@@ -50,5 +50,5 @@ description: "操作代码 SY07。面向管理员的应用，可跨全系统查�
 - **只想看某一单据的历史** … 最快的方式是打开该单据的详情页查看"历史"标签页。在本界面则可按单据编号搜索。
 - **看不到较早的记录** … 本界面仅显示最新 300 条。更早的记录请咨询系统管理员。
 - **没有登录或 PDF 下载的记录** … 这些不在本历史的记录范围内（仅记录数据的创建・更新・删除）。
-- **对象"应用管理"是什么** … 指在[应用管理](/internal-docs/zh/system/app-management)中切换应用显示开关的记录。
-- 用户与权限的查看请参见[用户管理](/internal-docs/zh/system/user-management)。
+- **对象"应用管理"是什么** … 指在[应用管理](/admin-manual/zh/system/app-management)中切换应用显示开关的记录。
+- 用户与权限的查看请参见[用户管理](/admin-manual/zh/system/user-management)。

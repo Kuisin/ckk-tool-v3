@@ -1,5 +1,5 @@
 ---
-title: "CKK Internal Docs"
+title: "CKK Admin Manual"
 description: "Internal documentation — system administration and kiosk device setup (login required)"
 ---
 

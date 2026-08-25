@@ -25,7 +25,7 @@ Operation code **SY09**. Registers and manages the shared plant-floor tablets (k
 
 ## Registering a device (link → activate)
 
-Registration is "profile first". For preparing the tablet itself (installing the dedicated app, etc.), see [Kiosk Device Setup](/internal-docs/en/system/kiosk-device-setup).
+Registration is "profile first". For preparing the tablet itself (installing the dedicated app, etc.), see [Kiosk Device Setup](/admin-manual/en/system/kiosk-device-setup).
 
 1. Click **端末プロファイル作成** (Create device profile) and enter a name, plant, and optional location. The status becomes "Awaiting link".
 2. The tablet's setup screen shows a **12-character link code** with a QR (valid for **10 minutes**).
@@ -74,5 +74,5 @@ In edit mode (toggle switch) you can:
 
 ## Related pages
 
-- Issuing and assigning login QR cards: see [QR Card Management](/internal-docs/en/system/kiosk-cards).
-- Setting up the tablet itself (APK, kiosk lock, auto-update): see [Kiosk Device Setup](/internal-docs/en/system/kiosk-device-setup).
+- Issuing and assigning login QR cards: see [QR Card Management](/admin-manual/en/system/kiosk-cards).
+- Setting up the tablet itself (APK, kiosk lock, auto-update): see [Kiosk Device Setup](/admin-manual/en/system/kiosk-device-setup).

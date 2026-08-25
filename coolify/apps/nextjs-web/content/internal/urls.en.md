@@ -69,7 +69,7 @@ The old `.kai-lab.net` addresses for `dock` / `monitor` / `chat` still work for 
 | URL | What it is |
 | --- | --- |
 | `https://app.ckk-tool.co.jp/manual` | User manual (**no login required**) |
-| `https://app.ckk-tool.co.jp/internal-docs` | Internal docs (this page — login required) |
+| `https://app.ckk-tool.co.jp/admin-manual` | Admin manual (this page — login required) |
 
 ## Notes
 

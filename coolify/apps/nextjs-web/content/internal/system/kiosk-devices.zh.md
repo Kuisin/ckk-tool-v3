@@ -25,7 +25,7 @@ description: "操作代码 SY09。用于注册和管理工厂现场的共享平�
 
 ## 注册终端（链接 → 启用）
 
-注册采用「档案先行」方式。平板本体的准备（安装专用应用等）请参见 [Kiosk 终端设置](/internal-docs/zh/system/kiosk-device-setup)。
+注册采用「档案先行」方式。平板本体的准备（安装专用应用等）请参见 [Kiosk 终端设置](/admin-manual/zh/system/kiosk-device-setup)。
 
 1. 点击 **端末プロファイル作成**（创建终端档案），输入终端名称、工厂和位置（可选）。状态变为「待链接」。
 2. 平板的设置界面会显示 **12 位链接码**（附 QR，**10 分钟内有效**）。
@@ -74,5 +74,5 @@ description: "操作代码 SY09。用于注册和管理工厂现场的共享平�
 
 ## 相关页面
 
-- 登录用 QR 卡片的签发与分配请参见 [QR卡片管理](/internal-docs/zh/system/kiosk-cards)。
-- 平板本体的设置（APK・kiosk 锁定・自动更新）请参见 [Kiosk 终端设置](/internal-docs/zh/system/kiosk-device-setup)。
+- 登录用 QR 卡片的签发与分配请参见 [QR卡片管理](/admin-manual/zh/system/kiosk-cards)。
+- 平板本体的设置（APK・kiosk 锁定・自动更新）请参见 [Kiosk 终端设置](/admin-manual/zh/system/kiosk-device-setup)。

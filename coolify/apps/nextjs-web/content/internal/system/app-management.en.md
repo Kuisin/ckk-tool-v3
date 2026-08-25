@@ -42,11 +42,11 @@ Toggling shows an "Enabled / Disabled" notification and takes effect right away.
 
 ## Change records
 
-Every ON/OFF operation is written to the audit log. In the [Activity Log](/internal-docs/en/system/activity-log) (target "アプリ管理 / App Management") you can see who toggled which app, in which environment, and when.
+Every ON/OFF operation is written to the audit log. In the [Activity Log](/admin-manual/en/system/activity-log) (target "アプリ管理 / App Management") you can see who toggled which app, in which environment, and when.
 
 ## FAQ
 
 - **Release a new app to production** — once it is verified on dev, turn its **main (production)** switch ON.
 - **Temporarily hide an app for maintenance** — switch it OFF in the relevant environment. Data is kept; switch it back ON to resume.
 - **Add an app to the list** — the list is generated from the app registry built into the system; adding one requires a development change.
-- Per-user permissions can be reviewed in [User Management](/internal-docs/en/system/user-management).
+- Per-user permissions can be reviewed in [User Management](/admin-manual/en/system/user-management).

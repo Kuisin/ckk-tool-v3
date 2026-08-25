@@ -1,7 +1,7 @@
 /**
  * /manual/search — 公開マニュアルの検索 API（Orama）。
  *
- * import しているのは manualSource のみ — 社内ドキュメント
+ * import しているのは manualSource のみ — 管理マニュアル
  * （internal-source.ts）は import 禁止（公開インデックスへの混入防止）。
  */
 

@@ -1,5 +1,5 @@
 /**
- * /internal-docs/[lang]/[[...slug]] — 社内ドキュメントのページ。
+ * /admin-manual/[lang]/[[...slug]] — 管理マニュアルのページ。
  * generateStaticParams なし（動的レンダー）— レイアウトの auth() を常に通す。
  */
 

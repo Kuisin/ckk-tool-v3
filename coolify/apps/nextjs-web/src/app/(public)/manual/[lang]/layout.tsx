@@ -20,9 +20,9 @@ export default async function ManualLayout({
   if (!isDocLang(lang)) notFound();
   return (
     <DocsShell
-      // 社内ドキュメントは要ログイン — 未ログインで押すとログイン画面へ。
+      // 管理マニュアルは要ログイン — 未ログインで押すとログイン画面へ。
       // リンク先が認証されるので、公開ページに出しても中身は漏れない。
-      crossLink={{ text: "社内ドキュメント", url: `/internal-docs/${lang}` }}
+      crossLink={{ text: "管理マニュアル", url: `/admin-manual/${lang}` }}
       lang={lang}
       searchApi="/manual/search"
       title="CKK マニュアル"

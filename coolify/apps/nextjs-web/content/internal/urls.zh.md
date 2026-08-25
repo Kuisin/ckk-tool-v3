@@ -68,7 +68,7 @@ description: "业务系统、平板终端、管理工具、数据库浏览器、
 | URL | 内容 |
 | --- | --- |
 | `https://app.ckk-tool.co.jp/manual` | 操作手册（**无需登录**） |
-| `https://app.ckk-tool.co.jp/internal-docs` | 公司内部文档（本页・需登录） |
+| `https://app.ckk-tool.co.jp/admin-manual` | 管理手册（本页・需登录） |
 
 ## 注意事项
 

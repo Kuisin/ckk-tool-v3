@@ -28,7 +28,7 @@ screenshots: [kiosk-login-01, kiosk-home-01]
 - 只能使用 **管理员登记过的** 平板。画面上出现「この端末は登録されていません」（本终端未登记）时，请联系管理员。
 - 第一次使用时，要 **自己设定并登记 PIN**（在下面的步骤中会有提示）。
 
-准备全新平板的步骤（安装应用、登记用 QR 码）在面向管理员的[内部文档](/internal-docs/zh/system/kiosk-device-setup)中（需要登录并具有权限才能阅读）。
+准备全新平板的步骤（安装应用、登记用 QR 码）在面向管理员的[内部文档](/admin-manual/zh/system/kiosk-device-setup)中（需要登录并具有权限才能阅读）。
 
 ## 登录
 

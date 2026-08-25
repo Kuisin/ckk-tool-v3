@@ -1,6 +1,6 @@
 /**
- * /internal-docs/search — 社内ドキュメントの検索 API（要ログイン）。
- * proxy.ts が /internal-docs を包含しているが、ここでも 401 を返す
+ * /admin-manual/search — 管理マニュアルの検索 API（要ログイン）。
+ * proxy.ts が /admin-manual を包含しているが、ここでも 401 を返す
  * （防御の深層化）。
  */
 
@@ -31,7 +31,7 @@ export async function GET(req: Request): Promise<Response> {
     return new Response("Unauthorized", { status: 401 });
   }
   // 本文と同じ権限で検索も塞ぐ（検索結果から見出しが漏れないように）。
-  const authz = await checkPermission("internal_docs", "READ");
+  const authz = await checkPermission("admin_manual", "READ");
   if (!authz.ok) {
     return new Response("Forbidden", { status: 403 });
   }

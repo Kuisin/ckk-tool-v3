@@ -278,11 +278,11 @@ export const OPERATION_CODES: OperationCodeEntry[] = [
     mode: "0",
     index: "1",
   },
-  // 社内ドキュメント（要ログイン + internal_docs 権限）— 単一画面, list コードのみ
+  // 管理マニュアル（要ログイン + admin_manual 権限）— 単一画面, list コードのみ
   {
     code: "DC02",
-    label: "社内ドキュメント",
-    href: "/internal-docs/ja",
+    label: "管理マニュアル",
+    href: "/admin-manual/ja",
     category: "ドキュメント",
     kind: "list",
     categoryCode: "DC",

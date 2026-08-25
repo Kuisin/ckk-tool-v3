@@ -2,7 +2,7 @@
  * /manual/llms.txt — 公開マニュアルの LLM 向けインデックス。
  * ja ページを一覧（1 行 = タイトル + URL + 説明）。生 Markdown は
  * /manual/ja/<slug>.md（rewrites → /llms-manual）で取得できる。
- * 社内ドキュメント（internal）版は存在させない。
+ * 管理マニュアル（internal）版は存在させない。
  */
 
 import { manualSource } from "@/lib/manual-source";

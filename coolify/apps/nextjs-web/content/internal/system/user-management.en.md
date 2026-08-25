@@ -52,5 +52,5 @@ The detail page has four blocks.
 - **I want to change roles** — this screen is for review only. Role assignment changes are made by a system administrator.
 - **Permissions look wrong** — check "Effective permissions" on the detail page. All grant rows from every role are listed, and actual access is their union. If someone has a "plant" / "region"-scoped permission but sees no data, also check that their "Assigned plants" is not empty.
 - **I want to change someone else's language or date display** — not possible from this screen. Language, date/time format and time zone are personal settings that **only the user themselves** can change, from **Display Settings** in the avatar menu (web) or the kiosk launcher (tablet). The language setting is shared between the web app and the kiosk.
-- To see who changed what and when, use the [Activity Log](/internal-docs/en/system/activity-log).
-- For app visibility ON/OFF, see [App Management](/internal-docs/en/system/app-management).
+- To see who changed what and when, use the [Activity Log](/admin-manual/en/system/activity-log).
+- For app visibility ON/OFF, see [App Management](/admin-manual/en/system/app-management).

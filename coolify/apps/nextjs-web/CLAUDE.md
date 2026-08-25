@@ -34,7 +34,7 @@ runs in the Docker build). Build utilities in-house instead — precedents:
 truly required, raise it explicitly; don't edit `pnpm-lock.yaml` casually.
 Sanctioned exception (explicit sign-off): the docs stack — `fumadocs-ui` /
 `fumadocs-core` / `fumadocs-mdx` / `@orama/tokenizers` (+ `@types/mdx`) for
-`/manual` + `/internal-docs`. Second sanctioned exception: the rich-text stack —
+`/manual` + `/admin-manual`. Second sanctioned exception: the rich-text stack —
 `@mantine/tiptap` (version-pinned **exactly** to `@mantine/core`) + `@tiptap/react`
 / `@tiptap/pm` / `@tiptap/starter-kit` / `@tiptap/extension-link` for the 文書メモ
 / コメント (`ui/MemoPanel.tsx`). Third sanctioned exception: **`next-intl`** for UI
@@ -51,7 +51,24 @@ library, or the kiosk twin file (`workflow-core.ts`) silently diverges. Loaded
 through `next/dynamic` + `ssr:false`; the React Flow attribution mark is hidden
 (`proOptions={{ hideAttribution: true }}`) — permitted under MIT, though the
 maintainers ask for a paid Pro plan in return. Not added to the kiosk — it has
-no flow graph.
+no flow graph. Fifth sanctioned exception: the **一般カテゴリ (CM02 フォーム /
+CM03 社内文書) スタック** — `react-markdown` + `remark-gfm` (MIT), `diff` (jsdiff,
+BSD-3), `@dnd-kit/core` + `@dnd-kit/sortable` + `@dnd-kit/utilities` (MIT), all
+pinned exactly, adopted on explicit sign-off. Why each, and where its
+responsibility stops:
+- `react-markdown` + `remark-gfm` render 社内文書 (`components/documents/MarkdownView.tsx`).
+  They build React elements instead of HTML strings, which is the whole point —
+  this repo has **no HTML sanitizer**, so a markdown app that produced markup
+  would be a stored-XSS surface. **Never add `rehype-raw`** (nor any plugin that
+  re-enables raw HTML): that single line would undo the guarantee. Link and image
+  URLs stay ours to police via `urlTransform` + custom `a` / `img` components.
+- `diff` (jsdiff) supplies line diffing and the old-line→new-line mapping behind
+  行コメントの追従 and blame. **It is a diff primitive only** — `lib/line-anchor.ts`
+  owns re-anchoring policy, the outdated rule and `MAX_DOC_LINES`.
+- `@dnd-kit/*` reorders fields in the form builder. **Drag is presentation only**:
+  `lib/form-schema.ts` owns `order` normalisation and validation, so a form built
+  without dragging (keyboard, or a future API) is identical.
+Not added to the kiosk — it has neither app.
 
 ## Layout
 
@@ -127,7 +144,7 @@ inside the Server Action / route handler, not only in the UI.
   home), `lib/operation-codes.ts` (`{CAT}{MODE}{IDX}` jump codes),
   `lib/icons.ts` (name→Tabler icon).
 
-## Docs system (`/manual` public + `/internal-docs` auth) — fumadocs
+## Docs system (`/manual` public + `/admin-manual` auth) — fumadocs
 
 Two content trees, both fumadocs-mdx collections (`source.config.ts`):
 
@@ -140,7 +157,7 @@ Two content trees, both fumadocs-mdx collections (`source.config.ts`):
   (`MANUAL_APP_CATEGORY` in `next.config.ts`) — keep that map in sync when an
   app page moves. Note pages sit 3 deep, so images are `../../../assets/…`.
 - `content/internal/` — internal docs (kiosk setup, admin) at
-  `/internal-docs/<lang>/<slug>` — proxy-gated AND `auth()`-checked in the layout.
+  `/admin-manual/<lang>/<slug>` — proxy-gated AND `auth()`-checked in the layout.
 
 Conventions: locale by filename suffix (`page.md` = ja, `page.en.md`,
 `page.zh.md`; same for `meta.json`/`meta.en.json`/`meta.zh.json`); frontmatter
@@ -149,7 +166,7 @@ Conventions: locale by filename suffix (`page.md` = ja, `page.en.md`,
 gone). Sources: `lib/manual-source.ts` / `lib/internal-source.ts` — **public
 routes must never import `internal-source.ts`** (that import boundary is what
 keeps internal content out of the public search index / llms endpoints).
-Search: `/manual/search` (public) + `/internal-docs/search` (session-checked),
+Search: `/manual/search` (public) + `/admin-manual/search` (session-checked),
 Orama with ja/zh tokenizers. LLM: `/manual/llms.txt` + raw markdown at
 `/manual/<lang>/<slug>.md` (rewrite → `/llms-manual`); no internal equivalents.
 Old `/docs/...?lang=xx` URLs 308-redirect (see `next.config.ts`). Screenshots:
