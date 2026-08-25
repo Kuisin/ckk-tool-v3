@@ -137,8 +137,8 @@ ollama は 1 プロセスで 1 枚しか使わないので**カードごとに 1
 
 | スタック | コンテナ | 役割 |
 |---|---|---|
-| `authentik` | server, worker, postgresql, redis | SSO（OIDC・VPN 越しの AD と連携） |
-| `vpn-ldap` | vpn-ldap, ldap-sync | Samba AD への到達（VPN）+ 社員同期 |
+| `authentik` | （停止中） | **旧・未使用**。2026-08-25 に停止した（ボリュームは残置）。実際の IdP は**別サーバー**で、`vpn-ldap` の socat 経由で `auth.ckk-tools.loc:9000` → `21.10.10.10:9000` に届く |
+| `vpn-ldap` | vpn-ldap, ldap-sync | Samba AD への到達（VPN）+ 社員同期。**IdP への経路もここ**（`auth.ckk-tools.loc` はこのコンテナのネットワーク別名で、socat が `21.10.10.10:9000` へ中継する） |
 | `mailrelay` | mailrelay | 送信メール中継 |
 | `kot-import` | kot-import | King of Time（勤怠）取込 |
 
