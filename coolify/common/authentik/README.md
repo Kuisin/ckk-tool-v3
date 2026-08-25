@@ -4,7 +4,7 @@ CKK アプリの SSO。`akadmin`（AUTHENTIK_BOOTSTRAP_PASSWORD）で
 http://192.168.50.15:9000 / https://auth.kai-lab.net にログイン。
 
 - OIDC Provider/Application「CKK」は bootstrap トークンで API 作成済み
-  （redirect: https://ckk-dev.kai-lab.net と https://ckk.kai-lab.net の
+  （redirect: https://app-dev.ckk-tool.co.jp と https://app.ckk-tool.co.jp の
   /api/auth/callback/authentik）。
 - アプリ側は Coolify の AUTH_AUTHENTIK_ISSUER / _ID / _SECRET で有効化
   （揃うとログインページに SSO ボタンが出る — src/auth.ts）。

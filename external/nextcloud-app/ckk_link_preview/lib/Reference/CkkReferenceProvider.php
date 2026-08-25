@@ -14,12 +14,12 @@ use OCP\IUserSession;
 use Psr\Log\LoggerInterface;
 
 /**
- * ckk.kai-lab.net / ckk-dev.kai-lab.net の URL を CKK 業務管理システムの
+ * app.ckk-tool.co.jp / app-dev.ckk-tool.co.jp の URL を CKK 業務管理システムの
  * /api/preview/resolve に照会し、閲覧ユーザーの READ 権限に応じた
  * プレビュー文を返す reference provider。
  *
  * 設定（occ config:app:set ckk_link_preview <key> --value <value>）:
- *   api_base      … 照会先 CKK アプリの origin（例 https://ckk.kai-lab.net）
+ *   api_base      … 照会先 CKK アプリの origin（例 https://app.ckk-tool.co.jp）
  *   shared_secret … CKK 側 env PREVIEW_SHARED_SECRET と同じ値
  */
 class CkkReferenceProvider implements IReferenceProvider {

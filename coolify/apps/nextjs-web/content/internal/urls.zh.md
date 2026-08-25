@@ -13,15 +13,15 @@ description: "业务系统、平板终端、管理工具、数据库浏览器、
 
 | URL | 环境 | 内容 |
 | --- | --- | --- |
-| `https://ckk.kai-lab.net` | **生产** | 业务管理系统 — **目前请使用此地址** |
-| `https://ckk-dev.kai-lab.net` | 验证 | 验证用。新功能确认请用此地址 |
-| `https://dev.kai-lab.net` | 验证 | 同上（旧地址） |
+| `https://app.ckk-tool.co.jp` | **生产** | 业务管理系统 — **目前请使用此地址** |
+| `https://app-dev.ckk-tool.co.jp` | 验证 | 验证用。新功能确认请用此地址 |
+| `https://app-dev.ckk-tool.co.jp` | 验证 | 同上（旧地址） |
 | `https://app.ckk-tool.co.jp` | **生产** | 迁移目标地址（已准备・见下） |
 | `https://app-dev.ckk-tool.co.jp` | 验证 | 迁移目标地址（已准备・见下） |
 
 > **`ckk-tool.co.jp` 侧目前只是「准备完毕」的状态。** 页面可以打开，但登录后的
 > 回调地址（SSO callback）仍指向 `kai-lab.net`，因此登录时会被跳转到
-> `ckk.kai-lab.net`。待 Authentik 的允许地址更新后再正式切换。
+> `app.ckk-tool.co.jp`。待 Authentik 的允许地址更新后再正式切换。
 > 在此之前**请使用 `kai-lab.net` 的地址。**
 
 ## 平板终端（现场共用）

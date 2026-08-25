@@ -322,9 +322,9 @@ def main() -> None:
     for u in users:
         name = u["username"]
         if name.startswith("dev_"):
-            pw, note = "dev2026", "ckk-dev.kai-lab.net（検証専用）"
+            pw, note = "dev2026", "app-dev.ckk-tool.co.jp（検証専用）"
         elif name.startswith("demo"):
-            pw, note = "demo2026", "ckk-dev.kai-lab.net（検証専用）"
+            pw, note = "demo2026", "app-dev.ckk-tool.co.jp（検証専用）"
         else:
             pw, note = "", "SSO / 実ユーザー"
         ws.append([
