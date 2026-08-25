@@ -148,9 +148,10 @@ Powers the AI-first 注文請書 intake (scan image + auto-filled form → user 
 
 - Deploy: `coolify/platform/deploy.sh dev` (or `main`, `kiosk-dev`, `kiosk-main`) after pushing; GitHub push auto-deploy activates once Coolify is exposed via the tunnel (see README).
 - **Rollback (main)**: Coolify UI → nextjs-web-main → Deployments → redeploy a previous build, or `deploy.sh main <git-sha>`. Deployment images are kept, so rollback is fast.
-- Ingress is decoupled from deploys: cloudflared/nginx target the stable socat relays `web:3000` (→ `:3004`) and `web-main:3000` (→ `:3005`) in the `nextjs-web` stack, so routing never changes on redeploys/rollbacks.
-- Coolify apps run on the external `coolify` docker network; `shared-db`, `gotenberg`, `seaweedfs`, `ollama` are attached to it so `DATABASE_URL`/`GOTENBERG_URL`/`SEAWEED_FILER_URL` resolve by container name. `PO_EXTRACT_URL` points at the per-environment Coolify app (`http://po-extract-dev:8000` / `http://po-extract-main:8000`) — Coolify containers are hash-named, so those names come from `custom_network_aliases`, not the container name. App env vars are managed in Coolify (not compose).
-- Both apps currently share the one business DB (`shared-db`/`ckk`); split a prod DB before real production traffic.
+- Ingress is decoupled from deploys by **`custom_network_aliases`**: each app claims a stable name on the `coolify` network (`web` / `web-main` / `kiosk` / `kiosk-main` / `admin-dev` / `admin` / `dockge` / `open-webui` / `po-extract-*` / `ckk-db-*`), so routing never changes on redeploys or rollbacks. The socat relays that used to do this were removed on 2026-08-25 — nginx and cloudflared now attach to **one** network (`coolify`) and resolve everything by alias. Chasing per-stack compose network names is what kept breaking them on every migration.
+- Coolify apps run on the external `coolify` docker network; everything they need (`ckk-db-*`, `gotenberg-*`, `seaweedfs-*`, `ollama`) is on it. App env vars are managed in Coolify (not compose).
+- **Coolify renames named volumes** to `<appUUID>_<name>` even when the compose declares `external: true` — so a named volume cannot be shared between apps, and a redeploy can silently come up on an empty one. Anything with data that must survive uses a **host bind mount** instead: `/data/ckk-secrets`, `/data/seaweed-dev`, `/data/seaweed-main`, `/data/ollama`, `/data/open-webui`. Bind mounts pass through Coolify unchanged.
+- dev and production share **nothing**: separate DB, object storage and PDF renderer (`ckk-db-dev`/`-main`, `seaweedfs-dev`/`-main`, `gotenberg-dev`/`-main`). The one accepted exception is `ollama` (a single GPU set).
 
 **Polymorphic children are cascaded by trigger, not FK** — 承認依頼 (`approval_requests.target_type/target_id`), メモ (`document_memos`), メモ改訂 (`document_memo_revisions`), 添付 (`document_attachments`) all point at a document by its **business-key string**, not an FK, so deleting a document would leave them behind — and if 採番 is ever reset, a reused number inherits them (this happened on dev: an approval record predating the document). Each document table therefore carries an `AFTER DELETE` trigger `purge_children_after_delete` → `app.purge_document_children()` (migration `20260911090000_document_children_cascade`) covering the 12 owner tables. It is invisible to the Prisma schema, so **add the trigger when you add a document table**. `audit_logs` is deliberately excluded — audit records outlive the document. The app has no document-delete path at all; the trigger exists because real deletions happen via psql/scripts/restores.
 
@@ -160,23 +161,32 @@ The history was **squashed on 2026-08-24** into 9 readable migrations: `20260824
 
 Never paste a pg_dump preamble into a migration: `set_config('search_path','')` blinds Prisma to `_prisma_migrations` and the deploy dies with **P1014** *after* writing data.
 
-**Migrations apply themselves.** Merging to `dev` / `main` triggers the Coolify apps `db-migrate-dev` / `db-migrate-main` (watch path `shared-db/**`), which run `prisma migrate deploy` and then re-apply the three idempotent, evolving artifacts — `grants.sql`, `kiosk-cron.sql`, `analytics-views.sql` — which are deliberately **not** migrations because they must re-run as the schema grows. A failure fails the deployment. Do not apply migrations by hand as part of normal work.
+**The DB is Coolify's, and migrations apply themselves — never by hand.** The databases are Coolify apps (`ckk-db-dev` / `ckk-db-main`), and merging to `dev` / `main` triggers the Coolify apps `db-migrate-dev` / `db-migrate-main` (watch path `shared-db/**`), which run `prisma migrate deploy` and then re-apply the three idempotent, evolving artifacts — `grants.sql`, `kiosk-cron.sql`, `analytics-views.sql` — which are deliberately **not** migrations because they must re-run as the schema grows. A failure fails the deployment, visibly, in the Coolify UI.
 
-**Break-glass / inspection** — the DBs publish no host port, so from this Mac use the `:remote` scripts, which open an SSH tunnel to the container (`scripts/remote-db.sh`) and run the command against it:
+**There is no manual apply path, on purpose.** `migrate:deploy`, `migrate:deploy:remote`, `grants:remote` and `cron:remote` were removed from `shared-db/package.json` (and from the pre-approved command list) on 2026-08-25. A hand-applied migration produces exactly the failures that are hardest to see later: dev and main drifting apart, `grants.sql` applied but `analytics-views.sql` forgotten, or a migration marked applied in `_prisma_migrations` that no deployment ever ran. If a migration must land, **merge it** — that is the mechanism. If the migrator fails, fix the migration and merge again; read its deployment log for the reason.
+
+Skipping `grants.sql` after adding tables makes the app 500 on those tables (role `app` has no rights) — which is why the migrator always runs it, every deploy.
+
+**Inspection (read-only)** — the DBs publish no host port, so from this Mac use `scripts/remote-db.sh`, which opens an SSH tunnel to the container and rewrites `DATABASE_URL`:
 
 ```bash
 cd shared-db
-pnpm migrate:status:remote     # inspect applied/pending
-pnpm migrate:deploy:remote     # apply by hand (normally the migrator's job)
-pnpm grants:remote             # re-grant (whenever tables/roles were added)
-pnpm import:legacy:remote      # 取引先マスタ (010_bp) — after a reset/re-provision
+pnpm migrate:status:remote     # applied/pending を見る（読むだけ）
+pnpm remote psql "$DATABASE_URL" -c '\dt app.*'
+pnpm import:legacy:remote      # 取引先マスタ (010_bp) — 再構築後のデータ投入（マイグレーションではない）
 ```
 
-`scripts/remote-db.sh <cmd>` is the general form (tunnel + DATABASE_URL rewrite, e.g. `pnpm remote psql "$DATABASE_URL" -c '\\dt app.*'`). Overrides: `DB_SSH_HOST`, `DB_CONTAINER`, `DB_TUNNEL_PORT`.
+Overrides: `DB_SSH_HOST`, `DB_CONTAINER`, `DB_TUNNEL_PORT`. **From a cloud Claude session** (sandbox has no LAN route — no SSH, no 192.168.50.x): run the same steps through Claude Code Remote in the Mac bridge environment (`kaisei-mac-studio:ckk-tool-v3`) — `create_trigger` with `create_new_session_on_fire: true` + that `environment_id`, then `fire_trigger`; have the session post its result as a PR comment and subscribe to the PR to receive it.
 
-Skipping `grants.sql` after adding tables makes the app 500 on those tables (role `app` has no rights) — which is why the migrator always runs it. **From a cloud Claude session** (sandbox has no LAN route — no SSH, no 192.168.50.x): run the same steps through Claude Code Remote in the Mac bridge environment (`kaisei-mac-studio:ckk-tool-v3`) — `create_trigger` with `create_new_session_on_fire: true` + that `environment_id`, then `fire_trigger`; have the session post its result as a PR comment and subscribe to the PR to receive it.
+**Server** — `192.168.50.15` (hostname `docker-mac-pro`; despite the name it runs Linux — Ubuntu noble / t2 kernel). Access: `ssh 192.168.50.15` (key-based, user `kaiseisawada`). **Almost everything is Coolify-managed** — 14 apps in the `common` environment (`ai-stack`, `app-support`, `cloudflared`, `fx-rates`, `kot-import`, `legacy-db`, `mailrelay`, `metabase`, `monitoring`, `portainer`, `prisma-studio`, `secrets`, `vpn-ldap`) plus the per-environment apps in `development` / `production`. Only **three** things are deployed directly with `coolify/common/deploy-stack.sh`, each for a stated reason:
 
-**Server** — `192.168.50.15` (hostname `docker-mac-pro`; despite the name it runs Linux — Ubuntu noble / t2 kernel). Access: `ssh 192.168.50.15` (key-based, user `kaiseisawada`). All services run as Docker Compose stacks, one dir per stack under `~/stacks/` on the server: `nextjs-web`, `coolify`, `shared-db`, `prisma-studio`, `metabase`, `legacy-db`, `ai-stack`, `monitoring`, `db-backup`, `authentik`, `vpn-ldap`, `kot-import`, `mailrelay`, `nginx-proxy`, `cloudflared`, `portainer`. Browsing/inspection is **Portainer** (`dock.kai-lab.net` — the hostname and its `dockge` network alias are leftovers from Dockge, which is gone).
+| Stack | なぜ Coolify に入れないか |
+|---|---|
+| `coolify` | Coolify 自身 |
+| `nginx-proxy` | LAN の TLS 終端。Coolify がアプリに `ports_exposes: 80,443` を見ると自前の Traefik を起動して 80/443 を奪う（実際に LAN の TLS を落とした） |
+| `db-backup` | バックアップは**復旧手段**なので、復旧したい相手（Coolify）に依存させない |
+
+Browsing/inspection is **Portainer** (`dock.kai-lab.net` — the hostname and its `dockge` network alias are leftovers from Dockge, which is gone).
 
 **The stack map is `coolify/README.md`** — every stack grouped by role (Edge / Coolify apps / app support / data / AI / ops / identity), which containers it owns, how it deploys, and the cross-stack network edges. Read it before adding a service, and add the new service there. Rule of the map: **every container belongs to a stack** — nothing is started with a bare `docker run`.
 
