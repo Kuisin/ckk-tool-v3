@@ -64,7 +64,10 @@ export function RespondFormClient({
           );
         return r.ok ? { ok: true } : { ok: false, error: r.error };
       }}
+      // 編集は受付終了後も許される設定があるので、送信可否は別に渡す。
+      // 最終判定はサーバ（canEditResponse / formAvailability）がやり直す。
       submitLabel={existing ? "更新" : "送信"}
+      submittable={existing ? true : availability === "OPEN"}
       title={title}
     />
   );

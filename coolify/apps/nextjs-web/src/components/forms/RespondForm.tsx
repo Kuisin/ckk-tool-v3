@@ -32,6 +32,7 @@ export function RespondForm({
   description,
   fields,
   availability,
+  submittable,
   initialAnswers = {},
   closesAtLabel,
   allowDraft = true,
@@ -43,6 +44,12 @@ export function RespondForm({
   description?: string | null;
   fields: FormFieldDef[];
   availability: FormAvailability;
+  /**
+   * いま送信してよいか。**受付中かどうかとは別物** — 「編集は指定日時まで」の
+   * 設定だと、受付が終わったあとでも自分の回答は直せる。ここを availability
+   * だけで決めると、その編集画面がまるごと無効になる。
+   */
+  submittable: boolean;
   initialAnswers?: Record<string, FormAnswerValue>;
   closesAtLabel?: string | null;
   allowDraft?: boolean;
@@ -59,7 +66,7 @@ export function RespondForm({
   const [answers, setAnswers] = useState(initialAnswers);
   const [errors, setErrors] = useState<Record<string, string>>({});
 
-  const open = availability === "OPEN";
+  const open = submittable;
 
   const submit = (asDraft: boolean) => {
     if (!asDraft) {
@@ -103,7 +110,7 @@ export function RespondForm({
         )}
       </Stack>
 
-      {!open && (
+      {!open && availability !== "OPEN" && (
         <Alert
           color={availability === "SCHEDULED" ? "yellow" : "gray"}
           icon={
