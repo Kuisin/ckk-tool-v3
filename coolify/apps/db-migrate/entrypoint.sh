@@ -39,11 +39,14 @@ pnpm exec prisma migrate deploy
 echo "==> grants.sql"
 psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -q -f sql/grants.sql
 
-echo "==> kiosk-cron.sql"
+# pg_cron を要する成果物はまとめて 1 回だけ判定する（SHOW を何度も引かない）。
 if psql "$DATABASE_URL" -At -c "SHOW shared_preload_libraries" | grep -q pg_cron; then
+  echo "==> kiosk-cron.sql"
   psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -q -f sql/kiosk-cron.sql
+  echo "==> user-suspension-cron.sql"
+  psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -q -f sql/user-suspension-cron.sql
 else
-  echo "   pg_cron not preloaded on this server — skipped"
+  echo "==> kiosk-cron.sql / user-suspension-cron.sql — pg_cron not preloaded, skipped"
 fi
 
 echo "==> analytics-views.sql"
