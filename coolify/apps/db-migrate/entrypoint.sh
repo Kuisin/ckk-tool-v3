@@ -45,8 +45,10 @@ if psql "$DATABASE_URL" -At -c "SHOW shared_preload_libraries" | grep -q pg_cron
   psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -q -f sql/kiosk-cron.sql
   echo "==> user-suspension-cron.sql"
   psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -q -f sql/user-suspension-cron.sql
+  echo "==> security-cron.sql"
+  psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -q -f sql/security-cron.sql
 else
-  echo "==> kiosk-cron.sql / user-suspension-cron.sql — pg_cron not preloaded, skipped"
+  echo "==> kiosk-cron.sql / user-suspension-cron.sql / security-cron.sql — pg_cron not preloaded, skipped"
 fi
 
 echo "==> analytics-views.sql"
