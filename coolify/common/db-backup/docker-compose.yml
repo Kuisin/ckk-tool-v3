@@ -1,5 +1,18 @@
 # CKK db-backup — scheduled PG17 incremental base backups of the production DB.
 #
+# ⚠️ **このスタックは意図的に Coolify 管理にしない。** `deploy-stack.sh db-backup`
+# で直接デプロイする（`coolify` スタック本体と同じ扱い）。
+#
+# 理由: バックアップは**復旧手段**なので、復旧したい相手（Coolify）に依存させない。
+# Coolify が壊れた・設定を壊した・ボリュームを取り違えた、というときにこそ
+# バックアップが要る。その状況で「バックアップも Coolify 管理でした」では
+# 手が無くなる。restore-agent が Coolify API を叩く構成であることも踏まえ、
+# 実行基盤としては独立させておく。
+#
+# スクリプトはイメージへ焼き込んである（bind mount をやめた）。直接デプロイなら
+# bind mount でも動くが、焼き込んでおけば「どこから実行しても同じ」になり、
+# 将来 Coolify へ移す判断をしても壊れない。
+#
 # 2026-08-24: 本番は `shared-db` から Coolify 管理の `ckk-db-main` へ移行した。
 # バックアップ対象も追随させる（`PGHOST` / `LOGICAL_DB_URL` / `RESTORE_DB_URL`）。
 # 対象は **本番だけ** — dev（ckk-db-dev）は取らない。
