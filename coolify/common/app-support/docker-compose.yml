@@ -1,0 +1,102 @@
+# app-support — アプリが要る周辺サービス（PDF 生成 + ファイル保管）。
+#
+# ⚠️ **Coolify 管理**（プロジェクト ckk / `common` 環境）。
+#
+# 旧 `nextjs-web` スタックの後継。旧スタックには socat のリレー 6 本
+# （web / web-main / kiosk / kiosk-main / admin-dev / admin）も居たが、
+# **廃止した** — あれは「Coolify のコンテナ名がハッシュで安定しない」ことへの
+# 回避策で、Coolify の `custom_network_aliases` で同じ名前を直接張れると
+# 判った時点で不要になった。nginx と cloudflared は `coolify` 網でその別名を
+# そのまま引く（vhost もトンネルの設定も変えていない）。
+#
+# **dev と本番は何も共有しない。** それぞれ自前の DB・オブジェクトストレージ・
+# PDF レンダラを持つ:
+#   gotenberg-dev  / gotenberg-main   HTML→PDF        (http://gotenberg-<env>:3000)
+#   seaweedfs-dev  / seaweedfs-main   ファイル保管    (http://seaweedfs-<env>:8888)
+#   ckk-db-dev     / ckk-db-main      DB              （別の Coolify アプリ）
+#
+# **保管データは bind mount。** Coolify は compose の名前付きボリュームを
+# `external: true` と書いても `<appUUID>_<name>` へ改名するので、名前付き
+# ボリュームにすると再デプロイのたびに空から始まりかねない。ホストの固定パスなら
+# Coolify 管理でも直接デプロイでも同じ実体を指す（../secrets/README.md と同じ理由）。
+
+services:
+  gotenberg-dev:
+    image: gotenberg/gotenberg:8.17
+    container_name: gotenberg-dev
+    restart: unless-stopped
+    command:
+      - gotenberg
+      - --chromium-disable-javascript=true
+      - --chromium-allow-list=file:///tmp/.*
+    networks:
+      - coolify
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://127.0.0.1:3000/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  gotenberg-main:
+    image: gotenberg/gotenberg:8.17
+    container_name: gotenberg-main
+    restart: unless-stopped
+    command:
+      - gotenberg
+      - --chromium-disable-javascript=true
+      - --chromium-allow-list=file:///tmp/.*
+    networks:
+      - coolify
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://127.0.0.1:3000/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  # ファイル保管（生成 PDF・添付・アバター・フロアマップ）。SeaweedFS の
+  # S3/Filer で、アプリは Filer の HTTP API :8888 を使う。
+  #
+  # **環境ごとに 1 台、保管先も別。** dev のアップロードが本番のファイルの隣に
+  # 落ちてはいけないし、DB を分けた以上 `files.storage_key` は自分の環境の
+  # ストアに対してしか意味を持たない。
+  #
+  # -ip.bind=0.0.0.0: 既定では最初のネットワークの IP にしかバインドせず、
+  # 他網（Coolify ビルドのアプリ）から接続拒否になるため全 IF で待ち受ける。
+  seaweedfs-dev:
+    image: chrislusf/seaweedfs:latest
+    container_name: seaweedfs-dev
+    restart: unless-stopped
+    command: "server -ip.bind=0.0.0.0 -dir=/data -filer -s3 -volume.max=0 -master.volumeSizeLimitMB=1024"
+    volumes:
+      - /data/seaweed-dev:/data
+    networks:
+      - coolify
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:8888/"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+
+  seaweedfs-main:
+    image: chrislusf/seaweedfs:latest
+    container_name: seaweedfs-main
+    restart: unless-stopped
+    command: "server -ip.bind=0.0.0.0 -dir=/data -filer -s3 -volume.max=0 -master.volumeSizeLimitMB=1024"
+    volumes:
+      - /data/seaweed-main:/data
+    networks:
+      - coolify
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:8888/"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+
+networks:
+  coolify:
+    external: true
+    name: coolify
