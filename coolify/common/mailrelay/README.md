@@ -22,10 +22,30 @@ authenticated send, so delivery is reputable (no self-hosted-IP / PTR problem).
 | Auth / TLS | 認証なし（社内ネットワークの 1 ホップ）。STARTTLS は自己署名なので検証しない |
 | From address | `no-reply@ckk-tool.co.jp` |
 
-**nextjs-web は 2026-08-25 からこの経路**（`SMTP_HOST=mailrelay`,
-`SMTP_PORT=587`, `MAIL_FROM` 明示、`SMTP_USER`/`SMTP_PASS` は**設定しない**）。
-`lib/mailer.ts` は資格情報が無ければ `auth` を渡さない実装になっている
-（空の auth を渡すと nodemailer が AUTH を試み、認証を求めないリレーに拒否される）。
+### 社内アプリは HTTP（mail-api）を使う
+
+同じスタックに **`mail-api`**（FastAPI）を置いてある。アプリ側に SMTP の作法を
+持たせないための薄い口で、配送・再送・DKIM は postfix が担う。
+
+```
+POST http://mail-api:8080/send
+X-Mail-Token: <MAIL_API_TOKEN>
+{ "to": "...", "subject": "...", "text": "...", "html": "…（任意）" }
+→ 200 { "ok": true, "message_id": "<…>" }
+→ 401 トークン不一致 / 502 リレーが受け取れなかった
+GET  http://mail-api:8080/healthz   # SMTP へ到達できるかも含めて返す
+```
+
+差出人は **mail-api が固定**する（アプリごとに違う From を許すと、リレーの
+`ALLOWED_SENDER_DOMAINS` と食い違ったときに原因が追いにくい）。`Message-ID` も
+ここで採番する — postfix 任せだと `<>` になり、スレッド化と追跡の手掛かりが消える。
+
+**nextjs-web は 2026-08-25 からこの経路**（`MAIL_API_URL=http://mail-api:8080` +
+`MAIL_API_TOKEN`）。`lib/mailer.ts` は fetch を 1 回するだけになり、SMTP の
+トランスポート設定・TLS・認証・差出人の組み立ては全部こちら側へ移った。
+
+SMTP（`mailrelay:587`）も**そのまま残す** — Metabase / Grafana / Open WebUI は
+SMTP しか話せないため。
 
 **なぜ直送をやめたか** — `sendMail` は失敗しても throw せず false を返すだけで
 再送もしないので、さくら側が一時的に詰まると**通知メールが黙って消えていた**。

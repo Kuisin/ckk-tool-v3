@@ -1,0 +1,6 @@
+# バージョンは固定する（_specs/techstack.md の規則）。>= で開くと、次に誰かが
+# 再ビルドしたときに壊れる。SMTP は標準ライブラリ（smtplib）なので依存は無い。
+fastapi==0.115.6
+uvicorn[standard]==0.34.0
+# EmailStr のバリデーションに必要。
+email-validator==2.2.0

@@ -30,6 +30,39 @@ services:
     networks:
       - coolify
 
+  # HTTP → SMTP の薄い口。アプリ側に SMTP の作法を持たせないために置く。
+  # 配送・再送・DKIM は上の postfix が担い、ここは JSON を受けて渡すだけ。
+  # SMTP（mailrelay:587）は残す — Metabase / Grafana / Open WebUI は
+  # SMTP しか話せないため。
+  mail-api:
+    build: ./api
+    image: ckk-mail-api
+    container_name: mail-api
+    restart: unless-stopped
+    depends_on:
+      - mailrelay
+    environment:
+      - SMTP_HOST=mailrelay
+      - SMTP_PORT=587
+      - MAIL_FROM=${MAIL_FROM:-no-reply@ckk-tool.co.jp}
+      - MAIL_FROM_NAME=${MAIL_FROM_NAME:-CKK 業務管理システム}
+      # 未設定なら API は 503 を返して開けっ放しにならない。
+      - MAIL_API_TOKEN=${MAIL_API_TOKEN:?set MAIL_API_TOKEN in .env}
+    # ホストポートは公開しない。アプリは http://mail-api:8080 で引く。
+    networks:
+      - coolify
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - >-
+          python -c "import urllib.request,sys;
+          sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8080/healthz',
+          timeout=5).status==200 else 1)"
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 20s
+
 volumes:
   # external にしてあるので、Coolify がプロジェクト名を変えても同じ DKIM 鍵を掴む
   # （名前付きのままだとボリューム名が変わって鍵が孤児になる）。
