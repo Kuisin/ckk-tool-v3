@@ -15,6 +15,7 @@ import {
   LINK_REQUEST_TTL_MS,
   REGISTRATION_CODE_LENGTH,
 } from "@/lib/kiosk-auth-core";
+import { clientIpOf, userAgentOf } from "@/lib/request-ip";
 
 export async function POST(req: Request) {
   const existing = await getDevice({ skipAttest: true });
@@ -36,9 +37,9 @@ export async function POST(req: Request) {
     data: {
       code: generateCode(REGISTRATION_CODE_LENGTH),
       expiresAt: new Date(now.getTime() + LINK_REQUEST_TTL_MS),
-      userAgent: req.headers.get("user-agent"),
-      lastIpAddress:
-        req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? null,
+      // 左端（クライアント自称）ではなく、信頼できるプロキシが観測した値を採る
+      userAgent: userAgentOf(req),
+      lastIpAddress: clientIpOf(req),
     },
     select: { code: true, expiresAt: true },
   });

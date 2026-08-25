@@ -320,6 +320,7 @@ Operation codes provide keyboard-shortcut navigation. Format: `{CAT}{MODE}{IDX}`
 | システム | A | キオスク設定 | SY0A | — | — |
 | システム | B | リンク管理 | SY0B | — | — |
 | システム | C | 注文書取込 | SY0C | — | — |
+| システム | D | ログイン履歴 | SY0D | — | — |
 
 > `CM00`（ダッシュボード）は**アプリ一覧（`lib/app-list.ts`）には登録されて
 > いない** — ホーム自体だから。ランチャーに出るアプリの正は常に
@@ -423,6 +424,7 @@ Stack (gap="xl", p="md", maw={1200})
 | QRカード管理 | `IconQrcode` |
 | 端末管理 | `IconDeviceTablet` |
 | 注文書取込 | `IconFileImport` |
+| ログイン履歴 | `IconShieldLock` |
 | マニュアル | `IconBook2` |
 
 ---

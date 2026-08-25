@@ -56,6 +56,14 @@ export type DeviceAuth = {
   name: string | null;
   plantId: number | null;
   status: "PENDING" | "ACTIVE" | "DISABLED" | "REVOKED";
+  /**
+   * このリクエストが有効なアテステーション Cookie を持っていたか。
+   * KIOSK_ATTESTATION=required でなくても判定するのは、所有区分
+   * （device-ownership-core）が「鍵署名という暗号的な証拠があるか」を
+   * 見分けるため。**認可には使わない** — 認可は required のときの
+   * ATTEST_REQUIRED で既に決まっている。
+   */
+  attested: boolean;
 };
 
 /** 30日デバイストークンを発行し Cookie に設定、ハッシュを返す。 */
@@ -111,12 +119,16 @@ export async function getDevice(
   if (!isDeviceTokenAlive(new Date(), device.deviceTokenExpiresAt)) {
     return { ok: false, reason: "EXPIRED" };
   }
-  if (!opts.skipAttest && attestationRequired()) {
-    const secret = attestSecret();
-    const attest = store.get(ATTEST_COOKIE)?.value;
-    if (!secret || !attest || !verifyAttestCookie(secret, attest, device.id)) {
-      return { ok: false, reason: "ATTEST_REQUIRED" };
-    }
+  // 鍵署名の有無は required かどうかに関わらず見る（所有区分の判定材料）。
+  const secret = attestSecret();
+  const attestCookie = store.get(ATTEST_COOKIE)?.value;
+  const attested = Boolean(
+    secret &&
+      attestCookie &&
+      verifyAttestCookie(secret, attestCookie, device.id),
+  );
+  if (!opts.skipAttest && attestationRequired() && !attested) {
+    return { ok: false, reason: "ATTEST_REQUIRED" };
   }
   return {
     ok: true,
@@ -126,6 +138,7 @@ export async function getDevice(
       name: deviceName(device.name),
       plantId: device.plantId,
       status: device.status,
+      attested,
     },
   };
 }

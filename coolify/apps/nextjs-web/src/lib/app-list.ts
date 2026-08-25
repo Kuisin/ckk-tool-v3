@@ -518,6 +518,17 @@ export const appList: AppEntry[] = [
     category: "システム",
     requiredPermission: "system",
   },
+  {
+    // ログイン履歴 — Web / キオスク両方の認証イベント（成功・失敗）。
+    // 「誰がどこから何回試したか」を後から追える唯一の場所。
+    key: "login-history",
+    label: "ログイン履歴",
+    operationCode: "SY0D",
+    href: "/settings/login-history",
+    icon: "IconShieldLock",
+    category: "システム",
+    requiredPermission: "system",
+  },
 ];
 
 /** Home 絞り込み（工程）で使う URL パラメータのキー。 */

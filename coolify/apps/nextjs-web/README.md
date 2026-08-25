@@ -52,7 +52,7 @@ honors `ignoredBuiltDependencies` (pnpm 11 hard-fails on the ignored `sharp` bui
 - `gotenberg` / `seaweedfs` — PDF rendering + document storage (also attached to
   the `coolify` network so the Coolify apps reach them by name)
 - `web` / `web-main` — socat relays giving cloudflared/nginx the stable targets
-  `web:3000` / `web-main:3000` on `nextjs-web_default` regardless of deploys
+  `web:3000` / `web-main:3000` on the `coolify` network regardless of deploys
 
 ### Access beyond the LAN
 
@@ -61,5 +61,5 @@ honors `ignoredBuiltDependencies` (pnpm 11 hard-fails on the ignored `sharp` bui
 - **`nginx-proxy` stack** — LAN TLS for the same hostnames (split-horizon; shared
   `app.ckk-tool.co.jp` SAN cert).
 
-Both attach to `nextjs-web_default` and target the relays, so they need this
+Both attach to `coolify` and target those aliases, so they need this
 stack up, but never care about Coolify redeploys.

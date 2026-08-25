@@ -17,7 +17,7 @@ Networks > Tunnels > docker-linux > Public Hostname
                                                       app-dev.ckk-tool.co.jp kept as legacy alias)
   app.ckk-tool.co.jp      →  HTTP  →  web-main:3000     (nextjs-web main/production — relay to :3005)
   app.ckk-tool.co.jp   →  HTTP  →  web-main:3000     (same production app, ckk-tool.co.jp alias)
-  ckk-kiosk-dev.kai-lab.net → HTTP → kiosk:3000      (nextjs-kiosk dev — relay to Coolify :3006;
+  ckk-kiosk-dev.kai-lab.net → HTTP → kiosk:3000      (nextjs-kiosk dev — `coolify` 網の別名 kiosk;
                                                       WS /api/kiosk/ws passes through)
   ckk-kiosk.kai-lab.net →  HTTP  →  kiosk-main:3000  (nextjs-kiosk main — relay to :3007)
   dockge.kai-lab.net   →  HTTP  →  dockge:5001       (dockge)
@@ -30,11 +30,16 @@ Networks > Tunnels > docker-linux > Public Hostname
 `web` / `web-main` are stable socat relays in the `nextjs-web` stack, so Coolify
 redeploys and rollbacks never require touching this dashboard config.
 
-The connector joins each target stack's network (`nextjs-web_default` as `web`,
-`dockge_default` as `dockge`, `ai-stack_default` as `ai-stack`,
+2026-08-25 以降、コネクタが参加するネットワークは **`coolify` の 1 本だけ**。
+各サービスは `custom_network_aliases` でそこに安定した名前を張っている
+（`web` / `web-main` / `kiosk` / `kiosk-main` / `admin` / `admin-dev` /
+`dockge` / `open-webui` / `metabase` / `grafana`）。
+
+以前はスタックごとの compose 網（`nextjs-web_default`,
+`dockge_default`, `ai-stack_default`, …）を名前でたぐっていたが、
 `monitoring_monitoring` as `monitoring`) to resolve those service names, so those
 stacks must be up first. Ollama (`:11434`) is intentionally **not** published —
-Open WebUI talks to it internally over `ai-stack_default`.
+Open WebUI talks to it internally over the ai-stack's own network.
 
 > **Security — protect these with Cloudflare Access:**
 > - `dockge.kai-lab.net` — full Docker-management UI with the host console enabled

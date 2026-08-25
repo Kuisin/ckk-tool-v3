@@ -6,6 +6,11 @@
  * 通常ユーザーは SSO ボタンのみ。credentials（デモ/開発アカウント）は下部の
  * テキストリンクから開く隠しフォーム — 一般ユーザー向けではない。
  * SSO は AUTH_AUTHENTIK_* が未設定の間は無効表示（設定で自動有効化）。
+ *
+ * マウント時に端末シグネチャを /api/device-signals へ投げ、署名 Cookie を
+ * 受け取っておく（認証イベントの記録用）。SSO は Server Action で即
+ * リダイレクトしてしまうので、**押した後ではなくマウント時**に送るのが要点。
+ * 失敗してもログインには一切影響しない。
  */
 
 import {
@@ -24,8 +29,9 @@ import {
 import { IconLogin2 } from "@tabler/icons-react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { signIn } from "next-auth/react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { ssoSignIn } from "@/app/(auth)/login/actions";
+import { ensureDeviceSignals } from "@/lib/device-signals-client";
 
 /** Auth.js が /login?error=… で返すコードを日本語に。 */
 const AUTH_ERROR_MESSAGES: Record<string, string> = {
@@ -53,10 +59,17 @@ export function LoginForm({ ssoEnabled }: { ssoEnabled: boolean }) {
       : null,
   );
 
+  // 端末シグネチャの収集・送信（投げっぱなし。SSO ボタンを押す前に済ませる）
+  useEffect(() => {
+    void ensureDeviceSignals();
+  }, []);
+
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setError(null);
+    // マウント時の送信が終わっていなければ待つ（Cookie が付いてから認証する）
+    await ensureDeviceSignals();
     const res = await signIn("credentials", {
       username,
       password,

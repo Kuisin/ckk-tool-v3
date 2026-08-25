@@ -11,6 +11,9 @@
 > `system_logs` / `ad_sync_logs` / `material_purchase_approvers`
 > （DB にも存在しない。使う前に作る必要がある）
 >
+> ※ `system_logs` のうち **LOGIN の部分だけは `login_attempts` として実装済み**
+> （下記 Security 節）。残り（PDF ダウンロード等の操作記録）は未実装のまま。
+>
 > **実装にあるが本書に未記載（32）** — 後から足した機能の分:
 > - `directory.prisma`: `employee_directory` / `ldap_sync_log`
 > - `intake.prisma`: （`order_lines` は本書に記載済み）
@@ -1715,6 +1718,9 @@ Table feature_flags {
 // System Log（統合ログ）
 // -----------------------------
 // ⚠️ 未実装 — 設計のみ（システム操作ログ）。Prisma スキーマにも DB にも存在しない。
+// ただし **LOGIN 相当は login_attempts として実装済み**（下の Security 節）。
+// 残りを作るときは、認証イベントを二重に持たないよう login_attempts と
+// 役割を分けること。
 Table system_logs {
   id              uuid [pk]
   user_id         uuid
@@ -1766,5 +1772,93 @@ Table ad_sync_logs {
   error_message   text
   started_at      timestamp   [not null]
   finished_at     timestamp
+}
+
+```
+
+### Security（認証イベント）
+
+```
+// 認証イベント（成功・失敗の両方）。Web / キオスクの両方が同じ表に書く。
+//
+// audit_logs に入れられないのは、あちらが actor（user_id）前提の台帳だから。
+// ログイン失敗は「actor が確定しない事象」そのもので、そこには表現できない。
+// 実装前は失敗が 1 行も残っていなかった（キオスクはカードのカウンタ、Web は
+// インメモリのレート制限だけ）。
+//
+// **生の秘密を残さない**のが設計の芯:
+//   - パスワード / PIN は保存しない
+//   - kiosk_cards.id は QR の secret そのものなので、実在カードだけ FK で参照し、
+//     未知・偽造カードは HMAC の相関キー（card_ref）だけ残す
+//   - ユーザー名も実在ユーザーに解決できたときだけ生値（DB の CHECK でも強制）
+//
+// 個人データを含むので 3 点セットで守る: SY0D は system 権限 /
+// metabase_ro からテーブルごと剥奪（grants.sql）/ pg_cron で保持期間を切る
+// （security-cron.sql — 成功 180 日・失敗 400 日）。
+Table login_attempts {
+  id                  bigserial [pk]
+  created_at          timestamp
+  app                 LOGIN_APP      // WEB | KIOSK
+  outcome             LOGIN_OUTCOME  // SUCCESS | FAILURE
+  method              varchar        // 認証方式。enum にしない（必ず増えるため）
+  reason              varchar        // 失敗理由。値の集合は lib/login-attempt-core.ts が正
+  user_id             uuid [ref: > users.id]
+  identifier          varchar        // 実在ユーザーに解決できたときだけ生値
+  identifier_ref      char(64)       // HMAC(pepper, 入力値)。未知の入力の相関用
+  card_id             varchar [ref: > kiosk_cards.id]  // 実在カードのみ
+  card_ref            char(64)       // HMAC(pepper, 正規化スキャン値)
+  scan_kind           varchar        // CARD / WO / OTHER / MALFORMED / EMPTY（中身は残さない）
+  kiosk_device_id     uuid [ref: > kiosk_devices.id]
+  user_device_id      uuid [ref: > user_devices.id]
+  ip_address          inet           // **正規形で書くこと**（v4-mapped だと CIDR 検索から漏れる）
+  ip_chain            varchar        // x-forwarded-for の生チェーン（信頼ホップ数の検算用）
+  user_agent          varchar
+  signals_fingerprint char(64)       // サーバーが再計算した端末シグネチャ。**認証要素ではない**
+  signals_version     smallint
+  signals             json           // 正規化済みシグネチャ（版を上げたら再ハッシュできる）
+  ownership           DEVICE_OWNERSHIP
+  ownership_source    varchar        // なぜそう判定したか（監査用）
+}
+
+// Web ブラウザ端末の台帳。1 行 = (ユーザー, シグネチャ)。
+// **端末の同定ではない** — 同一キッティングの PC は衝突し、ブラウザ更新で割れる。
+// 「この人がいつも使っている端末か」の目安。成功ログインでのみ upsert する
+// （失敗で作ると攻撃者の端末が「登録済み端末」として並ぶ）。
+Table user_devices {
+  id               uuid [pk]
+  user_id          uuid [ref: > users.id]
+  fingerprint      char(64)
+  signals_version  smallint
+  label            varchar          // "Chrome / Windows 11"
+  ownership        DEVICE_OWNERSHIP
+  ownership_source varchar
+  signals          json
+  user_agent       varchar
+  last_ip_address  inet
+  login_count      int
+  first_seen_at    timestamp
+  last_seen_at     timestamp
+
+  indexes {
+    (user_id, fingerprint) [unique]
+  }
+}
+
+Enum LOGIN_APP { WEB, KIOSK }
+Enum LOGIN_OUTCOME { SUCCESS, FAILURE }
+
+// 端末の所有区分（**自動判定のみ**。管理者の上書き欄は持たない）。
+// 素のブラウザでは所有を検証できないので、判定と一緒に**根拠の強さ**を残す
+// （判定規則は lib/device-ownership-core.ts が唯一の定義）:
+//   COMPANY_MANAGED  端末鍵の署名 = 暗号的な証拠（トークンのみは状況証拠）
+//   COMPANY_NETWORK  送信元 IP が社内 CIDR = 「社内にいる」だけ。所有の証拠ではない
+//   UNMANAGED        証拠なし（私用の可能性。断定ではない）
+//   UNKNOWN          判定材料なし（IP 不明 / CIDR 未設定）
+// **アクセス制御には使わない** — 表示とアラートのみ。
+Enum DEVICE_OWNERSHIP {
+  COMPANY_MANAGED
+  COMPANY_NETWORK
+  UNMANAGED
+  UNKNOWN
 }
 ```

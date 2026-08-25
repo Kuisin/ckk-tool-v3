@@ -47,7 +47,7 @@ Admin → Settings → Email（API では `PUT /api/email`）。パスワード�
 | 5 | CKK 業務 | `metabase_ro` | `app`（限定） | 受注・生産・請求・在庫 |
 
 `metabase_ro` は `app` スキーマに read-only（`shared-db/sql/grants.sql` +
-`coolify/common/shared-db/init/01-roles.sh`）。労務 DB の `kot_ro` とは分離。
+`coolify/apps/ckk-db/init/01-roles.sh`）。労務 DB の `kot_ro` とは分離。
 
 **機微データのマスキング** — BI に不要で漏れると危険な認証・セッション・端末鍵・
 PIN・プッシュ秘密は `grants.sql` の metabase_ro ブロックで隠している（DB 権限で
@@ -102,7 +102,7 @@ ssh 192.168.50.15 "cd ~/stacks/metabase && docker compose restart metabase"   # 
   会計処理用ではない）。
 - レートは **shared-db スタック**の `fx-rates` コンテナが毎日 07:15 JST に自動
   更新（通貨は業務システムでも使うため Metabase 非依存 —
-  `coolify/common/shared-db/fx-rates/` を参照）。ログは `docker logs fx-rates`。
+  `coolify/common/fx-rates/` を参照）。ログは `docker logs fx-rates`。
 - db 5 の schema-filter は `app,analytics`（生テーブルと解決済みビューの両方が見える）。
 - 列ラベルは下記 `gen-business-ja.py` の analytics パスで日本語化。
 - 適用（`analytics-views.sql` を先に、その後 `grants.sql`。どちらも冪等）:

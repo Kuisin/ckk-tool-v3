@@ -1,0 +1,163 @@
+// 認証イベントの記録（app.login_attempts）と Web ブラウザ端末台帳（app.user_devices）。
+//
+// ■ なぜ独立したテーブルなのか
+// audit_logs は「ログイン**済み**の人が何をしたか」の台帳で、actor（user_id）が
+// あることが前提。ログイン失敗はまさに actor が確定しない事象なので、そこには
+// 入らない（実際、これまで失敗は一切残っていなかった）。kiosk_device_logs は
+// 端末プレゼンスの遷移ログで、Web のログインを持てない。
+//
+// ■ 大原則: 生の秘密は保存しない
+// kiosk_cards.id は QR に刷られている secret そのもの。実在しないカードを読んだ
+// 失敗行に生値を書くと、「偽造カードの中身」と「正規カードの secret」が同じ列に
+// 溜まることになる。実在したカードだけ FK で参照し、それ以外は pepper 付き HMAC
+// の相関キー（card_ref）だけを残す。ユーザー名も同じ — 実在ユーザーに解決できた
+// ときだけ生値（identifier）を持ち、未知の文字列は ref だけにする（打ち間違いの
+// パスワードが混ざりうるため）。
+//
+// ■ 端末シグネチャ（signals_fingerprint）は認証要素ではない
+// クライアント申告の特徴量をサーバーが再計算したハッシュで、相関キーにすぎない。
+// kiosk_devices.fingerprint（= アテステーション鍵の指紋。暗号的な証拠）とは
+// 別物なので、名前も UI 表記も分けてある（端末シグネチャ / 鍵フィンガープリント）。
+//
+// ■ 保持期間
+// 成功 180 日 / 失敗 400 日。pg_cron（sql/security-cron.sql）が落とす。
+// 個人データ（TZ・言語・ハードウェア構成）を含むので、期間を切ることと
+// metabase_ro から剥がすこと（sql/grants.sql）はセットで必須。
+
+enum LoginApp {
+  WEB // nextjs-web（Auth.js — credentials / Authentik SSO）
+  KIOSK // nextjs-kiosk（QRカード + PIN / アテステーション / 端末設定コード）
+
+  @@map("LOGIN_APP")
+  @@schema("app")
+}
+
+enum LoginOutcome {
+  SUCCESS
+  FAILURE
+
+  @@map("LOGIN_OUTCOME")
+  @@schema("app")
+}
+
+// 端末の所有区分（**自動判定のみ**。管理者が上書きする欄は持たない）。
+// 判定の強さは ownership_source が語る（lib/device-ownership-core.ts）:
+//   COMPANY_MANAGED  端末鍵で署名された管理端末プロファイル = 暗号的証拠
+//                    （デバイストークンだけの場合は状況証拠どまり）
+//   COMPANY_NETWORK  送信元 IP が社内 CIDR = 「社内 NW にいる」だけ。
+//                    持ち込み PC も VPN も同じ判定になる（所有の証拠ではない）
+//   UNMANAGED        証拠が無い（= 私用端末の**可能性**。断定ではない）
+//   UNKNOWN          判定材料が無い（IP 不明 / CIDR 未設定）
+enum DeviceOwnership {
+  COMPANY_MANAGED
+  COMPANY_NETWORK
+  UNMANAGED
+  UNKNOWN
+
+  @@map("DEVICE_OWNERSHIP")
+  @@schema("app")
+}
+
+model LoginAttempt {
+  id        BigInt   @id @default(autoincrement())
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  app     LoginApp
+  outcome LoginOutcome
+  // 認証方式。enum にしないのは将来必ず増えるため（WebAuthn 等）。値の集合は
+  // アプリ側 lib/login-attempt-core.ts が正（kiosk_device_logs.source と同じ割り切り）。
+  method  String       @db.VarChar(24)
+  // 失敗理由。SUCCESS では null。集合は同上。
+  reason  String?      @db.VarChar(40)
+
+  // ── 主体 ────────────────────────────────────────────────────────────────
+  userId String? @map("user_id") @db.Uuid
+  // 入力されたユーザー名。**実在ユーザーに解決できたときだけ**生値を入れる
+  // （CHECK 制約でも強制。未知の文字列はパスワード誤入力が混ざりうる）
+  identifier    String? @db.VarChar(120)
+  // 常に入る相関キー: HMAC-SHA256(pepper, lower(trim(入力値)))。
+  // 同じ未知ユーザー名への連続試行を、値を残さずに数えられる。
+  identifierRef String? @map("identifier_ref") @db.Char(64)
+
+  // ── キオスクのカード ─────────────────────────────────────────────────────
+  // 実在したカードのみ FK。存在しない/偽造カードでは null のまま。
+  cardId  String? @map("card_id")
+  // 常に入る相関キー: HMAC-SHA256(pepper, 正規化スキャン値)。生値は保存しない。
+  cardRef String? @map("card_ref") @db.Char(64)
+  // 読み取ったペイロードの種別だけ（中身は残さない）:
+  // CARD / WO / OTHER / MALFORMED / EMPTY
+  scanKind String? @map("scan_kind") @db.VarChar(16)
+
+  // ── 端末 ────────────────────────────────────────────────────────────────
+  kioskDeviceId String? @map("kiosk_device_id") @db.Uuid
+  userDeviceId  String? @map("user_device_id") @db.Uuid
+
+  // 送信元 IP（プロキシチェーンを解いた最終的なクライアント）。inet なので
+  // 管理画面の CIDR 絞り込みを SQL の `<<=` でそのまま書ける。
+  ipAddress String? @map("ip_address") @db.Inet
+  // x-forwarded-for の生チェーン。信頼ホップ数の設定を後から直したときに、
+  // 過去分を再解釈できるように残す。
+  ipChain   String? @map("ip_chain") @db.VarChar(200)
+  userAgent String? @map("user_agent") @db.VarChar(512)
+
+  // ブラウザ端末シグネチャ（**サーバーが再計算した** SHA-256 hex）。
+  signalsFingerprint String? @map("signals_fingerprint") @db.Char(64)
+  signalsVersion     Int?    @map("signals_version") @db.SmallInt
+  // 収集シグネチャ一式（正規化済み・サイズ上限つき）。「将来のために
+  // できるだけ残す」箱。版を上げたとき、ここから再ハッシュできる。
+  signals            Json?
+
+  ownership       DeviceOwnership @default(UNKNOWN)
+  ownershipSource String?         @map("ownership_source") @db.VarChar(40)
+
+  user        User?        @relation("LoginAttemptUser", fields: [userId], references: [id], onDelete: SetNull)
+  card        KioskCard?   @relation("LoginAttemptCard", fields: [cardId], references: [id], onDelete: SetNull)
+  kioskDevice KioskDevice? @relation("LoginAttemptDevice", fields: [kioskDeviceId], references: [id], onDelete: SetNull)
+  userDevice  UserDevice?  @relation("LoginAttemptUserDevice", fields: [userDeviceId], references: [id], onDelete: SetNull)
+
+  // 「失敗だけを新しい順に」は SY0D の既定表示なので、部分索引を migration 側で
+  // 別に張っている（成功行のほうが桁で多く、全体索引だと失敗の走査が重い）。
+  @@index([createdAt(sort: Desc)])
+  @@index([userId, createdAt(sort: Desc)])
+  @@index([identifierRef, createdAt(sort: Desc)])
+  @@index([ipAddress, createdAt(sort: Desc)])
+  @@index([signalsFingerprint, createdAt(sort: Desc)])
+  @@index([kioskDeviceId, createdAt(sort: Desc)])
+  @@index([cardRef, createdAt(sort: Desc)])
+  @@map("login_attempts")
+  @@schema("app")
+}
+
+// Web ブラウザ端末の台帳。1 行 = (ユーザー, シグネチャ) の組。
+//
+// **端末を同定するものではない**。同一キッティングの社給 PC は同じシグネチャに
+// なりうるし、ブラウザ/GPU ドライバの更新で別物になる。「この人がいつも使って
+// いる端末か / 初めて見る端末か」の目安として使う。
+model UserDevice {
+  id     String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId String @map("user_id") @db.Uuid
+
+  fingerprint String @db.Char(64)
+  version     Int    @map("signals_version") @db.SmallInt
+  // 表示用の要約（"Chrome / Windows 11"）。UA から純関数で組み立てる。
+  label       String? @db.VarChar(80)
+
+  ownership       DeviceOwnership @default(UNKNOWN)
+  ownershipSource String?         @map("ownership_source") @db.VarChar(40)
+
+  signals       Json?
+  userAgent     String?  @map("user_agent") @db.VarChar(512)
+  lastIpAddress String?  @map("last_ip_address") @db.Inet
+  loginCount    Int      @default(0) @map("login_count")
+  firstSeenAt   DateTime @default(now()) @map("first_seen_at") @db.Timestamptz(6)
+  lastSeenAt    DateTime @default(now()) @map("last_seen_at") @db.Timestamptz(6)
+
+  user          User           @relation("UserDeviceUser", fields: [userId], references: [id], onDelete: Cascade)
+  loginAttempts LoginAttempt[] @relation("LoginAttemptUserDevice")
+
+  @@unique([userId, fingerprint])
+  @@index([fingerprint])
+  @@index([lastSeenAt])
+  @@map("user_devices")
+  @@schema("app")
+}

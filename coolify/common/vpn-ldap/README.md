@@ -61,7 +61,7 @@ login page; TLS is off because traffic is already encrypted inside the VPN tunne
 
 ## Secured access (network segmentation)
 
-`vpn-ldap` lives on its **own** network (`vpn-ldap_default`), not the shared
+`vpn-ldap` lives on its **own** network (`ckk-ldap`), not the shared
 `ai-stack` network. Only apps that explicitly attach to it can reach `:389`/AD:
 
 ```yaml
@@ -69,9 +69,9 @@ login page; TLS is off because traffic is already encrypted inside the VPN tunne
 networks:
   ldap:
     external: true
-    name: vpn-ldap_default
+    name: ckk-ldap
 ```
 
 So `ollama`, `searxng`, `po-extract`, `cloudflared`, etc. cannot reach the AD
 forwarder — only `open-webui` (and any future opt-in app) can. To grant a new app
-access, attach it to the `vpn-ldap_default` network the same way.
+access, attach it to the `ckk-ldap` network the same way.

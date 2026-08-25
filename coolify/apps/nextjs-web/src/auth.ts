@@ -9,13 +9,24 @@
  *
  * - Credentials: app.users の username + password_hash（scrypt）。デモ用。
  * - 初回 SSO ログイン時に profile から app.users を照合・自動作成する（signIn callback）。
+ *
+ * ■ 認証イベントの記録（app.login_attempts）
+ * 失敗は authorize()（credentials）と callbacks.signIn（SSO）が書き、
+ * **成功は events.signIn だけ**が書く（両方で書くと二重記録になる）。
+ * IP / UA / 端末シグネチャは api/auth/[...nextauth]/route.ts が
+ * AsyncLocalStorage で運ぶ（lib/auth-request-context.ts）。
+ * 記録は best-effort — 失敗してもログインは通す。
  */
 
 import NextAuth from "next-auth";
 import type { OAuthConfig } from "next-auth/providers";
 import Credentials from "next-auth/providers/credentials";
 import { authConfig } from "./auth.config";
+import { currentAuthRequest } from "./lib/auth-request-context";
 import { prisma } from "./lib/db";
+import { EMPTY_DEVICE_CONTEXT } from "./lib/device-signals";
+import type { LoginFailureReason, LoginMethod } from "./lib/login-attempt-core";
+import { recordLoginAttempt, upsertUserDevice } from "./lib/login-attempts";
 import { verifyPassword } from "./lib/password";
 
 const authentikEnabled =
@@ -97,6 +108,28 @@ function recordLoginFailure(username: string): void {
   }
 }
 
+/** 記録用の端末文脈（リクエスト外から呼ばれたら空の文脈）。 */
+function deviceContext() {
+  return currentAuthRequest()?.device ?? EMPTY_DEVICE_CONTEXT;
+}
+
+/** 失敗を記録する（await しない — ログイン応答を遅らせない）。 */
+function recordFailure(
+  method: LoginMethod,
+  reason: LoginFailureReason,
+  identifier: string | null,
+  userId: string | null = null,
+): void {
+  void recordLoginAttempt({
+    outcome: "FAILURE",
+    method,
+    reason,
+    identifier,
+    userId,
+    device: deviceContext(),
+  });
+}
+
 export const { handlers, auth, signIn, signOut } = NextAuth({
   ...authConfig,
   // AUTH_DEBUG=true で OAuth フロー（cookie/state/token/profile）を詳細ログ出力。
@@ -115,17 +148,35 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
             : "";
         const password =
           typeof credentials?.password === "string" ? credentials.password : "";
-        if (!username || !password) return null;
+        if (!username || !password) {
+          recordFailure("PASSWORD", "EMPTY_INPUT", username || null);
+          return null;
+        }
         if (loginRateLimited(username)) {
           console.warn(`[auth] レート制限: ${username}`);
+          recordFailure("PASSWORD", "RATE_LIMITED", username);
           return null;
         }
         const user = await prisma.user.findUnique({ where: { username } });
-        if (!user?.isActive || !user.passwordHash) {
+        if (!user) {
+          // 未知のユーザー名は生値を残さない（打ち間違いのパスワードが
+          // 混ざりうる）。相関キー（identifier_ref）だけが残る。
+          recordFailure("PASSWORD", "UNKNOWN_USER", username);
+          recordLoginFailure(username);
+          return null;
+        }
+        if (!user.isActive) {
+          recordFailure("PASSWORD", "USER_INACTIVE", username, user.id);
+          recordLoginFailure(username);
+          return null;
+        }
+        if (!user.passwordHash) {
+          recordFailure("PASSWORD", "NO_PASSWORD_SET", username, user.id);
           recordLoginFailure(username);
           return null;
         }
         if (!verifyPassword(password, user.passwordHash)) {
+          recordFailure("PASSWORD", "BAD_PASSWORD", username, user.id);
           recordLoginFailure(username);
           return null;
         }
@@ -134,6 +185,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           where: { id: user.id },
           data: { lastLoginAt: new Date() },
         });
+        // 成功の記録は events.signIn が一本化して書く（二重記録の防止）
         return {
           id: user.id,
           name: user.displayName,
@@ -162,6 +214,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           "[auth][sso] no username claim; profile keys=",
           Object.keys((profile as object) ?? {}),
         );
+        recordFailure("SSO", "SSO_NO_USERNAME", null);
         return false;
       }
       try {
@@ -176,14 +229,49 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           },
           update: { lastLoginAt: new Date() },
         });
-        if (!row.isActive) return false;
+        if (!row.isActive) {
+          recordFailure("SSO", "SSO_USER_INACTIVE", username, row.id);
+          return false;
+        }
         user.id = row.id;
         (user as { username?: string }).username = row.username;
         return true;
       } catch (e) {
         console.error("[auth][sso] user upsert failed:", e);
+        recordFailure("SSO", "SSO_UPSERT_FAILED", username);
         return false;
       }
+    },
+  },
+  // 成功を書く唯一の場所。端末台帳（user_devices）もここで更新する。
+  events: {
+    async signIn({ user, account }) {
+      const method: LoginMethod =
+        account?.provider === "authentik" ? "SSO" : "PASSWORD";
+      const device = deviceContext();
+      const userId = user.id ?? null;
+      const userDeviceId = userId
+        ? await upsertUserDevice(userId, device)
+        : null;
+      await recordLoginAttempt({
+        outcome: "SUCCESS",
+        method,
+        identifier: (user as { username?: string }).username ?? null,
+        userId,
+        userDeviceId,
+        device,
+      });
+    },
+  },
+  // コールバックにすら届かない OAuth 失敗（state/token 取得エラー等）を拾う。
+  // ALS の文脈内なので IP / UA は取れる。
+  logger: {
+    error(error: Error) {
+      const name = error?.name ?? "";
+      if (name.includes("OAuth") || name.includes("Callback")) {
+        recordFailure("SSO", "SSO_CALLBACK_ERROR", null);
+      }
+      console.error("[auth]", error);
     },
   },
 });

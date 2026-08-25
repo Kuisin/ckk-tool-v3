@@ -45,7 +45,8 @@ fi
 KIOSK_WS_SECRET=$(cat "$SECRET_FILE")
 
 set -a; . ~/stacks/nextjs-web/.env; set +a
-DATABASE_URL="postgresql://app:${APP_DB_PASSWORD}@shared-db:5432/ckk"
+# dev / main で DB は別。呼び出し側が環境に合わせて上書きする。
+DATABASE_URL="postgresql://app:${APP_DB_PASSWORD}@ckk-db-dev:5432/ckk"
 
 create_app() { # name branch host_port env_name
   local name=$1 branch=$2 port=$3 env_name=$4 uuid secret

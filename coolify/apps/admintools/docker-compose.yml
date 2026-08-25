@@ -4,7 +4,8 @@
 # Deployed on docker-mac-pro at ~/stacks/admintools.
 #   admintools     host :8090 -> :8000  (WebUI + API)
 #
-# Data lives in the shared-db stack (db `ckk`, schema `admintools`; role
+# Data lives in the business DB (Coolify アプリ ckk-db-main / db `ckk`,
+# schema `admintools`; role
 # `admintools` has search_path=admintools). KOT_DB_URL uses role `kot`
 # (search_path=kot,directory) for the import-log view and employee matching.
 # DDL is owned by Prisma — see repo shared-db/.
@@ -16,7 +17,7 @@ services:
     container_name: admintools
     restart: unless-stopped
     environment:
-      - DATABASE_URL=postgresql+psycopg://admintools:${DB_PASSWORD:?set DB_PASSWORD in .env}@shared-db:5432/ckk
+      - DATABASE_URL=postgresql+psycopg://admintools:${DB_PASSWORD:?set DB_PASSWORD in .env}@ckk-db-main:5432/ckk
       # Sakura RS control-panel login — needed only for the sync action.
       - SAKURA_ID=${SAKURA_ID:-}
       - SAKURA_PW=${SAKURA_PW:-}
@@ -26,22 +27,33 @@ services:
       - DEFAULT_DOMAIN=${DEFAULT_DOMAIN:-ckk-tool.co.jp}
       # Connection to the KOT schema to show its import log. Empty = off.
       - KOT_DB_URL=${KOT_DB_URL:-}
-      # バックアップ / 復元 UI → restore-agent（db-backup スタック, shared-db 網）。
+      # バックアップ / 復元 UI → restore-agent（db-backup スタック, coolify 網）。
       # トークン未設定なら機能は無効表示。restore-agent の RESTORE_AGENT_TOKEN と一致させる。
       - RESTORE_AGENT_URL=${RESTORE_AGENT_URL:-http://restore-agent:9000}
       - RESTORE_AGENT_TOKEN=${RESTORE_AGENT_TOKEN:-}
-    env_file:
-      # Shared LDAP/AD bind creds (LDAP_SERVER_HOST=vpn-ldap, LDAP_APP_DN, ...).
-      - ../vpn-ldap/ldap.env
+      # AD の bind 情報。以前は `env_file: ../vpn-ldap/ldap.env` で読んでいたが、
+      # Coolify は git からアプリを建てるので **git に無いファイルは存在しない**
+      # （しかもそのパスは coolify/apps/ からは外れる）。値は Coolify の環境変数。
+      - LDAP_SERVER_LABEL=${LDAP_SERVER_LABEL:-CKK AD}
+      - LDAP_SERVER_HOST=${LDAP_SERVER_HOST:-vpn-ldap}
+      - LDAP_SERVER_PORT=${LDAP_SERVER_PORT:-389}
+      - LDAP_APP_DN=${LDAP_APP_DN:?set LDAP_APP_DN}
+      - LDAP_APP_PASSWORD=${LDAP_APP_PASSWORD:?set LDAP_APP_PASSWORD}
+      - LDAP_SEARCH_BASE=${LDAP_SEARCH_BASE:?set LDAP_SEARCH_BASE}
+      - LDAP_ATTRIBUTE_FOR_USERNAME=${LDAP_ATTRIBUTE_FOR_USERNAME:-sAMAccountName}
+      - LDAP_ATTRIBUTE_FOR_MAIL=${LDAP_ATTRIBUTE_FOR_MAIL:-mail}
+      - LDAP_USE_TLS=${LDAP_USE_TLS:-false}
     networks:
       - default
-      - ldap        # vpn-ldap_default — read AD users for User emails
-      - shareddb    # shared-db — admintools schema + KOT import log
+      - ldap      # AD のユーザーを読む（vpn-ldap:389）
+      - coolify   # 業務 DB（ckk-db-main）と restore-agent
 
 networks:
+  # AD へ届く区画網。`coolify` に出さないのは「繋いだコンテナだけが AD を
+  # 触れる」区画分離を保つため（../ai-stack / ../vpn-ldap と同じ 1 本）。
   ldap:
     external: true
-    name: vpn-ldap_default
-  shareddb:
+    name: ckk-ldap
+  coolify:
     external: true
-    name: shared-db
+    name: coolify

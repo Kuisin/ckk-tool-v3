@@ -59,7 +59,7 @@ remove it.
   (dev) / `... admin-main [<git-sha>]` (prod). Push to the branch auto-deploys.
 - **Env vars are managed in Coolify** (Application → Environment Variables), not
   in a `.env`/`env_file`. Required keys: `DATABASE_URL`
-  (`postgresql+psycopg://admintools:<pw>@shared-db:5432/ckk`), `ADMINTOOLS_API_KEY`,
+  (`postgresql+psycopg://admintools:<pw>@ckk-db-main:5432/ckk`), `ADMINTOOLS_API_KEY`,
   `SAKURA_ID`, `SAKURA_PW`, `DEFAULT_DOMAIN`, `KOT_DB_URL`, the `LDAP_*` set (same
   values as `vpn-ldap/ldap.env`), and `RESTORE_AGENT_URL` /
   `RESTORE_AGENT_TOKEN` (for the 復元 tool; token must match the db-backup

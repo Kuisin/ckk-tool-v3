@@ -6,20 +6,26 @@
 #   - coolify stack running (~/stacks/coolify, UI on :8000)
 #   - /data/coolify/source/.env with ROOT_USERNAME/ROOT_USER_EMAIL/ROOT_USER_PASSWORD
 #   - SSH keypair /data/coolify/ssh/keys/id.kaiseisawada@host.docker.internal
-#   - ~/stacks/nextjs-web/docker-compose.next.yml (relay/infra compose, staged)
 #
 # What it does:
 #   1. authorizes Coolify's SSH key for kaiseisawada (host management)
-#   2. attaches shared-db / po-extract / gotenberg / seaweedfs to the coolify network
+#   2. creates the shared docker networks (coolify / ckk-ldap)
 #   3. seeds the Coolify root user from .env (RootUserSeeder)
 #   4. enables the API, disables self-registration
 #   5. creates an API token -> /data/coolify/source/.api-token
-#   6. registers project `ckk` and two apps built from github.com/Kuisin/ckk-tool-v3:
+#   6. registers project `ckk` and the two nextjs-web apps from github.com/Kuisin/ckk-tool-v3:
 #        nextjs-web-dev   branch dev   host :3004
 #        nextjs-web-main  branch main  host :3005
 #   7. deploys dev, waits for the build, smoke-tests :3004
-#   8. cuts the nextjs-web stack over to the relay compose (web -> :3004)
-#   9. deploys main (prod pipeline validation), smoke-tests :3005
+#   8. deploys main (prod pipeline validation), smoke-tests :3005
+#
+# **これは nextjs-web の分だけ。** 残りのアプリは専用スクリプトで登録する:
+#   add-db-apps.sh        ckk-db-* / db-migrate-*
+#   add-kiosk-apps.sh     nextjs-kiosk-*
+#   add-po-extract-apps.sh po-extract-*
+# `common` 環境のスタック（ai-stack / app-support / metabase / monitoring …）は
+# coolify/common/<name>/ を base_directory にした dockercompose アプリとして
+# 登録する。全体像は ../README.md。
 
 set -euo pipefail
 
@@ -74,10 +80,19 @@ PUB=$(docker exec coolify sh -c 'for f in /var/www/html/storage/app/ssh/keys/ssh
 grep -qxF "$PUB" ~/.ssh/authorized_keys || printf '%s\n' "$PUB" >> ~/.ssh/authorized_keys
 echo "authorized"
 
-step "2/9 Attach shared services to the coolify network"
-for c in shared-db po-extract nextjs-gotenberg nextjs-seaweedfs; do
-  docker network connect coolify "$c" 2>/dev/null && echo "connected: $c" || echo "already connected: $c"
+step "2/8 Create the shared docker networks"
+# `coolify` は Coolify 本体が作る。`ckk-ldap` は AD へ届く区画網で、vpn-ldap と
+# open-webui / metabase / admintools だけが参加する（`coolify` に出すと全アプリ
+# から AD が見えてしまうので、意図的に別網にしてある）。
+for n in coolify ckk-ldap; do
+  docker network inspect "$n" >/dev/null 2>&1 && echo "exists: $n" || { docker network create "$n" >/dev/null && echo "created: $n"; }
 done
+
+# ⚠️ docker の既定アドレスプール（172.17–31 の /16 + 192.168 の /20 × 16）は
+# 31 本で尽きる。実際に尽きてデプロイが
+# 「all predefined address pools have been fully subnetted」で落ちた。
+# 使っていない網は `docker network prune` で落とすこと。
+echo "networks in use: $(docker network ls -q | wc -l) / 31 (既定プールの上限)"
 
 step "3/9 Seed Coolify root user (from /data/coolify/source/.env)"
 docker exec coolify php artisan db:seed --class=RootUserSeeder --force
@@ -120,7 +135,7 @@ api POST "/projects/$PROJECT_UUID/environments" -d '{"name":"development"}' >/de
 
 # App env vars come from the existing stack .env (APP_DB_PASSWORD, NEXT_PUBLIC_APP_VERSION)
 set -a; . ~/stacks/nextjs-web/.env; set +a
-DATABASE_URL="postgresql://app:${APP_DB_PASSWORD}@shared-db:5432/ckk"
+DATABASE_URL="postgresql://app:${APP_DB_PASSWORD}@ckk-db-dev:5432/ckk"
 
 create_app() { # name branch host_port env_name result_var
   local name=$1 branch=$2 port=$3 env_name=$4 uuid secret
@@ -203,20 +218,16 @@ deploy_and_wait() { # uuid label port
   curl -sf -o /dev/null "http://127.0.0.1:$port/" && echo "$label responds on :$port" || { echo "!! $label not responding on :$port"; return 1; }
 }
 
-step "8/9 Deploy dev + cut over"
+step "7/8 Deploy dev"
 deploy_and_wait "$DEV_UUID" dev "$DEV_PORT"
-cd ~/stacks/nextjs-web
-if [ -f docker-compose.next.yml ]; then
-  [ -f docker-compose.yml ] && cp docker-compose.yml "docker-compose.yml.pre-coolify.$(date +%Y%m%d%H%M%S)"
-  mv docker-compose.next.yml docker-compose.yml
-fi
-docker compose up -d --remove-orphans
+# 入口の安定名は Coolify の custom_network_aliases が張る（旧 socat リレーは
+# 2026-08-25 に廃止）。`coolify` 網で web が引ければ nginx / cloudflared も引ける。
 sleep 3
-docker run --rm --network nextjs-web_default curlimages/curl:8.10.1 -sf -o /dev/null http://web:3000/ \
-  && echo "relay web:3000 -> :$DEV_PORT OK (app-dev.ckk-tool.co.jp unchanged)" \
-  || echo "!! relay check failed — inspect: docker logs web-relay-dev"
+docker run --rm --network coolify curlimages/curl:8.10.1 -sf -o /dev/null http://web:3000/ \
+  && echo "alias web:3000 OK (app-dev.ckk-tool.co.jp unchanged)" \
+  || echo "!! alias check failed — custom_network_aliases が未設定か、再デプロイ待ち"
 
-step "9/9 Deploy main (prod pipeline validation)"
+step "8/8 Deploy main (prod pipeline validation)"
 deploy_and_wait "$MAIN_UUID" main "$MAIN_PORT" || echo "(main build failure is non-blocking for dev; fix at next promotion)"
 
 step "Done"
