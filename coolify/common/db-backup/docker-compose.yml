@@ -52,9 +52,7 @@ services:
       - LOGICAL_DB_URL=${LOGICAL_DB_URL:-} # = restore-agent の RESTORE_DB_URL（スーパーユーザ DSN）
       - LOGICAL_KEEP_DAYS=${LOGICAL_KEEP_DAYS:-14}
       - LOGICAL_MONTHLY_KEEP=${LOGICAL_MONTHLY_KEEP:-12}
-    entrypoint: ["/bin/bash", "/logical-dump.sh"]
-    volumes:
-      - ./logical-dump.sh:/logical-dump.sh:ro
+    entrypoint: ["/bin/bash", "/usr/local/bin/logical-dump.sh"]
       - ${BACKUP_DIR:-/data/db-backups}:/backups
     networks:
       - shareddb # 旧 shared-db（移行期間中のみ・撤去したら外す）
@@ -95,7 +93,10 @@ services:
   # SeaweedFS（受注書スキャン原本・証憑・生成 PDF）の日次 tar スナップショット。
   # nextjs-web スタックの seaweed-data ボリュームを read-only でマウントする。
   seaweed-backup:
-    image: alpine:3.20
+    build:
+      context: .
+      dockerfile: seaweed/Dockerfile
+    image: ckk-seaweed-backup
     container_name: seaweed-backup
     restart: unless-stopped
     environment:
@@ -103,8 +104,6 @@ services:
       - SEAWEED_KEEP_DAYS=${SEAWEED_KEEP_DAYS:-14}
       - SEAWEED_MONTHLY_KEEP=${SEAWEED_MONTHLY_KEEP:-12}
     entrypoint: ["/bin/sh", "/seaweed-backup.sh"]
-    volumes:
-      - ./seaweed-backup.sh:/seaweed-backup.sh:ro
       - seaweed-data:/seaweed-data:ro
       - ${BACKUP_DIR:-/data/db-backups}:/backups
 
@@ -153,8 +152,6 @@ services:
       - RCLONE_CONFIG_R2_ACCESS_KEY_ID=${RCLONE_CONFIG_R2_ACCESS_KEY_ID:-}
       - RCLONE_CONFIG_R2_SECRET_ACCESS_KEY=${RCLONE_CONFIG_R2_SECRET_ACCESS_KEY:-}
       - RCLONE_CONFIG_R2_ENDPOINT=${RCLONE_CONFIG_R2_ENDPOINT:-}
-    volumes:
-      - ./offsite-sync.sh:/offsite-sync.sh:ro
       - ${BACKUP_DIR:-/data/db-backups}:/backups:ro
 
 volumes:
