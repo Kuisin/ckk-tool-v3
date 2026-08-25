@@ -1,7 +1,7 @@
 # secrets — 機微ファイルの単一の置き場
 
 **このディレクトリに秘密そのものは入らない。** 入っているのは雛形と手順だけで、
-実体はサーバー上の Docker ボリューム **`ckk-secrets`** にある。
+実体はサーバー上のディレクトリ **`/data/ckk-secrets`** にある。
 
 ## なぜ 1 本のボリュームにまとめるのか
 
@@ -17,21 +17,31 @@ nginx や、接続情報を持たない VPN が建ってしまう。
 
 ## 中身の構成
 
+**なぜ Docker ボリュームではなくホストのディレクトリか** — Coolify は compose の
+名前付きボリュームを `external: true` と書いても `<appUUID>_<name>` へ**改名する**。
+つまり複数の Coolify アプリで 1 本を共有できない（実際、空のボリュームを掴んで
+健全性チェックが全項目 MISSING になった）。bind mount はそのまま渡るので、
+固定パスなら Coolify 管理でも直接デプロイでも同じ場所を見られる。
+
 ```
-ckk-secrets（Docker ボリューム）
-└── /secrets
+/data/ckk-secrets
     ├── nginx/
     │   ├── certs/      TLS 証明書と鍵（29 ファイル）+ 社内 CA
     │   └── acme/       acme.sh のアカウント・更新状態
-    └── vpn/
-        └── config.ovpn OpenVPN 設定（CA + tls-auth 込み）
+    ├── vpn/
+    │   └── config.ovpn OpenVPN 設定（CA + tls-auth 込み）
+    └── searxng/
+        └── settings.yml インスタンス固有の secret_key を含む
 ```
+
+所有者は `cp -a` で保つ（searxng は uid 977 が書き換えるため）。
 
 | 使う側 | マウント | 権限 |
 |---|---|---|
-| `nginx-proxy` (nginx) | `/secrets` | **ro** — 読むだけ |
-| `nginx-proxy` (acme.sh) | `/secrets` | **rw** — 更新結果を書く |
-| `vpn-ldap` | `/secrets` | **ro** |
+| `nginx-proxy` (nginx) | `/etc/nginx/certs` | **ro** |
+| `nginx-proxy` (acme.sh) | `/acme.sh` + `/certs` | **rw** |
+| `ai-stack` (searxng) | `/etc/searxng` | **rw**（自分で書き換える） |
+| `secrets-vault` | `/secrets` | **ro** — 健全性チェック用 |
 
 ## ファイルではない秘密は Coolify の env へ
 
@@ -54,18 +64,17 @@ ssh 192.168.50.15 'bash ~/stacks/coolify/seed-secrets.sh'
 
 ## バックアップ
 
-`ckk-secrets` は**再生成できないもの**（社内 CA の秘密鍵、VPN 設定）を含む。
+`/data/ckk-secrets` は**再生成できないもの**（社内 CA の秘密鍵、VPN 設定）を含む。
 失うと LAN の TLS と AD への到達が両方止まり、CA は作り直し = 全端末に
 再配布が要る。`db-backup` の対象に入れること。手動で取るなら:
 
 ```bash
-docker run --rm -v ckk-secrets:/s -v "$PWD":/out alpine \
-  tar czf /out/ckk-secrets-$(date +%Y%m%d).tar.gz -C /s .
+sudo tar czf ckk-secrets-$(date +%Y%m%d).tar.gz -C /data/ckk-secrets .
 ```
 
 ## 絶対にやらないこと
 
 - **git に入れない。** `.crt` は公開情報だが `.key` と `config.ovpn` は違う。
   混在させると事故るので、ディレクトリごと入れない。
-- ボリュームを `docker volume rm` しない。証明書は acme で再取得できるが、
+- `/data/ckk-secrets` を消さない。証明書は acme で再取得できるが、
   **社内 CA の鍵は再生成すると全キオスク端末の信頼が切れる**。

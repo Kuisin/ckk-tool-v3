@@ -1,35 +1,38 @@
 #!/usr/bin/env bash
-# seed-secrets.sh — 既存の bind mount から Docker ボリューム `ckk-secrets` へ
-# 機微ファイルを写す（冪等・上書きしない）。
+# seed-secrets.sh — 機微ファイルをホストの単一ディレクトリ /data/ckk-secrets へ
+# 集約する（冪等・既にあるものは上書きしない）。
 #
 # Run ON docker-mac-pro:  bash ~/stacks/coolify/seed-secrets.sh
 #
-# なぜ要るか: Coolify は git からアプリを建てるので、git に無いファイル
-# （TLS 証明書 / acme の更新状態 / OpenVPN 設定）は移行時に消える。秘密を git へ
-# 入れる訳にはいかないため、ホスト側の 1 か所（このボリューム）へ集約する。
+# なぜホストのディレクトリで、Docker ボリュームではないのか:
+#   Coolify は compose の名前付きボリュームを `external: true` と書いても
+#   `<appUUID>_<name>` へ改名する。つまり**複数アプリで 1 本を共有できない**
+#   （実際、空のボリュームを掴んで健全性チェックが全項目 MISSING になった）。
+#   bind mount はそのまま渡るので、固定パスに置けば Coolify 管理でも直接
+#   デプロイでも同じ場所を見られる。
+#
+# なぜ集約するのか:
+#   Coolify は git からアプリを建てるので **git に無いファイルは存在しない**。
+#   証明書・acme の state・OpenVPN 設定・searxng の secret_key は git に置けない。
 set -euo pipefail
 
-VOL=ckk-secrets
+DEST=/data/ckk-secrets
 SRC_NGINX="$HOME/stacks/nginx-proxy"
 SRC_VPN="$HOME/stacks/vpn-ldap"
+SRC_SEARX="$HOME/stacks/ai-stack/searxng"
 
-docker volume inspect "$VOL" >/dev/null 2>&1 || {
-  docker volume create "$VOL" >/dev/null
-  echo "created volume $VOL"
-}
+sudo mkdir -p "$DEST"
+echo "dest: $DEST"
 
-# 既に入っていれば触らない（再実行で古い値に戻さない）。
-have() { docker run --rm -v "$VOL":/s alpine test -e "/s/$1"; }
-
-copy_dir() { # src, dest-in-volume
+copy_dir() { # src, dest-relative
   local src=$1 dest=$2
-  if have "$dest"; then
+  if sudo test -e "$DEST/$dest"; then
     echo "  $dest: 既にある — 飛ばす"
     return
   fi
   [ -d "$src" ] || { echo "  !! $src が無い"; return 1; }
-  docker run --rm -v "$VOL":/s -v "$src":/src:ro alpine \
-    sh -c "mkdir -p /s/$(dirname "$dest") && cp -a /src /s/$dest"
+  sudo mkdir -p "$DEST/$(dirname "$dest")"
+  sudo cp -a "$src" "$DEST/$dest"   # -a で所有者を保つ（searxng は uid 977）
   echo "  $dest ← $src"
 }
 
@@ -37,14 +40,20 @@ echo "== 投入 =="
 copy_dir "$SRC_NGINX/certs" nginx/certs
 copy_dir "$SRC_NGINX/acme"  nginx/acme
 copy_dir "$SRC_VPN/vpn"     vpn
+# searxng の settings.yml はインスタンス固有の secret_key を含む
+# （README に「実鍵は commit しない」と明記されている）。
+copy_dir "$SRC_SEARX"       searxng
 
 echo
 echo "== 確認 =="
-docker run --rm -v "$VOL":/s alpine sh -c '
-  echo "  certs: $(ls /s/nginx/certs 2>/dev/null | wc -l) files"
-  echo "  acme : $(ls -A /s/nginx/acme 2>/dev/null | wc -l) entries"
-  echo "  vpn  : $(ls /s/vpn 2>/dev/null | tr "\n" " ")"
-  echo "  size : $(du -sh /s | cut -f1)"
-  # 社内 CA の秘密鍵は再生成不能 — 入っているか名指しで確認する。
-  test -f /s/nginx/certs/ckk-internal-ca.key \
-    && echo "  内部 CA 秘密鍵: あり" || echo "  !! 内部 CA 秘密鍵が無い"'
+sudo sh -c '
+  D=/data/ckk-secrets
+  echo "  certs: $(ls "$D/nginx/certs" 2>/dev/null | wc -l) files"
+  echo "  acme : $(ls -A "$D/nginx/acme" 2>/dev/null | wc -l) entries"
+  echo "  vpn  : $(ls "$D/vpn" 2>/dev/null | tr "\n" " ")"
+  echo "  searx: $(ls "$D/searxng" 2>/dev/null | tr "\n" " ")"
+  echo "  size : $(du -sh "$D" | cut -f1)"
+  # 社内 CA の秘密鍵は再生成すると全キオスク端末の信頼が切れる。名指しで確認する。
+  test -f "$D/nginx/certs/ckk-internal-ca.key" \
+    && echo "  内部 CA 秘密鍵: あり" || echo "  !! 内部 CA 秘密鍵が無い"
+'
