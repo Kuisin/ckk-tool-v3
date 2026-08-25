@@ -124,7 +124,9 @@ services:
       - GF_USERS_ALLOW_SIGN_UP=false
     volumes:
       - grafana-data:/var/lib/grafana
-    networks: [monitoring]
+    # cloudflared / nginx-proxy から `grafana:3000` で引けるよう coolify にも出す。
+    # これで Edge 側は監視スタック固有のネットワーク名を知らなくてよくなる。
+    networks: [monitoring, coolify]
 
 volumes:
   # external — Coolify がプロジェクト名（アプリ UUID）を変えても同じ実体を
@@ -144,3 +146,6 @@ volumes:
 
 networks:
   monitoring:
+  coolify:
+    external: true
+    name: coolify
