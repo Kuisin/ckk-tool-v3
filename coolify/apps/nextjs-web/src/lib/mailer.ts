@@ -1,65 +1,23 @@
 /**
- * mailer.ts — メール送信（nodemailer / さくらのレンタルサーバー SMTP）。server-only.
+ * mailer.ts — メール送信。server-only。
+ *
+ * **社内の mail-api に JSON を 1 回 POST するだけ**。SMTP の作法（トランスポート、
+ * TLS、認証の有無、差出人の組み立て）は全部リレー側（coolify/common/mailrelay）に
+ * 寄せてある。アプリはどのメールボックスの資格情報も持たない。
  *
  * 環境変数（未設定ならメールチャネルは黙ってスキップ — 開発環境で安全）:
- *   SMTP_HOST   … 例: example.sakura.ne.jp（さくらは初期ドメインの SMTP を利用）
- *   SMTP_PORT   … 587 (STARTTLS, 既定) または 465 (SSL)
- *   SMTP_USER   … メールアドレス全体（さくらはフルアドレスがユーザー名）
- *   SMTP_PASS   … メールパスワード
- *   SMTP_SECURE … "true" で SSL(465)。既定 false（587 STARTTLS）
- *   MAIL_FROM   … 差出人。既定 `CKK 業務管理システム <SMTP_USER>`
+ *   MAIL_API_URL   … 例: http://mail-api:8080
+ *   MAIL_API_TOKEN … リレーと同じ共有シークレット
+ *
+ * 差出人は mail-api が固定する（アプリごとに違う From を許すと、リレーの
+ * ALLOWED_SENDER_DOMAINS と食い違ったときに原因が追いにくい）。
  */
 
-import nodemailer, { type Transporter } from "nodemailer";
 import { escapeHtml } from "./format";
 
-let cached: Transporter | null | undefined;
-
-/**
- * SMTP 設定済みか（設定 UI の表示・ヘルスチェック用）。
- *
- * **資格情報は任意**。社内リレー（`mailrelay:587`）は認証を要求しないので、
- * SMTP_HOST だけで設定済みとみなす。外部 SMTP へ直接出すときだけ USER/PASS が
- * 要る。未設定（SMTP_HOST 無し）ならメールチャネルは黙ってスキップ — 開発環境で安全。
- */
+/** 送信口が設定済みか（設定 UI の表示・ヘルスチェック用）。 */
 export function isMailerConfigured(): boolean {
-  return Boolean(process.env.SMTP_HOST);
-}
-
-function transporter(): Transporter | null {
-  if (cached !== undefined) return cached;
-  if (!isMailerConfigured()) {
-    cached = null;
-    return cached;
-  }
-  const secure = process.env.SMTP_SECURE === "true";
-  const user = process.env.SMTP_USER;
-  const pass = process.env.SMTP_PASS;
-  const hasAuth = Boolean(user && pass);
-  cached = nodemailer.createTransport({
-    host: process.env.SMTP_HOST,
-    port: Number(process.env.SMTP_PORT ?? (secure ? 465 : 587)),
-    secure,
-    // 認証情報が無いときは auth を**渡さない**。空の auth を渡すと nodemailer が
-    // AUTH を試み、認証を求めないリレーが 5xx を返して全滅する。
-    ...(hasAuth ? { auth: { user, pass } } : {}),
-    // 社内リレーは自己署名証明書で STARTTLS する。検証を通すための CA を配るより、
-    // 「Docker ネットワーク内の 1 ホップ」として検証を外すほうが素直
-    // （外部への配送はリレー → さくら間で正規の TLS が張られる）。
-    ...(hasAuth ? {} : { tls: { rejectUnauthorized: false } }),
-  });
-  return cached;
-}
-
-function fromAddress(): string {
-  // リレー経由では SMTP_USER が無いので、MAIL_FROM が実質必須。
-  // 最後の砦として no-reply を置く（リレーの ALLOWED_SENDER_DOMAINS に合わせる）。
-  return (
-    process.env.MAIL_FROM ??
-    (process.env.SMTP_USER
-      ? `CKK 業務管理システム <${process.env.SMTP_USER}>`
-      : "CKK 業務管理システム <no-reply@ckk-tool.co.jp>")
-  );
+  return Boolean(process.env.MAIL_API_URL && process.env.MAIL_API_TOKEN);
 }
 
 export interface MailInput {
@@ -73,25 +31,40 @@ export interface MailInput {
 /**
  * 1 通送信。未設定なら false（スキップ）。送信失敗は throw せず false
  * （通知のメールチャネルはベストエフォート — 業務処理を止めない）。
+ *
+ * ここで false が返るのは「リレーが受け取れなかった」場合だけ。受け取った後の
+ * 配送失敗はリレー側のキューと Grafana アラート（deferred / bounced）が見る。
  */
 export async function sendMail(input: MailInput): Promise<boolean> {
-  const t = transporter();
-  if (!t) return false;
+  if (!isMailerConfigured()) return false;
   try {
-    await t.sendMail({
-      from: fromAddress(),
-      to: input.to,
-      subject: input.subject,
-      text: input.text,
-      html: input.html,
+    const res = await fetch(`${process.env.MAIL_API_URL}/send`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-Mail-Token": process.env.MAIL_API_TOKEN as string,
+      },
+      body: JSON.stringify({
+        to: input.to,
+        subject: input.subject,
+        text: input.text,
+        html: input.html,
+      }),
+      // 通知 1 通のために業務処理を待たせない。リレーは受け取るだけなので速い。
+      signal: AbortSignal.timeout(10_000),
     });
+    if (!res.ok) {
+      console.error(
+        `[mailer] 送信失敗 to=${input.to}: ${res.status} ${await res.text()}`,
+      );
+      return false;
+    }
     return true;
   } catch (e) {
     console.error(`[mailer] 送信失敗 to=${input.to}:`, e);
     return false;
   }
 }
-
 /** アプリのベース URL（メール内リンク用）。 */
 export function appBaseUrl(): string {
   if (process.env.APP_BASE_URL) return process.env.APP_BASE_URL;
