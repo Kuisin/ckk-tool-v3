@@ -2,10 +2,16 @@
  * /api/kiosk/attest — 端末アテステーション（Android ラッパーの Keystore 鍵）。
  *
  * GET  — チャレンジ発行: { nonce }（2分・単回・この端末に束縛）
- * POST — { nonce, publicKey (SPKI DER base64), signature (DER base64) }
+ * POST — { nonce, publicKey (SPKI DER base64), signature (DER base64),
+ *          profile? (署名済み端末プロファイル・v0.6.0+) }
  *        署名を検証し、鍵が未束縛なら TOFU で端末行に束縛（fingerprint 保存）。
  *        既存鍵と不一致は KEY_MISMATCH（管理者が SY09 で鍵リセット → 再束縛）。
  *        成功で kiosk_attest Cookie（HMAC・12h）を発行。
+ *
+ *        profile が付いていれば、署名対象は `nonce\nprofileJson`。
+ *        **旧 APK（profile なし）は従来どおり nonce だけで検証する** —
+ *        サーバーを先に出して端末を後から更新できるようにするため。
+ *        少なくとも 1 リリースは両方受けること。
  *
  * 有効化（KIOSK_ATTESTATION=required）時、getDevice() はこの Cookie が無いと
  * ATTEST_REQUIRED を返す — つまりログイン関連 API はラッパー経由でしか通らない。
@@ -24,7 +30,13 @@ import {
   mintAttestCookie,
   verifyDeviceSignature,
 } from "@/lib/attest-core";
+import { parseCidrList } from "@/lib/cidr-core";
 import { prisma } from "@/lib/db";
+import { classifyDeviceOwnership } from "@/lib/device-ownership-core";
+import {
+  toVerifiedWrapperProfile,
+  verifyDeviceProfile,
+} from "@/lib/device-profile";
 import { getDevice } from "@/lib/kiosk-auth";
 import {
   attemptContext,
@@ -33,6 +45,7 @@ import {
   recordKioskFailure,
   recordKioskSuccess,
 } from "@/lib/kiosk-login-log";
+import { clientIpOf, userAgentOf } from "@/lib/request-ip";
 import { consumeTicket, issueTicket } from "@/lib/tickets";
 
 export async function GET() {
@@ -51,6 +64,8 @@ const bodySchema = z.object({
   nonce: z.string().min(1),
   publicKey: z.string().min(80).max(400), // P-256 SPKI DER base64 は ~120 文字
   signature: z.string().min(1).max(400),
+  /** 署名済み端末プロファイル（v0.6.0+）。旧 APK には無い */
+  profile: z.string().min(2).max(4000).optional(),
 });
 
 export async function POST(req: Request) {
@@ -68,12 +83,24 @@ export async function POST(req: Request) {
   if (!parsed.success) {
     return deny(ctx, "BAD_REQUEST", 400, { method: "ATTEST" });
   }
-  const { nonce, publicKey, signature } = parsed.data;
+  const { nonce, publicKey, signature, profile } = parsed.data;
 
   if (!consumeTicket(nonce, "ATTEST", device.device.id)) {
     return deny(ctx, "TICKET_EXPIRED", 410, { method: "ATTEST" });
   }
-  if (!verifyDeviceSignature(publicKey, nonce, signature)) {
+
+  // profile 付き（v0.6.0+）は `nonce\nprofileJson` を、無ければ nonce だけを
+  // 検証する。検証を通ってからでないとプロファイルを parse しない。
+  const verified = profile
+    ? verifyDeviceProfile(publicKey, nonce, { profile, signature })
+    : null;
+  if (profile) {
+    if (!verified?.ok) {
+      // 署名は正しいが中身が不正なのか、署名自体が不正なのかは
+      // 端末側からは区別させない（どちらも同じ扱いで良い事象）
+      return deny(ctx, "BAD_PROFILE", 403, { method: "ATTEST" });
+    }
+  } else if (!verifyDeviceSignature(publicKey, nonce, signature)) {
     return deny(ctx, "BAD_SIGNATURE", 403, { method: "ATTEST" });
   }
 
@@ -103,6 +130,35 @@ export async function POST(req: Request) {
   } else if (row.devicePublicKey !== publicKey) {
     return deny(ctx, "KEY_MISMATCH", 403, { method: "ATTEST" });
   }
+
+  // 所有区分の判定 — 署名検証を通ったプロファイルだけが判定器に届く。
+  const verdict = classifyDeviceOwnership({
+    wrapper: verified?.ok ? toVerifiedWrapperProfile(verified.profile) : null,
+    kioskDeviceLinked: true,
+    attested: true,
+    ip: ctx.ip,
+    corporateCidrs: parseCidrList(process.env.CORPORATE_CIDRS),
+  });
+  await prisma.kioskDevice
+    .update({
+      where: { id: device.device.id },
+      data: {
+        ownership: verdict.ownership,
+        ownershipSource: verdict.source,
+        lastIpAddress: clientIpOf(req),
+        userAgent: userAgentOf(req),
+        // プロファイルは payload と署名も残す（後から独立に再検証できる証拠）
+        ...(verified?.ok
+          ? {
+              deviceProfile: verified.profile,
+              deviceProfilePayload: verified.payload,
+              deviceProfileSig: verified.signature,
+              deviceProfileAt: new Date(),
+            }
+          : {}),
+      },
+    })
+    .catch(() => undefined);
 
   recordKioskSuccess(ctx, { method: "ATTEST" });
   const res = NextResponse.json({ state: "OK" });
