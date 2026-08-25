@@ -223,6 +223,14 @@ export async function fetchApprovalDocInfo(
       if (!row) return null;
       return { item_count: row._count.items };
     }
+    case "form_responses": {
+      const row = await prisma.formResponse.findUnique({
+        where: { responseNumber: targetId },
+        select: { form: { select: { kind: true } } },
+      });
+      if (!row) return null;
+      return { form_kind: row.form.kind };
+    }
     case "work_order_flow_changes": {
       const row = await prisma.workOrderFlowChange.findUnique({
         where: { id: targetId },
@@ -432,6 +440,13 @@ async function targetCreatedAt(
     case "purchase_requests": {
       const row = await prisma.purchaseRequest.findUnique({
         where: { requestNumber: targetId },
+        select: { createdAt: true },
+      });
+      return row?.createdAt ?? null;
+    }
+    case "form_responses": {
+      const row = await prisma.formResponse.findUnique({
+        where: { responseNumber: targetId },
         select: { createdAt: true },
       });
       return row?.createdAt ?? null;
