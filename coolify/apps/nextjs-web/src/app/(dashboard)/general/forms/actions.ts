@@ -47,7 +47,11 @@ import {
   actionOk,
   prismaErrorMessage,
 } from "@/lib/server-action";
-import { replaceShareGrants, shareAccessFor } from "@/lib/share-grants";
+import {
+  replaceShareGrants,
+  shareAccessFor,
+  visibleOwnerIds,
+} from "@/lib/share-grants";
 
 const BASE_PATH = "/general/forms";
 const TASKS_PATH = "/general/tasks";
@@ -911,5 +915,78 @@ export async function importForm(
     return actionOk({ code, mode: "new" });
   } catch (e) {
     return actionError(prismaErrorMessage(e, "取り込みに失敗しました"));
+  }
+}
+
+// ── ビルダー用の選択肢（関連レコード一覧の設定） ─────────────────────────────
+//
+// 項目キーは画面に出さない方針なので、「どのフォームの、どの項目と突き合わせるか」
+// はラベルで選ばせる。そのための一覧をここで引く。
+
+export interface FormOption {
+  value: string;
+  label: string;
+}
+
+/** 自分が読めるフォーム（関連レコード一覧の参照先候補）。 */
+export async function searchFormOptions(query: string): Promise<FormOption[]> {
+  const authz = await checkPermission("form", "READ");
+  if (!authz.ok) return [];
+  const q = query.trim();
+  try {
+    const rows = await prisma.form.findMany({
+      where: {
+        currentVersion: { gt: 0 },
+        ...(q ? { title: { contains: q, mode: "insensitive" } } : {}),
+      },
+      orderBy: { updatedAt: "desc" },
+      take: 50,
+      select: { code: true, title: true, createdBy: true },
+    });
+    const visible = await visibleOwnerIds(
+      FORM_OWNER_TYPE,
+      rows.map((r) => ({ ownerId: r.code, createdBy: r.createdBy })),
+    );
+    return rows
+      .filter((r) => visible.has(r.code))
+      .map((r) => ({ value: r.code, label: `${r.title}（${r.code}）` }));
+  } catch {
+    return [];
+  }
+}
+
+/** 指定フォームの項目（公開中の版）。ラベルで選ばせるための一覧。 */
+export async function fetchFormFieldOptions(
+  code: string,
+): Promise<FormOption[]> {
+  const authz = await checkPermission("form", "READ");
+  if (!authz.ok) return [];
+  try {
+    const form = await prisma.form.findUnique({
+      where: { code },
+      select: {
+        code: true,
+        createdBy: true,
+        versions: { orderBy: { version: "desc" }, take: 1 },
+      },
+    });
+    if (!form) return [];
+    const access = await shareAccessFor(
+      FORM_OWNER_TYPE,
+      form.code,
+      form.createdBy,
+    );
+    if (!access.canRead) return [];
+
+    const parsed = parseFormFields(form.versions[0]?.schema ?? []);
+    if (!parsed.ok) return [];
+    return (
+      parsed.fields
+        // 表示専用の項目は突き合わせにも表示にも使えない。
+        .filter((f) => f.type !== "related")
+        .map((f) => ({ value: f.key, label: f.label.ja || f.key }))
+    );
+  } catch {
+    return [];
   }
 }

@@ -54,13 +54,13 @@ function typeLabel(t: FormFieldDef["type"]): string {
 function SortableField({
   field,
   index,
-  siblingKeys,
+  siblings,
   onChange,
   onRemove,
 }: {
   field: FormFieldDef;
   index: number;
-  siblingKeys: string[];
+  siblings: FormFieldDef[];
   onChange: (next: FormFieldDef) => void;
   onRemove: () => void;
 }) {
@@ -134,7 +134,7 @@ function SortableField({
             <FormFieldEditor
               field={field}
               onChange={onChange}
-              siblingKeys={siblingKeys}
+              siblings={siblings}
             />
           </Accordion.Panel>
         </Accordion.Item>
@@ -220,10 +220,7 @@ export function FormBuilder({
                 onRemove={() =>
                   onChange(normalizeOrder(fields.filter((_, idx) => idx !== i)))
                 }
-                siblingKeys={fields
-                  .filter((_, idx) => idx !== i)
-                  .map((f) => f.key)
-                  .filter(Boolean)}
+                siblings={fields.filter((_, idx) => idx !== i)}
               />
             ))}
           </Stack>

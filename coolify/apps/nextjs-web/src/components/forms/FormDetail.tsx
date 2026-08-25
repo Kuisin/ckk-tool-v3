@@ -2,6 +2,7 @@
 
 import { Alert, Badge, CopyButton, Group, Tabs, Text } from "@mantine/core";
 import {
+  IconChartBar,
   IconCheck,
   IconCopy,
   IconDownload,
@@ -63,6 +64,11 @@ export function FormDetail({
       actions={
         <ResourceActions
           menuItems={[
+            {
+              label: "回答を集計する",
+              icon: <IconChartBar size={14} />,
+              onClick: () => router.push(`/general/forms/${form.code}/summary`),
+            },
             {
               label: "回答画面を開く",
               icon: <IconLink size={14} />,
@@ -178,6 +184,18 @@ export function FormDetail({
         </Tabs.List>
 
         <Tabs.Panel pt="md" value="responses">
+          {responses.length > 0 && (
+            <Group justify="flex-end" mb="sm">
+              <GhostButton
+                leftSection={<IconChartBar size={14} />}
+                onClick={() =>
+                  router.push(`/general/forms/${form.code}/summary`)
+                }
+              >
+                集計を見る
+              </GhostButton>
+            </Group>
+          )}
           <DataTable
             columns={[
               {

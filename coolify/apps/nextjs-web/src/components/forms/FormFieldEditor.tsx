@@ -11,6 +11,7 @@ import {
   ActionIcon,
   Checkbox,
   Group,
+  MultiSelect,
   NumberInput,
   Select,
   Stack,
@@ -19,6 +20,12 @@ import {
   TextInput,
 } from "@mantine/core";
 import { IconPlus, IconTrash } from "@tabler/icons-react";
+import { useEffect, useState } from "react";
+import {
+  type FormOption,
+  fetchFormFieldOptions,
+  searchFormOptions,
+} from "@/app/(dashboard)/general/forms/actions";
 import { GhostButton } from "@/components/ui/buttons";
 import { useIsMobile } from "@/hooks/useViewport";
 import {
@@ -31,27 +38,34 @@ import {
   LOOKUP_SOURCES,
   MAX_PATTERN_LENGTH,
   nextFieldKey,
+  type RelatedConfig,
 } from "@/lib/form-schema";
 
 const NEEDS_OPTIONS: FormFieldType[] = ["select", "multiselect"];
 const NEEDS_PATTERN: FormFieldType[] = ["text", "textarea"];
 
+/**
+ * 項目キーの検証。**キーは画面に出さない**（追加時に field1, field2 … と自動で
+ * 割り当てる）ので、ここが引っかかるのは取り込んだ定義が壊れているときだけ。
+ * 内部識別子としては生き続けるので、検証自体は残す。
+ */
 export function fieldKeyError(key: string, others: string[]): string | null {
-  if (!key) return "キーを入力してください";
+  if (!key) return "内部キーがありません";
   if (!FIELD_KEY_PATTERN.test(key))
-    return "キーは英字で始まる英数字・_ のみ使えます";
-  if (others.includes(key)) return "同じキーの項目があります";
+    return "内部キーの形式が不正です（英字で始まる英数字・_）";
+  if (others.includes(key)) return "内部キーが重複しています";
   return null;
 }
 
 export function FormFieldEditor({
   field,
-  siblingKeys,
+  siblings,
   nestedOnly = false,
   onChange,
 }: {
   field: FormFieldDef;
-  siblingKeys: string[];
+  /** 同じ階層の他の項目。関連レコード一覧の突き合わせ先をラベルで選ばせる。 */
+  siblings: FormFieldDef[];
   /** サブテーブルの列として編集するとき（置ける型が減る）。 */
   nestedOnly?: boolean;
   onChange: (next: FormFieldDef) => void;
@@ -62,7 +76,10 @@ export function FormFieldEditor({
   const types = nestedOnly
     ? FORM_FIELD_TYPES.filter((t) => isNestableFieldType(t.value))
     : FORM_FIELD_TYPES;
-  const keyError = fieldKeyError(field.key, siblingKeys);
+  const keyError = fieldKeyError(
+    field.key,
+    siblings.map((f) => f.key),
+  );
   const patternError =
     field.pattern && !isSafePattern(field.pattern)
       ? `使えない正規表現です（構文エラー、量指定の入れ子、または ${MAX_PATTERN_LENGTH} 文字超）`
@@ -70,26 +87,25 @@ export function FormFieldEditor({
 
   return (
     <Stack gap="sm">
-      <Group align="flex-start" grow={!isMobile}>
-        <TextInput
-          label="表示名"
-          onChange={(e) =>
-            set({ label: { ...field.label, ja: e.currentTarget.value } })
-          }
-          placeholder="会社名"
-          value={field.label.ja}
-          withAsterisk
-        />
-        <TextInput
-          description="回答データの中で使うキー。あとから変えると過去の回答と結びつかなくなる"
-          error={keyError ?? undefined}
-          label="キー"
-          onChange={(e) => set({ key: e.currentTarget.value })}
-          placeholder="companyName"
-          value={field.key}
-          withAsterisk
-        />
-      </Group>
+      {/*
+        内部キー（field1, field2 …）は追加時に自動で割り当てる。画面には出さない —
+        利用者が決めることではないし、あとから変えると過去の回答と結びつかなく
+        なる。壊れた定義を取り込んだときだけ、下にエラーとして出る。
+      */}
+      <TextInput
+        label="表示名"
+        onChange={(e) =>
+          set({ label: { ...field.label, ja: e.currentTarget.value } })
+        }
+        placeholder="会社名"
+        value={field.label.ja}
+        withAsterisk
+      />
+      {keyError && (
+        <Text c="red" size="xs">
+          {keyError}（取り込んだ定義が壊れています）
+        </Text>
+      )}
 
       <Group align="flex-start" grow={!isMobile}>
         <Select
@@ -301,9 +317,7 @@ export function FormFieldEditor({
                     ),
                   })
                 }
-                siblingKeys={(field.columns ?? [])
-                  .filter((_, idx) => idx !== i)
-                  .map((c) => c.key)}
+                siblings={(field.columns ?? []).filter((_, idx) => idx !== i)}
               />
             </Stack>
           ))}
@@ -337,97 +351,133 @@ export function FormFieldEditor({
       )}
 
       {field.type === "related" && (
-        <Stack gap="xs">
-          <Group align="flex-start" grow={!isMobile}>
-            <TextInput
-              description="埋め込みたいフォームの共有コード（/f/ のあと）"
-              label="参照先フォームのコード"
-              onChange={(e) =>
-                set({
-                  related: {
-                    targetFormCode: e.currentTarget.value,
-                    targetFieldKey: field.related?.targetFieldKey ?? "",
-                    thisFieldKey: field.related?.thisFieldKey ?? "",
-                    columns: field.related?.columns ?? [],
-                    limit: field.related?.limit ?? 20,
-                  },
-                })
-              }
-              value={field.related?.targetFormCode ?? ""}
-            />
-            <NumberInput
-              label="最大表示件数"
-              max={100}
-              min={1}
-              onChange={(v) =>
-                set({
-                  related: {
-                    targetFormCode: field.related?.targetFormCode ?? "",
-                    targetFieldKey: field.related?.targetFieldKey ?? "",
-                    thisFieldKey: field.related?.thisFieldKey ?? "",
-                    columns: field.related?.columns ?? [],
-                    limit: Number(v) || 20,
-                  },
-                })
-              }
-              value={field.related?.limit ?? 20}
-            />
-          </Group>
-          <Group align="flex-start" grow={!isMobile}>
-            <TextInput
-              description="このフォーム側の項目キー"
-              label="突き合わせるキー（自分）"
-              onChange={(e) =>
-                set({
-                  related: {
-                    targetFormCode: field.related?.targetFormCode ?? "",
-                    targetFieldKey: field.related?.targetFieldKey ?? "",
-                    thisFieldKey: e.currentTarget.value,
-                    columns: field.related?.columns ?? [],
-                    limit: field.related?.limit ?? 20,
-                  },
-                })
-              }
-              value={field.related?.thisFieldKey ?? ""}
-            />
-            <TextInput
-              description="参照先フォームの項目キー"
-              label="突き合わせるキー（参照先）"
-              onChange={(e) =>
-                set({
-                  related: {
-                    targetFormCode: field.related?.targetFormCode ?? "",
-                    targetFieldKey: e.currentTarget.value,
-                    thisFieldKey: field.related?.thisFieldKey ?? "",
-                    columns: field.related?.columns ?? [],
-                    limit: field.related?.limit ?? 20,
-                  },
-                })
-              }
-              value={field.related?.targetFieldKey ?? ""}
-            />
-          </Group>
-          <TextInput
-            description="カンマ区切りの項目キー。参照先の一覧に出す列"
-            label="表示する列"
-            onChange={(e) =>
-              set({
-                related: {
-                  targetFormCode: field.related?.targetFormCode ?? "",
-                  targetFieldKey: field.related?.targetFieldKey ?? "",
-                  thisFieldKey: field.related?.thisFieldKey ?? "",
-                  columns: e.currentTarget.value
-                    .split(",")
-                    .map((s) => s.trim())
-                    .filter(Boolean),
-                  limit: field.related?.limit ?? 20,
-                },
-              })
-            }
-            value={(field.related?.columns ?? []).join(", ")}
-          />
-        </Stack>
+        <RelatedConfigEditor
+          field={field}
+          onChange={(related) => set({ related })}
+          siblings={siblings}
+        />
       )}
+    </Stack>
+  );
+}
+
+/**
+ * 関連レコード一覧の設定。項目キーは画面に出さない方針なので、
+ * 「どのフォームの、どの項目と突き合わせるか」はすべてラベルで選ばせる。
+ * 参照先フォームを選んだ時点で、そのフォームの項目を読みに行く。
+ */
+function RelatedConfigEditor({
+  field,
+  siblings,
+  onChange,
+}: {
+  field: FormFieldDef;
+  siblings: FormFieldDef[];
+  onChange: (related: RelatedConfig) => void;
+}) {
+  const isMobile = useIsMobile();
+  const current: RelatedConfig = field.related ?? {
+    targetFormCode: "",
+    targetFieldKey: "",
+    thisFieldKey: "",
+    columns: [],
+    limit: 20,
+  };
+  const [forms, setForms] = useState<FormOption[]>([]);
+  const [targetFields, setTargetFields] = useState<FormOption[]>([]);
+  const [loading, setLoading] = useState(false);
+
+  // 参照先の候補は開いたときに 1 度だけ引く（フォームの数はたかが知れている）。
+  useEffect(() => {
+    let alive = true;
+    searchFormOptions("").then((rows) => {
+      if (alive) setForms(rows);
+    });
+    return () => {
+      alive = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!current.targetFormCode) {
+      setTargetFields([]);
+      return;
+    }
+    let alive = true;
+    setLoading(true);
+    fetchFormFieldOptions(current.targetFormCode)
+      .then((rows) => {
+        if (alive) setTargetFields(rows);
+      })
+      .finally(() => {
+        if (alive) setLoading(false);
+      });
+    return () => {
+      alive = false;
+    };
+  }, [current.targetFormCode]);
+
+  const set = (patch: Partial<RelatedConfig>) =>
+    onChange({ ...current, ...patch });
+
+  // 自分側の突き合わせ先は lookup が自然（会社名など）だが、テキストでも
+  // 突き合わせられるので表示専用以外は全部出す。
+  const ownOptions = siblings
+    .filter((f) => f.type !== "related" && f.type !== "table")
+    .map((f) => ({ value: f.key, label: f.label.ja || f.key }));
+
+  return (
+    <Stack gap="xs">
+      <Select
+        data={forms}
+        description="この項目に一覧として埋め込むフォーム"
+        label="参照先のフォーム"
+        onChange={(v) =>
+          set({ targetFormCode: v ?? "", targetFieldKey: "", columns: [] })
+        }
+        placeholder="フォームを選ぶ"
+        searchable
+        value={current.targetFormCode || null}
+      />
+      <Group align="flex-start" grow={!isMobile}>
+        <Select
+          data={ownOptions}
+          description="このフォームの項目"
+          label="突き合わせる項目（自分）"
+          onChange={(v) => set({ thisFieldKey: v ?? "" })}
+          placeholder="項目を選ぶ"
+          searchable
+          value={current.thisFieldKey || null}
+        />
+        <Select
+          data={targetFields}
+          description="参照先フォームの項目"
+          disabled={!current.targetFormCode || loading}
+          label="突き合わせる項目（参照先）"
+          onChange={(v) => set({ targetFieldKey: v ?? "" })}
+          placeholder={loading ? "読み込み中…" : "項目を選ぶ"}
+          searchable
+          value={current.targetFieldKey || null}
+        />
+      </Group>
+      <MultiSelect
+        data={targetFields}
+        description="参照先の一覧に出す列（最大 8 つ）"
+        disabled={!current.targetFormCode || loading}
+        label="表示する列"
+        maxValues={8}
+        onChange={(v) => set({ columns: v })}
+        placeholder="列を選ぶ"
+        searchable
+        value={current.columns}
+      />
+      <NumberInput
+        label="最大表示件数"
+        max={100}
+        min={1}
+        onChange={(v) => set({ limit: Number(v) || 20 })}
+        value={current.limit}
+      />
     </Stack>
   );
 }
