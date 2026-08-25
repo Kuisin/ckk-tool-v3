@@ -12,14 +12,16 @@
 
 services:
   prometheus:
-    image: prom/prometheus:v3.1.0
+    build:
+      context: .
+      dockerfile: images/prometheus.Dockerfile
+    image: ckk-prometheus
     container_name: prometheus
     restart: unless-stopped
     command:
       - '--config.file=/etc/prometheus/prometheus.yml'
       - '--storage.tsdb.retention.time=30d'
     volumes:
-      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
       - prometheus-data:/prometheus
     networks: [monitoring]
 
@@ -60,18 +62,23 @@ services:
 
   # Log store for container logs (collected by Alloy below).
   loki:
-    image: grafana/loki:3.4.2
+    build:
+      context: .
+      dockerfile: images/loki.Dockerfile
+    image: ckk-loki
     container_name: loki
     restart: unless-stopped
     command: -config.file=/etc/loki/loki-config.yaml
     volumes:
-      - ./loki/loki-config.yaml:/etc/loki/loki-config.yaml:ro
       - loki-data:/loki
     networks: [monitoring]
 
   # Collects EVERY container's stdout/stderr (via the Docker socket) -> Loki.
   alloy:
-    image: grafana/alloy:v1.7.5
+    build:
+      context: .
+      dockerfile: images/alloy.Dockerfile
+    image: ckk-alloy
     container_name: alloy
     restart: unless-stopped
     depends_on:
@@ -81,13 +88,15 @@ services:
       - /etc/alloy/config.alloy
       - --storage.path=/var/lib/alloy/data
     volumes:
-      - ./alloy/config.alloy:/etc/alloy/config.alloy:ro
       - /var/run/docker.sock:/var/run/docker.sock:ro
       - alloy-data:/var/lib/alloy/data
     networks: [monitoring]
 
   grafana:
-    image: grafana/grafana:11.6.0
+    build:
+      context: .
+      dockerfile: images/grafana.Dockerfile
+    image: ckk-grafana
     container_name: grafana
     restart: unless-stopped
     depends_on:
@@ -98,16 +107,24 @@ services:
       - GF_SERVER_ROOT_URL=${GF_ROOT_URL:-http://localhost:3002}
       - GF_USERS_ALLOW_SIGN_UP=false
     volumes:
-      - ./grafana/provisioning:/etc/grafana/provisioning:ro
-      - ./grafana/dashboards:/var/lib/grafana/dashboards:ro
       - grafana-data:/var/lib/grafana
     networks: [monitoring]
 
 volumes:
+  # external — Coolify がプロジェクト名（アプリ UUID）を変えても同じ実体を
+  # 掴む。名前付きのままだと新しい空ボリュームができて履歴が孤児になる。
   prometheus-data:
+    external: true
+    name: monitoring_prometheus-data
   grafana-data:
+    external: true
+    name: monitoring_grafana-data
   loki-data:
+    external: true
+    name: monitoring_loki-data
   alloy-data:
+    external: true
+    name: monitoring_alloy-data
 
 networks:
   monitoring:
