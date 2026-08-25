@@ -19,13 +19,25 @@ promotion PR and leave it for the user).
 merged with **"Create a merge commit"**, never squash/rebase. A squash promotion
 creates a `main`-only commit, so `dev` and `main` histories diverge and **every
 later promotion PR conflicts** on files touched since (this happened with
-`docs-tree.ts`). If histories have already diverged (`git merge-base
---is-ancestor origin/main origin/dev` fails), first land a sync PR into `dev`
-that merges `origin/main` back in (resolve conflicts in favor of `dev` unless
-`main` has content `dev` lacks), then promote. CI enforces both rules on PRs to
-`main` via `.github/workflows/promotion-guard.yml` (head must be `dev`; `dev`
-must already contain `main`). A sync/merge PR into `dev` must itself be merged
-with a merge commit — squashing it flattens the join and defeats the fix.
+`docs-tree.ts`).
+
+**`git merge-base --is-ancestor origin/main origin/dev` failing is NORMAL — do
+not open a sync PR for it.** Each promotion leaves a merge commit that exists
+only on `main`, so `dev` legitimately "does not contain" `main` right after every
+promotion. `promotion-guard.yml` knows this: it first tries `is-ancestor`, and if
+that fails it runs `git merge-tree` to test whether the merge would *actually*
+conflict. Only a real conflict fails the check. (Two needless sync PRs were
+opened against this misreading — the guidance here was stale, not the guard.)
+
+A sync PR into `dev` is only needed when the guard reports a **real conflict**
+(`merge-tree` exit 1) — i.e. content genuinely diverged, usually from a squashed
+promotion. Then merge `origin/main` into `dev` (resolve in favour of `dev` unless
+`main` has content `dev` lacks), and merge that PR **with a merge commit** —
+squashing it flattens the join and defeats the fix.
+
+CI enforces both rules on PRs to `main` via
+`.github/workflows/promotion-guard.yml` (head must be `dev`; the merge must not
+conflict).
 
 **Branch cleanup (required)** — after a PR is merged into `dev`, **delete its
 feature branch** (remote: `gh pr merge --delete-branch`, or
