@@ -1,0 +1,210 @@
+// フォーム（CM02, /general/forms）— 利用者が項目を組んで作る汎用フォーム。
+// 用途は 2 つ: アンケート（回答収集）と 申請/報告（承認ステップ付き）。
+//
+// 定義を JSON 1 枚に持たせず「定義行 + 不変バージョン行」に割るのは、回答が
+// 何年も残るのに定義は編集され続けるため。回答は必ず「回答した時点の
+// バージョン」を指すので、後から項目を消しても過去の回答の意味が壊れない
+// （前例: inspection_templates の @@unique([code, version]) /
+//  product_process_route_versions）。最新 = max(version)、is_latest は持たない。
+//
+// 共有（誰が回答・閲覧・編集できるか）は share_grants が持つ。権限コード `form`
+// は「フォームを作る側」の門番で、回答者側の可否はフォームごとの共有設定が決める。
+
+model Form {
+  id          String  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  // 短縮 URL 用のコード（Crockford Base32 8 桁）。/f/<code> で回答画面に入る。
+  // アプリ配下でない短い URL にしてあるのは、将来社外公開へ広げる余地を残すため。
+  code        String  @unique
+  title       String
+  description String?
+
+  kind   FormKind
+  status FormStatus @default(DRAFT)
+
+  // 回答者を画面に出すかどうか。**記録は常にする**（下の form_responses.submitted_by は
+  // NOT NULL）。HIDDEN は「集計時に見せない」であって匿名ではない — 自分の回答を
+  // 編集させるためと、自分の回答一覧を出すために本人特定が要る。
+  respondentVisibility RespondentVisibility @default(SHOWN) @map("respondent_visibility")
+
+  // 公開中の定義バージョン。0 = まだ一度も公開していない。
+  currentVersion Int @default(0) @map("current_version")
+  // フォーム内の連番（画面に出す「No.」）。採番は提出トランザクション内で
+  // UPDATE ... RETURNING するので行ロックで競合しない。
+  recordSeq Int @default(0) @map("record_seq")
+
+  // 承認フロー（kind = REQUEST のときだけ意味を持つ）。実際の段数と承認者は
+  // 承認設定 (MS0B) の approval_flows / approval_flow_rules が持つ。
+  approvalEnabled Boolean @default(false) @map("approval_enabled")
+  // 1 人 1 回に制限するか。false = 何度でも出せる。
+  allowMultiple Boolean @default(true) @map("allow_multiple")
+
+  // 受付期間。status に CLOSED を持たせず、この 2 つと現在時刻から導出する
+  // （lib/form-schema.ts formAvailability）。締切は cron ではなく毎リクエストの
+  // 評価で閉じる。
+  opensAt  DateTime? @map("opens_at") @db.Timestamptz(6)
+  closesAt DateTime? @map("closes_at") @db.Timestamptz(6)
+
+  // 回答者が自分の回答を編集できる期間。
+  responseEditMode      ResponseEditMode @default(NONE) @map("response_edit_mode")
+  responseEditableUntil DateTime?        @map("response_editable_until") @db.Timestamptz(6)
+
+  createdBy String?  @map("created_by") @db.Uuid
+  updatedBy String?  @map("updated_by") @db.Uuid
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  createdByUser User? @relation("FormCreatedBy", fields: [createdBy], references: [id])
+  updatedByUser User? @relation("FormUpdatedBy", fields: [updatedBy], references: [id])
+
+  versions  FormVersion[]
+  responses FormResponse[]
+
+  @@index([status, updatedAt])
+  @@map("forms")
+  @@schema("app")
+}
+
+enum FormKind {
+  SURVEY // アンケート（回答収集）
+  REQUEST // 申請・報告（承認ステップを付けられる）
+
+  @@schema("app")
+}
+
+enum FormStatus {
+  DRAFT // 未公開（作成中）
+  PUBLISHED // 公開済み（受付可否は opens_at / closes_at が決める）
+  ARCHIVED // 使い終わった
+
+  @@schema("app")
+}
+
+enum RespondentVisibility {
+  SHOWN // 一覧・詳細・CSV に回答者を出す
+  HIDDEN // どの画面にも出さない（記録はする）
+
+  @@schema("app")
+}
+
+enum ResponseEditMode {
+  NONE // 提出したら編集できない
+  UNTIL_CLOSE // 受付終了まで編集できる
+  UNTIL_DATE // response_editable_until まで編集できる
+
+  @@schema("app")
+}
+
+// 公開した定義の不変スナップショット。回答はここを指す。
+model FormVersion {
+  id      String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  formId  String @map("form_id") @db.Uuid
+  version Int
+  // FormFieldDef[]（lib/form-schema.ts の zod で検証してから保存する）。
+  schema Json
+
+  publishedAt DateTime @default(now()) @map("published_at") @db.Timestamptz(6)
+  publishedBy String?  @map("published_by") @db.Uuid
+
+  form            Form  @relation(fields: [formId], references: [id], onDelete: Cascade)
+  publishedByUser User? @relation("FormVersionPublishedBy", fields: [publishedBy], references: [id])
+
+  @@unique([formId, version])
+  @@map("form_versions")
+  @@schema("app")
+}
+
+model FormResponse {
+  id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  // 業務キー。承認依頼・監査ログ・添付はこの文字列で紐づく（FK は張らない）。
+  responseNumber String @unique @map("response_number")
+  // フォーム内の連番（kintone の「No.」相当）。表示・印刷で使う。
+  recordNo Int @map("record_no")
+
+  formId String @map("form_id") @db.Uuid
+  // 回答時点の定義バージョン。以後変わらない。
+  version Int
+
+  status FormResponseStatus @default(DRAFT)
+
+  // { [fieldKey]: value }。値の形は lib/form-schema.ts の型ごとの規約に従う。
+  answers Json
+  // answers の平文射影（検索・監査ログの可読性のため）。
+  plainText String? @map("plain_text")
+
+  // 回答者。**常に記録する** — 表示するかは forms.respondent_visibility が決める。
+  submittedBy String    @map("submitted_by") @db.Uuid
+  submittedAt DateTime? @map("submitted_at") @db.Timestamptz(6)
+
+  approvedAt   DateTime? @map("approved_at") @db.Timestamptz(6)
+  rejectedAt   DateTime? @map("rejected_at") @db.Timestamptz(6)
+  rejectReason String?   @map("reject_reason")
+  // 状態遷移履歴 [{ action, user, at, notes }]（他書類と同じ row-workflow）。
+  history Json?
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  form            Form @relation(fields: [formId], references: [id], onDelete: Cascade)
+  submittedByUser User @relation("FormResponseSubmittedBy", fields: [submittedBy], references: [id])
+
+  @@unique([formId, recordNo])
+  @@index([formId, status])
+  @@index([submittedBy, createdAt])
+  @@map("form_responses")
+  @@schema("app")
+}
+
+enum FormResponseStatus {
+  DRAFT // 下書き（本人だけが見える）
+  SUBMITTED // 提出済み（承認なしのフォームはここで終わり）
+  REQUESTED // 承認依頼中
+  APPROVED // 承認済み
+  REJECTED // 差し戻し（本人が直して再提出できる）
+
+  @@schema("app")
+}
+
+// レコード単位の共有。フォーム (CM02) と社内文書 (CM03) が共用する。
+// 既存のポリモーフィック規約（owner_type = @@map 名 / owner_id = 業務キー文字列 /
+// FK は張らない）に合わせてある。RBAC の権限コードは「アプリを使えるか」までしか
+// 決められず、「この 1 件を誰に見せるか」は表現できないので別立てにした。
+model ShareGrant {
+  id        String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  ownerType String @map("owner_type") // forms / internal_pages
+  ownerId   String @map("owner_id") // forms.code / internal_pages.page_number
+
+  subjectType ShareSubjectType @map("subject_type")
+  // plants.id / roles.id / users.id を文字列で持つ（対象種別ごとに型が違うため）。
+  // EVERYONE のときは null。
+  subjectId String? @map("subject_id")
+
+  level ShareLevel
+
+  createdBy String?  @map("created_by") @db.Uuid
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  createdByUser User? @relation("ShareGrantCreatedBy", fields: [createdBy], references: [id])
+
+  @@unique([ownerType, ownerId, subjectType, subjectId, level])
+  @@index([ownerType, ownerId])
+  @@map("share_grants")
+  @@schema("app")
+}
+
+enum ShareSubjectType {
+  EVERYONE // ログインユーザー全員
+  PLANT // 拠点所属（user_plants）
+  ROLE // ロール保持（user_role_relation）
+  USER // 個人指定
+
+  @@schema("app")
+}
+
+enum ShareLevel {
+  RESPOND // フォームに回答できる
+  READ // 読める（フォーム= 全回答の閲覧 / 文書 = 本文の閲覧）
+  EDIT // 編集できる
+  MANAGE // 共有設定を含めて管理できる
+
+  @@schema("app")
+}
