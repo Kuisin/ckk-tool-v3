@@ -8,6 +8,7 @@ import "server-only";
  * （system:READ）でゲート — 呼び出し側ページで checkPermission を通すこと。
  */
 
+import { BOOTSTRAP_ADMIN_USERNAME } from "./bootstrap-admin-core";
 import { prisma } from "./db";
 import type { LocalizedText } from "./format";
 
@@ -171,5 +172,38 @@ export async function getAdminUser(
       name: up.plant.name as LocalizedText | null,
       isActive: up.plant.isActive,
     })),
+  };
+}
+
+/**
+ * 初期管理者（ローカル `admin`）の現況を 1 回のクエリ束で読む。
+ *
+ * 「他に管理者が居るか」は **user_permissions ビュー**で数える（roles テーブルの
+ * `admin` ロール名ではなく）。ロール名は運用で増減しうるが、実際に管理できるか
+ * どうかは `system:ADMIN` を持つかどうかで決まるため。ビューは users.is_active も
+ * 見ているので、無効化されたユーザーは自動的に数から外れる。
+ */
+export async function getBootstrapAdminSnapshot(): Promise<{
+  id: string;
+  isActive: boolean;
+  passwordChangeRequired: boolean;
+  otherActiveAdminCount: number;
+} | null> {
+  const u = await prisma.user.findUnique({
+    where: { username: BOOTSTRAP_ADMIN_USERNAME },
+    select: { id: true, isActive: true, passwordChangeRequired: true },
+  });
+  if (!u) return null;
+  const rows = await prisma.$queryRaw<{ n: bigint }[]>`
+    SELECT COUNT(DISTINCT user_id) AS n
+    FROM app.user_permissions
+    WHERE permission_code = 'system'
+      AND action = 'ADMIN'
+      AND user_id <> ${u.id}::uuid`;
+  return {
+    id: u.id,
+    isActive: u.isActive,
+    passwordChangeRequired: u.passwordChangeRequired,
+    otherActiveAdminCount: Number(rows[0]?.n ?? 0),
   };
 }

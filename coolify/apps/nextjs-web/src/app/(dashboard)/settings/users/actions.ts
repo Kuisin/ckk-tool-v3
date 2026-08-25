@@ -12,6 +12,10 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { recordAudit } from "@/lib/audit";
 import { checkPermission } from "@/lib/authz";
+import {
+  BOOTSTRAP_ADMIN_USERNAME,
+  bootstrapAdminState,
+} from "@/lib/bootstrap-admin-core";
 import { prisma } from "@/lib/db";
 import {
   type ActionResult,
@@ -19,6 +23,7 @@ import {
   actionOk,
   prismaErrorMessage,
 } from "@/lib/server-action";
+import { getBootstrapAdminSnapshot } from "@/lib/users-admin";
 
 const BASE_PATH = "/settings/users";
 
@@ -98,5 +103,53 @@ export async function updateUserPlants(
     return actionOk();
   } catch (e) {
     return actionError(prismaErrorMessage(e, "所属拠点の更新に失敗しました"));
+  }
+}
+
+/**
+ * 初期管理者（ローカル `admin`）を無効化する。
+ *
+ * 立ち上げ用の踏み台なので、実運用の管理者ができたら畳むのが正しい終わり方。
+ * ただし **最後の管理者を消させない** — ロールを付与する画面が無いので、
+ * 管理者が居ない DB は psql でしか復旧できない。
+ *
+ * 可否の判定は bootstrapAdminState（純関数）に集約してあり、画面のボタンの活性も
+ * 同じ関数の結果を見る。ここで読み直して再判定するのは画面を信用しないため —
+ * Server Action を直接叩かれても同じ結論になるようにしておく。
+ */
+export async function disableBootstrapAdmin(): Promise<ActionResult> {
+  const authz = await checkPermission("system", "ADMIN");
+  if (!authz.ok) return actionError(authz.error);
+
+  try {
+    const snap = await getBootstrapAdminSnapshot();
+    if (!snap) return actionError("初期管理者アカウントが見つかりません");
+
+    const state = bootstrapAdminState({
+      username: BOOTSTRAP_ADMIN_USERNAME,
+      isActive: snap.isActive,
+      passwordChangeRequired: snap.passwordChangeRequired,
+      otherActiveAdminCount: snap.otherActiveAdminCount,
+    });
+    if (!state.canDisable) {
+      return actionError(state.message ?? "この操作はいま実行できません");
+    }
+
+    await prisma.user.update({
+      where: { id: snap.id },
+      data: { isActive: false },
+    });
+    await recordAudit({
+      action: "UPDATE",
+      tableName: "users",
+      recordId: snap.id,
+      before: { username: BOOTSTRAP_ADMIN_USERNAME, isActive: true },
+      after: { username: BOOTSTRAP_ADMIN_USERNAME, isActive: false },
+    });
+    revalidatePath(BASE_PATH);
+    revalidatePath(`${BASE_PATH}/${snap.id}`);
+    return actionOk(undefined);
+  } catch (e) {
+    return actionError(prismaErrorMessage(e, "無効化に失敗しました"));
   }
 }
