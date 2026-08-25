@@ -24,7 +24,20 @@ services:
       - DKIM_AUTOGENERATE=${DKIM_AUTOGENERATE:-false}
     volumes:
       - mailrelay-dkim:/etc/opendkim/keys
-    # No published ports — internal only. Apps reach it as mailrelay:587.
+    # ホストポートは公開しない。アプリは `coolify` ネットワーク上で
+    # **mailrelay:587** として引く（認証不要 — 外向きの認証はこのリレーが
+    # さくらに対して行う）。
+    networks:
+      - coolify
 
 volumes:
+  # external にしてあるので、Coolify がプロジェクト名を変えても同じ DKIM 鍵を掴む
+  # （名前付きのままだとボリューム名が変わって鍵が孤児になる）。
   mailrelay-dkim:
+    external: true
+    name: xfx4dfmdobzm07yuril7ijtx_mailrelay-dkim
+
+networks:
+  coolify:
+    external: true
+    name: coolify

@@ -15,11 +15,15 @@ import { escapeHtml } from "./format";
 
 let cached: Transporter | null | undefined;
 
-/** SMTP 設定済みか（設定 UI の表示・ヘルスチェック用）。 */
+/**
+ * SMTP 設定済みか（設定 UI の表示・ヘルスチェック用）。
+ *
+ * **資格情報は任意**。社内リレー（`mailrelay:587`）は認証を要求しないので、
+ * SMTP_HOST だけで設定済みとみなす。外部 SMTP へ直接出すときだけ USER/PASS が
+ * 要る。未設定（SMTP_HOST 無し）ならメールチャネルは黙ってスキップ — 開発環境で安全。
+ */
 export function isMailerConfigured(): boolean {
-  return Boolean(
-    process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASS,
-  );
+  return Boolean(process.env.SMTP_HOST);
 }
 
 function transporter(): Transporter | null {
@@ -29,18 +33,32 @@ function transporter(): Transporter | null {
     return cached;
   }
   const secure = process.env.SMTP_SECURE === "true";
+  const user = process.env.SMTP_USER;
+  const pass = process.env.SMTP_PASS;
+  const hasAuth = Boolean(user && pass);
   cached = nodemailer.createTransport({
     host: process.env.SMTP_HOST,
     port: Number(process.env.SMTP_PORT ?? (secure ? 465 : 587)),
     secure,
-    auth: { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS },
+    // 認証情報が無いときは auth を**渡さない**。空の auth を渡すと nodemailer が
+    // AUTH を試み、認証を求めないリレーが 5xx を返して全滅する。
+    ...(hasAuth ? { auth: { user, pass } } : {}),
+    // 社内リレーは自己署名証明書で STARTTLS する。検証を通すための CA を配るより、
+    // 「Docker ネットワーク内の 1 ホップ」として検証を外すほうが素直
+    // （外部への配送はリレー → さくら間で正規の TLS が張られる）。
+    ...(hasAuth ? {} : { tls: { rejectUnauthorized: false } }),
   });
   return cached;
 }
 
 function fromAddress(): string {
+  // リレー経由では SMTP_USER が無いので、MAIL_FROM が実質必須。
+  // 最後の砦として no-reply を置く（リレーの ALLOWED_SENDER_DOMAINS に合わせる）。
   return (
-    process.env.MAIL_FROM ?? `CKK 業務管理システム <${process.env.SMTP_USER}>`
+    process.env.MAIL_FROM ??
+    (process.env.SMTP_USER
+      ? `CKK 業務管理システム <${process.env.SMTP_USER}>`
+      : "CKK 業務管理システム <no-reply@ckk-tool.co.jp>")
   );
 }
 
