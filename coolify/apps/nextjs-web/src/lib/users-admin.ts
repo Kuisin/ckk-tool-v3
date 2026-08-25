@@ -222,23 +222,39 @@ export async function getBootstrapAdminSnapshot(): Promise<{
  * user_permissions ビュー = 実効権限で数えるのは、ロール構成が変わっても
  * 「実際に管理できる人が居るか」という問いの答えが変わらないため。
  * ビューは users.is_active を JOIN 済みなので、停止中の管理者は数に入らない。
+ *
+ * ⚠️ **GROUP BY にプレースホルダを含む式を書かないこと**。
+ * `$queryRaw` のテンプレートは補間ごとに別のパラメータを作るので、
+ * `SELECT (user_id = ${id}) … GROUP BY (user_id = ${id})` は SQL 上
+ * `$1` と `$2` になり、PostgreSQL から見て「同じ式」ではなくなる。結果
+ * `column "user_permissions.user_id" must appear in the GROUP BY clause`
+ * で**必ず**失敗する（SY01 の詳細画面が常に 500 になっていた原因）。
+ * 集計は FILTER で 1 行に畳んで、GROUP BY 自体を無くしてある。
  */
 export async function getAdminCoverage(targetUserId: string): Promise<{
   targetIsAdmin: boolean;
   otherActiveAdminCount: number;
 }> {
-  const rows = await prisma.$queryRaw<{ is_target: boolean; n: bigint }[]>`
-    SELECT (user_id = ${targetUserId}::uuid) AS is_target,
-           COUNT(DISTINCT user_id) AS n
+  // 呼び出し側（詳細ページ）は getAdminUser と Promise.all で並走させるため、
+  // ここで弾かないと不正な id で notFound() より先に SQL が落ちて 500 になる。
+  if (!UUID_RE.test(targetUserId)) {
+    return { targetIsAdmin: false, otherActiveAdminCount: 0 };
+  }
+  const rows = await prisma.$queryRaw<
+    { target_is_admin: boolean; other_count: bigint }[]
+  >`
+    SELECT COUNT(DISTINCT user_id) FILTER (
+             WHERE user_id = ${targetUserId}::uuid
+           ) > 0 AS target_is_admin,
+           COUNT(DISTINCT user_id) FILTER (
+             WHERE user_id <> ${targetUserId}::uuid
+           ) AS other_count
       FROM app.user_permissions
      WHERE permission_code = 'system'
-       AND action = 'ADMIN'
-     GROUP BY (user_id = ${targetUserId}::uuid)`;
-  let targetIsAdmin = false;
-  let others = 0;
-  for (const r of rows) {
-    if (r.is_target) targetIsAdmin = Number(r.n) > 0;
-    else others = Number(r.n);
-  }
-  return { targetIsAdmin, otherActiveAdminCount: others };
+       AND action = 'ADMIN'`;
+  const row = rows[0];
+  return {
+    targetIsAdmin: row?.target_is_admin === true,
+    otherActiveAdminCount: Number(row?.other_count ?? 0),
+  };
 }
