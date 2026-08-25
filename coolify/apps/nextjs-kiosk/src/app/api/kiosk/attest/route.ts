@@ -9,6 +9,9 @@
  *
  * 有効化（KIOSK_ATTESTATION=required）時、getDevice() はこの Cookie が無いと
  * ATTEST_REQUIRED を返す — つまりログイン関連 API はラッパー経由でしか通らない。
+ *
+ * ここの失敗（署名不正・鍵不一致・鍵の使い回し）は**最も重い security 事象**
+ * なので、成否とも認証イベント（app.login_attempts）に残す。
  */
 
 import { NextResponse } from "next/server";
@@ -23,6 +26,13 @@ import {
 } from "@/lib/attest-core";
 import { prisma } from "@/lib/db";
 import { getDevice } from "@/lib/kiosk-auth";
+import {
+  attemptContext,
+  deny,
+  denyDevice,
+  recordKioskFailure,
+  recordKioskSuccess,
+} from "@/lib/kiosk-login-log";
 import { consumeTicket, issueTicket } from "@/lib/tickets";
 
 export async function GET() {
@@ -46,27 +56,25 @@ const bodySchema = z.object({
 export async function POST(req: Request) {
   const device = await getDevice({ skipAttest: true });
   if (!device.ok) {
-    return NextResponse.json(
-      { state: "DEVICE_INVALID", reason: device.reason },
-      { status: 403 },
-    );
+    return denyDevice(attemptContext(req, null), device.reason, "ATTEST");
   }
+  const ctx = attemptContext(req, device.device);
   const secret = attestSecret();
   if (!secret) {
-    return NextResponse.json({ state: "NOT_CONFIGURED" }, { status: 503 });
+    return deny(ctx, "NOT_CONFIGURED", 503, { method: "ATTEST" });
   }
 
   const parsed = bodySchema.safeParse(await req.json().catch(() => null));
   if (!parsed.success) {
-    return NextResponse.json({ error: "invalid request" }, { status: 400 });
+    return deny(ctx, "BAD_REQUEST", 400, { method: "ATTEST" });
   }
   const { nonce, publicKey, signature } = parsed.data;
 
   if (!consumeTicket(nonce, "ATTEST", device.device.id)) {
-    return NextResponse.json({ state: "TICKET_EXPIRED" }, { status: 410 });
+    return deny(ctx, "TICKET_EXPIRED", 410, { method: "ATTEST" });
   }
   if (!verifyDeviceSignature(publicKey, nonce, signature)) {
-    return NextResponse.json({ state: "BAD_SIGNATURE" }, { status: 403 });
+    return deny(ctx, "BAD_SIGNATURE", 403, { method: "ATTEST" });
   }
 
   const row = await prisma.kioskDevice.findUnique({
@@ -74,6 +82,7 @@ export async function POST(req: Request) {
     select: { devicePublicKey: true },
   });
   if (!row) {
+    recordKioskFailure(ctx, "DEVICE_NOT_FOUND", { method: "ATTEST" });
     return NextResponse.json({ state: "DEVICE_INVALID" }, { status: 403 });
   }
 
@@ -89,12 +98,13 @@ export async function POST(req: Request) {
         },
       });
     } catch {
-      return NextResponse.json({ state: "KEY_IN_USE" }, { status: 409 });
+      return deny(ctx, "KEY_IN_USE", 409, { method: "ATTEST" });
     }
   } else if (row.devicePublicKey !== publicKey) {
-    return NextResponse.json({ state: "KEY_MISMATCH" }, { status: 403 });
+    return deny(ctx, "KEY_MISMATCH", 403, { method: "ATTEST" });
   }
 
+  recordKioskSuccess(ctx, { method: "ATTEST" });
   const res = NextResponse.json({ state: "OK" });
   res.cookies.set(ATTEST_COOKIE, mintAttestCookie(secret, device.device.id), {
     httpOnly: true,

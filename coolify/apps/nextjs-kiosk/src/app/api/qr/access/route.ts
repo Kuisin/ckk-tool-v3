@@ -15,7 +15,11 @@
  *
  * カードの存在有無を漏らさないため、失敗系は同一メッセージの CARD_INVALID に
  * 集約する（SUSPENDED / 有効期間外の EXPIRED だけは利用者向けに区別 —
- * 管理者に連絡させるため）。
+ * 管理者に連絡させるため）。**画面には出さない区別も認証イベント
+ * （login_attempts）には残す** — 管理者が後から何が起きたか追えるように。
+ *
+ * PIN_REQUIRED / PIN_SETUP_REQUIRED は中間状態なので記録しない（結末は
+ * /api/kiosk/pin が書く）。
  */
 
 import { NextResponse } from "next/server";
@@ -29,6 +33,13 @@ import {
   isPinLocked,
   needsPinVerify,
 } from "@/lib/kiosk-auth-core";
+import {
+  attemptContext,
+  deny,
+  denyDevice,
+  recordKioskSuccess,
+} from "@/lib/kiosk-login-log";
+import { clientIpOf, userAgentOf } from "@/lib/request-ip";
 import { issueTicket } from "@/lib/tickets";
 import { wsBridge } from "@/lib/ws-bridge";
 
@@ -37,27 +48,31 @@ const bodySchema = z.object({ cardId: z.string().min(1).max(200) });
 export async function POST(req: Request) {
   const device = await getDevice();
   if (!device.ok) {
-    return NextResponse.json(
-      { state: "DEVICE_INVALID", reason: device.reason },
-      { status: 403 },
-    );
+    return denyDevice(attemptContext(req, null), device.reason, "QR_SCAN");
   }
+  const ctx = attemptContext(req, device.device);
 
   const parsed = bodySchema.safeParse(await req.json().catch(() => null));
   if (!parsed.success) {
-    return NextResponse.json({ error: "invalid request" }, { status: 400 });
+    return deny(ctx, "BAD_REQUEST", 400, { method: "QR_SCAN" });
   }
 
-  // 端末の生存を刻む（プレゼンス）
+  // 端末の生存を刻む（プレゼンス）。ついでに「最後に観測した」UA / IP も更新する
+  // — 追加のクエリを増やさずに端末情報を新鮮に保てる。
   await prisma.kioskDevice.update({
     where: { id: device.device.id },
-    data: { lastActivityAt: new Date() },
+    data: {
+      lastActivityAt: new Date(),
+      lastIpAddress: clientIpOf(req),
+      userAgent: userAgentOf(req),
+    },
   });
   wsBridge()?.notifyActivity(device.device.id);
 
-  const cardId = extractCardId(parsed.data.cardId);
+  const scanned = parsed.data.cardId;
+  const cardId = extractCardId(scanned);
   if (cardId.length !== CARD_ID_LENGTH) {
-    return NextResponse.json({ state: "CARD_INVALID" }, { status: 404 });
+    return deny(ctx, "CARD_INVALID", 404, { method: "QR_SCAN", scanned });
   }
 
   const card = await prisma.kioskCard.findUnique({
@@ -65,33 +80,44 @@ export async function POST(req: Request) {
     include: { user: { select: { id: true, isActive: true } } },
   });
   if (!card || !card.user || !card.user.isActive) {
-    return NextResponse.json({ state: "CARD_INVALID" }, { status: 404 });
+    // 画面では区別しないが、記録には「実在するカードだったか」を残す
+    return deny(ctx, "CARD_INVALID", 404, {
+      method: "QR_SCAN",
+      scanned,
+      cardId: card?.id ?? null,
+      userId: card?.user?.id ?? null,
+    });
   }
+
+  const detail = {
+    method: "QR_SCAN" as const,
+    scanned,
+    cardId: card.id,
+    userId: card.user.id,
+  };
+
   if (card.status === "SUSPENDED") {
-    return NextResponse.json({ state: "CARD_SUSPENDED" }, { status: 403 });
+    return deny(ctx, "CARD_SUSPENDED", 403, detail);
   }
   if (card.status !== "ASSIGNED") {
-    return NextResponse.json({ state: "CARD_INVALID" }, { status: 404 });
+    return deny(ctx, "CARD_INVALID", 404, detail);
   }
 
   const now = new Date();
 
   // テンポラリカードの有効期間外（利用者に管理者への連絡を促すため区別する）
   if (!isCardWithinValidPeriod(now, card.validFrom, card.validUntil)) {
-    return NextResponse.json({ state: "CARD_EXPIRED" }, { status: 403 });
+    return deny(ctx, "CARD_EXPIRED", 403, detail);
   }
 
-  // 1. PIN 未設定 → 初回設定を要求
+  // 1. PIN 未設定 → 初回設定を要求（結末は /api/kiosk/pin が記録する）
   if (!card.pinHash) {
     const ticket = issueTicket(card.id, device.device.id, "PIN_SETUP");
     return NextResponse.json({ state: "PIN_SETUP_REQUIRED", ticket });
   }
   // 2. ロック中
   if (isPinLocked(now, card.pinLockedUntil)) {
-    return NextResponse.json(
-      { state: "LOCKED", until: card.pinLockedUntil },
-      { status: 429 },
-    );
+    return deny(ctx, "LOCKED", 429, detail, { until: card.pinLockedUntil });
   }
   // 3. この端末で 48h 以内に使用 + PIN 検証 2 週間以内 → スキャンのみでログイン
   const lastDeviceSession = await prisma.kioskSession.findFirst({
@@ -111,6 +137,7 @@ export async function POST(req: Request) {
       data: { lastUsedAt: now, useCount: { increment: 1 } },
     });
     await createSession(card.user.id, card.id, device.device.id);
+    recordKioskSuccess(ctx, detail);
     // userId はクライアントの「最後に開いたページ」復元（localStorage キー）用
     return NextResponse.json({ state: "OK", userId: card.user.id });
   }

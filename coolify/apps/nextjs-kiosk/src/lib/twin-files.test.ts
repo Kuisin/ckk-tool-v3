@@ -35,6 +35,8 @@ const TWINS = [
   "device-signals-core.test.ts",
   "device-ownership-core.ts",
   "device-ownership-core.test.ts",
+  "login-attempt-core.ts",
+  "login-attempt-core.test.ts",
 ];
 
 describe("twin files (nextjs-web ⇄ nextjs-kiosk)", () => {
