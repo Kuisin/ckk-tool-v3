@@ -102,8 +102,14 @@ services:
     image: searxng/searxng:latest
     container_name: searxng
     restart: unless-stopped
+    # settings.yml は**インスタンス固有の secret_key を含む**ので git に置けない。
+    # 機微ファイルは 1 本のボリュームへ集約する方針（../secrets/README.md）。
+    # searxng は uid 977 で動き、この設定を自分で書き換えるため rw。
     volumes:
-      - ./searxng:/etc/searxng
+      - type: volume
+        source: ckk-secrets
+        target: /etc/searxng
+        volume: { subpath: searxng }
     environment:
       - SEARXNG_BASE_URL=http://searxng:8080/
     # No published port — reached internally by open-webui at http://searxng:8080.
@@ -138,6 +144,9 @@ services:
       - default     # ai-stack_default — reachable by open-webui
 
 volumes:
+  ckk-secrets:
+    external: true
+    name: ckk-secrets
   ollama:
   open-webui:
 
