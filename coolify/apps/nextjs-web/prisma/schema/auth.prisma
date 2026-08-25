@@ -171,6 +171,12 @@ model User {
   formVersionsPublished FormVersion[] @relation("FormVersionPublishedBy")
   formResponses      FormResponse[] @relation("FormResponseSubmittedBy")
   shareGrantsCreated ShareGrant[]   @relation("ShareGrantCreatedBy")
+  internalPagesCreated   InternalPage[]            @relation("InternalPageCreatedBy")
+  internalPagesUpdated   InternalPage[]            @relation("InternalPageUpdatedBy")
+  internalPageRevisions  InternalPageRevision[]    @relation("InternalPageRevisionEditedBy")
+  internalPageBlame      InternalPageLineBlame[]   @relation("InternalPageBlameEditedBy")
+  internalPageComments   InternalPageLineComment[] @relation("InternalPageCommentCreatedBy")
+  internalPageCommentsResolved InternalPageLineComment[] @relation("InternalPageCommentResolvedBy")
 
   // 表示設定（本人が /profile/preferences で変更する。AD 由来ではない）。
   //

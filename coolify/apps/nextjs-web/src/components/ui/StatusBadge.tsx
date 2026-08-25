@@ -63,6 +63,13 @@ export const STATUS_MAPS = {
     PUBLISHED: { label: "公開中", color: "blue" },
     ARCHIVED: { label: "アーカイブ", color: "dark" },
   },
+  // 社内文書 (CM03)。DRAFT は「公開版より新しい編集がある」も含む。
+  InternalPage: {
+    DRAFT: { label: "下書き", color: "gray" },
+    PENDING: { label: "公開承認待ち", color: "yellow" },
+    PUBLISHED: { label: "公開中", color: "green" },
+    ARCHIVED: { label: "アーカイブ", color: "dark" },
+  },
   FormResponse: {
     DRAFT: { label: "下書き", color: "gray" },
     SUBMITTED: { label: "提出済", color: "blue" },

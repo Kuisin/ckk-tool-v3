@@ -137,6 +137,32 @@ export async function mintShortLinks(
   return map;
 }
 
+/**
+ * URL → 短縮コード。**描画時に使う読み取り専用の引き**。
+ *
+ * mintShortLinks は登録も行うので、描画のたびに呼ぶと閲覧しただけで行が増える。
+ * 保存時に登録済みのものをここで引くだけにする（未登録の URL は返さず、
+ * 呼び出し側はリンクにしない）。
+ */
+export async function lookupShortLinkCodes(
+  urls: readonly string[],
+): Promise<Record<string, string>> {
+  const unique = [...new Set(urls.map((u) => normalizeUrl(u)).filter(Boolean))];
+  if (unique.length === 0) return {};
+  try {
+    const rows = await prisma.linkIndex.findMany({
+      where: { url: { in: unique as string[] } },
+      select: { code: true, url: true },
+    });
+    const map: Record<string, string> = {};
+    for (const row of rows) map[row.url] = row.code;
+    return map;
+  } catch (e) {
+    console.error("lookupShortLinkCodes failed", e);
+    return {};
+  }
+}
+
 /** 表示用のリンク情報（ホバーで遷移先を見せるため）。 */
 export interface ShortLinkTarget {
   url: string;
