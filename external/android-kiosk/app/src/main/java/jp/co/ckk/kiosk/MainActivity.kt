@@ -143,7 +143,7 @@ class MainActivity : ComponentActivity() {
             // 位置報告（LocationReporter — navigator.geolocation）
             setGeolocationEnabled(true)
         }
-        webView.addJavascriptInterface(KioskBridge(), "KioskDevice")
+        webView.addJavascriptInterface(KioskBridge(applicationContext), "KioskDevice")
 
         webView.webViewClient = object : WebViewClient() {
             override fun shouldOverrideUrlLoading(
