@@ -29,6 +29,8 @@ const TWINS = [
   "inspection-core.test.ts",
   "qr-payload.ts",
   "qr-payload.test.ts",
+  "cidr-core.ts",
+  "cidr-core.test.ts",
 ];
 
 describe("twin files (nextjs-web ⇄ nextjs-kiosk)", () => {
