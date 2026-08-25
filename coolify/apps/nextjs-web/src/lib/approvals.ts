@@ -231,6 +231,15 @@ export async function fetchApprovalDocInfo(
       if (!row) return null;
       return { form_kind: row.form.kind };
     }
+    case "internal_pages": {
+      const row = await prisma.internalPage.findUnique({
+        where: { pageNumber: targetId },
+        select: { pageNumber: true },
+      });
+      // 条件に使う属性は今のところ無い（APPROVAL_CONDITION_FIELDS も空）。
+      // 書類が実在することだけを確かめて、空の属性を返す。
+      return row ? {} : null;
+    }
     case "work_order_flow_changes": {
       const row = await prisma.workOrderFlowChange.findUnique({
         where: { id: targetId },
@@ -447,6 +456,13 @@ async function targetCreatedAt(
     case "form_responses": {
       const row = await prisma.formResponse.findUnique({
         where: { responseNumber: targetId },
+        select: { createdAt: true },
+      });
+      return row?.createdAt ?? null;
+    }
+    case "internal_pages": {
+      const row = await prisma.internalPage.findUnique({
+        where: { pageNumber: targetId },
         select: { createdAt: true },
       });
       return row?.createdAt ?? null;

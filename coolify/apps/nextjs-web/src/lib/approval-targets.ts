@@ -20,6 +20,7 @@ export const APPROVAL_TARGET_TYPES = [
   "work_order_flow_changes",
   "order_acceptance_cancel_requests",
   "form_responses",
+  "internal_pages",
 ] as const;
 
 export type ApprovalTargetType = (typeof APPROVAL_TARGET_TYPES)[number];
@@ -116,6 +117,13 @@ export const APPROVAL_TARGET: Record<ApprovalTargetType, ApprovalTargetMeta> = {
     href: (id) => `/general/forms/responses/${id}`,
     appKey: "forms",
     approvePermission: "form",
+  },
+  internal_pages: {
+    label: "社内文書",
+    color: "lime",
+    href: (id) => `/general/documents/${id}`,
+    appKey: "internal-pages",
+    approvePermission: "internal_page",
   },
   purchase_requests: {
     label: "購買依頼",

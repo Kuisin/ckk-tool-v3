@@ -26,6 +26,8 @@ const SEQUENCES = {
   WORK_ORDER_DOC: { prefix: "WOR", digits: 5 },
   // フォーム回答 (CM02)。承認依頼・監査・添付はこの番号で紐づく。
   FORM_RESPONSE: { prefix: "FRM", digits: 5 },
+  // 社内文書 (CM03)。DC02「管理マニュアル」とは無関係（あちらはファイル）。
+  INTERNAL_PAGE: { prefix: "DOC", digits: 5 },
 } as const;
 
 export type NumberingKey = keyof typeof SEQUENCES;

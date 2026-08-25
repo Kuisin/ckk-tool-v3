@@ -77,6 +77,11 @@ const TABLE_ROUTES: Record<string, TableRoute> = {
     listPath: "/general/forms",
     directDetail: true,
   },
+  internal_pages: {
+    appLabel: "社内文書",
+    listPath: "/general/documents",
+    directDetail: true,
+  },
   form_responses: {
     // 回答の業務キー（FRM-…）だけでは所属フォームが分からないので、
     // 番号から実ページへ 302 する中継ページへ送る。

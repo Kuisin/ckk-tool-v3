@@ -127,6 +127,9 @@ export const OPERATION_CODES: OperationCodeEntry[] = [
   // フォーム（一般カテゴリ）— 一覧 / 新規 / 詳細
   ...makeResource("一般", "CM", "2", "フォーム", "/general/forms"),
 
+  // 社内文書（一般カテゴリ）— 一覧 / 新規 / 詳細
+  ...makeResource("一般", "CM", "3", "社内文書", "/general/documents"),
+
   // ─── 販売 (SA) ───────────────────────────────────────────────────────────
   // 業務フロー順: 試算 → 価格表 → 見積書 → 注文請書（設計依頼書は並行フロー）
   ...makeResource("販売", "SA", "1", "試算", "/sales/trial-estimates"),
