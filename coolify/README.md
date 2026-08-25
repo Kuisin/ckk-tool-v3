@@ -225,13 +225,17 @@ Portainer は Dockge 由来のスタック（上のグループ 1〜7）を見�
 coolify    ← ほぼ全部。Coolify のアプリと、それを指す nginx / cloudflared。
               安定名は custom_network_aliases が張る（web / kiosk / admin /
               dockge / open-webui / metabase / grafana / ckk-db-* / po-extract-*）
-ckk-ldap   ← AD へ届く区画網。vpn-ldap（+ldap-sync）と、AD を読む
-              open-webui / metabase / admintools **だけ**が参加する
+ckk-ldap   ← AD を読む相手を繋ぐ網。vpn-ldap（+ldap-sync）と open-webui /
+              metabase が参加する
 ```
 
-**`ckk-ldap` を `coolify` に統合しないのは意図的。** 配線は楽になるが、それは
-全 Coolify アプリから AD が見えるということで、「明示的に参加したものだけが
-AD を触れる」という元の設計を捨てることになる。
+**ただし `ckk-ldap` は到達制御としては効いていない。** `vpn-ldap` は SSO の
+OIDC discovery のために `coolify` 網にも参加していて（別名
+`auth.ckk-tools.loc` を張る必要がある）、Coolify はそこへサービス名
+`vpn-ldap` も自動で足す。結果として **:389 は coolify 網のどのアプリからも
+届く**。`ckk-ldap` は「AD を読むのはこれ」という宣言として残してあるだけで、
+本当に閉じたいなら SSO 中継を別コンテナに分けて `vpn-ldap` 本体を
+`coolify` から外す必要がある（未実施 — コンテナが 1 つ増えるため）。
 
 各アプリ固有の網（`<appUUID>_default`）はそのアプリのサービス間通信専用。
 `monitoring` はログ収集を Docker ソケット経由でやるので、網に関係なく全体を見る。
