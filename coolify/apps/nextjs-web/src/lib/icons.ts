@@ -47,6 +47,7 @@ import {
   IconRuler2,
   IconSettings2,
   IconShieldCheck,
+  IconShieldLock,
   IconShoppingCart,
   IconStack2,
   IconTruck,
@@ -111,6 +112,7 @@ export const ICON_MAP: Record<string, AppIcon> = {
   IconDeviceTablet,
   IconDeviceTabletCog,
   IconFileImport,
+  IconShieldLock,
 };
 
 /** Representative icon for each category section header. */

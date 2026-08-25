@@ -10,6 +10,9 @@ import "server-only";
  */
 
 import { prisma } from "./db";
+import type { DeviceOwnership } from "./device-ownership-core";
+import type { DeviceProfileSummary } from "./device-profile-core";
+import { toProfileSummary } from "./device-profile-core";
 import type { LocalizedText } from "./format";
 import { deviceName, localized } from "./format";
 
@@ -249,6 +252,18 @@ export interface KioskDeviceRow {
   lastActivityAt: string | null;
   /** アテステーション鍵の SHA-256（未束縛は null）。 */
   fingerprint: string | null;
+  /** 所有区分（自動判定。判定根拠は ownershipSource）。 */
+  ownership: DeviceOwnership;
+  ownershipSource: string | null;
+  /** 署名検証済みの端末プロファイル（v0.6.0+ のラッパー。無ければ null）。 */
+  deviceProfile: DeviceProfileSummary | null;
+  deviceProfileAt: string | null;
+  /** 最後に観測した UA / IP（毎リクエスト更新）。 */
+  userAgent: string | null;
+  lastIpAddress: string | null;
+  /** リンクした時点のスナップショット（以後不変）。 */
+  linkedUserAgent: string | null;
+  linkedIpAddress: string | null;
   /** 端末設定画面（5タップ）の解錠コード（6桁）。編集モーダルで表示。 */
   settingsCode: string;
   /** サーバー計算の初期オンライン判定（WS 未接続時のフォールバック）。 */
@@ -318,6 +333,14 @@ function toDeviceRow(r: DeviceWithIncludes, now: number): KioskDeviceRow {
     mapY: r.mapY != null ? Number(r.mapY) : null,
     lastActivityAt: r.lastActivityAt?.toISOString() ?? null,
     fingerprint: r.fingerprint,
+    ownership: r.ownership,
+    ownershipSource: r.ownershipSource,
+    deviceProfile: toProfileSummary(r.deviceProfile),
+    deviceProfileAt: r.deviceProfileAt?.toISOString() ?? null,
+    userAgent: r.userAgent,
+    lastIpAddress: r.lastIpAddress,
+    linkedUserAgent: r.linkedUserAgent,
+    linkedIpAddress: r.linkedIpAddress,
     settingsCode: r.settingsCode,
     initialOnline:
       r.status === "ACTIVE" &&

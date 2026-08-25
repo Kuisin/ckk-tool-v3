@@ -55,6 +55,7 @@ import {
   updateDevice,
 } from "@/app/(dashboard)/settings/kiosk-devices/actions";
 import { useFormat } from "@/components/layout/PreferencesProvider";
+import { OwnershipBadge } from "@/components/settings/security/ownership";
 import { CreateButton, SecondaryButton } from "@/components/ui/buttons";
 import {
   type Column,
@@ -547,6 +548,18 @@ export function KioskDevicesTable({
       // PENDING=リンク待ち（灰）/ LINKED=有効化待ち（黄）— StatusBadge のマップ。
       render: (r) => <StatusBadge entity="KioskDevice" status={r.status} />,
       sortValue: (r) => r.status,
+    },
+    {
+      // 所有区分（自動判定）。根拠の強さはバッジのツールチップに出る。
+      key: "ownership",
+      header: "端末区分",
+      width: 130,
+      hideable: true,
+      sortable: true,
+      render: (r) => (
+        <OwnershipBadge source={r.ownershipSource} value={r.ownership} />
+      ),
+      sortValue: (r) => r.ownership,
     },
     {
       key: "link",
