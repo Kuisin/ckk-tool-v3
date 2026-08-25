@@ -21,11 +21,20 @@ services:
     restart: unless-stopped
     command: daemon
     environment:
-      # Cloudflare API token, scope Zone:DNS:Edit for kai-lab.net.
       - CF_Token=${CLOUDFLARE_DNS_API_TOKEN:-}
+    # 秘密は 1 本のボリューム（ckk-secrets）に集約しつつ、**subpath** で
+    # 各コンテナが従来どおりのパスで見えるようにする。acme.sh は自分の state が
+    # /acme.sh にある前提で動き、LE_WORKING_DIR を実行時に見ない（この前提を
+    # 曲げると --list が空になり、更新が静かに止まる）。
     volumes:
-      - ./acme:/acme.sh      # acme.sh account + renewal state
-      - ./certs:/certs        # installed cert/key (shared with nginx)
+      - type: volume
+        source: ckk-secrets
+        target: /acme.sh          # acme.sh の state（書き込みあり）
+        volume: { subpath: nginx/acme }
+      - type: volume
+        source: ckk-secrets
+        target: /certs            # 発行した証明書の設置先
+        volume: { subpath: nginx/certs }
 
   nginx:
     image: nginx:1.28
@@ -36,16 +45,20 @@ services:
       - "443:443"
     volumes:
       - ./conf.d:/etc/nginx/conf.d:ro
-      - ./certs:/etc/nginx/certs:ro
+      # 証明書は秘密ボリュームの subpath から。パスは従来どおりなので vhost の
+      # 設定は書き換えなくてよい。
+      - type: volume
+        source: ckk-secrets
+        target: /etc/nginx/certs
+        read_only: true
+        volume: { subpath: nginx/certs }
     networks:
-      - web         # nextjs-web `web:3000`         (app-dev.ckk-tool.co.jp)
-      - ai-stack    # open-webui `open-webui:8080`  (chat.kai-lab.net)
-      - monitoring  # grafana `grafana:3000`        (monitor.kai-lab.net)
-      - dockge      # dockge `dockge:5001`          (dock.kai-lab.net)
-      - metabase    # metabase `metabase:3000`      (bi.ckk-tool.co.jp — staged)
-      - shareddb    # prisma-studio `:5555`         (db.ckk-tool.co.jp — staged)
-      - admintools  # admintools `admintools:8000`  (admin.ckk-tool.co.jp — staged)
-      - coolify     # coolify `coolify:8080` + realtime :6001/:6002 (deploy.ckk-tool.co.jp)
+      # cloudflared と同じ 4 本に集約。監視 / metabase / prisma-studio は
+      # すべて coolify 網へ出ており、shared-db は退役した。
+      - web       # nextjs-web の socat リレー
+      - ai-stack  # open-webui
+      - dockge    # portainer（dockge 別名）
+      - coolify   # coolify 本体 + grafana / metabase / prisma-studio
     # Reload daily so renewed certs from acme.sh are applied without a restart.
     command: ["sh", "-c", "(while :; do sleep 86400; nginx -s reload 2>/dev/null || true; done &) ; exec nginx -g 'daemon off;'"]
 
@@ -57,21 +70,16 @@ networks:
   ai-stack:
     external: true
     name: ai-stack_default
-  monitoring:
-    external: true
-    name: monitoring_monitoring
   dockge:
     external: true
     name: dockge_default
-  metabase:
-    external: true
-    name: metabase_default
-  shareddb:
-    external: true
-    name: shared-db
-  admintools:
-    external: true
-    name: admintools_default
   coolify:
     external: true
     name: coolify
+
+volumes:
+  # 機微ファイルの単一の置き場。中身の投入は
+  # coolify/common/secrets/seed-secrets.sh（git には雛形と手順だけ）。
+  ckk-secrets:
+    external: true
+    name: ckk-secrets
