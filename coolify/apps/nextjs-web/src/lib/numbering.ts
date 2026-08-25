@@ -25,7 +25,7 @@ const SEQUENCES = {
   // 同じキーにすると月次リセットの upsert が通し連番を壊すため分けている。
   WORK_ORDER_DOC: { prefix: "WOR", digits: 5 },
   // フォーム回答 (CM02)。承認依頼・監査・添付はこの番号で紐づく。
-  FORM_RESPONSE:   { prefix: "FRM", digits: 5 },
+  FORM_RESPONSE: { prefix: "FRM", digits: 5 },
 } as const;
 
 export type NumberingKey = keyof typeof SEQUENCES;

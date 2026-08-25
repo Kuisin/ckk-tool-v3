@@ -189,8 +189,8 @@ export function FormBuilder({
             {fields.map((field, i) => (
               <SortableField
                 field={field}
-                // biome-ignore lint/suspicious/noArrayIndexKey: 並び順そのものが同一性（キーは編集中に空になりうる）
                 index={i}
+                // biome-ignore lint/suspicious/noArrayIndexKey: 並び順そのものが同一性（項目キーは編集中に空になりうる）
                 key={i}
                 onChange={(next) =>
                   onChange(fields.map((f, idx) => (idx === i ? next : f)))

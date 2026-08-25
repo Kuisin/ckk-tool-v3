@@ -262,9 +262,9 @@ export function FormFieldEditor({
             サブテーブルの中にサブテーブル・関連レコード一覧・リッチテキストは置けません。
           </Text>
           {(field.columns ?? []).map((col, i) => (
-            // biome-ignore lint/suspicious/noArrayIndexKey: 並び順が同一性
             <Stack
               gap="xs"
+              // biome-ignore lint/suspicious/noArrayIndexKey: 並び順が同一性
               key={i}
               pl="md"
               style={{ borderLeft: "2px solid var(--mantine-color-gray-3)" }}
