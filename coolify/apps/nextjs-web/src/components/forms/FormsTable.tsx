@@ -1,9 +1,10 @@
 "use client";
 
 import { Badge, Group, Stack, Text } from "@mantine/core";
-import { IconForms } from "@tabler/icons-react";
+import { IconFileImport, IconForms } from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
 import { useFormat } from "@/components/layout/PreferencesProvider";
+import { SecondaryButton } from "@/components/ui/buttons";
 import { DataTable } from "@/components/ui/DataTable";
 import { NewButton } from "@/components/ui/NewButton";
 import { StatusBadge } from "@/components/ui/StatusBadge";
@@ -31,7 +32,19 @@ export function FormsTable({
 
   return (
     <ListShell
-      action={canCreate ? <NewButton href="/general/forms/new" /> : undefined}
+      action={
+        canCreate ? (
+          <Group gap="xs" wrap="nowrap">
+            <SecondaryButton
+              href="/general/forms/import"
+              leftSection={<IconFileImport size={14} />}
+            >
+              取り込み
+            </SecondaryButton>
+            <NewButton href="/general/forms/new" />
+          </Group>
+        ) : undefined
+      }
       breadcrumbs={[{ label: "一般" }, { label: "フォーム" }]}
       title="フォーム"
     >

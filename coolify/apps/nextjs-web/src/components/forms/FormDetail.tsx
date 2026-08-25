@@ -1,7 +1,12 @@
 "use client";
 
 import { Alert, Badge, CopyButton, Group, Tabs, Text } from "@mantine/core";
-import { IconCheck, IconCopy, IconLink } from "@tabler/icons-react";
+import {
+  IconCheck,
+  IconCopy,
+  IconDownload,
+  IconLink,
+} from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
 import { useFormat } from "@/components/layout/PreferencesProvider";
 import { GhostButton } from "@/components/ui/buttons";
@@ -62,6 +67,13 @@ export function FormDetail({
               label: "回答画面を開く",
               icon: <IconLink size={14} />,
               onClick: () => router.push(`/f/${form.code}`),
+            },
+            {
+              // 別環境へ持っていくための書き出し。実ファイルの
+              // ダウンロードなので href（Route Handler）で開く。
+              label: "定義を書き出す（.txt）",
+              icon: <IconDownload size={14} />,
+              href: `/api/forms/${form.code}/export`,
             },
           ]}
           onEdit={

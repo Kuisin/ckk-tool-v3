@@ -5,6 +5,7 @@ import {
   formAvailability,
   isSafePattern,
   lookupHref,
+  nextFieldKey,
   normalizeOrder,
   parseFormFields,
   toPlainAnswers,
@@ -341,5 +342,61 @@ describe("lookupHref", () => {
   });
   it("空 id はリンクにしない", () => {
     expect(lookupHref("customer", "")).toBeNull();
+  });
+});
+
+describe("nextFieldKey", () => {
+  it("既存と衝突しないキーを返す", () => {
+    expect(nextFieldKey([])).toBe("field1");
+    expect(nextFieldKey(["field1"])).toBe("field2");
+  });
+
+  it("歯抜けでも衝突しない", () => {
+    // 途中を消した後でも、既にあるキーは避ける
+    expect(nextFieldKey(["field1", "field3"])).toBe("field4");
+  });
+
+  it("手で付けたキーとも衝突しない", () => {
+    expect(nextFieldKey(["companyName"])).toBe("field2");
+  });
+});
+
+describe("追加した直後の項目がそのまま保存できること（回帰）", () => {
+  // 以前は key/label を空で作っていたため、項目を足した直後に必ず検証エラーに
+  // なっていた（「追加したのに保存できない」）。ビルダーが使う既定値で
+  // parseFormFields が通ることを固定する。
+  it("既定のキーとラベルで作った項目は妥当", () => {
+    const fresh: FormFieldDef[] = [0, 1, 2].map((i) => ({
+      key: nextFieldKey([0, 1, 2].slice(0, i).map((n) => `field${n + 1}`)),
+      label: { ja: `項目 ${i + 1}`, en: "" },
+      type: "text",
+      required: false,
+      order: i,
+    }));
+    const parsed = parseFormFields(fresh);
+    expect(parsed.ok).toBe(true);
+  });
+});
+
+describe("parseFormFields のエラーは何番目かを言う", () => {
+  it("2 番目の項目のラベルが空なら位置を示す", () => {
+    const r = parseFormFields([
+      {
+        key: "a",
+        label: { ja: "あ", en: "" },
+        type: "text",
+        required: false,
+        order: 0,
+      },
+      {
+        key: "b",
+        label: { ja: "", en: "" },
+        type: "text",
+        required: false,
+        order: 1,
+      },
+    ]);
+    expect(r.ok).toBe(false);
+    if (!r.ok) expect(r.error).toContain("2 番目の項目");
   });
 });
