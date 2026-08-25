@@ -18,7 +18,7 @@ providers:
     updateIntervalSeconds: 30
     allowUiUpdates: true
     options:
-      path: /var/lib/grafana/dashboards/Dev
+      path: /etc/grafana/dashboards/Dev
 
   - name: prod
     orgId: 1
@@ -28,7 +28,7 @@ providers:
     updateIntervalSeconds: 30
     allowUiUpdates: true
     options:
-      path: /var/lib/grafana/dashboards/Prod
+      path: /etc/grafana/dashboards/Prod
 
   - name: external
     orgId: 1
@@ -38,7 +38,7 @@ providers:
     updateIntervalSeconds: 30
     allowUiUpdates: true
     options:
-      path: /var/lib/grafana/dashboards/External
+      path: /etc/grafana/dashboards/External
 
   - name: platform
     orgId: 1
@@ -48,4 +48,4 @@ providers:
     updateIntervalSeconds: 30
     allowUiUpdates: true
     options:
-      path: /var/lib/grafana/dashboards/Platform
+      path: /etc/grafana/dashboards/Platform
