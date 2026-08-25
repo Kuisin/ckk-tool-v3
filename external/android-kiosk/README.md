@@ -74,7 +74,7 @@ Android Studio（Ladybug 以降）でこのディレクトリを開く。フレ�
 CLI からもビルドできる（この Mac には Android SDK が入っている）:
 
 ```bash
-cd android-kiosk
+cd external/android-kiosk
 # 初回のみ — local.properties は .gitignore 済み（各自の SDK パスなのでコミットしない）
 echo "sdk.dir=$HOME/Library/Android/sdk" > local.properties
 

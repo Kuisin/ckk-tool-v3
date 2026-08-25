@@ -130,7 +130,7 @@ object DeviceProfile {
             .bool("isProfileOwner", profileOwner)
             .bool(
                 "isManagedProfile",
-                orNull { dpm?.isManagedProfile(admin) } ?: false,
+                orNull { admin?.let { a -> dpm?.isManagedProfile(a) } } ?: false,
             )
             .num(
                 "activeAdmins",
