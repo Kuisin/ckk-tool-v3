@@ -1,0 +1,31 @@
+# fx-rates — app.currencies の対円レートを日次更新する小さな cron コンテナ。
+#
+# ⚠️ **Coolify 管理**（プロジェクト ckk / `common` 環境）。
+# `deploy-stack.sh fx-rates` を使わないこと。
+#
+# 元は shared-db スタックに同居していたが、**旧 shared-db を退役させるため**に
+# 切り出した（同居したままだと shared-db を止めた瞬間にレート更新も止まる）。
+# 参照先は本番 DB `ckk-db-main` — レートはマスタ（app.currencies）の値なので
+# 環境ごとに分ける意味が無く、dev は同じ値を見ればよい。
+#
+# 書き込みは専用ロール fx_rates（rate_per_100_jpy / updated_at の UPDATE のみ）。
+
+services:
+  fx-rates:
+    build: .
+    image: ckk-fx-rates
+    container_name: fx-rates
+    restart: unless-stopped
+    environment:
+      - TZ=Asia/Tokyo
+      - FX_DB_HOST=${FX_DB_HOST:-ckk-db-main}
+      - FX_DB_NAME=${FX_DB_NAME:-ckk}
+      - FX_DB_PASSWORD=${FX_DB_PASSWORD:?set FX_DB_PASSWORD in .env}
+    # ホストポートは持たない。DB へは coolify ネットワーク上の別名で届く。
+    networks:
+      - coolify
+
+networks:
+  coolify:
+    external: true
+    name: coolify
