@@ -7,7 +7,7 @@
  * 本当の判定はサーバ (actions.ts) が同じ関数でやり直す。
  */
 
-import { Alert, Paper, Stack, Text, Title } from "@mantine/core";
+import { Alert, Group, Paper, Stack, Text, Title } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
 import { IconClock, IconLock } from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
@@ -17,6 +17,7 @@ import {
   PrimaryButton,
   SecondaryButton,
 } from "@/components/ui/buttons";
+import { useIsMobile } from "@/hooks/useViewport";
 import {
   AVAILABILITY_LABEL,
   type FormAnswerValue,
@@ -53,6 +54,7 @@ export function RespondForm({
   onCancel?: () => void;
 }) {
   const router = useRouter();
+  const isMobile = useIsMobile();
   const [isPending, startTransition] = useTransition();
   const [answers, setAnswers] = useState(initialAnswers);
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -139,25 +141,54 @@ export function RespondForm({
         </Stack>
       </Paper>
 
+      {/* モバイルは主操作（送信）を上に、全幅で積む（design.md §8.3 — 画面下は
+          ソフトキーボードに取られる）。PC は右寄せの 1 行。 */}
       <div className="form-actions">
-        {onCancel && <CancelButton onClick={onCancel} />}
-        {allowDraft && (
-          <SecondaryButton
-            disabled={!open}
-            loading={isPending}
-            onClick={() => submit(true)}
-          >
-            下書き保存
-          </SecondaryButton>
+        {isMobile ? (
+          <Stack gap="xs">
+            <PrimaryButton
+              disabled={!open}
+              fullWidth
+              loading={isPending}
+              onClick={() => submit(false)}
+              type="button"
+            >
+              {submitLabel}
+            </PrimaryButton>
+            {allowDraft && (
+              <SecondaryButton
+                disabled={!open}
+                fullWidth
+                loading={isPending}
+                onClick={() => submit(true)}
+              >
+                下書き保存
+              </SecondaryButton>
+            )}
+            {onCancel && <CancelButton fullWidth onClick={onCancel} />}
+          </Stack>
+        ) : (
+          <Group justify="flex-end">
+            {onCancel && <CancelButton onClick={onCancel} />}
+            {allowDraft && (
+              <SecondaryButton
+                disabled={!open}
+                loading={isPending}
+                onClick={() => submit(true)}
+              >
+                下書き保存
+              </SecondaryButton>
+            )}
+            <PrimaryButton
+              disabled={!open}
+              loading={isPending}
+              onClick={() => submit(false)}
+              type="button"
+            >
+              {submitLabel}
+            </PrimaryButton>
+          </Group>
         )}
-        <PrimaryButton
-          disabled={!open}
-          loading={isPending}
-          onClick={() => submit(false)}
-          type="button"
-        >
-          {submitLabel}
-        </PrimaryButton>
       </div>
     </Stack>
   );

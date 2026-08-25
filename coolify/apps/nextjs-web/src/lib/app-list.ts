@@ -74,6 +74,20 @@ export const appList: AppEntry[] = [
     requiredPermission: null,
   },
 
+  {
+    // 社内文書 — 利用者が書く Markdown 文書。手順書・議事録・ノウハウなど。
+    // DC02「管理マニュアル」（開発者が書くビルド時の MDX）とは別物。
+    // アプリを開けるのは internal_page:READ を持つ人で、個々の文書を誰に
+    // 見せるかは share_grants（文書ごとの共有設定）が決める。
+    key: "internal-pages",
+    label: "社内文書",
+    operationCode: "CM03",
+    href: "/general/documents",
+    icon: "IconFileDescription",
+    category: "一般",
+    requiredPermission: "internal_page",
+  },
+
   // ─── 販売 ──────────────────────────────────────────────────────────────────
   // 業務フロー順: 試算 → 価格表 → 見積書 → 注文請書（設計依頼書は並行フロー）
   {

@@ -1,0 +1,155 @@
+// 社内文書（CM03, /general/documents）— 利用者が書く Markdown 文書。
+//
+// DC02「管理マニュアル」（content/internal/** のビルド時 MDX、開発者が書く）とは
+// 別物で、こちらは実行時に利用者が書き換える。
+//
+// 版管理は線形で、保存のたびに不変のリビジョンを積む。「復元」も過去の内容で
+// **新しいリビジョンを作る**（履歴が消えては証跡にならない —
+// document_memo_revisions と同じ思想）。
+//
+// 本文は **Markdown ソース**。ProseMirror JSON ではなく素のテキストなのは、
+// 行番号が安定していないと「行にぶら下げるコメント」と行差分が作れないため。
+// 描画は react-markdown（生 HTML を通さないので保存 XSS にならない）。
+
+model InternalPage {
+  id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  // 業務キー DOC-YYYYMM-NNNNN。承認依頼・監査・共有はこの文字列で紐づく。
+  pageNumber String  @unique @map("page_number")
+  title      String
+  summary    String?
+  // "手順書/出荷" のような区切り文字つきのパス。一覧のグルーピングにだけ使う
+  // （ツリー構造のテーブルは持たない — 文書数が増えても運用で畳めるので）。
+  folder String?
+
+  status InternalPageStatus @default(DRAFT)
+  // 公開に承認を要求するか。段数と承認者は承認設定 (MS0B) が持つ。
+  approvalRequired Boolean @default(false) @map("approval_required")
+  // いま公開されているリビジョン番号。null = 未公開（下書きだけ）。
+  publishedRevision Int? @map("published_revision")
+
+  createdBy String?  @map("created_by") @db.Uuid
+  updatedBy String?  @map("updated_by") @db.Uuid
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  createdByUser User? @relation("InternalPageCreatedBy", fields: [createdBy], references: [id])
+  updatedByUser User? @relation("InternalPageUpdatedBy", fields: [updatedBy], references: [id])
+
+  revisions InternalPageRevision[]
+  blame     InternalPageLineBlame[]
+  comments  InternalPageLineComment[]
+
+  @@index([status, updatedAt])
+  @@index([folder])
+  @@map("internal_pages")
+  @@schema("app")
+}
+
+enum InternalPageStatus {
+  DRAFT // 下書き（公開版なし、または公開版より新しい編集がある）
+  PENDING // 公開の承認待ち
+  PUBLISHED // 公開中
+  ARCHIVED // 使い終わった
+
+  @@schema("app")
+}
+
+// 不変のリビジョン。1 行 = 1 操作。
+model InternalPageRevision {
+  id       String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  pageId   String @map("page_id") @db.Uuid
+  revision Int
+  title    String
+  // Markdown ソース（これが正）。
+  body String @db.Text
+  // 変更理由（コミットメッセージ相当）。
+  note   String?
+  action InternalPageRevisionAction
+
+  // 版ごとの変更量（+N / -M）。一覧で「誰がどれだけ変えたか」を出すために
+  // 保存時に数えておく（後から数え直すと全版の本文を読む必要がある）。
+  addedLines   Int @default(0) @map("added_lines")
+  removedLines Int @default(0) @map("removed_lines")
+
+  editedBy String?  @map("edited_by") @db.Uuid
+  editedAt DateTime @default(now()) @map("edited_at") @db.Timestamptz(6)
+
+  page         InternalPage @relation(fields: [pageId], references: [id], onDelete: Cascade)
+  editedByUser User?        @relation("InternalPageRevisionEditedBy", fields: [editedBy], references: [id])
+
+  @@unique([pageId, revision])
+  @@index([pageId, editedAt])
+  @@map("internal_page_revisions")
+  @@schema("app")
+}
+
+enum InternalPageRevisionAction {
+  CREATE
+  UPDATE
+  PUBLISH
+  RESTORE
+  ARCHIVE
+
+  @@schema("app")
+}
+
+// 行ごとの最終更新者（git blame 相当）。最新リビジョンの行番号で持ち、
+// 保存のたびに差分の写像で付け替える。
+model InternalPageLineBlame {
+  pageId String @map("page_id") @db.Uuid
+  // 最新リビジョンでの 1 始まりの行番号。
+  line Int
+  // その行を最後に変えたリビジョン。
+  revision Int
+  editedBy String?  @map("edited_by") @db.Uuid
+  editedAt DateTime @map("edited_at") @db.Timestamptz(6)
+
+  page         InternalPage @relation(fields: [pageId], references: [id], onDelete: Cascade)
+  editedByUser User?        @relation("InternalPageBlameEditedBy", fields: [editedBy], references: [id])
+
+  @@id([pageId, line])
+  @@map("internal_page_line_blame")
+  @@schema("app")
+}
+
+// 行単位コメント。**レビュー画面にだけ出し、公開版の閲覧画面には出さない。**
+model InternalPageLineComment {
+  id     String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  pageId String @map("page_id") @db.Uuid
+  // スレッドの根 = 自分の id。返信は根の id を持つ。
+  threadId String @map("thread_id") @db.Uuid
+
+  // 付けた時点のリビジョンと、その版での行番号。
+  revision   Int
+  anchorLine Int @map("anchor_line")
+  // 当時の行の内容。行が消えて追従できなくなっても「何への指摘か」が読めるように
+  // 必ず残す（行番号だけに頼らない）。
+  anchorText String @map("anchor_text")
+  // 最新リビジョンでの行番号。追従できなくなったら null（= outdated 表示）。
+  currentLine Int? @map("current_line")
+
+  body   String            @db.Text
+  status LineCommentStatus @default(OPEN)
+
+  resolvedBy String?   @map("resolved_by") @db.Uuid
+  resolvedAt DateTime? @map("resolved_at") @db.Timestamptz(6)
+  createdBy  String?   @map("created_by") @db.Uuid
+  createdAt  DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt  DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  page           InternalPage @relation(fields: [pageId], references: [id], onDelete: Cascade)
+  createdByUser  User?        @relation("InternalPageCommentCreatedBy", fields: [createdBy], references: [id])
+  resolvedByUser User?        @relation("InternalPageCommentResolvedBy", fields: [resolvedBy], references: [id])
+
+  @@index([pageId, status])
+  @@index([threadId])
+  @@map("internal_page_line_comments")
+  @@schema("app")
+}
+
+enum LineCommentStatus {
+  OPEN
+  RESOLVED
+
+  @@schema("app")
+}

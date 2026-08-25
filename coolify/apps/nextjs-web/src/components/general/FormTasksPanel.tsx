@@ -17,6 +17,7 @@ import type {
 import { useFormat } from "@/components/layout/PreferencesProvider";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { StatusBadge } from "@/components/ui/StatusBadge";
+import { useIsMobile } from "@/hooks/useViewport";
 
 function Row({
   onClick,
@@ -41,6 +42,7 @@ function Row({
 export function PendingFormsList({ rows }: { rows: PendingFormRow[] }) {
   const router = useRouter();
   const fmt = useFormat();
+  const isMobile = useIsMobile();
 
   if (rows.length === 0) {
     return (
@@ -57,7 +59,7 @@ export function PendingFormsList({ rows }: { rows: PendingFormRow[] }) {
     <Stack gap="xs">
       {rows.map((row) => (
         <Row key={row.code} onClick={() => router.push(`/f/${row.code}`)}>
-          <Group justify="space-between" wrap="nowrap">
+          <Group justify="space-between" wrap={isMobile ? "wrap" : "nowrap"}>
             <Group gap="sm" style={{ minWidth: 0 }} wrap="nowrap">
               <Text fw={600} size="sm" truncate>
                 {row.title}
@@ -83,6 +85,7 @@ export function PendingFormsList({ rows }: { rows: PendingFormRow[] }) {
 export function MyResponsesList({ rows }: { rows: MyResponseRow[] }) {
   const router = useRouter();
   const fmt = useFormat();
+  const isMobile = useIsMobile();
 
   if (rows.length === 0) {
     return (
@@ -106,7 +109,7 @@ export function MyResponsesList({ rows }: { rows: MyResponseRow[] }) {
             )
           }
         >
-          <Group justify="space-between" wrap="nowrap">
+          <Group justify="space-between" wrap={isMobile ? "wrap" : "nowrap"}>
             <Group gap="sm" style={{ minWidth: 0 }} wrap="nowrap">
               <Text fw={600} size="sm" truncate>
                 {row.formTitle}

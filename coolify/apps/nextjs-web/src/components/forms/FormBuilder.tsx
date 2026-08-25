@@ -15,7 +15,8 @@ import {
   DndContext,
   type DragEndEvent,
   KeyboardSensor,
-  PointerSensor,
+  MouseSensor,
+  TouchSensor,
   useSensor,
   useSensors,
 } from "@dnd-kit/core";
@@ -86,9 +87,17 @@ function SortableField({
         <Accordion.Item value={`field-${index}`}>
           <Group gap={0} wrap="nowrap">
             <ActionIcon
-              aria-label="ドラッグして並べ替え"
+              aria-label="ドラッグして並べ替え（スマホは長押し）"
               color="gray"
-              style={{ cursor: "grab" }}
+              size="lg"
+              style={{
+                cursor: "grab",
+                // 指で掴める大きさを確保する（design.md §20.1 の 44px）。
+                minWidth: 44,
+                minHeight: 44,
+                // ドラッグ中にブラウザのスクロールと取り合わないようにする。
+                touchAction: "none",
+              }}
               variant="subtle"
               {...attributes}
               {...listeners}
@@ -140,8 +149,15 @@ export function FormBuilder({
   fields: FormFieldDef[];
   onChange: (next: FormFieldDef[]) => void;
 }) {
+  // タッチとマウスでセンサーを分けるのが要点。PointerSensor 1 本だと、スマホで
+  // 縦にスワイプしただけでドラッグが始まり、ページがスクロールできなくなる。
+  // タッチは「長押ししてから動かす」(delay) に限定し、指のわずかなブレは
+  // tolerance で吸収する。
   const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
+    useSensor(MouseSensor, { activationConstraint: { distance: 4 } }),
+    useSensor(TouchSensor, {
+      activationConstraint: { delay: 200, tolerance: 8 },
+    }),
     useSensor(KeyboardSensor, {
       coordinateGetter: sortableKeyboardCoordinates,
     }),
