@@ -135,5 +135,9 @@ export function suspensionState(
       isAwaitingRestore: true,
     };
   }
-  return { kind: "temporary", label: "停止中（一時）", isAwaitingRestore: false };
+  return {
+    kind: "temporary",
+    label: "停止中（一時）",
+    isAwaitingRestore: false,
+  };
 }

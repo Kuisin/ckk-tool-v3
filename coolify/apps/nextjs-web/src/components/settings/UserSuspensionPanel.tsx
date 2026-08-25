@@ -52,7 +52,7 @@ export function UserSuspensionPanel({
   canAdminister: boolean;
 }) {
   const router = useRouter();
-  const { formatDateTime } = useFormat();
+  const fmt = useFormat();
   const [isPending, startTransition] = useTransition();
   const [kind, setKind] = useState<SuspensionKind>("temporary");
   const [until, setUntil] = useState<string | null>(null);
@@ -73,7 +73,10 @@ export function UserSuspensionPanel({
   });
   const restoreCheck = canRestore(target);
 
-  const run = (fn: () => Promise<{ ok: boolean; error?: string }>, ok: string) =>
+  const run = (
+    fn: () => Promise<{ ok: boolean; error?: string }>,
+    ok: string,
+  ) =>
     startTransition(async () => {
       const res = await fn();
       if (res.ok) {
@@ -129,7 +132,7 @@ export function UserSuspensionPanel({
             <Stack gap={4}>
               {user.disabledUntil && (
                 <Text size="sm">
-                  解除予定: {formatDateTime(new Date(user.disabledUntil))}
+                  解除予定: {fmt.dateTime(user.disabledUntil)}
                 </Text>
               )}
               {user.disabledReason && (
