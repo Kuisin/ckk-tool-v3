@@ -22,10 +22,15 @@
 
 ### `common/` の移行状況
 
+`common` 環境のアプリは **main 追従**（共有の土台なので、変更が本番へ出るのは
+promotion 後 — dev へのマージで ingress や監視が再起動しない）。
+
 | スタック | 管理 | 備考 |
 |---|---|---|
-| `prisma-studio` | **Coolify**（`common` 環境・dev 追従） | 第 1 号。状態を持たないので試験台にした |
-| 他 13 スタック | `deploy-stack.sh` | 未移行 |
+| `prisma-studio` | **Coolify**（main 追従） | 第 1 号。状態を持たないので試験台にした |
+| `metabase` | **Coolify**（main 追従） | ボリュームを持つ最初の例。停止 → コピー → 起動で移した |
+| `kot-import` | **Coolify**（main 追従） | 状態なし。旧 shared-db ネットワークも外した |
+| 他 11 スタック | `deploy-stack.sh` | 未移行 |
 
 **Coolify 化で判ったこと（次のスタックでも同じ）**
 
@@ -54,7 +59,7 @@
 
 | スタック | コンテナ | 役割 |
 |---|---|---|
-| `cloudflared` | cloudflared | 公開ドメイン（`*.kai-lab.net` / `deploy.ckk-tool.co.jp`）のトンネル |
+| `cloudflared` | cloudflared | 公開ドメイン（`*.ckk-tool.co.jp` に一本化。キオスクのみ `*.kai-lab.net`）のトンネル |
 | `nginx-proxy` | nginx-proxy, nginx-acme | LAN 内 TLS（acme.sh DNS-01 で Let's Encrypt） |
 
 どちらも **リレー名**（下の 2）へ向ける。Coolify のコンテナ名はデプロイの度に
@@ -64,8 +69,8 @@
 
 | アプリ | ブランチ | ソース | 公開名 |
 |---|---|---|---|
-| `nextjs-web-dev` / `-main` | dev / main | リポジトリ root（pnpm workspace） | ckk-dev / ckk.kai-lab.net |
-| `nextjs-kiosk-dev` / `-main` | dev / main | リポジトリ root | ckk-kiosk-dev / ckk-kiosk.kai-lab.net |
+| `nextjs-web-dev` / `-main` | dev / main | リポジトリ root（pnpm workspace） | app-dev / app.ckk-tool.co.jp |
+| `nextjs-kiosk-dev` / `-main` | dev / main | リポジトリ root | ckk-kiosk-dev / ckk-kiosk.kai-lab.net（**キオスクのみ kai-lab 継続** — 将来 LAN 専用にするため） |
 | `admintools-dev` / `-main` | dev / main | `apps/admintools/` | 内部のみ |
 | `po-extract-dev` / `-main` | dev / main | `apps/po-extract/` | 内部のみ（alias 有り） |
 | `ckk-db-dev` / `ckk-db-main` | dev / main | `ckk-db/` | 内部のみ（alias 有り）**業務 DB 本体** |

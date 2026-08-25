@@ -4,7 +4,7 @@ import { genericPreviewTitle, resolvePreviewTarget } from "./link-preview";
 describe("resolvePreviewTarget", () => {
   it("resolves document URLs (EST/PRC/QOT) to their permission code", () => {
     const t = resolvePreviewTarget(
-      "https://ckk-dev.kai-lab.net/sales/price-lists/PRC-202607-00004",
+      "https://app-dev.ckk-tool.co.jp/sales/price-lists/PRC-202607-00004",
     );
     expect(t).toEqual({
       kind: "price-list",
@@ -24,7 +24,7 @@ describe("resolvePreviewTarget", () => {
 
   it("resolves master URLs (int id)", () => {
     const t = resolvePreviewTarget(
-      "https://ckk.kai-lab.net/master/products/42",
+      "https://app.ckk-tool.co.jp/master/products/42",
     );
     expect(t).toEqual({
       kind: "product",

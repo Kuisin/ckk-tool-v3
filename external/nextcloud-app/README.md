@@ -1,7 +1,7 @@
 # nextcloud-app — CKK Link Preview（権限連動リンクプレビュー）
 
 Nextcloud（Talk / Text）に貼られた CKK 業務管理システムの URL
-（`https://ckk.kai-lab.net/...` / `https://ckk-dev.kai-lab.net/...`）を、
+（`https://app.ckk-tool.co.jp/...` / `https://app-dev.ckk-tool.co.jp/...`）を、
 **閲覧ユーザーの権限に応じた内容**でプレビュー表示するカスタムアプリ。
 
 ## 仕組み
@@ -47,11 +47,11 @@ rsync -a external/nextcloud-app/ckk_link_preview/ \
 occ app:enable ckk_link_preview
 
 # 3. 照会先とシークレットを設定（CKK 側と同じ値）
-occ config:app:set ckk_link_preview api_base --value "https://ckk.kai-lab.net"
+occ config:app:set ckk_link_preview api_base --value "https://app.ckk-tool.co.jp"
 occ config:app:set ckk_link_preview shared_secret --value "<PREVIEW_SHARED_SECRET と同じ値>"
 ```
 
-dev 検証時は `api_base` に `https://ckk-dev.kai-lab.net` を設定する。
+dev 検証時は `api_base` に `https://app-dev.ckk-tool.co.jp` を設定する。
 Nextcloud サーバーから CKK アプリの origin へ HTTPS 到達できること
 （LAN 内なら nginx-proxy 経由で同名ホストに解決される）。
 
@@ -60,12 +60,12 @@ Nextcloud サーバーから CKK アプリの origin へ HTTPS 到達できる�
 ```bash
 # 汎用（権限なし/ユーザー不明）
 curl -sf -H "X-Preview-Token: $PREVIEW_SHARED_SECRET" \
-  "https://ckk-dev.kai-lab.net/api/preview/resolve?url=/sales/price-lists/PRC-202607-00001&user=nobody"
+  "https://app-dev.ckk-tool.co.jp/api/preview/resolve?url=/sales/price-lists/PRC-202607-00001&user=nobody"
 # → {"matched":true,"allowed":false,"title":"価格表 PRC-202607-00001"}
 
 # リッチ（READ 権限のあるユーザー）
 curl -sf -H "X-Preview-Token: $PREVIEW_SHARED_SECRET" \
-  "https://ckk-dev.kai-lab.net/api/preview/resolve?url=/sales/price-lists/PRC-202607-00001&user=<AD username>"
+  "https://app-dev.ckk-tool.co.jp/api/preview/resolve?url=/sales/price-lists/PRC-202607-00001&user=<AD username>"
 # → {"matched":true,"allowed":true,"title":"...","description":"顧客 / 製品 / 基準単価 ..."}
 
 # トークン無し → 401、PREVIEW_SHARED_SECRET 未設定 → 503

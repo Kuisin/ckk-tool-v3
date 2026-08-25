@@ -35,8 +35,8 @@ The app is built and deployed by **Coolify** from this repo (multi-stage
 `Dockerfile`, pnpm + Next `output: "standalone"`; base directory
 `coolify/apps/nextjs-web`) — see `../../README.md`:
 
-- `nextjs-web-dev` — branch `dev`, host **`:3004`** → `https://ckk-dev.kai-lab.net`
-- `nextjs-web-main` — branch `main`, host **`:3005`** → `https://ckk.kai-lab.net`
+- `nextjs-web-dev` — branch `dev`, host **`:3004`** → `https://app-dev.ckk-tool.co.jp`
+- `nextjs-web-main` — branch `main`, host **`:3005`** → `https://app.ckk-tool.co.jp`
   (rollback: redeploy any previous build from Coolify's Deployments list)
 
 App env vars (`DATABASE_URL`, `GOTENBERG_URL`, `SEAWEED_FILER_URL`,
@@ -56,10 +56,10 @@ honors `ignoredBuiltDependencies` (pnpm 11 hard-fails on the ignored `sharp` bui
 
 ### Access beyond the LAN
 
-- **`cloudflared` stack** — public access at **https://ckk-dev.kai-lab.net** (dev) and
-  **https://ckk.kai-lab.net** (main) via Cloudflare Tunnel.
+- **`cloudflared` stack** — public access at **https://app-dev.ckk-tool.co.jp** (dev) and
+  **https://app.ckk-tool.co.jp** (main) via Cloudflare Tunnel.
 - **`nginx-proxy` stack** — LAN TLS for the same hostnames (split-horizon; shared
-  `ckk.kai-lab.net` SAN cert).
+  `app.ckk-tool.co.jp` SAN cert).
 
 Both attach to `nextjs-web_default` and target the relays, so they need this
 stack up, but never care about Coolify redeploys.

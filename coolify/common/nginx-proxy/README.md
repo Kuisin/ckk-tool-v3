@@ -1,6 +1,6 @@
-# nginx-proxy — LAN TLS reverse proxy for dev.kai-lab.net
+# nginx-proxy — LAN TLS reverse proxy for app-dev.ckk-tool.co.jp
 
-Nginx (techstack #8) terminating HTTPS on the LAN for **https://dev.kai-lab.net**
+Nginx (techstack #8) terminating HTTPS on the LAN for **https://app-dev.ckk-tool.co.jp**
 and proxying to the `nextjs-web` `web` service. TLS is a real Let's Encrypt cert
 (browser-trusted) issued via Cloudflare **DNS-01**, so no inbound ports are needed
 and it works even though the host isn't publicly reachable.
@@ -10,7 +10,7 @@ Deployed on `docker-mac-pro` at `~/stacks/nginx-proxy` (Dockge-managed).
 ```
 Internet ─┐
           ├─ (external) Cloudflare edge → tunnel → web:3000
-LAN ──────┘  dev.kai-lab.net → 192.168.50.15:443 → nginx → web:3000   ← this stack
+LAN ──────┘  app-dev.ckk-tool.co.jp → 192.168.50.15:443 → nginx → web:3000   ← this stack
 ```
 
 ## Services
@@ -18,7 +18,7 @@ LAN ──────┘  dev.kai-lab.net → 192.168.50.15:443 → nginx → w
 | Service | Role |
 |---------|------|
 | `acme`  | `acme.sh` daemon — issues/renews the LE cert via Cloudflare DNS-01 into `./certs`; checks renewals daily |
-| `nginx` | serves `./certs`, proxies `dev.kai-lab.net` → `web:3000`; self-reloads daily to apply renewals |
+| `nginx` | serves `./certs`, proxies `app-dev.ckk-tool.co.jp` → `web:3000`; self-reloads daily to apply renewals |
 
 ## Setup
 
@@ -36,10 +36,10 @@ LAN ──────┘  dev.kai-lab.net → 192.168.50.15:443 → nginx → w
    ```bash
    docker compose up -d acme
    docker exec nginx-acme --register-account -m kaisei0807s@gmail.com --server letsencrypt
-   docker exec nginx-acme --issue --dns dns_cf -d dev.kai-lab.net --server letsencrypt
-   docker exec nginx-acme --install-cert -d dev.kai-lab.net \
-     --key-file       /certs/dev.kai-lab.net.key \
-     --fullchain-file /certs/dev.kai-lab.net.crt
+   docker exec nginx-acme --issue --dns dns_cf -d app-dev.ckk-tool.co.jp --server letsencrypt
+   docker exec nginx-acme --install-cert -d app-dev.ckk-tool.co.jp \
+     --key-file       /certs/app-dev.ckk-tool.co.jp.key \
+     --fullchain-file /certs/app-dev.ckk-tool.co.jp.crt
    ```
 
 3. **Start nginx:**
@@ -56,11 +56,11 @@ For LAN clients to hit this proxy instead of Cloudflare, resolve the hostname to
 the host on your local DNS:
 
 ```
-dev.kai-lab.net  →  192.168.50.15
+app-dev.ckk-tool.co.jp  →  192.168.50.15
 ```
 
 Add this on your LAN resolver (the box serving the `ckk.lan` zone / your router).
-Without it, `dev.kai-lab.net` still works but routes out via Cloudflare. External
+Without it, `app-dev.ckk-tool.co.jp` still works but routes out via Cloudflare. External
 access continues to work either way through the existing tunnel.
 
 ## Adding more hostnames
