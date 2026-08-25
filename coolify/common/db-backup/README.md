@@ -69,7 +69,7 @@ docker exec shared-db cat /var/lib/postgresql/data/pg_hba.conf
 
 # 5. deploy the updated shared-db stack (recreates the container — a few
 #    seconds of DB downtime; pick a quiet moment)
-#    (from repo: rsync coolify/common/shared-db/ up, then:)
+#    (旧 shared-db スタックは退役。本番 DB は Coolify アプリ ckk-db-main)
 cd ~/stacks/shared-db && docker compose up -d
 
 # 6. verify
@@ -217,7 +217,7 @@ docker exec offsite-backup rclone sync /backups "$OFFSITE_REMOTE" --dry-run --st
   起動（roles/grants/全 DB を厳密復元）。**この間 shared-db を使う全スタックが停止**。
   UI では「物理・全停止」バッジ＋強い確認。物理は restore-agent が `docker` 経由で
   実行するため RESTORE_DB_URL 不要（ただし事前スナップショットの pg_dump には必要）。
-- **ストレージ復元** — SeaweedFS tar を、`nextjs-seaweedfs` を停止 → ボリューム
+- **ストレージ復元** — SeaweedFS tar を、`seaweedfs-main` を停止 → ボリューム
   入替 → 起動、で戻す。
 - **アプリ版数復元** — Coolify API で `nextjs-web-main` を復元ポイントの git commit へ
   ピン＋再デプロイ（DB・ストレージ復元の**後**に実行）。
@@ -233,13 +233,13 @@ docker exec offsite-backup rclone sync /backups "$OFFSITE_REMOTE" --dry-run --st
 ```ini
 # restore-agent
 RESTORE_AGENT_TOKEN=<openssl rand -hex 24>          # admintools と共有
-RESTORE_DB_URL=postgresql://postgres:<pw>@shared-db:5432/ckk   # 空 = DB 復元無効
-LOGICAL_DB_URL=postgresql://postgres:<pw>@shared-db:5432/ckk   # = RESTORE_DB_URL
+RESTORE_DB_URL=postgresql://postgres:<pw>@ckk-db-main:5432/ckk   # 空 = DB 復元無効
+LOGICAL_DB_URL=postgresql://postgres:<pw>@ckk-db-main:5432/ckk   # = RESTORE_DB_URL
 # アプリ版数復元（任意）
 COOLIFY_API_URL=http://coolify:8000/api/v1
 COOLIFY_API_TOKEN=<Coolify API token>               # サーバの /data/coolify/source/.api-token と同じ
 COOLIFY_APP_NAME=nextjs-web-main
-# 既定で足りるもの: SEAWEED_CONTAINER=nextjs-seaweedfs  SEAWEED_VOLUME=nextjs-web_seaweed-data
+# 既定で足りるもの: SEAWEED_CONTAINER=seaweedfs-main  SEAWEED_VOLUME=nextjs-web_seaweed-data
 ```
 
 admintools 側 `~/stacks/admintools/.env` にも同じトークンを:

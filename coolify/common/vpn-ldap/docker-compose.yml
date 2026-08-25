@@ -1,7 +1,7 @@
 # OpenVPN client + LDAP TCP forwarder.
 #
 # Connects to the CKK VPN (ckkhda.heinelt.info) and exposes the LDAP server at
-# `vpn-ldap:389` on this stack's OWN network (vpn-ldap_default). Only apps that
+# `vpn-ldap:389` on the segmented `ckk-ldap` network. Only apps that
 # explicitly join that network (e.g. open-webui) can reach AD — the rest of the
 # stack never touches the VPN/LDAP.
 #
