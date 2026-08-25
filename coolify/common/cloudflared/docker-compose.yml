@@ -37,15 +37,17 @@ services:
     command: tunnel --no-autoupdate run
     environment:
       - TUNNEL_TOKEN=${CLOUDFLARE_TUNNEL_TOKEN:-}
+    # 参加するネットワークは 4 本だけ。common 環境のサービス（metabase /
+    # prisma-studio / grafana）は Coolify 管理になり、いずれも `coolify` に
+    # 出ているので、スタック固有のネットワーク名を知る必要が無くなった。
+    # 旧構成は 8 本を名前で参照していたが、Coolify 化でネットワーク名が
+    # `<appUUID>_...` に変わり、`shared-db` に至っては退役して消えている。
+    # 名前を追いかけ続けると、移行のたびにここが壊れる。
     networks:
-      - web         # nextjs-web `web:3000`
-      - dockge      # dockge `dockge:5001`
-      - ai-stack    # ai-stack `open-webui:8080` (ollama reached internally by open-webui)
-      - monitoring  # monitoring `grafana:3000`
-      - metabase    # metabase `metabase:3000`
-      - admintools   # admintools `admintools:8000`
-      - shareddb    # prisma-studio `prisma-studio:5555`
-      - coolify     # coolify `coolify:8080` + `coolify-realtime:6001` (deploy.ckk-tool.co.jp)
+      - web       # nextjs-web の socat リレー（web / web-main / admin / admin-dev / kiosk）
+      - dockge    # portainer（`dockge` 別名を維持）
+      - ai-stack  # open-webui
+      - coolify   # coolify 本体 + metabase / prisma-studio / grafana
 
 # Attach to each target stack's compose network so the tunnel can resolve them.
 networks:
@@ -58,18 +60,6 @@ networks:
   ai-stack:
     external: true
     name: ai-stack_default
-  monitoring:
-    external: true
-    name: monitoring_monitoring
-  metabase:
-    external: true
-    name: metabase_default
-  admintools:
-    external: true
-    name: admintools_default
-  shareddb:
-    external: true
-    name: shared-db
   coolify:
     external: true
     name: coolify
