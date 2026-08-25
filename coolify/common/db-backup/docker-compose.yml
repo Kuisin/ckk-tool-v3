@@ -153,7 +153,11 @@ services:
   # 瞬間にクラウドへ copy し、04時台に日次 mirror で保持を追従。OFFSITE_REMOTE
   # 未設定時は待機のみ（安全に無効）。設定は README 参照。
   offsite-backup:
-    build: ./offsite # rclone/rclone:1.68 + inotify-tools
+    # スクリプト（offsite-sync.sh）はこのディレクトリ直下にあるので、
+    # コンテキストは `.`、Dockerfile だけ offsite/ から取る（seaweed と同じ形）。
+    build:
+      context: .
+      dockerfile: offsite/Dockerfile # rclone/rclone:1.68 + inotify-tools
     image: ckk-offsite-backup
     container_name: offsite-backup
     restart: unless-stopped
