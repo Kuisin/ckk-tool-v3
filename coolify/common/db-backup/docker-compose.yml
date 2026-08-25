@@ -66,6 +66,7 @@ services:
       - LOGICAL_KEEP_DAYS=${LOGICAL_KEEP_DAYS:-14}
       - LOGICAL_MONTHLY_KEEP=${LOGICAL_MONTHLY_KEEP:-12}
     entrypoint: ["/bin/bash", "/usr/local/bin/logical-dump.sh"]
+    volumes:
       - ${BACKUP_DIR:-/data/db-backups}:/backups
     networks:
       - shareddb # 旧 shared-db（移行期間中のみ・撤去したら外す）
@@ -117,6 +118,7 @@ services:
       - SEAWEED_KEEP_DAYS=${SEAWEED_KEEP_DAYS:-14}
       - SEAWEED_MONTHLY_KEEP=${SEAWEED_MONTHLY_KEEP:-12}
     entrypoint: ["/bin/sh", "/seaweed-backup.sh"]
+    volumes:
       - seaweed-data:/seaweed-data:ro
       - ${BACKUP_DIR:-/data/db-backups}:/backups
 
@@ -152,6 +154,8 @@ services:
     container_name: offsite-backup
     restart: unless-stopped
     entrypoint: ["/bin/sh", "/offsite-sync.sh"]
+    volumes:
+      - ${BACKUP_DIR:-/data/db-backups}:/backups:ro
     environment:
       - TZ=${TZ:-Asia/Tokyo}
       - OFFSITE_REMOTE=${OFFSITE_REMOTE:-}
@@ -165,7 +169,6 @@ services:
       - RCLONE_CONFIG_R2_ACCESS_KEY_ID=${RCLONE_CONFIG_R2_ACCESS_KEY_ID:-}
       - RCLONE_CONFIG_R2_SECRET_ACCESS_KEY=${RCLONE_CONFIG_R2_SECRET_ACCESS_KEY:-}
       - RCLONE_CONFIG_R2_ENDPOINT=${RCLONE_CONFIG_R2_ENDPOINT:-}
-      - ${BACKUP_DIR:-/data/db-backups}:/backups:ro
 
 volumes:
   # 本番のファイルストレージ（2026-08-24 に環境別へ分割。旧 nextjs-web_seaweed-data

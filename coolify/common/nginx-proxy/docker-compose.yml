@@ -27,14 +27,8 @@ services:
     # /acme.sh にある前提で動き、LE_WORKING_DIR を実行時に見ない（この前提を
     # 曲げると --list が空になり、更新が静かに止まる）。
     volumes:
-      - type: volume
-        source: ckk-secrets
-        target: /acme.sh          # acme.sh の state（書き込みあり）
-        volume: { subpath: nginx/acme }
-      - type: volume
-        source: ckk-secrets
-        target: /certs            # 発行した証明書の設置先
-        volume: { subpath: nginx/certs }
+      - /data/ckk-secrets/nginx/acme:/acme.sh   # acme.sh の state（書き込みあり）
+      - /data/ckk-secrets/nginx/certs:/certs     # 発行した証明書の設置先
 
   nginx:
     image: nginx:1.28
@@ -47,11 +41,7 @@ services:
       - ./conf.d:/etc/nginx/conf.d:ro
       # 証明書は秘密ボリュームの subpath から。パスは従来どおりなので vhost の
       # 設定は書き換えなくてよい。
-      - type: volume
-        source: ckk-secrets
-        target: /etc/nginx/certs
-        read_only: true
-        volume: { subpath: nginx/certs }
+      - /data/ckk-secrets/nginx/certs:/etc/nginx/certs:ro
     networks:
       # cloudflared と同じ 4 本に集約。監視 / metabase / prisma-studio は
       # すべて coolify 網へ出ており、shared-db は退役した。
@@ -77,9 +67,3 @@ networks:
     external: true
     name: coolify
 
-volumes:
-  # 機微ファイルの単一の置き場。中身の投入は
-  # coolify/common/secrets/seed-secrets.sh（git には雛形と手順だけ）。
-  ckk-secrets:
-    external: true
-    name: ckk-secrets
