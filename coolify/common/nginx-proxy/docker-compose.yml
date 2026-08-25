@@ -42,27 +42,18 @@ services:
       # 証明書は秘密ボリュームの subpath から。パスは従来どおりなので vhost の
       # 設定は書き換えなくてよい。
       - /data/ckk-secrets/nginx/certs:/etc/nginx/certs:ro
+    # **1 本だけ。** 以前は各スタックの compose 網を名前で 4〜8 本たぐって
+    # いたが、移行のたびに名前が変わって（`<appUUID>_...`）参照側が壊れた。
+    # 全サービスが `coolify` 網に別名で出ている今、たぐる必要が無い:
+    #   web / web-main / kiosk / kiosk-main / admin / admin-dev … Coolify アプリの別名
+    #   dockge（portainer）/ open-webui / metabase / grafana / coolify 本体
     networks:
-      # cloudflared と同じ 4 本に集約。監視 / metabase / prisma-studio は
-      # すべて coolify 網へ出ており、shared-db は退役した。
-      - web       # nextjs-web の socat リレー
-      - ai-stack  # open-webui
-      - dockge    # portainer（dockge 別名）
-      - coolify   # coolify 本体 + grafana / metabase / prisma-studio
+      - coolify
     # Reload daily so renewed certs from acme.sh are applied without a restart.
     command: ["sh", "-c", "(while :; do sleep 86400; nginx -s reload 2>/dev/null || true; done &) ; exec nginx -g 'daemon off;'"]
 
 # Attach to each app's compose network so proxy_pass resolves the service names.
 networks:
-  web:
-    external: true
-    name: nextjs-web_default
-  ai-stack:
-    external: true
-    name: ai-stack_default
-  dockge:
-    external: true
-    name: dockge_default
   coolify:
     external: true
     name: coolify

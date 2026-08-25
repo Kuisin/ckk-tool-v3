@@ -45,7 +45,12 @@ services:
       # config.ovpn（CA + tls-auth 込み）。資格情報は環境変数から。
       - /data/ckk-secrets/vpn:/vpn:ro
     networks:
-      default: {}          # vpn-ldap_default (apps + ldap-sync attach here)
+      default: {}          # ldap-sync との内部網
+      # AD へ届く区画網（open-webui もここに繋ぐ）。`coolify` に出さないのは
+      # 「繋いだコンテナだけが AD を触れる」区画分離を保つため。
+      ldap:
+        aliases:
+          - vpn-ldap
       # Coolify ビルドの nextjs-web からブラウザと同一の issuer ホスト名で
       # 到達できるよう alias を張る（SSO の OIDC discovery/token 用）
       coolify:
@@ -89,6 +94,9 @@ services:
 
 networks:
   default:
+  ldap:
+    external: true
+    name: ckk-ldap
   coolify:
     external: true
     name: coolify

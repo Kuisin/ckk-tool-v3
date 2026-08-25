@@ -16,15 +16,17 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock
       - portainer-data:/data
     networks:
-      dockge:
+      coolify:
         aliases:
           - dockge           # so http://dockge:5001 resolves here
 
 volumes:
   portainer-data:
 
-# Reuse the kept network so tunnel/nginx external refs to dockge_default stay valid.
+# 2026-08-25: 旧 `dockge_default` を捨てて `coolify` 網へ寄せた。別名 `dockge` は
+# そのままなので nginx / cloudflared の設定は変えなくてよい。スタック固有の
+# ネットワーク名を追いかけ続けると、移行のたびに参照側が壊れる。
 networks:
-  dockge:
+  coolify:
     external: true
-    name: dockge_default
+    name: coolify
