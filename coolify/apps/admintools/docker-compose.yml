@@ -1,8 +1,13 @@
 # adminTools — WebUI + DB to manage Sakura/onamae mail accounts, synced to the
 # Sakura control panel via headless Playwright (replaces the Excel-driven scripts).
 #
-# Deployed on docker-mac-pro at ~/stacks/admintools.
-#   admintools     host :8090 -> :8000  (WebUI + API)
+# ⚠️ **Coolify は この compose を使わない。** `admintools-dev` / `-main` は
+# build_pack=dockerfile で、Coolify は Dockerfile をビルドして 1 コンテナを
+# `coolify` 網に建てる（環境変数も Coolify 側）。このファイルはローカルで
+# 一式を立ち上げるときの定義で、**ここを直しても本番の挙動は変わらない**。
+#
+# Coolify アプリ: admintools-dev（host :8090）/ admintools-main（host :8091）。
+# 入口は `coolify` 網の別名 admin-dev:8000 / admin:8000。
 #
 # Data lives in the business DB (Coolify アプリ ckk-db-main / db `ckk`,
 # schema `admintools`; role
@@ -49,8 +54,7 @@ services:
       - coolify   # 業務 DB（ckk-db-main）と restore-agent
 
 networks:
-  # AD へ届く区画網。`coolify` に出さないのは「繋いだコンテナだけが AD を
-  # 触れる」区画分離を保つため（../ai-stack / ../vpn-ldap と同じ 1 本）。
+  # AD を読む相手を繋ぐ網（到達制御ではない — ../../README.md 参照）。
   ldap:
     external: true
     name: ckk-ldap
