@@ -2,9 +2,14 @@
  * wrapper-bridge.ts — Android ラッパー（android-kiosk）の JS ブリッジ。
  *
  * ラッパーの WebView は `window.KioskDevice` を注入する:
- *   getPublicKey(): SPKI DER base64（Keystore P-256、非エクスポート鍵の公開部）
- *   sign(data):     SHA256withECDSA の DER 署名 base64
+ *   getPublicKey():      SPKI DER base64（Keystore P-256、非エクスポート鍵の公開部）
+ *   sign(data):          SHA256withECDSA の DER 署名 base64
+ *   deviceProfile(nonce): 署名済み端末プロファイル（v0.6.0+）
  * 通常ブラウザには存在しない — 存在チェックが「ラッパー経由か」の判定。
+ *
+ * deviceProfile は**任意**にしてある。旧 APK が現場に残っている間、
+ * サーバーは nonce だけの署名も受け付ける（先にサーバーを出して、端末は
+ * SelfUpdater で順に上げる、という順序を成立させるため）。
  */
 
 export type KioskBridge = {
@@ -12,6 +17,12 @@ export type KioskBridge = {
   sign(data: string): string;
   /** ラッパー APK のバージョン（KioskBridge.appVersion — 表示用）。 */
   appVersion?: () => string;
+  /**
+   * 署名済み端末プロファイル（v0.6.0+）。戻り値は JSON 文字列:
+   *   {"profile":"<正規形 JSON>","signature":"<base64>"}
+   * 署名対象は `nonce\nprofileJson`（サーバー側 attestPayload と同一）。
+   */
+  deviceProfile?: (nonce: string) => string;
 };
 
 export function getBridge(): KioskBridge | null {
@@ -31,6 +42,29 @@ export function getWrapperVersion(): string | null {
   }
 }
 
+/** ブリッジから署名済みプロファイルを取る。旧 APK・失敗時は null。 */
+function signedProfile(
+  bridge: KioskBridge,
+  nonce: string,
+): { profile: string; signature: string } | null {
+  if (typeof bridge.deviceProfile !== "function") return null;
+  try {
+    const parsed = JSON.parse(bridge.deviceProfile(nonce)) as {
+      profile?: unknown;
+      signature?: unknown;
+    };
+    if (
+      typeof parsed?.profile === "string" &&
+      typeof parsed?.signature === "string"
+    ) {
+      return { profile: parsed.profile, signature: parsed.signature };
+    }
+  } catch {
+    // 取れなければ nonce だけの署名にフォールバックする
+  }
+  return null;
+}
+
 export type AttestOutcome =
   | "OK"
   | "NO_BRIDGE"
@@ -46,11 +80,22 @@ export async function runAttestation(): Promise<AttestOutcome> {
     if (!challengeRes.ok) return "FAILED";
     const { nonce } = (await challengeRes.json()) as { nonce: string };
     const publicKey = bridge.getPublicKey();
-    const signature = bridge.sign(nonce);
+
+    // v0.6.0+ は端末プロファイルごと署名する。旧 APK は nonce だけ。
+    let profile: string | undefined;
+    let signature: string;
+    const envelope = signedProfile(bridge, nonce);
+    if (envelope) {
+      profile = envelope.profile;
+      signature = envelope.signature;
+    } else {
+      signature = bridge.sign(nonce);
+    }
+
     const res = await fetch("/api/kiosk/attest", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ nonce, publicKey, signature }),
+      body: JSON.stringify({ nonce, publicKey, signature, profile }),
     });
     if (res.ok) return "OK";
     const data = (await res.json().catch(() => null)) as {

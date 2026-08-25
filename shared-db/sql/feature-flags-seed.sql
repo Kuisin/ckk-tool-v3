@@ -50,4 +50,10 @@ ON CONFLICT (key) DO UPDATE
 -- 設定してフォルダをコンテナへマウントし、そのうえで:
 --   ('app:order-intake:main', true, '注文書取込 本番公開', now())
 
+-- ログイン履歴（SY0D）は dev で記録が溜まるのを確認してから本番公開する。
+-- 先に本番の env（LOGIN_ATTEMPT_PEPPER / CORPORATE_CIDRS /
+-- TRUSTED_PROXY_HOPS）を入れておくこと — 未設定でも落ちないが、相関キーも
+-- 所有区分も付かない空の履歴になる。公開時:
+--   ('app:login-history:main', true, 'ログイン履歴 本番公開', now())
+
 COMMIT;

@@ -9,7 +9,8 @@
 1. 初回起動時に **Android Keystore** へ P-256 鍵ペアを生成
    （ハードウェア保護・秘密鍵は端末外に出せない）
 2. WebView に `window.KioskDevice` ブリッジを注入
-   （`getPublicKey()` = SPKI base64 / `sign(data)` = SHA256withECDSA 署名）
+   （`getPublicKey()` = SPKI base64 / `sign(data)` = SHA256withECDSA 署名 /
+   `deviceProfile(nonce)` = 署名済み端末プロファイル）
 3. Web アプリのログイン画面がチャレンジ（nonce）をサーバーから取得し、
    ブリッジで署名して `POST /api/kiosk/attest` — 初回で公開鍵が端末行に
    **TOFU 束縛**され（SY09 にフィンガープリント表示）、以降は同じ鍵の署名が
@@ -20,6 +21,46 @@
 
 鍵を失った端末（初期化・交換）は SY09 の **鍵リセット** で解除 → 次回接続時に
 新しい鍵が再束縛される。
+
+### 署名済み端末プロファイル（v0.6.0+）
+
+アテステーション時に、端末の素性を **同じ Keystore 鍵で署名して** 一緒に送る。
+サーバー（`nextjs-kiosk/src/lib/device-profile.ts`）はこれを見て端末の
+**所有区分（社用 / 私用）を自動判定**し、SY09 に表示する。
+
+- 署名対象は `"<nonce>\n<profileJson>"`。サーバー側 `attestPayload()` と
+  **1 文字も違ってはいけない**。
+- profileJson は `DeviceProfile.kt` が**キー順を固定して手で組み立てる**
+  （`JSONObject` のイテレーション順に依存すると、端末や OS 版で文字列が揺れて
+  署名が合わなくなる）。
+- サーバーは **署名検証 → parse → nonce 照合** の順に見る。profile 内にも
+  nonce を入れてあるので、別チャレンジで得た署名の貼り替えも弾かれる。
+- **旧 APK 互換**: `deviceProfile` を持たない端末は従来どおり nonce だけの
+  署名で通る。サーバーを先に出して、端末は SelfUpdater で順に上げてよい。
+
+送る項目（取れないものは `null`。minSdk 29 なので `enrollmentId` /
+`installer` / `securityPatch` は実機でも普通に欠ける）:
+
+| 群 | キー |
+|----|------|
+| 版・アプリ | `v` `nonce` `signedAt` `appVersion` `appVersionCode` `packageName` `installer` |
+| 管理状態 | `isDeviceOwner` `isProfileOwner` `isManagedProfile` `activeAdmins` `lockTaskState` `enrollmentId` |
+| 端末同定 | `androidId` `serial` |
+| Build | `manufacturer` `model` `device` `brand` `hardware` `buildFingerprint` `buildId` `buildTags` `buildType` |
+| OS・リスク | `sdkInt` `securityPatch` `isDeviceSecure` `adbEnabled` `developmentSettings` `isEmulator` |
+| 環境 | `timeZone` `locale` |
+
+`enrollmentId`（`dpm.getEnrollmentSpecificId()`、API31+・デバイスオーナー時のみ）は
+**組織 × 端末 × アプリで一意、工場出荷リセットでも変わらない** ので、社給端末の
+証拠として最も強い。
+
+**保証されること / されないこと**: 鍵は非エクスポートなので、プロファイルを
+書き換えれば署名が壊れる = 「その端末が申告した内容である」ことは保証できる。
+一方、root 化した端末が**本物の鍵で嘘の値に署名する**ことは防げない。そこを
+塞ぐのはハードウェア鍵アテステーション（`setAttestationChallenge` + Google
+ルートへのチェーン検証）だけだが、鍵を作り直すことになり既存の TOFU 束縛が
+全て壊れる（現場の全端末が `KEY_MISMATCH` → 1 台ずつ手で鍵リセット）ため、
+今回は採用していない。採るなら **別エイリアスの 2 本目の鍵**として足すこと。
 
 ## ビルド
 
@@ -33,7 +74,7 @@ Android Studio（Ladybug 以降）でこのディレクトリを開く。フレ�
 CLI からもビルドできる（この Mac には Android SDK が入っている）:
 
 ```bash
-cd android-kiosk
+cd external/android-kiosk
 # 初回のみ — local.properties は .gitignore 済み（各自の SDK パスなのでコミットしない）
 echo "sdk.dir=$HOME/Library/Android/sdk" > local.properties
 

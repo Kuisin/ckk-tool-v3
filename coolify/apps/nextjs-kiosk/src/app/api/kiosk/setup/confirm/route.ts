@@ -4,12 +4,18 @@
  * 管理者が SY09 で有効化（status: ACTIVE）済みなら、30日デバイストークンを
  * 発行して kiosk_device Cookie を設定する。トークンは端末側のこの経路で
  * しか発行されない（管理 UI は status を変えるだけ）。
+ *
+ * トークン発行 = 「この端末が信頼済みになった」瞬間なので認証イベント
+ * （app.login_attempts）に残す。PENDING のポーリング（3 秒間隔）は記録しない
+ * — 有効化待ちの間じゅう行が増えても意味が無い。
  */
 
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/db";
 import { setDeviceCookie } from "@/lib/kiosk-auth";
+import { attemptContext, recordKioskSuccess } from "@/lib/kiosk-login-log";
+import { clientIpOf, userAgentOf } from "@/lib/request-ip";
 import { wsBridge } from "@/lib/ws-bridge";
 
 const bodySchema = z.object({ deviceId: z.uuid() });
@@ -45,7 +51,12 @@ export async function POST(req: Request) {
       deviceTokenHash: hash,
       deviceTokenExpiresAt: expiresAt,
       lastActivityAt: new Date(),
+      lastIpAddress: clientIpOf(req),
+      userAgent: userAgentOf(req),
     },
+  });
+  recordKioskSuccess(attemptContext(req, { id: device.id, attested: false }), {
+    method: "DEVICE_LINK",
   });
   wsBridge()?.notifyDeviceChanged(device.id);
   return NextResponse.json({ status: "CONFIRMED" });

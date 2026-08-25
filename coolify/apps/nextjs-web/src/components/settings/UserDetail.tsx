@@ -23,6 +23,8 @@ import { useRouter } from "next/navigation";
 import { useMemo, useState, useTransition } from "react";
 import { updateUserPlants } from "@/app/(dashboard)/settings/users/actions";
 import { useFormat } from "@/components/layout/PreferencesProvider";
+import { LoginAttemptList } from "@/components/settings/security/LoginAttemptList";
+import { UserDeviceList } from "@/components/settings/security/UserDeviceList";
 import {
   UserActiveBadge,
   UserGroupBadge,
@@ -32,6 +34,7 @@ import { FieldValue } from "@/components/ui/FieldValue";
 import { DetailShell, SummaryGrid } from "@/components/ui/shells";
 import { permissionActionLabel, permissionScopeLabel } from "@/lib/enum-labels";
 import { localized } from "@/lib/format";
+import type { LoginAttemptRow, UserDeviceRow } from "@/lib/login-attempts";
 import type { AdminUserDetail, AdminUserPlant } from "@/lib/users-admin";
 
 function roleLabel(role: {
@@ -155,10 +158,16 @@ export function UserDetail({
   user,
   plantOptions,
   canEditPlants,
+  loginAttempts,
+  userDevices,
 }: {
   user: AdminUserDetail;
   plantOptions: AdminUserPlant[];
   canEditPlants: boolean;
+  /** この人の認証イベント（成功・失敗の両方。直近 30 日）。 */
+  loginAttempts: LoginAttemptRow[];
+  /** この人が Web で使った端末の台帳。 */
+  userDevices: UserDeviceRow[];
 }) {
   const fmt = useFormat();
   return (
@@ -311,6 +320,25 @@ export function UserDetail({
             </Table>
           </Table.ScrollContainer>
         )}
+      </Paper>
+
+      {/* ログイン履歴 — 成功・失敗の両方。失敗が続いていれば異常に気づける。 */}
+      <Paper p="md" radius="md" withBorder>
+        <Title mb="sm" order={5}>
+          ログイン履歴（直近 30 日）
+        </Title>
+        <LoginAttemptList
+          emptyMessage="この期間のログイン記録はありません"
+          rows={loginAttempts}
+        />
+      </Paper>
+
+      {/* 登録端末 — 「いつもの端末か」の目安。端末の同定ではない。 */}
+      <Paper p="md" radius="md" withBorder>
+        <Title mb="sm" order={5}>
+          登録端末（Web）
+        </Title>
+        <UserDeviceList devices={userDevices} />
       </Paper>
     </DetailShell>
   );

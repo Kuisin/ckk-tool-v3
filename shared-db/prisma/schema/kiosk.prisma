@@ -100,9 +100,34 @@ model KioskDevice {
   devicePublicKey String? @map("device_public_key") // SPKI DER base64 (P-256)
   fingerprint     String? @unique // SHA-256 hex of SPKI DER
 
-  // 参考情報のみ（認証のフォールバックには使わない）
+  // 参考情報のみ（認証のフォールバックには使わない）。
+  // **最後に観測した値**で、リクエストのたびに更新される。リンクした時点の
+  // スナップショットは linked_user_agent / linked_ip_address のほう。
   userAgent     String? @map("user_agent")
   lastIpAddress String? @map("last_ip_address")
+
+  // リンク時のスナップショット（kiosk_link_requests から複写した固定値）。
+  // 「登録したときの端末」と「いま繋いでいる端末」を並べて見るために分けている。
+  linkedUserAgent String? @map("linked_user_agent")
+  linkedIpAddress String? @map("linked_ip_address")
+
+  // 所有区分（自動判定。管理者の上書き欄は持たない）。判定は
+  // lib/device-ownership-core.ts、根拠は ownership_source に残す。
+  ownership       DeviceOwnership @default(UNKNOWN)
+  ownershipSource String?         @map("ownership_source") @db.VarChar(40)
+
+  // 署名済み端末プロファイル（Android ラッパー）。アテステーション時に、
+  // TOFU 束縛済みの Keystore 鍵で `nonce\nprofileJson` を署名させて受け取る。
+  // **payload と署名も残す** — 後から独立に再検証できる証拠にするため
+  // （device_profile は検索・表示用の複製）。
+  //
+  // 改竄耐性の根拠は鍵が非エクスポートであること。逆に言えば、root 化端末が
+  // 「本物の鍵で嘘の値に署名する」ことは防げない。そこを塞ぐのはハードウェア
+  // 鍵アテステーションだけで、既存の TOFU 束縛を壊すため今回は採っていない。
+  deviceProfile        Json?     @map("device_profile")
+  deviceProfilePayload String?   @map("device_profile_payload")
+  deviceProfileSig     String?   @map("device_profile_sig")
+  deviceProfileAt      DateTime? @map("device_profile_at") @db.Timestamptz(6)
 
   activatedById  String?   @map("activated_by") @db.Uuid
   activatedAt    DateTime? @map("activated_at") @db.Timestamptz(6)
@@ -119,6 +144,7 @@ model KioskDevice {
   logs        KioskDeviceLog[] @relation("KioskDeviceLogDevice")
   locations   KioskDeviceLocation[] @relation("KioskDeviceLocationDevice")
   auditLogs   AuditLog[]            @relation("AuditLogKioskDevice")
+  loginAttempts LoginAttempt[]      @relation("LoginAttemptDevice")
 
   @@index([plantId])
   @@index([status])
@@ -185,6 +211,8 @@ model KioskCard {
   assignedBy User? @relation("KioskCardAssignedBy", fields: [assignedById], references: [id])
   revokedBy  User? @relation("KioskCardRevokedBy", fields: [revokedById], references: [id])
   sessions   KioskSession[] @relation("KioskSessionCard")
+  // 実在したカードでの試行のみ紐づく（未知・偽造カードは card_ref だけ残る）
+  loginAttempts LoginAttempt[] @relation("LoginAttemptCard")
 
   // 「ASSIGNED は 1 ユーザー 1 枚」は migration の手書き部分 partial unique index
   // (user_id WHERE status = 'ASSIGNED') で担保 — Prisma では表現不可。

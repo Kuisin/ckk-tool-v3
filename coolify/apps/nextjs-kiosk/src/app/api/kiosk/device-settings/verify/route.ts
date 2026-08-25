@@ -6,6 +6,10 @@
  * 試行制限: 5回失敗で 15分ロック（settings-gate.ts — PIN と同ポリシー）。
  * コードは管理者が SY09 で確認してフロア担当者に伝える便宜ゲート —
  * 端末の認証そのものはデバイストークン Cookie が担う。
+ *
+ * 試行は成否とも認証イベント（app.login_attempts）に残す。ロックは
+ * インメモリでプロセス再起動で消えるため、繰り返し当てられている事実を
+ * 後から見る手段がここにしか無い。
  */
 
 import { timingSafeEqual } from "node:crypto";
@@ -14,6 +18,12 @@ import { z } from "zod";
 import { prisma } from "@/lib/db";
 import { deviceName, type LocalizedText, localized } from "@/lib/format";
 import { getDeviceForSettings } from "@/lib/kiosk-auth";
+import {
+  attemptContext,
+  deny,
+  recordKioskFailure,
+  recordKioskSuccess,
+} from "@/lib/kiosk-login-log";
 import {
   clearGate,
   gateLockedUntil,
@@ -32,11 +42,17 @@ function safeEqual(a: string, b: string): boolean {
 export async function POST(req: Request) {
   const device = await getDeviceForSettings();
   if (!device) {
+    const ctx = attemptContext(req, null);
+    recordKioskFailure(ctx, "SETTINGS_NO_DEVICE", {
+      method: "DEVICE_SETTINGS",
+    });
     return NextResponse.json({ state: "NO_DEVICE" }, { status: 403 });
   }
+  const ctx = attemptContext(req, { id: device.id, attested: false });
 
   const lockedUntil = gateLockedUntil(device.id);
   if (lockedUntil) {
+    recordKioskFailure(ctx, "SETTINGS_LOCKED", { method: "DEVICE_SETTINGS" });
     return NextResponse.json(
       { state: "LOCKED", until: lockedUntil },
       { status: 429 },
@@ -48,12 +64,14 @@ export async function POST(req: Request) {
   if (!parsed.success || !safeEqual(parsed.data.code, device.settingsCode)) {
     const until = recordGateFailure(device.id);
     if (until) {
+      recordKioskFailure(ctx, "SETTINGS_LOCKED", { method: "DEVICE_SETTINGS" });
       return NextResponse.json({ state: "LOCKED", until }, { status: 429 });
     }
-    return NextResponse.json({ state: "INVALID" }, { status: 401 });
+    return deny(ctx, "INVALID", 401, { method: "DEVICE_SETTINGS" });
   }
 
   clearGate(device.id);
+  recordKioskSuccess(ctx, { method: "DEVICE_SETTINGS" });
   const ticket = issueTicket("", device.id, "DEVICE_SETTINGS");
 
   // 既定の作業場所 — 現在値 + 選択肢（端末の拠点 or 拠点未指定グループ）。

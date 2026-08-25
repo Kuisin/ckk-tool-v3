@@ -150,6 +150,11 @@ ALTER DEFAULT PRIVILEGES IN SCHEMA app GRANT SELECT ON TABLES TO metabase_ro;
 REVOKE SELECT ON app.kiosk_sessions      FROM metabase_ro;  -- 稼働中セッション
 REVOKE SELECT ON app.kiosk_link_requests FROM metabase_ro;  -- 端末リンクコード
 REVOKE SELECT ON app.push_subscriptions  FROM metabase_ro;  -- Web Push 秘密鍵
+-- 認証イベントと端末台帳。IP・端末シグネチャ・相関ハッシュ・ハードウェア構成を
+-- 含み、従業員監視に隣接する。閲覧は SY0D（system 権限）に閉じるのが設計なので、
+-- BI からはテーブルごと外す。
+REVOKE SELECT ON app.login_attempts      FROM metabase_ro;  -- 認証イベント（個人データ）
+REVOKE SELECT ON app.user_devices        FROM metabase_ro;  -- 端末台帳（個人データ）
 
 -- (2) 一部だけ秘密の表 — テーブル SELECT を剥奪し、安全な列だけ列単位で GRANT
 --     （Postgres ではテーブル SELECT があると列単位 REVOKE が効かないため、
@@ -168,10 +173,13 @@ GRANT SELECT (id, user_id, status, last_used_at, use_count, assigned_at,
   ON app.kiosk_cards TO metabase_ro;  -- 隠す: pin_hash, pin_set_at, pin_failed_attempts, pin_locked_until, pin_last_verified_at
 
 REVOKE SELECT ON app.kiosk_devices FROM metabase_ro;
+-- ownership は「社用/私用」の集計に使えて無害なので許可列に入れる。判定根拠
+-- （ownership_source）と端末プロファイルは調査用なので出さない。
 GRANT SELECT (id, name, location, plant_id, floor_map_id, map_x, map_y, status,
               device_token_expires_at, user_agent, activated_by, activated_at,
-              last_activity_at, created_at, updated_at, linked_at, settings_code)
-  ON app.kiosk_devices TO metabase_ro;  -- 隠す: device_token_hash, device_public_key, fingerprint, last_ip_address
+              last_activity_at, created_at, updated_at, linked_at, settings_code,
+              ownership)
+  ON app.kiosk_devices TO metabase_ro;  -- 隠す: device_token_hash, device_public_key, fingerprint, last_ip_address, linked_ip_address, ownership_source, device_profile*
 
 -- ── fx_rates: 為替レート日次更新（shared-db スタックの fx-rates コンテナ） ──
 -- app.currencies の rate_per_100_jpy / updated_at だけを UPDATE できる最小権限。

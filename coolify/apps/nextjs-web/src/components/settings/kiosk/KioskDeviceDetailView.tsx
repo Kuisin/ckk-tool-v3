@@ -32,6 +32,8 @@ import {
   revealKioskPin,
 } from "@/app/(dashboard)/settings/kiosk-devices/actions";
 import { useFormat } from "@/components/layout/PreferencesProvider";
+import { LoginAttemptList } from "@/components/settings/security/LoginAttemptList";
+import { OwnershipBadge } from "@/components/settings/security/ownership";
 import { SecondaryButton } from "@/components/ui/buttons";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { FieldValue } from "@/components/ui/FieldValue";
@@ -40,6 +42,8 @@ import { PageHeader } from "@/components/ui/PageHeader";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { UserAvatar } from "@/components/ui/UserAvatar";
 import type { KioskDeviceRecentUser, KioskDeviceRow } from "@/lib/kiosk-admin";
+import type { LoginAttemptRow } from "@/lib/login-attempts";
+import { DeviceProfilePanel } from "./DeviceProfilePanel";
 import { DeviceLogList } from "./KioskDeviceLogsModal";
 import {
   OnlineDot,
@@ -52,9 +56,12 @@ import { useKioskPresence } from "./useKioskPresence";
 export function KioskDeviceDetailView({
   device,
   recentUsers,
+  authFailures,
 }: {
   device: KioskDeviceRow;
   recentUsers: KioskDeviceRecentUser[];
+  /** この端末で弾かれた認証（直近 90 日・最大 30 件）。 */
+  authFailures: LoginAttemptRow[];
 }) {
   const fmt = useFormat();
   const { presence, live, transport } = useKioskPresence();
@@ -174,15 +181,13 @@ export function KioskDeviceDetailView({
             }
           />
           <FieldValue
-            label="アテステーション鍵"
+            label="端末区分"
             value={
-              device.fingerprint ? (
-                <Text ff="monospace" size="sm">
-                  {device.fingerprint.slice(0, 16)}…
-                </Text>
-              ) : (
-                "未束縛"
-              )
+              <OwnershipBadge
+                size="sm"
+                source={device.ownershipSource}
+                value={device.ownership}
+              />
             }
           />
           <FieldValue
@@ -287,6 +292,9 @@ export function KioskDeviceDetailView({
         </SimpleGrid>
       </Paper>
 
+      {/* 端末情報（所有区分・判定根拠・署名済みプロファイル） */}
+      <DeviceProfilePanel device={device} />
+
       <Flex align="stretch" direction={{ base: "column", md: "row" }} gap="md">
         {/* 最近の利用者（LOGIN ログの集計） */}
         <Flex direction="column" style={{ flex: 5, minWidth: 0 }}>
@@ -343,6 +351,18 @@ export function KioskDeviceDetailView({
           </Paper>
         </Flex>
       </Flex>
+
+      {/* 認証エラー — 利用履歴（成功したログインとプレゼンス）では見えない分 */}
+      <Paper p="md" radius="md" withBorder>
+        <Title mb="sm" order={5}>
+          認証エラー（直近 90 日）
+        </Title>
+        <LoginAttemptList
+          emptyMessage="この端末で弾かれた認証はありません"
+          rows={authFailures}
+          showOwnership={false}
+        />
+      </Paper>
       {/* PIN 表示・再生成の確認 */}
       <ConfirmModal
         confirmColor="blue"

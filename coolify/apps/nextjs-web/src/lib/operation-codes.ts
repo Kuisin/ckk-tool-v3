@@ -413,6 +413,28 @@ export const OPERATION_CODES: OperationCodeEntry[] = [
     mode: "0",
     index: "B",
   },
+  // 注文書取込（受注請書の監視フォルダへまとめて投入する）
+  {
+    code: "SY0C",
+    label: "注文書取込",
+    href: "/settings/order-intake",
+    category: "システム",
+    kind: "list",
+    categoryCode: "SY",
+    mode: "0",
+    index: "C",
+  },
+  // ログイン履歴（Web / キオスクの認証イベント — 成功も失敗も）
+  {
+    code: "SY0D",
+    label: "ログイン履歴",
+    href: "/settings/login-history",
+    category: "システム",
+    kind: "list",
+    categoryCode: "SY",
+    mode: "0",
+    index: "D",
+  },
 ];
 
 const CODE_LOOKUP = new Map(

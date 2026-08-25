@@ -160,6 +160,11 @@ model User {
   kioskSessions         KioskSession[] @relation("KioskSessionUser")
   kioskDeviceLogs       KioskDeviceLog[] @relation("KioskDeviceLogUser")
 
+  // 認証イベント（security.prisma）。失敗行は user_id が null のことも多い —
+  // ユーザーに解決できなかった試行そのものを残すのがこのテーブルの目的。
+  loginAttempts LoginAttempt[] @relation("LoginAttemptUser")
+  userDevices   UserDevice[]   @relation("UserDeviceUser")
+
   // 表示設定（本人が /profile/preferences で変更する。AD 由来ではない）。
   //
   // UI 言語（"ja" | "en" | "zh" — docs の DOCS_LANGS と同じ集合）。
