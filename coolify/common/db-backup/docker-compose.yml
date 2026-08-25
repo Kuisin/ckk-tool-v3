@@ -48,7 +48,6 @@ services:
     volumes:
       - ${BACKUP_DIR:-/data/db-backups}:/backups
     networks:
-      - shareddb # 旧 shared-db（移行期間中のみ・撤去したら外す）
       - coolify
 
   # 日次の論理バックアップ（pg_dump カスタム形式）。restore-agent がワンクリック
@@ -66,9 +65,9 @@ services:
       - LOGICAL_KEEP_DAYS=${LOGICAL_KEEP_DAYS:-14}
       - LOGICAL_MONTHLY_KEEP=${LOGICAL_MONTHLY_KEEP:-12}
     entrypoint: ["/bin/bash", "/usr/local/bin/logical-dump.sh"]
+    volumes:
       - ${BACKUP_DIR:-/data/db-backups}:/backups
     networks:
-      - shareddb # 旧 shared-db（移行期間中のみ・撤去したら外す）
       - coolify
 
   # 復元エグゼキュータ。admintools UI から token 付きで呼ばれ、DB（pg_restore）と
@@ -87,11 +86,18 @@ services:
       - RESTORE_AGENT_TOKEN=${RESTORE_AGENT_TOKEN:-}
       - RESTORE_DB_URL=${RESTORE_DB_URL:-} # ckk へのスーパーユーザ DSN（空 = DB 復元無効）
       - SEAWEED_CONTAINER=${SEAWEED_CONTAINER:-seaweedfs-main}
-      - SEAWEED_VOLUME=${SEAWEED_VOLUME:-nextjs-web_seaweed-data-main}
-      - SHARED_DB_NETWORK=${SHARED_DB_NETWORK:-shared-db}
-      # 物理復元（全停止）: shared-db を停止しデータボリュームを入れ替える
-      - SHARED_DB_CONTAINER=${SHARED_DB_CONTAINER:-shared-db}
-      - SHARED_DB_VOLUME=${SHARED_DB_VOLUME:-shared-db_shared-db-data}
+      # 2026-08-25: 保管先を名前付きボリュームからホストの固定パスへ移した
+      # （Coolify がボリュームを `<appUUID>_<name>` へ改名するため — ../app-support）。
+      # docker SDK はボリューム名でもホストパスでもマウント元にできるので、
+      # 変数名はそのままで値だけパスにしてある。
+      - SEAWEED_VOLUME=${SEAWEED_VOLUME:-/data/seaweed-main}
+      - SHARED_DB_NETWORK=${SHARED_DB_NETWORK:-coolify}
+      # 物理復元（全停止）: 本番 DB を止めてデータボリュームを入れ替える。
+      # ckk-db-main は Coolify アプリなのでコンテナ名もボリューム名もハッシュ入り。
+      # **アプリを作り直すと両方変わる**ので、復元前に必ず現物を確認すること
+      # （README「物理復元」を参照）。
+      - SHARED_DB_CONTAINER=${SHARED_DB_CONTAINER:?set SHARED_DB_CONTAINER in .env}
+      - SHARED_DB_VOLUME=${SHARED_DB_VOLUME:?set SHARED_DB_VOLUME in .env}
       # Coolify — 復元ポイントの git commit へアプリを戻す（空 = アプリ復元無効）
       - COOLIFY_API_URL=${COOLIFY_API_URL:-} # 例: http://coolify:8000/api/v1
       - COOLIFY_API_TOKEN=${COOLIFY_API_TOKEN:-}
@@ -100,11 +106,10 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock
       - ${BACKUP_DIR:-/data/db-backups}:/backups
     networks:
-      - shareddb
       - coolify # Coolify API（coolify:8000）到達用
 
   # SeaweedFS（受注書スキャン原本・証憑・生成 PDF）の日次 tar スナップショット。
-  # nextjs-web スタックの seaweed-data ボリュームを read-only でマウントする。
+  # 本番の保管ディレクトリ /data/seaweed-main を read-only でマウントする。
   seaweed-backup:
     build:
       context: .
@@ -117,7 +122,8 @@ services:
       - SEAWEED_KEEP_DAYS=${SEAWEED_KEEP_DAYS:-14}
       - SEAWEED_MONTHLY_KEEP=${SEAWEED_MONTHLY_KEEP:-12}
     entrypoint: ["/bin/sh", "/seaweed-backup.sh"]
-      - seaweed-data:/seaweed-data:ro
+    volumes:
+      - ${SEAWEED_VOLUME:-/data/seaweed-main}:/seaweed-data:ro
       - ${BACKUP_DIR:-/data/db-backups}:/backups
 
   # 補助バックアップ — 「git repo + /backups だけでサーバー全損から完全復旧」を
@@ -152,6 +158,8 @@ services:
     container_name: offsite-backup
     restart: unless-stopped
     entrypoint: ["/bin/sh", "/offsite-sync.sh"]
+    volumes:
+      - ${BACKUP_DIR:-/data/db-backups}:/backups:ro
     environment:
       - TZ=${TZ:-Asia/Tokyo}
       - OFFSITE_REMOTE=${OFFSITE_REMOTE:-}
@@ -165,22 +173,15 @@ services:
       - RCLONE_CONFIG_R2_ACCESS_KEY_ID=${RCLONE_CONFIG_R2_ACCESS_KEY_ID:-}
       - RCLONE_CONFIG_R2_SECRET_ACCESS_KEY=${RCLONE_CONFIG_R2_SECRET_ACCESS_KEY:-}
       - RCLONE_CONFIG_R2_ENDPOINT=${RCLONE_CONFIG_R2_ENDPOINT:-}
-      - ${BACKUP_DIR:-/data/db-backups}:/backups:ro
 
 volumes:
-  # 本番のファイルストレージ（2026-08-24 に環境別へ分割。旧 nextjs-web_seaweed-data
-  # は dev 側へコピー済みで、本番切替後は使っていない）。
-  seaweed-data:
-    external: true
-    name: ${SEAWEED_VOLUME:-nextjs-web_seaweed-data-main}
+  # Grafana は Coolify 管理になったのでボリューム名にアプリ UUID が入る。
+  # 既定値のままだと**退役した空のボリューム**を掴む（気付きにくい）。
   grafana-data:
     external: true
-    name: monitoring_grafana-data
+    name: ${GRAFANA_VOLUME:?set GRAFANA_VOLUME in .env}
 
 networks:
-  shareddb:
-    external: true
-    name: shared-db
   coolify:
     external: true
     name: coolify

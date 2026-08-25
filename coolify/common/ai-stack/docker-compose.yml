@@ -23,7 +23,7 @@ services:
       - 'c 226:* rmw'
     volumes:
       - /dev/dri:/dev/dri
-      - ollama:/models
+      - /data/ollama:/models
     environment:
       - OLLAMA_MODELS=/models
       # Default context window. 4096 is too small for a thinking model + injected
@@ -89,13 +89,27 @@ services:
       - METABASE_URL=${METABASE_URL:-}
       - METABASE_DB_ID=${METABASE_DB_ID:-2}
       - METABASE_API_KEY=${METABASE_API_KEY:-}
-    env_file:
-      - ../vpn-ldap/ldap.env
+      # 旧 ../vpn-ldap/ldap.env（env_file）の中身。Coolify は git からアプリを
+      # 建てるので **git に無いファイルは存在しない** — 値は Coolify の環境変数で
+      # 与える（../vpn-ldap と同じ 9 個）。
+      - LDAP_SERVER_LABEL=${LDAP_SERVER_LABEL:-CKK AD}
+      - LDAP_SERVER_HOST=${LDAP_SERVER_HOST:?set LDAP_SERVER_HOST}
+      - LDAP_SERVER_PORT=${LDAP_SERVER_PORT:-389}
+      - LDAP_APP_DN=${LDAP_APP_DN:?set LDAP_APP_DN}
+      - LDAP_APP_PASSWORD=${LDAP_APP_PASSWORD:?set LDAP_APP_PASSWORD}
+      - LDAP_SEARCH_BASE=${LDAP_SEARCH_BASE:?set LDAP_SEARCH_BASE}
+      - LDAP_ATTRIBUTE_FOR_USERNAME=${LDAP_ATTRIBUTE_FOR_USERNAME:-sAMAccountName}
+      - LDAP_ATTRIBUTE_FOR_MAIL=${LDAP_ATTRIBUTE_FOR_MAIL:-mail}
+      - LDAP_USE_TLS=${LDAP_USE_TLS:-false}
     volumes:
-      - open-webui:/app/backend/data
+      - /data/open-webui:/app/backend/data
     networks:
-      - default     # ai-stack_default (ollama, searxng)
-      - ldap        # vpn-ldap_default — reach vpn-ldap:389 (segmented)
+      default: {}   # ai-stack の自前網（ollama / searxng / metabase-mcp）
+      ldap: {}      # AD へ届く唯一の経路（区画分離は維持）
+      # nginx / cloudflared が chat.kai-lab.net で引く名前
+      coolify:
+        aliases:
+          - open-webui
 
   # Private metasearch engine providing Open WebUI's web search (no API keys).
   searxng:
@@ -106,10 +120,7 @@ services:
     # 機微ファイルは 1 本のボリュームへ集約する方針（../secrets/README.md）。
     # searxng は uid 977 で動き、この設定を自分で書き換えるため rw。
     volumes:
-      - type: volume
-        source: ckk-secrets
-        target: /etc/searxng
-        volume: { subpath: searxng }
+      - /data/ckk-secrets/searxng:/etc/searxng
     environment:
       - SEARXNG_BASE_URL=http://searxng:8080/
     # No published port — reached internally by open-webui at http://searxng:8080.
@@ -143,18 +154,17 @@ services:
     networks:
       - default     # ai-stack_default — reachable by open-webui
 
-volumes:
-  ckk-secrets:
-    external: true
-    name: ckk-secrets
-  ollama:
-  open-webui:
+# 名前付きボリュームは置かない。Coolify は `external: true` と書いても
+# `<appUUID>_<name>` へ改名するので、38GB のモデルが再デプロイのたびに空から
+# 始まりかねない。実体はホストの固定パス（/data/ollama, /data/open-webui）。
 
 networks:
-  # Segmented LDAP network owned by the vpn-ldap stack; only open-webui joins it.
+  # AD へ届く区画。**ここに繋いだコンテナだけ** LDAP を触れる、という
+  # 元の設計を保つため `coolify` には出さない。両スタックが同じ名前で
+  # 参加できるよう、サーバー側で 1 本作ってある（docker network create ckk-ldap）。
   ldap:
     external: true
-    name: vpn-ldap_default
+    name: ckk-ldap
   # Coolify apps' network — po-extract serves the nextjs-web 受注請書 intake there.
   coolify:
     external: true

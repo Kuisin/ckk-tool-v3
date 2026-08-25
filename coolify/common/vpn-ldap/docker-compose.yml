@@ -5,9 +5,17 @@
 # explicitly join that network (e.g. open-webui) can reach AD — the rest of the
 # stack never touches the VPN/LDAP.
 #
-# Shared AD credentials live in ldap.env (single source, reused by apps via
-# env_file). Deployed on docker-mac-pro at ~/stacks/vpn-ldap (Dockge-managed).
-# Secrets (vpn/, .env, ldap.env) are gitignored.
+# ⚠️ **Coolify 管理**（プロジェクト ckk / `common` 環境）。
+#
+# 秘密の渡し方が 2 通りある:
+#   - **設定値**（AD の DN / パスワード / VPN 資格情報 / DSN）は Coolify の環境変数。
+#     以前は gitignore した `ldap.env` / `.env` を `env_file:` で読んでいたが、
+#     Coolify は git からアプリを建てるので **git に無いファイルは存在しない**。
+#     そのため全部 `environment:` に展開して Coolify 側で与える。
+#   - **ファイル**（`config.ovpn` — CA と tls-auth を含む）は
+#     `/data/ckk-secrets/vpn`（../secrets/README.md）から bind mount する。
+#     Coolify は名前付きボリュームを `<appUUID>_<name>` へ改名するので、
+#     共有したい実体は必ず bind mount にすること。
 
 services:
   vpn-ldap:
@@ -28,15 +36,21 @@ services:
       # On a user login (bind that is not the service account) the forwarder POSTs
       # here so ldap-sync refreshes that user. LDAP_APP_DN (to skip) comes from ldap.env.
       - SYNC_TRIGGER_URL=http://ldap-sync:8088/sync
+      # 束ねが公式アカウントかどうかの判定に使う（旧 ldap.env 由来）
+      - LDAP_APP_DN=${LDAP_APP_DN:?set LDAP_APP_DN}
       # Authentik SSO bridge（任意）: VPN 内の IdP を coolify ネットへ中継
       - AUTHENTIK_HOST=${AUTHENTIK_HOST:-}
       - AUTHENTIK_PORT=${AUTHENTIK_PORT:-9000}
-    env_file:
-      - ./ldap.env         # provides LDAP_APP_DN for the bind-aware forwarder
     volumes:
-      - ./vpn:/vpn:ro      # config.ovpn (CA + tls-auth); credentials come from .env
+      # config.ovpn（CA + tls-auth 込み）。資格情報は環境変数から。
+      - /data/ckk-secrets/vpn:/vpn:ro
     networks:
-      default: {}          # vpn-ldap_default (apps + ldap-sync attach here)
+      default: {}          # ldap-sync との内部網
+      # AD へ届く区画網（open-webui もここに繋ぐ）。`coolify` に出さないのは
+      # 「繋いだコンテナだけが AD を触れる」区画分離を保つため。
+      ldap:
+        aliases:
+          - vpn-ldap
       # Coolify ビルドの nextjs-web からブラウザと同一の issuer ホスト名で
       # 到達できるよう alias を張る（SSO の OIDC discovery/token 用）
       coolify:
@@ -64,18 +78,25 @@ services:
       # `docker logs ldap-sync` が**空のまま**になる。同期が失敗しても何も出ず、
       # 原因を掴むのにコンテナ内で sync.full_sync() を直接呼ぶ羽目になった。
       - PYTHONUNBUFFERED=1
-    env_file:
-      - ./ldap.env       # LDAP_SERVER_HOST / LDAP_APP_DN / LDAP_APP_PASSWORD / base
+      # 旧 ldap.env の中身（Coolify の環境変数として与える）
+      - LDAP_SERVER_LABEL=${LDAP_SERVER_LABEL:-CKK AD}
+      - LDAP_SERVER_HOST=${LDAP_SERVER_HOST:?set LDAP_SERVER_HOST}
+      - LDAP_SERVER_PORT=${LDAP_SERVER_PORT:-389}
+      - LDAP_APP_DN=${LDAP_APP_DN:?set LDAP_APP_DN}
+      - LDAP_APP_PASSWORD=${LDAP_APP_PASSWORD:?set LDAP_APP_PASSWORD}
+      - LDAP_SEARCH_BASE=${LDAP_SEARCH_BASE:?set LDAP_SEARCH_BASE}
+      - LDAP_ATTRIBUTE_FOR_USERNAME=${LDAP_ATTRIBUTE_FOR_USERNAME:-sAMAccountName}
+      - LDAP_ATTRIBUTE_FOR_MAIL=${LDAP_ATTRIBUTE_FOR_MAIL:-mail}
+      - LDAP_USE_TLS=${LDAP_USE_TLS:-false}
     networks:
       - default          # reach vpn-ldap:389
       - coolify          # reach ckk-db-main（Coolify アプリ — 別名で引く）
-      - shareddb         # 旧 shared-db（移行期間中のみ・撤去したら外す）
 
 networks:
   default:
-  shareddb:
+  ldap:
     external: true
-    name: shared-db
+    name: ckk-ldap
   coolify:
     external: true
     name: coolify
