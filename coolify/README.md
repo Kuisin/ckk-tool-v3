@@ -80,10 +80,32 @@ promotion 後 — dev へのマージで ingress や監視が再起動しない�
 
 - **docker の既定アドレスプールは 31 本で尽きる**（172.17–31 の /16 が 15 本 +
   192.168 の /20 が 16 本）。アプリごとに `<uuid>_default` が増えるので、移行の
-  途中で尽き、デプロイが `all predefined address pools have been fully subnetted`
-  で落ちた。**使っていない網を `docker network prune`** すること。恒久対策は
-  `/etc/docker/daemon.json` の `default-address-pools` 拡張だが、dockerd の
-  再起動＝全コンテナ再起動なので未実施。
+  途中で実際に尽き、デプロイが
+  `all predefined address pools have been fully subnetted` で落ちた。
+
+  **2026-08-25 に `/etc/docker/daemon.json` でプールを差し替えて解決した**
+  （これはサーバー上のファイルで git には無い。中身はここに控える）:
+
+  ```json
+  {
+    "default-address-pools": [
+      { "base": "10.100.0.0/16", "size": 24 },
+      { "base": "10.101.0.0/16", "size": 24 }
+    ]
+  }
+  ```
+
+  512 本になる。**10.x を選んだ理由**は、既定の 192.168 帯が危ないから:
+
+  | 帯 | 何と衝突しうるか |
+  |---|---|
+  | `192.168.50.0/24` | **LAN そのもの**。docker が `192.168.48.0/20` を採ったら死ぬ |
+  | `192.168.11.0/24` | VPN 経由の経路（`vpn-ldap` の tun0 が持つ）|
+  | `10.0.10.0/24` `21.10.10.0/24` | 同じく VPN 経由 |
+
+  10.100 / 10.101 はいずれとも重ならない。既存の網は割り当て済みの 192.168 帯を
+  保持したままで（再起動では移動しない）、**アプリを作り直したときに 10.100.x へ
+  移る**。適用には dockerd の再起動＝**全コンテナ再起動**が要る。
 - 移行の直前に **旧スタックを `docker compose down`** する。`container_name` が
   衝突して新デプロイが失敗するため。
 - 自動デプロイには **アプリごとの GitHub webhook** が要る（Coolify 側で

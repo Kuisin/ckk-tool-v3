@@ -13,11 +13,12 @@
 #   3. seeds the Coolify root user from .env (RootUserSeeder)
 #   4. enables the API, disables self-registration
 #   5. creates an API token -> /data/coolify/source/.api-token
-#   6. registers project `ckk` and the two nextjs-web apps from github.com/Kuisin/ckk-tool-v3:
+#   6. registers project `ckk` + its environments
 #        nextjs-web-dev   branch dev   host :3004
 #        nextjs-web-main  branch main  host :3005
-#   7. deploys dev, waits for the build, smoke-tests :3004
-#   8. deploys main (prod pipeline validation), smoke-tests :3005
+#   7. registers the two nextjs-web applications
+#   8. deploys dev, waits for the build, smoke-tests :3004
+#   9. deploys main (prod pipeline validation), smoke-tests :3005
 #
 # **これは nextjs-web の分だけ。** 残りのアプリは専用スクリプトで登録する:
 #   add-db-apps.sh        ckk-db-* / db-migrate-*
@@ -80,7 +81,7 @@ PUB=$(docker exec coolify sh -c 'for f in /var/www/html/storage/app/ssh/keys/ssh
 grep -qxF "$PUB" ~/.ssh/authorized_keys || printf '%s\n' "$PUB" >> ~/.ssh/authorized_keys
 echo "authorized"
 
-step "2/8 Create the shared docker networks"
+step "2/9 Create the shared docker networks"
 # `coolify` は Coolify 本体が作る。`ckk-ldap` は AD へ届く区画網で、vpn-ldap と
 # open-webui / metabase / admintools だけが参加する（`coolify` に出すと全アプリ
 # から AD が見えてしまうので、意図的に別網にしてある）。
@@ -90,9 +91,14 @@ done
 
 # ⚠️ docker の既定アドレスプール（172.17–31 の /16 + 192.168 の /20 × 16）は
 # 31 本で尽きる。実際に尽きてデプロイが
-# 「all predefined address pools have been fully subnetted」で落ちた。
-# 使っていない網は `docker network prune` で落とすこと。
-echo "networks in use: $(docker network ls -q | wc -l) / 31 (既定プールの上限)"
+# 「all predefined address pools have been fully subnetted」で落ちた。しかも
+# 既定の 192.168 帯は LAN（192.168.50.0/24）と VPN 経路（192.168.11.0/24）に
+# ぶつかりうる。/etc/docker/daemon.json でプールを 10.100/10.101 に差し替える
+# こと（中身は ../README.md に控えてある。反映には dockerd 再起動が要る）。
+if ! sudo test -f /etc/docker/daemon.json; then
+  echo "!! /etc/docker/daemon.json が無い — default-address-pools を設定すること"
+fi
+echo "networks in use: $(docker network ls -q | wc -l)"
 
 step "3/9 Seed Coolify root user (from /data/coolify/source/.env)"
 docker exec coolify php artisan db:seed --class=RootUserSeeder --force
@@ -133,8 +139,10 @@ echo "project: $PROJECT_UUID"
 # Environments: dev app lives in `development`, main in `production` (default).
 api POST "/projects/$PROJECT_UUID/environments" -d '{"name":"development"}' >/dev/null 2>&1 || true
 
-# App env vars come from the existing stack .env (APP_DB_PASSWORD, NEXT_PUBLIC_APP_VERSION)
-set -a; . ~/stacks/nextjs-web/.env; set +a
+# アプリの env。旧 `~/stacks/nextjs-web/.env` は 2026-08-25 に退役したので、
+# 値は Coolify 側（既存アプリの env）か手元の控えから渡す。
+: "${APP_DB_PASSWORD:?export APP_DB_PASSWORD before running}"
+: "${NEXT_PUBLIC_APP_VERSION:=0.0.0}"
 DATABASE_URL="postgresql://app:${APP_DB_PASSWORD}@ckk-db-dev:5432/ckk"
 
 create_app() { # name branch host_port env_name result_var
@@ -218,7 +226,7 @@ deploy_and_wait() { # uuid label port
   curl -sf -o /dev/null "http://127.0.0.1:$port/" && echo "$label responds on :$port" || { echo "!! $label not responding on :$port"; return 1; }
 }
 
-step "7/8 Deploy dev"
+step "8/9 Deploy dev"
 deploy_and_wait "$DEV_UUID" dev "$DEV_PORT"
 # 入口の安定名は Coolify の custom_network_aliases が張る（旧 socat リレーは
 # 2026-08-25 に廃止）。`coolify` 網で web が引ければ nginx / cloudflared も引ける。
@@ -227,7 +235,7 @@ docker run --rm --network coolify curlimages/curl:8.10.1 -sf -o /dev/null http:/
   && echo "alias web:3000 OK (app-dev.ckk-tool.co.jp unchanged)" \
   || echo "!! alias check failed — custom_network_aliases が未設定か、再デプロイ待ち"
 
-step "8/8 Deploy main (prod pipeline validation)"
+step "9/9 Deploy main (prod pipeline validation)"
 deploy_and_wait "$MAIN_UUID" main "$MAIN_PORT" || echo "(main build failure is non-blocking for dev; fix at next promotion)"
 
 step "Done"
