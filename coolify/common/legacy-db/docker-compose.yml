@@ -5,8 +5,13 @@
 # shared-db（PG17 + PGroonga）を見る** — こちらへ書かないこと。
 #
 # これまで compose を持たず `docker run` で立てられていて、どのスタックにも
-# 属さない唯一のコンテナだった（README「規則 1」）。データは元からの名前付き
-# ボリューム `ckk-legacy-data` をそのまま引き継ぐので、中身は変わらない。
+# 属さない唯一のコンテナだった（README「規則 1」）。
+#
+# ⚠️ **データはホストの固定パス `/data/legacy-db`。** 名前付きボリューム
+# `ckk-legacy-data` を `external: true` で参照していたが、Coolify はそれを
+# `<appUUID>_legacy-data` へ改名するので、**空のクラスタで初期化された状態で
+# 動いていた**（2026-08-26 に発覚。0 テーブル）。元データは
+# `ckk-legacy-data`（81.8MB）に無事残っていたので、そこから移送した。
 #
 # ホストポートは公開しない。使うときは同じネットワークから引くか、
 #   docker exec -it ckk-legacy-db psql -U ckk_admin ckk_system
@@ -24,15 +29,10 @@ services:
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:?legacy-db/.env に POSTGRES_PASSWORD が要る}
       - POSTGRES_DB=ckk_system
     volumes:
-      - legacy-data:/var/lib/postgresql/data
+      # bind mount であること。Coolify は名前付きボリュームを必ず改名する。
+      - /data/legacy-db:/var/lib/postgresql/data
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ckk_admin -d ckk_system"]
       interval: 30s
       timeout: 5s
       retries: 5
-
-volumes:
-  # 既存のボリュームをそのまま使う（compose に作らせない ＝ 中身を失わない）。
-  legacy-data:
-    external: true
-    name: ckk-legacy-data
