@@ -76,8 +76,8 @@ volumes:
   metabase-db-data:
 
 networks:
-  # AD へ届く区画網。`coolify` に出さないのは「繋いだコンテナだけが AD を
-  # 触れる」区画分離を保つため（../ai-stack / ../vpn-ldap と同じ 1 本）。
+  # AD を読む相手を繋ぐ網（../ai-stack / ../vpn-ldap と同じ 1 本）。
+  # 到達制御ではない点は ../README.md「スタックをまたぐ接続」を参照。
   ldap:
     external: true
     name: ckk-ldap

@@ -159,9 +159,9 @@ services:
 # 始まりかねない。実体はホストの固定パス（/data/ollama, /data/open-webui）。
 
 networks:
-  # AD へ届く区画。**ここに繋いだコンテナだけ** LDAP を触れる、という
-  # 元の設計を保つため `coolify` には出さない。両スタックが同じ名前で
-  # 参加できるよう、サーバー側で 1 本作ってある（docker network create ckk-ldap）。
+  # AD を読む相手を繋ぐ網（サーバー側で `docker network create ckk-ldap`）。
+  # 注意: これは到達制御ではない — vpn-ldap は SSO の OIDC discovery のため
+  # `coolify` にも居るので、:389 は coolify 網からも届く（../README.md 参照）。
   ldap:
     external: true
     name: ckk-ldap

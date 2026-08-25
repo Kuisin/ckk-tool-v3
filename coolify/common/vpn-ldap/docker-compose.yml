@@ -46,8 +46,9 @@ services:
       - /data/ckk-secrets/vpn:/vpn:ro
     networks:
       default: {}          # ldap-sync との内部網
-      # AD へ届く区画網（open-webui もここに繋ぐ）。`coolify` に出さないのは
-      # 「繋いだコンテナだけが AD を触れる」区画分離を保つため。
+      # AD を読む相手を繋ぐ網（open-webui / metabase / admintools）。
+      # なお下の `coolify` にも参加している（SSO の OIDC discovery で
+      # `auth.ckk-tools.loc` を張るため）ので、:389 は coolify 網からも届く。
       ldap:
         aliases:
           - vpn-ldap
