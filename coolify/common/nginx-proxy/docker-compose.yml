@@ -20,16 +20,21 @@ services:
     container_name: nginx-acme
     restart: unless-stopped
     command: daemon
-    volumes:
-      # 証明書と acme の更新状態は git に置けないので、ホスト側の 1 本の
-      # ボリュームに集約してある（coolify/common/secrets/README.md）。
-      # acme は更新結果を書くので rw。
-      - ckk-secrets:/secrets
     environment:
       - CF_Token=${CLOUDFLARE_DNS_API_TOKEN:-}
-      # acme.sh の既定パスを秘密ボリューム内へ向ける。
-      - LE_WORKING_DIR=/secrets/nginx/acme
-      - CERT_HOME=/secrets/nginx/certs
+    # 秘密は 1 本のボリューム（ckk-secrets）に集約しつつ、**subpath** で
+    # 各コンテナが従来どおりのパスで見えるようにする。acme.sh は自分の state が
+    # /acme.sh にある前提で動き、LE_WORKING_DIR を実行時に見ない（この前提を
+    # 曲げると --list が空になり、更新が静かに止まる）。
+    volumes:
+      - type: volume
+        source: ckk-secrets
+        target: /acme.sh          # acme.sh の state（書き込みあり）
+        volume: { subpath: nginx/acme }
+      - type: volume
+        source: ckk-secrets
+        target: /certs            # 発行した証明書の設置先
+        volume: { subpath: nginx/certs }
 
   nginx:
     image: nginx:1.28
@@ -40,10 +45,13 @@ services:
       - "443:443"
     volumes:
       - ./conf.d:/etc/nginx/conf.d:ro
-      # 証明書は秘密ボリュームから読む（従来のパス /etc/nginx/certs を維持したい
-      # ところだが、ボリュームの一部だけをマウントできないので /secrets を丸ごと
-      # 読み取り専用で入れ、vhost 側のパスを合わせてある）。
-      - ckk-secrets:/secrets:ro
+      # 証明書は秘密ボリュームの subpath から。パスは従来どおりなので vhost の
+      # 設定は書き換えなくてよい。
+      - type: volume
+        source: ckk-secrets
+        target: /etc/nginx/certs
+        read_only: true
+        volume: { subpath: nginx/certs }
     networks:
       # cloudflared と同じ 4 本に集約。監視 / metabase / prisma-studio は
       # すべて coolify 網へ出ており、shared-db は退役した。
