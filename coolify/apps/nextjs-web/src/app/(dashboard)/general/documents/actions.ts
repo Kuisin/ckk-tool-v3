@@ -33,6 +33,8 @@ import {
   normalizeBody,
   remapLineAnchors,
 } from "@/lib/line-anchor";
+import { mintShortLinks } from "@/lib/link-index";
+import { collectMarkdownLinks } from "@/lib/markdown-links";
 import { nextDocumentNumber } from "@/lib/numbering";
 import {
   type ActionResult,
@@ -305,6 +307,16 @@ export async function savePageBody(
       });
       return next;
     });
+
+    // 本文中の外部 URL を link_index に登録しておく（本文自体は書き換えない —
+    // ソースを短縮 URL に置換すると、書いた覚えのない差分が出る）。描画時は
+    // lookupShortLinkCodes で引いて /l/<code> に差し替える。
+    // 失敗しても本文の保存は成立させる（リンクがそのまま出ないだけ）。
+    try {
+      await mintShortLinks(collectMarkdownLinks(body));
+    } catch (e) {
+      console.error("mintShortLinks failed for", pageNumber, e);
+    }
 
     await recordAudit({
       action: "UPDATE",

@@ -13,6 +13,7 @@ import { Badge, Group, Paper, Stack, Tabs, Text } from "@mantine/core";
 import { IconCalendarTime } from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
 import type { ApprovalRequestRow } from "@/app/(dashboard)/general/tasks/approvals-data";
+import type { InboxCommentRow } from "@/app/(dashboard)/general/tasks/comments-data";
 import type { MyPlanRow } from "@/app/(dashboard)/general/tasks/data";
 import type { FormTasks } from "@/app/(dashboard)/general/tasks/forms-data";
 import { useFormat } from "@/components/layout/PreferencesProvider";
@@ -23,6 +24,7 @@ import { StatusBadge } from "@/components/ui/StatusBadge";
 import { useTabParam } from "@/hooks/useUrlState";
 import { ApprovalRequestTable } from "./ApprovalRequestTable";
 import { MyResponsesList, PendingFormsList } from "./FormTasksPanel";
+import { InboxCommentsList } from "./InboxCommentsList";
 
 const WORK_ORDERS_PATH = "/production/work-orders";
 
@@ -90,11 +92,13 @@ export function TasksView({
   plans,
   approvals,
   forms,
+  comments,
 }: {
   plans: MyPlanRow[];
   /** null = approve 権限なし（セクション自体を出さない）。 */
   approvals: ApprovalRequestRow[] | null;
   forms: FormTasks;
+  comments: InboxCommentRow[];
 }) {
   const [tab, setTab] = useTabParam("plans");
   return (
@@ -142,6 +146,18 @@ export function TasksView({
             未回答のフォーム
           </Tabs.Tab>
           <Tabs.Tab value="my-forms">回答済みのフォーム</Tabs.Tab>
+          <Tabs.Tab
+            rightSection={
+              comments.length > 0 && (
+                <Badge color="blue" size="sm" variant="light">
+                  {comments.length}
+                </Badge>
+              )
+            }
+            value="comments"
+          >
+            文書のコメント
+          </Tabs.Tab>
         </Tabs.List>
 
         <Tabs.Panel pt="md" value="plans">
@@ -173,6 +189,10 @@ export function TasksView({
 
         <Tabs.Panel pt="md" value="my-forms">
           <MyResponsesList rows={forms.mine} />
+        </Tabs.Panel>
+
+        <Tabs.Panel pt="md" value="comments">
+          <InboxCommentsList rows={comments} />
         </Tabs.Panel>
       </Tabs>
     </Stack>

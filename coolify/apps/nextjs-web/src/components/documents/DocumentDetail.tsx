@@ -1,0 +1,175 @@
+"use client";
+
+/**
+ * DocumentDetail — 公開版の閲覧。
+ *
+ * **行コメントはここに出さない。** ページ側でも取得していない（レビュー画面
+ * だけが読む）。「レビューに出し、公開には出さない」をこの境界で担保する。
+ */
+
+import { Alert, Badge, Group, Tabs } from "@mantine/core";
+import { IconEye, IconMessage } from "@tabler/icons-react";
+import {
+  type RoleOption,
+  ShareGrantsPanel,
+} from "@/components/forms/ShareGrantsPanel";
+import { useFormat } from "@/components/layout/PreferencesProvider";
+import { EditButton, SecondaryButton } from "@/components/ui/buttons";
+import { FieldValue } from "@/components/ui/FieldValue";
+import { StatusBadge } from "@/components/ui/StatusBadge";
+import {
+  type AuditEntry,
+  AuditTimeline,
+  DetailShell,
+  SummaryGrid,
+} from "@/components/ui/shells";
+import type { PageDetailView } from "@/lib/internal-pages";
+import type { ShareGrantView } from "@/lib/share-grants";
+import type { ShareLevel } from "@/lib/share-grants-core";
+import { type LinkTargets, MarkdownView } from "./MarkdownView";
+import { PagePublishCard } from "./PagePublishCard";
+
+// 文書には「回答」が無いので RESPOND は出さない。
+const PAGE_SHARE_LEVELS: ShareLevel[] = ["READ", "EDIT", "MANAGE"];
+
+export function DocumentDetail({
+  page,
+  links,
+  grants,
+  roleOptions,
+  auditEntries,
+  canEdit,
+  canManage,
+  canApprove,
+  openComments,
+  onSaveShare,
+}: {
+  page: PageDetailView;
+  links: LinkTargets;
+  grants: ShareGrantView[];
+  roleOptions: RoleOption[];
+  auditEntries: AuditEntry[];
+  canEdit: boolean;
+  canManage: boolean;
+  canApprove: boolean;
+  openComments: number;
+  onSaveShare: (
+    grants: { subjectType: string; subjectId: string | null; level: string }[],
+  ) => Promise<{ ok: boolean; error?: string }>;
+}) {
+  const fmt = useFormat();
+  const hasUnpublished =
+    page.latestRevision > 0 && page.publishedRevision !== page.latestRevision;
+
+  return (
+    <DetailShell
+      actions={
+        <Group gap="xs">
+          <SecondaryButton
+            href={`/general/documents/${page.pageNumber}/review`}
+            leftSection={<IconMessage size={14} />}
+          >
+            レビュー
+          </SecondaryButton>
+          <SecondaryButton
+            href={`/general/documents/${page.pageNumber}/revisions`}
+          >
+            履歴・差分
+          </SecondaryButton>
+          {canEdit && (
+            <EditButton href={`/general/documents/${page.pageNumber}/edit`} />
+          )}
+        </Group>
+      }
+      breadcrumbs={[
+        { label: "一般" },
+        { label: "社内文書", href: "/general/documents" },
+        { label: page.title },
+      ]}
+      createdAt={fmt.dateTime(page.createdAt)}
+      status={<StatusBadge entity="InternalPage" status={page.status} />}
+      title={page.title}
+      updatedAt={fmt.dateTime(page.updatedAt)}
+    >
+      <PagePublishCard
+        approvalRequired={page.approvalRequired}
+        canApprove={canApprove}
+        canEdit={canEdit}
+        hasUnpublishedChanges={hasUnpublished}
+        openComments={openComments}
+        pageNumber={page.pageNumber}
+        status={page.status}
+      />
+
+      <SummaryGrid>
+        <FieldValue label="文書番号" value={page.pageNumber} />
+        <FieldValue label="フォルダ" value={page.folder ?? "—"} />
+        <FieldValue
+          label="公開版"
+          value={
+            page.publishedRevision ? (
+              <Group gap="xs">
+                <Badge color="green" variant="light">
+                  r{page.publishedRevision}
+                </Badge>
+                {hasUnpublished && (
+                  <Badge color="yellow" variant="light">
+                    未公開の変更あり（r{page.latestRevision}）
+                  </Badge>
+                )}
+              </Group>
+            ) : (
+              "未公開"
+            )
+          }
+        />
+        <FieldValue
+          label="公開に承認"
+          value={page.approvalRequired ? "必要" : "不要"}
+        />
+        {page.summary && (
+          <FieldValue fullWidth label="概要" value={page.summary} />
+        )}
+      </SummaryGrid>
+
+      <Tabs defaultValue="body">
+        <Tabs.List>
+          <Tabs.Tab leftSection={<IconEye size={14} />} value="body">
+            本文
+          </Tabs.Tab>
+          <Tabs.Tab value="share">共有</Tabs.Tab>
+          <Tabs.Tab value="history">履歴</Tabs.Tab>
+        </Tabs.List>
+
+        <Tabs.Panel pt="md" value="body">
+          {page.publishedBody == null ? (
+            <Alert color="yellow">
+              まだ公開されていません。編集して公開すると、ここに本文が出ます。
+              下書きの内容は「レビュー」から読めます。
+            </Alert>
+          ) : (
+            <MarkdownView body={page.publishedBody} links={links} />
+          )}
+        </Tabs.Panel>
+
+        <Tabs.Panel keepMounted={false} pt="md" value="share">
+          <ShareGrantsPanel
+            canManage={canManage}
+            grants={grants}
+            levels={PAGE_SHARE_LEVELS}
+            onSave={
+              onSaveShare as unknown as React.ComponentProps<
+                typeof ShareGrantsPanel
+              >["onSave"]
+            }
+            roleOptions={roleOptions}
+          />
+        </Tabs.Panel>
+
+        <Tabs.Panel pt="md" value="history">
+          <AuditTimeline entries={auditEntries} />
+        </Tabs.Panel>
+      </Tabs>
+    </DetailShell>
+  );
+}

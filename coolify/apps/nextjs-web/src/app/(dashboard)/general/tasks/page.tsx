@@ -2,6 +2,7 @@ import { TasksView } from "@/components/general/TasksView";
 import { checkPermission } from "@/lib/authz";
 import { requireAppRead } from "@/lib/authz-page";
 import { fetchPendingApprovalRequests } from "./approvals-data";
+import { fetchInboxComments } from "./comments-data";
 import { fetchMyPendingPlans } from "./data";
 import { fetchFormTasks } from "./forms-data";
 
@@ -16,11 +17,19 @@ export default async function GeneralTasksPage() {
   if (denied) return denied;
 
   const approveAuthz = await checkPermission("approve", "READ");
-  const [plans, approvals, forms] = await Promise.all([
+  const [plans, approvals, forms, comments] = await Promise.all([
     fetchMyPendingPlans(),
     approveAuthz.ok ? fetchPendingApprovalRequests() : Promise.resolve(null),
     fetchFormTasks(),
+    fetchInboxComments(),
   ]);
 
-  return <TasksView approvals={approvals} forms={forms} plans={plans} />;
+  return (
+    <TasksView
+      approvals={approvals}
+      comments={comments}
+      forms={forms}
+      plans={plans}
+    />
+  );
 }
