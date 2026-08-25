@@ -1,0 +1,295 @@
+{
+  "annotations": {
+    "list": []
+  },
+  "editable": true,
+  "graphTooltip": 0,
+  "id": null,
+  "uid": "containers-prod",
+  "title": "Containers — prod (Coolify)",
+  "description": "Coolify の production 環境（main ブランチ）のアプリ。container = アプリ名、deploy = 実際のコンテナ名（デプロイごとに変わる）。",
+  "tags": [
+    "logs",
+    "docker",
+    "prod"
+  ],
+  "timezone": "",
+  "schemaVersion": 39,
+  "version": 1,
+  "refresh": "30s",
+  "time": {
+    "from": "now-6h",
+    "to": "now"
+  },
+  "templating": {
+    "list": [
+      {
+        "name": "container",
+        "label": "App / container",
+        "type": "query",
+        "datasource": {
+          "type": "loki",
+          "uid": "loki"
+        },
+        "definition": "label_values({job=\"docker\", environment=\"production\"}, container)",
+        "query": {
+          "label": "container",
+          "stream": "{job=\"docker\", environment=\"production\"}",
+          "type": 1,
+          "refId": "LokiVariableQueryEditor-VariableQuery"
+        },
+        "refresh": 2,
+        "sort": 1,
+        "includeAll": true,
+        "multi": true,
+        "current": {
+          "text": "All",
+          "value": "$__all"
+        }
+      },
+      {
+        "name": "search",
+        "label": "Search (regex)",
+        "type": "textbox",
+        "current": {
+          "text": "",
+          "value": ""
+        },
+        "query": ""
+      }
+    ]
+  },
+  "panels": [
+    {
+      "type": "timeseries",
+      "title": "ログ量 (lines/sec) — アプリ別",
+      "datasource": {
+        "type": "loki",
+        "uid": "loki"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 16,
+        "x": 0,
+        "y": 0
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 1,
+            "fillOpacity": 15,
+            "stacking": {
+              "mode": "normal",
+              "group": "A"
+            },
+            "showPoints": "never"
+          },
+          "unit": "logs"
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "right",
+          "calcs": [
+            "sum"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "loki",
+            "uid": "loki"
+          },
+          "expr": "sum by (container) (rate({job=\"docker\", environment=\"production\", container=~\"$container\"} |~ \"(?i)$search\" [1m]))",
+          "legendFormat": "{{container}}"
+        }
+      ]
+    },
+    {
+      "type": "table",
+      "title": "エラー行数 (直近 5 分) — アプリ別",
+      "datasource": {
+        "type": "loki",
+        "uid": "loki"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 16,
+        "y": 0
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": "auto"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 1
+              },
+              {
+                "color": "red",
+                "value": 25
+              }
+            ]
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Value"
+            },
+            "properties": [
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "color-text"
+                }
+              },
+              {
+                "id": "displayName",
+                "value": "errors / 5m"
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "showHeader": true,
+        "sortBy": [
+          {
+            "desc": true,
+            "displayName": "errors / 5m"
+          }
+        ]
+      },
+      "transformations": [
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {
+              "Time": true
+            }
+          }
+        }
+      ],
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "loki",
+            "uid": "loki"
+          },
+          "queryType": "instant",
+          "expr": "sum by (container) (count_over_time({job=\"docker\", environment=\"production\", container=~\"$container\"} |~ \"(?i)(error|exception|traceback|fatal|panic|critical|failed|level=error)\" [5m]))"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "デプロイ別のログ量（deploy = 実コンテナ名 / 入れ替わりが見える）",
+      "description": "Coolify はデプロイごとにコンテナを作り直すので、線が切り替わった時刻が新しいデプロイの開始時刻。",
+      "datasource": {
+        "type": "loki",
+        "uid": "loki"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 24,
+        "x": 0,
+        "y": 8
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "drawStyle": "bars",
+            "lineWidth": 1,
+            "fillOpacity": 60,
+            "stacking": {
+              "mode": "normal",
+              "group": "A"
+            },
+            "showPoints": "never"
+          },
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "right",
+          "calcs": [
+            "sum"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "loki",
+            "uid": "loki"
+          },
+          "expr": "sum by (container, deploy) (count_over_time({job=\"docker\", environment=\"production\", container=~\"$container\"} |~ \"(?i)$search\" [5m]))",
+          "legendFormat": "{{container}} · {{deploy}}"
+        }
+      ]
+    },
+    {
+      "type": "logs",
+      "title": "ログ ($container)",
+      "datasource": {
+        "type": "loki",
+        "uid": "loki"
+      },
+      "gridPos": {
+        "h": 20,
+        "w": 24,
+        "x": 0,
+        "y": 16
+      },
+      "options": {
+        "showTime": true,
+        "showLabels": false,
+        "showCommonLabels": false,
+        "wrapLogMessage": true,
+        "prettifyLogMessage": false,
+        "enableLogDetails": true,
+        "dedupStrategy": "none",
+        "sortOrder": "Descending"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "loki",
+            "uid": "loki"
+          },
+          "expr": "{job=\"docker\", environment=\"production\", container=~\"$container\"} |~ \"(?i)$search\""
+        }
+      ]
+    }
+  ]
+}
