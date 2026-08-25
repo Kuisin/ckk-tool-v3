@@ -42,6 +42,7 @@ import { GhostButton } from "@/components/ui/buttons";
 import {
   FORM_FIELD_TYPES,
   type FormFieldDef,
+  nextFieldKey,
   normalizeOrder,
 } from "@/lib/form-schema";
 import { FormFieldEditor } from "./FormFieldEditor";
@@ -171,19 +172,24 @@ export function FormBuilder({
     onChange(normalizeOrder(arrayMove(fields, from, to)));
   };
 
-  const addField = () =>
+  const addField = () => {
+    // 空のキー・ラベルで作らない。空だと追加した瞬間に検証エラーになり、
+    // 「項目を足したのに保存できない」ところから始まってしまう。
+    const key = nextFieldKey(fields.map((f) => f.key));
+    const n = fields.length + 1;
     onChange(
       normalizeOrder([
         ...fields,
         {
-          key: "",
-          label: { ja: "", en: "" },
+          key,
+          label: { ja: `項目 ${n}`, en: "" },
           type: "text",
           required: false,
           order: fields.length,
         },
       ]),
     );
+  };
 
   return (
     <Stack gap="sm">

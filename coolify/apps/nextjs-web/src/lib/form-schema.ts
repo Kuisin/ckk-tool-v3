@@ -295,12 +295,31 @@ export function parseFormFields(
 ): { ok: true; fields: FormFieldDef[] } | { ok: false; error: string } {
   const parsed = formFieldsSchema.safeParse(value);
   if (!parsed.success) {
+    const issue = parsed.error.issues[0];
+    const message = issue?.message ?? "項目定義が不正です";
+    // 何番目の項目でこけたのかを言う。「ラベルを入力してください」だけだと、
+    // 項目が 20 個あるフォームでどれを直せばいいのか分からない。
+    const index = typeof issue?.path?.[0] === "number" ? issue.path[0] : null;
     return {
       ok: false,
-      error: parsed.error.issues[0]?.message ?? "項目定義が不正です",
+      error: index === null ? message : `${index + 1} 番目の項目: ${message}`,
     };
   }
   return { ok: true, fields: parsed.data as FormFieldDef[] };
+}
+
+/**
+ * 新しい項目に割り当てる既定のキー。`field1`, `field2`, … で、既存と衝突しない
+ * ものを返す。空キーで作ると、追加した直後の項目が常に検証エラーになり、
+ * 「追加したのに保存できない」状態から始まってしまう。
+ */
+export function nextFieldKey(existingKeys: readonly string[]): string {
+  const taken = new Set(existingKeys);
+  for (let n = existingKeys.length + 1; n < existingKeys.length + 1000; n++) {
+    const candidate = `field${n}`;
+    if (!taken.has(candidate)) return candidate;
+  }
+  return `field${Date.now()}`;
 }
 
 /** 並び順を 0..n-1 に振り直す（ドラッグ後・削除後に必ず通す）。 */

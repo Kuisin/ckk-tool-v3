@@ -39,6 +39,7 @@ import {
   toPlainAnswers,
   validateAnswers,
 } from "@/lib/form-schema";
+import { type FormExportBody, parseFormExport } from "@/lib/form-transfer";
 import { nextDocumentNumber } from "@/lib/numbering";
 import {
   type ActionResult,
@@ -703,4 +704,212 @@ export async function rejectResponse(
   const trimmed = reason.trim();
   if (!trimmed) return actionError("差し戻しの理由を入力してください");
   return actOnResponse(responseNumber, "REJECTED", trimmed);
+}
+
+// ── 取り込み（環境をまたぐ移送） ─────────────────────────────────────────────
+
+/** 貼り付けの上限。フォーム定義は数 KB。桁違いのものは読まずに弾く。 */
+const MAX_IMPORT_BYTES = 512 * 1024;
+
+export interface ImportPreview {
+  title: string;
+  kind: "SURVEY" | "REQUEST";
+  fieldCount: number;
+  sourceEnv: string;
+  sourceCode: string;
+  sourceVersion: number;
+  exportedAt: string;
+  exportedBy: string | null;
+  warnings: string[];
+  /** 書き出し元と同じコードが取り込み先で空いているか。 */
+  codeAvailable: boolean;
+  /** 同じコードの既存フォームがあり、自分がそれを編集できるか。 */
+  existingEditable: boolean;
+  existingTitle: string | null;
+}
+
+/**
+ * 取り込む前の下見。**何も書き込まない** — 取り込み先で何が起きるかを
+ * 先に見せてから確定させる（コードが衝突するのか、参照が外れるのか）。
+ */
+export async function previewFormImport(
+  text: string,
+): Promise<ActionResult<ImportPreview>> {
+  const authz = await checkPermission("form", "CREATE");
+  if (!authz.ok) return actionError(authz.error);
+  if (text.length > MAX_IMPORT_BYTES)
+    return actionError("ファイルが大きすぎます");
+
+  const parsed = parseFormExport(text);
+  if (!parsed.ok) return actionError(parsed.error);
+
+  const existing = parsed.data.meta.sourceCode
+    ? await prisma.form.findUnique({
+        where: { code: parsed.data.meta.sourceCode },
+        select: { code: true, title: true, createdBy: true },
+      })
+    : null;
+
+  let existingEditable = false;
+  if (existing) {
+    const access = await shareAccessFor(
+      FORM_OWNER_TYPE,
+      existing.code,
+      existing.createdBy,
+    );
+    existingEditable = access.canEdit;
+  }
+
+  return actionOk({
+    title: parsed.data.form.title,
+    kind: parsed.data.form.kind,
+    fieldCount: parsed.data.form.fields.length,
+    sourceEnv: parsed.data.meta.sourceEnv,
+    sourceCode: parsed.data.meta.sourceCode,
+    sourceVersion: parsed.data.meta.sourceVersion,
+    exportedAt: parsed.data.meta.exportedAt,
+    exportedBy: parsed.data.meta.exportedBy,
+    warnings: parsed.warnings,
+    codeAvailable: !existing,
+    existingEditable,
+    existingTitle: existing?.title ?? null,
+  });
+}
+
+async function insertImportedForm(
+  body: FormExportBody,
+  preferredCode: string,
+  actor: string | null,
+): Promise<string> {
+  // 書き出し元と同じコードが空いていれば使う（共有 URL が環境をまたいでも
+  // 同じになるので、手順書や QR を作り直さずに済む）。埋まっていれば新規採番。
+  let code = preferredCode;
+  const taken = code
+    ? await prisma.form.findUnique({ where: { code }, select: { code: true } })
+    : { code: "" };
+  if (!code || taken) code = await uniqueFormCode();
+
+  await prisma.$transaction(async (tx) => {
+    const form = await tx.form.create({
+      data: {
+        code,
+        title: body.title,
+        description: body.description,
+        kind: body.kind,
+        respondentVisibility: body.respondentVisibility,
+        approvalEnabled: body.approvalEnabled,
+        allowMultiple: body.allowMultiple,
+        responseEditMode: body.responseEditMode,
+        // 受付期間は運ばない。取り込んだ側で決める。
+        opensAt: null,
+        closesAt: null,
+        responseEditableUntil: null,
+        currentVersion: 1,
+        // 公開はするが、共有設定は空なので作成者以外には見えない。
+        status: "PUBLISHED",
+        createdBy: actor,
+        updatedBy: actor,
+      },
+      select: { id: true },
+    });
+    await tx.formVersion.create({
+      data: {
+        formId: form.id,
+        version: 1,
+        schema: body.fields as unknown as object,
+        publishedBy: actor,
+      },
+    });
+  });
+  return code;
+}
+
+/**
+ * 取り込む。2 通り:
+ *   - "new"     … 新しいフォームとして作る（既定）。
+ *   - "version" … 同じコードの既存フォームに、新しいバージョンとして重ねる。
+ *                 過去の回答は回答時点の版を指したままなので壊れない。
+ */
+export async function importForm(
+  text: string,
+  mode: "new" | "version" = "new",
+): Promise<
+  ActionResult<{ code: string; mode: "new" | "version"; version?: number }>
+> {
+  const authz = await checkPermission("form", "CREATE");
+  if (!authz.ok) return actionError(authz.error);
+  if (text.length > MAX_IMPORT_BYTES)
+    return actionError("ファイルが大きすぎます");
+
+  const parsed = parseFormExport(text);
+  if (!parsed.ok) return actionError(parsed.error);
+  const { form: body, meta } = parsed.data;
+
+  try {
+    const actor = await getCurrentActorId();
+
+    if (mode === "version") {
+      if (!meta.sourceCode)
+        return actionError("書き出し元のコードが無いので上書きできません");
+      const gate = await requireFormEdit(meta.sourceCode);
+      if (!gate.ok) return actionError(gate.error);
+
+      const version = await prisma.$transaction(async (tx) => {
+        const current = await tx.form.findUniqueOrThrow({
+          where: { code: meta.sourceCode },
+          select: { id: true, currentVersion: true },
+        });
+        const next = current.currentVersion + 1;
+        await tx.formVersion.create({
+          data: {
+            formId: current.id,
+            version: next,
+            schema: body.fields as unknown as object,
+            publishedBy: actor,
+          },
+        });
+        await tx.form.update({
+          where: { id: current.id },
+          data: {
+            title: body.title,
+            description: body.description,
+            kind: body.kind,
+            respondentVisibility: body.respondentVisibility,
+            approvalEnabled: body.approvalEnabled,
+            allowMultiple: body.allowMultiple,
+            responseEditMode: body.responseEditMode,
+            currentVersion: next,
+            status: "PUBLISHED",
+            updatedBy: actor,
+          },
+        });
+        return next;
+      });
+
+      await recordAudit({
+        action: "UPDATE",
+        tableName: "forms",
+        recordId: meta.sourceCode,
+        after: {
+          note: `${meta.sourceEnv} から取り込み（バージョン ${version} として公開）`,
+        },
+      });
+      revalidate(meta.sourceCode);
+      return actionOk({ code: meta.sourceCode, mode: "version", version });
+    }
+
+    const code = await insertImportedForm(body, meta.sourceCode, actor);
+    await recordAudit({
+      action: "CREATE",
+      tableName: "forms",
+      recordId: code,
+      after: {
+        note: `${meta.sourceEnv} / ${meta.sourceCode} から取り込み`,
+      },
+    });
+    revalidate(code);
+    return actionOk({ code, mode: "new" });
+  } catch (e) {
+    return actionError(prismaErrorMessage(e, "取り込みに失敗しました"));
+  }
 }

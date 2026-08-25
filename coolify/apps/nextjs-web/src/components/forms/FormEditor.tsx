@@ -9,7 +9,6 @@
 
 import {
   Checkbox,
-  Group,
   Select,
   Stack,
   Text,
@@ -20,10 +19,9 @@ import { DateTimePicker } from "@mantine/dates";
 import { notifications } from "@mantine/notifications";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
-import { PrimaryButton } from "@/components/ui/buttons";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { FormActions, FormSection } from "@/components/ui/shells";
-import type { FormFieldDef } from "@/lib/form-schema";
+import { type FormFieldDef, normalizeOrder } from "@/lib/form-schema";
 import { FormBuilder } from "./FormBuilder";
 
 export interface FormSettingsValues {
@@ -85,38 +83,63 @@ export function FormEditor({
   const set = (patch: Partial<FormSettingsValues>) =>
     setValues({ ...values, ...patch });
 
-  const saveSettings = () =>
+  /**
+   * 項目に手が入ったか。**入っていないときは公開しない** — 設定を直すたびに
+   * 中身の同じバージョンが積み上がるのを避ける（バージョンは不変なので、
+   * 一度作ると消せない）。
+   */
+  const fieldsDirty =
+    JSON.stringify(normalizeOrder(fields)) !==
+    JSON.stringify(normalizeOrder(initialFields));
+
+  /**
+   * 保存は 1 つ。設定と項目をまとめて保存する。
+   *
+   * 以前は「保存」が設定だけを保存して即座に画面を離れており、組んだ項目が
+   * 黙って捨てられていた（項目の公開は別ボタンだったが、下の大きいボタンを
+   * 押すのが自然なので気づけない）。保存は 1 つにして、**どちらかが失敗したら
+   * 画面を離れない**。
+   */
+  const save = () =>
     startTransition(async () => {
-      const result = await onSaveSettings(values);
-      if (result.ok) {
-        notifications.show({ message: "保存しました", color: "green" });
-        router.push(`/general/forms/${result.code ?? code}`);
-      } else {
+      const saved = await onSaveSettings(values);
+      if (!saved.ok) {
         notifications.show({
           title: "エラー",
-          message: result.error ?? "保存に失敗しました",
+          message: saved.error ?? "保存に失敗しました",
           color: "red",
         });
+        return;
       }
-    });
 
-  const publish = () =>
-    startTransition(async () => {
-      if (!onPublishFields) return;
-      const result = await onPublishFields(fields);
-      if (result.ok) {
+      const target = saved.code ?? code;
+
+      if (mode === "edit" && onPublishFields && fieldsDirty) {
+        const published = await onPublishFields(fields);
+        if (!published.ok) {
+          // 設定は保存済み。項目だけ落ちたので、画面はそのまま残して直させる。
+          notifications.show({
+            title: "項目を保存できませんでした",
+            message: `${published.error ?? "項目定義が不正です"}（設定は保存しました）`,
+            color: "red",
+          });
+          return;
+        }
         notifications.show({
-          message: "項目を公開しました（新しいバージョン）",
+          message: "保存しました（項目は新しいバージョンとして公開）",
           color: "green",
         });
-        router.refresh();
       } else {
-        notifications.show({
-          title: "エラー",
-          message: result.error ?? "公開に失敗しました",
-          color: "red",
-        });
+        notifications.show({ message: "保存しました", color: "green" });
       }
+
+      // 新規作成の直後は、項目を組むために編集画面へ進ませる
+      // （詳細画面に飛ばすと「編集」を探し直すことになる）。
+      router.push(
+        mode === "new"
+          ? `/general/forms/${target}/edit`
+          : `/general/forms/${target}`,
+      );
     });
 
   return (
@@ -241,15 +264,16 @@ export function FormEditor({
       {mode === "edit" && onPublishFields && (
         <FormSection title="項目">
           <Text c="dimmed" size="sm">
-            保存すると新しいバージョンとして公開されます。これまでの回答は
-            回答した時点の項目のまま残ります。
+            下の「保存」で、設定と一緒に保存されます。項目に手を入れた場合は
+            新しいバージョンとして公開され、これまでの回答は回答した時点の
+            項目のまま残ります。
           </Text>
           <FormBuilder fields={fields} onChange={setFields} />
-          <Group justify="flex-end">
-            <PrimaryButton loading={isPending} onClick={publish} type="button">
-              項目を公開
-            </PrimaryButton>
-          </Group>
+          {fieldsDirty && (
+            <Text c="orange" size="xs">
+              項目に未保存の変更があります。
+            </Text>
+          )}
         </FormSection>
       )}
 
@@ -258,7 +282,7 @@ export function FormEditor({
         onCancel={() =>
           router.push(code ? `/general/forms/${code}` : "/general/forms")
         }
-        onSave={saveSettings}
+        onSave={save}
       />
     </Stack>
   );

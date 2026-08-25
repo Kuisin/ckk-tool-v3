@@ -30,6 +30,7 @@ import {
   isSafePattern,
   LOOKUP_SOURCES,
   MAX_PATTERN_LENGTH,
+  nextFieldKey,
 } from "@/lib/form-schema";
 
 const NEEDS_OPTIONS: FormFieldType[] = ["select", "multiselect"];
@@ -314,8 +315,13 @@ export function FormFieldEditor({
                   columns: [
                     ...(field.columns ?? []),
                     {
-                      key: "",
-                      label: { ja: "", en: "" },
+                      key: nextFieldKey(
+                        (field.columns ?? []).map((c) => c.key),
+                      ),
+                      label: {
+                        ja: `列 ${(field.columns ?? []).length + 1}`,
+                        en: "",
+                      },
                       type: "text",
                       required: false,
                       order: (field.columns ?? []).length,
