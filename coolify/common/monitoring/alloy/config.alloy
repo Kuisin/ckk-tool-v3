@@ -31,6 +31,15 @@ discovery.relabel "docker" {
     source_labels = ["__meta_docker_container_image"]
     target_label  = "image"
   }
+  // 実際の Docker コンテナ名を別ラベルに残す。Coolify のアプリは
+  // デプロイの度にコンテナが作り直され `<uuid>-<時刻>` と変わるので、
+  // これが**デプロイの識別子**になる（container はアプリ名に上書きするため、
+  // それだけでは「いつのデプロイのログか」が分からない）。
+  rule {
+    source_labels = ["__meta_docker_container_name"]
+    regex         = "/(.*)"
+    target_label  = "deploy"
+  }
 
   // ── Coolify のアプリだけ名前を読める形に上書きする ─────────────────
   // Coolify はコンテナ名も compose project もハッシュ（例:

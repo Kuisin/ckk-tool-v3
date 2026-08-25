@@ -60,6 +60,22 @@ services:
       - /sys:/sys:ro
     networks: [monitoring]
 
+  # コンテナのメタ情報を Prometheus 形式で出す自前 exporter。
+  # docker.sock は読み取り専用でマウントするが、API 自体は強い権限を持つ
+  # （cadvisor / portainer と同じ前提）。外には出さない。
+  #
+  # ⚠️ この定義は長らく**サーバー側の compose にしか無かった**（リポジトリ未コミット）。
+  # Coolify は git から建てるので移行時に丸ごと消え、そこで発覚した。
+  # サーバーを直接編集すると、こうして黙って失われる。
+  docker-exporter:
+    build: ./docker-exporter
+    image: ckk-docker-exporter
+    container_name: docker-exporter
+    restart: unless-stopped
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    networks: [monitoring]
+
   # Log store for container logs (collected by Alloy below).
   loki:
     build:

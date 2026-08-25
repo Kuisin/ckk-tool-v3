@@ -2,15 +2,23 @@
  * file-naming.ts — 保存ファイル名の系統的リネーム。
  *
  * アプリからストレージへ保存するファイルは必ずここを通し、
- * `{yyyyMMdd-HHmmss}_{rand4}_{ラベル_}{元ファイル名}` に統一する。
+ * `{yyyyMMdd-HHmmss}_{rand6}_{ラベル_}{元ファイル名}` に統一する。
  * 一意（時刻 + 乱数）かつ元名・文脈ラベルで判別可能。isomorphic（依存なし）。
  */
 
 const RAND_CHARS = "abcdefghjkmnpqrstuvwxyz23456789";
 
-function rand4(): string {
+/**
+ * 衝突回避用のランダム接尾辞。
+ *
+ * タイムスタンプは**秒**までなので、同一秒に作られたファイルはここだけで
+ * 区別される。4 文字（31^4 ≈ 92 万）だと 50 件で約 0.13%、1 万件では
+ * ほぼ確実に衝突する — 実際 CI のユニークネステストが偶発的に落ちた。
+ * 6 文字（31^6 ≈ 8.9 億）にして、50 件で約 140 万分の 1 に下げる。
+ */
+function randSuffix(): string {
   let s = "";
-  for (let i = 0; i < 4; i++) {
+  for (let i = 0; i < 6; i++) {
     s += RAND_CHARS[Math.floor(Math.random() * RAND_CHARS.length)];
   }
   return s;
@@ -41,7 +49,7 @@ export function sanitizeFileName(name: string): string {
  */
 export function systematicFileName(original: string, label?: string): string {
   const safeLabel = label ? `${sanitizeFileName(label)}_` : "";
-  return `${timestamp()}_${rand4()}_${safeLabel}${sanitizeFileName(original)}`;
+  return `${timestamp()}_${randSuffix()}_${safeLabel}${sanitizeFileName(original)}`;
 }
 
 /**
