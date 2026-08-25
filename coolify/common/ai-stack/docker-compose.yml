@@ -42,7 +42,7 @@ services:
       # Each slot is one KV-cache copy (slot KV = context).
       - OLLAMA_NUM_PARALLEL=2
     networks:
-      - default   # ai-stack_default（open-webui / metabase-mcp 等）
+      - default   # このスタックの自前網（open-webui / metabase-mcp 等）
       # Coolify 上の po-extract-dev / -main が http://ollama:11434 で引くため。
       # GPU は 1 セットなので ollama は**この 1 台だけ**を両環境で共有する。
       - coolify
@@ -152,7 +152,7 @@ services:
       # Protects the mcpo OpenAPI endpoints; Open WebUI sends it as the bearer token.
       - MCPO_API_KEY=${MCPO_API_KEY:-}
     networks:
-      - default     # ai-stack_default — reachable by open-webui
+      - default     # このスタックの自前網 — open-webui から引ける
 
 # 名前付きボリュームは置かない。Coolify は `external: true` と書いても
 # `<appUUID>_<name>` へ改名するので、38GB のモデルが再デプロイのたびに空から

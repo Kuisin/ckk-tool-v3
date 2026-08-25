@@ -46,9 +46,11 @@ BACKUP_DIR = Path(os.environ.get("BACKUP_DIR", "/backups"))       # this contain
 BACKUP_HOST_DIR = os.environ.get("BACKUP_HOST_DIR", "/data/db-backups")  # host path for one-shot mounts
 TOKEN = os.environ.get("RESTORE_AGENT_TOKEN", "")
 DB_URL = os.environ.get("RESTORE_DB_URL", "")                     # superuser DSN to the ckk database
-SEAWEED_CONTAINER = os.environ.get("SEAWEED_CONTAINER", "nextjs-seaweedfs")
-SEAWEED_VOLUME = os.environ.get("SEAWEED_VOLUME", "nextjs-web_seaweed-data")
-SHARED_DB_NETWORK = os.environ.get("SHARED_DB_NETWORK", "shared-db")
+SEAWEED_CONTAINER = os.environ.get("SEAWEED_CONTAINER", "seaweedfs-main")
+# ボリューム名でもホストパスでもよい（docker SDK のマウント元）。2026-08-25 に
+# ホストの固定パスへ移した — Coolify がボリュームを改名するため。
+SEAWEED_VOLUME = os.environ.get("SEAWEED_VOLUME", "/data/seaweed-main")
+SHARED_DB_NETWORK = os.environ.get("SHARED_DB_NETWORK", "coolify")
 # Physical restore (whole-cluster): stop shared-db, swap its data volume, start.
 SHARED_DB_CONTAINER = os.environ.get("SHARED_DB_CONTAINER", "shared-db")
 SHARED_DB_VOLUME = os.environ.get("SHARED_DB_VOLUME", "shared-db_shared-db-data")

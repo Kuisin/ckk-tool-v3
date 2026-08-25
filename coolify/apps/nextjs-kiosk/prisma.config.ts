@@ -13,6 +13,6 @@ export default defineConfig({
   datasource: {
     // Only used by CLI introspection; the app passes a driver adapter at runtime.
     url:
-      process.env.DATABASE_URL ?? "postgresql://app:unused@shared-db:5432/ckk",
+      process.env.DATABASE_URL ?? "postgresql://app:unused@ckk-db-dev:5432/ckk",
   },
 });

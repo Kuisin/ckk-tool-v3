@@ -16,30 +16,32 @@
 `common/` の各ディレクトリはサーバーの `~/stacks/<name>/` と 1:1 で対応する。
 `apps/` にサーバー側の対応ディレクトリは無い（Coolify が git から直接建てる）。
 
-> **移行中** — `common/` は Coolify 管理（プロジェクト `ckk` の **`common` 環境**）へ
-> 1 スタックずつ移している。**移行済みのものに `deploy-stack.sh` を使ってはいけない**
-> （Coolify が建てたコンテナと二重になる）。現況は下表。
+> **移行は 2026-08-25 に完了した。** `common/` は 1 つを除いてすべて Coolify 管理
+> （プロジェクト `ckk` の **`common` 環境**）。**Coolify 管理のものに
+> `deploy-stack.sh` を使ってはいけない** — 同じものが二重に立ち上がる。
+> `deploy-stack.sh` が正しいのは下の「意図的に Coolify へ移さないもの」だけ。
 
-### `common/` の移行状況
+### `common/` 環境のアプリ（14）
 
 `common` 環境のアプリは **main 追従**（共有の土台なので、変更が本番へ出るのは
 promotion 後 — dev へのマージで ingress や監視が再起動しない）。
 
-| スタック | 管理 | 備考 |
-|---|---|---|
-| `prisma-studio` | **Coolify** | 第 1 号。状態を持たないので試験台にした |
-| `metabase` | **Coolify** | ボリュームを持つ最初の例。停止 → コピー → 起動で移した |
-| `kot-import` | **Coolify** | 状態なし。旧 shared-db ネットワークも外した |
-| `mailrelay` | **Coolify** | + `mail-api`（HTTP → SMTP） |
-| `portainer` | **Coolify** | `dockge` 別名を維持したので経路は無傷 |
-| `legacy-db` | **Coolify** | 参照専用の旧 DB |
-| `monitoring` | **Coolify** | 設定はイメージへ焼き込み（0750 対策） |
-| `fx-rates` | **Coolify** | shared-db から切り出し |
-| `cloudflared` | **Coolify** | 参加ネットワークを 8 → 4 本に整理 |
-| `secrets` | **Coolify** | `ckk-secrets` ボリュームの持ち主 + 健全性チェック |
-| `ai-stack` | 移行中 | searxng の設定は秘密ボリュームへ |
-| `vpn-ldap` | 未移行 | `ldap.env` を Coolify env へ移す必要あり |
-| `nextjs-web` | 未移行 | socat リレー + gotenberg / seaweedfs |
+| スタック | 備考 |
+|---|---|
+| `prisma-studio` | 第 1 号。状態を持たないので試験台にした |
+| `metabase` | ボリュームを持つ最初の例。停止 → コピー → 起動で移した |
+| `kot-import` | 状態なし |
+| `mailrelay` | + `mail-api`（HTTP → SMTP）|
+| `portainer` | `dockge` 別名を維持したので経路は無傷 |
+| `legacy-db` | 参照専用の旧 DB |
+| `monitoring` | 設定はイメージへ焼き込み（0750 対策）|
+| `fx-rates` | 旧 shared-db スタックから切り出し |
+| `cloudflared` | 参加ネットワークを 8 → **1 本**（`coolify`）に整理 |
+| `secrets` | `/data/ckk-secrets` の持ち主 + 健全性チェック |
+| `ai-stack` | ollama / open-webui / searxng / metabase-mcp。39GB はホストの固定パスへ |
+| `vpn-ldap` | `ldap.env` は Coolify env へ。AD 経路は専用網 `ckk-ldap` |
+| `app-support` | 旧 `nextjs-web` スタックの後継（gotenberg × 2 / seaweedfs × 2）|
+| `nginx-proxy` | **アプリ行はあるがデプロイしていない**（下記の理由で直接デプロイ）|
 
 ### 意図的に Coolify へ移さないもの
 
@@ -48,6 +50,10 @@ promotion 後 — dev へのマージで ingress や監視が再起動しない�
 | `coolify` | **不可能**。自分自身をデプロイすると、その途中で自分を落として失敗する |
 | `nginx-proxy` | Coolify は 80/443 を自分の Traefik で握ろうとする。アプリに `ports_exposes: 80,443` を付けた瞬間に `coolify-proxy` が起動してポートを奪い、**LAN の TLS が落ちた**（実際に踏んだ）。逆方向の前提を持つ 2 つのリバースプロキシを同居させる意味は無い |
 | `db-backup` | バックアップは**復旧手段**なので、復旧したい相手に依存させない。Coolify が壊れたときにこそ要る |
+
+この 3 つだけが `common/deploy-stack.sh <name>` の対象。サーバーの `~/stacks/`
+にもこの 3 つしか残っていない（他は `~/stacks-retired/` へ退避済み — `.env` ごと
+保持してあり、消してはいない）。
 
 **Coolify 化で判ったこと（次のスタックでも同じ）**
 
@@ -59,9 +65,25 @@ promotion 後 — dev へのマージで ingress や監視が再起動しない�
 - サーバーの `.env` は引き継がれない。**Coolify の env 変数へ入れ直す**
   （値は `~/stacks/<stack>/.env` から移す。`${VAR:?}` の必須変数を落とすと
   デプロイが即失敗するので、キーを数えて確認すること）。
-- **名前付きボリュームは名前が変わる**（compose プロジェクト名がアプリ UUID に
-  なるため）。状態を持つスタックは「停止 → 新ボリュームへコピー → 起動」を
-  1 スタックずつやる。`prisma-studio` はボリュームが無いので影響なし。
+- **名前付きボリュームは名前が変わる。`external: true` と書いても変わる。**
+  Coolify は必ず `<appUUID>_<name>` に改名するので、(a) 複数のアプリで 1 本を
+  共有できず、(b) 再デプロイが空のボリュームで立ち上がりうる。実際 `secrets` は
+  空を掴んで健全性チェックが全項目 MISSING になった。
+  **データを持つものは bind mount にする** — bind はそのまま渡る:
+
+  | ホストのパス | 中身 |
+  |---|---|
+  | `/data/ckk-secrets` | 証明書 / acme state / OpenVPN 設定 / searxng の secret_key |
+  | `/data/seaweed-dev` `/data/seaweed-main` | ファイル本体（環境別）|
+  | `/data/ollama` `/data/open-webui` | モデル 38GB / チャット履歴 |
+  | `/data/db-backups` | バックアップ |
+
+- **docker の既定アドレスプールは 31 本で尽きる**（172.17–31 の /16 が 15 本 +
+  192.168 の /20 が 16 本）。アプリごとに `<uuid>_default` が増えるので、移行の
+  途中で尽き、デプロイが `all predefined address pools have been fully subnetted`
+  で落ちた。**使っていない網を `docker network prune`** すること。恒久対策は
+  `/etc/docker/daemon.json` の `default-address-pools` 拡張だが、dockerd の
+  再起動＝全コンテナ再起動なので未実施。
 - 移行の直前に **旧スタックを `docker compose down`** する。`container_name` が
   衝突して新デプロイが失敗するため。
 - 自動デプロイには **アプリごとの GitHub webhook** が要る（Coolify 側で
@@ -79,8 +101,15 @@ promotion 後 — dev へのマージで ingress や監視が再起動しない�
 | `cloudflared` | cloudflared | 公開ドメイン（`*.ckk-tool.co.jp` に一本化。キオスクのみ `*.kai-lab.net`）のトンネル |
 | `nginx-proxy` | nginx-proxy, nginx-acme | LAN 内 TLS（acme.sh DNS-01 で Let's Encrypt） |
 
-どちらも **リレー名**（下の 2）へ向ける。Coolify のコンテナ名はデプロイの度に
-変わるハッシュなので、ここから直接は指さない。
+どちらも **`coolify` 網の別名**へ向ける。Coolify のコンテナ名はデプロイの度に
+変わるハッシュなので直接は指さないが、`custom_network_aliases` が安定した名前を
+張ってくれる（`web` / `web-main` / `kiosk` / `kiosk-main` / `admin` / `admin-dev` /
+`dockge` / `open-webui` …）。
+
+以前はここに socat のリレーを 6 本置いていた。同じ役目を Coolify の機能で
+果たせると判ったので **2026-08-25 に廃止**した。同時に nginx と cloudflared の
+参加ネットワークを **1 本（`coolify`）** に絞った — スタックごとの compose 網を
+名前でたぐる構成は、移行のたびに名前が変わって（`<appUUID>_...`）壊れていた。
 
 ### 2. Business apps — Coolify がビルドするアプリ（ブランチ別に 2 系統）
 
@@ -107,26 +136,27 @@ dev と main を**常時両方**動かす（本番の隣で検証するため）
 `ckk-db-*` は**自動デプロイを切ってある**（push で DB コンテナが作り直される
 事故を防ぐため）。登録は `platform/add-db-apps.sh`。
 
-### 3. App support — アプリが必要とする周辺（`nextjs-web` スタック）
+### 3. App support — アプリが必要とする周辺（`app-support`）
 
 | コンテナ | 役割 |
 |---|---|
-| `web` / `web-main` / `kiosk` / `kiosk-main` / `admin` / `admin-dev` | socat リレー。ハッシュ名の Coolify コンテナに**安定した名前**を与える |
-| `gotenberg-dev` / `gotenberg-main` | PDF 生成（環境別） |
-| `seaweedfs-dev` / `seaweedfs-main` | ファイル本体（S3 API + filer）。**ボリュームも環境別** |
+| `gotenberg-dev` / `gotenberg-main` | PDF 生成（環境別）|
+| `seaweedfs-dev` / `seaweedfs-main` | ファイル本体（S3 API + filer）。**保管先も環境別**（`/data/seaweed-dev` / `-main`）|
 
-> リレー 6 本は Coolify の `custom_network_aliases`（po-extract で使っている
-> 仕組み）で置き換えられる。置き換えると Edge から Coolify コンテナへ直接
-> 向けられ、6 コンテナ消える — 未実施（ingress を触るため要検証）。
+旧 `nextjs-web` スタックの後継。socat リレー 6 本はここに居たが、
+`custom_network_aliases` で置き換えて廃止した（上の「Edge」参照）。
 
 ### 4. Data — 状態を持つもの
 
 | スタック | コンテナ | 中身 |
 |---|---|---|
-| `shared-db` | shared-db, fx-rates | **旧・共有 DB**。`ckk-db-dev` / `ckk-db-main`（Coolify アプリ）へ移行中。移行完了後に停止する（ボリュームは切り戻し用に暫く残す） |
 | `prisma-studio` | prisma-studio | DB ブラウザ |
 | `metabase` | metabase, metabase-db | BI ダッシュボード |
 | `legacy-db` | ckk-legacy-db | 旧 macOS 版の `ckk_system`（FileMaker 移行元・参照専用） |
+
+業務 DB 本体は `apps/ckk-db/` の **`ckk-db-dev` / `ckk-db-main`**（グループ 2）。
+旧 `shared-db` スタックは 2026-08-24 に退役し、`fx-rates` は `common/fx-rates/`
+へ切り出した。
 
 ### 5. AI — GPU を使うもの（32GB × 2 枚）
 
@@ -154,8 +184,10 @@ ollama は 1 プロセスで 1 枚しか使わないので**カードごとに 1
 
 | スタック | コンテナ | 役割 |
 |---|---|---|
-| `authentik` | （停止中） | **旧・未使用**。2026-08-25 に停止した（ボリュームは残置）。実際の IdP は**別サーバー**で、`vpn-ldap` の socat 経由で `auth.ckk-tools.loc:9000` → `21.10.10.10:9000` に届く |
-| `vpn-ldap` | vpn-ldap, ldap-sync | Samba AD への到達（VPN）+ 社員同期。**IdP への経路もここ**（`auth.ckk-tools.loc` はこのコンテナのネットワーク別名で、socat が `21.10.10.10:9000` へ中継する） |
+| `vpn-ldap` | vpn-ldap, ldap-sync | Samba AD への到達（VPN）+ 社員同期。**IdP への経路もここ**（`auth.ckk-tools.loc` はこのコンテナのネットワーク別名で、socat が `21.10.10.10:9000` へ中継する）|
+
+IdP（Authentik）は**別サーバー**にあり、このサーバーの `authentik` スタックは
+2026-08-25 に廃止した（リポジトリからも削除済み。サーバー側のボリュームは残置）。
 | `mailrelay` | mailrelay | 送信メール中継 |
 | `kot-import` | kot-import | King of Time（勤怠）取込 |
 
@@ -186,15 +218,23 @@ Portainer は Dockge 由来のスタック（上のグループ 1〜7）を見�
 
 ## スタックをまたぐ接続
 
-外部ネットワークに参加させることでのみ繋がる（既定では届かない）:
+外部ネットワークに参加させることでのみ繋がる（既定では届かない）。移行後は
+**実質 2 本**しかない:
 
 ```
-coolify ネットワーク   ← shared-db / gotenberg / seaweedfs / ollama / ollama-vl
-                          （Coolify のアプリから名前で引くため）
-vpn-ldap_default       ← open-webui（LDAP ログイン）
-nextjs-web_default     ← nginx-proxy / cloudflared（リレー経由でアプリへ）
-monitoring             ← 監視系のみ（ログ収集は Docker ソケット経由なので全体を見る）
+coolify    ← ほぼ全部。Coolify のアプリと、それを指す nginx / cloudflared。
+              安定名は custom_network_aliases が張る（web / kiosk / admin /
+              dockge / open-webui / metabase / grafana / ckk-db-* / po-extract-*）
+ckk-ldap   ← AD へ届く区画網。vpn-ldap（+ldap-sync）と、AD を読む
+              open-webui / metabase / admintools **だけ**が参加する
 ```
+
+**`ckk-ldap` を `coolify` に統合しないのは意図的。** 配線は楽になるが、それは
+全 Coolify アプリから AD が見えるということで、「明示的に参加したものだけが
+AD を触れる」という元の設計を捨てることになる。
+
+各アプリ固有の網（`<appUUID>_default`）はそのアプリのサービス間通信専用。
+`monitoring` はログ収集を Docker ソケット経由でやるので、網に関係なく全体を見る。
 
 ---
 

@@ -1,9 +1,20 @@
 # shared-db — CKK 共有データベース
 
-Single source of truth for the shared PostgreSQL database (`ckk`) that holds
-**all business data** across apps. Runs as the `shared-db` docker-compose stack
-on docker-mac-pro (`~/stacks/shared-db`, image `groonga/pgroonga:4.0.6-alpine-17`,
-LAN port `192.168.50.15:15432`, in-cluster host `shared-db:5432`).
+Single source of truth for the PostgreSQL database (`ckk`) that holds
+**all business data** across apps.
+
+**このディレクトリはスキーマとマイグレーションだけ**で、DB サーバーそのものでは
+ない。DB は環境ごとに 1 台あり、どちらも Coolify アプリ（イメージのソースは
+`coolify/apps/ckk-db/`、`groonga/pgroonga:4.0.6-alpine-17` ベース）:
+
+| 環境 | Coolify アプリ | 網内ホスト名 |
+|---|---|---|
+| dev | `ckk-db-dev` | `ckk-db-dev:5432` |
+| 本番 | `ckk-db-main` | `ckk-db-main:5432` |
+
+**ホストポートは公開していない。** ワークステーションからは `scripts/remote-db.sh`
+（SSH トンネル）で読む。旧 `shared-db` スタック（`~/stacks/shared-db`, LAN
+`:15432`）は 2026-08-24 に退役した。
 
 ## One DB, one schema per domain
 
@@ -192,7 +203,7 @@ pgroonga の無い開発ホストでも通る（本番の `groonga/pgroonga` イ
 
 ## Roles / connections
 
-Created by `coolify/common/shared-db/init/01-roles.sh` (passwords in the
+Created by `coolify/apps/ckk-db/init/01-roles.sh` (passwords in the
 server-side `~/stacks/shared-db/.env`); grants + per-role `search_path` in
 `sql/grants.sql` (idempotent — re-run after adding a schema or role;
 `ALTER DEFAULT PRIVILEGES` already covers new tables in existing schemas).

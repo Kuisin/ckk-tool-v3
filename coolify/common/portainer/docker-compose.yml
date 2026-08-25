@@ -1,7 +1,7 @@
 # Portainer CE — Docker management UI (replaces Dockge).
 #
 # Deployed on docker-mac-pro at ~/stacks/portainer.
-# Serves plain HTTP on :5001 and joins the kept `dockge_default` network with the
+# Serves plain HTTP on :5001 and joins the `coolify` network with the
 # alias `dockge`, so the existing cloudflared tunnel + nginx routes
 # (dock.kai-lab.net -> http://dockge:5001) keep working unchanged.
 
