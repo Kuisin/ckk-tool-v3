@@ -20,6 +20,7 @@ const OWNER_TYPE_PERMISSION: Record<string, string> = {
   material_receipts: "material_receipt",
   order_acceptances: "order_acceptance",
   design_requests: "design_request",
+  form_responses: "form",
 };
 
 function badRequest(error: string): NextResponse {
@@ -54,6 +55,11 @@ async function ownerExists(
         select: { yearMonth: true },
       }));
     }
+    case "form_responses":
+      return !!(await prisma.formResponse.findUnique({
+        where: { responseNumber: ownerId },
+        select: { id: true },
+      }));
     case "design_requests":
       return !!(await prisma.designRequest.findUnique({
         where: { requestNumber: ownerId },

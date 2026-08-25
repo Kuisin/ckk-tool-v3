@@ -18,6 +18,7 @@ import { contentTypeForKey, getObject } from "@/lib/storage";
 const OWNER_PERMISSION: Record<string, string> = {
   material_purchase_orders: "purchase_order",
   purchase_requests: "purchase_order",
+  form_responses: "form",
   material_receipts: "material_receipt",
   order_acceptances: "order_acceptance",
   work_orders: "work_order",

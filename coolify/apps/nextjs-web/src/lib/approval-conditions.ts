@@ -87,6 +87,20 @@ export const APPROVAL_CONDITION_FIELDS: Record<
   purchase_requests: [
     { key: "item_count", label: "明細数", type: "number", unit: "件" },
   ],
+  // フォーム申請 (CM02)。どのフォームの申請かで承認者を変えたい、が一番効くので
+  // フォーム種別を出す。フォームは利用者が随時作るため、フォームそのものを
+  // 選択肢にすると条件が壊れやすい（削除・改名）ので v1 では出さない。
+  form_responses: [
+    {
+      key: "form_kind",
+      label: "フォームの種類",
+      type: "select",
+      options: [
+        { value: "SURVEY", label: "アンケート" },
+        { value: "REQUEST", label: "申請・報告" },
+      ],
+    },
+  ],
   work_order_flow_changes: [
     {
       key: "wo_type",

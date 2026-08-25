@@ -19,6 +19,7 @@ export const APPROVAL_TARGET_TYPES = [
   "purchase_requests",
   "work_order_flow_changes",
   "order_acceptance_cancel_requests",
+  "form_responses",
 ] as const;
 
 export type ApprovalTargetType = (typeof APPROVAL_TARGET_TYPES)[number];
@@ -105,6 +106,16 @@ export const APPROVAL_TARGET: Record<ApprovalTargetType, ApprovalTargetMeta> = {
     href: (id) => `/sales/order-acceptances/cancel-requests/${id}`,
     appKey: "order-acceptances",
     approvePermission: "order_acceptance",
+  },
+  form_responses: {
+    label: "フォーム申請",
+    color: "indigo",
+    // 回答は「どのフォームの何番目か」で辿るのが自然だが、承認一覧からは
+    // 業務キー（FRM-…）1 本しか渡ってこない。番号から所属フォームを引いて
+    // 実ページへ 302 する中継ページを置く。
+    href: (id) => `/general/forms/responses/${id}`,
+    appKey: "forms",
+    approvePermission: "form",
   },
   purchase_requests: {
     label: "購買依頼",

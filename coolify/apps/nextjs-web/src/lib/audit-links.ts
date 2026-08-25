@@ -71,6 +71,19 @@ const TABLE_ROUTES: Record<string, TableRoute> = {
     listPath: "/production/inventory/materials",
     directDetail: true,
   },
+  // 一般
+  forms: {
+    appLabel: "フォーム",
+    listPath: "/general/forms",
+    directDetail: true,
+  },
+  form_responses: {
+    // 回答の業務キー（FRM-…）だけでは所属フォームが分からないので、
+    // 番号から実ページへ 302 する中継ページへ送る。
+    appLabel: "フォーム回答",
+    listPath: "/general/forms/responses",
+    directDetail: true,
+  },
   // 購買
   purchase_requests: {
     appLabel: "購買依頼",

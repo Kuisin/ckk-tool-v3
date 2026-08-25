@@ -61,6 +61,19 @@ export const appList: AppEntry[] = [
     requiredPermission: null,
   },
 
+  {
+    // フォーム — 利用者が項目を組んで作る汎用フォーム（アンケート / 申請・報告）。
+    // アプリ自体は全員が開ける（回答するため）。作成できるかは form:CREATE で、
+    // 個々のフォームを誰に見せるかは share_grants（フォームごとの共有設定）が決める。
+    key: "forms",
+    label: "フォーム",
+    operationCode: "CM02",
+    href: "/general/forms",
+    icon: "IconForms",
+    category: "一般",
+    requiredPermission: null,
+  },
+
   // ─── 販売 ──────────────────────────────────────────────────────────────────
   // 業務フロー順: 試算 → 価格表 → 見積書 → 注文請書（設計依頼書は並行フロー）
   {
