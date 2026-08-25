@@ -27,10 +27,27 @@ promotion 後 — dev へのマージで ingress や監視が再起動しない�
 
 | スタック | 管理 | 備考 |
 |---|---|---|
-| `prisma-studio` | **Coolify**（main 追従） | 第 1 号。状態を持たないので試験台にした |
-| `metabase` | **Coolify**（main 追従） | ボリュームを持つ最初の例。停止 → コピー → 起動で移した |
-| `kot-import` | **Coolify**（main 追従） | 状態なし。旧 shared-db ネットワークも外した |
-| 他 11 スタック | `deploy-stack.sh` | 未移行 |
+| `prisma-studio` | **Coolify** | 第 1 号。状態を持たないので試験台にした |
+| `metabase` | **Coolify** | ボリュームを持つ最初の例。停止 → コピー → 起動で移した |
+| `kot-import` | **Coolify** | 状態なし。旧 shared-db ネットワークも外した |
+| `mailrelay` | **Coolify** | + `mail-api`（HTTP → SMTP） |
+| `portainer` | **Coolify** | `dockge` 別名を維持したので経路は無傷 |
+| `legacy-db` | **Coolify** | 参照専用の旧 DB |
+| `monitoring` | **Coolify** | 設定はイメージへ焼き込み（0750 対策） |
+| `fx-rates` | **Coolify** | shared-db から切り出し |
+| `cloudflared` | **Coolify** | 参加ネットワークを 8 → 4 本に整理 |
+| `secrets` | **Coolify** | `ckk-secrets` ボリュームの持ち主 + 健全性チェック |
+| `ai-stack` | 移行中 | searxng の設定は秘密ボリュームへ |
+| `vpn-ldap` | 未移行 | `ldap.env` を Coolify env へ移す必要あり |
+| `nextjs-web` | 未移行 | socat リレー + gotenberg / seaweedfs |
+
+### 意図的に Coolify へ移さないもの
+
+| スタック | 理由 |
+|---|---|
+| `coolify` | **不可能**。自分自身をデプロイすると、その途中で自分を落として失敗する |
+| `nginx-proxy` | Coolify は 80/443 を自分の Traefik で握ろうとする。アプリに `ports_exposes: 80,443` を付けた瞬間に `coolify-proxy` が起動してポートを奪い、**LAN の TLS が落ちた**（実際に踏んだ）。逆方向の前提を持つ 2 つのリバースプロキシを同居させる意味は無い |
+| `db-backup` | バックアップは**復旧手段**なので、復旧したい相手に依存させない。Coolify が壊れたときにこそ要る |
 
 **Coolify 化で判ったこと（次のスタックでも同じ）**
 
