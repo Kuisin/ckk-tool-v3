@@ -1,0 +1,274 @@
+import "server-only";
+
+/**
+ * share-grants.ts — レコード単位の共有の読み書き（server-only）。
+ *
+ * 判定そのものは lib/share-grants-core.ts（純関数・テスト付き）が持ち、ここは
+ * 「DB から行を集めて、いまのユーザーの拠点・ロールと突き合わせる」だけを担う。
+ *
+ * owner の規約は既存の多態テーブル（document_memos / document_attachments /
+ * audit_logs）と同じ: ownerType = @@map 名、ownerId = 業務キー文字列、FK なし。
+ * 親が消えたときの掃除は DB のトリガ（app.purge_share_grants）が持つ。
+ */
+
+import { cache } from "react";
+import { getPermissionSet, sessionUserId } from "./authz";
+import { prisma } from "./db";
+import {
+  resolveShareAccess,
+  type ShareAccess,
+  type ShareGrantRow,
+  type ShareLevel,
+  type ShareSubjectType,
+} from "./share-grants-core";
+
+export type { ShareAccess, ShareLevel, ShareSubjectType };
+
+export interface ShareGrantView {
+  id: string;
+  subjectType: ShareSubjectType;
+  subjectId: string | null;
+  /** 画面に出す名前（拠点名・ロール名・ユーザー名）。解決できなければ id。 */
+  subjectLabel: string;
+  level: ShareLevel;
+}
+
+/** 現在ユーザーの所属拠点 id とロール id（リクエスト単位でメモ化）。 */
+const subjectContextFor = cache(
+  async (
+    userId: string,
+  ): Promise<{ plantIds: string[]; roleIds: string[] }> => {
+    const [plants, roles] = await Promise.all([
+      prisma.userPlant.findMany({
+        where: { userId },
+        select: { plantId: true },
+      }),
+      prisma.userRoleRelation.findMany({
+        where: { userId, isActive: true },
+        select: { roleId: true },
+      }),
+    ]);
+    return {
+      plantIds: plants.map((p) => String(p.plantId)),
+      roleIds: roles.map((r) => String(r.roleId)),
+    };
+  },
+);
+
+async function grantRowsFor(
+  ownerType: string,
+  ownerId: string,
+): Promise<ShareGrantRow[]> {
+  const rows = await prisma.shareGrant.findMany({
+    where: { ownerType, ownerId },
+    select: { subjectType: true, subjectId: true, level: true },
+  });
+  return rows as ShareGrantRow[];
+}
+
+/**
+ * いまのユーザーがこのレコードに対して何をできるか。
+ * `createdBy` を渡すと作成者本人を常に MANAGE として扱う。
+ */
+export async function shareAccessFor(
+  ownerType: string,
+  ownerId: string,
+  createdBy?: string | null,
+): Promise<ShareAccess> {
+  const userId = await sessionUserId();
+  if (!userId) {
+    return {
+      canRespond: false,
+      canRead: false,
+      canEdit: false,
+      canManage: false,
+    };
+  }
+  const [grants, ctx, permissions] = await Promise.all([
+    grantRowsFor(ownerType, ownerId),
+    subjectContextFor(userId),
+    getPermissionSet(),
+  ]);
+  return resolveShareAccess(grants, {
+    userId,
+    plantIds: ctx.plantIds,
+    roleIds: ctx.roleIds,
+    isOwner: !!createdBy && createdBy === userId,
+    isSuperuser: permissions?.superuser ?? false,
+  });
+}
+
+/**
+ * 一覧向け: 複数レコードの可視性をまとめて解く。
+ * 1 レコードずつ shareAccessFor を呼ぶと N+1 になるので、grant をまとめて引く。
+ */
+export async function visibleOwnerIds(
+  ownerType: string,
+  owners: readonly { ownerId: string; createdBy: string | null }[],
+): Promise<Set<string>> {
+  const userId = await sessionUserId();
+  if (!userId || owners.length === 0) return new Set();
+
+  const [rows, ctx, permissions] = await Promise.all([
+    prisma.shareGrant.findMany({
+      where: { ownerType, ownerId: { in: owners.map((o) => o.ownerId) } },
+      select: {
+        ownerId: true,
+        subjectType: true,
+        subjectId: true,
+        level: true,
+      },
+    }),
+    subjectContextFor(userId),
+    getPermissionSet(),
+  ]);
+
+  const byOwner = new Map<string, ShareGrantRow[]>();
+  for (const row of rows) {
+    const list = byOwner.get(row.ownerId) ?? [];
+    list.push(row as ShareGrantRow);
+    byOwner.set(row.ownerId, list);
+  }
+
+  const superuser = permissions?.superuser ?? false;
+  const visible = new Set<string>();
+  for (const owner of owners) {
+    const access = resolveShareAccess(byOwner.get(owner.ownerId) ?? [], {
+      userId,
+      plantIds: ctx.plantIds,
+      roleIds: ctx.roleIds,
+      isOwner: owner.createdBy === userId,
+      isSuperuser: superuser,
+    });
+    if (access.canRead || access.canRespond) visible.add(owner.ownerId);
+  }
+  return visible;
+}
+
+/** 共有設定の一覧（管理画面用。対象名を解決して返す）。 */
+export async function listShareGrants(
+  ownerType: string,
+  ownerId: string,
+): Promise<ShareGrantView[]> {
+  try {
+    const rows = await prisma.shareGrant.findMany({
+      where: { ownerType, ownerId },
+      orderBy: [{ subjectType: "asc" }, { createdAt: "asc" }],
+    });
+    if (rows.length === 0) return [];
+
+    const plantIds = rows
+      .filter((r) => r.subjectType === "PLANT" && r.subjectId)
+      .map((r) => Number(r.subjectId));
+    const roleIds = rows
+      .filter((r) => r.subjectType === "ROLE" && r.subjectId)
+      .map((r) => Number(r.subjectId));
+    const userIds = rows
+      .filter((r) => r.subjectType === "USER" && r.subjectId)
+      .map((r) => r.subjectId as string);
+
+    const [plants, roles, users] = await Promise.all([
+      plantIds.length
+        ? prisma.plant.findMany({
+            where: { id: { in: plantIds } },
+            select: { id: true, name: true },
+          })
+        : [],
+      roleIds.length
+        ? prisma.role.findMany({
+            where: { id: { in: roleIds } },
+            select: { id: true, displayName: true, rolename: true },
+          })
+        : [],
+      userIds.length
+        ? prisma.user.findMany({
+            where: { id: { in: userIds } },
+            select: { id: true, displayName: true, username: true },
+          })
+        : [],
+    ]);
+
+    const ja = (v: unknown): string | null =>
+      typeof v === "object" && v != null && "ja" in v
+        ? String((v as { ja: unknown }).ja ?? "")
+        : null;
+
+    const plantName = new Map(plants.map((p) => [String(p.id), ja(p.name)]));
+    const roleName = new Map(
+      roles.map((r) => [String(r.id), ja(r.displayName) || r.rolename]),
+    );
+    const userName = new Map(
+      users.map((u) => [u.id, u.displayName || u.username]),
+    );
+
+    return rows.map((r) => ({
+      id: r.id,
+      subjectType: r.subjectType as ShareSubjectType,
+      subjectId: r.subjectId,
+      subjectLabel:
+        r.subjectType === "EVERYONE"
+          ? "全社（ログインユーザー全員）"
+          : (r.subjectType === "PLANT"
+              ? plantName.get(r.subjectId ?? "")
+              : r.subjectType === "ROLE"
+                ? roleName.get(r.subjectId ?? "")
+                : userName.get(r.subjectId ?? "")) ||
+            r.subjectId ||
+            "（不明）",
+      level: r.level as ShareLevel,
+    }));
+  } catch {
+    // 共有設定が読めなくても画面自体は出したい。
+    return [];
+  }
+}
+
+export interface ShareGrantInput {
+  subjectType: ShareSubjectType;
+  subjectId: string | null;
+  level: ShareLevel;
+}
+
+/**
+ * 共有設定をまるごと置き換える（1 トランザクション）。
+ * 差分更新にしないのは、UI が「いまの一覧」を送るだけで済み、
+ * 消し忘れによる権限の残留が起きないため。
+ */
+export async function replaceShareGrants(
+  ownerType: string,
+  ownerId: string,
+  grants: readonly ShareGrantInput[],
+  actorId: string | null,
+): Promise<void> {
+  const clean = grants
+    .map((g) => ({
+      subjectType: g.subjectType,
+      subjectId: g.subjectType === "EVERYONE" ? null : (g.subjectId ?? null),
+      level: g.level,
+    }))
+    .filter((g) => g.subjectType === "EVERYONE" || g.subjectId);
+
+  // 同じ (対象, 権限) の重複を落とす（UI の二重追加対策）。
+  const seen = new Set<string>();
+  const unique = clean.filter((g) => {
+    const key = `${g.subjectType}:${g.subjectId ?? ""}:${g.level}`;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+
+  await prisma.$transaction(async (tx) => {
+    await tx.shareGrant.deleteMany({ where: { ownerType, ownerId } });
+    if (unique.length === 0) return;
+    await tx.shareGrant.createMany({
+      data: unique.map((g) => ({
+        ownerType,
+        ownerId,
+        subjectType: g.subjectType,
+        subjectId: g.subjectId,
+        level: g.level,
+        createdBy: actorId,
+      })),
+    });
+  });
+}
