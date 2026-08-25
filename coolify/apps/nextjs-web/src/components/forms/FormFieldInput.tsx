@@ -13,6 +13,7 @@ import {
   Group,
   MultiSelect,
   NumberInput,
+  Paper,
   Select,
   Stack,
   Table,
@@ -25,6 +26,7 @@ import { IconPlus, IconTrash } from "@tabler/icons-react";
 import dynamic from "next/dynamic";
 import { GhostButton } from "@/components/ui/buttons";
 import { SearchSelect } from "@/components/ui/SearchSelect";
+import { useIsMobile } from "@/hooks/useViewport";
 import type { FormAnswerValue, FormFieldDef } from "@/lib/form-schema";
 import { MAX_TABLE_ROWS } from "@/lib/form-schema";
 import type { RichTextDoc } from "@/lib/rich-text-core";
@@ -64,6 +66,7 @@ export function FormFieldInput({
   disabled,
   onChange,
 }: FieldInputProps) {
+  const isMobile = useIsMobile();
   const label = field.label.ja || field.key;
   const common = {
     label,
@@ -209,8 +212,10 @@ export function FormFieldInput({
       const columns = field.columns ?? [];
       const setRow = (i: number, next: Record<string, FormAnswerValue>) =>
         onChange(rows.map((r, idx) => (idx === i ? next : r)));
-      return (
-        <Stack gap="xs">
+      // スマホでは表を横に並べない — 列が 3 つもあると 1 列 40px になって
+      // 何も打てない。design.md §8.3 のとおり 1 行 = 1 カードに積む。
+      const header = (
+        <>
           <Text fw={500} size="sm">
             {label}
             {field.required && (
@@ -224,6 +229,75 @@ export function FormFieldInput({
               {field.help}
             </Text>
           )}
+        </>
+      );
+      const addRow = (
+        <Group>
+          <GhostButton
+            disabled={disabled || rows.length >= MAX_TABLE_ROWS}
+            fullWidth={isMobile}
+            leftSection={<IconPlus size={14} />}
+            onClick={() => onChange([...rows, {}])}
+          >
+            行を追加
+          </GhostButton>
+        </Group>
+      );
+
+      if (isMobile) {
+        return (
+          <Stack gap="xs">
+            {header}
+            {rows.length === 0 && (
+              <Text c="dimmed" size="sm">
+                行がありません
+              </Text>
+            )}
+            {rows.map((row, i) => (
+              // biome-ignore lint/suspicious/noArrayIndexKey: 並び順が同一性
+              <Paper key={i} p="sm" radius="sm" withBorder>
+                <Stack gap="sm">
+                  <Group justify="space-between">
+                    <Text c="dimmed" size="xs">
+                      {i + 1} 行目
+                    </Text>
+                    <ActionIcon
+                      aria-label="この行を削除"
+                      color="red"
+                      disabled={disabled}
+                      onClick={() =>
+                        onChange(rows.filter((_, idx) => idx !== i))
+                      }
+                      variant="subtle"
+                    >
+                      <IconTrash size={16} />
+                    </ActionIcon>
+                  </Group>
+                  {columns.map((c) => (
+                    <FormFieldInput
+                      disabled={disabled}
+                      field={c}
+                      key={c.key}
+                      onChange={(v) => setRow(i, { ...row, [c.key]: v })}
+                      value={row[c.key]}
+                    />
+                  ))}
+                </Stack>
+              </Paper>
+            ))}
+            {addRow}
+            {error && (
+              <Text c="red" size="xs">
+                {error}
+              </Text>
+            )}
+          </Stack>
+        );
+      }
+
+      return (
+        <Stack gap="xs">
+          {header}
           <Table withTableBorder>
             <Table.Thead>
               <Table.Tr>
@@ -277,15 +351,7 @@ export function FormFieldInput({
               ))}
             </Table.Tbody>
           </Table>
-          <Group>
-            <GhostButton
-              disabled={disabled || rows.length >= MAX_TABLE_ROWS}
-              leftSection={<IconPlus size={14} />}
-              onClick={() => onChange([...rows, {}])}
-            >
-              行を追加
-            </GhostButton>
-          </Group>
+          {addRow}
           {error && (
             <Text c="red" size="xs">
               {error}

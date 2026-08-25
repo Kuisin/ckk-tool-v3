@@ -278,6 +278,29 @@ body {
   }
 
   /*
+   * Tabs — スマホでは折り返さず横スクロールさせる。
+   *
+   * Mantine の既定は flex-wrap なので、タブが 4 枚を超えると 2〜3 段に折り返して
+   * 本文が画面外へ押し出される（承認・予定 CM01 は 5 枚、フォーム回答は 5 枚）。
+   * 段が増えるより、横に流して指でなぞれるほうが読める。スクロールバーは
+   * 消すが、端が切れて見えるので「まだ先がある」ことは伝わる。
+   */
+  @media (max-width: 767px) {
+    .mantine-Tabs-list {
+      flex-wrap: nowrap;
+      overflow-x: auto;
+      scrollbar-width: none;
+      -webkit-overflow-scrolling: touch;
+    }
+    .mantine-Tabs-list::-webkit-scrollbar {
+      display: none;
+    }
+    .mantine-Tabs-tab {
+      flex-shrink: 0;
+    }
+  }
+
+  /*
    * Form action bar (キャンセル / 保存) — pinned to the bottom of the viewport
    * on desktop so the buttons stay reachable however long the form is.
    * `bottom` clears the fixed AppShell footer (--app-shell-footer-offset), and

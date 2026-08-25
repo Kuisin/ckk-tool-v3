@@ -9,6 +9,7 @@ import { useFormat } from "@/components/layout/PreferencesProvider";
 import { GhostButton } from "@/components/ui/buttons";
 import { openConfirm } from "@/components/ui/modals";
 import { PageHeader } from "@/components/ui/PageHeader";
+import { useIsMobile } from "@/hooks/useViewport";
 import type { RevisionRow } from "@/lib/internal-pages";
 import { RevisionDiff } from "./RevisionDiff";
 
@@ -36,6 +37,7 @@ export function RevisionsView({
 }) {
   const router = useRouter();
   const fmt = useFormat();
+  const isMobile = useIsMobile();
   const [isPending, startTransition] = useTransition();
 
   const options = revisions.map((r) => ({
@@ -110,7 +112,10 @@ export function RevisionsView({
           <Stack gap="xs">
             {revisions.map((r) => (
               <Paper key={r.revision} p="sm" radius="sm" withBorder>
-                <Group justify="space-between" wrap="nowrap">
+                <Group
+                  justify="space-between"
+                  wrap={isMobile ? "wrap" : "nowrap"}
+                >
                   <Group gap="sm" style={{ minWidth: 0 }} wrap="nowrap">
                     <Badge color="gray" variant="light">
                       r{r.revision}

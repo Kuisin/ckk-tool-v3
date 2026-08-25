@@ -38,6 +38,7 @@ import {
 } from "@/app/(dashboard)/general/documents/actions";
 import { useFormat } from "@/components/layout/PreferencesProvider";
 import { GhostButton, PrimaryButton } from "@/components/ui/buttons";
+import { useIsMobile } from "@/hooks/useViewport";
 import type { BlameLine, LineCommentView } from "@/lib/internal-pages";
 import { splitLines } from "@/lib/line-anchor";
 
@@ -82,6 +83,7 @@ function CommentThread({
   onDone: () => void;
 }) {
   const fmt = useFormat();
+  const isMobile = useIsMobile();
   const [isPending, startTransition] = useTransition();
   const [reply, setReply] = useState("");
 
@@ -114,8 +116,8 @@ function CommentThread({
       withBorder
     >
       <Stack gap="xs">
-        <Group gap="xs" justify="space-between">
-          <Group gap="xs">
+        <Group gap="xs" justify="space-between" wrap="wrap">
+          <Group gap="xs" wrap="wrap">
             <Badge
               color={thread.status === "RESOLVED" ? "green" : "blue"}
               size="xs"
@@ -200,17 +202,18 @@ function CommentThread({
           </Group>
         ))}
 
-        <Group align="flex-end" gap="xs" wrap="nowrap">
+        <Group align="flex-end" gap="xs" wrap={isMobile ? "wrap" : "nowrap"}>
           <Textarea
             autosize
             minRows={1}
             onChange={(e) => setReply(e.currentTarget.value)}
             placeholder="返信"
-            style={{ flex: 1 }}
+            style={{ flex: 1, minWidth: isMobile ? "100%" : undefined }}
             value={reply}
           />
           <GhostButton
             disabled={!reply.trim()}
+            fullWidth={isMobile}
             loading={isPending}
             onClick={() =>
               run(() =>
@@ -248,6 +251,7 @@ export function ReviewView({
 }) {
   const router = useRouter();
   const fmt = useFormat();
+  const isMobile = useIsMobile();
   const [showResolved, setShowResolved] = useState(false);
   const [composeLine, setComposeLine] = useState<number | null>(null);
   const [draft, setDraft] = useState("");
@@ -344,7 +348,10 @@ export function ReviewView({
                       px="xs"
                       py={4}
                       style={{
-                        width: 130,
+                        // スマホは行番号だけ。編集者名まで出すと本文が 200px を
+                        // 切って、どの行に付けるのか分からなくなる（名前は
+                        // タップでツールチップに出る）。
+                        width: isMobile ? 40 : 130,
                         flexShrink: 0,
                         background: "var(--mantine-color-gray-0)",
                         cursor: b ? "help" : "default",
@@ -354,9 +361,11 @@ export function ReviewView({
                         <Text c="dimmed" className="tabular-nums" size="xs">
                           {no}
                         </Text>
-                        <Text c="dimmed" size="xs" truncate>
-                          {b?.editedBy ?? ""}
-                        </Text>
+                        {!isMobile && (
+                          <Text c="dimmed" size="xs" truncate>
+                            {b?.editedBy ?? ""}
+                          </Text>
+                        )}
                       </Group>
                     </Box>
                   </Tooltip>
@@ -404,12 +413,16 @@ export function ReviewView({
                         placeholder={`${no} 行目へのコメント`}
                         value={draft}
                       />
-                      <Group justify="flex-end">
-                        <GhostButton onClick={() => setComposeLine(null)}>
+                      <Group grow={isMobile} justify="flex-end">
+                        <GhostButton
+                          fullWidth={isMobile}
+                          onClick={() => setComposeLine(null)}
+                        >
                           やめる
                         </GhostButton>
                         <PrimaryButton
                           disabled={!draft.trim()}
+                          fullWidth={isMobile}
                           loading={isPending}
                           onClick={() => submit(no)}
                         >

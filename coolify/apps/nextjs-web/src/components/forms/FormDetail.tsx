@@ -4,7 +4,7 @@ import { Alert, Badge, CopyButton, Group, Tabs, Text } from "@mantine/core";
 import { IconCheck, IconCopy, IconLink } from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
 import { useFormat } from "@/components/layout/PreferencesProvider";
-import { EditButton, GhostButton } from "@/components/ui/buttons";
+import { GhostButton } from "@/components/ui/buttons";
 import { DataTable } from "@/components/ui/DataTable";
 import { FieldValue } from "@/components/ui/FieldValue";
 import { StatusBadge } from "@/components/ui/StatusBadge";
@@ -12,8 +12,10 @@ import {
   type AuditEntry,
   AuditTimeline,
   DetailShell,
+  ResourceActions,
   SummaryGrid,
 } from "@/components/ui/shells";
+import { useIsMobile } from "@/hooks/useViewport";
 import { AVAILABILITY_LABEL } from "@/lib/form-schema";
 import type { FormDetailView, ResponseRow } from "@/lib/forms";
 import type { ShareGrantView } from "@/lib/share-grants";
@@ -45,6 +47,7 @@ export function FormDetail({
 }) {
   const router = useRouter();
   const fmt = useFormat();
+  const isMobile = useIsMobile();
   const shareUrl =
     typeof window !== "undefined"
       ? `${window.location.origin}/f/${form.code}`
@@ -53,9 +56,20 @@ export function FormDetail({
   return (
     <DetailShell
       actions={
-        canEdit ? (
-          <EditButton href={`/general/forms/${form.code}/edit`} />
-        ) : undefined
+        <ResourceActions
+          menuItems={[
+            {
+              label: "回答画面を開く",
+              icon: <IconLink size={14} />,
+              onClick: () => router.push(`/f/${form.code}`),
+            },
+          ]}
+          onEdit={
+            canEdit
+              ? () => router.push(`/general/forms/${form.code}/edit`)
+              : undefined
+          }
+        />
       }
       breadcrumbs={[
         { label: "一般" },
@@ -110,8 +124,12 @@ export function FormDetail({
           fullWidth
           label="共有 URL"
           value={
-            <Group gap="xs">
-              <Text ff="mono" size="sm">
+            <Group gap="xs" wrap={isMobile ? "wrap" : "nowrap"}>
+              <Text
+                ff="mono"
+                size="sm"
+                style={{ wordBreak: "break-all", minWidth: 0 }}
+              >
                 {shareUrl}
               </Text>
               <CopyButton value={shareUrl}>

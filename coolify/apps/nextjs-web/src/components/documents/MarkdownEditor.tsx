@@ -18,6 +18,7 @@ import {
 } from "@mantine/core";
 import { useState } from "react";
 import { GhostButton } from "@/components/ui/buttons";
+import { useIsMobile } from "@/hooks/useViewport";
 import { lineCountOf, MAX_DOC_LINES } from "@/lib/line-anchor";
 import { MarkdownView } from "./MarkdownView";
 
@@ -48,7 +49,10 @@ export function MarkdownEditor({
   onChange: (next: string) => void;
   minRows?: number;
 }) {
+  const isMobile = useIsMobile();
+  // スマホに分割表示は無い。横 375px を 2 つに割ると、どちらも読めない。
   const [mode, setMode] = useState<Mode>("split");
+  const effectiveMode: Mode = isMobile && mode === "split" ? "edit" : mode;
   const [el, setEl] = useState<HTMLTextAreaElement | null>(null);
   const lines = lineCountOf(value);
   const tooLong = lines > MAX_DOC_LINES;
@@ -61,7 +65,7 @@ export function MarkdownEditor({
 
   const editor = (
     <Stack gap="xs">
-      <Group gap="xs">
+      <Group gap="xs" wrap="wrap">
         <GhostButton onClick={() => apply((e) => wrapSelection(e, "**"))}>
           太字
         </GhostButton>
@@ -114,17 +118,25 @@ export function MarkdownEditor({
   return (
     <Stack gap="sm">
       <SegmentedControl
-        data={[
-          { value: "edit", label: "編集" },
-          { value: "split", label: "分割" },
-          { value: "preview", label: "プレビュー" },
-        ]}
+        data={
+          isMobile
+            ? [
+                { value: "edit", label: "編集" },
+                { value: "preview", label: "プレビュー" },
+              ]
+            : [
+                { value: "edit", label: "編集" },
+                { value: "split", label: "分割" },
+                { value: "preview", label: "プレビュー" },
+              ]
+        }
+        fullWidth={isMobile}
         onChange={(v) => setMode(v as Mode)}
-        value={mode}
+        value={effectiveMode}
       />
-      {mode === "edit" && editor}
-      {mode === "preview" && preview}
-      {mode === "split" && (
+      {effectiveMode === "edit" && editor}
+      {effectiveMode === "preview" && preview}
+      {effectiveMode === "split" && (
         <Group align="flex-start" grow wrap="nowrap">
           <Box style={{ minWidth: 0 }}>{editor}</Box>
           <Box style={{ minWidth: 0 }}>{preview}</Box>

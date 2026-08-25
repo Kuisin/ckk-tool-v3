@@ -1515,5 +1515,24 @@ Approval notifications use `/api/sse/approvals` — shows a `Notification` banne
   - Detail summary: 3-column grid → 1-column grid.
   - Form fields: 2-column grid → 1-column grid.
   - Form actions: right-aligned row → full-width stacked.
-  - Action buttons: button group → `...` menu dropdown.
+  - Action buttons: button group → `...` menu dropdown（`ResourceActions` が担う）。
   - Timestamps: footer row → inline Group in summary card.
+  - **Tabs: 折り返さず横スクロール**（globals.css の `.mantine-Tabs-list`）。
+    タブが 4 枚を超えると 2〜3 段に折り返して本文が画面外へ押し出されるため、
+    段を増やすより横に流す。スクロールバーは隠すが、端が切れて見えるので
+    「まだ先がある」ことは伝わる。
+  - **編集可能な表（明細・サブテーブル・共有設定）: 表 → 1 行 = 1 カード。**
+    列が 3 つあると 1 列 40px になり、`Select` が何を選んでいるのか読めない。
+    §8.3 の「Line item cards (mobile)」と同じ扱い。
+  - **左右 2 ペインの編集（Markdown の分割表示など）はモバイルに出さない。**
+    横 375px を割ると両方読めないので、切り替え（編集 / プレビュー）にする。
+
+### 20.3 タッチ操作
+
+- **ドラッグ並べ替えは MouseSensor と TouchSensor を分ける**（@dnd-kit）。
+  `PointerSensor` 1 本だと、スマホで縦にスワイプしただけでドラッグが始まり
+  ページがスクロールできなくなる。タッチは
+  `activationConstraint: { delay: 200, tolerance: 8 }`（長押ししてから動かす）に
+  限定し、ハンドルには `touchAction: "none"` と 44px の当たり判定を与える。
+- ホバーでしか出ない操作を作らない（タッチにホバーは無い）。行に付けるボタンなどは
+  常時表示にする。
