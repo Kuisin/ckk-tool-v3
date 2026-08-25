@@ -9,13 +9,10 @@ import {
   savePageBody,
   updatePageSettings,
 } from "@/app/(dashboard)/general/documents/actions";
-import {
-  CancelButton,
-  PrimaryButton,
-  SaveButton,
-} from "@/components/ui/buttons";
+import { PrimaryButton } from "@/components/ui/buttons";
 import { PageHeader } from "@/components/ui/PageHeader";
-import { FormSection } from "@/components/ui/shells";
+import { FormActions, FormSection } from "@/components/ui/shells";
+import { useIsMobile } from "@/hooks/useViewport";
 import { MarkdownEditor } from "./MarkdownEditor";
 
 export function DocumentEditor({
@@ -34,6 +31,7 @@ export function DocumentEditor({
   };
 }) {
   const router = useRouter();
+  const isMobile = useIsMobile();
   const [isPending, startTransition] = useTransition();
   const [title, setTitle] = useState(initial.title);
   const [summary, setSummary] = useState(initial.summary);
@@ -137,24 +135,28 @@ export function DocumentEditor({
             placeholder="出荷前チェックの項目を追加"
             value={note}
           />
-          <PrimaryButton loading={isPending} onClick={saveBody} type="button">
+          <PrimaryButton
+            fullWidth={isMobile}
+            loading={isPending}
+            onClick={saveBody}
+            type="button"
+          >
             本文を保存（新しいリビジョン）
           </PrimaryButton>
         </FormSection>
       )}
 
-      <div className="form-actions">
-        <CancelButton
-          onClick={() =>
-            router.push(
-              pageNumber
-                ? `/general/documents/${pageNumber}`
-                : "/general/documents",
-            )
-          }
-        />
-        <SaveButton loading={isPending} onClick={saveSettings} type="button" />
-      </div>
+      <FormActions
+        loading={isPending}
+        onCancel={() =>
+          router.push(
+            pageNumber
+              ? `/general/documents/${pageNumber}`
+              : "/general/documents",
+          )
+        }
+        onSave={saveSettings}
+      />
     </Stack>
   );
 }

@@ -6,10 +6,12 @@ import { useRouter } from "next/navigation";
 import type { InboxCommentRow } from "@/app/(dashboard)/general/tasks/comments-data";
 import { useFormat } from "@/components/layout/PreferencesProvider";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { useIsMobile } from "@/hooks/useViewport";
 
 export function InboxCommentsList({ rows }: { rows: InboxCommentRow[] }) {
   const router = useRouter();
   const fmt = useFormat();
+  const isMobile = useIsMobile();
 
   if (rows.length === 0) {
     return (
@@ -36,7 +38,11 @@ export function InboxCommentsList({ rows }: { rows: InboxCommentRow[] }) {
           withBorder
         >
           <Stack gap={4}>
-            <Group gap="xs" justify="space-between" wrap="nowrap">
+            <Group
+              gap="xs"
+              justify="space-between"
+              wrap={isMobile ? "wrap" : "nowrap"}
+            >
               <Group gap="xs" style={{ minWidth: 0 }} wrap="nowrap">
                 <Text fw={600} size="sm" truncate>
                   {row.pageTitle}

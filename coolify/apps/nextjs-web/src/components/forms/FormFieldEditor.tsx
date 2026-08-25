@@ -20,6 +20,7 @@ import {
 } from "@mantine/core";
 import { IconPlus, IconTrash } from "@tabler/icons-react";
 import { GhostButton } from "@/components/ui/buttons";
+import { useIsMobile } from "@/hooks/useViewport";
 import {
   FIELD_KEY_PATTERN,
   FORM_FIELD_TYPES,
@@ -54,6 +55,7 @@ export function FormFieldEditor({
   nestedOnly?: boolean;
   onChange: (next: FormFieldDef) => void;
 }) {
+  const isMobile = useIsMobile();
   const set = (patch: Partial<FormFieldDef>) =>
     onChange({ ...field, ...patch });
   const types = nestedOnly
@@ -67,7 +69,7 @@ export function FormFieldEditor({
 
   return (
     <Stack gap="sm">
-      <Group align="flex-start" grow>
+      <Group align="flex-start" grow={!isMobile}>
         <TextInput
           label="表示名"
           onChange={(e) =>
@@ -88,7 +90,7 @@ export function FormFieldEditor({
         />
       </Group>
 
-      <Group align="flex-start" grow>
+      <Group align="flex-start" grow={!isMobile}>
         <Select
           data={types.map((t) => ({ value: t.value, label: t.label }))}
           label="種類"
@@ -110,7 +112,7 @@ export function FormFieldEditor({
       />
 
       {field.type === "number" && (
-        <Group grow>
+        <Group grow={!isMobile}>
           <NumberInput
             label="最小値"
             onChange={(v) => set({ min: v === "" ? undefined : Number(v) })}
@@ -125,7 +127,7 @@ export function FormFieldEditor({
       )}
 
       {NEEDS_PATTERN.includes(field.type) && (
-        <Group align="flex-start" grow>
+        <Group align="flex-start" grow={!isMobile}>
           <TextInput
             description="入力の形式を縛りたいときだけ。空なら自由入力"
             error={patternError}
@@ -330,7 +332,7 @@ export function FormFieldEditor({
 
       {field.type === "related" && (
         <Stack gap="xs">
-          <Group align="flex-start" grow>
+          <Group align="flex-start" grow={!isMobile}>
             <TextInput
               description="埋め込みたいフォームの共有コード（/f/ のあと）"
               label="参照先フォームのコード"
@@ -365,7 +367,7 @@ export function FormFieldEditor({
               value={field.related?.limit ?? 20}
             />
           </Group>
-          <Group align="flex-start" grow>
+          <Group align="flex-start" grow={!isMobile}>
             <TextInput
               description="このフォーム側の項目キー"
               label="突き合わせるキー（自分）"

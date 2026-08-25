@@ -20,13 +20,9 @@ import { DateTimePicker } from "@mantine/dates";
 import { notifications } from "@mantine/notifications";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
-import {
-  CancelButton,
-  PrimaryButton,
-  SaveButton,
-} from "@/components/ui/buttons";
+import { PrimaryButton } from "@/components/ui/buttons";
 import { PageHeader } from "@/components/ui/PageHeader";
-import { FormSection } from "@/components/ui/shells";
+import { FormActions, FormSection } from "@/components/ui/shells";
 import type { FormFieldDef } from "@/lib/form-schema";
 import { FormBuilder } from "./FormBuilder";
 
@@ -257,14 +253,13 @@ export function FormEditor({
         </FormSection>
       )}
 
-      <div className="form-actions">
-        <CancelButton
-          onClick={() =>
-            router.push(code ? `/general/forms/${code}` : "/general/forms")
-          }
-        />
-        <SaveButton loading={isPending} onClick={saveSettings} type="button" />
-      </div>
+      <FormActions
+        loading={isPending}
+        onCancel={() =>
+          router.push(code ? `/general/forms/${code}` : "/general/forms")
+        }
+        onSave={saveSettings}
+      />
     </Stack>
   );
 }

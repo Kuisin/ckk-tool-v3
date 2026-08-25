@@ -6,6 +6,7 @@
 
 import { Box, Group, Paper, Select, Stack, Text } from "@mantine/core";
 import { useMemo } from "react";
+import { useIsMobile } from "@/hooks/useViewport";
 import { collapseUnchanged, diffBodies } from "@/lib/line-anchor";
 
 const COLORS: Record<string, string> = {
@@ -35,6 +36,7 @@ export function RevisionDiff({
   to: string;
   onChange: (from: string, to: string) => void;
 }) {
+  const isMobile = useIsMobile();
   const rows = useMemo(
     () => collapseUnchanged(diffBodies(fromBody, toBody), 3),
     [fromBody, toBody],
@@ -46,20 +48,20 @@ export function RevisionDiff({
 
   return (
     <Stack gap="sm">
-      <Group align="flex-end" gap="sm">
+      <Group align="flex-end" gap="sm" grow={isMobile}>
         <Select
           data={revisions}
           label="比較元"
           onChange={(v) => onChange(v ?? from, to)}
           value={from}
-          w={200}
+          w={isMobile ? undefined : 200}
         />
         <Select
           data={revisions}
           label="比較先"
           onChange={(v) => onChange(from, v ?? to)}
           value={to}
-          w={200}
+          w={isMobile ? undefined : 200}
         />
         <Text c="dimmed" size="sm">
           {changed === 0
@@ -91,23 +93,30 @@ export function RevisionDiff({
                 style={{ background: COLORS[row.kind] }}
                 wrap="nowrap"
               >
+                {/* スマホは行番号を 1 列に絞る（2 列で 96px 取ると本文が読めない）。 */}
+                {!isMobile && (
+                  <Text
+                    c="dimmed"
+                    className="tabular-nums"
+                    px={6}
+                    size="xs"
+                    style={{ width: 48, flexShrink: 0, textAlign: "right" }}
+                  >
+                    {row.oldLine ?? ""}
+                  </Text>
+                )}
                 <Text
                   c="dimmed"
                   className="tabular-nums"
                   px={6}
                   size="xs"
-                  style={{ width: 48, flexShrink: 0, textAlign: "right" }}
+                  style={{
+                    width: isMobile ? 36 : 48,
+                    flexShrink: 0,
+                    textAlign: "right",
+                  }}
                 >
-                  {row.oldLine ?? ""}
-                </Text>
-                <Text
-                  c="dimmed"
-                  className="tabular-nums"
-                  px={6}
-                  size="xs"
-                  style={{ width: 48, flexShrink: 0, textAlign: "right" }}
-                >
-                  {row.newLine ?? ""}
+                  {row.newLine ?? row.oldLine ?? ""}
                 </Text>
                 <Text
                   ff="mono"

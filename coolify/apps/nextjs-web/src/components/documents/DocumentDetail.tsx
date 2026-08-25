@@ -8,19 +8,20 @@
  */
 
 import { Alert, Badge, Group, Tabs } from "@mantine/core";
-import { IconEye, IconMessage } from "@tabler/icons-react";
+import { IconEye, IconGitCompare, IconMessage } from "@tabler/icons-react";
+import { useRouter } from "next/navigation";
 import {
   type RoleOption,
   ShareGrantsPanel,
 } from "@/components/forms/ShareGrantsPanel";
 import { useFormat } from "@/components/layout/PreferencesProvider";
-import { EditButton, SecondaryButton } from "@/components/ui/buttons";
 import { FieldValue } from "@/components/ui/FieldValue";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import {
   type AuditEntry,
   AuditTimeline,
   DetailShell,
+  ResourceActions,
   SummaryGrid,
 } from "@/components/ui/shells";
 import type { PageDetailView } from "@/lib/internal-pages";
@@ -58,28 +59,35 @@ export function DocumentDetail({
   ) => Promise<{ ok: boolean; error?: string }>;
 }) {
   const fmt = useFormat();
+  const router = useRouter();
   const hasUnpublished =
     page.latestRevision > 0 && page.publishedRevision !== page.latestRevision;
 
   return (
     <DetailShell
       actions={
-        <Group gap="xs">
-          <SecondaryButton
-            href={`/general/documents/${page.pageNumber}/review`}
-            leftSection={<IconMessage size={14} />}
-          >
-            レビュー
-          </SecondaryButton>
-          <SecondaryButton
-            href={`/general/documents/${page.pageNumber}/revisions`}
-          >
-            履歴・差分
-          </SecondaryButton>
-          {canEdit && (
-            <EditButton href={`/general/documents/${page.pageNumber}/edit`} />
-          )}
-        </Group>
+        // スマホでは 3 つ並べず ... メニューに畳む（design.md §20.2）。
+        <ResourceActions
+          menuItems={[
+            {
+              label: "レビュー",
+              icon: <IconMessage size={14} />,
+              onClick: () =>
+                router.push(`/general/documents/${page.pageNumber}/review`),
+            },
+            {
+              label: "履歴・差分",
+              icon: <IconGitCompare size={14} />,
+              onClick: () =>
+                router.push(`/general/documents/${page.pageNumber}/revisions`),
+            },
+          ]}
+          onEdit={
+            canEdit
+              ? () => router.push(`/general/documents/${page.pageNumber}/edit`)
+              : undefined
+          }
+        />
       }
       breadcrumbs={[
         { label: "一般" },
