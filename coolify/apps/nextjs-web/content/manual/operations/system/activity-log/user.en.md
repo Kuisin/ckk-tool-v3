@@ -124,7 +124,7 @@ A. The quickest way is to open that quotation's screen and look at the 「**履�
 A. This screen shows only the 300 newest records. If you need anything earlier than that, please ask your system administrator.
 
 **Q. I want to know who logged in.**
-A. You cannot tell from this screen. Only records of data being made, corrected, or erased are kept here. If you need login records, please ask your system administrator.
+A. You cannot tell from this screen. Only records of data being made, corrected, or erased are kept here. Sign-in records live in [Login History](/manual/en/operations/system/login-history/user) (`SY0D`).
 
 **Q. 「ユーザー」 says 「システム」. Who did it?**
 A. It was not a person — the system did it automatically. Overnight automatic processing and data imports are examples of this.
