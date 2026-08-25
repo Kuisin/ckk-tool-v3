@@ -26,8 +26,8 @@ Project `ckk` — dev app in the `development` environment, main in `production`
 
 | App | Env | Branch | Host port | Public host | Ingress path |
 |-----|-----|--------|-----------|-------------|--------------|
-| `nextjs-web-dev` | development | `dev` | `:3004` | `ckk-dev.kai-lab.net` (legacy alias: `dev.kai-lab.net`) | cloudflared/nginx → `web:3000` relay → `:3004` |
-| `nextjs-web-main` | production | `main` | `:3005` | `ckk.kai-lab.net` | cloudflared/nginx → `web-main:3000` relay → `:3005` |
+| `nextjs-web-dev` | development | `dev` | `:3004` | `app-dev.ckk-tool.co.jp` | cloudflared/nginx → `web:3000` relay → `:3004` |
+| `nextjs-web-main` | production | `main` | `:3005` | `app.ckk-tool.co.jp` | cloudflared/nginx → `web-main:3000` relay → `:3005` |
 | `admintools-dev` | production | `dev` | `:8090` | `admin-dev.ckk-tool.co.jp` (Cloudflare **Access**) | tunnel → `admin-dev:8000` relay → `:8090` |
 | `admintools-main` | production | `main` | `:8091` | `admin.ckk-tool.co.jp` (Cloudflare **Access**) | tunnel → `admin:8000` relay → `:8091` |
 | `nextjs-kiosk-dev` | development | `dev` | `:3006` | `ckk-kiosk-dev.kai-lab.net` | cloudflared/nginx → `kiosk:3000` relay → `:3006` |

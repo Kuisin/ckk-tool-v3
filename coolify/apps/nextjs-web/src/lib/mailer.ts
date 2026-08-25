@@ -78,8 +78,8 @@ export async function sendMail(input: MailInput): Promise<boolean> {
 export function appBaseUrl(): string {
   if (process.env.APP_BASE_URL) return process.env.APP_BASE_URL;
   return process.env.APP_ENV === "main"
-    ? "https://ckk.kai-lab.net"
-    : "https://ckk-dev.kai-lab.net";
+    ? "https://app.ckk-tool.co.jp"
+    : "https://app-dev.ckk-tool.co.jp";
 }
 
 /** 通知メール（タイトル + 本文 + アプリ内リンクボタン）を組み立てて送信。 */

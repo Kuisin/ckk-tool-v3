@@ -14,15 +14,15 @@ check the URL before you touch anything.
 
 | URL | Environment | What it is |
 | --- | --- | --- |
-| `https://ckk.kai-lab.net` | **Production** | Business management system — **use this one for now** |
-| `https://ckk-dev.kai-lab.net` | Staging | Staging — check new features here |
-| `https://dev.kai-lab.net` | Staging | Same as above (older address) |
+| `https://app.ckk-tool.co.jp` | **Production** | Business management system — **use this one for now** |
+| `https://app-dev.ckk-tool.co.jp` | Staging | Staging — check new features here |
+| `https://app-dev.ckk-tool.co.jp` | Staging | Same as above (older address) |
 | `https://app.ckk-tool.co.jp` | **Production** | Future address (staged — see below) |
 | `https://app-dev.ckk-tool.co.jp` | Staging | Future address (staged — see below) |
 
 > **The `ckk-tool.co.jp` addresses are staged, not live yet.** The pages load, but
 > the SSO callback still points at `kai-lab.net`, so logging in sends you back to
-> `ckk.kai-lab.net`. They become the real addresses once Authentik's allowed
+> `app.ckk-tool.co.jp`. They become the real addresses once Authentik's allowed
 > callback list is updated. Until then, **use the `kai-lab.net` addresses.**
 
 ## Kiosk (shared shop-floor tablets)

@@ -5,7 +5,7 @@
     <name>CKK Link Preview</name>
     <summary>CKK 業務管理システムの URL に権限連動プレビューを表示</summary>
     <description><![CDATA[
-Talk / Text に貼られた ckk.kai-lab.net / ckk-dev.kai-lab.net の URL を、
+Talk / Text に貼られた app.ckk-tool.co.jp / app-dev.ckk-tool.co.jp の URL を、
 CKK 業務管理システムの /api/preview/resolve に照会してプレビュー表示します。
 閲覧ユーザー（Samba AD で CKK 側と同一 ID）に READ 権限がある場合のみ
 顧客名・金額などの業務データ入りリッチプレビューを返し、権限がない場合は

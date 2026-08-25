@@ -1,6 +1,6 @@
 # cloudflared — Cloudflare Tunnel connector
 
-Publishes the app to the public internet at **https://dev.kai-lab.net** via a
+Publishes the app to the public internet at **https://app-dev.ckk-tool.co.jp** via a
 Cloudflare Tunnel (no port-forwarding; TLS terminated at Cloudflare's edge).
 
 Deployed on `docker-mac-pro` at `~/stacks/cloudflared` (Dockge-managed). Split out
@@ -13,9 +13,9 @@ the public-hostname routing lives in the Cloudflare **Zero Trust** dashboard:
 
 ```
 Networks > Tunnels > docker-linux > Public Hostname
-  ckk-dev.kai-lab.net  →  HTTP  →  web:3000          (nextjs-web dev — relay to Coolify :3004;
-                                                      dev.kai-lab.net kept as legacy alias)
-  ckk.kai-lab.net      →  HTTP  →  web-main:3000     (nextjs-web main/production — relay to :3005)
+  app-dev.ckk-tool.co.jp  →  HTTP  →  web:3000          (nextjs-web dev — relay to Coolify :3004;
+                                                      app-dev.ckk-tool.co.jp kept as legacy alias)
+  app.ckk-tool.co.jp      →  HTTP  →  web-main:3000     (nextjs-web main/production — relay to :3005)
   app.ckk-tool.co.jp   →  HTTP  →  web-main:3000     (same production app, ckk-tool.co.jp alias)
   ckk-kiosk-dev.kai-lab.net → HTTP → kiosk:3000      (nextjs-kiosk dev — relay to Coolify :3006;
                                                       WS /api/kiosk/ws passes through)
@@ -51,4 +51,4 @@ docker logs cloudflared --tail 20   # expect "Registered tunnel connection"
 ```
 
 For **LAN** access to the same hostname without the Cloudflare round-trip, see the
-`nginx-proxy` stack (local TLS) + a `dev.kai-lab.net → 192.168.50.15` DNS override.
+`nginx-proxy` stack (local TLS) + a `app-dev.ckk-tool.co.jp → 192.168.50.15` DNS override.

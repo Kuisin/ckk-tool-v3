@@ -1,8 +1,8 @@
 # Nginx reverse proxy / TLS terminator (techstack #8) + acme.sh for Let's Encrypt.
 #
-# Fronts the app for LOCAL access: terminates HTTPS for dev.kai-lab.net on the
+# Fronts the app for LOCAL access: terminates HTTPS for app-dev.ckk-tool.co.jp on the
 # LAN and proxies to the nextjs-web `web` service over its compose network.
-# Pair with a LAN DNS override (dev.kai-lab.net -> 192.168.50.15) so internal
+# Pair with a LAN DNS override (app-dev.ckk-tool.co.jp -> 192.168.50.15) so internal
 # clients reach this proxy directly instead of hairpinning out via Cloudflare.
 #
 # - acme : issues/renews a Let's Encrypt cert via Cloudflare DNS-01 (no inbound
@@ -38,7 +38,7 @@ services:
       - ./conf.d:/etc/nginx/conf.d:ro
       - ./certs:/etc/nginx/certs:ro
     networks:
-      - web         # nextjs-web `web:3000`         (dev.kai-lab.net)
+      - web         # nextjs-web `web:3000`         (app-dev.ckk-tool.co.jp)
       - ai-stack    # open-webui `open-webui:8080`  (chat.kai-lab.net)
       - monitoring  # grafana `grafana:3000`        (monitor.kai-lab.net)
       - dockge      # dockge `dockge:5001`          (dock.kai-lab.net)

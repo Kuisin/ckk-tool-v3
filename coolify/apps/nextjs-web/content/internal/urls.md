@@ -13,15 +13,15 @@ description: "業務アプリ・キオスク・管理ツール・DB ブラウザ
 
 | URL | 環境 | 中身 |
 | --- | --- | --- |
-| `https://ckk.kai-lab.net` | **本番** | 業務管理システム — **いまはこちらを使ってください** |
-| `https://ckk-dev.kai-lab.net` | 検証 | 検証用。新機能の確認はこちら |
-| `https://dev.kai-lab.net` | 検証 | 上と同じ（旧アドレス） |
+| `https://app.ckk-tool.co.jp` | **本番** | 業務管理システム — **いまはこちらを使ってください** |
+| `https://app-dev.ckk-tool.co.jp` | 検証 | 検証用。新機能の確認はこちら |
+| `https://app-dev.ckk-tool.co.jp` | 検証 | 上と同じ（旧アドレス） |
 | `https://app.ckk-tool.co.jp` | **本番** | 移行先（準備済み・下記参照） |
 | `https://app-dev.ckk-tool.co.jp` | 検証 | 移行先（準備済み・下記参照） |
 
 > **`ckk-tool.co.jp` 側は「準備だけ済んだ」状態です。** 画面は開きますが、
 > ログインの戻り先（SSO のコールバック）はまだ `kai-lab.net` を向いているため、
-> ログインすると `ckk.kai-lab.net` へ飛ばされます。
+> ログインすると `app.ckk-tool.co.jp` へ飛ばされます。
 > Authentik 側の許可 URL が更新されたら切り替えます。それまでは
 > **`kai-lab.net` のアドレスを使ってください。**
 
