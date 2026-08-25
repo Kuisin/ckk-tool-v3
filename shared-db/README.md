@@ -56,7 +56,15 @@ the script).
 `db-migrate-dev` / `db-migrate-main` が `shared-db/**` の変更を検知して再ビルドし、
 `prisma migrate deploy` → `grants.sql` → `kiosk-cron.sql` → `analytics-views.sql`
 を流す。失敗すればそのデプロイが失敗として残る（Coolify のログで見える）。
-`:remote` スクリプトは緊急時の手動口として残してある。
+
+**手で当てる口は用意していない。** `migrate:deploy` / `migrate:deploy:remote` /
+`grants:remote` / `cron:remote` は 2026-08-25 に削除した。手で当てると、後から
+いちばん気付きにくい形で壊れる — dev と main がずれる、`grants.sql` は当てたが
+`analytics-views.sql` を忘れる、どのデプロイも実行していないのに
+`_prisma_migrations` には適用済みと記録される。当てたいならマージする。
+それが唯一の手段で、失敗したらマイグレーションを直してもう一度マージする。
+`:remote` に残っているのは**読み取り**（`migrate:status:remote`、`psql`）と、
+マイグレーションではないデータ投入（`import:legacy:remote`）だけ。
 
 きっかけは GitHub の push webhook（`deploy.ckk-tool.co.jp/webhooks/source/github/
 events/manual`。アプリごとに別のシークレット）。**Coolify にアプリを足しただけでは

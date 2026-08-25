@@ -43,23 +43,16 @@ services:
     # 旧構成は 8 本を名前で参照していたが、Coolify 化でネットワーク名が
     # `<appUUID>_...` に変わり、`shared-db` に至っては退役して消えている。
     # 名前を追いかけ続けると、移行のたびにここが壊れる。
+    # **1 本だけ。** 以前は各スタックの compose 網を名前で 4〜8 本たぐって
+    # いたが、移行のたびに名前が変わって（`<appUUID>_...`）参照側が壊れた。
+    # 全サービスが `coolify` 網に別名で出ている今、たぐる必要が無い:
+    #   web / web-main / kiosk / kiosk-main / admin / admin-dev … Coolify アプリの別名
+    #   dockge（portainer）/ open-webui / metabase / grafana / coolify 本体
     networks:
-      - web       # nextjs-web の socat リレー（web / web-main / admin / admin-dev / kiosk）
-      - dockge    # portainer（`dockge` 別名を維持）
-      - ai-stack  # open-webui
-      - coolify   # coolify 本体 + metabase / prisma-studio / grafana
+      - coolify
 
 # Attach to each target stack's compose network so the tunnel can resolve them.
 networks:
-  web:
-    external: true
-    name: nextjs-web_default
-  dockge:
-    external: true
-    name: dockge_default
-  ai-stack:
-    external: true
-    name: ai-stack_default
   coolify:
     external: true
     name: coolify

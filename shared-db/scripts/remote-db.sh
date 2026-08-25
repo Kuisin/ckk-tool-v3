@@ -8,18 +8,22 @@
 # rewrites DATABASE_URL to the tunnel, runs the given command, then closes the
 # tunnel. No server-side change, no DB restart, no exposed port.
 #
+# ⚠️ **マイグレーションを手で当てるのには使わないこと。** それは Coolify の
+# db-migrate-dev / db-migrate-main の仕事で、merge が唯一の引き金
+# （CLAUDE.md「The DB is Coolify's」）。ここは読み取りとデータ投入の口。
+#
 # Usage (from shared-db/):
-#   ./scripts/remote-db.sh pnpm prisma migrate deploy
 #   ./scripts/remote-db.sh pnpm prisma migrate status
 #   ./scripts/remote-db.sh psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f sql/grants.sql
 #   ./scripts/remote-db.sh sh -c 'gunzip -c ../tools/data-migration/imports/010_bp.sql.gz | psql "$DATABASE_URL"'
 #
-# Env overrides: DB_SSH_HOST (192.168.50.15), DB_CONTAINER (shared-db),
+# Env overrides: DB_SSH_HOST (192.168.50.15), DB_CONTAINER (ckk-db-dev の
+#                コンテナ名 — Coolify なのでハッシュ入り),
 #                DB_TUNNEL_PORT (25432).
 set -euo pipefail
 
 SERVER="${DB_SSH_HOST:-192.168.50.15}"
-CONTAINER="${DB_CONTAINER:-shared-db}"
+CONTAINER="${DB_CONTAINER:-ckk-db-dev}"
 LOCAL_PORT="${DB_TUNNEL_PORT:-25432}"
 
 cd "$(dirname "$0")/.."   # shared-db root
