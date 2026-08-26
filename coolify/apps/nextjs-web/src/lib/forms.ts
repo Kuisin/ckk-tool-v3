@@ -295,7 +295,7 @@ export async function resolveRelatedRecords(
   try {
     const target = await prisma.form.findUnique({
       where: { code: cfg.targetFormCode },
-      select: { id: true, createdBy: true, code: true },
+      select: { id: true, createdBy: true, code: true, currentVersion: true },
     });
     if (!target) return { headers: [], rows: [] };
     // 参照先フォームを読む権限が無ければ何も出さない（横断で覗けてしまうため）。
@@ -305,6 +305,17 @@ export async function resolveRelatedRecords(
       target.createdBy,
     );
     if (!access.canRead) return { headers: [], rows: [] };
+
+    // 見出しは参照先の**ラベル**で出す。項目キー（field1 …）は内部の識別子で
+    // 画面には出さない方針なので、そのまま見出しにすると読めない
+    // （実際に「field1 / field3 / field7」と並んでいた）。
+    const targetFields = await fetchFormVersionFields(
+      target.id,
+      target.currentVersion,
+    );
+    const labelOf = new Map(
+      targetFields.map((f) => [f.key, f.label.ja || f.key]),
+    );
 
     const rows = await prisma.formResponse.findMany({
       where: { formId: target.id, status: { not: "DRAFT" } },
@@ -324,7 +335,7 @@ export async function resolveRelatedRecords(
     });
 
     return {
-      headers: cfg.columns,
+      headers: cfg.columns.map((c) => labelOf.get(c) ?? c),
       rows: matched.map((r) => {
         const a = (r.answers ?? {}) as Record<string, FormAnswerValue>;
         return {

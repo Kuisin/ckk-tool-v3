@@ -1,0 +1,196 @@
+# CKK 業務管理システム — フォーム定義
+# タイトル : 営業報告
+# 種類     : 申請・報告
+# 項目数   : 11
+# 書き出し元: template / SALESRPT (v1)
+# 書き出し日時: 2026-08-26T00:00:00.000Z
+#
+# kintone の「商談メモ」(cybozu.com/k/249) を写した営業報告のひな形です。
+# このファイルは「フォームの作り」だけを含みます。回答と共有設定は含みません
+#（共有先は環境ごとに違うため、取り込んだフォームは非公開で始まります）。
+# 取り込みは フォーム > 取り込み から、このファイルを選ぶか中身を貼り付けます。
+# 以下の JSON は編集しないでください（壊れると取り込めません）。
+{
+  "meta": {
+    "formatVersion": 1,
+    "sourceEnv": "template",
+    "sourceCode": "SALESRPT",
+    "sourceVersion": 1,
+    "exportedAt": "2026-08-26T00:00:00.000Z",
+    "exportedBy": null,
+    "appVersion": null,
+    "checksum": "8215af33"
+  },
+  "form": {
+    "title": "営業報告",
+    "description": "訪問・商談の記録です。会社名と工場名を選ぶと、同じ会社の過去の報告が下に並びます。\n報告者は、代理で入力した場合に実際に訪問した人を選んでください。",
+    "kind": "REQUEST",
+    "respondentVisibility": "SHOWN",
+    "approvalEnabled": false,
+    "allowMultiple": true,
+    "responseEditMode": "UNTIL_CLOSE",
+    "fields": [
+      {
+        "key": "field1",
+        "label": {
+          "ja": "日付",
+          "en": "Date"
+        },
+        "type": "date",
+        "required": true,
+        "order": 0,
+        "help": "訪問・商談を行った日"
+      },
+      {
+        "key": "field2",
+        "label": {
+          "ja": "報告者",
+          "en": "Reporter"
+        },
+        "type": "lookup",
+        "lookup": {
+          "source": "user"
+        },
+        "required": true,
+        "order": 1,
+        "help": "代理入力のときは、実際に訪問した人を選ぶ"
+      },
+      {
+        "key": "field3",
+        "label": {
+          "ja": "案件名",
+          "en": "Subject"
+        },
+        "type": "text",
+        "required": false,
+        "order": 2,
+        "placeholder": "リーマ LD 品 納品"
+      },
+      {
+        "key": "field4",
+        "label": {
+          "ja": "会社名",
+          "en": "Company"
+        },
+        "type": "lookup",
+        "lookup": {
+          "source": "customer"
+        },
+        "required": true,
+        "order": 3,
+        "help": "取引先マスタから選ぶ（過去の報告の突き合わせにも使う）"
+      },
+      {
+        "key": "field5",
+        "label": {
+          "ja": "工場名・支店",
+          "en": "Site"
+        },
+        "type": "lookup",
+        "lookup": {
+          "source": "business_partner"
+        },
+        "required": false,
+        "order": 4,
+        "help": "訪問した拠点。支店・工場まで含めて選べる"
+      },
+      {
+        "key": "field6",
+        "label": {
+          "ja": "ご担当者",
+          "en": "Contacts"
+        },
+        "type": "table",
+        "required": false,
+        "order": 5,
+        "help": "会った人。複数いる場合は行を足す",
+        "columns": [
+          {
+            "key": "field1",
+            "label": {
+              "ja": "氏名",
+              "en": "Name"
+            },
+            "type": "text",
+            "required": false,
+            "order": 0
+          },
+          {
+            "key": "field2",
+            "label": {
+              "ja": "部署・役職",
+              "en": "Title"
+            },
+            "type": "text",
+            "required": false,
+            "order": 1
+          }
+        ]
+      },
+      {
+        "key": "field7",
+        "label": {
+          "ja": "商談メモ",
+          "en": "Notes"
+        },
+        "type": "textarea",
+        "required": true,
+        "order": 6,
+        "help": "話した内容。次に読む人が経緯を追えるように書く"
+      },
+      {
+        "key": "field8",
+        "label": {
+          "ja": "添付ファイル",
+          "en": "Attachments"
+        },
+        "type": "attachment",
+        "required": false,
+        "order": 7,
+        "help": "図面・見積・写真など"
+      },
+      {
+        "key": "field9",
+        "label": {
+          "ja": "今後の活動",
+          "en": "Next actions"
+        },
+        "type": "textarea",
+        "required": false,
+        "order": 8,
+        "placeholder": "後日図面を頂き見積もり提出へ"
+      },
+      {
+        "key": "field10",
+        "label": {
+          "ja": "その他情報",
+          "en": "Other"
+        },
+        "type": "textarea",
+        "required": false,
+        "order": 9
+      },
+      {
+        "key": "field11",
+        "label": {
+          "ja": "この会社の過去の報告",
+          "en": "Past reports"
+        },
+        "type": "related",
+        "required": false,
+        "order": 10,
+        "related": {
+          "targetFormCode": "SALESRPT",
+          "targetFieldKey": "field4",
+          "thisFieldKey": "field4",
+          "columns": [
+            "field1",
+            "field3",
+            "field7"
+          ],
+          "limit": 20
+        }
+      }
+    ]
+  }
+}

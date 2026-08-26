@@ -75,6 +75,7 @@ export function isNestableFieldType(type: FormFieldType): boolean {
 export type LookupSource =
   | "user"
   | "customer"
+  | "business_partner"
   | "product"
   | "material"
   | "material_type"
@@ -85,7 +86,10 @@ export type LookupSource =
 
 export const LOOKUP_SOURCES: { value: LookupSource; label: string }[] = [
   { value: "user", label: "ユーザー" },
-  { value: "customer", label: "取引先" },
+  { value: "customer", label: "取引先（会社）" },
+  // 支店・工場まで含めて引く。customer は parentId=null（本社）だけなので、
+  // 「顧客の◯◯工場」を選びたいときはこちら。
+  { value: "business_partner", label: "取引先の支店・工場" },
   { value: "product", label: "製品" },
   { value: "material", label: "素材" },
   { value: "material_type", label: "材種" },
@@ -106,6 +110,7 @@ export function lookupHref(source: LookupSource, id: string): string | null {
     case "user":
       return `/settings/users/${enc}`;
     case "customer":
+    case "business_partner":
       return `/master/business-partners/${enc}`;
     case "product":
       return `/master/products/${enc}`;
