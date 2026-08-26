@@ -4,7 +4,7 @@ import { fetchAuditEntries } from "@/lib/audit";
 import { requireAppRead } from "@/lib/authz-page";
 import { fetchForm, formAccess, listResponses } from "@/lib/forms";
 import { listShareGrants } from "@/lib/share-grants";
-import { saveShareGrants } from "../actions";
+import { saveShareGrants, setFormStatus } from "../actions";
 import { fetchRoleOptions } from "../data";
 
 export const dynamic = "force-dynamic";
@@ -45,6 +45,11 @@ export default async function FormDetailPage({
           code,
           next as Parameters<typeof saveShareGrants>[1],
         );
+        return result.ok ? { ok: true } : { ok: false, error: result.error };
+      }}
+      onSetStatus={async (status) => {
+        "use server";
+        const result = await setFormStatus(code, status);
         return result.ok ? { ok: true } : { ok: false, error: result.error };
       }}
       responses={responses}

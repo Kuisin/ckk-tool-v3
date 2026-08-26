@@ -1,23 +1,30 @@
 "use client";
 
 import { Alert, Badge, CopyButton, Group, Tabs, Text } from "@mantine/core";
+import { notifications } from "@mantine/notifications";
 import {
+  IconArchive,
+  IconArrowBackUp,
   IconChartBar,
   IconCheck,
   IconCopy,
   IconDownload,
   IconLink,
+  IconWorld,
 } from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
+import { useTransition } from "react";
 import { useFormat } from "@/components/layout/PreferencesProvider";
 import { GhostButton } from "@/components/ui/buttons";
 import { DataTable } from "@/components/ui/DataTable";
 import { FieldValue } from "@/components/ui/FieldValue";
+import { openConfirm } from "@/components/ui/modals";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import {
   type AuditEntry,
   AuditTimeline,
   DetailShell,
+  type MenuItemDef,
   ResourceActions,
   SummaryGrid,
 } from "@/components/ui/shells";
@@ -26,6 +33,7 @@ import { AVAILABILITY_LABEL } from "@/lib/form-schema";
 import type { FormDetailView, ResponseRow } from "@/lib/forms";
 import type { ShareGrantView } from "@/lib/share-grants";
 import type { ShareLevel } from "@/lib/share-grants-core";
+import { FormFieldsPanel } from "./FormFieldsPanel";
 import { type RoleOption, ShareGrantsPanel } from "./ShareGrantsPanel";
 
 const FORM_SHARE_LEVELS: ShareLevel[] = ["RESPOND", "READ", "EDIT", "MANAGE"];
@@ -39,6 +47,7 @@ export function FormDetail({
   canEdit,
   canManage,
   onSaveShare,
+  onSetStatus,
 }: {
   form: FormDetailView;
   responses: ResponseRow[];
@@ -50,6 +59,9 @@ export function FormDetail({
   onSaveShare: (
     grants: { subjectType: string; subjectId: string | null; level: string }[],
   ) => Promise<{ ok: boolean; error?: string }>;
+  onSetStatus: (
+    status: "DRAFT" | "PUBLISHED" | "ARCHIVED",
+  ) => Promise<{ ok: boolean; error?: string }>;
 }) {
   const router = useRouter();
   const fmt = useFormat();
@@ -59,11 +71,91 @@ export function FormDetail({
       ? `${window.location.origin}/f/${form.code}`
       : `/f/${form.code}`;
 
+  const [pending, startTransition] = useTransition();
+
+  const applyStatus = (
+    status: "DRAFT" | "PUBLISHED" | "ARCHIVED",
+    done: string,
+  ) => {
+    startTransition(async () => {
+      const result = await onSetStatus(status);
+      notifications.show(
+        result.ok
+          ? { title: done, message: form.title, color: "green" }
+          : {
+              title: "変更できませんでした",
+              message: result.error ?? "もう一度お試しください",
+              color: "red",
+            },
+      );
+      if (result.ok) router.refresh();
+    });
+  };
+
+  // 公開状態の操作。**押せないときも隠さずグレーアウトで残す** — 「公開する」が
+  // 見当たらないのと、押せない理由が書いてあるのとでは、迷い方がまるで違う。
+  const statusItems: MenuItemDef[] = canEdit
+    ? [
+        ...(form.status === "PUBLISHED"
+          ? []
+          : [
+              {
+                label: "公開する",
+                icon: <IconWorld size={14} />,
+                disabled: pending || form.currentVersion === 0,
+                disabledReason:
+                  form.currentVersion === 0
+                    ? "先に「編集」から項目を追加して保存してください"
+                    : undefined,
+                onClick: () => applyStatus("PUBLISHED", "公開しました"),
+              },
+            ]),
+        ...(form.status === "PUBLISHED"
+          ? [
+              {
+                label: "下書きに戻す",
+                icon: <IconArrowBackUp size={14} />,
+                disabled: pending,
+                onClick: () =>
+                  openConfirm({
+                    title: "下書きに戻す",
+                    message:
+                      "受付を止めます。共有 URL を開いても回答できなくなります（今ある回答は残ります）。",
+                    confirmLabel: "下書きに戻す",
+                    onConfirm: () => applyStatus("DRAFT", "下書きに戻しました"),
+                  }),
+              },
+            ]
+          : []),
+        ...(form.status === "ARCHIVED"
+          ? []
+          : [
+              {
+                label: "アーカイブする",
+                icon: <IconArchive size={14} />,
+                color: "red",
+                disabled: pending,
+                divider: true,
+                onClick: () =>
+                  openConfirm({
+                    title: "アーカイブする",
+                    message:
+                      "使い終わったフォームとして片付けます。受付は止まりますが、回答と集計は残ります。",
+                    confirmLabel: "アーカイブする",
+                    onConfirm: () =>
+                      applyStatus("ARCHIVED", "アーカイブしました"),
+                  }),
+              },
+            ]),
+      ]
+    : [];
+
   return (
     <DetailShell
       actions={
         <ResourceActions
           menuItems={[
+            ...statusItems,
             {
               label: "回答を集計する",
               icon: <IconChartBar size={14} />,
@@ -176,12 +268,21 @@ export function FormDetail({
         )}
       </SummaryGrid>
 
-      <Tabs defaultValue="responses">
+      <Tabs defaultValue="fields">
         <Tabs.List>
+          <Tabs.Tab value="fields">項目（{form.fields.length}）</Tabs.Tab>
           <Tabs.Tab value="responses">回答（{responses.length}）</Tabs.Tab>
           <Tabs.Tab value="share">共有</Tabs.Tab>
           <Tabs.Tab value="history">履歴</Tabs.Tab>
         </Tabs.List>
+
+        <Tabs.Panel pt="md" value="fields">
+          <FormFieldsPanel
+            currentVersion={form.currentVersion}
+            fields={form.fields}
+            schemaError={form.schemaError}
+          />
+        </Tabs.Panel>
 
         <Tabs.Panel pt="md" value="responses">
           {responses.length > 0 && (
