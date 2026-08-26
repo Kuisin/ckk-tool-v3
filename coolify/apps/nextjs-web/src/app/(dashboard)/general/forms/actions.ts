@@ -324,25 +324,41 @@ export async function publishFormFields(
   }
 }
 
-export async function setFormArchived(
+/**
+ * 公開状態の切り替え。**受付可否そのものは日時から導出する**（formAvailability）
+ * ので、ここで決めるのは「土台として公開されているか」だけ。
+ *
+ * - `PUBLISHED` … 受付開始。項目が 1 版も無いフォームは公開できない
+ *   （公開 URL を開いても空のフォームしか出ないため）。
+ * - `DRAFT`     … 受付を止めて手元に戻す。既存の回答は消えず、読める。
+ * - `ARCHIVED`  … 使い終わったフォームを一覧の既定から外す。
+ */
+export async function setFormStatus(
   code: string,
-  archived: boolean,
+  status: "DRAFT" | "PUBLISHED" | "ARCHIVED",
 ): Promise<ActionResult> {
   const gate = await requireFormEdit(code);
   if (!gate.ok) return actionError(gate.error);
   try {
+    const current = await prisma.form.findUniqueOrThrow({
+      where: { code },
+      select: { status: true, currentVersion: true },
+    });
+    if (current.status === status) return actionOk();
+    if (status === "PUBLISHED" && current.currentVersion === 0)
+      return actionError(
+        "項目がまだ公開されていません。「編集」から項目を追加して保存してください",
+      );
+
     await prisma.form.update({
       where: { code },
-      data: {
-        status: archived ? "ARCHIVED" : "PUBLISHED",
-        updatedBy: await getCurrentActorId(),
-      },
+      data: { status, updatedBy: await getCurrentActorId() },
     });
     await recordAudit({
       action: "UPDATE",
       tableName: "forms",
       recordId: code,
-      after: { note: archived ? "アーカイブ" : "アーカイブを解除" },
+      after: { note: FORM_STATUS_NOTE[status] },
     });
     revalidate(code);
     return actionOk();
@@ -350,6 +366,12 @@ export async function setFormArchived(
     return actionError(prismaErrorMessage(e, "更新に失敗しました"));
   }
 }
+
+const FORM_STATUS_NOTE: Record<"DRAFT" | "PUBLISHED" | "ARCHIVED", string> = {
+  DRAFT: "下書きに戻した（受付を停止）",
+  PUBLISHED: "公開した（受付を開始）",
+  ARCHIVED: "アーカイブした",
+};
 
 /** 共有設定はまとめて置き換える（消し忘れによる権限の残留を防ぐ）。 */
 export async function saveShareGrants(

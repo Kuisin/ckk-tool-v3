@@ -59,6 +59,11 @@ export interface FormDetailView {
   responseEditMode: "NONE" | "UNTIL_CLOSE" | "UNTIL_DATE";
   responseEditableUntil: Date | null;
   fields: FormFieldDef[];
+  /**
+   * 保存済みの定義を読み取れなかったときの理由。**「項目ゼロ」と区別する**ため
+   * に持つ — 黙って空のフォームを見せると、壊れているのか未作成なのか分からない。
+   */
+  schemaError: string | null;
   createdBy: string | null;
   createdAt: Date;
   updatedAt: Date;
@@ -82,6 +87,12 @@ function toIso(d: Date | null): string | null {
 function fieldsOf(schema: unknown): FormFieldDef[] {
   const parsed = parseFormFields(schema);
   return parsed.ok ? parsed.fields : [];
+}
+
+/** 読み取れなかった理由。読めたときは null。 */
+function schemaErrorOf(schema: unknown): string | null {
+  const parsed = parseFormFields(schema);
+  return parsed.ok ? null : parsed.error;
 }
 
 /**
@@ -166,6 +177,7 @@ export const fetchForm = cache(
       responseEditMode: row.responseEditMode,
       responseEditableUntil: row.responseEditableUntil,
       fields: fieldsOf(row.versions[0]?.schema ?? []),
+      schemaError: schemaErrorOf(row.versions[0]?.schema ?? []),
       createdBy: row.createdBy,
       createdAt: row.createdAt,
       updatedAt: row.updatedAt,
