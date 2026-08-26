@@ -26,6 +26,7 @@ import {
   shareAccessFor,
   visibleOwnerIds,
 } from "./share-grants";
+import { type ResponseScope, responseInScope } from "./share-grants-core";
 
 export const FORM_OWNER_TYPE = "forms";
 export const RESPONSE_OWNER_TYPE = "form_responses";
@@ -206,8 +207,18 @@ export async function formAccess(form: {
 }
 
 /** 回答一覧（respondentVisibility=HIDDEN なら回答者を載せない）。 */
+/**
+ * 一覧に出してよい回答。
+ *
+ * 共有に条件が付いていれば**当てはまる回答だけ**を返す。自分の回答は条件に
+ * 関係なく常に見える（自分が出したものが自分に見えないのは筋が通らない）。
+ * 絞り込みはアプリ側で行う — JSONB の問い合わせを組み立てるより、
+ * 1 つの純関数（responseInScope）に判断を寄せたほうが検証しやすい。
+ */
 export async function listResponses(
   form: FormDetailView,
+  scope: ResponseScope,
+  viewerId: string | null,
 ): Promise<ResponseRow[]> {
   try {
     const rows = await prisma.formResponse.findMany({
@@ -220,22 +231,30 @@ export async function listResponses(
         status: true,
         plainText: true,
         submittedAt: true,
+        answers: true,
+        submittedBy: true,
         submittedByUser: { select: { displayName: true, username: true } },
       },
     });
-    return rows.map((r) => ({
-      responseNumber: r.responseNumber,
-      recordNo: r.recordNo,
-      status: r.status,
-      // HIDDEN のフォームでは props に載せない — クライアントへ送ってから
-      // 隠すのは事故のもと。
-      respondent:
-        form.respondentVisibility === "HIDDEN"
-          ? null
-          : r.submittedByUser.displayName || r.submittedByUser.username,
-      submittedAt: toIso(r.submittedAt),
-      summary: (r.plainText ?? "").split("\n").slice(0, 2).join(" / "),
-    }));
+    return rows
+      .filter(
+        (r) =>
+          (viewerId != null && r.submittedBy === viewerId) ||
+          responseInScope(scope, (r.answers ?? {}) as Record<string, unknown>),
+      )
+      .map((r) => ({
+        responseNumber: r.responseNumber,
+        recordNo: r.recordNo,
+        status: r.status,
+        // HIDDEN のフォームでは props に載せない — クライアントへ送ってから
+        // 隠すのは事故のもと。
+        respondent:
+          form.respondentVisibility === "HIDDEN"
+            ? null
+            : r.submittedByUser.displayName || r.submittedByUser.username,
+        submittedAt: toIso(r.submittedAt),
+        summary: (r.plainText ?? "").split("\n").slice(0, 2).join(" / "),
+      }));
   } catch {
     return [];
   }
@@ -295,6 +314,13 @@ export async function fetchResponse(
 export async function resolveRelatedRecords(
   field: FormFieldDef,
   ownValue: FormAnswerValue,
+  /**
+   * 条件付き閲覧者のときだけ渡す。関連レコード一覧は突合キー（例: 会社名）で
+   * 絞るだけなので、条件が別の項目に付いていると、この表を経由して条件の外の
+   * 回答が見えてしまう。**条件を持つ相手にだけ**追加で絞る — 条件を持たない
+   * 相手（回答のみの共有など）の見え方は変えない。
+   */
+  scope?: ResponseScope,
 ): Promise<{ headers: string[]; rows: { number: string; cells: string[] }[] }> {
   const cfg = field.related;
   if (!cfg || ownValue == null) return { headers: [], rows: [] };
@@ -336,8 +362,10 @@ export async function resolveRelatedRecords(
       select: { responseNumber: true, answers: true },
     });
 
+    const conditioned = !!scope && !scope.all && scope.conditions.length > 0;
     const matched = rows.filter((r) => {
       const a = (r.answers ?? {}) as Record<string, FormAnswerValue>;
+      if (conditioned && !responseInScope(scope, a)) return false;
       const v = a[cfg.targetFieldKey];
       const id =
         typeof v === "object" && v != null && "id" in v

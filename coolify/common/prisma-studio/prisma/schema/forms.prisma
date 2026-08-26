@@ -180,6 +180,17 @@ model ShareGrant {
 
   level ShareLevel
 
+  // 「この条件に当てはまる回答だけ見せる」— READ の共有にだけ意味がある
+  // （EDIT/MANAGE はフォームを預かる側なので絞らない）。
+  // conditionFieldKey が null なら絞り込みなし＝全件。
+  //
+  // 値は突合キー（select/multiselect は選択肢の value、lookup はマスタの id）で、
+  // ラベルは表示用のスナップショット。マスタ名が変わっても共有設定の画面が
+  // 読めるようにするため（回答の lookup が {id,label} を持つのと同じ理由）。
+  conditionFieldKey String?  @map("condition_field_key")
+  conditionValues   String[] @default([]) @map("condition_values")
+  conditionLabels   String[] @default([]) @map("condition_labels")
+
   createdBy String?  @map("created_by") @db.Uuid
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
 

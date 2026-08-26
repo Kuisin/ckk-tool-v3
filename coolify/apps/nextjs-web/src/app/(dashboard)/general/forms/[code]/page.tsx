@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import { FormDetail } from "@/components/forms/FormDetail";
 import { fetchAuditEntries } from "@/lib/audit";
+import { sessionUserId } from "@/lib/authz";
 import { requireAppRead } from "@/lib/authz-page";
 import { fetchForm, formAccess, listResponses } from "@/lib/forms";
 import { listShareGrants } from "@/lib/share-grants";
@@ -25,8 +26,9 @@ export default async function FormDetailPage({
   const access = await formAccess(form);
   if (!access.canRead) notFound();
 
+  const viewerId = await sessionUserId();
   const [responses, grants, roleOptions, auditEntries] = await Promise.all([
-    listResponses(form),
+    listResponses(form, access.responseScope, viewerId),
     listShareGrants("forms", code),
     fetchRoleOptions(),
     fetchAuditEntries("forms", code),

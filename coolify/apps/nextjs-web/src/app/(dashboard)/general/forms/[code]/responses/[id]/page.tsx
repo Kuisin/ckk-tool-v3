@@ -9,6 +9,7 @@ import { requireAppRead } from "@/lib/authz-page";
 import { listMemos } from "@/lib/document-memos";
 import { canEditResponse } from "@/lib/form-schema";
 import { fetchResponse, formAccess, resolveRelatedRecords } from "@/lib/forms";
+import { responseInScope } from "@/lib/share-grants-core";
 
 export const dynamic = "force-dynamic";
 
@@ -27,8 +28,11 @@ export default async function ResponseDetailPage({
   const userId = await sessionUserId();
   const access = await formAccess(response.form);
   const isOwner = !!userId && response.submittedBy === userId;
-  // 自分の回答は共有設定に関係なく読める。他人の回答は「閲覧」以上が要る。
-  if (!access.canRead && !isOwner) notFound();
+  // 自分の回答は共有設定に関係なく読める。他人の回答は「閲覧」以上が要り、
+  // さらに共有に条件が付いていればその条件に当てはまるものだけ。
+  const inScope =
+    access.canRead && responseInScope(access.responseScope, response.answers);
+  if (!inScope && !isOwner) notFound();
 
   // 「回答者を表示しない」フォームでは、操作履歴の実行者名と添付のアップロード者名が
   // そのまま回答者を指してしまう。本人以外には渡さない — 画面で隠すのではなく
@@ -63,6 +67,7 @@ export default async function ResponseDetailPage({
     related[field.key] = await resolveRelatedRecords(
       field,
       response.answers[field.related?.thisFieldKey ?? ""],
+      isOwner ? undefined : access.responseScope,
     );
   }
 
