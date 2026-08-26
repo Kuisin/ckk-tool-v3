@@ -99,6 +99,30 @@ function tally(values: string[]): CountItem[] {
   );
 }
 
+/**
+ * 並び順。多い順が既定だが、5 段階評価のように**選択肢の順序に意味がある**項目では
+ * 定義順のほうが読める（「そう思う」→「思わない」が票数で入れ替わらない）。
+ * 定義順では 0 件の選択肢も残す — 「誰も選ばなかった」ことが結果だから。
+ */
+function orderItems(
+  counted: CountItem[],
+  field: FormFieldDef,
+  options: SummaryOptions,
+): CountItem[] {
+  if (options.order !== "definition" || !field.options?.length) return counted;
+  const byLabel = new Map(counted.map((c) => [c.label, c.count]));
+  const definedLabels = new Set(
+    field.options.map((o) => o.label.ja || o.value),
+  );
+  const defined = field.options.map((o) => {
+    const label = o.label.ja || o.value;
+    return { label, count: byLabel.get(label) ?? 0 };
+  });
+  // 定義に無い値（過去の版で選ばれたもの）は末尾に残す。
+  const extra = counted.filter((c) => !definedLabels.has(c.label));
+  return [...defined, ...extra];
+}
+
 function capBars(items: CountItem[]): {
   items: CountItem[];
   otherCount: number;
@@ -163,6 +187,7 @@ function median(sorted: number[]): number {
 function summarizeField(
   field: FormFieldDef,
   answers: readonly Record<string, FormAnswerValue>[],
+  options: SummaryOptions,
 ): FieldSummaryBody {
   const values = answers
     .map((a) => a[field.key])
@@ -171,14 +196,16 @@ function summarizeField(
 
   switch (field.type) {
     case "select": {
-      const capped = capBars(
-        tally(
-          values
-            .filter((v): v is string => typeof v === "string")
-            .map((v) => optionLabel(field, v)),
-        ),
+      const counted = tally(
+        values
+          .filter((v): v is string => typeof v === "string")
+          .map((v) => optionLabel(field, v)),
       );
-      return { kind: "categories", answered, ...capped };
+      return {
+        kind: "categories",
+        answered,
+        ...capBars(orderItems(counted, field, options)),
+      };
     }
 
     case "multiselect": {
@@ -188,7 +215,11 @@ function summarizeField(
         .flat()
         .filter((v): v is string => typeof v === "string")
         .map((v) => optionLabel(field, v));
-      return { kind: "categories", answered, ...capBars(tally(flat)) };
+      return {
+        kind: "categories",
+        answered,
+        ...capBars(orderItems(tally(flat), field, options)),
+      };
     }
 
     case "lookup": {
@@ -222,11 +253,13 @@ function summarizeField(
     }
 
     case "date": {
-      // 月でまとめる。日別だと棒が増えすぎて傾向が読めない。
-      const months = values
+      // 既定は月。日別は棒が増えて傾向が読みにくいが、短期のアンケートでは
+      // 日ごとに見たいことがあるので切り替えられるようにしてある。
+      const cut = options.dateGrain === "day" ? 10 : 7;
+      const keys = values
         .filter((v): v is string => typeof v === "string")
-        .map((v) => v.slice(0, 7));
-      const buckets = tally(months).sort((a, b) =>
+        .map((v) => v.slice(0, cut));
+      const buckets = tally(keys).sort((a, b) =>
         a.label.localeCompare(b.label),
       );
       return { kind: "periods", answered, buckets };
@@ -280,14 +313,38 @@ function summarizeField(
   }
 }
 
+export interface SummaryOptions {
+  /** 選択肢の並び。多い順（既定）か、フォームで定義した順か。 */
+  order: "count" | "definition";
+  /** 日付項目のまとめ方。 */
+  dateGrain: "month" | "day";
+}
+
+export const DEFAULT_SUMMARY_OPTIONS: SummaryOptions = {
+  order: "count",
+  dateGrain: "month",
+};
+
 export function summarizeResponses(
   fields: readonly FormFieldDef[],
   answers: readonly Record<string, FormAnswerValue>[],
+  options: SummaryOptions = DEFAULT_SUMMARY_OPTIONS,
 ): FieldSummary[] {
   return fields.map((field) => ({
     key: field.key,
     label: field.label.ja || field.key,
     type: field.type,
-    body: summarizeField(field, answers),
+    body: summarizeField(field, answers, options),
   }));
+}
+
+/** 提出の推移（回答そのものの件数。項目ではなくフォーム全体の話）。 */
+export function submissionTrend(
+  submittedAt: readonly (string | null)[],
+  grain: "month" | "day",
+): CountItem[] {
+  const keys = submittedAt
+    .filter((d): d is string => !!d)
+    .map((d) => (grain === "day" ? d.slice(0, 10) : d.slice(0, 7)));
+  return tally(keys).sort((a, b) => a.label.localeCompare(b.label));
 }
