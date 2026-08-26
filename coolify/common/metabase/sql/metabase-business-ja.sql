@@ -92,7 +92,7 @@ m(tbl, ja) AS (VALUES
   ('work_order_step_links', '工程分岐・合流'),
   ('work_order_step_plans', '工程作業計画'),
   ('work_order_step_actuals', '工程作業実績'),
-  ('work_order_step_inspection_templates', '工程検査表'),
+  ('work_order_inspection_templates', '指示書検査表'),
   ('work_order_flow_changes', '工程フロー変更'),
   ('product_inventory', '製品在庫'),
   ('material_inventory', '素材在庫'),
@@ -593,7 +593,10 @@ m(tbl, ja) AS (VALUES
   ('v_defect_types', '不良種類'),
   ('v_currencies', '通貨マスタ'),
   ('v_order_lines_disp', '注文明細(表示通貨別)'),
-  ('v_invoices_disp', '請求書(表示通貨別)')
+  ('v_invoices_disp', '請求書(表示通貨別)'),
+  ('v_forms', 'フォーム'),
+  ('v_form_responses', 'フォーム回答'),
+  ('v_form_answers', 'フォーム回答明細')
 )
 UPDATE metabase_table t SET display_name = m.ja
 FROM m, target
@@ -1063,7 +1066,29 @@ m(col, ja) AS (VALUES
   ('base_unit_price_jpy', '基準単価(JPY)'),
   ('base_unit_price_usd', '基準単価(USD)'),
   ('total_amount_jpy', '合計金額(JPY)'),
-  ('total_amount_usd', '合計金額(USD)')
+  ('total_amount_usd', '合計金額(USD)'),
+  ('form_code', 'フォームコード'),
+  ('form_title', 'フォーム名'),
+  ('form_kind', 'フォーム種別'),
+  ('form_version', '定義バージョン'),
+  ('response_no', '回答番号'),
+  ('record_no', 'No.'),
+  ('respondent_name', '回答者'),
+  ('respondent_visibility', '回答者の表示'),
+  ('response_count', '回答数'),
+  ('approval_enabled', '承認フロー'),
+  ('allow_multiple', '複数回答'),
+  ('opens_at', '受付開始'),
+  ('closes_at', '受付終了'),
+  ('submitted_at', '提出日時'),
+  ('field_key', '項目キー'),
+  ('field_label', '項目名'),
+  ('field_type', '項目の種類'),
+  ('field_order', '項目の並び'),
+  ('value_text', '回答値'),
+  ('value_number', '回答値(数値)'),
+  ('value_date', '回答値(日付)'),
+  ('value_count', '回答値の個数')
 )
 UPDATE metabase_field f SET display_name = m.ja
 FROM m, metabase_table t, target
@@ -1084,7 +1109,9 @@ m(tbl, col) AS (VALUES
   ('v_delivery_orders', 'delivery_order_no'),
   ('v_delivery_notes', 'delivery_no'),
   ('v_price_list_entries', 'price_list_no'),
-  ('v_estimates', 'estimate_no')
+  ('v_estimates', 'estimate_no'),
+  ('v_forms', 'form_code'),
+  ('v_form_responses', 'response_no')
 )
 UPDATE metabase_field f SET semantic_type = 'type/PK'
 FROM m, metabase_table t, target
@@ -1092,6 +1119,30 @@ WHERE f.table_id = t.id AND t.db_id = target.id AND t.schema = 'analytics'
   AND t.name = m.tbl AND f.name = m.col
   AND f.semantic_type IS DISTINCT FROM 'type/PK';
 
+WITH target AS (SELECT id FROM metabase_database WHERE name = 'CKK 業務')
+UPDATE metabase_field f SET semantic_type = 'type/FK', fk_target_field_id = tf.id
+FROM metabase_table t, metabase_table tt, metabase_field tf, target
+WHERE f.table_id = t.id AND t.db_id = target.id AND t.schema = 'analytics'
+  AND t.name = 'v_form_responses' AND f.name = 'form_code'
+  AND tt.db_id = target.id AND tt.schema = 'analytics' AND tt.name = 'v_forms'
+  AND tf.table_id = tt.id AND tf.name = 'form_code'
+  AND (f.semantic_type IS DISTINCT FROM 'type/FK' OR f.fk_target_field_id IS DISTINCT FROM tf.id);
+WITH target AS (SELECT id FROM metabase_database WHERE name = 'CKK 業務')
+UPDATE metabase_field f SET semantic_type = 'type/FK', fk_target_field_id = tf.id
+FROM metabase_table t, metabase_table tt, metabase_field tf, target
+WHERE f.table_id = t.id AND t.db_id = target.id AND t.schema = 'analytics'
+  AND t.name = 'v_form_answers' AND f.name = 'form_code'
+  AND tt.db_id = target.id AND tt.schema = 'analytics' AND tt.name = 'v_forms'
+  AND tf.table_id = tt.id AND tf.name = 'form_code'
+  AND (f.semantic_type IS DISTINCT FROM 'type/FK' OR f.fk_target_field_id IS DISTINCT FROM tf.id);
+WITH target AS (SELECT id FROM metabase_database WHERE name = 'CKK 業務')
+UPDATE metabase_field f SET semantic_type = 'type/FK', fk_target_field_id = tf.id
+FROM metabase_table t, metabase_table tt, metabase_field tf, target
+WHERE f.table_id = t.id AND t.db_id = target.id AND t.schema = 'analytics'
+  AND t.name = 'v_form_answers' AND f.name = 'response_no'
+  AND tt.db_id = target.id AND tt.schema = 'analytics' AND tt.name = 'v_form_responses'
+  AND tf.table_id = tt.id AND tf.name = 'response_no'
+  AND (f.semantic_type IS DISTINCT FROM 'type/FK' OR f.fk_target_field_id IS DISTINCT FROM tf.id);
 WITH target AS (SELECT id FROM metabase_database WHERE name = 'CKK 業務')
 UPDATE metabase_field f SET semantic_type = 'type/FK', fk_target_field_id = tf.id
 FROM metabase_table t, metabase_table tt, metabase_field tf, target

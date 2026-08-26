@@ -7,14 +7,29 @@
  * 全部 1 件になるだけ）。件数と抜粋を出す。
  */
 
-import { Badge, Card, Group, Paper, Stack, Text } from "@mantine/core";
-import { IconChartBar } from "@tabler/icons-react";
+import {
+  Alert,
+  Badge,
+  Card,
+  Group,
+  Paper,
+  SegmentedControl,
+  Stack,
+  Text,
+} from "@mantine/core";
+import {
+  IconChartBar,
+  IconDownload,
+  IconExternalLink,
+} from "@tabler/icons-react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useFormat } from "@/components/layout/PreferencesProvider";
-import { SecondaryButton } from "@/components/ui/buttons";
+import { GhostButton, SecondaryButton } from "@/components/ui/buttons";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { PageHeader } from "@/components/ui/PageHeader";
+import { downloadCsv, toCsv } from "@/lib/csv";
 import { FORM_FIELD_TYPES } from "@/lib/form-schema";
-import type { FieldSummary } from "@/lib/form-summary";
+import type { CountItem, FieldSummary } from "@/lib/form-summary";
 import { StatRow, SummaryBars } from "./SummaryBars";
 
 function typeLabel(type: FieldSummary["type"]): string {
@@ -111,22 +126,71 @@ export function FormSummaryView({
   responseCount,
   lastResponseAt,
   summaries,
+  trend,
+  order,
+  dateGrain,
+  metabaseUrl,
 }: {
   formCode: string;
   formTitle: string;
   responseCount: number;
   lastResponseAt: string | null;
   summaries: FieldSummary[];
+  /** 提出の推移（フォーム全体の件数）。 */
+  trend: CountItem[];
+  order: "count" | "definition";
+  dateGrain: "month" | "day";
+  /** 未設定なら Metabase へのリンクは出さない（LAN 限定の URL を焼き込まない）。 */
+  metabaseUrl: string | null;
 }) {
   const fmt = useFormat();
+  const router = useRouter();
+  const params = useSearchParams();
+
+  // 表示の切り替えは URL に持たせる（共有したときに同じ見え方で開ける）。
+  const setParam = (key: string, value: string) => {
+    const next = new URLSearchParams(params.toString());
+    next.set(key, value);
+    router.replace(`?${next.toString()}`, { scroll: false });
+  };
+
+  // 集計そのものを CSV で出す（画面の数字をそのまま持ち出せるように）。
+  const exportCsv = () => {
+    const rows: (string | number)[][] = [["項目", "区分", "件数"]];
+    for (const s of summaries) {
+      const b = s.body;
+      if (b.kind === "categories" || b.kind === "periods") {
+        const items = b.kind === "categories" ? b.items : b.buckets;
+        for (const i of items) rows.push([s.label, i.label, i.count]);
+      } else if (b.kind === "numbers") {
+        rows.push([s.label, "回答数", b.answered]);
+        rows.push([s.label, "最小", b.min]);
+        rows.push([s.label, "平均", b.mean]);
+        rows.push([s.label, "中央", b.median]);
+        rows.push([s.label, "最大", b.max]);
+        for (const i of b.buckets) rows.push([s.label, i.label, i.count]);
+      } else if (b.kind === "text" || b.kind === "amount") {
+        rows.push([s.label, "回答数", b.answered]);
+      }
+    }
+    downloadCsv(`集計_${formTitle}_${formCode}.csv`, toCsv(rows));
+  };
 
   return (
     <Stack gap="md">
       <PageHeader
         actions={
-          <SecondaryButton href={`/general/forms/${formCode}`}>
-            フォームへ戻る
-          </SecondaryButton>
+          <Group gap="xs" wrap="nowrap">
+            <GhostButton
+              leftSection={<IconDownload size={14} />}
+              onClick={exportCsv}
+            >
+              CSV
+            </GhostButton>
+            <SecondaryButton href={`/general/forms/${formCode}`}>
+              フォームへ戻る
+            </SecondaryButton>
+          </Group>
         }
         breadcrumbs={[
           { label: "一般" },
@@ -148,6 +212,86 @@ export function FormSummaryView({
           ]}
         />
       </Card>
+
+      {responseCount > 0 && (
+        <Card padding="md" radius="md" withBorder>
+          <Stack gap="sm">
+            <Group gap="xl" wrap="wrap">
+              <Stack gap={4}>
+                <Text c="dimmed" size="xs">
+                  選択肢の並び
+                </Text>
+                <SegmentedControl
+                  data={[
+                    { value: "count", label: "多い順" },
+                    { value: "definition", label: "定義順" },
+                  ]}
+                  onChange={(v) => setParam("order", v)}
+                  size="xs"
+                  value={order}
+                />
+              </Stack>
+              <Stack gap={4}>
+                <Text c="dimmed" size="xs">
+                  日付のまとめ方
+                </Text>
+                <SegmentedControl
+                  data={[
+                    { value: "month", label: "月別" },
+                    { value: "day", label: "日別" },
+                  ]}
+                  onChange={(v) => setParam("grain", v)}
+                  size="xs"
+                  value={dateGrain}
+                />
+              </Stack>
+            </Group>
+            <Stack gap={4}>
+              <Text fw={600} size="sm">
+                提出の推移
+              </Text>
+              <SummaryBars
+                items={trend}
+                showPercent={false}
+                total={responseCount}
+              />
+            </Stack>
+          </Stack>
+        </Card>
+      )}
+
+      <Alert
+        color="gray"
+        icon={<IconChartBar size={16} />}
+        title="もっと詳しく分析するには"
+        variant="light"
+      >
+        <Stack gap="xs">
+          <Text size="sm">
+            この画面は「何がどれだけ選ばれたか」までです。項目どうしの掛け合わせ、
+            期間の比較、他の業務データ（受注・出荷など）との突き合わせは
+            <strong> Metabase </strong>で行えます。
+            <br />
+            フォームの回答は{" "}
+            <Text component="span" ff="mono" size="sm">
+              analytics.v_form_answers
+            </Text>{" "}
+            に「1 行 = 1 回答 × 1 項目」で入っています。項目名で内訳を出し、
+            フォーム名で絞るだけで集計できます。
+          </Text>
+          {metabaseUrl && (
+            <Group>
+              <SecondaryButton
+                external
+                href={metabaseUrl}
+                leftSection={<IconExternalLink size={14} />}
+              >
+                Metabase を開く
+              </SecondaryButton>
+            </Group>
+          )}
+        </Stack>
+      </Alert>
 
       {responseCount === 0 ? (
         <Paper p="md" radius="md" withBorder>

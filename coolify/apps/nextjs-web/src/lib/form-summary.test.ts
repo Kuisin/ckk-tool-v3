@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
 import type { FormFieldDef } from "./form-schema";
-import { MAX_CATEGORY_BARS, summarizeResponses } from "./form-summary";
+import {
+  MAX_CATEGORY_BARS,
+  submissionTrend,
+  summarizeResponses,
+} from "./form-summary";
 
 function field(over: Partial<FormFieldDef>): FormFieldDef {
   return {
@@ -223,5 +227,85 @@ describe("回答が 1 件も無いとき", () => {
     const out = summarizeResponses(fields, []);
     expect(out).toHaveLength(3);
     expect(out[0].body).toMatchObject({ answered: 0, items: [] });
+  });
+});
+
+describe("並び順の切り替え", () => {
+  const f = field({ key: "q", type: "select", options });
+
+  it("既定は多い順", () => {
+    const body = summarizeResponses(
+      [f],
+      [{ q: "b" }, { q: "b" }, { q: "a" }],
+    )[0].body;
+    if (body.kind !== "categories") throw new Error("categories を期待");
+    expect(body.items.map((i) => i.label)).toEqual(["思わない", "そう思う"]);
+  });
+
+  it("定義順にすると選択肢の順序を保つ（票数で入れ替わらない）", () => {
+    const body = summarizeResponses([f], [{ q: "b" }, { q: "b" }, { q: "a" }], {
+      order: "definition",
+      dateGrain: "month",
+    })[0].body;
+    if (body.kind !== "categories") throw new Error("categories を期待");
+    expect(body.items.map((i) => i.label)).toEqual(["そう思う", "思わない"]);
+  });
+
+  it("定義順では 0 件の選択肢も残す（誰も選ばなかったことが結果）", () => {
+    const body = summarizeResponses([f], [{ q: "a" }], {
+      order: "definition",
+      dateGrain: "month",
+    })[0].body;
+    if (body.kind !== "categories") throw new Error("categories を期待");
+    expect(body.items).toEqual([
+      { label: "そう思う", count: 1 },
+      { label: "思わない", count: 0 },
+    ]);
+  });
+});
+
+describe("日付の粒度", () => {
+  const f = field({ key: "d", type: "date" });
+  const answers = [{ d: "2026-08-01" }, { d: "2026-08-26" }];
+
+  it("既定は月別", () => {
+    const body = summarizeResponses([f], answers)[0].body;
+    expect(body).toMatchObject({ buckets: [{ label: "2026-08", count: 2 }] });
+  });
+
+  it("日別に切り替えられる", () => {
+    const body = summarizeResponses([f], answers, {
+      order: "count",
+      dateGrain: "day",
+    })[0].body;
+    if (body.kind !== "periods") throw new Error("periods を期待");
+    expect(body.buckets.map((b) => b.label)).toEqual([
+      "2026-08-01",
+      "2026-08-26",
+    ]);
+  });
+});
+
+describe("submissionTrend", () => {
+  it("提出日時を月でまとめ、古い順に返す", () => {
+    expect(
+      submissionTrend(
+        [
+          "2026-08-26T01:00:00Z",
+          "2026-07-02T01:00:00Z",
+          "2026-08-02T01:00:00Z",
+        ],
+        "month",
+      ),
+    ).toEqual([
+      { label: "2026-07", count: 1 },
+      { label: "2026-08", count: 2 },
+    ]);
+  });
+
+  it("null は数えない", () => {
+    expect(submissionTrend([null, "2026-08-26T01:00:00Z"], "day")).toEqual([
+      { label: "2026-08-26", count: 1 },
+    ]);
   });
 });

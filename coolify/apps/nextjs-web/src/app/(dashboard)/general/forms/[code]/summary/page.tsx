@@ -3,7 +3,11 @@ import { FormSummaryView } from "@/components/forms/FormSummaryView";
 import { requireAppRead } from "@/lib/authz-page";
 import { prisma } from "@/lib/db";
 import type { FormAnswerValue } from "@/lib/form-schema";
-import { summarizeResponses } from "@/lib/form-summary";
+import {
+  DEFAULT_SUMMARY_OPTIONS,
+  submissionTrend,
+  summarizeResponses,
+} from "@/lib/form-summary";
 import { fetchForm, formAccess } from "@/lib/forms";
 
 export const dynamic = "force-dynamic";
@@ -11,13 +15,20 @@ export const dynamic = "force-dynamic";
 /** 回答の集計（CM02）。全回答を読む画面なので、閲覧権限が要る。 */
 export default async function FormSummaryPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ code: string }>;
+  searchParams: Promise<{ order?: string; grain?: string }>;
 }) {
   const denied = await requireAppRead("forms");
   if (denied) return denied;
 
   const { code } = await params;
+  const sp = await searchParams;
+  const order =
+    sp.order === "definition" ? "definition" : DEFAULT_SUMMARY_OPTIONS.order;
+  const dateGrain =
+    sp.grain === "day" ? "day" : DEFAULT_SUMMARY_OPTIONS.dateGrain;
   const form = await fetchForm(code);
   if (!form) notFound();
 
@@ -30,21 +41,32 @@ export default async function FormSummaryPage({
     orderBy: { createdAt: "desc" },
     // 集計はメモリ上で行う。数万件になったら SQL 側へ寄せる（その時が来たら）。
     take: 5000,
-    select: { answers: true, createdAt: true },
+    select: { answers: true, createdAt: true, submittedAt: true },
   });
 
   const summaries = summarizeResponses(
     form.fields,
     rows.map((r) => (r.answers ?? {}) as Record<string, FormAnswerValue>),
+    { order, dateGrain },
+  );
+
+  const trend = submissionTrend(
+    rows.map((r) => (r.submittedAt ?? r.createdAt).toISOString()),
+    dateGrain,
   );
 
   return (
     <FormSummaryView
+      dateGrain={dateGrain}
       formCode={form.code}
       formTitle={form.title}
       lastResponseAt={rows[0]?.createdAt.toISOString() ?? null}
+      metabaseUrl={process.env.NEXT_PUBLIC_METABASE_URL ?? null}
+      // LAN 限定の URL を焼き込まない。設定されていなければリンクを出さない。
+      order={order}
       responseCount={rows.length}
       summaries={summaries}
+      trend={trend}
     />
   );
 }

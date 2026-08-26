@@ -768,3 +768,116 @@ SELECT
   CASE d.display_currency WHEN 'JPY' THEN i.total_amount_jpy ELSE i.total_amount_usd END AS total_amount_disp
 FROM analytics.v_invoices i
 CROSS JOIN (VALUES ('JPY'), ('USD')) AS d(display_currency);
+
+-- =====================================================================
+-- フォーム (CM02) — 利用者が項目を組むので、列は固定できない
+-- =====================================================================
+--
+-- 普通の業務表と違い、フォームは**項目そのものが利用者定義**なので「1 列 = 1 項目」の
+-- 横長ビューは作れない（フォームごとに列が変わる）。そこで **1 行 = 1 回答 × 1 項目**の
+-- 縦持ちで公開する。Metabase 側はスキーマを知らなくても
+-- 「field_label で group by して value_text を数える」だけで集計できる。
+--
+-- 回答者は forms.respondent_visibility を尊重する。アプリが「回答者を表示しない」と
+-- 約束したフォームは、BI からも辿れないようにする（ここを素通しにすると、
+-- 画面で隠した意味が無くなる）。
+
+CREATE OR REPLACE VIEW analytics.v_forms WITH (security_invoker = true) AS
+SELECT
+  f.code AS form_code,
+  f.title AS form_title,
+  CASE f.kind WHEN 'REQUEST' THEN '申請・報告' ELSE 'アンケート' END AS form_kind,
+  f.status,
+  CASE f.respondent_visibility WHEN 'HIDDEN' THEN '表示しない' ELSE '表示する' END
+    AS respondent_visibility,
+  f.approval_enabled,
+  f.allow_multiple,
+  f.current_version AS form_version,
+  f.opens_at,
+  f.closes_at,
+  cu.display_name AS created_by_name,
+  f.created_at,
+  f.updated_at,
+  (SELECT count(*) FROM app.form_responses r
+    WHERE r.form_id = f.id AND r.status <> 'DRAFT') AS response_count
+FROM app.forms f
+LEFT JOIN app.users cu ON cu.id = f.created_by;
+
+CREATE OR REPLACE VIEW analytics.v_form_responses WITH (security_invoker = true) AS
+SELECT
+  r.response_number AS response_no,
+  r.record_no,
+  f.code AS form_code,
+  f.title AS form_title,
+  CASE f.kind WHEN 'REQUEST' THEN '申請・報告' ELSE 'アンケート' END AS form_kind,
+  r.status,
+  r.version AS form_version,
+  -- 「回答者を表示しない」フォームでは名前を出さない（アプリと同じ約束）。
+  CASE WHEN f.respondent_visibility = 'SHOWN' THEN u.display_name END AS respondent_name,
+  r.submitted_at,
+  r.approved_at,
+  r.rejected_at,
+  r.created_at,
+  r.updated_at
+FROM app.form_responses r
+JOIN app.forms f ON f.id = r.form_id
+LEFT JOIN app.users u ON u.id = r.submitted_by
+WHERE r.status <> 'DRAFT';
+
+CREATE OR REPLACE VIEW analytics.v_form_answers WITH (security_invoker = true) AS
+SELECT
+  r.response_number AS response_no,
+  r.record_no,
+  f.code AS form_code,
+  f.title AS form_title,
+  r.status,
+  CASE WHEN f.respondent_visibility = 'SHOWN' THEN u.display_name END AS respondent_name,
+  r.submitted_at,
+  r.created_at,
+  fld.field_key,
+  fld.field_label,
+  fld.field_type,
+  fld.field_order,
+  val.value_text,
+  -- 数値・日付は型を分けて出す（Metabase が文字列のまま扱うと集計も並べ替えもできない）
+  CASE WHEN fld.field_type = 'number' AND val.value_text ~ '^-?[0-9]+(\.[0-9]+)?$'
+       THEN val.value_text::numeric END AS value_number,
+  CASE WHEN fld.field_type = 'date' AND val.value_text ~ '^[0-9]{4}-[0-9]{2}-[0-9]{2}$'
+       THEN val.value_text::date END AS value_date,
+  -- 複数選択・添付・サブテーブルは「いくつ入っているか」も出す
+  CASE WHEN jsonb_typeof(r.answers -> fld.field_key) = 'array'
+       THEN jsonb_array_length(r.answers -> fld.field_key) END AS value_count
+FROM app.form_responses r
+JOIN app.forms f ON f.id = r.form_id
+LEFT JOIN app.users u ON u.id = r.submitted_by
+-- 回答は「回答した時点の版」の項目で読む。あとから項目を消しても過去の回答は読める。
+JOIN app.form_versions v ON v.form_id = r.form_id AND v.version = r.version
+CROSS JOIN LATERAL (
+  SELECT
+    e->>'key' AS field_key,
+    coalesce(e->'label'->>'ja', e->'label'->>'en', e->>'key') AS field_label,
+    e->>'type' AS field_type,
+    coalesce((e->>'order')::int, 0) AS field_order
+  FROM jsonb_array_elements(v.schema) AS e
+) fld
+CROSS JOIN LATERAL (
+  SELECT CASE jsonb_typeof(r.answers -> fld.field_key)
+    WHEN 'string' THEN r.answers ->> fld.field_key
+    WHEN 'number' THEN r.answers ->> fld.field_key
+    -- 業務データ検索は保存済みのラベルを出す（id は人が読めない）
+    WHEN 'object' THEN coalesce(
+      r.answers -> fld.field_key ->> 'label',
+      r.answers -> fld.field_key ->> 'id')
+    WHEN 'array' THEN (
+      SELECT string_agg(
+        CASE jsonb_typeof(x)
+          WHEN 'string' THEN x #>> '{}'
+          WHEN 'object' THEN coalesce(x ->> 'label', x ->> 'id')
+          ELSE NULL END, ', ')
+      FROM jsonb_array_elements(r.answers -> fld.field_key) AS x)
+    ELSE NULL
+  END AS value_text
+) val
+WHERE r.status <> 'DRAFT'
+  -- 表示専用の項目は値を持たない
+  AND fld.field_type <> 'related';
