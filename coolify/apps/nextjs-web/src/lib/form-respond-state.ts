@@ -34,7 +34,7 @@ export interface RespondStateInput {
     status: string;
     submittedBy: string;
   }[];
-  /** ?response= で指定された回答番号（自分の回答を直しに来た場合）。 */
+  /** 編集 URL（/f/<code>/<回答番号>/edit）で指定された回答番号。 */
   requestedResponseNumber?: string | null;
   now: Date;
 }
@@ -58,6 +58,21 @@ export type RespondState =
   | { kind: "already-answered"; responseNumber: string; canEdit: boolean }
   /** 編集しに来たが、期限切れ・他人の回答・存在しないなどで編集できない。 */
   | { kind: "edit-unavailable"; responseNumber: string; exists: boolean };
+
+/**
+ * 自分の下書きだけを新しい順で返す。
+ *
+ * 下書きは**何本あってもよい**（訪問先ごとに書きかけを持つ、といった使い方を
+ * する）。提出済みと違って 1 人 1 回の制限にも数えない — まだ出していないから。
+ */
+export function myDraftsOf(
+  myResponses: RespondStateInput["myResponses"],
+  userId: string,
+): RespondStateInput["myResponses"] {
+  return myResponses.filter(
+    (r) => r.status === "DRAFT" && r.submittedBy === userId,
+  );
+}
 
 export function resolveRespondState(input: RespondStateInput): RespondState {
   const { canRespond, form, userId, myResponses, now } = input;

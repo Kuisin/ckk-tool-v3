@@ -544,9 +544,17 @@ export async function submitResponse(
 }
 
 /** 自分の回答を編集する（編集期限の判定はここが最終防衛線）。 */
+/**
+ * 自分の回答を保存する。下書きのまま置くか、提出するかを `asDraft` で選ぶ。
+ *
+ * 下書きは**まだ出していないもの**なので、検証を通さずに何度でも保存できる
+ * （途中まで書いて閉じられないと「下書き」の意味がない）。提出に切り替える
+ * ときに初めて必須項目を見て、受付期間と 1 人 1 回の制限もそこで確かめる。
+ */
 export async function updateResponse(
   responseNumber: string,
   answers: Record<string, FormAnswerValue>,
+  asDraft = false,
 ): Promise<ActionResult> {
   const userId = await sessionUserId();
   if (!userId) return actionError("ログインしてください");
@@ -571,19 +579,53 @@ export async function updateResponse(
   );
   if (!fieldsParsed.ok) return actionError("フォームの定義を読み込めません");
 
-  const errors = validateAnswers(fieldsParsed.fields, answers);
-  const first = Object.values(errors)[0];
-  if (first) return actionError(first);
+  const wasDraft = row.status === "DRAFT";
+  // 下書きに戻す道は用意しない（提出済みを引っ込めるのは承認の取り消しであって
+  // 編集ではない）。下書きでない回答に asDraft を渡すのは呼び違い。
+  if (asDraft && !wasDraft)
+    return actionError("提出済みの回答は下書きに戻せません");
 
+  if (!asDraft) {
+    const errors = validateAnswers(fieldsParsed.fields, answers);
+    const first = Object.values(errors)[0];
+    if (first) return actionError(first);
+  }
+
+  // 下書きを提出に切り替える瞬間だけ、新規提出と同じ関門を通す。
+  if (wasDraft && !asDraft) {
+    const availability = formAvailability(row.form, new Date());
+    if (availability !== "OPEN")
+      return actionError(
+        availability === "SCHEDULED"
+          ? "このフォームはまだ受付前です"
+          : "このフォームの受付は終了しています",
+      );
+    if (!row.form.allowMultiple) {
+      const existing = await prisma.formResponse.findFirst({
+        where: {
+          formId: row.formId,
+          submittedBy: userId,
+          status: { not: "DRAFT" },
+        },
+        select: { responseNumber: true },
+      });
+      if (existing) return actionError("このフォームには既に回答済みです");
+    }
+  }
+
+  const action = asDraft ? "DRAFT" : wasDraft ? "SUBMIT" : "UPDATE";
   try {
     await prisma.formResponse.update({
       where: { responseNumber },
       data: {
         answers: answers as unknown as object,
         plainText: toPlainAnswers(fieldsParsed.fields, answers),
+        ...(wasDraft && !asDraft
+          ? { status: "SUBMITTED" as const, submittedAt: new Date() }
+          : {}),
         history: appendHistory(
           row.history,
-          entry("UPDATE", userId),
+          entry(action, userId),
         ) as unknown as object,
       },
     });
@@ -591,7 +633,13 @@ export async function updateResponse(
       action: "UPDATE",
       tableName: "form_responses",
       recordId: responseNumber,
-      after: { note: "回答を編集" },
+      after: {
+        note: asDraft
+          ? "下書きを保存"
+          : wasDraft
+            ? "下書きを提出"
+            : "回答を編集",
+      },
     });
     revalidate(row.form.code, responseNumber);
     return actionOk();
@@ -601,6 +649,43 @@ export async function updateResponse(
 }
 
 // ── 承認（申請・報告フォーム） ───────────────────────────────────────────────
+
+/**
+ * 自分の下書きを捨てる。**下書きだけ**が対象 — 提出済みの回答を消す道は
+ * 用意しない（記録として残すべきものなので、取り下げは承認側の話）。
+ */
+export async function discardDraft(
+  responseNumber: string,
+): Promise<ActionResult<{ code: string }>> {
+  const userId = await sessionUserId();
+  if (!userId) return actionError("ログインしてください");
+
+  const row = await prisma.formResponse.findUnique({
+    where: { responseNumber },
+    select: {
+      status: true,
+      submittedBy: true,
+      form: { select: { code: true } },
+    },
+  });
+  if (!row) return actionError("下書きが見つかりません");
+  if (row.submittedBy !== userId || row.status !== "DRAFT")
+    return actionError("この下書きは削除できません");
+
+  try {
+    await prisma.formResponse.delete({ where: { responseNumber } });
+    await recordAudit({
+      action: "DELETE",
+      tableName: "form_responses",
+      recordId: responseNumber,
+      before: { note: "下書きを削除" },
+    });
+    revalidate(row.form.code);
+    return actionOk({ code: row.form.code });
+  } catch (e) {
+    return actionError(prismaErrorMessage(e, "下書きの削除に失敗しました"));
+  }
+}
 
 export async function requestResponseApproval(
   responseNumber: string,

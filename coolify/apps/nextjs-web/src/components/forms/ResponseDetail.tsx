@@ -81,7 +81,7 @@ export function ResponseDetail({
       actions={
         canEdit ? (
           <EditButton
-            href={`/f/${formCode}?response=${encodeURIComponent(responseNumber)}`}
+            href={`/f/${formCode}/${encodeURIComponent(responseNumber)}/edit`}
           />
         ) : undefined
       }

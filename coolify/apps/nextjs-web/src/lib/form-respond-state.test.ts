@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  myDraftsOf,
   type RespondStateInput,
   resolveRespondState,
 } from "./form-respond-state";
@@ -230,5 +231,35 @@ describe("resolveRespondState", () => {
         ),
       ).toEqual({ kind: "unavailable" });
     });
+  });
+});
+
+describe("myDraftsOf", () => {
+  const r = (responseNumber: string, status: string, submittedBy = "me") => ({
+    responseNumber,
+    status,
+    submittedBy,
+  });
+
+  it("自分の下書きだけを返す", () => {
+    const got = myDraftsOf(
+      [
+        r("FRM-1", "DRAFT"),
+        r("FRM-2", "SUBMITTED"),
+        r("FRM-3", "DRAFT", "someone-else"),
+        r("FRM-4", "DRAFT"),
+      ],
+      "me",
+    );
+    expect(got.map((x) => x.responseNumber)).toEqual(["FRM-1", "FRM-4"]);
+  });
+
+  it("下書きが無ければ空", () => {
+    expect(myDraftsOf([r("FRM-1", "SUBMITTED")], "me")).toEqual([]);
+  });
+
+  it("下書きは何本でも許す（上限を設けない）", () => {
+    const many = Array.from({ length: 5 }, (_, i) => r(`FRM-${i}`, "DRAFT"));
+    expect(myDraftsOf(many, "me")).toHaveLength(5);
   });
 });
