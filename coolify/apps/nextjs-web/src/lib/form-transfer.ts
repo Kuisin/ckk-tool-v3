@@ -237,6 +237,29 @@ export function parseFormExport(text: string): ParseResult {
 }
 
 /**
+ * 自分自身を参照する「関連レコード一覧」の参照先を、取り込み後のコードへ
+ * 張り替える。
+ *
+ * WHY: 取り込みは書き出し元と同じコードを使おうとするが、そのコードが埋まって
+ * いれば新しいコードで作る。このとき自己参照はもとのコードを指したままになり、
+ * **エラーも出さずに常に 0 件**を表示する（参照先が別環境の別フォームなら、
+ * もっと悪く、他人のフォームを指す）。他フォームへの参照は意図的な外部参照
+ * なので触らない。
+ */
+export function remapSelfReferences(
+  fields: readonly FormFieldDef[],
+  fromCode: string,
+  toCode: string,
+): FormFieldDef[] {
+  if (!fromCode || fromCode === toCode) return [...fields];
+  return fields.map((f) =>
+    f.type === "related" && f.related?.targetFormCode === fromCode
+      ? { ...f, related: { ...f.related, targetFormCode: toCode } }
+      : f,
+  );
+}
+
+/**
  * 環境をまたぐと外れるかもしれない参照を洗い出す。取り込みは止めない —
  * 直せるのは取り込んだ側の人なので、何を直すべきかだけ伝える。
  */
