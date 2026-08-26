@@ -33,6 +33,7 @@ import {
 } from "@tabler/icons-react";
 import Link from "next/link";
 import type { MouseEventHandler, ReactNode } from "react";
+import { keepInAppOnClick } from "@/lib/pwa-display";
 
 export type AppButtonProps = ButtonProps & {
   /** Render as a Next.js <Link> (internal) or, with `external`, a new-tab <a>. */
@@ -66,6 +67,12 @@ function BaseButton({ href, external, children, ...props }: AppButtonProps) {
         target="_blank"
         {...baseButtonDefaults}
         {...props}
+        // インストールした PWA では新しいタブに出さず、アプリの中で開く
+        // （iOS は target="_blank" で Safari が起動し、アプリの外へ出るため）。
+        onClick={(e) => {
+          keepInAppOnClick(e, href);
+          props.onClick?.(e);
+        }}
       >
         {children}
       </Button>

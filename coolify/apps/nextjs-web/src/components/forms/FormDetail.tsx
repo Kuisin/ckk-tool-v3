@@ -1,6 +1,14 @@
 "use client";
 
-import { Alert, Badge, CopyButton, Group, Tabs, Text } from "@mantine/core";
+import {
+  Alert,
+  Anchor,
+  Badge,
+  CopyButton,
+  Group,
+  Tabs,
+  Text,
+} from "@mantine/core";
 import { notifications } from "@mantine/notifications";
 import {
   IconArchive,
@@ -31,6 +39,7 @@ import {
 import { useIsMobile } from "@/hooks/useViewport";
 import { AVAILABILITY_LABEL } from "@/lib/form-schema";
 import type { FormDetailView, ResponseRow } from "@/lib/forms";
+import { keepInAppOnClick } from "@/lib/pwa-display";
 import type { ShareGrantView } from "@/lib/share-grants";
 import type { ShareLevel } from "@/lib/share-grants-core";
 import { isShareConditionFieldType } from "@/lib/share-grants-core";
@@ -185,9 +194,11 @@ export function FormDetail({
               onClick: () => router.push(`/general/forms/${form.code}/summary`),
             },
             {
+              // 回答画面は「配る先が見るもの」なので、編集中の画面を
+              // 置き換えずに別タブで開く（PWA ではアプリ内で開く）。
               label: "回答画面を開く",
               icon: <IconLink size={14} />,
-              onClick: () => router.push(`/f/${form.code}`),
+              href: `/f/${form.code}`,
             },
             {
               // 別環境へ持っていくための書き出し。実ファイルの
@@ -258,13 +269,19 @@ export function FormDetail({
           label="共有 URL"
           value={
             <Group gap="xs" wrap={isMobile ? "wrap" : "nowrap"}>
-              <Text
+              {/* URL そのものも踏めるようにする（コピーして貼り直す手間を省く）。
+                  別タブで開き、PWA ではアプリ内に留める。 */}
+              <Anchor
                 ff="mono"
+                href={`/f/${form.code}`}
+                onClick={(e) => keepInAppOnClick(e, `/f/${form.code}`)}
+                rel="noopener noreferrer"
                 size="sm"
                 style={{ wordBreak: "break-all", minWidth: 0 }}
+                target="_blank"
               >
                 {shareUrl}
-              </Text>
+              </Anchor>
               <CopyButton value={shareUrl}>
                 {({ copied, copy }) => (
                   <GhostButton
@@ -278,8 +295,9 @@ export function FormDetail({
                 )}
               </CopyButton>
               <GhostButton
+                external
+                href={`/f/${form.code}`}
                 leftSection={<IconLink size={14} />}
-                onClick={() => router.push(`/f/${form.code}`)}
               >
                 回答画面を開く
               </GhostButton>
