@@ -4,6 +4,10 @@
 - Apply security path for Next.js, Auth.js and Nginx
 - Docker image: freeze tag
 - pnpm install --frozen-lockfile required
+- 依存の追加は**禁止ではない**。入れる / 自前で書く の両案とトレードオフ
+  （得られるもの・大きさ・ライセンス・保守の見込み・責務の境界）を示して
+  **利用者に確認してから**決める。決めたら完全固定でピンし、採用理由を
+  `coolify/apps/nextjs-web/CLAUDE.md`「依存ライブラリ」へ記録する
 
 ### Containers
 | #  | Container   | Image                         | Role                          | Port (internal) |
