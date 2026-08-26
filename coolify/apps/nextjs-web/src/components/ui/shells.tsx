@@ -44,6 +44,7 @@ import {
 import { type ReactNode, useState } from "react";
 import { useUnsavedChanges } from "@/components/layout/NavigationGuard";
 import { useIsMobile } from "@/hooks/useViewport";
+import { keepInAppOnClick } from "@/lib/pwa-display";
 import { AuditDetailModal } from "./AuditDetailModal";
 import {
   CancelButton,
@@ -122,12 +123,15 @@ export function ResourceActions({
               <Box key={m.label}>
                 {m.divider && i > 0 && <Menu.Divider />}
                 {m.href && !m.disabled ? (
-                  // 実アンカー + target="_blank" — PWA でもアプリ内ブラウザで開く。
+                  // 実アンカー + target="_blank"（window.open はポップアップ扱いで
+                  // 塞がれる）。インストールした PWA ではアプリの中で開く —
+                  // 判定と分岐は lib/pwa-display.ts に寄せてある。
                   <Menu.Item
                     color={m.color}
                     component="a"
                     href={m.href}
                     leftSection={m.icon}
+                    onClick={(e) => keepInAppOnClick(e, m.href as string)}
                     rel="noopener noreferrer"
                     target="_blank"
                   >
