@@ -61,7 +61,9 @@ Manufacturing Company Business Management System — a Next.js fullstack monolit
 ## Commands
 
 ```bash
-# Install — pnpm workspace: ルートで 1 回（lockfile はルートの 1 本。変更禁止）
+# Install — pnpm workspace: ルートで 1 回（lockfile はルートの 1 本）
+# 依存を足すときは相談してから `pnpm add` をルートで実行し、lockfile を必ずコミット
+#   （方針は coolify/apps/nextjs-web/CLAUDE.md「依存ライブラリ」）
 # workspace = nextjs-web / nextjs-kiosk / packages/*（authz-core 等の共有パッケージ）
 pnpm install --frozen-lockfile   # リポジトリルートで実行
 
@@ -210,7 +212,9 @@ cd coolify/common
 # server host override: DEPLOY_HOST=<ip> ./deploy-stack.sh <stack>
 ```
 
-Always `--dry-run` first to confirm the file set. The nextjs-web Dockerfile builds Next.js `output: "standalone"`; PDF templates under `src/pdf-templates/` reach the runtime image via `outputFileTracingIncludes` in `next.config.ts` (file tracing can't follow `fs.readFile` paths). `pnpm install --frozen-lockfile` runs in-build, so never let the lockfile drift.
+Always `--dry-run` first to confirm the file set. The nextjs-web Dockerfile builds Next.js `output: "standalone"`; PDF templates under `src/pdf-templates/` reach the runtime image via `outputFileTracingIncludes` in `next.config.ts` (file tracing can't follow `fs.readFile` paths). `pnpm install --frozen-lockfile` runs in-build, so the lockfile must always match
+`package.json` — 依存を足したら `pnpm-lock.yaml` を必ず同じコミットに含める
+（足すかどうかの決め方は `coolify/apps/nextjs-web/CLAUDE.md`「依存ライブラリ」）。
 
 **nextjs-web topology** — the app containers are Coolify-managed (dev `:3004`, main `:3005`, container `:3000`; host `:3000` is taken by open-webui). Public access `https://app-dev.ckk-tool.co.jp` (dev) / `https://app.ckk-tool.co.jp` (main) via the `cloudflared` stack; LAN TLS via `nginx-proxy` (same hostnames, shared `app.ckk-tool.co.jp` SAN cert); both reach the apps over the **`coolify`** network at `http://web:3000` (dev) / `http://web-main:3000` (main) — those are Coolify `custom_network_aliases` on the app containers themselves (the socat relays that used to provide them were removed on 2026-08-25). PDF generation and file storage are per-environment services in the `app-support` stack: `GOTENBERG_URL=http://gotenberg-{dev|main}:3000`, `SEAWEED_FILER_URL=http://seaweedfs-{dev|main}:8888`.
 
