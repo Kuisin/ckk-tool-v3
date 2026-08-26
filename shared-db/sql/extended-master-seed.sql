@@ -954,5 +954,28 @@ INSERT INTO app.materials VALUES ('E01A0001-A120-310', '{"en": "SH10 Black skin 
 INSERT INTO app.materials VALUES ('E01A0001-A130-310', '{"en": "SH10 Black skin φ13.0x310", "ja": "SH10 黒皮 φ13.0×310"}', '本', true, NULL, '2026-08-24 09:19:52.070639+00', '2026-08-24 09:19:52.070639+00', '130', 13.000, 'A0', 310.000, '310', NULL, NULL, 'A', 12, 903, '{}');
 INSERT INTO app.materials VALUES ('E01A0001-A140-310', '{"en": "SH10 Black skin φ14.0x310", "ja": "SH10 黒皮 φ14.0×310"}', '本', true, NULL, '2026-08-24 09:19:52.070908+00', '2026-08-24 09:19:52.070908+00', '140', 14.000, 'A0', 310.000, '310', NULL, NULL, 'A', 12, 904, '{}');
 
+-- ─── 連番の採番位置を合わせる ────────────────────────────────────────────────
+-- 上の INSERT は id を明示して入れている。明示 id の INSERT はシーケンスを
+-- 進めないので、このあと画面や別のシードが id を省略して INSERT すると
+-- 1 番から採番し直して重複で落ちる（撮影用 DB で実際に
+-- manufacturing-demo-seed が approval_groups で落ちていた）。
+-- 入れ終わった時点の最大値までシーケンスを送っておく。
+SELECT setval(
+  pg_get_serial_sequence('app.approval_groups', 'id'),
+  GREATEST((SELECT COALESCE(MAX(id), 0) FROM app.approval_groups), 1)
+);
+SELECT setval(
+  pg_get_serial_sequence('app.approval_flow_steps', 'id'),
+  GREATEST((SELECT COALESCE(MAX(id), 0) FROM app.approval_flow_steps), 1)
+);
+SELECT setval(
+  pg_get_serial_sequence('app.defect_types', 'id'),
+  GREATEST((SELECT COALESCE(MAX(id), 0) FROM app.defect_types), 1)
+);
+SELECT setval(
+  pg_get_serial_sequence('app.plants', 'id'),
+  GREATEST((SELECT COALESCE(MAX(id), 0) FROM app.plants), 1)
+);
+
 SET session_replication_role = DEFAULT;
 COMMIT;
