@@ -8,6 +8,7 @@ import {
   type FormExportBody,
   parseFormExport,
   portabilityWarnings,
+  remapSelfReferences,
   serializeFormExport,
 } from "./form-transfer";
 
@@ -217,5 +218,53 @@ describe("exportFileName", () => {
   });
   it("空タイトルでも壊れない", () => {
     expect(exportFileName("   ", "dev", "X")).toBe("フォーム_無題_dev_X.txt");
+  });
+});
+
+describe("remapSelfReferences", () => {
+  const related = (targetFormCode: string): FormFieldDef => ({
+    key: "field1",
+    label: { ja: "過去の報告", en: "" },
+    type: "related",
+    required: false,
+    order: 0,
+    related: {
+      targetFormCode,
+      targetFieldKey: "field4",
+      thisFieldKey: "field4",
+      columns: ["field1"],
+      limit: 20,
+    },
+  });
+
+  it("自己参照は取り込み後のコードへ張り替える", () => {
+    const out = remapSelfReferences(
+      [related("SALESRPT")],
+      "SALESRPT",
+      "NEWCODE",
+    );
+    expect(out[0].related?.targetFormCode).toBe("NEWCODE");
+  });
+
+  it("他フォームへの参照は意図的な外部参照なので触らない", () => {
+    const out = remapSelfReferences(
+      [related("OTHER123")],
+      "SALESRPT",
+      "NEWCODE",
+    );
+    expect(out[0].related?.targetFormCode).toBe("OTHER123");
+  });
+
+  it("コードが変わらないときは何もしない", () => {
+    const fields = [related("SALESRPT")];
+    expect(remapSelfReferences(fields, "SALESRPT", "SALESRPT")[0]).toEqual(
+      fields[0],
+    );
+  });
+
+  it("元の配列を書き換えない", () => {
+    const fields = [related("SALESRPT")];
+    remapSelfReferences(fields, "SALESRPT", "NEWCODE");
+    expect(fields[0].related?.targetFormCode).toBe("SALESRPT");
   });
 });

@@ -39,7 +39,11 @@ import {
   toPlainAnswers,
   validateAnswers,
 } from "@/lib/form-schema";
-import { type FormExportBody, parseFormExport } from "@/lib/form-transfer";
+import {
+  type FormExportBody,
+  parseFormExport,
+  remapSelfReferences,
+} from "@/lib/form-transfer";
 import { nextDocumentNumber } from "@/lib/numbering";
 import {
   type ActionResult,
@@ -815,6 +819,10 @@ async function insertImportedForm(
     : { code: "" };
   if (!code || taken) code = await uniqueFormCode();
 
+  // 別コードになった場合、自己参照の「関連レコード一覧」は書き出し元の
+  // コードを指したままになる（黙って 0 件になる）ので張り替える。
+  const fields = remapSelfReferences(body.fields, preferredCode, code);
+
   await prisma.$transaction(async (tx) => {
     const form = await tx.form.create({
       data: {
@@ -842,7 +850,7 @@ async function insertImportedForm(
       data: {
         formId: form.id,
         version: 1,
-        schema: body.fields as unknown as object,
+        schema: fields as unknown as object,
         publishedBy: actor,
       },
     });
