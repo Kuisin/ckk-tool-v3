@@ -25,6 +25,12 @@ export interface BarItem {
 
 const BAR_HEIGHT = 14;
 
+/**
+ * 帯の最大幅。画面いっぱいに伸ばすと、棒グラフというより読み込みバーに見える。
+ * 比較に必要なのは長さの差であって、絶対的な長さではない。
+ */
+const MAX_PLOT_WIDTH = 560;
+
 export function SummaryBars({
   items,
   total,
@@ -53,14 +59,22 @@ export function SummaryBars({
   return (
     <Stack gap="xs">
       {items.map((item) => {
-        const width = Math.max(2, (item.count / max) * 100);
+        // 0 件は棒を出さない。最低幅を持たせると「0 なのに何かある」という
+        // 嘘になる（実際に 0 件の区間が塗られていた）。
+        const width =
+          item.count === 0 ? 0 : Math.max(1, (item.count / max) * 100);
         const percent =
           showPercent && total > 0
             ? Math.round((item.count / total) * 1000) / 10
             : null;
         return (
           <Box key={item.label}>
-            <Group gap="xs" justify="space-between" wrap="nowrap">
+            <Group
+              gap="xs"
+              justify="space-between"
+              maw={MAX_PLOT_WIDTH}
+              wrap="nowrap"
+            >
               {/* ラベルは折り返す。切ると何の項目か分からなくなる。 */}
               <Text size="sm" style={{ minWidth: 0, wordBreak: "break-word" }}>
                 {item.label}
@@ -82,6 +96,7 @@ export function SummaryBars({
               </Text>
             </Group>
             <Box
+              maw={MAX_PLOT_WIDTH}
               mt={4}
               style={{
                 height: BAR_HEIGHT,

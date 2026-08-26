@@ -114,6 +114,28 @@ describe("number", () => {
     });
   });
 
+  it("値の種類が少ないときは区間に切らず、そのまま数える", () => {
+    // 5 段階評価を「1〜2.33」のように刻んでも読めない。
+    const body = summarizeResponses(
+      [f],
+      [{ n: "1" }, { n: "4" }, { n: "5" }, { n: "5" }],
+    )[0].body;
+    if (body.kind !== "numbers") throw new Error("numbers を期待");
+    expect(body.buckets).toEqual([
+      { label: "1", count: 1 },
+      { label: "4", count: 1 },
+      { label: "5", count: 2 },
+    ]);
+  });
+
+  it("値の種類が多いときは区間にまとめる", () => {
+    const answers = Array.from({ length: 40 }, (_, i) => ({ n: String(i) }));
+    const body = summarizeResponses([f], answers)[0].body;
+    if (body.kind !== "numbers") throw new Error("numbers を期待");
+    expect(body.buckets.length).toBeLessThanOrEqual(8);
+    expect(body.buckets.reduce((a, b) => a + b.count, 0)).toBe(40);
+  });
+
   it("最大値が最後の区間に入る（範囲外に落ちない）", () => {
     const body = summarizeResponses([f], [{ n: "0" }, { n: "10" }])[0].body;
     if (body.kind !== "numbers") throw new Error("numbers を期待");

@@ -121,6 +121,18 @@ function numberBuckets(values: number[]): CountItem[] {
   const max = Math.max(...values);
   if (min === max) return [{ label: String(min), count: values.length }];
 
+  // 取りうる値が少ないなら、区間に切らずそのまま数える。5 段階評価を
+  // 「1〜2.33 / 2.33〜3.67」と刻んでも読めない（実際にそう出ていた）。
+  const distinct = [...new Set(values)].sort((a, b) => a - b);
+  if (distinct.length <= MAX_NUMBER_BUCKETS) {
+    const counts = new Map<number, number>();
+    for (const v of values) counts.set(v, (counts.get(v) ?? 0) + 1);
+    return distinct.map((v) => ({
+      label: String(round(v)),
+      count: counts.get(v) ?? 0,
+    }));
+  }
+
   const count = Math.min(MAX_NUMBER_BUCKETS, Math.max(2, values.length));
   const width = (max - min) / count;
   const buckets: CountItem[] = [];
