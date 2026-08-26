@@ -9,7 +9,9 @@ import { PrimaryButton, SecondaryButton } from "@/components/ui/buttons";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { sessionUserId } from "@/lib/authz";
 import { canEditResponse, formAvailability } from "@/lib/form-schema";
-import { fetchResponse, resolveRelatedRecords } from "@/lib/forms";
+import { fetchResponse, formAccess, resolveRelatedRecords } from "@/lib/forms";
+import { NO_SHARE_ACCESS } from "@/lib/share-grants";
+import { responseInScope } from "@/lib/share-grants-core";
 import { getServerFormatters } from "@/lib/user-preferences";
 
 export const dynamic = "force-dynamic";
@@ -44,13 +46,22 @@ export default async function MyResponsePage({
   const row = await fetchResponse(responseNumber);
   const isOwner = !!userId && !!row && row.submittedBy === userId;
 
+  // 本人以外は「閲覧」の共有が要る。共有に条件が付いていれば、その条件に
+  // 当てはまる回答だけ。判定は一覧・作成者用画面と同じ規則を使う。
+  const access = row ? await formAccess(row.form) : NO_SHARE_ACCESS;
+  const visible =
+    isOwner ||
+    (!!row &&
+      access.canRead &&
+      responseInScope(access.responseScope, row.answers));
+
   // フォームのコードが URL と食い違う場合も同じ結末（URL の組み替えを許さない）。
-  if (!row || !isOwner || row.form.code !== code) {
+  if (!row || !visible || row.form.code !== code) {
     return (
       <FormStateScreen
         actions={[{ ...HOME, variant: "filled" }]}
         color="gray"
-        description="URL が間違っているか、自分の回答ではありません。"
+        description="URL が間違っているか、この回答を見る権限がありません。"
         formTitle={null}
         icon={<IconSearchOff size={24} />}
         title="回答が見つかりません"
@@ -59,7 +70,7 @@ export default async function MyResponsePage({
   }
 
   const now = new Date();
-  const editable = canEditResponse(row.form, row, userId, now);
+  const editable = isOwner && canEditResponse(row.form, row, userId, now);
   const isDraft = row.status === "DRAFT";
   const canAnswerAgain =
     row.form.allowMultiple && formAvailability(row.form, now) === "OPEN";
@@ -71,6 +82,7 @@ export default async function MyResponsePage({
     related[field.key] = await resolveRelatedRecords(
       field,
       row.answers[field.related?.thisFieldKey ?? ""],
+      isOwner ? undefined : access.responseScope,
     );
   }
 
@@ -87,6 +99,11 @@ export default async function MyResponsePage({
           <Text c="dimmed" ff="mono" size="xs">
             {row.responseNumber}
           </Text>
+          {!isOwner && row.respondent && (
+            <Text c="dimmed" size="xs">
+              回答者 {row.respondent}
+            </Text>
+          )}
           <Text c="dimmed" size="xs">
             {isDraft
               ? "まだ提出していません"
@@ -123,6 +140,7 @@ export default async function MyResponsePage({
 
       <MyResponseActions
         canAnswerAgain={canAnswerAgain}
+        canSeeAll={access.canRead}
         code={code}
         editable={editable}
         isDraft={isDraft}
@@ -147,12 +165,14 @@ function MyResponseActions({
   editable,
   isDraft,
   canAnswerAgain,
+  canSeeAll,
 }: {
   code: string;
   responseNumber: string;
   editable: boolean;
   isDraft: boolean;
   canAnswerAgain: boolean;
+  canSeeAll: boolean;
 }) {
   const edit = `/f/${code}/${encodeURIComponent(responseNumber)}/edit`;
   return (
@@ -164,6 +184,11 @@ function MyResponseActions({
       )}
       {canAnswerAgain && (
         <SecondaryButton href={`/f/${code}`}>もう 1 件回答する</SecondaryButton>
+      )}
+      {canSeeAll && (
+        <SecondaryButton href={`/f/${code}/responses`}>
+          回答一覧を見る
+        </SecondaryButton>
       )}
     </Group>
   );

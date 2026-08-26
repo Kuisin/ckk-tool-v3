@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 import { FormSummaryView } from "@/components/forms/FormSummaryView";
+import { sessionUserId } from "@/lib/authz";
 import { requireAppRead } from "@/lib/authz-page";
 import { prisma } from "@/lib/db";
 import type { FormAnswerValue } from "@/lib/form-schema";
@@ -9,6 +10,7 @@ import {
   summarizeResponses,
 } from "@/lib/form-summary";
 import { fetchForm, formAccess } from "@/lib/forms";
+import { responseInScope } from "@/lib/share-grants-core";
 
 export const dynamic = "force-dynamic";
 
@@ -36,13 +38,30 @@ export default async function FormSummaryPage({
   const access = await formAccess(form);
   if (!access.canRead) notFound();
 
-  const rows = await prisma.formResponse.findMany({
+  const allRows = await prisma.formResponse.findMany({
     where: { formId: form.id, status: { not: "DRAFT" } },
     orderBy: { createdAt: "desc" },
     // 集計はメモリ上で行う。数万件になったら SQL 側へ寄せる（その時が来たら）。
     take: 5000,
-    select: { answers: true, createdAt: true, submittedAt: true },
+    select: {
+      answers: true,
+      createdAt: true,
+      submittedAt: true,
+      submittedBy: true,
+    },
   });
+
+  // 共有に条件が付いた相手には、その条件に当てはまる回答だけを集計する。
+  // ここを素通しにすると、一覧では隠している回答が件数と分布から読めてしまう。
+  const viewerId = await sessionUserId();
+  const rows = allRows.filter(
+    (r) =>
+      (viewerId != null && r.submittedBy === viewerId) ||
+      responseInScope(
+        access.responseScope,
+        (r.answers ?? {}) as Record<string, unknown>,
+      ),
+  );
 
   const summaries = summarizeResponses(
     form.fields,

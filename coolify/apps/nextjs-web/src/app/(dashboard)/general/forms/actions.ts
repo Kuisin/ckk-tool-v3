@@ -44,6 +44,7 @@ import {
   parseFormExport,
   remapSelfReferences,
 } from "@/lib/form-transfer";
+import { fetchForm } from "@/lib/forms";
 import { nextDocumentNumber } from "@/lib/numbering";
 import {
   type ActionResult,
@@ -56,6 +57,7 @@ import {
   shareAccessFor,
   visibleOwnerIds,
 } from "@/lib/share-grants";
+import { isShareConditionFieldType } from "@/lib/share-grants-core";
 
 const BASE_PATH = "/general/forms";
 const TASKS_PATH = "/general/tasks";
@@ -115,6 +117,10 @@ const shareGrantInput = z.object({
   subjectType: z.enum(["EVERYONE", "PLANT", "ROLE", "USER"]),
   subjectId: z.string().nullable(),
   level: z.enum(["RESPOND", "READ", "EDIT", "MANAGE"]),
+  // 「この条件に当てはまる回答だけ見せる」。READ 以外では replaceShareGrants が捨てる。
+  conditionFieldKey: z.string().nullable().optional(),
+  conditionValues: z.array(z.string().max(200)).max(50).optional(),
+  conditionLabels: z.array(z.string().max(200)).max(50).optional(),
 });
 
 export type ShareGrantInputDto = z.infer<typeof shareGrantInput>;
@@ -396,6 +402,24 @@ export async function saveShareGrants(
   const parsed = z.array(shareGrantInput).max(200).safeParse(grants);
   if (!parsed.success)
     return actionError(parsed.error.issues[0]?.message ?? "共有設定が不正です");
+
+  // 条件の項目は実在して、条件に使ってよい型でなければならない。画面が正しく
+  // 送っていても、ここで確かめ直す（送られてきた値をそのまま信じない）。
+  const detail = await fetchForm(code);
+  const allowed = new Set(
+    (detail?.fields ?? [])
+      .filter((f) => isShareConditionFieldType(f.type))
+      .map((f) => f.key),
+  );
+  for (const g of parsed.data) {
+    if (g.level !== "READ") continue;
+    if (!g.conditionFieldKey || (g.conditionValues ?? []).length === 0)
+      continue;
+    if (!allowed.has(g.conditionFieldKey))
+      return actionError(
+        "条件に使えない項目が指定されています（ドロップダウン・複数選択・業務データ検索のみ）",
+      );
+  }
 
   try {
     await replaceShareGrants(

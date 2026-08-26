@@ -14,6 +14,7 @@ import { sessionUserId } from "@/lib/authz";
 import { prisma } from "@/lib/db";
 import { myDraftsOf, resolveRespondState } from "@/lib/form-respond-state";
 import { fetchForm, fetchFormVersionFields, formAccess } from "@/lib/forms";
+import { NO_SHARE_ACCESS } from "@/lib/share-grants";
 import { getServerFormatters } from "@/lib/user-preferences";
 
 const HOME = { label: "ホームへ戻る", href: "/" };
@@ -47,9 +48,7 @@ export async function RespondScreen({
   if (!userId) redirect("/login");
 
   const form = await fetchForm(code);
-  const access = form
-    ? await formAccess(form)
-    : { canRespond: false, canRead: false, canEdit: false, canManage: false };
+  const access = form ? await formAccess(form) : NO_SHARE_ACCESS;
 
   // 自分の回答（新しい順）。状態判定と「自分の回答を見る」リンクに使う。
   const myResponses = form
@@ -84,6 +83,10 @@ export async function RespondScreen({
   // 添付・操作履歴まで載っている。回答した人が見る場所ではない）。
   const responseHref = (n: string) => `/f/${code}/${encodeURIComponent(n)}`;
   const editHref = (n: string) => `${responseHref(n)}/edit`;
+  // 閲覧の共有をもらっている人には、回答一覧への導線も出す。
+  const listAction = access.canRead
+    ? [{ label: "回答一覧を見る", href: `/f/${code}/responses` }]
+    : [];
   // 共有されている相手にだけタイトルを出す（未共有では実在を明かさない）。
   const formTitle = access.canRespond ? (form?.title ?? null) : null;
   // 日時は本人の表示設定（タイムゾーン・書式）で読む。
@@ -199,6 +202,7 @@ export async function RespondScreen({
                   },
                 ]
               : []),
+            ...listAction,
             HOME,
           ]}
           color="green"

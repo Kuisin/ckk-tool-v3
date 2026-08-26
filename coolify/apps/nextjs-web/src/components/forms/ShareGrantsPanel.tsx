@@ -21,7 +21,7 @@ import {
 import { notifications } from "@mantine/notifications";
 import { IconInfoCircle, IconPlus, IconTrash } from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
-import { useState, useTransition } from "react";
+import { Fragment, useState, useTransition } from "react";
 import {
   searchPlantOptions,
   searchUserOptions,
@@ -36,6 +36,12 @@ import {
   type ShareLevel,
   type ShareSubjectType,
 } from "@/lib/share-grants-core";
+import {
+  type ConditionFieldOption,
+  type ConditionValue,
+  EMPTY_CONDITION,
+  ShareConditionEditor,
+} from "./ShareConditionEditor";
 
 export interface RoleOption {
   value: string;
@@ -47,11 +53,13 @@ interface Draft {
   subjectId: string | null;
   subjectLabel: string;
   level: ShareLevel;
+  condition: ConditionValue;
 }
 
 const SUBJECT_TYPES: ShareSubjectType[] = ["EVERYONE", "PLANT", "ROLE", "USER"];
 
 export function ShareGrantsPanel({
+  conditionFields = [],
   grants,
   roleOptions,
   levels,
@@ -62,12 +70,20 @@ export function ShareGrantsPanel({
   roleOptions: RoleOption[];
   /** このオーナー種別で選べる権限（フォームは RESPOND を含む）。 */
   levels: ShareLevel[];
+  /**
+   * 「この条件に当てはまる回答だけ見せる」に使える項目。フォームでだけ渡す
+   * （社内文書には回答が無いので条件も無い）。
+   */
+  conditionFields?: ConditionFieldOption[];
   canManage: boolean;
   onSave: (
     grants: {
       subjectType: ShareSubjectType;
       subjectId: string | null;
       level: ShareLevel;
+      conditionFieldKey: string | null;
+      conditionValues: string[];
+      conditionLabels: string[];
     }[],
   ) => Promise<{ ok: boolean; error?: string }>;
 }) {
@@ -80,6 +96,11 @@ export function ShareGrantsPanel({
       subjectId: g.subjectId,
       subjectLabel: g.subjectLabel,
       level: g.level,
+      condition: {
+        fieldKey: g.conditionFieldKey ?? null,
+        values: g.conditionValues ?? [],
+        labels: g.conditionLabels ?? [],
+      },
     })),
   );
 
@@ -91,6 +112,7 @@ export function ShareGrantsPanel({
         subjectId: null,
         subjectLabel: "全社（ログインユーザー全員）",
         level: levels[0],
+        condition: EMPTY_CONDITION,
       },
     ]);
 
@@ -104,6 +126,9 @@ export function ShareGrantsPanel({
           subjectType: r.subjectType,
           subjectId: r.subjectId,
           level: r.level,
+          conditionFieldKey: r.condition.fieldKey,
+          conditionValues: r.condition.values,
+          conditionLabels: r.condition.labels,
         })),
       );
       if (result.ok) {
@@ -200,6 +225,17 @@ export function ShareGrantsPanel({
     />
   );
 
+  // 条件は READ にだけ効く（EDIT/MANAGE はフォームを預かる側なので絞らない）。
+  const conditionBlock = (row: Draft, i: number) =>
+    conditionFields.length > 0 && row.level === "READ" ? (
+      <ShareConditionEditor
+        disabled={!canManage}
+        fields={conditionFields}
+        onChange={(condition) => update(i, { condition })}
+        value={row.condition}
+      />
+    ) : null;
+
   const levelSelect = (row: Draft, i: number) => (
     <Select
       data={levels.map((l) => ({ value: l, label: SHARE_LEVEL_LABEL[l] }))}
@@ -259,6 +295,7 @@ export function ShareGrantsPanel({
                   </Stack>
                 )}
                 {levelSelect(row, i)}
+                {conditionBlock(row, i)}
               </Stack>
             </Paper>
           ))}
@@ -283,15 +320,34 @@ export function ShareGrantsPanel({
                 </Table.Td>
               </Table.Tr>
             )}
-            {rows.map((row, i) => (
-              // biome-ignore lint/suspicious/noArrayIndexKey: 並び順が同一性
-              <Table.Tr key={i}>
-                <Table.Td>{typeSelect(row, i)}</Table.Td>
-                <Table.Td>{subjectInput(row, i)}</Table.Td>
-                <Table.Td>{levelSelect(row, i)}</Table.Td>
-                <Table.Td>{removeButton(i)}</Table.Td>
-              </Table.Tr>
-            ))}
+            {rows.map((row, i) => {
+              const condition = conditionBlock(row, i);
+              return (
+                // biome-ignore lint/suspicious/noArrayIndexKey: 並び順が同一性
+                <Fragment key={i}>
+                  <Table.Tr>
+                    <Table.Td>{typeSelect(row, i)}</Table.Td>
+                    <Table.Td>{subjectInput(row, i)}</Table.Td>
+                    <Table.Td>{levelSelect(row, i)}</Table.Td>
+                    <Table.Td>{removeButton(i)}</Table.Td>
+                  </Table.Tr>
+                  {condition && (
+                    // 条件は行に収めず、その行の下に全幅で敷く（4 列の表に
+                    // 押し込むと選択肢が読めない）。
+                    <Table.Tr>
+                      <Table.Td colSpan={4}>
+                        <Stack gap={4} pl="md">
+                          <Text c="dimmed" size="xs">
+                            見せる回答を絞る（この共有先だけに効きます）
+                          </Text>
+                          {condition}
+                        </Stack>
+                      </Table.Td>
+                    </Table.Tr>
+                  )}
+                </Fragment>
+              );
+            })}
           </Table.Tbody>
         </Table>
       )}

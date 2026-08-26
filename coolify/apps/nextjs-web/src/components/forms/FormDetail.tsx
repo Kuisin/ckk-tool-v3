@@ -33,8 +33,31 @@ import { AVAILABILITY_LABEL } from "@/lib/form-schema";
 import type { FormDetailView, ResponseRow } from "@/lib/forms";
 import type { ShareGrantView } from "@/lib/share-grants";
 import type { ShareLevel } from "@/lib/share-grants-core";
+import { isShareConditionFieldType } from "@/lib/share-grants-core";
 import { FormFieldsPanel } from "./FormFieldsPanel";
+import type { ConditionFieldOption } from "./ShareConditionEditor";
 import { type RoleOption, ShareGrantsPanel } from "./ShareGrantsPanel";
+
+/**
+ * 共有条件に使える項目だけを取り出す。選んで入れる項目に限る理由は
+ * ShareConditionEditor 側のコメントを参照。
+ */
+function conditionFieldsOf(
+  fields: FormDetailView["fields"],
+): ConditionFieldOption[] {
+  return fields
+    .filter((f) => isShareConditionFieldType(f.type))
+    .map((f) => ({
+      key: f.key,
+      label: f.label.ja || f.key,
+      type: f.type as ConditionFieldOption["type"],
+      options: f.options?.map((o) => ({
+        value: o.value,
+        label: o.label.ja || o.value,
+      })),
+      lookupSource: f.lookup?.source,
+    }));
+}
 
 const FORM_SHARE_LEVELS: ShareLevel[] = ["RESPOND", "READ", "EDIT", "MANAGE"];
 
@@ -368,6 +391,7 @@ export function FormDetail({
         <Tabs.Panel keepMounted={false} pt="md" value="share">
           <ShareGrantsPanel
             canManage={canManage}
+            conditionFields={conditionFieldsOf(form.fields)}
             grants={grants}
             levels={FORM_SHARE_LEVELS}
             onSave={
