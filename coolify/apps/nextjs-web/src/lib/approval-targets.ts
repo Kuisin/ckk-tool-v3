@@ -26,6 +26,18 @@ export const APPROVAL_TARGET_TYPES = [
 export type ApprovalTargetType = (typeof APPROVAL_TARGET_TYPES)[number];
 
 /**
+ * 承認設定（MS0B）で段を組む書類種別。
+ *
+ * **フォームは含めない** — フォームは利用者がいくつでも作るもので、稟議・日報・
+ * 点検簿が 1 本の承認を共有する理由が無い。段は `form_approval_steps` に
+ * フォームごとへ持たせ、設定はフォームの「承認」タブで行う。
+ * 承認エンジンから見た書類種別としては form_responses のままなので、
+ * APPROVAL_TARGET_TYPES からは外さない（承認待ち一覧・履歴はそのまま動く）。
+ */
+export const FLOW_SETTINGS_TARGET_TYPES: readonly ApprovalTargetType[] =
+  APPROVAL_TARGET_TYPES.filter((t) => t !== "form_responses");
+
+/**
  * 適用モード（approval_flows.apply_mode: PRE = 承認後に適用 / POST = 即時適用 +
  * 事後承認）を設定できる書類種別。列は汎用だが、対象の操作が「保留 → 適用」の
  * 形を持つものだけ UI に出す — 現状は 工程フロー変更のみ。

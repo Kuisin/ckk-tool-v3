@@ -26,6 +26,7 @@ import {
   shareAccessFor,
   visibleOwnerIds,
 } from "./share-grants";
+import { type ResponseScope, responseInScope } from "./share-grants-core";
 
 export const FORM_OWNER_TYPE = "forms";
 export const RESPONSE_OWNER_TYPE = "form_responses";
@@ -53,12 +54,18 @@ export interface FormDetailView {
   respondentVisibility: "SHOWN" | "HIDDEN";
   currentVersion: number;
   approvalEnabled: boolean;
+  editableUntilFirstApproval: boolean;
   allowMultiple: boolean;
   opensAt: Date | null;
   closesAt: Date | null;
   responseEditMode: "NONE" | "UNTIL_CLOSE" | "UNTIL_DATE";
   responseEditableUntil: Date | null;
   fields: FormFieldDef[];
+  /**
+   * 保存済みの定義を読み取れなかったときの理由。**「項目ゼロ」と区別する**ため
+   * に持つ — 黙って空のフォームを見せると、壊れているのか未作成なのか分からない。
+   */
+  schemaError: string | null;
   createdBy: string | null;
   createdAt: Date;
   updatedAt: Date;
@@ -82,6 +89,12 @@ function toIso(d: Date | null): string | null {
 function fieldsOf(schema: unknown): FormFieldDef[] {
   const parsed = parseFormFields(schema);
   return parsed.ok ? parsed.fields : [];
+}
+
+/** 読み取れなかった理由。読めたときは null。 */
+function schemaErrorOf(schema: unknown): string | null {
+  const parsed = parseFormFields(schema);
+  return parsed.ok ? null : parsed.error;
 }
 
 /**
@@ -160,12 +173,14 @@ export const fetchForm = cache(
       respondentVisibility: row.respondentVisibility,
       currentVersion: row.currentVersion,
       approvalEnabled: row.approvalEnabled,
+      editableUntilFirstApproval: row.editableUntilFirstApproval,
       allowMultiple: row.allowMultiple,
       opensAt: row.opensAt,
       closesAt: row.closesAt,
       responseEditMode: row.responseEditMode,
       responseEditableUntil: row.responseEditableUntil,
       fields: fieldsOf(row.versions[0]?.schema ?? []),
+      schemaError: schemaErrorOf(row.versions[0]?.schema ?? []),
       createdBy: row.createdBy,
       createdAt: row.createdAt,
       updatedAt: row.updatedAt,
@@ -194,8 +209,18 @@ export async function formAccess(form: {
 }
 
 /** 回答一覧（respondentVisibility=HIDDEN なら回答者を載せない）。 */
+/**
+ * 一覧に出してよい回答。
+ *
+ * 共有に条件が付いていれば**当てはまる回答だけ**を返す。自分の回答は条件に
+ * 関係なく常に見える（自分が出したものが自分に見えないのは筋が通らない）。
+ * 絞り込みはアプリ側で行う — JSONB の問い合わせを組み立てるより、
+ * 1 つの純関数（responseInScope）に判断を寄せたほうが検証しやすい。
+ */
 export async function listResponses(
   form: FormDetailView,
+  scope: ResponseScope,
+  viewerId: string | null,
 ): Promise<ResponseRow[]> {
   try {
     const rows = await prisma.formResponse.findMany({
@@ -208,22 +233,30 @@ export async function listResponses(
         status: true,
         plainText: true,
         submittedAt: true,
+        answers: true,
+        submittedBy: true,
         submittedByUser: { select: { displayName: true, username: true } },
       },
     });
-    return rows.map((r) => ({
-      responseNumber: r.responseNumber,
-      recordNo: r.recordNo,
-      status: r.status,
-      // HIDDEN のフォームでは props に載せない — クライアントへ送ってから
-      // 隠すのは事故のもと。
-      respondent:
-        form.respondentVisibility === "HIDDEN"
-          ? null
-          : r.submittedByUser.displayName || r.submittedByUser.username,
-      submittedAt: toIso(r.submittedAt),
-      summary: (r.plainText ?? "").split("\n").slice(0, 2).join(" / "),
-    }));
+    return rows
+      .filter(
+        (r) =>
+          (viewerId != null && r.submittedBy === viewerId) ||
+          responseInScope(scope, (r.answers ?? {}) as Record<string, unknown>),
+      )
+      .map((r) => ({
+        responseNumber: r.responseNumber,
+        recordNo: r.recordNo,
+        status: r.status,
+        // HIDDEN のフォームでは props に載せない — クライアントへ送ってから
+        // 隠すのは事故のもと。
+        respondent:
+          form.respondentVisibility === "HIDDEN"
+            ? null
+            : r.submittedByUser.displayName || r.submittedByUser.username,
+        submittedAt: toIso(r.submittedAt),
+        summary: (r.plainText ?? "").split("\n").slice(0, 2).join(" / "),
+      }));
   } catch {
     return [];
   }
@@ -283,6 +316,13 @@ export async function fetchResponse(
 export async function resolveRelatedRecords(
   field: FormFieldDef,
   ownValue: FormAnswerValue,
+  /**
+   * 条件付き閲覧者のときだけ渡す。関連レコード一覧は突合キー（例: 会社名）で
+   * 絞るだけなので、条件が別の項目に付いていると、この表を経由して条件の外の
+   * 回答が見えてしまう。**条件を持つ相手にだけ**追加で絞る — 条件を持たない
+   * 相手（回答のみの共有など）の見え方は変えない。
+   */
+  scope?: ResponseScope,
 ): Promise<{ headers: string[]; rows: { number: string; cells: string[] }[] }> {
   const cfg = field.related;
   if (!cfg || ownValue == null) return { headers: [], rows: [] };
@@ -295,7 +335,7 @@ export async function resolveRelatedRecords(
   try {
     const target = await prisma.form.findUnique({
       where: { code: cfg.targetFormCode },
-      select: { id: true, createdBy: true, code: true },
+      select: { id: true, createdBy: true, code: true, currentVersion: true },
     });
     if (!target) return { headers: [], rows: [] };
     // 参照先フォームを読む権限が無ければ何も出さない（横断で覗けてしまうため）。
@@ -306,6 +346,17 @@ export async function resolveRelatedRecords(
     );
     if (!access.canRead) return { headers: [], rows: [] };
 
+    // 見出しは参照先の**ラベル**で出す。項目キー（field1 …）は内部の識別子で
+    // 画面には出さない方針なので、そのまま見出しにすると読めない
+    // （実際に「field1 / field3 / field7」と並んでいた）。
+    const targetFields = await fetchFormVersionFields(
+      target.id,
+      target.currentVersion,
+    );
+    const labelOf = new Map(
+      targetFields.map((f) => [f.key, f.label.ja || f.key]),
+    );
+
     const rows = await prisma.formResponse.findMany({
       where: { formId: target.id, status: { not: "DRAFT" } },
       orderBy: { recordNo: "desc" },
@@ -313,8 +364,10 @@ export async function resolveRelatedRecords(
       select: { responseNumber: true, answers: true },
     });
 
+    const conditioned = !!scope && !scope.all && scope.conditions.length > 0;
     const matched = rows.filter((r) => {
       const a = (r.answers ?? {}) as Record<string, FormAnswerValue>;
+      if (conditioned && !responseInScope(scope, a)) return false;
       const v = a[cfg.targetFieldKey];
       const id =
         typeof v === "object" && v != null && "id" in v
@@ -324,7 +377,7 @@ export async function resolveRelatedRecords(
     });
 
     return {
-      headers: cfg.columns,
+      headers: cfg.columns.map((c) => labelOf.get(c) ?? c),
       rows: matched.map((r) => {
         const a = (r.answers ?? {}) as Record<string, FormAnswerValue>;
         return {

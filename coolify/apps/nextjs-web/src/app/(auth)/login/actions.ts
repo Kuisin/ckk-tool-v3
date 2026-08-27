@@ -10,7 +10,11 @@
  */
 
 import { signIn } from "@/auth";
+import { safeCallbackPath } from "@/lib/safe-redirect";
 
-export async function ssoSignIn() {
-  await signIn("authentik", { redirectTo: "/" });
+export async function ssoSignIn(formData: FormData) {
+  // 戻り先はフォームの hidden から受け取る。**ここでも畳み直す** — Server
+  // Action は誰でも直接叩けるので、画面が正しい値を入れていることに頼らない。
+  const next = safeCallbackPath(formData.get("callbackUrl")?.toString());
+  await signIn("authentik", { redirectTo: next });
 }

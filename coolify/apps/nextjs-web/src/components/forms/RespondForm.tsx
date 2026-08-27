@@ -7,16 +7,20 @@
  * 本当の判定はサーバ (actions.ts) が同じ関数でやり直す。
  */
 
-import { Alert, Group, Paper, Stack, Text, Title } from "@mantine/core";
+import { Alert, Anchor, Group, Paper, Stack, Text, Title } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
 import { IconClock, IconLock } from "@tabler/icons-react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
+import { discardDraft } from "@/app/(dashboard)/general/forms/actions";
 import {
   CancelButton,
+  GhostButton,
   PrimaryButton,
   SecondaryButton,
 } from "@/components/ui/buttons";
+import { openConfirm } from "@/components/ui/modals";
 import { useIsMobile } from "@/hooks/useViewport";
 import {
   AVAILABILITY_LABEL,
@@ -32,9 +36,11 @@ export function RespondForm({
   description,
   fields,
   availability,
+  submittable,
   initialAnswers = {},
   closesAtLabel,
   allowDraft = true,
+  drafts = [],
   submitLabel = "送信",
   onSubmit,
   onCancel,
@@ -43,9 +49,17 @@ export function RespondForm({
   description?: string | null;
   fields: FormFieldDef[];
   availability: FormAvailability;
+  /**
+   * いま送信してよいか。**受付中かどうかとは別物** — 「編集は指定日時まで」の
+   * 設定だと、受付が終わったあとでも自分の回答は直せる。ここを availability
+   * だけで決めると、その編集画面がまるごと無効になる。
+   */
+  submittable: boolean;
   initialAnswers?: Record<string, FormAnswerValue>;
   closesAtLabel?: string | null;
   allowDraft?: boolean;
+  /** 書きかけの下書き（新規回答画面でだけ渡す）。 */
+  drafts?: { responseNumber: string; href: string }[];
   submitLabel?: string;
   onSubmit: (
     answers: Record<string, FormAnswerValue>,
@@ -59,7 +73,7 @@ export function RespondForm({
   const [answers, setAnswers] = useState(initialAnswers);
   const [errors, setErrors] = useState<Record<string, string>>({});
 
-  const open = availability === "OPEN";
+  const open = submittable;
 
   const submit = (asDraft: boolean) => {
     if (!asDraft) {
@@ -103,7 +117,9 @@ export function RespondForm({
         )}
       </Stack>
 
-      {!open && (
+      {drafts.length > 0 && <DraftResumeList drafts={drafts} />}
+
+      {!open && availability !== "OPEN" && (
         <Alert
           color={availability === "SCHEDULED" ? "yellow" : "gray"}
           icon={
@@ -191,5 +207,77 @@ export function RespondForm({
         )}
       </div>
     </Stack>
+  );
+}
+
+/**
+ * 書きかけの下書きを続きから開くための一覧。
+ *
+ * 下書きは**何本でも持てる**（訪問先ごとに書きかけを残す、といった使い方）。
+ * 一覧に出さないと、URL を控えていない限り二度とたどり着けず、次に開いた
+ * ときには空のフォームが出るだけ — 実際そうなっていた。
+ */
+function DraftResumeList({
+  drafts,
+}: {
+  drafts: { responseNumber: string; href: string }[];
+}) {
+  const router = useRouter();
+  const [busy, setBusy] = useState<string | null>(null);
+
+  const discard = (responseNumber: string) =>
+    openConfirm({
+      title: "下書きを削除",
+      message: "この下書きを捨てます。書いた内容は戻せません。",
+      confirmLabel: "削除する",
+      onConfirm: async () => {
+        setBusy(responseNumber);
+        const result = await discardDraft(responseNumber);
+        setBusy(null);
+        if (result.ok) {
+          notifications.show({
+            message: "下書きを削除しました",
+            color: "green",
+          });
+          router.refresh();
+        } else {
+          notifications.show({
+            title: "エラー",
+            message: result.error ?? "削除できませんでした",
+            color: "red",
+          });
+        }
+      },
+    });
+
+  return (
+    <Paper p="sm" radius="md" withBorder>
+      <Stack gap="xs">
+        <Text fw={600} size="sm">
+          書きかけの下書き（{drafts.length}）
+        </Text>
+        {drafts.map((d) => (
+          <Group
+            gap="xs"
+            justify="space-between"
+            key={d.responseNumber}
+            wrap="nowrap"
+          >
+            <Anchor component={Link} ff="mono" href={d.href} size="sm">
+              {d.responseNumber}
+            </Anchor>
+            <GhostButton
+              loading={busy === d.responseNumber}
+              onClick={() => discard(d.responseNumber)}
+            >
+              削除
+            </GhostButton>
+          </Group>
+        ))}
+        <Text c="dimmed" size="xs">
+          下の空のフォームに書けば、新しい 1 件として保存されます。
+        </Text>
+      </Stack>
+    </Paper>
   );
 }

@@ -605,6 +605,9 @@ ANALYTICS_TABLES = {
     "v_process_step_catalog": "工程マスタ", "v_inspection_templates": "検査表テンプレート",
     "v_defect_types": "不良種類", "v_currencies": "通貨マスタ",
     "v_order_lines_disp": "注文明細(表示通貨別)", "v_invoices_disp": "請求書(表示通貨別)",
+    # フォーム (CM02)。項目が利用者定義なので、回答は縦持ち（1 行 = 1 回答 × 1 項目）。
+    "v_forms": "フォーム", "v_form_responses": "フォーム回答",
+    "v_form_answers": "フォーム回答明細",
 }
 
 ANALYTICS_COLS = {
@@ -643,6 +646,15 @@ ANALYTICS_COLS = {
     "amount_jpy": "金額(JPY)", "amount_usd": "金額(USD)",
     "base_unit_price_jpy": "基準単価(JPY)", "base_unit_price_usd": "基準単価(USD)",
     "total_amount_jpy": "合計金額(JPY)", "total_amount_usd": "合計金額(USD)",
+    # フォーム (CM02)
+    "form_code": "フォームコード", "form_title": "フォーム名", "form_kind": "フォーム種別",
+    "form_version": "定義バージョン", "response_no": "回答番号", "record_no": "No.",
+    "respondent_name": "回答者", "respondent_visibility": "回答者の表示",
+    "response_count": "回答数", "approval_enabled": "承認フロー", "allow_multiple": "複数回答",
+    "opens_at": "受付開始", "closes_at": "受付終了", "submitted_at": "提出日時",
+    "field_key": "項目キー", "field_label": "項目名", "field_type": "項目の種類",
+    "field_order": "項目の並び", "value_text": "回答値", "value_number": "回答値(数値)",
+    "value_date": "回答値(日付)", "value_count": "回答値の個数",
 }
 
 
@@ -661,9 +673,15 @@ VIEW_PKS = [
     ("v_invoices", "invoice_no"), ("v_delivery_orders", "delivery_order_no"),
     ("v_delivery_notes", "delivery_no"), ("v_price_list_entries", "price_list_no"),
     ("v_estimates", "estimate_no"),
+    ("v_forms", "form_code"), ("v_form_responses", "response_no"),
 ]
 
 VIEW_FKS = [
+    # フォーム (CM02) — 回答明細から回答へ、回答からフォームへ辿れるようにする。
+    # これが無いと、Metabase で「項目名で内訳を出しつつフォームで絞る」ができない。
+    ("v_form_responses", "form_code", "v_forms", "form_code"),
+    ("v_form_answers", "form_code", "v_forms", "form_code"),
+    ("v_form_answers", "response_no", "v_form_responses", "response_no"),
     # 通貨 → 通貨マスタ（換算に使うレート行はビューの通貨列が決める）
     ("v_order_acceptances", "currency", "v_currencies", "code"),
     ("v_order_lines", "currency", "v_currencies", "code"),

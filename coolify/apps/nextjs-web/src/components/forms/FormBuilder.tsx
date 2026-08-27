@@ -42,6 +42,7 @@ import { GhostButton } from "@/components/ui/buttons";
 import {
   FORM_FIELD_TYPES,
   type FormFieldDef,
+  nextFieldKey,
   normalizeOrder,
 } from "@/lib/form-schema";
 import { FormFieldEditor } from "./FormFieldEditor";
@@ -53,13 +54,13 @@ function typeLabel(t: FormFieldDef["type"]): string {
 function SortableField({
   field,
   index,
-  siblingKeys,
+  siblings,
   onChange,
   onRemove,
 }: {
   field: FormFieldDef;
   index: number;
-  siblingKeys: string[];
+  siblings: FormFieldDef[];
   onChange: (next: FormFieldDef) => void;
   onRemove: () => void;
 }) {
@@ -133,7 +134,7 @@ function SortableField({
             <FormFieldEditor
               field={field}
               onChange={onChange}
-              siblingKeys={siblingKeys}
+              siblings={siblings}
             />
           </Accordion.Panel>
         </Accordion.Item>
@@ -171,19 +172,24 @@ export function FormBuilder({
     onChange(normalizeOrder(arrayMove(fields, from, to)));
   };
 
-  const addField = () =>
+  const addField = () => {
+    // 空のキー・ラベルで作らない。空だと追加した瞬間に検証エラーになり、
+    // 「項目を足したのに保存できない」ところから始まってしまう。
+    const key = nextFieldKey(fields.map((f) => f.key));
+    const n = fields.length + 1;
     onChange(
       normalizeOrder([
         ...fields,
         {
-          key: "",
-          label: { ja: "", en: "" },
+          key,
+          label: { ja: `項目 ${n}`, en: "" },
           type: "text",
           required: false,
           order: fields.length,
         },
       ]),
     );
+  };
 
   return (
     <Stack gap="sm">
@@ -214,10 +220,7 @@ export function FormBuilder({
                 onRemove={() =>
                   onChange(normalizeOrder(fields.filter((_, idx) => idx !== i)))
                 }
-                siblingKeys={fields
-                  .filter((_, idx) => idx !== i)
-                  .map((f) => f.key)
-                  .filter(Boolean)}
+                siblings={fields.filter((_, idx) => idx !== i)}
               />
             ))}
           </Stack>

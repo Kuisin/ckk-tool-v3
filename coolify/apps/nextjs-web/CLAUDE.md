@@ -28,47 +28,72 @@ pnpm db:generate         # prisma generate
 lockfile). Shared packages live in `packages/*` (`@ckk/authz-core` = RBAC core;
 consumed as TS source via `transpilePackages`).
 
-**No new dependencies.** The lockfile is frozen (`pnpm install --frozen-lockfile`
-runs in the Docker build). Build utilities in-house instead — precedents:
-`lib/csv.ts` (CSV), `lib/js-highlight.ts` (syntax highlight/format). If a dep is
-truly required, raise it explicitly; don't edit `pnpm-lock.yaml` casually.
-Sanctioned exception (explicit sign-off): the docs stack — `fumadocs-ui` /
-`fumadocs-core` / `fumadocs-mdx` / `@orama/tokenizers` (+ `@types/mdx`) for
-`/manual` + `/admin-manual`. Second sanctioned exception: the rich-text stack —
-`@mantine/tiptap` (version-pinned **exactly** to `@mantine/core`) + `@tiptap/react`
-/ `@tiptap/pm` / `@tiptap/starter-kit` / `@tiptap/extension-link` for the 文書メモ
-/ コメント (`ui/MemoPanel.tsx`). Third sanctioned exception: **`next-intl`** for UI
-translations — the stack `_specs/techstack.md` always named, adopted on explicit
-sign-off (see §i18n below). Fourth sanctioned exception: **`@xyflow/react`**
-(React Flow, MIT, pinned exactly) for the 工程ワークフロー flow graph
-(`components/production/WorkflowGraphCanvas.tsx`) — chosen over X6 / JointJS /
-rete on explicit sign-off because it is React-native, renders HTML (Mantine)
-nodes so Japanese step names need no truncation, and accepts our own layout.
-**It is a rendering layer only**: `lib/workflow-core.ts` `layoutWorkflowGraph`
-keeps owning layer/lane, and `branchableQuantity` / `canStartStep` /
-`validateComposition` keep owning validity — never move that logic into the
-library, or the kiosk twin file (`workflow-core.ts`) silently diverges. Loaded
-through `next/dynamic` + `ssr:false`; the React Flow attribution mark is hidden
-(`proOptions={{ hideAttribution: true }}`) — permitted under MIT, though the
-maintainers ask for a paid Pro plan in return. Not added to the kiosk — it has
-no flow graph. Fifth sanctioned exception: the **一般カテゴリ (CM02 フォーム /
-CM03 社内文書) スタック** — `react-markdown` + `remark-gfm` (MIT), `diff` (jsdiff,
-BSD-3), `@dnd-kit/core` + `@dnd-kit/sortable` + `@dnd-kit/utilities` (MIT), all
-pinned exactly, adopted on explicit sign-off. Why each, and where its
-responsibility stops:
-- `react-markdown` + `remark-gfm` render 社内文書 (`components/documents/MarkdownView.tsx`).
-  They build React elements instead of HTML strings, which is the whole point —
-  this repo has **no HTML sanitizer**, so a markdown app that produced markup
-  would be a stored-XSS surface. **Never add `rehype-raw`** (nor any plugin that
-  re-enables raw HTML): that single line would undo the guarantee. Link and image
-  URLs stay ours to police via `urlTransform` + custom `a` / `img` components.
-- `diff` (jsdiff) supplies line diffing and the old-line→new-line mapping behind
-  行コメントの追従 and blame. **It is a diff primitive only** — `lib/line-anchor.ts`
-  owns re-anchoring policy, the outdated rule and `MAX_DOC_LINES`.
-- `@dnd-kit/*` reorders fields in the form builder. **Drag is presentation only**:
-  `lib/form-schema.ts` owns `order` normalisation and validation, so a form built
-  without dragging (keyboard, or a future API) is identical.
-Not added to the kiosk — it has neither app.
+## 依存ライブラリ — 入れてよい。ただし勝手に決めず、必ず相談する
+
+既定は「入れない」でも「入れる」でもない。**トレードオフを示して利用者に選んでもらう**。
+以前この節は「No new dependencies / 自前で書け」だったが、それだと
+「500KB 足すほどではない」と**黙って自前実装する**判断も、逆に軽く足す判断も、
+どちらも書いた人の一存で決まってしまう。ライブラリを入れるかどうかは
+保守を引き受ける人の判断なので、こちらで閉じない。
+
+**手順**
+
+1. **何が要るのかを先に決める。** 形（何を描く / 何を解く）を決めてから
+   ライブラリを探す。形が決まると「そもそも要らない」ことも普通にある。
+2. **両方の案を書く。** 「入れる場合」と「自前で書く場合」を並べ、
+   少なくとも次を書く:
+   - それで何が手に入るか / 自前だと何行くらいで、どこが難しいか
+   - 大きさ（bundle への影響）とライセンス
+   - 保守の見込み（更新頻度・メンテナ・破壊的変更の履歴）
+   - この構成に馴染むか（Mantine v9 / App Router / `output: standalone`）
+   - **責務の境界** — どこまでをライブラリに渡し、何を自前のロジックに残すか
+3. **利用者に聞く。** 一存で決めない。**「必要なら入れてよい」と言われていても、
+   何を入れるかは提案して確認する。**
+4. 合意できたら: **リポジトリルート**で `pnpm add`（lockfile はルートの 1 本）、
+   **バージョンは完全固定**、`pnpm-lock.yaml` を必ずコミット、そして**下の一覧に
+   理由と責務の境界を書き足す**。Docker ビルドは `--frozen-lockfile` なので、
+   lockfile のコミット漏れはビルドを落とす。
+
+**自前で書くのが正解だったこと**もある（形が単純で、ライブラリのほうが縛りに
+なる場合）。前例: `lib/csv.ts`（CSV）、`lib/js-highlight.ts`（構文強調）、
+`lib/qr.ts`（QR）、`components/forms/SummaryBars.tsx`（1 系列の件数の横棒 —
+必要な形が 1 つだけで、日本語の長いラベルは横棒のほうが読めた）。
+**これは「自前が既定」という意味ではない** — 上の 3. を踏んだ結果そうなった、という記録。
+
+### 入れているライブラリ（採用理由と、責務の境界）
+
+- **ドキュメント基盤** — `fumadocs-ui` / `fumadocs-core` / `fumadocs-mdx` /
+  `@orama/tokenizers`（+ `@types/mdx`）。`/manual` + `/admin-manual`。
+- **リッチテキスト** — `@mantine/tiptap`（`@mantine/core` と**完全に同一バージョン**に
+  固定）+ `@tiptap/react` / `@tiptap/pm` / `@tiptap/starter-kit` /
+  `@tiptap/extension-link`。文書メモ / コメント（`ui/MemoPanel.tsx`）。
+- **UI 翻訳** — `next-intl`。`_specs/techstack.md` が当初から名指ししていたもの（§i18n）。
+- **工程フロー図** — `@xyflow/react`（React Flow, MIT, 完全固定）。
+  `components/production/WorkflowGraphCanvas.tsx`。X6 / JointJS / rete と比べて
+  React ネイティブで、HTML（Mantine）のノードを描けるので日本語の工程名を
+  省略せずに済み、レイアウトは自前のものを渡せる。
+  **描画層に限る**: `lib/workflow-core.ts` の `layoutWorkflowGraph` が layer/lane を、
+  `branchableQuantity` / `canStartStep` / `validateComposition` が妥当性を持ち続ける
+  — ここをライブラリへ移すと、キオスクの twin file（`workflow-core.ts`）が黙って
+  食い違う。`next/dynamic` + `ssr:false` で読み込み、React Flow の帰属表示は
+  `proOptions={{ hideAttribution: true }}` で隠す（MIT の範囲内。ただし作者は
+  有償 Pro を求めている）。キオスクには入れない（フロー図が無い）。
+- **一般カテゴリ（CM02 フォーム / CM03 社内文書）** — `react-markdown` + `remark-gfm`
+  (MIT)、`diff`（jsdiff, BSD-3）、`@dnd-kit/core` + `@dnd-kit/sortable` +
+  `@dnd-kit/utilities` (MIT)。いずれも完全固定。
+  - `react-markdown` + `remark-gfm` … 社内文書の描画
+    (`components/documents/MarkdownView.tsx`)。HTML 文字列ではなく React 要素を
+    組み立てるのが要点 — このリポジトリには **HTML サニタイザが無い**ので、
+    マークアップを生成する作りにすると保存 XSS の受け皿になる。
+    **`rehype-raw`（および生 HTML を通すプラグイン）は足さないこと。** その 1 行で
+    保証が消える。リンクと画像の URL は `urlTransform` + 自前の `a` / `img` で絞る。
+  - `diff`（jsdiff）… 行差分と「旧版 N 行目 → 新版何行目」の写像。行コメントの追従と
+    blame の土台。**差分のプリミティブに限る** — 再アンカーの方針・outdated の扱い・
+    `MAX_DOC_LINES` は `lib/line-anchor.ts` が持つ。
+  - `@dnd-kit/*` … フォームビルダーの並べ替え。**描画層に限る**:
+    `lib/form-schema.ts` が `order` の正規化と検証を持つので、ドラッグを使わずに
+    （キーボード、将来の API）組んでも結果は同じ。
+  - キオスクには入れない（どちらのアプリも無い）。
 
 ## Layout
 

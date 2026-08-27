@@ -1,9 +1,5 @@
-import { notFound } from "next/navigation";
-import { RespondFormClient } from "@/components/forms/RespondFormClient";
-import { sessionUserId } from "@/lib/authz";
-import { prisma } from "@/lib/db";
-import { canEditResponse } from "@/lib/form-schema";
-import { fetchForm, fetchFormVersionFields, formAccess } from "@/lib/forms";
+import { redirect } from "next/navigation";
+import { RespondScreen } from "./RespondScreen";
 
 export const dynamic = "force-dynamic";
 
@@ -14,12 +10,19 @@ export const metadata = {
 };
 
 /**
- * 共有 URL の回答画面（`/f/<code>`）。
+ * 共有 URL（`/f/<code>`）= **新規回答**。
  *
  * `(dashboard)` の外に置いてあるのは、短くてアプリ配下でない URL にするため
  * （`/l/<code>` の外部リンク確認ページと同じ構え）。**いまはログイン必須** —
- * `proxy.ts` の matcher は触っていない。将来社外へ開くときは matcher に
- * `f(?:$|/)` を足せばよく、データ側は共有設定で既に表現できている。
+ * `proxy.ts` の matcher は触っていない。
+ *
+ * 役割ごとに URL を分けてある:
+ *   /f/<code>                    新規に回答する
+ *   /f/<code>/<回答番号>         自分の回答を見る
+ *   /f/<code>/<回答番号>/edit    自分の回答・下書きを直す
+ *
+ * 以前の `?response=<回答番号>`（編集）は配った URL が残っているので、
+ * 新しい編集 URL へ 1 回だけ転送する。
  */
 export default async function RespondPage({
   params,
@@ -29,64 +32,9 @@ export default async function RespondPage({
   searchParams: Promise<{ response?: string }>;
 }) {
   const { code } = await params;
-  const { response: responseNumber } = await searchParams;
-
-  const form = await fetchForm(code);
-  if (!form) notFound();
-
-  // 共有されていない人には、URL を知っていても存在を教えない。
-  const access = await formAccess(form);
-  if (!access.canRespond) notFound();
-
-  const userId = await sessionUserId();
-  if (!userId) notFound();
-
-  // 自分の回答を編集しに来た場合は、その回答の版で描く。
-  let existing: {
-    responseNumber: string;
-    answers: Record<string, unknown>;
-    version: number;
-  } | null = null;
-  if (responseNumber) {
-    const row = await prisma.formResponse.findUnique({
-      where: { responseNumber },
-      select: {
-        responseNumber: true,
-        answers: true,
-        version: true,
-        formId: true,
-        status: true,
-        submittedBy: true,
-      },
-    });
-    if (
-      row &&
-      row.formId === form.id &&
-      canEditResponse(form, row, userId, new Date())
-    ) {
-      existing = {
-        responseNumber: row.responseNumber,
-        answers: (row.answers ?? {}) as Record<string, unknown>,
-        version: row.version,
-      };
-    }
+  const { response } = await searchParams;
+  if (response) {
+    redirect(`/f/${code}/${encodeURIComponent(response)}/edit`);
   }
-
-  const fields = existing
-    ? await fetchFormVersionFields(form.id, existing.version)
-    : form.fields;
-
-  if (fields.length === 0) notFound();
-
-  return (
-    <RespondFormClient
-      availability={form.availability}
-      closesAt={form.closesAt?.toISOString() ?? null}
-      code={code}
-      description={form.description}
-      existing={existing}
-      fields={fields}
-      title={form.title}
-    />
-  );
+  return <RespondScreen code={code} />;
 }

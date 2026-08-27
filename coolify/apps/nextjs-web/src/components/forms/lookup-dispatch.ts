@@ -15,6 +15,7 @@ import {
   searchPlantOptions,
   searchProcessStepOptions,
   searchProductOptions,
+  searchShipToOptions,
   searchStorageLocationOptions,
   searchUserOptions,
   searchWorkLocationOptions,
@@ -27,6 +28,8 @@ type Searcher = (query: string) => Promise<RecentOption[]>;
 const SEARCHERS: Record<LookupSource, Searcher> = {
   user: searchUserOptions,
   customer: searchCustomerOptions,
+  // 支店・工場も含めて引く（顧客の◯◯工場 を選ぶため）。
+  business_partner: searchShipToOptions,
   product: searchProductOptions,
   material: searchMaterialOptions,
   material_type: searchMaterialTypeOptions,

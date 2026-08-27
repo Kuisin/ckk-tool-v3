@@ -5,6 +5,7 @@ import {
   formAvailability,
   isSafePattern,
   lookupHref,
+  nextFieldKey,
   normalizeOrder,
   parseFormFields,
   toPlainAnswers,
@@ -341,5 +342,119 @@ describe("lookupHref", () => {
   });
   it("空 id はリンクにしない", () => {
     expect(lookupHref("customer", "")).toBeNull();
+  });
+});
+
+describe("nextFieldKey", () => {
+  it("既存と衝突しないキーを返す", () => {
+    expect(nextFieldKey([])).toBe("field1");
+    expect(nextFieldKey(["field1"])).toBe("field2");
+  });
+
+  it("歯抜けでも衝突しない", () => {
+    // 途中を消した後でも、既にあるキーは避ける
+    expect(nextFieldKey(["field1", "field3"])).toBe("field4");
+  });
+
+  it("手で付けたキーとも衝突しない", () => {
+    expect(nextFieldKey(["companyName"])).toBe("field2");
+  });
+});
+
+describe("追加した直後の項目がそのまま保存できること（回帰）", () => {
+  // 以前は key/label を空で作っていたため、項目を足した直後に必ず検証エラーに
+  // なっていた（「追加したのに保存できない」）。ビルダーが使う既定値で
+  // parseFormFields が通ることを固定する。
+  it("既定のキーとラベルで作った項目は妥当", () => {
+    const fresh: FormFieldDef[] = [0, 1, 2].map((i) => ({
+      key: nextFieldKey([0, 1, 2].slice(0, i).map((n) => `field${n + 1}`)),
+      label: { ja: `項目 ${i + 1}`, en: "" },
+      type: "text",
+      required: false,
+      order: i,
+    }));
+    const parsed = parseFormFields(fresh);
+    expect(parsed.ok).toBe(true);
+  });
+});
+
+describe("parseFormFields のエラーは何番目かを言う", () => {
+  it("2 番目の項目のラベルが空なら位置を示す", () => {
+    const r = parseFormFields([
+      {
+        key: "a",
+        label: { ja: "あ", en: "" },
+        type: "text",
+        required: false,
+        order: 0,
+      },
+      {
+        key: "b",
+        label: { ja: "", en: "" },
+        type: "text",
+        required: false,
+        order: 1,
+      },
+    ]);
+    expect(r.ok).toBe(false);
+    if (!r.ok) expect(r.error).toContain("2 番目の項目");
+  });
+});
+
+describe("canEditResponse — 承認中の編集ロック", () => {
+  const base = {
+    status: "PUBLISHED" as const,
+    opensAt: null,
+    closesAt: null,
+    responseEditMode: "UNTIL_CLOSE" as const,
+    responseEditableUntil: null,
+  };
+  const now = new Date("2026-08-27T00:00:00Z");
+  const mine = { submittedBy: "u1", status: "REQUESTED" };
+
+  it("既定は依頼した時点で締まる", () => {
+    expect(canEditResponse(base, mine, "u1", now)).toBe(false);
+    expect(canEditResponse(base, mine, "u1", now, false)).toBe(false);
+  });
+
+  it("設定が入っていれば、承認が下りるまでは直せる", () => {
+    const f = { ...base, editableUntilFirstApproval: true };
+    expect(canEditResponse(f, mine, "u1", now, false)).toBe(true);
+  });
+
+  it("最初の承認が下りたら締まる", () => {
+    const f = { ...base, editableUntilFirstApproval: true };
+    expect(canEditResponse(f, mine, "u1", now, true)).toBe(false);
+  });
+
+  it("承認済みは設定に関係なく直せない", () => {
+    const f = { ...base, editableUntilFirstApproval: true };
+    expect(
+      canEditResponse(f, { ...mine, status: "APPROVED" }, "u1", now, false),
+    ).toBe(false);
+  });
+
+  it("差し戻しは常に直せる（設定・受付期間・承認済みの有無に依らない）", () => {
+    const rejected = { ...mine, status: "REJECTED" };
+    const closed = {
+      ...base,
+      closesAt: new Date("2026-08-01T00:00:00Z"),
+      responseEditMode: "NONE" as const,
+    };
+    expect(canEditResponse(closed, rejected, "u1", now, true)).toBe(true);
+    expect(
+      canEditResponse(
+        { ...closed, editableUntilFirstApproval: true },
+        rejected,
+        "u1",
+        now,
+        true,
+      ),
+    ).toBe(true);
+  });
+
+  it("他人の回答は設定に関係なく触れない", () => {
+    const f = { ...base, editableUntilFirstApproval: true };
+    expect(canEditResponse(f, mine, "someone-else", now, false)).toBe(false);
   });
 });

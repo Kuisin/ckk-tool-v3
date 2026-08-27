@@ -75,6 +75,7 @@ export function isNestableFieldType(type: FormFieldType): boolean {
 export type LookupSource =
   | "user"
   | "customer"
+  | "business_partner"
   | "product"
   | "material"
   | "material_type"
@@ -85,7 +86,10 @@ export type LookupSource =
 
 export const LOOKUP_SOURCES: { value: LookupSource; label: string }[] = [
   { value: "user", label: "ユーザー" },
-  { value: "customer", label: "取引先" },
+  { value: "customer", label: "取引先（会社）" },
+  // 支店・工場まで含めて引く。customer は parentId=null（本社）だけなので、
+  // 「顧客の◯◯工場」を選びたいときはこちら。
+  { value: "business_partner", label: "取引先の支店・工場" },
   { value: "product", label: "製品" },
   { value: "material", label: "素材" },
   { value: "material_type", label: "材種" },
@@ -106,6 +110,7 @@ export function lookupHref(source: LookupSource, id: string): string | null {
     case "user":
       return `/settings/users/${enc}`;
     case "customer":
+    case "business_partner":
       return `/master/business-partners/${enc}`;
     case "product":
       return `/master/products/${enc}`;
@@ -295,12 +300,31 @@ export function parseFormFields(
 ): { ok: true; fields: FormFieldDef[] } | { ok: false; error: string } {
   const parsed = formFieldsSchema.safeParse(value);
   if (!parsed.success) {
+    const issue = parsed.error.issues[0];
+    const message = issue?.message ?? "項目定義が不正です";
+    // 何番目の項目でこけたのかを言う。「ラベルを入力してください」だけだと、
+    // 項目が 20 個あるフォームでどれを直せばいいのか分からない。
+    const index = typeof issue?.path?.[0] === "number" ? issue.path[0] : null;
     return {
       ok: false,
-      error: parsed.error.issues[0]?.message ?? "項目定義が不正です",
+      error: index === null ? message : `${index + 1} 番目の項目: ${message}`,
     };
   }
   return { ok: true, fields: parsed.data as FormFieldDef[] };
+}
+
+/**
+ * 新しい項目に割り当てる既定のキー。`field1`, `field2`, … で、既存と衝突しない
+ * ものを返す。空キーで作ると、追加した直後の項目が常に検証エラーになり、
+ * 「追加したのに保存できない」状態から始まってしまう。
+ */
+export function nextFieldKey(existingKeys: readonly string[]): string {
+  const taken = new Set(existingKeys);
+  for (let n = existingKeys.length + 1; n < existingKeys.length + 1000; n++) {
+    const candidate = `field${n}`;
+    if (!taken.has(candidate)) return candidate;
+  }
+  return `field${Date.now()}`;
 }
 
 /** 並び順を 0..n-1 に振り直す（ドラッグ後・削除後に必ず通す）。 */
@@ -529,6 +553,11 @@ export const AVAILABILITY_LABEL: Record<FormAvailability, string> = {
 export interface EditWindow extends FormWindow {
   responseEditMode: "NONE" | "UNTIL_CLOSE" | "UNTIL_DATE";
   responseEditableUntil: Date | null;
+  /**
+   * 承認依頼中でも、**最初の承認が下りるまで**は本人が直せる。
+   * 既定（false / 未指定）は依頼した時点で締める。
+   */
+  editableUntilFirstApproval?: boolean;
 }
 
 /**
@@ -541,14 +570,23 @@ export function canEditResponse(
   response: { submittedBy: string; status: string },
   userId: string,
   now: Date,
+  /** 承認が 1 つでも下りているか（サーバが数えて渡す）。 */
+  firstApprovalDone = false,
 ): boolean {
   if (response.submittedBy !== userId) return false;
   // 下書きと差し戻しは期限に関係なく本人が直せる（まだ出していない/戻された）。
+  // **差し戻しは常に直せる** — 直して出し直すための状態なので、
+  // editableUntilFirstApproval の設定や受付期間には左右されない。
   if (response.status === "DRAFT" || response.status === "REJECTED")
     return true;
-  // 承認フローに乗って動き出したものは、この経路では触らせない。
-  if (response.status === "REQUESTED" || response.status === "APPROVED")
-    return false;
+  // 承認済みは触らせない（承認した中身が後から変わってはいけない）。
+  if (response.status === "APPROVED") return false;
+  if (response.status === "REQUESTED") {
+    // 依頼中の既定は「締める」。設定が入っているときだけ、**誰も承認して
+    // いないうち**は直せる — 1 人でも承認したあとに中身が変わると、その承認が
+    // 何に対するものだったのか分からなくなるため、そこで必ず締める。
+    return form.editableUntilFirstApproval === true && !firstApprovalDone;
+  }
   switch (form.responseEditMode) {
     case "UNTIL_CLOSE":
       return !form.closesAt || now < form.closesAt;

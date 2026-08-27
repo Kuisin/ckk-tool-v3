@@ -361,12 +361,34 @@ export function FormFieldInput({
       );
     }
 
+    // 添付と関連レコード一覧は、回答中は入力欄を持たない。ただし**何も描かないと
+    // 項目ごと消えたように見える**（実際、営業報告の「添付ファイル」が回答画面から
+    // 消えていた）。いつ・どこで扱えるのかをその場に書く。
     case "attachment":
+      return (
+        <Stack gap={4}>
+          <Text fw={500} size="sm">
+            {label}
+          </Text>
+          <Text c="dimmed" size="xs">
+            {field.help ? `${field.help} — ` : ""}
+            送信したあと、回答の「添付」タブからアップロードできます。
+          </Text>
+        </Stack>
+      );
+
     case "related":
-      // 添付は回答保存後に /api/attachments へ上げる（Server Action は 1MB 上限）。
-      // 関連レコード一覧は読み取り専用でサーバが解決した内容を出す。
-      // どちらも入力欄を持たないので、表示側（FormResponseView）が担当する。
-      return null;
+      return (
+        <Stack gap={4}>
+          <Text fw={500} size="sm">
+            {label}
+          </Text>
+          <Text c="dimmed" size="xs">
+            {field.help ? `${field.help} — ` : ""}
+            送信すると、条件に合う過去のレコードがここに並びます。
+          </Text>
+        </Stack>
+      );
 
     default:
       return (

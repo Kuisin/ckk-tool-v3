@@ -19,6 +19,18 @@ export interface ShareGrantRow {
   /** EVERYONE のときは null。それ以外は plant.id / role.id / user.id の文字列。 */
   subjectId: string | null;
   level: ShareLevel;
+  /**
+   * 「この条件に当てはまる回答だけ見せる」。**READ にだけ意味がある** —
+   * EDIT/MANAGE はフォームを預かる側なので絞らない。null = 絞り込みなし。
+   */
+  condition?: ShareCondition | null;
+}
+
+/** 回答の絞り込み条件（1 項目 × 値の集合。値のどれかに当たれば通る）。 */
+export interface ShareCondition {
+  fieldKey: string;
+  /** 突合キー（select/multiselect は選択肢の value、lookup はマスタの id）。 */
+  values: readonly string[];
 }
 
 export interface ShareSubject {
@@ -38,6 +50,18 @@ export interface ShareAccess {
   canRead: boolean;
   canEdit: boolean;
   canManage: boolean;
+  /**
+   * 他人の回答をどこまで見てよいか。`all` なら全件、そうでなければ
+   * `conditions` のいずれかに当てはまる回答だけ。
+   *
+   * **自分の回答は常に別枠で見える** — ここは「他人の回答」の話。
+   */
+  responseScope: ResponseScope;
+}
+
+export interface ResponseScope {
+  all: boolean;
+  conditions: ShareCondition[];
 }
 
 const NONE: ShareAccess = {
@@ -45,6 +69,7 @@ const NONE: ShareAccess = {
   canRead: false,
   canEdit: false,
   canManage: false,
+  responseScope: { all: false, conditions: [] },
 };
 
 const ALL: ShareAccess = {
@@ -52,6 +77,7 @@ const ALL: ShareAccess = {
   canRead: true,
   canEdit: true,
   canManage: true,
+  responseScope: { all: true, conditions: [] },
 };
 
 /** その行が対象ユーザーに当てはまるか。 */
@@ -76,19 +102,49 @@ function matches(row: ShareGrantRow, subject: ShareSubject): boolean {
  *   MANAGE ⊃ EDIT ⊃ READ ⊃ RESPOND
  * 「回答できるが他人の回答は見えない」を作りたいので RESPOND は READ を含まない。
  */
-function apply(level: ShareLevel, acc: ShareAccess): ShareAccess {
-  switch (level) {
+function apply(row: ShareGrantRow, acc: ShareAccess): ShareAccess {
+  switch (row.level) {
     case "MANAGE":
       return ALL;
     case "EDIT":
-      return { ...acc, canRespond: true, canRead: true, canEdit: true };
+      return {
+        ...acc,
+        canRespond: true,
+        canRead: true,
+        canEdit: true,
+        // フォームを預かる側なので回答は全部見える。
+        responseScope: { all: true, conditions: [] },
+      };
     case "READ":
-      return { ...acc, canRespond: true, canRead: true };
+      return {
+        ...acc,
+        canRespond: true,
+        canRead: true,
+        responseScope: widen(acc.responseScope, row.condition),
+      };
     case "RESPOND":
       return { ...acc, canRespond: true };
     default:
       return acc;
   }
+}
+
+/**
+ * 見える範囲を広げる（狭めることはしない）。
+ *
+ * 行の和集合という既存の規則をそのまま適用する: **条件なしの READ が 1 行でも
+ * あれば全件**。条件付きどうしは条件を足し合わせる（どれかに当たれば見える）。
+ * 逆向き（条件付きが全件を打ち消す）にはしない — 否定行を持たない設計なので、
+ * 1 行増やして見える範囲が減るのは規則が壊れる。
+ */
+function widen(
+  scope: ResponseScope,
+  condition: ShareCondition | null | undefined,
+): ResponseScope {
+  if (scope.all) return scope;
+  if (!condition || condition.values.length === 0)
+    return { all: true, conditions: [] };
+  return { all: false, conditions: [...scope.conditions, condition] };
 }
 
 export function resolveShareAccess(
@@ -98,7 +154,7 @@ export function resolveShareAccess(
   if (subject.isSuperuser || subject.isOwner) return ALL;
   let acc = NONE;
   for (const row of grants) {
-    if (matches(row, subject)) acc = apply(row.level, acc);
+    if (matches(row, subject)) acc = apply(row, acc);
   }
   return acc;
 }
@@ -117,3 +173,60 @@ export const SHARE_SUBJECT_LABEL: Record<ShareSubjectType, string> = {
   ROLE: "ロール",
   USER: "個人",
 };
+
+/**
+ * 条件に使える項目の型。
+ *
+ * 「選んだもの」だけを条件にする。自由入力（テキスト・数値・日付）は表記ゆれで
+ * 当たり外れが変わり、共有範囲が入力の綺麗さに左右されてしまう — 見える／
+ * 見えないを決める材料としては危うい。
+ */
+export const SHARE_CONDITION_FIELD_TYPES = [
+  "select",
+  "multiselect",
+  "lookup",
+] as const;
+
+export type ShareConditionFieldType =
+  (typeof SHARE_CONDITION_FIELD_TYPES)[number];
+
+export function isShareConditionFieldType(
+  type: string,
+): type is ShareConditionFieldType {
+  return (SHARE_CONDITION_FIELD_TYPES as readonly string[]).includes(type);
+}
+
+/**
+ * 1 つの回答値が条件の値集合に当たるか。
+ *
+ * 回答の形は項目の型で違う（select = 文字列 / multiselect = 配列 /
+ * lookup = `{ id, label }`）。**lookup は id だけで突き合わせる** — ラベルは
+ * マスタ名の写しなので、改名で共有範囲が変わってはいけない。
+ */
+function answerHits(answer: unknown, values: readonly string[]): boolean {
+  if (answer == null) return false;
+  if (typeof answer === "string") return values.includes(answer);
+  if (Array.isArray(answer)) return answer.some((v) => answerHits(v, values));
+  if (typeof answer === "object") {
+    const id = (answer as { id?: unknown }).id;
+    return typeof id === "string" && values.includes(id);
+  }
+  return false;
+}
+
+/**
+ * この回答が「見せてよい範囲」に入るか。
+ *
+ * **fail-closed** — 条件の項目が回答に無い（その版には無かった項目など）ときは
+ * 見せない。見せてから気付くのでは遅い種類の間違いなので、迷ったら隠す。
+ */
+export function responseInScope(
+  scope: ResponseScope,
+  answers: Record<string, unknown>,
+): boolean {
+  if (scope.all) return true;
+  if (scope.conditions.length === 0) return false;
+  return scope.conditions.some(
+    (c) => c.values.length > 0 && answerHits(answers[c.fieldKey], c.values),
+  );
+}

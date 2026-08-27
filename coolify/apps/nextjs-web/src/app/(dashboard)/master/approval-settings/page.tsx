@@ -3,7 +3,10 @@ import { ApprovalSettingsView } from "@/components/master/approval-flows/Approva
 import type { ApprovalGroupRow } from "@/components/master/approval-settings/ApprovalGroupTable";
 import { effectiveMemberWhere } from "@/lib/approval-membership";
 import { loadGroupApprovers } from "@/lib/approval-permissions";
-import { APPROVAL_TARGET, APPROVAL_TARGET_TYPES } from "@/lib/approval-targets";
+import {
+  APPROVAL_TARGET,
+  FLOW_SETTINGS_TARGET_TYPES,
+} from "@/lib/approval-targets";
 import { requireAppRead } from "@/lib/authz-page";
 import { prisma } from "@/lib/db";
 import { type LocalizedText, localized } from "@/lib/format";
@@ -18,7 +21,9 @@ export default async function MasterApprovalSettingsPage() {
   const now = new Date();
   const permissionCodes = [
     ...new Set(
-      APPROVAL_TARGET_TYPES.map((t) => APPROVAL_TARGET[t].approvePermission),
+      FLOW_SETTINGS_TARGET_TYPES.map(
+        (t) => APPROVAL_TARGET[t].approvePermission,
+      ),
     ),
   ];
   const [flowSteps, ruleCounts, groupRecords, permissions] = await Promise.all([
@@ -60,32 +65,34 @@ export default async function MasterApprovalSettingsPage() {
     ]),
   );
 
-  const flows: FlowOverviewRow[] = APPROVAL_TARGET_TYPES.map((targetType) => {
-    const code = APPROVAL_TARGET[targetType].approvePermission;
-    return {
-      targetType,
-      permissionCode: code,
-      // 権限マスタが未投入でもコードだけは出す（画面が空欄になるより読める）。
-      permissionLabel: permissionLabels.get(code) || code,
-      ruleCount:
-        ruleCounts.find((r) => r.targetType === targetType)?._count._all ?? 0,
-      steps: flowSteps
-        .filter((s) => s.targetType === targetType)
-        .map((s) => ({
-          stepNo: s.stepNo,
-          label: localized(s.name as LocalizedText | null),
-          groupLabel: localized(s.group.name as LocalizedText | null),
-          mode: s.mode as "ANY" | "ALL",
-          approvers: (approversByGroup.get(s.groupId) ?? []).map((a) => ({
-            userId: a.userId,
-            displayName: a.displayName,
-            allowed: a.capabilities[code]?.allowed ?? false,
-            unrestricted: a.capabilities[code]?.unrestricted ?? false,
-            scopes: a.capabilities[code]?.scopes ?? [],
+  const flows: FlowOverviewRow[] = FLOW_SETTINGS_TARGET_TYPES.map(
+    (targetType) => {
+      const code = APPROVAL_TARGET[targetType].approvePermission;
+      return {
+        targetType,
+        permissionCode: code,
+        // 権限マスタが未投入でもコードだけは出す（画面が空欄になるより読める）。
+        permissionLabel: permissionLabels.get(code) || code,
+        ruleCount:
+          ruleCounts.find((r) => r.targetType === targetType)?._count._all ?? 0,
+        steps: flowSteps
+          .filter((s) => s.targetType === targetType)
+          .map((s) => ({
+            stepNo: s.stepNo,
+            label: localized(s.name as LocalizedText | null),
+            groupLabel: localized(s.group.name as LocalizedText | null),
+            mode: s.mode as "ANY" | "ALL",
+            approvers: (approversByGroup.get(s.groupId) ?? []).map((a) => ({
+              userId: a.userId,
+              displayName: a.displayName,
+              allowed: a.capabilities[code]?.allowed ?? false,
+              unrestricted: a.capabilities[code]?.unrestricted ?? false,
+              scopes: a.capabilities[code]?.scopes ?? [],
+            })),
           })),
-        })),
-    };
-  });
+      };
+    },
+  );
 
   const groups: ApprovalGroupRow[] = groupRecords.map((r) => ({
     id: r.id,

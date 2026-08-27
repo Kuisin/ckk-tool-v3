@@ -24,7 +24,19 @@ import {
 
 export type { ShareAccess, ShareLevel, ShareSubjectType };
 
+/** 何も見えない状態。フォームが存在しないときの既定として使い回す。 */
+export const NO_SHARE_ACCESS: ShareAccess = {
+  canRespond: false,
+  canRead: false,
+  canEdit: false,
+  canManage: false,
+  responseScope: { all: false, conditions: [] },
+};
+
 export interface ShareGrantView {
+  conditionFieldKey?: string | null;
+  conditionValues?: string[];
+  conditionLabels?: string[];
   id: string;
   subjectType: ShareSubjectType;
   subjectId: string | null;
@@ -61,15 +73,41 @@ async function grantRowsFor(
 ): Promise<ShareGrantRow[]> {
   const rows = await prisma.shareGrant.findMany({
     where: { ownerType, ownerId },
-    select: { subjectType: true, subjectId: true, level: true },
+    select: {
+      subjectType: true,
+      subjectId: true,
+      level: true,
+      conditionFieldKey: true,
+      conditionValues: true,
+    },
   });
-  return rows as ShareGrantRow[];
+  return rows.map(toGrantRow);
 }
 
 /**
  * いまのユーザーがこのレコードに対して何をできるか。
  * `createdBy` を渡すと作成者本人を常に MANAGE として扱う。
  */
+/** DB 行 → 判定用の行。条件は「項目が指定されていて値が 1 つ以上」のときだけ。 */
+function toGrantRow(row: {
+  subjectType: string;
+  subjectId: string | null;
+  level: string;
+  conditionFieldKey?: string | null;
+  conditionValues?: string[];
+}): ShareGrantRow {
+  const values = row.conditionValues ?? [];
+  return {
+    subjectType: row.subjectType as ShareGrantRow["subjectType"],
+    subjectId: row.subjectId,
+    level: row.level as ShareGrantRow["level"],
+    condition:
+      row.conditionFieldKey && values.length > 0
+        ? { fieldKey: row.conditionFieldKey, values }
+        : null,
+  };
+}
+
 export async function shareAccessFor(
   ownerType: string,
   ownerId: string,
@@ -82,6 +120,7 @@ export async function shareAccessFor(
       canRead: false,
       canEdit: false,
       canManage: false,
+      responseScope: { all: false, conditions: [] },
     };
   }
   const [grants, ctx, permissions] = await Promise.all([
@@ -216,6 +255,9 @@ export async function listShareGrants(
             r.subjectId ||
             "（不明）",
       level: r.level as ShareLevel,
+      conditionFieldKey: r.conditionFieldKey,
+      conditionValues: r.conditionValues,
+      conditionLabels: r.conditionLabels,
     }));
   } catch {
     // 共有設定が読めなくても画面自体は出したい。
@@ -227,6 +269,10 @@ export interface ShareGrantInput {
   subjectType: ShareSubjectType;
   subjectId: string | null;
   level: ShareLevel;
+  /** READ のときだけ意味がある（それ以外では捨てる）。 */
+  conditionFieldKey?: string | null;
+  conditionValues?: string[];
+  conditionLabels?: string[];
 }
 
 /**
@@ -241,11 +287,25 @@ export async function replaceShareGrants(
   actorId: string | null,
 ): Promise<void> {
   const clean = grants
-    .map((g) => ({
-      subjectType: g.subjectType,
-      subjectId: g.subjectType === "EVERYONE" ? null : (g.subjectId ?? null),
-      level: g.level,
-    }))
+    .map((g) => {
+      // 条件は READ にだけ効く。EDIT/MANAGE に付いていても保存しない —
+      // 残すと画面には条件が見えるのに効かない、という嘘の表示になる。
+      const values = g.level === "READ" ? (g.conditionValues ?? []) : [];
+      const fieldKey =
+        g.level === "READ" && values.length > 0
+          ? (g.conditionFieldKey ?? null)
+          : null;
+      const labels = fieldKey ? (g.conditionLabels ?? []) : [];
+      return {
+        subjectType: g.subjectType,
+        subjectId: g.subjectType === "EVERYONE" ? null : (g.subjectId ?? null),
+        level: g.level,
+        conditionFieldKey: fieldKey,
+        conditionValues: fieldKey ? values : [],
+        // ラベルは表示用の写し。数が合わないときは値をそのまま出す。
+        conditionLabels: labels.length === values.length ? labels : [],
+      };
+    })
     .filter((g) => g.subjectType === "EVERYONE" || g.subjectId);
 
   // 同じ (対象, 権限) の重複を落とす（UI の二重追加対策）。
@@ -267,6 +327,9 @@ export async function replaceShareGrants(
         subjectType: g.subjectType,
         subjectId: g.subjectId,
         level: g.level,
+        conditionFieldKey: g.conditionFieldKey,
+        conditionValues: g.conditionValues,
+        conditionLabels: g.conditionLabels,
         createdBy: actorId,
       })),
     });

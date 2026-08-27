@@ -89,6 +89,41 @@ export async function getApprovalFlow(
 }
 
 /**
+ * フォーム 1 件分の承認フロー（form_approval_steps）。
+ *
+ * targetId は回答番号なので、回答 → フォーム → 段定義 とたどる。段が 0 本なら
+ * 「未設定」— 呼び出し側がその旨を返す。
+ */
+export async function getFormApprovalFlow(
+  responseNumber: string,
+): Promise<FlowStepDef[]> {
+  const response = await prisma.formResponse.findUnique({
+    where: { responseNumber },
+    select: { formId: true },
+  });
+  if (!response) return [];
+  return getFormApprovalFlowByFormId(response.formId);
+}
+
+/** フォーム id から直接引く（設定画面・依頼前の確認用）。 */
+export async function getFormApprovalFlowByFormId(
+  formId: string,
+): Promise<FlowStepDef[]> {
+  const rows = await prisma.formApprovalStep.findMany({
+    where: { formId },
+    include: { group: { select: { name: true } } },
+    orderBy: { stepNo: "asc" },
+  });
+  return rows.map((r) => ({
+    stepNo: r.stepNo,
+    name: (r.name ?? { ja: "", en: "" }) as LocalizedText,
+    groupId: r.groupId,
+    groupName: (r.group.name ?? { ja: "", en: "" }) as LocalizedText,
+    mode: r.mode as ApprovalMode,
+  }));
+}
+
+/**
  * 承認フローの適用モード（approval_flows.apply_mode）。行が無ければ PRE
  * （= 承認後に適用・従来動作）。POST の意味は lib/flow-change-core.ts。
  */
@@ -106,10 +141,44 @@ export async function getApprovalApplyMode(
 export async function assertFlowConfigured(
   targetType: ApprovalTargetType,
 ): Promise<string | null> {
+  // フォームはフォームごとにフローを持つので、種別だけでは判定できない
+  // （呼ぶ側が assertFormFlowConfigured を使う）。
+  if (targetType === "form_responses") return null;
   const count = await prisma.approvalFlowStep.count({ where: { targetType } });
   return count > 0
     ? null
     : `${APPROVAL_TARGET[targetType].label}の承認フローが未設定です（承認設定 MS0B で設定してください）`;
+}
+
+/**
+ * その書類に承認が 1 つでも下りているか。
+ *
+ * 採番のリセットで番号が再利用されると、**前の書類の承認記録**を拾ってしまう
+ * （target_id は業務キー文字列で FK が無い — 既知の性質）。書類の作成時刻より
+ * 後の依頼だけを数えて、その取り違えを避ける。
+ */
+export async function hasAnyApproval(
+  targetType: ApprovalTargetType,
+  targetId: string,
+  since: Date,
+): Promise<boolean> {
+  const count = await prisma.approvalRecord.count({
+    where: {
+      action: "APPROVED",
+      request: { targetType, targetId, requestedAt: { gte: since } },
+    },
+  });
+  return count > 0;
+}
+
+/** そのフォームに段が 1 つ以上あるか。無ければ画面に出す文言を返す。 */
+export async function assertFormFlowConfigured(
+  formId: string,
+): Promise<string | null> {
+  const count = await prisma.formApprovalStep.count({ where: { formId } });
+  return count > 0
+    ? null
+    : "このフォームの承認フローが未設定です（フォームの「承認」タブで段を追加してください）";
 }
 
 // ─── 条件付きフロー（approval_flow_rules）────────────────────────────────────
@@ -291,6 +360,12 @@ async function resolveFlowForTarget(
   targetType: ApprovalTargetType,
   targetId: string,
 ): Promise<FlowStepDef[]> {
+  // フォームだけは**フォームごと**にフローを持つ（共通フローは見ない）。
+  // 稟議・日報・点検簿が 1 本の承認を共有する理由が無いため、設定場所ごと
+  // フォームの「承認」タブへ移してある。条件付きフロー（approval_flow_rules）
+  // も使わない — 分岐が要るならフォームを分ければよい。
+  if (targetType === "form_responses") return getFormApprovalFlow(targetId);
+
   const flow = await getApprovalFlow(targetType);
   if (flow.length === 0) return flow;
   const rules = await getApprovalFlowRules(targetType);
@@ -674,7 +749,10 @@ export async function startApprovalFlow(input: {
   if (flow.length === 0) {
     return {
       ok: false,
-      error: `${APPROVAL_TARGET[input.targetType].label}の承認フローが未設定です（承認設定 MS0B で設定してください）`,
+      error:
+        input.targetType === "form_responses"
+          ? "このフォームの承認フローが未設定です（フォームの「承認」タブで段を追加してください）"
+          : `${APPROVAL_TARGET[input.targetType].label}の承認フローが未設定です（承認設定 MS0B で設定してください）`,
     };
   }
   const actor = await getCurrentActorId();
