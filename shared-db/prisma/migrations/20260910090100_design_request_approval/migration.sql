@@ -50,8 +50,6 @@ UPDATE "app"."design_requests" dr
    SELECT 1 FROM "app"."design_files" df WHERE df."product_id" = dr."product_id"
  );
 
-ALTER TABLE "app"."design_requests"
-
 -- 新規は下書きから始まる。既存行（PENDING / IN_PROGRESS / COMPLETED）はそのまま —
 -- PENDING は「承認済・着手待ち」として意味を引き継ぐので移行は不要。
 ALTER TABLE "app"."design_requests"
