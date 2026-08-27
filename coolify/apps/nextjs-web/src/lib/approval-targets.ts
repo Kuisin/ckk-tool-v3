@@ -21,6 +21,7 @@ export const APPROVAL_TARGET_TYPES = [
   "order_acceptance_cancel_requests",
   "form_responses",
   "internal_pages",
+  "design_requests",
 ] as const;
 
 export type ApprovalTargetType = (typeof APPROVAL_TARGET_TYPES)[number];
@@ -144,6 +145,13 @@ export const APPROVAL_TARGET: Record<ApprovalTargetType, ApprovalTargetMeta> = {
     appKey: "purchase-requests",
     // 購買依頼は素材発注と同じ権限コード（購買一式で 1 コード）。
     approvePermission: "purchase_order",
+  },
+  design_requests: {
+    label: "設計依頼書",
+    color: "orange",
+    href: (id) => `/sales/design-requests/${id}`,
+    appKey: "design-requests",
+    approvePermission: "design_request",
   },
 };
 
