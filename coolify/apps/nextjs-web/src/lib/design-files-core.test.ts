@@ -8,6 +8,7 @@ import {
   designFileSource,
   groupBySeries,
   nextDesignVersion,
+  pickThumbFile,
   resolveLatestFile,
   resolveSeriesCustomer,
   sameSeries,
@@ -192,5 +193,37 @@ describe("編集・削除の可否", () => {
     expect(describeLock({ usedByWorkOrder: true, designRequestId: "r" })).toBe(
       "指示書で使用中のため変更できません",
     );
+  });
+});
+
+describe("pickThumbFile", () => {
+  it("最新版のプレビューを優先する", () => {
+    const files = [
+      f({ id: "bp", isLatest: true, role: "BLUEPRINT" }),
+      f({ id: "pv", isLatest: true, role: "PREVIEW" }),
+    ];
+    expect(pickThumbFile(files)?.id).toBe("pv");
+  });
+
+  it("プレビューが無ければ図面データ", () => {
+    expect(
+      pickThumbFile([f({ id: "bp", isLatest: true, role: "BLUEPRINT" })])?.id,
+    ).toBe("bp");
+  });
+
+  it("**参考資料は選ばない**（主図面の代わりに出ると形を誤解させる）", () => {
+    expect(
+      pickThumbFile([f({ id: "ref", isLatest: true, role: "REFERENCE" })]),
+    ).toBeNull();
+  });
+
+  it("古い版は選ばない", () => {
+    expect(
+      pickThumbFile([f({ id: "old", isLatest: false, role: "PREVIEW" })]),
+    ).toBeNull();
+  });
+
+  it("空なら null", () => {
+    expect(pickThumbFile([])).toBeNull();
   });
 });

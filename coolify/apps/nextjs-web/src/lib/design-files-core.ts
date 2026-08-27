@@ -187,3 +187,24 @@ export function describeLock(f: {
   }
   return null;
 }
+
+/**
+ * 「いま見せたい 1 枚」を選ぶ — 最新版の プレビュー → 図面データ の順。
+ *
+ * 製品マスタ・設計依頼・指示書のサムネイルが**同じ 1 枚**を指すようにする
+ * ための規則。画面ごとに別々に書くと、同じ版を見ているのに出てくる絵が
+ * 違う、ということが起きる。
+ *
+ * 参考資料は選ばない — 部品図や寸法表が主図面の代わりに出ると、
+ * 「これがこの製品の形だ」と誤解させる。
+ */
+export function pickThumbFile<
+  T extends { isLatest: boolean; role: DesignFileRole },
+>(files: readonly T[]): T | null {
+  const latest = files.filter((f) => f.isLatest);
+  return (
+    latest.find((f) => f.role === "PREVIEW") ??
+    latest.find((f) => f.role === "BLUEPRINT") ??
+    null
+  );
+}

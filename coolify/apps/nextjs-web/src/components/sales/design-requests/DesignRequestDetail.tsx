@@ -24,6 +24,7 @@ import {
   Alert,
   Anchor,
   Badge,
+  Box,
   Divider,
   Group,
   Paper,
@@ -73,6 +74,7 @@ import {
   type AttachmentView,
 } from "@/components/ui/AttachmentsPanel";
 import { PrimaryButton } from "@/components/ui/buttons";
+import { DesignFileThumb } from "@/components/ui/DesignFileViewer";
 import { DocNumber } from "@/components/ui/DocNumber";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { FieldValue } from "@/components/ui/FieldValue";
@@ -90,6 +92,8 @@ import {
   SummaryGrid,
 } from "@/components/ui/shells";
 import { useTabParam } from "@/hooks/useUrlState";
+import { isViewable } from "@/lib/design-file-kind";
+import { pickThumbFile } from "@/lib/design-files-core";
 import {
   DESIGN_KIND_LABEL,
   DESIGN_PRIORITY_LABEL,
@@ -188,6 +192,39 @@ export function DesignRequestDetail({
   const [assigneeDraft, setAssigneeDraft] = useState(request.assigneeId ?? "");
   const [pdfFile, setPdfFile] = useState<PdfFileMeta | null>(pdfMeta);
   const [pdfNonce, setPdfNonce] = useState(0);
+
+  /**
+   * サムネイルに出す 1 枚。
+   *
+   * 登録済みの版があればそれ（製品マスタと同じ規則 — 最新版の
+   * プレビュー → 図面データ）。まだ無ければ、添付の中で表示できる
+   * いちばん新しいものを出す。完了前は版が存在しないので、後者が無いと
+   * 図面を描いている期間ずっと何も見えない。
+   *
+   * 版と添付では**配信ルートが違う**（版は design_files → files を直接
+   * 指していて document_attachments の行ではない）ので、URL もそれぞれ。
+   */
+  const thumbTarget = (() => {
+    const version = pickThumbFile(request.files);
+    if (version) {
+      return {
+        caption: `v${version.version}${version.isLatest ? "（最新）" : ""} ${version.filename}`,
+        filename: version.filename,
+        mimeType: version.mimeType,
+        src: `/api/design-files/${encodeURIComponent(version.id)}`,
+      };
+    }
+    // listAttachments は新しい順。表示できないもの（CAD 等）は飛ばす。
+    const a = attachments.find((x) => isViewable(x.filename, x.mimeType));
+    return a
+      ? {
+          caption: `添付（未登録）${a.filename}`,
+          filename: a.filename,
+          mimeType: a.mimeType,
+          src: `/api/attachments/${encodeURIComponent(a.id)}`,
+        }
+      : null;
+  })();
 
   const canViewPdf = isIssuedDesign(request.status);
   const pdfFilename = `${request.requestNumber}.pdf`;
@@ -649,6 +686,21 @@ export function DesignRequestDetail({
         {/* 設計ファイル — 添付（作業ファイル）+ 完了時に版管理へ登録される。 */}
         <Tabs.Panel pt="md" value="files">
           <Stack gap="md">
+            {/* 見えるものを先に出す（製品マスタと同じサムネイル）。
+                完了前は登録済みの版がまだ無いので、その間は**添付**の中から
+                表示できるものを見せる — 図面を描いている最中こそ「上げた物が
+                合っているか」を確かめたいのに、完了するまで何も見えないのでは
+                置く意味がない。 */}
+            {thumbTarget && (
+              <Stack gap={4}>
+                <Box maw={320}>
+                  <DesignFileThumb target={thumbTarget} />
+                </Box>
+                <Text c="dimmed" size="xs">
+                  {thumbTarget.caption}
+                </Text>
+              </Stack>
+            )}
             <AttachmentsPanel
               attachments={attachments}
               canDelete={canAttachFiles(request)}
@@ -663,7 +715,7 @@ export function DesignRequestDetail({
                 message="登録済みバージョンはありません"
               />
             ) : (
-              <DesignFileList rows={request.files} />
+              <DesignFileList rows={request.files} showSource />
             )}
           </Stack>
         </Tabs.Panel>
