@@ -29,7 +29,7 @@ import type { ProductDesignFile } from "@/components/sales/design-requests/model
 import { SecondaryButton } from "@/components/ui/buttons";
 import { DesignFileThumb } from "@/components/ui/DesignFileViewer";
 import { ConfirmModal, ModalShell } from "@/components/ui/modals";
-import { groupBySeries } from "@/lib/design-files-core";
+import { groupBySeries, pickThumbFile } from "@/lib/design-files-core";
 import { AddDesignVersionModal } from "./AddDesignVersionModal";
 
 interface Option {
@@ -103,13 +103,9 @@ export function ProductDesignFiles({
         </Text>
       ) : (
         series.map((g) => {
-          // 系列の中で「いま見せたい 1 枚」— プレビューがあればそれ、
-          // 無ければ最新の図面データ。
-          const latest = g.files.filter((f) => f.isLatest);
-          const thumb =
-            latest.find((f) => f.role === "PREVIEW") ??
-            latest.find((f) => f.role === "BLUEPRINT") ??
-            null;
+          // 系列の中で「いま見せたい 1 枚」。規則は design-files-core が持つ
+          // ので、設計依頼 (SA26) のサムネイルと必ず同じ 1 枚を指す。
+          const thumb = pickThumbFile(g.files);
           return (
             <Stack gap="xs" key={g.customerBpId ?? "__generic__"}>
               <Group gap="xs" wrap="wrap">
