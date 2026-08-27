@@ -30,71 +30,13 @@ import { IconUpload, IconX } from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { GhostButton, SecondaryButton } from "@/components/ui/buttons";
+import { DesignFileSlot, type SlotValue } from "@/components/ui/DesignFileSlot";
 import { ModalShell } from "@/components/ui/modals";
 import { useIsMobile } from "@/hooks/useViewport";
 
 interface Option {
   value: string;
   label: string;
-}
-
-/** 1 枠ぶんのファイル選択（選ぶと名前 + 取り消しが出る）。 */
-function FilePick({
-  label,
-  description,
-  file,
-  onPick,
-  required,
-  fullWidth,
-}: {
-  label: string;
-  description: string;
-  file: File | null;
-  onPick: (f: File | null) => void;
-  required?: boolean;
-  fullWidth?: boolean;
-}) {
-  return (
-    <Stack gap={4}>
-      <Text fw={500} size="sm">
-        {label}
-        {required && (
-          <Text c="red" component="span" size="sm">
-            {" *"}
-          </Text>
-        )}
-      </Text>
-      <Text c="dimmed" size="xs">
-        {description}
-      </Text>
-      <Group gap="xs" wrap="wrap">
-        <FileButton onChange={onPick}>
-          {(props) => (
-            <SecondaryButton
-              {...props}
-              fullWidth={fullWidth}
-              leftSection={<IconUpload size={14} />}
-            >
-              {file ? "選び直す" : "ファイルを選択"}
-            </SecondaryButton>
-          )}
-        </FileButton>
-        {file && (
-          <Group gap={4} wrap="nowrap">
-            <Text size="xs" style={{ overflowWrap: "anywhere" }}>
-              {file.name}
-            </Text>
-            <GhostButton
-              leftSection={<IconX size={12} />}
-              onClick={() => onPick(null)}
-            >
-              取消
-            </GhostButton>
-          </Group>
-        )}
-      </Group>
-    </Stack>
-  );
 }
 
 export function AddDesignVersionModal({
@@ -112,8 +54,8 @@ export function AddDesignVersionModal({
   const router = useRouter();
   const isMobile = useIsMobile();
   const [customerBpId, setCustomerBpId] = useState<string | null>(null);
-  const [blueprint, setBlueprint] = useState<File | null>(null);
-  const [preview, setPreview] = useState<File | null>(null);
+  const [blueprint, setBlueprint] = useState<SlotValue>(null);
+  const [preview, setPreview] = useState<SlotValue>(null);
   const [references, setReferences] = useState<File[]>([]);
   const [notes, setNotes] = useState("");
   const [busy, setBusy] = useState(false);
@@ -134,8 +76,10 @@ export function AddDesignVersionModal({
       body.set("productId", String(productId));
       if (customerBpId) body.set("customerBpId", customerBpId);
       if (notes.trim()) body.set("notes", notes.trim());
-      body.set("blueprint", blueprint);
-      if (preview) body.set("preview", preview);
+      // 製品マスタからの登録は必ず新しいファイル（添付という概念が無い）。
+      if (blueprint.kind !== "file") return;
+      body.set("blueprint", blueprint.file);
+      if (preview?.kind === "file") body.set("preview", preview.file);
       for (const r of references) body.append("reference", r);
 
       const res = await fetch("/api/design-files/upload", {
@@ -196,20 +140,20 @@ export function AddDesignVersionModal({
           value={customerBpId}
         />
 
-        <FilePick
+        <DesignFileSlot
           description="加工プログラムを起こす元データ。この系列の最新図面になります"
-          file={blueprint}
           fullWidth={isMobile}
           label="図面データ"
-          onPick={setBlueprint}
+          onChange={setBlueprint}
           required
+          value={blueprint}
         />
-        <FilePick
+        <DesignFileSlot
           description="STL など、画面で形を確かめるためのファイル。無くても登録できます"
-          file={preview}
           fullWidth={isMobile}
           label="プレビュー用（3D）"
-          onPick={setPreview}
+          onChange={setPreview}
+          value={preview}
         />
 
         <Stack gap={4}>
