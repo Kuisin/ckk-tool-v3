@@ -1452,3 +1452,60 @@ export async function rejectFlowChange(
     return actionError(prismaErrorMessage(e, "差し戻しに失敗しました"));
   }
 }
+
+/**
+ * 使用する図面の版を固定する / 固定を解除する。
+ *
+ * **任意の操作。** 固定しなければ、表示のたびに製品の最新図面（受注元が
+ * 一致する系列 → 無ければ汎用）を引く。固定すると、あとから改訂されても
+ * 現場が見る図面は変わらない。
+ *
+ * 固定された版は編集・削除できなくなる（lib/design-files-core
+ * canEditDesignFile）— その図面で物を作ったという記録なので、あとから
+ * 中身が変わると「何を見て作ったか」が追えなくなる。
+ */
+export async function setWorkOrderDesignFile(
+  workOrderNumber: number,
+  designFileId: string | null,
+): Promise<ActionResult> {
+  const authz = await checkPermission("work_order", "UPDATE");
+  if (!authz.ok) return actionError(authz.error);
+  try {
+    const wo = await prisma.workOrder.findUnique({
+      where: { workOrderNumber },
+      select: { id: true, productId: true, yearMonth: true, seq: true },
+    });
+    if (!wo) return actionError("対象の指示書が見つかりません");
+
+    if (designFileId) {
+      // 別の製品の図面を貼れないようにする（画面では選べないが、
+      // 呼び出しは画面からしか来ないとは限らない）。
+      const df = await prisma.designFile.findUnique({
+        where: { id: designFileId },
+        select: { productId: true, version: true },
+      });
+      if (!df) return actionError("対象の設計図が見つかりません");
+      if (df.productId !== wo.productId) {
+        return actionError("この指示書の製品の設計図ではありません");
+      }
+    }
+
+    await prisma.workOrder.update({
+      where: { id: wo.id },
+      data: { designFileId },
+    });
+    await recordAudit({
+      action: "UPDATE",
+      tableName: "work_orders",
+      recordId: String(workOrderNumber),
+      after: {
+        note: designFileId ? "使用する図面を固定" : "図面の固定を解除",
+        designFileId,
+      },
+    });
+    revalidate(workOrderNumber, formatDocNumber("WOR", wo));
+    return actionOk();
+  } catch (e) {
+    return actionError(prismaErrorMessage(e, "図面の設定に失敗しました"));
+  }
+}

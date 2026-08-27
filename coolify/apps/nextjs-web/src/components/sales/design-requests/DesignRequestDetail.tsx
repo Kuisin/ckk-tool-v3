@@ -448,6 +448,21 @@ export function DesignRequestDetail({
           />
         )}
         <FieldValue label="製品" value={request.productName ?? "—"} />
+        {/* 完成した版がどの系列に載るか。汎用なら全顧客の指示書から見える。 */}
+        <FieldValue
+          label="受注元"
+          value={
+            request.customerName ? (
+              <Badge color="blue" variant="light">
+                {request.customerName}
+              </Badge>
+            ) : (
+              <Badge color="gray" variant="outline">
+                汎用
+              </Badge>
+            )
+          }
+        />
         <FieldValue
           label="依頼区分"
           value={
