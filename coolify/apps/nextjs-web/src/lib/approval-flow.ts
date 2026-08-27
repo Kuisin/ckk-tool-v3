@@ -19,9 +19,16 @@ export type ApprovalMode = "ANY" | "ALL";
 export interface FlowStepSnapshot {
   stepNo: number;
   name: LocalizedText;
-  groupId: number;
+  /** 承認グループ宛の段。個人宛のときは null。 */
+  groupId: number | null;
   groupName: LocalizedText;
   mode: ApprovalMode;
+  /**
+   * 個人宛の段（フォームのみ）。**グループとどちらか一方**。
+   * 依頼時点の名前も写す — 後で改名・退職しても履歴が読めるように。
+   */
+  approverUserId?: string | null;
+  approverName?: string | null;
 }
 
 /** 依頼 1 件ぶんの承認枠（ALL では必須チェックリスト、ANY では表示用）。 */
@@ -104,13 +111,19 @@ export interface FlowStepDraft {
   nameJa: string;
   groupId: number | null;
   mode: ApprovalMode;
+  /** 個人宛の段（フォームのみ）。グループとどちらか一方が入っていればよい。 */
+  approverUserId?: string | null;
 }
 
 /**
  * フロー定義の検証。エラー文言の配列（空 = OK）。
  * 画面はボタンを止めるために、Server Action は保存を弾くために同じものを使う。
  */
-export function validateFlowSteps(steps: FlowStepDraft[]): string[] {
+export function validateFlowSteps(
+  steps: FlowStepDraft[],
+  /** 段の宛先に個人を選べるか（フォームのみ true）。文言が変わる。 */
+  allowIndividual = false,
+): string[] {
   const issues: string[] = [];
   if (steps.length === 0) {
     issues.push("承認ステップを 1 段以上設定してください");
@@ -120,13 +133,20 @@ export function validateFlowSteps(steps: FlowStepDraft[]): string[] {
   const noGroup: number[] = [];
   steps.forEach((s, i) => {
     if (!s.nameJa.trim()) noName.push(i + 1);
-    if (s.groupId == null) noGroup.push(i + 1);
+    // 個人宛は allowIndividual のときだけ「宛先あり」と認める。共通フロー
+    // （MS0B）に個人が紛れ込んでも、宛先なしとして弾く。
+    if (s.groupId == null && !(allowIndividual && s.approverUserId))
+      noGroup.push(i + 1);
   });
   if (noName.length > 0) {
     issues.push(`${noName.join(", ")} 段目: 名称を入力してください`);
   }
   if (noGroup.length > 0) {
-    issues.push(`${noGroup.join(", ")} 段目: 承認グループを選択してください`);
+    issues.push(
+      allowIndividual
+        ? `${noGroup.join(", ")} 段目: 承認グループか承認者を選択してください`
+        : `${noGroup.join(", ")} 段目: 承認グループを選択してください`,
+    );
   }
   return issues;
 }

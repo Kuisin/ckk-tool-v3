@@ -3,7 +3,10 @@ import type { FormFlowStep } from "@/components/forms/FormApprovalPanel";
 import { FormDetail } from "@/components/forms/FormDetail";
 import type { FlowApprover } from "@/components/master/approval-flows/ApproverPermissionBadge";
 import type { ApprovalMode } from "@/lib/approval-flow";
-import { loadGroupApprovers } from "@/lib/approval-permissions";
+import {
+  loadApproveCapabilities,
+  loadGroupApprovers,
+} from "@/lib/approval-permissions";
 import { fetchAuditEntries } from "@/lib/audit";
 import { sessionUserId } from "@/lib/authz";
 import { requireAppRead } from "@/lib/authz-page";
@@ -25,6 +28,9 @@ async function loadFormApprovalPanel(formId: string): Promise<{
   const [steps, groups, permission] = await Promise.all([
     prisma.formApprovalStep.findMany({
       where: { formId },
+      include: {
+        approver: { select: { id: true, displayName: true, username: true } },
+      },
       orderBy: { stepNo: "asc" },
     }),
     prisma.approvalGroup.findMany({
@@ -44,6 +50,12 @@ async function loadFormApprovalPanel(formId: string): Promise<{
     groups.map((g) => g.id),
     [APPROVE_PERMISSION],
   );
+  // 段に直接刺さっている個人の権限（グループ経由ではないので別に引く）。
+  const individualCaps = await loadApproveCapabilities(
+    steps.map((s) => s.approverUserId).filter((v) => v != null),
+    [APPROVE_PERMISSION],
+  );
+
   const approversByGroup: Record<string, FlowApprover[]> = {};
   for (const [groupId, members] of approvers) {
     approversByGroup[String(groupId)] = members.map((m) => ({
@@ -61,8 +73,18 @@ async function loadFormApprovalPanel(formId: string): Promise<{
       return {
         nameJa: name?.ja ?? "",
         nameEn: name?.en ?? "",
-        groupId: String(s.groupId),
+        groupId: s.groupId == null ? null : String(s.groupId),
         mode: s.mode as ApprovalMode,
+        approverUserId: s.approverUserId,
+        approverName: s.approver
+          ? s.approver.displayName || s.approver.username
+          : null,
+        // 保存済みの個人はここで権限を解いて渡す（選び直さなくても
+        // 「承認できない人が刺さっている」ことが画面で分かるように）。
+        approverAllowed: s.approverUserId
+          ? (individualCaps.get(s.approverUserId)?.get(APPROVE_PERMISSION)
+              ?.allowed ?? false)
+          : undefined,
       };
     }),
     groupOptions: groups.map((g) => ({

@@ -5,6 +5,7 @@ import {
   fetchApprovalState,
   fetchApprovalTrail,
   hasAnyApproval,
+  isApproverOf,
 } from "@/lib/approvals";
 import { listAttachments } from "@/lib/attachments";
 import { fetchAuditEntries } from "@/lib/audit";
@@ -36,7 +37,10 @@ export default async function ResponseDetailPage({
   // さらに共有に条件が付いていればその条件に当てはまるものだけ。
   const inScope =
     access.canRead && responseInScope(access.responseScope, response.answers);
-  if (!inScope && !isOwner) notFound();
+  // 承認を頼まれた人は、共有が「回答のみ」でもこの書類を開ける必要がある
+  // （読めなければ承認しようがない）。
+  const isApprover = await isApproverOf("form_responses", id, userId);
+  if (!inScope && !isOwner && !isApprover) notFound();
 
   // 「回答者を表示しない」フォームでは、操作履歴の実行者名と添付のアップロード者名が
   // そのまま回答者を指してしまう。本人以外には渡さない — 画面で隠すのではなく

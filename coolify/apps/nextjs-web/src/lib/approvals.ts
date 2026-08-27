@@ -65,9 +65,13 @@ export function appendHistory(
 export interface FlowStepDef {
   stepNo: number;
   name: LocalizedText;
-  groupId: number;
+  /** 承認グループ宛の段。個人宛のときは null。 */
+  groupId: number | null;
   groupName: LocalizedText;
   mode: ApprovalMode;
+  /** 個人宛の段（フォームのみ）。グループとどちらか一方。 */
+  approverUserId?: string | null;
+  approverName?: string | null;
 }
 
 /** 書類種別の承認フロー（stepNo 昇順）。未設定なら空配列。 */
@@ -111,15 +115,22 @@ export async function getFormApprovalFlowByFormId(
 ): Promise<FlowStepDef[]> {
   const rows = await prisma.formApprovalStep.findMany({
     where: { formId },
-    include: { group: { select: { name: true } } },
+    include: {
+      group: { select: { name: true } },
+      approver: { select: { displayName: true, username: true } },
+    },
     orderBy: { stepNo: "asc" },
   });
   return rows.map((r) => ({
     stepNo: r.stepNo,
     name: (r.name ?? { ja: "", en: "" }) as LocalizedText,
     groupId: r.groupId,
-    groupName: (r.group.name ?? { ja: "", en: "" }) as LocalizedText,
+    groupName: (r.group?.name ?? { ja: "", en: "" }) as LocalizedText,
     mode: r.mode as ApprovalMode,
+    approverUserId: r.approverUserId,
+    approverName: r.approver
+      ? r.approver.displayName || r.approver.username
+      : null,
   }));
 }
 
@@ -167,6 +178,27 @@ export async function hasAnyApproval(
       action: "APPROVED",
       request: { targetType, targetId, requestedAt: { gte: since } },
     },
+  });
+  return count > 0;
+}
+
+/**
+ * その人がこの書類の承認枠に入っている（入っていた）か。
+ *
+ * 承認を頼まれた人は、**その書類を読めなければ承認しようがない**。共有設定が
+ * 「回答のみ」でも、承認者として指名された段の書類は開ける必要がある。
+ * 承認枠（approval_request_approvers）は依頼時のスナップショットなので、
+ * グループ宛・個人宛のどちらでも同じ判定で済む。押し終わったあとも読めるよう、
+ * 進行中の依頼に限定しない。
+ */
+export async function isApproverOf(
+  targetType: ApprovalTargetType,
+  targetId: string,
+  userId: string | null | undefined,
+): Promise<boolean> {
+  if (!userId) return false;
+  const count = await prisma.approvalRequestApprover.count({
+    where: { userId, request: { targetType, targetId } },
   });
   return count > 0;
 }
@@ -384,6 +416,8 @@ function toSnapshot(flow: FlowStepDef[]): FlowStepSnapshot[] {
     groupId: s.groupId,
     groupName: s.groupName,
     mode: s.mode,
+    approverUserId: s.approverUserId ?? null,
+    approverName: s.approverName ?? null,
   }));
 }
 
@@ -397,9 +431,23 @@ function toSnapshot(flow: FlowStepDef[]): FlowStepSnapshot[] {
 export async function resolveApprover(
   groupId: number | null | undefined,
   userId?: string | null,
+  /**
+   * 個人宛の段（グループ無し）を判定するための依頼 id。依頼時に張った
+   * approval_request_approvers を唯一の根拠にする — 承認枠は依頼時点の
+   * スナップショットなので、あとで段の宛先を変えても進行中の依頼は動かない。
+   */
+  requestId?: string | null,
 ): Promise<{ ok: boolean; delegateForId: string | null }> {
   const actor = userId ?? (await getCurrentActorId());
-  if (!actor || groupId == null) return { ok: false, delegateForId: null };
+  if (!actor) return { ok: false, delegateForId: null };
+
+  if (groupId == null) {
+    if (!requestId) return { ok: false, delegateForId: null };
+    const slot = await prisma.approvalRequestApprover.count({
+      where: { approvalRequestId: requestId, userId: actor },
+    });
+    return { ok: slot > 0, delegateForId: null };
+  }
 
   const now = new Date();
   const effective = effectiveMemberWhere(now);
@@ -617,7 +665,7 @@ export async function fetchApprovalState(
     };
   }
 
-  const auth = await resolveApprover(pending.groupId, actor);
+  const auth = await resolveApprover(pending.groupId, actor, pending.id);
   const step = stepFromSnapshot(pending.flowSnapshot, pending.stepNo);
   const mode = pending.mode as ApprovalMode;
   // ALL は「自分（or 代理元）の枠が空いているか」まで見る
@@ -680,14 +728,19 @@ async function createStepRequest(
   // 依頼時点の実効メンバーを承認枠として張る。
   // ANY では表示・通知用、ALL では必須チェックリストになる。
   if (step) {
-    const members = await tx.approvalGroupMember.findMany({
-      where: {
-        groupId: step.groupId,
-        group: { isActive: true },
-        ...effectiveMemberWhere(new Date()),
-      },
-      select: { userId: true },
-    });
+    // 個人宛の段は、その 1 人だけが承認枠。グループを引く必要がない。
+    const members = step.approverUserId
+      ? [{ userId: step.approverUserId }]
+      : step.groupId == null
+        ? []
+        : await tx.approvalGroupMember.findMany({
+            where: {
+              groupId: step.groupId,
+              group: { isActive: true },
+              ...effectiveMemberWhere(new Date()),
+            },
+            select: { userId: true },
+          });
     if (members.length > 0) {
       await tx.approvalRequestApprover.createMany({
         data: members.map((m) => ({
@@ -720,14 +773,20 @@ async function notifyStepStart(
             })
           ).map((a) => a.userId)
         : undefined;
-    await notifyApprovalGroup(step.groupId, {
-      type: "APPROVAL_REQUEST",
+    const payload = {
+      type: "APPROVAL_REQUEST" as const,
       title: `${APPROVAL_TARGET[targetType].label} ${targetId} の${localized(step.name)}依頼`,
       // 承認管理の一覧ではなく当の書類を開く（承認操作は書類詳細の
       // ActionCard にある — design.md §10.9）。承認結果通知と同じ行き先。
       linkPath: APPROVAL_TARGET[targetType].href(targetId),
-      userIds,
-    });
+    };
+    if (step.groupId == null) {
+      // 個人宛の段 — その 1 人にだけ送る（代理はグループの仕組みなので無い）。
+      if (step.approverUserId)
+        await notify({ ...payload, userIds: [step.approverUserId] });
+    } else {
+      await notifyApprovalGroup(step.groupId, { ...payload, userIds });
+    }
   } catch (e) {
     console.error("[approvals] 承認依頼通知に失敗:", e);
   }
@@ -853,7 +912,7 @@ export async function actOnCurrentStep(input: {
   });
   if (!request) return ACT_FAILED("承認待ちの依頼がありません");
 
-  const auth = await resolveApprover(request.groupId, actor);
+  const auth = await resolveApprover(request.groupId, actor, request.id);
   if (!auth.ok) {
     return ACT_FAILED("承認権限がありません（代理設定も未該当）");
   }

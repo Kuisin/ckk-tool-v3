@@ -200,6 +200,8 @@ model User {
   @@index([avatarThumbFileId])
   @@map("users")
   @@schema("app")
+  formApprovalSteps FormApprovalStep[] @relation("FormApprovalStepApprover")
+
 }
 
 model Role {
