@@ -105,6 +105,8 @@ import {
   canReopen,
   canRequestApproval,
   canStart,
+  DESIGN_FILE_ROLE_COLOR,
+  DESIGN_FILE_ROLE_LABEL,
   DESIGN_HISTORY_ACTION_LABEL,
   DESIGN_KIND_COLOR,
   DESIGN_TRIGGER_COLOR,
@@ -666,11 +668,12 @@ export function DesignRequestDetail({
                         <Table.Td className="tabular-nums" ta="right">
                           <Group gap="xs" justify="flex-end" wrap="nowrap">
                             v{f.version}
-                            {f.role === "PRIMARY" && (
-                              <Badge color="blue" variant="light">
-                                主図面
-                              </Badge>
-                            )}
+                            <Badge
+                              color={DESIGN_FILE_ROLE_COLOR[f.role] ?? "gray"}
+                              variant="light"
+                            >
+                              {DESIGN_FILE_ROLE_LABEL[f.role] ?? f.role}
+                            </Badge>
                             {f.isLatest && (
                               <Badge color="green" variant="light">
                                 最新

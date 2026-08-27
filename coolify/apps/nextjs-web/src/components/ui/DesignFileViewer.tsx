@@ -98,7 +98,13 @@ export function DesignFileViewerModal({
             }}
           />
         )}
-        {kind === "model3d" && <Model3dCanvas height="70vh" src={target.src} />}
+        {kind === "model3d" && (
+          <Model3dCanvas
+            filename={target.filename}
+            height="70vh"
+            src={target.src}
+          />
+        )}
         {kind === "download" && (
           <Center py="xl">
             <Text c="dimmed" size="sm">

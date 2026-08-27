@@ -120,11 +120,17 @@ model DesignRequest {
   @@schema("app")
 }
 
-// 設計ファイルの役割。1 つの版は「主図面 1 枚 + 参考資料 0..N 枚」で構成する。
-// 製品マスタが出す「最新図面」は is_latest かつ PRIMARY の 1 行に定まる。
+// 設計ファイルの役割。1 つの版は
+//   プレビュー 0..1 枚 + 図面データ 1 枚 + 参考資料 0..N 枚
+// で構成する。**プレビューと図面データを分けている**のは用途が違うから:
+//   PREVIEW   … 人が形を確かめるためのもの（STL 等）。画面で回して見る
+//   BLUEPRINT … 加工プログラムを起こす元データ（CAD）。これが成果物の本体で、
+//               製品マスタの「最新図面」もこれを指す
+// 同じ形状でも STL は見るため・CAD は作るためのもので、片方で代用できない。
 enum DesignFileRole {
-  PRIMARY // 主図面
-  REFERENCE // 参考資料（部品図・寸法表・3D モデルなど）
+  PREVIEW // プレビュー用（3D 表示）
+  BLUEPRINT // 図面データ（加工プログラム用）
+  REFERENCE // 参考資料（部品図・寸法表など）
 
   @@map("DESIGN_FILE_ROLE")
   @@schema("app")
@@ -135,6 +141,8 @@ enum DesignFileRole {
 // **同じ version の行が複数あってよい。** 1 回の完了で上げたファイルは
 // すべて同じ version・同じ is_latest を持ち、role だけが違う。version は
 // 「図面の改訂世代」であってファイルの通し番号ではない。
+// 製品の「最新図面」= is_latest かつ BLUEPRINT、
+// 「最新の 3D プレビュー」= is_latest かつ PREVIEW。
 model DesignFile {
   id              String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   designRequestId String?  @map("design_request_id") @db.Uuid
@@ -142,7 +150,7 @@ model DesignFile {
   fileId          String   @map("file_id") @db.Uuid
   version         Int      @default(1)
   isLatest        Boolean  @default(true) @map("is_latest")
-  role            DesignFileRole @default(PRIMARY)
+  role            DesignFileRole @default(BLUEPRINT)
   notes           String?
   createdBy       String?  @map("created_by") @db.Uuid
   createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz(6)

@@ -37,9 +37,12 @@
 - 設計図アップロード: SeaweedFS に保存（`design_files` テーブル）。添付できるのは
   **承認済〜完了前**（`PENDING` / `IN_PROGRESS`）だけ
 - バージョン管理: `version` + `is_latest` フラグ。**1 回の完了 = 1 版**で、
-  その版は「主図面 1 枚 + 参考資料 0..N 枚」（`design_files.role`）。同時に出した
-  ファイルは同じ `version` を共有する — `version` は改訂世代であってファイルの
-  通し番号ではないため。製品の最新図面 = `is_latest` かつ `role = PRIMARY`
+  その版は「プレビュー 0..1 + 図面データ 1 + 参考資料 0..N」（`design_files.role`）。
+  **プレビュー（STL 等）と図面データ（CAD）を分けている**のは用途が違うから —
+  片方は人が形を確かめるため、片方は加工プログラムを起こす元データで代用できない。
+  同時に出したファイルは同じ `version` を共有する — `version` は改訂世代であって
+  ファイルの通し番号ではないため。製品の最新図面 = `is_latest` かつ
+  `role = BLUEPRINT`、サムネイルは PREVIEW があればそれを優先
 - 添付の受付形式は**制限しない**（図面・3D・仕様書と何が来るか決められないため）。
   代わりに**ブラウザ内で開くのを PDF / 画像 / 3D だけに絞る**
   （`lib/attachments.ts` `isInlineSafe` が唯一の判定元。SVG / HTML を inline で

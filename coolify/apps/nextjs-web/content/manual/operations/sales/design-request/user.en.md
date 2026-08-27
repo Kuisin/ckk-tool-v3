@@ -48,8 +48,9 @@ Use this when a customer asks about a special shape and a drawing is needed.
 - **変更理由 (change reason)** … on a revision, why it is being redrawn.
 - **依頼内容 (request details)** … the text field where you write what you want designed.
 - **バージョン（版）(version)** … a number that goes up each time the drawing is made again. It goes v1, v2, and the newest one is marked「最新」(newest). **Every file uploaded in one completion shares the same version.**
-- **主図面 (primary drawing)** … the one representative file of a version. The product master's newest drawing points at this.
-- **参考資料 (reference material)** … the other files of the same version — part drawings, dimension tables, 3D models.
+- **プレビュー用 (preview)** … a file for checking the shape on screen (STL and the like). You can rotate it.
+- **図面データ (blueprint)** … the file a machining program is written from (CAD and the like). The product master's newest drawing points at this.
+- **参考資料 (reference material)** … the other files of the same version — part drawings, dimension tables.
 - **下書き (draft) / 承認依頼中 (awaiting approval) / 未着手 (not started) / 進行中 (in progress) / 完了 (done) / 差し戻し (sent back) / キャンセル (cancelled)** … where the request stands now.
 
 ## Before you start
@@ -169,10 +170,12 @@ STEP, IGES, DXF and DWG cannot be opened here; download them and use your own so
 
 1. Press「**…**」at the top right of the screen.
 2. Choose「**完了**」(done).
-3. On the confirmation screen, tick **which files go into this version** and pick the **主図面 (primary drawing)**. If something is missing, use「**ファイルを追加**」(add a file) to upload it right there.
+3. On the confirmation screen, pick the **プレビュー用 (preview)** file (optional) and the **図面データ (blueprint)** (required). Everything else becomes **参考資料 (reference material)** automatically. If something is missing, use「**ファイルを追加**」(add a file) to upload it right there.
 4. Press「**完了**」(done).
 
-**One completion = one version.** Every file you picked gets the same version number (v1, v2 …); the **主図面** becomes the product master's newest drawing and the rest go in as **参考資料 (reference material)** on that same version. An assembly drawing, a part drawing and a 3D model raised together no longer land on different version numbers, so "please use v3" is never ambiguous. The completion date is recorded too, and the requester is notified — as is the sales rep on the quote, if it was raised at quoting time. On a request where you set a product, that product's newest drawing is switched to this version as well.
+**One completion = one version.** Every file you picked gets the same version number (v1, v2 …). An assembly drawing, a part drawing and a 3D model raised together no longer land on different version numbers, so "please use v3" is never ambiguous.
+
+**Preview and blueprint are picked separately** because they do different jobs. For the same shape, an STL is *for looking at* and a CAD file is *for making from* — neither substitutes for the other. The product master's newest drawing points at the **blueprint**, while on-screen thumbnails prefer the **preview** when one exists. The completion date is recorded too, and the requester is notified — as is the sales rep on the quote, if it was raised at quoting time. On a request where you set a product, that product's newest drawing is switched to this version as well.
 
 If a correction is needed after it is done, press「**差し戻し**」(send back) from「**…**」, then press「**差し戻す**」(send back). The status returns to 進行中 (in progress), and you can add files again. The completion date is cleared. This kind of send-back is **redoing the work**, so the approval does not have to be taken again.
 
