@@ -7,6 +7,7 @@ import {
 import { FormStateScreen } from "@/components/forms/FormStateScreen";
 import { PrimaryButton, SecondaryButton } from "@/components/ui/buttons";
 import { StatusBadge } from "@/components/ui/StatusBadge";
+import { hasAnyApproval } from "@/lib/approvals";
 import { sessionUserId } from "@/lib/authz";
 import { canEditResponse, formAvailability } from "@/lib/form-schema";
 import { fetchResponse, formAccess, resolveRelatedRecords } from "@/lib/forms";
@@ -70,7 +71,11 @@ export default async function MyResponsePage({
   }
 
   const now = new Date();
-  const editable = isOwner && canEditResponse(row.form, row, userId, now);
+  const firstApprovalDone =
+    row.status === "REQUESTED" &&
+    (await hasAnyApproval("form_responses", row.responseNumber, row.createdAt));
+  const editable =
+    isOwner && canEditResponse(row.form, row, userId, now, firstApprovalDone);
   const isDraft = row.status === "DRAFT";
   const canAnswerAgain =
     row.form.allowMultiple && formAvailability(row.form, now) === "OPEN";

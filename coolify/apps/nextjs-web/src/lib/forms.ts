@@ -54,6 +54,7 @@ export interface FormDetailView {
   respondentVisibility: "SHOWN" | "HIDDEN";
   currentVersion: number;
   approvalEnabled: boolean;
+  editableUntilFirstApproval: boolean;
   allowMultiple: boolean;
   opensAt: Date | null;
   closesAt: Date | null;
@@ -172,6 +173,7 @@ export const fetchForm = cache(
       respondentVisibility: row.respondentVisibility,
       currentVersion: row.currentVersion,
       approvalEnabled: row.approvalEnabled,
+      editableUntilFirstApproval: row.editableUntilFirstApproval,
       allowMultiple: row.allowMultiple,
       opensAt: row.opensAt,
       closesAt: row.closesAt,

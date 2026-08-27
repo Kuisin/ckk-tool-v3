@@ -184,6 +184,8 @@ describe("resolveRespondState", () => {
         kind: "edit-unavailable",
         responseNumber: "FRM-202608-00001",
         exists: true,
+        // 期限切れ。承認で止まっている場合とは文言を分けるため理由も返す。
+        reason: "window",
       });
     });
 
@@ -261,5 +263,84 @@ describe("myDraftsOf", () => {
   it("下書きは何本でも許す（上限を設けない）", () => {
     const many = Array.from({ length: 5 }, (_, i) => r(`FRM-${i}`, "DRAFT"));
     expect(myDraftsOf(many, "me")).toHaveLength(5);
+  });
+});
+
+describe("resolveRespondState — 承認中の編集", () => {
+  const form = {
+    status: "PUBLISHED" as const,
+    opensAt: null,
+    closesAt: null,
+    responseEditMode: "UNTIL_CLOSE" as const,
+    responseEditableUntil: null,
+    currentVersion: 1,
+    allowMultiple: true,
+  };
+  const base = {
+    canRespond: true,
+    userId: "u1",
+    now: new Date("2026-08-27T00:00:00Z"),
+    requestedResponseNumber: "FRM-1",
+  };
+  const requested = (firstApprovalDone: boolean) => [
+    {
+      responseNumber: "FRM-1",
+      status: "REQUESTED",
+      submittedBy: "u1",
+      firstApprovalDone,
+    },
+  ];
+
+  it("設定が無ければ、依頼中は直せない（理由は承認）", () => {
+    expect(
+      resolveRespondState({ ...base, form, myResponses: requested(false) }),
+    ).toEqual({
+      kind: "edit-unavailable",
+      responseNumber: "FRM-1",
+      exists: true,
+      reason: "in-approval",
+    });
+  });
+
+  it("設定があり未承認なら直せる", () => {
+    expect(
+      resolveRespondState({
+        ...base,
+        form: { ...form, editableUntilFirstApproval: true },
+        myResponses: requested(false),
+      }),
+    ).toEqual({ kind: "edit", responseNumber: "FRM-1" });
+  });
+
+  it("設定があっても承認が下りていれば直せない", () => {
+    expect(
+      resolveRespondState({
+        ...base,
+        form: { ...form, editableUntilFirstApproval: true },
+        myResponses: requested(true),
+      }),
+    ).toEqual({
+      kind: "edit-unavailable",
+      responseNumber: "FRM-1",
+      exists: true,
+      reason: "in-approval",
+    });
+  });
+
+  it("差し戻しは承認が下りたあとでも直せる", () => {
+    expect(
+      resolveRespondState({
+        ...base,
+        form,
+        myResponses: [
+          {
+            responseNumber: "FRM-1",
+            status: "REJECTED",
+            submittedBy: "u1",
+            firstApprovalDone: true,
+          },
+        ],
+      }),
+    ).toEqual({ kind: "edit", responseNumber: "FRM-1" });
   });
 });

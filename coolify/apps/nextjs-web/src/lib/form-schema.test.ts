@@ -400,3 +400,61 @@ describe("parseFormFields のエラーは何番目かを言う", () => {
     if (!r.ok) expect(r.error).toContain("2 番目の項目");
   });
 });
+
+describe("canEditResponse — 承認中の編集ロック", () => {
+  const base = {
+    status: "PUBLISHED" as const,
+    opensAt: null,
+    closesAt: null,
+    responseEditMode: "UNTIL_CLOSE" as const,
+    responseEditableUntil: null,
+  };
+  const now = new Date("2026-08-27T00:00:00Z");
+  const mine = { submittedBy: "u1", status: "REQUESTED" };
+
+  it("既定は依頼した時点で締まる", () => {
+    expect(canEditResponse(base, mine, "u1", now)).toBe(false);
+    expect(canEditResponse(base, mine, "u1", now, false)).toBe(false);
+  });
+
+  it("設定が入っていれば、承認が下りるまでは直せる", () => {
+    const f = { ...base, editableUntilFirstApproval: true };
+    expect(canEditResponse(f, mine, "u1", now, false)).toBe(true);
+  });
+
+  it("最初の承認が下りたら締まる", () => {
+    const f = { ...base, editableUntilFirstApproval: true };
+    expect(canEditResponse(f, mine, "u1", now, true)).toBe(false);
+  });
+
+  it("承認済みは設定に関係なく直せない", () => {
+    const f = { ...base, editableUntilFirstApproval: true };
+    expect(
+      canEditResponse(f, { ...mine, status: "APPROVED" }, "u1", now, false),
+    ).toBe(false);
+  });
+
+  it("差し戻しは常に直せる（設定・受付期間・承認済みの有無に依らない）", () => {
+    const rejected = { ...mine, status: "REJECTED" };
+    const closed = {
+      ...base,
+      closesAt: new Date("2026-08-01T00:00:00Z"),
+      responseEditMode: "NONE" as const,
+    };
+    expect(canEditResponse(closed, rejected, "u1", now, true)).toBe(true);
+    expect(
+      canEditResponse(
+        { ...closed, editableUntilFirstApproval: true },
+        rejected,
+        "u1",
+        now,
+        true,
+      ),
+    ).toBe(true);
+  });
+
+  it("他人の回答は設定に関係なく触れない", () => {
+    const f = { ...base, editableUntilFirstApproval: true };
+    expect(canEditResponse(f, mine, "someone-else", now, false)).toBe(false);
+  });
+});

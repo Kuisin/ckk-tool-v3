@@ -30,6 +30,7 @@ export interface FormSettingsValues {
   kind: "SURVEY" | "REQUEST";
   respondentVisibility: "SHOWN" | "HIDDEN";
   approvalEnabled: boolean;
+  editableUntilFirstApproval: boolean;
   allowMultiple: boolean;
   opensAt: string | null;
   closesAt: string | null;
@@ -43,6 +44,7 @@ export const EMPTY_SETTINGS: FormSettingsValues = {
   kind: "SURVEY",
   respondentVisibility: "SHOWN",
   approvalEnabled: false,
+  editableUntilFirstApproval: false,
   allowMultiple: true,
   opensAt: null,
   closesAt: null,
@@ -201,9 +203,20 @@ export function FormEditor({
         {values.kind === "REQUEST" && (
           <Checkbox
             checked={values.approvalEnabled}
-            description="承認の段数と承認者は 承認設定（MS0B）で決めます"
+            description="承認の段と承認グループは、このフォームの「承認」タブで決めます"
             label="承認フローを使う"
             onChange={(e) => set({ approvalEnabled: e.currentTarget.checked })}
+          />
+        )}
+        {values.kind === "REQUEST" && values.approvalEnabled && (
+          <Checkbox
+            checked={values.editableUntilFirstApproval}
+            description="承認者が「ここを直して」と言う場面のための設定。1 人でも承認したら締まります（差し戻しは設定に関係なく直せます）"
+            label="承認依頼中でも、最初の承認が下りるまでは回答者が直せる"
+            ml="md"
+            onChange={(e) =>
+              set({ editableUntilFirstApproval: e.currentTarget.checked })
+            }
           />
         )}
         <Checkbox

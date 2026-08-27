@@ -1,7 +1,11 @@
 import { notFound } from "next/navigation";
 import type { RelatedTable } from "@/components/forms/FormResponseView";
 import { ResponseDetail } from "@/components/forms/ResponseDetail";
-import { fetchApprovalState, fetchApprovalTrail } from "@/lib/approvals";
+import {
+  fetchApprovalState,
+  fetchApprovalTrail,
+  hasAnyApproval,
+} from "@/lib/approvals";
 import { listAttachments } from "@/lib/attachments";
 import { fetchAuditEntries } from "@/lib/audit";
 import { sessionUserId } from "@/lib/authz";
@@ -55,6 +59,10 @@ export default async function ResponseDetailPage({
         : fetchAuditEntries("form_responses", id),
     ]);
 
+  const firstApprovalDone =
+    response.status === "REQUESTED" &&
+    (await hasAnyApproval("form_responses", id, response.createdAt));
+
   const attachments = hideIdentity
     ? rawAttachments.map((a) => ({ ...a, uploadedBy: "—" }))
     : rawAttachments;
@@ -86,6 +94,7 @@ export default async function ResponseDetailPage({
           { submittedBy: response.submittedBy, status: response.status },
           userId,
           new Date(),
+          firstApprovalDone,
         )
       }
       createdAt={response.createdAt.toISOString()}

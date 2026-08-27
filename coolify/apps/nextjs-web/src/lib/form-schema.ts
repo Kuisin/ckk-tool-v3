@@ -553,6 +553,11 @@ export const AVAILABILITY_LABEL: Record<FormAvailability, string> = {
 export interface EditWindow extends FormWindow {
   responseEditMode: "NONE" | "UNTIL_CLOSE" | "UNTIL_DATE";
   responseEditableUntil: Date | null;
+  /**
+   * 承認依頼中でも、**最初の承認が下りるまで**は本人が直せる。
+   * 既定（false / 未指定）は依頼した時点で締める。
+   */
+  editableUntilFirstApproval?: boolean;
 }
 
 /**
@@ -565,14 +570,23 @@ export function canEditResponse(
   response: { submittedBy: string; status: string },
   userId: string,
   now: Date,
+  /** 承認が 1 つでも下りているか（サーバが数えて渡す）。 */
+  firstApprovalDone = false,
 ): boolean {
   if (response.submittedBy !== userId) return false;
   // 下書きと差し戻しは期限に関係なく本人が直せる（まだ出していない/戻された）。
+  // **差し戻しは常に直せる** — 直して出し直すための状態なので、
+  // editableUntilFirstApproval の設定や受付期間には左右されない。
   if (response.status === "DRAFT" || response.status === "REJECTED")
     return true;
-  // 承認フローに乗って動き出したものは、この経路では触らせない。
-  if (response.status === "REQUESTED" || response.status === "APPROVED")
-    return false;
+  // 承認済みは触らせない（承認した中身が後から変わってはいけない）。
+  if (response.status === "APPROVED") return false;
+  if (response.status === "REQUESTED") {
+    // 依頼中の既定は「締める」。設定が入っているときだけ、**誰も承認して
+    // いないうち**は直せる — 1 人でも承認したあとに中身が変わると、その承認が
+    // 何に対するものだったのか分からなくなるため、そこで必ず締める。
+    return form.editableUntilFirstApproval === true && !firstApprovalDone;
+  }
   switch (form.responseEditMode) {
     case "UNTIL_CLOSE":
       return !form.closesAt || now < form.closesAt;

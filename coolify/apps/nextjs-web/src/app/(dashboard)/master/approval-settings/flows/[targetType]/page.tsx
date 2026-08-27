@@ -9,6 +9,7 @@ import { loadGroupApprovers } from "@/lib/approval-permissions";
 import {
   APPLY_MODE_TARGETS,
   APPROVAL_TARGET,
+  FLOW_SETTINGS_TARGET_TYPES,
   isApprovalTargetType,
 } from "@/lib/approval-targets";
 import { requireAppRead } from "@/lib/authz-page";
@@ -27,6 +28,9 @@ export default async function ApprovalFlowEditPage({
   if (denied) return denied;
   const { targetType } = await params;
   if (!isApprovalTargetType(targetType)) notFound();
+  // フォームはフォームごとに段を持つ（設定はフォームの「承認」タブ）。
+  // 一覧から外すだけでなく、URL を直接叩かれても開けないようにする。
+  if (!FLOW_SETTINGS_TARGET_TYPES.includes(targetType)) notFound();
 
   const permissionCode = APPROVAL_TARGET[targetType].approvePermission;
   const [steps, groups, permission, rules, plants, flowRow] = await Promise.all(

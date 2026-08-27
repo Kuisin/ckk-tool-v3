@@ -35,6 +35,14 @@ model Form {
   // 承認フロー（kind = REQUEST のときだけ意味を持つ）。実際の段数と承認者は
   // 承認設定 (MS0B) の approval_flows / approval_flow_rules が持つ。
   approvalEnabled Boolean @default(false) @map("approval_enabled")
+  // 承認依頼を出したあと、本人がまだ直せるか。
+  //   false（既定）… 依頼した時点で締める（従来どおり）
+  //   true          … **最初の承認が下りるまで**は直せる
+  // 承認者が口頭で「ここを直して」と言う場面があるので、誰も承認していない
+  // うちは直させたい。逆に 1 人でも承認したあとに中身が変わると、その承認が
+  // 何に対するものだったのか分からなくなるので、そこで必ず締める。
+  // 差し戻しは status=REJECTED で必ず直せる（この設定に依らない）。
+  editableUntilFirstApproval Boolean @default(false) @map("editable_until_first_approval")
   // 1 人 1 回に制限するか。false = 何度でも出せる。
   allowMultiple Boolean @default(true) @map("allow_multiple")
 
@@ -57,6 +65,7 @@ model Form {
   updatedByUser User? @relation("FormUpdatedBy", fields: [updatedBy], references: [id])
 
   versions  FormVersion[]
+  approvalSteps FormApprovalStep[]
   responses FormResponse[]
 
   @@index([status, updatedAt])
@@ -161,6 +170,36 @@ enum FormResponseStatus {
   APPROVED // 承認済み
   REJECTED // 差し戻し（本人が直して再提出できる）
 
+  @@schema("app")
+}
+
+/// フォームごとの承認フロー（段の定義）。
+///
+/// WHY 書類共通の approval_flow_steps を使わないのか: あちらは **書類種別ごとに
+/// 1 本**（target_type が主キー）で、「注文請書はこの承認」という単位でしか
+/// 表現できない。フォームは利用者がいくつでも作るもので、稟議・日報・点検簿が
+/// 同じ承認フローを共有する理由がない。フォームごとに持たせる。
+///
+/// 承認エンジン（lib/approvals.ts）は依頼時にこの定義を flow_snapshot へ写して
+/// 進むので、進行中の依頼は後からフローを変えても影響を受けない — 共通フローと
+/// 同じ扱いのまま。
+model FormApprovalStep {
+  id     String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  formId String @map("form_id") @db.Uuid
+  stepNo Int    @map("step_no")
+  name   Json // { ja, en } 例「一次承認」
+  groupId Int          @map("group_id")
+  mode    ApprovalMode @default(ANY)
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  form  Form          @relation(fields: [formId], references: [id], onDelete: Cascade)
+  group ApprovalGroup @relation(fields: [groupId], references: [id], onDelete: Restrict)
+
+  @@unique([formId, stepNo])
+  @@index([groupId])
+  @@map("form_approval_steps")
   @@schema("app")
 }
 

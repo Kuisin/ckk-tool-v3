@@ -17,8 +17,9 @@ import { z } from "zod";
 import {
   actOnCurrentStep,
   appendHistory,
-  assertFlowConfigured,
+  assertFormFlowConfigured,
   type HistoryEntry,
+  hasAnyApproval,
   startApprovalFlow,
 } from "@/lib/approvals";
 import { getCurrentActorId, recordAudit } from "@/lib/audit";
@@ -104,6 +105,7 @@ const formSettingsInput = z.object({
   kind: z.enum(["SURVEY", "REQUEST"]),
   respondentVisibility: z.enum(["SHOWN", "HIDDEN"]),
   approvalEnabled: z.boolean(),
+  editableUntilFirstApproval: z.boolean().default(false),
   allowMultiple: z.boolean(),
   opensAt: dateTimeOrNull,
   closesAt: dateTimeOrNull,
@@ -184,6 +186,8 @@ export async function createForm(
         kind: parsed.data.kind,
         respondentVisibility: parsed.data.respondentVisibility,
         approvalEnabled: parsed.data.approvalEnabled,
+        editableUntilFirstApproval:
+          parsed.data.approvalEnabled && parsed.data.editableUntilFirstApproval,
         allowMultiple: parsed.data.allowMultiple,
         opensAt: parsed.data.opensAt,
         closesAt: parsed.data.closesAt,
@@ -254,6 +258,8 @@ export async function updateFormSettings(
         kind: parsed.data.kind,
         respondentVisibility: parsed.data.respondentVisibility,
         approvalEnabled: parsed.data.approvalEnabled,
+        editableUntilFirstApproval:
+          parsed.data.approvalEnabled && parsed.data.editableUntilFirstApproval,
         allowMultiple: parsed.data.allowMultiple,
         opensAt: parsed.data.opensAt,
         closesAt: parsed.data.closesAt,
@@ -589,7 +595,12 @@ export async function updateResponse(
   });
   if (!row) return actionError("回答が見つかりません");
 
-  if (!canEditResponse(row.form, row, userId, new Date())) {
+  // 承認が下りているかはサーバでしか分からない。**画面の判定を信用しない** —
+  // 編集 URL を直接叩かれても、ここで同じ規則を通す。
+  const firstApprovalDone =
+    row.status === "REQUESTED" &&
+    (await hasAnyApproval("form_responses", responseNumber, row.createdAt));
+  if (!canEditResponse(row.form, row, userId, new Date(), firstApprovalDone)) {
     return actionError("この回答は編集できません（期限切れ、または本人以外）");
   }
 
@@ -729,7 +740,7 @@ export async function requestResponseApproval(
   if (row.status !== "SUBMITTED" && row.status !== "REJECTED")
     return actionError("この状態からは承認依頼を出せません");
 
-  const missing = await assertFlowConfigured("form_responses");
+  const missing = await assertFormFlowConfigured(row.formId);
   if (missing) return actionError(missing);
 
   const started = await startApprovalFlow({
@@ -1054,6 +1065,74 @@ export async function importForm(
     return actionOk({ code, mode: "new" });
   } catch (e) {
     return actionError(prismaErrorMessage(e, "取り込みに失敗しました"));
+  }
+}
+
+// ── 承認フロー（フォームごと） ──────────────────────────────────────────────
+//
+// 書類共通の承認設定（MS0B）ではなく、フォーム 1 件ごとに段を持つ。稟議・日報・
+// 点検簿が同じ承認を共有する理由が無いため。エンジン側は依頼時に flow_snapshot
+// へ写すので、進行中の依頼は後からフローを変えても影響を受けない。
+
+const formFlowStepInput = z.object({
+  nameJa: z.string().trim().min(1, "段の名前を入力してください").max(60),
+  nameEn: z.string().trim().max(60).optional(),
+  groupId: z.number().int().positive("承認グループを選んでください"),
+  mode: z.enum(["ANY", "ALL"]),
+});
+
+/** フォームの承認フローをまるごと置き換える（段番号は 1..N で振り直す）。 */
+export async function saveFormApprovalFlow(
+  code: string,
+  steps: unknown,
+): Promise<ActionResult> {
+  const gate = await requireFormEdit(code);
+  if (!gate.ok) return actionError(gate.error);
+
+  const parsed = z.array(formFlowStepInput).max(20).safeParse(steps);
+  if (!parsed.success)
+    return actionError(
+      parsed.error.issues[0]?.message ?? "承認フローが不正です",
+    );
+
+  // 承認グループの実在確認（消えたグループを指したまま保存させない）。
+  const groupIds = [...new Set(parsed.data.map((s) => s.groupId))];
+  if (groupIds.length > 0) {
+    const found = await prisma.approvalGroup.count({
+      where: { id: { in: groupIds }, isActive: true },
+    });
+    if (found !== groupIds.length)
+      return actionError("使えない承認グループが含まれています");
+  }
+
+  try {
+    const actor = await getCurrentActorId();
+    await prisma.$transaction(async (tx) => {
+      // 段番号を詰めて作り直す。進行中の依頼は flow_snapshot を見ているので
+      // ここを消しても影響しない（既存フローと同じ扱い）。
+      await tx.formApprovalStep.deleteMany({ where: { formId: gate.form.id } });
+      if (parsed.data.length === 0) return;
+      await tx.formApprovalStep.createMany({
+        data: parsed.data.map((s, i) => ({
+          formId: gate.form.id,
+          stepNo: i + 1,
+          name: { ja: s.nameJa, en: s.nameEn ?? "" },
+          groupId: s.groupId,
+          mode: s.mode,
+        })),
+      });
+    });
+    await recordAudit({
+      action: "UPDATE",
+      tableName: "forms",
+      recordId: code,
+      after: { note: `承認フローを更新（${parsed.data.length} 段）` },
+    });
+    revalidate(code);
+    void actor;
+    return actionOk();
+  } catch (e) {
+    return actionError(prismaErrorMessage(e, "承認フローの保存に失敗しました"));
   }
 }
 
