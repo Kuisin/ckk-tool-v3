@@ -12,18 +12,28 @@
  * STL は見るため・CAD は作るためのもので、片方で代用できない。1 枠にすると
  * どちらか一方しか登録できず、製品マスタの「最新図面」も曖昧になる。
  *
+ * **役割ごとに直接ファイルを選べる。** 以前は「先に添付してから、どれがどれか
+ * を選び直す」の 2 段だった。役割が 3 つと決まっているのだから、枠に入れる
+ * だけで済むほうが手数が少ない。作業中にファイルタブへ上げた添付も同じ枠から
+ * 選べるので、同じものを 2 回上げなくてよい。
+ *
  * アップロードは Server Action ではなく `/api/attachments/upload`
  * （Server Action のボディは 1MB で頭打ちになるため — app CLAUDE.md）。
+ * **確定を押すまで送らない** — 途中でやめたときに使われない添付が残らない。
  */
 
-import { Alert, FileButton, Group, Select, Stack, Text } from "@mantine/core";
+import { Alert, Group, Stack, Text } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
-import { IconAlertTriangle, IconUpload } from "@tabler/icons-react";
-import { useRouter } from "next/navigation";
+import { IconAlertTriangle, IconPlus } from "@tabler/icons-react";
 import { useEffect, useState } from "react";
 import { useFormat } from "@/components/layout/PreferencesProvider";
 import type { AttachmentView } from "@/components/ui/AttachmentsPanel";
 import { SecondaryButton } from "@/components/ui/buttons";
+import {
+  DesignFileSlot,
+  type SlotValue,
+  slotLabel,
+} from "@/components/ui/DesignFileSlot";
 import { ModalShell } from "@/components/ui/modals";
 import { useIsMobile } from "@/hooks/useViewport";
 import { designFileKind } from "@/lib/design-file-kind";
@@ -53,13 +63,14 @@ export function CompleteDesignModal({
 }) {
   const fmt = useFormat();
   const isMobile = useIsMobile();
-  const router = useRouter();
-  const [preview, setPreview] = useState<string | null>(null);
-  const [blueprint, setBlueprint] = useState<string | null>(null);
+  const [preview, setPreview] = useState<SlotValue>(null);
+  const [blueprint, setBlueprint] = useState<SlotValue>(null);
+  const [references, setReferences] = useState<SlotValue[]>([]);
   const [uploading, setUploading] = useState(false);
 
-  // 添付が増減したら選び直す。開くたびにも通るので前回の選択が残らない。
-  // 既定: 3D として読めるものをプレビューへ、そうでない最新を図面データへ。
+  // 開くたびに引き直す。既に添付があるときだけ、それらを既定に置く
+  // （3D として読めるものをプレビューへ、そうでない最新を図面データへ）。
+  // 添付が無ければ全部空 = そのままファイルを選んでもらう。
   // biome-ignore lint/correctness/useExhaustiveDependencies: 添付一覧と開閉が変わったときだけ引き直す
   useEffect(() => {
     if (!opened) return;
@@ -67,95 +78,93 @@ export function CompleteDesignModal({
       (a) => designFileKind(a.filename, a.mimeType) === "model3d",
     );
     const rest = attachments.find((a) => a.id !== three?.id);
-    setPreview(three?.id ?? null);
-    setBlueprint(rest?.id ?? attachments[0]?.id ?? null);
+    const asSlot = (a?: AttachmentView): SlotValue =>
+      a ? { kind: "attachment", id: a.id, filename: a.filename } : null;
+    setPreview(asSlot(three));
+    setBlueprint(asSlot(rest ?? attachments[0]));
+    setReferences([]);
   }, [opened, attachments.map((a) => a.id).join(",")]);
 
-  const upload = async (file: File | null) => {
-    if (!file) return;
+  // 添付の選択肢（どの枠からも同じ一覧を選べる）。
+  const attachmentOptions = attachments.map((a) => ({
+    value: a.id,
+    label: `${a.filename}（${fmt.date(a.createdAt)}）`,
+  }));
+
+  /** 枠 1 つを添付 id に解決する。新しいファイルはここで初めて送る。 */
+  const resolve = async (v: SlotValue): Promise<string | null> => {
+    if (!v) return null;
+    if (v.kind === "attachment") return v.id;
+    const body = new FormData();
+    body.set("ownerType", ownerType);
+    body.set("ownerId", requestNumber);
+    body.set("file", v.file);
+    const res = await fetch("/api/attachments/upload", {
+      method: "POST",
+      body,
+    });
+    const json = (await res.json().catch(() => null)) as {
+      ok?: boolean;
+      id?: string;
+      error?: string;
+    } | null;
+    if (!res.ok || !json?.ok || !json.id) {
+      throw new Error(
+        json?.error ?? `${v.file.name} のアップロードに失敗しました`,
+      );
+    }
+    return json.id;
+  };
+
+  const submit = async () => {
+    if (!blueprint) return;
     setUploading(true);
     try {
-      const body = new FormData();
-      body.set("ownerType", ownerType);
-      body.set("ownerId", requestNumber);
-      body.set("file", file);
-      const res = await fetch("/api/attachments/upload", {
-        method: "POST",
-        body,
-      });
-      const json = (await res.json().catch(() => null)) as {
-        ok?: boolean;
-        error?: string;
-      } | null;
-      if (res.ok && json?.ok) {
-        notifications.show({
-          title: "追加しました",
-          message: file.name,
-          color: "green",
-        });
-        router.refresh();
-      } else {
-        notifications.show({
-          title: "エラー",
-          message: json?.error ?? "アップロードに失敗しました",
-          color: "red",
-        });
+      // 図面データ → プレビュー → 参考資料 の順に送る。途中で失敗したら
+      // そこで止める（それまでに上がったものは添付として残り、ファイルタブ
+      // から消せる）。
+      const blueprintId = await resolve(blueprint);
+      if (!blueprintId) throw new Error("図面データを選択してください");
+      const previewId = await resolve(preview);
+      const referenceIds: string[] = [];
+      for (const r of references) {
+        const id = await resolve(r);
+        if (id) referenceIds.push(id);
       }
+      onConfirm({
+        previewAttachmentId: previewId,
+        blueprintAttachmentId: blueprintId,
+        referenceAttachmentIds: referenceIds,
+      });
+    } catch (e) {
+      notifications.show({
+        title: "エラー",
+        message: e instanceof Error ? e.message : "アップロードに失敗しました",
+        color: "red",
+      });
     } finally {
       setUploading(false);
     }
   };
 
-  // 参考資料は「選ばれなかった残り全部」。個別に外したいことは稀なので、
-  // 3 つ目の選択 UI は置かず結果だけ見せる。
-  const references = attachments.filter(
-    (a) => a.id !== preview && a.id !== blueprint,
-  );
-
-  // 選択肢のラベルは**ファイル名だけ**。日付まで 1 行に入れると 375px の
-  // 入力欄では肝心のファイル名が押し出されて、どれを選んだのか判らない。
-  // 日付は候補一覧の 2 行目（renderOption）に回す。
-  const options = attachments.map((a) => ({
-    value: a.id,
-    label: a.filename,
-    date: fmt.date(a.createdAt),
-  }));
-
-  // 候補は 2 行（ファイル名 / 追加日）。長い名前は折り返さず truncate する。
-  const renderOption = ({
-    option,
-  }: {
-    option: { value: string; label: string; date?: string };
-  }) => (
-    <Stack gap={0} style={{ minWidth: 0 }}>
-      <Text size="sm" truncate>
-        {option.label}
-      </Text>
-      {option.date && (
-        <Text c="dimmed" size="xs">
-          {option.date}
-        </Text>
-      )}
-    </Stack>
-  );
-  const canConfirm = blueprint != null && blueprint !== preview;
+  // 同じ添付を 2 つの役割に入れさせない（1 ファイル = 1 役割）。
+  const usedTwice = (() => {
+    const ids = [preview, blueprint, ...references]
+      .map((v) => (v?.kind === "attachment" ? v.id : null))
+      .filter((v): v is string => v != null);
+    return new Set(ids).size !== ids.length;
+  })();
 
   return (
     <ModalShell
       confirmColor="blue"
-      confirmDisabled={!canConfirm}
+      confirmDisabled={!blueprint || usedTwice}
       confirmLabel="完了"
-      loading={loading}
+      loading={loading || uploading}
       onClose={onClose}
-      onConfirm={() =>
-        blueprint &&
-        onConfirm({
-          previewAttachmentId: preview,
-          blueprintAttachmentId: blueprint,
-          referenceAttachmentIds: references.map((a) => a.id),
-        })
-      }
+      onConfirm={submit}
       opened={opened}
+      size="lg"
       title="完了の確認"
     >
       <Stack gap="md">
@@ -165,80 +174,66 @@ export function CompleteDesignModal({
           <strong>図面データ</strong>が製品マスタの最新図面になります。
         </Text>
 
-        {attachments.length === 0 ? (
+        {usedTwice && (
           <Alert
             color="orange"
             icon={<IconAlertTriangle size={16} />}
             variant="light"
           >
-            図面がまだ 1 件も添付されていません。下の「ファイルを追加」から
-            アップロードしてください。
+            同じファイルを複数の役割に指定できません。
           </Alert>
-        ) : (
-          <>
-            <Select
-              clearable
-              data={options}
-              description="STL など、画面で形を確かめるためのファイル。無くても完了できます"
-              label="プレビュー用（3D）"
-              onChange={setPreview}
-              placeholder="選択しない"
-              renderOption={renderOption}
-              value={preview}
-            />
-            <Select
-              data={options}
-              description="加工プログラムを起こす元データ。製品マスタの最新図面になります"
-              error={
-                blueprint && blueprint === preview
-                  ? "プレビューと同じファイルは選べません"
-                  : undefined
-              }
-              label="図面データ"
-              onChange={setBlueprint}
-              placeholder="選択してください"
-              renderOption={renderOption}
-              value={blueprint}
-              withAsterisk
-            />
-            <Stack gap={4}>
-              <Text fw={500} size="sm">
-                参考資料
-              </Text>
-              {references.length === 0 ? (
-                <Text c="dimmed" size="xs">
-                  —（残りのファイルが自動でここに入ります）
-                </Text>
-              ) : (
-                references.map((a) => (
-                  <Text c="dimmed" key={a.id} size="xs" truncate>
-                    {a.filename}
-                  </Text>
-                ))
-              )}
-            </Stack>
-          </>
         )}
 
-        {/* モバイルは縦積み + 全幅（44px の当たり判定）。横並びのままだと
-            「1 件 20MB まで」に押されてボタンが極端に細くなる。 */}
-        <Group gap="xs" wrap="wrap">
-          <FileButton onChange={upload}>
-            {(props) => (
-              <SecondaryButton
-                {...props}
-                fullWidth={isMobile}
-                leftSection={<IconUpload size={14} />}
-                loading={uploading}
-              >
-                ファイルを追加
-              </SecondaryButton>
-            )}
-          </FileButton>
-          <Text c="dimmed" size="xs">
-            1 件 20MB まで
-          </Text>
-        </Group>
+        <DesignFileSlot
+          attachmentOptions={attachmentOptions}
+          description="加工プログラムを起こす元データ。製品マスタの最新図面になります"
+          fullWidth={isMobile}
+          label="図面データ"
+          onChange={setBlueprint}
+          required
+          value={blueprint}
+        />
+        <DesignFileSlot
+          attachmentOptions={attachmentOptions}
+          description="STL など、画面で形を確かめるためのファイル。無くても完了できます"
+          fullWidth={isMobile}
+          label="プレビュー用（3D）"
+          onChange={setPreview}
+          value={preview}
+        />
+
+        <Stack gap={4}>
+          {references.map((r, i) => (
+            <DesignFileSlot
+              attachmentOptions={attachmentOptions}
+              description="部品図・寸法表など"
+              fullWidth={isMobile}
+              key={`ref-${i}-${slotLabel(r) ?? "empty"}`}
+              label={`参考資料 ${i + 1}`}
+              onChange={(v) =>
+                setReferences((prev) =>
+                  v == null
+                    ? prev.filter((_, j) => j !== i)
+                    : prev.map((x, j) => (j === i ? v : x)),
+                )
+              }
+              value={r}
+            />
+          ))}
+          <Group>
+            <SecondaryButton
+              fullWidth={isMobile}
+              leftSection={<IconPlus size={14} />}
+              onClick={() => setReferences((prev) => [...prev, null])}
+            >
+              参考資料を追加
+            </SecondaryButton>
+          </Group>
+        </Stack>
+
+        <Text c="dimmed" size="xs">
+          1 件 20MB まで。確定するまでアップロードは始まりません
+        </Text>
       </Stack>
     </ModalShell>
   );
