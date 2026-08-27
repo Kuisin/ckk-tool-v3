@@ -1361,6 +1361,14 @@ Use Mantine `Alert` for:
 | Button action | `loading={isPending}` on the Button |
 | Data fetching (SSR) | React Suspense + Skeleton components |
 | App card grid loading | `Skeleton height={110} radius="md"` per card |
+| 重いプレビュー（3D / 大きな画像） | 枠だけ先に確保して `Loader`、中身は見えてから読む |
+
+**重いものは「見えてから」読む（`useInView`）。** Mantine の `Tabs.Panel` は
+既定で **keepMounted** — 表に出ていないタブも DOM にある。門を置かないと、
+開いてもいないタブの 3D モデルを取りに行き WebGL まで起こすので、ページを
+開いた瞬間が重くなる。表示中かどうかは `IntersectionObserver` でしか判らない。
+枠（`AspectRatio`）は先に確保しておくこと — 読み終えた瞬間に高さが変わると
+下の内容が飛ぶ。
 
 ### 16.5 Transition Durations
 

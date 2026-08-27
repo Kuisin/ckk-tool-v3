@@ -23,18 +23,29 @@
  */
 
 import { Box, Center, Loader, Stack, Text } from "@mantine/core";
+import { IconCube } from "@tabler/icons-react";
 import { useEffect, useRef, useState } from "react";
 
 export function Model3dCanvas({
   src,
   filename,
   height = 420,
+  interactive = true,
+  compact,
 }: {
   /** モデルの URL（/api/design-files/<id> など）。 */
   src: string;
   /** 本来のファイル名。**拡張子がインポータの選択に要る。** */
   filename: string;
   height?: number | string;
+  /**
+   * 指・マウスの操作を受けるか。サムネイルでは false —
+   * 押したら回るのではなく**拡大が開く**のが期待される動きなので、
+   * 操作はキャンバスに渡さず外側のボタンへ通す。
+   */
+  interactive?: boolean;
+  /** 小さい枠向けの控えめな読み込み表示（文言を出さない）。 */
+  compact?: boolean;
 }) {
   const holder = useRef<HTMLDivElement>(null);
   const [state, setState] = useState<"loading" | "ready" | "error">("loading");
@@ -112,7 +123,12 @@ export function Model3dCanvas({
           モバイルでモデルを回せない。 */}
       <div
         ref={holder}
-        style={{ height: "100%", touchAction: "none", width: "100%" }}
+        style={{
+          height: "100%",
+          pointerEvents: interactive ? undefined : "none",
+          touchAction: interactive ? "none" : undefined,
+          width: "100%",
+        }}
       />
       {state !== "ready" && (
         <Center
@@ -123,8 +139,17 @@ export function Model3dCanvas({
           {state === "loading" ? (
             <Stack align="center" gap="xs">
               <Loader size="sm" />
+              {!compact && (
+                <Text c="dimmed" size="xs">
+                  3D モデルを読み込んでいます…
+                </Text>
+              )}
+            </Stack>
+          ) : compact ? (
+            <Stack align="center" gap={4}>
+              <IconCube size={28} />
               <Text c="dimmed" size="xs">
-                3D モデルを読み込んでいます…
+                3D モデル
               </Text>
             </Stack>
           ) : (
