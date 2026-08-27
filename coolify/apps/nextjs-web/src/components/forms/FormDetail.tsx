@@ -23,6 +23,7 @@ import {
 import { useRouter } from "next/navigation";
 import { useTransition } from "react";
 import { useFormat } from "@/components/layout/PreferencesProvider";
+import type { FlowApprover } from "@/components/master/approval-flows/ApproverPermissionBadge";
 import { GhostButton } from "@/components/ui/buttons";
 import { DataTable } from "@/components/ui/DataTable";
 import { FieldValue } from "@/components/ui/FieldValue";
@@ -43,6 +44,7 @@ import { keepInAppOnClick } from "@/lib/pwa-display";
 import type { ShareGrantView } from "@/lib/share-grants";
 import type { ShareLevel } from "@/lib/share-grants-core";
 import { isShareConditionFieldType } from "@/lib/share-grants-core";
+import { FormApprovalPanel, type FormFlowStep } from "./FormApprovalPanel";
 import { FormFieldsPanel } from "./FormFieldsPanel";
 import type { ConditionFieldOption } from "./ShareConditionEditor";
 import { type RoleOption, ShareGrantsPanel } from "./ShareGrantsPanel";
@@ -78,6 +80,7 @@ export function FormDetail({
   auditEntries,
   canEdit,
   canManage,
+  approval,
   onSaveShare,
   onSetStatus,
 }: {
@@ -88,6 +91,13 @@ export function FormDetail({
   auditEntries: AuditEntry[];
   canEdit: boolean;
   canManage: boolean;
+  /** 承認タブの中身（申請・報告フォームのときだけサーバが渡す）。 */
+  approval: {
+    steps: FormFlowStep[];
+    groupOptions: { value: string; label: string }[];
+    approversByGroup: Record<string, FlowApprover[]>;
+    permissionLabel: string;
+  } | null;
   onSaveShare: (
     grants: { subjectType: string; subjectId: string | null; level: string }[],
   ) => Promise<{ ok: boolean; error?: string }>;
@@ -313,6 +323,7 @@ export function FormDetail({
         <Tabs.List>
           <Tabs.Tab value="fields">項目（{form.fields.length}）</Tabs.Tab>
           <Tabs.Tab value="responses">回答（{responses.length}）</Tabs.Tab>
+          {approval && <Tabs.Tab value="approval">承認</Tabs.Tab>}
           <Tabs.Tab value="share">共有</Tabs.Tab>
           <Tabs.Tab value="history">履歴</Tabs.Tab>
         </Tabs.List>
@@ -405,6 +416,22 @@ export function FormDetail({
             }
           />
         </Tabs.Panel>
+
+        {approval && (
+          <Tabs.Panel keepMounted={false} pt="md" value="approval">
+            <FormApprovalPanel
+              approvalEnabled={form.approvalEnabled}
+              approversByGroup={approval.approversByGroup}
+              canManage={canManage}
+              code={form.code}
+              editableUntilFirstApproval={form.editableUntilFirstApproval}
+              groupOptions={approval.groupOptions}
+              initialSteps={approval.steps}
+              permissionLabel={approval.permissionLabel}
+              title={form.title}
+            />
+          </Tabs.Panel>
+        )}
 
         <Tabs.Panel keepMounted={false} pt="md" value="share">
           <ShareGrantsPanel

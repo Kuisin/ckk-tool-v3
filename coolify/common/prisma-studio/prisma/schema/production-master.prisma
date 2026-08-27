@@ -372,6 +372,7 @@ model ApprovalGroup {
   delegates     ApprovalDelegate[]
   flowSteps     ApprovalFlowStep[]
   flowRuleSteps ApprovalFlowRuleStep[]
+  formSteps     FormApprovalStep[]
   requests      ApprovalRequest[]
 
   @@map("approval_groups")

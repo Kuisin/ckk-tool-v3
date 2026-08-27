@@ -39,6 +39,7 @@ export default async function EditFormPage({
         kind: form.kind,
         respondentVisibility: form.respondentVisibility,
         approvalEnabled: form.approvalEnabled,
+        editableUntilFirstApproval: form.editableUntilFirstApproval,
         allowMultiple: form.allowMultiple,
         opensAt: form.opensAt?.toISOString() ?? null,
         closesAt: form.closesAt?.toISOString() ?? null,

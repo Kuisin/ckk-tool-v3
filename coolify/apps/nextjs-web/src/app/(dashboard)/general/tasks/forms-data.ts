@@ -103,6 +103,26 @@ export async function fetchFormTasks(): Promise<FormTasks> {
         closesAt: f.closesAt?.toISOString() ?? null,
       }));
 
+    // 承認中の回答が「まだ誰も承認していない」かをまとめて引く（1 行ずつ
+    // 数えると件数ぶんクエリが飛ぶ）。承認が下りていれば編集は締まる。
+    const requested = myResponses.filter((r) => r.status === "REQUESTED");
+    const approvedAlready = new Set(
+      requested.length === 0
+        ? []
+        : (
+            await prisma.approvalRecord.findMany({
+              where: {
+                action: "APPROVED",
+                request: {
+                  targetType: "form_responses",
+                  targetId: { in: requested.map((r) => r.responseNumber) },
+                },
+              },
+              select: { request: { select: { targetId: true } } },
+            })
+          ).map((x) => x.request.targetId),
+    );
+
     const mine = myResponses.map((r) => ({
       responseNumber: r.responseNumber,
       formCode: r.form.code,
@@ -115,6 +135,7 @@ export async function fetchFormTasks(): Promise<FormTasks> {
         { submittedBy: userId, status: r.status },
         userId,
         now,
+        approvedAlready.has(r.responseNumber),
       ),
       editDeadline: editDeadlineOf(r.form)?.toISOString() ?? null,
     }));

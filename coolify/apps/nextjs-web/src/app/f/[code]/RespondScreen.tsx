@@ -10,6 +10,7 @@ import {
 import { redirect } from "next/navigation";
 import { FormStateScreen } from "@/components/forms/FormStateScreen";
 import { RespondFormClient } from "@/components/forms/RespondFormClient";
+import { hasAnyApproval } from "@/lib/approvals";
 import { sessionUserId } from "@/lib/authz";
 import { prisma } from "@/lib/db";
 import { myDraftsOf, resolveRespondState } from "@/lib/form-respond-state";
@@ -62,6 +63,30 @@ export async function RespondScreen({
 
   const myDrafts = myDraftsOf(myResponses, userId);
 
+  // 直しに来た回答が承認中なら、「まだ誰も承認していないか」で編集可否が
+  // 変わる（フォームの設定）。必要なときだけ数える。
+  const editTarget = requestedResponseNumber
+    ? myResponses.find((r) => r.responseNumber === requestedResponseNumber)
+    : null;
+  const firstApprovalDone =
+    editTarget?.status === "REQUESTED" && form
+      ? await hasAnyApproval(
+          "form_responses",
+          editTarget.responseNumber,
+          (
+            await prisma.formResponse.findUnique({
+              where: { responseNumber: editTarget.responseNumber },
+              select: { createdAt: true },
+            })
+          )?.createdAt ?? new Date(0),
+        )
+      : false;
+  const myResponsesWithApproval = myResponses.map((r) =>
+    r.responseNumber === editTarget?.responseNumber
+      ? { ...r, firstApprovalDone }
+      : r,
+  );
+
   const state = resolveRespondState({
     canRespond: access.canRespond,
     form: form ?? {
@@ -74,7 +99,7 @@ export async function RespondScreen({
       allowMultiple: true,
     },
     userId,
-    myResponses,
+    myResponses: myResponsesWithApproval,
     requestedResponseNumber,
     now: new Date(),
   });
@@ -240,9 +265,11 @@ export async function RespondScreen({
           ]}
           color="gray"
           description={
-            state.exists
-              ? "編集できる期間が終わっています。内容を直したい場合は作成者に連絡してください。"
-              : "編集の対象が見つかりません。URL が間違っているか、自分の回答ではありません。"
+            !state.exists
+              ? "編集の対象が見つかりません。URL が間違っているか、自分の回答ではありません。"
+              : state.reason === "in-approval"
+                ? "承認が進んでいるため直せません。内容を変えたい場合は、承認者に差し戻してもらってください（差し戻されたら直せます）。"
+                : "編集できる期間が終わっています。内容を直したい場合は作成者に連絡してください。"
           }
           formTitle={formTitle}
           icon={<IconPencilOff size={24} />}

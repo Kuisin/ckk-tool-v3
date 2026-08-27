@@ -87,6 +87,9 @@ export function ApprovalFlowEditor({
   permissionLabel,
   rulesSection,
   applyModeSection,
+  onSave,
+  afterSaveHref,
+  embedded = false,
 }: {
   targetType: string;
   targetLabel: string;
@@ -101,6 +104,26 @@ export function ApprovalFlowEditor({
   rulesSection?: React.ReactNode;
   /** 適用モード設定（ApplyModeControl）— 対応 target のみ既定フローの下に出す。 */
   applyModeSection?: React.ReactNode;
+  /**
+   * 保存の差し替え。既定は書類共通フロー（MS0B）の保存。フォームは
+   * **フォームごと**にフローを持つので、その保存を渡して同じ編集画面を使う。
+   */
+  onSave?: (
+    steps: {
+      nameJa: string;
+      nameEn?: string;
+      groupId: number;
+      mode: ApprovalMode;
+    }[],
+  ) => Promise<{ ok: boolean; error?: string }>;
+  /** 保存後の遷移先。既定は承認設定の一覧。 */
+  afterSaveHref?: string;
+  /**
+   * タブの中に埋め込むとき true。**ページ見出しとパンくずを出さない** —
+   * 出すと、フォームの画面に「マスタ / 承認設定」への戻り先と 2 つ目のタイトルが
+   * 並んで、どの画面にいるのか分からなくなる。
+   */
+  embedded?: boolean;
 }) {
   const router = useRouter();
   const isMobile = useIsMobile();
@@ -156,26 +179,27 @@ export function ApprovalFlowEditor({
       return;
     }
     startTransition(async () => {
-      const result = await saveApprovalFlow(
-        targetType,
-        steps.map((s) => ({
-          nameJa: s.nameJa.trim(),
-          nameEn: s.nameEn.trim() || undefined,
-          groupId: Number(s.groupId),
-          mode: s.mode,
-        })),
-      );
+      const payload = steps.map((s) => ({
+        nameJa: s.nameJa.trim(),
+        nameEn: s.nameEn.trim() || undefined,
+        groupId: Number(s.groupId),
+        mode: s.mode,
+      }));
+      const result = onSave
+        ? await onSave(payload)
+        : await saveApprovalFlow(targetType, payload);
       if (result.ok) {
         notifications.show({
           title: "保存しました",
           message: `${targetLabel}の承認フロー`,
           color: "green",
         });
-        router.push(BASE_PATH);
+        if (afterSaveHref) router.refresh();
+        else router.push(BASE_PATH);
       } else {
         notifications.show({
           title: "エラー",
-          message: result.error,
+          message: result.error ?? "保存に失敗しました",
           color: "red",
         });
       }
@@ -184,17 +208,21 @@ export function ApprovalFlowEditor({
 
   return (
     <Stack gap="md">
-      <PageHeader
-        breadcrumbs={[
-          "マスタ",
-          { label: "承認設定", href: BASE_PATH },
-          "承認フロー",
-        ]}
-        title={`${targetLabel}の承認フロー`}
-      />
-      <Alert color="blue" icon={<IconInfoCircle size={16} />} variant="light">
-        変更は今後の承認依頼から適用されます。進行中の書類は依頼した時点の設定のまま進みます。
-      </Alert>
+      {!embedded && (
+        <PageHeader
+          breadcrumbs={[
+            "マスタ",
+            { label: "承認設定", href: BASE_PATH },
+            "承認フロー",
+          ]}
+          title={`${targetLabel}の承認フロー`}
+        />
+      )}
+      {!embedded && (
+        <Alert color="blue" icon={<IconInfoCircle size={16} />} variant="light">
+          変更は今後の承認依頼から適用されます。進行中の書類は依頼した時点の設定のまま進みます。
+        </Alert>
+      )}
       <Alert
         color="gray"
         icon={<IconShieldCheck size={16} />}

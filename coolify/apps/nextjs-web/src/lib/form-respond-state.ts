@@ -33,6 +33,8 @@ export interface RespondStateInput {
     responseNumber: string;
     status: string;
     submittedBy: string;
+    /** 承認が 1 つでも下りているか（サーバが数えて渡す。既定は未承認扱い）。 */
+    firstApprovalDone?: boolean;
   }[];
   /** 編集 URL（/f/<code>/<回答番号>/edit）で指定された回答番号。 */
   requestedResponseNumber?: string | null;
@@ -56,8 +58,18 @@ export type RespondState =
   | { kind: "archived"; myResponseNumber: string | null }
   /** 1 人 1 回のフォームに既に回答済み。 */
   | { kind: "already-answered"; responseNumber: string; canEdit: boolean }
-  /** 編集しに来たが、期限切れ・他人の回答・存在しないなどで編集できない。 */
-  | { kind: "edit-unavailable"; responseNumber: string; exists: boolean };
+  /** 編集しに来たが、期限切れ・承認中・他人の回答・存在しないなどで編集できない。 */
+  | {
+      kind: "edit-unavailable";
+      responseNumber: string;
+      exists: boolean;
+      /**
+       * 直せない理由。画面の文言を変えるためだけに持つ — 「期限切れ」と
+       * 「承認が動き出したから」を同じ文で出すと、待てば直せるのか、
+       * 承認者に言うべきなのかが分からない。
+       */
+      reason?: "window" | "in-approval";
+    };
 
 /**
  * 自分の下書きだけを新しい順で返す。
@@ -96,9 +108,19 @@ export function resolveRespondState(input: RespondStateInput): RespondState {
         exists: false,
       };
     }
-    return canEditResponse(form, target, userId, now)
-      ? { kind: "edit", responseNumber: requested }
-      : { kind: "edit-unavailable", responseNumber: requested, exists: true };
+    if (canEditResponse(form, target, userId, now, !!target.firstApprovalDone))
+      return { kind: "edit", responseNumber: requested };
+    return {
+      kind: "edit-unavailable",
+      responseNumber: requested,
+      exists: true,
+      // 「期限切れ」と「承認が動き出したから」を同じ文で出すと、待てば直せるのか
+      // 承認者に言うべきなのかが読み手に分からない。
+      reason:
+        target.status === "REQUESTED" || target.status === "APPROVED"
+          ? "in-approval"
+          : "window",
+    };
   }
 
   const availability = formAvailability(form, now);
