@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <title>設計依頼書</title>
+  <link rel="stylesheet" href="base.css" />
+  <style>
+    /* 依頼内容がこの帳票の本体 — 製造はここだけを見て図面を作るので、
+       明細表ではなく本文として大きく組む。 */
+    .request-body {
+      border: 1pt solid #ddd;
+      padding: 14pt 16pt;
+      margin-bottom: 20pt;
+      font-size: 11pt;
+      line-height: 1.8;
+      min-height: 120pt;
+      white-space: pre-wrap;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="header">
+    <div class="brand">
+      <img class="brand-logo" src="logo.svg" alt="シー・ケィ・ケー株式会社" />
+      <div class="doc-title">設計依頼書</div>
+    </div>
+    <div class="issuer">
+      <strong>{{issuer.name}}</strong><br>
+      {{issuer.address}}<br>
+      {{issuer.tel}}
+    </div>
+  </div>
+
+  <div class="meta-row">
+    <div class="recipient-block">
+      <div class="recipient-name">{{assignee.name}}</div>
+      <div class="recipient-meta">
+        依頼者: {{doc.requested_by}}<br>
+        トリガー: {{doc.trigger}}　参照元: {{doc.reference}}
+      </div>
+    </div>
+    <div class="doc-info">
+      <table>
+        <tr><td>依頼番号</td><td>{{doc.number}}</td></tr>
+        <tr><td>依頼区分</td><td>{{doc.kind}}</td></tr>
+        <tr><td>状態</td><td>{{doc.status}}</td></tr>
+        <tr><td>希望納期</td><td>{{doc.desired_date}}</td></tr>
+        <tr><td>優先度</td><td>{{doc.priority}}</td></tr>
+        <tr><td>依頼日</td><td>{{doc.requested_date}}</td></tr>
+        <tr><td>承認日</td><td>{{doc.approved_date}}</td></tr>
+        <tr><td>完了日</td><td>{{doc.completed_date}}</td></tr>
+      </table>
+      <!-- 書類 QR（CKK:DSG:<番号>）— URL は入れない -->
+      <div class="doc-qr">{{doc_qr}}</div>
+    </div>
+  </div>
+
+  <div class="strip row">
+    <div>
+      <div class="cell-label">対象製品</div>
+      <div class="cell-value">{{product.name}}</div>
+    </div>
+    <div>
+      <div class="cell-label">元図面（改訂のとき）</div>
+      <div class="cell-value">{{doc.base_design_file}}</div>
+    </div>
+    <div>
+      <div class="cell-label">承認者</div>
+      <div class="cell-value">{{doc.approved_by}}</div>
+    </div>
+  </div>
+
+  <div class="section-title">変更理由（改訂のとき）</div>
+  <div class="request-body">{{doc.change_reason}}</div>
+
+  <div class="section-title">依頼内容</div>
+  <div class="request-body">{{doc.description}}</div>
+
+  <div class="section-title">設計ファイル</div>
+  <table class="items-table">
+    <thead>
+      <tr>
+        <th style="width: 12%">版</th>
+        <th style="width: 48%">ファイル名</th>
+        <th>備考</th>
+        <th style="width: 22%">登録日時</th>
+      </tr>
+    </thead>
+    <tbody>
+      {{#each files}}
+      <tr>
+        <td>{{version}}</td>
+        <td>{{filename}}</td>
+        <td>{{notes}}</td>
+        <td>{{created_at}}</td>
+      </tr>
+      {{/each}}
+    </tbody>
+  </table>
+
+  <div class="section-title">承認・作業履歴</div>
+  <table class="items-table">
+    <thead>
+      <tr>
+        <th style="width: 22%">操作</th>
+        <th style="width: 24%">実施者</th>
+        <th style="width: 24%">日時</th>
+        <th>備考</th>
+      </tr>
+    </thead>
+    <tbody>
+      {{#each history}}
+      <tr>
+        <td>{{action}}</td>
+        <td>{{user}}</td>
+        <td>{{at}}</td>
+        <td>{{notes}}</td>
+      </tr>
+      {{/each}}
+    </tbody>
+  </table>
+
+  <div class="strip center">
+    社内文書 — 社外持出禁止
+  </div>
+
+  <div class="footer">
+    {{doc.number}} 　 出力: {{doc.printed_at}} 　 1 / 1
+  </div>
+
+</body>
+</html>

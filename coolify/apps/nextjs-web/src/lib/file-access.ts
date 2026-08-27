@@ -23,6 +23,7 @@ export const APP_PREFIX_PERMISSIONS: { prefix: string; code: string }[] = [
   { prefix: "pdfs/invoices", code: "invoice" },
   { prefix: "pdfs/delivery-notes", code: "delivery_note" },
   { prefix: "pdfs/kiosk-cards", code: "kiosk" },
+  { prefix: "pdfs/design-requests", code: "design_request" },
   { prefix: "attachments/material_purchase_orders", code: "purchase_order" },
   { prefix: "attachments/purchase_requests", code: "purchase_order" },
   { prefix: "attachments/form_responses", code: "form" },
