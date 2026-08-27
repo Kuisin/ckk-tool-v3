@@ -51,16 +51,37 @@ export interface CreateVersionInput {
 }
 
 /**
+ * 版の採番で使う advisory lock の名前空間。他の用途と衝突しないための定数。
+ */
+const VERSION_LOCK_NS = 0x0de5_1;
+
+/**
  * 版を 1 つ作る（採番 + is_latest の付け替え + 行作成）。
  *
  * **必ずトランザクションの中で呼ぶこと。** 採番は「読んで + 1 して書く」ので、
- * 同時に 2 つ走ると同じ番号が 2 回出る。呼び出し側の tx を受け取る形にして、
- * 版の作成が常に他の更新と同じトランザクションに入るようにしている。
+ * 呼び出し側の tx を受け取る形にして、版の作成が常に他の更新と同じ
+ * トランザクションに入るようにしている。
+ *
+ * ⚠️ **トランザクションだけでは足りない。** PostgreSQL の既定は READ COMMITTED
+ * なので、同じ系列に対して同時に 2 本走ると**両方が同じ max を読んで同じ番号を
+ * 書く**（v2 が 2 つでき、is_latest も 2 行立つ）。採番テーブルのように
+ * 1 文の upsert に畳めない（読んだ結果で更新対象が変わる）ため、系列ごとの
+ * advisory lock で直列化する。トランザクション終了時に自動で解放される。
+ *
+ * 採番テーブル（numbering_sequences）を使わないのは、版番号が「系列ごとの
+ * 連番」で、系列が (製品 × 受注元) の組で無数に増えるため — キーを 1 行ずつ
+ * 作る形に馴染まない。
  */
 export async function createVersionInTx(
   tx: Parameters<Parameters<typeof prisma.$transaction>[0]>[0],
   input: CreateVersionInput,
 ): Promise<number> {
+  await tx.$executeRaw`
+    SELECT pg_advisory_xact_lock(
+      ${VERSION_LOCK_NS}::int,
+      hashtext(${`${input.productId}:${input.customerBpId ?? ""}`})::int
+    )`;
+
   // 系列（製品 × 受注元）の中だけを見て次の番号を決める。
   const existing = await tx.designFile.findMany({
     where: { productId: input.productId },
