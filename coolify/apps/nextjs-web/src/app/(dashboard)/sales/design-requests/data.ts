@@ -264,6 +264,37 @@ export async function fetchDesignFilesForProduct(
   }));
 }
 
+/**
+ * 製品の**最新の主図面 1 件**（指示書詳細のサムネイル用）。
+ *
+ * 版一覧は要らず「いま何を見て作るか」だけが要る画面のための細い口。
+ * is_latest かつ role = PRIMARY は設計上 1 件に定まる。
+ */
+export async function fetchLatestPrimaryDesignFile(
+  productId: number,
+): Promise<ProductDesignFile | null> {
+  const f = await prisma.designFile.findFirst({
+    where: { productId, isLatest: true, role: "PRIMARY" },
+    include: {
+      file: { select: { filename: true, mimeType: true } },
+      designRequest: { select: { requestNumber: true } },
+    },
+    orderBy: { version: "desc" },
+  });
+  if (!f) return null;
+  return {
+    id: f.id,
+    version: f.version,
+    isLatest: f.isLatest,
+    role: "PRIMARY",
+    mimeType: f.file.mimeType,
+    filename: f.file.filename,
+    requestNumber: f.designRequest?.requestNumber ?? null,
+    notes: f.notes,
+    createdAt: f.createdAt.toISOString(),
+  };
+}
+
 /** 製品に紐づく設計依頼（製品詳細 関連タブ）。 */
 export function fetchDesignRequestsForProduct(
   productId: number,

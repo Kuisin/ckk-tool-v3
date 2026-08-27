@@ -94,6 +94,22 @@ consumed as TS source via `transpilePackages`).
     `lib/form-schema.ts` が `order` の正規化と検証を持つので、ドラッグを使わずに
     （キーボード、将来の API）組んでも結果は同じ。
   - キオスクには入れない（どちらのアプリも無い）。
+- **3D プレビュー** — `online-3d-viewer` (MIT, 完全固定)。設計依頼で受け取った
+  3D モデル（STL / OBJ / PLY / GLB / 3MF …）を製品マスタ・指示書・設計依頼の
+  画面で見るため。自前だと WebGL のカメラ・ライト・当たり判定まで書くことに
+  なり、それは「図面を見せる」ために引き受ける保守ではない。
+  **描画層に限る**: どの形式を見せてよいかは `lib/design-file-kind.ts` が持ち、
+  ライブラリはもらった URL を描くだけ（React Flow と同じ約束）。
+  `next/dynamic` + `ssr:false` で読み込む（document / WebGL を直に触るため）。
+  - **npm 版はエンジンだけを同梱していて、STEP / IGES / 3DM / IFC が要る wasm
+    は入っていない。** そのため対応形式を `design-file-kind.ts` の
+    `MODEL_3D_EXT` に絞ってある — 読めないものを「見られます」と出す方が害が
+    大きい。STEP を見せたくなったら occt-import-js を `public/` へ持ち込む
+    判断が別途要る。
+  - **DXF は入れていない。** 唯一実用的な `dxf-viewer` が MPL-2.0 で、既存の
+    依存が全て許容的ライセンスで揃っている一貫性を崩すため（利用者判断）。
+    DXF はダウンロードのみ。
+  - キオスクには入れない（図面を見る画面が無い）。
 
 ## Layout
 
