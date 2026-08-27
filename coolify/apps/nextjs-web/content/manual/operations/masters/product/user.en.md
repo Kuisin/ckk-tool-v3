@@ -90,6 +90,42 @@ The screen of a saved product has four tabs.
 
 To correct the content, press 「**編集**」 (Edit) at the top right of the screen.
 
+## Managing drawings
+
+The 関連 (related) tab lists this product's drawings.
+
+**Versions are counted per product × customer.** The same product grows separate drawings for different customers, so customer A's v3 and customer B's v1 sit side by side on one product. A series with no customer is **汎用 (generic)** and is used by any customer that has no drawing of its own. Each series gets its own heading, with the newest thumbnail on top — press it to enlarge, and 3D models can be rotated right there.
+
+Each version carries a tag saying where it came from.
+
+- **依頼 (request)** — produced by completing a [design request](/manual/en/operations/sales/design-request/user).
+- **手動 (manual)** — added directly from this screen.
+
+### Adding a drawing without a design request
+
+When the drawing already exists, or you are importing one received from elsewhere, register it directly with「**設計図を追加**」(add a drawing).
+
+1. Press「**設計図を追加**」on the 関連 tab.
+2. Choose the **受注元 (customer)**. Left empty, the version is generic.
+3. Put files into **図面データ (blueprint)** (required), **プレビュー用 (preview)** (optional) and **参考資料 (reference material)** (optional).
+4. Press「**登録**」(register).
+
+The version number continues that series. A customer's first drawing is v1 even when other customers already have versions on the same product.
+
+### Which versions can be changed
+
+| State of the version | Edit the note | Delete |
+|---|---|---|
+| In use by a work order | No | No |
+| Output of a design request | Yes | No |
+| Added manually, unused | Yes | Yes |
+
+**A version a work order points at cannot be moved.** It is the record of what a part was made from, so if its contents changed afterwards you could no longer tell what was actually used. Unpin it on the work order and it becomes editable again.
+
+A version produced by a design request cannot be deleted for a different reason — it is the deliverable of a completed request. Its note can still be edited.
+
+**The drawing file itself cannot be swapped.** Changing a drawing means making a new version, so register it through「設計図を追加」or by completing a design request.
+
 ## Registering the order of the process steps
 
 On the 「工程」 (Processes) tab you can register the order of the process steps used to make that product. If you register it, the steps are **already filled in** when you make a [Work Order](/manual/en/operations/production/work-order/user). You no longer have to choose the steps from nothing every time.

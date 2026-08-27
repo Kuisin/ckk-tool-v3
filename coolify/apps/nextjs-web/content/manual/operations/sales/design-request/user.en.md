@@ -170,10 +170,14 @@ STEP, IGES, DXF and DWG cannot be opened here; download them and use your own so
 
 1. Press「**…**」at the top right of the screen.
 2. Choose「**完了**」(done).
-3. On the confirmation screen, pick the **プレビュー用 (preview)** file (optional) and the **図面データ (blueprint)** (required). Everything else becomes **参考資料 (reference material)** automatically. If something is missing, use「**ファイルを追加**」(add a file) to upload it right there.
-4. Press「**完了**」(done).
+3. The confirmation screen has a slot for **図面データ (blueprint)** (required), **プレビュー用 (preview)** (optional) and **参考資料 (reference material)** (optional, as many as you like). Put a file straight into each slot with「**ファイルを選択**」(choose a file). Anything already uploaded to the files tab while you were working can be picked from「**または、添付済みから選ぶ**」(or choose one already attached) below the slot.
+4. Press「**完了**」(done). The upload starts at this point, not when you pick.
+
+The same file cannot go in two slots (one file = one role).
 
 **One completion = one version.** Every file you picked gets the same version number (v1, v2 …). An assembly drawing, a part drawing and a 3D model raised together no longer land on different version numbers, so "please use v3" is never ambiguous.
+
+**Versions are counted per product × customer.** The same product grows separate drawings for different customers, so customer A's v3 and customer B's v1 live side by side on one product. Which series a completion lands on is decided by the request's **受注元 (customer)**; leaving it empty makes the version *generic*, used by any customer that has no drawing of their own.
 
 **Preview and blueprint are picked separately** because they do different jobs. For the same shape, an STL is *for looking at* and a CAD file is *for making from* — neither substitutes for the other. The product master's newest drawing points at the **blueprint**, while on-screen thumbnails prefer the **preview** when one exists. The completion date is recorded too, and the requester is notified — as is the sales rep on the quote, if it was raised at quoting time. On a request where you set a product, that product's newest drawing is switched to this version as well.
 
@@ -204,7 +208,8 @@ Every field on the design request screen. The **?** next to a field in the app l
 | [Trigger](#field-trigger) | Required | Raised at quoting time or after the order |
 | [Quote](#field-quote) | Conditional | The quote it relates to, when raised at quoting time |
 | [Order line](#field-order-line) | Conditional | The order line it relates to, when raised after the order |
-| [Product](#field-product) | Optional | The product the drawing is for |
+| [Product](#field-product) | Required | The product the drawing is for |
+| [Customer](#field-customer-bp) | Optional | Which customer's series the version belongs to |
 | [Assignee](#field-assignee) | Required | The manufacturing person who makes the drawing |
 | [Due date](#field-desired-at) | Optional | When the drawing is needed by |
 | [Priority](#field-priority) | Required | Normal or urgent |
@@ -227,6 +232,12 @@ Chosen when the trigger is after the order, recording which order the design is 
 ### Product [#field-product]
 
 The product the drawing is for. **Required.** Whether this product already has a past design decides new versus revision. A brand-new product can be registered in the product master with just a name and a unit, so register it first and then raise the request.
+
+### Customer [#field-customer-bp]
+
+Decides which customer's series the finished version lands on. When the request was raised from a quote or an order line, that document's customer is filled in already.
+
+Left empty, the version is **generic** and is used by any customer that has no drawing of its own for that product. New-versus-revision is judged **within that series only** — if customer A has drawings but customer B does not, the request is **new** as far as B is concerned.
 
 ### Assignee [#field-assignee]
 
