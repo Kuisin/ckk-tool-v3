@@ -12,12 +12,14 @@ import type {
   DesignRequest,
   DesignRequestHistoryView,
   DesignRequestKind,
+  DesignRequestLink,
   DesignRequestPriority,
   DesignRequestStatus,
   DesignRequestTrigger,
+  ProductDesignFile,
 } from "@/components/sales/design-requests/model";
 import type { HistoryEntry } from "@/lib/approvals";
-import { prisma } from "@/lib/db";
+import { type Prisma, prisma } from "@/lib/db";
 import {
   formatProductNumber,
   formatQuoteNumber,
@@ -185,6 +187,84 @@ export async function fetchDesignRequest(
       createdAt: f.createdAt.toISOString(),
     })),
   };
+}
+
+/**
+ * 逆リンク — その書類に紐づく設計依頼（新しい順）。
+ *
+ * 見積書詳細・注文明細詳細・製品詳細の「関連」から呼ぶ。キャンセル済みは
+ * 出さない（起票し直した跡が並ぶだけで読み手の助けにならない）。
+ */
+async function fetchLinks(
+  where: Prisma.DesignRequestWhereInput,
+): Promise<DesignRequestLink[]> {
+  const rows = await prisma.designRequest.findMany({
+    where,
+    include: { assigneeUser: { select: { displayName: true } } },
+    orderBy: { requestNumber: "desc" },
+    take: 20,
+  });
+  return rows.map((r) => ({
+    requestNumber: r.requestNumber,
+    status: r.status as DesignRequestStatus,
+    description: r.description,
+    assigneeName: r.assigneeUser?.displayName ?? null,
+    updatedAt: r.updatedAt.toISOString(),
+  }));
+}
+
+/** 見積書に紐づく設計依頼（見積書詳細 関連タブ）。 */
+export function fetchDesignRequestsForQuote(key: {
+  yearMonth: string;
+  seq: number;
+}): Promise<DesignRequestLink[]> {
+  return fetchLinks({
+    quoteYearMonth: key.yearMonth,
+    quoteSeq: key.seq,
+    status: { not: "CANCELLED" },
+  });
+}
+
+/** 注文明細に紐づく設計依頼（注文明細詳細 設計タブ）。 */
+export function fetchDesignRequestsForOrderLine(
+  orderLineId: string,
+): Promise<DesignRequestLink[]> {
+  return fetchLinks({ orderLineId, status: { not: "CANCELLED" } });
+}
+
+/**
+ * 製品の設計図（版一覧・新しい版から）。製品詳細の「設計図」節。
+ *
+ * 「最新」は is_latest が立っている行。製品側に design_file_id 列は無い。
+ */
+export async function fetchDesignFilesForProduct(
+  productId: number,
+): Promise<ProductDesignFile[]> {
+  const rows = await prisma.designFile.findMany({
+    where: { productId },
+    include: {
+      file: { select: { filename: true } },
+      designRequest: { select: { requestNumber: true } },
+    },
+    orderBy: { version: "desc" },
+    take: 20,
+  });
+  return rows.map((f) => ({
+    id: f.id,
+    version: f.version,
+    isLatest: f.isLatest,
+    filename: f.file.filename,
+    requestNumber: f.designRequest?.requestNumber ?? null,
+    notes: f.notes,
+    createdAt: f.createdAt.toISOString(),
+  }));
+}
+
+/** 製品に紐づく設計依頼（製品詳細 関連タブ）。 */
+export function fetchDesignRequestsForProduct(
+  productId: number,
+): Promise<DesignRequestLink[]> {
+  return fetchLinks({ productId, status: { not: "CANCELLED" } });
 }
 
 export interface QuoteOption {

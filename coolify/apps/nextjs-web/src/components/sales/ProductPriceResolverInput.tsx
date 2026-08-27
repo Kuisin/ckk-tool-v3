@@ -8,9 +8,13 @@
  * 数量 を選ぶと、単価（基準単価 × 数量倍率）と値引き（値引きルール）が自動計算
  * される。手動の単価・値引き入力はない。該当する価格表がない行は見積できない
  * （試算 → 価格表登録が必要）。金額 = 単価 × 数量 − 値引き。
+ *
+ * 価格表が無いときは「価格表なし」と出すだけでなく、_specs/feature/01-sales.md
+ * §1 のとおり **試算 と §10 設計依頼へ誘導する**。新規品で単価が引けないのは
+ * たいてい「まだ図面が無い」からで、そこで手が止まるのが一番困るため。
  */
 
-import { Group, NumberInput, Select, Stack, Text } from "@mantine/core";
+import { Anchor, Group, NumberInput, Select, Stack, Text } from "@mantine/core";
 import { searchProductOptions } from "@/app/(dashboard)/_shared/option-search";
 import { PRODUCT_F4 } from "@/components/ui/f4-presets";
 import { HelpLabel } from "@/components/ui/HelpLabel";
@@ -40,12 +44,19 @@ export function ProductPriceResolverInput({
   entries,
   value,
   onChange,
+  designRequestHref,
 }: {
   customerId: string;
   /** 顧客の価格表エントリ（サーバー取得）— ライブ解決に使用。 */
   entries: PriceListEntry[];
   value: ResolverValue;
   onChange: (next: ResolverValue) => void;
+  /**
+   * 単価未解決のときに出す「設計依頼を起票」の遷移先を作る。
+   * 渡さないと誘導リンクを出さない（価格表画面など、設計依頼が無関係な
+   * 呼び出し元のため）。
+   */
+  designRequestHref?: (productId: string) => string;
 }) {
   const isMobile = useIsMobile();
 
@@ -127,9 +138,20 @@ export function ProductPriceResolverInput({
           />
         </Text>
         {unresolved ? (
-          <Text c="orange" fw={600} size="xs">
-            価格表なし
-          </Text>
+          <Stack align={isMobile ? "flex-start" : "flex-end"} gap={0}>
+            <Text c="orange" fw={600} size="xs">
+              価格表なし
+            </Text>
+            {designRequestHref && (
+              <Anchor
+                href={designRequestHref(value.productId)}
+                size="xs"
+                target="_blank"
+              >
+                設計依頼を起票
+              </Anchor>
+            )}
+          </Stack>
         ) : (
           <Text className="tabular-nums" ff="mono" size="sm">
             {formatMoney(value.unitPrice)}

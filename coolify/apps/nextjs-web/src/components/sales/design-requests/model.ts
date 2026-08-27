@@ -81,6 +81,38 @@ export function describeDetection(d: DesignKindDetection): string {
     : `この製品には v${d.versionCount} まであります → 改訂`;
 }
 
+/**
+ * 逆リンク用の最小の 1 行。見積書・注文明細・製品マスタの「関連」から
+ * 「この書類に紐づく設計依頼」を出すためだけの形。
+ */
+export interface DesignRequestLink {
+  requestNumber: string;
+  status: DesignRequestStatus;
+  /** 依頼内容の先頭（一覧で何の依頼か分かる程度）。 */
+  description: string | null;
+  assigneeName: string | null;
+  updatedAt: string;
+}
+
+/**
+ * 製品マスタに出す「その製品の設計図」1 行。
+ *
+ * 製品の最新図面は `design_files.product_id` + `is_latest` が正で、
+ * `products` 側に列は無い。差し替えは設計依頼 (SA06) の完了経由だけ
+ * — 版採番と両側の is_latest クリアは completeDesign の 1 tx が唯一の
+ * 管理者なので、マスタ側に第 2 の書き込み口を作らない。
+ */
+export interface ProductDesignFile {
+  id: string;
+  version: number;
+  isLatest: boolean;
+  filename: string;
+  /** 生成元の設計依頼（DSG-…）。手動登録の版は null。 */
+  requestNumber: string | null;
+  notes: string | null;
+  createdAt: string;
+}
+
 /** ファイルタブの1行（design_files + files の抜粋）。 */
 export interface DesignRequestFile {
   id: string;

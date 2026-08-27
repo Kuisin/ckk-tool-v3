@@ -661,7 +661,15 @@ export function DesignRequestDetail({
                           </Group>
                         </Table.Td>
                         <Table.Td>
-                          <Text size="sm">{f.filename}</Text>
+                          {/* 版の実体は design_files → files（証憑ではない）
+                              ので専用ルートで開く。 */}
+                          <Anchor
+                            href={`/api/design-files/${encodeURIComponent(f.id)}`}
+                            size="sm"
+                            target="_blank"
+                          >
+                            {f.filename}
+                          </Anchor>
                           <Text c="dimmed" size="xs">
                             {f.mimeType}
                           </Text>

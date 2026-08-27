@@ -13,11 +13,18 @@
 
 import { Anchor, Badge, Stack, Table, Tabs, Text } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
-import { IconCopy, IconDownload, IconSend } from "@tabler/icons-react";
+import {
+  IconCopy,
+  IconDownload,
+  IconRuler2,
+  IconSend,
+} from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { issueQuote } from "@/app/(dashboard)/sales/quotes/actions";
 import { useFormat } from "@/components/layout/PreferencesProvider";
+import { DesignRequestLinks } from "@/components/sales/design-requests/DesignRequestLinks";
+import type { DesignRequestLink } from "@/components/sales/design-requests/model";
 import { PrimaryButton } from "@/components/ui/buttons";
 import { DocNumber } from "@/components/ui/DocNumber";
 import { FieldValue } from "@/components/ui/FieldValue";
@@ -56,8 +63,11 @@ export function QuoteDetail({
   relatedEntries,
   auditEntries,
   memos,
+  designRequests = [],
 }: {
   quote: Quote;
+  /** この見積に紐づく設計依頼（§10 — 関連タブの逆リンク）。 */
+  designRequests?: DesignRequestLink[];
   /** 保管済み PDF のメタ（SeaweedFS 由来。未生成なら null）。 */
   pdfMeta: PdfFileMeta | null;
   /** この見積の明細 tier が属する価格表エントリ（関連タブ・適用価格表）。 */
@@ -134,6 +144,18 @@ export function QuoteDetail({
                   },
                 ]
               : []),
+            // §10 設計依頼は「唯一の次の一歩」ではなく任意の側枝なので、
+            // NextStepCard ではなくメニュー項目に置く。
+            {
+              label: "設計依頼を起票",
+              icon: <IconRuler2 size={14} />,
+              disabled: status === "REJECTED" || status === "EXPIRED",
+              disabledReason: "却下・期限切れの見積書からは起票できません",
+              onClick: () =>
+                router.push(
+                  `/sales/design-requests/new?quote=${encodeURIComponent(quote.quoteNumber)}`,
+                ),
+            },
             {
               label: "複製",
               icon: <IconCopy size={14} />,
@@ -315,6 +337,21 @@ export function QuoteDetail({
 
         <Tabs.Panel pt="md" value="related">
           <Stack gap="md">
+            <div>
+              <Text c="dimmed" mb={4} size="xs">
+                設計依頼
+              </Text>
+              <DesignRequestLinks
+                createDisabledReason={
+                  status === "REJECTED" || status === "EXPIRED"
+                    ? "却下・期限切れの見積書からは起票できません"
+                    : undefined
+                }
+                createHref={`/sales/design-requests/new?quote=${encodeURIComponent(quote.quoteNumber)}`}
+                links={designRequests}
+              />
+            </div>
+
             <div>
               <Text c="dimmed" mb={4} size="xs">
                 適用価格表

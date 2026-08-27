@@ -10,6 +10,7 @@ An app for asking the design department to make a drawing, and for **keeping eac
 ## What you can do with this app
 
 - You can write what you want designed and register it as a request.
+- You can raise one **with the source document already linked** from the [quote](/manual/en/operations/sales/quote/user), an order line, or the [product master](/manual/en/operations/masters/product/user).
 - You can record whether the request came at quotation time or after the order.
 - You can **name the person who will make the drawing**. They get a notification.
 - **New or revision is decided automatically** — 改訂 (revision) if the product already has a past design, 新規 (new) if it does not.
@@ -97,6 +98,23 @@ If the call is wrong you can **switch it by hand** right there; it then shows as
 The kind is **stored as it was when the request was made**. If another request finishes first later on, this request's kind does not move — otherwise, where approval steps are split by kind, the request would no longer match what was approved.
 
 If you came from a quote or an order line with「**設計依頼を起票**」(raise a design request), the trigger and the reference are already filled in. The trigger cannot be switched in that case, because switching it would quietly break the link back to where you came from.
+
+## Where to raise one from
+
+「新規作成」(New) on the list works, but raising it from these places **opens the form with the reference already filled in**, so there is nothing to link up afterwards.
+
+| From | What gets filled in |
+|------|---------------------|
+| [Quote](/manual/en/operations/sales/quote/user) →「…」→「設計依頼を起票」 | Trigger = 見積時 (at quotation) + that quote |
+| Order line →「…」→「設計依頼を起票」 | Trigger = 受注時 (at order) + that order line |
+| [Product master](/manual/en/operations/masters/product/user) →「…」→「設計依頼を起票」 | That product |
+| 「設計依頼を起票」 next to「価格表なし」(no price list) on a quote line | That product |
+
+The last one is the way out when **a new product has no price to resolve**. There usually is no price list because there is no drawing yet — so you can ask for the drawing right there.
+
+> Coming from a route that carries a product (product master, or "no price list") opens the form with the required 製品 (product) already filled in. Coming from a quote or an order line, just pick the product — new versus revision is decided the moment you do.
+
+A request you raised is reachable back from the「関連」(related) tab of the source document —「設計」(design) on an order line.
 
 ## Requesting approval
 

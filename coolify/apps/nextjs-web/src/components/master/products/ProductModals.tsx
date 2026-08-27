@@ -5,7 +5,12 @@
  *
  * Ported from design-preview (designs/master/products/_modals) and wired to
  * the Server Actions. 複製は新コードを自動採番して作成する。
- * （設計図差し替えモーダルは design_files 導入時に追加する。）
+ *
+ * **設計図の差し替えモーダルはここには作らない。** 差し替えは設計依頼 (SA06)
+ * の「完了」経由だけ — 版採番と、依頼側・製品側 両方の is_latest クリアは
+ * completeDesign の 1 トランザクションが唯一の管理者で、マスタ側に第 2 の
+ * 書き込み口を作ると is_latest が 2 行立つ。図面が変わった理由も追えなくなる。
+ * 製品詳細の「関連」タブからは読むだけ + 起票への導線を出す。
  */
 
 import { Select, Stack, TextInput } from "@mantine/core";
