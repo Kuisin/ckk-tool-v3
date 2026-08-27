@@ -21,7 +21,7 @@
 --                           設計依頼(design_request) C·R·U（自分=OWN）+ マスタ R
 --   purchasing : 購買依頼・発注/入荷/外注 RCUDE、在庫 R、他 R
 --   production : 指示書 RCUDE（拠点スコープ）、在庫 RCUE（拠点スコープ）、
---                受注明細 RU、外注 RU、他 R
+--                受注明細 RU、外注 RU、設計依頼 RU（図面をつくる側）、他 R
 --   quality    : 指示書（検査記録・検査承認） RU（拠点スコープ）、他 R
 --   shipping   : 出荷書/納品書 RCUDE（出荷書は拠点スコープ）、在庫 RU（拠点スコープ）、他 R
 --   accounting : 請求書/締日 RCUDE、販売・出荷 R、他 R
@@ -38,7 +38,7 @@ INSERT INTO app.roles (is_system, rolename, display_name, description) VALUES
   (true, 'manager',    '{"ja":"管理職（承認者）","en":"Manager"}',      '{"ja":"全業務の閲覧・承認・エクスポート","en":""}'),
   (true, 'sales',      '{"ja":"営業","en":"Sales"}',                    '{"ja":"見積・価格表・受注請書・設計依頼（自分のデータ）","en":""}'),
   (true, 'purchasing', '{"ja":"購買","en":"Purchasing"}',               '{"ja":"購買依頼・素材発注・入荷・外注","en":""}'),
-  (true, 'production', '{"ja":"製造・生産管理","en":"Production"}',     '{"ja":"受注明細・指示書・工程実行・在庫","en":""}'),
+  (true, 'production', '{"ja":"製造・生産管理","en":"Production"}',     '{"ja":"受注明細・指示書・工程実行・在庫・設計依頼","en":""}'),
   (true, 'quality',    '{"ja":"品質・検査","en":"Quality"}',            '{"ja":"検査記録・検査承認","en":""}'),
   (true, 'shipping',   '{"ja":"出荷","en":"Shipping"}',                 '{"ja":"出荷書・納品書","en":""}'),
   (true, 'accounting', '{"ja":"経理","en":"Accounting"}',               '{"ja":"請求書・締日処理・会計連携","en":""}'),
@@ -140,6 +140,9 @@ CROSS JOIN (VALUES
   -- 注文明細（SA05）は order_acceptance 権限。在庫照合・キャンセルに UPDATE が要る。
   ('order_acceptance','READ'),('order_acceptance','UPDATE'),
   ('delivery_order','READ'),
+  -- 設計依頼（SA06）— 図面を作るのは製造なので、担当者として着手・完了できる必要がある。
+  -- これが無いと「担当に指定されました」の通知を開いた先が 403 になる。
+  ('design_request','READ'),('design_request','UPDATE'),
   ('master','READ'),('approve','READ')
 ) AS g(code, action)
 WHERE r.rolename = 'production'

@@ -345,6 +345,15 @@ export async function fetchApprovalDocInfo(
       if (!row) return null;
       return { item_count: row._count.items };
     }
+    case "design_requests": {
+      const row = await prisma.designRequest.findUnique({
+        where: { requestNumber: targetId },
+        select: { trigger: true, kind: true, priority: true },
+      });
+      if (!row) return null;
+      // キーは approval-conditions.ts の APPROVAL_CONDITION_FIELDS と一致必須。
+      return { trigger: row.trigger, kind: row.kind, priority: row.priority };
+    }
     case "form_responses": {
       const row = await prisma.formResponse.findUnique({
         where: { responseNumber: targetId },
@@ -592,6 +601,13 @@ async function targetCreatedAt(
     }
     case "purchase_requests": {
       const row = await prisma.purchaseRequest.findUnique({
+        where: { requestNumber: targetId },
+        select: { createdAt: true },
+      });
+      return row?.createdAt ?? null;
+    }
+    case "design_requests": {
+      const row = await prisma.designRequest.findUnique({
         where: { requestNumber: targetId },
         select: { createdAt: true },
       });

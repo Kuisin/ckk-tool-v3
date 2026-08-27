@@ -199,10 +199,24 @@ SELECT
       || CASE WHEN ol.branch IS NOT NULL THEN '-'||lpad(ol.branch::text,2,'0') ELSE '' END
   END AS order_line_no,
   CASE WHEN dr.quote_year_month IS NOT NULL THEN
-    'QOT-'||dr.quote_year_month||'-'||lpad(dr.quote_seq::text,5,'0') END AS quote_no
+    'QOT-'||dr.quote_year_month||'-'||lpad(dr.quote_seq::text,5,'0') END AS quote_no,
+  -- ⚠️ 列は必ず末尾に足すこと。CREATE OR REPLACE VIEW は既存列の並べ替え・改名を
+  -- 拒否するので、途中に挿入すると db-migrate が ON_ERROR_STOP で落ち、
+  -- デプロイ全体が失敗扱いになる。
+  au.display_name AS assignee_name,
+  dr.requested_at,
+  dr.approved_at,
+  dr.started_at,
+  dr.cancelled_at,
+  dr.cancel_reason,
+  dr.kind,
+  dr.desired_at,
+  dr.priority,
+  dr.change_reason
 FROM app.design_requests dr
 LEFT JOIN app.products prod ON prod.id = dr.product_id
 LEFT JOIN app.users cu ON cu.id = dr.created_by
+LEFT JOIN app.users au ON au.id = dr.assignee_id
 LEFT JOIN app.order_lines ol ON ol.id = dr.order_line_id;
 
 -- =====================================================================

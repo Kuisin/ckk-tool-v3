@@ -253,6 +253,26 @@ export const DESIGN_TRIGGER_OPTIONS = Object.entries(DESIGN_TRIGGER_LABEL).map(
   ([value, label]) => ({ value, label }),
 );
 
+/** app.DESIGN_KIND（依頼区分 — 過去の設計書の有無で自動判定） */
+export const DESIGN_KIND_LABEL: Record<string, string> = {
+  NEW: "新規",
+  REVISION: "改訂",
+};
+
+export const DESIGN_KIND_OPTIONS = Object.entries(DESIGN_KIND_LABEL).map(
+  ([value, label]) => ({ value, label }),
+);
+
+/** app.DESIGN_PRIORITY（優先度） */
+export const DESIGN_PRIORITY_LABEL: Record<string, string> = {
+  NORMAL: "通常",
+  HIGH: "急ぎ",
+};
+
+export const DESIGN_PRIORITY_OPTIONS = Object.entries(
+  DESIGN_PRIORITY_LABEL,
+).map(([value, label]) => ({ value, label }));
+
 /** app.notifications.type（通知種別） */
 export const NOTIFICATION_TYPE_LABEL: Record<string, string> = {
   APPROVAL_REQUEST: "承認依頼",

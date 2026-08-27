@@ -2,6 +2,16 @@
 //
 // トリガ: 見積時（§1 並行）or 受注時（§3 並行）。番号 DSG-YYYYMM-NNNNN は
 // numbering_sequences（DESIGN）で採番し request_number に保存する。
+//
+// 承認フローを持つ（購買依頼 PU01 と同型の row-workflow）。
+// approval_flows.target_type = 'design_requests' で MS0B から段構成を組み、
+// 承認が通ってはじめて担当者が着手できる。
+//
+// 依頼区分（新規 / 改訂）は「その製品に design_files の行があるか」で自動判定
+// するが、**導出値ではなく保存する**。区分は承認ルートを決めるので
+// （MS0B の条件）、flow_snapshot と同じ理由で依頼時点の値を固定する必要がある。
+// 導出のままだと、別の依頼が先に完了した瞬間に「新規」が「改訂」へ変わり、
+// 承認済みのルートと食い違う。
 
 enum DesignTrigger {
   QUOTE // 見積時
@@ -11,12 +21,36 @@ enum DesignTrigger {
   @@schema("app")
 }
 
+// ⚠️ メンバの並びは DB の enum 順と一致させること（ORDER BY status を決めるため。
+// ずらすと prisma migrate diff が並べ替えを出す）。
+// PENDING は「承認済・着手待ち」— 承認フロー導入前からある値で、意味を引き継ぐ。
 enum DesignStatus {
-  PENDING
-  IN_PROGRESS
-  COMPLETED
+  DRAFT // 下書き
+  REQUESTED // 承認依頼中
+  PENDING // 未着手（承認済・着手待ち）
+  IN_PROGRESS // 進行中
+  COMPLETED // 完了
+  REJECTED // 差し戻し（承認軸）
+  CANCELLED // キャンセル
 
   @@map("DESIGN_STATUS")
+  @@schema("app")
+}
+
+// 依頼区分。判定規則は lib 側 detectDesignKind（design_files の存在）。
+enum DesignKind {
+  NEW // 新規（その製品に過去の設計書が無い）
+  REVISION // 改訂（既存の版がある）
+
+  @@map("DESIGN_KIND")
+  @@schema("app")
+}
+
+enum DesignPriority {
+  NORMAL
+  HIGH // 急ぎ
+
+  @@map("DESIGN_PRIORITY")
   @@schema("app")
 }
 
@@ -28,22 +62,56 @@ model DesignRequest {
   quoteYearMonth String? @map("quote_year_month") @db.Char(6)
   quoteSeq       Int?    @map("quote_seq")
   orderLineId    String? @map("order_line_id") @db.Uuid
+  // アプリ側では必須（区分の自動判定に要る）。DB は nullable のまま —
+  // 製品未指定の既存行があるので NOT NULL にすると移行が落ちるうえ、
+  // 埋める妥当な値も無い。「これからの依頼には必須、過去の行はそのまま」。
   productId      Int?    @map("product_id")
   description    String?
-  status         DesignStatus @default(PENDING)
+  // 依頼区分 — 作成時に自動判定して保存。編集できるあいだ（下書き・差し戻し）に
+  // 製品が変わったら判定し直す。kindOverridden は人が上書きしたかどうか。
+  kind           DesignKind     @default(NEW)
+  kindOverridden Boolean        @default(false) @map("kind_overridden")
+  // 改訂の元図面（既定 = 起票時点の最新版）。新規のときは null。
+  baseDesignFileId String?      @map("base_design_file_id") @db.Uuid
+  // 改訂のときだけ必須（依頼内容とは別に「なぜ描き直すか」を残す）。
+  changeReason   String?        @map("change_reason")
+  desiredAt      DateTime?      @map("desired_at") @db.Date
+  priority       DesignPriority @default(NORMAL)
+  status         DesignStatus @default(DRAFT)
+  // 図面をつくる製造担当（起票時に 1 名指定 → 承認完了で通知）
+  assigneeId     String?      @map("assignee_id") @db.Uuid
+  requestedAt    DateTime?    @map("requested_at") @db.Timestamptz(6)
+  requestedBy    String?      @map("requested_by") @db.Uuid
+  approvedAt     DateTime?    @map("approved_at") @db.Timestamptz(6)
+  approvedBy     String?      @map("approved_by") @db.Uuid
+  startedAt      DateTime?    @map("started_at") @db.Timestamptz(6)
   completedAt    DateTime?    @map("completed_at") @db.Timestamptz(6)
+  completedBy    String?      @map("completed_by") @db.Uuid
+  cancelledAt    DateTime?    @map("cancelled_at") @db.Timestamptz(6)
+  cancelledBy    String?      @map("cancelled_by") @db.Uuid
+  cancelReason   String?      @map("cancel_reason")
+  // 状態遷移履歴 [{ action, user, at, notes }]（PurchaseRequest と同型）
+  history        Json?
   createdBy      String?      @map("created_by") @db.Uuid
   createdAt      DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt      DateTime     @updatedAt @map("updated_at") @db.Timestamptz(6)
 
-  quote         Quote?      @relation(fields: [quoteYearMonth, quoteSeq], references: [yearMonth, seq])
-  orderLine     OrderLine?  @relation(fields: [orderLineId], references: [id])
-  product       Product?    @relation(fields: [productId], references: [id])
-  createdByUser User?       @relation("DesignRequestCreatedBy", fields: [createdBy], references: [id])
+  quote           Quote?     @relation(fields: [quoteYearMonth, quoteSeq], references: [yearMonth, seq])
+  orderLine       OrderLine? @relation(fields: [orderLineId], references: [id])
+  product         Product?   @relation(fields: [productId], references: [id])
+  assigneeUser    User?      @relation("DesignRequestAssignee", fields: [assigneeId], references: [id])
+  requestedByUser User?      @relation("DesignRequestRequestedBy", fields: [requestedBy], references: [id])
+  approvedByUser  User?      @relation("DesignRequestApprovedBy", fields: [approvedBy], references: [id])
+  completedByUser User?      @relation("DesignRequestCompletedBy", fields: [completedBy], references: [id])
+  cancelledByUser User?      @relation("DesignRequestCancelledBy", fields: [cancelledBy], references: [id])
+  createdByUser   User?      @relation("DesignRequestCreatedBy", fields: [createdBy], references: [id])
+  baseDesignFile  DesignFile? @relation("DesignRequestBaseFile", fields: [baseDesignFileId], references: [id])
 
-  files DesignFile[]
+  files DesignFile[] @relation("DesignRequestFiles")
 
   @@index([status])
+  @@index([assigneeId, status])
+  @@index([desiredAt])
   @@map("design_requests")
   @@schema("app")
 }
@@ -60,7 +128,9 @@ model DesignFile {
   createdBy       String?  @map("created_by") @db.Uuid
   createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
 
-  designRequest DesignRequest? @relation(fields: [designRequestId], references: [id])
+  designRequest DesignRequest? @relation("DesignRequestFiles", fields: [designRequestId], references: [id])
+  // この版を「元図面」に指している改訂依頼。
+  baseOfRequests DesignRequest[] @relation("DesignRequestBaseFile")
   product       Product?       @relation(fields: [productId], references: [id])
   file          File           @relation("DesignFileFile", fields: [fileId], references: [id])
   createdByUser User?          @relation("DesignFileCreatedBy", fields: [createdBy], references: [id])
