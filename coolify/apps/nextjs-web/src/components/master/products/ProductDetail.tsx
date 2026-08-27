@@ -9,7 +9,16 @@
  * 履歴タブは audit_logs 導入後に接続する（現状は空表示）。
  */
 
-import { Anchor, Badge, Group, Stack, Table, Tabs, Text } from "@mantine/core";
+import {
+  Anchor,
+  Badge,
+  Box,
+  Group,
+  Stack,
+  Table,
+  Tabs,
+  Text,
+} from "@mantine/core";
 import {
   IconCircleMinus,
   IconCopy,
@@ -26,6 +35,10 @@ import type {
   ProductDesignFile,
 } from "@/components/sales/design-requests/model";
 import { ActiveBadge } from "@/components/ui/ActiveBadge";
+import {
+  DesignFileThumb,
+  DesignFileViewButton,
+} from "@/components/ui/DesignFileViewer";
 import { DocNumber } from "@/components/ui/DocNumber";
 import { FieldValue } from "@/components/ui/FieldValue";
 import { HistoryPanel } from "@/components/ui/HistoryPanel";
@@ -37,6 +50,7 @@ import {
 } from "@/components/ui/shells";
 import { useTabParam } from "@/hooks/useUrlState";
 import { useIsMobile } from "@/hooks/useViewport";
+import { isViewable } from "@/lib/design-file-kind";
 import type { RouteView } from "@/lib/product-routes-core";
 import { isReservedSpecKey } from "@/lib/product-types";
 import {
@@ -107,6 +121,11 @@ export function ProductDetail({
   const isMobile = useIsMobile();
   // アクティブタブを ?tab= に保持（URL 共有でタブまで再現）
   const [tab, setTab] = useTabParam("overview");
+
+  // 製品の「最新図面」= is_latest かつ主図面（design_files が正）。
+  const latestPrimary = designFiles.find(
+    (f) => f.isLatest && f.role === "PRIMARY",
+  );
 
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [duplicateOpen, setDuplicateOpen] = useState(false);
@@ -264,71 +283,99 @@ export function ProductDetail({
                   この製品の設計図はまだありません
                 </Text>
               ) : (
-                <Table highlightOnHover striped withTableBorder>
-                  <Table.Thead>
-                    <Table.Tr>
-                      <Table.Th w={110}>バージョン</Table.Th>
-                      <Table.Th>ファイル名</Table.Th>
-                      {!isMobile && <Table.Th w={170}>元依頼</Table.Th>}
-                      {!isMobile && <Table.Th w={150}>登録日時</Table.Th>}
-                    </Table.Tr>
-                  </Table.Thead>
-                  <Table.Tbody>
-                    {designFiles.map((f) => (
-                      <Table.Tr key={f.id}>
-                        <Table.Td className="tabular-nums">
-                          <Group gap="xs" wrap="nowrap">
-                            v{f.version}
-                            {f.role === "PRIMARY" && (
-                              <Badge color="blue" variant="light">
-                                主図面
-                              </Badge>
-                            )}
-                            {f.isLatest && (
-                              <Badge color="green" variant="light">
-                                最新
-                              </Badge>
-                            )}
-                          </Group>
-                        </Table.Td>
-                        <Table.Td>
-                          <Anchor
-                            href={`/api/design-files/${encodeURIComponent(f.id)}`}
-                            size="sm"
-                            target="_blank"
-                          >
-                            {f.filename}
-                          </Anchor>
-                        </Table.Td>
-                        {!isMobile && (
-                          <Table.Td>
-                            {f.requestNumber ? (
-                              <Anchor
-                                onClick={() =>
-                                  router.push(
-                                    `/sales/design-requests/${encodeURIComponent(f.requestNumber ?? "")}`,
-                                  )
-                                }
-                                size="sm"
-                              >
-                                {f.requestNumber}
-                              </Anchor>
-                            ) : (
-                              <Text c="dimmed" size="sm">
-                                —
-                              </Text>
-                            )}
-                          </Table.Td>
-                        )}
-                        {!isMobile && (
-                          <Table.Td className="tabular-nums">
-                            {fmt.dateTime(f.createdAt)}
-                          </Table.Td>
-                        )}
+                <>
+                  {/* 最新の主図面だけサムネイルで出す。押すと拡大。
+                      版を全部サムネイルにすると 3D が何枚も WebGL を起こす。 */}
+                  {latestPrimary && (
+                    <Box maw={320}>
+                      <DesignFileThumb
+                        target={{
+                          caption: `v${latestPrimary.version}（最新）`,
+                          filename: latestPrimary.filename,
+                          mimeType: latestPrimary.mimeType,
+                          src: `/api/design-files/${encodeURIComponent(latestPrimary.id)}`,
+                        }}
+                      />
+                    </Box>
+                  )}
+                  <Table highlightOnHover striped withTableBorder>
+                    <Table.Thead>
+                      <Table.Tr>
+                        <Table.Th w={110}>バージョン</Table.Th>
+                        <Table.Th>ファイル名</Table.Th>
+                        {!isMobile && <Table.Th w={170}>元依頼</Table.Th>}
+                        {!isMobile && <Table.Th w={150}>登録日時</Table.Th>}
                       </Table.Tr>
-                    ))}
-                  </Table.Tbody>
-                </Table>
+                    </Table.Thead>
+                    <Table.Tbody>
+                      {designFiles.map((f) => (
+                        <Table.Tr key={f.id}>
+                          <Table.Td className="tabular-nums">
+                            <Group gap="xs" wrap="nowrap">
+                              v{f.version}
+                              {f.role === "PRIMARY" && (
+                                <Badge color="blue" variant="light">
+                                  主図面
+                                </Badge>
+                              )}
+                              {f.isLatest && (
+                                <Badge color="green" variant="light">
+                                  最新
+                                </Badge>
+                              )}
+                            </Group>
+                          </Table.Td>
+                          <Table.Td>
+                            <Group gap="xs" wrap="nowrap">
+                              <Anchor
+                                href={`/api/design-files/${encodeURIComponent(f.id)}`}
+                                size="sm"
+                                target="_blank"
+                              >
+                                {f.filename}
+                              </Anchor>
+                              {isViewable(f.filename, f.mimeType) && (
+                                <DesignFileViewButton
+                                  target={{
+                                    caption: `v${f.version}`,
+                                    filename: f.filename,
+                                    mimeType: f.mimeType,
+                                    src: `/api/design-files/${encodeURIComponent(f.id)}`,
+                                  }}
+                                />
+                              )}
+                            </Group>
+                          </Table.Td>
+                          {!isMobile && (
+                            <Table.Td>
+                              {f.requestNumber ? (
+                                <Anchor
+                                  onClick={() =>
+                                    router.push(
+                                      `/sales/design-requests/${encodeURIComponent(f.requestNumber ?? "")}`,
+                                    )
+                                  }
+                                  size="sm"
+                                >
+                                  {f.requestNumber}
+                                </Anchor>
+                              ) : (
+                                <Text c="dimmed" size="sm">
+                                  —
+                                </Text>
+                              )}
+                            </Table.Td>
+                          )}
+                          {!isMobile && (
+                            <Table.Td className="tabular-nums">
+                              {fmt.dateTime(f.createdAt)}
+                            </Table.Td>
+                          )}
+                        </Table.Tr>
+                      ))}
+                    </Table.Tbody>
+                  </Table>
+                </>
               )}
             </Stack>
 

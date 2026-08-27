@@ -17,6 +17,7 @@ import {
   Alert,
   Anchor,
   Badge,
+  Box,
   Button,
   Group,
   Stack,
@@ -28,6 +29,7 @@ import {
   IconAlertTriangle,
   IconCopy,
   IconPrinter,
+  IconRuler2,
   IconX,
 } from "@tabler/icons-react";
 import Link from "next/link";
@@ -47,7 +49,10 @@ import {
   WorkOrderProcedurePanel,
 } from "@/components/production/ApprovalStatusPanel";
 import { WorkOrderStepsPanel } from "@/components/production/WorkOrderStepsPanel";
+import type { ProductDesignFile } from "@/components/sales/design-requests/model";
+import { DesignFileThumb } from "@/components/ui/DesignFileViewer";
 import { DocNumber } from "@/components/ui/DocNumber";
+import { EmptyState } from "@/components/ui/EmptyState";
 import { FieldValue } from "@/components/ui/FieldValue";
 import { HistoryPanel } from "@/components/ui/HistoryPanel";
 import { MemoPanel } from "@/components/ui/MemoPanel";
@@ -80,6 +85,7 @@ export function WorkOrderDetail({
   flowChange = null,
   flowChangeApproval = null,
   rejectedAppliedFlowChange = null,
+  designFile = null,
   variant = "default",
 }: {
   workOrder: WorkOrderView;
@@ -91,6 +97,8 @@ export function WorkOrderDetail({
   approvalTrail?: ApprovalTrailView[];
   /** 分岐追加モーダル用の工程カタログ options（詳細画面のみ）。 */
   catalogOptions?: { value: string; label: string }[];
+  /** この指示書の製品の最新の主図面（無ければ null）。 */
+  designFile?: ProductDesignFile | null;
   /** 承認待ちの工程フロー変更（承認設定が未設定なら常に null = 即適用）。 */
   flowChange?: PendingFlowChangeView | null;
   /** 上の変更そのものの承認状態（指示書の承認とは別物）。 */
@@ -425,6 +433,7 @@ export function WorkOrderDetail({
       <Tabs onChange={setTab} value={tab}>
         <Tabs.List>
           <Tabs.Tab value="overview">概要</Tabs.Tab>
+          <Tabs.Tab value="drawing">図面</Tabs.Tab>
           <Tabs.Tab value="related">関連</Tabs.Tab>
           <Tabs.Tab value="memo">メモ</Tabs.Tab>
           <Tabs.Tab value="history">履歴</Tabs.Tab>
@@ -458,6 +467,46 @@ export function WorkOrderDetail({
               </div>
             )}
           </Stack>
+        </Tabs.Panel>
+
+        {/* 図面 — 現場が「何を見て作るか」。製品の最新の主図面 1 枚だけを
+            サムネイルで置き、押すと拡大する。工程や在庫を見に来ただけの人に
+            毎回モデルを読み込ませないよう、常設のビューアにはしない。 */}
+        <Tabs.Panel pt="md" value="drawing">
+          {designFile ? (
+            <Stack gap="sm">
+              <Box maw={360}>
+                <DesignFileThumb
+                  target={{
+                    caption: `v${designFile.version}（最新）`,
+                    filename: designFile.filename,
+                    mimeType: designFile.mimeType,
+                    src: `/api/design-files/${encodeURIComponent(designFile.id)}`,
+                  }}
+                />
+              </Box>
+              <Group gap="sm" wrap="nowrap">
+                <Text size="sm">{designFile.filename}</Text>
+                {designFile.requestNumber && (
+                  <Anchor
+                    onClick={() =>
+                      router.push(
+                        `/sales/design-requests/${encodeURIComponent(designFile.requestNumber ?? "")}`,
+                      )
+                    }
+                    size="sm"
+                  >
+                    {designFile.requestNumber}
+                  </Anchor>
+                )}
+              </Group>
+            </Stack>
+          ) : (
+            <EmptyState
+              icon={<IconRuler2 size={24} />}
+              message="この製品の図面はまだ登録されていません"
+            />
+          )}
         </Tabs.Panel>
 
         <Tabs.Panel pt="md" value="related">

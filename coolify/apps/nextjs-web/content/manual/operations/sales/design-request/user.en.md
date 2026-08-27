@@ -159,6 +159,12 @@ To remove an attachment, press the bin mark to the right of the file, then press
 
 You can only attach files **between approval and completion** (未着手 and 進行中).
 
+### Viewing a drawing on screen
+
+Registered versions open in the app from「**表示**」(view) next to the file name. PDFs and images show as they are, and **3D models such as STL can be rotated** — drag to orbit, wheel to zoom.
+
+STEP, IGES, DXF and DWG cannot be opened here; download them and use your own software.
+
 ## Finishing the request
 
 1. Press「**…**」at the top right of the screen.
