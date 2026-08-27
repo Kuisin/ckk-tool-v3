@@ -126,12 +126,25 @@ export interface ProductDesignFile {
   createdAt: string;
 }
 
-/** 版の中での役割（主図面 1 枚 + 参考資料 0..N 枚）。 */
-export type DesignFileRole = "PRIMARY" | "REFERENCE";
+/**
+ * 版の中での役割。1 版 = プレビュー 0..1 + 図面データ 1 + 参考資料 0..N。
+ *
+ * PREVIEW と BLUEPRINT を分けているのは用途が違うから — STL は人が形を
+ * 確かめるためのもの、CAD は加工プログラムを起こす元データで、片方で
+ * 代用できない。製品マスタの「最新図面」は BLUEPRINT を指す。
+ */
+export type DesignFileRole = "PREVIEW" | "BLUEPRINT" | "REFERENCE";
 
 export const DESIGN_FILE_ROLE_LABEL: Record<DesignFileRole, string> = {
-  PRIMARY: "主図面",
+  PREVIEW: "プレビュー",
+  BLUEPRINT: "図面データ",
   REFERENCE: "参考資料",
+};
+
+export const DESIGN_FILE_ROLE_COLOR: Record<DesignFileRole, string> = {
+  PREVIEW: "grape",
+  BLUEPRINT: "blue",
+  REFERENCE: "gray",
 };
 
 /** ファイルタブの1行（design_files + files の抜粋）。 */

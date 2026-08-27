@@ -1,5 +1,5 @@
 import { notFound } from "next/navigation";
-import { fetchLatestPrimaryDesignFile } from "@/app/(dashboard)/sales/design-requests/data";
+import { fetchLatestViewableDesignFile } from "@/app/(dashboard)/sales/design-requests/data";
 import { WorkOrderDetail } from "@/components/production/work-orders/WorkOrderDetail";
 import { fetchApprovalState } from "@/lib/approvals";
 import { fetchAuditEntries } from "@/lib/audit";
@@ -60,7 +60,7 @@ export default async function ProductionWorkOrdersDetailPage({
   // 現場が「何を見て作るか」— 製品の最新の主図面をサムネイルで出す。
   // 指示書は製品を必ず持つ（work_orders.product_id は NOT NULL）。
   const designFile = workOrder.productId
-    ? await fetchLatestPrimaryDesignFile(Number(workOrder.productId))
+    ? await fetchLatestViewableDesignFile(Number(workOrder.productId))
     : null;
 
   // 承認待ちの工程フロー変更（承認設定が未設定の環境では常に null）。

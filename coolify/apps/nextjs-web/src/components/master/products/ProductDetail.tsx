@@ -30,9 +30,11 @@ import { useState } from "react";
 import { useFormat } from "@/components/layout/PreferencesProvider";
 import { KeywordBadges } from "@/components/master/MasterKeywordsField";
 import { DesignRequestLinks } from "@/components/sales/design-requests/DesignRequestLinks";
-import type {
-  DesignRequestLink,
-  ProductDesignFile,
+import {
+  DESIGN_FILE_ROLE_COLOR,
+  DESIGN_FILE_ROLE_LABEL,
+  type DesignRequestLink,
+  type ProductDesignFile,
 } from "@/components/sales/design-requests/model";
 import { ActiveBadge } from "@/components/ui/ActiveBadge";
 import {
@@ -122,10 +124,10 @@ export function ProductDetail({
   // アクティブタブを ?tab= に保持（URL 共有でタブまで再現）
   const [tab, setTab] = useTabParam("overview");
 
-  // 製品の「最新図面」= is_latest かつ主図面（design_files が正）。
-  const latestPrimary = designFiles.find(
-    (f) => f.isLatest && f.role === "PRIMARY",
-  );
+  // サムネイルに出す 1 件 — 3D プレビューがあればそれ、無ければ図面データ。
+  const latestPreview =
+    designFiles.find((f) => f.isLatest && f.role === "PREVIEW") ??
+    designFiles.find((f) => f.isLatest && f.role === "BLUEPRINT");
 
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [duplicateOpen, setDuplicateOpen] = useState(false);
@@ -286,14 +288,14 @@ export function ProductDetail({
                 <>
                   {/* 最新の主図面だけサムネイルで出す。押すと拡大。
                       版を全部サムネイルにすると 3D が何枚も WebGL を起こす。 */}
-                  {latestPrimary && (
+                  {latestPreview && (
                     <Box maw={320}>
                       <DesignFileThumb
                         target={{
-                          caption: `v${latestPrimary.version}（最新）`,
-                          filename: latestPrimary.filename,
-                          mimeType: latestPrimary.mimeType,
-                          src: `/api/design-files/${encodeURIComponent(latestPrimary.id)}`,
+                          caption: `v${latestPreview.version}（最新）`,
+                          filename: latestPreview.filename,
+                          mimeType: latestPreview.mimeType,
+                          src: `/api/design-files/${encodeURIComponent(latestPreview.id)}`,
                         }}
                       />
                     </Box>
@@ -313,11 +315,12 @@ export function ProductDetail({
                           <Table.Td className="tabular-nums">
                             <Group gap="xs" wrap="nowrap">
                               v{f.version}
-                              {f.role === "PRIMARY" && (
-                                <Badge color="blue" variant="light">
-                                  主図面
-                                </Badge>
-                              )}
+                              <Badge
+                                color={DESIGN_FILE_ROLE_COLOR[f.role] ?? "gray"}
+                                variant="light"
+                              >
+                                {DESIGN_FILE_ROLE_LABEL[f.role] ?? f.role}
+                              </Badge>
                               {f.isLatest && (
                                 <Badge color="green" variant="light">
                                   最新

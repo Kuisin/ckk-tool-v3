@@ -1432,9 +1432,13 @@ Table design_requests {
 
 Ref: design_requests.(quote_year_month, quote_seq) > quotes.(year_month, seq)
 
+// 1 版 = プレビュー 0..1 + 図面データ 1 + 参考資料 0..N。
+// PREVIEW と BLUEPRINT を分けているのは用途が違うから — STL は人が形を
+// 確かめるためのもの、CAD は加工プログラムを起こす元データで代用できない。
 Enum DESIGN_FILE_ROLE {
-  PRIMARY         // 主図面（製品マスタの最新図面はこれ）
-  REFERENCE       // 参考資料（部品図・寸法表・3D モデルなど）
+  PREVIEW         // プレビュー用（3D 表示）
+  BLUEPRINT       // 図面データ（加工プログラム用。製品マスタの最新図面はこれ）
+  REFERENCE       // 参考資料（部品図・寸法表など）
 }
 
 Enum DESIGN_TRIGGER {
@@ -1476,7 +1480,8 @@ Enum DESIGN_STATUS {
 // **同じ version の行が複数あってよい。** 1 回の完了で上げたファイルはすべて
 // 同じ version・同じ is_latest を持ち、role（主図面 1 枚 / 参考資料 0..N 枚）
 // だけが違う。version は「図面の改訂世代」でファイルの通し番号ではない。
-// 製品の最新図面 = is_latest かつ role = PRIMARY の 1 行。
+// 製品の最新図面 = is_latest かつ role = BLUEPRINT の 1 行。
+// 最新の 3D プレビュー = is_latest かつ role = PREVIEW。
 Table design_files {
   id              uuid [pk]
   design_request_id uuid [ref: > design_requests.id]
@@ -1484,7 +1489,7 @@ Table design_files {
   file_id         uuid [not null, ref: > files.id]
   version         int [not null, default: 1]
   is_latest       boolean [not null, default: true]
-  role            DESIGN_FILE_ROLE [not null, default: 'PRIMARY']
+  role            DESIGN_FILE_ROLE [not null, default: 'BLUEPRINT']
   notes           text
   created_by      uuid [ref: > users.id]
   created_at      timestamp

@@ -265,28 +265,35 @@ export async function fetchDesignFilesForProduct(
 }
 
 /**
- * 製品の**最新の主図面 1 件**（指示書詳細のサムネイル用）。
+ * 製品の最新版から、**見せたい 1 件**を返す（製品・指示書のサムネイル用）。
  *
- * 版一覧は要らず「いま何を見て作るか」だけが要る画面のための細い口。
- * is_latest かつ role = PRIMARY は設計上 1 件に定まる。
+ * 優先は PREVIEW → BLUEPRINT。3D プレビュー用に上げたファイルがあれば
+ * それを見せ、無ければ図面データ（PDF 等）を見せる。版一覧は要らず
+ * 「いま何を見て作るか」だけが要る画面のための細い口。
  */
-export async function fetchLatestPrimaryDesignFile(
+export async function fetchLatestViewableDesignFile(
   productId: number,
 ): Promise<ProductDesignFile | null> {
-  const f = await prisma.designFile.findFirst({
-    where: { productId, isLatest: true, role: "PRIMARY" },
+  const rows = await prisma.designFile.findMany({
+    where: {
+      productId,
+      isLatest: true,
+      role: { in: ["PREVIEW", "BLUEPRINT"] },
+    },
     include: {
       file: { select: { filename: true, mimeType: true } },
       designRequest: { select: { requestNumber: true } },
     },
-    orderBy: { version: "desc" },
+    orderBy: [{ version: "desc" }, { role: "asc" }],
   });
+  // role の enum 順が PREVIEW → BLUEPRINT なので、先頭がそのまま優先分。
+  const f = rows[0];
   if (!f) return null;
   return {
     id: f.id,
     version: f.version,
     isLatest: f.isLatest,
-    role: "PRIMARY",
+    role: f.role as DesignFileRole,
     mimeType: f.file.mimeType,
     filename: f.file.filename,
     requestNumber: f.designRequest?.requestNumber ?? null,
