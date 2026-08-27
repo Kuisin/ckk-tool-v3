@@ -38,6 +38,7 @@ import { listAttachments } from "@/lib/attachments";
 import { getCurrentActorId, recordAudit } from "@/lib/audit";
 import { checkApprovalDocAccess, checkPermission } from "@/lib/authz";
 import { prisma } from "@/lib/db";
+import { createVersionInTx } from "@/lib/design-files";
 import { parseDocKey } from "@/lib/doc-number";
 import { type NotificationType, notify } from "@/lib/notifications";
 import { nextDocumentNumber } from "@/lib/numbering";
@@ -60,6 +61,12 @@ const priorityEnum = z.enum(["NORMAL", "HIGH"]);
 const commonInput = {
   /** 製品は必須 — 依頼区分の自動判定に要る。 */
   productId: z.string().min(1, "製品を選択してください"),
+  /**
+   * 対象の受注元。完成した版がどの系列に載るかを決める。
+   * null = 汎用（どの顧客の指示書からも使える）。
+   * 見積・受注から起票したときはその顧客が既定になる。
+   */
+  customerBpId: z.string().nullable(),
   /** 図面をつくる製造担当（必須 — §10 の「依頼通知を製造担当へ」の宛先）。 */
   assigneeId: z.string().min(1, "担当者を選択してください"),
   description: z.string().nullable(),
@@ -134,15 +141,22 @@ function toHistoryJson(list: HistoryEntry[]): Record<string, string | null>[] {
  * 作成時と、編集できるあいだの製品変更時にだけ呼ぶ。結果は保存する（画面表示の
  * たびに引き直すと、他の依頼が先に完了した瞬間に区分が変わってしまう）。
  */
-async function detectDesignKind(productId: number): Promise<{
+async function detectDesignKind(
+  productId: number,
+  customerBpId: string | null = null,
+): Promise<{
   kind: "NEW" | "REVISION";
   versionCount: number;
   latestFileId: string | null;
 }> {
+  // 版は (製品 × 受注元) ごとの系列なので、区分もその系列だけを見て決める。
+  // 「顧客 A には図面があるが B にはまだ無い」は B から見れば**新規**で、
+  // 製品全体で数えると改訂に見えてしまう。
+  const where = { productId, customerBpId };
   const [versionCount, latest] = await Promise.all([
-    prisma.designFile.count({ where: { productId } }),
+    prisma.designFile.count({ where }),
     prisma.designFile.findFirst({
-      where: { productId, isLatest: true },
+      where: { ...where, isLatest: true },
       select: { id: true },
     }),
   ]);
@@ -235,11 +249,14 @@ async function notifySafe(input: {
  * 出すだけで、**保存する値を決めるのは createDesignRequest / updateDesignRequest
  * の中の detectDesignKind**（画面の表示と保存が食い違っても、保存側が正）。
  */
-export async function fetchKindContextAction(productId: string) {
+export async function fetchKindContextAction(
+  productId: string,
+  customerBpId: string | null = null,
+) {
   const authz = await checkPermission("design_request", "READ");
   if (!authz.ok) return null;
   const { fetchDesignKindContext } = await import("./data");
-  return fetchDesignKindContext(productId);
+  return fetchDesignKindContext(productId, customerBpId);
 }
 
 // ── 作成 / 更新 ──────────────────────────────────────────────────────────────
@@ -271,8 +288,10 @@ export async function createDesignRequest(
 
   try {
     const actor = await getCurrentActorId();
-    // 依頼区分は「その製品に過去の設計書があるか」で決める（入力があれば上書き）。
-    const detected = await detectDesignKind(productId);
+    // 依頼区分は「その系列（製品 × 受注元）に過去の設計書があるか」で決める
+    // （入力があれば上書き）。
+    const customerBpId = trimOrNull(v.customerBpId);
+    const detected = await detectDesignKind(productId, customerBpId);
     const resolved = resolveKindFields(v, detected);
     if ("error" in resolved) return actionError(resolved.error);
 
@@ -284,6 +303,7 @@ export async function createDesignRequest(
         quoteYearMonth: quoteKey?.yearMonth ?? null,
         quoteSeq: quoteKey?.seq ?? null,
         orderLineId,
+        customerBpId,
         productId,
         assigneeId: v.assigneeId,
         description: trimOrNull(v.description),
@@ -358,9 +378,10 @@ export async function updateDesignRequest(
       },
     });
     if (!prior) return actionError("対象の設計依頼書が見つかりません");
-    // 製品が変われば区分を判定し直す。編集できるのは承認に出す前だけなので、
-    // ここで動いても承認済みのルートと食い違わない。
-    const detected = await detectDesignKind(productId);
+    // 製品や受注元が変われば区分を判定し直す。編集できるのは承認に出す前だけ
+    // なので、ここで動いても承認済みのルートと食い違わない。
+    const customerBpId = trimOrNull(v.customerBpId);
+    const detected = await detectDesignKind(productId, customerBpId);
     const resolved = resolveKindFields(v, detected);
     if ("error" in resolved) return actionError(resolved.error);
     // status を where に含めた updateMany で原子的にガードする。
@@ -371,6 +392,7 @@ export async function updateDesignRequest(
       },
       data: {
         productId,
+        customerBpId,
         assigneeId: v.assigneeId,
         description: trimOrNull(v.description),
         kind: resolved.kind,
@@ -820,6 +842,7 @@ export async function completeDesign(
       select: {
         id: true,
         productId: true,
+        customerBpId: true,
         createdBy: true,
         history: true,
         kind: true,
@@ -865,63 +888,34 @@ export async function completeDesign(
       return actionError("進行中の設計依頼書のみ完了できます");
     }
 
-    // design_files へバージョン登録し、製品マスタの最新設計を更新
-    await prisma.$transaction(async (tx) => {
-      const prev = await tx.designFile.aggregate({
-        _max: { version: true },
-        where: { designRequestId: request.id },
-      });
-      const version = (prev._max.version ?? 0) + 1;
-      await tx.designFile.updateMany({
-        where: { designRequestId: request.id, isLatest: true },
-        data: { isLatest: false },
-      });
-      // 製品との紐付けは design_files.product_id + is_latest（製品側の
-      // 最新設計は designFiles(isLatest) で参照する — カラム二重化しない）
-      if (request.productId != null) {
-        await tx.designFile.updateMany({
-          where: { productId: request.productId, isLatest: true },
-          data: { isLatest: false },
-        });
-      }
-      // プレビュー → 図面データ → 参考資料 の順で、同じ version・同じ
-      // is_latest で並べる。
-      await tx.designFile.createMany({
-        data: [
-          ...(preview
-            ? [
-                {
-                  designRequestId: request.id,
-                  productId: request.productId,
-                  fileId: preview.fileId,
-                  version,
-                  isLatest: true,
-                  role: "PREVIEW" as const,
-                  createdBy: actor,
-                },
-              ]
-            : []),
-          {
-            designRequestId: request.id,
-            productId: request.productId,
-            fileId: blueprint.fileId,
-            version,
-            isLatest: true,
-            role: "BLUEPRINT" as const,
-            createdBy: actor,
-          },
-          ...references.map((a) => ({
-            designRequestId: request.id,
-            productId: request.productId,
-            fileId: a.fileId,
-            version,
-            isLatest: true,
-            role: "REFERENCE" as const,
-            createdBy: actor,
-          })),
-        ],
-      });
-    });
+    // design_files へ版として登録する。
+    //
+    // **採番と is_latest の付け替えは createVersionInTx が唯一の管理者。**
+    // 手動登録（製品マスタ）も同じ関数を通るので、どちらの入口から入れても
+    // 版番号の数え方が揃う。ここで自前に数えると、片方だけ直したときに
+    // 版が飛んだり is_latest が 2 行立ったりするのが避けられない。
+    //
+    // 版が載る系列は依頼の受注元（customer_bp_id）。null なら汎用。
+    if (request.productId != null) {
+      await prisma.$transaction((tx) =>
+        createVersionInTx(tx, {
+          productId: request.productId as number,
+          customerBpId: request.customerBpId,
+          designRequestId: request.id,
+          files: [
+            ...(preview
+              ? [{ fileId: preview.fileId, role: "PREVIEW" as const }]
+              : []),
+            { fileId: blueprint.fileId, role: "BLUEPRINT" as const },
+            ...references.map((a) => ({
+              fileId: a.fileId,
+              role: "REFERENCE" as const,
+            })),
+          ],
+          actor,
+        }),
+      );
+    }
     await recordAudit({
       action: "UPDATE",
       tableName: "design_requests",

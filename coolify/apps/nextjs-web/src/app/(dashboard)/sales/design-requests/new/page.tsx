@@ -1,7 +1,9 @@
+import { fetchBillingOptions } from "@/app/(dashboard)/master/_shared/bp-data";
 import { DesignRequestForm } from "@/components/sales/design-requests/DesignRequestForm";
 import { requireAppRead } from "@/lib/authz-page";
 import {
   fetchEmployeeOptions,
+  fetchOrderLineCustomerBpId,
   fetchOrderLineRef,
   fetchProductRef,
   fetchQuoteRef,
@@ -37,19 +39,34 @@ export default async function SalesDesignRequestsNewPage({
   if (denied) return denied;
   const sp = await searchParams;
 
-  const [quoteOptions, assigneeOptions, quoteRef, orderLineRef, productRef] =
-    await Promise.all([
-      // 見積書リンク用 — 直近の見積書をサーバーで読み込んで Select に渡す。
-      fetchRecentQuoteOptions(),
-      fetchEmployeeOptions(),
-      sp.quote ? fetchQuoteRef(sp.quote) : null,
-      sp.orderLine ? fetchOrderLineRef(sp.orderLine) : null,
-      sp.product ? fetchProductRef(sp.product) : null,
-    ]);
+  const [
+    quoteOptions,
+    assigneeOptions,
+    quoteRef,
+    orderLineRef,
+    productRef,
+    customerOptions,
+    orderLineCustomer,
+  ] = await Promise.all([
+    // 見積書リンク用 — 直近の見積書をサーバーで読み込んで Select に渡す。
+    fetchRecentQuoteOptions(),
+    fetchEmployeeOptions(),
+    sp.quote ? fetchQuoteRef(sp.quote) : null,
+    sp.orderLine ? fetchOrderLineRef(sp.orderLine) : null,
+    sp.product ? fetchProductRef(sp.product) : null,
+    // 版が載る系列（受注元）の候補。
+    fetchBillingOptions(),
+    sp.orderLine ? fetchOrderLineCustomerBpId(sp.orderLine) : null,
+  ]);
+
+  // 見積・受注から起票したときは、その書類の顧客を受注元の既定にする。
+  const initialCustomerBpId = quoteRef?.customerBpId ?? orderLineCustomer;
 
   return (
     <DesignRequestForm
       assigneeOptions={assigneeOptions}
+      customerOptions={customerOptions}
+      initialCustomerBpId={initialCustomerBpId}
       initialOrderLine={
         orderLineRef
           ? { value: orderLineRef.id, label: orderLineRef.label }

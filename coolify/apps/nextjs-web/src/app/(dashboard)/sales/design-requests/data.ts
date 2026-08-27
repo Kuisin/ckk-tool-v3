@@ -21,6 +21,7 @@ import type {
 } from "@/components/sales/design-requests/model";
 import type { HistoryEntry } from "@/lib/approvals";
 import { type Prisma, prisma } from "@/lib/db";
+import { resolveSeriesCustomer } from "@/lib/design-files-core";
 import {
   formatProductNumber,
   formatQuoteNumber,
@@ -48,6 +49,8 @@ const iso = (d: Date | null | undefined) => d?.toISOString() ?? null;
 const LIST_INCLUDE = {
   orderLine: true,
   product: true,
+  // 版が載る系列（受注元）。一覧でも「誰向けの図面か」が要る。
+  customerBp: { select: { name: true } },
   createdByUser: { select: { displayName: true } },
   assigneeUser: { select: { displayName: true } },
   // 改訂の元図面（版とファイル名だけ — 一覧でもバッジに出す）。
@@ -109,6 +112,8 @@ function mapCommon(r: ListRow) {
     orderLineNumber: r.orderLine ? orderLineNumberOf(r.orderLine) : null,
     productId: r.productId != null ? String(r.productId) : null,
     productName: r.product ? productLabel(r.product) : null,
+    customerBpId: r.customerBpId,
+    customerName: localized(r.customerBp?.name as LocalizedText | null) || null,
     description: r.description,
     kind: r.kind as DesignRequestKind,
     kindOverridden: r.kindOverridden,
@@ -247,9 +252,15 @@ export async function fetchDesignFilesForProduct(
     include: {
       file: { select: { filename: true, mimeType: true } },
       designRequest: { select: { requestNumber: true } },
+      customerBp: { select: { name: true } },
+      // 指示書がこの版を指しているか = 編集・削除できるか。導出値なので
+      // 列は持たない（ピン留めを外したら編集できるように戻るのが正しい）。
+      _count: { select: { workOrders: true } },
     },
     orderBy: [{ version: "desc" }, { role: "asc" }],
-    take: 20,
+    // 版は (製品 × 受注元) ごとに育つので、顧客が増えるほど行が増える。
+    // 20 だと系列がいくつかあるだけで古い版が黙って消えるため広めに取る。
+    take: 200,
   });
   return rows.map((f) => ({
     id: f.id,
@@ -259,36 +270,32 @@ export async function fetchDesignFilesForProduct(
     mimeType: f.file.mimeType,
     filename: f.file.filename,
     requestNumber: f.designRequest?.requestNumber ?? null,
+    designRequestId: f.designRequestId,
+    customerBpId: f.customerBpId,
+    customerName: localized(f.customerBp?.name as LocalizedText | null) || null,
+    usedByWorkOrder: f._count.workOrders > 0,
     notes: f.notes,
     createdAt: f.createdAt.toISOString(),
   }));
 }
 
-/**
- * 製品の最新版から、**見せたい 1 件**を返す（製品・指示書のサムネイル用）。
- *
- * 優先は PREVIEW → BLUEPRINT。3D プレビュー用に上げたファイルがあれば
- * それを見せ、無ければ図面データ（PDF 等）を見せる。版一覧は要らず
- * 「いま何を見て作るか」だけが要る画面のための細い口。
- */
-export async function fetchLatestViewableDesignFile(
-  productId: number,
-): Promise<ProductDesignFile | null> {
-  const rows = await prisma.designFile.findMany({
-    where: {
-      productId,
-      isLatest: true,
-      role: { in: ["PREVIEW", "BLUEPRINT"] },
-    },
-    include: {
-      file: { select: { filename: true, mimeType: true } },
-      designRequest: { select: { requestNumber: true } },
-    },
-    orderBy: [{ version: "desc" }, { role: "asc" }],
-  });
-  // role の enum 順が PREVIEW → BLUEPRINT なので、先頭がそのまま優先分。
-  const f = rows[0];
-  if (!f) return null;
+/** design_files 1 行 → 画面の型（取り出し方をここ 1 箇所に閉じる）。 */
+type DesignFileRow = {
+  id: string;
+  version: number;
+  isLatest: boolean;
+  role: string;
+  notes: string | null;
+  createdAt: Date;
+  customerBpId: string | null;
+  designRequestId: string | null;
+  file: { filename: string; mimeType: string };
+  designRequest: { requestNumber: string } | null;
+  customerBp: { name: unknown } | null;
+  _count: { workOrders: number };
+};
+
+function toProductDesignFile(f: DesignFileRow): ProductDesignFile {
   return {
     id: f.id,
     version: f.version,
@@ -297,9 +304,76 @@ export async function fetchLatestViewableDesignFile(
     mimeType: f.file.mimeType,
     filename: f.file.filename,
     requestNumber: f.designRequest?.requestNumber ?? null,
+    designRequestId: f.designRequestId,
+    customerBpId: f.customerBpId,
+    customerName: localized(f.customerBp?.name as LocalizedText | null) || null,
+    usedByWorkOrder: f._count.workOrders > 0,
     notes: f.notes,
     createdAt: f.createdAt.toISOString(),
   };
+}
+
+const DESIGN_FILE_INCLUDE = {
+  file: { select: { filename: true, mimeType: true } },
+  designRequest: { select: { requestNumber: true } },
+  customerBp: { select: { name: true } },
+  _count: { select: { workOrders: true } },
+} as const;
+
+/**
+ * 指示書などに出す「いま何を見て作るか」の 1 件。
+ *
+ * **受注元で見る系列が変わる。** 顧客一致の系列を優先し、無ければ汎用へ落ちる
+ * （他の顧客専用の系列へは決して落ちない — 落とすと B の指示書に A の図面が
+ * 黙って出て、気づかないまま違う物を作る）。優先規則は
+ * lib/design-files-core resolveSeriesCustomer が唯一の定義元。
+ *
+ * 役割の優先は PREVIEW → BLUEPRINT。3D プレビュー用に上げたファイルがあれば
+ * それを見せ、無ければ図面データ（PDF 等）を見せる。
+ */
+export async function fetchLatestViewableDesignFile(
+  productId: number,
+  customerBpId: string | null = null,
+): Promise<ProductDesignFile | null> {
+  const rows = await prisma.designFile.findMany({
+    where: {
+      productId,
+      isLatest: true,
+      role: { in: ["PREVIEW", "BLUEPRINT"] },
+    },
+    include: DESIGN_FILE_INCLUDE,
+    orderBy: [{ version: "desc" }, { role: "asc" }],
+  });
+  if (rows.length === 0) return null;
+  const series = resolveSeriesCustomer(
+    rows.map((r) => ({
+      id: r.id,
+      version: r.version,
+      isLatest: r.isLatest,
+      role: r.role as DesignFileRole,
+      customerBpId: r.customerBpId,
+      designRequestId: r.designRequestId,
+    })),
+    customerBpId,
+  );
+  if (series === undefined) return null;
+  // role の enum 順が PREVIEW → BLUEPRINT なので、先頭がそのまま優先分。
+  const f = rows.find((r) => (r.customerBpId ?? null) === series);
+  return f ? toProductDesignFile(f as DesignFileRow) : null;
+}
+
+/**
+ * 版を id で 1 件（指示書がピン留めしている版を出すため）。
+ * ピン留めは系列の優先規則を**上書きする** — 人が明示的に選んだものが勝つ。
+ */
+export async function fetchDesignFileById(
+  id: string,
+): Promise<ProductDesignFile | null> {
+  const f = await prisma.designFile.findUnique({
+    where: { id },
+    include: DESIGN_FILE_INCLUDE,
+  });
+  return f ? toProductDesignFile(f as DesignFileRow) : null;
 }
 
 /** 製品に紐づく設計依頼（製品詳細 関連タブ）。 */
@@ -321,14 +395,20 @@ export interface QuoteOption {
  * 判定規則そのものは actions.ts の detectDesignKind と同じ（design_files の存在）
  * — あちらは保存する値を決め、こちらは画面に見せる。
  */
-export async function fetchDesignKindContext(productId: string): Promise<{
+export async function fetchDesignKindContext(
+  productId: string,
+  customerBpId: string | null = null,
+): Promise<{
   detection: DesignKindDetection;
   versions: QuoteOption[];
 } | null> {
   const id = Number(productId);
   if (!Number.isInteger(id) || id <= 0) return null;
+  // 版は (製品 × 受注元) ごとの系列なので、**その系列だけ**を見て数える。
+  // 「顧客 A には図面があるが B にはまだ無い」は B から見れば新規で、
+  // 製品全体で数えると改訂に見えてしまう。
   const rows = await prisma.designFile.findMany({
-    where: { productId: id },
+    where: { productId: id, customerBpId },
     include: { file: { select: { filename: true } } },
     orderBy: [{ version: "desc" }, { role: "asc" }],
     take: 50,
@@ -375,7 +455,7 @@ export async function fetchRecentQuoteOptions(): Promise<QuoteOption[]> {
  */
 export async function fetchQuoteRef(
   quoteNumber: string,
-): Promise<QuoteOption | null> {
+): Promise<(QuoteOption & { customerBpId: string | null }) | null> {
   const { parseDocKey } = await import("@/lib/doc-number");
   const key = parseDocKey(quoteNumber, "QOT");
   if (!key) return null;
@@ -388,7 +468,23 @@ export async function fetchQuoteRef(
   return {
     value: number,
     label: `${number} ${localized(r.customerBp.name as LocalizedText | null)}`,
+    // 起票時に「版がどの系列に載るか」の既定を決めるために要る。
+    customerBpId: r.customerBpId,
   };
+}
+
+/**
+ * 注文明細の顧客（`?orderLine=` 起票時の受注元の既定）。
+ * 顧客は明細ではなく注文請書ヘッダが持つ（明細に複写すると乖離するため）。
+ */
+export async function fetchOrderLineCustomerBpId(
+  orderLineId: string,
+): Promise<string | null> {
+  const r = await prisma.orderLine.findUnique({
+    where: { id: orderLineId },
+    select: { acceptance: { select: { customerBpId: true } } },
+  });
+  return r?.acceptance.customerBpId ?? null;
 }
 
 /** 製品 1 件の参照解決（`?product=<id>` プリフィル用）。 */

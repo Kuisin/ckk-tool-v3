@@ -1,4 +1,5 @@
 import { notFound, redirect } from "next/navigation";
+import { fetchBillingOptions } from "@/app/(dashboard)/master/_shared/bp-data";
 import { DesignRequestForm } from "@/components/sales/design-requests/DesignRequestForm";
 import { isEditable } from "@/components/sales/design-requests/model";
 import { requireAppRead } from "@/lib/authz-page";
@@ -22,9 +23,10 @@ export default async function SalesDesignRequestsEditPage({
   const denied = await requireAppRead("design-requests");
   if (denied) return denied;
   const { id } = await params;
-  const [request, assigneeOptions] = await Promise.all([
+  const [request, assigneeOptions, customerOptions] = await Promise.all([
     fetchDesignRequest(decodeURIComponent(id)),
     fetchEmployeeOptions(),
+    fetchBillingOptions(),
   ]);
   if (!request) notFound();
   if (!isEditable(request)) {
@@ -34,6 +36,7 @@ export default async function SalesDesignRequestsEditPage({
   return (
     <DesignRequestForm
       assigneeOptions={assigneeOptions}
+      customerOptions={customerOptions}
       mode="edit"
       request={request}
     />

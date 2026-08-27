@@ -9,7 +9,7 @@
  * 履歴タブは audit_logs 導入後に接続する（現状は空表示）。
  */
 
-import { Badge, Box, Stack, Table, Tabs, Text } from "@mantine/core";
+import { Badge, Stack, Table, Tabs, Text } from "@mantine/core";
 import {
   IconCircleMinus,
   IconCopy,
@@ -20,14 +20,12 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { useFormat } from "@/components/layout/PreferencesProvider";
 import { KeywordBadges } from "@/components/master/MasterKeywordsField";
-import { DesignFileList } from "@/components/sales/design-requests/DesignFileList";
 import { DesignRequestLinks } from "@/components/sales/design-requests/DesignRequestLinks";
 import type {
   DesignRequestLink,
   ProductDesignFile,
 } from "@/components/sales/design-requests/model";
 import { ActiveBadge } from "@/components/ui/ActiveBadge";
-import { DesignFileThumb } from "@/components/ui/DesignFileViewer";
 import { DocNumber } from "@/components/ui/DocNumber";
 import { FieldValue } from "@/components/ui/FieldValue";
 import { HistoryPanel } from "@/components/ui/HistoryPanel";
@@ -41,6 +39,7 @@ import { useTabParam } from "@/hooks/useUrlState";
 import { useIsMobile } from "@/hooks/useViewport";
 import type { RouteView } from "@/lib/product-routes-core";
 import { isReservedSpecKey } from "@/lib/product-types";
+import { ProductDesignFiles } from "./ProductDesignFiles";
 import {
   DeleteProductModal,
   DuplicateProductModal,
@@ -93,6 +92,8 @@ export function ProductDetail({
   auditEntries,
   routes,
   designFiles = [],
+  customerOptions = [],
+  canManageDesign = false,
   designRequests = [],
 }: {
   record: ProductDetailData;
@@ -101,6 +102,10 @@ export function ProductDetail({
   routes: RouteView[];
   /** この製品の設計図（版一覧）— 関連タブ。 */
   designFiles?: ProductDesignFile[];
+  /** 版を載せられる受注元（CUSTOMER ロールの取引先）。 */
+  customerOptions?: { value: string; label: string }[];
+  /** 設計図を足す・直す権限があるか。 */
+  canManageDesign?: boolean;
   /** この製品に紐づく設計依頼 — 関連タブ。 */
   designRequests?: DesignRequestLink[];
 }) {
@@ -111,9 +116,6 @@ export function ProductDetail({
   const [tab, setTab] = useTabParam("overview");
 
   // サムネイルに出す 1 件 — 3D プレビューがあればそれ、無ければ図面データ。
-  const latestPreview =
-    designFiles.find((f) => f.isLatest && f.role === "PREVIEW") ??
-    designFiles.find((f) => f.isLatest && f.role === "BLUEPRINT");
 
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [duplicateOpen, setDuplicateOpen] = useState(false);
@@ -260,43 +262,15 @@ export function ProductDetail({
 
         <Tabs.Panel pt="md" value="related">
           <Stack gap="lg">
-            {/* 設計図 — 差し替えは設計依頼 (SA06) の「完了」でのみ行う。
-                版採番と is_latest の整合を 1 tx で守るため、ここは読むだけ。 */}
-            <Stack gap="xs">
-              <Text fw={600} size="sm">
-                設計図
-              </Text>
-              {designFiles.length === 0 ? (
-                <Text c="dimmed" size="sm">
-                  この製品の設計図はまだありません
-                </Text>
-              ) : (
-                <>
-                  {/* 最新の主図面だけサムネイルで出す。押すと拡大。
-                      版を全部サムネイルにすると 3D が何枚も WebGL を起こす。 */}
-                  {latestPreview && (
-                    <Box maw={320}>
-                      <DesignFileThumb
-                        target={{
-                          caption: `v${latestPreview.version}（最新）`,
-                          filename: latestPreview.filename,
-                          mimeType: latestPreview.mimeType,
-                          src: `/api/design-files/${encodeURIComponent(latestPreview.id)}`,
-                        }}
-                      />
-                    </Box>
-                  )}
-                  <DesignFileList
-                    onOpenRequest={(n) =>
-                      router.push(
-                        `/sales/design-requests/${encodeURIComponent(n)}`,
-                      )
-                    }
-                    rows={designFiles}
-                  />
-                </>
-              )}
-            </Stack>
+            {/* 設計図 — 系列（製品 × 受注元）ごとに分けて出す。
+                版の差し替えは「新しい版を作る」操作だけで、過去の版は
+                書き換えない（何を見て作ったかを追えるようにするため）。 */}
+            <ProductDesignFiles
+              canManage={canManageDesign}
+              customerOptions={customerOptions}
+              files={designFiles}
+              productId={record.id}
+            />
 
             <Stack gap="xs">
               <Text fw={600} size="sm">

@@ -1,9 +1,13 @@
 import { notFound } from "next/navigation";
-import { fetchLatestViewableDesignFile } from "@/app/(dashboard)/sales/design-requests/data";
+import {
+  fetchDesignFileById,
+  fetchLatestViewableDesignFile,
+} from "@/app/(dashboard)/sales/design-requests/data";
 import { WorkOrderDetail } from "@/components/production/work-orders/WorkOrderDetail";
 import { fetchApprovalState } from "@/lib/approvals";
 import { fetchAuditEntries } from "@/lib/audit";
 import { requireAppRead } from "@/lib/authz-page";
+import { prisma } from "@/lib/db";
 import { listMemos } from "@/lib/document-memos";
 import {
   fetchPendingFlowChange,
@@ -57,11 +61,44 @@ export default async function ProductionWorkOrdersDetailPage({
   ]);
   if (!workOrder) notFound();
 
-  // 現場が「何を見て作るか」— 製品の最新の主図面をサムネイルで出す。
-  // 指示書は製品を必ず持つ（work_orders.product_id は NOT NULL）。
-  const designFile = workOrder.productId
-    ? await fetchLatestViewableDesignFile(Number(workOrder.productId))
-    : null;
+  // 現場が「何を見て作るか」。
+  //
+  // 図面は **(製品 × 受注元)** ごとに系列が分かれるので、この指示書の顧客を
+  // 先に決めてから引く。指示書が版をピン留めしていれば、それが優先される
+  // （人が明示的に選んだものが系列の優先規則に勝つ）。
+  const woDesign = await prisma.workOrder.findUnique({
+    where: { workOrderNumber },
+    select: {
+      productId: true,
+      designFileId: true,
+      orderLineLinks: {
+        select: {
+          orderLine: {
+            select: { acceptance: { select: { customerBpId: true } } },
+          },
+        },
+      },
+    },
+  });
+  // 複数の注文明細を束ねた指示書は顧客が 1 人に定まらないことがある。
+  // **定まるときだけ**その顧客の系列を見て、混在していれば汎用へ落とす
+  // （どちらか一方の顧客の図面を勝手に選ぶと、もう一方が黙って間違う）。
+  const woCustomers = [
+    ...new Set(
+      (woDesign?.orderLineLinks ?? [])
+        .map((l) => l.orderLine.acceptance.customerBpId)
+        .filter((v): v is string => v != null),
+    ),
+  ];
+  const designCustomerBpId = woCustomers.length === 1 ? woCustomers[0] : null;
+  const designFile = woDesign?.designFileId
+    ? await fetchDesignFileById(woDesign.designFileId)
+    : woDesign?.productId
+      ? await fetchLatestViewableDesignFile(
+          Number(woDesign.productId),
+          designCustomerBpId,
+        )
+      : null;
 
   // 承認待ちの工程フロー変更（承認設定が未設定の環境では常に null）。
   // 承認状態は「指示書」ではなく「変更そのもの」に付くので別で引く。
@@ -81,6 +118,7 @@ export default async function ProductionWorkOrdersDetailPage({
       auditEntries={auditEntries}
       catalogOptions={catalogOptions}
       designFile={designFile}
+      designPinned={woDesign?.designFileId != null}
       flowChange={pendingFlowChange}
       flowChangeApproval={flowChangeApproval}
       memos={memos}

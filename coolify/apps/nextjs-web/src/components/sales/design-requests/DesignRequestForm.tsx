@@ -85,6 +85,8 @@ const schema = z
     // 新規品でも「先に製品を登録する」で運用が回る。
     productId: z.string().min(1, "製品を選択してください"),
     productName: z.string(),
+    /** 版が載る系列。null = 汎用（どの顧客の指示書からも使える）。 */
+    customerBpId: z.string().nullable(),
     assigneeId: z.string().min(1, "担当者を選択してください"),
     /** null = 自動判定に従う。値が入っていれば手動指定。 */
     kind: z.enum(["NEW", "REVISION"]).nullable(),
@@ -114,6 +116,7 @@ function toFormValues(request: DesignRequest): FormValues {
     orderLineId: request.orderLineId,
     productId: request.productId ?? "",
     productName: request.productName ?? "",
+    customerBpId: request.customerBpId ?? null,
     assigneeId: request.assigneeId ?? "",
     // 保存済みの区分は「手動指定として復元」する — 自動判定に戻したいときは
     // 画面の「自動判定に戻す」で明示的に外す。
@@ -134,6 +137,8 @@ export function DesignRequestForm({
   initialQuote = null,
   initialOrderLine = null,
   initialProduct = null,
+  customerOptions = [],
+  initialCustomerBpId = null,
 }: {
   mode: "create" | "edit";
   /** 編集時: 対象設計依頼書（サーバー取得の view-model）。 */
@@ -148,6 +153,10 @@ export function DesignRequestForm({
   initialOrderLine?: QuoteOption | null;
   /** `?product=` 起票時の製品。 */
   initialProduct?: QuoteOption | null;
+  /** 版を載せられる受注元。 */
+  customerOptions?: QuoteOption[];
+  /** 起票元から引き継いだ受注元（見積・注文明細の顧客）。 */
+  initialCustomerBpId?: string | null;
 }) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
@@ -181,6 +190,8 @@ export function DesignRequestForm({
             orderLineId: initialOrderLine?.value ?? null,
             productId: initialProduct?.value ?? "",
             productName: initialProduct?.label ?? "",
+            // 見積・受注から起票したときはその顧客が既定になる。
+            customerBpId: initialCustomerBpId ?? null,
             assigneeId: "",
             kind: null,
             baseDesignFileId: null,
@@ -191,12 +202,15 @@ export function DesignRequestForm({
           },
   });
 
-  const loadKindContext = async (productId: string | null) => {
+  const loadKindContext = async (
+    productId: string | null,
+    customerBpId: string | null = form.values.customerBpId,
+  ) => {
     if (!productId) {
       setKindContext(null);
       return;
     }
-    const ctx = await fetchKindContextAction(productId);
+    const ctx = await fetchKindContextAction(productId, customerBpId);
     setKindContext(ctx);
     // 手動指定していなければ、元図面の既定は判定時点の最新版のまま（null）。
     if (ctx && !form.values.kind) form.setFieldValue("baseDesignFileId", null);
@@ -222,6 +236,7 @@ export function DesignRequestForm({
   const handleSubmit = (values: FormValues) => {
     const payload = {
       productId: values.productId,
+      customerBpId: values.customerBpId,
       assigneeId: values.assigneeId,
       kind: values.kind,
       baseDesignFileId: values.baseDesignFileId,
@@ -417,6 +432,22 @@ export function DesignRequestForm({
             storageKey="product"
             value={form.values.productId || null}
             withAsterisk
+          />
+          {/* 受注元 — 完成した版がどの系列に載るか。図面は (製品 × 受注元)
+              ごとに別々に育つので、ここが変わると区分（新規 / 改訂）の
+              判定結果も変わる。 */}
+          <Select
+            clearable
+            data={customerOptions}
+            description="空のままなら「汎用」— どの顧客の指示書からも使えます。版番号は受注元ごとに数えます"
+            label="受注元"
+            onChange={(v) => {
+              form.setFieldValue("customerBpId", v);
+              void loadKindContext(form.values.productId || null, v);
+            }}
+            placeholder="汎用（すべての顧客）"
+            searchable
+            value={form.values.customerBpId}
           />
           <Select
             data={assigneeOptions}
