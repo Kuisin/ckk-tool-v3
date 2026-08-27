@@ -1432,6 +1432,11 @@ Table design_requests {
 
 Ref: design_requests.(quote_year_month, quote_seq) > quotes.(year_month, seq)
 
+Enum DESIGN_FILE_ROLE {
+  PRIMARY         // 主図面（製品マスタの最新図面はこれ）
+  REFERENCE       // 参考資料（部品図・寸法表・3D モデルなど）
+}
+
 Enum DESIGN_TRIGGER {
   QUOTE           // 見積時（§1 と並行）
   SALES_ORDER     // 受注時（§3 と並行）
@@ -1467,6 +1472,11 @@ Enum DESIGN_STATUS {
 
 // 製品の「最新図面」はここが正 — products 側に design_file_id 列は無い。
 // 版採番と両側の is_latest クリアは completeDesign の 1 tx が唯一の管理者。
+//
+// **同じ version の行が複数あってよい。** 1 回の完了で上げたファイルはすべて
+// 同じ version・同じ is_latest を持ち、role（主図面 1 枚 / 参考資料 0..N 枚）
+// だけが違う。version は「図面の改訂世代」でファイルの通し番号ではない。
+// 製品の最新図面 = is_latest かつ role = PRIMARY の 1 行。
 Table design_files {
   id              uuid [pk]
   design_request_id uuid [ref: > design_requests.id]
@@ -1474,6 +1484,7 @@ Table design_files {
   file_id         uuid [not null, ref: > files.id]
   version         int [not null, default: 1]
   is_latest       boolean [not null, default: true]
+  role            DESIGN_FILE_ROLE [not null, default: 'PRIMARY']
   notes           text
   created_by      uuid [ref: > users.id]
   created_at      timestamp

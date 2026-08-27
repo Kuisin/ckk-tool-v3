@@ -768,8 +768,23 @@ export async function startDesign(number: string): Promise<ActionResult> {
   }
 }
 
-/** 完了 (IN_PROGRESS → COMPLETED)。completedAt を記録する。 */
-export async function completeDesign(number: string): Promise<ActionResult> {
+/**
+ * 完了 (IN_PROGRESS → COMPLETED)。completedAt を記録する。
+ *
+ * 1 回の完了 = 1 版。選んだ添付をまとめてその版に登録し、**主図面 1 枚**が
+ * PRIMARY、残りが REFERENCE になる。version は図面の改訂世代なので、同時に
+ * 出したファイルは同じ番号を共有する（ファイルごとに採番すると「v3 にして」が
+ * 何を指すか分からなくなる）。
+ */
+export async function completeDesign(
+  number: string,
+  input?: {
+    /** 主図面にする添付 id。省略時はいちばん新しい添付。 */
+    primaryAttachmentId?: string | null;
+    /** この版に含める添付 id。省略時は添付すべて。 */
+    attachmentIds?: string[] | null;
+  },
+): Promise<ActionResult> {
   const authz = await checkPermission("design_request", "UPDATE");
   if (!authz.ok) return actionError(authz.error);
   try {
@@ -778,7 +793,18 @@ export async function completeDesign(number: string): Promise<ActionResult> {
     if (attachments.length === 0) {
       return actionError("設計ファイルを添付してから完了してください");
     }
-    const latest = attachments[0]; // listAttachments は新しい順
+    // 指定があればその順・その範囲だけを版に含める。存在しない id は黙って
+    // 捨てる（画面が古いまま送ってきても、実在する添付だけが登録される）。
+    const wanted = input?.attachmentIds?.length
+      ? attachments.filter((a) => input.attachmentIds?.includes(a.id))
+      : attachments;
+    if (wanted.length === 0) {
+      return actionError("この版に含めるファイルを 1 件以上選んでください");
+    }
+    // listAttachments は新しい順。主図面の既定はいちばん新しいもの。
+    const primary =
+      wanted.find((a) => a.id === input?.primaryAttachmentId) ?? wanted[0];
+    const references = wanted.filter((a) => a.id !== primary.id);
 
     const request = await prisma.designRequest.findUnique({
       where: { requestNumber: number },
@@ -849,15 +875,28 @@ export async function completeDesign(number: string): Promise<ActionResult> {
           data: { isLatest: false },
         });
       }
-      await tx.designFile.create({
-        data: {
-          designRequestId: request.id,
-          productId: request.productId,
-          fileId: latest.fileId,
-          version,
-          isLatest: true,
-          createdBy: actor,
-        },
+      // 主図面 → 参考資料 の順で、同じ version・同じ is_latest で並べる。
+      await tx.designFile.createMany({
+        data: [
+          {
+            designRequestId: request.id,
+            productId: request.productId,
+            fileId: primary.fileId,
+            version,
+            isLatest: true,
+            role: "PRIMARY" as const,
+            createdBy: actor,
+          },
+          ...references.map((a) => ({
+            designRequestId: request.id,
+            productId: request.productId,
+            fileId: a.fileId,
+            version,
+            isLatest: true,
+            role: "REFERENCE" as const,
+            createdBy: actor,
+          })),
+        ],
       });
     });
     await recordAudit({
@@ -867,7 +906,7 @@ export async function completeDesign(number: string): Promise<ActionResult> {
       before: { status: "IN_PROGRESS" },
       after: {
         status: "COMPLETED",
-        note: `設計ファイル登録（${latest.filename}）${request.productId != null ? " + 製品の最新設計を更新" : ""}`,
+        note: `設計ファイル登録（主図面 ${primary.filename}${references.length > 0 ? ` + 参考資料 ${references.length} 件` : ""}）${request.productId != null ? " + 製品の最新設計を更新" : ""}`,
         ...(staleBase ? { staleBaseVersion: staleBase.version } : {}),
       },
     });
@@ -877,7 +916,7 @@ export async function completeDesign(number: string): Promise<ActionResult> {
       actor,
       type: "DESIGN",
       title: `設計依頼 ${number} の図面ができました`,
-      message: latest.filename,
+      message: `${primary.filename}${references.length > 0 ? `（ほか ${references.length} 件）` : ""}`,
       number,
     });
     revalidate(number);

@@ -13,6 +13,7 @@
  * 削除は無い — 版は履歴なので消さない（差し替えは新しい版を足す）。
  */
 
+import { isInlineSafe } from "@/lib/attachments";
 import { requirePermissionResponse } from "@/lib/authz";
 import { prisma } from "@/lib/db";
 import { contentTypeForKey, getObject } from "@/lib/storage";
@@ -46,14 +47,21 @@ export async function GET(
 
   const contentType =
     row.file.mimeType || contentTypeForKey(row.file.storageKey);
-  const inline =
-    contentType === "application/pdf" || contentType.startsWith("image/");
+  // インライン表示は PDF / 画像 / 3D だけ。それ以外は必ずダウンロードにする
+  // （SVG・HTML を inline で返すと保存 XSS になる。判定は lib/attachments の
+  //  isInlineSafe が唯一の持ち主）。
+  const inline = isInlineSafe(contentType);
   const encodedName = encodeURIComponent(row.file.filename);
   return new Response(bytes, {
     status: 200,
     headers: {
       "content-type": contentType,
       "content-disposition": `${inline ? "inline" : "attachment"}; filename="${encodedName}"; filename*=UTF-8''${encodedName}`,
+      // 申告 MIME を勝手に読み替えさせない（sniffing 経由の HTML 実行を塞ぐ）。
+      "x-content-type-options": "nosniff",
+      // 万一 inline で開かれても、スクリプト・同一オリジンを与えない。
+      "content-security-policy":
+        "sandbox; default-src 'none'; img-src 'self' data:; object-src 'self'",
     },
   });
 }

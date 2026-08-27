@@ -117,6 +117,8 @@ export interface ProductDesignFile {
   id: string;
   version: number;
   isLatest: boolean;
+  role: DesignFileRole;
+  mimeType: string;
   filename: string;
   /** 生成元の設計依頼（DSG-…）。手動登録の版は null。 */
   requestNumber: string | null;
@@ -124,11 +126,20 @@ export interface ProductDesignFile {
   createdAt: string;
 }
 
+/** 版の中での役割（主図面 1 枚 + 参考資料 0..N 枚）。 */
+export type DesignFileRole = "PRIMARY" | "REFERENCE";
+
+export const DESIGN_FILE_ROLE_LABEL: Record<DesignFileRole, string> = {
+  PRIMARY: "主図面",
+  REFERENCE: "参考資料",
+};
+
 /** ファイルタブの1行（design_files + files の抜粋）。 */
 export interface DesignRequestFile {
   id: string;
   version: number;
   isLatest: boolean;
+  role: DesignFileRole;
   filename: string;
   mimeType: string;
   sizeBytes: number;

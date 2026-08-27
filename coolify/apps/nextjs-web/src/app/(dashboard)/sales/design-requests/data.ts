@@ -8,6 +8,7 @@
  */
 
 import type {
+  DesignFileRole,
   DesignKindDetection,
   DesignRequest,
   DesignRequestHistoryView,
@@ -60,7 +61,7 @@ const DETAIL_INCLUDE = {
   // ファイルタブ — 最新バージョンから順に。
   files: {
     include: { file: true },
-    orderBy: { version: "desc" as const },
+    orderBy: [{ version: "desc" as const }, { role: "asc" as const }],
   },
 };
 
@@ -180,6 +181,7 @@ export async function fetchDesignRequest(
       id: f.id,
       version: f.version,
       isLatest: f.isLatest,
+      role: f.role as DesignFileRole,
       filename: f.file.filename,
       mimeType: f.file.mimeType,
       sizeBytes: Number(f.file.sizeBytes ?? 0),
@@ -243,16 +245,18 @@ export async function fetchDesignFilesForProduct(
   const rows = await prisma.designFile.findMany({
     where: { productId },
     include: {
-      file: { select: { filename: true } },
+      file: { select: { filename: true, mimeType: true } },
       designRequest: { select: { requestNumber: true } },
     },
-    orderBy: { version: "desc" },
+    orderBy: [{ version: "desc" }, { role: "asc" }],
     take: 20,
   });
   return rows.map((f) => ({
     id: f.id,
     version: f.version,
     isLatest: f.isLatest,
+    role: f.role as DesignFileRole,
+    mimeType: f.file.mimeType,
     filename: f.file.filename,
     requestNumber: f.designRequest?.requestNumber ?? null,
     notes: f.notes,
@@ -288,7 +292,7 @@ export async function fetchDesignKindContext(productId: string): Promise<{
   const rows = await prisma.designFile.findMany({
     where: { productId: id },
     include: { file: { select: { filename: true } } },
-    orderBy: { version: "desc" },
+    orderBy: [{ version: "desc" }, { role: "asc" }],
     take: 50,
   });
   const latest = rows.find((r) => r.isLatest) ?? rows[0] ?? null;

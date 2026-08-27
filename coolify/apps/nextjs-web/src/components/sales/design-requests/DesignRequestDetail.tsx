@@ -97,6 +97,7 @@ import {
   DESIGN_TRIGGER_LABEL,
 } from "@/lib/enum-labels";
 import type { ActionResult } from "@/lib/server-action";
+import { CompleteDesignModal } from "./CompleteDesignModal";
 import {
   canAttachFiles,
   canComplete,
@@ -310,8 +311,8 @@ export function DesignRequestDetail({
         }
         description={
           attachments.length === 0
-            ? "完了するには「ファイル」タブから図面を 1 件以上添付してください"
-            : "いちばん新しい添付が版として登録されます"
+            ? "完了するとファイルを選んで版として登録します（この場で追加もできます）"
+            : `添付 ${attachments.length} 件から主図面を選んで、ひとつの版として登録します`
         }
         icon={<IconCheck size={20} />}
         title="図面ができたら完了できます"
@@ -665,6 +666,11 @@ export function DesignRequestDetail({
                         <Table.Td className="tabular-nums" ta="right">
                           <Group gap="xs" justify="flex-end" wrap="nowrap">
                             v{f.version}
+                            {f.role === "PRIMARY" && (
+                              <Badge color="blue" variant="light">
+                                主図面
+                              </Badge>
+                            )}
                             {f.isLatest && (
                               <Badge color="green" variant="light">
                                 最新
@@ -719,17 +725,19 @@ export function DesignRequestDetail({
         </Tabs.Panel>
       </Tabs>
 
-      <ConfirmModal
-        confirmColor="blue"
-        confirmLabel="完了"
+      <CompleteDesignModal
+        attachments={attachments}
         loading={isPending}
-        message={`設計依頼書 ${request.requestNumber} を完了します。いちばん新しい添付が版として登録され、完了日時が記録されます。`}
         onClose={() => setCompleteOpen(false)}
-        onConfirm={() =>
-          run(() => completeDesign(request.requestNumber), "完了しました")
+        onConfirm={(input) =>
+          run(
+            () => completeDesign(request.requestNumber, input),
+            "完了しました",
+          )
         }
         opened={completeOpen}
-        title="完了の確認"
+        ownerType="design_requests"
+        requestNumber={request.requestNumber}
       />
       <ConfirmModal
         confirmLabel="差し戻す"
