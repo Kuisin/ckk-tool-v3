@@ -29,6 +29,7 @@ import {
   IconClipboardList,
   IconLock,
   IconPackageImport,
+  IconRuler2,
   IconSettings2,
   IconTruck,
 } from "@tabler/icons-react";
@@ -36,6 +37,8 @@ import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { runStockCheck } from "@/app/(dashboard)/sales/order-lines/actions";
 import { useFormat } from "@/components/layout/PreferencesProvider";
+import { DesignRequestLinks } from "@/components/sales/design-requests/DesignRequestLinks";
+import type { DesignRequestLink } from "@/components/sales/design-requests/model";
 import { SecondaryButton } from "@/components/ui/buttons";
 import { DocNumber } from "@/components/ui/DocNumber";
 import { EmptyState } from "@/components/ui/EmptyState";
@@ -170,12 +173,15 @@ export function OrderLineDetail({
   order,
   auditEntries,
   memos,
+  designRequests = [],
 }: {
   order: OrderLine;
   /** 操作履歴（audit_logs 由来、履歴タブ）。 */
   auditEntries: AuditEntry[];
   /** 社内メモ（document_memos 由来、メモタブ）。 */
   memos: MemoView[];
+  /** この注文明細に紐づく設計依頼（§10 — 設計タブ）。 */
+  designRequests?: DesignRequestLink[];
 }) {
   const fmt = useFormat();
   const router = useRouter();
@@ -205,6 +211,7 @@ export function OrderLineDetail({
             ? "出荷段階の明細には作成できません"
             : undefined;
   const woCreateHref = `/production/work-orders/new?orderLine=${order.uuid}`;
+  const designCreateHref = `/sales/design-requests/new?orderLine=${order.uuid}`;
 
   // 出荷書作成の可否 — 確定済み以降（キャンセル・全量出荷済みを除く）で
   // 未出荷数量が残っているときだけ。プリフィルは ?orderLine= が担う。
@@ -278,6 +285,17 @@ export function OrderLineDetail({
                 disabled: !doCreatable,
                 disabledReason: doDisabledReason,
                 onClick: () => router.push(doCreateHref),
+              },
+              // §10 設計依頼は受注と並行する任意の側枝なので、NextStepCard
+              // （＝唯一の次の一歩）ではなくここに置く。
+              {
+                label: "設計依頼を起票",
+                icon: <IconRuler2 size={14} />,
+                disabled: order.isLocked || order.status === "CANCELLED",
+                disabledReason: order.isLocked
+                  ? "承認依頼中のためロックされています"
+                  : "キャンセル済みの明細には起票できません",
+                onClick: () => router.push(designCreateHref),
               },
             ]}
           />
@@ -435,6 +453,7 @@ export function OrderLineDetail({
           <Tabs.Tab value="shipping">
             出荷（{order.deliveryOrders.length}）
           </Tabs.Tab>
+          <Tabs.Tab value="design">設計（{designRequests.length}）</Tabs.Tab>
           <Tabs.Tab value="memo">メモ</Tabs.Tab>
           <Tabs.Tab value="history">履歴</Tabs.Tab>
         </Tabs.List>
@@ -584,6 +603,20 @@ export function OrderLineDetail({
         </Tabs.Panel>
 
         {/* keepMounted={false}: エディタ（prosemirror）はタブを開くまで読み込まない。 */}
+        <Tabs.Panel pt="md" value="design">
+          <DesignRequestLinks
+            createDisabledReason={
+              order.isLocked
+                ? "承認依頼中のためロックされています"
+                : order.status === "CANCELLED"
+                  ? "キャンセル済みの明細には起票できません"
+                  : undefined
+            }
+            createHref={designCreateHref}
+            links={designRequests}
+          />
+        </Tabs.Panel>
+
         <Tabs.Panel keepMounted={false} pt="md" value="memo">
           <MemoPanel
             memos={memos}

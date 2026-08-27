@@ -1,5 +1,9 @@
 import { notFound } from "next/navigation";
 import {
+  fetchDesignFilesForProduct,
+  fetchDesignRequestsForProduct,
+} from "@/app/(dashboard)/sales/design-requests/data";
+import {
   ProductDetail,
   type ProductDetailData,
 } from "@/components/master/products/ProductDetail";
@@ -25,23 +29,28 @@ export default async function MasterProductsDetailPage({
   const { id: idParam } = await params;
   const id = Number(idParam);
   if (!Number.isInteger(id)) notFound();
-  const [r, auditEntries, routes] = await Promise.all([
-    prisma.product.findUnique({
-      where: { id },
-      include: {
-        materialType: { select: { code: true, name: true } },
-        priceListEntries: {
-          include: {
-            customerBp: true,
-            variants: { orderBy: { orderType: "asc" } },
+  const [r, auditEntries, routes, designFiles, designRequests] =
+    await Promise.all([
+      prisma.product.findUnique({
+        where: { id },
+        include: {
+          materialType: { select: { code: true, name: true } },
+          priceListEntries: {
+            include: {
+              customerBp: true,
+              variants: { orderBy: { orderType: "asc" } },
+            },
+            orderBy: { createdAt: "desc" },
           },
-          orderBy: { createdAt: "desc" },
         },
-      },
-    }),
-    fetchAuditEntries("products", String(id)),
-    listProductRoutes(id),
-  ]);
+      }),
+      fetchAuditEntries("products", String(id)),
+      listProductRoutes(id),
+      // 製品の最新図面は design_files（product_id + is_latest）が正。
+      // products 側に design_file_id 列は無い。
+      fetchDesignFilesForProduct(id),
+      fetchDesignRequestsForProduct(id),
+    ]);
   if (!r) notFound();
 
   const name = r.name as LocalizedText | null;
@@ -97,6 +106,8 @@ export default async function MasterProductsDetailPage({
   return (
     <ProductDetail
       auditEntries={auditEntries}
+      designFiles={designFiles}
+      designRequests={designRequests}
       record={record}
       routes={routes}
     />

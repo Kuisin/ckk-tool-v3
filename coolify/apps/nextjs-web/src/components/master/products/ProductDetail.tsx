@@ -9,12 +9,22 @@
  * 履歴タブは audit_logs 導入後に接続する（現状は空表示）。
  */
 
-import { Badge, Stack, Table, Tabs, Text } from "@mantine/core";
-import { IconCircleMinus, IconCopy, IconTrash } from "@tabler/icons-react";
+import { Anchor, Badge, Group, Stack, Table, Tabs, Text } from "@mantine/core";
+import {
+  IconCircleMinus,
+  IconCopy,
+  IconRuler2,
+  IconTrash,
+} from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { useFormat } from "@/components/layout/PreferencesProvider";
 import { KeywordBadges } from "@/components/master/MasterKeywordsField";
+import { DesignRequestLinks } from "@/components/sales/design-requests/DesignRequestLinks";
+import type {
+  DesignRequestLink,
+  ProductDesignFile,
+} from "@/components/sales/design-requests/model";
 import { ActiveBadge } from "@/components/ui/ActiveBadge";
 import { DocNumber } from "@/components/ui/DocNumber";
 import { FieldValue } from "@/components/ui/FieldValue";
@@ -80,11 +90,17 @@ export function ProductDetail({
   record,
   auditEntries,
   routes,
+  designFiles = [],
+  designRequests = [],
 }: {
   record: ProductDetailData;
   auditEntries: AuditEntry[];
   /** 工程リスト（ルート）— 工程タブ。 */
   routes: RouteView[];
+  /** この製品の設計図（版一覧）— 関連タブ。 */
+  designFiles?: ProductDesignFile[];
+  /** この製品に紐づく設計依頼 — 関連タブ。 */
+  designRequests?: DesignRequestLink[];
 }) {
   const fmt = useFormat();
   const router = useRouter();
@@ -117,6 +133,14 @@ export function ProductDetail({
       actions={
         <ResourceActions
           menuItems={[
+            // 設計図を差し替える唯一の入口。マスタ側で直接置き換えさせない
+            // （版と is_latest の整合は設計依頼の完了が 1 tx で守っている）。
+            {
+              label: "設計依頼を起票",
+              icon: <IconRuler2 size={14} />,
+              onClick: () =>
+                router.push(`/sales/design-requests/new?product=${record.id}`),
+            },
             {
               label: "複製",
               icon: <IconCopy size={14} />,
@@ -228,51 +252,139 @@ export function ProductDetail({
         </Tabs.Panel>
 
         <Tabs.Panel pt="md" value="related">
-          <Stack gap="xs">
-            <Text fw={600} size="sm">
-              価格表エントリ
-            </Text>
-            {record.priceListEntries.length === 0 ? (
-              <Text c="dimmed" size="sm">
-                この製品の価格表エントリはありません
+          <Stack gap="lg">
+            {/* 設計図 — 差し替えは設計依頼 (SA06) の「完了」でのみ行う。
+                版採番と is_latest の整合を 1 tx で守るため、ここは読むだけ。 */}
+            <Stack gap="xs">
+              <Text fw={600} size="sm">
+                設計図
               </Text>
-            ) : (
-              <Table highlightOnHover striped withTableBorder>
-                <Table.Thead>
-                  <Table.Tr>
-                    <Table.Th>顧客</Table.Th>
-                    <Table.Th>注文種別</Table.Th>
-                    {!isMobile && <Table.Th>有効期間</Table.Th>}
-                    <Table.Th>状態</Table.Th>
-                  </Table.Tr>
-                </Table.Thead>
-                <Table.Tbody>
-                  {record.priceListEntries.map((e) => (
-                    <Table.Tr
-                      className="cursor-pointer"
-                      key={`${e.id}-${e.orderType}`}
-                      onClick={() => router.push(`/sales/price-lists/${e.id}`)}
-                    >
-                      <Table.Td>{e.customerName}</Table.Td>
-                      <Table.Td>
-                        <Badge color="gray" variant="light">
-                          {ORDER_TYPE_LABEL[e.orderType] ?? e.orderType}
-                        </Badge>
-                      </Table.Td>
-                      {!isMobile && (
-                        <Table.Td>
-                          {fmt.date(e.validFrom)} 〜{" "}
-                          {e.validUntil ? fmt.date(e.validUntil) : "無期限"}
-                        </Table.Td>
-                      )}
-                      <Table.Td>
-                        <ActiveBadge active={e.isActive} />
-                      </Table.Td>
+              {designFiles.length === 0 ? (
+                <Text c="dimmed" size="sm">
+                  この製品の設計図はまだありません
+                </Text>
+              ) : (
+                <Table highlightOnHover striped withTableBorder>
+                  <Table.Thead>
+                    <Table.Tr>
+                      <Table.Th w={110}>バージョン</Table.Th>
+                      <Table.Th>ファイル名</Table.Th>
+                      {!isMobile && <Table.Th w={170}>元依頼</Table.Th>}
+                      {!isMobile && <Table.Th w={150}>登録日時</Table.Th>}
                     </Table.Tr>
-                  ))}
-                </Table.Tbody>
-              </Table>
-            )}
+                  </Table.Thead>
+                  <Table.Tbody>
+                    {designFiles.map((f) => (
+                      <Table.Tr key={f.id}>
+                        <Table.Td className="tabular-nums">
+                          <Group gap="xs" wrap="nowrap">
+                            v{f.version}
+                            {f.isLatest && (
+                              <Badge color="green" variant="light">
+                                最新
+                              </Badge>
+                            )}
+                          </Group>
+                        </Table.Td>
+                        <Table.Td>
+                          <Anchor
+                            href={`/api/design-files/${encodeURIComponent(f.id)}`}
+                            size="sm"
+                            target="_blank"
+                          >
+                            {f.filename}
+                          </Anchor>
+                        </Table.Td>
+                        {!isMobile && (
+                          <Table.Td>
+                            {f.requestNumber ? (
+                              <Anchor
+                                onClick={() =>
+                                  router.push(
+                                    `/sales/design-requests/${encodeURIComponent(f.requestNumber ?? "")}`,
+                                  )
+                                }
+                                size="sm"
+                              >
+                                {f.requestNumber}
+                              </Anchor>
+                            ) : (
+                              <Text c="dimmed" size="sm">
+                                —
+                              </Text>
+                            )}
+                          </Table.Td>
+                        )}
+                        {!isMobile && (
+                          <Table.Td className="tabular-nums">
+                            {fmt.dateTime(f.createdAt)}
+                          </Table.Td>
+                        )}
+                      </Table.Tr>
+                    ))}
+                  </Table.Tbody>
+                </Table>
+              )}
+            </Stack>
+
+            <Stack gap="xs">
+              <Text fw={600} size="sm">
+                設計依頼
+              </Text>
+              <DesignRequestLinks
+                createHref={`/sales/design-requests/new?product=${record.id}`}
+                links={designRequests}
+              />
+            </Stack>
+
+            <Stack gap="xs">
+              <Text fw={600} size="sm">
+                価格表エントリ
+              </Text>
+              {record.priceListEntries.length === 0 ? (
+                <Text c="dimmed" size="sm">
+                  この製品の価格表エントリはありません
+                </Text>
+              ) : (
+                <Table highlightOnHover striped withTableBorder>
+                  <Table.Thead>
+                    <Table.Tr>
+                      <Table.Th>顧客</Table.Th>
+                      <Table.Th>注文種別</Table.Th>
+                      {!isMobile && <Table.Th>有効期間</Table.Th>}
+                      <Table.Th>状態</Table.Th>
+                    </Table.Tr>
+                  </Table.Thead>
+                  <Table.Tbody>
+                    {record.priceListEntries.map((e) => (
+                      <Table.Tr
+                        className="cursor-pointer"
+                        key={`${e.id}-${e.orderType}`}
+                        onClick={() =>
+                          router.push(`/sales/price-lists/${e.id}`)
+                        }
+                      >
+                        <Table.Td>{e.customerName}</Table.Td>
+                        <Table.Td>
+                          <Badge color="gray" variant="light">
+                            {ORDER_TYPE_LABEL[e.orderType] ?? e.orderType}
+                          </Badge>
+                        </Table.Td>
+                        {!isMobile && (
+                          <Table.Td>
+                            {fmt.date(e.validFrom)} 〜{" "}
+                            {e.validUntil ? fmt.date(e.validUntil) : "無期限"}
+                          </Table.Td>
+                        )}
+                        <Table.Td>
+                          <ActiveBadge active={e.isActive} />
+                        </Table.Td>
+                      </Table.Tr>
+                    ))}
+                  </Table.Tbody>
+                </Table>
+              )}
+            </Stack>
           </Stack>
         </Tabs.Panel>
 

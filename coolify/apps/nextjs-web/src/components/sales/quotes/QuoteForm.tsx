@@ -354,6 +354,11 @@ export function QuoteForm({
                 <Box flex={1}>
                   <ProductPriceResolverInput
                     customerId={form.values.customerId}
+                    // 単価が引けないのはたいてい「まだ図面が無い新規品」なので、
+                    // 保存できない旨だけを出さずに §10 設計依頼へ逃がす。
+                    designRequestHref={(productId) =>
+                      `/sales/design-requests/new?product=${encodeURIComponent(productId)}`
+                    }
                     entries={entries}
                     onChange={(next: ResolverValue) => {
                       form.setFieldValue(

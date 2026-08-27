@@ -1,0 +1,59 @@
+/**
+ * /api/design-files/[id] — 設計図（版）の配信。
+ *
+ * 設計依頼の完了で登録される `design_files` は `file_id → files` を直接指して
+ * いて、`document_attachments` の行ではない。そのため `/api/attachments/[id]`
+ * では開けず、版一覧はファイル名を並べるだけで**中身を見る手段が無かった**。
+ * ここがその手段。
+ *
+ * GET — SeaweedFS から本体をストリーム返却。PDF / 画像は inline、それ以外は
+ *       attachment。読める人は `design_request:READ` を持つ人（版は設計依頼の
+ *       成果物なので、依頼と同じ権限で見える）。
+ *
+ * 削除は無い — 版は履歴なので消さない（差し替えは新しい版を足す）。
+ */
+
+import { requirePermissionResponse } from "@/lib/authz";
+import { prisma } from "@/lib/db";
+import { contentTypeForKey, getObject } from "@/lib/storage";
+
+export const dynamic = "force-dynamic";
+
+type Params = { params: Promise<{ id: string }> };
+
+export async function GET(
+  _request: Request,
+  { params }: Params,
+): Promise<Response> {
+  const denied = await requirePermissionResponse("design_request", "READ");
+  if (denied) return denied;
+
+  const { id } = await params;
+  const designFileId = decodeURIComponent(id);
+
+  const row = await prisma.designFile.findUnique({
+    where: { id: designFileId },
+    include: {
+      file: {
+        select: { storageKey: true, filename: true, mimeType: true },
+      },
+    },
+  });
+  if (!row) return new Response("Not found", { status: 404 });
+
+  const bytes = await getObject(row.file.storageKey);
+  if (!bytes) return new Response("Not found", { status: 404 });
+
+  const contentType =
+    row.file.mimeType || contentTypeForKey(row.file.storageKey);
+  const inline =
+    contentType === "application/pdf" || contentType.startsWith("image/");
+  const encodedName = encodeURIComponent(row.file.filename);
+  return new Response(bytes, {
+    status: 200,
+    headers: {
+      "content-type": contentType,
+      "content-disposition": `${inline ? "inline" : "attachment"}; filename="${encodedName}"; filename*=UTF-8''${encodedName}`,
+    },
+  });
+}
