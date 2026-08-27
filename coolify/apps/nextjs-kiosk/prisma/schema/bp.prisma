@@ -91,6 +91,8 @@ model BusinessPartner {
   stepsAsSupplier       WorkOrderStep[] @relation("StepSupplier")
   routeStepsAsSupplier  ProductProcessRouteVersionStep[] @relation("RouteStepSupplier")
   routesAsCustomer      ProductProcessRoute[] @relation("RouteCustomerBp")
+  designFilesAsCustomer    DesignFile[]    @relation("DesignFileCustomerBp")
+  designRequestsAsCustomer DesignRequest[] @relation("DesignRequestCustomerBp")
 
   deliveryNotesAsRecipient DeliveryNote[] @relation("DeliveryNoteRecipient")
   deliveryNotesAsBranch    DeliveryNote[] @relation("DeliveryNoteRecipientBranch")
