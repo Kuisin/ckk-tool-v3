@@ -65,6 +65,7 @@ export function ModalShell({
   loading,
   size = "md",
   hideFooter,
+  fullScreen,
 }: ModalBaseProps & {
   title: ReactNode;
   children: ReactNode;
@@ -77,10 +78,17 @@ export function ModalShell({
   loading?: boolean;
   size?: ModalSize;
   hideFooter?: boolean;
+  /**
+   * 画面いっぱいに開く。**ビューア用の逃げ道**で、通常のダイアログでは使わない
+   * — モバイルで 70vh の中身（PDF / 3D / 画像）を `size` 指定のモーダルに入れると
+   * 本文とフッターが折り返して画面外へ出てしまうため。
+   */
+  fullScreen?: boolean;
 }) {
   return (
     <Modal
       centered
+      fullScreen={fullScreen}
       onClose={onClose}
       opened={opened}
       size={size}

@@ -7,11 +7,14 @@
  * どう見せるかは `lib/design-file-kind.ts` が決め、ここは器だけ:
  *   pdf     … iframe（ブラウザ内蔵ビューア）
  *   image   … img
- *   model3d … Model3dViewer（online-3d-viewer / ssr:false）
+ *   model3d … Model3dCanvas（online-3d-viewer / ssr:false）
  *   それ以外 … 理由を出してダウンロードだけ
  *
  * 詳細ページに大きなビューアを常設しない（サムネイル + モーダル）のは、
  * 指示書詳細を工程や在庫を見に来た人にまで毎回モデルを読み込ませないため。
+ *
+ * **モバイルは全画面で開く。** 図面は「画面の広さがそのまま読めるかどうか」に
+ * なる中身で、375px の中に枠・題・フッターを重ねると本文が数十 px しか残らない。
  */
 
 import {
@@ -24,11 +27,17 @@ import {
   Text,
   UnstyledButton,
 } from "@mantine/core";
-import { IconCube, IconFile, IconPhoto } from "@tabler/icons-react";
+import {
+  IconCube,
+  IconFile,
+  IconFileTypePdf,
+  IconPhoto,
+} from "@tabler/icons-react";
 import dynamic from "next/dynamic";
 import { useState } from "react";
 import { SecondaryButton } from "@/components/ui/buttons";
 import { ModalShell } from "@/components/ui/modals";
+import { useIsMobile } from "@/hooks/useViewport";
 import { designFileKind, notViewableReason } from "@/lib/design-file-kind";
 
 // O3DV は document / WebGL を直接触るのでサーバーでは描けない。
@@ -56,16 +65,24 @@ export function DesignFileViewerModal({
   onClose: () => void;
   target: DesignFileViewerTarget | null;
 }) {
+  const isMobile = useIsMobile();
   if (!target) return null;
   const kind = designFileKind(target.filename, target.mimeType);
+  // 全画面のときは題とフッターを引いた残り全部。dvh なのは、モバイルの
+  // アドレスバーが引っ込むと vh が実際の表示領域とずれるため。
+  const viewerHeight = isMobile ? "calc(100dvh - 190px)" : "70vh";
+
   return (
     <ModalShell
+      fullScreen={isMobile}
       hideFooter
       onClose={onClose}
       opened={opened}
       size="xl"
       title={
-        <Group gap="xs" wrap="nowrap">
+        // モバイルは 2 行に積む。1 行に押し込むと題が閉じるボタンに当たって
+        // ファイル名がほとんど見えなくなる。
+        <Stack gap={0} style={{ minWidth: 0 }}>
           <Text fw={600} size="sm" truncate>
             {target.filename}
           </Text>
@@ -74,14 +91,14 @@ export function DesignFileViewerModal({
               {target.caption}
             </Text>
           )}
-        </Group>
+        </Stack>
       }
     >
       <Stack gap="sm">
         {kind === "pdf" && (
           <iframe
             src={target.src}
-            style={{ border: 0, height: "70vh", width: "100%" }}
+            style={{ border: 0, height: viewerHeight, width: "100%" }}
             title={target.filename}
           />
         )}
@@ -92,7 +109,7 @@ export function DesignFileViewerModal({
             src={target.src}
             style={{
               height: "auto",
-              maxHeight: "70vh",
+              maxHeight: viewerHeight,
               objectFit: "contain",
               width: "100%",
             }}
@@ -101,19 +118,19 @@ export function DesignFileViewerModal({
         {kind === "model3d" && (
           <Model3dCanvas
             filename={target.filename}
-            height="70vh"
+            height={viewerHeight}
             src={target.src}
           />
         )}
         {kind === "download" && (
           <Center py="xl">
-            <Text c="dimmed" size="sm">
+            <Text c="dimmed" size="sm" ta="center">
               {notViewableReason(target.filename)}
             </Text>
           </Center>
         )}
         <Group justify="flex-end">
-          <SecondaryButton external href={target.src}>
+          <SecondaryButton external fullWidth={isMobile} href={target.src}>
             ダウンロード
           </SecondaryButton>
         </Group>
@@ -136,7 +153,12 @@ export function DesignFileThumb({
   height?: number;
 }) {
   const [open, setOpen] = useState(false);
+  const isMobile = useIsMobile();
   const kind = designFileKind(target.filename, target.mimeType);
+  // モバイルのブラウザは iframe の PDF をまず描かない（iOS Safari は空白、
+  // Android Chrome はダウンロード誘導）。白い枠を出すより、何のファイルかを
+  // アイコンで言い切って拡大に誘導する。
+  const inlineThumb = kind === "pdf" && !isMobile;
 
   return (
     <>
@@ -156,9 +178,9 @@ export function DesignFileThumb({
                 src={target.src}
                 style={{ height: "100%", objectFit: "contain", width: "100%" }}
               />
-            ) : kind === "pdf" ? (
+            ) : inlineThumb ? (
               // 1 ページ目をそのまま縮小して出す（ラスタライズは pdf.js が要るので
-              // 入れていない）。ポインタは受けず、クリックは外側の Box が拾う。
+              // 入れていない）。ポインタは受けず、クリックは外側のボタンが拾う。
               <Box style={{ pointerEvents: "none" }}>
                 <iframe
                   src={`${target.src}#toolbar=0&navpanes=0&view=FitH`}
@@ -171,11 +193,17 @@ export function DesignFileThumb({
                 <Stack align="center" gap={4}>
                   {kind === "model3d" ? (
                     <IconCube size={28} />
+                  ) : kind === "pdf" ? (
+                    <IconFileTypePdf size={28} />
                   ) : (
                     <IconFile size={28} />
                   )}
                   <Text c="dimmed" size="xs">
-                    {kind === "model3d" ? "3D モデル" : "プレビューなし"}
+                    {kind === "model3d"
+                      ? "3D モデル"
+                      : kind === "pdf"
+                        ? "PDF"
+                        : "プレビューなし"}
                   </Text>
                 </Stack>
               </Center>
@@ -192,18 +220,22 @@ export function DesignFileThumb({
   );
 }
 
-/** アイコンだけの小さな起動口（表の行など、場所が無いとき）。 */
+/** 小さな起動口（表の行・カードなど、場所が無いとき）。 */
 export function DesignFileViewButton({
   target,
   label = "表示",
+  fullWidth,
 }: {
   target: DesignFileViewerTarget;
   label?: string;
+  /** モバイルのカード内で使うときに全幅（44px の当たり判定）にする。 */
+  fullWidth?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   return (
     <>
       <SecondaryButton
+        fullWidth={fullWidth}
         leftSection={<IconPhoto size={14} />}
         onClick={() => setOpen(true)}
       >

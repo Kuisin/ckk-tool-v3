@@ -1530,6 +1530,15 @@ Approval notifications use `/api/sse/approvals` — shows a `Notification` banne
     §8.3 の「Line item cards (mobile)」と同じ扱い。
   - **左右 2 ペインの編集（Markdown の分割表示など）はモバイルに出さない。**
     横 375px を割ると両方読めないので、切り替え（編集 / プレビュー）にする。
+  - **ビューア（PDF / 画像 / 3D）のモーダルはモバイルで全画面にする**
+    （`ModalShell` の `fullScreen`）。図面のように「画面の広さがそのまま
+    読めるかどうか」になる中身を `size` 指定のモーダルに入れると、枠・題・
+    フッターに挟まれて本文が数十 px しか残らない。高さは `vh` ではなく
+    **`dvh`** で取る — モバイルのアドレスバーが引っ込むと `vh` は実際の
+    表示領域とずれる。
+  - **モバイルのブラウザは `iframe` の PDF を描かない**（iOS Safari は空白、
+    Android Chrome はダウンロード誘導）。サムネイルなど小さい枠では
+    アイコン + 種別名に落として、拡大表示へ誘導する。
 
 ### 20.3 タッチ操作
 
@@ -1540,3 +1549,10 @@ Approval notifications use `/api/sse/approvals` — shows a `Notification` banne
   限定し、ハンドルには `touchAction: "none"` と 44px の当たり判定を与える。
 - ホバーでしか出ない操作を作らない（タッチにホバーは無い）。行に付けるボタンなどは
   常時表示にする。
+- **キャンバス（3D ビューア等）には `touch-action: none` を置く。** 既定のままだと
+  ブラウザが指のドラッグをスクロールとして横取りし、モデルを回せない。併せて
+  **WebGL コンテキストは閉じるときに必ず破棄する** — 同時保持数はモバイルの方が
+  ずっと少なく（iOS Safari で 8〜16 程度）、漏らすと数回でタブごと落ちる。
+- **入れ物の寸法だけが変わったときに measure し直す**（`ResizeObserver`）。
+  画面回転・アドレスバーの出入り・全画面モーダルの開き切りでは `window` の
+  `resize` が来ないことがあり、canvas が古い寸法のまま引き伸ばされる。
