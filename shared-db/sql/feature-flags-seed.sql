@@ -50,6 +50,14 @@ ON CONFLICT (key) DO UPDATE
 -- 設定してフォルダをコンテナへマウントし、そのうえで:
 --   ('app:order-intake:main', true, '注文書取込 本番公開', now())
 
+-- 設計依頼書（SA06）は **承認フローの設定が前提**。承認設定（MS0B）で
+-- 「設計依頼書」の段を 1 つ以上作っておかないと、公開しても「承認依頼」が
+-- 「承認フローが未設定です」で止まり、下書きから先へ進めない。
+-- あわせて roles-seed.sql を本番へ再適用しておくこと（production ロールの
+-- design_request R·U — 無いと担当者が通知を開いた先で 403 になる）。
+-- 両方を済ませて dev で受け入れたら:
+--   ('app:design-requests:main', true, '設計依頼書 本番公開', now())
+
 -- ログイン履歴（SY0D）は dev で記録が溜まるのを確認してから本番公開する。
 -- 先に本番の env（LOGIN_ATTEMPT_PEPPER / CORPORATE_CIDRS /
 -- TRUSTED_PROXY_HOPS）を入れておくこと — 未設定でも落ちないが、相関キーも
