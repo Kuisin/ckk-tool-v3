@@ -16,6 +16,7 @@ An app for asking the design department to make a drawing, and for **keeping eac
 - You can set a **希望納期 (due date)** and a **優先度 (priority)**, then sort and spot late requests in the list.
 - You can require **approval before the design starts**. The approval steps are set in [Approval settings](/manual/en/operations/masters/approval-setting/user).
 - You can attach the finished drawing file and keep it **as separate versions, v1, v2 and so on**.
+- An approved request can be **printed as a PDF document** to hand to manufacturing on paper.
 - If you set a product, the newest drawing on the [product master](/manual/en/operations/masters/product/user) is replaced when the request is done.
 
 Use this when a customer asks about a special shape and a drawing is needed.
@@ -146,6 +147,16 @@ You can only attach files **between approval and completion** (未着手 and 進
 When it is done, the newest attached file at that moment is **registered as a version (v1, v2 …)** and marked「**最新**」(newest). The completion date is recorded too, and the requester is notified — as is the sales rep on the quote, if it was raised at quoting time. On a request where you set a product, that product's newest drawing is switched to this version as well.
 
 If a correction is needed after it is done, press「**差し戻し**」(send back) from「**…**」, then press「**差し戻す**」(send back). The status returns to 進行中 (in progress), and you can add files again. The completion date is cleared. This kind of send-back is **redoing the work**, so the approval does not have to be taken again.
+
+## Printing the document
+
+After approval (未着手, 進行中 or 完了) the「**PDF**」tab on the request screen shows the design request as a printable document. The「**PDF**」button at the top right opens it too.
+
+The document carries the request number, **kind (new/revision)**, status, assignee, **due date**, priority, trigger and reference, the target product, **the base drawing and change reason** on a revision, the **request details**, the list of drawing file versions, and the approval and work history. It is an internal document meant to be handed to manufacturing on paper — do not send it outside the company.
+
+While the contents can still change (未着手, 進行中) it is rebuilt fresh each time you open it. Once the request is done nothing moves any more, so the stored copy is shown as is.
+
+> You cannot open the PDF before approval (下書き, 承認依頼中, 差し戻し). Only what was approved goes on paper.
 
 ## Cancelling a request
 

@@ -16,6 +16,8 @@
  *
  * 承認軸の「差し戻し」(REJECTED) と作業軸の「差し戻し」(COMPLETED →
  * IN_PROGRESS) は別物。前者は ApprovalActionCard、後者は「…」メニュー。
+ *
+ * PDF タブは承認済み以降のみ（isIssuedDesign）— 承認前の内容は紙にしない。
  */
 
 import {
@@ -77,6 +79,10 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { FieldValue } from "@/components/ui/FieldValue";
 import { HistoryPanel } from "@/components/ui/HistoryPanel";
 import { ConfirmModal, ModalShell } from "@/components/ui/modals";
+import {
+  PdfAttachmentPanel,
+  type PdfFileMeta,
+} from "@/components/ui/PdfAttachmentPanel";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import {
   type AuditEntry,
@@ -104,6 +110,7 @@ import {
   type DesignRequest,
   isCancellable,
   isEditable,
+  isIssuedDesign,
 } from "./model";
 
 const BASE_PATH = "/sales/design-requests";
@@ -150,6 +157,7 @@ export function DesignRequestDetail({
   approval,
   approvalTrail = [],
   assigneeOptions = [],
+  pdfMeta = null,
 }: {
   request: DesignRequest;
   /** 操作履歴（audit_logs 由来、履歴タブ）。 */
@@ -162,6 +170,8 @@ export function DesignRequestDetail({
   approvalTrail?: ApprovalTrailView[];
   /** 担当者候補（有効な従業員）。 */
   assigneeOptions?: Option[];
+  /** 保管済み PDF のメタ（承認前は null）。 */
+  pdfMeta?: PdfFileMeta | null;
 }) {
   const fmt = useFormat();
   const router = useRouter();
@@ -174,6 +184,37 @@ export function DesignRequestDetail({
   const [cancelReason, setCancelReason] = useState("");
   const [assigneeOpen, setAssigneeOpen] = useState(false);
   const [assigneeDraft, setAssigneeDraft] = useState(request.assigneeId ?? "");
+  const [pdfFile, setPdfFile] = useState<PdfFileMeta | null>(pdfMeta);
+  const [pdfNonce, setPdfNonce] = useState(0);
+
+  const canViewPdf = isIssuedDesign(request.status);
+  const pdfFilename = `${request.requestNumber}.pdf`;
+  const pdfUrl = (extra = "") =>
+    `/api/pdf/design-request?id=${encodeURIComponent(request.requestNumber)}${extra}`;
+
+  const regeneratePdf = async () => {
+    try {
+      const res = await fetch(pdfUrl("&force=1"));
+      if (!res.ok) throw new Error(`PDF route ${res.status}`);
+      const blob = await res.blob();
+      setPdfFile({
+        sizeBytes: blob.size,
+        generatedAt: new Date().toISOString(),
+      });
+      setPdfNonce((n) => n + 1);
+      notifications.show({
+        title: "再生成しました",
+        message: "PDF を再生成・保存しました",
+        color: "green",
+      });
+    } catch (e) {
+      notifications.show({
+        title: "エラー",
+        message: e instanceof Error ? e.message : "PDF の再生成に失敗しました",
+        color: "red",
+      });
+    }
+  };
 
   /**
    * モーダルを開くときは現在値から下書きを作り直す。useState の初期値は初回
@@ -329,6 +370,7 @@ export function DesignRequestDetail({
               ? () => router.push(`${BASE_PATH}/${request.requestNumber}/edit`)
               : undefined
           }
+          pdf={canViewPdf ? { href: pdfUrl() } : undefined}
         />
       }
       breadcrumbs={["販売", { label: "設計依頼書", href: BASE_PATH }, "詳細"]}
@@ -535,6 +577,7 @@ export function DesignRequestDetail({
         <Tabs.List>
           <Tabs.Tab value="overview">概要</Tabs.Tab>
           <Tabs.Tab value="files">ファイル（{request.files.length}）</Tabs.Tab>
+          <Tabs.Tab value="pdf">PDF</Tabs.Tab>
           <Tabs.Tab value="history">履歴</Tabs.Tab>
         </Tabs.List>
 
@@ -638,6 +681,17 @@ export function DesignRequestDetail({
               </Table.ScrollContainer>
             )}
           </Stack>
+        </Tabs.Panel>
+
+        <Tabs.Panel pt="md" value="pdf">
+          <PdfAttachmentPanel
+            downloadHref={pdfUrl("&download=1")}
+            emptyMessage="承認されると設計依頼書の PDF を閲覧できます。"
+            file={pdfFile}
+            filename={pdfFilename}
+            onRegenerate={regeneratePdf}
+            previewSrc={canViewPdf ? pdfUrl(`&v=${pdfNonce}`) : undefined}
+          />
         </Tabs.Panel>
 
         <Tabs.Panel pt="md" value="history">

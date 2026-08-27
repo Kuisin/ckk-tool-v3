@@ -14,6 +14,10 @@ import "server-only";
  *   請求書 INVOICE        … ISSUED / SENT / PAID
  *   納品書 DELIVERY_NOTE  … ISSUED / DELIVERED
  * いずれも「DRAFT でなければ発行済み」で一致するため判定は共通。
+ *
+ * **設計依頼書はこの `isIssued` を使えない** — 状態が承認軸と作業軸に分かれて
+ * いて、DRAFT 以外でも REQUESTED / REJECTED / CANCELLED は「まだ発行前」だから。
+ * 判定は components/sales/design-requests/model.ts の `isIssuedDesign`。
  */
 
 import type { PdfFileMeta } from "@/components/ui/PdfAttachmentPanel";
@@ -25,6 +29,8 @@ export const pdfStorageKey = {
   invoice: (invoiceNumber: string) => `pdfs/invoices/${invoiceNumber}.pdf`,
   deliveryNote: (deliveryNumber: string) =>
     `pdfs/delivery-notes/${deliveryNumber}.pdf`,
+  designRequest: (requestNumber: string) =>
+    `pdfs/design-requests/${requestNumber}.pdf`,
 };
 
 /** 発行済み（= PDF を閲覧してよい）か。下書きのみ不可。 */

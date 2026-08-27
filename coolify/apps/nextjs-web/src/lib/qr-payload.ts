@@ -55,6 +55,8 @@ export const QR_KINDS = {
    * 作業場所を上書きできる（端末の既定作業場所より優先）。
    */
   WORK_LOCATION: "LOC",
+  /** 設計依頼書。KEY = DSG-YYYYMM-NNNNN。 */
+  DESIGN_REQUEST: "DSG",
 } as const;
 
 export type QrKind = (typeof QR_KINDS)[keyof typeof QR_KINDS];
