@@ -17,17 +17,59 @@
 
 ### 主要機能
 
-- 設計依頼書起票: 見積時（§1）または受注時（§3）
-- 設計図アップロード: SeaweedFS に保存（`design_files` テーブル）
-- バージョン管理: `version` + `is_latest` フラグ
-- 完了通知: 営業・営業補助へ SSE / メール通知
-- 製品への反映: `products.design_file_id` を更新
-- ステータス: `PENDING → IN_PROGRESS → COMPLETED`
+- 設計依頼書起票: 見積時（§1）または受注時（§3）。導線は 見積書詳細 /
+  注文明細詳細 / 見積明細の単価未解決（`?quote=` `?orderLine=` `?product=`）
+- 担当者指定: `design_requests.assignee_id` — 図面をつくる製造担当を 1 名。
+  §10 の「依頼通知を製造担当へ」はこの列で宛先が定まる
+- **依頼区分 `kind`（新規 / 改訂）— 自動判定して保存する。** 規則は「その製品に
+  `design_files` の行があるか」。**製品は必須**（判定に要るため。名称と単位だけで
+  製品は登録できるので、新規品でも「先に登録する」で回る）。導出値にしないのは、
+  区分が承認ルートを決めるから — 別の依頼が先に完了した瞬間に値が動くと、
+  承認済みのルートと食い違う（`flow_snapshot` と同じ理由）。人が上書きしたら
+  `kind_overridden` を立てて尊重し、画面には判定の根拠を出す
+- 改訂の付随項目: `base_design_file_id`（元図面。既定 = 判定時点の最新版）と
+  `change_reason`（必須）。**完了時に元図面が最新でなくなっていれば履歴と監査に
+  残す** — 依頼中に別の改訂が先に完了した、を黙って上書きさせない
+- `desired_at`（希望納期）/ `priority`（NORMAL / HIGH）
+- 承認フロー: `approval_flows.target_type = 'design_requests'`（段構成は承認設定
+  MS0B。条件は **トリガー / 依頼区分 / 優先度** — 「新規は部長承認・改訂は係長」
+  「急ぎは 1 段」といった分岐が組める）。承認が通ってはじめて着手できる
+- 設計図アップロード: SeaweedFS に保存（`design_files` テーブル）。添付できるのは
+  **承認済〜完了前**（`PENDING` / `IN_PROGRESS`）だけ
+- バージョン管理: `version` + `is_latest` フラグ。**1 回の完了 = 1 版**で、
+  その版は「プレビュー 0..1 + 図面データ 1 + 参考資料 0..N」（`design_files.role`）。
+  **プレビュー（STL 等）と図面データ（CAD）を分けている**のは用途が違うから —
+  片方は人が形を確かめるため、片方は加工プログラムを起こす元データで代用できない。
+  同時に出したファイルは同じ `version` を共有する — `version` は改訂世代であって
+  ファイルの通し番号ではないため。製品の最新図面 = `is_latest` かつ
+  `role = BLUEPRINT`、サムネイルは PREVIEW があればそれを優先
+- 添付の受付形式は**制限しない**（図面・3D・仕様書と何が来るか決められないため）。
+  代わりに**ブラウザ内で開くのを PDF / 画像 / 3D だけに絞る**
+  （`lib/attachments.ts` `isInlineSafe` が唯一の判定元。SVG / HTML を inline で
+  返すと保存 XSS になる）。それ以外は必ずダウンロード扱い + `nosniff` + CSP sandbox
+- 通知: 起票・担当変更 → 担当者 / 承認完了 → 担当者（着手の合図）/
+  着手 → 依頼者 / 完了 → 依頼者 + 見積の営業担当（`notifications` type `DESIGN`）
+- 帳票: `/api/pdf/design-request`（承認済み以降のみ。`isIssuedDesign`）
+- ステータス: `DRAFT → REQUESTED → PENDING → IN_PROGRESS → COMPLETED`
+  （+ `REJECTED` / `CANCELLED`）
 
 ### 業務ルール
 
-- 起票トリガ: `DESIGN_TRIGGER.QUOTE`（見積時）/ `DESIGN_TRIGGER.SALES_ORDER`（受注時）
+- 起票トリガ: `DESIGN_TRIGGER.QUOTE`（見積時）/ `DESIGN_TRIGGER.SALES_ORDER`（受注時）/
+  `DESIGN_TRIGGER.STANDALONE`（単独 — 見積にも受注にも紐づかない。新製品の検討・
+  客先からの事前相談・社内改善。参照元は両方 null）
 - 設計依頼書は任意（設計図がある場合は不要）
+- 編集できるのは `DRAFT` / `REJECTED` のみ。ただし **担当者の付け替えは承認後
+  （`PENDING` / `IN_PROGRESS`）でもできる** — 承認の対象は「何を設計するか」で
+  あって「誰がつくるか」ではないため、専用のアクションに割ってある。
+  製品は必須かつ承認前にしか変えられない（変えると区分が動くため）
+- `COMPLETED → IN_PROGRESS` の差し戻しは**作業の巻き戻し**で、承認軸の
+  `REJECTED` とは別物。承認記録には触らず、承認は取りなおさない
+- **製品への反映は `design_files.product_id` + `is_latest`**。
+  `products.design_file_id` という列は存在しない（旧記述は誤り）。版採番と
+  両側の `is_latest` クリアは `completeDesign` の 1 トランザクションが唯一の
+  管理者で、マスタ側に第 2 の書き込み口は作らない（`is_latest` が 2 行に
+  なるうえ、図面が変わった理由を追えなくなるため）
 
 ---
 
@@ -85,7 +127,8 @@
 
 - 製品コード: `PRD-YYYYMM-NNNN`
 - 仕様は `spec` JSON フィールドに自由記述
-- `design_file_id` で最新設計図を参照
+- 最新設計図は `design_files`（`product_id` + `is_latest`）から引く
+  — 製品側に `design_file_id` 列は持たない（差し替えは §10 の完了経由のみ）
 
 ### 材種・素材マスタ
 

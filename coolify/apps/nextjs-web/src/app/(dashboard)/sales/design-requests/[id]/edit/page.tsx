@@ -2,15 +2,16 @@ import { notFound, redirect } from "next/navigation";
 import { DesignRequestForm } from "@/components/sales/design-requests/DesignRequestForm";
 import { isEditable } from "@/components/sales/design-requests/model";
 import { requireAppRead } from "@/lib/authz-page";
-import { fetchDesignRequest } from "../../data";
+import { fetchDesignRequest, fetchEmployeeOptions } from "../../data";
 
 export const dynamic = "force-dynamic";
 
 /**
- * 設計依頼書 編集 (SA25 → edit)。
+ * 設計依頼書 編集 (SA26 → edit)。
  *
- * 編集できるのは「未着手・進行中」のみ — 完了済みは詳細へリダイレクト
- * （サーバーアクション側でも同じガードを行う）。
+ * 編集できるのは「下書き・差し戻し」のみ — 承認に出したあとの内容は
+ * 承認を受けた中身なので触らせない（サーバーアクション側でも同じガード）。
+ * 承認後に変えてよい 担当者 / 製品 は詳細画面の専用アクションで扱う。
  * トリガー・参照元（見積書/注文明細）は作成後変更不可。
  */
 export default async function SalesDesignRequestsEditPage({
@@ -21,9 +22,20 @@ export default async function SalesDesignRequestsEditPage({
   const denied = await requireAppRead("design-requests");
   if (denied) return denied;
   const { id } = await params;
-  const request = await fetchDesignRequest(decodeURIComponent(id));
+  const [request, assigneeOptions] = await Promise.all([
+    fetchDesignRequest(decodeURIComponent(id)),
+    fetchEmployeeOptions(),
+  ]);
   if (!request) notFound();
-  if (!isEditable(request)) redirect(`/sales/design-requests/${request.id}`);
+  if (!isEditable(request)) {
+    redirect(`/sales/design-requests/${request.requestNumber}`);
+  }
 
-  return <DesignRequestForm mode="edit" request={request} />;
+  return (
+    <DesignRequestForm
+      assigneeOptions={assigneeOptions}
+      mode="edit"
+      request={request}
+    />
+  );
 }

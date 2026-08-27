@@ -247,11 +247,33 @@ export const PURCHASE_REQUEST_STATUS_OPTIONS = Object.entries(
 export const DESIGN_TRIGGER_LABEL: Record<string, string> = {
   QUOTE: "見積時",
   SALES_ORDER: "受注時",
+  // 見積にも受注にも紐づかない起票（新製品の検討・事前相談・社内改善）。
+  STANDALONE: "単独",
 };
 
 export const DESIGN_TRIGGER_OPTIONS = Object.entries(DESIGN_TRIGGER_LABEL).map(
   ([value, label]) => ({ value, label }),
 );
+
+/** app.DESIGN_KIND（依頼区分 — 過去の設計書の有無で自動判定） */
+export const DESIGN_KIND_LABEL: Record<string, string> = {
+  NEW: "新規",
+  REVISION: "改訂",
+};
+
+export const DESIGN_KIND_OPTIONS = Object.entries(DESIGN_KIND_LABEL).map(
+  ([value, label]) => ({ value, label }),
+);
+
+/** app.DESIGN_PRIORITY（優先度） */
+export const DESIGN_PRIORITY_LABEL: Record<string, string> = {
+  NORMAL: "通常",
+  HIGH: "急ぎ",
+};
+
+export const DESIGN_PRIORITY_OPTIONS = Object.entries(
+  DESIGN_PRIORITY_LABEL,
+).map(([value, label]) => ({ value, label }));
 
 /** app.notifications.type（通知種別） */
 export const NOTIFICATION_TYPE_LABEL: Record<string, string> = {
@@ -260,6 +282,7 @@ export const NOTIFICATION_TYPE_LABEL: Record<string, string> = {
   INTAKE: "取込",
   PURCHASE: "購買",
   SHARE: "共有",
+  DESIGN: "設計",
   SYSTEM: "システム",
 };
 

@@ -14,6 +14,7 @@
 
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
+import { loadApproveCapabilities } from "@/lib/approval-permissions";
 import {
   actOnCurrentStep,
   appendHistory,
@@ -1074,12 +1075,19 @@ export async function importForm(
 // 点検簿が同じ承認を共有する理由が無いため。エンジン側は依頼時に flow_snapshot
 // へ写すので、進行中の依頼は後からフローを変えても影響を受けない。
 
-const formFlowStepInput = z.object({
-  nameJa: z.string().trim().min(1, "段の名前を入力してください").max(60),
-  nameEn: z.string().trim().max(60).optional(),
-  groupId: z.number().int().positive("承認グループを選んでください"),
-  mode: z.enum(["ANY", "ALL"]),
-});
+const formFlowStepInput = z
+  .object({
+    nameJa: z.string().trim().min(1, "段の名前を入力してください").max(60),
+    nameEn: z.string().trim().max(60).optional(),
+    // 宛先はグループか「カスタム（1..N 人の指名）」のどちらか一方。
+    groupId: z.number().int().positive().nullable().optional(),
+    approverUserIds: z.array(z.string().uuid()).max(50).optional(),
+    mode: z.enum(["ANY", "ALL"]),
+  })
+  .refine((v) => !!v.groupId !== (v.approverUserIds ?? []).length > 0, {
+    message:
+      "各段の宛先は、承認グループか、カスタムの承認者 1 人以上のどちらかにしてください",
+  });
 
 /** フォームの承認フローをまるごと置き換える（段番号は 1..N で振り直す）。 */
 export async function saveFormApprovalFlow(
@@ -1095,14 +1103,26 @@ export async function saveFormApprovalFlow(
       parsed.error.issues[0]?.message ?? "承認フローが不正です",
     );
 
-  // 承認グループの実在確認（消えたグループを指したまま保存させない）。
-  const groupIds = [...new Set(parsed.data.map((s) => s.groupId))];
+  // 宛先の実在確認（消えたグループ・停止したユーザーを指したまま保存させない）。
+  const groupIds = [
+    ...new Set(parsed.data.map((s) => s.groupId).filter((v) => v != null)),
+  ];
   if (groupIds.length > 0) {
     const found = await prisma.approvalGroup.count({
       where: { id: { in: groupIds }, isActive: true },
     });
     if (found !== groupIds.length)
       return actionError("使えない承認グループが含まれています");
+  }
+  const userIds = [
+    ...new Set(parsed.data.flatMap((s) => s.approverUserIds ?? [])),
+  ];
+  if (userIds.length > 0) {
+    const found = await prisma.user.count({
+      where: { id: { in: userIds }, isActive: true },
+    });
+    if (found !== userIds.length)
+      return actionError("使えないユーザーが承認者に含まれています");
   }
 
   try {
@@ -1111,16 +1131,31 @@ export async function saveFormApprovalFlow(
       // 段番号を詰めて作り直す。進行中の依頼は flow_snapshot を見ているので
       // ここを消しても影響しない（既存フローと同じ扱い）。
       await tx.formApprovalStep.deleteMany({ where: { formId: gate.form.id } });
-      if (parsed.data.length === 0) return;
-      await tx.formApprovalStep.createMany({
-        data: parsed.data.map((s, i) => ({
-          formId: gate.form.id,
-          stepNo: i + 1,
-          name: { ja: s.nameJa, en: s.nameEn ?? "" },
-          groupId: s.groupId,
-          mode: s.mode,
-        })),
-      });
+      // 承認者は子テーブルなので createMany では張れない。段ごとに作る
+      // （段数は上限 20 なのでループで足りる）。
+      for (const [i, step] of parsed.data.entries()) {
+        const created = await tx.formApprovalStep.create({
+          data: {
+            formId: gate.form.id,
+            stepNo: i + 1,
+            name: { ja: step.nameJa, en: step.nameEn ?? "" },
+            groupId: step.groupId ?? null,
+            mode: step.mode,
+          },
+          select: { id: true },
+        });
+        const approvers = step.approverUserIds ?? [];
+        if (approvers.length > 0) {
+          await tx.formApprovalStepApprover.createMany({
+            data: approvers.map((userId, order) => ({
+              stepId: created.id,
+              userId,
+              sortOrder: order,
+            })),
+            skipDuplicates: true,
+          });
+        }
+      }
     });
     await recordAudit({
       action: "UPDATE",
@@ -1133,6 +1168,50 @@ export async function saveFormApprovalFlow(
     return actionOk();
   } catch (e) {
     return actionError(prismaErrorMessage(e, "承認フローの保存に失敗しました"));
+  }
+}
+
+/**
+ * 個人を承認者に指すときの検索。
+ *
+ * 「承認できるか」を**選ぶ時点で**出す — フォームを開けない人を承認者にしても
+ * 承認できず、依頼が誰にも進められないまま止まる。あとで気付くのでは遅い。
+ */
+export async function searchFormApproverOptions(
+  query: string,
+): Promise<{ value: string; label: string; allowed: boolean }[]> {
+  const authz = await checkPermission("form", "READ");
+  if (!authz.ok) return [];
+  const q = query.trim();
+  try {
+    const users = await prisma.user.findMany({
+      where: {
+        isActive: true,
+        ...(q
+          ? {
+              OR: [
+                { displayName: { contains: q, mode: "insensitive" as const } },
+                { username: { contains: q, mode: "insensitive" as const } },
+              ],
+            }
+          : {}),
+      },
+      orderBy: { username: "asc" },
+      take: 30,
+      select: { id: true, displayName: true, username: true },
+    });
+    if (users.length === 0) return [];
+    const caps = await loadApproveCapabilities(
+      users.map((u) => u.id),
+      ["form"],
+    );
+    return users.map((u) => ({
+      value: u.id,
+      label: u.displayName || u.username,
+      allowed: caps.get(u.id)?.get("form")?.allowed ?? false,
+    }));
+  } catch {
+    return [];
   }
 }
 

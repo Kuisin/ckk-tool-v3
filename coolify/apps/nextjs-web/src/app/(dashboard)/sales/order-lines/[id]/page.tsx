@@ -4,6 +4,7 @@ import { fetchAuditEntries } from "@/lib/audit";
 import { requireAppRead } from "@/lib/authz-page";
 import { formatOrderLineNumber, parseOrderLineKey } from "@/lib/doc-number";
 import { listMemos } from "@/lib/document-memos";
+import { fetchDesignRequestsForOrderLine } from "../../design-requests/data";
 import { fetchOrderLine } from "../data";
 
 export const dynamic = "force-dynamic";
@@ -18,7 +19,7 @@ export async function generateMetadata({
   return { title: `注文明細 ${decodeURIComponent(id)} | CKK 業務管理システム` };
 }
 
-/** 注文明細 詳細 (PD21). URL id = 導出文書番号 ORD-YYYYMM-NNNNN-NN. */
+/** 注文明細 詳細 (SA25). URL id = 導出文書番号 ORD-YYYYMM-NNNNN-NN. */
 export default async function ProductionOrderLinesDetailPage({
   params,
 }: {
@@ -37,7 +38,16 @@ export default async function ProductionOrderLinesDetailPage({
   ]);
   if (!order) notFound();
 
+  // §10 設計依頼は受注と並行する側枝 — 設計タブに逆リンクを出す。
+  // 明細の uuid は fetchOrderLine の後でないと分からないので直列に引く。
+  const designRequests = await fetchDesignRequestsForOrderLine(order.uuid);
+
   return (
-    <OrderLineDetail auditEntries={auditEntries} memos={memos} order={order} />
+    <OrderLineDetail
+      auditEntries={auditEntries}
+      designRequests={designRequests}
+      memos={memos}
+      order={order}
+    />
   );
 }

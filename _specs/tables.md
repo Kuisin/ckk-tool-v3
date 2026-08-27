@@ -1386,39 +1386,110 @@ Enum CLOSING_STATUS {
 // 設計依頼（§10）
 // ===========================
 
+// 承認フローを持つ（購買依頼 purchase_requests と同型の row-workflow）。
+// 承認依頼・記録は approval_requests / approval_records へ正規化し、
+// ここには遷移列（at/by）+ history だけを置く。
 Table design_requests {
   id              uuid [pk]
   request_number  varchar [unique, not null]
   trigger         DESIGN_TRIGGER [not null]
-  quote_id        uuid [ref: > quotes.id]           // 見積時
+  // 見積時は複合キー（quotes は uuid PK ではない）
+  quote_year_month char(6)
+  quote_seq       int
   order_line_id   uuid [ref: > order_lines.id]      // 受注時
-  product_id      varchar [ref: > products.id]
+  // アプリ側では必須（依頼区分の自動判定に要る）。DB は nullable のまま —
+  // 製品未指定の既存行があるので NOT NULL にすると移行が落ちる。
+  product_id      int [ref: > products.id]
   description     text
-  status          DESIGN_STATUS [not null, default: 'PENDING']
+  // 依頼区分。「その製品に design_files があるか」で自動判定した値を**保存**する
+  // （導出しない — 区分は承認ルートを決めるので、他の依頼の完了で値が動くと
+  //  承認済みのルートと食い違う）。kind_overridden は人が上書きしたかどうか。
+  kind            DESIGN_KIND [not null, default: 'NEW']
+  kind_overridden boolean [not null, default: false]
+  base_design_file_id uuid [ref: > design_files.id]  // 改訂の元図面
+  change_reason   text        // 改訂のとき必須
+  desired_at      date        // 希望納期
+  priority        DESIGN_PRIORITY [not null, default: 'NORMAL']
+  status          DESIGN_STATUS [not null, default: 'DRAFT']
+  // 図面をつくる製造担当。§10 の「依頼通知を製造担当へ」の宛先はこの 1 列で
+  // 決まる（承認完了時に「着手してください」を送る）。
+  assignee_id     uuid [ref: > users.id]
+  requested_at    timestamp
+  requested_by    uuid [ref: > users.id]
+  approved_at     timestamp
+  approved_by     uuid [ref: > users.id]
+  started_at      timestamp
   completed_at    timestamp
+  completed_by    uuid [ref: > users.id]
+  cancelled_at    timestamp
+  cancelled_by    uuid [ref: > users.id]
+  cancel_reason   text
+  history         json    // 状態遷移履歴 [{ action, user, at, notes }]
   created_by      uuid [ref: > users.id]
   created_at      timestamp
   updated_at      timestamp
 }
 
+Ref: design_requests.(quote_year_month, quote_seq) > quotes.(year_month, seq)
+
+// 1 版 = プレビュー 0..1 + 図面データ 1 + 参考資料 0..N。
+// PREVIEW と BLUEPRINT を分けているのは用途が違うから — STL は人が形を
+// 確かめるためのもの、CAD は加工プログラムを起こす元データで代用できない。
+Enum DESIGN_FILE_ROLE {
+  PREVIEW         // プレビュー用（3D 表示）
+  BLUEPRINT       // 図面データ（加工プログラム用。製品マスタの最新図面はこれ）
+  REFERENCE       // 参考資料（部品図・寸法表など）
+}
+
 Enum DESIGN_TRIGGER {
   QUOTE           // 見積時（§1 と並行）
   SALES_ORDER     // 受注時（§3 と並行）
+  STANDALONE      // 単独 — 見積にも受注にも紐づかない（新製品の検討・事前相談・
+                  //        社内改善）。参照元は両方 null になる
+}
+
+// 2 つの軸が重なっている:
+//   承認軸  DRAFT → REQUESTED →（承認）→ PENDING /（差し戻し）→ REJECTED
+//   作業軸  PENDING →（着手）→ IN_PROGRESS →（完了）→ COMPLETED
+// PENDING は承認フロー導入前からある値で、「未着手」= 承認済・着手待ち。
+// COMPLETED → IN_PROGRESS の差し戻しは**作業の巻き戻し**なので REJECTED には
+// 落とさず、承認記録にも触らない。
+Enum DESIGN_KIND {
+  NEW             // 新規（その製品に過去の設計書が無い）
+  REVISION        // 改訂（既存の版がある）
+}
+
+Enum DESIGN_PRIORITY {
+  NORMAL
+  HIGH            // 急ぎ
 }
 
 Enum DESIGN_STATUS {
+  DRAFT
+  REQUESTED
   PENDING
   IN_PROGRESS
   COMPLETED
+  REJECTED
+  CANCELLED
 }
 
+// 製品の「最新図面」はここが正 — products 側に design_file_id 列は無い。
+// 版採番と両側の is_latest クリアは completeDesign の 1 tx が唯一の管理者。
+//
+// **同じ version の行が複数あってよい。** 1 回の完了で上げたファイルはすべて
+// 同じ version・同じ is_latest を持ち、role（主図面 1 枚 / 参考資料 0..N 枚）
+// だけが違う。version は「図面の改訂世代」でファイルの通し番号ではない。
+// 製品の最新図面 = is_latest かつ role = BLUEPRINT の 1 行。
+// 最新の 3D プレビュー = is_latest かつ role = PREVIEW。
 Table design_files {
   id              uuid [pk]
   design_request_id uuid [ref: > design_requests.id]
-  product_id      varchar [ref: > products.id]
+  product_id      int [ref: > products.id]
   file_id         uuid [not null, ref: > files.id]
   version         int [not null, default: 1]
   is_latest       boolean [not null, default: true]
+  role            DESIGN_FILE_ROLE [not null, default: 'BLUEPRINT']
   notes           text
   created_by      uuid [ref: > users.id]
   created_at      timestamp

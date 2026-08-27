@@ -18,6 +18,11 @@
  */
 
 import type { ApprovalTargetType } from "./approval-targets";
+import {
+  DESIGN_KIND_OPTIONS,
+  DESIGN_PRIORITY_OPTIONS,
+  DESIGN_TRIGGER_OPTIONS,
+} from "./enum-labels";
 
 /** 条件の比較演算子。number は全部、select は eq / ne のみ。 */
 export type ConditionOp = "eq" | "ne" | "gte" | "lte";
@@ -86,6 +91,32 @@ export const APPROVAL_CONDITION_FIELDS: Record<
   ],
   purchase_requests: [
     { key: "item_count", label: "明細数", type: "number", unit: "件" },
+  ],
+  // 設計依頼書 (SA06)。
+  //   トリガー … 見積時の起票（受注前の引合）と受注時では通す相手が変わりうる
+  //   依頼区分 … 新規設計は部長承認・改訂は係長だけ、といった分岐に使う
+  //   優先度   … 急ぎは段を減らす、といった運用に使う
+  // ⚠️ key は approvals.ts fetchApprovalDocInfo が返す Record のキーと一致必須
+  // （突き合わせるテストが無いので、追加時は必ず両方を直す）。
+  design_requests: [
+    {
+      key: "trigger",
+      label: "トリガー",
+      type: "select",
+      options: DESIGN_TRIGGER_OPTIONS,
+    },
+    {
+      key: "kind",
+      label: "依頼区分",
+      type: "select",
+      options: DESIGN_KIND_OPTIONS,
+    },
+    {
+      key: "priority",
+      label: "優先度",
+      type: "select",
+      options: DESIGN_PRIORITY_OPTIONS,
+    },
   ],
   // 社内文書 (CM03) の公開承認。条件で分ける軸が今のところ無いので空
   // （空 = 条件分岐なし。既定フローだけが使われる）。フォルダや文書の重要度で

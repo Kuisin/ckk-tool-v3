@@ -235,7 +235,7 @@ export const shots: Shot[] = [
       await page.getByRole("button", { name: "確定" }).first().waitFor();
     },
   },
-  // ── 販売: 設計依頼書（SA05）────────────────────────────────────────────────
+  // ── 販売: 設計依頼書（SA06）────────────────────────────────────────────────
   {
     id: "design-request-list-01",
     docPage: "operations/sales/design-request/user",

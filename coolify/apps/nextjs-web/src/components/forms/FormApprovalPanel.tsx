@@ -2,7 +2,10 @@
 
 import { Alert, Stack, Text } from "@mantine/core";
 import { IconInfoCircle } from "@tabler/icons-react";
-import { saveFormApprovalFlow } from "@/app/(dashboard)/general/forms/actions";
+import {
+  saveFormApprovalFlow,
+  searchFormApproverOptions,
+} from "@/app/(dashboard)/general/forms/actions";
 import { ApprovalFlowEditor } from "@/components/master/approval-flows/ApprovalFlowEditor";
 import type { FlowApprover } from "@/components/master/approval-flows/ApproverPermissionBadge";
 import type { ApprovalMode } from "@/lib/approval-flow";
@@ -10,8 +13,12 @@ import type { ApprovalMode } from "@/lib/approval-flow";
 export interface FormFlowStep {
   nameJa: string;
   nameEn: string;
-  groupId: string;
+  groupId: string | null;
   mode: ApprovalMode;
+  /** カスタム段か（グループが無い段）。 */
+  custom?: boolean;
+  /** カスタム段の承認者（1..N 人）。グループ段では空。 */
+  approvers?: { value: string; label: string; allowed: boolean }[];
 }
 
 /**
@@ -56,6 +63,7 @@ export function FormApprovalPanel({
         <Stack gap={4}>
           <Text size="sm">
             承認の段はこのフォーム専用です。ほかのフォームや書類には影響しません。
+            宛先は承認グループか、この段だけの承認者（カスタム・複数可）から選べます。
           </Text>
           <Text c="dimmed" size="xs">
             進行中の承認依頼は、依頼した時点の段構成のまま進みます（ここを変えても
@@ -74,6 +82,7 @@ export function FormApprovalPanel({
       {canManage ? (
         <ApprovalFlowEditor
           afterSaveHref={`/general/forms/${code}`}
+          allowIndividual
           approversByGroup={approversByGroup}
           embedded
           groupOptions={groupOptions}
@@ -81,6 +90,7 @@ export function FormApprovalPanel({
           onSave={(steps) => saveFormApprovalFlow(code, steps)}
           permissionCode="form"
           permissionLabel={permissionLabel}
+          searchApprovers={searchFormApproverOptions}
           targetLabel={title}
           targetType="form_responses"
         />

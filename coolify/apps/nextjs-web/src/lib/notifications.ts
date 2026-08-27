@@ -21,6 +21,7 @@ export type NotificationType =
   | "INTAKE" // 注文請書 自動取込の結果
   | "PURCHASE" // 素材発注の状態遷移
   | "SHARE" // ページ共有（layout/share-actions）
+  | "DESIGN" // 設計依頼の担当指定・状態遷移
   | "SYSTEM";
 
 /**

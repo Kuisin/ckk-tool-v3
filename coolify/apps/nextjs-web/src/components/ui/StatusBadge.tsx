@@ -138,9 +138,14 @@ export const STATUS_MAPS = {
     APPROVED: { label: "承認済", color: "teal" },
   },
   DesignRequest: {
-    PENDING: { label: "未着手", color: "gray" },
-    IN_PROGRESS: { label: "進行中", color: "blue" },
+    DRAFT: { label: "下書き", color: "gray" },
+    REQUESTED: { label: "承認依頼中", color: "yellow" },
+    // 承認済・着手待ち。承認フロー導入前からある値で、意味を引き継いでいる。
+    PENDING: { label: "未着手", color: "blue" },
+    IN_PROGRESS: { label: "進行中", color: "violet" },
     COMPLETED: { label: "完了", color: "green" },
+    REJECTED: { label: "差し戻し", color: "red" },
+    CANCELLED: { label: "キャンセル", color: "red" },
   },
   BillingClosing: {
     PENDING: { label: "未処理", color: "gray" },

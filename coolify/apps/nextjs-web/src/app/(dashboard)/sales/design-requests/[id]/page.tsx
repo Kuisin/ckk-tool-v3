@@ -1,9 +1,12 @@
 import { notFound } from "next/navigation";
 import { DesignRequestDetail } from "@/components/sales/design-requests/DesignRequestDetail";
+import { isIssuedDesign } from "@/components/sales/design-requests/model";
+import { fetchApprovalState, fetchApprovalTrail } from "@/lib/approvals";
 import { listAttachments } from "@/lib/attachments";
 import { fetchAuditEntries } from "@/lib/audit";
 import { requireAppRead } from "@/lib/authz-page";
-import { fetchDesignRequest } from "../data";
+import { pdfStorageKey, storedPdfMeta } from "@/lib/document-pdf";
+import { fetchDesignRequest, fetchEmployeeOptions } from "../data";
 
 export const dynamic = "force-dynamic";
 
@@ -19,7 +22,7 @@ export async function generateMetadata({
   };
 }
 
-/** 設計依頼書 詳細 (SA25). URL id = 依頼番号 DSG-YYYYMM-NNNNN. */
+/** 設計依頼書 詳細 (SA26). URL id = 依頼番号 DSG-YYYYMM-NNNNN. */
 export default async function SalesDesignRequestsDetailPage({
   params,
 }: {
@@ -30,17 +33,36 @@ export default async function SalesDesignRequestsDetailPage({
   const { id } = await params;
   const requestNumber = decodeURIComponent(id);
 
-  const [request, auditEntries, attachments] = await Promise.all([
+  const [
+    request,
+    auditEntries,
+    attachments,
+    approval,
+    approvalTrail,
+    assigneeOptions,
+  ] = await Promise.all([
     fetchDesignRequest(requestNumber),
     fetchAuditEntries("design_requests", requestNumber),
     listAttachments("design_requests", requestNumber),
+    fetchApprovalState("design_requests", requestNumber),
+    fetchApprovalTrail("design_requests", requestNumber),
+    fetchEmployeeOptions(),
   ]);
   if (!request) notFound();
 
+  // 承認前は PDF そのものを出さないので、保管メタも引かない。
+  const pdfMeta = isIssuedDesign(request.status)
+    ? await storedPdfMeta(pdfStorageKey.designRequest(request.requestNumber))
+    : null;
+
   return (
     <DesignRequestDetail
+      approval={approval}
+      approvalTrail={approvalTrail}
+      assigneeOptions={assigneeOptions}
       attachments={attachments}
       auditEntries={auditEntries}
+      pdfMeta={pdfMeta}
       request={request}
     />
   );
