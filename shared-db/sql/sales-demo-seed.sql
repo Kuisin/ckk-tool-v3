@@ -215,23 +215,67 @@ VALUES
    NULL, 'PRODUCTION'::app."ORDER_TYPE", 100, 1850, '2026-09-15', 0)
 ON CONFLICT (id) DO NOTHING;
 
--- ── 設計依頼書（DSG-202607-00001〜00003）────────────────────────────────────
+-- ── 設計依頼書（DSG-202607-00001〜00005）────────────────────────────────────
 -- sales_order_id は order_line_id へ改名済み（同じ order_lines 統合による）。
+-- 承認フロー導入で状態が 7 つになったので、下書き・承認依頼中の行も置いて
+-- マニュアルの撮影（承認カード / 承認・作業状況）に被写体があるようにする。
+--
+-- 依頼区分は「その製品に design_files があるか」で決まる。この seed では
+-- **製品 9001 に版が 2 つあるので改訂、9002 には無いので新規**になり、
+-- 両方の区分が撮影できる（migration のバックフィルもこの規則）。
 INSERT INTO app.design_requests (id, request_number, trigger, quote_year_month, quote_seq,
-  order_line_id, product_id, description, status, completed_at, created_by, created_at, updated_at)
+  order_line_id, product_id, description, status, assignee_id,
+  kind, change_reason, desired_at, priority,
+  requested_at, approved_at, started_at, completed_at, history,
+  created_by, created_at, updated_at)
 VALUES
   ('d7000000-0000-4000-8000-000000000001'::uuid, 'DSG-202607-00001', 'QUOTE'::app."DESIGN_TRIGGER",
    '202607', 1, NULL, 9001, '先端R0.5 の特殊形状。見積提出前に図面確認をお願いします。',
-   'IN_PROGRESS'::app."DESIGN_STATUS", NULL,
+   'IN_PROGRESS'::app."DESIGN_STATUS", 'a0b1c2d3-0000-4000-8000-000000005107'::uuid,
+   'REVISION'::app."DESIGN_KIND", '先端形状の公差見直しに伴う改訂。', '2026-07-15', 'HIGH'::app."DESIGN_PRIORITY",
+   '2026-07-03T14:10:00+09', '2026-07-03T16:00:00+09', '2026-07-04T09:00:00+09', NULL,
+   '[{"action":"CREATE","user":"a0b1c2d3-0000-4000-8000-000000005107","at":"2026-07-03T05:00:00.000Z"},
+     {"action":"REQUEST_APPROVAL","user":"a0b1c2d3-0000-4000-8000-000000005107","at":"2026-07-03T05:10:00.000Z"},
+     {"action":"APPROVE","user":"a0b1c2d3-0000-4000-8000-000000005107","at":"2026-07-03T07:00:00.000Z"},
+     {"action":"START","user":"a0b1c2d3-0000-4000-8000-000000005107","at":"2026-07-04T00:00:00.000Z"}]'::jsonb,
    'a0b1c2d3-0000-4000-8000-000000005107'::uuid, '2026-07-03T14:00:00+09', '2026-07-04T09:00:00+09'),
   ('d7000000-0000-4000-8000-000000000002'::uuid, 'DSG-202607-00002', 'QUOTE'::app."DESIGN_TRIGGER",
    NULL, NULL, NULL, 9001, '首下逃がし形状の見直し（公差 ±0.005）。',
-   'COMPLETED'::app."DESIGN_STATUS", '2026-07-06T15:30:00+09',
+   'COMPLETED'::app."DESIGN_STATUS", 'a0b1c2d3-0000-4000-8000-000000005107'::uuid,
+   'REVISION'::app."DESIGN_KIND", '首下逃がしの公差を ±0.005 へ。', '2026-07-08', 'NORMAL'::app."DESIGN_PRIORITY",
+   '2026-07-02T10:10:00+09', '2026-07-02T13:00:00+09', '2026-07-03T09:00:00+09', '2026-07-06T15:30:00+09',
+   '[{"action":"CREATE","user":"a0b1c2d3-0000-4000-8000-000000005107","at":"2026-07-02T01:00:00.000Z"},
+     {"action":"REQUEST_APPROVAL","user":"a0b1c2d3-0000-4000-8000-000000005107","at":"2026-07-02T01:10:00.000Z"},
+     {"action":"APPROVE","user":"a0b1c2d3-0000-4000-8000-000000005107","at":"2026-07-02T04:00:00.000Z"},
+     {"action":"START","user":"a0b1c2d3-0000-4000-8000-000000005107","at":"2026-07-03T00:00:00.000Z"},
+     {"action":"COMPLETE","user":"a0b1c2d3-0000-4000-8000-000000005107","at":"2026-07-06T06:30:00.000Z"}]'::jsonb,
    'a0b1c2d3-0000-4000-8000-000000005107'::uuid, '2026-07-02T10:00:00+09', '2026-07-06T15:30:00+09'),
   ('d7000000-0000-4000-8000-000000000003'::uuid, 'DSG-202607-00003', 'SALES_ORDER'::app."DESIGN_TRIGGER",
-   NULL, NULL, NULL, NULL, '受注後の治具設計（注文請書確定待ち）。',
-   'PENDING'::app."DESIGN_STATUS", NULL,
-   'a0b1c2d3-0000-4000-8000-000000005107'::uuid, '2026-07-07T09:00:00+09', '2026-07-07T09:00:00+09')
+   NULL, NULL, NULL, 9002, '受注後の治具設計（注文請書確定待ち）。',
+   'PENDING'::app."DESIGN_STATUS", 'a0b1c2d3-0000-4000-8000-000000005107'::uuid,
+   'NEW'::app."DESIGN_KIND", NULL, '2026-07-20', 'NORMAL'::app."DESIGN_PRIORITY",
+   '2026-07-07T09:10:00+09', '2026-07-07T11:00:00+09', NULL, NULL,
+   '[{"action":"CREATE","user":"a0b1c2d3-0000-4000-8000-000000005107","at":"2026-07-07T00:00:00.000Z"},
+     {"action":"REQUEST_APPROVAL","user":"a0b1c2d3-0000-4000-8000-000000005107","at":"2026-07-07T00:10:00.000Z"},
+     {"action":"APPROVE","user":"a0b1c2d3-0000-4000-8000-000000005107","at":"2026-07-07T02:00:00.000Z"}]'::jsonb,
+   'a0b1c2d3-0000-4000-8000-000000005107'::uuid, '2026-07-07T09:00:00+09', '2026-07-07T09:00:00+09'),
+  -- 下書き（承認依頼のカードが出ている状態）
+  ('d7000000-0000-4000-8000-000000000004'::uuid, 'DSG-202607-00004', 'QUOTE'::app."DESIGN_TRIGGER",
+   NULL, NULL, NULL, 9002, 'テーパ部の面粗さ指定を追加した図面（下書き）。',
+   'DRAFT'::app."DESIGN_STATUS", 'a0b1c2d3-0000-4000-8000-000000005107'::uuid,
+   'NEW'::app."DESIGN_KIND", NULL, '2026-07-31', 'NORMAL'::app."DESIGN_PRIORITY",
+   NULL, NULL, NULL, NULL,
+   '[{"action":"CREATE","user":"a0b1c2d3-0000-4000-8000-000000005107","at":"2026-07-08T00:00:00.000Z"}]'::jsonb,
+   'a0b1c2d3-0000-4000-8000-000000005107'::uuid, '2026-07-08T09:00:00+09', '2026-07-08T09:00:00+09'),
+  -- 承認依頼中（承認 / 差し戻しのカードが出ている状態）
+  ('d7000000-0000-4000-8000-000000000005'::uuid, 'DSG-202607-00005', 'SALES_ORDER'::app."DESIGN_TRIGGER",
+   NULL, NULL, NULL, 9002, '座ぐり深さ変更に伴う図面改訂（承認待ち）。',
+   'REQUESTED'::app."DESIGN_STATUS", 'a0b1c2d3-0000-4000-8000-000000005107'::uuid,
+   'NEW'::app."DESIGN_KIND", NULL, '2026-07-24', 'HIGH'::app."DESIGN_PRIORITY",
+   '2026-07-08T13:00:00+09', NULL, NULL, NULL,
+   '[{"action":"CREATE","user":"a0b1c2d3-0000-4000-8000-000000005107","at":"2026-07-08T03:30:00.000Z"},
+     {"action":"REQUEST_APPROVAL","user":"a0b1c2d3-0000-4000-8000-000000005107","at":"2026-07-08T04:00:00.000Z"}]'::jsonb,
+   'a0b1c2d3-0000-4000-8000-000000005107'::uuid, '2026-07-08T12:30:00+09', '2026-07-08T13:00:00+09')
 ON CONFLICT (id) DO NOTHING;
 
 INSERT INTO app.design_files (id, design_request_id, product_id, file_id, version, is_latest, notes,
@@ -244,5 +288,11 @@ VALUES
    'd5000000-0000-4000-8000-000000000004'::uuid, 2, true, '公差修正',
    'a0b1c2d3-0000-4000-8000-000000005107'::uuid, '2026-07-06T15:30:00+09')
 ON CONFLICT (id) DO NOTHING;
+
+-- 改訂の元図面は design_files の後でないと張れない（FK）ので、ここで当てる。
+UPDATE app.design_requests SET base_design_file_id = 'd8000000-0000-4000-8000-000000000002'::uuid
+ WHERE id = 'd7000000-0000-4000-8000-000000000001'::uuid;
+UPDATE app.design_requests SET base_design_file_id = 'd8000000-0000-4000-8000-000000000001'::uuid
+ WHERE id = 'd7000000-0000-4000-8000-000000000002'::uuid;
 
 COMMIT;
