@@ -27,6 +27,7 @@ import {
   Badge,
   Group,
   Paper,
+  Pill,
   SegmentedControl,
   Select,
   Stack,
@@ -68,11 +69,13 @@ export interface FlowEditorStep {
   nameEn: string;
   groupId: string | null;
   mode: ApprovalMode;
-  /** 個人宛の段（allowIndividual のときだけ）。グループとどちらか一方。 */
-  approverUserId?: string | null;
-  approverName?: string | null;
-  /** 選んだ個人が実際に承認できるか（選択肢が持ってきた値）。 */
-  approverAllowed?: boolean;
+  /**
+   * カスタム段の承認者（allowIndividual のときだけ・1..N 人）。
+   * グループとどちらか一方。`allowed` は選択肢が持ってきた「承認できるか」。
+   */
+  approvers?: { value: string; label: string; allowed: boolean }[];
+  /** カスタム段かどうか（承認者が 0 人の状態も表せるように別で持つ）。 */
+  custom?: boolean;
 }
 
 export interface GroupOption {
@@ -135,12 +138,13 @@ export function ApprovalFlowEditor({
    */
   embedded?: boolean;
   /**
-   * 段の宛先に**個人**を選べるようにする（フォームのみ）。既定は従来どおり
-   * 承認グループだけ — 書類共通のフローで個人を指すと、異動のたびに全書類の
-   * フローを直して回ることになる。フォームは持ち主が自分で直せるので許す。
+   * 段の宛先に**カスタム（この段だけの承認者）**を選べるようにする（フォームのみ）。
+   * 既定は従来どおり承認グループだけ — 書類共通のフローで個人を指すと、異動の
+   * たびに全書類のフローを直して回ることになる。フォームは持ち主が自分で
+   * 直せるので許す。
    */
   allowIndividual?: boolean;
-  /** 個人を選ぶときの検索（allowIndividual のとき必須）。 */
+  /** 承認者を選ぶときの検索（allowIndividual のとき必須）。 */
   searchApprovers?: (
     query: string,
   ) => Promise<{ value: string; label: string; allowed: boolean }[]>;
@@ -184,9 +188,9 @@ export function ApprovalFlowEditor({
   const issues = validateFlowSteps(
     steps.map((s) => ({
       nameJa: s.nameJa,
-      groupId: s.groupId ? Number(s.groupId) : null,
+      groupId: s.custom ? null : s.groupId ? Number(s.groupId) : null,
       mode: s.mode,
-      approverUserId: s.approverUserId ?? null,
+      approverUserIds: s.custom ? (s.approvers ?? []).map((a) => a.value) : [],
     })),
     allowIndividual,
   );
@@ -204,8 +208,10 @@ export function ApprovalFlowEditor({
       const payload = steps.map((s) => ({
         nameJa: s.nameJa.trim(),
         nameEn: s.nameEn.trim() || undefined,
-        groupId: s.approverUserId ? null : Number(s.groupId),
-        approverUserId: s.approverUserId ?? null,
+        groupId: s.custom ? null : Number(s.groupId),
+        approverUserIds: s.custom
+          ? (s.approvers ?? []).map((a) => a.value)
+          : [],
         mode: s.mode,
       }));
       const result = onSave
@@ -314,7 +320,7 @@ export function ApprovalFlowEditor({
                 withAsterisk
               />
             );
-            const individual = !!s.approverUserId;
+            const individual = !!s.custom;
             const groupField = (
               <Select
                 data={groupOptions}
@@ -327,64 +333,77 @@ export function ApprovalFlowEditor({
                 withAsterisk
               />
             );
+            const chosen = s.approvers ?? [];
             const individualField = searchApprovers && (
-              <SearchSelect
-                initialOption={
-                  s.approverUserId
-                    ? {
-                        value: s.approverUserId,
-                        label: s.approverName ?? s.approverUserId,
+              <Stack gap={4} w={isMobile ? undefined : 260}>
+                <SearchSelect
+                  label="承認者（複数可）"
+                  onChange={(v, option) => {
+                    if (!v || chosen.some((a) => a.value === v)) return;
+                    patch(s.key, {
+                      approvers: [
+                        ...chosen,
+                        {
+                          value: v,
+                          label: option?.label ?? v,
+                          allowed:
+                            (option as { allowed?: boolean } | undefined)
+                              ?.allowed ?? false,
+                        },
+                      ],
+                    });
+                  }}
+                  onSearch={async (q) => {
+                    const rows = (await searchApprovers(q)) ?? [];
+                    // すでに選んだ人は候補から外す（押しても増えないので迷う）。
+                    return rows
+                      .filter((r) => !chosen.some((a) => a.value === r.value))
+                      .map((r) => ({
+                        value: r.value,
+                        label: r.allowed
+                          ? r.label
+                          : `${r.label}（承認権限なし）`,
+                        allowed: r.allowed,
+                      }));
+                  }}
+                  placeholder="検索して追加"
+                  storageKey="form-approver"
+                  value={null}
+                />
+                <Group gap={4}>
+                  {chosen.map((a) => (
+                    <Pill
+                      key={a.value}
+                      onRemove={() =>
+                        patch(s.key, {
+                          approvers: chosen.filter((x) => x.value !== a.value),
+                        })
                       }
-                    : null
-                }
-                label="承認者"
-                onChange={(v, option) =>
-                  patch(s.key, {
-                    approverUserId: v,
-                    approverName: option?.label ?? null,
-                    // 権限の有無は選択肢が持ってくる（下の注意書きに使う）。
-                    approverAllowed:
-                      (option as { allowed?: boolean } | undefined)?.allowed ??
-                      false,
-                    groupId: null,
-                  })
-                }
-                onSearch={async (q) => {
-                  const rows = (await searchApprovers(q)) ?? [];
-                  return rows.map((r) => ({
-                    value: r.value,
-                    label: r.allowed ? r.label : `${r.label}（承認権限なし）`,
-                    allowed: r.allowed,
-                  }));
-                }}
-                placeholder="検索して選択"
-                storageKey="form-approver"
-                value={s.approverUserId ?? null}
-                w={isMobile ? undefined : 240}
-                withAsterisk
-              />
+                      withRemoveButton
+                    >
+                      {a.label}
+                    </Pill>
+                  ))}
+                </Group>
+              </Stack>
             );
             const targetToggle = allowIndividual && (
               <SegmentedControl
                 data={[
                   { value: "group", label: "グループ" },
-                  { value: "user", label: "個人" },
+                  { value: "custom", label: "カスタム" },
                 ]}
                 fullWidth={isMobile}
                 onChange={(v) =>
-                  // 切り替えたら反対側は必ず捨てる（両方入ると DB の CHECK で落ちる）。
+                  // 切り替えたら反対側は必ず捨てる（両方入った状態を作らない）。
                   patch(
                     s.key,
-                    v === "user"
-                      ? { groupId: null }
-                      : {
-                          approverUserId: null,
-                          approverName: null,
-                          approverAllowed: undefined,
-                        },
+                    v === "custom"
+                      ? { custom: true, groupId: null }
+                      : { custom: false, approvers: [] },
                   )
                 }
-                value={individual ? "user" : "group"}
+                value={individual ? "custom" : "group"}
               />
             );
             const modeField = (
@@ -398,17 +417,13 @@ export function ApprovalFlowEditor({
             // 選んだグループの「今この瞬間に承認できる人」と、その権限の有無。
             // 入力行の下に置く — 行の中に入れると入力欄の高さが揃わなくなる。
             const approvers = individual
-              ? s.approverUserId
-                ? [
-                    {
-                      userId: s.approverUserId,
-                      displayName: s.approverName ?? "",
-                      allowed: s.approverAllowed ?? false,
-                      unrestricted: false,
-                      scopes: [],
-                    },
-                  ]
-                : null
+              ? chosen.map((a) => ({
+                  userId: a.value,
+                  displayName: a.label,
+                  allowed: a.allowed,
+                  unrestricted: false,
+                  scopes: [],
+                }))
               : s.groupId
                 ? (approversByGroup[s.groupId] ?? [])
                 : null;
@@ -469,8 +484,8 @@ export function ApprovalFlowEditor({
                     {nameField}
                     {targetToggle}
                     {individual ? individualField : groupField}
-                    {/* 個人宛は 1 人なので「いずれか / 全員」を出さない */}
-                    {!individual && modeField}
+                    {/* カスタムでも 1 人なら「いずれか / 全員」は同じ意味なので出さない */}
+                    {(!individual || chosen.length > 1) && modeField}
                     {approverRow}
                   </Stack>
                 ) : (
@@ -480,7 +495,7 @@ export function ApprovalFlowEditor({
                       {nameField}
                       {targetToggle}
                       {individual ? individualField : groupField}
-                      {!individual && modeField}
+                      {(!individual || chosen.length > 1) && modeField}
                       {controls}
                     </Group>
                     {approverRow}

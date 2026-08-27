@@ -168,7 +168,7 @@ describe("snapshot readers", () => {
   });
 });
 
-describe("validateFlowSteps — 個人宛の段", () => {
+describe("validateFlowSteps — カスタム段（承認者を直接指名）", () => {
   const step = (over: Partial<FlowStepDraft> = {}): FlowStepDraft => ({
     nameJa: "一次承認",
     groupId: null,
@@ -176,27 +176,39 @@ describe("validateFlowSteps — 個人宛の段", () => {
     ...over,
   });
 
-  it("個人が入っていればグループ未選択でも通る", () => {
-    expect(validateFlowSteps([step({ approverUserId: "u1" })], true)).toEqual(
-      [],
-    );
+  it("承認者が 1 人でも入っていればグループ未選択で通る", () => {
+    expect(
+      validateFlowSteps([step({ approverUserIds: ["u1"] })], true),
+    ).toEqual([]);
   });
 
-  it("どちらも空なら弾く（個人を許す場合の文言）", () => {
-    expect(validateFlowSteps([step()], true)).toEqual([
-      "1 段目: 承認グループか承認者を選択してください",
+  it("承認者が複数でも通る", () => {
+    expect(
+      validateFlowSteps([step({ approverUserIds: ["u1", "u2"] })], true),
+    ).toEqual([]);
+  });
+
+  it("カスタムで承認者ゼロは弾く（誰も押せない段を作らない）", () => {
+    expect(validateFlowSteps([step({ approverUserIds: [] })], true)).toEqual([
+      "1 段目: 承認グループを選ぶか、承認者を 1 人以上選んでください",
     ]);
   });
 
-  it("個人を許さない場面（MS0B）の文言は変わらない", () => {
+  it("どちらも空なら弾く（カスタムを許す場合の文言）", () => {
+    expect(validateFlowSteps([step()], true)).toEqual([
+      "1 段目: 承認グループを選ぶか、承認者を 1 人以上選んでください",
+    ]);
+  });
+
+  it("カスタムを許さない場面（MS0B）の文言は変わらない", () => {
     expect(validateFlowSteps([step()])).toEqual([
       "1 段目: 承認グループを選択してください",
     ]);
   });
 
-  it("個人を許さない場面では approverUserId があっても通さない", () => {
-    // MS0B の共通フローは個人を持てない — 誤って渡っても宛先なし扱いにする。
-    expect(validateFlowSteps([step({ approverUserId: "u1" })])).toEqual([
+  it("カスタムを許さない場面では承認者が渡っても通さない", () => {
+    // MS0B の共通フローはカスタムを持てない — 誤って渡っても宛先なし扱い。
+    expect(validateFlowSteps([step({ approverUserIds: ["u1"] })])).toEqual([
       "1 段目: 承認グループを選択してください",
     ]);
   });

@@ -69,9 +69,9 @@ export interface FlowStepDef {
   groupId: number | null;
   groupName: LocalizedText;
   mode: ApprovalMode;
-  /** 個人宛の段（フォームのみ）。グループとどちらか一方。 */
-  approverUserId?: string | null;
-  approverName?: string | null;
+  /** カスタム段の承認者（フォームのみ・1..N 人）。グループとどちらか一方。 */
+  approverUserIds?: string[];
+  approverNames?: string[];
 }
 
 /** 書類種別の承認フロー（stepNo 昇順）。未設定なら空配列。 */
@@ -117,7 +117,10 @@ export async function getFormApprovalFlowByFormId(
     where: { formId },
     include: {
       group: { select: { name: true } },
-      approver: { select: { displayName: true, username: true } },
+      approvers: {
+        include: { user: { select: { displayName: true, username: true } } },
+        orderBy: { sortOrder: "asc" },
+      },
     },
     orderBy: { stepNo: "asc" },
   });
@@ -127,10 +130,10 @@ export async function getFormApprovalFlowByFormId(
     groupId: r.groupId,
     groupName: (r.group?.name ?? { ja: "", en: "" }) as LocalizedText,
     mode: r.mode as ApprovalMode,
-    approverUserId: r.approverUserId,
-    approverName: r.approver
-      ? r.approver.displayName || r.approver.username
-      : null,
+    approverUserIds: r.approvers.map((a) => a.userId),
+    approverNames: r.approvers.map(
+      (a) => a.user.displayName || a.user.username,
+    ),
   }));
 }
 
@@ -207,10 +210,28 @@ export async function isApproverOf(
 export async function assertFormFlowConfigured(
   formId: string,
 ): Promise<string | null> {
-  const count = await prisma.formApprovalStep.count({ where: { formId } });
-  return count > 0
-    ? null
-    : "このフォームの承認フローが未設定です（フォームの「承認」タブで段を追加してください）";
+  const steps = await prisma.formApprovalStep.findMany({
+    where: { formId },
+    select: {
+      stepNo: true,
+      groupId: true,
+      _count: { select: { approvers: true } },
+    },
+    orderBy: { stepNo: "asc" },
+  });
+  if (steps.length === 0)
+    return "このフォームの承認フローが未設定です（フォームの「承認」タブで段を追加してください）";
+
+  // 承認者が 1 人もいない段があると、依頼を出しても誰も押せないまま止まる。
+  // 保存時にも弾いているが、承認グループが空になった場合はここでしか気付けない。
+  const empty = steps.filter(
+    (s) => s.groupId == null && s._count.approvers === 0,
+  );
+  if (empty.length > 0)
+    return `承認者が設定されていない段があります（${empty
+      .map((s) => `${s.stepNo} 段目`)
+      .join("、")}）。フォームの「承認」タブで指定してください`;
+  return null;
 }
 
 // ─── 条件付きフロー（approval_flow_rules）────────────────────────────────────
@@ -416,8 +437,8 @@ function toSnapshot(flow: FlowStepDef[]): FlowStepSnapshot[] {
     groupId: s.groupId,
     groupName: s.groupName,
     mode: s.mode,
-    approverUserId: s.approverUserId ?? null,
-    approverName: s.approverName ?? null,
+    approverUserIds: s.approverUserIds ?? [],
+    approverNames: s.approverNames ?? [],
   }));
 }
 
@@ -728,9 +749,9 @@ async function createStepRequest(
   // 依頼時点の実効メンバーを承認枠として張る。
   // ANY では表示・通知用、ALL では必須チェックリストになる。
   if (step) {
-    // 個人宛の段は、その 1 人だけが承認枠。グループを引く必要がない。
-    const members = step.approverUserId
-      ? [{ userId: step.approverUserId }]
+    // カスタム段は指名された人がそのまま承認枠。グループを引く必要がない。
+    const members = (step.approverUserIds ?? []).length
+      ? (step.approverUserIds ?? []).map((userId) => ({ userId }))
       : step.groupId == null
         ? []
         : await tx.approvalGroupMember.findMany({
@@ -781,9 +802,10 @@ async function notifyStepStart(
       linkPath: APPROVAL_TARGET[targetType].href(targetId),
     };
     if (step.groupId == null) {
-      // 個人宛の段 — その 1 人にだけ送る（代理はグループの仕組みなので無い）。
-      if (step.approverUserId)
-        await notify({ ...payload, userIds: [step.approverUserId] });
+      // カスタム段 — 指名された人にだけ送る（代理はグループの仕組みなので無い）。
+      // ALL のときは、まだ押していない人だけに絞る（userIds と同じ考え方）。
+      const named = userIds ?? step.approverUserIds ?? [];
+      if (named.length > 0) await notify({ ...payload, userIds: named });
     } else {
       await notifyApprovalGroup(step.groupId, { ...payload, userIds });
     }

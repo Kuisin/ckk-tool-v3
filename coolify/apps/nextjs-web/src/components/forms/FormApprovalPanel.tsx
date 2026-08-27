@@ -15,9 +15,10 @@ export interface FormFlowStep {
   nameEn: string;
   groupId: string | null;
   mode: ApprovalMode;
-  approverUserId?: string | null;
-  approverName?: string | null;
-  approverAllowed?: boolean;
+  /** カスタム段か（グループが無い段）。 */
+  custom?: boolean;
+  /** カスタム段の承認者（1..N 人）。グループ段では空。 */
+  approvers?: { value: string; label: string; allowed: boolean }[];
 }
 
 /**
@@ -62,6 +63,7 @@ export function FormApprovalPanel({
         <Stack gap={4}>
           <Text size="sm">
             承認の段はこのフォーム専用です。ほかのフォームや書類には影響しません。
+            宛先は承認グループか、この段だけの承認者（カスタム・複数可）から選べます。
           </Text>
           <Text c="dimmed" size="xs">
             進行中の承認依頼は、依頼した時点の段構成のまま進みます（ここを変えても

@@ -29,7 +29,12 @@ async function loadFormApprovalPanel(formId: string): Promise<{
     prisma.formApprovalStep.findMany({
       where: { formId },
       include: {
-        approver: { select: { id: true, displayName: true, username: true } },
+        approvers: {
+          include: {
+            user: { select: { id: true, displayName: true, username: true } },
+          },
+          orderBy: { sortOrder: "asc" },
+        },
       },
       orderBy: { stepNo: "asc" },
     }),
@@ -52,7 +57,7 @@ async function loadFormApprovalPanel(formId: string): Promise<{
   );
   // 段に直接刺さっている個人の権限（グループ経由ではないので別に引く）。
   const individualCaps = await loadApproveCapabilities(
-    steps.map((s) => s.approverUserId).filter((v) => v != null),
+    steps.flatMap((s) => s.approvers.map((a) => a.userId)),
     [APPROVE_PERMISSION],
   );
 
@@ -74,17 +79,19 @@ async function loadFormApprovalPanel(formId: string): Promise<{
         nameJa: name?.ja ?? "",
         nameEn: name?.en ?? "",
         groupId: s.groupId == null ? null : String(s.groupId),
+        // グループが無い段 = カスタム。ここで立てないと、保存済みの段が
+        // 「グループ未選択」に見えてしまう。
+        custom: s.groupId == null,
         mode: s.mode as ApprovalMode,
-        approverUserId: s.approverUserId,
-        approverName: s.approver
-          ? s.approver.displayName || s.approver.username
-          : null,
-        // 保存済みの個人はここで権限を解いて渡す（選び直さなくても
+        // 保存済みのカスタム承認者はここで権限も解いて渡す（選び直さなくても
         // 「承認できない人が刺さっている」ことが画面で分かるように）。
-        approverAllowed: s.approverUserId
-          ? (individualCaps.get(s.approverUserId)?.get(APPROVE_PERMISSION)
-              ?.allowed ?? false)
-          : undefined,
+        approvers: s.approvers.map((a) => ({
+          value: a.userId,
+          label: a.user.displayName || a.user.username,
+          allowed:
+            individualCaps.get(a.userId)?.get(APPROVE_PERMISSION)?.allowed ??
+            false,
+        })),
       };
     }),
     groupOptions: groups.map((g) => ({
