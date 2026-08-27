@@ -187,18 +187,27 @@ model FormApprovalStep {
   id     String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   formId String @map("form_id") @db.Uuid
   stepNo Int    @map("step_no")
-  name   Json // { ja, en } 例「一次承認」
-  groupId Int          @map("group_id")
-  mode    ApprovalMode @default(ANY)
+  name Json // { ja, en } 例「一次承認」
+
+  // 段の宛先は **承認グループか個人のどちらか一方**（DB 側の CHECK で強制）。
+  // 個人を直接指せるのは、フォームだと「この稟議は部長ひとりが見る」のように
+  // グループを作るまでもない段が多いため。グループを 1 人で作らせると、
+  // 承認グループ一覧が使い捨ての 1 人グループで埋まって読めなくなる。
+  groupId        Int?    @map("group_id")
+  approverUserId String? @map("approver_user_id") @db.Uuid
+
+  mode ApprovalMode @default(ANY)
 
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
 
-  form  Form          @relation(fields: [formId], references: [id], onDelete: Cascade)
-  group ApprovalGroup @relation(fields: [groupId], references: [id], onDelete: Restrict)
+  form     Form           @relation(fields: [formId], references: [id], onDelete: Cascade)
+  group    ApprovalGroup? @relation(fields: [groupId], references: [id], onDelete: Restrict)
+  approver User?          @relation("FormApprovalStepApprover", fields: [approverUserId], references: [id], onDelete: Restrict)
 
   @@unique([formId, stepNo])
   @@index([groupId])
+  @@index([approverUserId])
   @@map("form_approval_steps")
   @@schema("app")
 }

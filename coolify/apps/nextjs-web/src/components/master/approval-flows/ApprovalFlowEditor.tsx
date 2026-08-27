@@ -47,6 +47,7 @@ import { saveApprovalFlow } from "@/app/(dashboard)/master/approval-settings/act
 import { GhostButton } from "@/components/ui/buttons";
 import { HelpLabel } from "@/components/ui/HelpLabel";
 import { PageHeader } from "@/components/ui/PageHeader";
+import { SearchSelect } from "@/components/ui/SearchSelect";
 import { FormActions, FormSection } from "@/components/ui/shells";
 import { useIsMobile } from "@/hooks/useViewport";
 import { type ApprovalMode, validateFlowSteps } from "@/lib/approval-flow";
@@ -67,6 +68,11 @@ export interface FlowEditorStep {
   nameEn: string;
   groupId: string | null;
   mode: ApprovalMode;
+  /** 個人宛の段（allowIndividual のときだけ）。グループとどちらか一方。 */
+  approverUserId?: string | null;
+  approverName?: string | null;
+  /** 選んだ個人が実際に承認できるか（選択肢が持ってきた値）。 */
+  approverAllowed?: boolean;
 }
 
 export interface GroupOption {
@@ -90,6 +96,8 @@ export function ApprovalFlowEditor({
   onSave,
   afterSaveHref,
   embedded = false,
+  allowIndividual = false,
+  searchApprovers,
 }: {
   targetType: string;
   targetLabel: string;
@@ -112,7 +120,9 @@ export function ApprovalFlowEditor({
     steps: {
       nameJa: string;
       nameEn?: string;
-      groupId: number;
+      /** 個人宛の段では null。 */
+      groupId: number | null;
+      approverUserId?: string | null;
       mode: ApprovalMode;
     }[],
   ) => Promise<{ ok: boolean; error?: string }>;
@@ -124,6 +134,16 @@ export function ApprovalFlowEditor({
    * 並んで、どの画面にいるのか分からなくなる。
    */
   embedded?: boolean;
+  /**
+   * 段の宛先に**個人**を選べるようにする（フォームのみ）。既定は従来どおり
+   * 承認グループだけ — 書類共通のフローで個人を指すと、異動のたびに全書類の
+   * フローを直して回ることになる。フォームは持ち主が自分で直せるので許す。
+   */
+  allowIndividual?: boolean;
+  /** 個人を選ぶときの検索（allowIndividual のとき必須）。 */
+  searchApprovers?: (
+    query: string,
+  ) => Promise<{ value: string; label: string; allowed: boolean }[]>;
 }) {
   const router = useRouter();
   const isMobile = useIsMobile();
@@ -166,7 +186,9 @@ export function ApprovalFlowEditor({
       nameJa: s.nameJa,
       groupId: s.groupId ? Number(s.groupId) : null,
       mode: s.mode,
+      approverUserId: s.approverUserId ?? null,
     })),
+    allowIndividual,
   );
 
   const save = () => {
@@ -182,12 +204,30 @@ export function ApprovalFlowEditor({
       const payload = steps.map((s) => ({
         nameJa: s.nameJa.trim(),
         nameEn: s.nameEn.trim() || undefined,
-        groupId: Number(s.groupId),
+        groupId: s.approverUserId ? null : Number(s.groupId),
+        approverUserId: s.approverUserId ?? null,
         mode: s.mode,
       }));
       const result = onSave
         ? await onSave(payload)
-        : await saveApprovalFlow(targetType, payload);
+        : // 書類共通フロー（MS0B）は個人宛を持たない。allowIndividual が false
+          // なので validateFlowSteps がグループ未選択を弾いており、ここでは
+          // 必ずグループが入っている。
+          await saveApprovalFlow(
+            targetType,
+            payload.flatMap((p) =>
+              p.groupId == null
+                ? []
+                : [
+                    {
+                      nameJa: p.nameJa,
+                      nameEn: p.nameEn,
+                      groupId: p.groupId,
+                      mode: p.mode,
+                    },
+                  ],
+            ),
+          );
       if (result.ok) {
         notifications.show({
           title: "保存しました",
@@ -235,8 +275,9 @@ export function ApprovalFlowEditor({
           <Text component="span" ff="mono" size="sm">
             {permissionCode}:READ / UPDATE
           </Text>
-          ）が要ります。誰が承認するかは、この画面の承認グループだけで
-          決まります。書類を開けない人は、承認グループに入れても承認できません
+          ）が要ります。誰が承認するかは、この画面で指定した
+          {allowIndividual ? "承認グループ・承認者" : "承認グループ"}
+          だけで決まります。書類を開けない人は、指定しても承認できません
           （権限はユーザー管理 SY01 のロールで決まります）。
         </Text>
       </Alert>
@@ -273,6 +314,7 @@ export function ApprovalFlowEditor({
                 withAsterisk
               />
             );
+            const individual = !!s.approverUserId;
             const groupField = (
               <Select
                 data={groupOptions}
@@ -285,6 +327,66 @@ export function ApprovalFlowEditor({
                 withAsterisk
               />
             );
+            const individualField = searchApprovers && (
+              <SearchSelect
+                initialOption={
+                  s.approverUserId
+                    ? {
+                        value: s.approverUserId,
+                        label: s.approverName ?? s.approverUserId,
+                      }
+                    : null
+                }
+                label="承認者"
+                onChange={(v, option) =>
+                  patch(s.key, {
+                    approverUserId: v,
+                    approverName: option?.label ?? null,
+                    // 権限の有無は選択肢が持ってくる（下の注意書きに使う）。
+                    approverAllowed:
+                      (option as { allowed?: boolean } | undefined)?.allowed ??
+                      false,
+                    groupId: null,
+                  })
+                }
+                onSearch={async (q) => {
+                  const rows = (await searchApprovers(q)) ?? [];
+                  return rows.map((r) => ({
+                    value: r.value,
+                    label: r.allowed ? r.label : `${r.label}（承認権限なし）`,
+                    allowed: r.allowed,
+                  }));
+                }}
+                placeholder="検索して選択"
+                storageKey="form-approver"
+                value={s.approverUserId ?? null}
+                w={isMobile ? undefined : 240}
+                withAsterisk
+              />
+            );
+            const targetToggle = allowIndividual && (
+              <SegmentedControl
+                data={[
+                  { value: "group", label: "グループ" },
+                  { value: "user", label: "個人" },
+                ]}
+                fullWidth={isMobile}
+                onChange={(v) =>
+                  // 切り替えたら反対側は必ず捨てる（両方入ると DB の CHECK で落ちる）。
+                  patch(
+                    s.key,
+                    v === "user"
+                      ? { groupId: null }
+                      : {
+                          approverUserId: null,
+                          approverName: null,
+                          approverAllowed: undefined,
+                        },
+                  )
+                }
+                value={individual ? "user" : "group"}
+              />
+            );
             const modeField = (
               <SegmentedControl
                 data={APPROVAL_MODE_OPTIONS}
@@ -295,9 +397,21 @@ export function ApprovalFlowEditor({
             );
             // 選んだグループの「今この瞬間に承認できる人」と、その権限の有無。
             // 入力行の下に置く — 行の中に入れると入力欄の高さが揃わなくなる。
-            const approvers = s.groupId
-              ? (approversByGroup[s.groupId] ?? [])
-              : null;
+            const approvers = individual
+              ? s.approverUserId
+                ? [
+                    {
+                      userId: s.approverUserId,
+                      displayName: s.approverName ?? "",
+                      allowed: s.approverAllowed ?? false,
+                      unrestricted: false,
+                      scopes: [],
+                    },
+                  ]
+                : null
+              : s.groupId
+                ? (approversByGroup[s.groupId] ?? [])
+                : null;
             const approverRow = approvers && (
               <Group gap="xs" wrap="wrap">
                 <Text c="dimmed" size="xs">
@@ -353,8 +467,10 @@ export function ApprovalFlowEditor({
                       {controls}
                     </Group>
                     {nameField}
-                    {groupField}
-                    {modeField}
+                    {targetToggle}
+                    {individual ? individualField : groupField}
+                    {/* 個人宛は 1 人なので「いずれか / 全員」を出さない */}
+                    {!individual && modeField}
                     {approverRow}
                   </Stack>
                 ) : (
@@ -362,8 +478,9 @@ export function ApprovalFlowEditor({
                     <Group align="flex-end" gap="sm" wrap="nowrap">
                       {stepBadge}
                       {nameField}
-                      {groupField}
-                      {modeField}
+                      {targetToggle}
+                      {individual ? individualField : groupField}
+                      {!individual && modeField}
                       {controls}
                     </Group>
                     {approverRow}

@@ -2,7 +2,10 @@
 
 import { Alert, Stack, Text } from "@mantine/core";
 import { IconInfoCircle } from "@tabler/icons-react";
-import { saveFormApprovalFlow } from "@/app/(dashboard)/general/forms/actions";
+import {
+  saveFormApprovalFlow,
+  searchFormApproverOptions,
+} from "@/app/(dashboard)/general/forms/actions";
 import { ApprovalFlowEditor } from "@/components/master/approval-flows/ApprovalFlowEditor";
 import type { FlowApprover } from "@/components/master/approval-flows/ApproverPermissionBadge";
 import type { ApprovalMode } from "@/lib/approval-flow";
@@ -10,8 +13,11 @@ import type { ApprovalMode } from "@/lib/approval-flow";
 export interface FormFlowStep {
   nameJa: string;
   nameEn: string;
-  groupId: string;
+  groupId: string | null;
   mode: ApprovalMode;
+  approverUserId?: string | null;
+  approverName?: string | null;
+  approverAllowed?: boolean;
 }
 
 /**
@@ -74,6 +80,7 @@ export function FormApprovalPanel({
       {canManage ? (
         <ApprovalFlowEditor
           afterSaveHref={`/general/forms/${code}`}
+          allowIndividual
           approversByGroup={approversByGroup}
           embedded
           groupOptions={groupOptions}
@@ -81,6 +88,7 @@ export function FormApprovalPanel({
           onSave={(steps) => saveFormApprovalFlow(code, steps)}
           permissionCode="form"
           permissionLabel={permissionLabel}
+          searchApprovers={searchFormApproverOptions}
           targetLabel={title}
           targetType="form_responses"
         />

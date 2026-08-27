@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   decideAfterApproval,
+  type FlowStepDraft,
   isStepComplete,
   type RequiredApproverState,
   remainingApprovers,
@@ -164,5 +165,39 @@ describe("snapshot readers", () => {
     expect(stepFromSnapshot(null, 1)).toBeNull();
     expect(stepsFromSnapshot("nope")).toEqual([]);
     expect(stepsFromSnapshot([null, { stepNo: 1 }])).toHaveLength(1);
+  });
+});
+
+describe("validateFlowSteps — 個人宛の段", () => {
+  const step = (over: Partial<FlowStepDraft> = {}): FlowStepDraft => ({
+    nameJa: "一次承認",
+    groupId: null,
+    mode: "ANY",
+    ...over,
+  });
+
+  it("個人が入っていればグループ未選択でも通る", () => {
+    expect(validateFlowSteps([step({ approverUserId: "u1" })], true)).toEqual(
+      [],
+    );
+  });
+
+  it("どちらも空なら弾く（個人を許す場合の文言）", () => {
+    expect(validateFlowSteps([step()], true)).toEqual([
+      "1 段目: 承認グループか承認者を選択してください",
+    ]);
+  });
+
+  it("個人を許さない場面（MS0B）の文言は変わらない", () => {
+    expect(validateFlowSteps([step()])).toEqual([
+      "1 段目: 承認グループを選択してください",
+    ]);
+  });
+
+  it("個人を許さない場面では approverUserId があっても通さない", () => {
+    // MS0B の共通フローは個人を持てない — 誤って渡っても宛先なし扱いにする。
+    expect(validateFlowSteps([step({ approverUserId: "u1" })])).toEqual([
+      "1 段目: 承認グループを選択してください",
+    ]);
   });
 });
