@@ -60,11 +60,17 @@ async function ownerExists(
         where: { responseNumber: ownerId },
         select: { id: true },
       }));
-    case "design_requests":
-      return !!(await prisma.designRequest.findUnique({
+    case "design_requests": {
+      // 設計依頼は「実在するか」だけでは足りない — 承認前（下書き・承認依頼中・
+      // 差し戻し）と終わったあと（完了・キャンセル）に図面を足せてしまうと、
+      // 承認した中身と完了時に版登録される中身がずれる。画面側の canAttachFiles
+      // と同じ条件をここでも見る（UI のガードは飾りにしない）。
+      const row = await prisma.designRequest.findUnique({
         where: { requestNumber: ownerId },
-        select: { id: true },
-      }));
+        select: { status: true },
+      });
+      return row?.status === "PENDING" || row?.status === "IN_PROGRESS";
+    }
     default:
       return false;
   }

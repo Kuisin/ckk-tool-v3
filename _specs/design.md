@@ -659,9 +659,13 @@ Stack (gap="md")
 | InspectionRecord | PASS | green | 合格 |
 | InspectionRecord | FAIL | red | 不合格 |
 | InspectionRecord | APPROVED | teal | 承認済 |
-| DesignRequest | PENDING | gray | 未着手 |
-| DesignRequest | IN_PROGRESS | blue | 進行中 |
+| DesignRequest | DRAFT | gray | 下書き |
+| DesignRequest | REQUESTED | yellow | 承認依頼中 |
+| DesignRequest | PENDING | blue | 未着手 |
+| DesignRequest | IN_PROGRESS | violet | 進行中 |
 | DesignRequest | COMPLETED | green | 完了 |
+| DesignRequest | REJECTED | red | 差し戻し |
+| DesignRequest | CANCELLED | red | キャンセル |
 | BillingClosing | PENDING | gray | 未処理 |
 | BillingClosing | PROCESSED | blue | 処理済 |
 | BillingClosing | EXPORTED | green | エクスポート済 |
@@ -1272,7 +1276,7 @@ Row click navigates to detail page.
 | DeliveryNote | 納品番号 / 出荷書番号 / 納品先 / 方法 / 状態 / 納品日 |
 | Invoice | 請求番号 / 顧客 / 請求期間 / 合計金額 / 状態 / 発行日 |
 | BillingClosing | 顧客 / 締日 / 合計金額 / 状態 / 処理日 |
-| DesignRequest | 依頼番号 / トリガー / 製品 / 状態 / 更新日 |
+| DesignRequest | 依頼番号 / 区分 / 製品 / 担当者 / 希望納期 / 状態 / 更新日 |
 | MaterialPurchaseOrder | 発注番号 / 仕入先 / 入荷先拠点 / 合計金額 / 状態 / 発注日 |
 | MaterialReceipt | 素材 / 仕入先 / 入荷拠点 / 数量 / 入荷日 |
 | OutsourceOrder | 外注先 / 工程 / 依頼日 / 入荷予定日 / 入荷日 / 状態 |

@@ -280,6 +280,7 @@ export const NOTIFICATION_TYPE_LABEL: Record<string, string> = {
   INTAKE: "取込",
   PURCHASE: "購買",
   SHARE: "共有",
+  DESIGN: "設計",
   SYSTEM: "システム",
 };
 
