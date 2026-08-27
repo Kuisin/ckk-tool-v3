@@ -43,7 +43,14 @@ const AUTH_ERROR_MESSAGES: Record<string, string> = {
   Verification: "リンクが無効か期限切れです。もう一度お試しください。",
 };
 
-export function LoginForm({ ssoEnabled }: { ssoEnabled: boolean }) {
+export function LoginForm({
+  ssoEnabled,
+  callbackUrl = "/",
+}: {
+  ssoEnabled: boolean;
+  /** ログイン後に戻る先（サーバ側で safeCallbackPath 済み）。 */
+  callbackUrl?: string;
+}) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const urlError = searchParams.get("error");
@@ -80,7 +87,8 @@ export function LoginForm({ ssoEnabled }: { ssoEnabled: boolean }) {
       setError("ユーザー名またはパスワードが正しくありません");
       return;
     }
-    router.push("/");
+    // 元々開こうとしていた画面へ戻す（無ければホーム）。
+    router.push(callbackUrl);
     router.refresh();
   };
 
@@ -95,6 +103,8 @@ export function LoginForm({ ssoEnabled }: { ssoEnabled: boolean }) {
       }}
       style={{ width: "100%" }}
     >
+      {/* 戻り先を Server Action へ渡す（サーバ側でも畳み直す）。 */}
+      <input name="callbackUrl" type="hidden" value={callbackUrl} />
       <Button
         disabled={!ssoEnabled || ssoLoading}
         fullWidth
