@@ -68,11 +68,12 @@ import {
   type DesignKindDetection,
   type DesignRequest,
   describeDetection,
+  hasSourceDocument,
 } from "./model";
 
 const BASE_PATH = "/sales/design-requests";
 
-const TRIGGERS = ["QUOTE", "SALES_ORDER"] as const;
+const TRIGGERS = ["QUOTE", "SALES_ORDER", "STANDALONE"] as const;
 type Trigger = (typeof TRIGGERS)[number];
 
 const schema = z
@@ -334,7 +335,7 @@ export function DesignRequestForm({
                   searchable
                   {...form.getInputProps("quoteNumber")}
                 />
-              ) : (
+              ) : form.values.trigger === "SALES_ORDER" ? (
                 <SearchSelect
                   description="§3 受注と並行して設計を依頼する場合の注文明細（任意）"
                   label={
@@ -345,6 +346,16 @@ export function DesignRequestForm({
                   placeholder="注文明細を検索"
                   storageKey="sales-order"
                   value={form.values.orderLineId}
+                />
+              ) : (
+                // 単独 — 紐づける書類が無いので、欄を出さずに何が起きるかだけ書く。
+                <FieldValue
+                  label="参照元"
+                  value={
+                    <Text c="dimmed" size="sm">
+                      なし（見積・受注に紐づけません）
+                    </Text>
+                  }
                 />
               )}
             </>
@@ -367,11 +378,19 @@ export function DesignRequestForm({
                 }
               />
               <FieldValue
-                label={request?.trigger === "QUOTE" ? "見積書" : "注文明細"}
+                label={
+                  request && !hasSourceDocument(request.trigger)
+                    ? "参照元"
+                    : request?.trigger === "QUOTE"
+                      ? "見積書"
+                      : "注文明細"
+                }
                 value={
-                  request?.trigger === "QUOTE"
-                    ? (request?.quoteNumber ?? "—")
-                    : (request?.orderLineNumber ?? "—")
+                  request && !hasSourceDocument(request.trigger)
+                    ? "なし"
+                    : request?.trigger === "QUOTE"
+                      ? (request?.quoteNumber ?? "—")
+                      : (request?.orderLineNumber ?? "—")
                 }
               />
             </>

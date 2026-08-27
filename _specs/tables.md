@@ -1435,6 +1435,8 @@ Ref: design_requests.(quote_year_month, quote_seq) > quotes.(year_month, seq)
 Enum DESIGN_TRIGGER {
   QUOTE           // 見積時（§1 と並行）
   SALES_ORDER     // 受注時（§3 と並行）
+  STANDALONE      // 単独 — 見積にも受注にも紐づかない（新製品の検討・事前相談・
+                  //        社内改善）。参照元は両方 null になる
 }
 
 // 2 つの軸が重なっている:

@@ -108,6 +108,7 @@ import {
   DESIGN_KIND_COLOR,
   DESIGN_TRIGGER_COLOR,
   type DesignRequest,
+  hasSourceDocument,
   isCancellable,
   isEditable,
   isIssuedDesign,
@@ -397,7 +398,18 @@ export function DesignRequestDetail({
             </Badge>
           }
         />
-        {request.trigger === "QUOTE" ? (
+        {!hasSourceDocument(request.trigger) ? (
+          // 単独 — 紐づく書類が無いことを「—」ではなく明示する
+          // （空欄だと「入れ忘れ」に見えて、後から探しに行かれる）。
+          <FieldValue
+            label="参照元"
+            value={
+              <Text c="dimmed" size="sm">
+                なし（単独起票）
+              </Text>
+            }
+          />
+        ) : request.trigger === "QUOTE" ? (
           <FieldValue
             label="見積書"
             value={

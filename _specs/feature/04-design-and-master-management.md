@@ -45,7 +45,9 @@
 
 ### 業務ルール
 
-- 起票トリガ: `DESIGN_TRIGGER.QUOTE`（見積時）/ `DESIGN_TRIGGER.SALES_ORDER`（受注時）
+- 起票トリガ: `DESIGN_TRIGGER.QUOTE`（見積時）/ `DESIGN_TRIGGER.SALES_ORDER`（受注時）/
+  `DESIGN_TRIGGER.STANDALONE`（単独 — 見積にも受注にも紐づかない。新製品の検討・
+  客先からの事前相談・社内改善。参照元は両方 null）
 - 設計依頼書は任意（設計図がある場合は不要）
 - 編集できるのは `DRAFT` / `REJECTED` のみ。ただし **担当者の付け替えは承認後
   （`PENDING` / `IN_PROGRESS`）でもできる** — 承認の対象は「何を設計するか」で
