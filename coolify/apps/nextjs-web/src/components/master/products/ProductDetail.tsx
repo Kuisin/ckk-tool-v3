@@ -9,16 +9,7 @@
  * 履歴タブは audit_logs 導入後に接続する（現状は空表示）。
  */
 
-import {
-  Anchor,
-  Badge,
-  Box,
-  Group,
-  Stack,
-  Table,
-  Tabs,
-  Text,
-} from "@mantine/core";
+import { Badge, Box, Stack, Table, Tabs, Text } from "@mantine/core";
 import {
   IconCircleMinus,
   IconCopy,
@@ -29,18 +20,14 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { useFormat } from "@/components/layout/PreferencesProvider";
 import { KeywordBadges } from "@/components/master/MasterKeywordsField";
+import { DesignFileList } from "@/components/sales/design-requests/DesignFileList";
 import { DesignRequestLinks } from "@/components/sales/design-requests/DesignRequestLinks";
-import {
-  DESIGN_FILE_ROLE_COLOR,
-  DESIGN_FILE_ROLE_LABEL,
-  type DesignRequestLink,
-  type ProductDesignFile,
+import type {
+  DesignRequestLink,
+  ProductDesignFile,
 } from "@/components/sales/design-requests/model";
 import { ActiveBadge } from "@/components/ui/ActiveBadge";
-import {
-  DesignFileThumb,
-  DesignFileViewButton,
-} from "@/components/ui/DesignFileViewer";
+import { DesignFileThumb } from "@/components/ui/DesignFileViewer";
 import { DocNumber } from "@/components/ui/DocNumber";
 import { FieldValue } from "@/components/ui/FieldValue";
 import { HistoryPanel } from "@/components/ui/HistoryPanel";
@@ -52,7 +39,6 @@ import {
 } from "@/components/ui/shells";
 import { useTabParam } from "@/hooks/useUrlState";
 import { useIsMobile } from "@/hooks/useViewport";
-import { isViewable } from "@/lib/design-file-kind";
 import type { RouteView } from "@/lib/product-routes-core";
 import { isReservedSpecKey } from "@/lib/product-types";
 import {
@@ -300,84 +286,14 @@ export function ProductDetail({
                       />
                     </Box>
                   )}
-                  <Table highlightOnHover striped withTableBorder>
-                    <Table.Thead>
-                      <Table.Tr>
-                        <Table.Th w={110}>バージョン</Table.Th>
-                        <Table.Th>ファイル名</Table.Th>
-                        {!isMobile && <Table.Th w={170}>元依頼</Table.Th>}
-                        {!isMobile && <Table.Th w={150}>登録日時</Table.Th>}
-                      </Table.Tr>
-                    </Table.Thead>
-                    <Table.Tbody>
-                      {designFiles.map((f) => (
-                        <Table.Tr key={f.id}>
-                          <Table.Td className="tabular-nums">
-                            <Group gap="xs" wrap="nowrap">
-                              v{f.version}
-                              <Badge
-                                color={DESIGN_FILE_ROLE_COLOR[f.role] ?? "gray"}
-                                variant="light"
-                              >
-                                {DESIGN_FILE_ROLE_LABEL[f.role] ?? f.role}
-                              </Badge>
-                              {f.isLatest && (
-                                <Badge color="green" variant="light">
-                                  最新
-                                </Badge>
-                              )}
-                            </Group>
-                          </Table.Td>
-                          <Table.Td>
-                            <Group gap="xs" wrap="nowrap">
-                              <Anchor
-                                href={`/api/design-files/${encodeURIComponent(f.id)}`}
-                                size="sm"
-                                target="_blank"
-                              >
-                                {f.filename}
-                              </Anchor>
-                              {isViewable(f.filename, f.mimeType) && (
-                                <DesignFileViewButton
-                                  target={{
-                                    caption: `v${f.version}`,
-                                    filename: f.filename,
-                                    mimeType: f.mimeType,
-                                    src: `/api/design-files/${encodeURIComponent(f.id)}`,
-                                  }}
-                                />
-                              )}
-                            </Group>
-                          </Table.Td>
-                          {!isMobile && (
-                            <Table.Td>
-                              {f.requestNumber ? (
-                                <Anchor
-                                  onClick={() =>
-                                    router.push(
-                                      `/sales/design-requests/${encodeURIComponent(f.requestNumber ?? "")}`,
-                                    )
-                                  }
-                                  size="sm"
-                                >
-                                  {f.requestNumber}
-                                </Anchor>
-                              ) : (
-                                <Text c="dimmed" size="sm">
-                                  —
-                                </Text>
-                              )}
-                            </Table.Td>
-                          )}
-                          {!isMobile && (
-                            <Table.Td className="tabular-nums">
-                              {fmt.dateTime(f.createdAt)}
-                            </Table.Td>
-                          )}
-                        </Table.Tr>
-                      ))}
-                    </Table.Tbody>
-                  </Table>
+                  <DesignFileList
+                    onOpenRequest={(n) =>
+                      router.push(
+                        `/sales/design-requests/${encodeURIComponent(n)}`,
+                      )
+                    }
+                    rows={designFiles}
+                  />
                 </>
               )}
             </Stack>

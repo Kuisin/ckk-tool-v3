@@ -25,6 +25,7 @@ import { useFormat } from "@/components/layout/PreferencesProvider";
 import type { AttachmentView } from "@/components/ui/AttachmentsPanel";
 import { SecondaryButton } from "@/components/ui/buttons";
 import { ModalShell } from "@/components/ui/modals";
+import { useIsMobile } from "@/hooks/useViewport";
 import { designFileKind } from "@/lib/design-file-kind";
 
 export interface CompleteDesignInput {
@@ -51,13 +52,11 @@ export function CompleteDesignModal({
   attachments: AttachmentView[];
 }) {
   const fmt = useFormat();
+  const isMobile = useIsMobile();
   const router = useRouter();
   const [preview, setPreview] = useState<string | null>(null);
   const [blueprint, setBlueprint] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
-
-  const label = (a: AttachmentView) =>
-    `${a.filename}（${fmt.date(a.createdAt)}）`;
 
   // 添付が増減したら選び直す。開くたびにも通るので前回の選択が残らない。
   // 既定: 3D として読めるものをプレビューへ、そうでない最新を図面データへ。
@@ -113,7 +112,32 @@ export function CompleteDesignModal({
     (a) => a.id !== preview && a.id !== blueprint,
   );
 
-  const options = attachments.map((a) => ({ value: a.id, label: label(a) }));
+  // 選択肢のラベルは**ファイル名だけ**。日付まで 1 行に入れると 375px の
+  // 入力欄では肝心のファイル名が押し出されて、どれを選んだのか判らない。
+  // 日付は候補一覧の 2 行目（renderOption）に回す。
+  const options = attachments.map((a) => ({
+    value: a.id,
+    label: a.filename,
+    date: fmt.date(a.createdAt),
+  }));
+
+  // 候補は 2 行（ファイル名 / 追加日）。長い名前は折り返さず truncate する。
+  const renderOption = ({
+    option,
+  }: {
+    option: { value: string; label: string; date?: string };
+  }) => (
+    <Stack gap={0} style={{ minWidth: 0 }}>
+      <Text size="sm" truncate>
+        {option.label}
+      </Text>
+      {option.date && (
+        <Text c="dimmed" size="xs">
+          {option.date}
+        </Text>
+      )}
+    </Stack>
+  );
   const canConfirm = blueprint != null && blueprint !== preview;
 
   return (
@@ -159,6 +183,7 @@ export function CompleteDesignModal({
               label="プレビュー用（3D）"
               onChange={setPreview}
               placeholder="選択しない"
+              renderOption={renderOption}
               value={preview}
             />
             <Select
@@ -172,6 +197,7 @@ export function CompleteDesignModal({
               label="図面データ"
               onChange={setBlueprint}
               placeholder="選択してください"
+              renderOption={renderOption}
               value={blueprint}
               withAsterisk
             />
@@ -186,7 +212,7 @@ export function CompleteDesignModal({
               ) : (
                 references.map((a) => (
                   <Text c="dimmed" key={a.id} size="xs" truncate>
-                    {label(a)}
+                    {a.filename}
                   </Text>
                 ))
               )}
@@ -194,11 +220,14 @@ export function CompleteDesignModal({
           </>
         )}
 
-        <Group>
+        {/* モバイルは縦積み + 全幅（44px の当たり判定）。横並びのままだと
+            「1 件 20MB まで」に押されてボタンが極端に細くなる。 */}
+        <Group gap="xs" wrap="wrap">
           <FileButton onChange={upload}>
             {(props) => (
               <SecondaryButton
                 {...props}
+                fullWidth={isMobile}
                 leftSection={<IconUpload size={14} />}
                 loading={uploading}
               >

@@ -485,8 +485,12 @@ export function WorkOrderDetail({
                   }}
                 />
               </Box>
-              <Group gap="sm" wrap="nowrap">
-                <Text size="sm">{designFile.filename}</Text>
+              {/* wrap="wrap" — 長いファイル名 + 依頼番号は 375px で 1 行に
+                  収まらない。nowrap のままだと依頼番号が枠外へ出る。 */}
+              <Group gap="sm" wrap="wrap">
+                <Text size="sm" style={{ overflowWrap: "anywhere" }}>
+                  {designFile.filename}
+                </Text>
                 {designFile.requestNumber && (
                   <Anchor
                     onClick={() =>

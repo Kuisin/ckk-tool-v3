@@ -30,7 +30,6 @@ import {
   Select,
   Stack,
   Stepper,
-  Table,
   Tabs,
   Text,
   Textarea,
@@ -98,6 +97,7 @@ import {
 } from "@/lib/enum-labels";
 import type { ActionResult } from "@/lib/server-action";
 import { CompleteDesignModal } from "./CompleteDesignModal";
+import { DesignFileList } from "./DesignFileList";
 import {
   canAttachFiles,
   canComplete,
@@ -105,8 +105,6 @@ import {
   canReopen,
   canRequestApproval,
   canStart,
-  DESIGN_FILE_ROLE_COLOR,
-  DESIGN_FILE_ROLE_LABEL,
   DESIGN_HISTORY_ACTION_LABEL,
   DESIGN_KIND_COLOR,
   DESIGN_TRIGGER_COLOR,
@@ -650,64 +648,7 @@ export function DesignRequestDetail({
                 message="登録済みバージョンはありません"
               />
             ) : (
-              <Table.ScrollContainer minWidth={640}>
-                <Table highlightOnHover>
-                  <Table.Thead>
-                    <Table.Tr>
-                      <Table.Th ta="right" w={90}>
-                        バージョン
-                      </Table.Th>
-                      <Table.Th>ファイル名</Table.Th>
-                      <Table.Th>備考</Table.Th>
-                      <Table.Th w={150}>登録日時</Table.Th>
-                    </Table.Tr>
-                  </Table.Thead>
-                  <Table.Tbody>
-                    {request.files.map((f) => (
-                      <Table.Tr key={f.id}>
-                        <Table.Td className="tabular-nums" ta="right">
-                          <Group gap="xs" justify="flex-end" wrap="nowrap">
-                            v{f.version}
-                            <Badge
-                              color={DESIGN_FILE_ROLE_COLOR[f.role] ?? "gray"}
-                              variant="light"
-                            >
-                              {DESIGN_FILE_ROLE_LABEL[f.role] ?? f.role}
-                            </Badge>
-                            {f.isLatest && (
-                              <Badge color="green" variant="light">
-                                最新
-                              </Badge>
-                            )}
-                          </Group>
-                        </Table.Td>
-                        <Table.Td>
-                          {/* 版の実体は design_files → files（証憑ではない）
-                              ので専用ルートで開く。 */}
-                          <Anchor
-                            href={`/api/design-files/${encodeURIComponent(f.id)}`}
-                            size="sm"
-                            target="_blank"
-                          >
-                            {f.filename}
-                          </Anchor>
-                          <Text c="dimmed" size="xs">
-                            {f.mimeType}
-                          </Text>
-                        </Table.Td>
-                        <Table.Td>
-                          <Text c={f.notes ? undefined : "dimmed"} size="sm">
-                            {f.notes || "—"}
-                          </Text>
-                        </Table.Td>
-                        <Table.Td className="tabular-nums">
-                          {fmt.dateTime(f.createdAt)}
-                        </Table.Td>
-                      </Table.Tr>
-                    ))}
-                  </Table.Tbody>
-                </Table>
-              </Table.ScrollContainer>
+              <DesignFileList rows={request.files} />
             )}
           </Stack>
         </Tabs.Panel>
