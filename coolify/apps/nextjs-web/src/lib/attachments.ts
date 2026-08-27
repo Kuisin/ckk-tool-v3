@@ -27,21 +27,65 @@ import { deleteObject, putObject } from "@/lib/storage";
 export const MAX_ATTACHMENT_BYTES = 20 * 1024 * 1024;
 
 /**
- * 許可する拡張子 → 許可する申告 MIME タイプ（先頭が正規の保存用 MIME）。
- * 拡張子と申告 MIME の両方がホワイトリストに一致しない限り受け付けない。
+ * 拡張子 → 保存用に正規化する MIME。**受付の可否はここで決めない。**
+ *
+ * 設計依頼には図面・3D モデル・仕様書など何が来るか分からないので、拡張子の
+ * ホワイトリストで弾くのはやめた。代わりに **危険なのは「保存」ではなく
+ * 「ブラウザ内で開くこと」** と割り切り、配信側（/api/attachments/[id] ・
+ * /api/design-files/[id]）でインライン表示を PDF・画像・3D だけに絞っている。
+ * SVG / HTML のようなスクリプトを含みうる形式は、受け取りはするが必ず
+ * ダウンロード扱いにする（`INLINE_SAFE_TYPES` が唯一の判定元）。
  */
-const ALLOWED_TYPES: Record<string, string[]> = {
-  pdf: ["application/pdf"],
-  png: ["image/png"],
-  jpg: ["image/jpeg"],
-  jpeg: ["image/jpeg"],
-  webp: ["image/webp"],
-  heic: ["image/heic", "image/heif"],
-  xlsx: ["application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"],
-  csv: ["text/csv", "application/csv", "application/vnd.ms-excel"],
+const CANONICAL_TYPES: Record<string, string> = {
+  pdf: "application/pdf",
+  png: "image/png",
+  jpg: "image/jpeg",
+  jpeg: "image/jpeg",
+  webp: "image/webp",
+  heic: "image/heic",
+  xlsx: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+  csv: "text/csv",
+  // 3D — ブラウザは MIME を持たないことが多いので拡張子から決める。
+  stl: "model/stl",
+  obj: "model/obj",
+  gltf: "model/gltf+json",
+  glb: "model/gltf-binary",
+  ply: "application/octet-stream",
+  step: "application/step",
+  stp: "application/step",
+  iges: "model/iges",
+  igs: "model/iges",
+  "3mf": "model/3mf",
+  fbx: "application/octet-stream",
+  dxf: "image/vnd.dxf",
+  dwg: "image/vnd.dwg",
 };
 
-const ALLOWED_EXT_LABEL = "PDF / PNG / JPG / WEBP / HEIC / XLSX / CSV";
+/**
+ * **ブラウザ内で開いてよい** MIME。ここに無いものは配信時に必ず
+ * `Content-Disposition: attachment` にする。XSS の入口になるのは
+ * インライン表示だけなので、絞るのはここ 1 箇所でよい。
+ * 3D は `<canvas>` へ自前で読み込むため inline 配信でよい（HTML として
+ * 解釈されることはない）。
+ */
+export const INLINE_SAFE_TYPES = new Set([
+  "application/pdf",
+  "image/png",
+  "image/jpeg",
+  "image/webp",
+  "model/stl",
+  "model/obj",
+  "model/gltf+json",
+  "model/gltf-binary",
+  "model/3mf",
+  "model/iges",
+  "application/step",
+]);
+
+/** その MIME をブラウザ内で開いてよいか（配信ルートの唯一の判定元）。 */
+export function isInlineSafe(mimeType: string): boolean {
+  return INLINE_SAFE_TYPES.has(mimeType.toLowerCase());
+}
 
 export interface SaveAttachmentInput {
   ownerType: string;
@@ -57,8 +101,11 @@ export interface SaveAttachmentInput {
 }
 
 /**
- * ファイル検証 — 拡張子と申告 MIME の両方をホワイトリストで照合。
- * 戻り値: エラーメッセージ（正常時は正規化した保存用 MIME を返す）。
+ * ファイル検証 — 大きさだけを見る。**形式では弾かない。**
+ *
+ * 保存用 MIME は拡張子の正規値に寄せ（ブラウザの申告はばらつくため）、
+ * 知らない拡張子は application/octet-stream にする。octet-stream は
+ * INLINE_SAFE_TYPES に無いので、配信時に必ずダウンロード扱いになる。
  */
 function validateFile(
   name: string,
@@ -69,22 +116,24 @@ function validateFile(
   if (size > MAX_ATTACHMENT_BYTES) {
     return { ok: false, error: "ファイルサイズは 20MB 以下にしてください" };
   }
-  const ext = name.includes(".") ? name.split(".").pop()?.toLowerCase() : "";
-  const allowed = ext ? ALLOWED_TYPES[ext] : undefined;
-  if (!allowed) {
-    return {
-      ok: false,
-      error: `対応していないファイル形式です（${ALLOWED_EXT_LABEL}）`,
-    };
-  }
-  if (!allowed.includes(declaredType.toLowerCase())) {
-    return {
-      ok: false,
-      error: "ファイルの形式（MIME タイプ）が拡張子と一致しません",
-    };
-  }
-  // 保存用 MIME は拡張子の正規値に寄せる（csv の vnd.ms-excel 等を統一）。
-  return { ok: true, contentType: allowed[0] };
+  const ext = name.includes(".")
+    ? (name.split(".").pop()?.toLowerCase() ?? "")
+    : "";
+  const canonical = CANONICAL_TYPES[ext];
+  if (canonical) return { ok: true, contentType: canonical };
+  // 拡張子を知らない場合はブラウザの申告を使うが、スクリプトを含みうる形式は
+  // 保存時点で octet-stream に落として、間違ってもインライン判定に入れない。
+  const declared = declaredType.toLowerCase().trim();
+  const risky =
+    !declared ||
+    declared.startsWith("text/html") ||
+    declared.includes("svg") ||
+    declared.includes("javascript") ||
+    declared.includes("xml");
+  return {
+    ok: true,
+    contentType: risky ? "application/octet-stream" : declared,
+  };
 }
 
 /** 添付一覧（新しい順）。失敗時は空配列（画面を壊さない）。 */

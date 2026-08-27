@@ -279,6 +279,11 @@ export function ProductDetail({
                         <Table.Td className="tabular-nums">
                           <Group gap="xs" wrap="nowrap">
                             v{f.version}
+                            {f.role === "PRIMARY" && (
+                              <Badge color="blue" variant="light">
+                                主図面
+                              </Badge>
+                            )}
                             {f.isLatest && (
                               <Badge color="green" variant="light">
                                 最新
