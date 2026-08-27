@@ -1079,13 +1079,14 @@ const formFlowStepInput = z
   .object({
     nameJa: z.string().trim().min(1, "段の名前を入力してください").max(60),
     nameEn: z.string().trim().max(60).optional(),
-    // 宛先はグループか個人のどちらか一方（DB 側にも CHECK がある）。
+    // 宛先はグループか「カスタム（1..N 人の指名）」のどちらか一方。
     groupId: z.number().int().positive().nullable().optional(),
-    approverUserId: z.string().uuid().nullable().optional(),
+    approverUserIds: z.array(z.string().uuid()).max(50).optional(),
     mode: z.enum(["ANY", "ALL"]),
   })
-  .refine((v) => !!v.groupId !== !!v.approverUserId, {
-    message: "各段の承認者は、承認グループか個人のどちらか一方を選んでください",
+  .refine((v) => !!v.groupId !== (v.approverUserIds ?? []).length > 0, {
+    message:
+      "各段の宛先は、承認グループか、カスタムの承認者 1 人以上のどちらかにしてください",
   });
 
 /** フォームの承認フローをまるごと置き換える（段番号は 1..N で振り直す）。 */
@@ -1114,9 +1115,7 @@ export async function saveFormApprovalFlow(
       return actionError("使えない承認グループが含まれています");
   }
   const userIds = [
-    ...new Set(
-      parsed.data.map((s) => s.approverUserId).filter((v) => v != null),
-    ),
+    ...new Set(parsed.data.flatMap((s) => s.approverUserIds ?? [])),
   ];
   if (userIds.length > 0) {
     const found = await prisma.user.count({
@@ -1132,17 +1131,31 @@ export async function saveFormApprovalFlow(
       // 段番号を詰めて作り直す。進行中の依頼は flow_snapshot を見ているので
       // ここを消しても影響しない（既存フローと同じ扱い）。
       await tx.formApprovalStep.deleteMany({ where: { formId: gate.form.id } });
-      if (parsed.data.length === 0) return;
-      await tx.formApprovalStep.createMany({
-        data: parsed.data.map((s, i) => ({
-          formId: gate.form.id,
-          stepNo: i + 1,
-          name: { ja: s.nameJa, en: s.nameEn ?? "" },
-          groupId: s.groupId ?? null,
-          approverUserId: s.approverUserId ?? null,
-          mode: s.mode,
-        })),
-      });
+      // 承認者は子テーブルなので createMany では張れない。段ごとに作る
+      // （段数は上限 20 なのでループで足りる）。
+      for (const [i, step] of parsed.data.entries()) {
+        const created = await tx.formApprovalStep.create({
+          data: {
+            formId: gate.form.id,
+            stepNo: i + 1,
+            name: { ja: step.nameJa, en: step.nameEn ?? "" },
+            groupId: step.groupId ?? null,
+            mode: step.mode,
+          },
+          select: { id: true },
+        });
+        const approvers = step.approverUserIds ?? [];
+        if (approvers.length > 0) {
+          await tx.formApprovalStepApprover.createMany({
+            data: approvers.map((userId, order) => ({
+              stepId: created.id,
+              userId,
+              sortOrder: order,
+            })),
+            skipDuplicates: true,
+          });
+        }
+      }
     });
     await recordAudit({
       action: "UPDATE",

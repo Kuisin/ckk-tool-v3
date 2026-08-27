@@ -189,26 +189,44 @@ model FormApprovalStep {
   stepNo Int    @map("step_no")
   name Json // { ja, en } 例「一次承認」
 
-  // 段の宛先は **承認グループか個人のどちらか一方**（DB 側の CHECK で強制）。
-  // 個人を直接指せるのは、フォームだと「この稟議は部長ひとりが見る」のように
-  // グループを作るまでもない段が多いため。グループを 1 人で作らせると、
-  // 承認グループ一覧が使い捨ての 1 人グループで埋まって読めなくなる。
-  groupId        Int?    @map("group_id")
-  approverUserId String? @map("approver_user_id") @db.Uuid
+  // 段の宛先は **承認グループか「カスタム（この段だけの承認者）」のどちらか**。
+  // group_id が NULL ならカスタムで、承認者は form_approval_step_approvers に
+  // 1 人以上入る。カスタムを用意するのは、フォームだと「この稟議は部長と
+  // 経理の 2 人が見る」程度の段が多く、そのたびに承認グループを作ると
+  // グループ一覧が使い捨てで埋まって読めなくなるため。
+  //
+  // 「カスタムなら承認者が 1 人以上」は表をまたぐので CHECK では書けない。
+  // 書き込み口（saveFormApprovalFlow）で守り、依頼時にも承認者ゼロの段が
+  // あれば止める（誰も押せない依頼を作らない）。
+  groupId Int? @map("group_id")
 
   mode ApprovalMode @default(ANY)
 
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
 
-  form     Form           @relation(fields: [formId], references: [id], onDelete: Cascade)
-  group    ApprovalGroup? @relation(fields: [groupId], references: [id], onDelete: Restrict)
-  approver User?          @relation("FormApprovalStepApprover", fields: [approverUserId], references: [id], onDelete: Restrict)
+  form      Form                      @relation(fields: [formId], references: [id], onDelete: Cascade)
+  group     ApprovalGroup?            @relation(fields: [groupId], references: [id], onDelete: Restrict)
+  approvers FormApprovalStepApprover[]
 
   @@unique([formId, stepNo])
   @@index([groupId])
-  @@index([approverUserId])
   @@map("form_approval_steps")
+  @@schema("app")
+}
+
+/// カスタム段の承認者（この段だけの指名）。承認グループを作らずに 1..N 人を指す。
+model FormApprovalStepApprover {
+  stepId    String @map("step_id") @db.Uuid
+  userId    String @map("user_id") @db.Uuid
+  sortOrder Int    @default(0) @map("sort_order")
+
+  step FormApprovalStep @relation(fields: [stepId], references: [id], onDelete: Cascade)
+  user User             @relation("FormApprovalStepApprover", fields: [userId], references: [id], onDelete: Restrict)
+
+  @@id([stepId, userId])
+  @@index([userId])
+  @@map("form_approval_step_approvers")
   @@schema("app")
 }
 

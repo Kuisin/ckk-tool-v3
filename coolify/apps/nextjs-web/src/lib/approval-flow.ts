@@ -24,11 +24,12 @@ export interface FlowStepSnapshot {
   groupName: LocalizedText;
   mode: ApprovalMode;
   /**
-   * 個人宛の段（フォームのみ）。**グループとどちらか一方**。
-   * 依頼時点の名前も写す — 後で改名・退職しても履歴が読めるように。
+   * カスタム段の承認者（フォームのみ・1..N 人）。**グループとどちらか一方**で、
+   * groupId が null のときに入る。依頼時点の名前も写す — 後で改名・退職しても
+   * 履歴が読めるように。
    */
-  approverUserId?: string | null;
-  approverName?: string | null;
+  approverUserIds?: string[];
+  approverNames?: string[];
 }
 
 /** 依頼 1 件ぶんの承認枠（ALL では必須チェックリスト、ANY では表示用）。 */
@@ -111,8 +112,8 @@ export interface FlowStepDraft {
   nameJa: string;
   groupId: number | null;
   mode: ApprovalMode;
-  /** 個人宛の段（フォームのみ）。グループとどちらか一方が入っていればよい。 */
-  approverUserId?: string | null;
+  /** カスタム段の承認者（フォームのみ）。グループとどちらか一方が入っていればよい。 */
+  approverUserIds?: readonly string[];
 }
 
 /**
@@ -133,9 +134,13 @@ export function validateFlowSteps(
   const noGroup: number[] = [];
   steps.forEach((s, i) => {
     if (!s.nameJa.trim()) noName.push(i + 1);
-    // 個人宛は allowIndividual のときだけ「宛先あり」と認める。共通フロー
-    // （MS0B）に個人が紛れ込んでも、宛先なしとして弾く。
-    if (s.groupId == null && !(allowIndividual && s.approverUserId))
+    // カスタムは allowIndividual のときだけ「宛先あり」と認める。共通フロー
+    // （MS0B）に紛れ込んでも、宛先なしとして弾く。**承認者が 0 人のカスタムも
+    // 宛先なし** — 誰も押せない段を保存させない。
+    if (
+      s.groupId == null &&
+      !(allowIndividual && (s.approverUserIds?.length ?? 0) > 0)
+    )
       noGroup.push(i + 1);
   });
   if (noName.length > 0) {
@@ -144,7 +149,7 @@ export function validateFlowSteps(
   if (noGroup.length > 0) {
     issues.push(
       allowIndividual
-        ? `${noGroup.join(", ")} 段目: 承認グループか承認者を選択してください`
+        ? `${noGroup.join(", ")} 段目: 承認グループを選ぶか、承認者を 1 人以上選んでください`
         : `${noGroup.join(", ")} 段目: 承認グループを選択してください`,
     );
   }
