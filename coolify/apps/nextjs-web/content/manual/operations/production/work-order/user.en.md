@@ -239,6 +239,7 @@ Every field on the work order screen. The order of the steps themselves is set i
 | [Planned quantity](#field-planned-quantity) | Required | How many pieces |
 | [Material](#field-material) | Optional | The material used |
 | [Storage location](#field-storage-location) | Optional | Where the finished products are kept |
+| [Drawing to use](#field-design-file) | Optional | Which version of the drawing to build from |
 | [Process list / version](#field-route) | Required (made-to-order) | Which sequence of steps to use |
 | [New process list name](#field-new-route-name) | Conditional | Name when creating a new list |
 | [Inspection sheets](#field-inspection-templates) | Optional | Templates per inspection step |
@@ -266,6 +267,18 @@ How many pieces to make. Enter **at least the total of the allocations** (adding
 ### Material [#field-material]
 
 The material used. When the work order is approved, **this material is reserved from stock.**
+
+### Drawing to use [#field-design-file]
+
+**Pins** the version of the drawing the shop floor sees. Optional.
+
+Left empty, nothing is pinned and the **newest version at the time** is shown whenever the screen is opened — so if the drawing is revised, what the floor sees changes with it. The field's description shows what would be used ("固定しない場合: …").
+
+Pick a version and it is pinned: later revisions do not change what the floor sees. **A pinned version can no longer be edited or deleted**, because it is the record of what the part was made from.
+
+Drawings are split per product × customer. When nothing is pinned, the series for this work order's customer is used, falling back to the generic series. **Another customer's drawings are never chosen** — showing them silently would mean making the wrong part without noticing. If a work order bundles order lines from more than one customer, the generic series is used.
+
+Pinning and unpinning are also available on the 図面 (drawing) tab of the work order.
 
 ### Storage location [#field-storage-location]
 
