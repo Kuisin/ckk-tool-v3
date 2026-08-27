@@ -18,6 +18,7 @@
 import { fetchDesignRequest } from "@/app/(dashboard)/sales/design-requests/data";
 import {
   DESIGN_HISTORY_ACTION_LABEL,
+  hasSourceDocument,
   isIssuedDesign,
 } from "@/components/sales/design-requests/model";
 import { requirePermissionResponse } from "@/lib/authz";
@@ -96,8 +97,10 @@ export async function GET(request: Request): Promise<Response> {
     }
   }
 
-  const reference =
-    req.trigger === "QUOTE"
+  // 単独起票は紐づく書類が無い。紙でも「—」ではなく理由が読めるようにする。
+  const reference = !hasSourceDocument(req.trigger)
+    ? "なし（単独起票）"
+    : req.trigger === "QUOTE"
       ? (req.quoteNumber ?? "—")
       : (req.orderLineNumber ?? "—");
 

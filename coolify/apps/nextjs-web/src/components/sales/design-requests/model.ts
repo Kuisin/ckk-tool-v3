@@ -30,15 +30,26 @@ export type DesignRequestStatus =
   | "REJECTED"
   | "CANCELLED";
 
-export type DesignRequestTrigger = "QUOTE" | "SALES_ORDER";
+export type DesignRequestTrigger = "QUOTE" | "SALES_ORDER" | "STANDALONE";
 export type DesignRequestKind = "NEW" | "REVISION";
 export type DesignRequestPriority = "NORMAL" | "HIGH";
 
-/** トリガーバッジの色（QUOTE=blue 見積時 / SALES_ORDER=violet 受注時）。 */
+/**
+ * トリガーバッジの色
+ * （QUOTE=blue 見積時 / SALES_ORDER=violet 受注時 / STANDALONE=gray 単独）。
+ * 単独を無彩色にしているのは、紐づく書類が無いこと自体が「情報が少ない」状態で、
+ * 見積・受注と同じ強さで目に入る必要がないため。
+ */
 export const DESIGN_TRIGGER_COLOR: Record<DesignRequestTrigger, string> = {
   QUOTE: "blue",
   SALES_ORDER: "violet",
+  STANDALONE: "gray",
 };
+
+/** そのトリガーが参照元の書類を持つか（単独は持たない）。 */
+export function hasSourceDocument(trigger: DesignRequestTrigger): boolean {
+  return trigger !== "STANDALONE";
+}
 
 /** 依頼区分バッジの色（新規=teal / 改訂=orange）。 */
 export const DESIGN_KIND_COLOR: Record<DesignRequestKind, string> = {

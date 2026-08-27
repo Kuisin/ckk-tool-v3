@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { STATUS_MAPS } from "@/components/ui/StatusBadge";
+import { DESIGN_TRIGGER_LABEL } from "@/lib/enum-labels";
 import {
   canAttachFiles,
   canComplete,
@@ -8,7 +9,10 @@ import {
   canReopen,
   canRequestApproval,
   canStart,
+  DESIGN_TRIGGER_COLOR,
   type DesignRequestStatus,
+  type DesignRequestTrigger,
+  hasSourceDocument,
   isCancellable,
   isEditable,
   isIssuedDesign,
@@ -193,6 +197,32 @@ describe("状態機械の不変条件", () => {
   it("完了済みはキャンセルできない（巻き戻してからにする）", () => {
     expect(isCancellable({ status: "COMPLETED" })).toBe(false);
     expect(canReopen({ status: "COMPLETED" })).toBe(true);
+  });
+});
+
+describe("トリガーと参照元", () => {
+  const ALL_TRIGGERS: DesignRequestTrigger[] = [
+    "QUOTE",
+    "SALES_ORDER",
+    "STANDALONE",
+  ];
+
+  it("参照元の書類を持つのは 見積時 / 受注時 だけ", () => {
+    expect(ALL_TRIGGERS.filter(hasSourceDocument)).toEqual([
+      "QUOTE",
+      "SALES_ORDER",
+    ]);
+  });
+
+  it("単独は参照元を持たない", () => {
+    expect(hasSourceDocument("STANDALONE")).toBe(false);
+  });
+
+  it("全トリガーにラベルと色がある", () => {
+    for (const t of ALL_TRIGGERS) {
+      expect(DESIGN_TRIGGER_LABEL[t], `${t} のラベルが無い`).toBeTruthy();
+      expect(DESIGN_TRIGGER_COLOR[t], `${t} の色が無い`).toBeTruthy();
+    }
   });
 });
 

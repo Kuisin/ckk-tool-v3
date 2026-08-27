@@ -247,6 +247,8 @@ export const PURCHASE_REQUEST_STATUS_OPTIONS = Object.entries(
 export const DESIGN_TRIGGER_LABEL: Record<string, string> = {
   QUOTE: "見積時",
   SALES_ORDER: "受注時",
+  // 見積にも受注にも紐づかない起票（新製品の検討・事前相談・社内改善）。
+  STANDALONE: "単独",
 };
 
 export const DESIGN_TRIGGER_OPTIONS = Object.entries(DESIGN_TRIGGER_LABEL).map(

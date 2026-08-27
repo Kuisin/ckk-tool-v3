@@ -5,7 +5,9 @@
  *
  * - 採番: nextDocumentNumber("DESIGN") → DSG-YYYYMM-NNNNN（文字列保存、月次
  *   リセット）。URL id も依頼番号。
- * - トリガ（見積時/受注時）と参照元（見積書/注文明細）は作成後変更不可。
+ * - トリガ（見積時/受注時/単独）と参照元（見積書/注文明細）は作成後変更不可。
+ *   単独は見積にも受注にも紐づかない起票（新製品の検討・客先からの事前相談・
+ *   社内の改善）で、参照元を両方 null にする。
  * - **製品は必須**。依頼区分（新規/改訂）を「その製品に design_files があるか」で
  *   自動判定するため。判定は detectDesignKind の 1 箇所だけが持ち、作成時と、
  *   編集できるあいだの製品変更時に走る。結果は保存する（導出しない）— 区分は
@@ -49,7 +51,7 @@ import {
 const BASE_PATH = "/sales/design-requests";
 const APPROVALS_PATH = "/general/tasks";
 
-const triggerEnum = z.enum(["QUOTE", "SALES_ORDER"]);
+const triggerEnum = z.enum(["QUOTE", "SALES_ORDER", "STANDALONE"]);
 
 const kindEnum = z.enum(["NEW", "REVISION"]);
 const priorityEnum = z.enum(["NORMAL", "HIGH"]);
@@ -255,6 +257,7 @@ export async function createDesignRequest(
   const v = parsed.data;
 
   // 参照元はトリガに対応する側のみ採用する（もう一方は常に null）。
+  // 単独 (STANDALONE) はどちらも持たないので両方 null になる。
   const quoteNumber = v.trigger === "QUOTE" ? trimOrNull(v.quoteNumber) : null;
   const quoteKey = quoteNumber ? parseDocKey(quoteNumber, "QOT") : null;
   if (quoteNumber && !quoteKey) {

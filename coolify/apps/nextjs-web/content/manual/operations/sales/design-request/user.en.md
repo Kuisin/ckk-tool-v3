@@ -11,7 +11,7 @@ An app for asking the design department to make a drawing, and for **keeping eac
 
 - You can write what you want designed and register it as a request.
 - You can raise one **with the source document already linked** from the [quote](/manual/en/operations/sales/quote/user), an order line, or the [product master](/manual/en/operations/masters/product/user).
-- You can record whether the request came at quotation time or after the order.
+- You can record whether the request came at quotation time, after the order, or **on its own with neither**.
 - You can **name the person who will make the drawing**. They get a notification.
 - **New or revision is decided automatically** — 改訂 (revision) if the product already has a past design, 新規 (new) if it does not.
 - You can set a **希望納期 (due date)** and a **優先度 (priority)**, then sort and spot late requests in the list.
@@ -38,9 +38,10 @@ Use this when a customer asks about a special shape and a drawing is needed.
 
 ## Words used on this page
 
-- **トリガー (trigger)** … what starts the design request. You choose either **見積時 (at quotation)** or **受注時 (at order)**.
+- **トリガー (trigger)** … what starts the design request. You choose **見積時 (at quotation)**, **受注時 (at order)** or **単独 (standalone)**.
 - **見積時 (at quotation)** … when the drawing is made alongside the work, before the quote goes out.
 - **受注時 (at order)** … when the drawing is made after the order is decided.
+- **単独 (standalone)** … tied to neither a quote nor an order line. Use it when **no paperwork exists yet** — exploring a new product, an early enquiry from a customer, an internal improvement.
 - **担当者 (assignee)** … the manufacturing person who makes the drawing. They are notified once the request is approved.
 - **依頼区分 (request kind)** … either **新規 (new)** or **改訂 (revision)**. Decided automatically when you pick a product.
 - **元図面 (base drawing)** … on a revision, which version is being redrawn from.
@@ -75,7 +76,7 @@ When you open the app, the requests so far are shown as a list.
 1. Press「**新規作成**」(New) at the top right of the list screen.
 2. In「**トリガー**」(trigger), press「**見積時**」(at quotation) or「**受注時**」(at order) to choose it.
 3. If you chose 見積時, choose the quote it is based on in the「**見積書**」(quote) field. You can also leave it empty.
-4. If you chose 受注時, search for and choose the order line it is based on in the「**注文明細**」(order line) field. You can also leave it empty.
+4. If you chose 受注時, search for and choose the order line it is based on in the「**注文明細**」(order line) field. You can also leave it empty. If you chose 単独, no reference field appears.
 5. Choose the product in the「**製品**」(product) field — required. Picking it flips「**依頼区分**」(request kind) below to 新規 (new) or 改訂 (revision) automatically.
 6. Choose who will make the drawing in the「**担当者**」(assignee) field.
 7. Set「**希望納期**」(due date) and「**優先度**」(priority) if you need them.
@@ -201,7 +202,7 @@ Every field on the design request screen. The **?** next to a field in the app l
 
 ### Trigger [#field-trigger]
 
-Whether the request is **for a quote** or **for a confirmed order**. Which one you choose decides whether you then link a quote or a order line.
+Whether the request is **for a quote**, **for a confirmed order**, or **standalone (neither)**. Choosing 見積時 or 受注時 decides whether you then link a quote or an order line. Choosing 単独 shows no reference field — use it for a request raised before any paperwork exists, such as exploring a new product or an early customer enquiry.
 
 ### Quote [#field-quote]
 
@@ -269,7 +270,10 @@ A. The one while awaiting approval is **an approver rejecting it**: the status b
 A. The trigger, and the quote or order line chosen there, cannot be changed after the request is made. If you made a mistake, make a new request, and either leave the wrong one as it is or talk to the person in charge.
 
 **Q. Do I always have to choose a quote or a order line?**
-A. Both are optional. You can make a request without linking anything.
+A. Both are optional. You can pick 見積時 or 受注時 and leave the reference empty — but if there is nothing to link to at all, choosing **単独 (standalone)** for the trigger says so far more clearly.
+
+**Q. Can I ask for a drawing before any quote or order exists?**
+A. Yes — choose **単独 (standalone)** for the trigger. It is meant for exploring a new product or an early customer enquiry. You cannot re-link it to a quote or an order line afterwards, so make a new request if that becomes necessary.
 
 **Q. It says「未着手の設計依頼書のみ着手できます」(only design requests that have not started can be started).**
 A. That request is already in progress or done. You do not need to press「着手」(start) again.
