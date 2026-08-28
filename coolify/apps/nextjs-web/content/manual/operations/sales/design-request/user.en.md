@@ -206,7 +206,7 @@ Every field on the design request screen. The **?** next to a field in the app l
 
 | Field | Required | What to enter |
 |-------|----------|---------------|
-| [Trigger](#field-trigger) | Required | Raised at quoting time or after the order |
+| [Trigger](#field-trigger) | Required | Raised at quoting time, after the order, or standalone |
 | [Quote](#field-quote) | Conditional | The quote it relates to, when raised at quoting time |
 | [Order line](#field-order-line) | Conditional | The order line it relates to, when raised after the order |
 | [Product](#field-product) | Required | The product the drawing is for |
