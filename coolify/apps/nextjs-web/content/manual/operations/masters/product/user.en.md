@@ -107,7 +107,7 @@ When the drawing already exists, or you are importing one received from elsewher
 
 1. Press「**設計図を追加**」on the 関連 tab.
 2. Choose the **受注元 (customer)**. Left empty, the version is generic.
-3. Put files into **図面データ (blueprint)** (required), **プレビュー用 (preview)** (optional) and **参考資料 (reference material)** (optional).
+3. Put files into **図面データ (blueprint)** (required, one file), **プレビュー用 (preview)** (optional, one file) and **参考資料 (reference material)** (optional, as many as you like). Each piece of reference material can carry its own short description.
 4. Press「**登録**」(register).
 
 The version number continues that series. A customer's first drawing is v1 even when other customers already have versions on the same product.

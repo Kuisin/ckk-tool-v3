@@ -170,10 +170,11 @@ STEP, IGES, DXF and DWG cannot be opened here; download them and use your own so
 
 1. Press「**…**」at the top right of the screen.
 2. Choose「**完了**」(done).
-3. The confirmation screen has a slot for **図面データ (blueprint)** (required), **プレビュー用 (preview)** (optional) and **参考資料 (reference material)** (optional, as many as you like). Put a file straight into each slot with「**ファイルを選択**」(choose a file). Anything already uploaded to the files tab while you were working can be picked from「**または、添付済みから選ぶ**」(or choose one already attached) below the slot.
-4. Press「**完了**」(done). The upload starts at this point, not when you pick.
+3. The confirmation screen has a slot for **図面データ (blueprint)** (required, one file), **プレビュー用 (preview)** (optional, one file) and **参考資料 (reference material)** (optional, as many as you like). Put a file into each slot with「**ファイルを選択**」(choose a file).
+4. Each piece of reference material can carry its own short **description** ("part drawing", "dimension table" …), so the version list later tells you what each file is.
+5. Press「**完了**」(done). The upload starts at this point, not when you pick.
 
-The same file cannot go in two slots (one file = one role).
+**Every file you upload lands in exactly one role.** There is no way to leave a file unassigned.
 
 **One completion = one version.** Every file you picked gets the same version number (v1, v2 …). An assembly drawing, a part drawing and a 3D model raised together no longer land on different version numbers, so "please use v3" is never ambiguous.
 

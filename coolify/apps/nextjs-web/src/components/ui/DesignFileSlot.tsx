@@ -3,59 +3,44 @@
 /**
  * DesignFileSlot — 版の 1 枠（プレビュー / 図面データ / 参考資料）。
  *
- * **その場でファイルを選べば済むようにする。** 以前は「先に添付してから、
- * どれがどれかを選び直す」の 2 段だった。1 版 = 3 つの役割と決まっている
- * のだから、役割ごとに枠を出して直接入れるほうが手数が少ない。
+ * **入口はアップロードだけ。** 以前は「その場で上げる」と「添付済みから選ぶ」
+ * の 2 通りがあったが、同じことをする道が 2 本あると、どちらを使えばよいか
+ * 迷ううえ、片方だけ直したときに挙動がずれる。上げたファイルは必ず
+ * どれか 1 つの役割に入る、という単純な形にそろえた。
  *
- * ただし**既に添付済みのファイルも使える**ようにしてある。設計依頼では
- * 作業中にファイルタブへ図面を上げていることが多く、そこを無視すると
- * 同じものを 2 回上げることになる。添付が 1 件も無ければ選択欄は出ない
- * （選ぶものが無い欄を並べても邪魔なだけ）。
+ * 枚数は役割で決まる — プレビューと図面データは 1 枚ずつ、参考資料は何枚でも。
+ * 参考資料だけ説明を付けられる（「部品図」「寸法表」など、後から見て
+ * 何の図か判るように）。
  */
 
-import { FileButton, Group, Select, Stack, Text } from "@mantine/core";
+import { FileButton, Group, Stack, Text, TextInput } from "@mantine/core";
 import { IconUpload, IconX } from "@tabler/icons-react";
 import { GhostButton, SecondaryButton } from "@/components/ui/buttons";
-
-/** 枠の中身 — 新しく選んだファイル、既存の添付、または未選択。 */
-export type SlotValue =
-  | { kind: "file"; file: File }
-  | { kind: "attachment"; id: string; filename: string }
-  | null;
-
-export interface SlotOption {
-  value: string;
-  label: string;
-}
-
-/** 枠に入っているものの表示名（未選択なら null）。 */
-export function slotLabel(v: SlotValue): string | null {
-  if (!v) return null;
-  return v.kind === "file" ? v.file.name : v.filename;
-}
 
 export function DesignFileSlot({
   label,
   description,
-  value,
-  onChange,
-  attachmentOptions = [],
+  file,
+  onPick,
+  note,
+  onNoteChange,
+  notePlaceholder = "説明（任意）",
   required,
   fullWidth,
   error,
 }: {
   label: string;
-  description: string;
-  value: SlotValue;
-  onChange: (v: SlotValue) => void;
-  /** 既に添付済みのファイル。空なら選択欄そのものを出さない。 */
-  attachmentOptions?: SlotOption[];
+  description?: string;
+  file: File | null;
+  onPick: (f: File | null) => void;
+  /** 説明を付けられる枠のときだけ渡す（参考資料）。 */
+  note?: string;
+  onNoteChange?: (v: string) => void;
+  notePlaceholder?: string;
   required?: boolean;
   fullWidth?: boolean;
   error?: string;
 }) {
-  const name = slotLabel(value);
-
   return (
     <Stack gap={4}>
       <Text fw={500} size="sm">
@@ -66,53 +51,43 @@ export function DesignFileSlot({
           </Text>
         )}
       </Text>
-      <Text c="dimmed" size="xs">
-        {description}
-      </Text>
+      {description && (
+        <Text c="dimmed" size="xs">
+          {description}
+        </Text>
+      )}
       <Group gap="xs" wrap="wrap">
-        <FileButton
-          onChange={(f) => onChange(f ? { kind: "file", file: f } : null)}
-        >
+        <FileButton onChange={onPick}>
           {(props) => (
             <SecondaryButton
               {...props}
               fullWidth={fullWidth}
               leftSection={<IconUpload size={14} />}
             >
-              {name ? "選び直す" : "ファイルを選択"}
+              {file ? "選び直す" : "ファイルを選択"}
             </SecondaryButton>
           )}
         </FileButton>
-        {name && (
+        {file && (
           <Group gap={4} wrap="nowrap">
             <Text size="xs" style={{ overflowWrap: "anywhere" }}>
-              {name}
+              {file.name}
             </Text>
             <GhostButton
               leftSection={<IconX size={12} />}
-              onClick={() => onChange(null)}
+              onClick={() => onPick(null)}
             >
               取消
             </GhostButton>
           </Group>
         )}
       </Group>
-      {attachmentOptions.length > 0 && (
-        <Select
-          clearable
-          data={attachmentOptions}
-          onChange={(id) => {
-            const opt = attachmentOptions.find((o) => o.value === id);
-            onChange(
-              opt
-                ? { kind: "attachment", id: opt.value, filename: opt.label }
-                : null,
-            );
-          }}
-          placeholder="または、添付済みから選ぶ"
-          searchable
+      {onNoteChange && (
+        <TextInput
+          onChange={(e) => onNoteChange(e.currentTarget.value)}
+          placeholder={notePlaceholder}
           size="xs"
-          value={value?.kind === "attachment" ? value.id : null}
+          value={note ?? ""}
         />
       )}
       {error && (

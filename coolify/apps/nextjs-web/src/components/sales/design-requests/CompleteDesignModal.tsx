@@ -6,42 +6,42 @@
  * 完了は「1 回 = 1 版」で、その版は 3 つの役割で構成する:
  *   プレビュー 0..1 … 人が形を確かめるためのもの（STL 等。画面で回して見る）
  *   図面データ 1    … 加工プログラムを起こす元データ（成果物の本体）
- *   参考資料 0..N   … 部品図・寸法表など
+ *   参考資料 0..N   … 部品図・寸法表など。1 枚ずつ説明を付けられる
  *
  * **プレビューと図面データを別枠にしている**のは用途が違うから。同じ形状でも
  * STL は見るため・CAD は作るためのもので、片方で代用できない。1 枠にすると
  * どちらか一方しか登録できず、製品マスタの「最新図面」も曖昧になる。
  *
- * **役割ごとに直接ファイルを選べる。** 以前は「先に添付してから、どれがどれか
- * を選び直す」の 2 段だった。役割が 3 つと決まっているのだから、枠に入れる
- * だけで済むほうが手数が少ない。作業中にファイルタブへ上げた添付も同じ枠から
- * 選べるので、同じものを 2 回上げなくてよい。
+ * **入口はアップロードだけ。** 上げたファイルは必ずどれか 1 つの役割に入る。
+ * 「添付済みから選ぶ」は無い — 同じことをする道が 2 本あると、どちらを使うか
+ * 迷ううえ片方だけ直したときに挙動がずれる。
  *
  * アップロードは Server Action ではなく `/api/attachments/upload`
  * （Server Action のボディは 1MB で頭打ちになるため — app CLAUDE.md）。
  * **確定を押すまで送らない** — 途中でやめたときに使われない添付が残らない。
  */
 
-import { Alert, Group, Stack, Text } from "@mantine/core";
+import { Group, Stack, Text } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
-import { IconAlertTriangle, IconPlus } from "@tabler/icons-react";
+import { IconPlus } from "@tabler/icons-react";
 import { useEffect, useState } from "react";
-import { useFormat } from "@/components/layout/PreferencesProvider";
-import type { AttachmentView } from "@/components/ui/AttachmentsPanel";
 import { SecondaryButton } from "@/components/ui/buttons";
-import {
-  DesignFileSlot,
-  type SlotValue,
-  slotLabel,
-} from "@/components/ui/DesignFileSlot";
+import { DesignFileSlot } from "@/components/ui/DesignFileSlot";
 import { ModalShell } from "@/components/ui/modals";
 import { useIsMobile } from "@/hooks/useViewport";
-import { designFileKind } from "@/lib/design-file-kind";
+
+/** 参考資料 1 枚（ファイル + 説明）。 */
+interface ReferenceRow {
+  key: number;
+  file: File | null;
+  note: string;
+}
 
 export interface CompleteDesignInput {
   previewAttachmentId: string | null;
   blueprintAttachmentId: string;
-  referenceAttachmentIds: string[];
+  /** 参考資料（説明つき）。 */
+  references: { attachmentId: string; description: string | null }[];
 }
 
 export function CompleteDesignModal({
@@ -51,7 +51,6 @@ export function CompleteDesignModal({
   loading,
   requestNumber,
   ownerType,
-  attachments,
 }: {
   opened: boolean;
   onClose: () => void;
@@ -59,46 +58,29 @@ export function CompleteDesignModal({
   loading: boolean;
   requestNumber: string;
   ownerType: string;
-  attachments: AttachmentView[];
 }) {
-  const fmt = useFormat();
   const isMobile = useIsMobile();
-  const [preview, setPreview] = useState<SlotValue>(null);
-  const [blueprint, setBlueprint] = useState<SlotValue>(null);
-  const [references, setReferences] = useState<SlotValue[]>([]);
+  const [blueprint, setBlueprint] = useState<File | null>(null);
+  const [preview, setPreview] = useState<File | null>(null);
+  const [references, setReferences] = useState<ReferenceRow[]>([]);
+  const [nextKey, setNextKey] = useState(1);
   const [uploading, setUploading] = useState(false);
 
-  // 開くたびに引き直す。既に添付があるときだけ、それらを既定に置く
-  // （3D として読めるものをプレビューへ、そうでない最新を図面データへ）。
-  // 添付が無ければ全部空 = そのままファイルを選んでもらう。
-  // biome-ignore lint/correctness/useExhaustiveDependencies: 添付一覧と開閉が変わったときだけ引き直す
+  // 開くたびに空から始める（前回の選択が残っていると、閉じて開き直した
+  // ときに何を入れたのか判らなくなる）。
   useEffect(() => {
     if (!opened) return;
-    const three = attachments.find(
-      (a) => designFileKind(a.filename, a.mimeType) === "model3d",
-    );
-    const rest = attachments.find((a) => a.id !== three?.id);
-    const asSlot = (a?: AttachmentView): SlotValue =>
-      a ? { kind: "attachment", id: a.id, filename: a.filename } : null;
-    setPreview(asSlot(three));
-    setBlueprint(asSlot(rest ?? attachments[0]));
+    setBlueprint(null);
+    setPreview(null);
     setReferences([]);
-  }, [opened, attachments.map((a) => a.id).join(",")]);
+  }, [opened]);
 
-  // 添付の選択肢（どの枠からも同じ一覧を選べる）。
-  const attachmentOptions = attachments.map((a) => ({
-    value: a.id,
-    label: `${a.filename}（${fmt.date(a.createdAt)}）`,
-  }));
-
-  /** 枠 1 つを添付 id に解決する。新しいファイルはここで初めて送る。 */
-  const resolve = async (v: SlotValue): Promise<string | null> => {
-    if (!v) return null;
-    if (v.kind === "attachment") return v.id;
+  /** ファイル 1 枚を添付として送り、その id を返す。 */
+  const upload = async (file: File): Promise<string> => {
     const body = new FormData();
     body.set("ownerType", ownerType);
     body.set("ownerId", requestNumber);
-    body.set("file", v.file);
+    body.set("file", file);
     const res = await fetch("/api/attachments/upload", {
       method: "POST",
       body,
@@ -110,7 +92,7 @@ export function CompleteDesignModal({
     } | null;
     if (!res.ok || !json?.ok || !json.id) {
       throw new Error(
-        json?.error ?? `${v.file.name} のアップロードに失敗しました`,
+        json?.error ?? `${file.name} のアップロードに失敗しました`,
       );
     }
     return json.id;
@@ -121,20 +103,22 @@ export function CompleteDesignModal({
     setUploading(true);
     try {
       // 図面データ → プレビュー → 参考資料 の順に送る。途中で失敗したら
-      // そこで止める（それまでに上がったものは添付として残り、ファイルタブ
-      // から消せる）。
-      const blueprintId = await resolve(blueprint);
-      if (!blueprintId) throw new Error("図面データを選択してください");
-      const previewId = await resolve(preview);
-      const referenceIds: string[] = [];
+      // そこで止める（それまでに上がったものは添付として残り、ファイル
+      // タブから消せる）。
+      const blueprintId = await upload(blueprint);
+      const previewId = preview ? await upload(preview) : null;
+      const refs: CompleteDesignInput["references"] = [];
       for (const r of references) {
-        const id = await resolve(r);
-        if (id) referenceIds.push(id);
+        if (!r.file) continue;
+        refs.push({
+          attachmentId: await upload(r.file),
+          description: r.note.trim() || null,
+        });
       }
       onConfirm({
         previewAttachmentId: previewId,
         blueprintAttachmentId: blueprintId,
-        referenceAttachmentIds: referenceIds,
+        references: refs,
       });
     } catch (e) {
       notifications.show({
@@ -147,18 +131,10 @@ export function CompleteDesignModal({
     }
   };
 
-  // 同じ添付を 2 つの役割に入れさせない（1 ファイル = 1 役割）。
-  const usedTwice = (() => {
-    const ids = [preview, blueprint, ...references]
-      .map((v) => (v?.kind === "attachment" ? v.id : null))
-      .filter((v): v is string => v != null);
-    return new Set(ids).size !== ids.length;
-  })();
-
   return (
     <ModalShell
       confirmColor="blue"
-      confirmDisabled={!blueprint || usedTwice}
+      confirmDisabled={!blueprint}
       confirmLabel="完了"
       loading={loading || uploading}
       onClose={onClose}
@@ -169,62 +145,65 @@ export function CompleteDesignModal({
     >
       <Stack gap="md">
         <Text size="sm">
-          設計依頼書 {requestNumber} を完了します。選んだファイルが
+          設計依頼書 {requestNumber} を完了します。ここで上げたファイルが
           <strong>ひとつの版</strong>として登録され、
           <strong>図面データ</strong>が製品マスタの最新図面になります。
         </Text>
 
-        {usedTwice && (
-          <Alert
-            color="orange"
-            icon={<IconAlertTriangle size={16} />}
-            variant="light"
-          >
-            同じファイルを複数の役割に指定できません。
-          </Alert>
-        )}
-
         <DesignFileSlot
-          attachmentOptions={attachmentOptions}
           description="加工プログラムを起こす元データ。製品マスタの最新図面になります"
+          file={blueprint}
           fullWidth={isMobile}
           label="図面データ"
-          onChange={setBlueprint}
+          onPick={setBlueprint}
           required
-          value={blueprint}
         />
         <DesignFileSlot
-          attachmentOptions={attachmentOptions}
           description="STL など、画面で形を確かめるためのファイル。無くても完了できます"
+          file={preview}
           fullWidth={isMobile}
           label="プレビュー用（3D）"
-          onChange={setPreview}
-          value={preview}
+          onPick={setPreview}
         />
 
-        <Stack gap={4}>
+        <Stack gap="sm">
           {references.map((r, i) => (
             <DesignFileSlot
-              attachmentOptions={attachmentOptions}
-              description="部品図・寸法表など"
+              description={
+                i === 0 ? "部品図・寸法表など。何枚でも追加できます" : undefined
+              }
+              file={r.file}
               fullWidth={isMobile}
-              key={`ref-${i}-${slotLabel(r) ?? "empty"}`}
+              key={r.key}
               label={`参考資料 ${i + 1}`}
-              onChange={(v) =>
+              note={r.note}
+              notePlaceholder="説明（任意）— 例: 部品図、寸法表"
+              onNoteChange={(v) =>
                 setReferences((prev) =>
-                  v == null
-                    ? prev.filter((_, j) => j !== i)
-                    : prev.map((x, j) => (j === i ? v : x)),
+                  prev.map((x, j) => (j === i ? { ...x, note: v } : x)),
                 )
               }
-              value={r}
+              onPick={(f) =>
+                setReferences((prev) =>
+                  // ファイルを外したら行ごと消す（空の行が残らない）
+                  f == null
+                    ? prev.filter((_, j) => j !== i)
+                    : prev.map((x, j) => (j === i ? { ...x, file: f } : x)),
+                )
+              }
             />
           ))}
           <Group>
             <SecondaryButton
               fullWidth={isMobile}
               leftSection={<IconPlus size={14} />}
-              onClick={() => setReferences((prev) => [...prev, null])}
+              onClick={() => {
+                setReferences((prev) => [
+                  ...prev,
+                  { key: nextKey, file: null, note: "" },
+                ]);
+                setNextKey((k) => k + 1);
+              }}
             >
               参考資料を追加
             </SecondaryButton>
