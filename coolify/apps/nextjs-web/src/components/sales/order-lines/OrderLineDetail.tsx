@@ -73,7 +73,7 @@ import type { OrderLine } from "./model";
 
 const BASE_PATH = "/sales/order-lines";
 
-/** 手続き状況（作成 → 確定 → 製造 → 出荷）+ 次の書類への受け渡し。 */
+/** 手続き状況（作成 → 確定 → 製造 → 出荷）+ 前後の書類への受け渡し。 */
 function OrderLineProcedurePanel({
   order,
   fmtDate,
@@ -122,6 +122,40 @@ function OrderLineProcedurePanel({
     }
   })();
 
+  // 上流 = この明細が載っている注文請書と、その見積元。
+  const sourceGroups: HandoffGroup[] = [
+    {
+      key: "acceptance",
+      title: "注文請書",
+      items: [
+        {
+          key: order.acceptanceNumber,
+          label: order.acceptanceNumber,
+          href: `/sales/order-acceptances/${order.acceptanceNumber}`,
+          note: "この明細の親書類",
+        },
+      ],
+      emptyNote: "—",
+    },
+    ...(order.quoteNumber
+      ? [
+          {
+            key: "quote",
+            title: "見積書",
+            items: [
+              {
+                key: order.quoteNumber,
+                label: order.quoteNumber,
+                href: `/sales/quotes/${order.quoteNumber}`,
+                note: "注文請書の見積元",
+              },
+            ],
+            emptyNote: "—",
+          },
+        ]
+      : []),
+  ];
+
   const allocated = order.workOrders.reduce(
     (sum, w) => sum + w.allocatedQuantity,
     0,
@@ -164,6 +198,7 @@ function OrderLineProcedurePanel({
       active={active}
       cancelled={order.status === "CANCELLED"}
       handoffGroups={handoffGroups}
+      sourceGroups={sourceGroups}
       stages={stages}
     />
   );

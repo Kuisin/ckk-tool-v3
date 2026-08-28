@@ -178,6 +178,45 @@ export function WorkOrderProcedurePanel({
     }
   })();
 
+  // ── 前の書類から: 割り当てられた注文明細 + 前段の指示書 ──────────────────
+  // 割当ゼロ = 在庫向けの独立指示書（_specs/tables.md work_order_order_lines）。
+  const allocated = wo.orderLines.reduce(
+    (sum, l) => sum + l.allocatedQuantity,
+    0,
+  );
+  const sourceGroups: HandoffGroup[] = [
+    {
+      key: "order-lines",
+      title: "注文明細（割当）",
+      summary:
+        wo.orderLines.length > 0
+          ? `割当 ${allocated} 本 / 予定 ${wo.plannedQuantity} 本`
+          : null,
+      items: wo.orderLines.map((l) => ({
+        key: l.orderLineId,
+        label: l.number,
+        href: `/sales/order-lines/${l.number}`,
+        note: `${l.customerName ?? "—"}・割当 ${l.allocatedQuantity} / 受注 ${l.lineQuantity} 本`,
+      })),
+      emptyNote: "割当なし（在庫向けの独立指示書）",
+    },
+    ...(wo.woLinksIncoming.length > 0
+      ? [
+          {
+            key: "wo-links-in",
+            title: "前段の指示書（数量受け渡し）",
+            items: wo.woLinksIncoming.map((l) => ({
+              key: l.id,
+              label: l.docNumber,
+              href: `/production/work-orders/${l.workOrderNumber}`,
+              note: `${l.quantity != null ? `${l.quantity} 本` : "完成数全量"}を受け取り`,
+            })),
+            emptyNote: "—",
+          },
+        ]
+      : []),
+  ];
+
   // ── 次の書類へ: 出荷書（ロット単位）+ 後続指示書 ────────────────────────────
   const shippedToDo = wo.shipments.reduce((sum, s) => sum + s.quantity, 0);
   const handoffGroups: HandoffGroup[] = [
@@ -224,6 +263,7 @@ export function WorkOrderProcedurePanel({
       active={active}
       cancelled={wo.status === "CANCELLED"}
       handoffGroups={handoffGroups}
+      sourceGroups={sourceGroups}
       stages={stages}
     >
       {rejected && rejectReason && (
