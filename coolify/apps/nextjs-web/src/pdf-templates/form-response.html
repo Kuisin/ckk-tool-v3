@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <title>フォーム回答</title>
+  <link rel="stylesheet" href="base.css" />
+  <style>
+    /* 項目は利用者が組むので、この帳票だけは**列が固定できない**。
+       他の帳票のような明細表ではなく「項目名 / 回答」の 2 列で縦に積む。 */
+    .answer-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-bottom: 16pt;
+    }
+    .answer-table th,
+    .answer-table td {
+      border: 0.75pt solid #ddd;
+      padding: 6pt 8pt;
+      vertical-align: top;
+      font-size: 10pt;
+      line-height: 1.6;
+    }
+    .answer-table th {
+      width: 28%;
+      background: #f7f7f7;
+      text-align: left;
+      font-weight: 600;
+    }
+    /* 回答は改行・空白をそのまま出す（サブテーブルを 1 セルに畳んでいるため）。 */
+    .answer-table td {
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+    .answer-table td.empty {
+      color: #999;
+    }
+
+    /* 承認の記録。申請・報告フォームのときだけ出す。 */
+    .trail {
+      width: 100%;
+      border-collapse: collapse;
+      margin-bottom: 16pt;
+    }
+    .trail th,
+    .trail td {
+      border-bottom: 0.5pt solid #eee;
+      padding: 4pt 6pt;
+      font-size: 9pt;
+      text-align: left;
+    }
+    .trail th {
+      color: #666;
+      font-weight: 600;
+      border-bottom-width: 0.75pt;
+    }
+    .section-label {
+      font-size: 10pt;
+      font-weight: 600;
+      margin: 0 0 6pt;
+    }
+
+    /* まとめ印刷では 1 回答 = 1 ページ。最後の 1 枚に空ページを足さない。 */
+    .answer-page {
+      page-break-after: always;
+    }
+    .answer-page:last-child {
+      page-break-after: auto;
+    }
+  </style>
+</head>
+<body>
+  {{pages}}
+</body>
+</html>

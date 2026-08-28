@@ -1,7 +1,7 @@
 "use client";
 
 import { Alert, Tabs, Text } from "@mantine/core";
-import { IconLink } from "@tabler/icons-react";
+import { IconFileTypePdf, IconLink } from "@tabler/icons-react";
 import {
   approveResponse,
   rejectResponse,
@@ -91,6 +91,12 @@ export function ResponseDetail({
       actions={
         <ResourceActions
           menuItems={[
+            {
+              // 1 件だけの控え。承認の記録まで載るので、紙で回す申請にも使える。
+              label: "PDF で印刷",
+              icon: <IconFileTypePdf size={14} />,
+              href: `/api/pdf/form-response?id=${encodeURIComponent(responseNumber)}`,
+            },
             {
               // 回答者に配っている画面。作成者が「相手にはこう見える」を
               // 確かめられるように残す（編集は回答タブの中でする）。

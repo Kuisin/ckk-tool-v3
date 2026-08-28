@@ -1,6 +1,7 @@
 {
   "title": "操作方法",
   "pages": [
+    "general",
     "sales",
     "purchasing",
     "production",

@@ -18,6 +18,7 @@ import {
   Text,
 } from "@mantine/core";
 import {
+  IconBook2,
   IconChartBar,
   IconDownload,
   IconExternalLink,
@@ -25,6 +26,7 @@ import {
 import { useRouter, useSearchParams } from "next/navigation";
 import { useFormat } from "@/components/layout/PreferencesProvider";
 import { GhostButton, SecondaryButton } from "@/components/ui/buttons";
+import { CopyableValue } from "@/components/ui/CopyableValue";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { downloadCsv, toCsv } from "@/lib/csv";
@@ -277,10 +279,19 @@ export function FormSummaryView({
               analytics.v_form_answers
             </Text>{" "}
             に「1 行 = 1 回答 × 1 項目」で入っています。項目名で内訳を出し、
-            フォーム名で絞るだけで集計できます。
+            フォームコードで絞るだけで集計できます。
           </Text>
-          {metabaseUrl && (
-            <Group>
+
+          {/* Metabase の「フォームコード」フィルタに貼る値。手で書き写すと
+              打ち間違えるので、そのままコピーできる形で出す。 */}
+          <CopyableValue
+            description="Metabase の「フォームコード」に貼り付けると、このフォームの回答だけに絞れます。"
+            label="フォームコード"
+            value={formCode}
+          />
+
+          <Group gap="xs">
+            {metabaseUrl && (
               <SecondaryButton
                 external
                 href={metabaseUrl}
@@ -288,8 +299,15 @@ export function FormSummaryView({
               >
                 Metabase を開く
               </SecondaryButton>
-            </Group>
-          )}
+            )}
+            <SecondaryButton
+              external
+              href="/manual/ja/operations/general/forms/user#metabase"
+              leftSection={<IconBook2 size={14} />}
+            >
+              集計のしかたを読む
+            </SecondaryButton>
+          </Group>
         </Stack>
       </Alert>
 

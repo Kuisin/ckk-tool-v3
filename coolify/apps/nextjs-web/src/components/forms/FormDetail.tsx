@@ -19,13 +19,15 @@ import {
   IconCopy,
   IconDownload,
   IconLink,
+  IconTableExport,
   IconWorld,
 } from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
-import { useTransition } from "react";
+import { useState, useTransition } from "react";
 import { useFormat } from "@/components/layout/PreferencesProvider";
 import type { FlowApprover } from "@/components/master/approval-flows/ApproverPermissionBadge";
 import { GhostButton } from "@/components/ui/buttons";
+import { CopyableValue } from "@/components/ui/CopyableValue";
 import { DataTable } from "@/components/ui/DataTable";
 import { EditablePanel } from "@/components/ui/EditablePanel";
 import { FieldValue } from "@/components/ui/FieldValue";
@@ -48,6 +50,7 @@ import type { ShareLevel } from "@/lib/share-grants-core";
 import { isShareConditionFieldType } from "@/lib/share-grants-core";
 import { FormApprovalPanel, type FormFlowStep } from "./FormApprovalPanel";
 import { FormFieldsPanel } from "./FormFieldsPanel";
+import { ResponseExportModal } from "./ResponseExportModal";
 import type { ConditionFieldOption } from "./ShareConditionEditor";
 import { type RoleOption, ShareGrantsPanel } from "./ShareGrantsPanel";
 import { ShareGrantsView } from "./ShareGrantsView";
@@ -117,6 +120,7 @@ export function FormDetail({
       : `/f/${form.code}`;
 
   const [pending, startTransition] = useTransition();
+  const [exportOpen, setExportOpen] = useState(false);
 
   const applyStatus = (
     status: "DRAFT" | "PUBLISHED" | "ARCHIVED",
@@ -261,6 +265,11 @@ export function FormDetail({
           }
         />
         <FieldValue label="定義バージョン" value={`v${form.currentVersion}`} />
+        {/* 集計を Metabase で見るときに貼る値。集計画面にも同じものを出している。 */}
+        <FieldValue
+          label="フォームコード"
+          value={<CopyableValue value={form.code} />}
+        />
         <FieldValue
           label="受付開始"
           value={form.opensAt ? fmt.dateTime(form.opensAt) : "公開時から"}
@@ -350,6 +359,13 @@ export function FormDetail({
                 }
               >
                 集計を見る
+              </GhostButton>
+              <GhostButton
+                fullWidth={isMobile}
+                leftSection={<IconTableExport size={14} />}
+                onClick={() => setExportOpen(true)}
+              >
+                書き出す
               </GhostButton>
             </Group>
           )}
@@ -496,6 +512,15 @@ export function FormDetail({
           <AuditTimeline entries={auditEntries} />
         </Tabs.Panel>
       </Tabs>
+
+      <ResponseExportModal
+        code={form.code}
+        fields={form.fields.filter((f) => f.type !== "related")}
+        formTitle={form.title}
+        onClose={() => setExportOpen(false)}
+        opened={exportOpen}
+        responseCount={responses.length}
+      />
     </DetailShell>
   );
 }
