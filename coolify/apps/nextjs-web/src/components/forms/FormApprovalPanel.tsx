@@ -8,7 +8,9 @@ import {
 } from "@/app/(dashboard)/general/forms/actions";
 import { ApprovalFlowEditor } from "@/components/master/approval-flows/ApprovalFlowEditor";
 import type { FlowApprover } from "@/components/master/approval-flows/ApproverPermissionBadge";
+import { EditablePanel } from "@/components/ui/EditablePanel";
 import type { ApprovalMode } from "@/lib/approval-flow";
+import { FormFlowSummary } from "./FormFlowSummary";
 
 export interface FormFlowStep {
   nameJa: string;
@@ -79,22 +81,38 @@ export function FormApprovalPanel({
         </Stack>
       </Alert>
 
-      {canManage ? (
-        <ApprovalFlowEditor
-          afterSaveHref={`/general/forms/${code}`}
-          allowIndividual
-          approversByGroup={approversByGroup}
-          embedded
-          groupOptions={groupOptions}
-          initialSteps={initialSteps}
-          onSave={(steps) => saveFormApprovalFlow(code, steps)}
-          permissionCode="form"
-          permissionLabel={permissionLabel}
-          searchApprovers={searchFormApproverOptions}
-          targetLabel={title}
-          targetType="form_responses"
-        />
-      ) : (
+      <EditablePanel
+        canEdit={canManage}
+        edit={({ close }) => (
+          <ApprovalFlowEditor
+            afterSaveHref={`/general/forms/${code}`}
+            allowIndividual
+            approversByGroup={approversByGroup}
+            embedded
+            groupOptions={groupOptions}
+            initialSteps={initialSteps}
+            onCancel={close}
+            onSave={(steps) => saveFormApprovalFlow(code, steps)}
+            onSaved={close}
+            permissionCode="form"
+            permissionLabel={permissionLabel}
+            searchApprovers={searchFormApproverOptions}
+            targetLabel={title}
+            targetType="form_responses"
+          />
+        )}
+        title="承認の段"
+        view={
+          <FormFlowSummary
+            approvalEnabled={approvalEnabled}
+            approversByGroup={approversByGroup}
+            groupOptions={groupOptions}
+            steps={initialSteps}
+          />
+        }
+      />
+
+      {!canManage && (
         <Text c="dimmed" size="sm">
           承認フローを変更する権限がありません。
         </Text>

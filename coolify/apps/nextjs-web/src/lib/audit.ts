@@ -21,7 +21,9 @@ export type AuditAction =
   | "DELETE"
   | "SEED"
   | "MIGRATE"
-  | "VIEW";
+  | "VIEW"
+  /** 個人データを含むファイルの持ち出し（誰がいつ何件出したかを残す）。 */
+  | "EXPORT";
 
 /**
  * システムユーザー（固定 UUID）。認証実装前の操作、および seed・force-migration

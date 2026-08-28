@@ -38,6 +38,7 @@ import {
   formAvailability,
   normalizeOrder,
   parseFormFields,
+  shouldAutoRequestApproval,
   toPlainAnswers,
   validateAnswers,
 } from "@/lib/form-schema";
@@ -496,6 +497,111 @@ async function loadRespondContext(
 }
 
 /**
+ * 提出したら、そのまま承認依頼まで通す（申請・報告フォームのみ）。
+ *
+ * **提出＝申請**。以前は提出後に本人が回答詳細を開いて「承認依頼」を押す必要が
+ * あり、その一手間が忘れられて申請が滞留していた。押す場所そのものを無くした。
+ *
+ * **承認フローが未設定なら何もしない** — 提出は成功させ、回答は SUBMITTED に
+ * 留める。回答者はフォームの設定を直せないので、ここでエラーにすると回答者が
+ * 詰む。代わりに監査ログへ理由を残し、フォーム詳細の承認タブが未設定を警告する
+ * （利用者の判断で、手動の承認依頼ボタンは復活させない）。
+ *
+ * 起こす条件の判定は lib/form-schema.ts の shouldAutoRequestApproval が持つ
+ * （純粋なので単体テストがある）。ここはその結果に従って I/O をするだけ。
+ *
+ * フローの開始に失敗した場合も提出自体は取り消さない — 出したものは残す。
+ * **この関数は決して throw しない**。呼び出し元の try に巻き込むと、回答は
+ * 保存できているのに「保存に失敗しました」と出てしまう。
+ */
+async function autoRequestApproval(
+  form: { id: string; kind: string; approvalEnabled: boolean },
+  responseNumber: string,
+  actorId: string,
+  history: unknown,
+  prevStatus: string | null,
+  asDraft: boolean,
+): Promise<void> {
+  if (!shouldAutoRequestApproval(form, prevStatus, asDraft)) return;
+  try {
+    await startRequestedFlow(
+      form,
+      responseNumber,
+      actorId,
+      history,
+      prevStatus,
+    );
+  } catch (e) {
+    // 依頼だけが落ちた。提出は成立しているので、記録だけ残して黙って抜ける。
+    await recordAudit({
+      action: "UPDATE",
+      tableName: "form_responses",
+      recordId: responseNumber,
+      after: {
+        note: `承認依頼の開始でエラー: ${prismaErrorMessage(e, "原因不明")}`,
+      },
+    }).catch(() => {});
+  }
+}
+
+/** autoRequestApproval の本体（例外はあちらが受ける）。 */
+async function startRequestedFlow(
+  form: { id: string },
+  responseNumber: string,
+  actorId: string,
+  history: unknown,
+  prevStatus: string | null,
+): Promise<void> {
+  const missing = await assertFormFlowConfigured(form.id);
+  if (missing) {
+    await recordAudit({
+      action: "UPDATE",
+      tableName: "form_responses",
+      recordId: responseNumber,
+      after: { note: `承認フロー未設定のため承認依頼を開始せず: ${missing}` },
+    });
+    return;
+  }
+
+  const started = await startApprovalFlow({
+    targetType: "form_responses",
+    targetId: responseNumber,
+  });
+  if (!started.ok) {
+    await recordAudit({
+      action: "UPDATE",
+      tableName: "form_responses",
+      recordId: responseNumber,
+      after: {
+        note: `承認依頼を開始できず: ${started.error ?? "原因不明"}`,
+      },
+    });
+    return;
+  }
+
+  await prisma.formResponse.update({
+    where: { responseNumber },
+    data: {
+      status: "REQUESTED",
+      // 差し戻しから出し直したときは、前回の差し戻しを引きずらない。
+      rejectedAt: null,
+      rejectReason: null,
+      history: appendHistory(
+        history,
+        entry("REQUEST", actorId),
+      ) as unknown as object,
+    },
+  });
+  await recordAudit({
+    action: "UPDATE",
+    tableName: "form_responses",
+    recordId: responseNumber,
+    before: { status: prevStatus ?? "SUBMITTED" },
+    after: { status: "REQUESTED", note: "提出により承認を依頼" },
+  });
+}
+
+/**
  * 回答を提出する（下書き保存も同じ経路）。
  * 受付期間はここで必ず見る — クライアントの無効化は UI だけの話。
  */
@@ -557,7 +663,7 @@ export async function submitResponse(
             entry(asDraft ? "DRAFT" : "SUBMIT", userId),
           ] as unknown as object,
         },
-        select: { responseNumber: true },
+        select: { responseNumber: true, history: true },
       });
     });
 
@@ -567,6 +673,15 @@ export async function submitResponse(
       recordId: created.responseNumber,
       after: { note: asDraft ? "下書き保存" : "回答を提出" },
     });
+    // 申請・報告フォームは提出がそのまま申請 — ここで承認依頼まで通す。
+    await autoRequestApproval(
+      form,
+      created.responseNumber,
+      userId,
+      created.history,
+      null,
+      asDraft,
+    );
     revalidate(code, created.responseNumber);
     return actionOk({ responseNumber: created.responseNumber });
   } catch (e) {
@@ -650,6 +765,7 @@ export async function updateResponse(
   }
 
   const action = asDraft ? "DRAFT" : wasDraft ? "SUBMIT" : "UPDATE";
+  const nextHistory = appendHistory(row.history, entry(action, userId));
   try {
     await prisma.formResponse.update({
       where: { responseNumber },
@@ -659,10 +775,7 @@ export async function updateResponse(
         ...(wasDraft && !asDraft
           ? { status: "SUBMITTED" as const, submittedAt: new Date() }
           : {}),
-        history: appendHistory(
-          row.history,
-          entry(action, userId),
-        ) as unknown as object,
+        history: nextHistory as unknown as object,
       },
     });
     await recordAudit({
@@ -677,6 +790,16 @@ export async function updateResponse(
             : "回答を編集",
       },
     });
+    // 下書きの提出と、差し戻しを直しての保存は「いま出した」— 承認依頼まで通す。
+    // 依頼中の編集では起こさない（進行中のフローを張り直さないため）。
+    await autoRequestApproval(
+      row.form,
+      responseNumber,
+      userId,
+      nextHistory,
+      row.status,
+      asDraft,
+    );
     revalidate(row.form.code, responseNumber);
     return actionOk();
   } catch (e) {
@@ -720,59 +843,6 @@ export async function discardDraft(
     return actionOk({ code: row.form.code });
   } catch (e) {
     return actionError(prismaErrorMessage(e, "下書きの削除に失敗しました"));
-  }
-}
-
-export async function requestResponseApproval(
-  responseNumber: string,
-): Promise<ActionResult> {
-  const userId = await sessionUserId();
-  if (!userId) return actionError("ログインしてください");
-
-  const row = await prisma.formResponse.findUnique({
-    where: { responseNumber },
-    include: { form: true },
-  });
-  if (!row) return actionError("回答が見つかりません");
-  if (!row.form.approvalEnabled)
-    return actionError("このフォームは承認フローを使いません");
-  if (row.submittedBy !== userId)
-    return actionError("承認依頼は回答した本人だけが出せます");
-  if (row.status !== "SUBMITTED" && row.status !== "REJECTED")
-    return actionError("この状態からは承認依頼を出せません");
-
-  const missing = await assertFormFlowConfigured(row.formId);
-  if (missing) return actionError(missing);
-
-  const started = await startApprovalFlow({
-    targetType: "form_responses",
-    targetId: responseNumber,
-  });
-  if (!started.ok)
-    return actionError(started.error ?? "承認依頼に失敗しました");
-
-  try {
-    await prisma.formResponse.update({
-      where: { responseNumber },
-      data: {
-        status: "REQUESTED",
-        history: appendHistory(
-          row.history,
-          entry("REQUEST", userId),
-        ) as unknown as object,
-      },
-    });
-    await recordAudit({
-      action: "UPDATE",
-      tableName: "form_responses",
-      recordId: responseNumber,
-      before: { status: row.status },
-      after: { status: "REQUESTED" },
-    });
-    revalidate(row.form.code, responseNumber);
-    return actionOk();
-  } catch (e) {
-    return actionError(prismaErrorMessage(e, "承認依頼に失敗しました"));
   }
 }
 

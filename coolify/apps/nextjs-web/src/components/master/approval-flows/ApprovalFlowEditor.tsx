@@ -98,6 +98,8 @@ export function ApprovalFlowEditor({
   applyModeSection,
   onSave,
   afterSaveHref,
+  onCancel,
+  onSaved,
   embedded = false,
   allowIndividual = false,
   searchApprovers,
@@ -131,6 +133,14 @@ export function ApprovalFlowEditor({
   ) => Promise<{ ok: boolean; error?: string }>;
   /** 保存後の遷移先。既定は承認設定の一覧。 */
   afterSaveHref?: string;
+  /**
+   * キャンセルの差し替え。**埋め込みでは必ず渡すこと** — 既定は承認設定
+   * （MS0B）への画面遷移なので、フォームのタブの中でそのまま押すと
+   * マスタ画面へ飛ばされる。
+   */
+  onCancel?: () => void;
+  /** 保存が成功したあとに呼ぶ（埋め込みで閲覧モードへ戻すため）。 */
+  onSaved?: () => void;
   /**
    * タブの中に埋め込むとき true。**ページ見出しとパンくずを出さない** —
    * 出すと、フォームの画面に「マスタ / 承認設定」への戻り先と 2 つ目のタイトルが
@@ -242,6 +252,7 @@ export function ApprovalFlowEditor({
         });
         if (afterSaveHref) router.refresh();
         else router.push(BASE_PATH);
+        onSaved?.();
       } else {
         notifications.show({
           title: "エラー",
@@ -524,7 +535,7 @@ export function ApprovalFlowEditor({
 
       <FormActions
         loading={isPending}
-        onCancel={() => router.push(BASE_PATH)}
+        onCancel={onCancel ?? (() => router.push(BASE_PATH))}
         onSave={save}
       />
     </Stack>

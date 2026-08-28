@@ -6,6 +6,7 @@ import {
   Badge,
   CopyButton,
   Group,
+  Stack,
   Tabs,
   Text,
 } from "@mantine/core";
@@ -18,14 +19,17 @@ import {
   IconCopy,
   IconDownload,
   IconLink,
+  IconTableExport,
   IconWorld,
 } from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
-import { useTransition } from "react";
+import { useState, useTransition } from "react";
 import { useFormat } from "@/components/layout/PreferencesProvider";
 import type { FlowApprover } from "@/components/master/approval-flows/ApproverPermissionBadge";
 import { GhostButton } from "@/components/ui/buttons";
+import { CopyableValue } from "@/components/ui/CopyableValue";
 import { DataTable } from "@/components/ui/DataTable";
+import { EditablePanel } from "@/components/ui/EditablePanel";
 import { FieldValue } from "@/components/ui/FieldValue";
 import { openConfirm } from "@/components/ui/modals";
 import { StatusBadge } from "@/components/ui/StatusBadge";
@@ -46,8 +50,10 @@ import type { ShareLevel } from "@/lib/share-grants-core";
 import { isShareConditionFieldType } from "@/lib/share-grants-core";
 import { FormApprovalPanel, type FormFlowStep } from "./FormApprovalPanel";
 import { FormFieldsPanel } from "./FormFieldsPanel";
+import { ResponseExportModal } from "./ResponseExportModal";
 import type { ConditionFieldOption } from "./ShareConditionEditor";
 import { type RoleOption, ShareGrantsPanel } from "./ShareGrantsPanel";
+import { ShareGrantsView } from "./ShareGrantsView";
 
 /**
  * 共有条件に使える項目だけを取り出す。選んで入れる項目に限る理由は
@@ -114,6 +120,7 @@ export function FormDetail({
       : `/f/${form.code}`;
 
   const [pending, startTransition] = useTransition();
+  const [exportOpen, setExportOpen] = useState(false);
 
   const applyStatus = (
     status: "DRAFT" | "PUBLISHED" | "ARCHIVED",
@@ -258,6 +265,11 @@ export function FormDetail({
           }
         />
         <FieldValue label="定義バージョン" value={`v${form.currentVersion}`} />
+        {/* 集計を Metabase で見るときに貼る値。集計画面にも同じものを出している。 */}
+        <FieldValue
+          label="フォームコード"
+          value={<CopyableValue value={form.code} />}
+        />
         <FieldValue
           label="受付開始"
           value={form.opensAt ? fmt.dateTime(form.opensAt) : "公開時から"}
@@ -338,14 +350,22 @@ export function FormDetail({
 
         <Tabs.Panel pt="md" value="responses">
           {responses.length > 0 && (
-            <Group justify="flex-end" mb="sm">
+            <Group justify={isMobile ? "stretch" : "flex-end"} mb="sm">
               <GhostButton
+                fullWidth={isMobile}
                 leftSection={<IconChartBar size={14} />}
                 onClick={() =>
                   router.push(`/general/forms/${form.code}/summary`)
                 }
               >
                 集計を見る
+              </GhostButton>
+              <GhostButton
+                fullWidth={isMobile}
+                leftSection={<IconTableExport size={14} />}
+                onClick={() => setExportOpen(true)}
+              >
+                書き出す
               </GhostButton>
             </Group>
           )}
@@ -414,6 +434,32 @@ export function FormDetail({
                 `/general/forms/${form.code}/responses/${r.responseNumber}`,
               )
             }
+            renderCard={(r) => (
+              <Stack gap={4}>
+                <Group gap="xs" justify="space-between" wrap="nowrap">
+                  <Text fw={600} size="sm">
+                    No. {r.recordNo}
+                  </Text>
+                  <StatusBadge entity="FormResponse" status={r.status} />
+                </Group>
+                <Text c="dimmed" ff="mono" size="xs">
+                  {r.responseNumber}
+                </Text>
+                {/* 回答者は「表示する」フォームだけ。列と同じ条件をここにも置く
+                    — サーバは既に null にしているが、条件を 1 か所に頼らない。 */}
+                {form.respondentVisibility === "SHOWN" && r.respondent && (
+                  <Text c="dimmed" size="xs">
+                    回答者 {r.respondent}
+                  </Text>
+                )}
+                <Text lineClamp={2} size="sm">
+                  {r.summary || "—"}
+                </Text>
+                <Text c="dimmed" size="xs">
+                  {r.submittedAt ? fmt.dateTime(r.submittedAt) : "未提出"}
+                </Text>
+              </Stack>
+            )}
           />
         </Tabs.Panel>
 
@@ -434,17 +480,31 @@ export function FormDetail({
         )}
 
         <Tabs.Panel keepMounted={false} pt="md" value="share">
-          <ShareGrantsPanel
-            canManage={canManage}
-            conditionFields={conditionFieldsOf(form.fields)}
-            grants={grants}
-            levels={FORM_SHARE_LEVELS}
-            onSave={
-              onSaveShare as unknown as React.ComponentProps<
-                typeof ShareGrantsPanel
-              >["onSave"]
+          <EditablePanel
+            canEdit={canManage}
+            edit={({ close }) => (
+              <ShareGrantsPanel
+                canManage={canManage}
+                conditionFields={conditionFieldsOf(form.fields)}
+                grants={grants}
+                levels={FORM_SHARE_LEVELS}
+                onCancel={close}
+                onSave={
+                  onSaveShare as unknown as React.ComponentProps<
+                    typeof ShareGrantsPanel
+                  >["onSave"]
+                }
+                onSaved={close}
+                roleOptions={roleOptions}
+              />
+            )}
+            title="共有先"
+            view={
+              <ShareGrantsView
+                conditionFields={conditionFieldsOf(form.fields)}
+                grants={grants}
+              />
             }
-            roleOptions={roleOptions}
           />
         </Tabs.Panel>
 
@@ -452,6 +512,15 @@ export function FormDetail({
           <AuditTimeline entries={auditEntries} />
         </Tabs.Panel>
       </Tabs>
+
+      <ResponseExportModal
+        code={form.code}
+        fields={form.fields.filter((f) => f.type !== "related")}
+        formTitle={form.title}
+        onClose={() => setExportOpen(false)}
+        opened={exportOpen}
+        responseCount={responses.length}
+      />
     </DetailShell>
   );
 }
