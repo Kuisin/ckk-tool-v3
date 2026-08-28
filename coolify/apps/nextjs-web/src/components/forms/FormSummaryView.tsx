@@ -3,8 +3,17 @@
 /**
  * FormSummaryView — 回答の集計。項目ごとに、その型に合った出し方をする。
  *
- * テキスト項目は**グラフにしない**（同じ文章が並ぶことは無いので、棒にしても
- * 全部 1 件になるだけ）。件数と抜粋を出す。
+ * 形の選び方（Google フォーム / Microsoft Forms と同じ考え方。判断は
+ * SummaryCharts の冒頭に書いてある）:
+ *   1 つ選ぶ（ドロップダウン・業務データ検索）… 構成 → ドーナツ
+ *   複数選ぶ                                    … 部分の和が全体を超える → 横棒
+ *   数値                                        … 分布 → 代表値 + 縦棒
+ *   日付・時刻                                  … 推移 → 縦棒（左から右へ）
+ *   自由記述                                    … **グラフにしない**（件数と抜粋）
+ *   添付・サブテーブル                          … 量だけ
+ *
+ * 狭い画面では縦棒をやめて横棒に落とす。1 本が数 px になると、棒の長短ではなく
+ * 隙間を見比べることになって読めない。
  */
 
 import {
@@ -29,35 +38,89 @@ import { GhostButton, SecondaryButton } from "@/components/ui/buttons";
 import { CopyableValue } from "@/components/ui/CopyableValue";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { PageHeader } from "@/components/ui/PageHeader";
+import { useIsMobile } from "@/hooks/useViewport";
 import { downloadCsv, toCsv } from "@/lib/csv";
 import { FORM_FIELD_TYPES } from "@/lib/form-schema";
 import type { CountItem, FieldSummary } from "@/lib/form-summary";
 import { StatRow, SummaryBars } from "./SummaryBars";
+import { ColumnChart, DonutChart, MAX_DONUT_SLICES } from "./SummaryCharts";
+
+/** 選択肢のグラフの出し方。`auto` は区分の数で決める。 */
+export type ChartMode = "auto" | "pie" | "bar";
 
 function typeLabel(type: FieldSummary["type"]): string {
   return FORM_FIELD_TYPES.find((t) => t.value === type)?.label ?? type;
 }
 
-function Body({ summary }: { summary: FieldSummary }) {
+/** 1 つだけ選ぶ質問か（＝部分の和が全体になる質問か）。 */
+function isSingleChoice(type: FieldSummary["type"]): boolean {
+  return type === "select" || type === "lookup";
+}
+
+function Body({
+  summary,
+  chartMode,
+  isMobile,
+}: {
+  summary: FieldSummary;
+  chartMode: ChartMode;
+  isMobile: boolean;
+}) {
   const body = summary.body;
 
   switch (body.kind) {
-    case "categories":
+    case "categories": {
+      const drawn = body.items.filter((i) => i.count > 0).length;
+      // ドーナツにしてよいのは「1 人が 1 つだけ選ぶ」質問だけ。複数選べる
+      // 質問で円を描くと、面積の合計が回答数を超えて割合が嘘になる。
+      // 上位打ち切り（otherCount > 0）のときも円にしない — 全体が欠けた円は
+      // 「これで全部」に見えてしまう。
+      const canDonut =
+        isSingleChoice(summary.type) &&
+        body.otherCount === 0 &&
+        drawn >= 2 &&
+        drawn <= MAX_DONUT_SLICES;
+      // 「棒」を選んだときだけ円をやめる。「円」は**できるものだけ**円にする
+      // 指示であって、できないものを無理に円にする指示ではない。
+      const donut = canDonut && chartMode !== "bar";
+
       return (
         <Stack gap="sm">
-          <SummaryBars
-            items={body.items}
-            // 複数選択は 1 回答が複数選ぶので、割合の分母が回答数にならない。
-            showPercent={summary.type !== "multiselect"}
-            total={body.answered}
-          />
+          {donut ? (
+            <DonutChart
+              items={body.items.filter((i) => i.count > 0)}
+              total={body.answered}
+            />
+          ) : (
+            <SummaryBars
+              items={body.items}
+              // 複数選択は 1 回答が複数選ぶので合計が回答数を超える。それでも
+              // 「回答した人のうち何 % が選んだか」は読みたい数字なので、
+              // 分母が何かを下に書いたうえで出す。
+              showPercent
+              total={body.answered}
+            />
+          )}
+          {summary.type === "multiselect" && (
+            <Text c="dimmed" size="xs">
+              割合は回答した {body.answered} 件に対するもの（複数選べるので
+              合計は 100% を超えます）
+            </Text>
+          )}
           {body.otherCount > 0 && (
             <Text c="dimmed" size="xs">
               ほかに {body.otherCount} 件（上位のみ表示）
             </Text>
           )}
+          {chartMode === "pie" && !canDonut && (
+            <Text c="dimmed" size="xs">
+              この項目は円グラフにできません（複数選べる質問、区分が 1 つだけ、
+              区分が多すぎる、または上位のみの表示）
+            </Text>
+          )}
         </Stack>
       );
+    }
 
     case "numbers":
       return (
@@ -71,28 +134,36 @@ function Body({ summary }: { summary: FieldSummary }) {
               { label: "最大", value: body.max },
             ]}
           />
-          <SummaryBars
-            items={body.buckets}
-            showPercent={false}
-            total={body.answered}
-          />
+          {isMobile ? (
+            <SummaryBars
+              items={body.buckets}
+              showPercent={false}
+              total={body.answered}
+            />
+          ) : (
+            <ColumnChart items={body.buckets} />
+          )}
         </Stack>
       );
 
     case "periods":
-      return (
+      // 日付・時刻は左から右へ流れるほうが読める（並びに意味がある）。
+      return isMobile ? (
         <SummaryBars
           items={body.buckets}
           showPercent={false}
           total={body.answered}
         />
+      ) : (
+        <ColumnChart items={body.buckets} />
       );
 
     case "text":
       return (
         <Stack gap="xs">
           <Text c="dimmed" size="sm">
-            {body.answered} 件の回答（自由記述はグラフにしません）
+            自由記述はグラフにしません。最近の回答を{body.samples.length}
+            件まで並べます。
           </Text>
           {body.samples.map((sample, i) => (
             <Paper
@@ -102,11 +173,22 @@ function Body({ summary }: { summary: FieldSummary }) {
               radius="sm"
               withBorder
             >
-              <Text lineClamp={3} size="sm">
+              {/* 改行をそのまま出す。潰すと箇条書きで書かれた回答が読めない。 */}
+              <Text
+                lineClamp={4}
+                size="sm"
+                style={{ whiteSpace: "pre-wrap", wordBreak: "break-word" }}
+              >
                 {sample}
               </Text>
             </Paper>
           ))}
+          {body.answered > body.samples.length && (
+            <Text c="dimmed" size="xs">
+              ほかに {body.answered - body.samples.length} 件（すべて読むには
+              回答一覧か Excel の書き出しへ）
+            </Text>
+          )}
         </Stack>
       );
 
@@ -122,6 +204,20 @@ function Body({ summary }: { summary: FieldSummary }) {
   }
 }
 
+/** 回答 / 未回答の件数。必須でない質問では「答えなかった」ことも結果。 */
+function AnsweredCount({ summary }: { summary: FieldSummary }) {
+  const body = summary.body;
+  if (body.kind === "none") return null;
+  const answered = body.answered;
+  const unanswered = Math.max(0, summary.total - answered);
+  return (
+    <Text c="dimmed" size="xs" style={{ marginLeft: "auto" }}>
+      回答 {answered}
+      {unanswered > 0 ? ` / 未回答 ${unanswered}` : ""}
+    </Text>
+  );
+}
+
 export function FormSummaryView({
   formCode,
   formTitle,
@@ -131,6 +227,7 @@ export function FormSummaryView({
   trend,
   order,
   dateGrain,
+  chartMode,
   metabaseUrl,
 }: {
   formCode: string;
@@ -142,12 +239,14 @@ export function FormSummaryView({
   trend: CountItem[];
   order: "count" | "definition";
   dateGrain: "month" | "day";
+  chartMode: ChartMode;
   /** 未設定なら Metabase へのリンクは出さない（LAN 限定の URL を焼き込まない）。 */
   metabaseUrl: string | null;
 }) {
   const fmt = useFormat();
   const router = useRouter();
   const params = useSearchParams();
+  const isMobile = useIsMobile();
 
   // 表示の切り替えは URL に持たせる（共有したときに同じ見え方で開ける）。
   const setParam = (key: string, value: string) => {
@@ -174,6 +273,8 @@ export function FormSummaryView({
       } else if (b.kind === "text" || b.kind === "amount") {
         rows.push([s.label, "回答数", b.answered]);
       }
+      if (b.kind !== "none")
+        rows.push([s.label, "未回答", Math.max(0, s.total - b.answered)]);
     }
     downloadCsv(`集計_${formTitle}_${formCode}.csv`, toCsv(rows));
   };
@@ -235,6 +336,21 @@ export function FormSummaryView({
               </Stack>
               <Stack gap={4}>
                 <Text c="dimmed" size="xs">
+                  選択肢のグラフ
+                </Text>
+                <SegmentedControl
+                  data={[
+                    { value: "auto", label: "自動" },
+                    { value: "pie", label: "円" },
+                    { value: "bar", label: "棒" },
+                  ]}
+                  onChange={(v) => setParam("chart", v)}
+                  size="xs"
+                  value={chartMode}
+                />
+              </Stack>
+              <Stack gap={4}>
+                <Text c="dimmed" size="xs">
                   日付のまとめ方
                 </Text>
                 <SegmentedControl
@@ -252,11 +368,15 @@ export function FormSummaryView({
               <Text fw={600} size="sm">
                 提出の推移
               </Text>
-              <SummaryBars
-                items={trend}
-                showPercent={false}
-                total={responseCount}
-              />
+              {isMobile ? (
+                <SummaryBars
+                  items={trend}
+                  showPercent={false}
+                  total={responseCount}
+                />
+              ) : (
+                <ColumnChart items={trend} />
+              )}
             </Stack>
           </Stack>
         </Card>
@@ -323,15 +443,20 @@ export function FormSummaryView({
           {summaries.map((summary) => (
             <Card key={summary.key} padding="md" radius="md" withBorder>
               <Stack gap="sm">
-                <Group gap="xs" wrap="wrap">
-                  <Text fw={600} size="sm">
+                <Group gap="xs" wrap="nowrap">
+                  <Text fw={600} size="sm" style={{ minWidth: 0 }}>
                     {summary.label}
                   </Text>
                   <Badge color="gray" size="xs" variant="light">
                     {typeLabel(summary.type)}
                   </Badge>
+                  <AnsweredCount summary={summary} />
                 </Group>
-                <Body summary={summary} />
+                <Body
+                  chartMode={chartMode}
+                  isMobile={isMobile}
+                  summary={summary}
+                />
               </Stack>
             </Card>
           ))}

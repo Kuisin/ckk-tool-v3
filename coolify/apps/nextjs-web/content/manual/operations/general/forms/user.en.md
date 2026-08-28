@@ -73,15 +73,39 @@ For request-report forms, **the record of who approved and when is printed too**
 
 One answer becomes one page. A large batch takes a while.
 
+Multi-line answers keep their line breaks and sub-tables print as tables.
+Questions with no answer print "（未回答）" rather than a blank, so you can tell a
+skipped question from a printing fault.
+
 > 💡 Batch printing does not include the approval record. Print one at a time if you need it.
 
 ## Summarise the answers [#summary]
 
-Press **View summary** on the Responses tab to get a bar chart per question.
+Press **View summary** on the Responses tab. Each question gets the chart that
+suits its type.
 
-- **Most first / Definition order** changes how the bars are sorted.
+| Question type | What you get |
+|---|---|
+| Pick one (dropdown, business-data lookup) | Doughnut chart with a breakdown |
+| Pick several | Horizontal bars |
+| Number | Min / average / median / max, plus a column chart of the spread |
+| Date, time | A column chart showing when submissions cluster |
+| Free text | No chart — a count and a few recent answers |
+| Attachment, sub-table | Counts only |
+
+Each question shows **Answered N / Unanswered M**. On optional questions, how many
+people skipped it is a result too, so the denominator is shown alongside the count.
+
+- **Most first / Definition order** changes how the choices are sorted. Definition
+  order reads better when the order means something (a 1–5 rating scale).
+- **Auto / Pie / Bar** picks the chart shape for choice questions.
 - **Monthly / Daily** changes how submissions over time are grouped.
 - **CSV** saves the numbers behind the charts.
+
+> 💡 **Pick-several questions never get a pie chart.** One person can tick two
+> options, so the percentages add up to more than 100%. A pie would make "share of
+> the whole" a lie, so those stay as bars (the percentage is "of the people who
+> answered").
 
 This screen only shows the breakdown of one question at a time. For cross-question analysis, use Metabase below.
 

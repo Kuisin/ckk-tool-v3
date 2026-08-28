@@ -1,5 +1,8 @@
 import { notFound } from "next/navigation";
-import { FormSummaryView } from "@/components/forms/FormSummaryView";
+import {
+  type ChartMode,
+  FormSummaryView,
+} from "@/components/forms/FormSummaryView";
 import { sessionUserId } from "@/lib/authz";
 import { requireAppRead } from "@/lib/authz-page";
 import { prisma } from "@/lib/db";
@@ -20,7 +23,7 @@ export default async function FormSummaryPage({
   searchParams,
 }: {
   params: Promise<{ code: string }>;
-  searchParams: Promise<{ order?: string; grain?: string }>;
+  searchParams: Promise<{ order?: string; grain?: string; chart?: string }>;
 }) {
   const denied = await requireAppRead("forms");
   if (denied) return denied;
@@ -31,6 +34,9 @@ export default async function FormSummaryPage({
     sp.order === "definition" ? "definition" : DEFAULT_SUMMARY_OPTIONS.order;
   const dateGrain =
     sp.grain === "day" ? "day" : DEFAULT_SUMMARY_OPTIONS.dateGrain;
+  // 知らない値は「自動」に倒す（URL を手で書き換えられても壊れないように）。
+  const chartMode: ChartMode =
+    sp.chart === "pie" || sp.chart === "bar" ? sp.chart : "auto";
   const form = await fetchForm(code);
   if (!form) notFound();
 
@@ -76,6 +82,7 @@ export default async function FormSummaryPage({
 
   return (
     <FormSummaryView
+      chartMode={chartMode}
       dateGrain={dateGrain}
       formCode={form.code}
       formTitle={form.title}
