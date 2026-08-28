@@ -104,9 +104,11 @@ export function ResponseExportModal({
       title="回答を書き出す"
     >
       <Stack gap="md">
+        {/* 件数を「一覧に出ている数」と結び付けない — 一覧は 500 件までしか
+            出さないが、書き出しはもっと多くを含む。数を約束すると食い違う。 */}
         <Text c="dimmed" size="sm">
-          条件を指定しないと、いま見えている回答（{responseCount} 件）を
-          すべて書き出します。
+          条件を指定しなければ、あなたが見られる回答をすべて書き出します
+          （一覧には {responseCount} 件を表示中）。
         </Text>
 
         <Stack gap="xs">
