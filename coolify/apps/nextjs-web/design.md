@@ -80,7 +80,15 @@ table per screen (page/size/sort in the URL); never on a sub-table in a detail t
 - Values: `FieldValue`, `MoneyText`, `JsonLocalizedText` (`{ja,en}` renderer),
   `DocNumber` (`ff="mono"` doc numbers), `EmptyState`, `HelpLabel`.
 - Panels: `HistoryPanel` (audit timeline), `AttachmentsPanel` /
-  `PdfAttachmentPanel`, `MemoPanel` (メモ / コメント — 下記）。
+  `PdfAttachmentPanel`, `MemoPanel` (メモ / コメント — 下記）,
+  `ProcedurePanel` (手続き状況 — 下記）。
+- 進捗表示: **`ProcedurePanel` が唯一の書類進捗カード**（`_specs/design.md §12.10`）。
+  ライフサイクルのある 12 書類すべてが同じ形・同じ位置（ActionCard → サマリ →
+  **手続き状況** → タブ）で載せる。**画面に生の `<Stepper>` を書かないこと** —
+  以前は表示が 3 通りに割れ、`approvalStepDescription` が 4 ファイルに重複して
+  いた。前後関係は `sourceGroups`（前の書類から）/ `handoffGroups`（次の書類へ）で
+  渡す。承認段は `approvalStage()` を使い、文言は `lib/approval-flow.ts` の
+  `approvalStepDescription` が唯一の定義（段数は承認設定 MS0B が決めるため）。
 - Rich text: `MemoPanel` を詳細画面の Tabs に 1 枚差すだけで社内メモ
   （`mode="memo"` = 1 文書 1 件）またはコメントスレッド（`mode="comment"`）が付く。
   データは `lib/document-memos.listMemos(ownerType, ownerId)` を `page.tsx` で

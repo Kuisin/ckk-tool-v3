@@ -123,7 +123,7 @@ The request screen has three tabs.
 - **概要** (overview) … the reason for the request and any notes.
 - **履歴** (history) … a record of who changed what and when.
 
-The 「承認・変換状況」 (approval and conversion status) box shows how far the request has moved along — request → approval → conversion to purchase order — and who approved it and when.
+The 「手続き状況」 (procedure status) box shows how far the request has moved along — request → approval → conversion to purchase order — and who approved it and when. The material purchase order it turned into appears under 「次の書類へ」 (next document).
 
 ## Input fields
 
