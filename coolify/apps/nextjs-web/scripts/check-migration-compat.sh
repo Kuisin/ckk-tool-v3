@@ -23,10 +23,20 @@ MIG_DIR="shared-db/prisma/migrations"
 
 cd "$ROOT" || exit 1
 
+# base が引けないまま進むと diff が空になり、**ガードが黙って通る**。
+# 守っているつもりで守れていない状態がいちばん悪いので、ここで落とす。
+# （CI は fetch-depth: 0 でチェックアウトすること）
+if ! git rev-parse --verify --quiet "$BASE" >/dev/null; then
+  echo "check-migration-compat: base ref '$BASE' を解決できません。" >&2
+  echo "  浅いクローンだと差分が取れず、ガードが素通りします" >&2
+  echo "  （CI は actions/checkout に fetch-depth: 0 を指定）。" >&2
+  exit 1
+fi
+
 # base から見て**追加・変更された** migration.sql だけを見る。
 # 既に適用済みの過去分を蒸し返さないため。
 # （mapfile は bash 4+ 専用で macOS の bash 3.2 に無いので使わない）
-FILES=$(git diff --name-only --diff-filter=AM "$BASE"...HEAD -- "$MIG_DIR" 2>/dev/null \
+FILES=$(git diff --name-only --diff-filter=AM "$BASE"...HEAD -- "$MIG_DIR" \
           | grep 'migration\.sql$' || true)
 
 if [ -z "$FILES" ]; then
