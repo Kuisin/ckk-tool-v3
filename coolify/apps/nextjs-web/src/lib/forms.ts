@@ -12,7 +12,9 @@ import "server-only";
  */
 
 import { cache } from "react";
-import { sessionUserId } from "./authz";
+import { getDisabledAppKeys } from "./app-flags";
+import { appList } from "./app-list";
+import { getVisibleAppKeys, sessionUserId } from "./authz";
 import { prisma } from "./db";
 import {
   type FormAnswerValue,
@@ -417,4 +419,30 @@ export interface MyResponseRow {
   submittedAt: string | null;
   canEdit: boolean;
   editDeadline: string | null;
+}
+
+/**
+ * このリクエストで `/general/forms/...`（アプリ内の画面）を開けるか。
+ *
+ * 共有 URL `/f/<code>/<回答番号>` は AppShell の外の薄い画面で、アプリ内の
+ * 回答詳細には承認・添付・コメント・履歴が載る。**社内利用者はどちらの URL を
+ * 踏んでも濃いほうへ着くべき**なので、転送してよいかをここで判定する。
+ *
+ * 判定は **ダッシュボードの AppAvailabilityGuard と同じ 2 条件**にする。片方でも
+ * 欠けると、転送した先で「この機能は現在利用できません」に着いてしまう:
+ *   - 権限で見えるアプリか（`getVisibleAppKeys`）。`forms` は
+ *     `requiredPermission: null` なので今は常に真だが、あとで権限を付けたときに
+ *     ここが黙って壊れないよう素通りさせない。
+ *   - 環境の ON/OFF フラグ（`getDisabledAppKeys`）。`main` で未公開なら
+ *     アプリ内の画面は出せない = 転送してはいけない。
+ *
+ * 読めなかったときは `getDisabledAppKeys` が fail-open（空配列）なので転送する側に
+ * 倒れる。転送先は自前で権限と共有を見直すので危険はない。
+ */
+export async function formsAppAvailable(): Promise<boolean> {
+  const [visible, disabled] = await Promise.all([
+    getVisibleAppKeys(appList),
+    getDisabledAppKeys(),
+  ]);
+  return visible.has(FORM_OWNER_TYPE) && !disabled.includes(FORM_OWNER_TYPE);
 }

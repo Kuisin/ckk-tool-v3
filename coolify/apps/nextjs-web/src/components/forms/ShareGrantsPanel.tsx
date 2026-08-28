@@ -26,8 +26,9 @@ import {
   searchPlantOptions,
   searchUserOptions,
 } from "@/app/(dashboard)/_shared/option-search";
-import { GhostButton, SaveButton } from "@/components/ui/buttons";
+import { GhostButton } from "@/components/ui/buttons";
 import { SearchSelect } from "@/components/ui/SearchSelect";
+import { FormActions } from "@/components/ui/shells";
 import { useIsMobile } from "@/hooks/useViewport";
 import type { ShareGrantView } from "@/lib/share-grants";
 import {
@@ -64,6 +65,8 @@ export function ShareGrantsPanel({
   roleOptions,
   levels,
   canManage,
+  onCancel,
+  onSaved,
   onSave,
 }: {
   grants: ShareGrantView[];
@@ -76,6 +79,10 @@ export function ShareGrantsPanel({
    */
   conditionFields?: ConditionFieldOption[];
   canManage: boolean;
+  /** キャンセル。EditablePanel に埋め込むときに閲覧モードへ戻す。 */
+  onCancel?: () => void;
+  /** 保存が成功したあとに呼ぶ（閲覧モードへ戻すため）。 */
+  onSaved?: () => void;
   onSave: (
     grants: {
       subjectType: ShareSubjectType;
@@ -137,6 +144,7 @@ export function ShareGrantsPanel({
           color: "green",
         });
         router.refresh();
+        onSaved?.();
       } else {
         notifications.show({
           title: "エラー",
@@ -353,7 +361,7 @@ export function ShareGrantsPanel({
       )}
 
       {canManage && (
-        <Group grow={isMobile} justify="space-between">
+        <>
           <GhostButton
             fullWidth={isMobile}
             leftSection={<IconPlus size={14} />}
@@ -361,13 +369,10 @@ export function ShareGrantsPanel({
           >
             共有先を追加
           </GhostButton>
-          <SaveButton
-            fullWidth={isMobile}
-            loading={isPending}
-            onClick={save}
-            type="button"
-          />
-        </Group>
+          {/* 保存 / キャンセルは共有の FormActions に任せる — PC の sticky と
+              スマホの全幅積みがそれで揃う（design.md §8.3）。 */}
+          <FormActions loading={isPending} onCancel={onCancel} onSave={save} />
+        </>
       )}
     </Stack>
   );

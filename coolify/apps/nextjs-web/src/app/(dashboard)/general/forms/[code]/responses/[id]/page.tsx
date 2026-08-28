@@ -90,6 +90,7 @@ export default async function ResponseDetailPage({
       approvalTrail={approvalTrail}
       attachments={attachments}
       auditEntries={auditEntries}
+      availability={response.form.availability}
       canActOnApproval={approvalState?.canAct ?? false}
       canEdit={
         !!userId &&

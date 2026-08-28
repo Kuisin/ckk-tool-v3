@@ -837,6 +837,49 @@ Paper (withBorder, p="md", radius="md")
 
 搭載画面: 指示書 (`WorkOrderApprovalCard`) / 注文請書 / 素材発注書 / 購買依頼。
 
+### 10.10 EditablePanel
+
+`src/components/ui/EditablePanel.tsx` — `'use client'`
+
+タブやセクションを「**既定は閲覧、押して編集**」にする枠。詳細画面のタブに
+編集フォームを直接置くと、読みに来ただけの人にも常に編集画面が開いていること
+になり、いま何が設定されているのかが読み取れない。閲覧の形を別に用意して、
+編集は明示的に始める。
+
+```tsx
+<EditablePanel
+  canEdit={canManage}
+  title="共有先"
+  view={<ShareGrantsView grants={grants} />}
+  edit={({ close }) => (
+    <ShareGrantsPanel grants={grants} onCancel={close} onSaved={close} … />
+  )}
+/>
+```
+
+| prop | 役割 |
+|------|------|
+| `canEdit` | false なら編集ボタンごと出さない（押せないボタンを置かない） |
+| `view` | 閲覧モードの中身。読める形にする — 無効化した入力欄を並べない |
+| `edit` | `({ close }) => ReactNode`。**編集中だけマウントされる** |
+| `title` / `description` | 見出しと補足。補足は編集中も出す |
+| `editLabel` | 既定「編集」 |
+
+**約束ごと**
+
+- **保存 / キャンセルの行は編集側が持つ**（§8.3 の `FormActions` をそのまま
+  使う）。渡された `close` を `onCancel` と保存成功後に呼ぶ。ヘッダーに保存を
+  置かない。
+- **閉じるときに編集側をアンマウントする。** props からドラフトを `useState` で
+  作るエディタ（`ShareGrantsPanel` / `ApprovalFlowEditor`）は、それだけで
+  「キャンセル＝サーバの値へ戻す」になる。復元処理を書かない。
+- 埋め込むエディタが既定で画面遷移するキャンセルを持つ場合は、**必ず
+  `onCancel` を渡して差し替える**（`ApprovalFlowEditor` の既定は承認設定 MS0B
+  への遷移で、そのままだと別画面へ飛ばされる）。
+- モバイルでは見出しと編集ボタンを縦に積み、ボタンを全幅にする（§20.2）。
+
+搭載画面: フォーム詳細の 承認 / 共有 タブ、回答詳細の 回答 タブ。
+
 ---
 
 ## 11. Components: Variants and States

@@ -5,44 +5,34 @@
  *
  * 指示書の WorkOrderApprovalCard は指示書専用なので、フォーム用に同じ考え方で
  * 作る。**色は状態ではなくログイン中ユーザーの立場で決まる**（design.md §10.9）:
- * 自分で進められる = blue / 承認できる = green / 待つだけ = gray / 差し戻し = red。
+ * 承認できる = green / 待つだけ = gray。
+ *
+ * **回答者向けの「承認依頼」ボタンは持たない。** 提出そのものが申請になり
+ * （actions.ts の autoRequestApproval）、差し戻しは内容を直して保存し直せば
+ * 再依頼される。押し忘れで申請が滞留する余地を無くすため、押す場所を作らない。
+ * 差し戻された事実と理由は ResponseDetail の Alert が伝える。
  */
 
 import { Text, Textarea } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
-import {
-  IconAlertTriangle,
-  IconCheck,
-  IconClock,
-  IconSend,
-} from "@tabler/icons-react";
+import { IconCheck, IconClock } from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { ActionCard } from "@/components/ui/ActionCard";
-import {
-  ApproveButton,
-  PrimaryButton,
-  RejectButton,
-} from "@/components/ui/buttons";
+import { ApproveButton, RejectButton } from "@/components/ui/buttons";
 import { ModalShell } from "@/components/ui/modals";
 
 export function ResponseApprovalCard({
   responseNumber,
   status,
-  rejectReason,
-  isOwner,
   canAct,
-  onRequest,
   onApprove,
   onReject,
 }: {
   responseNumber: string;
   status: string;
-  rejectReason: string | null;
-  isOwner: boolean;
   /** 承認グループに入っていて、この段を処理できるか。 */
   canAct: boolean;
-  onRequest: (n: string) => Promise<{ ok: boolean; error?: string }>;
   onApprove: (n: string) => Promise<{ ok: boolean; error?: string }>;
   onReject: (
     n: string,
@@ -73,54 +63,6 @@ export function ResponseApprovalCard({
         });
       }
     });
-
-  if (status === "SUBMITTED" && isOwner) {
-    return (
-      <ActionCard
-        actions={
-          <PrimaryButton
-            leftSection={<IconSend size={14} />}
-            loading={isPending}
-            onClick={() =>
-              run(() => onRequest(responseNumber), "承認を依頼しました")
-            }
-          >
-            承認依頼
-          </PrimaryButton>
-        }
-        description="内容を確認したら承認を依頼してください。"
-        icon={<IconSend size={20} />}
-        title="承認依頼ができます"
-        tone="action"
-      />
-    );
-  }
-
-  if (status === "REJECTED" && isOwner) {
-    return (
-      <ActionCard
-        actions={
-          <PrimaryButton
-            leftSection={<IconSend size={14} />}
-            loading={isPending}
-            onClick={() =>
-              run(() => onRequest(responseNumber), "承認を再依頼しました")
-            }
-          >
-            再依頼
-          </PrimaryButton>
-        }
-        description={
-          rejectReason
-            ? `理由: ${rejectReason}`
-            : "内容を直して再依頼してください。"
-        }
-        icon={<IconAlertTriangle size={20} />}
-        title="差し戻されています"
-        tone="alert"
-      />
-    );
-  }
 
   if (status === "REQUESTED") {
     if (!canAct) {

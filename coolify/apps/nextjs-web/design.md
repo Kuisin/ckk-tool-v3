@@ -98,6 +98,15 @@ table per screen (page/size/sort in the URL); never on a sub-table in a detail t
   `RichTextEditorField`（`@mantine/tiptap`）。本文は HTML ではなく
   **ProseMirror JSON** で保存し、`lib/rich-text-core.ts` が許可リスト検証・
   平文射影・HTML 化を担う。
+- 閲覧⇄編集: **`EditablePanel`**（`_specs/design.md §10.10`）。タブやセクションを
+  「既定は閲覧、押して編集」にする枠。**タブを編集フォームで開かないこと** —
+  読みに来ただけの人に編集画面が開いていると、いま何が設定されているのかが
+  読めない。`view` に読める形を、`edit` に既存のエディタを渡す。保存 /
+  キャンセルの行は**編集側**が `FormActions` で持ち、渡された `close` を呼んで
+  閲覧へ戻す。閉じるとエディタはアンマウントされるので、キャンセルの復元処理は
+  書かなくてよい（props からドラフトを作るエディタなら自動で元に戻る）。
+  既定で画面遷移するキャンセルを持つエディタ（`ApprovalFlowEditor`）には
+  **必ず `onCancel` を渡す**。
 - Selects: `SearchSelect` (async option search), `F4SearchModal` + `f4-presets.ts`
   (F4 master lookup), `CustomerSelect`/`FactorySelect` (two-level).
 - Destructive confirm: `openConfirm` (`ui/modals.tsx`, wraps `@mantine/modals`)

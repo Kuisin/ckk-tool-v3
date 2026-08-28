@@ -1,16 +1,22 @@
 import { Group, Paper, Stack, Text, Title } from "@mantine/core";
 import { IconPencilOff, IconSearchOff } from "@tabler/icons-react";
+import { redirect } from "next/navigation";
 import {
   FormResponseView,
   type RelatedTable,
 } from "@/components/forms/FormResponseView";
 import { FormStateScreen } from "@/components/forms/FormStateScreen";
-import { PrimaryButton, SecondaryButton } from "@/components/ui/buttons";
+import { ResponseActionRow } from "@/components/forms/ResponseActionRow";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { hasAnyApproval } from "@/lib/approvals";
 import { sessionUserId } from "@/lib/authz";
 import { canEditResponse, formAvailability } from "@/lib/form-schema";
-import { fetchResponse, formAccess, resolveRelatedRecords } from "@/lib/forms";
+import {
+  fetchResponse,
+  formAccess,
+  formsAppAvailable,
+  resolveRelatedRecords,
+} from "@/lib/forms";
 import { NO_SHARE_ACCESS } from "@/lib/share-grants";
 import { responseInScope } from "@/lib/share-grants-core";
 import { getServerFormatters } from "@/lib/user-preferences";
@@ -67,6 +73,18 @@ export default async function MyResponsePage({
         icon={<IconSearchOff size={24} />}
         title="回答が見つかりません"
       />
+    );
+  }
+
+  // ここまで来た = この人にこの回答を見せてよい。**判定より後ろに置くこと** —
+  // 前に出すと、見えない回答でも転送が起きて「実在するか」を教えてしまう。
+  // アプリ内の回答詳細は承認・添付・コメント・履歴まで載る濃い画面で、門は
+  // こちら（本人 or 閲覧共有）の上位集合（+ 承認者）なので 404 にはならない。
+  if (await formsAppAvailable()) {
+    redirect(
+      `/general/forms/${row.form.code}/responses/${encodeURIComponent(
+        row.responseNumber,
+      )}`,
     );
   }
 
@@ -143,7 +161,7 @@ export default async function MyResponsePage({
         />
       </Paper>
 
-      <MyResponseActions
+      <ResponseActionRow
         canAnswerAgain={canAnswerAgain}
         canSeeAll={access.canRead}
         code={code}
@@ -161,40 +179,5 @@ export default async function MyResponsePage({
         </Group>
       )}
     </Stack>
-  );
-}
-
-function MyResponseActions({
-  code,
-  responseNumber,
-  editable,
-  isDraft,
-  canAnswerAgain,
-  canSeeAll,
-}: {
-  code: string;
-  responseNumber: string;
-  editable: boolean;
-  isDraft: boolean;
-  canAnswerAgain: boolean;
-  canSeeAll: boolean;
-}) {
-  const edit = `/f/${code}/${encodeURIComponent(responseNumber)}/edit`;
-  return (
-    <Group gap="xs">
-      {editable && (
-        <PrimaryButton href={edit}>
-          {isDraft ? "下書きの続きを書く" : "回答を編集する"}
-        </PrimaryButton>
-      )}
-      {canAnswerAgain && (
-        <SecondaryButton href={`/f/${code}`}>もう 1 件回答する</SecondaryButton>
-      )}
-      {canSeeAll && (
-        <SecondaryButton href={`/f/${code}/responses`}>
-          回答一覧を見る
-        </SecondaryButton>
-      )}
-    </Group>
   );
 }

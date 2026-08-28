@@ -1,17 +1,18 @@
 "use client";
 
-import { Alert, Stack, Tabs, Text } from "@mantine/core";
+import { Alert, Tabs, Text } from "@mantine/core";
+import { IconLink } from "@tabler/icons-react";
 import {
   approveResponse,
   rejectResponse,
-  requestResponseApproval,
+  updateResponse,
 } from "@/app/(dashboard)/general/forms/actions";
 import type { ApprovalTrailView } from "@/components/approvals/ApprovalTrailList";
 import { ApprovalTrailList } from "@/components/approvals/ApprovalTrailList";
 import { useFormat } from "@/components/layout/PreferencesProvider";
 import type { AttachmentView } from "@/components/ui/AttachmentsPanel";
 import { AttachmentsPanel } from "@/components/ui/AttachmentsPanel";
-import { EditButton } from "@/components/ui/buttons";
+import { EditablePanel } from "@/components/ui/EditablePanel";
 import { FieldValue } from "@/components/ui/FieldValue";
 import { MemoPanel } from "@/components/ui/MemoPanel";
 import { StatusBadge } from "@/components/ui/StatusBadge";
@@ -19,11 +20,17 @@ import {
   type AuditEntry,
   AuditTimeline,
   DetailShell,
+  ResourceActions,
   SummaryGrid,
 } from "@/components/ui/shells";
 import type { MemoView } from "@/lib/document-memos";
-import type { FormAnswerValue, FormFieldDef } from "@/lib/form-schema";
+import type {
+  FormAnswerValue,
+  FormAvailability,
+  FormFieldDef,
+} from "@/lib/form-schema";
 import { FormResponseView, type RelatedTable } from "./FormResponseView";
+import { RespondForm } from "./RespondForm";
 import { ResponseApprovalCard } from "./ResponseApprovalCard";
 
 export function ResponseDetail({
@@ -38,6 +45,7 @@ export function ResponseDetail({
   fields,
   answers,
   related,
+  availability,
   approvalEnabled,
   approvalTrail,
   canActOnApproval,
@@ -61,6 +69,8 @@ export function ResponseDetail({
   fields: FormFieldDef[];
   answers: Record<string, FormAnswerValue>;
   related: Record<string, RelatedTable>;
+  /** フォームの受付状態。回答タブの中で編集するときの送信可否に使う。 */
+  availability: FormAvailability;
   approvalEnabled: boolean;
   approvalTrail: ApprovalTrailView[];
   canActOnApproval: boolean;
@@ -79,11 +89,17 @@ export function ResponseDetail({
   return (
     <DetailShell
       actions={
-        canEdit ? (
-          <EditButton
-            href={`/f/${formCode}/${encodeURIComponent(responseNumber)}/edit`}
-          />
-        ) : undefined
+        <ResourceActions
+          menuItems={[
+            {
+              // 回答者に配っている画面。作成者が「相手にはこう見える」を
+              // 確かめられるように残す（編集は回答タブの中でする）。
+              label: "回答者向けの画面で開く",
+              icon: <IconLink size={14} />,
+              href: `/f/${formCode}/${encodeURIComponent(responseNumber)}`,
+            },
+          ]}
+        />
       }
       breadcrumbs={[
         { label: "一般" },
@@ -99,7 +115,6 @@ export function ResponseDetail({
       {approvalEnabled && (
         <ResponseApprovalCard
           canAct={canActOnApproval}
-          isOwner={isOwner}
           onApprove={async (n) => {
             const r = await approveResponse(n);
             return r.ok ? { ok: true } : { ok: false, error: r.error };
@@ -108,11 +123,6 @@ export function ResponseDetail({
             const r = await rejectResponse(n, reason);
             return r.ok ? { ok: true } : { ok: false, error: r.error };
           }}
-          onRequest={async (n) => {
-            const r = await requestResponseApproval(n);
-            return r.ok ? { ok: true } : { ok: false, error: r.error };
-          }}
-          rejectReason={rejectReason}
           responseNumber={responseNumber}
           status={status}
         />
@@ -140,7 +150,14 @@ export function ResponseDetail({
 
       {status === "REJECTED" && rejectReason && (
         <Alert color="red" title="差し戻されています">
-          {rejectReason}
+          <Text size="sm" style={{ whiteSpace: "pre-wrap" }}>
+            {rejectReason}
+          </Text>
+          {isOwner && (
+            <Text mt={4} size="xs">
+              「回答」タブで内容を直して保存すると、もう一度承認を依頼します。
+            </Text>
+          )}
         </Alert>
       )}
 
@@ -154,13 +171,42 @@ export function ResponseDetail({
         </Tabs.List>
 
         <Tabs.Panel pt="md" value="answers">
-          <Stack gap="md">
-            <FormResponseView
-              answers={answers}
-              fields={fields}
-              related={related}
-            />
-          </Stack>
+          <EditablePanel
+            canEdit={canEdit}
+            edit={({ close }) => (
+              <RespondForm
+                // 下書きのまま置けるのは、まだ出していない回答だけ。
+                allowDraft={status === "DRAFT"}
+                availability={availability}
+                embedded
+                // **回答した時点の版**の項目で直す（form_versions は不変）。
+                fields={fields}
+                initialAnswers={answers}
+                onCancel={close}
+                onSubmit={async (next, asDraft) => {
+                  const r = await updateResponse(responseNumber, next, asDraft);
+                  // 下書きを保存しただけなら書き続けられるよう開いたままにする。
+                  // 画面の再取得は RespondForm 側が router.refresh() でやる。
+                  if (r.ok && !asDraft) close();
+                  return r.ok ? { ok: true } : { ok: false, error: r.error };
+                }}
+                submitLabel={status === "DRAFT" ? "提出する" : "更新"}
+                // 編集は受付終了後も許される設定があるので送信可否は別扱い。
+                // 最終判定はサーバ（canEditResponse / formAvailability）。
+                submittable={
+                  status === "DRAFT" ? availability === "OPEN" : true
+                }
+                title={formTitle}
+              />
+            )}
+            view={
+              <FormResponseView
+                answers={answers}
+                fields={fields}
+                related={related}
+              />
+            }
+          />
         </Tabs.Panel>
 
         {approvalEnabled && (
