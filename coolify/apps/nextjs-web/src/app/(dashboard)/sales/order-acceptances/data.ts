@@ -10,8 +10,10 @@
 
 import { ownWhere, rowInScope } from "@ckk/authz-core";
 import type {
+  AcceptanceLink,
   OrderAcceptanceItemView,
   OrderAcceptanceListRow,
+  OrderAcceptanceStatus,
   OrderAcceptanceView,
 } from "@/components/sales/order-acceptances/model";
 import { checkPermission } from "@/lib/authz";
@@ -277,5 +279,39 @@ export async function fetchPlantOptions(): Promise<
   return rows.map((r) => ({
     value: String(r.id),
     label: `${r.code} ${localized(r.name as LocalizedText | null)}`,
+  }));
+}
+
+/**
+ * 逆リンク — その見積書から起きた注文請書（新しい採番順）。
+ *
+ * 1 見積書から複数回受注することがあるので配列。キャンセル済みは出さない
+ * （設計依頼の fetchLinks と同じ方針 — 起票し直した跡が並ぶだけのため）。
+ */
+export async function fetchOrderAcceptancesForQuote(key: {
+  yearMonth: string;
+  seq: number;
+}): Promise<AcceptanceLink[]> {
+  const rows = await prisma.orderAcceptance.findMany({
+    where: {
+      quoteYearMonth: key.yearMonth,
+      quoteSeq: key.seq,
+      status: { not: "CANCELLED" },
+    },
+    select: {
+      yearMonth: true,
+      seq: true,
+      status: true,
+      updatedAt: true,
+      _count: { select: { items: true } },
+    },
+    orderBy: [{ yearMonth: "desc" }, { seq: "desc" }],
+    take: 20,
+  });
+  return rows.map((r) => ({
+    number: formatDocNumber("ORD", { yearMonth: r.yearMonth, seq: r.seq }),
+    status: r.status as OrderAcceptanceStatus,
+    orderLineCount: r._count.items,
+    updatedAt: r.updatedAt.toISOString(),
   }));
 }

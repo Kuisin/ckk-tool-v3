@@ -4,6 +4,8 @@
  * TrialEstimateDetail — 試算 詳細 (SA52). Read-only view of a saved 試算:
  * summary + recomputed results + the material price-history graph.
  *
+ * 手続き状況（ProcedurePanel — 下書き→確定→価格表登録済、価格表 →）。
+ *
  * Flow (試算 → 価格表 → 見積書): DRAFT は「確定」で CONFIRMED になり、
  * 価格表（顧客×製品）の作成時に基準単価ソースとして選択できる（初回使用時に
  * REGISTERED でロック）。Backed by sales.estimates via the server page;
@@ -47,6 +49,11 @@ import { HistoryPanel } from "@/components/ui/HistoryPanel";
 import { MemoPanel } from "@/components/ui/MemoPanel";
 import { MoneyText } from "@/components/ui/MoneyText";
 import { ModalShell } from "@/components/ui/modals";
+import {
+  type HandoffGroup,
+  ProcedurePanel,
+  type ProcedureStage,
+} from "@/components/ui/ProcedurePanel";
 import { SearchSelect } from "@/components/ui/SearchSelect";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import {
@@ -118,6 +125,51 @@ export function TrialEstimateDetail({
   // 製品リンク モーダル（REGISTERED は価格表が参照済みのため変更不可）
   const [linkOpen, setLinkOpen] = useState(false);
   const [linkProductId, setLinkProductId] = useState<string | null>(null);
+
+  // ── 手続き状況（下書き → 確定 → 価格表登録済）───────────────────────────
+  const stages: ProcedureStage[] = [
+    {
+      key: "draft",
+      label: "下書き",
+      description: fmt.date(record.createdAt),
+      loading: status === "DRAFT",
+    },
+    {
+      key: "confirmed",
+      label: "確定",
+      description:
+        status === "DRAFT" ? "価格表の基準単価にできる状態へ" : "確定済み",
+      loading: status === "CONFIRMED",
+    },
+    {
+      key: "registered",
+      label: "価格表登録済",
+      description: record.registeredAt
+        ? fmt.date(record.registeredAt)
+        : "価格表で使用されると確定（以後ロック）",
+    },
+  ];
+  const active = status === "DRAFT" ? 0 : status === "CONFIRMED" ? 1 : 3;
+
+  // 下流 = この試算を基準単価ソースにした価格表（1 試算が複数に使われ得る）。
+  const handoffGroups: HandoffGroup[] = [
+    {
+      key: "price-lists",
+      title: "価格表",
+      summary: linkedEntries.length > 0 ? `${linkedEntries.length} 件` : null,
+      items: linkedEntries.map((e) => ({
+        key: e.entryId,
+        label: `${e.customerName} × ${e.productName}`,
+        href: `/sales/price-lists/${e.entryId}`,
+        done: true,
+        note: `${ORDER_TYPE_LABEL[e.orderType] ?? e.orderType}・${e.tierCount}段階`,
+      })),
+      emptyNote:
+        status === "CONFIRMED"
+          ? "未使用（価格表の作成時に基準単価ソースとして選べます）"
+          : "未使用（確定すると価格表の基準単価に選べます）",
+    },
+  ];
 
   const openProductLink = () => {
     setLinkProductId(record.productId);
@@ -257,6 +309,12 @@ export function TrialEstimateDetail({
           }
         />
       </SummaryGrid>
+
+      <ProcedurePanel
+        active={active}
+        handoffGroups={handoffGroups}
+        stages={stages}
+      />
 
       <Tabs onChange={setTab} value={tab}>
         <Tabs.List>

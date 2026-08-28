@@ -4,7 +4,8 @@
  * ClosingDetail — 締日処理 詳細 (BL22, design.md §8.2).
  *
  * SummaryGrid（顧客 / 締日 / 合計金額 / 状態 / 生成請求書リンク / 処理日）+
- * 期間内の対象出荷テーブル（出荷書番号 / 出荷日 / 数量 / 金額）+
+ * 手続き状況（ProcedurePanel — 未処理→請求書生成→エクスポート済、対象出荷 ← /
+ * 請求書 →）+ 期間内の対象出荷テーブル（出荷書番号 / 出荷日 / 数量 / 金額）+
  * Tabs: 概要 / 履歴。
  *
  * Actions: 「請求書を生成」（PENDING のみ）→ processClosing(id) が請求書
@@ -33,6 +34,11 @@ import { FieldValue } from "@/components/ui/FieldValue";
 import { HistoryPanel } from "@/components/ui/HistoryPanel";
 import { MoneyText } from "@/components/ui/MoneyText";
 import { ConfirmModal } from "@/components/ui/modals";
+import {
+  type HandoffGroup,
+  ProcedurePanel,
+  type ProcedureStage,
+} from "@/components/ui/ProcedurePanel";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import {
   type AuditEntry,
@@ -40,6 +46,7 @@ import {
   SummaryGrid,
 } from "@/components/ui/shells";
 import { useTabParam } from "@/hooks/useUrlState";
+import { formatMoney } from "@/lib/format";
 import { type BillingClosingDetail, isProcessable } from "./model";
 
 const BASE_PATH = "/billing/closings";
@@ -85,6 +92,70 @@ export function ClosingDetail({
     0,
   );
   const totalAmount = closing.shipments.reduce((sum, s) => sum + s.amount, 0);
+
+  // ── 手続き状況（未処理 → 請求書生成 → エクスポート済）─────────────────
+  const stages: ProcedureStage[] = [
+    {
+      key: "pending",
+      label: "未処理",
+      description: `対象出荷 ${closing.shipments.length} 件`,
+      loading: closing.status === "PENDING",
+    },
+    {
+      key: "processed",
+      label: "請求書生成",
+      description: closing.processedAt
+        ? fmt.date(closing.processedAt)
+        : "請求書を作成",
+      loading: closing.status === "PROCESSED",
+    },
+    {
+      key: "exported",
+      label: "エクスポート済",
+      description: "弥生会計 CSV",
+    },
+  ];
+  const active =
+    closing.status === "PENDING" ? 0 : closing.status === "PROCESSED" ? 1 : 3;
+
+  // 上流 = 請求対象として集計した出荷書。
+  const sourceGroups: HandoffGroup[] = [
+    {
+      key: "shipments",
+      title: "対象出荷",
+      summary:
+        closing.shipments.length > 0
+          ? `${closing.shipments.length} 件・${totalQuantity} 本`
+          : null,
+      items: closing.shipments.map((sp) => ({
+        key: sp.deliveryOrderNumber,
+        label: sp.deliveryOrderNumber,
+        href: `/shipping/delivery-orders/${sp.deliveryOrderNumber}`,
+        note: `${sp.quantity} 本・${formatMoney(sp.amount)}`,
+      })),
+      emptyNote: "請求対象の出荷がありません",
+    },
+  ];
+
+  // 下流 = 締めで生成した請求書（1 締め = 1 請求書）。
+  const handoffGroups: HandoffGroup[] = [
+    {
+      key: "invoice",
+      title: "請求書",
+      items: closing.invoiceNumber
+        ? [
+            {
+              key: closing.invoiceNumber,
+              label: closing.invoiceNumber,
+              href: `${INVOICES_PATH}/${closing.invoiceNumber}`,
+              done: closing.status === "EXPORTED",
+              note: formatMoney(closing.totalAmount),
+            },
+          ]
+        : [],
+      emptyNote: "未生成（「請求書を生成」で作成します）",
+    },
+  ];
 
   return (
     <DetailShell
@@ -136,6 +207,13 @@ export function ClosingDetail({
         />
         <FieldValue label="処理日" value={fmt.dateTime(closing.processedAt)} />
       </SummaryGrid>
+
+      <ProcedurePanel
+        active={active}
+        handoffGroups={handoffGroups}
+        sourceGroups={sourceGroups}
+        stages={stages}
+      />
 
       <Paper p="md" radius="md" withBorder>
         <Group justify="space-between" mb="sm">

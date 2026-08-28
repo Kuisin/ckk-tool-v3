@@ -3,7 +3,8 @@
 /**
  * QuoteDetail — 見積書 詳細 (design.md §8.2).
  *
- * Summary grid + tabs: 明細 (価格表 tier-resolved lines + 値引き + 適用価格表) /
+ * Summary grid + 手続き状況 (ProcedurePanel — 下書き→発行→受諾、価格表 ← /
+ * 注文請書 →) + tabs: 明細 (価格表 tier-resolved lines + 値引き + 適用価格表) /
  * PDF (発行時に保存された PDF のメタ + インライン A4 プレビュー) / 関連 (試算・
  * 価格表 back-links) / 履歴. 発行 (DRAFT → ISSUED) generates the PDF via the
  * Gotenberg route and stores it in SeaweedFS; the PDF tab streams that stored
@@ -25,6 +26,7 @@ import { issueQuote } from "@/app/(dashboard)/sales/quotes/actions";
 import { useFormat } from "@/components/layout/PreferencesProvider";
 import { DesignRequestLinks } from "@/components/sales/design-requests/DesignRequestLinks";
 import type { DesignRequestLink } from "@/components/sales/design-requests/model";
+import type { AcceptanceLink } from "@/components/sales/order-acceptances/model";
 import { PrimaryButton } from "@/components/ui/buttons";
 import { DocNumber } from "@/components/ui/DocNumber";
 import { FieldValue } from "@/components/ui/FieldValue";
@@ -35,7 +37,12 @@ import {
   PdfAttachmentPanel,
   type PdfFileMeta,
 } from "@/components/ui/PdfAttachmentPanel";
-import { StatusBadge } from "@/components/ui/StatusBadge";
+import {
+  type HandoffGroup,
+  ProcedurePanel,
+  type ProcedureStage,
+} from "@/components/ui/ProcedurePanel";
+import { StatusBadge, statusLabel } from "@/components/ui/StatusBadge";
 import {
   type AuditEntry,
   DetailShell,
@@ -64,6 +71,7 @@ export function QuoteDetail({
   auditEntries,
   memos,
   designRequests = [],
+  acceptances = [],
 }: {
   quote: Quote;
   /** この見積に紐づく設計依頼（§10 — 関連タブの逆リンク）。 */
@@ -76,6 +84,8 @@ export function QuoteDetail({
   auditEntries: AuditEntry[];
   /** 社内メモ（document_memos 由来、メモタブ）。 */
   memos: MemoView[];
+  /** この見積から起きた注文請書（手続き状況の「次の書類へ」）。 */
+  acceptances?: AcceptanceLink[];
 }) {
   const fmt = useFormat();
   const router = useRouter();
@@ -94,6 +104,86 @@ export function QuoteDetail({
 
   const pdfUrl = (extra = "") =>
     `/api/pdf/quote?id=${encodeURIComponent(quote.id)}${extra}`;
+
+  // ── 手続き状況（下書き → 発行 → 受諾）───────────────────────────────────
+  // 却下・期限切れは「受諾」段で止まった状態。段を増やさず色で示す
+  // （_specs/design.md §9 の REJECTED = red / EXPIRED = orange）。
+  const settled = status === "ACCEPTED" || status === "REJECTED";
+  const stages: ProcedureStage[] = [
+    {
+      key: "draft",
+      label: "下書き",
+      description: fmt.date(quote.createdAt),
+      loading: status === "DRAFT",
+    },
+    {
+      key: "issued",
+      label: "発行",
+      description: status === "DRAFT" ? "PDF を発行" : "発行済",
+      loading: status === "ISSUED",
+    },
+    {
+      key: "accepted",
+      label: "受諾",
+      description:
+        status === "REJECTED"
+          ? "却下"
+          : status === "EXPIRED"
+            ? `期限切れ（${fmt.date(quote.validUntil)}）`
+            : status === "ACCEPTED"
+              ? "受注へ"
+              : `有効期限 ${fmt.date(quote.validUntil)}`,
+      color:
+        status === "REJECTED"
+          ? "red"
+          : status === "EXPIRED"
+            ? "orange"
+            : undefined,
+    },
+  ];
+  const active =
+    status === "DRAFT" ? 0 : settled || status === "EXPIRED" ? 2 : 1;
+
+  // 上流 = 明細の単価を引いた価格表（見積書は価格表からしか値を持たない）。
+  const sourceGroups: HandoffGroup[] | undefined =
+    relatedEntries.length > 0
+      ? [
+          {
+            key: "price-lists",
+            title: "価格表",
+            summary: `${relatedEntries.length} 件`,
+            items: relatedEntries.map((e) => ({
+              key: e.entryId,
+              label: `${e.customerName} × ${e.productName}`,
+              href: `/sales/price-lists/${e.entryId}`,
+              note: "単価の解決元",
+            })),
+            emptyNote: "—",
+          },
+        ]
+      : undefined;
+
+  // 下流 = この見積から起きた注文請書（1 見積から複数回受注し得る）。
+  const handoffGroups: HandoffGroup[] = [
+    {
+      key: "order-acceptances",
+      title: "注文請書",
+      summary: acceptances.length > 0 ? `${acceptances.length} 件` : null,
+      items: acceptances.map((a) => ({
+        key: a.number,
+        label: a.number,
+        href: `/sales/order-acceptances/${a.number}`,
+        done: a.status === "COMPLETED" || a.status === "ARCHIVED",
+        note: `${statusLabel("OrderAcceptanceIntake", a.status)}${
+          a.orderLineCount > 0 ? `・明細 ${a.orderLineCount} 件` : ""
+        }`,
+      })),
+      emptyNote:
+        status === "ACCEPTED"
+          ? "未受注（注文請書はまだありません）"
+          : "未受注（受諾後に注文請書を作成します）",
+    },
+  ];
 
   const regenerate = async () => {
     try {
@@ -185,6 +275,13 @@ export function QuoteDetail({
           value={<MoneyText ta="left" value={totals.grandTotal} />}
         />
       </SummaryGrid>
+
+      <ProcedurePanel
+        active={active}
+        handoffGroups={handoffGroups}
+        sourceGroups={sourceGroups}
+        stages={stages}
+      />
 
       <Tabs onChange={setTab} value={tab}>
         <Tabs.List>

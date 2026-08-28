@@ -26,6 +26,19 @@ export interface InvoiceItem {
   deliveryNoteNumber: string | null;
 }
 
+/**
+ * 逆リンク 1 行 — 納品書詳細の「次の書類へ」に出す請求書の要約。
+ * 取得は app/(dashboard)/billing/invoices/data.ts の
+ * fetchInvoicesForDeliveryNote。
+ */
+export interface InvoiceLink {
+  /** 表示番号 INV-YYYYMM-NNNNN（URL id も同じ）。 */
+  number: string;
+  status: InvoiceStatus;
+  totalAmount: number;
+  issuedAt: string | null;
+}
+
 export interface Invoice {
   /** 導出文書番号 INV-YYYYMM-NNNNN — URL id と同一。 */
   id: string;
