@@ -29,7 +29,6 @@ import { IconLayoutDashboard, IconStarFilled } from "@tabler/icons-react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useHiddenApps, useUnreleasedApps } from "@/components/layout/AppFlags";
-import { LinkPending } from "@/components/ui/LinkPending";
 import { UserAvatar } from "@/components/ui/UserAvatar";
 import { useIsMobile } from "@/hooks/useViewport";
 import {
@@ -124,9 +123,6 @@ export function HomeApps({
         key={app.key}
       >
         <Paper h="100%" p="md" pos="relative" radius="md" withBorder>
-          {/* 押したカード自身に進行中を出す（画面の骨組みは
-              (dashboard)/loading.tsx が別に出す）。 */}
-          <LinkPending />
           {unreleasedApps.has(app.key) && (
             <Badge
               color="orange"

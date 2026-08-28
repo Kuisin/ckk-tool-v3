@@ -1362,23 +1362,6 @@ Use Mantine `Alert` for:
 | Data fetching (SSR) | React Suspense + Skeleton components |
 | App card grid loading | `Skeleton height={110} radius="md"` per card |
 | 重いプレビュー（3D / 大きな画像） | 枠だけ先に確保して `Loader`、中身は見えてから読む |
-| 画面遷移 | `loading.tsx`（本文だけ骨組みへ）+ 押した要素の `useLinkStatus` |
-
-**遷移は 2 か所で見せる。** ダッシュボード配下は全ページ `force-dynamic`
-なので、次の画面のサーバー処理が終わるまで React は何も差し替えない — 何も
-置かないと「押しても無反応 → しばらくして画面が丸ごと入れ替わる」になり、
-押せたのかどうか判らず二度押しされる。
-
-1. **`app/(dashboard)/loading.tsx`** … Suspense の境界。レイアウト
-   （ヘッダー・フッター・各 Provider）は**そのまま残り**、本文だけが即座に
-   骨組みへ変わる。全体が描き直されるわけではないので、ヘッダーの状態も
-   失われない。画面ごとに合わせたいときは、その route に `loading.tsx` を
-   置けばこちらより優先される。
-2. **押した要素自身**（`useLinkStatus`、`components/ui/LinkPending.tsx`）…
-   `<Link>` の**子**として置く（外に置くと常に false）。押した場所に
-   すぐ反応が出ると、体感が「待たされている」から「進んでいる」に変わる。
-   ポップオーバー内のように押した直後に消える要素では要らない — そちらは
-   1 だけで足りる。
 
 **重いものは「見えてから」読む（`useInView`）。** Mantine の `Tabs.Panel` は
 既定で **keepMounted** — 表に出ていないタブも DOM にある。門を置かないと、
