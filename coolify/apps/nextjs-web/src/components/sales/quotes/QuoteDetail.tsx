@@ -132,7 +132,9 @@ export function QuoteDetail({
             ? `期限切れ（${fmt.date(quote.validUntil)}）`
             : status === "ACCEPTED"
               ? "受注へ"
-              : `有効期限 ${fmt.date(quote.validUntil)}`,
+              : quote.validUntil
+                ? `有効期限 ${fmt.date(quote.validUntil)}`
+                : "受注へ",
       color:
         status === "REJECTED"
           ? "red"
