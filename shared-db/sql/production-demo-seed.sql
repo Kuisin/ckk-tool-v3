@@ -1,4 +1,4 @@
--- production-demo-seed.sql — 生産アプリ（PD02 指示書 / PD03 承認管理 / PD04 在庫管理）
+-- production-demo-seed.sql — 生産アプリ（PD02 指示書 / CM01 承認・予定 / PD04 在庫管理）
 -- のマニュアル撮影用デモデータ。
 --
 -- tools/docs-screenshots のローカル一時 DB に流す（orchestrate.ts SEED_FILES_POST —
@@ -26,10 +26,13 @@
 BEGIN;
 
 -- ── 撮影用フラグ ────────────────────────────────────────────────────────────
--- 撮影は APP_ENV=main。生産 3 アプリは main 未公開のため撮影 DB に限り有効化。
+-- 撮影は APP_ENV=main。これらは main 未公開のため撮影 DB に限り有効化。
+-- 旧 承認管理 (PD03, key `approvals`) は 承認・予定 (CM01, key `my-tasks`) へ
+-- 移設済み。旧キーのままだと画面が「この機能は現在利用できません」になり、
+-- approval-list-01 が 60 秒待って落ちる。
 INSERT INTO app.feature_flags (key, is_enabled, description, updated_at) VALUES
   ('app:work-orders:main', true, '指示書（マニュアル撮影用）', now()),
-  ('app:approvals:main',   true, '承認管理（マニュアル撮影用）', now()),
+  ('app:my-tasks:main',    true, '承認・予定（マニュアル撮影用）', now()),
   ('app:inventory:main',   true, '在庫管理（マニュアル撮影用）', now())
 ON CONFLICT (key) DO UPDATE
   SET is_enabled = EXCLUDED.is_enabled, updated_at = now();

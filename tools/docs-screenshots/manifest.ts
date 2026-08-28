@@ -568,9 +568,14 @@ export const shots: Shot[] = [
   {
     id: "approval-list-01",
     docPage: "operations/production/approval/user",
-    path: "/production/approvals",
+    // 旧 承認管理 (PD03 /production/approvals) は 承認・予定 (CM01) へ移設され、
+    // 旧パスは 308 リダイレクト。リダイレクト先を直に撮る（旧パスのままだと
+    // 「9002」が無い画面で 60 秒待って落ちる）。
+    path: "/general/tasks?tab=approvals",
     steps: async (page) => {
-      await page.getByText("9002").first().waitFor();
+      await page.getByRole("tab", { name: /承認待ち/ }).waitFor();
+      // 対象番号の書式に依存しない待ち（列見出しは行があるときだけ出る）。
+      await page.getByText("対象番号").first().waitFor();
     },
   },
   {
@@ -578,19 +583,19 @@ export const shots: Shot[] = [
     docPage: "operations/production/approval/user",
     path: "/production/work-orders/9002",
     steps: async (page) => {
-      await page.getByText("承認状況").first().waitFor();
+      await page.getByText("手続き状況").first().waitFor();
     },
   },
   // ── 生産: 初心者向けマニュアル用の追加撮影 ────────────────────────────────
   {
     // 指示書ページ側の承認カット。approval-panel-01 と URL が同じなので
-    // fullPage で「指示書全体の中の承認状況」として差別化する。
+    // fullPage で「指示書全体の中の手続き状況」として差別化する。
     id: "work-order-approval-01",
     docPage: "operations/production/work-order/user",
     path: "/production/work-orders/9002",
     fullPage: true,
     steps: async (page) => {
-      await page.getByText("承認状況").first().waitFor();
+      await page.getByText("手続き状況").first().waitFor();
     },
   },
   {
@@ -639,7 +644,7 @@ export const shots: Shot[] = [
     docPage: "operations/production/approval/user",
     path: "/production/approvals/9002",
     steps: async (page) => {
-      await page.getByText("承認状況").first().waitFor();
+      await page.getByText("手続き状況").first().waitFor();
     },
   },
   {
@@ -2152,7 +2157,7 @@ export const shots: Shot[] = [
     docPage: "process/default-flow",
     path: "/production/work-orders/9002",
     steps: async (page) => {
-      await page.getByText("承認状況").first().waitFor();
+      await page.getByText("手続き状況").first().waitFor();
     },
     highlight: [{ role: "button", name: "承認", exact: true }],
   },
