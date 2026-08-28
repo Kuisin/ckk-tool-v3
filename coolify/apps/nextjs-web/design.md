@@ -107,6 +107,13 @@ table per screen (page/size/sort in the URL); never on a sub-table in a detail t
   書かなくてよい（props からドラフトを作るエディタなら自動で元に戻る）。
   既定で画面遷移するキャンセルを持つエディタ（`ApprovalFlowEditor`）には
   **必ず `onCancel` を渡す**。
+- グラフ: `components/forms/SummaryBars.tsx`（横棒 / 代表値）+
+  `SummaryCharts.tsx`（ドーナツ / 縦棒）。**chart ライブラリは入れない** —
+  出るのは 1 系列の件数だけで、SVG と div で足りる。寸法の計算は
+  `lib/form-summary.ts`（`donutArcs`）が持ち、部品は描画に留める。
+  形は**項目の型で決まる**（`_specs/design.md §12.11`）。
+  **複数選択を円にしないこと** — 1 人が複数選ぶので、合計が 100% を超えて
+  「全体の何割」が嘘になる。
 - Selects: `SearchSelect` (async option search), `F4SearchModal` + `f4-presets.ts`
   (F4 master lookup), `CustomerSelect`/`FactorySelect` (two-level).
 - Destructive confirm: `openConfirm` (`ui/modals.tsx`, wraps `@mantine/modals`)

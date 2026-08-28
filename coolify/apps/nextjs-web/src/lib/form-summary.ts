@@ -11,7 +11,9 @@
  * すべて 1 系列の件数なので、色は 1 色でよく、凡例も要らない。
  */
 
+import { optionLabel } from "./form-answer-display";
 import type { FormAnswerValue, FormFieldDef } from "./form-schema";
+import { type RichTextDoc, toPlainText } from "./rich-text-core";
 
 export interface CountItem {
   label: string;
@@ -72,6 +74,12 @@ export interface FieldSummary {
   key: string;
   label: string;
   type: FormFieldDef["type"];
+  /**
+   * 集計に入れた回答の総数（項目に答えたかどうかに依らない）。
+   * `body.answered` との差が「この項目に答えなかった人」— 必須でない質問では
+   * それ自体が結果なので、件数だけでなく**母数**も持って回る。
+   */
+  total: number;
   body: FieldSummaryBody;
 }
 
@@ -133,11 +141,6 @@ function capBars(items: CountItem[]): {
     .slice(MAX_CATEGORY_BARS)
     .reduce((sum, i) => sum + i.count, 0);
   return { items: head, otherCount };
-}
-
-function optionLabel(field: FormFieldDef, value: string): string {
-  const opt = (field.options ?? []).find((o) => o.value === value);
-  return opt ? opt.label.ja || opt.value : value;
 }
 
 function numberBuckets(values: number[]): CountItem[] {
@@ -235,9 +238,14 @@ function summarizeField(
     }
 
     case "number": {
+      // 保存は文字列（form-schema の値表現）だが、取り込みや古い回答では
+      // JSON の数値がそのまま入っていることがある。両方受けないと、
+      // そういうフォームだけ「回答 0 件」に見える。
+      // FormAnswerValue の型に number は入っていないが、実際の JSON には
+      // 入りうる（form-export-core.numericAnswer に同じ注記がある）。
       const nums = values
-        .filter((v): v is string => typeof v === "string")
-        .map(Number)
+        .filter((v) => typeof v !== "object")
+        .map((v) => Number(v))
         .filter((n) => Number.isFinite(n));
       if (nums.length === 0) return { kind: "text", answered: 0, samples: [] };
       const sorted = [...nums].sort((a, b) => a - b);
@@ -304,8 +312,16 @@ function summarizeField(
 
     default: {
       // text / textarea / richtext — 数えても意味が無いので棒にしない。
+      // リッチテキストは ProseMirror の JSON なので、平文に落としてから拾う
+      // （文字列だけを拾っていたので、リッチテキストの抜粋が常に空だった）。
       const samples = values
-        .map((v) => (typeof v === "string" ? v : ""))
+        .map((v) =>
+          field.type === "richtext"
+            ? toPlainText(v as unknown as RichTextDoc)
+            : typeof v === "string"
+              ? v
+              : "",
+        )
         .filter(Boolean)
         .slice(0, MAX_TEXT_SAMPLES);
       return { kind: "text", answered, samples };
@@ -334,8 +350,45 @@ export function summarizeResponses(
     key: field.key,
     label: field.label.ja || field.key,
     type: field.type,
+    total: answers.length,
     body: summarizeField(field, answers, options),
   }));
+}
+
+// ── グラフの寸法 ────────────────────────────────────────────────────────────
+//
+// 描画そのものは React（SummaryCharts）が行うが、**寸法の計算はここが持つ**。
+// 工程フロー図で座標を lib/workflow-core.ts が決め、React Flow を描画層に
+// 留めているのと同じ考え方 — 計算を部品の中に置くと、確かめるのに画面を
+// 開かないといけなくなる。
+
+export interface DonutArc {
+  label: string;
+  /** 円周に沿った長さ（stroke-dasharray の可視部分）。 */
+  length: number;
+  /** 始まりの位置（stroke-dashoffset に負で入れる）。 */
+  offset: number;
+}
+
+/**
+ * ドーナツの弧を、区分の並び順に切っていく。
+ *
+ * **総和が円周ちょうどになる**のは `total` が件数の合計と一致するときだけ。
+ * 1 つだけ選ぶ質問（select / lookup）でしか使わないのはそのためで、複数選べる
+ * 質問に使うと弧が 1 周を超えて重なる。呼び出し側がこの前提を守ること。
+ */
+export function donutArcs(
+  items: readonly CountItem[],
+  total: number,
+  circumference: number,
+): DonutArc[] {
+  let offset = 0;
+  return items.map((item) => {
+    const length = total > 0 ? (item.count / total) * circumference : 0;
+    const arc = { label: item.label, length, offset };
+    offset += length;
+    return arc;
+  });
 }
 
 /** 提出の推移（回答そのものの件数。項目ではなくフォーム全体の話）。 */

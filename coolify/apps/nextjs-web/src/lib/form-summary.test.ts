@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { FormFieldDef } from "./form-schema";
 import {
+  donutArcs,
   MAX_CATEGORY_BARS,
   submissionTrend,
   summarizeResponses,
@@ -306,6 +307,90 @@ describe("submissionTrend", () => {
   it("null は数えない", () => {
     expect(submissionTrend([null, "2026-08-26T01:00:00Z"], "day")).toEqual([
       { label: "2026-08-26", count: 1 },
+    ]);
+  });
+});
+
+describe("母数（total）", () => {
+  it("項目に答えたかに依らず、集計に入れた回答の総数を持つ", () => {
+    const f = field({ key: "q", type: "select", options });
+    const [s] = summarizeResponses([f], [{ q: "a" }, {}, { q: "" }]);
+    expect(s.total).toBe(3);
+    // 答えたのは 1 件だけ = 未回答 2 件。必須でない質問ではこれ自体が結果。
+    expect(s.body).toMatchObject({ answered: 1 });
+  });
+});
+
+describe("リッチテキスト", () => {
+  const f = field({ key: "q", type: "richtext" });
+  const doc = {
+    type: "doc",
+    content: [
+      { type: "paragraph", content: [{ type: "text", text: "現場の所感" }] },
+    ],
+  };
+
+  it("抜粋は平文に落としてから拾う（JSON のままでは何も出せない）", () => {
+    const [s] = summarizeResponses([f], [{ q: doc as never }]);
+    expect(s.body).toMatchObject({
+      kind: "text",
+      answered: 1,
+      samples: ["現場の所感"],
+    });
+  });
+});
+
+describe("数値", () => {
+  const f = field({ key: "q", type: "number" });
+
+  it("文字列でも JSON の数値でも数える", () => {
+    const [s] = summarizeResponses([f], [{ q: "10" }, { q: 20 as never }]);
+    expect(s.body).toMatchObject({
+      kind: "numbers",
+      answered: 2,
+      min: 10,
+      max: 20,
+      mean: 15,
+    });
+  });
+});
+
+describe("donutArcs", () => {
+  const C = 100;
+
+  it("区分を順に切り、総和が円周ちょうどになる", () => {
+    const arcs = donutArcs(
+      [
+        { label: "a", count: 1 },
+        { label: "b", count: 3 },
+      ],
+      4,
+      C,
+    );
+    expect(arcs).toEqual([
+      { label: "a", length: 25, offset: 0 },
+      { label: "b", length: 75, offset: 25 },
+    ]);
+    const last = arcs[arcs.length - 1];
+    expect(last.offset + last.length).toBe(C);
+  });
+
+  it("0 件の区分は長さを持たない（次の弧の開始位置も動かない）", () => {
+    const arcs = donutArcs(
+      [
+        { label: "a", count: 0 },
+        { label: "b", count: 2 },
+      ],
+      2,
+      C,
+    );
+    expect(arcs[0]).toEqual({ label: "a", length: 0, offset: 0 });
+    expect(arcs[1]).toEqual({ label: "b", length: 100, offset: 0 });
+  });
+
+  it("回答が 0 件なら弧を描かない（0 割りにしない）", () => {
+    expect(donutArcs([{ label: "a", count: 0 }], 0, C)).toEqual([
+      { label: "a", length: 0, offset: 0 },
     ]);
   });
 });

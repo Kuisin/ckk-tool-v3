@@ -20,10 +20,10 @@ import { requirePermissionResponse, sessionUserId } from "@/lib/authz";
 import { exportDownloadName, loadFormExport } from "@/lib/form-export";
 import { parseExportFilter } from "@/lib/form-export-core";
 import { responsePageHtml, responsePagesHtml } from "@/lib/form-response-pdf";
+import { documentFormatters } from "@/lib/format";
 import { fetchResponse, formAccess } from "@/lib/forms";
 import { renderPdf } from "@/lib/pdf";
 import { responseInScope } from "@/lib/share-grants-core";
-import { getServerFormatters } from "@/lib/user-preferences";
 
 export const dynamic = "force-dynamic";
 
@@ -49,7 +49,9 @@ export async function GET(request: Request): Promise<Response> {
       status: 400,
     });
 
-  const fmt = await getServerFormatters();
+  // 帳票は読む人の表示設定に従わない（lib/format.ts の約束）— 同じ回答を
+  // 誰が刷っても同じ紙になるように、日本語 / JST 固定で組む。
+  const fmt = documentFormatters;
   const viewerId = await sessionUserId();
 
   // ── 1 件だけ ──────────────────────────────────────────────────────────────
