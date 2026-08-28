@@ -82,3 +82,21 @@ export async function fetchMaterialReceipt(
   const row = await findRow(id);
   return row ? mapReceipt(row) : null;
 }
+
+/**
+ * 逆リンク — その素材発注書から起きた入荷（素材発注書詳細の「次の書類へ」）。
+ *
+ * 入荷は発注**明細**にぶら下がるので、発注書 1 件で複数行になる。入荷日の
+ * 新しい順（同日は作成順）で返す。
+ */
+export async function fetchReceiptsForPurchaseOrder(
+  purchaseOrderId: string,
+): Promise<MaterialReceiptView[]> {
+  if (!UUID_RE.test(purchaseOrderId)) return [];
+  const rows = await prisma.materialReceipt.findMany({
+    where: { purchaseOrderItem: { purchaseOrderId } },
+    include: RECEIPT_INCLUDE,
+    orderBy: [{ receivedAt: "desc" }, { createdAt: "desc" }],
+  });
+  return rows.map(mapReceipt);
+}

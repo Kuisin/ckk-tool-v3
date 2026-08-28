@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  approvalStepDescription,
   decideAfterApproval,
   type FlowStepDraft,
   isStepComplete,
@@ -211,5 +212,42 @@ describe("validateFlowSteps — カスタム段（承認者を直接指名）", 
     expect(validateFlowSteps([step({ approverUserIds: ["u1"] })])).toEqual([
       "1 段目: 承認グループを選択してください",
     ]);
+  });
+});
+
+describe("approvalStepDescription", () => {
+  // 段の説明は 4 画面（注文請書 / 設計依頼 / 購買依頼 / 素材発注書）が共有する。
+  // 以前は各画面に同じ関数が重複していて、直し漏れると説明が食い違っていた。
+  const approval = (
+    over: Partial<Parameters<typeof approvalStepDescription>[0]> = {},
+  ) => ({
+    phase: "PENDING" as const,
+    stepNo: 2,
+    stepCount: 3,
+    stepLabel: "部門承認",
+    groupLabel: "製造部",
+    ...over,
+  });
+
+  it("進行中で多段なら「何段目 / 全何段 + 段名」", () => {
+    expect(approvalStepDescription(approval())).toBe("2/3 部門承認");
+  });
+
+  it("進行中でも 1 段だけならグループ名（段数を出しても情報が無い）", () => {
+    expect(approvalStepDescription(approval({ stepCount: 1, stepNo: 1 }))).toBe(
+      "製造部",
+    );
+  });
+
+  it("依頼前・承認済み・差し戻しはグループ名", () => {
+    for (const phase of ["NONE", "APPROVED", "REJECTED"] as const) {
+      expect(approvalStepDescription(approval({ phase }))).toBe("製造部");
+    }
+  });
+
+  it("グループ名が空なら既定の文言に落とす（空欄を出さない）", () => {
+    expect(
+      approvalStepDescription(approval({ phase: "NONE", groupLabel: "" })),
+    ).toBe("承認グループ");
   });
 });

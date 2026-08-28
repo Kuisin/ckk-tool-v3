@@ -517,7 +517,7 @@ Stack (gap="md")
 │   ├── SimpleGrid cols={isMobile ? 1 : 3} spacing="md"
 │   │   └── FieldValue[] (see §10.1)
 │   └── [mobile] Group gap="xl" mt="sm" — timestamps inline
-├── [if has approval] ApprovalStatusPanel (see §12.4)
+├── ProcedurePanel (see §12.10) — 手続き状況（ライフサイクルのある書類は必ず）
 ├── [if work order] WorkOrderStepsPanel (see §12.2)
 ├── Tabs defaultValue="items"
 │   ├── Tabs.List
@@ -1098,6 +1098,8 @@ Paper (withBorder, p="lg")
 差し戻し中 = red + 再承認依頼）。操作が無い状態では何も描画しない。
 
 **ApprovalStatusPanel** — フローと記録の**表示のみ**（操作ボタンは持たない）。
+指示書はこれではなく `WorkOrderProcedurePanel`（= §12.10 ProcedurePanel に
+承認段を流し込んだもの）を使う。承認だけを見せたい画面のために残してある。
 
 ```
 Paper (withBorder, p="md", radius="md")
@@ -1109,6 +1111,44 @@ Paper (withBorder, p="md", radius="md")
 └── approval_records list
     └── Group — approver name + acted_at + action badge + comment
 ```
+
+### 12.10 ProcedurePanel（手続き状況）
+
+`src/components/ui/ProcedurePanel.tsx` — `'use client'`
+
+**ライフサイクルを持つ書類の進捗表示はこれ 1 つ。** 生の `<Stepper>` を画面に
+直接書かないこと — 以前は表示が 3 通りに割れ（このパネル / 手書きの Stepper /
+表示なし）、書類ごとに進捗を探す場所が違っていた。
+
+搭載: 試算 / 見積書 / 注文請書 / 注文明細 / 設計依頼書 / 購買依頼 / 素材発注書 /
+指示書 / 出荷書 / 納品書 / 請求書 / 締日処理（**12 書類**）。
+価格表（進行するライフサイクルが無い）と素材入荷（入庫済みの確定記録）は持たない。
+
+置き場所は **ActionCard (§10.9) → SummaryGrid → ProcedurePanel → Tabs** の順。
+
+```
+Paper (withBorder, p="md", radius="md")
+├── Title order={5} "手続き状況"   ← 見出しは全書類で同じ。書類ごとに変えない
+├── [if cancelled] Alert color="red" "キャンセル済み" + cancelledNote
+├── [if sourceGroups] "前の書類から" — どこから来たか（見積書 ← / 出荷書 ← …）
+├── Stepper (active, size="sm", orientation={isMobile ? "vertical" : "horizontal"})
+│   └── Stepper.Step × N ← stages（key / label / description / color / loading）
+│       color・loading は **現在段（i === active）にだけ**効く
+├── [if handoffGroups] "次の書類へ" — どこへ渡ったか（済/未 バッジ付き）
+└── children — 承認記録（ApprovalTrailList）・遷移履歴など
+```
+
+- `active` = **達成済みの段数**（Mantine Stepper の規約。active 番目の段が
+  「現在進行中」として描かれる）。段の組み立てと `active` の算出は書類ごとの
+  呼び出し側が純関数で持ち、このパネルは表示だけを担う。
+- `HandoffItem.done` は **optional**。`undefined` なら 済/未 バッジを出さない —
+  上流（前の書類）は「済/未」で語る対象ではないため。
+- 承認を持つ書類の「承認」段は `approvalStage(approval, { approvedAt, fmtDate })`
+  で作る。文言（進行中は「2/3 部門承認」、それ以外はグループ名）は
+  `lib/approval-flow.ts` の `approvalStepDescription` が唯一の定義 — 段数は
+  承認設定 (MS0B) が書類種別ごとに決めるので固定文言にできない。
+- 差し戻し・却下・期限切れは**段を増やさず色で示す**（§9 の REJECTED = red /
+  EXPIRED = orange）。
 
 ### 12.5 InspectionRecordForm
 

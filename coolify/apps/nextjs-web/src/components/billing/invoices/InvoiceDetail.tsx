@@ -5,7 +5,8 @@
  *
  * SummaryGrid（番号 / 顧客+支店 / 請求期間 / 小計 / 消費税 / 合計 / 支払期限 /
  * 発行日 / 弥生エクスポート）+ 明細テーブル（摘要 / 数量 / 単価 / 金額 / 由来
- * DOR・DRN リンク）+ Tabs: 概要 / 履歴。
+ * DOR・DRN リンク）+ 手続き状況（ProcedurePanel — 下書き→発行→送付→入金、
+ * 出荷書・納品書 ← / 弥生エクスポート →）+ Tabs: 概要 / 履歴。
  *
  * Actions: PDF（/api/pdf/invoice?id=INV-…）/ 発行（DRAFT → ISSUED）/
  * 送付済み（ISSUED → SENT）/ 入金済み（SENT → PAID）/
@@ -49,6 +50,11 @@ import {
   PdfAttachmentPanel,
   type PdfFileMeta,
 } from "@/components/ui/PdfAttachmentPanel";
+import {
+  type HandoffGroup,
+  ProcedurePanel,
+  type ProcedureStage,
+} from "@/components/ui/ProcedurePanel";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import {
   type AuditEntry,
@@ -102,6 +108,95 @@ export function InvoiceDetail({
 
   const pdfUrl = (extra = "") =>
     `/api/pdf/invoice?id=${encodeURIComponent(invoice.id)}${extra}`;
+
+  // ── 手続き状況（下書き → 発行 → 送付 → 入金）───────────────────────────
+  const stages: ProcedureStage[] = [
+    {
+      key: "draft",
+      label: "下書き",
+      description: fmt.date(invoice.createdAt),
+      loading: invoice.status === "DRAFT",
+    },
+    {
+      key: "issued",
+      label: "発行",
+      description: invoice.issuedAt ? fmt.date(invoice.issuedAt) : "PDF を発行",
+      loading: invoice.status === "ISSUED",
+    },
+    {
+      key: "sent",
+      label: "送付",
+      description: invoice.sentAt ? fmt.date(invoice.sentAt) : "顧客へ送付",
+      loading: invoice.status === "SENT",
+    },
+    {
+      key: "paid",
+      label: "入金",
+      description: invoice.dueDate
+        ? `支払期限 ${fmt.date(invoice.dueDate)}`
+        : "入金の確認",
+    },
+  ];
+  const active =
+    invoice.status === "DRAFT"
+      ? 0
+      : invoice.status === "ISSUED"
+        ? 1
+        : invoice.status === "SENT"
+          ? 2
+          : 4;
+
+  // 上流 = 明細の由来（出荷書 / 納品書）。1 請求書は複数の出荷を束ねるので
+  // 明細から重複を除いて集める。
+  const uniq = (xs: (string | null)[]) => [
+    ...new Set(xs.filter((x): x is string => !!x)),
+  ];
+  const orderNumbers = uniq(invoice.items.map((it) => it.deliveryOrderNumber));
+  const noteNumbers = uniq(invoice.items.map((it) => it.deliveryNoteNumber));
+  const sourceGroups: HandoffGroup[] = [
+    {
+      key: "delivery-orders",
+      title: "出荷書",
+      summary: orderNumbers.length > 0 ? `${orderNumbers.length} 件` : null,
+      items: orderNumbers.map((n) => ({
+        key: n,
+        label: n,
+        href: `/shipping/delivery-orders/${n}`,
+      })),
+      emptyNote: "—（手入力の明細のみ）",
+    },
+    {
+      key: "delivery-notes",
+      title: "納品書",
+      summary: noteNumbers.length > 0 ? `${noteNumbers.length} 件` : null,
+      items: noteNumbers.map((n) => ({
+        key: n,
+        label: n,
+        href: `/shipping/delivery-notes/${n}`,
+      })),
+      emptyNote: "—（納品書未発行の出荷）",
+    },
+  ];
+
+  // 下流 = 会計連携（弥生会計 Next の CSV）。書類ではないが請求書の最後の
+  // 一歩なので、済/未 が判るようにここへ出す。
+  const handoffGroups: HandoffGroup[] = [
+    {
+      key: "yayoi",
+      title: "弥生会計エクスポート",
+      items: invoice.yayoiExportedAt
+        ? [
+            {
+              key: "yayoi",
+              label: invoice.invoiceNumber,
+              done: true,
+              note: `エクスポート済・${fmt.dateTime(invoice.yayoiExportedAt)}`,
+            },
+          ]
+        : [],
+      emptyNote: "未エクスポート（発行後に弥生CSVを出力します）",
+    },
+  ];
 
   const regenerate = async () => {
     try {
@@ -253,6 +348,13 @@ export function InvoiceDetail({
           }
         />
       </SummaryGrid>
+
+      <ProcedurePanel
+        active={active}
+        handoffGroups={handoffGroups}
+        sourceGroups={sourceGroups}
+        stages={stages}
+      />
 
       <Paper p="md" radius="md" withBorder>
         <Title mb="sm" order={5}>

@@ -4,6 +4,7 @@ import { fetchAuditEntries } from "@/lib/audit";
 import { requireAppRead } from "@/lib/authz-page";
 import { formatDocNumber, parseDocKey } from "@/lib/doc-number";
 import { isIssued, pdfStorageKey, storedPdfMeta } from "@/lib/document-pdf";
+import { fetchInvoicesForDeliveryNote } from "../../../billing/invoices/data";
 import { fetchDeliveryNote } from "../data";
 
 export const dynamic = "force-dynamic";
@@ -30,9 +31,11 @@ export default async function ShippingDeliveryNotesDetailPage({
   const key = parseDocKey(decodeURIComponent(id), "DRN");
   if (!key) notFound();
 
-  const [note, auditEntries] = await Promise.all([
+  const [note, auditEntries, invoices] = await Promise.all([
     fetchDeliveryNote(key),
     fetchAuditEntries("delivery_notes", formatDocNumber("DRN", key)),
+    // 手続き状況の「次の書類へ」— この納品書を請求した請求書。
+    fetchInvoicesForDeliveryNote(key),
   ]);
   if (!note) notFound();
 
@@ -44,6 +47,7 @@ export default async function ShippingDeliveryNotesDetailPage({
   return (
     <DeliveryNoteDetail
       auditEntries={auditEntries}
+      invoices={invoices}
       note={note}
       pdfMeta={pdfMeta}
     />

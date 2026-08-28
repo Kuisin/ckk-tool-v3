@@ -60,7 +60,7 @@ import { canCreateDeliveryNote, type DeliveryOrder, isEditable } from "./model";
 
 const BASE_PATH = "/shipping/delivery-orders";
 
-/** 手続き状況（作成 → 確定 → 出荷）+ 納品書への受け渡し。 */
+/** 手続き状況（作成 → 確定 → 出荷）+ 前後の書類への受け渡し。 */
 function DeliveryOrderProcedurePanel({
   order,
   fmtDate,
@@ -80,6 +80,43 @@ function DeliveryOrderProcedurePanel({
   ];
   const active =
     order.status === "DRAFT" ? 1 : order.status === "CONFIRMED" ? 2 : 3;
+
+  // 上流 = 束ねた注文明細（在庫保管はゼロ件もあり得る）と、ヘッダ紐付けの指示書。
+  const sourceGroups: HandoffGroup[] = [
+    {
+      key: "order-lines",
+      title: "注文明細",
+      summary:
+        order.orderLineNumbers.length > 0
+          ? `${order.orderLineNumbers.length} 件`
+          : null,
+      items: order.orderLineNumbers.map((n) => ({
+        key: n,
+        label: n,
+        href: `/sales/order-lines/${n}`,
+      })),
+      emptyNote: isStock
+        ? "—（在庫保管のため注文明細に紐づかない）"
+        : "—（注文明細に紐づかない出荷）",
+    },
+    ...(order.workOrderNumber != null
+      ? [
+          {
+            key: "work-order",
+            title: "指示書",
+            items: [
+              {
+                key: String(order.workOrderNumber),
+                label: `#${order.workOrderNumber}`,
+                href: `/production/work-orders/${order.workOrderNumber}`,
+                note: "出荷ロットの製造元",
+              },
+            ],
+            emptyNote: "—",
+          },
+        ]
+      : []),
+  ];
 
   // 在庫保管（請求フロー外）は納品書を作らない — セクション自体を出さない。
   const handoffGroups: HandoffGroup[] | undefined = isStock
@@ -110,6 +147,7 @@ function DeliveryOrderProcedurePanel({
     <ProcedurePanel
       active={active}
       handoffGroups={handoffGroups}
+      sourceGroups={sourceGroups}
       stages={stages}
     />
   );

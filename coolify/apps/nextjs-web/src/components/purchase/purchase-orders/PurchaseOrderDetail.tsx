@@ -4,8 +4,8 @@
  * PurchaseOrderDetail — 素材発注書 詳細 (PU22, design.md §8.2)。
  *
  * 最上部の ActionCard（いまやること — 権限で色が変わる）+ SummaryGrid +
- * 承認/遷移パネル（線形 Stepper 依頼→承認→発注→入荷完了）+ Tabs
- * （明細 / 概要 / 履歴）。
+ * 手続き状況（ProcedurePanel — 依頼→承認→発注→入荷完了、購買依頼 ← / 素材入荷 →）
+ * + Tabs（明細 / 概要 / 履歴）。
  *
  * 状態別アクション:
  *   DRAFT: 承認依頼 + 編集 / キャンセル
@@ -15,26 +15,17 @@
  */
 
 import {
-  Alert,
   Badge,
   Divider,
   Group,
-  Paper,
   Stack,
-  Stepper,
   Table,
   Tabs,
   Text,
   Textarea,
-  Title,
 } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
-import {
-  IconAlertTriangle,
-  IconPackageImport,
-  IconTruck,
-  IconX,
-} from "@tabler/icons-react";
+import { IconPackageImport, IconTruck, IconX } from "@tabler/icons-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { type ReactNode, useState, useTransition } from "react";
@@ -56,6 +47,7 @@ import {
   type ApprovalTrailView,
   countTrailRecords,
 } from "@/components/production/ApprovalStatusPanel";
+import type { MaterialReceiptView } from "@/components/purchase/material-receipts/model";
 import { ActionCard } from "@/components/ui/ActionCard";
 import {
   AttachmentsPanel,
@@ -67,6 +59,12 @@ import { FieldValue } from "@/components/ui/FieldValue";
 import { HistoryPanel } from "@/components/ui/HistoryPanel";
 import { MoneyText } from "@/components/ui/MoneyText";
 import { ModalShell } from "@/components/ui/modals";
+import {
+  approvalStage,
+  type HandoffGroup,
+  ProcedurePanel,
+  type ProcedureStage,
+} from "@/components/ui/ProcedurePanel";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import {
   type AuditEntry,
@@ -104,23 +102,13 @@ function stepperActive(status: string): number {
   }
 }
 
-/**
- * 書類ライフサイクルの Stepper に出す「承認」段の説明。段数は承認設定 (MS0B)
- * が決めるので、進行中は「2/3 部門承認」、それ以外は担当グループ名を出す。
- */
-function approvalStepDescription(approval: ApprovalActionState): string {
-  if (approval.phase === "PENDING" && approval.stepCount > 1) {
-    return `${approval.stepNo}/${approval.stepCount} ${approval.stepLabel}`;
-  }
-  return approval.groupLabel || "承認グループ";
-}
-
 export function PurchaseOrderDetail({
   purchaseOrder,
   auditEntries,
   approval,
   attachments,
   approvalTrail = [],
+  receipts = [],
 }: {
   purchaseOrder: PurchaseOrderView;
   /** 操作履歴（audit_logs 由来、履歴タブ）。 */
@@ -131,6 +119,8 @@ export function PurchaseOrderDetail({
   attachments: AttachmentView[];
   /** 正規化された承認記録（approval_records — 代理承認マーカー付き）。 */
   approvalTrail?: ApprovalTrailView[];
+  /** この発注書から起きた素材入荷（手続き状況の「次の書類へ」）。 */
+  receipts?: MaterialReceiptView[];
 }) {
   const fmt = useFormat();
   const router = useRouter();
@@ -170,6 +160,75 @@ export function PurchaseOrderDetail({
 
   // 遷移履歴は新しい順で表示
   const records = [...po.history].reverse();
+
+  // ── 手続き状況（依頼 → 承認 → 発注 → 入荷完了）─────────────────────────
+  const stages: ProcedureStage[] = [
+    {
+      key: "requested",
+      label: "依頼",
+      description: po.requestedAt ? fmt.date(po.requestedAt) : "作成中",
+      loading: po.status === "DRAFT",
+    },
+    approvalStage(approval, {
+      approvedAt: po.approvedAt,
+      fmtDate: (v) => fmt.date(v),
+    }),
+    {
+      key: "ordered",
+      label: "発注",
+      description: po.orderedAt ? fmt.date(po.orderedAt) : "入荷予定へ",
+      loading: po.status === "APPROVED",
+    },
+    {
+      key: "completed",
+      label: "入荷完了",
+      description: po.completedAt ? fmt.date(po.completedAt) : "在庫入庫",
+      loading: po.status === "ORDERED",
+    },
+  ];
+
+  // 上流 = 変換元の購買依頼（直接起票した発注書には無い）。
+  const sourceGroups: HandoffGroup[] | undefined = po.sourceRequestNumber
+    ? [
+        {
+          key: "purchase-request",
+          title: "購買依頼",
+          items: [
+            {
+              key: po.sourceRequestNumber,
+              label: po.sourceRequestNumber,
+              href: `/purchase/purchase-requests/${encodeURIComponent(po.sourceRequestNumber)}`,
+              note: "この発注書の変換元",
+            },
+          ],
+          emptyNote: "—",
+        },
+      ]
+    : undefined;
+
+  // 下流 = この発注書から起きた素材入荷（明細ごとなので複数行になり得る）。
+  const receivedQuantity = receipts.reduce((sum, r) => sum + r.quantity, 0);
+  const handoffGroups: HandoffGroup[] = [
+    {
+      key: "material-receipts",
+      title: "素材入荷",
+      summary:
+        receipts.length > 0
+          ? `${receipts.length} 件・合計 ${receivedQuantity} ${receipts[0]?.unit ?? ""}`
+          : null,
+      items: receipts.map((r) => ({
+        key: r.id,
+        label: r.materialCode,
+        href: `/purchase/material-receipts/${r.id}`,
+        done: true,
+        note: `${r.quantity} ${r.unit}・${fmt.date(r.receivedAt)}`,
+      })),
+      emptyNote:
+        po.status === "ORDERED"
+          ? "未入荷（入荷完了で在庫へ入庫します）"
+          : "未入荷（発注後に入荷します）",
+    },
+  ];
 
   /**
    * 「いまやること」カード（最上部）。承認待ちは承認権限の有無で色が変わる
@@ -296,51 +355,14 @@ export function PurchaseOrderDetail({
         )}
       </SummaryGrid>
 
-      {/* 承認 / 遷移パネル — 指示書の ApprovalStatusPanel と同型（線形 4 段階） */}
-      <Paper p="md" radius="md" withBorder>
-        <Title mb="md" order={5}>
-          承認・発注状況
-        </Title>
-
-        <Stepper active={stepperActive(po.status)} size="sm">
-          <Stepper.Step
-            description={po.requestedAt ? fmt.date(po.requestedAt) : "作成中"}
-            label="依頼"
-            loading={po.status === "DRAFT"}
-          />
-          <Stepper.Step
-            description={
-              po.approvedAt
-                ? fmt.date(po.approvedAt)
-                : approvalStepDescription(approval)
-            }
-            label="承認"
-            loading={po.status === "REQUESTED"}
-          />
-          <Stepper.Step
-            description={po.orderedAt ? fmt.date(po.orderedAt) : "入荷予定へ"}
-            label="発注"
-            loading={po.status === "APPROVED"}
-          />
-          <Stepper.Step
-            description={po.completedAt ? fmt.date(po.completedAt) : "在庫入庫"}
-            label="入荷完了"
-            loading={po.status === "ORDERED"}
-          />
-        </Stepper>
-
-        {po.status === "CANCELLED" && (
-          <Alert
-            color="red"
-            icon={<IconAlertTriangle size={16} />}
-            mt="md"
-            title="キャンセル済"
-            variant="light"
-          >
-            {po.cancelReason ?? "—"}
-          </Alert>
-        )}
-
+      <ProcedurePanel
+        active={stepperActive(po.status)}
+        cancelled={po.status === "CANCELLED"}
+        cancelledNote={po.cancelReason}
+        handoffGroups={handoffGroups}
+        sourceGroups={sourceGroups}
+        stages={stages}
+      >
         {/* 承認記録 — approval_records 由来（代理は「（代理: 原承認者）」付き） */}
         {countTrailRecords(approvalTrail) > 0 && (
           <>
@@ -372,7 +394,7 @@ export function PurchaseOrderDetail({
             </Stack>
           </>
         )}
-      </Paper>
+      </ProcedurePanel>
 
       <Tabs onChange={setTab} value={tab}>
         <Tabs.List>

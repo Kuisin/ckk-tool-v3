@@ -10,6 +10,7 @@
 import type {
   Invoice,
   InvoiceItem,
+  InvoiceLink,
   InvoiceStatus,
 } from "@/components/billing/invoices/model";
 import { prisma } from "@/lib/db";
@@ -111,4 +112,40 @@ export async function fetchInvoices(): Promise<Invoice[]> {
 export async function fetchInvoice(key: DocKey): Promise<Invoice | null> {
   const row = await findRow(key);
   return row ? mapInvoice(row) : null;
+}
+
+/**
+ * 逆リンク — その納品書を請求した請求書（新しい採番順）。
+ *
+ * 明細（invoice_items）が由来の納品書キーを持つので、そこから逆に引く。
+ * 1 納品書が複数の請求書に載ることは通常ないが、訂正再発行があり得るため配列。
+ */
+export async function fetchInvoicesForDeliveryNote(
+  key: DocKey,
+): Promise<InvoiceLink[]> {
+  const rows = await prisma.invoice.findMany({
+    where: {
+      items: {
+        some: {
+          deliveryNoteYearMonth: key.yearMonth,
+          deliveryNoteSeq: key.seq,
+        },
+      },
+    },
+    select: {
+      yearMonth: true,
+      seq: true,
+      status: true,
+      totalAmount: true,
+      issuedAt: true,
+    },
+    orderBy: [{ yearMonth: "desc" }, { seq: "desc" }],
+    take: 20,
+  });
+  return rows.map((r) => ({
+    number: formatDocNumber("INV", { yearMonth: r.yearMonth, seq: r.seq }),
+    status: r.status as InvoiceStatus,
+    totalAmount: Number(r.totalAmount),
+    issuedAt: r.issuedAt?.toISOString() ?? null,
+  }));
 }

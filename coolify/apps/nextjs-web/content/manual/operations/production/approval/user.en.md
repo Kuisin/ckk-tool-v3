@@ -54,7 +54,7 @@ When you open the app, the documents waiting for approval are listed.
 ## Approving
 
 1. Click a row in the list. The screen for that document opens.
-2. For a work order, 「**承認状況**」 (approval status) is near the top of the screen and shows which stage it is at.
+2. For a work order, 「**手続き状況**」 (procedure status) is near the top of the screen and shows which stage it is at.
 3. If it is your turn to approve, the 「**承認**」 (Approve) button appears.
 4. Check the content and press the button.
 
@@ -81,13 +81,13 @@ Once you send it back, that document returns to 「**下書き**」 (draft), and
 
 ## The screen just for approving
 
-For work orders there is also a screen used only for approving. It shows the same content as the work order screen, with 「承認状況」 (approval status) placed at the very top. This screen is used when you open it from a link in a notification, for example.
+For work orders there is also a screen used only for approving. It shows the same content as the work order screen, with 「手続き状況」 (procedure status) placed at the very top. This screen is used when you open it from a link in a notification, for example.
 
 ![The screen just for approving](../../../assets/screenshots/approval-detail-01.png)
 
 ## The record of approvals
 
-When you approve or send back, an **approval record** stays under 「承認状況」 (approval status). It shows who, when, at which stage, whether they approved or sent it back, and any comment. Ones approved by a stand-in are marked 「（代理: 原承認者）」 (stand-in for the original approver).
+When you approve or send back, an **approval record** stays under 「手続き状況」 (procedure status). It shows who, when, at which stage, whether they approved or sent it back, and any comment. Ones approved by a stand-in are marked 「（代理: 原承認者）」 (stand-in for the original approver).
 
 You need read permission for Approvals to use this app. Actually approving or rejecting requires being a member (or in-period stand-in) of the step's approval group, plus being able to view or edit the target document.
 

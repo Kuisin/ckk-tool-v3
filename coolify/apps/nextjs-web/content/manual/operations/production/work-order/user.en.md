@@ -92,7 +92,7 @@ After saving, the work order detail screen shows 「**工程ルート**」 (step
 
 Work cannot start on a work order until it is approved. **How many approval stages it goes through** is decided in the [approval settings](/manual/en/operations/masters/approval-setting/user), and the number of stages can differ depending on what is in the document. The card on the screen shows which stage it is currently on.
 
-1. On the work order screen, press 「**承認依頼**」 (Request approval) in the 「**承認状況**」 (approval status) area.
+1. On the work order screen, press 「**承認依頼**」 (Request approval) on the card at the very top.
 2. The status changes to 「**承認待ち**」 (waiting for approval). From this point, the original order line can no longer be edited.
 3. The person approving each stage presses 「**承認**」 (Approve) in turn.
 4. Once the last stage is through, the status becomes 「**承認済**」 (approved) and the work can start.
@@ -102,7 +102,7 @@ Work cannot start on a work order until it is approved. **How many approval stag
 - Only people **in the approval group** for that step, and stand-ins appointed for a set period, can approve. If you are not in the group, the buttons do not appear and the screen shows 「◯◯ のメンバーのみ承認・差し戻しできます」 (Only members of that group can approve or send back). In addition, you also need **permission to view or edit that work order** (including the scope of the site in charge) — someone in the group who cannot open the document cannot approve it.
 - If there is a problem, press 「**差し戻し**」 (Send back). You must enter a 「**差し戻し理由**」 (reason for sending back).
 - A work order that was sent back returns to 「下書き」 (draft) and the reason appears in red on the screen. After fixing it, you can send it out again with 「**再承認依頼**」 (Request approval again).
-- Records of approvals and send-backs stay under 「承認状況」 (approval status). Ones approved by a stand-in are marked 「（代理: 原承認者）」 (stand-in for the original approver).
+- Records of approvals and send-backs stay under 「手続き状況」 (procedure status). Ones approved by a stand-in are marked 「（代理: 原承認者）」 (stand-in for the original approver).
 
 You can also approve from the list in [approval management](/manual/en/operations/production/approval/user) (PD03).
 
