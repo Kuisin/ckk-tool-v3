@@ -37,6 +37,13 @@ import { deleteObject, putObject } from "@/lib/storage";
 export interface VersionFileInput {
   fileId: string;
   role: DesignFileRole;
+  /**
+   * そのファイルだけの説明（参考資料の「何の図か」など）。
+   * **枚数が増えるのは参考資料だけ**なので、実際に使うのはほぼそこ。
+   * 版全体のメモ（CreateVersionInput.notes）とは別物で、指定があれば
+   * こちらが優先される。
+   */
+  notes?: string | null;
 }
 
 export interface CreateVersionInput {
@@ -120,7 +127,7 @@ export async function createVersionInTx(
       version,
       isLatest: true,
       role: f.role,
-      notes: input.notes?.trim() || null,
+      notes: f.notes?.trim() || input.notes?.trim() || null,
       createdBy: input.actor,
     })),
   });
@@ -169,7 +176,13 @@ export interface UploadVersionInput {
   notes: string | null;
   blueprint: { name: string; type: string; bytes: ArrayBuffer };
   preview?: { name: string; type: string; bytes: ArrayBuffer } | null;
-  references?: { name: string; type: string; bytes: ArrayBuffer }[];
+  references?: {
+    name: string;
+    type: string;
+    bytes: ArrayBuffer;
+    /** その 1 枚の説明（何の図か）。 */
+    note?: string | null;
+  }[];
 }
 
 /**
@@ -197,8 +210,12 @@ export async function uploadDesignVersion(
 
   // 先に全部を storage + files に置く。1 枚でも失敗したら、それまでに
   // 置いたものを消してから諦める（孤児を残さない）。
-  const stored: { fileId: string; storageKey: string; role: DesignFileRole }[] =
-    [];
+  const stored: {
+    fileId: string;
+    storageKey: string;
+    role: DesignFileRole;
+    note?: string | null;
+  }[] = [];
   const rollback = async () => {
     for (const s of stored) {
       await deleteObject(s.storageKey);
@@ -240,7 +257,11 @@ export async function uploadDesignVersion(
         productId: input.productId,
         customerBpId: input.customerBpId,
         designRequestId: null,
-        files: stored.map((s) => ({ fileId: s.fileId, role: s.role })),
+        files: stored.map((s) => ({
+          fileId: s.fileId,
+          role: s.role,
+          notes: s.note,
+        })),
         notes: input.notes,
         actor,
       }),

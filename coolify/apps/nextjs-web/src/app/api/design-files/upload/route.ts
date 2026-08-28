@@ -12,6 +12,7 @@
  *   blueprint     … 図面データ 1 枚（必須）
  *   preview       … プレビュー用 0..1 枚（任意）
  *   reference     … 参考資料 0..N 枚（同名で複数）
+ *   referenceNote … 参考資料の説明（reference と**同じ順**で並べる）
  *
  * **Server Action ではなく Route Handler なのは、Server Action のボディが
  * 1MB で頭打ちになるから**（app CLAUDE.md）。図面は普通に超える。
@@ -66,6 +67,9 @@ export async function POST(request: Request): Promise<NextResponse> {
   const previewRaw = form.get("preview");
   const preview =
     previewRaw instanceof File && previewRaw.size > 0 ? previewRaw : null;
+  // 参考資料は「ファイルの配列」と「説明の配列」を同じ順で受ける。
+  // 説明が足りない/多いぶんは無視する（順ズレしても落とさない）。
+  const referenceNotes = form.getAll("referenceNote").map(String);
   const references = form
     .getAll("reference")
     .filter((f): f is File => f instanceof File && f.size > 0);
@@ -83,7 +87,12 @@ export async function POST(request: Request): Promise<NextResponse> {
     notes: String(form.get("notes") ?? "").trim() || null,
     blueprint: await toBytes(blueprint),
     preview: preview ? await toBytes(preview) : null,
-    references: await Promise.all(references.map(toBytes)),
+    references: await Promise.all(
+      references.map(async (f, i) => ({
+        ...(await toBytes(f)),
+        note: referenceNotes[i]?.trim() || null,
+      })),
+    ),
   });
   if (!result.ok) return badRequest(result.error);
   return NextResponse.json({ ok: true, version: result.data.version });

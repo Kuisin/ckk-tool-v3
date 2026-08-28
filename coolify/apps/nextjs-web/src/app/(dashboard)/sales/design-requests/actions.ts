@@ -807,8 +807,8 @@ export async function completeDesign(
     previewAttachmentId?: string | null;
     /** 図面データの添付 id。省略時はいちばん新しい添付。 */
     blueprintAttachmentId?: string | null;
-    /** 参考資料の添付 id。 */
-    referenceAttachmentIds?: string[] | null;
+    /** 参考資料の添付 id + 説明（何の図か）。 */
+    references?: { attachmentId: string; description?: string | null }[] | null;
   },
 ): Promise<ActionResult> {
   const authz = await checkPermission("design_request", "UPDATE");
@@ -832,10 +832,12 @@ export async function completeDesign(
         "同じファイルをプレビューと図面データの両方には指定できません",
       );
     }
-    const references = (input?.referenceAttachmentIds ?? [])
-      .map(byId)
-      .filter((a): a is NonNullable<typeof a> => Boolean(a))
-      .filter((a) => a.id !== blueprint.id && a.id !== preview?.id);
+    // 存在しない id は黙って捨て、図面データ・プレビューと同じものは除く。
+    const references = (input?.references ?? []).flatMap((r) => {
+      const a = byId(r.attachmentId);
+      if (!a || a.id === blueprint.id || a.id === preview?.id) return [];
+      return [{ a, description: r.description ?? null }];
+    });
 
     const request = await prisma.designRequest.findUnique({
       where: { requestNumber: number },
@@ -907,9 +909,11 @@ export async function completeDesign(
               ? [{ fileId: preview.fileId, role: "PREVIEW" as const }]
               : []),
             { fileId: blueprint.fileId, role: "BLUEPRINT" as const },
-            ...references.map((a) => ({
-              fileId: a.fileId,
+            ...references.map((r) => ({
+              fileId: r.a.fileId,
               role: "REFERENCE" as const,
+              // 参考資料は 1 枚ずつ説明を持てる（後から見て何の図か判るように）
+              notes: r.description?.trim() || null,
             })),
           ],
           actor,

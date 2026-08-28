@@ -17,20 +17,13 @@
  * （Server Action のボディは 1MB で頭打ちになり、図面は普通に超える）。
  */
 
-import {
-  FileButton,
-  Group,
-  Select,
-  Stack,
-  Text,
-  Textarea,
-} from "@mantine/core";
+import { Group, Select, Stack, Text, Textarea } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
-import { IconUpload, IconX } from "@tabler/icons-react";
+import { IconPlus } from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { GhostButton, SecondaryButton } from "@/components/ui/buttons";
-import { DesignFileSlot, type SlotValue } from "@/components/ui/DesignFileSlot";
+import { SecondaryButton } from "@/components/ui/buttons";
+import { DesignFileSlot } from "@/components/ui/DesignFileSlot";
 import { ModalShell } from "@/components/ui/modals";
 import { useIsMobile } from "@/hooks/useViewport";
 
@@ -54,9 +47,12 @@ export function AddDesignVersionModal({
   const router = useRouter();
   const isMobile = useIsMobile();
   const [customerBpId, setCustomerBpId] = useState<string | null>(null);
-  const [blueprint, setBlueprint] = useState<SlotValue>(null);
-  const [preview, setPreview] = useState<SlotValue>(null);
-  const [references, setReferences] = useState<File[]>([]);
+  const [blueprint, setBlueprint] = useState<File | null>(null);
+  const [preview, setPreview] = useState<File | null>(null);
+  const [references, setReferences] = useState<
+    { key: number; file: File | null; note: string }[]
+  >([]);
+  const [nextKey, setNextKey] = useState(1);
   const [notes, setNotes] = useState("");
   const [busy, setBusy] = useState(false);
 
@@ -76,11 +72,14 @@ export function AddDesignVersionModal({
       body.set("productId", String(productId));
       if (customerBpId) body.set("customerBpId", customerBpId);
       if (notes.trim()) body.set("notes", notes.trim());
-      // 製品マスタからの登録は必ず新しいファイル（添付という概念が無い）。
-      if (blueprint.kind !== "file") return;
-      body.set("blueprint", blueprint.file);
-      if (preview?.kind === "file") body.set("preview", preview.file);
-      for (const r of references) body.append("reference", r);
+      body.set("blueprint", blueprint);
+      if (preview) body.set("preview", preview);
+      // 参考資料はファイルと説明を同じ順で並べて送る（受け側で組み直す）。
+      for (const r of references) {
+        if (!r.file) continue;
+        body.append("reference", r.file);
+        body.append("referenceNote", r.note.trim());
+      }
 
       const res = await fetch("/api/design-files/upload", {
         method: "POST",
@@ -142,57 +141,62 @@ export function AddDesignVersionModal({
 
         <DesignFileSlot
           description="加工プログラムを起こす元データ。この系列の最新図面になります"
+          file={blueprint}
           fullWidth={isMobile}
           label="図面データ"
-          onChange={setBlueprint}
+          onPick={setBlueprint}
           required
-          value={blueprint}
         />
         <DesignFileSlot
           description="STL など、画面で形を確かめるためのファイル。無くても登録できます"
+          file={preview}
           fullWidth={isMobile}
           label="プレビュー用（3D）"
-          onChange={setPreview}
-          value={preview}
+          onPick={setPreview}
         />
 
-        <Stack gap={4}>
-          <Text fw={500} size="sm">
-            参考資料
-          </Text>
-          <Text c="dimmed" size="xs">
-            部品図・寸法表など。何枚でも追加できます
-          </Text>
-          <Group gap="xs" wrap="wrap">
-            <FileButton
-              onChange={(f) => f && setReferences((prev) => [...prev, f])}
-            >
-              {(props) => (
-                <SecondaryButton
-                  {...props}
-                  fullWidth={isMobile}
-                  leftSection={<IconUpload size={14} />}
-                >
-                  参考資料を追加
-                </SecondaryButton>
-              )}
-            </FileButton>
-          </Group>
+        <Stack gap="sm">
           {references.map((r, i) => (
-            <Group gap={4} key={`${r.name}-${r.size}-${i}`} wrap="nowrap">
-              <Text c="dimmed" size="xs" style={{ overflowWrap: "anywhere" }}>
-                {r.name}
-              </Text>
-              <GhostButton
-                leftSection={<IconX size={12} />}
-                onClick={() =>
-                  setReferences((prev) => prev.filter((_, j) => j !== i))
-                }
-              >
-                取消
-              </GhostButton>
-            </Group>
+            <DesignFileSlot
+              description={
+                i === 0 ? "部品図・寸法表など。何枚でも追加できます" : undefined
+              }
+              file={r.file}
+              fullWidth={isMobile}
+              key={r.key}
+              label={`参考資料 ${i + 1}`}
+              note={r.note}
+              notePlaceholder="説明（任意）— 例: 部品図、寸法表"
+              onNoteChange={(v) =>
+                setReferences((prev) =>
+                  prev.map((x, j) => (j === i ? { ...x, note: v } : x)),
+                )
+              }
+              onPick={(f) =>
+                setReferences((prev) =>
+                  // ファイルを外したら行ごと消す（空の行が残らない）
+                  f == null
+                    ? prev.filter((_, j) => j !== i)
+                    : prev.map((x, j) => (j === i ? { ...x, file: f } : x)),
+                )
+              }
+            />
           ))}
+          <Group>
+            <SecondaryButton
+              fullWidth={isMobile}
+              leftSection={<IconPlus size={14} />}
+              onClick={() => {
+                setReferences((prev) => [
+                  ...prev,
+                  { key: nextKey, file: null, note: "" },
+                ]);
+                setNextKey((k) => k + 1);
+              }}
+            >
+              参考資料を追加
+            </SecondaryButton>
+          </Group>
         </Stack>
 
         <Textarea

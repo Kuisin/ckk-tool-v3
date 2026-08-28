@@ -707,7 +707,7 @@ export function DesignRequestDetail({
               canUpload={canAttachFiles(request)}
               ownerId={request.requestNumber}
               ownerType="design_requests"
-              title="設計ファイル（完了時に最新版として登録されます）"
+              title="作業ファイル（メモ・下書きなど。版として登録するファイルは完了のときに選びます）"
             />
             {request.files.length === 0 ? (
               <EmptyState
@@ -737,7 +737,6 @@ export function DesignRequestDetail({
       </Tabs>
 
       <CompleteDesignModal
-        attachments={attachments}
         loading={isPending}
         onClose={() => setCompleteOpen(false)}
         onConfirm={(input) =>
