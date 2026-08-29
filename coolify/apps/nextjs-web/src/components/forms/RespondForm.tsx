@@ -42,6 +42,7 @@ export function RespondForm({
   allowDraft = true,
   drafts = [],
   submitLabel = "送信",
+  embedded = false,
   onSubmit,
   onCancel,
 }: {
@@ -60,6 +61,12 @@ export function RespondForm({
   allowDraft?: boolean;
   /** 書きかけの下書き（新規回答画面でだけ渡す）。 */
   drafts?: { responseNumber: string; href: string }[];
+  /**
+   * 詳細画面のタブに埋め込むとき true。**見出しと外枠を出さない** — 画面には
+   * 既に書類のタイトルがあり、2 つ目のタイトルと中央寄せの幅制限が並ぶと
+   * どこを読んでいるのか分からなくなる（ApprovalFlowEditor の embedded と同じ）。
+   */
+  embedded?: boolean;
   submitLabel?: string;
   onSubmit: (
     answers: Record<string, FormAnswerValue>,
@@ -107,15 +114,22 @@ export function RespondForm({
   };
 
   return (
-    <Stack gap="md" maw={840} mx="auto" p="md">
-      <Stack gap={4}>
-        <Title order={3}>{title}</Title>
-        {description && (
-          <Text c="dimmed" size="sm" style={{ whiteSpace: "pre-wrap" }}>
-            {description}
-          </Text>
-        )}
-      </Stack>
+    <Stack
+      gap="md"
+      maw={embedded ? undefined : 840}
+      mx={embedded ? undefined : "auto"}
+      p={embedded ? undefined : "md"}
+    >
+      {!embedded && (
+        <Stack gap={4}>
+          <Title order={3}>{title}</Title>
+          {description && (
+            <Text c="dimmed" size="sm" style={{ whiteSpace: "pre-wrap" }}>
+              {description}
+            </Text>
+          )}
+        </Stack>
+      )}
 
       {drafts.length > 0 && <DraftResumeList drafts={drafts} />}
 

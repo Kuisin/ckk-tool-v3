@@ -20,6 +20,10 @@ description: "工厂现场共享平板（自助终端设备）的分发与注册
 3. 连接 Wi-Fi 并扫描下方的配置 QR 码
 4. APK 会自动下载并安装，设备将锁定为自助终端模式
 
+> **预装应用（臃肿软件）会被自动停用。** 这些平板专用于业务应用，因此厂商预装的应用会在登记时统一停用（对象为会出现在启动器中的应用）。键盘、画面显示、自动更新以及维护用的「設定を開く」所需的组件都会保留，不影响操作。
+>
+> 这只对**通过本步骤新登记的设备**生效。若要清理已经在使用的设备，请恢复出厂设置后重新执行本步骤。
+
 **生产环境 QR：**
 
 ![生产环境配置 QR](https://ckk-kiosk.kai-lab.net/apk/provisioning-prod.png)
@@ -78,6 +82,124 @@ description: "工厂现场共享平板（自助终端设备）的分发与注册
 4. 返回应用（返回键等）后**自动重新锁定**，无需其他操作
 
 > 左上角的 5 次点按是另一功能（设备设置 — 用 6 位设置码解锁）。更换网络请使用**右上角**。
+
+## 恢复无法用 PIN 打开的设备
+
+Wi-Fi 断开的设备可能无法使用上述步骤。**设备把 PIN 保存在本地，离线期间收不到新的 PIN**，因此输入 SY09 上显示的当前 PIN 也打不开。请按顺序尝试 — 越往下花费越大。
+
+### 1. 查看该设备持有的 PIN
+
+SY09 设备详情「PIN・設定コード」→「**この端末が保持している PIN**」（本终端持有的 PIN）→「表示」（显示）。会显示**最后一次发给该设备的号码**，输入它即可。
+
+若「**最終同期**」（最后同步）显示为「**未同期**」（未同步），说明设备从未收到过号码。此时服务器端没有该号码，设备仍在使用**打包进 APK 的号码**。请确认构建用 Mac 上 `~/.gradle/gradle.properties` 的 `KIOSK_UNLOCK_PIN`（未设置时为 `246810`）。
+
+### 2. 通过 USB 连接修复 Wi-Fi（不需要 PIN）
+
+Kiosk 锁定只固定**画面**（Lock Task），并不封闭 USB 调试（应用不设置 `DISALLOW_DEBUGGING_FEATURES` 等任何用户限制）。若配置时启用了 USB 调试，它现在依然有效。
+
+```bash
+~/Library/Android/sdk/platform-tools/adb devices -l
+```
+
+- `device` — 继续下一步
+- `unauthorized` — 在平板上确认「是否允许 USB 调试？」并勾选「一律允许使用这台计算机进行调试」。若不出现，请重新插拔（该对话框仅在连接时弹出）
+- 什么都没有 — 很可能是**仅充电线缆**，请换成可传输数据的线缆
+
+连接成功后，无需 PIN 即可修复 Wi-Fi：
+
+```bash
+~/Library/Android/sdk/platform-tools/adb shell svc wifi enable
+~/Library/Android/sdk/platform-tools/adb shell cmd wifi connect-network "SSID" wpa2 "密码"
+~/Library/Android/sdk/platform-tools/adb shell cmd wifi status
+```
+
+开放网络请用 `open` 代替 `wpa2 "密码"`。连上后设备会自行恢复（PIN 会在下次同步时更新为最新）。
+
+若为 debug 构建，还可以直接读取设备持有的 PIN：
+
+```bash
+~/Library/Android/sdk/platform-tools/adb shell run-as jp.co.ckk.kiosk.dev \
+  cat /data/data/jp.co.ckk.kiosk.dev/shared_prefs/kiosk.xml
+```
+
+查看 `<string name="unlock_pin">`。出现 `not debuggable` / `unknown package` 表示是 release 构建，无法使用。没有 `unlock_pin` 这一行则说明从未同步过。
+
+### 3. 强制恢复出厂设置（最后手段）
+
+> ⚠️ **这是最后的手段，请勿着急。** 恢复出厂设置无法撤销，加上重新配置（QR 配置 + 在 SY09 解除链接并重新链接）需要半天工作量。**务必先尝试 1 和 2** — 换一根线缆、试三个 PIN 就能解决的情况更常见。
+
+#### 什么情况下才应该恢复出厂设置
+
+**仅当以下全部成立时**才执行：
+
+- 输入「この端末が保持している PIN」也打不开（若为「未同期」，构建时的 PIN 也已试过）
+- **换用可传输数据的线缆后**，`adb devices` 仍无任何显示，或一直是 `unauthorized` 且平板上不弹出授权对话框
+- 设备没有恢复 Wi-Fi 的可能（也无法用热点等方式重现原 SSID）
+
+**不应该（或还不到时候）恢复出厂设置：**
+
+| 情况 | 请先执行 |
+|---|---|
+| `adb devices` 显示 `unauthorized` | 在平板上确认授权对话框（重新插拔可再次弹出）。USB 调试仍然可用 |
+| `adb devices` 无任何显示 | **怀疑是仅充电线缆**，请更换 |
+| 设备仍在线，或可以恢复联网 | 重现原 SSID 让其自动连接。连上后 PIN 会自动更新 |
+| 不清楚是否添加过 Google 账号 | **先确认。** 参见下面的 FRP |
+| 只是不知道 PIN | 查看 SY09 的「この端末が保持している PIN」/「履歴」 |
+
+#### 执行前必须确认
+
+**该设备是否添加过 Google 账号。** 若添加过，恢复出厂设置后 FRP（恢复出厂设置保护）会要求该账号，不知道账号则**设备将彻底无法使用**。设备所有者配置要求没有任何账号，通常不会有，但请务必确认而非想当然。
+
+丢失的只有设备令牌、认证密钥和设备上缓存的 PIN。会话、操作记录和审计日志都保存在服务器端，不会丢失。
+
+1. **拔掉 USB 线缆**（供电状态下会进入充电画面）
+2. 关机（长按 → 关机。kiosk 状态下电源菜单仍可使用）
+3. 完全关机后，长按**音量↑ + 电源**约 10 秒直到振动 → 进入引导菜单
+4. **用音量键滚动菜单**，寻找 **Recovery Mode**。若有则选择它并跳到第 6 步
+
+**若没有 Recovery 项，只显示「enter meta mode」「enter fastboot mode」**（联发科机型，如 TB330FU）：
+
+> **不要选择 META mode** — 那是出厂诊断模式，用途不同。
+
+5. 选择「**enter fastboot mode**」，连接 USB 后执行：
+
+   ```bash
+   ~/Library/Android/sdk/platform-tools/fastboot devices        # 显示 <serial> fastboot
+   ~/Library/Android/sdk/platform-tools/fastboot reboot recovery # 无效时用 fastboot oem reboot-recovery
+   ```
+
+   fastboot **不需要 adb 授权对话框**，因此即使第 2 步卡在 `unauthorized` 也能使用。
+
+   > **不要使用 `fastboot -w`，也不要解锁 Bootloader。** 锁定状态下 `-w` 会失败，而解锁会清空设备并可能触发 FRP。
+
+6. 进入恢复模式后会出现倒下的 Android 机器人和「No command」。这不是故障。**按住电源键并按一次音量↑**后松开，菜单即会出现
+7. 选择 **Wipe data / factory reset** 执行
+
+> 引导菜单的按键组合因机型而异。音量↑+电源无效时，请尝试**音量↓+电源**，或两个音量键+电源。
+
+### 4. 恢复出厂设置后的重新登记
+
+**1. 重新安装应用。** 重复上面的「新设备登记（QR 配置）」。在初始化后的「欢迎」画面**连续点按同一位置 6 次** → QR 扫描器 → 连接 Wi-Fi → 扫描 QR，APK 安装与设备所有者登记会自动完成。不需要线缆 — 若原因本就是线缆，这一点尤其重要。
+
+**2. 打开设备登记（setup）画面。** 应用启动时没有设备 Cookie，会**自动跳转到登记画面**（显示链接码和 QR）。若停留在其他画面，请直接打开网址：
+
+| 环境 | URL |
+|---|---|
+| dev | `https://ckk-kiosk-dev.kai-lab.net/setup` |
+| 生产 | `https://ckk-kiosk.kai-lab.net/setup` |
+
+画面会显示 12 位链接码和 QR。**有效期为 10 分钟**，过期后重新加载页面即可重新签发。
+
+**3. 在 SY09 侧重新开放该配置。** 在设备管理（SY09）中打开该设备并点击「**リンク解除**」（解除链接）。状态回到 PENDING（开放），且**名称、基地、楼层地图上的标记都会保留**（新建配置则需要重新放置标记，因此务必使用解除链接）。只有 PENDING 的配置才能进行链接。
+
+**4. 链接并启用。** 在 SY09 输入平板的链接码（或扫描 QR）→ 变为 LINKED → 点击「**有効化**」（启用）→ ACTIVE。平板通过轮询检测到后会自行签发设备令牌并进入 kiosk 画面。
+
+**5. 确认。** 在 SY09 设备详情页确认：
+
+- 「**最終同期**」已填充 — 表示该设备今后能正常接收 PIN（若仍为「未同期」，将会再次陷入同样的状况）
+- 「**この端末が保持している PIN**」与当前 PIN 一致
+
+如需重新构建 APK，请此时将 `~/.gradle/gradle.properties` 的 `KIOSK_UNLOCK_PIN` 设为预期的值（不要沿用默认值发布）。
 
 ## 设备更新（自动）
 

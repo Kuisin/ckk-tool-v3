@@ -4,8 +4,9 @@
  * DeliveryNoteDetail — 納品書 詳細 (SH22, design.md §8.2).
  *
  * SummaryGrid（番号 / 出荷書番号 link / 納品先 / 届け先 / 方法 / 価格記載 /
- * 納品日 …）+ 明細テーブル（製品 / 数量 / 単価 / 金額 — 価格記載ありのみ）+
- * Tabs: 概要 / 履歴。
+ * 納品日 …）+ 手続き状況（ProcedurePanel — 下書き→発行→納品済、出荷書・
+ * 注文明細 ← / 請求書 →）+ 明細テーブル（製品 / 数量 / 単価 / 金額 —
+ * 価格記載ありのみ）+ Tabs: 概要 / 履歴。
  *
  * Actions: 編集（DRAFT のみ）/ PDF（/api/pdf/delivery-note?id=DRN-…）/
  * 発行（DRAFT → ISSUED）/ 納品済み（ISSUED → DELIVERED + deliveredAt）。
@@ -33,6 +34,7 @@ import {
   issueDeliveryNote,
   markDelivered,
 } from "@/app/(dashboard)/shipping/delivery-notes/actions";
+import type { InvoiceLink } from "@/components/billing/invoices/model";
 import { useFormat } from "@/components/layout/PreferencesProvider";
 import { PrimaryButton } from "@/components/ui/buttons";
 import { DocNumber } from "@/components/ui/DocNumber";
@@ -44,7 +46,12 @@ import {
   PdfAttachmentPanel,
   type PdfFileMeta,
 } from "@/components/ui/PdfAttachmentPanel";
-import { StatusBadge } from "@/components/ui/StatusBadge";
+import {
+  type HandoffGroup,
+  ProcedurePanel,
+  type ProcedureStage,
+} from "@/components/ui/ProcedurePanel";
+import { StatusBadge, statusLabel } from "@/components/ui/StatusBadge";
 import {
   type AuditEntry,
   DetailShell,
@@ -53,6 +60,7 @@ import {
 } from "@/components/ui/shells";
 import { useTabParam } from "@/hooks/useUrlState";
 import { downloadFile } from "@/lib/download";
+import { formatMoney } from "@/lib/format";
 import type { ActionResult } from "@/lib/server-action";
 import { DeliveryMethodBadge } from "./DeliveryNoteTable";
 import { type DeliveryNote, isEditable } from "./model";
@@ -63,12 +71,15 @@ export function DeliveryNoteDetail({
   note,
   pdfMeta,
   auditEntries,
+  invoices = [],
 }: {
   note: DeliveryNote;
   /** 保管済み PDF のメタ（SeaweedFS 由来。未生成なら null）。 */
   pdfMeta: PdfFileMeta | null;
   /** 操作履歴（audit_logs 由来、履歴タブ）。 */
   auditEntries: AuditEntry[];
+  /** この納品書を請求した請求書（手続き状況の「次の書類へ」）。 */
+  invoices?: InvoiceLink[];
 }) {
   const fmt = useFormat();
   const router = useRouter();
@@ -87,6 +98,78 @@ export function DeliveryNoteDetail({
 
   const pdfUrl = (extra = "") =>
     `/api/pdf/delivery-note?id=${encodeURIComponent(note.id)}${extra}`;
+
+  // ── 手続き状況（下書き → 発行 → 納品済）─────────────────────────────────
+  const stages: ProcedureStage[] = [
+    {
+      key: "draft",
+      label: "下書き",
+      description: fmt.date(note.createdAt),
+      loading: note.status === "DRAFT",
+    },
+    {
+      key: "issued",
+      label: "発行",
+      description: note.status === "DRAFT" ? "PDF を発行" : "発行済",
+      loading: note.status === "ISSUED",
+    },
+    {
+      key: "delivered",
+      label: "納品済",
+      description: note.deliveredAt ? fmt.date(note.deliveredAt) : "納品の確認",
+    },
+  ];
+  const active = note.status === "DRAFT" ? 0 : note.status === "ISSUED" ? 1 : 3;
+
+  // 上流 = 出荷書（1 件）と、そこに束ねられた注文明細。
+  const sourceGroups: HandoffGroup[] = [
+    {
+      key: "delivery-order",
+      title: "出荷書",
+      items: [
+        {
+          key: note.deliveryOrderNumber,
+          label: note.deliveryOrderNumber,
+          href: `/shipping/delivery-orders/${note.deliveryOrderNumber}`,
+          note: "この納品書の出荷元",
+        },
+      ],
+      emptyNote: "—",
+    },
+    {
+      key: "order-lines",
+      title: "注文明細",
+      summary:
+        note.orderLineNumbers.length > 0
+          ? `${note.orderLineNumbers.length} 件`
+          : null,
+      items: note.orderLineNumbers.map((n) => ({
+        key: n,
+        label: n,
+        href: `/sales/order-lines/${n}`,
+      })),
+      emptyNote: "—（在庫保管など、注文明細に紐づかない出荷）",
+    },
+  ];
+
+  // 下流 = この納品書を請求した請求書。
+  const handoffGroups: HandoffGroup[] = [
+    {
+      key: "invoices",
+      title: "請求書",
+      items: invoices.map((inv) => ({
+        key: inv.number,
+        label: inv.number,
+        href: `/billing/invoices/${inv.number}`,
+        done: inv.status === "PAID",
+        note: `${statusLabel("Invoice", inv.status)}・${formatMoney(inv.totalAmount)}`,
+      })),
+      emptyNote:
+        note.status === "DELIVERED"
+          ? "未請求（締日処理で請求書を作成します）"
+          : "未請求（納品後に締日処理で請求します）",
+    },
+  ];
 
   const regenerate = async () => {
     try {
@@ -259,6 +342,13 @@ export function DeliveryNoteDetail({
           }
         />
       </SummaryGrid>
+
+      <ProcedurePanel
+        active={active}
+        handoffGroups={handoffGroups}
+        sourceGroups={sourceGroups}
+        stages={stages}
+      />
 
       <Paper p="md" radius="md" withBorder>
         <Title mb="sm" order={5}>

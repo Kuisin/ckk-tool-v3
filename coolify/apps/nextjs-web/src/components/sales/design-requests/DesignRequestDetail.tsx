@@ -4,8 +4,8 @@
  * DesignRequestDetail — 設計依頼書 詳細 (SA26, design.md §8.2).
  *
  * 最上部の ActionCard（いまやること — 権限で色が変わる）+ SummaryGrid +
- * 承認・作業状況パネル（線形 Stepper 依頼→承認→着手→完了）+ Tabs
- * （概要 / ファイル / 履歴）。
+ * 手続き状況（ProcedurePanel — 依頼→承認→着手→完了、見積書・注文明細 ← /
+ * 図面 →）+ Tabs（概要 / ファイル / 履歴）。
  *
  * 状態別アクション:
  *   DRAFT / REJECTED: 承認依頼 + 編集 / キャンセル
@@ -24,21 +24,17 @@ import {
   Alert,
   Anchor,
   Badge,
+  Box,
   Divider,
   Group,
-  Paper,
   Select,
   Stack,
-  Stepper,
-  Table,
   Tabs,
   Text,
   Textarea,
-  Title,
 } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
 import {
-  IconAlertTriangle,
   IconArrowBackUp,
   IconCheck,
   IconFile,
@@ -74,6 +70,7 @@ import {
   type AttachmentView,
 } from "@/components/ui/AttachmentsPanel";
 import { PrimaryButton } from "@/components/ui/buttons";
+import { DesignFileThumb } from "@/components/ui/DesignFileViewer";
 import { DocNumber } from "@/components/ui/DocNumber";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { FieldValue } from "@/components/ui/FieldValue";
@@ -83,6 +80,12 @@ import {
   PdfAttachmentPanel,
   type PdfFileMeta,
 } from "@/components/ui/PdfAttachmentPanel";
+import {
+  approvalStage,
+  type HandoffGroup,
+  ProcedurePanel,
+  type ProcedureStage,
+} from "@/components/ui/ProcedurePanel";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import {
   type AuditEntry,
@@ -91,6 +94,8 @@ import {
   SummaryGrid,
 } from "@/components/ui/shells";
 import { useTabParam } from "@/hooks/useUrlState";
+import { isViewable } from "@/lib/design-file-kind";
+import { pickThumbFile } from "@/lib/design-files-core";
 import {
   DESIGN_KIND_LABEL,
   DESIGN_PRIORITY_LABEL,
@@ -98,6 +103,7 @@ import {
 } from "@/lib/enum-labels";
 import type { ActionResult } from "@/lib/server-action";
 import { CompleteDesignModal } from "./CompleteDesignModal";
+import { DesignFileList } from "./DesignFileList";
 import {
   canAttachFiles,
   canComplete,
@@ -105,7 +111,6 @@ import {
   canReopen,
   canRequestApproval,
   canStart,
-  DESIGN_FILE_ROLE_COLOR,
   DESIGN_FILE_ROLE_LABEL,
   DESIGN_HISTORY_ACTION_LABEL,
   DESIGN_KIND_COLOR,
@@ -141,17 +146,6 @@ function stepperActive(status: DesignRequest["status"]): number {
     default:
       return -1; // CANCELLED
   }
-}
-
-/**
- * Stepper に出す「承認」段の説明。段数は承認設定 (MS0B) が決めるので、
- * 進行中は「2/3 部門承認」、それ以外は担当グループ名を出す。
- */
-function approvalStepDescription(approval: ApprovalActionState): string {
-  if (approval.phase === "PENDING" && approval.stepCount > 1) {
-    return `${approval.stepNo}/${approval.stepCount} ${approval.stepLabel}`;
-  }
-  return approval.groupLabel || "承認グループ";
 }
 
 export function DesignRequestDetail({
@@ -190,6 +184,39 @@ export function DesignRequestDetail({
   const [assigneeDraft, setAssigneeDraft] = useState(request.assigneeId ?? "");
   const [pdfFile, setPdfFile] = useState<PdfFileMeta | null>(pdfMeta);
   const [pdfNonce, setPdfNonce] = useState(0);
+
+  /**
+   * サムネイルに出す 1 枚。
+   *
+   * 登録済みの版があればそれ（製品マスタと同じ規則 — 最新版の
+   * プレビュー → 図面データ）。まだ無ければ、添付の中で表示できる
+   * いちばん新しいものを出す。完了前は版が存在しないので、後者が無いと
+   * 図面を描いている期間ずっと何も見えない。
+   *
+   * 版と添付では**配信ルートが違う**（版は design_files → files を直接
+   * 指していて document_attachments の行ではない）ので、URL もそれぞれ。
+   */
+  const thumbTarget = (() => {
+    const version = pickThumbFile(request.files);
+    if (version) {
+      return {
+        caption: `v${version.version}${version.isLatest ? "（最新）" : ""} ${version.filename}`,
+        filename: version.filename,
+        mimeType: version.mimeType,
+        src: `/api/design-files/${encodeURIComponent(version.id)}`,
+      };
+    }
+    // listAttachments は新しい順。表示できないもの（CAD 等）は飛ばす。
+    const a = attachments.find((x) => isViewable(x.filename, x.mimeType));
+    return a
+      ? {
+          caption: `添付（未登録）${a.filename}`,
+          filename: a.filename,
+          mimeType: a.mimeType,
+          src: `/api/attachments/${encodeURIComponent(a.id)}`,
+        }
+      : null;
+  })();
 
   const canViewPdf = isIssuedDesign(request.status);
   const pdfFilename = `${request.requestNumber}.pdf`;
@@ -259,6 +286,114 @@ export function DesignRequestDetail({
 
   // 遷移履歴は新しい順で表示
   const records = [...request.history].reverse();
+
+  // ── 手続き状況（依頼 → 承認 → 着手 → 完了）───────────────────────────────
+  const stages: ProcedureStage[] = [
+    {
+      key: "requested",
+      label: "依頼",
+      description: request.requestedAt
+        ? fmt.date(request.requestedAt)
+        : "作成中",
+      // 差し戻し中は赤（_specs/design.md §9 REJECTED = red）。
+      color: request.status === "REJECTED" ? "red" : undefined,
+      loading: request.status === "DRAFT",
+    },
+    approvalStage(approval, {
+      approvedAt: request.approvedAt,
+      fmtDate: (v) => fmt.date(v),
+    }),
+    {
+      key: "started",
+      label: "着手",
+      description: request.startedAt
+        ? fmt.date(request.startedAt)
+        : (request.assigneeName ?? "担当者"),
+      loading: request.status === "PENDING",
+    },
+    {
+      key: "completed",
+      label: "完了",
+      description: request.completedAt
+        ? fmt.date(request.completedAt)
+        : "図面の添付",
+      loading: request.status === "IN_PROGRESS",
+    },
+  ];
+
+  // 上流 = 依頼のきっかけ（見積時 / 受注時）。単独依頼は両方 null。
+  const sourceItems = [
+    ...(request.quoteNumber
+      ? [
+          {
+            key: request.quoteNumber,
+            label: request.quoteNumber,
+            href: `/sales/quotes/${request.quoteNumber}`,
+            note: "見積時の依頼",
+          },
+        ]
+      : []),
+    ...(request.orderLineNumber
+      ? [
+          {
+            key: request.orderLineNumber,
+            label: request.orderLineNumber,
+            href: `/sales/order-lines/${request.orderLineNumber}`,
+            note: "受注時の依頼",
+          },
+        ]
+      : []),
+  ];
+  const sourceGroups: HandoffGroup[] | undefined =
+    sourceItems.length > 0
+      ? [
+          {
+            key: "trigger",
+            title: "依頼元",
+            items: sourceItems,
+            emptyNote: "—",
+          },
+        ]
+      : undefined;
+
+  // 下流 = 完了で上がった図面（最新版のみ）。製品の最新図面は
+  // is_latest かつ role = BLUEPRINT の 1 行（_specs/tables.md design_files）。
+  const latestFiles = request.files.filter((f) => f.isLatest);
+  const handoffGroups: HandoffGroup[] = [
+    {
+      key: "design-files",
+      title: "図面",
+      summary:
+        latestFiles.length > 0 ? `第 ${latestFiles[0]?.version} 版` : null,
+      items: latestFiles.map((f) => ({
+        key: f.id,
+        label: f.filename,
+        done: true,
+        note: DESIGN_FILE_ROLE_LABEL[f.role] ?? f.role,
+      })),
+      emptyNote:
+        request.status === "IN_PROGRESS"
+          ? "未添付（完了時に図面を添付します）"
+          : "未添付（着手・完了で図面が付きます）",
+    },
+    ...(request.productName
+      ? [
+          {
+            key: "product",
+            title: "製品マスタ",
+            items: [
+              {
+                key: "product",
+                label: request.productName,
+                href: `/master/products/${request.productId}`,
+                note: "最新図面の反映先",
+              },
+            ],
+            emptyNote: "—",
+          },
+        ]
+      : []),
+  ];
   // 差し戻し中の表示用: 最新の REJECT エントリの理由
   const lastReject = records.find((h) => h.action === "REJECT");
 
@@ -450,6 +585,21 @@ export function DesignRequestDetail({
           />
         )}
         <FieldValue label="製品" value={request.productName ?? "—"} />
+        {/* 完成した版がどの系列に載るか。汎用なら全顧客の指示書から見える。 */}
+        <FieldValue
+          label="受注元"
+          value={
+            request.customerName ? (
+              <Badge color="blue" variant="light">
+                {request.customerName}
+              </Badge>
+            ) : (
+              <Badge color="gray" variant="outline">
+                汎用
+              </Badge>
+            )
+          }
+        />
         <FieldValue
           label="依頼区分"
           value={
@@ -500,61 +650,14 @@ export function DesignRequestDetail({
         />
       </SummaryGrid>
 
-      {/* 承認・作業状況 — 購買依頼の承認パネルと同型（線形 4 段階） */}
-      <Paper p="md" radius="md" withBorder>
-        <Title mb="md" order={5}>
-          承認・作業状況
-        </Title>
-
-        <Stepper active={stepperActive(request.status)} size="sm">
-          <Stepper.Step
-            description={
-              request.requestedAt ? fmt.date(request.requestedAt) : "作成中"
-            }
-            label="依頼"
-            loading={
-              request.status === "DRAFT" || request.status === "REJECTED"
-            }
-          />
-          <Stepper.Step
-            description={
-              request.approvedAt
-                ? fmt.date(request.approvedAt)
-                : approvalStepDescription(approval)
-            }
-            label="承認"
-            loading={request.status === "REQUESTED"}
-          />
-          <Stepper.Step
-            description={
-              request.startedAt
-                ? fmt.date(request.startedAt)
-                : (request.assigneeName ?? "担当者")
-            }
-            label="着手"
-            loading={request.status === "PENDING"}
-          />
-          <Stepper.Step
-            description={
-              request.completedAt ? fmt.date(request.completedAt) : "図面の添付"
-            }
-            label="完了"
-            loading={request.status === "IN_PROGRESS"}
-          />
-        </Stepper>
-
-        {request.status === "CANCELLED" && (
-          <Alert
-            color="red"
-            icon={<IconAlertTriangle size={16} />}
-            mt="md"
-            title="キャンセル済"
-            variant="light"
-          >
-            {request.cancelReason ?? "—"}
-          </Alert>
-        )}
-
+      <ProcedurePanel
+        active={stepperActive(request.status)}
+        cancelled={request.status === "CANCELLED"}
+        cancelledNote={request.cancelReason}
+        handoffGroups={handoffGroups}
+        sourceGroups={sourceGroups}
+        stages={stages}
+      >
         {/* 承認記録 — approval_records 由来（代理は「（代理: 原承認者）」付き） */}
         {countTrailRecords(approvalTrail) > 0 && (
           <>
@@ -586,7 +689,7 @@ export function DesignRequestDetail({
             </Stack>
           </>
         )}
-      </Paper>
+      </ProcedurePanel>
 
       <Tabs onChange={setTab} value={tab}>
         <Tabs.List>
@@ -636,13 +739,28 @@ export function DesignRequestDetail({
         {/* 設計ファイル — 添付（作業ファイル）+ 完了時に版管理へ登録される。 */}
         <Tabs.Panel pt="md" value="files">
           <Stack gap="md">
+            {/* 見えるものを先に出す（製品マスタと同じサムネイル）。
+                完了前は登録済みの版がまだ無いので、その間は**添付**の中から
+                表示できるものを見せる — 図面を描いている最中こそ「上げた物が
+                合っているか」を確かめたいのに、完了するまで何も見えないのでは
+                置く意味がない。 */}
+            {thumbTarget && (
+              <Stack gap={4}>
+                <Box maw={320}>
+                  <DesignFileThumb target={thumbTarget} />
+                </Box>
+                <Text c="dimmed" size="xs">
+                  {thumbTarget.caption}
+                </Text>
+              </Stack>
+            )}
             <AttachmentsPanel
               attachments={attachments}
               canDelete={canAttachFiles(request)}
               canUpload={canAttachFiles(request)}
               ownerId={request.requestNumber}
               ownerType="design_requests"
-              title="設計ファイル（完了時に最新版として登録されます）"
+              title="作業ファイル（メモ・下書きなど。版として登録するファイルは完了のときに選びます）"
             />
             {request.files.length === 0 ? (
               <EmptyState
@@ -650,64 +768,7 @@ export function DesignRequestDetail({
                 message="登録済みバージョンはありません"
               />
             ) : (
-              <Table.ScrollContainer minWidth={640}>
-                <Table highlightOnHover>
-                  <Table.Thead>
-                    <Table.Tr>
-                      <Table.Th ta="right" w={90}>
-                        バージョン
-                      </Table.Th>
-                      <Table.Th>ファイル名</Table.Th>
-                      <Table.Th>備考</Table.Th>
-                      <Table.Th w={150}>登録日時</Table.Th>
-                    </Table.Tr>
-                  </Table.Thead>
-                  <Table.Tbody>
-                    {request.files.map((f) => (
-                      <Table.Tr key={f.id}>
-                        <Table.Td className="tabular-nums" ta="right">
-                          <Group gap="xs" justify="flex-end" wrap="nowrap">
-                            v{f.version}
-                            <Badge
-                              color={DESIGN_FILE_ROLE_COLOR[f.role] ?? "gray"}
-                              variant="light"
-                            >
-                              {DESIGN_FILE_ROLE_LABEL[f.role] ?? f.role}
-                            </Badge>
-                            {f.isLatest && (
-                              <Badge color="green" variant="light">
-                                最新
-                              </Badge>
-                            )}
-                          </Group>
-                        </Table.Td>
-                        <Table.Td>
-                          {/* 版の実体は design_files → files（証憑ではない）
-                              ので専用ルートで開く。 */}
-                          <Anchor
-                            href={`/api/design-files/${encodeURIComponent(f.id)}`}
-                            size="sm"
-                            target="_blank"
-                          >
-                            {f.filename}
-                          </Anchor>
-                          <Text c="dimmed" size="xs">
-                            {f.mimeType}
-                          </Text>
-                        </Table.Td>
-                        <Table.Td>
-                          <Text c={f.notes ? undefined : "dimmed"} size="sm">
-                            {f.notes || "—"}
-                          </Text>
-                        </Table.Td>
-                        <Table.Td className="tabular-nums">
-                          {fmt.dateTime(f.createdAt)}
-                        </Table.Td>
-                      </Table.Tr>
-                    ))}
-                  </Table.Tbody>
-                </Table>
-              </Table.ScrollContainer>
+              <DesignFileList rows={request.files} showSource />
             )}
           </Stack>
         </Tabs.Panel>
@@ -729,7 +790,6 @@ export function DesignRequestDetail({
       </Tabs>
 
       <CompleteDesignModal
-        attachments={attachments}
         loading={isPending}
         onClose={() => setCompleteOpen(false)}
         onConfirm={(input) =>

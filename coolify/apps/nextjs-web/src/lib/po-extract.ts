@@ -10,9 +10,15 @@ import "server-only";
  *     アプリ側の道具（マスタのキーワード生成など）はこちらを使う。
  *
  * ここは接続先（PO_EXTRACT_URL）と `/generate` の呼び出しだけを持つ。
+ *
+ * **どのモデルを使うかは呼び出しごとに決まる** — 管理画面（SY0E）の設定を
+ * `ai-provider.ts` が復号し、`X-AI-Config` ヘッダに載せて渡す。設定が既定
+ * （ローカル ollama）ならヘッダは付かず、po-extract は env どおりに動く。
  * 環境ごとに別インスタンス（po-extract-dev / po-extract-main）が立っており、
  * GPU の ollama だけを共有している — 詳細はルート CLAUDE.md。
  */
+
+import { AiProviderConfigError, aiConfigHeaders } from "./ai-provider";
 
 export const PO_EXTRACT_URL = (
   process.env.PO_EXTRACT_URL ?? "http://po-extract:8000"
@@ -45,11 +51,19 @@ export async function generateJson<T>(
   opts?: { prompt?: string; timeoutMs?: number },
 ): Promise<T> {
   const endpoint = `${PO_EXTRACT_URL}/generate/${task}`;
+  let aiHeaders: Record<string, string>;
+  try {
+    aiHeaders = await aiConfigHeaders();
+  } catch (e) {
+    // 設定側の問題（鍵が変わった等）。プロバイダに届く前なので、そのまま見せる。
+    if (e instanceof AiProviderConfigError) throw new PoExtractError(e.message);
+    throw e;
+  }
   let res: Response;
   try {
     res = await fetch(endpoint, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", ...aiHeaders },
       body: JSON.stringify({ input, prompt: opts?.prompt }),
       signal: AbortSignal.timeout(opts?.timeoutMs ?? TASK_TIMEOUT_MS),
     });
@@ -67,10 +81,12 @@ export async function generateJson<T>(
   if (!res.ok) {
     const body = await res.text().catch(() => null);
     console.error(`[po-extract] ${endpoint} HTTP ${res.status}`, body);
+    const ai = aiErrorMessage(body);
     throw new PoExtractError(
-      res.status === 404
-        ? "AI サービスがこの機能に対応していません（更新が必要です）。"
-        : "AI サービスの処理に失敗しました。時間をおいてもう一度お試しください。",
+      ai ??
+        (res.status === 404
+          ? "AI サービスがこの機能に対応していません（更新が必要です）。"
+          : "AI サービスの処理に失敗しました。時間をおいてもう一度お試しください。"),
     );
   }
   try {
@@ -78,4 +94,42 @@ export async function generateJson<T>(
   } catch {
     throw new PoExtractError("AI の応答を読み取れませんでした。");
   }
+}
+
+/**
+ * po-extract が返す `ai_<kind>: ...`（= プロバイダ由来の失敗）を日本語にする。
+ * 当てはまらなければ null を返し、呼び出し側の既定文言に任せる。
+ *
+ * 分類の集合は `intake-extract-error.ts` と同じ（あちらは取込の失敗票、
+ * こちらは画面へ即返すメッセージ）。
+ */
+export function aiErrorMessage(body: string | null): string | null {
+  if (!body) return null;
+  let detail = body;
+  try {
+    const parsed = JSON.parse(body) as { detail?: unknown };
+    if (typeof parsed.detail === "string") detail = parsed.detail;
+  } catch {
+    // 素のテキストとして扱う
+  }
+  const kind = /^ai_([a-z_]+):/.exec(detail.trim())?.[1];
+  if (!kind) return null;
+  const messages: Record<string, string> = {
+    auth: "AI プロバイダに API トークンを拒否されました。システム設定 → AI プロバイダ で確認してください。",
+    model_not_found:
+      "AI プロバイダに指定のモデルがありません。システム設定 → AI プロバイダ でモデル名を確認してください。",
+    rate_limit:
+      "AI プロバイダの利用上限に達しました。時間をおいてもう一度お試しください。",
+    unreachable:
+      "AI プロバイダへ接続できませんでした。システム管理者へ連絡してください。",
+    bad_schema:
+      "AI プロバイダがこの形式に対応していません。別のモデルをお試しください。",
+    not_configured:
+      "AI プロバイダが未設定です。システム設定 → AI プロバイダ を確認してください。",
+    no_vision:
+      "指定のモデルは画像を読み取れません。システム設定 → AI プロバイダ で画像対応モデルを指定してください。",
+    upstream:
+      "AI プロバイダでエラーが起きました。時間をおいてもう一度お試しください。",
+  };
+  return messages[kind] ?? null;
 }

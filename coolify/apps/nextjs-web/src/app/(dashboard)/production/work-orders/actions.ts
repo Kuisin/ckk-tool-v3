@@ -30,6 +30,10 @@ import { type MaterialAtp, materialAtp } from "@/lib/atp";
 import { getCurrentActorId, recordAudit } from "@/lib/audit";
 import { checkApprovalDocAccess, checkPermission } from "@/lib/authz";
 import { type Prisma, prisma } from "@/lib/db";
+import {
+  type DesignFileRole,
+  resolveSeriesCustomer,
+} from "@/lib/design-files-core";
 import { formatDocNumber, orderLineNumberOf } from "@/lib/doc-number";
 import { type LocalizedText, localized } from "@/lib/format";
 import { allocateDocumentKey, nextSerialNumber } from "@/lib/numbering";
@@ -167,6 +171,8 @@ const workOrderInput = z
     plannedQuantity: z.number().int().min(1, "予定数量は1以上"),
     materialId: z.number().int().positive().nullable(),
     storageLocationId: z.number().int().positive().nullable(),
+    /** 使用する図面の版（任意）。null = 固定しない（そのつど最新を引く）。 */
+    designFileId: z.string().uuid().nullable().optional(),
     notes: z.string(),
     steps: z.array(stepInput).min(1, "工程を1つ以上選択してください"),
     // 製造分は必須。在庫分（FROM_STOCK）は固定構成のため工程リストを使わない。
@@ -270,6 +276,27 @@ async function resolveWorkOrderTarget(
 }
 
 /** 保管場所（任意）の存在・有効チェック。null = 未指定は素通し。 */
+/**
+ * 固定する図面がその製品のものか。**別製品の版を貼らせない** — 画面では
+ * 選べないが、呼び出しが画面からしか来ないとは限らない。
+ * 返り値はエラー文字列、問題なければ null。
+ */
+async function validateDesignFile(
+  designFileId: string | null | undefined,
+  productId: number,
+): Promise<string | null> {
+  if (!designFileId) return null;
+  const df = await prisma.designFile.findUnique({
+    where: { id: designFileId },
+    select: { productId: true },
+  });
+  if (!df) return "対象の設計図が見つかりません";
+  if (df.productId !== productId) {
+    return "この指示書の製品の設計図ではありません";
+  }
+  return null;
+}
+
 async function validateStorageLocation(
   storageLocationId: number | null,
 ): Promise<string | null> {
@@ -373,6 +400,8 @@ export async function createWorkOrder(
     const storageError = await validateStorageLocation(v.storageLocationId);
     if (storageError) return actionError(storageError);
     const { productId } = target;
+    const designError = await validateDesignFile(v.designFileId, productId);
+    if (designError) return actionError(designError);
     const actor = await getCurrentActorId();
     const workOrderNumber = await nextSerialNumber("WORK_ORDER");
     const docKey = await allocateDocumentKey("WORK_ORDER_DOC");
@@ -399,6 +428,7 @@ export async function createWorkOrder(
           plannedQuantity: v.plannedQuantity,
           materialId,
           storageLocationId: v.storageLocationId,
+          designFileId: v.designFileId ?? null,
           routeVersionId: resolvedRouteVersionId,
           status: "DRAFT",
           approvalStatus: "NONE",
@@ -517,6 +547,8 @@ export async function updateWorkOrder(
     const storageError = await validateStorageLocation(v.storageLocationId);
     if (storageError) return actionError(storageError);
     const { productId } = target;
+    const designError = await validateDesignFile(v.designFileId, productId);
+    if (designError) return actionError(designError);
     const actor = await getCurrentActorId();
     const materialId = v.type === "MANUFACTURE" ? v.materialId : null;
 
@@ -542,6 +574,7 @@ export async function updateWorkOrder(
           plannedQuantity: v.plannedQuantity,
           materialId,
           storageLocationId: v.storageLocationId,
+          designFileId: v.designFileId ?? null,
           routeVersionId: resolvedRouteVersionId,
           notes: v.notes.trim() || null,
           history: toHistoryJson(
@@ -1451,4 +1484,132 @@ export async function rejectFlowChange(
   } catch (e) {
     return actionError(prismaErrorMessage(e, "差し戻しに失敗しました"));
   }
+}
+
+/**
+ * 使用する図面の版を固定する / 固定を解除する。
+ *
+ * **任意の操作。** 固定しなければ、表示のたびに製品の最新図面（受注元が
+ * 一致する系列 → 無ければ汎用）を引く。固定すると、あとから改訂されても
+ * 現場が見る図面は変わらない。
+ *
+ * 固定された版は編集・削除できなくなる（lib/design-files-core
+ * canEditDesignFile）— その図面で物を作ったという記録なので、あとから
+ * 中身が変わると「何を見て作ったか」が追えなくなる。
+ */
+export async function setWorkOrderDesignFile(
+  workOrderNumber: number,
+  designFileId: string | null,
+): Promise<ActionResult> {
+  const authz = await checkPermission("work_order", "UPDATE");
+  if (!authz.ok) return actionError(authz.error);
+  try {
+    const wo = await prisma.workOrder.findUnique({
+      where: { workOrderNumber },
+      select: { id: true, productId: true, yearMonth: true, seq: true },
+    });
+    if (!wo) return actionError("対象の指示書が見つかりません");
+
+    if (designFileId) {
+      // 別の製品の図面を貼れないようにする（画面では選べないが、
+      // 呼び出しは画面からしか来ないとは限らない）。
+      const df = await prisma.designFile.findUnique({
+        where: { id: designFileId },
+        select: { productId: true, version: true },
+      });
+      if (!df) return actionError("対象の設計図が見つかりません");
+      if (df.productId !== wo.productId) {
+        return actionError("この指示書の製品の設計図ではありません");
+      }
+    }
+
+    await prisma.workOrder.update({
+      where: { id: wo.id },
+      data: { designFileId },
+    });
+    await recordAudit({
+      action: "UPDATE",
+      tableName: "work_orders",
+      recordId: String(workOrderNumber),
+      after: {
+        note: designFileId ? "使用する図面を固定" : "図面の固定を解除",
+        designFileId,
+      },
+    });
+    revalidate(workOrderNumber, formatDocNumber("WOR", wo));
+    return actionOk();
+  } catch (e) {
+    return actionError(prismaErrorMessage(e, "図面の設定に失敗しました"));
+  }
+}
+
+/**
+ * 製品の設計図の版一覧（指示書ビルダーの「使用する図面」）。
+ *
+ * 版は (製品 × 受注元) ごとの系列なので、**その指示書の顧客で自動解決した
+ * ときに何が使われるか**も一緒に返す。固定しない（null）を選んだときに
+ * 何が出るのか判らないと、固定するかどうかを決められない。
+ */
+export async function getDesignVersionsForProduct(
+  productId: number,
+  customerBpId: string | null,
+): Promise<{
+  options: { value: string; label: string }[];
+  /** 固定しない場合に使われる版の説明（無ければ null）。 */
+  autoLabel: string | null;
+}> {
+  const authz = await checkPermission("work_order", "READ");
+  if (!authz.ok || !Number.isInteger(productId) || productId <= 0) {
+    return { options: [], autoLabel: null };
+  }
+  const rows = await prisma.designFile.findMany({
+    where: { productId, role: { in: ["PREVIEW", "BLUEPRINT"] } },
+    select: {
+      id: true,
+      version: true,
+      isLatest: true,
+      role: true,
+      customerBpId: true,
+      designRequestId: true,
+      file: { select: { filename: true } },
+      customerBp: { select: { name: true } },
+    },
+    orderBy: [{ version: "desc" }, { role: "asc" }],
+    take: 200,
+  });
+
+  const seriesName = (r: (typeof rows)[number]) =>
+    r.customerBpId == null
+      ? "汎用"
+      : localized(r.customerBp?.name as LocalizedText | null) || "受注元";
+
+  // 自動解決の結果（詳細画面と同じ規則を通す）。
+  const series = resolveSeriesCustomer(
+    rows.map((r) => ({
+      id: r.id,
+      version: r.version,
+      isLatest: r.isLatest,
+      role: r.role as DesignFileRole,
+      customerBpId: r.customerBpId,
+      designRequestId: r.designRequestId,
+    })),
+    customerBpId,
+  );
+  const auto =
+    series === undefined
+      ? null
+      : (rows.find((r) => (r.customerBpId ?? null) === series && r.isLatest) ??
+        null);
+
+  return {
+    // 固定できるのは「図面データ」だけにしない — プレビューを指したい場面も
+    // あるので両方出し、どちらか判るようにラベルへ役割を書く。
+    options: rows.map((r) => ({
+      value: r.id,
+      label: `${seriesName(r)} / v${r.version}${r.isLatest ? "（最新）" : ""} ${r.file.filename}`,
+    })),
+    autoLabel: auto
+      ? `${seriesName(auto)} / v${auto.version}（最新）${auto.file.filename}`
+      : null,
+  };
 }

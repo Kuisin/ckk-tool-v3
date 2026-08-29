@@ -212,11 +212,13 @@ SELECT
   dr.kind,
   dr.desired_at,
   dr.priority,
-  dr.change_reason
+  dr.change_reason,
+  coalesce(cbp.name->>'ja', cbp.name->>'en') AS customer_name
 FROM app.design_requests dr
 LEFT JOIN app.products prod ON prod.id = dr.product_id
 LEFT JOIN app.users cu ON cu.id = dr.created_by
 LEFT JOIN app.users au ON au.id = dr.assignee_id
+LEFT JOIN app.business_partners cbp ON cbp.id = dr.customer_bp_id
 LEFT JOIN app.order_lines ol ON ol.id = dr.order_line_id;
 
 -- =====================================================================

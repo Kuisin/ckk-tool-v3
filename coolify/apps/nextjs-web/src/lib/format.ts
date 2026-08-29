@@ -83,6 +83,57 @@ function formatDateWith(
   }
 }
 
+/**
+ * 暦の日付（`YYYY-MM-DD`）を表示形式に並べ替える。**タイムゾーンで読み替えない。**
+ *
+ * フォームの日付項目が持っているのは「2026-03-01」という**暦の日付**であって
+ * 瞬間ではない。`new Date("2026-03-01")` は UTC 0 時と解釈されるので、UTC より
+ * 西のタイムゾーンで表示すると前日にずれる（回答した本人の画面と、それを読む
+ * 海外拠点の画面で日付が 1 日違って見える）。ここでは並べ替えるだけにする。
+ *
+ * 形が合わない値はそのまま返す — 回答は過去の版のもので、いまの検証を
+ * 通っていないことがある。
+ */
+export function formatCalendarDate(
+  value: string | null | undefined,
+  dateFormat: DisplayPreferences["dateFormat"],
+): string {
+  if (!value) return "—";
+  const parts = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value.trim());
+  if (!parts) return value;
+  const [, y, m, d] = parts;
+  switch (dateFormat) {
+    case "YYYY-MM-DD":
+      return `${y}-${m}-${d}`;
+    case "DD/MM/YYYY":
+      return `${d}/${m}/${y}`;
+    case "MM/DD/YYYY":
+      return `${m}/${d}/${y}`;
+    default:
+      return `${y}/${m}/${d}`;
+  }
+}
+
+/**
+ * 時計の時刻（`HH:MM`）を表示形式へ。日付と同じ理由でタイムゾーン変換しない
+ * （「9:00 集合」は読む人の居場所で動かない）。
+ */
+export function formatClockTime(
+  value: string | null | undefined,
+  timeFormat: DisplayPreferences["timeFormat"],
+): string {
+  if (!value) return "—";
+  const parts = /^(\d{1,2}):(\d{2})/.exec(value.trim());
+  if (!parts) return value;
+  const hour = Number(parts[1]);
+  const minute = parts[2];
+  if (!Number.isFinite(hour) || hour > 23) return value;
+  if (timeFormat !== "12h") return `${String(hour).padStart(2, "0")}:${minute}`;
+  const suffix = hour < 12 ? "AM" : "PM";
+  const h12 = hour % 12 === 0 ? 12 : hour % 12;
+  return `${h12}:${minute} ${suffix}`;
+}
+
 /** 表示設定 1 つぶんの整形関数一式。 */
 export interface Formatters {
   readonly prefs: DisplayPreferences;

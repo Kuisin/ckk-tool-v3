@@ -45,6 +45,10 @@ const DB_CONTAINER = "ckk-shots-db";
 const DB_IMAGE = "groonga/pgroonga:4.0.6-alpine-17";
 const DATABASE_URL = `postgresql://postgres:shots@127.0.0.1:${DB_PORT}/ckk`;
 const AUTH_SECRET = "docs-screenshots-fixed-secret-not-production";
+// フッターに出るバージョン。**固定しないと撮り直すたびに全画像が変わる** —
+// 未設定だと AppFooter が "0.0.0" にフォールバックするので、撮る人の環境
+// （.env の有無）で 200 枚超が一斉に差分になっていた。中身は撮影用の固定値。
+const APP_VERSION = "0.1.0-local";
 
 // import:legacy（BP マスタ）より前に流す基盤シード。
 // 権限コード / 業務ロール / フィーチャーフラグ自体は migration が入れるので、
@@ -227,7 +231,7 @@ function buildApp(): void {
   log("next build (production)");
   execFileSync("pnpm", ["run", "build"], {
     cwd: NEXTJS_WEB,
-    env: { ...process.env, DATABASE_URL },
+    env: { ...process.env, DATABASE_URL, NEXT_PUBLIC_APP_VERSION: APP_VERSION },
     stdio: "inherit",
   });
 }
@@ -241,7 +245,7 @@ function buildKiosk(): void {
   log("next build (kiosk)");
   execFileSync("pnpm", ["run", "build"], {
     cwd: NEXTJS_KIOSK,
-    env: { ...process.env, DATABASE_URL },
+    env: { ...process.env, DATABASE_URL, NEXT_PUBLIC_APP_VERSION: APP_VERSION },
     stdio: "inherit",
   });
 }

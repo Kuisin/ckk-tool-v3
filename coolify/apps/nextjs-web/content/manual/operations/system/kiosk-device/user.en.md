@@ -136,6 +136,22 @@ There are 2 numbers for operating the tablet on the floor. Both are normally hid
 
 > ⚠️ Pressing 「**表示**」 is recorded. Tell the numbers only to the staff on the floor, and do not post them on a wall or similar.
 
+#### The maintenance PIN for a tablet that has lost its connection
+
+The maintenance PIN changes at 4:00 every day, but **a tablet keeps the number it had the last time it could talk to the server**. A tablet with no Wi-Fi cannot receive the new number, so the number shown on this screen right now will not open it.
+
+In that case press 「**表示**」 (Show) under 「**この端末が保持している PIN**」 (The PIN this device is holding). It shows the number **last handed to that tablet**. This is the delivery record, not a guess, so it is the number to enter.
+
+Below it is 「**最終同期**」 (Last sync). A tablet showing 「**未同期**」 (Never synced) has not once received a number. The server then has no number for it — it is still on the one built into the app, so check the app's build settings. Reasons a tablet shows 未同期 include:
+
+- The tablet is not linked, or its device period (30 days) has expired
+- The installed app is old and has no PIN fetch (before v0.5.3)
+
+Pressing 「**履歴**」 (History) still lists the past numbers with the period each was valid for. Use it for older tablets that have no per-device record.
+
+- 400 days are kept. A tablet that has been off longer than that cannot be opened with a PIN — connect it to a PC over USB to release it, or set it up again from scratch.
+- Pressing 「**表示**」 and 「**履歴**」 is also recorded.
+
 ### Usage records
 
 - 「**最近の利用者**」 (Recent users) … the people who use that tablet often, and how many times.

@@ -70,6 +70,10 @@ model DesignRequest {
   // 製品未指定の既存行があるので NOT NULL にすると移行が落ちるうえ、
   // 埋める妥当な値も無い。「これからの依頼には必須、過去の行はそのまま」。
   productId      Int?    @map("product_id")
+  // 完成した版がどの系列に載るか（= design_files.customer_bp_id）。
+  // 既定は見積の顧客 / 注文明細の顧客。STANDALONE や汎用の図面は null。
+  // null = 汎用（どの顧客の指示書からも使える）— 製品工程ルートと同じ規約。
+  customerBpId   String? @map("customer_bp_id") @db.Uuid
   description    String?
   // 依頼区分 — 作成時に自動判定して保存。編集できるあいだ（下書き・差し戻し）に
   // 製品が変わったら判定し直す。kindOverridden は人が上書きしたかどうか。
@@ -103,6 +107,7 @@ model DesignRequest {
   quote           Quote?     @relation(fields: [quoteYearMonth, quoteSeq], references: [yearMonth, seq])
   orderLine       OrderLine? @relation(fields: [orderLineId], references: [id])
   product         Product?   @relation(fields: [productId], references: [id])
+  customerBp      BusinessPartner? @relation("DesignRequestCustomerBp", fields: [customerBpId], references: [id])
   assigneeUser    User?      @relation("DesignRequestAssignee", fields: [assigneeId], references: [id])
   requestedByUser User?      @relation("DesignRequestRequestedBy", fields: [requestedBy], references: [id])
   approvedByUser  User?      @relation("DesignRequestApprovedBy", fields: [approvedBy], references: [id])
@@ -141,12 +146,26 @@ enum DesignFileRole {
 // **同じ version の行が複数あってよい。** 1 回の完了で上げたファイルは
 // すべて同じ version・同じ is_latest を持ち、role だけが違う。version は
 // 「図面の改訂世代」であってファイルの通し番号ではない。
-// 製品の「最新図面」= is_latest かつ BLUEPRINT、
+//
+// **版は (製品 × 受注元) ごとに数える。** 同じ製品でも顧客ごとに図面が別々に
+// 育つので、顧客 A の v3 と顧客 B の v1 が同じ製品に同居する。customer_bp_id が
+// null の系列は「汎用」で、顧客専用の図面が無いときのフォールバック。
+// この規約は製品工程ルート（product_process_routes.customer_bp_id）と同じ —
+// 「製品 × 顧客」で枝分かれするものは 1 つの読み方に揃える。
+//
+// 系列内の「最新図面」= is_latest かつ BLUEPRINT、
 // 「最新の 3D プレビュー」= is_latest かつ PREVIEW。
+//
+// **設計依頼を経ない版もある**（design_request_id = null）。図面だけ先に
+// 出来ている・既存図面を取り込む、といった場合に製品マスタから直接足せる。
+// 一覧の「依頼 / 手動」の別はこの列の有無から導く（列を増やして二重に
+// 持たない）。
 model DesignFile {
   id              String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   designRequestId String?  @map("design_request_id") @db.Uuid
   productId       Int?     @map("product_id")
+  // 対象の受注元。null = 汎用。版番号と is_latest はこの列ごとに数える。
+  customerBpId    String?  @map("customer_bp_id") @db.Uuid
   fileId          String   @map("file_id") @db.Uuid
   version         Int      @default(1)
   isLatest        Boolean  @default(true) @map("is_latest")
@@ -159,12 +178,16 @@ model DesignFile {
   // この版を「元図面」に指している改訂依頼。
   baseOfRequests DesignRequest[] @relation("DesignRequestBaseFile")
   product       Product?       @relation(fields: [productId], references: [id])
+  customerBp    BusinessPartner? @relation("DesignFileCustomerBp", fields: [customerBpId], references: [id])
+  // この版を使うと決めた指示書（任意のピン留め）。
+  workOrders    WorkOrder[]    @relation("WorkOrderDesignFile")
   file          File           @relation("DesignFileFile", fields: [fileId], references: [id])
   createdByUser User?          @relation("DesignFileCreatedBy", fields: [createdBy], references: [id])
 
   @@index([designRequestId])
-  // 製品の最新図面（is_latest かつ PRIMARY）を引く。
-  @@index([productId, isLatest, role])
+  // 系列（製品 × 受注元）の最新図面を引く。productId 前方一致で
+  // 「この製品の全系列」も同じ索引で足りる。
+  @@index([productId, customerBpId, isLatest, role])
   @@map("design_files")
   @@schema("app")
 }

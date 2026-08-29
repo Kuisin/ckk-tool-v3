@@ -103,11 +103,14 @@ export interface SaveAttachmentInput {
 /**
  * ファイル検証 — 大きさだけを見る。**形式では弾かない。**
  *
+ * 設計図の版（/api/design-files/upload）も同じ関数を通す。「保存する MIME を
+ * どう決めるか」は 1 箇所であるべきで、経路ごとに別の規則を持たせない。
+ *
  * 保存用 MIME は拡張子の正規値に寄せ（ブラウザの申告はばらつくため）、
  * 知らない拡張子は application/octet-stream にする。octet-stream は
  * INLINE_SAFE_TYPES に無いので、配信時に必ずダウンロード扱いになる。
  */
-function validateFile(
+export function validateFile(
   name: string,
   declaredType: string,
   size: number,

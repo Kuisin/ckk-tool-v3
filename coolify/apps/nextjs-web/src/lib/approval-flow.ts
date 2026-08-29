@@ -175,3 +175,26 @@ export function stepsFromSnapshot(snapshot: unknown): FlowStepSnapshot[] {
     (s) => s != null && typeof s.stepNo === "number",
   );
 }
+
+/**
+ * 書類ライフサイクルの Stepper に出す「承認」段の説明。
+ *
+ * 段数は承認設定 (MS0B) が書類種別ごとに決めるので固定の文言にできない。
+ * 進行中は「2/3 部門承認」、それ以外は担当グループ名を出す。
+ *
+ * 以前は注文請書 / 設計依頼 / 素材発注書 / 購買依頼の 4 画面に**同一の関数が
+ * 重複**していた。文言を直すときに 1 つ直し漏らすと画面ごとに説明が食い違うので、
+ * 純ロジックとしてここに 1 本だけ置く。
+ */
+export function approvalStepDescription(approval: {
+  phase: ApprovalPhase;
+  stepNo: number;
+  stepCount: number;
+  stepLabel: string;
+  groupLabel: string;
+}): string {
+  if (approval.phase === "PENDING" && approval.stepCount > 1) {
+    return `${approval.stepNo}/${approval.stepCount} ${approval.stepLabel}`;
+  }
+  return approval.groupLabel || "承認グループ";
+}

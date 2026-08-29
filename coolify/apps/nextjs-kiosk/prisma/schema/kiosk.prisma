@@ -132,6 +132,20 @@ model KioskDevice {
   activatedById  String?   @map("activated_by") @db.Uuid
   activatedAt    DateTime? @map("activated_at") @db.Timestamptz(6)
   lastActivityAt DateTime? @map("last_activity_at") @db.Timestamptz(6)
+
+  // メンテナンス退出 PIN の同期状況（GET /api/kiosk/unlock-pin が書く）。
+  //
+  // 端末は PIN をローカルに持つので、**その端末が実際に受け取れたか**が分からないと
+  // 「いま何を入れれば開くか」が決まらない。lastActivityAt では代用できない —
+  // あれは WS/HTTP 全般の通信であって、PIN を取れたこととは別（未リンク・
+  // トークン切れなら 401 で取れず、PinSync 以前の APK はそもそも要求しない）。
+  //
+  // unlockPinRotatedAt はそのとき渡した PIN の rotated_at（= system_settings の
+  // updated_at）。kiosk_unlock_pins の同じ時刻の行を引けば**その端末が保持して
+  // いる PIN そのもの**が出る。null = 一度も同期できていない → 端末は
+  // BuildConfig.KIOSK_UNLOCK_PIN（ビルド時の既定値）のまま。
+  unlockPinSyncedAt  DateTime? @map("unlock_pin_synced_at") @db.Timestamptz(6)
+  unlockPinRotatedAt DateTime? @map("unlock_pin_rotated_at") @db.Timestamptz(6)
   createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt      DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
 
@@ -302,5 +316,38 @@ model KioskLinkRequest {
 
   @@index([expiresAt])
   @@map("kiosk_link_requests")
+  @@schema("app")
+}
+
+// ─── メンテナンス退出 PIN の履歴 ──────────────────────────────────────────────
+//
+// 現行値は system_settings['kiosk.unlock_pin'] の 1 行で、pg_cron が毎日 4:00 に
+// **上書き**する（kiosk-cron.sql）。上書きなので旧値はどこにも残らなかった。
+//
+// それが困るのは、端末が PIN を**ローカルに持っている**から（PinSync →
+// SharedPreferences）。オフラインの端末が受け付けるのは「最後に同期できた時点の
+// 値」であって現行値ではない。回線が切れた端末を開けたいとき、必要なのは
+// まさに上書きされて消えた値になる。ここはその 1 行を残すためだけの表。
+//
+// 「いつの PIN か」を引くための表なので rotated_at（有効になった時刻）だけ持ち、
+// 有効期間の終わりは次の行の rotated_at から導く（更新が要らない = cron の
+// INSERT 1 本で済む）。
+//
+// 保持期間は 400 日 — login_attempts の失敗行と同じ既定に合わせる。行は 1 日 1 本
+// なので容量は問題にならず、長く持つことの危険も小さい（旧 PIN で開けられるのは
+// 「その値のまま止まっているオフライン端末」だけで、DB を読める相手は現行値も
+// 読める）。刈り取りは同じ pg_cron ジョブが行う。
+//
+// 参照は SY09 端末詳細（kiosk 権限 = 管理者のみ）。表示は監査ログに残る。
+
+model KioskUnlockPin {
+  id        BigInt   @id @default(autoincrement())
+  pin       String   @db.VarChar(8)
+  // この PIN が有効になった時刻。有効期間の終わり = 次の行の rotatedAt
+  rotatedAt DateTime @default(now()) @map("rotated_at") @db.Timestamptz(6)
+  source    String   @default("pg_cron") @db.VarChar(16) // "pg_cron" | "migration"
+
+  @@index([rotatedAt])
+  @@map("kiosk_unlock_pins")
   @@schema("app")
 }

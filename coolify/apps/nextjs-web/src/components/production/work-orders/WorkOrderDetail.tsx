@@ -40,6 +40,7 @@ import {
   acknowledgeFlowChangeAction,
   cancelWorkOrder,
   copyWorkOrder,
+  setWorkOrderDesignFile,
 } from "@/app/(dashboard)/production/work-orders/actions";
 import type { ApprovalActionState } from "@/components/approvals/ApprovalActionCard";
 import { useFormat } from "@/components/layout/PreferencesProvider";
@@ -50,6 +51,7 @@ import {
 } from "@/components/production/ApprovalStatusPanel";
 import { WorkOrderStepsPanel } from "@/components/production/WorkOrderStepsPanel";
 import type { ProductDesignFile } from "@/components/sales/design-requests/model";
+import { GhostButton } from "@/components/ui/buttons";
 import { DesignFileThumb } from "@/components/ui/DesignFileViewer";
 import { DocNumber } from "@/components/ui/DocNumber";
 import { EmptyState } from "@/components/ui/EmptyState";
@@ -86,6 +88,7 @@ export function WorkOrderDetail({
   flowChangeApproval = null,
   rejectedAppliedFlowChange = null,
   designFile = null,
+  designPinned = false,
   variant = "default",
 }: {
   workOrder: WorkOrderView;
@@ -99,6 +102,8 @@ export function WorkOrderDetail({
   catalogOptions?: { value: string; label: string }[];
   /** この指示書の製品の最新の主図面（無ければ null）。 */
   designFile?: ProductDesignFile | null;
+  /** その版に固定されているか（false = 表示のたびに最新を引いている）。 */
+  designPinned?: boolean;
   /** 承認待ちの工程フロー変更（承認設定が未設定なら常に null = 即適用）。 */
   flowChange?: PendingFlowChangeView | null;
   /** 上の変更そのものの承認状態（指示書の承認とは別物）。 */
@@ -128,6 +133,30 @@ export function WorkOrderDetail({
   const isApproval = variant === "approval";
   const canEdit = wo.status === "DRAFT";
   const canCancel = wo.status === "DRAFT" || wo.status === "PENDING_APPROVAL";
+
+  // 図面の固定 / 解除。任意の操作なので、失敗しても指示書側は何も変えない。
+  const onToggleDesignPin = (designFileId: string | null) => {
+    startTransition(async () => {
+      const res = await setWorkOrderDesignFile(
+        wo.workOrderNumber,
+        designFileId,
+      );
+      if (res.ok) {
+        notifications.show({
+          title: designFileId ? "固定しました" : "固定を解除しました",
+          message: "",
+          color: "green",
+        });
+        router.refresh();
+      } else {
+        notifications.show({
+          title: "エラー",
+          message: res.error ?? "失敗しました",
+          color: "red",
+        });
+      }
+    });
+  };
 
   const handleCopy = () => {
     startTransition(async () => {
@@ -475,18 +504,47 @@ export function WorkOrderDetail({
         <Tabs.Panel pt="md" value="drawing">
           {designFile ? (
             <Stack gap="sm">
+              {/* 固定しているか、そのつど最新を引いているか。現場が見ている
+                  図面が「改訂で変わりうるもの」かどうかは、ここでしか判らない。 */}
+              <Group gap="xs" wrap="wrap">
+                <Badge color={designPinned ? "violet" : "gray"} variant="light">
+                  {designPinned ? "この版に固定" : "最新を表示"}
+                </Badge>
+                {designFile.customerName ? (
+                  <Badge color="blue" variant="light">
+                    {designFile.customerName}
+                  </Badge>
+                ) : (
+                  <Badge color="gray" variant="outline">
+                    汎用
+                  </Badge>
+                )}
+                {onToggleDesignPin && (
+                  <GhostButton
+                    onClick={() =>
+                      onToggleDesignPin(designPinned ? null : designFile.id)
+                    }
+                  >
+                    {designPinned ? "固定を解除" : "この版に固定"}
+                  </GhostButton>
+                )}
+              </Group>
               <Box maw={360}>
                 <DesignFileThumb
                   target={{
-                    caption: `v${designFile.version}（最新）`,
+                    caption: `v${designFile.version}${designPinned ? "" : "（最新）"}`,
                     filename: designFile.filename,
                     mimeType: designFile.mimeType,
                     src: `/api/design-files/${encodeURIComponent(designFile.id)}`,
                   }}
                 />
               </Box>
-              <Group gap="sm" wrap="nowrap">
-                <Text size="sm">{designFile.filename}</Text>
+              {/* wrap="wrap" — 長いファイル名 + 依頼番号は 375px で 1 行に
+                  収まらない。nowrap のままだと依頼番号が枠外へ出る。 */}
+              <Group gap="sm" wrap="wrap">
+                <Text size="sm" style={{ overflowWrap: "anywhere" }}>
+                  {designFile.filename}
+                </Text>
                 {designFile.requestNumber && (
                   <Anchor
                     onClick={() =>

@@ -32,7 +32,6 @@ import {
   Paper,
   Select,
   Stack,
-  Stepper,
   Table,
   Tabs,
   Text,
@@ -106,6 +105,12 @@ import { MemoPanel } from "@/components/ui/MemoPanel";
 import { MoneyText } from "@/components/ui/MoneyText";
 import { ModalShell } from "@/components/ui/modals";
 import { NextStepCard } from "@/components/ui/NextStepCard";
+import {
+  approvalStage,
+  type HandoffGroup,
+  ProcedurePanel,
+  type ProcedureStage,
+} from "@/components/ui/ProcedurePanel";
 import { SalesRepSelect } from "@/components/ui/SalesRepSelect";
 import { SearchSelect } from "@/components/ui/SearchSelect";
 import { StatusBadge } from "@/components/ui/StatusBadge";
@@ -174,17 +179,6 @@ function stepperActive(status: string): number {
 }
 
 const EMPTY_PRICE_CHECK: AcceptancePriceCheck = { lines: [], diffCount: 0 };
-
-/**
- * 書類ライフサイクルの Stepper に出す「承認」段の説明。段数は承認設定 (MS0B)
- * が決めるので、進行中は「2/3 部門承認」、それ以外は担当グループ名を出す。
- */
-function approvalStepDescription(approval: ApprovalActionState): string {
-  if (approval.phase === "PENDING" && approval.stepCount > 1) {
-    return `${approval.stepNo}/${approval.stepCount} ${approval.stepLabel}`;
-  }
-  return approval.groupLabel || "承認グループ";
-}
 
 export function OrderAcceptanceDetail({
   acceptance,
@@ -261,6 +255,71 @@ export function OrderAcceptanceDetail({
     return () => clearInterval(timer);
   }, [awaitingExtraction, router]);
   const fileUrl = a.sourceFilename ? sourceFileUrl(a) : null;
+
+  // ── 手続き状況（取込 → 下書き → 承認 → 確定）─────────────────────────────
+  const stages: ProcedureStage[] = [
+    {
+      key: "import",
+      label: "取込",
+      description: sourceDef.label,
+      loading: a.status === "IMPORT",
+    },
+    {
+      key: "draft",
+      label: "下書き",
+      description: "内容確認・編集",
+      loading: a.status === "DRAFT",
+    },
+    approvalStage(approval, { fmtDate: (v) => fmt.date(v) }),
+    {
+      key: "completed",
+      label: "確定",
+      description: a.completedAt ? fmt.date(a.completedAt) : "注文明細へ",
+      loading: a.status === "APPROVED",
+    },
+  ];
+
+  // 上流 = 元になった見積書（FAX 直受けの注文書には無い）。
+  const sourceGroups: HandoffGroup[] | undefined = a.quoteNumber
+    ? [
+        {
+          key: "quote",
+          title: "見積書",
+          items: [
+            {
+              key: a.quoteNumber,
+              label: a.quoteNumber,
+              href: `/sales/quotes/${a.quoteNumber}`,
+              note: "この注文請書の見積元",
+            },
+          ],
+          emptyNote: "—",
+        },
+      ]
+    : undefined;
+
+  // 下流 = 確定で生成された注文明細（1 明細行 = 1 注文明細）。
+  const handoffGroups: HandoffGroup[] = [
+    {
+      key: "order-lines",
+      title: "注文明細",
+      summary:
+        a.orderLineNumbers.length > 0
+          ? `${a.orderLineNumbers.length} 件`
+          : null,
+      items: a.orderLineNumbers.map((n) => ({
+        key: n,
+        label: n,
+        href: `${SALES_ORDERS_PATH}/${n}`,
+        done: true,
+        note: null,
+      })),
+      emptyNote:
+        a.status === "APPROVED"
+          ? "未展開（確定すると注文明細を作成します）"
+          : "未展開（承認・確定後に注文明細へ展開します）",
+    },
+  ];
 
   // 承認依頼の可否 — 確定と同じ完成条件（サーバーの submitForApproval と
   // 同じ関数）。足りない項目があるうちはボタンを押せなくし、理由をカードに出す。
@@ -973,65 +1032,16 @@ export function OrderAcceptanceDetail({
               </>
             )}
 
-            {/* 承認・展開状況パネル */}
-            <Paper p="md" radius="md" withBorder>
-              <Title mb="md" order={5}>
-                承認・展開状況
-              </Title>
-
-              <Stepper active={stepperActive(a.status)} size="sm">
-                <Stepper.Step
-                  description={sourceDef.label}
-                  label="取込"
-                  loading={a.status === "IMPORT"}
-                />
-                <Stepper.Step
-                  description="内容確認・編集"
-                  label="下書き"
-                  loading={a.status === "DRAFT"}
-                />
-                <Stepper.Step
-                  description={approvalStepDescription(approval)}
-                  label="承認"
-                  loading={a.status === "REQUESTED"}
-                />
-                <Stepper.Step
-                  description={
-                    a.completedAt ? fmt.date(a.completedAt) : "注文明細へ"
-                  }
-                  label="確定"
-                  loading={a.status === "APPROVED"}
-                />
-              </Stepper>
-
+            <ProcedurePanel
+              active={stepperActive(a.status)}
+              handoffGroups={handoffGroups}
+              sourceGroups={sourceGroups}
+              stages={stages}
+            >
               {a.status === "ARCHIVED" && (
                 <Text c="dimmed" mt="md" size="xs">
                   アーカイブ済み（{fmt.dateTime(a.archivedAt)}）
                 </Text>
-              )}
-
-              {/* 確定で生成された注文明細 */}
-              {a.orderLineNumbers.length > 0 && (
-                <>
-                  <Divider my="md" />
-                  <Stack gap="xs">
-                    <Text c="dimmed" fw={600} size="xs">
-                      生成された注文明細
-                    </Text>
-                    <Group gap="sm">
-                      {a.orderLineNumbers.map((n) => (
-                        <Anchor
-                          ff="mono"
-                          href={`${SALES_ORDERS_PATH}/${n}`}
-                          key={n}
-                          size="sm"
-                        >
-                          {n}
-                        </Anchor>
-                      ))}
-                    </Group>
-                  </Stack>
-                </>
               )}
 
               {countTrailRecords(approvalTrail) > 0 && (
@@ -1040,7 +1050,7 @@ export function OrderAcceptanceDetail({
                   <ApprovalTrailList trail={approvalTrail} />
                 </>
               )}
-            </Paper>
+            </ProcedurePanel>
 
             <Tabs onChange={setTab} value={tab}>
               <Tabs.List>

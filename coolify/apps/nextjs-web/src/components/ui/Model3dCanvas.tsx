@@ -8,7 +8,7 @@
  * React Flow のときと同じ約束で、ライブラリに業務判断をさせない。
  *
  * O3DV は document / WebGL を直に触るので **必ず ssr:false で読み込むこと**
- * （エントリは Model3dViewer.tsx。ここを直接 import しない）。
+ * （エントリは DesignFileViewer.tsx の dynamic import。ここを直接 import しない）。
  *
  * npm の online-3d-viewer はエンジンだけを同梱していて、STEP / IGES / 3DM /
  * IFC が要る wasm は入っていない。そのため対応形式は
@@ -23,18 +23,29 @@
  */
 
 import { Box, Center, Loader, Stack, Text } from "@mantine/core";
+import { IconCube } from "@tabler/icons-react";
 import { useEffect, useRef, useState } from "react";
 
 export function Model3dCanvas({
   src,
   filename,
   height = 420,
+  interactive = true,
+  compact,
 }: {
   /** モデルの URL（/api/design-files/<id> など）。 */
   src: string;
   /** 本来のファイル名。**拡張子がインポータの選択に要る。** */
   filename: string;
   height?: number | string;
+  /**
+   * 指・マウスの操作を受けるか。サムネイルでは false —
+   * 押したら回るのではなく**拡大が開く**のが期待される動きなので、
+   * 操作はキャンバスに渡さず外側のボタンへ通す。
+   */
+  interactive?: boolean;
+  /** 小さい枠向けの控えめな読み込み表示（文言を出さない）。 */
+  compact?: boolean;
 }) {
   const holder = useRef<HTMLDivElement>(null);
   const [state, setState] = useState<"loading" | "ready" | "error">("loading");
@@ -45,6 +56,7 @@ export function Model3dCanvas({
     let disposed = false;
     // biome-ignore lint/suspicious/noExplicitAny: O3DV の EmbeddedViewer は型を公開していない
     let viewer: any = null;
+    let observer: ResizeObserver | null = null;
 
     void (async () => {
       try {
@@ -69,6 +81,21 @@ export function Model3dCanvas({
         viewer.LoadModelFromFileList([
           new File([blob], filename, { type: blob.type }),
         ]);
+
+        // O3DV は window の resize しか見ていない。モバイルでは
+        // 画面回転・アドレスバーの出入り・全画面モーダルの開き切りで
+        // **入れ物だけ**が変わることがあり、そのとき canvas が古い寸法のまま
+        // 引き伸ばされる。入れ物そのものを観測して measure し直す。
+        if (typeof ResizeObserver !== "undefined" && holder.current) {
+          observer = new ResizeObserver(() => {
+            try {
+              viewer?.Resize?.();
+            } catch {
+              // 破棄途中に来ることがある。描画の追従は諦めてよい
+            }
+          });
+          observer.observe(holder.current);
+        }
       } catch {
         if (!disposed) setState("error");
       }
@@ -76,10 +103,12 @@ export function Model3dCanvas({
 
     return () => {
       disposed = true;
-      // EmbeddedViewer は Destroy を持たない版があるので、生成した DOM ごと畳む
-      // （残すと WebGL コンテキストが溜まってタブが落ちる）。
+      observer?.disconnect();
+      // **必ず Destroy する。** WebGL コンテキストの同時保持数はモバイルの方が
+      // ずっと少なく（iOS Safari で 8〜16 程度）、開いて閉じるたびに漏らすと
+      // 数回でタブごと落ちる。
       try {
-        viewer?.viewer?.renderer?.dispose?.();
+        viewer?.Destroy?.();
       } catch {
         // 破棄に失敗しても画面は閉じる
       }
@@ -89,7 +118,18 @@ export function Model3dCanvas({
 
   return (
     <Box pos="relative" style={{ height, width: "100%" }}>
-      <div ref={holder} style={{ height: "100%", width: "100%" }} />
+      {/* touchAction: none — 指のドラッグを O3DV の回転に渡す。
+          既定のままだとブラウザがスクロールとして横取りし、
+          モバイルでモデルを回せない。 */}
+      <div
+        ref={holder}
+        style={{
+          height: "100%",
+          pointerEvents: interactive ? undefined : "none",
+          touchAction: interactive ? "none" : undefined,
+          width: "100%",
+        }}
+      />
       {state !== "ready" && (
         <Center
           pos="absolute"
@@ -99,12 +139,21 @@ export function Model3dCanvas({
           {state === "loading" ? (
             <Stack align="center" gap="xs">
               <Loader size="sm" />
+              {!compact && (
+                <Text c="dimmed" size="xs">
+                  3D モデルを読み込んでいます…
+                </Text>
+              )}
+            </Stack>
+          ) : compact ? (
+            <Stack align="center" gap={4}>
+              <IconCube size={28} />
               <Text c="dimmed" size="xs">
-                3D モデルを読み込んでいます…
+                3D モデル
               </Text>
             </Stack>
           ) : (
-            <Text c="dimmed" size="sm">
+            <Text c="dimmed" size="sm" ta="center">
               このファイルは表示できませんでした（ダウンロードしてご覧ください）
             </Text>
           )}

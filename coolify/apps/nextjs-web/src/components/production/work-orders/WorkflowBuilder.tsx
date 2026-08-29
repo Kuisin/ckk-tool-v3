@@ -61,6 +61,7 @@ import {
 } from "@/app/(dashboard)/_shared/option-search";
 import {
   createWorkOrder,
+  getDesignVersionsForProduct,
   getMaterialAtp,
   getOrderLineInfo,
   getProductRoutesForOrderLine,
@@ -115,6 +116,8 @@ const schema = z.object({
   plannedQuantity: z.number().int().min(1, "予定数量は1以上"),
   materialId: z.string().nullable(),
   storageLocationId: z.string().nullable(),
+  /** 使用する図面の版。null = 固定しない（そのつど最新を引く）。 */
+  designFileId: z.string().nullable(),
   notes: z.string(),
   selectedStepIds: z.array(z.number()).min(1, "工程を1つ以上選択してください"),
 });
@@ -142,6 +145,7 @@ function initialValues(
       plannedQuantity: 1,
       materialId: null,
       storageLocationId: null,
+      designFileId: null,
       notes: "",
       selectedStepIds: [],
     };
@@ -157,6 +161,7 @@ function initialValues(
       workOrder.storageLocationId != null
         ? String(workOrder.storageLocationId)
         : null,
+    designFileId: workOrder.designFileId ?? null,
     notes: workOrder.notes ?? "",
     selectedStepIds: workOrder.steps.map((s) => s.processStepId),
   };
@@ -494,6 +499,43 @@ export function WorkflowBuilder({
       cancelled = true;
     };
   }, [target, firstOrderLineId, productIdValue]);
+
+  // 使用する図面の候補。routesInfo が製品と受注元を解決済みなので、
+  // そこに相乗りする（同じものを 2 回引かない）。
+  const [designInfo, setDesignInfo] = useState<{
+    options: Option[];
+    autoLabel: string | null;
+  } | null>(null);
+  const designProductId = routesInfo?.productId ?? null;
+  const designCustomerBpId = routesInfo?.customerBpId ?? null;
+  useEffect(() => {
+    if (designProductId == null) {
+      setDesignInfo(null);
+      return;
+    }
+    let cancelled = false;
+    getDesignVersionsForProduct(designProductId, designCustomerBpId).then(
+      (info) => {
+        if (!cancelled) setDesignInfo(info);
+      },
+    );
+    return () => {
+      cancelled = true;
+    };
+  }, [designProductId, designCustomerBpId]);
+
+  // 別製品へ切り替えたら図面の固定は外す（他製品の版が残ると保存で弾かれる）。
+  // **初回は外さない** — 編集で開いたときは保存済みの固定が入っており、
+  // ここで消すと「開いただけで設定が消える」ことになる。
+  const prevDesignProductId = useRef<number | null>(null);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: 製品が変わったときだけ
+  useEffect(() => {
+    const prev = prevDesignProductId.current;
+    prevDesignProductId.current = designProductId;
+    if (prev != null && prev !== designProductId) {
+      form.setFieldValue("designFileId", null);
+    }
+  }, [designProductId]);
 
   // 別製品の注文明細へ切り替えたらルート選択をリセット
   useEffect(() => {
@@ -837,6 +879,7 @@ export function WorkflowBuilder({
       storageLocationId: values.storageLocationId
         ? Number(values.storageLocationId)
         : null,
+      designFileId: values.designFileId,
       notes: values.notes,
       steps: currentSnapshots.map((s) => ({
         processStepId: s.processStepId,
@@ -1141,6 +1184,23 @@ export function WorkflowBuilder({
             searchable={storageLocationOptions.length > 5}
             {...form.getInputProps("storageLocationId")}
           />
+          {/* 使用する図面（任意）。固定しなければ、そのつど最新の版を引く
+              ので、改訂されれば現場が見る図面も変わる。固定すると変わらない。 */}
+          {designInfo && designInfo.options.length > 0 && (
+            <Select
+              clearable
+              data={designInfo.options}
+              description={
+                designInfo.autoLabel
+                  ? `固定しない場合: ${designInfo.autoLabel}`
+                  : "この製品の図面はまだありません"
+              }
+              label="使用する図面"
+              placeholder="固定しない（そのつど最新）"
+              searchable={designInfo.options.length > 5}
+              {...form.getInputProps("designFileId")}
+            />
+          )}
         </SimpleGrid>
         {/* 素材 ATP 警告（充足=緑 / 不足+入荷予定あり=黄 / 不足+入荷予定なし=赤）。
             警告のみ — 保存はブロックしない（§5 素材判断は指示書承認側で行う）。 */}

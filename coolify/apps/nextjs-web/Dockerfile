@@ -37,6 +37,14 @@ WORKDIR /app/coolify/apps/nextjs-web
 RUN pnpm exec prisma generate
 WORKDIR /app
 COPY coolify/apps/nextjs-web ./coolify/apps/nextjs-web
+# このイメージが前提にしているマイグレーション一覧。/api/health がこれと
+# _prisma_migrations を突き合わせ、揃うまで unhealthy を返す（デプロイと
+# マイグレーションの順序を無関係にするため — lib/schema-readiness.ts）。
+# migrations が変わったときだけこの層が焼き直される。
+COPY shared-db/prisma/migrations ./shared-db-migrations
+RUN find ./shared-db-migrations -mindepth 1 -maxdepth 1 -type d -printf '%f\n' \
+      | sort > /app/required-migrations.txt \
+  && echo "required migrations: $(wc -l < /app/required-migrations.txt)"
 WORKDIR /app/coolify/apps/nextjs-web
 ENV NEXT_TELEMETRY_DISABLED=1
 ARG NEXT_PUBLIC_APP_VERSION=0.1.0
@@ -67,6 +75,22 @@ RUN groupadd -g 1001 nodejs && useradd -u 1001 -g nodejs -m nextjs
 COPY --from=builder --chown=nextjs:nodejs /app/coolify/apps/nextjs-web/.next/standalone ./
 COPY --from=builder /app/coolify/apps/nextjs-web/public ./coolify/apps/nextjs-web/public
 COPY --from=builder --chown=nextjs:nodejs /app/coolify/apps/nextjs-web/.next/static ./coolify/apps/nextjs-web/.next/static
+# server.js は /app から起動するので、readiness の既定パスもここ。
+COPY --from=builder --chown=nextjs:nodejs /app/required-migrations.txt ./required-migrations.txt
+
+# スキーマ準備の待ち合わせ。**既定は無効**で、環境ごとに Coolify の env で
+# SCHEMA_READINESS_GATE=1 を入れたところだけ有効になる（まず dev で確かめる）。
+#
+# 有効なとき /api/health は、このイメージが前提にするマイグレーションが全部
+# 当たるまで 503 を返す。Coolify は healthy になるまで新コンテナを公開しない
+# ので、**デプロイが先に来ても 500 を出さずに migrator を待つ**（その間は
+# 旧コンテナが serving を続けるので無停止）。
+#
+# start-period が長くても、スキーマが揃っていれば最初の probe で healthy に
+# なるため通常のデプロイは遅くならない。長さが効くのは「待っている間」だけ。
+ENV SCHEMA_READINESS_GATE=0
+HEALTHCHECK --interval=10s --timeout=5s --start-period=300s --retries=30 \
+  CMD node -e "if(process.env.SCHEMA_READINESS_GATE!=='1')process.exit(0);fetch('http://127.0.0.1:'+(process.env.PORT||3000)+'/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
 
 USER nextjs
 EXPOSE 3000

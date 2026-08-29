@@ -1,10 +1,16 @@
 import { Group, Stack, Text, Title } from "@mantine/core";
 import { IconSearchOff } from "@tabler/icons-react";
+import { redirect } from "next/navigation";
 import { FormStateScreen } from "@/components/forms/FormStateScreen";
 import { PublicResponsesTable } from "@/components/forms/PublicResponsesTable";
 import { SecondaryButton } from "@/components/ui/buttons";
 import { sessionUserId } from "@/lib/authz";
-import { fetchForm, formAccess, listResponses } from "@/lib/forms";
+import {
+  fetchForm,
+  formAccess,
+  formsAppAvailable,
+  listResponses,
+} from "@/lib/forms";
 import { NO_SHARE_ACCESS } from "@/lib/share-grants";
 
 export const dynamic = "force-dynamic";
@@ -48,6 +54,10 @@ export default async function PublicResponsesPage({
       />
     );
   }
+
+  // 閲覧できると決まったあとで転送する（判定より前に出すと実在を明かす）。
+  // 転送先 /general/forms/<code> の門も access.canRead で、ここと同じ。
+  if (await formsAppAvailable()) redirect(`/general/forms/${code}`);
 
   const responses = await listResponses(form, access.responseScope, userId);
   const limited = !access.responseScope.all;

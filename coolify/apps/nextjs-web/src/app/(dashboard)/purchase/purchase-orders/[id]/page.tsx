@@ -4,6 +4,7 @@ import { fetchApprovalState, fetchApprovalTrail } from "@/lib/approvals";
 import { listAttachments } from "@/lib/attachments";
 import { fetchAuditEntries } from "@/lib/audit";
 import { requireAppRead } from "@/lib/authz-page";
+import { fetchReceiptsForPurchaseOrder } from "../../material-receipts/data";
 import { fetchPurchaseOrder } from "../data";
 
 export const dynamic = "force-dynamic";
@@ -41,6 +42,9 @@ export default async function PurchasePurchaseOrdersDetailPage({
     ]);
   if (!purchaseOrder) notFound();
 
+  // 入荷は発注書の uuid で引くので、発注書を取ってからの 2 段目。
+  const receipts = await fetchReceiptsForPurchaseOrder(purchaseOrder.id);
+
   return (
     <PurchaseOrderDetail
       approval={approval}
@@ -48,6 +52,7 @@ export default async function PurchasePurchaseOrdersDetailPage({
       attachments={attachments}
       auditEntries={auditEntries}
       purchaseOrder={purchaseOrder}
+      receipts={receipts}
     />
   );
 }

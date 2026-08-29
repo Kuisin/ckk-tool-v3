@@ -55,7 +55,12 @@ jobs:
       run:
         working-directory: coolify/apps/nextjs-web
     steps:
+      # fetch-depth: 0 — マイグレーション後方互換ガードが base との差分を
+      # 取るため。浅いクローンだと origin/<base> が無く、diff が空になって
+      # **ガードが黙って通ってしまう**（守っているつもりで守れていない状態）。
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       # Reads the pinned pnpm version from the root "packageManager" field.
       - uses: pnpm/action-setup@v4
@@ -89,6 +94,15 @@ jobs:
       # （tsc も biome も next build も検出しない）。
       - name: Server Action export guard ("use server")
         run: bash scripts/check-use-server-exports.sh
+
+      # マイグレーションは「前のバージョンのアプリでも動く」形であること。
+      # デプロイと migrator は同じ merge から並行に走り、どちらが先に着くか
+      # 決められない。列を落とす・改名する類は、まだ serving 中の旧コンテナを
+      # 壊す。禁止はしないが、migration.sql に
+      #   -- allow-destructive: <理由>
+      # と書いて意図的だと言わせる。
+      - name: Migration backward-compat guard
+        run: bash scripts/check-migration-compat.sh "origin/${{ github.base_ref }}"
 
       # ── strict gates: promotion PRs into main only ──────────────────────
       - name: Lint strict — warnings as errors (main)

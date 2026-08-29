@@ -98,6 +98,13 @@ model WorkOrder {
   // 工程は work_order_steps に実体化済みで、出所リンクだけが外れる。
   routeVersionId String? @map("route_version_id") @db.Uuid
 
+  // 使用する図面の版（**任意**）。null = 固定しない → 表示のたびに製品の
+  // 最新図面（受注元が一致する系列 → 無ければ汎用）を引く。
+  // 指定すると版がその指示書に固定され、あとから改訂されても現場が見る図面は
+  // 変わらない。ピン留めされた版は編集・削除できなくなる（作った物の根拠を
+  // あとから書き換えさせない）。
+  designFileId   String? @map("design_file_id") @db.Uuid
+
   // 承認遷移（MaterialPurchaseOrder と同型の row-workflow）。
   // 段ごとの日時・承認者は approval_requests / approval_records が持つ。
   requestedAt  DateTime? @map("requested_at") @db.Timestamptz(6)
@@ -117,6 +124,7 @@ model WorkOrder {
   updatedAt   DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
 
   product         Product     @relation(fields: [productId], references: [id])
+  designFile      DesignFile? @relation("WorkOrderDesignFile", fields: [designFileId], references: [id])
   material        Material?   @relation(fields: [materialId], references: [id])
   storageLocation StorageLocation? @relation("WorkOrderStorageLocation", fields: [storageLocationId], references: [id])
   sourceWorkOrder WorkOrder? @relation("WorkOrderCopySource", fields: [sourceWorkOrderId], references: [id])

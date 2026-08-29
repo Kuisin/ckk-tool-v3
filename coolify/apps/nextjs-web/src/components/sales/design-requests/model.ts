@@ -122,6 +122,13 @@ export interface ProductDesignFile {
   filename: string;
   /** 生成元の設計依頼（DSG-…）。手動登録の版は null。 */
   requestNumber: string | null;
+  /** 依頼 id そのもの。「依頼 / 手動」の別はこれの有無から導く。 */
+  designRequestId: string | null;
+  /** 版系列の軸。null = 汎用（どの顧客の指示書からも使える）。 */
+  customerBpId: string | null;
+  customerName: string | null;
+  /** 指示書がこの版を指しているか。true なら編集・削除できない。 */
+  usedByWorkOrder: boolean;
   notes: string | null;
   createdAt: string;
 }
@@ -210,6 +217,9 @@ export interface DesignRequest {
   cancelledAt: string | null;
   cancelReason: string | null;
   history: DesignRequestHistoryView[];
+  /** 完成した版が載る系列。null = 汎用。 */
+  customerBpId: string | null;
+  customerName: string | null;
   files: DesignRequestFile[];
   createdAt: string;
   updatedAt: string;

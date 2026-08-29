@@ -195,6 +195,8 @@ export interface WorkOrderView {
   materialName: string | null;
   /** 完成品の保管場所（保管場所マスタ MS0E。null = 未指定）。 */
   storageLocationId: number | null;
+  /** 使用する図面の版（任意のピン留め）。null = そのつど最新を引く。 */
+  designFileId: string | null;
   storageLocationName: string | null;
   /** 注文明細の対象製品（工程ルートのリンク先）。 */
   productId: number;

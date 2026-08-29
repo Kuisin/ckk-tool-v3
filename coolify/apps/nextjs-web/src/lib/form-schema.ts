@@ -608,3 +608,42 @@ export function editDeadlineOf(form: EditWindow): Date | null {
       return null;
   }
 }
+
+/**
+ * 提出したときに承認依頼まで自動で通すか。
+ *
+ * **提出＝申請**にするための判定。以前は提出後に本人が回答詳細を開いて
+ * 「承認依頼」を押す必要があり、その一手間が忘れられて申請が滞留していた。
+ *
+ * 対象は申請・報告フォームで承認フローを使う設定のものだけ。起こす条件は
+ * 「いま出した」に相当するもの:
+ *   - 新規に提出した（prevStatus なし）
+ *   - 下書きを提出に切り替えた
+ *   - 差し戻された回答を直して保存した（＝再依頼）
+ *   - 提出済みのまま止まっている回答を保存し直した
+ *
+ * 最後の 1 つは**取りこぼしの回収**。承認フローが未設定のまま提出された回答は
+ * SUBMITTED で止まり、手動の承認依頼ボタンはもう無い。フローを設定したあとに
+ * 本人が開いて保存し直せば流れ出す、という逃げ道をここで用意しておく。
+ *
+ * **承認依頼中（REQUESTED）の編集では起こさない。** フォームの設定
+ * `editableUntilFirstApproval` で初回承認前だけ直せる場合があるが、そこで
+ * フローを張り直すと進行中の依頼と承認枠を捨てることになる。
+ *
+ * 承認済み（APPROVED）はそもそも編集できないので、ここへは来ない。
+ */
+export function shouldAutoRequestApproval(
+  form: { kind: string; approvalEnabled: boolean },
+  /** 保存前の状態。新規提出では null。 */
+  prevStatus: string | null,
+  asDraft: boolean,
+): boolean {
+  if (asDraft) return false;
+  if (form.kind !== "REQUEST" || !form.approvalEnabled) return false;
+  return (
+    prevStatus === null ||
+    prevStatus === "DRAFT" ||
+    prevStatus === "REJECTED" ||
+    prevStatus === "SUBMITTED"
+  );
+}

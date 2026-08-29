@@ -321,6 +321,7 @@ Operation codes provide keyboard-shortcut navigation. Format: `{CAT}{MODE}{IDX}`
 | システム | B | リンク管理 | SY0B | — | — |
 | システム | C | 注文書取込 | SY0C | — | — |
 | システム | D | ログイン履歴 | SY0D | — | — |
+| システム | E | AI プロバイダ | SY0E | — | — |
 
 > `CM00`（ダッシュボード）は**アプリ一覧（`lib/app-list.ts`）には登録されて
 > いない** — ホーム自体だから。ランチャーに出るアプリの正は常に
@@ -425,6 +426,7 @@ Stack (gap="xl", p="md", maw={1200})
 | 端末管理 | `IconDeviceTablet` |
 | 注文書取込 | `IconFileImport` |
 | ログイン履歴 | `IconShieldLock` |
+| AI プロバイダ | `IconRobot` |
 | マニュアル | `IconBook2` |
 
 ---
@@ -517,7 +519,7 @@ Stack (gap="md")
 │   ├── SimpleGrid cols={isMobile ? 1 : 3} spacing="md"
 │   │   └── FieldValue[] (see §10.1)
 │   └── [mobile] Group gap="xl" mt="sm" — timestamps inline
-├── [if has approval] ApprovalStatusPanel (see §12.4)
+├── ProcedurePanel (see §12.10) — 手続き状況（ライフサイクルのある書類は必ず）
 ├── [if work order] WorkOrderStepsPanel (see §12.2)
 ├── Tabs defaultValue="items"
 │   ├── Tabs.List
@@ -837,6 +839,49 @@ Paper (withBorder, p="md", radius="md")
 
 搭載画面: 指示書 (`WorkOrderApprovalCard`) / 注文請書 / 素材発注書 / 購買依頼。
 
+### 10.10 EditablePanel
+
+`src/components/ui/EditablePanel.tsx` — `'use client'`
+
+タブやセクションを「**既定は閲覧、押して編集**」にする枠。詳細画面のタブに
+編集フォームを直接置くと、読みに来ただけの人にも常に編集画面が開いていること
+になり、いま何が設定されているのかが読み取れない。閲覧の形を別に用意して、
+編集は明示的に始める。
+
+```tsx
+<EditablePanel
+  canEdit={canManage}
+  title="共有先"
+  view={<ShareGrantsView grants={grants} />}
+  edit={({ close }) => (
+    <ShareGrantsPanel grants={grants} onCancel={close} onSaved={close} … />
+  )}
+/>
+```
+
+| prop | 役割 |
+|------|------|
+| `canEdit` | false なら編集ボタンごと出さない（押せないボタンを置かない） |
+| `view` | 閲覧モードの中身。読める形にする — 無効化した入力欄を並べない |
+| `edit` | `({ close }) => ReactNode`。**編集中だけマウントされる** |
+| `title` / `description` | 見出しと補足。補足は編集中も出す |
+| `editLabel` | 既定「編集」 |
+
+**約束ごと**
+
+- **保存 / キャンセルの行は編集側が持つ**（§8.3 の `FormActions` をそのまま
+  使う）。渡された `close` を `onCancel` と保存成功後に呼ぶ。ヘッダーに保存を
+  置かない。
+- **閉じるときに編集側をアンマウントする。** props からドラフトを `useState` で
+  作るエディタ（`ShareGrantsPanel` / `ApprovalFlowEditor`）は、それだけで
+  「キャンセル＝サーバの値へ戻す」になる。復元処理を書かない。
+- 埋め込むエディタが既定で画面遷移するキャンセルを持つ場合は、**必ず
+  `onCancel` を渡して差し替える**（`ApprovalFlowEditor` の既定は承認設定 MS0B
+  への遷移で、そのままだと別画面へ飛ばされる）。
+- モバイルでは見出しと編集ボタンを縦に積み、ボタンを全幅にする（§20.2）。
+
+搭載画面: フォーム詳細の 承認 / 共有 タブ、回答詳細の 回答 タブ。
+
 ---
 
 ## 11. Components: Variants and States
@@ -1098,6 +1143,8 @@ Paper (withBorder, p="lg")
 差し戻し中 = red + 再承認依頼）。操作が無い状態では何も描画しない。
 
 **ApprovalStatusPanel** — フローと記録の**表示のみ**（操作ボタンは持たない）。
+指示書はこれではなく `WorkOrderProcedurePanel`（= §12.10 ProcedurePanel に
+承認段を流し込んだもの）を使う。承認だけを見せたい画面のために残してある。
 
 ```
 Paper (withBorder, p="md", radius="md")
@@ -1109,6 +1156,44 @@ Paper (withBorder, p="md", radius="md")
 └── approval_records list
     └── Group — approver name + acted_at + action badge + comment
 ```
+
+### 12.10 ProcedurePanel（手続き状況）
+
+`src/components/ui/ProcedurePanel.tsx` — `'use client'`
+
+**ライフサイクルを持つ書類の進捗表示はこれ 1 つ。** 生の `<Stepper>` を画面に
+直接書かないこと — 以前は表示が 3 通りに割れ（このパネル / 手書きの Stepper /
+表示なし）、書類ごとに進捗を探す場所が違っていた。
+
+搭載: 試算 / 見積書 / 注文請書 / 注文明細 / 設計依頼書 / 購買依頼 / 素材発注書 /
+指示書 / 出荷書 / 納品書 / 請求書 / 締日処理（**12 書類**）。
+価格表（進行するライフサイクルが無い）と素材入荷（入庫済みの確定記録）は持たない。
+
+置き場所は **ActionCard (§10.9) → SummaryGrid → ProcedurePanel → Tabs** の順。
+
+```
+Paper (withBorder, p="md", radius="md")
+├── Title order={5} "手続き状況"   ← 見出しは全書類で同じ。書類ごとに変えない
+├── [if cancelled] Alert color="red" "キャンセル済み" + cancelledNote
+├── [if sourceGroups] "前の書類から" — どこから来たか（見積書 ← / 出荷書 ← …）
+├── Stepper (active, size="sm", orientation={isMobile ? "vertical" : "horizontal"})
+│   └── Stepper.Step × N ← stages（key / label / description / color / loading）
+│       color・loading は **現在段（i === active）にだけ**効く
+├── [if handoffGroups] "次の書類へ" — どこへ渡ったか（済/未 バッジ付き）
+└── children — 承認記録（ApprovalTrailList）・遷移履歴など
+```
+
+- `active` = **達成済みの段数**（Mantine Stepper の規約。active 番目の段が
+  「現在進行中」として描かれる）。段の組み立てと `active` の算出は書類ごとの
+  呼び出し側が純関数で持ち、このパネルは表示だけを担う。
+- `HandoffItem.done` は **optional**。`undefined` なら 済/未 バッジを出さない —
+  上流（前の書類）は「済/未」で語る対象ではないため。
+- 承認を持つ書類の「承認」段は `approvalStage(approval, { approvedAt, fmtDate })`
+  で作る。文言（進行中は「2/3 部門承認」、それ以外はグループ名）は
+  `lib/approval-flow.ts` の `approvalStepDescription` が唯一の定義 — 段数は
+  承認設定 (MS0B) が書類種別ごとに決めるので固定文言にできない。
+- 差し戻し・却下・期限切れは**段を増やさず色で示す**（§9 の REJECTED = red /
+  EXPIRED = orange）。
 
 ### 12.5 InspectionRecordForm
 
@@ -1181,6 +1266,35 @@ Group align="flex-end"
 ├── NumberInput (unit_price) — auto-filled from price_list_tiers (resolved by 顧客×製品×注文種別×数量), editable override
 └── Text ff="mono" — computed amount (= quantity × unit_price)
 ```
+
+---
+
+### 12.11 フォーム集計のグラフ（SummaryBars / SummaryCharts）
+
+`src/components/forms/SummaryBars.tsx`（横棒・代表値）と
+`SummaryCharts.tsx`（ドーナツ・縦棒）— `'use client'`
+
+**chart ライブラリは入れない。** 出るのは全部 1 系列の件数で、必要な形は
+3 つ（構成・並び・順序）しかない。寸法の計算（`donutArcs`）は
+`lib/form-summary.ts` が持ち、部品は描画に留める — 工程フロー図で座標を
+`lib/workflow-core.ts` が決めているのと同じ約束。
+
+| 項目の型 | 形 | なぜ |
+|---|---|---|
+| 1 つ選ぶ（select / lookup） | ドーナツ + 凡例 | 部分の和が全体になる |
+| 複数選ぶ（multiselect） | **横棒のみ** | 1 人が複数選ぶので、円にすると合計が 100% を超えて嘘になる |
+| 数値 | 代表値 + 縦棒 | 分布は左から右へ読む |
+| 日付 / 時刻 | 縦棒 | 順序に意味がある（時間は左から右） |
+| 自由記述 | グラフにしない | 同じ文章は並ばないので、全部 1 件の棒になるだけ |
+| 添付 / サブテーブル | 数字だけ | 量しか言えない |
+
+- ドーナツは区分が **2〜8**（色の数）で、上位打ち切りが無いときだけ。欠けた円は
+  「これで全部」に見えるため、`otherCount > 0` では棒に落とす。
+- 数字は必ず凡例に**文字でも**出す（色が判別できない人・白黒印刷でも読める）。
+- 縦棒の後ろに帯を敷かない。低い棒が「読み込み中のバー」に見える。
+- 狭い画面（`useIsMobile`）では縦棒をやめて横棒にする。1 本が数 px になると、
+  棒の長短ではなく隙間を見比べることになる。
+- 項目ごとに「回答 N / 未回答 M」を出す。必須でない質問では、答えなかったことも結果。
 
 ---
 
@@ -1361,6 +1475,14 @@ Use Mantine `Alert` for:
 | Button action | `loading={isPending}` on the Button |
 | Data fetching (SSR) | React Suspense + Skeleton components |
 | App card grid loading | `Skeleton height={110} radius="md"` per card |
+| 重いプレビュー（3D / 大きな画像） | 枠だけ先に確保して `Loader`、中身は見えてから読む |
+
+**重いものは「見えてから」読む（`useInView`）。** Mantine の `Tabs.Panel` は
+既定で **keepMounted** — 表に出ていないタブも DOM にある。門を置かないと、
+開いてもいないタブの 3D モデルを取りに行き WebGL まで起こすので、ページを
+開いた瞬間が重くなる。表示中かどうかは `IntersectionObserver` でしか判らない。
+枠（`AspectRatio`）は先に確保しておくこと — 読み終えた瞬間に高さが変わると
+下の内容が飛ぶ。
 
 ### 16.5 Transition Durations
 
@@ -1530,6 +1652,15 @@ Approval notifications use `/api/sse/approvals` — shows a `Notification` banne
     §8.3 の「Line item cards (mobile)」と同じ扱い。
   - **左右 2 ペインの編集（Markdown の分割表示など）はモバイルに出さない。**
     横 375px を割ると両方読めないので、切り替え（編集 / プレビュー）にする。
+  - **ビューア（PDF / 画像 / 3D）のモーダルはモバイルで全画面にする**
+    （`ModalShell` の `fullScreen`）。図面のように「画面の広さがそのまま
+    読めるかどうか」になる中身を `size` 指定のモーダルに入れると、枠・題・
+    フッターに挟まれて本文が数十 px しか残らない。高さは `vh` ではなく
+    **`dvh`** で取る — モバイルのアドレスバーが引っ込むと `vh` は実際の
+    表示領域とずれる。
+  - **モバイルのブラウザは `iframe` の PDF を描かない**（iOS Safari は空白、
+    Android Chrome はダウンロード誘導）。サムネイルなど小さい枠では
+    アイコン + 種別名に落として、拡大表示へ誘導する。
 
 ### 20.3 タッチ操作
 
@@ -1540,3 +1671,10 @@ Approval notifications use `/api/sse/approvals` — shows a `Notification` banne
   限定し、ハンドルには `touchAction: "none"` と 44px の当たり判定を与える。
 - ホバーでしか出ない操作を作らない（タッチにホバーは無い）。行に付けるボタンなどは
   常時表示にする。
+- **キャンバス（3D ビューア等）には `touch-action: none` を置く。** 既定のままだと
+  ブラウザが指のドラッグをスクロールとして横取りし、モデルを回せない。併せて
+  **WebGL コンテキストは閉じるときに必ず破棄する** — 同時保持数はモバイルの方が
+  ずっと少なく（iOS Safari で 8〜16 程度）、漏らすと数回でタブごと落ちる。
+- **入れ物の寸法だけが変わったときに measure し直す**（`ResizeObserver`）。
+  画面回転・アドレスバーの出入り・全画面モーダルの開き切りでは `window` の
+  `resize` が来ないことがあり、canvas が古い寸法のまま引き伸ばされる。

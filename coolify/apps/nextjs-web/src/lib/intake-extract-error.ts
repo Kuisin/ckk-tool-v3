@@ -84,6 +84,87 @@ export function extractServerDetail(
   return clip(text);
 }
 
+/**
+ * AI プロバイダ由来の失敗（po-extract が `ai_<kind>: ...` で返すもの）。
+ *
+ * HTTP 状態だけでは足りない — 429 は po-extract 自身の混雑でも起きるし、
+ * 401 は下の総括分岐に落ちて「要求を受け付けませんでした」になってしまう。
+ * どちらも**現場には手の打ちようがない文言**なので、接頭辞で分けて
+ * 「鍵を直す / モデル名を直す / 待つ」を書き分ける。
+ *
+ * `retryable` の切り分けが肝: 鍵違い・モデル名違いを再試行しても直らないのに
+ * 再試行すると、上限（既定 3 回）を使い切ってから失敗が出る。
+ *
+ * 当てはまらなければ null を返し、既存の分類へそのまま流す。
+ */
+export function aiFailureFromDetail(
+  serverDetail: string | null,
+  detail: string,
+): ExtractFailure | null {
+  const kind = /^ai_([a-z_]+):/.exec((serverDetail ?? "").trim())?.[1];
+  if (!kind) return null;
+  const SY0E = "システム設定 → AI プロバイダ（SY0E）";
+  const table: Record<string, Omit<ExtractFailure, "detail">> = {
+    auth: {
+      summary: "AI プロバイダの認証に失敗しました",
+      cause: "API トークンが無効か失効しています",
+      hint: `${SY0E} でトークンを入力し直してください`,
+      retryable: false,
+    },
+    model_not_found: {
+      summary: "AI モデルが見つかりません",
+      cause: "指定したモデル名がプロバイダに存在しません",
+      hint: `${SY0E} のモデル名を確認してください（「接続テスト」で確かめられます）`,
+      retryable: false,
+    },
+    rate_limit: {
+      summary: "AI プロバイダの利用上限に達しました",
+      cause: "レート制限、または残高・プランの上限です",
+      hint: "自動で再試行します。続く場合はプロバイダ側の上限と残高を確認してください",
+      retryable: true,
+    },
+    unreachable: {
+      summary: "AI プロバイダへ接続できませんでした",
+      cause: "po-extract から接続先へ到達できません（DNS・外向き通信の遮断）",
+      hint: "システム管理者へ連絡してください",
+      retryable: true,
+    },
+    bad_schema: {
+      summary: "AI プロバイダがこの様式を受け付けませんでした",
+      cause: "指定のモデルが所定の JSON 形式に対応していません",
+      hint: `${SY0E} で別のモデルを試してください`,
+      retryable: false,
+    },
+    not_configured: {
+      summary: "AI プロバイダが未設定です",
+      cause: "API トークンが未設定か、暗号鍵が変わって復号できません",
+      hint: `${SY0E} でトークンを設定し直してください`,
+      retryable: false,
+    },
+    no_vision: {
+      summary: "AI モデルが画像を読み取れません",
+      cause: "指定のモデルは文字だけで、画像入力に対応していません",
+      hint: `${SY0E} で画像に対応したモデルを指定してください`,
+      retryable: false,
+    },
+    bad_sampling: {
+      summary: "AI モデルが指定の生成パラメータを受け付けませんでした",
+      cause:
+        "temperature を既定値しか受けないモデルです（自動で外して再試行しますが、それでも通りませんでした）",
+      hint: `${SY0E} で別のモデルを試してください`,
+      retryable: false,
+    },
+    upstream: {
+      summary: "AI プロバイダでエラーが起きました",
+      cause: "プロバイダ側の一時的な障害です",
+      hint: `自動で再試行します。${MANUAL_HINT}`,
+      retryable: true,
+    },
+  };
+  const hit = table[kind];
+  return hit ? { ...hit, detail } : null;
+}
+
 /** HTTP で返ってきた失敗を分類する。 */
 export function classifyHttpFailure(
   status: number,
@@ -91,6 +172,11 @@ export function classifyHttpFailure(
 ): ExtractFailure {
   const serverDetail = extractServerDetail(body);
   const detail = `po-extract HTTP ${status}${serverDetail ? ` — ${serverDetail}` : ""}`;
+
+  // プロバイダ由来はここで先に拾う（下の 429 / 502 分岐が ollama を名指しした
+  // 文言で飲み込んでしまうため）。
+  const ai = aiFailureFromDetail(serverDetail, detail);
+  if (ai) return ai;
 
   if (status === 400) {
     return {

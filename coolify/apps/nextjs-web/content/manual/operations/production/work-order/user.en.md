@@ -92,7 +92,7 @@ After saving, the work order detail screen shows 「**工程ルート**」 (step
 
 Work cannot start on a work order until it is approved. **How many approval stages it goes through** is decided in the [approval settings](/manual/en/operations/masters/approval-setting/user), and the number of stages can differ depending on what is in the document. The card on the screen shows which stage it is currently on.
 
-1. On the work order screen, press 「**承認依頼**」 (Request approval) in the 「**承認状況**」 (approval status) area.
+1. On the work order screen, press 「**承認依頼**」 (Request approval) on the card at the very top.
 2. The status changes to 「**承認待ち**」 (waiting for approval). From this point, the original order line can no longer be edited.
 3. The person approving each stage presses 「**承認**」 (Approve) in turn.
 4. Once the last stage is through, the status becomes 「**承認済**」 (approved) and the work can start.
@@ -102,7 +102,7 @@ Work cannot start on a work order until it is approved. **How many approval stag
 - Only people **in the approval group** for that step, and stand-ins appointed for a set period, can approve. If you are not in the group, the buttons do not appear and the screen shows 「◯◯ のメンバーのみ承認・差し戻しできます」 (Only members of that group can approve or send back). In addition, you also need **permission to view or edit that work order** (including the scope of the site in charge) — someone in the group who cannot open the document cannot approve it.
 - If there is a problem, press 「**差し戻し**」 (Send back). You must enter a 「**差し戻し理由**」 (reason for sending back).
 - A work order that was sent back returns to 「下書き」 (draft) and the reason appears in red on the screen. After fixing it, you can send it out again with 「**再承認依頼**」 (Request approval again).
-- Records of approvals and send-backs stay under 「承認状況」 (approval status). Ones approved by a stand-in are marked 「（代理: 原承認者）」 (stand-in for the original approver).
+- Records of approvals and send-backs stay under 「手続き状況」 (procedure status). Ones approved by a stand-in are marked 「（代理: 原承認者）」 (stand-in for the original approver).
 
 You can also approve from the list in [approval management](/manual/en/operations/production/approval/user) (PD03).
 
@@ -239,6 +239,7 @@ Every field on the work order screen. The order of the steps themselves is set i
 | [Planned quantity](#field-planned-quantity) | Required | How many pieces |
 | [Material](#field-material) | Optional | The material used |
 | [Storage location](#field-storage-location) | Optional | Where the finished products are kept |
+| [Drawing to use](#field-design-file) | Optional | Which version of the drawing to build from |
 | [Process list / version](#field-route) | Required (made-to-order) | Which sequence of steps to use |
 | [New process list name](#field-new-route-name) | Conditional | Name when creating a new list |
 | [Inspection sheets](#field-inspection-templates) | Optional | Templates per inspection step |
@@ -266,6 +267,18 @@ How many pieces to make. Enter **at least the total of the allocations** (adding
 ### Material [#field-material]
 
 The material used. When the work order is approved, **this material is reserved from stock.**
+
+### Drawing to use [#field-design-file]
+
+**Pins** the version of the drawing the shop floor sees. Optional.
+
+Left empty, nothing is pinned and the **newest version at the time** is shown whenever the screen is opened — so if the drawing is revised, what the floor sees changes with it. The field's description shows what would be used ("固定しない場合: …").
+
+Pick a version and it is pinned: later revisions do not change what the floor sees. **A pinned version can no longer be edited or deleted**, because it is the record of what the part was made from.
+
+Drawings are split per product × customer. When nothing is pinned, the series for this work order's customer is used, falling back to the generic series. **Another customer's drawings are never chosen** — showing them silently would mean making the wrong part without noticing. If a work order bundles order lines from more than one customer, the generic series is used.
+
+Pinning and unpinning are also available on the 図面 (drawing) tab of the work order.
 
 ### Storage location [#field-storage-location]
 

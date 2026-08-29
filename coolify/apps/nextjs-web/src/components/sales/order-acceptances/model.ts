@@ -17,6 +17,20 @@ export type OrderAcceptanceStatus =
 
 export type IntakeSource = "FOLDER" | "UPLOAD" | "MANUAL";
 
+/**
+ * 逆リンク 1 行 — 見積書詳細の「次の書類へ」に出す注文請書の要約。
+ * 取得は app/(dashboard)/sales/order-acceptances/data.ts の
+ * fetchOrderAcceptancesForQuote。
+ */
+export interface AcceptanceLink {
+  /** 表示番号 ORD-YYYYMM-NNNNN（URL id も同じ）。 */
+  number: string;
+  status: OrderAcceptanceStatus;
+  /** ぶら下がる注文明細の件数（確定前は下書き行の数）。 */
+  orderLineCount: number;
+  updatedAt: string;
+}
+
 /** 取込元 → バッジ表示（ラベル + 色）。 */
 export const INTAKE_SOURCE_BADGE: Record<
   IntakeSource,

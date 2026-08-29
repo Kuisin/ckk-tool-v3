@@ -9,16 +9,7 @@
  * 履歴タブは audit_logs 導入後に接続する（現状は空表示）。
  */
 
-import {
-  Anchor,
-  Badge,
-  Box,
-  Group,
-  Stack,
-  Table,
-  Tabs,
-  Text,
-} from "@mantine/core";
+import { Badge, Stack, Table, Tabs, Text } from "@mantine/core";
 import {
   IconCircleMinus,
   IconCopy,
@@ -30,17 +21,11 @@ import { useState } from "react";
 import { useFormat } from "@/components/layout/PreferencesProvider";
 import { KeywordBadges } from "@/components/master/MasterKeywordsField";
 import { DesignRequestLinks } from "@/components/sales/design-requests/DesignRequestLinks";
-import {
-  DESIGN_FILE_ROLE_COLOR,
-  DESIGN_FILE_ROLE_LABEL,
-  type DesignRequestLink,
-  type ProductDesignFile,
+import type {
+  DesignRequestLink,
+  ProductDesignFile,
 } from "@/components/sales/design-requests/model";
 import { ActiveBadge } from "@/components/ui/ActiveBadge";
-import {
-  DesignFileThumb,
-  DesignFileViewButton,
-} from "@/components/ui/DesignFileViewer";
 import { DocNumber } from "@/components/ui/DocNumber";
 import { FieldValue } from "@/components/ui/FieldValue";
 import { HistoryPanel } from "@/components/ui/HistoryPanel";
@@ -52,9 +37,9 @@ import {
 } from "@/components/ui/shells";
 import { useTabParam } from "@/hooks/useUrlState";
 import { useIsMobile } from "@/hooks/useViewport";
-import { isViewable } from "@/lib/design-file-kind";
 import type { RouteView } from "@/lib/product-routes-core";
 import { isReservedSpecKey } from "@/lib/product-types";
+import { ProductDesignFiles } from "./ProductDesignFiles";
 import {
   DeleteProductModal,
   DuplicateProductModal,
@@ -107,6 +92,8 @@ export function ProductDetail({
   auditEntries,
   routes,
   designFiles = [],
+  customerOptions = [],
+  canManageDesign = false,
   designRequests = [],
 }: {
   record: ProductDetailData;
@@ -115,6 +102,10 @@ export function ProductDetail({
   routes: RouteView[];
   /** この製品の設計図（版一覧）— 関連タブ。 */
   designFiles?: ProductDesignFile[];
+  /** 版を載せられる受注元（CUSTOMER ロールの取引先）。 */
+  customerOptions?: { value: string; label: string }[];
+  /** 設計図を足す・直す権限があるか。 */
+  canManageDesign?: boolean;
   /** この製品に紐づく設計依頼 — 関連タブ。 */
   designRequests?: DesignRequestLink[];
 }) {
@@ -125,9 +116,6 @@ export function ProductDetail({
   const [tab, setTab] = useTabParam("overview");
 
   // サムネイルに出す 1 件 — 3D プレビューがあればそれ、無ければ図面データ。
-  const latestPreview =
-    designFiles.find((f) => f.isLatest && f.role === "PREVIEW") ??
-    designFiles.find((f) => f.isLatest && f.role === "BLUEPRINT");
 
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [duplicateOpen, setDuplicateOpen] = useState(false);
@@ -274,113 +262,15 @@ export function ProductDetail({
 
         <Tabs.Panel pt="md" value="related">
           <Stack gap="lg">
-            {/* 設計図 — 差し替えは設計依頼 (SA06) の「完了」でのみ行う。
-                版採番と is_latest の整合を 1 tx で守るため、ここは読むだけ。 */}
-            <Stack gap="xs">
-              <Text fw={600} size="sm">
-                設計図
-              </Text>
-              {designFiles.length === 0 ? (
-                <Text c="dimmed" size="sm">
-                  この製品の設計図はまだありません
-                </Text>
-              ) : (
-                <>
-                  {/* 最新の主図面だけサムネイルで出す。押すと拡大。
-                      版を全部サムネイルにすると 3D が何枚も WebGL を起こす。 */}
-                  {latestPreview && (
-                    <Box maw={320}>
-                      <DesignFileThumb
-                        target={{
-                          caption: `v${latestPreview.version}（最新）`,
-                          filename: latestPreview.filename,
-                          mimeType: latestPreview.mimeType,
-                          src: `/api/design-files/${encodeURIComponent(latestPreview.id)}`,
-                        }}
-                      />
-                    </Box>
-                  )}
-                  <Table highlightOnHover striped withTableBorder>
-                    <Table.Thead>
-                      <Table.Tr>
-                        <Table.Th w={110}>バージョン</Table.Th>
-                        <Table.Th>ファイル名</Table.Th>
-                        {!isMobile && <Table.Th w={170}>元依頼</Table.Th>}
-                        {!isMobile && <Table.Th w={150}>登録日時</Table.Th>}
-                      </Table.Tr>
-                    </Table.Thead>
-                    <Table.Tbody>
-                      {designFiles.map((f) => (
-                        <Table.Tr key={f.id}>
-                          <Table.Td className="tabular-nums">
-                            <Group gap="xs" wrap="nowrap">
-                              v{f.version}
-                              <Badge
-                                color={DESIGN_FILE_ROLE_COLOR[f.role] ?? "gray"}
-                                variant="light"
-                              >
-                                {DESIGN_FILE_ROLE_LABEL[f.role] ?? f.role}
-                              </Badge>
-                              {f.isLatest && (
-                                <Badge color="green" variant="light">
-                                  最新
-                                </Badge>
-                              )}
-                            </Group>
-                          </Table.Td>
-                          <Table.Td>
-                            <Group gap="xs" wrap="nowrap">
-                              <Anchor
-                                href={`/api/design-files/${encodeURIComponent(f.id)}`}
-                                size="sm"
-                                target="_blank"
-                              >
-                                {f.filename}
-                              </Anchor>
-                              {isViewable(f.filename, f.mimeType) && (
-                                <DesignFileViewButton
-                                  target={{
-                                    caption: `v${f.version}`,
-                                    filename: f.filename,
-                                    mimeType: f.mimeType,
-                                    src: `/api/design-files/${encodeURIComponent(f.id)}`,
-                                  }}
-                                />
-                              )}
-                            </Group>
-                          </Table.Td>
-                          {!isMobile && (
-                            <Table.Td>
-                              {f.requestNumber ? (
-                                <Anchor
-                                  onClick={() =>
-                                    router.push(
-                                      `/sales/design-requests/${encodeURIComponent(f.requestNumber ?? "")}`,
-                                    )
-                                  }
-                                  size="sm"
-                                >
-                                  {f.requestNumber}
-                                </Anchor>
-                              ) : (
-                                <Text c="dimmed" size="sm">
-                                  —
-                                </Text>
-                              )}
-                            </Table.Td>
-                          )}
-                          {!isMobile && (
-                            <Table.Td className="tabular-nums">
-                              {fmt.dateTime(f.createdAt)}
-                            </Table.Td>
-                          )}
-                        </Table.Tr>
-                      ))}
-                    </Table.Tbody>
-                  </Table>
-                </>
-              )}
-            </Stack>
+            {/* 設計図 — 系列（製品 × 受注元）ごとに分けて出す。
+                版の差し替えは「新しい版を作る」操作だけで、過去の版は
+                書き換えない（何を見て作ったかを追えるようにするため）。 */}
+            <ProductDesignFiles
+              canManage={canManageDesign}
+              customerOptions={customerOptions}
+              files={designFiles}
+              productId={record.id}
+            />
 
             <Stack gap="xs">
               <Text fw={600} size="sm">

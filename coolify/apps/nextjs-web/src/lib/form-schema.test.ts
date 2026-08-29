@@ -8,6 +8,7 @@ import {
   nextFieldKey,
   normalizeOrder,
   parseFormFields,
+  shouldAutoRequestApproval,
   toPlainAnswers,
   validateAnswers,
   validateFieldValue,
@@ -456,5 +457,51 @@ describe("canEditResponse — 承認中の編集ロック", () => {
   it("他人の回答は設定に関係なく触れない", () => {
     const f = { ...base, editableUntilFirstApproval: true };
     expect(canEditResponse(f, mine, "someone-else", now, false)).toBe(false);
+  });
+});
+
+describe("shouldAutoRequestApproval — 提出＝申請", () => {
+  const request = { kind: "REQUEST", approvalEnabled: true };
+
+  it("申請・報告フォームの新規提出で承認依頼まで通す", () => {
+    expect(shouldAutoRequestApproval(request, null, false)).toBe(true);
+  });
+
+  it("下書きを提出に切り替えたときも通す", () => {
+    expect(shouldAutoRequestApproval(request, "DRAFT", false)).toBe(true);
+  });
+
+  it("差し戻しを直して保存したら再依頼する", () => {
+    expect(shouldAutoRequestApproval(request, "REJECTED", false)).toBe(true);
+  });
+
+  it("下書き保存では起こさない", () => {
+    expect(shouldAutoRequestApproval(request, null, true)).toBe(false);
+    expect(shouldAutoRequestApproval(request, "DRAFT", true)).toBe(false);
+  });
+
+  it("提出済みで止まっている回答は、保存し直すと流れ出す（取りこぼしの回収）", () => {
+    expect(shouldAutoRequestApproval(request, "SUBMITTED", false)).toBe(true);
+  });
+
+  it("承認依頼中の編集ではフローを張り直さない", () => {
+    expect(shouldAutoRequestApproval(request, "REQUESTED", false)).toBe(false);
+  });
+
+  it("アンケートと、承認を使わない申請フォームは対象外", () => {
+    expect(
+      shouldAutoRequestApproval(
+        { kind: "SURVEY", approvalEnabled: false },
+        null,
+        false,
+      ),
+    ).toBe(false);
+    expect(
+      shouldAutoRequestApproval(
+        { kind: "REQUEST", approvalEnabled: false },
+        null,
+        false,
+      ),
+    ).toBe(false);
   });
 });
