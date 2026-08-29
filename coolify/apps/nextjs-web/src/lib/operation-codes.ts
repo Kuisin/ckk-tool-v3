@@ -441,6 +441,17 @@ export const OPERATION_CODES: OperationCodeEntry[] = [
     mode: "0",
     index: "D",
   },
+  // AI プロバイダ（文書抽出・AI 補助タスクが使うモデルの接続先）
+  {
+    code: "SY0E",
+    label: "AI プロバイダ",
+    href: "/settings/ai-provider",
+    category: "システム",
+    kind: "list",
+    categoryCode: "SY",
+    mode: "0",
+    index: "E",
+  },
 ];
 
 const CODE_LOOKUP = new Map(

@@ -40,6 +40,7 @@
 
 import { mkdir, readdir, readFile, rename, stat } from "node:fs/promises";
 import path from "node:path";
+import { AiProviderConfigError, aiConfigHeaders } from "./ai-provider";
 import { APPROVAL_TARGET } from "./approval-targets";
 import { firstStepGroupId } from "./approvals";
 import { getCurrentActorId, recordAudit } from "./audit";
@@ -184,6 +185,23 @@ async function callPoExtract(file: {
   mimeType: string;
 }): Promise<unknown> {
   const endpoint = `${PO_EXTRACT_URL}/extract/order-request`;
+  // どのモデルで読むかは SY0E の設定で決まる（既定 = ローカル ollama = ヘッダ無し）。
+  let aiHeaders: Record<string, string>;
+  try {
+    aiHeaders = await aiConfigHeaders();
+  } catch (e) {
+    // プロバイダに届く前に落ちている（鍵が変わった等）。再試行しても直らない。
+    if (e instanceof AiProviderConfigError) {
+      throw new ExtractFailureError({
+        summary: "AI プロバイダの設定を読めませんでした",
+        cause: e.message,
+        hint: "システム設定 → AI プロバイダ（SY0E）でトークンを設定し直してください",
+        detail: "ai provider config unavailable",
+        retryable: false,
+      });
+    }
+    throw e;
+  }
   const form = new FormData();
   form.append(
     "file",
@@ -195,6 +213,7 @@ async function callPoExtract(file: {
   try {
     res = await fetch(endpoint, {
       method: "POST",
+      headers: aiHeaders,
       body: form,
       signal: AbortSignal.timeout(EXTRACT_TIMEOUT_MS),
     });

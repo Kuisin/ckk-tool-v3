@@ -87,6 +87,11 @@ create_app() { # name branch env_name alias
     return 0
   fi
   # ollama は ai-stack 側の 1 台を共有（GPU 1 枚）。OWN_COMPANY 等は app.py の既定でよい。
+  #
+  # ここで入れるのは **既定値**。実際にどのモデルを叩くかは nextjs-web の
+  # AI プロバイダ設定（SY0E）が決め、リクエストごとにヘッダ X-AI-Config で
+  # 届く。外部プロバイダの API トークンをここに置く必要は無い（置かないこと —
+  # 鍵は暗号化して DB に持ち、画面から入れ替えられるようにしてある）。
   api PATCH "/applications/$uuid/envs/bulk" -d "{\"data\": [
     {\"key\": \"OLLAMA_URL\", \"value\": \"http://ollama:11434\"},
     {\"key\": \"MODEL\",      \"value\": \"qwen2.5vl\"}

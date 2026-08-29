@@ -185,3 +185,72 @@ describe("formatExtractError / parseExtractError", () => {
     expect(parsed.retrying).toBe(false);
   });
 });
+
+/**
+ * AI プロバイダ由来の失敗。ここが効かないと、外部プロバイダの鍵違いが
+ * 「抽出サーバーが混み合っています」として出て、しかも再試行を 3 回使い切る。
+ */
+describe("AI プロバイダ由来の失敗", () => {
+  const po = (kind: string, status = 502) =>
+    classifyHttpFailure(
+      status,
+      JSON.stringify({ detail: `ai_${kind}: something` }),
+    );
+
+  it("鍵・モデル名の誤りは再試行しない", () => {
+    for (const kind of [
+      "auth",
+      "model_not_found",
+      "bad_schema",
+      "not_configured",
+      "no_vision",
+    ]) {
+      expect(po(kind).retryable, kind).toBe(false);
+    }
+  });
+
+  it("一時的な失敗は再試行する", () => {
+    for (const kind of ["rate_limit", "unreachable", "upstream"]) {
+      expect(po(kind).retryable, kind).toBe(true);
+    }
+  });
+
+  it("原因ごとに次の一手を書き分ける", () => {
+    expect(po("auth").summary).toContain("認証");
+    expect(po("auth").hint).toContain("SY0E");
+    expect(po("model_not_found").hint).toContain("モデル名");
+    expect(po("no_vision").summary).toContain("画像");
+    // 429 でも「po-extract が混んでいる」ではなくプロバイダの話にする
+    expect(po("rate_limit", 429).summary).toContain("AI プロバイダ");
+  });
+
+  it("詳細に元の HTTP 状態を残す", () => {
+    expect(po("auth", 502).detail).toContain("ai_auth");
+    expect(po("auth", 502).detail).toContain("502");
+  });
+
+  it("知らない ai_* は既存の分類へ素通しする", () => {
+    const out = classifyHttpFailure(
+      502,
+      JSON.stringify({ detail: "ai_wat: ?" }),
+    );
+    expect(out.summary).toBe("抽出サーバーが応答しませんでした");
+  });
+
+  it("従来の失敗の分類を変えない（回帰）", () => {
+    const json = classifyHttpFailure(
+      502,
+      JSON.stringify({ detail: "structuring model did not return valid JSON" }),
+    );
+    expect(json.summary).toBe("AI が読み取り結果をまとめられませんでした");
+    expect(json.retryable).toBe(true);
+
+    expect(classifyHttpFailure(400).retryable).toBe(false);
+    expect(classifyHttpFailure(404).summary).toContain("様式");
+    expect(classifyHttpFailure(413).summary).toContain("大きすぎ");
+    expect(classifyHttpFailure(429).summary).toBe(
+      "抽出サーバーが混み合っています",
+    );
+    expect(classifyHttpFailure(503).retryable).toBe(true);
+  });
+});
