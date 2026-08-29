@@ -58,6 +58,44 @@ Deploy/rollback: `./deploy.sh kiosk-dev [<sha>]` / `./deploy.sh kiosk-main [<sha
   cloudflared once the tunnel hostnames are added — put a Cloudflare Access policy
   in front). Direct LAN fallback: `http://192.168.50.15:8000`. Root login lives in
   `/data/coolify/source/.env` (server-only). API token: `/data/coolify/source/.api-token`.
+
+### git アクセスはデプロイキー（リポジトリが非公開のため）
+
+**このリポジトリは非公開**なので、Coolify は SSH のデプロイキーで clone する。
+26 個のアプリすべてが `git@github.com:Kuisin/ckk-tool-v3.git` を見ており、
+`applications.private_key_id` は Coolify に登録した鍵
+（`coolify-deploy-ckk-tool-v3`, id=1）を指す。
+
+2026-08-29 に公開 → 非公開へ切り替えたとき、**全アプリのビルドが一斉に落ちた**。
+それまでは Coolify 組み込みの擬似ソース「Public GitHub」（app_id も
+installation も持たない）で **匿名 HTTPS clone** していたため:
+
+```
+fatal: could not read Username for 'https://github.com'
+```
+
+無関係なアプリ（db-migrate / po-extract / nextjs-web）が同時に落ちたら、
+コードではなくこの経路を疑うこと。
+
+**注意点が 2 つある。**
+
+- **`private_key_id` は REST API では設定できない**
+  （`{"message":"Validation failed.","errors":{"private_key_id":["This field is not allowed."]}}`）。
+  DB を直接更新するしかない:
+
+  ```sql
+  update applications
+     set git_repository = 'git@github.com:Kuisin/ckk-tool-v3.git',
+         private_key_id = 1, source_id = null, source_type = null
+   where git_repository = 'Kuisin/ckk-tool-v3';
+  ```
+
+- **`setup.sh` / `add-*-apps.sh` で新しくアプリを作ると、既定の公開ソースに戻る。**
+  作成後に上の UPDATE を流すこと（さもないとそのアプリだけビルドできない）。
+
+GitHub 側は読み取り専用のデプロイキー（Settings → Deploy keys、
+`coolify-deploy (read-only)`）。鍵を入れ替えるときは GitHub 側と
+Coolify の private key の両方を差し替える。
 - Coolify's Traefik proxy is **not** used (nginx-proxy owns 80/443); apps publish
   plain host ports and the `web`/`web-main` socat relays in the `nextjs-web` stack
   give cloudflared/nginx stable names — deploys and rollbacks never change routing.
