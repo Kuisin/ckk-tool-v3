@@ -132,6 +132,20 @@ model KioskDevice {
   activatedById  String?   @map("activated_by") @db.Uuid
   activatedAt    DateTime? @map("activated_at") @db.Timestamptz(6)
   lastActivityAt DateTime? @map("last_activity_at") @db.Timestamptz(6)
+
+  // メンテナンス退出 PIN の同期状況（GET /api/kiosk/unlock-pin が書く）。
+  //
+  // 端末は PIN をローカルに持つので、**その端末が実際に受け取れたか**が分からないと
+  // 「いま何を入れれば開くか」が決まらない。lastActivityAt では代用できない —
+  // あれは WS/HTTP 全般の通信であって、PIN を取れたこととは別（未リンク・
+  // トークン切れなら 401 で取れず、PinSync 以前の APK はそもそも要求しない）。
+  //
+  // unlockPinRotatedAt はそのとき渡した PIN の rotated_at（= system_settings の
+  // updated_at）。kiosk_unlock_pins の同じ時刻の行を引けば**その端末が保持して
+  // いる PIN そのもの**が出る。null = 一度も同期できていない → 端末は
+  // BuildConfig.KIOSK_UNLOCK_PIN（ビルド時の既定値）のまま。
+  unlockPinSyncedAt  DateTime? @map("unlock_pin_synced_at") @db.Timestamptz(6)
+  unlockPinRotatedAt DateTime? @map("unlock_pin_rotated_at") @db.Timestamptz(6)
   createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt      DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
 

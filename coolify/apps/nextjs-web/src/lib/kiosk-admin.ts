@@ -250,6 +250,15 @@ export interface KioskDeviceRow {
   mapX: number | null;
   mapY: number | null;
   lastActivityAt: string | null;
+  /**
+   * メンテナンス退出 PIN を最後に受け取れた時刻。null = 一度も同期できて
+   * いない（端末はビルド時の既定 PIN のまま）。lastActivityAt とは別物 —
+   * 通信できていても 401（未リンク/トークン切れ）や PinSync 以前の APK では
+   * PIN は届いていない。
+   */
+  unlockPinSyncedAt: string | null;
+  /** そのとき受け取った PIN の rotated_at（履歴の行を引くキー）。 */
+  unlockPinRotatedAt: string | null;
   /** アテステーション鍵の SHA-256（未束縛は null）。 */
   fingerprint: string | null;
   /** 所有区分（自動判定。判定根拠は ownershipSource）。 */
@@ -332,6 +341,8 @@ function toDeviceRow(r: DeviceWithIncludes, now: number): KioskDeviceRow {
     mapX: r.mapX != null ? Number(r.mapX) : null,
     mapY: r.mapY != null ? Number(r.mapY) : null,
     lastActivityAt: r.lastActivityAt?.toISOString() ?? null,
+    unlockPinSyncedAt: r.unlockPinSyncedAt?.toISOString() ?? null,
+    unlockPinRotatedAt: r.unlockPinRotatedAt?.toISOString() ?? null,
     fingerprint: r.fingerprint,
     ownership: r.ownership,
     ownershipSource: r.ownershipSource,

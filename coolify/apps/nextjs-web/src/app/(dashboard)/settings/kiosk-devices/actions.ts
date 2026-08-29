@@ -734,6 +734,81 @@ export async function listUnlockPinHistory(): Promise<
   }
 }
 
+/** その端末がいま保持しているメンテナンス PIN。 */
+export type DeviceUnlockPinInfo = {
+  /**
+   * 端末が保持している PIN。null = まだ一度も同期できていない、または同期は
+   * したが当時の PIN が履歴に無い（履歴を入れる前に受け取った / 400 日を過ぎた）。
+   */
+  pin: string | null;
+  /** 最後に PIN を受け取れた時刻。null = 一度も受け取れていない。 */
+  syncedAt: string | null;
+  /** 受け取った PIN が有効になった時刻。 */
+  rotatedAt: string | null;
+  /** その PIN が現行値と同じか（= 端末は最新を持っている）。 */
+  isCurrent: boolean;
+};
+
+/**
+ * 端末がいま保持しているメンテナンス PIN（SY09 端末詳細 — 確認 + 監査ログ記録）。
+ *
+ * 端末は PIN をローカルに持つ（PinSync → SharedPreferences）ので、オフラインの
+ * 端末に現行 PIN を入れても開かない。ここは「その端末に最後に渡した PIN」を
+ * 受け渡しの記録（kiosk_devices.unlock_pin_rotated_at）から引き当てて返す
+ * — 最終通信時刻からの推測ではなく、実際に渡した記録に基づく。
+ *
+ * syncedAt が null のときは端末がビルド時の既定 PIN のままで、サーバー側には
+ * その値が無い（APK のビルド設定にしかない）。
+ */
+export async function revealDeviceUnlockPin(
+  deviceId: string,
+): Promise<ActionResult<DeviceUnlockPinInfo>> {
+  const authz = await checkPermission("kiosk", "READ");
+  if (!authz.ok) return actionError(authz.error);
+  const parsed = uuidSchema.safeParse(deviceId);
+  if (!parsed.success) return actionError("端末が指定されていません");
+  try {
+    const device = await prisma.kioskDevice.findUnique({
+      where: { id: parsed.data },
+      select: { unlockPinSyncedAt: true, unlockPinRotatedAt: true },
+    });
+    if (!device) return actionError("対象の端末が見つかりません");
+
+    await recordAudit({
+      action: "VIEW",
+      tableName: "kiosk_devices",
+      recordId: parsed.data,
+      after: { note: "端末が保持しているメンテナンス PIN を表示" },
+    });
+
+    if (!device.unlockPinRotatedAt) {
+      return actionOk({
+        pin: null,
+        syncedAt: device.unlockPinSyncedAt?.toISOString() ?? null,
+        rotatedAt: null,
+        isCurrent: false,
+      });
+    }
+    const [held, current] = await Promise.all([
+      prisma.kioskUnlockPin.findFirst({
+        where: { rotatedAt: device.unlockPinRotatedAt },
+        select: { pin: true },
+      }),
+      prisma.systemSetting.findUnique({ where: { key: "kiosk.unlock_pin" } }),
+    ]);
+    const currentPin =
+      typeof current?.value === "string" ? current.value : null;
+    return actionOk({
+      pin: held?.pin ?? null,
+      syncedAt: device.unlockPinSyncedAt?.toISOString() ?? null,
+      rotatedAt: device.unlockPinRotatedAt.toISOString(),
+      isCurrent: held?.pin != null && held.pin === currentPin,
+    });
+  } catch (e) {
+    return actionError(prismaErrorMessage(e, "PIN の取得に失敗しました"));
+  }
+}
+
 /** アテステーション鍵をリセット（次回ラッパー接続時に再束縛 = TOFU）。 */
 export async function resetDeviceKey(id: string): Promise<ActionResult> {
   const authz = await checkPermission("kiosk", "UPDATE");
