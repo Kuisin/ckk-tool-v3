@@ -28,6 +28,17 @@
 #   KioskMode.installCaFromProvisioningExtras が受け取って installCaCert する。
 #   → *.ckk-tools.loc の https がアプリから使えるようになる（端末ごとの
 #     証明書インストール作業は不要）
+# - **PROVISIONING_LEAVE_ALL_SYSTEM_APPS_ENABLED は false**（プリインストール
+#   アプリを残さない）。この端末は Web ラッパー専用なので、OEM のブロートウェアを
+#   残す理由が無い — 残すと現場で触れてしまい、ストレージも食う。
+#   false にすると managedprovisioning が「**ランチャーに出る**システムアプリ」を
+#   無効化する（必須アプリ一覧のものは除く）。ランチャーアイコンを持たない
+#   コンポーネントは対象外なので、**WebView・IME・パッケージインストーラ・
+#   設定は残る** — ラッパーの表示、キーボード、自動更新、メンテナンスの
+#   「設定を開く」はいずれも動く。
+#   影響するのは**新規プロビジョニングだけ**。既存の端末を綺麗にするには
+#   初期化して QR からやり直す。個別に戻したくなったら端末側で
+#   DevicePolicyManager.enableSystemApp() を呼ぶ（初期化でも戻る）。
 # - qrencode があれば PNG も出力する（brew install qrencode）
 set -euo pipefail
 
@@ -78,7 +89,7 @@ JSON=$(jq -n \
     "android.app.extra.PROVISIONING_DEVICE_ADMIN_COMPONENT_NAME": $component,
     "android.app.extra.PROVISIONING_DEVICE_ADMIN_PACKAGE_DOWNLOAD_LOCATION": $url,
     "android.app.extra.PROVISIONING_DEVICE_ADMIN_PACKAGE_CHECKSUM": $checksum,
-    "android.app.extra.PROVISIONING_LEAVE_ALL_SYSTEM_APPS_ENABLED": true
+    "android.app.extra.PROVISIONING_LEAVE_ALL_SYSTEM_APPS_ENABLED": false
   }
   + (if ($ca | length) > 0
      then {"android.app.extra.PROVISIONING_ADMIN_EXTRAS_BUNDLE":

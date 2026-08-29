@@ -20,6 +20,10 @@ Configure a freshly plant-reset tablet as a dedicated kiosk device — no cable,
 3. Connect to Wi-Fi and scan the provisioning QR below
 4. The APK downloads and installs automatically, and the device locks into kiosk mode
 
+> **Pre-installed apps (bloatware) are disabled automatically.** These tablets are dedicated to the business app, so the manufacturer's pre-installed apps are disabled during registration (those that appear in the launcher). Everything needed for the keyboard, the display, auto-update and the maintenance 「設定を開く」 is kept, so operation is unaffected.
+>
+> This applies **only to devices newly registered with this procedure**. To clean up a device already in service, factory-reset it and repeat these steps.
+
 **Production QR:**
 
 ![Production provisioning QR](https://ckk-kiosk.kai-lab.net/apk/provisioning-prod.png)
