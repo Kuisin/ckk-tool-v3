@@ -1,0 +1,92 @@
+# Branch Archive — PR がマージされたら feature ブランチをタグへ退避して削除する。
+#
+# root CLAUDE.md「Git workflow」の Branch cleanup（マージ済みブランチは
+# アーカイブ/剪定する）を自動化したもの。手作業だと消し忘れが溜まり、
+# 実際に 45 本の死んだブランチが残っていた（2026-08-30 に一括削除）。
+#
+# なぜ GitHub の設定「Automatically delete head branches」を使わないか:
+#   あの設定が削除を避けるのは「保護ブランチ」と「他の open PR の base に
+#   なっているブランチ」だけ。このリポジトリは private かつ無料プランなので
+#   **branch protection / ruleset が使えず**（API が 403）、dev も main も
+#   保護できない。そのまま有効にすると dev → main の昇格 PR をマージした
+#   瞬間に **dev が消える**。除外は自前で持つしかない。
+#
+# 退避先は軽量タグ refs/tags/archive/<ブランチ名>。タグはブランチ一覧に
+# 出ないので邪魔にならず、元のコミット列は永続的に辿れる。
+#   復元: git push origin refs/tags/archive/<名前>:refs/heads/<名前>
+
+name: Branch Archive
+
+on:
+  pull_request:
+    types: [closed]
+
+permissions:
+  contents: write
+  pull-requests: read
+
+jobs:
+  archive:
+    name: Archive and delete merged branch
+    # マージされずに閉じた PR では何もしない（作業途中のブランチを消さない）。
+    # fork からの PR も対象外（そもそも相手のリポジトリのブランチは触れない）。
+    if: >-
+      github.event.pull_request.merged == true &&
+      github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+      # ブランチ名は ${{ }} で直接シェルへ展開しない（ref 名にはバッククォートや
+      # $ を含められるためコマンド注入になる）。env 経由で渡して "$BRANCH" と書く。
+      BRANCH: ${{ github.event.pull_request.head.ref }}
+      HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+      PR_NUMBER: ${{ github.event.pull_request.number }}
+    steps:
+      - name: Skip long-lived branches
+        run: |
+          case "$BRANCH" in
+            dev|main|gh-pages)
+              echo "::notice::'$BRANCH' は長命ブランチなので削除しません。"
+              echo "SKIP=1" >> "$GITHUB_ENV"
+              ;;
+          esac
+
+      - name: Skip if other open PRs use this branch as base
+        if: env.SKIP != '1'
+        run: |
+          COUNT=$(gh pr list --repo "$GH_REPO" --state open --base "$BRANCH" --json number --jq 'length')
+          if [ "$COUNT" -gt 0 ]; then
+            echo "::notice::'$BRANCH' を base にした open PR が $COUNT 件あるため削除しません。"
+            echo "SKIP=1" >> "$GITHUB_ENV"
+          fi
+
+      - name: Create archive tag
+        if: env.SKIP != '1'
+        run: |
+          TAG="archive/$BRANCH"
+          # 同名ブランチが作り直された場合に備えて、衝突したら PR 番号を付ける。
+          if gh api "repos/$GH_REPO/git/ref/tags/$TAG" >/dev/null 2>&1; then
+            TAG="archive/$BRANCH-pr$PR_NUMBER"
+          fi
+          if gh api "repos/$GH_REPO/git/ref/tags/$TAG" >/dev/null 2>&1; then
+            # ここまで来るのは workflow の再実行時だけ。作成済みなので何もしない。
+            echo "::notice::タグ '$TAG' は既に存在します（再実行）。"
+          else
+            gh api "repos/$GH_REPO/git/refs" \
+              -f "ref=refs/tags/$TAG" \
+              -f "sha=$HEAD_SHA" >/dev/null
+            echo "::notice::'$BRANCH' を $HEAD_SHA でタグ '$TAG' に退避しました。"
+          fi
+          echo "TAG=$TAG" >> "$GITHUB_ENV"
+
+      - name: Delete merged branch
+        if: env.SKIP != '1'
+        run: |
+          # タグの作成が成功した後にだけ消す（前ステップが失敗すれば job ごと止まる）。
+          if gh api -X DELETE "repos/$GH_REPO/git/refs/heads/$BRANCH" >/dev/null 2>&1; then
+            echo "::notice::ブランチ '$BRANCH' を削除しました（復元: git push origin refs/tags/$TAG:refs/heads/$BRANCH）。"
+          else
+            # 手動で先に消された場合など。タグは残っているので実害はない。
+            echo "::notice::ブランチ '$BRANCH' は既に存在しませんでした。"
+          fi

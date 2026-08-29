@@ -39,12 +39,18 @@ CI enforces both rules on PRs to `main` via
 `.github/workflows/promotion-guard.yml` (head must be `dev`; the merge must not
 conflict).
 
-**Branch cleanup (required)** — after a PR is merged into `dev`, **delete its
-feature branch** (remote: `gh pr merge --delete-branch`, or
-`git push origin --delete <branch>`; local: `git branch -d <branch>`). Merged
-branches are archived/pruned to keep the branch list clean — never leave merged
-feature branches behind, and run `git fetch --prune` so stale remote refs drop
-off. Long-lived branches are only `dev` and `main`.
+**Branch cleanup — the remote side is automatic.** `.github/workflows/branch-archive.yml`
+runs on every merged PR: it tags the head branch as **`refs/tags/archive/<branch>`**
+and then deletes the branch. Restore one with
+`git push origin refs/tags/archive/<name>:refs/heads/<name>`. Long-lived branches
+are only `dev`, `main` and `gh-pages`, and the workflow skips them by name —
+**do not** turn on GitHub's *Automatically delete head branches* setting instead:
+this repo is private on a plan without branch protection / rulesets (the API
+returns 403), so that setting would delete `dev` the moment a `dev`→`main`
+promotion PR is merged.
+
+Locally you still prune yourself: `git fetch --prune`, then
+`git branch -d <branch>` (or `git branch -vv | grep ': gone]'` to find them all).
 
 ## Project Overview
 
