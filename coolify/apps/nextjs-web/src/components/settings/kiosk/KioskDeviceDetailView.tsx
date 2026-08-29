@@ -32,8 +32,10 @@ import {
 } from "@tabler/icons-react";
 import { useEffect, useRef, useState, useTransition } from "react";
 import {
+  type DeviceUnlockPinInfo,
   listUnlockPinHistory,
   regenerateSettingsCode,
+  revealDeviceUnlockPin,
   revealKioskPin,
   type UnlockPinHistoryRow,
 } from "@/app/(dashboard)/settings/kiosk-devices/actions";
@@ -124,6 +126,32 @@ export function KioskDeviceDetailView({
         setHistory(result.data.rows);
         if (historyTimerRef.current) clearTimeout(historyTimerRef.current);
         historyTimerRef.current = setTimeout(() => setHistory(null), 60_000);
+      } else {
+        notifications.show({
+          title: "エラー",
+          message: result.error,
+          color: "red",
+        });
+      }
+    });
+  };
+  // この端末が保持している PIN（受け渡しの記録から引く）。同じく 60 秒で隠す。
+  const [confirmHeld, setConfirmHeld] = useState(false);
+  const [held, setHeld] = useState<DeviceUnlockPinInfo | null>(null);
+  const heldTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(
+    () => () => {
+      if (heldTimerRef.current) clearTimeout(heldTimerRef.current);
+    },
+    [],
+  );
+  const revealHeld = () => {
+    startTransition(async () => {
+      const result = await revealDeviceUnlockPin(device.id);
+      if (result.ok) {
+        setHeld(result.data);
+        if (heldTimerRef.current) clearTimeout(heldTimerRef.current);
+        heldTimerRef.current = setTimeout(() => setHeld(null), 60_000);
       } else {
         notifications.show({
           title: "エラー",
@@ -302,10 +330,55 @@ export function KioskDeviceDetailView({
             </Text>
             <Text c="dimmed" size="xs">
               オフラインの端末は PIN を同期できないため、
-              <b>最後に通信できた時点の PIN</b>
-              しか受け付けない。その場合は「履歴」から当時の値を引く
+              <b>最後に受け取れた時点の PIN</b>
+              しか受け付けない。開けたいときは右の「この端末が保持している
+              PIN」を使う
             </Text>
           </Stack>
+
+          {/* 端末が実際に受け取れた PIN（推測ではなく受け渡しの記録から引く） */}
+          <Stack gap={4}>
+            <Text c="dimmed" size="xs">
+              この端末が保持している PIN
+            </Text>
+            <Group gap="xs" wrap="nowrap">
+              <Text ff="monospace" fw={700} size="lg">
+                {held ? (held.pin ?? "—") : "••••••"}
+              </Text>
+              {!held && device.unlockPinSyncedAt && (
+                <SecondaryButton
+                  leftSection={<IconEye size={14} />}
+                  loading={isPending}
+                  onClick={() => setConfirmHeld(true)}
+                  size="xs"
+                >
+                  表示
+                </SecondaryButton>
+              )}
+              {held?.isCurrent && (
+                <Badge color="green" size="xs" variant="light">
+                  最新
+                </Badge>
+              )}
+            </Group>
+            {device.unlockPinSyncedAt ? (
+              <Text c="dimmed" size="xs">
+                最終同期 {fmt.dateTime(device.unlockPinSyncedAt)}
+                {held && !held.pin ? "（当時の PIN は履歴に残っていない）" : ""}
+              </Text>
+            ) : (
+              <Text c="orange" size="xs">
+                <b>未同期</b> — この端末はまだ一度も PIN
+                を受け取っていない。端末はビルド時の既定 PIN（APK
+                のビルド設定にのみ存在。サーバーには無い）のまま
+              </Text>
+            )}
+            <Text c="dimmed" size="xs">
+              受け取れたときだけ記録する。通信できていても未リンク・トークン切れ
+              （401）や PinSync 以前の APK では届いていない
+            </Text>
+          </Stack>
+
           <Stack gap={4}>
             <Text c="dimmed" size="xs">
               端末設定コード（この端末・左上 5 タップ用）
@@ -436,6 +509,20 @@ export function KioskDeviceDetailView({
         }}
         opened={confirmRegen}
         title="設定コードの再生成"
+      />
+      {/* 端末が保持している PIN の表示確認 */}
+      <ConfirmModal
+        confirmColor="blue"
+        confirmLabel="表示"
+        loading={isPending}
+        message="この端末に最後に渡したメンテナンス PIN を表示します。表示した操作は監査ログに記録されます。"
+        onClose={() => setConfirmHeld(false)}
+        onConfirm={() => {
+          revealHeld();
+          setConfirmHeld(false);
+        }}
+        opened={confirmHeld}
+        title="端末が保持している PIN の表示"
       />
       {/* PIN 履歴の表示確認 */}
       <ConfirmModal
