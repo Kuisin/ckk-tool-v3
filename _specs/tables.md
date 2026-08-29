@@ -14,7 +14,7 @@
 > ※ `system_logs` のうち **LOGIN の部分だけは `login_attempts` として実装済み**
 > （下記 Security 節）。残り（PDF ダウンロード等の操作記録）は未実装のまま。
 >
-> **実装にあるが本書に未記載（32）** — 後から足した機能の分:
+> **実装にあるが本書に未記載（33）** — 後から足した機能の分:
 > - `directory.prisma`: `employee_directory` / `ldap_sync_log`
 > - `intake.prisma`: （`order_lines` は本書に記載済み）
 > - `inventory.prisma`: `storage_locations` / `storage_shelves`
@@ -23,7 +23,14 @@
 >   書類・製品の `currency` 列（products / quotes / order_acceptances / invoices に
 >   追加。既定 'JPY'、FK なし — 既存 price_list_entries.currency と同じ規約）が指す。
 >   レートは手動更新の分析用換算（会計処理用ではない）。注文明細はヘッダから読む。
-> - `kiosk.prisma`: `kiosk_cards` / `kiosk_device_locations` / `kiosk_device_logs` / `kiosk_devices` / `kiosk_floor_maps` / `kiosk_link_requests` / `kiosk_sessions`
+> - `kiosk.prisma`: `kiosk_cards` / `kiosk_device_locations` / `kiosk_device_logs` / `kiosk_devices` / `kiosk_floor_maps` / `kiosk_link_requests` / `kiosk_sessions` /
+>   `kiosk_unlock_pins` — メンテナンス退出 PIN の履歴。現行値は
+>   `system_settings['kiosk.unlock_pin']` の 1 行で pg_cron が毎日 4:00 に**上書き**
+>   するが、端末は PIN を**ローカルに持つ**（PinSync → SharedPreferences）ため、
+>   オフラインの端末が受け付けるのは「最後に同期できた時点の値」= 上書きで消えた
+>   値になる。それを引くためだけの表なので `rotated_at`（有効になった時刻）だけを
+>   持ち、期間の終わりは次の行から導く。保持 400 日、書き込みも刈り取りも
+>   `kiosk-cron.sql` の rotate ジョブが 1 本で行う
 > - `notification.prisma`: `notifications` / `push_subscriptions` / `user_notification_settings`
 > - `product-routes.prisma`: `product_process_route_version_steps` / `product_process_route_versions` / `product_process_routes`
 > - `production-master.prisma`: `work_location_groups` / `work_locations`
