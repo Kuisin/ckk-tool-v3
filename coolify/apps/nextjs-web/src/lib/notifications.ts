@@ -12,8 +12,12 @@ import { effectiveMemberWhere } from "./approval-membership";
 import { SYSTEM_USER_ID } from "./audit";
 import { prisma } from "./db";
 import { sendNotificationMail } from "./mailer";
+import { markNotificationsEmailed } from "./notification-digest";
+import { sendsImmediateEmail } from "./notification-email-core";
+import { getNotificationEmailSettings } from "./notification-email-settings";
 import {
   externalNotificationLinks,
+  type NotificationType,
   sanitizeLinkPath,
 } from "./notifications-core";
 import { sendPushToUser } from "./push";
@@ -24,18 +28,11 @@ import { publishNotificationEvent } from "./realtime";
 export {
   externalNotificationLinks,
   isNotificationId,
+  NOTIFICATION_TYPES,
+  type NotificationType,
   notificationOpenPath,
   sanitizeLinkPath,
 } from "./notifications-core";
-
-export type NotificationType =
-  | "APPROVAL_REQUEST" // 承認依頼 → 承認者へ
-  | "APPROVAL_RESULT" // 承認/差し戻し → 依頼者へ
-  | "INTAKE" // 注文請書 自動取込の結果
-  | "PURCHASE" // 素材発注の状態遷移
-  | "SHARE" // ページ共有（layout/share-actions）
-  | "DESIGN" // 設計依頼の担当指定・状態遷移
-  | "SYSTEM";
 
 export interface NotifyInput {
   userIds: string[];
@@ -92,6 +89,11 @@ async function dispatchExternal(
   // dev/main が DB を共有しているため、検証環境からの実ユーザーへの
   // メール・プッシュを止めるキルスイッチ（監査 P1-4）。アプリ内通知は残る。
   if (process.env.NOTIFY_EXTERNAL_DISABLED === "1") return;
+  // メールを 1 件ずつ送るか、ダイジェストに回すか（SY0F の設定）。
+  // 回す場合はここでは何も送らず、notification-digest.ts の掃き出しが
+  // 「猶予を過ぎても未読のもの」だけをまとめて 1 通にする。
+  const emailSettings = await getNotificationEmailSettings();
+  const immediateEmail = sendsImmediateEmail(emailSettings, input.type);
   const users = await prisma.user.findMany({
     where: { id: { in: userIds }, isActive: true },
     select: {
@@ -114,13 +116,20 @@ async function dispatchExternal(
         notificationId: notificationIdByUser.get(u.id),
         linkPath: input.linkPath,
       });
-      if (emailOn && u.email) {
+      if (emailOn && u.email && immediateEmail) {
+        const notificationId = notificationIdByUser.get(u.id);
         jobs.push(
           sendNotificationMail({
             to: u.email,
             title: input.title,
             message: input.message,
             linkPath: links.mail,
+          }).then((sent) => {
+            // 送れたぶんには印を付ける — 付けないと、その通知が未読のまま
+            // 残ったときに次のダイジェストへもう一度載る。
+            if (sent && notificationId) {
+              return markNotificationsEmailed([notificationId]);
+            }
           }),
         );
       }

@@ -3,6 +3,9 @@
  *
  * 注文請書の監視フォルダポーラーを起動する。INTAKE_DIR 未設定なら何もしない
  * （ローカル・ビルド時は安全に無効）。間隔は INTAKE_POLL_MS（既定 60 秒）。
+ *
+ * 通知メールのダイジェスト掃き出しもここで回す（BullMQ は入れていないので、
+ * 締日オートラン・取込ポーラーと同じ setInterval に揃える）。
  */
 
 export async function register() {
@@ -17,6 +20,21 @@ export async function register() {
     10 * 60_000, // 10 分間隔で時刻判定（実行は 1 日 1 回）
   );
   process.on("SIGTERM", () => clearInterval(closingTimer));
+
+  // 通知メールのダイジェスト（見逃した未読だけをまとめて 1 通）。
+  // **刻みは固定で、送信間隔そのものではない** — 実際に送るかどうかは
+  // 毎回 SY0F の設定（間隔・猶予）を読んで決めるので、設定を変えても
+  // 再起動が要らない。既定 5 分刻み（NOTIFICATION_DIGEST_TICK_MS）。
+  const { runNotificationDigest } = await import("./lib/notification-digest");
+  const digestTick = Number(
+    process.env.NOTIFICATION_DIGEST_TICK_MS ?? 5 * 60_000,
+  );
+  const digestTimer = setInterval(() => {
+    runNotificationDigest().catch((e) =>
+      console.error("[notification-digest] tick", e),
+    );
+  }, digestTick);
+  process.on("SIGTERM", () => clearInterval(digestTimer));
 
   // 抽出待ちのまま落ちた行の拾い直し（優先取込はプロセス内キューで動くため、
   // コンテナが入れ替わると待機分が消える）。十分に古い行だけを対象にするので、

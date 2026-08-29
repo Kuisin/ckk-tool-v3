@@ -8,6 +8,23 @@
  */
 
 /**
+ * 通知の種別。**メール設定（どの種別を待たせずに送るか）が値を列挙する**ので、
+ * 型だけでなく実体の配列としてここに置く。notifications.ts は server-only の
+ * 依存を抱えていて設定画面から import できない。
+ */
+export const NOTIFICATION_TYPES = [
+  "APPROVAL_REQUEST", // 承認依頼 → 承認者へ
+  "APPROVAL_RESULT", // 承認/差し戻し → 依頼者へ
+  "INTAKE", // 注文請書 自動取込の結果
+  "PURCHASE", // 素材発注の状態遷移
+  "SHARE", // ページ共有（layout/share-actions）
+  "DESIGN", // 設計依頼の担当指定・状態遷移
+  "SYSTEM",
+] as const;
+
+export type NotificationType = (typeof NOTIFICATION_TYPES)[number];
+
+/**
  * アプリ内パスの検証（監査 P1-6: `/\\evil.com` や二重エンコードの
  * オープンリダイレクトを遮断）。正規化して pathname+search が元と一致する
  * 相対パスのみ許可。不正は undefined を返す。
