@@ -96,8 +96,12 @@ ISO-2022-JP / Shift_JIS — を正しく読めることが選定理由で、こ�
 
 - **uid/gid（最大のリスク）** — 取込フォルダは nextjs-web と共有する。
   このイメージは向こうと同じ **1001:1001** で走る。ホスト側も揃えること:
-  `sudo chown -R 1001:1001 /data/intake-dev`。ずれると EACCES で黙って止まり、
-  画面では「取込待ちのまま動かない」としか見えない
+  `sudo chown -R 1001:1001 <取込フォルダ>`。ずれると EACCES で黙って止まり、
+  画面では「取込待ちのまま動かない」としか見えない。
+  **dev の実際の配置**（2026-08-30 実測・疎通確認済み）:
+  host `/home/kaiseisawada/intake/orders` → container `/data/intake`、
+  `INTAKE_DIR=/data/intake`。フォルダは 0777、`processed/`・`failed/` は
+  uid 1001 所有。nextjs-web-dev と intake-gateway-dev が同じホストパスを見る
 - **フォルダに書けないまま受信を始めない** — 全部失敗し、それでも既読が付く
   ＝注文書が黙って消える。だから起動時に `ensure_writable` で確かめ、
   駄目なら**ポーリングを始めずに終了する**
@@ -139,8 +143,9 @@ IMAP サーバーは使わない — `mailbox` の入出力を差し替えてい
 ```bash
 # 1. 共有フォルダの相互運用（これを最初にやる）
 docker exec intake-gateway-dev python -c \
-  "from gateway.writer import write_to_intake; print(write_to_intake('/intake','probe.pdf', b'%PDF-1.4\n'))"
-docker exec <nextjs-web-dev> ls -la /intake
+  "from gateway.writer import ensure_writable, write_to_intake; ensure_writable('/data/intake'); \
+   print(write_to_intake('/data/intake','probe.pdf', b'%PDF-1.4\n'))"
+docker exec <nextjs-web-dev> ls -la /data/intake
 #    → 60 秒以内に ORD-... へ改名され processed/ へ移ること。EACCES が出ないこと
 
 # 2. PDF 1 枚 + HTML 署名にロゴを入れたメールを送る
@@ -156,8 +161,22 @@ docker logs -f intake-gateway-dev     # 1 通・1 ファイル（ロゴは落ち
 ## デプロイ
 
 Coolify 管理・環境別・内部専用（ホストポートも公開ドメインも無い）。
-登録は `coolify/platform/add-intake-gateway-apps.sh`、デプロイは
-`coolify/platform/deploy.sh intake-gateway-dev|intake-gateway-main`。
+登録は `coolify/platform/add-intake-gateway-apps.sh`（冪等 — アプリ作成 /
+ビルド設定 / env / バインドマウント / デプロイキーまで全部やる）、
+デプロイは `coolify/platform/deploy.sh intake-gateway-dev|intake-gateway-main`。
 
-**main はまだ取込フォルダのマウントが無い**（`INTAKE_DIR` 未設定）。
-本番で動かすには先にバインドマウントと env を用意すること。
+登録スクリプトが自動でやる 2 つの落とし穴:
+
+- **バインドマウント** — `/storages` の `type` は `persistent|file` の 2 択
+  （`bind` / `volume` は Validation failed）だが、**`persistent` に `host_path`
+  を渡すとバインドマウントになる**。名前付きボリュームは Coolify が
+  `<appUUID>_<name>` に改名するのでアプリ間で共有できず、ここでは使えない
+- **デプロイキー** — `/applications/public` で作ると組み込みの「Public GitHub」に
+  紐づき、非公開リポジトリを匿名 HTTPS で clone しようとして
+  `could not read Username for 'https://github.com'` で落ちる。
+  `private_key_id` は REST API では設定できない（"This field is not allowed."）ので
+  スクリプトが `coolify-db` へ直接 UPDATE する
+
+**dev は疎通確認済み**（2026-08-30）。**main は取込フォルダ自体がまだ無い** —
+`nextjs-web-main` に `INTAKE_DIR` も storages も無いので、本番で動かすには
+先にフォルダ作成（`chown 1001:1001`）+ 両アプリへのマウント + env が要る。

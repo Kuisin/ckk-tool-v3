@@ -15,13 +15,15 @@
 # ⚠️ **取込フォルダは手で付ける必要がある。**
 # Coolify は名前付きボリュームを `<appUUID>_<name>` に改名するので、
 # **アプリ間で共有できない**。nextjs-web と同じフォルダを見せるには
-# ホストのバインドマウント（例 /data/intake-dev → /intake）にすること。
-# API の /storages は persistent|file しか受けないため、バインドは UI で付ける。
-# 下の案内を読んで、**最初のデプロイ前に**両アプリへ同じホストパスを付ける。
+# ホストのバインドマウント（dev は実測で
+# /home/kaiseisawada/intake/orders → /data/intake）にすること。
+# /storages の type は persistent|file の 2 択だが、**persistent に host_path を
+# 渡すとバインドマウントになる**ので、このスクリプトが自動で付ける。
 #
 # ⚠️ uid/gid — このコンテナは nextjs-web と同じ **1001:1001** で走る
 # （Dockerfile 参照）。ホスト側のディレクトリもその uid が書ける状態にすること:
-#   sudo mkdir -p /data/intake-dev && sudo chown -R 1001:1001 /data/intake-dev
+#   dev のフォルダは既にあり 0777 + processed/failed が uid 1001 所有。
+#   新設するときは: sudo mkdir -p <dir> && sudo chown -R 1001:1001 <dir>
 # ずれていると EACCES で黙って止まり、画面では「取込待ちのまま動かない」としか
 # 見えない。
 
@@ -92,7 +94,7 @@ create_app() { # name branch env_name host_dir
     # 空で入れておき、値は Coolify の UI で設定する。INTAKE_MAIL_HOST が空の
     # 間はゲートウェイは何もしない（起動して待つだけ）。
     api PATCH "/applications/$uuid/envs/bulk" -d "{\"data\": [
-      {\"key\": \"INTAKE_DIR\",                \"value\": \"/intake\"},
+      {\"key\": \"INTAKE_DIR\",                \"value\": \"/data/intake\"},
       {\"key\": \"INTAKE_MAIL_HOST\",          \"value\": \"\"},
       {\"key\": \"INTAKE_MAIL_PORT\",          \"value\": \"993\"},
       {\"key\": \"INTAKE_MAIL_SSL\",           \"value\": \"1\"},
@@ -109,40 +111,72 @@ create_app() { # name branch env_name host_dir
     ]}" >/dev/null && echo "  envs set (資格情報は空 — Coolify の UI で入れる)"
   fi
 
-  # バインドマウントは API から作れない（type は persistent|file の 2 択で、
-  # ホストパスを指定できない）。UI での手順を出して終わる。
+  # 取込フォルダのバインドマウント。**アプリ間で共有するので名前付きボリュームは
+  # 使えない**（Coolify が <appUUID>_<name> に改名するため）。
+  # type は persistent|file の 2 択（bind / volume は Validation failed になる）だが、
+  # **persistent に host_path を渡すとバインドマウントになる** — 実測で確認済み。
+  # nextjs-web-dev の既存マウントも同じ形。
   if api GET "/applications/$uuid/storages" \
-       | jq -e '.persistent_storages[]? | select(.mount_path == "/intake")' >/dev/null 2>&1; then
-    echo "  /intake は既にマウント済み"
+       | jq -e '.persistent_storages[]? | select(.mount_path == "/data/intake")' >/dev/null 2>&1; then
+    echo "  /data/intake は既にマウント済み"
+  elif api POST "/applications/$uuid/storages" -d "{
+          \"type\": \"persistent\",
+          \"name\": \"${name}-intake\",
+          \"host_path\": \"$host_dir\",
+          \"mount_path\": \"/data/intake\"
+        }" >/dev/null 2>&1; then
+    echo "  bind mount attached ($host_dir → /data/intake)"
   else
-    echo "  !! /intake が未マウント — **最初のデプロイ前に** UI で付けること:"
+    echo "  !! /data/intake を付けられなかった — **最初のデプロイ前に** UI で付けること:"
     echo "     $name → Persistent Storage → Add → Bind mount"
-    echo "       Host: $host_dir   Container: /intake"
-    echo "     nextjs-web-${name#intake-gateway-} 側にも同じホストパスを付けること"
+    echo "       Host: $host_dir   Container: /data/intake"
+    echo "     （nextjs-web 側は dev では設定済み。main はこれから）"
   fi
 }
 
-create_app intake-gateway-dev  dev  development /data/intake-dev
-create_app intake-gateway-main main production  /data/intake-main
+# ── 非公開リポジトリのデプロイキーへ付け替える ─────────────────────────
+# **必須。** /applications/public で作ると Coolify 組み込みの擬似ソース
+# 「Public GitHub」に紐づき、匿名 HTTPS clone を試みて
+#   fatal: could not read Username for 'https://github.com'
+# でビルドが落ちる（このリポジトリは非公開）。private_key_id は REST API では
+# 設定できない（"This field is not allowed."）ので DB を直接更新する。
+# 詳細は coolify/platform/README.md「git アクセスはデプロイキー」。
+fix_private_key() {
+  docker exec -i coolify-db psql -U coolify -d coolify -q <<'SQL'
+update applications
+   set git_repository = 'git@github.com:Kuisin/ckk-tool-v3.git',
+       private_key_id = 1, source_id = null, source_type = null
+ where name in ('intake-gateway-dev','intake-gateway-main')
+   and (private_key_id is null or git_repository <> 'git@github.com:Kuisin/ckk-tool-v3.git');
+SQL
+  echo "private_key_id / git_repository fixed (非公開リポジトリのデプロイキー)"
+}
+
+create_app intake-gateway-dev  dev  development /home/kaiseisawada/intake/orders
+create_app intake-gateway-main main production  /home/kaiseisawada/intake/orders-main
+
+fix_private_key
 
 cat <<'EOS'
 
 次の手順:
-  1. ホスト側のフォルダを作り、nextjs-web と同じ uid(1001) が書けるようにする:
-       sudo mkdir -p /data/intake-dev /data/intake-main
-       sudo chown -R 1001:1001 /data/intake-dev /data/intake-main
-  2. Coolify UI で **両方のアプリ**にバインドマウントを付ける（上の案内のとおり）:
-       intake-gateway-dev  : /data/intake-dev  → /intake
-       nextjs-web-dev      : /data/intake-dev  → /intake
-     nextjs-web 側は env INTAKE_DIR=/intake も設定する（今は dev のみ設定済み）。
+  1. **dev は既に用意済み** — nextjs-web-dev が
+       host /home/kaiseisawada/intake/orders → container /data/intake
+     をバインドマウントし、INTAKE_DIR=/data/intake を設定している（実測）。
+     intake-gateway-dev には**同じホストパス**を同じ位置へ付ける。
+     main はフォルダ自体が未整備なので、先に作ること:
+       sudo mkdir -p /home/kaiseisawada/intake/orders-main
+       sudo chown -R 1001:1001 /home/kaiseisawada/intake/orders-main
+     （uid 1001 = nextjs-web / intake-gateway 共通の実行ユーザー）
+  2. バインドマウントはこのスクリプトが API で付ける（type=persistent +
+     host_path。bind / volume は Validation failed になる）。付かなかったと
+     表示されたときだけ UI で手当てする。
   3. Coolify UI で受信箱の資格情報を入れる（INTAKE_MAIL_HOST / USER / PASSWORD）。
      **dev と main で別のメールボックスにすること** — 同じ受信箱を 2 つの
      コンテナが読むと、どちらが先に既読を打つかで取り合いになる。
   4. ./deploy.sh intake-gateway-dev
-  5. docker logs -f で「メール取込を開始します」を確認。
-     「メール取込は無効です」なら env が足りていない（理由が出る）。
-     「取込フォルダが使えません」なら uid/gid かマウント（1. と 2. を見直す）。
-
-注意: main は取込フォルダのマウントがまだ無い。先に 1./2. を main 側にも
-      行い、nextjs-web-main の INTAKE_DIR を設定してから deploy すること。
+  5. docker logs -f で確認する:
+       「メール取込を開始します」 … 正常
+       「メール取込は無効です（…）」 … env が足りない（理由が出る）
+       「取込フォルダが使えません」 … uid/gid かマウント（1. と 2. を見直す）
 EOS
