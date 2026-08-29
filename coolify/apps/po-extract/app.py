@@ -473,7 +473,8 @@ def _dialect(fmt, provider):
 
 # ── Request shaping / response reading (pure — no I/O) ───────────────────
 def _build_chat(cfg: AIConfig, model: str, content: str,
-                images: list[str] | None, fmt: dict | None):
+                images: list[str] | None, fmt: dict | None,
+                omit_temperature: bool = False):
     p = cfg.provider
     schema = _dialect(fmt, p)
 
@@ -482,7 +483,9 @@ def _build_chat(cfg: AIConfig, model: str, content: str,
         if images:
             msg["images"] = images          # ollama は素の base64
         body = {"model": model, "stream": False, "keep_alive": KEEP_ALIVE,
-                "options": {"temperature": 0}, "messages": [msg]}
+                "messages": [msg]}
+        if not omit_temperature:
+            body["options"] = {"temperature": 0}
         if schema is not None:
             body["format"] = schema
         headers = {"Authorization": f"Bearer {cfg.api_key}"} if cfg.api_key else {}
@@ -497,8 +500,10 @@ def _build_chat(cfg: AIConfig, model: str, content: str,
             msg_content = parts
         else:
             msg_content = content
-        body = {"model": model, "temperature": 0,
+        body = {"model": model,
                 "messages": [{"role": "user", "content": msg_content}]}
+        if not omit_temperature:
+            body["temperature"] = 0
         if schema is not None:
             body["response_format"] = {"type": "json_schema", "json_schema": {
                 "name": "result", "schema": schema, "strict": True}}
@@ -524,7 +529,7 @@ def _build_chat(cfg: AIConfig, model: str, content: str,
         parts = [{"text": content}]
         parts += [{"inline_data": {"mime_type": "image/png", "data": b}}
                   for b in (images or [])]
-        gen = {"temperature": 0}
+        gen = {} if omit_temperature else {"temperature": 0}
         if schema is not None:
             gen["responseMimeType"] = "application/json"
             gen["responseSchema"] = schema
@@ -577,6 +582,8 @@ def _http_ai_error(cfg: AIConfig, r: httpx.Response) -> AIError:
         return AIError("rate_limit", f"{cfg.provider} reports insufficient credit (HTTP 402)", s)
     if s == 429:
         return AIError("rate_limit", f"{cfg.provider} rate limit reached (HTTP 429)", s)
+    if s == 400 and re.search(r"temperature|top_p|sampling", body, re.I):
+        return AIError("bad_sampling", f"{cfg.provider} rejected the sampling params: {body}", s)
     if s == 400 and re.search(r"image|vision|multimodal", body, re.I):
         return AIError("no_vision", f"{cfg.provider} model cannot read images: {body}", s)
     if s == 400 and re.search(r"schema|response_format|responseSchema|output_config", body, re.I):
@@ -587,8 +594,9 @@ def _http_ai_error(cfg: AIConfig, r: httpx.Response) -> AIError:
 
 
 def _chat_once(cfg: AIConfig, model: str, content: str,
-               images: list[str] | None, fmt: dict | None) -> str:
-    url, headers, body = _build_chat(cfg, model, content, images, fmt)
+               images: list[str] | None, fmt: dict | None,
+               omit_temperature: bool = False) -> str:
+    url, headers, body = _build_chat(cfg, model, content, images, fmt, omit_temperature)
     t0 = time.monotonic()
     try:
         with httpx.Client(timeout=CHAT_TIMEOUT) as client:
@@ -616,6 +624,12 @@ def _chat(cfg: AIConfig, model: str, content: str,
     try:
         return _chat_once(cfg, model, content, images, fmt)
     except AIError as e:
+        # 推論寄りのモデルは temperature を既定値しか受けない
+        # （例: "does not support 0 with this model"）。決定性は諦めて通す —
+        # 送らないほうが「動くが揺れる」で、動かないよりましなため。
+        if e.kind == "bad_sampling":
+            print("[ai] sampling params rejected → retrying without temperature", flush=True)
+            return _chat_once(cfg, model, content, images, fmt, omit_temperature=True)
         # スキーマを受けないモデルでも、プロンプトで形を指示すれば大抵通る。
         # 1 回だけ落として試す（成否は _loads の寛容パースが受け止める）。
         if e.kind == "bad_schema" and fmt is not None:

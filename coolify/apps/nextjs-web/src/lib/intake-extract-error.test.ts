@@ -229,6 +229,15 @@ describe("AI プロバイダ由来の失敗", () => {
     expect(po("auth", 502).detail).toContain("502");
   });
 
+  it("温度を受けないモデルは再試行対象にしない", () => {
+    // po-extract 側が temperature を外して 1 度やり直しても駄目だった場合だけ
+    // ここに来る。何度投げても同じなので retryable は false。
+    const f = po("bad_sampling");
+    expect(f.summary).toContain("生成パラメータ");
+    expect(f.retryable).toBe(false);
+    expect(f.hint).toContain("SY0E");
+  });
+
   it("知らない ai_* は既存の分類へ素通しする", () => {
     const out = classifyHttpFailure(
       502,

@@ -213,33 +213,33 @@ export function AiProviderForm({ initial }: Props) {
             <TextInput
               description="空欄でプロバイダの既定を使用"
               label="ベース URL"
-              onChange={(e) =>
-                setSettings((s) => ({ ...s, baseUrl: e.currentTarget.value }))
-              }
+              onChange={(e) => {
+                // 値は**同期的に**読む。updater の中で e.currentTarget を
+                // 読むと、React が updater を呼ぶ頃には dispatch が終わって
+                // currentTarget が null に戻っていて落ちる。
+                const value = e.currentTarget.value;
+                setSettings((s) => ({ ...s, baseUrl: value }));
+              }}
               placeholder={preset.baseUrlPlaceholder}
               value={settings.baseUrl}
             />
             <TextInput
               description="注文書の画像を読むモデル"
               label="画像読み取りモデル"
-              onChange={(e) =>
-                setSettings((s) => ({
-                  ...s,
-                  visionModel: e.currentTarget.value,
-                }))
-              }
+              onChange={(e) => {
+                const value = e.currentTarget.value;
+                setSettings((s) => ({ ...s, visionModel: value }));
+              }}
               placeholder={preset.modelPlaceholder}
               value={settings.visionModel}
             />
             <TextInput
               description="空欄なら画像読み取りモデルと同じものを使う"
               label="構造化モデル"
-              onChange={(e) =>
-                setSettings((s) => ({
-                  ...s,
-                  structModel: e.currentTarget.value,
-                }))
-              }
+              onChange={(e) => {
+                const value = e.currentTarget.value;
+                setSettings((s) => ({ ...s, structModel: value }));
+              }}
               placeholder={preset.modelPlaceholder}
               value={settings.structModel}
             />
