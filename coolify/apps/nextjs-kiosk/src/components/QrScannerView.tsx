@@ -22,6 +22,29 @@ import { useEffect, useRef, useState } from "react";
 
 const CAMERA_KEY = "kiosk_camera_id";
 
+/**
+ * カメラ一覧を取る。**取れなくてもスキャナ本体は動く**ので、失敗は空配列に畳む。
+ *
+ * `listCameras(true)`（ラベル付き）は getUserMedia をもう一度呼ぶ。Android の
+ * WebView ではこの 2 回目が拒否されることがあり、以前はその失敗が start() と
+ * 同じ catch に落ちて「カメラを起動できません」を出していた — 実際にはカメラは
+ * 映っているのにエラーが出て、しかも一覧が空なので**カメラ切替も消える**という
+ * 症状になっていた（実機 TB330FU で確認）。
+ *
+ * ラベルが取れないときはラベル無しで引き直す。id さえあれば切替はできる。
+ */
+async function listCamerasSafely(): Promise<QrScanner.Camera[]> {
+  try {
+    return await QrScanner.listCameras(true);
+  } catch {
+    try {
+      return await QrScanner.listCameras(false);
+    } catch {
+      return [];
+    }
+  }
+}
+
 type Props = {
   onScan: (payload: string) => void;
   /** 一時停止（PIN 入力中など） */
@@ -76,11 +99,13 @@ export function QrScannerView({ onScan, paused = false }: Props) {
         }
         throw e;
       })
-      .then(() => {
+      .then(async () => {
+        // ここまで来ていればスキャナは動いている。以降の一覧取得は「おまけ」で、
+        // 失敗してもエラー表示に落とさない。
         setStarting(false);
-        return QrScanner.listCameras(true);
+        setError(null);
+        setCameras(await listCamerasSafely());
       })
-      .then((list) => setCameras(list))
       .catch(() => {
         setStarting(false);
         setError(
@@ -157,9 +182,10 @@ export function QrScannerView({ onScan, paused = false }: Props) {
           </Menu.Target>
           <Menu.Dropdown>
             <Menu.Label>カメラを選択</Menu.Label>
-            {cameras.map((cam) => (
+            {cameras.map((cam, i) => (
               <Menu.Item key={cam.id} onClick={() => selectCamera(cam.id)}>
-                <Text size="sm">{cam.label || cam.id}</Text>
+                {/* ラベル無しで引いたときは id が入る（人が読めないので通し番号） */}
+                <Text size="sm">{cam.label || `カメラ ${i + 1}`}</Text>
               </Menu.Item>
             ))}
           </Menu.Dropdown>
