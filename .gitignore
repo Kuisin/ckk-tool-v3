@@ -7,3 +7,7 @@
 # Dependencies / build artifacts
 node_modules/
 *.tsbuildinfo
+
+# Python (po-extract をローカルで読み込んだときの副産物)
+__pycache__/
+*.py[cod]
