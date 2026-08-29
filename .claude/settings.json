@@ -1,5 +1,27 @@
 {
   "enabledPlugins": {
     "frontend-design@claude-plugins-official": true
+  },
+  "permissions": {
+    "allow": [
+      "Bash(git push origin *)",
+      "Bash(git push -u origin *)",
+      "Bash(gh pr create *)",
+      "Bash(gh pr merge *)"
+    ],
+    "deny": [
+      "Bash(git push origin main*)",
+      "Bash(git push origin dev*)",
+      "Bash(git push origin HEAD:main*)",
+      "Bash(git push origin HEAD:dev*)",
+      "Bash(git push origin --delete main*)",
+      "Bash(git push origin --delete dev*)",
+      "Bash(git push origin -d main*)",
+      "Bash(git push origin -d dev*)",
+      "Bash(git push -u origin main*)",
+      "Bash(git push -u origin dev*)",
+      "Bash(git push -u origin HEAD:main*)",
+      "Bash(git push -u origin HEAD:dev*)"
+    ]
   }
 }
