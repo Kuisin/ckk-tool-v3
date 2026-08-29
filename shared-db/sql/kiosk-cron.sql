@@ -30,14 +30,35 @@ SELECT cron.unschedule(jobid) FROM cron.job WHERE jobname = 'kiosk_unlock_pin_ro
 -- SY09 端末詳細で確認（表示は監査ログ記録）。端末アプリ（v0.5.3+）は
 -- /api/kiosk/unlock-pin から 1 時間ごと + ダイアログ表示時に同期する。
 -- （JST 4:00 = GMT 19:00）
+--
+-- 現行値の更新は上書きなので、**同じジョブで履歴（app.kiosk_unlock_pins）へも
+-- 1 行残す**。端末は PIN をローカルに持っており（PinSync → SharedPreferences）、
+-- オフラインの端末が受け付けるのは「最後に同期できた時点の値」= 上書きで
+-- 消えた値だから。ここを落とすと、回線の切れた端末を開ける手段が
+-- バックアップからの復元しか無くなる。
+--
+-- 履歴の rotated_at は system_settings.updated_at と同じ値を入れる
+-- （「この時刻に有効だった PIN」を 1 本の物差しで引けるようにするため）。
+-- 保持期間 400 日 — login_attempts の失敗行と同じ既定。1 日 1 行なので容量は
+-- 問題にならない。刈り取りはこのジョブの本体（最後の DELETE）。
 SELECT cron.schedule('kiosk_unlock_pin_rotate', '0 19 * * *', $job$
-  INSERT INTO app.system_settings (key, value, description, updated_at)
-  VALUES ('kiosk.unlock_pin',
-          to_jsonb(lpad(floor(random() * 1000000)::text, 6, '0')),
-          'キオスク メンテナンス退出 PIN（毎日 4:00 自動更新・全端末共通）',
-          now())
-  ON CONFLICT (key) DO UPDATE
-    SET value = EXCLUDED.value, description = EXCLUDED.description, updated_at = now()
+  WITH rotated AS (
+    INSERT INTO app.system_settings (key, value, description, updated_at)
+    VALUES ('kiosk.unlock_pin',
+            to_jsonb(lpad(floor(random() * 1000000)::text, 6, '0')),
+            'キオスク メンテナンス退出 PIN（毎日 4:00 自動更新・全端末共通）',
+            now())
+    ON CONFLICT (key) DO UPDATE
+      SET value = EXCLUDED.value, description = EXCLUDED.description, updated_at = now()
+    RETURNING value #>> '{}' AS pin, updated_at
+  ),
+  -- WITH 内の更新文は参照されなくても必ず実行される（Postgres の仕様）
+  history AS (
+    INSERT INTO app.kiosk_unlock_pins (pin, rotated_at, source)
+    SELECT pin, updated_at, 'pg_cron' FROM rotated
+  )
+  DELETE FROM app.kiosk_unlock_pins
+  WHERE rotated_at < now() - interval '400 days'
 $job$);
 
 -- 位置ログの保持期間: 90 日（毎日 JST 3:30 = GMT 18:30 に削除。

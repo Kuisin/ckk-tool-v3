@@ -136,6 +136,15 @@ There are 2 numbers for operating the tablet on the floor. Both are normally hid
 
 > ⚠️ Pressing 「**表示**」 is recorded. Tell the numbers only to the staff on the floor, and do not post them on a wall or similar.
 
+#### The maintenance PIN for a tablet that has lost its connection
+
+The maintenance PIN changes at 4:00 every day, but **a tablet keeps the number it had the last time it could talk to the server**. A tablet with no Wi-Fi cannot receive the new number, so the number shown on this screen right now will not open it.
+
+In that case press 「**履歴**」 (History) next to the maintenance PIN. The past numbers are listed together with the period each one was valid for. The row covering that tablet's 「**最終アクティビティ**」 (Last activity) time is marked 「**最終通信時**」 (At last contact) — enter that number.
+
+- 400 days are kept. A tablet that has been off longer than that cannot be opened with a PIN — connect it to a PC over USB to release it, or set it up again from scratch.
+- Pressing 「**履歴**」 is also recorded.
+
 ### Usage records
 
 - 「**最近の利用者**」 (Recent users) … the people who use that tablet often, and how many times.

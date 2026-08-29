@@ -10,11 +10,14 @@
 
 import {
   Anchor,
+  Badge,
   Flex,
   Group,
   Paper,
+  ScrollArea,
   SimpleGrid,
   Stack,
+  Table,
   Text,
   Title,
   Tooltip,
@@ -22,14 +25,17 @@ import {
 import { notifications } from "@mantine/notifications";
 import {
   IconEye,
+  IconHistory,
   IconMapPin,
   IconRefresh,
   IconUsers,
 } from "@tabler/icons-react";
 import { useEffect, useRef, useState, useTransition } from "react";
 import {
+  listUnlockPinHistory,
   regenerateSettingsCode,
   revealKioskPin,
+  type UnlockPinHistoryRow,
 } from "@/app/(dashboard)/settings/kiosk-devices/actions";
 import { useFormat } from "@/components/layout/PreferencesProvider";
 import { LoginAttemptList } from "@/components/settings/security/LoginAttemptList";
@@ -37,7 +43,7 @@ import { OwnershipBadge } from "@/components/settings/security/ownership";
 import { SecondaryButton } from "@/components/ui/buttons";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { FieldValue } from "@/components/ui/FieldValue";
-import { ConfirmModal } from "@/components/ui/modals";
+import { ConfirmModal, ModalShell } from "@/components/ui/modals";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { UserAvatar } from "@/components/ui/UserAvatar";
@@ -100,6 +106,33 @@ export function KioskDeviceDetailView({
       }
     });
   };
+  // PIN 履歴（オフライン端末を開けるとき用 — 現行値ではなく「最後に同期できた
+  // 時点の値」が要る）。開示と同じく確認 → 監査ログ記録 → 60 秒で自動的に閉じる。
+  const [confirmHistory, setConfirmHistory] = useState(false);
+  const [history, setHistory] = useState<UnlockPinHistoryRow[] | null>(null);
+  const historyTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(
+    () => () => {
+      if (historyTimerRef.current) clearTimeout(historyTimerRef.current);
+    },
+    [],
+  );
+  const openHistory = () => {
+    startTransition(async () => {
+      const result = await listUnlockPinHistory();
+      if (result.ok) {
+        setHistory(result.data.rows);
+        if (historyTimerRef.current) clearTimeout(historyTimerRef.current);
+        historyTimerRef.current = setTimeout(() => setHistory(null), 60_000);
+      } else {
+        notifications.show({
+          title: "エラー",
+          message: result.error,
+          color: "red",
+        });
+      }
+    });
+  };
   const [confirmRegen, setConfirmRegen] = useState(false);
   const regenerate = () => {
     startTransition(async () => {
@@ -126,6 +159,8 @@ export function KioskDeviceDetailView({
   const liveActivity = live
     ? (presence.get(device.id)?.lastActivityAt ?? device.lastActivityAt)
     : device.lastActivityAt;
+  // PIN 履歴の照合用（この端末が最後に通信できた時刻）
+  const lastSeenMs = liveActivity ? Date.parse(liveActivity) : null;
 
   return (
     <Stack gap="md">
@@ -252,10 +287,23 @@ export function KioskDeviceDetailView({
                   表示
                 </SecondaryButton>
               )}
+              <SecondaryButton
+                leftSection={<IconHistory size={14} />}
+                loading={isPending}
+                onClick={() => setConfirmHistory(true)}
+                size="xs"
+              >
+                履歴
+              </SecondaryButton>
             </Group>
             <Text c="dimmed" size="xs">
               端末画面の右上 5 タップ → この PIN でキオスクロックを一時解除
               （Wi-Fi 変更等）
+            </Text>
+            <Text c="dimmed" size="xs">
+              オフラインの端末は PIN を同期できないため、
+              <b>最後に通信できた時点の PIN</b>
+              しか受け付けない。その場合は「履歴」から当時の値を引く
             </Text>
           </Stack>
           <Stack gap={4}>
@@ -389,6 +437,90 @@ export function KioskDeviceDetailView({
         opened={confirmRegen}
         title="設定コードの再生成"
       />
+      {/* PIN 履歴の表示確認 */}
+      <ConfirmModal
+        confirmColor="blue"
+        confirmLabel="表示"
+        loading={isPending}
+        message="過去のメンテナンス PIN を表示します。表示した操作は監査ログに記録されます。"
+        onClose={() => setConfirmHistory(false)}
+        onConfirm={() => {
+          openHistory();
+          setConfirmHistory(false);
+        }}
+        opened={confirmHistory}
+        title="PIN 履歴の表示"
+      />
+      <ModalShell
+        hideFooter
+        onClose={() => setHistory(null)}
+        opened={history != null}
+        size="lg"
+        title="メンテナンス PIN の履歴"
+      >
+        <Text c="dimmed" size="xs">
+          オフラインの端末が受け付けるのは「最後に通信できた時点の PIN」。
+          この端末の最終通信は
+          {liveActivity ? ` ${fmt.dateTime(liveActivity)}` : "（記録なし）"}
+          {liveActivity ? " — その時刻を含む行を使う" : ""}。
+        </Text>
+        {history?.length === 0 ? (
+          <EmptyState
+            icon={<IconHistory size={20} />}
+            message="履歴がまだありません（次の自動更新から記録されます）"
+          />
+        ) : (
+          <ScrollArea.Autosize mah={420}>
+            <Table highlightOnHover striped={false}>
+              <Table.Thead>
+                <Table.Tr>
+                  <Table.Th>PIN</Table.Th>
+                  <Table.Th>有効になった時刻</Table.Th>
+                  <Table.Th>置き換わった時刻</Table.Th>
+                </Table.Tr>
+              </Table.Thead>
+              <Table.Tbody>
+                {(history ?? []).map((row) => {
+                  // この端末が最後に通信できた時刻に有効だった行 = その端末が
+                  // 今も保持している PIN
+                  const activeThen =
+                    lastSeenMs != null &&
+                    Date.parse(row.rotatedAt) <= lastSeenMs &&
+                    (row.supersededAt == null ||
+                      lastSeenMs < Date.parse(row.supersededAt));
+                  return (
+                    <Table.Tr key={row.rotatedAt}>
+                      <Table.Td>
+                        <Group gap="xs" wrap="nowrap">
+                          <Text ff="monospace" fw={700}>
+                            {row.pin}
+                          </Text>
+                          {row.supersededAt == null && (
+                            <Badge color="blue" size="xs" variant="light">
+                              現在
+                            </Badge>
+                          )}
+                          {activeThen && (
+                            <Badge color="green" size="xs" variant="light">
+                              最終通信時
+                            </Badge>
+                          )}
+                        </Group>
+                      </Table.Td>
+                      <Table.Td>{fmt.dateTime(row.rotatedAt)}</Table.Td>
+                      <Table.Td>
+                        {row.supersededAt
+                          ? fmt.dateTime(row.supersededAt)
+                          : "—"}
+                      </Table.Td>
+                    </Table.Tr>
+                  );
+                })}
+              </Table.Tbody>
+            </Table>
+          </ScrollArea.Autosize>
+        )}
+      </ModalShell>
     </Stack>
   );
 }
