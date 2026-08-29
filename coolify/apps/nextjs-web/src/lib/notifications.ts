@@ -12,8 +12,17 @@ import { effectiveMemberWhere } from "./approval-membership";
 import { SYSTEM_USER_ID } from "./audit";
 import { prisma } from "./db";
 import { sendNotificationMail } from "./mailer";
+import { notificationOpenPath, sanitizeLinkPath } from "./notifications-core";
 import { sendPushToUser } from "./push";
 import { publishNotificationEvent } from "./realtime";
+
+// 純粋関数は lib/notifications-core.ts（単体テスト可能）。呼び出し口は従来どおり
+// ここから import できるよう再輸出する。
+export {
+  isNotificationId,
+  notificationOpenPath,
+  sanitizeLinkPath,
+} from "./notifications-core";
 
 export type NotificationType =
   | "APPROVAL_REQUEST" // 承認依頼 → 承認者へ
@@ -23,26 +32,6 @@ export type NotificationType =
   | "SHARE" // ページ共有（layout/share-actions）
   | "DESIGN" // 設計依頼の担当指定・状態遷移
   | "SYSTEM";
-
-/**
- * アプリ内パスの検証（監査 P1-6: `/\\evil.com` や二重エンコードの
- * オープンリダイレクトを遮断）。正規化して pathname+search が元と一致する
- * 相対パスのみ許可。不正はプレーンな "/" に落とす。
- */
-export function sanitizeLinkPath(path: string | undefined): string | undefined {
-  if (!path) return undefined;
-  if (!path.startsWith("/") || path.includes("\\")) return undefined;
-  try {
-    const u = new URL(path, "http://x");
-    if (u.origin !== "http://x") return undefined;
-    const normalized = u.pathname + u.search;
-    // バックスラッシュ・プロトコル相対（//）を弾く
-    if (u.pathname.startsWith("//")) return undefined;
-    return normalized;
-  } catch {
-    return undefined;
-  }
-}
 
 export interface NotifyInput {
   userIds: string[];
@@ -64,7 +53,8 @@ export async function notify(input: NotifyInput): Promise<void> {
   if (userIds.length === 0) return;
 
   const linkPath = sanitizeLinkPath(input.linkPath);
-  await prisma.notification.createMany({
+  // 作成した行の id を受け取る（端末通知の中継 URL に使う — notificationOpenPath）。
+  const rows = await prisma.notification.createManyAndReturn({
     data: userIds.map((userId) => ({
       userId,
       type: input.type,
@@ -72,21 +62,27 @@ export async function notify(input: NotifyInput): Promise<void> {
       message: input.message,
       linkPath,
     })),
+    select: { id: true, userId: true },
   });
+  const notificationIdByUser = new Map(rows.map((r) => [r.userId, r.id]));
 
   // 開いているタブのベルを即時更新（SSE — lib/realtime.ts）。
   // 失敗しても通知行は残るので、次のフォールバック取得で追いつく。
   void publishNotificationEvent(userIds);
 
   // 外部チャネルは fire-and-forget（standalone Node ランタイム前提）
-  void dispatchExternal(userIds, { ...input, linkPath }).catch((e) =>
-    console.error("[notify] 外部チャネル配信エラー:", e),
-  );
+  void dispatchExternal(
+    userIds,
+    { ...input, linkPath },
+    notificationIdByUser,
+  ).catch((e) => console.error("[notify] 外部チャネル配信エラー:", e));
 }
 
 async function dispatchExternal(
   userIds: string[],
   input: NotifyInput,
+  /** userId → 作成した通知行の id（端末通知の中継 URL 用）。 */
+  notificationIdByUser: Map<string, string>,
 ): Promise<void> {
   // dev/main が DB を共有しているため、検証環境からの実ユーザーへの
   // メール・プッシュを止めるキルスイッチ（監査 P1-4）。アプリ内通知は残る。
@@ -118,12 +114,17 @@ async function dispatchExternal(
         );
       }
       if (pushOn) {
+        const notificationId = notificationIdByUser.get(u.id);
         jobs.push(
           sendPushToUser(u.id, {
             title: input.title,
             body: input.message,
-            // 対象ページが無い通知はアプリ内通知センターを開く
-            link: input.linkPath ?? "/notifications",
+            // 端末の通知は必ず中継 URL 経由 — 開いた時点で既読にしてから
+            // 対象ページへ送る。行が引けなかったときだけ従来どおり直接開く
+            // （対象ページが無い通知はアプリ内通知センター）。
+            link: notificationId
+              ? notificationOpenPath(notificationId)
+              : (input.linkPath ?? "/notifications"),
           }),
         );
       }
