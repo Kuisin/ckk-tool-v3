@@ -7,6 +7,10 @@
  * 返すのはマイグレーションの適用状況だけで、業務データは含めない。
  * `/api/device-signals` も除外必須 — ログイン画面（＝未ログイン）から叩く
  * 端末シグネチャの受け口なので、ここを守ると 307 されて機能が無言で死ぬ。
+ * `/api/intake/inbound` も除外必須 — 共有シークレット（X-Intake-Token）で
+ * 認証する機械向けの注文書投入口。**`api/intake` と書いてはいけない** —
+ * それだと即座に採番する `/api/intake/upload` と `/api/intake/folder` から
+ * セッション認証まで外れる。
  * /admin-manual は除外しない（要ログイン — レイアウト側でも二重確認）。
  *
  * ファビコン `/icon.svg`（app/icon.svg の Next 規約ルート）も除外必須 —
@@ -23,6 +27,6 @@ export default proxy;
 
 export const config = {
   matcher: [
-    "/((?!api/auth|api/sso|api/preview|api/device-signals|api/health|login|manual(?:$|/)|llms-manual(?:$|/)|_next/static|_next/image|favicon\\.ico|icon\\.svg|design-assets|manifest\\.webmanifest|icons|sw\\.js).*)",
+    "/((?!api/auth|api/sso|api/preview|api/device-signals|api/health|api/intake/inbound|login|manual(?:$|/)|llms-manual(?:$|/)|_next/static|_next/image|favicon\\.ico|icon\\.svg|design-assets|manifest\\.webmanifest|icons|sw\\.js).*)",
   ],
 };

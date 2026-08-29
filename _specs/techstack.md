@@ -104,7 +104,13 @@ User Data i18n: DB json field {ja, en}
 Date/Time:      date-fns v4（tree-shakeable）
 HTTP Client:    Ky
 File Storage:   SeaweedFS（Apache 2.0）
-Doc Intake:     imapflow（IMAP） + BullMQ（ファイル監視）
+Doc Intake:     intake-gateway コンテナ（IMAP。Python 標準ライブラリ
+                imaplib + email — 日本語メールのファイル名 RFC 2047 /
+                RFC 2231 / ISO-2022-JP を正しく読めるため。imapflow は
+                入れない）+ 監視フォルダ（instrumentation.ts のポーラー）。
+                受信した添付は INTAKE_DIR へ**直接書く**（アプリのトークンも
+                DB 接続もゲートウェイに渡さない = 隔離）。外部システムからの
+                push は POST /api/intake/inbound（X-Intake-Token）
 OCR/Extraction: ローカルLLM（self-hosted）— po-extract API
                 （**Coolify 管理・環境別**: po-extract-dev / po-extract-main。
                  いずれも内部専用でホストポート非公開。ソースは
