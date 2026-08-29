@@ -38,7 +38,11 @@ export function isPushConfigured(): boolean {
 export interface PushPayload {
   title: string;
   body?: string;
-  /** アプリ内パス — 通知タップで開く。 */
+  /**
+   * 通知タップで開くアプリ内パス。通知から届いたものは
+   * `/notifications/<id>/open`（lib/notifications.ts `notificationOpenPath`）—
+   * 対象ページへ送る前に既読を記録するための中継 URL。
+   */
   link?: string;
 }
 
