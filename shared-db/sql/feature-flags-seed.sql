@@ -64,4 +64,10 @@ ON CONFLICT (key) DO UPDATE
 -- 所有区分も付かない空の履歴になる。公開時:
 --   ('app:login-history:main', true, 'ログイン履歴 本番公開', now())
 
+-- AI プロバイダ（SY0E）は **本番の env に SETTINGS_ENCRYPTION_KEY を入れてから**
+-- 公開する。未設定のままだと API トークンを保存できず（守れない秘密は預からない
+-- 方針で、保存自体を拒否する）、画面を開いても何もできない。鍵は環境ごとに別
+-- （openssl rand -base64 32）。公開時:
+--   ('app:ai-provider:main', true, 'AI プロバイダ 本番公開', now())
+
 COMMIT;
