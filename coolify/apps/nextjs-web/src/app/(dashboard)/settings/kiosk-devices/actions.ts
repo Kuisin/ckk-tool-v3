@@ -637,7 +637,7 @@ export async function regenerateSettingsCode(
  * PIN / 設定コードの開示（SY09 端末詳細 — 表示前に確認 + 監査ログ記録）。
  * kind = "unlock": メンテナンス退出 PIN（全端末共通・毎日 4:00 に自動更新 —
  *   system_settings kiosk.unlock_pin。端末側は 1 時間ごと + ダイアログ表示時に同期）。
- * kind = "settings": 端末設定コード（端末ごと・左上 5 タップ画面の解錠用）。
+ * kind = "settings": 端末設定コード（端末ごと・左下 5 タップ画面の解錠用）。
  */
 export async function revealKioskPin(input: {
   kind: "unlock" | "settings";

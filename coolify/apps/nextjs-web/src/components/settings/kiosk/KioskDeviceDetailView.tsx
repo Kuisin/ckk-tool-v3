@@ -418,7 +418,7 @@ export function KioskDeviceDetailView({
 
           <Stack gap={4}>
             <Text c="dimmed" size="xs">
-              端末設定コード（この端末・左上 5 タップ用）
+              端末設定コード（この端末・左下 5 タップ用）
             </Text>
             <Group gap="xs" wrap="nowrap">
               <Text ff="monospace" fw={700} size="lg">

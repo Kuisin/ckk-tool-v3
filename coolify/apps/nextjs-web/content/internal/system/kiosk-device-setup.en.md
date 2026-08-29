@@ -81,7 +81,7 @@ Even while kiosk-locked, an administrator can temporarily lift the lock to open 
 3. Android Settings opens — **change the Wi-Fi**
 4. Return to the app (back button etc.) and it **re-locks automatically**
 
-> The top-LEFT 5-tap is a different feature (device settings, unlocked with the 6-digit settings code). Network changes use the **top right**.
+> The BOTTOM-LEFT 5-tap is a different feature (device settings, unlocked with the 6-digit settings code). Network changes use the **top right**.
 
 ## Recovering a device the PIN no longer opens
 
