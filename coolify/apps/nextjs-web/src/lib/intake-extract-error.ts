@@ -147,6 +147,13 @@ export function aiFailureFromDetail(
       hint: `${SY0E} で画像に対応したモデルを指定してください`,
       retryable: false,
     },
+    bad_sampling: {
+      summary: "AI モデルが指定の生成パラメータを受け付けませんでした",
+      cause:
+        "temperature を既定値しか受けないモデルです（自動で外して再試行しますが、それでも通りませんでした）",
+      hint: `${SY0E} で別のモデルを試してください`,
+      retryable: false,
+    },
     upstream: {
       summary: "AI プロバイダでエラーが起きました",
       cause: "プロバイダ側の一時的な障害です",
