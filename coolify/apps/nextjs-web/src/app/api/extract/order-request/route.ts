@@ -5,17 +5,17 @@
  * Keeps the extractor server-side (the browser never talks to it directly).
  * `PO_EXTRACT_URL` points at the extractor; in the deployed stack `nextjs-web`
  * is attached to the `ai-stack` network and reaches it at http://po-extract:8000.
+ * Which model actually runs is decided per request by the SY0E settings, passed
+ * along in the `X-AI-Config` header (absent = the local ollama default).
  */
 
+import { AiProviderConfigError, aiConfigHeaders } from "@/lib/ai-provider";
 import { requirePermissionResponse } from "@/lib/authz";
+import { PO_EXTRACT_URL } from "@/lib/po-extract";
 
 // Vision extraction takes ~25-40s; keep this a runtime (uncached) handler.
 export const dynamic = "force-dynamic";
 export const maxDuration = 300;
-
-const PO_EXTRACT_URL = (
-  process.env.PO_EXTRACT_URL ?? "http://po-extract:8000"
-).replace(/\/$/, "");
 
 export async function POST(request: Request): Promise<Response> {
   // 注文請書取込の一部として実行される — order_acceptance:CREATE でゲート。
@@ -30,9 +30,20 @@ export async function POST(request: Request): Promise<Response> {
   const out = new FormData();
   out.append("file", file, file.name || "upload.pdf");
 
+  let aiHeaders: Record<string, string>;
+  try {
+    aiHeaders = await aiConfigHeaders();
+  } catch (err) {
+    if (err instanceof AiProviderConfigError) {
+      return Response.json({ error: err.message }, { status: 502 });
+    }
+    throw err;
+  }
+
   try {
     const res = await fetch(`${PO_EXTRACT_URL}/extract/order-request`, {
       method: "POST",
+      headers: aiHeaders,
       body: out,
     });
     if (!res.ok) {
