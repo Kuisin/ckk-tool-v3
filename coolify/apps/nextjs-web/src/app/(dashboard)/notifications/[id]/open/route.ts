@@ -20,7 +20,6 @@
  * ここを「メールから来たときは認証を省く」向きに変えてはいけない。
  */
 
-import { type NextRequest, NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/db";
 import {
@@ -35,15 +34,27 @@ export const dynamic = "force-dynamic";
 const NOTIFICATION_CENTER = "/notifications";
 
 export async function GET(
-  request: NextRequest,
+  _request: Request,
   { params }: { params: Promise<{ id: string }> },
-): Promise<NextResponse> {
+): Promise<Response> {
   const { id } = await params;
   const target = await resolveTarget(id);
-  const response = NextResponse.redirect(new URL(target, request.url), 303);
-  // 遷移先は人・通知ごとに違う。中間キャッシュに残さない。
-  response.headers.set("Cache-Control", "no-store");
-  return response;
+  return new Response(null, {
+    status: 303,
+    headers: {
+      // **相対パスで返すこと。** `NextResponse.redirect()` は絶対 URL を要求し、
+      // それを `request.url` から組むと standalone サーバーが bind している
+      // アドレス（Dockerfile の `HOSTNAME=0.0.0.0`）が出てくる — cloudflared /
+      // nginx の内側では公開ホスト名がここに現れない。実際それで端末の通知が
+      // `http://0.0.0.0:3000/...` へ飛び、Safari が 0.0.0.0 を拒否して
+      // 「Not allowed to use restricted network port」で止まった。
+      // 相対 Location はブラウザが**踏んだ URL**（= 公開ホスト）で解決するので、
+      // 経路にどんなプロキシが居ても正しい。
+      Location: target,
+      // 遷移先は人・通知ごとに違う。中間キャッシュに残さない。
+      "Cache-Control": "no-store",
+    },
+  });
 }
 
 /** 既読にして、送り先のアプリ内パスを返す。 */
