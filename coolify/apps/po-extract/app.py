@@ -1,8 +1,12 @@
-import base64, io, json, os, re
+import base64, io, json, os, re, time
+from dataclasses import dataclass
 from datetime import date
 import fitz  # PyMuPDF
 import httpx
-from fastapi import Body, FastAPI, UploadFile, File, Form, HTTPException
+from fastapi import (
+    Body, Depends, FastAPI, Header, UploadFile, File, Form, HTTPException,
+)
+from fastapi.responses import JSONResponse
 
 OLLAMA_URL = os.environ.get("OLLAMA_URL", "http://ollama:11434")
 # Stage 2: vision model reads the page image. Stage 3: LLM builds the JSON.
@@ -19,6 +23,15 @@ RENDER_DPI = int(os.environ.get("RENDER_DPI", "200"))
 MAX_EDGE = int(os.environ.get("MAX_EDGE", "2400"))
 MIN_EDGE = int(os.environ.get("MIN_EDGE", "1600"))
 KEEP_ALIVE = os.environ.get("OLLAMA_KEEP_ALIVE", "10m")
+#
+# ★ 上の env は「何も指定されなかったときの既定」であって、固定値ではない。
+#   モデルの接続先はリクエストごとにヘッダ **X-AI-Config**（base64url の JSON）で
+#   受け取り、ollama / OpenAI 互換 / Anthropic / Google Gemini を切り替えられる。
+#   設定の正は nextjs-web 側（app.system_settings の ai_provider.*、画面は SY0E）で、
+#   このサービスは DB を持たない。ヘッダが無ければ下の env どおり = 従来の挙動。
+#   OCR（RapidOCR）は**常にローカル**。差し替わるのは vision 転写と JSON 構造化だけ。
+#   実装は「Model backend」節、疎通確認は POST /probe。
+#
 # デプロイ: このディレクトリ（coolify/apps/po-extract/**）への push で
 # Coolify が po-extract-dev（dev ブランチ）/ po-extract-main（main）を自動ビルドする。
 # 手動で流すときは coolify/platform/deploy.sh po-extract-dev|po-extract-main。
@@ -279,24 +292,376 @@ def _page_pngs(file: UploadFile) -> list[bytes]:
         print(f"[normalize] image → pdf failed ({e}); passing through", flush=True)
         return [data]
 
-# ── Ollama calls ─────────────────────────────────────────────────────────
-def _ollama(model: str, content: str, images: list[str] | None, fmt: dict | None):
-    msg = {"role": "user", "content": content}
-    if images:
-        msg["images"] = images
-    payload = {"model": model, "stream": False, "keep_alive": KEEP_ALIVE,
-               "options": {"temperature": 0}, "messages": [msg]}
-    if fmt is not None:
-        payload["format"] = fmt
-    with httpx.Client(timeout=600) as client:
-        r = client.post(f"{OLLAMA_URL}/api/chat", json=payload)
-        r.raise_for_status()
-        return r.json()["message"]["content"]
+# ── Model backend (provider-neutral) ─────────────────────────────────────
+#
+# モデルを呼ぶ口はここ 1 つだけ（_chat）。OCR は常にローカルのままで、
+# 差し替わるのは vision 転写と JSON 構造化の 2 段だけ。
+#
+# 接続先は **リクエストごと**にヘッダ X-AI-Config（base64url の JSON）で来る。
+# ヘッダが無ければ従来どおり env の ollama 既定 — 既存の呼び出し元は 1 行も
+# 変えずに今までどおり動く。
+#
+# なぜ body ではなくヘッダか: /generate/{task} は input を省くと **body の残り
+# 全部をモデルへの入力とみなす**（下の generate_task 参照）。body に API トークンを
+# 置くと、それがそのままプロンプトに載ってモデルへ送られてしまう。
+#
+# SDK は入れない（httpx だけ）。4 プロバイダの差分は URL・認証ヘッダ・画像の
+# 包み方・スキーマ強制の書き方の 4 点しかなく、SDK を 3 つ抱えるより小さい。
 
-def _vision_transcribe(images: list[str]) -> str:
+PROVIDERS = ("ollama", "openai", "anthropic", "gemini")
+PROVIDER_BASE_DEFAULTS = {
+    "openai": "https://api.openai.com/v1",
+    "anthropic": "https://api.anthropic.com",
+    "gemini": "https://generativelanguage.googleapis.com",
+}
+ANTHROPIC_VERSION = "2023-06-01"
+CHAT_TIMEOUT = int(os.environ.get("AI_TIMEOUT", "600"))
+
+
+@dataclass(frozen=True)
+class AIConfig:
+    provider: str
+    base_url: str
+    api_key: str | None
+    vision_model: str
+    struct_model: str
+    max_output_tokens: int = 8192
+
+
+class AIError(Exception):
+    """kind は nextjs-web 側の分類キー（lib/intake-extract-error.ts）と 1:1。
+
+    detail 文字列を `ai_<kind>: <message>` に固定してあるので、アプリ側は
+    HTTP ステータスではなく接頭辞を見て原因を出し分けられる（429 は
+    po-extract 自身の混雑でも起きるため、ステータスだけでは足りない）。
+    """
+
+    def __init__(self, kind: str, message: str, status: int | None = None):
+        self.kind, self.message, self.status = kind, message, status
+        super().__init__(f"ai_{kind}: {message}")
+
+
+def _resolve_ai(raw: str | None) -> AIConfig:
+    if not raw:
+        return AIConfig("ollama", OLLAMA_URL, None, VISION_MODEL, STRUCT_MODEL)
     try:
-        return _ollama(VISION_MODEL, VISION_PROMPT, images, None)
+        pad = "=" * (-len(raw) % 4)
+        cfg = json.loads(base64.urlsafe_b64decode(raw + pad).decode("utf-8"))
     except Exception:
+        raise AIError("not_configured", "X-AI-Config is not valid base64url JSON")
+    if not isinstance(cfg, dict) or cfg.get("v") != 1:
+        raise AIError("not_configured", f"unsupported X-AI-Config version {cfg.get('v') if isinstance(cfg, dict) else '?'}")
+    p = (cfg.get("provider") or "ollama").strip()
+    if p not in PROVIDERS:
+        raise AIError("not_configured", f"unknown provider '{p}'")
+    base = (cfg.get("baseUrl") or "").strip().rstrip("/")
+    vision = (cfg.get("visionModel") or "").strip()
+    struct = (cfg.get("structModel") or "").strip() or vision
+    key = (cfg.get("apiKey") or "").strip() or None
+    try:
+        max_out = int(cfg.get("maxOutputTokens") or 8192)
+    except (TypeError, ValueError):
+        max_out = 8192
+    if p == "ollama":
+        # ローカルは env の既定で埋める（認証付き ollama もあり得るので key は通す）。
+        return AIConfig(p, base or OLLAMA_URL, key,
+                        vision or VISION_MODEL, struct or STRUCT_MODEL, max_out)
+    # 外部プロバイダで部品が欠けていたら **ollama に落とさず失敗させる**。
+    # 黙って落とすと「設定したのに効いていない」が一番わかりにくい形で出る。
+    if not key:
+        raise AIError("not_configured", f"{p}: API token is not set")
+    if not struct:
+        raise AIError("not_configured", f"{p}: model name is not set")
+    return AIConfig(p, base or PROVIDER_BASE_DEFAULTS[p], key,
+                    vision or struct, struct, max_out)
+
+
+def ai_config(x_ai_config: str | None = Header(default=None)) -> AIConfig:
+    return _resolve_ai(x_ai_config)
+
+
+# ── JSON Schema dialects ─────────────────────────────────────────────────
+#
+# 既存の OBJ() は required に全キーを並べ additionalProperties:False を付ける
+# ので、OpenAI strict と Anthropic の structured outputs には**無変換で通る**。
+# 変換が要るのは Gemini（型の配列・additionalProperties を受けない）と、
+# 念のための Anthropic（型の配列より anyOf が確実）だけ。
+
+def _schema_openai(s):
+    if not isinstance(s, dict):
+        return s
+    out = dict(s)
+    if "properties" in out:
+        out["properties"] = {k: _schema_openai(v) for k, v in out["properties"].items()}
+        out["required"] = list(out["properties"])
+        out["additionalProperties"] = False
+    if "items" in out:
+        out["items"] = _schema_openai(out["items"])
+    return out
+
+
+def _schema_anthropic(s):
+    if not isinstance(s, dict):
+        return s
+    out = dict(s)
+    t = out.get("type")
+    if isinstance(t, list):
+        non_null = [x for x in t if x != "null"]
+        enum = [e for e in (out.get("enum") or []) if e is not None]
+        base = {k: v for k, v in out.items() if k not in ("type", "enum")}
+        variants = []
+        for x in non_null:
+            v = dict(base, type=x)
+            if enum:
+                v["enum"] = enum
+            variants.append(v)
+        if "null" in t:
+            variants.append({"type": "null"})
+        if len(variants) == 1:
+            out = variants[0]
+        else:
+            return {"anyOf": [_schema_anthropic(v) for v in variants]}
+    if "properties" in out:
+        out["properties"] = {k: _schema_anthropic(v) for k, v in out["properties"].items()}
+    if "items" in out:
+        out["items"] = _schema_anthropic(out["items"])
+    return out
+
+
+# Gemini は OpenAPI 3.0 の部分集合。型は列挙値（大文字）で、union も
+# additionalProperties も無い。enum は文字列だけなので None は落とす。
+_GEMINI_TYPES = {"string": "STRING", "number": "NUMBER", "integer": "INTEGER",
+                 "boolean": "BOOLEAN", "array": "ARRAY", "object": "OBJECT"}
+
+
+def _schema_gemini(s):
+    if not isinstance(s, dict):
+        return s
+    t, nullable = s.get("type"), False
+    if isinstance(t, list):
+        non_null = [x for x in t if x != "null"]
+        nullable = "null" in t
+        t = non_null[0] if non_null else "string"
+    out = {}
+    if t is not None:
+        out["type"] = _GEMINI_TYPES.get(t, str(t).upper())
+    if "description" in s:
+        out["description"] = s["description"]
+    if "enum" in s:
+        values = [x for x in s["enum"] if x is not None]
+        if values:
+            out["enum"] = [str(x) for x in values]
+        if len(values) != len(s["enum"]):
+            nullable = True
+    if nullable:
+        out["nullable"] = True
+    if "properties" in s:
+        out["properties"] = {k: _schema_gemini(v) for k, v in s["properties"].items()}
+    if "required" in s:
+        out["required"] = list(s["required"])
+    if "items" in s:
+        out["items"] = _schema_gemini(s["items"])
+    return out
+
+
+def _dialect(fmt, provider):
+    if fmt is None:
+        return None
+    return {"openai": _schema_openai, "anthropic": _schema_anthropic,
+            "gemini": _schema_gemini}.get(provider, lambda x: x)(fmt)
+
+
+# ── Request shaping / response reading (pure — no I/O) ───────────────────
+def _build_chat(cfg: AIConfig, model: str, content: str,
+                images: list[str] | None, fmt: dict | None):
+    p = cfg.provider
+    schema = _dialect(fmt, p)
+
+    if p == "ollama":
+        msg = {"role": "user", "content": content}
+        if images:
+            msg["images"] = images          # ollama は素の base64
+        body = {"model": model, "stream": False, "keep_alive": KEEP_ALIVE,
+                "options": {"temperature": 0}, "messages": [msg]}
+        if schema is not None:
+            body["format"] = schema
+        headers = {"Authorization": f"Bearer {cfg.api_key}"} if cfg.api_key else {}
+        return f"{cfg.base_url}/api/chat", headers, body
+
+    if p == "openai":
+        if images:                          # OpenAI は data URL
+            parts = [{"type": "text", "text": content}]
+            parts += [{"type": "image_url",
+                       "image_url": {"url": f"data:image/png;base64,{b}"}}
+                      for b in images]
+            msg_content = parts
+        else:
+            msg_content = content
+        body = {"model": model, "temperature": 0,
+                "messages": [{"role": "user", "content": msg_content}]}
+        if schema is not None:
+            body["response_format"] = {"type": "json_schema", "json_schema": {
+                "name": "result", "schema": schema, "strict": True}}
+        return (f"{cfg.base_url}/chat/completions",
+                {"Authorization": f"Bearer {cfg.api_key}"}, body)
+
+    if p == "anthropic":
+        blocks = [{"type": "image",
+                   "source": {"type": "base64", "media_type": "image/png", "data": b}}
+                  for b in (images or [])]
+        blocks.append({"type": "text", "text": content})
+        # temperature は送らない — 新しいモデルは 400 で拒否する。
+        # max_tokens は必須（他 3 つには無い）。
+        body = {"model": model, "max_tokens": cfg.max_output_tokens,
+                "messages": [{"role": "user", "content": blocks}]}
+        if schema is not None:
+            body["output_config"] = {"format": {"type": "json_schema", "schema": schema}}
+        return (f"{cfg.base_url}/v1/messages",
+                {"x-api-key": cfg.api_key or "", "anthropic-version": ANTHROPIC_VERSION},
+                body)
+
+    if p == "gemini":
+        parts = [{"text": content}]
+        parts += [{"inline_data": {"mime_type": "image/png", "data": b}}
+                  for b in (images or [])]
+        gen = {"temperature": 0}
+        if schema is not None:
+            gen["responseMimeType"] = "application/json"
+            gen["responseSchema"] = schema
+        body = {"contents": [{"role": "user", "parts": parts}], "generationConfig": gen}
+        # キーは URL ではなくヘッダに置く（例外の repr やリダイレクトに載せない）。
+        return (f"{cfg.base_url}/v1beta/models/{model}:generateContent",
+                {"x-goog-api-key": cfg.api_key or ""}, body)
+
+    raise AIError("not_configured", f"unknown provider '{p}'")
+
+
+def _parse_chat(cfg: AIConfig, data: dict) -> str:
+    p = cfg.provider
+    try:
+        if p == "ollama":
+            return data["message"]["content"]
+        if p == "openai":
+            return data["choices"][0]["message"]["content"] or ""
+        if p == "anthropic":
+            blocks = data.get("content") or []
+            texts = [b.get("text", "") for b in blocks if b.get("type") == "text"]
+            if texts:
+                return "".join(texts)
+            for b in blocks:                        # tool 経由で返ってきた場合
+                if b.get("type") == "tool_use":
+                    return json.dumps(b.get("input"), ensure_ascii=False)
+            return ""
+        if p == "gemini":
+            blocked = (data.get("promptFeedback") or {}).get("blockReason")
+            if blocked:
+                raise AIError("upstream", f"gemini blocked the request ({blocked})")
+            cand = (data.get("candidates") or [{}])[0]
+            parts = (cand.get("content") or {}).get("parts") or []
+            return "".join(x.get("text", "") for x in parts)
+    except AIError:
+        raise
+    except (KeyError, IndexError, TypeError, AttributeError) as e:
+        raise AIError("upstream", f"unexpected {p} response shape: {e}")
+    raise AIError("not_configured", f"unknown provider '{p}'")
+
+
+def _http_ai_error(cfg: AIConfig, r: httpx.Response) -> AIError:
+    body, s = (r.text or "")[:400], r.status_code
+    if s in (401, 403):
+        return AIError("auth", f"{cfg.provider} rejected the API token (HTTP {s})", s)
+    if s == 404:
+        return AIError("model_not_found",
+                       f"{cfg.provider} has no such model or endpoint (HTTP 404): {body}", s)
+    if s in (402,):
+        return AIError("rate_limit", f"{cfg.provider} reports insufficient credit (HTTP 402)", s)
+    if s == 429:
+        return AIError("rate_limit", f"{cfg.provider} rate limit reached (HTTP 429)", s)
+    if s == 400 and re.search(r"image|vision|multimodal", body, re.I):
+        return AIError("no_vision", f"{cfg.provider} model cannot read images: {body}", s)
+    if s == 400 and re.search(r"schema|response_format|responseSchema|output_config", body, re.I):
+        return AIError("bad_schema", f"{cfg.provider} rejected the schema: {body}", s)
+    if s >= 500:
+        return AIError("upstream", f"{cfg.provider} error (HTTP {s}): {body}", s)
+    return AIError("upstream", f"{cfg.provider} HTTP {s}: {body}", s)
+
+
+def _chat_once(cfg: AIConfig, model: str, content: str,
+               images: list[str] | None, fmt: dict | None) -> str:
+    url, headers, body = _build_chat(cfg, model, content, images, fmt)
+    t0 = time.monotonic()
+    try:
+        with httpx.Client(timeout=CHAT_TIMEOUT) as client:
+            r = client.post(url, headers=headers, json=body)
+    except httpx.TimeoutException:
+        raise AIError("upstream", f"{cfg.provider} timed out after {CHAT_TIMEOUT}s")
+    except httpx.RequestError as e:
+        raise AIError("unreachable", f"{cfg.provider} unreachable: {type(e).__name__}")
+    ms = int((time.monotonic() - t0) * 1000)
+    # トークンは絶対に出さない（provider / model / status / 所要だけ）。
+    print(f"[ai] provider={cfg.provider} model={model} status={r.status_code} ms={ms}",
+          flush=True)
+    if r.status_code >= 400:
+        raise _http_ai_error(cfg, r)
+    try:
+        data = r.json()
+    except ValueError:
+        raise AIError("upstream", f"{cfg.provider} returned a non-JSON body")
+    return _parse_chat(cfg, data)
+
+
+def _chat(cfg: AIConfig, model: str, content: str,
+          images: list[str] | None, fmt: dict | None) -> str:
+    """唯一のモデル呼び出し。戻り値は常に「JSON 文字列 or 素のテキスト」。"""
+    try:
+        return _chat_once(cfg, model, content, images, fmt)
+    except AIError as e:
+        # スキーマを受けないモデルでも、プロンプトで形を指示すれば大抵通る。
+        # 1 回だけ落として試す（成否は _loads の寛容パースが受け止める）。
+        if e.kind == "bad_schema" and fmt is not None:
+            print("[ai] schema rejected → prompt-level fallback", flush=True)
+            hint = ("\n\nRespond with JSON only, matching exactly this JSON Schema:\n"
+                    + json.dumps(fmt, ensure_ascii=False))
+            return _chat_once(cfg, model, content + hint, images, None)
+        raise
+
+
+# モデルが JSON を ``` で包むことがあるので、素の json.loads より寛容に読む。
+_FENCE = re.compile(r"^\s*```(?:json)?\s*|\s*```\s*$", re.I)
+
+
+def _loads(text: str):
+    s = _FENCE.sub("", (text or "").strip()).strip()
+    try:
+        return json.loads(s)
+    except json.JSONDecodeError:
+        pass
+    for op, cl in (("{", "}"), ("[", "]")):
+        i, j = s.find(op), s.rfind(cl)
+        if i != -1 and j > i:
+            try:
+                return json.loads(s[i:j + 1])
+            except json.JSONDecodeError:
+                continue
+    raise json.JSONDecodeError("no JSON value found in model output", s or "", 0)
+
+
+# vision 段だけは「落ちても OCR で続行」でよい — ただし**設定の誤り**は別。
+# 401 やモデル名違いまで握り潰すと、黙って精度の落ちた結果が出てどこにも
+# エラーが残らない（ローカル GPU 前提の頃は起こり得なかった失敗）。
+_VISION_FATAL = {"auth", "model_not_found", "no_vision", "not_configured", "bad_schema"}
+
+
+def _vision_transcribe(cfg: AIConfig, images: list[str]) -> str:
+    try:
+        return _chat(cfg, cfg.vision_model, VISION_PROMPT, images, None)
+    except AIError as e:
+        if e.kind in _VISION_FATAL:
+            raise
+        print(f"[ai] vision stage degraded ({e}); continuing with OCR only", flush=True)
+        return ""
+    except Exception as e:  # 想定外は従来どおり握り潰して OCR で続行
+        print(f"[ai] vision stage degraded ({e}); continuing with OCR only", flush=True)
         return ""
 
 # ── Text normalization (non-destructive) ─────────────────────────────────
@@ -370,7 +735,7 @@ def _reconcile(obj):
     return obj
 
 # ── Pipeline: (1) OCR + (2) vision read → (3) text LLM builds JSON ────────
-def _pipeline(file: UploadFile, fmt: dict, hint: str):
+def _pipeline(cfg: AIConfig, file: UploadFile, fmt: dict, hint: str):
     pages = _page_pngs(file)
     images = [base64.b64encode(p).decode() for p in pages]
 
@@ -381,14 +746,14 @@ def _pipeline(file: UploadFile, fmt: dict, hint: str):
             if t:
                 ocr_chunks.append((f"[Page {i + 1}]\n" if len(pages) > 1 else "") + t)
     ocr_text = "\n\n".join(ocr_chunks)
-    vision_text = _vision_transcribe(images)
+    vision_text = _vision_transcribe(cfg, images)
 
     content = STRUCT_PROMPT + (f"\n{hint}" if hint else "")
     content += "\n\n=== (A) OCR text layer ===\n" + (ocr_text or "(none)")
     content += "\n\n=== (B) Vision transcription ===\n" + (vision_text or "(none)")
-    out = _ollama(STRUCT_MODEL, content, None, fmt)
+    out = _chat(cfg, cfg.struct_model, content, None, fmt)
     try:
-        return _reconcile(_normalize(json.loads(out)))
+        return _reconcile(_normalize(_loads(out)))
     except json.JSONDecodeError:
         raise HTTPException(502, "structuring model did not return valid JSON")
 
@@ -407,24 +772,39 @@ def _clean(obj):
         return obj.strip()
     return obj
 
-def _text_task(fmt: dict, prompt: str, payload):
+def _text_task(cfg: AIConfig, fmt: dict, prompt: str, payload):
     content = prompt + "\n\n=== input ===\n" + json.dumps(
         payload, ensure_ascii=False, indent=2, default=str
     )
-    out = _ollama(STRUCT_MODEL, content, None, fmt)
+    out = _chat(cfg, cfg.struct_model, content, None, fmt)
     try:
-        return _clean(json.loads(out))
+        return _clean(_loads(out))
     except json.JSONDecodeError:
         raise HTTPException(502, "generation model did not return valid JSON")
+
+# AIError は必ず 502 + detail "ai_<kind>: ..." で返す。ステータスを増やさない
+# のは、アプリ側（lib/intake-extract-error.ts）が既に detail を読んで分類して
+# いるため — 接頭辞に寄せるほうが波及が小さい。
+@app.exception_handler(AIError)
+def _ai_error_handler(request, exc: "AIError"):
+    return JSONResponse(status_code=502, content={"detail": str(exc)})
+
 
 # ── Routes ───────────────────────────────────────────────────────────────
 @app.get("/healthz")
 def healthz():
+    # ここが申告するのは **何も指定されなかったときの既定**。実際の接続先は
+    # リクエストごとに X-AI-Config で来る。トークンの有無は返さない
+    # （この口は網内から誰でも叩けるため）。
     return {"status": "ok", "vision_model": VISION_MODEL,
             "struct_model": STRUCT_MODEL, "ocr": OCR_ENABLED,
             "ocr_engine": "rapidocr-onnxruntime (PP-OCR)",
             "document_types": sorted(SCHEMAS),
-            "tasks": sorted(TASK_SCHEMAS)}
+            "tasks": sorted(TASK_SCHEMAS),
+            "ai": {"default_provider": "ollama",
+                   "default_base_url": OLLAMA_URL,
+                   "supported_providers": list(PROVIDERS),
+                   "config_source": "env default; per-request override via X-AI-Config"}}
 
 @app.get("/schemas")
 def schemas():
@@ -439,28 +819,31 @@ def extract(
     file: UploadFile = File(...),
     schema: str = Form(...),
     prompt: str = Form(""),
+    cfg: AIConfig = Depends(ai_config),
 ):
     try:
         fmt = json.loads(schema)
     except json.JSONDecodeError:
         raise HTTPException(400, "schema must be a valid JSON Schema string")
-    return _pipeline(file, fmt, prompt)
+    return _pipeline(cfg, file, fmt, prompt)
 
 @app.post("/extract/{doc_type}")
 def extract_typed(
     doc_type: str,
     file: UploadFile = File(...),
     prompt: str | None = Form(None),
+    cfg: AIConfig = Depends(ai_config),
 ):
     fmt = SCHEMAS.get(doc_type)
     if fmt is None:
         raise HTTPException(404, f"unknown document type '{doc_type}'; available: {sorted(SCHEMAS)}")
-    return _pipeline(file, fmt, prompt or PROMPTS.get(doc_type, ""))
+    return _pipeline(cfg, file, fmt, prompt or PROMPTS.get(doc_type, ""))
 
 # 紙のない補助タスク（アプリの道具から呼ぶ）。JSON body:
 #   { "input": <任意の JSON>, "prompt": "<追加指示・任意>" }
 @app.post("/generate/{task}")
-def generate_task(task: str, body: dict = Body(default={})):
+def generate_task(task: str, body: dict = Body(default={}),
+                  cfg: AIConfig = Depends(ai_config)):
     fmt = TASK_SCHEMAS.get(task)
     if fmt is None:
         raise HTTPException(404, f"unknown task '{task}'; available: {sorted(TASK_SCHEMAS)}")
@@ -470,16 +853,53 @@ def generate_task(task: str, body: dict = Body(default={})):
         prompt = f"{prompt}\n{extra.strip()}"
     # input を省いたら body 全体を入力とみなす（呼び出し側の手間を減らす）。
     payload = body.get("input", {k: v for k, v in body.items() if k != "prompt"})
-    return _text_task(fmt, prompt, payload)
+    return _text_task(cfg, fmt, prompt, payload)
 
 # 呼び出し側が自前のスキーマを持つ場合。JSON body:
 #   { "prompt": "<指示>", "schema": <JSON Schema>, "input": <任意の JSON・任意> }
 @app.post("/generate")
-def generate(body: dict = Body(...)):
+def generate(body: dict = Body(...), cfg: AIConfig = Depends(ai_config)):
     fmt = body.get("schema")
     if not isinstance(fmt, dict):
         raise HTTPException(400, "schema must be a JSON Schema object")
     prompt = body.get("prompt")
     if not isinstance(prompt, str) or not prompt.strip():
         raise HTTPException(400, "prompt is required")
-    return _text_task(fmt, prompt.strip(), body.get("input"))
+    return _text_task(cfg, fmt, prompt.strip(), body.get("input"))
+
+
+# 1x1 の白 PNG。画像入力に対応しているかを最小コストで確かめるためだけのもの。
+_PROBE_PNG_B64 = (
+    "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8"
+    "/5+hHgAHggJ/PchI7wAAAABJRU5ErkJggg=="
+)
+
+
+# 接続テスト（SY0E の「接続テスト」ボタン）。**アプリからではなく po-extract
+# から**叩くのが要点 — 実際に外へ出るのはこのコンテナなので、nextjs-web から
+# プロバイダに届いても意味がない（届くのに抽出は失敗する、が起こり得る）。
+#
+# 構造化と画像読み取りを別々に報告する。画像だけ失敗する構成は、放っておくと
+# 「OCR だけの劣化した抽出」として静かに現れるので、ここで見えるようにする。
+@app.post("/probe")
+def probe(cfg: AIConfig = Depends(ai_config)):
+    def stage(model: str, run):
+        t0 = time.monotonic()
+        try:
+            run()
+            return {"ok": True, "ms": int((time.monotonic() - t0) * 1000), "model": model}
+        except AIError as e:
+            return {"ok": False, "ms": int((time.monotonic() - t0) * 1000),
+                    "model": model, "error": str(e)[:300]}
+        except Exception as e:
+            return {"ok": False, "ms": int((time.monotonic() - t0) * 1000),
+                    "model": model, "error": f"ai_upstream: {e}"[:300]}
+
+    return {
+        "provider": cfg.provider,
+        # スキーマ強制の経路（方言変換込み）もここで一緒に検証される。
+        "struct": stage(cfg.struct_model, lambda: _loads(
+            _chat(cfg, cfg.struct_model, 'Reply with {"ok":"ok"}.', None, OBJ(ok=STR)))),
+        "vision": stage(cfg.vision_model, lambda: _chat(
+            cfg, cfg.vision_model, "Reply with the word ok.", [_PROBE_PNG_B64], None)),
+    }

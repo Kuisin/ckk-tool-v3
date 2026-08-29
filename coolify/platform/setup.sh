@@ -196,6 +196,7 @@ create_app() { # name branch host_port env_name result_var
     {\"key\": \"GOTENBERG_URL\",          \"value\": \"http://gotenberg:3000\"},
     {\"key\": \"SEAWEED_FILER_URL\",      \"value\": \"http://seaweedfs:8888\"},
     {\"key\": \"PO_EXTRACT_URL\",         \"value\": \"http://po-extract:8000\"},
+    {\"key\": \"SETTINGS_ENCRYPTION_KEY\", \"value\": \"$(openssl rand -base64 32)\"},
     {\"key\": \"NEXT_PUBLIC_APP_VERSION\",\"value\": \"${NEXT_PUBLIC_APP_VERSION:-0.1.0}\"}
   ]}" >/dev/null && echo "envs set for $name"
   eval "${5}=$uuid"

@@ -559,6 +559,17 @@ export const appList: AppEntry[] = [
     category: "システム",
     requiredPermission: "system",
   },
+  {
+    // AI プロバイダ — 文書抽出（注文請書の取込）と AI 補助タスクが使うモデルの
+    // 接続先。既定はローカル ollama で、外部プロバイダは管理者が設定したときだけ。
+    key: "ai-provider",
+    label: "AI プロバイダ",
+    operationCode: "SY0E",
+    href: "/settings/ai-provider",
+    icon: "IconRobot",
+    category: "システム",
+    requiredPermission: "system",
+  },
 ];
 
 /** Home 絞り込み（工程）で使う URL パラメータのキー。 */

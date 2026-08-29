@@ -112,7 +112,12 @@ OCR/Extraction: ローカルLLM（self-hosted）— po-extract API
                  ai-stack に 1 台だけ置き両環境で共有）
                 （FastAPI /extract: PDF/画像 → 構造化JSON）。3段ハイブリッド:
                 ①OCR（PP-OCRモデルをONNXRuntime=RapidOCRで実行）+ ②Vision
-                転写（qwen2.5vl）→ ③LLMがJSON生成。外部API・キー不要。
+                転写（qwen2.5vl）→ ③LLMがJSON生成。
+                **モデルの接続先は実行時に差し替えられる**（SY0E）—
+                ローカル ollama（既定）/ OpenAI 互換 / Anthropic / Gemini。
+                設定は nextjs-web が持ち、リクエストごとにヘッダ
+                X-AI-Config で渡す。SDK は足さず httpx の生 REST。
+                OCR は常にローカル。既定のままなら従来と同一挙動。
 AI補助タスク:    同じ po-extract の /generate/<task>（紙なし・LLM 1回・数秒）。
                 アプリ内の道具から呼ぶ汎用口で、第1号は keywords
                 （製品・素材マスタのキーワード候補生成 — MS04/MS06）。

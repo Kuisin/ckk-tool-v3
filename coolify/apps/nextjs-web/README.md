@@ -42,6 +42,18 @@ The app is built and deployed by **Coolify** from this repo (multi-stage
 App env vars (`DATABASE_URL`, `GOTENBERG_URL`, `SEAWEED_FILER_URL`,
 `PO_EXTRACT_URL`, `NEXT_PUBLIC_APP_VERSION`) are managed in Coolify, not compose.
 
+`SETTINGS_ENCRYPTION_KEY` — AES-256-GCM key for secrets stored in
+`app.system_settings` (today: the AI provider API token set in SY0E). Generate
+one **per environment** with `openssl rand -base64 32`; never share it between
+dev and main. Unlike most env vars here this one does **not** degrade quietly:
+with it unset the app refuses to save a token at all, because the alternatives
+are storing it in plaintext or borrowing `AUTH_SECRET` (which turns a session-key
+rotation into a silent AI outage months later). Rotating it: put the old value in
+`SETTINGS_ENCRYPTION_KEY_PREVIOUS`, deploy, then re-save the settings page once —
+the UI says so — and drop the old var. Without that step the token reads as
+"復号できません" and extraction stops with a named error rather than falling back
+to the local model.
+
 pnpm is pinned via `package.json#packageManager` (`pnpm@10.18.0`) so corepack
 honors `ignoredBuiltDependencies` (pnpm 11 hard-fails on the ignored `sharp` build).
 
