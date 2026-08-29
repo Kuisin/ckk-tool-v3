@@ -48,7 +48,7 @@ import java.net.URL
  * デバイスオーナー時（QR プロビジョニング / adb dpm set-device-owner）は
  * KioskMode により Lock Task で端末をこのアプリに固定する。メンテナンスは
  * 画面**右上**を 5 回連続タップ → 管理者 PIN（BuildConfig.KIOSK_UNLOCK_PIN）。
- * ※ 左上は Web 側の隠し端末設定ジェスチャ（KioskShell のタイトル 5 タップ →
+ * ※ 左下は Web 側の隠し端末設定ジェスチャ（KioskShell のタイトル 5 タップ →
  *   /device-settings）が使うため右上にしている。
  */
 class MainActivity : ComponentActivity() {
@@ -305,7 +305,7 @@ class MainActivity : ComponentActivity() {
         (getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager).lockTaskModeState
 
     // ─── メンテナンス退出（右上 5 連続タップ → PIN） ───────────────
-    // 左上は Web 側の隠し端末設定（KioskShell タイトル 5 タップ）と衝突するため右上
+    // 左下は Web 側の隠し端末設定（KioskShell タイトル 5 タップ）。こちらは右上
 
     override fun dispatchTouchEvent(ev: MotionEvent): Boolean {
         if (ev.action == MotionEvent.ACTION_DOWN) trackMaintenanceTap(ev)
