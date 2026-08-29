@@ -16,10 +16,17 @@ model Notification {
   isRead    Boolean   @default(false) @map("is_read")
   readAt    DateTime? @map("read_at") @db.Timestamptz(6)
   createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  // この行をメールに載せた時刻。null = まだ載せていない。
+  // Teams 型のダイジェスト（見逃した未読だけをまとめて 1 通）で「同じ通知を
+  // 二度メールしない」ための印であり、同時に**ユーザーごとの最後の送信時刻**でも
+  // ある（MAX(email_sent_at) で引ける）ので、送信間隔を測る列を別に持たない。
+  emailSentAt DateTime? @map("email_sent_at") @db.Timestamptz(6)
 
   user User @relation("NotificationUser", fields: [userId], references: [id])
 
   @@index([userId, isRead, createdAt(sort: Desc)])
+  // ダイジェストの掃き出し用。未読・未送信・猶予を過ぎたものを拾う。
+  @@index([isRead, emailSentAt, createdAt])
   @@map("notifications")
   @@schema("app")
 }

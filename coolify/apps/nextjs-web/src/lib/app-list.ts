@@ -570,6 +570,17 @@ export const appList: AppEntry[] = [
     category: "システム",
     requiredPermission: "system",
   },
+  {
+    // 通知メール — 通知をメールで送るときのまとめ方。既定は Teams と同じで
+    // 「見逃した未読だけを、間隔をあけて 1 通」。読まれた通知は送らない。
+    key: "notification-email",
+    label: "通知メール",
+    operationCode: "SY0F",
+    href: "/settings/notification-email",
+    icon: "IconMailFast",
+    category: "システム",
+    requiredPermission: "system",
+  },
 ];
 
 /** Home 絞り込み（工程）で使う URL パラメータのキー。 */

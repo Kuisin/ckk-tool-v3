@@ -322,6 +322,7 @@ Operation codes provide keyboard-shortcut navigation. Format: `{CAT}{MODE}{IDX}`
 | システム | C | 注文書取込 | SY0C | — | — |
 | システム | D | ログイン履歴 | SY0D | — | — |
 | システム | E | AI プロバイダ | SY0E | — | — |
+| システム | F | 通知メール | SY0F | — | — |
 
 > `CM00`（ダッシュボード）は**アプリ一覧（`lib/app-list.ts`）には登録されて
 > いない** — ホーム自体だから。ランチャーに出るアプリの正は常に
@@ -427,6 +428,7 @@ Stack (gap="xl", p="md", maw={1200})
 | 注文書取込 | `IconFileImport` |
 | ログイン履歴 | `IconShieldLock` |
 | AI プロバイダ | `IconRobot` |
+| 通知メール | `IconMailFast` |
 | マニュアル | `IconBook2` |
 
 ---

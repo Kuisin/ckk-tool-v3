@@ -452,6 +452,17 @@ export const OPERATION_CODES: OperationCodeEntry[] = [
     mode: "0",
     index: "E",
   },
+  // 通知メール（見逃した未読のまとめ方）
+  {
+    code: "SY0F",
+    label: "通知メール",
+    href: "/settings/notification-email",
+    category: "システム",
+    kind: "list",
+    categoryCode: "SY",
+    mode: "0",
+    index: "F",
+  },
 ];
 
 const CODE_LOOKUP = new Map(
