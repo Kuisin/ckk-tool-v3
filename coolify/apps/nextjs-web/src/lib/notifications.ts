@@ -12,13 +12,17 @@ import { effectiveMemberWhere } from "./approval-membership";
 import { SYSTEM_USER_ID } from "./audit";
 import { prisma } from "./db";
 import { sendNotificationMail } from "./mailer";
-import { notificationOpenPath, sanitizeLinkPath } from "./notifications-core";
+import {
+  externalNotificationLinks,
+  sanitizeLinkPath,
+} from "./notifications-core";
 import { sendPushToUser } from "./push";
 import { publishNotificationEvent } from "./realtime";
 
 // 純粋関数は lib/notifications-core.ts（単体テスト可能）。呼び出し口は従来どおり
 // ここから import できるよう再輸出する。
 export {
+  externalNotificationLinks,
   isNotificationId,
   notificationOpenPath,
   sanitizeLinkPath,
@@ -53,7 +57,8 @@ export async function notify(input: NotifyInput): Promise<void> {
   if (userIds.length === 0) return;
 
   const linkPath = sanitizeLinkPath(input.linkPath);
-  // 作成した行の id を受け取る（端末通知の中継 URL に使う — notificationOpenPath）。
+  // 作成した行の id を受け取る（メール・端末通知の中継 URL に使う —
+  // externalNotificationLinks）。
   const rows = await prisma.notification.createManyAndReturn({
     data: userIds.map((userId) => ({
       userId,
@@ -81,7 +86,7 @@ export async function notify(input: NotifyInput): Promise<void> {
 async function dispatchExternal(
   userIds: string[],
   input: NotifyInput,
-  /** userId → 作成した通知行の id（端末通知の中継 URL 用）。 */
+  /** userId → 作成した通知行の id（メール・端末通知の中継 URL 用）。 */
   notificationIdByUser: Map<string, string>,
 ): Promise<void> {
   // dev/main が DB を共有しているため、検証環境からの実ユーザーへの
@@ -103,28 +108,28 @@ async function dispatchExternal(
       const jobs: Promise<unknown>[] = [];
       const emailOn = u.notificationSetting?.emailEnabled ?? true;
       const pushOn = u.notificationSetting?.pushEnabled ?? true;
+      // メールも端末通知も中継 URL 経由 — 開いた時点で既読にしてから対象
+      // ページへ送る。チャネルごとの違いは notifications-core が持つ。
+      const links = externalNotificationLinks({
+        notificationId: notificationIdByUser.get(u.id),
+        linkPath: input.linkPath,
+      });
       if (emailOn && u.email) {
         jobs.push(
           sendNotificationMail({
             to: u.email,
             title: input.title,
             message: input.message,
-            linkPath: input.linkPath,
+            linkPath: links.mail,
           }),
         );
       }
       if (pushOn) {
-        const notificationId = notificationIdByUser.get(u.id);
         jobs.push(
           sendPushToUser(u.id, {
             title: input.title,
             body: input.message,
-            // 端末の通知は必ず中継 URL 経由 — 開いた時点で既読にしてから
-            // 対象ページへ送る。行が引けなかったときだけ従来どおり直接開く
-            // （対象ページが無い通知はアプリ内通知センター）。
-            link: notificationId
-              ? notificationOpenPath(notificationId)
-              : (input.linkPath ?? "/notifications"),
+            link: links.push,
           }),
         );
       }
