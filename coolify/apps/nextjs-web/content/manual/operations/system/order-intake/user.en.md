@@ -45,6 +45,34 @@ Each row shows:
 
 While at least one file is waiting, the screen refreshes itself automatically every 30 seconds.
 
+## The three ways an order arrives
+
+Besides dropping files in from this screen, orders also arrive by the routes
+below. **All of them land in the same intake folder**, so numbering and AI
+extraction work identically for each.
+
+| Route | How it gets in |
+|---|---|
+| **Upload** | This screen, or "Priority intake" on the order acceptance app |
+| **Email** | Orders sent to a dedicated mailbox are picked up automatically (`intake-gateway`) and appear under "Waiting" within a few minutes |
+| **Fax** | Currently a manual step — someone scans the paper on the MFP and uploads it via "Priority intake". There is no automatic fax receiver |
+
+### Spotting a file that came from email
+
+Files that arrived by email are named `mail_sender_originalname`. For example
+`mail_tanaka-at-example.co.jp_order.pdf` came from `tanaka@example.co.jp`.
+
+> ⚠️ **The sender and subject are not recorded on the order acceptance itself.**
+> That filename is the only trace — the order acceptance detail page does not
+> show it. To see the subject or body, open the mailbox directly. Messages that
+> were taken in have been moved to its "Processed" folder.
+
+### Emails with several attachments
+
+If one email carries three order documents, you get **three order acceptances**
+(one document = one record). Images embedded in the signature — company logos
+and the like — are not taken in.
+
 ## Dropping in files
 
 1. Press 「**ファイルを選ぶ**」 (Choose files).
@@ -77,3 +105,9 @@ A. The dropped file is saved under a unique name, so it won't overwrite anything
 
 **Q. Is it safe to place a file directly into the intake folder's path?**
 A. Yes. Dropping a file in from this screen and placing one directly into the shared folder are handled through exactly the same path.
+
+**Q. An order sent by email was not taken in.**
+A. Check, in order: (1) whether that sender is on the allow list (ask a system administrator); (2) whether the attachment is PDF, PNG, JPG or WEBP — anything else is skipped; (3) whether the message is marked read in the mailbox. Read but not taken in means it was attempted and failed. **Failed messages are not retried automatically**, to avoid registering the same order twice. Ask the sender to resend, or save the attachment and use "Priority intake".
+
+**Q. Can faxes be taken in automatically?**
+A. Not today. Scan the received fax on the MFP and upload it via "Priority intake". If you later subscribe to a fax-to-email service, those messages will ride the email route with no further change.
