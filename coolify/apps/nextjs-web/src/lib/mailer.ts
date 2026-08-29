@@ -73,7 +73,13 @@ export function appBaseUrl(): string {
     : "https://app-dev.ckk-tool.co.jp";
 }
 
-/** 通知メール（タイトル + 本文 + アプリ内リンクボタン）を組み立てて送信。 */
+/**
+ * 通知メール（タイトル + 本文 + アプリ内リンクボタン）を組み立てて送信。
+ *
+ * linkPath は通知から呼ばれる場合 `/notifications/<id>/open` の中継 URL
+ * （lib/notifications-core.ts `externalNotificationLinks`）— ボタンを押した
+ * 時点で既読にしてから対象ページへ送るため。ここはただのパスとして扱う。
+ */
 export async function sendNotificationMail(input: {
   to: string;
   title: string;

@@ -43,3 +43,28 @@ export function isNotificationId(id: string): boolean {
 export function notificationOpenPath(id: string): string {
   return `/notifications/${encodeURIComponent(id)}/open`;
 }
+
+/**
+ * 通知 1 件ぶんの外部チャネル（メール / 端末通知）のリンク先。
+ *
+ * 2 つのチャネルで**違うのは 1 点だけ** — 対象ページが無い通知の扱い:
+ *   - メール … リンクを出さない（本文で完結している。押す先が通知一覧しか
+ *     無いのにボタンを置いても手間が増えるだけ）
+ *   - 端末通知 … 必ず開き先が要る（タップできない通知は作れない）ので通知一覧へ
+ *
+ * それ以外は同じで、どちらも中継 URL（notificationOpenPath）を指す。対象ページを
+ * 直接指していた頃は、メールや端末から用を済ませてもアプリ内のベルが未読のまま
+ * 残っていた。id が無いとき（作成行を引けなかったとき）だけ従来の直リンクに落ちる。
+ */
+export function externalNotificationLinks(input: {
+  notificationId?: string;
+  linkPath?: string | null;
+}): { mail: string | null; push: string } {
+  const relay = input.notificationId
+    ? notificationOpenPath(input.notificationId)
+    : undefined;
+  return {
+    mail: input.linkPath ? (relay ?? input.linkPath) : null,
+    push: relay ?? input.linkPath ?? "/notifications",
+  };
+}
