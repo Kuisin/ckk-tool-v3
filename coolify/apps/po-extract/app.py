@@ -882,10 +882,22 @@ def generate(body: dict = Body(...), cfg: AIConfig = Depends(ai_config)):
     return _text_task(cfg, fmt, prompt.strip(), body.get("input"))
 
 
-# 1x1 の白 PNG。画像入力に対応しているかを最小コストで確かめるためだけのもの。
+# 接続テスト用のダミー画像（224x224 の無地）。
+#
+# **1x1 にしてはいけない。** qwen2.5vl の前処理が退化した画像で落ち、
+# ollama が "model runner has unexpectedly stopped" を返す。設定は正しいのに
+# 「画像読み取り 失敗」と出てしまい、実際の抽出（ページ全体の画像）は問題なく
+# 動く、という一番たちの悪い誤報になる。224 は ViT の標準入力サイズ。
 _PROBE_PNG_B64 = (
-    "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8"
-    "/5+hHgAHggJ/PchI7wAAAABJRU5ErkJggg=="
+    "iVBORw0KGgoAAAANSUhEUgAAAOAAAADgCAIAAACVT/22AAABqklEQVR42u3SAQ0AAAzCMPwr"
+    "QxY2/qSVsCyFwyIBBgWDYlAwKBgUg4JBMSgYFAyKQcGgGBQMCgbFoGBQDAoGBYNiUDAoBgWD"
+    "gkExKBgUDIpBwaAYFAwKBsWgYFAMCgYFg2JQMCgGBYOCQTEoGBSDgkHBoBgUDAoGxaBgUAwK"
+    "BgWDYlAwKAYFg4JBMSgYFIOCQcGgGBQMikHBoGBQDAoGBYNiUDAoBgWDgkExKBgUg4JBwaAY"
+    "FAyKQcGgYFAMCgbFoGBQMCgGBYOCQTEoGBSDgkHBoBgUDIpBwaBgUAwKBsWgYFAwKAYFg2JQ"
+    "MCgYFIOCQcGgGBQMikHBoGBQDAoGxaBgUDAoBgWDYlAwKBgUg4JBMSgYFAyKQcGgYFAMCgbF"
+    "oGBQMCgGBYNiUDAoGBSDgkExKBgUDIpBwaAYFAwKBsWgYFAwKAYFg2JQMCgYFIOCQTEoGBQM"
+    "ikHBoBgUDAoGxaBgUAwKBgWDYlAwKBgUg4JBMSgYFAyKQcGgGBQMCgbFoGBQDAoGBYNiUDAo"
+    "BgWDgkExKBgUDIpBwaAYFAwKBsWgYFAMCgYFg/LRAFfdeubNbESdAAAAAElFTkSuQmCC"
 )
 
 
