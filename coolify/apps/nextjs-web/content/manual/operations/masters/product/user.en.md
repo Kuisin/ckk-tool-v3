@@ -261,3 +261,20 @@ A. The steps are exactly the same as the earlier version. Change something befor
 
 **Q. I cannot make an extra item with a name of my own.**
 A. That is how it works. You can only choose from the items prepared in advance. If the item you need is missing, please ask your administrator.
+
+<!-- permissions:start -->
+## Permissions required
+
+Using this screen requires the **Master data** (`master`) permission.
+
+| What you want to do | Permission needed |
+| --- | --- |
+| Open the screen, view lists and details | Master data — View |
+| Add, change or delete | Master data — Create / Edit / Delete |
+
+Viewing only needs *View*. Where a screen offers adding, changing or deleting, each of those needs its matching permission.
+
+Permissions come through roles. If something is missing, ask an administrator.
+
+For the whole picture see [Permissions and roles](../../../permissions).
+<!-- permissions:end -->

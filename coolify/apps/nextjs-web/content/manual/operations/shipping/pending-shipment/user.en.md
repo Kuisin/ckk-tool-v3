@@ -78,3 +78,20 @@ A. This screen is a work queue, so shipped shipping orders are not shown. Check 
 
 **Q. The unarranged tab says 「出荷書待ちの注文明細はありません」 (there are no order lines waiting for a shipping order).**
 A. It means there is no order line that needs a shipping order right now. Lines appear here once a work order is completed and finished pieces exist.
+
+<!-- permissions:start -->
+## Permissions required
+
+Using this screen requires the **Delivery order** (`delivery_order`) permission.
+
+| What you want to do | Permission needed |
+| --- | --- |
+| Open the screen, view lists and details | Delivery order — View |
+| Add, change or delete | Delivery order — Create / Edit / Delete |
+
+Viewing only needs *View*. Where a screen offers adding, changing or deleting, each of those needs its matching permission.
+
+Permissions come through roles. If something is missing, ask an administrator.
+
+For the whole picture see [Permissions and roles](../../../permissions).
+<!-- permissions:end -->

@@ -161,3 +161,159 @@ model UserDevice {
   @@map("user_devices")
   @@schema("app")
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 特権アクセス — 「持っているから使える」を「頼んで、別の人が許して、期限つきで
+// 使える」に分ける。
+//
+// ■ なぜ RBAC に期限を足さないのか
+// role_permission_relation は「この役割は何ができるか」の定義で、恒久的な事実。
+// そこに valid_until を足すと、期限切れの grant が権限表に残り続けて
+// 「この人は何ができるのか」が読めなくなる。付与は別テーブルに分け、RBAC 側は
+// **申請できるか / 承認できるか** だけを語る（decide() は一切変えていない）。
+//
+// ■ 2 つの方式（形が違うので分けてある）
+//   A 時限昇格（privileged_access_requests）
+//     対象を事前に名指しできない操作 — PIN を見る / カードを刷る / 履歴を検索する。
+//     承認は「一定期間、この操作をしてよい」という許可で、**時計は初回使用から**
+//     動きはじめ、min(初回使用 + duration, 窓の終わり) で切れる。
+//   B 変更依頼（user_change_requests）
+//     それ自体が 1 つの具体的な変更である操作 — この人を停止する。
+//     承認がその変更を**適用する**。窓も duration も無い。
+//     work_order_flow_changes / order_acceptance_cancel_requests と同じ形。
+//
+// ■ 有効期限は毎回その場で判定する（cron に消させない）
+// user-suspension-cron.sql は期限切れの停止を pg_cron で戻していて、最大 1 分の
+// 遅れを許容している — 遅れても「アクセスが減る側」に倒れるから安全。ここで同じ
+// ことをすると遅れが「アクセスが増える側」に倒れる。だから判定は常に時刻式
+// （lib/privileged-access-core.ts / 実際の SQL の WHERE 句）で行い、pg_cron は
+// 表示用の EXPIRED 打刻と保持期間の刈り取りしかしない。
+//
+// ■ 保持期間・可視性
+// 400 日で刈る（sql/security-cron.sql）。「誰がどの秘密を見たがったか」「誰が誰を
+// 止めようとしたか」の記録なので、login_attempts と同じく metabase_ro からは
+// 剥がす（sql/grants.sql）。
+// ─────────────────────────────────────────────────────────────────────────────
+
+enum PrivilegedRequestStatus {
+  PENDING // 承認待ち
+  APPROVED // 承認済み（A では「使える」。ただし窓と duration の範囲内）
+  REJECTED // 差し戻し
+  CANCELLED // 申請者が取り下げ
+  REVOKED // 承認者が有効な付与を打ち切った（A のみ）
+  EXPIRED // 期限切れ（**表示用の打刻**。判定はこの値を見ない）
+
+  @@map("PRIVILEGED_REQUEST_STATUS")
+  @@schema("app")
+}
+
+// A: 時限昇格の申請 1 件。1 申請 = 1 権限コード（承認できる人が一意に決まるため）。
+// 中身の操作は privileged_access_request_operations（承認時に一部だけ落とせる）。
+model PrivilegedAccessRequest {
+  id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  // kiosk_secret | kiosk_device | kiosk_card | personal_data
+  // （permissions への FK は張らない — 権限コードは seed 由来で、申請の履歴は
+  //   コードを廃止しても読めなければならない。audit_logs.table_name と同じ割り切り）
+  code   String                  @db.VarChar(64)
+  status PrivilegedRequestStatus @default(PENDING)
+  // 申請理由。空文字は DB の CHECK で拒否する（「なぜ」の無い特権付与を作らない）。
+  reason String
+
+  // 承認された「窓」。申請時点から最長 14 日（DB CHECK）。
+  windowStartsAt  DateTime @map("window_starts_at") @db.Timestamptz(6)
+  windowEndsAt    DateTime @map("window_ends_at") @db.Timestamptz(6)
+  // 初回使用から測る有効時間（分）。
+  durationMinutes Int      @map("duration_minutes")
+  // **初回使用時刻**。null = まだ一度も使っていない = 時計が動いていない。
+  // 画面を開いただけでは埋まらない（peekElevation は書かない）。
+  activatedAt     DateTime? @map("activated_at") @db.Timestamptz(6)
+  lastUsedAt      DateTime? @map("last_used_at") @db.Timestamptz(6)
+  useCount        Int       @default(0) @map("use_count")
+
+  requestedBy     String    @map("requested_by") @db.Uuid
+  requestedAt     DateTime  @default(now()) @map("requested_at") @db.Timestamptz(6)
+  decidedBy       String?   @map("decided_by") @db.Uuid
+  decidedAt       DateTime? @map("decided_at") @db.Timestamptz(6)
+  decisionComment String?   @map("decision_comment")
+  revokedBy       String?   @map("revoked_by") @db.Uuid
+  revokedAt       DateTime? @map("revoked_at") @db.Timestamptz(6)
+  revokeReason    String?   @map("revoke_reason")
+
+  requestedByUser User? @relation("PrivilegedRequestedBy", fields: [requestedBy], references: [id], onDelete: NoAction)
+  decidedByUser   User? @relation("PrivilegedDecidedBy", fields: [decidedBy], references: [id], onDelete: SetNull)
+  revokedByUser   User? @relation("PrivilegedRevokedBy", fields: [revokedBy], references: [id], onDelete: SetNull)
+
+  operations PrivilegedAccessRequestOperation[]
+
+  @@index([requestedBy, status])
+  @@index([code, status])
+  @@index([requestedAt(sort: Desc)])
+  @@map("privileged_access_requests")
+  @@schema("app")
+}
+
+// 申請に含まれる操作。key は lib/privileged-operations.ts の PRIVILEGED_OPERATIONS。
+// granted は承認時に確定する — 承認者は要求された操作の一部だけを許可できる
+// （「PIN のリセットは良いがカードの失効は駄目」を却下せずに表現するため）。
+model PrivilegedAccessRequestOperation {
+  requestId String  @map("request_id") @db.Uuid
+  operation String  @db.VarChar(64)
+  granted   Boolean @default(false)
+
+  request PrivilegedAccessRequest @relation(fields: [requestId], references: [id], onDelete: Cascade)
+
+  @@id([requestId, operation])
+  @@index([operation])
+  @@map("privileged_access_request_operations")
+  @@schema("app")
+}
+
+enum UserChangeKind {
+  SUSPEND // 利用停止（恒久 or 期限つき）
+  RESTORE // 利用停止の解除
+  UPDATE_PLANTS // 所属拠点の変更（= PLANT/REGION スコープの変更）
+
+  @@map("USER_CHANGE_KIND")
+  @@schema("app")
+}
+
+// B: ユーザーへの変更依頼 1 件。承認がその変更を**適用する**。
+//
+// payload は kind ごとに形が違うので Json（zod で検証。lib/user-change-core.ts）:
+//   SUSPEND        { disabledUntil: string | null, disabledReason: string }
+//   RESTORE        {}
+//   UPDATE_PLANTS  { plantIds: number[] }
+//
+// 適用は列を直接書き換えるのではなく、通常の変更関数を通す。承認までに前提が
+// 崩れていれば（既に停止済み・拠点が消えた・対象が無効化された）適用せず
+// apply_error に理由を残す — 古い前提のまま当てないため
+// （work_order_flow_changes と同じ約束）。
+model UserChangeRequest {
+  id           String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  kind         UserChangeKind
+  targetUserId String         @map("target_user_id") @db.Uuid
+  payload      Json
+  reason       String
+  // REVOKED / EXPIRED は使わない（適用済みの変更は「打ち切る」ものではない）。
+  status       PrivilegedRequestStatus @default(PENDING)
+
+  requestedBy     String    @map("requested_by") @db.Uuid
+  requestedAt     DateTime  @default(now()) @map("requested_at") @db.Timestamptz(6)
+  decidedBy       String?   @map("decided_by") @db.Uuid
+  decidedAt       DateTime? @map("decided_at") @db.Timestamptz(6)
+  decisionComment String?   @map("decision_comment")
+  // 適用の結果。承認済みで applied_at が null かつ apply_error があれば「承認は
+  // されたが当てられなかった」— 画面はこれを失敗として出す。
+  appliedAt       DateTime? @map("applied_at") @db.Timestamptz(6)
+  applyError      String?   @map("apply_error")
+
+  targetUser      User  @relation("UserChangeTarget", fields: [targetUserId], references: [id], onDelete: Cascade)
+  requestedByUser User? @relation("UserChangeRequestedBy", fields: [requestedBy], references: [id], onDelete: NoAction)
+  decidedByUser   User? @relation("UserChangeDecidedBy", fields: [decidedBy], references: [id], onDelete: SetNull)
+
+  @@index([status])
+  @@index([targetUserId])
+  @@index([requestedAt(sort: Desc)])
+  @@map("user_change_requests")
+  @@schema("app")
+}

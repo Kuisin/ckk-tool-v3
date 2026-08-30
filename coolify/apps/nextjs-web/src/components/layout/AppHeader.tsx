@@ -36,6 +36,7 @@ import {
   IconLayoutDashboard,
   IconLogout,
   IconShare2,
+  IconShieldCheck,
   IconUser,
 } from "@tabler/icons-react";
 import Link from "next/link";
@@ -520,6 +521,14 @@ export function AppHeader({
                 py={{ base: "sm", md: "xs" }}
               >
                 {t("preferences")}
+              </Menu.Item>
+              <Menu.Item
+                component={Link}
+                href="/profile/permissions"
+                leftSection={<IconShieldCheck size={14} />}
+                py={{ base: "sm", md: "xs" }}
+              >
+                {t("myPermissions")}
               </Menu.Item>
               <Divider my="5px" />
               <Menu.Item

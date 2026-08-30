@@ -124,3 +124,20 @@ A. Another person who can approve may have dealt with it first. Requests that ha
 
 **Q. Approvals stop while I am away.**
 A. A stand-in can be set up for a set period. This is set in [approval settings](/manual/en/operations/masters/approval-setting/user), so please ask an administrator.
+
+<!-- permissions:start -->
+## Permissions required
+
+Using this screen requires the **Approvals** (`approve`) permission.
+
+| What you want to do | Permission needed |
+| --- | --- |
+| Open the screen, view lists and details | Approvals — View |
+| Add, change or delete | Approvals — Create / Edit / Delete |
+
+Viewing only needs *View*. Where a screen offers adding, changing or deleting, each of those needs its matching permission.
+
+Permissions come through roles. If something is missing, ask an administrator.
+
+For the whole picture see [Permissions and roles](../../../permissions).
+<!-- permissions:end -->

@@ -15,7 +15,6 @@
  * （帳票 PDF と違い保存キーが定まらない + 氏名入りで使い捨て）。
  */
 
-import { requirePermissionResponse } from "@/lib/authz";
 import { formatCode } from "@/lib/crockford";
 import { escapeHtml } from "@/lib/format";
 import {
@@ -29,6 +28,7 @@ import {
 } from "@/lib/kiosk-card-sheet";
 import { renderPdf } from "@/lib/pdf";
 import { withPrintPreferences } from "@/lib/pdf-print-prefs";
+import { useElevation } from "@/lib/privileged-access";
 import { qrSvg } from "@/lib/qr";
 
 export const dynamic = "force-dynamic";
@@ -87,8 +87,15 @@ function timestampJst(): string {
 }
 
 export async function GET(request: Request): Promise<Response> {
-  const denied = await requirePermissionResponse("kiosk", "READ");
-  if (denied) return denied;
+  // 台紙の PDF は QR（= 認証情報そのもの）をファイルとして手元に残す操作。
+  // 一覧を見るのとは重さが違うので、承認された期間だけに絞る。
+  const gate = await useElevation("kiosk_card.print");
+  if (!gate.ok) {
+    return Response.json(
+      { error: gate.error },
+      { status: gate.needsElevation ? 403 : 401 },
+    );
+  }
 
   const params = new URL(request.url).searchParams;
   const ids = (params.get("ids") ?? "")

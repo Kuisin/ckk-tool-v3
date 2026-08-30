@@ -11,6 +11,7 @@
     "kiosk-device",
     "kiosk-settings",
     "link-management",
-    "order-intake"
+    "order-intake",
+    "privileged-access"
   ]
 }

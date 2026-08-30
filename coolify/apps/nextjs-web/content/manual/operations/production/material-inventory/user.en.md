@@ -130,3 +130,20 @@ A. There is no work order in progress. Things appear once a work order is approv
 
 **Q. The work in progress quantity does not appear on the products tab.**
 A. Pieces still being made are not stock yet. They go onto the products tab when all the steps are finished.
+
+<!-- permissions:start -->
+## Permissions required
+
+Using this screen requires the **Inventory** (`inventory`) permission.
+
+| What you want to do | Permission needed |
+| --- | --- |
+| Open the screen, view lists and details | Inventory — View |
+| Add, change or delete | Inventory — Create / Edit / Delete |
+
+Viewing only needs *View*. Where a screen offers adding, changing or deleting, each of those needs its matching permission.
+
+Permissions come through roles. If something is missing, ask an administrator.
+
+For the whole picture see [Permissions and roles](../../../permissions).
+<!-- permissions:end -->

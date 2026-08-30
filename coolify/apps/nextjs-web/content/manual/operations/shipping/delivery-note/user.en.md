@@ -197,3 +197,20 @@ A. While it is a 「下書き」 (Draft) you can turn the switch back on with �
 
 **Q. I noticed a mistake after issuing it.**
 A. There is no way to undo an issue. Make a new delivery note with the correct contents, and do not hand the wrong one to the customer.
+
+<!-- permissions:start -->
+## Permissions required
+
+Using this screen requires the **Delivery note** (`delivery_note`) permission.
+
+| What you want to do | Permission needed |
+| --- | --- |
+| Open the screen, view lists and details | Delivery note — View |
+| Add, change or delete | Delivery note — Create / Edit / Delete |
+
+Viewing only needs *View*. Where a screen offers adding, changing or deleting, each of those needs its matching permission.
+
+Permissions come through roles. If something is missing, ask an administrator.
+
+For the whole picture see [Permissions and roles](../../../permissions).
+<!-- permissions:end -->

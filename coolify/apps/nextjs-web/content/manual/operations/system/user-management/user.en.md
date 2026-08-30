@@ -140,3 +140,20 @@ A. That is normal. It happens when the person has two roles and the same permiss
 
 **Q. I want to know who changed this person's assigned sites, and when.**
 A. You can check in the [Activity Log](/manual/en/operations/system/activity-log/user). Every change is recorded.
+
+<!-- permissions:start -->
+## Permissions required
+
+Using this screen requires the **User administration** (`user_admin`) permission.
+
+| What you want to do | Permission needed |
+| --- | --- |
+| Open the screen, view lists and details | User administration — View |
+| Add, change or delete | User administration — Create / Edit / Delete |
+
+Viewing only needs *View*. Where a screen offers adding, changing or deleting, each of those needs its matching permission.
+
+Permissions come through roles. If something is missing, ask an administrator.
+
+For the whole picture see [Permissions and roles](../../../permissions).
+<!-- permissions:end -->

@@ -8,15 +8,18 @@
  */
 
 import { recordAudit } from "@/lib/audit";
-import { checkPermission } from "@/lib/authz";
 import { getLoginAttempt, type LoginAttemptDetail } from "@/lib/login-attempts";
+import { elevationAuditNote, useElevation } from "@/lib/privileged-access";
 import { type ActionResult, actionError, actionOk } from "@/lib/server-action";
 
 export async function fetchLoginAttemptDetail(
   id: string,
 ): Promise<ActionResult<LoginAttemptDetail>> {
-  const authz = await checkPermission("system", "READ");
-  if (!authz.ok) return actionError(authz.error);
+  // 1 件の認証イベントを IP・端末シグネチャ・所有区分まで開く操作。
+  // 一覧（誰がいつ入ったか）は personal_data:READ で見えるが、ここから先は
+  // 従業員監視に隣接するので承認された期間だけに絞る。
+  const gate = await useElevation("personal_data.login_history_detail");
+  if (!gate.ok) return actionError(gate.error);
 
   const row = await getLoginAttempt(id);
   if (!row) return actionError("記録が見つかりません");
@@ -25,7 +28,10 @@ export async function fetchLoginAttemptDetail(
     action: "VIEW",
     tableName: "login_attempts",
     recordId: id,
-    after: { viewed: true },
+    after: {
+      viewed: true,
+      ...elevationAuditNote(gate, "personal_data.login_history_detail"),
+    },
   });
   return actionOk(row);
 }

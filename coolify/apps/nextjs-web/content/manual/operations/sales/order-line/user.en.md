@@ -131,3 +131,20 @@ It needs the same permission as order acceptances (`order_acceptance`). Contact 
 - [Work order](/manual/en/operations/production/work-order/user) — production
 - [Shipping order](/manual/en/operations/shipping/delivery-order/user) — shipping
 - [Inventory](/manual/en/operations/production/product-inventory/user) — stock and reservations
+
+<!-- permissions:start -->
+## Permissions required
+
+Using this screen requires the **Order acceptance** (`order_acceptance`) permission.
+
+| What you want to do | Permission needed |
+| --- | --- |
+| Open the screen, view lists and details | Order acceptance — View |
+| Add, change or delete | Order acceptance — Create / Edit / Delete |
+
+Viewing only needs *View*. Where a screen offers adding, changing or deleting, each of those needs its matching permission.
+
+Permissions come through roles. If something is missing, ask an administrator.
+
+For the whole picture see [Permissions and roles](../../../permissions).
+<!-- permissions:end -->

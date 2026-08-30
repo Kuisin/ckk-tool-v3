@@ -187,3 +187,20 @@ A. You can only edit while it is a 「下書き」 (Draft). After it is confirme
 
 **Q. I shipped, but the order line does not become 「出荷済」 (Shipped).**
 A. Check whether the type is 「在庫保管」 (Keep in stock). That type is a record of pieces kept in-house, so the order line status does not change. Also, if you sent only part of the ordered pieces, it becomes 「一部出荷」 (Partly shipped).
+
+<!-- permissions:start -->
+## Permissions required
+
+Using this screen requires the **Delivery order** (`delivery_order`) permission.
+
+| What you want to do | Permission needed |
+| --- | --- |
+| Open the screen, view lists and details | Delivery order — View |
+| Add, change or delete | Delivery order — Create / Edit / Delete |
+
+Viewing only needs *View*. Where a screen offers adding, changing or deleting, each of those needs its matching permission.
+
+Permissions come through roles. If something is missing, ask an administrator.
+
+For the whole picture see [Permissions and roles](../../../permissions).
+<!-- permissions:end -->

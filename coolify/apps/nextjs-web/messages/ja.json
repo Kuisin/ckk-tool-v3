@@ -36,6 +36,7 @@
     "notificationSettings": "通知設定",
     "homeSettings": "ホーム画面設定",
     "preferences": "表示設定",
+    "myPermissions": "自分の権限",
     "logout": "ログアウト",
     "devBadge": "DEV"
   },

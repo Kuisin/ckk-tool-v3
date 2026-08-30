@@ -137,3 +137,20 @@ A. The file you chose is too big. If it is a photo, take it again at a smaller s
 
 **Q. I registered it, but the stock at that site has not gone up.**
 A. Please open the detail screen and check whether it was registered with 「入荷先拠点」 (receiving site) left blank. If no site was chosen, it is recorded as stock with no site instead of stock at that site.
+
+<!-- permissions:start -->
+## Permissions required
+
+Using this screen requires the **Material receipt** (`material_receipt`) permission.
+
+| What you want to do | Permission needed |
+| --- | --- |
+| Open the screen, view lists and details | Material receipt — View |
+| Add, change or delete | Material receipt — Create / Edit / Delete |
+
+Viewing only needs *View*. Where a screen offers adding, changing or deleting, each of those needs its matching permission.
+
+Permissions come through roles. If something is missing, ask an administrator.
+
+For the whole picture see [Permissions and roles](../../../permissions).
+<!-- permissions:end -->

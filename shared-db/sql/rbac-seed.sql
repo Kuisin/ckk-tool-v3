@@ -28,7 +28,25 @@ INSERT INTO app.permissions (code, display_name, description) VALUES
   ('master',          '{"ja":"マスタ管理","en":"Master data"}',       '{"ja":"","en":""}'),
   ('system',          '{"ja":"システム管理","en":"System admin"}',    '{"ja":"アプリ設定・ファイル管理・操作履歴","en":""}'),
   ('kiosk',           '{"ja":"キオスク管理","en":"Kiosk admin"}',     '{"ja":"QRカード・共有端末の管理","en":""}'),
-  ('admin_manual',   '{"ja":"管理マニュアル","en":"Internal docs"}','{"ja":"端末セットアップ等の社内向け手順書（公開マニュアルとは別権限）","en":""}')
+  ('admin_manual',   '{"ja":"管理マニュアル","en":"Internal docs"}','{"ja":"端末セットアップ等の社内向け手順書（公開マニュアルとは別権限）","en":""}'),
+  -- 一般カテゴリ（CM02/CM03）。migration 20260903090000 で足したが、この seed が
+  -- 追随していなかった。新規 DB をこの seed だけで作るときに欠ける。
+  ('form',           '{"ja":"フォーム","en":"Forms"}',
+   '{"ja":"フォームの作成・編集と全回答の閲覧。誰が回答できるかはフォームごとの共有設定が決める","en":""}'),
+  ('internal_page',  '{"ja":"社内文書","en":"Internal pages"}',
+   '{"ja":"社内文書アプリの利用。CREATE = 新規文書の作成可否。個々の文書の可視性は文書ごとの共有設定が決める","en":""}'),
+  -- 特権操作（migration 20260919090000）。粗い kiosk / system を割ったもので、
+  -- 実行には申請と承認が要る（詳細は shared-db/prisma/schema/security.prisma）。
+  ('kiosk_secret',   '{"ja":"キオスク端末の秘密","en":"Kiosk device secrets"}',
+   '{"ja":"メンテナンス退出 PIN・端末設定コードの開示と再生成、端末鍵のリセット","en":""}'),
+  ('kiosk_device',   '{"ja":"端末アクセスの付与","en":"Kiosk device enrolment"}',
+   '{"ja":"端末プロファイルの作成・リンク・有効化・停止・失効","en":""}'),
+  ('kiosk_card',     '{"ja":"QRカードの発行・PIN","en":"Kiosk card issuance"}',
+   '{"ja":"カードの発行・割当・失効・PIN リセット・台紙の印刷","en":""}'),
+  ('personal_data',  '{"ja":"個人データの閲覧","en":"Personal data access"}',
+   '{"ja":"ログイン履歴の詳細と操作履歴の横断検索","en":""}'),
+  ('user_admin',     '{"ja":"ユーザー・権限の変更","en":"User administration"}',
+   '{"ja":"利用停止・復帰・所属拠点の変更。1 操作ごとに変更依頼を出し、承認が適用する","en":""}')
 ON CONFLICT (code) DO NOTHING;
 
 -- ─── roles ───────────────────────────────────────────────────────────────────
@@ -48,11 +66,18 @@ FROM app.roles r CROSS JOIN app.permissions p
 WHERE r.rolename = 'admin'
 ON CONFLICT DO NOTHING;
 
--- 承認は権限アクションでは管理しない — APPROVE グラントは全ロールから全廃。
--- 承認できる人は承認設定（MS0B）の承認グループ所属だけが決め、RBAC 側の要件は
--- その書類の READ / UPDATE（閲覧または編集 — lib/authz.ts checkApprovalDocAccess）。
--- ACTION enum の 'APPROVE' 値自体は互換のため残す（行を作らないだけ）。
-DELETE FROM app.role_permission_relation WHERE action = 'APPROVE';
+-- **書類の**承認は権限アクションでは管理しない — APPROVE グラントは全ロールから
+-- 全廃。承認できる人は承認設定（MS0B）の承認グループ所属だけが決め、RBAC 側の
+-- 要件はその書類の READ / UPDATE（lib/authz.ts checkApprovalDocAccess）。
+--
+-- **例外は特権操作の 5 コードだけ**（migration 20260919090000）。あれは書類では
+-- ないので MS0B に段を組めず、承認者を表現する場所が RBAC しかない。ここで
+-- まとめて消すと privileged_approver が空のロールになり、申請が誰にも決裁でき
+-- なくなる（この seed を後から流し直したときに沈黙で壊れる形）。
+DELETE FROM app.role_permission_relation
+ WHERE action = 'APPROVE'
+   AND permission_code NOT IN
+       ('kiosk_secret', 'kiosk_device', 'kiosk_card', 'personal_data', 'user_admin');
 
 -- staff: system / kiosk 以外の業務コードに実務アクション
 INSERT INTO app.role_permission_relation (role_id, permission_code, action, scope)
@@ -60,7 +85,12 @@ SELECT r.id, p.code, a.action::app."ACTION", 'ALL'::app."SCOPE"
 FROM app.roles r
 CROSS JOIN app.permissions p
 CROSS JOIN (VALUES ('READ'),('CREATE'),('UPDATE'),('DELETE'),('EXPORT')) AS a(action)
-WHERE r.rolename = 'staff' AND p.code NOT IN ('system', 'kiosk', 'admin_manual')
+-- 特権操作の 5 コードは staff にも配らない（system / kiosk と同じ扱い）。
+-- 配ると「申請すれば誰でも PIN を見られる」になり、粒度を割った意味が消える。
+WHERE r.rolename = 'staff'
+  AND p.code NOT IN ('system', 'kiosk', 'admin_manual',
+                     'kiosk_secret', 'kiosk_device', 'kiosk_card',
+                     'personal_data', 'user_admin')
 ON CONFLICT DO NOTHING;
 
 -- ─── demo ユーザーへのロール割当 ─────────────────────────────────────────────
