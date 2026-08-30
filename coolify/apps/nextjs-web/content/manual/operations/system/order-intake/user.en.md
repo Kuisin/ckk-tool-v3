@@ -4,7 +4,9 @@ description: "An app for dropping received order-document PDFs/scans into the in
 ---
 An app for dropping received **order documents (PDFs / scanned images)** into the intake folder in bulk. The operation code is `SY0C`.
 
-> ⚠️ This app is currently **limited to the test environment (dev)**. The production environment (main) has no intake folder configured, so opening this app there shows "folder not configured." To bring in order documents on production, use the "priority intake" feature on order acceptances instead.
+> This app works in **both the test environment (dev) and production (main)** — the production intake folder was set up on 2026-08-30.
+>
+> ⚠️ However, **automatic intake by email runs on dev only.** Using it on production needs a separate production mailbox and configuration. On production you can drop files in from this screen and use "priority intake" on order acceptances.
 
 ## What you can do with this app
 
@@ -98,7 +100,7 @@ In the "Failed" list, press 「**再取込**」 (Retry) on the row for the file 
 ## Questions and problems
 
 **Q. It says "folder not configured."**
-A. Right now this feature only works on the test environment (dev). The production environment (main) does not yet have an intake folder configured. If you need to bring in order documents on production, use "priority intake" on order acceptances to bring them in one at a time.
+A. The intake folder exists in both the test and production environments. If you still see this, the `INTAKE_DIR` setting or the folder assignment has come loose — ask a system administrator. ("Priority intake" on order acceptances does not use the intake folder, so it keeps working meanwhile.)
 
 **Q. I dropped in a file, but it stays "not yet numbered" forever.**
 A. The automatic scan runs every 60 seconds by default. Please wait a little and refresh the screen. If it still doesn't change, try 「今すぐスキャン」 (Scan now).

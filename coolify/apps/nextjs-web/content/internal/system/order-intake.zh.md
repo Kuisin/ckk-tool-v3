@@ -4,7 +4,7 @@ description: "发送至 order-intake@ckk-tool.co.jp 的订单书自动导入机�
 ---
 客户发送到 **order-intake@ckk-tool.co.jp** 的订单书，无需人工介入即可导入为注文请书 —— 本页说明该机制的运维。面向使用者的操作请参见「[注文書取込（SY0C）](/manual/zh/operations/system/order-intake/user)」。
 
-> 该机制目前**仅在验证环境（dev）**运行。生产环境（main）尚无导入文件夹（见下方「推广到生产环境时」）。
+> **邮件导入目前仅在验证环境（dev）运行。** 生产环境（main）的导入文件夹已于 2026-08-30 准备完毕，可从 SY0C 投入并使用「优先导入」，但**尚无邮箱与网关**（见下方「推广到生产环境时」）。
 
 ## 整体流程
 
@@ -95,7 +95,7 @@ description: "发送至 order-intake@ckk-tool.co.jp 的订单书自动导入机�
 
 ## 推广到生产环境时
 
-生产环境（main）尚无导入文件夹。推广需要在服务器侧完成以下工作：
+导入文件夹已于 **2026-08-30 准备完毕**（host `/home/kaiseisawada/intake/orders-main` → container `/data/intake`，已设置 `INTAKE_DIR`，轮询器运行中）。剩下的只有**邮件导入**部分：
 
 1. 创建生产用的导入文件夹（使 `nextjs-web` 与 `intake-gateway` 双方均可写入）
 2. 将**同一个文件夹**分配给 `nextjs-web-main` 与 `intake-gateway-main` 两者
