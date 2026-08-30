@@ -14,6 +14,9 @@
  *      完了できること、製品マスタ側からは書けないこと
  *   6. リッチテキスト — 設計依頼のコメント（スレッド）と設計図の版メモ
  *      （1 版 1 件）が書けて、読み込み直しても残ること
+ *   7. ヘッダーの「戻る」— ページ階層の親（旧仕様）ではなく実際のブラウザ
+ *      履歴の前ページへ戻ること、モバイルの重複「戻る」リンク（PageHeader /
+ *      MasterDetailShell）が消えていること
  *
  * 落ちたときに原因を追えるよう、check() には**実測値**（URL・幅・ラベル）を
  * 添えること。合否だけだと「なぜ」が残らない。
@@ -516,6 +519,65 @@ async function main(): Promise<void> {
     (await page.getByText(memoText).count()) > 0,
     memoText,
   );
+
+  // ── 7. ヘッダーの「戻る」──────────────────────────────────────────
+  //
+  // 旧仕様は URL のパス階層を1段上がるだけの独自ロジックで、/master/products
+  // からは常に「マスタ」カテゴリ扱いでホームへ飛んでいた（間に何を見ていても
+  // 無視される）。実際のブラウザ履歴で戻るなら、直前に見ていた
+  // /master/business-partners に戻るはず — この差がそのまま回帰の検出になる。
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.goto(`${APP}/master/business-partners`, {
+    waitUntil: "networkidle",
+  });
+  await page.goto(`${APP}/master/products`, { waitUntil: "networkidle" });
+  await page.waitForTimeout(400);
+  await page.getByRole("button", { name: "前のページへ戻る" }).click();
+  await page.waitForLoadState("networkidle");
+  check(
+    "ヘッダー「戻る」: 階層の親（旧: ホーム固定）ではなく実際の履歴の前ページへ戻る",
+    page.url().endsWith("/master/business-partners"),
+    page.url(),
+  );
+
+  // モバイル: PageHeader が出していた重複リンク（パンくずの代わりの「‹ 取引先」）が消えている
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto(`${APP}/master/business-partners`, {
+    waitUntil: "networkidle",
+  });
+  const firstBpRow = page.locator("tbody tr").first();
+  if (await firstBpRow.count()) {
+    await firstBpRow.click();
+    await page.waitForLoadState("networkidle");
+    await page.waitForTimeout(400);
+    const dupCrumbLink = await page
+      .getByRole("link", { name: "取引先", exact: true })
+      .count();
+    check(
+      "PageHeader: モバイルの重複「戻る」リンクが無い（取引先 詳細）",
+      dupCrumbLink === 0,
+      `件数 ${dupCrumbLink}`,
+    );
+  } else {
+    check(
+      "PageHeader: モバイル重複リンク確認は一覧に行が無く未確認",
+      false,
+      "demo データ無し",
+    );
+  }
+
+  // モバイル: MasterDetailShell が出していた重複リンク（詳細ルートの「一覧へ戻る」）が消えている
+  await page.goto(`${APP}/settings/trial-pricing-engine/criteria/new`, {
+    waitUntil: "networkidle",
+  });
+  await page.waitForTimeout(400);
+  const dupListLink = await page.getByText("一覧へ戻る").count();
+  check(
+    "MasterDetailShell: モバイルの重複「一覧へ戻る」リンクが無い（計算基準 新規）",
+    dupListLink === 0,
+    `件数 ${dupListLink}`,
+  );
+  await page.setViewportSize({ width: 1440, height: 900 });
 
   console.log("\n---- 結果 ----");
   for (const r of results) console.log(r);
