@@ -87,18 +87,30 @@ Selecting **Register drawing** on a [design request](/manual/en/operations/sales
 
 After saving you return to the request, where **Complete** is now available. **A request cannot be completed with no deliverable** — otherwise completing it would only advance a status, and the person who raised it could not see what was produced.
 
-## Editing notes and deleting versions
+## Writing a memo on a version
+
+Selecting **メモ** (memo) on a row opens a memo **for that version alone** — where to record what changed in it, or what to watch out for when using it.
+
+- Text can carry **bold, italic, bullet lists, headings and links**.
+- It is **one shared field per version**: anyone who can register or edit drawings can rewrite it. It holds the current facts about the version, not a record of who said what.
+- **It can be written even on a version used by a work order.** What freezes is the drawing itself, not the notes about it.
+- **Memos are internal.** They never appear on a printed document.
+
+This is separate from the short **備考** (note) shown in the list column: that is the one line written at registration, while the memo grows afterwards.
+
+## Editing the note and deleting versions
 
 Use the buttons at the right of each row in the version list.
 
 | Action | When it is allowed |
 |--------|--------------------|
+| Memo | Always — read-only users can open it too |
 | Edit note | The version is not used by a work order |
 | Delete | The version is not used by a work order and did not come from a design request |
 
 **The drawing file itself cannot be replaced.** Changing a drawing means creating a new version; rewriting a past version would make it impossible to trace what something was made from.
 
-**A version used by a work order cannot be touched.** It records that something was made — or is about to be made — from that drawing. A version from a design request cannot be deleted for a different reason: it is the deliverable of a completed request. Its note can still be edited.
+**A version used by a work order cannot be touched.** It records that something was made — or is about to be made — from that drawing. A version from a design request cannot be deleted for a different reason: it is the deliverable of a completed request. Its note and memo can still be edited.
 
 ## Questions and problems
 

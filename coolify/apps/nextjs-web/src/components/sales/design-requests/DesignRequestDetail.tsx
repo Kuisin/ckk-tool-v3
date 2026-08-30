@@ -78,6 +78,7 @@ import { DocNumber } from "@/components/ui/DocNumber";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { FieldValue } from "@/components/ui/FieldValue";
 import { HistoryPanel } from "@/components/ui/HistoryPanel";
+import { MemoPanel } from "@/components/ui/MemoPanel";
 import { ConfirmModal, ModalShell } from "@/components/ui/modals";
 import {
   PdfAttachmentPanel,
@@ -99,6 +100,7 @@ import {
 import { useTabParam } from "@/hooks/useUrlState";
 import { isViewable } from "@/lib/design-file-kind";
 import { pickThumbFile } from "@/lib/design-files-core";
+import type { MemoView } from "@/lib/document-memos";
 import {
   DESIGN_KIND_LABEL,
   DESIGN_PRIORITY_LABEL,
@@ -156,6 +158,7 @@ export function DesignRequestDetail({
   approvalTrail = [],
   assigneeOptions = [],
   pdfMeta = null,
+  memos = [],
 }: {
   request: DesignRequest;
   /** 操作履歴（audit_logs 由来、履歴タブ）。 */
@@ -170,6 +173,8 @@ export function DesignRequestDetail({
   assigneeOptions?: Option[];
   /** 保管済み PDF のメタ（承認前は null）。 */
   pdfMeta?: PdfFileMeta | null;
+  /** コメント（document_memos, ownerType "design_requests"）。 */
+  memos?: MemoView[];
 }) {
   const fmt = useFormat();
   const router = useRouter();
@@ -721,6 +726,7 @@ export function DesignRequestDetail({
           <Tabs.Tab value="overview">概要</Tabs.Tab>
           <Tabs.Tab value="files">ファイル（{request.files.length}）</Tabs.Tab>
           <Tabs.Tab value="pdf">PDF</Tabs.Tab>
+          <Tabs.Tab value="comments">コメント</Tabs.Tab>
           <Tabs.Tab value="history">履歴</Tabs.Tab>
         </Tabs.List>
 
@@ -823,6 +829,16 @@ export function DesignRequestDetail({
             filename={pdfFilename}
             onRegenerate={regeneratePdf}
             previewSrc={canViewPdf ? pdfUrl(`&v=${pdfNonce}`) : undefined}
+          />
+        </Tabs.Panel>
+
+        {/* keepMounted={false}: エディタ（prosemirror）はタブを開くまで読み込まない。 */}
+        <Tabs.Panel keepMounted={false} pt="md" value="comments">
+          <MemoPanel
+            memos={memos}
+            mode="comment"
+            ownerId={request.requestNumber}
+            ownerType="design_requests"
           />
         </Tabs.Panel>
 

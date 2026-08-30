@@ -24,9 +24,11 @@ import {
 } from "@/app/(dashboard)/production/design-files/actions";
 import { SecondaryButton } from "@/components/ui/buttons";
 import { DesignFileThumb } from "@/components/ui/DesignFileViewer";
+import { MemoPanel } from "@/components/ui/MemoPanel";
 import { ConfirmModal, ModalShell } from "@/components/ui/modals";
 import { DetailShell } from "@/components/ui/shells";
 import { groupBySeries, pickThumbFile } from "@/lib/design-files-core";
+import type { MemoView } from "@/lib/document-memos";
 import { DesignFileList, type DesignFileListRow } from "./DesignFileList";
 import type { ProductDesignFile } from "./model";
 
@@ -37,18 +39,25 @@ export function ProductDrawings({
   productLabel,
   files,
   canManage,
+  memosByFile = {},
 }: {
   productId: number;
   productLabel: string;
   files: ProductDesignFile[];
   /** 版を足す・直す・消す権限があるか（無ければ読むだけ）。 */
   canManage: boolean;
+  /**
+   * 版 id → メモ（document_memos, ownerType "design_files"）。
+   * 画面に並ぶ版ぶんをまとめて 1 回で引いたもの（listMemosByOwnerIds）。
+   */
+  memosByFile?: Record<string, MemoView[]>;
 }) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [editing, setEditing] = useState<DesignFileListRow | null>(null);
   const [notes, setNotes] = useState("");
   const [deleting, setDeleting] = useState<DesignFileListRow | null>(null);
+  const [memoFor, setMemoFor] = useState<DesignFileListRow | null>(null);
 
   const series = groupBySeries(files);
 
@@ -142,6 +151,7 @@ export function ProductDrawings({
                         }
                       : undefined
                   }
+                  onMemo={setMemoFor}
                   onOpenRequest={openRequest}
                   rows={g.files}
                   showSource
@@ -174,6 +184,24 @@ export function ProductDrawings({
           placeholder="この版で何が変わったか"
           value={notes}
         />
+      </ModalShell>
+
+      {/* 版ごとのメモ（リッチテキスト）。1 版 1 件の共有欄なので mode="memo"。
+          モーダルの中でだけエディタを読み込む（prosemirror は重い）。 */}
+      <ModalShell
+        onClose={() => setMemoFor(null)}
+        opened={memoFor != null}
+        size="lg"
+        title={memoFor ? `v${memoFor.version} のメモ` : "メモ"}
+      >
+        {memoFor && (
+          <MemoPanel
+            memos={memosByFile[memoFor.id] ?? []}
+            mode="memo"
+            ownerId={memoFor.id}
+            ownerType="design_files"
+          />
+        )}
       </ModalShell>
 
       <ConfirmModal

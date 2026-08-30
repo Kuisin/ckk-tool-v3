@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import { ProductDrawings } from "@/components/production/design-files/ProductDrawings";
 import { checkPermission } from "@/lib/authz";
 import { requireAppRead } from "@/lib/authz-page";
+import { listMemosByOwnerIds } from "@/lib/document-memos";
 import { fetchDesignFileProduct, fetchDesignFilesForProduct } from "../data";
 
 export const dynamic = "force-dynamic";
@@ -32,10 +33,17 @@ export default async function ProductionDesignFileDetailPage({
   ]);
   if (!product) notFound();
 
+  // 版ごとのメモ。行ごとに引くと版数ぶん走るので 1 回でまとめて取る。
+  const memosByFile = await listMemosByOwnerIds(
+    "design_files",
+    files.map((f) => f.id),
+  );
+
   return (
     <ProductDrawings
       canManage={manageAuthz.ok}
       files={files}
+      memosByFile={memosByFile}
       productId={product.id}
       productLabel={product.label}
     />

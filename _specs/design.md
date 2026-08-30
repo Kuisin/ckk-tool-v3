@@ -794,9 +794,19 @@ new Intl.NumberFormat('ja-JP', { style: 'currency', currency: currency ?? 'JPY' 
 | `RichTextEditorField` | `src/components/ui/RichTextEditorField.tsx` | `@mantine/tiptap` ラッパ。太字 / 斜体 / 下線 / 打消 / コード / H3・H4 / 箇条書き / 番号付き / 引用 / コードブロック / 区切り線 / リンク |
 | `RichTextView` | `src/components/ui/RichTextView.tsx` | 読み取り専用表示。React 要素を組み立てる（`dangerouslySetInnerHTML` 不使用） |
 
-搭載画面: 見積書 / 注文明細 / 指示書 / 出荷書 / 請求書 = **メモ**、
-価格表 / 価格試算 = **コメント**。既存の 備考（`notes`）は平文のまま別物として残り、
-PDF 印字も従来どおり（メモ・コメントは社内限定で PDF に出ない）。
+搭載画面: 見積書 / 注文明細 / 指示書 / 出荷書 / 請求書 / **設計図（版ごと）** = **メモ**、
+価格表 / 価格試算 / **設計依頼書** = **コメント**。既存の 備考（`notes`）は平文のまま
+別物として残り、PDF 印字も従来どおり（メモ・コメントは社内限定で PDF に出ない）。
+
+**設計図 (PD06) だけ owner が書類ではなく「版」**（`design_files` の 1 行）で、
+`ownerId` は表示番号ではなく **版の uuid**。版には業務キーが無いため。画面では
+版の行の「メモ」ボタンからモーダルで開く（タブではない）。**編集可否とは独立に
+開ける** — 指示書で使用中の版でも、その版について書き残すことはできてよい
+（凍結されるのは図面の中身であって注記ではない）。
+
+owner を足したら `purge_children_after_delete` トリガーも足すこと。多態参照は
+FK ではないので、無いと owner を消したときにメモが孤児になる
+（設計図はマイグレーション `20260922090000_design_file_memo_cascade`）。
 
 ```tsx
 // page.tsx（owner キーは fetchAuditEntries に渡す値と同一）

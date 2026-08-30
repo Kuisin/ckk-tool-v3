@@ -23,7 +23,7 @@ import {
   Table,
   Text,
 } from "@mantine/core";
-import { IconPencil, IconTrash } from "@tabler/icons-react";
+import { IconMessage2, IconPencil, IconTrash } from "@tabler/icons-react";
 import { useFormat } from "@/components/layout/PreferencesProvider";
 import { GhostButton } from "@/components/ui/buttons";
 import { DesignFileViewButton } from "@/components/ui/DesignFileViewer";
@@ -64,6 +64,7 @@ export function DesignFileList({
   rows,
   onOpenRequest,
   onEdit,
+  onMemo,
   onDelete,
   showSource,
 }: {
@@ -72,6 +73,12 @@ export function DesignFileList({
   onOpenRequest?: (requestNumber: string) => void;
   /** 渡すと行に操作を出す。可否は design-files-core が決める。 */
   onEdit?: (row: DesignFileListRow) => void;
+  /**
+   * リッチテキストのメモを開く。**編集可否とは独立**に出す — 指示書で使用中の
+   * 版でも、その版について書き残すことはできてよい（凍結されるのは図面の
+   * 中身であって、注記ではない）。
+   */
+  onMemo?: (row: DesignFileListRow) => void;
   onDelete?: (row: DesignFileListRow) => void;
   /** 「依頼 / 手動」のタグを出すか（製品マスタでは出す）。 */
   showSource?: boolean;
@@ -107,22 +114,37 @@ export function DesignFileList({
 
   const rowActions = (f: DesignFileListRow) => {
     const { canEdit, canDelete, lock } = actionsFor(f);
+    // メモは編集可否と無関係に開ける（読むだけの人も中身は見る）。
+    const memoButton = onMemo && (
+      <GhostButton
+        leftSection={<IconMessage2 size={14} />}
+        onClick={() => onMemo(f)}
+      >
+        メモ
+      </GhostButton>
+    );
     if (!canEdit && !canDelete) {
       // 触れない理由は黙って隠さず、その場に出す。
       return lock && (onEdit || onDelete) ? (
-        <Text c="dimmed" size="xs">
-          {lock}
-        </Text>
-      ) : null;
+        <Group gap="xs" wrap="nowrap">
+          {memoButton}
+          <Text c="dimmed" size="xs">
+            {lock}
+          </Text>
+        </Group>
+      ) : (
+        (memoButton ?? null)
+      );
     }
     return (
       <Group gap="xs" wrap="nowrap">
+        {memoButton}
         {canEdit && (
           <GhostButton
             leftSection={<IconPencil size={14} />}
             onClick={() => onEdit?.(f)}
           >
-            メモ
+            備考
           </GhostButton>
         )}
         {canDelete && (
@@ -203,7 +225,9 @@ export function DesignFileList({
             {showNotes && <Table.Th>備考</Table.Th>}
             {onOpenRequest && <Table.Th w={170}>元依頼</Table.Th>}
             <Table.Th w={150}>登録日時</Table.Th>
-            {(onEdit || onDelete) && <Table.Th w={170}>操作</Table.Th>}
+            {(onEdit || onDelete || onMemo) && (
+              <Table.Th w={230}>操作</Table.Th>
+            )}
           </Table.Tr>
         </Table.Thead>
         <Table.Tbody>
@@ -272,7 +296,9 @@ export function DesignFileList({
               <Table.Td className="tabular-nums">
                 {fmt.dateTime(f.createdAt)}
               </Table.Td>
-              {(onEdit || onDelete) && <Table.Td>{rowActions(f)}</Table.Td>}
+              {(onEdit || onDelete || onMemo) && (
+                <Table.Td>{rowActions(f)}</Table.Td>
+              )}
             </Table.Tr>
           ))}
         </Table.Tbody>
