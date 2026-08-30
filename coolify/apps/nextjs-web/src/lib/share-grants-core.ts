@@ -24,6 +24,11 @@ export interface ShareGrantRow {
    * EDIT/MANAGE はフォームを預かる側なので絞らない。null = 絞り込みなし。
    */
   condition?: ShareCondition | null;
+  /**
+   * 「この共有先へ、申請・報告の完了を知らせる」（フォームだけが使う）。
+   * 読めない共有（RESPOND）には付かない — 開けない通知を送らないため。
+   */
+  notifyOnComplete?: boolean;
 }
 
 /** 回答の絞り込み条件（1 項目 × 値の集合。値のどれかに当たれば通る）。 */
@@ -220,6 +225,39 @@ function answerHits(answer: unknown, values: readonly string[]): boolean {
  * **fail-closed** — 条件の項目が回答に無い（その版には無かった項目など）ときは
  * 見せない。見せてから気付くのでは遅い種類の間違いなので、迷ったら隠す。
  */
+/**
+ * 完了通知を付けられる共有権限。**RESPOND は含まない** — 回答だけの共有では
+ * 他人の回答を読めないので、通知を開いても notFound になる。
+ */
+export const NOTIFIABLE_SHARE_LEVELS: readonly ShareLevel[] = [
+  "READ",
+  "EDIT",
+  "MANAGE",
+];
+
+export function canNotifyOnComplete(level: ShareLevel): boolean {
+  return NOTIFIABLE_SHARE_LEVELS.includes(level);
+}
+
+/**
+ * この回答の完了を知らせるべき共有行を選ぶ。
+ *
+ * 条件付き共有（「拠点 A の回答だけ」）はそのまま効く — 見えない回答の完了を
+ * 知らせても行き止まりなので、**見える範囲と通知の範囲は同じ**にしてある。
+ * 宛先の展開（拠点・ロール → ユーザー）は DB が要るので lib/form-completion.ts。
+ */
+export function completionNotifyGrants(
+  grants: readonly ShareGrantRow[],
+  answers: Record<string, unknown>,
+): ShareGrantRow[] {
+  return grants.filter((g) => {
+    if (!g.notifyOnComplete || !canNotifyOnComplete(g.level)) return false;
+    const condition = g.condition;
+    if (!condition || condition.values.length === 0) return true;
+    return answerHits(answers[condition.fieldKey], condition.values);
+  });
+}
+
 export function responseInScope(
   scope: ResponseScope,
   answers: Record<string, unknown>,

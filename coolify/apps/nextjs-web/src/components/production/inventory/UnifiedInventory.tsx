@@ -38,6 +38,7 @@ import { useRouter } from "next/navigation";
 import { useMemo, useRef, useState } from "react";
 import { useFormat } from "@/components/layout/PreferencesProvider";
 import { InventoryBadge } from "@/components/production/InventoryBadge";
+import { AppTabs } from "@/components/ui/AppTabs";
 import { GhostButton } from "@/components/ui/buttons";
 import { type Column, DataTable } from "@/components/ui/DataTable";
 import { EmptyState } from "@/components/ui/EmptyState";
@@ -437,7 +438,7 @@ export function UnifiedInventory({
       }
       title="在庫管理"
     >
-      <Tabs onChange={setTab} value={tab}>
+      <AppTabs onChange={setTab} value={tab}>
         <Tabs.List mb="sm">
           <Tabs.Tab leftSection={<IconBoxSeam size={14} />} value="products">
             製品
@@ -500,6 +501,7 @@ export function UnifiedInventory({
                 </Stack>
               </Group>
             )}
+            settingsKey="products"
             urlState
           />
         </Tabs.Panel>
@@ -537,6 +539,7 @@ export function UnifiedInventory({
                 </Text>
               </Group>
             )}
+            settingsKey="materials"
             urlState
           />
         </Tabs.Panel>
@@ -553,7 +556,7 @@ export function UnifiedInventory({
             productRows={productRows}
           />
         </Tabs.Panel>
-      </Tabs>
+      </AppTabs>
 
       {transferSource && (
         <StockTransferModal
@@ -865,7 +868,7 @@ function LocationView({
               </Text>
             </Group>
             {selected.floorMaps.length > 1 && (
-              <Tabs onChange={setActiveMapId} value={activeMap.id}>
+              <AppTabs onChange={setActiveMapId} value={activeMap.id}>
                 <Tabs.List>
                   {selected.floorMaps.map((m) => (
                     <Tabs.Tab key={m.id} value={m.id}>
@@ -873,7 +876,7 @@ function LocationView({
                     </Tabs.Tab>
                   ))}
                 </Tabs.List>
-              </Tabs>
+              </AppTabs>
             )}
           </Group>
           <FloorMapCanvas

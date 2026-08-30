@@ -15,7 +15,6 @@
  * (description) を含める。権限なし・ユーザー不明は汎用文（種別+番号のみ）。
  */
 
-import { timingSafeEqual } from "node:crypto";
 import {
   buildPermissionSet,
   decide,
@@ -33,15 +32,9 @@ import {
   resolvePreviewTarget,
 } from "@/lib/link-preview";
 import { ORDER_TYPE_LABEL } from "@/lib/mock";
+import { tokenMatches } from "@/lib/shared-token";
 
 export const dynamic = "force-dynamic";
-
-function tokenMatches(given: string | null, expected: string): boolean {
-  if (!given) return false;
-  const a = Buffer.from(given);
-  const b = Buffer.from(expected);
-  return a.length === b.length && timingSafeEqual(a, b);
-}
 
 /**
  * READ 判定は authz-core decide()（コード ADMIN / system:ADMIN も許可 —

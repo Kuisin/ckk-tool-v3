@@ -1,0 +1,8 @@
+# IMAP と MIME は Python 標準ライブラリ（imaplib / email）で足りるので依存を足さない。
+# 日本語メールのファイル名（RFC 2047 encoded-word / RFC 2231 分割 / ISO-2022-JP）を
+# 正しく読めることが選定理由 — ここは自前実装が壊れる場所。
+#
+# 残る 2 つは TIFF → PDF の変換だけのため（FAX→メールサービス対応。詳細は convert.py）。
+# バージョンは完全固定（Docker ビルドの再現性）。
+img2pdf==0.6.1
+pillow==11.3.0

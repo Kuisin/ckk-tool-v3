@@ -12,37 +12,27 @@ import { effectiveMemberWhere } from "./approval-membership";
 import { SYSTEM_USER_ID } from "./audit";
 import { prisma } from "./db";
 import { sendNotificationMail } from "./mailer";
+import { markNotificationsEmailed } from "./notification-digest";
+import { sendsImmediateEmail } from "./notification-email-core";
+import { getNotificationEmailSettings } from "./notification-email-settings";
+import {
+  externalNotificationLinks,
+  type NotificationType,
+  sanitizeLinkPath,
+} from "./notifications-core";
 import { sendPushToUser } from "./push";
 import { publishNotificationEvent } from "./realtime";
 
-export type NotificationType =
-  | "APPROVAL_REQUEST" // 承認依頼 → 承認者へ
-  | "APPROVAL_RESULT" // 承認/差し戻し → 依頼者へ
-  | "INTAKE" // 注文請書 自動取込の結果
-  | "PURCHASE" // 素材発注の状態遷移
-  | "SHARE" // ページ共有（layout/share-actions）
-  | "DESIGN" // 設計依頼の担当指定・状態遷移
-  | "SYSTEM";
-
-/**
- * アプリ内パスの検証（監査 P1-6: `/\\evil.com` や二重エンコードの
- * オープンリダイレクトを遮断）。正規化して pathname+search が元と一致する
- * 相対パスのみ許可。不正はプレーンな "/" に落とす。
- */
-export function sanitizeLinkPath(path: string | undefined): string | undefined {
-  if (!path) return undefined;
-  if (!path.startsWith("/") || path.includes("\\")) return undefined;
-  try {
-    const u = new URL(path, "http://x");
-    if (u.origin !== "http://x") return undefined;
-    const normalized = u.pathname + u.search;
-    // バックスラッシュ・プロトコル相対（//）を弾く
-    if (u.pathname.startsWith("//")) return undefined;
-    return normalized;
-  } catch {
-    return undefined;
-  }
-}
+// 純粋関数は lib/notifications-core.ts（単体テスト可能）。呼び出し口は従来どおり
+// ここから import できるよう再輸出する。
+export {
+  externalNotificationLinks,
+  isNotificationId,
+  NOTIFICATION_TYPES,
+  type NotificationType,
+  notificationOpenPath,
+  sanitizeLinkPath,
+} from "./notifications-core";
 
 export interface NotifyInput {
   userIds: string[];
@@ -64,7 +54,9 @@ export async function notify(input: NotifyInput): Promise<void> {
   if (userIds.length === 0) return;
 
   const linkPath = sanitizeLinkPath(input.linkPath);
-  await prisma.notification.createMany({
+  // 作成した行の id を受け取る（メール・端末通知の中継 URL に使う —
+  // externalNotificationLinks）。
+  const rows = await prisma.notification.createManyAndReturn({
     data: userIds.map((userId) => ({
       userId,
       type: input.type,
@@ -72,25 +64,36 @@ export async function notify(input: NotifyInput): Promise<void> {
       message: input.message,
       linkPath,
     })),
+    select: { id: true, userId: true },
   });
+  const notificationIdByUser = new Map(rows.map((r) => [r.userId, r.id]));
 
   // 開いているタブのベルを即時更新（SSE — lib/realtime.ts）。
   // 失敗しても通知行は残るので、次のフォールバック取得で追いつく。
   void publishNotificationEvent(userIds);
 
   // 外部チャネルは fire-and-forget（standalone Node ランタイム前提）
-  void dispatchExternal(userIds, { ...input, linkPath }).catch((e) =>
-    console.error("[notify] 外部チャネル配信エラー:", e),
-  );
+  void dispatchExternal(
+    userIds,
+    { ...input, linkPath },
+    notificationIdByUser,
+  ).catch((e) => console.error("[notify] 外部チャネル配信エラー:", e));
 }
 
 async function dispatchExternal(
   userIds: string[],
   input: NotifyInput,
+  /** userId → 作成した通知行の id（メール・端末通知の中継 URL 用）。 */
+  notificationIdByUser: Map<string, string>,
 ): Promise<void> {
   // dev/main が DB を共有しているため、検証環境からの実ユーザーへの
   // メール・プッシュを止めるキルスイッチ（監査 P1-4）。アプリ内通知は残る。
   if (process.env.NOTIFY_EXTERNAL_DISABLED === "1") return;
+  // メールを 1 件ずつ送るか、ダイジェストに回すか（SY0F の設定）。
+  // 回す場合はここでは何も送らず、notification-digest.ts の掃き出しが
+  // 「猶予を過ぎても未読のもの」だけをまとめて 1 通にする。
+  const emailSettings = await getNotificationEmailSettings();
+  const immediateEmail = sendsImmediateEmail(emailSettings, input.type);
   const users = await prisma.user.findMany({
     where: { id: { in: userIds }, isActive: true },
     select: {
@@ -107,13 +110,26 @@ async function dispatchExternal(
       const jobs: Promise<unknown>[] = [];
       const emailOn = u.notificationSetting?.emailEnabled ?? true;
       const pushOn = u.notificationSetting?.pushEnabled ?? true;
-      if (emailOn && u.email) {
+      // メールも端末通知も中継 URL 経由 — 開いた時点で既読にしてから対象
+      // ページへ送る。チャネルごとの違いは notifications-core が持つ。
+      const links = externalNotificationLinks({
+        notificationId: notificationIdByUser.get(u.id),
+        linkPath: input.linkPath,
+      });
+      if (emailOn && u.email && immediateEmail) {
+        const notificationId = notificationIdByUser.get(u.id);
         jobs.push(
           sendNotificationMail({
             to: u.email,
             title: input.title,
             message: input.message,
-            linkPath: input.linkPath,
+            linkPath: links.mail,
+          }).then((sent) => {
+            // 送れたぶんには印を付ける — 付けないと、その通知が未読のまま
+            // 残ったときに次のダイジェストへもう一度載る。
+            if (sent && notificationId) {
+              return markNotificationsEmailed([notificationId]);
+            }
           }),
         );
       }
@@ -122,8 +138,7 @@ async function dispatchExternal(
           sendPushToUser(u.id, {
             title: input.title,
             body: input.message,
-            // 対象ページが無い通知はアプリ内通知センターを開く
-            link: input.linkPath ?? "/notifications",
+            link: links.push,
           }),
         );
       }

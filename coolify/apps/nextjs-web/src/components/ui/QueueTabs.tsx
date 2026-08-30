@@ -12,6 +12,7 @@
 
 import { Badge, Tabs } from "@mantine/core";
 import type { ReactNode } from "react";
+import { AppTabs } from "@/components/ui/AppTabs";
 
 export interface QueueTabDef {
   value: string;
@@ -34,7 +35,7 @@ export function QueueTabs({
   children: ReactNode;
 }) {
   return (
-    <Tabs onChange={(v) => onChange(v ?? tabs[0].value)} value={value}>
+    <AppTabs onChange={(v) => onChange(v ?? tabs[0].value)} value={value}>
       <Tabs.List mb="sm">
         {tabs.map((t) => (
           <Tabs.Tab
@@ -59,6 +60,6 @@ export function QueueTabs({
         ))}
       </Tabs.List>
       {children}
-    </Tabs>
+    </AppTabs>
   );
 }

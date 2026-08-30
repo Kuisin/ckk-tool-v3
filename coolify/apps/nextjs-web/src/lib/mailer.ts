@@ -73,7 +73,13 @@ export function appBaseUrl(): string {
     : "https://app-dev.ckk-tool.co.jp";
 }
 
-/** 通知メール（タイトル + 本文 + アプリ内リンクボタン）を組み立てて送信。 */
+/**
+ * 通知メール（タイトル + 本文 + アプリ内リンクボタン）を組み立てて送信。
+ *
+ * linkPath は通知から呼ばれる場合 `/notifications/<id>/open` の中継 URL
+ * （lib/notifications-core.ts `externalNotificationLinks`）— ボタンを押した
+ * 時点で既読にしてから対象ページへ送るため。ここはただのパスとして扱う。
+ */
 export async function sendNotificationMail(input: {
   to: string;
   title: string;
@@ -101,4 +107,73 @@ export async function sendNotificationMail(input: {
     text: text || input.title,
     html,
   });
+}
+
+/** ダイジェストに載せる 1 件（表示用に整えたもの）。 */
+export interface DigestMailItem {
+  /** 種別の日本語ラベル（承認依頼 など）。 */
+  typeLabel: string;
+  title: string;
+  message?: string | null;
+  /** 受け取った人が押す URL。既読にしてから対象ページへ送る中継。 */
+  url: string;
+  /** 表示用の日時文字列（JST・書類と同じ体裁）。 */
+  at: string;
+}
+
+/**
+ * ダイジェストメール（見逃した未読をまとめた 1 通）。
+ *
+ * 1 行ごとにリンクを張るのは、**それが既読の記録の入口**だから。単発の
+ * 通知メールでは対象ページが無ければボタンを出さないが、ここでは行そのものが
+ * リンクなので必ず張る（対象ページが無い通知は中継が通知一覧へ送る）。
+ */
+export async function sendNotificationDigestMail(input: {
+  to: string;
+  items: DigestMailItem[];
+  /** 載せきれずに畳んだ件数（0 なら出さない）。 */
+  omittedCount: number;
+  subject: string;
+  /** 通知一覧（すべて見る）の URL。 */
+  allUrl: string;
+}): Promise<boolean> {
+  const lines = input.items.map(
+    (i) =>
+      `- [${i.typeLabel}] ${i.title}${i.message ? ` / ${i.message}` : ""}\n  ${i.at}  ${i.url}`,
+  );
+  if (input.omittedCount > 0) {
+    lines.push(`- ほか ${input.omittedCount} 件`);
+  }
+  const text = [...lines, "", `すべて見る: ${input.allUrl}`].join("\n");
+
+  const rows = input.items
+    .map(
+      (i) => `
+    <tr>
+      <td style="padding:10px 0;border-bottom:1px solid #dee2e6;vertical-align:top">
+        <div style="font-size:11px;color:#868e96">${escapeHtml(i.typeLabel)} ・ ${escapeHtml(i.at)}</div>
+        <a href="${i.url}" style="font-size:14px;color:#228be6;text-decoration:none;font-weight:600">${escapeHtml(i.title)}</a>
+        ${i.message ? `<div style="font-size:12px;color:#495057;margin-top:2px">${escapeHtml(i.message)}</div>` : ""}
+      </td>
+    </tr>`,
+    )
+    .join("");
+
+  const html = `
+<div style="font-family:'Noto Sans JP',system-ui,sans-serif;max-width:560px;margin:0 auto;padding:24px">
+  <h2 style="font-size:16px;border-bottom:2px solid #228be6;padding-bottom:8px">未読の通知</h2>
+  <p style="font-size:12px;color:#868e96">アプリで開いていない通知だけをまとめています。読んだものは届きません。</p>
+  <table style="width:100%;border-collapse:collapse">${rows}</table>
+  ${
+    input.omittedCount > 0
+      ? `<p style="font-size:12px;color:#868e96;margin-top:12px">ほか ${input.omittedCount} 件</p>`
+      : ""
+  }
+  <p style="margin:24px 0"><a href="${input.allUrl}" style="background:#228be6;color:#fff;padding:10px 20px;border-radius:4px;text-decoration:none;font-size:14px">すべて見る</a></p>
+  <p style="font-size:12px;color:#868e96;border-top:1px solid #dee2e6;padding-top:12px;margin-top:32px">
+    CKK 業務管理システムからの自動送信メールです。通知設定はアプリの「プロフィール → 通知設定」から変更できます。
+  </p>
+</div>`;
+
+  return sendMail({ to: input.to, subject: input.subject, text, html });
 }

@@ -3,6 +3,7 @@ import {
   canEditResponse,
   type FormFieldDef,
   formAvailability,
+  isCompletedRequest,
   isSafePattern,
   lookupHref,
   nextFieldKey,
@@ -501,6 +502,32 @@ describe("shouldAutoRequestApproval — 提出＝申請", () => {
         { kind: "REQUEST", approvalEnabled: false },
         null,
         false,
+      ),
+    ).toBe(false);
+  });
+});
+
+describe("isCompletedRequest — 申請・報告の「完了」", () => {
+  const withApproval = { kind: "REQUEST", approvalEnabled: true };
+  const noApproval = { kind: "REQUEST", approvalEnabled: false };
+
+  it("承認フローを使うなら、全段承認（APPROVED）だけが完了", () => {
+    expect(isCompletedRequest(withApproval, "APPROVED")).toBe(true);
+    expect(isCompletedRequest(withApproval, "SUBMITTED")).toBe(false);
+    expect(isCompletedRequest(withApproval, "REQUESTED")).toBe(false);
+    expect(isCompletedRequest(withApproval, "REJECTED")).toBe(false);
+  });
+
+  it("承認フローを使わないなら、提出が完了（日報・点検簿）", () => {
+    expect(isCompletedRequest(noApproval, "SUBMITTED")).toBe(true);
+    expect(isCompletedRequest(noApproval, "DRAFT")).toBe(false);
+  });
+
+  it("アンケートに完了は無い", () => {
+    expect(
+      isCompletedRequest(
+        { kind: "SURVEY", approvalEnabled: false },
+        "SUBMITTED",
       ),
     ).toBe(false);
   });

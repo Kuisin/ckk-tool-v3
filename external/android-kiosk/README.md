@@ -140,7 +140,7 @@ adb shell dpm set-device-owner jp.co.ckk.kiosk/jp.co.ckk.kiosk.KioskDeviceAdminR
 ### メンテナンス退出
 
 画面**右上を 3 秒以内に 5 回タップ** → 管理者 PIN 入力
-（※ 左上 5 タップは Web 側の隠し端末設定 `/device-settings` に割当済みのため右上）:
+（※ 左下 5 タップは Web 側の隠し端末設定 `/device-settings` に割当済み。こちらは右上）:
 
 - **設定を開く** — 一時的にロックを外して Android 設定へ（アプリに戻ると再ロック）
 - **キオスク解除** — デバイスオーナーを放棄して通常アプリに戻す

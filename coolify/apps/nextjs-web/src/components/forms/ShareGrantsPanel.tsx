@@ -11,6 +11,7 @@
 import {
   ActionIcon,
   Alert,
+  Checkbox,
   Group,
   Paper,
   Select,
@@ -32,6 +33,7 @@ import { FormActions } from "@/components/ui/shells";
 import { useIsMobile } from "@/hooks/useViewport";
 import type { ShareGrantView } from "@/lib/share-grants";
 import {
+  canNotifyOnComplete,
   SHARE_LEVEL_LABEL,
   SHARE_SUBJECT_LABEL,
   type ShareLevel,
@@ -55,6 +57,8 @@ interface Draft {
   subjectLabel: string;
   level: ShareLevel;
   condition: ConditionValue;
+  /** 申請・報告が完了したときに、この共有先へ通知するか。 */
+  notifyOnComplete: boolean;
 }
 
 const SUBJECT_TYPES: ShareSubjectType[] = ["EVERYONE", "PLANT", "ROLE", "USER"];
@@ -65,6 +69,7 @@ export function ShareGrantsPanel({
   roleOptions,
   levels,
   canManage,
+  showNotifyOnComplete = false,
   onCancel,
   onSaved,
   onSave,
@@ -78,6 +83,11 @@ export function ShareGrantsPanel({
    * （社内文書には回答が無いので条件も無い）。
    */
   conditionFields?: ConditionFieldOption[];
+  /**
+   * 「完了時に通知」の列を出すか。申請・報告フォームでだけ true
+   * （アンケートに完了は無く、社内文書にも回答が無い）。
+   */
+  showNotifyOnComplete?: boolean;
   canManage: boolean;
   /** キャンセル。EditablePanel に埋め込むときに閲覧モードへ戻す。 */
   onCancel?: () => void;
@@ -91,6 +101,7 @@ export function ShareGrantsPanel({
       conditionFieldKey: string | null;
       conditionValues: string[];
       conditionLabels: string[];
+      notifyOnComplete: boolean;
     }[],
   ) => Promise<{ ok: boolean; error?: string }>;
 }) {
@@ -108,6 +119,7 @@ export function ShareGrantsPanel({
         values: g.conditionValues ?? [],
         labels: g.conditionLabels ?? [],
       },
+      notifyOnComplete: g.notifyOnComplete,
     })),
   );
 
@@ -120,6 +132,7 @@ export function ShareGrantsPanel({
         subjectLabel: "全社（ログインユーザー全員）",
         level: levels[0],
         condition: EMPTY_CONDITION,
+        notifyOnComplete: false,
       },
     ]);
 
@@ -136,6 +149,8 @@ export function ShareGrantsPanel({
           conditionFieldKey: r.condition.fieldKey,
           conditionValues: r.condition.values,
           conditionLabels: r.condition.labels,
+          // 読めない共有には付けない（サーバ側でも同じ判定で落とす）。
+          notifyOnComplete: r.notifyOnComplete && canNotifyOnComplete(r.level),
         })),
       );
       if (result.ok) {
@@ -249,8 +264,26 @@ export function ShareGrantsPanel({
       data={levels.map((l) => ({ value: l, label: SHARE_LEVEL_LABEL[l] }))}
       disabled={!canManage}
       label={isMobile ? "権限" : undefined}
-      onChange={(v) => update(i, { level: (v as ShareLevel) ?? levels[0] })}
+      onChange={(v) => {
+        const level = (v as ShareLevel) ?? levels[0];
+        // 「回答のみ」に落としたら完了通知も外す — 開けない通知を
+        // 送る設定が画面に残らないように。
+        update(i, {
+          level,
+          notifyOnComplete: row.notifyOnComplete && canNotifyOnComplete(level),
+        });
+      }}
       value={row.level}
+    />
+  );
+
+  // 完了通知のチェック。読めない共有（回答のみ）には付けられない。
+  const notifyCheckbox = (row: Draft, i: number) => (
+    <Checkbox
+      checked={row.notifyOnComplete}
+      disabled={!canManage || !canNotifyOnComplete(row.level)}
+      label={isMobile ? "完了したら通知する" : undefined}
+      onChange={(e) => update(i, { notifyOnComplete: e.currentTarget.checked })}
     />
   );
 
@@ -273,6 +306,15 @@ export function ShareGrantsPanel({
         つも設定していないフォームは、作成者と管理者にしか見えません。 URL
         を知っていても開けません。
       </Alert>
+
+      {showNotifyOnComplete && (
+        <Alert color="gray" icon={<IconInfoCircle size={16} />} variant="light">
+          「完了通知」を付けた共有先には、申請・報告が完了したとき（承認フローを
+          使うなら全段の承認、使わないなら提出）に通知が届き、承認・予定 (CM01)
+          の「完了した申請」に並びます。条件を付けた共有先には、その条件に
+          当てはまる回答の完了だけが届きます。
+        </Alert>
+      )}
 
       {isMobile ? (
         // スマホは 4 列の表を諦めてカードに積む。Select が 1 列 40px になると
@@ -303,6 +345,7 @@ export function ShareGrantsPanel({
                   </Stack>
                 )}
                 {levelSelect(row, i)}
+                {showNotifyOnComplete && notifyCheckbox(row, i)}
                 {conditionBlock(row, i)}
               </Stack>
             </Paper>
@@ -315,13 +358,16 @@ export function ShareGrantsPanel({
               <Table.Th style={{ width: 140 }}>対象</Table.Th>
               <Table.Th>相手</Table.Th>
               <Table.Th style={{ width: 160 }}>権限</Table.Th>
+              {showNotifyOnComplete && (
+                <Table.Th style={{ width: 110 }}>完了通知</Table.Th>
+              )}
               <Table.Th style={{ width: 48 }} />
             </Table.Tr>
           </Table.Thead>
           <Table.Tbody>
             {rows.length === 0 && (
               <Table.Tr>
-                <Table.Td colSpan={4}>
+                <Table.Td colSpan={showNotifyOnComplete ? 5 : 4}>
                   <Text c="dimmed" size="sm">
                     共有先がありません（非公開）
                   </Text>
@@ -337,13 +383,16 @@ export function ShareGrantsPanel({
                     <Table.Td>{typeSelect(row, i)}</Table.Td>
                     <Table.Td>{subjectInput(row, i)}</Table.Td>
                     <Table.Td>{levelSelect(row, i)}</Table.Td>
+                    {showNotifyOnComplete && (
+                      <Table.Td>{notifyCheckbox(row, i)}</Table.Td>
+                    )}
                     <Table.Td>{removeButton(i)}</Table.Td>
                   </Table.Tr>
                   {condition && (
                     // 条件は行に収めず、その行の下に全幅で敷く（4 列の表に
                     // 押し込むと選択肢が読めない）。
                     <Table.Tr>
-                      <Table.Td colSpan={4}>
+                      <Table.Td colSpan={showNotifyOnComplete ? 5 : 4}>
                         <Stack gap={4} pl="md">
                           <Text c="dimmed" size="xs">
                             見せる回答を絞る（この共有先だけに効きます）

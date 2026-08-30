@@ -12,6 +12,7 @@ import { fetchAuditEntries } from "@/lib/audit";
 import { sessionUserId } from "@/lib/authz";
 import { requireAppRead } from "@/lib/authz-page";
 import { listMemos } from "@/lib/document-memos";
+import { markFormCompletionRead } from "@/lib/form-completion";
 import { canEditResponse } from "@/lib/form-schema";
 import { fetchResponse, formAccess, resolveRelatedRecords } from "@/lib/forms";
 import { responseInScope } from "@/lib/share-grants-core";
@@ -41,6 +42,11 @@ export default async function ResponseDetailPage({
   // （読めなければ承認しようがない）。
   const isApprover = await isApproverOf("form_responses", id, userId);
   if (!inScope && !isOwner && !isApprover) notFound();
+
+  // 完了通知を受け取っている人がこの回答を開いたら、それが既読
+  // （「確認しました」を押させない — 開いた事実だけを記録する）。
+  // 受け取っていない人には行が無いので何も起きない。
+  await markFormCompletionRead(userId, id);
 
   // 「回答者を表示しない」フォームでは、操作履歴の実行者名と添付のアップロード者名が
   // そのまま回答者を指してしまう。本人以外には渡さない — 画面で隠すのではなく

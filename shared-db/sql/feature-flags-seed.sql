@@ -70,4 +70,10 @@ ON CONFLICT (key) DO UPDATE
 -- （openssl rand -base64 32）。公開時:
 --   ('app:ai-provider:main', true, 'AI プロバイダ 本番公開', now())
 
+-- 通知メール（SY0F）は dev でダイジェストが期待どおりの量になるのを見てから
+-- 本番公開する。**画面が無くてもダイジェスト自体は動く**（既定 = まとめて送る）
+-- ので、公開は「管理者が間隔と即時種別を変えられるようにする」ためのもの。
+-- 公開時:
+--   ('app:notification-email:main', true, '通知メール 本番公開', now())
+
 COMMIT;

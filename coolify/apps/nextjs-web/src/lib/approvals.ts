@@ -810,9 +810,19 @@ async function notifyStepStart(
             })
           ).map((a) => a.userId)
         : undefined;
+    // 誰からの依頼かを本文に載せる。件名は書類種別・番号・段名で既に長く、
+    // 端末の通知では折り返しで切れる。段が進んでも依頼者は最初に出した人の
+    // まま（createStepRequest が requestedBy を引き継ぐ）で、途中の承認者では
+    // ない — 承認者が知りたいのは「誰の依頼か」なのでこれで正しい。
+    const request = await prisma.approvalRequest.findUnique({
+      where: { id: requestId },
+      select: { requestedByUser: { select: { displayName: true } } },
+    });
+    const requesterName = request?.requestedByUser?.displayName;
     const payload = {
       type: "APPROVAL_REQUEST" as const,
       title: `${APPROVAL_TARGET[targetType].label} ${targetId} の${localized(step.name)}依頼`,
+      message: requesterName ? `依頼者: ${requesterName}` : undefined,
       // 承認管理の一覧ではなく当の書類を開く（承認操作は書類詳細の
       // ActionCard にある — design.md §10.9）。承認結果通知と同じ行き先。
       linkPath: APPROVAL_TARGET[targetType].href(targetId),

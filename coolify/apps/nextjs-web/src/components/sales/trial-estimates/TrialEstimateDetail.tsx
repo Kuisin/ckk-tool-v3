@@ -42,6 +42,7 @@ import {
   linkTrialEstimateProduct,
 } from "@/app/(dashboard)/sales/trial-estimates/actions";
 import { useFormat } from "@/components/layout/PreferencesProvider";
+import { AppTabs } from "@/components/ui/AppTabs";
 import { DocNumber } from "@/components/ui/DocNumber";
 import { FieldValue } from "@/components/ui/FieldValue";
 import { PRODUCT_F4 } from "@/components/ui/f4-presets";
@@ -316,7 +317,7 @@ export function TrialEstimateDetail({
         stages={stages}
       />
 
-      <Tabs onChange={setTab} value={tab}>
+      <AppTabs onChange={setTab} value={tab}>
         <Tabs.List>
           <Tabs.Tab leftSection={<IconCalculator size={14} />} value="result">
             試算結果
@@ -457,7 +458,7 @@ export function TrialEstimateDetail({
         <Tabs.Panel pt="md" value="audit">
           <HistoryPanel entries={auditEntries} />
         </Tabs.Panel>
-      </Tabs>
+      </AppTabs>
 
       <ModalShell
         confirmLabel="保存"

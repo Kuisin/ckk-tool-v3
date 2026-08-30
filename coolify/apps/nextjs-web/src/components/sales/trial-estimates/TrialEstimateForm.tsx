@@ -41,6 +41,7 @@ import {
   type MaterialPricing,
 } from "@/app/(dashboard)/sales/trial-estimates/actions";
 import { useFormat } from "@/components/layout/PreferencesProvider";
+import { AppTabs } from "@/components/ui/AppTabs";
 import { EditButton } from "@/components/ui/buttons";
 import { PRODUCT_F4 } from "@/components/ui/f4-presets";
 import { HelpLabel } from "@/components/ui/HelpLabel";
@@ -360,7 +361,7 @@ export function TrialEstimateForm({
         title="見積試算"
       />
 
-      <Tabs defaultValue="calc">
+      <AppTabs defaultValue="calc">
         <Tabs.List>
           <Tabs.Tab leftSection={<IconCalculator size={14} />} value="calc">
             試算
@@ -914,7 +915,7 @@ export function TrialEstimateForm({
             </Stack>
           </Paper>
         </Tabs.Panel>
-      </Tabs>
+      </AppTabs>
 
       <FormActions
         cancelLabel="一覧へ"

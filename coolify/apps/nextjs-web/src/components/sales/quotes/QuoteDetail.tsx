@@ -27,6 +27,7 @@ import { useFormat } from "@/components/layout/PreferencesProvider";
 import { DesignRequestLinks } from "@/components/sales/design-requests/DesignRequestLinks";
 import type { DesignRequestLink } from "@/components/sales/design-requests/model";
 import type { AcceptanceLink } from "@/components/sales/order-acceptances/model";
+import { AppTabs } from "@/components/ui/AppTabs";
 import { PrimaryButton } from "@/components/ui/buttons";
 import { DocNumber } from "@/components/ui/DocNumber";
 import { FieldValue } from "@/components/ui/FieldValue";
@@ -285,7 +286,7 @@ export function QuoteDetail({
         stages={stages}
       />
 
-      <Tabs onChange={setTab} value={tab}>
+      <AppTabs onChange={setTab} value={tab}>
         <Tabs.List>
           <Tabs.Tab value="items">明細</Tabs.Tab>
           <Tabs.Tab value="pdf">PDF</Tabs.Tab>
@@ -536,7 +537,7 @@ export function QuoteDetail({
         <Tabs.Panel pt="md" value="history">
           <HistoryPanel entries={auditEntries} />
         </Tabs.Panel>
-      </Tabs>
+      </AppTabs>
 
       <IssueQuoteModal
         defaultValidUntil={quote.validUntil}

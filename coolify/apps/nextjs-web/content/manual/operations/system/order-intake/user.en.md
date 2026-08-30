@@ -4,7 +4,9 @@ description: "An app for dropping received order-document PDFs/scans into the in
 ---
 An app for dropping received **order documents (PDFs / scanned images)** into the intake folder in bulk. The operation code is `SY0C`.
 
-> ⚠️ This app is currently **limited to the test environment (dev)**. The production environment (main) has no intake folder configured, so opening this app there shows "folder not configured." To bring in order documents on production, use the "priority intake" feature on order acceptances instead.
+> This app works in **both the test environment (dev) and production (main)** — the production intake folder was set up on 2026-08-30.
+>
+> ⚠️ However, **automatic intake by email runs on dev only.** Using it on production needs a separate production mailbox and configuration. On production you can drop files in from this screen and use "priority intake" on order acceptances.
 
 ## What you can do with this app
 
@@ -45,6 +47,40 @@ Each row shows:
 
 While at least one file is waiting, the screen refreshes itself automatically every 30 seconds.
 
+## The three ways an order arrives
+
+Besides dropping files in from this screen, orders also arrive by the routes
+below. **All of them land in the same intake folder**, so numbering and AI
+extraction work identically for each.
+
+| Route | How it gets in |
+|---|---|
+| **Upload** | This screen, or "Priority intake" on the order acceptance app |
+| **Email** | Orders sent to **order-intake@ckk-tool.co.jp** are picked up automatically (`intake-gateway`) and appear under "Waiting" within a few minutes |
+| **Fax** | Currently a manual step — someone scans the paper on the MFP and uploads it via "Priority intake". There is no automatic fax receiver |
+
+### The intake address
+
+It is **order-intake@ckk-tool.co.jp**. Ask customers to send order forms there.
+It is an **automated intake address that nobody reads** — do not use it for
+enquiries or correspondence, which would sit there unnoticed.
+
+### Spotting a file that came from email
+
+Files that arrived by email are named `mail_sender_originalname`. For example
+`mail_tanaka-at-example.co.jp_order.pdf` came from `tanaka@example.co.jp`.
+
+> ⚠️ **The sender and subject are not recorded on the order acceptance itself.**
+> That filename is the only trace — the order acceptance detail page does not
+> show it. To see the subject or body, open the mailbox directly. Messages that
+> were taken in have been moved to its "Processed" folder (failures go to "Failed").
+
+### Emails with several attachments
+
+If one email carries three order documents, you get **three order acceptances**
+(one document = one record). Images embedded in the signature — company logos
+and the like — are not taken in.
+
 ## Dropping in files
 
 1. Press 「**ファイルを選ぶ**」 (Choose files).
@@ -64,7 +100,7 @@ In the "Failed" list, press 「**再取込**」 (Retry) on the row for the file 
 ## Questions and problems
 
 **Q. It says "folder not configured."**
-A. Right now this feature only works on the test environment (dev). The production environment (main) does not yet have an intake folder configured. If you need to bring in order documents on production, use "priority intake" on order acceptances to bring them in one at a time.
+A. The intake folder exists in both the test and production environments. If you still see this, the `INTAKE_DIR` setting or the folder assignment has come loose — ask a system administrator. ("Priority intake" on order acceptances does not use the intake folder, so it keeps working meanwhile.)
 
 **Q. I dropped in a file, but it stays "not yet numbered" forever.**
 A. The automatic scan runs every 60 seconds by default. Please wait a little and refresh the screen. If it still doesn't change, try 「今すぐスキャン」 (Scan now).
@@ -77,3 +113,9 @@ A. The dropped file is saved under a unique name, so it won't overwrite anything
 
 **Q. Is it safe to place a file directly into the intake folder's path?**
 A. Yes. Dropping a file in from this screen and placing one directly into the shared folder are handled through exactly the same path.
+
+**Q. An order sent by email was not taken in.**
+A. Check, in order: (1) whether that sender is on the allow list (ask a system administrator); (2) whether the attachment is PDF, PNG, JPG or WEBP — anything else is skipped; (3) whether the message is marked read in the mailbox. Read but not taken in means it was attempted and failed. **Failed messages are not retried automatically**, to avoid registering the same order twice. Ask the sender to resend, or save the attachment and use "Priority intake".
+
+**Q. Can faxes be taken in automatically?**
+A. Not today. Scan the received fax on the MFP and upload it via "Priority intake". If you later subscribe to a fax-to-email service, those messages will ride the email route with no further change.

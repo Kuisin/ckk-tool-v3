@@ -36,6 +36,7 @@ import {
 } from "@/app/(dashboard)/shipping/delivery-notes/actions";
 import type { InvoiceLink } from "@/components/billing/invoices/model";
 import { useFormat } from "@/components/layout/PreferencesProvider";
+import { AppTabs } from "@/components/ui/AppTabs";
 import { PrimaryButton } from "@/components/ui/buttons";
 import { DocNumber } from "@/components/ui/DocNumber";
 import { FieldValue } from "@/components/ui/FieldValue";
@@ -413,7 +414,7 @@ export function DeliveryNoteDetail({
         </Table.ScrollContainer>
       </Paper>
 
-      <Tabs onChange={setTab} value={tab}>
+      <AppTabs onChange={setTab} value={tab}>
         <Tabs.List>
           <Tabs.Tab value="overview">概要</Tabs.Tab>
           <Tabs.Tab value="pdf">PDF</Tabs.Tab>
@@ -458,7 +459,7 @@ export function DeliveryNoteDetail({
         <Tabs.Panel pt="md" value="history">
           <HistoryPanel entries={auditEntries} />
         </Tabs.Panel>
-      </Tabs>
+      </AppTabs>
 
       <ConfirmModal
         confirmColor="blue"

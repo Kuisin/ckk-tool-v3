@@ -39,6 +39,7 @@ import {
   setBlacklistActiveAction,
 } from "@/app/(dashboard)/settings/links/actions";
 import { useFormat } from "@/components/layout/PreferencesProvider";
+import { AppTabs } from "@/components/ui/AppTabs";
 import { PrimaryButton } from "@/components/ui/buttons";
 import { type Column, DataTable } from "@/components/ui/DataTable";
 import { openConfirm } from "@/components/ui/modals";
@@ -210,7 +211,7 @@ export function LinkAdminPanel({
   ];
 
   return (
-    <Tabs onChange={setTab} value={tab}>
+    <AppTabs onChange={setTab} value={tab}>
       <Tabs.List>
         <Tabs.Tab leftSection={<IconLink size={14} />} value="index">
           索引（{links.length}）
@@ -239,6 +240,7 @@ export function LinkAdminPanel({
             emptyMessage="外部リンクはまだ登録されていません"
             getRowId={(r) => r.code}
             pageSize={20}
+            settingsKey="links"
           />
         </Stack>
       </Tabs.Panel>
@@ -292,9 +294,10 @@ export function LinkAdminPanel({
                 onAction: remove,
               },
             ]}
+            settingsKey="blocked"
           />
         </Stack>
       </Tabs.Panel>
-    </Tabs>
+    </AppTabs>
   );
 }

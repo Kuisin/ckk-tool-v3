@@ -278,26 +278,37 @@ body {
   }
 
   /*
-   * Tabs — スマホでは折り返さず横スクロールさせる。
+   * Tabs — 幅に収まらないときはドロップダウンへ切り替える
+   * （components/ui/AppTabs.tsx。画面のタブは全部そこを通る）。
    *
-   * Mantine の既定は flex-wrap なので、タブが 4 枚を超えると 2〜3 段に折り返して
-   * 本文が画面外へ押し出される（承認・予定 CM01 は 5 枚、フォーム回答は 5 枚）。
-   * 段が増えるより、横に流して指でなぞれるほうが読める。スクロールバーは
-   * 消すが、端が切れて見えるので「まだ先がある」ことは伝わる。
+   * Mantine の既定は flex-wrap なので、タブが増えると 2〜3 段に折り返して本文が
+   * 下へ押し出される。スマホだけ横スクロールにしていた時期もあったが、今度は
+   * 開いているタブが画面外に隠れて「いま何を見ているか」が分からなくなった。
+   * どちらもやめて、**折り返さない**ことだけをここで決める — 収まらないことを
+   * JS 側が scrollWidth で気づけるようにするため（折り返すと気づけない）。
    */
-  @media (max-width: 767px) {
-    .mantine-Tabs-list {
-      flex-wrap: nowrap;
-      overflow-x: auto;
-      scrollbar-width: none;
-      -webkit-overflow-scrolling: touch;
-    }
-    .mantine-Tabs-list::-webkit-scrollbar {
-      display: none;
-    }
-    .mantine-Tabs-tab {
-      flex-shrink: 0;
-    }
+  .app-tabs-bar {
+    position: relative;
+  }
+  .app-tabs-bar .mantine-Tabs-list {
+    flex-wrap: nowrap;
+    overflow: hidden;
+  }
+  .app-tabs-bar .mantine-Tabs-tab {
+    flex-shrink: 0;
+  }
+  /*
+   * 畳んだときのタブ列。**消さずに隠す** — 自然な幅を測り続けて広くなったら
+   * 戻すためと、Tabs.Panel の aria-labelledby が指すタブの id を残すため。
+   * visibility:hidden なのでフォーカスは当たらない。
+   */
+  .app-tabs-measure {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: max-content;
+    visibility: hidden;
+    pointer-events: none;
   }
 
   /*

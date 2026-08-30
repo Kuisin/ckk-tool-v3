@@ -36,6 +36,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { useFormat } from "@/components/layout/PreferencesProvider";
 import { ActiveBadge } from "@/components/ui/ActiveBadge";
+import { AppTabs } from "@/components/ui/AppTabs";
 import { GhostButton } from "@/components/ui/buttons";
 import { DocNumber } from "@/components/ui/DocNumber";
 import { EmptyState } from "@/components/ui/EmptyState";
@@ -256,7 +257,7 @@ export function InspectionTemplateDetail({
         />
       </SummaryGrid>
 
-      <Tabs onChange={setTab} value={tab}>
+      <AppTabs onChange={setTab} value={tab}>
         <Tabs.List>
           <Tabs.Tab value="info">テンプレート情報</Tabs.Tab>
           <Tabs.Tab value="items">検査項目</Tabs.Tab>
@@ -488,7 +489,7 @@ export function InspectionTemplateDetail({
         <Tabs.Panel pt="md" value="history">
           <HistoryPanel entries={auditEntries} />
         </Tabs.Panel>
-      </Tabs>
+      </AppTabs>
 
       <DeleteInspectionTemplateModal
         onClose={() => setDeleteOpen(false)}

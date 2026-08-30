@@ -34,6 +34,7 @@ import {
   AI_PROVIDERS,
   type AiProvider,
   type AiProviderSettings,
+  DEFAULT_AI_PROVIDER_SETTINGS,
   isExternalProvider,
   type TokenStatus,
 } from "@/lib/ai-provider-core";
@@ -137,6 +138,25 @@ export function AiProviderForm({ initial }: Props) {
     initial.tokenStatus === "set" || initial.tokenStatus === "rotate-pending";
 
   const payload = () => ({ settings, token, clearToken });
+
+  // 既定 = ローカル ollama・全欄空。このとき toWireConfig が null を返し、
+  // po-extract へヘッダを送らない = 完全に従来どおりの経路になる。
+  // **トークンが残っていると既定にならない**（鍵があるとヘッダを送るため）ので、
+  // 保存済みトークンがあれば削除も一緒に予約する。保存するまでは何も起きない。
+  const isDefault =
+    settings.provider === DEFAULT_AI_PROVIDER_SETTINGS.provider &&
+    !settings.baseUrl &&
+    !settings.visionModel &&
+    !settings.structModel &&
+    settings.maxOutputTokens === DEFAULT_AI_PROVIDER_SETTINGS.maxOutputTokens &&
+    (!hasStoredToken || clearToken);
+
+  const revertToDefault = () => {
+    setSettings({ ...DEFAULT_AI_PROVIDER_SETTINGS });
+    setToken("");
+    setClearToken(hasStoredToken);
+    setProbe(null);
+  };
 
   const save = () =>
     startTransition(async () => {
@@ -244,6 +264,19 @@ export function AiProviderForm({ initial }: Props) {
               value={settings.structModel}
             />
           </SimpleGrid>
+
+          <Group gap="sm">
+            <GhostButton disabled={isDefault} onClick={revertToDefault}>
+              既定に戻す
+            </GhostButton>
+            <Text c="dimmed" size="xs">
+              {isDefault
+                ? "現在は既定（社内 GPU の Ollama）です"
+                : hasStoredToken
+                  ? "社内 GPU の Ollama に戻します。保存すると API トークンも削除されます"
+                  : "社内 GPU の Ollama に戻します"}
+            </Text>
+          </Group>
 
           {external && (
             <Alert color="orange" icon={<IconWorld size={16} />}>

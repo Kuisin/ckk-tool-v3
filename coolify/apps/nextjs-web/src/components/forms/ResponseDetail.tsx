@@ -10,6 +10,7 @@ import {
 import type { ApprovalTrailView } from "@/components/approvals/ApprovalTrailList";
 import { ApprovalTrailList } from "@/components/approvals/ApprovalTrailList";
 import { useFormat } from "@/components/layout/PreferencesProvider";
+import { AppTabs } from "@/components/ui/AppTabs";
 import type { AttachmentView } from "@/components/ui/AttachmentsPanel";
 import { AttachmentsPanel } from "@/components/ui/AttachmentsPanel";
 import { EditablePanel } from "@/components/ui/EditablePanel";
@@ -167,7 +168,7 @@ export function ResponseDetail({
         </Alert>
       )}
 
-      <Tabs defaultValue="answers">
+      <AppTabs defaultValue="answers">
         <Tabs.List>
           <Tabs.Tab value="answers">回答</Tabs.Tab>
           {approvalEnabled && <Tabs.Tab value="approval">承認</Tabs.Tab>}
@@ -245,7 +246,7 @@ export function ResponseDetail({
             <AuditTimeline entries={auditEntries} />
           </Tabs.Panel>
         )}
-      </Tabs>
+      </AppTabs>
     </DetailShell>
   );
 }

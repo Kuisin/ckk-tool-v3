@@ -156,6 +156,8 @@ model FormResponse {
   form            Form @relation(fields: [formId], references: [id], onDelete: Cascade)
   submittedByUser User @relation("FormResponseSubmittedBy", fields: [submittedBy], references: [id])
 
+  completionNotices FormCompletionNotice[]
+
   @@unique([formId, recordNo])
   @@index([formId, status])
   @@index([submittedBy, createdAt])
@@ -257,6 +259,14 @@ model ShareGrant {
   conditionValues   String[] @default([]) @map("condition_values")
   conditionLabels   String[] @default([]) @map("condition_labels")
 
+  // 「この共有先へ、申請・報告の完了を知らせる」（フォームだけが使う）。
+  // 宛先を別表に持たせず共有行に載せるのは、**通知先は必ずその回答を読める人**
+  // でなければ意味が無いため — 通知を開いたら notFound、という行き止まりを
+  // 構造として作れないようにしてある。条件（conditionValues）もそのまま効くので、
+  // 「拠点 A の回答が完了したときだけ拠点 A の課長へ」が 1 行で書ける。
+  // RESPOND は他人の回答を読めないので、書き込み口（replaceShareGrants）が落とす。
+  notifyOnComplete Boolean @default(false) @map("notify_on_complete")
+
   createdBy String?  @map("created_by") @db.Uuid
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
 
@@ -283,5 +293,30 @@ enum ShareLevel {
   EDIT // 編集できる
   MANAGE // 共有設定を含めて管理できる
 
+  @@schema("app")
+}
+
+/// 申請・報告の「完了しました」を誰に届けたか、その人が読んだか。
+///
+/// notifications 行（ベル・メール・プッシュ）とは別に持つ。あちらは全機能が
+/// 共有する流れる通知で、対象を指す列が無い（linkPath の文字列だけ）。ここは
+/// **どの回答を誰に届けたか**の台帳で、CM01「完了した申請」の一覧と未読の印は
+/// この表だけを読む。二重送信の防止（同じ回答で 2 度作らない）も兼ねる。
+///
+/// read_at は明示的な「確認しました」ボタンではなく、その回答を開いた時刻を
+/// 記録するだけ（受け身の既読）。
+model FormCompletionNotice {
+  id             String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  responseNumber String    @map("response_number")
+  userId         String    @map("user_id") @db.Uuid
+  notifiedAt     DateTime  @default(now()) @map("notified_at") @db.Timestamptz(6)
+  readAt         DateTime? @map("read_at") @db.Timestamptz(6)
+
+  response FormResponse @relation(fields: [responseNumber], references: [responseNumber], onDelete: Cascade)
+  user     User         @relation("FormCompletionNoticeUser", fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([responseNumber, userId])
+  @@index([userId, notifiedAt(sort: Desc)])
+  @@map("form_completion_notices")
   @@schema("app")
 }

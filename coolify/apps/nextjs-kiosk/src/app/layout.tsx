@@ -9,7 +9,7 @@ import { DevicePresence } from "@/components/DevicePresence";
 import { KioskShell } from "@/components/KioskShell";
 import { LastPageTracker } from "@/components/LastPageTracker";
 import { LocationReporter } from "@/components/LocationReporter";
-import { getDevice } from "@/lib/kiosk-auth";
+import { getDevice, getSession } from "@/lib/kiosk-auth";
 import { Providers } from "./providers";
 
 const notoSansJp = Noto_Sans_JP({
@@ -49,6 +49,16 @@ export default async function RootLayout({
     // ビルド時（request scope 外）や DB 不通時はヘッダーだけ既定表示
   }
 
+  // ログイン中の利用者名をヘッダー左に出す（未ログインは null＝非表示）。
+  // getSession は読み取りのみ（期限切れセッションの失効だけは書く）で
+  // lastActivityAt には触らないので、ここで呼んでも滞留時間は伸びない。
+  let userName: string | null = null;
+  try {
+    userName = (await getSession())?.displayName ?? null;
+  } catch {
+    // 端末名と同じくビルド時・DB 不通時は出さないだけ
+  }
+
   return (
     <html lang="ja" {...mantineHtmlProps} className={notoSansJp.variable}>
       <body>
@@ -58,7 +68,11 @@ export default async function RootLayout({
           {registered && <LocationReporter />}
           <LastPageTracker />
 
-          <KioskShell deviceName={deviceName} registered={registered}>
+          <KioskShell
+            deviceName={deviceName}
+            registered={registered}
+            userName={userName}
+          >
             {children}
           </KioskShell>
         </Providers>

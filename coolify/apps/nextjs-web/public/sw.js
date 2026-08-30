@@ -2,6 +2,12 @@
  * sw.js — PWA Service Worker（Web Push 受信・通知クリック）。
  *
  * 配信ペイロード（lib/push.ts）: { title, body, link }
+ *
+ * link は対象ページそのものではなく `/notifications/<id>/open` の中継 URL
+ * （lib/notifications.ts `notificationOpenPath`）。サーバー側がそこで既読に
+ * してから対象ページへ 303 で送るので、端末の通知をタップするだけでアプリ内の
+ * ベルからも消える。SW は受け取った link をそのまま開くだけでよい。
+ *
  * オフラインキャッシュは行わない（業務データの鮮度優先 — 通知専用 SW）。
  */
 
@@ -26,7 +32,7 @@ self.addEventListener("push", (event) => {
       body: data.body || "",
       icon: "/icons/icon-192.png",
       badge: "/icons/icon-192.png",
-      // リンク未指定の通知はアプリ内通知センターを開く
+      // link 未指定（旧いペイロード等）はアプリ内通知センターを開く
       data: { link: data.link || "/notifications" },
       lang: "ja",
     }),

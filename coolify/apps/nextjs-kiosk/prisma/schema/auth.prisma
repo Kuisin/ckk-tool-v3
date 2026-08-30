@@ -154,6 +154,7 @@ model User {
   pushSubscriptions   PushSubscription[]       @relation("PushSubscriptionUser")
   notificationSetting UserNotificationSetting? @relation("UserNotificationSettingUser")
   homeSetting         UserHomeSetting?         @relation("UserHomeSettingUser")
+  viewSettings        UserViewSetting[]        @relation("UserViewSettingUser")
 
   userPlants         UserPlant[] @relation("UserPlantUser")
   userPlantsAssigned UserPlant[] @relation("UserPlantAssignedBy")
@@ -175,6 +176,7 @@ model User {
   formsUpdated       Form[]         @relation("FormUpdatedBy")
   formVersionsPublished FormVersion[] @relation("FormVersionPublishedBy")
   formResponses      FormResponse[] @relation("FormResponseSubmittedBy")
+  formCompletionNotices FormCompletionNotice[] @relation("FormCompletionNoticeUser")
   shareGrantsCreated ShareGrant[]   @relation("ShareGrantCreatedBy")
   internalPagesCreated   InternalPage[]            @relation("InternalPageCreatedBy")
   internalPagesUpdated   InternalPage[]            @relation("InternalPageUpdatedBy")

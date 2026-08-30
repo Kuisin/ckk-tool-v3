@@ -81,7 +81,7 @@ Even while kiosk-locked, an administrator can temporarily lift the lock to open 
 3. Android Settings opens — **change the Wi-Fi**
 4. Return to the app (back button etc.) and it **re-locks automatically**
 
-> The top-LEFT 5-tap is a different feature (device settings, unlocked with the 6-digit settings code). Network changes use the **top right**.
+> The BOTTOM-LEFT 5-tap is a different feature (device settings, unlocked with the 6-digit settings code). Network changes use the **top right**.
 
 ## Recovering a device the PIN no longer opens
 
@@ -200,6 +200,34 @@ The screen shows a 12-character link code and a QR. It **expires after 10 minute
 - 「**この端末が保持している PIN**」 matches the current PIN
 
 If you rebuild the APK, set `KIOSK_UNLOCK_PIN` in `~/.gradle/gradle.properties` to an intended value now (never ship the default).
+
+## When the camera (QR scan) will not start
+
+If the QR scan screen shows 「**カメラを起動できません。カメラ権限と HTTPS 接続を確認してください。**」 (Cannot start the camera. Check camera permission and the HTTPS connection.), work through these in order.
+
+### First, get the app up to date
+
+**An old app causes this.** On the SY09 device detail page, if 「プロファイル取得」 is blank and 「鍵フィンガープリント」 reads 未束縛, that device is running an app **older than v0.6.0**.
+
+The app auto-updates (checks roughly hourly, applies at night), so first check whether **the published APK itself is stale**. If the published build is old, factory-resetting and re-registering the device just installs the same old app again.
+
+### Camera permission
+
+As device owner the app **grants itself camera permission**, so normally nothing is asked. If it did ask and 「Don't allow」 was chosen, go through maintenance (5 taps top-right → PIN → 「設定を開く」) to Android Settings → Apps → Permissions → Camera and set it back to Allow.
+
+### Is it served over HTTPS?
+
+The camera **only works over https** (a browser rule). Opening the LAN address (`*.ckk-tools.loc`) over **http** will not start the camera. Use the public address (`ckk-kiosk.kai-lab.net` / `ckk-kiosk-dev.kai-lab.net`), or the **https** LAN address with the internal CA installed.
+
+### When the camera switcher is missing
+
+If the camera is showing but the gear (camera selection) is not, there used to be a bug where **a failure to list cameras turned into an error message and also removed the switcher** (reproduced on a TB330FU). This is fixed — update the app first.
+
+If it is still missing after that, the device has only one camera and there is nothing to switch to. **The gear only appears when there are 2 or more.**
+
+### If it still fails
+
+Another app can hold the camera open. **Reboot** the device and try again. If it still fails after a reboot, suspect the camera hardware and swap the device.
 
 ## Updating devices (automatic)
 

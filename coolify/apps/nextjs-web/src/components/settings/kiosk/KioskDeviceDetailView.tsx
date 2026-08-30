@@ -74,6 +74,20 @@ export function KioskDeviceDetailView({
   const fmt = useFormat();
   const { presence, live, transport } = useKioskPresence();
   const [isPending, startTransition] = useTransition();
+  /**
+   * いま走っている操作。`isPending` は useTransition ひとつ分の状態なので、
+   * これだけでボタンを光らせると**押していないボタンまで一緒に loading になる**
+   * （SY09 で実際にそうなっていた）。押されたものだけを光らせるための識別子。
+   */
+  const [busy, setBusy] = useState<
+    "unlock" | "settings" | "history" | "held" | "regen" | null
+  >(null);
+  /** そのボタンが押されて実行中か。 */
+  const loadingOf = (kind: NonNullable<typeof busy>) =>
+    isPending && busy === kind;
+  /** 実行中は他のボタンを押させない（多重送信と表示の取り違えを防ぐ）。 */
+  const otherBusy = (kind: NonNullable<typeof busy>) =>
+    isPending && busy !== null && busy !== kind;
   // PIN 開示（表示前に確認 → サーバーで監査ログ記録 → 60 秒後に自動で隠す）
   const [confirmKind, setConfirmKind] = useState<"unlock" | "settings" | null>(
     null,
@@ -94,17 +108,22 @@ export function KioskDeviceDetailView({
     hideTimerRef.current = setTimeout(() => setRevealed({}), 60_000);
   };
   const reveal = (kind: "unlock" | "settings") => {
+    setBusy(kind);
     startTransition(async () => {
-      const result = await revealKioskPin({ kind, deviceId: device.id });
-      if (result.ok) {
-        setRevealed((r) => ({ ...r, [kind]: result.data.value }));
-        scheduleHide();
-      } else {
-        notifications.show({
-          title: "エラー",
-          message: result.error,
-          color: "red",
-        });
+      try {
+        const result = await revealKioskPin({ kind, deviceId: device.id });
+        if (result.ok) {
+          setRevealed((r) => ({ ...r, [kind]: result.data.value }));
+          scheduleHide();
+        } else {
+          notifications.show({
+            title: "エラー",
+            message: result.error,
+            color: "red",
+          });
+        }
+      } finally {
+        setBusy(null);
       }
     });
   };
@@ -120,18 +139,23 @@ export function KioskDeviceDetailView({
     [],
   );
   const openHistory = () => {
+    setBusy("history");
     startTransition(async () => {
-      const result = await listUnlockPinHistory();
-      if (result.ok) {
-        setHistory(result.data.rows);
-        if (historyTimerRef.current) clearTimeout(historyTimerRef.current);
-        historyTimerRef.current = setTimeout(() => setHistory(null), 60_000);
-      } else {
-        notifications.show({
-          title: "エラー",
-          message: result.error,
-          color: "red",
-        });
+      try {
+        const result = await listUnlockPinHistory();
+        if (result.ok) {
+          setHistory(result.data.rows);
+          if (historyTimerRef.current) clearTimeout(historyTimerRef.current);
+          historyTimerRef.current = setTimeout(() => setHistory(null), 60_000);
+        } else {
+          notifications.show({
+            title: "エラー",
+            message: result.error,
+            color: "red",
+          });
+        }
+      } finally {
+        setBusy(null);
       }
     });
   };
@@ -146,39 +170,49 @@ export function KioskDeviceDetailView({
     [],
   );
   const revealHeld = () => {
+    setBusy("held");
     startTransition(async () => {
-      const result = await revealDeviceUnlockPin(device.id);
-      if (result.ok) {
-        setHeld(result.data);
-        if (heldTimerRef.current) clearTimeout(heldTimerRef.current);
-        heldTimerRef.current = setTimeout(() => setHeld(null), 60_000);
-      } else {
-        notifications.show({
-          title: "エラー",
-          message: result.error,
-          color: "red",
-        });
+      try {
+        const result = await revealDeviceUnlockPin(device.id);
+        if (result.ok) {
+          setHeld(result.data);
+          if (heldTimerRef.current) clearTimeout(heldTimerRef.current);
+          heldTimerRef.current = setTimeout(() => setHeld(null), 60_000);
+        } else {
+          notifications.show({
+            title: "エラー",
+            message: result.error,
+            color: "red",
+          });
+        }
+      } finally {
+        setBusy(null);
       }
     });
   };
   const [confirmRegen, setConfirmRegen] = useState(false);
   const regenerate = () => {
+    setBusy("regen");
     startTransition(async () => {
-      const result = await regenerateSettingsCode(device.id);
-      if (result.ok) {
-        setRevealed((r) => ({ ...r, settings: result.data.code }));
-        scheduleHide();
-        notifications.show({
-          title: "再生成しました",
-          message: "新しい設定コードを表示しています",
-          color: "green",
-        });
-      } else {
-        notifications.show({
-          title: "エラー",
-          message: result.error,
-          color: "red",
-        });
+      try {
+        const result = await regenerateSettingsCode(device.id);
+        if (result.ok) {
+          setRevealed((r) => ({ ...r, settings: result.data.code }));
+          scheduleHide();
+          notifications.show({
+            title: "再生成しました",
+            message: "新しい設定コードを表示しています",
+            color: "green",
+          });
+        } else {
+          notifications.show({
+            title: "エラー",
+            message: result.error,
+            color: "red",
+          });
+        }
+      } finally {
+        setBusy(null);
       }
     });
   };
@@ -307,8 +341,9 @@ export function KioskDeviceDetailView({
               </Text>
               {!revealed.unlock && (
                 <SecondaryButton
+                  disabled={otherBusy("unlock")}
                   leftSection={<IconEye size={14} />}
-                  loading={isPending}
+                  loading={loadingOf("unlock")}
                   onClick={() => setConfirmKind("unlock")}
                   size="xs"
                 >
@@ -316,8 +351,9 @@ export function KioskDeviceDetailView({
                 </SecondaryButton>
               )}
               <SecondaryButton
+                disabled={otherBusy("history")}
                 leftSection={<IconHistory size={14} />}
-                loading={isPending}
+                loading={loadingOf("history")}
                 onClick={() => setConfirmHistory(true)}
                 size="xs"
               >
@@ -347,8 +383,9 @@ export function KioskDeviceDetailView({
               </Text>
               {!held && device.unlockPinSyncedAt && (
                 <SecondaryButton
+                  disabled={otherBusy("held")}
                   leftSection={<IconEye size={14} />}
-                  loading={isPending}
+                  loading={loadingOf("held")}
                   onClick={() => setConfirmHeld(true)}
                   size="xs"
                 >
@@ -381,7 +418,7 @@ export function KioskDeviceDetailView({
 
           <Stack gap={4}>
             <Text c="dimmed" size="xs">
-              端末設定コード（この端末・左上 5 タップ用）
+              端末設定コード（この端末・左下 5 タップ用）
             </Text>
             <Group gap="xs" wrap="nowrap">
               <Text ff="monospace" fw={700} size="lg">
@@ -389,8 +426,9 @@ export function KioskDeviceDetailView({
               </Text>
               {!revealed.settings && (
                 <SecondaryButton
+                  disabled={otherBusy("settings")}
                   leftSection={<IconEye size={14} />}
-                  loading={isPending}
+                  loading={loadingOf("settings")}
                   onClick={() => setConfirmKind("settings")}
                   size="xs"
                 >
@@ -398,8 +436,9 @@ export function KioskDeviceDetailView({
                 </SecondaryButton>
               )}
               <SecondaryButton
+                disabled={otherBusy("regen")}
                 leftSection={<IconRefresh size={14} />}
-                loading={isPending}
+                loading={loadingOf("regen")}
                 onClick={() => setConfirmRegen(true)}
                 size="xs"
               >
