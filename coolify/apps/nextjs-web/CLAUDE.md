@@ -237,9 +237,11 @@ links from rotting (`docs:lint` is not in CI).
 **訳す前に `_specs/i18n-glossary.md` を読む — 例外なし。** 翻訳ルール（§2: キーの
 付け方 / 変数と複数形 / 言語別の書き方 / 確認項目）と、全用語の ja/en/zh 対訳表
 （§3）はあの 1 本が正。表にある語を別の言い方で訳し直さない。必要な語が無ければ
-**まず表に足してから**使い、判断が要るものは §5「要確認」に上げて、決まるまで
-使わない。キオスク（`nextjs-kiosk/src/lib/i18n/messages/`）と重なる語（状態・工程・
-数量）は両アプリで同じ訳にする — 食い違いは表に寄せる。
+**まず表に足してから**使い、判断が要るものは §5「未決」に上げて、決まるまで使わない
+（決着済みの呼び方は §4）。共有端末アプリ（`nextjs-kiosk/src/lib/i18n/messages/`）と
+重なる語（状態・工程・数量）は両アプリで同じ訳にする — 食い違いは表に寄せる。
+**DB に入る文字列（マスタ名称・取引先名・ロール名）は対象外** — 訳すのは
+ハードコードされた UI 文言だけ。
 
 Per-user display settings live on **`app.users`** — `locale` (shared with the
 kiosk, which writes the same column) plus `date_format` / `time_format` /
@@ -269,8 +271,12 @@ across the three languages (`lib/user-preferences-core.test.ts` enforces it).
 owns it: `createFormatters(prefs)` → `useFormat()` (client) /
 `getServerFormatters()` (server); plain helpers take `Formatters` as an argument.
 Never keep "current user" in module state — on the server that leaks across
-requests. **PDFs and mail use `documentFormatters`** (JST + Japanese, fixed): a
-finished document must not change with whoever opens it.
+requests. **PDFs and mail use `documentFormatters`** (JST, fixed): a finished
+document must not change with whoever opens it. **The document's *language* is the
+recipient's**, not the viewer's — 見積書 / 納品書 / 請求書 render in the partner's
+configured language and fall back to the default (ja) when unset (glossary §2.7,
+decided 2026-08-30; the partner-language column and the multilingual templates are
+not built yet).
 
 `lib/i18n/index.ts` keeps only locale identity (`LOCALES`, `normalizeLocale`,
 `INTL_LOCALES`) — no messages; those belong to next-intl. The kiosk app keeps its

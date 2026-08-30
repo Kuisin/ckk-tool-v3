@@ -1543,48 +1543,29 @@ Respect `@media (prefers-reduced-motion: reduce)` — disable all CSS transition
 
 ### 17.1 Terminology Glossary
 
-Use these exact terms consistently across all UI strings, error messages, and notifications:
-
-> **未確認の用語（2026-08 時点）** — 「注文請書」「注文明細」は本仕様で定めた語で、
-> 業務側の文書 `_docs/business_flow.md` は同じものを **「注文受諾書」（§2）**
-> **「受注書」（§3）** と呼んでいる。利用者から「注文明細という語は聞いたことが
-> ない」との指摘があり、**現場の語彙と一致していない可能性が高い**。
-> 改称する場合は UI ラベル・マニュアル・本節をまとめて直すこと（DB のテーブル名
-> `order_acceptances` / `sales_orders` と操作コードは利用者に見えないので変えない）。
-
-| Concept | Japanese term | Abbreviation/code |
-|---------|---------------|-------------------|
-| 試算 | 試算 | EST |
-| 価格表 | 価格表 | price_list |
-| 見積書 | 見積書 | QOT |
-| 注文請書 | 注文請書 | ORD |
-| 注文明細 | 注文明細 | ORD-...-NN |
-| 指示書 | 指示書 | — (serial int) |
-| 出荷書 | 出荷書 | — |
-| 納品書 | 納品書 | DRN |
-| 請求書 | 請求書 | INV |
-| 締日処理 | 締日処理 | — |
-| 設計依頼書 | 設計依頼書 | — |
-| 工程ステップ | 工程 | — |
-| 素材 | 素材 | material |
-| 材種 | 材種 | material_type |
-| 製品 | 製品 | product |
-| 在庫 | 在庫 | inventory |
-| 予約（在庫） | 予約 | RESERVED |
-| 引当 | 引当 | confirmed |
-| 外注 | 外注 | OUTSOURCE |
-| 仕入先 | 仕入先 | SUPPLIER |
-| 最終需要家 | 最終需要家 | END_USER |
-| 顧客 | 顧客 | CUSTOMER |
-| 支店 | 支店 | branch |
-| 承認設定 | 承認設定 | — |
-| 操作コード | 操作コード | operation code |
-| 下書き | 下書き | DRAFT |
-| 確定 | 確定 | CONFIRMED |
-| キャンセル | キャンセル | CANCELLED |
-| 差し戻し | 差し戻し | REJECTED |
+**用語の正は `_specs/i18n-glossary.md`** — ja / en / zh の対訳と翻訳ルールを 1 本に
+まとめてある。ここに表を二重に持たない（片方だけ直って割れるため）。UI 文言・
+エラーメッセージ・通知は、必ずその表の語を使う。
 
 Do **not** use synonyms — e.g. never write "注文書" where "注文請書" is meant.
+
+**確定済みの呼び方**（2026-08-30。以前ここにあった「注文請書 / 注文明細は現場の
+語彙と違うかもしれない」という注記は、**この語のまま使う**と決まったので削除した）:
+
+| 概念 | 呼び方 | 記号・コード |
+|---|---|---|
+| 価格試算 | 価格試算（旧「試算」） | EST |
+| 見積書 | 見積書 | QOT |
+| 注文請書 | 注文請書 | ORD |
+| 注文明細 | 注文明細 | ORD-…-NN |
+| 指示書 | 指示書 | WOR / ロット番号 |
+| 出荷書 / 納品書 / 請求書 | そのまま | — / DRN / INV |
+| 拠点 | 拠点（en は Site） | plants |
+| 工程 | 工程（「工程ステップ」とは言わない） | STEP |
+| 実施場所 | 社内 / 外注 | INTERNAL / OUTSOURCE |
+| 共有端末 | 共有端末（「キオスク」とは言わない） | kiosk（コードのみ） |
+| 承認依頼中 | 承認依頼中（「承認待ち」とは言わない） | PENDING / REQUESTED |
+| 下書き | 下書き（「作成中」とは言わない） | DRAFT |
 
 ### 17.2 敬語 / Tone
 
