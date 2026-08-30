@@ -319,7 +319,10 @@ export function FormDetail({
               </CopyButton>
               <GhostButton
                 external
+                // 回答画面はアプリの画面（自前のナビゲーションを持つ）なので、
+                // PWA ではアプリの中で開く（lib/pwa-display.ts）。
                 href={`/f/${form.code}`}
+                keepInApp
                 leftSection={<IconLink size={14} />}
               >
                 回答画面を開く

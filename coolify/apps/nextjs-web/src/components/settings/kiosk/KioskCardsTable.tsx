@@ -48,6 +48,7 @@ import { formatCode } from "@/lib/crockford";
 import { fieldHelp } from "@/lib/field-help";
 import type { Formatters } from "@/lib/format";
 import type { KioskCardRow, KioskUserOption } from "@/lib/kiosk-admin";
+import { openInNewContext } from "@/lib/pwa-display";
 import type { ActionResult } from "@/lib/server-action";
 
 const PRINT_PATH = "/settings/kiosk-cards/print";
@@ -64,18 +65,12 @@ export function maskCardId(id: string): string {
  * `@page { size: <length>{2} }` は絶対ページボックスで UA が縮小できない
  * のに対し、PDF はビューアの「印刷可能領域に合わせる」で縮んでしまう。
  *
- * `window.open` ではなく実アンカーをクリックする — ホーム画面に追加した PWA
- * （standalone）でもアプリ内ブラウザで開けるようにするため。
+ * 開き方は `openInNewContext`（`lib/pwa-display.ts`）に任せる — `window.open`
+ * ではなく実アンカーをクリックし、PWA でも端末のアプリ内ブラウザ / 別ウィンドウ
+ * で開く（アプリの中に置き換えると印刷シートから戻れない）。
  */
 export function openPrintSheet(ids: string[]) {
-  const url = `${PRINT_PATH}?ids=${encodeURIComponent(ids.join(","))}`;
-  const a = document.createElement("a");
-  a.href = url;
-  a.target = "_blank";
-  a.rel = "noopener noreferrer";
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
+  openInNewContext(`${PRINT_PATH}?ids=${encodeURIComponent(ids.join(","))}`);
 }
 
 // ── 有効期間（テンポラリカード） ─────────────────────────────────────────────

@@ -17,8 +17,9 @@
  *
  * Size is `compact-md` with sm text via CSS vars — override via `size` only when needed.
  * All buttons accept `href` to render as a Next.js <Link>; pass `external` for a
- * new-tab <a>. Every other Mantine Button prop (loading, disabled, fullWidth,
- * onClick, leftSection override …) passes straight through.
+ * new-tab <a> (add `keepInApp` when that target is an app screen — see
+ * `lib/pwa-display.ts`). Every other Mantine Button prop (loading, disabled,
+ * fullWidth, onClick, leftSection override …) passes straight through.
  */
 
 import { Button, type ButtonProps } from "@mantine/core";
@@ -39,6 +40,15 @@ export type AppButtonProps = ButtonProps & {
   /** Render as a Next.js <Link> (internal) or, with `external`, a new-tab <a>. */
   href?: string;
   external?: boolean;
+  /**
+   * `external` の行き先が**アプリの画面**のとき（自前のナビゲーションを持つ）
+   * だけ true。インストールした PWA でアプリの中に留める。
+   *
+   * 既定 (false) は新しいブラウジングコンテキスト = 端末のアプリ内ブラウザ /
+   * 別ウィンドウ。PDF・保管ファイル・外部サイトはこちら — 同じウィンドウに
+   * 出すと戻る手段が無くなる（`lib/pwa-display.ts` の WHY）。
+   */
+  keepInApp?: boolean;
   /** Typed as HTMLElement so it satisfies both <button> and <a>/<Link> renders. */
   onClick?: MouseEventHandler<HTMLElement>;
   type?: "button" | "submit" | "reset";
@@ -57,7 +67,13 @@ const baseButtonDefaults = {
 } satisfies Partial<ButtonProps>;
 
 /** Internal: resolves `href`/`external` to the right polymorphic Button. */
-function BaseButton({ href, external, children, ...props }: AppButtonProps) {
+function BaseButton({
+  href,
+  external,
+  keepInApp,
+  children,
+  ...props
+}: AppButtonProps) {
   if (href && external) {
     return (
       <Button
@@ -67,10 +83,11 @@ function BaseButton({ href, external, children, ...props }: AppButtonProps) {
         target="_blank"
         {...baseButtonDefaults}
         {...props}
-        // インストールした PWA では新しいタブに出さず、アプリの中で開く
-        // （iOS は target="_blank" で Safari が起動し、アプリの外へ出るため）。
+        // 既定は target="_blank" のまま端末に任せる（アプリ内ブラウザ /
+        // 別ウィンドウ）。アプリの画面へ行くリンクだけ keepInApp でアプリの
+        // 中に留める — 判定と理由は lib/pwa-display.ts に寄せてある。
         onClick={(e) => {
-          keepInAppOnClick(e, href);
+          if (keepInApp) keepInAppOnClick(e, href);
           props.onClick?.(e);
         }}
       >
