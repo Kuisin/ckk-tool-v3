@@ -23,6 +23,7 @@ import { useForm } from "@mantine/form";
 import { notifications } from "@mantine/notifications";
 import { IconInfoCircle } from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
+import { useLocale } from "next-intl";
 import { useEffect, useRef, useState, useTransition } from "react";
 import { z } from "zod";
 import { searchStructuredMaterialTypeOptions } from "@/app/(dashboard)/_shared/option-search";
@@ -43,7 +44,7 @@ import {
   LocalizedTextInput,
 } from "@/components/ui/shells";
 import { useIsMobile } from "@/hooks/useViewport";
-import { UNIT_OPTIONS } from "@/lib/enum-labels";
+import { unitOptions } from "@/lib/enum-labels";
 import { fieldHelp, fieldHelpTip } from "@/lib/field-help";
 import { zodResolver } from "@/lib/form";
 import {
@@ -119,6 +120,7 @@ export function MaterialForm({
   manufacturerOptions?: Option[];
   shapeOptions?: Option[];
 }) {
+  const locale = useLocale();
   const router = useRouter();
   const isMobile = useIsMobile();
   const [isPending, startTransition] = useTransition();
@@ -469,7 +471,7 @@ export function MaterialForm({
         />
         <SimpleGrid cols={isMobile ? 1 : 3} mt="sm" spacing="sm">
           <Select
-            data={UNIT_OPTIONS}
+            data={unitOptions(locale)}
             label={<HelpLabel {...fieldHelp("material", "unit")} />}
             withAsterisk
             {...form.getInputProps("unit")}

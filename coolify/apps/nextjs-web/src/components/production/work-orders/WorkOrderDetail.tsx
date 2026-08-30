@@ -34,6 +34,7 @@ import {
 } from "@tabler/icons-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { useLocale } from "next-intl";
 import { useState, useTransition } from "react";
 import { searchAllocatableOrderLineOptions } from "@/app/(dashboard)/_shared/option-search";
 import {
@@ -70,7 +71,7 @@ import {
 } from "@/components/ui/shells";
 import { useTabParam } from "@/hooks/useUrlState";
 import type { MemoView } from "@/lib/document-memos";
-import { WORK_ORDER_TYPE_LABEL } from "@/lib/enum-labels";
+import { workOrderTypeLabel } from "@/lib/enum-labels";
 import { FlowChangeCard, type PendingFlowChangeView } from "./FlowChangeCard";
 import type { WorkOrderView } from "./model";
 import { WorkOrderLinksCard } from "./WorkOrderLinksCard";
@@ -118,6 +119,7 @@ export function WorkOrderDetail({
   /** "approval" = 承認管理 (PD03) からの承認画面。 */
   variant?: "default" | "approval";
 }) {
+  const locale = useLocale();
   const fmt = useFormat();
   const router = useRouter();
   // アクティブタブを ?tab= に保持（URL 共有でタブまで再現）
@@ -277,7 +279,7 @@ export function WorkOrderDetail({
       <FieldValue label="製品" value={wo.productName} />
       <FieldValue
         label="種別"
-        value={WORK_ORDER_TYPE_LABEL[wo.type] ?? wo.type}
+        value={workOrderTypeLabel(wo.type, locale) ?? wo.type}
       />
       <FieldValue label="予定数量" value={`${wo.plannedQuantity}`} />
       <FieldValue

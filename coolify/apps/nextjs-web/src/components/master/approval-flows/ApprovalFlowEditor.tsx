@@ -43,6 +43,7 @@ import {
   IconTrash,
 } from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
+import { useLocale } from "next-intl";
 import { useState, useTransition } from "react";
 import { saveApprovalFlow } from "@/app/(dashboard)/master/approval-settings/actions";
 import { GhostButton } from "@/components/ui/buttons";
@@ -56,8 +57,7 @@ import {
 } from "@/components/ui/shells";
 import { useIsMobile } from "@/hooks/useViewport";
 import { type ApprovalMode, validateFlowSteps } from "@/lib/approval-flow";
-
-import { APPROVAL_MODE_OPTIONS } from "@/lib/enum-labels";
+import { approvalModeOptions } from "@/lib/enum-labels";
 import { fieldHelp, fieldHelpTip } from "@/lib/field-help";
 import {
   ApproverPermissionBadge,
@@ -164,6 +164,7 @@ export function ApprovalFlowEditor({
     query: string,
   ) => Promise<{ value: string; label: string; allowed: boolean }[]>;
 }) {
+  const locale = useLocale();
   const router = useRouter();
   const isMobile = useIsMobile();
   const [isPending, startTransition] = useTransition();
@@ -431,7 +432,7 @@ export function ApprovalFlowEditor({
             );
             const modeField = (
               <SegmentedControl
-                data={APPROVAL_MODE_OPTIONS}
+                data={approvalModeOptions(locale)}
                 fullWidth={isMobile}
                 onChange={(v) => patch(s.key, { mode: v as ApprovalMode })}
                 value={s.mode}

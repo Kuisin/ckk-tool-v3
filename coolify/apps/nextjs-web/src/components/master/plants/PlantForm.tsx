@@ -18,6 +18,7 @@ import {
 import { useForm } from "@mantine/form";
 import { notifications } from "@mantine/notifications";
 import { useRouter } from "next/navigation";
+import { useLocale } from "next-intl";
 import { useTransition } from "react";
 import { z } from "zod";
 import {
@@ -32,7 +33,7 @@ import {
   LocalizedTextInput,
 } from "@/components/ui/shells";
 import { useIsMobile } from "@/hooks/useViewport";
-import { COUNTRY_OPTIONS } from "@/lib/enum-labels";
+import { countryOptions } from "@/lib/enum-labels";
 import { fieldHelp, fieldHelpTip } from "@/lib/field-help";
 import { zodResolver } from "@/lib/form";
 
@@ -86,6 +87,7 @@ export function PlantForm({
   /** 地域 Select の選択肢（value = String(region id)）。 */
   regionOptions: { value: string; label: string }[];
 }) {
+  const locale = useLocale();
   const router = useRouter();
   const isMobile = useIsMobile();
   const [isPending, startTransition] = useTransition();
@@ -201,7 +203,7 @@ export function PlantForm({
         <SimpleGrid cols={isMobile ? 1 : 2} spacing="sm">
           <Select
             clearable
-            data={COUNTRY_OPTIONS}
+            data={countryOptions(locale)}
             label={
               <HelpLabel {...fieldHelp("plant", "region", { label: "国" })} />
             }

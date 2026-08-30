@@ -28,6 +28,7 @@ import {
   IconTrash,
 } from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
+import { useLocale } from "next-intl";
 import { useState } from "react";
 import type { BpDetail as BpDetailData } from "@/app/(dashboard)/master/_shared/bp-data";
 import { BP_BASE_PATH } from "@/app/(dashboard)/master/_shared/bp-paths";
@@ -56,9 +57,9 @@ import { useTabParam } from "@/hooks/useUrlState";
 import { useIsMobile } from "@/hooks/useViewport";
 import {
   BP_ROLE_COLOR,
-  INVOICE_METHOD_LABEL,
-  TAX_TYPE_LABEL,
-  VENDOR_TYPE_LABEL,
+  invoiceMethodLabel,
+  taxTypeLabel,
+  vendorTypeLabel,
 } from "@/lib/enum-labels";
 import { formatMoney } from "@/lib/format";
 
@@ -107,6 +108,7 @@ export function BpDetail({
   record: BpDetailData;
   auditEntries: AuditEntry[];
 }) {
+  const locale = useLocale();
   const fmt = useFormat();
   const router = useRouter();
   const isMobile = useIsMobile();
@@ -223,12 +225,14 @@ export function BpDetail({
                   />
                   <FieldValue
                     label="課税区分"
-                    value={TAX_TYPE_LABEL[customer.taxType] ?? customer.taxType}
+                    value={
+                      taxTypeLabel(customer.taxType, locale) ?? customer.taxType
+                    }
                   />
                   <FieldValue
                     label="請求書送付方法"
                     value={
-                      INVOICE_METHOD_LABEL[customer.invoiceMethod] ??
+                      invoiceMethodLabel(customer.invoiceMethod, locale) ??
                       customer.invoiceMethod
                     }
                   />
@@ -280,7 +284,7 @@ export function BpDetail({
                     label="外注種別"
                     value={
                       <Badge color="teal" size="sm" variant="light">
-                        {VENDOR_TYPE_LABEL[vendor.vendorType] ??
+                        {vendorTypeLabel(vendor.vendorType, locale) ??
                           vendor.vendorType}
                       </Badge>
                     }

@@ -43,6 +43,7 @@ import {
   IconX,
 } from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
+import { useLocale } from "next-intl";
 import { type ReactNode, useState, useTransition } from "react";
 import {
   approveDesign,
@@ -98,9 +99,9 @@ import { useTabParam } from "@/hooks/useUrlState";
 import { isViewable } from "@/lib/design-file-kind";
 import { pickThumbFile } from "@/lib/design-files-core";
 import {
-  DESIGN_KIND_LABEL,
-  DESIGN_PRIORITY_LABEL,
-  DESIGN_TRIGGER_LABEL,
+  designKindLabel,
+  designPriorityLabel,
+  designTriggerLabel,
 } from "@/lib/enum-labels";
 import type { ActionResult } from "@/lib/server-action";
 import { CompleteDesignModal } from "./CompleteDesignModal";
@@ -172,6 +173,7 @@ export function DesignRequestDetail({
   /** 保管済み PDF のメタ（承認前は null）。 */
   pdfMeta?: PdfFileMeta | null;
 }) {
+  const locale = useLocale();
   const fmt = useFormat();
   const router = useRouter();
   // アクティブタブを ?tab= に保持（URL 共有でタブまで再現）
@@ -533,7 +535,7 @@ export function DesignRequestDetail({
               color={DESIGN_TRIGGER_COLOR[request.trigger] ?? "gray"}
               variant="light"
             >
-              {DESIGN_TRIGGER_LABEL[request.trigger] ?? request.trigger}
+              {designTriggerLabel(request.trigger, locale) ?? request.trigger}
             </Badge>
           }
         />
@@ -609,7 +611,7 @@ export function DesignRequestDetail({
                 color={DESIGN_KIND_COLOR[request.kind] ?? "gray"}
                 variant="light"
               >
-                {DESIGN_KIND_LABEL[request.kind] ?? request.kind}
+                {designKindLabel(request.kind, locale) ?? request.kind}
               </Badge>
               {request.kindOverridden && (
                 <Text c="dimmed" size="xs">
@@ -632,7 +634,8 @@ export function DesignRequestDetail({
                 急ぎ
               </Badge>
             ) : (
-              (DESIGN_PRIORITY_LABEL[request.priority] ?? request.priority)
+              (designPriorityLabel(request.priority, locale) ??
+              request.priority)
             )
           }
         />

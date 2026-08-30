@@ -24,6 +24,7 @@ import {
 import { notifications } from "@mantine/notifications";
 import { IconGitBranch, IconPlus } from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
+import { useLocale } from "next-intl";
 import { useState, useTransition } from "react";
 import {
   deleteProductRoute,
@@ -39,7 +40,7 @@ import {
 } from "@/components/ui/buttons";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { useIsMobile } from "@/hooks/useViewport";
-import { PROCESS_CATEGORY_LABEL } from "@/lib/enum-labels";
+import { processCategoryLabel } from "@/lib/enum-labels";
 import type { RouteView } from "@/lib/product-routes-core";
 
 export function ProductRoutesPanel({
@@ -87,6 +88,7 @@ function RouteCard({
   productId: number;
   route: RouteView;
 }) {
+  const locale = useLocale();
   const fmt = useFormat();
   const router = useRouter();
   const isMobile = useIsMobile();
@@ -180,7 +182,7 @@ function RouteCard({
                   {!isMobile && (
                     <Table.Td>
                       <Text c="dimmed" size="sm">
-                        {PROCESS_CATEGORY_LABEL[s.category] ?? s.category}
+                        {processCategoryLabel(s.category, locale) ?? s.category}
                       </Text>
                     </Table.Td>
                   )}

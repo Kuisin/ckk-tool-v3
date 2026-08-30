@@ -21,6 +21,7 @@ import {
 } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
 import { useRouter } from "next/navigation";
+import { useLocale } from "next-intl";
 import { useMemo, useState, useTransition } from "react";
 import { updateUserPlants } from "@/app/(dashboard)/settings/users/actions";
 import { useFormat } from "@/components/layout/PreferencesProvider";
@@ -200,6 +201,7 @@ export function UserDetail({
   userDevices: UserDeviceRow[];
 }) {
   const fmt = useFormat();
+  const locale = useLocale();
   return (
     <DetailShell
       breadcrumbs={[
@@ -341,12 +343,12 @@ export function UserDetail({
                     </Table.Td>
                     <Table.Td>
                       <Badge color="blue" variant="light">
-                        {permissionActionLabel(p.action)}
+                        {permissionActionLabel(p.action, locale)}
                       </Badge>
                     </Table.Td>
                     <Table.Td>
                       <Text size="sm">
-                        {permissionScopeLabel(p.scope)}
+                        {permissionScopeLabel(p.scope, locale)}
                         {(p.scope === "PLANT" || p.scope === "REGION") &&
                         !(
                           p.scopeValues.length === 1 && p.scopeValues[0] === "*"

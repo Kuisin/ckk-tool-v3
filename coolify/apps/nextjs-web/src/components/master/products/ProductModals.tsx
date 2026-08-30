@@ -16,6 +16,7 @@
 import { Select, Stack, TextInput } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
 import { useRouter } from "next/navigation";
+import { useLocale } from "next-intl";
 import { useState, useTransition } from "react";
 import {
   createProduct,
@@ -28,7 +29,7 @@ import {
   type ModalBaseProps,
 } from "@/components/ui/modals";
 import { LocalizedTextInput } from "@/components/ui/shells";
-import { UNIT_OPTIONS } from "@/lib/enum-labels";
+import { unitOptions } from "@/lib/enum-labels";
 
 export interface ProductModalTarget {
   id: number;
@@ -152,6 +153,7 @@ export function DuplicateProductModal({
 }: ModalBaseProps & {
   source: ProductModalTarget | null;
 }) {
+  const locale = useLocale();
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
 
@@ -261,7 +263,7 @@ export function DuplicateProductModal({
           value={materialSpecText}
         />
         <Select
-          data={UNIT_OPTIONS}
+          data={unitOptions(locale)}
           label="単位"
           onChange={setUnit}
           value={unit}

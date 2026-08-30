@@ -14,6 +14,7 @@ import {
   IconSearch,
 } from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
+import { useLocale } from "next-intl";
 import { useFormat } from "@/components/layout/PreferencesProvider";
 import { SecondaryButton } from "@/components/ui/buttons";
 import { type Column, DataTable } from "@/components/ui/DataTable";
@@ -22,12 +23,13 @@ import { StatusBadge, statusOptions } from "@/components/ui/StatusBadge";
 import { ListShell } from "@/components/ui/shells";
 import { useUrlSelectState, useUrlStringState } from "@/hooks/useUrlState";
 import { useIsMobile } from "@/hooks/useViewport";
-import { ORDER_TYPE_LABEL, ORDER_TYPE_OPTIONS } from "@/lib/enum-labels";
+import { orderTypeLabel, orderTypeOptions } from "@/lib/enum-labels";
 import type { OrderLine } from "./model";
 
 const BASE_PATH = "/sales/order-lines";
 
 export function OrderLineTable({ rows }: { rows: OrderLine[] }) {
+  const locale = useLocale();
   const fmt = useFormat();
   const router = useRouter();
   const isMobile = useIsMobile();
@@ -79,7 +81,7 @@ export function OrderLineTable({ rows }: { rows: OrderLine[] }) {
         <>
           <Text size="sm">{o.productName}</Text>
           <Text c="dimmed" size="xs">
-            {ORDER_TYPE_LABEL[o.orderType] ?? o.orderType}
+            {orderTypeLabel(o.orderType, locale) ?? o.orderType}
           </Text>
         </>
       ),
@@ -150,7 +152,7 @@ export function OrderLineTable({ rows }: { rows: OrderLine[] }) {
           />
           <Select
             clearable
-            data={ORDER_TYPE_OPTIONS}
+            data={orderTypeOptions(locale)}
             flex={isMobile ? 1 : undefined}
             onChange={setOrderType}
             placeholder="注文種別"

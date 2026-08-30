@@ -35,6 +35,7 @@ import { DatePickerInput } from "@mantine/dates";
 import { useForm } from "@mantine/form";
 import { notifications } from "@mantine/notifications";
 import { useRouter } from "next/navigation";
+import { useLocale } from "next-intl";
 import { useEffect, useState, useTransition } from "react";
 import { z } from "zod";
 import {
@@ -55,10 +56,10 @@ import { SearchSelect } from "@/components/ui/SearchSelect";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { FormSection, FormShell } from "@/components/ui/shells";
 import {
-  DESIGN_KIND_LABEL,
-  DESIGN_KIND_OPTIONS,
-  DESIGN_PRIORITY_OPTIONS,
-  DESIGN_TRIGGER_LABEL,
+  designKindLabel,
+  designKindOptions,
+  designPriorityOptions,
+  designTriggerLabel,
 } from "@/lib/enum-labels";
 import { fieldHelp } from "@/lib/field-help";
 import { zodResolver } from "@/lib/form";
@@ -158,6 +159,7 @@ export function DesignRequestForm({
   /** 起票元から引き継いだ受注元（見積・注文明細の顧客）。 */
   initialCustomerBpId?: string | null;
 }) {
+  const locale = useLocale();
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const requestId = mode === "edit" ? request?.id : undefined;
@@ -315,7 +317,8 @@ export function DesignRequestForm({
                     color={DESIGN_TRIGGER_COLOR[prefilledTrigger] ?? "gray"}
                     variant="light"
                   >
-                    {DESIGN_TRIGGER_LABEL[prefilledTrigger] ?? prefilledTrigger}
+                    {designTriggerLabel(prefilledTrigger, locale) ??
+                      prefilledTrigger}
                   </Badge>
                 }
               />
@@ -333,7 +336,7 @@ export function DesignRequestForm({
                 <SegmentedControl
                   data={TRIGGERS.map((t) => ({
                     value: t,
-                    label: DESIGN_TRIGGER_LABEL[t] ?? t,
+                    label: designTriggerLabel(t, locale) ?? t,
                   }))}
                   fullWidth
                   onChange={onTriggerChange}
@@ -385,7 +388,8 @@ export function DesignRequestForm({
                       color={DESIGN_TRIGGER_COLOR[request.trigger] ?? "gray"}
                       variant="light"
                     >
-                      {DESIGN_TRIGGER_LABEL[request.trigger] ?? request.trigger}
+                      {designTriggerLabel(request.trigger, locale) ??
+                        request.trigger}
                     </Badge>
                   ) : (
                     "—"
@@ -467,7 +471,7 @@ export function DesignRequestForm({
             valueFormat="YYYY/MM/DD"
           />
           <Select
-            data={DESIGN_PRIORITY_OPTIONS}
+            data={designPriorityOptions(locale)}
             label={<HelpLabel {...fieldHelp("designRequest", "priority")} />}
             {...form.getInputProps("priority")}
           />
@@ -486,7 +490,7 @@ export function DesignRequestForm({
               size="lg"
               variant="light"
             >
-              {DESIGN_KIND_LABEL[effectiveKind] ?? effectiveKind}
+              {designKindLabel(effectiveKind, locale) ?? effectiveKind}
             </Badge>
             <Badge color="gray" size="sm" variant="outline">
               {form.values.kind ? "手動指定" : "自動判定"}
@@ -501,7 +505,7 @@ export function DesignRequestForm({
           </Group>
           <Group gap="xs">
             <SegmentedControl
-              data={DESIGN_KIND_OPTIONS}
+              data={designKindOptions(locale)}
               onChange={(v) =>
                 form.setFieldValue("kind", v as "NEW" | "REVISION")
               }

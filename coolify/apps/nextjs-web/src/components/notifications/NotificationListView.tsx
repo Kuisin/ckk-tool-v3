@@ -24,6 +24,7 @@ import {
 } from "@mantine/core";
 import { IconBellOff } from "@tabler/icons-react";
 import { useRouter, useSearchParams } from "next/navigation";
+import { useLocale } from "next-intl";
 import {
   markAllReadAction,
   markReadAction,
@@ -37,10 +38,9 @@ import {
   useNotificationSignal,
 } from "@/hooks/useNotifications";
 import {
-  NOTIFICATION_TYPE_LABEL,
-  NOTIFICATION_TYPE_OPTIONS,
+  notificationTypeLabel,
+  notificationTypeOptions,
 } from "@/lib/enum-labels";
-
 export function NotificationListView({
   items,
   total,
@@ -58,6 +58,7 @@ export function NotificationListView({
   unreadOnly: boolean;
   type: string | null;
 }) {
+  const locale = useLocale();
   const router = useRouter();
   const searchParams = useSearchParams();
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
@@ -120,7 +121,7 @@ export function NotificationListView({
           />
           <Select
             clearable
-            data={NOTIFICATION_TYPE_OPTIONS}
+            data={notificationTypeOptions(locale)}
             onChange={(v) => updateParams({ type: v })}
             placeholder="種別"
             value={type}
@@ -151,7 +152,8 @@ export function NotificationListView({
                   <Stack className="min-w-0" gap={2}>
                     <Group gap="xs" wrap="nowrap">
                       <Badge size="xs" variant="light">
-                        {NOTIFICATION_TYPE_LABEL[notif.type] ?? notif.type}
+                        {notificationTypeLabel(notif.type, locale) ??
+                          notif.type}
                       </Badge>
                       <Text fw={notif.isRead ? 400 : 600} size="sm" truncate>
                         {notif.title}

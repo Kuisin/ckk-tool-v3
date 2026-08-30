@@ -23,12 +23,13 @@ import {
 } from "@mantine/core";
 import { DatePickerInput } from "@mantine/dates";
 import { IconCalendar, IconPlus, IconTrash } from "@tabler/icons-react";
+import { useLocale } from "next-intl";
 import { searchProductOptions } from "@/app/(dashboard)/_shared/option-search";
 import type { OrderAcceptanceDraftInput } from "@/app/(dashboard)/sales/order-acceptances/actions";
 import { GhostButton } from "@/components/ui/buttons";
 import { PRODUCT_F4 } from "@/components/ui/f4-presets";
 import { SearchSelect } from "@/components/ui/SearchSelect";
-import { ORDER_TYPE_OPTIONS } from "@/lib/enum-labels";
+import { orderTypeOptions } from "@/lib/enum-labels";
 import { formatMoney } from "@/lib/format";
 import { acceptanceTotals } from "@/lib/order-acceptance-totals";
 import { MatchSuggestions } from "./MatchSuggestions";
@@ -129,6 +130,7 @@ export function OrderAcceptanceItemsEditor({
   /** 保存済み行の価格照合結果（itemId → 結果）。保存内容に対する照合。 */
   lineChecks?: Record<string, ItemPriceCheck>;
 }) {
+  const locale = useLocale();
   const patch = (ri: number, p: Partial<ItemRowForm>) => {
     onChange(items.map((r, i) => (i === ri ? { ...r, ...p } : r)));
   };
@@ -202,7 +204,7 @@ export function OrderAcceptanceItemsEditor({
                     value={row.productText}
                   />
                   <Select
-                    data={ORDER_TYPE_OPTIONS}
+                    data={orderTypeOptions(locale)}
                     label="種別"
                     maw={130}
                     onChange={(v) =>

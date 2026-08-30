@@ -13,6 +13,7 @@
 import { Badge, Group, Select, Stack, Text, TextInput } from "@mantine/core";
 import { IconRuler2, IconSearch } from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
+import { useLocale } from "next-intl";
 import { useFormat } from "@/components/layout/PreferencesProvider";
 import { type Column, DataTable } from "@/components/ui/DataTable";
 import { NewButton } from "@/components/ui/NewButton";
@@ -21,10 +22,10 @@ import { ListShell } from "@/components/ui/shells";
 import { useUrlSelectState, useUrlStringState } from "@/hooks/useUrlState";
 import { useIsMobile } from "@/hooks/useViewport";
 import {
-  DESIGN_KIND_LABEL,
-  DESIGN_KIND_OPTIONS,
-  DESIGN_TRIGGER_LABEL,
-  DESIGN_TRIGGER_OPTIONS,
+  designKindLabel,
+  designKindOptions,
+  designTriggerLabel,
+  designTriggerOptions,
 } from "@/lib/enum-labels";
 import {
   DESIGN_KIND_COLOR,
@@ -45,14 +46,16 @@ function isOverdue(r: DesignRequest): boolean {
 }
 
 function TriggerBadge({ trigger }: { trigger: DesignRequest["trigger"] }) {
+  const locale = useLocale();
   return (
     <Badge color={DESIGN_TRIGGER_COLOR[trigger] ?? "gray"} variant="light">
-      {DESIGN_TRIGGER_LABEL[trigger] ?? trigger}
+      {designTriggerLabel(trigger, locale) ?? trigger}
     </Badge>
   );
 }
 
 export function DesignRequestTable({ rows }: { rows: DesignRequest[] }) {
+  const locale = useLocale();
   const fmt = useFormat();
   const router = useRouter();
   const isMobile = useIsMobile();
@@ -121,7 +124,7 @@ export function DesignRequestTable({ rows }: { rows: DesignRequest[] }) {
       sortValue: (r) => r.kind,
       render: (r) => (
         <Badge color={DESIGN_KIND_COLOR[r.kind] ?? "gray"} variant="light">
-          {DESIGN_KIND_LABEL[r.kind] ?? r.kind}
+          {designKindLabel(r.kind, locale) ?? r.kind}
         </Badge>
       ),
     },
@@ -204,7 +207,7 @@ export function DesignRequestTable({ rows }: { rows: DesignRequest[] }) {
         <>
           <Select
             clearable
-            data={DESIGN_KIND_OPTIONS}
+            data={designKindOptions(locale)}
             flex={isMobile ? 1 : undefined}
             onChange={setKind}
             placeholder="区分"
@@ -213,7 +216,7 @@ export function DesignRequestTable({ rows }: { rows: DesignRequest[] }) {
           />
           <Select
             clearable
-            data={DESIGN_TRIGGER_OPTIONS}
+            data={designTriggerOptions(locale)}
             flex={isMobile ? 1 : undefined}
             onChange={setTrigger}
             placeholder="トリガー"
@@ -280,7 +283,7 @@ export function DesignRequestTable({ rows }: { rows: DesignRequest[] }) {
                   color={DESIGN_KIND_COLOR[r.kind] ?? "gray"}
                   variant="light"
                 >
-                  {DESIGN_KIND_LABEL[r.kind] ?? r.kind}
+                  {designKindLabel(r.kind, locale) ?? r.kind}
                 </Badge>
                 <TriggerBadge trigger={r.trigger} />
                 {r.assigneeName && (

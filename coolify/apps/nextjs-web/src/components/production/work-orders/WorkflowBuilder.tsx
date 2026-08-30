@@ -45,6 +45,7 @@ import {
 } from "@tabler/icons-react";
 import { format } from "date-fns";
 import { useRouter } from "next/navigation";
+import { useLocale } from "next-intl";
 import {
   useCallback,
   useEffect,
@@ -88,7 +89,7 @@ import { FormSection, FormShell } from "@/components/ui/shells";
 import { useIsMobile } from "@/hooks/useViewport";
 // type-only import — lib/atp は server-only（型はバンドルされない）。
 import type { MaterialAtp } from "@/lib/atp";
-import { WORK_ORDER_TYPE_OPTIONS } from "@/lib/enum-labels";
+import { workOrderTypeOptions } from "@/lib/enum-labels";
 import { fieldHelp } from "@/lib/field-help";
 import { zodResolver } from "@/lib/form";
 import type { RouteStepSnapshot, RouteView } from "@/lib/product-routes-core";
@@ -291,6 +292,7 @@ export function WorkflowBuilder({
   /** 担当者候補（有効な従業員）— 作成時の作業計画 MultiSelect。 */
   employeeOptions: Option[];
 }) {
+  const locale = useLocale();
   const fmt = useFormat();
   const router = useRouter();
   const isMobile = useIsMobile();
@@ -1118,7 +1120,7 @@ export function WorkflowBuilder({
               種別
             </Text>
             <SegmentedControl
-              data={WORK_ORDER_TYPE_OPTIONS.map((o) => ({
+              data={workOrderTypeOptions(locale).map((o) => ({
                 ...o,
                 disabled: target === "STOCK" && o.value === "FROM_STOCK",
               }))}

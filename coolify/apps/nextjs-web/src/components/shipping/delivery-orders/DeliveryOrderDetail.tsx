@@ -25,6 +25,7 @@ import {
 import { notifications } from "@mantine/notifications";
 import { IconCheck, IconReceipt, IconTruck, IconX } from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
+import { useLocale } from "next-intl";
 import { useState, useTransition } from "react";
 import {
   confirmDeliveryOrder,
@@ -54,7 +55,7 @@ import {
 } from "@/components/ui/shells";
 import { useTabParam } from "@/hooks/useUrlState";
 import type { MemoView } from "@/lib/document-memos";
-import { DELIVERY_METHOD_LABEL } from "@/lib/enum-labels";
+import { deliveryMethodLabel } from "@/lib/enum-labels";
 import type { ActionResult } from "@/lib/server-action";
 import { DeliveryOrderTypeBadge } from "./DeliveryOrderTable";
 import { canCreateDeliveryNote, type DeliveryOrder, isEditable } from "./model";
@@ -165,6 +166,7 @@ export function DeliveryOrderDetail({
   /** 社内メモ（document_memos 由来、メモタブ）。 */
   memos: MemoView[];
 }) {
+  const locale = useLocale();
   const fmt = useFormat();
   const router = useRouter();
   // アクティブタブを ?tab= に保持（URL 共有でタブまで再現）
@@ -448,7 +450,7 @@ export function DeliveryOrderDetail({
                         <Table.Td>{dn.recipientName}</Table.Td>
                         <Table.Td>
                           <Text size="sm">
-                            {DELIVERY_METHOD_LABEL[dn.deliveryMethod] ??
+                            {deliveryMethodLabel(dn.deliveryMethod, locale) ??
                               dn.deliveryMethod}
                           </Text>
                         </Table.Td>

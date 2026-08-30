@@ -25,6 +25,7 @@ import { useForm } from "@mantine/form";
 import { notifications } from "@mantine/notifications";
 import { IconMinus } from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
+import { useLocale } from "next-intl";
 import { useMemo, useState, useTransition } from "react";
 import { z } from "zod";
 import { searchStructuredMaterialTypeOptions } from "@/app/(dashboard)/_shared/option-search";
@@ -43,7 +44,7 @@ import {
   LocalizedTextInput,
 } from "@/components/ui/shells";
 import { useIsMobile } from "@/hooks/useViewport";
-import { UNIT_OPTIONS } from "@/lib/enum-labels";
+import { unitOptions } from "@/lib/enum-labels";
 import { fieldHelp, fieldHelpTip } from "@/lib/field-help";
 import { zodResolver } from "@/lib/form";
 import { diameterCodeFromMm, lengthCodeFromMm } from "@/lib/material-code";
@@ -133,6 +134,7 @@ export function ProductForm({
   /** 製品項目（SY03）で定義された入力項目ライブラリ。追加項目の候補になる。 */
   itemDefs: ProductItemDef[];
 }) {
+  const locale = useLocale();
   const router = useRouter();
   const isMobile = useIsMobile();
   const [isPending, startTransition] = useTransition();
@@ -397,7 +399,7 @@ export function ProductForm({
             value={initial?.code ?? ""}
           />
           <Select
-            data={UNIT_OPTIONS}
+            data={unitOptions(locale)}
             label={<HelpLabel {...fieldHelp("product", "unit")} />}
             withAsterisk
             {...form.getInputProps("unit")}

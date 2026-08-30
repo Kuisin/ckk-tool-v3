@@ -14,6 +14,7 @@
 import { Badge, Group, Select, Stack, Text, TextInput } from "@mantine/core";
 import { IconSearch, IconTruck, IconTruckLoading } from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
+import { useLocale } from "next-intl";
 import { useFormat } from "@/components/layout/PreferencesProvider";
 import { DeliveryOrderTypeBadge } from "@/components/shipping/delivery-orders/DeliveryOrderTable";
 import type { DeliveryOrder } from "@/components/shipping/delivery-orders/model";
@@ -28,7 +29,7 @@ import {
   useUrlStringState,
 } from "@/hooks/useUrlState";
 import { useIsMobile } from "@/hooks/useViewport";
-import { DELIVERY_ORDER_TYPE_OPTIONS } from "@/lib/enum-labels";
+import { deliveryOrderTypeOptions } from "@/lib/enum-labels";
 import type { UnshippedOrderLineRow } from "./model";
 
 const ORDER_LINES_PATH = "/sales/order-lines";
@@ -41,6 +42,7 @@ export function PendingShipmentBoard({
   unshippedRows: UnshippedOrderLineRow[];
   openRows: DeliveryOrder[];
 }) {
+  const locale = useLocale();
   const fmt = useFormat();
   const router = useRouter();
   const isMobile = useIsMobile();
@@ -267,7 +269,7 @@ export function PendingShipmentBoard({
           {!isUnshipped && (
             <Select
               clearable
-              data={DELIVERY_ORDER_TYPE_OPTIONS}
+              data={deliveryOrderTypeOptions(locale)}
               flex={isMobile ? 1 : undefined}
               onChange={setType}
               placeholder="種別"

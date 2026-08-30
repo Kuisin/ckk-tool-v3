@@ -20,6 +20,7 @@ import {
   IconSettings2,
 } from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
+import { useLocale } from "next-intl";
 import { useFormat } from "@/components/layout/PreferencesProvider";
 import type { WorkOrderRow } from "@/components/production/work-orders/model";
 import { SecondaryButton } from "@/components/ui/buttons";
@@ -33,10 +34,7 @@ import {
   useUrlStringState,
 } from "@/hooks/useUrlState";
 import { useIsMobile } from "@/hooks/useViewport";
-import {
-  WORK_ORDER_TYPE_LABEL,
-  WORK_ORDER_TYPE_OPTIONS,
-} from "@/lib/enum-labels";
+import { workOrderTypeLabel, workOrderTypeOptions } from "@/lib/enum-labels";
 import type { UnplannedOrderLineRow } from "./model";
 
 const ORDER_LINES_PATH = "/sales/order-lines";
@@ -54,6 +52,7 @@ export function PendingWorkOrderBoard({
   unplannedRows: UnplannedOrderLineRow[];
   openRows: WorkOrderRow[];
 }) {
+  const locale = useLocale();
   const fmt = useFormat();
   const router = useRouter();
   const isMobile = useIsMobile();
@@ -259,7 +258,7 @@ export function PendingWorkOrderBoard({
           size="sm"
           variant="light"
         >
-          {WORK_ORDER_TYPE_LABEL[r.type] ?? r.type}
+          {workOrderTypeLabel(r.type, locale) ?? r.type}
         </Badge>
       ),
     },
@@ -320,7 +319,7 @@ export function PendingWorkOrderBoard({
           {!isUnplanned && (
             <Select
               clearable
-              data={WORK_ORDER_TYPE_OPTIONS}
+              data={workOrderTypeOptions(locale)}
               flex={isMobile ? 1 : undefined}
               onChange={setType}
               placeholder="種別"

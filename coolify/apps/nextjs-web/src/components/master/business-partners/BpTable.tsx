@@ -19,6 +19,7 @@ import {
   IconTrash,
 } from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
+import { useLocale } from "next-intl";
 import { useState, useTransition } from "react";
 import {
   deleteBps,
@@ -42,7 +43,7 @@ import { ListShell } from "@/components/ui/shells";
 import { useUrlSelectState, useUrlStringState } from "@/hooks/useUrlState";
 import { useIsMobile } from "@/hooks/useViewport";
 import { bpMatchesQuery } from "@/lib/bp-search";
-import { BP_ROLE_OPTIONS } from "@/lib/enum-labels";
+import { bpRoleOptions } from "@/lib/enum-labels";
 
 const STATUS_OPTIONS = [
   { value: "active", label: "有効" },
@@ -50,6 +51,7 @@ const STATUS_OPTIONS = [
 ];
 
 export function BpTable({ rows }: { rows: BpRow[] }) {
+  const locale = useLocale();
   const fmt = useFormat();
   const router = useRouter();
   const isMobile = useIsMobile();
@@ -189,7 +191,7 @@ export function BpTable({ rows }: { rows: BpRow[] }) {
         <>
           <Select
             clearable
-            data={BP_ROLE_OPTIONS}
+            data={bpRoleOptions(locale)}
             onChange={setRoleFilter}
             placeholder="ロール"
             value={roleFilter}

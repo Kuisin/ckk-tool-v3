@@ -17,12 +17,13 @@ import {
   TextInput,
 } from "@mantine/core";
 import type { UseFormReturnType } from "@mantine/form";
+import { useLocale } from "next-intl";
 import { z } from "zod";
 import type { BpBaseDetail } from "@/app/(dashboard)/master/_shared/bp-data";
 import { HelpLabel } from "@/components/ui/HelpLabel";
 import { FormSection, LocalizedTextInput } from "@/components/ui/shells";
 import { useIsMobile } from "@/hooks/useViewport";
-import { COUNTRY_OPTIONS } from "@/lib/enum-labels";
+import { countryOptions } from "@/lib/enum-labels";
 import { fieldHelp, fieldHelpTip } from "@/lib/field-help";
 import { LOCALE_LABELS, LOCALES } from "@/lib/i18n";
 import { MatchNameSuggestions } from "./MatchNameSuggestions";
@@ -91,6 +92,7 @@ export function BpBaseFields<T extends BpBaseFormValues>({
   codeDescription: string;
 }) {
   const isMobile = useIsMobile();
+  const locale = useLocale();
   // Field paths are shared with the extended form value types.
   const props = (path: string) => form.getInputProps(path);
   // 同じ理由（T が BpBaseFormValues の拡張）で setFieldValue も narrow できない。
@@ -118,7 +120,7 @@ export function BpBaseFields<T extends BpBaseFormValues>({
           />
           <Select
             clearable
-            data={COUNTRY_OPTIONS}
+            data={countryOptions(locale)}
             label={<HelpLabel {...fieldHelp("businessPartner", "country")} />}
             placeholder="国を選択"
             {...props("countryCode")}

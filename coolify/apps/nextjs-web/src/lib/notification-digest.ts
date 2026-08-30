@@ -17,8 +17,9 @@ import "server-only";
  */
 
 import { prisma } from "./db";
-import { NOTIFICATION_TYPE_LABEL } from "./enum-labels";
+import { notificationTypeLabel } from "./enum-labels";
 import { documentFormatters } from "./format";
+import { normalizeLocale } from "./i18n";
 import {
   appBaseUrl,
   isMailerConfigured,
@@ -105,7 +106,7 @@ async function sweep(): Promise<DigestRunResult> {
       title: true,
       message: true,
       createdAt: true,
-      user: { select: { email: true } },
+      user: { select: { email: true, locale: true } },
     },
   });
   if (pending.length === 0) return { users: 0, notifications: 0 };
@@ -152,13 +153,15 @@ async function sweep(): Promise<DigestRunResult> {
 
     const { shown, omittedCount } = splitDigestItems(items, settings);
     const base = appBaseUrl();
+    // 受取人（この人）の言語で送る — 見積書等の書類と同じ「宛先の言語」の原則。
+    const locale = normalizeLocale(items[0]?.user.locale);
     const ok = await sendNotificationDigestMail({
       to: email,
       subject: digestSubject(items.length),
       omittedCount,
       allUrl: `${base}/notifications`,
       items: shown.map((i) => ({
-        typeLabel: NOTIFICATION_TYPE_LABEL[i.type] ?? i.type,
+        typeLabel: notificationTypeLabel(i.type, locale),
         title: i.title,
         message: i.message,
         // 中継 URL — 開いた時点で既読になり、対象ページへ送られる。
