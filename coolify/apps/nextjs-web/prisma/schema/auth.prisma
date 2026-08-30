@@ -171,6 +171,15 @@ model User {
   loginAttempts LoginAttempt[] @relation("LoginAttemptUser")
   userDevices   UserDevice[]   @relation("UserDeviceUser")
 
+  // 特権アクセス（security.prisma）。申請者・決裁者・失効実行者はそれぞれ別の
+  // 人になりうるので 3 本に分けてある。B の変更依頼は「対象」も人。
+  privilegedRequested   PrivilegedAccessRequest[] @relation("PrivilegedRequestedBy")
+  privilegedDecided     PrivilegedAccessRequest[] @relation("PrivilegedDecidedBy")
+  privilegedRevoked     PrivilegedAccessRequest[] @relation("PrivilegedRevokedBy")
+  userChangesTargeting  UserChangeRequest[]       @relation("UserChangeTarget")
+  userChangesRequested  UserChangeRequest[]       @relation("UserChangeRequestedBy")
+  userChangesDecided    UserChangeRequest[]       @relation("UserChangeDecidedBy")
+
   // 一般カテゴリ: フォーム (CM02) / 社内文書 (CM03) の共有。
   formsCreated       Form[]         @relation("FormCreatedBy")
   formsUpdated       Form[]         @relation("FormUpdatedBy")
