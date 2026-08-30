@@ -132,3 +132,20 @@ ORD-202608-00012-01
 - [指示書](/manual/ja/operations/production/work-order/user) — 製造を進める画面
 - [出荷書](/manual/ja/operations/shipping/delivery-order/user) — 出荷する画面
 - [在庫管理](/manual/ja/operations/production/product-inventory/user) — 在庫と引き当ての状況
+
+<!-- permissions:start -->
+## 必要な権限
+
+この画面を使うには **注文請書・注文明細**（`order_acceptance`）の権限が要ります。
+
+| したいこと | 必要な権限 |
+| --- | --- |
+| 画面を開く・一覧や詳細を見る | 注文請書・注文明細 の 閲覧 |
+| 追加・変更・削除する | 注文請書・注文明細 の 作成 / 更新 / 削除 |
+
+見るだけなら「閲覧」で足ります。追加・変更・削除の操作がある画面では、その操作にあたる権限がそれぞれ必要です。
+
+権限は役割（ロール）を通して付きます。足りないときは管理者に相談してください。
+
+権限の全体像は「[権限とロール](../../../permissions)」を参照してください。
+<!-- permissions:end -->

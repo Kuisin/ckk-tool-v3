@@ -211,3 +211,20 @@ A. That is how it works. They are part of the code, so they cannot be changed af
 
 **Q. When I try to delete, I see 「関連するデータが存在するため実行できません」 (This cannot be done because related data exists).**
 A. Purchase or stock records that use that material already exist, so it cannot be deleted. This is normal. Please use 「無効化」 (Deactivate).
+
+<!-- permissions:start -->
+## Permissions required
+
+Using this screen requires the **Master data** (`master`) permission.
+
+| What you want to do | Permission needed |
+| --- | --- |
+| Open the screen, view lists and details | Master data — View |
+| Add, change or delete | Master data — Create / Edit / Delete |
+
+Viewing only needs *View*. Where a screen offers adding, changing or deleting, each of those needs its matching permission.
+
+Permissions come through roles. If something is missing, ask an administrator.
+
+For the whole picture see [Permissions and roles](../../../permissions).
+<!-- permissions:end -->

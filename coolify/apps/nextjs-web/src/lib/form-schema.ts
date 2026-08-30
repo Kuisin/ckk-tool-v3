@@ -66,6 +66,21 @@ export function isNestableFieldType(type: FormFieldType): boolean {
   return !NOT_NESTABLE.has(type);
 }
 
+/**
+ * 一覧の見出し（CM02 の回答一覧・CM01 の回答行）に使えない型。値が複雑すぎて
+ * 一行の文字列にならない、または値そのものを持たない型を外す。
+ */
+const NOT_TITLEABLE: ReadonlySet<FormFieldType> = new Set([
+  "richtext",
+  "attachment",
+  "table",
+  "related",
+]);
+
+export function canBeTitleField(type: FormFieldType): boolean {
+  return !NOT_TITLEABLE.has(type);
+}
+
 // ─── 業務データ検索（lookup）の参照先 ────────────────────────────────────────
 //
 // ここは値の定義なので `"use server"` のモジュールに置いてはいけない
@@ -186,6 +201,13 @@ export interface FormFieldDef {
   /** related */
   related?: RelatedConfig;
   order: number;
+  /**
+   * 一覧（CM02 の回答一覧・CM01 の回答行）の見出しに使う項目か。
+   * フォームにつき最大 1 つ（`formFieldsSchema` の superRefine が強制する）。
+   * サブテーブルの列には意味を持たせない — ビルダーはトップレベルの項目にしか
+   * 見せない。
+   */
+  isTitle?: boolean;
 }
 
 const localizedLabel = z.object({
@@ -232,6 +254,7 @@ const baseFieldShape = {
     .optional(),
   related: relatedConfig.optional(),
   order: z.number().int(),
+  isTitle: z.boolean().optional(),
 };
 
 const columnFieldSchema = z.object({
@@ -254,6 +277,21 @@ export const formFieldsSchema = z
   .max(200, "項目は 200 個までです")
   .superRefine((fields, ctx) => {
     const seen = new Set<string>();
+    const titleFields = fields.filter((f) => f.isTitle);
+    if (titleFields.length > 1) {
+      ctx.addIssue({
+        code: "custom",
+        message: "一覧の見出しにできる項目は 1 つだけです",
+      });
+    }
+    for (const f of titleFields) {
+      if (!canBeTitleField(f.type)) {
+        ctx.addIssue({
+          code: "custom",
+          message: `「${f.label.ja}」はこの種類の項目を一覧の見出しにできません`,
+        });
+      }
+    }
     for (const f of fields) {
       if (seen.has(f.key)) {
         ctx.addIssue({
@@ -311,6 +349,12 @@ export function parseFormFields(
     };
   }
   return { ok: true, fields: parsed.data as FormFieldDef[] };
+}
+
+/** 項目定義の JSON（form_versions.schema）を項目配列に戻す。壊れていたら空配列。 */
+export function fieldsFromSchema(schema: unknown): FormFieldDef[] {
+  const parsed = parseFormFields(schema);
+  return parsed.ok ? parsed.fields : [];
 }
 
 /**
@@ -478,38 +522,64 @@ export function validateAnswers(
   return errors;
 }
 
+/**
+ * 1 項目の値を平文にする（`toPlainAnswers` と一覧の見出し抽出が共有する）。
+ * `table` は列を再帰的に平文化して 1 行にまとめる。
+ */
+function renderFieldPlainValue(
+  field: FormFieldDef,
+  value: FormAnswerValue,
+): string {
+  if (value == null) return "";
+  if (typeof value === "string") return value;
+  if (Array.isArray(value)) {
+    if (field.type === "table") {
+      return (value as Record<string, FormAnswerValue>[])
+        .map((row) =>
+          (field.columns ?? [])
+            .map((c) => renderFieldPlainValue(c, row[c.key]))
+            .filter(Boolean)
+            .join(" "),
+        )
+        .filter(Boolean)
+        .join(" / ");
+    }
+    return value.filter((v) => typeof v === "string").join(", ");
+  }
+  if (typeof value === "object" && "label" in value)
+    return String((value as { label: unknown }).label ?? "");
+  return "";
+}
+
 /** 回答の平文射影（検索・監査ログの可読性のため）。 */
 export function toPlainAnswers(
   fields: FormFieldDef[],
   answers: Record<string, FormAnswerValue>,
 ): string {
   const parts: string[] = [];
-  const render = (field: FormFieldDef, value: FormAnswerValue): string => {
-    if (value == null) return "";
-    if (typeof value === "string") return value;
-    if (Array.isArray(value)) {
-      if (field.type === "table") {
-        return (value as Record<string, FormAnswerValue>[])
-          .map((row) =>
-            (field.columns ?? [])
-              .map((c) => render(c, row[c.key]))
-              .filter(Boolean)
-              .join(" "),
-          )
-          .filter(Boolean)
-          .join(" / ");
-      }
-      return value.filter((v) => typeof v === "string").join(", ");
-    }
-    if (typeof value === "object" && "label" in value)
-      return String((value as { label: unknown }).label ?? "");
-    return "";
-  };
   for (const field of fields) {
-    const text = render(field, answers[field.key]).trim();
+    const text = renderFieldPlainValue(field, answers[field.key]).trim();
     if (text) parts.push(`${field.label.ja}: ${text}`);
   }
   return parts.join("\n");
+}
+
+/** 一覧の見出しに指定された項目（`isTitle: true`）。無ければ null。 */
+export function titleFieldOf(fields: FormFieldDef[]): FormFieldDef | null {
+  return fields.find((f) => f.isTitle && canBeTitleField(f.type)) ?? null;
+}
+
+/**
+ * 一覧の見出しに使う文字列。見出し項目が未設定、または未回答なら空文字を
+ * 返す — 呼び出し側で「内容」の旧来のフォールバック（先頭 2 項目）に落とす。
+ */
+export function titleTextOf(
+  fields: FormFieldDef[],
+  answers: Record<string, FormAnswerValue>,
+): string {
+  const field = titleFieldOf(fields);
+  if (!field) return "";
+  return renderFieldPlainValue(field, answers[field.key]).trim();
 }
 
 // ─── 受付期間・編集期限 ──────────────────────────────────────────────────────

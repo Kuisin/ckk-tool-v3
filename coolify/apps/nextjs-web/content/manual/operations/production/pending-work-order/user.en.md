@@ -78,3 +78,20 @@ A. This screen is a work queue, so completed and cancelled work orders are not s
 
 **Q. Can I split one order across several work orders?**
 A. Yes. If you reduce the quantity in 「指示書作成」 (create work order) and save, the remaining quantity stays in this list as unarranged.
+
+<!-- permissions:start -->
+## Permissions required
+
+Using this screen requires the **Work order** (`work_order`) permission.
+
+| What you want to do | Permission needed |
+| --- | --- |
+| Open the screen, view lists and details | Work order — View |
+| Add, change or delete | Work order — Create / Edit / Delete |
+
+Viewing only needs *View*. Where a screen offers adding, changing or deleting, each of those needs its matching permission.
+
+Permissions come through roles. If something is missing, ask an administrator.
+
+For the whole picture see [Permissions and roles](../../../permissions).
+<!-- permissions:end -->

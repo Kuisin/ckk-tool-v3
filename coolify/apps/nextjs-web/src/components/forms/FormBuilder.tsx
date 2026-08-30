@@ -57,12 +57,14 @@ function SortableField({
   siblings,
   onChange,
   onRemove,
+  onSetTitle,
 }: {
   field: FormFieldDef;
   index: number;
   siblings: FormFieldDef[];
   onChange: (next: FormFieldDef) => void;
   onRemove: () => void;
+  onSetTitle: () => void;
 }) {
   const {
     attributes,
@@ -118,6 +120,11 @@ function SortableField({
                     必須
                   </Badge>
                 )}
+                {field.isTitle && (
+                  <Badge color="blue" size="xs" variant="light">
+                    見出し
+                  </Badge>
+                )}
               </Group>
             </Accordion.Control>
             <ActionIcon
@@ -134,6 +141,7 @@ function SortableField({
             <FormFieldEditor
               field={field}
               onChange={onChange}
+              onSetTitle={onSetTitle}
               siblings={siblings}
             />
           </Accordion.Panel>
@@ -219,6 +227,11 @@ export function FormBuilder({
                 }
                 onRemove={() =>
                   onChange(normalizeOrder(fields.filter((_, idx) => idx !== i)))
+                }
+                onSetTitle={() =>
+                  onChange(
+                    fields.map((f, idx) => ({ ...f, isTitle: idx === i })),
+                  )
                 }
                 siblings={fields.filter((_, idx) => idx !== i)}
               />

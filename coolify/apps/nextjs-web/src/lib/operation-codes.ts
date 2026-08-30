@@ -463,6 +463,17 @@ export const OPERATION_CODES: OperationCodeEntry[] = [
     mode: "0",
     index: "F",
   },
+  // 特権アクセス（重要な操作の申請と承認・期限つきの付与）
+  {
+    code: "SY0G",
+    label: "特権アクセス",
+    href: "/settings/privileged-access",
+    category: "システム",
+    kind: "list",
+    categoryCode: "SY",
+    mode: "0",
+    index: "G",
+  },
 ];
 
 const CODE_LOOKUP = new Map(

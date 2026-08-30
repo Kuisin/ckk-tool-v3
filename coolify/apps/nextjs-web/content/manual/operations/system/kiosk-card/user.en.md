@@ -179,3 +179,35 @@ A. That person is either not registered in the system, or is currently in an unu
 
 **Q. I want to move a card to a different person.**
 A. You cannot change who a card is assigned to. Set the current card to 「**取り消し**」 (Revoke) and assign a new card to that person.
+
+<!-- permissions:start -->
+## Permissions required
+
+Using this screen requires the **Kiosk card issuance** (`kiosk_card`) permission.
+
+| What you want to do | Permission needed |
+| --- | --- |
+| Open the screen, view lists and details | Kiosk card issuance — View |
+| Add, change or delete | Kiosk card issuance — Create / Edit / Delete |
+
+Viewing only needs *View*. Where a screen offers adding, changing or deleting, each of those needs its matching permission.
+
+### Operations that need approval
+
+Holding the permission is not enough for the operations below. You **request them in Privileged Access (SY0G) and may act only for the window someone else approves**.
+
+| Operation | Permission | What it unlocks |
+| --- | --- | --- |
+| Issue cards | Kiosk card issuance（`kiosk_card`）— Create | Creates new QR cards. The QR payload is the credential itself. |
+| Assign / reassign a card | Kiosk card issuance（`kiosk_card`）— Edit | Binds a card to an employee. After reassignment, actions are recorded under the new person. |
+| Revoke a card | Kiosk card issuance（`kiosk_card`）— Edit | Permanently disables a card — correct for a lost card, and irreversible. |
+| Reset a card PIN | Kiosk card issuance（`kiosk_card`）— Edit | Clears the PIN so it is set again at next login. In the wrong hands this is account takeover. |
+| Release a PIN lockout | Kiosk card issuance（`kiosk_card`）— Edit | Clears the 15-minute lockout caused by five failed PIN attempts. |
+| Change card validity | Kiosk card issuance（`kiosk_card`）— Edit | Changes how long a card works; extending it revives an expired card. |
+| Change concurrent session limit | Kiosk card issuance（`kiosk_card`）— Edit | Changes how many sessions one card may hold at once; raising it hides card sharing. |
+| Print the card sheet | Kiosk card issuance（`kiosk_card`）— View | Renders the QR codes into a printable PDF — the credential leaves the system as a file. |
+
+Permissions come through roles. If something is missing, ask an administrator.
+
+For the whole picture see [Permissions and roles](../../../permissions).
+<!-- permissions:end -->

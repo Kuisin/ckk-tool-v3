@@ -166,12 +166,28 @@ docker logs -f intake-gateway-dev     # 1 通・1 ファイル（ロゴは落ち
 
 ## デプロイ
 
-Coolify 管理・環境別・内部専用（ホストポートも公開ドメインも無い）。
-登録は `coolify/platform/add-intake-gateway-apps.sh`（冪等 — アプリ作成 /
-ビルド設定 / env / バインドマウント / デプロイキーまで全部やる）、
-デプロイは `coolify/platform/deploy.sh intake-gateway-dev|intake-gateway-main`。
+**Coolify 管理・`common` 環境・`main` ブランチ・内部専用**（ホストポートも
+公開ドメインもネットワーク別名も無い）。登録は
+`coolify/platform/add-intake-gateway-app.sh`（冪等 — アプリ作成 / ビルド設定 /
+env / バインドマウント / デプロイキーまで全部やる）、デプロイは
+`coolify/platform/deploy.sh intake-gateway`。
 
-登録スクリプトが自動でやる 2 つの落とし穴:
+### なぜ dev / main に分けず common に 1 つなのか
+
+**メールアドレスは環境で分けられない。** さくらのメールドメインは 1 つで、
+`order-intake@ckk-tool.co.jp` も 1 つしかない。dev と main に 1 つずつ置くと、
+2 つのゲートウェイが**同じ受信箱を取り合い**、先に既読を打った側でしか
+取り込まれない。送信側の `mailrelay` が common に 1 つなのと同じ理屈で、
+受信側もここに置く。
+
+したがって**取込先は本番の取込フォルダ**（`/home/kaiseisawada/intake/orders-main`）。
+顧客に案内するアドレスなので、届いた注文書は本番の注文請書にならなければ
+意味がない。
+
+**dev にメール取込は無い。** dev で取込を試すときは SY0C の投入か、取込フォルダへ
+直接置く — どちらもメールを経由しないだけで、その先はまったく同じ経路を通る。
+
+### 登録スクリプトが自動でやる 2 つの落とし穴
 
 - **バインドマウント** — `/storages` の `type` は `persistent|file` の 2 択
   （`bind` / `volume` は Validation failed）だが、**`persistent` に `host_path`
@@ -180,9 +196,12 @@ Coolify 管理・環境別・内部専用（ホストポートも公開ドメイ
 - **デプロイキー** — `/applications/public` で作ると組み込みの「Public GitHub」に
   紐づき、非公開リポジトリを匿名 HTTPS で clone しようとして
   `could not read Username for 'https://github.com'` で落ちる。
-  `private_key_id` は REST API では設定できない（"This field is not allowed."）ので
-  スクリプトが `coolify-db` へ直接 UPDATE する
+  `private_key_id` は REST API では設定できないのでスクリプトが
+  `coolify-db` へ直接 UPDATE する
 
-**dev は疎通確認済み**（2026-08-30）。**main は取込フォルダ自体がまだ無い** —
-`nextjs-web-main` に `INTAKE_DIR` も storages も無いので、本番で動かすには
-先にフォルダ作成（`chown 1001:1001`）+ 両アプリへのマウント + env が要る。
+### 監視
+
+adminTools の「**メール監視**」(`/mail-monitor`) が受信箱を読み取り専用で覗き、
+**未読の滞留**（＝このゲートウェイが止まっている）と **Failed の滞留**
+（＝人が拾う必要がある注文書）を見張る。外部監視は
+`GET /api/v1/mail-monitor`（API キー）。

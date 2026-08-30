@@ -155,3 +155,20 @@ A. The tax is worked out with the rule set for each customer. Customers on the r
 
 **Q. I press 「弥生会計CSV」 but no file comes out.**
 A. You may not have the export permission. Please ask your administrator.
+
+<!-- permissions:start -->
+## Permissions required
+
+Using this screen requires the **Invoice** (`invoice`) permission.
+
+| What you want to do | Permission needed |
+| --- | --- |
+| Open the screen, view lists and details | Invoice — View |
+| Add, change or delete | Invoice — Create / Edit / Delete |
+
+Viewing only needs *View*. Where a screen offers adding, changing or deleting, each of those needs its matching permission.
+
+Permissions come through roles. If something is missing, ask an administrator.
+
+For the whole picture see [Permissions and roles](../../../permissions).
+<!-- permissions:end -->

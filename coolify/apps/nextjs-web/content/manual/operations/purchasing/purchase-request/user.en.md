@@ -191,3 +191,20 @@ A. Before it becomes a purchase order (draft, pending approval, approved, or sen
 
 **Q. I cannot find a box for the price.**
 A. A purchase request has no price box. You enter the price after it becomes a [material purchase order](/manual/en/operations/purchasing/purchase-order/user).
+
+<!-- permissions:start -->
+## Permissions required
+
+Using this screen requires the **Purchasing** (`purchase_order`) permission.
+
+| What you want to do | Permission needed |
+| --- | --- |
+| Open the screen, view lists and details | Purchasing — View |
+| Add, change or delete | Purchasing — Create / Edit / Delete |
+
+Viewing only needs *View*. Where a screen offers adding, changing or deleting, each of those needs its matching permission.
+
+Permissions come through roles. If something is missing, ask an administrator.
+
+For the whole picture see [Permissions and roles](../../../permissions).
+<!-- permissions:end -->

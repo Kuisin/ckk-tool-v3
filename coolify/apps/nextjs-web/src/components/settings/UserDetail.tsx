@@ -16,6 +16,7 @@ import {
   Paper,
   Table,
   Text,
+  Textarea,
   Title,
 } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
@@ -35,6 +36,7 @@ import { DetailShell, SummaryGrid } from "@/components/ui/shells";
 import { permissionActionLabel, permissionScopeLabel } from "@/lib/enum-labels";
 import { localized } from "@/lib/format";
 import type { LoginAttemptRow, UserDeviceRow } from "@/lib/login-attempts";
+import { permissionLabel, permissionSummary } from "@/lib/permission-labels";
 import type { AdminUserDetail, AdminUserPlant } from "@/lib/users-admin";
 
 function roleLabel(role: {
@@ -54,10 +56,13 @@ function UserPlantsCard({
   user,
   plantOptions,
   canEdit,
+  requiresApproval,
 }: {
   user: AdminUserDetail;
   plantOptions: AdminUserPlant[];
   canEdit: boolean;
+  /** true = 直接は変えられず、変更依頼を出して承認を待つ（管理者以外）。 */
+  requiresApproval: boolean;
 }) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
@@ -66,6 +71,7 @@ function UserPlantsCard({
     [user.plants],
   );
   const [value, setValue] = useState<string[]>(assignedIds);
+  const [reason, setReason] = useState("");
   const options = useMemo(() => {
     // 無効化済みでも割当済みの拠点は選択肢に残す（外すと保存で消えるため明示）。
     const byId = new Map<string, { value: string; label: string }>();
@@ -92,13 +98,19 @@ function UserPlantsCard({
       const result = await updateUserPlants(
         user.id,
         value.map((v) => Number(v)),
+        reason.trim() || undefined,
       );
       if (result.ok) {
+        // 依頼だったのに「保存しました」と出すと、変わっていないものが変わったと
+        // 伝わる。サーバーが返した requested をそのまま文言に反映する。
         notifications.show({
-          title: "保存しました",
-          message: "所属拠点を更新しました",
-          color: "green",
+          title: result.data.requested ? "承認を依頼しました" : "保存しました",
+          message: result.data.requested
+            ? "承認されると所属拠点が変更されます"
+            : "所属拠点を更新しました",
+          color: result.data.requested ? "blue" : "green",
         });
+        setReason("");
         router.refresh();
       } else {
         notifications.show({
@@ -128,13 +140,28 @@ function UserPlantsCard({
             searchable
             value={value}
           />
+          {requiresApproval && (
+            <Textarea
+              autosize
+              description="承認者がこの内容を見て判断します"
+              label="変更の理由"
+              minRows={2}
+              mt="sm"
+              onChange={(e) => setReason(e.currentTarget.value)}
+              placeholder="例: 異動のため所属拠点を変更"
+              value={reason}
+              withAsterisk
+            />
+          )}
           <Group justify="flex-end" mt="sm">
             <SaveButton
-              disabled={!dirty}
+              disabled={!dirty || (requiresApproval && !reason.trim())}
               loading={isPending}
               onClick={handleSave}
               type="button"
-            />
+            >
+              {requiresApproval ? "承認を依頼" : undefined}
+            </SaveButton>
           </Group>
         </>
       ) : user.plants.length === 0 ? (
@@ -158,12 +185,15 @@ export function UserDetail({
   user,
   plantOptions,
   canEditPlants,
+  requiresApproval,
   loginAttempts,
   userDevices,
 }: {
   user: AdminUserDetail;
   plantOptions: AdminUserPlant[];
   canEditPlants: boolean;
+  /** true = 変更依頼を出して承認を待つ（管理者以外）。 */
+  requiresApproval: boolean;
   /** この人の認証イベント（成功・失敗の両方。直近 30 日）。 */
   loginAttempts: LoginAttemptRow[];
   /** この人が Web で使った端末の台帳。 */
@@ -264,6 +294,7 @@ export function UserDetail({
       <UserPlantsCard
         canEdit={canEditPlants}
         plantOptions={plantOptions}
+        requiresApproval={requiresApproval}
         user={user}
       />
 
@@ -294,7 +325,17 @@ export function UserDetail({
                     key={`${p.permissionCode}:${p.action}:${p.scope}:${i}`}
                   >
                     <Table.Td>
-                      <Text ff="mono" size="sm">
+                      {/* コードだけでは何の権限か読めないので、表示名を主に出し、
+                          コードは補助として下に小さく添える（問い合わせでは
+                          コードで指定されることがあるため消さない）。 */}
+                      <Text
+                        fw={500}
+                        size="sm"
+                        title={permissionSummary(p.permissionCode)}
+                      >
+                        {permissionLabel(p.permissionCode)}
+                      </Text>
+                      <Text c="dimmed" ff="mono" size="xs">
                         {p.permissionCode}
                       </Text>
                     </Table.Td>

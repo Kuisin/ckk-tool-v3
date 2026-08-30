@@ -118,3 +118,20 @@ A. No partner company has been named for that step. Open the step on the work or
 
 **Q. Do I also order material here?**
 A. No. Buying material is done in [material purchase order](/manual/en/operations/purchasing/purchase-order/user). This app lists only the machining work you ask outside companies to do.
+
+<!-- permissions:start -->
+## Permissions required
+
+Using this screen requires the **Outsource order** (`outsource_order`) permission.
+
+| What you want to do | Permission needed |
+| --- | --- |
+| Open the screen, view lists and details | Outsource order — View |
+| Add, change or delete | Outsource order — Create / Edit / Delete |
+
+Viewing only needs *View*. Where a screen offers adding, changing or deleting, each of those needs its matching permission.
+
+Permissions come through roles. If something is missing, ask an administrator.
+
+For the whole picture see [Permissions and roles](../../../permissions).
+<!-- permissions:end -->

@@ -22,6 +22,7 @@ import {
   type FormFieldDef,
   formAvailability,
   parseFormFields,
+  titleTextOf,
 } from "./form-schema";
 import {
   type ShareAccess,
@@ -257,7 +258,13 @@ export async function listResponses(
             ? null
             : r.submittedByUser.displayName || r.submittedByUser.username,
         submittedAt: toIso(r.submittedAt),
-        summary: (r.plainText ?? "").split("\n").slice(0, 2).join(" / "),
+        // 見出し項目（isTitle）が設定・回答されていればそれを優先する。
+        // 未設定・未回答なら従来どおり先頭 2 項目の平文へフォールバックする。
+        summary:
+          titleTextOf(
+            form.fields,
+            (r.answers ?? {}) as Record<string, FormAnswerValue>,
+          ) || (r.plainText ?? "").split("\n").slice(0, 2).join(" / "),
       }));
   } catch {
     return [];

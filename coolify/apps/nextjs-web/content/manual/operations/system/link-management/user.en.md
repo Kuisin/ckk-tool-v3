@@ -80,3 +80,20 @@ A. A hostname entry blocks "that host and all of its subdomains." There is no wa
 
 **Q. If I delete a block entry, does the link disappear from the original document too?**
 A. No. Deleting only removes the block entry. This app cannot edit the memo/comment body of a document, and there is no way to delete an indexed link itself.
+
+<!-- permissions:start -->
+## Permissions required
+
+Using this screen requires the **System admin** (`system`) permission.
+
+| What you want to do | Permission needed |
+| --- | --- |
+| Open the screen, view lists and details | System admin — View |
+| Add, change or delete | System admin — Create / Edit / Delete |
+
+Viewing only needs *View*. Where a screen offers adding, changing or deleting, each of those needs its matching permission.
+
+Permissions come through roles. If something is missing, ask an administrator.
+
+For the whole picture see [Permissions and roles](../../../permissions).
+<!-- permissions:end -->

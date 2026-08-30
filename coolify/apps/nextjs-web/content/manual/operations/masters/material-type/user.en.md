@@ -180,3 +180,20 @@ A. This appears when someone else registered the same kind of material type at t
 
 **Q. Can I use a material type shown as 「未変換」 (Not converted) in the list?**
 A. You can correct the name and so on, but **you cannot choose it when you make a material**. If you want to use it for a material, please register it again from this screen.
+
+<!-- permissions:start -->
+## Permissions required
+
+Using this screen requires the **Master data** (`master`) permission.
+
+| What you want to do | Permission needed |
+| --- | --- |
+| Open the screen, view lists and details | Master data — View |
+| Add, change or delete | Master data — Create / Edit / Delete |
+
+Viewing only needs *View*. Where a screen offers adding, changing or deleting, each of those needs its matching permission.
+
+Permissions come through roles. If something is missing, ask an administrator.
+
+For the whole picture see [Permissions and roles](../../../permissions).
+<!-- permissions:end -->

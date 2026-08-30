@@ -1925,6 +1925,107 @@ Table user_devices {
 Enum LOGIN_APP { WEB, KIOSK }
 Enum LOGIN_OUTCOME { SUCCESS, FAILURE }
 
+// ===========================
+// 特権アクセス（申請 → 承認 → 期限つきの実行）
+// ===========================
+//
+// 粗い権限コード（kiosk / system）を割って、システム上重要な操作を
+// 「持っているから使える」から「頼んで、別の人が許して、期限つきで使える」に
+// 変えるための表。RBAC 側は **申請できるか / 承認できるか** だけを語り、
+// 実際に使えるかはこちらが決める（role_permission_relation に期限は足さない —
+// あれは「この役割は何ができるか」の恒久的な定義で、期限切れの grant が
+// 残ると権限表が読めなくなる）。
+//
+// 方式が 2 つあるのは、操作の形が 2 通りあるから:
+//
+//   A 時限昇格（privileged_access_requests + _operations）
+//     対象を事前に名指しできない操作 — PIN を見る / カードを刷る / 履歴を検索する。
+//     承認は「一定期間この操作をしてよい」という許可。**時計は承認ではなく
+//     初回使用から動きはじめ**、min(初回使用 + duration, 窓の終わり) で切れる
+//     （短いほうが勝つ）。窓を先に取っておいても、使わなければ持ち時間は減らない。
+//     申請は 1 コード分で、中身の操作は子表に持つ。承認者は要求された操作の
+//     一部だけを許可できる（granted）— 「PIN のリセットは良いがカードの失効は
+//     駄目」を却下せずに表現するため。
+//
+//   B 変更依頼（user_change_requests）
+//     それ自体が 1 つの具体的な変更である操作 — この人を停止する。
+//     承認がその変更を**適用する**。窓も duration も無い。
+//     work_order_flow_changes / order_acceptance_cancel_requests と同じ形で、
+//     適用は列を書き換えるのではなく通常の変更処理を通す。承認までに前提が
+//     崩れていれば適用せず apply_error に残す（古い前提のまま当てない）。
+//
+// ★ 有効期限の判定は**常にその場で時刻式で行う**。status の EXPIRED は
+//   pg_cron が打つ表示用の印で、判定の入力ではない。
+//   user-suspension-cron.sql は期限切れの停止を毎分 cron で戻していて最大 1 分の
+//   遅れを許容しているが、あれは遅れが「アクセスが減る側」に倒れるから成立する。
+//   ここで同じことをすると遅れが「アクセスが増える側」に倒れる。
+//
+// ★ 管理者（system:ADMIN）は素通しする（利用者の判断）。これが唯一の
+//   締め出し回避路でもあるので、自己承認の抜け道を作らずに済んでいる。
+//   素通しは監査行に bypass:"admin" として残り、承認を経た実行と区別できる。
+//
+// 個人データを含むので login_attempts と同じ 3 点セットで守る:
+//   SY0G は権限で閉じる / metabase_ro から剥奪（grants.sql）/ 400 日で刈る。
+
+Table privileged_access_requests {
+  id               uuid [pk]
+  code             varchar   // kiosk_secret | kiosk_device | kiosk_card | personal_data
+                             // （permissions への FK は張らない — コードを廃止しても
+                             //   申請の履歴は読めなければならない。audit と同じ規約）
+  status           PRIVILEGED_REQUEST_STATUS
+  reason           text      // 申請理由。空白は CHECK で拒否（理由の無い特権付与を作らない）
+  window_starts_at timestamp // 承認された窓。**申請時点から最長 14 日**（CHECK）
+  window_ends_at   timestamp
+  duration_minutes int       // 初回使用から測る有効時間（1〜1440）
+  activated_at     timestamp // 初回使用。null = 未使用 = 時計が動いていない
+  last_used_at     timestamp
+  use_count        int
+  requested_by     uuid [ref: > users.id]
+  requested_at     timestamp
+  decided_by       uuid [ref: > users.id]   // 承認済みなら必ず居る（CHECK）
+  decided_at       timestamp
+  decision_comment text
+  revoked_by       uuid [ref: > users.id]   // 有効な付与の打ち切り
+  revoked_at       timestamp
+  revoke_reason    text
+  // 同じコードの申請を同時に何本も出させない（部分 unique・PENDING のみ）
+}
+
+Table privileged_access_request_operations {
+  request_id  uuid [ref: > privileged_access_requests.id]
+  operation   varchar  // lib/privileged-operations.ts の PRIVILEGED_OPERATIONS のキー
+  granted     boolean  // 承認時に確定。false = 承認者が外した操作
+  indexes { (request_id, operation) [pk] }
+}
+
+Enum PRIVILEGED_REQUEST_STATUS {
+  PENDING
+  APPROVED
+  REJECTED
+  CANCELLED
+  REVOKED
+  EXPIRED    // **表示用の打刻**。判定はこの値を見ない
+}
+
+Enum USER_CHANGE_KIND { SUSPEND, RESTORE, UPDATE_PLANTS }
+
+Table user_change_requests {
+  id               uuid [pk]
+  kind             USER_CHANGE_KIND
+  target_user_id   uuid [ref: > users.id]
+  payload          json   // kind ごとに形が違う（zod で境界検証）
+  reason           text
+  status           PRIVILEGED_REQUEST_STATUS  // REVOKED / EXPIRED は使わない
+  requested_by     uuid [ref: > users.id]     // target とは別人であること（CHECK）
+  requested_at     timestamp
+  decided_by       uuid [ref: > users.id]
+  decided_at       timestamp
+  decision_comment text
+  applied_at       timestamp  // 承認して実際に当たった時刻
+  apply_error      text       // 承認はされたが前提が崩れていて当てられなかった理由
+  // 同じ人・同じ種類の PENDING は 1 本だけ（部分 unique）
+}
+
 // 端末の所有区分（**自動判定のみ**。管理者の上書き欄は持たない）。
 // 素のブラウザでは所有を検証できないので、判定と一緒に**根拠の強さ**を残す
 // （判定規則は lib/device-ownership-core.ts が唯一の定義）:

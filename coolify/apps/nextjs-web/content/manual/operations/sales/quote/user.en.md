@@ -195,3 +195,20 @@ A. That is normal. If the price list is set so that a larger order makes each pi
 
 **Q. I issued a quote by mistake.**
 A. There is no way to undo an issue. If the contents are wrong, make a new quote with the correct contents (duplicating is handy) and set the wrong one to「却下」(rejected) so it is easy to tell apart.
+
+<!-- permissions:start -->
+## Permissions required
+
+Using this screen requires the **Quote** (`quote`) permission.
+
+| What you want to do | Permission needed |
+| --- | --- |
+| Open the screen, view lists and details | Quote — View |
+| Add, change or delete | Quote — Create / Edit / Delete |
+
+Viewing only needs *View*. Where a screen offers adding, changing or deleting, each of those needs its matching permission.
+
+Permissions come through roles. If something is missing, ask an administrator.
+
+For the whole picture see [Permissions and roles](../../../permissions).
+<!-- permissions:end -->

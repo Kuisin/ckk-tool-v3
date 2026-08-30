@@ -33,6 +33,7 @@ import {
 import { cache } from "react";
 import { auth } from "@/auth";
 import { prisma } from "./db";
+import { actionLabel, permissionLabel } from "./permission-labels";
 
 export type { Access, PermissionAction, ScopeContext };
 
@@ -96,9 +97,11 @@ export async function checkPermission(
   if (decision.allowed) {
     return { ok: true, userId, access: decision.access };
   }
+  // コードだけを見せても「何を頼めばいいのか」が分からないので、名前つきで返す。
+  // 括弧のコードは残す — 管理者への問い合わせではコードで指定されることがある。
   return {
     ok: false,
-    error: `この操作の権限がありません（${code}:${action}）`,
+    error: `${permissionLabel(code)}の${actionLabel(action)}権限がありません（${code}:${action}）`,
   };
 }
 
@@ -121,7 +124,7 @@ export async function checkApprovalDocAccess(
   if (update.ok) return update;
   return {
     ok: false,
-    error: `この操作の権限がありません（${code} の閲覧または編集権限が必要です）`,
+    error: `${permissionLabel(code)}の閲覧または編集の権限がありません（${code}:READ / UPDATE）`,
   };
 }
 

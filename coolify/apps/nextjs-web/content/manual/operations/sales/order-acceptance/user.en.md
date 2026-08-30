@@ -49,20 +49,31 @@ When you open the app, you see the list of the order forms that have been import
 - The 「監視フォルダ取込」(watched folder import) badge at the top of the screen tells you whether automatic importing is available.
 - While a row is still being read, the screen refreshes itself every 30 seconds.
 
-## Importing an order form (three ways)
+## Importing an order form (four ways)
 
-**1. Put the file in the set folder**
+**1. Receive it by email (automatic)**
+
+When a customer sends an order form to **order-intake@ckk-tool.co.jp**, it is imported **with no action from you**. It appears in the list within a few minutes.
+
+- If one email carries three order forms, you get **three order acceptances** (one form = one record).
+- Images embedded in the signature — company logos and the like — are not imported.
+- The filename is prefixed with `mail_sender_`, so the list shows **where it came from**.
+- Only **PDF, PNG, JPG and WEBP** attachments are imported; anything else is skipped.
+
+> The sender and subject are not recorded on the order acceptance itself. To see them, open that mailbox directly.
+
+**2. Put the file in the set folder**
 
 Put the file in the import folder on the server and it is imported automatically. You can use this when the list shows「**監視フォルダ取込: 有効**」(watched folder import: enabled).
 
-**2. Choose a file there and then**
+**3. Choose a file there and then**
 
 1. Press「**優先取込**」(priority import) at the top right of the list screen.
 2. Choose the order form file (PDF, PNG, JPG or WebP; you can choose several at once).
 3. **All** the chosen files are added to the list first (status 「取込中」/ importing). Only once they are all listed does the reading (AI extraction) start, one after another.
 4. The progress is shown at the top right of the screen. Reading takes about **1 to 3 minutes** per file.
 
-**3. Type it in by hand**
+**4. Type it in by hand**
 
 1. Press「**手入力で新規**」(new, typed in) at the top right of the list screen.
 2. Choose the「**顧客**」(customer). This one is required. Choosing it fills「**営業担当**」(sales rep) with that customer's primary rep automatically — change it if needed.
@@ -280,3 +291,20 @@ A. A draft opens read only — press「**編集**」(edit) first (top right of t
 
 **Q. The import does not finish.**
 A. Reading takes about 1 to 3 minutes per file. When you choose several files, they are handled one after another, so it takes that much longer.
+
+<!-- permissions:start -->
+## Permissions required
+
+Using this screen requires the **Order acceptance** (`order_acceptance`) permission.
+
+| What you want to do | Permission needed |
+| --- | --- |
+| Open the screen, view lists and details | Order acceptance — View |
+| Add, change or delete | Order acceptance — Create / Edit / Delete |
+
+Viewing only needs *View*. Where a screen offers adding, changing or deleting, each of those needs its matching permission.
+
+Permissions come through roles. If something is missing, ask an administrator.
+
+For the whole picture see [Permissions and roles](../../../permissions).
+<!-- permissions:end -->

@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
 import { ActivityLogDetail } from "@/components/admin/ActivityLogDetail";
 import { getActivityEntry } from "@/lib/audit";
-import { requireAppRead } from "@/lib/authz-page";
+import { requireAppRead, requireElevation } from "@/lib/authz-page";
 
 export const dynamic = "force-dynamic";
 
@@ -13,6 +13,8 @@ export default async function AdminActivityDetailPage({
 }) {
   const denied = await requireAppRead("activity-log");
   if (denied) return denied;
+  const notElevated = await requireElevation("personal_data.activity_detail");
+  if (notElevated) return notElevated;
   const { id } = await params;
   const entry = await getActivityEntry(id);
   if (!entry) notFound();

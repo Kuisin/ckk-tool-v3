@@ -337,3 +337,20 @@ A. Part of that order line is already allocated to other work orders. You can on
 
 **Q. I cannot roll back a finished step.**
 A. Either the next step has already started, or the work order is finished and the pieces have already gone into stock. Differences in quantity after stock has been updated cannot be fixed on this screen. Please talk to an administrator.
+
+<!-- permissions:start -->
+## Permissions required
+
+Using this screen requires the **Work order** (`work_order`) permission.
+
+| What you want to do | Permission needed |
+| --- | --- |
+| Open the screen, view lists and details | Work order — View |
+| Add, change or delete | Work order — Create / Edit / Delete |
+
+Viewing only needs *View*. Where a screen offers adding, changing or deleting, each of those needs its matching permission.
+
+Permissions come through roles. If something is missing, ask an administrator.
+
+For the whole picture see [Permissions and roles](../../../permissions).
+<!-- permissions:end -->

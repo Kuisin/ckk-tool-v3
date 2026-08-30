@@ -160,3 +160,28 @@ A. Set "アプリ" to kiosk. To look at one specific tablet, the device detail p
 
 **Q. Older records do not appear.**
 A. Records are removed automatically (successes after 180 days, failures after 400 days). If you need to investigate something older, please ask your system administrator.
+
+<!-- permissions:start -->
+## Permissions required
+
+Using this screen requires the **Personal data access** (`personal_data`) permission.
+
+| What you want to do | Permission needed |
+| --- | --- |
+| Open the screen, view lists and details | Personal data access — View |
+| Add, change or delete | Personal data access — Create / Edit / Delete |
+
+Viewing only needs *View*. Where a screen offers adding, changing or deleting, each of those needs its matching permission.
+
+### Operations that need approval
+
+Holding the permission is not enough for the operations below. You **request them in Privileged Access (SY0G) and may act only for the window someone else approves**.
+
+| Operation | Permission | What it unlocks |
+| --- | --- | --- |
+| Login history detail | Personal data access（`personal_data`）— View | Opens one auth event down to IP, device signature and ownership — adjacent to employee monitoring. |
+
+Permissions come through roles. If something is missing, ask an administrator.
+
+For the whole picture see [Permissions and roles](../../../permissions).
+<!-- permissions:end -->

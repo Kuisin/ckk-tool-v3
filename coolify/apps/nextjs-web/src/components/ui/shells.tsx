@@ -69,9 +69,15 @@ export interface MenuItemDef {
   onClick?: () => void;
   /**
    * リンクとして開く項目（PDF 等）。`window.open` ではなく実アンカーを描画する
-   * ので、ホーム画面に追加した PWA（standalone）でもアプリ内ブラウザで開く。
+   * ので、ホーム画面に追加した PWA（standalone）でも端末のアプリ内ブラウザ /
+   * 別ウィンドウで開き、閉じれば元の画面に戻れる。
    */
   href?: string;
+  /**
+   * `href` がアプリの画面のときだけ true — PWA でアプリの中に留める。
+   * PDF・ファイル・外部サイトでは付けない（`lib/pwa-display.ts` の WHY）。
+   */
+  keepInApp?: boolean;
   divider?: boolean;
   /**
    * 状態的にいま実行できない項目。**隠さずグレーアウトで残す** — 操作が
@@ -128,14 +134,19 @@ export function ResourceActions({
                 {m.divider && i > 0 && <Menu.Divider />}
                 {m.href && !m.disabled ? (
                   // 実アンカー + target="_blank"（window.open はポップアップ扱いで
-                  // 塞がれる）。インストールした PWA ではアプリの中で開く —
+                  // 塞がれる）。PWA でも既定は別ウィンドウ = アプリ内ブラウザで、
+                  // アプリの画面へ行く項目だけ keepInApp で中に留める —
                   // 判定と分岐は lib/pwa-display.ts に寄せてある。
                   <Menu.Item
                     color={m.color}
                     component="a"
                     href={m.href}
                     leftSection={m.icon}
-                    onClick={(e) => keepInAppOnClick(e, m.href as string)}
+                    onClick={
+                      m.keepInApp
+                        ? (e) => keepInAppOnClick(e, m.href as string)
+                        : undefined
+                    }
                     rel="noopener noreferrer"
                     target="_blank"
                   >
@@ -169,7 +180,8 @@ export function ResourceActions({
               label: pdf.label ?? "PDF",
               icon: <IconFileTypePdf size={14} />,
               // モバイルにはインラインボタンが無いので、メニュー項目を別タブ
-              // リンクとして描画する（PWA ではアプリ内ブラウザで開く）。
+              // リンクとして描画する（PWA では端末のアプリ内ブラウザ。PDF は
+              // アプリの中に置き換えると戻れなくなるので留めない）。
               href: pdf.href,
               onClick: pdf.href ? undefined : pdf.onClick,
             },

@@ -164,3 +164,13 @@ A. It cannot be brought back from this screen. Please ask your system administra
 
 **Q. The file name changed after I uploaded it.**
 A. That is normal. A date and some other text are added automatically so a file with the same name is not overwritten. The contents are unchanged.
+
+<!-- permissions:start -->
+## Permissions required
+
+This screen needs no special permission — being signed in is enough.
+
+Permissions come through roles. If something is missing, ask an administrator.
+
+For the whole picture see [Permissions and roles](../../../permissions).
+<!-- permissions:end -->
