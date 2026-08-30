@@ -488,6 +488,7 @@ export function FormDetail({
                 conditionFields={conditionFieldsOf(form.fields)}
                 grants={grants}
                 levels={FORM_SHARE_LEVELS}
+                // 完了通知はアンケートには無い概念（完了する対象が無い）。
                 onCancel={close}
                 onSave={
                   onSaveShare as unknown as React.ComponentProps<
@@ -496,6 +497,7 @@ export function FormDetail({
                 }
                 onSaved={close}
                 roleOptions={roleOptions}
+                showNotifyOnComplete={form.kind === "REQUEST"}
               />
             )}
             title="共有先"

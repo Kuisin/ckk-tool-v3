@@ -219,6 +219,14 @@ export function FormEditor({
             }
           />
         )}
+        {values.kind === "REQUEST" && (
+          <Text c="dimmed" size="xs">
+            完了（承認フローを使うなら全段の承認、使わないなら提出）したときの
+            通知先は、「共有」タブで共有先ごとに「完了通知」を付けて決めます。
+            通知を受け取った人は、承認・予定 (CM01) の「完了した申請」でも
+            一覧を見られます。
+          </Text>
+        )}
         <Checkbox
           checked={!values.allowMultiple}
           label="1 人 1 回だけ回答できるようにする"

@@ -31,6 +31,7 @@ import {
 } from "@/lib/authz";
 import { generateCode } from "@/lib/crockford";
 import { prisma } from "@/lib/db";
+import { notifyFormCompletion } from "@/lib/form-completion";
 import {
   canEditResponse,
   type FormAnswerValue,
@@ -125,6 +126,8 @@ const shareGrantInput = z.object({
   conditionFieldKey: z.string().nullable().optional(),
   conditionValues: z.array(z.string().max(200)).max(50).optional(),
   conditionLabels: z.array(z.string().max(200)).max(50).optional(),
+  // 完了通知（申請・報告のみ）。RESPOND に付いていても replaceShareGrants が捨てる。
+  notifyOnComplete: z.boolean().optional(),
 });
 
 export type ShareGrantInputDto = z.infer<typeof shareGrantInput>;
@@ -682,6 +685,11 @@ export async function submitResponse(
       null,
       asDraft,
     );
+    // 承認を使わない申請・報告は提出が完了そのもの（日報・点検簿など）。
+    // 承認を使うものは全段承認したときに actOnResponse から呼ぶ。実際に
+    // 完了かどうかは notifyFormCompletion が状態を見て決める。
+    if (form.kind === "REQUEST" && !asDraft)
+      await notifyFormCompletion(created.responseNumber);
     revalidate(code, created.responseNumber);
     return actionOk({ responseNumber: created.responseNumber });
   } catch (e) {
@@ -800,6 +808,10 @@ export async function updateResponse(
       row.status,
       asDraft,
     );
+    // 承認を使わない申請・報告の「提出」も完了。既に知らせた相手には
+    // 送り直さない（form_completion_notices の unique が最終防衛線）。
+    if (row.form.kind === "REQUEST" && !asDraft)
+      await notifyFormCompletion(responseNumber);
     revalidate(row.form.code, responseNumber);
     return actionOk();
   } catch (e) {
@@ -904,6 +916,10 @@ async function actOnResponse(
             : `差し戻し: ${comment ?? ""}`,
       },
     });
+    // 全段の承認が下りた = 申請の完了。共有設定で「完了時に通知」を付けた
+    // 相手へ知らせる（依頼者本人への承認結果は approvals.ts が別に送る）。
+    if (action === "APPROVED" && done)
+      await notifyFormCompletion(responseNumber);
     revalidate(row.form.code, responseNumber);
     return actionOk();
   } catch (e) {

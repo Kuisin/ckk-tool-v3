@@ -19,6 +19,7 @@ export const NOTIFICATION_TYPES = [
   "PURCHASE", // 素材発注の状態遷移
   "SHARE", // ページ共有（layout/share-actions）
   "DESIGN", // 設計依頼の担当指定・状態遷移
+  "FORM_COMPLETED", // 申請・報告の完了 → 共有先（完了通知を付けた相手）へ
   "SYSTEM",
 ] as const;
 

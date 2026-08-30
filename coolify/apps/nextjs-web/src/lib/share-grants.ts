@@ -15,6 +15,7 @@ import { cache } from "react";
 import { getPermissionSet, sessionUserId } from "./authz";
 import { prisma } from "./db";
 import {
+  canNotifyOnComplete,
   resolveShareAccess,
   type ShareAccess,
   type ShareGrantRow,
@@ -43,6 +44,8 @@ export interface ShareGrantView {
   /** 画面に出す名前（拠点名・ロール名・ユーザー名）。解決できなければ id。 */
   subjectLabel: string;
   level: ShareLevel;
+  /** 申請・報告が完了したときに、この共有先へ通知するか（フォームのみ）。 */
+  notifyOnComplete: boolean;
 }
 
 /** 現在ユーザーの所属拠点 id とロール id（リクエスト単位でメモ化）。 */
@@ -255,6 +258,7 @@ export async function listShareGrants(
             r.subjectId ||
             "（不明）",
       level: r.level as ShareLevel,
+      notifyOnComplete: r.notifyOnComplete,
       conditionFieldKey: r.conditionFieldKey,
       conditionValues: r.conditionValues,
       conditionLabels: r.conditionLabels,
@@ -273,6 +277,8 @@ export interface ShareGrantInput {
   conditionFieldKey?: string | null;
   conditionValues?: string[];
   conditionLabels?: string[];
+  /** 完了通知。読めない共有（RESPOND）に付いていても捨てる。 */
+  notifyOnComplete?: boolean;
 }
 
 /**
@@ -300,6 +306,11 @@ export async function replaceShareGrants(
         subjectType: g.subjectType,
         subjectId: g.subjectType === "EVERYONE" ? null : (g.subjectId ?? null),
         level: g.level,
+        // 完了通知は「その回答を読める共有」にだけ載る。RESPOND に付いたまま
+        // 保存すると、開けない通知を送る設定を作れてしまう。
+        notifyOnComplete: canNotifyOnComplete(g.level)
+          ? (g.notifyOnComplete ?? false)
+          : false,
         conditionFieldKey: fieldKey,
         conditionValues: fieldKey ? values : [],
         // ラベルは表示用の写し。数が合わないときは値をそのまま出す。
@@ -327,6 +338,7 @@ export async function replaceShareGrants(
         subjectType: g.subjectType,
         subjectId: g.subjectId,
         level: g.level,
+        notifyOnComplete: g.notifyOnComplete,
         conditionFieldKey: g.conditionFieldKey,
         conditionValues: g.conditionValues,
         conditionLabels: g.conditionLabels,

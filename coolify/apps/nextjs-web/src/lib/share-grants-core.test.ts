@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
+  canNotifyOnComplete,
+  completionNotifyGrants,
   resolveShareAccess,
   responseInScope,
   type ShareCondition,
@@ -254,5 +256,61 @@ describe("responseInScope", () => {
     expect(responseInScope({ all: false, conditions: [] }, { f: "a" })).toBe(
       false,
     );
+  });
+});
+
+describe("completionNotifyGrants — 申請の完了を誰に知らせるか", () => {
+  const read = (over: Partial<ShareGrantRow> = {}): ShareGrantRow => ({
+    subjectType: "USER",
+    subjectId: "u9",
+    level: "READ",
+    notifyOnComplete: true,
+    ...over,
+  });
+
+  it("完了通知を付けた共有行だけを返す", () => {
+    const on = read();
+    const off = read({ subjectId: "u8", notifyOnComplete: false });
+    expect(completionNotifyGrants([on, off], {})).toEqual([on]);
+  });
+
+  it("回答のみ（RESPOND）には送らない — 開いても読めないから", () => {
+    expect(canNotifyOnComplete("RESPOND")).toBe(false);
+    expect(completionNotifyGrants([read({ level: "RESPOND" })], {})).toEqual(
+      [],
+    );
+  });
+
+  it("閲覧・編集・管理には送れる", () => {
+    for (const level of ["READ", "EDIT", "MANAGE"] as const) {
+      expect(canNotifyOnComplete(level)).toBe(true);
+      expect(completionNotifyGrants([read({ level })], {})).toHaveLength(1);
+    }
+  });
+
+  it("条件付き共有は、その条件に当たる回答の完了だけ知らせる", () => {
+    const grant = read({
+      condition: { fieldKey: "plant", values: ["osaka"] },
+    });
+    expect(completionNotifyGrants([grant], { plant: "osaka" })).toEqual([
+      grant,
+    ]);
+    expect(completionNotifyGrants([grant], { plant: "tokyo" })).toEqual([]);
+    // 条件の項目がその版に無い回答は知らせない（見えない回答と同じ扱い）。
+    expect(completionNotifyGrants([grant], {})).toEqual([]);
+  });
+
+  it("lookup 値は id で突き合わせる（ラベルの改名で宛先が変わらない）", () => {
+    const grant = read({ condition: { fieldKey: "bp", values: ["bp-1"] } });
+    expect(
+      completionNotifyGrants([grant], { bp: { id: "bp-1", label: "旧社名" } }),
+    ).toEqual([grant]);
+  });
+
+  it("値が空の条件は絞り込みなし扱い（保存時に落ちる形と揃える）", () => {
+    const grant = read({ condition: { fieldKey: "plant", values: [] } });
+    expect(completionNotifyGrants([grant], { plant: "osaka" })).toEqual([
+      grant,
+    ]);
   });
 });
