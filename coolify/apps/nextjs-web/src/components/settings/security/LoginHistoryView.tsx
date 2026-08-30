@@ -50,7 +50,7 @@ const OUTCOME_OPTIONS = [
 
 const APP_OPTIONS = [
   { value: "WEB", label: "Web" },
-  { value: "KIOSK", label: "キオスク" },
+  { value: "KIOSK", label: "共有端末" },
 ];
 
 function SummaryCard({
@@ -131,7 +131,7 @@ export function LoginHistoryView({
       header: "アプリ",
       width: 80,
       render: (r) => (
-        <Text size="xs">{r.app === "KIOSK" ? "キオスク" : "Web"}</Text>
+        <Text size="xs">{r.app === "KIOSK" ? "共有端末" : "Web"}</Text>
       ),
     },
     {

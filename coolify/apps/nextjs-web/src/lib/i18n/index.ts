@@ -42,3 +42,24 @@ export const INTL_LOCALES: Record<Locale, string> = {
   en: "en-US",
   zh: "zh-CN",
 };
+
+/**
+ * DB の多言語 JSON（`{ ja, en, ... }` — キーは言語コード。`_specs/i18n-glossary.md`
+ * §2.10）を表示するときの読み替え順。**ja は必ず持つ**という約束のほかは、
+ * どの言語キーが埋まっているかはレコードごとに違う（後から言語を足せる
+ * 可変キー設計のため）ので、「無ければ次はどれを見るか」をここで決める。
+ *
+ * zh → en を優先するのは、日本語より英語の方が読める可能性が高いという
+ * 判断（zh データがまだ無い移行期間の既定動作）。新しい言語を足すときは
+ * ここに 1 行足すだけでよい — 型・フォーム側は LOCALES を見て自動で追従する。
+ */
+export const LOCALE_FALLBACK: Record<Locale, readonly Locale[]> = {
+  ja: ["ja"],
+  en: ["en", "ja"],
+  zh: ["zh", "en", "ja"],
+};
+
+/** 未知の言語コードに対する既定の読み替え順（新言語を LOCALE_FALLBACK に足す前でも壊れない）。 */
+export function localeFallbackOrder(locale: string): readonly string[] {
+  return LOCALE_FALLBACK[locale as Locale] ?? [locale, "ja"];
+}

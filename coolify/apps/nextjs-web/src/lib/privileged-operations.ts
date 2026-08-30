@@ -37,18 +37,18 @@ export function isElevationCode(v: string): v is ElevationCode {
 /** コードの表示名（申請フォームの「対象」選択肢）。 */
 export const ELEVATION_CODE_LABEL: Record<ElevationCode, LocalizedLabel> = {
   kiosk_secret: {
-    ja: "キオスク端末の秘密",
-    en: "Kiosk device secrets",
-    zh: "自助终端机密",
+    ja: "共有端末の秘密",
+    en: "Shared device secrets",
+    zh: "共用终端机密",
   },
   kiosk_device: {
     ja: "端末アクセスの付与",
-    en: "Kiosk device enrolment",
+    en: "Shared device enrolment",
     zh: "终端访问授予",
   },
   kiosk_card: {
     ja: "QRカードの発行・PIN",
-    en: "Kiosk card issuance",
+    en: "Shared device card issuance",
     zh: "二维码卡发放・PIN",
   },
   personal_data: {
@@ -93,7 +93,7 @@ export const PRIVILEGED_OPERATIONS: readonly PrivilegedOperation[] = [
       zh: "查看维护退出 PIN",
     },
     description: {
-      ja: "全端末共通の退出 PIN を平文で表示する。これを知っている人はどの端末でもキオスクから抜けて Android 設定へ入れる",
+      ja: "全端末共通の退出 PIN を平文で表示する。これを知っている人はどの端末でも共有端末から抜けて Android 設定へ入れる",
       en: "Shows the shared maintenance-exit PIN in clear text. It exits kiosk mode on every device.",
       zh: "以明文显示全终端通用的退出 PIN。知道它的人可以在任何终端退出自助模式进入 Android 设置。",
     },

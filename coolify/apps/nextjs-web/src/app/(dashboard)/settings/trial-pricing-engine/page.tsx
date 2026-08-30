@@ -12,7 +12,7 @@ export const dynamic = "force-dynamic";
 
 const BASE = "/settings/trial-pricing-engine";
 
-/** 試算計算（SY02）— 各セクションを閲覧し、クリックで個別の編集ページへ。 */
+/** 価格試算計算（SY02）— 各セクションを閲覧し、クリックで個別の編集ページへ。 */
 export default async function TrialPricingEnginePage() {
   const denied = await requireAppRead("trial-pricing-engine");
   if (denied) return denied;
@@ -56,7 +56,10 @@ export default async function TrialPricingEnginePage() {
 
   return (
     <Stack gap="md" maw={1000}>
-      <PageHeader breadcrumbs={["システム", "試算計算"]} title="試算計算" />
+      <PageHeader
+        breadcrumbs={["システム", "価格試算計算"]}
+        title="価格試算計算"
+      />
       <Text c="dimmed" size="sm">
         各セクションを選ぶと編集ページが開きます。
       </Text>

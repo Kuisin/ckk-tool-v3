@@ -4,7 +4,11 @@ import {
 } from "@/components/master/defect-types/DefectTypeTable";
 import { requireAppRead } from "@/lib/authz-page";
 import { prisma } from "@/lib/db";
-import { type LocalizedText, localized } from "@/lib/format";
+import {
+  type LocalizedText,
+  localized,
+  localizedTranslations,
+} from "@/lib/format";
 
 export const dynamic = "force-dynamic";
 
@@ -23,7 +27,7 @@ export default async function MasterDefectTypesPage() {
       code: r.code,
       name: localized(name),
       nameJa: name?.ja ?? "",
-      nameEn: name?.en ?? "",
+      nameTranslations: localizedTranslations(name),
       sortOrder: r.sortOrder,
       isActive: r.isActive,
     };

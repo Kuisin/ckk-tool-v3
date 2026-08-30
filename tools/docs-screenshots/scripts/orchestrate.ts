@@ -57,7 +57,7 @@ const APP_VERSION = "0.1.0-local";
 // ユーザーが既に居るときだけ効く — 逆順だと 1 回目と 2 回目で結果が変わる）。
 const SEED_FILES_PRE = [
   // 本番には入れないマスタ（素材 / 拠点 / 不良種類 / 承認フロー）。
-  // 材種・工程マスタ・試算設定・RBAC・フラグは migration が入れる。
+  // 材種・工程マスタ・価格試算設定・RBAC・フラグは migration が入れる。
   "sql/extended-master-seed.sql",
   "sql/demo-users-seed.sql",
   "sql/rbac-seed.sql", // デモユーザーへのロール割当（権限定義そのものは migration）

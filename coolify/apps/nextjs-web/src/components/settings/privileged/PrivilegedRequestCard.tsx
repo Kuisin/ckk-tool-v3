@@ -18,7 +18,7 @@ import {
 import type { PrivilegedRequestRow } from "@/lib/privileged-requests";
 
 const STATUS_LABEL: Record<string, string> = {
-  PENDING: "承認待ち",
+  PENDING: "承認依頼中",
   APPROVED: "承認済み",
   REJECTED: "差し戻し",
   CANCELLED: "取り下げ",
@@ -78,7 +78,7 @@ export function PrivilegedRequestCard({
   actions?: React.ReactNode;
 }) {
   const fmt = useFormat();
-  // 方式 A で「利用中」のときだけ実時間のカウントダウンを出す。承認待ちや
+  // 方式 A で「利用中」のときだけ実時間のカウントダウンを出す。承認依頼中や
   // 期限切れに秒を出しても読む意味が無い。
   // **未使用（ARMED）ではカウントダウンしない。** あの残り時間は窓の終わりまで
   // なので、1 回あたりの持ち時間と取り違えられる。時計が動いてから出す。

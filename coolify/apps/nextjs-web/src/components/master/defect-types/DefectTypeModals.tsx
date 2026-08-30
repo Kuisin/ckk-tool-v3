@@ -20,12 +20,13 @@ import {
   FormModal,
   type ModalBaseProps,
 } from "@/components/ui/modals";
+import { LocalizedTextInput } from "@/components/ui/shells";
 
 export interface DefectTypeModalTarget {
   id: number;
   code: string;
   nameJa: string;
-  nameEn: string;
+  nameTranslations: Record<string, string>;
   sortOrder: number;
   isActive: boolean;
 }
@@ -46,7 +47,9 @@ export function EditDefectTypeModal({
   const [isPending, startTransition] = useTransition();
 
   const [nameJa, setNameJa] = useState("");
-  const [nameEn, setNameEn] = useState("");
+  const [nameTranslations, setNameTranslations] = useState<
+    Record<string, string>
+  >({});
   const [sortOrder, setSortOrder] = useState<number | string>(0);
   const [isActive, setIsActive] = useState(true);
   const [seededFrom, setSeededFrom] = useState<number | null>(null);
@@ -55,7 +58,7 @@ export function EditDefectTypeModal({
   if (opened && target && seededFrom !== target.id) {
     setSeededFrom(target.id);
     setNameJa(target.nameJa);
-    setNameEn(target.nameEn);
+    setNameTranslations(target.nameTranslations);
     setSortOrder(target.sortOrder);
     setIsActive(target.isActive);
   }
@@ -72,7 +75,7 @@ export function EditDefectTypeModal({
       const result = await updateDefectType(target.id, {
         code: target.code,
         nameJa,
-        nameEn,
+        nameTranslations,
         sortOrder: typeof sortOrder === "number" ? sortOrder : 0,
         isActive,
       });
@@ -112,16 +115,18 @@ export function EditDefectTypeModal({
           readOnly
           value={target?.code ?? ""}
         />
-        <TextInput
-          label="名称（日本語）"
-          onChange={(e) => setNameJa(e.currentTarget.value)}
-          value={nameJa}
-          withAsterisk
-        />
-        <TextInput
-          label="名称（English）"
-          onChange={(e) => setNameEn(e.currentTarget.value)}
-          value={nameEn}
+        <LocalizedTextInput
+          jaProps={{
+            value: nameJa,
+            onChange: (e: React.ChangeEvent<HTMLInputElement>) =>
+              setNameJa(e.currentTarget.value),
+          }}
+          label="名称"
+          required
+          translationsProps={{
+            value: nameTranslations,
+            onChange: setNameTranslations,
+          }}
         />
         <NumberInput
           allowDecimal={false}

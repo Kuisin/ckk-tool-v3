@@ -9,7 +9,7 @@
  * - PRE（既定）: 承認は**変更を止める** — 依頼時点では工程を一切触らず、
  *   やろうとした操作を work_order_flow_changes に保留し、最終承認で初めて
  *   適用する。差し戻し・取消は適用せずに終わる。適用は承認後にサーバーで
- *   **再検証**してから走るので、承認待ちの間に前提が崩れていれば FAILED で
+ *   **再検証**してから走るので、承認依頼中の間に前提が崩れていれば FAILED で
  *   残る ——黙って古い前提のまま当てない。
  * - POST: **即時適用 + 事後承認** — 変更をその場で適用してから承認依頼を出す
  *   （現場を止めない運用）。差し戻されても工程は自動では戻らない — 指示書
@@ -44,7 +44,7 @@ const TARGET_TYPE = "work_order_flow_changes" as const;
 export interface FlowChangeResult {
   ok: boolean;
   errors?: string[];
-  /** true = 承認待ちとして保留した（工程はまだ変わっていない）。 */
+  /** true = 承認依頼中として保留した（工程はまだ変わっていない）。 */
   pending?: boolean;
   /** true = 即時適用した（事後承認 POST — 承認は別途進行中）。 */
   applied?: boolean;
@@ -94,7 +94,7 @@ export async function submitFlowChange(input: {
   if (existing) {
     return {
       ok: false,
-      errors: ["この指示書には承認待ちの工程フロー変更があります"],
+      errors: ["この指示書には承認依頼中の工程フロー変更があります"],
     };
   }
 
@@ -172,7 +172,7 @@ export async function submitFlowChange(input: {
 }
 
 /**
- * 承認が完了した変更を実際に当てる。承認待ちの間に前提が変わっている
+ * 承認が完了した変更を実際に当てる。承認依頼中の間に前提が変わっている
  * ことがあるので、適用は通常の操作と同じ関数を通す（= 同じ検証を受ける）。
  */
 export async function applyApprovedFlowChange(

@@ -54,7 +54,7 @@ const materialTypeSchema = (isEdit: boolean) =>
       ? z.string()
       : z.string().min(1, "形状を選択してください"),
     nameJa: z.string().min(1, "名称（日本語）を入力してください"),
-    nameEn: z.string(),
+    nameTranslations: z.record(z.string(), z.string()).default({}),
     descriptionJa: z.string(),
     descriptionEn: z.string(),
     isActive: z.boolean(),
@@ -78,7 +78,7 @@ export interface MaterialTypeFormInitial {
     kindCode: string;
   } | null;
   nameJa: string;
-  nameEn: string;
+  nameTranslations: Record<string, string>;
   descriptionJa: string;
   descriptionEn: string;
   isActive: boolean;
@@ -107,7 +107,7 @@ export function MaterialTypeForm({
       gradeCode: "",
       shapeCode: "",
       nameJa: initial?.nameJa ?? "",
-      nameEn: initial?.nameEn ?? "",
+      nameTranslations: initial?.nameTranslations ?? {},
       descriptionJa: initial?.descriptionJa ?? "",
       descriptionEn: initial?.descriptionEn ?? "",
       isActive: initial?.isActive ?? true,
@@ -263,12 +263,12 @@ export function MaterialTypeForm({
 
       <FormSection title="基本情報">
         <LocalizedTextInput
-          enProps={form.getInputProps("nameEn")}
           help={fieldHelpTip("materialType", "name")}
           jaProps={form.getInputProps("nameJa")}
           label="名称"
           placeholder="K40UF"
           required
+          translationsProps={form.getInputProps("nameTranslations")}
         />
         <Switch
           label={<HelpLabel {...fieldHelp("materialType", "active")} />}

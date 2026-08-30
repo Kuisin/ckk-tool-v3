@@ -69,7 +69,7 @@ const FORM_OWNER_TYPE = "forms";
 
 function revalidate(code?: string, responseNumber?: string) {
   revalidatePath(BASE_PATH);
-  // 承認待ち・未回答フォームは 承認・予定 (CM01) にも出る。
+  // 承認依頼中・未回答フォームは 承認・予定 (CM01) にも出る。
   revalidatePath(TASKS_PATH);
   if (code) {
     revalidatePath(`${BASE_PATH}/${code}`);
@@ -873,7 +873,7 @@ async function actOnResponse(
   });
   if (!row) return actionError("回答が見つかりません");
   if (row.status !== "REQUESTED")
-    return actionError("この回答は承認待ちではありません");
+    return actionError("この回答は承認依頼中ではありません");
 
   const result = await actOnCurrentStep({
     targetType: "form_responses",

@@ -98,7 +98,7 @@ export const shots: Shot[] = [
     docPage: "operations/sales/quote/user",
     path: "/sales/quotes",
   },
-  // ── 販売: 試算（SA01）──────────────────────────────────────────────────────
+  // ── 販売: 価格試算（SA01）──────────────────────────────────────────────────────
   {
     id: "trial-estimate-list-01",
     docPage: "operations/sales/trial-estimate/user",
@@ -262,7 +262,7 @@ export const shots: Shot[] = [
   },
   // ── 販売: 初心者向けマニュアル用の追加撮影 ────────────────────────────────
   {
-    // 試算結果パネル（原価内訳〜見積単価）
+    // 価格試算結果パネル（原価内訳〜見積単価）
     id: "trial-estimate-new-02",
     docPage: "operations/sales/trial-estimate/user",
     path: "/sales/trial-estimates/new",
@@ -276,7 +276,7 @@ export const shots: Shot[] = [
       await page.getByRole("textbox", { name: /^最大径/ }).fill("6");
       await page.getByRole("textbox", { name: /^全長/ }).fill("60");
       await page.getByText(/参照価格/).first().waitFor();
-      await page.getByText("試算結果").first().scrollIntoViewIfNeeded();
+      await page.getByText("価格試算結果").first().scrollIntoViewIfNeeded();
     },
   },
   {
@@ -288,7 +288,7 @@ export const shots: Shot[] = [
     },
   },
   {
-    // 下書き試算の操作メニュー（確定 / 製品にリンク / 複製して再試算）
+    // 下書き価格試算の操作メニュー（確定 / 製品にリンク / 複製して再価格試算）
     id: "trial-estimate-detail-03",
     docPage: "operations/sales/trial-estimate/user",
     path: "/sales/trial-estimates/EST-202607-00003",
@@ -573,7 +573,7 @@ export const shots: Shot[] = [
     // 「9002」が無い画面で 60 秒待って落ちる）。
     path: "/general/tasks?tab=approvals",
     steps: async (page) => {
-      await page.getByRole("tab", { name: /承認待ち/ }).waitFor();
+      await page.getByRole("tab", { name: /承認依頼中/ }).waitFor();
       // 対象番号の書式に依存しない待ち（列見出しは行があるときだけ出る）。
       await page.getByText("対象番号").first().waitFor();
     },
@@ -1358,7 +1358,7 @@ export const shots: Shot[] = [
      * 固定サンプル時刻なので、mask/clip 無しで決定的に撮れる。
      */
   },
-  // ── 設定: 試算計算（SY02, 管理者）──────────────────────────────────────────
+  // ── 設定: 価格試算計算（SY02, 管理者）──────────────────────────────────────────
   {
     id: "trial-pricing-hub-01",
     docPage: "operations/sales/trial-estimate/settings",
@@ -1714,7 +1714,7 @@ export const shots: Shot[] = [
     path: "/settings/apps",
     user: "admin",
     steps: async (page) => {
-      await page.getByText("試算").first().waitFor();
+      await page.getByText("価格試算").first().waitFor();
     },
   },
   // ── システム: ファイル管理（SY06, 管理者）──────────────────────────────────
@@ -2070,10 +2070,10 @@ export const shots: Shot[] = [
     },
   },
   // ── プロセス: 標準フロー（process/default-flow）───────────────────────────
-  // 一つの注文を試算 → 請求まで通しで追うページ用。既存カットの steps を流用し、
+  // 一つの注文を価格試算 → 請求まで通しで追うページ用。既存カットの steps を流用し、
   // その段階で押すボタン・見る欄を highlight で赤枠強調する。
   {
-    // 下書き試算の操作メニュー — 「確定」を強調
+    // 下書き価格試算の操作メニュー — 「確定」を強調
     id: "flow-trial-estimate-01",
     docPage: "process/default-flow",
     path: "/sales/trial-estimates/EST-202607-00003",
@@ -2152,7 +2152,7 @@ export const shots: Shot[] = [
     highlight: [{ role: "button", name: "保存" }],
   },
   {
-    // 承認待ちの指示書 — 承認ボタンを強調（demo_shot は承認者）
+    // 承認依頼中の指示書 — 承認ボタンを強調（demo_shot は承認者）
     id: "flow-approval-01",
     docPage: "process/default-flow",
     path: "/production/work-orders/9002",
@@ -2253,7 +2253,7 @@ export const shots: Shot[] = [
   // ── プロセス: 分野別ページ（process/sales〜billing）───────────────────────
   // 各分野ページの「それぞれの段階でおきること」に 1 段階 1 枚で載せる赤枠カット。
   {
-    // 試算の新規フォーム — 保存ボタンを強調
+    // 価格試算の新規フォーム — 保存ボタンを強調
     id: "flow-trial-estimate-save-01",
     docPage: "process/sales",
     path: "/sales/trial-estimates/new",

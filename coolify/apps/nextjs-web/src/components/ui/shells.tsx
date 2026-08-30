@@ -14,7 +14,7 @@
  *   SummaryGrid — responsive FieldValue grid
  *   ResourceActions — edit / pdf / overflow menu (collapses to “…” on mobile)
  *   AuditTimeline   — 履歴 tab timeline
- *   LocalizedTextInput — { ja, en } paired inputs
+ *   LocalizedTextInput — default-locale field + multilingual popup (variable locales)
  */
 
 import {
@@ -35,15 +35,18 @@ import {
   UnstyledButton,
 } from "@mantine/core";
 import type { GetInputPropsReturnType } from "@mantine/form";
+import { useDisclosure } from "@mantine/hooks";
 import {
   IconDeviceTablet,
   IconDotsVertical,
   IconEdit,
   IconFileTypePdf,
+  IconLanguage,
 } from "@tabler/icons-react";
 import { type ReactNode, useState } from "react";
 import { useUnsavedChanges } from "@/components/layout/NavigationGuard";
 import { useIsMobile } from "@/hooks/useViewport";
+import { LOCALE_LABELS, LOCALES } from "@/lib/i18n";
 import { keepInAppOnClick } from "@/lib/pwa-display";
 import { AuditDetailModal } from "./AuditDetailModal";
 import {
@@ -54,6 +57,7 @@ import {
   SecondaryButton,
 } from "./buttons";
 import { HelpLabel } from "./HelpLabel";
+import { ModalShell } from "./modals";
 import { type Crumb, PageHeader } from "./PageHeader";
 import { PdfButton } from "./PdfButton";
 import { UserAvatar } from "./UserAvatar";
@@ -490,7 +494,7 @@ export interface AuditEntry {
   user: string;
   /** 操作者の顔写真（小）。未設定・システム操作なら null → イニシャル。 */
   avatarUrl?: string | null;
-  /** 操作元のキオスク端末名（共有タブレット経由のみ。Web 操作は null）。 */
+  /** 操作元の共有端末名（共有タブレット経由のみ。Web 操作は null）。 */
   device?: string | null;
   at: string;
   detail?: ReactNode;
@@ -580,18 +584,34 @@ export function AuditTimeline({ entries }: { entries: AuditEntry[] }) {
   );
 }
 
-// ── LocalizedTextInput ({ ja, en } pair) ─────────────────────────────────────
+// ── LocalizedTextInput（既定言語 1 欄 + 多言語ポップアップ） ─────────────────
+//
+// 以前は言語ごとに入力欄を並べていた（{ja, en} 固定 2 欄）。今後の対応言語
+// 増加に耐えるよう、`_specs/i18n-glossary.md` §2.10 の約束どおり
+// **既定言語（日本語）だけ本文に置き、それ以外は「多言語」ボタン →
+// モーダルで編集**する形にした。追加の言語は `LOCALES`（`lib/i18n`）に
+// 1 行足すだけでモーダルに反映される — フィールドや呼び出し側の変更は不要。
 export function LocalizedTextInput({
   label,
   jaProps,
-  enProps,
+  translationsProps,
   required,
   placeholder,
   help,
 }: {
   label: string;
-  jaProps: GetInputPropsReturnType;
-  enProps: GetInputPropsReturnType;
+  /**
+   * 既定言語（日本語）の値。本文に常時表示する唯一の欄。`description` を
+   * 追加で渡してよい（`TextInput` へそのまま伝わる）。
+   */
+  jaProps: GetInputPropsReturnType & { description?: ReactNode };
+  /**
+   * 日本語以外の翻訳をまとめて持つ 1 フィールド（`Record<言語コード, 値>`）。
+   * `form.getInputProps("xxxTranslations")` をそのまま渡せる — 生の
+   * `{value, onChange}` オブジェクトでもよい（編集モーダルなど useState 直書きの
+   * 画面向け）。
+   */
+  translationsProps: GetInputPropsReturnType;
   required?: boolean;
   placeholder?: string;
   /**
@@ -600,22 +620,63 @@ export function LocalizedTextInput({
    */
   help?: { help: string; manual: string };
 }) {
-  const isMobile = useIsMobile();
+  const [opened, { open, close }] = useDisclosure(false);
+  const translations: Record<string, string> = translationsProps.value ?? {};
+  const [draft, setDraft] = useState<Record<string, string>>(translations);
   const withHelp = (text: string) =>
     help ? <HelpLabel label={text} {...help} /> : text;
+  const otherLocales = LOCALES.filter((l) => l !== "ja");
+  const filledCount = otherLocales.filter((l) =>
+    translations[l]?.trim(),
+  ).length;
+
   return (
-    <SimpleGrid cols={isMobile ? 1 : 2} spacing="sm">
-      <TextInput
-        label={withHelp(`${label}（日本語）`)}
-        placeholder={placeholder}
-        withAsterisk={required}
-        {...jaProps}
-      />
-      <TextInput
-        label={withHelp(`${label}（English）`)}
-        placeholder={placeholder}
-        {...enProps}
-      />
-    </SimpleGrid>
+    <>
+      <Group align="flex-end" gap="xs" wrap="nowrap">
+        <TextInput
+          label={withHelp(`${label}（${LOCALE_LABELS.ja}）`)}
+          placeholder={placeholder}
+          style={{ flex: 1 }}
+          withAsterisk={required}
+          {...jaProps}
+        />
+        <SecondaryButton
+          leftSection={<IconLanguage size={14} />}
+          onClick={() => {
+            setDraft(translations);
+            open();
+          }}
+        >
+          多言語{filledCount > 0 ? `（${filledCount}）` : ""}
+        </SecondaryButton>
+      </Group>
+      <ModalShell
+        onClose={close}
+        onConfirm={() => {
+          translationsProps.onChange(draft);
+          close();
+        }}
+        opened={opened}
+        title={`${label} — 多言語`}
+      >
+        <Stack gap="sm">
+          <Text c="dimmed" size="xs">
+            {LOCALE_LABELS.ja}（{jaProps.value || "—"}
+            ）は上の欄で編集します。ここでは他の言語だけを設定します。
+          </Text>
+          {otherLocales.map((locale) => (
+            <TextInput
+              key={locale}
+              label={`${label}（${LOCALE_LABELS[locale]}）`}
+              onChange={(e) =>
+                setDraft((d) => ({ ...d, [locale]: e.currentTarget.value }))
+              }
+              placeholder={placeholder}
+              value={draft[locale] ?? ""}
+            />
+          ))}
+        </Stack>
+      </ModalShell>
+    </>
   );
 }

@@ -42,21 +42,35 @@ export function prismaErrorMessage(e: unknown, fallback: string): string {
 }
 
 /**
- * Build a `{ ja, en }` DB JSON value from form inputs.
- * DB multilingual fields must always carry both locales
+ * Build a `{ ja, en, ... }` DB JSON value from form inputs.
+ * DB multilingual fields must always carry both `ja` and `en`
  * (_specs/design.md §17.4) — an empty English value falls back to Japanese.
+ *
+ * `translations` は `LocalizedTextInput`（`nameTranslations` フィールド —
+ * `_specs/i18n-glossary.md` §2.10 の多言語ポップアップ）から来る、日本語以外の
+ * 言語コード→値。`en` が両方から来たときは明示の第2引数を優先する。
  */
-export function localizedInput(ja: string, en?: string): LocalizedText {
+export function localizedInput(
+  ja: string,
+  en?: string,
+  translations?: Record<string, string | undefined>,
+): LocalizedText {
   const j = ja.trim();
-  const e = (en ?? "").trim();
-  return { ja: j, en: e || j };
+  const extra: Record<string, string> = {};
+  for (const [locale, text] of Object.entries(translations ?? {})) {
+    const t = text?.trim();
+    if (t) extra[locale] = t;
+  }
+  const e = (en ?? extra.en ?? "").trim();
+  return { ...extra, ja: j, en: e || j };
 }
 
 /** Same, but returns null when the Japanese value is empty (optional fields). */
 export function localizedInputOrNull(
   ja?: string,
   en?: string,
+  translations?: Record<string, string | undefined>,
 ): LocalizedText | null {
   if (!ja?.trim()) return null;
-  return localizedInput(ja, en);
+  return localizedInput(ja, en, translations);
 }

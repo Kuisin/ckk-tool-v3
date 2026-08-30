@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * CodeExpressionEditor — 試算計算の式エディタ（依存なしのシンタックスハイライト）。
+ * CodeExpressionEditor — 価格試算計算の式エディタ（依存なしのシンタックスハイライト）。
  *
  * 透明 textarea を色付き <pre> オーバーレイに重ねる古典手法。上部に「利用可能な変数」
  * のクリック挿入パレットと「整形」ボタン。ハイライト/整形は lib/js-highlight.ts。

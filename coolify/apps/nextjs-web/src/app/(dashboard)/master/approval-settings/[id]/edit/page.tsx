@@ -2,7 +2,7 @@ import { notFound } from "next/navigation";
 import { ApprovalGroupForm } from "@/components/master/approval-settings/ApprovalGroupForm";
 import { requireAppRead } from "@/lib/authz-page";
 import { prisma } from "@/lib/db";
-import type { LocalizedText } from "@/lib/format";
+import { type LocalizedText, localizedTranslations } from "@/lib/format";
 
 export const dynamic = "force-dynamic";
 
@@ -27,7 +27,7 @@ export default async function MasterApprovalGroupsEditPage({
       initial={{
         id: r.id,
         nameJa: name?.ja ?? "",
-        nameEn: name?.en ?? "",
+        nameTranslations: localizedTranslations(name),
         isActive: r.isActive,
       }}
     />

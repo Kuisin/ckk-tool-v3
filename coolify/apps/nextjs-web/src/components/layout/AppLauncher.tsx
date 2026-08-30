@@ -23,12 +23,15 @@ import {
 import { IconHome, IconSearch } from "@tabler/icons-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { useLocale, useTranslations } from "next-intl";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { appKeyForPath, useHiddenApps } from "@/components/layout/AppFlags";
 import {
   type AppCategory,
+  appLabel,
   appList,
   CATEGORY_COLORS,
+  categoryLabel,
   getAppsByCategory,
 } from "@/lib/app-list";
 import { CATEGORY_SECTION_ICONS, resolveAppIcon } from "@/lib/icons";
@@ -46,6 +49,8 @@ interface AppLauncherProps {
 }
 
 export function AppLauncher({ onNavigate }: AppLauncherProps) {
+  const t = useTranslations("shell");
+  const locale = useLocale();
   const router = useRouter();
   const [search, setSearch] = useState("");
   // Index of the keyboard-highlighted search result (Arrow Up/Down).
@@ -92,6 +97,7 @@ export function AppLauncher({ onNavigate }: AppLauncherProps) {
       (app) =>
         !hiddenApps.has(app.key) &&
         (app.label.toLowerCase().includes(q.toLowerCase()) ||
+          appLabel(app, locale).toLowerCase().includes(q.toLowerCase()) ||
           app.operationCode.toUpperCase().startsWith(cleaned)),
     );
 
@@ -103,7 +109,7 @@ export function AppLauncher({ onNavigate }: AppLauncherProps) {
     }
 
     return codeResults;
-  }, [search, hiddenApps]);
+  }, [search, hiddenApps, locale]);
 
   // Keep the highlighted result scrolled into view as it moves.
   useEffect(() => {
@@ -114,7 +120,7 @@ export function AppLauncher({ onNavigate }: AppLauncherProps) {
     <Stack gap="sm" miw={0} w="100%">
       <Group align="center" gap={4} px="xs" wrap="nowrap">
         <UnstyledButton
-          aria-label="ホームへ移動"
+          aria-label={t("goHome")}
           className="home-link"
           component={Link}
           href="/"
@@ -163,7 +169,7 @@ export function AppLauncher({ onNavigate }: AppLauncherProps) {
               jumpToCode((results[activeIndex] ?? results[0]).code);
             }
           }}
-          placeholder="操作コード / アプリ名..."
+          placeholder={t("searchPlaceholder")}
           role="combobox"
           value={search}
         />
@@ -179,7 +185,7 @@ export function AppLauncher({ onNavigate }: AppLauncherProps) {
       >
         {searchResults ? (
           <Stack
-            aria-label="検索結果"
+            aria-label={t("searchResults")}
             gap={2}
             id="app-search-listbox"
             mx="xs"
@@ -187,7 +193,7 @@ export function AppLauncher({ onNavigate }: AppLauncherProps) {
           >
             {searchResults.length === 0 ? (
               <Text c="dimmed" py="md" size="sm" ta="center">
-                該当するアプリが見つかりません
+                {t("noAppsFound")}
               </Text>
             ) : (
               searchResults.map((entry, index) => {
@@ -225,9 +231,11 @@ export function AppLauncher({ onNavigate }: AppLauncherProps) {
                       <Text className="tabular-nums" fw={600} size="sm">
                         {formatOperationCodeDisplay(entry)}
                       </Text>
-                      <Text size="sm">{entry.label}</Text>
+                      <Text size="sm">
+                        {app ? appLabel(app, locale) : entry.label}
+                      </Text>
                       <Text c="dimmed" size="xs" visibleFrom="md">
-                        {entry.category}
+                        {categoryLabel(entry.category as AppCategory, locale)}
                       </Text>
                     </Group>
                   </UnstyledButton>
@@ -252,7 +260,7 @@ export function AppLauncher({ onNavigate }: AppLauncherProps) {
                       <SectionIcon size={14} />
                     </ThemeIcon>
                     <Title c="dimmed" order={5}>
-                      {cat.category}
+                      {categoryLabel(cat.category, locale)}
                     </Title>
                   </Group>
 
@@ -283,7 +291,7 @@ export function AppLauncher({ onNavigate }: AppLauncherProps) {
                                 <IconComponent size={24} />
                               </ThemeIcon>
                               <Text fw={500} lh={1.3} size="sm" ta="center">
-                                {app.label}
+                                {appLabel(app, locale)}
                               </Text>
                               <Text
                                 c="dimmed"

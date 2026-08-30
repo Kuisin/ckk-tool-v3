@@ -1,9 +1,9 @@
 "use client";
 
 /**
- * TrialEstimateForm — 見積試算 calculator (SA51 新規).
+ * TrialEstimateForm — 価格試算 calculator (SA51 新規).
  *
- * Two tabs: 「試算」(inputs + live results) and 「素材価格推移」(purchase-price
+ * Two tabs: 「価格試算」(inputs + live results) and 「素材価格推移」(purchase-price
  * line graph; clicking a point overrides the reference price). The default
  * reference price follows the system pricing policy (直近Nヶ月の最高単価 etc.,
  * editable in 設定). Material price comes from purchase history, not a static
@@ -116,7 +116,9 @@ export function TrialEstimateForm({
   const [toolType, setToolType] = useState<ToolType>(
     src?.toolType ?? "ROUND_BAR",
   );
-  const [name, setName] = useState(source ? `${source.name}（再試算）` : "");
+  const [name, setName] = useState(
+    source ? `${source.name}（再価格試算）` : "",
+  );
   const [customerId, setCustomerId] = useState<string | null>(
     source?.customerId ?? null,
   );
@@ -178,10 +180,10 @@ export function TrialEstimateForm({
   );
   // 加工単価・予備形状本数は scope:"global" のカスタム固定係数（customValues）を使用。
   // 基準数量 — 形状出し（段取り分）の按分にのみ使用。数量スケール（×倍率）は
-  // 価格表側で管理するため、試算はこの1点の基準単価だけを算出する。
+  // 価格表側で管理するため、価格試算はこの1点の基準単価だけを算出する。
   const [baseQuantity, setBaseQuantity] = useState<number | string>(100);
 
-  // ── カスタム入力項目（管理者が試算計算 SY02 で定義）───────────────────────
+  // ── カスタム入力項目（管理者が価格試算計算 SY02 で定義）───────────────────────
   const [customValues, setCustomValues] = useState<
     Record<string, number | boolean | string>
   >(() => {
@@ -257,7 +259,7 @@ export function TrialEstimateForm({
     openConfirm({
       title: "材料単価のカスタム設定",
       message:
-        "この素材の単価を手動で設定しますか？カスタム単価を使った試算は「カスタム」として記録されます。",
+        "この素材の単価を手動で設定しますか？カスタム単価を使った価格試算は「カスタム」として記録されます。",
       confirmLabel: "カスタム設定する",
       onConfirm: () => {
         setCustomMode(true);
@@ -304,7 +306,7 @@ export function TrialEstimateForm({
     if (!name.trim()) {
       notifications.show({
         title: "エラー",
-        message: "試算名を入力してください",
+        message: "価格試算名を入力してください",
         color: "red",
       });
       return;
@@ -328,8 +330,8 @@ export function TrialEstimateForm({
         notifications.show({
           title: "保存しました",
           message: overridden
-            ? "試算を保存しました（カスタム単価）"
-            : "試算を保存しました",
+            ? "価格試算を保存しました（カスタム単価）"
+            : "価格試算を保存しました",
           color: "green",
         });
         // 作成後は詳細（ビュー）ページへ。
@@ -350,7 +352,7 @@ export function TrialEstimateForm({
     <Stack gap="md">
       {/* 保存 / キャンセルはヘッダーではなく画面下端の FormActions に置く。 */}
       <PageHeader
-        breadcrumbs={["販売", { label: "試算", href: BASE_PATH }, "新規"]}
+        breadcrumbs={["販売", { label: "価格試算", href: BASE_PATH }, "新規"]}
         status={
           overridden ? (
             <Badge color="orange" variant="light">
@@ -358,20 +360,20 @@ export function TrialEstimateForm({
             </Badge>
           ) : undefined
         }
-        title="見積試算"
+        title="価格試算"
       />
 
       <AppTabs defaultValue="calc">
         <Tabs.List>
           <Tabs.Tab leftSection={<IconCalculator size={14} />} value="calc">
-            試算
+            価格試算
           </Tabs.Tab>
           <Tabs.Tab leftSection={<IconChartLine size={14} />} value="history">
             素材価格推移
           </Tabs.Tab>
         </Tabs.List>
 
-        {/* ── 試算 tab ───────────────────────────────────────────────────── */}
+        {/* ── 価格試算 tab ───────────────────────────────────────────────────── */}
         <Tabs.Panel pt="md" value="calc">
           <Stack gap="md">
             <FormSection title="基本">
@@ -415,7 +417,7 @@ export function TrialEstimateForm({
                     }
                     label={
                       <HelpLabel
-                        help="対象製品（任意）。指定して確定すると、価格表（顧客×製品）の作成時にこの試算を基準単価ソースとして選択できます。"
+                        help="対象製品（任意）。指定して確定すると、価格表（顧客×製品）の作成時にこの価格試算を基準単価ソースとして選択できます。"
                         label={
                           <HelpLabel
                             {...fieldHelp("trialEstimate", "product")}
@@ -686,7 +688,7 @@ export function TrialEstimateForm({
                 ).toLocaleString()}
                 /10分）・予備形状本数（
                 {Number(customValues.spareShapeCount ?? 3)}
-                本）は試算計算のグローバル固定係数を使用します。
+                本）は価格試算計算のグローバル固定係数を使用します。
               </Text>
             </FormSection>
 
@@ -781,7 +783,7 @@ export function TrialEstimateForm({
 
             {settings.customInputs.some((d) => d.scope !== "global") && (
               <FormSection
-                description="試算計算（SY02）で定義された追加入力。計算基準の式で変数として使われます。"
+                description="価格試算計算（SY02）で定義された追加入力。計算基準の式で変数として使われます。"
                 title="カスタム項目"
               >
                 <SimpleGrid cols={{ base: 1, sm: 2 }} maw={640} spacing="sm">
@@ -862,7 +864,7 @@ export function TrialEstimateForm({
               warnings={result.warnings}
             />
 
-            <FormSection required title="試算名">
+            <FormSection required title="価格試算名">
               <TextInput
                 maw={480}
                 onChange={(e) => setName(e.currentTarget.value)}
@@ -928,7 +930,7 @@ export function TrialEstimateForm({
 }
 
 // ── Results ──────────────────────────────────────────────────────────────────
-// 数量スケール（ロット別掛け率）は廃止 — 試算は基準単価1点のみを算出する。
+// 数量スケール（ロット別掛け率）は廃止 — 価格試算は基準単価1点のみを算出する。
 // 数量ごとの価格（×倍率）は価格表側で設定・上書きする。
 function ResultsPanel({
   breakdown,
@@ -956,7 +958,7 @@ function ResultsPanel({
   return (
     <Paper p="md" radius="md" withBorder>
       <Stack gap="md">
-        <Text fw={600}>試算結果</Text>
+        <Text fw={600}>価格試算結果</Text>
 
         {warnings.length > 0 && (
           <Alert

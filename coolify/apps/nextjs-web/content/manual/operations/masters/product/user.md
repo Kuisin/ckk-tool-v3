@@ -1,16 +1,16 @@
 ---
 title: "製品 — 操作マニュアル"
-description: "自社でつくる製品を登録しておく台帳です。ここに登録した製品が、試算や見積書の「製品」の選択肢になります。"
+description: "自社でつくる製品を登録しておく台帳です。ここに登録した製品が、価格試算や見積書の「製品」の選択肢になります。"
 screenshots: [master-product-list-01, master-product-new-01, master-product-detail-01, master-product-routes-01, master-product-route-new-01]
 ---
 自社でつくる製品を登録しておく台帳です。操作コードは `MS04` です。
 
-**製品が登録されていないと、[試算](/manual/ja/operations/sales/trial-estimate/user)も[価格表](/manual/ja/operations/sales/price-list/user)も[見積書](/manual/ja/operations/sales/quote/user)もつくれません。** 新しい製品の話が来たら、まずこの画面で登録します。
+**製品が登録されていないと、[価格試算](/manual/ja/operations/sales/trial-estimate/user)も[価格表](/manual/ja/operations/sales/price-list/user)も[見積書](/manual/ja/operations/sales/quote/user)もつくれません。** 新しい製品の話が来たら、まずこの画面で登録します。
 
 ## このアプリでできること
 
 - 自社でつくる製品を登録できます。
-- 登録すると、試算・価格表・見積書の「製品」の欄で選べるようになります。
+- 登録すると、価格試算・価格表・見積書の「製品」の欄で選べるようになります。
 - その製品を **どんな材料からつくるか**（材種・太さ・長さ）を記録できます。
 - 硬度や公差など、製品ごとの決まりごとを記録できます。
 - その製品をつくるときの **工程の並び** を登録できます。
@@ -29,7 +29,7 @@ screenshots: [master-product-list-01, master-product-new-01, master-product-deta
 
 製品を登録するには、先に **[材種](/manual/ja/operations/masters/material-type/user)が登録されている必要があります**。材種は「どんな材料を使うか」を選ぶための欄で使います。
 
-材種を選ばずに製品を登録することもできますが、後で[試算](/manual/ja/operations/sales/trial-estimate/user)をするときに材料の値段が出せません。できるだけ材種まで入れておくことをおすすめします。
+材種を選ばずに製品を登録することもできますが、後で[価格試算](/manual/ja/operations/sales/trial-estimate/user)をするときに材料の値段が出せません。できるだけ材種まで入れておくことをおすすめします。
 
 ## 画面の見かた
 
@@ -176,7 +176,7 @@ screenshots: [master-product-list-01, master-product-new-01, master-product-deta
 2. 「**無効化**」を選びます。
 3. 確認の画面で「**無効化する**」を押します。
 
-無効にすると新しい試算・価格表・見積書では選べなくなりますが、**過去のデータはそのまま残ります**。
+無効にすると新しい価格試算・価格表・見積書では選べなくなりますが、**過去のデータはそのまま残ります**。
 
 ## 入力項目
 

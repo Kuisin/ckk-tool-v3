@@ -91,7 +91,7 @@ export const PURCHASE_REQUEST_HISTORY_ACTION_LABEL: Record<string, string> = {
   CANCEL: "キャンセル",
 };
 
-/** 編集可能か — 作成中（DRAFT）/ 差し戻し（REJECTED）のみ。 */
+/** 編集可能か — 下書き（DRAFT）/ 差し戻し（REJECTED）のみ。 */
 export function isEditable(r: Pick<PurchaseRequestView, "status">) {
   return r.status === "DRAFT" || r.status === "REJECTED";
 }

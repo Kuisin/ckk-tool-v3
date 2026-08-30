@@ -5,7 +5,7 @@
  * PENDING の approval_requests を対象種別（注文請書 / 指示書 / 素材発注書 /
  * 購買依頼）横断で一覧する。
  *
- * 旧データ補完（依頼行のない承認待ちを行ワークフロー列から合成していた分岐）は
+ * 旧データ補完（依頼行のない承認依頼中を行ワークフロー列から合成していた分岐）は
  * 廃止した — マイグレーション 20260908090000_approval_flows が進行中の全書類に
  * 実体の依頼行を作るため。
  */
@@ -79,7 +79,7 @@ async function readableTargetTypes(
   return readable;
 }
 
-/** 承認待ち一覧 (PD03) — PENDING の承認依頼。依頼日時の昇順。 */
+/** 承認依頼中一覧 (PD03) — PENDING の承認依頼。依頼日時の昇順。 */
 export async function fetchPendingApprovalRequests(): Promise<
   ApprovalRequestRow[]
 > {

@@ -295,7 +295,7 @@ export function DesignRequestDetail({
       label: "依頼",
       description: request.requestedAt
         ? fmt.date(request.requestedAt)
-        : "作成中",
+        : "下書き",
       // 差し戻し中は赤（_specs/design.md §9 REJECTED = red）。
       color: request.status === "REJECTED" ? "red" : undefined,
       loading: request.status === "DRAFT",
@@ -399,8 +399,8 @@ export function DesignRequestDetail({
   const lastReject = records.find((h) => h.action === "REJECT");
 
   /**
-   * 「いまやること」カード（最上部）。承認待ちは承認権限の有無で色が変わる
-   * — 権限あり = 緑 + 承認/差し戻し、権限なし = グレーの「承認待ち」表示。
+   * 「いまやること」カード（最上部）。承認依頼中は承認権限の有無で色が変わる
+   * — 権限あり = 緑 + 承認/差し戻し、権限なし = グレーの「承認依頼中」表示。
    */
   let actionCard: ReactNode = null;
   if (canRequestApproval(request) || request.status === "REQUESTED") {
@@ -832,7 +832,7 @@ export function DesignRequestDetail({
         <Stack gap="sm">
           <Text size="sm">
             設計依頼書 {request.requestNumber} をキャンセルします。承認依頼中の
-            場合は承認待ちの一覧からも取り下げられます。
+            場合は承認依頼中の一覧からも取り下げられます。
           </Text>
           <Textarea
             autosize

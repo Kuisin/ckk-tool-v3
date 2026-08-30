@@ -31,7 +31,7 @@ View-only operations such as browsing or downloading PDFs are not recorded (only
 
 - **Date/time** — when the operation happened. Newest first by default.
 - **Action** — Create / Update / Delete, etc.
-- **Target** — the kind of data changed, e.g. quote (見積書), trial estimate (試算), price list (価格表), product, business partner, app management.
+- **Target** — the kind of data changed, e.g. quote (見積書), trial estimate (価格試算), price list (価格表), product, business partner, app management.
 - **Record** — the business identifier (document numbers like `QOT-…` / `EST-…`, master IDs; monospace).
 - **User** — the display name of the user who acted. System-driven operations show as "システム (System)". Operations made via a shared tablet (kiosk device) carry a **device-name badge** under the name (operations from the Web carry no badge).
 - **Changes** — a summary of the change. For updates, a per-field diff such as "Status: Draft → Confirmed".

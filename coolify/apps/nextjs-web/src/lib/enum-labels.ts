@@ -118,9 +118,9 @@ export const PROCESS_CATEGORY_COLOR: Record<string, string> = {
   SHIPPING: "pink",
 };
 
-/** app.PROCESS_EXECUTION（工程の実施場所） */
+/** app.PROCESS_EXECUTION（工程の実施場所）。用語は「社内」「外注」の2語だけで組み立てる。 */
 export const PROCESS_EXECUTION_LABEL: Record<string, string> = {
-  INTERNAL: "社内のみ",
+  INTERNAL: "社内",
   INTERNAL_OR_OUTSOURCE: "社内・外注",
 };
 
@@ -217,7 +217,7 @@ export const ACCEPTANCE_DELIVERY_METHOD_OPTIONS = Object.entries(
 
 /** app.PURCHASE_STATUS（素材発注書） */
 export const PURCHASE_STATUS_LABEL: Record<string, string> = {
-  DRAFT: "作成中",
+  DRAFT: "下書き",
   REQUESTED: "承認依頼中",
   APPROVED: "承認済",
   ORDERED: "発注済",

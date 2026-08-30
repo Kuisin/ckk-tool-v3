@@ -91,7 +91,7 @@ function NoAccessBadge() {
 
 /**
  * 段バッジ — 「2/3 部門承認」。最終段だけ色を変えて「あと 1 つで通る」を出す
- * （design.md §9 の承認待ち配色: 途中=yellow / 最終=orange）。
+ * （design.md §9 の承認依頼中配色: 途中=yellow / 最終=orange）。
  * ALL 段は承認済み人数を添える。
  */
 function StepBadge({ row }: { row: ApprovalRequestRow }) {
@@ -236,7 +236,7 @@ export function ApprovalRequestTable({
         data={filtered}
         defaultSort={{ key: "requestedAt", dir: "asc" }}
         emptyIcon={<IconShieldCheck size={24} />}
-        emptyMessage="承認待ちの依頼はありません"
+        emptyMessage="承認依頼中の依頼はありません"
         getRowId={(r) => r.id}
         onRowClick={(r) => {
           const href = targetHref(r);

@@ -19,7 +19,7 @@ import "server-only";
  * rich-text-core.toHtml が内部で全てのテキストと href をエスケープしている。
  */
 
-import { STATUS_MAPS } from "@/components/ui/StatusBadge";
+import { statusLabel as statusMapLabel } from "@/components/ui/StatusBadge";
 import type { ApprovalTrailEntry } from "./approvals";
 import {
   answerShape,
@@ -45,10 +45,6 @@ export function esc(value: string): string {
     .replaceAll('"', "&quot;")
     .replaceAll("'", "&#39;");
 }
-
-const statusLabel = (status: string): string =>
-  (STATUS_MAPS.FormResponse as Record<string, { label: string }>)[status]
-    ?.label ?? status;
 
 const EMPTY_CELL = '<span class="empty">（未回答）</span>';
 
@@ -170,7 +166,7 @@ export function responsePageHtml(input: FormResponsePageInput): string {
   const meta = [
     ["回答番号", response.responseNumber],
     ["No.", String(response.recordNo)],
-    ["状態", statusLabel(response.status)],
+    ["状態", statusMapLabel("FormResponse", response.status)],
     // 匿名フォームでは行ごと出さない（空欄だと「誰か居るのに空」に見える）。
     ...(respondent ? [["回答者", respondent]] : []),
     [

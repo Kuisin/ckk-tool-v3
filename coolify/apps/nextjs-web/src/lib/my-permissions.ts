@@ -35,7 +35,7 @@ export interface MyOperationState {
   allowed: boolean;
   /** 申請する資格があるか（無ければロールから足りない）。 */
   canRequest: boolean;
-  /** 承認待ちの申請があるか。 */
+  /** 承認依頼中の申請があるか。 */
   pending: boolean;
   /**
    * 残り（ミリ秒）。**まだ一度も使っていない付与では窓の終わりまで**なので、

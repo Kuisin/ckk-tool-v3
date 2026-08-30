@@ -4,7 +4,7 @@
  * PriceListTypeForm — 価格表 新規作成 / 編集 (顧客×製品, design.md §8.3).
  *
  * One page edits ONE (顧客, 製品) entry with its 注文種別バリアント一式。
- * バリアントごとに: 基準単価（製品にリンクされた確定済み試算をソースに選択、
+ * バリアントごとに: 基準単価（製品にリンクされた確定済み価格試算をソースに選択、
  * 手動上書き可）+ 有効期間 + 状態 + quantity tiers（数量範囲 → ×倍率。単価 =
  * 基準単価 × 倍率、行ごとに手動上書き可）. The (顧客, 製品) keys are the
  * identity of the entry and are LOCKED after creation; 注文種別 is locked per
@@ -79,9 +79,9 @@ const variantFormSchema = z.object({
   /** 保存済みバリアントの id（新規は null）. */
   id: z.string().nullable(),
   orderType: z.enum(["PRODUCTION", "TEST", "SAMPLE", "OTHER"]),
-  /** 基準単価ソースの試算番号（null = 手動設定）. */
+  /** 基準単価ソースの価格試算番号（null = 手動設定）. */
   sourceEstimate: z.string().nullable(),
-  /** 試算値を使わず手動の基準単価を使う（送信時に除去）. */
+  /** 価格試算値を使わず手動の基準単価を使う（送信時に除去）. */
   customBase: z.boolean(),
   baseUnitPrice: z.number().min(0),
   validFrom: z.string().min(1, "有効開始日を選択してください"),
@@ -208,7 +208,7 @@ export function PriceListTypeForm({
   /** Create: 顧客/製品 prefilled+locked（`?customer&product` リンク経由）. */
   lockedCustomerId?: string;
   lockedProductId?: string;
-  /** 既存バリアントの試算番号 → 見積単価（基準単価のロック値）. */
+  /** 既存バリアントの価格試算番号 → 見積単価（基準単価のロック値）. */
   estimateBases?: Record<string, number>;
   /** ロック時の表示ラベル（未ロック時は SearchSelect が検索する）. */
   customerOption?: Option | null;
@@ -234,7 +234,7 @@ export function PriceListTypeForm({
     }),
   });
 
-  // ── 製品にリンクされた試算（基準単価ソース候補）────────────────────────────
+  // ── 製品にリンクされた価格試算（基準単価ソース候補）────────────────────────────
   const [sources, setSources] = useState<EstimateSource[]>([]);
   const productId = form.values.productId;
   useEffect(() => {
@@ -251,7 +251,7 @@ export function PriceListTypeForm({
     };
   }, [productId]);
 
-  /** バリアントの基準単価ロック値（試算ソース選択時のみ）。 */
+  /** バリアントの基準単価ロック値（価格試算ソース選択時のみ）。 */
   const baseOf = (v: VariantForm): number | null => {
     if (!v.sourceEstimate) return null;
     return (
@@ -264,19 +264,19 @@ export function PriceListTypeForm({
   /** カスタム基準単価の ON/OFF — どちらの向きも確認ポップアップを挟む。 */
   const toggleCustomBase = (vi: number, next: boolean) => {
     const estimateBase = baseOf(form.values.variants[vi]);
-    if (estimateBase == null) return; // 試算ソースなし: 常に手動
+    if (estimateBase == null) return; // 価格試算ソースなし: 常に手動
     if (next) {
       openConfirm({
         title: "カスタム基準単価の使用",
-        message: `試算の見積単価（${formatMoney(estimateBase)}）を使わず、基準単価を手動で設定します。よろしいですか？`,
+        message: `価格試算の見積単価（${formatMoney(estimateBase)}）を使わず、基準単価を手動で設定します。よろしいですか？`,
         confirmLabel: "カスタム設定する",
         onConfirm: () => form.setFieldValue(`variants.${vi}.customBase`, true),
       });
     } else {
       openConfirm({
-        title: "試算値に戻す",
-        message: `手動で設定した基準単価を破棄し、試算の見積単価（${formatMoney(estimateBase)}）に戻します。`,
-        confirmLabel: "試算値に戻す",
+        title: "価格試算値に戻す",
+        message: `手動で設定した基準単価を破棄し、価格試算の見積単価（${formatMoney(estimateBase)}）に戻します。`,
+        confirmLabel: "価格試算値に戻す",
         onConfirm: () => {
           form.setFieldValue(`variants.${vi}.customBase`, false);
           form.setFieldValue(`variants.${vi}.baseUnitPrice`, estimateBase);
@@ -316,7 +316,7 @@ export function PriceListTypeForm({
       return {
         id: v.id,
         orderType: v.orderType,
-        // カスタム未使用時は必ず試算値を採用する（バイパスは明示チェックのみ）。
+        // カスタム未使用時は必ず価格試算値を採用する（バイパスは明示チェックのみ）。
         baseUnitPrice:
           !v.customBase && estimateBase != null
             ? estimateBase
@@ -482,7 +482,7 @@ export function PriceListTypeForm({
         )}
         {form.values.productId && sources.length === 0 && (
           <Alert color="gray" mt="sm" variant="light">
-            この製品にリンクされた確定済みの試算はありません。基準単価は手動で設定します（試算（SA01）で製品を指定して確定すると、ここで選択できます）。
+            この製品にリンクされた確定済みの価格試算はありません。基準単価は手動で設定します（価格試算（SA01）で製品を指定して確定すると、ここで選択できます）。
           </Alert>
         )}
       </FormSection>
@@ -493,7 +493,7 @@ export function PriceListTypeForm({
         const savedVariant = Boolean(variant.id);
         return (
           <FormSection
-            description="基準単価は試算の見積単価から取得します。手動上書きは明示的にカスタムを有効化した場合のみ（確認あり）。各段階の単価 = 基準単価 × 倍率。"
+            description="基準単価は価格試算の見積単価から取得します。手動上書きは明示的にカスタムを有効化した場合のみ（確認あり）。各段階の単価 = 基準単価 × 倍率。"
             key={form.key(`variants.${vi}`)}
             title={`注文種別: ${ORDER_TYPE_LABEL[variant.orderType] ?? variant.orderType}`}
           >
@@ -513,19 +513,19 @@ export function PriceListTypeForm({
               )}
               {savedVariant ? (
                 <FieldValue
-                  label="価格ソース（試算）"
+                  label="価格ソース（価格試算）"
                   value={variant.sourceEstimate ?? "手動設定"}
                 />
               ) : (
                 <Select
                   clearable
                   data={sourceOptions}
-                  description="製品にリンクされた確定済み試算"
+                  description="製品にリンクされた確定済み価格試算"
                   disabled={sourceOptions.length === 0}
                   label={
                     <HelpLabel
                       {...fieldHelp("priceList", "basePrice", {
-                        label: "価格ソース（試算）",
+                        label: "価格ソース（価格試算）",
                       })}
                     />
                   }
@@ -543,7 +543,9 @@ export function PriceListTypeForm({
                     }
                   }}
                   placeholder={
-                    sourceOptions.length === 0 ? "試算なし（手動）" : "手動設定"
+                    sourceOptions.length === 0
+                      ? "価格試算なし（手動）"
+                      : "手動設定"
                   }
                   value={variant.sourceEstimate}
                 />
@@ -582,24 +584,24 @@ export function PriceListTypeForm({
 
             <SimpleGrid cols={{ base: 1, sm: 3 }} mt="sm" spacing="sm">
               <FieldValue
-                label="見積単価（試算）"
+                label="見積単価（価格試算）"
                 value={
                   estimateBase != null
                     ? formatMoney(estimateBase)
-                    : "—（試算ソースなし）"
+                    : "—（価格試算ソースなし）"
                 }
               />
               <Checkbox
                 checked={customBase}
                 description={
                   estimateBase == null
-                    ? "試算ソースがないため手動設定のみ"
+                    ? "価格試算ソースがないため手動設定のみ"
                     : undefined
                 }
                 disabled={estimateBase == null}
                 label={
                   <HelpLabel
-                    help="既定では試算の見積単価をそのまま使います。手動で別の基準単価を設定する場合のみチェックしてください（確認あり）。"
+                    help="既定では価格試算の見積単価をそのまま使います。手動で別の基準単価を設定する場合のみチェックしてください（確認あり）。"
                     label="カスタム単価を使用"
                   />
                 }
@@ -610,14 +612,14 @@ export function PriceListTypeForm({
                 description={
                   customBase
                     ? estimateBase != null
-                      ? `手動設定（試算値: ${formatMoney(estimateBase)}）`
+                      ? `手動設定（価格試算値: ${formatMoney(estimateBase)}）`
                       : "手動設定"
-                    : "試算値をそのまま使用"
+                    : "価格試算値をそのまま使用"
                 }
                 disabled={!customBase}
                 label={
                   <HelpLabel
-                    help="価格表の基準になる単価。既定は試算の見積単価。各数量帯の単価 = 基準単価 × 倍率。"
+                    help="価格表の基準になる単価。既定は価格試算の見積単価。各数量帯の単価 = 基準単価 × 倍率。"
                     label={
                       <HelpLabel {...fieldHelp("priceList", "basePrice")} />
                     }
@@ -675,7 +677,7 @@ export function PriceListTypeForm({
                   </Table.Th>
                   <Table.Th ta="right">
                     <HelpLabel
-                      help="基準単価（試算由来）× 倍率 の自動計算値。"
+                      help="基準単価（価格試算由来）× 倍率 の自動計算値。"
                       label="自動計算単価"
                     />
                   </Table.Th>

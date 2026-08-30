@@ -6,9 +6,9 @@ import "server-only";
  * The whole "アプリ設定" framework persists to ONE table: `app.system_settings`
  * (key PK, value JSON, description, updated_by, updated_at — see
  * `_specs/tables.md`). Keys are namespaced `"<namespace>.<field>"` so any app
- * can keep arbitrary settings — including code strings (e.g. the 試算 custom
+ * can keep arbitrary settings — including code strings (e.g. the 価格試算 custom
  * calculation) — without a schema change. Per-app adapters (e.g.
- * `system-settings.ts` for 試算) map their typed shape onto these keys.
+ * `system-settings.ts` for 価格試算) map their typed shape onto these keys.
  *
  * This is the single generic accessor; feature code should prefer a typed
  * adapter over reading raw keys.

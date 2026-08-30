@@ -28,13 +28,16 @@ import {
 import { IconLayoutDashboard, IconStarFilled } from "@tabler/icons-react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
+import { useLocale, useTranslations } from "next-intl";
 import { useHiddenApps, useUnreleasedApps } from "@/components/layout/AppFlags";
 import { UserAvatar } from "@/components/ui/UserAvatar";
 import { useIsMobile } from "@/hooks/useViewport";
 import {
   type AppEntry,
+  appLabel,
   appList,
   CATEGORY_COLORS,
+  categoryLabel,
   isAppCategory,
   WORKPROCESS_PARAM,
 } from "@/lib/app-list";
@@ -42,6 +45,7 @@ import {
   DEFAULT_HOME_SETTINGS,
   type HomeSettings,
   organizeHomeApps,
+  UNGROUPED_SECTION_TITLE,
 } from "@/lib/home-settings-core";
 import {
   type AppIcon,
@@ -90,6 +94,9 @@ export function HomeApps({
   settings = DEFAULT_HOME_SETTINGS,
   isLoading = false,
 }: HomeAppsProps) {
+  const t = useTranslations("home");
+  const locale = useLocale();
+  const displayName = user.username ? user.displayName : t("guest");
   const hiddenApps = useHiddenApps();
   const unreleasedApps = useUnreleasedApps();
   const searchParams = useSearchParams();
@@ -146,7 +153,7 @@ export function HomeApps({
               <IconComponent size={28} />
             </ThemeIcon>
             <Text fw={500} lh={1.3} size="sm" ta="center">
-              {app.label}
+              {appLabel(app, locale)}
             </Text>
             <Text c="dimmed" className="tabular-nums" size="xs">
               {app.operationCode}
@@ -165,13 +172,13 @@ export function HomeApps({
           <Group>
             <UserAvatar
               initials={user.initials}
-              name={user.displayName}
+              name={displayName}
               size={72}
               src={user.avatarUrl}
               thumbSrc={user.avatarThumbUrl}
             />
             <Stack gap={4}>
-              <Title order={3}>{user.displayName}</Title>
+              <Title order={3}>{displayName}</Title>
               {user.username && (
                 <Text c="dimmed" size="sm">
                   {user.username}
@@ -225,13 +232,13 @@ export function HomeApps({
       {workprocess && (
         <Group gap="xs" wrap="nowrap">
           <Text c="dimmed" size="sm">
-            工程で絞り込み中:
+            {t("workprocessFilter")}
           </Text>
           <Badge color={CATEGORY_COLORS[workprocess]} size="lg" variant="light">
-            {workprocess}
+            {categoryLabel(workprocess, locale)}
           </Badge>
           <CloseButton
-            aria-label="絞り込みを解除"
+            aria-label={t("clearFilter")}
             component={Link}
             href="/"
             size="sm"
@@ -247,7 +254,7 @@ export function HomeApps({
               <IconStarFilled size={14} />
             </ThemeIcon>
             <Title c="dimmed" order={5}>
-              お気に入り
+              {t("favorites")}
             </Title>
           </Group>
           <SimpleGrid cols={isMobile ? 2 : 4} spacing="sm">
@@ -278,7 +285,11 @@ export function HomeApps({
                 <SectionIcon size={14} />
               </ThemeIcon>
               <Title c="dimmed" order={5}>
-                {section.title}
+                {section.category
+                  ? categoryLabel(section.category, locale)
+                  : section.title === UNGROUPED_SECTION_TITLE
+                    ? t("other")
+                    : section.title}
               </Title>
             </Group>
 

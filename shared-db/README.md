@@ -23,12 +23,12 @@ Single source of truth for the PostgreSQL database (`ckk`) that holds
 | `kot` | hr_records, employees, kot_employees, kot_match_review, import_runs, `v_labor` view | kot-import, admintools (role `kot`) |
 | `directory` | employee_directory (+ `ldap_guid`: the immutable AD objectGUID apps FK to), ldap_sync_log | vpn-ldap ldap-sync (role `ldap_sync`) |
 | `admintools` | mail_accounts, group_members | admintools (role `admintools`) |
-| `app` | ALL ckk-tool-v3 business tables in ONE schema — RBAC (users/roles/permissions), master data, business partners, sales (試算 → 価格表 → 見積書) — incl. the `app.user_permissions` view | nextjs-web (role `app`) |
+| `app` | ALL ckk-tool-v3 business tables in ONE schema — RBAC (users/roles/permissions), master data, business partners, sales (価格試算 → 価格表 → 見積書) — incl. the `app.user_permissions` view | nextjs-web (role `app`) |
 | `analytics` | BI/AI 用の名前解決済みレポートビューのみ（`sql/analytics-views.sql`、security_invoker。Prisma 管理外） | postgres（views） |
 | `public` | Prisma `_prisma_migrations` only (labor compat views retired 2026-08 — see `sql/metabase-compat.sql`) | — |
 
 The v3 web app owns a **single** `app` schema (Prisma-managed). Its scope is
-deliberately **minimal**: 試算 (`app.estimates`), 価格表
+deliberately **minimal**: 価格試算 (`app.estimates`), 価格表
 (`app.price_list_entries` + `price_list_variants` + `price_list_tiers` +
 `price_list_discounts`), 見積書
 (`app.quotes` + `quote_items`), their master-data deps (`app.material_types` /
@@ -146,7 +146,7 @@ FK を最終ファイルに集めてあるので、テーブルがどのファ�
 
 | migration | 中身 |
 |---|---|
-| `..0007_seed_master_data` | 材種（コード構成要素 + 材種 + 既定単価）/ 工程マスタ + 工程依存 / 試算設定（`system_settings`）/ 通貨 / `system` ユーザー |
+| `..0007_seed_master_data` | 材種（コード構成要素 + 材種 + 既定単価）/ 工程マスタ + 工程依存 / 価格試算設定（`system_settings`）/ 通貨 / `system` ユーザー |
 | `..0008_seed_rbac_roles` | 権限コード 18 種 + admin/staff + 業務ロール 15 種 |
 | `..0009_seed_feature_flags` | main で公開するアプリ |
 

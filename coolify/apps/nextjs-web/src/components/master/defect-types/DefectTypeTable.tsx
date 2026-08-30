@@ -46,7 +46,7 @@ export interface DefectTypeRow {
   /** 表示名（現ロケール解決済み） */
   name: string;
   nameJa: string;
-  nameEn: string;
+  nameTranslations: Record<string, string>;
   sortOrder: number;
   isActive: boolean;
 }

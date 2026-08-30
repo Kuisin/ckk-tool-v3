@@ -16,7 +16,7 @@ Signing in successfully and still not being able to open a screen is the normal 
 | Where you use it | How you are identified | Steps |
 | --- | --- | --- |
 | Desktop (web) | Company account sign-in, or username and password | [Getting started](start) |
-| Shop-floor tablet | QR card and PIN | [Starting on the kiosk](operations/kiosk/start/user) |
+| Shop-floor tablet | QR card and PIN | [Getting started on the shared device](operations/kiosk/start/user) |
 
 ## Authorisation — a permission is three things together
 
@@ -77,7 +77,7 @@ Permissions fall into four kinds. To see which you hold, open [My permissions](/
 
 | Permission | Code | What it covers |
 | --- | --- | --- |
-| Price list | `price_list` | Work with trial estimates and price lists — the per-customer unit prices. |
+| Price list | `price_list` | Work with price estimates and price lists — the per-customer unit prices. |
 | Quote | `quote` | Work with quotes. |
 | Order acceptance | `order_acceptance` | Work with order acceptances and their lines. |
 | Design request | `design_request` | Work with design requests. |
@@ -105,15 +105,15 @@ Permissions fall into four kinds. To see which you hold, open [My permissions](/
 
 | Permission | Code | What it covers |
 | --- | --- | --- |
-| System admin | `system` | Change system-side settings: app management, pricing engine, links, order intake, AI provider, notification email. |
-| Kiosk admin | `kiosk` | View shared devices and edit their name and location. **Revealing secrets and enrolling or revoking devices are separate** (see privileged operations). |
+| System admin | `system` | Change system-side settings: app management, price estimate engine, links, order intake, AI provider, notification email. |
+| Shared device admin | `kiosk` | View shared devices and edit their name and location. **Revealing secrets and enrolling or revoking devices are separate** (see privileged operations). |
 
 ### Privileged (request & approval required)
 
 | Permission | Code | What it covers |
 | --- | --- | --- |
-| Kiosk device secrets | `kiosk_secret` | Reveal the maintenance-exit PIN, PIN history and device settings code; regenerate codes and reset the device key. |
-| Kiosk device enrolment | `kiosk_device` | Create, link, activate, disable and revoke device profiles. Adding a device grants access. |
-| Kiosk card issuance | `kiosk_card` | See the card list. Issuing, assigning, revoking, resetting PINs and printing sheets need approval. |
+| Shared device secrets | `kiosk_secret` | Reveal the maintenance-exit PIN, PIN history and device settings code; regenerate codes and reset the device key. |
+| Shared device enrolment | `kiosk_device` | Create, link, activate, disable and revoke device profiles. Adding a device grants access. |
+| Shared device card issuance | `kiosk_card` | See the card list. Issuing, assigning, revoking, resetting PINs and printing sheets need approval. |
 | Personal data access | `personal_data` | Open login and activity history. Details (IP, device signature) and cross-document search need approval. Per-document history tabs are not restricted by this. |
 | User administration | `user_admin` | Open user management. Suspending, restoring and changing plants go through a per-change approval. |

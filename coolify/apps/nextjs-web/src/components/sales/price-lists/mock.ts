@@ -26,7 +26,7 @@ export const MOCK_PRICE_ENTRIES: PriceListEntry[] = [
       {
         id: "va-1",
         orderType: "PRODUCTION",
-        baseUnitPrice: 6000, // 試算 EST-202605-00031 の見積単価
+        baseUnitPrice: 6000, // 価格試算 EST-202605-00031 の見積単価
         validFrom: "2026-01-01",
         validUntil: null,
         isActive: true,

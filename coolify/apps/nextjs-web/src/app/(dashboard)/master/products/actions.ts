@@ -39,7 +39,7 @@ const LENGTH_MAX = 999;
 const productInput = z
   .object({
     nameJa: z.string().min(1, "名称（日本語）を入力してください"),
-    nameEn: z.string().optional(),
+    nameTranslations: z.record(z.string(), z.string()).optional(),
     /**
      * 製品が要求する素材の指定 = 材種 + 直径 + 全長。特定 materials 行には
      * 紐付けない（同一材種・直径の複数素材が cut-to-length で充当可能）。
@@ -160,7 +160,7 @@ export async function createProduct(
       data: {
         yearMonth,
         seq,
-        name: localizedInput(v.nameJa, v.nameEn),
+        name: localizedInput(v.nameJa, undefined, v.nameTranslations),
         materialTypeId: spec.materialTypeId,
         diameterMm: spec.diameterMm,
         lengthMm: spec.lengthMm,
@@ -226,7 +226,7 @@ export async function updateProduct(
     await prisma.product.update({
       where: { id },
       data: {
-        name: localizedInput(v.nameJa, v.nameEn),
+        name: localizedInput(v.nameJa, undefined, v.nameTranslations),
         materialTypeId: spec.materialTypeId,
         diameterMm: spec.diameterMm,
         lengthMm: spec.lengthMm,

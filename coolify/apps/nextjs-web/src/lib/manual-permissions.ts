@@ -81,7 +81,7 @@ export const MANUAL_PAGES: readonly ManualPageSource[] = [
   { path: "operations/production/product-inventory/user", app: "inventory" },
   { path: "operations/production/material-inventory/user", app: "inventory" },
   // 旧 承認管理（PD03）は 一般カテゴリの 承認・予定（CM01）へ移設した。画面自体は
-  // ログインだけで開くが、承認待ちの一覧が出るかは approve:READ で決まる。
+  // ログインだけで開くが、承認依頼中の一覧が出るかは approve:READ で決まる。
   { path: "operations/production/approval/user", code: "approve" },
   // ── 出荷 ────────────────────────────────────────────────────────────────
   { path: "operations/shipping/delivery-order/user", app: "delivery-orders" },
@@ -353,7 +353,7 @@ const REFERENCE: Record<Locale, ReferencePhrases> = {
     authBody:
       "システムは 2 つの段階を踏みます。\n\n1. **認証（にんしょう）** … あなたが誰なのかを確かめる段階です。いわゆるログインで、ここを通ると「誰として使っているか」が決まります。\n2. **認可（にんか）** … その人に何を許すかを決める段階です。ここで使うのが**権限**です。\n\nログインできたのに画面が開けないことがあるのは、この 2 つが別だからです。認証は通っている（あなたが誰かは分かっている）けれど、認可で足りていない（その操作は許されていない）という状態です。",
     authTable:
-      "| どこから使うか | 本人確認のしかた | 手順 |\n| --- | --- | --- |\n| パソコン（Web） | 社内アカウントでのサインイン、またはユーザー名とパスワード | [はじめかた](start) |\n| 現場の共有タブレット | QRカードと PIN | [キオスクをはじめる](operations/kiosk/start/user) |",
+      "| どこから使うか | 本人確認のしかた | 手順 |\n| --- | --- | --- |\n| パソコン（Web） | 社内アカウントでのサインイン、またはユーザー名とパスワード | [はじめかた](start) |\n| 現場の共有タブレット | QRカードと PIN | [共有端末のはじめかた](operations/kiosk/start/user) |",
     authzHeading: "## 認可 — 権限は 3 つの組み合わせで決まります",
     shapeIntro:
       "「見積書を、自分の担当ぶんだけ、見られる」のように、3 つが揃って 1 つの権限になります。",
@@ -387,7 +387,7 @@ const REFERENCE: Record<Locale, ReferencePhrases> = {
     authBody:
       "The system works in two stages.\n\n1. **Authentication** — establishing who you are. This is signing in; afterwards the system knows which person is using it.\n2. **Authorisation** — deciding what that person may do. This is where permissions come in.\n\nSigning in successfully and still not being able to open a screen is the normal consequence of these being separate: authentication passed, authorisation did not.",
     authTable:
-      "| Where you use it | How you are identified | Steps |\n| --- | --- | --- |\n| Desktop (web) | Company account sign-in, or username and password | [Getting started](start) |\n| Shop-floor tablet | QR card and PIN | [Starting on the kiosk](operations/kiosk/start/user) |",
+      "| Where you use it | How you are identified | Steps |\n| --- | --- | --- |\n| Desktop (web) | Company account sign-in, or username and password | [Getting started](start) |\n| Shop-floor tablet | QR card and PIN | [Getting started on the shared device](operations/kiosk/start/user) |",
     authzHeading: "## Authorisation — a permission is three things together",
     shapeIntro:
       'Like "view quotes, but only my own", three parts combine into one permission.',
@@ -423,7 +423,7 @@ const REFERENCE: Record<Locale, ReferencePhrases> = {
     authBody:
       "系统分两个阶段。\n\n1. **认证** … 确认你是谁的阶段，也就是登录。通过之后，系统便知道是谁在使用。\n2. **授权** … 决定允许这个人做什么的阶段，这里用到的就是**权限**。\n\n已经登录却打不开画面，正是因为两者是分开的：认证通过了，但授权不足。",
     authTable:
-      "| 从哪里使用 | 如何确认本人 | 步骤 |\n| --- | --- | --- |\n| 电脑（Web） | 公司账号登录，或用户名与密码 | [开始使用](start) |\n| 车间共享平板 | 二维码卡与 PIN | [自助终端入门](operations/kiosk/start/user) |",
+      "| 从哪里使用 | 如何确认本人 | 步骤 |\n| --- | --- | --- |\n| 电脑（Web） | 公司账号登录，或用户名与密码 | [开始使用](start) |\n| 车间共享平板 | 二维码卡与 PIN | [共用终端入门](operations/kiosk/start/user) |",
     authzHeading: "## 授权 — 权限由三者组合而成",
     shapeIntro: "如「只能查看本人负责的报价单」，三个部分合起来构成一项权限。",
     shapeTable:

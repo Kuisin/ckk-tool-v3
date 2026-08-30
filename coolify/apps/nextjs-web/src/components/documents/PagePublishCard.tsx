@@ -80,7 +80,7 @@ export function PagePublishCard({
         <ActionCard
           description="承認されると公開されます。"
           icon={<IconClock size={20} />}
-          title="公開の承認待ち"
+          title="公開の承認依頼中"
           tone="wait"
         />
       );
@@ -111,7 +111,7 @@ export function PagePublishCard({
           }
           description="内容を確認して承認または差し戻してください。"
           icon={<IconCheck size={20} />}
-          title="あなたの承認待ちです"
+          title="あなたの承認依頼中です"
           tone="approve"
         />
         <ModalShell

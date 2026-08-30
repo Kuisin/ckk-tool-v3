@@ -28,7 +28,10 @@
   "shell": {
     "appsLabel": "Apps",
     "home": "Home",
+    "goHome": "Go to home",
     "searchPlaceholder": "Operation code / app name...",
+    "searchResults": "Search results",
+    "noAppsFound": "No matching apps",
     "notifications": "Notifications",
     "markAllRead": "Mark all read",
     "noNotifications": "No notifications",
@@ -56,5 +59,12 @@
     "previewDateTime": "Date and time",
     "previewTime": "Time",
     "saved": "Display settings saved"
+  },
+  "home": {
+    "favorites": "Favorites",
+    "other": "Other",
+    "workprocessFilter": "Filtered by process:",
+    "clearFilter": "Clear filter",
+    "guest": "Guest"
   }
 }

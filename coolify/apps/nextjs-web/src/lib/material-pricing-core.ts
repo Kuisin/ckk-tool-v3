@@ -1,8 +1,8 @@
 /**
  * material-pricing-core.ts — 参照価格の純粋計算（server/client 両用）.
  *
- * 試算の材料原価は素材マスタの静的価格ではなく仕入実績の参照価格を使う
- * (_specs/tables.md §見積試算)。算出方法（最高/最新/平均）と参照期間は
+ * 価格試算の材料原価は素材マスタの静的価格ではなく仕入実績の参照価格を使う
+ * (_specs/tables.md §価格試算)。算出方法（最高/最新/平均）と参照期間は
  * system_settings（lib/system-settings.ts）。データ取得は lib/material-pricing.ts。
  */
 

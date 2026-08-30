@@ -1,10 +1,10 @@
 "use server";
 
 /**
- * Server Actions — 試算 (SA01 見積試算).
+ * Server Actions — 価格試算 (SA01 価格試算).
  *
  * sales.estimates は複合キー (year_month, seq) — EST-YYYYMM-NNNNN は
- * lib/doc-number.ts で導出する。試算は任意で製品にリンクでき（1製品に複数可）、
+ * lib/doc-number.ts で導出する。価格試算は任意で製品にリンクでき（1製品に複数可）、
  * 確定後は価格表（顧客×製品）の作成時に基準単価ソースとして選択される
  * （初回使用時に REGISTERED へロック — sales/price-lists/actions.ts）。
  */
@@ -45,7 +45,7 @@ import { toTrialPricingOptions } from "@/lib/trial-pricing-settings";
 const BASE_PATH = "/sales/trial-estimates";
 const SCOPE_DENIED = "この操作の権限がありません（対象範囲外）";
 
-/** 取得済みの試算行がスコープ内か（OWN 行チェック）。ALL は素通し。 */
+/** 取得済みの価格試算行がスコープ内か（OWN 行チェック）。ALL は素通し。 */
 function estimateInScope(
   access: Access,
   userId: string,
@@ -75,7 +75,7 @@ function toMaterialTypeKey(raw: {
   };
 }
 
-/** 材種・直径・黒皮/研磨 の変更時の仕入実績＋ポリシー参照価格（試算フォーム用）。 */
+/** 材種・直径・黒皮/研磨 の変更時の仕入実績＋ポリシー参照価格（価格試算フォーム用）。 */
 export async function fetchMaterialPricing(raw: {
   materialTypeId: string;
   diameterCode: string;
@@ -117,7 +117,7 @@ const trialInputSchema = z.looseObject({
 });
 
 const createInput = z.object({
-  name: z.string().min(1, "試算名を入力してください"),
+  name: z.string().min(1, "価格試算名を入力してください"),
   customerBpId: z.string().nullable(),
   /** 営業担当 — 未指定なら顧客の主担当が入る（lib/sales-rep）。 */
   salesRepId: z.string().nullable().optional(),
@@ -149,9 +149,9 @@ function keyOf(number: string): DocKey | null {
 }
 
 /**
- * 試算価格を「その時点」で記録するためのスナップショット（estimate.result）。
+ * 価格試算価格を「その時点」で記録するためのスナップショット（estimate.result）。
  * 保存/確定時に現在の設定で計算した結果を固定して保存し、後から計算ロジック
- * （計算基準）を変更しても過去の試算の価格が変わらないようにする。
+ * （計算基準）を変更しても過去の価格試算の価格が変わらないようにする。
  */
 function buildPriceSnapshot(
   input: TrialInput,
@@ -233,7 +233,7 @@ export async function createTrialEstimate(
     revalidate(number);
     return actionOk({ number });
   } catch (e) {
-    return actionError(prismaErrorMessage(e, "試算の保存に失敗しました"));
+    return actionError(prismaErrorMessage(e, "価格試算の保存に失敗しました"));
   }
 }
 
@@ -246,20 +246,20 @@ export async function linkTrialEstimateProduct(
   productId: string | null,
 ): Promise<ActionResult> {
   const key = keyOf(number);
-  if (!key) return actionError("試算番号が不正です");
+  if (!key) return actionError("価格試算番号が不正です");
   const authz = await checkPermission("price_list", "UPDATE");
   if (!authz.ok) return actionError(authz.error);
   try {
     const estimate = await prisma.estimate.findUnique({
       where: { yearMonth_seq: { yearMonth: key.yearMonth, seq: key.seq } },
     });
-    if (!estimate) return actionError("試算が見つかりません");
+    if (!estimate) return actionError("価格試算が見つかりません");
     if (!estimateInScope(authz.access, authz.userId, estimate)) {
       return actionError(SCOPE_DENIED);
     }
     if (estimate.status === "REGISTERED") {
       return actionError(
-        "価格表で使用済みの試算は製品リンクを変更できません（複製して再試算してください）",
+        "価格表で使用済みの価格試算は製品リンクを変更できません（複製して再価格試算してください）",
       );
     }
     let idNum: number | null = null;
@@ -299,19 +299,19 @@ export async function confirmTrialEstimate(
   number: string,
 ): Promise<ActionResult> {
   const key = keyOf(number);
-  if (!key) return actionError("試算番号が不正です");
+  if (!key) return actionError("価格試算番号が不正です");
   const authz = await checkPermission("price_list", "UPDATE");
   if (!authz.ok) return actionError(authz.error);
   try {
     const estimate = await prisma.estimate.findUnique({
       where: { yearMonth_seq: { yearMonth: key.yearMonth, seq: key.seq } },
     });
-    if (!estimate) return actionError("試算が見つかりません");
+    if (!estimate) return actionError("価格試算が見つかりません");
     if (!estimateInScope(authz.access, authz.userId, estimate)) {
       return actionError(SCOPE_DENIED);
     }
     if (estimate.status !== "DRAFT") {
-      return actionError("下書きの試算のみ確定できます");
+      return actionError("下書きの価格試算のみ確定できます");
     }
     // 確定時点の価格を再スナップショット（この時点の設定で固定）。
     const settings = await getTrialPricingSettings();

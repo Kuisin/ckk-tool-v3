@@ -276,7 +276,7 @@ Operation codes provide keyboard-shortcut navigation. Format: `{CAT}{MODE}{IDX}`
 |----------|-----|-----------|------|-----|--------|
 | 共通 | — | ダッシュボード | CM00 | — | — |
 | 一般 | 1 | 承認・予定 | CM01 | — | — |
-| 販売 | 1 | 試算 | SA01 | SA11 | SA21 |
+| 販売 | 1 | 価格試算 | SA01 | SA11 | SA21 |
 | 販売 | 2 | 価格表 | SA02 | SA12 | SA22 |
 | 販売 | 3 | 見積書 | SA03 | SA13 | SA23 |
 | 販売 | 4 | 注文請書 | SA04 | SA14 | SA24 |
@@ -309,7 +309,7 @@ Operation codes provide keyboard-shortcut navigation. Format: `{CAT}{MODE}{IDX}`
 | ドキュメント | 1 | マニュアル | DC01 | — | — |
 | ドキュメント | 2 | 管理マニュアル | DC02 | — | — |
 | システム | 1 | ユーザー管理 | SY01 | — | — |
-| システム | 2 | 試算計算 | SY02 | — | — |
+| システム | 2 | 価格試算計算 | SY02 | — | — |
 | システム | 3 | 製品項目 | SY03 | — | — |
 | システム | 4 | 製品種別 | SY04 | — | — |
 | システム | 5 | アプリ管理 | SY05 | — | — |
@@ -317,7 +317,7 @@ Operation codes provide keyboard-shortcut navigation. Format: `{CAT}{MODE}{IDX}`
 | システム | 7 | 操作履歴 | SY07 | — | — |
 | システム | 8 | QRカード管理 | SY08 | — | — |
 | システム | 9 | 端末管理 | SY09 | — | — |
-| システム | A | キオスク設定 | SY0A | — | — |
+| システム | A | 共有端末設定 | SY0A | — | — |
 | システム | B | リンク管理 | SY0B | — | — |
 | システム | C | 注文書取込 | SY0C | — | — |
 | システム | D | ログイン履歴 | SY0D | — | — |
@@ -330,7 +330,7 @@ Operation codes provide keyboard-shortcut navigation. Format: `{CAT}{MODE}{IDX}`
 > `lib/app-list.ts`。
 >
 > `PD03` / `PD13` / `PD23` は**欠番**。旧 承認管理 は 一般カテゴリの
-> 承認・予定（`CM01`, `/general/tasks` — 自分の作業予定 + 承認待ちの
+> 承認・予定（`CM01`, `/general/tasks` — 自分の作業予定 + 承認依頼中の
 > 横断一覧）へ移設した。旧 `/production/approvals` はリダイレクト。
 >
 > `PD01` / `PD11` / `PD21` は**欠番**。旧 注文請書 は注文請書の明細に統合され、
@@ -389,12 +389,12 @@ Stack (gap="xl", p="md", maw={1200})
 
 | App | Icon |
 |-----|------|
-| 試算 | `IconCalculator` |
+| 価格試算 | `IconCalculator` |
 | 価格表 | `IconCurrencyYen` |
 | 見積書 | `IconFileText` |
 | 注文請書 | `IconClipboardCheck` |
 | 設計依頼書 | `IconRuler2` |
-| 試算 | `IconCalculator` |
+| 価格試算 | `IconCalculator` |
 | 素材入荷 | `IconPackageImport` |
 | 外注依頼 | `IconTruckDelivery` |
 | 素材発注書 | `IconShoppingCart` |
@@ -418,7 +418,7 @@ Stack (gap="xl", p="md", maw={1200})
 | 承認設定 | `IconUsersGroup` |
 | 拠点 | `IconBuildingWarehouse` |
 | ユーザー管理 | `IconUserCog` |
-| 試算計算 | `IconMathFunction` |
+| 価格試算計算 | `IconMathFunction` |
 | 製品項目 | `IconListDetails` |
 | 製品種別 | `IconCategory` |
 | アプリ管理 | `IconLayoutGrid` |
@@ -599,8 +599,8 @@ Stack (gap="md")
 <FormActions loading={isPending} onCancel={back} />                 // <form> 送信（type="submit"）
 ```
 
-`FormShell` は自動でこれを使う。`FormShell` を使わない画面（試算 SA11 /
-受注請書ドラフト / 材種の既定単価 / キオスク設定 など）も同じ 1 行を置くこと。
+`FormShell` は自動でこれを使う。`FormShell` を使わない画面（価格試算 SA11 /
+受注請書ドラフト / 材種の既定単価 / 共有端末設定 など）も同じ 1 行を置くこと。
 ボタン構成そのものが違うときだけ `children` を渡して差し替える。
 
 ---
@@ -632,13 +632,13 @@ Stack (gap="md")
 | SalesOrder | SHIPPED | green | 出荷済 |
 | SalesOrder | CANCELLED | red | キャンセル |
 | WorkOrder | DRAFT | gray | 下書き |
-| WorkOrder | PENDING_APPROVAL | yellow | 承認待ち |
+| WorkOrder | PENDING_APPROVAL | yellow | 承認依頼中 |
 | WorkOrder | APPROVED | blue | 承認済 |
 | WorkOrder | IN_PROGRESS | violet | 進行中 |
 | WorkOrder | COMPLETED | green | 完了 |
 | WorkOrder | CANCELLED | red | キャンセル |
 | WorkOrder (approval) | NONE | gray | — |
-| WorkOrder (approval) | PENDING | yellow | 承認待ち |
+| WorkOrder (approval) | PENDING | yellow | 承認依頼中 |
 | WorkOrder (approval) | APPROVED | green | 承認済 |
 | WorkOrder (approval) | REJECTED | red | 差し戻し |
 | StepStatus | PENDING | gray | 未着手 |
@@ -793,7 +793,7 @@ new Intl.NumberFormat('ja-JP', { style: 'currency', currency: currency ?? 'JPY' 
 | `RichTextView` | `src/components/ui/RichTextView.tsx` | 読み取り専用表示。React 要素を組み立てる（`dangerouslySetInnerHTML` 不使用） |
 
 搭載画面: 見積書 / 注文明細 / 指示書 / 出荷書 / 請求書 = **メモ**、
-価格表 / 試算 = **コメント**。既存の 備考（`notes`）は平文のまま別物として残り、
+価格表 / 価格試算 = **コメント**。既存の 備考（`notes`）は平文のまま別物として残り、
 PDF 印字も従来どおり（メモ・コメントは社内限定で PDF に出ない）。
 
 ```tsx
@@ -838,7 +838,7 @@ Paper (withBorder, p="md", radius="md")
 |------|----|------|
 | `action` | blue | 自分で先へ進められる操作（承認依頼・注文確定・発注・入荷完了 …） |
 | `approve` | green | 承認権限がある。承認 / 差し戻しできる |
-| `wait` | gray | 権限が無いので待つだけ。タイトルは「承認待ち」 |
+| `wait` | gray | 権限が無いので待つだけ。タイトルは「承認依頼中」 |
 | `alert` | red | 差し戻しなど、対応が必要な状態 |
 
 搭載画面: 指示書 (`WorkOrderApprovalCard`) / 注文請書 / 素材発注書 / 購買依頼。
@@ -1120,7 +1120,7 @@ unallocated 工程分岐数 (良品+工程分岐 for terminal steps) — `branch
 **工程を触らずに保留**され（`work_order_flow_changes`）、最終承認で初めて適用
 される。1 段も無ければ保留せず即適用（**未設定 = 素通し**）。保留中は指示書
 詳細の最上部に `FlowChangeCard`（§10.9 ActionCard。承認できる人は green +
-承認/差し戻し、それ以外は gray の「承認待ち」）。差し戻すと適用されずに閉じ、
+承認/差し戻し、それ以外は gray の「承認依頼中」）。差し戻すと適用されずに閉じ、
 工程はそのまま。適用は承認後に通常の関数（addBranchSeries 等）を通すので、
 待っている間に前提が崩れていれば FAILED として残る（古い前提のまま当てない）。
 
@@ -1176,7 +1176,7 @@ Paper (withBorder, p="lg")
 
 **WorkOrderApprovalCard** — 画面最上部の ActionCard (§10.9)。承認依頼 / 第一・
 承認 / 差し戻し（理由必須モーダル）を持つ唯一の場所。色は承認権限で決まる
-（権限あり = green + 承認・差し戻し、権限なし = gray の「第一（第二）承認待ち」、
+（権限あり = green + 承認・差し戻し、権限なし = gray の「第一（第二）承認依頼中」、
 差し戻し中 = red + 再承認依頼）。操作が無い状態では何も描画しない。
 
 **ApprovalStatusPanel** — フローと記録の**表示のみ**（操作ボタンは持たない）。
@@ -1202,7 +1202,7 @@ Paper (withBorder, p="md", radius="md")
 直接書かないこと — 以前は表示が 3 通りに割れ（このパネル / 手書きの Stepper /
 表示なし）、書類ごとに進捗を探す場所が違っていた。
 
-搭載: 試算 / 見積書 / 注文請書 / 注文明細 / 設計依頼書 / 購買依頼 / 素材発注書 /
+搭載: 価格試算 / 見積書 / 注文請書 / 注文明細 / 設計依頼書 / 購買依頼 / 素材発注書 /
 指示書 / 出荷書 / 納品書 / 請求書 / 締日処理（**12 書類**）。
 価格表（進行するライフサイクルが無い）と素材入荷（入庫済みの確定記録）は持たない。
 
@@ -1423,8 +1423,8 @@ Row click navigates to detail page.
 
 | Entity | Columns |
 |--------|---------|
-| Estimate | 試算番号 / 名称 / 工具種 / 顧客 / 製品 / 見積単価 / 状態 / 更新日 |
-| PriceList | 顧客 / 製品 / 注文種別（バリアントのバッジ） / 段階 / 単価範囲 / 試算元 / 有効期間 / 状態 |
+| Estimate | 価格試算番号 / 名称 / 工具種 / 顧客 / 製品 / 見積単価 / 状態 / 更新日 |
+| PriceList | 顧客 / 製品 / 注文種別（バリアントのバッジ） / 段階 / 単価範囲 / 価格試算元 / 有効期間 / 状態 |
 | Quote | 見積番号 / 顧客 / 有効期限 / 状態 / 更新日 |
 | OrderAcceptance | 注文番号 / 顧客 / 顧客注文書番号 / 合計金額 / 状態 / 更新日 |
 | SalesOrder | 注文明細番号 / 顧客 / 製品 / 数量 / 金額 / 納期 / 状態 |
@@ -1545,48 +1545,29 @@ Respect `@media (prefers-reduced-motion: reduce)` — disable all CSS transition
 
 ### 17.1 Terminology Glossary
 
-Use these exact terms consistently across all UI strings, error messages, and notifications:
-
-> **未確認の用語（2026-08 時点）** — 「注文請書」「注文明細」は本仕様で定めた語で、
-> 業務側の文書 `_docs/business_flow.md` は同じものを **「注文受諾書」（§2）**
-> **「受注書」（§3）** と呼んでいる。利用者から「注文明細という語は聞いたことが
-> ない」との指摘があり、**現場の語彙と一致していない可能性が高い**。
-> 改称する場合は UI ラベル・マニュアル・本節をまとめて直すこと（DB のテーブル名
-> `order_acceptances` / `sales_orders` と操作コードは利用者に見えないので変えない）。
-
-| Concept | Japanese term | Abbreviation/code |
-|---------|---------------|-------------------|
-| 試算 | 試算 | EST |
-| 価格表 | 価格表 | price_list |
-| 見積書 | 見積書 | QOT |
-| 注文請書 | 注文請書 | ORD |
-| 注文明細 | 注文明細 | ORD-...-NN |
-| 指示書 | 指示書 | — (serial int) |
-| 出荷書 | 出荷書 | — |
-| 納品書 | 納品書 | DRN |
-| 請求書 | 請求書 | INV |
-| 締日処理 | 締日処理 | — |
-| 設計依頼書 | 設計依頼書 | — |
-| 工程ステップ | 工程 | — |
-| 素材 | 素材 | material |
-| 材種 | 材種 | material_type |
-| 製品 | 製品 | product |
-| 在庫 | 在庫 | inventory |
-| 予約（在庫） | 予約 | RESERVED |
-| 引当 | 引当 | confirmed |
-| 外注 | 外注 | OUTSOURCE |
-| 仕入先 | 仕入先 | SUPPLIER |
-| 最終需要家 | 最終需要家 | END_USER |
-| 顧客 | 顧客 | CUSTOMER |
-| 支店 | 支店 | branch |
-| 承認設定 | 承認設定 | — |
-| 操作コード | 操作コード | operation code |
-| 下書き | 下書き | DRAFT |
-| 確定 | 確定 | CONFIRMED |
-| キャンセル | キャンセル | CANCELLED |
-| 差し戻し | 差し戻し | REJECTED |
+**用語の正は `_specs/i18n-glossary.md`** — ja / en / zh の対訳と翻訳ルールを 1 本に
+まとめてある。ここに表を二重に持たない（片方だけ直って割れるため）。UI 文言・
+エラーメッセージ・通知は、必ずその表の語を使う。
 
 Do **not** use synonyms — e.g. never write "注文書" where "注文請書" is meant.
+
+**確定済みの呼び方**（2026-08-30。以前ここにあった「注文請書 / 注文明細は現場の
+語彙と違うかもしれない」という注記は、**この語のまま使う**と決まったので削除した）:
+
+| 概念 | 呼び方 | 記号・コード |
+|---|---|---|
+| 価格試算 | 価格試算（旧「試算」） | EST |
+| 見積書 | 見積書 | QOT |
+| 注文請書 | 注文請書 | ORD |
+| 注文明細 | 注文明細 | ORD-…-NN |
+| 指示書 | 指示書 | WOR / ロット番号 |
+| 出荷書 / 納品書 / 請求書 | そのまま | — / DRN / INV |
+| 拠点 | 拠点（en は Site） | plants |
+| 工程 | 工程（「工程ステップ」とは言わない） | STEP |
+| 実施場所 | 社内 / 外注 | INTERNAL / OUTSOURCE |
+| 共有端末 | 共有端末（「キオスク」とは言わない） | kiosk（コードのみ） |
+| 承認依頼中 | 承認依頼中（「承認依頼中」とは言わない） | PENDING / REQUESTED |
+| 下書き | 下書き（「作成中」とは言わない） | DRAFT |
 
 ### 17.2 敬語 / Tone
 
@@ -1610,7 +1591,7 @@ Use `date-fns` v4 for date formatting. Import only what is needed (tree-shakeabl
 
 ### 17.4 Multilingual DB Fields
 
-All DB fields defined as `json { ja: '', en: '' }` must have both locales populated. When rendering, use `JsonLocalizedText` component (§10.6) which falls back to `ja` if the current locale has no value.
+All DB fields defined as `json { ja: '', en: '' }` must have both locales populated (`en` falls back to `ja` when untranslated — `lib/server-action.ts` `localizedInput`). The shape is actually **open-ended**: any locale code present in `_specs/i18n-glossary.md` §2.10 / `LOCALES` may also be a key (`{ ja, en, zh, ... }`), so a language can be added later without a migration. Editing is a single default-locale (`ja`) field plus a "多言語" popup for every other locale — never one input per language (`components/ui/shells.tsx` `LocalizedTextInput`, applied to products / materials / material types / process steps / inspection templates / defect types / approval groups / plants / business partners as of 2026-08-30). When rendering, use `JsonLocalizedText` component (§10.6), which resolves through `lib/format.ts` `localized()` — current locale → the fallback chain in `localeFallbackOrder()` → `ja`.
 
 ---
 

@@ -23,7 +23,7 @@ export default async function LookupsLayout({
         <PageHeader
           breadcrumbs={[
             "システム",
-            { label: "試算計算", href: ENGINE },
+            { label: "価格試算計算", href: ENGINE },
             "ルックアップ表",
           ]}
           title="ルックアップ表"

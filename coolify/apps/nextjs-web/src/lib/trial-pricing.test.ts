@@ -1,6 +1,6 @@
 /**
- * 試算 engine — base-price sanity. The quantity scale (lot 掛け率) was removed
- * from 試算: with lotMarkups [1] the engine yields ONE base 見積単価
+ * 価格試算 engine — base-price sanity. The quantity scale (lot 掛け率) was removed
+ * from 価格試算: with lotMarkups [1] the engine yields ONE base 見積単価
  * (= roundUp(最低単価 × 補正値, 10円台) at the 基準数量). Quantity scaling now
  * lives in the 価格表 (×倍率 tiers).
  */

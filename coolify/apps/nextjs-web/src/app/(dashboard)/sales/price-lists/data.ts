@@ -4,7 +4,7 @@
  * sales.price_list_entries is keyed (year_month, seq) — the URL id is the
  * derived 価格表番号 PRC-YYYYMM-NNNNN (lib/doc-number). 自然キー
  * (customer_bp_id, product_id) は UNIQUE の識別用。注文種別ごとの価格は
- * price_list_variants（基準単価・期間・試算リンク + tiers/discounts）。
+ * price_list_variants（基準単価・期間・価格試算リンク + tiers/discounts）。
  */
 
 import { ownWhere, rowInScope } from "@ckk/authz-core";
@@ -182,15 +182,15 @@ export async function fetchRelatedQuotes(
   return [...byQuote.values()];
 }
 
-// ── 試算ソース（価格表作成時の基準単価候補） ─────────────────────────────────
+// ── 価格試算ソース（価格表作成時の基準単価候補） ─────────────────────────────────
 
-/** 製品にリンクされた確定済み試算 — 基準単価ソースの選択肢。 */
+/** 製品にリンクされた確定済み価格試算 — 基準単価ソースの選択肢。 */
 export interface EstimateSource {
   /** 文書番号 EST-YYYYMM-NNNNN（URL id と同一）。 */
   number: string;
   name: string;
   customerName: string | null;
-  /** 試算の見積単価（最小ロットの estimateUnitPrice）。 */
+  /** 価格試算の見積単価（最小ロットの estimateUnitPrice）。 */
   unitPrice: number;
   updatedAt: string;
 }
@@ -214,8 +214,8 @@ function estimateUnitPriceOf(
 }
 
 /**
- * 試算番号 → 見積単価（基準単価のロック値）。編集フォームで既存バリアントの
- * 試算リンクごとに使う。
+ * 価格試算番号 → 見積単価（基準単価のロック値）。編集フォームで既存バリアントの
+ * 価格試算リンクごとに使う。
  */
 export async function fetchEstimateBases(
   numbers: string[],
@@ -241,8 +241,8 @@ export async function fetchEstimateBases(
 }
 
 /**
- * 製品にリンクされた CONFIRMED の試算（価格ソース候補）。REGISTERED も含める
- * （既に他の価格表で使用済みでも、同じ試算を別顧客のソースにできる）。
+ * 製品にリンクされた CONFIRMED の価格試算（価格ソース候補）。REGISTERED も含める
+ * （既に他の価格表で使用済みでも、同じ価格試算を別顧客のソースにできる）。
  */
 export async function fetchEstimateSourcesForProduct(
   productId: number,

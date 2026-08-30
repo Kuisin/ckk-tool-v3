@@ -35,7 +35,7 @@ This app is for making a **素材発注書** (material purchase order), which is
 A material purchase order moves along in this order. The coloured badge on the screen tells you where it is now.
 
 1. **下書き** (draft) … you have only created it. This is the only time you can change it.
-2. **承認依頼中** (waiting for approval) … you are waiting for your manager's answer.
+2. **承認依頼中** (pending approval) … you are waiting for your manager's answer.
 3. **承認済** (approved) … it was accepted. You can now order from the supplier.
 4. **発注済** (ordered) … you have ordered from the supplier. Now you wait for the material.
 5. **入荷完了** (receiving complete) … the material arrived and went into stock.
@@ -49,7 +49,7 @@ When you open the app, you see a list of the material purchase orders made so fa
 ![Material purchase order list](../../../assets/screenshots/purchase-order-list-01.png)
 
 - **発注番号** (order number) … a number starting with `PO-`. The system adds it for you.
-- **状態** (status) … a coloured badge shows the current situation. Grey is 「下書き」 (draft), yellow is 「承認依頼中」 (waiting for approval), blue is 「承認済」 (approved), purple is 「発注済」 (ordered), green is 「入荷完了」 (receiving complete), and red is 「キャンセル」 (cancelled).
+- **状態** (status) … a coloured badge shows the current situation. Grey is 「下書き」 (draft), yellow is 「承認依頼中」 (pending approval), blue is 「承認済」 (approved), purple is 「発注済」 (ordered), green is 「入荷完了」 (receiving complete), and red is 「キャンセル」 (cancelled).
 - Type an order number or a supplier name into the search box at the top to narrow down the list.
 - Click a row to open the detail screen for that purchase order.
 
@@ -87,7 +87,7 @@ If a [purchase request](/manual/en/operations/purchasing/purchase-request/user) 
 
 ![Draft material purchase order](../../../assets/screenshots/purchase-order-detail-02.png)
 
-The status changes to 「**承認依頼中**」 (waiting for approval), and the request reaches the person who approves it. The same request also appears on the [approval management](/manual/en/operations/production/approval/user) screen.
+The status changes to 「**承認依頼中**」 (pending approval), and the request reaches the person who approves it. The same request also appears on the [approval management](/manual/en/operations/production/approval/user) screen.
 
 ## Approving or sending back (for the approver)
 
@@ -210,7 +210,7 @@ Notes for that material only. Notes about the whole order go in the notes field 
 ## Questions and problems
 
 **Q. The 「編集」 (Edit) button does not appear.**
-A. You can only change a purchase order while it is 「下書き」 (draft). Once approval has been requested, you cannot change it. If you try anyway, the screen shows 「**作成中の素材発注書のみ編集できます**」 (Only material purchase orders being created can be edited). If you need to change it, ask the approver to send it back to you.
+A. You can only change a purchase order while it is 「下書き」 (draft). Once approval has been requested, you cannot change it. If you try anyway, the screen shows 「**下書きの素材発注書のみ編集できます**」 (Only material purchase orders that are drafts can be edited). If you need to change it, ask the approver to send it back to you.
 
 **Q. The 「承認」 (Approve) and 「差し戻し」 (Send back) buttons do not appear.**
 A. Only people in that step's approval group (or a stand-in for them) can approve. Instead of the buttons, the screen shows 「**◯◯ のメンバーのみ承認・差し戻しできます**」 with the group name (Only members of that group can approve or send back).
@@ -219,7 +219,7 @@ A. Only people in that step's approval group (or a stand-in for them) can approv
 A. The supplier is still empty. Click the 「仕入先」 (supplier) box and choose a company from the list.
 
 **Q. I want to cancel an order that has already been placed.**
-A. 「発注済」 (ordered) and 「入荷完了」 (receiving complete) cannot be cancelled. You can only cancel before the order is placed (draft, waiting for approval, or approved). If you try anyway, the screen shows 「**発注前の素材発注書のみキャンセルできます**」 (Only material purchase orders before ordering can be cancelled).
+A. 「発注済」 (ordered) and 「入荷完了」 (receiving complete) cannot be cancelled. You can only cancel before the order is placed (draft, pending approval, or approved). If you try anyway, the screen shows 「**発注前の素材発注書のみキャンセルできます**」 (Only material purchase orders before ordering can be cancelled).
 
 **Q. The material arrived in several deliveries.**
 A. Register just the part that arrived in [material receipt](/manual/en/operations/purchasing/material-receipt/user). When everything has arrived, press 「入荷完了」 (Receiving complete) and the rest is handled together.

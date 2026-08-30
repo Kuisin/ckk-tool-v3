@@ -28,7 +28,10 @@
   "shell": {
     "appsLabel": "アプリ",
     "home": "ホーム",
+    "goHome": "ホームへ移動",
     "searchPlaceholder": "操作コード / アプリ名...",
+    "searchResults": "検索結果",
+    "noAppsFound": "該当するアプリが見つかりません",
     "notifications": "通知",
     "markAllRead": "すべて既読",
     "noNotifications": "通知はありません",
@@ -56,5 +59,12 @@
     "previewDateTime": "日時",
     "previewTime": "時刻",
     "saved": "表示設定を保存しました"
+  },
+  "home": {
+    "favorites": "お気に入り",
+    "other": "その他",
+    "workprocessFilter": "工程で絞り込み中:",
+    "clearFilter": "絞り込みを解除",
+    "guest": "ゲスト"
   }
 }

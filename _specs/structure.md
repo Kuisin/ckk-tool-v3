@@ -7,10 +7,10 @@ src/
 │   │   ├── layout.tsx
 │   │   ├── page.tsx                                # ダッシュボード
 │   │   │
-│   │   ├── sales/                                  # 販売（§1 試算・価格・見積 / §2 注文受付 / §10 設計依頼）
+│   │   ├── sales/                                  # 販売（§1 価格試算・価格・見積 / §2 注文受付 / §10 設計依頼）
 │   │   │   ├── price-lists/                        # 価格表（顧客×製品。注文種別ごとの価格はバリアント）
 │   │   │   │   ├── page.tsx
-│   │   │   │   ├── new/page.tsx                    # 顧客×製品を選択。製品にリンク済みの確定試算を基準単価ソースに選択可
+│   │   │   │   ├── new/page.tsx                    # 顧客×製品を選択。製品にリンク済みの確定価格試算を基準単価ソースに選択可
 │   │   │   │   └── [id]/
 │   │   │   │       ├── page.tsx
 │   │   │   │       └── edit/page.tsx
@@ -38,7 +38,7 @@ src/
 │   │   │   │   └── [id]/
 │   │   │   │       ├── page.tsx
 │   │   │   │       └── edit/page.tsx
-│   │   │   └── trial-estimates/                    # 試算（SA01 見積試算・仕入実績連動。任意で製品にリンク）
+│   │   │   └── trial-estimates/                    # 価格試算（SA01 価格試算・仕入実績連動。任意で製品にリンク）
 │   │   │       ├── page.tsx
 │   │   │       ├── new/page.tsx
 │   │   │       └── [id]/page.tsx
@@ -74,7 +74,7 @@ src/
 │   │   │   ├── pending-work-orders/                # 未処理指示書（PD05 — 作業キュー）
 │   │   │   │   └── page.tsx                        #   未手配の注文明細 + 進行中の指示書
 │   │   │   ├── approvals/                          # 承認管理（§6）
-│   │   │   │   ├── page.tsx                        # 承認待ち一覧
+│   │   │   │   ├── page.tsx                        # 承認依頼中一覧
 │   │   │   │   └── [id]/page.tsx
 │   │   │   └── inventory/                          # 在庫管理（§4・§5）
 │   │   │       ├── products/                       # 製品在庫台帳
@@ -232,7 +232,7 @@ src/
 │   ├── journal.ts                                  # 仕訳エンジン（弥生連携用）
 │   ├── csv-export.ts                               # 弥生会計 Next CSV 生成
 │   ├── inventory.ts                                # 在庫引当・予約ロジック
-│   ├── pricing.ts                                  # 試算原価計算・価格表解決・見積自動生成・値引き計算
+│   ├── pricing.ts                                  # 価格試算原価計算・価格表解決・見積自動生成・値引き計算
 │   ├── numbering.ts                                # 採番ロジック（EST/QOT/ORD/DRN/INV/PO）
 │   ├── purchasing.ts                               # 素材発注 承認フロー・在庫予約連携
 │   ├── workflow.ts                                 # 製造ワークフロー依存解決・実行可否・DAG分岐合流/数量伝播

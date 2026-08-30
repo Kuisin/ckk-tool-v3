@@ -2,7 +2,7 @@ import { notFound } from "next/navigation";
 import { PlantForm } from "@/components/master/plants/PlantForm";
 import { requireAppRead } from "@/lib/authz-page";
 import { prisma } from "@/lib/db";
-import type { LocalizedText } from "@/lib/format";
+import { type LocalizedText, localizedTranslations } from "@/lib/format";
 import { fetchRegionOptions } from "../../data";
 
 export const dynamic = "force-dynamic";
@@ -33,13 +33,13 @@ export default async function MasterPlantsEditPage({
         id: r.id,
         code: r.code,
         nameJa: name?.ja ?? "",
-        nameEn: name?.en ?? "",
+        nameTranslations: localizedTranslations(name),
         nameKana: r.nameKana ?? "",
         countryCode: r.countryCode,
         regionId: r.regionId,
         postalCode: r.postalCode ?? "",
         addressJa: address?.ja ?? "",
-        addressEn: address?.en ?? "",
+        addressTranslations: localizedTranslations(address),
         phone: r.phone ?? "",
         email: r.email ?? "",
         contactPerson: r.contactPerson ?? "",

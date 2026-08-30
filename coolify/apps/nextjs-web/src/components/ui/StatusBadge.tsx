@@ -1,18 +1,28 @@
+"use client";
+
 /**
  * status.tsx — Status enum → Mantine Badge color/label registry.
  *
  * Single source of truth for every status badge in the app.
- * Mirrors `_specs/design.md` §9 exactly (entity / status / color / Japanese label).
+ * Mirrors `_specs/design.md` §9 exactly (entity / status / color / ja/en/zh label —
+ * `_specs/i18n-glossary.md` §3.12 is the source for the translations).
  *
  * Usage:
  *   <StatusBadge entity="Quote" status="ISSUED" />
  *   <StatusBadge entity="WorkOrderApproval" status="PENDING" />
+ *
+ * `"use client"` because the label picks the viewer's language via next-intl's
+ * `useLocale()` — rendering this from a Server Component still works (it becomes
+ * a client leaf hydrated from the nearest `NextIntlClientProvider`, mounted in
+ * the `(dashboard)` layout).
  */
 
 import { Badge, type BadgeProps } from "@mantine/core";
+import { useLocale } from "next-intl";
+import type { Locale } from "@/lib/i18n";
 
 export interface StatusDef {
-  label: string;
+  label: Record<Locale, string>;
   color: string;
 }
 
@@ -21,156 +31,397 @@ type StatusMap = Record<string, StatusDef>;
 /** Per-entity status → { color, label } maps. Keys match DB enum values. */
 export const STATUS_MAPS = {
   Estimate: {
-    DRAFT: { label: "下書き", color: "gray" },
-    CONFIRMED: { label: "確定", color: "blue" },
-    REGISTERED: { label: "価格表登録済", color: "green" },
+    DRAFT: { label: { ja: "下書き", en: "Draft", zh: "草稿" }, color: "gray" },
+    CONFIRMED: {
+      label: { ja: "確定", en: "Confirmed", zh: "已确定" },
+      color: "blue",
+    },
+    REGISTERED: {
+      label: { ja: "価格表登録済", en: "Registered", zh: "已登记价格表" },
+      color: "green",
+    },
   },
   Quote: {
-    DRAFT: { label: "下書き", color: "gray" },
-    ISSUED: { label: "発行済", color: "blue" },
-    ACCEPTED: { label: "受諾済", color: "green" },
-    REJECTED: { label: "却下", color: "red" },
-    EXPIRED: { label: "期限切れ", color: "orange" },
+    DRAFT: { label: { ja: "下書き", en: "Draft", zh: "草稿" }, color: "gray" },
+    ISSUED: {
+      label: { ja: "発行済", en: "Issued", zh: "已发行" },
+      color: "blue",
+    },
+    ACCEPTED: {
+      label: { ja: "受諾済", en: "Accepted", zh: "已接受" },
+      color: "green",
+    },
+    REJECTED: {
+      label: { ja: "却下", en: "Rejected", zh: "已拒绝" },
+      color: "red",
+    },
+    EXPIRED: {
+      label: { ja: "期限切れ", en: "Expired", zh: "已过期" },
+      color: "orange",
+    },
   },
   OrderAcceptance: {
-    PENDING: { label: "照合中", color: "yellow" },
-    PRICE_DIFF: { label: "価格差異", color: "orange" },
-    CONFIRMED: { label: "確定", color: "green" },
+    PENDING: {
+      label: { ja: "照合中", en: "Matching", zh: "核对中" },
+      color: "yellow",
+    },
+    PRICE_DIFF: {
+      label: { ja: "価格差異", en: "Price mismatch", zh: "价格差异" },
+      color: "orange",
+    },
+    CONFIRMED: {
+      label: { ja: "確定", en: "Confirmed", zh: "已确定" },
+      color: "green",
+    },
   },
   /** 注文請書 intake（app.order_acceptances — 取込→下書き→承認→確定）。 */
   OrderAcceptanceIntake: {
-    IMPORT: { label: "取込中", color: "gray" },
-    DRAFT: { label: "下書き", color: "blue" },
-    REQUESTED: { label: "承認依頼中", color: "yellow" },
-    APPROVED: { label: "承認済", color: "green" },
-    COMPLETED: { label: "確定", color: "teal" },
-    ARCHIVED: { label: "アーカイブ", color: "dark" },
-    CANCELLED: { label: "キャンセル", color: "red" },
+    IMPORT: {
+      label: { ja: "取込中", en: "Importing", zh: "导入中" },
+      color: "gray",
+    },
+    DRAFT: { label: { ja: "下書き", en: "Draft", zh: "草稿" }, color: "blue" },
+    REQUESTED: {
+      label: { ja: "承認依頼中", en: "Pending approval", zh: "审批中" },
+      color: "yellow",
+    },
+    APPROVED: {
+      label: { ja: "承認済", en: "Approved", zh: "已批准" },
+      color: "green",
+    },
+    COMPLETED: {
+      label: { ja: "確定", en: "Confirmed", zh: "已确定" },
+      color: "teal",
+    },
+    ARCHIVED: {
+      label: { ja: "アーカイブ", en: "Archived", zh: "已归档" },
+      color: "dark",
+    },
+    CANCELLED: {
+      label: { ja: "キャンセル", en: "Cancelled", zh: "已取消" },
+      color: "red",
+    },
   },
   MaterialPurchaseOrder: {
-    DRAFT: { label: "下書き", color: "gray" },
-    REQUESTED: { label: "承認依頼中", color: "yellow" },
-    APPROVED: { label: "承認済", color: "blue" },
-    ORDERED: { label: "発注済", color: "violet" },
-    COMPLETED: { label: "入荷完了", color: "green" },
-    CANCELLED: { label: "キャンセル", color: "red" },
+    DRAFT: { label: { ja: "下書き", en: "Draft", zh: "草稿" }, color: "gray" },
+    REQUESTED: {
+      label: { ja: "承認依頼中", en: "Pending approval", zh: "审批中" },
+      color: "yellow",
+    },
+    APPROVED: {
+      label: { ja: "承認済", en: "Approved", zh: "已批准" },
+      color: "blue",
+    },
+    ORDERED: {
+      label: { ja: "発注済", en: "Ordered", zh: "已下单" },
+      color: "violet",
+    },
+    COMPLETED: {
+      label: { ja: "入荷完了", en: "Received", zh: "已入库" },
+      color: "green",
+    },
+    CANCELLED: {
+      label: { ja: "キャンセル", en: "Cancelled", zh: "已取消" },
+      color: "red",
+    },
   },
   /** 購買依頼 (app.purchase_requests — 発注書の前段, PU01)。 */
   // フォーム (CM02)。受付中/受付終了は status ではなく日時から導出するので
   // ここには置かない（lib/form-schema.ts formAvailability の AVAILABILITY_LABEL）。
   Form: {
-    DRAFT: { label: "下書き", color: "gray" },
-    PUBLISHED: { label: "公開中", color: "blue" },
-    ARCHIVED: { label: "アーカイブ", color: "dark" },
+    DRAFT: { label: { ja: "下書き", en: "Draft", zh: "草稿" }, color: "gray" },
+    PUBLISHED: {
+      label: { ja: "公開中", en: "Published", zh: "已发布" },
+      color: "blue",
+    },
+    ARCHIVED: {
+      label: { ja: "アーカイブ", en: "Archived", zh: "已归档" },
+      color: "dark",
+    },
   },
   // 社内文書 (CM03)。DRAFT は「公開版より新しい編集がある」も含む。
   InternalPage: {
-    DRAFT: { label: "下書き", color: "gray" },
-    PENDING: { label: "公開承認待ち", color: "yellow" },
-    PUBLISHED: { label: "公開中", color: "green" },
-    ARCHIVED: { label: "アーカイブ", color: "dark" },
+    DRAFT: { label: { ja: "下書き", en: "Draft", zh: "草稿" }, color: "gray" },
+    PENDING: {
+      label: {
+        ja: "公開承認依頼中",
+        en: "Pending publish approval",
+        zh: "待发布审批",
+      },
+      color: "yellow",
+    },
+    PUBLISHED: {
+      label: { ja: "公開中", en: "Published", zh: "已发布" },
+      color: "green",
+    },
+    ARCHIVED: {
+      label: { ja: "アーカイブ", en: "Archived", zh: "已归档" },
+      color: "dark",
+    },
   },
   FormResponse: {
-    DRAFT: { label: "下書き", color: "gray" },
-    SUBMITTED: { label: "提出済", color: "blue" },
-    REQUESTED: { label: "承認依頼中", color: "yellow" },
-    APPROVED: { label: "承認済", color: "green" },
-    REJECTED: { label: "差し戻し", color: "red" },
+    DRAFT: { label: { ja: "下書き", en: "Draft", zh: "草稿" }, color: "gray" },
+    SUBMITTED: {
+      label: { ja: "提出済", en: "Submitted", zh: "已提交" },
+      color: "blue",
+    },
+    REQUESTED: {
+      label: { ja: "承認依頼中", en: "Pending approval", zh: "审批中" },
+      color: "yellow",
+    },
+    APPROVED: {
+      label: { ja: "承認済", en: "Approved", zh: "已批准" },
+      color: "green",
+    },
+    REJECTED: {
+      label: { ja: "差し戻し", en: "Sent back", zh: "已退回" },
+      color: "red",
+    },
   },
   PurchaseRequest: {
-    DRAFT: { label: "下書き", color: "gray" },
-    REQUESTED: { label: "承認依頼中", color: "yellow" },
-    APPROVED: { label: "承認済", color: "blue" },
-    REJECTED: { label: "差し戻し", color: "red" },
-    ORDERED: { label: "発注済", color: "violet" },
-    CANCELLED: { label: "キャンセル", color: "red" },
+    DRAFT: { label: { ja: "下書き", en: "Draft", zh: "草稿" }, color: "gray" },
+    REQUESTED: {
+      label: { ja: "承認依頼中", en: "Pending approval", zh: "审批中" },
+      color: "yellow",
+    },
+    APPROVED: {
+      label: { ja: "承認済", en: "Approved", zh: "已批准" },
+      color: "blue",
+    },
+    REJECTED: {
+      label: { ja: "差し戻し", en: "Sent back", zh: "已退回" },
+      color: "red",
+    },
+    ORDERED: {
+      label: { ja: "発注済", en: "Ordered", zh: "已下单" },
+      color: "violet",
+    },
+    CANCELLED: {
+      label: { ja: "キャンセル", en: "Cancelled", zh: "已取消" },
+      color: "red",
+    },
   },
   OrderLine: {
-    DRAFT: { label: "下書き", color: "gray" },
-    CONFIRMED: { label: "確定", color: "blue" },
-    IN_PRODUCTION: { label: "製造中", color: "violet" },
-    PARTIAL_SHIPPED: { label: "一部出荷", color: "orange" },
-    SHIPPED: { label: "出荷済", color: "green" },
-    CANCELLED: { label: "キャンセル", color: "red" },
+    DRAFT: { label: { ja: "下書き", en: "Draft", zh: "草稿" }, color: "gray" },
+    CONFIRMED: {
+      label: { ja: "確定", en: "Confirmed", zh: "已确定" },
+      color: "blue",
+    },
+    IN_PRODUCTION: {
+      label: { ja: "製造中", en: "In production", zh: "生产中" },
+      color: "violet",
+    },
+    PARTIAL_SHIPPED: {
+      label: { ja: "一部出荷", en: "Partially shipped", zh: "部分出货" },
+      color: "orange",
+    },
+    SHIPPED: {
+      label: { ja: "出荷済", en: "Shipped", zh: "已出货" },
+      color: "green",
+    },
+    CANCELLED: {
+      label: { ja: "キャンセル", en: "Cancelled", zh: "已取消" },
+      color: "red",
+    },
   },
   WorkOrder: {
-    DRAFT: { label: "下書き", color: "gray" },
-    PENDING_APPROVAL: { label: "承認待ち", color: "yellow" },
-    APPROVED: { label: "承認済", color: "blue" },
-    IN_PROGRESS: { label: "進行中", color: "violet" },
-    COMPLETED: { label: "完了", color: "green" },
-    CANCELLED: { label: "キャンセル", color: "red" },
+    DRAFT: { label: { ja: "下書き", en: "Draft", zh: "草稿" }, color: "gray" },
+    PENDING_APPROVAL: {
+      label: { ja: "承認依頼中", en: "Pending approval", zh: "审批中" },
+      color: "yellow",
+    },
+    APPROVED: {
+      label: { ja: "承認済", en: "Approved", zh: "已批准" },
+      color: "blue",
+    },
+    IN_PROGRESS: {
+      label: { ja: "進行中", en: "In progress", zh: "进行中" },
+      color: "violet",
+    },
+    COMPLETED: {
+      label: { ja: "完了", en: "Completed", zh: "已完成" },
+      color: "green",
+    },
+    CANCELLED: {
+      label: { ja: "キャンセル", en: "Cancelled", zh: "已取消" },
+      color: "red",
+    },
   },
   // 段数は承認設定 (MS0B) が書類種別ごとに決めるので、ここは局面だけを表す。
   // 何段目かは承認カード / Stepper が依頼のスナップショットから出す。
   WorkOrderApproval: {
-    NONE: { label: "—", color: "gray" },
-    PENDING: { label: "承認待ち", color: "yellow" },
-    APPROVED: { label: "承認済", color: "green" },
-    REJECTED: { label: "差し戻し", color: "red" },
+    NONE: { label: { ja: "—", en: "—", zh: "—" }, color: "gray" },
+    PENDING: {
+      label: { ja: "承認依頼中", en: "Pending approval", zh: "审批中" },
+      color: "yellow",
+    },
+    APPROVED: {
+      label: { ja: "承認済", en: "Approved", zh: "已批准" },
+      color: "green",
+    },
+    REJECTED: {
+      label: { ja: "差し戻し", en: "Sent back", zh: "已退回" },
+      color: "red",
+    },
   },
   Step: {
-    PENDING: { label: "未着手", color: "gray" },
-    IN_PROGRESS: { label: "進行中", color: "blue" },
-    COMPLETED: { label: "完了", color: "green" },
-    CANCELLED: { label: "キャンセル", color: "red" },
+    PENDING: {
+      label: { ja: "未着手", en: "Not started", zh: "未开始" },
+      color: "gray",
+    },
+    IN_PROGRESS: {
+      label: { ja: "進行中", en: "In progress", zh: "进行中" },
+      color: "blue",
+    },
+    COMPLETED: {
+      label: { ja: "完了", en: "Completed", zh: "已完成" },
+      color: "green",
+    },
+    CANCELLED: {
+      label: { ja: "キャンセル", en: "Cancelled", zh: "已取消" },
+      color: "red",
+    },
   },
   DeliveryOrder: {
-    DRAFT: { label: "下書き", color: "gray" },
-    CONFIRMED: { label: "確定", color: "blue" },
-    SHIPPED: { label: "出荷済", color: "green" },
+    DRAFT: { label: { ja: "下書き", en: "Draft", zh: "草稿" }, color: "gray" },
+    CONFIRMED: {
+      label: { ja: "確定", en: "Confirmed", zh: "已确定" },
+      color: "blue",
+    },
+    SHIPPED: {
+      label: { ja: "出荷済", en: "Shipped", zh: "已出货" },
+      color: "green",
+    },
   },
   DeliveryNote: {
-    DRAFT: { label: "下書き", color: "gray" },
-    ISSUED: { label: "発行済", color: "blue" },
-    DELIVERED: { label: "納品済", color: "green" },
+    DRAFT: { label: { ja: "下書き", en: "Draft", zh: "草稿" }, color: "gray" },
+    ISSUED: {
+      label: { ja: "発行済", en: "Issued", zh: "已发行" },
+      color: "blue",
+    },
+    DELIVERED: {
+      label: { ja: "納品済", en: "Delivered", zh: "已交货" },
+      color: "green",
+    },
   },
   Invoice: {
-    DRAFT: { label: "下書き", color: "gray" },
-    ISSUED: { label: "発行済", color: "blue" },
-    SENT: { label: "送付済", color: "violet" },
-    PAID: { label: "支払済", color: "green" },
+    DRAFT: { label: { ja: "下書き", en: "Draft", zh: "草稿" }, color: "gray" },
+    ISSUED: {
+      label: { ja: "発行済", en: "Issued", zh: "已发行" },
+      color: "blue",
+    },
+    SENT: {
+      label: { ja: "送付済", en: "Sent", zh: "已寄送" },
+      color: "violet",
+    },
+    PAID: { label: { ja: "支払済", en: "Paid", zh: "已付款" }, color: "green" },
   },
   InspectionRecord: {
-    PENDING: { label: "未実施", color: "gray" },
-    PASS: { label: "合格", color: "green" },
-    FAIL: { label: "不合格", color: "red" },
-    APPROVED: { label: "承認済", color: "teal" },
+    PENDING: {
+      label: { ja: "未実施", en: "Not performed", zh: "未实施" },
+      color: "gray",
+    },
+    PASS: { label: { ja: "合格", en: "Pass", zh: "合格" }, color: "green" },
+    FAIL: { label: { ja: "不合格", en: "Fail", zh: "不合格" }, color: "red" },
+    APPROVED: {
+      label: { ja: "承認済", en: "Approved", zh: "已批准" },
+      color: "teal",
+    },
   },
   DesignRequest: {
-    DRAFT: { label: "下書き", color: "gray" },
-    REQUESTED: { label: "承認依頼中", color: "yellow" },
+    DRAFT: { label: { ja: "下書き", en: "Draft", zh: "草稿" }, color: "gray" },
+    REQUESTED: {
+      label: { ja: "承認依頼中", en: "Pending approval", zh: "审批中" },
+      color: "yellow",
+    },
     // 承認済・着手待ち。承認フロー導入前からある値で、意味を引き継いでいる。
-    PENDING: { label: "未着手", color: "blue" },
-    IN_PROGRESS: { label: "進行中", color: "violet" },
-    COMPLETED: { label: "完了", color: "green" },
-    REJECTED: { label: "差し戻し", color: "red" },
-    CANCELLED: { label: "キャンセル", color: "red" },
+    PENDING: {
+      label: { ja: "未着手", en: "Not started", zh: "未开始" },
+      color: "blue",
+    },
+    IN_PROGRESS: {
+      label: { ja: "進行中", en: "In progress", zh: "进行中" },
+      color: "violet",
+    },
+    COMPLETED: {
+      label: { ja: "完了", en: "Completed", zh: "已完成" },
+      color: "green",
+    },
+    REJECTED: {
+      label: { ja: "差し戻し", en: "Sent back", zh: "已退回" },
+      color: "red",
+    },
+    CANCELLED: {
+      label: { ja: "キャンセル", en: "Cancelled", zh: "已取消" },
+      color: "red",
+    },
   },
   BillingClosing: {
-    PENDING: { label: "未処理", color: "gray" },
-    PROCESSED: { label: "処理済", color: "blue" },
-    EXPORTED: { label: "エクスポート済", color: "green" },
+    PENDING: {
+      label: { ja: "未処理", en: "Unprocessed", zh: "未处理" },
+      color: "gray",
+    },
+    PROCESSED: {
+      label: { ja: "処理済", en: "Processed", zh: "已处理" },
+      color: "blue",
+    },
+    EXPORTED: {
+      label: { ja: "エクスポート済", en: "Exported", zh: "已导出" },
+      color: "green",
+    },
   },
   ApprovalRequest: {
-    PENDING: { label: "承認待ち", color: "yellow" },
-    APPROVED: { label: "承認済", color: "green" },
-    REJECTED: { label: "差し戻し", color: "red" },
+    PENDING: {
+      label: { ja: "承認依頼中", en: "Pending approval", zh: "审批中" },
+      color: "yellow",
+    },
+    APPROVED: {
+      label: { ja: "承認済", en: "Approved", zh: "已批准" },
+      color: "green",
+    },
+    REJECTED: {
+      label: { ja: "差し戻し", en: "Sent back", zh: "已退回" },
+      color: "red",
+    },
   },
-  /** キオスク QRカード（app.kiosk_cards — SY08）。 */
+  /** QRカード（共有端末 — app.kiosk_cards — SY08）。 */
   KioskCard: {
-    UNASSIGNED: { label: "未割当", color: "gray" },
-    ASSIGNED: { label: "割当済", color: "green" },
-    SUSPENDED: { label: "一時停止", color: "orange" },
-    REVOKED: { label: "取り消し", color: "red" },
+    UNASSIGNED: {
+      label: { ja: "未割当", en: "Unassigned", zh: "未分配" },
+      color: "gray",
+    },
+    ASSIGNED: {
+      label: { ja: "割当済", en: "Assigned", zh: "已分配" },
+      color: "green",
+    },
+    SUSPENDED: {
+      label: { ja: "一時停止", en: "Suspended", zh: "已停用" },
+      color: "orange",
+    },
+    REVOKED: {
+      label: { ja: "取り消し", en: "Revoked", zh: "已撤销" },
+      color: "red",
+    },
   },
-  /** キオスク端末（app.kiosk_devices — SY09）。 */
+  /** 共有端末（app.kiosk_devices — SY09）。 */
   KioskDevice: {
-    PENDING: { label: "リンク待ち", color: "gray" },
-    LINKED: { label: "有効化待ち", color: "yellow" },
-    ACTIVE: { label: "有効", color: "green" },
-    DISABLED: { label: "無効", color: "gray" },
-    REVOKED: { label: "取り消し", color: "red" },
+    PENDING: {
+      label: { ja: "リンク待ち", en: "Awaiting link", zh: "待关联" },
+      color: "gray",
+    },
+    LINKED: {
+      label: { ja: "有効化待ち", en: "Awaiting activation", zh: "待启用" },
+      color: "yellow",
+    },
+    ACTIVE: { label: { ja: "有効", en: "Active", zh: "启用" }, color: "green" },
+    DISABLED: {
+      label: { ja: "無効", en: "Disabled", zh: "停用" },
+      color: "gray",
+    },
+    REVOKED: {
+      label: { ja: "取り消し", en: "Revoked", zh: "已撤销" },
+      color: "red",
+    },
   },
 } satisfies Record<string, StatusMap>;
 
@@ -183,27 +434,40 @@ interface StatusBadgeProps extends Omit<BadgeProps, "color" | "children"> {
 
 /** Maps an entity status enum to its themed Badge. */
 export function StatusBadge({ entity, status, ...props }: StatusBadgeProps) {
-  const def = (STATUS_MAPS[entity] as StatusMap)[status] ?? {
-    label: status,
-    color: "gray",
-  };
+  const locale = useLocale();
+  const def = (STATUS_MAPS[entity] as StatusMap)[status];
+  const label = def ? (def.label[locale] ?? def.label.ja) : status;
+  const color = def?.color ?? "gray";
   return (
-    <Badge color={def.color} {...props}>
-      {def.label}
+    <Badge color={color} {...props}>
+      {label}
     </Badge>
   );
 }
 
-/** 状態のラベルだけ欲しいとき用（手続き状況の補足文など）。未知の値はそのまま。 */
-export function statusLabel(entity: StatusEntity, status: string): string {
-  return (STATUS_MAPS[entity] as StatusMap)[status]?.label ?? status;
+/**
+ * 状態のラベルだけ欲しいとき用（手続き状況の補足文など）。未知の値はそのまま。
+ * `locale` を渡さない呼び出しは日本語のまま（次第に呼び出し側で
+ * `useLocale()` を渡すよう更新していく — 表示は `<StatusBadge>` を優先）。
+ */
+export function statusLabel(
+  entity: StatusEntity,
+  status: string,
+  locale: Locale = "ja",
+): string {
+  const def = (STATUS_MAPS[entity] as StatusMap)[status];
+  return def ? (def.label[locale] ?? def.label.ja) : status;
 }
 
 /** Build Select options from a status map (for filter bars). */
 export function statusOptions(
   entity: StatusEntity,
+  locale: Locale = "ja",
 ): { value: string; label: string }[] {
   return Object.entries(STATUS_MAPS[entity] as StatusMap)
-    .filter(([, def]) => def.label !== "—")
-    .map(([value, def]) => ({ value, label: def.label }));
+    .filter(([, def]) => def.label.ja !== "—")
+    .map(([value, def]) => ({
+      value,
+      label: def.label[locale] ?? def.label.ja,
+    }));
 }

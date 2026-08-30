@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * WorkOrderTable — 指示書 一覧 (PD02) / 承認待ち一覧 (PD03) (design.md §8.1/§14).
+ * WorkOrderTable — 指示書 一覧 (PD02) / 承認依頼中一覧 (PD03) (design.md §8.1/§14).
  *
  * variant="workOrders": 指示書番号 / 注文明細番号 / 製品 / 種別 / 予定数量 /
  *   承認状態（NONE は非表示）/ 状態 / 更新日。行クリック → 指示書詳細。
@@ -252,7 +252,7 @@ export function WorkOrderTable({
           )
         }
         emptyMessage={
-          isApprovals ? "承認待ちの指示書はありません" : "指示書がありません"
+          isApprovals ? "承認依頼中の指示書はありません" : "指示書がありません"
         }
         getRowId={(r) => String(r.workOrderNumber)}
         onRowClick={(r) => router.push(`${basePath}/${r.docNumber}`)}

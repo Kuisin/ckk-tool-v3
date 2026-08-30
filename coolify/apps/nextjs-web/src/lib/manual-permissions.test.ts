@@ -133,7 +133,7 @@ describe("参照ページ「権限とロール」", () => {
     const md = buildPermissionsReferencePage("ja");
     expect(md).toContain("## 認証と認可");
     expect(md).toContain("[はじめかた](start)");
-    expect(md).toContain("[キオスクをはじめる](operations/kiosk/start/user)");
+    expect(md).toContain("[共有端末のはじめかた](operations/kiosk/start/user)");
   });
 
   it("権限の種類を 4 つとも説明している", () => {

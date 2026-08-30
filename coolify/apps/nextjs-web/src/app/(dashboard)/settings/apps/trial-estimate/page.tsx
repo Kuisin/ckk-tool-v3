@@ -2,7 +2,7 @@ import { redirect } from "next/navigation";
 import { requireAppRead } from "@/lib/authz-page";
 
 /**
- * 旧 アプリ設定 → 試算 の設定画面。試算計算（SY02, /settings/trial-pricing-engine）
+ * 旧 アプリ設定 → 価格試算 の設定画面。価格試算計算（SY02, /settings/trial-pricing-engine）
  * へ移動したため、旧ブックマーク互換のためリダイレクトする。
  */
 export default async function TrialEstimateSettingsRedirect() {

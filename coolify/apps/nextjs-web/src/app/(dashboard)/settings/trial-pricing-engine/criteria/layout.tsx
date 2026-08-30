@@ -23,7 +23,7 @@ export default async function CriteriaLayout({
         <PageHeader
           breadcrumbs={[
             "システム",
-            { label: "試算計算", href: ENGINE },
+            { label: "価格試算計算", href: ENGINE },
             "計算基準",
           ]}
           title="計算基準"
