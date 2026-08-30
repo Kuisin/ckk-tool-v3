@@ -234,6 +234,13 @@ links from rotting (`docs:lint` is not in CI).
 
 ## i18n & 表示設定（言語 / 日付 / 時刻 / タイムゾーン）
 
+**訳す前に `_specs/i18n-glossary.md` を読む — 例外なし。** 翻訳ルール（§2: キーの
+付け方 / 変数と複数形 / 言語別の書き方 / 確認項目）と、全用語の ja/en/zh 対訳表
+（§3）はあの 1 本が正。表にある語を別の言い方で訳し直さない。必要な語が無ければ
+**まず表に足してから**使い、判断が要るものは §5「要確認」に上げて、決まるまで
+使わない。キオスク（`nextjs-kiosk/src/lib/i18n/messages/`）と重なる語（状態・工程・
+数量）は両アプリで同じ訳にする — 食い違いは表に寄せる。
+
 Per-user display settings live on **`app.users`** — `locale` (shared with the
 kiosk, which writes the same column) plus `date_format` / `time_format` /
 `time_zone`. Edited at `/profile/preferences`; read via
