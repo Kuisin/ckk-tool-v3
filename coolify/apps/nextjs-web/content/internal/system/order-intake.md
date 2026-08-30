@@ -4,7 +4,7 @@ description: "order-intake@ckk-tool.co.jp に届いた注文書を自動で取�
 ---
 お客様が **order-intake@ckk-tool.co.jp** へ送った注文書を、人手を介さずに注文請書へ取り込む仕組みの運用ページです。利用者向けの操作は「[注文書取込（SY0C）](/manual/ja/operations/system/order-intake/user)」を参照してください。
 
-> この仕組みは現在 **検証環境（dev）でのみ**動いています。本番環境（main）には取込フォルダがまだありません（下の「本番へ広げるとき」）。
+> **メール取込は現在 検証環境（dev）でのみ**動いています。本番環境（main）は取込フォルダまで用意済み（2026-08-30）で、SY0C からの投入と「優先取込」は使えますが、**受信箱とゲートウェイがまだありません**（下の「本番へ広げるとき」）。
 
 ## 全体の流れ
 
@@ -95,7 +95,7 @@ description: "order-intake@ckk-tool.co.jp に届いた注文書を自動で取�
 
 ## 本番へ広げるとき
 
-本番環境（main）にはまだ取込フォルダがありません。広げるには、サーバー側で次が必要です。
+取込フォルダは **2026-08-30 に用意済み**です（host `/home/kaiseisawada/intake/orders-main` → container `/data/intake`、`INTAKE_DIR` 設定済み、ポーラー稼働中）。残っているのは**メール取込**の分だけです。
 
 1. 本番用の取込フォルダを作る（`nextjs-web` と `intake-gateway` の両方から書ける状態にする）
 2. `nextjs-web-main` と `intake-gateway-main` の両方に、**同じフォルダ**を割り当てる

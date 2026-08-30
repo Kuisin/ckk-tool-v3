@@ -4,7 +4,7 @@ description: "Running the automatic intake of order forms sent to order-intake@c
 ---
 How order forms customers send to **order-intake@ckk-tool.co.jp** become order acceptances without anyone touching them. For the end-user screens, see「[注文書取込 (SY0C)](/manual/en/operations/system/order-intake/user)」.
 
-> This currently runs in the **verification environment (dev) only**. Production (main) has no intake folder yet — see "Rolling it out to production".
+> **Email intake currently runs on dev only.** Production (main) has its intake folder in place (2026-08-30), so dropping files in from SY0C and "priority intake" both work there — but it has **no mailbox and no gateway yet**. See "Rolling it out to production".
 
 ## The flow
 
@@ -95,7 +95,7 @@ Mail addresses are created by **admintools**, which drives Sakura's control pane
 
 ## Rolling it out to production
 
-Production (main) has no intake folder yet. It needs, on the server:
+The intake folder was **set up on 2026-08-30** (host `/home/kaiseisawada/intake/orders-main` → container `/data/intake`, `INTAKE_DIR` set, poller running). Only the **email** side is left:
 
 1. A production intake folder, writable by both `nextjs-web` and `intake-gateway`
 2. That **same folder** attached to both `nextjs-web-main` and `intake-gateway-main`

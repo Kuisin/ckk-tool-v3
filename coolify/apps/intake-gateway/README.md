@@ -183,6 +183,18 @@ Coolify 管理・環境別・内部専用（ホストポートも公開ドメイ
   `private_key_id` は REST API では設定できない（"This field is not allowed."）ので
   スクリプトが `coolify-db` へ直接 UPDATE する
 
-**dev は疎通確認済み**（2026-08-30）。**main は取込フォルダ自体がまだ無い** —
-`nextjs-web-main` に `INTAKE_DIR` も storages も無いので、本番で動かすには
-先にフォルダ作成（`chown 1001:1001`）+ 両アプリへのマウント + env が要る。
+**dev は疎通確認済み**（2026-08-30。実メールから注文請書まで到達）。
+
+**main は取込フォルダまで用意済み**（2026-08-30）— host
+`/home/kaiseisawada/intake/orders-main` → container `/data/intake`、
+`nextjs-web-main` に `INTAKE_DIR` 設定済みでポーラーも動いている。
+残っているのは**メール取込の分だけ**:
+
+1. **本番専用の受信箱**を作る（admintools → 同期。**dev と共用しない** —
+   2 つのゲートウェイが同じメールを取り合う）
+2. `intake-gateway-main` に同じホストパスをマウント（登録スクリプトが
+   `/home/kaiseisawada/intake/orders-main` を見るようになっている）
+3. 受信箱の資格情報を入れて `deploy.sh intake-gateway-main`
+
+なお `POST /api/intake/inbound` は **main のコードにまだ入っていない**
+（dev のみ）。使うには dev → main の昇格が要る。
