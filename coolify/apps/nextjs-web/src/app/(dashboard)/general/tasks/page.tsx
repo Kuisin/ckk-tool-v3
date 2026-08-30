@@ -1,6 +1,8 @@
 import { TasksView } from "@/components/general/TasksView";
-import { checkPermission } from "@/lib/authz";
+import { checkPermission, sessionUserId } from "@/lib/authz";
 import { requireAppRead } from "@/lib/authz-page";
+import { sanitizeHiddenTabs, TASK_TABS_SETTING_KEY } from "@/lib/tasks-tabs";
+import { readViewSetting } from "@/lib/view-settings";
 import { fetchPendingApprovalRequests } from "./approvals-data";
 import { fetchInboxComments } from "./comments-data";
 import { fetchCompletedRequests } from "./completions-data";
@@ -18,13 +20,16 @@ export default async function GeneralTasksPage() {
   if (denied) return denied;
 
   const approveAuthz = await checkPermission("approve", "READ");
-  const [plans, approvals, forms, comments, completions] = await Promise.all([
-    fetchMyPendingPlans(),
-    approveAuthz.ok ? fetchPendingApprovalRequests() : Promise.resolve(null),
-    fetchFormTasks(),
-    fetchInboxComments(),
-    fetchCompletedRequests(),
-  ]);
+  const userId = await sessionUserId();
+  const [plans, approvals, forms, comments, completions, tabSetting] =
+    await Promise.all([
+      fetchMyPendingPlans(),
+      approveAuthz.ok ? fetchPendingApprovalRequests() : Promise.resolve(null),
+      fetchFormTasks(),
+      fetchInboxComments(),
+      fetchCompletedRequests(),
+      readViewSetting(userId, TASK_TABS_SETTING_KEY),
+    ]);
 
   return (
     <TasksView
@@ -32,6 +37,7 @@ export default async function GeneralTasksPage() {
       comments={comments}
       completions={completions}
       forms={forms}
+      hiddenTabs={sanitizeHiddenTabs(tabSetting)}
       plans={plans}
     />
   );
