@@ -28,6 +28,7 @@ export default async function UserDetailPage({
     user,
     plantOptions,
     adminAuthz,
+    userAdminAuthz,
     bootstrap,
     actorId,
     coverage,
@@ -37,6 +38,7 @@ export default async function UserDetailPage({
     getAdminUser(id),
     listActivePlantOptions(),
     checkPermission("system", "ADMIN"),
+    checkPermission("user_admin", "UPDATE"),
     getBootstrapAdminSnapshot(),
     sessionUserId(),
     getAdminCoverage(id),
@@ -44,6 +46,13 @@ export default async function UserDetailPage({
     listUserDevices(id),
   ]);
   if (!user) notFound();
+
+  // 利用停止 / 復帰 / 所属拠点の変更は特権操作（user_admin）。管理者は素通しで
+  // 直接適用でき、それ以外は変更依頼を出して承認を待つ。画面は同じボタンを出す
+  // が、ラベルと理由欄の要否がここで変わる（判定はサーバー側 applyOrRequest と
+  // 同じ 2 つの条件なので、押してから断られることはない）。
+  const canChangeUser = userAdminAuthz.ok;
+  const requiresApproval = canChangeUser && !adminAuthz.ok;
 
   // 初期管理者の詳細を開いたときだけカードを出す。判定は純関数に委ねる
   // （サーバー側 disableBootstrapAdmin と同じ関数）。
@@ -61,9 +70,10 @@ export default async function UserDetailPage({
         state={bootstrapState}
       />
       <UserDetail
-        canEditPlants={adminAuthz.ok}
+        canEditPlants={canChangeUser}
         loginAttempts={attempts.rows}
         plantOptions={plantOptions}
+        requiresApproval={requiresApproval}
         user={user}
         userDevices={devices}
       />
@@ -71,8 +81,9 @@ export default async function UserDetailPage({
       {bootstrapState.status === "not-bootstrap" && actorId && (
         <UserSuspensionPanel
           actorId={actorId}
-          canAdminister={adminAuthz.ok}
+          canAdminister={canChangeUser}
           otherActiveAdminCount={coverage.otherActiveAdminCount}
+          requiresApproval={requiresApproval}
           targetIsAdmin={coverage.targetIsAdmin}
           user={user}
         />
