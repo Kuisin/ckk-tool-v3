@@ -68,16 +68,6 @@ const PROFILE_MENU_WIDTH = 260;
 /** 開発環境バーの高さ（dev のみ表示。ヘッダー最上部に重ねる）。 */
 export const DEV_BAR_HEIGHT = 28;
 
-// ページを持たない工程カテゴリのパス先頭セグメント（戻る先はホームにする）。
-const CATEGORY_ROOTS = new Set([
-  "sales",
-  "purchase",
-  "production",
-  "shipping",
-  "billing",
-  "master",
-]);
-
 function canHoverOpen(): boolean {
   return (
     typeof window !== "undefined" &&
@@ -151,17 +141,16 @@ export function AppHeader({
   })();
   const isHome = pathname === "/";
 
-  // ヘッダーの「戻る」= ブラウザ履歴ではなくページ階層を1段上がる。
-  // 末尾セグメントを外した親パスへ遷移。工程カテゴリ（ページ無し）のみホームへ。
-  const goUpOneLevel = () => {
-    const segs = pathname.split("/").filter(Boolean);
-    const parent = segs.slice(0, -1);
-    const target =
-      parent.length === 0 ||
-      (parent.length === 1 && CATEGORY_ROOTS.has(parent[0]))
-        ? "/"
-        : `/${parent.join("/")}`;
-    guard(() => router.push(target));
+  // ヘッダーの「戻る」= ブラウザの戻るボタンと同じ（実際の履歴を 1 つ戻る）。
+  // 直接アクセス等で戻り先の履歴が無いときはブラウザの戻るボタン同様に隠す
+  // （history はクライアントでのみ判定 — SSR とのミスマッチ回避）。
+  const [canGoBack, setCanGoBack] = useState(false);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: pathname re-triggers this on route change (history.length grows/shrinks), it isn't read in the body.
+  useEffect(() => {
+    setCanGoBack(window.history.length > 1);
+  }, [pathname]);
+  const goBack = () => {
+    guard(() => router.back());
   };
 
   const { unreadCount, items: notifications, refresh } = useNotifications();
@@ -224,12 +213,12 @@ export function AppHeader({
       >
         {/* ── Left: back (非ホーム時) + App Launcher (+ code jump on mobile) ── */}
         <Group className="min-w-0" gap="xs" wrap="nowrap">
-          {!isHome && (
+          {!isHome && canGoBack && (
             <Tooltip label="戻る" withinPortal>
               <ActionIcon
-                aria-label="1つ上の階層へ戻る"
+                aria-label="前のページへ戻る"
                 color="gray"
-                onClick={goUpOneLevel}
+                onClick={goBack}
                 size="lg"
                 variant="subtle"
               >

@@ -48,7 +48,6 @@ export default async function WorkOrderStepsLayout({
         />
       }
       master={<StepListPane basePath={basePath} steps={nav.steps} />}
-      mobileBackLabel="工程一覧へ戻る"
     >
       {children}
     </MasterDetailShell>
