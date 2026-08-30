@@ -131,6 +131,11 @@ export function FormFieldsPanel({
                   必須
                 </Badge>
               )}
+              {f.isTitle && (
+                <Badge color="blue" size="xs" variant="light">
+                  見出し
+                </Badge>
+              )}
             </Group>
           ),
         },
@@ -181,6 +186,11 @@ export function FormFieldsPanel({
               {f.required && (
                 <Badge color="red" size="xs" variant="light">
                   必須
+                </Badge>
+              )}
+              {f.isTitle && (
+                <Badge color="blue" size="xs" variant="light">
+                  見出し
                 </Badge>
               )}
             </Group>

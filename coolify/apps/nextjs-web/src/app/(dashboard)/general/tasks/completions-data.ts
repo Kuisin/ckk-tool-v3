@@ -11,6 +11,11 @@
 
 import { sessionUserId } from "@/lib/authz";
 import { prisma } from "@/lib/db";
+import {
+  type FormAnswerValue,
+  fieldsFromSchema,
+  titleTextOf,
+} from "@/lib/form-schema";
 
 /** 一覧に出す件数。古いものは通知の控えとしての役目を終えているので切る。 */
 const LIMIT = 100;
@@ -19,6 +24,8 @@ export interface CompletedRequestRow {
   responseNumber: string;
   formCode: string;
   formTitle: string;
+  /** 見出し項目（isTitle）の値。未設定・未回答なら null。 */
+  recordTitle: string | null;
   recordNo: number;
   /** 回答者を表示しないフォームでは null。 */
   respondent: string | null;
@@ -44,12 +51,18 @@ export async function fetchCompletedRequests(): Promise<CompletedRequestRow[]> {
           select: {
             recordNo: true,
             status: true,
+            answers: true,
             submittedByUser: { select: { displayName: true, username: true } },
             form: {
               select: {
                 code: true,
                 title: true,
                 respondentVisibility: true,
+                versions: {
+                  orderBy: { version: "desc" },
+                  take: 1,
+                  select: { schema: true },
+                },
               },
             },
           },
@@ -61,6 +74,11 @@ export async function fetchCompletedRequests(): Promise<CompletedRequestRow[]> {
       responseNumber: r.responseNumber,
       formCode: r.response.form.code,
       formTitle: r.response.form.title,
+      recordTitle:
+        titleTextOf(
+          fieldsFromSchema(r.response.form.versions[0]?.schema ?? []),
+          (r.response.answers ?? {}) as Record<string, FormAnswerValue>,
+        ) || null,
       recordNo: r.response.recordNo,
       // 「回答者を表示しない」フォームでは props に載せない（画面で隠すのでは
       // なく送らない — 回答詳細と同じ扱い）。

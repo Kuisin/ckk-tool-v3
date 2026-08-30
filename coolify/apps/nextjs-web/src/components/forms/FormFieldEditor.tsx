@@ -29,6 +29,7 @@ import {
 import { GhostButton } from "@/components/ui/buttons";
 import { useIsMobile } from "@/hooks/useViewport";
 import {
+  canBeTitleField,
   FIELD_KEY_PATTERN,
   FORM_FIELD_TYPES,
   type FormFieldDef,
@@ -62,6 +63,7 @@ export function FormFieldEditor({
   siblings,
   nestedOnly = false,
   onChange,
+  onSetTitle,
 }: {
   field: FormFieldDef;
   /** 同じ階層の他の項目。関連レコード一覧の突き合わせ先をラベルで選ばせる。 */
@@ -69,6 +71,12 @@ export function FormFieldEditor({
   /** サブテーブルの列として編集するとき（置ける型が減る）。 */
   nestedOnly?: boolean;
   onChange: (next: FormFieldDef) => void;
+  /**
+   * この項目を一覧の見出しにする（他の項目からは自動的に外す）。
+   * トップレベルの項目にしか渡さない — 見出しはフォームにつき 1 つで、
+   * 他の兄弟項目を書き換える必要があるため、配列全体を持つ FormBuilder 側が実装する。
+   */
+  onSetTitle?: () => void;
 }) {
   const isMobile = useIsMobile();
   const set = (patch: Partial<FormFieldDef>) =>
@@ -127,6 +135,22 @@ export function FormFieldEditor({
         label="必須にする"
         onChange={(e) => set({ required: e.currentTarget.checked })}
       />
+
+      {!nestedOnly && (
+        <Checkbox
+          checked={field.isTitle === true}
+          description="一覧（CM02 の回答一覧・CM01 の回答行）でこの項目の値を見出しとして表示します。フォームにつき 1 つだけ選べます"
+          disabled={!canBeTitleField(field.type)}
+          label="一覧の見出しにする"
+          onChange={(e) => {
+            if (e.currentTarget.checked) {
+              onSetTitle?.();
+            } else {
+              set({ isTitle: false });
+            }
+          }}
+        />
+      )}
 
       {field.type === "number" && (
         <Group grow={!isMobile}>
