@@ -327,7 +327,7 @@ export function DesignRequestDetail({
       label: "完了",
       description: request.completedAt
         ? fmt.date(request.completedAt)
-        : "図面の添付",
+        : "設計図の登録",
       loading: request.status === "IN_PROGRESS",
     },
   ];

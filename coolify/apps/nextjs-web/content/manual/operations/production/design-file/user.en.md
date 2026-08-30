@@ -1,5 +1,6 @@
 ---
 title: "Drawing — user guide"
+screenshots: [design-file-list-01, design-file-detail-01, design-file-new-01]
 description: "Register product drawings as versions and manage them separately per customer."
 ---
 Register product drawings as **versions** and keep them **separate per customer**. The operation code is `PD06`.
@@ -48,6 +49,10 @@ The list shows **one row per series**, not per version. Listing every version wo
 
 Clicking a row shows **every series for that product**, split by customer, each with a thumbnail of its latest version and the full version list.
 
+![The drawing list. One row is one series (product × customer)](../../../assets/screenshots/design-file-list-01.png)
+
+![A product's drawings, split into series per customer](../../../assets/screenshots/design-file-detail-01.png)
+
 ## Registering a drawing
 
 1. Select **Register drawing** at the top right of the list.
@@ -59,6 +64,8 @@ Clicking a row shows **every series for that product**, split by customer, each 
 7. Select **Save**.
 
 The version number is assigned automatically (the series' latest version plus one).
+
+![The registration form, with one slot per role](../../../assets/screenshots/design-file-new-01.png)
 
 ### The three roles
 

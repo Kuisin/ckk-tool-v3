@@ -1,7 +1,7 @@
 ---
 title: "Design Request — User Manual"
 description: "An app for asking the design department to make a drawing, and for keeping each version of the finished drawing file."
-screenshots: [design-request-list-01, design-request-new-01, design-request-detail-01, design-request-detail-02, design-request-files-01]
+screenshots: [design-request-list-01, design-request-new-01, design-request-detail-01, design-request-detail-02, design-request-detail-03, design-request-files-01]
 ---
 An app for asking the design department to make a drawing, and for **keeping each version** of the finished drawing file. The operation code is `SA06`.
 
@@ -169,6 +169,8 @@ You can only attach files **between approval and completion** (未着手 and 進
 3. You return to the request. 「**完了**」(done) is now available — press it to finish.
 
 **A request cannot be completed with no deliverable.** Otherwise completing it would only advance a status, and the person who raised it could not see what was produced.
+
+![An in-progress request with no drawing yet; "register drawing" is outlined in red](../../../assets/screenshots/design-request-detail-03.png)
 
 How versions are counted (one registration = one version; versions are per product and customer) is covered on the [Drawing](/manual/en/operations/production/design-file/user) page.
 

@@ -259,6 +259,9 @@ export const shots: Shot[] = [
     steps: async (page) => {
       await page.getByText("設計図面_PRD-202607-0001_v2.pdf").first().waitFor();
     },
+    // サムネイルは SeaweedFS の実体を読むが、撮影スタックにストレージは無い
+    // ので必ず "Not found" になる。中身は本筋ではないので塗りつぶす。
+    mask: ['[title$="を拡大"]'],
   },
   // ── 販売: 初心者向けマニュアル用の追加撮影 ────────────────────────────────
   {
@@ -353,13 +356,56 @@ export const shots: Shot[] = [
     },
   },
   {
-    // 進行中の設計依頼（操作メニューに「完了」）
+    // 進行中で成果物が登録済みの設計依頼（操作メニューに「完了」）。
+    // **DSG-00001 ではない** — あちらは成果物ゼロなので「完了」は出ない
+    // （設計図に版が 1 件以上ないと完了できない。design-request-detail-03 参照）。
     id: "design-request-detail-02",
     docPage: "operations/sales/design-request/user",
-    path: "/sales/design-requests/DSG-202607-00001",
+    path: "/sales/design-requests/DSG-202607-00006",
     steps: async (page) => {
       await page.getByRole("button", { name: "操作メニュー" }).first().click();
       await page.getByRole("menuitem", { name: "完了" }).first().waitFor();
+    },
+  },
+  {
+    // 進行中だが成果物が未登録 — 「図面を登録してください」の案内が出る状態。
+    id: "design-request-detail-03",
+    docPage: "operations/sales/design-request/user",
+    path: "/sales/design-requests/DSG-202607-00001",
+    steps: async (page) => {
+      await page.getByText("図面を登録してください").first().waitFor();
+    },
+    highlight: [{ role: "link", name: "設計図に登録" }],
+  },
+  // ── 生産: 設計図（PD06）────────────────────────────────────────────────────
+  {
+    // 一覧 — 1 行 = 1 系列。汎用とデモ商事の 2 系列が並ぶ。
+    id: "design-file-list-01",
+    docPage: "operations/production/design-file/user",
+    path: "/production/design-files",
+    steps: async (page) => {
+      await page.getByText("汎用").first().waitFor();
+    },
+  },
+  {
+    // 詳細 — 1 製品の全系列。製品 9001 は汎用 v2 とデモ商事 v1 を持つ。
+    id: "design-file-detail-01",
+    docPage: "operations/production/design-file/user",
+    path: "/production/design-files/9001",
+    steps: async (page) => {
+      await page.getByText("設計図面_デモ商事仕様_v1.pdf").first().waitFor();
+    },
+    // サムネイルは SeaweedFS の実体を読むが、撮影スタックにストレージは無い
+    // ので必ず "Not found" になる。中身は本筋ではないので塗りつぶす。
+    mask: ['[title$="を拡大"]'],
+  },
+  {
+    // 登録フォーム — 役割ごとのファイル枠（図面データ / プレビュー / 参考資料）。
+    id: "design-file-new-01",
+    docPage: "operations/production/design-file/user",
+    path: "/production/design-files/new",
+    steps: async (page) => {
+      await page.getByText("図面データ").first().waitFor();
     },
   },
   // ── 購買: 購買依頼（PU01）──────────────────────────────────────────────────

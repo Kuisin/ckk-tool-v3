@@ -26,15 +26,27 @@ import { type LocalizedText, localized } from "@/lib/format";
  */
 const LIST_FETCH_CAP = 2000;
 
-/** 製品ラベル: 名称 + 製品コード（レガシーはコード未採番 → 名称のみ）。 */
+/** 製品の名称とコードを分けて返す（表示側で行を分けられるように）。 */
+function productPartsOf(p: {
+  id: number;
+  name: unknown;
+  yearMonth: string | null;
+  seq: number | null;
+}): { name: string; code: string | null } {
+  return {
+    name: localized(p.name as LocalizedText | null) || `製品 #${p.id}`,
+    code: formatProductNumber(p.yearMonth, p.seq),
+  };
+}
+
+/** 見出し用の 1 行ラベル（名称 + コード）。 */
 function productLabelOf(p: {
   id: number;
   name: unknown;
   yearMonth: string | null;
   seq: number | null;
 }): string {
-  const name = localized(p.name as LocalizedText | null) || `製品 #${p.id}`;
-  const code = formatProductNumber(p.yearMonth, p.seq);
+  const { name, code } = productPartsOf(p);
   return code ? `${name} ${code}` : name;
 }
 
@@ -213,9 +225,9 @@ export async function fetchDesignFileSeries(): Promise<{
   const rows: DesignFileSeriesRow[] = [];
   for (const [productId, list] of byProduct) {
     const product = list.find((f) => f.product)?.product;
-    const productLabel = product
-      ? productLabelOf(product)
-      : `製品 #${productId}`;
+    const parts = product
+      ? productPartsOf(product)
+      : { name: `製品 #${productId}`, code: null };
     for (const g of groupBySeries(
       list.map((f) => ({
         id: f.id,
@@ -233,7 +245,8 @@ export async function fetchDesignFileSeries(): Promise<{
       rows.push({
         key: `${productId}:${g.customerBpId ?? ""}`,
         productId,
-        productLabel,
+        productName: parts.name,
+        productCode: parts.code,
         customerBpId: g.customerBpId,
         customerName: g.files.find((f) => f.customerName)?.customerName ?? null,
         latestVersion: g.latestVersion,
@@ -253,7 +266,7 @@ export async function fetchDesignFileSeries(): Promise<{
   rows.sort(
     (a, b) =>
       b.updatedAt.localeCompare(a.updatedAt) ||
-      a.productLabel.localeCompare(b.productLabel, "ja"),
+      a.productName.localeCompare(b.productName, "ja"),
   );
   return { rows, truncated };
 }

@@ -1,7 +1,7 @@
 ---
 title: "设计委托单 — 操作手册"
 description: "委托设计部门制作图纸，并把做好的图纸文件按版本保存下来的应用。"
-screenshots: [design-request-list-01, design-request-new-01, design-request-detail-01, design-request-detail-02, design-request-files-01]
+screenshots: [design-request-list-01, design-request-new-01, design-request-detail-01, design-request-detail-02, design-request-detail-03, design-request-files-01]
 ---
 委托设计部门制作图纸，并把做好的图纸文件 **按版本（バージョン）保存下来** 的应用。操作码是 `SA06`。
 
@@ -175,6 +175,8 @@ screenshots: [design-request-list-01, design-request-new-01, design-request-deta
 3. 回到委托页面，此时「**完了**」（完成）可以点击了，点击后确定。
 
 **没有成果的委托无法完成。** 否则完成只是推进状态，提出委托的一方看不出究竟做出了什么。
+
+![尚未登记图纸的进行中委托，「登记图纸」以红框强调](../../../assets/screenshots/design-request-detail-03.png)
 
 版本的计数方式（一次登记 = 一个版本，版本按「产品 × 接单方」计数）请参阅[图纸](/manual/zh/operations/production/design-file/user)页面。
 

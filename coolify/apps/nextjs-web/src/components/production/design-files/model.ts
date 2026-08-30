@@ -70,7 +70,10 @@ export interface DesignFileSeriesRow {
   /** 系列キー。`${productId}:${customerBpId ?? ""}`。 */
   key: string;
   productId: number;
-  productLabel: string;
+  /** 製品名（コードは別に持つ — 1 列に詰めると長い名前でコードが切れる）。 */
+  productName: string;
+  /** 製品コード PRD-YYYYMM-NNNN。未採番のレガシーは null。 */
+  productCode: string | null;
   /** null = 汎用。 */
   customerBpId: string | null;
   customerName: string | null;

@@ -1,5 +1,6 @@
 ---
 title: "图纸 — 操作手册"
+screenshots: [design-file-list-01, design-file-detail-01, design-file-new-01]
 description: "按版本登记产品图纸，并按接单方分别管理。"
 ---
 按 **版本** 登记产品图纸，并 **按接单方分别管理**。操作代码为 `PD06`。
@@ -48,6 +49,10 @@ description: "按版本登记产品图纸，并按接单方分别管理。"
 
 点击行会显示 **该产品的全部系列**，按接单方分节，每节都有最新版本的缩略图和版本列表。
 
+![图纸列表。一行是一个系列（产品 × 接单方）](../../../assets/screenshots/design-file-list-01.png)
+
+![产品的图纸，按接单方分为不同系列](../../../assets/screenshots/design-file-detail-01.png)
+
 ## 登记图纸
 
 1. 点击列表右上角的「**登记图纸**」。
@@ -59,6 +64,8 @@ description: "按版本登记产品图纸，并按接单方分别管理。"
 7. 点击「**保存**」。
 
 版本号自动确定（该系列的最新版本加 1）。
+
+![图纸登记界面，按角色分别选择文件](../../../assets/screenshots/design-file-new-01.png)
 
 ### 三种角色
 

@@ -1,7 +1,7 @@
 ---
 title: "設計依頼書 — 操作マニュアル"
 description: "設計部門に図面の作成をお願いし、できあがった図面ファイルを版ごとに残しておくアプリです。"
-screenshots: [design-request-list-01, design-request-new-01, design-request-detail-01, design-request-detail-02, design-request-files-01]
+screenshots: [design-request-list-01, design-request-new-01, design-request-detail-01, design-request-detail-02, design-request-detail-03, design-request-files-01]
 ---
 設計部門に図面の作成をお願いし、できあがった図面ファイルを **版（バージョン）ごとに残しておく** アプリです。操作コードは `SA06` です。
 
@@ -180,6 +180,8 @@ screenshots: [design-request-list-01, design-request-new-01, design-request-deta
 3. 依頼の画面に戻ります。「**完了**」が押せるようになっているので、押して確定します。
 
 **成果物が 1 件も無いと完了できません。** 完了が状態を進めるだけの操作になってしまうと、依頼を出した側から見て何が出来たのか判らないためです。
+
+![図面がまだ登録されていない進行中の依頼。「設計図に登録」が赤枠で強調されている](../../../assets/screenshots/design-request-detail-03.png)
 
 版の数え方（1 回の登録 = 1 つの版、版は「製品 × 受注元」ごと）は[設計図](/manual/ja/operations/production/design-file/user)のページをご覧ください。
 

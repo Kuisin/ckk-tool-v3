@@ -13,7 +13,7 @@
  * 行クリック → その製品の設計図（系列ごとの節）。
  */
 
-import { Badge, Group, Select, Text, TextInput } from "@mantine/core";
+import { Badge, Group, Select, Stack, Text, TextInput } from "@mantine/core";
 import { IconRuler2, IconSearch } from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
 import { useFormat } from "@/components/layout/PreferencesProvider";
@@ -66,7 +66,8 @@ export function DesignFileTable({
   const filtered = rows.filter((r) => {
     const matchesSearch =
       !search ||
-      r.productLabel.includes(search) ||
+      r.productName.includes(search) ||
+      (r.productCode ?? "").includes(search) ||
       (r.customerName ?? "").includes(search);
     const matchesSeries =
       !series ||
@@ -79,10 +80,21 @@ export function DesignFileTable({
 
   const columns: Column<DesignFileSeriesRow>[] = [
     {
-      key: "productLabel",
+      key: "productName",
       header: "製品",
       sortable: true,
-      render: (r) => <Text size="sm">{r.productLabel}</Text>,
+      // 名称とコードを 2 行に分ける。1 行に詰めると長い製品名でコードが
+      // 切れてしまい、台帳として引けなくなる（コードは mono・design.md §14）。
+      render: (r) => (
+        <Stack gap={0}>
+          <Text size="sm">{r.productName}</Text>
+          {r.productCode && (
+            <Text c="dimmed" ff="mono" size="xs">
+              {r.productCode}
+            </Text>
+          )}
+        </Stack>
+      ),
     },
     {
       key: "customerName",
