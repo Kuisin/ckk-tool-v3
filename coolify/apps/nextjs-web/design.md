@@ -37,6 +37,14 @@ Action (label+icon+role baked in): `SaveButton` (`type=submit`, 保存/💾),
 (`ui/PdfButton.tsx`), `NewButton`. All accept any Mantine Button prop **plus**
 `href` (renders a Next `<Link>`) and `external` (new-tab `<a>`).
 
+**`external` の行き先が PDF・保管ファイル・外部サイトなら、そのままにする。**
+インストールした PWA には戻るボタンが無いので、同じウィンドウで PDF を開くと
+ブラウザ内蔵のビューアが画面を占め、前の画面へ戻れなくなる。別ウィンドウ
+（Android=カスタムタブ / iOS=アプリ内ブラウザ / デスクトップ=別ウィンドウ）なら
+閉じるだけで戻る。**アプリの画面**へ行くリンク（自前のナビゲーションを持つもの）
+だけ `keepInApp` を付けて PWA 内に留める。同じ規約が `ResourceActions` の
+`MenuItemDef.href` にもある。理由と判定は `lib/pwa-display.ts`。
+
 ## Page shells — `components/ui/shells.tsx`
 
 - `ListShell` — filter bar `Paper` + `DataTable`, header + create action.
