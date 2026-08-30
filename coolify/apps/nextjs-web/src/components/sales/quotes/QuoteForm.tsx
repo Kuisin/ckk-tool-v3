@@ -63,7 +63,8 @@ const itemSchema = z
   })
   // 見積書は価格表からのみ価格を解決する — 未解決の行は保存できない。
   .refine((it) => it.priceTierId != null, {
-    message: "該当する価格表がありません（価格試算から価格表を登録してください）",
+    message:
+      "該当する価格表がありません（価格試算から価格表を登録してください）",
     path: ["productId"],
   });
 

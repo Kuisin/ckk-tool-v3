@@ -32,7 +32,7 @@ const BASE_PATH = "/master/approval-settings";
 
 const groupSchema = z.object({
   nameJa: z.string().min(1, "名称（日本語）を入力してください"),
-  nameEn: z.string(),
+  nameTranslations: z.record(z.string(), z.string()).default({}),
   isActive: z.boolean(),
 });
 
@@ -41,7 +41,7 @@ type FormValues = z.infer<typeof groupSchema>;
 export interface ApprovalGroupFormInitial {
   id: number;
   nameJa: string;
-  nameEn: string;
+  nameTranslations: Record<string, string>;
   isActive: boolean;
 }
 
@@ -59,7 +59,7 @@ export function ApprovalGroupForm({
     validate: zodResolver(groupSchema),
     initialValues: {
       nameJa: initial?.nameJa ?? "",
-      nameEn: initial?.nameEn ?? "",
+      nameTranslations: initial?.nameTranslations ?? {},
       isActive: initial?.isActive ?? true,
     },
   });
@@ -68,7 +68,7 @@ export function ApprovalGroupForm({
     startTransition(async () => {
       const input = {
         nameJa: values.nameJa,
-        nameEn: values.nameEn,
+        nameTranslations: values.nameTranslations,
         isActive: values.isActive,
       };
       const result = isEdit
@@ -119,11 +119,11 @@ export function ApprovalGroupForm({
       >
         <SimpleGrid cols={1} spacing="sm">
           <LocalizedTextInput
-            enProps={form.getInputProps("nameEn")}
             help={fieldHelpTip("approvalGroup", "name")}
             jaProps={form.getInputProps("nameJa")}
             label="名称"
             required
+            translationsProps={form.getInputProps("nameTranslations")}
           />
           <Switch
             label={<HelpLabel {...fieldHelp("approvalGroup", "active")} />}

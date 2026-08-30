@@ -19,7 +19,7 @@
  *   `documentFormatters` を使う。
  */
 
-import { INTL_LOCALES, type Locale } from "./i18n";
+import { INTL_LOCALES, type Locale, localeFallbackOrder } from "./i18n";
 import {
   DEFAULT_PREFERENCES,
   type DisplayPreferences,
@@ -175,9 +175,7 @@ export function createFormatters(prefs: DisplayPreferences): Formatters {
     minute: "2-digit",
     hour12,
   });
-  // { ja, en } JSON は 2 言語しか持たない。zh の人には英語を見せる
-  // （日本語より読める可能性が高い）。
-  const textLocale: "ja" | "en" = prefs.locale === "ja" ? "ja" : "en";
+  const textLocale = prefs.locale;
 
   const date = (iso: string | Date | null | undefined): string => {
     if (!iso) return "—";
@@ -215,15 +213,57 @@ export function createFormatters(prefs: DisplayPreferences): Formatters {
 export const documentFormatters: Formatters =
   createFormatters(DEFAULT_PREFERENCES);
 
-/** { ja, en } DB JSON field (_specs/design.md §17.4). */
+/** { ja, en } DB JSON field (_specs/design.md §17.4). ja/en は必ず埋まる前提の固定 2 言語形。 */
 export type LocalizedText = { ja: string; en: string };
 
-/** Render-side fallback: current locale → ja → '—'. */
+/**
+ * DB の多言語 JSON の一般形（`_specs/i18n-glossary.md` §2.10）。**ja だけが必須**で、
+ * それ以外のキーは言語コード（`en` / `zh` / 将来足す言語）を任意に持つ —
+ * 言語を増やしてもこの型・`localized()` 側は変更不要（フォーム側は
+ * `components/ui/shells.tsx` の `LocalizedTextInput` が `LOCALES` を見て
+ * 自動で追従する）。既存の固定 `LocalizedText`（{ja,en} 両方必須）はこの形の
+ * 部分集合なので、呼び出し側の変更なしにそのまま渡せる。
+ */
+export type LocalizedTextInput = { ja: string } & Record<
+  string,
+  string | undefined
+>;
+
+/** Render-side fallback: `localeFallbackOrder(locale)` → 最初に埋まっている言語 → '—'. */
 export function localized(
-  value: LocalizedText | null | undefined,
-  locale: "ja" | "en" = "ja",
+  value: LocalizedTextInput | null | undefined,
+  locale: Locale | string = "ja",
 ): string {
-  return value?.[locale] || value?.ja || value?.en || "—";
+  if (!value) return "—";
+  for (const l of localeFallbackOrder(locale)) {
+    const text = value[l];
+    if (text) return text;
+  }
+  for (const text of Object.values(value)) {
+    if (text) return text;
+  }
+  return "—";
+}
+
+/**
+ * 編集フォーム用: 保存済みの `{ ja, en, ... }` から「日本語以外」を
+ * `Record<言語コード, 値>` として取り出す（`LocalizedTextInput` の多言語
+ * ポップアップの初期値）。`localizedInput` が未入力の英語を自動で日本語と
+ * 同じ値で埋めるため、**`en` が `ja` と同一なら「未入力だった」とみなして
+ * 除く** — そうしないと、翻訳した覚えのない英語欄がポップアップを開くたび
+ * 埋まって見える。
+ */
+export function localizedTranslations(
+  value: LocalizedTextInput | null | undefined,
+): Record<string, string> {
+  if (!value) return {};
+  const out: Record<string, string> = {};
+  for (const [locale, text] of Object.entries(value)) {
+    if (locale === "ja" || !text) continue;
+    if (locale === "en" && text === value.ja) continue;
+    out[locale] = text;
+  }
+  return out;
 }
 
 /**
@@ -232,12 +272,12 @@ export function localized(
  */
 export function deviceName(
   value: unknown,
-  locale: "ja" | "en" = "ja",
+  locale: Locale | string = "ja",
 ): string | null {
   if (value == null) return null;
   if (typeof value === "string") return value || null;
   if (typeof value === "object") {
-    const text = localized(value as LocalizedText, locale);
+    const text = localized(value as LocalizedTextInput, locale);
     return text === "—" ? null : text;
   }
   return null;

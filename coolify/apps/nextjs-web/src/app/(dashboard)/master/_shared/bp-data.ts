@@ -10,7 +10,11 @@
 import { bpSearchKeys } from "@/lib/bp-search";
 import { prisma } from "@/lib/db";
 import { formatQuoteNumber } from "@/lib/doc-number";
-import { type LocalizedText, localized } from "@/lib/format";
+import {
+  type LocalizedText,
+  localized,
+  localizedTranslations,
+} from "@/lib/format";
 import { BP_ROLES, type BpRoleValue } from "./bp-schema";
 
 const ja = (v: unknown) => (v as LocalizedText | null)?.ja ?? "";
@@ -106,6 +110,8 @@ export interface BpBaseDetail {
   bpCode: string;
   nameJa: string;
   nameEn: string;
+  /** 日本語以外の翻訳（LocalizedTextInput の多言語ポップアップ初期値）。 */
+  nameTranslations: Record<string, string>;
   name: string;
   nameKana: string;
   shortName: string;
@@ -113,6 +119,7 @@ export interface BpBaseDetail {
   postalCode: string;
   addressJa: string;
   addressEn: string;
+  addressTranslations: Record<string, string>;
   address: string;
   phone: string;
   fax: string;
@@ -153,6 +160,7 @@ export function mapBpBase(r: BpRowLike): BpBaseDetail {
     bpCode: r.bpCode ?? "—",
     nameJa: ja(r.name),
     nameEn: en(r.name),
+    nameTranslations: localizedTranslations(r.name as LocalizedText | null),
     name: localized(r.name as LocalizedText | null),
     nameKana: r.nameKana ?? "",
     shortName: r.shortName ?? "",
@@ -160,6 +168,9 @@ export function mapBpBase(r: BpRowLike): BpBaseDetail {
     postalCode: r.postalCode ?? "",
     addressJa: ja(r.address),
     addressEn: en(r.address),
+    addressTranslations: localizedTranslations(
+      r.address as LocalizedText | null,
+    ),
     address: localized(r.address as LocalizedText | null),
     phone: r.phone ?? "",
     fax: r.fax ?? "",

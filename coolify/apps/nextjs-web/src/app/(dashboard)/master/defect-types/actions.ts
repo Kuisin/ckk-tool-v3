@@ -25,7 +25,7 @@ const BASE_PATH = "/master/defect-types";
 const defectTypeInput = z.object({
   code: z.string().min(1, "コードを入力してください"),
   nameJa: z.string().min(1, "名称（日本語）を入力してください"),
-  nameEn: z.string().optional(),
+  nameTranslations: z.record(z.string(), z.string()).optional(),
   sortOrder: z.number().int("表示順は整数で入力してください").min(0),
   isActive: z.boolean(),
 });
@@ -50,7 +50,7 @@ export async function createDefectType(
     const created = await prisma.defectType.create({
       data: {
         code: v.code.trim(),
-        name: localizedInput(v.nameJa, v.nameEn),
+        name: localizedInput(v.nameJa, undefined, v.nameTranslations),
         sortOrder: v.sortOrder,
         isActive: v.isActive,
       },
@@ -94,7 +94,7 @@ export async function updateDefectType(
     await prisma.defectType.update({
       where: { id },
       data: {
-        name: localizedInput(v.nameJa, v.nameEn),
+        name: localizedInput(v.nameJa, undefined, v.nameTranslations),
         sortOrder: v.sortOrder,
         isActive: v.isActive,
       },

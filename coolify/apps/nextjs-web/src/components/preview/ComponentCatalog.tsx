@@ -211,7 +211,10 @@ export function ComponentCatalog() {
   const [formModalOpen, setFormModalOpen] = useState(false);
 
   const form = useForm({
-    initialValues: { name: { ja: "精密軸", en: "Precision shaft" } },
+    initialValues: {
+      name: { ja: "精密軸" },
+      nameTranslations: { en: "Precision shaft" },
+    },
   });
 
   const quoteColumns: Column<DemoQuote>[] = [
@@ -552,7 +555,7 @@ export function ComponentCatalog() {
 
       {/* ── 10. FormSection + LocalizedTextInput ────────────────────────── */}
       <DemoSection
-        description="フォームページのセクション Paper と { ja, en } ペア入力（design.md §8.3 / §17.4）。"
+        description="フォームページのセクション Paper と既定言語欄 + 多言語ポップアップ（design.md §8.3 / §17.4）。"
         name="FormSection / LocalizedTextInput"
         source="components/ui/shells.tsx"
       >
@@ -569,10 +572,10 @@ export function ComponentCatalog() {
             <FormSection description="製品マスタの例" title="基本情報">
               <Stack gap="sm">
                 <LocalizedTextInput
-                  enProps={form.getInputProps("name.en")}
                   jaProps={form.getInputProps("name.ja")}
                   label="名称"
                   required
+                  translationsProps={form.getInputProps("nameTranslations")}
                 />
                 <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="sm">
                   <Select
@@ -691,10 +694,10 @@ export function ComponentCatalog() {
         >
           <TextInput label="コード" placeholder="scratch" withAsterisk />
           <LocalizedTextInput
-            enProps={{ defaultValue: "Scratch" } as never}
-            jaProps={{ defaultValue: "キズ" } as never}
+            jaProps={{ value: "キズ", onChange: () => {} }}
             label="名称"
             required
+            translationsProps={{ value: { en: "Scratch" }, onChange: () => {} }}
           />
         </FormModal>
       </DemoSection>

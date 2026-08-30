@@ -44,7 +44,7 @@ const BASE_PATH = "/master/approval-settings";
 // 編集可能フィールド（type は識別 — 作成後不変）
 const groupUpdateInput = z.object({
   nameJa: z.string().min(1, "名称（日本語）を入力してください"),
-  nameEn: z.string().optional(),
+  nameTranslations: z.record(z.string(), z.string()).optional(),
   isActive: z.boolean(),
 });
 
@@ -78,7 +78,7 @@ export async function createApprovalGroup(
   try {
     const created = await prisma.approvalGroup.create({
       data: {
-        name: localizedInput(v.nameJa, v.nameEn),
+        name: localizedInput(v.nameJa, undefined, v.nameTranslations),
         isActive: v.isActive,
       },
       select: { id: true },
@@ -117,7 +117,7 @@ export async function updateApprovalGroup(
     await prisma.approvalGroup.update({
       where: { id },
       data: {
-        name: localizedInput(v.nameJa, v.nameEn),
+        name: localizedInput(v.nameJa, undefined, v.nameTranslations),
         isActive: v.isActive,
       },
     });

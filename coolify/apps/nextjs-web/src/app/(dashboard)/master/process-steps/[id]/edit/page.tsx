@@ -5,7 +5,11 @@ import {
 } from "@/components/master/process-steps/ProcessStepForm";
 import { requireAppRead } from "@/lib/authz-page";
 import { prisma } from "@/lib/db";
-import { type LocalizedText, localized } from "@/lib/format";
+import {
+  type LocalizedText,
+  localized,
+  localizedTranslations,
+} from "@/lib/format";
 import {
   fetchWorkLocationOptions,
   readWorkLocationTypes,
@@ -69,7 +73,7 @@ export default async function MasterProcessStepsEditPage({
         id: r.id,
         code: r.code,
         nameJa: name?.ja ?? "",
-        nameEn: name?.en ?? "",
+        nameTranslations: localizedTranslations(name),
         category: r.category,
         executionLocation: r.executionLocation,
         isSyncCapable: r.isSyncCapable,

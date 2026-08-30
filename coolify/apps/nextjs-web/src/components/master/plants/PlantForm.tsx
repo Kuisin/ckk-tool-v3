@@ -41,13 +41,13 @@ const BASE_PATH = "/master/plants";
 const plantSchema = z.object({
   code: z.string().min(1, "拠点コードを入力してください"),
   nameJa: z.string().min(1, "名称（日本語）を入力してください"),
-  nameEn: z.string(),
+  nameTranslations: z.record(z.string(), z.string()).default({}),
   nameKana: z.string(),
   countryCode: z.string().nullable(),
   regionId: z.string().nullable(),
   postalCode: z.string(),
   addressJa: z.string(),
-  addressEn: z.string(),
+  addressTranslations: z.record(z.string(), z.string()).default({}),
   phone: z.string(),
   email: z
     .string()
@@ -64,13 +64,13 @@ export interface PlantFormInitial {
   id: number;
   code: string;
   nameJa: string;
-  nameEn: string;
+  nameTranslations: Record<string, string>;
   nameKana: string;
   countryCode: string | null;
   regionId: number | null;
   postalCode: string;
   addressJa: string;
-  addressEn: string;
+  addressTranslations: Record<string, string>;
   phone: string;
   email: string;
   contactPerson: string;
@@ -96,13 +96,13 @@ export function PlantForm({
     initialValues: {
       code: initial?.code ?? "",
       nameJa: initial?.nameJa ?? "",
-      nameEn: initial?.nameEn ?? "",
+      nameTranslations: initial?.nameTranslations ?? {},
       nameKana: initial?.nameKana ?? "",
       countryCode: initial?.countryCode ?? "JP",
       regionId: initial?.regionId != null ? String(initial.regionId) : null,
       postalCode: initial?.postalCode ?? "",
       addressJa: initial?.addressJa ?? "",
-      addressEn: initial?.addressEn ?? "",
+      addressTranslations: initial?.addressTranslations ?? {},
       phone: initial?.phone ?? "",
       email: initial?.email ?? "",
       contactPerson: initial?.contactPerson ?? "",
@@ -177,11 +177,11 @@ export function PlantForm({
         </SimpleGrid>
         <Stack gap="sm" mt="sm">
           <LocalizedTextInput
-            enProps={form.getInputProps("nameEn")}
             help={fieldHelpTip("plant", "name")}
             jaProps={form.getInputProps("nameJa")}
             label="名称"
             required
+            translationsProps={form.getInputProps("nameTranslations")}
           />
           <Switch
             label={<HelpLabel {...fieldHelp("plant", "active")} />}
@@ -231,10 +231,10 @@ export function PlantForm({
         </SimpleGrid>
         <Stack gap="sm" mt="sm">
           <LocalizedTextInput
-            enProps={form.getInputProps("addressEn")}
             help={fieldHelpTip("plant", "address")}
             jaProps={form.getInputProps("addressJa")}
             label="住所"
+            translationsProps={form.getInputProps("addressTranslations")}
           />
         </Stack>
         <SimpleGrid cols={isMobile ? 1 : 2} mt="sm" spacing="sm">

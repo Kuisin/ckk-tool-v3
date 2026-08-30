@@ -66,7 +66,7 @@ const LENGTH_MAX = 999;
 const productSchema = z
   .object({
     nameJa: z.string().min(1, "名称（日本語）を入力してください"),
-    nameEn: z.string(),
+    nameTranslations: z.record(z.string(), z.string()).default({}),
     materialTypeId: z.string().nullable(),
     materialTypeLabel: z.string(),
     diameterMm: z.number().nullable(),
@@ -109,7 +109,7 @@ export interface ProductFormInitial {
   id: number;
   code: string | null;
   nameJa: string;
-  nameEn: string;
+  nameTranslations: Record<string, string>;
   materialTypeId: string | null;
   materialTypeLabel: string;
   diameterMm: number | null;
@@ -206,7 +206,7 @@ export function ProductForm({
     validate: zodResolver(productSchema),
     initialValues: {
       nameJa: initial?.nameJa ?? "",
-      nameEn: initial?.nameEn ?? "",
+      nameTranslations: initial?.nameTranslations ?? {},
       materialTypeId: initial?.materialTypeId ?? null,
       materialTypeLabel: initial?.materialTypeLabel ?? "",
       diameterMm: initial?.diameterMm ?? null,
@@ -265,10 +265,10 @@ export function ProductForm({
   // キーワード生成に渡す「いま画面に出ている製品の姿」。名称だけでは
   // 材質も寸法も分からず当たり障りのない語しか返ってこないので、種別項目まで含める。
   const keywordSubject = {
-    name: form.values.nameJa || form.values.nameEn,
+    name: form.values.nameJa || form.values.nameTranslations.en || "",
     code: initial?.code ?? null,
     attributes: [
-      { label: "英語名", value: form.values.nameEn },
+      { label: "英語名", value: form.values.nameTranslations.en ?? "" },
       { label: "材種", value: form.values.materialTypeLabel },
       {
         label: "直径 (mm)",
@@ -405,11 +405,11 @@ export function ProductForm({
         </SimpleGrid>
         <Stack gap="sm" mt="sm">
           <LocalizedTextInput
-            enProps={form.getInputProps("nameEn")}
             help={fieldHelpTip("product", "name")}
             jaProps={form.getInputProps("nameJa")}
             label="名称"
             required
+            translationsProps={form.getInputProps("nameTranslations")}
           />
           <Switch
             label={<HelpLabel {...fieldHelp("product", "active")} />}

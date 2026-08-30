@@ -180,13 +180,13 @@ export function BpForm({
   const handleSubmit = (values: FormValues) => {
     const input: BpInput = {
       nameJa: values.nameJa,
-      nameEn: values.nameEn,
+      nameTranslations: values.nameTranslations,
       nameKana: values.nameKana,
       shortName: values.shortName,
       countryCode: values.countryCode,
       postalCode: values.postalCode,
       addressJa: values.addressJa,
-      addressEn: values.addressEn,
+      addressTranslations: values.addressTranslations,
       phone: values.phone,
       fax: values.fax,
       email: values.email,

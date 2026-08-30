@@ -543,7 +543,9 @@ export function PriceListTypeForm({
                     }
                   }}
                   placeholder={
-                    sourceOptions.length === 0 ? "価格試算なし（手動）" : "手動設定"
+                    sourceOptions.length === 0
+                      ? "価格試算なし（手動）"
+                      : "手動設定"
                   }
                   value={variant.sourceEstimate}
                 />

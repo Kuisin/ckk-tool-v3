@@ -45,7 +45,7 @@ const execDependencyInput = z.object({
 
 const processStepUpdateInput = z.object({
   nameJa: z.string().min(1, "名称（日本語）を入力してください"),
-  nameEn: z.string().optional(),
+  nameTranslations: z.record(z.string(), z.string()).optional(),
   category: z.enum([
     "MATERIAL_PREP",
     "MACHINING",
@@ -204,7 +204,7 @@ export async function createProcessStep(
       const step = await tx.processStepCatalog.create({
         data: {
           code: v.code,
-          name: localizedInput(v.nameJa, v.nameEn),
+          name: localizedInput(v.nameJa, undefined, v.nameTranslations),
           category: v.category,
           executionLocation: v.executionLocation,
           isSyncCapable: v.isSyncCapable,
@@ -337,7 +337,7 @@ export async function updateProcessStep(
       await tx.processStepCatalog.update({
         where: { id },
         data: {
-          name: localizedInput(v.nameJa, v.nameEn),
+          name: localizedInput(v.nameJa, undefined, v.nameTranslations),
           category: v.category,
           executionLocation: v.executionLocation,
           isSyncCapable: v.isSyncCapable,

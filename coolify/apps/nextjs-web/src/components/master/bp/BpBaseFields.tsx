@@ -28,13 +28,13 @@ import { MatchNameSuggestions } from "./MatchNameSuggestions";
 
 export const bpBaseFormSchema = z.object({
   nameJa: z.string().min(1, "名称（日本語）を入力してください"),
-  nameEn: z.string(),
+  nameTranslations: z.record(z.string(), z.string()).default({}),
   nameKana: z.string(),
   shortName: z.string(),
   countryCode: z.string().nullable(),
   postalCode: z.string(),
   addressJa: z.string(),
-  addressEn: z.string(),
+  addressTranslations: z.record(z.string(), z.string()).default({}),
   phone: z.string(),
   fax: z.string(),
   email: z
@@ -53,13 +53,13 @@ export type BpBaseFormValues = z.infer<typeof bpBaseFormSchema>;
 export function bpBaseInitialValues(d?: BpBaseDetail): BpBaseFormValues {
   return {
     nameJa: d?.nameJa ?? "",
-    nameEn: d?.nameEn ?? "",
+    nameTranslations: d?.nameTranslations ?? {},
     nameKana: d?.nameKana ?? "",
     shortName: d?.shortName ?? "",
     countryCode: d?.countryCode ?? "JP",
     postalCode: d?.postalCode ?? "",
     addressJa: d?.addressJa ?? "",
-    addressEn: d?.addressEn ?? "",
+    addressTranslations: d?.addressTranslations ?? {},
     phone: d?.phone ?? "",
     fax: d?.fax ?? "",
     email: d?.email ?? "",
@@ -117,11 +117,11 @@ export function BpBaseFields<T extends BpBaseFormValues>({
         </SimpleGrid>
         <Stack gap="sm" mt="sm">
           <LocalizedTextInput
-            enProps={props("nameEn")}
             help={fieldHelpTip("businessPartner", "name")}
             jaProps={props("nameJa")}
             label="名称"
             required
+            translationsProps={props("nameTranslations")}
           />
         </Stack>
         <SimpleGrid cols={isMobile ? 1 : 2} mt="sm" spacing="sm">
@@ -173,7 +173,7 @@ export function BpBaseFields<T extends BpBaseFormValues>({
         {/* 足りない字種の指摘 + 機械的に作れる候補（lib/company-aliases）。 */}
         <MatchNameSuggestions
           matchNames={form.values.matchNames ?? []}
-          nameEn={form.values.nameEn}
+          nameEn={form.values.nameTranslations.en}
           nameJa={form.values.nameJa ?? ""}
           nameKana={form.values.nameKana}
           onAdd={(values) =>
@@ -201,10 +201,10 @@ export function BpBaseFields<T extends BpBaseFormValues>({
         </SimpleGrid>
         <Stack gap="sm" mt="sm">
           <LocalizedTextInput
-            enProps={props("addressEn")}
             help={fieldHelpTip("businessPartner", "address")}
             jaProps={props("addressJa")}
             label="住所"
+            translationsProps={props("addressTranslations")}
           />
         </Stack>
         <SimpleGrid cols={isMobile ? 1 : 2} mt="sm" spacing="sm">

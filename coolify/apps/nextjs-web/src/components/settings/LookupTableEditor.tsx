@@ -100,8 +100,17 @@ export function LookupTableEditor({
 
   const patch = (p: Partial<LookupTable>) => setTable((t) => ({ ...t, ...p }));
   const setRows = (rows: LookupRow[]) => patch({ rows });
-  const setName = (lang: "ja" | "en", v: string) =>
+  const setName = (lang: string, v: string) =>
     setTable((t) => ({ ...t, name: { ...t.name, [lang]: v } }));
+  const setNameTranslations = (translations: Record<string, string>) =>
+    setTable((t) => ({
+      ...t,
+      name: {
+        ja: t.name.ja,
+        en: translations.en || t.name.ja,
+        ...translations,
+      },
+    }));
 
   // ── キー列（照合方法つき）───────────────────────────────────────────────────
   const addColumn = () =>
@@ -288,11 +297,6 @@ export function LookupTableEditor({
             />
           </Group>
           <LocalizedTextInput
-            enProps={{
-              value: table.name.en,
-              onChange: (e: ChangeEvent<HTMLInputElement>) =>
-                setName("en", e.currentTarget.value),
-            }}
             jaProps={{
               value: table.name.ja,
               onChange: (e: ChangeEvent<HTMLInputElement>) =>
@@ -301,6 +305,12 @@ export function LookupTableEditor({
             label="表示名"
             placeholder="センタレス"
             required
+            translationsProps={{
+              value: Object.fromEntries(
+                Object.entries(table.name).filter(([k]) => k !== "ja"),
+              ),
+              onChange: setNameTranslations,
+            }}
           />
           <Textarea
             autosize

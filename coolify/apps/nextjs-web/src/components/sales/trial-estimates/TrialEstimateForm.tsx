@@ -116,7 +116,9 @@ export function TrialEstimateForm({
   const [toolType, setToolType] = useState<ToolType>(
     src?.toolType ?? "ROUND_BAR",
   );
-  const [name, setName] = useState(source ? `${source.name}（再価格試算）` : "");
+  const [name, setName] = useState(
+    source ? `${source.name}（再価格試算）` : "",
+  );
   const [customerId, setCustomerId] = useState<string | null>(
     source?.customerId ?? null,
   );

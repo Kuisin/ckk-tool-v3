@@ -26,13 +26,13 @@ const BASE_PATH = "/master/plants";
 const plantInput = z.object({
   code: z.string().min(1, "拠点コードを入力してください"),
   nameJa: z.string().min(1, "名称（日本語）を入力してください"),
-  nameEn: z.string().optional(),
+  nameTranslations: z.record(z.string(), z.string()).optional(),
   nameKana: z.string().optional(),
   countryCode: z.string().nullable(),
   regionId: z.number().int().positive().nullable(),
   postalCode: z.string().optional(),
   addressJa: z.string().optional(),
-  addressEn: z.string().optional(),
+  addressTranslations: z.record(z.string(), z.string()).optional(),
   phone: z.string().optional(),
   email: z
     .string()
@@ -54,12 +54,14 @@ function revalidate(id?: number) {
 /** 共通カラム（create/update 共用。code は create のみ別途設定）。 */
 function plantData(v: PlantInput) {
   return {
-    name: localizedInput(v.nameJa, v.nameEn),
+    name: localizedInput(v.nameJa, undefined, v.nameTranslations),
     nameKana: v.nameKana?.trim() || null,
     countryCode: v.countryCode,
     regionId: v.regionId,
     postalCode: v.postalCode?.trim() || null,
-    address: localizedInputOrNull(v.addressJa, v.addressEn) ?? Prisma.DbNull,
+    address:
+      localizedInputOrNull(v.addressJa, undefined, v.addressTranslations) ??
+      Prisma.DbNull,
     phone: v.phone?.trim() || null,
     email: v.email?.trim() || null,
     contactPerson: v.contactPerson?.trim() || null,

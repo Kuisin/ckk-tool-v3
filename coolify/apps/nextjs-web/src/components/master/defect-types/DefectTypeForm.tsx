@@ -35,7 +35,7 @@ const BASE_PATH = "/master/defect-types";
 const defectTypeSchema = z.object({
   code: z.string().min(1, "コードを入力してください"),
   nameJa: z.string().min(1, "名称（日本語）を入力してください"),
-  nameEn: z.string(),
+  nameTranslations: z.record(z.string(), z.string()).default({}),
   sortOrder: z.number().int("表示順は整数で入力してください").min(0),
   isActive: z.boolean(),
 });
@@ -52,7 +52,7 @@ export function DefectTypeForm() {
     initialValues: {
       code: "",
       nameJa: "",
-      nameEn: "",
+      nameTranslations: {},
       sortOrder: 0,
       isActive: true,
     },
@@ -115,11 +115,11 @@ export function DefectTypeForm() {
         </SimpleGrid>
         <Stack gap="sm" mt="sm">
           <LocalizedTextInput
-            enProps={form.getInputProps("nameEn")}
             help={fieldHelpTip("defectType", "code")}
             jaProps={form.getInputProps("nameJa")}
             label="名称"
             required
+            translationsProps={form.getInputProps("nameTranslations")}
           />
           <Switch
             label={<HelpLabel {...fieldHelp("defectType", "active")} />}

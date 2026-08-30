@@ -18,7 +18,11 @@ import { z } from "zod";
 import { recordAudit } from "@/lib/audit";
 import { checkPermission } from "@/lib/authz";
 import { Prisma, prisma } from "@/lib/db";
-import { type LocalizedText, localized } from "@/lib/format";
+import {
+  type LocalizedText,
+  localized,
+  localizedTranslations,
+} from "@/lib/format";
 import {
   type ActionResult,
   actionError,
@@ -35,7 +39,7 @@ const LOCKED_MESSAGE =
 // 編集可能フィールド（code は識別子 — 作成後不変）
 const templateFields = z.object({
   nameJa: z.string().min(1, "名称（日本語）を入力してください"),
-  nameEn: z.string().optional(),
+  nameTranslations: z.record(z.string(), z.string()).optional(),
   relatedProcessStepId: z.number().int().positive().nullable(),
   // 検査対象（シート単位）: 全数 / 割合(%) / 本数
   samplingMode: z.enum(["ALL", "PERCENT", "COUNT"]),
@@ -225,7 +229,7 @@ export async function createInspectionTemplate(
     const created = await prisma.inspectionTemplate.create({
       data: {
         code: v.code.trim(),
-        name: localizedInput(v.nameJa, v.nameEn),
+        name: localizedInput(v.nameJa, undefined, v.nameTranslations),
         relatedProcessStepId: v.relatedProcessStepId,
         samplingMode: v.samplingMode,
         samplingValue: v.samplingMode === "ALL" ? null : v.samplingValue,
@@ -282,9 +286,12 @@ export async function updateInspectionTemplate(
     const priorName = prior.name as LocalizedText | null;
     const priorSamplingValue =
       prior.samplingValue == null ? null : Number(prior.samplingValue);
-    const definitionChanged =
+    const nameChanged =
       (priorName?.ja ?? "") !== v.nameJa ||
-      (priorName?.en ?? "") !== (v.nameEn ?? "") ||
+      JSON.stringify(localizedTranslations(priorName)) !==
+        JSON.stringify(v.nameTranslations ?? {});
+    const definitionChanged =
+      nameChanged ||
       prior.relatedProcessStepId !== v.relatedProcessStepId ||
       prior.samplingMode !== v.samplingMode ||
       prior.recordStyle !== v.recordStyle ||
@@ -296,7 +303,7 @@ export async function updateInspectionTemplate(
     await prisma.inspectionTemplate.update({
       where: { id },
       data: {
-        name: localizedInput(v.nameJa, v.nameEn),
+        name: localizedInput(v.nameJa, undefined, v.nameTranslations),
         relatedProcessStepId: v.relatedProcessStepId,
         samplingMode: v.samplingMode,
         samplingValue: v.samplingMode === "ALL" ? null : v.samplingValue,

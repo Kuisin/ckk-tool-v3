@@ -74,7 +74,7 @@ const materialSchema = (isEdit: boolean) =>
       .max(999, "全長は 1〜999mm で入力してください"),
     kindCode: isEdit ? z.string() : z.string().min(1, "種類を選択してください"),
     nameJa: z.string().min(1, "名称（日本語）を入力してください"),
-    nameEn: z.string(),
+    nameTranslations: z.record(z.string(), z.string()).default({}),
     unit: z.string().min(1, "単位を選択してください"),
     manufacturerModel: z.string(),
     nominalDiameterMm: z.union([z.number(), z.literal("")]),
@@ -97,7 +97,7 @@ export interface MaterialFormInitial {
   kindLabel: string;
   // 編集可能
   nameJa: string;
-  nameEn: string;
+  nameTranslations: Record<string, string>;
   unit: string;
   manufacturerModel: string;
   nominalDiameterMm: number | null;
@@ -140,7 +140,7 @@ export function MaterialForm({
       lengthMm: initial?.lengthMm ?? 330,
       kindCode: "",
       nameJa: initial?.nameJa ?? "",
-      nameEn: initial?.nameEn ?? "",
+      nameTranslations: initial?.nameTranslations ?? {},
       unit: initial?.unit ?? "本",
       manufacturerModel: initial?.manufacturerModel ?? "",
       nominalDiameterMm: initial?.nominalDiameterMm ?? "",
@@ -224,10 +224,10 @@ export function MaterialForm({
   // 「K40UF φ3×330」のような機械的な文字列なので、材種・寸法・型式まで渡さないと
   // 呼び方の候補が出ない。
   const keywordSubject = {
-    name: form.values.nameJa || form.values.nameEn,
+    name: form.values.nameJa || form.values.nameTranslations.en || "",
     code: isEdit ? initial.code : preview,
     attributes: [
-      { label: "英語名", value: form.values.nameEn },
+      { label: "英語名", value: form.values.nameTranslations.en ?? "" },
       {
         label: "材種",
         value: isEdit
@@ -263,7 +263,7 @@ export function MaterialForm({
     startTransition(async () => {
       const editable = {
         nameJa: values.nameJa,
-        nameEn: values.nameEn,
+        nameTranslations: values.nameTranslations,
         unit: values.unit,
         manufacturerModel: values.manufacturerModel,
         nominalDiameterMm:
@@ -460,12 +460,12 @@ export function MaterialForm({
 
       <FormSection title="基本情報">
         <LocalizedTextInput
-          enProps={form.getInputProps("nameEn")}
           help={fieldHelpTip("material", "name")}
           jaProps={form.getInputProps("nameJa")}
           label="名称"
           placeholder="K40UF φ3×330"
           required
+          translationsProps={form.getInputProps("nameTranslations")}
         />
         <SimpleGrid cols={isMobile ? 1 : 3} mt="sm" spacing="sm">
           <Select

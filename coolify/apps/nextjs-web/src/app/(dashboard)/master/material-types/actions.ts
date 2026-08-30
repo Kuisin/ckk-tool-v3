@@ -27,7 +27,7 @@ const BASE_PATH = "/master/material-types";
 
 const materialTypeInput = z.object({
   nameJa: z.string().min(1, "名称（日本語）を入力してください"),
-  nameEn: z.string().optional(),
+  nameTranslations: z.record(z.string(), z.string()).optional(),
   descriptionJa: z.string().optional(),
   descriptionEn: z.string().optional(),
   isActive: z.boolean(),
@@ -110,7 +110,7 @@ export async function createMaterialType(
                 gradeCode: v.gradeCode,
                 shapeCode: v.shapeCode,
                 kindCode,
-                name: localizedInput(v.nameJa, v.nameEn),
+                name: localizedInput(v.nameJa, undefined, v.nameTranslations),
                 description:
                   localizedInputOrNull(v.descriptionJa, v.descriptionEn) ??
                   undefined,
@@ -174,7 +174,7 @@ export async function updateMaterialType(
     await prisma.materialType.update({
       where: { id },
       data: {
-        name: localizedInput(v.nameJa, v.nameEn),
+        name: localizedInput(v.nameJa, undefined, v.nameTranslations),
         description:
           localizedInputOrNull(v.descriptionJa, v.descriptionEn) ??
           Prisma.DbNull,

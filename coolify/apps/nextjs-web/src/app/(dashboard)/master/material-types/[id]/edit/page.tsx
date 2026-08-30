@@ -2,7 +2,11 @@ import { notFound } from "next/navigation";
 import { MaterialTypeForm } from "@/components/master/material-types/MaterialTypeForm";
 import { requireAppRead } from "@/lib/authz-page";
 import { prisma } from "@/lib/db";
-import { type LocalizedText, localized } from "@/lib/format";
+import {
+  type LocalizedText,
+  localized,
+  localizedTranslations,
+} from "@/lib/format";
 
 export const dynamic = "force-dynamic";
 
@@ -47,7 +51,7 @@ export default async function MasterMaterialTypesEditPage({
               }
             : null,
         nameJa: name?.ja ?? "",
-        nameEn: name?.en ?? "",
+        nameTranslations: localizedTranslations(name),
         descriptionJa: description?.ja ?? "",
         descriptionEn: description?.en ?? "",
         isActive: r.isActive,
