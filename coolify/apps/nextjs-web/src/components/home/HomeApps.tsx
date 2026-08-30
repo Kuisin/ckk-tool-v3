@@ -165,7 +165,7 @@ export function HomeApps({
   };
 
   return (
-    <Stack gap="xl" maw={1200} mx="auto" p="md" w="100%">
+    <Stack gap="xl" maw={1200} mx="auto" w="100%">
       {/* ── User profile card ──────────────────────────────────────────── */}
       <Card padding="lg" radius="md" shadow="xs" withBorder>
         <Group align="flex-start" justify="space-between" wrap="nowrap">
