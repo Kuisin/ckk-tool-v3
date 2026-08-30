@@ -168,7 +168,7 @@ export const OPERATION_CODES: OperationCodeEntry[] = [
   ...makeResource("購買", "PU", "4", "外注依頼", "/purchase/outsource-orders"),
 
   // ─── 生産 (PD) ───────────────────────────────────────────────────────────
-  // 業務フロー順: 指示書 → 承認管理 → 在庫管理。
+  // 業務フロー順: 指示書 → 承認管理 → 在庫管理 → 設計図。
   // 注文明細は販売カテゴリ (SA05) へ移設したため PD01/PD11/PD21 は欠番。
   // PD22 詳細（ID無し→検索）が旧 PD20 工程実行 のエントリポイントを兼ねる
   ...makeResource("生産", "PD", "2", "指示書", "/production/work-orders"),
@@ -185,6 +185,9 @@ export const OPERATION_CODES: OperationCodeEntry[] = [
     mode: "0",
     index: "4",
   },
+  // 設計図 — 図面の台帳。一覧 (PD06) は系列（製品 × 受注元）、詳細 (PD26) は
+  // 1 製品の全系列、新規 (PD16) は版を 1 つ登録する。
+  ...makeResource("生産", "PD", "6", "設計図", "/production/design-files"),
   // 未処理指示書 — 作業キュー（未手配の注文明細 + 進行中の指示書）。
   // 書類を作る画面ではないので list コードのみ（新規は PD12 と同じフォーム）。
   {

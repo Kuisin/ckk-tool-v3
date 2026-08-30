@@ -9,6 +9,9 @@
  *   3. 申請・報告フォームの完了通知（共有設定 → 提出 → CM01 → 既読）
  *   4. 個人の表示設定が **DB に入っていて端末をまたぐ**こと（別ブラウザ
  *      コンテキスト＝別端末で開き直して確かめる）
+ *   5. 設計図 (PD06) と設計依頼 (SA06) の分離 — 版の系列が (製品 × 受注元) で
+ *      分かれること、依頼は成果物が無いと完了できないこと、成果物があれば
+ *      完了できること、製品マスタ側からは書けないこと
  *
  * 落ちたときに原因を追えるよう、check() には**実測値**（URL・幅・ラベル）を
  * 添えること。合否だけだと「なぜ」が残らない。
@@ -350,6 +353,108 @@ async function main(): Promise<void> {
   await page.getByRole("button", { name: "保存" }).click();
   await page.waitForTimeout(800);
   await device2.close();
+
+  // ── 5. 設計図 (PD06) × 設計依頼 (SA06) の分離 ───────────────────────
+  //
+  // ここが今回いちばん壊れやすい。版の入口を 1 本にしたので、
+  //   ・依頼の完了が「成果物あり」に依存する
+  //   ・製品マスタからは書けない
+  //   ・系列 (製品 × 受注元) が混ざらない
+  // の 3 つを画面越しに確かめる。
+  await page.goto(`${APP}/production/design-files`, { waitUntil: "networkidle" });
+  await page.waitForTimeout(500);
+  const seriesRows = await page.locator("tbody tr").allInnerTexts();
+  check(
+    "PD06: 一覧が 1 行 = 1 系列（汎用と顧客別が別行）",
+    seriesRows.some((r) => r.includes("汎用")) &&
+      seriesRows.some((r) => r.includes("デモ商事")),
+    `${seriesRows.length} 行`,
+  );
+
+  // 製品 9001 は汎用 v2 とデモ商事 v1 を持つ ⇒ 詳細で 2 系列が節に分かれる
+  await page.goto(`${APP}/production/design-files/9001`, {
+    waitUntil: "networkidle",
+  });
+  await page.waitForTimeout(500);
+  const genericLatest = await page
+    .locator("text=最新 v2")
+    .count();
+  const customerLatest = await page.locator("text=最新 v1").count();
+  check(
+    "PD06: 版は (製品 × 受注元) ごとに数える（汎用 v2 / デモ商事 v1 が同居）",
+    genericLatest > 0 && customerLatest > 0,
+    `汎用 v2:${genericLatest} 顧客 v1:${customerLatest}`,
+  );
+
+  // 成果物ゼロの進行中依頼 → 「完了」ではなく登録への誘導が出る
+  await page.goto(`${APP}/sales/design-requests/DSG-202607-00001`, {
+    waitUntil: "networkidle",
+  });
+  await page.waitForTimeout(500);
+  const registerCta = page.getByRole("link", { name: "設計図に登録" });
+  check(
+    "SA06: 成果物が無い依頼は完了できず、設計図の登録へ誘導する",
+    (await registerCta.count()) > 0,
+    await page.getByText("図面を登録してください").first().innerText().catch(() => "(案内なし)"),
+  );
+  await page.getByRole("button", { name: "操作メニュー" }).first().click();
+  await page.waitForTimeout(300);
+  const doneItemAbsent =
+    (await page.getByRole("menuitem", { name: "完了" }).count()) === 0;
+  check("SA06: そのとき操作メニューにも「完了」が出ない", doneItemAbsent);
+  await page.keyboard.press("Escape");
+
+  // 誘導先は製品・受注元が依頼で固定されている（選び直せない）
+  await registerCta.click();
+  await page.waitForURL(/\/production\/design-files\/new\?request=/, {
+    timeout: 15_000,
+  });
+  await page.waitForTimeout(500);
+  const fixedNotice = await page
+    .getByText("設計依頼 DSG-202607-00001 の成果物として登録します")
+    .count();
+  // Mantine の Select は combobox（manifest の 材種 と同じ引き方）。
+  const customerSelect = page.getByRole("combobox", { name: "受注元" });
+  const customerDisabled = (await customerSelect.count())
+    ? await customerSelect.isDisabled()
+    : false;
+  check(
+    "SA06→PD06: 依頼から来ると製品・受注元が固定される",
+    fixedNotice > 0 && customerDisabled,
+    `案内:${fixedNotice} 受注元disabled:${customerDisabled}`,
+  );
+
+  // 成果物のある進行中依頼 → 完了できる
+  await page.goto(`${APP}/sales/design-requests/DSG-202607-00006`, {
+    waitUntil: "networkidle",
+  });
+  await page.waitForTimeout(500);
+  await page.getByRole("button", { name: "操作メニュー" }).first().click();
+  await page.waitForTimeout(300);
+  const doneItem = page.getByRole("menuitem", { name: "完了" });
+  check(
+    "SA06: 成果物のある依頼は完了できる",
+    (await doneItem.count()) > 0,
+    "DSG-202607-00006",
+  );
+  await page.keyboard.press("Escape");
+
+  // 製品マスタ側は読むだけ（第 2 の書き込み口を作っていないこと）
+  await page.goto(`${APP}/master/products/9001?tab=related`, {
+    waitUntil: "networkidle",
+  });
+  await page.waitForTimeout(600);
+  const addFromMaster = await page
+    .getByRole("button", { name: "設計図を追加" })
+    .count();
+  const manageLink = await page
+    .getByRole("link", { name: "設計図で管理" })
+    .count();
+  check(
+    "MS24: 製品マスタからは版を足せない（読み取り + 設計図へのリンクだけ）",
+    addFromMaster === 0 && manageLink > 0,
+    `追加ボタン:${addFromMaster} 管理リンク:${manageLink}`,
+  );
 
   console.log("\n---- 結果 ----");
   for (const r of results) console.log(r);

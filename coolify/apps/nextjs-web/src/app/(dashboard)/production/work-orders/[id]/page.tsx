@@ -2,7 +2,7 @@ import { notFound } from "next/navigation";
 import {
   fetchDesignFileById,
   fetchLatestViewableDesignFile,
-} from "@/app/(dashboard)/sales/design-requests/data";
+} from "@/app/(dashboard)/production/design-files/data";
 import { WorkOrderDetail } from "@/components/production/work-orders/WorkOrderDetail";
 import { fetchApprovalState } from "@/lib/approvals";
 import { fetchAuditEntries } from "@/lib/audit";

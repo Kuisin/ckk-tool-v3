@@ -1407,6 +1407,9 @@ Table design_requests {
   // アプリ側では必須（依頼区分の自動判定に要る）。DB は nullable のまま —
   // 製品未指定の既存行があるので NOT NULL にすると移行が落ちる。
   product_id      int [ref: > products.id]
+  // 完成した版がどの系列に載るか（= design_files.customer_bp_id）。
+  // 既定は見積の顧客 / 注文明細の顧客。単独起票や汎用の図面は null。
+  customer_bp_id  uuid [ref: > business_partners.id]
   description     text
   // 依頼区分。「その製品に design_files があるか」で自動判定した値を**保存**する
   // （導出しない — 区分は承認ルートを決めるので、他の依頼の完了で値が動くと
@@ -1482,17 +1485,34 @@ Enum DESIGN_STATUS {
 }
 
 // 製品の「最新図面」はここが正 — products 側に design_file_id 列は無い。
-// 版採番と両側の is_latest クリアは completeDesign の 1 tx が唯一の管理者。
+// 版採番と両側の is_latest クリアは lib/design-files.ts の createVersionInTx が
+// 唯一の管理者（設計図 PD06 の登録口 1 本だけが通る）。系列が (製品 × 受注元) の
+// 組で無数に増えるため採番表は使えず、系列ごとの advisory lock で直列化する。
 //
-// **同じ version の行が複数あってよい。** 1 回の完了で上げたファイルはすべて
-// 同じ version・同じ is_latest を持ち、role（主図面 1 枚 / 参考資料 0..N 枚）
-// だけが違う。version は「図面の改訂世代」でファイルの通し番号ではない。
-// 製品の最新図面 = is_latest かつ role = BLUEPRINT の 1 行。
+// **同じ version の行が複数あってよい。** 1 回の登録で上げたファイルはすべて
+// 同じ version・同じ is_latest を持ち、role（プレビュー 0..1 / 図面データ 1 /
+// 参考資料 0..N）だけが違う。version は「図面の改訂世代」でファイルの通し番号
+// ではない。
+//
+// **版は (製品 × 受注元) ごとに数える。** 同じ製品でも顧客ごとに図面が別々に
+// 育つので、顧客 A の v3 と顧客 B の v1 が同居する。customer_bp_id が null の
+// 系列は「汎用」で、顧客専用の図面が無いときのフォールバック。優先規則
+// （顧客一致 → 汎用。**他の顧客の系列へは決して落ちない**）は
+// lib/design-files-core.ts resolveSeriesCustomer が唯一の定義元で、製品工程
+// ルート（product_process_routes.customer_bp_id）と同じ規約。
+//
+// 系列内の最新図面 = is_latest かつ role = BLUEPRINT の 1 行。
 // 最新の 3D プレビュー = is_latest かつ role = PREVIEW。
+//
+// **設計依頼を経ない版もある**（design_request_id = null）。図面だけ先に
+// 出来ている・既存図面を取り込む場合で、一覧の「依頼 / 手動」の別はこの列の
+// 有無から導く（列を増やして二重に持たない）。
 Table design_files {
   id              uuid [pk]
   design_request_id uuid [ref: > design_requests.id]
   product_id      int [ref: > products.id]
+  // 対象の受注元。null = 汎用。版番号と is_latest はこの列ごとに数える。
+  customer_bp_id  uuid [ref: > business_partners.id]
   file_id         uuid [not null, ref: > files.id]
   version         int [not null, default: 1]
   is_latest       boolean [not null, default: true]

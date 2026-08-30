@@ -218,6 +218,19 @@ export const appList: AppEntry[] = [
     requiredPermission: "inventory",
   },
   {
+    // 設計図 — 図面（design_files）の台帳。版は (製品 × 受注元) ごとに数える。
+    // 設計依頼 (SA06) は「作ってほしい」という起票で、こちらはその成果物と
+    // 依頼を経ない取り込みの両方を持つ。**版を登録・編集できる唯一の画面**で、
+    // 製品マスタ (MS24) と設計依頼 (SA26) は表示だけ。
+    key: "design-files",
+    label: "設計図",
+    operationCode: "PD06",
+    href: "/production/design-files",
+    icon: "IconFileVector",
+    category: "生産",
+    requiredPermission: "design_file",
+  },
+  {
     // 未処理指示書 — 「まだ指示書になっていない注文明細」＋「完了していない
     // 指示書」の作業キュー。指示書一覧 (PD02) が台帳なのに対し、こちらは
     // 「次に手を動かすもの」だけを出す。作成の入口は PD12（同じフォーム）。

@@ -80,7 +80,8 @@ description: "登录（认证）与可做什么（授权）的机制，权限的
 | 价格表 | `price_list` | 处理价格试算与价格表，即各客户的单价。 |
 | 报价单 | `quote` | 处理报价单。 |
 | 订单确认书・订单明细 | `order_acceptance` | 处理订单确认书及其明细。 |
-| 设计委托 | `design_request` | 处理设计委托单。 |
+| 设计委托 | `design_request` | 处理设计委托单。图纸本身由「图纸」权限管理。 |
+| 图纸 | `design_file` | 登记、编辑和删除图纸版本。几乎所有业务角色都可查看。 |
 | 材料订购・采购申请 | `purchase_order` | 处理采购申请与材料订购单。 |
 | 材料入库 | `material_receipt` | 登记材料入库。 |
 | 外协委托 | `outsource_order` | 处理外协委托。 |

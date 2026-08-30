@@ -289,6 +289,7 @@ Operation codes provide keyboard-shortcut navigation. Format: `{CAT}{MODE}{IDX}`
 | 生産 | 2 | 指示書 | PD02 | PD12 | PD22 |
 | 生産 | 4 | 在庫管理 | PD04 | — | — |
 | 生産 | 5 | 未処理指示書 | PD05 | — | — |
+| 生産 | 6 | 設計図 | PD06 | PD16 | PD26 |
 | 出荷 | 1 | 出荷書 | SH01 | SH11 | SH21 |
 | 出荷 | 2 | 納品書 | SH02 | SH12 | SH22 |
 | 出荷 | 3 | 未処理出荷書 | SH03 | — | — |
@@ -400,6 +401,7 @@ Stack (gap="xl", p="md", maw={1200})
 | 素材発注書 | `IconShoppingCart` |
 | 指示書 | `IconSettings2` |
 | 未処理指示書 | `IconProgress` |
+| 設計図 | `IconFileVector` |
 | 承認・予定 | `IconClipboardList` |
 | 製品在庫 | `IconBoxSeam` |
 | 素材在庫 | `IconStack2` |
@@ -1436,6 +1438,7 @@ Row click navigates to detail page.
 | Invoice | 請求番号 / 顧客 / 請求期間 / 合計金額 / 状態 / 発行日 |
 | BillingClosing | 顧客 / 締日 / 合計金額 / 状態 / 処理日 |
 | DesignRequest | 依頼番号 / 区分 / 製品 / 担当者 / 希望納期 / 状態 / 更新日 |
+| DesignFile（設計図 PD06 — **1 行 = 1 系列**） | 製品 / 受注元 / 最新版 / 役割 / 出どころ / 更新日 |
 | MaterialPurchaseOrder | 発注番号 / 仕入先 / 入荷先拠点 / 合計金額 / 状態 / 発注日 |
 | MaterialReceipt | 素材 / 仕入先 / 入荷拠点 / 数量 / 入荷日 |
 | OutsourceOrder | 外注先 / 工程 / 依頼日 / 入荷予定日 / 入荷日 / 状態 |

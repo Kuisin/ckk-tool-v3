@@ -49,8 +49,8 @@ import {
   WorkOrderApprovalCard,
   WorkOrderProcedurePanel,
 } from "@/components/production/ApprovalStatusPanel";
+import type { ProductDesignFile } from "@/components/production/design-files/model";
 import { WorkOrderStepsPanel } from "@/components/production/WorkOrderStepsPanel";
-import type { ProductDesignFile } from "@/components/sales/design-requests/model";
 import { AppTabs } from "@/components/ui/AppTabs";
 import { GhostButton } from "@/components/ui/buttons";
 import { DesignFileThumb } from "@/components/ui/DesignFileViewer";

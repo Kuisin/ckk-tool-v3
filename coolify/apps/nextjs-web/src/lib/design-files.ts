@@ -173,6 +173,12 @@ async function storeOne(
 export interface UploadVersionInput {
   productId: number;
   customerBpId: string | null;
+  /**
+   * この版を成果物とする設計依頼 (SA06)。null = 依頼を経ない手動登録。
+   * 「依頼 / 手動」の別はこの列の有無から導く（designFileSource）ので、
+   * 別に持たせない。
+   */
+  designRequestId?: string | null;
   notes: string | null;
   blueprint: { name: string; type: string; bytes: ArrayBuffer };
   preview?: { name: string; type: string; bytes: ArrayBuffer } | null;
@@ -186,10 +192,12 @@ export interface UploadVersionInput {
 }
 
 /**
- * 依頼を経ずに版を 1 つ足す（製品マスタから）。
+ * 版を 1 つ足す（設計図 PD06 の登録口）。
  *
- * 図面だけ先に出来ている・既存図面を取り込む、といった場合に使う。
- * 出来た版は design_request_id = null なので、一覧では「手動」と出る。
+ * designRequestId を渡せばその依頼の成果物として、渡さなければ手動登録
+ * （図面だけ先に出来ている・既存図面を取り込む）として登録する。採番と
+ * is_latest の付け替えは createVersionInTx が唯一の管理者なので、どちらの
+ * 入口でも版の数え方は変わらない。
  */
 export async function uploadDesignVersion(
   input: UploadVersionInput,
@@ -206,6 +214,20 @@ export async function uploadDesignVersion(
       select: { id: true },
     });
     if (!bp) return actionError("対象の取引先が見つかりません");
+  }
+
+  // 依頼に紐づけるときは、**その依頼が同じ製品のものか**を確かめる。
+  // 別製品の依頼に紐づくと、依頼側の「成果物」に無関係な図面が並び、
+  // completeDesign の「成果物が 1 件以上ある」判定も通ってしまう。
+  if (input.designRequestId) {
+    const req = await prisma.designRequest.findUnique({
+      where: { id: input.designRequestId },
+      select: { id: true, productId: true },
+    });
+    if (!req) return actionError("対象の設計依頼が見つかりません");
+    if (req.productId != null && req.productId !== input.productId) {
+      return actionError("設計依頼と製品が一致しません");
+    }
   }
 
   // 先に全部を storage + files に置く。1 枚でも失敗したら、それまでに
@@ -256,7 +278,7 @@ export async function uploadDesignVersion(
       createVersionInTx(tx, {
         productId: input.productId,
         customerBpId: input.customerBpId,
-        designRequestId: null,
+        designRequestId: input.designRequestId ?? null,
         files: stored.map((s) => ({
           fileId: s.fileId,
           role: s.role,
@@ -271,9 +293,10 @@ export async function uploadDesignVersion(
       tableName: "design_files",
       recordId: String(input.productId),
       after: {
-        note: `設計図 v${version} を手動で登録（${stored.length} ファイル）`,
+        note: `設計図 v${version} を登録（${stored.length} ファイル${input.designRequestId ? "・設計依頼の成果物" : "・手動"}）`,
         productId: input.productId,
         customerBpId: input.customerBpId,
+        designRequestId: input.designRequestId ?? null,
       },
     });
     return actionOk({ version });

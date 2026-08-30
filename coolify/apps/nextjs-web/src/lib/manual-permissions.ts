@@ -78,6 +78,7 @@ export const MANUAL_PAGES: readonly ManualPageSource[] = [
     path: "operations/production/pending-work-order/user",
     app: "pending-work-orders",
   },
+  { path: "operations/production/design-file/user", app: "design-files" },
   { path: "operations/production/product-inventory/user", app: "inventory" },
   { path: "operations/production/material-inventory/user", app: "inventory" },
   // 旧 承認管理（PD03）は 一般カテゴリの 承認・予定（CM01）へ移設した。画面自体は

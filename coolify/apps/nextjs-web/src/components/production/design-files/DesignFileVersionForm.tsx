@@ -1,14 +1,14 @@
 "use client";
 
 /**
- * AddDesignVersionModal — 設計図の版を手で 1 つ足す (MS24 関連タブ)。
+ * DesignFileVersionForm — 設計図の版を 1 つ登録する (PD16)。
  *
- * 設計依頼を通さない登録口。図面だけ先に出来ている・既存の図面を取り込む、
- * といった場合に使う。出来た版は一覧で「手動」と出る。
+ * **版の登録口はここ 1 つ。** 設計依頼 (SA06) の成果物も、依頼を経ない
+ * 取り込みも同じフォームを通る。以前は「依頼の完了」と「製品マスタから追加」
+ * の 2 箇所に登録口があり、採番と is_latest の付け替えが二重に存在していた。
  *
- * 1 版 = プレビュー 0..1 + 図面データ 1 + 参考資料 0..N。設計依頼の完了
- * （CompleteDesignModal）と**同じ組み立て**にしてあるので、どちらの入口から
- * 入れても後の扱いは変わらない。
+ * 1 版 = プレビュー 0..1 + 図面データ 1 + 参考資料 0..N。同時に出したファイルは
+ * 同じ版番号を共有する（版は図面の改訂世代で、ファイルの通し番号ではない）。
  *
  * 受注元を選ぶと、その顧客の系列に版が積まれる。空のままなら「汎用」で、
  * 顧客専用の図面が無いときのフォールバックになる。
@@ -17,14 +17,16 @@
  * （Server Action のボディは 1MB で頭打ちになり、図面は普通に超える）。
  */
 
-import { Group, Select, Stack, Text, Textarea } from "@mantine/core";
+import { Alert, Group, Select, Stack, Text, Textarea } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
-import { IconPlus } from "@tabler/icons-react";
+import { IconInfoCircle, IconPlus } from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { searchProductOptions } from "@/app/(dashboard)/_shared/option-search";
 import { SecondaryButton } from "@/components/ui/buttons";
 import { DesignFileSlot } from "@/components/ui/DesignFileSlot";
-import { ModalShell } from "@/components/ui/modals";
+import { SearchSelect } from "@/components/ui/SearchSelect";
+import { FormActions, FormSection } from "@/components/ui/shells";
 import { useIsMobile } from "@/hooks/useViewport";
 
 interface Option {
@@ -32,21 +34,42 @@ interface Option {
   label: string;
 }
 
-export function AddDesignVersionModal({
-  opened,
-  onClose,
-  productId,
-  customerOptions,
-}: {
-  opened: boolean;
-  onClose: () => void;
+/** 依頼から来たときの前提（製品・受注元は依頼が決めるので動かさない）。 */
+export interface DesignRequestContext {
+  id: string;
+  requestNumber: string;
   productId: number;
+  productLabel: string;
+  customerBpId: string | null;
+  customerName: string | null;
+}
+
+export function DesignFileVersionForm({
+  customerOptions,
+  initialProduct,
+  requestContext,
+}: {
   /** 版を載せられる受注元。空のままなら汎用。 */
   customerOptions: Option[];
+  /** `?product=` から来たときの既定値。 */
+  initialProduct: Option | null;
+  /** `?request=` から来たときの依頼。 */
+  requestContext: DesignRequestContext | null;
 }) {
   const router = useRouter();
   const isMobile = useIsMobile();
-  const [customerBpId, setCustomerBpId] = useState<string | null>(null);
+
+  // 依頼から来たときは製品・受注元を依頼に合わせて固定する。ここで選び直せると
+  // 「依頼の成果物なのに別製品の図面」が作れてしまう（サーバー側でも弾くが、
+  // 選べる UI を出さないのが先）。
+  const [productId, setProductId] = useState<string | null>(
+    requestContext
+      ? String(requestContext.productId)
+      : (initialProduct?.value ?? null),
+  );
+  const [customerBpId, setCustomerBpId] = useState<string | null>(
+    requestContext?.customerBpId ?? null,
+  );
   const [blueprint, setBlueprint] = useState<File | null>(null);
   const [preview, setPreview] = useState<File | null>(null);
   const [references, setReferences] = useState<
@@ -56,21 +79,14 @@ export function AddDesignVersionModal({
   const [notes, setNotes] = useState("");
   const [busy, setBusy] = useState(false);
 
-  const reset = () => {
-    setCustomerBpId(null);
-    setBlueprint(null);
-    setPreview(null);
-    setReferences([]);
-    setNotes("");
-  };
-
   const submit = async () => {
-    if (!blueprint) return;
+    if (!blueprint || !productId) return;
     setBusy(true);
     try {
       const body = new FormData();
-      body.set("productId", String(productId));
+      body.set("productId", productId);
       if (customerBpId) body.set("customerBpId", customerBpId);
+      if (requestContext) body.set("designRequestId", requestContext.id);
       if (notes.trim()) body.set("notes", notes.trim());
       body.set("blueprint", blueprint);
       if (preview) body.set("preview", preview);
@@ -96,9 +112,12 @@ export function AddDesignVersionModal({
           message: `設計図 v${json.version} を追加しました`,
           color: "green",
         });
-        reset();
-        onClose();
-        router.refresh();
+        // 依頼から来たなら依頼へ戻す（次にやることは「完了」なので）。
+        router.push(
+          requestContext
+            ? `/sales/design-requests/${encodeURIComponent(requestContext.requestNumber)}`
+            : `/production/design-files/${productId}`,
+        );
       } else {
         notifications.show({
           title: "エラー",
@@ -112,33 +131,44 @@ export function AddDesignVersionModal({
   };
 
   return (
-    <ModalShell
-      confirmDisabled={!blueprint}
-      confirmLabel="登録"
-      loading={busy}
-      onClose={onClose}
-      onConfirm={submit}
-      opened={opened}
-      size="lg"
-      title="設計図を追加"
-    >
-      <Stack gap="md">
-        <Text size="sm">
-          設計依頼を通さずに版を 1 つ足します。
-          <strong>図面データ</strong>がその系列の最新図面になります。
-        </Text>
+    <Stack gap="md">
+      {requestContext && (
+        <Alert color="blue" icon={<IconInfoCircle size={16} />}>
+          設計依頼 {requestContext.requestNumber} の成果物として登録します。
+          製品「{requestContext.productLabel}」
+          {requestContext.customerName
+            ? `・受注元「${requestContext.customerName}」`
+            : "・汎用"}
+          は依頼で決まっているので変更できません。
+        </Alert>
+      )}
 
+      <FormSection title="対象">
+        {requestContext ? null : (
+          <SearchSelect
+            initialOption={initialProduct ?? undefined}
+            label="製品"
+            onChange={setProductId}
+            onSearch={searchProductOptions}
+            storageKey="product"
+            value={productId}
+            withAsterisk
+          />
+        )}
         <Select
           clearable
           data={customerOptions}
           description="空のままなら「汎用」— 顧客専用の図面が無いときに使われます。版番号は受注元ごとに数えます"
+          disabled={requestContext != null}
           label="受注元"
           onChange={setCustomerBpId}
           placeholder="汎用（すべての顧客）"
           searchable
           value={customerBpId}
         />
+      </FormSection>
 
+      <FormSection title="ファイル">
         <DesignFileSlot
           description="加工プログラムを起こす元データ。この系列の最新図面になります"
           file={blueprint}
@@ -210,7 +240,14 @@ export function AddDesignVersionModal({
         <Text c="dimmed" size="xs">
           1 件 20MB まで
         </Text>
-      </Stack>
-    </ModalShell>
+      </FormSection>
+
+      <FormActions
+        disabled={!blueprint || !productId}
+        loading={busy}
+        onCancel={() => router.back()}
+        onSave={submit}
+      />
+    </Stack>
   );
 }
