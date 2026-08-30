@@ -26,6 +26,7 @@ import {
 } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
 import { IconPlus, IconTrash } from "@tabler/icons-react";
+import { useLocale } from "next-intl";
 import { useEffect, useState, useTransition } from "react";
 import {
   addTemplateItem,
@@ -42,7 +43,7 @@ import {
   FormModal,
   type ModalBaseProps,
 } from "@/components/ui/modals";
-import { INSPECTION_ITEM_TYPE_OPTIONS } from "@/lib/enum-labels";
+import { inspectionItemTypeOptions } from "@/lib/enum-labels";
 import type { InspectionItemType } from "@/lib/inspection-core";
 
 export interface InspectionTemplateModalTarget {
@@ -265,6 +266,7 @@ export function InspectionTemplateItemModal({
   defaultSortOrder?: number;
   onDone?: () => void;
 }) {
+  const locale = useLocale();
   const [isPending, startTransition] = useTransition();
   const isEdit = !!item;
 
@@ -422,7 +424,7 @@ export function InspectionTemplateItemModal({
 
         <Select
           allowDeselect={false}
-          data={INSPECTION_ITEM_TYPE_OPTIONS}
+          data={inspectionItemTypeOptions(locale)}
           label="入力種別"
           onChange={(v) => {
             if (v) setInputType(v as InspectionItemType);

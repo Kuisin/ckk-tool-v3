@@ -22,6 +22,7 @@ import {
 import { useForm } from "@mantine/form";
 import { notifications } from "@mantine/notifications";
 import { useRouter } from "next/navigation";
+import { useLocale } from "next-intl";
 import { useTransition } from "react";
 import { z } from "zod";
 import { searchProcessStepOptions } from "@/app/(dashboard)/_shared/option-search";
@@ -38,7 +39,7 @@ import {
   LocalizedTextInput,
 } from "@/components/ui/shells";
 import { useIsMobile } from "@/hooks/useViewport";
-import { INSPECTION_SAMPLING_MODE_OPTIONS } from "@/lib/enum-labels";
+import { inspectionSamplingModeOptions } from "@/lib/enum-labels";
 import { fieldHelp, fieldHelpTip } from "@/lib/field-help";
 import { zodResolver } from "@/lib/form";
 
@@ -108,6 +109,7 @@ export function InspectionTemplateForm({
 }: {
   initial?: InspectionTemplateFormInitial;
 }) {
+  const locale = useLocale();
   const router = useRouter();
   const isMobile = useIsMobile();
   const [isPending, startTransition] = useTransition();
@@ -240,7 +242,7 @@ export function InspectionTemplateForm({
             </Text>
             <Group gap="sm" wrap="wrap">
               <SegmentedControl
-                data={INSPECTION_SAMPLING_MODE_OPTIONS}
+                data={inspectionSamplingModeOptions(locale)}
                 onChange={(v) => {
                   form.setFieldValue(
                     "samplingMode",

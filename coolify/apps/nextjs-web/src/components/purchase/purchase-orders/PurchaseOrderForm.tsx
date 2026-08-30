@@ -27,6 +27,7 @@ import { useForm } from "@mantine/form";
 import { notifications } from "@mantine/notifications";
 import { IconCalendar, IconPlus, IconTrash } from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
+import { useLocale } from "next-intl";
 import { useTransition } from "react";
 import { z } from "zod";
 import { searchMaterialOptions } from "@/app/(dashboard)/_shared/option-search";
@@ -39,7 +40,7 @@ import { HelpLabel } from "@/components/ui/HelpLabel";
 import { SearchSelect } from "@/components/ui/SearchSelect";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { FormSection, FormShell } from "@/components/ui/shells";
-import { UNIT_OPTIONS } from "@/lib/enum-labels";
+import { unitOptions } from "@/lib/enum-labels";
 import { fieldHelp } from "@/lib/field-help";
 import { zodResolver } from "@/lib/form";
 import { formatMoney } from "@/lib/format";
@@ -122,6 +123,7 @@ export function PurchaseOrderForm({
   /** 入荷先拠点（有効のみ）。value = String(内部 id)。 */
   plantOptions: Option[];
 }) {
+  const locale = useLocale();
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const poNumber = mode === "edit" ? purchaseOrder?.poNumber : undefined;
@@ -305,7 +307,7 @@ export function PurchaseOrderForm({
                     withAsterisk
                   />
                   <Select
-                    data={UNIT_OPTIONS}
+                    data={unitOptions(locale)}
                     label="単位"
                     maw={90}
                     withAsterisk

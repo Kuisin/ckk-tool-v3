@@ -10,6 +10,7 @@
 import { Badge, Group, Stack, Table, Tabs, Text } from "@mantine/core";
 import { IconCircleMinus, IconTrash } from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
+import { useLocale } from "next-intl";
 import { useState } from "react";
 import { ActiveBadge } from "@/components/ui/ActiveBadge";
 import { AppTabs } from "@/components/ui/AppTabs";
@@ -25,11 +26,11 @@ import {
 import { useTabParam } from "@/hooks/useUrlState";
 import { useIsMobile } from "@/hooks/useViewport";
 import {
-  DEPENDENCY_RELATION_LABEL,
-  LOT_INPUT_MODE_LABEL,
-  PROCESS_CATEGORY_LABEL,
-  PROCESS_EXECUTION_LABEL,
-  QUANTITY_TRACKING_LABEL,
+  dependencyRelationLabel,
+  lotInputModeLabel,
+  processCategoryLabel,
+  processExecutionLabel,
+  quantityTrackingLabel,
 } from "@/lib/enum-labels";
 import {
   DeleteProcessStepModal,
@@ -84,6 +85,7 @@ function DependencyTable({
   withNegation: boolean;
   emptyMessage: string;
 }) {
+  const locale = useLocale();
   const router = useRouter();
   const isMobile = useIsMobile();
 
@@ -119,7 +121,7 @@ function DependencyTable({
             </Table.Td>
             <Table.Td>
               <Text size="sm">
-                {DEPENDENCY_RELATION_LABEL[d.relation] ?? d.relation}
+                {dependencyRelationLabel(d.relation, locale) ?? d.relation}
               </Text>
             </Table.Td>
             {withNegation && (
@@ -160,6 +162,7 @@ export function ProcessStepDetail({
   createdAt?: string;
   updatedAt?: string;
 }) {
+  const locale = useLocale();
   const router = useRouter();
   // アクティブタブを ?tab= に保持（URL 共有でタブまで再現）
   const [tab, setTab] = useTabParam("overview");
@@ -243,28 +246,29 @@ export function ProcessStepDetail({
               color={PROCESS_CATEGORY_COLOR[record.category] ?? "gray"}
               variant="light"
             >
-              {PROCESS_CATEGORY_LABEL[record.category] ?? record.category}
+              {processCategoryLabel(record.category, locale) ?? record.category}
             </Badge>
           }
         />
         <FieldValue
           label="実施場所"
           value={
-            PROCESS_EXECUTION_LABEL[record.executionLocation] ??
+            processExecutionLabel(record.executionLocation, locale) ??
             record.executionLocation
           }
         />
         <FieldValue
           label="数量管理"
           value={
-            QUANTITY_TRACKING_LABEL[record.quantityTracking] ??
+            quantityTrackingLabel(record.quantityTracking, locale) ??
             record.quantityTracking
           }
         />
         <FieldValue
           label="ロット入力（既定）"
           value={
-            LOT_INPUT_MODE_LABEL[record.lotInputMode] ?? record.lotInputMode
+            lotInputModeLabel(record.lotInputMode, locale) ??
+            record.lotInputMode
           }
         />
         <FieldValue

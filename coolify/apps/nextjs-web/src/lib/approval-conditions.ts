@@ -19,10 +19,22 @@
 
 import type { ApprovalTargetType } from "./approval-targets";
 import {
-  DESIGN_KIND_OPTIONS,
-  DESIGN_PRIORITY_OPTIONS,
-  DESIGN_TRIGGER_OPTIONS,
+  deliveryMethodOptions,
+  designKindOptions,
+  designPriorityOptions,
+  designTriggerOptions,
+  workOrderTypeOptions,
 } from "./enum-labels";
+
+// この条件ビルダー自体は管理者専用の設定画面（MS0B）向けで、まだ ja 固定。
+// enum-labels.ts の各 xxxOptions(locale) をここでは "ja" 決め打ちで呼ぶ
+// （静的な module-level 定数として保つため — 呼び出し元の ApprovalFlowRulesSection
+// が multilingual 化されたら、この定数を関数化して locale を通す）。
+const DELIVERY_METHOD_OPTIONS = deliveryMethodOptions("ja");
+const WO_TYPE_OPTIONS = workOrderTypeOptions("ja");
+const DESIGN_TRIGGER_OPTIONS = designTriggerOptions("ja");
+const DESIGN_KIND_OPTIONS = designKindOptions("ja");
+const DESIGN_PRIORITY_OPTIONS = designPriorityOptions("ja");
 
 /** 条件の比較演算子。number は全部、select は eq / ne のみ。 */
 export type ConditionOp = "eq" | "ne" | "gte" | "lte";
@@ -47,16 +59,6 @@ export interface ConditionFieldDef {
   /** number の単位表示（円 / 本 / 件）。 */
   unit?: string;
 }
-
-const DELIVERY_METHOD_OPTIONS = [
-  { value: "NORMAL", label: "通常配送" },
-  { value: "DIRECT_TO_USER", label: "ユーザー直送" },
-];
-
-const WO_TYPE_OPTIONS = [
-  { value: "MANUFACTURE", label: "製造分" },
-  { value: "FROM_STOCK", label: "在庫分" },
-];
 
 /**
  * 書類種別ごとに条件へ使える属性。key は fetchApprovalDocInfo が返す

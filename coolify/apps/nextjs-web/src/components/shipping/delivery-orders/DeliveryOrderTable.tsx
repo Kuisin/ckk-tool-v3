@@ -10,6 +10,7 @@
 import { Badge, Group, Select, Stack, Text, TextInput } from "@mantine/core";
 import { IconSearch, IconTruck } from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
+import { useLocale } from "next-intl";
 import { useFormat } from "@/components/layout/PreferencesProvider";
 import { type Column, DataTable } from "@/components/ui/DataTable";
 import { NewButton } from "@/components/ui/NewButton";
@@ -18,8 +19,8 @@ import { ListShell } from "@/components/ui/shells";
 import { useUrlSelectState, useUrlStringState } from "@/hooks/useUrlState";
 import { useIsMobile } from "@/hooks/useViewport";
 import {
-  DELIVERY_ORDER_TYPE_LABEL,
-  DELIVERY_ORDER_TYPE_OPTIONS,
+  deliveryOrderTypeLabel,
+  deliveryOrderTypeOptions,
 } from "@/lib/enum-labels";
 import type { DeliveryOrder } from "./model";
 
@@ -27,14 +28,16 @@ const BASE_PATH = "/shipping/delivery-orders";
 
 /** 種別バッジ — DISPATCH=発送（青）/ STOCK_STORAGE=在庫保管（灰）。 */
 export function DeliveryOrderTypeBadge({ type }: { type: string }) {
+  const locale = useLocale();
   return (
     <Badge color={type === "DISPATCH" ? "blue" : "gray"} variant="light">
-      {DELIVERY_ORDER_TYPE_LABEL[type] ?? type}
+      {deliveryOrderTypeLabel(type, locale) ?? type}
     </Badge>
   );
 }
 
 export function DeliveryOrderTable({ rows }: { rows: DeliveryOrder[] }) {
+  const locale = useLocale();
   const fmt = useFormat();
   const router = useRouter();
   const isMobile = useIsMobile();
@@ -132,7 +135,7 @@ export function DeliveryOrderTable({ rows }: { rows: DeliveryOrder[] }) {
         <>
           <Select
             clearable
-            data={DELIVERY_ORDER_TYPE_OPTIONS}
+            data={deliveryOrderTypeOptions(locale)}
             flex={isMobile ? 1 : undefined}
             onChange={setType}
             placeholder="種別"

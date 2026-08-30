@@ -58,6 +58,7 @@ import {
 } from "@tabler/icons-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { useLocale } from "next-intl";
 import { type ReactNode, useEffect, useState, useTransition } from "react";
 import {
   searchCustomerOptions,
@@ -126,9 +127,9 @@ import {
 import { useTabParam } from "@/hooks/useUrlState";
 import type { MemoView } from "@/lib/document-memos";
 import {
-  ACCEPTANCE_DELIVERY_METHOD_LABEL,
-  ACCEPTANCE_DELIVERY_METHOD_OPTIONS,
-  ORDER_TYPE_LABEL,
+  acceptanceDeliveryMethodLabel,
+  acceptanceDeliveryMethodOptions,
+  orderTypeLabel,
 } from "@/lib/enum-labels";
 import { fieldHelp } from "@/lib/field-help";
 import { formatMoney } from "@/lib/format";
@@ -216,6 +217,7 @@ export function OrderAcceptanceDetail({
   /** キャンセル依頼の承認状態（cancelRequest があるときだけ使う）。 */
   cancelApproval?: ApprovalActionState | null;
 }) {
+  const locale = useLocale();
   const fmt = useFormat();
   const router = useRouter();
   // アクティブタブを ?tab= に保持（URL 共有でタブまで再現）
@@ -766,7 +768,10 @@ export function OrderAcceptanceDetail({
                   <FieldValue label="出荷先" value={a.shipToName} />
                   <FieldValue
                     label="配送方法"
-                    value={ACCEPTANCE_DELIVERY_METHOD_LABEL[a.deliveryMethod]}
+                    value={acceptanceDeliveryMethodLabel(
+                      a.deliveryMethod,
+                      locale,
+                    )}
                   />
                   <FieldValue label="エンドユーザー" value={a.endUserName} />
                   <FieldValue label="担当拠点" value={a.assignedPlantName} />
@@ -944,7 +949,8 @@ export function OrderAcceptanceDetail({
                                 </Text>
                               </Table.Td>
                               <Table.Td>
-                                {ORDER_TYPE_LABEL[it.orderType] ?? it.orderType}
+                                {orderTypeLabel(it.orderType, locale) ??
+                                  it.orderType}
                               </Table.Td>
                               <Table.Td className="tabular-nums" ta="right">
                                 {it.quantity}
@@ -1237,6 +1243,7 @@ function DraftEditor({
   /** 出荷作業場所の選択肢（グループ / 場所）。 */
   workLocationOptions: { value: string; label: string }[];
 }) {
+  const locale = useLocale();
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const a = acceptance;
@@ -1452,7 +1459,7 @@ function DraftEditor({
             {/* 配送方法 — 出荷書は同じ出荷先×配送方法の明細だけを束ねられる。 */}
             <Select
               allowDeselect={false}
-              data={ACCEPTANCE_DELIVERY_METHOD_OPTIONS}
+              data={acceptanceDeliveryMethodOptions(locale)}
               label={
                 <HelpLabel
                   {...fieldHelp("orderAcceptance", "deliveryMethod")}

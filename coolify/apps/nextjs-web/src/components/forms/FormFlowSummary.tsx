@@ -14,11 +14,12 @@
 
 import { Alert, Badge, Group, Paper, Stack, Text } from "@mantine/core";
 import { IconAlertTriangle, IconArrowRight } from "@tabler/icons-react";
+import { useLocale } from "next-intl";
 import {
   ApproverPermissionBadge,
   type FlowApprover,
 } from "@/components/master/approval-flows/ApproverPermissionBadge";
-import { APPROVAL_MODE_LABEL } from "@/lib/enum-labels";
+import { approvalModeLabel } from "@/lib/enum-labels";
 import type { FormFlowStep } from "./FormApprovalPanel";
 
 export function FormFlowSummary({
@@ -32,6 +33,7 @@ export function FormFlowSummary({
   groupOptions: { value: string; label: string }[];
   approversByGroup: Record<string, FlowApprover[]>;
 }) {
+  const locale = useLocale();
   if (steps.length === 0) {
     return (
       <Alert
@@ -84,7 +86,7 @@ export function FormFlowSummary({
               <IconArrowRight size={14} />
               <Text size="sm">{target}</Text>
               <Text c="dimmed" size="xs">
-                {APPROVAL_MODE_LABEL[step.mode] ?? step.mode}
+                {approvalModeLabel(step.mode, locale) ?? step.mode}
               </Text>
               <ApproverPermissionBadge approvers={approvers} />
             </Group>

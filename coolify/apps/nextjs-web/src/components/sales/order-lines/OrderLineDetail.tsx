@@ -34,6 +34,7 @@ import {
   IconTruck,
 } from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
+import { useLocale } from "next-intl";
 import { useState, useTransition } from "react";
 import { runStockCheck } from "@/app/(dashboard)/sales/order-lines/actions";
 import { useFormat } from "@/components/layout/PreferencesProvider";
@@ -63,9 +64,9 @@ import {
 import { useTabParam } from "@/hooks/useUrlState";
 import type { MemoView } from "@/lib/document-memos";
 import {
-  DELIVERY_ORDER_TYPE_LABEL,
-  ORDER_TYPE_LABEL,
-  WORK_ORDER_TYPE_LABEL,
+  deliveryOrderTypeLabel,
+  orderTypeLabel,
+  workOrderTypeLabel,
 } from "@/lib/enum-labels";
 // type-only import — lib/inventory は server-only（型はバンドルされない）。
 import type { StockCheckResult } from "@/lib/inventory";
@@ -219,6 +220,7 @@ export function OrderLineDetail({
   /** この注文明細に紐づく設計依頼（§10 — 設計タブ）。 */
   designRequests?: DesignRequestLink[];
 }) {
+  const locale = useLocale();
   const fmt = useFormat();
   const router = useRouter();
   // アクティブタブを ?tab= に保持（URL 共有でタブまで再現）
@@ -395,7 +397,7 @@ export function OrderLineDetail({
           label="注文種別"
           value={
             <Badge color="gray" variant="light">
-              {ORDER_TYPE_LABEL[order.orderType] ?? order.orderType}
+              {orderTypeLabel(order.orderType, locale) ?? order.orderType}
             </Badge>
           }
         />
@@ -548,7 +550,7 @@ export function OrderLineDetail({
                       </Table.Td>
                       <Table.Td>
                         <Badge color="gray" variant="light">
-                          {WORK_ORDER_TYPE_LABEL[wo.type] ?? wo.type}
+                          {workOrderTypeLabel(wo.type, locale) ?? wo.type}
                         </Badge>
                       </Table.Td>
                       <Table.Td className="tabular-nums" ta="right">
@@ -620,7 +622,7 @@ export function OrderLineDetail({
                           color={s.type === "DISPATCH" ? "blue" : "gray"}
                           variant="light"
                         >
-                          {DELIVERY_ORDER_TYPE_LABEL[s.type] ?? s.type}
+                          {deliveryOrderTypeLabel(s.type, locale) ?? s.type}
                         </Badge>
                       </Table.Td>
                       <Table.Td className="tabular-nums" ta="right">

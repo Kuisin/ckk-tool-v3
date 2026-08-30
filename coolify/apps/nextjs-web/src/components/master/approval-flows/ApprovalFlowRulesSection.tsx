@@ -36,6 +36,7 @@ import {
   IconTrash,
 } from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
+import { useLocale } from "next-intl";
 import { useState, useTransition } from "react";
 import {
   type ApprovalFlowRuleInput,
@@ -60,7 +61,7 @@ import {
 } from "@/lib/approval-conditions";
 import { type ApprovalMode, validateFlowSteps } from "@/lib/approval-flow";
 import type { ApprovalTargetType } from "@/lib/approval-targets";
-import { APPROVAL_MODE_OPTIONS } from "@/lib/enum-labels";
+import { approvalModeOptions } from "@/lib/enum-labels";
 import type { GroupOption } from "./ApprovalFlowEditor";
 
 /** 一覧に出すルール（サーバーで直列化した形）。 */
@@ -145,6 +146,7 @@ export function ApprovalFlowRulesSection({
   groupOptions: GroupOption[];
   dynamicOptions: ConditionDynamicOptions;
 }) {
+  const locale = useLocale();
   const router = useRouter();
   const isMobile = useIsMobile();
   const [isPending, startTransition] = useTransition();
@@ -588,7 +590,7 @@ export function ApprovalFlowRulesSection({
                     w={isMobile ? "100%" : 180}
                   />
                   <SegmentedControl
-                    data={APPROVAL_MODE_OPTIONS}
+                    data={approvalModeOptions(locale)}
                     onChange={(v) =>
                       setSteps((prev) =>
                         prev.map((x) =>

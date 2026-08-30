@@ -38,6 +38,7 @@ import { modals } from "@mantine/modals";
 import { notifications } from "@mantine/notifications";
 import { IconInfoCircle, IconPlus, IconTrash } from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
+import { useLocale } from "next-intl";
 import { useEffect, useRef, useState, useTransition } from "react";
 import { z } from "zod";
 import {
@@ -58,7 +59,7 @@ import { HelpLabel } from "@/components/ui/HelpLabel";
 import { SearchSelect } from "@/components/ui/SearchSelect";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { FormSection, FormShell } from "@/components/ui/shells";
-import { DELIVERY_ORDER_TYPE_LABEL } from "@/lib/enum-labels";
+import { deliveryOrderTypeLabel } from "@/lib/enum-labels";
 import { fieldHelp } from "@/lib/field-help";
 import { zodResolver } from "@/lib/form";
 import type { Option } from "@/lib/mock";
@@ -191,6 +192,7 @@ export function DeliveryOrderForm({
    */
   initialAcceptance?: string | null;
 }) {
+  const locale = useLocale();
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const orderId = mode === "edit" ? order?.id : undefined;
@@ -686,7 +688,7 @@ export function DeliveryOrderForm({
             <SegmentedControl
               data={DELIVERY_ORDER_TYPES.map((t) => ({
                 value: t,
-                label: DELIVERY_ORDER_TYPE_LABEL[t] ?? t,
+                label: deliveryOrderTypeLabel(t, locale) ?? t,
               }))}
               fullWidth
               onChange={(v) =>

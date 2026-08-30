@@ -11,6 +11,7 @@
 import { Stack, Tabs } from "@mantine/core";
 import { IconCircleMinus, IconTrash } from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
+import { useLocale } from "next-intl";
 import { useState } from "react";
 import { useFormat } from "@/components/layout/PreferencesProvider";
 import { ActiveBadge } from "@/components/ui/ActiveBadge";
@@ -23,7 +24,7 @@ import {
   SummaryGrid,
 } from "@/components/ui/shells";
 import { useTabParam } from "@/hooks/useUrlState";
-import { COUNTRY_LABEL } from "@/lib/enum-labels";
+import { countryLabel } from "@/lib/enum-labels";
 import { FloorMapsPanel, type PlantFloorMapRef } from "./FloorMapsPanel";
 import { DeletePlantModal, TogglePlantActiveModal } from "./PlantModals";
 
@@ -55,6 +56,7 @@ export function PlantDetail({
   record: PlantDetailData;
   floorMaps: PlantFloorMapRef[];
 }) {
+  const locale = useLocale();
   const fmt = useFormat();
   const router = useRouter();
   // アクティブタブを ?tab= に保持（URL 共有でタブまで再現）
@@ -109,7 +111,7 @@ export function PlantDetail({
           label="国"
           value={
             record.countryCode
-              ? (COUNTRY_LABEL[record.countryCode] ?? record.countryCode)
+              ? (countryLabel(record.countryCode, locale) ?? record.countryCode)
               : "—"
           }
         />

@@ -33,6 +33,7 @@ import {
 } from "@tabler/icons-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { useLocale } from "next-intl";
 import { useState } from "react";
 import { useFormat } from "@/components/layout/PreferencesProvider";
 import { ActiveBadge } from "@/components/ui/ActiveBadge";
@@ -49,7 +50,7 @@ import {
   SummaryGrid,
 } from "@/components/ui/shells";
 import { useTabParam } from "@/hooks/useUrlState";
-import { INSPECTION_ITEM_TYPE_LABEL } from "@/lib/enum-labels";
+import { inspectionItemTypeLabel } from "@/lib/enum-labels";
 import {
   acceptLabel,
   goalLabel,
@@ -136,6 +137,7 @@ export function InspectionTemplateDetail({
   record: InspectionTemplateDetailData;
   auditEntries: AuditEntry[];
 }) {
+  const locale = useLocale();
   const fmt = useFormat();
   const router = useRouter();
   // アクティブタブを ?tab= に保持（URL 共有でタブまで再現）
@@ -336,8 +338,10 @@ export function InspectionTemplateDetail({
                           <Table.Td>
                             <Group gap={4} wrap="wrap">
                               <Badge color="gray" variant="light">
-                                {INSPECTION_ITEM_TYPE_LABEL[item.inputType] ??
-                                  item.inputType}
+                                {inspectionItemTypeLabel(
+                                  item.inputType,
+                                  locale,
+                                ) ?? item.inputType}
                               </Badge>
                               {!item.allowManualOverride && (
                                 <Badge color="orange" size="xs" variant="light">

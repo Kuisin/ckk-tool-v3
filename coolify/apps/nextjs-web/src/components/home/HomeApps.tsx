@@ -94,8 +94,8 @@ export function HomeApps({
   settings = DEFAULT_HOME_SETTINGS,
   isLoading = false,
 }: HomeAppsProps) {
-  const t = useTranslations("home");
   const locale = useLocale();
+  const t = useTranslations("home");
   const displayName = user.username ? user.displayName : t("guest");
   const hiddenApps = useHiddenApps();
   const unreleasedApps = useUnreleasedApps();

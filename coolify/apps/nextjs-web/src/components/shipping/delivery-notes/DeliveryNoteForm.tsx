@@ -31,6 +31,7 @@ import { useForm } from "@mantine/form";
 import { notifications } from "@mantine/notifications";
 import { IconPlus, IconTrash } from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
+import { useLocale } from "next-intl";
 import { useTransition } from "react";
 import { z } from "zod";
 import { searchProductOptions } from "@/app/(dashboard)/_shared/option-search";
@@ -47,7 +48,7 @@ import { SalesRepSelect } from "@/components/ui/SalesRepSelect";
 import { SearchSelect } from "@/components/ui/SearchSelect";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { FormSection, FormShell } from "@/components/ui/shells";
-import { DELIVERY_METHOD_LABEL } from "@/lib/enum-labels";
+import { deliveryMethodLabel } from "@/lib/enum-labels";
 import { fieldHelp } from "@/lib/field-help";
 import { zodResolver } from "@/lib/form";
 import { formatMoney } from "@/lib/format";
@@ -164,6 +165,7 @@ export function DeliveryNoteForm({
   /** `?deliveryOrder=DOR-…` のプリセレクト（候補に無ければ無視）。 */
   initialDeliveryOrder?: string | null;
 }) {
+  const locale = useLocale();
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const noteId = mode === "edit" ? note?.id : undefined;
@@ -375,7 +377,7 @@ export function DeliveryNoteForm({
             <SegmentedControl
               data={DELIVERY_METHODS.map((m) => ({
                 value: m,
-                label: DELIVERY_METHOD_LABEL[m] ?? m,
+                label: deliveryMethodLabel(m, locale) ?? m,
               }))}
               fullWidth
               onChange={(v) => onMethodChange(v as DeliveryMethod)}

@@ -12,6 +12,7 @@
  */
 
 import { Badge, Tooltip } from "@mantine/core";
+import { useLocale } from "next-intl";
 import { permissionScopeLabel } from "@/lib/enum-labels";
 
 /** 段の承認グループに今いる 1 人 + 承認権限の有無。 */
@@ -46,6 +47,7 @@ export function ApproverPermissionBadge({
 }: {
   approvers: readonly FlowApprover[];
 }) {
+  const locale = useLocale();
   if (approvers.length === 0) {
     return (
       <Tooltip
@@ -77,7 +79,7 @@ export function ApproverPermissionBadge({
         label={`権限の範囲が限定されています（対象外の書類は承認できません）: ${limited
           .map(
             (a) =>
-              `${a.displayName}（${a.scopes.map(permissionScopeLabel).join("・")}）`,
+              `${a.displayName}（${a.scopes.map((s) => permissionScopeLabel(s, locale)).join("・")}）`,
           )
           .join("、")}`}
         withinPortal

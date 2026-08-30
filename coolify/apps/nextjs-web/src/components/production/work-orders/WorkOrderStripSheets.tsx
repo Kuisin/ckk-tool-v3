@@ -11,7 +11,7 @@
  */
 
 import type { WorkOrderStripView } from "@/app/(dashboard)/production/work-orders/data";
-import { WORK_ORDER_TYPE_LABEL } from "@/lib/enum-labels";
+import { workOrderTypeLabel } from "@/lib/enum-labels";
 import { qrSvg } from "@/lib/qr";
 import { encodeQrPayload, QR_KINDS } from "@/lib/qr-payload";
 import { A4, chunkForSheets, STRIP_SHEET } from "@/lib/work-order-strip-sheet";
@@ -66,7 +66,7 @@ export function WorkOrderStripSheets({
                           {wo.docNumber} ／ ロット #{wo.workOrderNumber}
                         </span>
                         <span className="wo-strip-type">
-                          {WORK_ORDER_TYPE_LABEL[wo.type] ?? wo.type}
+                          {workOrderTypeLabel(wo.type, "ja")}
                         </span>
                       </div>
                       <div className="wo-strip-product">{wo.productName}</div>

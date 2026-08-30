@@ -49,8 +49,8 @@ interface AppLauncherProps {
 }
 
 export function AppLauncher({ onNavigate }: AppLauncherProps) {
-  const t = useTranslations("shell");
   const locale = useLocale();
+  const t = useTranslations("shell");
   const router = useRouter();
   const [search, setSearch] = useState("");
   // Index of the keyboard-highlighted search result (Arrow Up/Down).
