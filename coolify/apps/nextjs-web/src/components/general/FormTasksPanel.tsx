@@ -1,15 +1,22 @@
 "use client";
 
 /**
- * FormTasksPanel — 承認・予定 (CM01) のフォームセクション。
+ * FormTasksPanel — 承認・予定 (CM01) のフォーム関連の一覧（3 つ）。
  *
- * 「自分が答えるべきもの」と「自分が出したもの」を並べる。回答者を表示しない
- * フォームでも、自分の回答は自分に見える（他人には出ない）。
+ *   未回答のフォーム … 自分が答えるべきもの
+ *   回答済みのフォーム … 自分が出したもの（回答者を表示しないフォームでも
+ *     自分の分は自分に見える。他人には出ない）
+ *   完了した申請 … 自分宛に届いた完了通知（lib/form-completion.ts）
+ *
+ * どの行も **スマホでは横並びをやめて縦に積む**（design.md §20.2）。
+ * タイトル・No.・状態・日付を 1 行に押し込むと、幅 375px ではタイトルが
+ * 数文字で切れて何のフォームか分からなくなる。
  */
 
 import { Badge, Group, Paper, Stack, Text } from "@mantine/core";
 import { IconForms } from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
+import type { ReactNode } from "react";
 import type { CompletedRequestRow } from "@/app/(dashboard)/general/tasks/completions-data";
 import type {
   MyResponseRow,
@@ -20,16 +27,30 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { useIsMobile } from "@/hooks/useViewport";
 
+function Empty({ message }: { message: string }) {
+  return (
+    <Paper p="md" radius="md" withBorder>
+      <EmptyState icon={<IconForms size={28} />} message={message} />
+    </Paper>
+  );
+}
+
+/**
+ * 一覧の 1 行。PC は「主内容 | 右端の補足」の横並び、スマホは縦積み。
+ * 未読の行は左に 3px の青線を引く（design.md §1.1）。
+ */
 function Row({
   onClick,
-  children,
+  main,
+  trailing,
   unread = false,
 }: {
   onClick: () => void;
-  children: React.ReactNode;
-  /** 未読の印（design.md §1.1 — 左 3px の blue.5）。 */
+  main: ReactNode;
+  trailing?: ReactNode;
   unread?: boolean;
 }) {
+  const isMobile = useIsMobile();
   return (
     <Paper
       onClick={onClick}
@@ -43,7 +64,25 @@ function Row({
       }}
       withBorder
     >
-      {children}
+      {isMobile ? (
+        <Stack gap={6}>
+          {main}
+          {trailing && (
+            <Group gap="xs" justify="space-between" wrap="wrap">
+              {trailing}
+            </Group>
+          )}
+        </Stack>
+      ) : (
+        <Group justify="space-between" wrap="nowrap">
+          <Group gap="sm" style={{ minWidth: 0 }} wrap="nowrap">
+            {main}
+          </Group>
+          <Group gap="xs" style={{ flexShrink: 0 }} wrap="nowrap">
+            {trailing}
+          </Group>
+        </Group>
+      )}
     </Paper>
   );
 }
@@ -53,39 +92,54 @@ export function PendingFormsList({ rows }: { rows: PendingFormRow[] }) {
   const fmt = useFormat();
   const isMobile = useIsMobile();
 
-  if (rows.length === 0) {
-    return (
-      <Paper p="md" radius="md" withBorder>
-        <EmptyState
-          icon={<IconForms size={28} />}
-          message="回答待ちのフォームはありません"
-        />
-      </Paper>
-    );
-  }
+  if (rows.length === 0)
+    return <Empty message="回答待ちのフォームはありません" />;
 
   return (
     <Stack gap="xs">
       {rows.map((row) => (
-        <Row key={row.code} onClick={() => router.push(`/f/${row.code}`)}>
-          <Group justify="space-between" wrap={isMobile ? "wrap" : "nowrap"}>
-            <Group gap="sm" style={{ minWidth: 0 }} wrap="nowrap">
-              <Text fw={600} size="sm" truncate>
+        <Row
+          key={row.code}
+          main={
+            isMobile ? (
+              <Text fw={600} size="sm">
                 {row.title}
               </Text>
-              <Badge
-                color={row.kind === "REQUEST" ? "indigo" : "cyan"}
-                size="sm"
-                variant="light"
-              >
-                {row.kind === "REQUEST" ? "申請・報告" : "アンケート"}
-              </Badge>
-            </Group>
-            <Text c="dimmed" size="xs" style={{ flexShrink: 0 }}>
-              {row.closesAt ? `${fmt.dateTime(row.closesAt)} まで` : "期限なし"}
-            </Text>
-          </Group>
-        </Row>
+            ) : (
+              <>
+                <Text fw={600} size="sm" truncate>
+                  {row.title}
+                </Text>
+                <Badge
+                  color={row.kind === "REQUEST" ? "indigo" : "cyan"}
+                  size="sm"
+                  variant="light"
+                >
+                  {row.kind === "REQUEST" ? "申請・報告" : "アンケート"}
+                </Badge>
+              </>
+            )
+          }
+          onClick={() => router.push(`/f/${row.code}`)}
+          trailing={
+            <>
+              {isMobile && (
+                <Badge
+                  color={row.kind === "REQUEST" ? "indigo" : "cyan"}
+                  size="sm"
+                  variant="light"
+                >
+                  {row.kind === "REQUEST" ? "申請・報告" : "アンケート"}
+                </Badge>
+              )}
+              <Text c="dimmed" size="xs">
+                {row.closesAt
+                  ? `${fmt.dateTime(row.closesAt)} まで`
+                  : "期限なし"}
+              </Text>
+            </>
+          }
+        />
       ))}
     </Stack>
   );
@@ -96,39 +150,46 @@ export function MyResponsesList({ rows }: { rows: MyResponseRow[] }) {
   const fmt = useFormat();
   const isMobile = useIsMobile();
 
-  if (rows.length === 0) {
-    return (
-      <Paper p="md" radius="md" withBorder>
-        <EmptyState
-          icon={<IconForms size={28} />}
-          message="まだフォームに回答していません"
-        />
-      </Paper>
-    );
-  }
+  if (rows.length === 0)
+    return <Empty message="まだフォームに回答していません" />;
 
   return (
     <Stack gap="xs">
       {rows.map((row) => (
         <Row
           key={row.responseNumber}
+          main={
+            isMobile ? (
+              <Stack gap={4}>
+                <Text fw={600} size="sm">
+                  {row.formTitle}
+                </Text>
+                <Group gap="xs" wrap="wrap">
+                  <Text c="dimmed" className="tabular-nums" size="xs">
+                    No. {row.recordNo}
+                  </Text>
+                  <StatusBadge entity="FormResponse" status={row.status} />
+                </Group>
+              </Stack>
+            ) : (
+              <>
+                <Text fw={600} size="sm" truncate>
+                  {row.formTitle}
+                </Text>
+                <Text c="dimmed" className="tabular-nums" size="xs">
+                  No. {row.recordNo}
+                </Text>
+                <StatusBadge entity="FormResponse" status={row.status} />
+              </>
+            )
+          }
           onClick={() =>
             router.push(
               `/general/forms/${row.formCode}/responses/${row.responseNumber}`,
             )
           }
-        >
-          <Group justify="space-between" wrap={isMobile ? "wrap" : "nowrap"}>
-            <Group gap="sm" style={{ minWidth: 0 }} wrap="nowrap">
-              <Text fw={600} size="sm" truncate>
-                {row.formTitle}
-              </Text>
-              <Text c="dimmed" className="tabular-nums" size="xs">
-                No. {row.recordNo}
-              </Text>
-              <StatusBadge entity="FormResponse" status={row.status} />
-            </Group>
-            <Group gap="xs" style={{ flexShrink: 0 }}>
+          trailing={
+            <>
               {row.canEdit && (
                 <Badge color="blue" size="sm" variant="light">
                   {row.editDeadline
@@ -139,19 +200,18 @@ export function MyResponsesList({ rows }: { rows: MyResponseRow[] }) {
               <Text c="dimmed" size="xs">
                 {row.submittedAt ? fmt.dateTime(row.submittedAt) : "下書き"}
               </Text>
-            </Group>
-          </Group>
-        </Row>
+            </>
+          }
+        />
       ))}
     </Stack>
   );
 }
 
 /**
- * CompletedRequestsList — 自分宛に届いた「完了した申請・報告」。
- *
- * 誰に届くかはフォームの共有設定（完了通知を付けた共有行）が決める。未読は
- * 左の青い線で示し、その回答を開いた時点で既読になる（押す操作は無い）。
+ * 自分宛に届いた「完了した申請・報告」。誰に届くかはフォームの共有設定
+ * （完了通知を付けた共有行）が決める。未読は左の青線とバッジで示し、
+ * その回答を開いた時点で既読になる（押す操作は無い）。
  */
 export function CompletedRequestsList({
   rows,
@@ -162,57 +222,65 @@ export function CompletedRequestsList({
   const fmt = useFormat();
   const isMobile = useIsMobile();
 
-  if (rows.length === 0) {
-    return (
-      <Paper p="md" radius="md" withBorder>
-        <EmptyState
-          icon={<IconForms size={28} />}
-          message="完了の通知はありません"
-        />
-      </Paper>
-    );
-  }
+  if (rows.length === 0) return <Empty message="完了の通知はありません" />;
 
   return (
     <Stack gap="xs">
-      {rows.map((row) => (
-        <Row
-          key={row.responseNumber}
-          onClick={() =>
-            router.push(
-              `/general/forms/${row.formCode}/responses/${row.responseNumber}`,
-            )
-          }
-          unread={!row.readAt}
-        >
-          <Group justify="space-between" wrap={isMobile ? "wrap" : "nowrap"}>
-            <Group gap="sm" style={{ minWidth: 0 }} wrap="nowrap">
-              <Text fw={row.readAt ? 500 : 700} size="sm" truncate>
-                {row.formTitle}
+      {rows.map((row) => {
+        const meta = (
+          <Group gap="xs" wrap="wrap">
+            <Text c="dimmed" className="tabular-nums" size="xs">
+              No. {row.recordNo}
+            </Text>
+            <StatusBadge entity="FormResponse" status={row.status} />
+            {row.respondent && (
+              <Text c="dimmed" size="xs" truncate>
+                {row.respondent}
               </Text>
-              <Text c="dimmed" className="tabular-nums" size="xs">
-                No. {row.recordNo}
-              </Text>
-              <StatusBadge entity="FormResponse" status={row.status} />
-              {row.respondent && (
-                <Text c="dimmed" size="xs" truncate>
-                  {row.respondent}
-                </Text>
-              )}
-            </Group>
-            <Group gap="xs" style={{ flexShrink: 0 }}>
-              {!row.readAt && (
-                <Badge color="blue" size="sm" variant="light">
-                  未読
-                </Badge>
-              )}
-              <Text c="dimmed" size="xs">
-                {fmt.dateTime(row.notifiedAt)}
-              </Text>
-            </Group>
+            )}
           </Group>
-        </Row>
-      ))}
+        );
+        return (
+          <Row
+            key={row.responseNumber}
+            main={
+              isMobile ? (
+                <Stack gap={4}>
+                  <Text fw={row.readAt ? 500 : 700} size="sm">
+                    {row.formTitle}
+                  </Text>
+                  {meta}
+                </Stack>
+              ) : (
+                <>
+                  <Text fw={row.readAt ? 500 : 700} size="sm" truncate>
+                    {row.formTitle}
+                  </Text>
+                  {meta}
+                </>
+              )
+            }
+            onClick={() =>
+              router.push(
+                `/general/forms/${row.formCode}/responses/${row.responseNumber}`,
+              )
+            }
+            trailing={
+              <>
+                {!row.readAt && (
+                  <Badge color="blue" size="sm" variant="light">
+                    未読
+                  </Badge>
+                )}
+                <Text c="dimmed" size="xs">
+                  {fmt.dateTime(row.notifiedAt)}
+                </Text>
+              </>
+            }
+            unread={!row.readAt}
+          />
+        );
+      })}
     </Stack>
   );
 }

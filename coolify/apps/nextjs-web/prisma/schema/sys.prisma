@@ -78,6 +78,30 @@ model UserHomeSetting {
   @@schema("app")
 }
 
+// 画面ごとの個人設定（1 行 = 1 ユーザー × 1 キー）。
+//
+// system_settings の個人版。「この画面のこのタブは自分には要らない」といった、
+// **業務データではない見た目の好み**を貯める。設定が増えるたびに列や表を足さない
+// ために key→JSON の 1 表にしてある（system_settings と同じ理由）。
+//
+// ホーム画面設定（user_home_settings）はアプリ一覧の構成という別の話で、
+// 専用の列を持っているのでそのまま残す。
+//
+// key の規約は `<画面>.<設定名>`。現在の利用者:
+//   general.tasks.tabs — 承認・予定 (CM01) で隠しているタブ { hidden: string[] }
+model UserViewSetting {
+  userId    String   @map("user_id") @db.Uuid
+  key       String
+  value     Json
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  user User @relation("UserViewSettingUser", fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([userId, key])
+  @@map("user_view_settings")
+  @@schema("app")
+}
+
 // 採番管理（EST/QOT — 月次リセット）
 model NumberingSequence {
   key           String   @id
