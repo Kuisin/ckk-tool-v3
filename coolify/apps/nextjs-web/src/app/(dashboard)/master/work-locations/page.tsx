@@ -4,7 +4,11 @@ import {
 } from "@/components/master/work-locations/WorkLocationsManager";
 import { requireAppRead } from "@/lib/authz-page";
 import { prisma } from "@/lib/db";
-import { type LocalizedText, localized } from "@/lib/format";
+import {
+  type LocalizedText,
+  localized,
+  localizedTranslations,
+} from "@/lib/format";
 import { readWorkLocationTypes } from "@/lib/work-locations";
 
 export const dynamic = "force-dynamic";
@@ -41,6 +45,7 @@ export default async function MasterWorkLocationsPage() {
       code: g.code,
       nameJa: name?.ja ?? "",
       nameEn: name?.en ?? "",
+      nameTranslations: localizedTranslations(name),
       typeKey: g.typeKey,
       plantId: g.plantId,
       plantName: g.plant
@@ -56,6 +61,7 @@ export default async function MasterWorkLocationsPage() {
           code: l.code,
           nameJa: lname?.ja ?? "",
           nameEn: lname?.en ?? "",
+          nameTranslations: localizedTranslations(lname),
           capacity: l.capacity,
           sortOrder: l.sortOrder,
           isActive: l.isActive,

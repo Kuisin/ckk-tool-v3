@@ -66,5 +66,9 @@
     "workprocessFilter": "Filtered by process:",
     "clearFilter": "Clear filter",
     "guest": "Guest"
+  },
+  "loginHistory": {
+    "appWeb": "Web",
+    "appKiosk": "Shared device"
   }
 }

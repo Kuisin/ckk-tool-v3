@@ -159,12 +159,17 @@ existing read call sites that assume it). On load, `localizedTranslations(value)
 extracts the popup's initial state, dropping `en` when it's just the auto-fill
 duplicate of `ja` (so a record nobody translated doesn't look pre-translated).
 Migrated: products / materials / material types / process steps / inspection
-templates / defect types / approval groups / plants / business partners. Not yet
-migrated (still one input per language, don't copy this pattern from them):
-`work-locations`, `storage-locations`, `approval-flows` (flow step names — rules
-`nameJa`/`nameEn` in `approval-settings/actions.ts` lines ~420/579), `regions`,
-kiosk device names — each has its own bespoke `useState`-based mini-editor
-instead of `@mantine/form` + `LocalizedTextInput`.
+templates / defect types / approval groups / plants / business partners /
+work locations / storage locations / approval-flow step names (both MS0B's
+default flow + conditional rules, and CM02 forms' per-form flow) / regions /
+kiosk device names (SY09) — the last four didn't use `@mantine/form`, so
+`LocalizedTextInput`'s `jaProps`/`translationsProps` take raw `{value,
+onChange}` there instead of `form.getInputProps(...)`; placed inside a
+horizontal `Group` (desktop row layouts), it needs a `<Box flex={1} miw={0}>`
+wrapper or it won't grow into the available width (Group children default to
+their content width). Not yet migrated: `work_location.types` (a
+`system_settings`-JSON list, not a DB `Json` column, so it can't use
+`localizedInput`/`translationsProps` the same way).
 
 ## 印刷する QR（統一フォーマット）
 
@@ -285,6 +290,12 @@ move it to the root layout, or the public `/manual` pages lose static rendering
 that's fine — they render Japanese regardless of the setting. Move strings into
 `messages/*.json` as you touch a screen; keep `messages/*.json` key-identical
 across the three languages (`lib/user-preferences-core.test.ts` enforces it).
+`lib/enum-labels.ts` (~30 ja-only `Record<string,string>` maps feeding `Select`
+`data`/badge text — tax type, unit, process category, order type, …) is the same
+kind of not-yet-migrated hard-coded Japanese, just concentrated in one file
+instead of JSX — it is imported by ~120 call sites across the app, so migrating
+it is a dedicated project (new `next-intl` namespace(s) + a translated-lookup
+hook + a pass over every call site), not a drive-by fix.
 
 **Dates/times are NOT next-intl's job here.** The user picks an explicit order
 (`YYYY/MM/DD` … `MM/DD/YYYY`) which no `Intl` option expresses, so `lib/format.ts`
@@ -295,8 +306,17 @@ requests. **PDFs and mail use `documentFormatters`** (JST, fixed): a finished
 document must not change with whoever opens it. **The document's *language* is the
 recipient's**, not the viewer's — 見積書 / 納品書 / 請求書 render in the partner's
 configured language and fall back to the default (ja) when unset (glossary §2.7,
-decided 2026-08-30; the partner-language column and the multilingual templates are
-not built yet).
+decided 2026-08-30, built 2026-08-30). `BusinessPartner.documentLocale` (nullable —
+edited via `BpBaseFields`'s "書類の言語" select, shared by the company row and every
+branch row) is resolved **branch first, then the parent company** in each
+`app/(dashboard)/**/data.ts` mapper (`recipientDocumentLocale` on `Quote` /
+`DeliveryNote` / `Invoice`) and normalized with `lib/i18n.ts` `normalizeLocale()` in
+the `api/pdf/*` route handlers. The templates' static labels (headers, column
+titles, the fixed strip sentence) live in `lib/pdf-labels.ts` — **not** next-intl,
+since Gotenberg renders plain HTML server-side with no request-scoped React tree
+for `useTranslations`; the small closed enums used only inside these three
+templates (注文種別/配送方法/消費税表示) have their own tiny translation maps there
+too, deliberately not routed through the (still ja-only) `lib/enum-labels.ts`.
 
 `lib/i18n/index.ts` keeps only locale identity (`LOCALES`, `normalizeLocale`,
 `INTL_LOCALES`) — no messages; those belong to next-intl. The kiosk app keeps its

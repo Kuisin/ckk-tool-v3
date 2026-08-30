@@ -82,7 +82,6 @@ export const MANUAL_PAGES: readonly ManualPageSource[] = [
   { path: "operations/production/material-inventory/user", app: "inventory" },
   // 旧 承認管理（PD03）は 一般カテゴリの 承認・予定（CM01）へ移設した。画面自体は
   // ログインだけで開くが、承認依頼中の一覧が出るかは approve:READ で決まる。
-  { path: "operations/production/approval/user", code: "approve" },
   // ── 出荷 ────────────────────────────────────────────────────────────────
   { path: "operations/shipping/delivery-order/user", app: "delivery-orders" },
   { path: "operations/shipping/delivery-note/user", app: "delivery-notes" },
@@ -94,6 +93,9 @@ export const MANUAL_PAGES: readonly ManualPageSource[] = [
   { path: "operations/billing/invoice/user", app: "invoices" },
   { path: "operations/billing/billing-closing/user", app: "billing-closings" },
   // ── 一般 ────────────────────────────────────────────────────────────────
+  // 旧 承認管理 (PD03) はここへ統合 — my-tasks 自体は無権限で開けるが、
+  // 承認依頼中タブは approve 権限がある人にだけ出る（ページ側の判定）。
+  { path: "operations/general/my-tasks/user", app: "my-tasks" },
   { path: "operations/general/forms/user", app: "forms" },
   // ── マスタ ──────────────────────────────────────────────────────────────
   {

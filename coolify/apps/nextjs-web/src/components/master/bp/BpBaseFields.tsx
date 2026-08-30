@@ -24,7 +24,14 @@ import { FormSection, LocalizedTextInput } from "@/components/ui/shells";
 import { useIsMobile } from "@/hooks/useViewport";
 import { COUNTRY_OPTIONS } from "@/lib/enum-labels";
 import { fieldHelp, fieldHelpTip } from "@/lib/field-help";
+import { LOCALE_LABELS, LOCALES } from "@/lib/i18n";
 import { MatchNameSuggestions } from "./MatchNameSuggestions";
+
+/** 見積書/納品書/請求書の言語（documentLocale）用の Select data。 */
+const DOCUMENT_LOCALE_OPTIONS = LOCALES.map((l) => ({
+  value: l,
+  label: LOCALE_LABELS[l],
+}));
 
 export const bpBaseFormSchema = z.object({
   nameJa: z.string().min(1, "名称（日本語）を入力してください"),
@@ -43,6 +50,7 @@ export const bpBaseFormSchema = z.object({
     .or(z.literal("")),
   website: z.string(),
   taxNumber: z.string(),
+  documentLocale: z.string().nullable(),
   matchNames: z.array(z.string()),
   isActive: z.boolean(),
   notes: z.string(),
@@ -65,6 +73,7 @@ export function bpBaseInitialValues(d?: BpBaseDetail): BpBaseFormValues {
     email: d?.email ?? "",
     website: d?.website ?? "",
     taxNumber: d?.taxNumber ?? "",
+    documentLocale: d?.documentLocale ?? null,
     matchNames: d?.matchNames ?? [],
     isActive: d?.isActive ?? true,
     notes: d?.notes ?? "",
@@ -113,6 +122,14 @@ export function BpBaseFields<T extends BpBaseFormValues>({
             label={<HelpLabel {...fieldHelp("businessPartner", "country")} />}
             placeholder="国を選択"
             {...props("countryCode")}
+          />
+          <Select
+            clearable
+            data={DOCUMENT_LOCALE_OPTIONS}
+            description="見積書・納品書・請求書をこの言語で発行する。未設定は既定言語（日本語）"
+            label="書類の言語"
+            placeholder="既定言語（日本語）"
+            {...props("documentLocale")}
           />
         </SimpleGrid>
         <Stack gap="sm" mt="sm">

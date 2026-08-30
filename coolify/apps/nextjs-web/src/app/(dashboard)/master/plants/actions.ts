@@ -191,7 +191,7 @@ const REGIONS_PATH = "/master/plants/regions";
 const regionInput = z.object({
   code: z.string().min(1, "地域コードを入力してください"),
   nameJa: z.string().min(1, "名称（日本語）を入力してください"),
-  nameEn: z.string().optional(),
+  nameTranslations: z.record(z.string(), z.string()).optional(),
   isActive: z.boolean(),
 });
 
@@ -216,7 +216,7 @@ export async function createRegion(
     const created = await prisma.region.create({
       data: {
         code: v.code.trim(),
-        name: localizedInput(v.nameJa, v.nameEn),
+        name: localizedInput(v.nameJa, undefined, v.nameTranslations),
         isActive: v.isActive,
       },
       select: { id: true },
@@ -255,7 +255,7 @@ export async function updateRegion(
     await prisma.region.update({
       where: { id },
       data: {
-        name: localizedInput(v.nameJa, v.nameEn),
+        name: localizedInput(v.nameJa, undefined, v.nameTranslations),
         isActive: v.isActive,
       },
     });

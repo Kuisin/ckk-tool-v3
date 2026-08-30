@@ -25,6 +25,7 @@ import {
   ActionIcon,
   Alert,
   Badge,
+  Box,
   Group,
   Paper,
   Pill,
@@ -32,7 +33,6 @@ import {
   Select,
   Stack,
   Text,
-  TextInput,
 } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
 import {
@@ -49,12 +49,16 @@ import { GhostButton } from "@/components/ui/buttons";
 import { HelpLabel } from "@/components/ui/HelpLabel";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { SearchSelect } from "@/components/ui/SearchSelect";
-import { FormActions, FormSection } from "@/components/ui/shells";
+import {
+  FormActions,
+  FormSection,
+  LocalizedTextInput,
+} from "@/components/ui/shells";
 import { useIsMobile } from "@/hooks/useViewport";
 import { type ApprovalMode, validateFlowSteps } from "@/lib/approval-flow";
 
 import { APPROVAL_MODE_OPTIONS } from "@/lib/enum-labels";
-import { fieldHelp } from "@/lib/field-help";
+import { fieldHelp, fieldHelpTip } from "@/lib/field-help";
 import {
   ApproverPermissionBadge,
   type FlowApprover,
@@ -66,7 +70,8 @@ export interface FlowEditorStep {
   /** React key（保存時には使わない）。 */
   key: string;
   nameJa: string;
-  nameEn: string;
+  /** 日本語以外の翻訳（LocalizedTextInput の多言語ポップアップ初期値）。 */
+  nameTranslations: Record<string, string>;
   groupId: string | null;
   mode: ApprovalMode;
   /**
@@ -124,7 +129,7 @@ export function ApprovalFlowEditor({
   onSave?: (
     steps: {
       nameJa: string;
-      nameEn?: string;
+      nameTranslations?: Record<string, string>;
       /** 個人宛の段では null。 */
       groupId: number | null;
       approverUserId?: string | null;
@@ -189,7 +194,7 @@ export function ApprovalFlowEditor({
       {
         key: nextKey(),
         nameJa: `第${prev.length + 1}承認`,
-        nameEn: "",
+        nameTranslations: {},
         groupId: null,
         mode: "ANY",
       },
@@ -217,7 +222,7 @@ export function ApprovalFlowEditor({
     startTransition(async () => {
       const payload = steps.map((s) => ({
         nameJa: s.nameJa.trim(),
-        nameEn: s.nameEn.trim() || undefined,
+        nameTranslations: s.nameTranslations,
         groupId: s.custom ? null : Number(s.groupId),
         approverUserIds: s.custom
           ? (s.approvers ?? []).map((a) => a.value)
@@ -237,7 +242,7 @@ export function ApprovalFlowEditor({
                 : [
                     {
                       nameJa: p.nameJa,
-                      nameEn: p.nameEn,
+                      nameTranslations: p.nameTranslations,
                       groupId: p.groupId,
                       mode: p.mode,
                     },
@@ -320,16 +325,23 @@ export function ApprovalFlowEditor({
               </Badge>
             );
             const nameField = (
-              <TextInput
-                flex={isMobile ? undefined : 1}
-                label={<HelpLabel {...fieldHelp("approvalFlow", "stepName")} />}
-                onChange={(e) =>
-                  patch(s.key, { nameJa: e.currentTarget.value })
-                }
-                placeholder="第一承認"
-                value={s.nameJa}
-                withAsterisk
-              />
+              <Box flex={isMobile ? undefined : 1} miw={0}>
+                <LocalizedTextInput
+                  help={fieldHelpTip("approvalFlow", "stepName")}
+                  jaProps={{
+                    value: s.nameJa,
+                    onChange: (v: string) => patch(s.key, { nameJa: v }),
+                  }}
+                  label="名称"
+                  placeholder="第一承認"
+                  required
+                  translationsProps={{
+                    value: s.nameTranslations,
+                    onChange: (v: Record<string, string>) =>
+                      patch(s.key, { nameTranslations: v }),
+                  }}
+                />
+              </Box>
             );
             const individual = !!s.custom;
             const groupField = (

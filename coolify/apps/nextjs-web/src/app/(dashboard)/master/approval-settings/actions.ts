@@ -419,7 +419,7 @@ export async function setGroupMemberActive(
 
 const flowStepInput = z.object({
   nameJa: z.string().min(1, "名称を入力してください"),
-  nameEn: z.string().optional(),
+  nameTranslations: z.record(z.string(), z.string()).optional(),
   groupId: z.number().int().positive("承認グループを選択してください"),
   mode: z.enum(["ANY", "ALL"]),
 });
@@ -485,7 +485,7 @@ export async function saveApprovalFlow(
         data: v.steps.map((s, i) => ({
           targetType: v.targetType,
           stepNo: i + 1,
-          name: localizedInput(s.nameJa, s.nameEn),
+          name: localizedInput(s.nameJa, undefined, s.nameTranslations),
           groupId: s.groupId,
           mode: s.mode,
         })),
@@ -577,7 +577,7 @@ const flowConditionInput = z.object({
 const flowRuleInput = z.object({
   targetType: z.enum(APPROVAL_TARGET_TYPES),
   nameJa: z.string().min(1, "ルール名（日本語）を入力してください"),
-  nameEn: z.string().optional(),
+  nameTranslations: z.record(z.string(), z.string()).optional(),
   conditions: z.array(flowConditionInput),
   steps: z
     .array(flowStepInput)
@@ -638,7 +638,7 @@ export async function saveApprovalFlowRule(
         const created = await tx.approvalFlowRule.create({
           data: {
             targetType: v.targetType,
-            name: localizedInput(v.nameJa, v.nameEn),
+            name: localizedInput(v.nameJa, undefined, v.nameTranslations),
             priority: (last._max.priority ?? -1) + 1,
             conditions: v.conditions,
             updatedBy: actor,
@@ -650,7 +650,7 @@ export async function saveApprovalFlowRule(
         const updated = await tx.approvalFlowRule.updateMany({
           where: { id: ruleId, targetType: v.targetType },
           data: {
-            name: localizedInput(v.nameJa, v.nameEn),
+            name: localizedInput(v.nameJa, undefined, v.nameTranslations),
             conditions: v.conditions,
             updatedBy: actor,
           },
@@ -665,7 +665,7 @@ export async function saveApprovalFlowRule(
         data: v.steps.map((s, i) => ({
           ruleId: id,
           stepNo: i + 1,
-          name: localizedInput(s.nameJa, s.nameEn),
+          name: localizedInput(s.nameJa, undefined, s.nameTranslations),
           groupId: s.groupId,
           mode: s.mode,
         })),

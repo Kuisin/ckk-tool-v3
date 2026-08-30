@@ -6,7 +6,11 @@ import {
 import type { StorageLocationRow } from "@/components/master/storage-locations/StorageLocationsPanel";
 import { requireAppRead } from "@/lib/authz-page";
 import { prisma } from "@/lib/db";
-import { type LocalizedText, localized } from "@/lib/format";
+import {
+  type LocalizedText,
+  localized,
+  localizedTranslations,
+} from "@/lib/format";
 
 export const dynamic = "force-dynamic";
 
@@ -28,6 +32,7 @@ async function fetchStorageLocations(
       code: r.code,
       nameJa: name?.ja ?? "",
       nameEn: name?.en ?? "",
+      nameTranslations: localizedTranslations(name),
       sortOrder: r.sortOrder,
       isActive: r.isActive,
       notes: r.notes ?? "",
@@ -41,6 +46,7 @@ async function fetchStorageLocations(
           code: s.code,
           nameJa: sname?.ja ?? "",
           nameEn: sname?.en ?? "",
+          nameTranslations: localizedTranslations(sname),
           sortOrder: s.sortOrder,
           isActive: s.isActive,
         };

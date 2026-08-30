@@ -11,7 +11,11 @@ import { fetchAuditEntries } from "@/lib/audit";
 import { sessionUserId } from "@/lib/authz";
 import { requireAppRead } from "@/lib/authz-page";
 import { prisma } from "@/lib/db";
-import { type LocalizedText, localized } from "@/lib/format";
+import {
+  type LocalizedText,
+  localized,
+  localizedTranslations,
+} from "@/lib/format";
 import { fetchForm, formAccess, listResponses } from "@/lib/forms";
 import { listShareGrants } from "@/lib/share-grants";
 import { saveShareGrants, setFormStatus } from "../actions";
@@ -78,6 +82,7 @@ async function loadFormApprovalPanel(formId: string): Promise<{
       return {
         nameJa: name?.ja ?? "",
         nameEn: name?.en ?? "",
+        nameTranslations: localizedTranslations(name),
         groupId: s.groupId == null ? null : String(s.groupId),
         // グループが無い段 = カスタム。ここで立てないと、保存済みの段が
         // 「グループ未選択」に見えてしまう。

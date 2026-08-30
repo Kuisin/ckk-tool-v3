@@ -3,7 +3,6 @@
   "pages": [
     "work-order",
     "pending-work-order",
-    "approval",
     "product-inventory",
     "material-inventory"
   ]

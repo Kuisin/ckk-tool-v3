@@ -94,6 +94,7 @@ const TIERED_QUOTE: Quote = {
   customerName: "株式会社ABC製作所",
   customerBranchId: "bp-001-t",
   customerBranchName: "東京本社",
+  recipientDocumentLocale: null,
   status: "ISSUED",
   validUntil: "2026-05-16",
   notes:
@@ -169,6 +170,7 @@ const SINGLE_QUOTE: Quote = {
   customerName: "合同会社XYZ工業",
   customerBranchId: null,
   customerBranchName: null,
+  recipientDocumentLocale: null,
   status: "DRAFT",
   validUntil: "2026-06-30",
   notes: null,

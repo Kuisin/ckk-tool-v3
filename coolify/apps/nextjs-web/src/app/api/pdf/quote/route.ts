@@ -9,12 +9,18 @@
  */
 
 import { fetchQuote } from "@/app/(dashboard)/sales/quotes/data";
-import { orderTypeLabel, quoteTotals } from "@/components/sales/quotes/model";
+import { quoteTotals } from "@/components/sales/quotes/model";
 import { requirePermissionResponse } from "@/lib/authz";
 import { parseDocKey } from "@/lib/doc-number";
 import { isIssued, notIssuedResponse, pdfStorageKey } from "@/lib/document-pdf";
 import { documentFormatters } from "@/lib/format";
+import { normalizeLocale } from "@/lib/i18n";
 import { renderPdf } from "@/lib/pdf";
+import {
+  orderTypeLabelLocalized,
+  pdfAttnLine,
+  quotePdfLabels,
+} from "@/lib/pdf-labels";
 import { documentQrSvg } from "@/lib/pdf-qr";
 import { QR_KINDS } from "@/lib/qr-payload";
 import { getObject, putObject } from "@/lib/storage";
@@ -75,13 +81,19 @@ export async function GET(request: Request): Promise<Response> {
   }
 
   const totals = quoteTotals(quote);
+  // 受取先（顧客の支店 → 顧客本体の順）の言語。未設定は既定言語 ja
+  // （_specs/i18n-glossary.md §2.7・決定 10 — 閲覧者の表示設定ではない）。
+  const lang = normalizeLocale(quote.recipientDocumentLocale);
+  const validUntilStr = documentFormatters.date(quote.validUntil);
+  const labels = quotePdfLabels(lang, validUntilStr);
+
   const data = {
+    lang,
+    labels,
     issuer: ISSUER,
     recipient: {
       name: quote.customerName,
-      contact: quote.customerBranchName
-        ? `${quote.customerBranchName}　ご担当者 様`
-        : "ご担当者 様",
+      contact: pdfAttnLine(lang, quote.customerBranchName),
       address: "",
     },
     // 書類 QR（CKK:QOT:<番号>）。URL は入れない。
@@ -89,14 +101,14 @@ export async function GET(request: Request): Promise<Response> {
     doc: {
       number: quote.quoteNumber,
       issued_date: documentFormatters.date(quote.createdAt),
-      valid_until: documentFormatters.date(quote.validUntil),
+      valid_until: validUntilStr,
       // 営業担当が未設定の見積は作成者を出す（従来の挙動へのフォールバック）。
       sales_rep: quote.salesRepName ?? quote.createdBy,
     },
     items: quote.items.map((it) => ({
       name: it.productName,
       code: it.productId,
-      order_type: orderTypeLabel(it.orderType),
+      order_type: orderTypeLabelLocalized(it.orderType, lang),
       quantity: yen(it.quantity),
       unit_price: yen(it.unitPrice),
       amount: yen(it.amount),

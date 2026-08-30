@@ -37,7 +37,7 @@ const groupInput = z.object({
     .min(1, "コードを入力してください")
     .regex(codePattern, "コードは英数字・ハイフン・アンダースコアで入力"),
   nameJa: z.string().min(1, "名称（日本語）を入力してください"),
-  nameEn: z.string().optional(),
+  nameTranslations: z.record(z.string(), z.string()).optional(),
   typeKey: z.string().min(1, "種別を選択してください"),
   plantId: z.number().int().positive().nullable(),
   sortOrder: z.number().int(),
@@ -51,7 +51,7 @@ const locationInput = z.object({
     .min(1, "コードを入力してください")
     .regex(codePattern, "コードは英数字・ハイフン・アンダースコアで入力"),
   nameJa: z.string().min(1, "名称（日本語）を入力してください"),
-  nameEn: z.string().optional(),
+  nameTranslations: z.record(z.string(), z.string()).optional(),
   capacity: z.number().int().min(1).nullable(),
   sortOrder: z.number().int(),
   isActive: z.boolean(),
@@ -90,7 +90,7 @@ export async function createWorkLocationGroup(
     const created = await prisma.workLocationGroup.create({
       data: {
         code: v.code.trim(),
-        name: localizedInput(v.nameJa, v.nameEn),
+        name: localizedInput(v.nameJa, undefined, v.nameTranslations),
         typeKey: v.typeKey,
         plantId: v.plantId,
         sortOrder: v.sortOrder,
@@ -130,7 +130,7 @@ export async function updateWorkLocationGroup(
       where: { id },
       data: {
         code: v.code.trim(),
-        name: localizedInput(v.nameJa, v.nameEn),
+        name: localizedInput(v.nameJa, undefined, v.nameTranslations),
         typeKey: v.typeKey,
         plantId: v.plantId,
         sortOrder: v.sortOrder,
@@ -194,7 +194,7 @@ export async function addWorkLocation(
       data: {
         groupId,
         code: v.code.trim(),
-        name: localizedInput(v.nameJa, v.nameEn),
+        name: localizedInput(v.nameJa, undefined, v.nameTranslations),
         capacity: v.capacity,
         sortOrder: v.sortOrder,
         isActive: v.isActive,
@@ -236,7 +236,7 @@ export async function updateWorkLocation(
       where: { id },
       data: {
         code: v.code.trim(),
-        name: localizedInput(v.nameJa, v.nameEn),
+        name: localizedInput(v.nameJa, undefined, v.nameTranslations),
         capacity: v.capacity,
         sortOrder: v.sortOrder,
         isActive: v.isActive,

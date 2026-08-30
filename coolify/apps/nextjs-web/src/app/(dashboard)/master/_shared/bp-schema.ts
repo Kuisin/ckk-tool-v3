@@ -7,6 +7,7 @@
 import { z } from "zod";
 import { autoMatchNames } from "@/lib/company-aliases";
 import { Prisma } from "@/lib/db";
+import { LOCALES } from "@/lib/i18n";
 import { localizedInput, localizedInputOrNull } from "@/lib/server-action";
 
 export const bpBaseInput = z.object({
@@ -27,6 +28,9 @@ export const bpBaseInput = z.object({
     .optional(),
   website: z.string().optional(),
   taxNumber: z.string().optional(),
+  // 見積書/納品書/請求書をこの取引先へ出すときの言語。null = 既定言語（ja）。
+  // _specs/i18n-glossary.md §2.7・決定 10。
+  documentLocale: z.enum(LOCALES).nullable(),
   matchNames: z.array(z.string()),
   isActive: z.boolean(),
   notes: z.string().optional(),
@@ -50,6 +54,7 @@ export function bpBaseData(v: BpBaseInput) {
     email: v.email?.trim() || null,
     website: v.website?.trim() || null,
     taxNumber: v.taxNumber?.trim() || null,
+    documentLocale: v.documentLocale,
     matchNames: [...new Set(v.matchNames.map((n) => n.trim()).filter(Boolean))],
     // フリガナ由来のかな・ローマ字は **画面に出さず** ここで自動生成して保存する
     // （AI照合名の欄には利用者が入れたものだけを残すため）。

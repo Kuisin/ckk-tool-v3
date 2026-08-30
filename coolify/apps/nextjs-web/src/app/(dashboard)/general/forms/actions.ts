@@ -54,6 +54,7 @@ import {
   type ActionResult,
   actionError,
   actionOk,
+  localizedInput,
   prismaErrorMessage,
 } from "@/lib/server-action";
 import {
@@ -1164,7 +1165,7 @@ export async function importForm(
 const formFlowStepInput = z
   .object({
     nameJa: z.string().trim().min(1, "段の名前を入力してください").max(60),
-    nameEn: z.string().trim().max(60).optional(),
+    nameTranslations: z.record(z.string(), z.string()).optional(),
     // 宛先はグループか「カスタム（1..N 人の指名）」のどちらか一方。
     groupId: z.number().int().positive().nullable().optional(),
     approverUserIds: z.array(z.string().uuid()).max(50).optional(),
@@ -1224,7 +1225,7 @@ export async function saveFormApprovalFlow(
           data: {
             formId: gate.form.id,
             stepNo: i + 1,
-            name: { ja: step.nameJa, en: step.nameEn ?? "" },
+            name: localizedInput(step.nameJa, undefined, step.nameTranslations),
             groupId: step.groupId ?? null,
             mode: step.mode,
           },

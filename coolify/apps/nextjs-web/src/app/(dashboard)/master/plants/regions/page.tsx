@@ -4,7 +4,7 @@ import {
 } from "@/components/master/plants/RegionsPanel";
 import { requireAppRead } from "@/lib/authz-page";
 import { prisma } from "@/lib/db";
-import type { LocalizedText } from "@/lib/format";
+import { type LocalizedText, localizedTranslations } from "@/lib/format";
 
 export const dynamic = "force-dynamic";
 
@@ -24,6 +24,7 @@ export default async function MasterPlantRegionsPage() {
       code: r.code,
       nameJa: name?.ja ?? "",
       nameEn: name?.en ?? "",
+      nameTranslations: localizedTranslations(name),
       plantCount: r._count.plants,
       isActive: r.isActive,
     };

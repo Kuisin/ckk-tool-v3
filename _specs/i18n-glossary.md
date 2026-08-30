@@ -635,5 +635,5 @@ zh は `取消` / `已取消` で字面が近い。§3.16 は暫定で**書類�
 1. **ja の統一を先に入れる**（決定 2・6・7・8・9・13）— 多言語化と混ぜると差分が読めない。`StatusBadge.tsx` / `enum-labels.ts` / `app-list.ts` の 3 ファイルでほぼ済む。
 2. 1 箇所で効くものからカタログ化 — `StatusBadge.tsx` / `enum-labels.ts` / `app-list.ts` / `audit.ts`。
 3. 画面はカテゴリ単位で移す（販売 → 購買 → 生産 …）。未移行の画面は日本語直書きのまま動く。
-4. ~~決定 11 の実装~~ — 済（`LocalizedTextInput` + 9 マスタ）。残りは作業場所・保管場所・承認フロー・地域・キオスク端末名の独自簡易 UI を同じ部品に載せ替えること。`_specs/tables.md` の `{ ja, en }` 規約説明も可変キーに触れるよう更新すること。
-5. 決定 10 の実装 — 取引先の言語設定、PDF テンプレートの多言語化、`documentFormatters` に「言語は受取先で決まる」を足す。
+4. ~~決定 11 の実装~~ — 済（`LocalizedTextInput` + 13 マスタ: 9 マスタ + 作業場所・保管場所・承認フロー（既定フロー / 条件付きルール / CM02 フォームの個別フロー）・地域・キオスク端末名）。残るのは `work_location.types`（`system_settings` の JSON リストで DB の `Json` 列ではないため同じ部品に載せられない）だけ。`_specs/tables.md` の `{ ja, en }` 規約説明を可変キーに触れるよう更新することも未着手。
+5. ~~決定 10 の実装~~ — 済（見積書・納品書・請求書の PDF、`business_partners.document_locale` + `lib/pdf-labels.ts`）。残るのは `lib/enum-labels.ts` の ja 専用ドロップダウン（税区分・単位・国など）— 123 箇所の呼び出し元を書き換える規模の作業で、他画面同様「触ったときに直す」の対象として意図的に先送り。ログイン履歴（SY0D）の Web/共有端末 フィルタは next-intl 化 済（`loginHistory` 名前空間）。

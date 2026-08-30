@@ -111,7 +111,7 @@ export async function fetchDeviceSessions(
 const createProfileInput = z.object({
   // 端末名は多言語（{ ja, en }）。英語未入力なら日本語で埋める。
   nameJa: z.string().min(1, "端末名を入力してください"),
-  nameEn: z.string().optional(),
+  nameTranslations: z.record(z.string(), z.string()).optional(),
   plantId: z.number().int().positive("拠点を選択してください"),
   location: z.string().optional(),
 });
@@ -141,7 +141,7 @@ export async function createDeviceProfile(
     if (!plant || !plant.isActive) {
       return actionError("対象の拠点が見つかりません");
     }
-    const name = localizedInput(v.nameJa, v.nameEn);
+    const name = localizedInput(v.nameJa, undefined, v.nameTranslations);
     const created = await prisma.kioskDevice.create({
       data: {
         status: "PENDING",
@@ -409,7 +409,7 @@ const updateInput = z.object({
   id: uuidSchema,
   // 端末名は多言語（{ ja, en }）。英語未入力なら日本語で埋める。
   nameJa: z.string().min(1, "端末名を入力してください"),
-  nameEn: z.string().optional(),
+  nameTranslations: z.record(z.string(), z.string()).optional(),
   plantId: z.number().int().positive("拠点を選択してください"),
   location: z.string().optional(),
   // 既定の作業場所（任意）。工程の開始/再開時に実績へ自動記録される。
@@ -451,7 +451,7 @@ export async function updateDevice(
         return actionError("既定の作業場所が端末の拠点と一致しません");
       }
     }
-    const name = localizedInput(v.nameJa, v.nameEn);
+    const name = localizedInput(v.nameJa, undefined, v.nameTranslations);
     await prisma.kioskDevice.update({
       where: { id: v.id },
       data: {
