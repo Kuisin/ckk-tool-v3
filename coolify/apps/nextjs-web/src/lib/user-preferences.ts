@@ -3,7 +3,8 @@ import "server-only";
 /**
  * user-preferences.ts — ログイン中ユーザーの表示設定の読み書き（server-only）。
  *
- * 値は app.users の locale / date_format / time_format / time_zone。
+ * 値は app.users の locale / date_format / time_format / time_zone /
+ * text_scale / bold_text。
  * 言語列（locale）はキオスクと共有なので、ここでの変更はタブレット側の
  * 表示にも効く。純ロジック（型・既定値・正規化）は user-preferences-core.ts。
  *
@@ -43,6 +44,8 @@ export const getCurrentPreferences = cache(
           dateFormat: true,
           timeFormat: true,
           timeZone: true,
+          textScale: true,
+          boldText: true,
         },
       });
       return row ? normalizePreferences(row) : DEFAULT_PREFERENCES;
@@ -85,6 +88,8 @@ export async function saveCurrentPreferences(
       dateFormat: true,
       timeFormat: true,
       timeZone: true,
+      textScale: true,
+      boldText: true,
     },
   });
   if (!current) return null;
@@ -96,6 +101,8 @@ export async function saveCurrentPreferences(
       dateFormat: prefs.dateFormat,
       timeFormat: prefs.timeFormat,
       timeZone: prefs.timeZone,
+      textScale: prefs.textScale,
+      boldText: prefs.boldText,
     },
   });
   return { before: normalizePreferences(current), after: prefs };

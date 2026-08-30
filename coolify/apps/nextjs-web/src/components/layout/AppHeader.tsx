@@ -205,6 +205,7 @@ export function AppHeader({
         </Box>
       )}
       <Group
+        className="app-header-row"
         h={isDev ? `calc(100% - ${DEV_BAR_HEIGHT}px)` : "100%"}
         justify="space-between"
         px={{ base: "xs", md: "md" }}
@@ -293,7 +294,12 @@ export function AppHeader({
             </Popover.Dropdown>
           </Popover>
 
-          <Box hiddenFrom="md">
+          {/*
+            操作コード入力。横幅が足りないときは globals.css が引っ込める
+            （文字を大きくした端末では収まらない）。同じ検索はロゴから開く
+            アプリ一覧の中にもあるので、無くなっても行き先は失われない。
+          */}
+          <Box className="app-header-code-jump" hiddenFrom="md">
             <OperationCodeJump
               compact
               onNavigate={() => setLauncherOpen(false)}
@@ -303,7 +309,7 @@ export function AppHeader({
 
         {/* ── Right: Code jump (desktop) + Notifications + User ──────────── */}
         <Group gap="xs" wrap="nowrap">
-          <Box visibleFrom="md">
+          <Box className="app-header-code-jump" visibleFrom="md">
             <OperationCodeJump
               compact
               onNavigate={() => setLauncherOpen(false)}

@@ -56,6 +56,38 @@
  * ───────────────────────────────────────────────────────────────────────── */
 body {
   font-family: var(--mantine-font-family, "Noto Sans JP", system-ui, sans-serif);
+  font-weight: var(--app-font-weight-regular, 400);
+}
+
+/*
+ * 表示設定 — 文字の大きさ / 文字を太くする（/profile/preferences）。
+ *
+ * 変数はログイン中ユーザーの設定から
+ * components/layout/DisplayPreferencesStyle が :root へ流し込む（未ログイン・
+ * マニュアル等、載っていない画面は既定値へ倒れる）。ここは**適用の仕方**だけを
+ * 持つ唯一の場所。
+ *
+ * 大きさは html の font-size を動かす。Mantine も Tailwind も寸法が rem 基準
+ * なので、文字だけでなく余白・行の高さ・部品の高さが一緒に伸びる（文字だけ
+ * 大きくすると、高さが固定の入力やボタンから文字がはみ出す）。
+ * 折り返し幅は変わらない — メディアクエリの em / rem はブラウザ既定の文字
+ * サイズで評価され、ここの指定を見ないため。
+ *
+ * 太さは Mantine の太さ変数ごと 1 段上げる。`fw={500}` のようなインライン指定
+ * には CSS が勝てないので、本文を 600 まで上げると強調のほうが細く見える
+ * （逆転する）。500 なら並ぶだけで反転しない — 理由は
+ * lib/user-preferences-core.ts の BOLD_TEXT_WEIGHTS に書いてある。
+ *
+ * どちらもレイヤ外に置く（Mantine のスタイルは @layer mantine の中なので、
+ * 同じ :root でもレイヤ外のこちらが勝つ）。
+ */
+html {
+  font-size: calc(100% * var(--app-text-scale, 1));
+}
+
+:root {
+  --mantine-font-weight-regular: var(--app-font-weight-regular, 400);
+  --mantine-font-weight-medium: var(--app-font-weight-medium, 600);
 }
 
 /*
@@ -88,6 +120,30 @@ body {
  * attribute the `dark:` variant above targets).
  * ───────────────────────────────────────────────────────────────────────── */
 @layer components {
+  /*
+   * ヘッダーは中身が減らない（戻る・ロゴ・アプリ名・操作コード入力・
+   * アイコン 4 つ）ので、幅が足りなくなると重なって描かれる。文字を大きく
+   * すると同じことが広い画面でも起きるため、**入る量で**決める。
+   *
+   * コンテナクエリの rem は**ルートの文字サイズ**で評価される（メディア
+   * クエリの rem / em はブラウザ既定値で評価され、文字設定を見ない）。
+   * つまりこの 1 本で「画面が狭い」と「文字が大きい」の両方を拾える。
+   *
+   * 26rem は実測から: ヘッダーの中身（戻る・ロゴ・アプリ名・入力欄・アイコン
+   * 4 つ）が重ならずに並ぶのに要る幅。既定の文字サイズだと携帯の幅（〜430px）
+   * では足りず、以前はアプリ名の枠がアイコン列に食い込んでいた（文字同士は
+   * 触れていなかったので気付きにくい）。入力欄を引っ込めると、代わりに
+   * アプリ名が最後まで読める。タブレット・PC では従来どおり出る。
+   */
+  .app-header-row {
+    container-type: inline-size;
+  }
+  @container (max-width: 26rem) {
+    .app-header-code-jump {
+      display: none;
+    }
+  }
+
   /* App launcher / home dashboard card — lift + shadow on hover. */
   .app-card {
     display: block;
@@ -165,8 +221,19 @@ body {
   }
 
   /* Header app-launcher trigger — rounded hit area with hover background. */
+  /*
+   * ロゴ +（開いていれば）アプリ名のボタン。幅が足りないときはアプリ名を
+   * 省略記号で詰める。以前は flex-shrink: 0 で縮まず、幅が足りなくなると
+   * 右のアイコン列に**重なって**描かれていた（狭い端末では既定の文字サイズ
+   * でも起きる。文字を大きくすると顕著）。min-width: 0 が要るのは、flex
+   * アイテムの既定 min-width:auto が「中身より小さくなること」を許さない
+   * ため — 内側の Group にも同じ理由で要る。アプリ名の Text 側は truncate。
+   */
+  .launcher-trigger,
+  .launcher-trigger > * {
+    min-width: 0;
+  }
   .launcher-trigger {
-    flex-shrink: 0;
     border-radius: var(--mantine-radius-sm);
     transition: background-color 120ms ease;
   }

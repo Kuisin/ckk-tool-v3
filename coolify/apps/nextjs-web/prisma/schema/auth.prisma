@@ -207,6 +207,13 @@ model User {
   // 表示タイムゾーン（IANA 名。例 "Asia/Tokyo"）。保存は常に UTC で、
   // ここは「画面に出すときどこの時刻で読むか」だけを決める。
   timeZone String @default("Asia/Tokyo") @map("time_zone") @db.VarChar(64)
+  // 文字の大きさ（"xs" | "sm" | "md" | "lg" | "xl"。既定 "md" = 従来どおり）。
+  // 段は 5 つで、真ん中が今までの大きさ。倍率そのものを持たないのは、
+  // 刻みを変えたくなったときに DB の値を書き換えずに済ませるため
+  // （倍率の定義は lib/user-preferences-core.ts の 1 か所）。
+  textScale String @default("md") @map("text_scale") @db.VarChar(8)
+  // 文字を太くする（iOS の「文字を太くする」相当）。本文の太さを 1 段上げる。
+  boldText Boolean @default(false) @map("bold_text")
 
   // Employees link to the shared directory by AD objectGUID (stable across
   // username/attribute changes). Null for SYSTEM / GUEST users.

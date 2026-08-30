@@ -257,7 +257,7 @@ heading text and break easily. `lib/field-help.test.ts` reads the real markdown 
 fails if any registered anchor is missing in ja/en/zh, which is what keeps these
 links from rotting (`docs:lint` is not in CI).
 
-## i18n & 表示設定（言語 / 日付 / 時刻 / タイムゾーン）
+## i18n & 表示設定（言語 / 日付 / 時刻 / タイムゾーン / 文字の大きさ）
 
 **訳す前に `_specs/i18n-glossary.md` を読む — 例外なし。** 翻訳ルール（§2: キーの
 付け方 / 変数と複数形 / 言語別の書き方 / 確認項目）と、全用語の ja/en/zh 対訳表
@@ -270,10 +270,30 @@ links from rotting (`docs:lint` is not in CI).
 
 Per-user display settings live on **`app.users`** — `locale` (shared with the
 kiosk, which writes the same column) plus `date_format` / `time_format` /
-`time_zone`. Edited at `/profile/preferences`; read via
-`lib/user-preferences.ts` (`getCurrentPreferences()`, `cache()`d per request).
-Timestamps stay **UTC in the DB** — `time_zone` only changes how they are read
-back for display.
+`time_zone` / `text_scale` / `bold_text` (the last two are web-only). Edited at
+`/profile/preferences`; read via `lib/user-preferences.ts`
+(`getCurrentPreferences()`, `cache()`d per request). Timestamps stay **UTC in
+the DB** — `time_zone` only changes how they are read back for display.
+
+**文字の大きさ・太さ（iOS の「テキストサイズ」相当）.** `text_scale` は 5 段で
+真ん中（`md`）が従来の大きさ。DB が持つのは**段の名前だけ**で、倍率は
+`lib/user-preferences-core.ts` の `TEXT_SCALE_FACTORS` が決める（刻みを直しても
+保存済みの行を書き換えずに済む）。当て方は 1 通りしかない: サーバーが
+`displayRootCss()` を `<style>` で `:root` へ流し込み（`DisplayPreferencesStyle`、
+`(dashboard)/layout.tsx` が 1 枚だけ描く）、`globals.css` §2 がその変数を
+**html の `font-size`** と **body の `font-weight`** に落とす。クライアントで
+当てないのは、最初の描画が既定の大きさになって画面が跳ねるため。設定画面だけは
+同じ変数を html の inline style に載せて「保存前の見た目」を出す。
+
+- 大きさは rem 基準ごと動かすので、文字だけでなく余白・部品の高さも一緒に伸びる
+  （文字だけ大きくすると高さ固定の部品からはみ出す）。
+- **折り返し幅は変わらない** — メディアクエリの `em` / `rem` はブラウザ既定の
+  文字サイズで評価され、この設定を見ない。逆に**コンテナクエリの `rem` は
+  ルートの文字サイズで評価される**ので、「文字が大きくて入らない」を CSS で
+  表現したいときはコンテナクエリを使う（ヘッダーの操作コード入力がその例）。
+- 太字は Mantine の太さ変数ごと 1 段上げる（400→500 / 600→700）。`fw={500}` の
+  ようなインライン指定に CSS は勝てないので、本文を 600 まで上げると強調のほうが
+  細く見える。理由は `BOLD_TEXT_WEIGHTS` のコメント。
 
 **UI strings — `next-intl`, without i18n routing.** The language comes from the
 user's DB setting, not the URL. `src/i18n/request.ts` (`getRequestConfig`) reads

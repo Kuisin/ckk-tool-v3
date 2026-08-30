@@ -3,8 +3,14 @@
 /**
  * DisplayPreferencesForm — 表示設定（/profile/preferences、本人のみ）。
  *
- * 言語 / 日付形式 / 時刻形式 / タイムゾーンを選ぶ。選んだ内容は保存前に
- * プレビューへ即反映する（設定名だけでは結果が想像しにくいため）。
+ * 言語 / 日付形式 / 時刻形式 / タイムゾーン / 文字の大きさ / 文字を太くする、を
+ * 選ぶ。選んだ内容は保存前にプレビューへ即反映する（設定名だけでは結果が
+ * 想像しにくいため）。
+ *
+ * ★ 文字の大きさ・太さは**画面全体に**その場で当てる（プレビュー枠の中だけに
+ *   当てない）。読めるかどうかは一覧やボタンを含めた画面全体で決まるもので、
+ *   小さな見本では判断できないため。保存せずに離れれば元に戻る
+ *   （html へ載せた上書きを片付ける）。
  *
  * ★ 言語も保存前に反映したいので、この画面だけ 3 言語ぶんの文言を読み込み、
  *   選択中の言語で `NextIntlClientProvider` を **入れ子**にして自分自身を包む
@@ -17,11 +23,14 @@
  */
 
 import {
+  Divider,
   Group,
   Paper,
+  SegmentedControl,
   Select,
   SimpleGrid,
   Stack,
+  Switch,
   Text,
   Title,
 } from "@mantine/core";
@@ -39,7 +48,11 @@ import {
   type DateFormat,
   type DisplayPreferences,
   dateFormatExample,
+  displayCssVariables,
   type Locale,
+  TEXT_SCALE_FACTORS,
+  TEXT_SCALES,
+  type TextScale,
   type TimeFormat,
 } from "@/lib/user-preferences-core";
 import en from "../../../messages/en.json";
@@ -50,6 +63,15 @@ import zh from "../../../messages/zh.json";
 const SAMPLE_ISO = "2026-03-05T05:30:00.000Z"; // JST 14:30 / UTC 05:30
 
 const PREVIEW_MESSAGES: Record<Locale, typeof ja> = { ja, en, zh };
+
+/** 段 → 文言キー（`t()` にテンプレート文字列を渡すと型検査が効かないため）。 */
+const TEXT_SCALE_LABEL_KEYS = {
+  xs: "textScaleXs",
+  sm: "textScaleSm",
+  md: "textScaleMd",
+  lg: "textScaleLg",
+  xl: "textScaleXl",
+} as const satisfies Record<TextScale, string>;
 
 /** 選択中の言語で文言を差し替えるための入れ子プロバイダ。 */
 export function DisplayPreferencesForm({
@@ -106,6 +128,24 @@ function PreferencesFormBody({
   useEffect(() => {
     setNow(new Date());
   }, []);
+
+  /**
+   * 選んだ文字の大きさ・太さを画面全体へ即反映する。
+   *
+   * html の inline style は、サーバーが :root へ流し込んだ `<style>` より強い
+   * ので上書きになる。片付ける（removeProperty）と保存済みの値へ戻るので、
+   * 保存せずに他の画面へ移った場合も設定は変わらない。
+   */
+  useEffect(() => {
+    const root = document.documentElement;
+    const vars = displayCssVariables(prefs);
+    for (const [name, value] of Object.entries(vars)) {
+      root.style.setProperty(name, value);
+    }
+    return () => {
+      for (const name of Object.keys(vars)) root.style.removeProperty(name);
+    };
+  }, [prefs]);
   const timeZoneOptions = useMemo(
     () => COMMON_TIME_ZONES.map((tz) => ({ value: tz, label: tz })),
     [],
@@ -198,6 +238,43 @@ function PreferencesFormBody({
         </SimpleGrid>
       </Paper>
 
+      {/*
+        文字の大きさ・太さ。選択肢のラベルは**その段の大きさで**描く
+        （「大」と書いてあるより、大きい字で「大」と出ているほうが早い）。
+      */}
+      <Paper p="md" radius="md" shadow="xs">
+        <Title mb="xs" order={5}>
+          {t("textSize")}
+        </Title>
+        <Text c="dimmed" mb="sm" size="sm">
+          {t("textSizeHelp")}
+        </Text>
+        <SegmentedControl
+          data={TEXT_SCALES.map((scale) => ({
+            value: scale,
+            label: (
+              <span
+                style={{
+                  fontSize: `calc(var(--mantine-font-size-sm) * ${TEXT_SCALE_FACTORS[scale]})`,
+                }}
+              >
+                {t(TEXT_SCALE_LABEL_KEYS[scale])}
+              </span>
+            ),
+          }))}
+          fullWidth
+          onChange={(value) => set("textScale", value as TextScale)}
+          value={prefs.textScale}
+        />
+        <Divider my="md" />
+        <Switch
+          checked={prefs.boldText}
+          description={t("boldTextHelp")}
+          label={t("boldText")}
+          onChange={(event) => set("boldText", event.currentTarget.checked)}
+        />
+      </Paper>
+
       {/* プレビュー — 保存前に「実際どう出るか」を見せる。 */}
       <Paper p="md" radius="md" shadow="xs">
         <Title mb="xs" order={5}>
@@ -229,6 +306,15 @@ function PreferencesFormBody({
             </Text>
           </Stack>
         </SimpleGrid>
+        <Divider my="sm" />
+        {/* 本文の見本 — 大きさと太さは画面全体に効いているので、ここは
+            「まとまった文章だとどう見えるか」を確かめるためだけに置く。 */}
+        <Stack gap={2}>
+          <Text c="dimmed" size="xs">
+            {t("previewText")}
+          </Text>
+          <Text size="sm">{t("previewTextSample")}</Text>
+        </Stack>
       </Paper>
 
       <FormActions
