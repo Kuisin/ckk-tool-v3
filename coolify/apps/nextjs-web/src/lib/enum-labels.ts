@@ -283,6 +283,7 @@ export const NOTIFICATION_TYPE_LABEL: Record<string, string> = {
   PURCHASE: "購買",
   SHARE: "共有",
   DESIGN: "設計",
+  FORM_COMPLETED: "申請の完了",
   SYSTEM: "システム",
 };
 

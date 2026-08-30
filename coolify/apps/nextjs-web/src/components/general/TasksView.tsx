@@ -14,6 +14,7 @@ import { IconCalendarTime } from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
 import type { ApprovalRequestRow } from "@/app/(dashboard)/general/tasks/approvals-data";
 import type { InboxCommentRow } from "@/app/(dashboard)/general/tasks/comments-data";
+import type { CompletedRequestRow } from "@/app/(dashboard)/general/tasks/completions-data";
 import type { MyPlanRow } from "@/app/(dashboard)/general/tasks/data";
 import type { FormTasks } from "@/app/(dashboard)/general/tasks/forms-data";
 import { useFormat } from "@/components/layout/PreferencesProvider";
@@ -23,7 +24,11 @@ import { PageHeader } from "@/components/ui/PageHeader";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { useTabParam } from "@/hooks/useUrlState";
 import { ApprovalRequestTable } from "./ApprovalRequestTable";
-import { MyResponsesList, PendingFormsList } from "./FormTasksPanel";
+import {
+  CompletedRequestsList,
+  MyResponsesList,
+  PendingFormsList,
+} from "./FormTasksPanel";
 import { InboxCommentsList } from "./InboxCommentsList";
 
 const WORK_ORDERS_PATH = "/production/work-orders";
@@ -93,14 +98,18 @@ export function TasksView({
   approvals,
   forms,
   comments,
+  completions,
 }: {
   plans: MyPlanRow[];
   /** null = approve 権限なし（セクション自体を出さない）。 */
   approvals: ApprovalRequestRow[] | null;
   forms: FormTasks;
   comments: InboxCommentRow[];
+  /** 自分宛に届いた「完了した申請・報告」。1 件も無ければタブごと出さない。 */
+  completions: CompletedRequestRow[];
 }) {
   const [tab, setTab] = useTabParam("plans");
+  const unreadCompletions = completions.filter((c) => !c.readAt).length;
   return (
     <Stack gap="md">
       <PageHeader breadcrumbs={["一般", "承認・予定"]} title="承認・予定" />
@@ -146,6 +155,22 @@ export function TasksView({
             未回答のフォーム
           </Tabs.Tab>
           <Tabs.Tab value="my-forms">回答済みのフォーム</Tabs.Tab>
+          {/* 完了通知を 1 度も受け取っていない人には出さない（大半の利用者に
+              とって常に空のタブになり、他のタブを押しにくくするだけ）。 */}
+          {completions.length > 0 && (
+            <Tabs.Tab
+              rightSection={
+                unreadCompletions > 0 && (
+                  <Badge color="blue" size="sm" variant="light">
+                    {unreadCompletions}
+                  </Badge>
+                )
+              }
+              value="completions"
+            >
+              完了した申請
+            </Tabs.Tab>
+          )}
           <Tabs.Tab
             rightSection={
               comments.length > 0 && (
@@ -190,6 +215,12 @@ export function TasksView({
         <Tabs.Panel pt="md" value="my-forms">
           <MyResponsesList rows={forms.mine} />
         </Tabs.Panel>
+
+        {completions.length > 0 && (
+          <Tabs.Panel pt="md" value="completions">
+            <CompletedRequestsList rows={completions} />
+          </Tabs.Panel>
+        )}
 
         <Tabs.Panel pt="md" value="comments">
           <InboxCommentsList rows={comments} />

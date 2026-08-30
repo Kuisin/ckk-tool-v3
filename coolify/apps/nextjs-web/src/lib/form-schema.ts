@@ -647,3 +647,24 @@ export function shouldAutoRequestApproval(
     prevStatus === "SUBMITTED"
   );
 }
+
+/**
+ * その回答は「完了した申請・報告」か。完了通知（lib/form-completion.ts）と
+ * CM01「完了した申請」の唯一の判定元。
+ *
+ * 完了の意味はフォームの設定で変わる:
+ *   - 承認フローを使う   … 全段の承認が下りた（APPROVED）
+ *   - 承認フローを使わない … 提出そのもの（SUBMITTED）— 日報・点検簿など、
+ *     承認を挟まない「報告」はここで終わりだから
+ *
+ * アンケート（SURVEY）に完了は無い。承認を使う設定なのに SUBMITTED で
+ * 止まっているもの（フロー未設定など）も完了ではない — 出しただけで、
+ * 通すべき承認をまだ通っていない。
+ */
+export function isCompletedRequest(
+  form: { kind: string; approvalEnabled: boolean },
+  status: string,
+): boolean {
+  if (form.kind !== "REQUEST") return false;
+  return form.approvalEnabled ? status === "APPROVED" : status === "SUBMITTED";
+}

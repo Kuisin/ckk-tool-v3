@@ -91,7 +91,14 @@ export function ShareGrantsView({
                     {subject}
                   </Text>
                 </Group>
-                <Text size="sm">{SHARE_LEVEL_LABEL[grant.level]}</Text>
+                <Group gap="xs">
+                  <Text size="sm">{SHARE_LEVEL_LABEL[grant.level]}</Text>
+                  {grant.notifyOnComplete && (
+                    <Badge color="indigo" variant="light">
+                      完了通知
+                    </Badge>
+                  )}
+                </Group>
                 {condition && (
                   <Text c="dimmed" size="xs">
                     {condition}
@@ -107,7 +114,7 @@ export function ShareGrantsView({
             <Table.Tr>
               <Table.Th style={{ width: 100 }}>対象</Table.Th>
               <Table.Th>相手</Table.Th>
-              <Table.Th style={{ width: 120 }}>権限</Table.Th>
+              <Table.Th style={{ width: 200 }}>権限</Table.Th>
               <Table.Th>条件</Table.Th>
             </Table.Tr>
           </Table.Thead>
@@ -120,7 +127,16 @@ export function ShareGrantsView({
                   </Badge>
                 </Table.Td>
                 <Table.Td>{subject}</Table.Td>
-                <Table.Td>{SHARE_LEVEL_LABEL[grant.level]}</Table.Td>
+                <Table.Td>
+                  <Group gap="xs">
+                    <Text size="sm">{SHARE_LEVEL_LABEL[grant.level]}</Text>
+                    {grant.notifyOnComplete && (
+                      <Badge color="indigo" variant="light">
+                        完了通知
+                      </Badge>
+                    )}
+                  </Group>
+                </Table.Td>
                 <Table.Td>
                   {condition ?? (
                     <Text c="dimmed" size="sm">
