@@ -581,6 +581,20 @@ export const appList: AppEntry[] = [
     category: "システム",
     requiredPermission: "system",
   },
+  {
+    // 特権アクセス — システム上重要な操作を「申請 → 別の人の承認 → 期限つきで
+    // 実行」に分ける。requiredPermission は null（誰でも開ける）: 中身は自分が
+    // 申請できるもの / 決裁できるものだけなので、権限の無い人には空で出る。
+    // 入口に権限を置くと、申請したい人にまず入口の権限を配ることになり、
+    // 分離した意味が薄れる（my-tasks / forms と同じ扱い）。
+    key: "privileged-access",
+    label: "特権アクセス",
+    operationCode: "SY0G",
+    href: "/settings/privileged-access",
+    icon: "IconShieldCheck",
+    category: "システム",
+    requiredPermission: null,
+  },
 ];
 
 /** Home 絞り込み（工程）で使う URL パラメータのキー。 */
