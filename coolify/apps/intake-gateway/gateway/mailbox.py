@@ -13,6 +13,7 @@ from __future__ import annotations
 import email
 import imaplib
 import logging
+import re
 from contextlib import contextmanager
 from datetime import datetime, timedelta
 from email.message import Message
@@ -31,6 +32,55 @@ _MONTHS = (
 
 def imap_date(d: datetime) -> str:
     return f"{d.day:02d}-{_MONTHS[d.month - 1]}-{d.year}"
+
+
+# ── メールボックス名の名前空間 ─────────────────────────────────────────
+# サーバーによって「受信箱の下」の書き方が違う。Sakura（Courier 系）は
+# NAMESPACE が (("INBOX." ".")) を返し、`Processed` は
+# **Invalid mailbox name.** で作れない — `INBOX.Processed` でなければならない。
+# Dovecot の多くは personal prefix が空なので `Processed` のままでよい。
+# 設定に `INBOX.` を書かせると移植性が無くなるので、接続時に聞いて自動で付ける。
+
+
+def parse_namespace_prefix(raw: object) -> str:
+    """NAMESPACE の応答から personal 名前空間の接頭辞を取り出す。
+
+    例: (("INBOX." ".")) NIL (...) → "INBOX."
+        (("" "/")) NIL (...)       → ""
+    読めなければ "" を返す（＝何も足さない。従来どおりの挙動）。
+    """
+    if isinstance(raw, (bytes, bytearray)):
+        text = raw.decode("utf-8", "replace")
+    elif isinstance(raw, (list, tuple)):
+        parts = []
+        for item in raw:
+            if isinstance(item, (bytes, bytearray)):
+                parts.append(item.decode("utf-8", "replace"))
+            elif isinstance(item, str):
+                parts.append(item)
+        text = " ".join(parts)
+    else:
+        text = str(raw or "")
+    m = re.search(r'\(\s*\(\s*"([^"]*)"', text)
+    return m.group(1) if m else ""
+
+
+def qualify_box(name: str, prefix: str) -> str:
+    """設定されたフォルダ名を、このサーバーで通る形にする。"""
+    if not name or not prefix:
+        return name
+    if name == "INBOX" or name.startswith(prefix):
+        return name
+    return f"{prefix}{name}"
+
+
+def namespace_prefix(client: imaplib.IMAP4) -> str:
+    """接続中のサーバーの personal 接頭辞（取れなければ ""）。"""
+    try:
+        typ, data = client.namespace()
+    except Exception:
+        return ""
+    return parse_namespace_prefix(data) if typ == "OK" else ""
 
 
 @contextmanager
@@ -98,16 +148,21 @@ def mark_seen(client: imaplib.IMAP4, uid: bytes) -> None:
     client.uid("STORE", uid, "+FLAGS", "(\\Seen)")  # type: ignore[arg-type]
 
 
-def move_to(client: imaplib.IMAP4, uid: bytes, box: str) -> None:
-    """別フォルダへ移す（無ければ作る）。失敗しても致命ではない。"""
+def move_to(client: imaplib.IMAP4, uid: bytes, box: str, prefix: str = "") -> None:
+    """別フォルダへ移す（無ければ作る）。失敗しても致命ではない。
+
+    `prefix` はサーバーの personal 名前空間（Sakura なら "INBOX."）。
+    設定に書かせず接続時に聞いた値をここで足す。
+    """
     if not box:
         return
-    typ, _ = client.uid("COPY", uid, box)  # type: ignore[arg-type]
+    target = qualify_box(box, prefix)
+    typ, _ = client.uid("COPY", uid, target)  # type: ignore[arg-type]
     if typ != "OK":
-        client.create(box)
-        typ, _ = client.uid("COPY", uid, box)  # type: ignore[arg-type]
+        client.create(target)
+        typ, _ = client.uid("COPY", uid, target)  # type: ignore[arg-type]
         if typ != "OK":
-            log.warning("メールを %s へ移せませんでした（既読にはしてあります）", box)
+            log.warning("メールを %s へ移せませんでした（既読にはしてあります）", target)
             return
     client.uid("STORE", uid, "+FLAGS", "(\\Deleted)")  # type: ignore[arg-type]
     client.expunge()
