@@ -4,7 +4,9 @@ description: "发送至 order-intake@ckk-tool.co.jp 的订单书自动导入机�
 ---
 客户发送到 **order-intake@ckk-tool.co.jp** 的订单书，无需人工介入即可导入为注文请书 —— 本页说明该机制的运维。面向使用者的操作请参见「[注文書取込（SY0C）](/manual/zh/operations/system/order-intake/user)」。
 
-> **邮件导入目前仅在验证环境（dev）运行。** 生产环境（main）的导入文件夹已于 2026-08-30 准备完毕，可从 SY0C 投入并使用「优先导入」，但**尚无邮箱与网关**（见下方「推广到生产环境时」）。
+> **邮件导入会进入生产环境（main）。** 网关并非按环境部署，而是**在 `common` 中只有 1 个**，巡回 `order-intake@ckk-tool.co.jp` 并写入**生产环境**的导入文件夹。邮件地址无法按环境区分（域名与地址都只有 1 个），部署 2 个会争抢同一邮箱。
+>
+> **验证环境（dev）没有邮件导入。** 在 dev 试用时请从 SY0C 投入或直接放入导入文件夹 —— 只是不经过邮件，之后的路径完全相同。
 
 ## 整体流程
 
@@ -25,7 +27,7 @@ description: "发送至 order-intake@ckk-tool.co.jp 的订单书自动导入机�
 | 名称 | 是什么 |
 |---|---|
 | `order-intake@ckk-tool.co.jp` | 客户发送的目标地址。**仅供自动导入，无人查看** |
-| `intake-gateway-dev` | 巡回邮箱并将附件写入文件夹的容器（Coolify 管理・仅限内部） |
+| `intake-gateway` | 巡回邮箱并将附件写入文件夹的容器（Coolify 管理・**common 中仅 1 个**・仅限内部） |
 | 导入文件夹 | `intake-gateway` 与 `nextjs-web` 共享的服务器文件夹 |
 | `admintools` | 创建・删除邮件地址。通过自动操作樱花的控制面板实现 |
 
@@ -58,7 +60,7 @@ description: "发送至 order-intake@ckk-tool.co.jp 的订单书自动导入机�
 
 **邮箱侧** … 可用普通邮件客户端打开 `order-intake@ckk-tool.co.jp`（IMAP：`ckk-tool.sakura.ne.jp` / 993 / SSL）。已处理的在「Processed」，失败的在「Failed」。
 
-**是否在运行** … 在服务器上执行 `docker logs intake-gateway-dev`。
+**是否在运行** … adminTools 的「邮件监视」可查看未读积压（＝网关已停止）与 Failed 积压（＝需人工处理的订单书）。需要详情时在服务器执行 `docker logs intake-gateway`。
 
 | 日志 | 含义 |
 |---|---|
@@ -91,16 +93,18 @@ description: "发送至 order-intake@ckk-tool.co.jp 的订单书自动导入机�
 
 > **请勿使用同步中「删除列表中不存在的项」。** 未登记在管理表中的樱花侧邮箱会被删除。执行前务必用「确认差异」查看将被创建・删除的内容。
 
-> **请勿让验证环境与生产环境使用同一个邮箱。** 两个网关会争抢同一封邮件，最终只会在其中一侧被导入。
+> **请勿按环境增设网关。** 邮件地址只有 1 个，部署 2 个会争抢同一封邮件，最终只会在一侧被导入。这正是只在 `common` 部署 1 个的原因。
 
-## 推广到生产环境时
+## 目前尚待完成的事项
 
-导入文件夹已于 **2026-08-30 准备完毕**（host `/home/kaiseisawada/intake/orders-main` → container `/data/intake`，已设置 `INTAKE_DIR`，轮询器运行中）。剩下的只有**邮件导入**部分：
+导入文件夹已于 **2026-08-30** 准备完毕（host `/home/kaiseisawada/intake/orders-main` → container `/data/intake`，已设置 `INTAKE_DIR`，轮询器运行中），邮箱 `order-intake@ckk-tool.co.jp` 也已创建。
 
-1. 创建生产用的导入文件夹（使 `nextjs-web` 与 `intake-gateway` 双方均可写入）
-2. 将**同一个文件夹**分配给 `nextjs-web-main` 与 `intake-gateway-main` 两者
-3. 准备**生产专用的邮箱**并配置到 `intake-gateway-main`（不与验证环境共用）
-4. 在应用管理（SY05）中公开「注文書取込」
+剩下的只有**启动网关**：
+
+1. 将 `dev` 昇格到 `main`（`coolify/apps/intake-gateway/` 需存在于 `main` 才能构建）
+2. 在服务器执行 `bash coolify/platform/add-intake-gateway-app.sh`（幂等）
+3. 在 Coolify UI 中填入邮箱凭据
+4. `./deploy.sh intake-gateway`
 
 详细步骤见 `coolify/apps/intake-gateway/README.md`。
 

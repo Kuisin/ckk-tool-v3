@@ -4,7 +4,9 @@ description: "order-intake@ckk-tool.co.jp に届いた注文書を自動で取�
 ---
 お客様が **order-intake@ckk-tool.co.jp** へ送った注文書を、人手を介さずに注文請書へ取り込む仕組みの運用ページです。利用者向けの操作は「[注文書取込（SY0C）](/manual/ja/operations/system/order-intake/user)」を参照してください。
 
-> **メール取込は現在 検証環境（dev）でのみ**動いています。本番環境（main）は取込フォルダまで用意済み（2026-08-30）で、SY0C からの投入と「優先取込」は使えますが、**受信箱とゲートウェイがまだありません**（下の「本番へ広げるとき」）。
+> **メール取込は本番（main）に届きます。** ゲートウェイは環境ごとではなく **`common` に 1 つだけ**置いてあり、`order-intake@ckk-tool.co.jp` を巡回して**本番の**取込フォルダへ入れます。メールアドレスは環境で分けられない（ドメインもアドレスも 1 つしかない）ため、2 つ置くと同じ受信箱を取り合ってしまうからです。
+>
+> **検証環境（dev）にメール取込はありません。** dev で試すときは SY0C の投入か取込フォルダへ直接置いてください — メールを経由しないだけで、その先はまったく同じ経路です。
 
 ## 全体の流れ
 
@@ -25,7 +27,7 @@ description: "order-intake@ckk-tool.co.jp に届いた注文書を自動で取�
 | 名前 | 何者か |
 |---|---|
 | `order-intake@ckk-tool.co.jp` | お客様が送る宛先。**自動取込専用で人は読みません** |
-| `intake-gateway-dev` | 受信箱を巡回して添付をフォルダへ置くコンテナ（Coolify 管理・内部専用） |
+| `intake-gateway` | 受信箱を巡回して添付をフォルダへ置くコンテナ（Coolify 管理・**common に 1 つ**・内部専用） |
 | 取込フォルダ | `intake-gateway` と `nextjs-web` が共有するサーバー上のフォルダ |
 | `admintools`（SY0B 相当の管理ツール） | メールアドレスの作成・削除。さくらのコントロールパネルを自動操作します |
 
@@ -58,7 +60,7 @@ description: "order-intake@ckk-tool.co.jp に届いた注文書を自動で取�
 
 **メール側** … `order-intake@ckk-tool.co.jp` の受信箱を、通常のメールソフト（IMAP: `ckk-tool.sakura.ne.jp` / 993 / SSL）で開けます。処理済みは「Processed」、失敗は「Failed」にあります。
 
-**動いているか** … サーバーで `docker logs intake-gateway-dev` を見ます。
+**動いているか** … adminTools の「**メール監視**」で、未読の滞留（＝ゲートウェイが止まっている）と Failed の滞留（＝人が拾う必要がある注文書）が見られます。詳しく見るときはサーバーで `docker logs intake-gateway`。
 
 | ログ | 意味 |
 |---|---|
@@ -91,16 +93,18 @@ description: "order-intake@ckk-tool.co.jp に届いた注文書を自動で取�
 
 > **同期の「一覧に無いものを削除」は使わないでください。** 管理表に載っていないさくら側のメールボックスが消えます。実行前に「差分を確認」で、作られる・消えるものを必ず見てください。
 
-> **検証環境と本番環境で、同じ受信箱を使わないでください。** 2 つのゲートウェイが同じメールを取り合い、どちらか一方でしか取り込まれません。
+> **ゲートウェイを環境ごとに増やさないでください。** メールアドレスは 1 つしかないので、2 つ置くと同じ受信箱を取り合い、どちらか一方でしか取り込まれません。これが `common` に 1 つだけ置いている理由です。
 
-## 本番へ広げるとき
+## いま残っていること
 
-取込フォルダは **2026-08-30 に用意済み**です（host `/home/kaiseisawada/intake/orders-main` → container `/data/intake`、`INTAKE_DIR` 設定済み、ポーラー稼働中）。残っているのは**メール取込**の分だけです。
+取込フォルダは **2026-08-30 に用意済み**（host `/home/kaiseisawada/intake/orders-main` → container `/data/intake`、`INTAKE_DIR` 設定済み、ポーラー稼働中）。受信箱 `order-intake@ckk-tool.co.jp` も作成済みです。
 
-1. 本番用の取込フォルダを作る（`nextjs-web` と `intake-gateway` の両方から書ける状態にする）
-2. `nextjs-web-main` と `intake-gateway-main` の両方に、**同じフォルダ**を割り当てる
-3. **本番専用の受信箱**を用意し、`intake-gateway-main` に設定する（検証環境と共用しない）
-4. アプリ管理（SY05）で「注文書取込」を公開する
+残りは **ゲートウェイを動かすこと**だけです。
+
+1. `dev` → `main` の昇格（`coolify/apps/intake-gateway/` が `main` に無いとビルドできません）
+2. `bash coolify/platform/add-intake-gateway-app.sh`（サーバー上・冪等）
+3. Coolify UI で受信箱の資格情報を入れる
+4. `./deploy.sh intake-gateway`
 
 手順の詳細は `coolify/apps/intake-gateway/README.md` にあります。
 
