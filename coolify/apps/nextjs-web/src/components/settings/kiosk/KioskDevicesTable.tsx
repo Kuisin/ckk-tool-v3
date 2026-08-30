@@ -25,7 +25,6 @@ import {
   Group,
   Menu,
   Select,
-  SimpleGrid,
   Stack,
   Text,
   TextInput,
@@ -65,11 +64,11 @@ import {
 import { HelpLabel } from "@/components/ui/HelpLabel";
 import { ConfirmModal, ModalShell } from "@/components/ui/modals";
 import { StatusBadge, statusOptions } from "@/components/ui/StatusBadge";
-import { ListShell } from "@/components/ui/shells";
+import { ListShell, LocalizedTextInput } from "@/components/ui/shells";
 import { useUrlSelectState, useUrlStringState } from "@/hooks/useUrlState";
 import { useIsMobile } from "@/hooks/useViewport";
 import { formatCode, normalizeCode } from "@/lib/crockford";
-import { fieldHelp } from "@/lib/field-help";
+import { fieldHelp, fieldHelpTip } from "@/lib/field-help";
 import type { KioskDeviceRow, KioskPlantOption } from "@/lib/kiosk-admin";
 import type { ActionResult } from "@/lib/server-action";
 import { KioskDeviceLogsModal } from "./KioskDeviceLogsModal";
@@ -260,9 +259,9 @@ function LinkQrScanner({ onCode }: { onCode: (code: string) => void }) {
 // ── 本体 ────────────────────────────────────────────────────────────────────
 
 interface DeviceFormState {
-  /** 端末名は多言語（{ ja, en }）。英語は任意 — 空なら日本語で埋まる。 */
+  /** 端末名は多言語（可変キー JSON）。ja 以外は「多言語」ポップアップで編集。 */
   nameJa: string;
-  nameEn: string;
+  nameTranslations: Record<string, string>;
   plantId: string | null;
   location: string;
   /** 既定の作業場所（編集のみ — 作成時は拠点未定のため設定不可）。 */
@@ -271,7 +270,7 @@ interface DeviceFormState {
 
 const EMPTY_FORM: DeviceFormState = {
   nameJa: "",
-  nameEn: "",
+  nameTranslations: {},
   plantId: null,
   location: "",
   defaultWorkLocationId: null,
@@ -375,7 +374,7 @@ export function KioskDevicesTable({
     startTransition(async () => {
       const result = await createDeviceProfile({
         nameJa: createForm.nameJa,
-        nameEn: createForm.nameEn,
+        nameTranslations: createForm.nameTranslations,
         plantId,
         location: createForm.location,
       });
@@ -439,7 +438,7 @@ export function KioskDevicesTable({
     setEditTarget(r);
     setEditForm({
       nameJa: r.nameJa,
-      nameEn: r.nameEn,
+      nameTranslations: r.nameTranslations,
       plantId: r.plantId != null ? String(r.plantId) : null,
       location: r.location ?? "",
       defaultWorkLocationId:
@@ -465,7 +464,7 @@ export function KioskDevicesTable({
       const result = await updateDevice({
         id,
         nameJa: editForm.nameJa,
-        nameEn: editForm.nameEn,
+        nameTranslations: editForm.nameTranslations,
         plantId,
         location: editForm.location,
         defaultWorkLocationId: editForm.defaultWorkLocationId
@@ -869,40 +868,22 @@ export function KioskDevicesTable({
             設定画面（/setup）に表示されるコードを「端末をリンク」で
             入力またはスキャンしてリンクした後、この画面から有効化できます。
           </Alert>
-          <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="sm">
-            <TextInput
-              label={
-                <HelpLabel
-                  {...fieldHelp("kioskDevice", "name", {
-                    label: "端末名（日本語）",
-                  })}
-                />
-              }
-              onChange={(e) => {
-                const nameJa = e.currentTarget.value;
-                setCreateForm((s) => ({ ...s, nameJa }));
-              }}
-              placeholder="例: 1F 加工場 タブレット1"
-              value={createForm.nameJa}
-              withAsterisk
-            />
-            <TextInput
-              description="未入力なら日本語名を使います"
-              label={
-                <HelpLabel
-                  {...fieldHelp("kioskDevice", "name", {
-                    label: "端末名（English）",
-                  })}
-                />
-              }
-              onChange={(e) => {
-                const nameEn = e.currentTarget.value;
-                setCreateForm((s) => ({ ...s, nameEn }));
-              }}
-              placeholder="e.g. 1F Machining Tablet 1"
-              value={createForm.nameEn}
-            />
-          </SimpleGrid>
+          <LocalizedTextInput
+            help={fieldHelpTip("kioskDevice", "name")}
+            jaProps={{
+              value: createForm.nameJa,
+              onChange: (v: string) =>
+                setCreateForm((s) => ({ ...s, nameJa: v })),
+            }}
+            label="端末名"
+            placeholder="例: 1F 加工場 タブレット1"
+            required
+            translationsProps={{
+              value: createForm.nameTranslations,
+              onChange: (v: Record<string, string>) =>
+                setCreateForm((s) => ({ ...s, nameTranslations: v })),
+            }}
+          />
           <Select
             data={plantOptions}
             label={<HelpLabel {...fieldHelp("kioskDevice", "plant")} />}
@@ -970,38 +951,21 @@ export function KioskDevicesTable({
         title="端末の編集"
       >
         <Stack gap="sm">
-          <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="sm">
-            <TextInput
-              label={
-                <HelpLabel
-                  {...fieldHelp("kioskDevice", "name", {
-                    label: "端末名（日本語）",
-                  })}
-                />
-              }
-              onChange={(e) => {
-                const nameJa = e.currentTarget.value;
-                setEditForm((s) => ({ ...s, nameJa }));
-              }}
-              value={editForm.nameJa}
-              withAsterisk
-            />
-            <TextInput
-              description="未入力なら日本語名を使います"
-              label={
-                <HelpLabel
-                  {...fieldHelp("kioskDevice", "name", {
-                    label: "端末名（English）",
-                  })}
-                />
-              }
-              onChange={(e) => {
-                const nameEn = e.currentTarget.value;
-                setEditForm((s) => ({ ...s, nameEn }));
-              }}
-              value={editForm.nameEn}
-            />
-          </SimpleGrid>
+          <LocalizedTextInput
+            help={fieldHelpTip("kioskDevice", "name")}
+            jaProps={{
+              value: editForm.nameJa,
+              onChange: (v: string) =>
+                setEditForm((s) => ({ ...s, nameJa: v })),
+            }}
+            label="端末名"
+            required
+            translationsProps={{
+              value: editForm.nameTranslations,
+              onChange: (v: Record<string, string>) =>
+                setEditForm((s) => ({ ...s, nameTranslations: v })),
+            }}
+          />
           <Select
             data={plantOptions}
             label={<HelpLabel {...fieldHelp("kioskDevice", "plant")} />}

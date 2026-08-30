@@ -32,7 +32,7 @@ const APP_MANUAL_PATH = {
   workOrder: "operations/production/work-order/user",
   productInventory: "operations/production/product-inventory/user",
   materialInventory: "operations/production/material-inventory/user",
-  approval: "operations/production/approval/user",
+  approval: "operations/general/my-tasks/user",
   deliveryOrder: "operations/shipping/delivery-order/user",
   deliveryNote: "operations/shipping/delivery-note/user",
   businessPartner: "operations/masters/business-partner/user",

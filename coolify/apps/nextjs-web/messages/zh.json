@@ -66,5 +66,9 @@
     "workprocessFilter": "按工序筛选中：",
     "clearFilter": "清除筛选",
     "guest": "访客"
+  },
+  "loginHistory": {
+    "appWeb": "Web",
+    "appKiosk": "共用终端"
   }
 }

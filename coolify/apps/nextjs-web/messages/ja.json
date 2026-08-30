@@ -66,5 +66,9 @@
     "workprocessFilter": "工程で絞り込み中:",
     "clearFilter": "絞り込みを解除",
     "guest": "ゲスト"
+  },
+  "loginHistory": {
+    "appWeb": "Web",
+    "appKiosk": "共有端末"
   }
 }

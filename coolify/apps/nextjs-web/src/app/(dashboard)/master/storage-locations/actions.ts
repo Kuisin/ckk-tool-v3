@@ -30,7 +30,7 @@ const locationInput = z.object({
     .min(1, "コードを入力してください")
     .regex(codePattern, "コードは英数字・ハイフン・アンダースコアで入力"),
   nameJa: z.string().min(1, "名称（日本語）を入力してください"),
-  nameEn: z.string().optional(),
+  nameTranslations: z.record(z.string(), z.string()).optional(),
   sortOrder: z.number().int(),
   isActive: z.boolean(),
   notes: z.string().optional(),
@@ -42,7 +42,7 @@ const shelfInput = z.object({
     .min(1, "棚コードを入力してください")
     .regex(codePattern, "コードは英数字・ハイフン・アンダースコアで入力"),
   nameJa: z.string().optional(),
-  nameEn: z.string().optional(),
+  nameTranslations: z.record(z.string(), z.string()).optional(),
   sortOrder: z.number().int(),
   isActive: z.boolean(),
 });
@@ -99,7 +99,7 @@ export async function createStorageLocation(
       data: {
         plantId: v.plantId,
         code: v.code.trim(),
-        name: localizedInput(v.nameJa, v.nameEn),
+        name: localizedInput(v.nameJa, undefined, v.nameTranslations),
         sortOrder: v.sortOrder,
         isActive: v.isActive,
         notes: v.notes?.trim() || null,
@@ -147,7 +147,7 @@ export async function updateStorageLocation(
       where: { id },
       data: {
         code: v.code.trim(),
-        name: localizedInput(v.nameJa, v.nameEn),
+        name: localizedInput(v.nameJa, undefined, v.nameTranslations),
         sortOrder: v.sortOrder,
         isActive: v.isActive,
         notes: v.notes?.trim() || null,
@@ -298,7 +298,9 @@ export async function createStorageShelf(
       data: {
         locationId,
         code: v.code.trim(),
-        name: localizedInputOrNull(v.nameJa, v.nameEn) ?? Prisma.DbNull,
+        name:
+          localizedInputOrNull(v.nameJa, undefined, v.nameTranslations) ??
+          Prisma.DbNull,
         sortOrder: v.sortOrder,
         isActive: v.isActive,
       },
@@ -338,7 +340,9 @@ export async function updateStorageShelf(
       where: { id },
       data: {
         code: v.code.trim(),
-        name: localizedInputOrNull(v.nameJa, v.nameEn) ?? Prisma.DbNull,
+        name:
+          localizedInputOrNull(v.nameJa, undefined, v.nameTranslations) ??
+          Prisma.DbNull,
         sortOrder: v.sortOrder,
         isActive: v.isActive,
       },

@@ -18,7 +18,9 @@ const MANUAL_APP_CATEGORY: Record<string, string> = {
   "material-receipt": "purchasing",
   "outsource-order": "purchasing",
   "work-order": "production",
-  approval: "production",
+  // "approval" (旧 PD03 承認管理) はここに置かない — production 内のスラッグ
+  // 改称ではなく 一般カテゴリの my-tasks (CM01) への統合なので、個別の
+  // redirect エントリ（下の「旧 承認管理 (PD03) のマニュアル」節）で扱う。
   "product-inventory": "production",
   "material-inventory": "production",
   // 旧スラッグのまま残す（このマップは旧 URL の移設用）。shipping-order →
@@ -88,6 +90,20 @@ const nextConfig: NextConfig = {
       {
         source: "/production/approvals/:id",
         destination: "/production/work-orders/:id",
+        permanent: true,
+      },
+      // 旧 承認管理 (PD03) のマニュアル。1. 再編前の短い URL
+      // (apps/approval)、2. 再編後だが CM01 統合前の URL
+      // (operations/production/approval) の両方から、統合後の
+      // operations/general/my-tasks へ寄せる。
+      {
+        source: "/manual/:lang(ja|en|zh)/apps/approval/:path*",
+        destination: "/manual/:lang/operations/general/my-tasks/:path*",
+        permanent: true,
+      },
+      {
+        source: "/manual/:lang(ja|en|zh)/operations/production/approval/:path*",
+        destination: "/manual/:lang/operations/general/my-tasks/:path*",
         permanent: true,
       },
       // 旧 /docs（?lang= クエリ方式）→ 新 /manual・/admin-manual（ロケール

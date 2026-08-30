@@ -110,6 +110,10 @@ function mapDeliveryNote(r: DeliveryNoteRow): DeliveryNote {
     recipientBranchName: r.recipientBranchBp
       ? localized(r.recipientBranchBp.name as LocalizedText | null)
       : null,
+    recipientDocumentLocale:
+      r.recipientBranchBp?.documentLocale ??
+      r.recipientBp.documentLocale ??
+      null,
     endUserId: r.endUserBpId,
     endUserName: r.endUserBp
       ? localized(r.endUserBp.name as LocalizedText | null)

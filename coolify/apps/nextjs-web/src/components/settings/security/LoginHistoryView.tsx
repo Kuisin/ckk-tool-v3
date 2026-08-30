@@ -21,6 +21,7 @@ import {
   Tooltip,
 } from "@mantine/core";
 import { IconSearch, IconShieldLock } from "@tabler/icons-react";
+import { useTranslations } from "next-intl";
 import { useState } from "react";
 import { useFormat } from "@/components/layout/PreferencesProvider";
 import { type Column, DataTable } from "@/components/ui/DataTable";
@@ -46,11 +47,6 @@ const DAY_OPTIONS = [
 const OUTCOME_OPTIONS = [
   { value: "FAILURE", label: "失敗" },
   { value: "SUCCESS", label: "成功" },
-];
-
-const APP_OPTIONS = [
-  { value: "WEB", label: "Web" },
-  { value: "KIOSK", label: "共有端末" },
 ];
 
 function SummaryCard({
@@ -85,6 +81,7 @@ export function LoginHistoryView({
 }) {
   const isMobile = useIsMobile();
   const fmt = useFormat();
+  const t = useTranslations("loginHistory");
   const [openId, setOpenId] = useState<string | null>(null);
 
   const [days, setDays] = useUrlSelectState("days");
@@ -100,6 +97,11 @@ export function LoginHistoryView({
     setOwnership(null);
     setIp(null);
   };
+
+  const APP_OPTIONS = [
+    { value: "WEB", label: t("appWeb") },
+    { value: "KIOSK", label: t("appKiosk") },
+  ];
 
   const columns: Column<LoginAttemptRow>[] = [
     {
@@ -131,7 +133,7 @@ export function LoginHistoryView({
       header: "アプリ",
       width: 80,
       render: (r) => (
-        <Text size="xs">{r.app === "KIOSK" ? "共有端末" : "Web"}</Text>
+        <Text size="xs">{r.app === "KIOSK" ? t("appKiosk") : t("appWeb")}</Text>
       ),
     },
     {

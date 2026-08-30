@@ -46,6 +46,11 @@ export interface Invoice {
   customerBpId: string;
   customerName: string;
   customerBranchName: string | null;
+  /**
+   * PDF の言語 — 支店の設定があればそれ、無ければ顧客本体の設定、どちらも
+   * 未設定なら null（既定言語 ja）。_specs/i18n-glossary.md §2.7・決定 10。
+   */
+  recipientDocumentLocale: string | null;
   /** 営業担当（作成時に顧客の主担当を複写したスナップショット）。 */
   salesRepId: string | null;
   salesRepName: string | null;

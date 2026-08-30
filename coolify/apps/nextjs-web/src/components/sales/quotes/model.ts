@@ -123,6 +123,11 @@ export interface Quote {
   customerName: string;
   customerBranchId: string | null;
   customerBranchName: string | null;
+  /**
+   * PDF の言語 — 支店の設定があればそれ、無ければ顧客本体の設定、どちらも
+   * 未設定なら null（既定言語 ja）。_specs/i18n-glossary.md §2.7・決定 10。
+   */
+  recipientDocumentLocale: string | null;
   status: QuoteStatus;
   validUntil: string | null;
   notes: string | null;
