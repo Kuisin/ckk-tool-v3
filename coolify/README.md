@@ -155,7 +155,6 @@ promotion 後 — dev へのマージで ingress や監視が再起動しない�
 | `nextjs-kiosk-dev` / `-main` | dev / main | リポジトリ root | ckk-kiosk-dev / ckk-kiosk.kai-lab.net（**キオスクのみ kai-lab 継続** — 将来 LAN 専用にするため） |
 | `admintools-dev` / `-main` | dev / main | `apps/admintools/` | 内部のみ |
 | `po-extract-dev` / `-main` | dev / main | `apps/po-extract/` | 内部のみ（alias 有り） |
-| `intake-gateway-dev` / `-main` | dev / main | `apps/intake-gateway/` | 内部のみ（ポートも alias も無い — 誰からも呼ばれない） |
 | `ckk-db-dev` / `ckk-db-main` | dev / main | `ckk-db/` | 内部のみ（alias 有り）**業務 DB 本体** |
 | `db-migrate-dev` / `-main` | dev / main | リポジトリ root（`db-migrate/`） | 内部のみ・ポート無し |
 
@@ -226,6 +225,7 @@ ollama は 1 プロセスで 1 枚しか使わないので**カードごとに 1
 IdP（Authentik）は**別サーバー**にあり、このサーバーの `authentik` スタックは
 2026-08-25 に廃止した（リポジトリからも削除済み。サーバー側のボリュームは残置）。
 | `mailrelay` | mailrelay | 送信メール中継 |
+| `intake-gateway` | intake-gateway | 注文書の**受信**メール取込（送信の裏返し。common に 1 つ — メールアドレスは環境で分けられないため）|
 | `kot-import` | kot-import | King of Time（勤怠）取込 |
 
 ---
@@ -290,7 +290,7 @@ Coolify が git から直接建てるので、サーバー側に対応ディレ�
 | `apps/nextjs-kiosk/` | `nextjs-kiosk-dev` / `-main`（同上） |
 | `apps/admintools/` | `admintools-dev` / `-main` |
 | `apps/po-extract/` | `po-extract-dev` / `-main`（旧 `ai-stack/extractor/`） |
-| `apps/intake-gateway/` | `intake-gateway-dev` / `-main` — 注文請書のメール取込。IMAP で受信箱を巡回し、添付を取込フォルダ（`INTAKE_DIR`）へ**直接書く**。DB にも nextjs-web にも繋がない（隔離） |
+| `apps/intake-gateway/` | `intake-gateway` — 注文請書のメール取込（**common / main に 1 つだけ**）。IMAP で受信箱を巡回し、添付を**本番の**取込フォルダへ直接書く。DB にも nextjs-web にも繋がない（隔離） |
 | `apps/ckk-db/` | `ckk-db-dev` / `ckk-db-main` — 業務 DB 本体 |
 | `apps/db-migrate/` | `db-migrate-dev` / `-main` — マイグレーション適用専用 |
 

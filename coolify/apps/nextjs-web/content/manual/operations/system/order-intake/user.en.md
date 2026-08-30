@@ -6,7 +6,7 @@ An app for dropping received **order documents (PDFs / scanned images)** into th
 
 > This app works in **both the test environment (dev) and production (main)** — the production intake folder was set up on 2026-08-30.
 >
-> ⚠️ However, **automatic intake by email runs on dev only.** Using it on production needs a separate production mailbox and configuration. On production you can drop files in from this screen and use "priority intake" on order acceptances.
+> ⚠️ However, **email arrives in production (main) only.** There is a single intake address, so there is a single thing receiving it. To try intake on dev, drop files in from this screen or use "priority intake" on order acceptances — the only difference is that email is not involved; everything after that is the same.
 
 ## What you can do with this app
 
