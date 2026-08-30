@@ -207,6 +207,9 @@ CROSS JOIN (VALUES
   ('kiosk_card',    'CREATE'),
   ('kiosk_card',    'UPDATE'),
   ('personal_data', 'READ'),
+  -- user_admin は READ も要る。SY01 の入口は requireAppRead = READ なので、
+  -- UPDATE だけ配ると「変更依頼を出す画面に入れない」ことになる（実機で踏んだ）。
+  ('user_admin',    'READ'),
   ('user_admin',    'UPDATE')
 ) AS g(code, action)
 WHERE r.rolename = 'privileged_operator'

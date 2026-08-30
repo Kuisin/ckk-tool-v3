@@ -21,7 +21,11 @@ WITH seed(username, display_name, password_hash) AS (
     ('dev_production_mgr', '開発 製造部長', '3c60efcf18b8d6c7307c19e88b3694d1:9b980be1f9e363f95f0808eb9944beebeaf8d459005266113638d7de1cd990f57479e6f5e5fed6afb1ef5d9351ff2a934d3b42cbeb307349cf1b6a01a536a61f'),
     ('dev_quality_mgr', '開発 品質部長', '1e347c8cd41c28239feb09c44f171db0:61f8403814fa7b8e86d4981f0763db2d7ff05011eae3c4a1f001a6d6889cfe1a041b2a0c4865583cae0672a1d6043bc2648e00b567b064208d8475f163940bc5'),
     ('dev_shipping_mgr', '開発 出荷部長', '4e38ec525d6ed96eb2f8abb24aa66e41:c6a5ff68d115e390ccc2745f08fe4a6d0eb2eb0feae79714e95f39212b8232e36b5aed21b0403f6f37869cbb76f0f05cab66b509432e63dbd4d837ab214d018e'),
-    ('dev_accounting_mgr', '開発 経理部長', '72e5ffc909cee578b0fdc8239fc653d8:26d3b17bfa978cbc98c0b223e04b16ab7ede31cbd382d511667d9ac5ad40afe64cff5e9acb59b30f065eae56cb6f93676d201952f60f4bc210feb6f02113dd08')
+    ('dev_accounting_mgr', '開発 経理部長', '72e5ffc909cee578b0fdc8239fc653d8:26d3b17bfa978cbc98c0b223e04b16ab7ede31cbd382d511667d9ac5ad40afe64cff5e9acb59b30f065eae56cb6f93676d201952f60f4bc210feb6f02113dd08'),
+    -- 特権アクセス（SY0G）の検証用。**申請する人と承認する人を分けてある** —
+    -- 1 人で両方を持たせると、分離が効いているかを確かめられない。
+    ('dev_priv_operator', '開発 特権申請', '086b96cb6c3b4230a552e81c8ab17249:8cd4a2aa38dd2048c685c3f682fa74602fc7441c1300734198346c56a57637f6a6e87e080bf647e66f4620073d5b7b9d83f3465b0c25d881c974c0cafb018a1c'),
+    ('dev_priv_approver', '開発 特権承認', '80a040e7e5f52a9292dd61a13035b556:417c21a0773bf177daf788ef8ed613c454971f2a6f171b5651849169b7c5efc872533e8325c13fc4e2c28b4ec020997fc161c1078feb0b2739712daa88054e70')
 )
 INSERT INTO app.users (id, "group", username, display_name, password_hash, is_active, created_at, updated_at)
 SELECT gen_random_uuid(), 'EMPLOYEE'::app."USER_GROUP", s.username, s.display_name, s.password_hash, true, now(), now()
@@ -120,6 +124,16 @@ SELECT u.id, p.id
 FROM app.users u CROSS JOIN app.plants p
 WHERE u.username IN ('dev_production', 'dev_quality', 'dev_shipping')
 ON CONFLICT (user_id, plant_id) DO NOTHING;
+
+INSERT INTO app.user_role_relation (user_id, role_id, is_active, assigned_at)
+SELECT u.id, r.id, true, now() FROM app.users u JOIN app.roles r ON r.rolename = 'privileged_operator'
+WHERE u.username = 'dev_priv_operator'
+ON CONFLICT (user_id, role_id) DO UPDATE SET is_active = true, deactivate_at = NULL;
+
+INSERT INTO app.user_role_relation (user_id, role_id, is_active, assigned_at)
+SELECT u.id, r.id, true, now() FROM app.users u JOIN app.roles r ON r.rolename = 'privileged_approver'
+WHERE u.username = 'dev_priv_approver'
+ON CONFLICT (user_id, role_id) DO UPDATE SET is_active = true, deactivate_at = NULL;
 
 -- REGION スコープの e2e 検証用デモロール（dev 専用・is_system=false）:
 -- work_order/inventory READ を REGION '{*}' で付与

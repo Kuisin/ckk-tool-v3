@@ -267,7 +267,7 @@ export async function useElevation(
   if (!grantId) {
     return {
       ok: false,
-      error: `この操作には承認が必要です（${op.label.ja}）。特権アクセス SY0F から申請してください`,
+      error: `この操作には承認が必要です（${op.label.ja}）。特権アクセス（SY0G）から申請してください`,
       needsElevation: true,
       operationKey: op.key,
     };
