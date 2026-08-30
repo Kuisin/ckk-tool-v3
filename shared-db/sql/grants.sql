@@ -155,6 +155,12 @@ REVOKE SELECT ON app.push_subscriptions  FROM metabase_ro;  -- Web Push 秘密�
 -- BI からはテーブルごと外す。
 REVOKE SELECT ON app.login_attempts      FROM metabase_ro;  -- 認証イベント（個人データ）
 REVOKE SELECT ON app.user_devices        FROM metabase_ro;  -- 端末台帳（個人データ）
+-- 特権アクセスの申請と決裁。「誰がどの秘密を見たがったか」「誰が誰を止めよう
+-- としたか」が理由つきで並ぶ表で、BI で集計する対象ではない。閲覧は SY0G と
+-- 監査ログに閉じる。
+REVOKE SELECT ON app.privileged_access_requests            FROM metabase_ro;
+REVOKE SELECT ON app.privileged_access_request_operations  FROM metabase_ro;
+REVOKE SELECT ON app.user_change_requests                  FROM metabase_ro;
 
 -- (2) 一部だけ秘密の表 — テーブル SELECT を剥奪し、安全な列だけ列単位で GRANT
 --     （Postgres ではテーブル SELECT があると列単位 REVOKE が効かないため、

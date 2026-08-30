@@ -111,3 +111,20 @@ A. You can check in the [Activity Log](/manual/en/operations/system/activity-log
 
 **Q. I want to hide an app just during maintenance.**
 A. Please turn off that app's switch. When the work is finished, turn it back on to resume. The data stays as it was.
+
+<!-- permissions:start -->
+## Permissions required
+
+Using this screen requires the **System admin** (`system`) permission.
+
+| What you want to do | Permission needed |
+| --- | --- |
+| Open the screen, view lists and details | System admin — View |
+| Add, change or delete | System admin — Create / Edit / Delete |
+
+Viewing only needs *View*. Where a screen offers adding, changing or deleting, each of those needs its matching permission.
+
+Permissions come through roles. If something is missing, ask an administrator.
+
+For the whole picture see [Permissions and roles](../../../permissions).
+<!-- permissions:end -->

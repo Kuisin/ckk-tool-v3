@@ -1,4 +1,5 @@
 import { KioskCardsTable } from "@/components/settings/kiosk/KioskCardsTable";
+import { PrivilegedAccessBanner } from "@/components/settings/privileged/PrivilegedAccessBanner";
 import { requireAppRead } from "@/lib/authz-page";
 import { listKioskAssignableUsers, listKioskCards } from "@/lib/kiosk-admin";
 
@@ -12,5 +13,10 @@ export default async function KioskCardsPage() {
     listKioskCards(),
     listKioskAssignableUsers(),
   ]);
-  return <KioskCardsTable rows={cards} userOptions={userOptions} />;
+  return (
+    <>
+      <PrivilegedAccessBanner code="kiosk_card" />
+      <KioskCardsTable rows={cards} userOptions={userOptions} />
+    </>
+  );
 }

@@ -407,3 +407,20 @@ A. No. Past documents stay exactly as they were at that time.
 
 **Q. What should I write in 「業種」 (Industry)?**
 A. There is no fixed list; you can type freely. Any wording your team understands is fine (for example 自動車部品 / automotive parts, 電子部品 / electronic parts). You can also save it empty.
+
+<!-- permissions:start -->
+## Permissions required
+
+Using this screen requires the **Master data** (`master`) permission.
+
+| What you want to do | Permission needed |
+| --- | --- |
+| Open the screen, view lists and details | Master data — View |
+| Add, change or delete | Master data — Create / Edit / Delete |
+
+Viewing only needs *View*. Where a screen offers adding, changing or deleting, each of those needs its matching permission.
+
+Permissions come through roles. If something is missing, ask an administrator.
+
+For the whole picture see [Permissions and roles](../../../permissions).
+<!-- permissions:end -->

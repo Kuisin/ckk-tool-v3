@@ -4,7 +4,9 @@ description: "Running the automatic intake of order forms sent to order-intake@c
 ---
 How order forms customers send to **order-intake@ckk-tool.co.jp** become order acceptances without anyone touching them. For the end-user screens, see「[注文書取込 (SY0C)](/manual/en/operations/system/order-intake/user)」.
 
-> **Email intake currently runs on dev only.** Production (main) has its intake folder in place (2026-08-30), so dropping files in from SY0C and "priority intake" both work there — but it has **no mailbox and no gateway yet**. See "Rolling it out to production".
+> **Email intake lands in production (main).** The gateway is not per-environment — there is **exactly one, in `common`** — and it polls `order-intake@ckk-tool.co.jp` into the **production** intake folder. A mail address cannot be split by environment (there is one domain and one address), so two gateways would compete for the same mailbox.
+>
+> **There is no email intake on dev.** To try intake there, drop files in from SY0C or straight into the intake folder — the only difference is that email isn't involved; everything after that is the same path.
 
 ## The flow
 
@@ -25,7 +27,7 @@ Customer ──email──> order-intake@ckk-tool.co.jp  (Sakura mail server)
 | Name | What it is |
 |---|---|
 | `order-intake@ckk-tool.co.jp` | Where customers send. **Automated intake only — nobody reads it** |
-| `intake-gateway-dev` | The container that polls the mailbox and writes attachments to the folder (Coolify-managed, internal only) |
+| `intake-gateway` | The container that polls the mailbox and writes attachments to the folder (Coolify-managed, **one in `common`**, internal only) |
 | The intake folder | A folder on the server shared by `intake-gateway` and `nextjs-web` |
 | `admintools` | Creates and deletes mail addresses by driving Sakura's control panel |
 
@@ -58,7 +60,7 @@ If one email carries three order forms, you get **three order acceptances** (one
 
 **The mailbox** — open `order-intake@ckk-tool.co.jp` in any mail client (IMAP `ckk-tool.sakura.ne.jp`, 993, SSL). Handled mail is in "Processed", failures in "Failed".
 
-**Is it running?** On the server, `docker logs intake-gateway-dev`.
+**Is it running?** adminTools「メール監視」shows unread piling up (the gateway has stopped) and anything sitting in Failed (an order form a person must pick up). For detail, `docker logs intake-gateway` on the server.
 
 | Log line | Meaning |
 |---|---|
@@ -91,16 +93,18 @@ Mail addresses are created by **admintools**, which drives Sakura's control pane
 
 > **Do not use the sync option that deletes anything missing from the list.** It removes Sakura mailboxes that are not in the management table. Always run "check the difference" first and read what would be created and removed.
 
-> **Do not point dev and production at the same mailbox.** The two gateways would compete for the same messages and each one would only be imported once.
+> **Do not add a second gateway per environment.** There is only one mail address, so two gateways compete for the same messages and each is only imported once. That is why there is exactly one, in `common`.
 
-## Rolling it out to production
+## What is still outstanding
 
-The intake folder was **set up on 2026-08-30** (host `/home/kaiseisawada/intake/orders-main` → container `/data/intake`, `INTAKE_DIR` set, poller running). Only the **email** side is left:
+The intake folder was set up on **2026-08-30** (host `/home/kaiseisawada/intake/orders-main` → container `/data/intake`, `INTAKE_DIR` set, poller running), and the mailbox `order-intake@ckk-tool.co.jp` exists.
 
-1. A production intake folder, writable by both `nextjs-web` and `intake-gateway`
-2. That **same folder** attached to both `nextjs-web-main` and `intake-gateway-main`
-3. A **separate production mailbox**, configured on `intake-gateway-main` (never shared with dev)
-4. 「注文書取込」published in app management (SY05)
+All that is left is **starting the gateway**:
+
+1. Promote `dev` → `main` (`coolify/apps/intake-gateway/` must exist on `main` to build)
+2. `bash coolify/platform/add-intake-gateway-app.sh` on the server (idempotent)
+3. Enter the mailbox credentials in the Coolify UI
+4. `./deploy.sh intake-gateway`
 
 The step-by-step is in `coolify/apps/intake-gateway/README.md`.
 

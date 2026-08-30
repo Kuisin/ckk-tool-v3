@@ -64,20 +64,16 @@ import {
 } from "@/components/ui/modals";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { fieldHelp } from "@/lib/field-help";
+import { openInNewContext } from "@/lib/pwa-display";
 
 /**
- * QR ラベル印刷シートを新しいタブで開く（SY08 と同じ実 <a> クリック方式 —
- * スタンドアロン PWA でも window.open ブロックに掛からない）。
+ * QR ラベル印刷シートを新しいタブで開く（SY08 と同じ `openInNewContext` —
+ * `window.open` のブロックに掛からず、PWA でもアプリ内ブラウザで開く）。
  */
 function openQrPrintSheet(ids: number[]) {
-  const url = `/master/work-locations/print?ids=${encodeURIComponent(ids.join(","))}`;
-  const a = document.createElement("a");
-  a.href = url;
-  a.target = "_blank";
-  a.rel = "noopener noreferrer";
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
+  openInNewContext(
+    `/master/work-locations/print?ids=${encodeURIComponent(ids.join(","))}`,
+  );
 }
 
 export interface WorkLocationRow {

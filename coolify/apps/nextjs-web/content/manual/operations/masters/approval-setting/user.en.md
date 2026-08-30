@@ -255,3 +255,20 @@ A. The same person is chosen for both. Choose someone else as the person who app
 
 **Q. I cannot delete a group.**
 A. It cannot be deleted while it is used by a step of an approval flow, or while approval requests that used it remain. Take it out of the approval flow first, or use **Disable** instead of deleting. Disabling stops it being used for new approvals and leaves the existing records as they are.
+
+<!-- permissions:start -->
+## Permissions required
+
+Using this screen requires the **Master data** (`master`) permission.
+
+| What you want to do | Permission needed |
+| --- | --- |
+| Open the screen, view lists and details | Master data — View |
+| Add, change or delete | Master data — Create / Edit / Delete |
+
+Viewing only needs *View*. Where a screen offers adding, changing or deleting, each of those needs its matching permission.
+
+Permissions come through roles. If something is missing, ask an administrator.
+
+For the whole picture see [Permissions and roles](../../../permissions).
+<!-- permissions:end -->

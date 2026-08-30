@@ -44,12 +44,15 @@ export function UserSuspensionPanel({
   targetIsAdmin,
   otherActiveAdminCount,
   canAdminister,
+  requiresApproval,
 }: {
   user: AdminUserDetail;
   actorId: string;
   targetIsAdmin: boolean;
   otherActiveAdminCount: number;
   canAdminister: boolean;
+  /** true = 直接は止められず、変更依頼を出して承認を待つ（管理者以外）。 */
+  requiresApproval: boolean;
 }) {
   const router = useRouter();
   const fmt = useFormat();
@@ -73,14 +76,26 @@ export function UserSuspensionPanel({
   });
   const restoreCheck = canRestore(target);
 
+  // 依頼だったのに「停止しました」と出すと、止まっていないものが止まったと
+  // 伝わる。サーバーが返した requested をそのまま文言に反映する。
   const run = (
-    fn: () => Promise<{ ok: boolean; error?: string }>,
+    fn: () => Promise<{
+      ok: boolean;
+      error?: string;
+      data?: { requested: boolean };
+    }>,
     ok: string,
   ) =>
     startTransition(async () => {
       const res = await fn();
       if (res.ok) {
-        notifications.show({ title: ok, message: "", color: "green" });
+        const requested = res.data?.requested === true;
+        notifications.show({
+          title: requested ? "承認を依頼しました" : ok,
+          message: requested ? "承認されるとこの変更が適用されます" : "",
+          color: requested ? "blue" : "green",
+        });
+        setReason("");
         router.refresh();
       } else {
         notifications.show({
@@ -93,15 +108,20 @@ export function UserSuspensionPanel({
 
   const confirmSuspend = () =>
     modals.openConfirmModal({
-      title: "ユーザーを停止",
+      title: requiresApproval ? "停止の承認を依頼" : "ユーザーを停止",
       children: (
         <Text size="sm">
           {user.displayName}（{user.username}）を
-          {kind === "permanent" ? "無期限で" : "一時的に"}停止します。
-          停止中はログインできません。
+          {kind === "permanent" ? "無期限で" : "一時的に"}停止
+          {requiresApproval
+            ? "する依頼を出します。承認されるまでこの人はログインできます。"
+            : "します。停止中はログインできません。"}
         </Text>
       ),
-      labels: { confirm: "停止", cancel: "戻る" },
+      labels: {
+        confirm: requiresApproval ? "依頼する" : "停止",
+        cancel: "戻る",
+      },
       confirmProps: { color: "red" },
       onConfirm: () =>
         run(
@@ -147,15 +167,37 @@ export function UserSuspensionPanel({
             </Stack>
           </Alert>
           {canAdminister && (
-            <Group justify="flex-end">
-              <PrimaryButton
-                disabled={!restoreCheck.ok}
-                loading={isPending}
-                onClick={() => run(() => restoreUser(user.id), "復帰しました")}
-              >
-                いま復帰させる
-              </PrimaryButton>
-            </Group>
+            <>
+              {requiresApproval && (
+                <Textarea
+                  autosize
+                  description="承認者がこの内容を見て判断します"
+                  disabled={!restoreCheck.ok}
+                  label="復帰の理由"
+                  minRows={2}
+                  onChange={(e) => setReason(e.currentTarget.value)}
+                  placeholder="例: 休職から復帰したため"
+                  value={reason}
+                  withAsterisk
+                />
+              )}
+              <Group justify="flex-end">
+                <PrimaryButton
+                  disabled={
+                    !restoreCheck.ok || (requiresApproval && !reason.trim())
+                  }
+                  loading={isPending}
+                  onClick={() =>
+                    run(
+                      () => restoreUser(user.id, reason.trim() || undefined),
+                      "復帰しました",
+                    )
+                  }
+                >
+                  {requiresApproval ? "復帰の承認を依頼" : "いま復帰させる"}
+                </PrimaryButton>
+              </Group>
+            </>
           )}
         </Stack>
       ) : (
@@ -189,22 +231,30 @@ export function UserSuspensionPanel({
               )}
               <Textarea
                 autosize
+                description={
+                  requiresApproval
+                    ? "承認者がこの内容を見て判断します。停止の記録にも残ります"
+                    : undefined
+                }
                 disabled={!suspendCheck.ok}
-                label="理由（任意）"
+                label={requiresApproval ? "停止の理由" : "理由（任意）"}
                 maxRows={4}
                 minRows={2}
                 onChange={(e) => setReason(e.currentTarget.value)}
                 value={reason}
+                withAsterisk={requiresApproval}
               />
               <Group justify="flex-end">
                 <DangerButton
                   disabled={
-                    !suspendCheck.ok || (kind === "temporary" && !until)
+                    !suspendCheck.ok ||
+                    (kind === "temporary" && !until) ||
+                    (requiresApproval && !reason.trim())
                   }
                   loading={isPending}
                   onClick={confirmSuspend}
                 >
-                  停止する
+                  {requiresApproval ? "停止の承認を依頼" : "停止する"}
                 </DangerButton>
               </Group>
             </>

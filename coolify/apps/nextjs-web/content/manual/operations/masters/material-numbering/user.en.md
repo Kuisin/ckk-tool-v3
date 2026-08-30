@@ -126,3 +126,20 @@ A. Nothing changes. Past material type codes and material codes stay as they are
 
 **Q. I registered a name by mistake. Can I correct it?**
 A. There is no edit on this screen. Please deactivate the wrong one with 「無効化」 (Deactivate) and add a new one with the correct name. Note that codes cannot be duplicated, so you need to use a different code.
+
+<!-- permissions:start -->
+## Permissions required
+
+Using this screen requires the **Master data** (`master`) permission.
+
+| What you want to do | Permission needed |
+| --- | --- |
+| Open the screen, view lists and details | Master data — View |
+| Add, change or delete | Master data — Create / Edit / Delete |
+
+Viewing only needs *View*. Where a screen offers adding, changing or deleting, each of those needs its matching permission.
+
+Permissions come through roles. If something is missing, ask an administrator.
+
+For the whole picture see [Permissions and roles](../../../permissions).
+<!-- permissions:end -->

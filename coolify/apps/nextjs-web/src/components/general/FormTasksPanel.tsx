@@ -164,6 +164,11 @@ export function MyResponsesList({ rows }: { rows: MyResponseRow[] }) {
                 <Text fw={600} size="sm">
                   {row.formTitle}
                 </Text>
+                {row.recordTitle && (
+                  <Text c="dimmed" size="xs" truncate>
+                    {row.recordTitle}
+                  </Text>
+                )}
                 <Group gap="xs" wrap="wrap">
                   <Text c="dimmed" className="tabular-nums" size="xs">
                     No. {row.recordNo}
@@ -173,9 +178,16 @@ export function MyResponsesList({ rows }: { rows: MyResponseRow[] }) {
               </Stack>
             ) : (
               <>
-                <Text fw={600} size="sm" truncate>
-                  {row.formTitle}
-                </Text>
+                <Stack gap={0} style={{ minWidth: 0 }}>
+                  <Text fw={600} size="sm" truncate>
+                    {row.formTitle}
+                  </Text>
+                  {row.recordTitle && (
+                    <Text c="dimmed" size="xs" truncate>
+                      {row.recordTitle}
+                    </Text>
+                  )}
+                </Stack>
                 <Text c="dimmed" className="tabular-nums" size="xs">
                   No. {row.recordNo}
                 </Text>
@@ -246,16 +258,30 @@ export function CompletedRequestsList({
             main={
               isMobile ? (
                 <Stack gap={4}>
-                  <Text fw={row.readAt ? 500 : 700} size="sm">
-                    {row.formTitle}
-                  </Text>
+                  <Stack gap={0}>
+                    <Text fw={row.readAt ? 500 : 700} size="sm">
+                      {row.formTitle}
+                    </Text>
+                    {row.recordTitle && (
+                      <Text c="dimmed" size="xs" truncate>
+                        {row.recordTitle}
+                      </Text>
+                    )}
+                  </Stack>
                   {meta}
                 </Stack>
               ) : (
                 <>
-                  <Text fw={row.readAt ? 500 : 700} size="sm" truncate>
-                    {row.formTitle}
-                  </Text>
+                  <Stack gap={0} style={{ minWidth: 0 }}>
+                    <Text fw={row.readAt ? 500 : 700} size="sm" truncate>
+                      {row.formTitle}
+                    </Text>
+                    {row.recordTitle && (
+                      <Text c="dimmed" size="xs" truncate>
+                        {row.recordTitle}
+                      </Text>
+                    )}
+                  </Stack>
                   {meta}
                 </>
               )

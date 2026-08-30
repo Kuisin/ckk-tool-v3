@@ -1,3 +1,10 @@
 {
-  "pages": ["start", "user-settings", "using-docs", "operations", "process"]
+  "pages": [
+    "start",
+    "user-settings",
+    "using-docs",
+    "permissions",
+    "operations",
+    "process"
+  ]
 }

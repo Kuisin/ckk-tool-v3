@@ -208,3 +208,20 @@ A. The price list has no quantity break that covers the number of pieces you ent
 
 **Q. I changed the price list, but the amount on a quote I made earlier did not change.**
 A. A quote keeps the amounts from the time it was made. To use the new amount, open that [quote](/manual/en/operations/sales/quote/user) and do「編集」(edit) →「保存」(save). The amounts are then filled in again from the price list as it is now.
+
+<!-- permissions:start -->
+## Permissions required
+
+Using this screen requires the **Price list** (`price_list`) permission.
+
+| What you want to do | Permission needed |
+| --- | --- |
+| Open the screen, view lists and details | Price list — View |
+| Add, change or delete | Price list — Create / Edit / Delete |
+
+Viewing only needs *View*. Where a screen offers adding, changing or deleting, each of those needs its matching permission.
+
+Permissions come through roles. If something is missing, ask an administrator.
+
+For the whole picture see [Permissions and roles](../../../permissions).
+<!-- permissions:end -->

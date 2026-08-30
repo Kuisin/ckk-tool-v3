@@ -180,3 +180,20 @@ A. The type you tried to choose is not registered yet. Add it in 「**種別管�
 
 **Q. I want to register warehouses and shelves. Is this the right place?**
 A. No. Places where things are kept are registered in [storage location (保管場所)](/manual/en/operations/masters/storage-location/user).
+
+<!-- permissions:start -->
+## Permissions required
+
+Using this screen requires the **Master data** (`master`) permission.
+
+| What you want to do | Permission needed |
+| --- | --- |
+| Open the screen, view lists and details | Master data — View |
+| Add, change or delete | Master data — Create / Edit / Delete |
+
+Viewing only needs *View*. Where a screen offers adding, changing or deleting, each of those needs its matching permission.
+
+Permissions come through roles. If something is missing, ask an administrator.
+
+For the whole picture see [Permissions and roles](../../../permissions).
+<!-- permissions:end -->

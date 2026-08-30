@@ -126,3 +126,20 @@ A. There is no way to put a close row back to 「未処理」 (Not processed). P
 
 **Q. The cut-off date looks wrong for one customer only.**
 A. Each customer's cut-off date comes from the registered details of the [customer](/manual/en/operations/masters/business-partner/user). Customers with nothing set become month-end. Fix the registered details and then run the monthly billing close again.
+
+<!-- permissions:start -->
+## Permissions required
+
+Using this screen requires the **Billing closing** (`billing_closing`) permission.
+
+| What you want to do | Permission needed |
+| --- | --- |
+| Open the screen, view lists and details | Billing closing — View |
+| Add, change or delete | Billing closing — Create / Edit / Delete |
+
+Viewing only needs *View*. Where a screen offers adding, changing or deleting, each of those needs its matching permission.
+
+Permissions come through roles. If something is missing, ask an administrator.
+
+For the whole picture see [Permissions and roles](../../../permissions).
+<!-- permissions:end -->

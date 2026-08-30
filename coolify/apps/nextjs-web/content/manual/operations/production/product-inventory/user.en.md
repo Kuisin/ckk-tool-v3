@@ -160,3 +160,20 @@ A. Pieces being made are not stock yet. You can check them on the 「**仕掛品
 
 **Q. Nothing appears on the locations tab.**
 A. Either no storage places are registered for that site yet, or there is no stock. Please talk to an administrator about registering storage places.
+
+<!-- permissions:start -->
+## Permissions required
+
+Using this screen requires the **Inventory** (`inventory`) permission.
+
+| What you want to do | Permission needed |
+| --- | --- |
+| Open the screen, view lists and details | Inventory — View |
+| Add, change or delete | Inventory — Create / Edit / Delete |
+
+Viewing only needs *View*. Where a screen offers adding, changing or deleting, each of those needs its matching permission.
+
+Permissions come through roles. If something is missing, ask an administrator.
+
+For the whole picture see [Permissions and roles](../../../permissions).
+<!-- permissions:end -->

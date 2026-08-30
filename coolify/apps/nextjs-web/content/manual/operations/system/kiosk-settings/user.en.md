@@ -111,3 +111,20 @@ A. The card alone works only when the card has been used **on that same tablet**
 
 **Q. Can I add a new app on this screen?**
 A. No. Adding more apps to the tablets requires work by the development team. Please ask your system administrator.
+
+<!-- permissions:start -->
+## Permissions required
+
+Using this screen requires the **Kiosk admin** (`kiosk`) permission.
+
+| What you want to do | Permission needed |
+| --- | --- |
+| Open the screen, view lists and details | Kiosk admin — View |
+| Add, change or delete | Kiosk admin — Create / Edit / Delete |
+
+Viewing only needs *View*. Where a screen offers adding, changing or deleting, each of those needs its matching permission.
+
+Permissions come through roles. If something is missing, ask an administrator.
+
+For the whole picture see [Permissions and roles](../../../permissions).
+<!-- permissions:end -->

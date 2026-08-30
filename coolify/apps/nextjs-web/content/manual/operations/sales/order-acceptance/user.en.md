@@ -291,3 +291,20 @@ A. A draft opens read only — press「**編集**」(edit) first (top right of t
 
 **Q. The import does not finish.**
 A. Reading takes about 1 to 3 minutes per file. When you choose several files, they are handled one after another, so it takes that much longer.
+
+<!-- permissions:start -->
+## Permissions required
+
+Using this screen requires the **Order acceptance** (`order_acceptance`) permission.
+
+| What you want to do | Permission needed |
+| --- | --- |
+| Open the screen, view lists and details | Order acceptance — View |
+| Add, change or delete | Order acceptance — Create / Edit / Delete |
+
+Viewing only needs *View*. Where a screen offers adding, changing or deleting, each of those needs its matching permission.
+
+Permissions come through roles. If something is missing, ask an administrator.
+
+For the whole picture see [Permissions and roles](../../../permissions).
+<!-- permissions:end -->

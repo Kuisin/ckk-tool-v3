@@ -17,6 +17,7 @@ import { recordAudit } from "@/lib/audit";
 import { checkPermission } from "@/lib/authz";
 import { generateCode } from "@/lib/crockford";
 import { prisma } from "@/lib/db";
+import { useElevation } from "@/lib/privileged-access";
 import {
   type ActionResult,
   actionError,
@@ -72,8 +73,8 @@ const issueInput = z.object({
 export async function issueCards(raw: {
   count: number;
 }): Promise<ActionResult<{ ids: string[] }>> {
-  const authz = await checkPermission("kiosk", "CREATE");
-  if (!authz.ok) return actionError(authz.error);
+  const gate = await useElevation("kiosk_card.issue");
+  if (!gate.ok) return actionError(gate.error);
   const parsed = issueInput.safeParse(raw);
   if (!parsed.success)
     return actionError("発行枚数は 1〜100 で指定してください");
@@ -130,8 +131,8 @@ export async function assignCard(raw: {
   userId: string;
   validity?: { validFrom: string | null; validUntil: string | null };
 }): Promise<ActionResult> {
-  const authz = await checkPermission("kiosk", "UPDATE");
-  if (!authz.ok) return actionError(authz.error);
+  const gate = await useElevation("kiosk_card.assign");
+  if (!gate.ok) return actionError(gate.error);
   const parsed = assignInput.safeParse(raw);
   if (!parsed.success)
     return actionError(parsed.error.issues[0]?.message ?? "入力が不正です");
@@ -170,7 +171,7 @@ export async function assignCard(raw: {
         status: "ASSIGNED",
         userId,
         assignedAt: new Date(),
-        assignedById: authz.userId,
+        assignedById: gate.userId,
         validFrom: validity?.validFrom ?? null,
         validUntil: validity?.validUntil ?? null,
       },
@@ -251,8 +252,8 @@ export async function resumeCard(cardId: string): Promise<ActionResult> {
 
 /** カードを取り消す（復元不可）。オープン中のキオスクセッションも失効させる。 */
 export async function revokeCard(cardId: string): Promise<ActionResult> {
-  const authz = await checkPermission("kiosk", "UPDATE");
-  if (!authz.ok) return actionError(authz.error);
+  const gate = await useElevation("kiosk_card.revoke");
+  if (!gate.ok) return actionError(gate.error);
   const parsed = cardIdSchema.safeParse(cardId);
   if (!parsed.success) return actionError("入力が不正です");
 
@@ -271,7 +272,7 @@ export async function revokeCard(cardId: string): Promise<ActionResult> {
         data: {
           status: "REVOKED",
           revokedAt: now,
-          revokedById: authz.userId,
+          revokedById: gate.userId,
         },
       }),
       prisma.kioskSession.updateMany({
@@ -309,8 +310,8 @@ export async function updateCardValidity(raw: {
   cardId: string;
   validity: { validFrom: string | null; validUntil: string | null };
 }): Promise<ActionResult> {
-  const authz = await checkPermission("kiosk", "UPDATE");
-  if (!authz.ok) return actionError(authz.error);
+  const gate = await useElevation("kiosk_card.update_validity");
+  if (!gate.ok) return actionError(gate.error);
   const parsed = updateValidityInput.safeParse(raw);
   if (!parsed.success)
     return actionError(parsed.error.issues[0]?.message ?? "入力が不正です");
@@ -373,8 +374,8 @@ export async function updateCardSessionLimit(raw: {
   cardId: string;
   maxActiveSessions: number;
 }): Promise<ActionResult> {
-  const authz = await checkPermission("kiosk", "UPDATE");
-  if (!authz.ok) return actionError(authz.error);
+  const gate = await useElevation("kiosk_card.update_session_limit");
+  if (!gate.ok) return actionError(gate.error);
   const parsed = updateSessionLimitInput.safeParse(raw);
   if (!parsed.success)
     return actionError(parsed.error.issues[0]?.message ?? "入力が不正です");
@@ -413,8 +414,8 @@ export async function updateCardSessionLimit(raw: {
 
 /** PIN をリセットする（次回ログインで再設定必須）。 */
 export async function resetPin(cardId: string): Promise<ActionResult> {
-  const authz = await checkPermission("kiosk", "UPDATE");
-  if (!authz.ok) return actionError(authz.error);
+  const gate = await useElevation("kiosk_card.reset_pin");
+  if (!gate.ok) return actionError(gate.error);
   const parsed = cardIdSchema.safeParse(cardId);
   if (!parsed.success) return actionError("入力が不正です");
 
@@ -449,8 +450,8 @@ export async function resetPin(cardId: string): Promise<ActionResult> {
 
 /** PIN 連続失敗ロックを解除する（PIN 自体は保持）。 */
 export async function unlockPin(cardId: string): Promise<ActionResult> {
-  const authz = await checkPermission("kiosk", "UPDATE");
-  if (!authz.ok) return actionError(authz.error);
+  const gate = await useElevation("kiosk_card.unlock_pin");
+  if (!gate.ok) return actionError(gate.error);
   const parsed = cardIdSchema.safeParse(cardId);
   if (!parsed.success) return actionError("入力が不正です");
 

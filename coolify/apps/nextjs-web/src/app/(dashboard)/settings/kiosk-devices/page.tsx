@@ -1,4 +1,5 @@
 import { KioskDevicesTable } from "@/components/settings/kiosk/KioskDevicesTable";
+import { PrivilegedAccessBanner } from "@/components/settings/privileged/PrivilegedAccessBanner";
 import { requireAppRead } from "@/lib/authz-page";
 import { listKioskDevices, listKioskPlantOptions } from "@/lib/kiosk-admin";
 import { fetchWorkLocationOptionsWithPlant } from "@/lib/work-locations";
@@ -15,10 +16,15 @@ export default async function KioskDevicesPage() {
     fetchWorkLocationOptionsWithPlant(),
   ]);
   return (
-    <KioskDevicesTable
-      plantOptions={plantOptions}
-      rows={devices}
-      workLocationOptions={workLocationOptions}
-    />
+    <>
+      {/* 端末の秘密と端末アクセスは別の承認。どちらの状態も先に見せる。 */}
+      <PrivilegedAccessBanner code="kiosk_secret" />
+      <PrivilegedAccessBanner code="kiosk_device" />
+      <KioskDevicesTable
+        plantOptions={plantOptions}
+        rows={devices}
+        workLocationOptions={workLocationOptions}
+      />
+    </>
   );
 }

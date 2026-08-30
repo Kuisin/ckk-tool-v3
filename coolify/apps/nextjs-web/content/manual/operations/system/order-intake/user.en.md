@@ -6,7 +6,7 @@ An app for dropping received **order documents (PDFs / scanned images)** into th
 
 > This app works in **both the test environment (dev) and production (main)** — the production intake folder was set up on 2026-08-30.
 >
-> ⚠️ However, **automatic intake by email runs on dev only.** Using it on production needs a separate production mailbox and configuration. On production you can drop files in from this screen and use "priority intake" on order acceptances.
+> ⚠️ However, **email arrives in production (main) only.** There is a single intake address, so there is a single thing receiving it. To try intake on dev, drop files in from this screen or use "priority intake" on order acceptances — the only difference is that email is not involved; everything after that is the same.
 
 ## What you can do with this app
 
@@ -119,3 +119,20 @@ A. Check, in order: (1) whether that sender is on the allow list (ask a system a
 
 **Q. Can faxes be taken in automatically?**
 A. Not today. Scan the received fax on the MFP and upload it via "Priority intake". If you later subscribe to a fax-to-email service, those messages will ride the email route with no further change.
+
+<!-- permissions:start -->
+## Permissions required
+
+Using this screen requires the **System admin** (`system`) permission.
+
+| What you want to do | Permission needed |
+| --- | --- |
+| Open the screen, view lists and details | System admin — View |
+| Add, change or delete | System admin — Create / Edit / Delete |
+
+Viewing only needs *View*. Where a screen offers adding, changing or deleting, each of those needs its matching permission.
+
+Permissions come through roles. If something is missing, ask an administrator.
+
+For the whole picture see [Permissions and roles](../../../permissions).
+<!-- permissions:end -->
