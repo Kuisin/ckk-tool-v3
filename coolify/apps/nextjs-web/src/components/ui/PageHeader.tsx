@@ -3,7 +3,9 @@
 /**
  * PageHeader.tsx — title + breadcrumbs + actions (_specs/design.md §10.2, §8).
  *
- * Breadcrumbs hide on mobile; title drops from order 2 to order 3.
+ * Breadcrumbs hide on mobile; title drops from order 2 to order 3. Mobile does
+ * not get its own back link here — AppHeader's back button (real browser
+ * history) already covers it; a second one would just be the same action twice.
  *
  * Breadcrumb segments may be a plain string (non-link) or `{ label, href }`
  * (a Next.js link). A Home ("/") link is prepended automatically, and the last
@@ -11,7 +13,6 @@
  */
 
 import { Anchor, Breadcrumbs, Group, Stack, Text, Title } from "@mantine/core";
-import { IconChevronLeft } from "@tabler/icons-react";
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { useIsMobile } from "@/hooks/useViewport";
@@ -44,24 +45,10 @@ export function PageHeader({
 }) {
   const isMobile = useIsMobile();
   const items = [HOME_CRUMB, ...breadcrumbs.map(normalize)];
-  // モバイルはパンくずを隠すため、最も近いリンク可能な親への「戻る」を出す。
-  const parent = [...items.slice(0, -1)].reverse().find((it) => it.href);
 
   return (
     <Group align={align} justify="space-between" wrap="nowrap">
       <Stack className="min-w-0" gap={8}>
-        {isMobile && parent?.href && (
-          <Anchor
-            c="dimmed"
-            component={Link}
-            href={parent.href}
-            size="sm"
-            style={{ display: "inline-flex", alignItems: "center", gap: 2 }}
-          >
-            <IconChevronLeft size={15} />
-            {parent.label}
-          </Anchor>
-        )}
         {!isMobile && (
           <Breadcrumbs>
             {items.map((item, i) => {
