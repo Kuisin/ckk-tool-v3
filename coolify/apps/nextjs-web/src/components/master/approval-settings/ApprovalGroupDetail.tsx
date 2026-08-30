@@ -42,6 +42,7 @@ import { useState, useTransition } from "react";
 import { setGroupMemberActive } from "@/app/(dashboard)/master/approval-settings/actions";
 import { useFormat } from "@/components/layout/PreferencesProvider";
 import { ActiveBadge } from "@/components/ui/ActiveBadge";
+import { AppTabs } from "@/components/ui/AppTabs";
 import { GhostButton } from "@/components/ui/buttons";
 import { DocNumber } from "@/components/ui/DocNumber";
 import { EmptyState } from "@/components/ui/EmptyState";
@@ -364,7 +365,7 @@ export function ApprovalGroupDetail({
         />
       </SummaryGrid>
 
-      <Tabs onChange={setTab} value={tab}>
+      <AppTabs onChange={setTab} value={tab}>
         <Tabs.List>
           <Tabs.Tab value="info">グループ情報</Tabs.Tab>
           <Tabs.Tab value="members">メンバー</Tabs.Tab>
@@ -612,7 +613,7 @@ export function ApprovalGroupDetail({
         <Tabs.Panel pt="md" value="history">
           <HistoryPanel entries={auditEntries} />
         </Tabs.Panel>
-      </Tabs>
+      </AppTabs>
 
       <DeleteApprovalGroupModal
         onClose={() => setDeleteOpen(false)}

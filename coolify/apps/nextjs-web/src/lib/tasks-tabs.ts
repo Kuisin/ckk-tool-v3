@@ -2,8 +2,9 @@
  * tasks-tabs.ts — 承認・予定 (CM01) のタブ定義と、個人ごとの表示/非表示。
  *
  * タブは 6 枚あり、全部を使う人はまずいない（現場は作業予定、承認者は承認待ち、
- * 事務はフォーム…）。使わないタブが常に前に並ぶと、スマホでは自分のタブが
- * 画面外へ押し出される。そこで**隠すタブを本人が選べる**ようにした。
+ * 事務はフォーム…）。使わないタブが前に並ぶだけ探す手間が増えるので、
+ * **隠すタブを本人が選べる**ようにした（狭い画面でタブがドロップダウンへ
+ * 畳まれるのは別の話 — components/ui/AppTabs.tsx が幅で決める）。
  *
  * 純関数（I/O なし）— サーバー（保存時の検証）とクライアント（描画・設定画面）で
  * 同じ判定を使う。並び順は常にこの定義の順で、入れ替えは持たない。
@@ -12,17 +13,15 @@
 export interface TaskTabDef {
   id: string;
   label: string;
-  /** スマホのタブに出す短い名前（6 枚が横スクロールに収まるように）。 */
-  shortLabel: string;
 }
 
 export const TASK_TABS: readonly TaskTabDef[] = [
-  { id: "plans", label: "作業予定", shortLabel: "予定" },
-  { id: "approvals", label: "承認待ち", shortLabel: "承認" },
-  { id: "forms", label: "未回答のフォーム", shortLabel: "未回答" },
-  { id: "my-forms", label: "回答済みのフォーム", shortLabel: "回答済み" },
-  { id: "completions", label: "完了した申請", shortLabel: "完了" },
-  { id: "comments", label: "文書のコメント", shortLabel: "コメント" },
+  { id: "plans", label: "作業予定" },
+  { id: "approvals", label: "承認待ち" },
+  { id: "forms", label: "未回答のフォーム" },
+  { id: "my-forms", label: "回答済みのフォーム" },
+  { id: "completions", label: "完了した申請" },
+  { id: "comments", label: "文書のコメント" },
 ];
 
 /** 個人設定の保存キー（app.user_view_settings.key）。 */
@@ -30,10 +29,8 @@ export const TASK_TABS_SETTING_KEY = "general.tasks.tabs";
 
 export const TASK_TAB_IDS: readonly string[] = TASK_TABS.map((t) => t.id);
 
-export function taskTabLabel(id: string, short = false): string {
-  const tab = TASK_TABS.find((t) => t.id === id);
-  if (!tab) return id;
-  return short ? tab.shortLabel : tab.label;
+export function taskTabLabel(id: string): string {
+  return TASK_TABS.find((t) => t.id === id)?.label ?? id;
 }
 
 /**

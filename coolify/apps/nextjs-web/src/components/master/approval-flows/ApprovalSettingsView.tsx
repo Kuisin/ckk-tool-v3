@@ -14,6 +14,7 @@ import {
   type ApprovalGroupRow,
   ApprovalGroupTable,
 } from "@/components/master/approval-settings/ApprovalGroupTable";
+import { AppTabs } from "@/components/ui/AppTabs";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { useTabParam } from "@/hooks/useUrlState";
 import {
@@ -33,7 +34,7 @@ export function ApprovalSettingsView({
   return (
     <Stack gap="md">
       <PageHeader breadcrumbs={["マスタ", "承認設定"]} title="承認設定" />
-      <Tabs onChange={setTab} value={tab}>
+      <AppTabs onChange={setTab} value={tab}>
         <Tabs.List>
           <Tabs.Tab value="flows">承認フロー</Tabs.Tab>
           <Tabs.Tab value="groups">承認グループ</Tabs.Tab>
@@ -44,7 +45,7 @@ export function ApprovalSettingsView({
         <Tabs.Panel keepMounted={false} pt="md" value="groups">
           <ApprovalGroupTable embedded rows={groups} />
         </Tabs.Panel>
-      </Tabs>
+      </AppTabs>
     </Stack>
   );
 }

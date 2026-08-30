@@ -39,6 +39,7 @@ import {
 import type { RelatedQuoteRow } from "@/app/(dashboard)/sales/price-lists/data";
 import { useFormat } from "@/components/layout/PreferencesProvider";
 import { ActiveBadge } from "@/components/ui/ActiveBadge";
+import { AppTabs } from "@/components/ui/AppTabs";
 import { SecondaryButton } from "@/components/ui/buttons";
 import { DocNumber } from "@/components/ui/DocNumber";
 import { FieldValue } from "@/components/ui/FieldValue";
@@ -243,7 +244,7 @@ export function PriceListDetail({
         <FieldValue label="作成者" value={entry.createdBy} />
       </SummaryGrid>
 
-      <Tabs onChange={setTab} value={tab}>
+      <AppTabs onChange={setTab} value={tab}>
         <Tabs.List>
           <Tabs.Tab value="prices">価格設定</Tabs.Tab>
           <Tabs.Tab value="discounts">値引き設定</Tabs.Tab>
@@ -535,7 +536,7 @@ export function PriceListDetail({
         <Tabs.Panel pt="md" value="history">
           <HistoryPanel entries={auditEntries} />
         </Tabs.Panel>
-      </Tabs>
+      </AppTabs>
 
       <DeletePriceListModal
         onClose={() => setDeleteOpen(false)}

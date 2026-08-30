@@ -34,6 +34,7 @@ import {
   deleteFloorMap,
   renameFloorMap,
 } from "@/app/(dashboard)/settings/kiosk-devices/actions";
+import { AppTabs } from "@/components/ui/AppTabs";
 import {
   CancelButton,
   GhostButton,
@@ -222,7 +223,7 @@ export function FloorMapsPanel({
       ) : (
         <Stack gap="sm">
           {floorMaps.length > 1 && (
-            <Tabs
+            <AppTabs
               onChange={(v) => {
                 setActiveMapId(v);
                 setOverlayIds([]);
@@ -236,7 +237,7 @@ export function FloorMapsPanel({
                   </Tabs.Tab>
                 ))}
               </Tabs.List>
-            </Tabs>
+            </AppTabs>
           )}
 
           {/* 重ね表示（スタッキング）— 他フロアの図面を低不透明度で重ねて位置合わせ */}

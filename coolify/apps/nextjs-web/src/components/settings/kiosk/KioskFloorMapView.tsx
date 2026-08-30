@@ -59,6 +59,7 @@ import {
   renameFloorMap,
   unplaceDevice,
 } from "@/app/(dashboard)/settings/kiosk-devices/actions";
+import { AppTabs } from "@/components/ui/AppTabs";
 import { GhostButton, SecondaryButton } from "@/components/ui/buttons";
 import { ConfirmModal, ModalShell } from "@/components/ui/modals";
 import { PageHeader } from "@/components/ui/PageHeader";
@@ -520,7 +521,7 @@ export function KioskFloorMapView({
                 : "編集モードでフロアを追加できます。"}
             </Alert>
           ) : (
-            <Tabs
+            <AppTabs
               onChange={(v) => {
                 setActiveMapId(v);
                 clearSelection();
@@ -534,7 +535,7 @@ export function KioskFloorMapView({
                   </Tabs.Tab>
                 ))}
               </Tabs.List>
-            </Tabs>
+            </AppTabs>
           )}
 
           {editMode && (
