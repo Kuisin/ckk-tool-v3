@@ -76,7 +76,7 @@ Mantine の medium 600→700）。設計上の含意:
 - **折り返し幅（`sm` 768px / `lg` 1024px）は動かない** — メディアクエリの
   `em` / `rem` はブラウザ既定の文字サイズで評価される。「文字が大きくて入らない」
   を CSS で表したいときは**コンテナクエリ**（そこでの `rem` はルートの文字
-  サイズで評価される）。ヘッダーの操作コード入力がこの方法で引っ込む。
+  サイズで評価される）。
 - **横並びが詰まる場所は、縮む側に `min-width: 0` を置く**（flex の既定
   `min-width: auto` は中身より小さくなることを許さず、重なって描かれる）。
 
@@ -195,10 +195,13 @@ AppShell.Header
     │   └── Popover.Dropdown (width=544, position="bottom-start", shadow="md", trapFocus)
     │       └── AppLauncher (see §5)
     ├── CENTER: OperationCodeJump (compact mode) — search input (see §6)
-    │   ヘッダーの幅が足りないとき（携帯の幅・文字を大きくしたとき）は
-    │   コンテナクエリで隠す（`.app-header-code-jump`）。同じ検索は
-    │   AppLauncher の中にもあるので行き先は失われない。アプリ名は
-    │   truncate で詰める（重ねて描かない）。
+    │   **デスクトップのみ**（`visibleFrom="md"`）。携帯の幅ではアプリ名と
+    │   アイコン列で埋まるので置かない — 置くとアプリ名が省略されて
+    │   「いまどこにいるか」が読めなくなる。同じ検索は AppLauncher の中に
+    │   あるので行き先は失われない。アプリ名は truncate で詰める
+    │   （幅が足りなくても重ねて描かない）。
+    │   アイコンボタン（戻る・共有・バグ報告・通知）は `.header-action` で
+    │   **横だけ**細くする（縦の当たりは残す。携帯はもう一段細い）。
     └── RIGHT: Group (gap="xs")
         ├── Popover (notifications, width=320, position="bottom-end")
         │   ├── Popover.Target → ActionIcon
