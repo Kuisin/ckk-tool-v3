@@ -14,6 +14,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { useFormat } from "@/components/layout/PreferencesProvider";
 import { ActiveBadge } from "@/components/ui/ActiveBadge";
+import { AppTabs } from "@/components/ui/AppTabs";
 import { DocNumber } from "@/components/ui/DocNumber";
 import { FieldValue } from "@/components/ui/FieldValue";
 import { HistoryPanel } from "@/components/ui/HistoryPanel";
@@ -161,7 +162,7 @@ export function MaterialTypeDetail({
         )}
       </SummaryGrid>
 
-      <Tabs onChange={setTab} value={tab}>
+      <AppTabs onChange={setTab} value={tab}>
         <Tabs.List>
           <Tabs.Tab value="overview">概要</Tabs.Tab>
           <Tabs.Tab value="prices">既定単価</Tabs.Tab>
@@ -238,7 +239,7 @@ export function MaterialTypeDetail({
         <Tabs.Panel pt="md" value="history">
           <HistoryPanel entries={auditEntries} />
         </Tabs.Panel>
-      </Tabs>
+      </AppTabs>
 
       <DeleteMaterialTypeModal
         onClose={() => setDeleteOpen(false)}

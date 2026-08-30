@@ -15,6 +15,7 @@ import {
   ShareGrantsPanel,
 } from "@/components/forms/ShareGrantsPanel";
 import { useFormat } from "@/components/layout/PreferencesProvider";
+import { AppTabs } from "@/components/ui/AppTabs";
 import { FieldValue } from "@/components/ui/FieldValue";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import {
@@ -140,7 +141,7 @@ export function DocumentDetail({
         )}
       </SummaryGrid>
 
-      <Tabs defaultValue="body">
+      <AppTabs defaultValue="body">
         <Tabs.List>
           <Tabs.Tab leftSection={<IconEye size={14} />} value="body">
             本文
@@ -177,7 +178,7 @@ export function DocumentDetail({
         <Tabs.Panel pt="md" value="history">
           <AuditTimeline entries={auditEntries} />
         </Tabs.Panel>
-      </Tabs>
+      </AppTabs>
     </DetailShell>
   );
 }

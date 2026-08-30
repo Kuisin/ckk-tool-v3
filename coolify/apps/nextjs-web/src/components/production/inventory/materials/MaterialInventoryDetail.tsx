@@ -11,6 +11,7 @@
 import { Table, Tabs, Text } from "@mantine/core";
 import { useFormat } from "@/components/layout/PreferencesProvider";
 import { InventoryBadge } from "@/components/production/InventoryBadge";
+import { AppTabs } from "@/components/ui/AppTabs";
 import { DocNumber } from "@/components/ui/DocNumber";
 import { FieldValue } from "@/components/ui/FieldValue";
 import { DetailShell, SummaryGrid } from "@/components/ui/shells";
@@ -91,7 +92,7 @@ export function MaterialInventoryDetail({
         <FieldValue label="備考" value={record.notes || "—"} />
       </SummaryGrid>
 
-      <Tabs onChange={setTab} value={tab}>
+      <AppTabs onChange={setTab} value={tab}>
         <Tabs.List>
           <Tabs.Tab value="atp">ATP タイムライン</Tabs.Tab>
           <Tabs.Tab value="transactions">
@@ -109,7 +110,7 @@ export function MaterialInventoryDetail({
             unit={record.unit}
           />
         </Tabs.Panel>
-      </Tabs>
+      </AppTabs>
     </DetailShell>
   );
 }

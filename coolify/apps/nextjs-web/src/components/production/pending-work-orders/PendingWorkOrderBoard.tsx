@@ -425,6 +425,7 @@ export function PendingWorkOrderBoard({
                 </Stack>
               </Group>
             )}
+            settingsKey="unplanned"
             urlState
           />
         ) : (
@@ -462,6 +463,7 @@ export function PendingWorkOrderBoard({
                 </Stack>
               </Group>
             )}
+            settingsKey="open"
             urlState
           />
         )}

@@ -28,6 +28,28 @@ export async function readViewSetting(
   }
 }
 
+/**
+ * 接頭辞でまとめて読む（画面ごとに 1 行ずつ引かないため）。
+ * 一覧表の「表示する列」はどの画面にも出るので、レイアウトで 1 回だけ読んで
+ * クライアントへ配る。
+ */
+export async function readViewSettings(
+  userId: string | null | undefined,
+  prefix: string,
+): Promise<Record<string, unknown>> {
+  if (!userId) return {};
+  try {
+    const rows = await prisma.userViewSetting.findMany({
+      where: { userId, key: { startsWith: prefix } },
+      select: { key: true, value: true },
+      take: 500,
+    });
+    return Object.fromEntries(rows.map((r) => [r.key, r.value]));
+  } catch {
+    return {};
+  }
+}
+
 export async function writeViewSetting(
   userId: string,
   key: string,

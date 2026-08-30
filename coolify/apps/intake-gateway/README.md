@@ -64,8 +64,8 @@ ISO-2022-JP / Shift_JIS — を正しく読めることが選定理由で、こ�
 | `INTAKE_MAIL_SSL` | `1` | `0` で 143 + STARTTLS（失敗したら接続を捨てる — 平文で資格情報を送らない） |
 | `INTAKE_MAIL_USER` / `INTAKE_MAIL_PASSWORD` | — | 未設定なら無効（理由をログに出す） |
 | `INTAKE_MAIL_BOX` | `INBOX` | |
-| `INTAKE_MAIL_PROCESSED_BOX` | `Processed` | 空なら既読にするだけで移動しない |
-| `INTAKE_MAIL_FAILED_BOX` | *(未設定)* | 一部失敗したメールの退避先 |
+| `INTAKE_MAIL_PROCESSED_BOX` | `Processed` | 空なら既読にするだけで移動しない。**`INBOX.` は書かない** — サーバーの名前空間はコードが聞いて自動で足す（下記） |
+| `INTAKE_MAIL_FAILED_BOX` | *(未設定)* | 一部失敗したメールの退避先。同上 |
 | `INTAKE_MAIL_POLL_SECONDS` | `120` | |
 | `INTAKE_MAIL_MAX_MESSAGES` | `20` | 1 巡あたり |
 | `INTAKE_MAIL_SINCE_DAYS` | `7` | 初回起動時の暴走よけ（未読が溜まった受信箱を一気に舐めない） |
@@ -108,6 +108,12 @@ ISO-2022-JP / Shift_JIS — を正しく読めることが選定理由で、こ�
 - **dev と main で受信箱を分ける** — 同じ受信箱を 2 つのコンテナが読むと、
   どちらが先に既読を打つかで取り合いになる
 - **処理済みフォルダを設定する** — 未設定だと既読メールが受信箱に積み上がる
+- **フォルダ名の名前空間はサーバーによって違う** — Sakura（Courier 系）は
+  NAMESPACE が `(("INBOX." "."))` を返し、`Processed` は
+  **`Invalid mailbox name.`** で作れない（`INBOX.Processed` でなければ通らない）。
+  実機で踏んで、処理済みメールが受信箱に溜まり続けた。設定に `INBOX.` を書くと
+  Dovecot 系（personal prefix が空）へ持っていけなくなるので、**接続時に
+  NAMESPACE を聞いて足す**（`mailbox.qualify_box`）。env は素の `Processed` のまま
 - **`ORD-` で始まる名前を作らない** — その接頭辞は「採番済みの続き」の目印で、
   付けると別の注文請書の続きだと誤認される（`writer.py` が強制）
 
@@ -177,6 +183,18 @@ Coolify 管理・環境別・内部専用（ホストポートも公開ドメイ
   `private_key_id` は REST API では設定できない（"This field is not allowed."）ので
   スクリプトが `coolify-db` へ直接 UPDATE する
 
-**dev は疎通確認済み**（2026-08-30）。**main は取込フォルダ自体がまだ無い** —
-`nextjs-web-main` に `INTAKE_DIR` も storages も無いので、本番で動かすには
-先にフォルダ作成（`chown 1001:1001`）+ 両アプリへのマウント + env が要る。
+**dev は疎通確認済み**（2026-08-30。実メールから注文請書まで到達）。
+
+**main は取込フォルダまで用意済み**（2026-08-30）— host
+`/home/kaiseisawada/intake/orders-main` → container `/data/intake`、
+`nextjs-web-main` に `INTAKE_DIR` 設定済みでポーラーも動いている。
+残っているのは**メール取込の分だけ**:
+
+1. **本番専用の受信箱**を作る（admintools → 同期。**dev と共用しない** —
+   2 つのゲートウェイが同じメールを取り合う）
+2. `intake-gateway-main` に同じホストパスをマウント（登録スクリプトが
+   `/home/kaiseisawada/intake/orders-main` を見るようになっている）
+3. 受信箱の資格情報を入れて `deploy.sh intake-gateway-main`
+
+なお `POST /api/intake/inbound` は **main のコードにまだ入っていない**
+（dev のみ）。使うには dev → main の昇格が要る。

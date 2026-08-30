@@ -65,6 +65,7 @@ import {
   countTrailRecords,
 } from "@/components/production/ApprovalStatusPanel";
 import { ActionCard } from "@/components/ui/ActionCard";
+import { AppTabs } from "@/components/ui/AppTabs";
 import {
   AttachmentsPanel,
   type AttachmentView,
@@ -691,7 +692,7 @@ export function DesignRequestDetail({
         )}
       </ProcedurePanel>
 
-      <Tabs onChange={setTab} value={tab}>
+      <AppTabs onChange={setTab} value={tab}>
         <Tabs.List>
           <Tabs.Tab value="overview">概要</Tabs.Tab>
           <Tabs.Tab value="files">ファイル（{request.files.length}）</Tabs.Tab>
@@ -787,7 +788,7 @@ export function DesignRequestDetail({
         <Tabs.Panel pt="md" value="history">
           <HistoryPanel entries={auditEntries} />
         </Tabs.Panel>
-      </Tabs>
+      </AppTabs>
 
       <CompleteDesignModal
         loading={isPending}

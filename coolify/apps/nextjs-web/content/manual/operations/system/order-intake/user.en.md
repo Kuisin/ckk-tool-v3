@@ -4,7 +4,9 @@ description: "An app for dropping received order-document PDFs/scans into the in
 ---
 An app for dropping received **order documents (PDFs / scanned images)** into the intake folder in bulk. The operation code is `SY0C`.
 
-> ⚠️ This app is currently **limited to the test environment (dev)**. The production environment (main) has no intake folder configured, so opening this app there shows "folder not configured." To bring in order documents on production, use the "priority intake" feature on order acceptances instead.
+> This app works in **both the test environment (dev) and production (main)** — the production intake folder was set up on 2026-08-30.
+>
+> ⚠️ However, **automatic intake by email runs on dev only.** Using it on production needs a separate production mailbox and configuration. On production you can drop files in from this screen and use "priority intake" on order acceptances.
 
 ## What you can do with this app
 
@@ -54,8 +56,14 @@ extraction work identically for each.
 | Route | How it gets in |
 |---|---|
 | **Upload** | This screen, or "Priority intake" on the order acceptance app |
-| **Email** | Orders sent to a dedicated mailbox are picked up automatically (`intake-gateway`) and appear under "Waiting" within a few minutes |
+| **Email** | Orders sent to **order-intake@ckk-tool.co.jp** are picked up automatically (`intake-gateway`) and appear under "Waiting" within a few minutes |
 | **Fax** | Currently a manual step — someone scans the paper on the MFP and uploads it via "Priority intake". There is no automatic fax receiver |
+
+### The intake address
+
+It is **order-intake@ckk-tool.co.jp**. Ask customers to send order forms there.
+It is an **automated intake address that nobody reads** — do not use it for
+enquiries or correspondence, which would sit there unnoticed.
 
 ### Spotting a file that came from email
 
@@ -65,7 +73,7 @@ Files that arrived by email are named `mail_sender_originalname`. For example
 > ⚠️ **The sender and subject are not recorded on the order acceptance itself.**
 > That filename is the only trace — the order acceptance detail page does not
 > show it. To see the subject or body, open the mailbox directly. Messages that
-> were taken in have been moved to its "Processed" folder.
+> were taken in have been moved to its "Processed" folder (failures go to "Failed").
 
 ### Emails with several attachments
 
@@ -92,7 +100,7 @@ In the "Failed" list, press 「**再取込**」 (Retry) on the row for the file 
 ## Questions and problems
 
 **Q. It says "folder not configured."**
-A. Right now this feature only works on the test environment (dev). The production environment (main) does not yet have an intake folder configured. If you need to bring in order documents on production, use "priority intake" on order acceptances to bring them in one at a time.
+A. The intake folder exists in both the test and production environments. If you still see this, the `INTAKE_DIR` setting or the folder assignment has come loose — ask a system administrator. ("Priority intake" on order acceptances does not use the intake folder, so it keeps working meanwhile.)
 
 **Q. I dropped in a file, but it stays "not yet numbered" forever.**
 A. The automatic scan runs every 60 seconds by default. Please wait a little and refresh the screen. If it still doesn't change, try 「今すぐスキャン」 (Scan now).

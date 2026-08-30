@@ -26,6 +26,7 @@ import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { useFormat } from "@/components/layout/PreferencesProvider";
 import type { FlowApprover } from "@/components/master/approval-flows/ApproverPermissionBadge";
+import { AppTabs } from "@/components/ui/AppTabs";
 import { GhostButton } from "@/components/ui/buttons";
 import { CopyableValue } from "@/components/ui/CopyableValue";
 import { DataTable } from "@/components/ui/DataTable";
@@ -331,7 +332,7 @@ export function FormDetail({
         )}
       </SummaryGrid>
 
-      <Tabs defaultValue="fields">
+      <AppTabs defaultValue="fields">
         <Tabs.List>
           <Tabs.Tab value="fields">項目（{form.fields.length}）</Tabs.Tab>
           <Tabs.Tab value="responses">回答（{responses.length}）</Tabs.Tab>
@@ -513,7 +514,7 @@ export function FormDetail({
         <Tabs.Panel pt="md" value="history">
           <AuditTimeline entries={auditEntries} />
         </Tabs.Panel>
-      </Tabs>
+      </AppTabs>
 
       <ResponseExportModal
         code={form.code}

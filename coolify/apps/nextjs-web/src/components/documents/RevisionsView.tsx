@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { restoreRevision } from "@/app/(dashboard)/general/documents/actions";
 import { useFormat } from "@/components/layout/PreferencesProvider";
+import { AppTabs } from "@/components/ui/AppTabs";
 import { GhostButton } from "@/components/ui/buttons";
 import { openConfirm } from "@/components/ui/modals";
 import { PageHeader } from "@/components/ui/PageHeader";
@@ -86,7 +87,7 @@ export function RevisionsView({
         title="履歴・差分"
       />
 
-      <Tabs defaultValue="diff">
+      <AppTabs defaultValue="diff">
         <Tabs.List>
           <Tabs.Tab value="diff">差分</Tabs.Tab>
           <Tabs.Tab value="list">版一覧（{revisions.length}）</Tabs.Tab>
@@ -153,7 +154,7 @@ export function RevisionsView({
             ))}
           </Stack>
         </Tabs.Panel>
-      </Tabs>
+      </AppTabs>
     </Stack>
   );
 }

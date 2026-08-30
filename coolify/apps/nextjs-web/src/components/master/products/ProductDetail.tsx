@@ -26,6 +26,7 @@ import type {
   ProductDesignFile,
 } from "@/components/sales/design-requests/model";
 import { ActiveBadge } from "@/components/ui/ActiveBadge";
+import { AppTabs } from "@/components/ui/AppTabs";
 import { DocNumber } from "@/components/ui/DocNumber";
 import { FieldValue } from "@/components/ui/FieldValue";
 import { HistoryPanel } from "@/components/ui/HistoryPanel";
@@ -209,7 +210,7 @@ export function ProductDetail({
         <FieldValue label="単位" value={record.unit} />
       </SummaryGrid>
 
-      <Tabs onChange={setTab} value={tab}>
+      <AppTabs onChange={setTab} value={tab}>
         <Tabs.List>
           <Tabs.Tab value="overview">概要</Tabs.Tab>
           <Tabs.Tab value="routes">工程</Tabs.Tab>
@@ -336,7 +337,7 @@ export function ProductDetail({
         <Tabs.Panel pt="md" value="history">
           <HistoryPanel entries={auditEntries} />
         </Tabs.Panel>
-      </Tabs>
+      </AppTabs>
 
       <DeleteProductModal
         onClose={() => setDeleteOpen(false)}
