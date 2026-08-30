@@ -42,6 +42,33 @@ pnpm exec tsx scripts/orchestrate.ts --only profile-preferences-01 \
 PNG は `coolify/apps/nextjs-web/content/manual/assets/screenshots/<id>.png` に
 出力され、**マニュアルと一緒にコミットする**。
 
+## 通し確認（smoke-flows.ts）
+
+撮影とは別に、**画面を実際に操作して通しで確かめる**ための使い捨てスクリプト。
+この仕組み（一時 DB + 本番ビルド + Playwright）がそのまま使えるので同居させている。
+CI では動かさない — 実行するのは人が「今の変更を通しで見たい」ときだけ。
+
+```bash
+pnpm docs:seed                      # 一時 DB を起動したまま残す
+cd ../../coolify/apps/nextjs-web && pnpm build
+DATABASE_URL="postgresql://postgres:shots@127.0.0.1:55432/ckk" \
+  AUTH_SECRET="docs-screenshots-fixed-secret-not-production" \
+  AUTH_URL="http://localhost:3100" NODE_ENV=production \
+  pnpm exec next start -p 3100 &
+cd - && pnpm exec tsx smoke-flows.ts   # PASS/FAIL を並べて表示
+docker rm -f ckk-shots-db              # 後始末
+```
+
+いま見ているもの:
+
+- タブ（`AppTabs`）が幅に収まらないときだけドロップダウンへ畳み、広げると戻る
+- 承認・予定 (CM01) のタブ表示設定が保存され、隠したタブの URL でも空にならない
+- 申請・報告フォームの完了通知 — 共有設定で「完了通知」を付ける → 別の人が提出 →
+  CM01「完了した申請」に未読で出る → 開くと既読になる
+
+**書き足すときの約束**: 落ちたときに何が起きたかが分かるよう、`check()` の第 3 引数に
+実測値（URL・幅・ラベル）を渡すこと。合否だけだと原因を追えない。
+
 ## 撮影の追加手順
 
 1. `manifest.ts` にエントリを足す（`id` / `docPage` / `path` / 必要なら `steps`）。
