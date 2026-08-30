@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>メール監視 — adminTools</title>
+  <style>
+    :root { font-family: 'Noto Sans JP', system-ui, sans-serif; }
+    body { margin: 0; background: #f5f6f8; color: #1f2937; }
+    header { background: #1e3a8a; color: #fff; padding: 14px 24px; display: flex; align-items: baseline; gap: 16px; }
+    header h1 { font-size: 18px; margin: 0; cursor: pointer; }
+    main { max-width: 1040px; margin: 24px auto; padding: 0 16px; }
+    .card { background: #fff; border: 1px solid #e5e7eb; border-radius: 8px; padding: 16px; margin-bottom: 20px; }
+    h2 { font-size: 15px; margin: 0 0 12px; } h3 { margin: 0 0 6px; font-size: 14px; }
+    .muted { color: #6b7280; font-size: 12px; }
+    .mono { font-family: ui-monospace, monospace; font-size: 12px; }
+    .crumb { font-size: 13px; color: #6b7280; margin-bottom: 14px; }
+    .crumb a { color: #2563eb; text-decoration: none; } .crumb a:hover { text-decoration: underline; }
+    .warn { background: #fffbeb; border: 1px solid #fde68a; color: #92400e; border-radius: 6px; padding: 10px 12px; font-size: 13px; margin-bottom: 16px; }
+    .danger { background: #fef2f2; border: 1px solid #fecaca; color: #991b1b; border-radius: 6px; padding: 10px 12px; font-size: 13px; margin-bottom: 16px; }
+    .pill { font-size: 11px; padding: 2px 9px; border-radius: 10px; font-weight: 600; }
+    .p-ok { background: #ecfdf5; color: #047857; } .p-warn { background: #fffbeb; color: #92400e; } .p-err { background: #fef2f2; color: #b91c1c; }
+    table { width: 100%; border-collapse: collapse; font-size: 13px; margin-top: 8px; }
+    th, td { text-align: left; padding: 6px 8px; border-bottom: 1px solid #f1f5f9; }
+    th { color: #6b7280; font-weight: 500; font-size: 12px; }
+    td.num { text-align: right; font-variant-numeric: tabular-nums; }
+    .msg { font-size: 13px; margin: 4px 0 0; padding-left: 18px; }
+    button { padding: 7px 14px; border: 0; border-radius: 5px; font-size: 13px; cursor: pointer; background: #2563eb; color: #fff; }
+  </style>
+</head>
+<body>
+  <header><h1 onclick="location.href='/'">adminTools</h1><span class="muted" style="color:#c7d2fe">メール監視</span></header>
+  <main>
+    <div class="crumb"><a href="/">アプリ</a> / メール監視</div>
+
+    {% if deploy_env and deploy_env != 'main' %}
+    <div class="danger">
+      ⚠️ これは <b>検証環境（{{ deploy_env }}）</b>の adminTools ですが、
+      メールサーバー <span class="mono">{{ imap_host }}</span> は<b>本番と同じ実サーバー</b>です。
+      ここでメールアカウントを作る・消す・同期すると<b>本番のメールボックスが変わります</b>。
+    </div>
+    {% endif %}
+
+    <div class="card">
+      <h2>注文書取込メールボックスの状態</h2>
+      <p class="muted" style="margin-top:0">
+        受信箱は<b>読み取り専用</b>で開きます（既読も付けません）。見ているのは 3 点です —
+        IMAP に入れるか / 未読が溜まっていないか（＝ゲートウェイが止まっている）/
+        Failed に居ないか（＝人が拾う必要がある注文書）。
+      </p>
+      <button onclick="load()">再確認</button>
+      <span id="overall" class="muted" style="margin-left:10px">確認中…</span>
+      <div id="body"></div>
+    </div>
+  </main>
+
+<script>
+const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const pill = lv => `<span class="pill ${lv==='ok'?'p-ok':lv==='warn'?'p-warn':'p-err'}">${lv==='ok'?'正常':lv==='warn'?'注意':'異常'}</span>`;
+const box = (bs, name) => bs.find(b => b.name === name || b.name.endsWith('.'+name));
+
+async function load() {
+  const el = document.getElementById('body');
+  document.getElementById('overall').textContent = '確認中…';
+  el.innerHTML = '';
+  let d;
+  try { d = await (await fetch('/mail-monitor/status')).json(); }
+  catch (e) { document.getElementById('overall').textContent = '取得に失敗しました'; return; }
+
+  document.getElementById('overall').innerHTML =
+    (d.count ? pill(d.level) : '') + ` <span class="muted">対象 ${d.count} 件 / ${esc(d.imap_host)}</span>`;
+
+  if (!d.count) { el.innerHTML = `<p class="warn" style="margin-top:12px">${esc(d.note)}</p>`; return; }
+
+  el.innerHTML = d.mailboxes.map(m => {
+    if (!m.ok) return `<div style="margin-top:16px"><h3>${esc(m.email)} ${pill('error')}</h3>
+        <p class="msg">${esc(m.error)}</p></div>`;
+    const inb = box(m.boxes,'INBOX'), pr = box(m.boxes,'Processed'), fa = box(m.boxes,'Failed');
+    const quiet = m.quiet_hours === null ? '—' : `${m.quiet_hours} 時間前`;
+    return `<div style="margin-top:16px">
+      <h3>${esc(m.email)} ${pill(m.level)} <span class="muted mono">${esc(m.username)}</span></h3>
+      <table>
+        <tr><th>フォルダ</th><th style="text-align:right">全件</th><th style="text-align:right">未読</th><th>最新</th></tr>
+        <tr><td>受信箱 (INBOX)</td><td class="num">${inb?.total ?? '—'}</td><td class="num">${inb?.unseen ?? '—'}</td><td class="muted">${quiet}</td></tr>
+        <tr><td>取込済 (Processed)</td><td class="num">${pr?.exists ? pr.total : '—'}</td><td class="num">—</td><td class="muted">${pr?.exists ? '' : 'フォルダなし'}</td></tr>
+        <tr><td>失敗 (Failed)</td><td class="num">${fa?.exists ? fa.total : '—'}</td><td class="num">—</td><td class="muted">${fa?.exists ? '' : 'フォルダなし'}</td></tr>
+      </table>
+      ${(m.messages||[]).map(x => `<p class="msg">・${esc(x)}</p>`).join('')}
+    </div>`;
+  }).join('');
+}
+load();
+</script>
+</body>
+</html>

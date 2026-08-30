@@ -11,7 +11,7 @@ from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel
 from sqlalchemy import func
 
-from . import ldap_client, restore_client, sync
+from . import ldap_client, mail_monitor, restore_client, sync
 from .db import DEFAULT_DOMAIN, GroupMember, MailAccount, SessionLocal, init_db
 
 
@@ -64,6 +64,12 @@ def _shared_type(username: str) -> str:
 
 app = FastAPI(title="adminTools")
 templates = Jinja2Templates(directory="app/templates")
+
+# このインスタンスがどの環境か（dev / main）。Coolify の env で入れる。
+# **dev も本番と同じさくらのメールサーバー（SAKURA_ID）を触る**ので、
+# 取り違えて本番のメールボックスを消さないよう画面で警告を出す。
+DEPLOY_ENV = os.environ.get("DEPLOY_ENV", "").strip().lower()
+
 
 # 実行環境（Coolify で APP_ENV=dev/main を設定。未設定＝ローカルは dev 扱い）。
 # main 以外はすべて dev とみなし、全テンプレート上部にオレンジの開発環境バーを表示。
@@ -255,6 +261,60 @@ def app_email(request: Request):
 @app.get("/kot", response_class=HTMLResponse)
 def app_kot(request: Request):
     return _render_index(request, "kot")
+
+
+# ---------------------------------------------------------------------------
+# メール監視 — 取込用メールボックスの健康状態。
+#
+# 見張るのは 3 点だけ: IMAP に入れるか / 未読が溜まっていないか（＝ゲートウェイ
+# が止まっている） / Failed に居ないか（＝人が拾う必要がある注文書）。
+# 資格情報は mail_accounts が既に持っているので監視のために秘密を増やさない。
+# 受信箱は **読み取り専用**で開く（既読も付けない）。
+# ---------------------------------------------------------------------------
+@app.get("/mail-monitor", response_class=HTMLResponse)
+def app_mail_monitor(request: Request):
+    return templates.TemplateResponse("mail_monitor.html", {
+        "request": request,
+        "domain": DEFAULT_DOMAIN,
+        "deploy_env": DEPLOY_ENV,
+        "imap_host": mail_monitor.IMAP_HOST,
+    })
+
+
+def _mail_monitor_report() -> dict:
+    """対象の受信箱を順に覗いて結果をまとめる（HTML と JSON で共用）。"""
+    with SessionLocal() as s:
+        targets = mail_monitor.monitored(
+            s.query(MailAccount).order_by(MailAccount.username).all())
+        rows = []
+        for a in targets:
+            h = mail_monitor.check_mailbox(a.email, a.password, a.username).as_dict()
+            inbox = next((b for b in h["boxes"] if b["name"] == "INBOX"), None)
+            h["quiet_hours"] = mail_monitor.quiet_since(inbox["newest"]) if inbox else None
+            rows.append(h)
+    worst = "ok"
+    for r in rows:
+        if r["level"] == "error":
+            worst = "error"
+            break
+        if r["level"] == "warn":
+            worst = "warn"
+    return {"level": worst if rows else "warn",
+            "count": len(rows),
+            "imap_host": mail_monitor.IMAP_HOST,
+            "mailboxes": rows,
+            "note": None if rows else "監視対象の取込用メールボックスが見つかりません"}
+
+
+@app.get("/mail-monitor/status")
+def mail_monitor_status():
+    return JSONResponse(_mail_monitor_report())
+
+
+@app.get("/api/v1/mail-monitor", dependencies=[Depends(require_api_key)])
+def api_mail_monitor():
+    """外部監視（Grafana 等）から叩く用。level が ok 以外なら要対応。"""
+    return JSONResponse(_mail_monitor_report())
 
 
 # ---------------------------------------------------------------------------
