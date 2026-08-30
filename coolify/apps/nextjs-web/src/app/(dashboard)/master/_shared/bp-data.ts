@@ -126,6 +126,8 @@ export interface BpBaseDetail {
   email: string;
   website: string;
   taxNumber: string;
+  /** 見積書/納品書/請求書の言語。null = 既定言語（ja）。 */
+  documentLocale: string | null;
   matchNames: string[];
   isActive: boolean;
   notes: string;
@@ -147,6 +149,7 @@ type BpRowLike = {
   email: string | null;
   website: string | null;
   taxNumber: string | null;
+  documentLocale: string | null;
   matchNames: string[];
   isActive: boolean;
   notes: string | null;
@@ -177,6 +180,7 @@ export function mapBpBase(r: BpRowLike): BpBaseDetail {
     email: r.email ?? "",
     website: r.website ?? "",
     taxNumber: r.taxNumber ?? "",
+    documentLocale: r.documentLocale ?? null,
     matchNames: r.matchNames,
     isActive: r.isActive,
     notes: r.notes ?? "",

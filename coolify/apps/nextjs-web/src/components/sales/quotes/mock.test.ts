@@ -104,6 +104,7 @@ describe("quoteTotals — 小計 / 消費税10% / 合計", () => {
     customerName: "c",
     customerBranchId: null,
     customerBranchName: null,
+    recipientDocumentLocale: null,
     status: "DRAFT",
     validUntil: null,
     notes: null,

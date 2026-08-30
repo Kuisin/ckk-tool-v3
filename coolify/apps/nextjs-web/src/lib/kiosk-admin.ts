@@ -14,7 +14,7 @@ import type { DeviceOwnership } from "./device-ownership-core";
 import type { DeviceProfileSummary } from "./device-profile-core";
 import { toProfileSummary } from "./device-profile-core";
 import type { LocalizedText } from "./format";
-import { deviceName, localized } from "./format";
+import { deviceName, localized, localizedTranslations } from "./format";
 
 /** 多言語 JSON（または旧文字列）から編集用の片側を取り出す。 */
 function namePart(value: unknown, key: "ja" | "en"): string {
@@ -238,6 +238,8 @@ export interface KioskDeviceRow {
   /** 編集用の原文（多言語 JSON の各言語）。 */
   nameJa: string;
   nameEn: string;
+  /** 日本語以外の翻訳（LocalizedTextInput の多言語ポップアップ初期値）。 */
+  nameTranslations: Record<string, string>;
   location: string | null;
   status: "PENDING" | "LINKED" | "ACTIVE" | "DISABLED" | "REVOKED";
   plantId: number | null;
@@ -327,6 +329,7 @@ function toDeviceRow(r: DeviceWithIncludes, now: number): KioskDeviceRow {
     name: deviceName(r.name),
     nameJa: namePart(r.name, "ja"),
     nameEn: namePart(r.name, "en"),
+    nameTranslations: localizedTranslations(r.name as LocalizedText | null),
     location: r.location,
     status: r.status,
     plantId: r.plantId,

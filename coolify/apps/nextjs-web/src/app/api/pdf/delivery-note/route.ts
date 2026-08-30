@@ -17,9 +17,14 @@ import { fetchDeliveryNote } from "@/app/(dashboard)/shipping/delivery-notes/dat
 import { requirePermissionResponse } from "@/lib/authz";
 import { parseDocKey } from "@/lib/doc-number";
 import { isIssued, notIssuedResponse, pdfStorageKey } from "@/lib/document-pdf";
-import { DELIVERY_METHOD_LABEL } from "@/lib/enum-labels";
 import { documentFormatters } from "@/lib/format";
+import { normalizeLocale } from "@/lib/i18n";
 import { renderPdf } from "@/lib/pdf";
+import {
+  deliveryMethodLabelLocalized,
+  deliveryNotePdfLabels,
+  pdfAttnLine,
+} from "@/lib/pdf-labels";
 import { documentQrSvg } from "@/lib/pdf-qr";
 import { QR_KINDS } from "@/lib/qr-payload";
 import { getObject, putObject } from "@/lib/storage";
@@ -79,18 +84,19 @@ export async function GET(request: Request): Promise<Response> {
     }
   }
 
+  const lang = normalizeLocale(note.recipientDocumentLocale);
+  const labels = deliveryNotePdfLabels(lang);
+
   // 宛先メタ: 支店 + ご担当者、ユーザー直送は届け先（最終需要家）を明記する。
-  const metaLines = [
-    note.recipientBranchName
-      ? `${note.recipientBranchName}　ご担当者 様`
-      : "ご担当者 様",
-  ];
+  const metaLines = [pdfAttnLine(lang, note.recipientBranchName)];
   if (note.deliveryMethod === "DIRECT_TO_USER" && note.endUserName) {
-    metaLines.push(`届け先（最終需要家）: ${note.endUserName}`);
+    metaLines.push(`${labels.endUserPrefix} ${note.endUserName}`);
   }
 
   // 価格記載（includePrice）に応じて 単価/金額 列・合計ブロックを注入する。
   const data = {
+    lang,
+    labels,
     issuer: ISSUER,
     recipient: {
       name: note.recipientName,
@@ -102,10 +108,10 @@ export async function GET(request: Request): Promise<Response> {
       number: note.deliveryNumber,
       issued_date: documentFormatters.date(note.createdAt),
       shipping_number: note.deliveryOrderNumber,
-      method: DELIVERY_METHOD_LABEL[note.deliveryMethod] ?? note.deliveryMethod,
+      method: deliveryMethodLabelLocalized(note.deliveryMethod, lang),
     },
     price_head: note.includePrice
-      ? '<th class="right">単価 (円)</th><th class="right">金額 (円)</th>'
+      ? `<th class="right">${labels.unitPrice}</th><th class="right">${labels.amount}</th>`
       : "",
     items: note.items.map((it) => ({
       name: it.productName,
@@ -118,8 +124,8 @@ export async function GET(request: Request): Promise<Response> {
     })),
     totals_block: note.includePrice
       ? `<div class="totals"><table>
-           <tr><td>数量合計</td><td>${yen(note.totalQuantity)}</td></tr>
-           <tr class="grand-total"><td>合計金額</td><td>¥ ${yen(note.totalAmount ?? 0)}</td></tr>
+           <tr><td>${labels.totalQuantity}</td><td>${yen(note.totalQuantity)}</td></tr>
+           <tr class="grand-total"><td>${labels.total}</td><td>¥ ${yen(note.totalAmount ?? 0)}</td></tr>
          </table></div>`
       : "",
     notes: (note.notes ?? "").replace(/\n/g, "<br>"),

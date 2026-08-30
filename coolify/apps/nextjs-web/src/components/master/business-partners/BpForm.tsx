@@ -192,6 +192,7 @@ export function BpForm({
       email: values.email,
       website: values.website,
       taxNumber: values.taxNumber,
+      documentLocale: values.documentLocale as BpInput["documentLocale"],
       matchNames: values.matchNames,
       isActive: values.isActive,
       notes: values.notes,

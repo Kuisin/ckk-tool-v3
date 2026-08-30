@@ -76,6 +76,8 @@ function mapInvoice(r: InvoiceRow): Invoice {
     customerBranchName: r.customerBranchBp
       ? localized(r.customerBranchBp.name as LocalizedText | null)
       : null,
+    recipientDocumentLocale:
+      r.customerBranchBp?.documentLocale ?? r.customerBp.documentLocale ?? null,
     salesRepId: r.salesRep?.id ?? null,
     salesRepName: r.salesRep?.displayName ?? null,
     createdByName: r.createdByUser?.displayName ?? null,
