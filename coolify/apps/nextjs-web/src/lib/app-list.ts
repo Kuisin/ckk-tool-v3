@@ -433,7 +433,10 @@ export const appList: AppEntry[] = [
     href: "/settings/users",
     icon: "IconUserCog",
     category: "システム",
-    requiredPermission: "system",
+    // 利用停止・所属拠点の変更は特権操作（user_admin）。入口もそこへ寄せる —
+    // system:READ を入口にすると、申請できるようにするために SY02 試算計算や
+    // SY0E AI プロバイダまで開いてしまう。
+    requiredPermission: "user_admin",
   },
   {
     // 試算カスタマイズ（計算基準・カスタム入力・カスタム計算 JS）。system 権限。
@@ -495,7 +498,8 @@ export const appList: AppEntry[] = [
     href: "/settings/activity",
     icon: "IconHistory",
     category: "システム",
-    requiredPermission: "system",
+    // 横断検索は個人データ。閲覧そのものに承認が要る（書類ごとの履歴タブは別）。
+    requiredPermission: "personal_data",
   },
   {
     // QRカード管理 — キオスク（共有端末）ログイン用カードの発行・割当・印刷。
@@ -505,7 +509,8 @@ export const appList: AppEntry[] = [
     href: "/settings/kiosk-cards",
     icon: "IconQrcode",
     category: "システム",
-    requiredPermission: "kiosk",
+    // 一覧・詳細はこの権限で見える。発行・割当・PIN は昇格が要る。
+    requiredPermission: "kiosk_card",
   },
   {
     // 端末管理 — キオスク端末の有効化・状態管理・フロアマップ配置。
@@ -557,7 +562,8 @@ export const appList: AppEntry[] = [
     href: "/settings/login-history",
     icon: "IconShieldLock",
     category: "システム",
-    requiredPermission: "system",
+    // 一覧は personal_data:READ で見える。詳細（IP・端末シグネチャ）は昇格が要る。
+    requiredPermission: "personal_data",
   },
   {
     // AI プロバイダ — 文書抽出（注文請書の取込）と AI 補助タスクが使うモデルの

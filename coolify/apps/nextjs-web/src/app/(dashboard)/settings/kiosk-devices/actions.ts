@@ -34,6 +34,7 @@ import {
   listKioskPresence,
 } from "@/lib/kiosk-admin";
 import { mintMonitorToken } from "@/lib/kiosk-ws-token";
+import { elevationAuditNote, useElevation } from "@/lib/privileged-access";
 import {
   type ActionResult,
   actionError,
@@ -124,8 +125,8 @@ export type CreateDeviceProfileInput = z.infer<typeof createProfileInput>;
 export async function createDeviceProfile(
   raw: CreateDeviceProfileInput,
 ): Promise<ActionResult<{ id: string }>> {
-  const authz = await checkPermission("kiosk", "CREATE");
-  if (!authz.ok) return actionError(authz.error);
+  const gate = await useElevation("kiosk_device.create_profile");
+  if (!gate.ok) return actionError(gate.error);
   const parsed = createProfileInput.safeParse(raw);
   if (!parsed.success) {
     return actionError(parsed.error.issues[0]?.message ?? "入力が不正です");
@@ -178,8 +179,8 @@ export async function linkDeviceToProfile(
   profileId: string,
   code: string,
 ): Promise<ActionResult> {
-  const authz = await checkPermission("kiosk", "UPDATE");
-  if (!authz.ok) return actionError(authz.error);
+  const gate = await useElevation("kiosk_device.link");
+  if (!gate.ok) return actionError(gate.error);
   const parsedId = uuidSchema.safeParse(profileId);
   if (!parsedId.success) return actionError("入力が不正です");
   const normalized = normalizeCode(code);
@@ -243,8 +244,8 @@ export async function linkDeviceToProfile(
  * アテステーション鍵は破棄する（端末の交換・故障時に再リンクするため）。
  */
 export async function unlinkDevice(id: string): Promise<ActionResult> {
-  const authz = await checkPermission("kiosk", "UPDATE");
-  if (!authz.ok) return actionError(authz.error);
+  const gate = await useElevation("kiosk_device.unlink");
+  if (!gate.ok) return actionError(gate.error);
   const parsed = uuidSchema.safeParse(id);
   if (!parsed.success) return actionError("入力が不正です");
 
@@ -358,8 +359,8 @@ export async function deleteDeviceProfile(id: string): Promise<ActionResult> {
 export async function activateDevice(
   id: string,
 ): Promise<ActionResult<{ id: string }>> {
-  const authz = await checkPermission("kiosk", "UPDATE");
-  if (!authz.ok) return actionError(authz.error);
+  const gate = await useElevation("kiosk_device.activate");
+  if (!gate.ok) return actionError(gate.error);
   const parsed = uuidSchema.safeParse(id);
   if (!parsed.success) return actionError("入力が不正です");
 
@@ -384,7 +385,7 @@ export async function activateDevice(
       where: { id: parsed.data },
       data: {
         status: "ACTIVE",
-        activatedById: authz.userId,
+        activatedById: gate.userId,
         activatedAt: new Date(),
       },
     });
@@ -492,8 +493,8 @@ async function transitionDevice(
   to: "ACTIVE" | "DISABLED",
   note: string,
 ): Promise<ActionResult> {
-  const authz = await checkPermission("kiosk", "UPDATE");
-  if (!authz.ok) return actionError(authz.error);
+  const gate = await useElevation("kiosk_device.set_enabled");
+  if (!gate.ok) return actionError(gate.error);
   const parsed = uuidSchema.safeParse(id);
   if (!parsed.success) return actionError("入力が不正です");
 
@@ -535,8 +536,8 @@ export async function enableDevice(id: string): Promise<ActionResult> {
 
 /** 端末を取り消す（トークン破棄・再登録が必要）。オープン中のセッションも失効。 */
 export async function revokeDevice(id: string): Promise<ActionResult> {
-  const authz = await checkPermission("kiosk", "UPDATE");
-  if (!authz.ok) return actionError(authz.error);
+  const gate = await useElevation("kiosk_device.revoke");
+  if (!gate.ok) return actionError(gate.error);
   const parsed = uuidSchema.safeParse(id);
   if (!parsed.success) return actionError("入力が不正です");
 
@@ -602,8 +603,8 @@ export async function revokeDevice(id: string): Promise<ActionResult> {
 export async function regenerateSettingsCode(
   id: string,
 ): Promise<ActionResult<{ code: string }>> {
-  const authz = await checkPermission("kiosk", "UPDATE");
-  if (!authz.ok) return actionError(authz.error);
+  const gate = await useElevation("kiosk_secret.regenerate_settings_code");
+  if (!gate.ok) return actionError(gate.error);
   const parsed = uuidSchema.safeParse(id);
   if (!parsed.success) return actionError("入力が不正です");
 
@@ -643,8 +644,14 @@ export async function revealKioskPin(input: {
   kind: "unlock" | "settings";
   deviceId?: string;
 }): Promise<ActionResult<{ value: string }>> {
-  const authz = await checkPermission("kiosk", "READ");
-  if (!authz.ok) return actionError(authz.error);
+  // 開示するものが違えば別の操作。設定コード（端末 1 台の解錠）と退出 PIN
+  // （全端末共通）では影響範囲が桁で違うので、まとめて 1 つの承認にしない。
+  const gate = await useElevation(
+    input.kind === "settings"
+      ? "kiosk_secret.reveal_settings_code"
+      : "kiosk_secret.reveal_unlock_pin",
+  );
+  if (!gate.ok) return actionError(gate.error);
   try {
     if (input.kind === "settings") {
       const parsed = uuidSchema.safeParse(input.deviceId);
@@ -658,7 +665,10 @@ export async function revealKioskPin(input: {
         action: "VIEW",
         tableName: "kiosk_devices",
         recordId: parsed.data,
-        after: { note: "端末設定コードを表示" },
+        after: {
+          note: "端末設定コードを表示",
+          ...elevationAuditNote(gate, "kiosk_secret.reveal_settings_code"),
+        },
       });
       return actionOk({ value: device.settingsCode });
     }
@@ -671,7 +681,10 @@ export async function revealKioskPin(input: {
       action: "VIEW",
       tableName: "system_settings",
       recordId: "kiosk.unlock_pin",
-      after: { note: "メンテナンス PIN を表示" },
+      after: {
+        note: "メンテナンス PIN を表示",
+        ...elevationAuditNote(gate, "kiosk_secret.reveal_unlock_pin"),
+      },
     });
     return actionOk({ value });
   } catch (e) {
@@ -706,8 +719,8 @@ export type UnlockPinHistoryRow = {
 export async function listUnlockPinHistory(): Promise<
   ActionResult<{ rows: UnlockPinHistoryRow[] }>
 > {
-  const authz = await checkPermission("kiosk", "READ");
-  if (!authz.ok) return actionError(authz.error);
+  const gate = await useElevation("kiosk_secret.reveal_pin_history");
+  if (!gate.ok) return actionError(gate.error);
   try {
     const rows = await prisma.kioskUnlockPin.findMany({
       orderBy: { rotatedAt: "desc" },
@@ -718,7 +731,11 @@ export async function listUnlockPinHistory(): Promise<
       action: "VIEW",
       tableName: "kiosk_unlock_pins",
       recordId: "kiosk.unlock_pin",
-      after: { note: "メンテナンス PIN の履歴を表示", count: rows.length },
+      after: {
+        note: "メンテナンス PIN の履歴を表示",
+        count: rows.length,
+        ...elevationAuditNote(gate, "kiosk_secret.reveal_pin_history"),
+      },
     });
     return actionOk({
       rows: rows.map((row, i) => ({
@@ -763,8 +780,8 @@ export type DeviceUnlockPinInfo = {
 export async function revealDeviceUnlockPin(
   deviceId: string,
 ): Promise<ActionResult<DeviceUnlockPinInfo>> {
-  const authz = await checkPermission("kiosk", "READ");
-  if (!authz.ok) return actionError(authz.error);
+  const gate = await useElevation("kiosk_secret.reveal_device_pin");
+  if (!gate.ok) return actionError(gate.error);
   const parsed = uuidSchema.safeParse(deviceId);
   if (!parsed.success) return actionError("端末が指定されていません");
   try {
@@ -778,7 +795,10 @@ export async function revealDeviceUnlockPin(
       action: "VIEW",
       tableName: "kiosk_devices",
       recordId: parsed.data,
-      after: { note: "端末が保持しているメンテナンス PIN を表示" },
+      after: {
+        note: "端末が保持しているメンテナンス PIN を表示",
+        ...elevationAuditNote(gate, "kiosk_secret.reveal_device_pin"),
+      },
     });
 
     if (!device.unlockPinRotatedAt) {
@@ -811,8 +831,8 @@ export async function revealDeviceUnlockPin(
 
 /** アテステーション鍵をリセット（次回ラッパー接続時に再束縛 = TOFU）。 */
 export async function resetDeviceKey(id: string): Promise<ActionResult> {
-  const authz = await checkPermission("kiosk", "UPDATE");
-  if (!authz.ok) return actionError(authz.error);
+  const gate = await useElevation("kiosk_secret.reset_device_key");
+  if (!gate.ok) return actionError(gate.error);
   const parsed = uuidSchema.safeParse(id);
   if (!parsed.success) return actionError("入力が不正です");
 

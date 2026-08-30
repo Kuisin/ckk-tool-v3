@@ -22,6 +22,8 @@ import type { ReactNode } from "react";
 import { AccessDenied } from "@/components/ui/AccessDenied";
 import { appList } from "@/lib/app-list";
 import { checkPermission } from "@/lib/authz";
+import { useElevation } from "@/lib/privileged-access";
+import { findOperation } from "@/lib/privileged-operations";
 
 /**
  * アプリの READ ゲート。許可なら null、拒否なら描画済みの AccessDenied を返す。
@@ -44,6 +46,33 @@ export async function requireAppRead(
       breadcrumbs={[app.category, app.label]}
       message={authz.error}
       title={app.label}
+    />
+  );
+}
+
+/**
+ * 特権操作のページゲート。requireAppRead の直後に置く:
+ *   const denied = await requireElevation("personal_data.activity_search");
+ *   if (denied) return denied;
+ *
+ * **ここは意図的に「使う」側（useElevation）を呼ぶ。** 画面を開くこと自体が
+ * その特権操作だからで（横断検索・履歴の閲覧）、開いた時点で持ち時間が動き
+ * はじめるのが正しい。ボタンの活性を描くだけの場面は peekElevation を使うこと
+ * — あちらは決して時計を動かさない。
+ */
+export async function requireElevation(
+  operationKey: string,
+): Promise<ReactNode | null> {
+  const op = findOperation(operationKey);
+  if (!op)
+    throw new Error(`requireElevation: unknown operation ${operationKey}`);
+  const gate = await useElevation(operationKey);
+  if (gate.ok) return null;
+  return (
+    <AccessDenied
+      breadcrumbs={["システム", op.label.ja]}
+      message={gate.error}
+      title={op.label.ja}
     />
   );
 }
