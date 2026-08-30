@@ -14,13 +14,12 @@
  * だけで、中身（`Tabs.List` / `Tabs.Tab` / `Tabs.Panel`）は一切変えない。
  * ドロップダウンの中身は `Tabs.List` の子（`Tabs.Tab`）から読み取る。
  *
- * 測り方: `Tabs.List` は常に 1 つだけ描く（複製すると id が重なる）。
- *   横並びのとき … 流れの中にあるので `scrollWidth`（＝折り返さない自然な幅）
- *   畳んだとき   … `position:absolute; width:max-content` で見えない場所に置き、
- *                  `offsetWidth` を読む
- * どちらも「本来必要な幅」なので、畳んだあとで広くなったら戻せる。
- * 見えないまま残すのは測るためだけではない — `Tabs.Panel` の
- * `aria-labelledby` が指す先（タブの id）を消さないため。
+ * 測り方: `Tabs.List` は常に 1 つだけ描き（複製すると id が重なる）、その
+ * `scrollWidth`（＝折り返さないときに必要な幅）を親の幅と比べる。畳んだあとは
+ * `position:absolute; width:max-content` で見えない場所に置くので、同じ読み方で
+ * 「本来必要な幅」が取れる ⇒ 広くなったら横並びへ戻せる。見えないまま残すのは
+ * 測るためだけではない — `Tabs.Panel` の `aria-labelledby` が指す先（タブの id）
+ * を消さないため。
  */
 
 import { Button, Menu, Tabs, type TabsProps } from "@mantine/core";
@@ -121,13 +120,19 @@ export function AppTabs({
     if (!container || items.length === 0) return;
 
     const measure = () => {
-      const wrap = listRef.current;
-      if (!wrap) return;
-      const avail = container.clientWidth;
-      // 畳んでいるときは width:max-content なので offsetWidth が自然な幅。
-      // 横並びのときは overflow:hidden なので scrollWidth が自然な幅。
-      const needed = collapsed ? wrap.offsetWidth : wrap.scrollWidth;
-      const next = nextTabsCollapsed(collapsed, needed, avail);
+      // **タブ列そのもの**を測る。包んでいる div ではない — 中の列は
+      // overflow:hidden なので親の div ははみ出さず、幅が常に同じに見える
+      // （これで畳まれない不具合を出した）。
+      const list =
+        listRef.current?.querySelector<HTMLElement>('[role="tablist"]');
+      if (!list) return;
+      // scrollWidth は「折り返さないときに必要な幅」。横並び（overflow:hidden）
+      // でも、畳んだあと（width:max-content の中）でも同じ意味になる。
+      const next = nextTabsCollapsed(
+        collapsed,
+        list.scrollWidth,
+        container.clientWidth,
+      );
       if (next !== null) setCollapsed(next);
     };
 
