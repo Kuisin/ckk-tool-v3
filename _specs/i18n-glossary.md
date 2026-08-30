@@ -554,6 +554,9 @@ DB データは**訳す対象ではないが、入れ物の作り方は決めて
 | 該当なし | No results | 无匹配结果 | |
 | 読み込み中 / 検索中… | Loading / Searching… | 加载中 / 搜索中… | |
 | 日付を選択 / すべて | Pick a date / All | 选择日期 / 全部 | |
+| 文字の大きさ / 文字を太くする | Text size / Bold text | 文字大小 / 加粗文字 | 表示設定（本人のみ・Web だけ） |
+| 最小 / 小 / 標準 / 大 / 最大 | Smallest / Small / Default / Large / Largest | 最小 / 小 / 标准 / 大 / 最大 | 文字の大きさの 5 段。真ん中が従来の大きさ |
+| プレビュー | Preview | 预览 | 保存前の見え方（表示設定） |
 | まとめて送る | Digest | 合并发送 | 通知メール（SY0F） |
 | 送る間隔 / 猶予（分） | Send interval / Grace period (min) | 发送间隔 / 宽限（分钟） | 通知メール（SY0F） |
 | 1通の件数 / 最大件数 | Items per email / Max items | 每封件数 / 最多件数 | 通知メール（SY0F） |

@@ -12,6 +12,9 @@
  *     タブレットでも同じ言語になる。
  *   - 不正値は必ず既定へ倒す（normalize）。表示設定が壊れて画面が落ちるより、
  *     既定で表示できるほうがよい。
+ *   - 文字の大きさ・太さは **CSS 変数 1 組**で表す（displayRootCss）。段の名前
+ *     だけを DB に持ち、倍率はここが決める — 刻みを直しても保存済みの行を
+ *     書き換えずに済む。
  */
 
 import { type Locale, normalizeLocale } from "./i18n";
@@ -28,12 +31,55 @@ export type DateFormat = (typeof DATE_FORMATS)[number];
 export const TIME_FORMATS = ["24h", "12h"] as const;
 export type TimeFormat = (typeof TIME_FORMATS)[number];
 
+/**
+ * 文字の大きさ（5 段・真ん中 "md" が従来の大きさ）。
+ * DB には段の名前だけを持つ（倍率は下の TEXT_SCALE_FACTORS が唯一の定義）。
+ */
+export const TEXT_SCALES = ["xs", "sm", "md", "lg", "xl"] as const;
+export type TextScale = (typeof TEXT_SCALES)[number];
+
+/**
+ * 段ごとの倍率（html の font-size に掛ける）。rem 基準を動かすので、文字だけ
+ * でなく余白・行の高さ・部品の高さも一緒に伸び縮みする（iOS の文字サイズと
+ * 同じ挙動。文字だけ大きくすると、高さが固定の部品から文字がはみ出す）。
+ *
+ * 下げ幅（-6.25% / -12.5%）より上げ幅（+12.5% / +25%）を大きく取っている。
+ * 小さくしたい人は「少し詰めたい」だけだが、大きくしたい人は「読めない」の
+ * ほうを直したいので、必要な振れ幅が違う。
+ *
+ * メディアクエリの境界（Mantine / Tailwind とも em・rem 指定）はブラウザ既定の
+ * 文字サイズを基準に評価されるため、ここを動かしても**折り返し幅は変わらない**。
+ */
+export const TEXT_SCALE_FACTORS: Record<TextScale, number> = {
+  xs: 0.875,
+  sm: 0.9375,
+  md: 1,
+  lg: 1.125,
+  xl: 1.25,
+};
+
+/**
+ * 太字テキスト時の本文の太さ。400 → 500 の 1 段だけ上げる。
+ *
+ * 2 段（600）上げないのは、この画面群が `fw={500}` を「少し強調」として
+ * 各所で**インライン指定**しているため — 本文を 600 にすると、強調のほうが
+ * 細く見える逆転が起きる。500 なら強調と同じ太さで並ぶだけで反転しない。
+ * 併せて Mantine の medium（600 → 700）も 1 段上げ、強調は本文より太いまま
+ * にしている。
+ */
+const BOLD_TEXT_WEIGHTS = { regular: 500, medium: 700 } as const;
+const NORMAL_TEXT_WEIGHTS = { regular: 400, medium: 600 } as const;
+
 export interface DisplayPreferences {
   locale: Locale;
   dateFormat: DateFormat;
   timeFormat: TimeFormat;
   /** IANA タイムゾーン名（例 "Asia/Tokyo"）。 */
   timeZone: string;
+  /** 文字の大きさ（5 段。既定 "md" = 従来どおり）。 */
+  textScale: TextScale;
+  /** 本文の文字を太くする。 */
+  boldText: boolean;
 }
 
 /**
@@ -45,6 +91,8 @@ export const DEFAULT_PREFERENCES: DisplayPreferences = {
   dateFormat: "YYYY/MM/DD",
   timeFormat: "24h",
   timeZone: "Asia/Tokyo",
+  textScale: "md",
+  boldText: false,
 };
 
 /**
@@ -95,12 +143,20 @@ function normalizeTimeFormat(value: string | null | undefined): TimeFormat {
     : DEFAULT_PREFERENCES.timeFormat;
 }
 
+function normalizeTextScale(value: string | null | undefined): TextScale {
+  return (TEXT_SCALES as readonly string[]).includes(value ?? "")
+    ? (value as TextScale)
+    : DEFAULT_PREFERENCES.textScale;
+}
+
 /** DB 行など未検証の値から表示設定を作る（各項目ごとに既定へ倒す）。 */
 export function normalizePreferences(raw: {
   locale?: string | null;
   dateFormat?: string | null;
   timeFormat?: string | null;
   timeZone?: string | null;
+  textScale?: string | null;
+  boldText?: boolean | null;
 }): DisplayPreferences {
   return {
     locale: normalizeLocale(raw.locale),
@@ -109,7 +165,43 @@ export function normalizePreferences(raw: {
     timeZone: isValidTimeZone(raw.timeZone)
       ? (raw.timeZone as string)
       : DEFAULT_PREFERENCES.timeZone,
+    textScale: normalizeTextScale(raw.textScale),
+    boldText: raw.boldText === true,
   };
+}
+
+/**
+ * 文字の大きさ・太さを表す CSS 変数一式。
+ *
+ * 実際の適用先（html の font-size / body の font-weight / Mantine の太さ変数）は
+ * globals.css §2 が持ち、ここは値だけを配る。設定画面が「保存前の見た目」を
+ * 出すときも同じ変数を html へ直接載せるので、**適用の仕方が 1 通り**に保たれる。
+ */
+export function displayCssVariables(
+  prefs: DisplayPreferences,
+): Record<string, string> {
+  const weights = prefs.boldText ? BOLD_TEXT_WEIGHTS : NORMAL_TEXT_WEIGHTS;
+  return {
+    "--app-text-scale": String(TEXT_SCALE_FACTORS[prefs.textScale]),
+    "--app-font-weight-regular": String(weights.regular),
+    "--app-font-weight-medium": String(weights.medium),
+  };
+}
+
+/**
+ * 上の変数を :root へ流し込む CSS 文字列（サーバーで `<style>` に入れる）。
+ *
+ * クライアントで当てると、最初の描画だけ既定の大きさで出てから切り替わる
+ * （文字がひと呼吸おいて跳ねる）。SSR で流し込めばその瞬間が無い。
+ *
+ * 値は列挙から作った数値だけなので、`<`・`>`・`&`・引用符は入り得ない
+ * （`<style>` の中身は生テキストで、React がエスケープすると壊れる）。
+ */
+export function displayRootCss(prefs: DisplayPreferences): string {
+  const body = Object.entries(displayCssVariables(prefs))
+    .map(([key, value]) => `${key}:${value}`)
+    .join(";");
+  return `:root{${body}}`;
 }
 
 /** 設定画面の選択肢ラベル（日付は実例で見せる — 2026-03-05 で固定）。 */

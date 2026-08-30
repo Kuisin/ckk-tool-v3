@@ -15,8 +15,11 @@ import {
   DATE_FORMATS,
   DEFAULT_PREFERENCES,
   dateFormatExample,
+  displayRootCss,
   isValidTimeZone,
   normalizePreferences,
+  TEXT_SCALE_FACTORS,
+  TEXT_SCALES,
 } from "./user-preferences-core";
 
 describe("normalizePreferences", () => {
@@ -27,12 +30,16 @@ describe("normalizePreferences", () => {
         dateFormat: "DD/MM/YYYY",
         timeFormat: "12h",
         timeZone: "Europe/London",
+        textScale: "lg",
+        boldText: true,
       }),
     ).toEqual({
       locale: "en",
       dateFormat: "DD/MM/YYYY",
       timeFormat: "12h",
       timeZone: "Europe/London",
+      textScale: "lg",
+      boldText: true,
     });
   });
 
@@ -43,6 +50,8 @@ describe("normalizePreferences", () => {
         dateFormat: "YYYY年MM月",
         timeFormat: "36h",
         timeZone: "Mars/Olympus",
+        textScale: "huge",
+        boldText: null,
       }),
     ).toEqual(DEFAULT_PREFERENCES);
     expect(normalizePreferences({})).toEqual(DEFAULT_PREFERENCES);
@@ -52,6 +61,8 @@ describe("normalizePreferences", () => {
         dateFormat: null,
         timeFormat: null,
         timeZone: null,
+        textScale: null,
+        boldText: null,
       }),
     ).toEqual(DEFAULT_PREFERENCES);
   });
@@ -69,16 +80,72 @@ describe("normalizePreferences", () => {
       dateFormat: DEFAULT_PREFERENCES.dateFormat,
       timeFormat: "12h",
       timeZone: "Asia/Shanghai",
+      textScale: DEFAULT_PREFERENCES.textScale,
+      boldText: false,
     });
   });
 
-  it("既定は従来の挙動（日本語 / JST / yyyy/MM/dd / 24h）", () => {
+  it("既定は従来の挙動（日本語 / JST / yyyy/MM/dd / 24h / 標準の大きさ）", () => {
     expect(DEFAULT_PREFERENCES).toEqual({
       locale: "ja",
       dateFormat: "YYYY/MM/DD",
       timeFormat: "24h",
       timeZone: "Asia/Tokyo",
+      textScale: "md",
+      boldText: false,
     });
+  });
+});
+
+describe("文字の大きさ", () => {
+  it("段は 5 つで、真ん中が従来の大きさ（倍率 1）", () => {
+    expect(TEXT_SCALES).toHaveLength(5);
+    expect(TEXT_SCALES[2]).toBe(DEFAULT_PREFERENCES.textScale);
+    expect(TEXT_SCALE_FACTORS[DEFAULT_PREFERENCES.textScale]).toBe(1);
+  });
+
+  it("小さいほうから大きいほうへ単調に増える", () => {
+    const factors = TEXT_SCALES.map((s) => TEXT_SCALE_FACTORS[s]);
+    expect(factors).toEqual([...factors].sort((a, b) => a - b));
+    expect(new Set(factors).size).toBe(factors.length);
+  });
+});
+
+describe("displayRootCss", () => {
+  it("既定では従来と同じ値（倍率 1・太さ 400/600）を出す", () => {
+    expect(displayRootCss(DEFAULT_PREFERENCES)).toBe(
+      ":root{--app-text-scale:1;--app-font-weight-regular:400;--app-font-weight-medium:600}",
+    );
+  });
+
+  it("太字は本文と medium を 1 段ずつ上げる（逆転させない）", () => {
+    const css = displayRootCss({ ...DEFAULT_PREFERENCES, boldText: true });
+    expect(css).toContain("--app-font-weight-regular:500");
+    expect(css).toContain("--app-font-weight-medium:700");
+  });
+
+  it("大きさは段の倍率をそのまま渡す", () => {
+    expect(
+      displayRootCss({ ...DEFAULT_PREFERENCES, textScale: "xl" }),
+    ).toContain(`--app-text-scale:${TEXT_SCALE_FACTORS.xl}`);
+  });
+
+  /**
+   * `<style>` の中身は生テキストなので、React にエスケープされる文字が
+   * 混ざると CSS ごと壊れる（&gt; がそのまま残る）。値が列挙由来の数値
+   * だけであることを、段の全組み合わせで確かめておく。
+   */
+  it("エスケープ対象の文字（< > & 引用符）を含まない", () => {
+    for (const textScale of TEXT_SCALES) {
+      for (const boldText of [false, true]) {
+        const css = displayRootCss({
+          ...DEFAULT_PREFERENCES,
+          boldText,
+          textScale,
+        });
+        expect(css, `${textScale}/${boldText}`).not.toMatch(/[<>&"']/);
+      }
+    }
   });
 });
 

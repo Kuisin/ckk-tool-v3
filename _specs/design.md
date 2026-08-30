@@ -65,6 +65,21 @@ fontFamily: "'Noto Sans JP', system-ui, -apple-system, sans-serif"
 
 **Monospace** — apply `ff="mono"` to all document numbers (QOT-/ORD-/DRN-/INV- etc.) and operation codes.
 
+**文字の大きさ・太さは利用者が選ぶ（表示設定 `/profile/preferences`）。** 5 段の
+うち真ん中が上の表の大きさで、`html` の `font-size` を倍率で動かす（0.875 /
+0.9375 / 1 / 1.125 / 1.25）。rem 基準ごと動くので、文字だけでなく余白・部品の
+高さも一緒に伸びる。「文字を太くする」は本文の太さを 1 段上げる（400→500 /
+Mantine の medium 600→700）。設計上の含意:
+
+- **px で寸法を書かない。** Mantine の値（`size` / `gap` / `p`）か rem を使う。
+  px で書いた高さの中に伸びた文字が入らなくなる。
+- **折り返し幅（`sm` 768px / `lg` 1024px）は動かない** — メディアクエリの
+  `em` / `rem` はブラウザ既定の文字サイズで評価される。「文字が大きくて入らない」
+  を CSS で表したいときは**コンテナクエリ**（そこでの `rem` はルートの文字
+  サイズで評価される）。ヘッダーの操作コード入力がこの方法で引っ込む。
+- **横並びが詰まる場所は、縮む側に `min-width: 0` を置く**（flex の既定
+  `min-width: auto` は中身より小さくなることを許さず、重なって描かれる）。
+
 ### 1.3 Spacing
 
 Based on Mantine's 4px grid. Props: `gap`, `p`, `px`, `py`, `m`, `mx`, `my`.
@@ -180,6 +195,10 @@ AppShell.Header
     │   └── Popover.Dropdown (width=544, position="bottom-start", shadow="md", trapFocus)
     │       └── AppLauncher (see §5)
     ├── CENTER: OperationCodeJump (compact mode) — search input (see §6)
+    │   ヘッダーの幅が足りないとき（携帯の幅・文字を大きくしたとき）は
+    │   コンテナクエリで隠す（`.app-header-code-jump`）。同じ検索は
+    │   AppLauncher の中にもあるので行き先は失われない。アプリ名は
+    │   truncate で詰める（重ねて描かない）。
     └── RIGHT: Group (gap="xs")
         ├── Popover (notifications, width=320, position="bottom-end")
         │   ├── Popover.Target → ActionIcon
