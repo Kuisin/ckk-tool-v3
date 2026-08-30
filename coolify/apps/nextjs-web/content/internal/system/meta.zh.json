@@ -5,6 +5,7 @@
     "app-management",
     "file-management",
     "activity-log",
+    "order-intake",
     "kiosk-cards",
     "kiosk-devices",
     "kiosk-device-setup"

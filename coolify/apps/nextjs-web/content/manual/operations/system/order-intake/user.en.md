@@ -54,8 +54,14 @@ extraction work identically for each.
 | Route | How it gets in |
 |---|---|
 | **Upload** | This screen, or "Priority intake" on the order acceptance app |
-| **Email** | Orders sent to a dedicated mailbox are picked up automatically (`intake-gateway`) and appear under "Waiting" within a few minutes |
+| **Email** | Orders sent to **order-intake@ckk-tool.co.jp** are picked up automatically (`intake-gateway`) and appear under "Waiting" within a few minutes |
 | **Fax** | Currently a manual step — someone scans the paper on the MFP and uploads it via "Priority intake". There is no automatic fax receiver |
+
+### The intake address
+
+It is **order-intake@ckk-tool.co.jp**. Ask customers to send order forms there.
+It is an **automated intake address that nobody reads** — do not use it for
+enquiries or correspondence, which would sit there unnoticed.
 
 ### Spotting a file that came from email
 
@@ -65,7 +71,7 @@ Files that arrived by email are named `mail_sender_originalname`. For example
 > ⚠️ **The sender and subject are not recorded on the order acceptance itself.**
 > That filename is the only trace — the order acceptance detail page does not
 > show it. To see the subject or body, open the mailbox directly. Messages that
-> were taken in have been moved to its "Processed" folder.
+> were taken in have been moved to its "Processed" folder (failures go to "Failed").
 
 ### Emails with several attachments
 
