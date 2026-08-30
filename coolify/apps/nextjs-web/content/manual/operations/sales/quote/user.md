@@ -26,7 +26,7 @@ screenshots: [quote-list-01, quote-new-01, quote-detail-01, quote-issue-01, quot
 
 見積書をつくるには、**そのお客様とその製品の[価格表](/manual/ja/operations/sales/price-list/user)が先に登録されている必要があります**。価格表が無いと、金額が計算できないため保存できません。
 
-まだ価格表が無いときは、先に[試算](/manual/ja/operations/sales/trial-estimate/user)で単価を計算し、[価格表](/manual/ja/operations/sales/price-list/user)に登録してください。
+まだ価格表が無いときは、先に[価格試算](/manual/ja/operations/sales/trial-estimate/user)で単価を計算し、[価格表](/manual/ja/operations/sales/price-list/user)に登録してください。
 
 ## 画面の見かた
 
@@ -68,7 +68,7 @@ screenshots: [quote-list-01, quote-new-01, quote-detail-01, quote-issue-01, quot
 
 - **明細** … 製品・本数・金額の一覧です。下に小計・消費税・合計が出ます。
 - **PDF** … 発行したあとの PDF を見たり、ダウンロードしたりできます。
-- **関連** … どの価格表・どの試算から金額が入ったかを確認できます。
+- **関連** … どの価格表・どの価格試算から金額が入ったかを確認できます。
 - **メモ** … この見積書についての社内向けメモを残せます。
 - **履歴** … いつ誰が変更したかの記録です。
 
@@ -184,7 +184,7 @@ PDF タブを開くと、できあがった見積書を見たり、ダウンロ�
 A. 見積書では金額を手入力できない仕組みです。金額はお客様ごとの[価格表](/manual/ja/operations/sales/price-list/user)から自動で入ります。値段を変えたいときは価格表を直してください。
 
 **Q.「該当する価格表がありません」と出て保存できません。**
-A. そのお客様とその製品の価格表がまだ登録されていません。先に[試算](/manual/ja/operations/sales/trial-estimate/user)で単価を出し、[価格表](/manual/ja/operations/sales/price-list/user)に登録してから、もう一度お試しください。
+A. そのお客様とその製品の価格表がまだ登録されていません。先に[価格試算](/manual/ja/operations/sales/trial-estimate/user)で単価を出し、[価格表](/manual/ja/operations/sales/price-list/user)に登録してから、もう一度お試しください。
 
 **Q. お客様を選び直したら、金額が変わりました。**
 A. 正常な動きです。金額はお客様ごとに決まっているため、お客様を変えるとそのお客様の価格表で計算し直されます。

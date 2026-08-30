@@ -26,7 +26,7 @@ screenshots: [kiosk-settings-01, kiosk-settings-apps-01, kiosk-settings-policy-0
 
 ## 打开方式
 
-点击主界面「システム」（系统）中的 **キオスク設定**（Kiosk 设置）。或者在画面上方的搜索框中输入 `SY0A`。
+点击主界面「システム」（系统）中的 **共有端末設定**（共用终端设置）。或者在画面上方的搜索框中输入 `SY0A`。
 
 ## 画面的看法
 
@@ -45,7 +45,7 @@ screenshots: [kiosk-settings-01, kiosk-settings-apps-01, kiosk-settings-policy-0
 
 ![启动器上显示的应用](../../../assets/screenshots/kiosk-settings-apps-01.png)
 
-出现「**保存しました**」（已保存）和「**キオスクのアプリ表示設定を更新しました**」（已更新 kiosk 的应用显示设置）即完成。
+出现「**保存しました**」（已保存）和「**共有端末のアプリ表示設定を更新しました**」（已更新共用终端的应用显示设置）即完成。
 
 > ⚠️ 关闭开关后，**该应用也会从拥有使用权限的人的画面上消失。** 无法用这种方式「只给一部分人看」。
 

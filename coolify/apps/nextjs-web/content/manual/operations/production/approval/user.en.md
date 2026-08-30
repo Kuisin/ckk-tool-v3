@@ -3,13 +3,13 @@ title: "Approval Management — User Manual"
 description: "An app that gathers, on one screen, only the documents that are waiting for your approval, across every type of document."
 screenshots: [approval-list-01, approval-panel-01, approval-reject-01, approval-detail-01]
 ---
-This app gathers, on one screen, only the documents that are waiting for approval, across every type of document. Think of it as your approval inbox. The operation code is `PD03`.
+This app gathers, on one screen, only the documents that are pending approval, across every type of document. Think of it as your approval inbox. The operation code is `PD03`.
 
 > ⚠️ For now this app works **only in the test environment**. The screens and the steps may change before it can be used for real work.
 
 ## What you can do with this app
 
-- You can see all the documents that are waiting for approval right now, **across every type of document**.
+- You can see all the documents that are pending approval right now, **across every type of document**.
 - Click a row and the screen for that document opens directly.
 - From there you can approve or send back.
 - Documents you have dealt with disappear from this list automatically.
@@ -37,7 +37,7 @@ These are the documents that appear in the list.
 
 ## How to read the screen
 
-When you open the app, the documents waiting for approval are listed.
+When you open the app, the documents pending approval are listed.
 
 ![Approval management list](../../../assets/screenshots/approval-list-01.png)
 
@@ -49,7 +49,7 @@ When you open the app, the documents waiting for approval are listed.
 - **備考** (notes) … any note written when the approval was requested.
 - Use the search box at the top to search by **document number, requester, or notes**. You can also narrow it down with 「**種別**」 (document type).
 - Rows with a 「**閲覧権限なし**」 (no view permission) badge are ones where you are in the approval group but do not have permission to open that document. Approval happens on the document's screen, so please ask an administrator about granting the permission.
-- When the list is empty, it shows 「**承認待ちの依頼はありません**」 (There are no requests waiting for approval).
+- When the list is empty, it shows 「**承認依頼中の依頼はありません**」 (There are no requests pending approval).
 
 ## Approving
 
@@ -108,7 +108,7 @@ Sending it back returns the work order to draft so the requester can correct and
 ## Questions and problems
 
 **Q. Nothing appears in the list.**
-A. There are no requests waiting for approval right now. Requests that have been dealt with or sent back do not appear in this list.
+A. There are no requests pending approval right now. Requests that have been dealt with or sent back do not appear in this list.
 
 **Q. The approval button does not appear.**
 A. You are not in the approval group for that stage. Please ask an administrator about being added to the approval group.

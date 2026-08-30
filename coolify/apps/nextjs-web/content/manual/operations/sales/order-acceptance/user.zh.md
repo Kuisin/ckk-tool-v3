@@ -145,7 +145,7 @@ screenshots: [order-acceptance-list-01, order-acceptance-new-01, order-acceptanc
 1. 在已确定的订单回执上，从「…」菜单选择「**キャンセル依頼**」（取消申请）。
 2. 填写**取消理由**（必填），点击「**キャンセルを依頼する**」。
 
-若[审批设定](/manual/zh/operations/masters/approval-setting/user)的「**订单回执取消**」流程设定了级别，则**审批完成前什么都不会改变**。画面上方会出现等待审批的卡片；有审批权限的人会在卡片上看到「**承認**」（批准）「**差し戻し**」（驳回）按钮（也可以在[审批管理](/manual/zh/operations/production/approval/user)列表中操作）。一个级别都没有设定时，会当场取消。
+若[审批设定](/manual/zh/operations/masters/approval-setting/user)的「**订单回执取消**」流程设定了级别，则**审批完成前什么都不会改变**。画面上方会出现审批中的卡片；有审批权限的人会在卡片上看到「**承認**」（批准）「**差し戻し**」（驳回）按钮（也可以在[审批管理](/manual/zh/operations/production/approval/user)列表中操作）。一个级别都没有设定时，会当场取消。
 
 最终批准后会自动执行以下处理：
 

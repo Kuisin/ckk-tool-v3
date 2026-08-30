@@ -26,7 +26,7 @@ You can also check the login rules for the tablets here (for example, how many h
 
 ## How to open it
 
-On the home screen, under 「システム」 (System), press **キオスク設定** (Kiosk Settings). Or type `SY0A` into the search box at the top of the screen.
+On the home screen, under 「システム」 (System), press **共有端末設定** (Shared Device Settings). Or type `SY0A` into the search box at the top of the screen.
 
 ## How to read the screen
 
@@ -45,7 +45,7 @@ The screen is split into an upper and a lower half.
 
 ![Apps shown on the launcher](../../../assets/screenshots/kiosk-settings-apps-01.png)
 
-You are done when 「**保存しました**」 (Saved) and 「**キオスクのアプリ表示設定を更新しました**」 (The kiosk app display settings have been updated) appear.
+You are done when 「**保存しました**」 (Saved) and 「**共有端末のアプリ表示設定を更新しました**」 (The shared device app display settings have been updated) appear.
 
 > ⚠️ If you turn a switch off, **the app also disappears for people who have permission to use it.** You cannot use this to show an app to only some people.
 

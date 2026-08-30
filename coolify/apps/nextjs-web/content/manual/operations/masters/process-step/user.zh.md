@@ -136,7 +136,7 @@ screenshots: [master-process-step-list-01, master-process-step-new-01, master-pr
 |------|------|--------|
 | [工序编码 / 名称](#field-code) | 必填 | 工序的管理编号与名称 |
 | [类别](#field-category) | 必填 | 材料准备・加工・检查 等区分 |
-| [实施地点](#field-execution) | 必填 | 仅社内或可委外 |
+| [实施地点](#field-execution) | 必填 | 仅厂内或可委外 |
 | [允许的作业场所](#field-allowed-locations) | 选填 | 限制该工序可使用的作业场所 |
 | [数量管理](#field-quantity-tracking) | 必填 | 该工序如何处理数量 |
 | [批次输入（默认）](#field-lot-input-mode) | 必填 | 开始时是否要求输入批次・单据编码 |
@@ -167,7 +167,7 @@ screenshots: [master-process-step-list-01, master-process-step-new-01, master-pr
 
 ### 实施地点 [#field-execution]
 
-**仅社内** 或 **社内・委外皆可**。允许委外后，可在指示书中选择外协厂商。
+**社内** 或 **社内・外注**。允许委外后，可在指示书中选择外协厂商。
 
 ### 数量管理 [#field-quantity-tracking]
 

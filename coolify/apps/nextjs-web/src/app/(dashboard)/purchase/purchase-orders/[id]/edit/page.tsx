@@ -13,7 +13,7 @@ export const dynamic = "force-dynamic";
 /**
  * 素材発注書 編集 (PU22 → edit)。
  *
- * 編集できるのは作成中（DRAFT）のみ — それ以外は詳細へリダイレクト
+ * 編集できるのは下書き（DRAFT）のみ — それ以外は詳細へリダイレクト
  * （サーバーアクション側でも同じガードを行う）。明細は保存時に全置換。
  */
 export default async function PurchasePurchaseOrdersEditPage({

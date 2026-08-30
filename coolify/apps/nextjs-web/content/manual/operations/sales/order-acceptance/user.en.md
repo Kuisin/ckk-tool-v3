@@ -26,7 +26,7 @@ Use this when an order form arrives from a customer by fax or email.
 - **明細 (line item)** … one row inside the order. It says which product and how many pieces.
 - **注文確定 (deploy)** … the action of making the order lines from an order acceptance all at once.
 - **価格差異 (price difference)** … when the unit price written on the order form differs from the price on the price list.
-- **取込中 (importing) / 下書き (draft) / 承認依頼中 (waiting for approval) / 承認済 (approved) / 確定済 (deployed) / アーカイブ (archived) / キャンセル (cancelled)** … where the order acceptance stands now.
+- **取込中 (importing) / 下書き (draft) / 承認依頼中 (pending approval) / 承認済 (approved) / 確定済 (deployed) / アーカイブ (archived) / キャンセル (cancelled)** … where the order acceptance stands now.
 
 ## Before you start
 
@@ -109,11 +109,11 @@ At the top of the screen, 「**製品**」 (products), 「**明細数 / 合計�
 1. In view mode, press「**承認依頼**」(request approval) in the card at the very top of the screen. (The button is hidden while you are editing — save first.) The button stays disabled while something is missing: the card lists what it is (for example「顧客が未特定です」— no customer —, or「明細 2 行目: 単価が未入力です」— no unit price on row 2). Fix it with「**編集**」(edit) first.
 2. If there is a price difference, a screen called「価格差異の確認」(check the price difference) appears. Check the contents and press「**差異を確認して依頼**」(confirm the difference and request).
 
-The status changes to「**承認依頼中**」(waiting for approval).
+The status changes to「**承認依頼中**」(pending approval).
 
 > 💡 How many approval steps there are and who approves is decided in the [approval settings](/manual/en/operations/masters/approval-setting/user). Depending on conditions such as the total amount, the delivery method or the assigned plant, the number and makeup of the steps can differ from document to document.
 
-![Order acceptance waiting for approval](../../../assets/screenshots/order-acceptance-detail-03.png)
+![Order acceptance pending approval](../../../assets/screenshots/order-acceptance-detail-03.png)
 
 The person who approves presses「**承認**」(approve) or「**差し戻し**」(send back) on this screen. To send it back, they enter a reason and then press「**差し戻す**」(send back). An order acceptance that is sent back returns to 「下書き」(draft), so you correct it and ask for approval again.
 
@@ -276,7 +276,7 @@ A. The product or the unit price on the row shown is empty. The same check runs 
 A. Only people in the approval group can approve or send back. The screen shows 「◯◯ のメンバーのみ承認・差し戻しできます」 with the name of that step's approval group (only members of that group can approve or send back). Please ask the person in charge.
 
 **Q. I cannot change the contents of a draft.**
-A. A draft opens read only — press「**編集**」(edit) first (top right of the screen). You can only change the contents while the status is 「下書き」(draft). You cannot change them while it is waiting for approval, approved or deployed. If you see 「下書きの注文請書のみ編集できます」(only draft order acceptances can be edited), ask for it to be sent back.
+A. A draft opens read only — press「**編集**」(edit) first (top right of the screen). You can only change the contents while the status is 「下書き」(draft). You cannot change them while it is pending approval, approved or deployed. If you see 「下書きの注文請書のみ編集できます」(only draft order acceptances can be edited), ask for it to be sent back.
 
 **Q. The import does not finish.**
 A. Reading takes about 1 to 3 minutes per file. When you choose several files, they are handled one after another, so it takes that much longer.

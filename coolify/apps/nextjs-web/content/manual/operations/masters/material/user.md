@@ -142,7 +142,7 @@ screenshots: [master-material-list-01, master-material-new-01, master-material-s
 
 ### 黒皮・研磨 [#field-surface-finish]
 
-表面の状態です。**黒皮・研磨・研磨済黒皮から選びます。** 試算では、この違いで材料単価が変わります。
+表面の状態です。**黒皮・研磨・研磨済黒皮から選びます。** 価格試算では、この違いで材料単価が変わります。
 
 ### 直径 (mm) / 全長 (mm) [#field-dimensions]
 

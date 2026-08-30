@@ -40,8 +40,8 @@ When you open the app, you see a list of the work orders made so far.
 - **指示書番号** (work order number) … a number such as `WOR-202608-00001`, in the same format as other documents (quotes, order acceptances, …), restarting from 1 each month. The lot number (a serial number such as `#9001`) is assigned separately and shown on the detail screen.
 - **種別** (type) … either 「**在庫分**」 (from stock — using stock you already have) or 「**製造分**」 (to make — making new pieces).
 - **予定数量** (planned quantity) … how many pieces you plan to make.
-- **承認状態** (approval status) … a coloured badge shows 「承認待ち」 (waiting for approval), 「承認済」 (approved) or 「差し戻し」 (sent back). Which step it is currently on is shown on the card on the detail screen.
-- **状態** (status) … one of 「下書き」 (draft), 「承認待ち」 (waiting for approval), 「承認済」 (approved), 「進行中」 (in progress), 「完了」 (finished), or 「キャンセル」 (cancelled).
+- **承認状態** (approval status) … a coloured badge shows 「承認依頼中」 (pending approval), 「承認済」 (approved) or 「差し戻し」 (sent back). Which step it is currently on is shown on the card on the detail screen.
+- **状態** (status) … one of 「下書き」 (draft), 「承認依頼中」 (pending approval), 「承認済」 (approved), 「進行中」 (in progress), 「完了」 (finished), or 「キャンセル」 (cancelled).
 - Type a work order number, a order line number, or a product name into the search box at the top to find one. You can also narrow it down with 「**種別**」 (type) and 「**状態**」 (status).
 - Click a row to open the detail screen for that work order.
 
@@ -93,7 +93,7 @@ After saving, the work order detail screen shows 「**工程ルート**」 (step
 Work cannot start on a work order until it is approved. **How many approval stages it goes through** is decided in the [approval settings](/manual/en/operations/masters/approval-setting/user), and the number of stages can differ depending on what is in the document. The card on the screen shows which stage it is currently on.
 
 1. On the work order screen, press 「**承認依頼**」 (Request approval) on the card at the very top.
-2. The status changes to 「**承認待ち**」 (waiting for approval). From this point, the original order line can no longer be edited.
+2. The status changes to 「**承認依頼中**」 (pending approval). From this point, the original order line can no longer be edited.
 3. The person approving each stage presses 「**承認**」 (Approve) in turn.
 4. Once the last stage is through, the status becomes 「**承認済**」 (approved) and the work can start.
 
@@ -220,7 +220,7 @@ You can check stock in [inventory management](/manual/en/operations/production/p
 ## Other things you can do
 
 - **編集** (edit) … only while it is 「下書き」 (draft). Press 「**編集**」 (Edit) at the top right of the screen.
-- **キャンセル** (cancel) … only while it is 「下書き」 (draft) or 「承認待ち」 (waiting for approval). Choose 「**キャンセル**」 (Cancel) from the button with three dots at the top right.
+- **キャンセル** (cancel) … only while it is 「下書き」 (draft) or 「承認依頼中」 (pending approval). Choose 「**キャンセル**」 (Cancel) from the button with three dots at the top right.
 - **コピー** (copy) … choose 「**コピー**」 (Copy) from the button with three dots at the top right, then choose the order line to use. You get a draft that keeps the steps, the places where they are done, and the inspection sheets. Where it was copied from stays on the detail screen as 「**コピー元**」 (copied from). If there is a newer version than the one you copied, a note suggests copying the latest version.
 - **ストリップ印刷** (strip print) … choose 「**ストリップ印刷**」 (Strip print) from the button with three dots at the top right to print strips with the key points of the work order and a QR code (6 strips on a plain A4 sheet). You can stick them on the pieces or the boxes.
 - The tabs on the detail screen are 「**概要**」 (overview — steps and notes), 「**関連**」 (related — the original order line and where it was copied from), and 「**履歴**」 (history — who changed what and when).

@@ -11,7 +11,7 @@ This app is for making a **購買依頼** (purchase request) — a way of asking
 
 - You can ask for a material by writing only "what, where to, how many, and by when".
 - **You do not write prices or suppliers.** The person who places the order decides those after the request is approved.
-- You can check whether your request is still waiting for approval or already approved.
+- You can check whether your request is still pending approval or already approved.
 - With one button, an approved request becomes a [material purchase order](/manual/en/operations/purchasing/purchase-order/user).
 - Use it when a material is running low and you want to buy more.
 
@@ -35,7 +35,7 @@ This app is for making a **購買依頼** (purchase request) — a way of asking
 A purchase request moves along in this order. The coloured badge on the screen tells you where it is now.
 
 1. **下書き** (draft) … you have only created it. You can change it as often as you like.
-2. **承認依頼中** (waiting for approval) … you are waiting for your manager's answer. You cannot change it during this time.
+2. **承認依頼中** (pending approval) … you are waiting for your manager's answer. You cannot change it during this time.
 3. **承認済** (approved) … it was accepted. It can now become a purchase order.
 4. **発注済** (ordered) … it has become a purchase order. From here the work continues in [material purchase order](/manual/en/operations/purchasing/purchase-order/user).
 
@@ -48,10 +48,10 @@ When you open the app, you see a list of the purchase requests made so far.
 ![Purchase request list](../../../assets/screenshots/purchase-request-list-01.png)
 
 - **依頼番号** (request number) … a number starting with `PRQ-`. The system adds it for you.
-- **状態** (status) … a coloured badge shows the current situation. Grey is 「下書き」 (draft), yellow is 「承認依頼中」 (waiting for approval), blue is 「承認済」 (approved), purple is 「発注済」 (ordered), and red is 「差し戻し」 (sent back) or 「キャンセル」 (cancelled).
+- **状態** (status) … a coloured badge shows the current situation. Grey is 「下書き」 (draft), yellow is 「承認依頼中」 (pending approval), blue is 「承認済」 (approved), purple is 「発注済」 (ordered), and red is 「差し戻し」 (sent back) or 「キャンセル」 (cancelled).
 - **主要素材** (main material) … the material on the first line. If there are more lines, it adds something like 「他 2 件」 (2 more).
 - Type a request number, a requester, or a material code into the search box at the top to narrow down the list.
-- The 「状態」 (status) box on the right lets you show only the ones waiting for approval.
+- The 「状態」 (status) box on the right lets you show only the ones pending approval.
 - Click a row to open the detail screen for that request.
 
 ## Creating a purchase request
@@ -79,11 +79,11 @@ Once you have checked the content, ask your manager to look at it.
 1. Open the request screen.
 2. Press 「**承認依頼**」 (Request approval) on the 「**承認依頼が必要です**」 (approval request needed) card near the top of the screen.
 
-The status changes to 「**承認依頼中**」 (waiting for approval), and the request reaches the person who approves it. The same request also appears on the [approval management](/manual/en/operations/production/approval/user) screen.
+The status changes to 「**承認依頼中**」 (pending approval), and the request reaches the person who approves it. The same request also appears on the [approval management](/manual/en/operations/production/approval/user) screen.
 
-![Purchase request waiting for approval](../../../assets/screenshots/purchase-request-detail-02.png)
+![Purchase request pending approval](../../../assets/screenshots/purchase-request-detail-02.png)
 
-While it is waiting for approval, you cannot change the content. If you need to change it, either press 「**キャンセル**」 (Cancel) from the 「**…**」 button (the one with three dots) and make it again, or ask your manager to send it back to you.
+While it is pending approval, you cannot change the content. If you need to change it, either press 「**キャンセル**」 (Cancel) from the 「**…**」 button (the one with three dots) and make it again, or ask your manager to send it back to you.
 
 ## Approving or sending back (for the approver)
 
@@ -178,7 +178,7 @@ Notes for that material only, such as asking for the same lot as last time.
 A. Only people in that step's approval group (or a stand-in for them) can approve. Instead of the buttons, the screen shows 「**◯◯ のメンバーのみ承認・差し戻しできます**」 with the group name (Only members of that group can approve or send back).
 
 **Q. The 「編集」 (Edit) button does not appear.**
-A. You can only change a request while it is 「下書き」 (draft) or 「差し戻し」 (sent back). You cannot change it while it is waiting for approval, approved, or ordered. If you try anyway, the screen shows 「**下書き・差し戻しの購買依頼のみ編集できます**」 (Only draft or sent-back purchase requests can be edited).
+A. You can only change a request while it is 「下書き」 (draft) or 「差し戻し」 (sent back). You cannot change it while it is pending approval, approved, or ordered. If you try anyway, the screen shows 「**下書き・差し戻しの購買依頼のみ編集できます**」 (Only draft or sent-back purchase requests can be edited).
 
 **Q. I see 「明細を1件以上追加してください」 (Please add at least one line item) and cannot save.**
 A. There is no material line at all. Choose a material in 「素材」 and press 「保存」 (Save) again.
@@ -187,7 +187,7 @@ A. There is no material line at all. Choose a material in 「素材」 and press
 A. The 「素材」 (material) box on the line item is empty. Click the box, search by material code or name, and choose from the list. Just typing the text does not count as choosing.
 
 **Q. I want to withdraw a request.**
-A. Before it becomes a purchase order (draft, waiting for approval, approved, or sent back), you can choose 「**キャンセル**」 (Cancel) from the 「**…**」 button at the top right of the screen. You must enter a reason. After it has become a purchase order, it cannot be withdrawn.
+A. Before it becomes a purchase order (draft, pending approval, approved, or sent back), you can choose 「**キャンセル**」 (Cancel) from the 「**…**」 button at the top right of the screen. You must enter a reason. After it has become a purchase order, it cannot be withdrawn.
 
 **Q. I cannot find a box for the price.**
 A. A purchase request has no price box. You enter the price after it becomes a [material purchase order](/manual/en/operations/purchasing/purchase-order/user).

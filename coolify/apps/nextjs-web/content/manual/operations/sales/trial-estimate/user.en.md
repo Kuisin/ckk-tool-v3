@@ -17,7 +17,7 @@ This is the first app you use when you decide the price of a new product.
 
 ## Words used on this page
 
-- **試算 (trial estimate)** … one record of "how much do we sell this product for", worked out from the cost.
+- **価格試算 (trial estimate)** … one record of "how much do we sell this product for", worked out from the cost.
 - **工具種 (tool type)** … the shape class of the tool. Three are provided as standard: **丸棒 (round bar) / 円筒 (cylinder) / OH付 (with OH)**. The class you choose changes which fields you fill in. Each company can also add its own classes, so you may see four or more on the screen.
 - **材種 (material type)** … the kind of material. It is decided by the combination of maker and material grade.
 - **参照単価 (reference unit price)** … the purchase price for 1000 mm of the material. It is filled in automatically from past purchases.
@@ -36,7 +36,7 @@ When you open the app, you see a list of the estimates made so far.
 
 ![Trial estimate list screen](../../../assets/screenshots/trial-estimate-list-01.png)
 
-- **試算番号 (estimate number)** … a number starting with `EST-`. It is added automatically when you save.
+- **価格試算番号 (estimate number)** … a number starting with `EST-`. It is added automatically when you save.
 - **状態 (status)** … a colored badge shows where the estimate stands. Gray is 「下書き」(draft), blue is 「確定」(confirmed), green is 「価格表登録済」(used in a price list).
 - **カスタム (custom)** … an estimate with an orange badge is one where the material price was typed in by hand.
 - Type an estimate number, a name, or a customer name in the search box at the top to narrow down the list. You can also narrow it down with「状態」(status) and「工具種」(tool type) on the right.
@@ -55,12 +55,12 @@ When you open the app, you see a list of the estimates made so far.
 9. In the「**コート・処理**」(coating and treatment) area, choose「**コート**」(coating),「**ラップ処理**」(lapping) and「**検査成績書**」(inspection certificate).
 10. If there is LD machining, turn on「**LD加工あり**」(has LD machining) and enter the position, outer diameter and blade length.
 11. Check「**基準数量（本）**」(base quantity in pieces). It starts at 100 pieces.
-12. Finally enter a name in「**試算名**」(estimate name). This one is required.
+12. Finally enter a name in「**価格試算名**」(estimate name). This one is required.
 13. Press「**保存**」(save) at the top right of the screen.
 
 ![New trial estimate form](../../../assets/screenshots/trial-estimate-new-01.png)
 
-Every time you enter something,「**試算結果**」(estimate result) near the bottom of the screen is worked out again on the spot.
+Every time you enter something,「**価格試算結果**」(estimate result) near the bottom of the screen is worked out again on the spot.
 
 ![Estimate result (cost breakdown and quoted unit price)](../../../assets/screenshots/trial-estimate-new-02.png)
 
@@ -104,7 +104,7 @@ The screen of a saved estimate has five tabs.
 
 ![Trial estimate detail screen](../../../assets/screenshots/trial-estimate-detail-01.png)
 
-- **試算結果 (estimate result)** … the quoted unit price and the cost breakdown. The prices from the time you saved stay as they are.
+- **価格試算結果 (estimate result)** … the quoted unit price and the cost breakdown. The prices from the time you saved stay as they are.
 - **素材価格推移 (material price history)** … a graph of how the purchase price of that material changed over time.
 - **関連 (related)** … the list of price lists that use this estimate.
 - **コメント (comments)** … a thread where you can post exchanges about this estimate.
@@ -117,11 +117,11 @@ The screen of a saved estimate has five tabs.
 When you want to calculate again with only small changes, copy it instead of making it again from scratch.
 
 1. Open the estimate you want to start from.
-2. From「**…**」at the top right, press「**複製して再試算**」(copy and re-estimate).
+2. From「**…**」at the top right, press「**複製して再価格試算**」(copy and re-estimate).
 3. A new input screen opens with the same contents. Change only what you need.
 4. Press「**保存**」(save).
 
-「（再試算）」(re-estimate) is added to the estimate name automatically, and a new number is given. You can do the same from「**…**」on a row in the list.
+「（再価格試算）」(re-estimate) is added to the estimate name automatically, and a new number is given. You can do the same from「**…**」on a row in the list.
 
 ## Input fields
 
@@ -228,19 +228,19 @@ How many pieces the costing assumes. **Cost per piece changes with quantity** be
 ## Questions and problems
 
 **Q. I cannot edit a saved estimate.**
-A. An estimate keeps the prices from the moment it was saved as a record, so it cannot be changed afterwards. Use「**複製して再試算**」(copy and re-estimate) to make a new one.
+A. An estimate keeps the prices from the moment it was saved as a record, so it cannot be changed afterwards. Use「**複製して再価格試算**」(copy and re-estimate) to make a new one.
 
-**Q. It says「試算名を入力してください」(please enter an estimate name) and I cannot save.**
-A. The estimate name is required. Enter a name that will be easy to find later in「試算名」(estimate name) at the very bottom of the screen.
+**Q. It says「価格試算名を入力してください」(please enter an estimate name) and I cannot save.**
+A. The estimate name is required. Enter a name that will be easy to find later in「価格試算名」(estimate name) at the very bottom of the screen.
 
 **Q. I cannot choose this estimate when I make a price list.**
 A. Only **estimates that have a product set and whose status is 確定 (confirmed)** can be chosen in a price list. On the estimate screen, use「**…**」to do「製品にリンク」(link to a product), then「確定」(confirm), in that order.
 
-**Q. It says「下書きの試算のみ確定できます」(only draft estimates can be confirmed).**
+**Q. It says「下書きの価格試算のみ確定できます」(only draft estimates can be confirmed).**
 A. That estimate is already confirmed, or already used in a price list. You do not need to confirm it again.
 
-**Q. It says「価格表で使用済みの試算は製品リンクを変更できません」(the product link cannot be changed on an estimate already used in a price list).**
-A. An estimate used in a price list (status 「価格表登録済」) cannot be changed. To calculate for a different product, make a new one with「複製して再試算」(copy and re-estimate).
+**Q. It says「価格表で使用済みの価格試算は製品リンクを変更できません」(the product link cannot be changed on an estimate already used in a price list).**
+A. An estimate used in a price list (status 「価格表登録済」) cannot be changed. To calculate for a different product, make a new one with「複製して再価格試算」(copy and re-estimate).
 
 **Q. The reference unit price shows「既定価格」(default price). The amount looks different from the real one.**
 A. There are no purchase records for that material yet, so the standard price registered on the material type is used. If you know the real price, enter it with「**単価を編集**」(edit unit price).

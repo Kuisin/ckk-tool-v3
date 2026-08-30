@@ -41,7 +41,7 @@ When you open the app, the registered price lists are shown as a list. One row i
 - **段階 (tiers)** … how many quantity breaks there are.
 - **単価 (unit price)** … the range from the cheapest price to the most expensive one.
 - **値引き (discount)** … the number on the pink badge is how many discount rules can be used.
-- **試算元 (source estimate)** … which estimate the price was taken from. 「手動」(manual) means it was typed in by hand.
+- **価格試算元 (source estimate)** … which estimate the price was taken from. 「手動」(manual) means it was typed in by hand.
 - **状態 (status)** … 「有効」(active) or 「無効」(inactive) shows whether it can be used.
 - Click a row to open the detail screen.
 
@@ -51,7 +51,7 @@ When you open the app, the registered price lists are shown as a list. One row i
 2. Click the「**顧客**」(customer) field and choose the customer.
 3. Click the「**製品**」(product) field and choose the product.
 4. Choose a class in「**注文種別**」(order type). It starts at 「本番」(production).
-5. Click the「**価格ソース（試算）**」(price source, estimate) field and choose the estimate to base the price on. The amount then fills in automatically in「**基準単価**」(base unit price).
+5. Click the「**価格ソース（価格試算）**」(price source, estimate) field and choose the estimate to base the price on. The amount then fills in automatically in「**基準単価**」(base unit price).
 6. Choose「**有効開始日**」(valid from).
 7. For テスト (test) and サンプル (sample), you must also choose「**有効終了日**」(valid until).
 8. In the quantity table, enter「**最小数量**」(minimum quantity),「**最大数量**」(maximum quantity) and「**倍率**」(multiplier).
@@ -65,7 +65,7 @@ When you enter a multiplier, the amount appears on the spot in「**自動計算�
 
 > 💡 Set the quantity breaks like this: "1–49 pieces at multiplier 1.05, 50–99 at 1.00, 100 and above at 0.95". This is how you make each piece cheaper the more the customer buys.
 
-> ⚠️ If you see「この製品にリンクされた確定済みの試算はありません」(there is no confirmed estimate linked to this product), no estimate for that product has been confirmed yet. If you want to use an estimate, first set the product on the [trial estimate](/manual/en/operations/sales/trial-estimate/user) and confirm it. If you do not want to use an estimate, tick「**カスタム単価を使用**」(use a custom price) and type the base unit price in by hand.
+> ⚠️ If you see「この製品にリンクされた確定済みの価格試算はありません」(there is no confirmed estimate linked to this product), no estimate for that product has been confirmed yet. If you want to use an estimate, first set the product on the [trial estimate](/manual/en/operations/sales/trial-estimate/user) and confirm it. If you do not want to use an estimate, tick「**カスタム単価を使用**」(use a custom price) and type the base unit price in by hand.
 
 ## Looking at what you registered
 

@@ -98,7 +98,7 @@ export const PURCHASE_HISTORY_ACTION_LABEL: Record<string, string> = {
   CANCEL: "キャンセル",
 };
 
-/** 編集可能か — 作成中（DRAFT）のみ。 */
+/** 編集可能か — 下書き（DRAFT）のみ。 */
 export function isEditable(o: Pick<PurchaseOrderView, "status">) {
   return o.status === "DRAFT";
 }

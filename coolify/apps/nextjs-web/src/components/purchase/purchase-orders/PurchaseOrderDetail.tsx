@@ -167,7 +167,7 @@ export function PurchaseOrderDetail({
     {
       key: "requested",
       label: "依頼",
-      description: po.requestedAt ? fmt.date(po.requestedAt) : "作成中",
+      description: po.requestedAt ? fmt.date(po.requestedAt) : "下書き",
       loading: po.status === "DRAFT",
     },
     approvalStage(approval, {

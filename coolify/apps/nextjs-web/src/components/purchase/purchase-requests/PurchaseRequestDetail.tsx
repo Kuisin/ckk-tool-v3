@@ -198,7 +198,7 @@ export function PurchaseRequestDetail({
     {
       key: "requested",
       label: "依頼",
-      description: rq.requestedAt ? fmt.date(rq.requestedAt) : "作成中",
+      description: rq.requestedAt ? fmt.date(rq.requestedAt) : "下書き",
       // 差し戻し中は赤（_specs/design.md §9 REJECTED = red）。
       color: rq.status === "REJECTED" ? "red" : undefined,
       loading: rq.status === "DRAFT",

@@ -295,7 +295,7 @@ export function DesignRequestDetail({
       label: "依頼",
       description: request.requestedAt
         ? fmt.date(request.requestedAt)
-        : "作成中",
+        : "下書き",
       // 差し戻し中は赤（_specs/design.md §9 REJECTED = red）。
       color: request.status === "REJECTED" ? "red" : undefined,
       loading: request.status === "DRAFT",
