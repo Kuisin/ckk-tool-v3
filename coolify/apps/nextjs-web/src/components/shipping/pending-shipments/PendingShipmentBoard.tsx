@@ -365,6 +365,7 @@ export function PendingShipmentBoard({
                 </Stack>
               </Group>
             )}
+            settingsKey="unshipped"
             urlState
           />
         ) : (
@@ -398,6 +399,7 @@ export function PendingShipmentBoard({
                 </Stack>
               </Group>
             )}
+            settingsKey="open"
             urlState
           />
         )}

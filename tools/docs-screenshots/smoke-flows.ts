@@ -7,6 +7,8 @@
  *   1. AppTabs — 幅に収まらないときだけドロップダウンへ畳み、広げると戻る
  *   2. 承認・予定 (CM01) のタブ表示設定（個人ごと）
  *   3. 申請・報告フォームの完了通知（共有設定 → 提出 → CM01 → 既読）
+ *   4. 個人の表示設定が **DB に入っていて端末をまたぐ**こと（別ブラウザ
+ *      コンテキスト＝別端末で開き直して確かめる）
  *
  * 落ちたときに原因を追えるよう、check() には**実測値**（URL・幅・ラベル）を
  * 添えること。合否だけだと「なぜ」が残らない。
@@ -289,6 +291,65 @@ async function main(): Promise<void> {
       (await card.getByText("未読").count()) === 0,
     );
   }
+
+  // ── 7. 個人の表示設定は端末をまたぐ（DB 保存であることの確認）─────────
+  //    別のブラウザコンテキスト＝ cookie も localStorage も別 ＝ 別端末。
+  //    ここで同じ設定が出れば、端末ローカルではなく DB に載っている。
+  await page.goto(`${APP}/sales/quotes`, { waitUntil: "networkidle" });
+  await page.waitForTimeout(400);
+  const beforeHeaders = await page.locator("thead th").allInnerTexts();
+  await page.getByRole("button", { name: "列の表示" }).click();
+  await page.waitForTimeout(300);
+  await page.getByRole("checkbox", { name: "合計金額" }).uncheck();
+  await page.keyboard.press("Escape");
+  await page.waitForTimeout(1200);
+  const afterHeaders = await page.locator("thead th").allInnerTexts();
+  check(
+    "一覧: 列を隠せる（見積書の合計金額）",
+    beforeHeaders.some((h) => h.includes("合計金額")) &&
+      !afterHeaders.some((h) => h.includes("合計金額")),
+    afterHeaders.join(" / "),
+  );
+
+  // 「別端末」で開き直す
+  const device2 = await browser.newContext({
+    locale: "ja-JP",
+    viewport: { width: 1440, height: 900 },
+  });
+  const page3 = await device2.newPage();
+  await login(page3, "demo1", "demo2026");
+  await page3.goto(`${APP}/sales/quotes`, { waitUntil: "networkidle" });
+  await page3.waitForTimeout(600);
+  const headers2 = await page3.locator("thead th").allInnerTexts();
+  check(
+    "別端末で開いても列の設定が効いている（DB 保存）",
+    !headers2.some((h) => h.includes("合計金額")),
+    headers2.join(" / "),
+  );
+
+  // タブの表示設定も同じく端末をまたぐ
+  await page.goto(`${APP}/general/tasks`, { waitUntil: "networkidle" });
+  await page.getByRole("button", { name: "表示するタブ" }).click();
+  await page.waitForTimeout(300);
+  await page.getByRole("checkbox", { name: "文書のコメント" }).uncheck();
+  await page.getByRole("button", { name: "保存" }).click();
+  await page.waitForTimeout(1200);
+  await page3.goto(`${APP}/general/tasks`, { waitUntil: "networkidle" });
+  await page3.waitForTimeout(600);
+  const tabs2 = await page3.locator('[role="tab"]:visible').allInnerTexts();
+  check(
+    "別端末で開いてもタブの表示設定が効いている（DB 保存）",
+    !tabs2.some((t) => t.includes("文書のコメント")),
+    tabs2.join(" / "),
+  );
+
+  // 元に戻す（この DB は使い捨てだが、続けて流したときのために）
+  await page.getByRole("button", { name: "表示するタブ" }).click();
+  await page.waitForTimeout(300);
+  await page.getByRole("checkbox", { name: "文書のコメント" }).check();
+  await page.getByRole("button", { name: "保存" }).click();
+  await page.waitForTimeout(800);
+  await device2.close();
 
   console.log("\n---- 結果 ----");
   for (const r of results) console.log(r);

@@ -1407,6 +1407,14 @@ Use `mantine-datatable` `DataTableColumn[]`. Standard conventions:
 | Boolean | `Badge` green "有効" / gray "無効" |
 | Actions | `Group` of `ActionIcon` — rightmost column, `accessor: 'actions'` |
 
+**「表示する列」は個人設定として DB に残る** — `hideable: true` の列を隠すと
+`app.user_view_settings`（key = `table.<画面のパス>`）に保存され、**別の端末で
+開いても同じ列が隠れている**（端末ローカルに持つと「会社の PC では直したのに
+タブレットでは戻っている」になる）。キーは画面のパスから決まり、レコード id を
+含む区切りは `*` に潰すので、詳細画面の表は 1 件ごとに設定が分かれない。
+**同じ画面に表が 2 つ以上あるときだけ** `settingsKey` を渡して区別する
+（`lib/table-settings-core.ts`）。
+
 Row click navigates to detail page.
 
 **Per-entity list columns:**

@@ -9,11 +9,17 @@ import { DashboardShell } from "@/components/layout/AppShell";
 import { NavigationGuardProvider } from "@/components/layout/NavigationGuard";
 import { PreferencesProvider } from "@/components/layout/PreferencesProvider";
 import { PwaRegister } from "@/components/layout/PwaRegister";
+import { TableSettingsProvider } from "@/components/layout/TableSettingsProvider";
 import { currentAppEnv, getDisabledAppKeys } from "@/lib/app-flags";
 import { appList } from "@/lib/app-list";
-import { getVisibleAppKeys } from "@/lib/authz";
+import { getVisibleAppKeys, sessionUserId } from "@/lib/authz";
 import { getCurrentProfile, isPasswordChangeRequired } from "@/lib/profile";
+import {
+  sanitizeHiddenColumns,
+  TABLE_SETTING_PREFIX,
+} from "@/lib/table-settings-core";
 import { getCurrentPreferences } from "@/lib/user-preferences";
+import { readViewSettings } from "@/lib/view-settings";
 
 // feature_flags はリクエスト毎に読む（静的プリレンダだとビルド時の値で固まり、
 // アプリ ON/OFF・DEV リボンが反映されない）。ダッシュボード配下は全て動的。
@@ -31,7 +37,8 @@ export default async function DashboardLayout({
   // main 無効 = 未リリース。DEV リボンは dev 環境のみ（main では未リリース
   // アプリ自体が非表示になるため、リボン情報は配布しない）。
   const isDevEnv = currentAppEnv() === "dev";
-  const [disabledKeys, unreleasedKeys, profile, visibleKeys, prefs] =
+  const userId = await sessionUserId();
+  const [disabledKeys, unreleasedKeys, profile, visibleKeys, prefs, tableRows] =
     await Promise.all([
       getDisabledAppKeys(),
       isDevEnv ? getDisabledAppKeys("main") : Promise.resolve([]),
@@ -40,7 +47,16 @@ export default async function DashboardLayout({
       // 表示設定（言語・日付・時刻・タイムゾーン）— 画面全体の日時整形と
       // UI 文言がこれを見る。SSR と同じ値をクライアントへ渡す。
       getCurrentPreferences(),
+      // 一覧表の「表示する列」— 画面ごとに引くと表の数だけ往復するので、
+      // ここで 1 回だけまとめて読んでクライアントへ配る。
+      readViewSettings(userId, TABLE_SETTING_PREFIX),
     ]);
+  const tableSettings = Object.fromEntries(
+    Object.entries(tableRows).map(([key, value]) => [
+      key,
+      sanitizeHiddenColumns(value),
+    ]),
+  );
   // 権限外アプリ（READ なし）は表示から隠す — fail-closed（未ログイン/権限
   // 取得失敗時は gated アプリ全非表示）。実防壁は各 page の requireAppRead。
   const deniedKeys = appList
@@ -74,11 +90,13 @@ export default async function DashboardLayout({
       */}
       <NextIntlClientProvider>
         <PreferencesProvider prefs={prefs}>
-          <NavigationGuardProvider>
-            <DashboardShell isDev={isDevEnv} user={headerUser}>
-              <AppAvailabilityGuard>{children}</AppAvailabilityGuard>
-            </DashboardShell>
-          </NavigationGuardProvider>
+          <TableSettingsProvider initial={tableSettings}>
+            <NavigationGuardProvider>
+              <DashboardShell isDev={isDevEnv} user={headerUser}>
+                <AppAvailabilityGuard>{children}</AppAvailabilityGuard>
+              </DashboardShell>
+            </NavigationGuardProvider>
+          </TableSettingsProvider>
         </PreferencesProvider>
       </NextIntlClientProvider>
     </AppFlagsProvider>
