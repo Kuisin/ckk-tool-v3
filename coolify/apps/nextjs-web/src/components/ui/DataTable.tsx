@@ -42,9 +42,12 @@ import {
   IconDotsVertical,
   IconInbox,
 } from "@tabler/icons-react";
+import { usePathname } from "next/navigation";
 import { type ReactNode, useMemo, useRef, useState } from "react";
+import { useTableSettings } from "@/components/layout/TableSettingsProvider";
 import { useUrlTableState } from "@/hooks/useUrlState";
 import { useIsMobile } from "@/hooks/useViewport";
+import { tableSettingKey } from "@/lib/table-settings-core";
 
 /** 幅未指定の列の既定幅（px）。列幅ドラッグ・truncate の基準。 */
 const DEFAULT_COL_WIDTH = 180;
@@ -100,6 +103,12 @@ export interface DataTableProps<T> {
    * こと — 詳細タブ内のサブテーブルでは使わない（パラメータが衝突する）。
    */
   urlState?: boolean;
+  /**
+   * 「表示する列」を覚えるときの表の名前。**同じ画面に表が 2 つ以上あるときだけ**
+   * 渡す（既定は画面のパスなので、1 画面 1 表なら不要）。渡さないと 2 つの表が
+   * 同じ設定を共有してしまう。
+   */
+  settingsKey?: string;
   stickyHeader?: boolean;
   emptyIcon?: ReactNode;
   emptyMessage?: string;
@@ -120,6 +129,7 @@ export function DataTable<T>({
   pageSize: initialPageSize = 10,
   defaultSort,
   urlState = false,
+  settingsKey,
   stickyHeader = true,
   emptyIcon,
   emptyMessage = "データがありません",
@@ -151,7 +161,17 @@ export function DataTable<T>({
     }
   };
   const [selected, setSelected] = useState<Set<string>>(new Set());
-  const [hidden, setHidden] = useState<Set<string>>(new Set());
+
+  // 「表示する列」は端末ではなく DB（app.user_view_settings）に持つので、
+  // 別の端末で開いても同じ列が隠れている。読み書きは Context 経由
+  // （レイアウトが 1 回だけまとめて読む — 表ごとに往復させない）。
+  const pathname = usePathname();
+  const tableKey = tableSettingKey(pathname, settingsKey);
+  const tableSettings = useTableSettings();
+  const hidden = useMemo(
+    () => new Set(tableSettings.hiddenFor(tableKey)),
+    [tableSettings, tableKey],
+  );
 
   // ── 列幅（ドラッグでリサイズ）───────────────────────────────────────────────
   const [colWidths, setColWidths] = useState<Record<string, number>>(() =>
@@ -194,12 +214,10 @@ export function DataTable<T>({
   const hideableColumns = columns.filter((c) => c.hideable);
 
   const toggleHidden = (key: string) => {
-    setHidden((prev) => {
-      const next = new Set(prev);
-      if (next.has(key)) next.delete(key);
-      else next.add(key);
-      return next;
-    });
+    const next = new Set(hidden);
+    if (next.has(key)) next.delete(key);
+    else next.add(key);
+    tableSettings.setHidden(tableKey, [...next]);
   };
 
   // ── Sorting ────────────────────────────────────────────────────────────────

@@ -240,6 +240,7 @@ export function LinkAdminPanel({
             emptyMessage="外部リンクはまだ登録されていません"
             getRowId={(r) => r.code}
             pageSize={20}
+            settingsKey="links"
           />
         </Stack>
       </Tabs.Panel>
@@ -293,6 +294,7 @@ export function LinkAdminPanel({
                 onAction: remove,
               },
             ]}
+            settingsKey="blocked"
           />
         </Stack>
       </Tabs.Panel>

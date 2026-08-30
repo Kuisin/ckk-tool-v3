@@ -501,6 +501,7 @@ export function UnifiedInventory({
                 </Stack>
               </Group>
             )}
+            settingsKey="products"
             urlState
           />
         </Tabs.Panel>
@@ -538,6 +539,7 @@ export function UnifiedInventory({
                 </Text>
               </Group>
             )}
+            settingsKey="materials"
             urlState
           />
         </Tabs.Panel>
