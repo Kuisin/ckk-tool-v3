@@ -3,8 +3,8 @@
 /**
  * AppHeader.tsx — topbar header inside AppShell.Header (_specs/design.md §4.1).
  *
- *   LEFT   : logo button → AppLauncher Popover (+ OperationCodeJump on mobile)
- *   CENTER : OperationCodeJump (compact, desktop)
+ *   LEFT   : back (非ホーム) + logo button → AppLauncher Popover
+ *   CENTER : OperationCodeJump (compact) — **デスクトップのみ**
  *   RIGHT  : notification bell Popover + user Menu
  *
  * Notifications are live (app.notifications → /api/notifications polling via
@@ -205,7 +205,6 @@ export function AppHeader({
         </Box>
       )}
       <Group
-        className="app-header-row"
         h={isDev ? `calc(100% - ${DEV_BAR_HEIGHT}px)` : "100%"}
         justify="space-between"
         px={{ base: "xs", md: "md" }}
@@ -218,6 +217,7 @@ export function AppHeader({
             <Tooltip label="戻る" withinPortal>
               <ActionIcon
                 aria-label="前のページへ戻る"
+                className="header-action"
                 color="gray"
                 onClick={goBack}
                 size="lg"
@@ -295,21 +295,16 @@ export function AppHeader({
           </Popover>
 
           {/*
-            操作コード入力。横幅が足りないときは globals.css が引っ込める
-            （文字を大きくした端末では収まらない）。同じ検索はロゴから開く
-            アプリ一覧の中にもあるので、無くなっても行き先は失われない。
+            操作コード入力はモバイルには置かない（デスクトップのみ）。
+            携帯の幅ではアプリ名とアイコン列で埋まってしまい、置くと
+            アプリ名が省略されて「いまどこにいるか」が読めなくなる。
+            同じ検索はロゴから開くアプリ一覧の中にある。
           */}
-          <Box className="app-header-code-jump" hiddenFrom="md">
-            <OperationCodeJump
-              compact
-              onNavigate={() => setLauncherOpen(false)}
-            />
-          </Box>
         </Group>
 
         {/* ── Right: Code jump (desktop) + Notifications + User ──────────── */}
         <Group gap="xs" wrap="nowrap">
-          <Box className="app-header-code-jump" visibleFrom="md">
+          <Box visibleFrom="md">
             <OperationCodeJump
               compact
               onNavigate={() => setLauncherOpen(false)}
@@ -319,6 +314,7 @@ export function AppHeader({
           <Tooltip label="ページを共有" withinPortal>
             <ActionIcon
               aria-label="ページを共有"
+              className="header-action"
               color="gray"
               onClick={() => setShareOpen(true)}
               size="lg"
@@ -335,6 +331,7 @@ export function AppHeader({
           <Tooltip label="バグを報告" withinPortal>
             <ActionIcon
               aria-label="バグを報告"
+              className="header-action"
               color="gray"
               onClick={() => setBugOpen(true)}
               size="lg"
@@ -356,6 +353,7 @@ export function AppHeader({
             <Popover.Target>
               <ActionIcon
                 aria-label={t("notifications")}
+                className="header-action"
                 color="gray"
                 onClick={() => setNotifOpen((o) => !o)}
                 size="lg"

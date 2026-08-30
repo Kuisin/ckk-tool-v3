@@ -69,7 +69,7 @@ Your choices appear immediately in the **Preview** below, so you can check them 
 
 > 💡 **Changing the time zone does not change the recorded timestamps.** It only changes which region's clock you read them by.
 
-> 💡 **Leave the page without saving and the text size returns to what it was**, so you can try a size before committing to it. On a narrow screen (a phone) with large text, the operation-code box in the header gives up its place — the same search lives inside the app launcher behind the logo at the top left.
+> 💡 **Leave the page without saving and the text size returns to what it was**, so you can try a size before committing to it.
 
 ### Some screens are still in Japanese
 
