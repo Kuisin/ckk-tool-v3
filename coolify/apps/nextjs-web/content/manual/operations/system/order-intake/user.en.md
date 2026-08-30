@@ -111,3 +111,20 @@ A. Check, in order: (1) whether that sender is on the allow list (ask a system a
 
 **Q. Can faxes be taken in automatically?**
 A. Not today. Scan the received fax on the MFP and upload it via "Priority intake". If you later subscribe to a fax-to-email service, those messages will ride the email route with no further change.
+
+<!-- permissions:start -->
+## Permissions required
+
+Using this screen requires the **System admin** (`system`) permission.
+
+| What you want to do | Permission needed |
+| --- | --- |
+| Open the screen, view lists and details | System admin — View |
+| Add, change or delete | System admin — Create / Edit / Delete |
+
+Viewing only needs *View*. Where a screen offers adding, changing or deleting, each of those needs its matching permission.
+
+Permissions come through roles. If something is missing, ask an administrator.
+
+For the whole picture see [Permissions and roles](../../../permissions).
+<!-- permissions:end -->

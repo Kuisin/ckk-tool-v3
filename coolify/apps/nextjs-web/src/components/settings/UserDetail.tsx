@@ -36,6 +36,7 @@ import { DetailShell, SummaryGrid } from "@/components/ui/shells";
 import { permissionActionLabel, permissionScopeLabel } from "@/lib/enum-labels";
 import { localized } from "@/lib/format";
 import type { LoginAttemptRow, UserDeviceRow } from "@/lib/login-attempts";
+import { permissionLabel, permissionSummary } from "@/lib/permission-labels";
 import type { AdminUserDetail, AdminUserPlant } from "@/lib/users-admin";
 
 function roleLabel(role: {
@@ -324,7 +325,17 @@ export function UserDetail({
                     key={`${p.permissionCode}:${p.action}:${p.scope}:${i}`}
                   >
                     <Table.Td>
-                      <Text ff="mono" size="sm">
+                      {/* コードだけでは何の権限か読めないので、表示名を主に出し、
+                          コードは補助として下に小さく添える（問い合わせでは
+                          コードで指定されることがあるため消さない）。 */}
+                      <Text
+                        fw={500}
+                        size="sm"
+                        title={permissionSummary(p.permissionCode)}
+                      >
+                        {permissionLabel(p.permissionCode)}
+                      </Text>
+                      <Text c="dimmed" ff="mono" size="xs">
                         {p.permissionCode}
                       </Text>
                     </Table.Td>

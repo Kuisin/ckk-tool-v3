@@ -10,6 +10,7 @@ import {
 import { requireAppRead } from "@/lib/authz-page";
 import { prisma } from "@/lib/db";
 import { type LocalizedText, localized } from "@/lib/format";
+import { permissionLabel } from "@/lib/permission-labels";
 
 export const dynamic = "force-dynamic";
 
@@ -26,7 +27,7 @@ export default async function MasterApprovalSettingsPage() {
       ),
     ),
   ];
-  const [flowSteps, ruleCounts, groupRecords, permissions] = await Promise.all([
+  const [flowSteps, ruleCounts, groupRecords] = await Promise.all([
     prisma.approvalFlowStep.findMany({
       include: { group: { select: { name: true } } },
       orderBy: [{ targetType: "asc" }, { stepNo: "asc" }],
@@ -45,10 +46,6 @@ export default async function MasterApprovalSettingsPage() {
       },
       orderBy: { id: "asc" },
     }),
-    prisma.permission.findMany({
-      where: { code: { in: permissionCodes } },
-      select: { code: true, displayName: true },
-    }),
   ]);
 
   // 段のメンバーが承認権限を持っているか — グループに入れただけでは承認できない
@@ -58,12 +55,6 @@ export default async function MasterApprovalSettingsPage() {
     permissionCodes,
     now,
   );
-  const permissionLabels = new Map(
-    permissions.map((p) => [
-      p.code,
-      localized(p.displayName as LocalizedText | null),
-    ]),
-  );
 
   const flows: FlowOverviewRow[] = FLOW_SETTINGS_TARGET_TYPES.map(
     (targetType) => {
@@ -71,8 +62,9 @@ export default async function MasterApprovalSettingsPage() {
       return {
         targetType,
         permissionCode: code,
-        // 権限マスタが未投入でもコードだけは出す（画面が空欄になるより読める）。
-        permissionLabel: permissionLabels.get(code) || code,
+        // 表示名は lib/permission-labels.ts が持つ（DB の display_name ではない）
+        // — マニュアルと同じ 1 箇所から引くため。未知のコードはコードのまま出る。
+        permissionLabel: permissionLabel(code),
         ruleCount:
           ruleCounts.find((r) => r.targetType === targetType)?._count._all ?? 0,
         steps: flowSteps

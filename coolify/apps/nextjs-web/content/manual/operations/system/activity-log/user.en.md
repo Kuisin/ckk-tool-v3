@@ -134,3 +134,29 @@ A. They are records of apps being switched on or off for display in [アプリ�
 
 **Q. The 「〈app name〉を開く」 button does not appear at the top right.**
 A. If the record cannot be narrowed down to a single document, the button does not appear. Note down the number shown under 「レコード」 and look for it on that app's screen.
+
+<!-- permissions:start -->
+## Permissions required
+
+Using this screen requires the **Personal data access** (`personal_data`) permission.
+
+| What you want to do | Permission needed |
+| --- | --- |
+| Open the screen, view lists and details | Personal data access — View |
+| Add, change or delete | Personal data access — Create / Edit / Delete |
+
+Viewing only needs *View*. Where a screen offers adding, changing or deleting, each of those needs its matching permission.
+
+### Operations that need approval
+
+Holding the permission is not enough for the operations below. You **request them in Privileged Access (SY0G) and may act only for the window someone else approves**.
+
+| Operation | Permission | What it unlocks |
+| --- | --- | --- |
+| Cross-document activity search | Personal data access（`personal_data`）— View | Searches what one person did across all documents. Per-document history tabs are not restricted by this. |
+| Activity log detail | Personal data access（`personal_data`）— View | Opens one operation down to its before/after payload. |
+
+Permissions come through roles. If something is missing, ask an administrator.
+
+For the whole picture see [Permissions and roles](../../../permissions).
+<!-- permissions:end -->

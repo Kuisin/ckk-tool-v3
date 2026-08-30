@@ -223,3 +223,20 @@ A. Change the 「**表示順**」 (display order) number of each step. A smaller
 
 **Q. Which decides the order of the work — the display order or the execution dependency?**
 A. The order is decided by the 「**表示順**」 (display order). When you pick steps into a process list or a work order, they line up from the smallest number first (the order of work orders already created does not change when you change the number later). The 「**実行依存**」 (execution dependency) is not an order itself — it sets the **condition for starting**, such as "this step cannot start until that step is finished".
+
+<!-- permissions:start -->
+## Permissions required
+
+Using this screen requires the **Master data** (`master`) permission.
+
+| What you want to do | Permission needed |
+| --- | --- |
+| Open the screen, view lists and details | Master data — View |
+| Add, change or delete | Master data — Create / Edit / Delete |
+
+Viewing only needs *View*. Where a screen offers adding, changing or deleting, each of those needs its matching permission.
+
+Permissions come through roles. If something is missing, ask an administrator.
+
+For the whole picture see [Permissions and roles](../../../permissions).
+<!-- permissions:end -->

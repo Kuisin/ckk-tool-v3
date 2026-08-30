@@ -72,3 +72,13 @@ Only one open request per permission. Withdraw it or wait for a decision.
 
 **Administrators do not need to request.**
 Correct. They act directly, and the activity log records that it was done with administrator rights.
+
+<!-- permissions:start -->
+## Permissions required
+
+This screen needs no special permission — being signed in is enough.
+
+Permissions come through roles. If something is missing, ask an administrator.
+
+For the whole picture see [Permissions and roles](../../../permissions).
+<!-- permissions:end -->

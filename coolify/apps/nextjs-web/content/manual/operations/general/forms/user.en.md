@@ -162,3 +162,13 @@ A. Form answer details has one row per question per response. To count responses
 
 **Q. I want to correct an answer I submitted.**
 A. You can edit your own answer within the window the form allows. Open it and press Edit on the Answer tab. Once approval has progressed you cannot — ask an approver to send it back.
+
+<!-- permissions:start -->
+## Permissions required
+
+This screen needs no special permission — being signed in is enough.
+
+Permissions come through roles. If something is missing, ask an administrator.
+
+For the whole picture see [Permissions and roles](../../../permissions).
+<!-- permissions:end -->

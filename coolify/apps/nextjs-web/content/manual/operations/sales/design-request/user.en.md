@@ -304,3 +304,20 @@ A. That request is already in progress or done. You do not need to press「着�
 
 **Q. I want to replace the file after finishing.**
 A. Use「差し戻し」(send back) to return it to 進行中 (in progress), upload the new file, then press「完了」(done) again. The old version stays, and the new version is added.
+
+<!-- permissions:start -->
+## Permissions required
+
+Using this screen requires the **Design request** (`design_request`) permission.
+
+| What you want to do | Permission needed |
+| --- | --- |
+| Open the screen, view lists and details | Design request — View |
+| Add, change or delete | Design request — Create / Edit / Delete |
+
+Viewing only needs *View*. Where a screen offers adding, changing or deleting, each of those needs its matching permission.
+
+Permissions come through roles. If something is missing, ask an administrator.
+
+For the whole picture see [Permissions and roles](../../../permissions).
+<!-- permissions:end -->

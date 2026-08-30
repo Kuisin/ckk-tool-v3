@@ -245,3 +245,39 @@ A. That is normal behavior. The layout drawings are separated by site, so changi
 
 **Q. I get 「リンク済み・有効化済みの端末は削除できません（取り消しを使用してください）」 (Linked or activated devices cannot be deleted — please use Revoke).**
 A. 「削除」 (Delete) can only remove registration slots that are not yet connected to a tablet. For tablets you no longer use, please use 「**取り消し**」 (Revoke).
+
+<!-- permissions:start -->
+## Permissions required
+
+Using this screen requires the **Kiosk admin** (`kiosk`) permission.
+
+| What you want to do | Permission needed |
+| --- | --- |
+| Open the screen, view lists and details | Kiosk admin — View |
+| Add, change or delete | Kiosk admin — Create / Edit / Delete |
+
+Viewing only needs *View*. Where a screen offers adding, changing or deleting, each of those needs its matching permission.
+
+### Operations that need approval
+
+Holding the permission is not enough for the operations below. You **request them in Privileged Access (SY0G) and may act only for the window someone else approves**.
+
+| Operation | Permission | What it unlocks |
+| --- | --- | --- |
+| Reveal maintenance PIN | Kiosk device secrets（`kiosk_secret`）— View | Shows the shared maintenance-exit PIN in clear text. It exits kiosk mode on every device. |
+| Reveal PIN history | Kiosk device secrets（`kiosk_secret`）— View | Lists up to 400 days of past exit PINs — needed for offline devices, but broader than the current value. |
+| Reveal the PIN a device holds | Kiosk device secrets（`kiosk_secret`）— View | Shows the exit PIN last delivered to that device — used to open an offline tablet. |
+| Reveal device settings code | Kiosk device secrets（`kiosk_secret`）— View | Shows the code that unlocks that device's hidden settings screen. |
+| Regenerate device settings code | Kiosk device secrets（`kiosk_secret`）— Edit | Issues a new settings code; anyone holding the old one loses access. |
+| Reset device attestation key | Kiosk device secrets（`kiosk_secret`）— Edit | Clears the attestation binding so the next device to connect is trusted (TOFU). Only for hardware replacement. |
+| Create device profile | Kiosk device enrolment（`kiosk_device`）— Create | Creates the slot a new tablet can be linked into. |
+| Link a device | Kiosk device enrolment（`kiosk_device`）— Edit | Binds real hardware to a profile and issues its device token. |
+| Activate a device | Kiosk device enrolment（`kiosk_device`）— Edit | Brings a linked device into service so employees can log in on it. |
+| Disable / enable a device | Kiosk device enrolment（`kiosk_device`）— Edit | Suspends a device or brings a suspended one back. |
+| Unlink a device | Kiosk device enrolment（`kiosk_device`）— Edit | Destroys the device token, sessions and attestation key, reopening the profile. |
+| Revoke a device | Kiosk device enrolment（`kiosk_device`）— Edit | Locks the device out immediately, cutting live shop-floor sessions. |
+
+Permissions come through roles. If something is missing, ask an administrator.
+
+For the whole picture see [Permissions and roles](../../../permissions).
+<!-- permissions:end -->

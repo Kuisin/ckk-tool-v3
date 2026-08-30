@@ -247,3 +247,20 @@ A. There are no purchase records for that material yet, so the standard price re
 
 **Q. I chose 円筒 (cylinder) and the reference unit price field disappeared.**
 A. For 円筒 (cylinder), the rule is that you enter the material price yourself in「**素材価格（手入力 ¥/本）**」(material price, entered by hand, ¥ per piece). You can still look at the purchase records for reference on the「素材価格推移」(material price history) tab.
+
+<!-- permissions:start -->
+## Permissions required
+
+Using this screen requires the **Price list** (`price_list`) permission.
+
+| What you want to do | Permission needed |
+| --- | --- |
+| Open the screen, view lists and details | Price list — View |
+| Add, change or delete | Price list — Create / Edit / Delete |
+
+Viewing only needs *View*. Where a screen offers adding, changing or deleting, each of those needs its matching permission.
+
+Permissions come through roles. If something is missing, ask an administrator.
+
+For the whole picture see [Permissions and roles](../../../permissions).
+<!-- permissions:end -->

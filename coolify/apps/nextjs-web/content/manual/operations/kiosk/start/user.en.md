@@ -116,3 +116,13 @@ A. They are logged out automatically after a while. If you are in a hurry, ask t
 
 **Q. The screen says 「この端末は登録されていません」 (This device is not registered).**
 A. That tablet has not been registered yet, or its registration has been removed. Please contact an administrator.
+
+<!-- permissions:start -->
+## Permissions required
+
+This screen needs no special permission — being signed in is enough.
+
+Permissions come through roles. If something is missing, ask an administrator.
+
+For the whole picture see [Permissions and roles](../../../permissions).
+<!-- permissions:end -->

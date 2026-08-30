@@ -117,3 +117,20 @@ A. Change the 「**表示順**」 (display order) number of each category. A sma
 
 **Q. I see 「表示順は整数で入力してください」 (please enter the display order as a whole number).**
 A. Enter a number with no decimal point in the display order, such as 0, 10 or 20.
+
+<!-- permissions:start -->
+## Permissions required
+
+Using this screen requires the **Master data** (`master`) permission.
+
+| What you want to do | Permission needed |
+| --- | --- |
+| Open the screen, view lists and details | Master data — View |
+| Add, change or delete | Master data — Create / Edit / Delete |
+
+Viewing only needs *View*. Where a screen offers adding, changing or deleting, each of those needs its matching permission.
+
+Permissions come through roles. If something is missing, ask an administrator.
+
+For the whole picture see [Permissions and roles](../../../permissions).
+<!-- permissions:end -->

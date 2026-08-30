@@ -163,3 +163,20 @@ A. You cannot undo it from the tablet. Please tell the person in charge in the o
 
 **Q. The screen closed while I was working.**
 A. Your record is kept. Log in again and open the same step; it is still 「作業中」 (in progress) and you can carry on from where you were.
+
+<!-- permissions:start -->
+## Permissions required
+
+Using this screen requires the **Work order** (`work_order`) permission.
+
+| What you want to do | Permission needed |
+| --- | --- |
+| Open the screen, view lists and details | Work order — View |
+| Add, change or delete | Work order — Create / Edit / Delete |
+
+Viewing only needs *View*. Where a screen offers adding, changing or deleting, each of those needs its matching permission.
+
+Permissions come through roles. If something is missing, ask an administrator.
+
+For the whole picture see [Permissions and roles](../../../permissions).
+<!-- permissions:end -->

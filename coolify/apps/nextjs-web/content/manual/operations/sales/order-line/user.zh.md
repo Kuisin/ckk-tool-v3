@@ -131,3 +131,20 @@ ORD-202608-00012-01
 - [指示书](/manual/zh/operations/production/work-order/user) — 推进生产的画面
 - [发货书](/manual/zh/operations/shipping/delivery-order/user) — 发货的画面
 - [库存管理](/manual/zh/operations/production/product-inventory/user) — 库存与预留的状况
+
+<!-- permissions:start -->
+## 所需权限
+
+使用本画面需要 **订单确认书・订单明细**（`order_acceptance`）权限。
+
+| 想做的事 | 所需权限 |
+| --- | --- |
+| 打开画面、查看列表与明细 | 订单确认书・订单明细 — 查看 |
+| 新增・变更・删除 | 订单确认书・订单明细 — 创建 / 更新 / 删除 |
+
+仅查看有「查看」即可。画面中若有新增、变更或删除的操作，则分别需要对应的权限。
+
+权限通过角色授予。若不足，请与管理员联系。
+
+权限的整体说明请参见「[权限与角色](../../../permissions)」。
+<!-- permissions:end -->

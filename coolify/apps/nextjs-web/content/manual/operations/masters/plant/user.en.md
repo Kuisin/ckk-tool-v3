@@ -174,3 +174,20 @@ A. Not in this app. You register them in [storage location (保管場所)](/manu
 
 **Q. Where do I register machines and places where work is done?**
 A. Not in this app. You register them in [work location (作業場所)](/manual/en/operations/masters/work-location/user).
+
+<!-- permissions:start -->
+## Permissions required
+
+Using this screen requires the **Master data** (`master`) permission.
+
+| What you want to do | Permission needed |
+| --- | --- |
+| Open the screen, view lists and details | Master data — View |
+| Add, change or delete | Master data — Create / Edit / Delete |
+
+Viewing only needs *View*. Where a screen offers adding, changing or deleting, each of those needs its matching permission.
+
+Permissions come through roles. If something is missing, ask an administrator.
+
+For the whole picture see [Permissions and roles](../../../permissions).
+<!-- permissions:end -->

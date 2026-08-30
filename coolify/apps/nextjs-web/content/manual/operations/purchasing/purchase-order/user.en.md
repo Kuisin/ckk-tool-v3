@@ -226,3 +226,20 @@ A. Register just the part that arrived in [material receipt](/manual/en/operatio
 
 **Q. I see 「未入荷の明細がありません」 (There are no line items still to arrive).**
 A. All the quantity is already treated as arrived. There is nothing left to do on this purchase order.
+
+<!-- permissions:start -->
+## Permissions required
+
+Using this screen requires the **Purchasing** (`purchase_order`) permission.
+
+| What you want to do | Permission needed |
+| --- | --- |
+| Open the screen, view lists and details | Purchasing — View |
+| Add, change or delete | Purchasing — Create / Edit / Delete |
+
+Viewing only needs *View*. Where a screen offers adding, changing or deleting, each of those needs its matching permission.
+
+Permissions come through roles. If something is missing, ask an administrator.
+
+For the whole picture see [Permissions and roles](../../../permissions).
+<!-- permissions:end -->
