@@ -14,6 +14,8 @@
  *   In the real implementation, import each icon by name; listed as string here for reference.
  */
 
+import type { Locale } from "./i18n";
+
 export type AppCategory =
   | "一般"
   | "販売"
@@ -611,6 +613,95 @@ export const CATEGORY_COLORS: Record<AppCategory, string> = {
   ドキュメント: "cyan",
   システム: "dark",
 };
+
+/**
+ * アプリ名・カテゴリ名の ja→en/zh 対訳（_specs/i18n-glossary.md §3.1〜3.2）。
+ * `label`/`category` は内部キー兼 ja フォールバックとして残し、表示だけ
+ * ここを経由して言語を切り替える — 呼び出し側は `appLabel(entry, locale)` /
+ * `categoryLabel(category, locale)` を使うこと。
+ */
+export const APP_LABEL_I18N: Record<string, { en: string; zh: string }> = {
+  "my-tasks": { en: "Approvals & schedule", zh: "审批与计划" },
+  forms: { en: "Forms", zh: "表单" },
+  "internal-pages": { en: "Internal documents", zh: "内部文档" },
+  "trial-estimates": { en: "Price estimate", zh: "价格试算" },
+  "price-lists": { en: "Price list", zh: "价格表" },
+  quotes: { en: "Quote", zh: "报价单" },
+  "order-acceptances": { en: "Order acceptance", zh: "订单确认书" },
+  "order-lines": { en: "Order line", zh: "订单明细" },
+  "design-requests": { en: "Design request", zh: "设计委托单" },
+  "purchase-requests": { en: "Purchase request", zh: "采购申请" },
+  "purchase-orders": { en: "Material purchase order", zh: "材料采购单" },
+  "material-receipts": { en: "Material receipt", zh: "材料到货" },
+  "outsource-orders": { en: "Outsource order", zh: "外协委托单" },
+  "work-orders": { en: "Work order", zh: "工单" },
+  inventory: { en: "Inventory", zh: "库存管理" },
+  "pending-work-orders": { en: "Pending work orders", zh: "未处理工单" },
+  "delivery-orders": { en: "Delivery order", zh: "出货单" },
+  "delivery-notes": { en: "Delivery note", zh: "送货单" },
+  "pending-shipments": { en: "Pending shipments", zh: "未处理出货" },
+  invoices: { en: "Invoice", zh: "请款单" },
+  "billing-closings": { en: "Billing closing", zh: "结算处理" },
+  "master-business-partners": { en: "Business partners", zh: "业务伙伴" },
+  "master-products": { en: "Products", zh: "产品" },
+  "master-material-types": { en: "Material types", zh: "材料类别" },
+  "master-materials": { en: "Materials", zh: "材料" },
+  "master-material-numbering": { en: "Code numbering", zh: "编号构成" },
+  "master-process-steps": { en: "Process steps", zh: "工序主数据" },
+  "master-inspection-templates": {
+    en: "Inspection templates",
+    zh: "检查表模板",
+  },
+  "master-defect-types": { en: "Defect types", zh: "不良类别" },
+  "master-approval-groups": { en: "Approval settings", zh: "审批设置" },
+  "master-plants": { en: "Sites", zh: "据点" },
+  "master-work-locations": { en: "Work locations", zh: "作业场所" },
+  "master-storage-locations": { en: "Storage locations", zh: "存放位置" },
+  docs: { en: "Manual", zh: "操作手册" },
+  "admin-manual": { en: "Admin manual", zh: "管理手册" },
+  "user-management": { en: "Users", zh: "用户管理" },
+  "trial-pricing-engine": { en: "Price estimate engine", zh: "价格试算计算" },
+  "product-items": { en: "Product items", zh: "产品项目" },
+  "product-types": { en: "Product types", zh: "产品类别" },
+  "app-management": { en: "Apps", zh: "应用管理" },
+  "file-management": { en: "Files", zh: "文件管理" },
+  "activity-log": { en: "Activity log", zh: "操作历史" },
+  "kiosk-cards": { en: "QR cards", zh: "二维码卡管理" },
+  "kiosk-devices": { en: "Devices", zh: "终端管理" },
+  "kiosk-settings": { en: "Shared device settings", zh: "共用终端设置" },
+  links: { en: "Links", zh: "链接管理" },
+  "order-intake": { en: "Order intake", zh: "订单导入" },
+  "login-history": { en: "Login history", zh: "登录历史" },
+  "ai-provider": { en: "AI provider", zh: "AI 服务商" },
+  "notification-email": { en: "Notification email", zh: "通知邮件" },
+};
+
+export const CATEGORY_LABEL_I18N: Record<
+  AppCategory,
+  { en: string; zh: string }
+> = {
+  一般: { en: "General", zh: "通用" },
+  販売: { en: "Sales", zh: "销售" },
+  購買: { en: "Purchasing", zh: "采购" },
+  生産: { en: "Production", zh: "生产" },
+  出荷: { en: "Shipping", zh: "出货" },
+  請求: { en: "Billing", zh: "请款" },
+  マスタ: { en: "Master data", zh: "主数据" },
+  ドキュメント: { en: "Documents", zh: "文档" },
+  システム: { en: "System", zh: "系统" },
+};
+
+/** アプリの表示名を言語ごとに解決する（未登録キー・ja は entry.label のまま）。 */
+export function appLabel(entry: AppEntry, locale: Locale): string {
+  if (locale === "ja") return entry.label;
+  return APP_LABEL_I18N[entry.key]?.[locale] ?? entry.label;
+}
+
+/** カテゴリの表示名を言語ごとに解決する。 */
+export function categoryLabel(category: AppCategory, locale: Locale): string {
+  if (locale === "ja") return category;
+  return CATEGORY_LABEL_I18N[category]?.[locale] ?? category;
+}
 
 /**
  * Returns apps grouped by category, preserving the order above.

@@ -145,7 +145,7 @@ export interface Formatters {
   /** ISO timestamp → 時刻のみ。 */
   time(iso: string | Date | null | undefined): string;
   /** { ja, en } JSON → 表示文字列（言語設定に従う）。 */
-  localized(value: LocalizedText | null | undefined): string;
+  localized(value: LocalizedTextInput | null | undefined): string;
   /** kiosk_devices.name（{ja,en} または旧文字列）→ 表示名。 */
   deviceName(value: unknown): string | null;
   money(value: number | null | undefined, currency?: string): string;
