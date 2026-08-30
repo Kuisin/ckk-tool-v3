@@ -13,6 +13,7 @@ import unittest
 from email import message_from_string
 from unittest import mock
 
+from gateway import mailbox as mailbox_mod
 from gateway import runner
 from gateway.config import Config
 
@@ -81,17 +82,19 @@ class TestPolicy(unittest.TestCase):
     def tearDown(self) -> None:
         self._tmp.cleanup()
 
-    def _run(self, raw: str):
+    def _run(self, raw: str, prefix: str = ""):
         client_calls: list[tuple[str, str]] = []
 
         def mark_seen(_c, uid):
             client_calls.append(("seen", uid.decode()))
 
-        def move_to(_c, uid, box):
-            client_calls.append(("move", box))
+        def move_to(_c, uid, box, pfx=""):
+            # 実物と同じ整形を通す（接頭辞が効いているかをここで見る）
+            client_calls.append(("move", mailbox_mod.qualify_box(box, pfx)))
 
         with (
             mock.patch.object(runner.mailbox, "connect", fake_connect),
+            mock.patch.object(runner.mailbox, "namespace_prefix", lambda c: prefix),
             mock.patch.object(runner.mailbox, "search_unseen", lambda c, cfg: [b"7"]),
             mock.patch.object(
                 runner.mailbox, "fetch_message", lambda c, u: message_from_string(raw)
@@ -135,6 +138,15 @@ class TestPolicy(unittest.TestCase):
         self.assertEqual(os.listdir(self.dir), [])
         # 読んだことは記録する（未読のまま残すと毎回引っかかる）
         self.assertEqual(calls, [("seen", "7")])
+
+    def test_Sakuraでは処理済みフォルダにINBOX接頭辞が付く(self):
+        # 素の "Processed" は Invalid mailbox name. になる（実機で踏んだ）
+        (messages, files), calls = self._run(ONE_PDF, prefix="INBOX.")
+        self.assertEqual(calls, [("seen", "7"), ("move", "INBOX.Processed")])
+
+    def test_接頭辞が無いサーバーではそのまま(self):
+        (_m, _f), calls = self._run(ONE_PDF, prefix="")
+        self.assertEqual(calls, [("seen", "7"), ("move", "Processed")])
 
     def test_例外が出ても既読にして先へ進む(self):
         # 毒メールで永久に止まらないこと

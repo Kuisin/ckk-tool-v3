@@ -92,6 +92,9 @@ def poll_once(cfg: config.Config) -> tuple[int, int]:
     messages = 0
     files = 0
     with mailbox.connect(cfg) as client:
+        # サーバーごとに「受信箱の下」の書き方が違う（Sakura は INBOX. 接頭辞が
+        # 要り、無いと Invalid mailbox name. で移動できない）。設定に書かせず聞く。
+        prefix = mailbox.namespace_prefix(client)
         uids = mailbox.search_unseen(client, cfg)
         if not uids:
             return (0, 0)
@@ -124,9 +127,9 @@ def poll_once(cfg: config.Config) -> tuple[int, int]:
                     "**再送しません** — 必要なら送信者に再送を依頼してください",
                     uid, accepted, saved, failed,
                 )
-                mailbox.move_to(client, raw_uid, cfg.failed_box)
+                mailbox.move_to(client, raw_uid, cfg.failed_box, prefix)
             elif accepted:
-                mailbox.move_to(client, raw_uid, cfg.processed_box)
+                mailbox.move_to(client, raw_uid, cfg.processed_box, prefix)
             # 添付ゼロは移動しない（人が受信箱で見つけられるように残す）
     return (messages, files)
 
@@ -157,7 +160,7 @@ def main() -> int:
         return 1
 
     log.info(
-        "メール取込を開始します: %s@%s:%d box=%s → %s（%d 秒間隔）",
+        "メール取込を開始します: %s / %s:%d box=%s → %s（%d 秒間隔）",
         cfg.user, cfg.host, cfg.port, cfg.box, cfg.intake_dir, cfg.poll_seconds,
     )
     while not _stop:
