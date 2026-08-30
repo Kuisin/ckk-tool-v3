@@ -36,6 +36,7 @@
     "notificationSettings": "通知设置",
     "homeSettings": "主页设置",
     "preferences": "显示设置",
+    "myPermissions": "我的权限",
     "logout": "退出登录",
     "devBadge": "DEV"
   },

@@ -1,10 +1,24 @@
 ---
 title: "Permissions and roles"
-description: "How permissions are read, and the full list of what each one unlocks."
+description: "How signing in (authentication) and what you may do (authorisation) fit together, how to read a permission, and the full list."
 ---
-Every app requires a particular permission. Each app's manual page ends with a *Permissions required* section — check there first. This page is the overview.
+Being able to sign in and being able to act are decided separately. This page explains how. Each app's manual page ends with a *Permissions required* section, which is quicker if you only care about the screen in front of you.
 
-## A permission is three things together
+## Authentication and authorisation — two stages
+
+The system works in two stages.
+
+1. **Authentication** — establishing who you are. This is signing in; afterwards the system knows which person is using it.
+2. **Authorisation** — deciding what that person may do. This is where permissions come in.
+
+Signing in successfully and still not being able to open a screen is the normal consequence of these being separate: authentication passed, authorisation did not.
+
+| Where you use it | How you are identified | Steps |
+| --- | --- | --- |
+| Desktop (web) | Company account sign-in, or username and password | [Getting started](start) |
+| Shop-floor tablet | QR card and PIN | [Starting on the kiosk](operations/kiosk/start/user) |
+
+## Authorisation — a permission is three things together
 
 Like "view quotes, but only my own", three parts combine into one permission.
 
@@ -37,15 +51,25 @@ The same *View* shows different amounts depending on scope. Limited to a plant, 
 
 ## Permissions do not decide who may approve
 
-Who may approve a document is decided by **membership of an approval group in 承認設定 (MS0B)**. All the permission side requires is that you can view or edit that document.
-
-To add approvers, change the approval group members — not the permissions.
+Who may approve a document is decided by **承認設定 (MS0B)**, not by permissions. How it works and how to set it up is covered in [Approval settings](operations/masters/approval-setting/user).
 
 ## Privileged operations — permission alone is not enough
 
 Revealing a device PIN, issuing a QR card, opening the details of a login record: holding the permission **does not let you do these**. You request them in Privileged Access (`SY0G`) with a reason, and may act only for the window someone else approves.
 
 The clock starts when you **first perform the operation**, not when it is approved. See [Privileged Access](operations/system/privileged-access/user).
+
+## Kinds of permission
+
+Permissions fall into four kinds. To see which you hold, open [My permissions](/profile/permissions).
+
+**Business** — Permissions for everyday work, split by the document you handle — quotes, order acceptances, work orders, delivery orders. Most people hold only these.
+
+**Master data & settings** — Permissions for the shared reference data everyone works from. Changing a partner or product affects every document created afterwards, so these are usually held by a few people.
+
+**Administration** — Permissions that change the system itself — how screens behave, external integrations — rather than business data.
+
+**Privileged (request & approval required)** — Permissions that holding is not enough for. Device PINs, card issuance and personal-data access sit here — operations with wide reach and little way back. Each use is requested and allowed only for a window someone else approves.
 
 ## All permissions
 
@@ -66,7 +90,7 @@ The clock starts when you **first perform the operation**, not when it is approv
 | Delivery note | `delivery_note` | Work with delivery notes. |
 | Invoice | `invoice` | Work with invoices. |
 | Billing closing | `billing_closing` | Run billing closings and export for accounting. |
-| Approvals | `approve` | See the pending-approval list. **Being able to approve is separate** — that is decided by approval-group membership in 承認設定 (MS0B). |
+| Approvals | `approve` | See the pending-approval list. Whether you may actually approve is decided by 承認設定 (MS0B), not by this permission. |
 | Forms | `form` | Create and edit forms and read every response. Who may respond is set per form. |
 | Internal pages | `internal_page` | Use the internal-documents app. Visibility of each document is set per document. |
 

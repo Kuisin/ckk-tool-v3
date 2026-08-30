@@ -129,8 +129,37 @@ describe("参照ページ「権限とロール」", () => {
     expect(md).not.toContain("| チーム |");
   });
 
-  it("承認はグループで決まると書いてある", () => {
-    expect(buildPermissionsReferencePage("ja")).toContain("承認グループ");
+  it("認証と認可の説明から始まる", () => {
+    const md = buildPermissionsReferencePage("ja");
+    expect(md).toContain("## 認証と認可");
+    expect(md).toContain("[はじめかた](start)");
+    expect(md).toContain("[キオスクをはじめる](operations/kiosk/start/user)");
+  });
+
+  it("権限の種類を 4 つとも説明している", () => {
+    const md = buildPermissionsReferencePage("ja");
+    expect(md).toContain("## 権限の種類");
+    for (const g of ["業務", "マスタ・設定", "管理", "特権操作"]) {
+      expect(md).toContain(`**${g}`);
+    }
+  });
+
+  /**
+   * 承認の仕組みは MS0B のマニュアルが持つ。ここで二重に説明すると、
+   * 直すときに片方だけ古くなる（利用者からの指示）。
+   */
+  it("承認は MS0B のマニュアルへ案内するだけで、ここでは説明しない", () => {
+    const md = buildPermissionsReferencePage("ja");
+    expect(md).toContain("(operations/masters/approval-setting/user)");
+    // 段・グループ・代理といった MS0B 側の説明を持ち込まない
+    for (const word of [
+      "承認グループに入っている",
+      "代理",
+      "第一承認",
+      "段を",
+    ]) {
+      expect(md, `MS0B の説明が混ざっている: ${word}`).not.toContain(word);
+    }
   });
 });
 

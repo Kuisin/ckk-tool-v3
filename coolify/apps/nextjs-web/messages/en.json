@@ -36,6 +36,7 @@
     "notificationSettings": "Notification settings",
     "homeSettings": "Home screen settings",
     "preferences": "Display settings",
+    "myPermissions": "My permissions",
     "logout": "Log out",
     "devBadge": "DEV"
   },

@@ -25,7 +25,13 @@ WITH seed(username, display_name, password_hash) AS (
     -- 特権アクセス（SY0G）の検証用。**申請する人と承認する人を分けてある** —
     -- 1 人で両方を持たせると、分離が効いているかを確かめられない。
     ('dev_priv_operator', '開発 特権申請', '086b96cb6c3b4230a552e81c8ab17249:8cd4a2aa38dd2048c685c3f682fa74602fc7441c1300734198346c56a57637f6a6e87e080bf647e66f4620073d5b7b9d83f3465b0c25d881c974c0cafb018a1c'),
-    ('dev_priv_approver', '開発 特権承認', '80a040e7e5f52a9292dd61a13035b556:417c21a0773bf177daf788ef8ed613c454971f2a6f171b5651849169b7c5efc872533e8325c13fc4e2c28b4ec020997fc161c1078feb0b2739712daa88054e70')
+    ('dev_priv_approver', '開発 特権承認', '80a040e7e5f52a9292dd61a13035b556:417c21a0773bf177daf788ef8ed613c454971f2a6f171b5651849169b7c5efc872533e8325c13fc4e2c28b4ec020997fc161c1078feb0b2739712daa88054e70'),
+    -- 役目を絞ったロールの検証用（端末運用 / ユーザー運用 / 監査）。
+    ('dev_kiosk_op',   '開発 端末運用申請',   '086b96cb6c3b4230a552e81c8ab17249:8cd4a2aa38dd2048c685c3f682fa74602fc7441c1300734198346c56a57637f6a6e87e080bf647e66f4620073d5b7b9d83f3465b0c25d881c974c0cafb018a1c'),
+    ('dev_kiosk_ap',   '開発 端末運用承認',   '80a040e7e5f52a9292dd61a13035b556:417c21a0773bf177daf788ef8ed613c454971f2a6f171b5651849169b7c5efc872533e8325c13fc4e2c28b4ec020997fc161c1078feb0b2739712daa88054e70'),
+    ('dev_user_op',    '開発 ユーザー運用申請','086b96cb6c3b4230a552e81c8ab17249:8cd4a2aa38dd2048c685c3f682fa74602fc7441c1300734198346c56a57637f6a6e87e080bf647e66f4620073d5b7b9d83f3465b0c25d881c974c0cafb018a1c'),
+    ('dev_user_ap',    '開発 ユーザー運用承認','80a040e7e5f52a9292dd61a13035b556:417c21a0773bf177daf788ef8ed613c454971f2a6f171b5651849169b7c5efc872533e8325c13fc4e2c28b4ec020997fc161c1078feb0b2739712daa88054e70'),
+    ('dev_auditor',    '開発 監査',           '086b96cb6c3b4230a552e81c8ab17249:8cd4a2aa38dd2048c685c3f682fa74602fc7441c1300734198346c56a57637f6a6e87e080bf647e66f4620073d5b7b9d83f3465b0c25d881c974c0cafb018a1c')
 )
 INSERT INTO app.users (id, "group", username, display_name, password_hash, is_active, created_at, updated_at)
 SELECT gen_random_uuid(), 'EMPLOYEE'::app."USER_GROUP", s.username, s.display_name, s.password_hash, true, now(), now()
@@ -133,6 +139,31 @@ ON CONFLICT (user_id, role_id) DO UPDATE SET is_active = true, deactivate_at = N
 INSERT INTO app.user_role_relation (user_id, role_id, is_active, assigned_at)
 SELECT u.id, r.id, true, now() FROM app.users u JOIN app.roles r ON r.rolename = 'privileged_approver'
 WHERE u.username = 'dev_priv_approver'
+ON CONFLICT (user_id, role_id) DO UPDATE SET is_active = true, deactivate_at = NULL;
+
+INSERT INTO app.user_role_relation (user_id, role_id, is_active, assigned_at)
+SELECT u.id, r.id, true, now() FROM app.users u JOIN app.roles r ON r.rolename = 'kiosk_operator'
+WHERE u.username = 'dev_kiosk_op'
+ON CONFLICT (user_id, role_id) DO UPDATE SET is_active = true, deactivate_at = NULL;
+
+INSERT INTO app.user_role_relation (user_id, role_id, is_active, assigned_at)
+SELECT u.id, r.id, true, now() FROM app.users u JOIN app.roles r ON r.rolename = 'kiosk_approver'
+WHERE u.username = 'dev_kiosk_ap'
+ON CONFLICT (user_id, role_id) DO UPDATE SET is_active = true, deactivate_at = NULL;
+
+INSERT INTO app.user_role_relation (user_id, role_id, is_active, assigned_at)
+SELECT u.id, r.id, true, now() FROM app.users u JOIN app.roles r ON r.rolename = 'user_operator'
+WHERE u.username = 'dev_user_op'
+ON CONFLICT (user_id, role_id) DO UPDATE SET is_active = true, deactivate_at = NULL;
+
+INSERT INTO app.user_role_relation (user_id, role_id, is_active, assigned_at)
+SELECT u.id, r.id, true, now() FROM app.users u JOIN app.roles r ON r.rolename = 'user_approver'
+WHERE u.username = 'dev_user_ap'
+ON CONFLICT (user_id, role_id) DO UPDATE SET is_active = true, deactivate_at = NULL;
+
+INSERT INTO app.user_role_relation (user_id, role_id, is_active, assigned_at)
+SELECT u.id, r.id, true, now() FROM app.users u JOIN app.roles r ON r.rolename = 'security_auditor'
+WHERE u.username = 'dev_auditor'
 ON CONFLICT (user_id, role_id) DO UPDATE SET is_active = true, deactivate_at = NULL;
 
 -- REGION スコープの e2e 検証用デモロール（dev 専用・is_system=false）:

@@ -34,7 +34,13 @@ export async function PrivilegedAccessBanner({
   const pending = entries.filter((e) => e.view?.pending);
   const label = ELEVATION_CODE_LABEL[code].ja;
 
-  const remainingLabel = (ms: number | null | undefined) => {
+  // 未使用の付与では remainingMs が窓の終わりまでを指す。持ち時間と取り違え
+  // られるので、時計が動いてから（ACTIVE）だけ残りを出す。
+  const remainingLabel = (
+    ms: number | null | undefined,
+    state?: string | null,
+  ) => {
+    if (state !== "ACTIVE") return null;
     if (ms == null || ms <= 0) return null;
     const m = Math.floor(ms / 60_000);
     return m >= 60
@@ -71,8 +77,8 @@ export async function PrivilegedAccessBanner({
               variant={view?.allowed ? "filled" : "light"}
             >
               {op.label.ja}
-              {view?.allowed && remainingLabel(view.remainingMs)
-                ? `（${remainingLabel(view.remainingMs)}）`
+              {view?.allowed && remainingLabel(view.remainingMs, view.state)
+                ? `（${remainingLabel(view.remainingMs, view.state)}）`
                 : view?.pending
                   ? "（承認待ち）"
                   : ""}

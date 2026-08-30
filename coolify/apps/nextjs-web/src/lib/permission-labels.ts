@@ -64,6 +64,31 @@ export const PERMISSION_GROUP_LABEL: Record<PermissionGroup, LocalizedLabel> = {
   },
 };
 
+/** 種類ごとの説明。「権限にはどんな種類があるのか」をマニュアルで語るための 1 段落。 */
+export const PERMISSION_GROUP_SUMMARY: Record<PermissionGroup, LocalizedLabel> =
+  {
+    business: {
+      ja: "日々の仕事で使う権限です。見積書・注文請書・指示書・出荷書のように、扱う書類ごとに分かれています。多くの人はここだけを持ちます。",
+      en: "Permissions for everyday work, split by the document you handle — quotes, order acceptances, work orders, delivery orders. Most people hold only these.",
+      zh: "日常工作使用的权限，按所处理的单据划分——报价单、订单确认书、作业指示书、出货单。大多数人只持有这一类。",
+    },
+    master: {
+      ja: "全員が共通で使う「元になるデータ」を整える権限です。取引先や製品を直すと、その後に作られる書類すべてに影響します。人数を絞って持つのが普通です。",
+      en: "Permissions for the shared reference data everyone works from. Changing a partner or product affects every document created afterwards, so these are usually held by a few people.",
+      zh: "整理全员共用的「基础数据」的权限。修改客户或产品会影响此后创建的所有单据，因此通常只由少数人持有。",
+    },
+    admin: {
+      ja: "システムそのものの設定を変える権限です。画面の見え方や外部連携など、業務データではなく仕組みの側を扱います。",
+      en: "Permissions that change the system itself — how screens behave, external integrations — rather than business data.",
+      zh: "更改系统本身设置的权限，涉及画面行为与外部对接等机制层面，而非业务数据。",
+    },
+    privileged: {
+      ja: "持っているだけでは実行できない権限です。端末の PIN やカードの発行、個人データの閲覧など、影響が大きく後戻りしにくい操作がここに入ります。使うたびに申請し、別の人の承認を受けた期間だけ実行できます。",
+      en: "Permissions that holding is not enough for. Device PINs, card issuance and personal-data access sit here — operations with wide reach and little way back. Each use is requested and allowed only for a window someone else approves.",
+      zh: "仅持有还不能执行的权限。终端 PIN、卡片发放、个人数据查看等影响大且难以回退的操作属于此类。每次使用都需申请，并只在他人批准的时间段内执行。",
+    },
+  };
+
 /**
  * 権限コードの一覧。**app.permissions に入るコードと同じ集合**
  * （shared-db/sql/rbac-seed.sql + migrations）。
@@ -212,9 +237,9 @@ export const PERMISSIONS: readonly PermissionMeta[] = [
     code: "approve",
     label: { ja: "承認管理", en: "Approvals", zh: "审批管理" },
     summary: {
-      ja: "承認待ちの一覧（承認・予定）を見られます。**押せるかどうかは別** — 承認できる人は承認設定 (MS0B) の承認グループ所属が決めます。",
-      en: "See the pending-approval list. **Being able to approve is separate** — that is decided by approval-group membership in 承認設定 (MS0B).",
-      zh: "查看待审批列表。**能否审批是另一回事** — 由审批设置 (MS0B) 的审批组成员资格决定。",
+      ja: "承認待ちの一覧（承認・予定）を見られます。実際に承認できるかどうかは、この権限ではなく承認設定（MS0B）で決まります。",
+      en: "See the pending-approval list. Whether you may actually approve is decided by 承認設定 (MS0B), not by this permission.",
+      zh: "查看待审批列表。能否实际审批由审批设置（MS0B）决定，而非此权限。",
     },
     group: "business",
   },

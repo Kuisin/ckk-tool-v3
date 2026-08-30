@@ -80,9 +80,11 @@ export function PrivilegedRequestCard({
   const fmt = useFormat();
   // 方式 A で「利用中」のときだけ実時間のカウントダウンを出す。承認待ちや
   // 期限切れに秒を出しても読む意味が無い。
+  // **未使用（ARMED）ではカウントダウンしない。** あの残り時間は窓の終わりまで
+  // なので、1 回あたりの持ち時間と取り違えられる。時計が動いてから出す。
   const live =
     row.kind === "elevation" &&
-    row.status === "APPROVED" &&
+    row.state === "ACTIVE" &&
     row.remainingMs != null &&
     row.remainingMs > 0;
 

@@ -25,6 +25,7 @@ import {
   actionLabel,
   PERMISSION_GROUP_LABEL,
   PERMISSION_GROUP_ORDER,
+  PERMISSION_GROUP_SUMMARY,
   permissionLabel,
   permissionsByGroup,
   scopeLabel,
@@ -320,7 +321,10 @@ interface ReferencePhrases {
   title: string;
   description: string;
   intro: string;
-  shapeHeading: string;
+  authHeading: string;
+  authBody: string;
+  authTable: string;
+  authzHeading: string;
   shapeIntro: string;
   shapeTable: string;
   actionHeading: string;
@@ -332,6 +336,8 @@ interface ReferencePhrases {
   approvalBody: string;
   privilegedHeading: string;
   privilegedBody: string;
+  typesHeading: string;
+  typesIntro: string;
   listHeading: string;
   listTableHead: string;
 }
@@ -340,10 +346,15 @@ const REFERENCE: Record<Locale, ReferencePhrases> = {
   ja: {
     title: "権限とロール",
     description:
-      "どのアプリを使うのに何の権限が要るのか、権限の読み方と一覧をまとめます。",
+      "ログイン（認証）と、何ができるか（認可）のしくみ。権限の読み方・種類・一覧をまとめます。",
     intro:
-      "アプリごとに「使うために必要な権限」が決まっています。各アプリのマニュアルの末尾にも「必要な権限」を載せているので、まずはそちらを見てください。このページは全体像です。",
-    shapeHeading: "## 権限は 3 つの組み合わせで決まります",
+      "「ログインできること」と「操作できること」は別々に決まっています。このページはその仕組みをまとめたものです。各アプリのマニュアルの末尾にも「必要な権限」を載せているので、目の前の画面のことを知りたいときはそちらが早いです。",
+    authHeading: "## 認証と認可 — 2 つの段階",
+    authBody:
+      "システムは 2 つの段階を踏みます。\n\n1. **認証（にんしょう）** … あなたが誰なのかを確かめる段階です。いわゆるログインで、ここを通ると「誰として使っているか」が決まります。\n2. **認可（にんか）** … その人に何を許すかを決める段階です。ここで使うのが**権限**です。\n\nログインできたのに画面が開けないことがあるのは、この 2 つが別だからです。認証は通っている（あなたが誰かは分かっている）けれど、認可で足りていない（その操作は許されていない）という状態です。",
+    authTable:
+      "| どこから使うか | 本人確認のしかた | 手順 |\n| --- | --- | --- |\n| パソコン（Web） | 社内アカウントでのサインイン、またはユーザー名とパスワード | [はじめかた](start) |\n| 現場の共有タブレット | QRカードと PIN | [キオスクをはじめる](operations/kiosk/start/user) |",
+    authzHeading: "## 認可 — 権限は 3 つの組み合わせで決まります",
     shapeIntro:
       "「見積書を、自分の担当ぶんだけ、見られる」のように、3 つが揃って 1 つの権限になります。",
     shapeTable:
@@ -354,9 +365,12 @@ const REFERENCE: Record<Locale, ReferencePhrases> = {
     scopeIntro:
       "同じ「閲覧」でも、範囲によって見える件数が変わります。拠点で絞られている場合、自分が所属する拠点のデータだけが出ます。",
     scopeTableHead: "| 範囲 | 意味 |\n| --- | --- |",
+    typesHeading: "## 権限の種類",
+    typesIntro:
+      "権限は性格ごとに 4 つに分かれます。どれを持っているかは「[自分の権限](/profile/permissions)」で確かめられます。",
     approvalHeading: "## 承認できるかどうかは、権限では決まりません",
     approvalBody:
-      "書類を承認できる人は、**承認設定（MS0B）の承認グループに入っているかどうか**で決まります。権限の側で必要なのは、その書類を見られる（閲覧）か直せる（更新）ことだけです。\n\n承認する人を増やしたいときは、権限ではなく承認グループのメンバーを見てください。",
+      "書類を承認できる人は、権限ではなく**承認設定（MS0B）**で決まります。仕組みと設定のしかたは「[承認設定](operations/masters/approval-setting/user)」にまとまっているので、そちらを見てください。",
     privilegedHeading: "## 特権操作 — 権限だけでは行えないもの",
     privilegedBody:
       "端末の PIN を見る、QR カードを発行する、ログイン履歴の中身を開く——こうした操作は、権限を持っていても**そのままでは行えません**。特権アクセス（`SY0G`）で理由を書いて申請し、別の人の承認を受けた期間だけ行えます。\n\n持ち時間は承認された時点ではなく、**最初にその操作をした時点から**減りはじめます。詳しくは「[特権アクセス](operations/system/privileged-access/user)」を参照してください。",
@@ -366,10 +380,15 @@ const REFERENCE: Record<Locale, ReferencePhrases> = {
   en: {
     title: "Permissions and roles",
     description:
-      "How permissions are read, and the full list of what each one unlocks.",
+      "How signing in (authentication) and what you may do (authorisation) fit together, how to read a permission, and the full list.",
     intro:
-      "Every app requires a particular permission. Each app's manual page ends with a *Permissions required* section — check there first. This page is the overview.",
-    shapeHeading: "## A permission is three things together",
+      "Being able to sign in and being able to act are decided separately. This page explains how. Each app's manual page ends with a *Permissions required* section, which is quicker if you only care about the screen in front of you.",
+    authHeading: "## Authentication and authorisation — two stages",
+    authBody:
+      "The system works in two stages.\n\n1. **Authentication** — establishing who you are. This is signing in; afterwards the system knows which person is using it.\n2. **Authorisation** — deciding what that person may do. This is where permissions come in.\n\nSigning in successfully and still not being able to open a screen is the normal consequence of these being separate: authentication passed, authorisation did not.",
+    authTable:
+      "| Where you use it | How you are identified | Steps |\n| --- | --- | --- |\n| Desktop (web) | Company account sign-in, or username and password | [Getting started](start) |\n| Shop-floor tablet | QR card and PIN | [Starting on the kiosk](operations/kiosk/start/user) |",
+    authzHeading: "## Authorisation — a permission is three things together",
     shapeIntro:
       'Like "view quotes, but only my own", three parts combine into one permission.',
     shapeTable:
@@ -380,9 +399,12 @@ const REFERENCE: Record<Locale, ReferencePhrases> = {
     scopeIntro:
       "The same *View* shows different amounts depending on scope. Limited to a plant, you only see data for the plants you belong to.",
     scopeTableHead: "| Scope | Meaning |\n| --- | --- |",
+    typesHeading: "## Kinds of permission",
+    typesIntro:
+      "Permissions fall into four kinds. To see which you hold, open [My permissions](/profile/permissions).",
     approvalHeading: "## Permissions do not decide who may approve",
     approvalBody:
-      "Who may approve a document is decided by **membership of an approval group in 承認設定 (MS0B)**. All the permission side requires is that you can view or edit that document.\n\nTo add approvers, change the approval group members — not the permissions.",
+      "Who may approve a document is decided by **承認設定 (MS0B)**, not by permissions. How it works and how to set it up is covered in [Approval settings](operations/masters/approval-setting/user).",
     privilegedHeading:
       "## Privileged operations — permission alone is not enough",
     privilegedBody:
@@ -393,10 +415,16 @@ const REFERENCE: Record<Locale, ReferencePhrases> = {
   },
   zh: {
     title: "权限与角色",
-    description: "如何理解权限，以及各权限可做什么的一览。",
+    description:
+      "登录（认证）与可做什么（授权）的机制，权限的读法、种类与一览。",
     intro:
-      "每个应用都规定了使用所需的权限。各应用手册的末尾都有「所需权限」一节，请先查看那里。本页是整体说明。",
-    shapeHeading: "## 权限由三者组合而成",
+      "「能否登录」与「能否操作」是分开决定的。本页说明其中的机制。各应用手册的末尾都有「所需权限」一节，若只想了解眼前的画面，看那里更快。",
+    authHeading: "## 认证与授权 — 两个阶段",
+    authBody:
+      "系统分两个阶段。\n\n1. **认证** … 确认你是谁的阶段，也就是登录。通过之后，系统便知道是谁在使用。\n2. **授权** … 决定允许这个人做什么的阶段，这里用到的就是**权限**。\n\n已经登录却打不开画面，正是因为两者是分开的：认证通过了，但授权不足。",
+    authTable:
+      "| 从哪里使用 | 如何确认本人 | 步骤 |\n| --- | --- | --- |\n| 电脑（Web） | 公司账号登录，或用户名与密码 | [开始使用](start) |\n| 车间共享平板 | 二维码卡与 PIN | [自助终端入门](operations/kiosk/start/user) |",
+    authzHeading: "## 授权 — 权限由三者组合而成",
     shapeIntro: "如「只能查看本人负责的报价单」，三个部分合起来构成一项权限。",
     shapeTable:
       "| | 含义 | 例 |\n| --- | --- | --- |\n| 权限 | 针对什么的权限 | 报价单 |\n| 动作 | 在其中可以做什么 | 查看 / 创建 / 更新 |\n| 范围 | 涉及到哪里 | 全公司 / 基地 / 本人负责的记录 |",
@@ -406,9 +434,12 @@ const REFERENCE: Record<Locale, ReferencePhrases> = {
     scopeIntro:
       "同样是「查看」，范围不同可见的条数也不同。若限定为基地，则只显示本人所属基地的数据。",
     scopeTableHead: "| 范围 | 含义 |\n| --- | --- |",
+    typesHeading: "## 权限的种类",
+    typesIntro:
+      "权限按性质分为四类。想确认自己持有哪些，请打开「[我的权限](/profile/permissions)」。",
     approvalHeading: "## 能否审批不由权限决定",
     approvalBody:
-      "谁可以审批单据，由**审批设置（MS0B）中的审批组成员资格**决定。权限侧只要求能查看或编辑该单据。\n\n想增加审批人时，请调整审批组成员，而不是权限。",
+      "谁可以审批单据由**审批设置（MS0B）**决定，而非权限。其机制与设置方法请参见「[审批设置](operations/masters/approval-setting/user)」。",
     privilegedHeading: "## 特权操作 — 仅有权限还不够",
     privilegedBody:
       "查看终端 PIN、发放二维码卡、打开登录记录的明细——即使拥有权限也**不能直接执行**。需在特权访问（`SY0G`）中写明理由提出申请，并只在他人批准的时间段内执行。\n\n时间不是从批准时开始，而是从**第一次执行该操作时**开始减少。详见「[特权访问](operations/system/privileged-access/user)」。",
@@ -427,7 +458,13 @@ export function buildPermissionsReferencePage(locale: Locale): string {
     "---",
     t.intro,
     "",
-    t.shapeHeading,
+    t.authHeading,
+    "",
+    t.authBody,
+    "",
+    t.authTable,
+    "",
+    t.authzHeading,
     "",
     t.shapeIntro,
     "",
@@ -450,7 +487,18 @@ export function buildPermissionsReferencePage(locale: Locale): string {
   }
   out.push("", t.approvalHeading, "", t.approvalBody);
   out.push("", t.privilegedHeading, "", t.privilegedBody);
-  out.push("", t.listHeading, "");
+
+  // 権限の「種類」— 一覧の前に、それぞれがどういう性格の集まりなのかを説明する。
+  // 表にすると 1 行が長くなりすぎるので、段落で並べる。
+  out.push("", t.typesHeading, "", t.typesIntro, "");
+  for (const group of PERMISSION_GROUP_ORDER) {
+    out.push(
+      `**${PERMISSION_GROUP_LABEL[group][locale]}** — ${PERMISSION_GROUP_SUMMARY[group][locale]}`,
+      "",
+    );
+  }
+
+  out.push(t.listHeading, "");
   for (const group of PERMISSION_GROUP_ORDER) {
     const items = permissionsByGroup(group);
     if (items.length === 0) continue;
