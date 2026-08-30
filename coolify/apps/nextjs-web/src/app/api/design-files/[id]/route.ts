@@ -1,14 +1,14 @@
 /**
  * /api/design-files/[id] — 設計図（版）の配信。
  *
- * 設計依頼の完了で登録される `design_files` は `file_id → files` を直接指して
+ * 設計図 (PD06) が持つ `design_files` は `file_id → files` を直接指して
  * いて、`document_attachments` の行ではない。そのため `/api/attachments/[id]`
  * では開けず、版一覧はファイル名を並べるだけで**中身を見る手段が無かった**。
  * ここがその手段。
  *
  * GET — SeaweedFS から本体をストリーム返却。PDF / 画像は inline、それ以外は
- *       attachment。読める人は `design_request:READ` を持つ人（版は設計依頼の
- *       成果物なので、依頼と同じ権限で見える）。
+ *       attachment。読める人は `design_file:READ` を持つ人 — 図面は
+ *       「何を作るか」なので、関わる業務ロールは全員 READ を持つ。
  *
  * 削除は無い — 版は履歴なので消さない（差し替えは新しい版を足す）。
  */
@@ -26,7 +26,7 @@ export async function GET(
   _request: Request,
   { params }: Params,
 ): Promise<Response> {
-  const denied = await requirePermissionResponse("design_request", "READ");
+  const denied = await requirePermissionResponse("design_file", "READ");
   if (denied) return denied;
 
   const { id } = await params;

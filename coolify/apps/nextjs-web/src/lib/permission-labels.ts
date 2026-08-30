@@ -133,9 +133,19 @@ export const PERMISSIONS: readonly PermissionMeta[] = [
     code: "design_request",
     label: { ja: "設計依頼", en: "Design request", zh: "设计委托" },
     summary: {
-      ja: "設計依頼書を扱えます。",
-      en: "Work with design requests.",
-      zh: "处理设计委托单。",
+      ja: "設計依頼書を扱えます。図面そのものは「設計図」の権限です。",
+      en: "Work with design requests. The drawings themselves are covered by the drawing permission.",
+      zh: "处理设计委托单。图纸本身由「图纸」权限管理。",
+    },
+    group: "business",
+  },
+  {
+    code: "design_file",
+    label: { ja: "設計図", en: "Drawing", zh: "图纸" },
+    summary: {
+      ja: "図面の版を登録・編集・削除できます。閲覧は業務ロールのほぼ全員が持ちます。",
+      en: "Register, edit and delete drawing versions. Nearly every business role can view them.",
+      zh: "登记、编辑和删除图纸版本。几乎所有业务角色都可查看。",
     },
     group: "business",
   },

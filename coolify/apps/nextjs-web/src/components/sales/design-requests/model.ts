@@ -18,8 +18,17 @@
  * 値を**保存**したもの。導出しないのは、区分が承認ルートを決めるから
  * （lib 側 detectDesignKind と design.prisma のコメントを参照）。
  *
+ * **図面そのもの（design_files）の型はここに無い** — 設計図 (PD06) が持つ
+ * （`components/production/design-files/model.ts`）。依頼は「作ってほしい」と
+ * いう起票で、図面はその成果物。依頼を経ずに取り込んだ版もあるので、図面の型が
+ * 依頼の型に従属していると表現できない。
+ *
  * ここは pure / client-safe のみ。
  */
+
+import type { DesignFileRole } from "@/components/production/design-files/model";
+
+export type { DesignFileRole };
 
 export type DesignRequestStatus =
   | "DRAFT"
@@ -106,55 +115,9 @@ export interface DesignRequestLink {
 }
 
 /**
- * 製品マスタに出す「その製品の設計図」1 行。
- *
- * 製品の最新図面は `design_files.product_id` + `is_latest` が正で、
- * `products` 側に列は無い。差し替えは設計依頼 (SA06) の完了経由だけ
- * — 版採番と両側の is_latest クリアは completeDesign の 1 tx が唯一の
- * 管理者なので、マスタ側に第 2 の書き込み口を作らない。
+ * ファイルタブの1行。設計図 (PD06) が所有する型を借りるだけ — 依頼側で
+ * 役割を定義し直すと、同じ enum が 2 箇所にできて必ずずれる。
  */
-export interface ProductDesignFile {
-  id: string;
-  version: number;
-  isLatest: boolean;
-  role: DesignFileRole;
-  mimeType: string;
-  filename: string;
-  /** 生成元の設計依頼（DSG-…）。手動登録の版は null。 */
-  requestNumber: string | null;
-  /** 依頼 id そのもの。「依頼 / 手動」の別はこれの有無から導く。 */
-  designRequestId: string | null;
-  /** 版系列の軸。null = 汎用（どの顧客の指示書からも使える）。 */
-  customerBpId: string | null;
-  customerName: string | null;
-  /** 指示書がこの版を指しているか。true なら編集・削除できない。 */
-  usedByWorkOrder: boolean;
-  notes: string | null;
-  createdAt: string;
-}
-
-/**
- * 版の中での役割。1 版 = プレビュー 0..1 + 図面データ 1 + 参考資料 0..N。
- *
- * PREVIEW と BLUEPRINT を分けているのは用途が違うから — STL は人が形を
- * 確かめるためのもの、CAD は加工プログラムを起こす元データで、片方で
- * 代用できない。製品マスタの「最新図面」は BLUEPRINT を指す。
- */
-export type DesignFileRole = "PREVIEW" | "BLUEPRINT" | "REFERENCE";
-
-export const DESIGN_FILE_ROLE_LABEL: Record<DesignFileRole, string> = {
-  PREVIEW: "プレビュー",
-  BLUEPRINT: "図面データ",
-  REFERENCE: "参考資料",
-};
-
-export const DESIGN_FILE_ROLE_COLOR: Record<DesignFileRole, string> = {
-  PREVIEW: "grape",
-  BLUEPRINT: "blue",
-  REFERENCE: "gray",
-};
-
-/** ファイルタブの1行（design_files + files の抜粋）。 */
 export interface DesignRequestFile {
   id: string;
   version: number;
@@ -255,7 +218,14 @@ export function canStart(r: StatusOnly) {
   return r.status === "PENDING";
 }
 
-/** 完了できるか（別途、設計ファイルの添付が 1 件以上必要 — サーバー側で検証）。 */
+/**
+ * 完了できるか（状態だけの判定）。
+ *
+ * **これだけでは完了できない** — この依頼を成果物とする版
+ * (design_files.design_request_id) が 1 件以上必要で、それはサーバー側
+ * (completeDesign) が検証する。版の登録は 設計図 (PD06) の仕事なので、
+ * 画面はここが true でも成果物が無ければ登録画面へ誘導する。
+ */
 export function canComplete(r: StatusOnly) {
   return r.status === "IN_PROGRESS";
 }
@@ -271,7 +241,8 @@ export function isCancellable(r: StatusOnly) {
 }
 
 /**
- * 設計ファイルを添付・削除できるか。承認前と完了後は不可。
+ * **作業ファイル**（document_attachments — メモ・下書き）を添付・削除できるか。
+ * 承認前と完了後は不可。成果物の版は 設計図 (PD06) が持つので、これとは別。
  * （旧実装は「完了以外は可」だったが、それだと下書き・キャンセル済みにも
  * 入れられてしまう。サーバー側 /api/attachments でも同じ条件で弾く。）
  *

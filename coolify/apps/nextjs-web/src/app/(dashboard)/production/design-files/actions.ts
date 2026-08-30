@@ -54,7 +54,7 @@ async function loadRow(id: string) {
 export async function updateDesignFileNotes(
   input: z.input<typeof notesInput>,
 ): Promise<ActionResult> {
-  const authz = await checkPermission("design_request", "UPDATE");
+  const authz = await checkPermission("design_file", "UPDATE");
   if (!authz.ok) return actionError(authz.error);
   const parsed = notesInput.safeParse(input);
   if (!parsed.success) return actionError("入力が不正です");
@@ -97,7 +97,7 @@ export async function updateDesignFileNotes(
  * 「新しい版を作る」ときだけの操作にしておく方が、状態の動く場所が減る。
  */
 export async function deleteDesignFile(id: string): Promise<ActionResult> {
-  const authz = await checkPermission("design_request", "DELETE");
+  const authz = await checkPermission("design_file", "DELETE");
   if (!authz.ok) return actionError(authz.error);
 
   try {

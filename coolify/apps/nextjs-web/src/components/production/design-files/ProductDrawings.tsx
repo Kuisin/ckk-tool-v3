@@ -1,0 +1,196 @@
+"use client";
+
+/**
+ * ProductDrawings — ある製品の設計図 (PD26)。**版を管理できる唯一の画面**。
+ *
+ * 系列（製品 × 受注元）ごとに節を分ける。汎用が先頭で、以降は版数の多い順。
+ * 系列を混ぜて 1 本の表にすると「どの顧客の v3 なのか」が読めなくなる。
+ * 並べ方は `lib/design-files-core.ts` の groupBySeries が決めるので、
+ * 製品マスタ (MS24) と設計依頼 (SA26) の見え方と必ず一致する。
+ *
+ * 既存の版のファイルそのものは差し替えられない — 図面を変えるということは
+ * 新しい版を作るということで、過去の版を書き換えると「何を見て作ったか」が
+ * 追えなくなる。直せるのはメモだけ。
+ */
+
+import { Badge, Box, Group, Stack, Text, Textarea } from "@mantine/core";
+import { notifications } from "@mantine/notifications";
+import { IconPlus } from "@tabler/icons-react";
+import { useRouter } from "next/navigation";
+import { useState, useTransition } from "react";
+import {
+  deleteDesignFile,
+  updateDesignFileNotes,
+} from "@/app/(dashboard)/production/design-files/actions";
+import { SecondaryButton } from "@/components/ui/buttons";
+import { DesignFileThumb } from "@/components/ui/DesignFileViewer";
+import { ConfirmModal, ModalShell } from "@/components/ui/modals";
+import { DetailShell } from "@/components/ui/shells";
+import { groupBySeries, pickThumbFile } from "@/lib/design-files-core";
+import { DesignFileList, type DesignFileListRow } from "./DesignFileList";
+import type { ProductDesignFile } from "./model";
+
+const BASE_PATH = "/production/design-files";
+
+export function ProductDrawings({
+  productId,
+  productLabel,
+  files,
+  canManage,
+}: {
+  productId: number;
+  productLabel: string;
+  files: ProductDesignFile[];
+  /** 版を足す・直す・消す権限があるか（無ければ読むだけ）。 */
+  canManage: boolean;
+}) {
+  const router = useRouter();
+  const [isPending, startTransition] = useTransition();
+  const [editing, setEditing] = useState<DesignFileListRow | null>(null);
+  const [notes, setNotes] = useState("");
+  const [deleting, setDeleting] = useState<DesignFileListRow | null>(null);
+
+  const series = groupBySeries(files);
+
+  const run = (
+    fn: () => Promise<{ ok: boolean; error?: string }>,
+    ok: string,
+  ) =>
+    startTransition(async () => {
+      const res = await fn();
+      if (res.ok) {
+        notifications.show({ title: ok, message: "", color: "green" });
+        setEditing(null);
+        setDeleting(null);
+        router.refresh();
+      } else {
+        notifications.show({
+          title: "エラー",
+          message: res.error ?? "失敗しました",
+          color: "red",
+        });
+      }
+    });
+
+  const openRequest = (n: string) =>
+    router.push(`/sales/design-requests/${encodeURIComponent(n)}`);
+
+  return (
+    <DetailShell
+      actions={
+        canManage ? (
+          <SecondaryButton
+            href={`${BASE_PATH}/new?product=${productId}`}
+            leftSection={<IconPlus size={14} />}
+          >
+            版を登録
+          </SecondaryButton>
+        ) : undefined
+      }
+      breadcrumbs={["生産", "設計図", productLabel]}
+      title={productLabel}
+    >
+      <Stack gap="lg">
+        {series.length === 0 ? (
+          <Text c="dimmed" size="sm">
+            この製品の設計図はまだありません
+          </Text>
+        ) : (
+          series.map((g) => {
+            const thumb = pickThumbFile(g.files);
+            return (
+              <Stack
+                gap="xs"
+                // 一覧の行から系列へ直接来られるようにアンカーを置く。
+                id={`series-${g.customerBpId ?? "generic"}`}
+                key={g.customerBpId ?? "__generic__"}
+              >
+                <Group gap="xs" wrap="wrap">
+                  {g.customerBpId == null ? (
+                    <Badge color="gray" variant="light">
+                      汎用
+                    </Badge>
+                  ) : (
+                    <Badge color="blue" variant="light">
+                      {g.files.find((f) => f.customerName)?.customerName ??
+                        "受注元"}
+                    </Badge>
+                  )}
+                  <Text c="dimmed" size="xs">
+                    最新 v{g.latestVersion}
+                  </Text>
+                </Group>
+                {thumb && (
+                  <Box maw={320}>
+                    <DesignFileThumb
+                      target={{
+                        caption: `v${thumb.version}（最新）`,
+                        filename: thumb.filename,
+                        mimeType: thumb.mimeType,
+                        src: `/api/design-files/${encodeURIComponent(thumb.id)}`,
+                      }}
+                    />
+                  </Box>
+                )}
+                <DesignFileList
+                  onDelete={canManage ? setDeleting : undefined}
+                  onEdit={
+                    canManage
+                      ? (row) => {
+                          setEditing(row);
+                          setNotes(row.notes ?? "");
+                        }
+                      : undefined
+                  }
+                  onOpenRequest={openRequest}
+                  rows={g.files}
+                  showSource
+                />
+              </Stack>
+            );
+          })
+        )}
+      </Stack>
+
+      <ModalShell
+        confirmLabel="保存"
+        loading={isPending}
+        onClose={() => setEditing(null)}
+        onConfirm={() =>
+          editing &&
+          run(
+            () => updateDesignFileNotes({ id: editing.id, notes }),
+            "保存しました",
+          )
+        }
+        opened={editing != null}
+        title={editing ? `v${editing.version} のメモ` : "メモ"}
+      >
+        <Textarea
+          autosize
+          label="メモ"
+          minRows={3}
+          onChange={(e) => setNotes(e.currentTarget.value)}
+          placeholder="この版で何が変わったか"
+          value={notes}
+        />
+      </ModalShell>
+
+      <ConfirmModal
+        confirmLabel="削除"
+        loading={isPending}
+        message={
+          deleting
+            ? `${deleting.filename}（v${deleting.version}）を削除します。この操作は取り消せません。`
+            : ""
+        }
+        onClose={() => setDeleting(null)}
+        onConfirm={() =>
+          deleting && run(() => deleteDesignFile(deleting.id), "削除しました")
+        }
+        opened={deleting != null}
+        title="設計図の削除"
+      />
+    </DetailShell>
+  );
+}

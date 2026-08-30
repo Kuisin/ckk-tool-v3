@@ -17,8 +17,9 @@
  *   同型の row-workflow: 遷移列（at/by）+ history Json + audit。承認依頼・記録は
  *   approval_requests / approval_records へ正規化する（targetType
  *   "design_requests" — CM01 横断表示・代理対応）。
- * - 作業軸 PENDING→着手→IN_PROGRESS→完了→COMPLETED。完了は設計ファイルの添付が
- *   必須で、そのとき design_files へ版を登録する。
+ * - 作業軸 PENDING→着手→IN_PROGRESS→完了→COMPLETED。**図面の登録はここでは
+ *   行わない** — 版は 設計図 (PD06) が持つ。完了できるのは、この依頼に紐づく
+ *   版 (design_files.design_request_id) が 1 件以上あるときだけ。
  * - COMPLETED → IN_PROGRESS の「差し戻し」は**作業の巻き戻し**であって承認軸では
  *   ないので、REJECTED には落とさず承認記録にも触らない。
  * - 遷移・更新は status を where に含めた updateMany で原子的にガードする。
@@ -34,11 +35,9 @@ import {
   type HistoryEntry,
   startApprovalFlow,
 } from "@/lib/approvals";
-import { listAttachments } from "@/lib/attachments";
 import { getCurrentActorId, recordAudit } from "@/lib/audit";
 import { checkApprovalDocAccess, checkPermission } from "@/lib/authz";
 import { prisma } from "@/lib/db";
-import { createVersionInTx } from "@/lib/design-files";
 import { parseDocKey } from "@/lib/doc-number";
 import { type NotificationType, notify } from "@/lib/notifications";
 import { nextDocumentNumber } from "@/lib/numbering";
@@ -793,58 +792,24 @@ export async function startDesign(number: string): Promise<ActionResult> {
 /**
  * 完了 (IN_PROGRESS → COMPLETED)。completedAt を記録する。
  *
- * 1 回の完了 = 1 版。選んだ添付をまとめてその版に登録する。役割は 3 つで、
- *   プレビュー 0..1 … 人が形を確かめる（STL 等）
- *   図面データ 1    … 加工プログラムを起こす元データ（成果物の本体）
- *   参考資料 0..N   … その他
- * version は図面の改訂世代なので、同時に出したファイルは同じ番号を共有する
- * （ファイルごとに採番すると「v3 にして」が何を指すか分からなくなる）。
+ * **図面はここでは登録しない。** 版の登録は 設計図 (PD06) が持つ — 依頼を
+ * 経ない版もあるので、採番と is_latest の付け替えを依頼の完了処理に
+ * ぶら下げると、入口が 2 つある処理の片方だけが正になってしまう。
+ *
+ * ただし成果物が無いまま完了はできない。**この依頼に紐づく版
+ * (design_files.design_request_id) が 1 件以上あること**を条件にする。
+ * これが無いと「完了」は状態を進めるだけの操作になり、依頼を出した側から
+ * 見て何が出来たのか判らない。画面側は未登録のときに 設計図 の登録画面へ
+ * 誘導する（DesignRequestDetail の ActionCard）。
  */
-export async function completeDesign(
-  number: string,
-  input?: {
-    /** 3D プレビュー用の添付 id（任意）。 */
-    previewAttachmentId?: string | null;
-    /** 図面データの添付 id。省略時はいちばん新しい添付。 */
-    blueprintAttachmentId?: string | null;
-    /** 参考資料の添付 id + 説明（何の図か）。 */
-    references?: { attachmentId: string; description?: string | null }[] | null;
-  },
-): Promise<ActionResult> {
+export async function completeDesign(number: string): Promise<ActionResult> {
   const authz = await checkPermission("design_request", "UPDATE");
   if (!authz.ok) return actionError(authz.error);
   try {
-    // 完了には設計ファイルの添付が必須（監査 P2-3 — dead-end 解消）
-    const attachments = await listAttachments("design_requests", number);
-    if (attachments.length === 0) {
-      return actionError("設計ファイルを添付してから完了してください");
-    }
-    // 存在しない id は黙って捨てる（画面が古いまま送ってきても、実在する
-    // 添付だけが登録される）。
-    const byId = (id: string | null | undefined) =>
-      id ? attachments.find((a) => a.id === id) : undefined;
-
-    // listAttachments は新しい順。図面データの既定はいちばん新しいもの。
-    const blueprint = byId(input?.blueprintAttachmentId) ?? attachments[0];
-    const preview = byId(input?.previewAttachmentId);
-    if (preview && preview.id === blueprint.id) {
-      return actionError(
-        "同じファイルをプレビューと図面データの両方には指定できません",
-      );
-    }
-    // 存在しない id は黙って捨て、図面データ・プレビューと同じものは除く。
-    const references = (input?.references ?? []).flatMap((r) => {
-      const a = byId(r.attachmentId);
-      if (!a || a.id === blueprint.id || a.id === preview?.id) return [];
-      return [{ a, description: r.description ?? null }];
-    });
-
     const request = await prisma.designRequest.findUnique({
       where: { requestNumber: number },
       select: {
         id: true,
-        productId: true,
-        customerBpId: true,
         createdBy: true,
         history: true,
         kind: true,
@@ -853,6 +818,19 @@ export async function completeDesign(
       },
     });
     if (!request) return actionError("対象の設計依頼書が見つかりません");
+
+    // 成果物（この依頼から出来た版）。1 版に複数ファイルが載るので、
+    // 版番号の種類数で「何版ぶんか」を数える。
+    const produced = await prisma.designFile.findMany({
+      where: { designRequestId: request.id },
+      select: { version: true, role: true },
+    });
+    if (produced.length === 0) {
+      return actionError(
+        "この依頼の図面が設計図に登録されていません。先に設計図で版を登録してください",
+      );
+    }
+    const versions = [...new Set(produced.map((f) => f.version))];
 
     // 依頼中に別の改訂が先に完了していると、この依頼が基にした版はもう最新では
     // ない。止めはしない（描き直させても仕方がない）が、**黙って上書きさせない**
@@ -890,36 +868,6 @@ export async function completeDesign(
       return actionError("進行中の設計依頼書のみ完了できます");
     }
 
-    // design_files へ版として登録する。
-    //
-    // **採番と is_latest の付け替えは createVersionInTx が唯一の管理者。**
-    // 手動登録（製品マスタ）も同じ関数を通るので、どちらの入口から入れても
-    // 版番号の数え方が揃う。ここで自前に数えると、片方だけ直したときに
-    // 版が飛んだり is_latest が 2 行立ったりするのが避けられない。
-    //
-    // 版が載る系列は依頼の受注元（customer_bp_id）。null なら汎用。
-    if (request.productId != null) {
-      await prisma.$transaction((tx) =>
-        createVersionInTx(tx, {
-          productId: request.productId as number,
-          customerBpId: request.customerBpId,
-          designRequestId: request.id,
-          files: [
-            ...(preview
-              ? [{ fileId: preview.fileId, role: "PREVIEW" as const }]
-              : []),
-            { fileId: blueprint.fileId, role: "BLUEPRINT" as const },
-            ...references.map((r) => ({
-              fileId: r.a.fileId,
-              role: "REFERENCE" as const,
-              // 参考資料は 1 枚ずつ説明を持てる（後から見て何の図か判るように）
-              notes: r.description?.trim() || null,
-            })),
-          ],
-          actor,
-        }),
-      );
-    }
     await recordAudit({
       action: "UPDATE",
       tableName: "design_requests",
@@ -927,7 +875,7 @@ export async function completeDesign(
       before: { status: "IN_PROGRESS" },
       after: {
         status: "COMPLETED",
-        note: `設計ファイル登録（図面 ${blueprint.filename}${preview ? ` / プレビュー ${preview.filename}` : ""}${references.length > 0 ? ` / 参考 ${references.length} 件` : ""}）${request.productId != null ? " + 製品の最新設計を更新" : ""}`,
+        note: `成果物 ${produced.length} 件（v${versions.join(", v")}）`,
         ...(staleBase ? { staleBaseVersion: staleBase.version } : {}),
       },
     });
@@ -937,7 +885,7 @@ export async function completeDesign(
       actor,
       type: "DESIGN",
       title: `設計依頼 ${number} の図面ができました`,
-      message: `${blueprint.filename}${preview || references.length > 0 ? `（ほか ${(preview ? 1 : 0) + references.length} 件）` : ""}`,
+      message: `設計図 v${versions.join(", v")}（${produced.length} 件）`,
       number,
     });
     revalidate(number);

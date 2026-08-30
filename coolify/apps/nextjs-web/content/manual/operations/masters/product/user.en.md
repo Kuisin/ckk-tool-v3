@@ -90,41 +90,16 @@ The screen of a saved product has four tabs.
 
 To correct the content, press 「**編集**」 (Edit) at the top right of the screen.
 
-## Managing drawings
+## Viewing drawings
 
-The 関連 (related) tab lists this product's drawings.
+The "related" tab shows this product's drawings. **This view is read-only** — registering, editing and deleting happen in [Drawing](/manual/en/operations/production/design-file/user) (PD06). Keeping one place to write is what keeps version numbering consistent across screens. Use「**設計図で管理**」(manage in Drawing) at the top right to go there.
 
-**Versions are counted per product × customer.** The same product grows separate drawings for different customers, so customer A's v3 and customer B's v1 sit side by side on one product. A series with no customer is **汎用 (generic)** and is used by any customer that has no drawing of its own. Each series gets its own heading, with the newest thumbnail on top — press it to enlarge, and 3D models can be rotated right there.
+**Versions are counted per product and customer.** The same product grows a separate drawing for each customer, so customer A's v3 sits next to customer B's v1 on one product. A series with no customer is the **generic** one, used by work orders for customers that have no drawing of their own. Each series gets its own heading, with a thumbnail of the latest version on top (select it to enlarge; 3D models rotate in place).
 
-Each version carries a tag saying where it came from.
+Each version carries a source tag.
 
-- **依頼 (request)** — produced by completing a [design request](/manual/en/operations/sales/design-request/user).
-- **手動 (manual)** — added directly from this screen.
-
-### Adding a drawing without a design request
-
-When the drawing already exists, or you are importing one received from elsewhere, register it directly with「**設計図を追加**」(add a drawing).
-
-1. Press「**設計図を追加**」on the 関連 tab.
-2. Choose the **受注元 (customer)**. Left empty, the version is generic.
-3. Put files into **図面データ (blueprint)** (required, one file), **プレビュー用 (preview)** (optional, one file) and **参考資料 (reference material)** (optional, as many as you like). Each piece of reference material can carry its own short description.
-4. Press「**登録**」(register).
-
-The version number continues that series. A customer's first drawing is v1 even when other customers already have versions on the same product.
-
-### Which versions can be changed
-
-| State of the version | Edit the note | Delete |
-|---|---|---|
-| In use by a work order | No | No |
-| Output of a design request | Yes | No |
-| Added manually, unused | Yes | Yes |
-
-**A version a work order points at cannot be moved.** It is the record of what a part was made from, so if its contents changed afterwards you could no longer tell what was actually used. Unpin it on the work order and it becomes editable again.
-
-A version produced by a design request cannot be deleted for a different reason — it is the deliverable of a completed request. Its note can still be edited.
-
-**The drawing file itself cannot be swapped.** Changing a drawing means making a new version, so register it through「設計図を追加」or by completing a design request.
+- **依頼 (request)** — registered as the deliverable of a [design request](/manual/en/operations/sales/design-request/user).
+- **手動 (manual)** — registered without going through a request.
 
 ## Registering the order of the process steps
 

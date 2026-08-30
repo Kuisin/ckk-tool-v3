@@ -80,7 +80,8 @@ Permissions fall into four kinds. To see which you hold, open [My permissions](/
 | Price list | `price_list` | Work with price estimates and price lists — the per-customer unit prices. |
 | Quote | `quote` | Work with quotes. |
 | Order acceptance | `order_acceptance` | Work with order acceptances and their lines. |
-| Design request | `design_request` | Work with design requests. |
+| Design request | `design_request` | Work with design requests. The drawings themselves are covered by the drawing permission. |
+| Drawing | `design_file` | Register, edit and delete drawing versions. Nearly every business role can view them. |
 | Purchasing | `purchase_order` | Work with purchase requests and material purchase orders. |
 | Material receipt | `material_receipt` | Record incoming material. |
 | Outsource order | `outsource_order` | Work with outsourcing orders. |

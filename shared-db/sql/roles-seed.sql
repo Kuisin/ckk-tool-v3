@@ -122,8 +122,9 @@ WHERE r.rolename = 'sales'
 ON CONFLICT DO NOTHING;
 
 INSERT INTO app.role_permission_relation (role_id, permission_code, action, scope)
-SELECT r.id, 'master', 'READ'::app."ACTION", 'ALL'::app."SCOPE"
-FROM app.roles r WHERE r.rolename = 'sales'
+SELECT r.id, g.code, 'READ'::app."ACTION", 'ALL'::app."SCOPE"
+FROM app.roles r CROSS JOIN (VALUES ('master'),('design_file')) AS g(code)
+WHERE r.rolename = 'sales'
 ON CONFLICT DO NOTHING;
 
 -- purchasing
@@ -134,7 +135,8 @@ CROSS JOIN (VALUES
   ('purchase_order','READ'),('purchase_order','CREATE'),('purchase_order','UPDATE'),('purchase_order','DELETE'),('purchase_order','EXPORT'),
   ('material_receipt','READ'),('material_receipt','CREATE'),('material_receipt','UPDATE'),('material_receipt','DELETE'),('material_receipt','EXPORT'),
   ('outsource_order','READ'),('outsource_order','CREATE'),('outsource_order','UPDATE'),('outsource_order','DELETE'),
-  ('inventory','READ'),('work_order','READ'),('master','READ'),('approve','READ')
+  ('inventory','READ'),('work_order','READ'),('master','READ'),('approve','READ'),
+  ('design_file','READ')
 ) AS g(code, action)
 WHERE r.rolename = 'purchasing'
 ON CONFLICT DO NOTHING;
@@ -155,6 +157,8 @@ CROSS JOIN (VALUES
   -- 設計依頼（SA06）— 図面を作るのは製造なので、担当者として着手・完了できる必要がある。
   -- これが無いと「担当に指定されました」の通知を開いた先が 403 になる。
   ('design_request','READ'),('design_request','UPDATE'),
+  -- 設計図（PD06）— 版を登録するのは製造。DELETE は配らない（版は履歴）。
+  ('design_file','READ'),('design_file','CREATE'),('design_file','UPDATE'),
   ('master','READ'),('approve','READ')
 ) AS g(code, action)
 WHERE r.rolename = 'production'
@@ -169,7 +173,9 @@ CROSS JOIN (VALUES
   ('work_order','READ'),('work_order','UPDATE'),
   -- 注文明細（SA05）の参照。旧 work_order 権限で見えていたぶんを引き継ぐ。
   ('order_acceptance','READ'),
-  ('inventory','READ'),('master','READ'),('approve','READ')
+  ('inventory','READ'),('master','READ'),('approve','READ'),
+  -- 検査は図面と突き合わせる
+  ('design_file','READ')
 ) AS g(code, action)
 WHERE r.rolename = 'quality'
 ON CONFLICT DO NOTHING;
@@ -183,7 +189,8 @@ CROSS JOIN (VALUES
   ('delivery_order','READ'),('delivery_order','CREATE'),('delivery_order','UPDATE'),('delivery_order','DELETE'),('delivery_order','EXPORT'),
   ('delivery_note','READ'),('delivery_note','CREATE'),('delivery_note','UPDATE'),('delivery_note','DELETE'),('delivery_note','EXPORT'),
   ('inventory','READ'),('inventory','UPDATE'),
-  ('work_order','READ'),('order_acceptance','READ'),('master','READ')
+  ('work_order','READ'),('order_acceptance','READ'),('master','READ'),
+  ('design_file','READ')
 ) AS g(code, action)
 WHERE r.rolename = 'shipping'
 ON CONFLICT DO NOTHING;
@@ -196,7 +203,8 @@ CROSS JOIN (VALUES
   ('invoice','READ'),('invoice','CREATE'),('invoice','UPDATE'),('invoice','DELETE'),('invoice','EXPORT'),
   ('billing_closing','READ'),('billing_closing','CREATE'),('billing_closing','UPDATE'),('billing_closing','EXPORT'),
   ('delivery_order','READ'),('delivery_note','READ'),
-  ('quote','READ'),('order_acceptance','READ'),('price_list','READ'),('master','READ')
+  ('quote','READ'),('order_acceptance','READ'),('price_list','READ'),('master','READ'),
+  ('design_file','READ')
 ) AS g(code, action)
 WHERE r.rolename = 'accounting'
 ON CONFLICT DO NOTHING;
@@ -209,7 +217,8 @@ INSERT INTO app.role_permission_relation (role_id, permission_code, action, scop
 SELECT r.id, g.code, 'READ'::app."ACTION", 'ALL'::app."SCOPE"
 FROM app.roles r
 CROSS JOIN (VALUES
-  ('quote'),('price_list'),('order_acceptance'),('design_request'),('master')
+  ('quote'),('price_list'),('order_acceptance'),('design_request'),
+  ('design_file'),('master')
 ) AS g(code)
 WHERE r.rolename = 'sales_assistant'
 ON CONFLICT DO NOTHING;
@@ -233,7 +242,7 @@ ON CONFLICT DO NOTHING;
 
 INSERT INTO app.role_permission_relation (role_id, permission_code, action, scope)
 SELECT r.id, g.code, 'READ'::app."ACTION", 'ALL'::app."SCOPE"
-FROM app.roles r CROSS JOIN (VALUES ('master'),('approve')) AS g(code)
+FROM app.roles r CROSS JOIN (VALUES ('master'),('approve'),('design_file')) AS g(code)
 WHERE r.rolename = 'sales_manager'
 ON CONFLICT DO NOTHING;
 
@@ -267,6 +276,15 @@ SELECT r.id, p.code, 'READ'::app."ACTION", 'ALL'::app."SCOPE"
 FROM app.roles r CROSS JOIN app.permissions p
 WHERE r.rolename = 'production_manager' AND p.code NOT IN ('system', 'kiosk', 'kiosk_secret', 'kiosk_device',
                     'kiosk_card', 'personal_data', 'user_admin')
+ON CONFLICT DO NOTHING;
+
+-- production_manager は製造部門なので図面も登録できる（READ は直上で配布済み）。
+-- DELETE は配らない — 版は履歴で、消せるのは admin だけにしておく。
+INSERT INTO app.role_permission_relation (role_id, permission_code, action, scope)
+SELECT r.id, 'design_file', a.action::app."ACTION", 'ALL'::app."SCOPE"
+FROM app.roles r
+CROSS JOIN (VALUES ('CREATE'),('UPDATE')) AS a(action)
+WHERE r.rolename = 'production_manager'
 ON CONFLICT DO NOTHING;
 
 -- quality_manager: 自部門フル（RCUDE） + 全業務 READ

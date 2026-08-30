@@ -1,13 +1,15 @@
 /**
  * POST /api/design-files/upload — 設計図の版を 1 つ手で足す（multipart/form-data）。
  *
- * 設計依頼を経ない登録口。図面だけ先に出来ている・既存図面を取り込む、
- * といった場合に製品マスタから使う。出来た版は design_request_id = null
- * なので、一覧では「手動」と出る。
+ * 設計図 (PD06) の唯一の登録口。設計依頼から出た版も、依頼を経ない版
+ * （図面だけ先に出来ている・既存図面を取り込む）も同じここを通る。
+ * designRequestId を渡さなければ design_request_id = null になり、
+ * 一覧では「手動」と出る。
  *
  * フィールド:
- *   productId     … 対象製品（必須）
+ *   productId       … 対象製品（必須）
  *   customerBpId  … 受注元（任意。空 = 汎用）
+ *   designRequestId … 成果物とする設計依頼の uuid（任意。空 = 手動登録）
  *   notes         … 版のメモ（任意）
  *   blueprint     … 図面データ 1 枚（必須）
  *   preview       … プレビュー用 0..1 枚（任意）
@@ -37,9 +39,9 @@ async function toBytes(f: File) {
 }
 
 export async function POST(request: Request): Promise<NextResponse> {
-  // 図面は設計の成果物なので、製品マスタの権限ではなく設計依頼の権限で守る
-  // （版を足せる人 = 設計依頼を完了できる人）。
-  const deny = await requirePermissionResponse("design_request", "UPDATE");
+  // 図面そのものの権限。設計依頼 (design_request) とは別コード — 依頼を
+  // 出す人と図面を描く人は同じではない。
+  const deny = await requirePermissionResponse("design_file", "CREATE");
   if (deny) return deny as NextResponse;
 
   let form: FormData;
@@ -57,6 +59,11 @@ export async function POST(request: Request): Promise<NextResponse> {
   const bpRaw = String(form.get("customerBpId") ?? "").trim();
   if (bpRaw && !UUID_RE.test(bpRaw)) {
     return badRequest("受注元の指定が不正です");
+  }
+
+  const requestRaw = String(form.get("designRequestId") ?? "").trim();
+  if (requestRaw && !UUID_RE.test(requestRaw)) {
+    return badRequest("設計依頼の指定が不正です");
   }
 
   const blueprint = form.get("blueprint");
@@ -84,6 +91,7 @@ export async function POST(request: Request): Promise<NextResponse> {
   const result = await uploadDesignVersion({
     productId,
     customerBpId: bpRaw || null,
+    designRequestId: requestRaw || null,
     notes: String(form.get("notes") ?? "").trim() || null,
     blueprint: await toBytes(blueprint),
     preview: preview ? await toBytes(preview) : null,
