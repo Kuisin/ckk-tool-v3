@@ -49,7 +49,7 @@ export interface AppEntry {
 export const appList: AppEntry[] = [
   // ─── 一般 ──────────────────────────────────────────────────────────────────
   {
-    // 承認・予定 — 自分の作業予定（work_order_step_plans）と、承認待ちの
+    // 承認・予定 — 自分の作業予定（work_order_step_plans）と、承認依頼中の
     // 承認依頼（旧 承認管理 PD03 の横断一覧）をまとめた個人のやることアプリ。
     // 承認セクションは approve 権限がある人にだけ出る（ページ側で判定）。
     key: "my-tasks",
@@ -89,15 +89,15 @@ export const appList: AppEntry[] = [
   },
 
   // ─── 販売 ──────────────────────────────────────────────────────────────────
-  // 業務フロー順: 試算 → 価格表 → 見積書 → 注文請書（設計依頼書は並行フロー）
+  // 業務フロー順: 価格試算 → 価格表 → 見積書 → 注文請書（設計依頼書は並行フロー）
   {
     key: "trial-estimates",
-    label: "試算",
+    label: "価格試算",
     operationCode: "SA01",
     href: "/sales/trial-estimates",
     icon: "IconCalculator",
     category: "販売",
-    // 試算のアクションは price_list を要求する（見積連動の価格表ソース）
+    // 価格試算のアクションは price_list を要求する（見積連動の価格表ソース）
     requiredPermission: "price_list",
   },
   {
@@ -202,7 +202,7 @@ export const appList: AppEntry[] = [
     category: "生産",
     requiredPermission: "work_order",
   },
-  // 旧 承認管理 (PD03, /production/approvals) は廃止 — 承認待ちの横断一覧は
+  // 旧 承認管理 (PD03, /production/approvals) は廃止 — 承認依頼中の横断一覧は
   // 一般カテゴリの 承認・予定 (CM01, /general/tasks) に移った。
   {
     // 在庫管理 — 旧 製品在庫 (PD04) / 素材在庫 (PD05) を統合した単一アプリ。
@@ -436,9 +436,9 @@ export const appList: AppEntry[] = [
     requiredPermission: "system",
   },
   {
-    // 試算カスタマイズ（計算基準・カスタム入力・カスタム計算 JS）。system 権限。
+    // 価格試算カスタマイズ（計算基準・カスタム入力・カスタム計算 JS）。system 権限。
     key: "trial-pricing-engine",
-    label: "試算計算",
+    label: "価格試算計算",
     operationCode: "SY02",
     href: "/settings/trial-pricing-engine",
     icon: "IconMathFunction",
@@ -518,9 +518,9 @@ export const appList: AppEntry[] = [
     requiredPermission: "kiosk",
   },
   {
-    // キオスク設定 — ランチャーのアプリ表示 on/off + 認証ポリシー参照。
+    // 共有端末設定 — ランチャーのアプリ表示 on/off + 認証ポリシー参照。
     key: "kiosk-settings",
-    label: "キオスク設定",
+    label: "共有端末設定",
     operationCode: "SY0A",
     href: "/settings/kiosk",
     icon: "IconDeviceTabletCog",

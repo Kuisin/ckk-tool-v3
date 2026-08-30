@@ -10,7 +10,7 @@
  * 色は「ログイン中のユーザーがその操作をできるか」で決まる（tone）:
  *   action  (blue)  — 自分で先へ進められる操作（承認依頼・注文確定・発注 …）
  *   approve (green) — 承認権限がある。承認 / 差し戻しできる
- *   wait    (gray)  — 権限が無いので待つだけ（「承認待ち」表示）
+ *   wait    (gray)  — 権限が無いので待つだけ（「承認依頼中」表示）
  *   alert   (red)   — 差し戻しなど、対応が必要な状態
  *
  * アクションが無い状態（wait / alert）は `actions` を省略してよい。
@@ -38,7 +38,7 @@ export function ActionCard({
 }: {
   tone: ActionCardTone;
   icon: ReactNode;
-  /** 状態の見出し（例: 「承認待ち」「承認してください」）。 */
+  /** 状態の見出し（例: 「承認依頼中」「承認してください」）。 */
   title: string;
   /** 補足（誰が何をするか・未保存の注意など）。 */
   description?: ReactNode;

@@ -34,7 +34,7 @@ export type NumberingKey = keyof typeof SEQUENCES;
 
 /**
  * Allocate the next (yearMonth, seq) pair for `key`. Documents with combined
- * keys (試算/見積書) store these two columns and DERIVE the display number
+ * keys (価格試算/見積書) store these two columns and DERIVE the display number
  * (lib/doc-number.ts); `nextDocumentNumber` keeps the formatted-string API for
  * single-column ids (製品コード).
  */

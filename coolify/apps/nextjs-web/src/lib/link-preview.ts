@@ -41,7 +41,7 @@ const DOC_ROUTES: Record<
   "sales/trial-estimates": {
     kind: "trial-estimate",
     prefix: "EST",
-    label: "試算",
+    label: "価格試算",
   },
   "sales/price-lists": { kind: "price-list", prefix: "PRC", label: "価格表" },
   "sales/quotes": { kind: "quote", prefix: "QOT", label: "見積書" },

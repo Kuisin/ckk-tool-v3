@@ -232,8 +232,8 @@ export function PurchaseOrderDetail({
   ];
 
   /**
-   * 「いまやること」カード（最上部）。承認待ちは承認権限の有無で色が変わる
-   * — 権限あり = 緑 + 承認/差し戻し、権限なし = グレーの「承認待ち」表示。
+   * 「いまやること」カード（最上部）。承認依頼中は承認権限の有無で色が変わる
+   * — 権限あり = 緑 + 承認/差し戻し、権限なし = グレーの「承認依頼中」表示。
    */
   let actionCard: ReactNode = null;
   if (po.status === "DRAFT" || po.status === "REQUESTED") {

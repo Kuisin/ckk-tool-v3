@@ -66,7 +66,7 @@ export const STATUS_MAPS = {
   // 社内文書 (CM03)。DRAFT は「公開版より新しい編集がある」も含む。
   InternalPage: {
     DRAFT: { label: "下書き", color: "gray" },
-    PENDING: { label: "公開承認待ち", color: "yellow" },
+    PENDING: { label: "公開承認依頼中", color: "yellow" },
     PUBLISHED: { label: "公開中", color: "green" },
     ARCHIVED: { label: "アーカイブ", color: "dark" },
   },
@@ -95,7 +95,7 @@ export const STATUS_MAPS = {
   },
   WorkOrder: {
     DRAFT: { label: "下書き", color: "gray" },
-    PENDING_APPROVAL: { label: "承認待ち", color: "yellow" },
+    PENDING_APPROVAL: { label: "承認依頼中", color: "yellow" },
     APPROVED: { label: "承認済", color: "blue" },
     IN_PROGRESS: { label: "進行中", color: "violet" },
     COMPLETED: { label: "完了", color: "green" },
@@ -105,7 +105,7 @@ export const STATUS_MAPS = {
   // 何段目かは承認カード / Stepper が依頼のスナップショットから出す。
   WorkOrderApproval: {
     NONE: { label: "—", color: "gray" },
-    PENDING: { label: "承認待ち", color: "yellow" },
+    PENDING: { label: "承認依頼中", color: "yellow" },
     APPROVED: { label: "承認済", color: "green" },
     REJECTED: { label: "差し戻し", color: "red" },
   },
@@ -153,18 +153,18 @@ export const STATUS_MAPS = {
     EXPORTED: { label: "エクスポート済", color: "green" },
   },
   ApprovalRequest: {
-    PENDING: { label: "承認待ち", color: "yellow" },
+    PENDING: { label: "承認依頼中", color: "yellow" },
     APPROVED: { label: "承認済", color: "green" },
     REJECTED: { label: "差し戻し", color: "red" },
   },
-  /** キオスク QRカード（app.kiosk_cards — SY08）。 */
+  /** QRカード（共有端末 — app.kiosk_cards — SY08）。 */
   KioskCard: {
     UNASSIGNED: { label: "未割当", color: "gray" },
     ASSIGNED: { label: "割当済", color: "green" },
     SUSPENDED: { label: "一時停止", color: "orange" },
     REVOKED: { label: "取り消し", color: "red" },
   },
-  /** キオスク端末（app.kiosk_devices — SY09）。 */
+  /** 共有端末（app.kiosk_devices — SY09）。 */
   KioskDevice: {
     PENDING: { label: "リンク待ち", color: "gray" },
     LINKED: { label: "有効化待ち", color: "yellow" },

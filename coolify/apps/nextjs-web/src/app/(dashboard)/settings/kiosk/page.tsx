@@ -10,7 +10,7 @@ import {
 
 export const dynamic = "force-dynamic";
 
-/** キオスク設定（SY0A）— ランチャーのアプリ表示 + ポリシー参照。kiosk 権限。 */
+/** 共有端末設定（SY0A）— ランチャーのアプリ表示 + ポリシー参照。kiosk 権限。 */
 export default async function KioskSettingsPage() {
   const denied = await requireAppRead("kiosk-settings");
   if (denied) return denied;
@@ -33,8 +33,8 @@ export default async function KioskSettingsPage() {
   return (
     <Stack gap="md">
       <PageHeader
-        breadcrumbs={["システム", "キオスク設定"]}
-        title="キオスク設定"
+        breadcrumbs={["システム", "共有端末設定"]}
+        title="共有端末設定"
       />
       <KioskSettingsPanel
         catalog={KIOSK_APP_CATALOG}

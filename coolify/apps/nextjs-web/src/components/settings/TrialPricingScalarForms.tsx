@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * TrialPricingScalarForms — 試算計算（SY02）のスカラー系セクション編集フォーム。
+ * TrialPricingScalarForms — 価格試算計算（SY02）のスカラー系セクション編集フォーム。
  *
  * 材料参照ポリシー / 既定値・係数 / カスタム入力項目 をそれぞれ独立ページで編集。
  * いずれも全設定を読み込み、該当セクションだけ編集して updateTrialPricingSettings
@@ -70,7 +70,7 @@ function useSectionSettings(initial: TrialPricingSettings) {
       if (res.ok) {
         notifications.show({
           title: "保存しました",
-          message: "試算の設定を更新しました",
+          message: "価格試算の設定を更新しました",
           color: "green",
         });
         router.push(BASE);
@@ -102,7 +102,7 @@ function SectionShell({
   return (
     <Stack gap="md">
       <PageHeader
-        breadcrumbs={["システム", { label: "試算計算", href: BASE }, title]}
+        breadcrumbs={["システム", { label: "価格試算計算", href: BASE }, title]}
         title={title}
       />
       {children}
@@ -127,7 +127,7 @@ export function MaterialPolicyForm({
       title="材料参照価格ポリシー"
     >
       <FormSection
-        description="試算の材料原価に使う、仕入実績（購買履歴）からの参照価格の決め方です。"
+        description="価格試算の材料原価に使う、仕入実績（購買履歴）からの参照価格の決め方です。"
         title="ポリシー"
       >
         <Stack gap="sm" maw={480}>
@@ -155,7 +155,7 @@ export function MaterialPolicyForm({
             value={settings.materialPriceLookbackMonths}
           />
           <NumberInput
-            description="仕入実績が無い素材の試算で使う既定単価（0 = 既定なし）。試算では「既定価格」と表示されます。"
+            description="仕入実績が無い素材の価格試算で使う既定単価（0 = 既定なし）。価格試算では「既定価格」と表示されます。"
             label="既定材料単価（¥/1000mm）"
             min={0}
             onChange={(v) => patch({ defaultMaterialPrice: Number(v) || 0 })}
@@ -208,7 +208,7 @@ export function CustomInputsForm({
       title="カスタム入力項目"
     >
       <FormSection
-        description="計算基準の式で変数として使える項目。スコープ「見積入力」は試算フォームに表示、「グローバル定数」は固定係数（補正値・LDチャージ・加工単価・予備形状本数）で削除・改名不可。"
+        description="計算基準の式で変数として使える項目。スコープ「見積入力」は価格試算フォームに表示、「グローバル定数」は固定係数（補正値・LDチャージ・加工単価・予備形状本数）で削除・改名不可。"
         title="カスタム入力項目"
       >
         <Stack gap="sm">

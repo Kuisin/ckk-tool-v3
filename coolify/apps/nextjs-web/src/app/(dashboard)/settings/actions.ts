@@ -1,7 +1,7 @@
 "use server";
 
 /**
- * Server Actions — システム設定（試算 価格ポリシー）.
+ * Server Actions — システム設定（価格試算 価格ポリシー）.
  *
  * app.system_settings の trial_pricing.* キーを一括 upsert する。
  * 読み出しは lib/system-settings.ts（Server Component から）。
@@ -65,7 +65,7 @@ const settingsInput = z.object({
 const criteriaInput = z.array(criterionSchema);
 
 /**
- * 計算基準の検証 — 壊れた式や不正な構成が全ユーザーの試算を止めないよう、
+ * 計算基準の検証 — 壊れた式や不正な構成が全ユーザーの価格試算を止めないよう、
  * 保存時に弾く。工具種（管理者定義リスト）ごとに有効な final がちょうど
  * 1つであること。
  */
@@ -248,7 +248,7 @@ export async function addToolType(payload: {
 }
 
 /**
- * 工具種を削除。組み込み種は不可。試算（estimates）で使用中の種も不可
+ * 工具種を削除。組み込み種は不可。価格試算（estimates）で使用中の種も不可
  * （未使用のみ削除可）。削除時は各基準の適用工具種からも取り除く。
  */
 export async function removeToolType(value: ToolType): Promise<ActionResult> {
@@ -264,7 +264,7 @@ export async function removeToolType(value: ToolType): Promise<ActionResult> {
     const used = await prisma.estimate.count({ where: { toolType: value } });
     if (used > 0) {
       return actionError(
-        `工具種「${def.label}」は ${used} 件の試算で使用中のため削除できません`,
+        `工具種「${def.label}」は ${used} 件の価格試算で使用中のため削除できません`,
       );
     }
   } catch (e) {

@@ -9,7 +9,7 @@
  * （order_acceptance_cancel_requests）に保留して最終承認で初めて適用する。
  * 適用 = 全明細のキャンセル（予約解放 + 未着手指示書の連鎖キャンセル —
  * lib/order-line-cancel.ts）+ ヘッダの CANCELLED 遷移。差し戻しなら何も
- * 変わらない。承認待ちの間に出荷された等で適用できなければ FAILED で残る
+ * 変わらない。承認依頼中の間に出荷された等で適用できなければ FAILED で残る
  * —— 黙って古い前提のまま当てない。
  */
 
@@ -26,7 +26,7 @@ const TARGET_TYPE = "order_acceptance_cancel_requests" as const;
 export interface AcceptanceCancelResult {
   ok: boolean;
   errors?: string[];
-  /** true = 承認待ちとして保留した（まだ何も変わっていない）。 */
+  /** true = 承認依頼中として保留した（まだ何も変わっていない）。 */
   pending?: boolean;
 }
 
@@ -111,7 +111,7 @@ export async function submitAcceptanceCancelRequest(input: {
   if (existing) {
     return {
       ok: false,
-      errors: ["この注文請書には承認待ちのキャンセル依頼があります"],
+      errors: ["この注文請書には承認依頼中のキャンセル依頼があります"],
     };
   }
 
@@ -146,7 +146,7 @@ export async function submitAcceptanceCancelRequest(input: {
 }
 
 /**
- * 承認が完了した依頼を実際に当てる。承認待ちの間に前提が変わっている
+ * 承認が完了した依頼を実際に当てる。承認依頼中の間に前提が変わっている
  * ことがあるので、適用前に依頼時と同じ検証を通す。
  */
 export async function applyApprovedAcceptanceCancel(

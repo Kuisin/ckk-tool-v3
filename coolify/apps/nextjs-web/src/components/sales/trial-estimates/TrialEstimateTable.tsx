@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * TrialEstimateTable — 試算 一覧 (SA50). One row per saved 試算 record.
+ * TrialEstimateTable — 価格試算 一覧 (SA50). One row per saved 価格試算 record.
  */
 
 import { Badge, Group, Select, Stack, Text, TextInput } from "@mantine/core";
@@ -42,7 +42,7 @@ export function TrialEstimateTable({
   toolTypeOptions = TOOL_TYPE_OPTIONS,
 }: {
   rows: TrialEstimateRecord[];
-  /** 試算エンジンのオプション（係数・カスタム計算）— 画面間で単価を一致させる。 */
+  /** 価格試算エンジンのオプション（係数・カスタム計算）— 画面間で単価を一致させる。 */
   pricingOptions?: TrialPricingOptions;
   /** 工具種の選択肢（管理者定義。未指定は組み込み 3 種）. */
   toolTypeOptions?: { value: string; label: string }[];
@@ -70,7 +70,7 @@ export function TrialEstimateTable({
   const columns: Column<TrialEstimateRecord>[] = [
     {
       key: "estimateNumber",
-      header: "試算番号",
+      header: "価格試算番号",
       width: 170,
       sortable: true,
       sortValue: (r) => r.estimateNumber,
@@ -158,7 +158,7 @@ export function TrialEstimateTable({
           <NewButton href={`${BASE_PATH}/new`} />
         </Group>
       }
-      breadcrumbs={["販売", "試算"]}
+      breadcrumbs={["販売", "価格試算"]}
       filters={
         <>
           <Select
@@ -190,11 +190,11 @@ export function TrialEstimateTable({
         <TextInput
           leftSection={<IconSearch size={14} />}
           onChange={(e) => setSearch(e.currentTarget.value)}
-          placeholder="試算番号・名称・顧客で検索"
+          placeholder="価格試算番号・名称・顧客で検索"
           value={search}
         />
       }
-      title="試算"
+      title="価格試算"
     >
       <DataTable
         columns={columns}
@@ -202,7 +202,7 @@ export function TrialEstimateTable({
         defaultSort={{ key: "updatedAt", dir: "desc" }}
         emptyAction={<NewButton href={`${BASE_PATH}/new`} />}
         emptyIcon={<IconCalculator size={24} />}
-        emptyMessage="試算がありません"
+        emptyMessage="価格試算がありません"
         getRowId={(r) => r.id}
         onRowClick={(r) => router.push(`${BASE_PATH}/${r.id}`)}
         renderCard={(r) => (
@@ -241,7 +241,7 @@ export function TrialEstimateTable({
         )}
         rowActions={() => [
           {
-            label: "複製して再試算",
+            label: "複製して再価格試算",
             icon: <IconCopy size={14} />,
             onAction: (row) => router.push(`${BASE_PATH}/new?from=${row.id}`),
           },

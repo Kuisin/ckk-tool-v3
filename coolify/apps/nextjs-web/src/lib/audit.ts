@@ -55,7 +55,7 @@ const ACTION_LABEL: Record<string, string> = {
 /** table_name → 画面表示用の日本語ラベル（操作履歴一覧の「対象」列）。 */
 export const AUDIT_TABLE_LABELS: Record<string, string> = {
   quotes: "見積書",
-  estimates: "試算",
+  estimates: "価格試算",
   price_list_entries: "価格表",
   products: "製品",
   materials: "素材",

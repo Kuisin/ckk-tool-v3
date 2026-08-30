@@ -175,7 +175,7 @@ inside the Server Action / route handler, not only in the UI.
 - **Generic settings store**: everything configurable persists to the ONE table
   `app.system_settings` (key→JSON) via `lib/app-config.ts`
   (`readConfigNamespace`/`writeConfigValues`) — **no schema change per setting**.
-  Each app has a typed adapter: `lib/system-settings.ts` (試算/SY02),
+  Each app has a typed adapter: `lib/system-settings.ts` (価格試算/SY02),
   `lib/product-settings.ts` (製品項目/種別 SY03/SY04). Namespaces are
   `"<ns>.<field>"`.
 - **App on/off**: `feature_flags` table via `lib/app-flags.ts`. On `main`, an app

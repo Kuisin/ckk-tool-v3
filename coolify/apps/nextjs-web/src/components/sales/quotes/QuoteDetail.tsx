@@ -5,7 +5,7 @@
  *
  * Summary grid + 手続き状況 (ProcedurePanel — 下書き→発行→受諾、価格表 ← /
  * 注文請書 →) + tabs: 明細 (価格表 tier-resolved lines + 値引き + 適用価格表) /
- * PDF (発行時に保存された PDF のメタ + インライン A4 プレビュー) / 関連 (試算・
+ * PDF (発行時に保存された PDF のメタ + インライン A4 プレビュー) / 関連 (価格試算・
  * 価格表 back-links) / 履歴. 発行 (DRAFT → ISSUED) generates the PDF via the
  * Gotenberg route and stores it in SeaweedFS; the PDF tab streams that stored
  * copy. Backed by sales.quotes via the server page; 発行 persists through the
@@ -485,7 +485,7 @@ export function QuoteDetail({
 
             <div>
               <Text c="dimmed" mb={4} size="xs">
-                試算元
+                価格試算元
               </Text>
               {relatedEntries.some((e) =>
                 e.variants.some((v) => v.estimateId),

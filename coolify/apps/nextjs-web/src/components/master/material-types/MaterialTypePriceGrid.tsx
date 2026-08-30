@@ -3,7 +3,7 @@
 /**
  * MaterialTypePriceGrid — 材種の既定単価マトリクス編集 (MS25 既定単価タブ).
  *
- * 行 = 直径、列 = 黒皮/研磨。セルは ¥/1000mm の単価。仕入実績が無いとき試算の
+ * 行 = 直径、列 = 黒皮/研磨。セルは ¥/1000mm の単価。仕入実績が無いとき価格試算の
  * フォールバック材料単価に使う（material_type_prices）。空セルは「価格なし」。
  * 共通の EditableCellTable（スリムな行編集表）で描画する。
  */
@@ -126,7 +126,7 @@ export function MaterialTypePriceGrid({
       <Text c="dimmed" size="xs">
         材種 × 直径 × 黒皮/研磨
         ごとの既定材料単価（¥/1000mm）。仕入実績が無いとき
-        試算のフォールバック単価に使います。空欄は「価格なし」。
+        価格試算のフォールバック単価に使います。空欄は「価格なし」。
       </Text>
       <EditableCellTable<GridRow>
         addLabel="直径を追加"

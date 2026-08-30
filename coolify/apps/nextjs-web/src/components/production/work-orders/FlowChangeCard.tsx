@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * FlowChangeCard — 承認待ちの工程フロー変更（_specs/design.md §10.9 ActionCard）。
+ * FlowChangeCard — 承認依頼中の工程フロー変更（_specs/design.md §10.9 ActionCard）。
  *
  * 承認済み・進行中の指示書で分岐を足す/直す/消すと、承認設定（MS0B）に
  * 「工程フロー変更」の段があるあいだは**工程を触らずここに保留**される。
@@ -54,7 +54,7 @@ export function FlowChangeCard({
   const stepLabel =
     approval.stepCount > 0
       ? `${approval.stepLabel || `第${approval.stepNo}承認`}（${approval.stepNo}/${approval.stepCount}）`
-      : "承認待ち";
+      : "承認依頼中";
 
   const handleApprove = () => {
     startTransition(async () => {
@@ -127,7 +127,7 @@ export function FlowChangeCard({
             : "承認されるまで工程は変わりません。"
         }`}
         icon={<IconGitBranch size={20} />}
-        title={canAct ? "工程フロー変更の承認" : "工程フロー変更の承認待ち"}
+        title={canAct ? "工程フロー変更の承認" : "工程フロー変更の承認依頼中"}
         tone={canAct ? "approve" : "wait"}
       />
       <ModalShell

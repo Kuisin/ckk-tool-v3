@@ -1,12 +1,12 @@
 "use client";
 
 /**
- * TrialEstimateDetail — 試算 詳細 (SA52). Read-only view of a saved 試算:
+ * TrialEstimateDetail — 価格試算 詳細 (SA52). Read-only view of a saved 価格試算:
  * summary + recomputed results + the material price-history graph.
  *
  * 手続き状況（ProcedurePanel — 下書き→確定→価格表登録済、価格表 →）。
  *
- * Flow (試算 → 価格表 → 見積書): DRAFT は「確定」で CONFIRMED になり、
+ * Flow (価格試算 → 価格表 → 見積書): DRAFT は「確定」で CONFIRMED になり、
  * 価格表（顧客×製品）の作成時に基準単価ソースとして選択できる（初回使用時に
  * REGISTERED でロック）。Backed by sales.estimates via the server page;
  * status transitions persist through Server Actions.
@@ -105,7 +105,7 @@ export function TrialEstimateDetail({
   memos: MemoView[];
   /** この素材の仕入実績（サーバー取得、価格推移タブ）。 */
   priceHistory: MaterialPricePoint[];
-  /** 試算エンジンのオプション（係数・カスタム計算）。 */
+  /** 価格試算エンジンのオプション（係数・カスタム計算）。 */
   pricingOptions?: TrialPricingOptions;
   /** 工具種の選択肢（管理者定義。未指定は組み込み 3 種）. */
   toolTypeOptions?: { value: string; label: string }[];
@@ -117,7 +117,7 @@ export function TrialEstimateDetail({
   // アクティブタブを ?tab= に保持（URL 共有でタブまで再現）
   const [tab, setTab] = useTabParam("result");
   // 保存/確定時に記録した価格（その時点の価格）を優先表示。無ければ現在の
-  // 計算ロジックで再計算する（スナップショット導入前の古い試算向けフォールバック）。
+  // 計算ロジックで再計算する（スナップショット導入前の古い価格試算向けフォールバック）。
   const result =
     record.resultSnapshot ?? calcTrialPricing(record.input, pricingOptions);
   const history = priceHistory;
@@ -152,7 +152,7 @@ export function TrialEstimateDetail({
   ];
   const active = status === "DRAFT" ? 0 : status === "CONFIRMED" ? 1 : 3;
 
-  // 下流 = この試算を基準単価ソースにした価格表（1 試算が複数に使われ得る）。
+  // 下流 = この価格試算を基準単価ソースにした価格表（1 価格試算が複数に使われ得る）。
   const handoffGroups: HandoffGroup[] = [
     {
       key: "price-lists",
@@ -250,14 +250,14 @@ export function TrialEstimateDetail({
                 ]
               : []),
             {
-              label: "複製して再試算",
+              label: "複製して再価格試算",
               icon: <IconCopy size={14} />,
               onClick: () => router.push(`${BASE_PATH}/new?from=${record.id}`),
             },
           ]}
         />
       }
-      breadcrumbs={["販売", { label: "試算", href: BASE_PATH }, "詳細"]}
+      breadcrumbs={["販売", { label: "価格試算", href: BASE_PATH }, "詳細"]}
       createdAt={fmt.dateTime(record.createdAt)}
       status={
         <Group gap="xs">
@@ -277,18 +277,18 @@ export function TrialEstimateDetail({
     >
       {status === "REGISTERED" && (
         <Alert color="blue" icon={<IconInfoCircle size={16} />} variant="light">
-          この試算は価格表で使用済みのため編集できません。単価を見直す場合は複製して再試算してください。
+          この価格試算は価格表で使用済みのため編集できません。単価を見直す場合は複製して再価格試算してください。
         </Alert>
       )}
       {status === "CONFIRMED" && (
         <Alert color="blue" icon={<IconInfoCircle size={16} />} variant="light">
           確定済み —
-          価格表（顧客×製品）の作成時に、この試算を基準単価ソースとして選択できます。
+          価格表（顧客×製品）の作成時に、この価格試算を基準単価ソースとして選択できます。
         </Alert>
       )}
       <SummaryGrid>
         <FieldValue
-          label="試算番号"
+          label="価格試算番号"
           value={<DocNumber>{record.estimateNumber}</DocNumber>}
         />
         <FieldValue label="見積り先" value={record.customerName ?? "—"} />
@@ -320,7 +320,7 @@ export function TrialEstimateDetail({
       <AppTabs onChange={setTab} value={tab}>
         <Tabs.List>
           <Tabs.Tab leftSection={<IconCalculator size={14} />} value="result">
-            試算結果
+            価格試算結果
           </Tabs.Tab>
           <Tabs.Tab leftSection={<IconChartLine size={14} />} value="history">
             素材価格推移
@@ -430,7 +430,7 @@ export function TrialEstimateDetail({
               ) : (
                 <Text c="dimmed" size="sm">
                   未使用 —
-                  価格表（顧客×製品）の作成時にこの試算を基準単価ソースとして選択できます
+                  価格表（顧客×製品）の作成時にこの価格試算を基準単価ソースとして選択できます
                 </Text>
               )}
             </div>
@@ -470,7 +470,7 @@ export function TrialEstimateDetail({
       >
         <Stack gap="sm">
           <Text c="dimmed" size="sm">
-            対象製品（任意）。リンクした試算は確定後、価格表（顧客×製品）の作成時に基準単価ソースとして選択できます。クリアして保存するとリンクを解除します。
+            対象製品（任意）。リンクした価格試算は確定後、価格表（顧客×製品）の作成時に基準単価ソースとして選択できます。クリアして保存するとリンクを解除します。
           </Text>
           <SearchSelect
             clearable

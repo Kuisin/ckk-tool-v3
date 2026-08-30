@@ -1,5 +1,5 @@
 /**
- * data.ts — server-side fetch/mapping for the 試算 (SA01) pages.
+ * data.ts — server-side fetch/mapping for the 価格試算 (SA01) pages.
  *
  * Maps sales.estimates rows (combined key year_month+seq) to the
  * TrialEstimateRecord view-model; the derived EST- number doubles as the

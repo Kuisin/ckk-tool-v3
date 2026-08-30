@@ -25,7 +25,7 @@ export default async function PriceListEditPage({
   ]);
   if (!entry) notFound();
 
-  // 各バリアントの試算元の見積単価（基準単価のロック値）。
+  // 各バリアントの価格試算元の見積単価（基準単価のロック値）。
   const estimateBases = await fetchEstimateBases(
     entry.variants.map((v) => v.estimateNumber).filter((n): n is string => !!n),
   );

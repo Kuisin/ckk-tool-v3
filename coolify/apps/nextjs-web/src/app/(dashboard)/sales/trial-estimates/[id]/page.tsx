@@ -29,10 +29,10 @@ export async function generateMetadata({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  return { title: `試算 ${decodeURIComponent(id)} | CKK 業務管理システム` };
+  return { title: `価格試算 ${decodeURIComponent(id)} | CKK 業務管理システム` };
 }
 
-/** 試算 詳細 (SA52). URL id = 導出文書番号 EST-YYYYMM-NNNNN. */
+/** 価格試算 詳細 (SA52). URL id = 導出文書番号 EST-YYYYMM-NNNNN. */
 export default async function TrialEstimateDetailPage({
   params,
 }: {

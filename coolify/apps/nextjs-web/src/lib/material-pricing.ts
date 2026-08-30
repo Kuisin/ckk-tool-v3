@@ -3,11 +3,11 @@ import "server-only";
 /**
  * material-pricing.ts — 材種の材料価格ソース（server-only）.
  *
- * 試算の材料原価は「材種 × 直径 × 黒皮/研磨」で指定し、実際の仕入実績
+ * 価格試算の材料原価は「材種 × 直径 × 黒皮/研磨」で指定し、実際の仕入実績
  * （material_purchase_order_items × material_purchase_orders、status が
  * ORDERED/COMPLETED のもの — 当該構成の全素材を集計）の参照価格を使う。
  * 仕入実績が無いときは material_type_prices（¥/1000mm）の既定単価にフォール
- * バックする (_specs/tables.md §見積試算)。純粋計算は lib/material-pricing-core.ts、
+ * バックする (_specs/tables.md §価格試算)。純粋計算は lib/material-pricing-core.ts、
  * ポリシーは lib/system-settings.ts。
  */
 

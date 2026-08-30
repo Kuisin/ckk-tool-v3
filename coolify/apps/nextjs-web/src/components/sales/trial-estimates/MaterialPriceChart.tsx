@@ -4,7 +4,7 @@
  * MaterialPriceChart — 素材価格推移 (仕入実績) の折れ線グラフ.
  *
  * Dependency-free SVG (lockfile is frozen). Plots purchase unit-price over time;
- * clicking a point sets it as the 試算 reference price (onSelect). The currently
+ * clicking a point sets it as the 価格試算 reference price (onSelect). The currently
  * selected point is highlighted; points inside the policy window are emphasized.
  */
 

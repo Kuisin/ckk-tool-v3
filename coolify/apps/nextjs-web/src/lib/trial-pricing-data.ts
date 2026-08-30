@@ -1,6 +1,6 @@
 /**
- * trial-pricing-data.ts — 見積試算 reference tables (ported from the master
- * Excel「最新見積書試算」, 2024年度第4版).
+ * trial-pricing-data.ts — 価格試算 reference tables (ported from the master
+ * Excel「最新見積書価格試算」, 2024年度第4版).
  *
  * MIGRATION NOTE: every export here is demo/seed data transcribed from the
  * spreadsheet. For full data migration, replace each table with a DB-backed
@@ -750,7 +750,7 @@ export const COATING_OPTIONS: string[] = [
 // ── コート表 ID（コート名 → ルックアップ表 ID）────────────────────────────────
 //
 // ルックアップ表の ID は英数字・ハイフン・アンダースコアのみ（LOOKUP_TABLE_ID）。
-// コート名（COATING_OPTIONS の値 = 試算入力のスナップショット値）は日本語・
+// コート名（COATING_OPTIONS の値 = 価格試算入力のスナップショット値）は日本語・
 // 空白を含み変更できないため、この明示マップで表 ID へ解決する。
 export const COATING_TABLE_IDS: Record<string, string> = {
   CX200: "coating-cx200",

@@ -33,7 +33,7 @@ export type ApprovalTargetType = (typeof APPROVAL_TARGET_TYPES)[number];
  * 点検簿が 1 本の承認を共有する理由が無い。段は `form_approval_steps` に
  * フォームごとへ持たせ、設定はフォームの「承認」タブで行う。
  * 承認エンジンから見た書類種別としては form_responses のままなので、
- * APPROVAL_TARGET_TYPES からは外さない（承認待ち一覧・履歴はそのまま動く）。
+ * APPROVAL_TARGET_TYPES からは外さない（承認依頼中一覧・履歴はそのまま動く）。
  */
 export const FLOW_SETTINGS_TARGET_TYPES: readonly ApprovalTargetType[] =
   APPROVAL_TARGET_TYPES.filter((t) => t !== "form_responses");

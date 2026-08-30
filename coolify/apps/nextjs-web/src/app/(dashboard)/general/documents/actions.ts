@@ -374,7 +374,7 @@ export async function publishPage(pageNumber: string): Promise<ActionResult> {
     select: { id: true, approvalRequired: true, status: true },
   });
   if (!page) return actionError("文書が見つかりません");
-  if (page.status === "PENDING") return actionError("すでに公開の承認待ちです");
+  if (page.status === "PENDING") return actionError("すでに公開の承認依頼中です");
 
   const latest = await prisma.internalPageRevision.findFirst({
     where: { pageId: page.id },
@@ -440,7 +440,7 @@ async function actOnPage(
   });
   if (!page) return actionError("文書が見つかりません");
   if (page.status !== "PENDING")
-    return actionError("この文書は承認待ちではありません");
+    return actionError("この文書は承認依頼中ではありません");
 
   const result = await actOnCurrentStep({
     targetType: "internal_pages",

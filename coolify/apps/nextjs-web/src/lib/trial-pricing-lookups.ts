@@ -1,4 +1,4 @@
-// AUTO-GENERATED from Excel「最新見積書試算」2024年度第4版 via lookups.json.
+// AUTO-GENERATED from Excel「最新見積書価格試算」2024年度第4版 via lookups.json.
 // 参照キーは不変の id。name は表示用 { ja, en }。行データは手編集せず再生成すること。
 //
 // id は英数字・ハイフン・アンダースコアのみ（trial-pricing-criteria.ts

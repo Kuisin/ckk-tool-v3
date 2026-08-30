@@ -6,7 +6,7 @@
  * Copies a (顧客, 製品) entry's 全注文種別バリアント（基準単価 + 段階）to a
  * different target 顧客 / 製品 with a fresh 有効期間 (Server Action). Unlike
  * 「有効期間を変更」 (same identity), this re-targets the price sheet.
- * 試算リンクは引き継がない（手動エントリとして作成）。
+ * 価格試算リンクは引き継がない（手動エントリとして作成）。
  */
 
 import { Alert, Select, Text } from "@mantine/core";

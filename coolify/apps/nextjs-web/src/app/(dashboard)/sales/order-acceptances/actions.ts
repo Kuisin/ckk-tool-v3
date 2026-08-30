@@ -924,7 +924,7 @@ export async function approveAcceptanceCancel(
   });
   if (!row) return actionError("対象のキャンセル依頼が見つかりません");
   if (row.status !== "PENDING") {
-    return actionError("承認待ちのキャンセル依頼ではありません");
+    return actionError("承認依頼中のキャンセル依頼ではありません");
   }
   const key = { yearMonth: row.acceptanceYearMonth, seq: row.acceptanceSeq };
   if (!(await acceptanceInScope(authz.access, authz.userId, key))) {
@@ -944,7 +944,7 @@ export async function approveAcceptanceCancel(
       return actionOk({ completed: false, applied: false });
     }
 
-    // 最終承認 — ここで初めてキャンセルを当てる（承認待ちの間に前提が変わって
+    // 最終承認 — ここで初めてキャンセルを当てる（承認依頼中の間に前提が変わって
     // いれば同じ検証で弾かれ、FAILED として残る）。
     const applied = await applyApprovedAcceptanceCancel(requestId);
     revalidate(number);
@@ -975,7 +975,7 @@ export async function rejectAcceptanceCancel(
   });
   if (!row) return actionError("対象のキャンセル依頼が見つかりません");
   if (row.status !== "PENDING") {
-    return actionError("承認待ちのキャンセル依頼ではありません");
+    return actionError("承認依頼中のキャンセル依頼ではありません");
   }
   const key = { yearMonth: row.acceptanceYearMonth, seq: row.acceptanceSeq };
   if (!(await acceptanceInScope(authz.access, authz.userId, key))) {

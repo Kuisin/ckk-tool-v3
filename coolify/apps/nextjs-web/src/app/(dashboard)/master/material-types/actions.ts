@@ -259,7 +259,7 @@ export async function deleteMaterialTypes(
 }
 
 // ─── 既定単価マトリクス (material_type_prices) ─────────────────────────────
-// 材種 × 直径 × 黒皮/研磨 → 単価 (¥/1000mm)。試算のフォールバック材料単価。
+// 材種 × 直径 × 黒皮/研磨 → 単価 (¥/1000mm)。価格試算のフォールバック材料単価。
 
 const priceRowInput = z.object({
   diameterCode: z.string().regex(/^[0-9]{3}$/, "直径コードが不正です"),

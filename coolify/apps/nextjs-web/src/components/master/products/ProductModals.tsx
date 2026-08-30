@@ -89,7 +89,7 @@ export function DeleteProductModal({
       }}
       opened={opened}
       title="製品の削除"
-      warning="この製品を参照する試算・価格表・見積書が存在する場合は削除できません。無効化をご検討ください。"
+      warning="この製品を参照する価格試算・価格表・見積書が存在する場合は削除できません。無効化をご検討ください。"
     />
   );
 }
@@ -113,8 +113,8 @@ export function ToggleProductActiveModal({
       message={
         target
           ? isActive
-            ? `製品「${label(target)}」を無効化します。新規の試算・価格表・見積書で選択できなくなります。`
-            : `製品「${label(target)}」を有効化します。再び試算・価格表・見積書で選択できるようになります。`
+            ? `製品「${label(target)}」を無効化します。新規の価格試算・価格表・見積書で選択できなくなります。`
+            : `製品「${label(target)}」を有効化します。再び価格試算・価格表・見積書で選択できるようになります。`
           : ""
       }
       onClose={onClose}

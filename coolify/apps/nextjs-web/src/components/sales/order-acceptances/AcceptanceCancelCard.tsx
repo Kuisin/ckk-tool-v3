@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * AcceptanceCancelCard — 承認待ちの注文請書キャンセル依頼
+ * AcceptanceCancelCard — 承認依頼中の注文請書キャンセル依頼
  * （_specs/design.md §10.9 ActionCard）。
  *
  * 確定済みの注文請書のキャンセルは、承認設定（MS0B）に「注文請書キャンセル」
@@ -46,7 +46,7 @@ export function AcceptanceCancelCard({
   const stepLabel =
     approval.stepCount > 0
       ? `${approval.stepLabel || `第${approval.stepNo}承認`}（${approval.stepNo}/${approval.stepCount}）`
-      : "承認待ち";
+      : "承認依頼中";
 
   const handleApprove = () => {
     startTransition(async () => {
@@ -111,7 +111,7 @@ export function AcceptanceCancelCard({
         description={`理由: ${request.reason}｜依頼: ${request.requestedByName ?? "—"}｜${stepLabel}。承認されるまで注文請書と注文明細は変わりません。`}
         icon={<IconX size={20} />}
         title={
-          canAct ? "注文請書キャンセルの承認" : "注文請書キャンセルの承認待ち"
+          canAct ? "注文請書キャンセルの承認" : "注文請書キャンセルの承認依頼中"
         }
         tone={canAct ? "approve" : "wait"}
       />

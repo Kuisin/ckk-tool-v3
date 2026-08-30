@@ -276,7 +276,7 @@ Operation codes provide keyboard-shortcut navigation. Format: `{CAT}{MODE}{IDX}`
 |----------|-----|-----------|------|-----|--------|
 | 共通 | — | ダッシュボード | CM00 | — | — |
 | 一般 | 1 | 承認・予定 | CM01 | — | — |
-| 販売 | 1 | 試算 | SA01 | SA11 | SA21 |
+| 販売 | 1 | 価格試算 | SA01 | SA11 | SA21 |
 | 販売 | 2 | 価格表 | SA02 | SA12 | SA22 |
 | 販売 | 3 | 見積書 | SA03 | SA13 | SA23 |
 | 販売 | 4 | 注文請書 | SA04 | SA14 | SA24 |
@@ -309,7 +309,7 @@ Operation codes provide keyboard-shortcut navigation. Format: `{CAT}{MODE}{IDX}`
 | ドキュメント | 1 | マニュアル | DC01 | — | — |
 | ドキュメント | 2 | 管理マニュアル | DC02 | — | — |
 | システム | 1 | ユーザー管理 | SY01 | — | — |
-| システム | 2 | 試算計算 | SY02 | — | — |
+| システム | 2 | 価格試算計算 | SY02 | — | — |
 | システム | 3 | 製品項目 | SY03 | — | — |
 | システム | 4 | 製品種別 | SY04 | — | — |
 | システム | 5 | アプリ管理 | SY05 | — | — |
@@ -317,7 +317,7 @@ Operation codes provide keyboard-shortcut navigation. Format: `{CAT}{MODE}{IDX}`
 | システム | 7 | 操作履歴 | SY07 | — | — |
 | システム | 8 | QRカード管理 | SY08 | — | — |
 | システム | 9 | 端末管理 | SY09 | — | — |
-| システム | A | キオスク設定 | SY0A | — | — |
+| システム | A | 共有端末設定 | SY0A | — | — |
 | システム | B | リンク管理 | SY0B | — | — |
 | システム | C | 注文書取込 | SY0C | — | — |
 | システム | D | ログイン履歴 | SY0D | — | — |
@@ -388,12 +388,12 @@ Stack (gap="xl", p="md", maw={1200})
 
 | App | Icon |
 |-----|------|
-| 試算 | `IconCalculator` |
+| 価格試算 | `IconCalculator` |
 | 価格表 | `IconCurrencyYen` |
 | 見積書 | `IconFileText` |
 | 注文請書 | `IconClipboardCheck` |
 | 設計依頼書 | `IconRuler2` |
-| 試算 | `IconCalculator` |
+| 価格試算 | `IconCalculator` |
 | 素材入荷 | `IconPackageImport` |
 | 外注依頼 | `IconTruckDelivery` |
 | 素材発注書 | `IconShoppingCart` |
@@ -417,7 +417,7 @@ Stack (gap="xl", p="md", maw={1200})
 | 承認設定 | `IconUsersGroup` |
 | 拠点 | `IconBuildingWarehouse` |
 | ユーザー管理 | `IconUserCog` |
-| 試算計算 | `IconMathFunction` |
+| 価格試算計算 | `IconMathFunction` |
 | 製品項目 | `IconListDetails` |
 | 製品種別 | `IconCategory` |
 | アプリ管理 | `IconLayoutGrid` |
@@ -597,8 +597,8 @@ Stack (gap="md")
 <FormActions loading={isPending} onCancel={back} />                 // <form> 送信（type="submit"）
 ```
 
-`FormShell` は自動でこれを使う。`FormShell` を使わない画面（試算 SA11 /
-受注請書ドラフト / 材種の既定単価 / キオスク設定 など）も同じ 1 行を置くこと。
+`FormShell` は自動でこれを使う。`FormShell` を使わない画面（価格試算 SA11 /
+受注請書ドラフト / 材種の既定単価 / 共有端末設定 など）も同じ 1 行を置くこと。
 ボタン構成そのものが違うときだけ `children` を渡して差し替える。
 
 ---
@@ -791,7 +791,7 @@ new Intl.NumberFormat('ja-JP', { style: 'currency', currency: currency ?? 'JPY' 
 | `RichTextView` | `src/components/ui/RichTextView.tsx` | 読み取り専用表示。React 要素を組み立てる（`dangerouslySetInnerHTML` 不使用） |
 
 搭載画面: 見積書 / 注文明細 / 指示書 / 出荷書 / 請求書 = **メモ**、
-価格表 / 試算 = **コメント**。既存の 備考（`notes`）は平文のまま別物として残り、
+価格表 / 価格試算 = **コメント**。既存の 備考（`notes`）は平文のまま別物として残り、
 PDF 印字も従来どおり（メモ・コメントは社内限定で PDF に出ない）。
 
 ```tsx
@@ -1200,7 +1200,7 @@ Paper (withBorder, p="md", radius="md")
 直接書かないこと — 以前は表示が 3 通りに割れ（このパネル / 手書きの Stepper /
 表示なし）、書類ごとに進捗を探す場所が違っていた。
 
-搭載: 試算 / 見積書 / 注文請書 / 注文明細 / 設計依頼書 / 購買依頼 / 素材発注書 /
+搭載: 価格試算 / 見積書 / 注文請書 / 注文明細 / 設計依頼書 / 購買依頼 / 素材発注書 /
 指示書 / 出荷書 / 納品書 / 請求書 / 締日処理（**12 書類**）。
 価格表（進行するライフサイクルが無い）と素材入荷（入庫済みの確定記録）は持たない。
 
@@ -1421,8 +1421,8 @@ Row click navigates to detail page.
 
 | Entity | Columns |
 |--------|---------|
-| Estimate | 試算番号 / 名称 / 工具種 / 顧客 / 製品 / 見積単価 / 状態 / 更新日 |
-| PriceList | 顧客 / 製品 / 注文種別（バリアントのバッジ） / 段階 / 単価範囲 / 試算元 / 有効期間 / 状態 |
+| Estimate | 価格試算番号 / 名称 / 工具種 / 顧客 / 製品 / 見積単価 / 状態 / 更新日 |
+| PriceList | 顧客 / 製品 / 注文種別（バリアントのバッジ） / 段階 / 単価範囲 / 価格試算元 / 有効期間 / 状態 |
 | Quote | 見積番号 / 顧客 / 有効期限 / 状態 / 更新日 |
 | OrderAcceptance | 注文番号 / 顧客 / 顧客注文書番号 / 合計金額 / 状態 / 更新日 |
 | SalesOrder | 注文明細番号 / 顧客 / 製品 / 数量 / 金額 / 納期 / 状態 |
@@ -1554,7 +1554,7 @@ Do **not** use synonyms — e.g. never write "注文書" where "注文請書" is
 
 | 概念 | 呼び方 | 記号・コード |
 |---|---|---|
-| 価格試算 | 価格試算（旧「試算」） | EST |
+| 価格試算 | 価格試算（旧「価格試算」） | EST |
 | 見積書 | 見積書 | QOT |
 | 注文請書 | 注文請書 | ORD |
 | 注文明細 | 注文明細 | ORD-…-NN |

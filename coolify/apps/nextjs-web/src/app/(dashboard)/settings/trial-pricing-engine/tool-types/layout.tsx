@@ -31,7 +31,7 @@ export default async function ToolTypesLayout({
         <PageHeader
           breadcrumbs={[
             "システム",
-            { label: "試算計算", href: ENGINE },
+            { label: "価格試算計算", href: ENGINE },
             "工具種管理",
           ]}
           title="工具種管理"

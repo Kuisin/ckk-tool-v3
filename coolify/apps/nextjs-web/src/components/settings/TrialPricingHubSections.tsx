@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * TrialPricingHubSections — 試算計算（SY02）ハブのセクションカード一覧。
+ * TrialPricingHubSections — 価格試算計算（SY02）ハブのセクションカード一覧。
  *
  * SY01 システム設定ハブと同じ HubCard（アイコン + 説明 + ホバー）で統一する。
  * アイコンはクライアント側で解決するため、サーバーページからは section key

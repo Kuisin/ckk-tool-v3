@@ -70,7 +70,7 @@ export function ResponseApprovalCard({
         <ActionCard
           description="承認者の対応を待っています。"
           icon={<IconClock size={20} />}
-          title="承認待ち"
+          title="承認依頼中"
           tone="wait"
         />
       );
@@ -94,7 +94,7 @@ export function ResponseApprovalCard({
           }
           description="内容を確認して承認または差し戻してください。"
           icon={<IconCheck size={20} />}
-          title="あなたの承認待ちです"
+          title="あなたの承認依頼中です"
           tone="approve"
         />
         <ModalShell

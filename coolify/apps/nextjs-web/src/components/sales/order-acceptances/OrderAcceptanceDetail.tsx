@@ -18,7 +18,7 @@
  * - APPROVED: 確定（明細ごとに注文明細 ORD-…-NN を一括作成）。
  * - COMPLETED: 生成された注文明細リンク + アーカイブ。
  * 状態ごとの操作は最上部の ActionCard にまとめる（承認権限の有無で色が変わる
- * — 権限が無いユーザーにはグレーの「承認待ち」カード）。
+ * — 権限が無いユーザーにはグレーの「承認依頼中」カード）。
  * タブ: 添付（AttachmentsPanel）/ 履歴（HistoryPanel）。
  */
 
@@ -419,8 +419,8 @@ export function OrderAcceptanceDetail({
   };
 
   /**
-   * 「いまやること」カード（最上部）。承認待ちは承認権限の有無で色が変わる
-   * — 権限あり = 緑 + 承認/差し戻し、権限なし = グレーの「承認待ち」表示。
+   * 「いまやること」カード（最上部）。承認依頼中は承認権限の有無で色が変わる
+   * — 権限あり = 緑 + 承認/差し戻し、権限なし = グレーの「承認依頼中」表示。
    */
   let actionCard: ReactNode = null;
   if (cancelRequest && cancelApproval) {
@@ -544,7 +544,7 @@ export function OrderAcceptanceDetail({
               disabled: a.status !== "COMPLETED" || cancelRequest != null,
               disabledReason:
                 cancelRequest != null
-                  ? "承認待ちのキャンセル依頼があります"
+                  ? "承認依頼中のキャンセル依頼があります"
                   : a.status !== "COMPLETED"
                     ? "確定後に依頼できます"
                     : undefined,

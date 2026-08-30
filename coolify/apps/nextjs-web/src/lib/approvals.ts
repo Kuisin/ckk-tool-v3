@@ -958,7 +958,7 @@ export async function actOnCurrentStep(input: {
     },
     include: { approvers: { select: { userId: true, actedAt: true } } },
   });
-  if (!request) return ACT_FAILED("承認待ちの依頼がありません");
+  if (!request) return ACT_FAILED("承認依頼中の依頼がありません");
 
   const auth = await resolveApprover(request.groupId, actor, request.id);
   if (!auth.ok) {

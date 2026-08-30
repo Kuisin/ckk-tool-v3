@@ -13,7 +13,7 @@ export const dynamic = "force-dynamic";
 
 /**
  * 承認・予定 (CM01) — 個人の「やること」: 自分の作業予定（未完了の作業計画）と
- * 承認待ちの承認依頼の横断一覧（旧 承認管理 PD03。approve 権限がある人のみ）。
+ * 承認依頼中の承認依頼の横断一覧（旧 承認管理 PD03。approve 権限がある人のみ）。
  */
 export default async function GeneralTasksPage() {
   const denied = await requireAppRead("my-tasks");

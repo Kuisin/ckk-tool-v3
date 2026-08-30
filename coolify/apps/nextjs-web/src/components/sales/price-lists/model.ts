@@ -4,13 +4,13 @@
  * Model (per sales.price_list_entries — combined key (year_month, seq)):
  *   Entry — 表示番号 PRC-YYYYMM-NNNNN はキーから導出（URL id と同一）。
  *           (顧客, 製品) は作成後不変の識別（unique）。通貨 + 状態を持つ。
- *     └ Variant  = 注文種別ごとの価格。基準単価（試算の見積単価 or 手動）+
- *                  有効期間 + 状態 + 試算リンクを持つ。
+ *     └ Variant  = 注文種別ごとの価格。基準単価（価格試算の見積単価 or 手動）+
+ *                  有効期間 + 状態 + 価格試算リンクを持つ。
  *       └ Tier     = 数量範囲 → 倍率 (×1.01 など)。単価 = 基準単価 × 倍率、
  *                    行ごとに手動上書き (priceOverride) 可。
  *       └ Discount = 期間 × 数量条件 → 値引きルール（専用リスト）。
  *
- * 価格表は顧客×製品で作成する。製品にリンクされた確定済み試算があれば、
+ * 価格表は顧客×製品で作成する。製品にリンクされた確定済み価格試算があれば、
  * その見積単価を基準単価ソースとして選択できる（手動設定も可）。
  * 見積書は価格表からのみ価格を解決する（単価・値引きとも自動計算）。
  * Rows are built by the server pages (app/sales/price-lists/data.ts);
@@ -58,14 +58,14 @@ export type EntryOrderType = "PRODUCTION" | "TEST" | "SAMPLE" | "OTHER";
 
 /**
  * 注文種別バリアント — 1 エントリ（顧客×製品）内の種別ごとの価格。
- * 基準単価・有効期間・試算リンクはバリアント単位で持つ。
+ * 基準単価・有効期間・価格試算リンクはバリアント単位で持つ。
  */
 export interface PriceVariant {
   /** price_list_variants.id（フォームの未保存行は ""）。 */
   id: string;
   orderType: string;
   /**
-   * 基準単価 — 試算の見積単価から登録（そのまま使うか手動上書き）。
+   * 基準単価 — 価格試算の見積単価から登録（そのまま使うか手動上書き）。
    * 各 tier の単価はここから倍率で計算される。
    */
   baseUnitPrice: number;
@@ -75,7 +75,7 @@ export interface PriceVariant {
   tiers: PriceTier[];
   /** 期間・数量条件つき値引きルール（専用リスト）. */
   discounts: PriceDiscount[];
-  /** 試算元の文書番号 EST-…（手動設定は null）— URL id と同一。 */
+  /** 価格試算元の文書番号 EST-…（手動設定は null）— URL id と同一。 */
   estimateId: string | null;
   estimateNumber: string | null;
 }

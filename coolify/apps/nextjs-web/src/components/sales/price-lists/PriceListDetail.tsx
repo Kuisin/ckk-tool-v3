@@ -4,7 +4,7 @@
  * PriceListDetail — 価格表 詳細 (design.md §8.2).
  *
  * One (顧客, 製品) entry with its 注文種別バリアント一式。バリアントごとに
- * 有効期間 + 状態 + 基準単価 + 試算元、a read-only table of quantity tiers,
+ * 有効期間 + 状態 + 基準単価 + 価格試算元、a read-only table of quantity tiers,
  * and the dedicated 値引きルール list (期間 × 数量 → 値引き — 見積書作成時に
  * 自動適用される). Backed by sales.price_list_entries via the server page;
  * 値引きルールの追加・編集・削除は Server Actions で永続化する。
@@ -442,7 +442,7 @@ export function PriceListDetail({
           <Stack gap="md">
             <div>
               <Text c="dimmed" mb={4} size="xs">
-                試算元（注文種別ごと）
+                価格試算元（注文種別ごと）
               </Text>
               {estimateVariants.length > 0 ? (
                 <Stack gap={4}>

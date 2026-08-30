@@ -573,7 +573,7 @@ export function ProcessStepForm({
       </FormSection>
 
       <FormSection
-        description="この工程の計画・実績で使える作業場所を制限します（種別と個別の和集合が許可されます）。両方空 = 制限なし。キオスクでも同じ制限が効きます。"
+        description="この工程の計画・実績で使える作業場所を制限します（種別と個別の和集合が許可されます）。両方空 = 制限なし。共有端末でも同じ制限が効きます。"
         title="許可作業場所"
       >
         <SimpleGrid cols={isMobile ? 1 : 2} spacing="sm">

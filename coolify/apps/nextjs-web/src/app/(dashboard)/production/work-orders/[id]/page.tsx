@@ -100,7 +100,7 @@ export default async function ProductionWorkOrdersDetailPage({
         )
       : null;
 
-  // 承認待ちの工程フロー変更（承認設定が未設定の環境では常に null）。
+  // 承認依頼中の工程フロー変更（承認設定が未設定の環境では常に null）。
   // 承認状態は「指示書」ではなく「変更そのもの」に付くので別で引く。
   const pendingFlowChange = await fetchPendingFlowChange(workOrder.id);
   const flowChangeApproval = pendingFlowChange

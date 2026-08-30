@@ -478,7 +478,7 @@ export interface AuditEntry {
   user: string;
   /** 操作者の顔写真（小）。未設定・システム操作なら null → イニシャル。 */
   avatarUrl?: string | null;
-  /** 操作元のキオスク端末名（共有タブレット経由のみ。Web 操作は null）。 */
+  /** 操作元の共有端末名（共有タブレット経由のみ。Web 操作は null）。 */
   device?: string | null;
   at: string;
   detail?: ReactNode;

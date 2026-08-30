@@ -10,7 +10,7 @@
  * 編集系アクションは出さない。
  *
  * アクション: 編集（DRAFT のみ）/ コピー（対象注文明細を選ぶモーダル。コピー元に
- * 新しい版があれば警告）/ キャンセル（DRAFT・承認待ちのみ）。
+ * 新しい版があれば警告）/ キャンセル（DRAFT・承認依頼中のみ）。
  */
 
 import {
@@ -105,7 +105,7 @@ export function WorkOrderDetail({
   designFile?: ProductDesignFile | null;
   /** その版に固定されているか（false = 表示のたびに最新を引いている）。 */
   designPinned?: boolean;
-  /** 承認待ちの工程フロー変更（承認設定が未設定なら常に null = 即適用）。 */
+  /** 承認依頼中の工程フロー変更（承認設定が未設定なら常に null = 即適用）。 */
   flowChange?: PendingFlowChangeView | null;
   /** 上の変更そのものの承認状態（指示書の承認とは別物）。 */
   flowChangeApproval?: ApprovalActionState | null;
@@ -444,7 +444,7 @@ export function WorkOrderDetail({
           </Stack>
         </Alert>
       )}
-      {/* 承認待ちの工程フロー変更（承認設定が未設定なら出ない = 即適用） */}
+      {/* 承認依頼中の工程フロー変更（承認設定が未設定なら出ない = 即適用） */}
       {flowChange && flowChangeApproval && (
         <FlowChangeCard approval={flowChangeApproval} change={flowChange} />
       )}

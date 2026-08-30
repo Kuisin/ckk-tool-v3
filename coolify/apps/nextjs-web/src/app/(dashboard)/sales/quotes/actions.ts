@@ -93,7 +93,7 @@ async function resolveItems(v: QuoteInput) {
     );
     if (!r) {
       throw new Error(
-        `明細${i + 1}: 該当する価格表がありません（試算から価格表を登録してください）`,
+        `明細${i + 1}: 該当する価格表がありません（価格試算から価格表を登録してください）`,
       );
     }
     return {
