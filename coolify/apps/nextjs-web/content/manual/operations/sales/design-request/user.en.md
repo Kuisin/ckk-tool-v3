@@ -178,6 +178,17 @@ The completion date is recorded, and the requester is notified — as is the sal
 
 If a correction is needed after it is done, press「**差し戻し**」(send back) from「**…**」, then press「**差し戻す**」(send back). The status returns to 進行中 (in progress) and the completion date is cleared. This kind of send-back is **redoing the work**, so the approval does not have to be taken again.
 
+## Discussing in comments
+
+The **コメント** (comments) tab on a request holds the back-and-forth about it. Review of a drawing goes back and forth, so this is a **thread** of posts (newest first) rather than a single shared memo that gets overwritten.
+
+- Text can carry **bold, italic, bullet lists, headings and links**.
+- You can **edit or delete only your own** posts.
+- Posts you are done with can be **archived** — they fold away rather than disappear, and open again on click.
+- **Comments are internal.** They never appear on the printed document.
+
+Write what you want designed in the 依頼内容 (description) field. Comments are for the conversation that follows.
+
 ## Printing the document
 
 After approval (未着手, 進行中 or 完了) the「**PDF**」tab on the request screen shows the design request as a printable document. The「**PDF**」button at the top right opens it too.

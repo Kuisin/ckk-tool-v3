@@ -66,6 +66,12 @@ const MEMO_OWNERS: Record<string, { permission: string; kind: MemoKind }> = {
   price_list_entries: { permission: "price_list", kind: "COMMENT" },
   estimates: { permission: "price_list", kind: "COMMENT" },
   form_responses: { permission: "form", kind: "COMMENT" },
+  // 設計依頼書は **コメント**（投稿スレッド）— 図面の指摘と回答が行き来する
+  // ものなので、1 件の共有欄に上書きしていくと誰が何を言ったかが消える。
+  design_requests: { permission: "design_request", kind: "COMMENT" },
+  // 設計図は **メモ**（1 版 1 件の共有欄）— 「この版で何が変わったか」は
+  // 版ごとに 1 つの事実で、書き換わってよい。ownerId は版の uuid。
+  design_files: { permission: "design_file", kind: "MEMO" },
 };
 
 /** owner の種別（MEMO / COMMENT）。未登録なら null。 */
@@ -176,19 +182,25 @@ function mayMutate(
 }
 
 /**
- * メモ一覧。COMMENT は**新しい順**（チャット履歴と同じ向き）、MEMO は 0 件か 1 件。
- * 失敗時は空配列（詳細画面を壊さない — attachments と同じ方針）。
+ * メモ一覧（複数 owner を 1 度に）。返り値は ownerId → メモ配列。
+ *
+ * **行ごとに listMemos を呼ばないための口。** 設計図 (PD26) は 1 画面に版が
+ * 何行も並び、その 1 行ずつがメモを持つ。行ごとに引くと findMany も権限確認も
+ * 短縮リンク解決も行数ぶん走る。ここでまとめて 1 回にする。
+ *
+ * 失敗時は空（詳細画面を壊さない — attachments と同じ方針）。
  */
-export async function listMemos(
+export async function listMemosByOwnerIds(
   ownerType: string,
-  ownerId: string,
-): Promise<MemoView[]> {
+  ownerIds: readonly string[],
+): Promise<Record<string, MemoView[]>> {
   const owner = MEMO_OWNERS[ownerType];
-  if (!owner) return [];
+  const ids = [...new Set(ownerIds)];
+  if (!owner || ids.length === 0) return {};
   try {
     const [rows, actorId, canUpdate, canDelete, isAdmin] = await Promise.all([
       prisma.documentMemo.findMany({
-        where: { ownerType, ownerId },
+        where: { ownerType, ownerId: { in: ids } },
         // COMMENT は新しい順。MEMO は 1 件なので実質どちらでも同じ。
         orderBy: { createdAt: "desc" },
         include: {
@@ -211,14 +223,17 @@ export async function listMemos(
       ),
     );
 
-    return rows.map((r) => {
+    const byOwner: Record<string, MemoView[]> = {};
+    for (const r of rows) {
       const mine = mayMutate(r.kind, r.createdBy, actor);
       const doc = r.content as unknown as RichTextDoc;
-      return {
+      const bucket = byOwner[r.ownerId] ?? [];
+      byOwner[r.ownerId] = bucket;
+      bucket.push({
         id: r.id,
         // 保存時に parseRichText を通した doc のみが入る。万一壊れた行があっても
         // RichTextView / isEmptyDoc は未知の形を無視するので表示は壊れない。
-        content: r.content as unknown as RichTextDoc,
+        content: doc,
         authorName: r.createdByUser?.displayName ?? "システム",
         authorAvatarUrl: r.createdByUser
           ? actorAvatarUrl(r.createdByUser as UserRow)
@@ -235,12 +250,25 @@ export async function listMemos(
         canDelete: canDelete && mine,
         canArchive: r.kind === "COMMENT" && canUpdate && mine,
         linkTargets: pickTargets(doc, targets),
-      };
-    });
+      });
+    }
+    return byOwner;
   } catch (e) {
-    console.error("listMemos failed", e);
-    return [];
+    console.error("listMemosByOwnerIds failed", e);
+    return {};
   }
+}
+
+/**
+ * メモ一覧。COMMENT は**新しい順**（チャット履歴と同じ向き）、MEMO は 0 件か 1 件。
+ * 失敗時は空配列（詳細画面を壊さない — attachments と同じ方針）。
+ */
+export async function listMemos(
+  ownerType: string,
+  ownerId: string,
+): Promise<MemoView[]> {
+  const byOwner = await listMemosByOwnerIds(ownerType, [ownerId]);
+  return byOwner[ownerId] ?? [];
 }
 
 /**

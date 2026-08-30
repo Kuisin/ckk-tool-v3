@@ -12,6 +12,8 @@
  *   5. 設計図 (PD06) と設計依頼 (SA06) の分離 — 版の系列が (製品 × 受注元) で
  *      分かれること、依頼は成果物が無いと完了できないこと、成果物があれば
  *      完了できること、製品マスタ側からは書けないこと
+ *   6. リッチテキスト — 設計依頼のコメント（スレッド）と設計図の版メモ
+ *      （1 版 1 件）が書けて、読み込み直しても残ること
  *
  * 落ちたときに原因を追えるよう、check() には**実測値**（URL・幅・ラベル）を
  * 添えること。合否だけだと「なぜ」が残らない。
@@ -454,6 +456,65 @@ async function main(): Promise<void> {
     "MS24: 製品マスタからは版を足せない（読み取り + 設計図へのリンクだけ）",
     addFromMaster === 0 && manageLink > 0,
     `追加ボタン:${addFromMaster} 管理リンク:${manageLink}`,
+  );
+
+  // ── 6. リッチテキスト（設計依頼のコメント / 設計図の版メモ）──────────
+  //
+  // どちらも document_memos に入るが owner の作り方が違う:
+  //   設計依頼 … ownerId = 依頼番号（業務キー）/ COMMENT（スレッド）
+  //   設計図   … ownerId = 版の uuid（業務キーが無い）/ MEMO（1 件の共有欄）
+  const commentText = `E2E コメント ${Date.now()}`;
+  await page.goto(
+    `${APP}/sales/design-requests/DSG-202607-00001?tab=comments`,
+    { waitUntil: "networkidle" },
+  );
+  await page.waitForTimeout(800);
+  const commentEditor = page.locator(".ProseMirror").first();
+  await commentEditor.click();
+  await commentEditor.fill(commentText);
+  await page.getByRole("button", { name: "投稿" }).first().click();
+  await page.waitForTimeout(1500);
+  check(
+    "SA06: コメントを投稿できる",
+    (await page.getByText(commentText).count()) > 0,
+    commentText,
+  );
+
+  // 読み込み直しても残る（DB に入っている）
+  await page.reload({ waitUntil: "networkidle" });
+  await page.waitForTimeout(800);
+  check(
+    "SA06: コメントは再読み込み後も残る",
+    (await page.getByText(commentText).count()) > 0,
+  );
+
+  // 設計図の版メモ — 行の「メモ」からモーダルで開く
+  const memoText = `E2E 版メモ ${Date.now()}`;
+  await page.goto(`${APP}/production/design-files/9001`, {
+    waitUntil: "networkidle",
+  });
+  await page.waitForTimeout(600);
+  await page.getByRole("button", { name: "メモ" }).first().click();
+  await page.waitForTimeout(800);
+  const memoDialog = page.getByRole("dialog");
+  // 未記入なら「メモを追加」、既にあれば鉛筆（aria-label="編集"）。
+  const memoAdd = memoDialog.getByRole("button", { name: "メモを追加" });
+  const memoEdit = memoDialog.getByRole("button", { name: "編集" });
+  if (await memoAdd.count()) {
+    await memoAdd.first().click();
+  } else if (await memoEdit.count()) {
+    await memoEdit.first().click();
+  }
+  await page.waitForTimeout(600);
+  const memoEditor = memoDialog.locator(".ProseMirror").first();
+  await memoEditor.click();
+  await memoEditor.fill(memoText);
+  await memoDialog.getByRole("button", { name: "保存" }).first().click();
+  await page.waitForTimeout(1500);
+  check(
+    "PD06: 版ごとのメモを書ける",
+    (await page.getByText(memoText).count()) > 0,
+    memoText,
   );
 
   console.log("\n---- 結果 ----");

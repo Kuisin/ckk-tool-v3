@@ -5,6 +5,7 @@ import { fetchApprovalState, fetchApprovalTrail } from "@/lib/approvals";
 import { listAttachments } from "@/lib/attachments";
 import { fetchAuditEntries } from "@/lib/audit";
 import { requireAppRead } from "@/lib/authz-page";
+import { listMemos } from "@/lib/document-memos";
 import { pdfStorageKey, storedPdfMeta } from "@/lib/document-pdf";
 import { fetchDesignRequest, fetchEmployeeOptions } from "../data";
 
@@ -40,6 +41,7 @@ export default async function SalesDesignRequestsDetailPage({
     approval,
     approvalTrail,
     assigneeOptions,
+    memos,
   ] = await Promise.all([
     fetchDesignRequest(requestNumber),
     fetchAuditEntries("design_requests", requestNumber),
@@ -47,6 +49,7 @@ export default async function SalesDesignRequestsDetailPage({
     fetchApprovalState("design_requests", requestNumber),
     fetchApprovalTrail("design_requests", requestNumber),
     fetchEmployeeOptions(),
+    listMemos("design_requests", requestNumber),
   ]);
   if (!request) notFound();
 
@@ -62,6 +65,7 @@ export default async function SalesDesignRequestsDetailPage({
       assigneeOptions={assigneeOptions}
       attachments={attachments}
       auditEntries={auditEntries}
+      memos={memos}
       pdfMeta={pdfMeta}
       request={request}
     />
