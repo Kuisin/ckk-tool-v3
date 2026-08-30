@@ -12,6 +12,7 @@ import { IconBookmark } from "@tabler/icons-react";
 import Link from "next/link";
 import { useFormat } from "@/components/layout/PreferencesProvider";
 import { InventoryBadge } from "@/components/production/InventoryBadge";
+import { AppTabs } from "@/components/ui/AppTabs";
 import { DocNumber } from "@/components/ui/DocNumber";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { FieldValue } from "@/components/ui/FieldValue";
@@ -125,7 +126,7 @@ export function ProductInventoryDetail({
         )}
       </SummaryGrid>
 
-      <Tabs onChange={setTab} value={tab}>
+      <AppTabs onChange={setTab} value={tab}>
         <Tabs.List>
           <Tabs.Tab value="reservations">
             予約（{record.reservations.length}）
@@ -142,7 +143,7 @@ export function ProductInventoryDetail({
         <Tabs.Panel pt="md" value="transactions">
           <InventoryTransactionsTable rows={record.transactions} unit="本" />
         </Tabs.Panel>
-      </Tabs>
+      </AppTabs>
     </DetailShell>
   );
 }

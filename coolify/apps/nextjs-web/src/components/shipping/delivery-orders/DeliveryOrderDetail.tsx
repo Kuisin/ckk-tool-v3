@@ -32,6 +32,7 @@ import {
   shipDeliveryOrder,
 } from "@/app/(dashboard)/shipping/delivery-orders/actions";
 import { useFormat } from "@/components/layout/PreferencesProvider";
+import { AppTabs } from "@/components/ui/AppTabs";
 import { SecondaryButton } from "@/components/ui/buttons";
 import { DocNumber } from "@/components/ui/DocNumber";
 import { EmptyState } from "@/components/ui/EmptyState";
@@ -364,7 +365,7 @@ export function DeliveryOrderDetail({
         </Table.ScrollContainer>
       </Paper>
 
-      <Tabs onChange={setTab} value={tab}>
+      <AppTabs onChange={setTab} value={tab}>
         <Tabs.List>
           <Tabs.Tab value="overview">概要</Tabs.Tab>
           <Tabs.Tab value="delivery-notes">
@@ -482,7 +483,7 @@ export function DeliveryOrderDetail({
         <Tabs.Panel pt="md" value="history">
           <HistoryPanel entries={auditEntries} />
         </Tabs.Panel>
-      </Tabs>
+      </AppTabs>
 
       <ConfirmModal
         confirmColor="blue"

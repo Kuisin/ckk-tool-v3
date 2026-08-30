@@ -40,6 +40,7 @@ import {
 import { BpRoleBadges } from "@/components/master/bp/BpRoleBadges";
 import { ContactsTable } from "@/components/master/bp/ContactsTable";
 import { ActiveBadge } from "@/components/ui/ActiveBadge";
+import { AppTabs } from "@/components/ui/AppTabs";
 import { GhostButton } from "@/components/ui/buttons";
 import { DocNumber } from "@/components/ui/DocNumber";
 import { EmptyState } from "@/components/ui/EmptyState";
@@ -172,7 +173,7 @@ export function BpDetail({
         record={record}
       />
 
-      <Tabs onChange={setTab} value={tab}>
+      <AppTabs onChange={setTab} value={tab}>
         <Tabs.List>
           <Tabs.Tab value="overview">概要</Tabs.Tab>
           <Tabs.Tab value="contacts">担当者</Tabs.Tab>
@@ -428,7 +429,7 @@ export function BpDetail({
         <Tabs.Panel pt="md" value="audit">
           <HistoryPanel entries={auditEntries} />
         </Tabs.Panel>
-      </Tabs>
+      </AppTabs>
 
       <DeleteBpModal
         entityLabel="取引先"

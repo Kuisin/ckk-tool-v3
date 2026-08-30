@@ -12,6 +12,7 @@ import { Alert, Stack, Tabs, Text } from "@mantine/core";
 import { IconInfoCircle } from "@tabler/icons-react";
 import { useState } from "react";
 import type { ComponentTableKind } from "@/app/(dashboard)/master/material-numbering/actions";
+import { AppTabs } from "@/components/ui/AppTabs";
 import { PrimaryButton } from "@/components/ui/buttons";
 import { DocNumber } from "@/components/ui/DocNumber";
 import { PageHeader } from "@/components/ui/PageHeader";
@@ -105,7 +106,7 @@ export function MaterialNumberingTabs({
         </Text>
       </Alert>
 
-      <Tabs onChange={setTab} value={active}>
+      <AppTabs onChange={setTab} value={active}>
         <Tabs.List>
           {TABS.map((t) => (
             <Tabs.Tab key={t.value} value={t.value}>
@@ -123,7 +124,7 @@ export function MaterialNumberingTabs({
             />
           </Tabs.Panel>
         ))}
-      </Tabs>
+      </AppTabs>
 
       <AddComponentModal
         kind={active}

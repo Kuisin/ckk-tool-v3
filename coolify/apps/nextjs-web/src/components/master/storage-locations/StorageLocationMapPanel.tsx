@@ -24,6 +24,7 @@ import {
   unplaceStorageLocation,
 } from "@/app/(dashboard)/master/storage-locations/actions";
 import type { PlantFloorMapRef } from "@/components/master/plants/FloorMapsPanel";
+import { AppTabs } from "@/components/ui/AppTabs";
 import { GhostButton } from "@/components/ui/buttons";
 import { FloorMapCanvas } from "@/components/ui/FloorMapCanvas";
 
@@ -101,7 +102,7 @@ export function StorageLocationMapPanel({
       ) : (
         <Stack gap="sm">
           {floorMaps.length > 1 && (
-            <Tabs
+            <AppTabs
               onChange={(v) => {
                 setActiveMapId(v);
                 setOverlayIds([]);
@@ -115,7 +116,7 @@ export function StorageLocationMapPanel({
                   </Tabs.Tab>
                 ))}
               </Tabs.List>
-            </Tabs>
+            </AppTabs>
           )}
 
           {/* 重ね表示（スタッキング）— 他フロアの図面を低不透明度で重ねて位置合わせ */}

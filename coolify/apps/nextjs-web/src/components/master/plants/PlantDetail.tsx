@@ -14,6 +14,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { useFormat } from "@/components/layout/PreferencesProvider";
 import { ActiveBadge } from "@/components/ui/ActiveBadge";
+import { AppTabs } from "@/components/ui/AppTabs";
 import { DocNumber } from "@/components/ui/DocNumber";
 import { FieldValue } from "@/components/ui/FieldValue";
 import {
@@ -120,7 +121,7 @@ export function PlantDetail({
         <FieldValue label="担当者" value={record.contactPerson || "—"} />
       </SummaryGrid>
 
-      <Tabs onChange={setTab} value={tab}>
+      <AppTabs onChange={setTab} value={tab}>
         <Tabs.List>
           <Tabs.Tab value="overview">概要</Tabs.Tab>
           <Tabs.Tab value="floor-maps">フロアマップ</Tabs.Tab>
@@ -135,7 +136,7 @@ export function PlantDetail({
         <Tabs.Panel pt="md" value="floor-maps">
           <FloorMapsPanel floorMaps={floorMaps} plantId={record.id} />
         </Tabs.Panel>
-      </Tabs>
+      </AppTabs>
 
       <DeletePlantModal
         onClose={() => setDeleteOpen(false)}

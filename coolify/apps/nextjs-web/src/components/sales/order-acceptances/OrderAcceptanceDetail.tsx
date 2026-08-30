@@ -91,6 +91,7 @@ import {
   countTrailRecords,
 } from "@/components/production/ApprovalStatusPanel";
 import { ActionCard } from "@/components/ui/ActionCard";
+import { AppTabs } from "@/components/ui/AppTabs";
 import {
   AttachmentsPanel,
   type AttachmentView,
@@ -1052,7 +1053,7 @@ export function OrderAcceptanceDetail({
               )}
             </ProcedurePanel>
 
-            <Tabs onChange={setTab} value={tab}>
+            <AppTabs onChange={setTab} value={tab}>
               <Tabs.List>
                 <Tabs.Tab value="attachments">
                   添付（{attachments.length}）
@@ -1084,7 +1085,7 @@ export function OrderAcceptanceDetail({
               <Tabs.Panel pt="md" value="history">
                 <HistoryPanel entries={auditEntries} />
               </Tabs.Panel>
-            </Tabs>
+            </AppTabs>
           </Stack>
         </Grid.Col>
       </Grid>

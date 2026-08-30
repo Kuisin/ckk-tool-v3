@@ -49,6 +49,7 @@ import {
 } from "@/components/production/ApprovalStatusPanel";
 import type { MaterialReceiptView } from "@/components/purchase/material-receipts/model";
 import { ActionCard } from "@/components/ui/ActionCard";
+import { AppTabs } from "@/components/ui/AppTabs";
 import {
   AttachmentsPanel,
   type AttachmentView,
@@ -396,7 +397,7 @@ export function PurchaseOrderDetail({
         )}
       </ProcedurePanel>
 
-      <Tabs onChange={setTab} value={tab}>
+      <AppTabs onChange={setTab} value={tab}>
         <Tabs.List>
           <Tabs.Tab value="items">明細（{po.items.length}）</Tabs.Tab>
           <Tabs.Tab value="attachments">証憑（{attachments.length}）</Tabs.Tab>
@@ -506,7 +507,7 @@ export function PurchaseOrderDetail({
         <Tabs.Panel pt="md" value="history">
           <HistoryPanel entries={auditEntries} />
         </Tabs.Panel>
-      </Tabs>
+      </AppTabs>
 
       {/* キャンセル（発注前のみ・理由必須） */}
       <ModalShell

@@ -884,6 +884,39 @@ Paper (withBorder, p="md", radius="md")
 
 搭載画面: フォーム詳細の 承認 / 共有 タブ、回答詳細の 回答 タブ。
 
+### 10.11 AppTabs
+
+`src/components/ui/AppTabs.tsx` — `'use client'`
+
+**画面のタブはすべてこれを通す。** Mantine の `Tabs` を直接書かない。
+
+タブ列が横幅に収まらないときは、横並びをやめて**ドロップダウン**にする
+（見出しボタン = いま開いているタブ）。判断は**幅**で、端末ではない — スマホでも
+タブが 2 枚なら横並びのままだし、PC でも 8 枚あって狭ければ畳まれる。負け方が
+2 通りあったのを 1 つの規則に寄せたもので、折り返し（本文が下へ押し出される）も
+横スクロール（開いているタブが画面外に隠れる）ももう起きない。
+
+```tsx
+// 呼び出し側は Mantine のまま — <Tabs> を <AppTabs> に替えるだけ
+<AppTabs onChange={setTab} value={tab}>
+  <Tabs.List>
+    <Tabs.Tab value="items">明細</Tabs.Tab>
+    …
+  </Tabs.List>
+  <Tabs.Panel pt="md" value="items">…</Tabs.Panel>
+</AppTabs>
+```
+
+- 中身（`Tabs.List` / `Tabs.Tab` / `Tabs.Panel`）は書き換えない。ドロップダウンの
+  項目は `Tabs.List` の子から読み取る（`leftSection` / `rightSection` のバッジも
+  そのまま出る）。
+- 制御・非制御のどちらでも使える（`value`+`onChange` / `defaultValue`）。
+- 畳んでも `Tabs.List` は**消さずに隠す**（`visibility: hidden`）。自然な幅を測り
+  続けて広くなったら横並びへ戻すためと、`Tabs.Panel` の `aria-labelledby` が指す
+  タブの id を残すため。
+- 畳む / 戻すの判定は `lib/tab-overflow.ts`（純関数・試験あり）。戻すときだけ余白を
+  要求して、境界幅での往復を止めている。
+
 ---
 
 ## 11. Components: Variants and States
@@ -1645,10 +1678,9 @@ Approval notifications use `/api/sse/approvals` — shows a `Notification` banne
   - Form actions: right-aligned row → full-width stacked.
   - Action buttons: button group → `...` menu dropdown（`ResourceActions` が担う）。
   - Timestamps: footer row → inline Group in summary card.
-  - **Tabs: 折り返さず横スクロール**（globals.css の `.mantine-Tabs-list`）。
-    タブが 4 枚を超えると 2〜3 段に折り返して本文が画面外へ押し出されるため、
-    段を増やすより横に流す。スクロールバーは隠すが、端が切れて見えるので
-    「まだ先がある」ことは伝わる。
+  - **Tabs: 収まらなければドロップダウン**（§10.11 `AppTabs`）。幅で決まるので、
+    スマホでもタブが 2 枚なら横並びのまま。以前は横スクロールにしていたが、
+    開いているタブが画面外に隠れて「いま何を見ているか」が分からなかった。
   - **編集可能な表（明細・サブテーブル・共有設定）: 表 → 1 行 = 1 カード。**
     列が 3 つあると 1 列 40px になり、`Select` が何を選んでいるのか読めない。
     §8.3 の「Line item cards (mobile)」と同じ扱い。
