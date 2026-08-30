@@ -125,7 +125,7 @@ export function grantState(g: GrantWindow, now: Date): GrantState {
 
 /** バッジの文言（_specs/design.md §9 の色の付け方に合わせる）。 */
 export const GRANT_STATE_LABEL: Record<GrantState, string> = {
-  PENDING: "承認待ち",
+  PENDING: "承認依頼中",
   SCHEDULED: "開始前",
   ARMED: "利用可能",
   ACTIVE: "利用中",

@@ -80,7 +80,7 @@ export async function PrivilegedAccessBanner({
               {view?.allowed && remainingLabel(view.remainingMs, view.state)
                 ? `（${remainingLabel(view.remainingMs, view.state)}）`
                 : view?.pending
-                  ? "（承認待ち）"
+                  ? "（承認依頼中）"
                   : ""}
             </Badge>
           ))}

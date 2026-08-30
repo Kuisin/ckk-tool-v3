@@ -330,7 +330,7 @@ Operation codes provide keyboard-shortcut navigation. Format: `{CAT}{MODE}{IDX}`
 > `lib/app-list.ts`。
 >
 > `PD03` / `PD13` / `PD23` は**欠番**。旧 承認管理 は 一般カテゴリの
-> 承認・予定（`CM01`, `/general/tasks` — 自分の作業予定 + 承認待ちの
+> 承認・予定（`CM01`, `/general/tasks` — 自分の作業予定 + 承認依頼中の
 > 横断一覧）へ移設した。旧 `/production/approvals` はリダイレクト。
 >
 > `PD01` / `PD11` / `PD21` は**欠番**。旧 注文請書 は注文請書の明細に統合され、
@@ -632,13 +632,13 @@ Stack (gap="md")
 | SalesOrder | SHIPPED | green | 出荷済 |
 | SalesOrder | CANCELLED | red | キャンセル |
 | WorkOrder | DRAFT | gray | 下書き |
-| WorkOrder | PENDING_APPROVAL | yellow | 承認待ち |
+| WorkOrder | PENDING_APPROVAL | yellow | 承認依頼中 |
 | WorkOrder | APPROVED | blue | 承認済 |
 | WorkOrder | IN_PROGRESS | violet | 進行中 |
 | WorkOrder | COMPLETED | green | 完了 |
 | WorkOrder | CANCELLED | red | キャンセル |
 | WorkOrder (approval) | NONE | gray | — |
-| WorkOrder (approval) | PENDING | yellow | 承認待ち |
+| WorkOrder (approval) | PENDING | yellow | 承認依頼中 |
 | WorkOrder (approval) | APPROVED | green | 承認済 |
 | WorkOrder (approval) | REJECTED | red | 差し戻し |
 | StepStatus | PENDING | gray | 未着手 |
@@ -838,7 +838,7 @@ Paper (withBorder, p="md", radius="md")
 |------|----|------|
 | `action` | blue | 自分で先へ進められる操作（承認依頼・注文確定・発注・入荷完了 …） |
 | `approve` | green | 承認権限がある。承認 / 差し戻しできる |
-| `wait` | gray | 権限が無いので待つだけ。タイトルは「承認待ち」 |
+| `wait` | gray | 権限が無いので待つだけ。タイトルは「承認依頼中」 |
 | `alert` | red | 差し戻しなど、対応が必要な状態 |
 
 搭載画面: 指示書 (`WorkOrderApprovalCard`) / 注文請書 / 素材発注書 / 購買依頼。
@@ -1120,7 +1120,7 @@ unallocated 工程分岐数 (良品+工程分岐 for terminal steps) — `branch
 **工程を触らずに保留**され（`work_order_flow_changes`）、最終承認で初めて適用
 される。1 段も無ければ保留せず即適用（**未設定 = 素通し**）。保留中は指示書
 詳細の最上部に `FlowChangeCard`（§10.9 ActionCard。承認できる人は green +
-承認/差し戻し、それ以外は gray の「承認待ち」）。差し戻すと適用されずに閉じ、
+承認/差し戻し、それ以外は gray の「承認依頼中」）。差し戻すと適用されずに閉じ、
 工程はそのまま。適用は承認後に通常の関数（addBranchSeries 等）を通すので、
 待っている間に前提が崩れていれば FAILED として残る（古い前提のまま当てない）。
 
@@ -1176,7 +1176,7 @@ Paper (withBorder, p="lg")
 
 **WorkOrderApprovalCard** — 画面最上部の ActionCard (§10.9)。承認依頼 / 第一・
 承認 / 差し戻し（理由必須モーダル）を持つ唯一の場所。色は承認権限で決まる
-（権限あり = green + 承認・差し戻し、権限なし = gray の「第一（第二）承認待ち」、
+（権限あり = green + 承認・差し戻し、権限なし = gray の「第一（第二）承認依頼中」、
 差し戻し中 = red + 再承認依頼）。操作が無い状態では何も描画しない。
 
 **ApprovalStatusPanel** — フローと記録の**表示のみ**（操作ボタンは持たない）。
@@ -1556,7 +1556,7 @@ Do **not** use synonyms — e.g. never write "注文書" where "注文請書" is
 
 | 概念 | 呼び方 | 記号・コード |
 |---|---|---|
-| 価格試算 | 価格試算（旧「価格試算」） | EST |
+| 価格試算 | 価格試算（旧「試算」） | EST |
 | 見積書 | 見積書 | QOT |
 | 注文請書 | 注文請書 | ORD |
 | 注文明細 | 注文明細 | ORD-…-NN |
@@ -1566,7 +1566,7 @@ Do **not** use synonyms — e.g. never write "注文書" where "注文請書" is
 | 工程 | 工程（「工程ステップ」とは言わない） | STEP |
 | 実施場所 | 社内 / 外注 | INTERNAL / OUTSOURCE |
 | 共有端末 | 共有端末（「キオスク」とは言わない） | kiosk（コードのみ） |
-| 承認依頼中 | 承認依頼中（「承認待ち」とは言わない） | PENDING / REQUESTED |
+| 承認依頼中 | 承認依頼中（「承認依頼中」とは言わない） | PENDING / REQUESTED |
 | 下書き | 下書き（「作成中」とは言わない） | DRAFT |
 
 ### 17.2 敬語 / Tone

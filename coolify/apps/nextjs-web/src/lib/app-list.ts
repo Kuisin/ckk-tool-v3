@@ -436,7 +436,7 @@ export const appList: AppEntry[] = [
     icon: "IconUserCog",
     category: "システム",
     // 利用停止・所属拠点の変更は特権操作（user_admin）。入口もそこへ寄せる —
-    // system:READ を入口にすると、申請できるようにするために SY02 試算計算や
+    // system:READ を入口にすると、申請できるようにするために SY02 価格試算計算や
     // SY0E AI プロバイダまで開いてしまう。
     requiredPermission: "user_admin",
   },

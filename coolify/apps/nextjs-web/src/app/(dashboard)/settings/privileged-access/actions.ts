@@ -143,7 +143,7 @@ export async function requestPrivilegedAccess(
   } catch (e) {
     if ((e as { code?: string }).code === "P2002") {
       return actionError(
-        "この権限の申請は既に承認待ちです（決裁されてから次を出してください）",
+        "この権限の申請は既に承認依頼中です（決裁されてから次を出してください）",
       );
     }
     return actionError(prismaErrorMessage(e, "申請の作成に失敗しました"));

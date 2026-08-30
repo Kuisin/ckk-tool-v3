@@ -74,7 +74,7 @@ src/
 │   │   │   ├── pending-work-orders/                # 未処理指示書（PD05 — 作業キュー）
 │   │   │   │   └── page.tsx                        #   未手配の注文明細 + 進行中の指示書
 │   │   │   ├── approvals/                          # 承認管理（§6）
-│   │   │   │   ├── page.tsx                        # 承認待ち一覧
+│   │   │   │   ├── page.tsx                        # 承認依頼中一覧
 │   │   │   │   └── [id]/page.tsx
 │   │   │   └── inventory/                          # 在庫管理（§4・§5）
 │   │   │       ├── products/                       # 製品在庫台帳

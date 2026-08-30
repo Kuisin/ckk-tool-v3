@@ -19,10 +19,10 @@
 BEGIN;
 
 INSERT INTO app.feature_flags (key, is_enabled, description, updated_at) VALUES
-  ('app:trial-estimates:main',        true, '試算 本番公開',            now()),
+  ('app:trial-estimates:main',        true, '価格試算 本番公開',            now()),
   ('app:price-lists:main',            true, '価格表 本番公開',          now()),
   ('app:quotes:main',                 true, '見積書 本番公開',          now()),
-  ('app:trial-pricing-engine:main',   true, '試算計算(設定) 本番公開',  now()),
+  ('app:trial-pricing-engine:main',   true, '価格試算計算(設定) 本番公開',  now()),
   ('app:product-items:main',          true, '製品項目(設定) 本番公開',  now()),
   ('app:product-types:main',          true, '製品種別(設定) 本番公開',  now()),
   ('app:master-business-partners:main', true, '取引先 本番公開',        now()),

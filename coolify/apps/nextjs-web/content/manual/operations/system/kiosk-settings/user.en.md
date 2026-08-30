@@ -115,12 +115,12 @@ A. No. Adding more apps to the tablets requires work by the development team. Pl
 <!-- permissions:start -->
 ## Permissions required
 
-Using this screen requires the **Kiosk admin** (`kiosk`) permission.
+Using this screen requires the **Shared device admin** (`kiosk`) permission.
 
 | What you want to do | Permission needed |
 | --- | --- |
-| Open the screen, view lists and details | Kiosk admin — View |
-| Add, change or delete | Kiosk admin — Create / Edit / Delete |
+| Open the screen, view lists and details | Shared device admin — View |
+| Add, change or delete | Shared device admin — Create / Edit / Delete |
 
 Viewing only needs *View*. Where a screen offers adding, changing or deleting, each of those needs its matching permission.
 

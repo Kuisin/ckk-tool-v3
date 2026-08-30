@@ -302,7 +302,7 @@ export async function createUserChangeRequest(input: {
   } catch (e) {
     if ((e as { code?: string }).code === "P2002") {
       return actionError(
-        `この利用者への「${USER_CHANGE_LABEL[input.kind]}」は既に承認待ちです`,
+        `この利用者への「${USER_CHANGE_LABEL[input.kind]}」は既に承認依頼中です`,
       );
     }
     return actionError(prismaErrorMessage(e, "変更依頼の作成に失敗しました"));
