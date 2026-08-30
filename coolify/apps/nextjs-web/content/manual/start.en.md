@@ -26,7 +26,7 @@ These three connect in order: **Trial Estimate → Price List → Quote** (see "
 ## 2. Reading the screen
 
 - Click the **logo (top left)** → the app launcher opens.
-- **Center search box** — type an app name or an "operation code" (e.g. `SA01`) and press Enter to jump straight to that screen.
+- **Search box (top right, desktop only)** — type an app name or an "operation code" (e.g. `SA01`) and press Enter to jump straight to that screen. It is not shown on narrow screens such as phones; the same search sits inside the app launcher above.
 - **Bell (top right)** — notifications. **Avatar** — Profile, Notification Settings, Home Screen Settings, Display Settings, Sign out.
 - **Home** — available apps grouped by category (choose "Custom (by group)" in Home Screen Settings to arrange them by the groups you create instead). Apps you lack permission for are hidden, and the set of published apps also differs per environment (production / development).
 
@@ -36,7 +36,7 @@ These three connect in order: **Trial Estimate → Price List → Quote** (see "
 
 ## 3. Operation codes (screen numbers)
 
-Every screen has a 4-character code. Remembering them lets you jump from the search box.
+Every screen has a 4-character code. Remembering them lets you jump from the search box (desktop) or from the search inside the app launcher.
 
 - `SA01` Trial Estimate / `SA02` Price List / `SA03` Quote
 - `MS01` Business Partners / `MS0B` Approval Settings
@@ -59,7 +59,7 @@ For detailed steps and what each input field means, open **Operations** in the s
 
 - **Can't find a screen** — you may lack the required permission; ask an administrator.
 - **Got a notification** — review it from the bell (top right).
-- **Change your own settings** — they all live in the top-right avatar menu: **Profile** for your notification email and password, **Home Screen Settings** for favorite apps and display mode, and **Display Settings** for the interface language, date/time format and time zone (see the [User Settings Manual](/manual/en/user-settings)).
+- **Change your own settings** — they all live in the top-right avatar menu: **Profile** for your notification email and password, **Home Screen Settings** for favorite apps and display mode, and **Display Settings** for the interface language, date/time format, time zone, text size and bold text (see the [User Settings Manual](/manual/en/user-settings)).
 
 ## Glossary
 
