@@ -22,6 +22,9 @@ CREATE EXTENSION IF NOT EXISTS pg_cron;
 -- 再実行時は既存ジョブを置き換える
 SELECT cron.unschedule(jobid) FROM cron.job WHERE jobname = 'login_attempt_retention';
 SELECT cron.unschedule(jobid) FROM cron.job WHERE jobname = 'user_device_retention';
+SELECT cron.unschedule(jobid) FROM cron.job WHERE jobname = 'privileged_access_expiry';
+SELECT cron.unschedule(jobid) FROM cron.job WHERE jobname = 'privileged_access_retention';
+SELECT cron.unschedule(jobid) FROM cron.job WHERE jobname = 'user_change_request_retention';
 
 -- 毎日 JST 3:10 = GMT 18:10（cron.timezone は GMT のため UTC で指定する）
 SELECT cron.schedule('login_attempt_retention', '10 18 * * *', $job$
@@ -36,4 +39,38 @@ $job$);
 SELECT cron.schedule('user_device_retention', '20 18 * * *', $job$
   DELETE FROM app.user_devices
   WHERE last_seen_at < now() - interval '400 days'
+$job$);
+
+-- ─── 特権アクセス（app.privileged_access_requests / user_change_requests）───
+--
+-- ■ この打刻は**表示専用**。判定に使ってはいけない。
+-- 期限切れかどうかはアプリ側が毎回その場で時刻式で判定する
+-- （lib/privileged-access-core.ts isGrantUsable と useElevation の WHERE 句）。
+-- ここで EXPIRED を打つのは一覧を読みやすくするためだけで、この行が遅れても
+-- 早まっても、実際に使えるかどうかは 1 ミリ秒も変わらない。
+--
+-- user-suspension-cron.sql とは向きが逆であることに注意。あちらは「期限が来たら
+-- アクセスを戻す」ので、cron が遅れれば止まったままになる = 安全側。こちらで
+-- cron に失効させると、遅れがそのまま「まだ使える」になってしまう = 危険側。
+-- だから cron は判定に関与しない。
+SELECT cron.schedule('privileged_access_expiry', '*/10 * * * *', $job$
+  UPDATE app.privileged_access_requests
+     SET status = 'EXPIRED'
+   WHERE status = 'APPROVED'
+     AND now() > LEAST(
+           window_ends_at,
+           COALESCE(activated_at + make_interval(mins => duration_minutes),
+                    window_ends_at))
+$job$);
+
+-- 保持期間は失敗ログインと同じ 400 日。特権の申請と決裁はインシデント調査で
+-- 一番先に見る記録なので、年次監査を跨げる長さにする。
+SELECT cron.schedule('privileged_access_retention', '30 18 * * *', $job$
+  DELETE FROM app.privileged_access_requests
+   WHERE requested_at < now() - interval '400 days'
+$job$);
+
+SELECT cron.schedule('user_change_request_retention', '40 18 * * *', $job$
+  DELETE FROM app.user_change_requests
+   WHERE requested_at < now() - interval '400 days'
 $job$);

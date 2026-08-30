@@ -8,11 +8,18 @@
 -- 削除する）。承認できる人は承認設定（MS0B）の承認グループ所属だけが決め、
 -- RBAC 側の要件はその書類の READ / UPDATE（閲覧または編集）のみ。
 --
--- 管理系 2 コードは業務ロールに配らない:
+-- 管理系コードは業務ロールに配らない:
 --   system — システム管理（SY01–SY0C）。admin のみ。
 --   kiosk  — 共有端末の管理（SY08–SY0A）。admin のみ（CLAUDE.md「admin-only」）。
 --            以前は「system 以外の全コード READ」の一括付与に kiosk が混ざり、
 --            管理職・部門長・閲覧ロールに QRカード/端末管理の READ が付いていた。
+--   kiosk_secret / kiosk_device / kiosk_card / personal_data / user_admin
+--          — 特権操作（migration 20260919090000）。**同じ罠がここにもある**:
+--            下の一括付与は CROSS JOIN app.permissions なので、除外しないと
+--            権限コードを足すたび管理職・部門長・閲覧ロールへ黙って配られる。
+--            特権操作は専用ロール（privileged_operator / privileged_approver）
+--            だけが持つ。権限コードを追加するときは、この 7 箇所の除外リストを
+--            必ず見直すこと。
 --   admin_manual は一括付与の対象（DC02 管理マニュアルは管理職も読む）。
 --
 -- マトリクス（R=READ C=CREATE U=UPDATE D=DELETE E=EXPORT）:
@@ -70,6 +77,9 @@ WHERE role_id IN (
     'shipping_manager','accounting_manager'
   )
 );
+-- privileged_operator / privileged_approver は **この一覧に入れない**。
+-- グラントは migration 20260919090000 が入れており、ここで消すと承認者が
+-- 空になって申請が誰にも決裁できなくなる。
 
 -- manager: 全業務コード（system 以外）に R + E（承認は MS0B のグループ所属で）
 INSERT INTO app.role_permission_relation (role_id, permission_code, action, scope)
@@ -77,14 +87,16 @@ SELECT r.id, p.code, a.action::app."ACTION", 'ALL'::app."SCOPE"
 FROM app.roles r
 CROSS JOIN app.permissions p
 CROSS JOIN (VALUES ('READ'),('EXPORT')) AS a(action)
-WHERE r.rolename = 'manager' AND p.code NOT IN ('system', 'kiosk')
+WHERE r.rolename = 'manager' AND p.code NOT IN ('system', 'kiosk', 'kiosk_secret', 'kiosk_device',
+                    'kiosk_card', 'personal_data', 'user_admin')
 ON CONFLICT DO NOTHING;
 
 -- viewer: 全業務コード（system 以外）に R
 INSERT INTO app.role_permission_relation (role_id, permission_code, action, scope)
 SELECT r.id, p.code, 'READ'::app."ACTION", 'ALL'::app."SCOPE"
 FROM app.roles r CROSS JOIN app.permissions p
-WHERE r.rolename = 'viewer' AND p.code NOT IN ('system', 'kiosk')
+WHERE r.rolename = 'viewer' AND p.code NOT IN ('system', 'kiosk', 'kiosk_secret', 'kiosk_device',
+                    'kiosk_card', 'personal_data', 'user_admin')
 ON CONFLICT DO NOTHING;
 
 -- sales（営業メンバー）: 自分の 試算/見積(quote)・価格表(price_list)・受注請書
@@ -237,7 +249,8 @@ ON CONFLICT DO NOTHING;
 INSERT INTO app.role_permission_relation (role_id, permission_code, action, scope)
 SELECT r.id, p.code, 'READ'::app."ACTION", 'ALL'::app."SCOPE"
 FROM app.roles r CROSS JOIN app.permissions p
-WHERE r.rolename = 'purchasing_manager' AND p.code NOT IN ('system', 'kiosk')
+WHERE r.rolename = 'purchasing_manager' AND p.code NOT IN ('system', 'kiosk', 'kiosk_secret', 'kiosk_device',
+                    'kiosk_card', 'personal_data', 'user_admin')
 ON CONFLICT DO NOTHING;
 
 -- production_manager: 自部門フル（RCUDE） + 全業務 READ
@@ -252,7 +265,8 @@ ON CONFLICT DO NOTHING;
 INSERT INTO app.role_permission_relation (role_id, permission_code, action, scope)
 SELECT r.id, p.code, 'READ'::app."ACTION", 'ALL'::app."SCOPE"
 FROM app.roles r CROSS JOIN app.permissions p
-WHERE r.rolename = 'production_manager' AND p.code NOT IN ('system', 'kiosk')
+WHERE r.rolename = 'production_manager' AND p.code NOT IN ('system', 'kiosk', 'kiosk_secret', 'kiosk_device',
+                    'kiosk_card', 'personal_data', 'user_admin')
 ON CONFLICT DO NOTHING;
 
 -- quality_manager: 自部門フル（RCUDE） + 全業務 READ
@@ -267,7 +281,8 @@ ON CONFLICT DO NOTHING;
 INSERT INTO app.role_permission_relation (role_id, permission_code, action, scope)
 SELECT r.id, p.code, 'READ'::app."ACTION", 'ALL'::app."SCOPE"
 FROM app.roles r CROSS JOIN app.permissions p
-WHERE r.rolename = 'quality_manager' AND p.code NOT IN ('system', 'kiosk')
+WHERE r.rolename = 'quality_manager' AND p.code NOT IN ('system', 'kiosk', 'kiosk_secret', 'kiosk_device',
+                    'kiosk_card', 'personal_data', 'user_admin')
 ON CONFLICT DO NOTHING;
 
 -- shipping_manager: 自部門フル（RCUDE） + 全業務 READ
@@ -282,7 +297,8 @@ ON CONFLICT DO NOTHING;
 INSERT INTO app.role_permission_relation (role_id, permission_code, action, scope)
 SELECT r.id, p.code, 'READ'::app."ACTION", 'ALL'::app."SCOPE"
 FROM app.roles r CROSS JOIN app.permissions p
-WHERE r.rolename = 'shipping_manager' AND p.code NOT IN ('system', 'kiosk')
+WHERE r.rolename = 'shipping_manager' AND p.code NOT IN ('system', 'kiosk', 'kiosk_secret', 'kiosk_device',
+                    'kiosk_card', 'personal_data', 'user_admin')
 ON CONFLICT DO NOTHING;
 
 -- accounting_manager: 自部門フル（RCUDE） + 全業務 READ
@@ -297,7 +313,8 @@ ON CONFLICT DO NOTHING;
 INSERT INTO app.role_permission_relation (role_id, permission_code, action, scope)
 SELECT r.id, p.code, 'READ'::app."ACTION", 'ALL'::app."SCOPE"
 FROM app.roles r CROSS JOIN app.permissions p
-WHERE r.rolename = 'accounting_manager' AND p.code NOT IN ('system', 'kiosk')
+WHERE r.rolename = 'accounting_manager' AND p.code NOT IN ('system', 'kiosk', 'kiosk_secret', 'kiosk_device',
+                    'kiosk_card', 'personal_data', 'user_admin')
 ON CONFLICT DO NOTHING;
 
 COMMIT;
