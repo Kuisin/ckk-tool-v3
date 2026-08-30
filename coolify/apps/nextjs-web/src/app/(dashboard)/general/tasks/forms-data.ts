@@ -13,8 +13,11 @@ import { prisma } from "@/lib/db";
 import {
   canEditResponse,
   editDeadlineOf,
+  type FormAnswerValue,
   type FormAvailability,
+  fieldsFromSchema,
   formAvailability,
+  titleTextOf,
 } from "@/lib/form-schema";
 import { visibleOwnerIds } from "@/lib/share-grants";
 
@@ -29,6 +32,8 @@ export interface MyResponseRow {
   responseNumber: string;
   formCode: string;
   formTitle: string;
+  /** 見出し項目（isTitle）の値。未設定・未回答なら null。 */
+  recordTitle: string | null;
   recordNo: number;
   status: string;
   submittedAt: string | null;
@@ -71,7 +76,24 @@ export async function fetchFormTasks(): Promise<FormTasks> {
           recordNo: true,
           status: true,
           submittedAt: true,
-          form: true,
+          answers: true,
+          form: {
+            select: {
+              code: true,
+              title: true,
+              status: true,
+              opensAt: true,
+              closesAt: true,
+              responseEditMode: true,
+              responseEditableUntil: true,
+              editableUntilFirstApproval: true,
+              versions: {
+                orderBy: { version: "desc" },
+                take: 1,
+                select: { schema: true },
+              },
+            },
+          },
         },
       }),
     ]);
@@ -127,6 +149,11 @@ export async function fetchFormTasks(): Promise<FormTasks> {
       responseNumber: r.responseNumber,
       formCode: r.form.code,
       formTitle: r.form.title,
+      recordTitle:
+        titleTextOf(
+          fieldsFromSchema(r.form.versions[0]?.schema ?? []),
+          (r.answers ?? {}) as Record<string, FormAnswerValue>,
+        ) || null,
       recordNo: r.recordNo,
       status: r.status,
       submittedAt: r.submittedAt?.toISOString() ?? null,

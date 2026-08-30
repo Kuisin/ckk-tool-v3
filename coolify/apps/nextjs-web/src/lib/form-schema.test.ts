@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  canBeTitleField,
   canEditResponse,
   type FormFieldDef,
   formAvailability,
@@ -10,6 +11,8 @@ import {
   normalizeOrder,
   parseFormFields,
   shouldAutoRequestApproval,
+  titleFieldOf,
+  titleTextOf,
   toPlainAnswers,
   validateAnswers,
   validateFieldValue,
@@ -154,6 +157,53 @@ describe("validateAnswers / toPlainAnswers", () => {
   });
 });
 
+describe("titleFieldOf / titleTextOf", () => {
+  const fields = [
+    field({
+      key: "title",
+      label: { ja: "案件名", en: "Title" },
+      isTitle: true,
+    }),
+    field({
+      key: "company",
+      label: { ja: "会社名", en: "Company" },
+      type: "lookup",
+      lookup: { source: "customer" },
+      order: 1,
+    }),
+  ];
+
+  it("isTitle の項目を返す", () => {
+    expect(titleFieldOf(fields)?.key).toBe("title");
+    expect(titleFieldOf([fields[1]])).toBeNull();
+  });
+
+  it("見出し項目の値を平文にする", () => {
+    expect(
+      titleTextOf(fields, {
+        title: "リーマ LD 品納品",
+        company: { id: "bp1", label: "豊生ブレーキ工業株式会社" },
+      }),
+    ).toBe("リーマ LD 品納品");
+  });
+
+  it("見出し項目が未回答なら空文字", () => {
+    expect(titleTextOf(fields, {})).toBe("");
+  });
+
+  it("見出し項目が無ければ空文字", () => {
+    expect(titleTextOf([fields[1]], { company: null })).toBe("");
+  });
+
+  it("複雑すぎる型は見出しにできない", () => {
+    expect(canBeTitleField("table")).toBe(false);
+    expect(canBeTitleField("attachment")).toBe(false);
+    expect(canBeTitleField("richtext")).toBe(false);
+    expect(canBeTitleField("related")).toBe(false);
+    expect(canBeTitleField("text")).toBe(true);
+  });
+});
+
 describe("isSafePattern", () => {
   it("構文エラーを弾く", () => {
     expect(isSafePattern("[")).toBe(false);
@@ -213,6 +263,28 @@ describe("parseFormFields", () => {
       },
     ]);
     expect(r.ok).toBe(false);
+  });
+
+  it("見出し項目（isTitle）は 1 つまで通す", () => {
+    const r = parseFormFields([{ ...ok[0], isTitle: true }]);
+    expect(r.ok).toBe(true);
+  });
+
+  it("見出し項目が 2 つ以上あると弾く", () => {
+    const r = parseFormFields([
+      { ...ok[0], isTitle: true },
+      { ...ok[0], key: "title2", isTitle: true, order: 1 },
+    ]);
+    expect(r.ok).toBe(false);
+    if (!r.ok) expect(r.error).toContain("見出し");
+  });
+
+  it("複雑な型を見出しにすると弾く", () => {
+    const r = parseFormFields([
+      { ...ok[0], type: "table", isTitle: true, columns: [] },
+    ]);
+    expect(r.ok).toBe(false);
+    if (!r.ok) expect(r.error).toContain("見出し");
   });
 });
 

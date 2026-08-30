@@ -19,7 +19,7 @@
     "exportedAt": "2026-08-26T00:00:00.000Z",
     "exportedBy": null,
     "appVersion": null,
-    "checksum": "8215af33"
+    "checksum": "000fa947"
   },
   "form": {
     "title": "営業報告",
@@ -64,7 +64,8 @@
         "type": "text",
         "required": false,
         "order": 2,
-        "placeholder": "リーマ LD 品 納品"
+        "placeholder": "リーマ LD 品 納品",
+        "isTitle": true
       },
       {
         "key": "field4",
