@@ -27,8 +27,10 @@ import { formatProductNumber } from "@/lib/doc-number";
 import type { LocalizedText } from "@/lib/format";
 import { formatMoney, localized } from "@/lib/format";
 import {
+  type DocPreviewTarget,
   genericPreviewTitle,
-  type PreviewTarget,
+  type MasterPreviewTarget,
+  type NumberedPreviewTarget,
   resolvePreviewTarget,
 } from "@/lib/link-preview";
 import { ORDER_TYPE_LABEL } from "@/lib/mock";
@@ -58,7 +60,9 @@ async function hasReadPermission(
 }
 
 /** 権限ありユーザー向けのリッチ本文（見つからなければ null → 汎用文のみ）。 */
-async function richDescription(target: PreviewTarget): Promise<string | null> {
+async function richDescription(
+  target: DocPreviewTarget | MasterPreviewTarget,
+): Promise<string | null> {
   switch (target.kind) {
     case "trial-estimate": {
       const r = await prisma.estimate.findUnique({
@@ -131,6 +135,113 @@ async function richDescription(target: PreviewTarget): Promise<string | null> {
       const code = formatProductNumber(r.yearMonth, r.seq);
       return `${code ?? "未採番"} / ${localized(r.name as LocalizedText | null)}`;
     }
+    case "order-acceptance": {
+      const r = await prisma.orderAcceptance.findUnique({
+        where: {
+          yearMonth_seq: {
+            yearMonth: target.docKey.yearMonth,
+            seq: target.docKey.seq,
+          },
+        },
+        include: { customerBp: true },
+      });
+      if (!r) return null;
+      const customer = r.customerBp
+        ? localized(r.customerBp.name as LocalizedText | null)
+        : "顧客未設定";
+      return `${customer} / 状態: ${r.status}`;
+    }
+    case "work-order": {
+      const r = await prisma.workOrder.findUnique({
+        where: {
+          yearMonth_seq: {
+            yearMonth: target.docKey.yearMonth,
+            seq: target.docKey.seq,
+          },
+        },
+        include: { product: true },
+      });
+      if (!r) return null;
+      const product = localized(r.product.name as LocalizedText | null);
+      return `${product} / 予定数量 ${r.plannedQuantity} / 状態: ${r.status}`;
+    }
+    case "delivery-order": {
+      const r = await prisma.deliveryOrder.findUnique({
+        where: {
+          yearMonth_seq: {
+            yearMonth: target.docKey.yearMonth,
+            seq: target.docKey.seq,
+          },
+        },
+        include: { customerBp: true },
+      });
+      if (!r) return null;
+      const customer = localized(r.customerBp.name as LocalizedText | null);
+      return `${customer} / 状態: ${r.status}`;
+    }
+    case "delivery-note": {
+      const r = await prisma.deliveryNote.findUnique({
+        where: {
+          yearMonth_seq: {
+            yearMonth: target.docKey.yearMonth,
+            seq: target.docKey.seq,
+          },
+        },
+        include: { recipientBp: true },
+      });
+      if (!r) return null;
+      const recipient = localized(r.recipientBp.name as LocalizedText | null);
+      return `${recipient} / 状態: ${r.status}`;
+    }
+    case "invoice": {
+      const r = await prisma.invoice.findUnique({
+        where: {
+          yearMonth_seq: {
+            yearMonth: target.docKey.yearMonth,
+            seq: target.docKey.seq,
+          },
+        },
+        include: { customerBp: true },
+      });
+      if (!r) return null;
+      const customer = localized(r.customerBp.name as LocalizedText | null);
+      return `${customer} / 合計 ${formatMoney(Number(r.totalAmount))} / 状態: ${r.status}`;
+    }
+  }
+}
+
+/** 番号列そのもので照会するテーブル（po_number / request_number）向け。 */
+async function richDescriptionByNumber(
+  target: NumberedPreviewTarget,
+): Promise<string | null> {
+  switch (target.kind) {
+    case "purchase-order": {
+      const r = await prisma.materialPurchaseOrder.findUnique({
+        where: { poNumber: target.docNumber },
+        include: { supplierBp: true },
+      });
+      if (!r) return null;
+      const supplier = localized(r.supplierBp.name as LocalizedText | null);
+      return `${supplier} / 合計 ${formatMoney(Number(r.totalAmount))} / 状態: ${r.status}`;
+    }
+    case "purchase-request": {
+      const r = await prisma.purchaseRequest.findUnique({
+        where: { requestNumber: target.docNumber },
+      });
+      if (!r) return null;
+      return `${r.purpose ?? "目的未設定"} / 状態: ${r.status}`;
+    }
+    case "design-request": {
+      const r = await prisma.designRequest.findUnique({
+        where: { requestNumber: target.docNumber },
+        include: { product: true },
+      });
+      if (!r) return null;
+      const product = r.product
+        ? localized(r.product.name as LocalizedText | null)
+        : "製品未設定";
+      return `${product} / 状態: ${r.status}`;
+    }
   }
 }
 
@@ -162,7 +273,13 @@ export async function GET(request: NextRequest) {
   if (!allowed) {
     return NextResponse.json({ matched: true, allowed: false, title: generic });
   }
-  const description = await richDescription(target);
+  // NumberedPreviewTarget（po_number 等）は複合キーを持たないので別経路。
+  const description =
+    "docKey" in target
+      ? await richDescription(target)
+      : "docNumber" in target
+        ? await richDescriptionByNumber(target)
+        : await richDescription(target);
   return NextResponse.json({
     matched: true,
     allowed: true,

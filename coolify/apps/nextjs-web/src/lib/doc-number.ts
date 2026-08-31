@@ -21,6 +21,9 @@ const DOC_FORMATS = {
   INV: { digits: 5 },
   ORD: { digits: 5 }, // 注文請書（注文明細の枝番なし基底番号）
   WOR: { digits: 5 }, // 指示書（書類番号 — ロット番号は別の通し連番 int）
+  PO: { digits: 5 }, // 素材発注書（po_number に文字列そのまま保存）
+  PRQ: { digits: 5 }, // 購買依頼（request_number に文字列そのまま保存）
+  DSG: { digits: 5 }, // 設計依頼書（request_number に文字列そのまま保存）
 } as const;
 
 export type DocPrefix = keyof typeof DOC_FORMATS;

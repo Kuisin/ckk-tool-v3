@@ -23,7 +23,7 @@ use Psr\Log\LoggerInterface;
  *   shared_secret … CKK 側 env PREVIEW_SHARED_SECRET と同じ値
  */
 class CkkReferenceProvider implements IReferenceProvider {
-	private const URL_PATTERN = '/^https:\/\/(ckk|ckk-dev)\.kai-lab\.net\/\S+$/';
+	private const URL_PATTERN = '/^https:\/\/app(-dev)?\.ckk-tool\.co\.jp\/\S+$/';
 
 	public function __construct(
 		private IClientService $clientService,

@@ -13,7 +13,9 @@ Nextcloud (ckk_link_preview / IReferenceProvider)
    ▼
 nextjs-web /api/preview/resolve
    1. URL → 対象解決（src/lib/link-preview.ts）
-      文書: EST-/PRC-/QOT- 番号 URL、マスタ: 材種/素材/製品の int id URL
+      文書（(year_month, seq) キー）: EST-/PRC-/QOT-/ORD-/WOR-/DOR-/DRN-/INV-
+      文書（番号列そのもの）: PO-/PRQ-/DSG-
+      マスタ: 材種/素材/製品の int id URL
    2. users.username = <NCログインID>（Samba AD で同一 ID）を照会し、
       user_permissions view で対象 permission_code の READ を判定
    3. 権限あり → 顧客名・金額・状態入りのリッチ文
@@ -72,5 +74,11 @@ curl -sf -H "X-Preview-Token: $PREVIEW_SHARED_SECRET" \
 ```
 
 権限は `user_permissions` view（roles → role_permission_relation 集約）で
-判定する。対象 permission_code: 販売系文書 = `sales`、マスタ = `master`
-（`src/lib/link-preview.ts` の `PERMISSION_BY_SECTION`）。
+判定する。permission_code は文書種別ごとに 1 つずつ持つ（`price_list` /
+`quote` / `order_acceptance` / `work_order` / `delivery_order` /
+`delivery_note` / `invoice` / `purchase_order` / `design_request`、
+マスタは `master`）— `lib/app-list.ts` の `requiredPermission` と同じ値
+（`src/lib/link-preview.ts` の `DOC_ROUTES` / `NUMBER_ROUTES` /
+`MASTER_ROUTES`）。以前はセクション名から一括で `sales` という
+実在しない permission_code を引いていて、価格試算・価格表・見積書の
+リッチプレビューが常に権限なし扱いになっていた（修正済み）。
