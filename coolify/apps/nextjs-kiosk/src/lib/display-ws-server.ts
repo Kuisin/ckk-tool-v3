@@ -27,6 +27,7 @@ import type { DisplayWsBridge } from "./display-ws-bridge";
 import {
   getDisplayPresence,
   listPresenceDisplays,
+  subscribeDisplayEvents,
   touchConnectedDisplays,
   touchDisplaySeen,
 } from "./display-ws-db";
@@ -72,6 +73,15 @@ export class DisplayWsServer implements DisplayWsBridge {
       void this.tick();
     }, DISPLAY_SWEEP_INTERVAL_MS);
     timer.unref();
+
+    // 管理画面（nextjs-web = 別プロセス）からの合図を受ける。
+    // 届かなくてもディスプレイは自分で引き直すので、ここは「早く気付く」
+    // ためだけの経路（display-events.ts の設計方針）。
+    subscribeDisplayEvents((event) => {
+      if (event.kind === "config_changed")
+        this.notifyConfigChanged(event.displayId);
+      if (event.kind === "revoked") this.notifyRevoked(event.displayId);
+    });
   }
 
   private async tick(): Promise<void> {

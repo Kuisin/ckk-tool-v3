@@ -29,7 +29,7 @@ import { APP_ENVS, type AppEnv, currentAppEnv } from "./app-env";
  * dev-features.test.ts が両者の集合の一致を固定するので、JSON だけ直して
  * ここを直し忘れると CI が落ちる。
  */
-export type DevFeatureKey = "portal";
+export type DevFeatureKey = "portal" | "display";
 
 export interface DevFeature {
   /** 何の機能か（人間向け。判定には使わない）。 */

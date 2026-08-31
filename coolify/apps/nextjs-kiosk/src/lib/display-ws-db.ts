@@ -5,7 +5,12 @@
  * 含み、カスタムサーバーの CJS ビルドに載らない）。
  */
 
-import { Pool } from "pg";
+import { Client, Pool } from "pg";
+import {
+  DISPLAY_CHANNEL,
+  type DisplayEvent,
+  decodeDisplayEvent,
+} from "./display-events";
 
 let pool: Pool | undefined;
 
@@ -109,4 +114,71 @@ export async function getDisplayPresence(
         appVersion: row.app_version,
       }
     : null;
+}
+
+// ─── 管理画面からの合図（LISTEN） ────────────────────────────────────────────
+//
+// nextjs-web は別プロセスなので、WS ブリッジを直接呼べない。両者が繋いでいる
+// 唯一の共有物（DB）を経由して合図だけを受け取る（display-events.ts 参照）。
+// 接続は 1 プロセス 1 本。切れたら指数バックオフで張り直す。
+
+const LISTEN_RETRY_BASE_MS = 1_000;
+const LISTEN_RETRY_MAX_MS = 30_000;
+
+/**
+ * ディスプレイ宛の合図を購読する。戻り値は購読解除。
+ * 接続できないうちも例外にせず、黙って再試行し続ける — 合図が届かなくても
+ * ディスプレイは自分で引き直すので、機能が落ちるだけで壊れはしない。
+ */
+export function subscribeDisplayEvents(
+  handler: (event: DisplayEvent) => void,
+): () => void {
+  let closed = false;
+  let client: Client | undefined;
+  let retryMs = LISTEN_RETRY_BASE_MS;
+  let timer: NodeJS.Timeout | undefined;
+
+  const connect = async (): Promise<void> => {
+    if (closed) return;
+    const connectionString = process.env.DATABASE_URL;
+    if (!connectionString) return;
+    const c = new Client({ connectionString });
+    client = c;
+    c.on("error", () => scheduleRetry());
+    c.on("end", () => scheduleRetry());
+    c.on("notification", (msg) => {
+      if (msg.channel !== DISPLAY_CHANNEL || !msg.payload) return;
+      const event = decodeDisplayEvent(msg.payload);
+      if (event) handler(event);
+    });
+    try {
+      await c.connect();
+      await c.query(`LISTEN ${DISPLAY_CHANNEL}`);
+      retryMs = LISTEN_RETRY_BASE_MS;
+    } catch {
+      scheduleRetry();
+    }
+  };
+
+  const scheduleRetry = (): void => {
+    if (closed || timer) return;
+    client?.removeAllListeners();
+    void client?.end().catch(() => undefined);
+    client = undefined;
+    timer = setTimeout(() => {
+      timer = undefined;
+      void connect();
+    }, retryMs);
+    timer.unref?.();
+    retryMs = Math.min(retryMs * 2, LISTEN_RETRY_MAX_MS);
+  };
+
+  void connect();
+
+  return () => {
+    closed = true;
+    if (timer) clearTimeout(timer);
+    client?.removeAllListeners();
+    void client?.end().catch(() => undefined);
+  };
 }

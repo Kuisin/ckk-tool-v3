@@ -89,6 +89,8 @@ export const AUDIT_TABLE_LABELS: Record<string, string> = {
   order_acceptances: "注文請書",
   kiosk_cards: "QRカード",
   kiosk_devices: "キオスク端末",
+  display_devices: "ディスプレイ",
+  display_profiles: "ディスプレイ表示内容",
   kiosk_floor_maps: "フロアマップ",
   product_inventory: "製品在庫",
   material_inventory: "素材在庫",
