@@ -5,8 +5,8 @@
     "appKeys": ["portal-admin"]
   },
   "display": {
-    "description": "管理ディスプレイ（現場の壁掛けテレビ・Raspberry Pi）",
+    "description": "管理ディスプレイ（SY09 端末管理のディスプレイ関連タブ）",
     "environments": ["dev"],
-    "appKeys": ["displays"]
+    "appKeys": []
   }
 }

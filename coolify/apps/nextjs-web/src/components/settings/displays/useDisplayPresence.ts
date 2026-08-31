@@ -19,7 +19,7 @@ import { useEffect, useRef, useState } from "react";
 import {
   fetchDisplayPresence,
   mintDisplayWsToken,
-} from "@/app/(dashboard)/settings/displays/actions";
+} from "@/app/(dashboard)/settings/kiosk-devices/displays/actions";
 
 const RECONNECT_DELAY_MS = 5000;
 const POLL_INTERVAL_MS = 30_000;

@@ -14,18 +14,45 @@
  */
 
 import { z } from "zod";
+import {
+  findDisplayTemplate,
+  templateOptionsSchema,
+} from "./display-templates";
 
-/** アプリ内の表示専用ページ。増やすときはページ実装も一緒に足す。 */
-export const DISPLAY_APP_PAGES = ["production"] as const;
-export type DisplayAppPage = (typeof DISPLAY_APP_PAGES)[number];
-
-export const appPageConfigSchema = z.object({
-  page: z.enum(DISPLAY_APP_PAGES),
-  /** 拠点で絞る（未指定 = 全拠点）。 */
-  plantId: z.number().int().positive().nullish(),
-  /** 作業場所で絞る（未指定 = 拠点内すべて）。 */
-  workLocationId: z.number().int().positive().nullish(),
-});
+/**
+ * アプリ内の画面（テンプレート）。**どんな画面があり、どんな設定を持つかは
+ * display-templates.ts の登録簿が唯一の正**で、ここはその宣言から検証を
+ * 組み立てるだけ。画面を増やすとき、この形を触る必要は無い。
+ */
+export const appPageConfigSchema = z
+  .object({ page: z.string(), options: z.unknown().optional() })
+  .transform((value, ctx) => {
+    const template = findDisplayTemplate(value.page);
+    if (!template) {
+      ctx.addIssue({
+        code: "custom",
+        message: "表示する画面を選んでください",
+        path: ["page"],
+      });
+      return z.NEVER;
+    }
+    const parsed = templateOptionsSchema(template).safeParse(
+      value.options ?? {},
+    );
+    if (!parsed.success) {
+      ctx.addIssue({
+        code: "custom",
+        message:
+          parsed.error.issues[0]?.message ?? "画面の設定が正しくありません",
+        path: ["options"],
+      });
+      return z.NEVER;
+    }
+    return {
+      page: template.key,
+      options: parsed.data as Record<string, unknown>,
+    };
+  });
 
 export const metabaseConfigSchema = z.object({
   dashboardId: z.number().int().positive(),

@@ -1,15 +1,18 @@
 ---
-title: "Displays — how to use"
-description: "Operation code SY0I. Decides what each shop-floor TV (managed display) shows. Pair a screen, assign content, disable or revoke it — all without going to the machine."
+title: "Displays (Devices) — how to use"
+description: "The \"Displays\" tab of Devices (SY09). Decides what each shop-floor TV shows. Registration follows the same three steps as a shared tablet (create, link, activate); assigning content and stopping a screen need no visit to the machine."
 ---
 
-Operation code **SY0I**. Decides what each shop-floor TV shows.
+The **"Displays" tab of Devices (SY09)**. Decides what each shop-floor TV shows.
+
+It sits alongside shared tablets because both are equipment installed at a site,
+and the registration steps are the same (create, link, activate).
 
 > This app is currently published on the **test environment (dev) only**. Screens
 > and steps may still change before it goes live.
 
-> This app requires the **shared-device management** permission. **Pairing** and
-> **revoking** are privileged operations — they work only for the period another
+> This app requires the **shared-device management** permission. **Linking**,
+> **activating** and **revoking** are privileged operations — they work only for the period another
 > person has approved (Privileged access, SY0G). Every action is recorded in the
 > audit log.
 
@@ -25,39 +28,43 @@ Operation code **SY0I**. Decides what each shop-floor TV shows.
 - **Display** … One TV on the shop floor.
 - **Content** … A setting for "what to show". One content can be shared by
   several TVs.
-- **Registration code** … 12 characters shown on the TV, used to identify which
-  screen you are pairing.
+- **Link code** … 12 characters shown on the TV. Same format as a shared
+  tablet's, so it is read the same way.
 
 ## Before you start
 
 - Set the TV side up first — see
   [Setting up a display (Raspberry Pi)](/admin-manual/en/system/display-setup).
 - It helps to create at least one **content** first, so you can choose it while
-  pairing.
+  creating the display.
 
 ## Display states
 
 | State | Meaning |
 |---|---|
-| Online | Reachable now (seen within the last 5 minutes) |
-| Offline | Powered off, or the network is down |
+| Awaiting link | Created, but not yet tied to a TV |
+| Awaiting activation | Tied to a TV. Press "Activate" to start showing |
 | Active | Normal |
-| Disabled | Stopped from here. The TV shows the pairing screen |
-| Revoked | Registration cancelled. Pair it again to reuse it |
+| Disabled | Stopped from here. The TV shows the link screen |
+| Revoked | Registration cancelled. Register again to reuse it |
 
-## Pairing a display
+Online / offline is separate from the state — it means whether the screen has
+answered within the last 5 minutes.
 
-1. Check that the TV is showing a QR code and a 12-character code.
-2. Scan the QR code with your phone camera.
-   (From a PC, press "Pair a display" instead.)
-3. Check the 12 characters are filled in. If not, type them.
-4. Enter a name people on the floor will use.
-5. Choose the location, site and content.
-6. Press "Register".
+## Registering a display (three steps)
 
-The TV changes within a few seconds.
+Exactly the same as a shared tablet.
 
-> ⚠️ The registration code expires after **10 minutes**. If that happens, press
+1. **Create** — "Add a display", then set the name, location, site and content.
+   It is not tied to a TV yet (awaiting link).
+2. **Link** — type the 12-character link code shown on the TV, from "Link" in
+   the list.
+3. **Activate** — press "Activate" and the TV starts showing.
+
+Step 1 can be done before the TV is ready, leaving only linking and activating
+for the site visit.
+
+> ⚠️ The link code expires after **10 minutes**. If that happens, press
 > "Issue a new code" on the TV to get a fresh one.
 
 ## Switching what a display shows
@@ -74,10 +81,22 @@ Use "Content" from the list to create and edit what can be shown.
 
 | Type | What it shows |
 |---|---|
-| App page | A screen from this system, such as production status |
+| App page | A screen from this system (choose from the list below) |
 | Dashboard | A Metabase dashboard |
 | External page | A page at a URL you give |
-| Image | A single image (notices, safety alerts) |
+| Image | A single image |
+
+App pages and their settings:
+
+| Screen | What it shows | Settings |
+|---|---|---|
+| Production status | Work orders in progress, current step, assignees | Site / rows / include not-started |
+| Pending arrangements | Order lines with no work order yet, by delivery date | Site / rows / days ahead / overdue only |
+| Shipping schedule | Delivery orders not yet shipped | Site / rows / days ahead |
+| Quality | Recent defects counted by type | Site / rows / days back |
+| Announcement | A message shown large | Text / style (normal, caution, alert) / clock |
+
+Every setting is a choice — there is no special format to type.
 
 "Reload interval (seconds)" is how often the display re-reads what it shows.
 Set it to `0` and it will only change when you change it here.
@@ -96,10 +115,11 @@ screen could be made to show another site's data. Ask the IT team how.
 | What you want | How | Reversible |
 |---|---|---|
 | Stop it for now | "Disable" on the detail page | Yes, press "Enable" |
-| Stop using it | "Revoke" on the detail page | Needs pairing again |
-| Remove the record | Revoke, then "Delete" | No |
+| Swap the hardware | "Unlink" on the detail page | Name and content are kept |
+| Stop using it | "Revoke" on the detail page | Needs registering again |
+| Remove the record | Revoke (or unlink), then "Delete" | No |
 
-**After revoking, the TV returns to the pairing screen on its next load.** You
+**After revoking, the TV returns to the link screen on its next load.** You
 can carry it elsewhere and reuse it. Use the same action if a display is broken
 or lost — nothing more can be seen on it.
 
@@ -113,8 +133,8 @@ online by itself once it can reach the network.
 A. Nothing has been chosen for that display. Open it, choose a content and
 press Save.
 
-**Q. Pairing says the code has already been used**
-A. That code was already paired. Use the fresh code now shown on the TV.
+**Q. Linking says the code was not found or has expired**
+A. Use the fresh code now shown on the TV.
 
 **Q. Can several TVs show the same thing?**
 A. Yes. Assign the same content to them. Changing that content switches all of

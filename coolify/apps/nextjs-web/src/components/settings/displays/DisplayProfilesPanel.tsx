@@ -30,7 +30,7 @@ import { useState, useTransition } from "react";
 import {
   deleteDisplayProfile,
   saveDisplayProfile,
-} from "@/app/(dashboard)/settings/displays/actions";
+} from "@/app/(dashboard)/settings/kiosk-devices/displays/actions";
 import { useFormat } from "@/components/layout/PreferencesProvider";
 import {
   DangerButton,
@@ -38,18 +38,19 @@ import {
   SecondaryButton,
 } from "@/components/ui/buttons";
 import { ListShell } from "@/components/ui/shells";
-import { DISPLAY_APP_PAGES } from "@/lib/display-content";
+import {
+  DISPLAY_TEMPLATES,
+  defaultTemplateOptions,
+  findDisplayTemplate,
+} from "@/lib/display-templates";
 import type { DisplayProfileRow } from "@/lib/displays-admin";
+import { TemplateOptionFields } from "./TemplateOptionFields";
 
 const CONTENT_TYPE_LABEL: Record<string, string> = {
   APP_PAGE: "アプリの画面",
   METABASE: "集計ダッシュボード",
   URL: "外部ページ",
   IMAGE: "画像",
-};
-
-const APP_PAGE_LABEL: Record<string, string> = {
-  production: "生産状況",
 };
 
 type Draft = {
@@ -61,7 +62,8 @@ type Draft = {
   isEnabled: boolean;
   // 種別ごとの入力（使う欄だけ意味を持つ）
   page: string;
-  plantId: string;
+  /** APP_PAGE のときのテンプレート設定（登録簿の宣言から描く）。 */
+  options: Record<string, unknown>;
   dashboardId: string;
   params: string;
   url: string;
@@ -75,8 +77,8 @@ function emptyDraft(): Draft {
     contentType: "APP_PAGE",
     refreshIntervalSec: 60,
     isEnabled: true,
-    page: DISPLAY_APP_PAGES[0],
-    plantId: "",
+    page: DISPLAY_TEMPLATES[0].key,
+    options: defaultTemplateOptions(DISPLAY_TEMPLATES[0]),
     dashboardId: "",
     params: "",
     url: "",
@@ -93,8 +95,12 @@ function toDraft(row: DisplayProfileRow): Draft {
     contentType: row.contentType,
     refreshIntervalSec: row.refreshIntervalSec,
     isEnabled: row.isEnabled,
-    page: String(c.page ?? DISPLAY_APP_PAGES[0]),
-    plantId: c.plantId == null ? "" : String(c.plantId),
+    page: String(c.page ?? DISPLAY_TEMPLATES[0].key),
+    options:
+      (c.options as Record<string, unknown> | undefined) ??
+      defaultTemplateOptions(
+        findDisplayTemplate(String(c.page)) ?? DISPLAY_TEMPLATES[0],
+      ),
     dashboardId: c.dashboardId == null ? "" : String(c.dashboardId),
     params: c.params ? JSON.stringify(c.params, null, 2) : "",
     url: String(c.url ?? ""),
@@ -108,13 +114,7 @@ function toConfig(
 ): { ok: true; value: unknown } | { ok: false; error: string } {
   switch (d.contentType) {
     case "APP_PAGE":
-      return {
-        ok: true,
-        value: {
-          page: d.page,
-          plantId: d.plantId ? Number(d.plantId) : null,
-        },
-      };
+      return { ok: true, value: { page: d.page, options: d.options } };
     case "METABASE": {
       let params: unknown = {};
       if (d.params.trim()) {
@@ -213,7 +213,7 @@ export function DisplayProfilesPanel({ rows, plantOptions }: Props) {
     <ListShell
       action={
         <Group gap="xs">
-          <SecondaryButton href="/settings/displays">
+          <SecondaryButton href="/settings/kiosk-devices">
             ディスプレイ一覧
           </SecondaryButton>
           <PrimaryButton
@@ -226,7 +226,7 @@ export function DisplayProfilesPanel({ rows, plantOptions }: Props) {
       }
       breadcrumbs={[
         { label: "システム" },
-        { label: "ディスプレイ管理", href: "/settings/displays" },
+        { label: "ディスプレイ管理", href: "/settings/kiosk-devices" },
         { label: "表示内容" },
       ]}
       title="表示内容"
@@ -272,28 +272,46 @@ export function DisplayProfilesPanel({ rows, plantOptions }: Props) {
                 value={draft.contentType}
               />
 
-              {draft.contentType === "APP_PAGE" && (
-                <>
-                  <Select
-                    data={DISPLAY_APP_PAGES.map((p) => ({
-                      value: p,
-                      label: APP_PAGE_LABEL[p] ?? p,
-                    }))}
-                    label="画面"
-                    onChange={(v) => v && setDraft({ ...draft, page: v })}
-                    value={draft.page}
-                  />
-                  <Select
-                    clearable
-                    data={plantOptions}
-                    description="未選択なら、そのディスプレイの拠点で絞ります"
-                    label="拠点で絞る"
-                    onChange={(v) => setDraft({ ...draft, plantId: v ?? "" })}
-                    searchable
-                    value={draft.plantId || null}
-                  />
-                </>
-              )}
+              {draft.contentType === "APP_PAGE" &&
+                (() => {
+                  const template =
+                    findDisplayTemplate(draft.page) ?? DISPLAY_TEMPLATES[0];
+                  return (
+                    <>
+                      <Select
+                        data={DISPLAY_TEMPLATES.map((t) => ({
+                          value: t.key,
+                          label: t.label,
+                        }))}
+                        description={template.description}
+                        label="画面"
+                        onChange={(v) => {
+                          const next = findDisplayTemplate(v ?? "");
+                          if (!next) return;
+                          // 画面を替えたら設定も作り直す（前の画面の設定が
+                          // 残っていると、保存時に落ちるか黙って無視される）
+                          setDraft({
+                            ...draft,
+                            page: next.key,
+                            options: defaultTemplateOptions(next),
+                          });
+                        }}
+                        value={template.key}
+                      />
+                      <TemplateOptionFields
+                        onChange={(key, value) =>
+                          setDraft({
+                            ...draft,
+                            options: { ...draft.options, [key]: value },
+                          })
+                        }
+                        plantOptions={plantOptions}
+                        template={template}
+                        values={draft.options}
+                      />
+                    </>
+                  );
+                })()}
 
               {draft.contentType === "METABASE" && (
                 <>

@@ -467,17 +467,6 @@ export const OPERATION_CODES: OperationCodeEntry[] = [
     index: "F",
   },
   // 特権アクセス（重要な操作の申請と承認・期限つきの付与）
-  // ディスプレイ管理（現場の壁掛けテレビ）
-  {
-    code: "SY0I",
-    label: "ディスプレイ管理",
-    href: "/settings/displays",
-    category: "システム",
-    kind: "list",
-    categoryCode: "SY",
-    mode: "0",
-    index: "I",
-  },
   {
     code: "SY0G",
     label: "特権アクセス",

@@ -165,7 +165,7 @@ model User {
   kioskDevicesActivated KioskDevice[]  @relation("KioskDeviceActivatedBy")
   kioskSessions         KioskSession[] @relation("KioskSessionUser")
   kioskDeviceLogs       KioskDeviceLog[] @relation("KioskDeviceLogUser")
-  displayDevicesPaired  DisplayDevice[]  @relation("DisplayDevicePairedBy")
+  displayDevicesActivated DisplayDevice[] @relation("DisplayDeviceActivatedBy")
   displayProfiles       DisplayProfile[] @relation("DisplayProfileCreatedBy")
 
   // 認証イベント（security.prisma）。失敗行は user_id が null のことも多い —

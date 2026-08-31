@@ -25,11 +25,13 @@ import { notifications } from "@mantine/notifications";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import {
+  activateDisplay,
   deleteDisplay,
   revokeDisplay,
   setDisplayEnabled,
+  unlinkDisplay,
   updateDisplay,
-} from "@/app/(dashboard)/settings/displays/actions";
+} from "@/app/(dashboard)/settings/kiosk-devices/displays/actions";
 import { useFormat } from "@/components/layout/PreferencesProvider";
 import { AppTabs } from "@/components/ui/AppTabs";
 import { DangerButton, SecondaryButton } from "@/components/ui/buttons";
@@ -45,6 +47,8 @@ import type { DisplayDetail } from "@/lib/displays-admin";
 import { useDisplayPresence } from "./useDisplayPresence";
 
 const STATUS_LABEL: Record<string, { label: string; color: string }> = {
+  PENDING: { label: "リンク待ち", color: "gray" },
+  LINKED: { label: "有効化待ち", color: "yellow" },
   ACTIVE: { label: "有効", color: "green" },
   DISABLED: { label: "一時停止", color: "gray" },
   REVOKED: { label: "失効", color: "red" },
@@ -141,7 +145,7 @@ export function DisplayDetailView({
         run(
           () => deleteDisplay(display.id),
           "削除しました",
-          () => router.push("/settings/displays"),
+          () => router.push("/settings/kiosk-devices"),
         ),
     });
 
@@ -150,6 +154,16 @@ export function DisplayDetailView({
       <PageHeader
         actions={
           <Group gap="xs">
+            {display.status === "LINKED" && (
+              <SecondaryButton
+                loading={pending}
+                onClick={() =>
+                  run(() => activateDisplay(display.id), "有効化しました")
+                }
+              >
+                有効化
+              </SecondaryButton>
+            )}
             {display.status === "ACTIVE" && (
               <SecondaryButton
                 loading={pending}
@@ -163,6 +177,16 @@ export function DisplayDetailView({
                 一時停止
               </SecondaryButton>
             )}
+            {display.status !== "PENDING" && display.status !== "REVOKED" && (
+              <SecondaryButton
+                loading={pending}
+                onClick={() =>
+                  run(() => unlinkDisplay(display.id), "リンクを解除しました")
+                }
+              >
+                リンク解除
+              </SecondaryButton>
+            )}
             {display.status === "DISABLED" && (
               <SecondaryButton
                 loading={pending}
@@ -173,20 +197,20 @@ export function DisplayDetailView({
                 再開
               </SecondaryButton>
             )}
-            {display.status !== "REVOKED" ? (
-              <DangerButton loading={pending} onClick={confirmRevoke}>
-                失効
-              </DangerButton>
-            ) : (
+            {display.status === "REVOKED" || display.status === "PENDING" ? (
               <DangerButton loading={pending} onClick={confirmDelete}>
                 削除
+              </DangerButton>
+            ) : (
+              <DangerButton loading={pending} onClick={confirmRevoke}>
+                失効
               </DangerButton>
             )}
           </Group>
         }
         breadcrumbs={[
           { label: "システム" },
-          { label: "ディスプレイ管理", href: "/settings/displays" },
+          { label: "ディスプレイ管理", href: "/settings/kiosk-devices" },
           { label: display.name ?? "ディスプレイ" },
         ]}
         title={display.name ?? "（名称未設定）"}
@@ -205,10 +229,21 @@ export function DisplayDetailView({
         </Badge>
       </Group>
 
+      {display.status === "PENDING" && (
+        <Alert color="gray">
+          このプロファイルはまだ画面と結びついていません。ディスプレイの画面に
+          出ているリンクコードを、一覧の「リンク」から入力してください。
+        </Alert>
+      )}
+      {display.status === "LINKED" && (
+        <Alert color="yellow">
+          画面とリンクしました。「有効化」を押すと表示を開始します。
+        </Alert>
+      )}
       {display.status === "REVOKED" && (
         <Alert color="red">
           このディスプレイは失効しています。もう一度使うには、現地の画面に出る
-          QR コードを読み取って登録し直してください。
+          リンクコードで登録し直してください。
         </Alert>
       )}
 
@@ -225,11 +260,17 @@ export function DisplayDetailView({
             value={display.profileName ?? "未割当"}
           />
           <FieldValue
-            label="登録"
+            label="リンク"
+            value={display.linkedAt ? fmt.dateTime(display.linkedAt) : "—"}
+          />
+          <FieldValue
+            label="有効化"
             value={
-              display.pairedAt
-                ? `${fmt.dateTime(display.pairedAt)}${
-                    display.pairedByName ? `（${display.pairedByName}）` : ""
+              display.activatedAt
+                ? `${fmt.dateTime(display.activatedAt)}${
+                    display.activatedByName
+                      ? `（${display.activatedByName}）`
+                      : ""
                   }`
                 : "—"
             }
@@ -288,7 +329,7 @@ export function DisplayDetailView({
               />
               <FormActions
                 loading={pending}
-                onCancel={() => router.push("/settings/displays")}
+                onCancel={() => router.push("/settings/kiosk-devices")}
                 onSave={save}
               />
             </Stack>

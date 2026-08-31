@@ -27,11 +27,7 @@ const RECONNECT_MAX_MS = 30_000;
 type Content =
   | {
       type: "APP_PAGE";
-      config: {
-        page: string;
-        plantId?: number | null;
-        workLocationId?: number | null;
-      };
+      config: { page: string; options?: Record<string, unknown> };
     }
   | { type: "METABASE"; url: string | null }
   | { type: "URL"; config: { url: string } }
@@ -58,12 +54,23 @@ type Props = {
 function contentSrc(content: Content, bust: number): string | null {
   switch (content.type) {
     case "APP_PAGE": {
+      // 設定は base64url の JSON 1 つで渡す。項目ごとにクエリを増やすと、
+      // テンプレートを足すたびにここを直すことになる（登録簿の意味が消える）。
+      // 受け側（content/_shared/options.ts）はこれを必ず検証し直す。
       const params = new URLSearchParams();
-      if (content.config.plantId != null) {
-        params.set("plantId", String(content.config.plantId));
-      }
-      if (content.config.workLocationId != null) {
-        params.set("workLocationId", String(content.config.workLocationId));
+      const options = content.config.options ?? {};
+      if (Object.keys(options).length > 0) {
+        params.set(
+          "opt",
+          btoa(
+            String.fromCharCode(
+              ...new TextEncoder().encode(JSON.stringify(options)),
+            ),
+          )
+            .replace(/\+/g, "-")
+            .replace(/\//g, "_")
+            .replace(/=+$/, ""),
+        );
       }
       params.set("t", String(bust));
       return `/display/content/${content.config.page}?${params.toString()}`;

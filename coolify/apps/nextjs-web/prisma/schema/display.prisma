@@ -25,9 +25,11 @@
 // 列単位で隠す。
 
 enum DisplayDeviceStatus {
-  ACTIVE // 有効（ペアリング成立時はここから始まる）
+  PENDING // プロファイル作成済・リンク待ち（= オープン。リンク解除で戻る）
+  LINKED // 画面リンク済・有効化待ち（有効化はこの状態からのみ）
+  ACTIVE // 有効
   DISABLED // 一時停止（再有効化可。トークンは生きたまま）
-  REVOKED // 取り消し（トークン破棄・再ペアリングが必要）
+  REVOKED // 取り消し（トークン破棄・再リンクが必要）
 
   @@map("DISPLAY_DEVICE_STATUS")
   @@schema("app")
@@ -94,11 +96,11 @@ model DisplayDevice {
   // プロファイル削除は Restrict — 使用中の内容を消して画面を黒くしない。
   displayProfileId String? @map("display_profile_id") @db.Uuid
 
-  status DisplayDeviceStatus @default(ACTIVE)
+  status DisplayDeviceStatus @default(PENDING)
 
   // デバイストークン（Cookie は生値、DB は SHA-256 のみ）。
   // 有効期間はキオスクの 30 日ではなく **365 日** — 壁のディスプレイは誰も
-  // 触らないので、短いと誰も見ていない間に自分でペアリング画面へ戻ってしまう。
+  // 触らないので、短いと誰も見ていない間に自分で登録画面へ戻ってしまう。
   deviceTokenHash      String?   @unique @map("device_token_hash")
   deviceTokenExpiresAt DateTime? @map("device_token_expires_at") @db.Timestamptz(6)
 
@@ -110,16 +112,17 @@ model DisplayDevice {
   userAgent     String?   @map("user_agent")
   appVersion    String?   @map("app_version") @db.VarChar(40)
 
-  pairedById String?   @map("paired_by") @db.Uuid
-  pairedAt   DateTime? @map("paired_at") @db.Timestamptz(6)
-  createdAt  DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt  DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+  linkedAt      DateTime? @map("linked_at") @db.Timestamptz(6)
+  activatedById String?   @map("activated_by") @db.Uuid
+  activatedAt   DateTime? @map("activated_at") @db.Timestamptz(6)
+  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt     DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
 
-  plant    Plant?          @relation("DisplayDevicePlant", fields: [plantId], references: [id])
-  profile  DisplayProfile? @relation("DisplayDeviceProfile", fields: [displayProfileId], references: [id], onDelete: Restrict)
-  pairedBy User?           @relation("DisplayDevicePairedBy", fields: [pairedById], references: [id])
+  plant       Plant?          @relation("DisplayDevicePlant", fields: [plantId], references: [id])
+  profile     DisplayProfile? @relation("DisplayDeviceProfile", fields: [displayProfileId], references: [id], onDelete: Restrict)
+  activatedBy User?           @relation("DisplayDeviceActivatedBy", fields: [activatedById], references: [id])
 
-  pairingSessions DisplayPairingSession[] @relation("DisplayPairingSessionDevice")
+  linkRequests DisplayLinkRequest[] @relation("DisplayLinkRequestDevice")
 
   @@index([plantId])
   @@index([status])
@@ -128,29 +131,29 @@ model DisplayDevice {
   @@schema("app")
 }
 
-// ─── ペアリングセッション（据付時の一時コード） ──────────────────────────────
+// ─── リンクリクエスト（画面が出す一時コード） ────────────────────────────────
 //
-// ディスプレイが自分で作り、画面に QR と文字で出す。管理者がそれを読んで
-// 名前・設置場所・表示内容を決めると display_device_id が入って成立する。
-// display_device_id の有無が「成立したか」の唯一の印。
+// kiosk_link_requests と同型・同寿命（12桁・10分）。ディスプレイが自分で作って
+// 画面に QR と文字で出し、管理者が SY09 で読み取ってオープンなプロファイルへ
+// 結ぶ。device_id が入った時点が「リンク成立」で、その有無が唯一の印。
 //
-// 期限切れ行の掃除は POST /api/display/pairing が入口で行う（pg_cron を
+// 期限切れ行の掃除は POST /api/display/setup/begin が入口で行う（pg_cron を
 // 増やさない — キオスクの setup/begin と同じやり方）。
 // コードは生の秘密なので grants.sql で metabase_ro から表ごと落とす。
 
-model DisplayPairingSession {
-  id              String  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  code            String  @unique // Crockford 12桁（I/O/0/1 を含まない）
-  displayDeviceId String? @map("display_device_id") @db.Uuid // 成立後に入る
+model DisplayLinkRequest {
+  id       String  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  code     String  @unique // Crockford 12桁（I/O/0/1 を含まない）
+  deviceId String? @map("device_id") @db.Uuid // リンク先プロファイル（成立後）
 
   userAgent     String?  @map("user_agent")
   lastIpAddress String?  @map("last_ip_address")
   createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   expiresAt     DateTime @map("expires_at") @db.Timestamptz(6) // 10分
 
-  device DisplayDevice? @relation("DisplayPairingSessionDevice", fields: [displayDeviceId], references: [id], onDelete: Cascade)
+  device DisplayDevice? @relation("DisplayLinkRequestDevice", fields: [deviceId], references: [id], onDelete: Cascade)
 
   @@index([expiresAt])
-  @@map("display_pairing_sessions")
+  @@map("display_link_requests")
   @@schema("app")
 }

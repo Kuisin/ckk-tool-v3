@@ -16,9 +16,13 @@ import { normalizeCode } from "./crockford";
  */
 export const DISPLAY_TOKEN_TTL_MS = 365 * 24 * 60 * 60 * 1000;
 
-/** ペアリングコードの桁数と寿命（キオスクのリンクコードと同じ規約）。 */
-export const PAIRING_CODE_LENGTH = 12;
-export const PAIRING_TTL_MS = 10 * 60 * 1000;
+/**
+ * リンクコードの桁数と寿命。**キオスク端末とまったく同じ値**（12桁・10分）。
+ * 揃えているのは、SY09 の 1 つのスキャナが両方を読むから — 桁数が違うと
+ * 「どちらのコードか」を人が意識することになる。
+ */
+export const LINK_CODE_LENGTH = 12;
+export const LINK_REQUEST_TTL_MS = 10 * 60 * 1000;
 
 /**
  * オンライン判定の窓。キオスクの ONLINE_WINDOW_MS と同値だが、**同じ定数を
@@ -42,8 +46,8 @@ export function isDisplayTokenAlive(
   return expiresAt !== null && now.getTime() < expiresAt.getTime();
 }
 
-/** ペアリングコードの有効判定。 */
-export function isPairingAlive(now: Date, expiresAt: Date | null): boolean {
+/** リンクコードの有効判定。 */
+export function isLinkRequestAlive(now: Date, expiresAt: Date | null): boolean {
   return expiresAt !== null && now.getTime() < expiresAt.getTime();
 }
 
@@ -53,29 +57,28 @@ export function isDisplayOnline(now: Date, lastSeenAt: Date | null): boolean {
   return now.getTime() - lastSeenAt.getTime() < DISPLAY_ONLINE_WINDOW_MS;
 }
 
-/** ペアリング期限までの残り ms（負値なし）。画面のカウントダウン用。 */
-export function pairingRemainingMs(now: Date, expiresAt: Date): number {
+/** リンクコードの期限までの残り ms（負値なし）。画面のカウントダウン用。 */
+export function linkRemainingMs(now: Date, expiresAt: Date): number {
   return Math.max(0, expiresAt.getTime() - now.getTime());
 }
 
 /**
- * 管理側が読み取った値からペアリングコードを取り出す。受け付ける形は 2 つ:
+ * 管理側（SY09）が読み取った値からリンクコードを取り出す。
  *
- * 1. **ペアリング URL**（`https://…/settings/displays/pair?code=ABCD-EFGH-JKLM`）
- *    — ディスプレイの画面に出る QR の中身。スマホの標準カメラで読んで
- *    そのまま開けることを優先した。
- * 2. 素のコード（`ABCD-EFGH-JKLM` / `ABCDEFGHJKLM`）— 画面に文字でも出している
- *    ので、QR が読めないときに手で打てる。
+ * **キオスク端末とディスプレイで QR の中身を同じにしてある**（裸の 12 桁）。
+ * 揃えたのは、SY09 のスキャナを 1 つに保つため — 端末とディスプレイで
+ * 別のスキャナ / 別の読み方があると、現場は「どっちで読むのか」を毎回
+ * 考えることになる。`CKK:` 統一形式（qr-payload.ts）を使わないのも
+ * キオスクと同じ理由で、あれは紙に刷る書類の規約。
  *
- * **`CKK:` 統一形式（qr-payload.ts）はここでは使わない。** あちらは紙に刷る
- * 書類の規約で、URL を入れない決まりになっている。ここは紙に刷らないし、
- * 脚立の上の人がカメラを向けて 1 手で開けることのほうが価値が高い。
- * コードは 10 分で失効する単回のもので、それ自体はアクセス権を持たない
- * （ペアリングを完了できるのは認証済みの管理者だけ）。
+ * 受け付ける形:
+ *   1. 裸のコード（`ABCD-EFGH-JKLM` / `ABCDEFGHJKLM`）— QR と手入力の両方
+ *   2. `?code=` を持つ URL — 将来スマホのカメラから直接開く経路を足したく
+ *      なったときのために受けておく（今どの画面も出していない）
  *
  * 一致しなければ空文字 — 呼び出し側は「読み取れません」を出す。
  */
-export function extractPairingCode(raw: string): string {
+export function extractLinkCode(raw: string): string {
   const trimmed = String(raw ?? "").trim();
   if (!trimmed) return "";
 
@@ -84,9 +87,9 @@ export function extractPairingCode(raw: string): string {
     const url = new URL(trimmed);
     candidate = url.searchParams.get("code") ?? "";
   } catch {
-    // URL でなければ素のコードとして扱う
+    // URL でなければ裸のコードとして扱う
   }
 
   const normalized = normalizeCode(candidate);
-  return normalized.length === PAIRING_CODE_LENGTH ? normalized : "";
+  return normalized.length === LINK_CODE_LENGTH ? normalized : "";
 }

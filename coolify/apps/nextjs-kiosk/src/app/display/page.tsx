@@ -1,13 +1,13 @@
 import { getDisplay } from "@/lib/display-auth";
-import { DisplayPairing } from "./DisplayPairing";
 import { DisplayRenderer } from "./DisplayRenderer";
+import { DisplaySetup } from "./DisplaySetup";
 
 /**
  * /display — Raspberry Pi が開く唯一の URL。
  *
  * ここから先の分岐は 2 つだけ:
- *   未ペアリング → QR とコードを出して待つ
- *   ペアリング済 → 割り当てられた表示内容を出す
+ *   未登録   → リンクコードを出して待つ（キオスク端末の /setup と同じ 4 段）
+ *   登録済み → 割り当てられた表示内容を出す
  *
  * Pi 側には設定が無いので、**この判断はすべてサーバーが持つ**。
  * 失効させると次の再読込でペアリング画面に戻る（現場に行かなくてよい）。
@@ -22,7 +22,7 @@ export default async function DisplayPage() {
   if (!auth.ok) {
     // NO_COOKIE 以外（失効・停止・期限切れ）は理由を出してからペアリングへ。
     // 現場の人が「壊れた」ではなく「取り消されたのだ」と分かるようにする。
-    return <DisplayPairing reason={auth.reason} />;
+    return <DisplaySetup reason={auth.reason} />;
   }
 
   return (

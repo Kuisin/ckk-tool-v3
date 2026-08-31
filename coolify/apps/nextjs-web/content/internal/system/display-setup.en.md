@@ -9,13 +9,13 @@ to know anything about computers — just follow the steps in order.**
 It takes about **30 minutes**, and about 15 of those are waiting.
 
 > 💡 There is nothing difficult to configure. What the TV shows is chosen later,
-> from a PC or a phone. You do not choose it during this work.
+> from a PC. You do not choose it during this work.
 
 ## What you can do here
 
 - Prepare the small computer that drives the TV
 - Connect it to the TV and switch it on
-- Scan the QR code on the screen to register that display
+- Register the display using the link code shown on the screen
 - Fix the common problems
 
 ## Words used on this page
@@ -24,8 +24,8 @@ It takes about **30 minutes**, and about 15 of those are waiting.
   it to the TV.
 - **microSD card** … A small memory card that goes inside the Raspberry Pi.
   It holds everything the computer needs to start.
-- **Registration code** … 12 letters and numbers shown on the TV. It tells the
-  system which screen you are setting up.
+- **Link code** … 12 letters and numbers shown on the TV. It tells the system
+  which screen you are setting up — the same mechanism shared tablets use.
 
 ## What you need
 
@@ -111,37 +111,42 @@ The Raspberry Pi restarts. **You can unplug the keyboard now.**
 
 ## 4. Register the display
 
-After restarting, the TV shows a QR code and a 12-character registration code.
+After restarting, the TV shows a 12-character link code.
+**From here it is exactly the same as a shared tablet.**
 
-1. Point your phone camera at the QR code.
-2. Tap the link that appears (log in if you are asked to).
-3. The "Pair a display" page opens.
-4. Enter a name people on the floor will use (for example `Line A entrance`).
-5. Choose the location and site (you can change these later).
-6. Choose what the display should show.
-7. Press "Register".
+On a PC, open **Devices (SY09)** and go to the "Displays" tab.
+
+1. Press "Add a display".
+2. Enter a name people on the floor will use (for example `Line A entrance`).
+3. Choose the location, site and content, then press "Create".
+4. Press "Link" on the new row in the list.
+5. Type the 12 characters shown on the TV and press "Link".
+6. When the state becomes "Awaiting activation", press "Activate".
 
 The TV changes within a few seconds. The display is now set up.
 
-> 💡 If the QR code will not scan, open **Displays (SY0I)** on a PC, press
-> "Pair a display" and type the 12-character code by hand.
+> 💡 Steps 1–3 can be done before the TV is ready. Doing them in advance
+> leaves only linking and activating to do on site.
 
-> ⚠️ The registration code expires after **10 minutes**. If that happens, press
+> ⚠️ The link code expires after **10 minutes**. If that happens, press
 > "Issue a new code" on the TV, or switch the Raspberry Pi off and on again.
 
 ## Changing things later
 
-**You never need to touch the Raspberry Pi.** Use **Displays (SY0I)** on a PC.
+**You never need to touch the Raspberry Pi.** Use the "Displays" tab of
+**Devices (SY09)** on a PC.
 
 | What you want | How |
 |---|---|
 | Change what it shows | Open the display, pick a different content, press Save |
 | Fix the name or location | Open the display, edit, press Save |
 | Stop it for now | Open the display, press "Disable" |
+| Move it elsewhere | Open the display, press "Unlink" (settings are kept) |
 | Stop using it | Open the display, press "Revoke" |
 
-After "Revoke" the screen goes back to showing a registration code. To use it
-somewhere else, carry it there and repeat step 4.
+"Unlink" keeps the name and content but releases the screen — handy when you
+want to use the same settings with a different Raspberry Pi. After "Revoke" the
+screen goes back to showing a link code.
 
 ## Questions and problems
 
@@ -154,12 +159,12 @@ A. Check the LAN cable. The normal display comes back on its own once the
 network returns. You do not have to do anything.
 
 **Q. The screen says no content has been set**
-A. Nothing has been chosen for that display yet. Open it in Displays (SY0I),
+A. Nothing has been chosen for that display yet. Open it in the Displays tab of Devices (SY09),
 choose a content and press Save.
 
-**Q. It went back to the QR code screen**
-A. That display has been revoked or disabled. Check its state in
-Displays (SY0I). To use it again, scan the QR code and register it once more.
+**Q. It went back to the link code screen**
+A. That display has been revoked or disabled. Check its state in the Displays
+tab of Devices (SY09). To use it again, register it with the code shown.
 
 **Q. The power went off. Do I have to set it up again?**
 A. No. Switch it on and it returns to the same display by itself.

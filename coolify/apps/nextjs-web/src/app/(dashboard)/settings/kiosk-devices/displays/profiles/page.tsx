@@ -6,7 +6,7 @@ export const dynamic = "force-dynamic";
 
 /** ディスプレイ管理 — 表示内容（プロファイル）の一覧と編集。 */
 export default async function DisplayProfilesPage() {
-  const denied = await requireAppRead("displays");
+  const denied = await requireAppRead("kiosk-devices");
   if (denied) return denied;
 
   const [profiles, plantOptions] = await Promise.all([

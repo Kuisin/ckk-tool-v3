@@ -603,19 +603,6 @@ export const appList: AppEntry[] = [
     requiredPermission: "system",
   },
   {
-    // ディスプレイ管理 — 現場の壁掛けテレビ（Raspberry Pi）の登録と表示内容。
-    // 一覧・名称変更・表示内容の切替は `kiosk`（共有端末と同じ「機器の管理」）。
-    // 登録と失効だけは特権操作 kiosk_device を通す — 画面を 1 枚増やすことは
-    // 業務データを新しい場所に出すことなので、承認の対象にする。
-    key: "displays",
-    label: "ディスプレイ管理",
-    operationCode: "SY0I",
-    href: "/settings/displays",
-    icon: "IconDeviceTv",
-    category: "システム",
-    requiredPermission: "kiosk",
-  },
-  {
     // 特権アクセス — システム上重要な操作を「申請 → 別の人の承認 → 期限つきで
     // 実行」に分ける。requiredPermission は null（誰でも開ける）: 中身は自分が
     // 申請できるもの / 決裁できるものだけなので、権限の無い人には空で出る。
@@ -734,7 +721,6 @@ export const APP_LABEL_I18N: Record<string, { en: string; zh: string }> = {
   "activity-log": { en: "Activity log", zh: "操作历史" },
   "kiosk-cards": { en: "QR cards", zh: "二维码卡管理" },
   "kiosk-devices": { en: "Devices", zh: "终端管理" },
-  displays: { en: "Displays", zh: "显示屏管理" },
   "kiosk-settings": { en: "Shared device settings", zh: "共用终端设置" },
   links: { en: "Links", zh: "链接管理" },
   "order-intake": { en: "Order intake", zh: "订单导入" },

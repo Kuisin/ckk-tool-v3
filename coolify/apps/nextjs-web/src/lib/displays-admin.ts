@@ -1,9 +1,10 @@
 import "server-only";
 
 /**
- * displays-admin.ts — ディスプレイ管理（SY0I）の読み取り。server-only・読むだけ。
+ * displays-admin.ts — ディスプレイ（SY09 端末管理）の読み取り。server-only・読むだけ。
  *
- * 書き込みは settings/displays/actions.ts が持つ（kiosk-admin.ts と同じ分担）。
+ * 書き込みは settings/kiosk-devices/displays/actions.ts が持つ
+ * （kiosk-admin.ts と同じ分担）。
  *
  * 死活は `last_seen_at` から**読むときに**計算する。状態列に持たせないのは、
  * 「オンライン」を保存すると、書き手が落ちたときに嘘が残り続けるため。
@@ -17,7 +18,12 @@ import { localized } from "./format";
 /** WS 未接続でも直近この時間内に生存していればオンライン扱い。 */
 export const DISPLAY_ONLINE_WINDOW_MS = 5 * 60 * 1000;
 
-export type DisplayStatus = "ACTIVE" | "DISABLED" | "REVOKED";
+export type DisplayStatus =
+  | "PENDING"
+  | "LINKED"
+  | "ACTIVE"
+  | "DISABLED"
+  | "REVOKED";
 export type DisplayContentType = "APP_PAGE" | "METABASE" | "URL" | "IMAGE";
 
 export interface DisplayRow {
@@ -34,7 +40,7 @@ export interface DisplayRow {
   appVersion: string | null;
   /** WS が使えないときのフォールバック（サーバー側の計算）。 */
   initialOnline: boolean;
-  pairedAt: Date | null;
+  linkedAt: Date | null;
   createdAt: Date;
 }
 
@@ -42,7 +48,8 @@ export interface DisplayDetail extends DisplayRow {
   lastIpAddress: string | null;
   userAgent: string | null;
   deviceTokenExpiresAt: Date | null;
-  pairedByName: string | null;
+  activatedAt: Date | null;
+  activatedByName: string | null;
 }
 
 export interface DisplayProfileRow {
@@ -87,7 +94,7 @@ export async function listDisplays(): Promise<DisplayRow[]> {
       status: true,
       lastSeenAt: true,
       appVersion: true,
-      pairedAt: true,
+      linkedAt: true,
       createdAt: true,
       plant: { select: { name: true } },
       profile: { select: { id: true, name: true } },
@@ -109,7 +116,7 @@ export async function listDisplays(): Promise<DisplayRow[]> {
       lastSeenAt: r.lastSeenAt,
       appVersion: r.appVersion,
       initialOnline: r.status === "ACTIVE" && onlineAt(now, r.lastSeenAt),
-      pairedAt: r.pairedAt,
+      linkedAt: r.linkedAt,
       createdAt: r.createdAt,
     };
   });
@@ -131,11 +138,12 @@ export async function getDisplayDetail(
       userAgent: true,
       appVersion: true,
       deviceTokenExpiresAt: true,
-      pairedAt: true,
+      linkedAt: true,
+      activatedAt: true,
       createdAt: true,
       plant: { select: { name: true } },
       profile: { select: { id: true, name: true } },
-      pairedBy: { select: { displayName: true } },
+      activatedBy: { select: { displayName: true } },
     },
   });
   if (!r) return null;
@@ -153,12 +161,13 @@ export async function getDisplayDetail(
     lastSeenAt: r.lastSeenAt,
     appVersion: r.appVersion,
     initialOnline: r.status === "ACTIVE" && onlineAt(Date.now(), r.lastSeenAt),
-    pairedAt: r.pairedAt,
+    linkedAt: r.linkedAt,
     createdAt: r.createdAt,
     lastIpAddress: r.lastIpAddress,
     userAgent: r.userAgent,
     deviceTokenExpiresAt: r.deviceTokenExpiresAt,
-    pairedByName: r.pairedBy?.displayName ?? null,
+    activatedAt: r.activatedAt,
+    activatedByName: r.activatedBy?.displayName ?? null,
   };
 }
 
@@ -223,28 +232,4 @@ export async function listPlantOptions(): Promise<
     value: String(p.id),
     label: `${p.code} ${jsonName(p.name).text ?? ""}`.trim(),
   }));
-}
-
-/**
- * ペアリングコードから、まだ成立していない有効なセッションを引く。
- * **見つからない理由を区別して返す** — 「打ち間違い」と「時間切れ」で
- * 次にすることが違うため。
- */
-export type PairingLookup =
-  | { ok: true; sessionId: string; expiresAt: Date }
-  | { ok: false; reason: "NOT_FOUND" | "EXPIRED" | "ALREADY_PAIRED" };
-
-export async function lookupPairingSession(
-  code: string,
-): Promise<PairingLookup> {
-  const session = await prisma.displayPairingSession.findUnique({
-    where: { code },
-    select: { id: true, expiresAt: true, displayDeviceId: true },
-  });
-  if (!session) return { ok: false, reason: "NOT_FOUND" };
-  if (session.displayDeviceId) return { ok: false, reason: "ALREADY_PAIRED" };
-  if (session.expiresAt.getTime() <= Date.now()) {
-    return { ok: false, reason: "EXPIRED" };
-  }
-  return { ok: true, sessionId: session.id, expiresAt: session.expiresAt };
 }

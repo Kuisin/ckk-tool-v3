@@ -187,14 +187,14 @@ GRANT SELECT (id, name, location, plant_id, floor_map_id, map_x, map_y, status,
               ownership)
   ON app.kiosk_devices TO metabase_ro;  -- 隠す: device_token_hash, device_public_key, fingerprint, last_ip_address, linked_ip_address, ownership_source, device_profile*
 
--- 管理ディスプレイ（デジタルサイネージ）。ペアリングコードは据付中に有効な
+-- 管理ディスプレイ（デジタルサイネージ）。リンクコードは据付中に有効な
 -- 生の秘密なので表ごと落とす。端末側は「どこに何台あって、いつまで生きていたか」
 -- が BI で意味を持つので列単位で許す。
-REVOKE SELECT ON app.display_pairing_sessions FROM metabase_ro;  -- ペアリングコード（有効中）
+REVOKE SELECT ON app.display_link_requests FROM metabase_ro;  -- リンクコード（有効中）
 REVOKE SELECT ON app.display_devices FROM metabase_ro;
 GRANT SELECT (id, name, location, plant_id, display_profile_id, status,
               device_token_expires_at, last_seen_at, app_version,
-              paired_by, paired_at, created_at, updated_at)
+              linked_at, activated_by, activated_at, created_at, updated_at)
   ON app.display_devices TO metabase_ro;  -- 隠す: device_token_hash, last_ip_address, user_agent
 
 -- display_profiles は「何を映しているか」の一覧で、秘密を持たない…と言い切れない:
