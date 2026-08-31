@@ -53,6 +53,14 @@ export interface LoginAttemptInput {
   identifier?: string | null;
   /** 実在ユーザーに解決できた場合の id */
   userId?: string | null;
+  /**
+   * 取引先ポータル（社外向け）のアカウント。**userId とは排他** —
+   * ポータルの主体は app.users ではない。
+   *
+   * ここが入っていても `identifier` には生値を入れない（顧客のメールアドレスを
+   * 平文で残さないため）。相関は identifier_ref（HMAC）が担う。
+   */
+  portalAccountId?: string | null;
   device?: DeviceContext | null;
   /** 成功時に紐づける端末台帳の行 */
   userDeviceId?: string | null;
@@ -70,10 +78,15 @@ export async function recordLoginAttempt(
         outcome: input.outcome,
         method: input.method,
         reason: input.reason ?? null,
-        // 解決できたときだけ生値（DB の CHECK 制約と同じ条件）
-        identifier: input.userId ? (input.identifier ?? null) : null,
+        // 解決できたときだけ生値（DB の CHECK 制約と同じ条件）。
+        // **ポータルでは常に null** — 社外の個人のアドレスを平文で残さない。
+        identifier:
+          input.userId && !input.portalAccountId
+            ? (input.identifier ?? null)
+            : null,
         identifierRef: correlationRef(input.identifier),
         userId: input.userId ?? null,
+        portalAccountId: input.portalAccountId ?? null,
         userDeviceId: input.userDeviceId ?? null,
         ipAddress: device.ip,
         ipChain: device.ipChain,
