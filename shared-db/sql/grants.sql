@@ -187,6 +187,27 @@ GRANT SELECT (id, name, location, plant_id, floor_map_id, map_x, map_y, status,
               ownership)
   ON app.kiosk_devices TO metabase_ro;  -- 隠す: device_token_hash, device_public_key, fingerprint, last_ip_address, linked_ip_address, ownership_source, device_profile*
 
+-- 取引先ポータル（社外向け）。生きた資格情報とその使われ方が並ぶので、
+-- 生の秘密を持つ表はまるごと外す。閲覧は SY0H に閉じる。
+REVOKE SELECT ON app.portal_login_challenges FROM metabase_ro;  -- OTP のハッシュ（有効中）
+REVOKE SELECT ON app.portal_backup_codes     FROM metabase_ro;  -- バックアップコードのハッシュ
+REVOKE SELECT ON app.portal_sessions         FROM metabase_ro;  -- 稼働中セッション
+REVOKE SELECT ON app.portal_rate_limits      FROM metabase_ro;  -- 相関キー（アドレス由来の HMAC）
+REVOKE SELECT ON app.portal_document_links   FROM metabase_ro;  -- トークンハッシュ + 束縛アドレス
+-- 社外の個人が「いつ何を見たか」と送信元 IP。login_attempts と同じ扱い。
+REVOKE SELECT ON app.portal_access_logs      FROM metabase_ro;
+
+-- portal_grants は「どの取引先に何を見せているか」で、BI で見て意味がある
+-- （共有範囲の棚卸し）。秘密を持たないので列の制限はしない。
+
+-- ポータルのアカウントは、取引先ごとの利用状況を数えられると有用なので
+-- 列単位で許す。**メールアドレスと相関キーは出さない** — 社外の個人データで、
+-- 表示は SY0H の権限つき画面（マスク + 監査記録つき）に閉じる設計のため。
+REVOKE SELECT ON app.portal_accounts FROM metabase_ro;
+GRANT SELECT (id, bp_id, display_name, locale, is_active, disabled_at,
+              last_login_at, created_at, updated_at)
+  ON app.portal_accounts TO metabase_ro;  -- 隠す: email, email_ref, bp_contact_id, disabled_reason, disabled_by, created_by
+
 -- ── fx_rates: 為替レート日次更新（shared-db スタックの fx-rates コンテナ） ──
 -- app.currencies の rate_per_100_jpy / updated_at だけを UPDATE できる最小権限。
 -- 通貨の追加・削除・名称変更はできない（それはマスタ管理の仕事）。
