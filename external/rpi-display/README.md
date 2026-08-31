@@ -13,7 +13,7 @@ Pi は**ブラウザ以上のことをしない**。電源を入れると Chromi
 Raspberry Pi
 └── Chromium --kiosk
     └── https://ckk-kiosk.kai-lab.net/display
-        ├── 未登録 → QR + 登録コードを出して待つ
+        ├── 未登録 → リンクコードを出して待つ（共有端末と同じ手順）
         └── 登録済 → 割り当てられた表示内容
 ```
 
