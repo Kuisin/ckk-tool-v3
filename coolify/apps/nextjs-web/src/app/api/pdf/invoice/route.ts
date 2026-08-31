@@ -24,6 +24,7 @@ import {
   taxLabelLocalized,
 } from "@/lib/pdf-labels";
 import { documentQrSvg } from "@/lib/pdf-qr";
+import { companyStampImg } from "@/lib/pdf-stamp";
 import { QR_KINDS } from "@/lib/qr-payload";
 import { getObject, putObject } from "@/lib/storage";
 
@@ -99,6 +100,10 @@ export async function GET(request: Request): Promise<Response> {
     },
     // 書類 QR（CKK:INV:<番号>）。URL は入れない。
     doc_qr: documentQrSvg(QR_KINDS.INVOICE, invoice.invoiceNumber),
+    // 社印。ここに来る時点で isIssued は真だが（69 行目のガード）、
+    // companyStampImg 自身にも判定を持たせている（lib/pdf-stamp.ts の
+    // コメント参照）ので、ここでも明示的に渡す。
+    stamp: await companyStampImg(isIssued(invoice.status)),
     doc: {
       number: invoice.invoiceNumber,
       issued_date: documentFormatters.date(
