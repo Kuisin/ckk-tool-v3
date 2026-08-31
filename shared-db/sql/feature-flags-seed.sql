@@ -81,4 +81,14 @@ ON CONFLICT (key) DO UPDATE
 -- 公開時:
 --   ('app:notification-email:main', true, '通知メール 本番公開', now())
 
+-- 取引先ポータル（SY0H）は **feature_flags では公開しない**。
+-- 公開判断は coolify/apps/nextjs-web/src/config/dev-features.json の 1 本が正で、
+-- そこに "main" を足す PR とデプロイが要る。ここに
+-- ('app:portal-admin:main', true, ...) を置くと「DB の行 1 つで本番を開ける」
+-- という誤った期待を残すので、意図的に書かない。
+--
+-- なぜコードに置くのか: dev と main は同じ DB を共有しているので、この表の行は
+-- SY05 の画面から誰でも切り替えられる。社外向けの未完成な口が本番で開くのを
+-- 「画面のうっかり」で起こせる状態にしない。
+
 COMMIT;

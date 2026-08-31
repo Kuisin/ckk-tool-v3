@@ -99,6 +99,13 @@ export const AUDIT_TABLE_LABELS: Record<string, string> = {
   file_folder_grants: "ファイルフォルダ権限",
   // テーブルではなく取込フォルダ（INTAKE_DIR）の操作 — SY0C の投入・再取込。
   intake_folder: "注文書取込フォルダ",
+  // 取引先ポータル（SY0H）— **社内の変更だけ**がここに載る。
+  // 社外の人の閲覧は app.portal_access_logs（audit_logs には書かない —
+  // user_id が app.users への FK で、actor が system に落ちて嘘になるため）。
+  portal_accounts: "ポータルアカウント",
+  portal_grants: "ポータル共有範囲",
+  portal_document_links: "ポータル書類リンク",
+  portal_backup_codes: "ポータルバックアップコード",
   system: "システム",
 };
 

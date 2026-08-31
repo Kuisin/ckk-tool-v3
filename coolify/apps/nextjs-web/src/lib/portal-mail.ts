@@ -42,12 +42,18 @@ export async function sendPortalOtpMail(input: {
 }): Promise<PortalMailResult> {
   if (!isDevFeatureEnabled("portal")) return "BLOCKED_DEV";
   if (!allowed(input.to)) {
+    // dev の安全弁。**アラートの対象ではない**（設定どおりの挙動）。
     console.warn(
-      `[portal-mail] 許可リスト外のため送信しない（PORTAL_MAIL_ALLOWLIST）`,
+      "[portal-mail] blocked (allowlist): PORTAL_MAIL_ALLOWLIST に無い宛先",
     );
     return "BLOCKED_DEV";
   }
-  if (!isMailerConfigured()) return "FAILED";
+  if (!isMailerConfigured()) {
+    console.error(
+      "[portal-mail] send failed: MAIL_API_URL / MAIL_API_TOKEN が未設定",
+    );
+    return "FAILED";
+  }
 
   const pretty = formatCode(input.code);
   const what = input.context ? `「${input.context}」の閲覧` : "ログイン";
@@ -73,5 +79,11 @@ export async function sendPortalOtpMail(input: {
 </div>`;
 
   const ok = await sendMail({ to: input.to, subject, text, html });
+  if (!ok) {
+    // **ここが運用の唯一の手がかり。** 画面は成功と同じものを返すので
+    // （アカウントの存在を漏らさないため）、利用者は「コードが来ない」としか
+    // 言えない。Grafana の portal_otp_mail_failed がこの行を見ている。
+    console.error("[portal-mail] send failed: リレーが受け取らなかった");
+  }
   return ok ? "SENT" : "FAILED";
 }

@@ -8,6 +8,7 @@
     "order-intake",
     "kiosk-cards",
     "kiosk-devices",
-    "kiosk-device-setup"
+    "kiosk-device-setup",
+    "partner-portal"
   ]
 }
