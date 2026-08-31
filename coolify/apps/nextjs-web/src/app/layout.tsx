@@ -9,6 +9,7 @@ import "@mantine/tiptap/styles.layer.css";
 import { mantineHtmlProps } from "@mantine/core";
 import type { Metadata, Viewport } from "next";
 import { Noto_Sans_JP } from "next/font/google";
+import { appBaseUrl } from "@/lib/mailer";
 import { MANTINE_COLOR_SCHEME_SCRIPT } from "@/lib/mantine-color-scheme-script";
 import { Providers } from "./providers";
 
@@ -30,6 +31,10 @@ const appleTouchIcon =
     : "/icons/apple-touch-icon.png";
 
 export const metadata: Metadata = {
+  // 各ページの相対 URL（openGraph.images / openGraph.url 等）をここから
+  // 絶対 URL に解決する。og:image は絶対 URL 必須（相対だと大半のスクレイパが
+  // 無視する）— 個々のページでホスト名を組み立てずに済ませるための設定。
+  metadataBase: new URL(appBaseUrl()),
   title: "CKK 業務管理システム",
   description: "製造業務管理システム — 販売・購買・生産・出荷・請求・マスタ",
   // PWA: manifest は app/manifest.ts が /manifest.webmanifest として配信。
