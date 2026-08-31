@@ -18,7 +18,10 @@
 
 import { Center, Loader, Stack, Text, Title } from "@mantine/core";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { DISPLAY_HEARTBEAT_MIN_INTERVAL_MS } from "@/lib/display-core";
+import {
+  DISPLAY_HEARTBEAT_MIN_INTERVAL_MS,
+  type MachineHint,
+} from "@/lib/display-core";
 
 const WS_PATH = "/api/display/ws";
 const RECONNECT_MIN_MS = 5_000;
@@ -55,6 +58,8 @@ type Props = {
   displayName: string | null;
   location: string | null;
   scalePercent: number;
+  /** どの機械の何枚目か（Pi が URL に載せてくる。1 枚運用では空）。 */
+  hint: MachineHint;
 };
 
 /** 中身 → フレームに載せる URL。載せられないものは null。 */
@@ -98,6 +103,7 @@ export function DisplayRenderer({
   displayName,
   location,
   scalePercent,
+  hint,
 }: Props) {
   const [config, setConfig] = useState<Config | null>(null);
   const [failed, setFailed] = useState(false);
@@ -175,12 +181,18 @@ export function DisplayRenderer({
   useEffect(() => {
     const id = setInterval(() => {
       if (wsRef.current?.readyState === WebSocket.OPEN) return;
-      void fetch("/api/display/heartbeat", { method: "POST" }).catch(
-        () => undefined,
-      );
+      void fetch("/api/display/heartbeat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        // 手掛かりも一緒に送る（Pi を差し替えたら追従する）
+        body: JSON.stringify({
+          machineId: hint.machineId,
+          screenIndex: hint.screenIndex,
+        }),
+      }).catch(() => undefined);
     }, DISPLAY_HEARTBEAT_MIN_INTERVAL_MS);
     return () => clearInterval(id);
-  }, []);
+  }, [hint]);
 
   // プロファイルの再取得間隔（0 = 自動再取得しない）
   useEffect(() => {

@@ -15,6 +15,7 @@ It takes about **30 minutes**, and about 15 of those are waiting.
 
 - Prepare the small computer that drives the TV
 - Connect it to the TV and switch it on
+- Drive two TVs from one unit, each with its own content
 - Register the display using the link code shown on the screen
 - Fix the common problems
 
@@ -130,6 +131,30 @@ The TV changes within a few seconds. The display is now set up.
 
 > ⚠️ The link code expires after **10 minutes**. If that happens, press
 > "Issue a new code" on the TV, or switch the Raspberry Pi off and on again.
+
+## Driving two TVs from one Raspberry Pi
+
+A Raspberry Pi 5 has two HDMI sockets, so one unit can show **different content**
+on two TVs.
+
+Run step 3 with `--screens 2`:
+
+```bash
+curl -fsSL https://ckk-kiosk.kai-lab.net/rpi/install.sh | bash -s -- --screens 2
+```
+
+> 💡 Run it without the option and it counts the connected TVs itself. Only pass
+> `--screens` when that count comes out wrong.
+
+After restarting, **each TV shows its own link code**. Do step 4 once per TV
+(twice in total). Each screen says "screen 1 of 2 on this machine", so you know
+which code you are typing.
+
+Once registered, the two TVs are **entirely separate displays**. Content and
+scale are set per screen, and disabling one leaves the other running.
+
+> ⚠️ If left and right come out swapped, swapping the HDMI cables is the
+> easiest fix.
 
 ## Changing things later
 

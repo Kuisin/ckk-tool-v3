@@ -133,6 +133,8 @@ export async function touchDisplay(
     ipAddress?: string | null;
     userAgent?: string | null;
     appVersion?: string | null;
+    machineId?: string | null;
+    screenIndex?: number | null;
   } = {},
 ): Promise<void> {
   await prisma.displayDevice
@@ -146,6 +148,10 @@ export async function touchDisplay(
         ...(meta.userAgent !== undefined ? { userAgent: meta.userAgent } : {}),
         ...(meta.appVersion !== undefined
           ? { appVersion: meta.appVersion }
+          : {}),
+        ...(meta.machineId !== undefined ? { machineId: meta.machineId } : {}),
+        ...(meta.screenIndex !== undefined
+          ? { screenIndex: meta.screenIndex }
           : {}),
       },
     })

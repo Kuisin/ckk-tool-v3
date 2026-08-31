@@ -354,6 +354,18 @@ export function DisplayDetailView({
                 value={display.appVersion ?? "—"}
               />
               <FieldValue
+                label="つないでいる機械"
+                value={
+                  display.machineId
+                    ? `${display.machineId}${
+                        display.screenIndex
+                          ? ` / ${display.screenIndex} 枚目`
+                          : ""
+                      }`
+                    : "—"
+                }
+              />
+              <FieldValue
                 fullWidth
                 label="ブラウザ"
                 value={display.userAgent ?? "—"}

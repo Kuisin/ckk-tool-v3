@@ -12,6 +12,7 @@
 
 import { NextResponse } from "next/server";
 import { getDisplay, touchDisplay } from "@/lib/display-auth";
+import { machineHint } from "@/lib/display-core";
 import { clientIpOf, userAgentOf } from "@/lib/request-ip";
 
 export const dynamic = "force-dynamic";
@@ -25,10 +26,20 @@ export async function POST(req: Request) {
     );
   }
 
+  // 手掛かりは毎回上書きする — 別の Pi へ差し替えたり、画面の並びを
+  // 入れ替えたりしたときに、古い値が残り続けないようにするため。
+  const body = (await req.json().catch(() => null)) as {
+    machineId?: unknown;
+    screenIndex?: unknown;
+  } | null;
+  const hint = machineHint(body?.machineId, body?.screenIndex);
+
   await touchDisplay(auth.display.id, {
     ipAddress: clientIpOf(req),
     userAgent: userAgentOf(req),
     appVersion: process.env.NEXT_PUBLIC_APP_VERSION ?? null,
+    machineId: hint.machineId,
+    screenIndex: hint.screenIndex,
   });
 
   return NextResponse.json({ ok: true });

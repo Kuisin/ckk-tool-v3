@@ -94,6 +94,53 @@ export const DISPLAY_SWEEP_INTERVAL_MS = 30 * 1000;
 /** ディスプレイ側から打つハートビートの最短間隔（WS が張れないときの保険）。 */
 export const DISPLAY_HEARTBEAT_MIN_INTERVAL_MS = 60 * 1000;
 
+/**
+ * どの機械の何枚目か（自己申告の手掛かり）。
+ *
+ * Pi が URL に載せてくる値なので**詐称できる**。表示とまとめ表示にしか
+ * 使わない — 認証にも権限にも使わない（端末シグネチャと同じ扱い）。
+ * だから検証は「変な値で列を汚さない」ためだけのもので、弾く必要は無い。
+ */
+export const MACHINE_ID_MAX_LENGTH = 64;
+export const SCREEN_INDEX_MAX = 8;
+
+export type MachineHint = {
+  machineId: string | null;
+  screenIndex: number | null;
+};
+
+/** hostname らしき文字列に丸める（英数字・ハイフン・アンダースコアだけ）。 */
+export function normalizeMachineId(value: unknown): string | null {
+  if (typeof value !== "string") return null;
+  const cleaned = value.trim().replace(/[^A-Za-z0-9._-]/g, "");
+  if (!cleaned) return null;
+  return cleaned.slice(0, MACHINE_ID_MAX_LENGTH);
+}
+
+/** 画面番号は 1 から。範囲外・数値でないものは「不明」に倒す。 */
+export function normalizeScreenIndex(value: unknown): number | null {
+  const n =
+    typeof value === "number"
+      ? value
+      : typeof value === "string" && value.trim() !== ""
+        ? Number(value)
+        : Number.NaN;
+  if (!Number.isInteger(n)) return null;
+  if (n < 1 || n > SCREEN_INDEX_MAX) return null;
+  return n;
+}
+
+/** URL のクエリなど、未検証の入力から手掛かりを組み立てる。 */
+export function machineHint(
+  machineId: unknown,
+  screenIndex: unknown,
+): MachineHint {
+  return {
+    machineId: normalizeMachineId(machineId),
+    screenIndex: normalizeScreenIndex(screenIndex),
+  };
+}
+
 /** デバイストークンの有効判定。 */
 export function isDisplayTokenAlive(
   now: Date,
