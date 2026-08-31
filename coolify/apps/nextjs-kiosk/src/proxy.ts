@@ -7,6 +7,10 @@
  *
  *   kiosk_device Cookie なし → /setup（端末登録）
  *   kiosk_session Cookie なし → /login（QR スキャン）
+ *
+ * /display（管理ディスプレイ）は**どちらの Cookie も持たない別系統**なので
+ * DEVICE_FREE に入れる。ここを外すと、新品の Raspberry Pi が延々とキオスクの
+ * 端末登録画面を映し続け、ペアリング画面に永久に到達しない。
  */
 
 import { type NextRequest, NextResponse } from "next/server";
@@ -16,7 +20,15 @@ const SESSION_COOKIE = "kiosk_session";
 
 // 端末信頼なしでも入れる画面（/device-settings は Cookie が壊れた端末の
 // 復旧経路でもあるため、ログイン前・端末信頼なしでも到達できる）
-const DEVICE_FREE = new Set(["/setup", "/device-error", "/device-settings"]);
+const DEVICE_FREE = new Set([
+  "/setup",
+  "/device-error",
+  "/device-settings",
+  "/display",
+]);
+
+// 管理ディスプレイの配下（/display/content/... など）。前方一致で通す。
+const DEVICE_FREE_PREFIXES = ["/display/"];
 
 export default function proxy(req: NextRequest) {
   const { pathname } = req.nextUrl;
@@ -24,7 +36,12 @@ export default function proxy(req: NextRequest) {
   const hasDevice = req.cookies.has(DEVICE_COOKIE);
   const hasSession = req.cookies.has(SESSION_COOKIE);
 
-  if (DEVICE_FREE.has(pathname)) return NextResponse.next();
+  if (
+    DEVICE_FREE.has(pathname) ||
+    DEVICE_FREE_PREFIXES.some((p) => pathname.startsWith(p))
+  ) {
+    return NextResponse.next();
+  }
 
   if (!hasDevice) {
     return NextResponse.redirect(new URL("/setup", req.url));
