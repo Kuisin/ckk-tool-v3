@@ -41,6 +41,11 @@ export interface DeliveryNote {
   recipientName: string;
   recipientBranchId: string | null;
   recipientBranchName: string | null;
+  /**
+   * PDF の言語 — 支店の設定があればそれ、無ければ納品先本体の設定、どちらも
+   * 未設定なら null（既定言語 ja）。_specs/i18n-glossary.md §2.7・決定 10。
+   */
+  recipientDocumentLocale: string | null;
   /** ユーザー直送時の届け先（最終需要家）。 */
   endUserId: string | null;
   endUserName: string | null;

@@ -1,8 +1,8 @@
 /**
- * Flow integration — 試算 → 価格表 → 見積書.
+ * Flow integration — 価格試算 → 価格表 → 見積書.
  *
- * 1. 試算 produces ONE base 見積単価 (quantity scale removed).
- * 2. 価格表 is created per 顧客×製品; the 試算 is picked as the base-price
+ * 1. 価格試算 produces ONE base 見積単価 (quantity scale removed).
+ * 2. 価格表 is created per 顧客×製品; the 価格試算 is picked as the base-price
  *    source for a 注文種別 variant (manual bypass is explicit), tiers scale it
  *    by ×倍率, 値引きルール are a dedicated per-variant list.
  * 3. 見積書 is print-only: 単価・値引き resolve automatically from the 価格表
@@ -21,17 +21,17 @@ import { resolveUnitPrice } from "@/components/sales/quotes/mock";
 import { getTrialEstimate } from "@/components/sales/trial-estimates/fixtures";
 import { calcTrialPricing } from "@/lib/trial-pricing";
 
-describe("試算 → 価格表 → 見積書 (constructed entry)", () => {
-  // ── 1. 試算: base 見積単価 ────────────────────────────────────────────────
+describe("価格試算 → 価格表 → 見積書 (constructed entry)", () => {
+  // ── 1. 価格試算: base 見積単価 ────────────────────────────────────────────────
   const estimate = getTrialEstimate("te-0002");
   if (!estimate) throw new Error("te-0002 missing");
   const basePrice = calcTrialPricing(estimate.input).lots[0].estimateUnitPrice;
 
-  // ── 2. 価格表を作成 (顧客×製品、試算をバリアントの基準単価ソースに選択) ──
+  // ── 2. 価格表を作成 (顧客×製品、価格試算をバリアントの基準単価ソースに選択) ──
   const variant: PriceVariant = {
     id: "fv-1",
     orderType: "PRODUCTION",
-    baseUnitPrice: basePrice, // 試算値をそのまま使用（バイパスなし）
+    baseUnitPrice: basePrice, // 価格試算値をそのまま使用（バイパスなし）
     validFrom: "2026-04-01",
     validUntil: null,
     isActive: true,
@@ -83,13 +83,13 @@ describe("試算 → 価格表 → 見積書 (constructed entry)", () => {
     updatedAt: "2026-04-01 00:00",
   };
 
-  it("基準単価 equals the 試算 value when not bypassed", () => {
+  it("基準単価 equals the 価格試算 value when not bypassed", () => {
     expect(variant.baseUnitPrice).toBe(basePrice);
     expect(basePrice).toBeGreaterThan(0);
     expect(entry.variants[0].estimateNumber).toBe(estimate.estimateNumber);
   });
 
-  it("tier prices scale the 試算-derived base by ×倍率", () => {
+  it("tier prices scale the 価格試算-derived base by ×倍率", () => {
     expect(tierUnitPrice(variant, variant.tiers[0])).toBe(
       Math.round(basePrice * 1.1),
     );
@@ -125,7 +125,7 @@ describe("試算 → 価格表 → 見積書 (constructed entry)", () => {
   });
 });
 
-describe("試算 → 価格表 → 見積書 (registered mock data end-to-end)", () => {
+describe("価格試算 → 価格表 → 見積書 (registered mock data end-to-end)", () => {
   it("bp-002 の登録済み価格表で見積明細が自動計算される", () => {
     // entry (bp-002 × 2008) PRODUCTION variant: base 6200 ×1.00 +
     // 数量増値引き ¥100/本 (50本〜, 2026-04-01..09-30)
@@ -169,7 +169,7 @@ describe("試算 → 価格表 → 見積書 (registered mock data end-to-end)",
     ).toBeNull();
   });
 
-  it("試算元 EST-202605-00031 → 価格表 (bp-001) → 見積単価チェーンが繋がる", () => {
+  it("価格試算元 EST-202605-00031 → 価格表 (bp-001) → 見積単価チェーンが繋がる", () => {
     const estimate = getTrialEstimate("te-0001");
     expect(estimate?.status).toBe("REGISTERED");
     const r = resolveUnitPrice(
@@ -179,7 +179,7 @@ describe("試算 → 価格表 → 見積書 (registered mock data end-to-end)",
       100,
       new Date("2026-05-01"),
     );
-    // 価格表 variant carries the 試算元 link and prices the quote line
+    // 価格表 variant carries the 価格試算元 link and prices the quote line
     expect(r?.unitPrice).toBe(6000);
     expect(r?.tierId).toBe("ti-2b");
   });

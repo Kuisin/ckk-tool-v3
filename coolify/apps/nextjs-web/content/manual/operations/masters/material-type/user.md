@@ -1,16 +1,16 @@
 ---
 title: "材種 — 操作マニュアル"
-description: "材料の種類を登録しておく台帳です。どのメーカーの、どんな材料かを登録すると、製品や素材、試算で選べるようになります。"
+description: "材料の種類を登録しておく台帳です。どのメーカーの、どんな材料かを登録すると、製品や素材、価格試算で選べるようになります。"
 screenshots: [master-material-type-list-01, master-material-type-new-01, master-material-type-detail-01, master-material-type-prices-01]
 ---
 材料の種類を登録しておく台帳です。操作コードは `MS05` です。
 
-「どのメーカーの、どんな材料か」をここに登録します。**材種が登録されていないと、[製品](/manual/ja/operations/masters/product/user)にも[素材](/manual/ja/operations/masters/material/user)にも材料を指定できません。** また[試算](/manual/ja/operations/sales/trial-estimate/user)の材料代も計算できません。
+「どのメーカーの、どんな材料か」をここに登録します。**材種が登録されていないと、[製品](/manual/ja/operations/masters/product/user)にも[素材](/manual/ja/operations/masters/material/user)にも材料を指定できません。** また[価格試算](/manual/ja/operations/sales/trial-estimate/user)の材料代も計算できません。
 
 ## このアプリでできること
 
 - 材料の種類を登録できます。
-- 登録すると、製品・素材・試算で選べるようになります。
+- 登録すると、製品・素材・価格試算で選べるようになります。
 - 材種ごとに、太さ・表面の仕上げ別の **標準の値段** を登録できます。
 - その材種を使っている素材の一覧を確認できます。
 
@@ -88,7 +88,7 @@ screenshots: [master-material-type-list-01, master-material-type-new-01, master-
 
 ## 標準の値段を登録する
 
-材料の仕入れ実績がまだ無いとき、[試算](/manual/ja/operations/sales/trial-estimate/user)の材料代はここに登録した値段を使います。**ここが空だと、試算で材料代が出せません。**
+材料の仕入れ実績がまだ無いとき、[価格試算](/manual/ja/operations/sales/trial-estimate/user)の材料代はここに登録した値段を使います。**ここが空だと、価格試算で材料代が出せません。**
 
 1. 材種の画面で「**既定単価**」タブを開きます。
 2. 「**直径を追加**」を押します。行が 1 つ増えます。

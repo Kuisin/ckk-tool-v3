@@ -19,10 +19,10 @@
 BEGIN;
 
 INSERT INTO app.feature_flags (key, is_enabled, description, updated_at) VALUES
-  ('app:trial-estimates:main',        true, '試算 本番公開',            now()),
+  ('app:trial-estimates:main',        true, '価格試算 本番公開',            now()),
   ('app:price-lists:main',            true, '価格表 本番公開',          now()),
   ('app:quotes:main',                 true, '見積書 本番公開',          now()),
-  ('app:trial-pricing-engine:main',   true, '試算計算(設定) 本番公開',  now()),
+  ('app:trial-pricing-engine:main',   true, '価格試算計算(設定) 本番公開',  now()),
   ('app:product-items:main',          true, '製品項目(設定) 本番公開',  now()),
   ('app:product-types:main',          true, '製品種別(設定) 本番公開',  now()),
   ('app:master-business-partners:main', true, '取引先 本番公開',        now()),
@@ -55,8 +55,13 @@ ON CONFLICT (key) DO UPDATE
 -- 「承認フローが未設定です」で止まり、下書きから先へ進めない。
 -- あわせて roles-seed.sql を本番へ再適用しておくこと（production ロールの
 -- design_request R·U — 無いと担当者が通知を開いた先で 403 になる）。
+--
+-- **設計図（PD06）とセットで公開すること。** 依頼の「完了」には、その依頼を
+-- 成果物とする版が 1 件以上必要で、版を登録できるのは設計図だけ。設計図を
+-- 公開せずに設計依頼だけ出すと、進行中のまま完了できない依頼が溜まる。
 -- 両方を済ませて dev で受け入れたら:
---   ('app:design-requests:main', true, '設計依頼書 本番公開', now())
+--   ('app:design-requests:main', true, '設計依頼書 本番公開', now()),
+--   ('app:design-files:main',    true, '設計図 本番公開',     now())
 
 -- ログイン履歴（SY0D）は dev で記録が溜まるのを確認してから本番公開する。
 -- 先に本番の env（LOGIN_ATTEMPT_PEPPER / CORPORATE_CIDRS /

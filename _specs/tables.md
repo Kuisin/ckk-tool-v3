@@ -280,7 +280,7 @@ Ref: material_types.(manufacturer_code, grade_code) > material_manufacturer_grad
 
 // 材種の既定材料単価マトリクス: (材種 × 直径 × 黒皮/研磨) → 単価。全長には依存しない
 // 固定長基準で ¥/1000mm。採番表 Excel「素材(通常)」由来（価格 × 1000 / 全長 で正規化）。
-// 仕入実績が無いとき試算（estimates / SA01）の材料原価フォールバックに使う。
+// 仕入実績が無いとき価格試算（estimates / SA01）の材料原価フォールバックに使う。
 Table material_type_prices {
   id                  serial [pk]
   material_type_id    int [not null, ref: > material_types.id]
@@ -397,12 +397,12 @@ Table products {
 ### Logic
 ```
 // ===========================
-// 試算（§1 / SA01 見積試算）EST-YYYYMM-NNNNN
+// 価格試算（§1 / SA01 価格試算）EST-YYYYMM-NNNNN
 // ===========================
 
 // 工具種（丸棒/円筒/OH付）別の原価計算スナップショット。文書番号
 // EST-YYYYMM-NNNNN は複合キー (year_month, seq) から導出する。
-// 任意で製品にリンク（1製品に複数試算可）— 確定した試算は価格表作成時に
+// 任意で製品にリンク（1製品に複数価格試算可）— 確定した価格試算は価格表作成時に
 // バリアントの基準単価ソースとして選択できる（初回使用で REGISTERED）。
 Table estimates {
   year_month      char(6) [not null]
@@ -411,7 +411,7 @@ Table estimates {
   tool_type       varchar [not null]  // 工具種（管理者定義 — trial_pricing.tool_types。組み込み: ROUND_BAR/CYLINDER/OH）
   status          ESTIMATE_STATUS [not null, default: 'DRAFT']
   customer_bp_id  uuid [ref: > business_partners.id]
-  product_id      int [ref: > products.id]     // 対象製品（任意。1製品に複数試算可）
+  product_id      int [ref: > products.id]     // 対象製品（任意。1製品に複数価格試算可）
   // 材料は「材種 × 直径 × 黒皮/研磨」で指定する（特定 materials 行には紐付けない）
   material_type_id     int [ref: > material_types.id]
   diameter_code        char(3) [ref: > material_diameters.code]
@@ -436,7 +436,7 @@ Table estimates {
 Enum ESTIMATE_STATUS {
   DRAFT           // 下書き
   CONFIRMED       // 確定（価格表の基準単価ソースに選択可能）
-  REGISTERED      // 価格表で使用済み（ロック — 再試算は複製で）
+  REGISTERED      // 価格表で使用済み（ロック — 再価格試算は複製で）
 }
 
 // ===========================
@@ -445,7 +445,7 @@ Enum ESTIMATE_STATUS {
 
 // 価格表エントリ: 顧客 + 製品 = 1 エントリ（UNIQUE・作成後不変）。
 // 表示番号 PRC-YYYYMM-NNNNN は複合キー (year_month, seq) から導出。
-// 注文種別ごとの価格（基準単価・有効期間・試算リンク・tiers・値引き）は
+// 注文種別ごとの価格（基準単価・有効期間・価格試算リンク・tiers・値引き）は
 // price_list_variants に持つ。
 Table price_list_entries {
   year_month      char(6) [not null]
@@ -464,7 +464,7 @@ Table price_list_entries {
   }
 }
 
-// 注文種別バリアント: 1 エントリ内の種別ごとの価格。基準単価は試算の
+// 注文種別バリアント: 1 エントリ内の種別ごとの価格。基準単価は価格試算の
 // 見積単価（選択時）または手動設定。有効期間はバリアント単位
 // （テスト/サンプルは終了日必須）。
 Table price_list_variants {
@@ -475,7 +475,7 @@ Table price_list_variants {
   base_unit_price numeric(12,2) [not null, default: 0]
   valid_from      date [not null]
   valid_until     date                         // null = 無期限
-  estimate_year_month char(6)                  // 試算元（手動設定時は null）
+  estimate_year_month char(6)                  // 価格試算元（手動設定時は null）
   estimate_seq    int
   is_active       boolean [not null, default: true]
   created_at      timestamp
@@ -1407,6 +1407,9 @@ Table design_requests {
   // アプリ側では必須（依頼区分の自動判定に要る）。DB は nullable のまま —
   // 製品未指定の既存行があるので NOT NULL にすると移行が落ちる。
   product_id      int [ref: > products.id]
+  // 完成した版がどの系列に載るか（= design_files.customer_bp_id）。
+  // 既定は見積の顧客 / 注文明細の顧客。単独起票や汎用の図面は null。
+  customer_bp_id  uuid [ref: > business_partners.id]
   description     text
   // 依頼区分。「その製品に design_files があるか」で自動判定した値を**保存**する
   // （導出しない — 区分は承認ルートを決めるので、他の依頼の完了で値が動くと
@@ -1482,17 +1485,34 @@ Enum DESIGN_STATUS {
 }
 
 // 製品の「最新図面」はここが正 — products 側に design_file_id 列は無い。
-// 版採番と両側の is_latest クリアは completeDesign の 1 tx が唯一の管理者。
+// 版採番と両側の is_latest クリアは lib/design-files.ts の createVersionInTx が
+// 唯一の管理者（設計図 PD06 の登録口 1 本だけが通る）。系列が (製品 × 受注元) の
+// 組で無数に増えるため採番表は使えず、系列ごとの advisory lock で直列化する。
 //
-// **同じ version の行が複数あってよい。** 1 回の完了で上げたファイルはすべて
-// 同じ version・同じ is_latest を持ち、role（主図面 1 枚 / 参考資料 0..N 枚）
-// だけが違う。version は「図面の改訂世代」でファイルの通し番号ではない。
-// 製品の最新図面 = is_latest かつ role = BLUEPRINT の 1 行。
+// **同じ version の行が複数あってよい。** 1 回の登録で上げたファイルはすべて
+// 同じ version・同じ is_latest を持ち、role（プレビュー 0..1 / 図面データ 1 /
+// 参考資料 0..N）だけが違う。version は「図面の改訂世代」でファイルの通し番号
+// ではない。
+//
+// **版は (製品 × 受注元) ごとに数える。** 同じ製品でも顧客ごとに図面が別々に
+// 育つので、顧客 A の v3 と顧客 B の v1 が同居する。customer_bp_id が null の
+// 系列は「汎用」で、顧客専用の図面が無いときのフォールバック。優先規則
+// （顧客一致 → 汎用。**他の顧客の系列へは決して落ちない**）は
+// lib/design-files-core.ts resolveSeriesCustomer が唯一の定義元で、製品工程
+// ルート（product_process_routes.customer_bp_id）と同じ規約。
+//
+// 系列内の最新図面 = is_latest かつ role = BLUEPRINT の 1 行。
 // 最新の 3D プレビュー = is_latest かつ role = PREVIEW。
+//
+// **設計依頼を経ない版もある**（design_request_id = null）。図面だけ先に
+// 出来ている・既存図面を取り込む場合で、一覧の「依頼 / 手動」の別はこの列の
+// 有無から導く（列を増やして二重に持たない）。
 Table design_files {
   id              uuid [pk]
   design_request_id uuid [ref: > design_requests.id]
   product_id      int [ref: > products.id]
+  // 対象の受注元。null = 汎用。版番号と is_latest はこの列ごとに数える。
+  customer_bp_id  uuid [ref: > business_partners.id]
   file_id         uuid [not null, ref: > files.id]
   version         int [not null, default: 1]
   is_latest       boolean [not null, default: true]
@@ -1503,10 +1523,10 @@ Table design_files {
 }
 
 // ===========================
-// 見積試算（SA01）— 実体は Logic §1 の estimates テーブル
+// 価格試算（SA01）— 実体は Logic §1 の estimates テーブル
 // ===========================
 //
-// 工具種（丸棒/円筒/OH付）別の見積試算。原価チェーン（材料原価+段加工+首下+加工
+// 工具種（丸棒/円筒/OH付）別の価格試算。原価チェーン（材料原価+段加工+首下+加工
 // 単価+コート+ラップ+LD+検査）→ 補正値を適用して見積単価を算出。
 // 材料は「材種 × 直径 × 黒皮/研磨」で指定する（特定 materials 行には紐付けない）。
 // 材料原価の参照価格は、当該構成に一致する全素材の仕入実績
@@ -1517,7 +1537,7 @@ Table design_files {
 //
 // テーブルは §1 の `estimates`（EST-YYYYMM-NNNNN）に統合済み — 独立した
 // trial_estimates / trial_estimate_lots は存在しない（ロットは input/result
-// JSON 内に保持）。任意の product_id で製品にリンクし（1製品に複数試算可）、
+// JSON 内に保持）。任意の product_id で製品にリンクし（1製品に複数価格試算可）、
 // 確定後は価格表（顧客×製品）作成時の基準単価ソースとして選択できる。
 
 // 工具種は管理者定義（system_settings trial_pricing.tool_types — SY02 工具種管理
@@ -1527,9 +1547,9 @@ Table design_files {
 
 // 汎用アプリ設定ストア（1テーブルで任意のコード設定を保持）。key は名前空間
 // 付き `<namespace>.<field>`。アクセスは lib/app-config.ts（generic）+ アプリ別
-// 型付きアダプタ（例: lib/system-settings.ts = 試算）。システム設定アプリ
+// 型付きアダプタ（例: lib/system-settings.ts = 価格試算）。システム設定アプリ
 // （SY01, /settings → アプリ設定）から編集する。
-// 試算キー: trial_pricing.material_price_basis / .lookback_months /
+// 価格試算キー: trial_pricing.material_price_basis / .lookback_months /
 //   .machining_rate_per_10min / .spare_shape_count / .correction_factor /
 //   .ld_charge_per_10min / .custom_script_enabled(bool) /
 //   .custom_script(string = 管理者が書く JS。calcTrialPricing の後処理フック。
@@ -1639,7 +1659,7 @@ Table bp_customer_attrs {
 
 // ─── 営業担当（CKK 側の担当者）───────────────────
 // CUSTOMER ロール固有。1 顧客に複数登録でき、書類（見積書・注文請書・
-// 出荷書・納品書・請求書・価格表・試算）の営業担当はこの一覧から選ぶ。
+// 出荷書・納品書・請求書・価格表・価格試算）の営業担当はこの一覧から選ぶ。
 // is_primary の 1 名が新規書類の既定値（部分 unique index で顧客あたり 1 名）。
 // 顧客側の担当者（bp_contacts）とは別物 — こちらは自社の営業。
 Table bp_sales_reps {
@@ -1760,7 +1780,7 @@ Table files {
 // ===========================
 
 // 採番フォーマット:
-//   EST-YYYYMM-NNNNN（試算）
+//   EST-YYYYMM-NNNNN（価格試算）
 //   QOT-YYYYMM-NNNNN（見積書）
 //   ORD-YYYYMM-NNNNN（注文受取書）
 //   ORD-YYYYMM-NNNNN-NN（注文明細）

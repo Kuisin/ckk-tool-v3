@@ -18,6 +18,7 @@ import {
   IconTrash,
 } from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
+import { useLocale } from "next-intl";
 import { useState, useTransition } from "react";
 import {
   deletePlants,
@@ -33,7 +34,8 @@ import { NewButton } from "@/components/ui/NewButton";
 import { ListShell } from "@/components/ui/shells";
 import { useUrlSelectState, useUrlStringState } from "@/hooks/useUrlState";
 import { useIsMobile } from "@/hooks/useViewport";
-import { COUNTRY_LABEL } from "@/lib/enum-labels";
+import { countryLabel } from "@/lib/enum-labels";
+import type { Locale } from "@/lib/i18n";
 import {
   DeletePlantModal,
   type PlantModalTarget,
@@ -54,9 +56,9 @@ export interface PlantRow {
   updatedAt: string;
 }
 
-function countryLabel(code: string | null): string {
+function plantCountryLabel(code: string | null, locale: Locale): string {
   if (!code) return "—";
-  return COUNTRY_LABEL[code] ?? code;
+  return countryLabel(code, locale);
 }
 
 const STATUS_OPTIONS = [
@@ -68,6 +70,7 @@ export function PlantTable({ rows }: { rows: PlantRow[] }) {
   const fmt = useFormat();
   const router = useRouter();
   const isMobile = useIsMobile();
+  const locale = useLocale();
   const [, startTransition] = useTransition();
 
   // 検索・フィルタは URL search params に保持（design.md §8.1 / ページ共有）
@@ -162,8 +165,8 @@ export function PlantTable({ rows }: { rows: PlantRow[] }) {
       sortable: true,
       hideable: true,
       width: 110,
-      sortValue: (r) => countryLabel(r.countryCode),
-      render: (r) => countryLabel(r.countryCode),
+      sortValue: (r) => plantCountryLabel(r.countryCode, locale),
+      render: (r) => plantCountryLabel(r.countryCode, locale),
     },
     {
       key: "region",
@@ -264,7 +267,7 @@ export function PlantTable({ rows }: { rows: PlantRow[] }) {
                 </Text>
                 <Group gap="md" mt={2}>
                   <Text c="dimmed" size="xs">
-                    {countryLabel(r.countryCode)}
+                    {plantCountryLabel(r.countryCode, locale)}
                   </Text>
                   <Text c="dimmed" size="xs">
                     {fmt.date(r.updatedAt)}

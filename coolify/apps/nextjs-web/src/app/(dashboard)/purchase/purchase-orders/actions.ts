@@ -181,7 +181,7 @@ export async function updatePurchaseOrder(
     });
     if (!prior) return actionError("対象の素材発注書が見つかりません");
     if (prior.status !== "DRAFT") {
-      return actionError("作成中の素材発注書のみ編集できます");
+      return actionError("下書きの素材発注書のみ編集できます");
     }
     const actor = await getCurrentActorId();
     const creates = buildItemCreates(v.items);
@@ -245,7 +245,7 @@ export async function requestPurchaseApproval(
     });
     if (!prior) return actionError("対象の素材発注書が見つかりません");
     if (prior.status !== "DRAFT") {
-      return actionError("作成中の素材発注書のみ承認依頼できます");
+      return actionError("下書きの素材発注書のみ承認依頼できます");
     }
     const actor = await getCurrentActorId();
     // フローが無いと依頼を出しても誰も承認できないので、状態を変える前に確かめる

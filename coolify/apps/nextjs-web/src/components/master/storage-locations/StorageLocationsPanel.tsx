@@ -47,7 +47,8 @@ import {
 import { EmptyState } from "@/components/ui/EmptyState";
 import { HelpLabel } from "@/components/ui/HelpLabel";
 import { openConfirm } from "@/components/ui/modals";
-import { fieldHelp } from "@/lib/field-help";
+import { LocalizedTextInput } from "@/components/ui/shells";
+import { fieldHelp, fieldHelpTip } from "@/lib/field-help";
 import { type FloorMapOption, LocationModal } from "./LocationModal";
 import { StorageLocationMapPanel } from "./StorageLocationMapPanel";
 
@@ -56,6 +57,7 @@ export interface StorageShelfRow {
   code: string;
   nameJa: string;
   nameEn: string;
+  nameTranslations: Record<string, string>;
   sortOrder: number;
   isActive: boolean;
 }
@@ -65,6 +67,7 @@ export interface StorageLocationRow {
   code: string;
   nameJa: string;
   nameEn: string;
+  nameTranslations: Record<string, string>;
   sortOrder: number;
   isActive: boolean;
   notes: string;
@@ -333,7 +336,7 @@ function ShelfModal({
     initialValues: {
       code: shelf?.code ?? "",
       nameJa: shelf?.nameJa ?? "",
-      nameEn: shelf?.nameEn ?? "",
+      nameTranslations: shelf?.nameTranslations ?? {},
       sortOrder: shelf?.sortOrder ?? 0,
       isActive: shelf?.isActive ?? true,
     },
@@ -370,25 +373,11 @@ function ShelfModal({
             withAsterisk
             {...form.getInputProps("code")}
           />
-          <TextInput
-            label={
-              <HelpLabel
-                {...fieldHelp("storageLocation", "code", {
-                  label: "名称（日本語・任意）",
-                })}
-              />
-            }
-            {...form.getInputProps("nameJa")}
-          />
-          <TextInput
-            label={
-              <HelpLabel
-                {...fieldHelp("storageLocation", "code", {
-                  label: "名称（英語）",
-                })}
-              />
-            }
-            {...form.getInputProps("nameEn")}
+          <LocalizedTextInput
+            help={fieldHelpTip("storageLocation", "code")}
+            jaProps={form.getInputProps("nameJa")}
+            label="名称（任意）"
+            translationsProps={form.getInputProps("nameTranslations")}
           />
           <NumberInput
             label={<HelpLabel {...fieldHelp("storageLocation", "sortOrder")} />}

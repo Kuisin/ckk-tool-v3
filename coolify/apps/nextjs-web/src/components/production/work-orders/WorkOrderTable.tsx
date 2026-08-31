@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * WorkOrderTable — 指示書 一覧 (PD02) / 承認待ち一覧 (PD03) (design.md §8.1/§14).
+ * WorkOrderTable — 指示書 一覧 (PD02) / 承認依頼中一覧 (PD03) (design.md §8.1/§14).
  *
  * variant="workOrders": 指示書番号 / 注文明細番号 / 製品 / 種別 / 予定数量 /
  *   承認状態（NONE は非表示）/ 状態 / 更新日。行クリック → 指示書詳細。
@@ -16,6 +16,7 @@ import {
   IconShieldCheck,
 } from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
+import { useLocale } from "next-intl";
 import { useFormat } from "@/components/layout/PreferencesProvider";
 import { type Column, DataTable } from "@/components/ui/DataTable";
 import { NewButton } from "@/components/ui/NewButton";
@@ -23,23 +24,21 @@ import { StatusBadge, statusOptions } from "@/components/ui/StatusBadge";
 import { ListShell } from "@/components/ui/shells";
 import { useUrlSelectState, useUrlStringState } from "@/hooks/useUrlState";
 import { useIsMobile } from "@/hooks/useViewport";
-import {
-  WORK_ORDER_TYPE_LABEL,
-  WORK_ORDER_TYPE_OPTIONS,
-} from "@/lib/enum-labels";
+import { workOrderTypeLabel, workOrderTypeOptions } from "@/lib/enum-labels";
 import type { WorkOrderRow } from "./model";
 
 const WORK_ORDERS_PATH = "/production/work-orders";
 const APPROVALS_PATH = "/production/approvals";
 
 function TypeBadge({ type }: { type: string }) {
+  const locale = useLocale();
   return (
     <Badge
       color={type === "MANUFACTURE" ? "violet" : "teal"}
       size="sm"
       variant="light"
     >
-      {WORK_ORDER_TYPE_LABEL[type] ?? type}
+      {workOrderTypeLabel(type, locale) ?? type}
     </Badge>
   );
 }
@@ -51,6 +50,7 @@ export function WorkOrderTable({
   rows: WorkOrderRow[];
   variant?: "workOrders" | "approvals";
 }) {
+  const locale = useLocale();
   const fmt = useFormat();
   const router = useRouter();
   const isMobile = useIsMobile();
@@ -196,7 +196,7 @@ export function WorkOrderTable({
         <>
           <Select
             clearable
-            data={WORK_ORDER_TYPE_OPTIONS}
+            data={workOrderTypeOptions(locale)}
             flex={isMobile ? 1 : undefined}
             onChange={setType}
             placeholder="種別"
@@ -252,7 +252,7 @@ export function WorkOrderTable({
           )
         }
         emptyMessage={
-          isApprovals ? "承認待ちの指示書はありません" : "指示書がありません"
+          isApprovals ? "承認依頼中の指示書はありません" : "指示書がありません"
         }
         getRowId={(r) => String(r.workOrderNumber)}
         onRowClick={(r) => router.push(`${basePath}/${r.docNumber}`)}

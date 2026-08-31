@@ -133,7 +133,7 @@ export async function createX(input: XInput): Promise<ActionResult<{ id: number 
   const parsed = xSchema.safeParse(input);                    // zod validate
   if (!parsed.success) return actionError(parsed.error.issues[0]?.message ?? "入力が不正です");
   try {
-    const row = await prisma.x.create({ data: { name: localizedInput(v.nameJa, v.nameEn), ... } });
+    const row = await prisma.x.create({ data: { name: localizedInput(v.nameJa, undefined, v.nameTranslations), ... } });
     await recordAudit({ action: "CREATE", tableName: "x", recordId: String(row.id), after: {...} });
     revalidatePath(BASE_PATH);
     return actionOk({ id: row.id });
@@ -142,9 +142,34 @@ export async function createX(input: XInput): Promise<ActionResult<{ id: number 
 ```
 
 Rules: `checkPermission` first · zod-validate · `localizedInput`/`localizedInputOrNull`
-for `{ ja, en }` JSON columns · `recordAudit` before/after · `revalidatePath` ·
+for `{ ja, en, ... }` JSON columns · `recordAudit` before/after · `revalidatePath` ·
 map DB errors with `prismaErrorMessage`. The client branches on `result.ok` and
 shows `@mantine/notifications`.
+
+**Multilingual name/address fields** (glossary §2.10, built 2026-08-30) — the form
+field is `xJa` (required, always visible) + `xTranslations: Record<string, string>`
+(every other locale, edited in one popup) instead of one input per language.
+`<LocalizedTextInput jaProps={form.getInputProps("nameJa")} translationsProps={form.getInputProps("nameTranslations")} .../>`
+(`components/ui/shells.tsx`) renders the ja field plus a "多言語" button that opens
+a modal listing `LOCALES.filter(l => l !== "ja")` — adding a locale to `LOCALES`
+is the only change needed to add a field everywhere this component is used. On
+submit, `localizedInput(v.xJa, undefined, v.xTranslations)` builds the `{ ja, en,
+... }` JSON (still always populates `en`, falling back to `ja`, for the ~440
+existing read call sites that assume it). On load, `localizedTranslations(value)`
+extracts the popup's initial state, dropping `en` when it's just the auto-fill
+duplicate of `ja` (so a record nobody translated doesn't look pre-translated).
+Migrated: products / materials / material types / process steps / inspection
+templates / defect types / approval groups / plants / business partners /
+work locations / storage locations / approval-flow step names (both MS0B's
+default flow + conditional rules, and CM02 forms' per-form flow) / regions /
+kiosk device names (SY09) — the last four didn't use `@mantine/form`, so
+`LocalizedTextInput`'s `jaProps`/`translationsProps` take raw `{value,
+onChange}` there instead of `form.getInputProps(...)`; placed inside a
+horizontal `Group` (desktop row layouts), it needs a `<Box flex={1} miw={0}>`
+wrapper or it won't grow into the available width (Group children default to
+their content width). Not yet migrated: `work_location.types` (a
+`system_settings`-JSON list, not a DB `Json` column, so it can't use
+`localizedInput`/`translationsProps` the same way).
 
 ## 印刷する QR（統一フォーマット）
 
@@ -175,7 +200,7 @@ inside the Server Action / route handler, not only in the UI.
 - **Generic settings store**: everything configurable persists to the ONE table
   `app.system_settings` (key→JSON) via `lib/app-config.ts`
   (`readConfigNamespace`/`writeConfigValues`) — **no schema change per setting**.
-  Each app has a typed adapter: `lib/system-settings.ts` (試算/SY02),
+  Each app has a typed adapter: `lib/system-settings.ts` (価格試算/SY02),
   `lib/product-settings.ts` (製品項目/種別 SY03/SY04). Namespaces are
   `"<ns>.<field>"`.
 - **App on/off**: `feature_flags` table via `lib/app-flags.ts`. On `main`, an app
@@ -232,14 +257,43 @@ heading text and break easily. `lib/field-help.test.ts` reads the real markdown 
 fails if any registered anchor is missing in ja/en/zh, which is what keeps these
 links from rotting (`docs:lint` is not in CI).
 
-## i18n & 表示設定（言語 / 日付 / 時刻 / タイムゾーン）
+## i18n & 表示設定（言語 / 日付 / 時刻 / タイムゾーン / 文字の大きさ）
+
+**訳す前に `_specs/i18n-glossary.md` を読む — 例外なし。** 翻訳ルール（§2: キーの
+付け方 / 変数と複数形 / 言語別の書き方 / 確認項目）と、全用語の ja/en/zh 対訳表
+（§3）はあの 1 本が正。表にある語を別の言い方で訳し直さない。必要な語が無ければ
+**まず表に足してから**使い、判断が要るものは §5「未決」に上げて、決まるまで使わない
+（決着済みの呼び方は §4）。共有端末アプリ（`nextjs-kiosk/src/lib/i18n/messages/`）と
+重なる語（状態・工程・数量）は両アプリで同じ訳にする — 食い違いは表に寄せる。
+**DB に入る文字列（マスタ名称・取引先名・ロール名）は対象外** — 訳すのは
+ハードコードされた UI 文言だけ。
 
 Per-user display settings live on **`app.users`** — `locale` (shared with the
 kiosk, which writes the same column) plus `date_format` / `time_format` /
-`time_zone`. Edited at `/profile/preferences`; read via
-`lib/user-preferences.ts` (`getCurrentPreferences()`, `cache()`d per request).
-Timestamps stay **UTC in the DB** — `time_zone` only changes how they are read
-back for display.
+`time_zone` / `text_scale` / `bold_text` (the last two are web-only). Edited at
+`/profile/preferences`; read via `lib/user-preferences.ts`
+(`getCurrentPreferences()`, `cache()`d per request). Timestamps stay **UTC in
+the DB** — `time_zone` only changes how they are read back for display.
+
+**文字の大きさ・太さ（iOS の「テキストサイズ」相当）.** `text_scale` は 5 段で
+真ん中（`md`）が従来の大きさ。DB が持つのは**段の名前だけ**で、倍率は
+`lib/user-preferences-core.ts` の `TEXT_SCALE_FACTORS` が決める（刻みを直しても
+保存済みの行を書き換えずに済む）。当て方は 1 通りしかない: サーバーが
+`displayRootCss()` を `<style>` で `:root` へ流し込み（`DisplayPreferencesStyle`、
+`(dashboard)/layout.tsx` が 1 枚だけ描く）、`globals.css` §2 がその変数を
+**html の `font-size`** と **body の `font-weight`** に落とす。クライアントで
+当てないのは、最初の描画が既定の大きさになって画面が跳ねるため。設定画面だけは
+同じ変数を html の inline style に載せて「保存前の見た目」を出す。
+
+- 大きさは rem 基準ごと動かすので、文字だけでなく余白・部品の高さも一緒に伸びる
+  （文字だけ大きくすると高さ固定の部品からはみ出す）。
+- **折り返し幅は変わらない** — メディアクエリの `em` / `rem` はブラウザ既定の
+  文字サイズで評価され、この設定を見ない。逆に**コンテナクエリの `rem` は
+  ルートの文字サイズで評価される**ので、「文字が大きくて入らない」を CSS で
+  表現したいときはコンテナクエリを使う。
+- 太字は Mantine の太さ変数ごと 1 段上げる（400→500 / 600→700）。`fw={500}` の
+  ようなインライン指定に CSS は勝てないので、本文を 600 まで上げると強調のほうが
+  細く見える。理由は `BOLD_TEXT_WEIGHTS` のコメント。
 
 **UI strings — `next-intl`, without i18n routing.** The language comes from the
 user's DB setting, not the URL. `src/i18n/request.ts` (`getRequestConfig`) reads
@@ -256,14 +310,33 @@ move it to the root layout, or the public `/manual` pages lose static rendering
 that's fine — they render Japanese regardless of the setting. Move strings into
 `messages/*.json` as you touch a screen; keep `messages/*.json` key-identical
 across the three languages (`lib/user-preferences-core.test.ts` enforces it).
+`lib/enum-labels.ts` (~30 ja-only `Record<string,string>` maps feeding `Select`
+`data`/badge text — tax type, unit, process category, order type, …) is the same
+kind of not-yet-migrated hard-coded Japanese, just concentrated in one file
+instead of JSX — it is imported by ~120 call sites across the app, so migrating
+it is a dedicated project (new `next-intl` namespace(s) + a translated-lookup
+hook + a pass over every call site), not a drive-by fix.
 
 **Dates/times are NOT next-intl's job here.** The user picks an explicit order
 (`YYYY/MM/DD` … `MM/DD/YYYY`) which no `Intl` option expresses, so `lib/format.ts`
 owns it: `createFormatters(prefs)` → `useFormat()` (client) /
 `getServerFormatters()` (server); plain helpers take `Formatters` as an argument.
 Never keep "current user" in module state — on the server that leaks across
-requests. **PDFs and mail use `documentFormatters`** (JST + Japanese, fixed): a
-finished document must not change with whoever opens it.
+requests. **PDFs and mail use `documentFormatters`** (JST, fixed): a finished
+document must not change with whoever opens it. **The document's *language* is the
+recipient's**, not the viewer's — 見積書 / 納品書 / 請求書 render in the partner's
+configured language and fall back to the default (ja) when unset (glossary §2.7,
+decided 2026-08-30, built 2026-08-30). `BusinessPartner.documentLocale` (nullable —
+edited via `BpBaseFields`'s "書類の言語" select, shared by the company row and every
+branch row) is resolved **branch first, then the parent company** in each
+`app/(dashboard)/**/data.ts` mapper (`recipientDocumentLocale` on `Quote` /
+`DeliveryNote` / `Invoice`) and normalized with `lib/i18n.ts` `normalizeLocale()` in
+the `api/pdf/*` route handlers. The templates' static labels (headers, column
+titles, the fixed strip sentence) live in `lib/pdf-labels.ts` — **not** next-intl,
+since Gotenberg renders plain HTML server-side with no request-scoped React tree
+for `useTranslations`; the small closed enums used only inside these three
+templates (注文種別/配送方法/消費税表示) have their own tiny translation maps there
+too, deliberately not routed through the (still ja-only) `lib/enum-labels.ts`.
 
 `lib/i18n/index.ts` keeps only locale identity (`LOCALES`, `normalizeLocale`,
 `INTL_LOCALES`) — no messages; those belong to next-intl. The kiosk app keeps its
@@ -298,9 +371,11 @@ are owned by `shared-db` (see root CLAUDE.md).
   above the largest per-handler limit (attachments / intake = 20MB) for that
   reason; raise it before raising any `MAX_*_BYTES`, and keep rejecting
   oversized files in the handler itself.
-- i18n: DB `{ ja, en }` fields always carry both (`localizedInput`); UI strings are
-  Japanese-first. Terminology + status-color map are fixed — see `design.md` /
-  `_specs/design.md §9, §17`.
+- i18n: DB multilingual JSON always carries `ja` + `en` (`localizedInput` backfills
+  `en` from `ja` when untranslated) plus whatever other locale keys were filled in
+  the "多言語" popup (see the i18n section above); UI strings are Japanese-first.
+  Terminology + status-color map are fixed — see `design.md` / `_specs/design.md
+  §9, §17`.
 - **Testing**: pure logic lives in isomorphic `lib/*` with vitest. The pricing
   engine keeps a **parity test** (`calcTrialPricing` == `calcTrialPricingLegacy`) —
   keep it green when touching `lib/trial-pricing*`.

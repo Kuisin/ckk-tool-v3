@@ -35,7 +35,7 @@ const BASE_PATH = "/master/materials";
 // 編集可能フィールド（識別＝コード構成は作成後不変）
 const materialUpdateInput = z.object({
   nameJa: z.string().min(1, "名称（日本語）を入力してください"),
-  nameEn: z.string().optional(),
+  nameTranslations: z.record(z.string(), z.string()).optional(),
   unit: z.string().min(1, "単位を選択してください"),
   manufacturerModel: z.string().optional(),
   nominalDiameterMm: z.number().min(0).nullable(),
@@ -185,7 +185,7 @@ export async function createMaterial(
           lengthMm: Math.round(v.lengthMm),
           manufacturerModel: v.manufacturerModel?.trim() || null,
           nominalDiameterMm: v.nominalDiameterMm,
-          name: localizedInput(v.nameJa, v.nameEn),
+          name: localizedInput(v.nameJa, undefined, v.nameTranslations),
           unit: v.unit,
           matchNames: normalizeKeywords(v.matchNames),
           isActive: v.isActive,
@@ -253,7 +253,7 @@ export async function updateMaterial(
     await prisma.material.update({
       where: { id },
       data: {
-        name: localizedInput(v.nameJa, v.nameEn),
+        name: localizedInput(v.nameJa, undefined, v.nameTranslations),
         unit: v.unit,
         manufacturerModel: v.manufacturerModel?.trim() || null,
         nominalDiameterMm: v.nominalDiameterMm,

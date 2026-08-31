@@ -26,7 +26,7 @@ You can also check the login rules for the tablets here (for example, how many h
 
 ## How to open it
 
-On the home screen, under 「システム」 (System), press **キオスク設定** (Kiosk Settings). Or type `SY0A` into the search box at the top of the screen.
+On the home screen, under 「システム」 (System), press **共有端末設定** (Shared Device Settings). Or type `SY0A` into the search box at the top of the screen.
 
 ## How to read the screen
 
@@ -45,7 +45,7 @@ The screen is split into an upper and a lower half.
 
 ![Apps shown on the launcher](../../../assets/screenshots/kiosk-settings-apps-01.png)
 
-You are done when 「**保存しました**」 (Saved) and 「**キオスクのアプリ表示設定を更新しました**」 (The kiosk app display settings have been updated) appear.
+You are done when 「**保存しました**」 (Saved) and 「**共有端末のアプリ表示設定を更新しました**」 (The shared device app display settings have been updated) appear.
 
 > ⚠️ If you turn a switch off, **the app also disappears for people who have permission to use it.** You cannot use this to show an app to only some people.
 
@@ -115,12 +115,12 @@ A. No. Adding more apps to the tablets requires work by the development team. Pl
 <!-- permissions:start -->
 ## Permissions required
 
-Using this screen requires the **Kiosk admin** (`kiosk`) permission.
+Using this screen requires the **Shared device admin** (`kiosk`) permission.
 
 | What you want to do | Permission needed |
 | --- | --- |
-| Open the screen, view lists and details | Kiosk admin — View |
-| Add, change or delete | Kiosk admin — Create / Edit / Delete |
+| Open the screen, view lists and details | Shared device admin — View |
+| Add, change or delete | Shared device admin — Create / Edit / Delete |
 
 Viewing only needs *View*. Where a screen offers adding, changing or deleting, each of those needs its matching permission.
 

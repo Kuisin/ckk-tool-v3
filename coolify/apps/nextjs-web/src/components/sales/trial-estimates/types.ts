@@ -1,5 +1,5 @@
 /**
- * types.ts — 試算 (見積試算) view-model shared by the SA01 screens.
+ * types.ts — 価格試算 (価格試算) view-model shared by the SA01 screens.
  *
  * Rows come from sales.estimates via Prisma (combined key year_month+seq);
  * `id` is the DERIVED document number (EST-YYYYMM-NNNNN) and doubles as the
@@ -16,8 +16,8 @@ export type TrialPriceSnapshot = TrialResult & {
 };
 
 /**
- * 試算 lifecycle — DRAFT: 編集可 / CONFIRMED: 計算確定・価格表登録可 /
- * REGISTERED: 価格表登録済（ロック — 複製して再試算）.
+ * 価格試算 lifecycle — DRAFT: 編集可 / CONFIRMED: 計算確定・価格表登録可 /
+ * REGISTERED: 価格表登録済（ロック — 複製して再価格試算）.
  */
 export type EstimateStatus = "DRAFT" | "CONFIRMED" | "REGISTERED";
 
@@ -41,7 +41,7 @@ export interface TrialEstimateRecord {
   input: TrialInput;
   /**
    * 保存/確定時に記録した価格（estimate.result）。存在すればこの値を表示し、
-   * 計算基準を後から変更しても過去の試算の価格は不変（「その時点の価格」）。
+   * 計算基準を後から変更しても過去の価格試算の価格は不変（「その時点の価格」）。
    */
   resultSnapshot: TrialPriceSnapshot | null;
   /** Date of the purchase point used as the reference price. */
@@ -59,7 +59,7 @@ export interface TrialEstimateRecord {
   updatedAt: string;
 }
 
-/** 価格表バリアント linked to a 試算 (関連 tab). */
+/** 価格表バリアント linked to a 価格試算 (関連 tab). */
 export interface LinkedPriceEntry {
   entryId: string;
   customerName: string;

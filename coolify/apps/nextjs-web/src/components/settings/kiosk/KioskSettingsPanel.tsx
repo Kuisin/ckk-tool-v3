@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * KioskSettingsPanel — キオスク設定（SY0A）のクライアント本体。
+ * KioskSettingsPanel — 共有端末設定（SY0A）のクライアント本体。
  *
  * v1: キオスクランチャーに載せるアプリの表示 on/off（`kiosk.apps`）を Switch で
  * 編集し、まとめて保存する。加えて現在の認証ポリシー（セッション/PIN/端末
@@ -48,7 +48,7 @@ export function KioskSettingsPanel({
       if (result.ok) {
         notifications.show({
           title: "保存しました",
-          message: "キオスクのアプリ表示設定を更新しました",
+          message: "共有端末のアプリ表示設定を更新しました",
           color: "green",
         });
       } else {

@@ -158,7 +158,7 @@ screenshots: [order-acceptance-list-01, order-acceptance-new-01, order-acceptanc
 1. 確定済みの注文請書で、右上の「…」メニューから「**キャンセル依頼**」を押します。
 2. **キャンセル理由**（必須）を入れて「**キャンセルを依頼する**」を押します。
 
-[承認設定](/manual/ja/operations/masters/approval-setting/user)の「**注文請書キャンセル**」フローに段があるときは、承認が終わるまで**何も変わりません**。画面の上に「注文請書キャンセルの承認待ち」のカードが出て、承認できる人にはそこに「**承認**」「**差し戻し**」のボタンが出ます（[承認管理](/manual/ja/operations/production/approval/user)の一覧からも操作できます）。段が 1 つも無いときは、その場でキャンセルされます。
+[承認設定](/manual/ja/operations/masters/approval-setting/user)の「**注文請書キャンセル**」フローに段があるときは、承認が終わるまで**何も変わりません**。画面の上に「注文請書キャンセルの承認依頼中」のカードが出て、承認できる人にはそこに「**承認**」「**差し戻し**」のボタンが出ます（[承認管理](/manual/ja/operations/production/approval/user)の一覧からも操作できます）。段が 1 つも無いときは、その場でキャンセルされます。
 
 最終承認されると、次のことが自動で行われます。
 

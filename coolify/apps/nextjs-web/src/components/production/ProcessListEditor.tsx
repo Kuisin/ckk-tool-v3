@@ -38,13 +38,15 @@ import {
   IconInfoCircle,
   IconWand,
 } from "@tabler/icons-react";
+import { useLocale } from "next-intl";
 import { useMemo, useState } from "react";
 import { EditButton, SecondaryButton } from "@/components/ui/buttons";
 import { FormSection } from "@/components/ui/shells";
 import { useIsMobile } from "@/hooks/useViewport";
 import {
-  LOT_INPUT_MODE_LABEL,
-  PROCESS_CATEGORY_LABEL,
+  lotInputModeLabel,
+  PROCESS_CATEGORY_KEYS,
+  processCategoryLabel,
 } from "@/lib/enum-labels";
 import type { RouteStepSnapshot } from "@/lib/product-routes-core";
 import type { CatalogStep, LotInputMode, UseDep } from "@/lib/workflow-core";
@@ -58,7 +60,6 @@ import {
   validateComposition,
 } from "@/lib/workflow-core";
 import { describeIssue } from "./work-orders/model";
-
 export interface Option {
   value: string;
   label: string;
@@ -143,6 +144,7 @@ export function ProcessListView({
   /** 「工程を編集」— エディタ表示へ切り替える。 */
   onEdit: () => void;
 }) {
+  const locale = useLocale();
   const isMobile = useIsMobile();
   const stepById = useMemo(
     () => new Map(catalogSteps.map((s) => [s.id, s])),
@@ -205,7 +207,8 @@ export function ProcessListView({
                       {cat.nameJa}
                     </Text>
                     <Text c="dimmed" size="xs">
-                      {PROCESS_CATEGORY_LABEL[cat.category] ?? cat.category}
+                      {processCategoryLabel(cat.category, locale) ??
+                        cat.category}
                     </Text>
                   </Group>
                   <Group gap="sm" wrap="nowrap">
@@ -257,6 +260,7 @@ export function ProcessListEditor({
   /** フォーム側の selectedStepIds エラー表示。 */
   error?: string | null;
 }) {
+  const locale = useLocale();
   const isMobile = useIsMobile();
   const stepById = useMemo(
     () => new Map(catalogSteps.map((s) => [s.id, s])),
@@ -325,7 +329,7 @@ export function ProcessListEditor({
   const middleSteps = catalogSteps.filter(
     (s) => !isStartStep(s) && !isShipStep(s),
   );
-  const categories = Object.keys(PROCESS_CATEGORY_LABEL).filter((cat) =>
+  const categories = PROCESS_CATEGORY_KEYS.filter((cat) =>
     middleSteps.some((s) => s.category === cat),
   );
 
@@ -494,7 +498,7 @@ export function ProcessListEditor({
               {categories.map((cat) => (
                 <Stack gap="xs" key={cat}>
                   <Text c="dimmed" fw={600} size="xs">
-                    {PROCESS_CATEGORY_LABEL[cat]}
+                    {processCategoryLabel(cat, locale)}
                   </Text>
                   {middleSteps
                     .filter((s) => s.category === cat)
@@ -560,7 +564,8 @@ export function ProcessListEditor({
                         {cat.nameJa}
                       </Text>
                       <Text c="dimmed" size="xs">
-                        {PROCESS_CATEGORY_LABEL[cat.category] ?? cat.category}
+                        {processCategoryLabel(cat.category, locale) ??
+                          cat.category}
                       </Text>
                     </Group>
                     <Group gap="xs" wrap={isMobile ? "wrap" : "nowrap"}>
@@ -570,7 +575,7 @@ export function ProcessListEditor({
                         data={[
                           {
                             value: "INHERIT",
-                            label: `既定（${LOT_INPUT_MODE_LABEL[cat.lotInputMode ?? "NONE"]}）`,
+                            label: `既定（${lotInputModeLabel(cat.lotInputMode ?? "NONE", locale)}）`,
                           },
                           { value: "REQUIRED", label: "ロット必須" },
                           { value: "OPTIONAL", label: "ロット任意" },

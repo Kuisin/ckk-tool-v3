@@ -10,7 +10,7 @@
  */
 
 import { NextResponse } from "next/server";
-import { STATUS_MAPS } from "@/components/ui/StatusBadge";
+import { statusLabel } from "@/components/ui/StatusBadge";
 import { recordAudit } from "@/lib/audit";
 import { requirePermissionResponse, sessionUserId } from "@/lib/authz";
 import {
@@ -70,11 +70,7 @@ export async function GET(
     const head: XlsxCell[] = [
       cellNumber(r.recordNo),
       cellText(r.responseNumber),
-      cellText(
-        (STATUS_MAPS.FormResponse as Record<string, { label: string }>)[
-          r.status
-        ]?.label ?? r.status,
-      ),
+      cellText(statusLabel("FormResponse", r.status)),
       ...(showRespondent ? [cellText(r.respondent)] : []),
       cellDateTime(r.submittedAt),
     ];

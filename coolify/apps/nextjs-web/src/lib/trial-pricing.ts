@@ -1,7 +1,7 @@
 /**
- * trial-pricing.ts — 見積試算 calculation engine (pure).
+ * trial-pricing.ts — 価格試算 calculation engine (pure).
  *
- * Ports the cost chain from the master Excel「最新見積書試算」across its three
+ * Ports the cost chain from the master Excel「最新見積書価格試算」across its three
  * tool variants — ROUND_BAR (丸棒見積), CYLINDER (円筒見積), OH (OH付見積もり).
  * Per-piece cost is built from component costs, then per-lot pricing applies a
  * lot discount and the 2022 correction factor.
@@ -148,7 +148,7 @@ export interface TrialPricingOptions {
 }
 
 /**
- * 見積試算のエントリポイント。計算は設定された criteria（既定 = 従来ロジックを
+ * 価格試算のエントリポイント。計算は設定された criteria（既定 = 従来ロジックを
  * 再現する DEFAULT_CRITERIA）で行い、最後に管理者のカスタム計算 JS を後処理として
  * 適用する。従来の固定ロジックは `calcTrialPricingLegacy`（パリティテストの
  * 参照実装）として残す。シグネチャと `TrialResult` は不変。

@@ -1,5 +1,5 @@
 /**
- * trial-pricing-settings.ts — system pricing policy for 見積試算.
+ * trial-pricing-settings.ts — system pricing policy for 価格試算.
  *
  * Controls how the default material reference price is derived from purchase
  * history (basis + lookback window). Editable from the system settings page.
@@ -34,7 +34,7 @@ export interface TrialPricingSettings {
   toolTypes: ToolTypeDef[];
   /** 見積単価を構成する計算基準（順序付き。既定 = 従来ロジック）. */
   criteria: Criterion[];
-  /** 管理者が追加したカスタム入力項目（試算フォームに表示 + 式の変数）. */
+  /** 管理者が追加したカスタム入力項目（価格試算フォームに表示 + 式の変数）. */
   customInputs: CustomInputDef[];
   /** 管理者が定義したルックアップ表（式内で lookup("<name>", key)）. */
   lookupTables: LookupTable[];
@@ -58,7 +58,7 @@ export const DEFAULT_TRIAL_PRICING_SETTINGS: TrialPricingSettings = {
 };
 
 /**
- * 試算エンジン (`calcTrialPricing`) へ渡すオプションを設定から導出する。
+ * 価格試算エンジン (`calcTrialPricing`) へ渡すオプションを設定から導出する。
  * 全ての計算呼び出し（フォーム・一覧・詳細・価格表変換）で使い、係数と
  * カスタム計算が画面間で一致するようにする。
  */

@@ -22,13 +22,14 @@ import {
   IconArrowRight,
   IconShieldCheck,
 } from "@tabler/icons-react";
+import { useLocale } from "next-intl";
 import { EditButton } from "@/components/ui/buttons";
 import { useIsMobile } from "@/hooks/useViewport";
 import {
   APPROVAL_TARGET,
   type ApprovalTargetType,
 } from "@/lib/approval-targets";
-import { APPROVAL_MODE_LABEL } from "@/lib/enum-labels";
+import { approvalModeLabel } from "@/lib/enum-labels";
 import {
   ApproverPermissionBadge,
   type FlowApprover,
@@ -60,6 +61,7 @@ export interface FlowOverviewRow {
 }
 
 export function ApprovalFlowOverview({ rows }: { rows: FlowOverviewRow[] }) {
+  const locale = useLocale();
   const isMobile = useIsMobile();
   return (
     <Stack gap="sm">
@@ -142,7 +144,7 @@ export function ApprovalFlowOverview({ rows }: { rows: FlowOverviewRow[] }) {
                         </Text>
                         <Text c="dimmed" size="xs">
                           {s.groupLabel} ·{" "}
-                          {APPROVAL_MODE_LABEL[s.mode] ?? s.mode}
+                          {approvalModeLabel(s.mode, locale) ?? s.mode}
                         </Text>
                         <ApproverPermissionBadge approvers={s.approvers} />
                       </Group>

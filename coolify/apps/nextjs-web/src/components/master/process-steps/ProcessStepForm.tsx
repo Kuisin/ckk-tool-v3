@@ -24,6 +24,7 @@ import { useForm } from "@mantine/form";
 import { notifications } from "@mantine/notifications";
 import { IconMinus, IconPlus } from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
+import { useLocale } from "next-intl";
 import { useTransition } from "react";
 import { z } from "zod";
 import { searchProcessStepOptions } from "@/app/(dashboard)/_shared/option-search";
@@ -42,11 +43,11 @@ import {
 } from "@/components/ui/shells";
 import { useIsMobile } from "@/hooks/useViewport";
 import {
-  DEPENDENCY_RELATION_OPTIONS,
-  LOT_INPUT_MODE_OPTIONS,
-  PROCESS_CATEGORY_OPTIONS,
-  PROCESS_EXECUTION_OPTIONS,
-  QUANTITY_TRACKING_OPTIONS,
+  dependencyRelationOptions,
+  lotInputModeOptions,
+  processCategoryOptions,
+  processExecutionOptions,
+  quantityTrackingOptions,
 } from "@/lib/enum-labels";
 import { fieldHelp, fieldHelpTip } from "@/lib/field-help";
 import { zodResolver } from "@/lib/form";
@@ -92,7 +93,7 @@ const processStepSchema = z
   .object({
     code: z.string(),
     nameJa: z.string().min(1, "名称（日本語）を入力してください"),
-    nameEn: z.string(),
+    nameTranslations: z.record(z.string(), z.string()).default({}),
     category: z.string().min(1, "カテゴリを選択してください"),
     executionLocation: z.string().min(1, "実施場所を選択してください"),
     isSyncCapable: z.boolean(),
@@ -133,7 +134,7 @@ export interface ProcessStepFormInitial {
   id: number;
   code: string;
   nameJa: string;
-  nameEn: string;
+  nameTranslations: Record<string, string>;
   category: string;
   executionLocation: string;
   isSyncCapable: boolean;
@@ -188,6 +189,7 @@ export function ProcessStepForm({
   /** 作業場所の選択肢（有効のみ、「グループ / 場所」ラベル）。 */
   workLocationOptions: { value: string; label: string }[];
 }) {
+  const locale = useLocale();
   const router = useRouter();
   const isMobile = useIsMobile();
   const [isPending, startTransition] = useTransition();
@@ -198,7 +200,7 @@ export function ProcessStepForm({
     initialValues: {
       code: initial?.code ?? "",
       nameJa: initial?.nameJa ?? "",
-      nameEn: initial?.nameEn ?? "",
+      nameTranslations: initial?.nameTranslations ?? {},
       category: initial?.category ?? "",
       executionLocation: initial?.executionLocation ?? "",
       isSyncCapable: initial?.isSyncCapable ?? false,
@@ -261,7 +263,7 @@ export function ProcessStepForm({
       }));
     const payload = {
       nameJa: values.nameJa,
-      nameEn: values.nameEn,
+      nameTranslations: values.nameTranslations,
       category: values.category as
         | "MATERIAL_PREP"
         | "MACHINING"
@@ -351,7 +353,7 @@ export function ProcessStepForm({
               </Box>
               <Select
                 allowDeselect={false}
-                data={DEPENDENCY_RELATION_OPTIONS}
+                data={dependencyRelationOptions(locale)}
                 w={isMobile ? 150 : 160}
                 {...form.getInputProps(`${field}.${index}.relation`)}
               />
@@ -442,29 +444,29 @@ export function ProcessStepForm({
         </SimpleGrid>
         <Stack gap="sm" mt="sm">
           <LocalizedTextInput
-            enProps={form.getInputProps("nameEn")}
             help={fieldHelpTip("processStep", "code")}
             jaProps={form.getInputProps("nameJa")}
             label="名称"
             required
+            translationsProps={form.getInputProps("nameTranslations")}
           />
         </Stack>
         <SimpleGrid cols={isMobile ? 1 : 2} mt="sm" spacing="sm">
           <Select
-            data={PROCESS_CATEGORY_OPTIONS}
+            data={processCategoryOptions(locale)}
             label={<HelpLabel {...fieldHelp("processStep", "category")} />}
             withAsterisk
             {...form.getInputProps("category")}
           />
           <Select
-            data={PROCESS_EXECUTION_OPTIONS}
+            data={processExecutionOptions(locale)}
             label={<HelpLabel {...fieldHelp("processStep", "execution")} />}
             withAsterisk
             {...form.getInputProps("executionLocation")}
           />
           <Select
             allowDeselect={false}
-            data={QUANTITY_TRACKING_OPTIONS}
+            data={quantityTrackingOptions(locale)}
             description="工程実行時の数量入力。なし = 記録せず通過数をそのまま次工程へ"
             label={
               <HelpLabel {...fieldHelp("processStep", "quantityTracking")} />
@@ -473,7 +475,7 @@ export function ProcessStepForm({
           />
           <Select
             allowDeselect={false}
-            data={LOT_INPUT_MODE_OPTIONS}
+            data={lotInputModeOptions(locale)}
             description="工程開始時のロット/伝票コード入力。必須 = 未入力では開始不可（工程リスト・指示書で工程別に上書き可）"
             label="ロット入力（既定）"
             {...form.getInputProps("lotInputMode")}
@@ -573,7 +575,7 @@ export function ProcessStepForm({
       </FormSection>
 
       <FormSection
-        description="この工程の計画・実績で使える作業場所を制限します（種別と個別の和集合が許可されます）。両方空 = 制限なし。キオスクでも同じ制限が効きます。"
+        description="この工程の計画・実績で使える作業場所を制限します（種別と個別の和集合が許可されます）。両方空 = 制限なし。共有端末でも同じ制限が効きます。"
         title="許可作業場所"
       >
         <SimpleGrid cols={isMobile ? 1 : 2} spacing="sm">

@@ -8,7 +8,7 @@ This is the **未処理指示書** (pending work orders) app, where you check to
 
 - You can see, in one list, the confirmed order lines that do not yet have enough work orders arranged.
 - You can go straight to creating a new [work order](/manual/en/operations/production/work-order/user), with the missing quantity already filled in.
-- You can check the work orders that were made but are not finished yet (draft, waiting for approval, approved, in progress).
+- You can check the work orders that were made but are not finished yet (draft, pending approval, approved, in progress).
 - It is handy for deciding which orders to make work orders for today, in order of the nearest delivery date.
 
 ## Words used on this page
@@ -49,7 +49,7 @@ Work orders that are not completed or cancelled are listed. Click a row to open 
 
 - **指示書番号 / 注文明細番号** (work order number / order line number) … a work order not tied to an order shows a 「**在庫向け**」 (for stock) badge.
 - **種別** (type) … whether it is 「製造分」 (manufactured) or 「在庫分」 (from stock).
-- **予定数量 / 承認状態 / 状態** (planned quantity / approval status / status) … how many are planned, how far approval has gone, and which stage the work order is at (draft, waiting for approval, approved, in progress).
+- **予定数量 / 承認状態 / 状態** (planned quantity / approval status / status) … how many are planned, how far approval has gone, and which stage the work order is at (draft, pending approval, approved, in progress).
 
 Completed work orders do not appear on this screen. Check them in the [work order](/manual/en/operations/production/work-order/user) list (`PD02`).
 

@@ -854,7 +854,7 @@ export async function cancelWorkOrder(
     });
     if (!prior) return actionError("対象の指示書が見つかりません");
     if (prior.status !== "DRAFT" && prior.status !== "PENDING_APPROVAL") {
-      return actionError("下書き・承認待ちの指示書のみキャンセルできます");
+      return actionError("下書き・承認依頼中の指示書のみキャンセルできます");
     }
     const actor = await getCurrentActorId();
     const linkedLineIds = prior.orderLineLinks.map((l) => l.orderLineId);
@@ -877,7 +877,7 @@ export async function cancelWorkOrder(
             }),
           ]
         : []),
-      // 承認待ち中のキャンセル: 未処理の承認依頼行を取り下げる（記録なしの
+      // 承認依頼中のキャンセル: 未処理の承認依頼行を取り下げる（記録なしの
       // PENDING 行のみ — PD03 の横断一覧に残さない）。
       prisma.approvalRequest.deleteMany({
         where: {
@@ -1008,7 +1008,7 @@ export async function approveWorkOrder(
     });
     if (!prior) return actionError("対象の指示書が見つかりません");
     if (prior.approvalStatus !== "PENDING") {
-      return actionError("承認待ちの指示書ではありません");
+      return actionError("承認依頼中の指示書ではありません");
     }
     // 承認権限（本人 or 代理）を検証しつつ承認記録を書き、段を進める。
     const acted = await actOnCurrentStep({
@@ -1163,9 +1163,9 @@ export async function rejectWorkOrder(
     });
     if (!prior) return actionError("対象の指示書が見つかりません");
     if (prior.approvalStatus !== "PENDING") {
-      return actionError("承認待ちの指示書ではありません");
+      return actionError("承認依頼中の指示書ではありません");
     }
-    // 現在承認待ちの段に対して差し戻しを記録する。差し戻しは段数に依らず
+    // 現在承認依頼中の段に対して差し戻しを記録する。差し戻しは段数に依らず
     // 1 件でフローを止める。権限（本人 or 代理）の検証は actOnCurrentStep が行う。
     const acted = await actOnCurrentStep({
       targetType: "work_orders",
@@ -1368,7 +1368,7 @@ export async function approveFlowChange(
   });
   if (!change) return actionError("対象の変更が見つかりません");
   if (change.status !== "PENDING") {
-    return actionError("承認待ちの変更ではありません");
+    return actionError("承認依頼中の変更ではありません");
   }
   if (
     !(await workOrderInScope(
@@ -1393,7 +1393,7 @@ export async function approveFlowChange(
       return actionOk({ completed: false, applied: false });
     }
 
-    // 最終承認 — ここで初めて工程へ当てる（承認待ちの間に前提が変わって
+    // 最終承認 — ここで初めて工程へ当てる（承認依頼中の間に前提が変わって
     // いれば通常の検証で弾かれ、FAILED として残る）。
     const applied = await applyApprovedFlowChange(flowChangeId);
     revalidate(change.workOrder.workOrderNumber);
@@ -1452,7 +1452,7 @@ export async function rejectFlowChange(
   });
   if (!change) return actionError("対象の変更が見つかりません");
   if (change.status !== "PENDING") {
-    return actionError("承認待ちの変更ではありません");
+    return actionError("承認依頼中の変更ではありません");
   }
   if (
     !(await workOrderInScope(

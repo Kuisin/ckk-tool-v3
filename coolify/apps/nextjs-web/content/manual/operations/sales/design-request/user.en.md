@@ -1,7 +1,7 @@
 ---
 title: "Design Request — User Manual"
 description: "An app for asking the design department to make a drawing, and for keeping each version of the finished drawing file."
-screenshots: [design-request-list-01, design-request-new-01, design-request-detail-01, design-request-detail-02, design-request-files-01]
+screenshots: [design-request-list-01, design-request-new-01, design-request-detail-01, design-request-detail-02, design-request-detail-03, design-request-files-01]
 ---
 An app for asking the design department to make a drawing, and for **keeping each version** of the finished drawing file. The operation code is `SA06`.
 
@@ -146,7 +146,7 @@ While it is 未着手 (not started) or 進行中 (in progress),「**…**」lets
 
 ![Design request in progress, with the action menu open](../../../assets/screenshots/design-request-detail-02.png)
 
-## Attaching a drawing file
+## Attaching working files
 
 1. Open the「**ファイル**」(files) tab on the request screen.
 2. Press「**アップロード**」(upload) at the top right.
@@ -154,35 +154,40 @@ While it is 未着手 (not started) or 進行中 (in progress),「**…**」lets
 4. If you like, write a note in「**ラベル（任意）**」(label, optional).
 5. Press「**アップロード**」(upload).
 
-![Files tab with the list of versions](../../../assets/screenshots/design-request-files-01.png)
+![Files tab](../../../assets/screenshots/design-request-files-01.png)
 
-To remove an attachment, press the bin mark to the right of the file, then press「**削除する**」(delete).
+What goes here is **working files** — notes and drafts. The finished drawing is registered in [Drawing](/manual/en/operations/production/design-file/user) instead (see below).
 
 You can only attach files **between approval and completion** (未着手 and 進行中).
 
-### Viewing a drawing on screen
+## Registering the drawing and finishing
 
-Registered versions open in the app from「**表示**」(view) next to the file name. PDFs and images show as they are, and **3D models such as STL can be rotated** — drag to orbit, wheel to zoom.
+**The finished drawing is registered in [Drawing](/manual/en/operations/production/design-file/user) (PD06).** A design request is the *asking*; the drawing itself belongs to Drawing. Keeping one place to write is what keeps version numbering consistent across screens.
 
-STEP, IGES, DXF and DWG cannot be opened here; download them and use your own software.
+1. Press「**設計図に登録**」(register drawing) on the card at the top of the request. The form opens with **the product and customer fixed to this request**.
+2. Choose the drawing file (required, one), preview (optional, one) and reference materials (optional, any number), then press「**保存**」(save).
+3. You return to the request. 「**完了**」(done) is now available — press it to finish.
 
-## Finishing the request
+**A request cannot be completed with no deliverable.** Otherwise completing it would only advance a status, and the person who raised it could not see what was produced.
 
-1. Press「**…**」at the top right of the screen.
-2. Choose「**完了**」(done).
-3. The confirmation screen has a slot for **図面データ (blueprint)** (required, one file), **プレビュー用 (preview)** (optional, one file) and **参考資料 (reference material)** (optional, as many as you like). Put a file into each slot with「**ファイルを選択**」(choose a file).
-4. Each piece of reference material can carry its own short **description** ("part drawing", "dimension table" …), so the version list later tells you what each file is.
-5. Press「**完了**」(done). The upload starts at this point, not when you pick.
+![An in-progress request with no drawing yet; "register drawing" is outlined in red](../../../assets/screenshots/design-request-detail-03.png)
 
-**Every file you upload lands in exactly one role.** There is no way to leave a file unassigned.
+How versions are counted (one registration = one version; versions are per product and customer) is covered on the [Drawing](/manual/en/operations/production/design-file/user) page.
 
-**One completion = one version.** Every file you picked gets the same version number (v1, v2 …). An assembly drawing, a part drawing and a 3D model raised together no longer land on different version numbers, so "please use v3" is never ambiguous.
+The completion date is recorded, and the requester is notified — as is the sales rep on the quote, if it was raised at quoting time. On a request where you set a product, that product's newest drawing is switched to this version as well.
 
-**Versions are counted per product × customer.** The same product grows separate drawings for different customers, so customer A's v3 and customer B's v1 live side by side on one product. Which series a completion lands on is decided by the request's **受注元 (customer)**; leaving it empty makes the version *generic*, used by any customer that has no drawing of their own.
+If a correction is needed after it is done, press「**差し戻し**」(send back) from「**…**」, then press「**差し戻す**」(send back). The status returns to 進行中 (in progress) and the completion date is cleared. This kind of send-back is **redoing the work**, so the approval does not have to be taken again.
 
-**Preview and blueprint are picked separately** because they do different jobs. For the same shape, an STL is *for looking at* and a CAD file is *for making from* — neither substitutes for the other. The product master's newest drawing points at the **blueprint**, while on-screen thumbnails prefer the **preview** when one exists. The completion date is recorded too, and the requester is notified — as is the sales rep on the quote, if it was raised at quoting time. On a request where you set a product, that product's newest drawing is switched to this version as well.
+## Discussing in comments
 
-If a correction is needed after it is done, press「**差し戻し**」(send back) from「**…**」, then press「**差し戻す**」(send back). The status returns to 進行中 (in progress), and you can add files again. The completion date is cleared. This kind of send-back is **redoing the work**, so the approval does not have to be taken again.
+The **コメント** (comments) tab on a request holds the back-and-forth about it. Review of a drawing goes back and forth, so this is a **thread** of posts (newest first) rather than a single shared memo that gets overwritten.
+
+- Text can carry **bold, italic, bullet lists, headings and links**.
+- You can **edit or delete only your own** posts.
+- Posts you are done with can be **archived** — they fold away rather than disappear, and open again on click.
+- **Comments are internal.** They never appear on the printed document.
+
+Write what you want designed in the 依頼内容 (description) field. Comments are for the conversation that follows.
 
 ## Printing the document
 

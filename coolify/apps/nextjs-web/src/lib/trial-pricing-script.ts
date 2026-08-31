@@ -1,5 +1,5 @@
 /**
- * trial-pricing-script.ts — admin-authored custom calculation hook for 見積試算.
+ * trial-pricing-script.ts — admin-authored custom calculation hook for 価格試算.
  *
  * A holder of the `system` permission can supply a small JavaScript snippet
  * (system setting `trial_pricing.custom_script`) that post-processes the

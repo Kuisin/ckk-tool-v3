@@ -2,7 +2,7 @@
 
 /**
  * HubCard — 設定系ページで使う「アイコン + 説明 + ホバー」のリンクカード。
- * 例: 試算計算（SY02）のハブセクション。
+ * 例: 価格試算計算（SY02）のハブセクション。
  */
 
 import { Card, Group, Stack, Text, ThemeIcon } from "@mantine/core";

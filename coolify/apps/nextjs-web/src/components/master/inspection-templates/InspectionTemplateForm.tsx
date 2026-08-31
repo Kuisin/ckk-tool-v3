@@ -22,6 +22,7 @@ import {
 import { useForm } from "@mantine/form";
 import { notifications } from "@mantine/notifications";
 import { useRouter } from "next/navigation";
+import { useLocale } from "next-intl";
 import { useTransition } from "react";
 import { z } from "zod";
 import { searchProcessStepOptions } from "@/app/(dashboard)/_shared/option-search";
@@ -38,7 +39,7 @@ import {
   LocalizedTextInput,
 } from "@/components/ui/shells";
 import { useIsMobile } from "@/hooks/useViewport";
-import { INSPECTION_SAMPLING_MODE_OPTIONS } from "@/lib/enum-labels";
+import { inspectionSamplingModeOptions } from "@/lib/enum-labels";
 import { fieldHelp, fieldHelpTip } from "@/lib/field-help";
 import { zodResolver } from "@/lib/form";
 
@@ -54,7 +55,7 @@ const templateSchema = z
         "コードは英数字・ハイフン・アンダースコアで入力してください",
       ),
     nameJa: z.string().min(1, "名称（日本語）を入力してください"),
-    nameEn: z.string(),
+    nameTranslations: z.record(z.string(), z.string()).default({}),
     relatedProcessStepId: z.string().nullable(),
     samplingMode: z.enum(["ALL", "PERCENT", "COUNT"]),
     samplingValue: z.union([z.number(), z.literal("")]),
@@ -94,7 +95,7 @@ export interface InspectionTemplateFormInitial {
   id: number;
   code: string;
   nameJa: string;
-  nameEn: string;
+  nameTranslations: Record<string, string>;
   relatedProcessStepId: string | null;
   relatedProcessStepLabel: string;
   samplingMode: "ALL" | "PERCENT" | "COUNT";
@@ -108,6 +109,7 @@ export function InspectionTemplateForm({
 }: {
   initial?: InspectionTemplateFormInitial;
 }) {
+  const locale = useLocale();
   const router = useRouter();
   const isMobile = useIsMobile();
   const [isPending, startTransition] = useTransition();
@@ -118,7 +120,7 @@ export function InspectionTemplateForm({
     initialValues: {
       code: initial?.code ?? "",
       nameJa: initial?.nameJa ?? "",
-      nameEn: initial?.nameEn ?? "",
+      nameTranslations: initial?.nameTranslations ?? {},
       relatedProcessStepId: initial?.relatedProcessStepId ?? null,
       samplingMode: initial?.samplingMode ?? "ALL",
       samplingValue: initial?.samplingValue ?? "",
@@ -134,7 +136,7 @@ export function InspectionTemplateForm({
         : null;
       const input = {
         nameJa: values.nameJa,
-        nameEn: values.nameEn,
+        nameTranslations: values.nameTranslations,
         relatedProcessStepId,
         samplingMode: values.samplingMode,
         samplingValue:
@@ -228,11 +230,11 @@ export function InspectionTemplateForm({
         </SimpleGrid>
         <SimpleGrid cols={1} mt="sm" spacing="sm">
           <LocalizedTextInput
-            enProps={form.getInputProps("nameEn")}
             help={fieldHelpTip("inspectionTemplate", "code")}
             jaProps={form.getInputProps("nameJa")}
             label="名称"
             required
+            translationsProps={form.getInputProps("nameTranslations")}
           />
           <Stack gap={4}>
             <Text fw={500} size="sm">
@@ -240,7 +242,7 @@ export function InspectionTemplateForm({
             </Text>
             <Group gap="sm" wrap="wrap">
               <SegmentedControl
-                data={INSPECTION_SAMPLING_MODE_OPTIONS}
+                data={inspectionSamplingModeOptions(locale)}
                 onChange={(v) => {
                   form.setFieldValue(
                     "samplingMode",

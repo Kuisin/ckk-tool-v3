@@ -99,9 +99,9 @@ export const PERMISSIONS: readonly PermissionMeta[] = [
     code: "price_list",
     label: { ja: "価格表", en: "Price list", zh: "价格表" },
     summary: {
-      ja: "試算と価格表を扱えます。顧客ごとの単価を決める権限です。",
-      en: "Work with trial estimates and price lists — the per-customer unit prices.",
-      zh: "处理试算与价格表，即各客户的单价。",
+      ja: "価格試算と価格表を扱えます。顧客ごとの単価を決める権限です。",
+      en: "Work with price estimates and price lists — the per-customer unit prices.",
+      zh: "处理价格试算与价格表，即各客户的单价。",
     },
     group: "business",
   },
@@ -133,9 +133,19 @@ export const PERMISSIONS: readonly PermissionMeta[] = [
     code: "design_request",
     label: { ja: "設計依頼", en: "Design request", zh: "设计委托" },
     summary: {
-      ja: "設計依頼書を扱えます。",
-      en: "Work with design requests.",
-      zh: "处理设计委托单。",
+      ja: "設計依頼書を扱えます。図面そのものは「設計図」の権限です。",
+      en: "Work with design requests. The drawings themselves are covered by the drawing permission.",
+      zh: "处理设计委托单。图纸本身由「图纸」权限管理。",
+    },
+    group: "business",
+  },
+  {
+    code: "design_file",
+    label: { ja: "設計図", en: "Drawing", zh: "图纸" },
+    summary: {
+      ja: "図面の版を登録・編集・削除できます。閲覧は業務ロールのほぼ全員が持ちます。",
+      en: "Register, edit and delete drawing versions. Nearly every business role can view them.",
+      zh: "登记、编辑和删除图纸版本。几乎所有业务角色都可查看。",
     },
     group: "business",
   },
@@ -177,9 +187,9 @@ export const PERMISSIONS: readonly PermissionMeta[] = [
     code: "work_order",
     label: { ja: "指示書", en: "Work order", zh: "作业指示书" },
     summary: {
-      ja: "指示書と工程の実行を扱えます。現場のタブレット（キオスク）の工程実行もこの権限です。",
+      ja: "指示書と工程の実行を扱えます。現場のタブレット（共有端末）の工程実行もこの権限です。",
       en: "Work with work orders and step execution — including the shop-floor kiosk.",
-      zh: "处理作业指示书与工序执行，包括车间平板（自助终端）。",
+      zh: "处理作业指示书与工序执行，包括车间平板（共用终端）。",
     },
     group: "business",
   },
@@ -237,7 +247,7 @@ export const PERMISSIONS: readonly PermissionMeta[] = [
     code: "approve",
     label: { ja: "承認管理", en: "Approvals", zh: "审批管理" },
     summary: {
-      ja: "承認待ちの一覧（承認・予定）を見られます。実際に承認できるかどうかは、この権限ではなく承認設定（MS0B）で決まります。",
+      ja: "承認依頼中の一覧（承認・予定）を見られます。実際に承認できるかどうかは、この権限ではなく承認設定（MS0B）で決まります。",
       en: "See the pending-approval list. Whether you may actually approve is decided by 承認設定 (MS0B), not by this permission.",
       zh: "查看待审批列表。能否实际审批由审批设置（MS0B）决定，而非此权限。",
     },
@@ -291,15 +301,19 @@ export const PERMISSIONS: readonly PermissionMeta[] = [
     code: "system",
     label: { ja: "システム管理", en: "System admin", zh: "系统管理" },
     summary: {
-      ja: "アプリ設定・試算計算・リンク管理・注文書取込・AI プロバイダ・通知メールなど、システム側の設定を扱えます。",
-      en: "Change system-side settings: app management, pricing engine, links, order intake, AI provider, notification email.",
-      zh: "更改系统侧设置：应用管理、试算计算、链接管理、订单导入、AI 提供方、通知邮件。",
+      ja: "アプリ設定・価格試算計算・リンク管理・注文書取込・AI プロバイダ・通知メールなど、システム側の設定を扱えます。",
+      en: "Change system-side settings: app management, price estimate engine, links, order intake, AI provider, notification email.",
+      zh: "更改系统侧设置：应用管理、价格试算计算、链接管理、订单导入、AI 提供方、通知邮件。",
     },
     group: "admin",
   },
   {
     code: "kiosk",
-    label: { ja: "キオスク管理", en: "Kiosk admin", zh: "自助终端管理" },
+    label: {
+      ja: "共有端末管理",
+      en: "Shared device admin",
+      zh: "共用终端管理",
+    },
     summary: {
       ja: "共有端末の一覧・詳細を見て、名称や設置場所を直せます。**秘密の開示や端末の登録・失効は別の権限**（下の特権操作）です。",
       en: "View shared devices and edit their name and location. **Revealing secrets and enrolling or revoking devices are separate** (see privileged operations).",
@@ -312,9 +326,9 @@ export const PERMISSIONS: readonly PermissionMeta[] = [
   {
     code: "kiosk_secret",
     label: {
-      ja: "キオスク端末の秘密",
-      en: "Kiosk device secrets",
-      zh: "自助终端机密",
+      ja: "共有端末の秘密",
+      en: "Shared device secrets",
+      zh: "共用终端机密",
     },
     summary: {
       ja: "メンテナンス退出 PIN・PIN 履歴・端末設定コードの開示と再生成、端末鍵のリセット。",
@@ -327,7 +341,7 @@ export const PERMISSIONS: readonly PermissionMeta[] = [
     code: "kiosk_device",
     label: {
       ja: "端末アクセスの付与",
-      en: "Kiosk device enrolment",
+      en: "Shared device enrolment",
       zh: "终端访问授予",
     },
     summary: {
@@ -341,7 +355,7 @@ export const PERMISSIONS: readonly PermissionMeta[] = [
     code: "kiosk_card",
     label: {
       ja: "QRカードの発行・PIN",
-      en: "Kiosk card issuance",
+      en: "Shared device card issuance",
       zh: "二维码卡发放・PIN",
     },
     summary: {

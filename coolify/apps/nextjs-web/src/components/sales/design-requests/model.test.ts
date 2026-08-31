@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { STATUS_MAPS } from "@/components/ui/StatusBadge";
-import { DESIGN_TRIGGER_LABEL } from "@/lib/enum-labels";
+import { designTriggerLabel } from "@/lib/enum-labels";
 import {
   canAttachFiles,
   canComplete,
@@ -220,7 +220,7 @@ describe("トリガーと参照元", () => {
 
   it("全トリガーにラベルと色がある", () => {
     for (const t of ALL_TRIGGERS) {
-      expect(DESIGN_TRIGGER_LABEL[t], `${t} のラベルが無い`).toBeTruthy();
+      expect(designTriggerLabel(t, "ja"), `${t} のラベルが無い`).toBeTruthy();
       expect(DESIGN_TRIGGER_COLOR[t], `${t} の色が無い`).toBeTruthy();
     }
   });

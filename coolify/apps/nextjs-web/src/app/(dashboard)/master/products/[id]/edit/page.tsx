@@ -3,7 +3,11 @@ import { ProductForm } from "@/components/master/products/ProductForm";
 import { requireAppRead } from "@/lib/authz-page";
 import { prisma } from "@/lib/db";
 import { formatProductNumber } from "@/lib/doc-number";
-import { type LocalizedText, localized } from "@/lib/format";
+import {
+  type LocalizedText,
+  localized,
+  localizedTranslations,
+} from "@/lib/format";
 import {
   getProductItemDefs,
   getResolvedProductTypes,
@@ -51,7 +55,7 @@ export default async function MasterProductsEditPage({
         id: r.id,
         code: formatProductNumber(r.yearMonth, r.seq),
         nameJa: name?.ja ?? "",
-        nameEn: name?.en ?? "",
+        nameTranslations: localizedTranslations(name),
         materialTypeId:
           r.materialTypeId != null ? String(r.materialTypeId) : null,
         materialTypeLabel,

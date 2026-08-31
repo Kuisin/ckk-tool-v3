@@ -17,7 +17,7 @@ export const DOCUMENT_LINK_TYPES = [
   { value: "delivery_order", label: "出荷書" },
   { value: "invoice", label: "請求書" },
   { value: "price_list", label: "価格表" },
-  { value: "estimate", label: "試算" },
+  { value: "estimate", label: "価格試算" },
 ] as const;
 
 export type DocumentLinkType = (typeof DOCUMENT_LINK_TYPES)[number]["value"];

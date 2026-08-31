@@ -12,6 +12,7 @@ import { DatePickerInput } from "@mantine/dates";
 import { notifications } from "@mantine/notifications";
 import { IconCalendar } from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
+import { useLocale } from "next-intl";
 import { useState, useTransition } from "react";
 import {
   searchCustomerOptions,
@@ -25,7 +26,7 @@ import { HelpLabel } from "@/components/ui/HelpLabel";
 import { SalesRepSelect } from "@/components/ui/SalesRepSelect";
 import { SearchSelect } from "@/components/ui/SearchSelect";
 import { FormSection, FormShell } from "@/components/ui/shells";
-import { ACCEPTANCE_DELIVERY_METHOD_OPTIONS } from "@/lib/enum-labels";
+import { acceptanceDeliveryMethodOptions } from "@/lib/enum-labels";
 import { fieldHelp } from "@/lib/field-help";
 import {
   type ItemRowForm,
@@ -45,6 +46,7 @@ export function OrderAcceptanceCreateForm({
   /** 出荷作業場所の選択肢（lib/work-locations fetchWorkLocationOptions）。 */
   workLocationOptions: { value: string; label: string }[];
 }) {
+  const locale = useLocale();
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
 
@@ -189,7 +191,7 @@ export function OrderAcceptanceCreateForm({
           {/* 配送方法 — 出荷書は同じ出荷先×配送方法の明細だけを束ねられる。 */}
           <Select
             allowDeselect={false}
-            data={ACCEPTANCE_DELIVERY_METHOD_OPTIONS}
+            data={acceptanceDeliveryMethodOptions(locale)}
             label={
               <HelpLabel {...fieldHelp("orderAcceptance", "deliveryMethod")} />
             }

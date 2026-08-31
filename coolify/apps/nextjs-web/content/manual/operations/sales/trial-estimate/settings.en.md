@@ -1,9 +1,9 @@
 ---
-title: "試算計算 (Trial calculation) — Settings Manual"
+title: "価格試算計算 (Trial calculation) — Settings Manual"
 description: "The app where an administrator decides how the Trial estimate app calculates unit prices."
 screenshots: [trial-pricing-hub-01, trial-pricing-criteria-01, trial-pricing-tool-types-01, trial-pricing-material-policy-01, trial-pricing-custom-inputs-01, trial-pricing-lookups-01]
 ---
-This is the app where an administrator decides **how unit prices are calculated** in the [試算](/manual/en/operations/sales/trial-estimate/user) (Trial estimate) app. Its operation code is `SY02`.
+This is the app where an administrator decides **how unit prices are calculated** in the [価格試算](/manual/en/operations/sales/trial-estimate/user) (Trial estimate) app. Its operation code is `SY02`.
 
 This screen changes the way prices are worked out, so **only staff who know your company's rules** should touch it.
 
@@ -31,7 +31,7 @@ This screen changes the way prices are worked out, so **only staff who know your
 
 ## How to open it
 
-Press **試算計算** in the システム (System) group on the home screen. Or type `SY02` into the search box at the top of the screen.
+Press **価格試算計算** in the システム (System) group on the home screen. Or type `SY02` into the search box at the top of the screen.
 
 ## Changing settings does not change past trial estimates
 
@@ -45,7 +45,7 @@ This is the most important rule.
 
 When you open the app, five cards are shown. Press a card to open that settings screen.
 
-![Top screen of 試算計算](../../../assets/screenshots/trial-pricing-hub-01.png)
+![Top screen of 価格試算計算](../../../assets/screenshots/trial-pricing-hub-01.png)
 
 - 「**計算基準**」 (Calculation criteria) … the list of the parts that build up the unit price.
 - 「**工具種管理**」 (Tool type management) … adding and deleting tool types, and the settings for each type.
@@ -116,7 +116,7 @@ When you open 「工具種管理」, the registered kinds of tool are listed.
 
 - **丸棒** (round bar) / **円筒** (cylinder) / **OH付** (with OH) are the three types included from the start. They carry the 「**組み込み**」 (built-in) mark and **cannot be deleted**.
 - Types added later carry the 「**カスタム**」 (custom) mark.
-- Each row shows 「**計算基準 N 件 · 試算 M 件**」 (N criteria · M trial estimates). This tells you how many criteria are used for that type, and how many trial estimates of that type exist.
+- Each row shows 「**計算基準 N 件 · 価格試算 M 件**」 (N criteria · M trial estimates). This tells you how many criteria are used for that type, and how many trial estimates of that type exist.
 
 ### Adding a kind of tool
 
@@ -221,7 +221,7 @@ A. No, they will not. A trial estimate that is already 確定 (confirmed) stores
 A. It is possible that 「**使用する見積単価**」 (Quoted unit price to use) has not been set for that type. Open that type from 「工具種管理」 (Tool type management) and check that one wrap-up part is selected.
 
 **Q. I cannot delete a tool type I added.**
-A. Trial estimates using that type still exist. It cannot be deleted unless 「試算 M 件」 (M trial estimates) in the list shows `0`. There is no problem in leaving a type you no longer use as it is, without deleting it.
+A. Trial estimates using that type still exist. It cannot be deleted unless 「価格試算 M 件」 (M trial estimates) in the list shows `0`. There is no problem in leaving a type you no longer use as it is, without deleting it.
 
 **Q. A calculation criterion shows 「適用なし」 (not applied) in red.**
 A. That criterion is not set for any kind of tool. If you want to use it, open it and choose 「**適用工具種**」 (Applicable tool types) — or press 「**全選択**」 (Select all) if you want it used everywhere.

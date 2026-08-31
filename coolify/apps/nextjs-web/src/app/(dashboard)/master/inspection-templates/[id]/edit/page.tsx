@@ -2,7 +2,11 @@ import { notFound, redirect } from "next/navigation";
 import { InspectionTemplateForm } from "@/components/master/inspection-templates/InspectionTemplateForm";
 import { requireAppRead } from "@/lib/authz-page";
 import { prisma } from "@/lib/db";
-import { type LocalizedText, localized } from "@/lib/format";
+import {
+  type LocalizedText,
+  localized,
+  localizedTranslations,
+} from "@/lib/format";
 
 export const dynamic = "force-dynamic";
 
@@ -40,7 +44,7 @@ export default async function MasterInspectionTemplatesEditPage({
         id: r.id,
         code: r.code,
         nameJa: name?.ja ?? "",
-        nameEn: name?.en ?? "",
+        nameTranslations: localizedTranslations(name),
         relatedProcessStepId:
           r.relatedProcessStepId != null
             ? String(r.relatedProcessStepId)

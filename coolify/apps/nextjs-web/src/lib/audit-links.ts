@@ -27,7 +27,7 @@ const TABLE_ROUTES: Record<string, TableRoute> = {
   // 販売
   quotes: { appLabel: "見積書", listPath: "/sales/quotes", directDetail: true },
   estimates: {
-    appLabel: "試算",
+    appLabel: "価格試算",
     listPath: "/sales/trial-estimates",
     directDetail: true,
   },

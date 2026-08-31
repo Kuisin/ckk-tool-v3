@@ -40,7 +40,7 @@ describe("collectTabs", () => {
   it("leftSection / rightSection / disabled を持ち越す（バッジも出す）", () => {
     const badge = createElement("span", null, "3");
     const [item] = collectTabs([
-      tab("a", "承認待ち", { rightSection: badge, disabled: true }),
+      tab("a", "承認依頼中", { rightSection: badge, disabled: true }),
     ]);
     expect(item.rightSection).toBe(badge);
     expect(item.disabled).toBe(true);

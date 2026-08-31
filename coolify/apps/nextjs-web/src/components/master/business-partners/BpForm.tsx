@@ -21,6 +21,7 @@ import {
 import { useForm } from "@mantine/form";
 import { notifications } from "@mantine/notifications";
 import { useRouter } from "next/navigation";
+import { useLocale } from "next-intl";
 import { useTransition } from "react";
 import { z } from "zod";
 import type { BpDetail } from "@/app/(dashboard)/master/_shared/bp-data";
@@ -41,11 +42,11 @@ import { HelpLabel } from "@/components/ui/HelpLabel";
 import { FormSection, FormShell } from "@/components/ui/shells";
 import { useIsMobile } from "@/hooks/useViewport";
 import {
-  BANK_ACCOUNT_TYPE_OPTIONS,
-  BP_ROLE_LABEL,
-  INVOICE_METHOD_OPTIONS,
-  TAX_TYPE_OPTIONS,
-  VENDOR_TYPE_OPTIONS,
+  bankAccountTypeOptions,
+  bpRoleLabel,
+  invoiceMethodOptions,
+  taxTypeOptions,
+  vendorTypeOptions,
 } from "@/lib/enum-labels";
 import { fieldHelp } from "@/lib/field-help";
 import { zodResolver } from "@/lib/form";
@@ -132,6 +133,7 @@ export function BpForm({
   /** 営業担当に選べるユーザー（有効な社員アカウント）。 */
   salesRepOptions: Option[];
 }) {
+  const locale = useLocale();
   const router = useRouter();
   const isMobile = useIsMobile();
   const [isPending, startTransition] = useTransition();
@@ -180,18 +182,19 @@ export function BpForm({
   const handleSubmit = (values: FormValues) => {
     const input: BpInput = {
       nameJa: values.nameJa,
-      nameEn: values.nameEn,
+      nameTranslations: values.nameTranslations,
       nameKana: values.nameKana,
       shortName: values.shortName,
       countryCode: values.countryCode,
       postalCode: values.postalCode,
       addressJa: values.addressJa,
-      addressEn: values.addressEn,
+      addressTranslations: values.addressTranslations,
       phone: values.phone,
       fax: values.fax,
       email: values.email,
       website: values.website,
       taxNumber: values.taxNumber,
+      documentLocale: values.documentLocale as BpInput["documentLocale"],
       matchNames: values.matchNames,
       isActive: values.isActive,
       notes: values.notes,
@@ -287,7 +290,7 @@ export function BpForm({
               <Checkbox
                 description={ROLE_DESCRIPTION[role]}
                 key={role}
-                label={BP_ROLE_LABEL[role]}
+                label={bpRoleLabel(role, locale)}
                 value={role}
               />
             ))}
@@ -368,12 +371,12 @@ export function BpForm({
               {...form.getInputProps("customer.creditLimit")}
             />
             <Select
-              data={TAX_TYPE_OPTIONS}
+              data={taxTypeOptions(locale)}
               label={<HelpLabel {...fieldHelp("businessPartner", "taxType")} />}
               {...form.getInputProps("customer.taxType")}
             />
             <Select
-              data={INVOICE_METHOD_OPTIONS}
+              data={invoiceMethodOptions(locale)}
               label={
                 <HelpLabel {...fieldHelp("businessPartner", "invoiceMethod")} />
               }
@@ -435,7 +438,7 @@ export function BpForm({
           >
             <SimpleGrid cols={isMobile ? 1 : 2} spacing="sm">
               <Select
-                data={VENDOR_TYPE_OPTIONS}
+                data={vendorTypeOptions(locale)}
                 label={
                   <HelpLabel {...fieldHelp("businessPartner", "vendorType")} />
                 }
@@ -519,7 +522,7 @@ export function BpForm({
               />
               <Select
                 clearable
-                data={BANK_ACCOUNT_TYPE_OPTIONS}
+                data={bankAccountTypeOptions(locale)}
                 label={
                   <HelpLabel
                     {...fieldHelp("businessPartner", "bank", {

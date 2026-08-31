@@ -11,7 +11,7 @@
  *   DRAFT / REJECTED: 承認依頼 + 編集 / キャンセル
  *   REQUESTED: 承認 / 差し戻し（理由必須 → REJECTED）— 段数は承認設定 MS0B
  *   PENDING: 着手 / 担当者変更 / 製品の紐付け / キャンセル
- *   IN_PROGRESS: 完了（要添付）/ 担当者変更 / 製品の紐付け / キャンセル
+ *   IN_PROGRESS: 完了（要・設計図の版）/ 担当者変更 / 製品の紐付け / キャンセル
  *   COMPLETED: 差し戻し（作業の巻き戻し。承認は取りなおさない）
  *
  * 承認軸の「差し戻し」(REJECTED) と作業軸の「差し戻し」(COMPLETED →
@@ -43,6 +43,7 @@ import {
   IconX,
 } from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
+import { useLocale } from "next-intl";
 import { type ReactNode, useState, useTransition } from "react";
 import {
   approveDesign,
@@ -64,18 +65,21 @@ import {
   type ApprovalTrailView,
   countTrailRecords,
 } from "@/components/production/ApprovalStatusPanel";
+import { DesignFileList } from "@/components/production/design-files/DesignFileList";
+import { DESIGN_FILE_ROLE_LABEL } from "@/components/production/design-files/model";
 import { ActionCard } from "@/components/ui/ActionCard";
 import { AppTabs } from "@/components/ui/AppTabs";
 import {
   AttachmentsPanel,
   type AttachmentView,
 } from "@/components/ui/AttachmentsPanel";
-import { PrimaryButton } from "@/components/ui/buttons";
+import { PrimaryButton, SecondaryButton } from "@/components/ui/buttons";
 import { DesignFileThumb } from "@/components/ui/DesignFileViewer";
 import { DocNumber } from "@/components/ui/DocNumber";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { FieldValue } from "@/components/ui/FieldValue";
 import { HistoryPanel } from "@/components/ui/HistoryPanel";
+import { MemoPanel } from "@/components/ui/MemoPanel";
 import { ConfirmModal, ModalShell } from "@/components/ui/modals";
 import {
   PdfAttachmentPanel,
@@ -97,14 +101,13 @@ import {
 import { useTabParam } from "@/hooks/useUrlState";
 import { isViewable } from "@/lib/design-file-kind";
 import { pickThumbFile } from "@/lib/design-files-core";
+import type { MemoView } from "@/lib/document-memos";
 import {
-  DESIGN_KIND_LABEL,
-  DESIGN_PRIORITY_LABEL,
-  DESIGN_TRIGGER_LABEL,
+  designKindLabel,
+  designPriorityLabel,
+  designTriggerLabel,
 } from "@/lib/enum-labels";
 import type { ActionResult } from "@/lib/server-action";
-import { CompleteDesignModal } from "./CompleteDesignModal";
-import { DesignFileList } from "./DesignFileList";
 import {
   canAttachFiles,
   canComplete,
@@ -112,7 +115,6 @@ import {
   canReopen,
   canRequestApproval,
   canStart,
-  DESIGN_FILE_ROLE_LABEL,
   DESIGN_HISTORY_ACTION_LABEL,
   DESIGN_KIND_COLOR,
   DESIGN_TRIGGER_COLOR,
@@ -157,6 +159,7 @@ export function DesignRequestDetail({
   approvalTrail = [],
   assigneeOptions = [],
   pdfMeta = null,
+  memos = [],
 }: {
   request: DesignRequest;
   /** 操作履歴（audit_logs 由来、履歴タブ）。 */
@@ -171,7 +174,10 @@ export function DesignRequestDetail({
   assigneeOptions?: Option[];
   /** 保管済み PDF のメタ（承認前は null）。 */
   pdfMeta?: PdfFileMeta | null;
+  /** コメント（document_memos, ownerType "design_requests"）。 */
+  memos?: MemoView[];
 }) {
+  const locale = useLocale();
   const fmt = useFormat();
   const router = useRouter();
   // アクティブタブを ?tab= に保持（URL 共有でタブまで再現）
@@ -218,6 +224,17 @@ export function DesignRequestDetail({
         }
       : null;
   })();
+
+  // 成果物（この依頼から出来た版）。完了できるかの判定はサーバー側
+  // (completeDesign) が正で、ここは同じ条件を画面に出しているだけ。
+  const producedVersions = [
+    ...new Set(request.files.map((f) => f.version)),
+  ].sort((a, b) => b - a);
+  const hasProducedVersion = producedVersions.length > 0;
+  /** 未登録のときに送る先 — 製品・受注元・依頼を埋めた 設計図 の登録画面。 */
+  const registerDrawingHref = `/production/design-files/new?request=${encodeURIComponent(
+    request.requestNumber,
+  )}`;
 
   const canViewPdf = isIssuedDesign(request.status);
   const pdfFilename = `${request.requestNumber}.pdf`;
@@ -295,7 +312,7 @@ export function DesignRequestDetail({
       label: "依頼",
       description: request.requestedAt
         ? fmt.date(request.requestedAt)
-        : "作成中",
+        : "下書き",
       // 差し戻し中は赤（_specs/design.md §9 REJECTED = red）。
       color: request.status === "REJECTED" ? "red" : undefined,
       loading: request.status === "DRAFT",
@@ -317,7 +334,7 @@ export function DesignRequestDetail({
       label: "完了",
       description: request.completedAt
         ? fmt.date(request.completedAt)
-        : "図面の添付",
+        : "設計図の登録",
       loading: request.status === "IN_PROGRESS",
     },
   ];
@@ -374,8 +391,8 @@ export function DesignRequestDetail({
       })),
       emptyNote:
         request.status === "IN_PROGRESS"
-          ? "未添付（完了時に図面を添付します）"
-          : "未添付（着手・完了で図面が付きます）",
+          ? "未登録（設計図で版を登録すると完了できます）"
+          : "未登録（着手して設計図に版を登録すると付きます）",
     },
     ...(request.productName
       ? [
@@ -386,7 +403,7 @@ export function DesignRequestDetail({
               {
                 key: "product",
                 label: request.productName,
-                href: `/master/products/${request.productId}`,
+                href: `/production/design-files/${request.productId}`,
                 note: "最新図面の反映先",
               },
             ],
@@ -399,8 +416,8 @@ export function DesignRequestDetail({
   const lastReject = records.find((h) => h.action === "REJECT");
 
   /**
-   * 「いまやること」カード（最上部）。承認待ちは承認権限の有無で色が変わる
-   * — 権限あり = 緑 + 承認/差し戻し、権限なし = グレーの「承認待ち」表示。
+   * 「いまやること」カード（最上部）。承認依頼中は承認権限の有無で色が変わる
+   * — 権限あり = 緑 + 承認/差し戻し、権限なし = グレーの「承認依頼中」表示。
    */
   let actionCard: ReactNode = null;
   if (canRequestApproval(request) || request.status === "REQUESTED") {
@@ -436,7 +453,10 @@ export function DesignRequestDetail({
       />
     );
   } else if (canComplete(request)) {
-    actionCard = (
+    // 成果物 = この依頼から出来た版。登録は 設計図 (PD06) の仕事なので、
+    // 未登録のうちは「完了」ではなく登録画面へ送る（押せない完了ボタンを
+    // 置いても、次に何をすればいいかが判らない）。
+    actionCard = hasProducedVersion ? (
       <ActionCard
         actions={
           <PrimaryButton
@@ -447,14 +467,25 @@ export function DesignRequestDetail({
             完了
           </PrimaryButton>
         }
-        description={
-          attachments.length === 0
-            ? "完了するとファイルを選んで版として登録します（この場で追加もできます）"
-            : `添付 ${attachments.length} 件から主図面を選んで、ひとつの版として登録します`
-        }
+        description={`設計図 v${latestFiles[0]?.version ?? producedVersions[0]} が登録済みです。完了すると依頼者へ通知します`}
         icon={<IconCheck size={20} />}
         title="図面ができたら完了できます"
-        tone={attachments.length === 0 ? "wait" : "action"}
+        tone="action"
+      />
+    ) : (
+      <ActionCard
+        actions={
+          <SecondaryButton
+            href={registerDrawingHref}
+            leftSection={<IconFile size={14} />}
+          >
+            設計図に登録
+          </SecondaryButton>
+        }
+        description="この依頼の図面がまだ設計図に登録されていません。版を登録すると完了できます"
+        icon={<IconFile size={20} />}
+        title="図面を登録してください"
+        tone="wait"
       />
     );
   }
@@ -466,7 +497,7 @@ export function DesignRequestDetail({
       actions={
         <ResourceActions
           menuItems={[
-            ...(canComplete(request)
+            ...(canComplete(request) && hasProducedVersion
               ? [
                   {
                     label: "完了",
@@ -533,7 +564,7 @@ export function DesignRequestDetail({
               color={DESIGN_TRIGGER_COLOR[request.trigger] ?? "gray"}
               variant="light"
             >
-              {DESIGN_TRIGGER_LABEL[request.trigger] ?? request.trigger}
+              {designTriggerLabel(request.trigger, locale) ?? request.trigger}
             </Badge>
           }
         />
@@ -609,7 +640,7 @@ export function DesignRequestDetail({
                 color={DESIGN_KIND_COLOR[request.kind] ?? "gray"}
                 variant="light"
               >
-                {DESIGN_KIND_LABEL[request.kind] ?? request.kind}
+                {designKindLabel(request.kind, locale) ?? request.kind}
               </Badge>
               {request.kindOverridden && (
                 <Text c="dimmed" size="xs">
@@ -632,7 +663,8 @@ export function DesignRequestDetail({
                 急ぎ
               </Badge>
             ) : (
-              (DESIGN_PRIORITY_LABEL[request.priority] ?? request.priority)
+              (designPriorityLabel(request.priority, locale) ??
+              request.priority)
             )
           }
         />
@@ -697,6 +729,7 @@ export function DesignRequestDetail({
           <Tabs.Tab value="overview">概要</Tabs.Tab>
           <Tabs.Tab value="files">ファイル（{request.files.length}）</Tabs.Tab>
           <Tabs.Tab value="pdf">PDF</Tabs.Tab>
+          <Tabs.Tab value="comments">コメント</Tabs.Tab>
           <Tabs.Tab value="history">履歴</Tabs.Tab>
         </Tabs.List>
 
@@ -737,7 +770,9 @@ export function DesignRequestDetail({
           </Stack>
         </Tabs.Panel>
 
-        {/* 設計ファイル — 添付（作業ファイル）+ 完了時に版管理へ登録される。 */}
+        {/* 設計ファイル — 作業ファイル（添付）と、成果物の版（読み取り専用）。
+            版の登録・編集・削除は 設計図 (PD06) が持つ。ここに 2 つ目の
+            書き込み口を作ると、採番と is_latest の付け替えが 2 箇所になる。 */}
         <Tabs.Panel pt="md" value="files">
           <Stack gap="md">
             {/* 見えるものを先に出す（製品マスタと同じサムネイル）。
@@ -761,16 +796,31 @@ export function DesignRequestDetail({
               canUpload={canAttachFiles(request)}
               ownerId={request.requestNumber}
               ownerType="design_requests"
-              title="作業ファイル（メモ・下書きなど。版として登録するファイルは完了のときに選びます）"
+              title="作業ファイル（メモ・下書きなど。成果物の版は設計図で登録します）"
             />
-            {request.files.length === 0 ? (
-              <EmptyState
-                icon={<IconFile size={24} />}
-                message="登録済みバージョンはありません"
-              />
-            ) : (
-              <DesignFileList rows={request.files} showSource />
-            )}
+            <Stack gap="xs">
+              <Group gap="sm" justify="space-between" wrap="wrap">
+                <Text fw={600} size="sm">
+                  成果物の版
+                </Text>
+                {request.productId != null && (
+                  <SecondaryButton
+                    href={`/production/design-files/${request.productId}`}
+                    leftSection={<IconFile size={14} />}
+                  >
+                    設計図で管理
+                  </SecondaryButton>
+                )}
+              </Group>
+              {request.files.length === 0 ? (
+                <EmptyState
+                  icon={<IconFile size={24} />}
+                  message="この依頼から登録された版はまだありません"
+                />
+              ) : (
+                <DesignFileList rows={request.files} showSource />
+              )}
+            </Stack>
           </Stack>
         </Tabs.Panel>
 
@@ -785,23 +835,31 @@ export function DesignRequestDetail({
           />
         </Tabs.Panel>
 
+        {/* keepMounted={false}: エディタ（prosemirror）はタブを開くまで読み込まない。 */}
+        <Tabs.Panel keepMounted={false} pt="md" value="comments">
+          <MemoPanel
+            memos={memos}
+            mode="comment"
+            ownerId={request.requestNumber}
+            ownerType="design_requests"
+          />
+        </Tabs.Panel>
+
         <Tabs.Panel pt="md" value="history">
           <HistoryPanel entries={auditEntries} />
         </Tabs.Panel>
       </AppTabs>
 
-      <CompleteDesignModal
+      <ConfirmModal
+        confirmLabel="完了する"
         loading={isPending}
+        message={`設計依頼書 ${request.requestNumber} を完了にします。設計図 v${producedVersions.join(", v")} が成果物として紐づきます。`}
         onClose={() => setCompleteOpen(false)}
-        onConfirm={(input) =>
-          run(
-            () => completeDesign(request.requestNumber, input),
-            "完了しました",
-          )
+        onConfirm={() =>
+          run(() => completeDesign(request.requestNumber), "完了しました")
         }
         opened={completeOpen}
-        ownerType="design_requests"
-        requestNumber={request.requestNumber}
+        title="完了の確認"
       />
       <ConfirmModal
         confirmLabel="差し戻す"
@@ -832,7 +890,7 @@ export function DesignRequestDetail({
         <Stack gap="sm">
           <Text size="sm">
             設計依頼書 {request.requestNumber} をキャンセルします。承認依頼中の
-            場合は承認待ちの一覧からも取り下げられます。
+            場合は承認依頼中の一覧からも取り下げられます。
           </Text>
           <Textarea
             autosize

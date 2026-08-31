@@ -28,7 +28,10 @@
   "shell": {
     "appsLabel": "アプリ",
     "home": "ホーム",
+    "goHome": "ホームへ移動",
     "searchPlaceholder": "操作コード / アプリ名...",
+    "searchResults": "検索結果",
+    "noAppsFound": "該当するアプリが見つかりません",
     "notifications": "通知",
     "markAllRead": "すべて既読",
     "noNotifications": "通知はありません",
@@ -42,7 +45,7 @@
   },
   "preferences": {
     "title": "表示設定",
-    "description": "言語と日時の表示方法を選びます。設定はこのユーザーだけに適用され、Web とタブレット（キオスク）で共通です。",
+    "description": "言語・日時の表示方法と、文字の大きさ・太さを選びます。設定はこのユーザーだけに適用され、言語と日時は Web とタブレット（キオスク）で共通です（文字の大きさ・太さは Web のみ）。",
     "language": "言語",
     "languageHelp": "画面の言語です。まだ翻訳されていない画面は日本語で表示されます。",
     "dateFormat": "日付の形式",
@@ -51,10 +54,32 @@
     "time12h": "12時間（2:30 PM）",
     "timeZone": "タイムゾーン",
     "timeZoneHelp": "日時をどの地域の時刻で表示するかです。保存される時刻そのものは変わりません。",
+    "textSize": "文字の大きさ",
+    "textSizeHelp": "画面全体の文字と余白の大きさです。選ぶとその場で画面に反映され、保存で確定します。",
+    "textScaleXs": "最小",
+    "textScaleSm": "小",
+    "textScaleMd": "標準",
+    "textScaleLg": "大",
+    "textScaleXl": "最大",
+    "boldText": "文字を太くする",
+    "boldTextHelp": "本文の文字を 1 段太くして読みやすくします。もともと太い見出しや強調はそのままです。",
     "preview": "プレビュー",
     "previewDate": "日付",
     "previewDateTime": "日時",
     "previewTime": "時刻",
+    "previewText": "本文",
+    "previewTextSample": "注文請書の明細を確認し、価格に差異がなければ確定してください。",
     "saved": "表示設定を保存しました"
+  },
+  "home": {
+    "favorites": "お気に入り",
+    "other": "その他",
+    "workprocessFilter": "工程で絞り込み中:",
+    "clearFilter": "絞り込みを解除",
+    "guest": "ゲスト"
+  },
+  "loginHistory": {
+    "appWeb": "Web",
+    "appKiosk": "共有端末"
   }
 }

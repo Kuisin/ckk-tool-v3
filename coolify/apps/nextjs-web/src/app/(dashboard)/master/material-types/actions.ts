@@ -27,7 +27,7 @@ const BASE_PATH = "/master/material-types";
 
 const materialTypeInput = z.object({
   nameJa: z.string().min(1, "名称（日本語）を入力してください"),
-  nameEn: z.string().optional(),
+  nameTranslations: z.record(z.string(), z.string()).optional(),
   descriptionJa: z.string().optional(),
   descriptionEn: z.string().optional(),
   isActive: z.boolean(),
@@ -110,7 +110,7 @@ export async function createMaterialType(
                 gradeCode: v.gradeCode,
                 shapeCode: v.shapeCode,
                 kindCode,
-                name: localizedInput(v.nameJa, v.nameEn),
+                name: localizedInput(v.nameJa, undefined, v.nameTranslations),
                 description:
                   localizedInputOrNull(v.descriptionJa, v.descriptionEn) ??
                   undefined,
@@ -174,7 +174,7 @@ export async function updateMaterialType(
     await prisma.materialType.update({
       where: { id },
       data: {
-        name: localizedInput(v.nameJa, v.nameEn),
+        name: localizedInput(v.nameJa, undefined, v.nameTranslations),
         description:
           localizedInputOrNull(v.descriptionJa, v.descriptionEn) ??
           Prisma.DbNull,
@@ -259,7 +259,7 @@ export async function deleteMaterialTypes(
 }
 
 // ─── 既定単価マトリクス (material_type_prices) ─────────────────────────────
-// 材種 × 直径 × 黒皮/研磨 → 単価 (¥/1000mm)。試算のフォールバック材料単価。
+// 材種 × 直径 × 黒皮/研磨 → 単価 (¥/1000mm)。価格試算のフォールバック材料単価。
 
 const priceRowInput = z.object({
   diameterCode: z.string().regex(/^[0-9]{3}$/, "直径コードが不正です"),

@@ -7,17 +7,18 @@
 import { z } from "zod";
 import { autoMatchNames } from "@/lib/company-aliases";
 import { Prisma } from "@/lib/db";
+import { LOCALES } from "@/lib/i18n";
 import { localizedInput, localizedInputOrNull } from "@/lib/server-action";
 
 export const bpBaseInput = z.object({
   nameJa: z.string().min(1, "名称（日本語）を入力してください"),
-  nameEn: z.string().optional(),
+  nameTranslations: z.record(z.string(), z.string()).optional(),
   nameKana: z.string().optional(),
   shortName: z.string().optional(),
   countryCode: z.string().nullable(),
   postalCode: z.string().optional(),
   addressJa: z.string().optional(),
-  addressEn: z.string().optional(),
+  addressTranslations: z.record(z.string(), z.string()).optional(),
   phone: z.string().optional(),
   fax: z.string().optional(),
   email: z
@@ -27,6 +28,9 @@ export const bpBaseInput = z.object({
     .optional(),
   website: z.string().optional(),
   taxNumber: z.string().optional(),
+  // 見積書/納品書/請求書をこの取引先へ出すときの言語。null = 既定言語（ja）。
+  // _specs/i18n-glossary.md §2.7・決定 10。
+  documentLocale: z.enum(LOCALES).nullable(),
   matchNames: z.array(z.string()),
   isActive: z.boolean(),
   notes: z.string().optional(),
@@ -37,17 +41,20 @@ export type BpBaseInput = z.infer<typeof bpBaseInput>;
 /** BP base columns from validated input (create/update shared). */
 export function bpBaseData(v: BpBaseInput) {
   return {
-    name: localizedInput(v.nameJa, v.nameEn),
+    name: localizedInput(v.nameJa, undefined, v.nameTranslations),
     nameKana: v.nameKana?.trim() || null,
     shortName: v.shortName?.trim() || null,
     countryCode: v.countryCode,
     postalCode: v.postalCode?.trim() || null,
-    address: localizedInputOrNull(v.addressJa, v.addressEn) ?? Prisma.DbNull,
+    address:
+      localizedInputOrNull(v.addressJa, undefined, v.addressTranslations) ??
+      Prisma.DbNull,
     phone: v.phone?.trim() || null,
     fax: v.fax?.trim() || null,
     email: v.email?.trim() || null,
     website: v.website?.trim() || null,
     taxNumber: v.taxNumber?.trim() || null,
+    documentLocale: v.documentLocale,
     matchNames: [...new Set(v.matchNames.map((n) => n.trim()).filter(Boolean))],
     // フリガナ由来のかな・ローマ字は **画面に出さず** ここで自動生成して保存する
     // （AI照合名の欄には利用者が入れたものだけを残すため）。

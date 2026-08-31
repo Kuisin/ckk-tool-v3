@@ -40,7 +40,7 @@ export const zh: KioskMessages = {
     backToWorkOrder: "返回工单",
     status: {
       DRAFT: "草稿",
-      PENDING_APPROVAL: "待批准",
+      PENDING_APPROVAL: "审批中",
       APPROVED: "已批准",
       IN_PROGRESS: "进行中",
       COMPLETED: "已完成",

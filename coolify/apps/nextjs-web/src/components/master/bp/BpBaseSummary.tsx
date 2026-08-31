@@ -5,12 +5,12 @@
  */
 
 import { Anchor, Badge, Group } from "@mantine/core";
+import { useLocale } from "next-intl";
 import type { BpBaseDetail } from "@/app/(dashboard)/master/_shared/bp-data";
 import { DocNumber } from "@/components/ui/DocNumber";
 import { FieldValue } from "@/components/ui/FieldValue";
 import { SummaryGrid } from "@/components/ui/shells";
-import { COUNTRY_LABEL } from "@/lib/enum-labels";
-
+import { countryLabel } from "@/lib/enum-labels";
 export function BpBaseSummary({
   record,
   extra,
@@ -18,6 +18,7 @@ export function BpBaseSummary({
   record: BpBaseDetail;
   extra?: React.ReactNode;
 }) {
+  const locale = useLocale();
   return (
     <SummaryGrid>
       <FieldValue
@@ -32,7 +33,7 @@ export function BpBaseSummary({
         label="国"
         value={
           record.countryCode
-            ? (COUNTRY_LABEL[record.countryCode] ?? record.countryCode)
+            ? (countryLabel(record.countryCode, locale) ?? record.countryCode)
             : "—"
         }
       />

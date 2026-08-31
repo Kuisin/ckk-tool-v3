@@ -24,9 +24,9 @@ import {
 import { requirePermissionResponse } from "@/lib/authz";
 import { pdfStorageKey } from "@/lib/document-pdf";
 import {
-  DESIGN_KIND_LABEL,
-  DESIGN_PRIORITY_LABEL,
-  DESIGN_TRIGGER_LABEL,
+  designKindLabel,
+  designPriorityLabel,
+  designTriggerLabel,
 } from "@/lib/enum-labels";
 import { documentFormatters } from "@/lib/format";
 import { renderPdf } from "@/lib/pdf";
@@ -113,12 +113,12 @@ export async function GET(request: Request): Promise<Response> {
     doc: {
       number: req.requestNumber,
       status: STATUS_LABEL[req.status] ?? req.status,
-      kind: DESIGN_KIND_LABEL[req.kind] ?? req.kind,
-      priority: DESIGN_PRIORITY_LABEL[req.priority] ?? req.priority,
+      kind: designKindLabel(req.kind, "ja"),
+      priority: designPriorityLabel(req.priority, "ja"),
       desired_date: documentFormatters.date(req.desiredAt),
       base_design_file: req.baseDesignFileLabel ?? "—",
       change_reason: req.changeReason ?? "—",
-      trigger: DESIGN_TRIGGER_LABEL[req.trigger] ?? req.trigger,
+      trigger: designTriggerLabel(req.trigger, "ja"),
       reference,
       requested_by: req.createdByName ?? "システム",
       requested_date: documentFormatters.date(req.requestedAt),

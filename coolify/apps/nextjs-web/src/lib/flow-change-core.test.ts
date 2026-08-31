@@ -23,7 +23,7 @@ describe("isFlowChangeGated — どの指示書で承認が要るか", () => {
     expect(isFlowChangeGated("IN_PROGRESS")).toBe(true);
   });
 
-  it("下書き・承認待ちは対象外（普通に編集できる段階）", () => {
+  it("下書き・承認依頼中は対象外（普通に編集できる段階）", () => {
     expect(isFlowChangeGated("DRAFT")).toBe(false);
     expect(isFlowChangeGated("PENDING_APPROVAL")).toBe(false);
   });

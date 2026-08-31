@@ -6,6 +6,7 @@ import {
   AppFlagsProvider,
 } from "@/components/layout/AppFlags";
 import { DashboardShell } from "@/components/layout/AppShell";
+import { DisplayPreferencesStyle } from "@/components/layout/DisplayPreferencesStyle";
 import { NavigationGuardProvider } from "@/components/layout/NavigationGuard";
 import { PreferencesProvider } from "@/components/layout/PreferencesProvider";
 import { PwaRegister } from "@/components/layout/PwaRegister";
@@ -80,6 +81,11 @@ export default async function DashboardLayout({
       unreleasedKeys={unreleasedKeys}
     >
       <PwaRegister />
+      {/*
+        文字の大きさ・太さ（表示設定）。SSR で :root へ載せる — クライアントで
+        当てると最初の描画だけ既定の大きさになり、画面が跳ねる。
+      */}
+      <DisplayPreferencesStyle prefs={prefs} />
       {/*
         文言（next-intl）と日時整形（PreferencesProvider）の 2 段。どちらも
         同じ app.users の設定を見る（src/i18n/request.ts / getCurrentPreferences）。

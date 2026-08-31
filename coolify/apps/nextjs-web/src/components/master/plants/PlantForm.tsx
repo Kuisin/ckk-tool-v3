@@ -18,6 +18,7 @@ import {
 import { useForm } from "@mantine/form";
 import { notifications } from "@mantine/notifications";
 import { useRouter } from "next/navigation";
+import { useLocale } from "next-intl";
 import { useTransition } from "react";
 import { z } from "zod";
 import {
@@ -32,7 +33,7 @@ import {
   LocalizedTextInput,
 } from "@/components/ui/shells";
 import { useIsMobile } from "@/hooks/useViewport";
-import { COUNTRY_OPTIONS } from "@/lib/enum-labels";
+import { countryOptions } from "@/lib/enum-labels";
 import { fieldHelp, fieldHelpTip } from "@/lib/field-help";
 import { zodResolver } from "@/lib/form";
 
@@ -41,13 +42,13 @@ const BASE_PATH = "/master/plants";
 const plantSchema = z.object({
   code: z.string().min(1, "拠点コードを入力してください"),
   nameJa: z.string().min(1, "名称（日本語）を入力してください"),
-  nameEn: z.string(),
+  nameTranslations: z.record(z.string(), z.string()).default({}),
   nameKana: z.string(),
   countryCode: z.string().nullable(),
   regionId: z.string().nullable(),
   postalCode: z.string(),
   addressJa: z.string(),
-  addressEn: z.string(),
+  addressTranslations: z.record(z.string(), z.string()).default({}),
   phone: z.string(),
   email: z
     .string()
@@ -64,13 +65,13 @@ export interface PlantFormInitial {
   id: number;
   code: string;
   nameJa: string;
-  nameEn: string;
+  nameTranslations: Record<string, string>;
   nameKana: string;
   countryCode: string | null;
   regionId: number | null;
   postalCode: string;
   addressJa: string;
-  addressEn: string;
+  addressTranslations: Record<string, string>;
   phone: string;
   email: string;
   contactPerson: string;
@@ -86,6 +87,7 @@ export function PlantForm({
   /** 地域 Select の選択肢（value = String(region id)）。 */
   regionOptions: { value: string; label: string }[];
 }) {
+  const locale = useLocale();
   const router = useRouter();
   const isMobile = useIsMobile();
   const [isPending, startTransition] = useTransition();
@@ -96,13 +98,13 @@ export function PlantForm({
     initialValues: {
       code: initial?.code ?? "",
       nameJa: initial?.nameJa ?? "",
-      nameEn: initial?.nameEn ?? "",
+      nameTranslations: initial?.nameTranslations ?? {},
       nameKana: initial?.nameKana ?? "",
       countryCode: initial?.countryCode ?? "JP",
       regionId: initial?.regionId != null ? String(initial.regionId) : null,
       postalCode: initial?.postalCode ?? "",
       addressJa: initial?.addressJa ?? "",
-      addressEn: initial?.addressEn ?? "",
+      addressTranslations: initial?.addressTranslations ?? {},
       phone: initial?.phone ?? "",
       email: initial?.email ?? "",
       contactPerson: initial?.contactPerson ?? "",
@@ -177,11 +179,11 @@ export function PlantForm({
         </SimpleGrid>
         <Stack gap="sm" mt="sm">
           <LocalizedTextInput
-            enProps={form.getInputProps("nameEn")}
             help={fieldHelpTip("plant", "name")}
             jaProps={form.getInputProps("nameJa")}
             label="名称"
             required
+            translationsProps={form.getInputProps("nameTranslations")}
           />
           <Switch
             label={<HelpLabel {...fieldHelp("plant", "active")} />}
@@ -201,7 +203,7 @@ export function PlantForm({
         <SimpleGrid cols={isMobile ? 1 : 2} spacing="sm">
           <Select
             clearable
-            data={COUNTRY_OPTIONS}
+            data={countryOptions(locale)}
             label={
               <HelpLabel {...fieldHelp("plant", "region", { label: "国" })} />
             }
@@ -231,10 +233,10 @@ export function PlantForm({
         </SimpleGrid>
         <Stack gap="sm" mt="sm">
           <LocalizedTextInput
-            enProps={form.getInputProps("addressEn")}
             help={fieldHelpTip("plant", "address")}
             jaProps={form.getInputProps("addressJa")}
             label="住所"
+            translationsProps={form.getInputProps("addressTranslations")}
           />
         </Stack>
         <SimpleGrid cols={isMobile ? 1 : 2} mt="sm" spacing="sm">

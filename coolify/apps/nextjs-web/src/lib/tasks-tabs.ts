@@ -1,7 +1,7 @@
 /**
  * tasks-tabs.ts — 承認・予定 (CM01) のタブ定義と、個人ごとの表示/非表示。
  *
- * タブは 6 枚あり、全部を使う人はまずいない（現場は作業予定、承認者は承認待ち、
+ * タブは 6 枚あり、全部を使う人はまずいない（現場は作業予定、承認者は承認依頼中、
  * 事務はフォーム…）。使わないタブが前に並ぶだけ探す手間が増えるので、
  * **隠すタブを本人が選べる**ようにした（狭い画面でタブがドロップダウンへ
  * 畳まれるのは別の話 — components/ui/AppTabs.tsx が幅で決める）。
@@ -17,7 +17,7 @@ export interface TaskTabDef {
 
 export const TASK_TABS: readonly TaskTabDef[] = [
   { id: "plans", label: "作業予定" },
-  { id: "approvals", label: "承認待ち" },
+  { id: "approvals", label: "承認依頼中" },
   { id: "forms", label: "未回答のフォーム" },
   { id: "my-forms", label: "回答済みのフォーム" },
   { id: "completions", label: "完了した申請" },

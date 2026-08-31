@@ -112,7 +112,7 @@ export const OPERATION_CODES: OperationCodeEntry[] = [
     index: "0",
   },
   {
-    // 一般カテゴリの 承認・予定 — 自分の作業予定 + 承認待ちの横断一覧
+    // 一般カテゴリの 承認・予定 — 自分の作業予定 + 承認依頼中の横断一覧
     //（旧 承認管理 PD03 の後継）。
     code: "CM01",
     label: "承認・予定",
@@ -131,8 +131,8 @@ export const OPERATION_CODES: OperationCodeEntry[] = [
   ...makeResource("一般", "CM", "3", "社内文書", "/general/documents"),
 
   // ─── 販売 (SA) ───────────────────────────────────────────────────────────
-  // 業務フロー順: 試算 → 価格表 → 見積書 → 注文請書（設計依頼書は並行フロー）
-  ...makeResource("販売", "SA", "1", "試算", "/sales/trial-estimates"),
+  // 業務フロー順: 価格試算 → 価格表 → 見積書 → 注文請書（設計依頼書は並行フロー）
+  ...makeResource("販売", "SA", "1", "価格試算", "/sales/trial-estimates"),
   ...makeResource("販売", "SA", "2", "価格表", "/sales/price-lists"),
   ...makeResource("販売", "SA", "3", "見積書", "/sales/quotes"),
   ...makeResource("販売", "SA", "4", "注文請書", "/sales/order-acceptances"),
@@ -168,11 +168,11 @@ export const OPERATION_CODES: OperationCodeEntry[] = [
   ...makeResource("購買", "PU", "4", "外注依頼", "/purchase/outsource-orders"),
 
   // ─── 生産 (PD) ───────────────────────────────────────────────────────────
-  // 業務フロー順: 指示書 → 承認管理 → 在庫管理。
+  // 業務フロー順: 指示書 → 承認管理 → 在庫管理 → 設計図。
   // 注文明細は販売カテゴリ (SA05) へ移設したため PD01/PD11/PD21 は欠番。
   // PD22 詳細（ID無し→検索）が旧 PD20 工程実行 のエントリポイントを兼ねる
   ...makeResource("生産", "PD", "2", "指示書", "/production/work-orders"),
-  // PD03（承認管理）は廃止・欠番 — 承認待ちの横断一覧は 承認・予定 (CM01) へ。
+  // PD03（承認管理）は廃止・欠番 — 承認依頼中の横断一覧は 承認・予定 (CM01) へ。
   // 在庫管理 — 製品・素材・仕掛品・ロケーションの統合単一画面, list コードのみ
   // （旧 PD04 製品在庫 / PD05 素材在庫 は本画面へ統合）
   {
@@ -185,6 +185,9 @@ export const OPERATION_CODES: OperationCodeEntry[] = [
     mode: "0",
     index: "4",
   },
+  // 設計図 — 図面の台帳。一覧 (PD06) は系列（製品 × 受注元）、詳細 (PD26) は
+  // 1 製品の全系列、新規 (PD16) は版を 1 つ登録する。
+  ...makeResource("生産", "PD", "6", "設計図", "/production/design-files"),
   // 未処理指示書 — 作業キュー（未手配の注文明細 + 進行中の指示書）。
   // 書類を作る画面ではないので list コードのみ（新規は PD12 と同じフォーム）。
   {
@@ -309,10 +312,10 @@ export const OPERATION_CODES: OperationCodeEntry[] = [
     mode: "0",
     index: "1",
   },
-  // 試算計算（計算基準・カスタム入力・カスタム計算）
+  // 価格試算計算（計算基準・カスタム入力・カスタム計算）
   {
     code: "SY02",
-    label: "試算計算",
+    label: "価格試算計算",
     href: "/settings/trial-pricing-engine",
     category: "システム",
     kind: "list",
@@ -397,10 +400,10 @@ export const OPERATION_CODES: OperationCodeEntry[] = [
     mode: "0",
     index: "9",
   },
-  // キオスク設定（ランチャーのアプリ表示 + 認証ポリシー参照）
+  // 共有端末設定（ランチャーのアプリ表示 + 認証ポリシー参照）
   {
     code: "SY0A",
-    label: "キオスク設定",
+    label: "共有端末設定",
     href: "/settings/kiosk",
     category: "システム",
     kind: "list",

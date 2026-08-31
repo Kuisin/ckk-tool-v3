@@ -136,7 +136,7 @@ export function LoginAttemptDrawer({
               {row.outcome === "SUCCESS" ? "成功" : "失敗"}
             </Badge>
             <Badge color="gray" variant="light">
-              {row.app === "KIOSK" ? "キオスク" : "Web"}
+              {row.app === "KIOSK" ? "共有端末" : "Web"}
             </Badge>
             <OwnershipBadge
               size="sm"
@@ -191,7 +191,7 @@ export function LoginAttemptDrawer({
               }
             />
             {row.kioskDeviceName && (
-              <FieldValue label="キオスク端末" value={row.kioskDeviceName} />
+              <FieldValue label="共有端末" value={row.kioskDeviceName} />
             )}
             {row.scanKind && (
               <FieldValue

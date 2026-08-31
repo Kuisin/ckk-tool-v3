@@ -54,6 +54,7 @@ import {
   type ActionResult,
   actionError,
   actionOk,
+  localizedInput,
   prismaErrorMessage,
 } from "@/lib/server-action";
 import {
@@ -69,7 +70,7 @@ const FORM_OWNER_TYPE = "forms";
 
 function revalidate(code?: string, responseNumber?: string) {
   revalidatePath(BASE_PATH);
-  // 承認待ち・未回答フォームは 承認・予定 (CM01) にも出る。
+  // 承認依頼中・未回答フォームは 承認・予定 (CM01) にも出る。
   revalidatePath(TASKS_PATH);
   if (code) {
     revalidatePath(`${BASE_PATH}/${code}`);
@@ -873,7 +874,7 @@ async function actOnResponse(
   });
   if (!row) return actionError("回答が見つかりません");
   if (row.status !== "REQUESTED")
-    return actionError("この回答は承認待ちではありません");
+    return actionError("この回答は承認依頼中ではありません");
 
   const result = await actOnCurrentStep({
     targetType: "form_responses",
@@ -1164,7 +1165,7 @@ export async function importForm(
 const formFlowStepInput = z
   .object({
     nameJa: z.string().trim().min(1, "段の名前を入力してください").max(60),
-    nameEn: z.string().trim().max(60).optional(),
+    nameTranslations: z.record(z.string(), z.string()).optional(),
     // 宛先はグループか「カスタム（1..N 人の指名）」のどちらか一方。
     groupId: z.number().int().positive().nullable().optional(),
     approverUserIds: z.array(z.string().uuid()).max(50).optional(),
@@ -1224,7 +1225,7 @@ export async function saveFormApprovalFlow(
           data: {
             formId: gate.form.id,
             stepNo: i + 1,
-            name: { ja: step.nameJa, en: step.nameEn ?? "" },
+            name: localizedInput(step.nameJa, undefined, step.nameTranslations),
             groupId: step.groupId ?? null,
             mode: step.mode,
           },

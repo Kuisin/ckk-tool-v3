@@ -22,7 +22,7 @@ export const FLOW_CHANGE_KIND_LABEL: Record<string, string> = {
 };
 
 export const FLOW_CHANGE_STATUS_LABEL: Record<string, string> = {
-  PENDING: "承認待ち",
+  PENDING: "承認依頼中",
   APPLIED: "適用済み",
   REJECTED: "差し戻し",
   CANCELLED: "取消",
@@ -45,7 +45,7 @@ export function displayFlowChangeStatus(
   status: string,
   appliedAt: string | Date | null,
 ): string {
-  if (status === "PENDING" && appliedAt != null) return "適用済み・承認待ち";
+  if (status === "PENDING" && appliedAt != null) return "適用済み・承認依頼中";
   if (status === "REJECTED" && appliedAt != null) return "差し戻し（適用済み）";
   return FLOW_CHANGE_STATUS_LABEL[status] ?? status;
 }
@@ -71,7 +71,7 @@ export function needsRejectedAppliedAlert(row: {
  * 承認を通すべきか。
  *
  * **承認設定（MS0B）で「工程フロー変更」の段が 1 つも無ければ素通し** —
- * 承認を運用しない拠点や立ち上げ期に、承認待ちで現場が止まらないようにする
+ * 承認を運用しない拠点や立ち上げ期に、承認依頼中で現場が止まらないようにする
  * （ご要望どおりの「未設定なら skip」）。段があるときだけ変更を保留する。
  */
 export function requiresApproval(flowStepCount: number): boolean {

@@ -30,7 +30,7 @@ import {
   SecondaryButton,
 } from "@/components/ui/buttons";
 import { ModalShell } from "@/components/ui/modals";
-import { STATUS_MAPS } from "@/components/ui/StatusBadge";
+import { statusLabel as statusMapLabel } from "@/components/ui/StatusBadge";
 import { useIsMobile } from "@/hooks/useViewport";
 import { downloadFile } from "@/lib/download";
 import {
@@ -38,11 +38,6 @@ import {
   exportFilterToParams,
 } from "@/lib/form-export-core";
 import type { FormFieldDef } from "@/lib/form-schema";
-
-const STATUS_LABEL = STATUS_MAPS.FormResponse as Record<
-  string,
-  { label: string }
->;
 
 export function ResponseExportModal({
   opened,
@@ -120,7 +115,7 @@ export function ResponseExportModal({
               {EXPORTABLE_STATUSES.map((s) => (
                 <Checkbox
                   key={s}
-                  label={STATUS_LABEL[s]?.label ?? s}
+                  label={statusMapLabel("FormResponse", s)}
                   value={s}
                 />
               ))}

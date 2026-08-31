@@ -54,6 +54,9 @@ model BusinessPartner {
   email       String?
   website     String?
   taxNumber   String?  @map("tax_number")
+  /// 書類の言語（見積書/納品書/請求書）。未設定 = 既定言語（ja）。
+  /// _specs/i18n-glossary.md §2.7・決定 10 — 閲覧者の表示設定ではなく受取先で決まる。
+  documentLocale String? @map("document_locale")
   // AI 抽出（po-extract）が読み取った社名をこの BP に解決するための照合名リスト。
   // 表記ゆれ（全角/半角・㈱/株式会社・旧名など）をすべて登録する。
   matchNames  String[] @default([]) @map("match_names")
@@ -76,6 +79,10 @@ model BusinessPartner {
   endUserAttrs    BpEndUserAttrs?
   contacts        BpContact[]
   salesReps       BpSalesRep[]       @relation("BpSalesRepBp")
+
+  // 取引先ポータル（社外向け）
+  portalAccounts  PortalAccount[]    @relation("PortalAccountBp")
+  portalGrants    PortalGrant[]      @relation("PortalGrantBp")
 
   estimates        Estimate[]       @relation("EstimateCustomer")
   priceListEntries PriceListEntry[] @relation("PriceListEntryCustomer")
@@ -214,6 +221,8 @@ model BpContact {
   updatedAt  DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
 
   bp BusinessPartner @relation(fields: [bpId], references: [id])
+
+  portalAccounts PortalAccount[] @relation("PortalAccountContact")
 
   @@index([bpId])
   @@map("bp_contacts")

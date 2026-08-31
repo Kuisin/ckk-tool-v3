@@ -1,10 +1,10 @@
 /**
- * trial-pricing-criteria.ts — data model for the configurable 試算 calculation.
+ * trial-pricing-criteria.ts — data model for the configurable 価格試算 calculation.
  *
  * The pricing result is the sum of an ordered list of admin-defined **criteria**,
  * each a JavaScript expression evaluated (per lot) against the simulation input
  * variables. Admins may also define extra **custom inputs** that appear in the
- * 試算 form and become variables in expressions. This module holds only the
+ * 価格試算 form and become variables in expressions. This module holds only the
  * shared types / zod schemas / defaults — it is client-safe (no `server-only`),
  * imported by the browser form, the engine, and the server settings adapter.
  *
@@ -99,7 +99,7 @@ export interface Criterion {
   expression: string;
   order: number;
   enabled: boolean;
-  /** 適用する工具種（未設定/空 = 全工具種）。指定時はその工具種の試算にのみ効く。 */
+  /** 適用する工具種（未設定/空 = 全工具種）。指定時はその工具種の価格試算にのみ効く。 */
   toolTypes?: ToolType[];
 }
 
@@ -111,7 +111,7 @@ export interface CustomInputOption {
 }
 
 /**
- * - `estimate` … editable per estimate (appears in the 試算 form; default is the
+ * - `estimate` … editable per estimate (appears in the 価格試算 form; default is the
  *                initial value).
  * - `global`   … fixed global constant; hidden from the estimate form, always uses
  *                `default`. Edited only in the SY02 custom-values admin list.
@@ -286,7 +286,7 @@ export const lookupTableSchema = z.object({
 
 export const lookupTablesArraySchema = z.array(lookupTableSchema);
 
-/** 参照表の既定セット（Excel「最新見積書試算」由来）。lib/trial-pricing-lookups.ts。 */
+/** 参照表の既定セット（Excel「最新見積書価格試算」由来）。lib/trial-pricing-lookups.ts。 */
 export { DEFAULT_LOOKUP_TABLES } from "./trial-pricing-lookups";
 
 /** キー配列 → 一意な合成キー文字列（区切りは NUL）。 */

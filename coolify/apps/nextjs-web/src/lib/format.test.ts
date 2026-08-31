@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { createFormatters, documentFormatters } from "./format";
+import {
+  createFormatters,
+  documentFormatters,
+  localizedTranslations,
+} from "./format";
 import { DEFAULT_PREFERENCES } from "./user-preferences-core";
 
 const jst = documentFormatters; // 既定 = 日本語 / JST / yyyy/MM/dd / 24h
@@ -68,7 +72,7 @@ describe("表示設定ごとの整形", () => {
     expect(ampm.time("2026-08-13T05:30:00.000Z")).toBe("02:30 PM");
   });
 
-  it("{ja,en} フィールドは言語設定で選ぶ（zh は英語へ）", () => {
+  it("{ja,en} フィールドは言語設定で選ぶ（zh はデータが無ければ英語へ）", () => {
     const value = { ja: "製品", en: "Product" };
     expect(jst.localized(value)).toBe("製品");
     expect(
@@ -81,5 +85,45 @@ describe("表示設定ごとの整形", () => {
         value,
       ),
     ).toBe("Product");
+  });
+
+  it("zh キーがあれば zh の人にはそちらを見せる（可変キー・_specs/i18n-glossary.md §2.10）", () => {
+    const value = { ja: "製品", en: "Product", zh: "产品" };
+    expect(
+      createFormatters({ ...DEFAULT_PREFERENCES, locale: "zh" }).localized(
+        value,
+      ),
+    ).toBe("产品");
+    // 追加の言語キーは ja/en の読み替えに影響しない
+    expect(jst.localized(value)).toBe("製品");
+  });
+
+  it("localized は空データで '—'、未知ロケールは ja へ落ちる", () => {
+    expect(jst.localized(null)).toBe("—");
+    expect(jst.localized({ ja: "" })).toBe("—");
+    expect(
+      createFormatters({
+        ...DEFAULT_PREFERENCES,
+        // biome-ignore lint/suspicious/noExplicitAny: 未対応ロケールの防御を試す
+        locale: "ko" as any,
+      }).localized({ ja: "製品" }),
+    ).toBe("製品");
+  });
+});
+
+describe("localizedTranslations（多言語ポップアップの初期値）", () => {
+  it("ja とオート補完された en（ja と同一）を除く", () => {
+    expect(localizedTranslations({ ja: "製品", en: "製品" })).toEqual({});
+  });
+
+  it("実際に入力された en / zh は残す", () => {
+    expect(
+      localizedTranslations({ ja: "製品", en: "Product", zh: "产品" }),
+    ).toEqual({ en: "Product", zh: "产品" });
+  });
+
+  it("null/undefined は空オブジェクト", () => {
+    expect(localizedTranslations(null)).toEqual({});
+    expect(localizedTranslations(undefined)).toEqual({});
   });
 });

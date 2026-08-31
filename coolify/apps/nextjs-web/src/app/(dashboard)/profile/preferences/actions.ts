@@ -2,7 +2,8 @@
 
 /**
  * Server Actions — 表示設定（本人のみ）。
- * 言語・日付形式・時刻形式・タイムゾーンを app.users の各列へ保存する。
+ * 言語・日付形式・時刻形式・タイムゾーン・文字の大きさ・文字を太くするを
+ * app.users の各列へ保存する。
  *
  * 言語列（locale）はキオスクと共有なので、ここでの変更は共有タブレット側の
  * 表示にも効く。
@@ -18,6 +19,7 @@ import {
   DATE_FORMATS,
   type DisplayPreferences,
   isValidTimeZone,
+  TEXT_SCALES,
   TIME_FORMATS,
 } from "@/lib/user-preferences-core";
 
@@ -31,6 +33,8 @@ const preferencesSchema = z.object({
     .string()
     .max(64)
     .refine(isValidTimeZone, "タイムゾーンを選択してください"),
+  textScale: z.enum(TEXT_SCALES),
+  boldText: z.boolean(),
 });
 
 export async function saveDisplayPreferences(

@@ -29,6 +29,7 @@ import { useForm } from "@mantine/form";
 import { notifications } from "@mantine/notifications";
 import { IconCalendar, IconPaperclip, IconX } from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
+import { useLocale } from "next-intl";
 import { useState, useTransition } from "react";
 import { z } from "zod";
 import { searchMaterialOptions } from "@/app/(dashboard)/_shared/option-search";
@@ -41,7 +42,7 @@ import { SecondaryButton } from "@/components/ui/buttons";
 import { HelpLabel } from "@/components/ui/HelpLabel";
 import { SearchSelect } from "@/components/ui/SearchSelect";
 import { FormSection, FormShell } from "@/components/ui/shells";
-import { UNIT_OPTIONS } from "@/lib/enum-labels";
+import { unitOptions } from "@/lib/enum-labels";
 import { fieldHelp } from "@/lib/field-help";
 import { zodResolver } from "@/lib/form";
 
@@ -75,6 +76,7 @@ export function MaterialReceiptForm({
   /** 入荷先拠点（有効のみ）。value = String(内部 id)。 */
   plantOptions: Option[];
 }) {
+  const locale = useLocale();
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   // 証憑（任意・複数可）。登録成功後に順次アップロードする。
@@ -258,7 +260,7 @@ export function MaterialReceiptForm({
             {...form.getInputProps("quantity")}
           />
           <Select
-            data={UNIT_OPTIONS}
+            data={unitOptions(locale)}
             label="単位"
             withAsterisk
             {...form.getInputProps("unit")}

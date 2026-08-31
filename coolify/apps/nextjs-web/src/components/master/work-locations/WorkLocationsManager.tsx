@@ -63,7 +63,8 @@ import {
   type ModalBaseProps,
 } from "@/components/ui/modals";
 import { PageHeader } from "@/components/ui/PageHeader";
-import { fieldHelp } from "@/lib/field-help";
+import { LocalizedTextInput } from "@/components/ui/shells";
+import { fieldHelp, fieldHelpTip } from "@/lib/field-help";
 import { openInNewContext } from "@/lib/pwa-display";
 
 /**
@@ -81,6 +82,7 @@ export interface WorkLocationRow {
   code: string;
   nameJa: string;
   nameEn: string;
+  nameTranslations: Record<string, string>;
   capacity: number | null;
   sortOrder: number;
   isActive: boolean;
@@ -96,6 +98,7 @@ export interface WorkLocationGroupRow {
   code: string;
   nameJa: string;
   nameEn: string;
+  nameTranslations: Record<string, string>;
   typeKey: string;
   plantId: number | null;
   plantName: string | null;
@@ -153,7 +156,9 @@ function GroupModal({
   const isEdit = !!group;
   const [code, setCode] = useState("");
   const [nameJa, setNameJa] = useState("");
-  const [nameEn, setNameEn] = useState("");
+  const [nameTranslations, setNameTranslations] = useState<
+    Record<string, string>
+  >({});
   const [typeKey, setTypeKey] = useState("machine");
   const [plantId, setPlantId] = useState<string | null>(null);
   const [sortOrder, setSortOrder] = useState(0);
@@ -164,7 +169,7 @@ function GroupModal({
     if (!opened) return;
     setCode(group?.code ?? "");
     setNameJa(group?.nameJa ?? "");
-    setNameEn(group?.nameEn ?? "");
+    setNameTranslations(group?.nameTranslations ?? {});
     setTypeKey(group?.typeKey ?? "machine");
     setPlantId(group?.plantId != null ? String(group.plantId) : null);
     setSortOrder(group?.sortOrder ?? 0);
@@ -178,7 +183,7 @@ function GroupModal({
       const input: WorkLocationGroupInput = {
         code,
         nameJa,
-        nameEn,
+        nameTranslations,
         typeKey,
         plantId: plantId ? Number(plantId) : null,
         sortOrder,
@@ -230,30 +235,6 @@ function GroupModal({
             value={typeKey}
             withAsterisk
           />
-          <TextInput
-            label={
-              <HelpLabel
-                {...fieldHelp("workLocation", "code", {
-                  label: "名称（日本語）",
-                })}
-              />
-            }
-            onChange={(e) => setNameJa(e.currentTarget.value)}
-            placeholder="例: NC旋盤"
-            value={nameJa}
-            withAsterisk
-          />
-          <TextInput
-            label={
-              <HelpLabel
-                {...fieldHelp("workLocation", "code", {
-                  label: "名称（English）",
-                })}
-              />
-            }
-            onChange={(e) => setNameEn(e.currentTarget.value)}
-            value={nameEn}
-          />
           <Select
             clearable
             data={plantOptions}
@@ -274,6 +255,17 @@ function GroupModal({
             value={sortOrder}
           />
         </SimpleGrid>
+        <LocalizedTextInput
+          help={fieldHelpTip("workLocation", "code")}
+          jaProps={{ value: nameJa, onChange: setNameJa }}
+          label="名称"
+          placeholder="例: NC旋盤"
+          required
+          translationsProps={{
+            value: nameTranslations,
+            onChange: setNameTranslations,
+          }}
+        />
         <TextInput
           label={
             <HelpLabel
@@ -316,7 +308,9 @@ function LocationModal({
   const isEdit = !!location;
   const [code, setCode] = useState("");
   const [nameJa, setNameJa] = useState("");
-  const [nameEn, setNameEn] = useState("");
+  const [nameTranslations, setNameTranslations] = useState<
+    Record<string, string>
+  >({});
   const [capacity, setCapacity] = useState<number | null>(null);
   const [sortOrder, setSortOrder] = useState(defaultSortOrder);
   const [isActive, setIsActive] = useState(true);
@@ -326,7 +320,7 @@ function LocationModal({
     if (!opened) return;
     setCode(location?.code ?? "");
     setNameJa(location?.nameJa ?? "");
-    setNameEn(location?.nameEn ?? "");
+    setNameTranslations(location?.nameTranslations ?? {});
     setCapacity(location?.capacity ?? null);
     setSortOrder(location?.sortOrder ?? defaultSortOrder);
     setIsActive(location?.isActive ?? true);
@@ -339,7 +333,7 @@ function LocationModal({
       const input: WorkLocationInput = {
         code,
         nameJa,
-        nameEn,
+        nameTranslations,
         capacity,
         sortOrder,
         isActive,
@@ -391,30 +385,6 @@ function LocationModal({
             }
             value={capacity ?? ""}
           />
-          <TextInput
-            label={
-              <HelpLabel
-                {...fieldHelp("workLocation", "code", {
-                  label: "名称（日本語）",
-                })}
-              />
-            }
-            onChange={(e) => setNameJa(e.currentTarget.value)}
-            placeholder="例: NC旋盤 1号機"
-            value={nameJa}
-            withAsterisk
-          />
-          <TextInput
-            label={
-              <HelpLabel
-                {...fieldHelp("workLocation", "code", {
-                  label: "名称（English）",
-                })}
-              />
-            }
-            onChange={(e) => setNameEn(e.currentTarget.value)}
-            value={nameEn}
-          />
           <NumberInput
             label={
               <HelpLabel
@@ -437,6 +407,17 @@ function LocationModal({
             onChange={(e) => setIsActive(e.currentTarget.checked)}
           />
         </SimpleGrid>
+        <LocalizedTextInput
+          help={fieldHelpTip("workLocation", "code")}
+          jaProps={{ value: nameJa, onChange: setNameJa }}
+          label="名称"
+          placeholder="例: NC旋盤 1号機"
+          required
+          translationsProps={{
+            value: nameTranslations,
+            onChange: setNameTranslations,
+          }}
+        />
         <TextInput
           label={
             <HelpLabel

@@ -1,15 +1,11 @@
 import { notFound } from "next/navigation";
-import { fetchBillingOptions } from "@/app/(dashboard)/master/_shared/bp-data";
-import {
-  fetchDesignFilesForProduct,
-  fetchDesignRequestsForProduct,
-} from "@/app/(dashboard)/sales/design-requests/data";
+import { fetchDesignFilesForProduct } from "@/app/(dashboard)/production/design-files/data";
+import { fetchDesignRequestsForProduct } from "@/app/(dashboard)/sales/design-requests/data";
 import {
   ProductDetail,
   type ProductDetailData,
 } from "@/components/master/products/ProductDetail";
 import { fetchAuditEntries } from "@/lib/audit";
-import { checkPermission } from "@/lib/authz";
 import { requireAppRead } from "@/lib/authz-page";
 import { prisma } from "@/lib/db";
 import { formatPriceListNumber, formatProductNumber } from "@/lib/doc-number";
@@ -31,39 +27,28 @@ export default async function MasterProductsDetailPage({
   const { id: idParam } = await params;
   const id = Number(idParam);
   if (!Number.isInteger(id)) notFound();
-  const [
-    r,
-    auditEntries,
-    routes,
-    designFiles,
-    designRequests,
-    customerOptions,
-    designAuthz,
-  ] = await Promise.all([
-    prisma.product.findUnique({
-      where: { id },
-      include: {
-        materialType: { select: { code: true, name: true } },
-        priceListEntries: {
-          include: {
-            customerBp: true,
-            variants: { orderBy: { orderType: "asc" } },
+  const [r, auditEntries, routes, designFiles, designRequests] =
+    await Promise.all([
+      prisma.product.findUnique({
+        where: { id },
+        include: {
+          materialType: { select: { code: true, name: true } },
+          priceListEntries: {
+            include: {
+              customerBp: true,
+              variants: { orderBy: { orderType: "asc" } },
+            },
+            orderBy: { createdAt: "desc" },
           },
-          orderBy: { createdAt: "desc" },
         },
-      },
-    }),
-    fetchAuditEntries("products", String(id)),
-    listProductRoutes(id),
-    // 製品の最新図面は design_files（product_id + is_latest）が正。
-    // products 側に design_file_id 列は無い。
-    fetchDesignFilesForProduct(id),
-    fetchDesignRequestsForProduct(id),
-    // 版を載せられる受注元（顧客）。空のままなら「汎用」。
-    fetchBillingOptions(),
-    // 図面は設計の成果物なので、製品マスタではなく設計依頼の権限で守る。
-    checkPermission("design_request", "UPDATE"),
-  ]);
+      }),
+      fetchAuditEntries("products", String(id)),
+      listProductRoutes(id),
+      // 製品の最新図面は design_files（product_id + is_latest）が正。
+      // products 側に design_file_id 列は無い。
+      fetchDesignFilesForProduct(id),
+      fetchDesignRequestsForProduct(id),
+    ]);
   if (!r) notFound();
 
   const name = r.name as LocalizedText | null;
@@ -119,8 +104,6 @@ export default async function MasterProductsDetailPage({
   return (
     <ProductDetail
       auditEntries={auditEntries}
-      canManageDesign={designAuthz.ok}
-      customerOptions={customerOptions}
       designFiles={designFiles}
       designRequests={designRequests}
       record={record}

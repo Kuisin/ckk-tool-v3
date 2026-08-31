@@ -28,7 +28,10 @@
   "shell": {
     "appsLabel": "应用",
     "home": "主页",
+    "goHome": "前往首页",
     "searchPlaceholder": "操作代码 / 应用名称...",
+    "searchResults": "搜索结果",
+    "noAppsFound": "未找到匹配的应用",
     "notifications": "通知",
     "markAllRead": "全部标为已读",
     "noNotifications": "没有通知",
@@ -42,7 +45,7 @@
   },
   "preferences": {
     "title": "显示设置",
-    "description": "选择语言以及日期时间的显示方式。设置仅适用于本人，且在网页端与车间平板（kiosk）通用。",
+    "description": "选择语言、日期时间的显示方式，以及文字的大小与粗细。设置仅适用于本人；语言与日期时间在网页端与车间平板（kiosk）通用（文字大小与加粗仅限网页端）。",
     "language": "语言",
     "languageHelp": "界面语言。尚未翻译的画面仍以日语显示。",
     "dateFormat": "日期格式",
@@ -51,10 +54,32 @@
     "time12h": "12 小时制（2:30 PM）",
     "timeZone": "时区",
     "timeZoneHelp": "以哪个地区的时间显示日期时间。已保存的时间本身不会改变。",
+    "textSize": "文字大小",
+    "textSizeHelp": "整个界面的文字与间距大小。选择后立即生效，保存后固定。",
+    "textScaleXs": "最小",
+    "textScaleSm": "小",
+    "textScaleMd": "标准",
+    "textScaleLg": "大",
+    "textScaleXl": "最大",
+    "boldText": "加粗文字",
+    "boldTextHelp": "将正文加粗一档，便于阅读。原本就加粗的标题与强调保持不变。",
     "preview": "预览",
     "previewDate": "日期",
     "previewDateTime": "日期时间",
     "previewTime": "时间",
+    "previewText": "正文",
+    "previewTextSample": "请确认订单确认书的明细，若价格无差异则予以确定。",
     "saved": "已保存显示设置"
+  },
+  "home": {
+    "favorites": "收藏",
+    "other": "其他",
+    "workprocessFilter": "按工序筛选中：",
+    "clearFilter": "清除筛选",
+    "guest": "访客"
+  },
+  "loginHistory": {
+    "appWeb": "Web",
+    "appKiosk": "共用终端"
   }
 }

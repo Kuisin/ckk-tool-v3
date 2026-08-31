@@ -10,7 +10,7 @@
  * 編集系アクションは出さない。
  *
  * アクション: 編集（DRAFT のみ）/ コピー（対象注文明細を選ぶモーダル。コピー元に
- * 新しい版があれば警告）/ キャンセル（DRAFT・承認待ちのみ）。
+ * 新しい版があれば警告）/ キャンセル（DRAFT・承認依頼中のみ）。
  */
 
 import {
@@ -34,6 +34,7 @@ import {
 } from "@tabler/icons-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { useLocale } from "next-intl";
 import { useState, useTransition } from "react";
 import { searchAllocatableOrderLineOptions } from "@/app/(dashboard)/_shared/option-search";
 import {
@@ -49,8 +50,8 @@ import {
   WorkOrderApprovalCard,
   WorkOrderProcedurePanel,
 } from "@/components/production/ApprovalStatusPanel";
+import type { ProductDesignFile } from "@/components/production/design-files/model";
 import { WorkOrderStepsPanel } from "@/components/production/WorkOrderStepsPanel";
-import type { ProductDesignFile } from "@/components/sales/design-requests/model";
 import { AppTabs } from "@/components/ui/AppTabs";
 import { GhostButton } from "@/components/ui/buttons";
 import { DesignFileThumb } from "@/components/ui/DesignFileViewer";
@@ -70,7 +71,7 @@ import {
 } from "@/components/ui/shells";
 import { useTabParam } from "@/hooks/useUrlState";
 import type { MemoView } from "@/lib/document-memos";
-import { WORK_ORDER_TYPE_LABEL } from "@/lib/enum-labels";
+import { workOrderTypeLabel } from "@/lib/enum-labels";
 import { FlowChangeCard, type PendingFlowChangeView } from "./FlowChangeCard";
 import type { WorkOrderView } from "./model";
 import { WorkOrderLinksCard } from "./WorkOrderLinksCard";
@@ -105,7 +106,7 @@ export function WorkOrderDetail({
   designFile?: ProductDesignFile | null;
   /** その版に固定されているか（false = 表示のたびに最新を引いている）。 */
   designPinned?: boolean;
-  /** 承認待ちの工程フロー変更（承認設定が未設定なら常に null = 即適用）。 */
+  /** 承認依頼中の工程フロー変更（承認設定が未設定なら常に null = 即適用）。 */
   flowChange?: PendingFlowChangeView | null;
   /** 上の変更そのものの承認状態（指示書の承認とは別物）。 */
   flowChangeApproval?: ApprovalActionState | null;
@@ -118,6 +119,7 @@ export function WorkOrderDetail({
   /** "approval" = 承認管理 (PD03) からの承認画面。 */
   variant?: "default" | "approval";
 }) {
+  const locale = useLocale();
   const fmt = useFormat();
   const router = useRouter();
   // アクティブタブを ?tab= に保持（URL 共有でタブまで再現）
@@ -277,7 +279,7 @@ export function WorkOrderDetail({
       <FieldValue label="製品" value={wo.productName} />
       <FieldValue
         label="種別"
-        value={WORK_ORDER_TYPE_LABEL[wo.type] ?? wo.type}
+        value={workOrderTypeLabel(wo.type, locale) ?? wo.type}
       />
       <FieldValue label="予定数量" value={`${wo.plannedQuantity}`} />
       <FieldValue
@@ -444,7 +446,7 @@ export function WorkOrderDetail({
           </Stack>
         </Alert>
       )}
-      {/* 承認待ちの工程フロー変更（承認設定が未設定なら出ない = 即適用） */}
+      {/* 承認依頼中の工程フロー変更（承認設定が未設定なら出ない = 即適用） */}
       {flowChange && flowChangeApproval && (
         <FlowChangeCard approval={flowChangeApproval} change={flowChange} />
       )}

@@ -5,7 +5,7 @@ import { fetchResponse } from "@/lib/forms";
 export const dynamic = "force-dynamic";
 
 /**
- * 回答番号だけを持っている入口（承認待ち一覧 CM01 と 操作履歴 SY07）から、
+ * 回答番号だけを持っている入口（承認依頼中一覧 CM01 と 操作履歴 SY07）から、
  * 実際の回答ページへ送る中継。業務キー FRM-… には所属フォームが入っていない
  * ので、ここで引いてから飛ばす。
  */

@@ -149,7 +149,7 @@ export function ToolTypeEditForm({
         }),
     });
 
-  // 組み込み種は削除不可。カスタム種も試算で使用中は削除できない。
+  // 組み込み種は削除不可。カスタム種も価格試算で使用中は削除できない。
   const deletable = !toolType.builtin && usageCount === 0;
 
   return (
@@ -171,7 +171,7 @@ export function ToolTypeEditForm({
           </Badge>
         )}
         <Text c="dimmed" size="xs">
-          試算 {usageCount} 件
+          価格試算 {usageCount} 件
         </Text>
       </Group>
 
@@ -181,7 +181,7 @@ export function ToolTypeEditForm({
       </Alert>
 
       <FormSection
-        description="チェックした基準がこの工具種の試算で評価されます（加算 = 合計に足す / 中間 = r.<id> で参照）。"
+        description="チェックした基準がこの工具種の価格試算で評価されます（加算 = 合計に足す / 中間 = r.<id> で参照）。"
         title="適用する計算基準"
       >
         <Stack gap="xs">

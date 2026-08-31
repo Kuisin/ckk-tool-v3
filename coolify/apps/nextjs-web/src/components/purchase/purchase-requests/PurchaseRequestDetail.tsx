@@ -198,7 +198,7 @@ export function PurchaseRequestDetail({
     {
       key: "requested",
       label: "依頼",
-      description: rq.requestedAt ? fmt.date(rq.requestedAt) : "作成中",
+      description: rq.requestedAt ? fmt.date(rq.requestedAt) : "下書き",
       // 差し戻し中は赤（_specs/design.md §9 REJECTED = red）。
       color: rq.status === "REJECTED" ? "red" : undefined,
       loading: rq.status === "DRAFT",
@@ -239,8 +239,8 @@ export function PurchaseRequestDetail({
   ];
 
   /**
-   * 「いまやること」カード（最上部）。承認待ちは承認権限の有無で色が変わる
-   * — 権限あり = 緑 + 承認/差し戻し、権限なし = グレーの「承認待ち」表示。
+   * 「いまやること」カード（最上部）。承認依頼中は承認権限の有無で色が変わる
+   * — 権限あり = 緑 + 承認/差し戻し、権限なし = グレーの「承認依頼中」表示。
    */
   let actionCard: ReactNode = null;
   if (canRequestApproval(rq) || rq.status === "REQUESTED") {

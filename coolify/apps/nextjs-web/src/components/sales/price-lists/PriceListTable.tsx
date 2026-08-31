@@ -225,7 +225,7 @@ export function PriceListTable({
     },
     {
       key: "estimateNumber",
-      header: "試算元",
+      header: "価格試算元",
       hideable: true,
       width: 160,
       sortValue: (e) =>

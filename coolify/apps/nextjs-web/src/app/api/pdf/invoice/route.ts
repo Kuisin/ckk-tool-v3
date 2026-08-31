@@ -12,12 +12,17 @@
  */
 
 import { fetchInvoice } from "@/app/(dashboard)/billing/invoices/data";
-import { taxLabel } from "@/components/billing/invoices/model";
 import { requirePermissionResponse } from "@/lib/authz";
 import { parseDocKey } from "@/lib/doc-number";
 import { isIssued, notIssuedResponse, pdfStorageKey } from "@/lib/document-pdf";
 import { documentFormatters } from "@/lib/format";
+import { normalizeLocale } from "@/lib/i18n";
 import { renderPdf } from "@/lib/pdf";
+import {
+  invoicePdfLabels,
+  pdfAttnLine,
+  taxLabelLocalized,
+} from "@/lib/pdf-labels";
 import { documentQrSvg } from "@/lib/pdf-qr";
 import { QR_KINDS } from "@/lib/qr-payload";
 import { getObject, putObject } from "@/lib/storage";
@@ -77,14 +82,16 @@ export async function GET(request: Request): Promise<Response> {
     }
   }
 
+  const lang = normalizeLocale(invoice.recipientDocumentLocale);
+  const dueDateStr = documentFormatters.date(invoice.dueDate);
+  const labels = invoicePdfLabels(lang, dueDateStr);
+
   // 宛先メタ: 支店 + ご担当者。
-  const metaLines = [
-    invoice.customerBranchName
-      ? `${invoice.customerBranchName}　ご担当者 様`
-      : "ご担当者 様",
-  ];
+  const metaLines = [pdfAttnLine(lang, invoice.customerBranchName)];
 
   const data = {
+    lang,
+    labels,
     issuer: ISSUER,
     recipient: {
       name: invoice.customerName,
@@ -98,7 +105,7 @@ export async function GET(request: Request): Promise<Response> {
         invoice.issuedAt ?? invoice.createdAt,
       ),
       period: `${documentFormatters.date(invoice.billingPeriodFrom)} 〜 ${documentFormatters.date(invoice.billingPeriodTo)}`,
-      due_date: documentFormatters.date(invoice.dueDate),
+      due_date: dueDateStr,
     },
     items: invoice.items.map((it) => ({
       name: it.description,
@@ -112,7 +119,7 @@ export async function GET(request: Request): Promise<Response> {
     totals: {
       subtotal: yen(invoice.subtotal),
       // 顧客の課税区分に合わせたラベル（8% / 非課税の顧客がいるため固定にしない）
-      tax_label: taxLabel(invoice.taxType),
+      tax_label: taxLabelLocalized(invoice.taxType, lang),
       tax: yen(invoice.taxAmount),
       grand_total: yen(invoice.totalAmount),
     },

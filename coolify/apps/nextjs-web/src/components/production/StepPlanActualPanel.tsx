@@ -384,7 +384,7 @@ export function StepPlanActualPanel({
       />
       <RecordSection
         canEdit={actualEditable}
-        description="実施した作業を担当者・日付ごとに記録します（進行中のみ追加可）。キオスクからの実績には端末の既定作業場所が入ります。"
+        description="実施した作業を担当者・日付ごとに記録します（進行中のみ追加可）。共有端末からの実績には端末の既定作業場所が入ります。"
         kind="actual"
         rows={actuals}
         stepId={stepId}

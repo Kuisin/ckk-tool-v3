@@ -17,11 +17,9 @@ import type {
   DesignRequestPriority,
   DesignRequestStatus,
   DesignRequestTrigger,
-  ProductDesignFile,
 } from "@/components/sales/design-requests/model";
 import type { HistoryEntry } from "@/lib/approvals";
 import { type Prisma, prisma } from "@/lib/db";
-import { resolveSeriesCustomer } from "@/lib/design-files-core";
 import {
   formatProductNumber,
   formatQuoteNumber,
@@ -237,143 +235,6 @@ export function fetchDesignRequestsForOrderLine(
   orderLineId: string,
 ): Promise<DesignRequestLink[]> {
   return fetchLinks({ orderLineId, status: { not: "CANCELLED" } });
-}
-
-/**
- * 製品の設計図（版一覧・新しい版から）。製品詳細の「設計図」節。
- *
- * 「最新」は is_latest が立っている行。製品側に design_file_id 列は無い。
- */
-export async function fetchDesignFilesForProduct(
-  productId: number,
-): Promise<ProductDesignFile[]> {
-  const rows = await prisma.designFile.findMany({
-    where: { productId },
-    include: {
-      file: { select: { filename: true, mimeType: true } },
-      designRequest: { select: { requestNumber: true } },
-      customerBp: { select: { name: true } },
-      // 指示書がこの版を指しているか = 編集・削除できるか。導出値なので
-      // 列は持たない（ピン留めを外したら編集できるように戻るのが正しい）。
-      _count: { select: { workOrders: true } },
-    },
-    orderBy: [{ version: "desc" }, { role: "asc" }],
-    // 版は (製品 × 受注元) ごとに育つので、顧客が増えるほど行が増える。
-    // 20 だと系列がいくつかあるだけで古い版が黙って消えるため広めに取る。
-    take: 200,
-  });
-  return rows.map((f) => ({
-    id: f.id,
-    version: f.version,
-    isLatest: f.isLatest,
-    role: f.role as DesignFileRole,
-    mimeType: f.file.mimeType,
-    filename: f.file.filename,
-    requestNumber: f.designRequest?.requestNumber ?? null,
-    designRequestId: f.designRequestId,
-    customerBpId: f.customerBpId,
-    customerName: localized(f.customerBp?.name as LocalizedText | null) || null,
-    usedByWorkOrder: f._count.workOrders > 0,
-    notes: f.notes,
-    createdAt: f.createdAt.toISOString(),
-  }));
-}
-
-/** design_files 1 行 → 画面の型（取り出し方をここ 1 箇所に閉じる）。 */
-type DesignFileRow = {
-  id: string;
-  version: number;
-  isLatest: boolean;
-  role: string;
-  notes: string | null;
-  createdAt: Date;
-  customerBpId: string | null;
-  designRequestId: string | null;
-  file: { filename: string; mimeType: string };
-  designRequest: { requestNumber: string } | null;
-  customerBp: { name: unknown } | null;
-  _count: { workOrders: number };
-};
-
-function toProductDesignFile(f: DesignFileRow): ProductDesignFile {
-  return {
-    id: f.id,
-    version: f.version,
-    isLatest: f.isLatest,
-    role: f.role as DesignFileRole,
-    mimeType: f.file.mimeType,
-    filename: f.file.filename,
-    requestNumber: f.designRequest?.requestNumber ?? null,
-    designRequestId: f.designRequestId,
-    customerBpId: f.customerBpId,
-    customerName: localized(f.customerBp?.name as LocalizedText | null) || null,
-    usedByWorkOrder: f._count.workOrders > 0,
-    notes: f.notes,
-    createdAt: f.createdAt.toISOString(),
-  };
-}
-
-const DESIGN_FILE_INCLUDE = {
-  file: { select: { filename: true, mimeType: true } },
-  designRequest: { select: { requestNumber: true } },
-  customerBp: { select: { name: true } },
-  _count: { select: { workOrders: true } },
-} as const;
-
-/**
- * 指示書などに出す「いま何を見て作るか」の 1 件。
- *
- * **受注元で見る系列が変わる。** 顧客一致の系列を優先し、無ければ汎用へ落ちる
- * （他の顧客専用の系列へは決して落ちない — 落とすと B の指示書に A の図面が
- * 黙って出て、気づかないまま違う物を作る）。優先規則は
- * lib/design-files-core resolveSeriesCustomer が唯一の定義元。
- *
- * 役割の優先は PREVIEW → BLUEPRINT。3D プレビュー用に上げたファイルがあれば
- * それを見せ、無ければ図面データ（PDF 等）を見せる。
- */
-export async function fetchLatestViewableDesignFile(
-  productId: number,
-  customerBpId: string | null = null,
-): Promise<ProductDesignFile | null> {
-  const rows = await prisma.designFile.findMany({
-    where: {
-      productId,
-      isLatest: true,
-      role: { in: ["PREVIEW", "BLUEPRINT"] },
-    },
-    include: DESIGN_FILE_INCLUDE,
-    orderBy: [{ version: "desc" }, { role: "asc" }],
-  });
-  if (rows.length === 0) return null;
-  const series = resolveSeriesCustomer(
-    rows.map((r) => ({
-      id: r.id,
-      version: r.version,
-      isLatest: r.isLatest,
-      role: r.role as DesignFileRole,
-      customerBpId: r.customerBpId,
-      designRequestId: r.designRequestId,
-    })),
-    customerBpId,
-  );
-  if (series === undefined) return null;
-  // role の enum 順が PREVIEW → BLUEPRINT なので、先頭がそのまま優先分。
-  const f = rows.find((r) => (r.customerBpId ?? null) === series);
-  return f ? toProductDesignFile(f as DesignFileRow) : null;
-}
-
-/**
- * 版を id で 1 件（指示書がピン留めしている版を出すため）。
- * ピン留めは系列の優先規則を**上書きする** — 人が明示的に選んだものが勝つ。
- */
-export async function fetchDesignFileById(
-  id: string,
-): Promise<ProductDesignFile | null> {
-  const f = await prisma.designFile.findUnique({
-    where: { id },
-    include: DESIGN_FILE_INCLUDE,
-  });
-  return f ? toProductDesignFile(f as DesignFileRow) : null;
 }
 
 /** 製品に紐づく設計依頼（製品詳細 関連タブ）。 */

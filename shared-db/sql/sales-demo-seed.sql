@@ -13,11 +13,14 @@ BEGIN;
 
 -- ── 撮影用フラグ ────────────────────────────────────────────────────────────
 -- 撮影は APP_ENV=main（本番相当の見た目）で行うため、main 未公開の販売アプリ
--- （注文請書・設計依頼書）を撮影 DB に限り明示有効化する。本番の
+-- （注文請書・設計依頼書・設計図）を撮影 DB に限り明示有効化する。本番の
 -- feature-flags-seed.sql には影響しない。
 INSERT INTO app.feature_flags (key, is_enabled, description, updated_at) VALUES
   ('app:order-acceptances:main', true, '注文請書（マニュアル撮影用）', now()),
-  ('app:design-requests:main',   true, '設計依頼書（マニュアル撮影用）', now())
+  ('app:design-requests:main',   true, '設計依頼書（マニュアル撮影用）', now()),
+  -- 設計図 (PD06) は設計依頼とセット — 依頼の完了に成果物の版が要るので、
+  -- 片方だけ有効にすると完了操作が撮れない。
+  ('app:design-files:main',      true, '設計図（マニュアル撮影用）', now())
 ON CONFLICT (key) DO UPDATE
   SET is_enabled = EXCLUDED.is_enabled, updated_at = now();
 
@@ -176,7 +179,12 @@ VALUES
   ('d5000000-0000-4000-8000-000000000003'::uuid, 'demo/design/dwg-v1.pdf',
    '設計図面_PRD-202607-0001_v1.pdf', 'application/pdf', 512000, '2026-07-03T14:00:00+09'),
   ('d5000000-0000-4000-8000-000000000004'::uuid, 'demo/design/dwg-v2.pdf',
-   '設計図面_PRD-202607-0001_v2.pdf', 'application/pdf', 524288, '2026-07-06T15:00:00+09')
+   '設計図面_PRD-202607-0001_v2.pdf', 'application/pdf', 524288, '2026-07-06T15:00:00+09'),
+  -- 設計図 (PD06) の撮影用 — 顧客専用の系列と、進行中依頼の成果物。
+  ('d5000000-0000-4000-8000-000000000005'::uuid, 'demo/design/dwg-demo-v1.pdf',
+   '設計図面_デモ商事仕様_v1.pdf', 'application/pdf', 498176, '2026-07-05T11:00:00+09'),
+  ('d5000000-0000-4000-8000-000000000006'::uuid, 'demo/design/dwg-0002-v1.pdf',
+   '設計図面_PRD-202607-0002_v1.pdf', 'application/pdf', 476000, '2026-07-09T10:00:00+09')
 ON CONFLICT (id) DO NOTHING;
 
 -- ── 注文請書（ORD-202607-00001〜00003）──────────────────────────────────────
@@ -220,9 +228,10 @@ ON CONFLICT (id) DO NOTHING;
 -- 承認フロー導入で状態が 7 つになったので、下書き・承認依頼中の行も置いて
 -- マニュアルの撮影（承認カード / 承認・作業状況）に被写体があるようにする。
 --
--- 依頼区分は「その製品に design_files があるか」で決まる。この seed では
--- **製品 9001 に版が 2 つあるので改訂、9002 には無いので新規**になり、
--- 両方の区分が撮影できる（migration のバックフィルもこの規則）。
+-- 依頼区分は「その製品に design_files があるか」で決まる。**保存された値**なので
+-- 後から版が増えても動かない（承認ルートが変わってしまうため — design.prisma 参照）。
+-- この seed では 9001 が改訂・9002 が新規で、両方の区分が撮影できる。
+-- なお DSG-00006 の完了で 9002 にも版が付くが、既存行の区分は保存値のまま。
 INSERT INTO app.design_requests (id, request_number, trigger, quote_year_month, quote_seq,
   order_line_id, product_id, description, status, assignee_id,
   kind, change_reason, desired_at, priority,
@@ -275,7 +284,19 @@ VALUES
    '2026-07-08T13:00:00+09', NULL, NULL, NULL,
    '[{"action":"CREATE","user":"a0b1c2d3-0000-4000-8000-000000005107","at":"2026-07-08T03:30:00.000Z"},
      {"action":"REQUEST_APPROVAL","user":"a0b1c2d3-0000-4000-8000-000000005107","at":"2026-07-08T04:00:00.000Z"}]'::jsonb,
-   'a0b1c2d3-0000-4000-8000-000000005107'::uuid, '2026-07-08T12:30:00+09', '2026-07-08T13:00:00+09')
+   'a0b1c2d3-0000-4000-8000-000000005107'::uuid, '2026-07-08T12:30:00+09', '2026-07-08T13:00:00+09'),
+  -- 進行中で **成果物が登録済み**（= 完了できる状態）。DSG-00001 は同じ進行中でも
+  -- 成果物が無いので「図面を登録してください」になる — 2 つ並べて両方を撮る。
+  ('d7000000-0000-4000-8000-000000000006'::uuid, 'DSG-202607-00006', 'SALES_ORDER'::app."DESIGN_TRIGGER",
+   NULL, NULL, NULL, 9002, 'ドリル先端角の変更（図面登録済み・完了待ち）。',
+   'IN_PROGRESS'::app."DESIGN_STATUS", 'a0b1c2d3-0000-4000-8000-000000005107'::uuid,
+   'NEW'::app."DESIGN_KIND", NULL, '2026-07-18', 'NORMAL'::app."DESIGN_PRIORITY",
+   '2026-07-08T09:10:00+09', '2026-07-08T11:00:00+09', '2026-07-09T09:00:00+09', NULL,
+   '[{"action":"CREATE","user":"a0b1c2d3-0000-4000-8000-000000005107","at":"2026-07-08T00:00:00.000Z"},
+     {"action":"REQUEST_APPROVAL","user":"a0b1c2d3-0000-4000-8000-000000005107","at":"2026-07-08T00:10:00.000Z"},
+     {"action":"APPROVE","user":"a0b1c2d3-0000-4000-8000-000000005107","at":"2026-07-08T02:00:00.000Z"},
+     {"action":"START","user":"a0b1c2d3-0000-4000-8000-000000005107","at":"2026-07-09T00:00:00.000Z"}]'::jsonb,
+   'a0b1c2d3-0000-4000-8000-000000005107'::uuid, '2026-07-08T09:00:00+09', '2026-07-09T09:00:00+09')
 ON CONFLICT (id) DO NOTHING;
 
 INSERT INTO app.design_files (id, design_request_id, product_id, file_id, version, is_latest, notes,
@@ -287,6 +308,28 @@ VALUES
   ('d8000000-0000-4000-8000-000000000002'::uuid, 'd7000000-0000-4000-8000-000000000002'::uuid, 9001,
    'd5000000-0000-4000-8000-000000000004'::uuid, 2, true, '公差修正',
    'a0b1c2d3-0000-4000-8000-000000005107'::uuid, '2026-07-06T15:30:00+09')
+ON CONFLICT (id) DO NOTHING;
+
+-- 設計図 (PD06) — **系列が 2 本ある状態**を作る。上の 2 版は汎用（customer_bp_id
+-- が null）で、こちらはデモ商事専用。同じ製品 9001 に「汎用 v2」と「デモ商事 v1」が
+-- 同居し、版が (製品 × 受注元) ごとに数えられていることが一覧・詳細で見える。
+--
+-- デモ商事の版は依頼を経ない登録（design_request_id = null）なので一覧で「手動」、
+-- 9002 の版は DSG-00006 の成果物なので「依頼」と出る — 出どころ列の両方を撮れる。
+INSERT INTO app.design_files (id, design_request_id, product_id, customer_bp_id, file_id,
+  version, is_latest, role, notes, created_by, created_at)
+VALUES
+  ('d8000000-0000-4000-8000-000000000003'::uuid, NULL, 9001,
+   'd0000000-0000-4000-8000-000000000001'::uuid,
+   'd5000000-0000-4000-8000-000000000005'::uuid, 1, true,
+   'BLUEPRINT'::app."DESIGN_FILE_ROLE", 'デモ商事向けの首下寸法違い',
+   'a0b1c2d3-0000-4000-8000-000000005107'::uuid, '2026-07-05T11:30:00+09'),
+  -- 進行中の DSG-202607-00006 の成果物。**これがあるから完了できる**
+  -- （成果物ゼロの依頼は完了できない — completeDesign）。
+  ('d8000000-0000-4000-8000-000000000004'::uuid, 'd7000000-0000-4000-8000-000000000006'::uuid, 9002,
+   NULL, 'd5000000-0000-4000-8000-000000000006'::uuid, 1, true,
+   'BLUEPRINT'::app."DESIGN_FILE_ROLE", '先端角 140° へ変更',
+   'a0b1c2d3-0000-4000-8000-000000005107'::uuid, '2026-07-09T10:30:00+09')
 ON CONFLICT (id) DO NOTHING;
 
 -- 改訂の元図面は design_files の後でないと張れない（FK）ので、ここで当てる。

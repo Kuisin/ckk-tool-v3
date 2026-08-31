@@ -61,7 +61,10 @@ export function BranchForm({
   });
 
   const handleSubmit = (values: FormValues) => {
-    const input: BranchInput = values;
+    const input: BranchInput = {
+      ...values,
+      documentLocale: values.documentLocale as BranchInput["documentLocale"],
+    };
     startTransition(async () => {
       const result = isEdit
         ? await updateBranch(parentId, initial.id, input)

@@ -80,7 +80,7 @@
 
 | パス | 内容 |
 |------|------|
-| `/production/approvals` | 承認待ち一覧（自分が承認者のもの） |
+| `/production/approvals` | 承認依頼中一覧（自分が承認者のもの） |
 | `/production/approvals/[id]` | 承認詳細・承認操作 |
 | `/master/approval-settings` | 承認設定（承認フロー / 承認グループ のタブ） |
 | `/master/approval-settings/flows/[targetType]` | 書類種別ごとの承認フロー編集 |

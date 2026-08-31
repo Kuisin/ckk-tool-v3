@@ -13,17 +13,14 @@
  * 読み取りはシェル描画に使うため fail-open（DB 障害時は全アプリ表示）。
  */
 
+import { APP_ENVS, type AppEnv, currentAppEnv } from "./app-env";
 import { appList } from "./app-list";
 import { prisma } from "./db";
+import { hiddenDevFeatureAppKeys } from "./dev-features";
 
-export type AppEnv = "dev" | "main";
-
-export const APP_ENVS: AppEnv[] = ["dev", "main"];
-
-/** この実行環境の識別子（APP_ENV。未設定はローカル＝dev 扱い）。 */
-export function currentAppEnv(): AppEnv {
-  return process.env.APP_ENV === "main" ? "main" : "dev";
-}
+// 環境の識別は app-env.ts が持つ（proxy / クライアントからも読めるように切り出した）。
+// 既存の呼び出し口を壊さないためここから再輸出する。
+export { type AppEnv, APP_ENVS, currentAppEnv };
 
 /** feature_flags のキー。 */
 export function appFlagKey(appKey: string, env: AppEnv): string {
@@ -34,11 +31,15 @@ export function appFlagKey(appKey: string, env: AppEnv): string {
  * 現在の環境で「非表示」にすべきアプリの key 一覧。
  *   - dev  : is_enabled=false の行があるアプリ。
  *   - main : 明示的に is_enabled=true の行が無いアプリ（＝未公開はすべて非表示）。
- * 失敗時は空（fail-open — 障害時は全アプリ表示）。
+ * 失敗時は DB 由来の判断だけを諦める（fail-open — 障害時は全アプリ表示）。
+ *
+ * **開発中機能（dev-features.json）の分は必ず合流する** — DB の行がコード側の
+ * ゲートを覆せないようにするため、fail-open の catch でも落とさない。
  */
 export async function getDisabledAppKeys(
   env: AppEnv = currentAppEnv(),
 ): Promise<string[]> {
+  const hiddenByFeature = hiddenDevFeatureAppKeys(env);
   try {
     const suffix = `:${env}`;
     const rows = await prisma.featureFlag.findMany({
@@ -51,15 +52,16 @@ export async function getDisabledAppKeys(
         .filter(([k]) => (k as string).length > 0) as [string, boolean][],
     );
     const allKeys = appList.map((a) => a.key);
-    if (env === "main") {
-      // 本番: 明示的に有効化されたアプリのみ表示（それ以外は非表示）。
-      return allKeys.filter((k) => state.get(k) !== true);
-    }
-    // dev: 既定表示（明示的に無効のもののみ非表示）。
-    return allKeys.filter((k) => state.get(k) === false);
+    const disabled =
+      env === "main"
+        ? // 本番: 明示的に有効化されたアプリのみ表示（それ以外は非表示）。
+          allKeys.filter((k) => state.get(k) !== true)
+        : // dev: 既定表示（明示的に無効のもののみ非表示）。
+          allKeys.filter((k) => state.get(k) === false);
+    return [...new Set([...disabled, ...hiddenByFeature])];
   } catch (e) {
     console.error("getDisabledAppKeys failed", e);
-    return [];
+    return hiddenByFeature;
   }
 }
 
@@ -70,6 +72,12 @@ export interface AppFlagRow {
   category: string;
   /** 環境ごとの有効状態（行が無ければ true）。 */
   enabled: Record<AppEnv, boolean>;
+  /**
+   * 環境ごとの「コード側で固定されているか」（dev-features.json）。
+   * true の環境は DB の行に関わらず非表示なので、画面は切り替えを無効にする —
+   * さもないと有効に見えるのに出ない、という嘘の表示になる。
+   */
+  lockedByFeature: Record<AppEnv, boolean>;
 }
 
 /** 管理画面用: 全アプリ × 全環境の有効状態。 */
@@ -79,6 +87,9 @@ export async function listAppFlags(): Promise<AppFlagRow[]> {
     select: { key: true, isEnabled: true },
   });
   const byKey = new Map(rows.map((r) => [r.key, r.isEnabled]));
+  const hiddenByEnv = Object.fromEntries(
+    APP_ENVS.map((env) => [env, new Set(hiddenDevFeatureAppKeys(env))]),
+  ) as Record<AppEnv, Set<string>>;
   return appList.map((app) => ({
     key: app.key,
     label: app.label,
@@ -86,10 +97,16 @@ export async function listAppFlags(): Promise<AppFlagRow[]> {
     category: app.category,
     enabled: Object.fromEntries(
       // dev は行が無ければ有効。main は行が無ければ無効（明示公開のみ表示）。
+      // 開発中機能に属するアプリはコード側の判断が勝つ。
       APP_ENVS.map((env) => [
         env,
-        byKey.get(appFlagKey(app.key, env)) ?? env === "dev",
+        hiddenByEnv[env].has(app.key)
+          ? false
+          : (byKey.get(appFlagKey(app.key, env)) ?? env === "dev"),
       ]),
+    ) as Record<AppEnv, boolean>,
+    lockedByFeature: Object.fromEntries(
+      APP_ENVS.map((env) => [env, hiddenByEnv[env].has(app.key)]),
     ) as Record<AppEnv, boolean>,
   }));
 }

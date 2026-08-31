@@ -25,6 +25,7 @@ import { useForm } from "@mantine/form";
 import { notifications } from "@mantine/notifications";
 import { IconMinus } from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
+import { useLocale } from "next-intl";
 import { useMemo, useState, useTransition } from "react";
 import { z } from "zod";
 import { searchStructuredMaterialTypeOptions } from "@/app/(dashboard)/_shared/option-search";
@@ -43,7 +44,7 @@ import {
   LocalizedTextInput,
 } from "@/components/ui/shells";
 import { useIsMobile } from "@/hooks/useViewport";
-import { UNIT_OPTIONS } from "@/lib/enum-labels";
+import { unitOptions } from "@/lib/enum-labels";
 import { fieldHelp, fieldHelpTip } from "@/lib/field-help";
 import { zodResolver } from "@/lib/form";
 import { diameterCodeFromMm, lengthCodeFromMm } from "@/lib/material-code";
@@ -66,7 +67,7 @@ const LENGTH_MAX = 999;
 const productSchema = z
   .object({
     nameJa: z.string().min(1, "名称（日本語）を入力してください"),
-    nameEn: z.string(),
+    nameTranslations: z.record(z.string(), z.string()).default({}),
     materialTypeId: z.string().nullable(),
     materialTypeLabel: z.string(),
     diameterMm: z.number().nullable(),
@@ -109,7 +110,7 @@ export interface ProductFormInitial {
   id: number;
   code: string | null;
   nameJa: string;
-  nameEn: string;
+  nameTranslations: Record<string, string>;
   materialTypeId: string | null;
   materialTypeLabel: string;
   diameterMm: number | null;
@@ -133,6 +134,7 @@ export function ProductForm({
   /** 製品項目（SY03）で定義された入力項目ライブラリ。追加項目の候補になる。 */
   itemDefs: ProductItemDef[];
 }) {
+  const locale = useLocale();
   const router = useRouter();
   const isMobile = useIsMobile();
   const [isPending, startTransition] = useTransition();
@@ -206,7 +208,7 @@ export function ProductForm({
     validate: zodResolver(productSchema),
     initialValues: {
       nameJa: initial?.nameJa ?? "",
-      nameEn: initial?.nameEn ?? "",
+      nameTranslations: initial?.nameTranslations ?? {},
       materialTypeId: initial?.materialTypeId ?? null,
       materialTypeLabel: initial?.materialTypeLabel ?? "",
       diameterMm: initial?.diameterMm ?? null,
@@ -265,10 +267,10 @@ export function ProductForm({
   // キーワード生成に渡す「いま画面に出ている製品の姿」。名称だけでは
   // 材質も寸法も分からず当たり障りのない語しか返ってこないので、種別項目まで含める。
   const keywordSubject = {
-    name: form.values.nameJa || form.values.nameEn,
+    name: form.values.nameJa || form.values.nameTranslations.en || "",
     code: initial?.code ?? null,
     attributes: [
-      { label: "英語名", value: form.values.nameEn },
+      { label: "英語名", value: form.values.nameTranslations.en ?? "" },
       { label: "材種", value: form.values.materialTypeLabel },
       {
         label: "直径 (mm)",
@@ -397,7 +399,7 @@ export function ProductForm({
             value={initial?.code ?? ""}
           />
           <Select
-            data={UNIT_OPTIONS}
+            data={unitOptions(locale)}
             label={<HelpLabel {...fieldHelp("product", "unit")} />}
             withAsterisk
             {...form.getInputProps("unit")}
@@ -405,11 +407,11 @@ export function ProductForm({
         </SimpleGrid>
         <Stack gap="sm" mt="sm">
           <LocalizedTextInput
-            enProps={form.getInputProps("nameEn")}
             help={fieldHelpTip("product", "name")}
             jaProps={form.getInputProps("nameJa")}
             label="名称"
             required
+            translationsProps={form.getInputProps("nameTranslations")}
           />
           <Switch
             label={<HelpLabel {...fieldHelp("product", "active")} />}

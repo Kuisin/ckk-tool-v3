@@ -55,7 +55,7 @@ export interface ElevationView {
   state: GrantState | null;
   /** 残りミリ秒（カウントダウン用）。付与が無い / 管理者素通しなら null。 */
   remainingMs: number | null;
-  /** 承認待ちの申請があるか（「申請済み・承認待ち」を出すため）。 */
+  /** 承認依頼中の申請があるか（「申請済み・承認依頼中」を出すため）。 */
   pending: boolean;
 }
 

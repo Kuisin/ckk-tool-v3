@@ -9,8 +9,8 @@
  * 識別（重複防止）にのみ使う。注文種別ごとの価格は price_list_variants で、
  * tiers/discounts は variant_id でぶら下がる。
  *
- * 作成は顧客×製品から行い、製品にリンクされた確定済み試算をバリアントの
- * 基準単価ソースに選択できる（初回使用時に試算を REGISTERED へロック）。
+ * 作成は顧客×製品から行い、製品にリンクされた確定済み価格試算をバリアントの
+ * 基準単価ソースに選択できる（初回使用時に価格試算を REGISTERED へロック）。
  */
 
 import { type Access, rowInScope } from "@ckk/authz-core";
@@ -84,7 +84,7 @@ const variantSchema = z.object({
   validFrom: z.string().min(1, "有効開始日を選択してください"),
   validUntil: z.string().nullable(),
   isActive: z.boolean(),
-  /** 基準単価ソースの試算番号 EST-…（手動設定は null。新規バリアントのみ有効）。 */
+  /** 基準単価ソースの価格試算番号 EST-…（手動設定は null。新規バリアントのみ有効）。 */
   estimateNumber: z.string().nullable(),
   tiers: z.array(tierSchema).min(1, "段階を1件以上追加してください"),
 });
@@ -140,7 +140,7 @@ function validateVariants(
 }
 
 /**
- * 基準単価ソースの試算を解決 — CONFIRMED / REGISTERED のみ許可。
+ * 基準単価ソースの価格試算を解決 — CONFIRMED / REGISTERED のみ許可。
  * 返り値の needsLock = 初回使用（CONFIRMED → REGISTERED へのロックが必要）。
  */
 async function resolveEstimateSource(
@@ -149,14 +149,14 @@ async function resolveEstimateSource(
   { ok: true; key: DocKey; needsLock: boolean } | { ok: false; error: string }
 > {
   const key = parseDocKey(estimateNumber, "EST");
-  if (!key) return { ok: false, error: "試算番号が不正です" };
+  if (!key) return { ok: false, error: "価格試算番号が不正です" };
   const estimate = await prisma.estimate.findUnique({
     where: whereKey(key),
     select: { status: true },
   });
-  if (!estimate) return { ok: false, error: "試算が見つかりません" };
+  if (!estimate) return { ok: false, error: "価格試算が見つかりません" };
   if (estimate.status === "DRAFT") {
-    return { ok: false, error: "確定済みの試算のみ価格表に使用できます" };
+    return { ok: false, error: "確定済みの価格試算のみ価格表に使用できます" };
   }
   return { ok: true, key, needsLock: estimate.status === "CONFIRMED" };
 }
@@ -171,7 +171,7 @@ function tierCreates(tiers: z.infer<typeof tierSchema>[]) {
   }));
 }
 
-/** 価格表作成フォーム用 — 製品にリンクされた試算（基準単価ソース候補）。 */
+/** 価格表作成フォーム用 — 製品にリンクされた価格試算（基準単価ソース候補）。 */
 export async function fetchEstimateSources(
   productId: string | number,
 ): Promise<ActionResult<EstimateSource[]>> {
@@ -182,7 +182,7 @@ export async function fetchEstimateSources(
   try {
     return actionOk(await fetchEstimateSourcesForProduct(id));
   } catch (e) {
-    return actionError(prismaErrorMessage(e, "試算の取得に失敗しました"));
+    return actionError(prismaErrorMessage(e, "価格試算の取得に失敗しました"));
   }
 }
 
@@ -212,7 +212,7 @@ export async function createPriceEntry(
   const variantError = validateVariants(v.variants);
   if (variantError) return actionError(variantError);
   try {
-    // 試算ソースを検証（初回使用の試算はロック対象として控える）。
+    // 価格試算ソースを検証（初回使用の価格試算はロック対象として控える）。
     const locks: { number: string; key: DocKey }[] = [];
     const estimateKeys = new Map<string, DocKey>();
     for (const variant of v.variants) {
@@ -352,7 +352,7 @@ export async function updatePriceEntry(
     }
     const removedIds = [...existingIds].filter((id) => !keptIds.has(id));
 
-    // 新規バリアントの試算ソースを検証（既存バリアントのリンクは不変）。
+    // 新規バリアントの価格試算ソースを検証（既存バリアントのリンクは不変）。
     const locks: { number: string; key: DocKey }[] = [];
     const estimateKeys = new Map<string, DocKey>();
     for (const variant of v.variants) {
@@ -469,7 +469,7 @@ export async function updatePriceEntry(
 
 /**
  * 別の顧客・製品へコピー — source の全バリアント（基準単価・tiers）を新エントリ
- * へ複製する。試算リンクは引き継がない（手動エントリとして作成）。指定した
+ * へ複製する。価格試算リンクは引き継がない（手動エントリとして作成）。指定した
  * 有効期間を全バリアントに適用する。
  */
 export async function copyPriceEntry(payload: {

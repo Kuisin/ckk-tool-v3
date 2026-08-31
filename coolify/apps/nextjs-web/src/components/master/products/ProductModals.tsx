@@ -16,6 +16,7 @@
 import { Select, Stack, TextInput } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
 import { useRouter } from "next/navigation";
+import { useLocale } from "next-intl";
 import { useState, useTransition } from "react";
 import {
   createProduct,
@@ -27,7 +28,8 @@ import {
   FormModal,
   type ModalBaseProps,
 } from "@/components/ui/modals";
-import { UNIT_OPTIONS } from "@/lib/enum-labels";
+import { LocalizedTextInput } from "@/components/ui/shells";
+import { unitOptions } from "@/lib/enum-labels";
 
 export interface ProductModalTarget {
   id: number;
@@ -89,7 +91,7 @@ export function DeleteProductModal({
       }}
       opened={opened}
       title="製品の削除"
-      warning="この製品を参照する試算・価格表・見積書が存在する場合は削除できません。無効化をご検討ください。"
+      warning="この製品を参照する価格試算・価格表・見積書が存在する場合は削除できません。無効化をご検討ください。"
     />
   );
 }
@@ -113,8 +115,8 @@ export function ToggleProductActiveModal({
       message={
         target
           ? isActive
-            ? `製品「${label(target)}」を無効化します。新規の試算・価格表・見積書で選択できなくなります。`
-            : `製品「${label(target)}」を有効化します。再び試算・価格表・見積書で選択できるようになります。`
+            ? `製品「${label(target)}」を無効化します。新規の価格試算・価格表・見積書で選択できなくなります。`
+            : `製品「${label(target)}」を有効化します。再び価格試算・価格表・見積書で選択できるようになります。`
           : ""
       }
       onClose={onClose}
@@ -151,11 +153,14 @@ export function DuplicateProductModal({
 }: ModalBaseProps & {
   source: ProductModalTarget | null;
 }) {
+  const locale = useLocale();
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
 
   const [nameJa, setNameJa] = useState("");
-  const [nameEn, setNameEn] = useState("");
+  const [nameTranslations, setNameTranslations] = useState<
+    Record<string, string>
+  >({});
   const [unit, setUnit] = useState<string | null>(null);
   const [seededFrom, setSeededFrom] = useState<number | null>(null);
 
@@ -163,7 +168,7 @@ export function DuplicateProductModal({
   if (opened && source && seededFrom !== source.id) {
     setSeededFrom(source.id);
     setNameJa(source.name !== "—" ? `${source.name}（コピー）` : "");
-    setNameEn("");
+    setNameTranslations({});
     setUnit(source.unit);
   }
 
@@ -177,7 +182,7 @@ export function DuplicateProductModal({
     startTransition(async () => {
       const result = await createProduct({
         nameJa,
-        nameEn,
+        nameTranslations,
         materialTypeId: source?.materialTypeId ?? null,
         diameterMm: source?.diameterMm ?? null,
         lengthMm: source?.lengthMm ?? null,
@@ -235,17 +240,20 @@ export function DuplicateProductModal({
               : ""
           }
         />
-        <TextInput
-          description="製品コードは保存時に自動採番されます（PRD-YYYYMM-NNNN）"
-          label="名称（日本語）"
-          onChange={(e) => setNameJa(e.currentTarget.value)}
-          value={nameJa}
-          withAsterisk
-        />
-        <TextInput
-          label="名称（English）"
-          onChange={(e) => setNameEn(e.currentTarget.value)}
-          value={nameEn}
+        <LocalizedTextInput
+          jaProps={{
+            description:
+              "製品コードは保存時に自動採番されます（PRD-YYYYMM-NNNN）",
+            value: nameJa,
+            onChange: (e: React.ChangeEvent<HTMLInputElement>) =>
+              setNameJa(e.currentTarget.value),
+          }}
+          label="名称"
+          required
+          translationsProps={{
+            value: nameTranslations,
+            onChange: setNameTranslations,
+          }}
         />
         <TextInput
           description="複製元の材種・直径・全長を引き継ぎます（作成後に編集できます）"
@@ -255,7 +263,7 @@ export function DuplicateProductModal({
           value={materialSpecText}
         />
         <Select
-          data={UNIT_OPTIONS}
+          data={unitOptions(locale)}
           label="単位"
           onChange={setUnit}
           value={unit}

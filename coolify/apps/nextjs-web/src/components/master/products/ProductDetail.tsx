@@ -20,11 +20,9 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { useFormat } from "@/components/layout/PreferencesProvider";
 import { KeywordBadges } from "@/components/master/MasterKeywordsField";
+import type { ProductDesignFile } from "@/components/production/design-files/model";
 import { DesignRequestLinks } from "@/components/sales/design-requests/DesignRequestLinks";
-import type {
-  DesignRequestLink,
-  ProductDesignFile,
-} from "@/components/sales/design-requests/model";
+import type { DesignRequestLink } from "@/components/sales/design-requests/model";
 import { ActiveBadge } from "@/components/ui/ActiveBadge";
 import { AppTabs } from "@/components/ui/AppTabs";
 import { DocNumber } from "@/components/ui/DocNumber";
@@ -93,20 +91,17 @@ export function ProductDetail({
   auditEntries,
   routes,
   designFiles = [],
-  customerOptions = [],
-  canManageDesign = false,
   designRequests = [],
 }: {
   record: ProductDetailData;
   auditEntries: AuditEntry[];
   /** 工程リスト（ルート）— 工程タブ。 */
   routes: RouteView[];
-  /** この製品の設計図（版一覧）— 関連タブ。 */
+  /**
+   * この製品の設計図（版一覧）— 関連タブ。**表示だけ**で、登録・編集・削除は
+   * 設計図 (PD06) が持つ。
+   */
   designFiles?: ProductDesignFile[];
-  /** 版を載せられる受注元（CUSTOMER ロールの取引先）。 */
-  customerOptions?: { value: string; label: string }[];
-  /** 設計図を足す・直す権限があるか。 */
-  canManageDesign?: boolean;
   /** この製品に紐づく設計依頼 — 関連タブ。 */
   designRequests?: DesignRequestLink[];
 }) {
@@ -263,15 +258,11 @@ export function ProductDetail({
 
         <Tabs.Panel pt="md" value="related">
           <Stack gap="lg">
-            {/* 設計図 — 系列（製品 × 受注元）ごとに分けて出す。
-                版の差し替えは「新しい版を作る」操作だけで、過去の版は
-                書き換えない（何を見て作ったかを追えるようにするため）。 */}
-            <ProductDesignFiles
-              canManage={canManageDesign}
-              customerOptions={customerOptions}
-              files={designFiles}
-              productId={record.id}
-            />
+            {/* 設計図 — 系列（製品 × 受注元）ごとに分けて出す（読み取り専用。
+                登録・編集は 設計図 PD06）。版の差し替えは「新しい版を作る」
+                操作だけで、過去の版は書き換えない（何を見て作ったかを
+                追えるようにするため）。 */}
+            <ProductDesignFiles files={designFiles} productId={record.id} />
 
             <Stack gap="xs">
               <Text fw={600} size="sm">

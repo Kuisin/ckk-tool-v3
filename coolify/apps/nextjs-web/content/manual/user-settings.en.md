@@ -54,18 +54,22 @@ Use **Home Screen Settings** in the avatar menu to customize your home screen la
 
 ## Display settings
 
-Use **Display Settings** in the avatar menu to change the language and how dates and times are shown. These apply to **your account only**, on both the web app and the shop-floor tablets (kiosk).
+Use **Display Settings** in the avatar menu to change the language, how dates and times are shown, and how large text is. These apply to **your account only** — language and date/time also apply to the shop-floor tablets (kiosk), while text size and bold text are web only.
 
 - **Language** — 日本語 / English / 中文.
 - **Date format** — `2026/03/05`, `2026-03-05`, `05/03/2026` or `03/05/2026`.
 - **Time format** — 24-hour (14:30) or 12-hour (2:30 PM).
 - **Time zone** — which region's clock dates and times are shown in; set it when working from an overseas site or on a trip. Each option shows the **current time** in that zone, so you can see the offset at a glance.
+- **Text size** — five steps: Smallest / Small / Default / Large / Largest. The middle one is the size you have today; changing it scales text **and** spacing across the whole app. Each option is drawn at the size it stands for, so you can see what you are picking.
+- **Bold text** — makes body text one step heavier. Headings and emphasis, already bold, stay as they are.
 
-Your choices appear immediately in the **Preview** below, so you can check them before saving. Once saved they apply **everywhere a date or time appears** — lists, detail pages, history.
+Your choices appear immediately in the **Preview** below, so you can check them before saving. **Text size and bold text are applied to the whole screen right away** — whether it reads well depends on lists and buttons too, not on a small sample.  Once saved they apply **everywhere a date or time appears** — lists, detail pages, history.
 
 ![Display settings](./assets/screenshots/profile-preferences-01.png)
 
 > 💡 **Changing the time zone does not change the recorded timestamps.** It only changes which region's clock you read them by.
+
+> 💡 **Leave the page without saving and the text size returns to what it was**, so you can try a size before committing to it.
 
 ### Some screens are still in Japanese
 

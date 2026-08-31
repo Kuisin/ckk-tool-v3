@@ -30,7 +30,8 @@ import {
 } from "@/app/(dashboard)/master/storage-locations/actions";
 import { CancelButton, SaveButton } from "@/components/ui/buttons";
 import { HelpLabel } from "@/components/ui/HelpLabel";
-import { fieldHelp } from "@/lib/field-help";
+import { LocalizedTextInput } from "@/components/ui/shells";
+import { fieldHelp, fieldHelpTip } from "@/lib/field-help";
 import type { StorageLocationRow } from "./StorageLocationsPanel";
 
 /** 全拠点分のフロアマップ（拠点選択に応じて絞り込む）。 */
@@ -72,7 +73,7 @@ export function LocationModal({
       floorMapId: null,
       code: location?.code ?? "",
       nameJa: location?.nameJa ?? "",
-      nameEn: location?.nameEn ?? "",
+      nameTranslations: location?.nameTranslations ?? {},
       sortOrder: location?.sortOrder ?? 0,
       isActive: location?.isActive ?? true,
       notes: location?.notes ?? "",
@@ -181,27 +182,13 @@ export function LocationModal({
             withAsterisk
             {...form.getInputProps("code")}
           />
-          <TextInput
-            label={
-              <HelpLabel
-                {...fieldHelp("storageLocation", "code", {
-                  label: "名称（日本語）",
-                })}
-              />
-            }
+          <LocalizedTextInput
+            help={fieldHelpTip("storageLocation", "code")}
+            jaProps={form.getInputProps("nameJa")}
+            label="名称"
             placeholder="第一倉庫"
-            withAsterisk
-            {...form.getInputProps("nameJa")}
-          />
-          <TextInput
-            label={
-              <HelpLabel
-                {...fieldHelp("storageLocation", "code", {
-                  label: "名称（英語）",
-                })}
-              />
-            }
-            {...form.getInputProps("nameEn")}
+            required
+            translationsProps={form.getInputProps("nameTranslations")}
           />
           <NumberInput
             label={<HelpLabel {...fieldHelp("storageLocation", "sortOrder")} />}

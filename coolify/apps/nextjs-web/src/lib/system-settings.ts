@@ -1,7 +1,7 @@
 import "server-only";
 
 /**
- * system-settings.ts — typed adapter for the 試算 settings.
+ * system-settings.ts — typed adapter for the 価格試算 settings.
  *
  * Maps `TrialPricingSettings` onto `trial_pricing.*` keys in the single generic
  * config table (see `app-config.ts`). Values are stored as JSON primitives.
@@ -67,7 +67,7 @@ const lookupTablesReadSchema = z.array(
 
 const customInputsArraySchema = z.array(customInputDefSchema);
 
-/** 試算設定 — 未設定キーは既定値で補完。 */
+/** 価格試算設定 — 未設定キーは既定値で補完。 */
 export async function getTrialPricingSettings(): Promise<TrialPricingSettings> {
   const byKey = await readConfigNamespace(NAMESPACE);
   const out = { ...DEFAULT_TRIAL_PRICING_SETTINGS };

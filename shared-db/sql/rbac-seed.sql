@@ -14,7 +14,9 @@ INSERT INTO app.permissions (code, display_name, description) VALUES
   ('price_list',      '{"ja":"価格表","en":"Price list"}',            '{"ja":"","en":""}'),
   ('quote',           '{"ja":"見積書","en":"Quote"}',                 '{"ja":"","en":""}'),
   ('order_acceptance','{"ja":"注文請書・注文明細","en":"Order acceptance"}', '{"ja":"","en":""}'),
-  ('design_request',  '{"ja":"設計依頼","en":"Design request"}',      '{"ja":"","en":""}'),
+  ('design_request',  '{"ja":"設計依頼","en":"Design request"}',      '{"ja":"依頼の起票・承認・進捗。図面そのものは design_file","en":""}'),
+  ('design_file',     '{"ja":"設計図","en":"Drawing"}',
+   '{"ja":"図面の版の登録・メモ編集・削除（設計図 PD06）。設計依頼 (design_request) とは別コード","en":""}'),
   ('material_receipt','{"ja":"素材入荷","en":"Material receipt"}',    '{"ja":"","en":""}'),
   ('outsource_order', '{"ja":"外注依頼","en":"Outsource order"}',     '{"ja":"","en":""}'),
   ('purchase_order',  '{"ja":"素材発注・購買依頼","en":"Purchasing"}','{"ja":"","en":""}'),
@@ -27,7 +29,7 @@ INSERT INTO app.permissions (code, display_name, description) VALUES
   ('billing_closing', '{"ja":"締日処理","en":"Billing closing"}',     '{"ja":"","en":""}'),
   ('master',          '{"ja":"マスタ管理","en":"Master data"}',       '{"ja":"","en":""}'),
   ('system',          '{"ja":"システム管理","en":"System admin"}',    '{"ja":"アプリ設定・ファイル管理・操作履歴","en":""}'),
-  ('kiosk',           '{"ja":"キオスク管理","en":"Kiosk admin"}',     '{"ja":"QRカード・共有端末の管理","en":""}'),
+  ('kiosk',           '{"ja":"共有端末管理","en":"Shared device admin"}',     '{"ja":"QRカード・共有端末の管理","en":""}'),
   ('admin_manual',   '{"ja":"管理マニュアル","en":"Internal docs"}','{"ja":"端末セットアップ等の社内向け手順書（公開マニュアルとは別権限）","en":""}'),
   -- 一般カテゴリ（CM02/CM03）。migration 20260903090000 で足したが、この seed が
   -- 追随していなかった。新規 DB をこの seed だけで作るときに欠ける。
@@ -37,11 +39,11 @@ INSERT INTO app.permissions (code, display_name, description) VALUES
    '{"ja":"社内文書アプリの利用。CREATE = 新規文書の作成可否。個々の文書の可視性は文書ごとの共有設定が決める","en":""}'),
   -- 特権操作（migration 20260919090000）。粗い kiosk / system を割ったもので、
   -- 実行には申請と承認が要る（詳細は shared-db/prisma/schema/security.prisma）。
-  ('kiosk_secret',   '{"ja":"キオスク端末の秘密","en":"Kiosk device secrets"}',
+  ('kiosk_secret',   '{"ja":"共有端末の秘密","en":"Shared device secrets"}',
    '{"ja":"メンテナンス退出 PIN・端末設定コードの開示と再生成、端末鍵のリセット","en":""}'),
-  ('kiosk_device',   '{"ja":"端末アクセスの付与","en":"Kiosk device enrolment"}',
+  ('kiosk_device',   '{"ja":"端末アクセスの付与","en":"Shared device enrolment"}',
    '{"ja":"端末プロファイルの作成・リンク・有効化・停止・失効","en":""}'),
-  ('kiosk_card',     '{"ja":"QRカードの発行・PIN","en":"Kiosk card issuance"}',
+  ('kiosk_card',     '{"ja":"QRカードの発行・PIN","en":"Shared device card issuance"}',
    '{"ja":"カードの発行・割当・失効・PIN リセット・台紙の印刷","en":""}'),
   ('personal_data',  '{"ja":"個人データの閲覧","en":"Personal data access"}',
    '{"ja":"ログイン履歴の詳細と操作履歴の横断検索","en":""}'),

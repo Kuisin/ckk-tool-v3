@@ -49,7 +49,7 @@ export const ja = {
     backToWorkOrder: "指示書へ",
     status: {
       DRAFT: "下書き",
-      PENDING_APPROVAL: "承認待ち",
+      PENDING_APPROVAL: "承認依頼中",
       APPROVED: "承認済",
       IN_PROGRESS: "進行中",
       COMPLETED: "完了",

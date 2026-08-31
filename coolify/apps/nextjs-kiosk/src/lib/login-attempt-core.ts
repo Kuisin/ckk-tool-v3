@@ -24,6 +24,11 @@ export const LOGIN_METHODS = [
   "ATTEST", // キオスク: 端末アテステーション（鍵署名）
   "DEVICE_SETTINGS", // キオスク: 端末設定コード
   "DEVICE_LINK", // キオスク: 端末リンク（登録）
+  // 取引先ポータル（社外向け・/portal）。app は WEB のまま（同じアプリが配信
+  // しているので嘘をつかない）で、社内の認証と区別するのは PORTAL_ 接頭辞。
+  "PORTAL_OTP", // ポータル: 事前登録メールへの確認コード
+  "PORTAL_BACKUP", // ポータル: バックアップコード（メールが受け取れないとき）
+  "PORTAL_LINK", // ポータル: 書類リンク（LINK_ONLY の解決）
 ] as const;
 
 export type LoginMethod = (typeof LOGIN_METHODS)[number];
@@ -71,6 +76,24 @@ export const LOGIN_FAILURE_REASONS = [
   "SETTINGS_NO_DEVICE",
   "SETTINGS_LOCKED",
   "SETTINGS_CODE_INVALID",
+  // ── 取引先ポータル（社外向け）─────────────────────────────────────────
+  // **画面はこれらを区別しない**（存在するアドレスとしないアドレスが
+  // 見分けられてしまう）。区別するのはこの記録の中だけ。
+  "PORTAL_UNKNOWN_EMAIL",
+  "PORTAL_ACCOUNT_INACTIVE",
+  "PORTAL_CODE_EXPIRED",
+  "PORTAL_CODE_MISMATCH",
+  "PORTAL_CODE_ATTEMPTS",
+  "PORTAL_BACKUP_INVALID",
+  "PORTAL_LINK_NOT_FOUND",
+  "PORTAL_LINK_EXPIRED",
+  "PORTAL_LINK_REVOKED",
+  "PORTAL_LINK_EXHAUSTED",
+  // メールが出せなかった。利用者には成功と同じ画面を出すので、運用が
+  // 気づける唯一の場所がここ（Grafana のアラートもこの行を見る）。
+  "PORTAL_MAIL_FAILED",
+  // dev で許可リスト（PORTAL_MAIL_ALLOWLIST）に無い宛先を止めた。
+  "PORTAL_MAIL_BLOCKED_DEV",
   // 想定外（新しい state を足して対応表を更新し忘れたとき）
   "UNKNOWN",
 ] as const;
@@ -118,6 +141,9 @@ const METHOD_LABELS: Record<LoginMethod, string> = {
   ATTEST: "端末アテステーション",
   DEVICE_SETTINGS: "端末設定コード",
   DEVICE_LINK: "端末リンク",
+  PORTAL_OTP: "取引先ポータル（確認コード）",
+  PORTAL_BACKUP: "取引先ポータル（バックアップコード）",
+  PORTAL_LINK: "取引先ポータル（書類リンク）",
 };
 
 const REASON_LABELS: Record<LoginFailureReason, string> = {
@@ -155,6 +181,18 @@ const REASON_LABELS: Record<LoginFailureReason, string> = {
   SETTINGS_NO_DEVICE: "端末設定: 端末不明",
   SETTINGS_LOCKED: "端末設定: ロック中",
   SETTINGS_CODE_INVALID: "端末設定コード不一致",
+  PORTAL_UNKNOWN_EMAIL: "ポータル: 未登録のアドレス",
+  PORTAL_ACCOUNT_INACTIVE: "ポータル: アカウントが無効",
+  PORTAL_CODE_EXPIRED: "ポータル: 確認コード期限切れ",
+  PORTAL_CODE_MISMATCH: "ポータル: 確認コード不一致",
+  PORTAL_CODE_ATTEMPTS: "ポータル: 確認コード試行上限",
+  PORTAL_BACKUP_INVALID: "ポータル: バックアップコード不一致",
+  PORTAL_LINK_NOT_FOUND: "ポータル: リンクが存在しない",
+  PORTAL_LINK_EXPIRED: "ポータル: リンク期限切れ",
+  PORTAL_LINK_REVOKED: "ポータル: リンクが失効済み",
+  PORTAL_LINK_EXHAUSTED: "ポータル: リンクの使用回数超過",
+  PORTAL_MAIL_FAILED: "ポータル: メール送信に失敗",
+  PORTAL_MAIL_BLOCKED_DEV: "ポータル: dev の許可リスト外",
   UNKNOWN: "不明",
 };
 

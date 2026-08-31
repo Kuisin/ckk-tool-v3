@@ -1,7 +1,7 @@
 /**
  * doc-number.ts — combined-key document numbers (client-safe, pure).
  *
- * 試算/見積書 rows are keyed (year_month, seq) — the display number
+ * 価格試算/見積書 rows are keyed (year_month, seq) — the display number
  * EST-YYYYMM-NNNNN / QOT-YYYYMM-NNNNN is DERIVED from the key, never stored.
  * URL ids use the formatted number; `parseDocKey` maps it back to the key.
  */

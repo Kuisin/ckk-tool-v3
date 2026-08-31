@@ -17,6 +17,7 @@
 import {
   ActionIcon,
   Badge,
+  Box,
   Group,
   NumberInput,
   Paper,
@@ -35,6 +36,7 @@ import {
   IconTrash,
 } from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
+import { useLocale } from "next-intl";
 import { useState, useTransition } from "react";
 import {
   type ApprovalFlowRuleInput,
@@ -45,7 +47,7 @@ import {
 } from "@/app/(dashboard)/master/approval-settings/actions";
 import { GhostButton } from "@/components/ui/buttons";
 import { ModalShell, openConfirm } from "@/components/ui/modals";
-import { FormSection } from "@/components/ui/shells";
+import { FormSection, LocalizedTextInput } from "@/components/ui/shells";
 import { useIsMobile } from "@/hooks/useViewport";
 import {
   APPROVAL_CONDITION_FIELDS,
@@ -59,7 +61,7 @@ import {
 } from "@/lib/approval-conditions";
 import { type ApprovalMode, validateFlowSteps } from "@/lib/approval-flow";
 import type { ApprovalTargetType } from "@/lib/approval-targets";
-import { APPROVAL_MODE_OPTIONS } from "@/lib/enum-labels";
+import { approvalModeOptions } from "@/lib/enum-labels";
 import type { GroupOption } from "./ApprovalFlowEditor";
 
 /** 一覧に出すルール（サーバーで直列化した形）。 */
@@ -67,11 +69,14 @@ export interface FlowRuleView {
   id: number;
   nameJa: string;
   nameEn: string;
+  /** 日本語以外の翻訳（LocalizedTextInput の多言語ポップアップ初期値）。 */
+  nameTranslations: Record<string, string>;
   isActive: boolean;
   conditions: FlowCondition[];
   steps: {
     nameJa: string;
     nameEn: string;
+    nameTranslations: Record<string, string>;
     groupId: string;
     mode: ApprovalMode;
   }[];
@@ -95,6 +100,7 @@ interface ConditionDraft {
 interface StepDraft {
   key: string;
   nameJa: string;
+  nameTranslations: Record<string, string>;
   groupId: string | null;
   mode: ApprovalMode;
 }
@@ -105,6 +111,7 @@ const nextKey = () => `rule-row-${++seq}`;
 const emptyStep = (index: number): StepDraft => ({
   key: nextKey(),
   nameJa: `第${index}承認`,
+  nameTranslations: {},
   groupId: null,
   mode: "ANY",
 });
@@ -139,6 +146,7 @@ export function ApprovalFlowRulesSection({
   groupOptions: GroupOption[];
   dynamicOptions: ConditionDynamicOptions;
 }) {
+  const locale = useLocale();
   const router = useRouter();
   const isMobile = useIsMobile();
   const [isPending, startTransition] = useTransition();
@@ -146,7 +154,9 @@ export function ApprovalFlowRulesSection({
   // モーダルの編集対象（null = 閉。id null = 新規）。
   const [editing, setEditing] = useState<{ id: number | null } | null>(null);
   const [nameJa, setNameJa] = useState("");
-  const [nameEn, setNameEn] = useState("");
+  const [nameTranslations, setNameTranslations] = useState<
+    Record<string, string>
+  >({});
   const [conditions, setConditions] = useState<ConditionDraft[]>([]);
   const [steps, setSteps] = useState<StepDraft[]>([]);
 
@@ -155,7 +165,7 @@ export function ApprovalFlowRulesSection({
 
   const openNew = () => {
     setNameJa("");
-    setNameEn("");
+    setNameTranslations({});
     setConditions([]);
     setSteps([emptyStep(1)]);
     setEditing({ id: null });
@@ -163,7 +173,7 @@ export function ApprovalFlowRulesSection({
 
   const openEdit = (rule: FlowRuleView) => {
     setNameJa(rule.nameJa);
-    setNameEn(rule.nameEn);
+    setNameTranslations(rule.nameTranslations);
     setConditions(
       rule.conditions.map((c) => {
         const def = conditionFieldDef(targetType, c.field);
@@ -180,6 +190,7 @@ export function ApprovalFlowRulesSection({
       rule.steps.map((s) => ({
         key: nextKey(),
         nameJa: s.nameJa,
+        nameTranslations: s.nameTranslations,
         groupId: s.groupId,
         mode: s.mode,
       })),
@@ -206,10 +217,11 @@ export function ApprovalFlowRulesSection({
     if (issues.length > 0) return;
     const payload: ApprovalFlowRuleInput = {
       nameJa: nameJa.trim(),
-      nameEn: nameEn.trim() || undefined,
+      nameTranslations,
       conditions: condPayload,
       steps: steps.map((s) => ({
         nameJa: s.nameJa.trim(),
+        nameTranslations: s.nameTranslations,
         groupId: Number(s.groupId),
         mode: s.mode,
       })),
@@ -417,21 +429,19 @@ export function ApprovalFlowRulesSection({
         }
       >
         <Stack gap="md">
-          <Group grow>
-            <TextInput
-              label="ルール名（日本語）"
-              onChange={(e) => setNameJa(e.currentTarget.value)}
-              placeholder="例: 50万円以上"
-              value={nameJa}
-              withAsterisk
-            />
-            <TextInput
-              label="ルール名（英語）"
-              onChange={(e) => setNameEn(e.currentTarget.value)}
-              placeholder="任意"
-              value={nameEn}
-            />
-          </Group>
+          <LocalizedTextInput
+            jaProps={{
+              value: nameJa,
+              onChange: (v: string) => setNameJa(v),
+            }}
+            label="ルール名"
+            placeholder="例: 50万円以上"
+            required
+            translationsProps={{
+              value: nameTranslations,
+              onChange: (v: Record<string, string>) => setNameTranslations(v),
+            }}
+          />
 
           <Stack gap="xs">
             <Text fw={600} size="sm">
@@ -538,20 +548,32 @@ export function ApprovalFlowRulesSection({
                   <Badge color="blue" mb={6} size="sm" variant="light">
                     第{i + 1}段
                   </Badge>
-                  <TextInput
-                    flex={1}
-                    label="名称"
-                    onChange={(e) => {
-                      const value = e.currentTarget.value;
-                      setSteps((prev) =>
-                        prev.map((x) =>
-                          x.key === s.key ? { ...x, nameJa: value } : x,
-                        ),
-                      );
-                    }}
-                    placeholder="第一承認"
-                    value={s.nameJa}
-                  />
+                  <Box flex={1} miw={0}>
+                    <LocalizedTextInput
+                      jaProps={{
+                        value: s.nameJa,
+                        onChange: (value: string) =>
+                          setSteps((prev) =>
+                            prev.map((x) =>
+                              x.key === s.key ? { ...x, nameJa: value } : x,
+                            ),
+                          ),
+                      }}
+                      label="名称"
+                      placeholder="第一承認"
+                      translationsProps={{
+                        value: s.nameTranslations,
+                        onChange: (value: Record<string, string>) =>
+                          setSteps((prev) =>
+                            prev.map((x) =>
+                              x.key === s.key
+                                ? { ...x, nameTranslations: value }
+                                : x,
+                            ),
+                          ),
+                      }}
+                    />
+                  </Box>
                   <Select
                     data={groupOptions}
                     label="承認グループ"
@@ -568,7 +590,7 @@ export function ApprovalFlowRulesSection({
                     w={isMobile ? "100%" : 180}
                   />
                   <SegmentedControl
-                    data={APPROVAL_MODE_OPTIONS}
+                    data={approvalModeOptions(locale)}
                     onChange={(v) =>
                       setSteps((prev) =>
                         prev.map((x) =>

@@ -17,24 +17,32 @@ import {
   TextInput,
 } from "@mantine/core";
 import type { UseFormReturnType } from "@mantine/form";
+import { useLocale } from "next-intl";
 import { z } from "zod";
 import type { BpBaseDetail } from "@/app/(dashboard)/master/_shared/bp-data";
 import { HelpLabel } from "@/components/ui/HelpLabel";
 import { FormSection, LocalizedTextInput } from "@/components/ui/shells";
 import { useIsMobile } from "@/hooks/useViewport";
-import { COUNTRY_OPTIONS } from "@/lib/enum-labels";
+import { countryOptions } from "@/lib/enum-labels";
 import { fieldHelp, fieldHelpTip } from "@/lib/field-help";
+import { LOCALE_LABELS, LOCALES } from "@/lib/i18n";
 import { MatchNameSuggestions } from "./MatchNameSuggestions";
+
+/** 見積書/納品書/請求書の言語（documentLocale）用の Select data。 */
+const DOCUMENT_LOCALE_OPTIONS = LOCALES.map((l) => ({
+  value: l,
+  label: LOCALE_LABELS[l],
+}));
 
 export const bpBaseFormSchema = z.object({
   nameJa: z.string().min(1, "名称（日本語）を入力してください"),
-  nameEn: z.string(),
+  nameTranslations: z.record(z.string(), z.string()).default({}),
   nameKana: z.string(),
   shortName: z.string(),
   countryCode: z.string().nullable(),
   postalCode: z.string(),
   addressJa: z.string(),
-  addressEn: z.string(),
+  addressTranslations: z.record(z.string(), z.string()).default({}),
   phone: z.string(),
   fax: z.string(),
   email: z
@@ -43,6 +51,7 @@ export const bpBaseFormSchema = z.object({
     .or(z.literal("")),
   website: z.string(),
   taxNumber: z.string(),
+  documentLocale: z.string().nullable(),
   matchNames: z.array(z.string()),
   isActive: z.boolean(),
   notes: z.string(),
@@ -53,18 +62,19 @@ export type BpBaseFormValues = z.infer<typeof bpBaseFormSchema>;
 export function bpBaseInitialValues(d?: BpBaseDetail): BpBaseFormValues {
   return {
     nameJa: d?.nameJa ?? "",
-    nameEn: d?.nameEn ?? "",
+    nameTranslations: d?.nameTranslations ?? {},
     nameKana: d?.nameKana ?? "",
     shortName: d?.shortName ?? "",
     countryCode: d?.countryCode ?? "JP",
     postalCode: d?.postalCode ?? "",
     addressJa: d?.addressJa ?? "",
-    addressEn: d?.addressEn ?? "",
+    addressTranslations: d?.addressTranslations ?? {},
     phone: d?.phone ?? "",
     fax: d?.fax ?? "",
     email: d?.email ?? "",
     website: d?.website ?? "",
     taxNumber: d?.taxNumber ?? "",
+    documentLocale: d?.documentLocale ?? null,
     matchNames: d?.matchNames ?? [],
     isActive: d?.isActive ?? true,
     notes: d?.notes ?? "",
@@ -82,6 +92,7 @@ export function BpBaseFields<T extends BpBaseFormValues>({
   codeDescription: string;
 }) {
   const isMobile = useIsMobile();
+  const locale = useLocale();
   // Field paths are shared with the extended form value types.
   const props = (path: string) => form.getInputProps(path);
   // 同じ理由（T が BpBaseFormValues の拡張）で setFieldValue も narrow できない。
@@ -109,19 +120,27 @@ export function BpBaseFields<T extends BpBaseFormValues>({
           />
           <Select
             clearable
-            data={COUNTRY_OPTIONS}
+            data={countryOptions(locale)}
             label={<HelpLabel {...fieldHelp("businessPartner", "country")} />}
             placeholder="国を選択"
             {...props("countryCode")}
           />
+          <Select
+            clearable
+            data={DOCUMENT_LOCALE_OPTIONS}
+            description="見積書・納品書・請求書をこの言語で発行する。未設定は既定言語（日本語）"
+            label="書類の言語"
+            placeholder="既定言語（日本語）"
+            {...props("documentLocale")}
+          />
         </SimpleGrid>
         <Stack gap="sm" mt="sm">
           <LocalizedTextInput
-            enProps={props("nameEn")}
             help={fieldHelpTip("businessPartner", "name")}
             jaProps={props("nameJa")}
             label="名称"
             required
+            translationsProps={props("nameTranslations")}
           />
         </Stack>
         <SimpleGrid cols={isMobile ? 1 : 2} mt="sm" spacing="sm">
@@ -173,7 +192,7 @@ export function BpBaseFields<T extends BpBaseFormValues>({
         {/* 足りない字種の指摘 + 機械的に作れる候補（lib/company-aliases）。 */}
         <MatchNameSuggestions
           matchNames={form.values.matchNames ?? []}
-          nameEn={form.values.nameEn}
+          nameEn={form.values.nameTranslations.en}
           nameJa={form.values.nameJa ?? ""}
           nameKana={form.values.nameKana}
           onAdd={(values) =>
@@ -201,10 +220,10 @@ export function BpBaseFields<T extends BpBaseFormValues>({
         </SimpleGrid>
         <Stack gap="sm" mt="sm">
           <LocalizedTextInput
-            enProps={props("addressEn")}
             help={fieldHelpTip("businessPartner", "address")}
             jaProps={props("addressJa")}
             label="住所"
+            translationsProps={props("addressTranslations")}
           />
         </Stack>
         <SimpleGrid cols={isMobile ? 1 : 2} mt="sm" spacing="sm">

@@ -222,7 +222,7 @@ export async function listMyRequests(): Promise<PrivilegedRequestRow[]> {
 }
 
 /**
- * 自分が決裁できる申請（承認待ちのみ）。
+ * 自分が決裁できる申請（承認依頼中のみ）。
  * **自分が出したものは除く** — 申請と承認は別の人でなければならないので、
  * 押せないものを一覧に並べない。
  */
@@ -298,7 +298,7 @@ export async function approvableCodesFor(
   return out;
 }
 
-/** 進行中（承認待ち・有効）を上に、そのあと新しい順。 */
+/** 進行中（承認依頼中・有効）を上に、そのあと新しい順。 */
 function sortRows(rows: PrivilegedRequestRow[]): PrivilegedRequestRow[] {
   return rows.sort((a, b) => {
     const ao = OPEN.includes(a.status) ? 0 : 1;

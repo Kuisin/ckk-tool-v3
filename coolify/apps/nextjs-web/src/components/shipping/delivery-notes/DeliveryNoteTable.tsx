@@ -10,6 +10,7 @@
 import { Badge, Group, Select, Stack, Text, TextInput } from "@mantine/core";
 import { IconReceipt, IconSearch } from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
+import { useLocale } from "next-intl";
 import { useFormat } from "@/components/layout/PreferencesProvider";
 import { type Column, DataTable } from "@/components/ui/DataTable";
 import { NewButton } from "@/components/ui/NewButton";
@@ -17,27 +18,26 @@ import { StatusBadge, statusOptions } from "@/components/ui/StatusBadge";
 import { ListShell } from "@/components/ui/shells";
 import { useUrlSelectState, useUrlStringState } from "@/hooks/useUrlState";
 import { useIsMobile } from "@/hooks/useViewport";
-import {
-  DELIVERY_METHOD_LABEL,
-  DELIVERY_METHOD_OPTIONS,
-} from "@/lib/enum-labels";
+import { deliveryMethodLabel, deliveryMethodOptions } from "@/lib/enum-labels";
 import type { DeliveryNote } from "./model";
 
 const BASE_PATH = "/shipping/delivery-notes";
 
 /** 納品方法バッジ — DIRECT_TO_USER=ユーザー直送（橙）/ NORMAL=通常納品（灰）。 */
 export function DeliveryMethodBadge({ method }: { method: string }) {
+  const locale = useLocale();
   return (
     <Badge
       color={method === "DIRECT_TO_USER" ? "orange" : "gray"}
       variant="light"
     >
-      {DELIVERY_METHOD_LABEL[method] ?? method}
+      {deliveryMethodLabel(method, locale) ?? method}
     </Badge>
   );
 }
 
 export function DeliveryNoteTable({ rows }: { rows: DeliveryNote[] }) {
+  const locale = useLocale();
   const fmt = useFormat();
   const router = useRouter();
   const isMobile = useIsMobile();
@@ -140,7 +140,7 @@ export function DeliveryNoteTable({ rows }: { rows: DeliveryNote[] }) {
         <>
           <Select
             clearable
-            data={DELIVERY_METHOD_OPTIONS}
+            data={deliveryMethodOptions(locale)}
             flex={isMobile ? 1 : undefined}
             onChange={setMethod}
             placeholder="方法"

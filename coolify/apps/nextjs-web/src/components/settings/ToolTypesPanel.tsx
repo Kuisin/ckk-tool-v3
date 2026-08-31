@@ -32,7 +32,7 @@ export function ToolTypesPanel({
 }: {
   toolTypes: ToolTypeDef[];
   criteria: Criterion[];
-  /** 工具種 → 試算（estimates）の使用件数。 */
+  /** 工具種 → 価格試算（estimates）の使用件数。 */
   usage: Record<string, number>;
 }) {
   const router = useRouter();
@@ -109,7 +109,7 @@ export function ToolTypesPanel({
                     )}
                   </Group>
                 ),
-                description: `計算基準 ${applied} 件 · 試算 ${used} 件`,
+                description: `計算基準 ${applied} 件 · 価格試算 ${used} 件`,
               };
             }),
           },
@@ -131,7 +131,7 @@ export function ToolTypesPanel({
       >
         <Stack gap="sm">
           <Text c="dimmed" size="xs">
-            追加した工具種は試算フォームの工具種として選択できます。計算入力は
+            追加した工具種は価格試算フォームの工具種として選択できます。計算入力は
             丸棒系（参照単価ベース）です。現在「全工具種」に適用中の計算基準は
             新しい種にも適用されます（追加後に調整できます）。
           </Text>

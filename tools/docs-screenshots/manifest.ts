@@ -98,7 +98,7 @@ export const shots: Shot[] = [
     docPage: "operations/sales/quote/user",
     path: "/sales/quotes",
   },
-  // ── 販売: 試算（SA01）──────────────────────────────────────────────────────
+  // ── 販売: 価格試算（SA01）──────────────────────────────────────────────────────
   {
     id: "trial-estimate-list-01",
     docPage: "operations/sales/trial-estimate/user",
@@ -259,10 +259,13 @@ export const shots: Shot[] = [
     steps: async (page) => {
       await page.getByText("設計図面_PRD-202607-0001_v2.pdf").first().waitFor();
     },
+    // サムネイルは SeaweedFS の実体を読むが、撮影スタックにストレージは無い
+    // ので必ず "Not found" になる。中身は本筋ではないので塗りつぶす。
+    mask: ['[title$="を拡大"]'],
   },
   // ── 販売: 初心者向けマニュアル用の追加撮影 ────────────────────────────────
   {
-    // 試算結果パネル（原価内訳〜見積単価）
+    // 価格試算結果パネル（原価内訳〜見積単価）
     id: "trial-estimate-new-02",
     docPage: "operations/sales/trial-estimate/user",
     path: "/sales/trial-estimates/new",
@@ -276,7 +279,7 @@ export const shots: Shot[] = [
       await page.getByRole("textbox", { name: /^最大径/ }).fill("6");
       await page.getByRole("textbox", { name: /^全長/ }).fill("60");
       await page.getByText(/参照価格/).first().waitFor();
-      await page.getByText("試算結果").first().scrollIntoViewIfNeeded();
+      await page.getByText("価格試算結果").first().scrollIntoViewIfNeeded();
     },
   },
   {
@@ -288,7 +291,7 @@ export const shots: Shot[] = [
     },
   },
   {
-    // 下書き試算の操作メニュー（確定 / 製品にリンク / 複製して再試算）
+    // 下書き価格試算の操作メニュー（確定 / 製品にリンク / 複製して再価格試算）
     id: "trial-estimate-detail-03",
     docPage: "operations/sales/trial-estimate/user",
     path: "/sales/trial-estimates/EST-202607-00003",
@@ -353,13 +356,56 @@ export const shots: Shot[] = [
     },
   },
   {
-    // 進行中の設計依頼（操作メニューに「完了」）
+    // 進行中で成果物が登録済みの設計依頼（操作メニューに「完了」）。
+    // **DSG-00001 ではない** — あちらは成果物ゼロなので「完了」は出ない
+    // （設計図に版が 1 件以上ないと完了できない。design-request-detail-03 参照）。
     id: "design-request-detail-02",
     docPage: "operations/sales/design-request/user",
-    path: "/sales/design-requests/DSG-202607-00001",
+    path: "/sales/design-requests/DSG-202607-00006",
     steps: async (page) => {
       await page.getByRole("button", { name: "操作メニュー" }).first().click();
       await page.getByRole("menuitem", { name: "完了" }).first().waitFor();
+    },
+  },
+  {
+    // 進行中だが成果物が未登録 — 「図面を登録してください」の案内が出る状態。
+    id: "design-request-detail-03",
+    docPage: "operations/sales/design-request/user",
+    path: "/sales/design-requests/DSG-202607-00001",
+    steps: async (page) => {
+      await page.getByText("図面を登録してください").first().waitFor();
+    },
+    highlight: [{ role: "link", name: "設計図に登録" }],
+  },
+  // ── 生産: 設計図（PD06）────────────────────────────────────────────────────
+  {
+    // 一覧 — 1 行 = 1 系列。汎用とデモ商事の 2 系列が並ぶ。
+    id: "design-file-list-01",
+    docPage: "operations/production/design-file/user",
+    path: "/production/design-files",
+    steps: async (page) => {
+      await page.getByText("汎用").first().waitFor();
+    },
+  },
+  {
+    // 詳細 — 1 製品の全系列。製品 9001 は汎用 v2 とデモ商事 v1 を持つ。
+    id: "design-file-detail-01",
+    docPage: "operations/production/design-file/user",
+    path: "/production/design-files/9001",
+    steps: async (page) => {
+      await page.getByText("設計図面_デモ商事仕様_v1.pdf").first().waitFor();
+    },
+    // サムネイルは SeaweedFS の実体を読むが、撮影スタックにストレージは無い
+    // ので必ず "Not found" になる。中身は本筋ではないので塗りつぶす。
+    mask: ['[title$="を拡大"]'],
+  },
+  {
+    // 登録フォーム — 役割ごとのファイル枠（図面データ / プレビュー / 参考資料）。
+    id: "design-file-new-01",
+    docPage: "operations/production/design-file/user",
+    path: "/production/design-files/new",
+    steps: async (page) => {
+      await page.getByText("図面データ").first().waitFor();
     },
   },
   // ── 購買: 購買依頼（PU01）──────────────────────────────────────────────────
@@ -573,7 +619,7 @@ export const shots: Shot[] = [
     // 「9002」が無い画面で 60 秒待って落ちる）。
     path: "/general/tasks?tab=approvals",
     steps: async (page) => {
-      await page.getByRole("tab", { name: /承認待ち/ }).waitFor();
+      await page.getByRole("tab", { name: /承認依頼中/ }).waitFor();
       // 対象番号の書式に依存しない待ち（列見出しは行があるときだけ出る）。
       await page.getByText("対象番号").first().waitFor();
     },
@@ -1358,7 +1404,7 @@ export const shots: Shot[] = [
      * 固定サンプル時刻なので、mask/clip 無しで決定的に撮れる。
      */
   },
-  // ── 設定: 試算計算（SY02, 管理者）──────────────────────────────────────────
+  // ── 設定: 価格試算計算（SY02, 管理者）──────────────────────────────────────────
   {
     id: "trial-pricing-hub-01",
     docPage: "operations/sales/trial-estimate/settings",
@@ -1714,7 +1760,7 @@ export const shots: Shot[] = [
     path: "/settings/apps",
     user: "admin",
     steps: async (page) => {
-      await page.getByText("試算").first().waitFor();
+      await page.getByText("価格試算").first().waitFor();
     },
   },
   // ── システム: ファイル管理（SY06, 管理者）──────────────────────────────────
@@ -2070,10 +2116,10 @@ export const shots: Shot[] = [
     },
   },
   // ── プロセス: 標準フロー（process/default-flow）───────────────────────────
-  // 一つの注文を試算 → 請求まで通しで追うページ用。既存カットの steps を流用し、
+  // 一つの注文を価格試算 → 請求まで通しで追うページ用。既存カットの steps を流用し、
   // その段階で押すボタン・見る欄を highlight で赤枠強調する。
   {
-    // 下書き試算の操作メニュー — 「確定」を強調
+    // 下書き価格試算の操作メニュー — 「確定」を強調
     id: "flow-trial-estimate-01",
     docPage: "process/default-flow",
     path: "/sales/trial-estimates/EST-202607-00003",
@@ -2152,7 +2198,7 @@ export const shots: Shot[] = [
     highlight: [{ role: "button", name: "保存" }],
   },
   {
-    // 承認待ちの指示書 — 承認ボタンを強調（demo_shot は承認者）
+    // 承認依頼中の指示書 — 承認ボタンを強調（demo_shot は承認者）
     id: "flow-approval-01",
     docPage: "process/default-flow",
     path: "/production/work-orders/9002",
@@ -2253,7 +2299,7 @@ export const shots: Shot[] = [
   // ── プロセス: 分野別ページ（process/sales〜billing）───────────────────────
   // 各分野ページの「それぞれの段階でおきること」に 1 段階 1 枚で載せる赤枠カット。
   {
-    // 試算の新規フォーム — 保存ボタンを強調
+    // 価格試算の新規フォーム — 保存ボタンを強調
     id: "flow-trial-estimate-save-01",
     docPage: "process/sales",
     path: "/sales/trial-estimates/new",

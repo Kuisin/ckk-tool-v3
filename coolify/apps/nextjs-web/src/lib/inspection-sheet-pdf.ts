@@ -9,7 +9,7 @@ import "server-only";
  * 持たないため）。ユーザー入力由来の文字列はすべて esc() で HTML エスケープ。
  */
 
-import { INSPECTION_ITEM_TYPE_LABEL } from "@/lib/enum-labels";
+import { inspectionItemTypeLabel } from "@/lib/enum-labels";
 import type { LocalizedText } from "@/lib/format";
 import { localized } from "@/lib/format";
 import {
@@ -82,9 +82,7 @@ function itemBase(item: ItemRow) {
     required_mark: item.isRequired
       ? ' <span class="pass-mark fail">*</span>'
       : "",
-    type_label: esc(
-      INSPECTION_ITEM_TYPE_LABEL[item.inputType] ?? item.inputType,
-    ),
+    type_label: esc(inspectionItemTypeLabel(item.inputType, "ja")),
     accept: esc(acceptLabel(spec) ?? "—"),
     goal: esc(goalLabel(spec) ?? "—"),
   };

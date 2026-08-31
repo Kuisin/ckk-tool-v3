@@ -26,6 +26,7 @@ import {
   IconTrash,
 } from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
+import { useLocale } from "next-intl";
 import { useState, useTransition } from "react";
 import {
   deleteProcessSteps,
@@ -40,9 +41,9 @@ import { ListShell } from "@/components/ui/shells";
 import { useUrlSelectState, useUrlStringState } from "@/hooks/useUrlState";
 import { useIsMobile } from "@/hooks/useViewport";
 import {
-  PROCESS_CATEGORY_LABEL,
-  PROCESS_CATEGORY_OPTIONS,
-  PROCESS_EXECUTION_LABEL,
+  processCategoryLabel,
+  processCategoryOptions,
+  processExecutionLabel,
 } from "@/lib/enum-labels";
 import {
   DeleteProcessStepModal,
@@ -111,6 +112,7 @@ function FlagBadge({
 }
 
 export function ProcessStepTable({ rows }: { rows: ProcessStepRow[] }) {
+  const locale = useLocale();
   const router = useRouter();
   const isMobile = useIsMobile();
   const [, startTransition] = useTransition();
@@ -215,13 +217,13 @@ export function ProcessStepTable({ rows }: { rows: ProcessStepRow[] }) {
       header: "カテゴリ",
       sortable: true,
       width: 130,
-      sortValue: (r) => PROCESS_CATEGORY_LABEL[r.category] ?? r.category,
+      sortValue: (r) => processCategoryLabel(r.category, locale) ?? r.category,
       render: (r) => (
         <Badge
           color={PROCESS_CATEGORY_COLOR[r.category] ?? "gray"}
           variant="light"
         >
-          {PROCESS_CATEGORY_LABEL[r.category] ?? r.category}
+          {processCategoryLabel(r.category, locale) ?? r.category}
         </Badge>
       ),
     },
@@ -234,7 +236,8 @@ export function ProcessStepTable({ rows }: { rows: ProcessStepRow[] }) {
       sortValue: (r) => r.executionLocation,
       render: (r) => (
         <Text size="sm">
-          {PROCESS_EXECUTION_LABEL[r.executionLocation] ?? r.executionLocation}
+          {processExecutionLabel(r.executionLocation, locale) ??
+            r.executionLocation}
         </Text>
       ),
     },
@@ -325,7 +328,7 @@ export function ProcessStepTable({ rows }: { rows: ProcessStepRow[] }) {
         <>
           <Select
             clearable
-            data={PROCESS_CATEGORY_OPTIONS}
+            data={processCategoryOptions(locale)}
             onChange={setCategoryFilter}
             placeholder="カテゴリ"
             value={categoryFilter}
@@ -396,10 +399,10 @@ export function ProcessStepTable({ rows }: { rows: ProcessStepRow[] }) {
                     size="xs"
                     variant="light"
                   >
-                    {PROCESS_CATEGORY_LABEL[r.category] ?? r.category}
+                    {processCategoryLabel(r.category, locale) ?? r.category}
                   </Badge>
                   <Text c="dimmed" size="xs">
-                    {PROCESS_EXECUTION_LABEL[r.executionLocation] ??
+                    {processExecutionLabel(r.executionLocation, locale) ??
                       r.executionLocation}
                   </Text>
                   {r.isSyncCapable && (

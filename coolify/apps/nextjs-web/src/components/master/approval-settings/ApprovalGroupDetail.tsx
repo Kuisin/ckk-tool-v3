@@ -38,6 +38,7 @@ import {
   IconUsers,
 } from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
+import { useLocale } from "next-intl";
 import { useState, useTransition } from "react";
 import { setGroupMemberActive } from "@/app/(dashboard)/master/approval-settings/actions";
 import { useFormat } from "@/components/layout/PreferencesProvider";
@@ -215,6 +216,7 @@ function ApprovalPermissionCell({
 }: {
   approvals: MemberApproval[];
 }) {
+  const locale = useLocale();
   if (approvals.length === 0) {
     return (
       <Text c="dimmed" size="xs">
@@ -230,7 +232,7 @@ function ApprovalPermissionCell({
           ? a.unrestricted
             ? `${a.label}を承認できます`
             : `${a.label}を承認できますが、権限の範囲が${a.scopes
-                .map(permissionScopeLabel)
+                .map((s) => permissionScopeLabel(s, locale))
                 .join("・")}に限定されています（範囲外の書類は承認できません）`
           : `${a.label}を閲覧・編集できる権限（${a.permissionCode}:READ / UPDATE）がありません — 承認ボタンを押しても弾かれます`;
         return (

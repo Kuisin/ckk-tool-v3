@@ -8,7 +8,7 @@
  * ようにするのがこの画面の目的なので、ある / 無い を同じ表に並べて色で分ける。
  *
  * 特権操作は「権限がある」＝「できる」ではないので、行の中でさらに
- * 実行できる / 承認待ち / 申請が要る を出し分ける。
+ * 実行できる / 承認依頼中 / 申請が要る を出し分ける。
  */
 
 import {
@@ -138,7 +138,7 @@ function PermissionCard({ row }: { row: MyPermissionRow }) {
                     leftSection={<IconClock size={11} />}
                     variant="light"
                   >
-                    承認待ち
+                    承認依頼中
                   </Badge>
                 ) : (
                   <Badge

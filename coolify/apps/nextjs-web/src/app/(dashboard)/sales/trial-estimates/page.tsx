@@ -9,7 +9,7 @@ import { fetchTrialEstimates } from "./data";
 
 export const dynamic = "force-dynamic";
 
-/** 試算 一覧 (SA50). */
+/** 価格試算 一覧 (SA50). */
 export default async function TrialEstimatesPage() {
   const denied = await requireAppRead("trial-estimates");
   if (denied) return denied;

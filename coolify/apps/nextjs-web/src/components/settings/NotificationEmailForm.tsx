@@ -21,10 +21,11 @@ import {
 import { notifications } from "@mantine/notifications";
 import { IconInfoCircle } from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
+import { useLocale } from "next-intl";
 import { useState, useTransition } from "react";
 import { updateNotificationEmailSettings } from "@/app/(dashboard)/settings/notification-email/actions";
 import { FormActions, FormSection } from "@/components/ui/shells";
-import { NOTIFICATION_TYPE_OPTIONS } from "@/lib/enum-labels";
+import { notificationTypeOptions } from "@/lib/enum-labels";
 import type { NotificationEmailSettings } from "@/lib/notification-email-core";
 import type { NotificationType } from "@/lib/notifications-core";
 
@@ -33,6 +34,7 @@ export function NotificationEmailForm({
 }: {
   initial: NotificationEmailSettings;
 }) {
+  const locale = useLocale();
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [settings, setSettings] = useState<NotificationEmailSettings>(initial);
@@ -112,7 +114,7 @@ export function NotificationEmailForm({
       >
         <MultiSelect
           clearable
-          data={NOTIFICATION_TYPE_OPTIONS}
+          data={notificationTypeOptions(locale)}
           disabled={!settings.digestEnabled}
           label="即時に送る通知の種別"
           onChange={(v) => patch({ immediateTypes: v as NotificationType[] })}

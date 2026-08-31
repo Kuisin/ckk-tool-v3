@@ -15,6 +15,8 @@ import { FormFlowSummary } from "./FormFlowSummary";
 export interface FormFlowStep {
   nameJa: string;
   nameEn: string;
+  /** 日本語以外の翻訳（LocalizedTextInput の多言語ポップアップ初期値）。 */
+  nameTranslations: Record<string, string>;
   groupId: string | null;
   mode: ApprovalMode;
   /** カスタム段か（グループが無い段）。 */

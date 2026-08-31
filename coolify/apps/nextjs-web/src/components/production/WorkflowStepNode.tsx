@@ -21,9 +21,10 @@
 
 import { Badge, Group, Paper, Text, ThemeIcon } from "@mantine/core";
 import { Handle, type Node, type NodeProps, Position } from "@xyflow/react";
+import { useLocale } from "next-intl";
 import {
   PROCESS_CATEGORY_COLOR,
-  PROCESS_CATEGORY_LABEL,
+  processCategoryLabel,
 } from "@/lib/enum-labels";
 import { STEP_STATUS_ICON } from "./StepCard";
 import type { WorkOrderStepView } from "./work-orders/model";
@@ -45,13 +46,15 @@ export type StepFlowNode = Node<StepNodeData, "workflowStep">;
 const HANDLE_STYLE = { opacity: 0, pointerEvents: "none" } as const;
 
 export function WorkflowStepNode({ data }: NodeProps<StepFlowNode>) {
+  const locale = useLocale();
   const { step, highlighted } = data;
   const icon = STEP_STATUS_ICON[step.status] ?? STEP_STATUS_ICON.PENDING;
   const isOutsource = step.executionLocation === "OUTSOURCE";
   const hasQuantities = step.inputQuantity != null;
   const categoryColor =
     PROCESS_CATEGORY_COLOR[step.category] ?? FALLBACK_CATEGORY_COLOR;
-  const categoryLabel = PROCESS_CATEGORY_LABEL[step.category] ?? step.category;
+  const categoryLabel =
+    processCategoryLabel(step.category, locale) ?? step.category;
   // 実行可否 — canStart はサーバーが canStartStep で算出済み（依存工程の完了）。
   const startable = step.status === "PENDING" && step.canStart;
 

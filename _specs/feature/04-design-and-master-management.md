@@ -6,6 +6,12 @@
 
 設計図がない場合に §1 または §3 と並行して起票。
 
+**設計依頼（SA06）と設計図（PD06）は別のアプリ。** 依頼は「図面を作ってほしい」
+という起票と、その承認・進捗を持つ。図面そのもの（`design_files` の版）は
+設計図が持ち、**版を登録・編集・削除できるのは設計図だけ**（製品マスタ MS24 と
+設計依頼 SA26 は表示のみ）。依頼を経ない版もあるため、図面の管理を依頼の完了
+処理にぶら下げると入口が 2 つある処理の片方だけが正になる。
+
 ### 画面
 
 | パス | 内容 |
@@ -14,10 +20,14 @@
 | `/sales/design-requests/new` | 設計依頼書新規作成 |
 | `/sales/design-requests/[id]` | 設計依頼書詳細 |
 | `/sales/design-requests/[id]/edit` | 設計依頼書編集 |
+| `/production/design-files` | 設計図一覧（PD06 — **1 行 = 1 系列**） |
+| `/production/design-files/new` | 版の登録（PD16。`?request=` / `?product=` でプリフィル） |
+| `/production/design-files/[productId]` | 1 製品の全系列（PD26。受注元ごとに節） |
 
 ### 主要機能
 
-- 設計依頼書起票: 見積時（§1）または受注時（§3）。導線は 見積書詳細 /
+- 設計依頼書起票: 見積時（§1）/ 受注時（§3）/ 単独（STANDALONE — どちらにも
+  紐づかない起票）。導線は 見積書詳細 /
   注文明細詳細 / 見積明細の単価未解決（`?quote=` `?orderLine=` `?product=`）
 - 担当者指定: `design_requests.assignee_id` — 図面をつくる製造担当を 1 名。
   §10 の「依頼通知を製造担当へ」はこの列で宛先が定まる
@@ -34,8 +44,12 @@
 - 承認フロー: `approval_flows.target_type = 'design_requests'`（段構成は承認設定
   MS0B。条件は **トリガー / 依頼区分 / 優先度** — 「新規は部長承認・改訂は係長」
   「急ぎは 1 段」といった分岐が組める）。承認が通ってはじめて着手できる
-- 設計図アップロード: SeaweedFS に保存（`design_files` テーブル）。添付できるのは
-  **承認済〜完了前**（`PENDING` / `IN_PROGRESS`）だけ
+- 依頼側の添付（`document_attachments`）は**作業ファイル**（メモ・下書き）で、
+  入れられるのは **承認済〜完了前**（`PENDING` / `IN_PROGRESS`）だけ。成果物の
+  版とは別物
+- 設計図アップロード: SeaweedFS に保存（`design_files`）。登録口は
+  `POST /api/design-files/upload` の 1 本だけで、依頼の成果物（`designRequestId`
+  あり）も手動登録（なし）も同じ経路を通る
 - バージョン管理: `version` + `is_latest` フラグ。**1 回の完了 = 1 版**で、
   その版は「プレビュー 0..1 + 図面データ 1 + 参考資料 0..N」（`design_files.role`）。
   **プレビュー（STL 等）と図面データ（CAD）を分けている**のは用途が違うから —
@@ -52,6 +66,13 @@
 - 帳票: `/api/pdf/design-request`（承認済み以降のみ。`isIssuedDesign`）
 - ステータス: `DRAFT → REQUESTED → PENDING → IN_PROGRESS → COMPLETED`
   （+ `REJECTED` / `CANCELLED`）
+- **完了の条件**: その依頼を `design_request_id` に持つ `design_files` が 1 件以上
+  あること。無いと完了は状態を進めるだけの操作になり、依頼を出した側から見て
+  何が出来たのか判らない。画面は未登録のとき「完了」ではなく設計図の登録画面
+  （`?request=DSG-…`）へ誘導する
+- 権限は 2 コードに分かれる: `design_request`（依頼の起票・承認・進捗）と
+  `design_file`（版の登録・メモ編集・削除）。図面を描くのは製造、依頼を出すのは
+  営業なので、1 コードでは配り分けられなかった。閲覧はほぼ全業務ロールが持つ
 
 ### 業務ルール
 
@@ -68,8 +89,18 @@
 - **製品への反映は `design_files.product_id` + `is_latest`**。
   `products.design_file_id` という列は存在しない（旧記述は誤り）。版採番と
   両側の `is_latest` クリアは `completeDesign` の 1 トランザクションが唯一の
-  管理者で、マスタ側に第 2 の書き込み口は作らない（`is_latest` が 2 行に
-  なるうえ、図面が変わった理由を追えなくなるため）
+  管理者で、他に書き込み口は作らない（`is_latest` が 2 行になるうえ、図面が
+  変わった理由を追えなくなるため）。系列が (製品 × 受注元) の組で無数に増える
+  ので採番表は使えず、系列ごとの advisory lock で直列化する
+- **版は (製品 × 受注元) ごとに数える**。`customer_bp_id = null` は汎用系列で、
+  顧客専用の図面が無いときのフォールバック。優先は 顧客一致 → 汎用 で、
+  **他の顧客の系列へは決して落ちない**（落とすと B の指示書に A の図面が黙って
+  出る）。唯一の定義元は `lib/design-files-core.ts` `resolveSeriesCustomer` で、
+  製品工程ルートの `pickDefaultRoute` と同じ規約
+- **設計依頼を経ない版もある**（`design_request_id = null`）。一覧の「依頼 / 手動」
+  の別はこの列の有無から導く（列を増やして二重に持たない）
+- 指示書は版を**ピン留め**できる（`work_orders.design_file_id`）。人が明示的に
+  選んだものが系列の優先規則を上書きする
 
 ---
 

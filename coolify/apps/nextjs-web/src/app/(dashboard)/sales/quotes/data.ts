@@ -53,6 +53,8 @@ export function mapQuote(r: QuoteRow): Quote {
     customerBranchName: r.customerBranchBp
       ? localized(r.customerBranchBp.name as LocalizedText | null)
       : null,
+    recipientDocumentLocale:
+      r.customerBranchBp?.documentLocale ?? r.customerBp.documentLocale ?? null,
     status: r.status,
     validUntil: r.validUntil?.toISOString().slice(0, 10) ?? null,
     notes: r.notes,

@@ -18,7 +18,7 @@
  * - APPROVED: 確定（明細ごとに注文明細 ORD-…-NN を一括作成）。
  * - COMPLETED: 生成された注文明細リンク + アーカイブ。
  * 状態ごとの操作は最上部の ActionCard にまとめる（承認権限の有無で色が変わる
- * — 権限が無いユーザーにはグレーの「承認待ち」カード）。
+ * — 権限が無いユーザーにはグレーの「承認依頼中」カード）。
  * タブ: 添付（AttachmentsPanel）/ 履歴（HistoryPanel）。
  */
 
@@ -58,6 +58,7 @@ import {
 } from "@tabler/icons-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { useLocale } from "next-intl";
 import { type ReactNode, useEffect, useState, useTransition } from "react";
 import {
   searchCustomerOptions,
@@ -126,9 +127,9 @@ import {
 import { useTabParam } from "@/hooks/useUrlState";
 import type { MemoView } from "@/lib/document-memos";
 import {
-  ACCEPTANCE_DELIVERY_METHOD_LABEL,
-  ACCEPTANCE_DELIVERY_METHOD_OPTIONS,
-  ORDER_TYPE_LABEL,
+  acceptanceDeliveryMethodLabel,
+  acceptanceDeliveryMethodOptions,
+  orderTypeLabel,
 } from "@/lib/enum-labels";
 import { fieldHelp } from "@/lib/field-help";
 import { formatMoney } from "@/lib/format";
@@ -216,6 +217,7 @@ export function OrderAcceptanceDetail({
   /** キャンセル依頼の承認状態（cancelRequest があるときだけ使う）。 */
   cancelApproval?: ApprovalActionState | null;
 }) {
+  const locale = useLocale();
   const fmt = useFormat();
   const router = useRouter();
   // アクティブタブを ?tab= に保持（URL 共有でタブまで再現）
@@ -419,8 +421,8 @@ export function OrderAcceptanceDetail({
   };
 
   /**
-   * 「いまやること」カード（最上部）。承認待ちは承認権限の有無で色が変わる
-   * — 権限あり = 緑 + 承認/差し戻し、権限なし = グレーの「承認待ち」表示。
+   * 「いまやること」カード（最上部）。承認依頼中は承認権限の有無で色が変わる
+   * — 権限あり = 緑 + 承認/差し戻し、権限なし = グレーの「承認依頼中」表示。
    */
   let actionCard: ReactNode = null;
   if (cancelRequest && cancelApproval) {
@@ -544,7 +546,7 @@ export function OrderAcceptanceDetail({
               disabled: a.status !== "COMPLETED" || cancelRequest != null,
               disabledReason:
                 cancelRequest != null
-                  ? "承認待ちのキャンセル依頼があります"
+                  ? "承認依頼中のキャンセル依頼があります"
                   : a.status !== "COMPLETED"
                     ? "確定後に依頼できます"
                     : undefined,
@@ -766,7 +768,10 @@ export function OrderAcceptanceDetail({
                   <FieldValue label="出荷先" value={a.shipToName} />
                   <FieldValue
                     label="配送方法"
-                    value={ACCEPTANCE_DELIVERY_METHOD_LABEL[a.deliveryMethod]}
+                    value={acceptanceDeliveryMethodLabel(
+                      a.deliveryMethod,
+                      locale,
+                    )}
                   />
                   <FieldValue label="エンドユーザー" value={a.endUserName} />
                   <FieldValue label="担当拠点" value={a.assignedPlantName} />
@@ -944,7 +949,8 @@ export function OrderAcceptanceDetail({
                                 </Text>
                               </Table.Td>
                               <Table.Td>
-                                {ORDER_TYPE_LABEL[it.orderType] ?? it.orderType}
+                                {orderTypeLabel(it.orderType, locale) ??
+                                  it.orderType}
                               </Table.Td>
                               <Table.Td className="tabular-nums" ta="right">
                                 {it.quantity}
@@ -1237,6 +1243,7 @@ function DraftEditor({
   /** 出荷作業場所の選択肢（グループ / 場所）。 */
   workLocationOptions: { value: string; label: string }[];
 }) {
+  const locale = useLocale();
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const a = acceptance;
@@ -1452,7 +1459,7 @@ function DraftEditor({
             {/* 配送方法 — 出荷書は同じ出荷先×配送方法の明細だけを束ねられる。 */}
             <Select
               allowDeselect={false}
-              data={ACCEPTANCE_DELIVERY_METHOD_OPTIONS}
+              data={acceptanceDeliveryMethodOptions(locale)}
               label={
                 <HelpLabel
                   {...fieldHelp("orderAcceptance", "deliveryMethod")}

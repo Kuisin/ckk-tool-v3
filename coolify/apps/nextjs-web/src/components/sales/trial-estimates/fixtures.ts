@@ -1,5 +1,5 @@
 /**
- * fixtures.ts — 試算 demo records (test fixtures).
+ * fixtures.ts — 価格試算 demo records (test fixtures).
  *
  * Formerly the screen mock; the SA01 screens now read sales.estimates via
  * Prisma. Kept ONLY as deterministic fixtures for the pricing unit tests.

@@ -14,7 +14,7 @@ You can read the user manuals for every app in the system without leaving the sy
 
 ## How to open
 
-- Click **マニュアル (Manuals)** on the home screen or in the launcher, or type `DC01` in the search box.
+- Click **マニュアル (Manuals)** on the home screen or in the launcher, or search for `DC01` (the top-right search box is desktop only; on a phone use the search inside the launcher).
 - Where an input field has a **?** next to it, you can read the explanation right there. Choose **Read more** to open the full description of that field.
 
 ## Switching languages

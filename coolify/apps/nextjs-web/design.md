@@ -66,8 +66,8 @@ Action (label+icon+role baked in): `SaveButton` (`type=submit`, 保存/💾),
   <FormActions loading={isPending} onCancel={back} />                 // <form> 送信（type=submit）
   ```
 
-  `FormShell` uses it automatically. Screens that build their own form (試算 /
-  受注請書ドラフト / 材種の既定単価 / キオスク設定 …) call it directly — pass
+  `FormShell` uses it automatically. Screens that build their own form (価格試算 /
+  受注請書ドラフト / 材種の既定単価 / 共有端末設定 …) call it directly — pass
   `children` only when the button set really differs.
 - `PageHeader` (`ui/PageHeader.tsx`) — breadcrumbs (desktop) / **mobile "← back"
   link to the nearest linkable parent** / `order={2→3}` title / status / actions.

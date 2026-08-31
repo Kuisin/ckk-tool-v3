@@ -32,7 +32,7 @@ const APP_MANUAL_PATH = {
   workOrder: "operations/production/work-order/user",
   productInventory: "operations/production/product-inventory/user",
   materialInventory: "operations/production/material-inventory/user",
-  approval: "operations/production/approval/user",
+  approval: "operations/general/my-tasks/user",
   deliveryOrder: "operations/shipping/delivery-order/user",
   deliveryNote: "operations/shipping/delivery-note/user",
   businessPartner: "operations/masters/business-partner/user",
@@ -289,12 +289,12 @@ export const FIELD_HELP = {
     customer: {
       label: "見積り先",
       summary:
-        "誰向けの試算かです。空のままでも計算できます — 相手が決まっていない段階の概算にも使えます。",
+        "誰向けの価格試算かです。空のままでも計算できます — 相手が決まっていない段階の概算にも使えます。",
     },
     product: {
       label: "製品",
       summary:
-        "どの製品の試算かです。製品にリンクしておくと、確定後に価格表の基準単価ソースとして選べるようになります。",
+        "どの製品の価格試算かです。製品にリンクしておくと、確定後に価格表の基準単価ソースとして選べるようになります。",
     },
     maxDiameter: {
       label: "最大径 (mm)",
@@ -436,7 +436,7 @@ export const FIELD_HELP = {
     unitPrice: {
       label: "単価",
       summary:
-        "1 単位あたりの価格です。ここに入れた金額が、試算の材料費の参考価格として使われますので、実際の取引価格を入れてください。",
+        "1 単位あたりの価格です。ここに入れた金額が、価格試算の材料費の参考価格として使われますので、実際の取引価格を入れてください。",
     },
     expectedDate: {
       label: "入荷予定日",
@@ -978,7 +978,7 @@ export const FIELD_HELP = {
     stepName: {
       label: "段の名称",
       summary:
-        "その承認の段の呼び名です。「第一承認」「部門承認」など、社内で通じる言い方を入れてください。書類の画面や承認待ちの一覧に、この名前で出ます。",
+        "その承認の段の呼び名です。「第一承認」「部門承認」など、社内で通じる言い方を入れてください。書類の画面や承認依頼中の一覧に、この名前で出ます。",
     },
     group: {
       label: "承認グループ",
