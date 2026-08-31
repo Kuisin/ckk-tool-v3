@@ -48,11 +48,7 @@ ALTER TABLE "app"."display_devices"
   ADD COLUMN  "linked_at"     TIMESTAMPTZ(6),
   ADD COLUMN  "activated_by"  UUID,
   ADD COLUMN  "activated_at"  TIMESTAMPTZ(6),
-  ADD COLUMN  "scale_percent" INTEGER NOT NULL DEFAULT 100,
-  -- どの機械の何枚目か（自己申告の手掛かり。認証には使わない）。
-  -- 1 台の Pi で 2 枚回したとき、まとめて消えたのか 1 枚だけなのかを見分ける。
-  ADD COLUMN  "machine_id"    VARCHAR(64),
-  ADD COLUMN  "screen_index"  INTEGER;
+  ADD COLUMN  "scale_percent" INTEGER NOT NULL DEFAULT 100;
 
 ALTER TABLE "app"."display_devices"
   ADD CONSTRAINT "display_devices_activated_by_fkey"
