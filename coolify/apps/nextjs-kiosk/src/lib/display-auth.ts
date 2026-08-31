@@ -28,10 +28,15 @@ export type DisplayAuth = {
 
 export type DisplayAuthFailReason =
   | "NO_COOKIE" // 未ペアリング（新品 / Cookie を消した）
-  | "NOT_FOUND" // Cookie はあるが該当行が無い（削除された）
+  // Cookie はあるが該当行が無い。**失効（取り消し）もここに来る** —
+  // 取り消しはトークンのハッシュごと消すので、照合の側からは行が無いのと
+  // 区別が付かない。画面の文言はそれを踏まえて書くこと（DisplayPairing.tsx）。
+  | "NOT_FOUND"
   | "EXPIRED" // トークン期限切れ
   | "DISABLED" // 一時停止
-  | "REVOKED"; // 取り消し
+  // 状態だけ REVOKED でトークンが残っている場合。通常の失効操作では
+  // ハッシュを消すので、実際にはまず通らない。
+  | "REVOKED";
 
 export type DisplayAuthResult =
   | { ok: true; display: DisplayAuth }
