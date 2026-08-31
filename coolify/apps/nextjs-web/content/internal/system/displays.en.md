@@ -67,6 +67,22 @@ for the site visit.
 > ⚠️ The link code expires after **10 minutes**. If that happens, press
 > "Issue a new code" on the TV to get a fresh one.
 
+## Matching the screen size (display scale)
+
+How large text needs to be depends on the TV and how far away people stand.
+A 43-inch screen at arm's length and a 65-inch screen 10 m away are not the same.
+
+1. Press the display in the list.
+2. On the "Settings" tab, use "Display scale" — press Smaller / Normal / Larger,
+   or use the slider for finer steps (50–200%).
+3. Press "Save".
+
+The TV changes immediately. **Adjust while looking at the wall** — there is no
+single correct percentage.
+
+> 💡 A larger scale makes each row bigger, so fewer fit on one screen. The rest
+> move to the next page automatically; nothing is dropped.
+
 ## Switching what a display shows
 
 1. Press the display in the list.

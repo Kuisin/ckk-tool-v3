@@ -36,6 +36,8 @@ export interface DisplayRow {
   profileId: string | null;
   profileName: string | null;
   status: DisplayStatus;
+  /** 表示倍率（%）。画面の大きさに合わせる微調整。 */
+  scalePercent: number;
   lastSeenAt: Date | null;
   appVersion: string | null;
   /** WS が使えないときのフォールバック（サーバー側の計算）。 */
@@ -92,6 +94,7 @@ export async function listDisplays(): Promise<DisplayRow[]> {
       location: true,
       plantId: true,
       status: true,
+      scalePercent: true,
       lastSeenAt: true,
       appVersion: true,
       linkedAt: true,
@@ -113,6 +116,7 @@ export async function listDisplays(): Promise<DisplayRow[]> {
       profileId: r.profile?.id ?? null,
       profileName: jsonName(r.profile?.name).text,
       status: r.status as DisplayStatus,
+      scalePercent: r.scalePercent,
       lastSeenAt: r.lastSeenAt,
       appVersion: r.appVersion,
       initialOnline: r.status === "ACTIVE" && onlineAt(now, r.lastSeenAt),
@@ -133,6 +137,7 @@ export async function getDisplayDetail(
       location: true,
       plantId: true,
       status: true,
+      scalePercent: true,
       lastSeenAt: true,
       lastIpAddress: true,
       userAgent: true,
@@ -158,6 +163,7 @@ export async function getDisplayDetail(
     profileId: r.profile?.id ?? null,
     profileName: jsonName(r.profile?.name).text,
     status: r.status as DisplayStatus,
+    scalePercent: r.scalePercent,
     lastSeenAt: r.lastSeenAt,
     appVersion: r.appVersion,
     initialOnline: r.status === "ACTIVE" && onlineAt(Date.now(), r.lastSeenAt),

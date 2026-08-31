@@ -51,6 +51,7 @@ CREATE TABLE "app"."display_devices" (
     "plant_id" INTEGER,
     "display_profile_id" UUID,
     "status" "app"."DISPLAY_DEVICE_STATUS" NOT NULL DEFAULT 'PENDING',
+    "scale_percent" INTEGER NOT NULL DEFAULT 100,
     "device_token_hash" TEXT,
     "device_token_expires_at" TIMESTAMPTZ(6),
     "last_seen_at" TIMESTAMPTZ(6),
@@ -114,3 +115,9 @@ ALTER TABLE "app"."display_devices" ADD CONSTRAINT "display_devices_activated_by
 
 -- AddForeignKey
 ALTER TABLE "app"."display_link_requests" ADD CONSTRAINT "display_link_requests_device_id_fkey" FOREIGN KEY ("device_id") REFERENCES "app"."display_devices"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- 表示倍率の範囲は DB 側でも閉じる（users.text_scale / date_format と同じ規約）。
+-- 画面が読めなくなる値を、経路を問わず入れられないようにする。
+ALTER TABLE "app"."display_devices"
+  ADD CONSTRAINT "display_devices_scale_percent_check"
+  CHECK ("scale_percent" BETWEEN 50 AND 200);

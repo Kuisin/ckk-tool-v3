@@ -1904,6 +1904,11 @@ Table display_devices {
   plant_id                int  [ref: > plants.id]
   display_profile_id      uuid [ref: > display_profiles.id]  // 削除は Restrict
   status                  DISPLAY_DEVICE_STATUS
+  // 表示倍率（%）。画面の大きさと見る距離に合わせる微調整で、50〜200 の 5 刻み
+  // （範囲は DB の CHECK でも閉じる）。**端末側に持つ** — これは「その画面の
+  // 物理的な性質」で、表示内容に持たせると 1 つの内容を複数の画面で共有した
+  // 瞬間にどれかが読めなくなる。
+  scale_percent           int
   // Cookie は生値、DB は SHA-256 のみ。**365日** — キオスクの 30 日と違えるのは、
   // 壁の画面は誰も触らないから。短いと誰も見ていない間に自分でペアリング画面へ
   // 戻ってしまい、現場には「テレビが壊れた」としか見えない。

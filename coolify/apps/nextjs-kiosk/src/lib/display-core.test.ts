@@ -1,13 +1,18 @@
 import { describe, expect, it } from "vitest";
 import {
   DISPLAY_ONLINE_WINDOW_MS,
+  DISPLAY_SCALE_DEFAULT,
+  DISPLAY_SCALE_MAX,
+  DISPLAY_SCALE_MIN,
   DISPLAY_TOKEN_TTL_MS,
   extractLinkCode,
+  fitRowsToHeight,
   isDisplayOnline,
   isDisplayTokenAlive,
   isLinkRequestAlive,
   LINK_CODE_LENGTH,
   linkRemainingMs,
+  normalizeScalePercent,
 } from "./display-core";
 
 const NOW = new Date("2026-08-31T09:00:00.000Z");
@@ -122,5 +127,74 @@ describe("extractLinkCode", () => {
     const misread = extractLinkCode("ABCD-EFGH-JKL0");
     expect(misread).toBe("ABCDEFGHJKL0");
     expect(misread).toHaveLength(LINK_CODE_LENGTH);
+  });
+});
+
+describe("normalizeScalePercent", () => {
+  it("そのまま置ける値は変えない", () => {
+    expect(normalizeScalePercent(100)).toBe(100);
+    expect(normalizeScalePercent(125)).toBe(125);
+  });
+
+  it("5 刻みに丸める（1% ずつは目で分からない）", () => {
+    expect(normalizeScalePercent(103)).toBe(105);
+    expect(normalizeScalePercent(102)).toBe(100);
+    expect(normalizeScalePercent(97)).toBe(95);
+  });
+
+  it("範囲外は端に寄せる（DB の CHECK と同じ範囲）", () => {
+    expect(normalizeScalePercent(10)).toBe(DISPLAY_SCALE_MIN);
+    expect(normalizeScalePercent(500)).toBe(DISPLAY_SCALE_MAX);
+    expect(normalizeScalePercent(-100)).toBe(DISPLAY_SCALE_MIN);
+  });
+
+  it("数値でないものは既定倍率（画面を壊さない）", () => {
+    expect(normalizeScalePercent("大きく")).toBe(DISPLAY_SCALE_DEFAULT);
+    expect(normalizeScalePercent(null)).toBe(DISPLAY_SCALE_DEFAULT);
+    expect(normalizeScalePercent(undefined)).toBe(DISPLAY_SCALE_DEFAULT);
+    expect(normalizeScalePercent(Number.NaN)).toBe(DISPLAY_SCALE_DEFAULT);
+    expect(normalizeScalePercent(Number.POSITIVE_INFINITY)).toBe(
+      DISPLAY_SCALE_DEFAULT,
+    );
+  });
+
+  it("数字の文字列は受ける（フォームから来る形）", () => {
+    expect(normalizeScalePercent("120")).toBe(120);
+  });
+});
+
+describe("fitRowsToHeight", () => {
+  it("入るなら設定どおりの件数", () => {
+    // 行 100px + 間隔 10px → 8 行で 870px。900px あるので全部入る
+    expect(fitRowsToHeight(900, 100, 10, 8)).toBe(8);
+  });
+
+  it("入らない分は減らす（黙って切り落とさない）", () => {
+    // 500px なら (500+10)/110 = 4.63 → 4 行
+    expect(fitRowsToHeight(500, 100, 10, 8)).toBe(4);
+  });
+
+  it("設定より多くは出さない（増やす方向には効かない）", () => {
+    expect(fitRowsToHeight(5000, 100, 10, 6)).toBe(6);
+  });
+
+  it("最低 1 行は出す（空の画面にしない）", () => {
+    expect(fitRowsToHeight(30, 100, 10, 8)).toBe(1);
+  });
+
+  it("測れないうちは設定値のまま（ちらつかせない）", () => {
+    expect(fitRowsToHeight(0, 100, 10, 8)).toBe(8);
+    expect(fitRowsToHeight(900, 0, 10, 8)).toBe(8);
+    expect(fitRowsToHeight(Number.NaN, 100, 10, 8)).toBe(8);
+  });
+
+  it("間隔が負でも壊れない", () => {
+    expect(fitRowsToHeight(900, 100, -5, 8)).toBe(8);
+  });
+
+  it("ちょうど収まる境界を切り捨てない", () => {
+    // 行 100 + 間隔 10 が 5 行 = 540px（最後の行の下に隙間は要らない）
+    expect(fitRowsToHeight(540, 100, 10, 5)).toBe(5);
+    expect(fitRowsToHeight(539, 100, 10, 5)).toBe(4);
   });
 });

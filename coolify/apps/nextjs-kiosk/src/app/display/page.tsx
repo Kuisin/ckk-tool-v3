@@ -30,6 +30,7 @@ export default async function DisplayPage() {
       displayId={auth.display.id}
       displayName={auth.display.name}
       location={auth.display.location}
+      scalePercent={auth.display.scalePercent}
     />
   );
 }

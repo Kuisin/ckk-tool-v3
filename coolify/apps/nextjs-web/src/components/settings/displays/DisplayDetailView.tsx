@@ -13,7 +13,9 @@ import {
   Badge,
   Group,
   Paper,
+  SegmentedControl,
   Select,
+  Slider,
   Stack,
   Tabs,
   Text,
@@ -80,6 +82,7 @@ export function DisplayDetailView({
     display.plantId ? String(display.plantId) : null,
   );
   const [profileId, setProfileId] = useState<string | null>(display.profileId);
+  const [scalePercent, setScalePercent] = useState(display.scalePercent);
 
   const online =
     display.status === "ACTIVE" &&
@@ -117,6 +120,7 @@ export function DisplayDetailView({
           location,
           plantId: plantId ? Number(plantId) : null,
           profileId,
+          scalePercent,
         }),
       "保存しました",
     );
@@ -327,6 +331,8 @@ export function DisplayDetailView({
                 searchable
                 value={profileId}
               />
+
+              <ScaleField onChange={setScalePercent} value={scalePercent} />
               <FormActions
                 loading={pending}
                 onCancel={() => router.push("/settings/kiosk-devices")}
@@ -360,6 +366,64 @@ export function DisplayDetailView({
           <AuditTimeline entries={audit} />
         </Tabs.Panel>
       </AppTabs>
+    </Stack>
+  );
+}
+
+/**
+ * 表示倍率の入力。
+ *
+ * **画面の大きさと見る距離に合わせる微調整**なので、数値を打たせるより
+ * 「小さめ / 標準 / 大きめ」を押して、必要なら細かく動かせる形にする。
+ * 現場の管理者は「何 % が正解か」を知らないし、知る必要もない —
+ * 壁を見ながら合わせるものだから。
+ */
+function ScaleField({
+  value,
+  onChange,
+}: {
+  value: number;
+  onChange: (value: number) => void;
+}) {
+  // よく使う 3 つ。ここに無い値のときは選択なしにして、スライダーだけ効かせる
+  const PRESETS = [
+    { value: "85", label: "小さめ" },
+    { value: "100", label: "標準" },
+    { value: "125", label: "大きめ" },
+  ];
+  const preset = PRESETS.some((p) => p.value === String(value))
+    ? String(value)
+    : "";
+
+  return (
+    <Stack gap="xs">
+      <Text fw={500} size="sm">
+        表示倍率
+      </Text>
+      <Text c="dimmed" size="xs">
+        画面の大きさと、どのくらい離れて見るかに合わせて調整します。
+        大きくすると 1 画面に入る件数は減り、あふれた分はページ送りになります。
+      </Text>
+      <SegmentedControl
+        data={PRESETS}
+        onChange={(v) => onChange(Number(v))}
+        value={preset}
+      />
+      <Slider
+        label={(v) => `${v}%`}
+        marks={[
+          { value: 50, label: "50%" },
+          { value: 100, label: "100%" },
+          { value: 150, label: "150%" },
+          { value: 200, label: "200%" },
+        ]}
+        max={200}
+        mb="lg"
+        min={50}
+        onChange={onChange}
+        step={5}
+        value={value}
+      />
     </Stack>
   );
 }

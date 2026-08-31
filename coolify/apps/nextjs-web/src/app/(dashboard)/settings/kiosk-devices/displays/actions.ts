@@ -281,7 +281,11 @@ export async function activateDisplay(id: string): Promise<ActionResult> {
 
 // ── 変更（素の kiosk 権限） ──────────────────────────────────────────────────
 
-const updateSchema = createSchema.extend({ id: z.string().uuid() });
+const updateSchema = createSchema.extend({
+  id: z.string().uuid(),
+  /** 表示倍率（%）。範囲は DB の CHECK と同じ 50〜200。 */
+  scalePercent: z.number().int().min(50).max(200).optional(),
+});
 
 export async function updateDisplay(raw: {
   id: string;
@@ -290,6 +294,7 @@ export async function updateDisplay(raw: {
   location?: string;
   plantId?: number | null;
   profileId?: string | null;
+  scalePercent?: number;
 }): Promise<ActionResult> {
   const authz = await checkPermission("kiosk", "UPDATE");
   if (!authz.ok) return actionError(authz.error);
@@ -297,7 +302,8 @@ export async function updateDisplay(raw: {
   if (!parsed.success) {
     return actionError(parsed.error.issues[0]?.message ?? "入力が不正です");
   }
-  const { id, nameJa, nameEn, location, plantId, profileId } = parsed.data;
+  const { id, nameJa, nameEn, location, plantId, profileId, scalePercent } =
+    parsed.data;
 
   try {
     const before = await prisma.displayDevice.findUnique({
@@ -307,6 +313,7 @@ export async function updateDisplay(raw: {
         location: true,
         plantId: true,
         displayProfileId: true,
+        scalePercent: true,
       },
     });
     if (!before) return actionError("対象のディスプレイが見つかりません");
@@ -318,6 +325,7 @@ export async function updateDisplay(raw: {
         location: location || null,
         plantId: plantId ?? null,
         displayProfileId: profileId ?? null,
+        ...(scalePercent === undefined ? {} : { scalePercent }),
       },
     });
     await recordAudit({
@@ -330,10 +338,14 @@ export async function updateDisplay(raw: {
         location: location || null,
         plantId: plantId ?? null,
         displayProfileId: profileId ?? null,
+        scalePercent: scalePercent ?? before.scalePercent,
       },
     });
-    // 表示内容が変わったなら、その場で画面を切り替える
-    if (before.displayProfileId !== (profileId ?? null)) {
+    // 表示内容か倍率が変わったなら、その場で画面へ反映する
+    if (
+      before.displayProfileId !== (profileId ?? null) ||
+      (scalePercent !== undefined && scalePercent !== before.scalePercent)
+    ) {
       await notifyDisplayConfigChanged(id);
     }
     revalidate();

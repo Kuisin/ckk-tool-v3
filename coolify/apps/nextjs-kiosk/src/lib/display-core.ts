@@ -32,6 +32,62 @@ export const LINK_REQUEST_TTL_MS = 10 * 60 * 1000;
  */
 export const DISPLAY_ONLINE_WINDOW_MS = 5 * 60 * 1000;
 
+/**
+ * 表示倍率（%）— 画面の大きさと見る距離に合わせる微調整。
+ *
+ * 同じ表示内容でも、43 型を近くで見るのと 65 型を 10m 先から見るのとでは
+ * 読みやすい大きさが違う。行数（テンプレートの設定）が「どれだけ載せるか」
+ * なのに対して、こちらは「どれだけ大きく出すか」。
+ *
+ * 5 刻みにしているのは、1% ずつ動かしても目で違いが分からないから —
+ * 選択肢が細かいほど、現場は「正解の値」を探して迷う。
+ */
+export const DISPLAY_SCALE_MIN = 50;
+export const DISPLAY_SCALE_MAX = 200;
+export const DISPLAY_SCALE_DEFAULT = 100;
+export const DISPLAY_SCALE_STEP = 5;
+
+/** 倍率を許される範囲・刻みに丸める。DB の CHECK と同じ範囲。 */
+export function normalizeScalePercent(value: unknown): number {
+  // Number(null) は 0 になる。素直に Number() へ渡すと「未設定」が最小倍率に
+  // 化けて、理由の見えない半分サイズの画面ができる。数値と数字の文字列だけ
+  // 受けて、それ以外は既定に倒す。
+  const n =
+    typeof value === "number"
+      ? value
+      : typeof value === "string" && value.trim() !== ""
+        ? Number(value)
+        : Number.NaN;
+  if (!Number.isFinite(n)) return DISPLAY_SCALE_DEFAULT;
+  const stepped = Math.round(n / DISPLAY_SCALE_STEP) * DISPLAY_SCALE_STEP;
+  return Math.min(DISPLAY_SCALE_MAX, Math.max(DISPLAY_SCALE_MIN, stepped));
+}
+
+/**
+ * 実際に置ける行数。
+ *
+ * 倍率を上げると 1 行が大きくなり、設定した件数が画面に入らなくなる。
+ * そのとき**黙って切り落とすと、下の行は存在しないのと同じ**になる
+ * （壁の画面ではスクロールできないので誰も気づけない）。だから入る数まで
+ * 減らし、あふれたぶんはページ送りへ回す。
+ *
+ * 測れないうち（初回描画・高さ 0）は設定値をそのまま使う — 推測で減らすと
+ * 一瞬だけ行が消えてちらつく。
+ */
+export function fitRowsToHeight(
+  availablePx: number,
+  rowPx: number,
+  gapPx: number,
+  configuredRows: number,
+): number {
+  if (!Number.isFinite(availablePx) || availablePx <= 0) return configuredRows;
+  if (!Number.isFinite(rowPx) || rowPx <= 0) return configuredRows;
+  const per = rowPx + Math.max(0, gapPx);
+  // 最後の行の下には隙間が要らないぶんを足して数える
+  const fits = Math.floor((availablePx + Math.max(0, gapPx)) / per);
+  return Math.max(1, Math.min(configuredRows, fits));
+}
+
 /** WS の生存確認とハートビートの間隔。 */
 export const DISPLAY_SWEEP_INTERVAL_MS = 30 * 1000;
 

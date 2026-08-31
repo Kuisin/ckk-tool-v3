@@ -40,6 +40,7 @@ export async function GET(req: Request) {
       id: true,
       name: true,
       location: true,
+      scalePercent: true,
       profile: {
         select: {
           id: true,
@@ -62,6 +63,7 @@ export async function GET(req: Request) {
         id: auth.display.id,
         name: deviceName(row?.name ?? null),
         location: row?.location ?? null,
+        scalePercent: auth.display.scalePercent,
       },
       profile: null,
     });
@@ -79,6 +81,7 @@ export async function GET(req: Request) {
         id: auth.display.id,
         name: deviceName(row?.name ?? null),
         location: row?.location ?? null,
+        scalePercent: auth.display.scalePercent,
       },
       profile: {
         id: profile.id,
@@ -100,6 +103,7 @@ export async function GET(req: Request) {
       id: auth.display.id,
       name: deviceName(row?.name ?? null),
       location: row?.location ?? null,
+      scalePercent: auth.display.scalePercent,
     },
     profile: {
       id: profile.id,

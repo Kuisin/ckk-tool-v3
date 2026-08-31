@@ -12,7 +12,11 @@
 
 import { cookies } from "next/headers";
 import { prisma } from "./db";
-import { DISPLAY_TOKEN_TTL_MS, isDisplayTokenAlive } from "./display-core";
+import {
+  DISPLAY_TOKEN_TTL_MS,
+  isDisplayTokenAlive,
+  normalizeScalePercent,
+} from "./display-core";
 import { deviceName } from "./format";
 import { mintToken, sha256hex } from "./kiosk-auth";
 
@@ -24,6 +28,8 @@ export type DisplayAuth = {
   location: string | null;
   plantId: number | null;
   displayProfileId: string | null;
+  /** 表示倍率（%）。画面の大きさに合わせる微調整。 */
+  scalePercent: number;
 };
 
 export type DisplayAuthFailReason =
@@ -91,6 +97,7 @@ export async function getDisplay(): Promise<DisplayAuthResult> {
       location: true,
       plantId: true,
       displayProfileId: true,
+      scalePercent: true,
       status: true,
       deviceTokenExpiresAt: true,
     },
@@ -110,6 +117,7 @@ export async function getDisplay(): Promise<DisplayAuthResult> {
       location: row.location,
       plantId: row.plantId,
       displayProfileId: row.displayProfileId,
+      scalePercent: normalizeScalePercent(row.scalePercent),
     },
   };
 }
