@@ -23,6 +23,7 @@
 >   書類・製品の `currency` 列（products / quotes / order_acceptances / invoices に
 >   追加。既定 'JPY'、FK なし — 既存 price_list_entries.currency と同じ規約）が指す。
 >   レートは手動更新の分析用換算（会計処理用ではない）。注文明細はヘッダから読む。
+> - `display.prisma`: 管理ディスプレイ（下記 Display 節）
 > - `kiosk.prisma`: `kiosk_cards` / `kiosk_device_locations` / `kiosk_device_logs` / `kiosk_devices` / `kiosk_floor_maps` / `kiosk_link_requests` / `kiosk_sessions` /
 >   `kiosk_unlock_pins` — メンテナンス退出 PIN の履歴。現行値は
 >   `system_settings['kiosk.unlock_pin']` の 1 行で pg_cron が毎日 4:00 に**上書き**
@@ -1872,6 +1873,95 @@ Table ad_sync_logs {
   finished_at     timestamp
 }
 
+```
+
+### Display（管理ディスプレイ / デジタルサイネージ）
+
+```
+// 現場の壁掛けテレビ。Raspberry Pi は固定 URL を開くだけのブラウザで、
+// **何を映すかはこの 3 表が決める**。Pi 側に設定を持たせないのが芯 —
+// 持たせた瞬間、台数ぶんの設定が現場に散り、1 台ごとに違う状態になる。
+//
+// キオスク端末（kiosk_devices）と似ているが、わざと 2 点違える:
+//
+//   1. **code-first**。キオスクは管理者が先にプロファイルを作り後から端末を
+//      紐づける（profile-first）が、ディスプレイは据付作業者が脚立の上で
+//      1 人で完了できることを優先する。QR を読んだ管理者がその場で名前と
+//      表示内容を決め、行はそのとき初めて生まれる。よって PENDING / LINKED
+//      に相当する状態を持たない。
+//   2. **遷移ログを持たない**（kiosk_device_logs 相当を作らない）。あれは
+//      フロア端末の使用実態を追うためのもので、誰も触らない掲示板には要らない。
+//      死活は last_seen_at 1 列から読むときに計算する。
+//
+// 期限切れのペアリングは API の入口（POST /api/display/pairing）が掃除する。
+// pg_cron を増やさないのは、掃除が遅れても害が無いため（増えるのは行だけ）。
+
+Table display_devices {
+  id                      uuid [pk]
+  name                    json      // { ja, en }（多言語。画面自体は ja 固定）
+  location                varchar
+  plant_id                int  [ref: > plants.id]
+  display_profile_id      uuid [ref: > display_profiles.id]  // 削除は Restrict
+  status                  DISPLAY_DEVICE_STATUS
+  // Cookie は生値、DB は SHA-256 のみ。**365日** — キオスクの 30 日と違えるのは、
+  // 壁の画面は誰も触らないから。短いと誰も見ていない間に自分でペアリング画面へ
+  // 戻ってしまい、現場には「テレビが壊れた」としか見えない。
+  device_token_hash       varchar [unique]
+  device_token_expires_at timestamp
+  last_seen_at            timestamp  // 死活の唯一の材料（WS 接続中は 30 秒ごとに更新）
+  last_ip_address         varchar
+  user_agent              varchar
+  app_version             varchar
+  paired_by               uuid [ref: > users.id]
+  paired_at               timestamp
+  created_at              timestamp
+  updated_at              timestamp
+}
+
+Enum DISPLAY_DEVICE_STATUS {
+  ACTIVE     // ペアリング成立時はここから始まる
+  DISABLED   // 一時停止（トークンは生きたまま）
+  REVOKED    // 取り消し（トークン破棄・再ペアリングが必要）
+}
+
+// 端末と表示内容を分けているのは、1 つの内容を複数の画面に出したいのと、
+// 「この画面をお知らせに切り替える」を端末に触らず行いたいため。
+// content_config は種別ごとに形が違う JSON なので DB では検証できない —
+// 保存時と配信時の 2 か所で lib/display-content.ts の zod を必ず通す
+// （nextjs-web を原本とする twin file。食い違うと「保存はできるのに何も
+//   映らない」という最も原因の分かりにくい壊れ方をする）。
+Table display_profiles {
+  id                   uuid [pk]
+  name                 json
+  description          text
+  content_type         DISPLAY_CONTENT_TYPE
+  content_config       json
+  refresh_interval_sec int   // 0 = 自動再取得しない（変更通知だけで切り替わる）
+  is_enabled           boolean
+  created_by           uuid [ref: > users.id]
+  created_at           timestamp
+  updated_at           timestamp
+}
+
+Enum DISPLAY_CONTENT_TYPE {
+  APP_PAGE   // アプリ内の表示専用ページ（生産ボード等）
+  METABASE   // 署名済み埋め込み。**locked パラメータはサーバーが入れる**
+  URL        // 任意の URL を iframe で
+  IMAGE      // 画像 1 枚（files.id を指す）
+}
+
+// 据付時の一時コード。ディスプレイが自分で作り、画面に QR と文字で出す。
+// display_device_id が入った時点が「成立」で、その有無が唯一の印。
+// コードは生の秘密なので grants.sql で metabase_ro から表ごと落とす。
+Table display_pairing_sessions {
+  id                uuid [pk]
+  code              varchar [unique]  // Crockford 12桁（I/O/0/1 を含まない）
+  display_device_id uuid [ref: > display_devices.id]  // 成立後に入る
+  user_agent        varchar
+  last_ip_address   varchar
+  created_at        timestamp
+  expires_at        timestamp         // 10分
+}
 ```
 
 ### Security（認証イベント）

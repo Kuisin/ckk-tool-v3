@@ -3,5 +3,10 @@
     "description": "取引先ポータル（社外向け・メール OTP ログイン）",
     "environments": ["dev"],
     "appKeys": ["portal-admin"]
+  },
+  "display": {
+    "description": "管理ディスプレイ（現場の壁掛けテレビ・Raspberry Pi）",
+    "environments": ["dev"],
+    "appKeys": ["displays"]
   }
 }

@@ -187,6 +187,20 @@ GRANT SELECT (id, name, location, plant_id, floor_map_id, map_x, map_y, status,
               ownership)
   ON app.kiosk_devices TO metabase_ro;  -- 隠す: device_token_hash, device_public_key, fingerprint, last_ip_address, linked_ip_address, ownership_source, device_profile*
 
+-- 管理ディスプレイ（デジタルサイネージ）。ペアリングコードは据付中に有効な
+-- 生の秘密なので表ごと落とす。端末側は「どこに何台あって、いつまで生きていたか」
+-- が BI で意味を持つので列単位で許す。
+REVOKE SELECT ON app.display_pairing_sessions FROM metabase_ro;  -- ペアリングコード（有効中）
+REVOKE SELECT ON app.display_devices FROM metabase_ro;
+GRANT SELECT (id, name, location, plant_id, display_profile_id, status,
+              device_token_expires_at, last_seen_at, app_version,
+              paired_by, paired_at, created_at, updated_at)
+  ON app.display_devices TO metabase_ro;  -- 隠す: device_token_hash, last_ip_address, user_agent
+
+-- display_profiles は「何を映しているか」の一覧で、秘密を持たない…と言い切れない:
+-- content_config には METABASE の locked パラメータや URL 種別の宛先が入る。
+-- ただしどちらも社内の設定値で、閲覧できて困るものではないため制限しない。
+
 -- 取引先ポータル（社外向け）。生きた資格情報とその使われ方が並ぶので、
 -- 生の秘密を持つ表はまるごと外す。閲覧は SY0H に閉じる。
 REVOKE SELECT ON app.portal_login_challenges FROM metabase_ro;  -- OTP のハッシュ（有効中）

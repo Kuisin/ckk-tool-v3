@@ -1,9 +1,14 @@
 /**
- * server.ts — カスタムサーバー: Next + WebSocket (/api/kiosk/ws)。
+ * server.ts — カスタムサーバー: Next + WebSocket
+ * (/api/kiosk/ws = 共有端末 / /api/display/ws = 管理ディスプレイ)。
  *
  * Next 単体では HTTP サーバーの upgrade イベントに触れないため、ここで
- * createServer し、/api/kiosk/ws の upgrade だけ自前で認証して ws に渡す。
+ * createServer し、2 つの WS パスだけ自前で認証して ws に渡す。
  * それ以外は全て Next のリクエストハンドラへ。
+ *
+ * 端末とディスプレイで**サーバーを分けている**のは、扱う表も語彙も別だから
+ * （kiosk_devices の「人が触った形跡」と display_devices の「Pi が生きている」）。
+ * モニタートークンだけは共通（KIOSK_WS_SECRET — 秘密を増やさない）。
  *
  * ビルド: `pnpm build:server`（tsc → dist/）、起動: `node dist/src/server.js`。
  * 開発で WS まで試すときは `pnpm build:server && NODE_ENV=development node dist/src/server.js`
@@ -18,6 +23,8 @@ import {
   attestSecret,
   verifyAttestCookie,
 } from "./lib/attest-core";
+import { findActiveDisplayByTokenHash } from "./lib/display-ws-db";
+import { DisplayWsServer } from "./lib/display-ws-server";
 import { verifyMonitorToken } from "./lib/ws-auth";
 import { findActiveDeviceByTokenHash } from "./lib/ws-db";
 import { KioskWsServer } from "./lib/ws-server";
@@ -70,6 +77,28 @@ async function authenticateUpgrade(
   return { kind: "device", deviceId };
 }
 
+/** /api/display/ws の upgrade 認証（ckk_display Cookie か モニタートークン）。 */
+async function authenticateDisplayUpgrade(
+  req: IncomingMessage,
+): Promise<
+  { kind: "display"; displayId: string } | { kind: "monitor" } | null
+> {
+  const url = new URL(req.url ?? "/", "http://localhost");
+
+  const token = url.searchParams.get("token");
+  if (token) {
+    const secret = process.env.KIOSK_WS_SECRET;
+    if (secret && verifyMonitorToken(secret, token)) return { kind: "monitor" };
+    return null;
+  }
+
+  const raw = parseCookies(req).ckk_display;
+  if (!raw) return null;
+  const hash = createHash("sha256").update(raw).digest("hex");
+  const displayId = await findActiveDisplayByTokenHash(hash);
+  return displayId ? { kind: "display", displayId } : null;
+}
+
 async function main(): Promise<void> {
   const app = next({ dev, dir: process.cwd() });
   await app.prepare();
@@ -80,29 +109,42 @@ async function main(): Promise<void> {
   // Next のルートハンドラ（別モジュールグラフ）から ws-bridge.ts 経由で参照
   (globalThis as { __kioskWs?: KioskWsServer }).__kioskWs = kioskWs;
 
+  const displayWs = new DisplayWsServer();
+  (globalThis as { __displayWs?: DisplayWsServer }).__displayWs = displayWs;
+
   const server = createServer((req, res) => {
     void handle(req, res);
   });
 
   server.on("upgrade", (req, socket, head) => {
     const pathname = new URL(req.url ?? "/", "http://localhost").pathname;
-    if (pathname !== "/api/kiosk/ws") {
-      // Next(dev) の HMR 用 upgrade は Next へ委譲
-      void handleUpgrade(req, socket, head);
+    const reject = () => {
+      socket.write("HTTP/1.1 401 Unauthorized\r\n\r\n");
+      socket.destroy();
+    };
+
+    if (pathname === "/api/kiosk/ws") {
+      void authenticateUpgrade(req)
+        .then((client) => {
+          if (!client) return reject();
+          kioskWs.handleUpgrade(req, socket, head, client);
+        })
+        .catch(() => socket.destroy());
       return;
     }
-    void authenticateUpgrade(req)
-      .then((client) => {
-        if (!client) {
-          socket.write("HTTP/1.1 401 Unauthorized\r\n\r\n");
-          socket.destroy();
-          return;
-        }
-        kioskWs.handleUpgrade(req, socket, head, client);
-      })
-      .catch(() => {
-        socket.destroy();
-      });
+
+    if (pathname === "/api/display/ws") {
+      void authenticateDisplayUpgrade(req)
+        .then((client) => {
+          if (!client) return reject();
+          displayWs.handleUpgrade(req, socket, head, client);
+        })
+        .catch(() => socket.destroy());
+      return;
+    }
+
+    // Next(dev) の HMR 用 upgrade は Next へ委譲
+    void handleUpgrade(req, socket, head);
   });
 
   server.listen(port, hostname, () => {

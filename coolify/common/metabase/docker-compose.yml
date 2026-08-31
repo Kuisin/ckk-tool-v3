@@ -45,6 +45,15 @@ services:
       - MB_DB_PASS=${MB_DB_PASS:?set MB_DB_PASS in .env}
       # Encrypts saved data-source credentials at rest in the app DB.
       - MB_ENCRYPTION_SECRET_KEY=${MB_ENCRYPTION_SECRET_KEY:?set MB_ENCRYPTION_SECRET_KEY in .env}
+      # Signed embedding — 現場の管理ディスプレイ（SY0I）がダッシュボードを
+      # iframe で映すために要る。埋め込みトークンはアプリ側（nextjs-kiosk の
+      # lib/metabase-embed.ts）がこの鍵で HS256 署名する。
+      #
+      # ★ 拠点・ラインの絞り込みは、**ダッシュボードごとに Metabase の画面で
+      #   「ロック」に設定すること**。ロックしないと JWT の値は単なる初期値に
+      #   なり、URL から上書きできてしまう（＝壁の画面から他拠点が覗ける）。
+      - MB_ENABLE_EMBEDDING=true
+      - MB_EMBEDDING_SECRET_KEY=${MB_EMBEDDING_SECRET_KEY:?set MB_EMBEDDING_SECRET_KEY in .env}
       # AD/LDAP auth via the vpn-ldap forwarder. Bind creds mirror vpn-ldap/ldap.env.
       - MB_LDAP_ENABLED=true
       - MB_LDAP_HOST=vpn-ldap

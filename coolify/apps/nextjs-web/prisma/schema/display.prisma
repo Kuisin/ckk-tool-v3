@@ -1,0 +1,156 @@
+// 管理ディスプレイ（デジタルサイネージ）— 現場の壁掛けテレビ用。
+//
+// Raspberry Pi は「固定 URL を開くだけのブラウザ」で、何を映すかは**すべて
+// この 3 表が決める**。Pi 側に設定を一切持たせないのが設計の芯 — 持たせた
+// 瞬間、台数ぶんの設定が現場に散り、1 台ごとに違う状態になる。
+//
+//   display_devices          = 「この画面は登録済みディスプレイ」
+//                              （Cookie はトークン生値、DB はハッシュのみ。365日）
+//   display_profiles         = 「何を映すか」（画面と端末を分離する要）
+//   display_pairing_sessions = 据付時の一時コード（10分）
+//
+// キオスク端末（kiosk_devices）と似ているが、**わざと 2 点違える**:
+//
+//   1. code-first。キオスクは管理者が先にプロファイルを作って後から端末を
+//      紐づける（profile-first）が、ディスプレイは据付作業者が脚立の上で
+//      1 人で完了できることを優先する。QR を読んだ管理者がその場で名前と
+//      表示内容を決め、行はそのとき初めて生まれる。よって PENDING / LINKED
+//      に相当する状態を持たない。
+//   2. 遷移ログ（kiosk_device_logs 相当）を持たない。あれはフロア端末の
+//      使用実態を追うためのもので、誰も触らない掲示板には要らない。
+//      死活は last_seen_at 1 列から読むときに計算する。
+//
+// 個人データは持たない（人が紐づかない機器なので login_attempts とは無関係）。
+// ただしトークンハッシュと IP は持つので、grants.sql で metabase_ro から
+// 列単位で隠す。
+
+enum DisplayDeviceStatus {
+  ACTIVE // 有効（ペアリング成立時はここから始まる）
+  DISABLED // 一時停止（再有効化可。トークンは生きたまま）
+  REVOKED // 取り消し（トークン破棄・再ペアリングが必要）
+
+  @@map("DISPLAY_DEVICE_STATUS")
+  @@schema("app")
+}
+
+// 何を映すか。増やすときは lib/display-content.ts の zod スキーマも一緒に足す
+// （content_config の形は種別ごとに違うので、DB では検証できない）。
+enum DisplayContentType {
+  APP_PAGE // アプリ内の表示専用ページ（生産ボード等）
+  METABASE // Metabase ダッシュボードの署名済み埋め込み
+  URL // 任意の URL を iframe で表示
+  IMAGE // 画像 1 枚（掲示・注意喚起）
+
+  @@map("DISPLAY_CONTENT_TYPE")
+  @@schema("app")
+}
+
+// ─── 表示プロファイル（何を映すか） ──────────────────────────────────────────
+//
+// 端末と表示内容を分けているのは、1 つの内容を複数の画面に出したいのと、
+// 「この画面をお知らせに切り替える」を端末に触らず行いたいため。
+// content_config は種別ごとに形が違う JSON:
+//   APP_PAGE { page, plantId?, workLocationId? }
+//   METABASE { dashboardId, params }      ← params はサーバーが locked で渡す
+//   URL      { url }
+//   IMAGE    { fileId }
+
+model DisplayProfile {
+  id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  // 多言語 JSON { ja, en }（_specs/design.md §17.4）
+  name        Json
+  description String?
+
+  contentType   DisplayContentType @map("content_type")
+  contentConfig Json               @default("{}") @map("content_config")
+
+  // 画面の再取得間隔（秒）。0 = 自動再取得しない（WS の通知だけで更新する）。
+  refreshIntervalSec Int     @default(60) @map("refresh_interval_sec")
+  isEnabled          Boolean @default(true) @map("is_enabled")
+
+  createdById String?  @map("created_by") @db.Uuid
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  createdBy User?           @relation("DisplayProfileCreatedBy", fields: [createdById], references: [id])
+  devices   DisplayDevice[] @relation("DisplayDeviceProfile")
+
+  @@index([contentType])
+  @@map("display_profiles")
+  @@schema("app")
+}
+
+// ─── ディスプレイ端末 ────────────────────────────────────────────────────────
+
+model DisplayDevice {
+  id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  // 端末名は多言語 JSON { ja, en }。ディスプレイ自身の画面は ja 固定だが、
+  // 管理画面は利用者の言語で読むので kiosk_devices と同じ規約にそろえる。
+  name     Json?
+  location String?
+  plantId  Int?    @map("plant_id")
+
+  // 割り当てられた表示プロファイル（null = 未割当。「表示内容がありません」を出す）。
+  // プロファイル削除は Restrict — 使用中の内容を消して画面を黒くしない。
+  displayProfileId String? @map("display_profile_id") @db.Uuid
+
+  status DisplayDeviceStatus @default(ACTIVE)
+
+  // デバイストークン（Cookie は生値、DB は SHA-256 のみ）。
+  // 有効期間はキオスクの 30 日ではなく **365 日** — 壁のディスプレイは誰も
+  // 触らないので、短いと誰も見ていない間に自分でペアリング画面へ戻ってしまう。
+  deviceTokenHash      String?   @unique @map("device_token_hash")
+  deviceTokenExpiresAt DateTime? @map("device_token_expires_at") @db.Timestamptz(6)
+
+  // 死活と素性（参考情報のみ。認証には使わない）。
+  // last_seen_at は WS 接続・30秒ハートビート・/api/display/heartbeat が更新し、
+  // 「オンラインか」は読むときに now() との差で判定する（status には持たない）。
+  lastSeenAt    DateTime? @map("last_seen_at") @db.Timestamptz(6)
+  lastIpAddress String?   @map("last_ip_address")
+  userAgent     String?   @map("user_agent")
+  appVersion    String?   @map("app_version") @db.VarChar(40)
+
+  pairedById String?   @map("paired_by") @db.Uuid
+  pairedAt   DateTime? @map("paired_at") @db.Timestamptz(6)
+  createdAt  DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt  DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  plant    Plant?          @relation("DisplayDevicePlant", fields: [plantId], references: [id])
+  profile  DisplayProfile? @relation("DisplayDeviceProfile", fields: [displayProfileId], references: [id], onDelete: Restrict)
+  pairedBy User?           @relation("DisplayDevicePairedBy", fields: [pairedById], references: [id])
+
+  pairingSessions DisplayPairingSession[] @relation("DisplayPairingSessionDevice")
+
+  @@index([plantId])
+  @@index([status])
+  @@index([displayProfileId])
+  @@map("display_devices")
+  @@schema("app")
+}
+
+// ─── ペアリングセッション（据付時の一時コード） ──────────────────────────────
+//
+// ディスプレイが自分で作り、画面に QR と文字で出す。管理者がそれを読んで
+// 名前・設置場所・表示内容を決めると display_device_id が入って成立する。
+// display_device_id の有無が「成立したか」の唯一の印。
+//
+// 期限切れ行の掃除は POST /api/display/pairing が入口で行う（pg_cron を
+// 増やさない — キオスクの setup/begin と同じやり方）。
+// コードは生の秘密なので grants.sql で metabase_ro から表ごと落とす。
+
+model DisplayPairingSession {
+  id              String  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  code            String  @unique // Crockford 12桁（I/O/0/1 を含まない）
+  displayDeviceId String? @map("display_device_id") @db.Uuid // 成立後に入る
+
+  userAgent     String?  @map("user_agent")
+  lastIpAddress String?  @map("last_ip_address")
+  createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  expiresAt     DateTime @map("expires_at") @db.Timestamptz(6) // 10分
+
+  device DisplayDevice? @relation("DisplayPairingSessionDevice", fields: [displayDeviceId], references: [id], onDelete: Cascade)
+
+  @@index([expiresAt])
+  @@map("display_pairing_sessions")
+  @@schema("app")
+}

@@ -17,7 +17,7 @@ import {
 } from "./dev-features";
 
 /** DevFeatureKey union の実体（JSON のキー集合と一致していること）。 */
-const DECLARED_KEYS: DevFeatureKey[] = ["portal"];
+const DECLARED_KEYS: DevFeatureKey[] = ["portal", "display"];
 
 describe("dev-features.json", () => {
   it("JSON のキーと DevFeatureKey の union が一致する", () => {
