@@ -55,6 +55,7 @@ model Plant {
   materialInventory MaterialInventory[]
   kioskDevices      KioskDevice[]   @relation("KioskDevicePlant")
   kioskFloorMaps    KioskFloorMap[] @relation("KioskFloorMapPlant")
+  displayDevices    DisplayDevice[] @relation("DisplayDevicePlant")
   routeVersionSteps ProductProcessRouteVersionStep[] @relation("RouteStepPlant")
   workLocationGroups WorkLocationGroup[] @relation("WorkLocationGroupPlant")
   storageLocations   StorageLocation[]   @relation("StorageLocationPlant")
