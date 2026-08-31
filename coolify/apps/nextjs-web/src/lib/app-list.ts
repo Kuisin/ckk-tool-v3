@@ -616,6 +616,26 @@ export const appList: AppEntry[] = [
     category: "システム",
     requiredPermission: null,
   },
+  {
+    // 取引先ポータル — 社外の人（取引先・需要家）に自社宛の書類を見せるための
+    // アカウントと書類リンクの管理。**SY01 ユーザー管理の拡張にはしない**:
+    // あちらの主体は社員（app.users）で、ポータルの主体は別の表
+    // （app.portal_accounts）。混ぜると一覧が主体混在の表になる。
+    //
+    // requiredPermission は portal_admin。**業務ロールには配っていない**
+    // （rbac-seed.sql / roles-seed.sql の除外リスト）— 社外の個人データを読み、
+    // 書類を外に出せる権限なので、既定で全社員に渡ってはいけない。
+    //
+    // 開発中は src/config/dev-features.json が dev 限定に閉じており、
+    // app-flags.ts の getDisabledAppKeys() がそれを合流させるので main では出ない。
+    key: "portal-admin",
+    label: "取引先ポータル",
+    operationCode: "SY0H",
+    href: "/settings/portal",
+    icon: "IconUsersGroup",
+    category: "システム",
+    requiredPermission: "portal_admin",
+  },
 ];
 
 /** Home 絞り込み（工程）で使う URL パラメータのキー。 */

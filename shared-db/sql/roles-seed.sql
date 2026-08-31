@@ -88,7 +88,7 @@ FROM app.roles r
 CROSS JOIN app.permissions p
 CROSS JOIN (VALUES ('READ'),('EXPORT')) AS a(action)
 WHERE r.rolename = 'manager' AND p.code NOT IN ('system', 'kiosk', 'kiosk_secret', 'kiosk_device',
-                    'kiosk_card', 'personal_data', 'user_admin')
+                    'kiosk_card', 'personal_data', 'user_admin', 'portal_admin')
 ON CONFLICT DO NOTHING;
 
 -- viewer: 全業務コード（system 以外）に R
@@ -96,7 +96,7 @@ INSERT INTO app.role_permission_relation (role_id, permission_code, action, scop
 SELECT r.id, p.code, 'READ'::app."ACTION", 'ALL'::app."SCOPE"
 FROM app.roles r CROSS JOIN app.permissions p
 WHERE r.rolename = 'viewer' AND p.code NOT IN ('system', 'kiosk', 'kiosk_secret', 'kiosk_device',
-                    'kiosk_card', 'personal_data', 'user_admin')
+                    'kiosk_card', 'personal_data', 'user_admin', 'portal_admin')
 ON CONFLICT DO NOTHING;
 
 -- sales（営業メンバー）: 自分の 試算/見積(quote)・価格表(price_list)・受注請書
@@ -259,7 +259,7 @@ INSERT INTO app.role_permission_relation (role_id, permission_code, action, scop
 SELECT r.id, p.code, 'READ'::app."ACTION", 'ALL'::app."SCOPE"
 FROM app.roles r CROSS JOIN app.permissions p
 WHERE r.rolename = 'purchasing_manager' AND p.code NOT IN ('system', 'kiosk', 'kiosk_secret', 'kiosk_device',
-                    'kiosk_card', 'personal_data', 'user_admin')
+                    'kiosk_card', 'personal_data', 'user_admin', 'portal_admin')
 ON CONFLICT DO NOTHING;
 
 -- production_manager: 自部門フル（RCUDE） + 全業務 READ
@@ -275,7 +275,7 @@ INSERT INTO app.role_permission_relation (role_id, permission_code, action, scop
 SELECT r.id, p.code, 'READ'::app."ACTION", 'ALL'::app."SCOPE"
 FROM app.roles r CROSS JOIN app.permissions p
 WHERE r.rolename = 'production_manager' AND p.code NOT IN ('system', 'kiosk', 'kiosk_secret', 'kiosk_device',
-                    'kiosk_card', 'personal_data', 'user_admin')
+                    'kiosk_card', 'personal_data', 'user_admin', 'portal_admin')
 ON CONFLICT DO NOTHING;
 
 -- production_manager は製造部門なので図面も登録できる（READ は直上で配布済み）。
@@ -300,7 +300,7 @@ INSERT INTO app.role_permission_relation (role_id, permission_code, action, scop
 SELECT r.id, p.code, 'READ'::app."ACTION", 'ALL'::app."SCOPE"
 FROM app.roles r CROSS JOIN app.permissions p
 WHERE r.rolename = 'quality_manager' AND p.code NOT IN ('system', 'kiosk', 'kiosk_secret', 'kiosk_device',
-                    'kiosk_card', 'personal_data', 'user_admin')
+                    'kiosk_card', 'personal_data', 'user_admin', 'portal_admin')
 ON CONFLICT DO NOTHING;
 
 -- shipping_manager: 自部門フル（RCUDE） + 全業務 READ
@@ -316,7 +316,7 @@ INSERT INTO app.role_permission_relation (role_id, permission_code, action, scop
 SELECT r.id, p.code, 'READ'::app."ACTION", 'ALL'::app."SCOPE"
 FROM app.roles r CROSS JOIN app.permissions p
 WHERE r.rolename = 'shipping_manager' AND p.code NOT IN ('system', 'kiosk', 'kiosk_secret', 'kiosk_device',
-                    'kiosk_card', 'personal_data', 'user_admin')
+                    'kiosk_card', 'personal_data', 'user_admin', 'portal_admin')
 ON CONFLICT DO NOTHING;
 
 -- accounting_manager: 自部門フル（RCUDE） + 全業務 READ
@@ -332,7 +332,7 @@ INSERT INTO app.role_permission_relation (role_id, permission_code, action, scop
 SELECT r.id, p.code, 'READ'::app."ACTION", 'ALL'::app."SCOPE"
 FROM app.roles r CROSS JOIN app.permissions p
 WHERE r.rolename = 'accounting_manager' AND p.code NOT IN ('system', 'kiosk', 'kiosk_secret', 'kiosk_device',
-                    'kiosk_card', 'personal_data', 'user_admin')
+                    'kiosk_card', 'personal_data', 'user_admin', 'portal_admin')
 ON CONFLICT DO NOTHING;
 
 COMMIT;
