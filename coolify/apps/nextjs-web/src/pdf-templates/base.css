@@ -63,14 +63,41 @@ body {
 }
 
 .issuer {
+  display: flex;
+  align-items: flex-start;
+  gap: 8pt;
   text-align: right;
   font-size: 9pt;
   color: #444;
 }
 
+.issuer-text {
+  flex: 1;
+}
+
 .issuer strong {
   font-size: 11pt;
   color: #1a1a1a;
+}
+
+/*
+ * 社印（電子印影）— 発行済みの書類にのみ載る（lib/pdf-stamp.ts）。空文字が
+ * 差し込まれたとき（下書き相当）は枠ごと消す（.doc-qr と同じ約束）。
+ */
+.stamp {
+  width: 18mm;
+  height: 18mm;
+  flex-shrink: 0;
+}
+
+.stamp:empty {
+  display: none;
+}
+
+.stamp-img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
 }
 
 /* ─── Recipient + doc info ─────────────────────── */
