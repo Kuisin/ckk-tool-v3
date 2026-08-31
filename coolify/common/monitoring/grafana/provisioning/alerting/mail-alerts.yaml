@@ -79,3 +79,45 @@ groups:
               refId: C
               conditions:
                 - evaluator: { type: gt, params: [0] }
+
+      # 取引先ポータルの確認コードが出せていない。
+      #
+      # なぜ専用のルールが要るか: ポータルのログイン画面は**成功・未登録・
+      # 無効・送信失敗をすべて同じ画面で返す**（アカウントの存在を漏らさない
+      # ため）。つまり利用者は「コードが来ない」としか言えず、社内も画面からは
+      # 何も分からない。運用がこれに気づける唯一の場所がこのログ行。
+      #
+      # 1 件でも鳴らす: 相手はログインできずに止まっているので、少数でも困る。
+      - uid: portal_otp_mail_failed
+        title: Portal OTP mail failed (external partner cannot sign in)
+        condition: C
+        for: 0m
+        noDataState: OK
+        execErrState: OK
+        labels:
+          severity: critical
+        annotations:
+          summary: >-
+            取引先ポータルの確認コードを送れていない
+            （login_attempts.reason = PORTAL_MAIL_FAILED）。
+            MAIL_API_URL / MAIL_API_TOKEN の設定、リレーの死活、
+            mail-api の 5xx を順に見る。**利用者側は「コードが来ない」としか
+            分からない**（存在を漏らさないため画面は成功と同じ）ので、
+            気づけるのはここだけ。
+        data:
+          - refId: A
+            relativeTimeRange: { from: 600, to: 0 }
+            datasourceUid: loki
+            model:
+              datasource: { type: loki, uid: loki }
+              expr: 'sum(count_over_time({stack=~".*nextjs-web.*"} |~ `portal-mail\\] send failed` [10m]))'
+              queryType: instant
+              refId: A
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              expression: A
+              refId: C
+              conditions:
+                - evaluator: { type: gt, params: [0] }

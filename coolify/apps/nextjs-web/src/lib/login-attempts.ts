@@ -180,12 +180,27 @@ export interface LoginAttemptRow {
   kioskDeviceId: string | null;
   kioskDeviceName: string | null;
   userDeviceLabel: string | null;
+  /**
+   * 取引先ポータル（社外向け）の行か。
+   * app は WEB のまま（同じアプリが配信しているので嘘をつかない）なので、
+   * 画面が「どの面のログインか」を出すにはこれを見る。
+   */
+  isPortal: boolean;
+  /** ポータルの主体（社外の担当者名）。アドレスは出さない。 */
+  portalAccountName: string | null;
 }
 
 export interface LoginAttemptFilter {
   /** 何日ぶんを見るか（既定 7 日）。 */
   days?: number;
   outcome?: "SUCCESS" | "FAILURE" | null;
+  /**
+   * どの面のログインか。**app 列そのものではない** — 取引先ポータルは
+   * nextjs-web が配信しているので app は WEB で、method の PORTAL_ 接頭辞で
+   * 見分ける。画面の「アプリ」絞り込みはこの 3 択。
+   */
+  surface?: "WEB" | "KIOSK" | "PORTAL" | null;
+  /** @deprecated surface を使う（app 列の直接指定）。 */
   app?: "WEB" | "KIOSK" | null;
   userId?: string | null;
   /** IP そのもの、または CIDR（例 192.168.50.0/24）。 */
@@ -202,6 +217,8 @@ const attemptInclude = {
   user: { select: { id: true, displayName: true, username: true } },
   kioskDevice: { select: { id: true, name: true } },
   userDevice: { select: { label: true } },
+  // 表示名だけ。**メールアドレスは引かない**（社外の個人データ。SY0D には出さない）。
+  portalAccount: { select: { displayName: true } },
 } as const;
 
 type AttemptRow = Prisma.LoginAttemptGetPayload<{
@@ -229,6 +246,8 @@ function toRow(r: AttemptRow): LoginAttemptRow {
     kioskDeviceId: r.kioskDeviceId,
     kioskDeviceName: r.kioskDevice ? deviceName(r.kioskDevice.name) : null,
     userDeviceLabel: r.userDevice?.label ?? null,
+    isPortal: r.method.startsWith("PORTAL_"),
+    portalAccountName: r.portalAccount?.displayName ?? null,
   };
 }
 
@@ -262,6 +281,16 @@ export async function listLoginAttempts(
       createdAt: { gte: since },
       ...(filter.outcome ? { outcome: filter.outcome } : {}),
       ...(filter.app ? { app: filter.app } : {}),
+      ...(filter.surface === "PORTAL"
+        ? { method: { startsWith: "PORTAL_" } }
+        : filter.surface === "KIOSK"
+          ? { app: "KIOSK" as const }
+          : filter.surface === "WEB"
+            ? {
+                app: "WEB" as const,
+                NOT: { method: { startsWith: "PORTAL_" } },
+              }
+            : {}),
       ...(filter.userId ? { userId: filter.userId } : {}),
       ...(filter.fingerprint ? { signalsFingerprint: filter.fingerprint } : {}),
       ...(filter.ownership ? { ownership: filter.ownership } : {}),

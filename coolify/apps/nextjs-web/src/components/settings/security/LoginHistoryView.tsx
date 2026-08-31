@@ -98,9 +98,12 @@ export function LoginHistoryView({
     setIp(null);
   };
 
+  // 面（どの入口からのログインか）。ポータルは app 列では区別できない —
+  // nextjs-web が配信しているので app は WEB で、method の PORTAL_ 接頭辞で見る。
   const APP_OPTIONS = [
     { value: "WEB", label: t("appWeb") },
     { value: "KIOSK", label: t("appKiosk") },
+    { value: "PORTAL", label: "取引先ポータル" },
   ];
 
   const columns: Column<LoginAttemptRow>[] = [
@@ -133,7 +136,13 @@ export function LoginHistoryView({
       header: "アプリ",
       width: 80,
       render: (r) => (
-        <Text size="xs">{r.app === "KIOSK" ? t("appKiosk") : t("appWeb")}</Text>
+        <Text size="xs">
+          {r.isPortal
+            ? "取引先ポータル"
+            : r.app === "KIOSK"
+              ? t("appKiosk")
+              : t("appWeb")}
+        </Text>
       ),
     },
     {
@@ -149,6 +158,16 @@ export function LoginHistoryView({
       render: (r) =>
         r.userName ? (
           <Text size="sm">{r.userName}</Text>
+        ) : r.portalAccountName ? (
+          // 社外の主体（app.users ではない）。**アドレスは出さない**。
+          <Group gap={4} wrap="nowrap">
+            <Badge color="cyan" size="xs" variant="light">
+              社外
+            </Badge>
+            <Text size="sm" truncate>
+              {r.portalAccountName}
+            </Text>
+          </Group>
         ) : (
           // 未解決の入力は生値を残していない（相関キーの先頭だけ出す）
           <Tooltip
@@ -335,6 +354,7 @@ export function LoginHistoryView({
                   </Group>
                   <Text fw={600} size="sm" truncate>
                     {r.userName ??
+                      r.portalAccountName ??
                       (r.identifierRef
                         ? `未解決 ${r.identifierRef.slice(0, 8)}`
                         : "—")}
