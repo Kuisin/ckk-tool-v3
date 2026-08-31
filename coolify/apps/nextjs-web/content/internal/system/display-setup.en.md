@@ -1,0 +1,186 @@
+---
+title: "Setting up a display (Raspberry Pi)"
+description: "How to prepare, connect and register the small computer (Raspberry Pi) that shows production status on a shop-floor TV. Written so that anyone can follow it, no computer knowledge needed."
+---
+
+How to put a TV on the shop floor that shows production status. **You do not need
+to know anything about computers — just follow the steps in order.**
+
+It takes about **30 minutes**, and about 15 of those are waiting.
+
+> 💡 There is nothing difficult to configure. What the TV shows is chosen later,
+> from a PC or a phone. You do not choose it during this work.
+
+## What you can do here
+
+- Prepare the small computer that drives the TV
+- Connect it to the TV and switch it on
+- Scan the QR code on the screen to register that display
+- Fix the common problems
+
+## Words used on this page
+
+- **Raspberry Pi** … A small computer, about the size of your hand. You connect
+  it to the TV.
+- **microSD card** … A small memory card that goes inside the Raspberry Pi.
+  It holds everything the computer needs to start.
+- **Registration code** … 12 letters and numbers shown on the TV. It tells the
+  system which screen you are setting up.
+
+## What you need
+
+| Item | Notes |
+|---|---|
+| Raspberry Pi 5 | 4GB is enough |
+| Official power supply | **Use the official one** |
+| microSD card | 32GB or larger. Look for "A2" (high endurance) |
+| HDMI cable | The Raspberry Pi end is the small "micro HDMI" shape |
+| LAN cable | Wi-Fi works, but a cable is more reliable |
+| USB keyboard | Needed only once, at the start |
+| A PC that can read microSD cards | Only for the preparation step |
+
+> ⚠️ Use a **power supply made for the Raspberry Pi 5**. A phone charger does not
+> supply enough power, and you get "the screen goes blank sometimes" — the
+> hardest kind of fault to track down.
+
+## 1. Prepare the microSD card
+
+Do this on a PC.
+
+1. Install **Raspberry Pi Imager** on the PC (free, from `raspberrypi.com`).
+2. Put the microSD card into the PC.
+3. Open Raspberry Pi Imager.
+4. Press "Choose device" and select **Raspberry Pi 5**.
+5. Press "Choose OS" and select **Raspberry Pi OS (64-bit)**.
+6. Press "Choose storage" and select the microSD card.
+7. Press "Next".
+8. Press "Edit settings".
+
+Now add a few settings that save work later.
+
+9. Set "hostname" to something recognisable (for example `ckk-display-1`).
+10. Tick "Set username and password", then choose a username and password.
+    **Write the password down.**
+11. If you will use Wi-Fi, tick "Configure wireless LAN" and enter the network
+    name and password.
+12. Open the "Services" tab and tick "Enable SSH".
+13. Press "Save", then "Yes" to start writing.
+
+Writing takes 5–10 minutes. When it finishes, remove the card.
+
+> 💡 Doing steps 9–12 now means you only need the keyboard once later.
+
+## 2. Connect it to the TV
+
+1. Push the microSD card fully into the slot on the underside of the Raspberry Pi.
+2. Connect the Raspberry Pi to the TV with the HDMI cable. On the Raspberry Pi,
+   use the socket nearer the power connector.
+3. Connect the LAN cable (skip this if you set up Wi-Fi).
+4. Connect the USB keyboard.
+5. Connect the power **last**.
+6. Switch the TV input to the HDMI socket you used.
+
+The screen appears after a while. The first start takes 2–3 minutes.
+
+## 3. Install the display software
+
+This is the only step that needs the keyboard.
+
+1. Press the black square icon (Terminal) at the top left of the screen.
+   If you cannot see it, press `Ctrl`, `Alt` and `T` together.
+2. When the black window opens, type this line **exactly as shown**.
+
+```bash
+curl -fsSL https://ckk-kiosk.kai-lab.net/rpi/install.sh | bash
+```
+
+3. Press `Enter`.
+4. If it asks for a password, type the one from step 1 and press `Enter`.
+   **Nothing appears on screen while you type, but it is being entered.**
+5. Wait about 5 minutes. A lot of text scrolls past — you can ignore it.
+6. When it says it has finished, type this line and press `Enter`.
+
+```bash
+sudo reboot
+```
+
+The Raspberry Pi restarts. **You can unplug the keyboard now.**
+
+> ⚠️ A typing mistake produces an error in English. Just type the same line
+> again. You can repeat it as many times as you need.
+
+## 4. Register the display
+
+After restarting, the TV shows a QR code and a 12-character registration code.
+
+1. Point your phone camera at the QR code.
+2. Tap the link that appears (log in if you are asked to).
+3. The "Pair a display" page opens.
+4. Enter a name people on the floor will use (for example `Line A entrance`).
+5. Choose the location and site (you can change these later).
+6. Choose what the display should show.
+7. Press "Register".
+
+The TV changes within a few seconds. The display is now set up.
+
+> 💡 If the QR code will not scan, open **Displays (SY0I)** on a PC, press
+> "Pair a display" and type the 12-character code by hand.
+
+> ⚠️ The registration code expires after **10 minutes**. If that happens, press
+> "Issue a new code" on the TV, or switch the Raspberry Pi off and on again.
+
+## Changing things later
+
+**You never need to touch the Raspberry Pi.** Use **Displays (SY0I)** on a PC.
+
+| What you want | How |
+|---|---|
+| Change what it shows | Open the display, pick a different content, press Save |
+| Fix the name or location | Open the display, edit, press Save |
+| Stop it for now | Open the display, press "Disable" |
+| Stop using it | Open the display, press "Revoke" |
+
+After "Revoke" the screen goes back to showing a registration code. To use it
+somewhere else, carry it there and repeat step 4.
+
+## Questions and problems
+
+**Q. The TV shows nothing (black screen)**
+A. Check the TV input is set to the HDMI socket you used. If it still shows
+nothing, move the HDMI cable to the other socket on the Raspberry Pi.
+
+**Q. The screen says it cannot connect**
+A. Check the LAN cable. The normal display comes back on its own once the
+network returns. You do not have to do anything.
+
+**Q. The screen says no content has been set**
+A. Nothing has been chosen for that display yet. Open it in Displays (SY0I),
+choose a content and press Save.
+
+**Q. It went back to the QR code screen**
+A. That display has been revoked or disabled. Check its state in
+Displays (SY0I). To use it again, scan the QR code and register it once more.
+
+**Q. The power went off. Do I have to set it up again?**
+A. No. Switch it on and it returns to the same display by itself.
+
+**Q. The information looks out of date**
+A. The content reloads on a set interval. To refresh it immediately, switch the
+Raspberry Pi off and on again.
+
+**Q. I want to make a second one**
+A. Repeat steps 1 to 4. The microSD card you make in step 1 is the same for
+every display. If you need many of them, ask the IT team — there is a copying
+procedure in `external/rpi-display/README.md`.
+
+## For the IT team
+
+The technical notes (how autostart works, cloning the image, updating) are in
+`external/rpi-display/README.md` in the repository.
+
+To point a display at the test environment (dev), replace the line in step 3
+with this one.
+
+```bash
+curl -fsSL https://ckk-kiosk-dev.kai-lab.net/rpi/install.sh | bash -s -- --dev
+```

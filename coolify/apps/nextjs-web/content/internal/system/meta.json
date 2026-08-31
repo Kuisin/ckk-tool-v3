@@ -9,6 +9,8 @@
     "kiosk-cards",
     "kiosk-devices",
     "kiosk-device-setup",
-    "partner-portal"
+    "partner-portal",
+    "displays",
+    "display-setup"
   ]
 }

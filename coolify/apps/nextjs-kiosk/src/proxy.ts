@@ -56,7 +56,10 @@ export const config = {
   matcher: [
     // API は各ルートが自前で検証（ここで弾くと setup ポーリング等が死ぬ）。
     // apk/ は Android ラッパー APK の公開配布パス（未登録端末が Cookie なしで
-    // ダウンロードする — リダイレクトすると provisioning が失敗する）
-    "/((?!api|apk/|_next/static|_next/image|favicon\\.ico|icon\\.svg).*)",
+    // ダウンロードする — リダイレクトすると provisioning が失敗する）。
+    // rpi/ は Raspberry Pi の導入スクリプト（`curl … | bash`）。まだ何も無い
+    // 状態の Pi が取りに来るので、ここを守るとリダイレクト先の HTML が
+    // シェルに流れ込み、意味の分からないエラーで止まる。
+    "/((?!api|apk/|rpi/|_next/static|_next/image|favicon\\.ico|icon\\.svg).*)",
   ],
 };
