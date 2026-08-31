@@ -6,6 +6,7 @@
 #   2. grants.sql             — every deploy: new tables need privileges, and
 #                               the `app` role 500s on anything it can't read
 #   3. kiosk-cron.sql         — pg_cron job definitions (idempotent)
+#      （user-suspension / security / portal も同じブロックで流す）
 #   4. analytics-views.sql    — Metabase / AI reporting views (CREATE OR REPLACE)
 #   5. user-provision-cron.sql — AD→app.users の日次作成（**本番のみ**・env で切替）
 #
@@ -47,8 +48,10 @@ if psql "$DATABASE_URL" -At -c "SHOW shared_preload_libraries" | grep -q pg_cron
   psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -q -f sql/user-suspension-cron.sql
   echo "==> security-cron.sql"
   psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -q -f sql/security-cron.sql
+  echo "==> portal-cron.sql"
+  psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -q -f sql/portal-cron.sql
 else
-  echo "==> kiosk-cron.sql / user-suspension-cron.sql / security-cron.sql — pg_cron not preloaded, skipped"
+  echo "==> kiosk-cron.sql / user-suspension-cron.sql / security-cron.sql / portal-cron.sql — pg_cron not preloaded, skipped"
 fi
 
 echo "==> analytics-views.sql"

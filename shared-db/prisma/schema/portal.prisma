@@ -1,0 +1,328 @@
+// ===========================================================================
+// 取引先ポータル（社外向け・メール OTP ログイン）
+// ===========================================================================
+//
+// 社外の人（取引先・需要家）が自社宛の書類と進捗を見るための基盤。
+// アプリ側の入口は /portal で、**開発中は src/config/dev-features.json が
+// dev 限定に閉じている**（feature_flags ではない — dev と main は同じ DB を
+// 共有するので、DB の行で本番を開けられる状態にしない）。
+//
+// ■ app.users を使わない理由
+//
+// group='GUEST' の users 行にすると、社員を前提にした既存の問い合わせ
+// （SY01 の一覧・承認グループのメンバー選択・共有先のユーザーピッカー・
+// 「全員」への通知の宛先展開・フォルダ権限の選択）すべてに「社外を除く」
+// という否定の規律が要る。今どれもフィルタが無いか is_active だけで、
+// 抜けたときの失敗が静か（顧客が社員のドロップダウンに出る／社内共有の
+// 通知が社外へ飛ぶ）。主体を分けて、混ざりようがない形にする。
+//
+// ■ 認可の考え方
+//
+// 認可の唯一の源は portal_grants。**share_grants と同じく「当てはまる行の
+// 和集合・否定行なし・fail-closed」**（判定は lib/portal-access-core.ts）。
+// portal_accounts.bp_id は所属の表示用であって、それ自体は何も許可しない。
+//
+// ■ 秘密の持ち方
+//
+// 生の資格情報は DB に残さない:
+//   - セッション/リンクのトークン … 生値は Cookie か URL にだけ。DB は sha256。
+//   - OTP / バックアップコード     … scrypt ハッシュ（lib/password.ts）。
+//   - メールアドレス               … portal_accounts だけが生値を持つ。ログ側は
+//                                    HMAC の相関キー（email_ref）で足りる。
+//
+// ■ 個人データなので 3 点セットで守る（login_attempts と同じ）
+//   (1) SY0H を権限で閉じる (2) grants.sql で metabase_ro から剥がす
+//   (3) portal-cron.sql で保持期間を切る
+
+/// 取引先ポータルのアカウント。app.users とは**別の主体**。
+///
+/// is_active は既定 false —「管理者が許可した人だけ有効」を既定値で表現する
+/// （作っただけでは何も見えない）。
+model PortalAccount {
+  id           String  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  /// 所属取引先（表示・既定スコープの出発点。許可そのものは portal_grants が持つ）
+  bpId         String  @map("bp_id") @db.Uuid
+  /// ログイン識別子。**lower(trim()) に正規化して保存**（照合を一意にするため）
+  email        String  @unique @db.VarChar(254)
+  /// HMAC-SHA256(LOGIN_ATTEMPT_PEPPER, email)。ログ・レート制限が生値を持たずに
+  /// 相関を取るためのキー（login_attempts.identifier_ref と同じ規約）
+  emailRef     String  @map("email_ref") @db.Char(64)
+  displayName  String  @map("display_name")
+  /// 取引先の担当者マスタへの任意の紐付け（無くても成立する）
+  bpContactId  String? @map("bp_contact_id") @db.Uuid
+  locale       String  @default("ja") @db.VarChar(8)
+  isActive     Boolean @default(false) @map("is_active")
+
+  disabledAt     DateTime? @map("disabled_at") @db.Timestamptz(6)
+  disabledReason String?   @map("disabled_reason")
+  disabledById   String?   @map("disabled_by") @db.Uuid
+
+  lastLoginAt DateTime? @map("last_login_at") @db.Timestamptz(6)
+  createdBy   String?   @map("created_by") @db.Uuid
+  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  bp            BusinessPartner @relation("PortalAccountBp", fields: [bpId], references: [id])
+  bpContact     BpContact?      @relation("PortalAccountContact", fields: [bpContactId], references: [id], onDelete: SetNull)
+  createdByUser User?           @relation("PortalAccountCreatedBy", fields: [createdBy], references: [id], onDelete: SetNull)
+  disabledBy    User?           @relation("PortalAccountDisabledBy", fields: [disabledById], references: [id], onDelete: SetNull)
+
+  grants      PortalGrant[]
+  sessions    PortalSession[]
+  challenges  PortalLoginChallenge[]
+  backupCodes PortalBackupCode[]
+  links       PortalDocumentLink[]
+  accessLogs  PortalAccessLog[]
+  loginAttempts LoginAttempt[] @relation("LoginAttemptPortalAccount")
+
+  @@index([bpId])
+  @@index([emailRef])
+  @@map("portal_accounts")
+  @@schema("app")
+}
+
+/// 何を見せるか。**認可の唯一の源**。
+///
+/// kind:
+///   BP_SCOPE … その取引先宛の書類すべて（一覧・進捗の土台）
+///   DOCUMENT … 書類 1 件（BP 一致は要求しない ——「指定された 1 件だけ」の意味）
+///   FORM     … フォーム 1 本の回答（絞り込みは share_grants と同じ突合方式）
+model PortalGrant {
+  id              String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  portalAccountId String @map("portal_account_id") @db.Uuid
+  /// BP_SCOPE | DOCUMENT | FORM（値の集合は lib/portal-access-core.ts が正）
+  kind            String @db.VarChar(16)
+
+  // ── BP_SCOPE ───────────────────────────────────────────────────────────
+  bpId            String?  @map("bp_id") @db.Uuid
+  /// 支店（business_partners.parent_id の子）も含めるか。**上へは辿らない** —
+  /// 支店の担当者が本社や他支店の書類を見られてはいけない。
+  includeBranches Boolean  @default(true) @map("include_branches")
+  /// 需要家・出荷先として自社名が入る書類も見せるか。**既定 false**（利用者判断）
+  /// — 卸し先の価格が需要家に見える事故を既定で防ぐ。
+  includeAsEndUser Boolean @default(false) @map("include_as_end_user")
+
+  // ── DOCUMENT / FORM ────────────────────────────────────────────────────
+  /// quotes | order_acceptances | delivery_notes | invoices | order_lines | forms
+  resourceType String? @map("resource_type") @db.VarChar(32)
+  /// 業務キー（QOT-… / ORD-… / DRN-… / INV-… / forms.code）
+  resourceId   String? @map("resource_id")
+
+  /// 回答の絞り込み（FORM のみ）。share_grants.condition_field_key と同じ規約で、
+  /// lookup は id、select は value で突き合わせる（改名で範囲が変わらない）。
+  conditionFieldKey String?  @map("condition_field_key")
+  conditionValues   String[] @default([]) @map("condition_values")
+
+  expiresAt DateTime? @map("expires_at") @db.Timestamptz(6)
+  revokedAt DateTime? @map("revoked_at") @db.Timestamptz(6)
+  revokedBy String?   @map("revoked_by") @db.Uuid
+  createdBy String?   @map("created_by") @db.Uuid
+  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  account       PortalAccount    @relation(fields: [portalAccountId], references: [id], onDelete: Cascade)
+  bp            BusinessPartner? @relation("PortalGrantBp", fields: [bpId], references: [id])
+  createdByUser User?            @relation("PortalGrantCreatedBy", fields: [createdBy], references: [id], onDelete: SetNull)
+  revokedByUser User?            @relation("PortalGrantRevokedBy", fields: [revokedBy], references: [id], onDelete: SetNull)
+
+  @@unique([portalAccountId, kind, resourceType, resourceId, bpId])
+  @@index([portalAccountId])
+  @@map("portal_grants")
+  @@schema("app")
+}
+
+/// ポータルのセッション。**id は Cookie に入る生トークンの sha256**
+/// （kiosk_sessions と同じ規約 — DB が漏れてもセッションを再現できない）。
+///
+/// Cookie は path=/portal に限定してあるので、この資格情報は内部ルートへ
+/// 送信されることすらない。
+model PortalSession {
+  id String @id @db.Char(64)
+
+  /// 通常ログイン（OTP / バックアップコード）のときに入る
+  portalAccountId String? @map("portal_account_id") @db.Uuid
+  /// VERIFY リンクを通ったときに入る。**その書類 1 件だけ**のスコープ
+  linkId          String? @map("link_id") @db.Uuid
+  /// PORTAL_OTP | PORTAL_BACKUP | PORTAL_LINK
+  method          String  @db.VarChar(24)
+
+  createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  expiresAt      DateTime  @map("expires_at") @db.Timestamptz(6)
+  lastActivityAt DateTime  @map("last_activity_at") @db.Timestamptz(6)
+  revokedAt      DateTime? @map("revoked_at") @db.Timestamptz(6)
+
+  ipAddress String? @map("ip_address") @db.Inet
+  userAgent String? @map("user_agent") @db.VarChar(512)
+
+  account PortalAccount?      @relation(fields: [portalAccountId], references: [id], onDelete: Cascade)
+  link    PortalDocumentLink? @relation(fields: [linkId], references: [id], onDelete: Cascade)
+
+  @@index([portalAccountId])
+  @@index([expiresAt])
+  @@map("portal_sessions")
+  @@schema("app")
+}
+
+/// 書類 1 件へのトークン URL。
+///
+/// policy:
+///   LINK_ONLY … URL の所持だけで開く（第二要素なしの bearer 資格情報）
+///   VERIFY    … **リンクに束縛されたアドレス**への OTP を要求する。
+///               訪問者が入力したアドレスへは決して送らない ——
+///               この一点が「転送されたリンクは転送先では無価値」を作る。
+model PortalDocumentLink {
+  id        String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  /// sha256(生トークン)。**生値は DB のどこにも無い**（URL にだけ存在する）
+  tokenHash String @unique @map("token_hash") @db.Char(64)
+
+  resourceType String @map("resource_type") @db.VarChar(32)
+  resourceId   String @map("resource_id")
+  /// LINK_ONLY | VERIFY
+  policy       String @db.VarChar(16)
+
+  /// VERIFY の宛先（アカウント紐付け or 素のアドレス）
+  portalAccountId String? @map("portal_account_id") @db.Uuid
+  boundEmail      String? @map("bound_email") @db.VarChar(254)
+  boundEmailRef   String? @map("bound_email_ref") @db.Char(64)
+
+  /// 発行メモ（誰に何のために渡したか）
+  label    String?
+  /// null = 期限内は再利用できる
+  maxUses  Int?     @map("max_uses")
+  useCount Int      @default(0) @map("use_count")
+
+  /// **必須**。無期限のリンクは作れない
+  expiresAt  DateTime  @map("expires_at") @db.Timestamptz(6)
+  revokedAt  DateTime? @map("revoked_at") @db.Timestamptz(6)
+  revokedBy  String?   @map("revoked_by") @db.Uuid
+  lastUsedAt DateTime? @map("last_used_at") @db.Timestamptz(6)
+  createdBy  String?   @map("created_by") @db.Uuid
+  createdAt  DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  account       PortalAccount? @relation(fields: [portalAccountId], references: [id], onDelete: SetNull)
+  createdByUser User?          @relation("PortalLinkCreatedBy", fields: [createdBy], references: [id], onDelete: SetNull)
+  revokedByUser User?          @relation("PortalLinkRevokedBy", fields: [revokedBy], references: [id], onDelete: SetNull)
+
+  sessions   PortalSession[]
+  challenges PortalLoginChallenge[]
+  accessLogs PortalAccessLog[]
+
+  @@index([resourceType, resourceId])
+  @@index([expiresAt])
+  @@map("portal_document_links")
+  @@schema("app")
+}
+
+/// メール OTP の 1 回分。
+///
+/// **未登録アドレスでも必ず行を作る**（portal_account_id = null のデコイ）。
+/// 「行ができたかどうか」「返るまでの時間」がアカウントの存在を漏らさないため。
+model PortalLoginChallenge {
+  id           String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  /// 画面と往復させる公開ハンドル。**コードではない**（コードはメールにしか無い）
+  challengeRef String @unique @map("challenge_ref") @db.Char(43)
+
+  portalAccountId String? @map("portal_account_id") @db.Uuid
+  /// VERIFY リンク経由のときの対象
+  linkId          String? @map("link_id") @db.Uuid
+  /// HMAC。**生アドレスは持たない**（未登録の入力が平文で溜まらないように）
+  emailRef        String  @map("email_ref") @db.Char(64)
+  /// scrypt（lib/password.ts）。コードは既にメールリレーと受信箱に露出しているので、
+  /// DB を 2 つ目の露出面にしない。
+  codeHash        String  @map("code_hash")
+
+  attempts   Int       @default(0)
+  /// 使用済み or 試行上限で焼き切れた印。**アカウントはロックしない** —
+  /// 第三者がチャレンジを焼くだけで顧客を締め出せてしまうため。
+  consumedAt DateTime? @map("consumed_at") @db.Timestamptz(6)
+
+  lastIpAddress String?  @map("last_ip_address") @db.Inet
+  userAgent     String?  @map("user_agent") @db.VarChar(512)
+  createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  expiresAt     DateTime @map("expires_at") @db.Timestamptz(6)
+
+  account PortalAccount?      @relation(fields: [portalAccountId], references: [id], onDelete: Cascade)
+  link    PortalDocumentLink? @relation(fields: [linkId], references: [id], onDelete: Cascade)
+
+  @@index([expiresAt])
+  @@index([emailRef, createdAt(sort: Desc)])
+  @@map("portal_login_challenges")
+  @@schema("app")
+}
+
+/// メールが受け取れないときの代替。発行時に 1 度だけ平文が存在する。
+model PortalBackupCode {
+  id              String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  portalAccountId String @map("portal_account_id") @db.Uuid
+  /// scrypt。**先頭数文字の平文も持たない**（探索空間を削る意味しかない）
+  codeHash        String @map("code_hash")
+  /// 「#3 を使った」と言うための通し番号。照合には使えない
+  ordinal         Int
+
+  usedAt DateTime? @map("used_at") @db.Timestamptz(6)
+  usedIp String?   @map("used_ip") @db.Inet
+
+  issuedBy String?  @map("issued_by") @db.Uuid
+  issuedAt DateTime @default(now()) @map("issued_at") @db.Timestamptz(6)
+
+  account      PortalAccount @relation(fields: [portalAccountId], references: [id], onDelete: Cascade)
+  issuedByUser User?         @relation("PortalBackupCodeIssuedBy", fields: [issuedBy], references: [id], onDelete: SetNull)
+
+  @@unique([portalAccountId, ordinal])
+  @@index([portalAccountId, usedAt])
+  @@map("portal_backup_codes")
+  @@schema("app")
+}
+
+/// 未認証エンドポイントのレート制限。
+///
+/// auth.ts のインメモリ Map は「単一コンテナなら十分」という前提で成立している
+/// が、その前提は**呼び出し側が識別子を自由に選べる、インターネットに面した
+/// 未認証の口**では成立しない（プロセス再起動で消える／識別子を変えれば回避できる）。
+/// なので DB に置く。
+model PortalRateLimit {
+  /// OTP_ISSUE_EMAIL | OTP_ISSUE_IP | OTP_VERIFY | BACKUP_VERIFY | LINK_RESOLVE
+  bucket String @db.VarChar(24)
+  /// HMAC(pepper, email | ip | tokenHash)。**生値はカウンタにも入れない**
+  keyRef String @map("key_ref") @db.Char(64)
+
+  failures        Int       @default(0)
+  windowStartedAt DateTime  @default(now()) @map("window_started_at") @db.Timestamptz(6)
+  lockedUntil     DateTime? @map("locked_until") @db.Timestamptz(6)
+  updatedAt       DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@id([bucket, keyRef])
+  @@index([updatedAt])
+  @@map("portal_rate_limits")
+  @@schema("app")
+}
+
+/// 社外からの閲覧記録。
+///
+/// audit_logs には入れない —— あちらの user_id は app.users への FK で、
+/// 素朴に recordAudit を呼ぶと actor が system にフォールバックして**監査行が
+/// 嘘をつく**。社外アクセスでは「誰が何を見たか」こそが問いなので、社内の
+/// 読み取りと違って**全閲覧**を残す。
+model PortalAccessLog {
+  id              String  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  portalAccountId String? @map("portal_account_id") @db.Uuid
+  linkId          String? @map("link_id") @db.Uuid
+
+  resourceType String @map("resource_type") @db.VarChar(32)
+  resourceId   String @map("resource_id")
+  /// VIEW | DOWNLOAD
+  action       String @db.VarChar(16)
+
+  ipAddress String?  @map("ip_address") @db.Inet
+  userAgent String?  @map("user_agent") @db.VarChar(512)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  account PortalAccount?      @relation(fields: [portalAccountId], references: [id], onDelete: SetNull)
+  link    PortalDocumentLink? @relation(fields: [linkId], references: [id], onDelete: SetNull)
+
+  @@index([portalAccountId, createdAt(sort: Desc)])
+  @@index([resourceType, resourceId, createdAt(sort: Desc)])
+  @@index([createdAt(sort: Desc)])
+  @@map("portal_access_logs")
+  @@schema("app")
+}

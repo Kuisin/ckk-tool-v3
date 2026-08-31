@@ -80,6 +80,10 @@ model BusinessPartner {
   contacts        BpContact[]
   salesReps       BpSalesRep[]       @relation("BpSalesRepBp")
 
+  // 取引先ポータル（社外向け）
+  portalAccounts  PortalAccount[]    @relation("PortalAccountBp")
+  portalGrants    PortalGrant[]      @relation("PortalGrantBp")
+
   estimates        Estimate[]       @relation("EstimateCustomer")
   priceListEntries PriceListEntry[] @relation("PriceListEntryCustomer")
   quotesAsCustomer Quote[]          @relation("QuoteCustomer")
@@ -217,6 +221,8 @@ model BpContact {
   updatedAt  DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
 
   bp BusinessPartner @relation(fields: [bpId], references: [id])
+
+  portalAccounts PortalAccount[] @relation("PortalAccountContact")
 
   @@index([bpId])
   @@map("bp_contacts")

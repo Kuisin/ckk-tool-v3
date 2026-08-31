@@ -79,6 +79,13 @@ model LoginAttempt {
   // 同じ未知ユーザー名への連続試行を、値を残さずに数えられる。
   identifierRef String? @map("identifier_ref") @db.Char(64)
 
+  // ── 取引先ポータル（社外向け）─────────────────────────────────────────────
+  // ポータルの主体は app.users ではないので user_id には入らない。SY0D で
+  // 名前を出すためだけの参照。**identifier は常に null のまま**にする
+  // （CHECK 制約に従う。顧客のメールアドレスを平文で残さない）。
+  // 相関は identifier_ref = HMAC(pepper, email) が担う。
+  portalAccountId String? @map("portal_account_id") @db.Uuid
+
   // ── キオスクのカード ─────────────────────────────────────────────────────
   // 実在したカードのみ FK。存在しない/偽造カードでは null のまま。
   cardId  String? @map("card_id")
@@ -114,6 +121,7 @@ model LoginAttempt {
   card        KioskCard?   @relation("LoginAttemptCard", fields: [cardId], references: [id], onDelete: SetNull)
   kioskDevice KioskDevice? @relation("LoginAttemptDevice", fields: [kioskDeviceId], references: [id], onDelete: SetNull)
   userDevice  UserDevice?  @relation("LoginAttemptUserDevice", fields: [userDeviceId], references: [id], onDelete: SetNull)
+  portalAccount PortalAccount? @relation("LoginAttemptPortalAccount", fields: [portalAccountId], references: [id], onDelete: SetNull)
 
   // 「失敗だけを新しい順に」は SY0D の既定表示なので、部分索引を migration 側で
   // 別に張っている（成功行のほうが桁で多く、全体索引だと失敗の走査が重い）。
@@ -124,6 +132,7 @@ model LoginAttempt {
   @@index([signalsFingerprint, createdAt(sort: Desc)])
   @@index([kioskDeviceId, createdAt(sort: Desc)])
   @@index([cardRef, createdAt(sort: Desc)])
+  @@index([portalAccountId, createdAt(sort: Desc)])
   @@map("login_attempts")
   @@schema("app")
 }
