@@ -184,6 +184,18 @@ Never paste a pg_dump preamble into a migration: `set_config('search_path','')` 
 
 **The DB is Coolify's, and migrations apply themselves — never by hand.** The databases are Coolify apps (`ckk-db-dev` / `ckk-db-main`), and merging to `dev` / `main` triggers the Coolify apps `db-migrate-dev` / `db-migrate-main` (watch path `shared-db/**`), which run `prisma migrate deploy` and then re-apply the three idempotent, evolving artifacts — `grants.sql`, `kiosk-cron.sql`, `analytics-views.sql` — which are deliberately **not** migrations because they must re-run as the schema grows. A failure fails the deployment, visibly, in the Coolify UI.
 
+**マージ済みのマイグレーションは二度と書き換えない。** merge した瞬間に
+自動で当たるので、base に載っているマイグレーションは**もう本物の DB に
+適用済み**で取り消せない。Prisma は checksum を `_prisma_migrations` に
+持っているため、あとから中身を直すと次のデプロイが **P3006**
+（`migration ... has been modified after it was applied`）で落ちる。しかも
+落ちるのは直した本人ではなく、**次に何かを merge した無関係な人**の番になる。
+直したくなったら元のファイルは戻し、差分は**新しいマイグレーション**
+（`ALTER` で当てる）として足すこと。CI が `nextjs-web-ci.yml` の
+`migrations` ジョブでこれを止める（`shared-db/scripts/check-applied-migrations.sh`）。
+2026-08-31 に実際にやりかけた — 同じ PR ブランチが merge されたあと、
+続きの作業で元のマイグレーションを書き換えていた。
+
 **There is no manual apply path, on purpose.** `migrate:deploy`, `migrate:deploy:remote`, `grants:remote` and `cron:remote` were removed from `shared-db/package.json` (and from the pre-approved command list) on 2026-08-25. A hand-applied migration produces exactly the failures that are hardest to see later: dev and main drifting apart, `grants.sql` applied but `analytics-views.sql` forgotten, or a migration marked applied in `_prisma_migrations` that no deployment ever ran. If a migration must land, **merge it** — that is the mechanism. If the migrator fails, fix the migration and merge again; read its deployment log for the reason.
 
 Skipping `grants.sql` after adding tables makes the app 500 on those tables (role `app` has no rights) — which is why the migrator always runs it, every deploy.
