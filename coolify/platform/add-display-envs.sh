@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-# 管理ディスプレイ（SY0I）に必要な env を Coolify のアプリへ足す（冪等）。
+# 管理ディスプレイ（SY09 端末管理の「ディスプレイ」タブ）に必要な env を
+# Coolify のアプリへ足す（冪等）。
 # Run ON docker-mac-pro:  bash ~/stacks/coolify/add-display-envs.sh
 # (or from the workstation: ssh 192.168.50.15 'bash ~/stacks/coolify/add-display-envs.sh')
 #
@@ -30,7 +31,6 @@ TOKEN=$(cat "$TOKEN_FILE")
 api() { local m=$1 p=$2; shift 2; curl -sf -X "$m" -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" -H "Accept: application/json" "$API$p" "$@"; }
 api GET /version >/dev/null && echo "API ok"
 
-# Metabase の署名鍵を取り出す（生成はしない — 二重の真実を作らないため）。
 # metabase は Coolify 管理（~/stacks/metabase は無い）。鍵は初回にここで作り、
 # 以後は使い回す — 作り直すと発行済みの埋め込みトークンが全部無効になる。
 SECRET_FILE=/data/coolify/source/.metabase-embed-secret
