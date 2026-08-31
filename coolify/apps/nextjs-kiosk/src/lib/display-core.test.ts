@@ -12,7 +12,12 @@ import {
   isLinkRequestAlive,
   LINK_CODE_LENGTH,
   linkRemainingMs,
+  MACHINE_ID_MAX_LENGTH,
+  machineHint,
+  normalizeMachineId,
   normalizeScalePercent,
+  normalizeScreenIndex,
+  SCREEN_INDEX_MAX,
 } from "./display-core";
 
 const NOW = new Date("2026-08-31T09:00:00.000Z");
@@ -196,5 +201,84 @@ describe("fitRowsToHeight", () => {
     // 行 100 + 間隔 10 が 5 行 = 540px（最後の行の下に隙間は要らない）
     expect(fitRowsToHeight(540, 100, 10, 5)).toBe(5);
     expect(fitRowsToHeight(539, 100, 10, 5)).toBe(4);
+  });
+});
+
+describe("normalizeMachineId", () => {
+  it("hostname をそのまま通す", () => {
+    expect(normalizeMachineId("ckk-display-1")).toBe("ckk-display-1");
+    expect(normalizeMachineId("pi_02.local")).toBe("pi_02.local");
+  });
+
+  it("前後の空白を落とす", () => {
+    expect(normalizeMachineId("  raspberrypi  ")).toBe("raspberrypi");
+  });
+
+  it("記号は落とす（列を変な値で汚さない）", () => {
+    expect(normalizeMachineId("pi<script>")).toBe("piscript");
+    expect(normalizeMachineId("a b/c")).toBe("abc");
+  });
+
+  it("長すぎるものは切る（列は 64 文字）", () => {
+    expect(normalizeMachineId("x".repeat(200))).toHaveLength(
+      MACHINE_ID_MAX_LENGTH,
+    );
+  });
+
+  it("空・非文字列は null", () => {
+    expect(normalizeMachineId("")).toBeNull();
+    expect(normalizeMachineId("   ")).toBeNull();
+    expect(normalizeMachineId("!!!")).toBeNull();
+    expect(normalizeMachineId(null)).toBeNull();
+    expect(normalizeMachineId(42)).toBeNull();
+  });
+});
+
+describe("normalizeScreenIndex", () => {
+  it("1 から数える", () => {
+    expect(normalizeScreenIndex(1)).toBe(1);
+    expect(normalizeScreenIndex(2)).toBe(2);
+    expect(normalizeScreenIndex("2")).toBe(2);
+  });
+
+  it("0・負数・上限超えは不明（null）", () => {
+    expect(normalizeScreenIndex(0)).toBeNull();
+    expect(normalizeScreenIndex(-1)).toBeNull();
+    expect(normalizeScreenIndex(SCREEN_INDEX_MAX + 1)).toBeNull();
+  });
+
+  it("整数でないものは不明", () => {
+    expect(normalizeScreenIndex(1.5)).toBeNull();
+    expect(normalizeScreenIndex("いち")).toBeNull();
+    expect(normalizeScreenIndex(null)).toBeNull();
+    expect(normalizeScreenIndex(undefined)).toBeNull();
+    expect(normalizeScreenIndex("")).toBeNull();
+  });
+});
+
+describe("machineHint", () => {
+  it("両方そろっていれば両方返す", () => {
+    expect(machineHint("ckk-display-1", "2")).toEqual({
+      machineId: "ckk-display-1",
+      screenIndex: 2,
+    });
+  });
+
+  it("片方だけでも残す（分かる分だけ控える）", () => {
+    expect(machineHint("pi", undefined)).toEqual({
+      machineId: "pi",
+      screenIndex: null,
+    });
+    expect(machineHint(undefined, 1)).toEqual({
+      machineId: null,
+      screenIndex: 1,
+    });
+  });
+
+  it("何も無ければ両方 null（1 枚運用では付かない）", () => {
+    expect(machineHint(undefined, undefined)).toEqual({
+      machineId: null,
+      screenIndex: null,
+    });
   });
 });

@@ -41,6 +41,39 @@ Pi が `curl` で取りに来られる。APK を `public/apk/` から配るの�
 `src/proxy.ts` の matcher から `rpi/` を除外してある。まだ Cookie を持たない Pi が
 取りに来るので、守るとリダイレクト先の HTML がシェルに流れ込む。
 
+## 1 台で複数のテレビ
+
+Pi 5 は HDMI が 2 口。`install.sh --screens 2` で、**画面ごとに独立した
+Chromium** が立ち上がる。
+
+```
+~/.config/ckk-display/
+  env                  URL と画面数（1 か所だけ）
+  screen-1/            画面 1 のプロファイル（= Cookie = 身分）
+  screen-2/            画面 2 のプロファイル
+systemd --user
+  ckk-display@1.service
+  ckk-display@2.service   （テンプレートユニット %i = 画面番号）
+```
+
+**プロファイルを分けるのが要点。** Cookie が別になるので、サーバーからは
+「たまたま同じ箱に入っている 2 枚の画面」に見え、表示内容も倍率も 1 枚ずつ
+決まる。共有すると 2 枚とも同じものが映り、片方を失効させると両方止まる。
+
+ロックも画面ごと（`ckk-display-<n>.lock`）。台ごとに 1 本にすると 2 枚目が
+起動できない。
+
+どのモニタに出すかは、そのモニタ内の座標を `--window-position` で渡して
+全画面にさせている。並びは X11 なら `xrandr --listmonitors`、Wayland なら
+`wlr-randr` から読む。**外れることがある**ので、そのときは環境ファイルに
+`CKK_DISPLAY_POSITION=1920,0` のように書いて明示するか、HDMI ケーブルを
+差し替えるほうが早い。
+
+Pi は URL に `?machine=<hostname>&screen=<n>&of=<総数>` を載せる。管理画面は
+これを「どの箱の何枚目か」の**手掛かり**として控えるだけで、認証には使わない
+（詐称できる値なので）。2 枚まとめて消えたら箱、1 枚だけならケーブルか
+テレビ側、という切り分けに使う。
+
 ## 触ると壊れるところ
 
 - **Chromium のプロファイルを消さない / `--incognito` を付けない。** 登録トークンは

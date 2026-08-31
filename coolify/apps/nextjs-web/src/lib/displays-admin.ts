@@ -38,6 +38,9 @@ export interface DisplayRow {
   status: DisplayStatus;
   /** 表示倍率（%）。画面の大きさに合わせる微調整。 */
   scalePercent: number;
+  /** どの機械の何枚目か（Pi の自己申告。認証には使わない）。 */
+  machineId: string | null;
+  screenIndex: number | null;
   lastSeenAt: Date | null;
   appVersion: string | null;
   /** WS が使えないときのフォールバック（サーバー側の計算）。 */
@@ -95,6 +98,8 @@ export async function listDisplays(): Promise<DisplayRow[]> {
       plantId: true,
       status: true,
       scalePercent: true,
+      machineId: true,
+      screenIndex: true,
       lastSeenAt: true,
       appVersion: true,
       linkedAt: true,
@@ -117,6 +122,8 @@ export async function listDisplays(): Promise<DisplayRow[]> {
       profileName: jsonName(r.profile?.name).text,
       status: r.status as DisplayStatus,
       scalePercent: r.scalePercent,
+      machineId: r.machineId,
+      screenIndex: r.screenIndex,
       lastSeenAt: r.lastSeenAt,
       appVersion: r.appVersion,
       initialOnline: r.status === "ACTIVE" && onlineAt(now, r.lastSeenAt),
@@ -138,6 +145,8 @@ export async function getDisplayDetail(
       plantId: true,
       status: true,
       scalePercent: true,
+      machineId: true,
+      screenIndex: true,
       lastSeenAt: true,
       lastIpAddress: true,
       userAgent: true,
@@ -164,6 +173,8 @@ export async function getDisplayDetail(
     profileName: jsonName(r.profile?.name).text,
     status: r.status as DisplayStatus,
     scalePercent: r.scalePercent,
+    machineId: r.machineId,
+    screenIndex: r.screenIndex,
     lastSeenAt: r.lastSeenAt,
     appVersion: r.appVersion,
     initialOnline: r.status === "ACTIVE" && onlineAt(Date.now(), r.lastSeenAt),

@@ -21,6 +21,7 @@
 
 import {
   Alert,
+  Badge,
   Box,
   Button,
   Center,
@@ -35,6 +36,7 @@ import { IconRefresh } from "@tabler/icons-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { formatCode } from "@/lib/crockford";
 import type { DisplayAuthFailReason } from "@/lib/display-auth";
+import type { MachineHint } from "@/lib/display-core";
 import { qrSvg } from "@/lib/qr";
 
 const DEVICE_ID_KEY = "ckk_display_device_id";
@@ -62,9 +64,15 @@ type SetupState =
   | { phase: "expired" }
   | { phase: "error"; message: string };
 
-type Props = { reason: DisplayAuthFailReason };
+type Props = {
+  reason: DisplayAuthFailReason;
+  /** どの機械の何枚目か（Pi が URL に載せてくる。1 枚運用では空）。 */
+  hint: MachineHint;
+  /** この機械につながっている画面の総数。 */
+  screenTotal: number;
+};
 
-export function DisplaySetup({ reason }: Props) {
+export function DisplaySetup({ reason, hint, screenTotal }: Props) {
   const [state, setState] = useState<SetupState>({ phase: "loading" });
   const [now, setNow] = useState(() => Date.now());
   const startedRef = useRef(false);
@@ -166,7 +174,11 @@ export function DisplaySetup({ reason }: Props) {
         const res = await fetch("/api/display/setup/confirm", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ deviceId: state.deviceId }),
+          body: JSON.stringify({
+            deviceId: state.deviceId,
+            machineId: hint.machineId,
+            screenIndex: hint.screenIndex,
+          }),
         });
         const data = (await res.json()) as { status: string };
         if (data.status === "CONFIRMED") {
@@ -189,9 +201,15 @@ export function DisplaySetup({ reason }: Props) {
       }
     }, POLL_INTERVAL_MS);
     return () => clearInterval(poll);
-  }, [state, begin]);
+  }, [state, begin, hint]);
 
   const note = REASON_NOTE[reason];
+  // 1 台に複数つないでいるときは「何枚目か」を出す。同時に 2 枚のテレビが
+  // コードを出すので、どちらのコードを入力しているのか分からなくなるため。
+  const screenLabel =
+    screenTotal > 1 && hint.screenIndex
+      ? `この機械の ${screenTotal} 枚中 ${hint.screenIndex} 枚目`
+      : null;
 
   return (
     <Center p="xl" style={{ flex: 1 }}>
@@ -237,6 +255,11 @@ export function DisplaySetup({ reason }: Props) {
                   管理者に「設定 → 端末管理 → ディスプレイ」でこのコードを
                   スキャンまたは入力してもらい、登録してください。
                 </Text>
+                {screenLabel && (
+                  <Badge color="blue" size="lg" variant="light">
+                    {screenLabel}
+                  </Badge>
+                )}
                 <Stack align="center" gap={4}>
                   <Text c="dimmed" size="sm">
                     リンクコード

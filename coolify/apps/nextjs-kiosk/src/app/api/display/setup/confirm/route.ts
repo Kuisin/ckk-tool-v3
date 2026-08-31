@@ -15,12 +15,18 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/db";
 import { setDisplayCookie } from "@/lib/display-auth";
+import { machineHint } from "@/lib/display-core";
 import { displayWsBridge } from "@/lib/display-ws-bridge";
 import { clientIpOf, userAgentOf } from "@/lib/request-ip";
 
 export const dynamic = "force-dynamic";
 
-const bodySchema = z.object({ deviceId: z.uuid() });
+const bodySchema = z.object({
+  deviceId: z.uuid(),
+  // どの機械の何枚目か（自己申告の手掛かり。認証には使わない）
+  machineId: z.string().optional(),
+  screenIndex: z.union([z.number(), z.string()]).optional(),
+});
 
 export async function POST(req: Request) {
   const parsed = bodySchema.safeParse(await req.json().catch(() => null));
@@ -46,6 +52,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ status: "ALREADY_CONFIRMED" });
   }
 
+  const hint = machineHint(parsed.data.machineId, parsed.data.screenIndex);
   const { hash, expiresAt } = await setDisplayCookie();
   await prisma.displayDevice.update({
     where: { id: device.id },
@@ -55,6 +62,8 @@ export async function POST(req: Request) {
       lastSeenAt: new Date(),
       lastIpAddress: clientIpOf(req),
       userAgent: userAgentOf(req),
+      machineId: hint.machineId,
+      screenIndex: hint.screenIndex,
     },
   });
   displayWsBridge()?.notifyDisplayChanged(device.id);
