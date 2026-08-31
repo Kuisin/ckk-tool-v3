@@ -477,6 +477,17 @@ export const OPERATION_CODES: OperationCodeEntry[] = [
     mode: "0",
     index: "G",
   },
+  // 取引先ポータル（社外向けアカウントと書類リンクの管理）
+  {
+    code: "SY0H",
+    label: "取引先ポータル",
+    href: "/settings/portal",
+    category: "システム",
+    kind: "list",
+    categoryCode: "SY",
+    mode: "0",
+    index: "H",
+  },
 ];
 
 const CODE_LOOKUP = new Map(

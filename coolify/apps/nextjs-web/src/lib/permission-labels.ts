@@ -393,6 +393,20 @@ export const PERMISSIONS: readonly PermissionMeta[] = [
     },
     group: "privileged",
   },
+  {
+    code: "portal_admin",
+    label: {
+      ja: "取引先ポータルの管理",
+      en: "Partner portal administration",
+      zh: "客户门户管理",
+    },
+    summary: {
+      ja: "社外の人（取引先・需要家）が自社宛の書類を見るためのアカウントと、書類 1 件へのリンクを管理します。有効化・バックアップコードの発行・本人確認なしリンクの発行は、1 件ずつ承認を受けます。",
+      en: "Manage the accounts external partners use to view their own documents, and the per-document links. Activating an account, issuing backup codes and minting link-only URLs each need approval.",
+      zh: "管理外部客户查看自身单据所用的账号，以及单据链接。启用账号、发放备用码、发放免验证链接均需逐项获得批准。",
+    },
+    group: "privileged",
+  },
 ];
 
 const BY_CODE = new Map(PERMISSIONS.map((p) => [p.code, p]));

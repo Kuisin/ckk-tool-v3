@@ -35,7 +35,7 @@ describe("dev-features.json", () => {
     // 期間がある。その間の打ち間違いを黙って通さないため、未登録のキーは
     // **ここに書き出すことを強制する**（app-list と合わせて 2 箇所に書く必要が
     // 出るので、typo なら必ず片方が浮く）。アプリを登録したら消すこと。
-    const PENDING_APP_KEYS = new Set(["portal-admin"]);
+    const PENDING_APP_KEYS = new Set<string>();
 
     const known = new Set(appList.map((a) => a.key));
     for (const key of devFeatureKeys()) {

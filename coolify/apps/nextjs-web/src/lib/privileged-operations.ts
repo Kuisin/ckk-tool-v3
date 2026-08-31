@@ -26,6 +26,7 @@ export const ELEVATION_CODES = [
   "kiosk_device",
   "kiosk_card",
   "personal_data",
+  "portal_admin",
 ] as const;
 
 export type ElevationCode = (typeof ELEVATION_CODES)[number];
@@ -45,6 +46,11 @@ export const ELEVATION_CODE_LABEL: Record<ElevationCode, LocalizedLabel> = {
     ja: "端末アクセスの付与",
     en: "Shared device enrolment",
     zh: "终端访问授予",
+  },
+  portal_admin: {
+    ja: "取引先ポータルの管理",
+    en: "Partner portal administration",
+    zh: "客户门户管理",
   },
   kiosk_card: {
     ja: "QRカードの発行・PIN",
@@ -428,6 +434,61 @@ export const PRIVILEGED_OPERATIONS: readonly PrivilegedOperation[] = [
       zh: "展开单次操作变更前后（before / after）的内容。",
     },
     appKey: "activity-log",
+  },
+
+  // ── portal_admin（SY0H 取引先ポータル）─────────────────────────────────────
+  //
+  // ゲートするのは「社外の人がアクセスできるようになる」操作だけ。
+  // 一覧の閲覧・表示名の編集・**無効化**・リンクの失効・VERIFY リンクの発行は
+  // 素の portal_admin で足りる（アクセスを減らす操作を承認待ちにしない、
+  // というキオスクのカード一時停止と同じ判断）。
+  {
+    key: "portal_admin.activate_account",
+    code: "portal_admin",
+    action: "UPDATE",
+    label: {
+      ja: "ポータルアカウントの有効化",
+      en: "Activate a portal account",
+      zh: "启用门户账号",
+    },
+    description: {
+      ja: "社外の人に、自社宛の書類を見続けられるログインを与える。kiosk_card.issue の社外版",
+      en: "Gives an external person a standing login to their own documents.",
+      zh: "授予外部人员持续查看自身单据的登录权限。",
+    },
+    appKey: "portal-admin",
+  },
+  {
+    key: "portal_admin.issue_backup_codes",
+    code: "portal_admin",
+    action: "UPDATE",
+    label: {
+      ja: "バックアップコードの発行",
+      en: "Issue backup codes",
+      zh: "发放备用码",
+    },
+    description: {
+      ja: "メールの受信を迂回して入れる使い捨てコードを刷る。刷った紙がそのまま鍵になる",
+      en: "Prints one-time codes that bypass e-mail possession. The paper is the key.",
+      zh: "打印可绕过邮箱验证的一次性代码。印出的纸即为钥匙。",
+    },
+    appKey: "portal-admin",
+  },
+  {
+    key: "portal_admin.mint_link_only",
+    code: "portal_admin",
+    action: "CREATE",
+    label: {
+      ja: "本人確認なしリンクの発行",
+      en: "Mint a link-only URL",
+      zh: "发放免验证链接",
+    },
+    description: {
+      ja: "URL を持っていれば誰でも開ける書類リンクを作る。転送されればその相手も開ける（本人確認ありのリンクは対象外）",
+      en: "Creates a document URL anyone holding it can open. Verified links are not gated.",
+      zh: "创建任何持有链接者均可打开的单据链接。需验证的链接不在此列。",
+    },
+    appKey: "portal-admin",
   },
 ];
 
