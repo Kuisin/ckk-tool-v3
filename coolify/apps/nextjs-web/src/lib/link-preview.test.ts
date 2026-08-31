@@ -8,7 +8,9 @@ describe("resolvePreviewTarget", () => {
     );
     expect(t).toEqual({
       kind: "price-list",
-      permissionCode: "sales",
+      // permissions.code は "price_list" — "sales" は実在しないコード
+      // （以前はここが "sales" のままで、権限判定が常に false になっていた）。
+      permissionCode: "price_list",
       label: "価格表",
       docNumber: "PRC-202607-00004",
       docKey: { yearMonth: "202607", seq: 4 },
@@ -20,6 +22,63 @@ describe("resolvePreviewTarget", () => {
     expect(resolvePreviewTarget("/sales/quotes/QOT-202607-00002")?.kind).toBe(
       "quote",
     );
+  });
+
+  it("resolves order-acceptance/work-order/delivery/invoice URLs (ORD/WOR/DOR/DRN/INV)", () => {
+    expect(
+      resolvePreviewTarget("/sales/order-acceptances/ORD-202607-00001"),
+    ).toEqual({
+      kind: "order-acceptance",
+      permissionCode: "order_acceptance",
+      label: "注文請書",
+      docNumber: "ORD-202607-00001",
+      docKey: { yearMonth: "202607", seq: 1 },
+    });
+    expect(
+      resolvePreviewTarget("/production/work-orders/WOR-202607-00002"),
+    ).toEqual({
+      kind: "work-order",
+      permissionCode: "work_order",
+      label: "指示書",
+      docNumber: "WOR-202607-00002",
+      docKey: { yearMonth: "202607", seq: 2 },
+    });
+    expect(
+      resolvePreviewTarget("/shipping/delivery-orders/DOR-202607-00003")?.kind,
+    ).toBe("delivery-order");
+    expect(
+      resolvePreviewTarget("/shipping/delivery-notes/DRN-202607-00004")?.kind,
+    ).toBe("delivery-note");
+    expect(resolvePreviewTarget("/billing/invoices/INV-202607-00005")).toEqual({
+      kind: "invoice",
+      permissionCode: "invoice",
+      label: "請求書",
+      docNumber: "INV-202607-00005",
+      docKey: { yearMonth: "202607", seq: 5 },
+    });
+  });
+
+  it("resolves number-column URLs (PO/PRQ/DSG) without a docKey", () => {
+    expect(
+      resolvePreviewTarget("/purchase/purchase-orders/PO-202607-00001"),
+    ).toEqual({
+      kind: "purchase-order",
+      permissionCode: "purchase_order",
+      label: "素材発注書",
+      docNumber: "PO-202607-00001",
+    });
+    expect(
+      resolvePreviewTarget("/purchase/purchase-requests/PRQ-202607-00002")
+        ?.kind,
+    ).toBe("purchase-request");
+    expect(
+      resolvePreviewTarget("/sales/design-requests/DSG-202607-00003"),
+    ).toEqual({
+      kind: "design-request",
+      permissionCode: "design_request",
+      label: "設計依頼書",
+      docNumber: "DSG-202607-00003",
+    });
   });
 
   it("resolves master URLs (int id)", () => {
