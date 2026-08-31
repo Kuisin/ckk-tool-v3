@@ -4,7 +4,7 @@
  * ここはまだログインの確認だけ。書類一覧・進捗・フォームは後続の PR で足す。
  */
 
-import { Card, Stack, Text, Title } from "@mantine/core";
+import { Anchor, Card, Stack, Text, Title } from "@mantine/core";
 import { PortalLogoutButton } from "@/components/portal/PortalLogoutButton";
 import { requirePortalView } from "@/lib/portal-page";
 
@@ -23,8 +23,11 @@ export default async function PortalHomePage() {
             {gate.session.displayName} 様
           </Text>
           <Text c="dimmed" size="sm">
-            ログインしました。書類の一覧と進捗はこの後の更新で表示されます。
+            自社宛の書類をご覧いただけます。
           </Text>
+          <Anchor href="/portal/documents" size="sm">
+            書類の一覧を開く
+          </Anchor>
         </Stack>
       </Card>
       <PortalLogoutButton />
