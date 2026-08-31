@@ -20,6 +20,23 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  # マージ済みマイグレーションの改変を止める。
+  # マイグレーションは merge した瞬間に自動で当たる（db-migrate-dev/-main）ので、
+  # base に載っているものは既に本物の DB に適用済み = 取り消せない。
+  # あとから書き換えると次のデプロイが P3006 で落ち、しかも落ちるのは
+  # 直した本人ではなく「次に merge した誰か」になる。
+  migrations:
+    name: shared-db — 適用済みマイグレーションの保護
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # base との差分を見るので履歴が要る
+          fetch-depth: 0
+      - name: Check applied migrations are untouched
+        run: bash shared-db/scripts/check-applied-migrations.sh "origin/${{ github.event.pull_request.base.ref }}"
+
   authz-core:
     name: authz-core — lint & test
     runs-on: ubuntu-latest

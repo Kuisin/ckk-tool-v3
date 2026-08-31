@@ -45,7 +45,7 @@ services:
       - MB_DB_PASS=${MB_DB_PASS:?set MB_DB_PASS in .env}
       # Encrypts saved data-source credentials at rest in the app DB.
       - MB_ENCRYPTION_SECRET_KEY=${MB_ENCRYPTION_SECRET_KEY:?set MB_ENCRYPTION_SECRET_KEY in .env}
-      # Signed embedding — 現場の管理ディスプレイ（SY0I）がダッシュボードを
+      # Signed embedding — 現場の管理ディスプレイ（SY09 端末管理）がダッシュボードを
       # iframe で映すために要る。埋め込みトークンはアプリ側（nextjs-kiosk の
       # lib/metabase-embed.ts）がこの鍵で HS256 署名する。
       #

@@ -23,7 +23,7 @@
 >   書類・製品の `currency` 列（products / quotes / order_acceptances / invoices に
 >   追加。既定 'JPY'、FK なし — 既存 price_list_entries.currency と同じ規約）が指す。
 >   レートは手動更新の分析用換算（会計処理用ではない）。注文明細はヘッダから読む。
-> - `display.prisma`: 管理ディスプレイ（下記 Display 節）
+> - `display.prisma`: 管理ディスプレイ（下記 Display 節。管理は SY09 の中）
 > - `kiosk.prisma`: `kiosk_cards` / `kiosk_device_locations` / `kiosk_device_logs` / `kiosk_devices` / `kiosk_floor_maps` / `kiosk_link_requests` / `kiosk_sessions` /
 >   `kiosk_unlock_pins` — メンテナンス退出 PIN の履歴。現行値は
 >   `system_settings['kiosk.unlock_pin']` の 1 行で pg_cron が毎日 4:00 に**上書き**
@@ -1884,14 +1884,15 @@ Table ad_sync_logs {
 //
 // キオスク端末（kiosk_devices）と似ているが、わざと 2 点違える:
 //
-//   1. **code-first**。キオスクは管理者が先にプロファイルを作り後から端末を
-//      紐づける（profile-first）が、ディスプレイは据付作業者が脚立の上で
-//      1 人で完了できることを優先する。QR を読んだ管理者がその場で名前と
-//      表示内容を決め、行はそのとき初めて生まれる。よって PENDING / LINKED
-//      に相当する状態を持たない。
-//   2. **遷移ログを持たない**（kiosk_device_logs 相当を作らない）。あれは
-//      フロア端末の使用実態を追うためのもので、誰も触らない掲示板には要らない。
-//      死活は last_seen_at 1 列から読むときに計算する。
+//   **登録の流れはキオスク端末と同じ**（profile-first）: 管理者がプロファイルを
+//   作り（PENDING）→ 画面が出すリンクコードで結び（LINKED）→ 有効化する
+//   （ACTIVE）→ 画面が自分でトークンを受け取る。端末とディスプレイで手順を
+//   変えないのは、覚えることを増やさないため。管理は SY09 端末管理の
+//   「ディスプレイ」タブで、スキャナもコード形式（12桁）も共有する。
+//
+//   違うのは **遷移ログを持たない**点だけ（kiosk_device_logs 相当は作らない）。
+//   あれはフロア端末の使用実態を追うためのもので、誰も触らない掲示板には
+//   要らない。死活は last_seen_at 1 列から読むときに計算する。
 //
 // 期限切れのペアリングは API の入口（POST /api/display/pairing）が掃除する。
 // pg_cron を増やさないのは、掃除が遅れても害が無いため（増えるのは行だけ）。
@@ -1903,6 +1904,11 @@ Table display_devices {
   plant_id                int  [ref: > plants.id]
   display_profile_id      uuid [ref: > display_profiles.id]  // 削除は Restrict
   status                  DISPLAY_DEVICE_STATUS
+  // 表示倍率（%）。画面の大きさと見る距離に合わせる微調整で、50〜200 の 5 刻み
+  // （範囲は DB の CHECK でも閉じる）。**端末側に持つ** — これは「その画面の
+  // 物理的な性質」で、表示内容に持たせると 1 つの内容を複数の画面で共有した
+  // 瞬間にどれかが読めなくなる。
+  scale_percent           int
   // Cookie は生値、DB は SHA-256 のみ。**365日** — キオスクの 30 日と違えるのは、
   // 壁の画面は誰も触らないから。短いと誰も見ていない間に自分でペアリング画面へ
   // 戻ってしまい、現場には「テレビが壊れた」としか見えない。
@@ -1912,16 +1918,19 @@ Table display_devices {
   last_ip_address         varchar
   user_agent              varchar
   app_version             varchar
-  paired_by               uuid [ref: > users.id]
-  paired_at               timestamp
+  linked_at               timestamp
+  activated_by            uuid [ref: > users.id]
+  activated_at            timestamp
   created_at              timestamp
   updated_at              timestamp
 }
 
 Enum DISPLAY_DEVICE_STATUS {
-  ACTIVE     // ペアリング成立時はここから始まる
+  PENDING    // プロファイル作成済・リンク待ち（= オープン。リンク解除で戻る）
+  LINKED     // 画面リンク済・有効化待ち（有効化はこの状態からのみ）
+  ACTIVE     // 有効
   DISABLED   // 一時停止（トークンは生きたまま）
-  REVOKED    // 取り消し（トークン破棄・再ペアリングが必要）
+  REVOKED    // 取り消し（トークン破棄・再リンクが必要）
 }
 
 // 端末と表示内容を分けているのは、1 つの内容を複数の画面に出したいのと、
@@ -1950,17 +1959,18 @@ Enum DISPLAY_CONTENT_TYPE {
   IMAGE      // 画像 1 枚（files.id を指す）
 }
 
-// 据付時の一時コード。ディスプレイが自分で作り、画面に QR と文字で出す。
-// display_device_id が入った時点が「成立」で、その有無が唯一の印。
+// kiosk_link_requests と同型・同寿命（12桁・10分）。ディスプレイが自分で作って
+// 画面に出し、管理者が SY09 で読み取ってオープンなプロファイルへ結ぶ。
+// device_id が入った時点が「リンク成立」で、その有無が唯一の印。
 // コードは生の秘密なので grants.sql で metabase_ro から表ごと落とす。
-Table display_pairing_sessions {
-  id                uuid [pk]
-  code              varchar [unique]  // Crockford 12桁（I/O/0/1 を含まない）
-  display_device_id uuid [ref: > display_devices.id]  // 成立後に入る
-  user_agent        varchar
-  last_ip_address   varchar
-  created_at        timestamp
-  expires_at        timestamp         // 10分
+Table display_link_requests {
+  id              uuid [pk]
+  code            varchar [unique]  // Crockford 12桁（I/O/0/1 を含まない）
+  device_id       uuid [ref: > display_devices.id]  // リンク成立後に入る
+  user_agent      varchar
+  last_ip_address varchar
+  created_at      timestamp
+  expires_at      timestamp         // 10分
 }
 ```
 

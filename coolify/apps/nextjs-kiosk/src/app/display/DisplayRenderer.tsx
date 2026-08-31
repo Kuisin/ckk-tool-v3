@@ -27,11 +27,7 @@ const RECONNECT_MAX_MS = 30_000;
 type Content =
   | {
       type: "APP_PAGE";
-      config: {
-        page: string;
-        plantId?: number | null;
-        workLocationId?: number | null;
-      };
+      config: { page: string; options?: Record<string, unknown> };
     }
   | { type: "METABASE"; url: string | null }
   | { type: "URL"; config: { url: string } }
@@ -39,7 +35,13 @@ type Content =
   | { type: "INVALID" };
 
 type Config = {
-  display: { id: string; name: string | null; location: string | null };
+  display: {
+    id: string;
+    name: string | null;
+    location: string | null;
+    /** 表示倍率（%）。画面の大きさに合わせる微調整。 */
+    scalePercent: number;
+  };
   profile: {
     id: string;
     name: string | null;
@@ -52,18 +54,30 @@ type Props = {
   displayId: string;
   displayName: string | null;
   location: string | null;
+  scalePercent: number;
 };
 
 /** 中身 → フレームに載せる URL。載せられないものは null。 */
 function contentSrc(content: Content, bust: number): string | null {
   switch (content.type) {
     case "APP_PAGE": {
+      // 設定は base64url の JSON 1 つで渡す。項目ごとにクエリを増やすと、
+      // テンプレートを足すたびにここを直すことになる（登録簿の意味が消える）。
+      // 受け側（content/_shared/options.ts）はこれを必ず検証し直す。
       const params = new URLSearchParams();
-      if (content.config.plantId != null) {
-        params.set("plantId", String(content.config.plantId));
-      }
-      if (content.config.workLocationId != null) {
-        params.set("workLocationId", String(content.config.workLocationId));
+      const options = content.config.options ?? {};
+      if (Object.keys(options).length > 0) {
+        params.set(
+          "opt",
+          btoa(
+            String.fromCharCode(
+              ...new TextEncoder().encode(JSON.stringify(options)),
+            ),
+          )
+            .replace(/\+/g, "-")
+            .replace(/\//g, "_")
+            .replace(/=+$/, ""),
+        );
       }
       params.set("t", String(bust));
       return `/display/content/${content.config.page}?${params.toString()}`;
@@ -79,7 +93,12 @@ function contentSrc(content: Content, bust: number): string | null {
   }
 }
 
-export function DisplayRenderer({ displayId, displayName, location }: Props) {
+export function DisplayRenderer({
+  displayId,
+  displayName,
+  location,
+  scalePercent,
+}: Props) {
   const [config, setConfig] = useState<Config | null>(null);
   const [failed, setFailed] = useState(false);
   /** フレームを作り直すための世代番号（再読込の合図）。 */
@@ -173,6 +192,21 @@ export function DisplayRenderer({ displayId, displayName, location }: Props) {
 
   const name = config?.display.name ?? displayName;
   const place = config?.display.location ?? location;
+  // 倍率は最新の設定を優先（変更したら再取得で即反映される）
+  const scale = config?.display.scalePercent ?? scalePercent;
+
+  /**
+   * 倍率の当て方は **CSS の `zoom`** に統一する。
+   *
+   * `transform: scale()` だと中身の折り返しが変わらないので、拡大すると
+   * ただ切れる。`zoom` は**表示領域そのものが縮んで中身が組み直される**ので、
+   * 「大きい画面用に文字を大きくする」という意図どおりに効く。
+   *
+   * そして `zoom` を**外側の枠に当てる**のが要点 — こうすると Metabase の
+   * ような別ドメインの中身にも同じように効く（向こうの CSS を触れない）。
+   * 種別ごとに当て方を変えると、片方だけ効かない状態が生まれる。
+   */
+  const zoomStyle = scale === 100 ? undefined : { zoom: `${scale}%` };
 
   if (failed) {
     return (
@@ -225,6 +259,8 @@ export function DisplayRenderer({ displayId, displayName, location }: Props) {
   }
 
   if (content.type === "IMAGE") {
+    // 画像は「収まるように」出すので倍率を当てない — 倍率を掛けると
+    // objectFit の計算とぶつかって、意図せず端が切れる
     return (
       // biome-ignore lint/performance/noImgElement: 全画面 1 枚。next/image の最適化は不要
       <img
@@ -256,7 +292,13 @@ export function DisplayRenderer({ displayId, displayName, location }: Props) {
     <iframe
       key={`${config.profile.id}-${generation}`}
       src={src}
-      style={{ flex: 1, width: "100%", height: "100dvh", border: 0 }}
+      style={{
+        flex: 1,
+        width: "100%",
+        height: "100dvh",
+        border: 0,
+        ...zoomStyle,
+      }}
       title={config.profile.name ?? "ディスプレイ"}
     />
   );

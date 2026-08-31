@@ -268,7 +268,7 @@ export const PRIVILEGED_OPERATIONS: readonly PrivilegedOperation[] = [
     appKey: "kiosk-devices",
   },
 
-  // ── kiosk_device（SY0I ディスプレイ管理）─────────────────────────────────
+  // ── kiosk_device（SY09 端末管理の「ディスプレイ」タブ）──────────────────
   // 一覧・名称変更・表示内容の切替は素の `kiosk` で足りる。ここに入れているのは
   // 「画面を 1 枚増やす／取り上げる」— どちらも業務データが出る場所そのものを
   // 変える操作なので、もう 1 人の目を通す。
@@ -286,7 +286,7 @@ export const PRIVILEGED_OPERATIONS: readonly PrivilegedOperation[] = [
       en: "Adds a shop-floor screen. A paired display shows business data where anyone can see it.",
       zh: "新增一块现场屏幕。登记后的屏幕会在任何人都能看到的位置持续显示业务数据。",
     },
-    appKey: "displays",
+    appKey: "kiosk-devices",
   },
   {
     key: "kiosk_device.revoke_display",
@@ -302,7 +302,7 @@ export const PRIVILEGED_OPERATIONS: readonly PrivilegedOperation[] = [
       en: "Locks the display out immediately; it returns to the pairing screen on next reload.",
       zh: "立即封锁该屏幕。下次重新加载后回到登记画面，此后不再显示内容。",
     },
-    appKey: "displays",
+    appKey: "kiosk-devices",
   },
 
   // ── kiosk_card（SY08 QRカード管理）───────────────────────────────────────

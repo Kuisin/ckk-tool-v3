@@ -80,6 +80,19 @@ const nextConfig: NextConfig = {
     : {}),
   async redirects() {
     return [
+      // ディスプレイ管理は独立アプリ（SY0I）をやめ、端末管理（SY09）の
+      // タブに統合した。機器の登録手順が共有端末とまったく同じなので、
+      // 別の場所に置くと「どっちの画面で直すのか」を現場が毎回考えることになる。
+      {
+        source: "/settings/displays",
+        destination: "/settings/kiosk-devices",
+        permanent: true,
+      },
+      {
+        source: "/settings/displays/:path*",
+        destination: "/settings/kiosk-devices",
+        permanent: true,
+      },
       // 旧 承認管理 (PD03) → 一般カテゴリの 承認・予定 (CM01)。
       // 詳細 URL は指示書詳細へ（承認カードは指示書詳細に出る）。
       {

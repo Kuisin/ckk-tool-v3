@@ -196,12 +196,12 @@ const TABLE_ROUTES: Record<string, TableRoute> = {
     listPath: "/settings/kiosk-devices/map",
   },
   display_devices: {
-    appLabel: "ディスプレイ管理",
-    listPath: "/settings/displays",
+    appLabel: "端末管理（ディスプレイ）",
+    listPath: "/settings/kiosk-devices",
   },
   display_profiles: {
-    appLabel: "ディスプレイ管理（表示内容）",
-    listPath: "/settings/displays/profiles",
+    appLabel: "端末管理（表示内容）",
+    listPath: "/settings/kiosk-devices",
   },
 };
 

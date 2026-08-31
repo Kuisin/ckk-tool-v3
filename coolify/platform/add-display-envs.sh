@@ -1,17 +1,20 @@
 #!/usr/bin/env bash
-# 管理ディスプレイ（SY0I）に必要な env を Coolify のアプリへ足す（冪等）。
+# 管理ディスプレイ（SY09 端末管理の「ディスプレイ」タブ）に必要な env を
+# Coolify のアプリへ足す（冪等）。
 # Run ON docker-mac-pro:  bash ~/stacks/coolify/add-display-envs.sh
 # (or from the workstation: ssh 192.168.50.15 'bash ~/stacks/coolify/add-display-envs.sh')
 #
 # 足すもの（nextjs-kiosk-dev / -main）:
-#   NEXT_PUBLIC_WEB_BASE_URL  ディスプレイが出す QR の飛び先（管理画面のホスト）
-#   METABASE_SITE_URL         埋め込み iframe の宛先（Pi のブラウザが直接引く）
-#   METABASE_EMBED_SECRET     埋め込みトークンの署名鍵
+#   METABASE_SITE_URL      埋め込み iframe の宛先（Pi のブラウザが直接引く）
+#   METABASE_EMBED_SECRET  埋め込みトークンの署名鍵
 #
-# METABASE_EMBED_SECRET は **Metabase 側の MB_EMBEDDING_SECRET_KEY と同値**で
-# なければならない。ここでは既存の値を読むだけで生成しない — 先に
-# ~/stacks/metabase/.env へ入れて metabase を再起動しておくこと
-# （coolify/common/metabase/.env.example 参照）。
+# ※ 2026-08-31 に **実行済み**（metabase と nextjs-kiosk-dev）。
+#   nextjs-kiosk-main だけ未適用なので、本番で Metabase を映す前に流すこと。
+#
+# METABASE_EMBED_SECRET は **Metabase 側の MB_EMBEDDING_SECRET_KEY と同値**。
+# metabase は Coolify 管理なので、compose ではなく Coolify の env に入れる。
+# **compose（coolify/common/metabase/docker-compose.yml）が main に載るまで
+# 埋め込みは有効にならない** — Coolify は main のブランチから compose を読む。
 #
 # 併せて Metabase の画面で、映したいダッシュボードごとに:
 #   1. 「共有」→「埋め込み」を有効化
@@ -22,26 +25,20 @@ set -euo pipefail
 
 API="http://127.0.0.1:8000/api/v1"
 TOKEN_FILE=/data/coolify/source/.api-token
-DEV_WEB_URL="https://app-dev.ckk-tool.co.jp"
-MAIN_WEB_URL="https://app.ckk-tool.co.jp"
 METABASE_URL="https://bi.ckk-tool.co.jp"
 
 TOKEN=$(cat "$TOKEN_FILE")
 api() { local m=$1 p=$2; shift 2; curl -sf -X "$m" -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" -H "Accept: application/json" "$API$p" "$@"; }
 api GET /version >/dev/null && echo "API ok"
 
-# Metabase の署名鍵を取り出す（生成はしない — 二重の真実を作らないため）。
-MB_ENV=~/stacks/metabase/.env
-if [ ! -s "$MB_ENV" ]; then
-  echo "!! $MB_ENV が無い。先に metabase スタックを構成すること"; exit 1
+# metabase は Coolify 管理（~/stacks/metabase は無い）。鍵は初回にここで作り、
+# 以後は使い回す — 作り直すと発行済みの埋め込みトークンが全部無効になる。
+SECRET_FILE=/data/coolify/source/.metabase-embed-secret
+if [ ! -s "$SECRET_FILE" ]; then
+  openssl rand -hex 32 > "$SECRET_FILE"; chmod 600 "$SECRET_FILE"
+  echo "鍵を生成: $SECRET_FILE"
 fi
-# shellcheck disable=SC1090
-MB_EMBEDDING_SECRET_KEY=$(grep -E '^MB_EMBEDDING_SECRET_KEY=' "$MB_ENV" | cut -d= -f2- || true)
-if [ -z "${MB_EMBEDDING_SECRET_KEY:-}" ] || [ "$MB_EMBEDDING_SECRET_KEY" = "change-me" ]; then
-  echo "!! MB_EMBEDDING_SECRET_KEY が未設定。次で作って $MB_ENV に入れ、metabase を再起動:"
-  echo "   openssl rand -hex 32"
-  exit 1
-fi
+MB_EMBEDDING_SECRET_KEY=$(cat "$SECRET_FILE")
 
 add_env_if_missing() { # app_name key value
   local app=$1 key=$2 value=$3 uuid
@@ -55,11 +52,13 @@ add_env_if_missing() { # app_name key value
   fi
 }
 
-add_env_if_missing nextjs-kiosk-dev  NEXT_PUBLIC_WEB_BASE_URL "$DEV_WEB_URL"
+# Metabase 本体（Coolify アプリ名 metabase）
+add_env_if_missing metabase           MB_ENABLE_EMBEDDING      "true"
+add_env_if_missing metabase           MB_EMBEDDING_SECRET_KEY  "$MB_EMBEDDING_SECRET_KEY"
+
 add_env_if_missing nextjs-kiosk-dev  METABASE_SITE_URL        "$METABASE_URL"
 add_env_if_missing nextjs-kiosk-dev  METABASE_EMBED_SECRET    "$MB_EMBEDDING_SECRET_KEY"
 
-add_env_if_missing nextjs-kiosk-main NEXT_PUBLIC_WEB_BASE_URL "$MAIN_WEB_URL"
 add_env_if_missing nextjs-kiosk-main METABASE_SITE_URL        "$METABASE_URL"
 add_env_if_missing nextjs-kiosk-main METABASE_EMBED_SECRET    "$MB_EMBEDDING_SECRET_KEY"
 

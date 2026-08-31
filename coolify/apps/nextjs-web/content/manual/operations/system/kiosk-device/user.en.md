@@ -276,6 +276,8 @@ Holding the permission is not enough for the operations below. You **request the
 | Disable / enable a device | Shared device enrolment（`kiosk_device`）— Edit | Suspends a device or brings a suspended one back. |
 | Unlink a device | Shared device enrolment（`kiosk_device`）— Edit | Destroys the device token, sessions and attestation key, reopening the profile. |
 | Revoke a device | Shared device enrolment（`kiosk_device`）— Edit | Locks the device out immediately, cutting live shop-floor sessions. |
+| Pair a display | Shared device enrolment（`kiosk_device`）— Create | Adds a shop-floor screen. A paired display shows business data where anyone can see it. |
+| Revoke a display | Shared device enrolment（`kiosk_device`）— Edit | Locks the display out immediately; it returns to the pairing screen on next reload. |
 
 Permissions come through roles. If something is missing, ask an administrator.
 

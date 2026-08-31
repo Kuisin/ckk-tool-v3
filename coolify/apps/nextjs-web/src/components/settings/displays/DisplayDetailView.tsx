@@ -13,7 +13,9 @@ import {
   Badge,
   Group,
   Paper,
+  SegmentedControl,
   Select,
+  Slider,
   Stack,
   Tabs,
   Text,
@@ -25,11 +27,13 @@ import { notifications } from "@mantine/notifications";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import {
+  activateDisplay,
   deleteDisplay,
   revokeDisplay,
   setDisplayEnabled,
+  unlinkDisplay,
   updateDisplay,
-} from "@/app/(dashboard)/settings/displays/actions";
+} from "@/app/(dashboard)/settings/kiosk-devices/displays/actions";
 import { useFormat } from "@/components/layout/PreferencesProvider";
 import { AppTabs } from "@/components/ui/AppTabs";
 import { DangerButton, SecondaryButton } from "@/components/ui/buttons";
@@ -45,6 +49,8 @@ import type { DisplayDetail } from "@/lib/displays-admin";
 import { useDisplayPresence } from "./useDisplayPresence";
 
 const STATUS_LABEL: Record<string, { label: string; color: string }> = {
+  PENDING: { label: "リンク待ち", color: "gray" },
+  LINKED: { label: "有効化待ち", color: "yellow" },
   ACTIVE: { label: "有効", color: "green" },
   DISABLED: { label: "一時停止", color: "gray" },
   REVOKED: { label: "失効", color: "red" },
@@ -76,6 +82,7 @@ export function DisplayDetailView({
     display.plantId ? String(display.plantId) : null,
   );
   const [profileId, setProfileId] = useState<string | null>(display.profileId);
+  const [scalePercent, setScalePercent] = useState(display.scalePercent);
 
   const online =
     display.status === "ACTIVE" &&
@@ -113,6 +120,7 @@ export function DisplayDetailView({
           location,
           plantId: plantId ? Number(plantId) : null,
           profileId,
+          scalePercent,
         }),
       "保存しました",
     );
@@ -141,7 +149,7 @@ export function DisplayDetailView({
         run(
           () => deleteDisplay(display.id),
           "削除しました",
-          () => router.push("/settings/displays"),
+          () => router.push("/settings/kiosk-devices"),
         ),
     });
 
@@ -150,6 +158,16 @@ export function DisplayDetailView({
       <PageHeader
         actions={
           <Group gap="xs">
+            {display.status === "LINKED" && (
+              <SecondaryButton
+                loading={pending}
+                onClick={() =>
+                  run(() => activateDisplay(display.id), "有効化しました")
+                }
+              >
+                有効化
+              </SecondaryButton>
+            )}
             {display.status === "ACTIVE" && (
               <SecondaryButton
                 loading={pending}
@@ -163,6 +181,16 @@ export function DisplayDetailView({
                 一時停止
               </SecondaryButton>
             )}
+            {display.status !== "PENDING" && display.status !== "REVOKED" && (
+              <SecondaryButton
+                loading={pending}
+                onClick={() =>
+                  run(() => unlinkDisplay(display.id), "リンクを解除しました")
+                }
+              >
+                リンク解除
+              </SecondaryButton>
+            )}
             {display.status === "DISABLED" && (
               <SecondaryButton
                 loading={pending}
@@ -173,20 +201,20 @@ export function DisplayDetailView({
                 再開
               </SecondaryButton>
             )}
-            {display.status !== "REVOKED" ? (
-              <DangerButton loading={pending} onClick={confirmRevoke}>
-                失効
-              </DangerButton>
-            ) : (
+            {display.status === "REVOKED" || display.status === "PENDING" ? (
               <DangerButton loading={pending} onClick={confirmDelete}>
                 削除
+              </DangerButton>
+            ) : (
+              <DangerButton loading={pending} onClick={confirmRevoke}>
+                失効
               </DangerButton>
             )}
           </Group>
         }
         breadcrumbs={[
           { label: "システム" },
-          { label: "ディスプレイ管理", href: "/settings/displays" },
+          { label: "ディスプレイ管理", href: "/settings/kiosk-devices" },
           { label: display.name ?? "ディスプレイ" },
         ]}
         title={display.name ?? "（名称未設定）"}
@@ -205,10 +233,21 @@ export function DisplayDetailView({
         </Badge>
       </Group>
 
+      {display.status === "PENDING" && (
+        <Alert color="gray">
+          このプロファイルはまだ画面と結びついていません。ディスプレイの画面に
+          出ているリンクコードを、一覧の「リンク」から入力してください。
+        </Alert>
+      )}
+      {display.status === "LINKED" && (
+        <Alert color="yellow">
+          画面とリンクしました。「有効化」を押すと表示を開始します。
+        </Alert>
+      )}
       {display.status === "REVOKED" && (
         <Alert color="red">
           このディスプレイは失効しています。もう一度使うには、現地の画面に出る
-          QR コードを読み取って登録し直してください。
+          リンクコードで登録し直してください。
         </Alert>
       )}
 
@@ -225,11 +264,17 @@ export function DisplayDetailView({
             value={display.profileName ?? "未割当"}
           />
           <FieldValue
-            label="登録"
+            label="リンク"
+            value={display.linkedAt ? fmt.dateTime(display.linkedAt) : "—"}
+          />
+          <FieldValue
+            label="有効化"
             value={
-              display.pairedAt
-                ? `${fmt.dateTime(display.pairedAt)}${
-                    display.pairedByName ? `（${display.pairedByName}）` : ""
+              display.activatedAt
+                ? `${fmt.dateTime(display.activatedAt)}${
+                    display.activatedByName
+                      ? `（${display.activatedByName}）`
+                      : ""
                   }`
                 : "—"
             }
@@ -286,9 +331,11 @@ export function DisplayDetailView({
                 searchable
                 value={profileId}
               />
+
+              <ScaleField onChange={setScalePercent} value={scalePercent} />
               <FormActions
                 loading={pending}
-                onCancel={() => router.push("/settings/displays")}
+                onCancel={() => router.push("/settings/kiosk-devices")}
                 onSave={save}
               />
             </Stack>
@@ -319,6 +366,64 @@ export function DisplayDetailView({
           <AuditTimeline entries={audit} />
         </Tabs.Panel>
       </AppTabs>
+    </Stack>
+  );
+}
+
+/**
+ * 表示倍率の入力。
+ *
+ * **画面の大きさと見る距離に合わせる微調整**なので、数値を打たせるより
+ * 「小さめ / 標準 / 大きめ」を押して、必要なら細かく動かせる形にする。
+ * 現場の管理者は「何 % が正解か」を知らないし、知る必要もない —
+ * 壁を見ながら合わせるものだから。
+ */
+function ScaleField({
+  value,
+  onChange,
+}: {
+  value: number;
+  onChange: (value: number) => void;
+}) {
+  // よく使う 3 つ。ここに無い値のときは選択なしにして、スライダーだけ効かせる
+  const PRESETS = [
+    { value: "85", label: "小さめ" },
+    { value: "100", label: "標準" },
+    { value: "125", label: "大きめ" },
+  ];
+  const preset = PRESETS.some((p) => p.value === String(value))
+    ? String(value)
+    : "";
+
+  return (
+    <Stack gap="xs">
+      <Text fw={500} size="sm">
+        表示倍率
+      </Text>
+      <Text c="dimmed" size="xs">
+        画面の大きさと、どのくらい離れて見るかに合わせて調整します。
+        大きくすると 1 画面に入る件数は減り、あふれた分はページ送りになります。
+      </Text>
+      <SegmentedControl
+        data={PRESETS}
+        onChange={(v) => onChange(Number(v))}
+        value={preset}
+      />
+      <Slider
+        label={(v) => `${v}%`}
+        marks={[
+          { value: 50, label: "50%" },
+          { value: 100, label: "100%" },
+          { value: 150, label: "150%" },
+          { value: 200, label: "200%" },
+        ]}
+        max={200}
+        mb="lg"
+        min={50}
+        onChange={onChange}
+        step={5}
+        value={value}
+      />
     </Stack>
   );
 }

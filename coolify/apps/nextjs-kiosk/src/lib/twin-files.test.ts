@@ -38,6 +38,7 @@ const TWINS = [
   "login-attempt-core.ts",
   "login-attempt-core.test.ts",
   "display-content.ts",
+  "display-templates.ts",
 ];
 
 describe("twin files (nextjs-web ⇄ nextjs-kiosk)", () => {

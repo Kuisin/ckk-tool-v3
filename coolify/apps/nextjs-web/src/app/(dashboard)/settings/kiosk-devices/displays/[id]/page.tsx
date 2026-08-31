@@ -17,7 +17,7 @@ export default async function DisplayDetailPage({
 }: {
   params: Promise<{ id: string }>;
 }) {
-  const denied = await requireAppRead("displays");
+  const denied = await requireAppRead("kiosk-devices");
   if (denied) return denied;
 
   const { id } = await params;
