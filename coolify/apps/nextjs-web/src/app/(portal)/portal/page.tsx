@@ -25,9 +25,17 @@ export default async function PortalHomePage() {
           <Text c="dimmed" size="sm">
             自社宛の書類をご覧いただけます。
           </Text>
-          <Anchor href="/portal/documents" size="sm">
-            書類の一覧を開く
-          </Anchor>
+          <Stack gap={4}>
+            <Anchor href="/portal/documents" size="sm">
+              書類（見積書・注文請書・納品書・請求書）
+            </Anchor>
+            <Anchor href="/portal/orders" size="sm">
+              注文の進捗
+            </Anchor>
+            <Anchor href="/portal/forms" size="sm">
+              フォームの回答
+            </Anchor>
+          </Stack>
         </Stack>
       </Card>
       <PortalLogoutButton />
