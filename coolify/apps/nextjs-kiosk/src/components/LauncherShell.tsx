@@ -25,7 +25,7 @@ import {
 import { IconApps, IconLayoutGrid, IconLogout } from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { LOCALE_LABELS, LOCALES } from "@/lib/i18n";
+import { fillMessage, LOCALE_LABELS, LOCALES } from "@/lib/i18n";
 import { playLogoutSound } from "@/lib/sound";
 import { ActivityMonitor } from "./ActivityMonitor";
 import { useI18n } from "./I18nProvider";
@@ -88,7 +88,7 @@ export function LauncherShell({ displayName, apps }: Props) {
                 {displayName.slice(0, 1)}
               </Avatar>
               <Text fw={600} size="lg" truncate>
-                {m.launcher.greeting(displayName)}
+                {fillMessage(m.launcher.greeting, { name: displayName })}
               </Text>
             </Group>
             <Group gap="sm" wrap="nowrap">

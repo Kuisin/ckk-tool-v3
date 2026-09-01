@@ -30,6 +30,7 @@ import {
 } from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { fillMessage } from "@/lib/i18n";
 import type { MyStepView } from "@/lib/steps";
 import type { StepBucket } from "@/lib/steps-core";
 import { ActivityMonitor } from "../ActivityMonitor";
@@ -80,7 +81,7 @@ export function StepListView({ steps, upcomingCount, completedSteps }: Props) {
           <Group gap="sm" wrap="nowrap">
             {upcomingCount > 0 && (
               <Badge color="gray" size="lg" variant="light">
-                {m.steps.upcoming(upcomingCount)}
+                {fillMessage(m.steps.upcoming, { n: upcomingCount })}
               </Badge>
             )}
             <Button
@@ -142,7 +143,9 @@ export function StepListView({ steps, upcomingCount, completedSteps }: Props) {
             >
               {showCompleted
                 ? m.steps.hideCompleted
-                : m.steps.showCompleted(completedSteps.length)}
+                : fillMessage(m.steps.showCompleted, {
+                    n: completedSteps.length,
+                  })}
             </Button>
             {showCompleted &&
               completedSteps.map((step) => (
@@ -174,7 +177,7 @@ function StepCard({ step }: { step: MyStepView }) {
         <Group align="flex-start" justify="space-between" wrap="nowrap">
           <Stack gap={4} style={{ minWidth: 0 }}>
             <Text c="dimmed" size="sm">
-              {m.steps.card.workOrder(step.workOrderNumber)}
+              {fillMessage(m.steps.card.workOrder, { n: step.workOrderNumber })}
               {step.plantName ? ` ・ ${step.plantName}` : ""}
               {step.workLocationName ? ` ・ ${step.workLocationName}` : ""}
             </Text>
@@ -188,26 +191,32 @@ function StepCard({ step }: { step: MyStepView }) {
               {step.plannedStartAt && (
                 <Text c="dimmed" size="sm">
                   {step.plannedEndAt
-                    ? m.steps.card.plannedTime(
-                        step.plannedStartAt,
-                        step.plannedEndAt,
-                      )
+                    ? fillMessage(m.steps.card.plannedTime, {
+                        start: step.plannedStartAt,
+                        end: step.plannedEndAt,
+                      })
                     : step.plannedStartAt}
                 </Text>
               )}
               {step.plannedQuantityForMe != null && (
                 <Text c="dimmed" size="sm">
-                  {m.steps.card.plannedQty(step.plannedQuantityForMe)}
+                  {fillMessage(m.steps.card.plannedQty, {
+                    n: step.plannedQuantityForMe,
+                  })}
                 </Text>
               )}
               {step.inputQuantity != null ? (
                 <Text c="dimmed" size="sm">
-                  {m.steps.card.inputRecorded(step.inputQuantity)}
+                  {fillMessage(m.steps.card.inputRecorded, {
+                    n: step.inputQuantity,
+                  })}
                 </Text>
               ) : (
                 step.expectedInputQuantity != null && (
                   <Text c="dimmed" size="sm">
-                    {m.steps.card.expectedInput(step.expectedInputQuantity)}
+                    {fillMessage(m.steps.card.expectedInput, {
+                      n: step.expectedInputQuantity,
+                    })}
                   </Text>
                 )
               )}
