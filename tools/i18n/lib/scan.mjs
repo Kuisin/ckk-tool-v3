@@ -51,18 +51,23 @@ const EXCLUDED = [
 ];
 
 /**
- * 文言そのものを持つと決めてあるファイル（enum-labels.ts の方式 — 値の隣に
- * ja/en/zh が並ぶ）。ロケールキーの値は常に除外するので判定には要らないが、
- * **取りこぼしを目視で確かめる**ために名前を残してある。
+ * 日本語が **ja の原文であると同時に内部キー** になっているファイル。
+ *
+ * `app-list.ts` の `label: "見積書"` は表示名でもあり、`APP_LABEL_I18N` を
+ * 引くキーでもあり、`CATEGORY_COLORS` のキーでもある。だからベタ書きが正しく、
+ * 走査では「訳が別ファイルにある」ことを判定できない（`ja:` のような目印が
+ * 無い）。ここに挙げたファイルは丸ごと数えない。
+ *
+ * **除外して良いのは、対訳の抜けを別のテストが落とすときだけ。**
+ * app-list.ts は `src/lib/app-list.test.ts` が全アプリ・全カテゴリに en/zh が
+ * あることを検査している。テストの無いファイルをここに足さないこと — 検出も
+ * 保証も無くなり、静かに未翻訳が増える。
+ *
+ * enum-labels.ts / permission-labels.ts / privileged-operations.ts /
+ * StatusBadge.tsx はここに要らない。値の隣に `ja:` `en:` `zh:` が並ぶ形なので、
+ * ロケールキーの判定（isLocaleValue）だけで 0 件になる。
  */
-const CATALOG_FILES = [
-  /\/lib\/enum-labels\.ts$/,
-  /\/lib\/permission-labels\.ts$/,
-  /\/lib\/privileged-operations\.ts$/,
-  /\/lib\/app-list\.ts$/,
-  /\/lib\/i18n\//,
-  /\/components\/ui\/StatusBadge\.tsx$/,
-];
+const SOURCE_LABEL_FILES = [/\/lib\/app-list\.ts$/];
 
 /**
  * コメントと文字列を分ける 1 パスの字句解析。
@@ -269,6 +274,7 @@ export function scanDir(root, { extensions = [".ts", ".tsx"] } = {}) {
     for (const entry of entries) {
       const full = path.join(dir, entry.name);
       if (EXCLUDED.some((re) => re.test(full))) continue;
+      if (SOURCE_LABEL_FILES.some((re) => re.test(full))) continue;
       if (entry.isDirectory()) {
         walk(full);
         continue;
@@ -283,4 +289,4 @@ export function scanDir(root, { extensions = [".ts", ".tsx"] } = {}) {
   return findings;
 }
 
-export { JAPANESE, CATALOG_FILES, EXCLUDED };
+export { JAPANESE, SOURCE_LABEL_FILES, EXCLUDED };

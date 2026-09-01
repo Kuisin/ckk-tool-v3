@@ -204,6 +204,8 @@ DB データは**訳す対象ではないが、入れ物の作り方は決めて
 | SY0E | AI プロバイダ | AI provider | AI 服务商 |
 | SY0F | 通知メール | Notification email | 通知邮件 |
 | SY0G | 特権アクセス | Privileged access | 特权访问 |
+| SY0H | 取引先ポータル | Partner portal | 业务伙伴门户 |
+| SY0G | 特権アクセス | Privileged access | 特权访问 |
 | SY0H | 取引先ポータル | Partner portal | 客户门户 |
 
 ### 3.3 書類・番号
