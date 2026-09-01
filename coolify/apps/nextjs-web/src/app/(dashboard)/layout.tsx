@@ -91,8 +91,12 @@ export default async function DashboardLayout({
         同じ app.users の設定を見る（src/i18n/request.ts / getCurrentPreferences）。
         NextIntlClientProvider はサーバーで描画されるとリクエストの locale /
         messages / timeZone をそのまま引き継ぐので、props は要らない。
-        ダッシュボード配下だけに掛ける — 公開マニュアルは翻訳対象外で、
-        ここで包むと静的化を落としてしまうため。
+
+        `app/providers.tsx` の**既定（ja・静的）プロバイダの内側にネストする**
+        ので、ここが実効の値になる——利用者ごとの言語切り替えが効くのは
+        ダッシュボード配下だけ。公開マニュアル・取引先ポータルは
+        `getCurrentPreferences()`（DB 読み取り）を経由しないので、静的化は
+        壊れない。
       */}
       <NextIntlClientProvider>
         <PreferencesProvider prefs={prefs}>

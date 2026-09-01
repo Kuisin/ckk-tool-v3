@@ -1,6 +1,7 @@
 import { Group, Paper, Stack, Text, Title } from "@mantine/core";
 import { IconPencilOff, IconSearchOff } from "@tabler/icons-react";
 import { redirect } from "next/navigation";
+import { getTranslations } from "next-intl/server";
 import {
   FormResponseView,
   type RelatedTable,
@@ -19,7 +20,6 @@ import {
 } from "@/lib/forms";
 import { NO_SHARE_ACCESS } from "@/lib/share-grants";
 import { responseInScope } from "@/lib/share-grants-core";
-import { getTr } from "@/lib/ui-text-server";
 import { getServerFormatters } from "@/lib/user-preferences";
 
 export const dynamic = "force-dynamic";
@@ -48,7 +48,7 @@ export default async function MyResponsePage({
 }: {
   params: Promise<{ code: string; response: string }>;
 }) {
-  const tr = await getTr();
+  const tr = await getTranslations();
   const { code, response: responseNumber } = await params;
 
   const userId = await sessionUserId();
@@ -70,12 +70,10 @@ export default async function MyResponsePage({
       <FormStateScreen
         actions={[{ ...HOME, variant: "filled" }]}
         color="gray"
-        description={tr(
-          "URL が間違っているか、この回答を見る権限がありません。",
-        )}
+        description={tr("f.page.theUrlIsWrongOrYou")}
         formTitle={null}
         icon={<IconSearchOff size={24} />}
-        title={tr("回答が見つかりません")}
+        title={tr("f.page.responseNotFound")}
       />
     );
   }
@@ -133,7 +131,7 @@ export default async function MyResponsePage({
           )}
           <Text c="dimmed" size="xs">
             {isDraft
-              ? tr("まだ提出していません")
+              ? tr("f.page.notSubmittedYet")
               : row.submittedAt
                 ? `提出 ${fmt.dateTime(row.submittedAt)}`
                 : ""}
@@ -149,7 +147,7 @@ export default async function MyResponsePage({
           withBorder
         >
           <Text fw={600} size="sm">
-            {tr("差し戻されました")}
+            {tr("f.page.itWasSentBack")}
           </Text>
           <Text size="sm" style={{ whiteSpace: "pre-wrap" }}>
             {row.rejectReason}
@@ -178,13 +176,7 @@ export default async function MyResponsePage({
         <Group gap="xs">
           <IconPencilOff size={14} />
           <Text c="dimmed" size="xs">
-            {tr(
-              tr(
-                tr(
-                  "編集できる期間が終わっています。直したい場合は作成者に連絡してください。",
-                ),
-              ),
-            )}
+            {tr("f.page.theEditingWindowHasClosedContact")}
           </Text>
         </Group>
       )}

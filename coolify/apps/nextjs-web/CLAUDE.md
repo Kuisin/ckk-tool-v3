@@ -299,38 +299,63 @@ the DB** — `time_zone` only changes how they are read back for display.
 user's DB setting, not the URL. `src/i18n/request.ts` (`getRequestConfig`) reads
 the preferences and returns `locale` / `messages` / `timeZone`;
 `next.config.ts` wires it with `createNextIntlPlugin`. Catalogs are
-`messages/{ja,en,zh}.json` — **ja is the source of truth**, and `src/global.d.ts`
-augments `AppConfig["Messages"]` with `typeof ja` so a wrong key fails the build.
-Server: `await getTranslations("shell")`. Client: `useTranslations("shell")`.
-`NextIntlClientProvider` is mounted in the **`(dashboard)` layout only** — do not
-move it to the root layout, or the public `/manual` pages lose static rendering
-(the request config touches the session).
+`messages/{ja,en,zh}.json` — **ja is the source of truth**. Server:
+`await getTranslations("ns")`. Client: `useTranslations("ns")`.
+`NextIntlClientProvider` is mounted **twice, nested**: `app/providers.tsx`
+carries a static, DB-independent default (`locale="ja"`, the static `ja.json`
+import, `timeZone="Asia/Tokyo"`) at the root, so real `useTranslations()` never
+throws outside the dashboard (`/_not-found`, the portal, public forms); the
+`(dashboard)` layout's own provider (no props — inherits the request-scoped
+locale/messages/timeZone) nests inside it and wins for every page under
+`(dashboard)`, so per-user language switching is unaffected. Do not remove the
+root one or move the dashboard one to the root — either breaks something (a
+build-time crash outside the dashboard, or lost static rendering for `/manual`
+et al., respectively).
+
+**Key-count ceiling.** Past ~5,700 leaf keys, next-intl's `AppConfig["Messages"]`
+type augmentation (enumerating every valid dotted path as a literal union) hits
+TypeScript's complexity ceiling and produces false `TS2590`/`TS2345` errors even
+for keys that exist. `src/global.d.ts` therefore keeps only `Locale` in
+`AppConfig`, not `Messages` — key existence is checked at **runtime** instead by
+`tools/i18n-unify/verify-keys.mjs` (`pnpm i18n:keys`, wired into CI), which scans
+every literal `tr("...")`/`translate("...")` call site and confirms the key
+exists in `messages/ja.json`.
 
 **文言の置き場は `messages/{ja,en,zh}.json` の 1 本だけ。** コードの中に訳を
-書かない（2026-09-01 に統合。以前は next-intl のカタログ / コードの中の
-`Record<Locale, string>` / 生成物の ja 鍵辞書 の 3 か所に散っていた）。
-読み口は **`lib/messages.ts`** に閉じている:
+書かない。読み口は 2 通り:
 
 | 名前空間 | 中身 | 引き方 |
 |---|---|---|
-| `common` / `shell` / `preferences` / … | 変数を含む文（ICU） | `useTranslations("shell")` / `await getTranslations("shell")` |
-| `enum` / `status` / `permission` / `privilegedOp` / `pdf` | 値に付くラベル | `xxxLabel(value, locale)`（中身は `label()` / `labelOptions()`）|
-| `ui` | 変数の無い決まり文句。**鍵は日本語の原文** | `useTr()` / `await getTr()` / `translate()` |
+| `common` / `shell` / `preferences` / … | 画面の文言（ICU、変数の有無を問わない） | `useTranslations("ns")` / `await getTranslations("ns")` |
+| `enum` / `status` / `permission` / `privilegedOp` / `pdf` | 値に付くラベル | `xxxLabel(value, locale)`（内部は `lib/messages.ts` が next-intl の `createTranslator` — `next-intl` は `use-intl/core` を re-export しているので依存追加なし — に委譲）|
 
-- **`ui` だけ平ら**にしてある。鍵が日本語の原文で、44 件は `.` を含む
-  （`直径は 0.1〜99.9mm…`）。next-intl の `t("a.b")` は `.` を入れ子の区切りと
-  して読むので入れ子には置けない。`tr()` は**直接プロパティを引く**ので安全で、
-  ついでに ICU を通らないから `^[A-Z]{2}-d{4}$` のような正規表現の例も壊れない。
+以前あった 3 つ目の層（`ui` 名前空間 = ja の原文そのものを鍵にした平らな決まり
+文句辞書、`src/lib/ui-text.ts` / `useTr()` / `getTr()`）は 2026-09-01 に退役した
+——6,000 件超の呼び出しを、ファイルパス→名前空間・英訳→leaf キーで発番した
+本物の next-intl 鍵へ一括移行した（道具一式は `tools/i18n-unify/`、退役の経緯
+は `tools/i18n/README.md`）。静的な鍵しか引けない next-intl の制約上、
+`tr(result.error)` のように**実行時の文字列**を渡していた呼び出し（約 190 件、
+ほぼ `ActionResult.error` 系）は鍵に変換できないため `tr(...)` を剥がして
+生の文字列をそのまま表示する形に倒した——訳されない（既知の残課題。サーバー
+側で結果を返す前に訳す設計へ変える、が未着手）が、存在しない鍵の診断文字列
+よりましという判断。パンくず（`PageHeader.tsx` の `Crumb` 文字列）も同じ理由
+で同じ扱い。
+
 - **3 言語で鍵の集合が完全一致**していること（`lib/user-preferences-core.test.ts`）。
   意図して空にする鍵はそこの許可リストに理由付きで足す（現状は「御中」だけ —
   en/zh では何も出さないのが正しい）。
+- **ICU が壊れる `{...}` を混ぜない。** `createTranslator`/`t()` は文字列を
+  ICU MessageFormat として解釈する。正規表現の例文（`^[A-Z]{2}-d{4}$`）を
+  そのまま入れて実際に壊れたことがある——`{name}`（識別子 1 つ）の形だけが
+  安全。`src/lib/messages.test.ts` の「ICU 互換性（退行防止）」が機械で見る。
 - 新しい文言は `messages/ja.json` に足してから en/zh を埋める。ja が正。
 - 人が訳す面は **Weblate**（`coolify/common/weblate/`）。`dev` を読み、
   `weblate-translations` ブランチへ push して PR を開く。
 
-**画面にはまだ日本語の直書きが残っている**が、それは壊れていない — `ui` の鍵が
-日本語なので、表示側が `tr()` を通せば後から訳せる（`lib/*.ts` や `actions.ts`
-は日本語のまま返してよい）。残数は `node tools/i18n/i18n-scan.mjs`。
+**画面にはまだ日本語の直書きが残っている**（`lib/*.ts` のエラーメッセージ、
+`field-help.ts` の説明文など）——`ui` 辞書を退役したので、これはもう
+「後から訳せる」設計ではなく、包む作業そのものが要る。残数と内訳は
+`node tools/i18n/i18n-scan.mjs`（ratchet — 増えたら CI が落ちる）。
 
 **Dates/times are NOT next-intl's job here.** The user picks an explicit order
 (`YYYY/MM/DD` … `MM/DD/YYYY`) which no `Intl` option expresses, so `lib/format.ts`

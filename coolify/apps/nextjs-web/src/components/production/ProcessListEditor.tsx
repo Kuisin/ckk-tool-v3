@@ -38,11 +38,10 @@ import {
   IconInfoCircle,
   IconWand,
 } from "@tabler/icons-react";
-import { useLocale } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { useMemo, useState } from "react";
 import { EditButton, SecondaryButton } from "@/components/ui/buttons";
 import { FormSection } from "@/components/ui/shells";
-import { useTr } from "@/hooks/useTr";
 import { useIsMobile } from "@/hooks/useViewport";
 import {
   lotInputModeLabel,
@@ -145,7 +144,7 @@ export function ProcessListView({
   /** 「工程を編集」— エディタ表示へ切り替える。 */
   onEdit: () => void;
 }) {
-  const tr = useTr();
+  const tr = useTranslations();
   const locale = useLocale();
   const isMobile = useIsMobile();
   const stepById = useMemo(
@@ -168,20 +167,18 @@ export function ProcessListView({
   return (
     <FormSection
       description={tr(
-        tr(
-          tr(
-            "選択した工程リストの構成です。工程・作業時間を変えるときは「工程を編集」を押してください（変更は保存時に新バージョンとして保存されます）。",
-          ),
-        ),
+        "production.processListEditor.theChosenStepListSComposition",
       )}
-      title={tr("工程・作業時間")}
+      title={tr("production.processListEditor.stepsAndWorkHours")}
     >
       <Group justify="flex-end" mb="xs">
-        <EditButton onClick={onEdit}>{tr("工程を編集")}</EditButton>
+        <EditButton onClick={onEdit}>
+          {tr("production.processListEditor.editTheStep")}
+        </EditButton>
       </Group>
       {orderedSelected.length === 0 ? (
         <Text c="dimmed" size="sm">
-          {tr("工程が未選択です")}
+          {tr("production.processListEditor.noStepIsSelected")}
         </Text>
       ) : (
         <Stack gap="xs">
@@ -197,7 +194,7 @@ export function ProcessListView({
             const place =
               execution === "OUTSOURCE"
                 ? (supplierLabel.get(loc?.supplierBpId ?? "") ??
-                  tr("外注先未定"))
+                  tr("production.processListEditor.subcontractorUndecided"))
                 : loc?.plantId
                   ? plantLabel.get(loc.plantId)
                   : null;
@@ -222,14 +219,18 @@ export function ProcessListView({
                   </Group>
                   <Group gap="sm" wrap="nowrap">
                     <Text className="tabular-nums" size="xs">
-                      {hours != null ? `${hours} h` : tr("作業時間なし")}
+                      {hours != null
+                        ? `${hours} h`
+                        : tr("production.processListEditor.noWorkHours")}
                     </Text>
                     <Badge
                       color={execution === "OUTSOURCE" ? "orange" : "gray"}
                       size="xs"
                       variant="outline"
                     >
-                      {execution === "OUTSOURCE" ? "外注" : tr("社内")}
+                      {execution === "OUTSOURCE"
+                        ? "外注"
+                        : tr("common.inHouse")}
                     </Badge>
                     {place && (
                       <Text c="dimmed" size="xs">
@@ -269,7 +270,7 @@ export function ProcessListEditor({
   /** フォーム側の selectedStepIds エラー表示。 */
   error?: string | null;
 }) {
-  const tr = useTr();
+  const tr = useTranslations();
   const locale = useLocale();
   const isMobile = useIsMobile();
   const stepById = useMemo(
@@ -384,7 +385,7 @@ export function ProcessListEditor({
             </Text>
             {s.isInspection && (
               <Badge color="blue" size="xs" variant="light">
-                {tr("検査")}
+                {tr("common.inspection")}
               </Badge>
             )}
             {s.isApprovalStep && (
@@ -394,7 +395,7 @@ export function ProcessListEditor({
             )}
             {s.isSyncCapable && (
               <Badge color="grape" size="xs" variant="light">
-                {tr("同期")}
+                {tr("production.processListEditor.sync")}
               </Badge>
             )}
             <Badge
@@ -407,8 +408,8 @@ export function ProcessListEditor({
               variant="outline"
             >
               {s.executionLocation === "INTERNAL_OR_OUTSOURCE"
-                ? tr("社内・外注")
-                : tr("社内")}
+                ? tr("production.processListEditor.inHouseOutsourced")
+                : tr("common.inHouse")}
             </Badge>
             {hint && (
               <Text c="dimmed" size="xs">
@@ -426,15 +427,9 @@ export function ProcessListEditor({
   return (
     <>
       <FormSection
-        description={tr(
-          tr(
-            tr(
-              "工程カタログから使用する工程を選択します。必須の随伴工程（検査・承認など）は選択時に自動追加されます。",
-            ),
-          ),
-        )}
+        description={tr("production.processListEditor.chooseTheStepsToUseFrom")}
         required
-        title={tr("工程選択")}
+        title={tr("production.processListEditor.selectSteps")}
       >
         {(blockers.length > 0 || warnings.length > 0) && (
           <Stack gap="xs" mb="md">
@@ -483,7 +478,7 @@ export function ProcessListEditor({
             必須工程を自動追加しました:{" "}
             {autoAdded
               .map((id) => stepById.get(id)?.nameJa ?? `工程#${id}`)
-              .join(tr("・"))}
+              .join(tr("common.s1"))}
           </Alert>
         )}
         {error && (
@@ -497,15 +492,11 @@ export function ProcessListEditor({
               <Stack gap="xs">
                 <Group gap={6}>
                   <Text c="blue" fw={600} size="xs">
-                    {tr("出し・受渡し（開始）")}
+                    {tr("production.processListEditor.issueAndHandoverStart")}
                   </Text>
                   <Text c="dimmed" size="xs">
                     {tr(
-                      tr(
-                        tr(
-                          "— 全ての工程はここから始まります（1 つだけ選択・必須）",
-                        ),
-                      ),
+                      "production.processListEditor.everyRouteStartsHereChooseExactly",
                     )}
                   </Text>
                 </Group>
@@ -534,15 +525,13 @@ export function ProcessListEditor({
               <Stack gap="xs">
                 <Group gap={6}>
                   <Text c="dimmed" fw={600} size="xs">
-                    {tr("出荷前検査（任意）")}
+                    {tr(
+                      "production.processListEditor.preShipmentInspectionOptional",
+                    )}
                   </Text>
                   <Text c="dimmed" size="xs">
                     {tr(
-                      tr(
-                        tr(
-                          "—\n                    追加すると常に最後に実行されます。出荷そのものは出荷書（SH01）で管理します",
-                        ),
-                      ),
+                      "production.processListEditor.onceAddedItAlwaysRunsLast",
                     )}
                   </Text>
                 </Group>
@@ -557,17 +546,15 @@ export function ProcessListEditor({
 
       <FormSection
         description={tr(
-          tr(
-            tr(
-              "実行順はカタログ既定順です（実際の実行可否は工程間依存の解決で決まります）。作業時間 (h) は任意 — 未入力は工程マスタの既定値。社内・外注可の工程は実施場所を選択できます。",
-            ),
-          ),
+          "production.processListEditor.theOrderIsTheCatalogDefault",
         )}
-        title={tr("選択済み工程・実施場所")}
+        title={tr(
+          "production.processListEditor.selectedStepsAndExecutionLocations",
+        )}
       >
         {orderedSelected.length === 0 ? (
           <Text c="dimmed" size="sm">
-            {tr("工程が未選択です")}
+            {tr("production.processListEditor.noStepIsSelected")}
           </Text>
         ) : (
           <Stack gap="xs">
@@ -610,9 +597,22 @@ export function ProcessListEditor({
                             value: "INHERIT",
                             label: `既定（${lotInputModeLabel(cat.lotInputMode ?? "NONE", locale)}）`,
                           },
-                          { value: "REQUIRED", label: tr("ロット必須") },
-                          { value: "OPTIONAL", label: tr("ロット任意") },
-                          { value: "NONE", label: tr("ロットなし") },
+                          {
+                            value: "REQUIRED",
+                            label: tr(
+                              "production.processListEditor.lotRequired",
+                            ),
+                          },
+                          {
+                            value: "OPTIONAL",
+                            label: tr(
+                              "production.processListEditor.lotOptional",
+                            ),
+                          },
+                          {
+                            value: "NONE",
+                            label: tr("production.processListEditor.noLot"),
+                          },
                         ]}
                         onChange={(v) =>
                           setLocation(stepId, {
@@ -635,7 +635,7 @@ export function ProcessListEditor({
                             workHours: v === "" || v == null ? null : Number(v),
                           })
                         }
-                        placeholder={tr("作業時間")}
+                        placeholder={tr("common.workHours")}
                         size="xs"
                         suffix=" h"
                         value={effectiveWorkHours(locations[stepId], cat) ?? ""}
@@ -645,8 +645,14 @@ export function ProcessListEditor({
                         <>
                           <SegmentedControl
                             data={[
-                              { value: "INTERNAL", label: tr("社内") },
-                              { value: "OUTSOURCE", label: tr("外注") },
+                              {
+                                value: "INTERNAL",
+                                label: tr("common.inHouse"),
+                              },
+                              {
+                                value: "OUTSOURCE",
+                                label: tr("common.outsourced"),
+                              },
                             ]}
                             onChange={(v) =>
                               setLocation(stepId, {
@@ -678,7 +684,9 @@ export function ProcessListEditor({
                               onChange={(v) =>
                                 setLocation(stepId, { supplierBpId: v })
                               }
-                              placeholder={tr("仕入先（外注先）")}
+                              placeholder={tr(
+                                "production.processListEditor.supplierSubcontractor",
+                              )}
                               searchable
                               size="xs"
                               value={loc.supplierBpId}
@@ -688,7 +696,7 @@ export function ProcessListEditor({
                         </>
                       ) : (
                         <Badge color="gray" size="xs" variant="outline">
-                          {tr("社内")}
+                          {tr("common.inHouse")}
                         </Badge>
                       )}
                     </Group>

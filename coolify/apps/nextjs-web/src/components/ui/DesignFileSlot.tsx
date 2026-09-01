@@ -15,8 +15,8 @@
 
 import { FileButton, Group, Stack, Text, TextInput } from "@mantine/core";
 import { IconUpload, IconX } from "@tabler/icons-react";
+import { useTranslations } from "next-intl";
 import { GhostButton, SecondaryButton } from "@/components/ui/buttons";
-import { useTr } from "@/hooks/useTr";
 
 export function DesignFileSlot({
   label,
@@ -42,7 +42,7 @@ export function DesignFileSlot({
   fullWidth?: boolean;
   error?: string;
 }) {
-  const tr = useTr();
+  const tr = useTranslations();
   return (
     <Stack gap={4}>
       <Text fw={500} size="sm">
@@ -66,7 +66,7 @@ export function DesignFileSlot({
               fullWidth={fullWidth}
               leftSection={<IconUpload size={14} />}
             >
-              {file ? "選び直す" : tr("ファイルを選択")}
+              {file ? "選び直す" : tr("common.selectAFile")}
             </SecondaryButton>
           )}
         </FileButton>
@@ -79,7 +79,7 @@ export function DesignFileSlot({
               leftSection={<IconX size={12} />}
               onClick={() => onPick(null)}
             >
-              {tr("取消")}
+              {tr("ui.designFileSlot.cancel")}
             </GhostButton>
           </Group>
         )}

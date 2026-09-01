@@ -22,6 +22,7 @@ import {
 } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
 import { IconCamera, IconDeviceMobile, IconTrash } from "@tabler/icons-react";
+import { useTranslations } from "next-intl";
 import { useRef, useState, useTransition } from "react";
 import {
   changePasswordAction,
@@ -41,7 +42,6 @@ import {
 } from "@/components/ui/ImageCropModal";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { UserAvatar } from "@/components/ui/UserAvatar";
-import { useTr } from "@/hooks/useTr";
 import { type LocalizedText, localized } from "@/lib/format";
 
 export interface ProfileData {
@@ -102,7 +102,7 @@ function deviceLabel(ua: string | null): string {
 }
 
 export function ProfileView({ user }: { user: ProfileData }) {
-  const tr = useTr();
+  const tr = useTranslations();
   const photoInputRef = useRef<HTMLInputElement>(null);
   const [avatarUrl, setAvatarUrl] = useState(user.avatarUrl);
   const [avatarThumbUrl, setAvatarThumbUrl] = useState(user.avatarThumbUrl);
@@ -145,14 +145,15 @@ export function ProfileView({ user }: { user: ProfileData }) {
         setAvatarThumbUrl(json.avatarThumbUrl);
         setCropTarget(null);
         notifications.show({
-          title: tr("設定しました"),
-          message: tr("プロフィール写真を更新しました"),
+          title: tr("common.saved3"),
+          message: tr("profile.profileView.theProfilePhotoWasUpdated"),
           color: "green",
         });
       } catch (err) {
         notifications.show({
-          title: tr("エラー"),
-          message: err instanceof Error ? err.message : tr("不明なエラー"),
+          title: tr("common.error2"),
+          message:
+            err instanceof Error ? err.message : tr("common.unknownError"),
           color: "red",
         });
       } finally {
@@ -168,14 +169,15 @@ export function ProfileView({ user }: { user: ProfileData }) {
         setAvatarUrl(null);
         setAvatarThumbUrl(null);
         notifications.show({
-          title: tr("削除しました"),
-          message: tr("プロフィール写真を削除しました"),
+          title: tr("common.deleted"),
+          message: tr("profile.profileView.theProfilePhotoWasRemoved"),
           color: "green",
         });
       } catch (err) {
         notifications.show({
-          title: tr("エラー"),
-          message: err instanceof Error ? err.message : tr("不明なエラー"),
+          title: tr("common.error2"),
+          message:
+            err instanceof Error ? err.message : tr("common.unknownError"),
           color: "red",
         });
       }
@@ -187,16 +189,16 @@ export function ProfileView({ user }: { user: ProfileData }) {
       const res = await updateEmailAction(email);
       if (res.ok) {
         notifications.show({
-          title: tr("保存しました"),
+          title: tr("common.saved2"),
           message: tr(
-            "メールアドレスを更新しました（通知メールの宛先になります）",
+            "profile.profileView.theEmailAddressWasUpdatedNotification",
           ),
           color: "green",
         });
       } else {
         notifications.show({
-          title: tr("エラー"),
-          message: tr(res.error),
+          title: tr("common.error2"),
+          message: res.error,
           color: "red",
         });
       }
@@ -206,8 +208,8 @@ export function ProfileView({ user }: { user: ProfileData }) {
   const savePassword = () => {
     if (newPassword !== newPassword2) {
       notifications.show({
-        title: tr("エラー"),
-        message: tr("新しいパスワードが一致しません"),
+        title: tr("common.error2"),
+        message: tr("profile.profileView.theNewPasswordsDoNotMatch"),
         color: "red",
       });
       return;
@@ -219,14 +221,14 @@ export function ProfileView({ user }: { user: ProfileData }) {
         setNewPassword("");
         setNewPassword2("");
         notifications.show({
-          title: tr("変更しました"),
-          message: tr("次回から新しいパスワードでログインしてください"),
+          title: tr("profile.profileView.changed"),
+          message: tr("profile.profileView.useTheNewPasswordFromNext"),
           color: "green",
         });
       } else {
         notifications.show({
-          title: tr("エラー"),
-          message: tr(res.error),
+          title: tr("common.error2"),
+          message: res.error,
           color: "red",
         });
       }
@@ -238,14 +240,14 @@ export function ProfileView({ user }: { user: ProfileData }) {
     if (res.ok) {
       setDevices((d) => d.filter((x) => x.id !== id));
       notifications.show({
-        title: tr("解除しました"),
-        message: tr("このデバイスへのプッシュ通知を停止しました"),
+        title: tr("profile.profileView.released"),
+        message: tr("profile.profileView.pushNotificationsToThisDeviceWere"),
         color: "green",
       });
     } else {
       notifications.show({
-        title: tr("エラー"),
-        message: tr(res.error),
+        title: tr("common.error2"),
+        message: res.error,
         color: "red",
       });
     }
@@ -254,8 +256,8 @@ export function ProfileView({ user }: { user: ProfileData }) {
   return (
     <Stack gap="md" maw={960} mx="auto" w="100%">
       <PageHeader
-        breadcrumbs={[{ label: tr("プロフィール") }]}
-        title={tr("プロフィール")}
+        breadcrumbs={[{ label: tr("common.profile") }]}
+        title={tr("common.profile")}
       />
 
       {/* 正方形に切り抜いてから保存する（表示は常に真円）。 */}
@@ -287,11 +289,11 @@ export function ProfileView({ user }: { user: ProfileData }) {
                 onClick={() => photoInputRef.current?.click()}
                 size="xs"
               >
-                {avatarUrl ? "変更" : tr("写真を設定")}
+                {avatarUrl ? "変更" : tr("profile.profileView.setAPhoto")}
               </GhostButton>
               {avatarUrl && (
                 <GhostButton
-                  aria-label={tr("プロフィール写真を削除")}
+                  aria-label={tr("profile.profileView.removeTheProfilePhoto")}
                   color="red"
                   disabled={photoPending}
                   onClick={deletePhoto}
@@ -313,18 +315,21 @@ export function ProfileView({ user }: { user: ProfileData }) {
           </Stack>
           <Stack className="min-w-0 flex-1" gap="md">
             <SimpleGrid cols={{ base: 1, md: 3 }} spacing="md">
-              <FieldValue label={tr("表示名")} value={user.displayName} />
-              <FieldValue label={tr("ユーザー名")} value={user.username} />
               <FieldValue
-                label={tr("種別")}
+                label={tr("common.displayName")}
+                value={user.displayName}
+              />
+              <FieldValue label={tr("common.username")} value={user.username} />
+              <FieldValue
+                label={tr("common.type2")}
                 value={USER_GROUP_LABEL[user.group] ?? user.group}
               />
               <FieldValue
-                label={tr("最終ログイン")}
+                label={tr("common.lastLogin")}
                 value={formatTs(user.lastLoginAt)}
               />
               <FieldValue
-                label={tr("承認グループ")}
+                label={tr("common.approvalGroup")}
                 value={
                   user.approvalGroups.length === 0 ? (
                     "—"
@@ -348,14 +353,10 @@ export function ProfileView({ user }: { user: ProfileData }) {
       <Paper p="md" radius="md" shadow="xs">
         <Stack gap="sm">
           <Text fw={600} size="sm">
-            {tr("メールアドレス")}
+            {tr("common.emailAddress")}
           </Text>
           <Text c="dimmed" size="xs">
-            {tr(
-              tr(
-                "通知メール（承認依頼・取込結果など）の宛先に使われます。空にすると\n            メール通知は届きません。",
-              ),
-            )}
+            {tr("profile.profileView.usedAsTheAddressForNotification")}
           </Text>
           <Group align="flex-end" gap="sm">
             <TextInput
@@ -380,24 +381,24 @@ export function ProfileView({ user }: { user: ProfileData }) {
         <Paper p="md" radius="md" shadow="xs">
           <Stack gap="sm">
             <Text fw={600} size="sm">
-              {tr("パスワード変更")}
+              {tr("profile.profileView.changePassword")}
             </Text>
             <SimpleGrid cols={{ base: 1, md: 3 }} spacing="sm">
               <PasswordInput
-                label={tr("現在のパスワード")}
+                label={tr("common.currentPassword")}
                 onChange={(e) => setCurrentPassword(e.currentTarget.value)}
                 value={currentPassword}
                 withAsterisk
               />
               <PasswordInput
-                description={tr("8 文字以上")}
-                label={tr("新しいパスワード")}
+                description={tr("profile.profileView.n8CharactersOrMore")}
+                label={tr("common.newPassword")}
                 onChange={(e) => setNewPassword(e.currentTarget.value)}
                 value={newPassword}
                 withAsterisk
               />
               <PasswordInput
-                label={tr("新しいパスワード（確認）")}
+                label={tr("common.newPasswordConfirm")}
                 onChange={(e) => setNewPassword2(e.currentTarget.value)}
                 value={newPassword2}
                 withAsterisk
@@ -410,7 +411,7 @@ export function ProfileView({ user }: { user: ProfileData }) {
                 onClick={savePassword}
                 type="button"
               >
-                {tr("パスワードを変更")}
+                {tr("profile.profileView.changeThePassword")}
               </SaveButton>
             </div>
           </Stack>
@@ -422,19 +423,15 @@ export function ProfileView({ user }: { user: ProfileData }) {
         <Stack gap="sm">
           <Group justify="space-between">
             <Text fw={600} size="sm">
-              {tr("プッシュ通知の登録デバイス")}
+              {tr("profile.profileView.devicesRegisteredForPush")}
             </Text>
             <SecondaryButton href="/profile/notifications">
-              {tr("通知設定")}
+              {tr("common.notificationSettings")}
             </SecondaryButton>
           </Group>
           {devices.length === 0 ? (
             <Text c="dimmed" size="xs">
-              {tr(
-                tr(
-                  "登録されたデバイスはありません。通知設定から有効化できます。",
-                ),
-              )}
+              {tr("profile.profileView.noDevicesAreRegisteredYouCan")}
             </Text>
           ) : (
             devices.map((d) => (
@@ -449,7 +446,7 @@ export function ProfileView({ user }: { user: ProfileData }) {
                   </Stack>
                 </Group>
                 <DangerButton onClick={() => removeDevice(d.id)}>
-                  {tr("解除")}
+                  {tr("common.release")}
                 </DangerButton>
               </Group>
             ))

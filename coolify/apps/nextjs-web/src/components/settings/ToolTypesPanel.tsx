@@ -11,12 +11,12 @@
 import { Badge, Group, Stack, Text, TextInput } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { useState, useTransition } from "react";
 import { addToolType } from "@/app/(dashboard)/settings/actions";
 import { CreateButton } from "@/components/ui/buttons";
 import { MasterListNav } from "@/components/ui/MasterListNav";
 import { ModalShell } from "@/components/ui/modals";
-import { useTr } from "@/hooks/useTr";
 import {
   type Criterion,
   criterionAppliesTo,
@@ -36,7 +36,7 @@ export function ToolTypesPanel({
   /** 工具種 → 価格試算（estimates）の使用件数。 */
   usage: Record<string, number>;
 }) {
-  const tr = useTr();
+  const tr = useTranslations();
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [addOpen, setAddOpen] = useState(false);
@@ -49,8 +49,10 @@ export function ToolTypesPanel({
     const value = newValue.trim().toUpperCase();
     if (!TOOL_TYPE_VALUE.test(value)) {
       notifications.show({
-        title: tr("エラー"),
-        message: tr("値は英大文字・数字・_（英大文字始まり）です"),
+        title: tr("common.error2"),
+        message: tr(
+          "settings.toolTypesPanel.useUppercaseLettersDigitsAndStarting",
+        ),
         color: "red",
       });
       return;
@@ -59,7 +61,7 @@ export function ToolTypesPanel({
       const res = await addToolType({ value, label: newLabel.trim() });
       if (res.ok) {
         notifications.show({
-          title: tr("追加しました"),
+          title: tr("common.added"),
           message: `工具種「${newLabel.trim()}」を追加しました。適用する計算基準を確認してください`,
           color: "green",
         });
@@ -70,8 +72,8 @@ export function ToolTypesPanel({
         router.refresh();
       } else {
         notifications.show({
-          title: tr("エラー"),
-          message: tr(res.error),
+          title: tr("common.error2"),
+          message: res.error,
           color: "red",
         });
       }
@@ -81,9 +83,7 @@ export function ToolTypesPanel({
   return (
     <>
       <MasterListNav
-        emptyMessage={tr(
-          "工具種がありません。「工具種を追加」から作成してください。",
-        )}
+        emptyMessage={tr("settings.toolTypesPanel.thereAreNoToolTypesCreate")}
         sections={[
           {
             items: toolTypes.map((t) => {
@@ -104,11 +104,11 @@ export function ToolTypesPanel({
                     </Text>
                     {t.builtin ? (
                       <Badge color="gray" size="xs" variant="light">
-                        {tr("組み込み")}
+                        {tr("common.builtIn")}
                       </Badge>
                     ) : (
                       <Badge color="blue" size="xs" variant="light">
-                        {tr("カスタム")}
+                        {tr("common.custom")}
                       </Badge>
                     )}
                   </Group>
@@ -120,43 +120,37 @@ export function ToolTypesPanel({
         ]}
         toolbar={
           <CreateButton onClick={() => setAddOpen(true)}>
-            {tr("工具種を追加")}
+            {tr("settings.toolTypesPanel.addAToolType")}
           </CreateButton>
         }
       />
 
       <ModalShell
-        confirmLabel={tr("追加")}
+        confirmLabel={tr("common.add")}
         loading={isPending}
         onClose={() => setAddOpen(false)}
         onConfirm={add}
         opened={addOpen}
-        title={tr("工具種を追加")}
+        title={tr("settings.toolTypesPanel.addAToolType")}
       >
         <Stack gap="sm">
           <Text c="dimmed" size="xs">
-            {tr(
-              tr(
-                tr(
-                  "追加した工具種は価格試算フォームの工具種として選択できます。計算入力は\n            丸棒系（参照単価ベース）です。現在「全工具種」に適用中の計算基準は\n            新しい種にも適用されます（追加後に調整できます）。",
-                ),
-              ),
-            )}
+            {tr("settings.toolTypesPanel.toolTypesYouAddBecomeSelectable")}
           </Text>
           <TextInput
             description={tr(
-              "英大文字・数字・_（例: BALL_END）。作成後は変更できません",
+              "settings.toolTypesPanel.uppercaseLettersDigitsAndEG",
             )}
-            label={tr("値")}
+            label={tr("common.value")}
             onChange={(e) => setNewValue(e.currentTarget.value.toUpperCase())}
             placeholder="BALL_END"
             value={newValue}
             withAsterisk
           />
           <TextInput
-            label={tr("表示名")}
+            label={tr("common.displayName")}
             onChange={(e) => setNewLabel(e.currentTarget.value)}
-            placeholder={tr("ボールエンド")}
+            placeholder={tr("settings.toolTypesPanel.ballEnd")}
             value={newLabel}
             withAsterisk
           />

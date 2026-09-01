@@ -23,6 +23,7 @@ import {
 } from "@mantine/core";
 import { modals } from "@mantine/modals";
 import { notifications } from "@mantine/notifications";
+import { useTranslations } from "next-intl";
 import { useState, useTransition } from "react";
 import {
   createLinkOnlyUrl,
@@ -30,7 +31,6 @@ import {
   type PortalLinkInput,
   revokeLink,
 } from "@/app/(dashboard)/settings/portal/actions";
-import { useTr } from "@/hooks/useTr";
 import type { PortalDocumentType } from "@/lib/portal-documents-core";
 import type { PortalLinkRow } from "@/lib/portal-links";
 
@@ -48,7 +48,7 @@ export function PortalShareCard({
   links: PortalLinkRow[];
   canMintLinkOnly: boolean;
 }) {
-  const tr = useTr();
+  const tr = useTranslations();
   const [pending, start] = useTransition();
   const [policy, setPolicy] = useState<"VERIFY" | "LINK_ONLY">("VERIFY");
   const [email, setEmail] = useState("");
@@ -58,11 +58,11 @@ export function PortalShareCard({
   function notify(res: { ok: boolean; error?: string }, ok: string) {
     notifications.show(
       res.ok
-        ? { color: "green", message: ok, title: tr("完了") }
+        ? { color: "green", message: ok, title: tr("common.completed") }
         : {
             color: "red",
-            message: res.error ?? tr("失敗しました"),
-            title: tr("エラー"),
+            message: res.error ?? tr("common.failed"),
+            title: tr("common.error2"),
           },
     );
   }
@@ -81,24 +81,21 @@ export function PortalShareCard({
             ? await createLinkOnlyUrl(input)
             : await createVerifyLink(input);
         if (res.ok) setUrl(res.data.url);
-        notify(res, tr("リンクを発行しました"));
+        notify(res, tr("settings.portal.theLinkWasIssued"));
       });
 
     if (policy === "LINK_ONLY" && MONEY_DOCS.includes(resourceType)) {
       modals.openConfirmModal({
-        title: tr("本人確認なしのリンクを発行します"),
+        title: tr("settings.portal.issuesALinkWithNoIdentity"),
         children: (
           <Text size="sm">
-            {tr(
-              tr(
-                tr(
-                  "このリンクを持つ人は誰でも、金額を含む内容を開けます。\n            転送された場合、その相手も開けます。",
-                ),
-              ),
-            )}
+            {tr("settings.portal.anyoneWithThisLinkCanOpen")}
           </Text>
         ),
-        labels: { cancel: tr("戻る"), confirm: tr("発行する") },
+        labels: {
+          cancel: tr("common.back2"),
+          confirm: tr("settings.portal.issue"),
+        },
         confirmProps: { color: "red" },
         onConfirm: run,
       });
@@ -111,10 +108,10 @@ export function PortalShareCard({
     <Card padding="md" radius="md" withBorder>
       <Stack gap="sm">
         <Text fw={600} size="sm">
-          {tr("ポータル共有")}
+          {tr("settings.portal.portalSharing")}
         </Text>
         <Text c="dimmed" size="xs">
-          {tr("この書類を取引先に見せるリンクを発行します。")}
+          {tr("settings.portal.issuesALinkThatShowsThis")}
         </Text>
 
         <Radio.Group
@@ -123,30 +120,18 @@ export function PortalShareCard({
         >
           <Stack gap={4}>
             <Radio
-              description={tr(
-                tr(
-                  tr(
-                    "登録アドレスへ確認コードを送ります。転送されても本人以外は開けません。",
-                  ),
-                ),
-              )}
-              label={tr("本人確認あり（推奨）")}
+              description={tr("settings.portal.aVerificationCodeGoesToThe")}
+              label={tr("settings.portal.withIdentityCheckRecommended")}
               value="VERIFY"
             />
             <Radio
               description={
                 canMintLinkOnly
-                  ? tr(
-                      tr(
-                        tr(
-                          "URL を知っていれば誰でも開けます。転送に注意してください。",
-                        ),
-                      ),
-                    )
-                  : tr("特権アクセス（SY0G）の承認が必要です")
+                  ? tr("settings.portal.anyoneWithTheUrlCanOpen")
+                  : tr("settings.portal.privilegedAccessSy0gApprovalIsRequired")
               }
               disabled={!canMintLinkOnly}
-              label={tr("リンクのみ")}
+              label={tr("settings.portal.linkOnly")}
               value="LINK_ONLY"
             />
           </Stack>
@@ -154,8 +139,8 @@ export function PortalShareCard({
 
         {policy === "VERIFY" ? (
           <TextInput
-            description={tr("このアドレスにだけ確認コードを送ります")}
-            label={tr("送信先メールアドレス")}
+            description={tr("settings.portal.theVerificationCodeGoesOnlyTo")}
+            label={tr("settings.portal.recipientEmailAddress")}
             onChange={(e) => setEmail(e.currentTarget.value)}
             type="email"
             value={email}
@@ -163,7 +148,7 @@ export function PortalShareCard({
         ) : null}
 
         <NumberInput
-          label={tr("有効期間（日）")}
+          label={tr("settings.portal.validPeriodDays")}
           max={180}
           min={1}
           onChange={(v) => setDays(Number(v) || 30)}
@@ -176,7 +161,7 @@ export function PortalShareCard({
             loading={pending}
             onClick={submit}
           >
-            {tr("リンクを発行")}
+            {tr("settings.portal.issueALink")}
           </Button>
         </Group>
 
@@ -184,7 +169,7 @@ export function PortalShareCard({
           <Alert color="blue" variant="light">
             <Stack gap={4}>
               <Text size="xs">
-                {tr("発行しました。この URL をお渡しください。")}
+                {tr("settings.portal.issuedHandOverThisUrl")}
               </Text>
               <Group gap="xs" wrap="nowrap">
                 <Text
@@ -197,7 +182,7 @@ export function PortalShareCard({
                 <CopyButton value={url}>
                   {({ copied, copy }) => (
                     <Button onClick={copy} size="compact-xs" variant="default">
-                      {copied ? "コピーしました" : tr("コピー")}
+                      {copied ? "コピーしました" : tr("common.copy2")}
                     </Button>
                   )}
                 </CopyButton>
@@ -209,7 +194,7 @@ export function PortalShareCard({
         {links.length > 0 ? (
           <Stack gap={4}>
             <Text c="dimmed" size="xs">
-              {tr("発行済みのリンク")}
+              {tr("settings.portal.issuedLinks")}
             </Text>
             {links.map((l) => (
               <Group gap="xs" justify="space-between" key={l.id} wrap="nowrap">
@@ -219,7 +204,9 @@ export function PortalShareCard({
                     size="xs"
                     variant="light"
                   >
-                    {l.policy === "VERIFY" ? "本人確認あり" : tr("リンクのみ")}
+                    {l.policy === "VERIFY"
+                      ? "本人確認あり"
+                      : tr("settings.portal.linkOnly")}
                   </Badge>
                   <Text c="dimmed" size="xs">
                     {l.maskedEmail ?? "—"} / {l.useCount} 回 /{" "}
@@ -228,7 +215,7 @@ export function PortalShareCard({
                 </Group>
                 {l.revokedAt ? (
                   <Badge color="gray" size="xs" variant="light">
-                    {tr("失効済み")}
+                    {tr("settings.portal.revoked")}
                   </Badge>
                 ) : (
                   <Button
@@ -236,13 +223,13 @@ export function PortalShareCard({
                     loading={pending}
                     onClick={() =>
                       start(async () =>
-                        notify(await revokeLink(l.id), tr("失効させました")),
+                        notify(await revokeLink(l.id), tr("common.revoked")),
                       )
                     }
                     size="compact-xs"
                     variant="subtle"
                   >
-                    {tr("失効")}
+                    {tr("common.revoke2")}
                   </Button>
                 )}
               </Group>

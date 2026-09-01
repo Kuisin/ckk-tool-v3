@@ -7,10 +7,10 @@
  */
 
 import { notifications } from "@mantine/notifications";
+import { useTranslations } from "next-intl";
 import { useTransition } from "react";
 import { deletePriceEntries } from "@/app/(dashboard)/sales/price-lists/actions";
 import { ConfirmModal, type ModalBaseProps } from "@/components/ui/modals";
-import { useTr } from "@/hooks/useTr";
 import type { PriceListEntry } from "./model";
 
 export function DeletePriceListModal({
@@ -22,11 +22,11 @@ export function DeletePriceListModal({
   target: PriceListEntry | null;
   onDone?: () => void;
 }) {
-  const tr = useTr();
+  const tr = useTranslations();
   const [isPending, startTransition] = useTransition();
   return (
     <ConfirmModal
-      confirmLabel={tr("削除する")}
+      confirmLabel={tr("common.delete2")}
       loading={isPending}
       message={
         target
@@ -40,29 +40,23 @@ export function DeletePriceListModal({
           const result = await deletePriceEntries([target.entryId]);
           if (result.ok) {
             notifications.show({
-              title: tr("削除しました"),
+              title: tr("common.deleted"),
               message: `「${target.productName}」の価格表を削除しました`,
               color: "green",
             });
             onDone?.();
           } else {
             notifications.show({
-              title: tr("エラー"),
-              message: tr(result.error),
+              title: tr("common.error2"),
+              message: result.error,
               color: "red",
             });
           }
         });
       }}
       opened={opened}
-      title={tr("価格表の削除")}
-      warning={tr(
-        tr(
-          tr(
-            "この価格表を参照中の見積書がある場合、単価の自動入力ができなくなります。",
-          ),
-        ),
-      )}
+      title={tr("sales.priceLists.deleteThePriceList")}
+      warning={tr("sales.priceLists.ifQuotesReferenceThisPriceList")}
     />
   );
 }

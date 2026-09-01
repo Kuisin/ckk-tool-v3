@@ -11,11 +11,11 @@
 import { Anchor, Group, Stack, Text } from "@mantine/core";
 import { IconRuler2 } from "@tabler/icons-react";
 import Link from "next/link";
+import { useTranslations } from "next-intl";
 import { useFormat } from "@/components/layout/PreferencesProvider";
 import { SecondaryButton } from "@/components/ui/buttons";
 import { DocNumber } from "@/components/ui/DocNumber";
 import { StatusBadge } from "@/components/ui/StatusBadge";
-import { useTr } from "@/hooks/useTr";
 import type { DesignRequestLink } from "./model";
 
 const BASE_PATH = "/sales/design-requests";
@@ -31,7 +31,7 @@ export function DesignRequestLinks({
   /** 起票できない理由（あると起票ボタンの代わりに文言を出す）。 */
   createDisabledReason?: string;
 }) {
-  const tr = useTr();
+  const tr = useTranslations();
   const fmt = useFormat();
 
   return (
@@ -66,7 +66,7 @@ export function DesignRequestLinks({
         </Stack>
       ) : (
         <Text c="dimmed" size="sm">
-          {tr("—（設計依頼はありません）")}
+          {tr("sales.designRequests.thereAreNoDesignRequests")}
         </Text>
       )}
 
@@ -80,7 +80,7 @@ export function DesignRequestLinks({
             href={createHref}
             leftSection={<IconRuler2 size={14} />}
           >
-            {tr("設計依頼を起票")}
+            {tr("common.raiseADesignRequest")}
           </SecondaryButton>
         </Group>
       ) : null}

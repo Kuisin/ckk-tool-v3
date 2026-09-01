@@ -18,6 +18,7 @@ import {
   IconTrash,
 } from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { useMemo, useState, useTransition } from "react";
 import {
   deleteMaterials,
@@ -29,7 +30,6 @@ import { DocNumber } from "@/components/ui/DocNumber";
 import { openConfirm } from "@/components/ui/modals";
 import { NewButton } from "@/components/ui/NewButton";
 import { ListShell } from "@/components/ui/shells";
-import { useTr } from "@/hooks/useTr";
 import { useUrlSelectState, useUrlStringState } from "@/hooks/useUrlState";
 import { useIsMobile } from "@/hooks/useViewport";
 import { matchesKeywordQuery } from "@/lib/master-keywords";
@@ -62,7 +62,7 @@ const STATUS_OPTIONS = [
 ];
 
 export function MaterialTable({ rows }: { rows: MaterialRow[] }) {
-  const tr = useTr();
+  const tr = useTranslations();
   const router = useRouter();
   const isMobile = useIsMobile();
   const [, startTransition] = useTransition();
@@ -130,15 +130,15 @@ export function MaterialTable({ rows }: { rows: MaterialRow[] }) {
       );
       if (result.ok) {
         notifications.show({
-          title: isActive ? "有効化しました" : tr("無効化しました"),
+          title: isActive ? "有効化しました" : tr("common.disabled2"),
           message: `${targets.length}件の素材を${isActive ? "有効化" : "無効化"}しました`,
           color: "green",
         });
         router.refresh();
       } else {
         notifications.show({
-          title: tr("エラー"),
-          message: tr(result.error),
+          title: tr("common.error2"),
+          message: result.error,
           color: "red",
         });
       }
@@ -147,23 +147,23 @@ export function MaterialTable({ rows }: { rows: MaterialRow[] }) {
 
   const bulkDelete = (targets: MaterialRow[]) => {
     openConfirm({
-      title: tr("素材の一括削除"),
+      title: tr("master.materials.bulkDeleteMaterials"),
       message: `選択中の${targets.length}件の素材を削除します。この操作は取り消せません。`,
-      confirmLabel: tr("削除する"),
+      confirmLabel: tr("common.delete2"),
       onConfirm: () => {
         startTransition(async () => {
           const result = await deleteMaterials(targets.map((r) => r.id));
           if (result.ok) {
             notifications.show({
-              title: tr("削除しました"),
+              title: tr("common.deleted"),
               message: `${targets.length}件の素材を削除しました`,
               color: "green",
             });
             router.refresh();
           } else {
             notifications.show({
-              title: tr("エラー"),
-              message: tr(result.error),
+              title: tr("common.error2"),
+              message: result.error,
               color: "red",
             });
           }
@@ -175,7 +175,7 @@ export function MaterialTable({ rows }: { rows: MaterialRow[] }) {
   const columns: Column<MaterialRow>[] = [
     {
       key: "code",
-      header: tr("素材コード"),
+      header: tr("common.materialCode"),
       sortable: true,
       width: 200,
       sortValue: (r) => r.code,
@@ -183,7 +183,7 @@ export function MaterialTable({ rows }: { rows: MaterialRow[] }) {
     },
     {
       key: "materialTypeCode",
-      header: tr("材種"),
+      header: tr("common.materialTypes"),
       sortable: true,
       hideable: true,
       width: 140,
@@ -191,14 +191,14 @@ export function MaterialTable({ rows }: { rows: MaterialRow[] }) {
     },
     {
       key: "name",
-      header: tr("名称"),
+      header: tr("common.name2"),
       sortable: true,
       sortValue: (r) => r.name,
       render: (r) => r.name,
     },
     {
       key: "diameterMm",
-      header: tr("直径"),
+      header: tr("common.diameter"),
       sortable: true,
       hideable: true,
       width: 90,
@@ -207,7 +207,7 @@ export function MaterialTable({ rows }: { rows: MaterialRow[] }) {
     },
     {
       key: "lengthMm",
-      header: tr("全長"),
+      header: tr("common.overallLength"),
       sortable: true,
       hideable: true,
       width: 90,
@@ -216,7 +216,7 @@ export function MaterialTable({ rows }: { rows: MaterialRow[] }) {
     },
     {
       key: "surfaceFinish",
-      header: tr("黒皮研磨"),
+      header: tr("master.materials.surfaceFinish"),
       sortable: true,
       hideable: true,
       width: 110,
@@ -224,7 +224,7 @@ export function MaterialTable({ rows }: { rows: MaterialRow[] }) {
     },
     {
       key: "isActive",
-      header: tr("状態"),
+      header: tr("common.status"),
       sortable: true,
       width: 90,
       sortValue: (r) => (r.isActive ? 1 : 0),
@@ -235,14 +235,14 @@ export function MaterialTable({ rows }: { rows: MaterialRow[] }) {
   return (
     <ListShell
       action={<NewButton href={`${BASE_PATH}/new`} />}
-      breadcrumbs={[tr("マスタ"), tr("素材")]}
+      breadcrumbs={[tr("common.masterData"), tr("common.materials")]}
       filters={
         <>
           <Select
             clearable
             data={typeOptions}
             onChange={setTypeFilter}
-            placeholder={tr("材種")}
+            placeholder={tr("common.materialTypes")}
             searchable
             style={isMobile ? { flex: 1 } : undefined}
             value={typeFilter}
@@ -252,7 +252,7 @@ export function MaterialTable({ rows }: { rows: MaterialRow[] }) {
             clearable
             data={finishOptions}
             onChange={setFinishFilter}
-            placeholder={tr("黒皮研磨")}
+            placeholder={tr("master.materials.surfaceFinish")}
             style={isMobile ? { flex: 1 } : undefined}
             value={finishFilter}
             w={isMobile ? undefined : 130}
@@ -261,7 +261,7 @@ export function MaterialTable({ rows }: { rows: MaterialRow[] }) {
             clearable
             data={STATUS_OPTIONS}
             onChange={setStatusFilter}
-            placeholder={tr("状態")}
+            placeholder={tr("common.status")}
             style={isMobile ? { flex: 1 } : undefined}
             value={statusFilter}
             w={isMobile ? undefined : 120}
@@ -273,28 +273,28 @@ export function MaterialTable({ rows }: { rows: MaterialRow[] }) {
         <TextInput
           leftSection={<IconSearch size={14} />}
           onChange={(e) => setSearch(e.currentTarget.value)}
-          placeholder={tr("素材コード・名称・キーワードで検索")}
+          placeholder={tr("master.materials.searchByMaterialCodeNameOr")}
           value={search}
         />
       }
-      title={tr("素材")}
+      title={tr("common.materials")}
     >
       <DataTable
         bulkActions={[
           {
-            label: tr("一括有効化"),
+            label: tr("common.bulkEnable"),
             icon: <IconCheck size={16} />,
             color: "green",
             onAction: (rs) => bulkSetActive(rs, true),
           },
           {
-            label: tr("一括無効化"),
+            label: tr("common.bulkDisable"),
             icon: <IconCircleMinus size={16} />,
             color: "orange",
             onAction: (rs) => bulkSetActive(rs, false),
           },
           {
-            label: tr("一括削除"),
+            label: tr("common.bulkDelete"),
             icon: <IconTrash size={16} />,
             color: "red",
             onAction: bulkDelete,
@@ -305,7 +305,7 @@ export function MaterialTable({ rows }: { rows: MaterialRow[] }) {
         defaultSort={{ key: "code", dir: "asc" }}
         emptyAction={<NewButton href={`${BASE_PATH}/new`} />}
         emptyIcon={<IconBolt size={24} />}
-        emptyMessage={tr("素材がありません")}
+        emptyMessage={tr("master.materials.thereAreNoMaterials")}
         getRowId={(r) => String(r.id)}
         onRowClick={(r) => router.push(`${BASE_PATH}/${r.id}`)}
         renderCard={(r) => (
@@ -331,12 +331,12 @@ export function MaterialTable({ rows }: { rows: MaterialRow[] }) {
         )}
         rowActions={(row) => [
           {
-            label: tr("編集"),
+            label: tr("common.edit2"),
             icon: <IconEdit size={14} />,
             onAction: (r) => router.push(`${BASE_PATH}/${r.id}/edit`),
           },
           {
-            label: row.isActive ? "無効化" : tr("有効化"),
+            label: row.isActive ? "無効化" : tr("common.enable"),
             icon: <IconCircleMinus size={14} />,
             onAction: (r) => setToggleRow(r),
           },

@@ -14,8 +14,8 @@
  */
 
 import { Group, Text } from "@mantine/core";
+import { useTranslations } from "next-intl";
 import { SecondaryButton } from "@/components/ui/buttons";
-import { useTr } from "@/hooks/useTr";
 import type { MatchSuggestion } from "./model";
 
 export function MatchSuggestions({
@@ -25,12 +25,12 @@ export function MatchSuggestions({
   suggestions: MatchSuggestion[];
   onPick: (suggestion: MatchSuggestion) => void;
 }) {
-  const tr = useTr();
+  const tr = useTranslations();
   if (suggestions.length === 0) return null;
   return (
     <Group gap="xs" wrap="wrap">
       <Text c="dimmed" size="xs">
-        {tr("もしかして")}
+        {tr("sales.orderAcceptances.didYouMean")}
       </Text>
       {suggestions.map((s) => (
         <SecondaryButton key={s.id} onClick={() => onPick(s)} size="xs">

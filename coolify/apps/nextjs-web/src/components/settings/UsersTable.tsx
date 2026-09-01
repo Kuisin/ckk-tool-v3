@@ -10,10 +10,10 @@
 import { Badge, Group, Select, Text, TextInput } from "@mantine/core";
 import { IconSearch, IconUserCog } from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { useFormat } from "@/components/layout/PreferencesProvider";
 import { type Column, DataTable } from "@/components/ui/DataTable";
 import { ListShell } from "@/components/ui/shells";
-import { useTr } from "@/hooks/useTr";
 import { useUrlSelectState, useUrlStringState } from "@/hooks/useUrlState";
 import { localized } from "@/lib/format";
 import type { AdminUserRow } from "@/lib/users-admin";
@@ -39,16 +39,16 @@ export function UserGroupBadge({ group }: { group: AdminUserRow["group"] }) {
 }
 
 export function UserActiveBadge({ isActive }: { isActive: boolean }) {
-  const tr = useTr();
+  const tr = useTranslations();
   return (
     <Badge color={isActive ? "green" : "gray"} variant="light">
-      {isActive ? "有効" : tr("無効")}
+      {isActive ? "有効" : tr("common.disabled3")}
     </Badge>
   );
 }
 
 export function UsersTable({ rows }: { rows: AdminUserRow[] }) {
-  const tr = useTr();
+  const tr = useTranslations();
   const fmt = useFormat();
   const router = useRouter();
 
@@ -79,7 +79,7 @@ export function UsersTable({ rows }: { rows: AdminUserRow[] }) {
   const columns: Column<AdminUserRow>[] = [
     {
       key: "username",
-      header: tr("ユーザー名"),
+      header: tr("common.username"),
       sortable: true,
       width: 180,
       render: (r) => (
@@ -91,7 +91,7 @@ export function UsersTable({ rows }: { rows: AdminUserRow[] }) {
     },
     {
       key: "displayName",
-      header: tr("表示名"),
+      header: tr("common.displayName"),
       sortable: true,
       render: (r) => (
         <Text fw={500} size="sm">
@@ -102,7 +102,7 @@ export function UsersTable({ rows }: { rows: AdminUserRow[] }) {
     },
     {
       key: "email",
-      header: tr("メール"),
+      header: tr("common.email"),
       hideable: true,
       render: (r) => (
         <Text c={r.email ? undefined : "dimmed"} size="sm">
@@ -112,13 +112,13 @@ export function UsersTable({ rows }: { rows: AdminUserRow[] }) {
     },
     {
       key: "group",
-      header: tr("区分"),
+      header: tr("common.type"),
       width: 100,
       render: (r) => <UserGroupBadge group={r.group} />,
     },
     {
       key: "roles",
-      header: tr("ロール"),
+      header: tr("common.role"),
       truncate: false,
       render: (r) =>
         r.roles.length === 0 ? (
@@ -139,7 +139,7 @@ export function UsersTable({ rows }: { rows: AdminUserRow[] }) {
     },
     {
       key: "isActive",
-      header: tr("状態"),
+      header: tr("common.status"),
       width: 90,
       sortable: true,
       render: (r) => <UserActiveBadge isActive={r.isActive} />,
@@ -147,7 +147,7 @@ export function UsersTable({ rows }: { rows: AdminUserRow[] }) {
     },
     {
       key: "lastLoginAt",
-      header: tr("最終ログイン"),
+      header: tr("common.lastLogin"),
       width: 150,
       sortable: true,
       render: (r) => (
@@ -161,7 +161,7 @@ export function UsersTable({ rows }: { rows: AdminUserRow[] }) {
 
   return (
     <ListShell
-      breadcrumbs={[tr("システム"), tr("ユーザー管理")]}
+      breadcrumbs={[tr("common.system"), tr("common.users")]}
       filters={
         <>
           <Select
@@ -171,7 +171,7 @@ export function UsersTable({ rows }: { rows: AdminUserRow[] }) {
               label,
             }))}
             onChange={setGroup}
-            placeholder={tr("区分")}
+            placeholder={tr("common.type")}
             value={group}
             w={140}
           />
@@ -179,10 +179,10 @@ export function UsersTable({ rows }: { rows: AdminUserRow[] }) {
             clearable
             data={[
               { value: "active", label: "有効" },
-              { value: "inactive", label: tr("無効") },
+              { value: "inactive", label: tr("common.disabled3") },
             ]}
             onChange={setActive}
-            placeholder={tr("状態")}
+            placeholder={tr("common.status")}
             value={active}
             w={120}
           />
@@ -193,17 +193,17 @@ export function UsersTable({ rows }: { rows: AdminUserRow[] }) {
         <TextInput
           leftSection={<IconSearch size={14} />}
           onChange={(e) => setSearch(e.currentTarget.value || null)}
-          placeholder={tr("ユーザー名 / 表示名 / メール / ロール...")}
+          placeholder={tr("settings.usersTable.usernameDisplayNameEmailRole")}
           value={search}
         />
       }
-      title={tr("ユーザー管理")}
+      title={tr("common.users")}
     >
       <DataTable
         columns={columns}
         data={filtered}
         emptyIcon={<IconUserCog size={28} />}
-        emptyMessage={tr("該当するユーザーがありません")}
+        emptyMessage={tr("settings.usersTable.noMatchingUsers")}
         getRowId={(r) => r.id}
         onRowClick={(r) => router.push(`/settings/users/${r.id}`)}
         urlState

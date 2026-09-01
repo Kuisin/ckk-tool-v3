@@ -27,6 +27,7 @@ import {
   IconTrash,
 } from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { useState, useTransition } from "react";
 import {
   deleteProducts,
@@ -38,7 +39,6 @@ import { DocNumber } from "@/components/ui/DocNumber";
 import { openConfirm } from "@/components/ui/modals";
 import { NewButton } from "@/components/ui/NewButton";
 import { ListShell } from "@/components/ui/shells";
-import { useTr } from "@/hooks/useTr";
 import { useUrlSelectState, useUrlStringState } from "@/hooks/useUrlState";
 import { useIsMobile } from "@/hooks/useViewport";
 import { matchesKeywordQuery } from "@/lib/master-keywords";
@@ -88,7 +88,7 @@ const STATUS_OPTIONS = [
 ];
 
 export function ProductTable({ rows }: { rows: ProductRow[] }) {
-  const tr = useTr();
+  const tr = useTranslations();
   const router = useRouter();
   const isMobile = useIsMobile();
   const [, startTransition] = useTransition();
@@ -134,15 +134,15 @@ export function ProductTable({ rows }: { rows: ProductRow[] }) {
       );
       if (result.ok) {
         notifications.show({
-          title: isActive ? "有効化しました" : tr("無効化しました"),
+          title: isActive ? "有効化しました" : tr("common.disabled2"),
           message: `${targets.length}件の製品を${isActive ? "有効化" : "無効化"}しました`,
           color: "green",
         });
         router.refresh();
       } else {
         notifications.show({
-          title: tr("エラー"),
-          message: tr(result.error),
+          title: tr("common.error2"),
+          message: result.error,
           color: "red",
         });
       }
@@ -151,23 +151,23 @@ export function ProductTable({ rows }: { rows: ProductRow[] }) {
 
   const bulkDelete = (targets: ProductRow[]) => {
     openConfirm({
-      title: tr("製品の一括削除"),
+      title: tr("master.products.bulkDeleteProducts"),
       message: `選択中の${targets.length}件の製品を削除します。この操作は取り消せません。`,
-      confirmLabel: tr("削除する"),
+      confirmLabel: tr("common.delete2"),
       onConfirm: () => {
         startTransition(async () => {
           const result = await deleteProducts(targets.map((r) => r.id));
           if (result.ok) {
             notifications.show({
-              title: tr("削除しました"),
+              title: tr("common.deleted"),
               message: `${targets.length}件の製品を削除しました`,
               color: "green",
             });
             router.refresh();
           } else {
             notifications.show({
-              title: tr("エラー"),
-              message: tr(result.error),
+              title: tr("common.error2"),
+              message: result.error,
               color: "red",
             });
           }
@@ -179,7 +179,7 @@ export function ProductTable({ rows }: { rows: ProductRow[] }) {
   const columns: Column<ProductRow>[] = [
     {
       key: "code",
-      header: tr("製品コード"),
+      header: tr("common.productCode"),
       sortable: true,
       width: 160,
       sortValue: (r) => r.code ?? "",
@@ -188,20 +188,20 @@ export function ProductTable({ rows }: { rows: ProductRow[] }) {
           <DocNumber>{r.code}</DocNumber>
         ) : (
           <Badge color="gray" size="xs" variant="light">
-            {tr("未採番")}
+            {tr("common.notNumbered")}
           </Badge>
         ),
     },
     {
       key: "name",
-      header: tr("名称"),
+      header: tr("common.name2"),
       sortable: true,
       sortValue: (r) => r.name,
       render: (r) => r.name,
     },
     {
       key: "materialType",
-      header: tr("材種"),
+      header: tr("common.materialTypes"),
       sortable: true,
       hideable: true,
       sortValue: (r) => r.materialTypeLabel,
@@ -210,7 +210,7 @@ export function ProductTable({ rows }: { rows: ProductRow[] }) {
     },
     {
       key: "unit",
-      header: tr("単位"),
+      header: tr("common.unit"),
       sortable: true,
       hideable: true,
       width: 80,
@@ -218,7 +218,7 @@ export function ProductTable({ rows }: { rows: ProductRow[] }) {
     },
     {
       key: "isActive",
-      header: tr("状態"),
+      header: tr("common.status"),
       sortable: true,
       width: 90,
       sortValue: (r) => (r.isActive ? 1 : 0),
@@ -229,13 +229,13 @@ export function ProductTable({ rows }: { rows: ProductRow[] }) {
   return (
     <ListShell
       action={<NewButton href={`${BASE_PATH}/new`} />}
-      breadcrumbs={[tr("マスタ"), "製品"]}
+      breadcrumbs={[tr("common.masterData"), "製品"]}
       filters={
         <Select
           clearable
           data={STATUS_OPTIONS}
           onChange={setStatusFilter}
-          placeholder={tr("状態")}
+          placeholder={tr("common.status")}
           value={statusFilter}
           w={isMobile ? 110 : 120}
         />
@@ -245,7 +245,7 @@ export function ProductTable({ rows }: { rows: ProductRow[] }) {
         <TextInput
           leftSection={<IconSearch size={14} />}
           onChange={(e) => setSearch(e.currentTarget.value)}
-          placeholder={tr("製品コード・名称・材種・キーワードで検索")}
+          placeholder={tr("master.products.searchByProductCodeNameMaterial")}
           value={search}
         />
       }
@@ -254,19 +254,19 @@ export function ProductTable({ rows }: { rows: ProductRow[] }) {
       <DataTable
         bulkActions={[
           {
-            label: tr("一括有効化"),
+            label: tr("common.bulkEnable"),
             icon: <IconCheck size={16} />,
             color: "green",
             onAction: (rs) => bulkSetActive(rs, true),
           },
           {
-            label: tr("一括無効化"),
+            label: tr("common.bulkDisable"),
             icon: <IconCircleMinus size={16} />,
             color: "orange",
             onAction: (rs) => bulkSetActive(rs, false),
           },
           {
-            label: tr("一括削除"),
+            label: tr("common.bulkDelete"),
             icon: <IconTrash size={16} />,
             color: "red",
             onAction: bulkDelete,
@@ -277,14 +277,16 @@ export function ProductTable({ rows }: { rows: ProductRow[] }) {
         defaultSort={{ key: "code", dir: "asc" }}
         emptyAction={<NewButton href={`${BASE_PATH}/new`} />}
         emptyIcon={<IconCylinder size={24} />}
-        emptyMessage={tr("製品がありません")}
+        emptyMessage={tr("master.products.thereAreNoProducts")}
         getRowId={(r) => String(r.id)}
         onRowClick={(r) => router.push(`${BASE_PATH}/${r.id}`)}
         renderCard={(r) => (
           <Paper p="sm" radius="sm" withBorder>
             <Group align="flex-start" justify="space-between" wrap="nowrap">
               <Stack gap={3} style={{ minWidth: 0 }}>
-                <DocNumber c="dimmed">{r.code ?? tr("未採番")}</DocNumber>
+                <DocNumber c="dimmed">
+                  {r.code ?? tr("common.notNumbered")}
+                </DocNumber>
                 <Text fw={600} size="sm" truncate>
                   {r.name}
                 </Text>
@@ -305,17 +307,17 @@ export function ProductTable({ rows }: { rows: ProductRow[] }) {
         )}
         rowActions={(row) => [
           {
-            label: tr("編集"),
+            label: tr("common.edit2"),
             icon: <IconEdit size={14} />,
             onAction: (r) => router.push(`${BASE_PATH}/${r.id}/edit`),
           },
           {
-            label: tr("複製"),
+            label: tr("common.duplicate"),
             icon: <IconCopy size={14} />,
             onAction: (r) => setDuplicateRow(r),
           },
           {
-            label: row.isActive ? "無効化" : tr("有効化"),
+            label: row.isActive ? "無効化" : tr("common.enable"),
             icon: <IconCircleMinus size={14} />,
             onAction: (r) => setToggleRow(r),
           },

@@ -15,11 +15,11 @@
 
 import { Badge, Box, Group, Stack, Text } from "@mantine/core";
 import { IconRuler2 } from "@tabler/icons-react";
+import { useTranslations } from "next-intl";
 import { DesignFileList } from "@/components/production/design-files/DesignFileList";
 import type { ProductDesignFile } from "@/components/production/design-files/model";
 import { SecondaryButton } from "@/components/ui/buttons";
 import { DesignFileThumb } from "@/components/ui/DesignFileViewer";
-import { useTr } from "@/hooks/useTr";
 import { groupBySeries, pickThumbFile } from "@/lib/design-files-core";
 
 export function ProductDesignFiles({
@@ -29,26 +29,26 @@ export function ProductDesignFiles({
   productId: number;
   files: ProductDesignFile[];
 }) {
-  const tr = useTr();
+  const tr = useTranslations();
   const series = groupBySeries(files);
 
   return (
     <Stack gap="md">
       <Group gap="sm" justify="space-between" wrap="wrap">
         <Text fw={600} size="sm">
-          {tr("設計図")}
+          {tr("common.drawing")}
         </Text>
         <SecondaryButton
           href={`/production/design-files/${productId}`}
           leftSection={<IconRuler2 size={14} />}
         >
-          {tr("設計図で管理")}
+          {tr("common.managedByDrawing")}
         </SecondaryButton>
       </Group>
 
       {series.length === 0 ? (
         <Text c="dimmed" size="sm">
-          {tr("この製品の設計図はまだありません")}
+          {tr("common.thereIsNoDrawingForThis")}
         </Text>
       ) : (
         series.map((g) => {
@@ -61,12 +61,12 @@ export function ProductDesignFiles({
               <Group gap="xs" wrap="wrap">
                 {g.customerBpId == null ? (
                   <Badge color="gray" variant="light">
-                    {tr("汎用")}
+                    {tr("common.generic")}
                   </Badge>
                 ) : (
                   <Badge color="blue" variant="light">
                     {g.files.find((f) => f.customerName)?.customerName ??
-                      tr("受注元")}
+                      tr("common.orderingCustomer")}
                   </Badge>
                 )}
                 <Text c="dimmed" size="xs">

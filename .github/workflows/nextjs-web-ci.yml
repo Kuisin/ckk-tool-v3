@@ -106,9 +106,9 @@ jobs:
       - name: Page gate guard (requireAppRead)
         run: bash scripts/check-page-gates.sh
 
-      # 英語・中国語対応は段階的に進める（約 11,000 箇所）。全部訳し終わって
-      # いなくても落とさない — 見るのは **後戻り** だけで、baseline より
-      # 増えたときに失敗する。使い方は tools/i18n/README.md。
+      # 英語・中国語対応は段階的に進める（数千箇所が未着手のまま残る）。
+      # 全部訳し終わっていなくても落とさない — 見るのは **後戻り** だけで、
+      # baseline より増えたときに失敗する。使い方は tools/i18n/README.md。
       - name: i18n regression guard (no new Japanese literals)
         run: node ../../../tools/i18n/i18n-scan.mjs
 
@@ -117,10 +117,12 @@ jobs:
       - name: i18n glossary consistency
         run: node ../../../tools/i18n/i18n-glossary-check.mjs
 
-      # ja を鍵にした対訳は、辞書に無ければ日本語をそのまま返す（壊れない代わりに
-      # 抜けが静かに日本語で出る）。tr() の鍵が辞書にあることはここでしか見られない。
+      # tr() の鍵は本物の next-intl 鍵（messages/ja.json のパス）。
+      # 鍵が 5,700 件を超えると next-intl の型付け（AppConfig["Messages"]）が
+      # TypeScript の複雑さの上限に触れるため型検査を諦めており（src/global.d.ts）、
+      # 実在しない鍵で呼んでいないかはここでしか見られない。
       - name: i18n translation keys exist
-        run: node ../../../tools/i18n/i18n-verify-keys.mjs
+        run: node ../../../tools/i18n-unify/verify-keys.mjs
 
       # "use server" は async 関数しか export できない。定数を export すると
       # クライアントにはアクション参照が渡り、実行時に画面ごと落ちる

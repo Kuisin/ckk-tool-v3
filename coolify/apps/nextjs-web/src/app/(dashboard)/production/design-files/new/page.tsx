@@ -1,8 +1,8 @@
 import { Stack } from "@mantine/core";
+import { getTranslations } from "next-intl/server";
 import { DesignFileVersionForm } from "@/components/production/design-files/DesignFileVersionForm";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { requireAppRead } from "@/lib/authz-page";
-import { getTr } from "@/lib/ui-text-server";
 import {
   fetchCustomerOptions,
   fetchDesignRequestContext,
@@ -24,7 +24,7 @@ export default async function ProductionDesignFileNewPage({
 }: {
   searchParams: Promise<{ request?: string; product?: string }>;
 }) {
-  const tr = await getTr();
+  const tr = await getTranslations();
   const denied = await requireAppRead("design-files");
   if (denied) return denied;
 
@@ -41,8 +41,12 @@ export default async function ProductionDesignFileNewPage({
   return (
     <Stack gap="md">
       <PageHeader
-        breadcrumbs={[tr("生産"), tr("設計図"), tr("新規")]}
-        title={tr("設計図を登録")}
+        breadcrumbs={[
+          tr("common.production"),
+          tr("common.drawing"),
+          tr("common.new"),
+        ]}
+        title={tr("common.registerADrawing")}
       />
       <DesignFileVersionForm
         customerOptions={customerOptions}

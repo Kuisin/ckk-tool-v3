@@ -13,13 +13,13 @@ import { Alert, Select, Table, Text } from "@mantine/core";
 import { DatePickerInput } from "@mantine/dates";
 import { notifications } from "@mantine/notifications";
 import { IconCalendar, IconInfoCircle } from "@tabler/icons-react";
+import { useTranslations } from "next-intl";
 import { useEffect, useState, useTransition } from "react";
 import { changePriceEntryPeriod } from "@/app/(dashboard)/sales/price-lists/actions";
 import { useFormat } from "@/components/layout/PreferencesProvider";
 import { FieldValue } from "@/components/ui/FieldValue";
 import { MoneyText } from "@/components/ui/MoneyText";
 import { FormModal, type ModalBaseProps } from "@/components/ui/modals";
-import { useTr } from "@/hooks/useTr";
 import { ORDER_TYPE_LABEL } from "@/lib/mock";
 import {
   type PriceListEntry,
@@ -38,7 +38,7 @@ export function DuplicatePriceListModal({
   source: PriceListEntry | null;
   onDone?: () => void;
 }) {
-  const tr = useTr();
+  const tr = useTranslations();
   const fmt = useFormat();
   const [isPending, startTransition] = useTransition();
   const [variantId, setVariantId] = useState<string | null>(null);
@@ -75,11 +75,11 @@ export function DuplicatePriceListModal({
         e.preventDefault();
         if (!(source && variant)) return;
         if (!validFrom) {
-          setError(tr("有効開始日を選択してください"));
+          setError(tr("sales.priceLists.selectAStartDate"));
           return;
         }
         if (needsEnd && !validUntil) {
-          setError(tr("テスト・サンプルは有効終了日が必須です"));
+          setError(tr("common.testAndSamplePricesNeedAn"));
           return;
         }
         startTransition(async () => {
@@ -91,16 +91,16 @@ export function DuplicatePriceListModal({
           });
           if (result.ok) {
             notifications.show({
-              title: tr("有効期間を変更しました"),
-              message: tr("同じ内容のまま新しい有効期間に切り替えました"),
+              title: tr("sales.priceLists.theValidPeriodWasChanged"),
+              message: tr("sales.priceLists.switchedToANewValidPeriod"),
               color: "green",
             });
             handleClose();
             onDone?.();
           } else {
             notifications.show({
-              title: tr("エラー"),
-              message: tr(result.error),
+              title: tr("common.error2"),
+              message: result.error,
               color: "red",
             });
           }
@@ -108,22 +108,14 @@ export function DuplicatePriceListModal({
       }}
       opened={opened}
       size="md"
-      submitLabel={tr("有効期間を変更")}
-      title={tr("有効期間を変更")}
+      submitLabel={tr("common.changeTheValidPeriod")}
+      title={tr("common.changeTheValidPeriod")}
     >
       <Alert color="blue" icon={<IconInfoCircle size={16} />} variant="light">
-        <Text size="sm">
-          {tr(
-            tr(
-              tr(
-                "選んだ注文種別の内容（基準単価・全段階）はそのままに、有効期間だけを新しい期間へ付け替えます。",
-              ),
-            ),
-          )}
-        </Text>
+        <Text size="sm">{tr("sales.priceLists.keepsTheChosenOrderTypeS")}</Text>
       </Alert>
 
-      <FieldValue label={tr("顧客")} value={source?.customerName} />
+      <FieldValue label={tr("common.customer")} value={source?.customerName} />
       <FieldValue label="製品" value={source?.productName} />
       <Select
         data={
@@ -132,13 +124,13 @@ export function DuplicatePriceListModal({
             label: ORDER_TYPE_LABEL[v.orderType] ?? v.orderType,
           })) ?? []
         }
-        label={tr("注文種別")}
+        label={tr("common.orderType")}
         onChange={setVariantId}
         value={variantId}
         withAsterisk
       />
       <FieldValue
-        label={tr("現在の有効期間")}
+        label={tr("sales.priceLists.currentValidPeriod")}
         value={
           variant
             ? validPeriod(fmt, variant.validFrom, variant.validUntil)
@@ -149,8 +141,8 @@ export function DuplicatePriceListModal({
       <Table withTableBorder>
         <Table.Thead>
           <Table.Tr>
-            <Table.Th>{tr("数量範囲")}</Table.Th>
-            <Table.Th ta="right">{tr("単価")}</Table.Th>
+            <Table.Th>{tr("common.quantityRange")}</Table.Th>
+            <Table.Th ta="right">{tr("common.unitPrice")}</Table.Th>
           </Table.Tr>
         </Table.Thead>
         <Table.Tbody>
@@ -172,10 +164,10 @@ export function DuplicatePriceListModal({
 
       <DatePickerInput
         error={error && !validFrom ? error : undefined}
-        label={tr("新しい有効開始日")}
+        label={tr("sales.priceLists.newStartDate")}
         leftSection={<IconCalendar size={14} />}
         onChange={setValidFrom}
-        placeholder={tr("日付を選択")}
+        placeholder={tr("common.pickADate")}
         value={validFrom}
         valueFormat="YYYY/MM/DD"
         withAsterisk
@@ -185,13 +177,15 @@ export function DuplicatePriceListModal({
         description={needsEnd ? "テスト・サンプルは終了日が必須" : undefined}
         error={
           error && needsEnd && !validUntil
-            ? tr("有効終了日を選択してください")
+            ? tr("common.selectAnEndDate")
             : undefined
         }
-        label={tr("新しい有効終了日")}
+        label={tr("sales.priceLists.newEndDate")}
         leftSection={<IconCalendar size={14} />}
         onChange={setValidUntil}
-        placeholder={needsEnd ? "日付を選択" : tr("空欄で無期限")}
+        placeholder={
+          needsEnd ? "日付を選択" : tr("common.leaveBlankForNoEndDate")
+        }
         value={validUntil}
         valueFormat="YYYY/MM/DD"
         withAsterisk={needsEnd}

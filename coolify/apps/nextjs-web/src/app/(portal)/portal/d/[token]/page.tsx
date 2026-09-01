@@ -14,6 +14,7 @@
 import { Alert, Card, Stack, Text, Title } from "@mantine/core";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
+import { getTranslations } from "next-intl/server";
 import { PortalLinkVerifyForm } from "@/components/portal/PortalLinkVerifyForm";
 import { resolveDeviceContext } from "@/lib/device-signals";
 import type { LoginFailureReason } from "@/lib/login-attempt-core";
@@ -26,7 +27,6 @@ import {
   checkPortalLimit,
   recordPortalLimitFailure,
 } from "@/lib/portal-rate-limit";
-import { getTr } from "@/lib/ui-text-server";
 
 export const dynamic = "force-dynamic";
 
@@ -46,7 +46,7 @@ export default async function PortalLinkPage({
 }: {
   params: Promise<{ token: string }>;
 }) {
-  const tr = await getTr();
+  const tr = await getTranslations();
   requirePortalFeature();
   const { token } = await params;
 
@@ -104,7 +104,7 @@ export default async function PortalLinkPage({
   // VERIFY — 中身は返さず、宛先のヒントだけを出す。
   return (
     <Stack gap="md" maw={420} mt="xl" mx="auto">
-      <Title order={3}>{tr("本人確認")}</Title>
+      <Title order={3}>{tr("portal.d.identityCheck")}</Title>
       <Card padding="lg" radius="md" withBorder>
         <Stack gap="md">
           <Text c="dimmed" size="sm">

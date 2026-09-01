@@ -21,14 +21,14 @@ import {
 import { IconAlertTriangle, IconKey } from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
 import { signOut } from "next-auth/react";
+import { useTranslations } from "next-intl";
 import { useState } from "react";
 import { changePasswordAction } from "@/app/(dashboard)/profile/actions";
-import { useTr } from "@/hooks/useTr";
 
 const MIN_LENGTH = 8;
 
 export function ForcedPasswordChangeForm() {
-  const tr = useTr();
+  const tr = useTranslations();
   const router = useRouter();
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
@@ -44,18 +44,26 @@ export function ForcedPasswordChangeForm() {
       return;
     }
     if (newPassword !== confirmPassword) {
-      setError(tr("確認用のパスワードが一致しません"));
+      setError(
+        tr("auth.forcedPasswordChangeForm.theConfirmationPasswordDoesNotMatch"),
+      );
       return;
     }
     if (newPassword === currentPassword) {
-      setError(tr("現在のパスワードとは違うものにしてください"));
+      setError(
+        tr(
+          "auth.forcedPasswordChangeForm.chooseSomethingDifferentFromTheCurrent",
+        ),
+      );
       return;
     }
     setLoading(true);
     const res = await changePasswordAction({ currentPassword, newPassword });
     setLoading(false);
     if (!res.ok) {
-      setError(res.error ?? tr("変更に失敗しました"));
+      setError(
+        res.error ?? tr("auth.forcedPasswordChangeForm.couldNotChangeIt"),
+      );
       return;
     }
     router.push("/");
@@ -68,9 +76,13 @@ export function ForcedPasswordChangeForm() {
         <form onSubmit={submit}>
           <Stack gap="lg">
             <Stack gap={4}>
-              <Title order={3}>{tr("パスワードの変更")}</Title>
+              <Title order={3}>
+                {tr("auth.forcedPasswordChangeForm.changeThePassword")}
+              </Title>
               <Text c="dimmed" size="sm">
-                {tr("初期パスワードのままです。続けるには変更してください。")}
+                {tr(
+                  "auth.forcedPasswordChangeForm.thePasswordIsStillTheInitial",
+                )}
               </Text>
             </Stack>
 
@@ -79,7 +91,9 @@ export function ForcedPasswordChangeForm() {
               icon={<IconAlertTriangle size={16} />}
               variant="light"
             >
-              {tr("変更するまで他の画面は開けません。")}
+              {tr(
+                "auth.forcedPasswordChangeForm.youCannotOpenOtherScreensUntil",
+              )}
             </Alert>
 
             {error ? (
@@ -90,7 +104,7 @@ export function ForcedPasswordChangeForm() {
 
             <PasswordInput
               autoComplete="current-password"
-              label={tr("現在のパスワード")}
+              label={tr("common.currentPassword")}
               onChange={(e) => setCurrentPassword(e.currentTarget.value)}
               required
               value={currentPassword}
@@ -99,7 +113,7 @@ export function ForcedPasswordChangeForm() {
             <PasswordInput
               autoComplete="new-password"
               description={`${MIN_LENGTH} 文字以上`}
-              label={tr("新しいパスワード")}
+              label={tr("common.newPassword")}
               onChange={(e) => setNewPassword(e.currentTarget.value)}
               required
               value={newPassword}
@@ -107,7 +121,7 @@ export function ForcedPasswordChangeForm() {
             />
             <PasswordInput
               autoComplete="new-password"
-              label={tr("新しいパスワード（確認）")}
+              label={tr("common.newPasswordConfirm")}
               onChange={(e) => setConfirmPassword(e.currentTarget.value)}
               required
               value={confirmPassword}
@@ -120,7 +134,7 @@ export function ForcedPasswordChangeForm() {
               loading={loading}
               type="submit"
             >
-              {tr("変更する")}
+              {tr("common.change")}
             </Button>
 
             <Button
@@ -129,7 +143,7 @@ export function ForcedPasswordChangeForm() {
               onClick={() => signOut({ callbackUrl: "/login" })}
               variant="subtle"
             >
-              {tr("ログアウト")}
+              {tr("common.logOut")}
             </Button>
           </Stack>
         </form>

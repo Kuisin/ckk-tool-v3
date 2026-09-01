@@ -9,18 +9,18 @@
 
 import { Stack } from "@mantine/core";
 import { notFound } from "next/navigation";
+import { getTranslations } from "next-intl/server";
 import { PortalAccountsTable } from "@/components/settings/portal/PortalAccountsTable";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { requireAppRead } from "@/lib/authz-page";
 import { isDevFeatureEnabled } from "@/lib/dev-features";
 import { listPortalAccounts, listPortalBpOptions } from "@/lib/portal-admin";
 import { peekElevations } from "@/lib/privileged-access";
-import { getTr } from "@/lib/ui-text-server";
 
 export const dynamic = "force-dynamic";
 
 export default async function PortalAdminPage() {
-  const tr = await getTr();
+  const tr = await getTranslations();
   const denied = await requireAppRead("portal-admin");
   if (denied) return denied;
   // 機能そのものが無効な環境では画面ごと出さない（AppAvailabilityGuard は
@@ -40,8 +40,8 @@ export default async function PortalAdminPage() {
   return (
     <Stack gap="md">
       <PageHeader
-        breadcrumbs={[tr("システム"), tr("取引先ポータル")]}
-        title={tr("取引先ポータル")}
+        breadcrumbs={[tr("common.system"), tr("common.partnerPortal")]}
+        title={tr("common.partnerPortal")}
       />
       <PortalAccountsTable
         accounts={accounts}

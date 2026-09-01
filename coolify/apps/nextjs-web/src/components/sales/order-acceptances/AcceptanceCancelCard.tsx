@@ -16,6 +16,7 @@ import { Text, Textarea } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
 import { IconX } from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { useState, useTransition } from "react";
 import {
   approveAcceptanceCancel,
@@ -24,7 +25,6 @@ import {
 import { ActionCard } from "@/components/ui/ActionCard";
 import { ApproveButton, RejectButton } from "@/components/ui/buttons";
 import { ModalShell } from "@/components/ui/modals";
-import { useTr } from "@/hooks/useTr";
 import type { ApprovalActionState } from "@/lib/approvals";
 import type { PendingAcceptanceCancelView } from "@/lib/order-acceptance-cancel";
 
@@ -36,7 +36,7 @@ export function AcceptanceCancelCard({
   /** 依頼そのものの承認状態（order_acceptance_cancel_requests の依頼）。 */
   approval: ApprovalActionState;
 }) {
-  const tr = useTr();
+  const tr = useTranslations();
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [rejectOpen, setRejectOpen] = useState(false);
@@ -48,7 +48,7 @@ export function AcceptanceCancelCard({
   const stepLabel =
     approval.stepCount > 0
       ? `${approval.stepLabel || `第${approval.stepNo}承認`}（${approval.stepNo}/${approval.stepCount}）`
-      : tr("承認依頼中");
+      : tr("common.pendingApproval");
 
   const handleApprove = () => {
     startTransition(async () => {
@@ -56,24 +56,20 @@ export function AcceptanceCancelCard({
       if (result.ok) {
         notifications.show({
           title: result.data?.applied
-            ? tr("注文請書をキャンセルしました")
-            : tr("承認しました"),
+            ? tr("sales.orderAcceptances.theOrderAcceptanceWasCancelled")
+            : tr("common.approved"),
           message: result.data?.applied
             ? tr(
-                tr(
-                  tr(
-                    "全明細をキャンセルしました（予約解放・未着手指示書の連鎖キャンセル含む）",
-                  ),
-                ),
+                "sales.orderAcceptances.everyLineWasCancelledIncludingReleasing",
               )
-            : tr("次の承認者へ回りました"),
+            : tr("common.passedToTheNextApprover"),
           color: "green",
         });
         router.refresh();
       } else {
         notifications.show({
-          title: tr("エラー"),
-          message: result.error ?? tr("承認に失敗しました"),
+          title: tr("common.error2"),
+          message: result.error ?? tr("common.couldNotApprove"),
           color: "red",
         });
       }
@@ -87,15 +83,15 @@ export function AcceptanceCancelCard({
         setRejectOpen(false);
         setReason("");
         notifications.show({
-          title: tr("差し戻しました"),
-          message: tr("注文請書は変更されていません"),
+          title: tr("common.sentBack"),
+          message: tr("sales.orderAcceptances.theOrderAcceptanceHasNotChanged"),
           color: "orange",
         });
         router.refresh();
       } else {
         notifications.show({
-          title: tr("エラー"),
-          message: result.error ?? tr("差し戻しに失敗しました"),
+          title: tr("common.error2"),
+          message: result.error ?? tr("common.couldNotSendItBack"),
           color: "red",
         });
       }
@@ -120,34 +116,30 @@ export function AcceptanceCancelCard({
         icon={<IconX size={20} />}
         title={
           canAct
-            ? tr("注文請書キャンセルの承認")
-            : tr("注文請書キャンセルの承認依頼中")
+            ? tr("sales.orderAcceptances.approveTheOrderAcceptanceCancellation")
+            : tr(
+                "sales.orderAcceptances.orderAcceptanceCancellationPendingApproval",
+              )
         }
         tone={canAct ? "approve" : "wait"}
       />
       <ModalShell
         confirmColor="red"
         confirmDisabled={!reason.trim()}
-        confirmLabel={tr("差し戻す")}
+        confirmLabel={tr("common.sendBack")}
         loading={isPending}
         onClose={() => setRejectOpen(false)}
         onConfirm={handleReject}
         opened={rejectOpen}
-        title={tr("キャンセル依頼の差し戻し")}
+        title={tr("sales.orderAcceptances.sendTheCancellationRequestBack")}
       >
         <Text size="sm">
-          {tr(
-            tr(
-              tr(
-                "差し戻すと、この依頼は適用されずに閉じます（注文請書はいまのままです）。",
-              ),
-            ),
-          )}
+          {tr("sales.orderAcceptances.sendingItBackClosesTheRequest")}
         </Text>
         <Textarea
           minRows={3}
           onChange={(e) => setReason(e.currentTarget.value)}
-          placeholder={tr("差し戻し理由")}
+          placeholder={tr("common.reasonForSendingBack")}
           value={reason}
         />
       </ModalShell>

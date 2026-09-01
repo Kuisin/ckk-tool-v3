@@ -1,7 +1,7 @@
 "use client";
 
 import { Badge, Table, Text } from "@mantine/core";
-import { useTr } from "@/hooks/useTr";
+import { useTranslations } from "next-intl";
 import type { PortalOrderLineRow } from "@/lib/portal-progress";
 import {
   PORTAL_PROGRESS_LABEL,
@@ -18,16 +18,16 @@ const COLOR: Record<PortalProgress, string> = {
 };
 
 export function PortalOrderTable({ rows }: { rows: PortalOrderLineRow[] }) {
-  const tr = useTr();
+  const tr = useTranslations();
   return (
     <Table highlightOnHover striped withTableBorder>
       <Table.Thead>
         <Table.Tr>
-          <Table.Th>{tr("注文番号")}</Table.Th>
+          <Table.Th>{tr("portal.portalOrderTable.orderNumber")}</Table.Th>
           <Table.Th>製品</Table.Th>
-          <Table.Th ta="right">{tr("数量")}</Table.Th>
-          <Table.Th>{tr("納期")}</Table.Th>
-          <Table.Th>{tr("状況")}</Table.Th>
+          <Table.Th ta="right">{tr("common.quantity")}</Table.Th>
+          <Table.Th>{tr("common.deliveryDate")}</Table.Th>
+          <Table.Th>{tr("portal.portalOrderTable.status")}</Table.Th>
         </Table.Tr>
       </Table.Thead>
       <Table.Tbody>

@@ -39,6 +39,7 @@ import {
   IconTrash,
 } from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { useEffect, useState, useTransition } from "react";
 import {
   removePushSubscriptionAction,
@@ -53,7 +54,6 @@ import {
 } from "@/components/ui/buttons";
 import { openConfirm } from "@/components/ui/modals";
 import { PageHeader } from "@/components/ui/PageHeader";
-import { useTr } from "@/hooks/useTr";
 
 interface ChannelSettings {
   emailEnabled: boolean;
@@ -130,7 +130,7 @@ export function NotificationSettingsForm({
   vapidPublicKey: string | null;
   devices: PushDevice[];
 }) {
-  const tr = useTr();
+  const tr = useTranslations();
   const fmt = useFormat();
   const router = useRouter();
   const [settings, setSettings] = useState(initial);
@@ -197,14 +197,16 @@ export function NotificationSettingsForm({
       const res = await saveNotificationSettingAction(settings);
       if (res.ok) {
         notifications.show({
-          title: tr("保存しました"),
-          message: tr("通知設定を更新しました"),
+          title: tr("common.saved2"),
+          message: tr(
+            "profile.notificationSettingsForm.theNotificationSettingsWereUpdated",
+          ),
           color: "green",
         });
       } else {
         notifications.show({
-          title: tr("エラー"),
-          message: tr(res.error),
+          title: tr("common.error2"),
+          message: res.error,
           color: "red",
         });
       }
@@ -221,8 +223,10 @@ export function NotificationSettingsForm({
       setPermission(result);
       if (result !== "granted") {
         notifications.show({
-          title: tr("許可されませんでした"),
-          message: tr("ブラウザの通知許可が必要です"),
+          title: tr("profile.notificationSettingsForm.itWasNotAllowed"),
+          message: tr(
+            "profile.notificationSettingsForm.theBrowserSNotificationPermissionIs",
+          ),
           color: "orange",
         });
         return;
@@ -244,26 +248,30 @@ export function NotificationSettingsForm({
         setSubscribed(true);
         setCurrentEndpoint(sub.endpoint);
         notifications.show({
-          title: tr("有効化しました"),
-          message: tr("このデバイスでプッシュ通知を受け取ります"),
+          title: tr("common.enabled2"),
+          message: tr(
+            "profile.notificationSettingsForm.receivePushNotificationsOnThisDevice",
+          ),
           color: "green",
         });
         router.refresh();
       } else {
         notifications.show({
-          title: tr("エラー"),
-          message: tr(res.error),
+          title: tr("common.error2"),
+          message: res.error,
           color: "red",
         });
       }
     } catch (e) {
       console.error("[push] subscribe failed:", e);
       notifications.show({
-        title: tr("エラー"),
+        title: tr("common.error2"),
         message:
           isIos && !isStandalone
-            ? tr("iOS ではホーム画面に追加した PWA からのみ有効化できます")
-            : tr("プッシュ通知の有効化に失敗しました"),
+            ? tr("profile.notificationSettingsForm.onIosItCanOnlyBe")
+            : tr(
+                "profile.notificationSettingsForm.couldNotEnablePushNotifications",
+              ),
         color: "red",
       });
     } finally {
@@ -283,8 +291,10 @@ export function NotificationSettingsForm({
       setSubscribed(false);
       setCurrentEndpoint(null);
       notifications.show({
-        title: tr("無効化しました"),
-        message: tr("このデバイスのプッシュ通知を解除しました"),
+        title: tr("common.disabled2"),
+        message: tr(
+          "profile.notificationSettingsForm.pushNotificationsWereTurnedOffOn",
+        ),
         color: "green",
       });
       router.refresh();
@@ -295,7 +305,7 @@ export function NotificationSettingsForm({
 
   const removeDevice = (device: PushDevice) => {
     openConfirm({
-      title: tr("登録デバイスの削除"),
+      title: tr("profile.notificationSettingsForm.removeTheRegisteredDevice"),
       message: `「${deviceLabel(device.userAgent)}」へのプッシュ通知を停止します。`,
       confirmLabel: "削除",
       onConfirm: () => {
@@ -317,8 +327,8 @@ export function NotificationSettingsForm({
             router.refresh();
           } else {
             notifications.show({
-              title: tr("エラー"),
-              message: tr(res.error),
+              title: tr("common.error2"),
+              message: res.error,
               color: "red",
             });
           }
@@ -342,31 +352,29 @@ export function NotificationSettingsForm({
     <Stack gap="md" maw={960} mx="auto" w="100%">
       <PageHeader
         breadcrumbs={[
-          { label: tr("プロフィール"), href: "/profile" },
-          { label: tr("通知設定") },
+          { label: tr("common.profile"), href: "/profile" },
+          { label: tr("common.notificationSettings") },
         ]}
-        title={tr("通知設定")}
+        title={tr("common.notificationSettings")}
       />
 
       <Paper p="md" radius="md" shadow="xs">
         <Stack gap="md">
           <Text fw={600} size="sm">
-            {tr("通知チャネル")}
+            {tr("profile.notificationSettingsForm.notificationChannel")}
           </Text>
           <Switch
             checked={settings.emailEnabled}
             description={
               mailerConfigured
-                ? tr("承認依頼・取込結果などをメールで受け取る")
+                ? tr(
+                    "profile.notificationSettingsForm.receiveApprovalRequestsImportResultsAnd",
+                  )
                 : tr(
-                    tr(
-                      tr(
-                        "メールサーバー未設定のため現在は送信されません（設定は保存できます）",
-                      ),
-                    ),
+                    "profile.notificationSettingsForm.nothingIsSentWhileTheMail",
                   )
             }
-            label={tr("メール通知")}
+            label={tr("profile.notificationSettingsForm.emailNotification")}
             onChange={(e) =>
               setSettings((s) => ({
                 ...s,
@@ -376,8 +384,10 @@ export function NotificationSettingsForm({
           />
           <Switch
             checked={settings.pushEnabled}
-            description={tr("有効化したデバイス（下記）にプッシュ通知を送る")}
-            label={tr("プッシュ通知")}
+            description={tr(
+              "profile.notificationSettingsForm.sendPushNotificationsToTheEnabled",
+            )}
+            label={tr("profile.notificationSettingsForm.pushNotifications")}
             onChange={(e) =>
               setSettings((s) => ({
                 ...s,
@@ -394,16 +404,14 @@ export function NotificationSettingsForm({
       <Paper p="md" radius="md" shadow="xs">
         <Stack gap="sm">
           <Text fw={600} size="sm">
-            {tr("このデバイスのプッシュ通知")}
+            {tr(
+              "profile.notificationSettingsForm.pushNotificationsOnThisDevice",
+            )}
           </Text>
           {!pushConfigured || !vapidPublicKey ? (
             <Alert color="orange" icon={<IconInfoCircle size={16} />}>
               {tr(
-                tr(
-                  tr(
-                    "サーバーの VAPID 鍵が未設定のため、プッシュ通知は利用できません。",
-                  ),
-                ),
+                "profile.notificationSettingsForm.pushNotificationsAreUnavailableBecauseThe",
               )}
             </Alert>
           ) : showIosGuide ? (
@@ -411,27 +419,23 @@ export function NotificationSettingsForm({
               color="blue"
               icon={<IconDeviceMobile size={16} />}
               title={tr(
-                tr(
-                  tr(
-                    "iPhone / iPad はホーム画面に追加して使います（iOS 16.4 以降）",
-                  ),
-                ),
+                "profile.notificationSettingsForm.onIphoneAndIpadAddIt",
               )}
             >
               <List size="sm" spacing={4} type="ordered">
                 <List.Item>
-                  {tr("Safari でこのサイトを開き、共有ボタン（")}
+                  {tr(
+                    "profile.notificationSettingsForm.openThisSiteInSafariAnd",
+                  )}
                   <IconShare2 size={14} style={{ verticalAlign: "-2px" }} />
-                  {tr("）をタップ")}
+                  {tr("profile.notificationSettingsForm.toTap")}
                 </List.Item>
-                <List.Item>{tr("「ホーム画面に追加」を選ぶ")}</List.Item>
+                <List.Item>
+                  {tr("profile.notificationSettingsForm.chooseAddToHomeScreen")}
+                </List.Item>
                 <List.Item>
                   {tr(
-                    tr(
-                      tr(
-                        "ホーム画面の「CKK」アイコンから開き直し、この画面で「このデバイスで有効化」を押す",
-                      ),
-                    ),
+                    "profile.notificationSettingsForm.reopenItFromTheCkkIcon",
                   )}
                 </List.Item>
               </List>
@@ -439,36 +443,26 @@ export function NotificationSettingsForm({
           ) : !pushSupported ? (
             <Alert color="orange" icon={<IconInfoCircle size={16} />}>
               {tr(
-                tr(
-                  tr(
-                    "このブラウザはプッシュ通知に対応していません。Chrome / Edge /\n              Firefox の最新版をご利用ください。",
-                  ),
-                ),
+                "profile.notificationSettingsForm.thisBrowserDoesNotSupportPush",
               )}
             </Alert>
           ) : permission === "denied" ? (
             <Alert
               color="orange"
               icon={<IconInfoCircle size={16} />}
-              title={tr("通知がブロックされています")}
+              title={tr(
+                "profile.notificationSettingsForm.notificationsAreBlocked",
+              )}
             >
               {tr(
-                tr(
-                  tr(
-                    "ブラウザの設定でこのサイトの通知を許可し直してください（Chrome:\n              アドレスバーの鍵アイコン → サイトの設定 → 通知 → 許可。Android:\n              サイト設定に加えて OS の通知設定でも Chrome\n              の通知を許可）。解除後に再度有効化できます。",
-                  ),
-                ),
+                "profile.notificationSettingsForm.allowNotificationsForThisSiteAgain",
               )}
             </Alert>
           ) : subscribed ? (
             <>
               <Text c="dimmed" size="xs">
                 {tr(
-                  tr(
-                    tr(
-                      "このデバイスは登録済みです。ロック画面・デスクトップに通知が届きます。",
-                    ),
-                  ),
+                  "profile.notificationSettingsForm.thisDeviceIsRegisteredNotificationsReach",
                 )}
               </Text>
               <div>
@@ -476,7 +470,7 @@ export function NotificationSettingsForm({
                   loading={pushBusy}
                   onClick={disablePushOnDevice}
                 >
-                  {tr("このデバイスで無効化")}
+                  {tr("profile.notificationSettingsForm.disableOnThisDevice")}
                 </SecondaryButton>
               </div>
             </>
@@ -484,11 +478,7 @@ export function NotificationSettingsForm({
             <>
               <Text c="dimmed" size="xs">
                 {tr(
-                  tr(
-                    tr(
-                      "有効化するとブラウザの通知許可を求めます。デバイスごとに設定が必要です。",
-                    ),
-                  ),
+                  "profile.notificationSettingsForm.enablingItAsksForTheBrowser",
                 )}
               </Text>
               <Group gap="sm">
@@ -497,25 +487,21 @@ export function NotificationSettingsForm({
                   loading={pushBusy}
                   onClick={enablePushOnDevice}
                 >
-                  {tr("このデバイスで有効化")}
+                  {tr("profile.notificationSettingsForm.enableOnThisDevice")}
                 </PrimaryButton>
                 {installPrompt && (
                   <SecondaryButton
                     leftSection={<IconDownload size={16} />}
                     onClick={installApp}
                   >
-                    {tr("アプリをインストール")}
+                    {tr("profile.notificationSettingsForm.installTheApp")}
                   </SecondaryButton>
                 )}
               </Group>
               {installPrompt && (
                 <Text c="dimmed" size="xs">
                   {tr(
-                    tr(
-                      tr(
-                        "インストールするとホーム画面 /\n                  デスクトップから起動でき、アプリとして通知を受け取れます（任意\n                  — ブラウザのままでも通知は届きます）。",
-                      ),
-                    ),
+                    "profile.notificationSettingsForm.installingItLetsYouLaunchFrom",
                   )}
                 </Text>
               )}
@@ -527,16 +513,12 @@ export function NotificationSettingsForm({
       <Paper p="md" radius="md" shadow="xs">
         <Stack gap="sm">
           <Text fw={600} size="sm">
-            {tr("登録デバイス")}
+            {tr("profile.notificationSettingsForm.registeredDevices")}
           </Text>
           {devices.length === 0 ? (
             <Text c="dimmed" size="sm">
               {tr(
-                tr(
-                  tr(
-                    "登録済みのデバイスはありません。上の「このデバイスで有効化」から登録できます。",
-                  ),
-                ),
+                "profile.notificationSettingsForm.noDevicesAreRegisteredUseEnable",
               )}
             </Text>
           ) : (
@@ -544,8 +526,10 @@ export function NotificationSettingsForm({
               <Table>
                 <Table.Thead>
                   <Table.Tr>
-                    <Table.Th>{tr("デバイス")}</Table.Th>
-                    <Table.Th>{tr("登録日時")}</Table.Th>
+                    <Table.Th>
+                      {tr("profile.notificationSettingsForm.device")}
+                    </Table.Th>
+                    <Table.Th>{tr("common.registeredAt")}</Table.Th>
                     <Table.Th w={48} />
                   </Table.Tr>
                 </Table.Thead>
@@ -557,7 +541,9 @@ export function NotificationSettingsForm({
                           <Text size="sm">{deviceLabel(d.userAgent)}</Text>
                           {d.endpoint === currentEndpoint && (
                             <Badge color="blue" size="xs" variant="light">
-                              {tr("このデバイス")}
+                              {tr(
+                                "profile.notificationSettingsForm.thisDevice",
+                              )}
                             </Badge>
                           )}
                         </Group>
@@ -569,7 +555,9 @@ export function NotificationSettingsForm({
                       </Table.Td>
                       <Table.Td>
                         <ActionIcon
-                          aria-label={tr("このデバイスの登録を削除")}
+                          aria-label={tr(
+                            "profile.notificationSettingsForm.removeThisDeviceSRegistration",
+                          )}
                           color="red"
                           onClick={() => removeDevice(d)}
                           variant="subtle"

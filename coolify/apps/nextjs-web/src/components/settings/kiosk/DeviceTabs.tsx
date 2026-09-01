@@ -14,9 +14,9 @@
  */
 
 import { Tabs } from "@mantine/core";
+import { useTranslations } from "next-intl";
 import { useState } from "react";
 import { AppTabs } from "@/components/ui/AppTabs";
-import { useTr } from "@/hooks/useTr";
 import type { DisplayRow } from "@/lib/displays-admin";
 import type { KioskDeviceRow, KioskPlantOption } from "@/lib/kiosk-admin";
 import { DisplaysTable } from "../displays/DisplaysTable";
@@ -46,7 +46,7 @@ export function DeviceTabs({
   displayPlantOptions,
   displaysEnabled,
 }: Props) {
-  const tr = useTr();
+  const tr = useTranslations();
   const [tab, setTab] = useState<string | null>("kiosk");
 
   if (!displaysEnabled) {
@@ -63,8 +63,8 @@ export function DeviceTabs({
   return (
     <AppTabs onChange={setTab} value={tab}>
       <Tabs.List>
-        <Tabs.Tab value="kiosk">{tr("共有端末")}</Tabs.Tab>
-        <Tabs.Tab value="displays">{tr("ディスプレイ")}</Tabs.Tab>
+        <Tabs.Tab value="kiosk">{tr("common.sharedDevice")}</Tabs.Tab>
+        <Tabs.Tab value="displays">{tr("settings.kiosk.display")}</Tabs.Tab>
       </Tabs.List>
 
       <Tabs.Panel pt="md" value="kiosk">

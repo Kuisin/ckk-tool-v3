@@ -13,38 +13,81 @@
    （取引先ポータル = 客户门户）を別の訳で上書きした事故がある。
 2. 無ければ §3 の該当表に 1 行足す。判断が要るものは §5「未決」に上げ、
    **決まるまで使わない**。
-3. そのうえで `messages/*.json`（3 言語同時）か `Record<Locale, string>` に書く。
-   表とコードは**同じコミット**で直す。
+3. そのうえで `messages/*.json`（3 言語同時）へ書く。表とコードは
+   **同じコミット**で直す。
 4. `node tools/i18n/i18n-glossary-check.mjs` を通す（CI でも走る）。
 
 同じ ja に 2 通りの訳を当てないのが用語集の芯なので、その 1 点だけは機械が見る。
 
+## 文言をどこに置くか — 2 通りある（2026-09-01 に 3 通りから整理）
+
+置き場は 2 つあり、**どれを使うかは文言の性質で決まる**。
+
+| 文言の性質 | 置き場 | 読み方 |
+|---|---|---|
+| 画面の文言（変数の有無を問わない） | `messages/{ja,en,zh}.json` | `useTranslations("ns")` / `await getTranslations("ns")` |
+| **値**に属するラベル（enum・状態・権限・アプリ名） | `messages/*.json` の `enum` / `status` / `permission` / `privilegedOp` / `pdf` 名前空間 | `xxxLabel(value, locale)`（内部は `lib/messages.ts` が `next-intl` の `createTranslator` に委譲） |
+
+以前あった**3 つ目の層**（ja を鍵にした平らな決まり文句辞書、`src/lib/ui-text.ts` /
+`useTr()` / `getTr()` / `data/translations/*.json`）は退役した。理由と経緯:
+
+- 鍵に ja の原文をそのまま使う設計は、`.` を含む文（`直径は 0.1〜99.9mm…`）が
+  next-intl の `t("a.b")`（`.` を入れ子の区切りとして読む）と噛み合わず、
+  next-intl を「本物」として使い切れなかった。
+- 6,000 件を超える呼び出しを、鍵の生成（ファイルパス→名前空間 / 英訳→
+  leaf キー）→ `messages/*.json` への統合 → 呼び出し側の書き換え、という
+  一括移行で本物の next-intl 鍵へ移した（`tools/i18n-unify/` 一式）。
+- 静的な鍵しか引けない next-intl の制約上、`tr(result.error)` のように
+  **実行時の文字列**を渡していた箇所（約 190 件、ほぼ `ActionResult.error`）は
+  鍵に変換できない——`tr(...)` を剥がして生の文字列をそのまま表示する形に
+  倒した（訳されないが、存在しない鍵の診断文字列よりまし）。この分は
+  サーバー側で結果を返す前に訳す設計へ変える、という別の作業が残っている。
+
+2 つ目（値に属するラベル）を `useTranslations()` に寄せない理由は
+`lib/enum-labels.ts` の冒頭に書いてある — **訳をその enum 値の隣に置く**
+ためで、React フックの外（Server Action・PDF テンプレート・モジュール直下の
+定数）から明示 `locale` 引数で呼べる関数が要る。次の口が対象:
+`enum-labels.ts` / `status-map.ts` / `permission-labels.ts` /
+`privileged-operations.ts` / `pdf-labels.ts`。内部の文字列解決・ICU 展開は
+`lib/messages.ts` が `next-intl` の `createTranslator`（`use-intl/core` の
+re-export）に委譲する——独自の木読みは持たない。
+
+### messages/*.json の約束
+
+- **キーは ja が正。** ja → en → zh の順で足す。3 言語でキー集合が完全に
+  一致し、空文字を置かない（`lib/user-preferences-core.test.ts` が検査）。
+- 鍵が 5,700 件を超えた時点で next-intl の型付け
+  （`AppConfig["Messages"]`）が TypeScript の複雑さの上限に触れるため、
+  `src/global.d.ts` は型検査をあきらめている——代わりに
+  **`tools/i18n-unify/verify-keys.mjs`** が全ての `tr(literal)` 呼び出しの
+  鍵を実行時に検査する（`pnpm i18n:keys`、CI でも走る）。
+- 名前空間は**画面ではなく意味**で切る（`common` / `shell` / ドメイン）。
+  同じ語を画面ごとに複製しない。
+- **文を連結しない。** `t("saved") + name` は語順が言語で変わって必ず壊れる。
+  1 文 = 1 キー + 変数（`"{name} を追加しました"`）。
+- **ICU が壊れる `{...}` を混ぜない。** `createTranslator` は文字列を
+  ICU MessageFormat として解釈するので、`^[A-Z]{2}-d{4}$` のような
+  正規表現の例文をそのまま入れると実行時に例外になる（実際に起きた）。
+  `{name}` の形（識別子 1 つ）だけが安全——`src/lib/messages.test.ts` の
+  「ICU 互換性（退行防止）」がこれを機械で見る。
+
 ## いまどこまで進んでいるか
 
-- **対訳（ja→en/zh）は完成している。** 5,342 語。`i18n-todo.mjs` の「まだ訳して
-  いない語」は 0。
-- **画面の文言はほぼ包み終わっている。** 330 ファイル・約 6,000 箇所を
-  `tr()` に通した。
-- **残っている日本語 = 未翻訳ではない。** ja を鍵にしているので、`lib/*.ts` や
-  `actions.ts` が日本語のまま文言を返しても、表示側が `tr()` を通せば訳される。
-  `i18n-scan.mjs` はその内訳を出す（「辞書にある」/「辞書にも無い」）。
+- **画面の文言はほぼ包み終わっている。** 5,800 件超を本物の next-intl 鍵に
+  通した（`tools/i18n-unify/`）。
+- **残っている日本語 = 未翻訳ではない、が「後から訳せる」設計はもう無い。**
+  ja 鍵の辞書を退役したので、包まれていない生の日本語（`lib/*.ts` の
+  エラーメッセージ、`field-help.ts` の説明文など）は表示側で `tr()` を通しても
+  訳されない——包む作業そのものが要る。`i18n-scan.mjs` が「まだ包まれて
+  いない箇所」の内訳を出す。
 
-残っている仕事は 2 つだけ:
+## なぜ「0 でなければ失敗」にしないのか
 
-1. **テンプレート断片 約 1,000 箇所** — `${}` を挟む文。ja 鍵では持てないので
-   （語順が言語で変わる。用語集 §2.6）、next-intl の変数付きキーへ移す。
-   `node tools/i18n/i18n-todo.mjs --templates` で場所が出る。
-2. **`lib/field-help.ts` 462 箇所** — マニュアルから生成しているので、
-   直すのは `content/manual/**` の側（`coolify/apps/nextjs-web/CLAUDE.md`）。
-   マニュアル本体の翻訳と同じ仕事になる。
-
-## なぜ「全部訳す」を CI の条件にしないのか
-
-上の 2 つが残っているうちは 0 にならないし、0 を条件にすると CI は赤のままに
-なって**赤いのが当たり前になり誰も見なくなる**。見たいのは残数そのものではなく
-**後戻り**なので、`baseline.json` より増えたときだけ落とす。減ったときは
-「下げられます」と言うだけで落とさない — 別の作業をしている人の PR を、
-無関係な baseline 更新で止めないため。
+対象は数千文字列で、1 回の作業では終わらない。全消しを条件にすると CI は
+初日から赤のままになって**赤いのが当たり前になり誰も見なくなる**。見たいのは
+残数そのものではなく**後戻り**なので、`baseline.json` より増えたときだけ落とす。
+減ったときは「下げられます」と言うだけで落とさない — 別の作業をしている人の
+PR を、無関係な baseline 更新で止めないため。
 
 ## 使う
 
@@ -63,60 +106,27 @@ node tools/i18n/i18n-scan.mjs --update-baseline
 # 用語集そのものの検査（訳の割れ・重複・空セル）
 node tools/i18n/i18n-glossary-check.mjs
 
-# まだ訳していない語を並べる / 次の N 語を出す / ICU 行きの断片を見る
-node tools/i18n/i18n-todo.mjs
-node tools/i18n/i18n-todo.mjs --next 200
-node tools/i18n/i18n-todo.mjs --templates
+# 入れ子の tr(tr(...)) を 1 段へ畳む（掃除道具。当てたら必ず tsc を通すこと）
+node tools/i18n/i18n-dedupe-nested.mjs --dry
+node tools/i18n/i18n-dedupe-nested.mjs
 
-# 辞書を書き出す（data/*.json → src/lib/ui-dictionary/{en,zh}.ts）
-node tools/i18n/build-dictionary.mjs
-
-# tr() の鍵が辞書にあるか（抜けは日本語のまま出るのでここでしか捕まらない）
-node tools/i18n/i18n-verify-keys.mjs
-
-# 辞書にある語を tr() へ包む（--dry で下見。当てたら必ず tsc を通すこと）
-node tools/i18n/i18n-codemod.mjs --dry --area components/sales
-node tools/i18n/i18n-codemod.mjs --area components/sales
+# tr() の鍵が messages/ja.json に実在するか
+node tools/i18n-unify/verify-keys.mjs
 ```
 
-`pnpm i18n:scan` / `pnpm i18n:glossary` / `pnpm i18n:baseline` でも同じ
-（`coolify/apps/nextjs-web`）。CI は前 2 つを毎 PR で走らせる。
+`pnpm i18n:scan` / `pnpm i18n:glossary` / `pnpm i18n:keys` / `pnpm i18n:baseline`
+でも同じ（`coolify/apps/nextjs-web`）。CI は `i18n:scan` / `i18n:glossary` /
+`i18n:keys` を毎 PR で走らせる。
 
-## 文言をどこに置くか — 3 通りある
+### 新しい画面文言を本物の next-intl 鍵で包むとき
 
-置き場は 3 つあり、**どれを使うかは文言の性質で決まる**。
-新しく足すときに迷ったら下の表を見ること。
-
-| 文言の性質 | 置き場 | 読み方 |
-|---|---|---|
-| **変数を含む文**（`{name} を追加しました`） | `messages/{ja,en,zh}.json` | `useTranslations("ns")` / `await getTranslations("ns")` |
-| **値**に属するラベル（enum・状態・権限・アプリ名） | 値の隣の `Record<Locale, string>` | `xxxLabel(value, locale)` |
-| それ以外の画面文言（変数の無い決まり文句） | `data/translations/*.json`（ja が鍵） | `useTr()` / `await getTr()` |
-
-3 つ目が今回足した層で、仕組みと「なぜ ja を鍵にするのか」は
-`src/lib/ui-text.ts` の冒頭に書いてある。要点だけ言うと、**6,000 個のキー名を
-発明せずに済み、同じ日本語に 2 つの訳が付く余地が構造的に無くなる**から。
-辞書に無ければ日本語のまま返すので、抜けが画面を壊すこともない。
-
-2 つ目（値に属するラベル）を next-intl に寄せない理由は `lib/enum-labels.ts` の
-冒頭に書いてある — **訳をその enum 値の隣に置く**ためで、2 ファイルに割れると
-片方だけ直る。既存の例: `enum-labels.ts` / `permission-labels.ts` /
-`privileged-operations.ts` / `StatusBadge.tsx`。
-
-なお 3 つ目は「**後から訳せる**」のが効く。`lib/*.ts` や `actions.ts` は
-日本語のまま文言を返してよく、表示する画面が `tr()` を通せば訳される。
-おかげでサーバー側の全関数に locale を引き回さずに済んでいる。
-
-### messages/*.json の約束
-
-- **キーは ja が正。** `ja.json` に無いキーはビルドで落ちる（`src/global.d.ts` が
-  `typeof ja` から型を作る）。ja → en → zh の順で足す。
-- 3 言語でキー集合が完全に一致し、空文字を置かない。
-  `lib/user-preferences-core.test.ts` が検査する。
-- 名前空間は**画面ではなく意味**で切る（`common` / `shell` / ドメイン）。
-  同じ語を画面ごとに複製しない。
-- **文を連結しない。** `t("saved") + name` は語順が言語で変わって必ず壊れる。
-  1 文 = 1 キー + 変数（`"{name} を追加しました"`）。
+`i18n-scan.mjs --list` で見つけた生の日本語リテラルを `tr()` へ包むのは、
+いまは `tools/i18n-unify/` の一括パイプラインの役目
+（`generate-keys.mjs` → `rewrite-call-sites.mjs`）。小さな範囲を手で直す
+だけなら、`messages/ja.json` に鍵を 1 つ足して呼び出し側で
+`useTranslations()`/`getTranslations()` を直接使えばよい——鍵は
+「ファイルの意味を表す名前空間 + 英訳ベースの leaf キー」の形（例:
+`settings.itemDefEditForm.aRegularExpressionConstrainingTheInput`）。
 
 ## 日本語のまま残したいとき
 

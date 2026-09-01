@@ -1,7 +1,7 @@
 import { IconMathFunction } from "@tabler/icons-react";
+import { getTranslations } from "next-intl/server";
 import { MasterDetailPlaceholder } from "@/components/ui/MasterDetailPlaceholder";
 import { requireAppRead } from "@/lib/authz-page";
-import { getTr } from "@/lib/ui-text-server";
 
 export const dynamic = "force-dynamic";
 
@@ -10,13 +10,13 @@ export const dynamic = "force-dynamic";
  * モバイルでは MasterDetailShell が一覧（master）を表示するため、これは出ない。
  */
 export default async function CriteriaIndexPage() {
-  const tr = await getTr();
+  const tr = await getTranslations();
   const denied = await requireAppRead("trial-pricing-engine");
   if (denied) return denied;
   return (
     <MasterDetailPlaceholder
       icon={<IconMathFunction size={24} />}
-      message={tr("左の一覧から基準を選ぶと式を編集できます")}
+      message={tr("settings.trialPricingEngine.selectACriterionOnTheLeft")}
     />
   );
 }

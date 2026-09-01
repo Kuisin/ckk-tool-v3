@@ -16,6 +16,7 @@ import {
   IconSend,
 } from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { useState, useTransition } from "react";
 import {
   approvePagePublish,
@@ -29,7 +30,6 @@ import {
   RejectButton,
 } from "@/components/ui/buttons";
 import { ModalShell } from "@/components/ui/modals";
-import { useTr } from "@/hooks/useTr";
 
 export function PagePublishCard({
   pageNumber,
@@ -48,7 +48,7 @@ export function PagePublishCard({
   openComments: number;
   hasUnpublishedChanges: boolean;
 }) {
-  const tr = useTr();
+  const tr = useTranslations();
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [confirmOpen, setConfirmOpen] = useState(false);
@@ -69,8 +69,8 @@ export function PagePublishCard({
         router.refresh();
       } else {
         notifications.show({
-          title: tr("エラー"),
-          message: r.error ?? tr("処理に失敗しました"),
+          title: tr("common.error2"),
+          message: r.error ?? tr("common.theOperationFailed"),
           color: "red",
         });
       }
@@ -80,9 +80,11 @@ export function PagePublishCard({
     if (!canApprove) {
       return (
         <ActionCard
-          description={tr("承認されると公開されます。")}
+          description={tr(
+            "documents.pagePublishCard.itIsPublishedOnceApproved",
+          )}
           icon={<IconClock size={20} />}
-          title={tr("公開の承認依頼中")}
+          title={tr("documents.pagePublishCard.pendingApprovalToPublish")}
           tone="wait"
         />
       );
@@ -101,7 +103,7 @@ export function PagePublishCard({
                         ok: r.ok,
                         error: r.ok ? undefined : r.error,
                       })),
-                    tr("承認しました"),
+                    tr("common.approved"),
                   )
                 }
               />
@@ -111,15 +113,15 @@ export function PagePublishCard({
               />
             </>
           }
-          description={tr("内容を確認して承認または差し戻してください。")}
+          description={tr("common.reviewItAndEitherApproveOr")}
           icon={<IconCheck size={20} />}
-          title={tr("あなたの承認依頼中です")}
+          title={tr("common.waitingForYourApproval")}
           tone="approve"
         />
         <ModalShell
           confirmColor="red"
           confirmDisabled={!reason.trim()}
-          confirmLabel={tr("差し戻す")}
+          confirmLabel={tr("common.sendBack")}
           loading={isPending}
           onClose={() => setRejectOpen(false)}
           onConfirm={() =>
@@ -129,14 +131,14 @@ export function PagePublishCard({
                   ok: r.ok,
                   error: r.ok ? undefined : r.error,
                 })),
-              tr("差し戻しました"),
+              tr("common.sentBack"),
             )
           }
           opened={rejectOpen}
           title="差し戻し"
         >
           <Text mb="sm" size="sm">
-            {tr("差し戻す理由を入力してください。")}
+            {tr("documents.pagePublishCard.enterAReasonForSendingIt")}
           </Text>
           <Textarea
             autosize
@@ -161,13 +163,13 @@ export function PagePublishCard({
             loading={isPending}
             onClick={() => setConfirmOpen(true)}
           >
-            {approvalRequired ? "公開を申請" : tr("公開する")}
+            {approvalRequired ? "公開を申請" : tr("common.publish")}
           </PrimaryButton>
         }
         description={
           approvalRequired
-            ? tr("承認されると公開版が入れ替わります。")
-            : tr("公開版が最新のリビジョンに入れ替わります。")
+            ? tr("documents.pagePublishCard.thePublishedVersionIsReplacedOnce")
+            : tr("documents.pagePublishCard.thePublishedVersionIsReplacedWith")
         }
         icon={
           openComments > 0 ? (
@@ -176,11 +178,11 @@ export function PagePublishCard({
             <IconSend size={20} />
           )
         }
-        title={tr("公開されていない変更があります")}
+        title={tr("documents.pagePublishCard.thereAreUnpublishedChanges")}
         tone="action"
       />
       <ModalShell
-        confirmLabel={approvalRequired ? "申請する" : tr("公開する")}
+        confirmLabel={approvalRequired ? "申請する" : tr("common.publish")}
         loading={isPending}
         onClose={() => setConfirmOpen(false)}
         onConfirm={() =>
@@ -190,16 +192,20 @@ export function PagePublishCard({
                 ok: r.ok,
                 error: r.ok ? undefined : r.error,
               })),
-            approvalRequired ? "公開を申請しました" : tr("公開しました"),
+            approvalRequired ? "公開を申請しました" : tr("common.published"),
           )
         }
         opened={confirmOpen}
-        title={approvalRequired ? "公開の申請" : tr("公開の確認")}
+        title={
+          approvalRequired
+            ? "公開の申請"
+            : tr("documents.pagePublishCard.confirmPublishing")
+        }
       >
         <Text size="sm">
           {openComments > 0
             ? `未解決のコメントが ${openComments} 件あります。このまま進めますか？`
-            : tr("最新のリビジョンを公開します。")}
+            : tr("documents.pagePublishCard.theLatestRevisionWillBePublished")}
         </Text>
       </ModalShell>
     </>

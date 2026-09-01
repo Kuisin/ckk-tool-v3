@@ -29,9 +29,9 @@ import {
   IconChevronUp,
   IconCircleCheck,
 } from "@tabler/icons-react";
+import { useTranslations } from "next-intl";
 import { useState } from "react";
 import { GhostButton } from "@/components/ui/buttons";
-import { useTr } from "@/hooks/useTr";
 import type { FieldReview } from "@/lib/intake-review";
 
 const STATUS_BADGE: Record<string, { label: string; color: string }> = {
@@ -40,7 +40,7 @@ const STATUS_BADGE: Record<string, { label: string; color: string }> = {
 };
 
 export function IntakeReviewPanel({ review }: { review: FieldReview[] }) {
-  const tr = useTr();
+  const tr = useTranslations();
   // 既定は畳む。開くと以後はそのページに居る間だけ開いたまま。
   const [open, setOpen] = useState(false);
 
@@ -56,17 +56,11 @@ export function IntakeReviewPanel({ review }: { review: FieldReview[] }) {
       <Alert
         color="green"
         icon={<IconCircleCheck size={16} />}
-        title={tr("全項目を特定できました")}
+        title={tr("sales.orderAcceptances.everyFieldWasIdentified")}
         variant="light"
       >
         <Text size="sm">
-          {tr(
-            tr(
-              tr(
-                "読み取った内容がマスタと一致しています。書類と見比べて確認してください。",
-              ),
-            ),
-          )}
+          {tr("sales.orderAcceptances.whatWasReadMatchesTheMaster")}
         </Text>
       </Alert>
     );
@@ -82,13 +76,7 @@ export function IntakeReviewPanel({ review }: { review: FieldReview[] }) {
       <Stack gap="xs">
         <Group gap="xs" justify="space-between" wrap="nowrap">
           <Text className="min-w-0" size="sm">
-            {tr(
-              tr(
-                tr(
-                  "自動で確定できなかった項目があります。書類を見ながら直してください。",
-                ),
-              ),
-            )}
+            {tr("sales.orderAcceptances.someFieldsCouldNotBeSettled")}
           </Text>
           <GhostButton
             aria-expanded={open}
@@ -99,7 +87,9 @@ export function IntakeReviewPanel({ review }: { review: FieldReview[] }) {
               open ? <IconChevronUp size={14} /> : <IconChevronDown size={14} />
             }
           >
-            {open ? "内訳を隠す" : tr("内訳を見る")}
+            {open
+              ? "内訳を隠す"
+              : tr("sales.orderAcceptances.viewTheBreakdown")}
           </GhostButton>
         </Group>
         <Collapse expanded={open}>

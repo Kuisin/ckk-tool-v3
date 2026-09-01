@@ -35,7 +35,7 @@ import { DatePickerInput } from "@mantine/dates";
 import { useForm } from "@mantine/form";
 import { notifications } from "@mantine/notifications";
 import { useRouter } from "next/navigation";
-import { useLocale } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { useEffect, useState, useTransition } from "react";
 import { z } from "zod";
 import {
@@ -55,7 +55,6 @@ import { HelpLabel } from "@/components/ui/HelpLabel";
 import { SearchSelect } from "@/components/ui/SearchSelect";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { FormSection, FormShell } from "@/components/ui/shells";
-import { useTr } from "@/hooks/useTr";
 import {
   designKindLabel,
   designKindOptions,
@@ -99,13 +98,13 @@ const schema = z
     description: z.string(),
   })
   .superRefine((v, ctx) => {
-    const tr = useTr();
+    const tr = useTranslations();
     // 改訂は「なぜ描き直すか」が要る（サーバー側でも同じ条件で弾く）。
     if (v.kind === "REVISION" && !v.changeReason.trim()) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         path: ["changeReason"],
-        message: tr("改訂のときは変更理由を入力してください"),
+        message: tr("sales.designRequests.enterAReasonForTheChange"),
       });
     }
   });
@@ -161,7 +160,7 @@ export function DesignRequestForm({
   /** 起票元から引き継いだ受注元（見積・注文明細の顧客）。 */
   initialCustomerBpId?: string | null;
 }) {
-  const tr = useTr();
+  const tr = useTranslations();
   const locale = useLocale();
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
@@ -262,18 +261,18 @@ export function DesignRequestForm({
             });
       if (result.ok) {
         notifications.show({
-          title: tr("保存しました"),
+          title: tr("common.saved2"),
           message:
             mode === "edit"
-              ? tr("設計依頼書を更新しました")
+              ? tr("sales.designRequests.theDesignRequestWasUpdated")
               : `設計依頼書 ${result.data.number} を作成しました`,
           color: "green",
         });
         router.push(`${BASE_PATH}/${result.data.number}`);
       } else {
         notifications.show({
-          title: tr("エラー"),
-          message: tr(result.error),
+          title: tr("common.error2"),
+          message: result.error,
           color: "red",
         });
       }
@@ -283,9 +282,9 @@ export function DesignRequestForm({
   return (
     <FormShell
       breadcrumbs={[
-        tr("販売"),
-        { label: tr("設計依頼書"), href: BASE_PATH },
-        mode === "edit" ? "編集" : tr("新規作成"),
+        tr("common.sales"),
+        { label: tr("common.designRequest2"), href: BASE_PATH },
+        mode === "edit" ? "編集" : tr("common.new2"),
       ]}
       isDirty={form.isDirty()}
       isPending={isPending}
@@ -301,18 +300,12 @@ export function DesignRequestForm({
       title={
         mode === "edit"
           ? `設計依頼書 編集 ${requestId ?? ""}`
-          : tr("設計依頼書 新規作成")
+          : tr("sales.designRequests.newDesignRequest")
       }
     >
       <FormSection
-        description={tr(
-          tr(
-            tr(
-              "トリガー（見積時 / 受注時）と参照元は作成後に変更できません。保存時に依頼番号 DSG-YYYYMM-NNNNN が採番されます。",
-            ),
-          ),
-        )}
-        title={tr("基本情報")}
+        description={tr("sales.designRequests.theTriggerAtQuoteOrAt")}
+        title={tr("common.basicInformation")}
       >
         <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="sm">
           {mode === "create" && prefilledTrigger ? (
@@ -320,7 +313,7 @@ export function DesignRequestForm({
             // 切り替えられるようにすると、誤操作でリンクが黙って外れる。
             <>
               <FieldValue
-                label={tr("トリガー")}
+                label={tr("common.trigger")}
                 value={
                   <Badge
                     color={DESIGN_TRIGGER_COLOR[prefilledTrigger] ?? "gray"}
@@ -332,7 +325,11 @@ export function DesignRequestForm({
                 }
               />
               <FieldValue
-                label={prefilledTrigger === "QUOTE" ? "見積書" : tr("注文明細")}
+                label={
+                  prefilledTrigger === "QUOTE"
+                    ? "見積書"
+                    : tr("common.orderLine")
+                }
                 value={prefilled?.label ?? "—"}
               />
             </>
@@ -357,34 +354,36 @@ export function DesignRequestForm({
                   clearable
                   data={quoteOptions}
                   description={tr(
-                    "§1 見積と並行して設計を依頼する場合の見積元（任意）",
+                    "sales.designRequests.n1TheSourceQuoteWhenDesign",
                   )}
                   label={<HelpLabel {...fieldHelp("designRequest", "quote")} />}
-                  placeholder={tr("直近の見積書から選択")}
+                  placeholder={tr(
+                    "sales.designRequests.chooseFromRecentQuotes",
+                  )}
                   searchable
                   {...form.getInputProps("quoteNumber")}
                 />
               ) : form.values.trigger === "SALES_ORDER" ? (
                 <SearchSelect
                   description={tr(
-                    "§3 受注と並行して設計を依頼する場合の注文明細（任意）",
+                    "sales.designRequests.n3TheOrderLineWhenDesign",
                   )}
                   label={
                     <HelpLabel {...fieldHelp("designRequest", "orderLine")} />
                   }
                   onChange={(v) => form.setFieldValue("orderLineId", v)}
                   onSearch={searchOrderLineOptions}
-                  placeholder={tr("注文明細を検索")}
+                  placeholder={tr("sales.designRequests.searchOrderLines")}
                   storageKey="sales-order"
                   value={form.values.orderLineId}
                 />
               ) : (
                 // 単独 — 紐づける書類が無いので、欄を出さずに何が起きるかだけ書く。
                 <FieldValue
-                  label={tr("参照元")}
+                  label={tr("common.source")}
                   value={
                     <Text c="dimmed" size="sm">
-                      {tr("なし（見積・受注に紐づけません）")}
+                      {tr("sales.designRequests.noneNotTiedToAQuote")}
                     </Text>
                   }
                 />
@@ -394,7 +393,7 @@ export function DesignRequestForm({
             <>
               {/* トリガー・参照元は作成後変更不可。 */}
               <FieldValue
-                label={tr("トリガー")}
+                label={tr("common.trigger")}
                 value={
                   request ? (
                     <Badge
@@ -412,14 +411,14 @@ export function DesignRequestForm({
               <FieldValue
                 label={
                   request && !hasSourceDocument(request.trigger)
-                    ? tr("参照元")
+                    ? tr("common.source")
                     : request?.trigger === "QUOTE"
-                      ? tr("見積書")
-                      : tr("注文明細")
+                      ? tr("common.quote")
+                      : tr("common.orderLine")
                 }
                 value={
                   request && !hasSourceDocument(request.trigger)
-                    ? tr("なし")
+                    ? tr("common.none2")
                     : request?.trigger === "QUOTE"
                       ? (request?.quoteNumber ?? "—")
                       : (request?.orderLineNumber ?? "—")
@@ -445,7 +444,7 @@ export function DesignRequestForm({
               void loadKindContext(v);
             }}
             onSearch={searchProductOptions}
-            placeholder={tr("製品を検索")}
+            placeholder={tr("common.searchProducts")}
             storageKey="product"
             value={form.values.productId || null}
             withAsterisk
@@ -457,28 +456,24 @@ export function DesignRequestForm({
             clearable
             data={customerOptions}
             description={tr(
-              tr(
-                tr(
-                  "空のままなら「汎用」— どの顧客の指示書からも使えます。版番号は受注元ごとに数えます",
-                ),
-              ),
+              "sales.designRequests.leaveItBlankForGenericUsable",
             )}
-            label={tr("受注元")}
+            label={tr("common.orderingCustomer")}
             onChange={(v) => {
               form.setFieldValue("customerBpId", v);
               void loadKindContext(form.values.productId || null, v);
             }}
-            placeholder={tr("汎用（すべての顧客）")}
+            placeholder={tr("common.genericAllCustomers2")}
             searchable
             value={form.values.customerBpId}
           />
           <Select
             data={assigneeOptions}
             description={tr(
-              "承認されると、この人に「着手してください」の通知が届きます",
+              "sales.designRequests.onceApprovedThisPersonIsNotified",
             )}
             label={<HelpLabel {...fieldHelp("designRequest", "assignee")} />}
-            placeholder={tr("図面をつくる担当者")}
+            placeholder={tr("common.whoDrawsTheDrawing")}
             searchable
             withAsterisk
             {...form.getInputProps("assigneeId")}
@@ -487,7 +482,7 @@ export function DesignRequestForm({
             clearable
             label={<HelpLabel {...fieldHelp("designRequest", "desiredAt")} />}
             onChange={(v) => form.setFieldValue("desiredAt", v)}
-            placeholder={tr("いつまでに図面が要るか")}
+            placeholder={tr("sales.designRequests.whenTheDrawingIsNeededBy")}
             value={form.values.desiredAt}
             valueFormat="YYYY/MM/DD"
           />
@@ -502,13 +497,9 @@ export function DesignRequestForm({
       {/* 依頼区分 — 製品を選ぶと自動で決まる。根拠を出したうえで上書きも許す。 */}
       <FormSection
         description={tr(
-          tr(
-            tr(
-              "製品に過去の設計書があるかで自動判定します。違うときは手で変えられます。",
-            ),
-          ),
+          "sales.designRequests.determinedAutomaticallyByWhetherTheProduct",
         )}
-        title={tr("依頼区分")}
+        title={tr("common.requestKind")}
       >
         <Stack gap="sm">
           <Group gap="sm" wrap="wrap">
@@ -520,14 +511,16 @@ export function DesignRequestForm({
               {designKindLabel(effectiveKind, locale) ?? effectiveKind}
             </Badge>
             <Badge color="gray" size="sm" variant="outline">
-              {form.values.kind ? "手動指定" : tr("自動判定")}
+              {form.values.kind
+                ? "手動指定"
+                : tr("sales.designRequests.determinedAutomatically")}
             </Badge>
             <Text c="dimmed" size="xs">
               {kindContext
                 ? describeDetection(kindContext.detection)
                 : form.values.productId
-                  ? tr("判定中…")
-                  : tr("製品を選ぶと判定します")}
+                  ? tr("sales.designRequests.checking")
+                  : tr("sales.designRequests.itIsDeterminedOnceYouChoose")}
             </Text>
           </Group>
           <Group gap="xs">
@@ -541,7 +534,7 @@ export function DesignRequestForm({
             />
             {form.values.kind && (
               <GhostButton onClick={() => form.setFieldValue("kind", null)}>
-                {tr("自動判定に戻す")}
+                {tr("sales.designRequests.backToAutomatic")}
               </GhostButton>
             )}
           </Group>
@@ -551,14 +544,17 @@ export function DesignRequestForm({
               <Select
                 clearable
                 data={kindContext?.versions ?? []}
-                description={tr("空にすると、判定した時点の最新版を基にします")}
+                description={tr(
+                  "sales.designRequests.ifLeftEmptyTheLatestVersion",
+                )}
                 label={
                   <HelpLabel
                     {...fieldHelp("designRequest", "baseDesignFile")}
                   />
                 }
                 placeholder={
-                  kindContext?.detection.latestFileLabel ?? tr("版を選択")
+                  kindContext?.detection.latestFileLabel ??
+                  tr("sales.designRequests.selectAVersion")
                 }
                 {...form.getInputProps("baseDesignFileId")}
               />
@@ -568,7 +564,7 @@ export function DesignRequestForm({
                   <HelpLabel {...fieldHelp("designRequest", "changeReason")} />
                 }
                 minRows={2}
-                placeholder={tr("なぜ描き直すか")}
+                placeholder={tr("sales.designRequests.whyItIsBeingRedrawn")}
                 withAsterisk
                 {...form.getInputProps("changeReason")}
               />
@@ -577,12 +573,14 @@ export function DesignRequestForm({
         </Stack>
       </FormSection>
 
-      <FormSection title={tr("依頼内容")}>
+      <FormSection title={tr("common.requestDetails")}>
         <Textarea
           autosize
           label={<HelpLabel {...fieldHelp("designRequest", "description")} />}
           minRows={4}
-          placeholder={tr("設計依頼の内容・要件（任意）")}
+          placeholder={tr(
+            "sales.designRequests.designRequestDetailsAndRequirementsOptional",
+          )}
           {...form.getInputProps("description")}
         />
       </FormSection>

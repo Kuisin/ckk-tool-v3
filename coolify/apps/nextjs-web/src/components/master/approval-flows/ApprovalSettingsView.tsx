@@ -10,13 +10,13 @@
  */
 
 import { Stack, Tabs } from "@mantine/core";
+import { useTranslations } from "next-intl";
 import {
   type ApprovalGroupRow,
   ApprovalGroupTable,
 } from "@/components/master/approval-settings/ApprovalGroupTable";
 import { AppTabs } from "@/components/ui/AppTabs";
 import { PageHeader } from "@/components/ui/PageHeader";
-import { useTr } from "@/hooks/useTr";
 import { useTabParam } from "@/hooks/useUrlState";
 import {
   ApprovalFlowOverview,
@@ -30,19 +30,19 @@ export function ApprovalSettingsView({
   flows: FlowOverviewRow[];
   groups: ApprovalGroupRow[];
 }) {
-  const tr = useTr();
+  const tr = useTranslations();
   const [tab, setTab] = useTabParam("flows");
 
   return (
     <Stack gap="md">
       <PageHeader
-        breadcrumbs={[tr("マスタ"), tr("承認設定")]}
-        title={tr("承認設定")}
+        breadcrumbs={[tr("common.masterData"), tr("common.approvalSettings")]}
+        title={tr("common.approvalSettings")}
       />
       <AppTabs onChange={setTab} value={tab}>
         <Tabs.List>
-          <Tabs.Tab value="flows">{tr("承認フロー")}</Tabs.Tab>
-          <Tabs.Tab value="groups">{tr("承認グループ")}</Tabs.Tab>
+          <Tabs.Tab value="flows">{tr("common.approvalFlow")}</Tabs.Tab>
+          <Tabs.Tab value="groups">{tr("common.approvalGroup")}</Tabs.Tab>
         </Tabs.List>
         <Tabs.Panel pt="md" value="flows">
           <ApprovalFlowOverview rows={flows} />

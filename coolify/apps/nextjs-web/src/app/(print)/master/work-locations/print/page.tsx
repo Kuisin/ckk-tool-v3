@@ -1,11 +1,11 @@
 import { IconLock } from "@tabler/icons-react";
+import { getTranslations } from "next-intl/server";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { checkPermission } from "@/lib/authz";
 import { prisma } from "@/lib/db";
 import { type LocalizedText, localized } from "@/lib/format";
 import { qrSvg } from "@/lib/qr";
 import { encodeQrPayload, QR_KINDS } from "@/lib/qr-payload";
-import { getTr } from "@/lib/ui-text-server";
 import { PrintToolbar } from "./print-toolbar";
 
 export const dynamic = "force-dynamic";
@@ -46,7 +46,7 @@ export default async function WorkLocationsPrintPage({
 }: {
   searchParams: Promise<{ ids?: string }>;
 }) {
-  const tr = await getTr();
+  const tr = await getTranslations();
   const authz = await checkPermission("master", "READ");
   if (!authz.ok) {
     return <EmptyState icon={<IconLock size={28} />} message={authz.error} />;
@@ -82,7 +82,7 @@ export default async function WorkLocationsPrintPage({
 
       {labels.length === 0 ? (
         <p className="wl-print-empty">
-          {tr("印刷対象の作業場所がありません。")}
+          {tr("master.workLocations.thereAreNoWorkLocationsTo")}
         </p>
       ) : (
         sheets.map((sheet) => (
@@ -91,7 +91,7 @@ export default async function WorkLocationsPrintPage({
             <div className="wl-print-scale">
               <span className="wl-print-scale-bar" />
               <span className="wl-print-scale-label">
-                {tr("50mm（原寸確認 / 用紙 A4・倍率 100%）")}
+                {tr("common.n50mmActualSizeCheckA4Paper")}
               </span>
             </div>
             <div className="wl-print-grid">
@@ -117,7 +117,7 @@ export default async function WorkLocationsPrintPage({
                       <span className="wl-print-name">{label.name}</span>
                       <span className="wl-print-code">{label.code}</span>
                       <span className="wl-print-hint">
-                        {tr("作業場所QR — 工程実行画面で読み取り")}
+                        {tr("master.workLocations.workLocationQrScannedOnThe")}
                       </span>
                     </div>
                   </div>

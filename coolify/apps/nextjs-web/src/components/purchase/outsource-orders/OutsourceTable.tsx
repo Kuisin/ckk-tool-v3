@@ -14,12 +14,12 @@ import { Anchor, Group, Select, Stack, Text, TextInput } from "@mantine/core";
 import { IconSearch, IconTruckDelivery } from "@tabler/icons-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { useMemo } from "react";
 import { useFormat } from "@/components/layout/PreferencesProvider";
 import { type Column, DataTable } from "@/components/ui/DataTable";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { ListShell } from "@/components/ui/shells";
-import { useTr } from "@/hooks/useTr";
 import { useUrlSelectState, useUrlStringState } from "@/hooks/useUrlState";
 import { useIsMobile } from "@/hooks/useViewport";
 import { statusOptions } from "@/lib/status-map";
@@ -28,7 +28,7 @@ import type { OutsourceStepRow } from "./model";
 const WORK_ORDERS_PATH = "/production/work-orders";
 
 export function OutsourceTable({ rows }: { rows: OutsourceStepRow[] }) {
-  const tr = useTr();
+  const tr = useTranslations();
   const fmt = useFormat();
   const router = useRouter();
   const isMobile = useIsMobile();
@@ -70,7 +70,7 @@ export function OutsourceTable({ rows }: { rows: OutsourceStepRow[] }) {
   const columns: Column<OutsourceStepRow>[] = [
     {
       key: "workOrderNumber",
-      header: tr("指示書番号"),
+      header: tr("common.workOrderNumber"),
       width: 110,
       sortable: true,
       sortValue: (r) => r.workOrderNumber,
@@ -95,20 +95,20 @@ export function OutsourceTable({ rows }: { rows: OutsourceStepRow[] }) {
     },
     {
       key: "processName",
-      header: tr("工程名"),
+      header: tr("purchase.outsourceOrders.stepName"),
       sortable: true,
       render: (r) => r.processName,
     },
     {
       key: "supplierName",
-      header: tr("外注先"),
+      header: tr("purchase.outsourceOrders.subcontractor"),
       sortable: true,
       sortValue: (r) => r.supplierName ?? "",
       render: (r) => r.supplierName ?? "—",
     },
     {
       key: "requestedAt",
-      header: tr("依頼日"),
+      header: tr("common.requestedDate"),
       width: 110,
       sortable: true,
       sortValue: (r) => r.requestedAt ?? "",
@@ -120,7 +120,7 @@ export function OutsourceTable({ rows }: { rows: OutsourceStepRow[] }) {
     },
     {
       key: "expectedAt",
-      header: tr("入荷予定日"),
+      header: tr("common.expectedDate"),
       width: 110,
       sortable: true,
       sortValue: (r) => r.expectedAt ?? "",
@@ -132,7 +132,7 @@ export function OutsourceTable({ rows }: { rows: OutsourceStepRow[] }) {
     },
     {
       key: "receivedAt",
-      header: tr("入荷日"),
+      header: tr("common.receivedDate"),
       width: 110,
       sortable: true,
       sortValue: (r) => r.receivedAt ?? "",
@@ -144,7 +144,7 @@ export function OutsourceTable({ rows }: { rows: OutsourceStepRow[] }) {
     },
     {
       key: "status",
-      header: tr("状態"),
+      header: tr("common.status"),
       width: 100,
       sortValue: (r) => r.status,
       render: (r) => <StatusBadge entity="Step" status={r.status} />,
@@ -153,7 +153,7 @@ export function OutsourceTable({ rows }: { rows: OutsourceStepRow[] }) {
 
   return (
     <ListShell
-      breadcrumbs={[tr("購買"), tr("外注依頼")]}
+      breadcrumbs={[tr("common.purchasing"), tr("common.outsourceOrder")]}
       filters={
         <>
           <Select
@@ -161,7 +161,7 @@ export function OutsourceTable({ rows }: { rows: OutsourceStepRow[] }) {
             data={supplierOptions}
             flex={isMobile ? 1 : undefined}
             onChange={setSupplier}
-            placeholder={tr("外注先")}
+            placeholder={tr("purchase.outsourceOrders.subcontractor")}
             searchable
             value={supplier}
             w={isMobile ? undefined : 180}
@@ -171,7 +171,7 @@ export function OutsourceTable({ rows }: { rows: OutsourceStepRow[] }) {
             data={statusOptions("Step")}
             flex={isMobile ? 1 : undefined}
             onChange={setStatus}
-            placeholder={tr("状態")}
+            placeholder={tr("common.status")}
             value={status}
             w={isMobile ? undefined : 130}
           />
@@ -182,11 +182,13 @@ export function OutsourceTable({ rows }: { rows: OutsourceStepRow[] }) {
         <TextInput
           leftSection={<IconSearch size={14} />}
           onChange={(e) => setSearch(e.currentTarget.value)}
-          placeholder={tr("指示書番号・製品・工程・外注先で検索")}
+          placeholder={tr(
+            "purchase.outsourceOrders.searchByWorkOrderNumberProduct",
+          )}
           value={search}
         />
       }
-      title={tr("外注依頼")}
+      title={tr("common.outsourceOrder")}
     >
       <DataTable
         columns={columns}
@@ -194,7 +196,7 @@ export function OutsourceTable({ rows }: { rows: OutsourceStepRow[] }) {
         defaultSort={{ key: "workOrderNumber", dir: "desc" }}
         emptyIcon={<IconTruckDelivery size={24} />}
         emptyMessage={tr(
-          "外注工程がありません（指示書の工程で外注を選ぶと表示されます）",
+          "purchase.outsourceOrders.thereAreNoOutsourcedStepsThey",
         )}
         getRowId={(r) => r.stepId}
         onRowClick={(r) =>
@@ -215,7 +217,8 @@ export function OutsourceTable({ rows }: { rows: OutsourceStepRow[] }) {
                 {r.productName}
               </Text>
               <Text c="dimmed" size="xs" truncate>
-                {r.supplierName ?? tr("外注先未設定")}
+                {r.supplierName ??
+                  tr("purchase.outsourceOrders.noSubcontractorSet")}
               </Text>
             </Stack>
             <Stack align="flex-end" className="shrink-0" gap={4}>

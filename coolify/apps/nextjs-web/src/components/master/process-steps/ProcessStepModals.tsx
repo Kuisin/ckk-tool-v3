@@ -8,13 +8,13 @@
  */
 
 import { notifications } from "@mantine/notifications";
+import { useTranslations } from "next-intl";
 import { useTransition } from "react";
 import {
   deleteProcessSteps,
   setProcessStepsActive,
 } from "@/app/(dashboard)/master/process-steps/actions";
 import { ConfirmModal, type ModalBaseProps } from "@/components/ui/modals";
-import { useTr } from "@/hooks/useTr";
 
 export interface ProcessStepModalTarget {
   id: number;
@@ -36,11 +36,11 @@ export function DeleteProcessStepModal({
   target: ProcessStepModalTarget | null;
   onDone?: () => void;
 }) {
-  const tr = useTr();
+  const tr = useTranslations();
   const [isPending, startTransition] = useTransition();
   return (
     <ConfirmModal
-      confirmLabel={tr("削除する")}
+      confirmLabel={tr("common.delete2")}
       loading={isPending}
       message={
         target
@@ -54,29 +54,23 @@ export function DeleteProcessStepModal({
           const result = await deleteProcessSteps([target.id]);
           if (result.ok) {
             notifications.show({
-              title: tr("削除しました"),
+              title: tr("common.deleted"),
               message: `工程「${label(target)}」を削除しました`,
               color: "green",
             });
             onDone?.();
           } else {
             notifications.show({
-              title: tr("エラー"),
-              message: tr(result.error),
+              title: tr("common.error2"),
+              message: result.error,
               color: "red",
             });
           }
         });
       }}
       opened={opened}
-      title={tr("工程の削除")}
-      warning={tr(
-        tr(
-          tr(
-            "他の工程がこの工程に依存している場合や、検査表テンプレート・指示書が参照している場合は削除できません。無効化をご検討ください。",
-          ),
-        ),
-      )}
+      title={tr("master.processSteps.deleteTheStep")}
+      warning={tr("master.processSteps.itCannotBeDeletedWhileOther")}
     />
   );
 }
@@ -90,13 +84,13 @@ export function ToggleProcessStepActiveModal({
   target: ProcessStepModalTarget | null;
   onDone?: () => void;
 }) {
-  const tr = useTr();
+  const tr = useTranslations();
   const [isPending, startTransition] = useTransition();
   const isActive = target?.isActive ?? true;
   return (
     <ConfirmModal
       confirmColor={isActive ? "red" : "blue"}
-      confirmLabel={isActive ? "無効化する" : tr("有効化する")}
+      confirmLabel={isActive ? "無効化する" : tr("common.enable2")}
       loading={isPending}
       message={
         target
@@ -112,22 +106,24 @@ export function ToggleProcessStepActiveModal({
           const result = await setProcessStepsActive([target.id], !isActive);
           if (result.ok) {
             notifications.show({
-              title: isActive ? "無効化しました" : tr("有効化しました"),
+              title: isActive ? "無効化しました" : tr("common.enabled2"),
               message: `工程「${label(target)}」を${isActive ? "無効化" : "有効化"}しました`,
               color: "green",
             });
             onDone?.();
           } else {
             notifications.show({
-              title: tr("エラー"),
-              message: tr(result.error),
+              title: tr("common.error2"),
+              message: result.error,
               color: "red",
             });
           }
         });
       }}
       opened={opened}
-      title={isActive ? "工程の無効化" : tr("工程の有効化")}
+      title={
+        isActive ? "工程の無効化" : tr("master.processSteps.enableTheStep")
+      }
     />
   );
 }

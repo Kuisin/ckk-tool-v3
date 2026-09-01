@@ -86,6 +86,28 @@ function matchParen(masked, open) {
 }
 
 /**
+ * 与えられた（masked な）引数リストに**本物の 2 つ目以降の引数**があるか。
+ *
+ * 深さ 0 のカンマを集め、**最後のカンマの後ろが空白しか無ければ**それは
+ * Biome が複数行整形のために置いた末尾カンマとみなして数えない。
+ * 残ったカンマが 1 つでもあれば、本物の vars がある。
+ */
+function hasRealSecondArg(maskedArgs) {
+  let depth = 0;
+  const commas = [];
+  for (let i = 0; i < maskedArgs.length; i++) {
+    const c = maskedArgs[i];
+    if ("([{".includes(c)) depth++;
+    else if (")]}".includes(c)) depth--;
+    else if (c === "," && depth === 0) commas.push(i);
+  }
+  if (commas.length === 0) return false;
+  const last = commas[commas.length - 1];
+  const trailingIsEmpty = maskedArgs.slice(last + 1).trim().length === 0;
+  return trailingIsEmpty ? commas.length > 1 : true;
+}
+
+/**
  * 1 ファイルを 1 回たたむ（内側から順に見つかる最初の 1 件を処理して返す）。
  * 変化が無ければ null。
  */
@@ -102,28 +124,27 @@ function collapseOnce(source) {
 
     // 内側の tr(...) が外側の第 1 引数を**まるごと**占めているか
     // （閉じた直後がカンマか、外側の閉じ括弧そのもの）。
-    const afterInner = source.slice(innerClose + 1, outerClose).trimStart();
-    const outerHasVars = afterInner.startsWith(",");
+    //
+    // ★ **Biome の「複数行なら末尾カンマ」を vars と誤認していたバグ**を直した。
+    // `tr(\n  tr(\n    "text",\n  ),\n)` は引数がただ 1 つ（内側の呼び出し）でも、
+    // 複数行に整形されているという理由だけで Biome が末尾にカンマを置く。
+    // 「閉じた直後がカンマなら vars 有り」という素朴な判定は、この**中身の無い
+    // 末尾カンマ**を「2 つ目の引数がある」と読み違えていた。3 段以上の入れ子
+    // （`tr(tr(tr("…")))`）では内側・外側の両方でこれが起き、
+    // `innerHasOwnVars && outerHasVars` の安全弁が常に働いて**一切たためない**
+    // まま放置されていた（気づかず #727 をマージしていた）。
+    // 「カンマの後ろに空白以外の中身があるか」まで見て、初めて本物の vars と
+    // 判定する。
+    const outerHasVars = hasRealSecondArg(masked.slice(innerClose + 1, outerClose));
 
     const innerArgs = source.slice(innerOpen + 1, innerClose); // 内側の引数全部
     const outerRest = outerHasVars
       ? source.slice(innerClose + 1, outerClose) // ", { vars… }" をそのまま引き継ぐ
       : "";
 
-    // 内側の tr(...) 自身が第 2 引数（vars）を持つか — 括弧の深さ 0 の
-    // カンマを探す。今回の壊れ方では内側は常に「素の tr(文字列)」なので
-    // 起きないはずだが、両方に vars がある形は想定外として触らない
-    // （安全側に倒して人が見る）。
-    let innerHasOwnVars = false;
-    {
-      let depth = 0;
-      const innerMasked = masked.slice(innerOpen + 1, innerClose);
-      for (const ch of innerMasked) {
-        if ("([{".includes(ch)) depth++;
-        else if (")]}".includes(ch)) depth--;
-        else if (ch === "," && depth === 0) { innerHasOwnVars = true; break; }
-      }
-    }
+    // 内側の tr(...) 自身が第 2 引数（vars）を持つか。同じ末尾カンマの罠が
+    // あるので、同じ判定関数を使う。
+    const innerHasOwnVars = hasRealSecondArg(masked.slice(innerOpen + 1, innerClose));
     if (innerHasOwnVars && outerHasVars) continue;
 
     const replacement = `tr(${innerArgs}${outerRest})`;

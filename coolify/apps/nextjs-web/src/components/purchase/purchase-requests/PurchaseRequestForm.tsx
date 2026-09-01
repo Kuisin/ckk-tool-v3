@@ -26,7 +26,7 @@ import { useForm } from "@mantine/form";
 import { notifications } from "@mantine/notifications";
 import { IconCalendar, IconPlus, IconTrash } from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
-import { useLocale } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { useTransition } from "react";
 import { z } from "zod";
 import { searchMaterialOptions } from "@/app/(dashboard)/_shared/option-search";
@@ -39,7 +39,6 @@ import { HelpLabel } from "@/components/ui/HelpLabel";
 import { SearchSelect } from "@/components/ui/SearchSelect";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { FormSection, FormShell } from "@/components/ui/shells";
-import { useTr } from "@/hooks/useTr";
 import { unitOptions } from "@/lib/enum-labels";
 import { fieldHelp } from "@/lib/field-help";
 import { zodResolver } from "@/lib/form";
@@ -114,7 +113,7 @@ export function PurchaseRequestForm({
   /** 入荷先拠点（有効のみ）。value = String(内部 id)。 */
   plantOptions: Option[];
 }) {
-  const tr = useTr();
+  const tr = useTranslations();
   const locale = useLocale();
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
@@ -153,7 +152,7 @@ export function PurchaseRequestForm({
           : await createPurchaseRequest(payload);
       if (result.ok) {
         notifications.show({
-          title: tr("保存しました"),
+          title: tr("common.saved2"),
           message:
             mode === "edit"
               ? `購買依頼 ${result.data.requestNumber} を更新しました`
@@ -163,8 +162,8 @@ export function PurchaseRequestForm({
         router.push(`${BASE_PATH}/${result.data.requestNumber}`);
       } else {
         notifications.show({
-          title: tr("エラー"),
-          message: tr(result.error),
+          title: tr("common.error2"),
+          message: result.error,
           color: "red",
         });
       }
@@ -174,9 +173,9 @@ export function PurchaseRequestForm({
   return (
     <FormShell
       breadcrumbs={[
-        tr("購買"),
-        { label: tr("購買依頼"), href: BASE_PATH },
-        mode === "edit" ? "編集" : tr("新規作成"),
+        tr("common.purchasing"),
+        { label: tr("common.purchaseRequest"), href: BASE_PATH },
+        mode === "edit" ? "編集" : tr("common.new2"),
       ]}
       isDirty={form.isDirty()}
       isPending={isPending}
@@ -195,36 +194,32 @@ export function PurchaseRequestForm({
       title={
         mode === "edit"
           ? `購買依頼 編集 ${requestNumber ?? ""}`
-          : tr("購買依頼 新規作成")
+          : tr("purchase.purchaseRequests.newPurchaseRequest")
       }
     >
-      <FormSection title={tr("基本情報")}>
+      <FormSection title={tr("common.basicInformation")}>
         <Textarea
           autosize
           label={<HelpLabel {...fieldHelp("purchaseRequest", "reason")} />}
           minRows={2}
-          placeholder={tr("依頼理由・用途（任意）")}
+          placeholder={tr(
+            "purchase.purchaseRequests.reasonAndIntendedUseOptional",
+          )}
           {...form.getInputProps("purpose")}
         />
         <Textarea
           autosize
-          label={tr("備考")}
+          label={tr("common.notes")}
           minRows={2}
           mt="sm"
-          placeholder={tr("備考（任意）")}
+          placeholder={tr("common.notesOptional")}
           {...form.getInputProps("notes")}
         />
       </FormSection>
 
       <FormSection
-        description={tr(
-          tr(
-            tr(
-              "単価・仕入先は持ちません。承認後に発注書へ変換し、発注側で確定します。",
-            ),
-          ),
-        )}
-        title={tr("明細")}
+        description={tr("purchase.purchaseRequests.itCarriesNoUnitPriceOr")}
+        title={tr("common.lineItems")}
       >
         <Group justify="flex-end" mb="xs">
           {typeof form.errors.items === "string" && (
@@ -264,7 +259,7 @@ export function PurchaseRequestForm({
                       );
                     }}
                     onSearch={searchMaterialOptions}
-                    placeholder={tr("素材を検索")}
+                    placeholder={tr("common.searchMaterials")}
                     storageKey="material"
                     value={item.materialId || null}
                     withAsterisk
@@ -276,13 +271,13 @@ export function PurchaseRequestForm({
                       <HelpLabel {...fieldHelp("purchaseRequest", "plant")} />
                     }
                     maw={180}
-                    placeholder={tr("拠点を選択")}
+                    placeholder={tr("common.selectASite")}
                     {...form.getInputProps(`items.${ri}.plantId`)}
                   />
                   <NumberInput
                     decimalScale={3}
                     error={form.errors[`items.${ri}.quantity`]}
-                    label={tr("数量")}
+                    label={tr("common.quantity")}
                     maw={110}
                     min={0}
                     {...form.getInputProps(`items.${ri}.quantity`)}
@@ -290,7 +285,7 @@ export function PurchaseRequestForm({
                   />
                   <Select
                     data={unitOptions(locale)}
-                    label={tr("単位")}
+                    label={tr("common.unit")}
                     maw={90}
                     withAsterisk
                     {...form.getInputProps(`items.${ri}.unit`)}
@@ -298,7 +293,7 @@ export function PurchaseRequestForm({
                 </Group>
               </Box>
               <ActionIcon
-                aria-label={tr("明細を削除")}
+                aria-label={tr("common.removeLine")}
                 color="red"
                 disabled={form.values.items.length <= 1}
                 mb={4}
@@ -316,14 +311,14 @@ export function PurchaseRequestForm({
                 }
                 leftSection={<IconCalendar size={14} />}
                 maw={200}
-                placeholder={tr("日付を選択")}
+                placeholder={tr("common.pickADate")}
                 valueFormat="YYYY/MM/DD"
                 {...form.getInputProps(`items.${ri}.desiredAt`)}
               />
               <TextInput
                 flex={1}
-                label={tr("備考")}
-                placeholder={tr("行の備考（任意）")}
+                label={tr("common.notes")}
+                placeholder={tr("common.lineNotesOptional")}
                 {...form.getInputProps(`items.${ri}.notes`)}
               />
             </Group>
@@ -336,7 +331,7 @@ export function PurchaseRequestForm({
           onClick={() => form.insertListItem("items", emptyItem())}
           size="xs"
         >
-          {tr("明細を追加")}
+          {tr("common.addLine")}
         </GhostButton>
       </FormSection>
     </FormShell>

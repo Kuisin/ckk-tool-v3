@@ -40,6 +40,7 @@ import {
 import { notifications } from "@mantine/notifications";
 import { IconDeviceTv, IconSearch } from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { useMemo, useState, useTransition } from "react";
 import {
   activateDisplay,
@@ -56,7 +57,6 @@ import {
 import { ModalShell } from "@/components/ui/modals";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { ListShell } from "@/components/ui/shells";
-import { useTr } from "@/hooks/useTr";
 import { useIsMobile } from "@/hooks/useViewport";
 import { formatCode, normalizeCode } from "@/lib/crockford";
 import {
@@ -131,7 +131,7 @@ type Props = {
 };
 
 export function DisplaysTable({ rows, plantOptions }: Props) {
-  const tr = useTr();
+  const tr = useTranslations();
   const { presence, live } = useDisplayPresence();
   const isMobile = useIsMobile();
   const fmt = useFormat();
@@ -166,8 +166,8 @@ export function DisplaysTable({ rows, plantOptions }: Props) {
       const result = await fn();
       if (!result.ok) {
         notifications.show({
-          title: tr("エラー"),
-          message: result.error ?? tr("操作に失敗しました"),
+          title: tr("common.error2"),
+          message: result.error ?? tr("common.theActionFailed"),
           color: "red",
         });
         return;
@@ -198,7 +198,7 @@ export function DisplaysTable({ rows, plantOptions }: Props) {
   const columns: Column<ViewRow>[] = [
     {
       key: "name",
-      header: tr("ディスプレイ名"),
+      header: tr("settings.displays.displayName2"),
       sortable: true,
       render: (r) => (
         <Stack gap={4} style={{ minWidth: 0 }}>
@@ -208,7 +208,7 @@ export function DisplaysTable({ rows, plantOptions }: Props) {
             </Text>
           ) : (
             <Text c="dimmed" size="sm">
-              {tr("（未設定）")}
+              {tr("common.notSet")}
             </Text>
           )}
           {r.group.grouped && (
@@ -229,7 +229,7 @@ export function DisplaysTable({ rows, plantOptions }: Props) {
     },
     {
       key: "location",
-      header: tr("場所"),
+      header: tr("common.location2"),
       hideable: true,
       render: (r) => (
         <Text c={r.location ? undefined : "dimmed"} size="sm" truncate>
@@ -250,7 +250,7 @@ export function DisplaysTable({ rows, plantOptions }: Props) {
     },
     {
       key: "content",
-      header: tr("表示内容"),
+      header: tr("common.whatToShow2"),
       sortable: true,
       render: (r) => (
         <Text size="sm" truncate>
@@ -261,7 +261,7 @@ export function DisplaysTable({ rows, plantOptions }: Props) {
     },
     {
       key: "status",
-      header: tr("状態"),
+      header: tr("common.status"),
       width: 110,
       sortable: true,
       render: (r) => <StatusBadge entity="DisplayDevice" status={r.status} />,
@@ -269,7 +269,7 @@ export function DisplaysTable({ rows, plantOptions }: Props) {
     },
     {
       key: "online",
-      header: tr("オンライン"),
+      header: tr("common.online"),
       width: 120,
       sortable: true,
       render: (r) =>
@@ -284,7 +284,7 @@ export function DisplaysTable({ rows, plantOptions }: Props) {
     },
     {
       key: "scalePercent",
-      header: tr("表示倍率"),
+      header: tr("common.zoom"),
       width: 100,
       align: "right",
       hideable: true,
@@ -298,7 +298,7 @@ export function DisplaysTable({ rows, plantOptions }: Props) {
     },
     {
       key: "lastSeenAt",
-      header: tr("最終確認"),
+      header: tr("common.lastChecked"),
       width: 160,
       hideable: true,
       sortable: true,
@@ -318,15 +318,18 @@ export function DisplaysTable({ rows, plantOptions }: Props) {
   const rowActions = (r: ViewRow): RowAction<ViewRow>[] => {
     if (r.status === "PENDING") {
       return [
-        { label: tr("ディスプレイをリンク"), onAction: () => setLinkTarget(r) },
+        {
+          label: tr("settings.displays.linkTheDisplay"),
+          onAction: () => setLinkTarget(r),
+        },
       ];
     }
     if (r.status === "LINKED") {
       return [
         {
-          label: tr("有効化"),
+          label: tr("common.enable"),
           onAction: () =>
-            run(() => activateDisplay(r.id), tr("有効化しました")),
+            run(() => activateDisplay(r.id), tr("common.enabled2")),
         },
       ];
     }
@@ -342,10 +345,10 @@ export function DisplaysTable({ rows, plantOptions }: Props) {
             onClick={() => setCreateOpen(true)}
             style={{ flexShrink: 0 }}
           >
-            {isMobile ? "作成" : tr("ディスプレイを追加")}
+            {isMobile ? "作成" : tr("settings.displays.addADisplay")}
           </CreateButton>
         }
-        breadcrumbs={[tr("システム"), tr("端末管理")]}
+        breadcrumbs={[tr("common.system"), tr("common.devices")]}
         filters={
           <>
             <Select
@@ -362,7 +365,7 @@ export function DisplaysTable({ rows, plantOptions }: Props) {
               clearable
               data={statusOptions("DisplayDevice")}
               onChange={setStatus}
-              placeholder={tr("状態")}
+              placeholder={tr("common.status")}
               style={isMobile ? { flex: 1 } : undefined}
               value={status}
               w={isMobile ? undefined : 140}
@@ -378,11 +381,11 @@ export function DisplaysTable({ rows, plantOptions }: Props) {
           <TextInput
             leftSection={<IconSearch size={14} />}
             onChange={(e) => setSearch(e.currentTarget.value || null)}
-            placeholder={tr("名前 / 場所 / 表示内容...")}
+            placeholder={tr("settings.displays.nameLocationContent")}
             value={search ?? ""}
           />
         }
-        title={tr("端末管理")}
+        title={tr("common.devices")}
       >
         <DataTable
           columns={columns}
@@ -390,14 +393,8 @@ export function DisplaysTable({ rows, plantOptions }: Props) {
           emptyIcon={<IconDeviceTv size={28} />}
           emptyMessage={
             rows.length === 0
-              ? tr(
-                  tr(
-                    tr(
-                      "ディスプレイがありません。「ディスプレイを追加」で作ってから、テレビに出るリンクコードで結びます",
-                    ),
-                  ),
-                )
-              : tr("条件に一致するディスプレイがありません")
+              ? tr("settings.displays.thereAreNoDisplaysCreateOne")
+              : tr("settings.displays.noDisplaysMatchTheConditions")
           }
           getRowId={(r) => r.id}
           onRowClick={(r) =>
@@ -406,7 +403,7 @@ export function DisplaysTable({ rows, plantOptions }: Props) {
           renderCard={(r) => (
             <Stack gap={3} style={{ minWidth: 0 }}>
               <Text fw={600} size="sm" truncate>
-                {r.name ?? tr("（未設定）")}
+                {r.name ?? tr("common.notSet")}
               </Text>
               {/* 何枚目かの選択は携帯でも要る（1 台 2 枚の機械が 1 枚に見える） */}
               {r.group.grouped && (
@@ -445,7 +442,7 @@ export function DisplaysTable({ rows, plantOptions }: Props) {
       <CreateDisplayModal
         onClose={() => setCreateOpen(false)}
         onSubmit={(values) =>
-          run(() => createDisplayDevice(values), tr("作成しました"))
+          run(() => createDisplayDevice(values), tr("common.created"))
         }
         opened={createOpen}
         pending={pending}
@@ -459,7 +456,7 @@ export function DisplaysTable({ rows, plantOptions }: Props) {
           if (linkTarget) {
             run(
               () => linkDisplayToProfile(linkTarget.id, code),
-              tr("リンクしました"),
+              tr("common.linked"),
             );
           }
         }}
@@ -490,7 +487,7 @@ function CreateDisplayModal({
   pending: boolean;
   plantOptions: Array<{ value: string; label: string }>;
 }) {
-  const tr = useTr();
+  const tr = useTranslations();
   const [nameJa, setNameJa] = useState("");
   const [location, setLocation] = useState("");
   const [plantId, setPlantId] = useState<string | null>(null);
@@ -499,7 +496,7 @@ function CreateDisplayModal({
   return (
     <ModalShell
       confirmDisabled={!nameJa.trim()}
-      confirmLabel={tr("作成")}
+      confirmLabel={tr("common.create2")}
       loading={pending}
       onClose={onClose}
       onConfirm={() =>
@@ -514,31 +511,25 @@ function CreateDisplayModal({
       }
       opened={opened}
       size="md"
-      title={tr("ディスプレイを追加")}
+      title={tr("settings.displays.addADisplay")}
     >
       <Stack gap="sm">
         <Alert color="blue" variant="light">
-          {tr(
-            tr(
-              tr(
-                "オープン（リンク待ち）で作成されます。テレビの画面に出るリンクコードを\n          「ディスプレイをリンク」で読み取ってリンクした後、この画面から\n          有効化できます（共有端末と同じ手順です）。",
-              ),
-            ),
-          )}
+          {tr("settings.displays.itIsCreatedOpenAwaitingA")}
         </Alert>
         <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="sm">
           <TextInput
-            description={tr("現場の人が呼ぶ名前")}
-            label={tr("名前")}
+            description={tr("settings.displays.whatPeopleOnTheFloorCall")}
+            label={tr("common.name")}
             onChange={(e) => setNameJa(e.currentTarget.value)}
-            placeholder={tr("例: A ライン 入口")}
+            placeholder={tr("settings.displays.eGLineAEntrance")}
             value={nameJa}
             withAsterisk
           />
           <TextInput
-            label={tr("設置場所")}
+            label={tr("common.location")}
             onChange={(e) => setLocation(e.currentTarget.value)}
-            placeholder={tr("例: 1F 加工エリア")}
+            placeholder={tr("settings.displays.eG1fMachiningArea")}
             value={location}
           />
           <Select
@@ -546,7 +537,7 @@ function CreateDisplayModal({
             data={plantOptions}
             label="拠点"
             onChange={setPlantId}
-            placeholder={tr("選択してください")}
+            placeholder={tr("common.selectOne")}
             searchable
             value={plantId}
           />
@@ -555,8 +546,8 @@ function CreateDisplayModal({
               value: t.key,
               label: t.label,
             }))}
-            description={tr("あとから詳細画面で変更・調整できます")}
-            label={tr("映す画面")}
+            description={tr("settings.displays.youCanChangeAndAdjustIt")}
+            label={tr("common.screenToShow")}
             onChange={(v) => setTemplateKey(v ?? DEFAULT_TEMPLATE)}
             value={templateKey}
           />
@@ -579,13 +570,13 @@ function LinkDisplayModal({
   onSubmit: (code: string) => void;
   pending: boolean;
 }) {
-  const tr = useTr();
+  const tr = useTranslations();
   const [code, setCode] = useState("");
 
   return (
     <ModalShell
       confirmDisabled={code.length !== 12}
-      confirmLabel={tr("リンク")}
+      confirmLabel={tr("common.link")}
       loading={pending}
       onClose={onClose}
       onConfirm={() => onSubmit(code)}
@@ -595,24 +586,18 @@ function LinkDisplayModal({
     >
       <Stack gap="sm">
         <Text c="dimmed" size="sm">
-          {tr(
-            tr(
-              tr(
-                "テレビの画面に出ている QR を読み取るか、12 文字のリンクコードを\n          入力してください。共有端末と同じ形式です。",
-              ),
-            ),
-          )}
+          {tr("settings.displays.scanTheQrShownOnThe")}
         </Text>
         {/* 読み取れたらそのままリンクまで進める（脚立の上で読み上げさせない） */}
         <LinkQrScanner
-          label={tr("ディスプレイのQRをスキャン")}
+          label={tr("settings.displays.scanTheDisplaySQrCode")}
           onCode={(scanned) => {
             setCode(scanned);
             onSubmit(scanned);
           }}
         />
         <TextInput
-          label={tr("リンクコード")}
+          label={tr("settings.displays.linkCode")}
           onChange={(e) =>
             setCode(normalizeCode(e.currentTarget.value).slice(0, 12))
           }

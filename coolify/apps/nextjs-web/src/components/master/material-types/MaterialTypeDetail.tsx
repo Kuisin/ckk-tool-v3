@@ -11,6 +11,7 @@
 import { Badge, Group, Stack, Table, Tabs, Text } from "@mantine/core";
 import { IconCircleMinus, IconTrash } from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { useState } from "react";
 import { useFormat } from "@/components/layout/PreferencesProvider";
 import { ActiveBadge } from "@/components/ui/ActiveBadge";
@@ -24,7 +25,6 @@ import {
   ResourceActions,
   SummaryGrid,
 } from "@/components/ui/shells";
-import { useTr } from "@/hooks/useTr";
 import { useTabParam } from "@/hooks/useUrlState";
 import { useIsMobile } from "@/hooks/useViewport";
 import type { Option } from "@/lib/mock";
@@ -81,7 +81,7 @@ export function MaterialTypeDetail({
   surfaceOptions: Option[];
   prices: MaterialTypePriceSeed[];
 }) {
-  const tr = useTr();
+  const tr = useTranslations();
   const fmt = useFormat();
   const router = useRouter();
   const isMobile = useIsMobile();
@@ -103,7 +103,7 @@ export function MaterialTypeDetail({
         <ResourceActions
           menuItems={[
             {
-              label: record.isActive ? "無効化" : tr("有効化"),
+              label: record.isActive ? "無効化" : tr("common.enable"),
               icon: <IconCircleMinus size={14} />,
               onClick: () => setToggleOpen(true),
             },
@@ -119,8 +119,8 @@ export function MaterialTypeDetail({
         />
       }
       breadcrumbs={[
-        tr("マスタ"),
-        { label: tr("材種"), href: BASE_PATH },
+        tr("common.masterData"),
+        { label: tr("common.materialTypes"), href: BASE_PATH },
         record.code ?? record.nameJa,
       ]}
       createdAt={fmt.dateTime(record.createdAt)}
@@ -130,37 +130,40 @@ export function MaterialTypeDetail({
     >
       <SummaryGrid>
         <FieldValue
-          label={tr("材種コード")}
+          label={tr("common.materialTypeCode")}
           value={
             record.code ? (
               <DocNumber>{record.code}</DocNumber>
             ) : (
               <Group gap={6} wrap="nowrap">
                 <Badge color="gray" size="xs" variant="light">
-                  {tr("未変換（レガシー）")}
+                  {tr("master.materialTypes.notConvertedLegacy")}
                 </Badge>
               </Group>
             )
           }
         />
-        <FieldValue label={tr("名称（日本語）")} value={record.nameJa} />
-        <FieldValue label={tr("名称（英語）")} value={record.nameEn || "—"} />
+        <FieldValue label={tr("common.nameJapanese")} value={record.nameJa} />
+        <FieldValue
+          label={tr("common.nameEnglish")}
+          value={record.nameEn || "—"}
+        />
         {record.composition && (
           <>
             <FieldValue
-              label={tr("メーカー")}
+              label={tr("common.manufacturer")}
               value={record.composition.manufacturerLabel}
             />
             <FieldValue
-              label={tr("メーカー材種")}
+              label={tr("master.materialTypes.manufacturerGrade")}
               value={record.composition.gradeLabel}
             />
             <FieldValue
-              label={tr("形状")}
+              label={tr("common.shape")}
               value={record.composition.shapeLabel}
             />
             <FieldValue
-              label={tr("種類（自動採番）")}
+              label={tr("common.kindNumberedAutomatically")}
               value={<DocNumber>{record.composition.kindCode}</DocNumber>}
             />
           </>
@@ -169,20 +172,22 @@ export function MaterialTypeDetail({
 
       <AppTabs onChange={setTab} value={tab}>
         <Tabs.List>
-          <Tabs.Tab value="overview">{tr("概要")}</Tabs.Tab>
-          <Tabs.Tab value="prices">{tr("既定単価")}</Tabs.Tab>
-          <Tabs.Tab value="related">{tr("関連")}</Tabs.Tab>
-          <Tabs.Tab value="history">{tr("履歴")}</Tabs.Tab>
+          <Tabs.Tab value="overview">{tr("common.overview")}</Tabs.Tab>
+          <Tabs.Tab value="prices">
+            {tr("master.materialTypes.defaultUnitPrice")}
+          </Tabs.Tab>
+          <Tabs.Tab value="related">{tr("common.related")}</Tabs.Tab>
+          <Tabs.Tab value="history">{tr("common.history")}</Tabs.Tab>
         </Tabs.List>
 
         <Tabs.Panel pt="md" value="overview">
           <Stack gap="md">
             <FieldValue
-              label={tr("説明（日本語）")}
+              label={tr("common.descriptionJapanese")}
               value={record.descriptionJa || "—"}
             />
             <FieldValue
-              label={tr("説明（英語）")}
+              label={tr("master.materialTypes.descriptionEnglish")}
               value={record.descriptionEn || "—"}
             />
           </Stack>
@@ -200,21 +205,25 @@ export function MaterialTypeDetail({
         <Tabs.Panel pt="md" value="related">
           <Stack gap="xs">
             <Text fw={600} size="sm">
-              {tr("この材種の素材")}
+              {tr("master.materialTypes.materialsOfThisType")}
             </Text>
             {record.materials.length === 0 ? (
               <Text c="dimmed" size="sm">
-                {tr("この材種に紐づく素材はありません")}
+                {tr("master.materialTypes.thereAreNoMaterialsOfThis")}
               </Text>
             ) : (
               <Table highlightOnHover striped withTableBorder>
                 <Table.Thead>
                   <Table.Tr>
-                    <Table.Th>{tr("素材コード")}</Table.Th>
-                    <Table.Th>{tr("名称")}</Table.Th>
-                    {!isMobile && <Table.Th>{tr("寸法")}</Table.Th>}
-                    {!isMobile && <Table.Th>{tr("単位")}</Table.Th>}
-                    <Table.Th>{tr("状態")}</Table.Th>
+                    <Table.Th>{tr("common.materialCode")}</Table.Th>
+                    <Table.Th>{tr("common.name2")}</Table.Th>
+                    {!isMobile && (
+                      <Table.Th>
+                        {tr("master.materialTypes.dimensions")}
+                      </Table.Th>
+                    )}
+                    {!isMobile && <Table.Th>{tr("common.unit")}</Table.Th>}
+                    <Table.Th>{tr("common.status")}</Table.Th>
                   </Table.Tr>
                 </Table.Thead>
                 <Table.Tbody>

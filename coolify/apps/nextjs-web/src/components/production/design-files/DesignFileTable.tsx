@@ -16,11 +16,11 @@
 import { Badge, Group, Select, Stack, Text, TextInput } from "@mantine/core";
 import { IconRuler2, IconSearch } from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { useFormat } from "@/components/layout/PreferencesProvider";
 import { type Column, DataTable } from "@/components/ui/DataTable";
 import { NewButton } from "@/components/ui/NewButton";
 import { ListShell } from "@/components/ui/shells";
-import { useTr } from "@/hooks/useTr";
 import { useUrlSelectState, useUrlStringState } from "@/hooks/useUrlState";
 import { useIsMobile } from "@/hooks/useViewport";
 import {
@@ -50,7 +50,7 @@ export function DesignFileTable({
   /** 取得上限に当たったか。当たったことは黙らせない（§「no silent caps」）。 */
   truncated: boolean;
 }) {
-  const tr = useTr();
+  const tr = useTranslations();
   const fmt = useFormat();
   const router = useRouter();
   const isMobile = useIsMobile();
@@ -100,23 +100,23 @@ export function DesignFileTable({
     },
     {
       key: "customerName",
-      header: tr("受注元"),
+      header: tr("common.orderingCustomer"),
       sortable: true,
       sortValue: (r) => r.customerName ?? "",
       render: (r) =>
         r.customerBpId == null ? (
           <Badge color="gray" variant="light">
-            {tr("汎用")}
+            {tr("common.generic")}
           </Badge>
         ) : (
           <Badge color="blue" variant="light">
-            {r.customerName ?? tr("受注元")}
+            {r.customerName ?? tr("common.orderingCustomer")}
           </Badge>
         ),
     },
     {
       key: "latestVersion",
-      header: tr("最新版"),
+      header: tr("production.designFiles.latestVersion"),
       width: 110,
       sortable: true,
       render: (r) => (
@@ -133,7 +133,7 @@ export function DesignFileTable({
     },
     {
       key: "latestRoles",
-      header: tr("役割"),
+      header: tr("common.role2"),
       // 最新版に何が揃っているか。図面データが無い系列は作れないはずだが、
       // 手で入れたデータや将来の変更で欠けうるので、揃っているものを出す。
       render: (r) => (
@@ -152,18 +152,18 @@ export function DesignFileTable({
     },
     {
       key: "hasRequestSourced",
-      header: tr("出どころ"),
+      header: tr("production.designFiles.source"),
       width: 100,
       sortValue: (r) => (r.hasRequestSourced ? 1 : 0),
       render: (r) => (
         <Badge color={r.hasRequestSourced ? "blue" : "gray"} variant="light">
-          {r.hasRequestSourced ? "依頼" : tr("手動")}
+          {r.hasRequestSourced ? "依頼" : tr("common.manual")}
         </Badge>
       ),
     },
     {
       key: "updatedAt",
-      header: tr("更新日"),
+      header: tr("common.updated"),
       width: 120,
       sortable: true,
       sortValue: (r) => r.updatedAt,
@@ -178,9 +178,12 @@ export function DesignFileTable({
   return (
     <ListShell
       action={
-        <NewButton href={`${BASE_PATH}/new`} label={tr("設計図を登録")} />
+        <NewButton
+          href={`${BASE_PATH}/new`}
+          label={tr("common.registerADrawing")}
+        />
       }
-      breadcrumbs={[tr("生産"), tr("設計図")]}
+      breadcrumbs={[tr("common.production"), tr("common.drawing")]}
       filters={
         <>
           <Select
@@ -188,7 +191,7 @@ export function DesignFileTable({
             data={SERIES_OPTIONS}
             flex={isMobile ? 1 : undefined}
             onChange={setSeries}
-            placeholder={tr("受注元")}
+            placeholder={tr("common.orderingCustomer")}
             value={series}
             w={isMobile ? undefined : 120}
           />
@@ -197,7 +200,7 @@ export function DesignFileTable({
             data={SOURCE_OPTIONS}
             flex={isMobile ? 1 : undefined}
             onChange={setSource}
-            placeholder={tr("出どころ")}
+            placeholder={tr("production.designFiles.source")}
             value={source}
             w={isMobile ? undefined : 130}
           />
@@ -208,21 +211,17 @@ export function DesignFileTable({
         <TextInput
           leftSection={<IconSearch size={14} />}
           onChange={(e) => setSearch(e.currentTarget.value)}
-          placeholder={tr("製品・受注元で検索")}
+          placeholder={tr(
+            "production.designFiles.searchByProductOrOrderingCustomer",
+          )}
           value={search}
         />
       }
-      title={tr("設計図")}
+      title={tr("common.drawing")}
     >
       {truncated && (
         <Text c="orange" mb="xs" size="xs">
-          {tr(
-            tr(
-              tr(
-                "版が多いため一部の系列を読み込んでいません。製品マスタから個別に開いてください。",
-              ),
-            ),
-          )}
+          {tr("production.designFiles.thereAreTooManyVersionsSo")}
         </Text>
       )}
       <DataTable
@@ -230,10 +229,13 @@ export function DesignFileTable({
         data={filtered}
         defaultSort={{ key: "updatedAt", dir: "desc" }}
         emptyAction={
-          <NewButton href={`${BASE_PATH}/new`} label={tr("設計図を登録")} />
+          <NewButton
+            href={`${BASE_PATH}/new`}
+            label={tr("common.registerADrawing")}
+          />
         }
         emptyIcon={<IconRuler2 size={24} />}
-        emptyMessage={tr("設計図がありません")}
+        emptyMessage={tr("production.designFiles.thereAreNoDrawings")}
         getRowId={(r) => r.key}
         onRowClick={(r) => router.push(`${BASE_PATH}/${r.productId}`)}
       />

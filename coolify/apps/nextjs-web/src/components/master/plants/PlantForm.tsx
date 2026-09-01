@@ -18,7 +18,7 @@ import {
 import { useForm } from "@mantine/form";
 import { notifications } from "@mantine/notifications";
 import { useRouter } from "next/navigation";
-import { useLocale } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { useTransition } from "react";
 import { z } from "zod";
 import {
@@ -32,7 +32,6 @@ import {
   FormShell,
   LocalizedTextInput,
 } from "@/components/ui/shells";
-import { useTr } from "@/hooks/useTr";
 import { useIsMobile } from "@/hooks/useViewport";
 import { countryOptions } from "@/lib/enum-labels";
 import { fieldHelp, fieldHelpTip } from "@/lib/field-help";
@@ -88,7 +87,7 @@ export function PlantForm({
   /** 地域 Select の選択肢（value = String(region id)）。 */
   regionOptions: { value: string; label: string }[];
 }) {
-  const tr = useTr();
+  const tr = useTranslations();
   const locale = useLocale();
   const router = useRouter();
   const isMobile = useIsMobile();
@@ -126,15 +125,17 @@ export function PlantForm({
         : await createPlant(payload);
       if (result.ok) {
         notifications.show({
-          title: tr("保存しました"),
-          message: isEdit ? "拠点を更新しました" : tr("拠点を作成しました"),
+          title: tr("common.saved2"),
+          message: isEdit
+            ? "拠点を更新しました"
+            : tr("master.plants.theSiteWasCreated"),
           color: "green",
         });
         router.push(`${BASE_PATH}/${result.data.id}`);
       } else {
         notifications.show({
-          title: tr("エラー"),
-          message: tr(result.error),
+          title: tr("common.error2"),
+          message: result.error,
           color: "red",
         });
       }
@@ -144,9 +145,9 @@ export function PlantForm({
   return (
     <FormShell
       breadcrumbs={[
-        tr("マスタ"),
+        tr("common.masterData"),
         { label: "拠点", href: BASE_PATH },
-        isEdit ? "編集" : tr("新規作成"),
+        isEdit ? "編集" : tr("common.new2"),
       ]}
       isDirty={form.isDirty()}
       isPending={isPending}
@@ -155,29 +156,31 @@ export function PlantForm({
       }
       onSubmit={form.onSubmit(handleSubmit)}
       status={isEdit ? <ActiveBadge active={initial.isActive} /> : undefined}
-      title={isEdit ? `拠点 編集 — ${initial.code}` : tr("拠点 新規作成")}
+      title={
+        isEdit ? `拠点 編集 — ${initial.code}` : tr("master.plants.newSite")
+      }
     >
-      <FormSection title={tr("基本情報")}>
+      <FormSection title={tr("common.basicInformation")}>
         <SimpleGrid cols={isMobile ? 1 : 2} spacing="sm">
           <TextInput
             description={
               isEdit
-                ? tr("作成後は変更できません")
-                : tr("拠点を識別する一意のコード")
+                ? tr("common.itCannotBeChangedOnceCreated")
+                : tr("master.plants.aUniqueCodeIdentifyingTheSite")
             }
             disabled={isEdit}
             label={<HelpLabel {...fieldHelp("plant", "code")} />}
-            placeholder={tr("例: F01")}
+            placeholder={tr("master.plants.eGF01")}
             withAsterisk={!isEdit}
             {...form.getInputProps("code")}
           />
           <TextInput
             label={
               <HelpLabel
-                {...fieldHelp("plant", "name", { label: tr("よみがな") })}
+                {...fieldHelp("plant", "name", { label: tr("common.kana2") })}
               />
             }
-            placeholder={tr("例: ほんしゃこうじょう")}
+            placeholder={tr("master.plants.eGHonshaKojo")}
             {...form.getInputProps("nameKana")}
           />
         </SimpleGrid>
@@ -185,7 +188,7 @@ export function PlantForm({
           <LocalizedTextInput
             help={fieldHelpTip("plant", "name")}
             jaProps={form.getInputProps("nameJa")}
-            label={tr("名称")}
+            label={tr("common.name2")}
             required
             translationsProps={form.getInputProps("nameTranslations")}
           />
@@ -197,45 +200,53 @@ export function PlantForm({
         <Textarea
           label={<HelpLabel {...fieldHelp("plant", "notes")} />}
           mt="sm"
-          placeholder={tr("備考・特記事項")}
+          placeholder={tr("common.notesAndRemarks")}
           rows={3}
           {...form.getInputProps("notes")}
         />
       </FormSection>
 
-      <FormSection title={tr("連絡先・住所")}>
+      <FormSection title={tr("master.plants.contactAndAddress")}>
         <SimpleGrid cols={isMobile ? 1 : 2} spacing="sm">
           <Select
             clearable
             data={countryOptions(locale)}
             label={
               <HelpLabel
-                {...fieldHelp("plant", "region", { label: tr("国") })}
+                {...fieldHelp("plant", "region", {
+                  label: tr("common.country"),
+                })}
               />
             }
-            placeholder={tr("国を選択")}
+            placeholder={tr("common.selectACountry")}
             {...form.getInputProps("countryCode")}
           />
           <Select
             clearable
             data={regionOptions}
-            description={tr("REGION スコープ権限の対象地域")}
+            description={tr(
+              "master.plants.regionsCoveredByRegionScopePermissions",
+            )}
             label={
               <HelpLabel
-                {...fieldHelp("plant", "region", { label: tr("地域") })}
+                {...fieldHelp("plant", "region", {
+                  label: tr("common.region"),
+                })}
               />
             }
-            placeholder={tr("地域を選択")}
+            placeholder={tr("master.plants.selectARegion")}
             searchable={regionOptions.length > 5}
             {...form.getInputProps("regionId")}
           />
           <TextInput
             label={
               <HelpLabel
-                {...fieldHelp("plant", "address", { label: tr("郵便番号") })}
+                {...fieldHelp("plant", "address", {
+                  label: tr("common.postalCode"),
+                })}
               />
             }
-            placeholder={tr("例: 123-4567")}
+            placeholder={tr("master.plants.eG1234567")}
             {...form.getInputProps("postalCode")}
           />
         </SimpleGrid>
@@ -243,7 +254,7 @@ export function PlantForm({
           <LocalizedTextInput
             help={fieldHelpTip("plant", "address")}
             jaProps={form.getInputProps("addressJa")}
-            label={tr("住所")}
+            label={tr("common.address")}
             translationsProps={form.getInputProps("addressTranslations")}
           />
         </Stack>
@@ -251,21 +262,23 @@ export function PlantForm({
           <TextInput
             label={
               <HelpLabel
-                {...fieldHelp("plant", "contact", { label: tr("電話番号") })}
+                {...fieldHelp("plant", "contact", {
+                  label: tr("common.phoneNumber"),
+                })}
               />
             }
-            placeholder={tr("例: 03-1234-5678")}
+            placeholder={tr("master.plants.eG0312345678")}
             {...form.getInputProps("phone")}
           />
           <TextInput
             label={
               <HelpLabel
                 {...fieldHelp("plant", "contact", {
-                  label: tr("メールアドレス"),
+                  label: tr("common.emailAddress"),
                 })}
               />
             }
-            placeholder={tr("例: plant@example.co.jp")}
+            placeholder={tr("master.plants.eGPlantExampleCoJp")}
             {...form.getInputProps("email")}
           />
         </SimpleGrid>
@@ -273,10 +286,12 @@ export function PlantForm({
           <TextInput
             label={
               <HelpLabel
-                {...fieldHelp("plant", "contact", { label: tr("担当者") })}
+                {...fieldHelp("plant", "contact", {
+                  label: tr("common.assignee"),
+                })}
               />
             }
-            placeholder={tr("例: 山田 太郎")}
+            placeholder={tr("master.plants.eGTaroYamada")}
             {...form.getInputProps("contactPerson")}
           />
         </SimpleGrid>

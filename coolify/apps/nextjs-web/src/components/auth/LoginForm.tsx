@@ -29,9 +29,9 @@ import {
 import { IconLogin2 } from "@tabler/icons-react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { signIn } from "next-auth/react";
+import { useTranslations } from "next-intl";
 import { useEffect, useState } from "react";
 import { ssoSignIn } from "@/app/(auth)/login/actions";
-import { useTr } from "@/hooks/useTr";
 import { ensureDeviceSignals } from "@/lib/device-signals-client";
 
 /** Auth.js が /login?error=… で返すコードを日本語に。 */
@@ -52,7 +52,7 @@ export function LoginForm({
   /** ログイン後に戻る先（サーバ側で safeCallbackPath 済み）。 */
   callbackUrl?: string;
 }) {
-  const tr = useTr();
+  const tr = useTranslations();
   const router = useRouter();
   const searchParams = useSearchParams();
   const urlError = searchParams.get("error");
@@ -86,7 +86,7 @@ export function LoginForm({
     });
     setLoading(false);
     if (res?.error) {
-      setError(tr("ユーザー名またはパスワードが正しくありません"));
+      setError(tr("auth.loginForm.theUsernameOrPasswordIsIncorrect"));
       return;
     }
     // 元々開こうとしていた画面へ戻す（無ければホーム）。
@@ -115,7 +115,7 @@ export function LoginForm({
         size="md"
         type="submit"
       >
-        {ssoLoading ? "認証画面へ移動中…" : tr("SSO でログイン")}
+        {ssoLoading ? "認証画面へ移動中…" : tr("auth.loginForm.logInWithSso")}
       </Button>
     </form>
   );
@@ -125,9 +125,11 @@ export function LoginForm({
       <Paper maw={380} p="xl" radius="md" shadow="sm" w="100%" withBorder>
         <Stack gap="lg">
           <Stack gap={4}>
-            <Title order={3}>{tr("CKK 業務管理システム")}</Title>
+            <Title order={3}>
+              {tr("auth.loginForm.cKKBusinessManagementSystem")}
+            </Title>
             <Text c="dimmed" size="sm">
-              {tr("組織アカウント（SSO）でログインしてください")}
+              {tr("auth.loginForm.logInWithYourOrganizationAccount")}
             </Text>
           </Stack>
 
@@ -135,7 +137,7 @@ export function LoginForm({
             ssoButton
           ) : (
             <Tooltip
-              label={tr("SSO は未設定です（管理者にお問い合わせください）")}
+              label={tr("auth.loginForm.sSOIsNotConfiguredPleaseContact")}
             >
               <span>{ssoButton}</span>
             </Tooltip>
@@ -155,29 +157,23 @@ export function LoginForm({
               ta="center"
               type="button"
             >
-              {tr("開発用アカウントでログイン")}
+              {tr("auth.loginForm.logInWithADevelopmentAccount")}
             </Anchor>
             <Collapse expanded={devOpen}>
               <form onSubmit={submit}>
                 <Stack gap="sm">
                   <Text c="dimmed" size="xs">
-                    {tr(
-                      tr(
-                        tr(
-                          "開発・検証用です。通常のユーザーは SSO をご利用ください。",
-                        ),
-                      ),
-                    )}
+                    {tr("auth.loginForm.forDevelopmentAndTestingOrdinaryUsers")}
                   </Text>
                   <TextInput
-                    label={tr("ユーザー名")}
+                    label={tr("common.username")}
                     onChange={(e) => setUsername(e.currentTarget.value)}
                     required
                     size="sm"
                     value={username}
                   />
                   <PasswordInput
-                    label={tr("パスワード")}
+                    label={tr("auth.loginForm.password")}
                     onChange={(e) => setPassword(e.currentTarget.value)}
                     required
                     size="sm"
@@ -194,7 +190,7 @@ export function LoginForm({
                     type="submit"
                     variant="default"
                   >
-                    {tr("ログイン")}
+                    {tr("common.logIn")}
                   </Button>
                 </Stack>
               </form>

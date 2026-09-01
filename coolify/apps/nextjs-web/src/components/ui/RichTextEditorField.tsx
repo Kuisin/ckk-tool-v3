@@ -21,8 +21,8 @@ import { IconFileSymlink } from "@tabler/icons-react";
 import type { Editor } from "@tiptap/react";
 import { useEditor } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
+import { useTranslations } from "next-intl";
 import { useState } from "react";
-import { useTr } from "@/hooks/useTr";
 import { emptyDoc, type RichTextDoc } from "@/lib/rich-text-core";
 import { DocumentLinkModal } from "./DocumentLinkModal";
 import type { DocumentHit } from "./document-link-types";
@@ -63,7 +63,7 @@ export function RichTextEditorField({
   placeholder?: string;
   minHeight?: number;
 }) {
-  const tr = useTr();
+  const tr = useTranslations();
   // React Compiler（next.config.ts の reactCompiler: true）は useEditor が返す
   // 可変のエディタインスタンスをメモ化して壊す。tiptap 公式の回避策どおり
   // このコンポーネントだけコンパイラの対象から外す。
@@ -120,9 +120,9 @@ export function RichTextEditorField({
           <RichTextEditor.Link />
           <RichTextEditor.Unlink />
           {/* 文書リンク — 他の業務文書の詳細ページへのアプリ内リンクを挿す。 */}
-          <Tooltip label={tr("文書リンク")} withArrow>
+          <Tooltip label={tr("ui.richTextEditorField.documentLink")} withArrow>
             <RichTextEditor.Control
-              aria-label={tr("文書リンク")}
+              aria-label={tr("ui.richTextEditorField.documentLink")}
               onClick={() => setDocPickerOpen(true)}
             >
               <IconFileSymlink size={16} stroke={1.5} />

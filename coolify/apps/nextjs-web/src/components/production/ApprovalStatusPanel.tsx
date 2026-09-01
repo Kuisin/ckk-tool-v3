@@ -26,6 +26,7 @@ import {
   Title,
 } from "@mantine/core";
 import { IconAlertTriangle } from "@tabler/icons-react";
+import { useTranslations } from "next-intl";
 import {
   approveWorkOrder,
   rejectWorkOrder,
@@ -47,7 +48,6 @@ import {
   ProcedurePanel,
   type ProcedureStage,
 } from "@/components/ui/ProcedurePanel";
-import { useTr } from "@/hooks/useTr";
 import { statusLabel } from "@/lib/status-map";
 import {
   WORK_ORDER_HISTORY_ACTION_LABEL,
@@ -115,7 +115,7 @@ export function WorkOrderProcedurePanel({
   history: WorkOrderHistoryView[];
   trail?: ApprovalTrailView[];
 }) {
-  const tr = useTr();
+  const tr = useTranslations();
   const fmt = useFormat();
   const wo = workOrder;
   const records = [...history].reverse();
@@ -129,7 +129,11 @@ export function WorkOrderProcedurePanel({
   const rejected = approval.phase === "REJECTED";
 
   const stages: ProcedureStage[] = [
-    { key: "created", label: tr("作成"), description: fmt.date(wo.createdAt) },
+    {
+      key: "created",
+      label: tr("common.create2"),
+      description: fmt.date(wo.createdAt),
+    },
     ...approvalSteps.map((s, i) => ({
       key: `approval-${s.stepNo}`,
       label: s.label || `第${s.stepNo}承認`,
@@ -147,17 +151,17 @@ export function WorkOrderProcedurePanel({
     })),
     {
       key: "production",
-      label: tr("製造"),
+      label: tr("common.manufacture"),
       description: wo.startedAt
         ? `開始 ${fmt.date(wo.startedAt)}`
         : wo.status === "APPROVED"
-          ? tr("開始待ち")
+          ? tr("production.approvalStatusPanel.awaitingStart")
           : null,
       loading: wo.status === "IN_PROGRESS",
     },
     {
       key: "done",
-      label: tr("完了"),
+      label: tr("common.completed"),
       description: wo.completedAt ? fmt.date(wo.completedAt) : null,
     },
   ];
@@ -189,7 +193,7 @@ export function WorkOrderProcedurePanel({
   const sourceGroups: HandoffGroup[] = [
     {
       key: "order-lines",
-      title: tr("注文明細（割当）"),
+      title: tr("common.orderLinesAllocated"),
       summary:
         wo.orderLines.length > 0
           ? `割当 ${allocated} 本 / 予定 ${wo.plannedQuantity} 本`
@@ -200,13 +204,17 @@ export function WorkOrderProcedurePanel({
         href: `/sales/order-lines/${l.number}`,
         note: `${l.customerName ?? "—"}・割当 ${l.allocatedQuantity} / 受注 ${l.lineQuantity} 本`,
       })),
-      emptyNote: tr("割当なし（在庫向けの独立指示書）"),
+      emptyNote: tr(
+        "production.approvalStatusPanel.noAllocationStandaloneWorkOrderFor",
+      ),
     },
     ...(wo.woLinksIncoming.length > 0
       ? [
           {
             key: "wo-links-in",
-            title: tr("前段の指示書（数量受け渡し）"),
+            title: tr(
+              "production.approvalStatusPanel.precedingWorkOrderQuantityHandover",
+            ),
             items: wo.woLinksIncoming.map((l) => ({
               key: l.id,
               label: l.docNumber,
@@ -224,7 +232,7 @@ export function WorkOrderProcedurePanel({
   const handoffGroups: HandoffGroup[] = [
     {
       key: "delivery-orders",
-      title: tr("出荷書"),
+      title: tr("common.deliveryOrder"),
       summary:
         wo.shipments.length > 0
           ? `割当 ${shippedToDo} 本 / 予定 ${wo.plannedQuantity} 本`
@@ -238,14 +246,18 @@ export function WorkOrderProcedurePanel({
       })),
       emptyNote:
         wo.status === "COMPLETED"
-          ? tr("出荷書への割当はまだありません")
-          : tr("未割当（完了後に出荷書で引き当てます）"),
+          ? tr("production.approvalStatusPanel.nothingIsAllocatedToADelivery")
+          : tr(
+              "production.approvalStatusPanel.unallocatedAllocatedOnADeliveryOrder",
+            ),
     },
     ...(wo.woLinksOutgoing.length > 0
       ? [
           {
             key: "wo-links",
-            title: tr("後続指示書（数量受け渡し）"),
+            title: tr(
+              "production.approvalStatusPanel.followingWorkOrderQuantityHandover",
+            ),
             summary: null,
             items: wo.woLinksOutgoing.map((l) => ({
               key: l.id,
@@ -330,7 +342,7 @@ export function ApprovalStatusPanel({
   /** 正規化された承認記録（fetchApprovalTrail の結果）。 */
   trail?: ApprovalTrailView[];
 }) {
-  const tr = useTr();
+  const tr = useTranslations();
   const fmt = useFormat();
   // 操作履歴は新しい順で表示
   const records = [...history].reverse();
@@ -338,7 +350,7 @@ export function ApprovalStatusPanel({
   return (
     <Paper p="md" radius="md" withBorder>
       <Title mb="md" order={5}>
-        {tr("承認状況")}
+        {tr("production.approvalStatusPanel.approvalStatus")}
       </Title>
 
       <ApprovalStepper

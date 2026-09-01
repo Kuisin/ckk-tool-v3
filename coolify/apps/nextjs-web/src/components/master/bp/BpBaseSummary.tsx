@@ -5,12 +5,11 @@
  */
 
 import { Anchor, Badge, Group } from "@mantine/core";
-import { useLocale } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import type { BpBaseDetail } from "@/app/(dashboard)/master/_shared/bp-data";
 import { DocNumber } from "@/components/ui/DocNumber";
 import { FieldValue } from "@/components/ui/FieldValue";
 import { SummaryGrid } from "@/components/ui/shells";
-import { useTr } from "@/hooks/useTr";
 import { countryLabel } from "@/lib/enum-labels";
 export function BpBaseSummary({
   record,
@@ -19,20 +18,29 @@ export function BpBaseSummary({
   record: BpBaseDetail;
   extra?: React.ReactNode;
 }) {
-  const tr = useTr();
+  const tr = useTranslations();
   const locale = useLocale();
   return (
     <SummaryGrid>
       <FieldValue
-        label={tr("BPコード")}
+        label={tr("common.bPCode")}
         value={<DocNumber>{record.bpCode}</DocNumber>}
       />
-      <FieldValue label={tr("名称（日本語）")} value={record.nameJa || "—"} />
-      <FieldValue label={tr("名称（英語）")} value={record.nameEn || "—"} />
-      <FieldValue label={tr("フリガナ")} value={record.nameKana || "—"} />
-      <FieldValue label={tr("略称")} value={record.shortName || "—"} />
       <FieldValue
-        label={tr("国")}
+        label={tr("common.nameJapanese")}
+        value={record.nameJa || "—"}
+      />
+      <FieldValue
+        label={tr("common.nameEnglish")}
+        value={record.nameEn || "—"}
+      />
+      <FieldValue label={tr("common.kana")} value={record.nameKana || "—"} />
+      <FieldValue
+        label={tr("common.shortName")}
+        value={record.shortName || "—"}
+      />
+      <FieldValue
+        label={tr("common.country")}
         value={
           record.countryCode
             ? (countryLabel(record.countryCode, locale) ?? record.countryCode)
@@ -40,18 +48,24 @@ export function BpBaseSummary({
         }
       />
       <FieldValue
-        label={tr("住所")}
+        label={tr("common.address")}
         value={
           record.postalCode || record.addressJa
             ? `${record.postalCode ? `〒${record.postalCode} ` : ""}${record.addressJa}`
             : "—"
         }
       />
-      <FieldValue label={tr("電話番号")} value={record.phone || "—"} />
-      <FieldValue label="FAX" value={record.fax || "—"} />
-      <FieldValue label={tr("メールアドレス")} value={record.email || "—"} />
       <FieldValue
-        label={tr("Webサイト")}
+        label={tr("common.phoneNumber")}
+        value={record.phone || "—"}
+      />
+      <FieldValue label="FAX" value={record.fax || "—"} />
+      <FieldValue
+        label={tr("common.emailAddress")}
+        value={record.email || "—"}
+      />
+      <FieldValue
+        label={tr("common.website")}
         value={
           record.website ? (
             <Anchor
@@ -67,9 +81,12 @@ export function BpBaseSummary({
           )
         }
       />
-      <FieldValue label={tr("法人番号")} value={record.taxNumber || "—"} />
       <FieldValue
-        label={tr("AI照合名")}
+        label={tr("master.bp.corporateNumber")}
+        value={record.taxNumber || "—"}
+      />
+      <FieldValue
+        label={tr("common.aIMatchNames")}
         value={
           record.matchNames.length > 0 ? (
             <Group gap={4} wrap="wrap">

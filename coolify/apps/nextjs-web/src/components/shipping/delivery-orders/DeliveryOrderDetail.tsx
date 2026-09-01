@@ -25,7 +25,7 @@ import {
 import { notifications } from "@mantine/notifications";
 import { IconCheck, IconReceipt, IconTruck, IconX } from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
-import { useLocale } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { useState, useTransition } from "react";
 import {
   confirmDeliveryOrder,
@@ -53,7 +53,6 @@ import {
   ResourceActions,
   SummaryGrid,
 } from "@/components/ui/shells";
-import { useTr } from "@/hooks/useTr";
 import { useTabParam } from "@/hooks/useUrlState";
 import type { MemoView } from "@/lib/document-memos";
 import { deliveryMethodLabel } from "@/lib/enum-labels";
@@ -72,18 +71,18 @@ function DeliveryOrderProcedurePanel({
   order: DeliveryOrder;
   fmtDate: (v: string | null) => string | null;
 }) {
-  const tr = useTr();
+  const tr = useTranslations();
   const isStock = order.type === "STOCK_STORAGE";
   const stages: ProcedureStage[] = [
     {
       key: "created",
-      label: tr("作成"),
+      label: tr("common.create2"),
       description: fmtDate(order.createdAt),
     },
-    { key: "confirmed", label: tr("確定"), description: null },
+    { key: "confirmed", label: tr("common.confirmed"), description: null },
     {
       key: "shipped",
-      label: isStock ? "保管（在庫へ）" : tr("出荷"),
+      label: isStock ? "保管（在庫へ）" : tr("common.shipping"),
       description: order.shippedAt ? fmtDate(order.shippedAt) : null,
     },
   ];
@@ -94,7 +93,7 @@ function DeliveryOrderProcedurePanel({
   const sourceGroups: HandoffGroup[] = [
     {
       key: "order-lines",
-      title: tr("注文明細"),
+      title: tr("common.orderLine"),
       summary:
         order.orderLineNumbers.length > 0
           ? `${order.orderLineNumbers.length} 件`
@@ -105,20 +104,20 @@ function DeliveryOrderProcedurePanel({
         href: `/sales/order-lines/${n}`,
       })),
       emptyNote: isStock
-        ? tr("—（在庫保管のため注文明細に紐づかない）")
-        : tr("—（注文明細に紐づかない出荷）"),
+        ? tr("shipping.deliveryOrders.stockStorageSoNotTiedTo")
+        : tr("shipping.deliveryOrders.shipmentNotTiedToAnOrder"),
     },
     ...(order.workOrderNumber != null
       ? [
           {
             key: "work-order",
-            title: tr("指示書"),
+            title: tr("common.workOrder"),
             items: [
               {
                 key: String(order.workOrderNumber),
                 label: `#${order.workOrderNumber}`,
                 href: `/production/work-orders/${order.workOrderNumber}`,
-                note: tr("出荷ロットの製造元"),
+                note: tr("shipping.deliveryOrders.whereTheShippedLotWasMade"),
               },
             ],
             emptyNote: "—",
@@ -133,7 +132,7 @@ function DeliveryOrderProcedurePanel({
     : [
         {
           key: "delivery-notes",
-          title: tr("納品書"),
+          title: tr("common.deliveryNote"),
           summary:
             order.deliveryNotes.length > 0
               ? `${order.deliveryNotes.length} 件`
@@ -147,8 +146,8 @@ function DeliveryOrderProcedurePanel({
           })),
           emptyNote:
             order.status === "SHIPPED"
-              ? tr("納品書は未作成です")
-              : tr("未作成（出荷後に納品書を作成します）"),
+              ? tr("shipping.deliveryOrders.noDeliveryNoteHasBeenCreated")
+              : tr("shipping.deliveryOrders.notCreatedTheDeliveryNoteIs"),
         },
       ];
 
@@ -173,7 +172,7 @@ export function DeliveryOrderDetail({
   /** 社内メモ（document_memos 由来、メモタブ）。 */
   memos: MemoView[];
 }) {
-  const tr = useTr();
+  const tr = useTranslations();
   const locale = useLocale();
   const fmt = useFormat();
   const router = useRouter();
@@ -202,8 +201,8 @@ export function DeliveryOrderDetail({
         else router.refresh();
       } else {
         notifications.show({
-          title: tr("エラー"),
-          message: tr(result.error),
+          title: tr("common.error2"),
+          message: result.error,
           color: "red",
         });
       }
@@ -218,7 +217,7 @@ export function DeliveryOrderDetail({
             ...(order.status === "DRAFT"
               ? [
                   {
-                    label: tr("確定"),
+                    label: tr("common.confirmed"),
                     icon: <IconCheck size={14} />,
                     onClick: () => setConfirmOpen(true),
                   },
@@ -227,7 +226,7 @@ export function DeliveryOrderDetail({
             ...(order.status === "CONFIRMED"
               ? [
                   {
-                    label: tr("出荷"),
+                    label: tr("common.shipping"),
                     icon: <IconTruck size={14} />,
                     onClick: () => setShipOpen(true),
                   },
@@ -253,8 +252,8 @@ export function DeliveryOrderDetail({
         />
       }
       breadcrumbs={[
-        tr("出荷"),
-        { label: tr("出荷書"), href: BASE_PATH },
+        tr("common.shipping"),
+        { label: tr("common.deliveryOrder"), href: BASE_PATH },
         "詳細",
       ]}
       createdAt={fmt.dateTime(order.createdAt)}
@@ -264,11 +263,11 @@ export function DeliveryOrderDetail({
     >
       <SummaryGrid>
         <FieldValue
-          label={tr("出荷書番号")}
+          label={tr("common.deliveryOrderNumber")}
           value={<DocNumber>{order.deliveryOrderNumber}</DocNumber>}
         />
         <FieldValue
-          label={tr("注文明細番号")}
+          label={tr("common.orderLineNumber")}
           value={
             order.orderLineNumbers.length > 0 ? (
               <Stack gap={2}>
@@ -290,7 +289,7 @@ export function DeliveryOrderDetail({
           }
         />
         <FieldValue
-          label={tr("顧客")}
+          label={tr("common.customer")}
           value={
             order.customerBranchName
               ? `${order.customerName} / ${order.customerBranchName}`
@@ -298,33 +297,39 @@ export function DeliveryOrderDetail({
           }
         />
         <FieldValue
-          label={tr("営業担当")}
+          label={tr("common.salesRep")}
           value={
             order.salesRepNames.length > 0
               ? order.salesRepNames.join("、")
               : null
           }
         />
-        <FieldValue label={tr("作成者")} value={order.createdByName} />
         <FieldValue
-          label={tr("種別")}
+          label={tr("common.createdBy")}
+          value={order.createdByName}
+        />
+        <FieldValue
+          label={tr("common.type2")}
           value={<DeliveryOrderTypeBadge type={order.type} />}
         />
         <FieldValue
-          label={tr("出荷元拠点")}
+          label={tr("shipping.deliveryOrders.fromSite")}
           value={order.fromPlantName ?? "—"}
         />
         <FieldValue
-          label={tr("数量合計")}
+          label={tr("common.totalQuantity")}
           value={
             <Text className="tabular-nums" size="sm" span>
               {order.totalQuantity}
             </Text>
           }
         />
-        <FieldValue label={tr("出荷日")} value={fmt.date(order.shippedAt)} />
         <FieldValue
-          label={tr("指示書（ヘッダ紐付け）")}
+          label={tr("common.shippedDate")}
+          value={fmt.date(order.shippedAt)}
+        />
+        <FieldValue
+          label={tr("shipping.deliveryOrders.workOrderLinkedAtHeader")}
           value={
             order.workOrderNumber != null ? (
               <DocNumber>{order.workOrderNumber}</DocNumber>
@@ -349,9 +354,9 @@ export function DeliveryOrderDetail({
             <Table.Thead>
               <Table.Tr>
                 <Table.Th>製品</Table.Th>
-                <Table.Th>{tr("ロット")}</Table.Th>
-                <Table.Th ta="right">{tr("数量")}</Table.Th>
-                <Table.Th>{tr("備考")}</Table.Th>
+                <Table.Th>{tr("common.lot")}</Table.Th>
+                <Table.Th ta="right">{tr("common.quantity")}</Table.Th>
+                <Table.Th>{tr("common.notes")}</Table.Th>
               </Table.Tr>
             </Table.Thead>
             <Table.Tbody>
@@ -384,19 +389,19 @@ export function DeliveryOrderDetail({
 
       <AppTabs onChange={setTab} value={tab}>
         <Tabs.List>
-          <Tabs.Tab value="overview">{tr("概要")}</Tabs.Tab>
+          <Tabs.Tab value="overview">{tr("common.overview")}</Tabs.Tab>
           <Tabs.Tab value="delivery-notes">
             納品書（{order.deliveryNotes.length}）
           </Tabs.Tab>
-          <Tabs.Tab value="memo">{tr("メモ")}</Tabs.Tab>
-          <Tabs.Tab value="history">{tr("履歴")}</Tabs.Tab>
+          <Tabs.Tab value="memo">{tr("common.memo")}</Tabs.Tab>
+          <Tabs.Tab value="history">{tr("common.history")}</Tabs.Tab>
         </Tabs.List>
 
         <Tabs.Panel pt="md" value="overview">
           <Stack gap="md">
             <div>
               <Text c="dimmed" mb={4} size="xs">
-                {tr("備考")}
+                {tr("common.notes")}
               </Text>
               <Text size="sm" style={{ whiteSpace: "pre-wrap" }}>
                 {order.notes || "—"}
@@ -414,15 +419,15 @@ export function DeliveryOrderDetail({
                     href={`/shipping/delivery-notes/new?deliveryOrder=${order.id}`}
                     leftSection={<IconReceipt size={14} />}
                   >
-                    {tr("納品書を作成")}
+                    {tr("shipping.deliveryOrders.createADeliveryNote")}
                   </SecondaryButton>
                 ) : undefined
               }
               icon={<IconReceipt size={24} />}
               message={
                 canCreateDeliveryNote(order)
-                  ? tr("この出荷書の納品書はまだありません")
-                  : tr("納品書は確定後に作成できます")
+                  ? tr("shipping.deliveryOrders.thereIsNoDeliveryNoteFor")
+                  : tr("shipping.deliveryOrders.youCanCreateTheDeliveryNote")
               }
             />
           ) : (
@@ -433,7 +438,7 @@ export function DeliveryOrderDetail({
                     href={`/shipping/delivery-notes/new?deliveryOrder=${order.id}`}
                     leftSection={<IconReceipt size={14} />}
                   >
-                    {tr("納品書を作成")}
+                    {tr("shipping.deliveryOrders.createADeliveryNote")}
                   </SecondaryButton>
                 </Group>
               )}
@@ -441,11 +446,11 @@ export function DeliveryOrderDetail({
                 <Table highlightOnHover>
                   <Table.Thead>
                     <Table.Tr>
-                      <Table.Th>{tr("納品番号")}</Table.Th>
-                      <Table.Th>{tr("納品先")}</Table.Th>
-                      <Table.Th>{tr("方法")}</Table.Th>
-                      <Table.Th>{tr("状態")}</Table.Th>
-                      <Table.Th>{tr("納品日")}</Table.Th>
+                      <Table.Th>{tr("common.deliveryNoteNumber")}</Table.Th>
+                      <Table.Th>{tr("common.shipTo")}</Table.Th>
+                      <Table.Th>{tr("common.method2")}</Table.Th>
+                      <Table.Th>{tr("common.status")}</Table.Th>
+                      <Table.Th>{tr("common.deliveredDate")}</Table.Th>
                     </Table.Tr>
                   </Table.Thead>
                   <Table.Tbody>
@@ -504,23 +509,23 @@ export function DeliveryOrderDetail({
 
       <ConfirmModal
         confirmColor="blue"
-        confirmLabel={tr("確定")}
+        confirmLabel={tr("common.confirmed")}
         loading={isPending}
         message={`出荷書 ${order.deliveryOrderNumber} を確定します。確定後は編集できません。`}
         onClose={() => setConfirmOpen(false)}
         onConfirm={() =>
           run(
             () => confirmDeliveryOrder(order.deliveryOrderNumber),
-            tr("確定しました"),
+            tr("common.confirmed2"),
             `出荷書 ${order.deliveryOrderNumber} を確定しました`,
           )
         }
         opened={confirmOpen}
-        title={tr("確定の確認")}
+        title={tr("common.confirm")}
       />
       <ConfirmModal
         confirmColor="blue"
-        confirmLabel={tr("出荷する")}
+        confirmLabel={tr("shipping.deliveryOrders.ship")}
         loading={isPending}
         message={
           order.type === "DISPATCH"
@@ -531,28 +536,28 @@ export function DeliveryOrderDetail({
         onConfirm={() =>
           run(
             () => shipDeliveryOrder(order.deliveryOrderNumber),
-            tr("出荷しました"),
+            tr("shipping.deliveryOrders.shipped"),
             `出荷書 ${order.deliveryOrderNumber} を出荷済みにしました`,
           )
         }
         opened={shipOpen}
-        title={tr("出荷の確認")}
+        title={tr("shipping.deliveryOrders.confirmTheShipment")}
       />
       <ConfirmModal
-        confirmLabel={tr("キャンセルする")}
+        confirmLabel={tr("common.cancelDocument")}
         loading={isPending}
         message={`出荷書 ${order.deliveryOrderNumber} を削除します。この操作は取り消せません。`}
         onClose={() => setCancelOpen(false)}
         onConfirm={() =>
           run(
             () => deleteDeliveryOrder(order.deliveryOrderNumber),
-            tr("キャンセルしました"),
+            tr("common.cancelled"),
             `出荷書 ${order.deliveryOrderNumber} を削除しました`,
             () => router.push(BASE_PATH),
           )
         }
         opened={cancelOpen}
-        title={tr("キャンセルの確認")}
+        title={tr("common.confirmCancellation")}
       />
     </DetailShell>
   );

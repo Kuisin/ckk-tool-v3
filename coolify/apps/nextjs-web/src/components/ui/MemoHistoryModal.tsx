@@ -12,13 +12,13 @@
 
 import { Badge, Group, Loader, Stack, Text, Timeline } from "@mantine/core";
 import { IconHistory } from "@tabler/icons-react";
+import { useTranslations } from "next-intl";
 import { useEffect, useState, useTransition } from "react";
 import { useFormat } from "@/components/layout/PreferencesProvider";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { ModalShell } from "@/components/ui/modals";
 import { RichTextView } from "@/components/ui/RichTextView";
 import { UserAvatar } from "@/components/ui/UserAvatar";
-import { useTr } from "@/hooks/useTr";
 import type { MemoRevisionView } from "@/lib/document-memos";
 import { listMemoRevisionsAction } from "./memo-actions";
 
@@ -45,7 +45,7 @@ export function MemoHistoryModal({
   ownerType: string;
   memoId: string;
 }) {
-  const tr = useTr();
+  const tr = useTranslations();
   const fmt = useFormat();
   const [revisions, setRevisions] = useState<MemoRevisionView[] | null>(null);
   const [pending, start] = useTransition();
@@ -62,7 +62,7 @@ export function MemoHistoryModal({
       hideFooter
       onClose={onClose}
       opened={opened}
-      title={tr("変更履歴")}
+      title={tr("common.changeHistory")}
     >
       {pending || revisions === null ? (
         <Group justify="center" py="lg">
@@ -71,7 +71,7 @@ export function MemoHistoryModal({
       ) : revisions.length === 0 ? (
         <EmptyState
           icon={<IconHistory size={24} />}
-          message={tr("変更履歴はまだありません")}
+          message={tr("ui.memoHistoryModal.thereIsNoChangeHistoryYet")}
         />
       ) : (
         <Timeline active={-1} bulletSize={24} lineWidth={1}>
@@ -108,8 +108,8 @@ export function MemoHistoryModal({
                 <Stack gap={4} mt={4}>
                   <Text c="dimmed" size="xs">
                     {rev.action === "DELETE"
-                      ? tr("削除直前の本文")
-                      : tr("この操作後の本文")}
+                      ? tr("ui.memoHistoryModal.bodyJustBeforeDeletion")
+                      : tr("ui.memoHistoryModal.bodyAfterThisOperation")}
                   </Text>
                   <RichTextView doc={rev.content} />
                 </Stack>

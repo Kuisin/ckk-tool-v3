@@ -22,9 +22,8 @@ import {
   IconArrowRight,
   IconShieldCheck,
 } from "@tabler/icons-react";
-import { useLocale } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { EditButton } from "@/components/ui/buttons";
-import { useTr } from "@/hooks/useTr";
 import { useIsMobile } from "@/hooks/useViewport";
 import {
   APPROVAL_TARGET,
@@ -62,28 +61,16 @@ export interface FlowOverviewRow {
 }
 
 export function ApprovalFlowOverview({ rows }: { rows: FlowOverviewRow[] }) {
-  const tr = useTr();
+  const tr = useTranslations();
   const locale = useLocale();
   const isMobile = useIsMobile();
   return (
     <Stack gap="sm">
       <Text c="dimmed" size="sm">
-        {tr(
-          tr(
-            tr(
-              "書類ごとに、確定の前に通す承認の段を並べます。変更は今後の承認依頼から\n        適用され、進行中の書類は依頼した時点の設定のまま進みます。",
-            ),
-          ),
-        )}
+        {tr("master.approvalFlows.listsTheApprovalStepsADocument")}
       </Text>
       <Text c="dimmed" size="sm">
-        {tr(
-          tr(
-            tr(
-              "誰が承認できるかは承認グループだけで決まります。加えて、承認を押すには\n        その書類を閲覧または編集できる権限が要ります。段のバッジは、今その段に\n        いるメンバーが書類を開けるかを表します。",
-            ),
-          ),
-        )}
+        {tr("master.approvalFlows.whoCanApproveIsDecidedBy")}
       </Text>
       {rows.map((r) => {
         const meta = APPROVAL_TARGET[r.targetType];
@@ -123,7 +110,7 @@ export function ApprovalFlowOverview({ rows }: { rows: FlowOverviewRow[] }) {
                     <Group c="red" gap={4} wrap="nowrap">
                       <IconAlertTriangle size={14} />
                       <Text size="xs">
-                        {tr("未設定 — この書類は承認依頼を出せません")}
+                        {tr("master.approvalFlows.notSetThisDocumentCannotBe")}
                       </Text>
                     </Group>
                   )}
@@ -167,7 +154,7 @@ export function ApprovalFlowOverview({ rows }: { rows: FlowOverviewRow[] }) {
                 fullWidth={isMobile}
                 href={`${BASE_PATH}/flows/${r.targetType}`}
               >
-                {empty ? "設定" : tr("編集")}
+                {empty ? "設定" : tr("common.edit2")}
               </EditButton>
             </Group>
           </Paper>

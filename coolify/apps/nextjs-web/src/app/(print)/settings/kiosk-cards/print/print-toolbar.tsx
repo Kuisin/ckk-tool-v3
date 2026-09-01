@@ -13,8 +13,8 @@
 
 import { Group, Text } from "@mantine/core";
 import { IconFileTypePdf, IconPrinter } from "@tabler/icons-react";
+import { useTranslations } from "next-intl";
 import { PrimaryButton, SecondaryButton } from "@/components/ui/buttons";
-import { useTr } from "@/hooks/useTr";
 
 export function PrintToolbar({
   count,
@@ -23,7 +23,7 @@ export function PrintToolbar({
   count: number;
   pdfHref: string;
 }) {
-  const tr = useTr();
+  const tr = useTranslations();
   return (
     <Group className="kiosk-print-toolbar" justify="space-between" mb="md">
       <Text fw={600} size="sm">
@@ -35,14 +35,14 @@ export function PrintToolbar({
           href={pdfHref}
           leftSection={<IconFileTypePdf size={16} />}
         >
-          {tr("PDFで保存")}
+          {tr("settings.kioskCards.saveAsPdf")}
         </SecondaryButton>
         <PrimaryButton
           disabled={count === 0}
           leftSection={<IconPrinter size={16} />}
           onClick={() => window.print()}
         >
-          {tr("印刷")}
+          {tr("common.print2")}
         </PrimaryButton>
       </Group>
     </Group>

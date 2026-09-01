@@ -18,6 +18,7 @@ import {
   IconX,
 } from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { useState, useTransition } from "react";
 import {
   placeStorageLocation,
@@ -27,7 +28,6 @@ import type { PlantFloorMapRef } from "@/components/master/plants/FloorMapsPanel
 import { AppTabs } from "@/components/ui/AppTabs";
 import { GhostButton } from "@/components/ui/buttons";
 import { FloorMapCanvas } from "@/components/ui/FloorMapCanvas";
-import { useTr } from "@/hooks/useTr";
 
 /** フロアマップに配置する保管場所ピン。 */
 export interface StorageMapPin {
@@ -49,7 +49,7 @@ export function StorageLocationMapPanel({
   floorMaps: PlantFloorMapRef[];
   pins: StorageMapPin[];
 }) {
-  const tr = useTr();
+  const tr = useTranslations();
   const router = useRouter();
   const [activeMapId, setActiveMapId] = useState<string | null>(null);
   const [overlayIds, setOverlayIds] = useState<string[]>([]);
@@ -74,8 +74,8 @@ export function StorageLocationMapPanel({
       const res = await action();
       if (!res.ok) {
         notifications.show({
-          title: tr("エラー"),
-          message: res.error ?? tr("操作に失敗しました"),
+          title: tr("common.error2"),
+          message: res.error ?? tr("common.theActionFailed"),
           color: "red",
         });
         return;
@@ -89,22 +89,16 @@ export function StorageLocationMapPanel({
       <Group gap="xs" mb="sm">
         <IconMap2 color="var(--mantine-color-gray-6)" size={18} />
         <Text fw={600} size="sm">
-          {tr("フロアマップ配置")}
+          {tr("master.storageLocations.placeOnTheFloorMap")}
         </Text>
         <Text c="dimmed" size="xs">
-          {tr("保管場所ピンをドラッグで配置。図面の管理は拠点マスタ (MS0C)")}
+          {tr("master.storageLocations.dragStorageLocationPinsIntoPlace")}
         </Text>
       </Group>
 
       {floorMaps.length === 0 ? (
         <Text c="dimmed" size="sm">
-          {tr(
-            tr(
-              tr(
-                "この拠点にはフロアマップがありません。拠点マスタ (MS0C)\n          の「フロアマップ」タブでフロアと図面を登録してください。",
-              ),
-            ),
-          )}
+          {tr("master.storageLocations.thisSiteHasNoFloorMap2")}
         </Text>
       ) : (
         <Stack gap="sm">
@@ -130,7 +124,7 @@ export function StorageLocationMapPanel({
           {overlayCandidates.length > 0 && (
             <Group gap="xs" wrap="wrap">
               <Text c="dimmed" size="xs">
-                {tr("重ね表示:")}
+                {tr("common.overlay")}
               </Text>
               {overlayCandidates.map((m) => (
                 <Chip

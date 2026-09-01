@@ -19,13 +19,13 @@ import {
   Text,
 } from "@mantine/core";
 import { IconHistory } from "@tabler/icons-react";
+import { useTranslations } from "next-intl";
 import { useEffect, useState, useTransition } from "react";
 import { fetchDeviceSessions } from "@/app/(dashboard)/settings/kiosk-devices/actions";
 import { useFormat } from "@/components/layout/PreferencesProvider";
 import { SecondaryButton } from "@/components/ui/buttons";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { ModalShell } from "@/components/ui/modals";
-import { useTr } from "@/hooks/useTr";
 import type { Formatters } from "@/lib/format";
 import type { KioskDeviceSessionRow } from "@/lib/kiosk-admin";
 
@@ -52,7 +52,7 @@ function formatEnd(fmt: Formatters, startIso: string, endIso: string): string {
  * モーダルと端末詳細ページの両方から使う。
  */
 export function DeviceLogList({ deviceId }: { deviceId: string }) {
-  const tr = useTr();
+  const tr = useTranslations();
   const fmt = useFormat();
   const [rows, setRows] = useState<KioskDeviceSessionRow[]>([]);
   const [nextCursor, setNextCursor] = useState<string | null>(null);
@@ -102,7 +102,7 @@ export function DeviceLogList({ deviceId }: { deviceId: string }) {
       {loaded && !error && rows.length === 0 && (
         <EmptyState
           icon={<IconHistory size={28} />}
-          message={tr("利用履歴はまだありません")}
+          message={tr("settings.kiosk.thereIsNoUsageHistoryYet")}
         />
       )}
       {rows.map((r, i) => (
@@ -121,7 +121,7 @@ export function DeviceLogList({ deviceId }: { deviceId: string }) {
                 miw={72}
                 variant={r.endedAt ? "light" : "filled"}
               >
-                {r.endedAt ? "終了" : tr("利用中")}
+                {r.endedAt ? "終了" : tr("settings.kiosk.inUse")}
               </Badge>
               <Text fw={500} size="sm" truncate>
                 {r.userName}
@@ -137,7 +137,7 @@ export function DeviceLogList({ deviceId }: { deviceId: string }) {
               <Text c="dimmed" size="xs">
                 {r.endedAt
                   ? formatDuration(r.startedAt, r.endedAt)
-                  : tr("ログイン中")}
+                  : tr("settings.kiosk.loggedIn")}
               </Text>
             </Stack>
           </Group>
@@ -146,7 +146,7 @@ export function DeviceLogList({ deviceId }: { deviceId: string }) {
       {nextCursor && (
         <Center pt="sm">
           <SecondaryButton loading={isPending} onClick={() => load(nextCursor)}>
-            {tr("さらに読み込む")}
+            {tr("settings.kiosk.loadMore")}
           </SecondaryButton>
         </Center>
       )}

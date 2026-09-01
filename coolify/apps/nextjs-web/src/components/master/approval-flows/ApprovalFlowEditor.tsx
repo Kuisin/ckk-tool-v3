@@ -43,7 +43,7 @@ import {
   IconTrash,
 } from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
-import { useLocale } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { useState, useTransition } from "react";
 import { saveApprovalFlow } from "@/app/(dashboard)/master/approval-settings/actions";
 import { GhostButton } from "@/components/ui/buttons";
@@ -55,7 +55,6 @@ import {
   FormSection,
   LocalizedTextInput,
 } from "@/components/ui/shells";
-import { useTr } from "@/hooks/useTr";
 import { useIsMobile } from "@/hooks/useViewport";
 import { type ApprovalMode, validateFlowSteps } from "@/lib/approval-flow";
 import { approvalModeOptions } from "@/lib/enum-labels";
@@ -165,7 +164,7 @@ export function ApprovalFlowEditor({
     query: string,
   ) => Promise<{ value: string; label: string; allowed: boolean }[]>;
 }) {
-  const tr = useTr();
+  const tr = useTranslations();
   const locale = useLocale();
   const router = useRouter();
   const isMobile = useIsMobile();
@@ -216,7 +215,7 @@ export function ApprovalFlowEditor({
   const save = () => {
     if (issues.length > 0) {
       notifications.show({
-        title: tr("エラー"),
+        title: tr("common.error2"),
         message: issues[0],
         color: "red",
       });
@@ -254,7 +253,7 @@ export function ApprovalFlowEditor({
           );
       if (result.ok) {
         notifications.show({
-          title: tr("保存しました"),
+          title: tr("common.saved2"),
           message: `${targetLabel}の承認フロー`,
           color: "green",
         });
@@ -263,8 +262,8 @@ export function ApprovalFlowEditor({
         onSaved?.();
       } else {
         notifications.show({
-          title: tr("エラー"),
-          message: result.error ?? tr("保存に失敗しました"),
+          title: tr("common.error2"),
+          message: result.error ?? tr("common.couldNotSave"),
           color: "red",
         });
       }
@@ -276,28 +275,22 @@ export function ApprovalFlowEditor({
       {!embedded && (
         <PageHeader
           breadcrumbs={[
-            tr("マスタ"),
-            { label: tr("承認設定"), href: BASE_PATH },
-            tr("承認フロー"),
+            tr("common.masterData"),
+            { label: tr("common.approvalSettings"), href: BASE_PATH },
+            tr("common.approvalFlow"),
           ]}
           title={`${targetLabel}の承認フロー`}
         />
       )}
       {!embedded && (
         <Alert color="blue" icon={<IconInfoCircle size={16} />} variant="light">
-          {tr(
-            tr(
-              tr(
-                "変更は今後の承認依頼から適用されます。進行中の書類は依頼した時点の設定のまま進みます。",
-              ),
-            ),
-          )}
+          {tr("master.approvalFlows.changesApplyFromTheNextApproval")}
         </Alert>
       )}
       <Alert
         color="gray"
         icon={<IconShieldCheck size={16} />}
-        title={tr("承認に必要な権限")}
+        title={tr("master.approvalFlows.permissionRequiredToApprove")}
         variant="light"
       >
         <Text size="sm">
@@ -307,23 +300,19 @@ export function ApprovalFlowEditor({
             {permissionCode}:READ / UPDATE
           </Text>
           ）が要ります。誰が承認するかは、この画面で指定した
-          {allowIndividual ? "承認グループ・承認者" : tr("承認グループ")}
+          {allowIndividual
+            ? "承認グループ・承認者"
+            : tr("common.approvalGroup")}
           だけで決まります。書類を開けない人は、指定しても承認できません
           （権限はユーザー管理 SY01 のロールで決まります）。
         </Text>
       </Alert>
 
-      <FormSection title={tr("承認ステップ")}>
+      <FormSection title={tr("master.approvalFlows.approvalStep")}>
         <Stack gap="sm">
           {steps.length === 0 && (
             <Text c="dimmed" size="sm">
-              {tr(
-                tr(
-                  tr(
-                    "承認ステップがありません。「段を追加」で 1\n              段以上設定してください。",
-                  ),
-                ),
-              )}
+              {tr("master.approvalFlows.thereAreNoApprovalStepsSet")}
             </Text>
           )}
           {steps.map((s, i) => {
@@ -347,8 +336,8 @@ export function ApprovalFlowEditor({
                     onChange: (e) =>
                       patch(s.key, { nameJa: e.currentTarget.value }),
                   }}
-                  label={tr("名称")}
-                  placeholder={tr("第一承認")}
+                  label={tr("common.name2")}
+                  placeholder={tr("common.firstApproval")}
                   required
                   translationsProps={{
                     value: s.nameTranslations,
@@ -364,7 +353,7 @@ export function ApprovalFlowEditor({
                 data={groupOptions}
                 label={<HelpLabel {...fieldHelp("approvalFlow", "group")} />}
                 onChange={(v) => patch(s.key, { groupId: v })}
-                placeholder={tr("選択")}
+                placeholder={tr("common.select")}
                 searchable
                 value={s.groupId}
                 w={isMobile ? undefined : 200}
@@ -375,7 +364,7 @@ export function ApprovalFlowEditor({
             const individualField = searchApprovers && (
               <Stack gap={4} w={isMobile ? undefined : 260}>
                 <SearchSelect
-                  label={tr("承認者（複数可）")}
+                  label={tr("master.approvalFlows.approversOneOrMore")}
                   onChange={(v, option) => {
                     if (!v || chosen.some((a) => a.value === v)) return;
                     patch(s.key, {
@@ -404,7 +393,7 @@ export function ApprovalFlowEditor({
                         allowed: r.allowed,
                       }));
                   }}
-                  placeholder={tr("検索して追加")}
+                  placeholder={tr("common.searchAndAdd")}
                   storageKey="form-approver"
                   value={null}
                 />
@@ -428,8 +417,8 @@ export function ApprovalFlowEditor({
             const targetToggle = allowIndividual && (
               <SegmentedControl
                 data={[
-                  { value: "group", label: tr("グループ") },
-                  { value: "custom", label: tr("カスタム") },
+                  { value: "group", label: tr("common.group") },
+                  { value: "custom", label: tr("common.custom") },
                 ]}
                 fullWidth={isMobile}
                 onChange={(v) =>
@@ -468,7 +457,7 @@ export function ApprovalFlowEditor({
             const approverRow = approvers && (
               <Group gap="xs" wrap="wrap">
                 <Text c="dimmed" size="xs">
-                  {tr("この段を承認できる人")}
+                  {tr("master.approvalFlows.whoCanApproveThisStep")}
                 </Text>
                 <ApproverPermissionBadge approvers={approvers} />
                 {approvers.length > 0 && (
@@ -481,7 +470,7 @@ export function ApprovalFlowEditor({
             const controls = (
               <Group gap={4} wrap="nowrap">
                 <ActionIcon
-                  aria-label={tr("上へ")}
+                  aria-label={tr("common.moveUp")}
                   disabled={i === 0}
                   onClick={() => move(i, -1)}
                   size={isMobile ? "lg" : undefined}
@@ -490,7 +479,7 @@ export function ApprovalFlowEditor({
                   <IconArrowUp size={16} />
                 </ActionIcon>
                 <ActionIcon
-                  aria-label={tr("下へ")}
+                  aria-label={tr("common.moveDown")}
                   disabled={i === steps.length - 1}
                   onClick={() => move(i, 1)}
                   size={isMobile ? "lg" : undefined}
@@ -543,7 +532,7 @@ export function ApprovalFlowEditor({
             );
           })}
           <GhostButton fullWidth={isMobile} onClick={add}>
-            {tr("段を追加")}
+            {tr("common.addAStep")}
           </GhostButton>
         </Stack>
       </FormSection>

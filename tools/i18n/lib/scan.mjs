@@ -355,12 +355,14 @@ function isInsideLocaleBlock(keyPath) {
 /**
  * `tr("…")` / `translate("…", …)` の引数か = **既に訳を引いている**。
  *
- * ja 鍵の対訳（src/lib/ui-text.ts）では日本語がそのまま鍵なので、包んだ後も
- * ソースには日本語が残る。ここを数えると移行しても残数が減らず、ratchet が
- * 働かない。
+ * 本物の next-intl 鍵（`settings.itemDefEditForm.foo` のような形）は
+ * 日本語ではないので、包んだ後はソースから日本語が消える。ここを数える
+ * ことでこそ ratchet が働く——「日本語のリテラルが tr() の外に残っている」
+ * ことだけを見る。
  *
- * 「鍵が辞書に有るか」はここでは見ない — それは i18n-verify-keys.mjs の仕事。
- * 走査は「包まれているか」だけを見る。
+ * 「鍵が messages/ja.json に実在するか」はここでは見ない —
+ * それは tools/i18n-unify/verify-keys.mjs の仕事。走査は
+ * 「包まれているか」だけを見る。
  */
 function isTranslationCall(masked, stringStart) {
   return /\b(?:tr|translate)\(\s*$/.test(masked.slice(0, stringStart));

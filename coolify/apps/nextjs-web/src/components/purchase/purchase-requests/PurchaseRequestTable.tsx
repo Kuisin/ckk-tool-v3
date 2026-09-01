@@ -10,12 +10,12 @@
 import { Group, Select, Stack, Text, TextInput } from "@mantine/core";
 import { IconClipboardList, IconSearch } from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { useFormat } from "@/components/layout/PreferencesProvider";
 import { type Column, DataTable } from "@/components/ui/DataTable";
 import { NewButton } from "@/components/ui/NewButton";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { ListShell } from "@/components/ui/shells";
-import { useTr } from "@/hooks/useTr";
 import { useUrlSelectState, useUrlStringState } from "@/hooks/useUrlState";
 import { useIsMobile } from "@/hooks/useViewport";
 import { statusOptions } from "@/lib/status-map";
@@ -32,7 +32,7 @@ function materialSummary(r: PurchaseRequestRow): string {
 }
 
 export function PurchaseRequestTable({ rows }: { rows: PurchaseRequestRow[] }) {
-  const tr = useTr();
+  const tr = useTranslations();
   const fmt = useFormat();
   const router = useRouter();
   const isMobile = useIsMobile();
@@ -59,7 +59,7 @@ export function PurchaseRequestTable({ rows }: { rows: PurchaseRequestRow[] }) {
   const columns: Column<PurchaseRequestRow>[] = [
     {
       key: "requestNumber",
-      header: tr("依頼番号"),
+      header: tr("common.requestNumber"),
       sortable: true,
       render: (r) => (
         <Text ff="mono" size="sm">
@@ -69,13 +69,13 @@ export function PurchaseRequestTable({ rows }: { rows: PurchaseRequestRow[] }) {
     },
     {
       key: "requesterName",
-      header: tr("依頼者"),
+      header: tr("common.requester"),
       sortable: true,
       render: (r) => r.requesterName,
     },
     {
       key: "primaryMaterial",
-      header: tr("主要素材"),
+      header: tr("purchase.purchaseRequests.mainMaterial"),
       sortValue: (r) => r.primaryMaterial ?? "",
       render: (r) => (
         <Text ff="mono" size="sm">
@@ -85,7 +85,7 @@ export function PurchaseRequestTable({ rows }: { rows: PurchaseRequestRow[] }) {
     },
     {
       key: "itemCount",
-      header: tr("明細数"),
+      header: tr("common.lineCount"),
       align: "right",
       width: 90,
       sortValue: (r) => r.itemCount,
@@ -97,14 +97,14 @@ export function PurchaseRequestTable({ rows }: { rows: PurchaseRequestRow[] }) {
     },
     {
       key: "status",
-      header: tr("状態"),
+      header: tr("common.status"),
       width: 110,
       sortValue: (r) => r.status,
       render: (r) => <StatusBadge entity="PurchaseRequest" status={r.status} />,
     },
     {
       key: "desiredAt",
-      header: tr("希望納期"),
+      header: tr("common.requestedDate2"),
       width: 120,
       sortValue: (r) => r.desiredAt ?? "",
       render: (r) => (
@@ -115,7 +115,7 @@ export function PurchaseRequestTable({ rows }: { rows: PurchaseRequestRow[] }) {
     },
     {
       key: "updatedAt",
-      header: tr("更新日"),
+      header: tr("common.updated"),
       width: 150,
       sortValue: (r) => r.updatedAt,
       render: (r) => (
@@ -129,14 +129,14 @@ export function PurchaseRequestTable({ rows }: { rows: PurchaseRequestRow[] }) {
   return (
     <ListShell
       action={<NewButton href={`${BASE_PATH}/new`} />}
-      breadcrumbs={[tr("購買"), tr("購買依頼")]}
+      breadcrumbs={[tr("common.purchasing"), tr("common.purchaseRequest")]}
       filters={
         <Select
           clearable
           data={statusOptions("PurchaseRequest")}
           flex={isMobile ? 1 : undefined}
           onChange={setStatus}
-          placeholder={tr("状態")}
+          placeholder={tr("common.status")}
           value={status}
           w={isMobile ? undefined : 150}
         />
@@ -146,11 +146,13 @@ export function PurchaseRequestTable({ rows }: { rows: PurchaseRequestRow[] }) {
         <TextInput
           leftSection={<IconSearch size={14} />}
           onChange={(e) => setSearch(e.currentTarget.value)}
-          placeholder={tr("依頼番号・依頼者・素材で検索")}
+          placeholder={tr(
+            "purchase.purchaseRequests.searchByRequestNumberRequesterOr",
+          )}
           value={search}
         />
       }
-      title={tr("購買依頼")}
+      title={tr("common.purchaseRequest")}
     >
       <DataTable
         columns={columns}
@@ -158,7 +160,9 @@ export function PurchaseRequestTable({ rows }: { rows: PurchaseRequestRow[] }) {
         defaultSort={{ key: "requestNumber", dir: "desc" }}
         emptyAction={<NewButton href={`${BASE_PATH}/new`} />}
         emptyIcon={<IconClipboardList size={24} />}
-        emptyMessage={tr("購買依頼がありません")}
+        emptyMessage={tr(
+          "purchase.purchaseRequests.thereAreNoPurchaseRequests",
+        )}
         getRowId={(r) => r.requestNumber}
         onRowClick={(r) => router.push(`${BASE_PATH}/${r.requestNumber}`)}
         renderCard={(r) => (

@@ -12,18 +12,18 @@
 import { Anchor, Badge, Group, Paper, Stack, Text } from "@mantine/core";
 import { IconExternalLink, IconUser } from "@tabler/icons-react";
 import Link from "next/link";
+import { useTranslations } from "next-intl";
 import { AuditChangeTable } from "@/components/ui/AuditChangeTable";
 import { SecondaryButton } from "@/components/ui/buttons";
 import { FieldValue } from "@/components/ui/FieldValue";
 import { DetailShell, SummaryGrid } from "@/components/ui/shells";
-import { useTr } from "@/hooks/useTr";
 import type { ActivityDetailEntry } from "@/lib/audit";
 import { auditRecordLink } from "@/lib/audit-links";
 
 const BASE_PATH = "/settings/activity";
 
 export function ActivityLogDetail({ entry }: { entry: ActivityDetailEntry }) {
-  const tr = useTr();
+  const tr = useTranslations();
   const link = auditRecordLink(entry.tableName, entry.recordId);
 
   return (
@@ -35,28 +35,32 @@ export function ActivityLogDetail({ entry }: { entry: ActivityDetailEntry }) {
             leftSection={<IconExternalLink size={14} />}
           >
             {link.kind === "detail"
-              ? tr("{appLabel}を開く", { appLabel: tr(link.appLabel) })
-              : tr("{appLabel}で表示", { appLabel: tr(link.appLabel) })}
+              ? tr("admin.activityLogDetail.openApplabel", {
+                  appLabel: link.appLabel,
+                })
+              : tr("admin.activityLogDetail.viewInApplabel", {
+                  appLabel: link.appLabel,
+                })}
           </SecondaryButton>
         ) : undefined
       }
       breadcrumbs={[
-        tr("システム"),
-        { label: tr("操作履歴"), href: BASE_PATH },
+        tr("common.system"),
+        { label: tr("common.activityLog"), href: BASE_PATH },
         `#${entry.id}`,
       ]}
       status={<Badge variant="light">{entry.action}</Badge>}
-      title={tr("操作履歴 #{id}", { id: entry.id })}
+      title={tr("admin.activityLogDetail.activityId", { id: entry.id })}
     >
       <SummaryGrid>
-        <FieldValue label={tr("日時")} value={entry.at} />
+        <FieldValue label={tr("common.dateAndTime")} value={entry.at} />
         <FieldValue
-          label={tr("操作")}
+          label={tr("common.actions")}
           value={`${entry.action}（${entry.actionRaw}）`}
         />
-        <FieldValue label={tr("対象")} value={entry.tableLabel} />
+        <FieldValue label={tr("common.target")} value={entry.tableLabel} />
         <FieldValue
-          label={tr("レコード")}
+          label={tr("common.record")}
           value={
             entry.recordId ? (
               <Text ff="mono" size="sm">
@@ -68,7 +72,7 @@ export function ActivityLogDetail({ entry }: { entry: ActivityDetailEntry }) {
           }
         />
         <FieldValue
-          label={tr("ユーザー")}
+          label={tr("common.user")}
           value={
             entry.userId ? (
               <Anchor
@@ -87,12 +91,13 @@ export function ActivityLogDetail({ entry }: { entry: ActivityDetailEntry }) {
           }
         />
         <FieldValue
-          label={tr("関連ページ")}
+          label={tr("admin.activityLogDetail.relatedPages")}
           value={
             link ? (
               <Anchor component={Link} href={link.href} size="sm">
-                {tr(link.appLabel)}
-                {link.kind === "list" && tr("（一覧で表示）")}
+                {link.appLabel}
+                {link.kind === "list" &&
+                  tr("admin.activityLogDetail.shownInTheList")}
               </Anchor>
             ) : (
               "—"
@@ -103,7 +108,7 @@ export function ActivityLogDetail({ entry }: { entry: ActivityDetailEntry }) {
 
       <Paper p="md" radius="md" withBorder>
         <Text c="dimmed" fw={600} mb="xs" size="xs">
-          {tr("変更内容（要約）")}
+          {tr("admin.activityLogDetail.whatChangedSummary")}
         </Text>
         <Text size="sm">{entry.detail}</Text>
       </Paper>
@@ -114,7 +119,7 @@ export function ActivityLogDetail({ entry }: { entry: ActivityDetailEntry }) {
             この中の「生データを表示」で見られる。 */}
         <Paper p="md" radius="md" withBorder>
           <Text c="dimmed" fw={600} mb="xs" size="xs">
-            {tr("変更内容")}
+            {tr("common.whatChanges")}
           </Text>
           <AuditChangeTable
             action={entry.action}

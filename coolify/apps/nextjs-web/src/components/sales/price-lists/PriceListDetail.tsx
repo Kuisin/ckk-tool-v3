@@ -31,6 +31,7 @@ import {
   IconTrash,
 } from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { useState, useTransition } from "react";
 import {
   deleteDiscountRule,
@@ -54,7 +55,6 @@ import {
   ResourceActions,
   SummaryGrid,
 } from "@/components/ui/shells";
-import { useTr } from "@/hooks/useTr";
 import { useTabParam } from "@/hooks/useUrlState";
 import type { MemoView } from "@/lib/document-memos";
 import type { Option } from "@/lib/mock";
@@ -96,7 +96,7 @@ export function PriceListDetail({
   /** 社内コメント（document_memos 由来、コメントタブ）。 */
   memos: MemoView[];
 }) {
-  const tr = useTr();
+  const tr = useTranslations();
   const fmt = useFormat();
   const router = useRouter();
   const [, startTransition] = useTransition();
@@ -136,15 +136,15 @@ export function PriceListDetail({
       });
       if (result.ok) {
         notifications.show({
-          title: tr("保存しました"),
+          title: tr("common.saved2"),
           message: `値引きルール「${rule.label}」を保存しました`,
           color: "green",
         });
         router.refresh();
       } else {
         notifications.show({
-          title: tr("エラー"),
-          message: tr(result.error),
+          title: tr("common.error2"),
+          message: result.error,
           color: "red",
         });
       }
@@ -153,7 +153,7 @@ export function PriceListDetail({
 
   const removeDiscount = (rule: PriceDiscount) => {
     openConfirm({
-      title: tr("値引きルールの削除"),
+      title: tr("sales.priceLists.deleteTheDiscountRule"),
       message: `「${rule.label}」を削除します。この操作は取り消せません。`,
       confirmLabel: "削除",
       onConfirm: () => {
@@ -163,8 +163,8 @@ export function PriceListDetail({
             router.refresh();
           } else {
             notifications.show({
-              title: tr("エラー"),
-              message: tr(result.error),
+              title: tr("common.error2"),
+              message: result.error,
               color: "red",
             });
           }
@@ -191,17 +191,17 @@ export function PriceListDetail({
         <ResourceActions
           menuItems={[
             {
-              label: tr("見積書を作成"),
+              label: tr("common.createAQuote"),
               icon: <IconFileText size={14} />,
               onClick: () => setQuoteOpen(true),
             },
             {
-              label: tr("有効期間を変更"),
+              label: tr("common.changeTheValidPeriod"),
               icon: <IconCopy size={14} />,
               onClick: () => setDuplicateOpen(true),
             },
             {
-              label: tr("別の顧客・製品へコピー"),
+              label: tr("common.copyToAnotherCustomerOrProduct"),
               icon: <IconCopyPlus size={14} />,
               onClick: () => setCopyOpen(true),
             },
@@ -217,20 +217,20 @@ export function PriceListDetail({
         />
       }
       breadcrumbs={[
-        tr("販売"),
-        { label: tr("価格表"), href: BASE_PATH },
+        tr("common.sales"),
+        { label: tr("common.priceList"), href: BASE_PATH },
         "詳細",
       ]}
       createdAt={fmt.dateTime(entry.createdAt)}
       status={<ActiveBadge active={entry.isActive} />}
-      title={tr("価格表 詳細")}
+      title={tr("sales.priceLists.priceListDetails")}
       updatedAt={fmt.dateTime(entry.updatedAt)}
     >
       <SummaryGrid>
-        <FieldValue label={tr("顧客")} value={entry.customerName} />
+        <FieldValue label={tr("common.customer")} value={entry.customerName} />
         <FieldValue label="製品" value={entry.productName} />
         <FieldValue
-          label={tr("注文種別")}
+          label={tr("common.orderType")}
           value={
             <Group gap={4} wrap="wrap">
               {entry.variants.map((v) => (
@@ -241,22 +241,27 @@ export function PriceListDetail({
             </Group>
           }
         />
-        <FieldValue label={tr("段階数")} value={`${summary.tierCount}段階`} />
         <FieldValue
-          label={tr("単価範囲")}
+          label={tr("sales.priceLists.tiers")}
+          value={`${summary.tierCount}段階`}
+        />
+        <FieldValue
+          label={tr("sales.priceLists.unitPriceRange")}
           value={priceRangeLabel(summary.minPrice, summary.maxPrice)}
         />
-        <FieldValue label={tr("営業担当")} value={entry.salesRepName} />
-        <FieldValue label={tr("作成者")} value={entry.createdBy} />
+        <FieldValue label={tr("common.salesRep")} value={entry.salesRepName} />
+        <FieldValue label={tr("common.createdBy")} value={entry.createdBy} />
       </SummaryGrid>
 
       <AppTabs onChange={setTab} value={tab}>
         <Tabs.List>
-          <Tabs.Tab value="prices">{tr("価格設定")}</Tabs.Tab>
-          <Tabs.Tab value="discounts">{tr("値引き設定")}</Tabs.Tab>
-          <Tabs.Tab value="related">{tr("関連")}</Tabs.Tab>
-          <Tabs.Tab value="comments">{tr("コメント")}</Tabs.Tab>
-          <Tabs.Tab value="history">{tr("履歴")}</Tabs.Tab>
+          <Tabs.Tab value="prices">{tr("sales.priceLists.pricing")}</Tabs.Tab>
+          <Tabs.Tab value="discounts">
+            {tr("sales.priceLists.discountRules")}
+          </Tabs.Tab>
+          <Tabs.Tab value="related">{tr("common.related")}</Tabs.Tab>
+          <Tabs.Tab value="comments">{tr("common.comment")}</Tabs.Tab>
+          <Tabs.Tab value="history">{tr("common.history")}</Tabs.Tab>
         </Tabs.List>
 
         <Tabs.Panel pt="md" value="prices">
@@ -265,7 +270,7 @@ export function PriceListDetail({
               leftSection={<IconPlus size={16} />}
               onClick={() => router.push(`${BASE_PATH}/${entry.entryId}/edit`)}
             >
-              {tr("注文種別を追加")}
+              {tr("common.addAnOrderType")}
             </SecondaryButton>
           </Group>
 
@@ -276,7 +281,7 @@ export function PriceListDetail({
                   {variantHeading(variant)}
                   <Group gap="md" wrap="nowrap">
                     <Text c="dimmed" size="xs">
-                      {tr("基準単価")}{" "}
+                      {tr("sales.priceLists.baseUnitPrice")}{" "}
                       <MoneyText value={variant.baseUnitPrice} />
                     </Text>
                     {variant.estimateId ? (
@@ -292,7 +297,7 @@ export function PriceListDetail({
                       </Anchor>
                     ) : (
                       <Text c="dimmed" size="xs">
-                        {tr("手動設定")}
+                        {tr("common.setManually")}
                       </Text>
                     )}
                   </Group>
@@ -301,9 +306,11 @@ export function PriceListDetail({
                   <Table>
                     <Table.Thead>
                       <Table.Tr>
-                        <Table.Th>{tr("数量範囲")}</Table.Th>
-                        <Table.Th ta="right">{tr("倍率")}</Table.Th>
-                        <Table.Th ta="right">{tr("単価")}</Table.Th>
+                        <Table.Th>{tr("common.quantityRange")}</Table.Th>
+                        <Table.Th ta="right">
+                          {tr("sales.priceLists.multiplier")}
+                        </Table.Th>
+                        <Table.Th ta="right">{tr("common.unitPrice")}</Table.Th>
                       </Table.Tr>
                     </Table.Thead>
                     <Table.Tbody>
@@ -321,7 +328,7 @@ export function PriceListDetail({
                             <Group gap="xs" justify="flex-end" wrap="nowrap">
                               {tier.priceOverride != null && (
                                 <Badge color="orange" size="xs" variant="light">
-                                  {tr("手動")}
+                                  {tr("common.manual")}
                                 </Badge>
                               )}
                               <MoneyText
@@ -342,13 +349,7 @@ export function PriceListDetail({
 
         <Tabs.Panel pt="md" value="discounts">
           <Text c="dimmed" mb="sm" size="xs">
-            {tr(
-              tr(
-                tr(
-                  "期間・数量条件を満たすルールが見積書作成時に自動適用されます（複数該当時は値引き額が最大のもの）。ルールは注文種別ごとに登録します。",
-                ),
-              ),
-            )}
+            {tr("sales.priceLists.rulesMeetingThePeriodAndQuantity")}
           </Text>
           <Stack gap="lg">
             {entry.variants.map((variant) => (
@@ -364,7 +365,7 @@ export function PriceListDetail({
                     }}
                     size="xs"
                   >
-                    {tr("値引きルールを追加")}
+                    {tr("common.addADiscountRule")}
                   </SecondaryButton>
                 </Group>
                 {variant.discounts.length > 0 ? (
@@ -372,11 +373,15 @@ export function PriceListDetail({
                     <Table>
                       <Table.Thead>
                         <Table.Tr>
-                          <Table.Th>{tr("名称")}</Table.Th>
-                          <Table.Th ta="right">{tr("値引き")}</Table.Th>
-                          <Table.Th>{tr("数量条件")}</Table.Th>
-                          <Table.Th>{tr("有効期間")}</Table.Th>
-                          <Table.Th>{tr("状態")}</Table.Th>
+                          <Table.Th>{tr("common.name2")}</Table.Th>
+                          <Table.Th ta="right">
+                            {tr("common.discount")}
+                          </Table.Th>
+                          <Table.Th>
+                            {tr("sales.priceLists.quantityCondition")}
+                          </Table.Th>
+                          <Table.Th>{tr("common.validPeriod")}</Table.Th>
+                          <Table.Th>{tr("common.status")}</Table.Th>
                           <Table.Th w={88} />
                         </Table.Tr>
                       </Table.Thead>
@@ -415,7 +420,9 @@ export function PriceListDetail({
                             <Table.Td>
                               <Group gap={4} justify="flex-end" wrap="nowrap">
                                 <ActionIcon
-                                  aria-label={tr("値引きルールを編集")}
+                                  aria-label={tr(
+                                    "sales.priceLists.editTheDiscountRule",
+                                  )}
                                   onClick={() => {
                                     setDiscountVariantId(variant.id);
                                     setDiscountEditTarget(d);
@@ -426,7 +433,9 @@ export function PriceListDetail({
                                   <IconEdit size={16} />
                                 </ActionIcon>
                                 <ActionIcon
-                                  aria-label={tr("値引きルールを削除")}
+                                  aria-label={tr(
+                                    "sales.priceLists.deleteTheDiscountRule2",
+                                  )}
                                   color="red"
                                   onClick={() => removeDiscount(d)}
                                   variant="subtle"
@@ -442,7 +451,7 @@ export function PriceListDetail({
                   </Table.ScrollContainer>
                 ) : (
                   <Text c="dimmed" size="sm">
-                    {tr("値引きルールがありません。")}
+                    {tr("sales.priceLists.thereAreNoDiscountRules")}
                   </Text>
                 )}
                 <Divider mt="md" />
@@ -455,7 +464,7 @@ export function PriceListDetail({
           <Stack gap="md">
             <div>
               <Text c="dimmed" mb={4} size="xs">
-                {tr("価格試算元（注文種別ごと）")}
+                {tr("sales.priceLists.priceEstimateSourcePerOrderType")}
               </Text>
               {estimateVariants.length > 0 ? (
                 <Stack gap={4}>
@@ -477,25 +486,25 @@ export function PriceListDetail({
                 </Stack>
               ) : (
                 <Text c="dimmed" size="sm">
-                  {tr("手動登録")}
+                  {tr("sales.priceLists.registeredManually")}
                 </Text>
               )}
             </div>
 
             <div>
               <Text c="dimmed" mb={4} size="xs">
-                {tr("この価格表から作成した見積書")}
+                {tr("sales.priceLists.quotesCreatedFromThisPriceList")}
               </Text>
               {relatedQuotes.length > 0 ? (
                 <Table.ScrollContainer minWidth={520}>
                   <Table>
                     <Table.Thead>
                       <Table.Tr>
-                        <Table.Th>{tr("見積番号")}</Table.Th>
-                        <Table.Th ta="right">{tr("数量")}</Table.Th>
-                        <Table.Th ta="right">{tr("金額")}</Table.Th>
-                        <Table.Th>{tr("状態")}</Table.Th>
-                        <Table.Th>{tr("作成日")}</Table.Th>
+                        <Table.Th>{tr("common.quoteNumber")}</Table.Th>
+                        <Table.Th ta="right">{tr("common.quantity")}</Table.Th>
+                        <Table.Th ta="right">{tr("common.amount")}</Table.Th>
+                        <Table.Th>{tr("common.status")}</Table.Th>
+                        <Table.Th>{tr("common.createdOn")}</Table.Th>
                       </Table.Tr>
                     </Table.Thead>
                     <Table.Tbody>
@@ -529,13 +538,7 @@ export function PriceListDetail({
                 </Table.ScrollContainer>
               ) : (
                 <Text c="dimmed" size="sm">
-                  {tr(
-                    tr(
-                      tr(
-                        "—（「見積書を作成」でこの価格表から見積書を作成できます）",
-                      ),
-                    ),
-                  )}
+                  {tr("sales.priceLists.useCreateAQuoteToBuild")}
                 </Text>
               )}
             </div>

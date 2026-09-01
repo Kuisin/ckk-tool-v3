@@ -13,6 +13,7 @@ import { Alert, Select, SimpleGrid, TextInput } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
 import { IconAlertTriangle } from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { useMemo, useState, useTransition } from "react";
 import {
   createProductRoute,
@@ -25,7 +26,6 @@ import {
   toStepSnapshots,
 } from "@/components/production/ProcessListEditor";
 import { FormSection, FormShell } from "@/components/ui/shells";
-import { useTr } from "@/hooks/useTr";
 import { useIsMobile } from "@/hooks/useViewport";
 import type { RouteStepSnapshot } from "@/lib/product-routes-core";
 import type { CatalogStep, UseDep } from "@/lib/workflow-core";
@@ -65,7 +65,7 @@ export function RouteEditorForm({
   /** create 時のみ: 対象顧客の選択肢（未指定 = 汎用のみ）。 */
   customerOptions?: Option[];
 }) {
-  const tr = useTr();
+  const tr = useTranslations();
   const router = useRouter();
   const isMobile = useIsMobile();
   const [isPending, startTransition] = useTransition();
@@ -126,17 +126,17 @@ export function RouteEditorForm({
     setNameError(null);
     setStepsError(null);
     if (mode === "create" && !nameJa.trim()) {
-      setNameError(tr("ルート名（日本語）を入力してください"));
+      setNameError(tr("master.products.enterTheRouteNameInJapanese"));
       return;
     }
     if (selected.length === 0) {
-      setStepsError(tr("工程を1つ以上選択してください"));
+      setStepsError(tr("master.products.selectAtLeastOneStep"));
       return;
     }
     if (blockers.length > 0) {
       notifications.show({
-        title: tr("工程構成にエラーがあります"),
-        message: tr("赤色の警告を解消してから保存してください"),
+        title: tr("common.thereIsAnErrorInThe"),
+        message: tr("common.clearTheRedWarningsBeforeSaving"),
         color: "red",
       });
       return;
@@ -167,18 +167,18 @@ export function RouteEditorForm({
             });
       if (result.ok) {
         notifications.show({
-          title: tr("保存しました"),
+          title: tr("common.saved2"),
           message:
             mode === "create"
-              ? tr("工程ルートを作成しました（v1）")
-              : tr("新バージョンを作成しました"),
+              ? tr("master.products.theProcessRouteWasCreatedV1")
+              : tr("common.aNewVersionWasCreated"),
           color: "green",
         });
         router.push(backPath);
       } else {
         notifications.show({
-          title: tr("エラー"),
-          message: tr(result.error),
+          title: tr("common.error2"),
+          message: result.error,
           color: "red",
         });
       }
@@ -188,10 +188,12 @@ export function RouteEditorForm({
   return (
     <FormShell
       breadcrumbs={[
-        tr("マスタ"),
+        tr("common.masterData"),
         { label: "製品", href: "/master/products" },
         { label: productLabel, href: backPath },
-        mode === "create" ? "工程ルート新規作成" : tr("新バージョン作成"),
+        mode === "create"
+          ? "工程ルート新規作成"
+          : tr("master.products.createANewVersion"),
       ]}
       isDirty={selected.length > 0 || !!nameJa}
       isPending={isPending}
@@ -199,40 +201,34 @@ export function RouteEditorForm({
       onSubmit={handleSubmit}
       title={
         mode === "create"
-          ? tr("工程ルート 新規作成")
+          ? tr("master.products.newProcessRoute")
           : `工程ルート「${routeName}」新バージョン作成（v${(latestVersion ?? 0) + 1}）`
       }
     >
-      <FormSection required title={tr("基本情報")}>
+      <FormSection required title={tr("common.basicInformation")}>
         <SimpleGrid cols={isMobile ? 1 : 2} spacing="sm">
           {mode === "create" ? (
             <>
               <TextInput
                 error={nameError}
-                label={tr("ルート名（日本語）")}
+                label={tr("common.routeNameJapanese")}
                 onChange={(e2) => setNameJa(e2.currentTarget.value)}
-                placeholder={tr("例: 標準工程")}
+                placeholder={tr("common.eGStandardRoute")}
                 value={nameJa}
                 withAsterisk
               />
               <TextInput
-                label={tr("ルート名（英語）")}
+                label={tr("common.routeNameEnglish")}
                 onChange={(e2) => setNameEn(e2.currentTarget.value)}
                 value={nameEn}
               />
               <Select
                 clearable
                 data={customerOptions ?? []}
-                description={tr(
-                  tr(
-                    tr(
-                      "指定すると同じ顧客×製品の指示書で優先選択されます（空 = 汎用）",
-                    ),
-                  ),
-                )}
-                label={tr("対象顧客")}
+                description={tr("master.products.settingItMakesItPreferredFor")}
+                label={tr("common.targetCustomer")}
                 onChange={setCustomerBpId}
-                placeholder={tr("汎用（全顧客）")}
+                placeholder={tr("common.genericAllCustomers")}
                 searchable
                 value={customerBpId}
               />
@@ -240,17 +236,17 @@ export function RouteEditorForm({
           ) : (
             <TextInput
               disabled
-              label={tr("ルート名")}
+              label={tr("master.products.routeName")}
               value={routeName ?? ""}
             />
           )}
           <TextInput
             description={
               mode === "new-version"
-                ? tr("変更内容のメモ（バージョン履歴に表示）")
+                ? tr("master.products.aNoteOnWhatChangedShown")
                 : undefined
             }
-            label={tr("備考")}
+            label={tr("common.notes")}
             onChange={(e2) => setNotes(e2.currentTarget.value)}
             value={notes}
           />

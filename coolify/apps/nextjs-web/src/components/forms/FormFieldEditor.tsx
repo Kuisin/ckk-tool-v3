@@ -20,6 +20,7 @@ import {
   TextInput,
 } from "@mantine/core";
 import { IconPlus, IconTrash } from "@tabler/icons-react";
+import { useTranslations } from "next-intl";
 import { useEffect, useState } from "react";
 import {
   type FormOption,
@@ -27,7 +28,6 @@ import {
   searchFormOptions,
 } from "@/app/(dashboard)/general/forms/actions";
 import { GhostButton } from "@/components/ui/buttons";
-import { useTr } from "@/hooks/useTr";
 import { useIsMobile } from "@/hooks/useViewport";
 import {
   canBeTitleField,
@@ -79,7 +79,7 @@ export function FormFieldEditor({
    */
   onSetTitle?: () => void;
 }) {
-  const tr = useTr();
+  const tr = useTranslations();
   const isMobile = useIsMobile();
   const set = (patch: Partial<FormFieldDef>) =>
     onChange({ ...field, ...patch });
@@ -103,11 +103,11 @@ export function FormFieldEditor({
         なる。壊れた定義を取り込んだときだけ、下にエラーとして出る。
       */}
       <TextInput
-        label={tr("表示名")}
+        label={tr("common.displayName")}
         onChange={(e) =>
           set({ label: { ...field.label, ja: e.currentTarget.value } })
         }
-        placeholder={tr("会社名")}
+        placeholder={tr("forms.formFieldEditor.companyName")}
         value={field.label.ja}
         withAsterisk
       />
@@ -120,36 +120,30 @@ export function FormFieldEditor({
       <Group align="flex-start" grow={!isMobile}>
         <Select
           data={types.map((t) => ({ value: t.value, label: t.label }))}
-          label={tr("種類")}
+          label={tr("common.kind")}
           onChange={(v) => set({ type: (v as FormFieldType) ?? "text" })}
           value={field.type}
         />
         <TextInput
-          label={tr("補足説明")}
+          label={tr("forms.formFieldEditor.additionalNotes")}
           onChange={(e) => set({ help: e.currentTarget.value })}
-          placeholder={tr("入力のヒント（任意）")}
+          placeholder={tr("forms.formFieldEditor.inputHintOptional")}
           value={field.help ?? ""}
         />
       </Group>
 
       <Checkbox
         checked={field.required}
-        label={tr("必須にする")}
+        label={tr("forms.formFieldEditor.makeItRequired")}
         onChange={(e) => set({ required: e.currentTarget.checked })}
       />
 
       {!nestedOnly && (
         <Checkbox
           checked={field.isTitle === true}
-          description={tr(
-            tr(
-              tr(
-                "一覧（CM02 の回答一覧・CM01 の回答行）でこの項目の値を見出しとして表示します。フォームにつき 1 つだけ選べます",
-              ),
-            ),
-          )}
+          description={tr("forms.formFieldEditor.showsThisFieldSValueAs")}
           disabled={!canBeTitleField(field.type)}
-          label={tr("一覧の見出しにする")}
+          label={tr("forms.formFieldEditor.useAsTheListHeading")}
           onChange={(e) => {
             if (e.currentTarget.checked) {
               onSetTitle?.();
@@ -163,12 +157,12 @@ export function FormFieldEditor({
       {field.type === "number" && (
         <Group grow={!isMobile}>
           <NumberInput
-            label={tr("最小値")}
+            label={tr("common.minimum")}
             onChange={(v) => set({ min: v === "" ? undefined : Number(v) })}
             value={field.min ?? ""}
           />
           <NumberInput
-            label={tr("最大値")}
+            label={tr("common.maximum")}
             onChange={(v) => set({ max: v === "" ? undefined : Number(v) })}
             value={field.max ?? ""}
           />
@@ -178,9 +172,9 @@ export function FormFieldEditor({
       {NEEDS_PATTERN.includes(field.type) && (
         <Group align="flex-start" grow={!isMobile}>
           <TextInput
-            description={tr("入力の形式を縛りたいときだけ。空なら自由入力")}
+            description={tr("forms.formFieldEditor.onlyWhenYouWantToConstrain")}
             error={patternError}
-            label={tr("形式（正規表現）")}
+            label={tr("forms.formFieldEditor.formatRegularExpression")}
             onChange={(e) =>
               set({ pattern: e.currentTarget.value || undefined })
             }
@@ -188,11 +182,11 @@ export function FormFieldEditor({
             value={field.pattern ?? ""}
           />
           <TextInput
-            label={tr("形式が違うときのメッセージ")}
+            label={tr("forms.formFieldEditor.messageShownWhenTheFormatIs")}
             onChange={(e) =>
               set({ patternMessage: e.currentTarget.value || undefined })
             }
-            placeholder={tr("郵便番号の形式で入力してください")}
+            placeholder={tr("forms.formFieldEditor.enterItAsAPostalCode")}
             value={field.patternMessage ?? ""}
           />
         </Group>
@@ -201,14 +195,8 @@ export function FormFieldEditor({
       {field.type === "lookup" && (
         <Select
           data={LOOKUP_SOURCES.map((s) => ({ value: s.value, label: s.label }))}
-          description={tr(
-            tr(
-              tr(
-                "選んだ値は、その業務データの詳細画面へのリンクとして表示される",
-              ),
-            ),
-          )}
-          label={tr("検索するデータ")}
+          description={tr("forms.formFieldEditor.theChosenValueIsShownAs")}
+          label={tr("forms.formFieldEditor.dataToSearch")}
           onChange={(v) =>
             set({
               lookup: {
@@ -224,13 +212,13 @@ export function FormFieldEditor({
       {NEEDS_OPTIONS.includes(field.type) && (
         <Stack gap="xs">
           <Text fw={500} size="sm">
-            {tr("選択肢")}
+            {tr("common.options")}
           </Text>
           <Table withTableBorder>
             <Table.Thead>
               <Table.Tr>
-                <Table.Th>{tr("値")}</Table.Th>
-                <Table.Th>{tr("表示名")}</Table.Th>
+                <Table.Th>{tr("common.value")}</Table.Th>
+                <Table.Th>{tr("common.displayName")}</Table.Th>
                 <Table.Th style={{ width: 48 }} />
               </Table.Tr>
             </Table.Thead>
@@ -274,7 +262,7 @@ export function FormFieldEditor({
                   </Table.Td>
                   <Table.Td>
                     <ActionIcon
-                      aria-label={tr("選択肢を削除")}
+                      aria-label={tr("common.removeOption")}
                       color="red"
                       onClick={() =>
                         set({
@@ -304,7 +292,7 @@ export function FormFieldEditor({
                 })
               }
             >
-              {tr("選択肢を追加")}
+              {tr("common.addAnOption")}
             </GhostButton>
           </Group>
         </Stack>
@@ -313,16 +301,10 @@ export function FormFieldEditor({
       {field.type === "table" && (
         <Stack gap="xs">
           <Text fw={500} size="sm">
-            {tr("列")}
+            {tr("forms.formFieldEditor.column")}
           </Text>
           <Text c="dimmed" size="xs">
-            {tr(
-              tr(
-                tr(
-                  "サブテーブルの中にサブテーブル・関連レコード一覧・リッチテキストは置けません。",
-                ),
-              ),
-            )}
+            {tr("forms.formFieldEditor.aSubTableCannotContainAnother")}
           </Text>
           {(field.columns ?? []).map((col, i) => (
             <Stack
@@ -337,7 +319,7 @@ export function FormFieldEditor({
                   列 {i + 1}
                 </Text>
                 <ActionIcon
-                  aria-label={tr("列を削除")}
+                  aria-label={tr("forms.formFieldEditor.removeTheColumn")}
                   color="red"
                   onClick={() =>
                     set({
@@ -388,7 +370,7 @@ export function FormFieldEditor({
                 })
               }
             >
-              {tr("列を追加")}
+              {tr("forms.formFieldEditor.addAColumn")}
             </GhostButton>
           </Group>
         </Stack>
@@ -419,7 +401,7 @@ function RelatedConfigEditor({
   siblings: FormFieldDef[];
   onChange: (related: RelatedConfig) => void;
 }) {
-  const tr = useTr();
+  const tr = useTranslations();
   const isMobile = useIsMobile();
   const current: RelatedConfig = field.related ?? {
     targetFormCode: "",
@@ -475,49 +457,53 @@ function RelatedConfigEditor({
     <Stack gap="xs">
       <Select
         data={forms}
-        description={tr("この項目に一覧として埋め込むフォーム")}
-        label={tr("参照先のフォーム")}
+        description={tr("forms.formFieldEditor.theFormEmbeddedAsAList")}
+        label={tr("forms.formFieldEditor.referencedForm")}
         onChange={(v) =>
           set({ targetFormCode: v ?? "", targetFieldKey: "", columns: [] })
         }
-        placeholder={tr("フォームを選ぶ")}
+        placeholder={tr("forms.formFieldEditor.chooseAForm")}
         searchable
         value={current.targetFormCode || null}
       />
       <Group align="flex-start" grow={!isMobile}>
         <Select
           data={ownOptions}
-          description={tr("このフォームの項目")}
-          label={tr("突き合わせる項目（自分）")}
+          description={tr("forms.formFieldEditor.fieldsOnThisForm")}
+          label={tr("forms.formFieldEditor.fieldToMatchOnThisForm")}
           onChange={(v) => set({ thisFieldKey: v ?? "" })}
-          placeholder={tr("項目を選ぶ")}
+          placeholder={tr("forms.formFieldEditor.pickAnItem")}
           searchable
           value={current.thisFieldKey || null}
         />
         <Select
           data={targetFields}
-          description={tr("参照先フォームの項目")}
+          description={tr("forms.formFieldEditor.fieldsOnTheReferencedForm")}
           disabled={!current.targetFormCode || loading}
-          label={tr("突き合わせる項目（参照先）")}
+          label={tr("forms.formFieldEditor.fieldToMatchOnReferencedForm")}
           onChange={(v) => set({ targetFieldKey: v ?? "" })}
-          placeholder={loading ? "読み込み中…" : tr("項目を選ぶ")}
+          placeholder={
+            loading ? "読み込み中…" : tr("forms.formFieldEditor.pickAnItem")
+          }
           searchable
           value={current.targetFieldKey || null}
         />
       </Group>
       <MultiSelect
         data={targetFields}
-        description={tr("参照先の一覧に出す列（最大 8 つ）")}
+        description={tr(
+          "forms.formFieldEditor.columnsShownInTheReferencedList",
+        )}
         disabled={!current.targetFormCode || loading}
-        label={tr("表示する列")}
+        label={tr("common.columnsToShow")}
         maxValues={8}
         onChange={(v) => set({ columns: v })}
-        placeholder={tr("列を選ぶ")}
+        placeholder={tr("forms.formFieldEditor.chooseAColumn")}
         searchable
         value={current.columns}
       />
       <NumberInput
-        label={tr("最大表示件数")}
+        label={tr("forms.formFieldEditor.maximumRowsShown")}
         max={100}
         min={1}
         onChange={(v) => set({ limit: Number(v) || 20 })}

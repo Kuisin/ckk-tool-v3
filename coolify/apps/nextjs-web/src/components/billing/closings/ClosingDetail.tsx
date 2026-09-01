@@ -25,6 +25,7 @@ import {
 import { notifications } from "@mantine/notifications";
 import { IconFileInvoice, IconTruck } from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { useState, useTransition } from "react";
 import { processClosing } from "@/app/(dashboard)/billing/closings/actions";
 import { useFormat } from "@/components/layout/PreferencesProvider";
@@ -46,7 +47,6 @@ import {
   DetailShell,
   SummaryGrid,
 } from "@/components/ui/shells";
-import { useTr } from "@/hooks/useTr";
 import { useTabParam } from "@/hooks/useUrlState";
 import { formatMoney } from "@/lib/format";
 import { type BillingClosingDetail, isProcessable } from "./model";
@@ -62,7 +62,7 @@ export function ClosingDetail({
   /** 操作履歴（audit_logs 由来、履歴タブ）。 */
   auditEntries: AuditEntry[];
 }) {
-  const tr = useTr();
+  const tr = useTranslations();
   const fmt = useFormat();
   const router = useRouter();
   // アクティブタブを ?tab= に保持（URL 共有でタブまで再現）
@@ -75,15 +75,15 @@ export function ClosingDetail({
       const result = await processClosing(closing.id);
       if (result.ok) {
         notifications.show({
-          title: tr("請求書を生成しました"),
+          title: tr("billing.closings.theInvoicesWereGenerated"),
           message: `請求書 ${result.data.invoiceNumber} を作成しました`,
           color: "green",
         });
         router.push(`${INVOICES_PATH}/${result.data.invoiceNumber}`);
       } else {
         notifications.show({
-          title: tr("エラー"),
-          message: tr(result.error),
+          title: tr("common.error2"),
+          message: result.error,
           color: "red",
         });
       }
@@ -100,22 +100,22 @@ export function ClosingDetail({
   const stages: ProcedureStage[] = [
     {
       key: "pending",
-      label: tr("未処理"),
+      label: tr("billing.closings.unprocessed"),
       description: `対象出荷 ${closing.shipments.length} 件`,
       loading: closing.status === "PENDING",
     },
     {
       key: "processed",
-      label: tr("請求書生成"),
+      label: tr("billing.closings.generateInvoices"),
       description: closing.processedAt
         ? fmt.date(closing.processedAt)
-        : tr("請求書を作成"),
+        : tr("billing.closings.createAnInvoice"),
       loading: closing.status === "PROCESSED",
     },
     {
       key: "exported",
-      label: tr("エクスポート済"),
-      description: tr("弥生会計 CSV"),
+      label: tr("billing.closings.exported"),
+      description: tr("billing.closings.yayoiAccountingCsv"),
     },
   ];
   const active =
@@ -125,7 +125,7 @@ export function ClosingDetail({
   const sourceGroups: HandoffGroup[] = [
     {
       key: "shipments",
-      title: tr("対象出荷"),
+      title: tr("billing.closings.shipmentsCovered"),
       summary:
         closing.shipments.length > 0
           ? `${closing.shipments.length} 件・${totalQuantity} 本`
@@ -136,7 +136,7 @@ export function ClosingDetail({
         href: `/shipping/delivery-orders/${sp.deliveryOrderNumber}`,
         note: `${sp.quantity} 本・${formatMoney(sp.amount)}`,
       })),
-      emptyNote: tr("請求対象の出荷がありません"),
+      emptyNote: tr("billing.closings.thereAreNoShipmentsToBill"),
     },
   ];
 
@@ -144,7 +144,7 @@ export function ClosingDetail({
   const handoffGroups: HandoffGroup[] = [
     {
       key: "invoice",
-      title: tr("請求書"),
+      title: tr("common.invoice"),
       items: closing.invoiceNumber
         ? [
             {
@@ -156,7 +156,7 @@ export function ClosingDetail({
             },
           ]
         : [],
-      emptyNote: tr("未生成（「請求書を生成」で作成します）"),
+      emptyNote: tr("billing.closings.notGeneratedUseGenerateInvoices"),
     },
   ];
 
@@ -169,13 +169,13 @@ export function ClosingDetail({
             onClick={() => setProcessOpen(true)}
             style={{ flexShrink: 0 }}
           >
-            {tr("請求書を生成")}
+            {tr("billing.closings.generateAnInvoice")}
           </PrimaryButton>
         ) : undefined
       }
       breadcrumbs={[
-        tr("請求"),
-        { label: tr("締日処理"), href: BASE_PATH },
+        tr("common.billing"),
+        { label: tr("common.billingClosing"), href: BASE_PATH },
         "詳細",
       ]}
       createdAt={fmt.dateTime(closing.createdAt)}
@@ -183,20 +183,26 @@ export function ClosingDetail({
       title={`${closing.customerName}（${fmt.date(closing.closingDate)} 締め）`}
     >
       <SummaryGrid>
-        <FieldValue label={tr("顧客")} value={closing.customerName} />
-        <FieldValue label={tr("締日")} value={fmt.date(closing.closingDate)} />
         <FieldValue
-          label={tr("合計金額（税抜）")}
+          label={tr("common.customer")}
+          value={closing.customerName}
+        />
+        <FieldValue
+          label={tr("common.closingDay")}
+          value={fmt.date(closing.closingDate)}
+        />
+        <FieldValue
+          label={tr("billing.closings.totalExclTax")}
           value={<MoneyText ta="left" value={closing.totalAmount} />}
         />
         <FieldValue
-          label={tr("状態")}
+          label={tr("common.status")}
           value={
             <StatusBadge entity="BillingClosing" status={closing.status} />
           }
         />
         <FieldValue
-          label={tr("生成請求書")}
+          label={tr("billing.closings.generatedInvoice")}
           value={
             closing.invoiceNumber ? (
               <Anchor
@@ -213,7 +219,7 @@ export function ClosingDetail({
           }
         />
         <FieldValue
-          label={tr("処理日")}
+          label={tr("common.processedOn")}
           value={fmt.dateTime(closing.processedAt)}
         />
       </SummaryGrid>
@@ -233,7 +239,7 @@ export function ClosingDetail({
           <Group gap="xs" py="md">
             <IconTruck size={18} />
             <Text c="dimmed" size="sm">
-              {tr("請求対象の出荷がありません")}
+              {tr("billing.closings.thereAreNoShipmentsToBill")}
             </Text>
           </Group>
         ) : (
@@ -241,10 +247,10 @@ export function ClosingDetail({
             <Table highlightOnHover>
               <Table.Thead>
                 <Table.Tr>
-                  <Table.Th>{tr("出荷書番号")}</Table.Th>
-                  <Table.Th>{tr("出荷日")}</Table.Th>
-                  <Table.Th ta="right">{tr("数量")}</Table.Th>
-                  <Table.Th ta="right">{tr("金額")}</Table.Th>
+                  <Table.Th>{tr("common.deliveryOrderNumber")}</Table.Th>
+                  <Table.Th>{tr("common.shippedDate")}</Table.Th>
+                  <Table.Th ta="right">{tr("common.quantity")}</Table.Th>
+                  <Table.Th ta="right">{tr("common.amount")}</Table.Th>
                 </Table.Tr>
               </Table.Thead>
               <Table.Tbody>
@@ -276,7 +282,7 @@ export function ClosingDetail({
               </Table.Tbody>
               <Table.Tfoot>
                 <Table.Tr>
-                  <Table.Td fw={700}>{tr("合計")}</Table.Td>
+                  <Table.Td fw={700}>{tr("common.total")}</Table.Td>
                   <Table.Td />
                   <Table.Td className="tabular-nums" fw={700} ta="right">
                     {totalQuantity}
@@ -293,15 +299,15 @@ export function ClosingDetail({
 
       <AppTabs onChange={setTab} value={tab}>
         <Tabs.List>
-          <Tabs.Tab value="overview">{tr("概要")}</Tabs.Tab>
-          <Tabs.Tab value="history">{tr("履歴")}</Tabs.Tab>
+          <Tabs.Tab value="overview">{tr("common.overview")}</Tabs.Tab>
+          <Tabs.Tab value="history">{tr("common.history")}</Tabs.Tab>
         </Tabs.List>
 
         <Tabs.Panel pt="md" value="overview">
           <Stack gap="md">
             <div>
               <Text c="dimmed" mb={4} size="xs">
-                {tr("備考")}
+                {tr("common.notes")}
               </Text>
               <Text size="sm" style={{ whiteSpace: "pre-wrap" }}>
                 {closing.notes || "—"}
@@ -317,13 +323,13 @@ export function ClosingDetail({
 
       <ConfirmModal
         confirmColor="blue"
-        confirmLabel={tr("請求書を生成")}
+        confirmLabel={tr("billing.closings.generateAnInvoice")}
         loading={isPending}
         message={`${closing.customerName} の ${fmt.date(closing.closingDate)} 締め分から請求書（下書き）を生成します。対象出荷 ${closing.shipments.length} 件が明細になります。`}
         onClose={() => setProcessOpen(false)}
         onConfirm={process}
         opened={processOpen}
-        title={tr("請求書生成の確認")}
+        title={tr("billing.closings.confirmGeneratingInvoices")}
       />
     </DetailShell>
   );

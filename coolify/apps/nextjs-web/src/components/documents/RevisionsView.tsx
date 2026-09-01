@@ -3,6 +3,7 @@
 import { Badge, Group, Paper, Stack, Tabs, Text } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { useState, useTransition } from "react";
 import { restoreRevision } from "@/app/(dashboard)/general/documents/actions";
 import { useFormat } from "@/components/layout/PreferencesProvider";
@@ -10,7 +11,6 @@ import { AppTabs } from "@/components/ui/AppTabs";
 import { GhostButton } from "@/components/ui/buttons";
 import { openConfirm } from "@/components/ui/modals";
 import { PageHeader } from "@/components/ui/PageHeader";
-import { useTr } from "@/hooks/useTr";
 import { useIsMobile } from "@/hooks/useViewport";
 import type { RevisionRow } from "@/lib/internal-pages";
 import { RevisionDiff } from "./RevisionDiff";
@@ -37,7 +37,7 @@ export function RevisionsView({
   bodies: Record<string, string>;
   canEdit: boolean;
 }) {
-  const tr = useTr();
+  const tr = useTranslations();
   const router = useRouter();
   const fmt = useFormat();
   const isMobile = useIsMobile();
@@ -55,14 +55,8 @@ export function RevisionsView({
   const restore = (revision: number) =>
     openConfirm({
       title: `リビジョン ${revision} を復元`,
-      message: tr(
-        tr(
-          tr(
-            "この内容で新しいリビジョンを作ります。履歴は巻き戻さず、前に進めて元に戻します。",
-          ),
-        ),
-      ),
-      confirmLabel: tr("復元する"),
+      message: tr("documents.revisionsView.thisCreatesANewRevisionWith"),
+      confirmLabel: tr("documents.revisionsView.restore"),
       onConfirm: () =>
         startTransition(async () => {
           const r = await restoreRevision(pageNumber, revision);
@@ -74,8 +68,8 @@ export function RevisionsView({
             router.refresh();
           } else {
             notifications.show({
-              title: tr("エラー"),
-              message: tr(r.error),
+              title: tr("common.error2"),
+              message: r.error,
               color: "red",
             });
           }
@@ -86,17 +80,17 @@ export function RevisionsView({
     <Stack gap="md">
       <PageHeader
         breadcrumbs={[
-          { label: tr("一般") },
-          { label: tr("社内文書"), href: "/general/documents" },
+          { label: tr("common.general") },
+          { label: tr("common.internalDocuments"), href: "/general/documents" },
           { label: pageTitle, href: `/general/documents/${pageNumber}` },
-          { label: tr("履歴・差分") },
+          { label: tr("common.historyAndDiff") },
         ]}
-        title={tr("履歴・差分")}
+        title={tr("common.historyAndDiff")}
       />
 
       <AppTabs defaultValue="diff">
         <Tabs.List>
-          <Tabs.Tab value="diff">{tr("差分")}</Tabs.Tab>
+          <Tabs.Tab value="diff">{tr("documents.revisionsView.diff")}</Tabs.Tab>
           <Tabs.Tab value="list">版一覧（{revisions.length}）</Tabs.Tab>
         </Tabs.List>
 
@@ -136,7 +130,7 @@ export function RevisionsView({
                         {r.note || r.title}
                       </Text>
                       <Text c="dimmed" size="xs">
-                        {r.editedBy ?? tr("システム")} ·{" "}
+                        {r.editedBy ?? tr("common.system")} ·{" "}
                         {fmt.dateTime(r.editedAt)}
                       </Text>
                     </Stack>
@@ -153,7 +147,7 @@ export function RevisionsView({
                         loading={isPending}
                         onClick={() => restore(r.revision)}
                       >
-                        {tr("復元")}
+                        {tr("documents.revisionsView.restore2")}
                       </GhostButton>
                     )}
                   </Group>

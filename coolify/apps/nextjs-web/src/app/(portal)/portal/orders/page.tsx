@@ -6,15 +6,15 @@
  */
 
 import { Stack, Text, Title } from "@mantine/core";
+import { getTranslations } from "next-intl/server";
 import { PortalOrderTable } from "@/components/portal/PortalOrderTable";
 import { requirePortalView } from "@/lib/portal-page";
 import { listPortalOrderLines } from "@/lib/portal-progress";
-import { getTr } from "@/lib/ui-text-server";
 
 export const dynamic = "force-dynamic";
 
 export default async function PortalOrdersPage() {
-  const tr = await getTr();
+  const tr = await getTranslations();
   const gate = await requirePortalView();
   if (!gate.ok) return gate.view;
 
@@ -22,10 +22,10 @@ export default async function PortalOrdersPage() {
 
   return (
     <Stack gap="md">
-      <Title order={3}>{tr("注文の進捗")}</Title>
+      <Title order={3}>{tr("common.orderProgress")}</Title>
       {rows.length === 0 ? (
         <Text c="dimmed" size="sm">
-          {tr("表示できる注文はありません。")}
+          {tr("portal.orders.thereAreNoOrdersToShow")}
         </Text>
       ) : (
         <PortalOrderTable rows={rows} />

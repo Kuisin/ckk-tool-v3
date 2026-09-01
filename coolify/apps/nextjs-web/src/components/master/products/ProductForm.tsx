@@ -25,7 +25,7 @@ import { useForm } from "@mantine/form";
 import { notifications } from "@mantine/notifications";
 import { IconMinus } from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
-import { useLocale } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { useMemo, useState, useTransition } from "react";
 import { z } from "zod";
 import { searchStructuredMaterialTypeOptions } from "@/app/(dashboard)/_shared/option-search";
@@ -43,7 +43,6 @@ import {
   FormShell,
   LocalizedTextInput,
 } from "@/components/ui/shells";
-import { useTr } from "@/hooks/useTr";
 import { useIsMobile } from "@/hooks/useViewport";
 import { unitOptions } from "@/lib/enum-labels";
 import { fieldHelp, fieldHelpTip } from "@/lib/field-help";
@@ -135,7 +134,7 @@ export function ProductForm({
   /** 製品項目（SY03）で定義された入力項目ライブラリ。追加項目の候補になる。 */
   itemDefs: ProductItemDef[];
 }) {
-  const tr = useTr();
+  const tr = useTranslations();
   const locale = useLocale();
   const router = useRouter();
   const isMobile = useIsMobile();
@@ -215,7 +214,7 @@ export function ProductForm({
       materialTypeLabel: initial?.materialTypeLabel ?? "",
       diameterMm: initial?.diameterMm ?? null,
       lengthMm: initial?.lengthMm ?? null,
-      unit: initial?.unit ?? tr("本"),
+      unit: initial?.unit ?? tr("common.pcs"),
       matchNames: initial?.matchNames ?? [],
       isActive: initial?.isActive ?? true,
       notes: initial?.notes ?? "",
@@ -272,20 +271,26 @@ export function ProductForm({
     name: form.values.nameJa || form.values.nameTranslations.en || "",
     code: initial?.code ?? null,
     attributes: [
-      { label: tr("英語名"), value: form.values.nameTranslations.en ?? "" },
-      { label: tr("材種"), value: form.values.materialTypeLabel },
       {
-        label: tr("直径 (mm)"),
+        label: tr("common.englishName"),
+        value: form.values.nameTranslations.en ?? "",
+      },
+      {
+        label: tr("common.materialTypes"),
+        value: form.values.materialTypeLabel,
+      },
+      {
+        label: tr("common.diameterMm"),
         value:
           form.values.diameterMm != null ? String(form.values.diameterMm) : "",
       },
       {
-        label: tr("全長 (mm)"),
+        label: tr("common.overallLengthMm"),
         value: form.values.lengthMm != null ? String(form.values.lengthMm) : "",
       },
-      { label: tr("単位"), value: form.values.unit },
+      { label: tr("common.unit"), value: form.values.unit },
       {
-        label: tr("製品種別"),
+        label: tr("common.productTypes"),
         value: selectedType ? typeLabel(selectedType) : "",
       },
       ...(selectedType?.items ?? []).map((it) => ({
@@ -296,7 +301,7 @@ export function ProductForm({
         label: defByKey.get(key)?.label.ja || key,
         value: extraValues[key] ?? "",
       })),
-      { label: tr("備考"), value: form.values.notes },
+      { label: tr("common.notes"), value: form.values.notes },
     ].filter((a) => a.value.trim() !== ""),
   };
 
@@ -311,8 +316,8 @@ export function ProductForm({
       if (Object.keys(errs).length > 0) {
         setTypeErrors(errs);
         notifications.show({
-          title: tr("入力エラー"),
-          message: tr("製品種別の項目を確認してください"),
+          title: tr("common.inputError"),
+          message: tr("master.products.checkTheProductTypeSFields"),
           color: "red",
         });
         return;
@@ -329,8 +334,8 @@ export function ProductForm({
     if (Object.keys(exErrs).length > 0) {
       setExtraErrors(exErrs);
       notifications.show({
-        title: tr("入力エラー"),
-        message: tr("追加項目を確認してください"),
+        title: tr("common.inputError"),
+        message: tr("master.products.checkTheExtraFields"),
         color: "red",
       });
       return;
@@ -357,15 +362,17 @@ export function ProductForm({
         : await createProduct(payload);
       if (result.ok) {
         notifications.show({
-          title: tr("保存しました"),
-          message: isEdit ? "製品を更新しました" : tr("製品を作成しました"),
+          title: tr("common.saved2"),
+          message: isEdit
+            ? "製品を更新しました"
+            : tr("master.products.theProductWasCreated"),
           color: "green",
         });
         router.push(`${BASE_PATH}/${result.data.id}`);
       } else {
         notifications.show({
-          title: tr("エラー"),
-          message: tr(result.error),
+          title: tr("common.error2"),
+          message: result.error,
           color: "red",
         });
       }
@@ -375,9 +382,9 @@ export function ProductForm({
   return (
     <FormShell
       breadcrumbs={[
-        tr("マスタ"),
+        tr("common.masterData"),
         { label: "製品", href: BASE_PATH },
-        isEdit ? "編集" : tr("新規作成"),
+        isEdit ? "編集" : tr("common.new2"),
       ]}
       isDirty={form.isDirty()}
       isPending={isPending}
@@ -389,16 +396,18 @@ export function ProductForm({
       title={
         isEdit
           ? `製品 編集 — ${initial.code ?? initial.nameJa}`
-          : tr("製品 新規作成")
+          : tr("master.products.newProduct")
       }
     >
-      <FormSection title={tr("基本情報")}>
+      <FormSection title={tr("common.basicInformation")}>
         <SimpleGrid cols={isMobile ? 1 : 2} spacing="sm">
           <TextInput
-            description={tr("形式: PRD-YYYYMM-NNNN（自動採番）")}
+            description={tr(
+              "master.products.formatPrdYyyymmNnnnNumberedAutomatically",
+            )}
             disabled
             label={<HelpLabel {...fieldHelp("product", "code")} />}
-            placeholder={tr("保存時に自動採番")}
+            placeholder={tr("common.numberedAutomaticallyOnSave")}
             // 内部 ID ではなく採番済みの製品コードを表示する
             // （レガシー取込の製品はコード未採番なので空欄）。
             value={initial?.code ?? ""}
@@ -414,7 +423,7 @@ export function ProductForm({
           <LocalizedTextInput
             help={fieldHelpTip("product", "name")}
             jaProps={form.getInputProps("nameJa")}
-            label={tr("名称")}
+            label={tr("common.name2")}
             required
             translationsProps={form.getInputProps("nameTranslations")}
           />
@@ -426,7 +435,7 @@ export function ProductForm({
         <Textarea
           label={<HelpLabel {...fieldHelp("product", "notes")} />}
           mt="sm"
-          placeholder={tr("備考・特記事項")}
+          placeholder={tr("common.notesAndRemarks")}
           rows={3}
           {...form.getInputProps("notes")}
         />
@@ -441,24 +450,18 @@ export function ProductForm({
       </FormSection>
 
       <FormSection
-        description={tr(
-          tr(
-            tr(
-              "製品が要求する素材を「材種 + 直径 + 全長」で指定します。同一材種・直径の素材を全長に合わせて切断して使用します（特定の素材コードには紐付けません）。",
-            ),
-          ),
-        )}
-        title={tr("素材仕様")}
+        description={tr("master.products.theMaterialAProductNeedsIs")}
+        title={tr("common.materialSpecification")}
       >
         <SearchSelect
-          description={tr("変換済（コード構成あり）の材種のみ選択できます")}
+          description={tr("common.onlyConvertedMaterialTypesWithA")}
           label={<HelpLabel {...fieldHelp("product", "materialType")} />}
           onChange={(value, option) => {
             form.setFieldValue("materialTypeId", value);
             form.setFieldValue("materialTypeLabel", option?.label ?? "");
           }}
           onSearch={searchStructuredMaterialTypeOptions}
-          placeholder={tr("材種コード・名称で検索")}
+          placeholder={tr("common.searchByMaterialTypeCodeOr")}
           storageKey="product-material-type"
           value={form.values.materialTypeId}
         />
@@ -476,7 +479,7 @@ export function ProductForm({
             label={
               <HelpLabel
                 {...fieldHelp("product", "dimensions", {
-                  label: tr("直径 (mm)"),
+                  label: tr("common.diameterMm"),
                 })}
               />
             }
@@ -503,7 +506,7 @@ export function ProductForm({
             label={
               <HelpLabel
                 {...fieldHelp("product", "dimensions", {
-                  label: tr("全長 (mm)"),
+                  label: tr("common.overallLengthMm"),
                 })}
               />
             }
@@ -522,22 +525,19 @@ export function ProductForm({
 
       {typeOptions.length > 0 && (
         <FormSection
-          description={tr(
-            tr(
-              tr(
-                "種別を選ぶと、その種別が予め定義した入力項目が展開されます（製品項目 SY03 で編集）。",
-              ),
-            ),
-          )}
-          title={tr("製品種別")}
+          description={tr("master.products.choosingATypeUnfoldsTheInput")}
+          title={tr("common.productTypes")}
         >
           <Select
             clearable
             data={typeOptions}
-            description={selectedType?.description || tr("種別を選択（任意）")}
+            description={
+              selectedType?.description ||
+              tr("master.products.selectATypeOptional")
+            }
             label={<HelpLabel {...fieldHelp("product", "productType")} />}
             onChange={onTypeChange}
-            placeholder={tr("種別を選択")}
+            placeholder={tr("common.selectAType")}
             value={typeId}
           />
           {selectedType && selectedType.items.length > 0 && (
@@ -558,14 +558,8 @@ export function ProductForm({
 
       {(extraKeys.length > 0 || addableOptions.length > 0) && (
         <FormSection
-          description={tr(
-            tr(
-              tr(
-                "製品項目（SY03）で定義された項目のみ追加できます。自由なキーは使えません。",
-              ),
-            ),
-          )}
-          title={tr("追加項目")}
+          description={tr("master.products.onlyFieldsDefinedUnderProductItems")}
+          title={tr("master.products.extraFields")}
         >
           {extraKeys.length > 0 && (
             <SimpleGrid cols={isMobile ? 1 : 2} mb="sm" spacing="sm">
@@ -583,7 +577,7 @@ export function ProductForm({
                       />
                     </div>
                     <GhostButton
-                      aria-label={tr("この項目を外す")}
+                      aria-label={tr("master.products.removeThisField")}
                       color="red"
                       onClick={() => removeExtra(key)}
                       px={6}
@@ -599,12 +593,12 @@ export function ProductForm({
             clearable
             data={addableOptions}
             disabled={addableOptions.length === 0}
-            label={tr("項目を追加")}
+            label={tr("common.addAnItem")}
             onChange={addExtra}
             placeholder={
               addableOptions.length === 0
-                ? tr("追加できる項目がありません")
-                : tr("項目を選択して追加")
+                ? tr("master.products.thereAreNoFieldsLeftTo")
+                : tr("master.products.selectAFieldAndAddIt")
             }
             searchable
             value={null}
@@ -627,7 +621,7 @@ function ProductTypeItemInput({
   error?: string;
   onChange: (v: string) => void;
 }) {
-  const tr = useTr();
+  const tr = useTranslations();
   const label = item.label.ja || item.label.en || item.key;
   const common = {
     label,
@@ -666,7 +660,7 @@ function ProductTypeItemInput({
             label: o.label,
           }))}
           onChange={(v) => onChange(v ?? "")}
-          placeholder={item.placeholder ?? tr("選択")}
+          placeholder={item.placeholder ?? tr("common.select")}
           value={value || null}
         />
       );

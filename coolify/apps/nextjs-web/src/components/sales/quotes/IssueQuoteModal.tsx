@@ -13,10 +13,10 @@ import { Checkbox, Stack, Text } from "@mantine/core";
 import { DatePickerInput } from "@mantine/dates";
 import { notifications } from "@mantine/notifications";
 import { IconCalendar } from "@tabler/icons-react";
+import { useTranslations } from "next-intl";
 import { useState } from "react";
 import { type ModalBaseProps, ModalShell } from "@/components/ui/modals";
 import type { PdfFileMeta } from "@/components/ui/PdfAttachmentPanel";
-import { useTr } from "@/hooks/useTr";
 
 export function IssueQuoteModal({
   opened,
@@ -35,7 +35,7 @@ export function IssueQuoteModal({
   /** 発行 + PDF 生成後に呼ぶ（meta は生成できなかった場合 null）。 */
   onIssued: (pdf: PdfFileMeta | null) => void;
 }) {
-  const tr = useTr();
+  const tr = useTranslations();
   const [validUntil, setValidUntil] = useState<string | null>(
     defaultValidUntil,
   );
@@ -60,7 +60,7 @@ export function IssueQuoteModal({
       const blob = await res.blob();
       meta = { sizeBytes: blob.size, generatedAt: new Date().toISOString() };
       notifications.show({
-        title: tr("発行しました"),
+        title: tr("common.issued"),
         message: `見積書 ${quoteNumber} を発行し、PDF を保存しました${
           sendMail ? "（メール送付予約済み）" : ""
         }`,
@@ -68,14 +68,8 @@ export function IssueQuoteModal({
       });
     } catch {
       notifications.show({
-        title: tr("発行しました（PDF 生成に失敗）"),
-        message: tr(
-          tr(
-            tr(
-              "PDF の生成に失敗しました。PDF タブの「再生成」で再試行できます。",
-            ),
-          ),
-        ),
+        title: tr("sales.quotes.issuedPdfGenerationFailed"),
+        message: tr("sales.quotes.pDFGenerationFailedYouCanRetry"),
         color: "orange",
       });
     } finally {
@@ -88,13 +82,13 @@ export function IssueQuoteModal({
   return (
     <ModalShell
       confirmColor="blue"
-      confirmLabel={tr("発行")}
+      confirmLabel={tr("common.issue")}
       loading={loading}
       onClose={onClose}
       onConfirm={issue}
       opened={opened}
       size="sm"
-      title={tr("見積書の発行")}
+      title={tr("sales.quotes.issueTheQuote")}
     >
       <Stack gap="sm">
         <Text size="sm">
@@ -104,16 +98,16 @@ export function IssueQuoteModal({
         </Text>
         <DatePickerInput
           clearable
-          label={tr("有効期限")}
+          label={tr("common.validUntil2")}
           leftSection={<IconCalendar size={14} />}
           onChange={setValidUntil}
-          placeholder={tr("日付を選択")}
+          placeholder={tr("common.pickADate")}
           value={validUntil}
           valueFormat="YYYY/MM/DD"
         />
         <Checkbox
           checked={sendMail}
-          label={tr("発行後に顧客へメール送付する")}
+          label={tr("sales.quotes.emailItToTheCustomerOnce")}
           onChange={(e) => setSendMail(e.currentTarget.checked)}
         />
       </Stack>

@@ -2,15 +2,15 @@
 
 import { Alert, Button, Stack, Text, TextInput } from "@mantine/core";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { useState, useTransition } from "react";
 import {
   requestLinkOtp,
   verifyLinkOtp,
 } from "@/app/(portal)/portal/d/[token]/actions";
-import { useTr } from "@/hooks/useTr";
 
 export function PortalLinkVerifyForm({ token }: { token: string }) {
-  const tr = useTr();
+  const tr = useTranslations();
   const router = useRouter();
   const [pending, start] = useTransition();
   const [sent, setSent] = useState(false);
@@ -62,20 +62,20 @@ export function PortalLinkVerifyForm({ token }: { token: string }) {
 
       {!sent ? (
         <Button fullWidth loading={pending} onClick={send}>
-          {tr("確認コードを送る")}
+          {tr("common.sendAVerificationCode")}
         </Button>
       ) : (
         <>
           <TextInput
             autoComplete="one-time-code"
             autoFocus
-            label={tr("確認コード")}
+            label={tr("common.verificationCode")}
             onChange={(e) => setCode(e.currentTarget.value)}
             placeholder="ABCD-EFGH"
             value={code}
           />
           <Button fullWidth loading={pending} onClick={verify}>
-            {tr("書類を開く")}
+            {tr("portal.portalLinkVerifyForm.openTheDocument")}
           </Button>
         </>
       )}

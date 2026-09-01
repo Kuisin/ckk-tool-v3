@@ -17,8 +17,8 @@ import {
   IconLinkOff,
   IconShieldCheck,
 } from "@tabler/icons-react";
+import { getTranslations } from "next-intl/server";
 import { resolveShortLink } from "@/lib/link-index";
-import { getTr } from "@/lib/ui-text-server";
 import { followShortLinkAction } from "./actions";
 
 export const dynamic = "force-dynamic";
@@ -42,7 +42,7 @@ export default async function ShortLinkPage({
 }: {
   params: Promise<{ code: string }>;
 }) {
-  const tr = await getTr();
+  const tr = await getTranslations();
   const { code } = await params;
   const resolved = await resolveShortLink(decodeURIComponent(code));
 
@@ -54,12 +54,12 @@ export default async function ShortLinkPage({
             <ThemeIcon color="gray" radius="xl" size="xl" variant="light">
               <IconLinkOff size={24} />
             </ThemeIcon>
-            <Title order={3}>{tr("リンクが見つかりません")}</Title>
+            <Title order={3}>{tr("l.page.linkNotFound")}</Title>
             <Text c="dimmed" size="sm" ta="center">
-              {tr("このリンクは削除されたか、URL が正しくありません。")}
+              {tr("l.page.thisLinkWasDeletedOrThe")}
             </Text>
             <Button component="a" href="/" variant="default">
-              {tr("ホームへ戻る")}
+              {tr("common.backToHome")}
             </Button>
           </Stack>
         )}
@@ -70,12 +70,13 @@ export default async function ShortLinkPage({
               <ThemeIcon color="red" radius="xl" size="lg" variant="light">
                 <IconAlertTriangle size={20} />
               </ThemeIcon>
-              <Title order={3}>{tr("このリンクはブロックされています")}</Title>
+              <Title order={3}>{tr("l.page.thisLinkIsBlocked")}</Title>
             </Group>
             <Alert color="red" variant="light">
               <Stack gap={4}>
                 <Text size="sm">
-                  {tr("管理者が")} <strong>{resolved.hostname}</strong>{" "}
+                  {tr("l.page.anAdministrator")}{" "}
+                  <strong>{resolved.hostname}</strong>{" "}
                   への移動を禁止しています。
                 </Text>
                 {resolved.reason && (
@@ -84,11 +85,11 @@ export default async function ShortLinkPage({
               </Stack>
             </Alert>
             <Text c="dimmed" size="xs">
-              {tr("心当たりがない場合はシステム管理者に連絡してください。")}
+              {tr("l.page.ifThisWasNotYouContact")}
             </Text>
             <Group justify="flex-end">
               <Button component="a" href="/" variant="default">
-                {tr("ホームへ戻る")}
+                {tr("common.backToHome")}
               </Button>
             </Group>
           </Stack>
@@ -100,23 +101,17 @@ export default async function ShortLinkPage({
               <ThemeIcon color="blue" radius="xl" size="lg" variant="light">
                 <IconShieldCheck size={20} />
               </ThemeIcon>
-              <Title order={3}>{tr("外部サイトへ移動します")}</Title>
+              <Title order={3}>{tr("l.page.youAreLeavingForAnExternal")}</Title>
             </Group>
 
             <Text size="sm">
-              {tr(
-                tr(
-                  tr(
-                    "このリンクは社内システムの外へ移動します。移動先を確認してください。",
-                  ),
-                ),
-              )}
+              {tr("l.page.thisLinkLeavesTheInternalSystem")}
             </Text>
 
             <Card bg="var(--mantine-color-default-hover)" p="sm" radius="sm">
               <Stack gap={4}>
                 <Text c="dimmed" size="xs">
-                  {tr("移動先")}
+                  {tr("l.page.destination")}
                 </Text>
                 <Text fw={600} size="sm">
                   {resolved.hostname}
@@ -132,13 +127,7 @@ export default async function ShortLinkPage({
 
             <Alert color="yellow" variant="light">
               <Text size="xs">
-                {tr(
-                  tr(
-                    tr(
-                      "社内のパスワードや業務データを、移動先のサイトへ入力しないでください。",
-                    ),
-                  ),
-                )}
+                {tr("l.page.doNotEnterInternalPasswordsOr")}
               </Text>
             </Alert>
 
@@ -152,7 +141,7 @@ export default async function ShortLinkPage({
                   rightSection={<IconExternalLink size={16} />}
                   type="submit"
                 >
-                  {tr("続行して移動")}
+                  {tr("l.page.continueAndLeave")}
                 </Button>
               </Group>
             </form>

@@ -12,7 +12,7 @@ import { DatePickerInput } from "@mantine/dates";
 import { notifications } from "@mantine/notifications";
 import { IconCalendar } from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
-import { useLocale } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { useState, useTransition } from "react";
 import {
   searchCustomerOptions,
@@ -26,7 +26,6 @@ import { HelpLabel } from "@/components/ui/HelpLabel";
 import { SalesRepSelect } from "@/components/ui/SalesRepSelect";
 import { SearchSelect } from "@/components/ui/SearchSelect";
 import { FormSection, FormShell } from "@/components/ui/shells";
-import { useTr } from "@/hooks/useTr";
 import { acceptanceDeliveryMethodOptions } from "@/lib/enum-labels";
 import { fieldHelp } from "@/lib/field-help";
 import {
@@ -47,7 +46,7 @@ export function OrderAcceptanceCreateForm({
   /** 出荷作業場所の選択肢（lib/work-locations fetchWorkLocationOptions）。 */
   workLocationOptions: { value: string; label: string }[];
 }) {
-  const tr = useTr();
+  const tr = useTranslations();
   const locale = useLocale();
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
@@ -74,11 +73,11 @@ export function OrderAcceptanceCreateForm({
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (!customerId) {
-      setCustomerError(tr("顧客を選択してください"));
+      setCustomerError(tr("sales.orderAcceptances.selectACustomer"));
       return;
     }
     if (deliveryMethod === "DIRECT_TO_USER" && !endUserBpId) {
-      setEndUserError(tr("ユーザー直送ではエンドユーザーを選択してください"));
+      setEndUserError(tr("common.selectAnEndUserForDirect"));
       return;
     }
     startTransition(async () => {
@@ -100,15 +99,15 @@ export function OrderAcceptanceCreateForm({
       });
       if (result.ok) {
         notifications.show({
-          title: tr("作成しました"),
+          title: tr("common.created"),
           message: `注文請書 ${result.data.number}（下書き）`,
           color: "green",
         });
         router.push(`${BASE_PATH}/${result.data.number}`);
       } else {
         notifications.show({
-          title: tr("エラー"),
-          message: tr(result.error),
+          title: tr("common.error2"),
+          message: result.error,
           color: "red",
         });
       }
@@ -145,26 +144,22 @@ export function OrderAcceptanceCreateForm({
   return (
     <FormShell
       breadcrumbs={[
-        tr("販売"),
-        { label: tr("注文請書"), href: BASE_PATH },
-        tr("手入力で新規"),
+        tr("common.sales"),
+        { label: tr("common.orderAcceptance"), href: BASE_PATH },
+        tr("common.createByHand"),
       ]}
       isDirty={isDirty}
       isPending={isPending}
       onCancel={() => router.push(BASE_PATH)}
       onSubmit={handleSubmit}
-      submitLabel={tr("下書きを作成")}
-      title={tr("注文請書 手入力作成")}
+      submitLabel={tr("sales.orderAcceptances.createADraft")}
+      title={tr("sales.orderAcceptances.createAnOrderAcceptanceByHand")}
     >
       <FormSection
         description={tr(
-          tr(
-            tr(
-              "注文書の自動取込を使わずに注文請書を直接作成します（下書きとして保存）。",
-            ),
-          ),
+          "sales.orderAcceptances.createsTheOrderAcceptanceDirectlyWithout",
         )}
-        title={tr("基本情報")}
+        title={tr("common.basicInformation")}
       >
         <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="sm">
           <SearchSelect
@@ -176,7 +171,7 @@ export function OrderAcceptanceCreateForm({
               if (v) setCustomerError(null);
             }}
             onSearch={searchCustomerOptions}
-            placeholder={tr("顧客を検索")}
+            placeholder={tr("common.searchCustomers")}
             storageKey="customer"
             value={customerId}
             withAsterisk
@@ -192,7 +187,7 @@ export function OrderAcceptanceCreateForm({
             label={<HelpLabel {...fieldHelp("orderAcceptance", "shipTo")} />}
             onChange={setShipToBpId}
             onSearch={searchShipToOptions}
-            placeholder={tr("出荷先を検索（任意）")}
+            placeholder={tr("common.searchShipToOptional")}
             storageKey="ship-to"
             value={shipToBpId}
           />
@@ -222,8 +217,8 @@ export function OrderAcceptanceCreateForm({
             onSearch={searchEndUserOptions}
             placeholder={
               deliveryMethod === "DIRECT_TO_USER"
-                ? tr("エンドユーザーを検索")
-                : tr("エンドユーザーを検索（任意）")
+                ? tr("common.searchEndUsers")
+                : tr("common.searchEndUsersOptional")
             }
             storageKey="end-user"
             value={endUserBpId}
@@ -236,7 +231,7 @@ export function OrderAcceptanceCreateForm({
               <HelpLabel {...fieldHelp("orderAcceptance", "assignedPlant")} />
             }
             onChange={setAssignedPlantId}
-            placeholder={tr("拠点を選択（任意）")}
+            placeholder={tr("common.selectASiteOptional")}
             searchable
             value={assignedPlantId}
           />
@@ -249,7 +244,7 @@ export function OrderAcceptanceCreateForm({
               />
             }
             onChange={setShippingWorkLocationId}
-            placeholder={tr("作業場所を選択（任意）")}
+            placeholder={tr("common.selectAWorkLocationOptional")}
             searchable
             value={shippingWorkLocationId}
           />
@@ -260,7 +255,7 @@ export function OrderAcceptanceCreateForm({
               />
             }
             onChange={(e) => setCustomerOrderRef(e.currentTarget.value)}
-            placeholder={tr("注文書の番号")}
+            placeholder={tr("common.orderDocumentNumber")}
             value={customerOrderRef}
           />
           {/* 手入力ではなく検索して選ぶ（顧客が決まっていればその顧客の見積だけ）。 */}
@@ -269,14 +264,16 @@ export function OrderAcceptanceCreateForm({
             label={
               <HelpLabel
                 {...fieldHelp("orderAcceptance", "quoteNumber", {
-                  label: tr("見積書（任意）"),
+                  label: tr("common.quoteOptional"),
                 })}
               />
             }
             onChange={(v) => setQuoteNumber(v ?? "")}
             onSearch={(q) => searchQuoteOptions(q, customerId)}
             placeholder={
-              customerId ? "見積書を検索" : tr("先に顧客を選ぶと絞り込めます")
+              customerId
+                ? "見積書を検索"
+                : tr("common.chooseACustomerFirstToNarrow")
             }
             storageKey="quote"
             value={quoteNumber || null}
@@ -286,24 +283,22 @@ export function OrderAcceptanceCreateForm({
             label={<HelpLabel {...fieldHelp("orderAcceptance", "orderDate")} />}
             leftSection={<IconCalendar size={14} />}
             onChange={setOrderDate}
-            placeholder={tr("日付を選択")}
+            placeholder={tr("common.pickADate")}
             value={orderDate}
             valueFormat="YYYY/MM/DD"
           />
           <TextInput
             label={<HelpLabel {...fieldHelp("orderAcceptance", "notes")} />}
             onChange={(e) => setNotes(e.currentTarget.value)}
-            placeholder={tr("備考（任意）")}
+            placeholder={tr("common.notesOptional")}
             value={notes}
           />
         </SimpleGrid>
       </FormSection>
 
       <FormSection
-        description={tr(
-          "明細ごとに製品・数量を入力します（単価は下書きで後入力も可）。",
-        )}
-        title={tr("明細")}
+        description={tr("sales.orderAcceptances.enterTheProductAndQuantityPer")}
+        title={tr("common.lineItems")}
       >
         <OrderAcceptanceItemsEditor items={items} onChange={setItems} />
       </FormSection>

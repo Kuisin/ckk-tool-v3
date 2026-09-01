@@ -38,8 +38,8 @@ import {
   Text,
 } from "@mantine/core";
 import { IconGripVertical, IconPlus, IconTrash } from "@tabler/icons-react";
+import { useTranslations } from "next-intl";
 import { GhostButton } from "@/components/ui/buttons";
-import { useTr } from "@/hooks/useTr";
 import {
   FORM_FIELD_TYPES,
   type FormFieldDef,
@@ -67,7 +67,7 @@ function SortableField({
   onRemove: () => void;
   onSetTitle: () => void;
 }) {
-  const tr = useTr();
+  const tr = useTranslations();
   const {
     attributes,
     listeners,
@@ -92,7 +92,7 @@ function SortableField({
         <Accordion.Item value={`field-${index}`}>
           <Group gap={0} wrap="nowrap">
             <ActionIcon
-              aria-label={tr("ドラッグして並べ替え（スマホは長押し）")}
+              aria-label={tr("forms.formBuilder.dragToReorderPressAndHold")}
               color="gray"
               size="lg"
               style={{
@@ -112,25 +112,25 @@ function SortableField({
             <Accordion.Control>
               <Group gap="xs" wrap="nowrap">
                 <Text fw={500} size="sm">
-                  {field.label.ja || tr("（名称未設定）")}
+                  {field.label.ja || tr("common.unnamed")}
                 </Text>
                 <Badge color="gray" size="xs" variant="light">
                   {typeLabel(field.type)}
                 </Badge>
                 {field.required && (
                   <Badge color="red" size="xs" variant="light">
-                    {tr("必須")}
+                    {tr("common.required2")}
                   </Badge>
                 )}
                 {field.isTitle && (
                   <Badge color="blue" size="xs" variant="light">
-                    {tr("見出し")}
+                    {tr("common.heading")}
                   </Badge>
                 )}
               </Group>
             </Accordion.Control>
             <ActionIcon
-              aria-label={tr("この項目を削除")}
+              aria-label={tr("forms.formBuilder.removeThisItem")}
               color="red"
               mr="xs"
               onClick={onRemove}
@@ -160,7 +160,7 @@ export function FormBuilder({
   fields: FormFieldDef[];
   onChange: (next: FormFieldDef[]) => void;
 }) {
-  const tr = useTr();
+  const tr = useTranslations();
   // タッチとマウスでセンサーを分けるのが要点。PointerSensor 1 本だと、スマホで
   // 縦にスワイプしただけでドラッグが始まり、ページがスクロールできなくなる。
   // タッチは「長押ししてから動かす」(delay) に限定し、指のわずかなブレは
@@ -206,7 +206,7 @@ export function FormBuilder({
     <Stack gap="sm">
       {fields.length === 0 && (
         <Text c="dimmed" size="sm">
-          {tr("項目がありません。「項目を追加」から作ってください。")}
+          {tr("forms.formBuilder.thereAreNoItemsCreateOne")}
         </Text>
       )}
       <DndContext
@@ -244,7 +244,7 @@ export function FormBuilder({
       </DndContext>
       <Group>
         <GhostButton leftSection={<IconPlus size={14} />} onClick={addField}>
-          {tr("項目を追加")}
+          {tr("common.addAnItem")}
         </GhostButton>
       </Group>
     </Stack>

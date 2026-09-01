@@ -13,6 +13,7 @@
  */
 
 import { notifications } from "@mantine/notifications";
+import { useTranslations } from "next-intl";
 import {
   createContext,
   type ReactNode,
@@ -21,7 +22,6 @@ import {
   useMemo,
   useState,
 } from "react";
-import { useTr } from "@/hooks/useTr";
 import { saveTableColumns } from "./table-settings-actions";
 
 interface TableSettingsValue {
@@ -42,7 +42,7 @@ export function TableSettingsProvider({
   initial: Record<string, string[]>;
   children: ReactNode;
 }) {
-  const tr = useTr();
+  const tr = useTranslations();
   const [map, setMap] = useState(initial);
 
   const setHidden = useCallback(
@@ -51,8 +51,10 @@ export function TableSettingsProvider({
       void saveTableColumns(key, hidden).then((r) => {
         if (!r.ok) {
           notifications.show({
-            title: tr("エラー"),
-            message: r.error ?? tr("表示する列を保存できませんでした"),
+            title: tr("common.error2"),
+            message:
+              r.error ??
+              tr("layout.tableSettingsProvider.couldNotSaveTheVisibleColumns"),
             color: "red",
           });
         }

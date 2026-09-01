@@ -14,7 +14,7 @@
 import { Badge, Group, Select, Stack, Text, TextInput } from "@mantine/core";
 import { IconSearch, IconTruck, IconTruckLoading } from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
-import { useLocale } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { useFormat } from "@/components/layout/PreferencesProvider";
 import { DeliveryOrderTypeBadge } from "@/components/shipping/delivery-orders/DeliveryOrderTable";
 import type { DeliveryOrder } from "@/components/shipping/delivery-orders/model";
@@ -23,7 +23,6 @@ import { type Column, DataTable } from "@/components/ui/DataTable";
 import { QueueTabs } from "@/components/ui/QueueTabs";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { ListShell } from "@/components/ui/shells";
-import { useTr } from "@/hooks/useTr";
 import {
   useTabParam,
   useUrlSelectState,
@@ -44,7 +43,7 @@ export function PendingShipmentBoard({
   unshippedRows: UnshippedOrderLineRow[];
   openRows: DeliveryOrder[];
 }) {
-  const tr = useTr();
+  const tr = useTranslations();
   const locale = useLocale();
   const fmt = useFormat();
   const router = useRouter();
@@ -87,7 +86,7 @@ export function PendingShipmentBoard({
   const unshippedColumns: Column<UnshippedOrderLineRow>[] = [
     {
       key: "orderLineNumber",
-      header: tr("注文明細番号"),
+      header: tr("common.orderLineNumber"),
       sortable: true,
       width: 190,
       render: (r) => (
@@ -98,7 +97,7 @@ export function PendingShipmentBoard({
     },
     {
       key: "customerName",
-      header: tr("顧客"),
+      header: tr("common.customer"),
       sortable: true,
       truncate: true,
       render: (r) => r.customerName,
@@ -112,7 +111,7 @@ export function PendingShipmentBoard({
     },
     {
       key: "completedLots",
-      header: tr("完了ロット"),
+      header: tr("shipping.pendingShipments.completedLots"),
       hideable: true,
       width: 140,
       sortValue: (r) => r.completedLots.length,
@@ -124,7 +123,7 @@ export function PendingShipmentBoard({
     },
     {
       key: "finishedQuantity",
-      header: tr("完成数"),
+      header: tr("shipping.pendingShipments.finishedQuantity"),
       align: "right",
       width: 90,
       sortable: true,
@@ -137,7 +136,7 @@ export function PendingShipmentBoard({
     },
     {
       key: "shippedQuantity",
-      header: tr("出荷手配済"),
+      header: tr("shipping.pendingShipments.shipmentPlanned"),
       align: "right",
       width: 105,
       sortable: true,
@@ -150,7 +149,7 @@ export function PendingShipmentBoard({
     },
     {
       key: "unshippedQuantity",
-      header: tr("未手配"),
+      header: tr("common.notPlanned"),
       align: "right",
       width: 100,
       sortable: true,
@@ -163,7 +162,7 @@ export function PendingShipmentBoard({
     },
     {
       key: "deliveryDate",
-      header: tr("納期"),
+      header: tr("common.deliveryDate"),
       width: 110,
       sortable: true,
       sortValue: (r) => r.deliveryDate ?? "",
@@ -175,7 +174,7 @@ export function PendingShipmentBoard({
     },
     {
       key: "status",
-      header: tr("状態"),
+      header: tr("common.status"),
       width: 110,
       sortValue: (r) => r.status,
       render: (r) => <StatusBadge entity="OrderLine" status={r.status} />,
@@ -191,7 +190,7 @@ export function PendingShipmentBoard({
           onClick={(e) => e.stopPropagation()}
           size="xs"
         >
-          {tr("出荷書作成")}
+          {tr("shipping.pendingShipments.createADeliveryOrder")}
         </SecondaryButton>
       ),
     },
@@ -200,7 +199,7 @@ export function PendingShipmentBoard({
   const openColumns: Column<DeliveryOrder>[] = [
     {
       key: "deliveryOrderNumber",
-      header: tr("出荷書番号"),
+      header: tr("common.deliveryOrderNumber"),
       sortable: true,
       width: 170,
       render: (o) => (
@@ -211,7 +210,7 @@ export function PendingShipmentBoard({
     },
     {
       key: "customerName",
-      header: tr("顧客 / 注文明細"),
+      header: tr("common.customerOrderLine"),
       sortable: true,
       render: (o) => (
         <>
@@ -224,14 +223,14 @@ export function PendingShipmentBoard({
     },
     {
       key: "type",
-      header: tr("種別"),
+      header: tr("common.type2"),
       width: 110,
       sortValue: (o) => o.type,
       render: (o) => <DeliveryOrderTypeBadge type={o.type} />,
     },
     {
       key: "totalQuantity",
-      header: tr("数量合計"),
+      header: tr("common.totalQuantity"),
       align: "right",
       width: 100,
       sortValue: (o) => o.totalQuantity,
@@ -243,14 +242,14 @@ export function PendingShipmentBoard({
     },
     {
       key: "status",
-      header: tr("状態"),
+      header: tr("common.status"),
       width: 100,
       sortValue: (o) => o.status,
       render: (o) => <StatusBadge entity="DeliveryOrder" status={o.status} />,
     },
     {
       key: "updatedAt",
-      header: tr("更新日"),
+      header: tr("common.updated"),
       hideable: true,
       width: 150,
       sortValue: (o) => o.updatedAt,
@@ -266,7 +265,10 @@ export function PendingShipmentBoard({
 
   return (
     <ListShell
-      breadcrumbs={[tr("出荷"), tr("未処理出荷書")]}
+      breadcrumbs={[
+        tr("common.shipping"),
+        tr("shipping.pendingShipments.pendingShipments"),
+      ]}
       filters={
         <>
           {!isUnshipped && (
@@ -275,7 +277,7 @@ export function PendingShipmentBoard({
               data={deliveryOrderTypeOptions(locale)}
               flex={isMobile ? 1 : undefined}
               onChange={setType}
-              placeholder={tr("種別")}
+              placeholder={tr("common.type2")}
               value={type}
               w={isMobile ? undefined : 130}
             />
@@ -295,7 +297,7 @@ export function PendingShipmentBoard({
             }
             flex={isMobile ? 1 : undefined}
             onChange={setStatus}
-            placeholder={tr("状態")}
+            placeholder={tr("common.status")}
             value={status}
             w={isMobile ? undefined : 150}
           />
@@ -308,27 +310,27 @@ export function PendingShipmentBoard({
           onChange={(e) => setSearch(e.currentTarget.value)}
           placeholder={
             isUnshipped
-              ? tr("注文明細番号・顧客・製品・ロットで検索")
-              : tr("出荷書番号・注文明細番号・顧客で検索")
+              ? tr("shipping.pendingShipments.searchByOrderLineNumberCustomer")
+              : tr("shipping.pendingShipments.searchByDeliveryOrderNumberOrder")
           }
           value={search}
         />
       }
-      title={tr("未処理出荷書")}
+      title={tr("shipping.pendingShipments.pendingShipments")}
     >
       <QueueTabs
         onChange={setTab}
         tabs={[
           {
             value: "unshipped",
-            label: tr("未手配"),
+            label: tr("common.notPlanned"),
             icon: <IconTruckLoading size={14} />,
             count: unshippedRows.length,
             color: "orange",
           },
           {
             value: "inflight",
-            label: tr("出荷準備中"),
+            label: tr("shipping.pendingShipments.preparingToShip"),
             icon: <IconTruck size={14} />,
             count: openRows.length,
           },
@@ -341,7 +343,9 @@ export function PendingShipmentBoard({
             data={filteredUnshipped}
             defaultSort={{ key: "deliveryDate", dir: "asc" }}
             emptyIcon={<IconTruckLoading size={24} />}
-            emptyMessage={tr("出荷書待ちの注文明細はありません")}
+            emptyMessage={tr(
+              "shipping.pendingShipments.thereAreNoOrderLinesAwaiting",
+            )}
             getRowId={(r) => r.id}
             onRowClick={(r) => router.push(`${ORDER_LINES_PATH}/${r.id}`)}
             renderCard={(r) => (
@@ -379,7 +383,9 @@ export function PendingShipmentBoard({
             data={filteredOpen}
             defaultSort={{ key: "deliveryOrderNumber", dir: "desc" }}
             emptyIcon={<IconTruck size={24} />}
-            emptyMessage={tr("出荷準備中の出荷書はありません")}
+            emptyMessage={tr(
+              "shipping.pendingShipments.thereAreNoDeliveryOrdersBeing",
+            )}
             getRowId={(o) => o.id}
             onRowClick={(o) => router.push(`${DELIVERY_ORDERS_PATH}/${o.id}`)}
             renderCard={(o) => (

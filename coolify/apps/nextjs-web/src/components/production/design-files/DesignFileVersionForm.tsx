@@ -21,13 +21,13 @@ import { Alert, Group, Select, Stack, Text, Textarea } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
 import { IconInfoCircle, IconPlus } from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { useState } from "react";
 import { searchProductOptions } from "@/app/(dashboard)/_shared/option-search";
 import { SecondaryButton } from "@/components/ui/buttons";
 import { DesignFileSlot } from "@/components/ui/DesignFileSlot";
 import { SearchSelect } from "@/components/ui/SearchSelect";
 import { FormActions, FormSection } from "@/components/ui/shells";
-import { useTr } from "@/hooks/useTr";
 import { useIsMobile } from "@/hooks/useViewport";
 
 interface Option {
@@ -57,7 +57,7 @@ export function DesignFileVersionForm({
   /** `?request=` から来たときの依頼。 */
   requestContext: DesignRequestContext | null;
 }) {
-  const tr = useTr();
+  const tr = useTranslations();
   const router = useRouter();
   const isMobile = useIsMobile();
 
@@ -110,7 +110,7 @@ export function DesignFileVersionForm({
       } | null;
       if (res.ok && json?.ok) {
         notifications.show({
-          title: tr("登録しました"),
+          title: tr("common.registered"),
           message: `設計図 v${json.version} を追加しました`,
           color: "green",
         });
@@ -122,8 +122,9 @@ export function DesignFileVersionForm({
         );
       } else {
         notifications.show({
-          title: tr("エラー"),
-          message: json?.error ?? tr("登録に失敗しました"),
+          title: tr("common.error2"),
+          message:
+            json?.error ?? tr("production.designFiles.couldNotRegisterIt"),
           color: "red",
         });
       }
@@ -140,12 +141,12 @@ export function DesignFileVersionForm({
           製品「{requestContext.productLabel}」
           {requestContext.customerName
             ? `・受注元「${requestContext.customerName}」`
-            : tr("・汎用")}
+            : tr("production.designFiles.generic")}
           は依頼で決まっているので変更できません。
         </Alert>
       )}
 
-      <FormSection title={tr("対象")}>
+      <FormSection title={tr("common.target")}>
         {requestContext ? null : (
           <SearchSelect
             initialOption={initialProduct ?? undefined}
@@ -160,44 +161,32 @@ export function DesignFileVersionForm({
         <Select
           clearable
           data={customerOptions}
-          description={tr(
-            tr(
-              tr(
-                "空のままなら「汎用」— 顧客専用の図面が無いときに使われます。版番号は受注元ごとに数えます",
-              ),
-            ),
-          )}
+          description={tr("production.designFiles.leaveItBlankForGenericUsed")}
           disabled={requestContext != null}
-          label={tr("受注元")}
+          label={tr("common.orderingCustomer")}
           onChange={setCustomerBpId}
-          placeholder={tr("汎用（すべての顧客）")}
+          placeholder={tr("common.genericAllCustomers2")}
           searchable
           value={customerBpId}
         />
       </FormSection>
 
-      <FormSection title={tr("ファイル")}>
+      <FormSection title={tr("common.file")}>
         <DesignFileSlot
           description={tr(
-            "加工プログラムを起こす元データ。この系列の最新図面になります",
+            "production.designFiles.theSourceDataForTheMachining",
           )}
           file={blueprint}
           fullWidth={isMobile}
-          label={tr("図面データ")}
+          label={tr("production.designFiles.drawingFile")}
           onPick={setBlueprint}
           required
         />
         <DesignFileSlot
-          description={tr(
-            tr(
-              tr(
-                "STL など、画面で形を確かめるためのファイル。無くても登録できます",
-              ),
-            ),
-          )}
+          description={tr("production.designFiles.aFileSuchAsStlFor")}
           file={preview}
           fullWidth={isMobile}
-          label={tr("プレビュー用（3D）")}
+          label={tr("production.designFiles.forPreview3d")}
           onPick={setPreview}
         />
 
@@ -212,7 +201,9 @@ export function DesignFileVersionForm({
               key={r.key}
               label={`参考資料 ${i + 1}`}
               note={r.note}
-              notePlaceholder={tr("説明（任意）— 例: 部品図、寸法表")}
+              notePlaceholder={tr(
+                "production.designFiles.descriptionOptionalEGPartDrawing",
+              )}
               onNoteChange={(v) =>
                 setReferences((prev) =>
                   prev.map((x, j) => (j === i ? { ...x, note: v } : x)),
@@ -240,21 +231,23 @@ export function DesignFileVersionForm({
                 setNextKey((k) => k + 1);
               }}
             >
-              {tr("参考資料を追加")}
+              {tr("production.designFiles.addAReference")}
             </SecondaryButton>
           </Group>
         </Stack>
 
         <Textarea
           autosize
-          label={tr("メモ")}
+          label={tr("common.memo")}
           minRows={2}
           onChange={(e) => setNotes(e.currentTarget.value)}
-          placeholder={tr("この版で何が変わったか（任意）")}
+          placeholder={tr(
+            "production.designFiles.whatChangedInThisVersionOptional",
+          )}
           value={notes}
         />
         <Text c="dimmed" size="xs">
-          {tr("1 件 20MB まで")}
+          {tr("production.designFiles.upTo20mbEach")}
         </Text>
       </FormSection>
 

@@ -10,13 +10,13 @@
 import { Group, Select, Stack, Text, TextInput } from "@mantine/core";
 import { IconSearch, IconShoppingCart } from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { useFormat } from "@/components/layout/PreferencesProvider";
 import { type Column, DataTable } from "@/components/ui/DataTable";
 import { MoneyText } from "@/components/ui/MoneyText";
 import { NewButton } from "@/components/ui/NewButton";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { ListShell } from "@/components/ui/shells";
-import { useTr } from "@/hooks/useTr";
 import { useUrlSelectState, useUrlStringState } from "@/hooks/useUrlState";
 import { useIsMobile } from "@/hooks/useViewport";
 import { statusOptions } from "@/lib/status-map";
@@ -25,7 +25,7 @@ import type { PurchaseOrderRow } from "./model";
 const BASE_PATH = "/purchase/purchase-orders";
 
 export function PurchaseOrderTable({ rows }: { rows: PurchaseOrderRow[] }) {
-  const tr = useTr();
+  const tr = useTranslations();
   const fmt = useFormat();
   const router = useRouter();
   const isMobile = useIsMobile();
@@ -49,7 +49,7 @@ export function PurchaseOrderTable({ rows }: { rows: PurchaseOrderRow[] }) {
   const columns: Column<PurchaseOrderRow>[] = [
     {
       key: "poNumber",
-      header: tr("発注番号"),
+      header: tr("common.pONumber"),
       sortable: true,
       render: (o) => (
         <Text ff="mono" size="sm">
@@ -59,13 +59,13 @@ export function PurchaseOrderTable({ rows }: { rows: PurchaseOrderRow[] }) {
     },
     {
       key: "supplierName",
-      header: tr("仕入先"),
+      header: tr("common.supplier"),
       sortable: true,
       render: (o) => o.supplierName,
     },
     {
       key: "itemCount",
-      header: tr("明細数"),
+      header: tr("common.lineCount"),
       align: "right",
       width: 90,
       sortValue: (o) => o.itemCount,
@@ -77,7 +77,7 @@ export function PurchaseOrderTable({ rows }: { rows: PurchaseOrderRow[] }) {
     },
     {
       key: "totalAmount",
-      header: tr("合計金額"),
+      header: tr("common.totalAmount"),
       align: "right",
       width: 130,
       sortValue: (o) => o.totalAmount,
@@ -85,7 +85,7 @@ export function PurchaseOrderTable({ rows }: { rows: PurchaseOrderRow[] }) {
     },
     {
       key: "status",
-      header: tr("状態"),
+      header: tr("common.status"),
       width: 110,
       sortValue: (o) => o.status,
       render: (o) => (
@@ -94,7 +94,7 @@ export function PurchaseOrderTable({ rows }: { rows: PurchaseOrderRow[] }) {
     },
     {
       key: "purchaseDate",
-      header: tr("発注日"),
+      header: tr("common.orderDate"),
       width: 120,
       sortValue: (o) => o.purchaseDate ?? "",
       render: (o) => (
@@ -108,14 +108,17 @@ export function PurchaseOrderTable({ rows }: { rows: PurchaseOrderRow[] }) {
   return (
     <ListShell
       action={<NewButton href={`${BASE_PATH}/new`} />}
-      breadcrumbs={[tr("購買"), tr("素材発注書")]}
+      breadcrumbs={[
+        tr("common.purchasing"),
+        tr("common.materialPurchaseOrder"),
+      ]}
       filters={
         <Select
           clearable
           data={statusOptions("MaterialPurchaseOrder")}
           flex={isMobile ? 1 : undefined}
           onChange={setStatus}
-          placeholder={tr("状態")}
+          placeholder={tr("common.status")}
           value={status}
           w={isMobile ? undefined : 150}
         />
@@ -125,11 +128,11 @@ export function PurchaseOrderTable({ rows }: { rows: PurchaseOrderRow[] }) {
         <TextInput
           leftSection={<IconSearch size={14} />}
           onChange={(e) => setSearch(e.currentTarget.value)}
-          placeholder={tr("発注番号・仕入先で検索")}
+          placeholder={tr("purchase.purchaseOrders.searchByPoNumberOrSupplier")}
           value={search}
         />
       }
-      title={tr("素材発注書")}
+      title={tr("common.materialPurchaseOrder")}
     >
       <DataTable
         columns={columns}
@@ -137,7 +140,9 @@ export function PurchaseOrderTable({ rows }: { rows: PurchaseOrderRow[] }) {
         defaultSort={{ key: "poNumber", dir: "desc" }}
         emptyAction={<NewButton href={`${BASE_PATH}/new`} />}
         emptyIcon={<IconShoppingCart size={24} />}
-        emptyMessage={tr("素材発注書がありません")}
+        emptyMessage={tr(
+          "purchase.purchaseOrders.thereAreNoMaterialPurchaseOrders",
+        )}
         getRowId={(o) => o.poNumber}
         onRowClick={(o) => router.push(`${BASE_PATH}/${o.poNumber}`)}
         renderCard={(o) => (

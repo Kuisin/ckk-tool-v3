@@ -1,9 +1,9 @@
 import { notFound } from "next/navigation";
+import { getTranslations } from "next-intl/server";
 import type { ReactNode } from "react";
 import { StepListPane } from "@/components/production/step-execution/StepListPane";
 import { MasterDetailShell } from "@/components/ui/MasterDetailShell";
 import { PageHeader } from "@/components/ui/PageHeader";
-import { getTr } from "@/lib/ui-text-server";
 import { fetchWorkOrderStepNav, resolveWorkOrderIdParam } from "../../data";
 
 export const dynamic = "force-dynamic";
@@ -21,7 +21,7 @@ export default async function WorkOrderStepsLayout({
   children: ReactNode;
   params: Promise<{ id: string }>;
 }) {
-  const tr = await getTr();
+  const tr = await getTranslations();
   const { id } = await params;
   const workOrderNumber = await resolveWorkOrderIdParam(id);
   if (workOrderNumber == null) notFound();
@@ -38,8 +38,8 @@ export default async function WorkOrderStepsLayout({
       header={
         <PageHeader
           breadcrumbs={[
-            tr("生産"),
-            { label: tr("指示書"), href: "/production/work-orders" },
+            tr("common.production"),
+            { label: tr("common.workOrder"), href: "/production/work-orders" },
             {
               label: woLabel,
               href: `/production/work-orders/${workOrderNumber}`,

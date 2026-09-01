@@ -38,7 +38,7 @@ import {
   IconUsers,
 } from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
-import { useLocale } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { useState, useTransition } from "react";
 import { setGroupMemberActive } from "@/app/(dashboard)/master/approval-settings/actions";
 import { useFormat } from "@/components/layout/PreferencesProvider";
@@ -55,7 +55,6 @@ import {
   ResourceActions,
   SummaryGrid,
 } from "@/components/ui/shells";
-import { useTr } from "@/hooks/useTr";
 import { useTabParam } from "@/hooks/useUrlState";
 import { useIsMobile } from "@/hooks/useViewport";
 import {
@@ -145,12 +144,12 @@ export interface ApprovalGroupDetailData {
 
 /** 在籍期間の表示（常任は「常任」）。 */
 function MemberPeriod({ member }: { member: ApprovalGroupMemberRow }) {
-  const tr = useTr();
+  const tr = useTranslations();
   const fmt = useFormat();
   if (!member.validFrom || !member.validUntil) {
     return (
       <Text c="dimmed" size="sm">
-        {tr("常任")}
+        {tr("common.permanent")}
       </Text>
     );
   }
@@ -174,17 +173,11 @@ function MemberPeriod({ member }: { member: ApprovalGroupMemberRow }) {
  * 何も起きないため）。
  */
 function GroupUsageNote({ usages }: { usages: GroupFlowUsage[] }) {
-  const tr = useTr();
+  const tr = useTranslations();
   if (usages.length === 0) {
     return (
       <Alert color="gray" icon={<IconShieldCheck size={16} />} variant="light">
-        {tr(
-          tr(
-            tr(
-              "このグループはどの承認フローにも使われていません（承認設定の「承認フロー」で段に割り当てます）。",
-            ),
-          ),
-        )}
+        {tr("master.approvalSettings.thisGroupIsNotUsedIn")}
       </Alert>
     );
   }
@@ -192,7 +185,7 @@ function GroupUsageNote({ usages }: { usages: GroupFlowUsage[] }) {
     <Alert
       color="gray"
       icon={<IconShieldCheck size={16} />}
-      title={tr("このグループが承認する書類と、必要な権限")}
+      title={tr("master.approvalSettings.theDocumentsThisGroupApprovesAnd")}
       variant="light"
     >
       <Stack gap={4}>
@@ -210,13 +203,7 @@ function GroupUsageNote({ usages }: { usages: GroupFlowUsage[] }) {
           </Group>
         ))}
         <Text c="dimmed" size="xs">
-          {tr(
-            tr(
-              tr(
-                "承認に必要なのは、その書類を閲覧または編集できる権限です。書類を\n          開けないメンバーは、承認ボタンを押しても弾かれます。権限は\n          ユーザー管理 (SY01) のロールで決まります。",
-              ),
-            ),
-          )}
+          {tr("master.approvalSettings.approvingNeedsPermissionToViewOr")}
         </Text>
       </Stack>
     </Alert>
@@ -283,7 +270,7 @@ export function ApprovalGroupDetail({
   record: ApprovalGroupDetailData;
   auditEntries: AuditEntry[];
 }) {
-  const tr = useTr();
+  const tr = useTranslations();
   const fmt = useFormat();
   const router = useRouter();
   const isMobile = useIsMobile();
@@ -325,15 +312,15 @@ export function ApprovalGroupDetail({
       );
       if (result.ok) {
         notifications.show({
-          title: member.isActive ? "無効化しました" : tr("有効化しました"),
+          title: member.isActive ? "無効化しました" : tr("common.enabled2"),
           message: `メンバー「${member.displayName}」を${member.isActive ? "無効化" : "有効化"}しました`,
           color: "green",
         });
         router.refresh();
       } else {
         notifications.show({
-          title: tr("エラー"),
-          message: tr(result.error),
+          title: tr("common.error2"),
+          message: result.error,
           color: "red",
         });
       }
@@ -346,7 +333,7 @@ export function ApprovalGroupDetail({
         <ResourceActions
           menuItems={[
             {
-              label: record.isActive ? "無効化" : tr("有効化"),
+              label: record.isActive ? "無効化" : tr("common.enable"),
               icon: <IconCircleMinus size={14} />,
               onClick: () => setToggleOpen(true),
             },
@@ -362,38 +349,47 @@ export function ApprovalGroupDetail({
         />
       }
       breadcrumbs={[
-        tr("マスタ"),
-        { label: tr("承認設定"), href: BASE_PATH },
+        tr("common.masterData"),
+        { label: tr("common.approvalSettings"), href: BASE_PATH },
         record.nameJa,
       ]}
       status={<ActiveBadge active={record.isActive} />}
       title={record.nameJa}
     >
       <SummaryGrid>
-        <FieldValue label={tr("名称")} value={record.nameJa} />
+        <FieldValue label={tr("common.name2")} value={record.nameJa} />
         <FieldValue
-          label={tr("メンバー数")}
+          label={tr("common.members")}
           value={`${activeCount}名（有効） / ${record.members.length}名`}
         />
         <FieldValue
-          label={tr("状態")}
+          label={tr("common.status")}
           value={<ActiveBadge active={record.isActive} />}
         />
       </SummaryGrid>
 
       <AppTabs onChange={setTab} value={tab}>
         <Tabs.List>
-          <Tabs.Tab value="info">{tr("グループ情報")}</Tabs.Tab>
-          <Tabs.Tab value="members">{tr("メンバー")}</Tabs.Tab>
-          <Tabs.Tab value="delegates">{tr("代理設定")}</Tabs.Tab>
-          <Tabs.Tab value="history">{tr("履歴")}</Tabs.Tab>
+          <Tabs.Tab value="info">
+            {tr("master.approvalSettings.groupInformation")}
+          </Tabs.Tab>
+          <Tabs.Tab value="members">
+            {tr("master.approvalSettings.members")}
+          </Tabs.Tab>
+          <Tabs.Tab value="delegates">
+            {tr("master.approvalSettings.delegation")}
+          </Tabs.Tab>
+          <Tabs.Tab value="history">{tr("common.history")}</Tabs.Tab>
         </Tabs.List>
 
         <Tabs.Panel pt="md" value="info">
           <Stack gap="sm">
-            <FieldValue label={tr("名称（日本語）")} value={record.nameJa} />
             <FieldValue
-              label={tr("名称（英語）")}
+              label={tr("common.nameJapanese")}
+              value={record.nameJa}
+            />
+            <FieldValue
+              label={tr("common.nameEnglish")}
               value={record.nameEn || "—"}
             />
           </Stack>
@@ -408,29 +404,35 @@ export function ApprovalGroupDetail({
                 leftSection={<IconPlus size={14} />}
                 onClick={() => setAddMemberOpen(true)}
               >
-                {tr("メンバーを追加")}
+                {tr("master.approvalSettings.addAMember")}
               </GhostButton>
             </Group>
             {record.members.length === 0 ? (
               <EmptyState
                 icon={<IconUsers size={24} />}
-                message={tr("メンバーがいません")}
+                message={tr("master.approvalSettings.thereAreNoMembers")}
               />
             ) : (
               <ScrollArea>
                 <Table striped withTableBorder>
                   <Table.Thead>
                     <Table.Tr>
-                      <Table.Th>{tr("氏名")}</Table.Th>
+                      <Table.Th>{tr("common.name3")}</Table.Th>
                       {!isMobile && (
-                        <Table.Th w={180}>{tr("ユーザー名")}</Table.Th>
+                        <Table.Th w={180}>{tr("common.username")}</Table.Th>
                       )}
                       {!isMobile && (
-                        <Table.Th w={200}>{tr("在籍期間")}</Table.Th>
+                        <Table.Th w={200}>
+                          {tr("master.approvalSettings.employmentPeriod")}
+                        </Table.Th>
                       )}
-                      {!isMobile && <Table.Th w={90}>{tr("状態")}</Table.Th>}
                       {!isMobile && (
-                        <Table.Th w={200}>{tr("承認権限")}</Table.Th>
+                        <Table.Th w={90}>{tr("common.status")}</Table.Th>
+                      )}
+                      {!isMobile && (
+                        <Table.Th w={200}>
+                          {tr("master.approvalSettings.approvalPermission")}
+                        </Table.Th>
                       )}
                       <Table.Th w={110} />
                     </Table.Tr>
@@ -475,9 +477,16 @@ export function ApprovalGroupDetail({
                         )}
                         <Table.Td>
                           <Group gap={4} justify="flex-end" wrap="nowrap">
-                            <Tooltip label={tr("在籍期間を変更")} withinPortal>
+                            <Tooltip
+                              label={tr(
+                                "master.approvalSettings.changeTheEmploymentPeriod",
+                              )}
+                              withinPortal
+                            >
                               <ActionIcon
-                                aria-label={tr("在籍期間を変更")}
+                                aria-label={tr(
+                                  "master.approvalSettings.changeTheEmploymentPeriod",
+                                )}
                                 onClick={() => setPeriodMember(m)}
                                 variant="subtle"
                               >
@@ -485,14 +494,20 @@ export function ApprovalGroupDetail({
                               </ActionIcon>
                             </Tooltip>
                             <Tooltip
-                              label={m.isActive ? "無効化" : tr("有効化")}
+                              label={
+                                m.isActive ? "無効化" : tr("common.enable")
+                              }
                               withinPortal
                             >
                               <ActionIcon
                                 aria-label={
                                   m.isActive
-                                    ? tr("メンバーを無効化")
-                                    : tr("メンバーを有効化")
+                                    ? tr(
+                                        "master.approvalSettings.disableTheMember",
+                                      )
+                                    : tr(
+                                        "master.approvalSettings.enableTheMember",
+                                      )
                                 }
                                 color={m.isActive ? "orange" : "green"}
                                 onClick={() => toggleMemberActive(m)}
@@ -503,7 +518,9 @@ export function ApprovalGroupDetail({
                             </Tooltip>
                             <Tooltip label="削除" withinPortal>
                               <ActionIcon
-                                aria-label={tr("メンバーを削除")}
+                                aria-label={tr(
+                                  "master.approvalSettings.removeTheMember",
+                                )}
                                 color="red"
                                 onClick={() => setRemoveMember(m)}
                                 variant="subtle"
@@ -530,26 +547,32 @@ export function ApprovalGroupDetail({
                 leftSection={<IconPlus size={14} />}
                 onClick={() => setAddDelegateOpen(true)}
               >
-                {tr("代理設定を追加")}
+                {tr("master.approvalSettings.addADelegation")}
               </GhostButton>
             </Group>
             {record.delegates.length === 0 ? (
               <EmptyState
                 icon={<IconUserShield size={24} />}
-                message={tr("代理設定がありません")}
+                message={tr("master.approvalSettings.thereAreNoDelegations")}
               />
             ) : (
               <ScrollArea>
                 <Table striped withTableBorder>
                   <Table.Thead>
                     <Table.Tr>
-                      <Table.Th>{tr("代理人")}</Table.Th>
-                      {!isMobile && <Table.Th>{tr("原承認者")}</Table.Th>}
-                      {!isMobile && <Table.Th w={200}>{tr("期間")}</Table.Th>}
+                      <Table.Th>{tr("common.delegate")}</Table.Th>
                       {!isMobile && (
-                        <Table.Th w={180}>{tr("承認権限")}</Table.Th>
+                        <Table.Th>{tr("common.originalApprover")}</Table.Th>
                       )}
-                      {!isMobile && <Table.Th>{tr("理由")}</Table.Th>}
+                      {!isMobile && (
+                        <Table.Th w={200}>{tr("common.period")}</Table.Th>
+                      )}
+                      {!isMobile && (
+                        <Table.Th w={180}>
+                          {tr("master.approvalSettings.approvalPermission")}
+                        </Table.Th>
+                      )}
+                      {!isMobile && <Table.Th>{tr("common.reason")}</Table.Th>}
                       <Table.Th w={60} />
                     </Table.Tr>
                   </Table.Thead>
@@ -612,7 +635,9 @@ export function ApprovalGroupDetail({
                           <Group gap={4} justify="flex-end" wrap="nowrap">
                             <Tooltip label="削除" withinPortal>
                               <ActionIcon
-                                aria-label={tr("代理設定を削除")}
+                                aria-label={tr(
+                                  "master.approvalSettings.deleteTheDelegation",
+                                )}
                                 color="red"
                                 onClick={() =>
                                   setRemoveDelegate({

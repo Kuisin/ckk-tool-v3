@@ -28,8 +28,8 @@ import {
   Text,
 } from "@mantine/core";
 import { IconArrowRight, IconChevronDown } from "@tabler/icons-react";
+import { useTranslations } from "next-intl";
 import { useState } from "react";
-import { useTr } from "@/hooks/useTr";
 import { useIsMobile } from "@/hooks/useViewport";
 import {
   auditFieldDiffs,
@@ -56,7 +56,7 @@ export function AuditChangeTable({
   tableName,
   emptyMessage = "変更点はありません",
 }: Props) {
-  const tr = useTr();
+  const tr = useTranslations();
   const [rawOpen, setRawOpen] = useState(false);
   const isMobile = useIsMobile();
   const diffs = auditFieldDiffs(before, after, tableName);
@@ -98,9 +98,9 @@ export function AuditChangeTable({
           <Table highlightOnHover striped withTableBorder>
             <Table.Thead>
               <Table.Tr>
-                <Table.Th style={{ width: 180 }}>{tr("項目")}</Table.Th>
-                <Table.Th>{tr("変更前")}</Table.Th>
-                <Table.Th>{tr("変更後")}</Table.Th>
+                <Table.Th style={{ width: 180 }}>{tr("common.item")}</Table.Th>
+                <Table.Th>{tr("ui.auditChangeTable.before")}</Table.Th>
+                <Table.Th>{tr("ui.auditChangeTable.after")}</Table.Th>
               </Table.Tr>
             </Table.Thead>
             <Table.Tbody>
@@ -143,8 +143,8 @@ export function AuditChangeTable({
           <Table highlightOnHover striped withTableBorder>
             <Table.Thead>
               <Table.Tr>
-                <Table.Th style={{ width: 180 }}>{tr("項目")}</Table.Th>
-                <Table.Th>{tr("値")}</Table.Th>
+                <Table.Th style={{ width: 180 }}>{tr("common.item")}</Table.Th>
+                <Table.Th>{tr("common.value")}</Table.Th>
               </Table.Tr>
             </Table.Thead>
             <Table.Tbody>
@@ -176,7 +176,9 @@ export function AuditChangeTable({
               onClick={() => setRawOpen((v) => !v)}
               size="xs"
             >
-              {rawOpen ? "生データを隠す" : tr("生データを表示")}
+              {rawOpen
+                ? "生データを隠す"
+                : tr("ui.auditChangeTable.showTheRawData")}
             </GhostButton>
           </Group>
           <Collapse expanded={rawOpen}>
@@ -184,7 +186,7 @@ export function AuditChangeTable({
               {before != null && (
                 <div>
                   <Text c="dimmed" fw={600} mb={4} size="xs">
-                    {tr("変更前（before）")}
+                    {tr("ui.auditChangeTable.before2")}
                   </Text>
                   <Code block style={{ whiteSpace: "pre-wrap" }}>
                     {JSON.stringify(before, null, 2)}
@@ -194,7 +196,7 @@ export function AuditChangeTable({
               {after != null && (
                 <div>
                   <Text c="dimmed" fw={600} mb={4} size="xs">
-                    {tr("変更後（after）")}
+                    {tr("ui.auditChangeTable.after2")}
                   </Text>
                   <Code block style={{ whiteSpace: "pre-wrap" }}>
                     {JSON.stringify(after, null, 2)}

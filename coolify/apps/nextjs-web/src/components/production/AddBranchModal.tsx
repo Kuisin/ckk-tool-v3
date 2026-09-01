@@ -25,13 +25,13 @@ import {
 } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { useEffect, useState, useTransition } from "react";
 import {
   addBranch,
   updateBranch,
 } from "@/app/(dashboard)/production/work-orders/[id]/steps/[stepId]/actions";
 import { ModalShell } from "@/components/ui/modals";
-import { useTr } from "@/hooks/useTr";
 import type { WorkOrderStepView } from "./work-orders/model";
 
 /** 終端の選び方（画面の state）。 */
@@ -84,7 +84,7 @@ export function AddBranchModal({
   /** 指定すると編集モード。 */
   editTarget?: BranchEditTarget | null;
 }) {
-  const tr = useTr();
+  const tr = useTranslations();
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [catalogStepIds, setCatalogStepIds] = useState<string[]>([]);
@@ -154,7 +154,9 @@ export function AddBranchModal({
       if (result == null) return;
       if (result.ok) {
         notifications.show({
-          title: isEdit ? "分岐を更新しました" : tr("分岐を追加しました"),
+          title: isEdit
+            ? "分岐を更新しました"
+            : tr("production.addBranchModal.theBranchWasAdded"),
           message: isEdit
             ? editTarget.stepNames.join(" → ")
             : `${sourceStep?.name ?? ""} から ${catalogStepIds.length} 工程`,
@@ -164,12 +166,12 @@ export function AddBranchModal({
         router.refresh();
       } else {
         notifications.show({
-          title: tr("エラー"),
+          title: tr("common.error2"),
           message:
             result.errors?.join(" / ") ??
             (isEdit
-              ? tr("分岐の更新に失敗しました")
-              : tr("分岐の追加に失敗しました")),
+              ? tr("production.addBranchModal.couldNotUpdateTheBranch")
+              : tr("production.addBranchModal.couldNotAddTheBranch")),
           color: "red",
         });
       }
@@ -179,7 +181,9 @@ export function AddBranchModal({
   return (
     <ModalShell
       confirmDisabled={!canConfirm}
-      confirmLabel={isEdit ? "分岐を更新" : tr("分岐を追加")}
+      confirmLabel={
+        isEdit ? "分岐を更新" : tr("production.addBranchModal.addABranch")
+      }
       loading={isPending}
       onClose={onClose}
       onConfirm={handleConfirm}
@@ -195,9 +199,9 @@ export function AddBranchModal({
         {!isEdit && (
           <MultiSelect
             data={catalogOptions}
-            label={tr("追加する工程（実行順）")}
+            label={tr("production.addBranchModal.stepsToAddInExecutionOrder")}
             onChange={setCatalogStepIds}
-            placeholder={tr("工程を選択")}
+            placeholder={tr("production.addBranchModal.selectAStep")}
             searchable
             value={catalogStepIds}
             withAsterisk
@@ -206,13 +210,13 @@ export function AddBranchModal({
         <NumberInput
           description={
             isEdit && !editTarget.canEditQuantity
-              ? tr("着手済みのため数量は変更できません")
+              ? tr("production.addBranchModal.theQuantityCannotBeChangedOnce")
               : max != null
                 ? `分岐可能: ${max}（工程分岐の未割当分）`
                 : undefined
           }
           disabled={isEdit && !editTarget.canEditQuantity}
-          label={tr("分岐数量")}
+          label={tr("production.addBranchModal.branchQuantity")}
           max={isEdit ? undefined : (max ?? undefined)}
           min={1}
           onChange={setRoutedQuantity}
@@ -222,8 +226,11 @@ export function AddBranchModal({
 
         <SegmentedControl
           data={[
-            { value: "MERGE", label: tr("本流へ合流") },
-            { value: "STOCK", label: tr("在庫へ") },
+            {
+              value: "MERGE",
+              label: tr("production.addBranchModal.mergeIntoTheMainLine"),
+            },
+            { value: "STOCK", label: tr("production.addBranchModal.toStock") },
           ]}
           disabled={isEdit && !editTarget.canEditTermination}
           fullWidth
@@ -234,12 +241,12 @@ export function AddBranchModal({
           <Select
             data={mergeTargets.map((s) => ({ value: s.id, label: s.name }))}
             description={tr(
-              "分岐系列の最後の工程から、この工程へ良品を戻します",
+              "production.addBranchModal.goodPiecesComeBackToThis",
             )}
             disabled={isEdit && !editTarget.canEditTermination}
-            label={tr("合流先（未着手のメインライン工程）")}
+            label={tr("production.addBranchModal.mergeTargetAMainLineStep")}
             onChange={setMergeTargetStepId}
-            placeholder={tr("合流先を選択")}
+            placeholder={tr("production.addBranchModal.selectTheMergeTarget")}
             value={mergeTargetStepId}
             withAsterisk
           />
@@ -247,14 +254,10 @@ export function AddBranchModal({
           <Select
             data={STOCK_OPTIONS}
             description={tr(
-              tr(
-                tr(
-                  "分岐系列の最後の工程の良品を、指示書の完了時にこの在庫へ入れます",
-                ),
-              ),
+              "production.addBranchModal.goodPiecesFromTheBranchSeries",
             )}
             disabled={isEdit && !editTarget.canEditTermination}
-            label={tr("入庫先")}
+            label={tr("production.addBranchModal.receivingLocation")}
             onChange={(v) => setStockKind((v as StockKind) ?? "SEMI_FINISHED")}
             value={stockKind}
             withAsterisk
@@ -262,20 +265,15 @@ export function AddBranchModal({
         )}
         {terminationKind === "MERGE" && mergeTargetStepId == null && (
           <Alert color="orange" variant="light">
-            {tr(
-              tr(
-                tr(
-                  "合流先を選ぶか、「在庫へ」を選んでください。分岐は必ず合流か在庫で\n            終わります。",
-                ),
-              ),
-            )}
+            {tr("production.addBranchModal.chooseAMergeTargetOrTo")}
           </Alert>
         )}
 
         <Text c="dimmed" size="xs">
           分岐元の完了後に、指定数量を追加工程の系列へ流します。系列内の
           受入数は前工程の良品数に自動で追従します。
-          {isEdit && tr("工程の入れ替えは、分岐を削除して作り直してください。")}
+          {isEdit &&
+            tr("production.addBranchModal.toReorderStepsDeleteTheBranch")}
         </Text>
       </Stack>
     </ModalShell>

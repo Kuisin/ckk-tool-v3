@@ -13,8 +13,8 @@ import { Group, NavLink, Stack, Text, TextInput } from "@mantine/core";
 import { IconSearch } from "@tabler/icons-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { type ReactNode, useState } from "react";
-import { useTr } from "@/hooks/useTr";
 
 export type MasterNavItem = {
   href: string;
@@ -47,7 +47,7 @@ export function MasterListNav({
   /** 全セクションが空（絞り込み含む）のときの文言。 */
   emptyMessage?: string;
 }) {
-  const tr = useTr();
+  const tr = useTranslations();
   const pathname = usePathname();
   const [query, setQuery] = useState("");
   const q = query.trim().toLowerCase();
@@ -70,7 +70,7 @@ export function MasterListNav({
       {toolbar && <Group gap="xs">{toolbar}</Group>}
       {searchable && (
         <TextInput
-          aria-label={tr("絞り込み")}
+          aria-label={tr("ui.masterListNav.filter")}
           leftSection={<IconSearch size={14} />}
           onChange={(e) => setQuery(e.currentTarget.value)}
           placeholder={searchPlaceholder}

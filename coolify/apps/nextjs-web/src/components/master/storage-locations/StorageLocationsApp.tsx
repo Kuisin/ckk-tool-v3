@@ -20,6 +20,7 @@ import {
 } from "@mantine/core";
 import { IconMapPin, IconPackages, IconSearch } from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { useState } from "react";
 import type { PlantFloorMapRef } from "@/components/master/plants/FloorMapsPanel";
 import { ActiveBadge } from "@/components/ui/ActiveBadge";
@@ -27,7 +28,6 @@ import { CreateButton } from "@/components/ui/buttons";
 import { type Column, DataTable } from "@/components/ui/DataTable";
 import { DocNumber } from "@/components/ui/DocNumber";
 import { ListShell } from "@/components/ui/shells";
-import { useTr } from "@/hooks/useTr";
 import { useUrlPatcher, useUrlStringState } from "@/hooks/useUrlState";
 import { useIsMobile } from "@/hooks/useViewport";
 import { type FloorMapOption, LocationModal } from "./LocationModal";
@@ -70,7 +70,7 @@ export function StorageLocationsApp({
     floorMaps: PlantFloorMapRef[];
   } | null;
 }) {
-  const tr = useTr();
+  const tr = useTranslations();
   const isMobile = useIsMobile();
   const router = useRouter();
   // 拠点選択はサーバー再取得が必要 → server モードで URL に反映
@@ -119,14 +119,14 @@ export function StorageLocationsApp({
     },
     {
       key: "name",
-      header: tr("名称"),
+      header: tr("common.name2"),
       sortable: true,
       sortValue: (r) => r.nameJa,
       render: (r) => r.nameJa,
     },
     {
       key: "shelfCount",
-      header: tr("棚数"),
+      header: tr("master.storageLocations.shelves"),
       sortable: true,
       width: 90,
       sortValue: (r) => r.shelfCount,
@@ -138,7 +138,7 @@ export function StorageLocationsApp({
     },
     {
       key: "placed",
-      header: tr("マップ配置"),
+      header: tr("master.storageLocations.placeOnTheMap"),
       sortable: true,
       hideable: true,
       width: 110,
@@ -151,7 +151,7 @@ export function StorageLocationsApp({
             size="xs"
             variant="light"
           >
-            {tr("配置済")}
+            {tr("master.storageLocations.placed")}
           </Badge>
         ) : (
           <Text c="dimmed" size="sm">
@@ -161,7 +161,7 @@ export function StorageLocationsApp({
     },
     {
       key: "isActive",
-      header: tr("状態"),
+      header: tr("common.status"),
       sortable: true,
       width: 90,
       sortValue: (r) => (r.isActive ? 1 : 0),
@@ -174,17 +174,17 @@ export function StorageLocationsApp({
       action={
         selected ? undefined : (
           <CreateButton onClick={() => setCreateOpen(true)}>
-            {isMobile ? "新規" : tr("新規作成")}
+            {isMobile ? "新規" : tr("common.new2")}
           </CreateButton>
         )
       }
-      breadcrumbs={[tr("マスタ"), tr("保管場所")]}
+      breadcrumbs={[tr("common.masterData"), tr("common.storageLocations")]}
       filters={
         <Select
           clearable
           data={plantOptions}
           onChange={setPlant}
-          placeholder={tr("拠点を選択して管理")}
+          placeholder={tr("master.storageLocations.selectASiteToManage")}
           searchable
           value={selected ? String(selected.plantId) : null}
           w={isMobile ? 180 : 240}
@@ -196,12 +196,12 @@ export function StorageLocationsApp({
           <TextInput
             leftSection={<IconSearch size={14} />}
             onChange={(e) => setSearch(e.currentTarget.value)}
-            placeholder={tr("コード・名称・拠点で検索")}
+            placeholder={tr("master.storageLocations.searchByCodeNameOrSite")}
             value={search}
           />
         )
       }
-      title={tr("保管場所")}
+      title={tr("common.storageLocations")}
     >
       {selected ? (
         <StorageLocationsPanel
@@ -217,7 +217,9 @@ export function StorageLocationsApp({
           data={filtered}
           defaultSort={{ key: "plant", dir: "asc" }}
           emptyIcon={<IconPackages size={24} />}
-          emptyMessage={tr("保管場所がありません（拠点を選択して追加）")}
+          emptyMessage={tr(
+            "master.storageLocations.thereAreNoStorageLocationsChoose",
+          )}
           getRowId={(r) => String(r.id)}
           onRowClick={(r) => setPlant(String(r.plantId))}
           renderCard={(r) => (

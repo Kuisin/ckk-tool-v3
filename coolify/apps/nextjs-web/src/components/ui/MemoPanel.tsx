@@ -48,6 +48,7 @@ import {
 } from "@tabler/icons-react";
 import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { useState, useTransition } from "react";
 import { useFormat } from "@/components/layout/PreferencesProvider";
 import { PrimaryButton, SecondaryButton } from "@/components/ui/buttons";
@@ -56,10 +57,9 @@ import { MemoHistoryModal } from "@/components/ui/MemoHistoryModal";
 import { openConfirm } from "@/components/ui/modals";
 import { RichTextView } from "@/components/ui/RichTextView";
 import { UserAvatar } from "@/components/ui/UserAvatar";
-import { useTr } from "@/hooks/useTr";
 import type { MemoView } from "@/lib/document-memos";
+import type { Tr } from "@/lib/i18n";
 import { emptyDoc, isEmptyDoc, type RichTextDoc } from "@/lib/rich-text-core";
-import type { Translate } from "@/lib/ui-text";
 import {
   deleteMemoAction,
   saveMemoAction,
@@ -88,15 +88,15 @@ export function MemoPanel(props: MemoPanelProps) {
 
 /** 失敗は赤トースト。成功したら true。 */
 function notifyResult(
-  tr: Translate,
+  tr: Tr,
   result: { ok: true } | { ok: false; error: string },
   successTitle: string,
   successMessage: string,
 ): boolean {
   if (!result.ok) {
     notifications.show({
-      title: tr("エラー"),
-      message: tr(result.error),
+      title: tr("common.error2"),
+      message: result.error,
       color: "red",
     });
     return false;
@@ -112,7 +112,7 @@ function notifyResult(
 // ── 共有メモ（1 文書 1 件） ─────────────────────────────────────────────
 
 function MemoBlock({ ownerType, ownerId, memos }: MemoPanelProps) {
-  const tr = useTr();
+  const tr = useTranslations();
   const fmt = useFormat();
   const router = useRouter();
   const existing = memos[0];
@@ -131,7 +131,12 @@ function MemoBlock({ ownerType, ownerId, memos }: MemoPanelProps) {
         content: draft,
       });
       if (
-        !notifyResult(tr, result, tr("保存しました"), tr("メモを更新しました"))
+        !notifyResult(
+          tr,
+          result,
+          tr("common.saved2"),
+          tr("ui.memoPanel.theMemoWasUpdated"),
+        )
       )
         return;
       setEditing(false);
@@ -158,7 +163,7 @@ function MemoBlock({ ownerType, ownerId, memos }: MemoPanelProps) {
             loading={pending}
             onClick={save}
           >
-            {tr("保存")}
+            {tr("common.save2")}
           </PrimaryButton>
         </Group>
       </Stack>
@@ -171,9 +176,9 @@ function MemoBlock({ ownerType, ownerId, memos }: MemoPanelProps) {
       <Group gap={2} justify="flex-end" wrap="nowrap">
         {existing && (
           <>
-            <Tooltip label={tr("変更履歴")} withArrow>
+            <Tooltip label={tr("common.changeHistory")} withArrow>
               <ActionIcon
-                aria-label={tr("変更履歴")}
+                aria-label={tr("common.changeHistory")}
                 color="gray"
                 onClick={() => setHistoryOpen(true)}
                 size="sm"
@@ -192,9 +197,9 @@ function MemoBlock({ ownerType, ownerId, memos }: MemoPanelProps) {
         )}
         {(existing?.canEdit ?? true) &&
           (existing ? (
-            <Tooltip label={tr("編集")} withArrow>
+            <Tooltip label={tr("common.edit2")} withArrow>
               <ActionIcon
-                aria-label={tr("編集")}
+                aria-label={tr("common.edit2")}
                 color="gray"
                 onClick={() => setEditing(true)}
                 size="sm"
@@ -205,7 +210,7 @@ function MemoBlock({ ownerType, ownerId, memos }: MemoPanelProps) {
             </Tooltip>
           ) : (
             <SecondaryButton onClick={() => setEditing(true)}>
-              {tr("メモを追加")}
+              {tr("ui.memoPanel.addAMemo")}
             </SecondaryButton>
           ))}
       </Group>
@@ -227,7 +232,7 @@ function MemoBlock({ ownerType, ownerId, memos }: MemoPanelProps) {
       ) : (
         <EmptyState
           icon={<IconNote size={24} />}
-          message={tr("メモはまだありません")}
+          message={tr("ui.memoPanel.thereAreNoMemosYet")}
         />
       )}
     </Stack>
@@ -237,7 +242,7 @@ function MemoBlock({ ownerType, ownerId, memos }: MemoPanelProps) {
 // ── コメントスレッド（新しい順） ─────────────────────────────────────────
 
 function CommentThread({ ownerType, ownerId, memos }: MemoPanelProps) {
-  const tr = useTr();
+  const tr = useTranslations();
   const router = useRouter();
   const [draft, setDraft] = useState<RichTextDoc>(emptyDoc());
   // 投稿フォームを再マウントして中身を空に戻すためのキー。
@@ -257,8 +262,8 @@ function CommentThread({ ownerType, ownerId, memos }: MemoPanelProps) {
         !notifyResult(
           tr,
           result,
-          tr("投稿しました"),
-          tr("コメントを追加しました"),
+          tr("ui.memoPanel.posted"),
+          tr("ui.memoPanel.theCommentWasAdded"),
         )
       )
         return;
@@ -280,8 +285,8 @@ function CommentThread({ ownerType, ownerId, memos }: MemoPanelProps) {
         !notifyResult(
           tr,
           result,
-          tr("保存しました"),
-          tr("コメントを更新しました"),
+          tr("common.saved2"),
+          tr("ui.memoPanel.theCommentWasUpdated"),
         )
       )
         return;
@@ -298,10 +303,10 @@ function CommentThread({ ownerType, ownerId, memos }: MemoPanelProps) {
         !notifyResult(
           tr,
           result,
-          archiving ? "アーカイブしました" : tr("復元しました"),
+          archiving ? "アーカイブしました" : tr("ui.memoPanel.restored"),
           archiving
-            ? tr("コメントを折りたたみました")
-            : tr("コメントを通常表示に戻しました"),
+            ? tr("ui.memoPanel.theCommentWasCollapsed")
+            : tr("ui.memoPanel.theCommentWasExpandedAgain"),
         )
       ) {
         return;
@@ -312,14 +317,8 @@ function CommentThread({ ownerType, ownerId, memos }: MemoPanelProps) {
 
   const remove = (id: string) => {
     openConfirm({
-      title: tr("コメントの削除"),
-      message: tr(
-        tr(
-          tr(
-            "このコメントを完全に削除します。この操作は取り消せません。残したまま畳むだけならアーカイブを使ってください。",
-          ),
-        ),
-      ),
+      title: tr("ui.memoPanel.deleteTheComment"),
+      message: tr("ui.memoPanel.deletesThisCommentCompletelyThisCannot"),
       confirmLabel: "削除",
       onConfirm: () =>
         start(async () => {
@@ -328,8 +327,8 @@ function CommentThread({ ownerType, ownerId, memos }: MemoPanelProps) {
             !notifyResult(
               tr,
               result,
-              tr("削除しました"),
-              tr("コメントを削除しました"),
+              tr("common.deleted"),
+              tr("ui.memoPanel.theCommentWasDeleted"),
             )
           ) {
             return;
@@ -355,7 +354,7 @@ function CommentThread({ ownerType, ownerId, memos }: MemoPanelProps) {
               loading={pending}
               onClick={post}
             >
-              {tr("投稿")}
+              {tr("ui.memoPanel.post")}
             </PrimaryButton>
           </Group>
         </Stack>
@@ -364,7 +363,7 @@ function CommentThread({ ownerType, ownerId, memos }: MemoPanelProps) {
       {memos.length === 0 ? (
         <EmptyState
           icon={<IconMessage2 size={24} />}
-          message={tr("コメントはまだありません")}
+          message={tr("ui.memoPanel.thereAreNoCommentsYet")}
         />
       ) : (
         <Stack gap={0}>
@@ -422,7 +421,7 @@ function CommentRow({
   onToggleArchive: () => void;
   onDelete: () => void;
 }) {
-  const tr = useTr();
+  const tr = useTranslations();
   const fmt = useFormat();
   const archived = memo.archivedAt !== null;
   // アーカイブ済みは既定で畳む。展開状態は行ごとに保持する。
@@ -435,7 +434,7 @@ function CommentRow({
         <Group align="center" gap="xs" style={{ minWidth: 0 }} wrap="nowrap">
           {archived && (
             <ActionIcon
-              aria-label={open ? "折りたたむ" : tr("展開する")}
+              aria-label={open ? "折りたたむ" : tr("common.expand")}
               color="gray"
               onClick={() => setOpen((v) => !v)}
               size="sm"
@@ -458,7 +457,7 @@ function CommentRow({
           </Text>
           <Text c="dimmed" size="xs" style={{ whiteSpace: "nowrap" }}>
             {fmt.dateTime(memo.createdAt)}
-            {memo.updatedAt !== memo.createdAt && tr("（編集済み）")}
+            {memo.updatedAt !== memo.createdAt && tr("ui.memoPanel.edited")}
           </Text>
           {archived && (
             <Text c="dimmed" size="xs" style={{ whiteSpace: "nowrap" }}>
@@ -471,9 +470,9 @@ function CommentRow({
         {!editing && (
           <Group gap={2} wrap="nowrap">
             {/* 履歴は「読める人なら誰でも」— 書き換えの証跡なので閲覧を絞らない。 */}
-            <Tooltip label={tr("変更履歴")} withArrow>
+            <Tooltip label={tr("common.changeHistory")} withArrow>
               <ActionIcon
-                aria-label={tr("変更履歴")}
+                aria-label={tr("common.changeHistory")}
                 color="gray"
                 onClick={() => setHistoryOpen(true)}
                 size="sm"
@@ -489,9 +488,9 @@ function CommentRow({
               ownerType={ownerType}
             />
             {memo.canEdit && !archived && (
-              <Tooltip label={tr("編集")} withArrow>
+              <Tooltip label={tr("common.edit2")} withArrow>
                 <ActionIcon
-                  aria-label={tr("編集")}
+                  aria-label={tr("common.edit2")}
                   color="gray"
                   disabled={pending}
                   onClick={onStartEdit}
@@ -503,9 +502,12 @@ function CommentRow({
               </Tooltip>
             )}
             {memo.canArchive && (
-              <Tooltip label={archived ? "復元" : tr("アーカイブ")} withArrow>
+              <Tooltip
+                label={archived ? "復元" : tr("common.archived2")}
+                withArrow
+              >
                 <ActionIcon
-                  aria-label={archived ? "復元" : tr("アーカイブ")}
+                  aria-label={archived ? "復元" : tr("common.archived2")}
                   color="gray"
                   disabled={pending}
                   onClick={onToggleArchive}
@@ -550,7 +552,7 @@ function CommentRow({
               loading={pending}
               onClick={onSaveEdit}
             >
-              {tr("保存")}
+              {tr("common.save2")}
             </PrimaryButton>
           </Group>
         </Stack>

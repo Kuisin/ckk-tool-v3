@@ -8,6 +8,7 @@ import { Stack } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
 import { IconTrash } from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { useTransition } from "react";
 import type { BranchDetail as BranchDetailData } from "@/app/(dashboard)/master/_shared/bp-data";
 import { BP_BASE_PATH } from "@/app/(dashboard)/master/_shared/bp-paths";
@@ -20,10 +21,9 @@ import { DocNumber } from "@/components/ui/DocNumber";
 import { FieldValue } from "@/components/ui/FieldValue";
 import { openConfirm } from "@/components/ui/modals";
 import { DetailShell, ResourceActions } from "@/components/ui/shells";
-import { useTr } from "@/hooks/useTr";
 
 export function BranchDetail({ record }: { record: BranchDetailData }) {
-  const tr = useTr();
+  const tr = useTranslations();
   const fmt = useFormat();
   const router = useRouter();
   const [, startTransition] = useTransition();
@@ -31,23 +31,23 @@ export function BranchDetail({ record }: { record: BranchDetailData }) {
 
   const handleDelete = () => {
     openConfirm({
-      title: tr("支店の削除"),
+      title: tr("master.bp.deleteTheBranch"),
       message: `支店「${record.nameJa}（${record.bpCode}）」を削除します。この操作は取り消せません。`,
-      confirmLabel: tr("削除する"),
+      confirmLabel: tr("common.delete2"),
       onConfirm: () => {
         startTransition(async () => {
           const result = await deleteBranch(record.parentId, record.id);
           if (result.ok) {
             notifications.show({
-              title: tr("削除しました"),
+              title: tr("common.deleted"),
               message: `支店「${record.nameJa}」を削除しました`,
               color: "green",
             });
             router.push(parentPath);
           } else {
             notifications.show({
-              title: tr("エラー"),
-              message: tr(result.error),
+              title: tr("common.error2"),
+              message: result.error,
               color: "red",
             });
           }
@@ -72,8 +72,8 @@ export function BranchDetail({ record }: { record: BranchDetailData }) {
         />
       }
       breadcrumbs={[
-        tr("マスタ"),
-        { label: tr("取引先"), href: BP_BASE_PATH },
+        tr("common.masterData"),
+        { label: tr("common.businessPartners"), href: BP_BASE_PATH },
         { label: record.parentName, href: parentPath },
         record.bpCode,
       ]}
@@ -85,7 +85,7 @@ export function BranchDetail({ record }: { record: BranchDetailData }) {
       <BpBaseSummary
         extra={
           <FieldValue
-            label={tr("親法人")}
+            label={tr("master.bp.parentCompany")}
             value={
               <DocNumber c="blue">
                 {record.parentBpCode}（{record.parentName}）
@@ -104,7 +104,7 @@ export function BranchDetail({ record }: { record: BranchDetailData }) {
         />
       </Stack>
 
-      <FieldValue label={tr("備考")} value={record.notes || "—"} />
+      <FieldValue label={tr("common.notes")} value={record.notes || "—"} />
     </DetailShell>
   );
 }

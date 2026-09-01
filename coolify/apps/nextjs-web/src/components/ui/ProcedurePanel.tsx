@@ -36,7 +36,7 @@ import {
 } from "@mantine/core";
 import { IconBan } from "@tabler/icons-react";
 import Link from "next/link";
-import { useTr } from "@/hooks/useTr";
+import { useTranslations } from "next-intl";
 import { useIsMobile } from "@/hooks/useViewport";
 import {
   type ApprovalPhase,
@@ -121,7 +121,7 @@ function LinkGroups({
   heading: string;
   groups: HandoffGroup[];
 }) {
-  const tr = useTr();
+  const tr = useTranslations();
   return (
     <Stack gap="sm" mt="md">
       <Text c="dimmed" fw={600} size="sm">
@@ -153,7 +153,7 @@ function LinkGroups({
                       size="sm"
                       variant="light"
                     >
-                      {it.done ? "済" : tr("未")}
+                      {it.done ? "済" : tr("ui.procedurePanel.notYet")}
                     </Badge>
                   )}
                   {it.href ? (
@@ -206,7 +206,7 @@ export function ProcedurePanel({
   /** 追加コンテンツ（承認記録・操作履歴など）。 */
   children?: React.ReactNode;
 }) {
-  const tr = useTr();
+  const tr = useTranslations();
   const isMobile = useIsMobile();
   return (
     <Paper p="md" radius="md" withBorder>
@@ -219,15 +219,19 @@ export function ProcedurePanel({
           color="red"
           icon={<IconBan size={16} />}
           mb="md"
-          title={tr("キャンセル済み")}
+          title={tr("ui.procedurePanel.cancelled")}
           variant="light"
         >
-          {cancelledNote ?? tr("この書類はキャンセルされています。")}
+          {cancelledNote ??
+            tr("ui.procedurePanel.thisDocumentHasBeenCancelled")}
         </Alert>
       )}
 
       {sourceGroups && sourceGroups.length > 0 && (
-        <LinkGroups groups={sourceGroups} heading={tr("前の書類から")} />
+        <LinkGroups
+          groups={sourceGroups}
+          heading={tr("ui.procedurePanel.from")}
+        />
       )}
 
       <Stepper
@@ -248,7 +252,10 @@ export function ProcedurePanel({
       </Stepper>
 
       {handoffGroups && handoffGroups.length > 0 && (
-        <LinkGroups groups={handoffGroups} heading={tr("次の書類へ")} />
+        <LinkGroups
+          groups={handoffGroups}
+          heading={tr("ui.procedurePanel.to")}
+        />
       )}
 
       {children}
