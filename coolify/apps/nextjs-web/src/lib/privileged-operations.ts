@@ -247,7 +247,7 @@ export const PRIVILEGED_OPERATIONS: readonly PrivilegedOperation[] = [
     key: "kiosk_device.unlink",
     code: "kiosk_device",
     action: "UPDATE",
-    label: { ja: "リンク解除", en: "Unlink a device", zh: "解除绑定" },
+    label: { ja: "リンク解除", en: "Unlink", zh: "解除关联" },
     description: {
       ja: "端末トークン・セッション・アテステーション鍵を破棄してプロファイルを空に戻す。名称と拠点は残る",
       en: "Destroys the device token, sessions and attestation key, reopening the profile.",
