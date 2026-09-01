@@ -11,6 +11,7 @@ import { Box, Group, Text, UnstyledButton } from "@mantine/core";
 import { IconChevronRight, IconWand } from "@tabler/icons-react";
 import { useMemo, useRef, useState } from "react";
 import { GhostButton } from "@/components/ui/buttons";
+import { useTr } from "@/hooks/useTr";
 import { formatExpression, highlightExpression } from "@/lib/js-highlight";
 
 export interface VariableGroup {
@@ -38,6 +39,7 @@ export function CodeExpressionEditor({
   variables?: VariableGroup[];
   minRows?: number;
 }) {
+  const tr = useTr();
   const ref = useRef<HTMLTextAreaElement>(null);
   // 変数パレットは既定で折りたたむ（式エディタをすっきり見せる）。
   const [showVars, setShowVars] = useState(false);
@@ -93,7 +95,7 @@ export function CodeExpressionEditor({
                 }}
               />
               <Text c="dimmed" size="xs">
-                利用可能な変数（クリックで挿入）
+                {tr("利用可能な変数（クリックで挿入）")}
               </Text>
             </Group>
           </UnstyledButton>
@@ -136,7 +138,7 @@ export function CodeExpressionEditor({
           onClick={() => onChange(formatExpression(value))}
           size="compact-xs"
         >
-          整形
+          {tr("整形")}
         </GhostButton>
       </Group>
 

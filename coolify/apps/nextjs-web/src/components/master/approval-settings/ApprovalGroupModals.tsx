@@ -34,6 +34,7 @@ import {
   ModalShell,
 } from "@/components/ui/modals";
 import { SearchSelect } from "@/components/ui/SearchSelect";
+import { useTr } from "@/hooks/useTr";
 import { useIsMobile } from "@/hooks/useViewport";
 import { validateMemberPeriod } from "@/lib/approval-membership";
 import { fieldHelp } from "@/lib/field-help";
@@ -53,10 +54,11 @@ export function DeleteApprovalGroupModal({
   target: ApprovalGroupModalTarget | null;
   onDone?: () => void;
 }) {
+  const tr = useTr();
   const [isPending, startTransition] = useTransition();
   return (
     <ConfirmModal
-      confirmLabel="削除する"
+      confirmLabel={tr("削除する")}
       loading={isPending}
       message={
         target
@@ -70,23 +72,29 @@ export function DeleteApprovalGroupModal({
           const result = await deleteApprovalGroups([target.id]);
           if (result.ok) {
             notifications.show({
-              title: "削除しました",
+              title: tr("削除しました"),
               message: `承認グループ「${target.name}」を削除しました`,
               color: "green",
             });
             onDone?.();
           } else {
             notifications.show({
-              title: "エラー",
-              message: result.error,
+              title: tr("エラー"),
+              message: tr(result.error),
               color: "red",
             });
           }
         });
       }}
       opened={opened}
-      title="承認グループの削除"
-      warning="このグループを参照する承認依頼・代理設定が存在する場合は削除できません。無効化をご検討ください。"
+      title={tr("承認グループの削除")}
+      warning={tr(
+        tr(
+          tr(
+            "このグループを参照する承認依頼・代理設定が存在する場合は削除できません。無効化をご検討ください。",
+          ),
+        ),
+      )}
     />
   );
 }
@@ -100,12 +108,13 @@ export function ToggleApprovalGroupActiveModal({
   target: ApprovalGroupModalTarget | null;
   onDone?: () => void;
 }) {
+  const tr = useTr();
   const [isPending, startTransition] = useTransition();
   const isActive = target?.isActive ?? true;
   return (
     <ConfirmModal
       confirmColor={isActive ? "red" : "blue"}
-      confirmLabel={isActive ? "無効化する" : "有効化する"}
+      confirmLabel={isActive ? "無効化する" : tr("有効化する")}
       loading={isPending}
       message={
         target
@@ -121,22 +130,22 @@ export function ToggleApprovalGroupActiveModal({
           const result = await setApprovalGroupsActive([target.id], !isActive);
           if (result.ok) {
             notifications.show({
-              title: isActive ? "無効化しました" : "有効化しました",
+              title: isActive ? "無効化しました" : tr("有効化しました"),
               message: `承認グループ「${target.name}」を${isActive ? "無効化" : "有効化"}しました`,
               color: "green",
             });
             onDone?.();
           } else {
             notifications.show({
-              title: "エラー",
-              message: result.error,
+              title: tr("エラー"),
+              message: tr(result.error),
               color: "red",
             });
           }
         });
       }}
       opened={opened}
-      title={isActive ? "承認グループの無効化" : "承認グループの有効化"}
+      title={isActive ? "承認グループの無効化" : tr("承認グループの有効化")}
     />
   );
 }
@@ -216,13 +225,14 @@ function MemberPeriodFields({
   period: PeriodDraft;
   onPeriodChange: (v: PeriodDraft) => void;
 }) {
+  const tr = useTr();
   const isMobile = useIsMobile();
   return (
     <Stack gap="sm" mt="sm">
       <SegmentedControl
         data={[
-          { value: "PERMANENT", label: "常任" },
-          { value: "TEMPORARY", label: "期間限定" },
+          { value: "PERMANENT", label: tr("常任") },
+          { value: "TEMPORARY", label: tr("期間限定") },
         ]}
         fullWidth={isMobile}
         onChange={(v) => onKindChange(v as MemberKind)}
@@ -231,8 +241,13 @@ function MemberPeriodFields({
       {kind === "TEMPORARY" && (
         <>
           <Text c="dimmed" size="xs">
-            この期間だけこのグループの一員として承認できます。期間外は承認者に
-            出てきません。
+            {tr(
+              tr(
+                tr(
+                  "この期間だけこのグループの一員として承認できます。期間外は承認者に\n            出てきません。",
+                ),
+              ),
+            )}
           </Text>
           {/* モバイルは縦積み（SimpleGrid 1 列）— 横 2 分割だと日時
               （YYYY/MM/DD HH:mm）が入力欄に収まらない。 */}
@@ -266,12 +281,12 @@ function MemberPeriodFields({
           </SimpleGrid>
           <Textarea
             autosize
-            label="メモ"
+            label={tr("メモ")}
             minRows={2}
             onChange={(e) =>
               onPeriodChange({ ...period, note: e.currentTarget.value })
             }
-            placeholder="期間限定にする理由（任意）"
+            placeholder={tr("期間限定にする理由（任意）")}
             value={period.note}
           />
         </>
@@ -289,6 +304,7 @@ export function AddApprovalGroupMemberModal({
   groupId: number;
   onDone?: () => void;
 }) {
+  const tr = useTr();
   const [isPending, startTransition] = useTransition();
   const [userId, setUserId] = useState<string | null>(null);
   const [userLabel, setUserLabel] = useState("");
@@ -305,14 +321,14 @@ export function AddApprovalGroupMemberModal({
 
   return (
     <ModalShell
-      confirmLabel="追加"
+      confirmLabel={tr("追加")}
       loading={isPending}
       onClose={closeAndReset}
       onConfirm={() => {
         if (!userId) {
           notifications.show({
-            title: "エラー",
-            message: "ユーザーを選択してください",
+            title: tr("エラー"),
+            message: tr("ユーザーを選択してください"),
             color: "red",
           });
           return;
@@ -320,7 +336,7 @@ export function AddApprovalGroupMemberModal({
         const payload = periodPayload(kind, period);
         if (payload.error) {
           notifications.show({
-            title: "エラー",
+            title: tr("エラー"),
             message: payload.error,
             color: "red",
           });
@@ -330,7 +346,7 @@ export function AddApprovalGroupMemberModal({
           const result = await addGroupMember(groupId, userId, payload.value);
           if (result.ok) {
             notifications.show({
-              title: "追加しました",
+              title: tr("追加しました"),
               message: `メンバー「${userLabel}」を追加しました`,
               color: "green",
             });
@@ -338,8 +354,8 @@ export function AddApprovalGroupMemberModal({
             onDone?.();
           } else {
             notifications.show({
-              title: "エラー",
-              message: result.error,
+              title: tr("エラー"),
+              message: tr(result.error),
               color: "red",
             });
           }
@@ -347,16 +363,16 @@ export function AddApprovalGroupMemberModal({
       }}
       opened={opened}
       size="md"
-      title="メンバーの追加"
+      title={tr("メンバーの追加")}
     >
       <SearchSelect
-        label="ユーザー"
+        label={tr("ユーザー")}
         onChange={(value, option) => {
           setUserId(value);
           setUserLabel(option?.label ?? "");
         }}
         onSearch={searchUserOptions}
-        placeholder="氏名・ユーザー名で検索"
+        placeholder={tr("氏名・ユーザー名で検索")}
         storageKey="approval-group-member"
         value={userId}
         withAsterisk
@@ -383,6 +399,7 @@ export function EditMemberPeriodModal({
   target: MemberPeriodTarget | null;
   onDone?: () => void;
 }) {
+  const tr = useTr();
   const [isPending, startTransition] = useTransition();
   const [kind, setKind] = useState<MemberKind>("PERMANENT");
   const [period, setPeriod] = useState<PeriodDraft>(emptyPeriod);
@@ -406,7 +423,7 @@ export function EditMemberPeriodModal({
 
   return (
     <ModalShell
-      confirmLabel="保存"
+      confirmLabel={tr("保存")}
       loading={isPending}
       onClose={close}
       onConfirm={() => {
@@ -414,7 +431,7 @@ export function EditMemberPeriodModal({
         const payload = periodPayload(kind, period);
         if (payload.error) {
           notifications.show({
-            title: "エラー",
+            title: tr("エラー"),
             message: payload.error,
             color: "red",
           });
@@ -428,7 +445,7 @@ export function EditMemberPeriodModal({
           );
           if (result.ok) {
             notifications.show({
-              title: "保存しました",
+              title: tr("保存しました"),
               message: `「${target.displayName}」の在籍期間を更新しました`,
               color: "green",
             });
@@ -436,8 +453,8 @@ export function EditMemberPeriodModal({
             onDone?.();
           } else {
             notifications.show({
-              title: "エラー",
-              message: result.error,
+              title: tr("エラー"),
+              message: tr(result.error),
               color: "red",
             });
           }
@@ -445,7 +462,7 @@ export function EditMemberPeriodModal({
       }}
       opened={opened}
       size="md"
-      title="在籍期間の変更"
+      title={tr("在籍期間の変更")}
     >
       <Text c="dimmed" mb="xs" size="xs">
         {target?.displayName}
@@ -475,6 +492,7 @@ export function AddApprovalDelegateModal({
   memberOptions: { value: string; label: string }[];
   onDone?: () => void;
 }) {
+  const tr = useTr();
   const [isPending, startTransition] = useTransition();
   const [delegatorId, setDelegatorId] = useState<string | null>(null);
   const [delegateId, setDelegateId] = useState<string | null>(null);
@@ -496,22 +514,22 @@ export function AddApprovalDelegateModal({
   };
 
   const validate = (): string | null => {
-    if (!delegatorId) return "原承認者を選択してください";
-    if (!delegateId) return "代理人を選択してください";
+    if (!delegatorId) return tr("原承認者を選択してください");
+    if (!delegateId) return tr("代理人を選択してください");
     if (delegatorId === delegateId) {
-      return "原承認者と代理人は別のユーザーを選択してください";
+      return tr("原承認者と代理人は別のユーザーを選択してください");
     }
-    if (!validFrom) return "開始日を選択してください";
-    if (!validUntil) return "終了日を選択してください";
+    if (!validFrom) return tr("開始日を選択してください");
+    if (!validUntil) return tr("終了日を選択してください");
     if (validFrom > validUntil) {
-      return "終了日は開始日以降の日付を選択してください";
+      return tr("終了日は開始日以降の日付を選択してください");
     }
     return null;
   };
 
   return (
     <ModalShell
-      confirmLabel="追加"
+      confirmLabel={tr("追加")}
       loading={isPending}
       onClose={closeAndReset}
       onConfirm={() => {
@@ -532,7 +550,7 @@ export function AddApprovalDelegateModal({
           });
           if (result.ok) {
             notifications.show({
-              title: "追加しました",
+              title: tr("追加しました"),
               message: `代理人「${delegateLabel}」の代理設定を追加しました`,
               color: "green",
             });
@@ -540,8 +558,8 @@ export function AddApprovalDelegateModal({
             onDone?.();
           } else {
             notifications.show({
-              title: "エラー",
-              message: result.error,
+              title: tr("エラー"),
+              message: tr(result.error),
               color: "red",
             });
           }
@@ -549,54 +567,54 @@ export function AddApprovalDelegateModal({
       }}
       opened={opened}
       size="md"
-      title="代理設定の追加"
+      title={tr("代理設定の追加")}
     >
       <Stack gap="sm">
         <Select
           data={memberOptions}
-          label="原承認者"
+          label={tr("原承認者")}
           onChange={setDelegatorId}
-          placeholder="グループの有効メンバーから選択"
+          placeholder={tr("グループの有効メンバーから選択")}
           searchable
           value={delegatorId}
           withAsterisk
         />
         <SearchSelect
-          label="代理人"
+          label={tr("代理人")}
           onChange={(value, option) => {
             setDelegateId(value);
             setDelegateLabel(option?.label ?? "");
           }}
           onSearch={searchUserOptions}
-          placeholder="氏名・ユーザー名で検索"
+          placeholder={tr("氏名・ユーザー名で検索")}
           storageKey="approval-delegate"
           value={delegateId}
           withAsterisk
         />
         <DatePickerInput
-          label="期間（開始日）"
+          label={tr("期間（開始日）")}
           leftSection={<IconCalendar size={14} />}
           onChange={setValidFrom}
-          placeholder="日付を選択"
+          placeholder={tr("日付を選択")}
           value={validFrom}
           valueFormat="YYYY/MM/DD"
           withAsterisk
         />
         <DatePickerInput
-          label="期間（終了日）"
+          label={tr("期間（終了日）")}
           leftSection={<IconCalendar size={14} />}
           onChange={setValidUntil}
-          placeholder="日付を選択"
+          placeholder={tr("日付を選択")}
           value={validUntil}
           valueFormat="YYYY/MM/DD"
           withAsterisk
         />
         <Textarea
           autosize
-          label="理由"
+          label={tr("理由")}
           minRows={2}
           onChange={(e) => setReason(e.currentTarget.value)}
-          placeholder="出張・休暇など（任意）"
+          placeholder={tr("出張・休暇など（任意）")}
           value={reason}
         />
         {error && (
@@ -627,10 +645,11 @@ export function RemoveApprovalDelegateModal({
   delegate: ApprovalDelegateTarget | null;
   onDone?: () => void;
 }) {
+  const tr = useTr();
   const [isPending, startTransition] = useTransition();
   return (
     <ConfirmModal
-      confirmLabel="削除する"
+      confirmLabel={tr("削除する")}
       loading={isPending}
       message={
         delegate
@@ -644,22 +663,22 @@ export function RemoveApprovalDelegateModal({
           const result = await removeDelegate(groupId, delegate.id);
           if (result.ok) {
             notifications.show({
-              title: "削除しました",
+              title: tr("削除しました"),
               message: `代理人「${delegate.delegateName}」の代理設定を削除しました`,
               color: "green",
             });
             onDone?.();
           } else {
             notifications.show({
-              title: "エラー",
-              message: result.error,
+              title: tr("エラー"),
+              message: tr(result.error),
               color: "red",
             });
           }
         });
       }}
       opened={opened}
-      title="代理設定の削除"
+      title={tr("代理設定の削除")}
     />
   );
 }
@@ -675,10 +694,11 @@ export function RemoveApprovalGroupMemberModal({
   member: ApprovalGroupMemberTarget | null;
   onDone?: () => void;
 }) {
+  const tr = useTr();
   const [isPending, startTransition] = useTransition();
   return (
     <ConfirmModal
-      confirmLabel="削除する"
+      confirmLabel={tr("削除する")}
       loading={isPending}
       message={
         member
@@ -692,22 +712,22 @@ export function RemoveApprovalGroupMemberModal({
           const result = await removeGroupMember(groupId, member.userId);
           if (result.ok) {
             notifications.show({
-              title: "削除しました",
+              title: tr("削除しました"),
               message: `メンバー「${member.displayName}」を削除しました`,
               color: "green",
             });
             onDone?.();
           } else {
             notifications.show({
-              title: "エラー",
-              message: result.error,
+              title: tr("エラー"),
+              message: tr(result.error),
               color: "red",
             });
           }
         });
       }}
       opened={opened}
-      title="メンバーの削除"
+      title={tr("メンバーの削除")}
     />
   );
 }

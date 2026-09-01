@@ -19,6 +19,7 @@ import {
   ApproverPermissionBadge,
   type FlowApprover,
 } from "@/components/master/approval-flows/ApproverPermissionBadge";
+import { useTr } from "@/hooks/useTr";
 import { approvalModeLabel } from "@/lib/enum-labels";
 import type { FormFlowStep } from "./FormApprovalPanel";
 
@@ -33,6 +34,7 @@ export function FormFlowSummary({
   groupOptions: { value: string; label: string }[];
   approversByGroup: Record<string, FlowApprover[]>;
 }) {
+  const tr = useTr();
   const locale = useLocale();
   if (steps.length === 0) {
     return (
@@ -41,14 +43,22 @@ export function FormFlowSummary({
         icon={<IconAlertTriangle size={16} />}
       >
         {approvalEnabled
-          ? "承認の段がまだありません。このままだと提出しても承認依頼が始まらず、回答は「提出済」で止まります。「編集」から段を追加してください。"
-          : "承認の段はまだありません。"}
+          ? tr(
+              tr(
+                tr(
+                  "承認の段がまだありません。このままだと提出しても承認依頼が始まらず、回答は「提出済」で止まります。「編集」から段を追加してください。",
+                ),
+              ),
+            )
+          : tr("承認の段はまだありません。")}
       </Alert>
     );
   }
 
   const groupLabel = (id: string | null) =>
-    id ? (groupOptions.find((o) => o.value === id)?.label ?? "（不明）") : null;
+    id
+      ? (groupOptions.find((o) => o.value === id)?.label ?? tr("（不明）"))
+      : null;
 
   return (
     <Stack gap="xs">
@@ -66,7 +76,7 @@ export function FormFlowSummary({
         const target = step.groupId
           ? groupLabel(step.groupId)
           : (step.approvers ?? []).map((a) => a.label).join("、") ||
-            "承認者が未設定";
+            tr("承認者が未設定");
         return (
           <Paper
             // 段は並び順そのものが同一性（保存のたびに作り直される）。

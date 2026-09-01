@@ -43,6 +43,7 @@ import { updateDisplay } from "@/app/(dashboard)/settings/kiosk-devices/displays
 import { SecondaryButton } from "@/components/ui/buttons";
 import { FieldValue } from "@/components/ui/FieldValue";
 import { FormActions, SummaryGrid } from "@/components/ui/shells";
+import { useTr } from "@/hooks/useTr";
 import type { ImageFit } from "@/lib/display-content";
 import { uploadDisplayImage } from "@/lib/display-image-client";
 import {
@@ -83,6 +84,7 @@ function initialOptions(
 }
 
 export function DisplayContentEditor({ display, plantOptions, onDone }: Props) {
+  const tr = useTr();
   const router = useRouter();
   const [pending, startTransition] = useTransition();
 
@@ -129,13 +131,13 @@ export function DisplayContentEditor({ display, plantOptions, onDone }: Props) {
       const result = await uploadDisplayImage(display.id, file);
       if (!result.ok) {
         notifications.show({
-          title: "エラー",
-          message: result.error ?? "画像の保存に失敗しました",
+          title: tr("エラー"),
+          message: result.error ?? tr("画像の保存に失敗しました"),
           color: "red",
         });
         return;
       }
-      notifications.show({ message: "画像を設定しました", color: "green" });
+      notifications.show({ message: tr("画像を設定しました"), color: "green" });
       router.refresh();
       onDone();
     });
@@ -162,8 +164,8 @@ export function DisplayContentEditor({ display, plantOptions, onDone }: Props) {
       });
       if (!result.ok) {
         notifications.show({
-          title: "エラー",
-          message: result.error ?? "保存に失敗しました",
+          title: tr("エラー"),
+          message: result.error ?? tr("保存に失敗しました"),
           color: "red",
         });
         return;
@@ -186,13 +188,13 @@ export function DisplayContentEditor({ display, plantOptions, onDone }: Props) {
       });
       if (!result.ok) {
         notifications.show({
-          title: "エラー",
-          message: result.error ?? "保存に失敗しました",
+          title: tr("エラー"),
+          message: result.error ?? tr("保存に失敗しました"),
           color: "red",
         });
         return;
       }
-      notifications.show({ message: "保存しました", color: "green" });
+      notifications.show({ message: tr("保存しました"), color: "green" });
       router.refresh();
       onDone();
     });
@@ -203,11 +205,11 @@ export function DisplayContentEditor({ display, plantOptions, onDone }: Props) {
           Paper の中に置かれているので、節ごとに Paper を足すとカードが
           入れ子になり、さらにテンプレートの見本カードで 3 枚重なる。
           見出しだけの軽い節にする。 */}
-      <Section title="映すもの">
+      <Section title={tr("映すもの")}>
         <SegmentedControl
           data={[
-            { value: "APP_PAGE", label: "アプリの画面" },
-            { value: "IMAGE", label: "画像" },
+            { value: "APP_PAGE", label: tr("アプリの画面") },
+            { value: "IMAGE", label: tr("画像") },
           ]}
           onChange={(v) => setMode(v as "APP_PAGE" | "IMAGE")}
           value={mode}
@@ -215,7 +217,7 @@ export function DisplayContentEditor({ display, plantOptions, onDone }: Props) {
       </Section>
 
       {mode === "IMAGE" && (
-        <Section title="画像">
+        <Section title={tr("画像")}>
           <ImageContent
             display={display}
             fit={fit}
@@ -227,7 +229,7 @@ export function DisplayContentEditor({ display, plantOptions, onDone }: Props) {
       )}
 
       {mode === "APP_PAGE" && (
-        <Section title="映す画面">
+        <Section title={tr("映す画面")}>
           <TemplatePicker onChange={pickTemplate} value={templateKey} />
         </Section>
       )}
@@ -250,8 +252,10 @@ export function DisplayContentEditor({ display, plantOptions, onDone }: Props) {
       {mode === "APP_PAGE" && (
         <Section title="更新">
           <NumberInput
-            description="この間隔で内容を取り直します。0 にすると自動更新しません"
-            label="更新間隔"
+            description={tr(
+              tr("この間隔で内容を取り直します。0 にすると自動更新しません"),
+            )}
+            label={tr("更新間隔")}
             max={86_400}
             min={0}
             onChange={(v) => setRefreshSec(Number(v) || 0)}
@@ -268,7 +272,7 @@ export function DisplayContentEditor({ display, plantOptions, onDone }: Props) {
         <FormActions loading={pending} onCancel={onDone} onSave={save} />
       ) : (
         <FormActions>
-          <SecondaryButton onClick={onDone}>閉じる</SecondaryButton>
+          <SecondaryButton onClick={onDone}>{tr("閉じる")}</SecondaryButton>
         </FormActions>
       )}
     </Stack>
@@ -323,6 +327,7 @@ function ImageContent({
   fit: ImageFit;
   onFitChange: (fit: ImageFit) => void;
 }) {
+  const tr = useTr();
   const current = display.contentType === "IMAGE" ? display.image : null;
   const fitHelp = FIT_CHOICES.find((c) => c.value === fit)?.help;
 
@@ -358,7 +363,13 @@ function ImageContent({
         </Stack>
       ) : (
         <Alert color="gray" variant="light">
-          まだ画像が設定されていません。画像を選ぶと、その場でこの画面に映ります。
+          {tr(
+            tr(
+              tr(
+                "まだ画像が設定されていません。画像を選ぶと、その場でこの画面に映ります。",
+              ),
+            ),
+          )}
         </Alert>
       )}
 
@@ -366,7 +377,7 @@ function ImageContent({
         <Select
           data={FIT_CHOICES.map((c) => ({ value: c.value, label: c.label }))}
           description={fitHelp}
-          label="画面への収め方"
+          label={tr("画面への収め方")}
           onChange={(v) => v && onFitChange(v as ImageFit)}
           value={fit}
         />
@@ -379,12 +390,12 @@ function ImageContent({
         >
           {(props) => (
             <SecondaryButton {...props} loading={pending}>
-              {current ? "画像を差し替える" : "画像を選ぶ"}
+              {current ? "画像を差し替える" : tr("画像を選ぶ")}
             </SecondaryButton>
           )}
         </FileButton>
         <Text c="dimmed" size="xs">
-          PNG / JPG / WEBP / GIF / SVG・10MB まで
+          {tr("PNG / JPG / WEBP / GIF / SVG・10MB まで")}
         </Text>
       </Group>
     </Stack>
@@ -422,6 +433,7 @@ export function DisplayContentView({
   display: DisplayDetail;
   plantOptions: Array<{ value: string; label: string }>;
 }) {
+  const tr = useTr();
   // 画像表示のときはテンプレートではないので、先に分けて出す。
   if (display.contentType === "IMAGE") {
     return display.image ? (
@@ -455,12 +467,12 @@ export function DisplayContentView({
               c.value ===
               ((display.contentConfig as { fit?: unknown } | null)?.fit ??
                 "contain"),
-          )?.label ?? "全体を表示"}
+          )?.label ?? tr("全体を表示")}
         </Text>
       </Stack>
     ) : (
       <Text c="dimmed" size="sm">
-        画像が設定されていません（元のファイルが見つかりません）。
+        {tr("画像が設定されていません（元のファイルが見つかりません）。")}
       </Text>
     );
   }
@@ -477,14 +489,14 @@ export function DisplayContentView({
   if (!template) {
     return (
       <Text c="dimmed" size="sm">
-        映す画面が選ばれていません。「編集」から選んでください。
+        {tr("映す画面が選ばれていません。「編集」から選んでください。")}
       </Text>
     );
   }
 
   return (
     <SummaryGrid cols={2}>
-      <FieldValue label="映す画面" value={template.label} />
+      <FieldValue label={tr("映す画面")} value={template.label} />
       {template.options.map((spec) => (
         <FieldValue
           key={spec.key}
@@ -493,11 +505,11 @@ export function DisplayContentView({
         />
       ))}
       <FieldValue
-        label="更新間隔"
+        label={tr("更新間隔")}
         value={
           display.refreshIntervalSec > 0
             ? `${display.refreshIntervalSec} 秒`
-            : "自動更新しない"
+            : tr("自動更新しない")
         }
       />
     </SummaryGrid>

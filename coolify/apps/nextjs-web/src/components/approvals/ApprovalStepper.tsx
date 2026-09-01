@@ -8,6 +8,7 @@
  */
 
 import { Stepper, Text } from "@mantine/core";
+import { useTr } from "@/hooks/useTr";
 import {
   type ApprovalPhase,
   stepperActive as computeActive,
@@ -29,10 +30,11 @@ export function ApprovalStepper({
   currentStepNo: number;
   phase: ApprovalPhase;
 }) {
+  const tr = useTr();
   if (steps.length === 0) {
     return (
       <Text c="dimmed" size="sm">
-        承認フローが未設定です
+        {tr("承認フローが未設定です")}
       </Text>
     );
   }

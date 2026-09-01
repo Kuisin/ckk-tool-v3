@@ -8,10 +8,12 @@
 import { Anchor, Card, Group, Stack, Text, Title } from "@mantine/core";
 import { listPortalForms } from "@/lib/portal-forms";
 import { requirePortalView } from "@/lib/portal-page";
+import { getTr } from "@/lib/ui-text-server";
 
 export const dynamic = "force-dynamic";
 
 export default async function PortalFormsPage() {
+  const tr = await getTr();
   const gate = await requirePortalView();
   if (!gate.ok) return gate.view;
 
@@ -19,10 +21,10 @@ export default async function PortalFormsPage() {
 
   return (
     <Stack gap="md">
-      <Title order={3}>フォーム</Title>
+      <Title order={3}>{tr("フォーム")}</Title>
       {forms.length === 0 ? (
         <Text c="dimmed" size="sm">
-          共有されているフォームはありません。
+          {tr("共有されているフォームはありません。")}
         </Text>
       ) : (
         forms.map((f) => (

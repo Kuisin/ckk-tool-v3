@@ -26,6 +26,7 @@ import {
   FormShell,
   LocalizedTextInput,
 } from "@/components/ui/shells";
+import { useTr } from "@/hooks/useTr";
 import { useIsMobile } from "@/hooks/useViewport";
 import { fieldHelp, fieldHelpTip } from "@/lib/field-help";
 import { zodResolver } from "@/lib/form";
@@ -43,6 +44,7 @@ const defectTypeSchema = z.object({
 type FormValues = z.infer<typeof defectTypeSchema>;
 
 export function DefectTypeForm() {
+  const tr = useTr();
   const router = useRouter();
   const isMobile = useIsMobile();
   const [isPending, startTransition] = useTransition();
@@ -63,16 +65,16 @@ export function DefectTypeForm() {
       const result = await createDefectType(values);
       if (result.ok) {
         notifications.show({
-          title: "保存しました",
-          message: "不良種類を作成しました",
+          title: tr("保存しました"),
+          message: tr("不良種類を作成しました"),
           color: "green",
         });
         // 詳細ページがないため一覧へ戻る。
         router.push(BASE_PATH);
       } else {
         notifications.show({
-          title: "エラー",
-          message: result.error,
+          title: tr("エラー"),
+          message: tr(result.error),
           color: "red",
         });
       }
@@ -82,32 +84,32 @@ export function DefectTypeForm() {
   return (
     <FormShell
       breadcrumbs={[
-        "マスタ",
+        tr("マスタ"),
         { label: "不良種類", href: BASE_PATH },
-        "新規作成",
+        tr("新規作成"),
       ]}
       isDirty={form.isDirty()}
       isPending={isPending}
       onCancel={() => router.push(BASE_PATH)}
       onSubmit={form.onSubmit(handleSubmit)}
-      title="不良種類 新規作成"
+      title={tr("不良種類 新規作成")}
     >
-      <FormSection title="基本情報">
+      <FormSection title={tr("基本情報")}>
         <SimpleGrid cols={isMobile ? 1 : 2} spacing="sm">
           <TextInput
-            description="不良種類を識別する一意のコード"
+            description={tr("不良種類を識別する一意のコード")}
             label={
               <HelpLabel
                 {...fieldHelp("defectType", "code", { label: "コード" })}
               />
             }
-            placeholder="例: SCRATCH"
+            placeholder={tr("例: SCRATCH")}
             withAsterisk
             {...form.getInputProps("code")}
           />
           <NumberInput
             allowDecimal={false}
-            description="一覧・不良入力での並び順"
+            description={tr("一覧・不良入力での並び順")}
             label={<HelpLabel {...fieldHelp("defectType", "sortOrder")} />}
             min={0}
             {...form.getInputProps("sortOrder")}
@@ -117,7 +119,7 @@ export function DefectTypeForm() {
           <LocalizedTextInput
             help={fieldHelpTip("defectType", "code")}
             jaProps={form.getInputProps("nameJa")}
-            label="名称"
+            label={tr("名称")}
             required
             translationsProps={form.getInputProps("nameTranslations")}
           />

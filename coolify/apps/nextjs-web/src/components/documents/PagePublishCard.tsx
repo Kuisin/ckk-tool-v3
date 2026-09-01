@@ -29,6 +29,7 @@ import {
   RejectButton,
 } from "@/components/ui/buttons";
 import { ModalShell } from "@/components/ui/modals";
+import { useTr } from "@/hooks/useTr";
 
 export function PagePublishCard({
   pageNumber,
@@ -47,6 +48,7 @@ export function PagePublishCard({
   openComments: number;
   hasUnpublishedChanges: boolean;
 }) {
+  const tr = useTr();
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [confirmOpen, setConfirmOpen] = useState(false);
@@ -67,8 +69,8 @@ export function PagePublishCard({
         router.refresh();
       } else {
         notifications.show({
-          title: "エラー",
-          message: r.error ?? "処理に失敗しました",
+          title: tr("エラー"),
+          message: r.error ?? tr("処理に失敗しました"),
           color: "red",
         });
       }
@@ -78,9 +80,9 @@ export function PagePublishCard({
     if (!canApprove) {
       return (
         <ActionCard
-          description="承認されると公開されます。"
+          description={tr("承認されると公開されます。")}
           icon={<IconClock size={20} />}
-          title="公開の承認依頼中"
+          title={tr("公開の承認依頼中")}
           tone="wait"
         />
       );
@@ -99,7 +101,7 @@ export function PagePublishCard({
                         ok: r.ok,
                         error: r.ok ? undefined : r.error,
                       })),
-                    "承認しました",
+                    tr("承認しました"),
                   )
                 }
               />
@@ -109,15 +111,15 @@ export function PagePublishCard({
               />
             </>
           }
-          description="内容を確認して承認または差し戻してください。"
+          description={tr("内容を確認して承認または差し戻してください。")}
           icon={<IconCheck size={20} />}
-          title="あなたの承認依頼中です"
+          title={tr("あなたの承認依頼中です")}
           tone="approve"
         />
         <ModalShell
           confirmColor="red"
           confirmDisabled={!reason.trim()}
-          confirmLabel="差し戻す"
+          confirmLabel={tr("差し戻す")}
           loading={isPending}
           onClose={() => setRejectOpen(false)}
           onConfirm={() =>
@@ -127,14 +129,14 @@ export function PagePublishCard({
                   ok: r.ok,
                   error: r.ok ? undefined : r.error,
                 })),
-              "差し戻しました",
+              tr("差し戻しました"),
             )
           }
           opened={rejectOpen}
           title="差し戻し"
         >
           <Text mb="sm" size="sm">
-            差し戻す理由を入力してください。
+            {tr("差し戻す理由を入力してください。")}
           </Text>
           <Textarea
             autosize
@@ -159,13 +161,13 @@ export function PagePublishCard({
             loading={isPending}
             onClick={() => setConfirmOpen(true)}
           >
-            {approvalRequired ? "公開を申請" : "公開する"}
+            {approvalRequired ? "公開を申請" : tr("公開する")}
           </PrimaryButton>
         }
         description={
           approvalRequired
-            ? "承認されると公開版が入れ替わります。"
-            : "公開版が最新のリビジョンに入れ替わります。"
+            ? tr("承認されると公開版が入れ替わります。")
+            : tr("公開版が最新のリビジョンに入れ替わります。")
         }
         icon={
           openComments > 0 ? (
@@ -174,11 +176,11 @@ export function PagePublishCard({
             <IconSend size={20} />
           )
         }
-        title="公開されていない変更があります"
+        title={tr("公開されていない変更があります")}
         tone="action"
       />
       <ModalShell
-        confirmLabel={approvalRequired ? "申請する" : "公開する"}
+        confirmLabel={approvalRequired ? "申請する" : tr("公開する")}
         loading={isPending}
         onClose={() => setConfirmOpen(false)}
         onConfirm={() =>
@@ -188,16 +190,16 @@ export function PagePublishCard({
                 ok: r.ok,
                 error: r.ok ? undefined : r.error,
               })),
-            approvalRequired ? "公開を申請しました" : "公開しました",
+            approvalRequired ? "公開を申請しました" : tr("公開しました"),
           )
         }
         opened={confirmOpen}
-        title={approvalRequired ? "公開の申請" : "公開の確認"}
+        title={approvalRequired ? "公開の申請" : tr("公開の確認")}
       >
         <Text size="sm">
           {openComments > 0
             ? `未解決のコメントが ${openComments} 件あります。このまま進めますか？`
-            : "最新のリビジョンを公開します。"}
+            : tr("最新のリビジョンを公開します。")}
         </Text>
       </ModalShell>
     </>

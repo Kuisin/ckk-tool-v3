@@ -2,6 +2,7 @@
 
 import { Group, MultiSelect, Pill, Select, Stack, Text } from "@mantine/core";
 import { SearchSelect } from "@/components/ui/SearchSelect";
+import { useTr } from "@/hooks/useTr";
 import type { LookupSource } from "@/lib/form-schema";
 import { recentsKeyFor, searcherFor } from "./lookup-dispatch";
 
@@ -47,6 +48,7 @@ export function ShareConditionEditor({
   onChange: (next: ConditionValue) => void;
   disabled?: boolean;
 }) {
+  const tr = useTr();
   const field = fields.find((f) => f.key === value.fieldKey) ?? null;
 
   const pickField = (key: string | null) =>
@@ -57,8 +59,13 @@ export function ShareConditionEditor({
   if (fields.length === 0) {
     return (
       <Text c="dimmed" size="xs">
-        条件に使える項目がありません（ドロップダウン・複数選択・業務データ検索の
-        項目を作ると使えます）
+        {tr(
+          tr(
+            tr(
+              "条件に使える項目がありません（ドロップダウン・複数選択・業務データ検索の\n        項目を作ると使えます）",
+            ),
+          ),
+        )}
       </Text>
     );
   }
@@ -68,11 +75,11 @@ export function ShareConditionEditor({
       <Select
         clearable
         data={fields.map((f) => ({ value: f.key, label: f.label }))}
-        description="空なら全件見えます"
+        description={tr("空なら全件見えます")}
         disabled={disabled}
-        label="この項目が"
+        label={tr("この項目が")}
         onChange={pickField}
-        placeholder="条件にする項目"
+        placeholder={tr("条件にする項目")}
         value={value.fieldKey}
       />
 
@@ -80,7 +87,7 @@ export function ShareConditionEditor({
         <Stack gap={4}>
           <SearchSelect
             disabled={disabled}
-            label="次のいずれかのとき"
+            label={tr("次のいずれかのとき")}
             onChange={(v, option) => {
               if (!v || value.values.includes(v)) return;
               onChange({
@@ -90,7 +97,7 @@ export function ShareConditionEditor({
               });
             }}
             onSearch={searcherFor(field.lookupSource)}
-            placeholder="検索して追加"
+            placeholder={tr("検索して追加")}
             storageKey={recentsKeyFor(field.lookupSource)}
             value={null}
           />
@@ -118,7 +125,7 @@ export function ShareConditionEditor({
         <MultiSelect
           data={field.options ?? []}
           disabled={disabled}
-          label="次のいずれかのとき"
+          label={tr("次のいずれかのとき")}
           onChange={(vals) =>
             onChange({
               fieldKey: value.fieldKey,
@@ -128,7 +135,7 @@ export function ShareConditionEditor({
               ),
             })
           }
-          placeholder="値を選ぶ"
+          placeholder={tr("値を選ぶ")}
           searchable
           value={value.values}
         />
@@ -136,8 +143,13 @@ export function ShareConditionEditor({
 
       {field && value.values.length === 0 && (
         <Text c="dimmed" size="xs">
-          値を 1
-          つ以上選ぶまで、条件は保存されません（全件見える状態のままです）
+          {tr(
+            tr(
+              tr(
+                "値を 1\n          つ以上選ぶまで、条件は保存されません（全件見える状態のままです）",
+              ),
+            ),
+          )}
         </Text>
       )}
     </Stack>

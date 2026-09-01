@@ -11,6 +11,7 @@ import { Badge, Group, Text } from "@mantine/core";
 import { IconListDetails } from "@tabler/icons-react";
 import { updateProductItemDefs } from "@/app/(dashboard)/settings/actions";
 import { SettingsReorderableList } from "@/components/settings/SettingsReorderableList";
+import { useTr } from "@/hooks/useTr";
 import { PRODUCT_FIELD_TYPES, type ProductItemDef } from "@/lib/product-types";
 
 const BASE = "/settings/product-items";
@@ -19,16 +20,25 @@ const typeLabel = (v: string) =>
   PRODUCT_FIELD_TYPES.find((o) => o.value === v)?.label ?? v;
 
 export function ItemDefsListPanel({ initial }: { initial: ProductItemDef[] }) {
+  const tr = useTr();
   return (
     <SettingsReorderableList
-      addLabel="項目を追加"
+      addLabel={tr("項目を追加")}
       deleteConfirm={(d) => ({
-        title: "項目定義の削除",
+        title: tr("項目定義の削除"),
         message: `「${d.label.ja || d.key}」を削除しますか？種別への割り当ても外れます。`,
       })}
-      description="再利用できる入力項目のライブラリです。製品種別に割り当てて使います。"
+      description={tr(
+        tr(
+          tr(
+            "再利用できる入力項目のライブラリです。製品種別に割り当てて使います。",
+          ),
+        ),
+      )}
       emptyIcon={<IconListDetails size={24} />}
-      emptyMessage="項目がありません。「項目を追加」から作成してください。"
+      emptyMessage={tr(
+        tr("項目がありません。「項目を追加」から作成してください。"),
+      )}
       initial={[...initial].sort((a, b) => a.order - b.order)}
       newHref={`${BASE}/new`}
       persistAction={(next) =>
@@ -49,7 +59,7 @@ export function ItemDefsListPanel({ initial }: { initial: ProductItemDef[] }) {
             </Badge>
             {d.required && (
               <Badge color="red" size="xs" variant="outline">
-                必須
+                {tr("必須")}
               </Badge>
             )}
           </Group>

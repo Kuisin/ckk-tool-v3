@@ -23,6 +23,7 @@ import {
 import { ActionCard } from "@/components/ui/ActionCard";
 import { ApproveButton, RejectButton } from "@/components/ui/buttons";
 import { ModalShell } from "@/components/ui/modals";
+import { useTr } from "@/hooks/useTr";
 import type { ApprovalActionState } from "@/lib/approvals";
 
 export interface PendingFlowChangeView {
@@ -43,6 +44,7 @@ export function FlowChangeCard({
   /** 変更そのものの承認状態（work_order_flow_changes の依頼）。 */
   approval: ApprovalActionState;
 }) {
+  const tr = useTr();
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [rejectOpen, setRejectOpen] = useState(false);
@@ -54,7 +56,7 @@ export function FlowChangeCard({
   const stepLabel =
     approval.stepCount > 0
       ? `${approval.stepLabel || `第${approval.stepNo}承認`}（${approval.stepNo}/${approval.stepCount}）`
-      : "承認依頼中";
+      : tr("承認依頼中");
 
   const handleApprove = () => {
     startTransition(async () => {
@@ -63,19 +65,19 @@ export function FlowChangeCard({
         notifications.show({
           title: result.data?.applied
             ? change.appliedAt != null
-              ? "工程フロー変更を承認しました（適用済み）"
-              : "工程フロー変更を適用しました"
-            : "承認しました",
+              ? tr("工程フロー変更を承認しました（適用済み）")
+              : tr("工程フロー変更を適用しました")
+            : tr("承認しました"),
           message: result.data?.applied
             ? change.summary
-            : "次の承認者へ回りました",
+            : tr("次の承認者へ回りました"),
           color: "green",
         });
         router.refresh();
       } else {
         notifications.show({
-          title: "エラー",
-          message: result.error ?? "承認に失敗しました",
+          title: tr("エラー"),
+          message: result.error ?? tr("承認に失敗しました"),
           color: "red",
         });
       }
@@ -89,18 +91,24 @@ export function FlowChangeCard({
         setRejectOpen(false);
         setReason("");
         notifications.show({
-          title: "差し戻しました",
+          title: tr("差し戻しました"),
           message:
             change.appliedAt != null
-              ? "変更は適用済みです — 工程は自動では戻りません（詳細に警告が出ます）"
-              : "工程は変更されていません",
+              ? tr(
+                  tr(
+                    tr(
+                      "変更は適用済みです — 工程は自動では戻りません（詳細に警告が出ます）",
+                    ),
+                  ),
+                )
+              : tr("工程は変更されていません"),
           color: "orange",
         });
         router.refresh();
       } else {
         notifications.show({
-          title: "エラー",
-          message: result.error ?? "差し戻しに失敗しました",
+          title: tr("エラー"),
+          message: result.error ?? tr("差し戻しに失敗しました"),
           color: "red",
         });
       }
@@ -127,25 +135,33 @@ export function FlowChangeCard({
             : "承認されるまで工程は変わりません。"
         }`}
         icon={<IconGitBranch size={20} />}
-        title={canAct ? "工程フロー変更の承認" : "工程フロー変更の承認依頼中"}
+        title={
+          canAct ? "工程フロー変更の承認" : tr("工程フロー変更の承認依頼中")
+        }
         tone={canAct ? "approve" : "wait"}
       />
       <ModalShell
         confirmColor="red"
         confirmDisabled={!reason.trim()}
-        confirmLabel="差し戻す"
+        confirmLabel={tr("差し戻す")}
         loading={isPending}
         onClose={() => setRejectOpen(false)}
         onConfirm={handleReject}
         opened={rejectOpen}
-        title="工程フロー変更の差し戻し"
+        title={tr("工程フロー変更の差し戻し")}
       >
         <Text size="sm">
-          差し戻すと、この変更は適用されずに閉じます（工程はいまのままです）。
+          {tr(
+            tr(
+              tr(
+                "差し戻すと、この変更は適用されずに閉じます（工程はいまのままです）。",
+              ),
+            ),
+          )}
         </Text>
         <textarea
           onChange={(e) => setReason(e.currentTarget.value)}
-          placeholder="差し戻し理由"
+          placeholder={tr("差し戻し理由")}
           rows={3}
           style={{ width: "100%" }}
           value={reason}

@@ -43,6 +43,7 @@ import {
   FormShell,
   LocalizedTextInput,
 } from "@/components/ui/shells";
+import { useTr } from "@/hooks/useTr";
 import { useIsMobile } from "@/hooks/useViewport";
 import { unitOptions } from "@/lib/enum-labels";
 import { fieldHelp, fieldHelpTip } from "@/lib/field-help";
@@ -134,6 +135,7 @@ export function ProductForm({
   /** 製品項目（SY03）で定義された入力項目ライブラリ。追加項目の候補になる。 */
   itemDefs: ProductItemDef[];
 }) {
+  const tr = useTr();
   const locale = useLocale();
   const router = useRouter();
   const isMobile = useIsMobile();
@@ -213,7 +215,7 @@ export function ProductForm({
       materialTypeLabel: initial?.materialTypeLabel ?? "",
       diameterMm: initial?.diameterMm ?? null,
       lengthMm: initial?.lengthMm ?? null,
-      unit: initial?.unit ?? "本",
+      unit: initial?.unit ?? tr("本"),
       matchNames: initial?.matchNames ?? [],
       isActive: initial?.isActive ?? true,
       notes: initial?.notes ?? "",
@@ -270,19 +272,22 @@ export function ProductForm({
     name: form.values.nameJa || form.values.nameTranslations.en || "",
     code: initial?.code ?? null,
     attributes: [
-      { label: "英語名", value: form.values.nameTranslations.en ?? "" },
-      { label: "材種", value: form.values.materialTypeLabel },
+      { label: tr("英語名"), value: form.values.nameTranslations.en ?? "" },
+      { label: tr("材種"), value: form.values.materialTypeLabel },
       {
-        label: "直径 (mm)",
+        label: tr("直径 (mm)"),
         value:
           form.values.diameterMm != null ? String(form.values.diameterMm) : "",
       },
       {
-        label: "全長 (mm)",
+        label: tr("全長 (mm)"),
         value: form.values.lengthMm != null ? String(form.values.lengthMm) : "",
       },
-      { label: "単位", value: form.values.unit },
-      { label: "製品種別", value: selectedType ? typeLabel(selectedType) : "" },
+      { label: tr("単位"), value: form.values.unit },
+      {
+        label: tr("製品種別"),
+        value: selectedType ? typeLabel(selectedType) : "",
+      },
       ...(selectedType?.items ?? []).map((it) => ({
         label: it.label.ja || it.key,
         value: typeValues[it.key] ?? "",
@@ -291,7 +296,7 @@ export function ProductForm({
         label: defByKey.get(key)?.label.ja || key,
         value: extraValues[key] ?? "",
       })),
-      { label: "備考", value: form.values.notes },
+      { label: tr("備考"), value: form.values.notes },
     ].filter((a) => a.value.trim() !== ""),
   };
 
@@ -306,8 +311,8 @@ export function ProductForm({
       if (Object.keys(errs).length > 0) {
         setTypeErrors(errs);
         notifications.show({
-          title: "入力エラー",
-          message: "製品種別の項目を確認してください",
+          title: tr("入力エラー"),
+          message: tr("製品種別の項目を確認してください"),
           color: "red",
         });
         return;
@@ -324,8 +329,8 @@ export function ProductForm({
     if (Object.keys(exErrs).length > 0) {
       setExtraErrors(exErrs);
       notifications.show({
-        title: "入力エラー",
-        message: "追加項目を確認してください",
+        title: tr("入力エラー"),
+        message: tr("追加項目を確認してください"),
         color: "red",
       });
       return;
@@ -352,15 +357,15 @@ export function ProductForm({
         : await createProduct(payload);
       if (result.ok) {
         notifications.show({
-          title: "保存しました",
-          message: isEdit ? "製品を更新しました" : "製品を作成しました",
+          title: tr("保存しました"),
+          message: isEdit ? "製品を更新しました" : tr("製品を作成しました"),
           color: "green",
         });
         router.push(`${BASE_PATH}/${result.data.id}`);
       } else {
         notifications.show({
-          title: "エラー",
-          message: result.error,
+          title: tr("エラー"),
+          message: tr(result.error),
           color: "red",
         });
       }
@@ -370,9 +375,9 @@ export function ProductForm({
   return (
     <FormShell
       breadcrumbs={[
-        "マスタ",
+        tr("マスタ"),
         { label: "製品", href: BASE_PATH },
-        isEdit ? "編集" : "新規作成",
+        isEdit ? "編集" : tr("新規作成"),
       ]}
       isDirty={form.isDirty()}
       isPending={isPending}
@@ -384,16 +389,16 @@ export function ProductForm({
       title={
         isEdit
           ? `製品 編集 — ${initial.code ?? initial.nameJa}`
-          : "製品 新規作成"
+          : tr("製品 新規作成")
       }
     >
-      <FormSection title="基本情報">
+      <FormSection title={tr("基本情報")}>
         <SimpleGrid cols={isMobile ? 1 : 2} spacing="sm">
           <TextInput
-            description="形式: PRD-YYYYMM-NNNN（自動採番）"
+            description={tr("形式: PRD-YYYYMM-NNNN（自動採番）")}
             disabled
             label={<HelpLabel {...fieldHelp("product", "code")} />}
-            placeholder="保存時に自動採番"
+            placeholder={tr("保存時に自動採番")}
             // 内部 ID ではなく採番済みの製品コードを表示する
             // （レガシー取込の製品はコード未採番なので空欄）。
             value={initial?.code ?? ""}
@@ -409,7 +414,7 @@ export function ProductForm({
           <LocalizedTextInput
             help={fieldHelpTip("product", "name")}
             jaProps={form.getInputProps("nameJa")}
-            label="名称"
+            label={tr("名称")}
             required
             translationsProps={form.getInputProps("nameTranslations")}
           />
@@ -421,7 +426,7 @@ export function ProductForm({
         <Textarea
           label={<HelpLabel {...fieldHelp("product", "notes")} />}
           mt="sm"
-          placeholder="備考・特記事項"
+          placeholder={tr("備考・特記事項")}
           rows={3}
           {...form.getInputProps("notes")}
         />
@@ -436,18 +441,24 @@ export function ProductForm({
       </FormSection>
 
       <FormSection
-        description="製品が要求する素材を「材種 + 直径 + 全長」で指定します。同一材種・直径の素材を全長に合わせて切断して使用します（特定の素材コードには紐付けません）。"
-        title="素材仕様"
+        description={tr(
+          tr(
+            tr(
+              "製品が要求する素材を「材種 + 直径 + 全長」で指定します。同一材種・直径の素材を全長に合わせて切断して使用します（特定の素材コードには紐付けません）。",
+            ),
+          ),
+        )}
+        title={tr("素材仕様")}
       >
         <SearchSelect
-          description="変換済（コード構成あり）の材種のみ選択できます"
+          description={tr("変換済（コード構成あり）の材種のみ選択できます")}
           label={<HelpLabel {...fieldHelp("product", "materialType")} />}
           onChange={(value, option) => {
             form.setFieldValue("materialTypeId", value);
             form.setFieldValue("materialTypeLabel", option?.label ?? "");
           }}
           onSearch={searchStructuredMaterialTypeOptions}
-          placeholder="材種コード・名称で検索"
+          placeholder={tr("材種コード・名称で検索")}
           storageKey="product-material-type"
           value={form.values.materialTypeId}
         />
@@ -464,7 +475,9 @@ export function ProductForm({
             error={form.errors.diameterMm}
             label={
               <HelpLabel
-                {...fieldHelp("product", "dimensions", { label: "直径 (mm)" })}
+                {...fieldHelp("product", "dimensions", {
+                  label: tr("直径 (mm)"),
+                })}
               />
             }
             max={DIAMETER_MAX}
@@ -489,7 +502,9 @@ export function ProductForm({
             error={form.errors.lengthMm}
             label={
               <HelpLabel
-                {...fieldHelp("product", "dimensions", { label: "全長 (mm)" })}
+                {...fieldHelp("product", "dimensions", {
+                  label: tr("全長 (mm)"),
+                })}
               />
             }
             max={LENGTH_MAX}
@@ -507,16 +522,22 @@ export function ProductForm({
 
       {typeOptions.length > 0 && (
         <FormSection
-          description="種別を選ぶと、その種別が予め定義した入力項目が展開されます（製品項目 SY03 で編集）。"
-          title="製品種別"
+          description={tr(
+            tr(
+              tr(
+                "種別を選ぶと、その種別が予め定義した入力項目が展開されます（製品項目 SY03 で編集）。",
+              ),
+            ),
+          )}
+          title={tr("製品種別")}
         >
           <Select
             clearable
             data={typeOptions}
-            description={selectedType?.description || "種別を選択（任意）"}
+            description={selectedType?.description || tr("種別を選択（任意）")}
             label={<HelpLabel {...fieldHelp("product", "productType")} />}
             onChange={onTypeChange}
-            placeholder="種別を選択"
+            placeholder={tr("種別を選択")}
             value={typeId}
           />
           {selectedType && selectedType.items.length > 0 && (
@@ -537,8 +558,14 @@ export function ProductForm({
 
       {(extraKeys.length > 0 || addableOptions.length > 0) && (
         <FormSection
-          description="製品項目（SY03）で定義された項目のみ追加できます。自由なキーは使えません。"
-          title="追加項目"
+          description={tr(
+            tr(
+              tr(
+                "製品項目（SY03）で定義された項目のみ追加できます。自由なキーは使えません。",
+              ),
+            ),
+          )}
+          title={tr("追加項目")}
         >
           {extraKeys.length > 0 && (
             <SimpleGrid cols={isMobile ? 1 : 2} mb="sm" spacing="sm">
@@ -556,7 +583,7 @@ export function ProductForm({
                       />
                     </div>
                     <GhostButton
-                      aria-label="この項目を外す"
+                      aria-label={tr("この項目を外す")}
                       color="red"
                       onClick={() => removeExtra(key)}
                       px={6}
@@ -572,12 +599,12 @@ export function ProductForm({
             clearable
             data={addableOptions}
             disabled={addableOptions.length === 0}
-            label="項目を追加"
+            label={tr("項目を追加")}
             onChange={addExtra}
             placeholder={
               addableOptions.length === 0
-                ? "追加できる項目がありません"
-                : "項目を選択して追加"
+                ? tr("追加できる項目がありません")
+                : tr("項目を選択して追加")
             }
             searchable
             value={null}
@@ -600,6 +627,7 @@ function ProductTypeItemInput({
   error?: string;
   onChange: (v: string) => void;
 }) {
+  const tr = useTr();
   const label = item.label.ja || item.label.en || item.key;
   const common = {
     label,
@@ -638,7 +666,7 @@ function ProductTypeItemInput({
             label: o.label,
           }))}
           onChange={(v) => onChange(v ?? "")}
-          placeholder={item.placeholder ?? "選択"}
+          placeholder={item.placeholder ?? tr("選択")}
           value={value || null}
         />
       );

@@ -29,6 +29,7 @@ import type { OrderAcceptanceDraftInput } from "@/app/(dashboard)/sales/order-ac
 import { GhostButton } from "@/components/ui/buttons";
 import { PRODUCT_F4 } from "@/components/ui/f4-presets";
 import { SearchSelect } from "@/components/ui/SearchSelect";
+import { useTr } from "@/hooks/useTr";
 import { orderTypeOptions } from "@/lib/enum-labels";
 import { formatMoney } from "@/lib/format";
 import { acceptanceTotals } from "@/lib/order-acceptance-totals";
@@ -130,6 +131,7 @@ export function OrderAcceptanceItemsEditor({
   /** 保存済み行の価格照合結果（itemId → 結果）。保存内容に対する照合。 */
   lineChecks?: Record<string, ItemPriceCheck>;
 }) {
+  const tr = useTr();
   const locale = useLocale();
   const patch = (ri: number, p: Partial<ItemRowForm>) => {
     onChange(items.map((r, i) => (i === ri ? { ...r, ...p } : r)));
@@ -151,7 +153,7 @@ export function OrderAcceptanceItemsEditor({
               </Text>
               {!row.productId && (
                 <Badge color="orange" size="xs" variant="light">
-                  製品未特定
+                  {tr("製品未特定")}
                 </Badge>
               )}
               {check?.diff && (
@@ -161,7 +163,7 @@ export function OrderAcceptanceItemsEditor({
               )}
               {check?.unpriced && (
                 <Badge color="gray" size="xs" variant="light">
-                  価格表なし
+                  {tr("価格表なし")}
                 </Badge>
               )}
             </Group>
@@ -191,21 +193,21 @@ export function OrderAcceptanceItemsEditor({
                       })
                     }
                     onSearch={searchProductOptions}
-                    placeholder="製品マスタと突合"
+                    placeholder={tr("製品マスタと突合")}
                     storageKey="product"
                     value={row.productId}
                   />
                   <TextInput
-                    label="品名（抽出テキスト）"
+                    label={tr("品名（抽出テキスト）")}
                     onChange={(e) =>
                       patch(ri, { productText: e.currentTarget.value })
                     }
-                    placeholder="注文書の品名"
+                    placeholder={tr("注文書の品名")}
                     value={row.productText}
                   />
                   <Select
                     data={orderTypeOptions(locale)}
-                    label="種別"
+                    label={tr("種別")}
                     maw={130}
                     onChange={(v) =>
                       patch(ri, { orderType: (v ?? "PRODUCTION") as OrderType })
@@ -214,7 +216,7 @@ export function OrderAcceptanceItemsEditor({
                     withAsterisk
                   />
                   <NumberInput
-                    label="数量"
+                    label={tr("数量")}
                     maw={100}
                     min={1}
                     onChange={(v) =>
@@ -225,13 +227,13 @@ export function OrderAcceptanceItemsEditor({
                   />
                   <NumberInput
                     decimalScale={2}
-                    label="単価"
+                    label={tr("単価")}
                     maw={150}
                     min={0}
                     onChange={(v) =>
                       patch(ri, { unitPrice: typeof v === "number" ? v : null })
                     }
-                    placeholder="未入力可"
+                    placeholder={tr("未入力可")}
                     prefix="¥"
                     thousandSeparator=","
                     value={row.unitPrice ?? ""}
@@ -253,7 +255,7 @@ export function OrderAcceptanceItemsEditor({
                 )}
               </Box>
               <ActionIcon
-                aria-label="明細を削除"
+                aria-label={tr("明細を削除")}
                 color="red"
                 disabled={items.length <= 1}
                 mb={4}
@@ -266,19 +268,19 @@ export function OrderAcceptanceItemsEditor({
             <Group align="flex-end" gap="sm" mt="xs">
               <DatePickerInput
                 clearable
-                label="納期"
+                label={tr("納期")}
                 leftSection={<IconCalendar size={14} />}
                 maw={200}
                 onChange={(v) => patch(ri, { deliveryDate: v })}
-                placeholder="日付を選択"
+                placeholder={tr("日付を選択")}
                 value={row.deliveryDate}
                 valueFormat="YYYY/MM/DD"
               />
               <TextInput
                 flex={1}
-                label="備考"
+                label={tr("備考")}
                 onChange={(e) => patch(ri, { notes: e.currentTarget.value })}
-                placeholder="行の備考（任意）"
+                placeholder={tr("行の備考（任意）")}
                 value={row.notes}
               />
               <Text
@@ -304,7 +306,7 @@ export function OrderAcceptanceItemsEditor({
         onClick={() => onChange([...items, newItemRow()])}
         size="xs"
       >
-        明細を追加
+        {tr("明細を追加")}
       </GhostButton>
 
       {/*
@@ -327,7 +329,7 @@ export function OrderAcceptanceItemsEditor({
         )}
         <Group gap="xs">
           <Text fw={600} size="sm">
-            合計金額
+            {tr("合計金額")}
           </Text>
           <Text className="tabular-nums" ff="mono" fw={700} size="sm">
             {formatMoney(totals.amount)}

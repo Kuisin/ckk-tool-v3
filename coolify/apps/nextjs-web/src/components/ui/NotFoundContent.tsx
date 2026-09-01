@@ -13,8 +13,10 @@ import { IconArrowLeft, IconError404, IconHome } from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { PrimaryButton, SecondaryButton } from "@/components/ui/buttons";
+import { useTr } from "@/hooks/useTr";
 
 export function NotFoundContent() {
+  const tr = useTr();
   const router = useRouter();
   const [canGoBack, setCanGoBack] = useState(false);
 
@@ -29,9 +31,15 @@ export function NotFoundContent() {
         <ThemeIcon color="gray" radius="xl" size={72} variant="light">
           <IconError404 size={40} />
         </ThemeIcon>
-        <Title order={3}>ページが見つかりません</Title>
+        <Title order={3}>{tr("ページが見つかりません")}</Title>
         <Text c="dimmed" size="sm" ta="center">
-          URL が間違っているか、ページが移動・削除された可能性があります。
+          {tr(
+            tr(
+              tr(
+                "URL が間違っているか、ページが移動・削除された可能性があります。",
+              ),
+            ),
+          )}
         </Text>
         <Stack gap="xs" mt="sm" w={240}>
           <PrimaryButton
@@ -39,7 +47,7 @@ export function NotFoundContent() {
             href="/"
             leftSection={<IconHome size={16} />}
           >
-            ホームへ戻る
+            {tr("ホームへ戻る")}
           </PrimaryButton>
           {canGoBack && (
             <SecondaryButton
@@ -47,7 +55,7 @@ export function NotFoundContent() {
               leftSection={<IconArrowLeft size={16} />}
               onClick={() => router.back()}
             >
-              前のページへ戻る
+              {tr("前のページへ戻る")}
             </SecondaryButton>
           )}
         </Stack>

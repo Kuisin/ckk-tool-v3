@@ -3,6 +3,7 @@ import { AiProviderForm } from "@/components/settings/AiProviderForm";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { getAiProviderSettings } from "@/lib/ai-provider";
 import { requireAppRead } from "@/lib/authz-page";
+import { getTr } from "@/lib/ui-text-server";
 
 export const dynamic = "force-dynamic";
 
@@ -19,6 +20,7 @@ export const dynamic = "force-dynamic";
  * ので、クライアントコンポーネントへ渡しても秘密が HTML に載らない。
  */
 export default async function AiProviderSettingsPage() {
+  const tr = await getTr();
   const denied = await requireAppRead("ai-provider");
   if (denied) return denied;
 
@@ -27,8 +29,8 @@ export default async function AiProviderSettingsPage() {
   return (
     <Stack gap="md">
       <PageHeader
-        breadcrumbs={["システム", "AI プロバイダ"]}
-        title="AI プロバイダ"
+        breadcrumbs={[tr("システム"), tr("AI プロバイダ")]}
+        title={tr("AI プロバイダ")}
       />
       <AiProviderForm initial={initial} />
     </Stack>

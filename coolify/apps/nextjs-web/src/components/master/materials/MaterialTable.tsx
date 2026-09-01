@@ -29,6 +29,7 @@ import { DocNumber } from "@/components/ui/DocNumber";
 import { openConfirm } from "@/components/ui/modals";
 import { NewButton } from "@/components/ui/NewButton";
 import { ListShell } from "@/components/ui/shells";
+import { useTr } from "@/hooks/useTr";
 import { useUrlSelectState, useUrlStringState } from "@/hooks/useUrlState";
 import { useIsMobile } from "@/hooks/useViewport";
 import { matchesKeywordQuery } from "@/lib/master-keywords";
@@ -61,6 +62,7 @@ const STATUS_OPTIONS = [
 ];
 
 export function MaterialTable({ rows }: { rows: MaterialRow[] }) {
+  const tr = useTr();
   const router = useRouter();
   const isMobile = useIsMobile();
   const [, startTransition] = useTransition();
@@ -128,15 +130,15 @@ export function MaterialTable({ rows }: { rows: MaterialRow[] }) {
       );
       if (result.ok) {
         notifications.show({
-          title: isActive ? "有効化しました" : "無効化しました",
+          title: isActive ? "有効化しました" : tr("無効化しました"),
           message: `${targets.length}件の素材を${isActive ? "有効化" : "無効化"}しました`,
           color: "green",
         });
         router.refresh();
       } else {
         notifications.show({
-          title: "エラー",
-          message: result.error,
+          title: tr("エラー"),
+          message: tr(result.error),
           color: "red",
         });
       }
@@ -145,23 +147,23 @@ export function MaterialTable({ rows }: { rows: MaterialRow[] }) {
 
   const bulkDelete = (targets: MaterialRow[]) => {
     openConfirm({
-      title: "素材の一括削除",
+      title: tr("素材の一括削除"),
       message: `選択中の${targets.length}件の素材を削除します。この操作は取り消せません。`,
-      confirmLabel: "削除する",
+      confirmLabel: tr("削除する"),
       onConfirm: () => {
         startTransition(async () => {
           const result = await deleteMaterials(targets.map((r) => r.id));
           if (result.ok) {
             notifications.show({
-              title: "削除しました",
+              title: tr("削除しました"),
               message: `${targets.length}件の素材を削除しました`,
               color: "green",
             });
             router.refresh();
           } else {
             notifications.show({
-              title: "エラー",
-              message: result.error,
+              title: tr("エラー"),
+              message: tr(result.error),
               color: "red",
             });
           }
@@ -173,7 +175,7 @@ export function MaterialTable({ rows }: { rows: MaterialRow[] }) {
   const columns: Column<MaterialRow>[] = [
     {
       key: "code",
-      header: "素材コード",
+      header: tr("素材コード"),
       sortable: true,
       width: 200,
       sortValue: (r) => r.code,
@@ -181,7 +183,7 @@ export function MaterialTable({ rows }: { rows: MaterialRow[] }) {
     },
     {
       key: "materialTypeCode",
-      header: "材種",
+      header: tr("材種"),
       sortable: true,
       hideable: true,
       width: 140,
@@ -189,14 +191,14 @@ export function MaterialTable({ rows }: { rows: MaterialRow[] }) {
     },
     {
       key: "name",
-      header: "名称",
+      header: tr("名称"),
       sortable: true,
       sortValue: (r) => r.name,
       render: (r) => r.name,
     },
     {
       key: "diameterMm",
-      header: "直径",
+      header: tr("直径"),
       sortable: true,
       hideable: true,
       width: 90,
@@ -205,7 +207,7 @@ export function MaterialTable({ rows }: { rows: MaterialRow[] }) {
     },
     {
       key: "lengthMm",
-      header: "全長",
+      header: tr("全長"),
       sortable: true,
       hideable: true,
       width: 90,
@@ -214,7 +216,7 @@ export function MaterialTable({ rows }: { rows: MaterialRow[] }) {
     },
     {
       key: "surfaceFinish",
-      header: "黒皮研磨",
+      header: tr("黒皮研磨"),
       sortable: true,
       hideable: true,
       width: 110,
@@ -222,7 +224,7 @@ export function MaterialTable({ rows }: { rows: MaterialRow[] }) {
     },
     {
       key: "isActive",
-      header: "状態",
+      header: tr("状態"),
       sortable: true,
       width: 90,
       sortValue: (r) => (r.isActive ? 1 : 0),
@@ -233,14 +235,14 @@ export function MaterialTable({ rows }: { rows: MaterialRow[] }) {
   return (
     <ListShell
       action={<NewButton href={`${BASE_PATH}/new`} />}
-      breadcrumbs={["マスタ", "素材"]}
+      breadcrumbs={[tr("マスタ"), tr("素材")]}
       filters={
         <>
           <Select
             clearable
             data={typeOptions}
             onChange={setTypeFilter}
-            placeholder="材種"
+            placeholder={tr("材種")}
             searchable
             style={isMobile ? { flex: 1 } : undefined}
             value={typeFilter}
@@ -250,7 +252,7 @@ export function MaterialTable({ rows }: { rows: MaterialRow[] }) {
             clearable
             data={finishOptions}
             onChange={setFinishFilter}
-            placeholder="黒皮研磨"
+            placeholder={tr("黒皮研磨")}
             style={isMobile ? { flex: 1 } : undefined}
             value={finishFilter}
             w={isMobile ? undefined : 130}
@@ -259,7 +261,7 @@ export function MaterialTable({ rows }: { rows: MaterialRow[] }) {
             clearable
             data={STATUS_OPTIONS}
             onChange={setStatusFilter}
-            placeholder="状態"
+            placeholder={tr("状態")}
             style={isMobile ? { flex: 1 } : undefined}
             value={statusFilter}
             w={isMobile ? undefined : 120}
@@ -271,28 +273,28 @@ export function MaterialTable({ rows }: { rows: MaterialRow[] }) {
         <TextInput
           leftSection={<IconSearch size={14} />}
           onChange={(e) => setSearch(e.currentTarget.value)}
-          placeholder="素材コード・名称・キーワードで検索"
+          placeholder={tr("素材コード・名称・キーワードで検索")}
           value={search}
         />
       }
-      title="素材"
+      title={tr("素材")}
     >
       <DataTable
         bulkActions={[
           {
-            label: "一括有効化",
+            label: tr("一括有効化"),
             icon: <IconCheck size={16} />,
             color: "green",
             onAction: (rs) => bulkSetActive(rs, true),
           },
           {
-            label: "一括無効化",
+            label: tr("一括無効化"),
             icon: <IconCircleMinus size={16} />,
             color: "orange",
             onAction: (rs) => bulkSetActive(rs, false),
           },
           {
-            label: "一括削除",
+            label: tr("一括削除"),
             icon: <IconTrash size={16} />,
             color: "red",
             onAction: bulkDelete,
@@ -303,7 +305,7 @@ export function MaterialTable({ rows }: { rows: MaterialRow[] }) {
         defaultSort={{ key: "code", dir: "asc" }}
         emptyAction={<NewButton href={`${BASE_PATH}/new`} />}
         emptyIcon={<IconBolt size={24} />}
-        emptyMessage="素材がありません"
+        emptyMessage={tr("素材がありません")}
         getRowId={(r) => String(r.id)}
         onRowClick={(r) => router.push(`${BASE_PATH}/${r.id}`)}
         renderCard={(r) => (
@@ -329,12 +331,12 @@ export function MaterialTable({ rows }: { rows: MaterialRow[] }) {
         )}
         rowActions={(row) => [
           {
-            label: "編集",
+            label: tr("編集"),
             icon: <IconEdit size={14} />,
             onAction: (r) => router.push(`${BASE_PATH}/${r.id}/edit`),
           },
           {
-            label: row.isActive ? "無効化" : "有効化",
+            label: row.isActive ? "無効化" : tr("有効化"),
             icon: <IconCircleMinus size={14} />,
             onAction: (r) => setToggleRow(r),
           },

@@ -61,6 +61,7 @@ import { useFormat } from "@/components/layout/PreferencesProvider";
 import { GhostButton, PrimaryButton } from "@/components/ui/buttons";
 import { openConfirm } from "@/components/ui/modals";
 import { ListShell } from "@/components/ui/shells";
+import { useTr } from "@/hooks/useTr";
 import { downloadFile } from "@/lib/download";
 import { isSystemFileKey } from "@/lib/system-files";
 
@@ -135,6 +136,7 @@ const rawHref = (key: string, download = false) =>
   `/api/admin/files/raw?key=${encodeURIComponent(key)}${download ? "&download=1" : ""}`;
 
 export function FileManager() {
+  const tr = useTr();
   const fmt = useFormat();
   const inputRef = useRef<HTMLInputElement>(null);
   const [files, setFiles] = useState<StoredFile[]>([]);
@@ -244,15 +246,15 @@ export function FileManager() {
       const json = await res.json();
       if (!res.ok) throw new Error(json?.error ?? `HTTP ${res.status}`);
       notifications.show({
-        title: "アップロードしました",
+        title: tr("アップロードしました"),
         message: file.name,
         color: "green",
       });
       await reload();
     } catch (err) {
       notifications.show({
-        title: "アップロード失敗",
-        message: err instanceof Error ? err.message : "不明なエラー",
+        title: tr("アップロード失敗"),
+        message: err instanceof Error ? err.message : tr("不明なエラー"),
         color: "red",
       });
     } finally {
@@ -270,7 +272,7 @@ export function FileManager() {
       const json = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(json?.error ?? `HTTP ${res.status}`);
       notifications.show({
-        title: "削除しました",
+        title: tr("削除しました"),
         message: file.name,
         color: "green",
       });
@@ -278,8 +280,8 @@ export function FileManager() {
       if (selectedKey === file.key) setSelectedKey(null);
     } catch (err) {
       notifications.show({
-        title: "削除失敗",
-        message: err instanceof Error ? err.message : "不明なエラー",
+        title: tr("削除失敗"),
+        message: err instanceof Error ? err.message : tr("不明なエラー"),
         color: "red",
       });
     }
@@ -287,7 +289,7 @@ export function FileManager() {
 
   function confirmDelete(f: StoredFile) {
     openConfirm({
-      title: "ファイルの削除",
+      title: tr("ファイルの削除"),
       message: `「${f.name}」を削除します。この操作は取り消せません。`,
       confirmLabel: "削除",
       onConfirm: () => onDelete(f),
@@ -327,9 +329,11 @@ export function FileManager() {
     <Table highlightOnHover striped>
       <Table.Thead>
         <Table.Tr>
-          <Table.Th>名前</Table.Th>
-          <Table.Th style={{ width: 100, textAlign: "right" }}>サイズ</Table.Th>
-          <Table.Th style={{ width: 150 }}>更新日時</Table.Th>
+          <Table.Th>{tr("名前")}</Table.Th>
+          <Table.Th style={{ width: 100, textAlign: "right" }}>
+            {tr("サイズ")}
+          </Table.Th>
+          <Table.Th style={{ width: 150 }}>{tr("更新日時")}</Table.Th>
         </Table.Tr>
       </Table.Thead>
       <Table.Tbody>
@@ -383,7 +387,7 @@ export function FileManager() {
                 </Stack>
                 {isSystemFileKey(f.key) && (
                   <Badge color="gray" size="xs" variant="light">
-                    システム
+                    {tr("システム")}
                   </Badge>
                 )}
               </Group>
@@ -540,7 +544,7 @@ export function FileManager() {
                   ))}
                   {c.folders.length === 0 && c.files.length === 0 && (
                     <Text c="dimmed" p="xs" size="xs">
-                      空のフォルダ
+                      {tr("空のフォルダ")}
                     </Text>
                   )}
                 </Stack>
@@ -597,7 +601,7 @@ export function FileManager() {
         <Stack gap={4}>
           <Group gap="xs" justify="space-between">
             <Text c="dimmed" size="xs">
-              パス
+              {tr("パス")}
             </Text>
             <Text
               ff="mono"
@@ -609,7 +613,7 @@ export function FileManager() {
           </Group>
           <Group gap="xs" justify="space-between">
             <Text c="dimmed" size="xs">
-              サイズ
+              {tr("サイズ")}
             </Text>
             <Text className="tabular-nums" size="xs">
               {formatBytes(selectedFile.size)}
@@ -617,19 +621,19 @@ export function FileManager() {
           </Group>
           <Group gap="xs" justify="space-between">
             <Text c="dimmed" size="xs">
-              更新日時
+              {tr("更新日時")}
             </Text>
             <Text size="xs">{fmt.dateTime(selectedFile.mtime)}</Text>
           </Group>
           <Group gap="xs" justify="space-between">
             <Text c="dimmed" size="xs">
-              種類
+              {tr("種類")}
             </Text>
-            <Text size="xs">{selectedFile.mime || "不明"}</Text>
+            <Text size="xs">{selectedFile.mime || tr("不明")}</Text>
           </Group>
           {isSystemFileKey(selectedFile.key) && (
             <Badge color="gray" variant="light">
-              システムファイル
+              {tr("システムファイル")}
             </Badge>
           )}
         </Stack>
@@ -641,7 +645,7 @@ export function FileManager() {
             leftSection={<IconEye size={14} />}
             size="xs"
           >
-            開く
+            {tr("開く")}
           </GhostButton>
           <GhostButton
             leftSection={<IconDownload size={14} />}
@@ -653,7 +657,7 @@ export function FileManager() {
             }
             size="xs"
           >
-            ダウンロード
+            {tr("ダウンロード")}
           </GhostButton>
           {canWrite(selectedFile.key) && (
             <GhostButton
@@ -682,7 +686,7 @@ export function FileManager() {
               leftSection={<IconUsersGroup size={16} />}
               onClick={() => setGrantsOpen(true)}
             >
-              フォルダ権限
+              {tr("フォルダ権限")}
             </GhostButton>
           )}
           <GhostButton
@@ -698,7 +702,7 @@ export function FileManager() {
               loading={uploading}
               onClick={() => inputRef.current?.click()}
             >
-              アップロード
+              {tr("アップロード")}
             </PrimaryButton>
           )}
           <input
@@ -709,7 +713,7 @@ export function FileManager() {
           />
         </Group>
       }
-      breadcrumbs={["システム", "ファイル管理"]}
+      breadcrumbs={[tr("システム"), tr("ファイル管理")]}
       filters={
         <Group gap="sm" wrap="nowrap">
           <SegmentedControl
@@ -717,7 +721,7 @@ export function FileManager() {
               {
                 value: "list",
                 label: (
-                  <Tooltip label="リスト" withinPortal>
+                  <Tooltip label={tr("リスト")} withinPortal>
                     <IconList size={16} style={{ display: "block" }} />
                   </Tooltip>
                 ),
@@ -725,7 +729,7 @@ export function FileManager() {
               {
                 value: "grid",
                 label: (
-                  <Tooltip label="アイコン" withinPortal>
+                  <Tooltip label={tr("アイコン")} withinPortal>
                     <IconLayoutGrid size={16} style={{ display: "block" }} />
                   </Tooltip>
                 ),
@@ -733,7 +737,7 @@ export function FileManager() {
               {
                 value: "columns",
                 label: (
-                  <Tooltip label="カラム" withinPortal>
+                  <Tooltip label={tr("カラム")} withinPortal>
                     <IconColumns size={16} style={{ display: "block" }} />
                   </Tooltip>
                 ),
@@ -744,7 +748,13 @@ export function FileManager() {
             value={view}
           />
           <Tooltip
-            label="「.DS_Store」「*.tmp」など、OS・ツールが自動生成した残骸ファイルを表示します"
+            label={tr(
+              tr(
+                tr(
+                  "「.DS_Store」「*.tmp」など、OS・ツールが自動生成した残骸ファイルを表示します",
+                ),
+              ),
+            )}
             withinPortal
           >
             <Switch
@@ -752,7 +762,7 @@ export function FileManager() {
               label={
                 hiddenSystemCount > 0
                   ? `システムファイル (${hiddenSystemCount})`
-                  : "システムファイル"
+                  : tr("システムファイル")
               }
               onChange={(e) => {
                 setShowSystem(e.currentTarget.checked);
@@ -772,11 +782,11 @@ export function FileManager() {
         <TextInput
           leftSection={<IconSearch size={14} />}
           onChange={(e) => setQuery(e.currentTarget.value)}
-          placeholder="ファイル名・パスで検索（全フォルダ横断）"
+          placeholder={tr("ファイル名・パスで検索（全フォルダ横断）")}
           value={query}
         />
       }
-      title="ファイル管理"
+      title={tr("ファイル管理")}
     >
       {!storageOk && (
         <Alert
@@ -785,8 +795,13 @@ export function FileManager() {
           mb="sm"
           variant="light"
         >
-          ストレージ（SeaweedFS）に接続できません。SEAWEED_FILER_URL
-          とコンテナの稼働状況をご確認ください。
+          {tr(
+            tr(
+              tr(
+                "ストレージ（SeaweedFS）に接続できません。SEAWEED_FILER_URL\n          とコンテナの稼働状況をご確認ください。",
+              ),
+            ),
+          )}
         </Alert>
       )}
 
@@ -798,7 +813,7 @@ export function FileManager() {
             onClick={() => openFolder("")}
             size="xs"
           >
-            すべて
+            {tr("すべて")}
           </GhostButton>
           {segments.map((seg, i) => (
             <Group
@@ -822,7 +837,7 @@ export function FileManager() {
         <Group justify="center" py="xl">
           <Loader size="sm" />
           <Text c="dimmed" size="sm">
-            読み込み中…
+            {tr("読み込み中…")}
           </Text>
         </Group>
       ) : (
@@ -834,9 +849,9 @@ export function FileManager() {
                 <Text c="dimmed" size="sm">
                   {storageOk
                     ? files.length === 0
-                      ? "閲覧できるファイルはありません"
-                      : "このフォルダにファイルはありません"
-                    : "ストレージに接続できません"}
+                      ? tr("閲覧できるファイルはありません")
+                      : tr("このフォルダにファイルはありません")
+                    : tr("ストレージに接続できません")}
                 </Text>
               </Stack>
             ) : view === "grid" ? (

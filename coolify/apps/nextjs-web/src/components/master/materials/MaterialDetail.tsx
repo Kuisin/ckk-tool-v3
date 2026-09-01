@@ -24,6 +24,7 @@ import {
   ResourceActions,
   SummaryGrid,
 } from "@/components/ui/shells";
+import { useTr } from "@/hooks/useTr";
 import { useTabParam } from "@/hooks/useUrlState";
 import {
   DeleteMaterialModal,
@@ -62,6 +63,7 @@ export function MaterialDetail({
   record: MaterialDetailData;
   auditEntries: AuditEntry[];
 }) {
+  const tr = useTr();
   const fmt = useFormat();
   const router = useRouter();
   // アクティブタブを ?tab= に保持（URL 共有でタブまで再現）
@@ -83,7 +85,7 @@ export function MaterialDetail({
         <ResourceActions
           menuItems={[
             {
-              label: record.isActive ? "無効化" : "有効化",
+              label: record.isActive ? "無効化" : tr("有効化"),
               icon: <IconCircleMinus size={14} />,
               onClick: () => setToggleOpen(true),
             },
@@ -98,7 +100,11 @@ export function MaterialDetail({
           onEdit={() => router.push(`${BASE_PATH}/${record.id}/edit`)}
         />
       }
-      breadcrumbs={["マスタ", { label: "素材", href: BASE_PATH }, record.code]}
+      breadcrumbs={[
+        tr("マスタ"),
+        { label: tr("素材"), href: BASE_PATH },
+        record.code,
+      ]}
       createdAt={fmt.dateTime(record.createdAt)}
       status={<ActiveBadge active={record.isActive} />}
       title={record.nameJa}
@@ -106,11 +112,11 @@ export function MaterialDetail({
     >
       <SummaryGrid>
         <FieldValue
-          label="素材コード"
+          label={tr("素材コード")}
           value={<DocNumber>{record.code}</DocNumber>}
         />
         <FieldValue
-          label="材種"
+          label={tr("材種")}
           value={
             <DocNumber c="blue">
               {record.materialTypeCode}
@@ -118,15 +124,15 @@ export function MaterialDetail({
             </DocNumber>
           }
         />
-        <FieldValue label="黒皮・研磨" value={record.surfaceFinish} />
-        <FieldValue label="直径" value={`φ${record.diameterMm} mm`} />
-        <FieldValue label="全長" value={`${record.lengthMm} mm`} />
+        <FieldValue label={tr("黒皮・研磨")} value={record.surfaceFinish} />
+        <FieldValue label={tr("直径")} value={`φ${record.diameterMm} mm`} />
+        <FieldValue label={tr("全長")} value={`${record.lengthMm} mm`} />
         <FieldValue
-          label="種類"
+          label={tr("種類")}
           value={<DocNumber>{record.kindCode}</DocNumber>}
         />
         <FieldValue
-          label="呼び径"
+          label={tr("呼び径")}
           value={
             record.nominalDiameterMm != null
               ? `φ${record.nominalDiameterMm} mm`
@@ -134,39 +140,47 @@ export function MaterialDetail({
           }
         />
         <FieldValue
-          label="メーカ型式"
+          label={tr("メーカ型式")}
           value={record.manufacturerModel || "—"}
         />
-        <FieldValue label="単位" value={record.unit} />
+        <FieldValue label={tr("単位")} value={record.unit} />
       </SummaryGrid>
 
       <AppTabs onChange={setTab} value={tab}>
         <Tabs.List>
-          <Tabs.Tab value="overview">概要</Tabs.Tab>
-          <Tabs.Tab value="related">関連</Tabs.Tab>
-          <Tabs.Tab value="history">履歴</Tabs.Tab>
+          <Tabs.Tab value="overview">{tr("概要")}</Tabs.Tab>
+          <Tabs.Tab value="related">{tr("関連")}</Tabs.Tab>
+          <Tabs.Tab value="history">{tr("履歴")}</Tabs.Tab>
         </Tabs.List>
 
         <Tabs.Panel pt="md" value="overview">
           <Stack gap="sm">
-            <FieldValue label="名称（日本語）" value={record.nameJa} />
-            <FieldValue label="名称（英語）" value={record.nameEn || "—"} />
+            <FieldValue label={tr("名称（日本語）")} value={record.nameJa} />
             <FieldValue
-              label="キーワード"
+              label={tr("名称（英語）")}
+              value={record.nameEn || "—"}
+            />
+            <FieldValue
+              label={tr("キーワード")}
               value={<KeywordBadges values={record.matchNames} />}
             />
-            <FieldValue label="備考" value={record.notes || "—"} />
+            <FieldValue label={tr("備考")} value={record.notes || "—"} />
           </Stack>
         </Tabs.Panel>
 
         <Tabs.Panel pt="md" value="related">
           <Stack gap="xs">
             <Text fw={600} size="sm">
-              使用製品
+              {tr("使用製品")}
             </Text>
             <Text c="dimmed" size="sm">
-              製品は「材種 + 直径 + 全長」で素材を指定するため、特定の素材には
-              直接紐付きません。この素材は在庫管理で使用します。
+              {tr(
+                tr(
+                  tr(
+                    "製品は「材種 + 直径 + 全長」で素材を指定するため、特定の素材には\n              直接紐付きません。この素材は在庫管理で使用します。",
+                  ),
+                ),
+              )}
             </Text>
           </Stack>
         </Tabs.Panel>

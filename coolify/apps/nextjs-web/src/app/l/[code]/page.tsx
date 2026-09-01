@@ -18,6 +18,7 @@ import {
   IconShieldCheck,
 } from "@tabler/icons-react";
 import { resolveShortLink } from "@/lib/link-index";
+import { getTr } from "@/lib/ui-text-server";
 import { followShortLinkAction } from "./actions";
 
 export const dynamic = "force-dynamic";
@@ -41,6 +42,7 @@ export default async function ShortLinkPage({
 }: {
   params: Promise<{ code: string }>;
 }) {
+  const tr = await getTr();
   const { code } = await params;
   const resolved = await resolveShortLink(decodeURIComponent(code));
 
@@ -52,12 +54,12 @@ export default async function ShortLinkPage({
             <ThemeIcon color="gray" radius="xl" size="xl" variant="light">
               <IconLinkOff size={24} />
             </ThemeIcon>
-            <Title order={3}>リンクが見つかりません</Title>
+            <Title order={3}>{tr("リンクが見つかりません")}</Title>
             <Text c="dimmed" size="sm" ta="center">
-              このリンクは削除されたか、URL が正しくありません。
+              {tr("このリンクは削除されたか、URL が正しくありません。")}
             </Text>
             <Button component="a" href="/" variant="default">
-              ホームへ戻る
+              {tr("ホームへ戻る")}
             </Button>
           </Stack>
         )}
@@ -68,12 +70,12 @@ export default async function ShortLinkPage({
               <ThemeIcon color="red" radius="xl" size="lg" variant="light">
                 <IconAlertTriangle size={20} />
               </ThemeIcon>
-              <Title order={3}>このリンクはブロックされています</Title>
+              <Title order={3}>{tr("このリンクはブロックされています")}</Title>
             </Group>
             <Alert color="red" variant="light">
               <Stack gap={4}>
                 <Text size="sm">
-                  管理者が <strong>{resolved.hostname}</strong>{" "}
+                  {tr("管理者が")} <strong>{resolved.hostname}</strong>{" "}
                   への移動を禁止しています。
                 </Text>
                 {resolved.reason && (
@@ -82,11 +84,11 @@ export default async function ShortLinkPage({
               </Stack>
             </Alert>
             <Text c="dimmed" size="xs">
-              心当たりがない場合はシステム管理者に連絡してください。
+              {tr("心当たりがない場合はシステム管理者に連絡してください。")}
             </Text>
             <Group justify="flex-end">
               <Button component="a" href="/" variant="default">
-                ホームへ戻る
+                {tr("ホームへ戻る")}
               </Button>
             </Group>
           </Stack>
@@ -98,17 +100,23 @@ export default async function ShortLinkPage({
               <ThemeIcon color="blue" radius="xl" size="lg" variant="light">
                 <IconShieldCheck size={20} />
               </ThemeIcon>
-              <Title order={3}>外部サイトへ移動します</Title>
+              <Title order={3}>{tr("外部サイトへ移動します")}</Title>
             </Group>
 
             <Text size="sm">
-              このリンクは社内システムの外へ移動します。移動先を確認してください。
+              {tr(
+                tr(
+                  tr(
+                    "このリンクは社内システムの外へ移動します。移動先を確認してください。",
+                  ),
+                ),
+              )}
             </Text>
 
             <Card bg="var(--mantine-color-default-hover)" p="sm" radius="sm">
               <Stack gap={4}>
                 <Text c="dimmed" size="xs">
-                  移動先
+                  {tr("移動先")}
                 </Text>
                 <Text fw={600} size="sm">
                   {resolved.hostname}
@@ -124,7 +132,13 @@ export default async function ShortLinkPage({
 
             <Alert color="yellow" variant="light">
               <Text size="xs">
-                社内のパスワードや業務データを、移動先のサイトへ入力しないでください。
+                {tr(
+                  tr(
+                    tr(
+                      "社内のパスワードや業務データを、移動先のサイトへ入力しないでください。",
+                    ),
+                  ),
+                )}
               </Text>
             </Alert>
 
@@ -138,7 +152,7 @@ export default async function ShortLinkPage({
                   rightSection={<IconExternalLink size={16} />}
                   type="submit"
                 >
-                  続行して移動
+                  {tr("続行して移動")}
                 </Button>
               </Group>
             </form>

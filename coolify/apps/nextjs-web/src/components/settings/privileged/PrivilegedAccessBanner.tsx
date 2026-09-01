@@ -6,6 +6,7 @@ import {
   type ElevationCode,
   operationsForCode,
 } from "@/lib/privileged-operations";
+import { getTr } from "@/lib/ui-text-server";
 
 /**
  * PrivilegedAccessBanner — その画面の特権操作が「いま使えるか」を先に見せる。
@@ -22,6 +23,7 @@ export async function PrivilegedAccessBanner({
 }: {
   code: ElevationCode;
 }) {
+  const tr = await getTr();
   const ops = operationsForCode(code);
   const views = await peekElevations(ops.map((o) => o.key));
   const entries = ops.map((o) => ({ op: o, view: views[o.key] }));
@@ -80,18 +82,18 @@ export async function PrivilegedAccessBanner({
               {view?.allowed && remainingLabel(view.remainingMs, view.state)
                 ? `（${remainingLabel(view.remainingMs, view.state)}）`
                 : view?.pending
-                  ? "（承認依頼中）"
+                  ? tr("（承認依頼中）")
                   : ""}
             </Badge>
           ))}
         </Group>
         <Text size="xs">
           {allowed.length > 0
-            ? "持ち時間は最初に操作した時点から測ります。"
-            : "これらの操作には承認が必要です。"}
+            ? tr("持ち時間は最初に操作した時点から測ります。")
+            : tr("これらの操作には承認が必要です。")}
           {pending.length > 0 && " 申請中のものは承認をお待ちください。"}{" "}
           <Anchor href="/settings/privileged-access/new" size="xs">
-            特権アクセスを申請する
+            {tr("特権アクセスを申請する")}
           </Anchor>
         </Text>
       </Stack>

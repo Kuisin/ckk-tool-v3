@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useFormat } from "@/components/layout/PreferencesProvider";
 import { DataTable } from "@/components/ui/DataTable";
 import { StatusBadge } from "@/components/ui/StatusBadge";
+import { useTr } from "@/hooks/useTr";
 import type { ResponseRow } from "@/lib/forms";
 
 /**
@@ -20,6 +21,7 @@ export function PublicResponsesTable({
   responses: ResponseRow[];
   respondentShown: boolean;
 }) {
+  const tr = useTr();
   const router = useRouter();
   const fmt = useFormat();
 
@@ -40,7 +42,7 @@ export function PublicResponsesTable({
           ? [
               {
                 key: "respondent",
-                header: "回答者",
+                header: tr("回答者"),
                 width: 160,
                 render: (r: ResponseRow) => r.respondent ?? "—",
               },
@@ -48,7 +50,7 @@ export function PublicResponsesTable({
           : []),
         {
           key: "status",
-          header: "状態",
+          header: tr("状態"),
           width: 110,
           render: (r) => (
             <StatusBadge entity="FormResponse" status={r.status} />
@@ -56,7 +58,7 @@ export function PublicResponsesTable({
         },
         {
           key: "summary",
-          header: "内容",
+          header: tr("内容"),
           render: (r) => (
             <Text lineClamp={1} size="sm">
               {r.summary || "—"}
@@ -65,13 +67,13 @@ export function PublicResponsesTable({
         },
         {
           key: "submittedAt",
-          header: "提出日時",
+          header: tr("提出日時"),
           width: 150,
           render: (r) => (r.submittedAt ? fmt.dateTime(r.submittedAt) : "—"),
         },
       ]}
       data={responses}
-      emptyMessage="見られる回答がありません"
+      emptyMessage={tr("見られる回答がありません")}
       getRowId={(r) => r.responseNumber}
       onRowClick={(r) =>
         router.push(`/f/${code}/${encodeURIComponent(r.responseNumber)}`)

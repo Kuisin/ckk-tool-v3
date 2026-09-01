@@ -727,6 +727,9 @@ export const APP_LABEL_I18N: Record<string, { en: string; zh: string }> = {
   "login-history": { en: "Login history", zh: "登录历史" },
   "ai-provider": { en: "AI provider", zh: "AI 服务商" },
   "notification-email": { en: "Notification email", zh: "通知邮件" },
+  "design-files": { en: "Drawing", zh: "图纸" },
+  "privileged-access": { en: "Privileged access", zh: "特权访问" },
+  "portal-admin": { en: "Partner portal", zh: "客户门户" },
 };
 
 export const CATEGORY_LABEL_I18N: Record<

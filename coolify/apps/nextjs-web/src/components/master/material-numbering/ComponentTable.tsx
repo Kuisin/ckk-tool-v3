@@ -21,6 +21,7 @@ import { ActiveBadge } from "@/components/ui/ActiveBadge";
 import { type Column, DataTable } from "@/components/ui/DataTable";
 import { DocNumber } from "@/components/ui/DocNumber";
 import { openConfirm } from "@/components/ui/modals";
+import { useTr } from "@/hooks/useTr";
 
 export interface ComponentRow {
   code: string;
@@ -46,6 +47,7 @@ export function ComponentTable({
   /** 追加列の見出し（直径=φmm, 全長=mm など）。 */
   extraHeader?: string;
 }) {
+  const tr = useTr();
   const fmt = useFormat();
   const router = useRouter();
   const [, startTransition] = useTransition();
@@ -53,11 +55,11 @@ export function ComponentTable({
   const toggle = (row: ComponentRow) => {
     const next = !row.isActive;
     openConfirm({
-      title: next ? "有効化の確認" : "無効化の確認",
+      title: next ? "有効化の確認" : tr("無効化の確認"),
       message: next
         ? `「${row.code} — ${row.name}」を有効化します。`
         : `「${row.code} — ${row.name}」を無効化します。新規の材種・素材作成で選択できなくなります（既存コードには影響しません）。`,
-      confirmLabel: next ? "有効化する" : "無効化する",
+      confirmLabel: next ? "有効化する" : tr("無効化する"),
       onConfirm: () => {
         startTransition(async () => {
           const res = await setComponentActive({
@@ -68,15 +70,15 @@ export function ComponentTable({
           });
           if (res.ok) {
             notifications.show({
-              title: next ? "有効化しました" : "無効化しました",
+              title: next ? "有効化しました" : tr("無効化しました"),
               message: `「${row.code}」を${next ? "有効化" : "無効化"}しました`,
               color: "green",
             });
             router.refresh();
           } else {
             notifications.show({
-              title: "エラー",
-              message: res.error,
+              title: tr("エラー"),
+              message: tr(res.error),
               color: "red",
             });
           }
@@ -107,7 +109,7 @@ export function ComponentTable({
     },
     {
       key: "name",
-      header: "名称",
+      header: tr("名称"),
       sortable: true,
       sortValue: (r) => r.name,
       render: (r) => r.name,
@@ -126,7 +128,7 @@ export function ComponentTable({
       : []),
     {
       key: "isActive",
-      header: "状態",
+      header: tr("状態"),
       sortable: true,
       width: 90,
       sortValue: (r) => (r.isActive ? 1 : 0),
@@ -134,7 +136,7 @@ export function ComponentTable({
     },
     {
       key: "updatedAt",
-      header: "更新日",
+      header: tr("更新日"),
       sortable: true,
       hideable: true,
       width: 110,
@@ -148,7 +150,7 @@ export function ComponentTable({
       data={rows}
       defaultSort={{ key: "code", dir: "asc" }}
       emptyIcon={<IconHash size={24} />}
-      emptyMessage="構成要素がありません"
+      emptyMessage={tr("構成要素がありません")}
       getRowId={(r) => `${r.parentCode ?? ""}:${r.code}`}
       pageSize={20}
       renderCard={(r) => (
@@ -174,7 +176,7 @@ export function ComponentTable({
       )}
       rowActions={(row) => [
         {
-          label: row.isActive ? "無効化" : "有効化",
+          label: row.isActive ? "無効化" : tr("有効化"),
           icon: <IconCircleMinus size={14} />,
           onAction: toggle,
         },

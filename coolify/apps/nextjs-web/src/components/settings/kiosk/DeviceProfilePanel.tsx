@@ -24,6 +24,7 @@ import { IconAlertTriangle, IconShieldCheck } from "@tabler/icons-react";
 import { useFormat } from "@/components/layout/PreferencesProvider";
 import { OwnershipBadge } from "@/components/settings/security/ownership";
 import { FieldValue } from "@/components/ui/FieldValue";
+import { useTr } from "@/hooks/useTr";
 // server-only の kiosk-admin からは **型だけ** 取る。値（関数）を取ると
 // クライアントバンドルが Prisma を掴んで画面が 500 になる。
 import { deviceRiskFlags } from "@/lib/device-profile-core";
@@ -35,6 +36,7 @@ function yesNo(value: boolean | null): string {
 }
 
 export function DeviceProfilePanel({ device }: { device: KioskDeviceRow }) {
+  const tr = useTr();
   const fmt = useFormat();
   const profile = device.deviceProfile;
   const flags = deviceRiskFlags(profile);
@@ -42,7 +44,7 @@ export function DeviceProfilePanel({ device }: { device: KioskDeviceRow }) {
   return (
     <Paper p="md" radius="md" withBorder>
       <Group justify="space-between" mb="sm">
-        <Title order={5}>端末情報</Title>
+        <Title order={5}>{tr("端末情報")}</Title>
         {profile && (
           <Badge
             color="green"
@@ -50,7 +52,7 @@ export function DeviceProfilePanel({ device }: { device: KioskDeviceRow }) {
             size="sm"
             variant="light"
           >
-            署名検証済み
+            {tr("署名検証済み")}
           </Badge>
         )}
       </Group>
@@ -60,7 +62,7 @@ export function DeviceProfilePanel({ device }: { device: KioskDeviceRow }) {
           color="orange"
           icon={<IconAlertTriangle size={16} />}
           mb="sm"
-          title="この端末で気をつける点"
+          title={tr("この端末で気をつける点")}
         >
           {flags.map((f) => (
             <Text key={f} size="xs">
@@ -72,7 +74,7 @@ export function DeviceProfilePanel({ device }: { device: KioskDeviceRow }) {
 
       <SimpleGrid cols={{ base: 1, sm: 2, lg: 3 }} spacing="md">
         <FieldValue
-          label="端末区分"
+          label={tr("端末区分")}
           value={
             <OwnershipBadge
               size="sm"
@@ -82,7 +84,7 @@ export function DeviceProfilePanel({ device }: { device: KioskDeviceRow }) {
           }
         />
         <FieldValue
-          label="判定根拠"
+          label={tr("判定根拠")}
           value={
             <Text ff="monospace" size="xs">
               {device.ownershipSource ?? "—"}
@@ -90,25 +92,28 @@ export function DeviceProfilePanel({ device }: { device: KioskDeviceRow }) {
           }
         />
         <FieldValue
-          label="鍵フィンガープリント"
+          label={tr("鍵フィンガープリント")}
           value={
             device.fingerprint ? (
               <Text ff="monospace" size="xs" style={{ wordBreak: "break-all" }}>
                 {device.fingerprint}
               </Text>
             ) : (
-              "未束縛"
+              tr("未束縛")
             )
           }
         />
 
         <FieldValue
-          label="最終 IP（最後に観測）"
+          label={tr("最終 IP（最後に観測）")}
           value={device.lastIpAddress ?? "—"}
         />
-        <FieldValue label="リンク時 IP" value={device.linkedIpAddress ?? "—"} />
         <FieldValue
-          label="プロファイル取得"
+          label={tr("リンク時 IP")}
+          value={device.linkedIpAddress ?? "—"}
+        />
+        <FieldValue
+          label={tr("プロファイル取得")}
           value={
             device.deviceProfileAt ? fmt.dateTime(device.deviceProfileAt) : "—"
           }
@@ -117,7 +122,7 @@ export function DeviceProfilePanel({ device }: { device: KioskDeviceRow }) {
         {profile && (
           <>
             <FieldValue
-              label="メーカー / 機種"
+              label={tr("メーカー / 機種")}
               value={
                 [profile.manufacturer, profile.model]
                   .filter(Boolean)
@@ -132,10 +137,13 @@ export function DeviceProfilePanel({ device }: { device: KioskDeviceRow }) {
                   : "—"
               }
             />
-            <FieldValue label="アプリ版" value={profile.appVersion ?? "—"} />
             <FieldValue
-              label="デバイスオーナー"
-              value={profile.isDeviceOwner ? "はい" : "いいえ"}
+              label={tr("アプリ版")}
+              value={profile.appVersion ?? "—"}
+            />
+            <FieldValue
+              label={tr("デバイスオーナー")}
+              value={profile.isDeviceOwner ? "はい" : tr("いいえ")}
             />
             <FieldValue
               label="Lock Task"
@@ -143,20 +151,20 @@ export function DeviceProfilePanel({ device }: { device: KioskDeviceRow }) {
                 profile.lockTaskState === null
                   ? "—"
                   : profile.lockTaskState > 0
-                    ? "固定中"
-                    : "解除"
+                    ? tr("固定中")
+                    : tr("解除")
               }
             />
             <FieldValue
-              label="USB デバッグ / 開発者オプション"
+              label={tr("USB デバッグ / 開発者オプション")}
               value={`${yesNo(profile.adbEnabled)} / ${yesNo(profile.developmentSettings)}`}
             />
             <FieldValue
-              label="インストール元"
+              label={tr("インストール元")}
               value={profile.installer ?? "—"}
             />
             <FieldValue
-              label="登録 ID（enrollmentId）"
+              label={tr("登録 ID（enrollmentId）")}
               value={
                 profile.enrollmentId ? (
                   <Text
@@ -171,13 +179,16 @@ export function DeviceProfilePanel({ device }: { device: KioskDeviceRow }) {
                 )
               }
             />
-            <FieldValue label="ビルドタグ" value={profile.buildTags ?? "—"} />
+            <FieldValue
+              label={tr("ビルドタグ")}
+              value={profile.buildTags ?? "—"}
+            />
           </>
         )}
 
         <FieldValue
           fullWidth
-          label="User-Agent（最後に観測）"
+          label={tr("User-Agent（最後に観測）")}
           value={
             <Text size="xs" style={{ wordBreak: "break-all" }}>
               {device.userAgent ?? "—"}
@@ -188,8 +199,13 @@ export function DeviceProfilePanel({ device }: { device: KioskDeviceRow }) {
 
       {!profile && (
         <Text c="dimmed" mt="sm" size="xs">
-          端末プロファイルは専用アプリ v0.6.0 以降が送ります。旧版の端末では
-          空欄のままで、アテステーション自体は従来どおり動作します。
+          {tr(
+            tr(
+              tr(
+                "端末プロファイルは専用アプリ v0.6.0 以降が送ります。旧版の端末では\n          空欄のままで、アテステーション自体は従来どおり動作します。",
+              ),
+            ),
+          )}
         </Text>
       )}
     </Paper>

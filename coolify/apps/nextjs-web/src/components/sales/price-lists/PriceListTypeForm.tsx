@@ -55,6 +55,7 @@ import { openConfirm } from "@/components/ui/modals";
 import { SalesRepSelect } from "@/components/ui/SalesRepSelect";
 import { SearchSelect } from "@/components/ui/SearchSelect";
 import { FormSection, FormShell } from "@/components/ui/shells";
+import { useTr } from "@/hooks/useTr";
 import { fieldHelp } from "@/lib/field-help";
 import { zodResolver } from "@/lib/form";
 import { formatMoney } from "@/lib/format";
@@ -102,13 +103,14 @@ const schema = z
       .min(1, "注文種別の価格を1件以上追加してください"),
   })
   .superRefine((val, ctx) => {
+    const tr = useTr();
     const seen = new Set<string>();
     val.variants.forEach((v, i) => {
       if (seen.has(v.orderType)) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
           path: ["variants", i, "orderType"],
-          message: "同じ注文種別が重複しています",
+          message: tr("同じ注文種別が重複しています"),
         });
       }
       seen.add(v.orderType);
@@ -116,7 +118,7 @@ const schema = z
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
           path: ["variants", i, "validUntil"],
-          message: "テスト・サンプルは有効終了日が必須です",
+          message: tr("テスト・サンプルは有効終了日が必須です"),
         });
       }
     });
@@ -216,6 +218,7 @@ export function PriceListTypeForm({
   /** All current (顧客, 製品) identities — duplicate warnings. */
   existingEntries: EntryIdentity[];
 }) {
+  const tr = useTr();
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const entryId = entry?.entryId;
@@ -267,16 +270,16 @@ export function PriceListTypeForm({
     if (estimateBase == null) return; // 価格試算ソースなし: 常に手動
     if (next) {
       openConfirm({
-        title: "カスタム基準単価の使用",
+        title: tr("カスタム基準単価の使用"),
         message: `価格試算の見積単価（${formatMoney(estimateBase)}）を使わず、基準単価を手動で設定します。よろしいですか？`,
-        confirmLabel: "カスタム設定する",
+        confirmLabel: tr("カスタム設定する"),
         onConfirm: () => form.setFieldValue(`variants.${vi}.customBase`, true),
       });
     } else {
       openConfirm({
-        title: "価格試算値に戻す",
+        title: tr("価格試算値に戻す"),
         message: `手動で設定した基準単価を破棄し、価格試算の見積単価（${formatMoney(estimateBase)}）に戻します。`,
-        confirmLabel: "価格試算値に戻す",
+        confirmLabel: tr("価格試算値に戻す"),
         onConfirm: () => {
           form.setFieldValue(`variants.${vi}.customBase`, false);
           form.setFieldValue(`variants.${vi}.baseUnitPrice`, estimateBase);
@@ -295,16 +298,16 @@ export function PriceListTypeForm({
     const path = `variants.${vi}.tiers.${ri}.priceOverride`;
     if (next) {
       openConfirm({
-        title: "カスタム単価の使用",
+        title: tr("カスタム単価の使用"),
         message: `この数量帯の自動計算単価（${formatMoney(autoPrice)} = 基準単価 × 倍率）を使わず、手動で単価を設定します。`,
-        confirmLabel: "カスタム設定する",
+        confirmLabel: tr("カスタム設定する"),
         onConfirm: () => form.setFieldValue(path, autoPrice),
       });
     } else {
       openConfirm({
-        title: "自動計算に戻す",
+        title: tr("自動計算に戻す"),
         message: `手動で設定した単価を破棄し、自動計算値（${formatMoney(autoPrice)}）に戻します。`,
-        confirmLabel: "自動計算に戻す",
+        confirmLabel: tr("自動計算に戻す"),
         onConfirm: () => form.setFieldValue(path, null),
       });
     }
@@ -347,17 +350,19 @@ export function PriceListTypeForm({
             });
       if (result.ok) {
         notifications.show({
-          title: "保存しました",
+          title: tr("保存しました"),
           message:
-            mode === "edit" ? "価格表を更新しました" : "価格表を作成しました",
+            mode === "edit"
+              ? tr("価格表を更新しました")
+              : tr("価格表を作成しました"),
           color: "green",
         });
         // 作成・更新後は対象エントリの詳細（ビュー）ページへ。
         router.push(`${BASE_PATH}/${result.data.entryId}`);
       } else {
         notifications.show({
-          title: "エラー",
-          message: result.error,
+          title: tr("エラー"),
+          message: tr(result.error),
           color: "red",
         });
       }
@@ -381,9 +386,9 @@ export function PriceListTypeForm({
   return (
     <FormShell
       breadcrumbs={[
-        "販売",
-        { label: "価格表", href: BASE_PATH },
-        mode === "edit" ? "編集" : "新規作成",
+        tr("販売"),
+        { label: tr("価格表"), href: BASE_PATH },
+        mode === "edit" ? "編集" : tr("新規作成"),
       ]}
       isDirty={form.isDirty()}
       isPending={isPending}
@@ -391,21 +396,27 @@ export function PriceListTypeForm({
         router.push(entryId ? `${BASE_PATH}/${entryId}` : BASE_PATH)
       }
       onSubmit={form.onSubmit(handleSubmit)}
-      title={mode === "edit" ? "価格表 編集" : "価格表 新規作成"}
+      title={mode === "edit" ? "価格表 編集" : tr("価格表 新規作成")}
     >
       {/* Identity keys — editable only on first creation, then locked. */}
       <FormSection
         description={
           lockCustomerProduct
-            ? "顧客・製品は作成後に変更できません。"
-            : "1つの顧客×製品につき価格表は1件です。注文種別ごとの価格は下で追加します。"
+            ? tr("顧客・製品は作成後に変更できません。")
+            : tr(
+                tr(
+                  tr(
+                    "1つの顧客×製品につき価格表は1件です。注文種別ごとの価格は下で追加します。",
+                  ),
+                ),
+              )
         }
-        title="対象"
+        title={tr("対象")}
       >
         <SimpleGrid cols={{ base: 1, sm: 3 }} spacing="sm">
           {lockCustomerProduct ? (
             <FieldValue
-              label="顧客"
+              label={tr("顧客")}
               value={customerOption?.label ?? (form.values.customerId || "—")}
             />
           ) : (
@@ -416,7 +427,7 @@ export function PriceListTypeForm({
               label={<HelpLabel {...fieldHelp("priceList", "customer")} />}
               onChange={(v) => form.setFieldValue("customerId", v ?? "")}
               onSearch={searchCustomerOptions}
-              placeholder="顧客を検索"
+              placeholder={tr("顧客を検索")}
               storageKey="customer"
               value={form.values.customerId || null}
               withAsterisk
@@ -435,7 +446,7 @@ export function PriceListTypeForm({
               label={<HelpLabel {...fieldHelp("priceList", "product")} />}
               onChange={(v) => form.setFieldValue("productId", v ?? "")}
               onSearch={searchProductOptions}
-              placeholder="製品を検索"
+              placeholder={tr("製品を検索")}
               storageKey="product"
               value={form.values.productId || null}
               withAsterisk
@@ -453,7 +464,7 @@ export function PriceListTypeForm({
           />
           {mode === "edit" && (
             <Switch
-              label="有効（価格表全体）"
+              label={tr("有効（価格表全体）")}
               mt={{ base: 0, sm: 28 }}
               {...form.getInputProps("isActive", { type: "checkbox" })}
             />
@@ -476,13 +487,19 @@ export function PriceListTypeForm({
             が既に存在します（
             {duplicateEntry.orderTypes
               .map((t) => ORDER_TYPE_LABEL[t] ?? t)
-              .join("・")}
+              .join(tr("・"))}
             ）。注文種別の追加は既存の価格表を編集してください。
           </Alert>
         )}
         {form.values.productId && sources.length === 0 && (
           <Alert color="gray" mt="sm" variant="light">
-            この製品にリンクされた確定済みの価格試算はありません。基準単価は手動で設定します（価格試算（SA01）で製品を指定して確定すると、ここで選択できます）。
+            {tr(
+              tr(
+                tr(
+                  "この製品にリンクされた確定済みの価格試算はありません。基準単価は手動で設定します（価格試算（SA01）で製品を指定して確定すると、ここで選択できます）。",
+                ),
+              ),
+            )}
           </Alert>
         )}
       </FormSection>
@@ -493,14 +510,20 @@ export function PriceListTypeForm({
         const savedVariant = Boolean(variant.id);
         return (
           <FormSection
-            description="基準単価は価格試算の見積単価から取得します。手動上書きは明示的にカスタムを有効化した場合のみ（確認あり）。各段階の単価 = 基準単価 × 倍率。"
+            description={tr(
+              tr(
+                tr(
+                  "基準単価は価格試算の見積単価から取得します。手動上書きは明示的にカスタムを有効化した場合のみ（確認あり）。各段階の単価 = 基準単価 × 倍率。",
+                ),
+              ),
+            )}
             key={form.key(`variants.${vi}`)}
             title={`注文種別: ${ORDER_TYPE_LABEL[variant.orderType] ?? variant.orderType}`}
           >
             <SimpleGrid cols={{ base: 1, sm: 3 }} spacing="sm">
               {savedVariant ? (
                 <FieldValue
-                  label="注文種別"
+                  label={tr("注文種別")}
                   value={ORDER_TYPE_LABEL[variant.orderType]}
                 />
               ) : (
@@ -513,19 +536,19 @@ export function PriceListTypeForm({
               )}
               {savedVariant ? (
                 <FieldValue
-                  label="価格ソース（価格試算）"
-                  value={variant.sourceEstimate ?? "手動設定"}
+                  label={tr("価格ソース（価格試算）")}
+                  value={variant.sourceEstimate ?? tr("手動設定")}
                 />
               ) : (
                 <Select
                   clearable
                   data={sourceOptions}
-                  description="製品にリンクされた確定済み価格試算"
+                  description={tr("製品にリンクされた確定済み価格試算")}
                   disabled={sourceOptions.length === 0}
                   label={
                     <HelpLabel
                       {...fieldHelp("priceList", "basePrice", {
-                        label: "価格ソース（価格試算）",
+                        label: tr("価格ソース（価格試算）"),
                       })}
                     />
                   }
@@ -544,8 +567,8 @@ export function PriceListTypeForm({
                   }}
                   placeholder={
                     sourceOptions.length === 0
-                      ? "価格試算なし（手動）"
-                      : "手動設定"
+                      ? tr("価格試算なし（手動）")
+                      : tr("手動設定")
                   }
                   value={variant.sourceEstimate}
                 />
@@ -564,12 +587,12 @@ export function PriceListTypeForm({
                   })}
                 />
                 <ActionIcon
-                  aria-label="この注文種別を削除"
+                  aria-label={tr("この注文種別を削除")}
                   color="red"
                   disabled={form.values.variants.length <= 1}
                   onClick={() =>
                     openConfirm({
-                      title: "注文種別の削除",
+                      title: tr("注文種別の削除"),
                       message: `${ORDER_TYPE_LABEL[variant.orderType]} の価格（数量段階・値引きルール含む）を削除します。保存時に反映されます。`,
                       confirmLabel: "削除",
                       onConfirm: () => form.removeListItem("variants", vi),
@@ -584,25 +607,31 @@ export function PriceListTypeForm({
 
             <SimpleGrid cols={{ base: 1, sm: 3 }} mt="sm" spacing="sm">
               <FieldValue
-                label="見積単価（価格試算）"
+                label={tr("見積単価（価格試算）")}
                 value={
                   estimateBase != null
                     ? formatMoney(estimateBase)
-                    : "—（価格試算ソースなし）"
+                    : tr("—（価格試算ソースなし）")
                 }
               />
               <Checkbox
                 checked={customBase}
                 description={
                   estimateBase == null
-                    ? "価格試算ソースがないため手動設定のみ"
+                    ? tr("価格試算ソースがないため手動設定のみ")
                     : undefined
                 }
                 disabled={estimateBase == null}
                 label={
                   <HelpLabel
-                    help="既定では価格試算の見積単価をそのまま使います。手動で別の基準単価を設定する場合のみチェックしてください（確認あり）。"
-                    label="カスタム単価を使用"
+                    help={tr(
+                      tr(
+                        tr(
+                          "既定では価格試算の見積単価をそのまま使います。手動で別の基準単価を設定する場合のみチェックしてください（確認あり）。",
+                        ),
+                      ),
+                    )}
+                    label={tr("カスタム単価を使用")}
                   />
                 }
                 mt={{ base: 0, sm: 26 }}
@@ -613,13 +642,19 @@ export function PriceListTypeForm({
                   customBase
                     ? estimateBase != null
                       ? `手動設定（価格試算値: ${formatMoney(estimateBase)}）`
-                      : "手動設定"
-                    : "価格試算値をそのまま使用"
+                      : tr("手動設定")
+                    : tr("価格試算値をそのまま使用")
                 }
                 disabled={!customBase}
                 label={
                   <HelpLabel
-                    help="価格表の基準になる単価。既定は価格試算の見積単価。各数量帯の単価 = 基準単価 × 倍率。"
+                    help={tr(
+                      tr(
+                        tr(
+                          "価格表の基準になる単価。既定は価格試算の見積単価。各数量帯の単価 = 基準単価 × 倍率。",
+                        ),
+                      ),
+                    )}
                     label={
                       <HelpLabel {...fieldHelp("priceList", "basePrice")} />
                     }
@@ -637,7 +672,7 @@ export function PriceListTypeForm({
               <DatePickerInput
                 label={<HelpLabel {...fieldHelp("priceList", "validFrom")} />}
                 leftSection={<IconCalendar size={14} />}
-                placeholder="日付を選択"
+                placeholder={tr("日付を選択")}
                 valueFormat="YYYY/MM/DD"
                 withAsterisk
                 {...form.getInputProps(`variants.${vi}.validFrom`)}
@@ -646,15 +681,15 @@ export function PriceListTypeForm({
                 clearable={!requiresEndDate(variant.orderType)}
                 description={
                   requiresEndDate(variant.orderType)
-                    ? "テスト・サンプルは終了日が必須"
+                    ? tr("テスト・サンプルは終了日が必須")
                     : undefined
                 }
                 label={<HelpLabel {...fieldHelp("priceList", "validUntil")} />}
                 leftSection={<IconCalendar size={14} />}
                 placeholder={
                   requiresEndDate(variant.orderType)
-                    ? "日付を選択"
-                    : "空欄で無期限"
+                    ? tr("日付を選択")
+                    : tr("空欄で無期限")
                 }
                 valueFormat="YYYY/MM/DD"
                 withAsterisk={requiresEndDate(variant.orderType)}
@@ -665,11 +700,17 @@ export function PriceListTypeForm({
             <Table mt="sm" withTableBorder>
               <Table.Thead>
                 <Table.Tr>
-                  <Table.Th>最小数量</Table.Th>
-                  <Table.Th>最大数量</Table.Th>
+                  <Table.Th>{tr("最小数量")}</Table.Th>
+                  <Table.Th>{tr("最大数量")}</Table.Th>
                   <Table.Th>
                     <HelpLabel
-                      help="数量帯ごとの掛け率（例 ×1.05 = 基準単価の5%増し）。単価 = 基準単価 × 倍率。"
+                      help={tr(
+                        tr(
+                          tr(
+                            "数量帯ごとの掛け率（例 ×1.05 = 基準単価の5%増し）。単価 = 基準単価 × 倍率。",
+                          ),
+                        ),
+                      )}
                       label={
                         <HelpLabel {...fieldHelp("priceList", "multiplier")} />
                       }
@@ -677,19 +718,25 @@ export function PriceListTypeForm({
                   </Table.Th>
                   <Table.Th ta="right">
                     <HelpLabel
-                      help="基準単価（価格試算由来）× 倍率 の自動計算値。"
-                      label="自動計算単価"
+                      help={tr("基準単価（価格試算由来）× 倍率 の自動計算値。")}
+                      label={tr("自動計算単価")}
                     />
                   </Table.Th>
                   <Table.Th>
                     <HelpLabel
-                      help="チェックすると自動計算を使わず、この数量帯だけ手動の固定単価にできます（確認あり）。"
+                      help={tr(
+                        tr(
+                          tr(
+                            "チェックすると自動計算を使わず、この数量帯だけ手動の固定単価にできます（確認あり）。",
+                          ),
+                        ),
+                      )}
                       label={
                         <HelpLabel {...fieldHelp("priceList", "customPrice")} />
                       }
                     />
                   </Table.Th>
-                  <Table.Th ta="right">採用単価</Table.Th>
+                  <Table.Th ta="right">{tr("採用単価")}</Table.Th>
                   <Table.Th w={48} />
                 </Table.Tr>
               </Table.Thead>
@@ -715,7 +762,7 @@ export function PriceListTypeForm({
                       <Table.Td>
                         <NumberInput
                           min={1}
-                          placeholder="上限なし"
+                          placeholder={tr("上限なし")}
                           {...form.getInputProps(
                             `variants.${vi}.tiers.${ri}.maxQuantity`,
                           )}
@@ -746,7 +793,7 @@ export function PriceListTypeForm({
                       <Table.Td>
                         <Group gap="xs" wrap="nowrap">
                           <Checkbox
-                            aria-label="カスタム単価を使用"
+                            aria-label={tr("カスタム単価を使用")}
                             checked={isCustom}
                             onChange={(e) =>
                               toggleTierOverride(
@@ -760,7 +807,7 @@ export function PriceListTypeForm({
                           <NumberInput
                             disabled={!isCustom}
                             min={0}
-                            placeholder={isCustom ? undefined : "自動計算"}
+                            placeholder={isCustom ? undefined : tr("自動計算")}
                             prefix="¥"
                             thousandSeparator=","
                             {...form.getInputProps(
@@ -780,7 +827,7 @@ export function PriceListTypeForm({
                         <Group gap={6} justify="flex-end" wrap="nowrap">
                           {isCustom && (
                             <Text c="orange" size="xs">
-                              手動
+                              {tr("手動")}
                             </Text>
                           )}
                           <Text
@@ -795,7 +842,7 @@ export function PriceListTypeForm({
                       </Table.Td>
                       <Table.Td>
                         <ActionIcon
-                          aria-label="段階を削除"
+                          aria-label={tr("段階を削除")}
                           color="red"
                           disabled={variant.tiers.length <= 1}
                           onClick={() =>
@@ -819,7 +866,7 @@ export function PriceListTypeForm({
               }
               size="xs"
             >
-              段階を追加
+              {tr("段階を追加")}
             </GhostButton>
           </FormSection>
         );
@@ -837,7 +884,7 @@ export function PriceListTypeForm({
           form.insertListItem("variants", emptyVariant(next));
         }}
       >
-        注文種別を追加
+        {tr("注文種別を追加")}
       </GhostButton>
     </FormShell>
   );

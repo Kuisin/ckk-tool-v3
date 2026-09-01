@@ -24,6 +24,7 @@ import {
   useRef,
   useState,
 } from "react";
+import { useTr } from "@/hooks/useTr";
 import { useIsMobile } from "@/hooks/useViewport";
 
 export function MasterDetailShell({
@@ -47,6 +48,7 @@ export function MasterDetailShell({
   minMasterWidth?: number;
   maxMasterWidth?: number;
 }) {
+  const tr = useTr();
   const isMobile = useIsMobile();
   const pathname = usePathname();
   const onList = pathname === basePath || pathname === `${basePath}/`;
@@ -139,7 +141,7 @@ export function MasterDetailShell({
         </Box>
         {/* biome-ignore lint/a11y/useSemanticElements: interactive drag splitter needs role=separator with aria-valuenow, not a semantic <hr> */}
         <Box
-          aria-label="ペイン幅を調整"
+          aria-label={tr("ペイン幅を調整")}
           aria-orientation="vertical"
           aria-valuemax={maxMasterWidth}
           aria-valuemin={minMasterWidth}

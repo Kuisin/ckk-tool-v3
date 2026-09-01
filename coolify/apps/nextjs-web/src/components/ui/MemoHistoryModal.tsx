@@ -18,6 +18,7 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { ModalShell } from "@/components/ui/modals";
 import { RichTextView } from "@/components/ui/RichTextView";
 import { UserAvatar } from "@/components/ui/UserAvatar";
+import { useTr } from "@/hooks/useTr";
 import type { MemoRevisionView } from "@/lib/document-memos";
 import { listMemoRevisionsAction } from "./memo-actions";
 
@@ -44,6 +45,7 @@ export function MemoHistoryModal({
   ownerType: string;
   memoId: string;
 }) {
+  const tr = useTr();
   const fmt = useFormat();
   const [revisions, setRevisions] = useState<MemoRevisionView[] | null>(null);
   const [pending, start] = useTransition();
@@ -56,7 +58,12 @@ export function MemoHistoryModal({
   }, [opened, ownerType, memoId]);
 
   return (
-    <ModalShell hideFooter onClose={onClose} opened={opened} title="変更履歴">
+    <ModalShell
+      hideFooter
+      onClose={onClose}
+      opened={opened}
+      title={tr("変更履歴")}
+    >
       {pending || revisions === null ? (
         <Group justify="center" py="lg">
           <Loader size="sm" />
@@ -64,7 +71,7 @@ export function MemoHistoryModal({
       ) : revisions.length === 0 ? (
         <EmptyState
           icon={<IconHistory size={24} />}
-          message="変更履歴はまだありません"
+          message={tr("変更履歴はまだありません")}
         />
       ) : (
         <Timeline active={-1} bulletSize={24} lineWidth={1}>
@@ -101,8 +108,8 @@ export function MemoHistoryModal({
                 <Stack gap={4} mt={4}>
                   <Text c="dimmed" size="xs">
                     {rev.action === "DELETE"
-                      ? "削除直前の本文"
-                      : "この操作後の本文"}
+                      ? tr("削除直前の本文")
+                      : tr("この操作後の本文")}
                   </Text>
                   <RichTextView doc={rev.content} />
                 </Stack>

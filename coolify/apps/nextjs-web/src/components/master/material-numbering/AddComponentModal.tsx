@@ -22,6 +22,7 @@ import {
   createSurfaceFinish,
 } from "@/app/(dashboard)/master/material-numbering/actions";
 import { FormModal, type ModalBaseProps } from "@/components/ui/modals";
+import { useTr } from "@/hooks/useTr";
 import { diameterCodeFromMm, lengthCodeFromMm } from "@/lib/material-code";
 import type { Option } from "@/lib/mock";
 import type { ActionResult } from "@/lib/server-action";
@@ -46,6 +47,7 @@ export function AddComponentModal({
   /** grade: メーカー options / kind: 形状 options。 */
   parentOptions?: Option[];
 }) {
+  const tr = useTr();
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
 
@@ -116,16 +118,16 @@ export function AddComponentModal({
       }
       if (res.ok) {
         notifications.show({
-          title: "追加しました",
-          message: "構成要素を追加しました",
+          title: tr("追加しました"),
+          message: tr("構成要素を追加しました"),
           color: "green",
         });
         resetAndClose();
         router.refresh();
       } else {
         notifications.show({
-          title: "エラー",
-          message: res.error,
+          title: tr("エラー"),
+          message: tr(res.error),
           color: "red",
         });
       }
@@ -141,16 +143,16 @@ export function AddComponentModal({
       onSubmit={handleSubmit}
       opened={opened}
       size="md"
-      submitLabel="追加"
+      submitLabel={tr("追加")}
       title={TITLES[kind]}
     >
       <Stack gap="sm">
         {kind === "grade" && (
           <Select
             data={parentOptions}
-            label="メーカー"
+            label={tr("メーカー")}
             onChange={setParentCode}
-            placeholder="メーカーを選択"
+            placeholder={tr("メーカーを選択")}
             value={parentCode}
             withAsterisk
           />
@@ -158,9 +160,9 @@ export function AddComponentModal({
         {kind === "kind" && (
           <Select
             data={parentOptions}
-            label="形状"
+            label={tr("形状")}
             onChange={setParentCode}
-            placeholder="形状を選択"
+            placeholder={tr("形状を選択")}
             value={parentCode}
             withAsterisk
           />
@@ -170,7 +172,7 @@ export function AddComponentModal({
             <NumberInput
               decimalScale={kind === "diameter" ? 1 : 0}
               description={`コード: ${derivedCode}`}
-              label={kind === "diameter" ? "直径 (mm)" : "全長 (mm)"}
+              label={kind === "diameter" ? "直径 (mm)" : tr("全長 (mm)")}
               max={kind === "diameter" ? 99.9 : 999}
               min={kind === "diameter" ? 0.1 : 1}
               onChange={setMm}
@@ -180,9 +182,9 @@ export function AddComponentModal({
             />
             {kind === "length" && (
               <TextInput
-                label="カスタム識別（任意）"
+                label={tr("カスタム識別（任意）")}
                 onChange={(e) => setCustomLabel(e.currentTarget.value)}
-                placeholder="例: 特注 330L"
+                placeholder={tr("例: 特注 330L")}
                 value={customLabel}
               />
             )}
@@ -192,8 +194,8 @@ export function AddComponentModal({
             <TextInput
               description={
                 kind === "grade" || kind === "kind"
-                  ? "2桁（例: 01, B5）"
-                  : "英大文字1文字（例: A）"
+                  ? tr("2桁（例: 01, B5）")
+                  : tr("英大文字1文字（例: A）")
               }
               label="コード"
               maxLength={kind === "grade" || kind === "kind" ? 2 : 1}
@@ -202,13 +204,13 @@ export function AddComponentModal({
               withAsterisk
             />
             <TextInput
-              label="名称（日本語）"
+              label={tr("名称（日本語）")}
               onChange={(e) => setNameJa(e.currentTarget.value)}
               value={nameJa}
               withAsterisk
             />
             <TextInput
-              label="名称（English）"
+              label={tr("名称（English）")}
               onChange={(e) => setNameEn(e.currentTarget.value)}
               value={nameEn}
             />

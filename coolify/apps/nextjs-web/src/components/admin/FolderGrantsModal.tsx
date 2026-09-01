@@ -30,6 +30,7 @@ import {
 import { GhostButton, PrimaryButton } from "@/components/ui/buttons";
 import { HelpLabel } from "@/components/ui/HelpLabel";
 import { openConfirm } from "@/components/ui/modals";
+import { useTr } from "@/hooks/useTr";
 import { fieldHelp } from "@/lib/field-help";
 
 export function FolderGrantsModal({
@@ -45,6 +46,7 @@ export function FolderGrantsModal({
   /** 既知のフォルダ候補（サジェスト用）。 */
   folders: string[];
 }) {
+  const tr = useTr();
   const [loading, setLoading] = useState(true);
   const [grants, setGrants] = useState<FolderGrantRow[]>([]);
   const [users, setUsers] = useState<GrantUserOption[]>([]);
@@ -65,14 +67,14 @@ export function FolderGrantsModal({
         setUsers(res.data.users);
       } else {
         notifications.show({
-          title: "読み込み失敗",
-          message: res.error,
+          title: tr("読み込み失敗"),
+          message: tr(res.error),
           color: "red",
         });
       }
       setLoading(false);
     });
-  }, [opened, defaultPrefix]);
+  }, [opened, defaultPrefix, tr]);
 
   function onAdd() {
     if (!userId) return;
@@ -84,14 +86,14 @@ export function FolderGrantsModal({
       });
       if (!res.ok) {
         notifications.show({
-          title: "保存失敗",
-          message: res.error,
+          title: tr("保存失敗"),
+          message: tr(res.error),
           color: "red",
         });
         return;
       }
       notifications.show({
-        title: "権限を付与しました",
+        title: tr("権限を付与しました"),
         message: prefix,
         color: "green",
       });
@@ -103,7 +105,7 @@ export function FolderGrantsModal({
 
   function onDelete(row: FolderGrantRow) {
     openConfirm({
-      title: "権限の削除",
+      title: tr("権限の削除"),
       message: `「${row.pathPrefix}」への ${row.userName} さんのアクセス権を削除します。`,
       confirmLabel: "削除",
       onConfirm: () => {
@@ -111,8 +113,8 @@ export function FolderGrantsModal({
           const res = await deleteFolderGrant(row.id);
           if (!res.ok) {
             notifications.show({
-              title: "削除失敗",
-              message: res.error,
+              title: tr("削除失敗"),
+              message: tr(res.error),
               color: "red",
             });
             return;
@@ -124,7 +126,12 @@ export function FolderGrantsModal({
   }
 
   return (
-    <Modal onClose={onClose} opened={opened} size="lg" title="フォルダ権限">
+    <Modal
+      onClose={onClose}
+      opened={opened}
+      size="lg"
+      title={tr("フォルダ権限")}
+    >
       {loading ? (
         <Group justify="center" py="xl">
           <Loader size="sm" />
@@ -133,7 +140,7 @@ export function FolderGrantsModal({
         <Stack gap="md">
           <Stack gap="xs">
             <Text fw={600} size="sm">
-              権限を付与
+              {tr("権限を付与")}
             </Text>
             <Group align="flex-end" gap="xs" wrap="wrap">
               <TextInput
@@ -158,7 +165,7 @@ export function FolderGrantsModal({
                   <HelpLabel {...fieldHelp("fileManagement", "grantUser")} />
                 }
                 onChange={setUserId}
-                placeholder="選択"
+                placeholder={tr("選択")}
                 searchable
                 style={{ flex: 1, minWidth: 200 }}
                 value={userId}
@@ -177,30 +184,35 @@ export function FolderGrantsModal({
                 loading={pending}
                 onClick={onAdd}
               >
-                付与
+                {tr("付与")}
               </PrimaryButton>
             </Group>
             <Text c="dimmed" size="xs">
-              指定フォルダ以下のすべてのファイルが対象。system
-              権限の管理者は常に全フォルダへアクセスできます。
+              {tr(
+                tr(
+                  tr(
+                    "指定フォルダ以下のすべてのファイルが対象。system\n              権限の管理者は常に全フォルダへアクセスできます。",
+                  ),
+                ),
+              )}
             </Text>
           </Stack>
 
           <Stack gap="xs">
             <Text fw={600} size="sm">
-              付与済み
+              {tr("付与済み")}
             </Text>
             {grants.length === 0 ? (
               <Text c="dimmed" size="sm">
-                個別付与はありません
+                {tr("個別付与はありません")}
               </Text>
             ) : (
               <Table>
                 <Table.Thead>
                   <Table.Tr>
-                    <Table.Th>フォルダ</Table.Th>
-                    <Table.Th>ユーザー</Table.Th>
-                    <Table.Th>権限</Table.Th>
+                    <Table.Th>{tr("フォルダ")}</Table.Th>
+                    <Table.Th>{tr("ユーザー")}</Table.Th>
+                    <Table.Th>{tr("権限")}</Table.Th>
                     <Table.Th />
                   </Table.Tr>
                 </Table.Thead>
@@ -225,7 +237,7 @@ export function FolderGrantsModal({
                           color={g.canWrite ? "blue" : "gray"}
                           variant="light"
                         >
-                          {g.canWrite ? "読み書き" : "読み取り"}
+                          {g.canWrite ? "読み書き" : tr("読み取り")}
                         </Badge>
                       </Table.Td>
                       <Table.Td align="right">

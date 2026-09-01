@@ -41,6 +41,7 @@ import {
   FormShell,
   LocalizedTextInput,
 } from "@/components/ui/shells";
+import { useTr } from "@/hooks/useTr";
 import { useIsMobile } from "@/hooks/useViewport";
 import {
   dependencyRelationOptions,
@@ -73,6 +74,7 @@ function refineDepRows(
   field: "useDeps" | "execDeps",
   ctx: z.RefinementCtx,
 ) {
+  const tr = useTr();
   const seen = new Map<string, number>();
   rows.forEach((row, index) => {
     if (!row.dependsOnStepId) return;
@@ -81,7 +83,7 @@ function refineDepRows(
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         path: [field, index, "dependsOnStepId"],
-        message: "依存先の工程が重複しています",
+        message: tr("依存先の工程が重複しています"),
       });
     } else {
       seen.set(row.dependsOnStepId, index);
@@ -189,6 +191,7 @@ export function ProcessStepForm({
   /** 作業場所の選択肢（有効のみ、「グループ / 場所」ラベル）。 */
   workLocationOptions: { value: string; label: string }[];
 }) {
+  const tr = useTr();
   const locale = useLocale();
   const router = useRouter();
   const isMobile = useIsMobile();
@@ -239,7 +242,7 @@ export function ProcessStepForm({
         if (index >= 0) {
           form.setFieldError(
             `${field}.${index}.dependsOnStepId`,
-            "自分自身の工程は指定できません",
+            tr("自分自身の工程は指定できません"),
           );
           return;
         }
@@ -296,15 +299,15 @@ export function ProcessStepForm({
         : await createProcessStep({ ...payload, code: values.code });
       if (result.ok) {
         notifications.show({
-          title: "保存しました",
-          message: isEdit ? "工程を更新しました" : "工程を作成しました",
+          title: tr("保存しました"),
+          message: isEdit ? "工程を更新しました" : tr("工程を作成しました"),
           color: "green",
         });
         router.push(`${BASE_PATH}/${result.data.id}`);
       } else {
         notifications.show({
-          title: "エラー",
-          message: result.error,
+          title: tr("エラー"),
+          message: tr(result.error),
           color: "red",
         });
       }
@@ -346,7 +349,7 @@ export function ProcessStepForm({
                     );
                   }}
                   onSearch={searchProcessStepOptions}
-                  placeholder="依存先の工程を検索"
+                  placeholder={tr("依存先の工程を検索")}
                   storageKey="process-step-dep"
                   value={row.dependsOnStepId}
                 />
@@ -359,7 +362,7 @@ export function ProcessStepForm({
               />
               {withNegation && (
                 <Switch
-                  label="排他"
+                  label={tr("排他")}
                   mt={8}
                   {...form.getInputProps(`${field}.${index}.isNegation`, {
                     type: "checkbox",
@@ -367,12 +370,12 @@ export function ProcessStepForm({
                 />
               )}
               <TextInput
-                placeholder="備考"
+                placeholder={tr("備考")}
                 style={{ flex: 1, minWidth: isMobile ? "60%" : 140 }}
                 {...form.getInputProps(`${field}.${index}.notes`)}
               />
               <GhostButton
-                aria-label="この依存を削除"
+                aria-label={tr("この依存を削除")}
                 color="red"
                 onClick={() => form.removeListItem(field, index)}
                 px={6}
@@ -388,7 +391,7 @@ export function ProcessStepForm({
           mt={rows.length > 0 ? "xs" : 0}
           onClick={() => form.insertListItem(field, newDepRow())}
         >
-          依存を追加
+          {tr("依存を追加")}
         </GhostButton>
       </>
     );
@@ -397,9 +400,9 @@ export function ProcessStepForm({
   return (
     <FormShell
       breadcrumbs={[
-        "マスタ",
-        { label: "工程マスタ", href: BASE_PATH },
-        isEdit ? "編集" : "新規作成",
+        tr("マスタ"),
+        { label: tr("工程マスタ"), href: BASE_PATH },
+        isEdit ? "編集" : tr("新規作成"),
       ]}
       isDirty={form.isDirty()}
       isPending={isPending}
@@ -408,27 +411,33 @@ export function ProcessStepForm({
       }
       onSubmit={form.onSubmit(handleSubmit)}
       status={isEdit ? <ActiveBadge active={initial.isActive} /> : undefined}
-      title={isEdit ? `工程 編集 — ${initial.code}` : "工程 新規作成"}
+      title={isEdit ? `工程 編集 — ${initial.code}` : tr("工程 新規作成")}
     >
-      <FormSection title="基本情報">
+      <FormSection title={tr("基本情報")}>
         <SimpleGrid cols={isMobile ? 1 : 2} spacing="sm">
           {isEdit ? (
             <TextInput
-              description="工程コードは作成後変更できません"
+              description={tr("工程コードは作成後変更できません")}
               disabled
               label={
                 <HelpLabel
-                  {...fieldHelp("processStep", "code", { label: "工程コード" })}
+                  {...fieldHelp("processStep", "code", {
+                    label: tr("工程コード"),
+                  })}
                 />
               }
               value={initial.code}
             />
           ) : (
             <TextInput
-              description="英大文字・数字・アンダースコア（例: CYLINDER_MACHINING）"
+              description={tr(
+                tr("英大文字・数字・アンダースコア（例: CYLINDER_MACHINING）"),
+              )}
               label={
                 <HelpLabel
-                  {...fieldHelp("processStep", "code", { label: "工程コード" })}
+                  {...fieldHelp("processStep", "code", {
+                    label: tr("工程コード"),
+                  })}
                 />
               }
               placeholder="CYLINDER_MACHINING"
@@ -437,7 +446,9 @@ export function ProcessStepForm({
             />
           )}
           <NumberInput
-            description="一覧・カタログの既定の並び順（実行順は依存解決で決定）"
+            description={tr(
+              tr("一覧・カタログの既定の並び順（実行順は依存解決で決定）"),
+            )}
             label={<HelpLabel {...fieldHelp("processStep", "sortOrder")} />}
             {...form.getInputProps("sortOrder")}
           />
@@ -446,7 +457,7 @@ export function ProcessStepForm({
           <LocalizedTextInput
             help={fieldHelpTip("processStep", "code")}
             jaProps={form.getInputProps("nameJa")}
-            label="名称"
+            label={tr("名称")}
             required
             translationsProps={form.getInputProps("nameTranslations")}
           />
@@ -467,7 +478,13 @@ export function ProcessStepForm({
           <Select
             allowDeselect={false}
             data={quantityTrackingOptions(locale)}
-            description="工程実行時の数量入力。なし = 記録せず通過数をそのまま次工程へ"
+            description={tr(
+              tr(
+                tr(
+                  "工程実行時の数量入力。なし = 記録せず通過数をそのまま次工程へ",
+                ),
+              ),
+            )}
             label={
               <HelpLabel {...fieldHelp("processStep", "quantityTracking")} />
             }
@@ -476,13 +493,21 @@ export function ProcessStepForm({
           <Select
             allowDeselect={false}
             data={lotInputModeOptions(locale)}
-            description="工程開始時のロット/伝票コード入力。必須 = 未入力では開始不可（工程リスト・指示書で工程別に上書き可）"
-            label="ロット入力（既定）"
+            description={tr(
+              tr(
+                tr(
+                  "工程開始時のロット/伝票コード入力。必須 = 未入力では開始不可（工程リスト・指示書で工程別に上書き可）",
+                ),
+              ),
+            )}
+            label={tr("ロット入力（既定）")}
             {...form.getInputProps("lotInputMode")}
           />
           <NumberInput
             decimalScale={2}
-            description="ルート/指示書の工程に入る初期値（任意・上書き可）"
+            description={tr(
+              tr("ルート/指示書の工程に入る初期値（任意・上書き可）"),
+            )}
             label={<HelpLabel {...fieldHelp("processStep", "defaultTime")} />}
             min={0.01}
             suffix=" h"
@@ -491,7 +516,7 @@ export function ProcessStepForm({
         </SimpleGrid>
         <Stack gap="xs" mt="sm">
           <Switch
-            description="他工程と同時実施・記録できる工程"
+            description={tr("他工程と同時実施・記録できる工程")}
             label={<HelpLabel {...fieldHelp("processStep", "sync")} />}
             {...form.getInputProps("isSyncCapable", { type: "checkbox" })}
           />
@@ -499,7 +524,7 @@ export function ProcessStepForm({
             label={
               <HelpLabel
                 {...fieldHelp("processStep", "inspection", {
-                  label: "検査工程",
+                  label: tr("検査工程"),
                 })}
               />
             }
@@ -522,7 +547,7 @@ export function ProcessStepForm({
             label={
               <HelpLabel
                 {...fieldHelp("processStep", "inspection", {
-                  label: "検査承認工程",
+                  label: tr("検査承認工程"),
                 })}
               />
             }
@@ -530,11 +555,11 @@ export function ProcessStepForm({
           />
           {form.values.isApprovalStep && (
             <TextInput
-              description="この承認工程を実行できる最低役職"
+              description={tr("この承認工程を実行できる最低役職")}
               label={
                 <HelpLabel {...fieldHelp("processStep", "approvalRank")} />
               }
-              placeholder="例: 係長以上"
+              placeholder={tr("例: 係長以上")}
               {...form.getInputProps("approvalMinRank")}
             />
           )}
@@ -550,48 +575,70 @@ export function ProcessStepForm({
         <Textarea
           label={
             <HelpLabel
-              {...fieldHelp("processStep", "active", { label: "備考" })}
+              {...fieldHelp("processStep", "active", { label: tr("備考") })}
             />
           }
           mt="sm"
-          placeholder="備考・特記事項"
+          placeholder={tr("備考・特記事項")}
           rows={3}
           {...form.getInputProps("notes")}
         />
       </FormSection>
 
       <FormSection
-        description="この工程をワークフローに含めてよい条件（依存先工程の存在）。排他 = 依存先が存在しないこと（!）。保存時に依存行は全置換されます。"
-        title="使用依存"
+        description={tr(
+          tr(
+            tr(
+              "この工程をワークフローに含めてよい条件（依存先工程の存在）。排他 = 依存先が存在しないこと（!）。保存時に依存行は全置換されます。",
+            ),
+          ),
+        )}
+        title={tr("使用依存")}
       >
         {depRowsEditor("useDeps")}
       </FormSection>
 
       <FormSection
-        description="この工程を開始してよい条件（依存先工程の完了）。ワークフローに存在しない依存先は満たされた扱いになります。"
-        title="実行依存"
+        description={tr(
+          tr(
+            tr(
+              "この工程を開始してよい条件（依存先工程の完了）。ワークフローに存在しない依存先は満たされた扱いになります。",
+            ),
+          ),
+        )}
+        title={tr("実行依存")}
       >
         {depRowsEditor("execDeps")}
       </FormSection>
 
       <FormSection
-        description="この工程の計画・実績で使える作業場所を制限します（種別と個別の和集合が許可されます）。両方空 = 制限なし。共有端末でも同じ制限が効きます。"
-        title="許可作業場所"
+        description={tr(
+          tr(
+            tr(
+              "この工程の計画・実績で使える作業場所を制限します（種別と個別の和集合が許可されます）。両方空 = 制限なし。共有端末でも同じ制限が効きます。",
+            ),
+          ),
+        )}
+        title={tr("許可作業場所")}
       >
         <SimpleGrid cols={isMobile ? 1 : 2} spacing="sm">
           <MultiSelect
             clearable
             data={workLocationTypeOptions}
-            description="種別に属する全場所を許可（種別は MS0D の種別管理で定義）"
+            description={tr(
+              tr("種別に属する全場所を許可（種別は MS0D の種別管理で定義）"),
+            )}
             label={
               <HelpLabel
                 {...fieldHelp("processStep", "allowedLocations", {
-                  label: "種別で許可",
+                  label: tr("種別で許可"),
                 })}
               />
             }
             placeholder={
-              form.values.allowedTypeKeys.length > 0 ? undefined : "種別を選択"
+              form.values.allowedTypeKeys.length > 0
+                ? undefined
+                : tr("種別を選択")
             }
             searchable
             {...form.getInputProps("allowedTypeKeys")}
@@ -599,12 +646,12 @@ export function ProcessStepForm({
           <MultiSelect
             clearable
             data={workLocationOptions}
-            description="個別の機械・エリアを許可"
-            label="場所で許可"
+            description={tr("個別の機械・エリアを許可")}
+            label={tr("場所で許可")}
             placeholder={
               form.values.allowedLocationIds.length > 0
                 ? undefined
-                : "作業場所を検索"
+                : tr("作業場所を検索")
             }
             searchable
             {...form.getInputProps("allowedLocationIds")}

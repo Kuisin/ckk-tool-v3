@@ -18,6 +18,7 @@ import { IconCamera, IconScan } from "@tabler/icons-react";
 import QrScanner from "qr-scanner";
 import { useEffect, useRef, useState } from "react";
 import { SecondaryButton } from "@/components/ui/buttons";
+import { useTr } from "@/hooks/useTr";
 import { normalizeCode } from "@/lib/crockford";
 
 // ── QR スキャナ（qr-scanner — 全ブラウザ対応。kiosk QrScannerView と同方式） ──
@@ -36,6 +37,7 @@ export function LinkQrScanner({
   /** ボタンの文言（端末 / ディスプレイで呼び分ける）。 */
   label?: string;
 }) {
+  const tr = useTr();
   const [scanning, setScanning] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [cameras, setCameras] = useState<QrScanner.Camera[]>([]);
@@ -72,14 +74,20 @@ export function LinkQrScanner({
       .then(setCameras)
       .catch(() => {
         setError(
-          "カメラを起動できません。カメラ権限と HTTPS 接続を確認してください。",
+          tr(
+            tr(
+              tr(
+                "カメラを起動できません。カメラ権限と HTTPS 接続を確認してください。",
+              ),
+            ),
+          ),
         );
       });
     return () => {
       scanner.destroy();
       scannerRef.current = null;
     };
-  }, [scanning]);
+  }, [scanning, tr]);
 
   return (
     <Stack gap="xs">
@@ -105,7 +113,7 @@ export function LinkQrScanner({
               <Menu position="bottom-end" shadow="md" withinPortal>
                 <Menu.Target>
                   <ActionIcon
-                    aria-label="カメラを切替"
+                    aria-label={tr("カメラを切替")}
                     style={{ position: "absolute", top: 8, right: 8 }}
                     variant="default"
                   >
@@ -113,7 +121,7 @@ export function LinkQrScanner({
                   </ActionIcon>
                 </Menu.Target>
                 <Menu.Dropdown>
-                  <Menu.Label>カメラを選択</Menu.Label>
+                  <Menu.Label>{tr("カメラを選択")}</Menu.Label>
                   {cameras.map((cam) => (
                     <Menu.Item
                       key={cam.id}
@@ -127,7 +135,7 @@ export function LinkQrScanner({
             )}
           </Box>
           <SecondaryButton onClick={() => setScanning(false)}>
-            スキャンを停止
+            {tr("スキャンを停止")}
           </SecondaryButton>
         </>
       ) : (

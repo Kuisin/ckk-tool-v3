@@ -10,6 +10,7 @@ import type { BpBaseDetail } from "@/app/(dashboard)/master/_shared/bp-data";
 import { DocNumber } from "@/components/ui/DocNumber";
 import { FieldValue } from "@/components/ui/FieldValue";
 import { SummaryGrid } from "@/components/ui/shells";
+import { useTr } from "@/hooks/useTr";
 import { countryLabel } from "@/lib/enum-labels";
 export function BpBaseSummary({
   record,
@@ -18,19 +19,20 @@ export function BpBaseSummary({
   record: BpBaseDetail;
   extra?: React.ReactNode;
 }) {
+  const tr = useTr();
   const locale = useLocale();
   return (
     <SummaryGrid>
       <FieldValue
-        label="BPコード"
+        label={tr("BPコード")}
         value={<DocNumber>{record.bpCode}</DocNumber>}
       />
-      <FieldValue label="名称（日本語）" value={record.nameJa || "—"} />
-      <FieldValue label="名称（英語）" value={record.nameEn || "—"} />
-      <FieldValue label="フリガナ" value={record.nameKana || "—"} />
-      <FieldValue label="略称" value={record.shortName || "—"} />
+      <FieldValue label={tr("名称（日本語）")} value={record.nameJa || "—"} />
+      <FieldValue label={tr("名称（英語）")} value={record.nameEn || "—"} />
+      <FieldValue label={tr("フリガナ")} value={record.nameKana || "—"} />
+      <FieldValue label={tr("略称")} value={record.shortName || "—"} />
       <FieldValue
-        label="国"
+        label={tr("国")}
         value={
           record.countryCode
             ? (countryLabel(record.countryCode, locale) ?? record.countryCode)
@@ -38,18 +40,18 @@ export function BpBaseSummary({
         }
       />
       <FieldValue
-        label="住所"
+        label={tr("住所")}
         value={
           record.postalCode || record.addressJa
             ? `${record.postalCode ? `〒${record.postalCode} ` : ""}${record.addressJa}`
             : "—"
         }
       />
-      <FieldValue label="電話番号" value={record.phone || "—"} />
+      <FieldValue label={tr("電話番号")} value={record.phone || "—"} />
       <FieldValue label="FAX" value={record.fax || "—"} />
-      <FieldValue label="メールアドレス" value={record.email || "—"} />
+      <FieldValue label={tr("メールアドレス")} value={record.email || "—"} />
       <FieldValue
-        label="Webサイト"
+        label={tr("Webサイト")}
         value={
           record.website ? (
             <Anchor
@@ -65,9 +67,9 @@ export function BpBaseSummary({
           )
         }
       />
-      <FieldValue label="法人番号" value={record.taxNumber || "—"} />
+      <FieldValue label={tr("法人番号")} value={record.taxNumber || "—"} />
       <FieldValue
-        label="AI照合名"
+        label={tr("AI照合名")}
         value={
           record.matchNames.length > 0 ? (
             <Group gap={4} wrap="wrap">

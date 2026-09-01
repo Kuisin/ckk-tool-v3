@@ -2,13 +2,15 @@ import { notFound } from "next/navigation";
 import { ClosingDetail } from "@/components/billing/closings/ClosingDetail";
 import { fetchAuditEntries } from "@/lib/audit";
 import { requireAppRead } from "@/lib/authz-page";
+import { getTr } from "@/lib/ui-text-server";
 import { fetchClosing } from "../data";
 
 export const dynamic = "force-dynamic";
 
 /** 未認証スクレイパ向けの汎用 OG（種別のみ、業務データなし）。 */
 export async function generateMetadata() {
-  return { title: "締日処理 詳細 | CKK 業務管理システム" };
+  const tr = await getTr();
+  return { title: tr("締日処理 詳細 | CKK 業務管理システム") };
 }
 
 /** 締日処理 詳細 (BL22). URL id = billing_closings.id (uuid). */

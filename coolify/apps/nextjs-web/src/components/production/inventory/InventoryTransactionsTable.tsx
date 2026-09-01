@@ -11,6 +11,7 @@ import { Badge, Table, Text } from "@mantine/core";
 import { IconArrowsExchange } from "@tabler/icons-react";
 import { useFormat } from "@/components/layout/PreferencesProvider";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { useTr } from "@/hooks/useTr";
 import { type InventoryTransactionRow, TRANSACTION_TYPE_BADGE } from "./model";
 
 export function InventoryTransactionsTable({
@@ -21,12 +22,13 @@ export function InventoryTransactionsTable({
   /** 数量の単位表示（製品は「本」等）。 */
   unit: string;
 }) {
+  const tr = useTr();
   const fmt = useFormat();
   if (rows.length === 0) {
     return (
       <EmptyState
         icon={<IconArrowsExchange size={24} />}
-        message="取引履歴がありません"
+        message={tr("取引履歴がありません")}
       />
     );
   }
@@ -36,13 +38,13 @@ export function InventoryTransactionsTable({
       <Table>
         <Table.Thead>
           <Table.Tr>
-            <Table.Th w={150}>日時</Table.Th>
-            <Table.Th w={90}>種別</Table.Th>
+            <Table.Th w={150}>{tr("日時")}</Table.Th>
+            <Table.Th w={90}>{tr("種別")}</Table.Th>
             <Table.Th ta="right" w={110}>
-              数量
+              {tr("数量")}
             </Table.Th>
-            <Table.Th>参照</Table.Th>
-            <Table.Th>備考</Table.Th>
+            <Table.Th>{tr("参照")}</Table.Th>
+            <Table.Th>{tr("備考")}</Table.Th>
           </Table.Tr>
         </Table.Thead>
         <Table.Tbody>

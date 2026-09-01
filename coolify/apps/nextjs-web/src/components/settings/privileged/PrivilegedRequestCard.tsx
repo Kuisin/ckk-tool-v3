@@ -11,6 +11,7 @@
 import { Badge, Group, Paper, Stack, Text } from "@mantine/core";
 import { useEffect, useState } from "react";
 import { useFormat } from "@/components/layout/PreferencesProvider";
+import { useTr } from "@/hooks/useTr";
 import {
   GRANT_STATE_COLOR,
   GRANT_STATE_LABEL,
@@ -52,6 +53,7 @@ function formatRemaining(ms: number): string {
  * 実際に使えるかどうかは操作した瞬間にサーバーが判定するため、ここは目安。
  */
 function Countdown({ initialMs }: { initialMs: number }) {
+  const tr = useTr();
   const [ms, setMs] = useState(initialMs);
   useEffect(() => {
     setMs(initialMs);
@@ -61,7 +63,7 @@ function Countdown({ initialMs }: { initialMs: number }) {
     }, 1000);
     return () => clearInterval(t);
   }, [initialMs]);
-  if (ms <= 0) return <Badge color="gray">期限切れ</Badge>;
+  if (ms <= 0) return <Badge color="gray">{tr("期限切れ")}</Badge>;
   return (
     <Badge color="violet" variant="filled">
       残り {formatRemaining(ms)}
@@ -77,6 +79,7 @@ export function PrivilegedRequestCard({
   /** この行に対する操作（承認 / 差し戻し / 取り下げ …）。無ければ表示のみ。 */
   actions?: React.ReactNode;
 }) {
+  const tr = useTr();
   const fmt = useFormat();
   // 方式 A で「利用中」のときだけ実時間のカウントダウンを出す。承認依頼中や
   // 期限切れに秒を出しても読む意味が無い。
@@ -134,7 +137,7 @@ export function PrivilegedRequestCard({
               {fmt.dateTime(row.windowEndsAt)} / 1 回 {row.durationMinutes} 分
               {row.activatedAt
                 ? `（${fmt.dateTime(row.activatedAt)} に開始・${row.useCount} 回使用）`
-                : "（未使用 — 最初に使った時点から測ります）"}
+                : tr("（未使用 — 最初に使った時点から測ります）")}
             </Text>
           )}
 

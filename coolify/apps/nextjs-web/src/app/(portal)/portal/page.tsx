@@ -7,33 +7,35 @@
 import { Anchor, Card, Stack, Text, Title } from "@mantine/core";
 import { PortalLogoutButton } from "@/components/portal/PortalLogoutButton";
 import { requirePortalView } from "@/lib/portal-page";
+import { getTr } from "@/lib/ui-text-server";
 
 export const dynamic = "force-dynamic";
 
 export default async function PortalHomePage() {
+  const tr = await getTr();
   const gate = await requirePortalView();
   if (!gate.ok) return gate.view;
 
   return (
     <Stack gap="md">
-      <Title order={3}>取引先ポータル</Title>
+      <Title order={3}>{tr("取引先ポータル")}</Title>
       <Card padding="lg" radius="md" withBorder>
         <Stack gap="xs">
           <Text fw={600} size="sm">
             {gate.session.displayName} 様
           </Text>
           <Text c="dimmed" size="sm">
-            自社宛の書類をご覧いただけます。
+            {tr("自社宛の書類をご覧いただけます。")}
           </Text>
           <Stack gap={4}>
             <Anchor href="/portal/documents" size="sm">
-              書類（見積書・注文請書・納品書・請求書）
+              {tr("書類（見積書・注文請書・納品書・請求書）")}
             </Anchor>
             <Anchor href="/portal/orders" size="sm">
-              注文の進捗
+              {tr("注文の進捗")}
             </Anchor>
             <Anchor href="/portal/forms" size="sm">
-              フォームの回答
+              {tr("フォームの回答")}
             </Anchor>
           </Stack>
         </Stack>

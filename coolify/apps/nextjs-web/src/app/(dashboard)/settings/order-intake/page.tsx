@@ -3,6 +3,7 @@ import { OrderIntakeFolderPanel } from "@/components/settings/order-intake/Order
 import { PageHeader } from "@/components/ui/PageHeader";
 import { requireAppRead } from "@/lib/authz-page";
 import { readIntakeFolder } from "@/lib/intake-folder";
+import { getTr } from "@/lib/ui-text-server";
 import { fetchIntakeDocs } from "./data";
 
 export const dynamic = "force-dynamic";
@@ -18,6 +19,7 @@ export const dynamic = "force-dynamic";
  * 焼き込まれている — lib/intake.ts）ので、結果を追うのに番号を探し回らない。
  */
 export default async function OrderIntakeSettingsPage() {
+  const tr = await getTr();
   const denied = await requireAppRead("order-intake");
   if (denied) return denied;
 
@@ -26,7 +28,10 @@ export default async function OrderIntakeSettingsPage() {
 
   return (
     <Stack gap="md">
-      <PageHeader breadcrumbs={["システム", "注文書取込"]} title="注文書取込" />
+      <PageHeader
+        breadcrumbs={[tr("システム"), tr("注文書取込")]}
+        title={tr("注文書取込")}
+      />
       <OrderIntakeFolderPanel docs={docs} status={status} />
     </Stack>
   );

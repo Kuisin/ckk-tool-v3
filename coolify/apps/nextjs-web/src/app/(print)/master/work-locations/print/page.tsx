@@ -5,6 +5,7 @@ import { prisma } from "@/lib/db";
 import { type LocalizedText, localized } from "@/lib/format";
 import { qrSvg } from "@/lib/qr";
 import { encodeQrPayload, QR_KINDS } from "@/lib/qr-payload";
+import { getTr } from "@/lib/ui-text-server";
 import { PrintToolbar } from "./print-toolbar";
 
 export const dynamic = "force-dynamic";
@@ -45,6 +46,7 @@ export default async function WorkLocationsPrintPage({
 }: {
   searchParams: Promise<{ ids?: string }>;
 }) {
+  const tr = await getTr();
   const authz = await checkPermission("master", "READ");
   if (!authz.ok) {
     return <EmptyState icon={<IconLock size={28} />} message={authz.error} />;
@@ -79,7 +81,9 @@ export default async function WorkLocationsPrintPage({
       <PrintToolbar count={labels.length} />
 
       {labels.length === 0 ? (
-        <p className="wl-print-empty">印刷対象の作業場所がありません。</p>
+        <p className="wl-print-empty">
+          {tr("印刷対象の作業場所がありません。")}
+        </p>
       ) : (
         sheets.map((sheet) => (
           <div className="wl-print-sheet" key={sheet[0]?.id}>
@@ -87,7 +91,7 @@ export default async function WorkLocationsPrintPage({
             <div className="wl-print-scale">
               <span className="wl-print-scale-bar" />
               <span className="wl-print-scale-label">
-                50mm（原寸確認 / 用紙 A4・倍率 100%）
+                {tr("50mm（原寸確認 / 用紙 A4・倍率 100%）")}
               </span>
             </div>
             <div className="wl-print-grid">
@@ -113,7 +117,7 @@ export default async function WorkLocationsPrintPage({
                       <span className="wl-print-name">{label.name}</span>
                       <span className="wl-print-code">{label.code}</span>
                       <span className="wl-print-hint">
-                        作業場所QR — 工程実行画面で読み取り
+                        {tr("作業場所QR — 工程実行画面で読み取り")}
                       </span>
                     </div>
                   </div>

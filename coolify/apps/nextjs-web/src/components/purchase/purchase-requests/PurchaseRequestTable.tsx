@@ -15,6 +15,7 @@ import { type Column, DataTable } from "@/components/ui/DataTable";
 import { NewButton } from "@/components/ui/NewButton";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { ListShell } from "@/components/ui/shells";
+import { useTr } from "@/hooks/useTr";
 import { useUrlSelectState, useUrlStringState } from "@/hooks/useUrlState";
 import { useIsMobile } from "@/hooks/useViewport";
 import { statusOptions } from "@/lib/status-map";
@@ -31,6 +32,7 @@ function materialSummary(r: PurchaseRequestRow): string {
 }
 
 export function PurchaseRequestTable({ rows }: { rows: PurchaseRequestRow[] }) {
+  const tr = useTr();
   const fmt = useFormat();
   const router = useRouter();
   const isMobile = useIsMobile();
@@ -57,7 +59,7 @@ export function PurchaseRequestTable({ rows }: { rows: PurchaseRequestRow[] }) {
   const columns: Column<PurchaseRequestRow>[] = [
     {
       key: "requestNumber",
-      header: "依頼番号",
+      header: tr("依頼番号"),
       sortable: true,
       render: (r) => (
         <Text ff="mono" size="sm">
@@ -67,13 +69,13 @@ export function PurchaseRequestTable({ rows }: { rows: PurchaseRequestRow[] }) {
     },
     {
       key: "requesterName",
-      header: "依頼者",
+      header: tr("依頼者"),
       sortable: true,
       render: (r) => r.requesterName,
     },
     {
       key: "primaryMaterial",
-      header: "主要素材",
+      header: tr("主要素材"),
       sortValue: (r) => r.primaryMaterial ?? "",
       render: (r) => (
         <Text ff="mono" size="sm">
@@ -83,7 +85,7 @@ export function PurchaseRequestTable({ rows }: { rows: PurchaseRequestRow[] }) {
     },
     {
       key: "itemCount",
-      header: "明細数",
+      header: tr("明細数"),
       align: "right",
       width: 90,
       sortValue: (r) => r.itemCount,
@@ -95,14 +97,14 @@ export function PurchaseRequestTable({ rows }: { rows: PurchaseRequestRow[] }) {
     },
     {
       key: "status",
-      header: "状態",
+      header: tr("状態"),
       width: 110,
       sortValue: (r) => r.status,
       render: (r) => <StatusBadge entity="PurchaseRequest" status={r.status} />,
     },
     {
       key: "desiredAt",
-      header: "希望納期",
+      header: tr("希望納期"),
       width: 120,
       sortValue: (r) => r.desiredAt ?? "",
       render: (r) => (
@@ -113,7 +115,7 @@ export function PurchaseRequestTable({ rows }: { rows: PurchaseRequestRow[] }) {
     },
     {
       key: "updatedAt",
-      header: "更新日",
+      header: tr("更新日"),
       width: 150,
       sortValue: (r) => r.updatedAt,
       render: (r) => (
@@ -127,14 +129,14 @@ export function PurchaseRequestTable({ rows }: { rows: PurchaseRequestRow[] }) {
   return (
     <ListShell
       action={<NewButton href={`${BASE_PATH}/new`} />}
-      breadcrumbs={["購買", "購買依頼"]}
+      breadcrumbs={[tr("購買"), tr("購買依頼")]}
       filters={
         <Select
           clearable
           data={statusOptions("PurchaseRequest")}
           flex={isMobile ? 1 : undefined}
           onChange={setStatus}
-          placeholder="状態"
+          placeholder={tr("状態")}
           value={status}
           w={isMobile ? undefined : 150}
         />
@@ -144,11 +146,11 @@ export function PurchaseRequestTable({ rows }: { rows: PurchaseRequestRow[] }) {
         <TextInput
           leftSection={<IconSearch size={14} />}
           onChange={(e) => setSearch(e.currentTarget.value)}
-          placeholder="依頼番号・依頼者・素材で検索"
+          placeholder={tr("依頼番号・依頼者・素材で検索")}
           value={search}
         />
       }
-      title="購買依頼"
+      title={tr("購買依頼")}
     >
       <DataTable
         columns={columns}
@@ -156,7 +158,7 @@ export function PurchaseRequestTable({ rows }: { rows: PurchaseRequestRow[] }) {
         defaultSort={{ key: "requestNumber", dir: "desc" }}
         emptyAction={<NewButton href={`${BASE_PATH}/new`} />}
         emptyIcon={<IconClipboardList size={24} />}
-        emptyMessage="購買依頼がありません"
+        emptyMessage={tr("購買依頼がありません")}
         getRowId={(r) => r.requestNumber}
         onRowClick={(r) => router.push(`${BASE_PATH}/${r.requestNumber}`)}
         renderCard={(r) => (

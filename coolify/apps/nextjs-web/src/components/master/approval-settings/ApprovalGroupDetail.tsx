@@ -55,6 +55,7 @@ import {
   ResourceActions,
   SummaryGrid,
 } from "@/components/ui/shells";
+import { useTr } from "@/hooks/useTr";
 import { useTabParam } from "@/hooks/useUrlState";
 import { useIsMobile } from "@/hooks/useViewport";
 import {
@@ -144,11 +145,12 @@ export interface ApprovalGroupDetailData {
 
 /** 在籍期間の表示（常任は「常任」）。 */
 function MemberPeriod({ member }: { member: ApprovalGroupMemberRow }) {
+  const tr = useTr();
   const fmt = useFormat();
   if (!member.validFrom || !member.validUntil) {
     return (
       <Text c="dimmed" size="sm">
-        常任
+        {tr("常任")}
       </Text>
     );
   }
@@ -172,10 +174,17 @@ function MemberPeriod({ member }: { member: ApprovalGroupMemberRow }) {
  * 何も起きないため）。
  */
 function GroupUsageNote({ usages }: { usages: GroupFlowUsage[] }) {
+  const tr = useTr();
   if (usages.length === 0) {
     return (
       <Alert color="gray" icon={<IconShieldCheck size={16} />} variant="light">
-        このグループはどの承認フローにも使われていません（承認設定の「承認フロー」で段に割り当てます）。
+        {tr(
+          tr(
+            tr(
+              "このグループはどの承認フローにも使われていません（承認設定の「承認フロー」で段に割り当てます）。",
+            ),
+          ),
+        )}
       </Alert>
     );
   }
@@ -183,7 +192,7 @@ function GroupUsageNote({ usages }: { usages: GroupFlowUsage[] }) {
     <Alert
       color="gray"
       icon={<IconShieldCheck size={16} />}
-      title="このグループが承認する書類と、必要な権限"
+      title={tr("このグループが承認する書類と、必要な権限")}
       variant="light"
     >
       <Stack gap={4}>
@@ -201,9 +210,13 @@ function GroupUsageNote({ usages }: { usages: GroupFlowUsage[] }) {
           </Group>
         ))}
         <Text c="dimmed" size="xs">
-          承認に必要なのは、その書類を閲覧または編集できる権限です。書類を
-          開けないメンバーは、承認ボタンを押しても弾かれます。権限は
-          ユーザー管理 (SY01) のロールで決まります。
+          {tr(
+            tr(
+              tr(
+                "承認に必要なのは、その書類を閲覧または編集できる権限です。書類を\n          開けないメンバーは、承認ボタンを押しても弾かれます。権限は\n          ユーザー管理 (SY01) のロールで決まります。",
+              ),
+            ),
+          )}
         </Text>
       </Stack>
     </Alert>
@@ -270,6 +283,7 @@ export function ApprovalGroupDetail({
   record: ApprovalGroupDetailData;
   auditEntries: AuditEntry[];
 }) {
+  const tr = useTr();
   const fmt = useFormat();
   const router = useRouter();
   const isMobile = useIsMobile();
@@ -311,15 +325,15 @@ export function ApprovalGroupDetail({
       );
       if (result.ok) {
         notifications.show({
-          title: member.isActive ? "無効化しました" : "有効化しました",
+          title: member.isActive ? "無効化しました" : tr("有効化しました"),
           message: `メンバー「${member.displayName}」を${member.isActive ? "無効化" : "有効化"}しました`,
           color: "green",
         });
         router.refresh();
       } else {
         notifications.show({
-          title: "エラー",
-          message: result.error,
+          title: tr("エラー"),
+          message: tr(result.error),
           color: "red",
         });
       }
@@ -332,7 +346,7 @@ export function ApprovalGroupDetail({
         <ResourceActions
           menuItems={[
             {
-              label: record.isActive ? "無効化" : "有効化",
+              label: record.isActive ? "無効化" : tr("有効化"),
               icon: <IconCircleMinus size={14} />,
               onClick: () => setToggleOpen(true),
             },
@@ -348,37 +362,40 @@ export function ApprovalGroupDetail({
         />
       }
       breadcrumbs={[
-        "マスタ",
-        { label: "承認設定", href: BASE_PATH },
+        tr("マスタ"),
+        { label: tr("承認設定"), href: BASE_PATH },
         record.nameJa,
       ]}
       status={<ActiveBadge active={record.isActive} />}
       title={record.nameJa}
     >
       <SummaryGrid>
-        <FieldValue label="名称" value={record.nameJa} />
+        <FieldValue label={tr("名称")} value={record.nameJa} />
         <FieldValue
-          label="メンバー数"
+          label={tr("メンバー数")}
           value={`${activeCount}名（有効） / ${record.members.length}名`}
         />
         <FieldValue
-          label="状態"
+          label={tr("状態")}
           value={<ActiveBadge active={record.isActive} />}
         />
       </SummaryGrid>
 
       <AppTabs onChange={setTab} value={tab}>
         <Tabs.List>
-          <Tabs.Tab value="info">グループ情報</Tabs.Tab>
-          <Tabs.Tab value="members">メンバー</Tabs.Tab>
-          <Tabs.Tab value="delegates">代理設定</Tabs.Tab>
-          <Tabs.Tab value="history">履歴</Tabs.Tab>
+          <Tabs.Tab value="info">{tr("グループ情報")}</Tabs.Tab>
+          <Tabs.Tab value="members">{tr("メンバー")}</Tabs.Tab>
+          <Tabs.Tab value="delegates">{tr("代理設定")}</Tabs.Tab>
+          <Tabs.Tab value="history">{tr("履歴")}</Tabs.Tab>
         </Tabs.List>
 
         <Tabs.Panel pt="md" value="info">
           <Stack gap="sm">
-            <FieldValue label="名称（日本語）" value={record.nameJa} />
-            <FieldValue label="名称（英語）" value={record.nameEn || "—"} />
+            <FieldValue label={tr("名称（日本語）")} value={record.nameJa} />
+            <FieldValue
+              label={tr("名称（英語）")}
+              value={record.nameEn || "—"}
+            />
           </Stack>
         </Tabs.Panel>
 
@@ -391,24 +408,30 @@ export function ApprovalGroupDetail({
                 leftSection={<IconPlus size={14} />}
                 onClick={() => setAddMemberOpen(true)}
               >
-                メンバーを追加
+                {tr("メンバーを追加")}
               </GhostButton>
             </Group>
             {record.members.length === 0 ? (
               <EmptyState
                 icon={<IconUsers size={24} />}
-                message="メンバーがいません"
+                message={tr("メンバーがいません")}
               />
             ) : (
               <ScrollArea>
                 <Table striped withTableBorder>
                   <Table.Thead>
                     <Table.Tr>
-                      <Table.Th>氏名</Table.Th>
-                      {!isMobile && <Table.Th w={180}>ユーザー名</Table.Th>}
-                      {!isMobile && <Table.Th w={200}>在籍期間</Table.Th>}
-                      {!isMobile && <Table.Th w={90}>状態</Table.Th>}
-                      {!isMobile && <Table.Th w={200}>承認権限</Table.Th>}
+                      <Table.Th>{tr("氏名")}</Table.Th>
+                      {!isMobile && (
+                        <Table.Th w={180}>{tr("ユーザー名")}</Table.Th>
+                      )}
+                      {!isMobile && (
+                        <Table.Th w={200}>{tr("在籍期間")}</Table.Th>
+                      )}
+                      {!isMobile && <Table.Th w={90}>{tr("状態")}</Table.Th>}
+                      {!isMobile && (
+                        <Table.Th w={200}>{tr("承認権限")}</Table.Th>
+                      )}
                       <Table.Th w={110} />
                     </Table.Tr>
                   </Table.Thead>
@@ -452,9 +475,9 @@ export function ApprovalGroupDetail({
                         )}
                         <Table.Td>
                           <Group gap={4} justify="flex-end" wrap="nowrap">
-                            <Tooltip label="在籍期間を変更" withinPortal>
+                            <Tooltip label={tr("在籍期間を変更")} withinPortal>
                               <ActionIcon
-                                aria-label="在籍期間を変更"
+                                aria-label={tr("在籍期間を変更")}
                                 onClick={() => setPeriodMember(m)}
                                 variant="subtle"
                               >
@@ -462,14 +485,14 @@ export function ApprovalGroupDetail({
                               </ActionIcon>
                             </Tooltip>
                             <Tooltip
-                              label={m.isActive ? "無効化" : "有効化"}
+                              label={m.isActive ? "無効化" : tr("有効化")}
                               withinPortal
                             >
                               <ActionIcon
                                 aria-label={
                                   m.isActive
-                                    ? "メンバーを無効化"
-                                    : "メンバーを有効化"
+                                    ? tr("メンバーを無効化")
+                                    : tr("メンバーを有効化")
                                 }
                                 color={m.isActive ? "orange" : "green"}
                                 onClick={() => toggleMemberActive(m)}
@@ -480,7 +503,7 @@ export function ApprovalGroupDetail({
                             </Tooltip>
                             <Tooltip label="削除" withinPortal>
                               <ActionIcon
-                                aria-label="メンバーを削除"
+                                aria-label={tr("メンバーを削除")}
                                 color="red"
                                 onClick={() => setRemoveMember(m)}
                                 variant="subtle"
@@ -507,24 +530,26 @@ export function ApprovalGroupDetail({
                 leftSection={<IconPlus size={14} />}
                 onClick={() => setAddDelegateOpen(true)}
               >
-                代理設定を追加
+                {tr("代理設定を追加")}
               </GhostButton>
             </Group>
             {record.delegates.length === 0 ? (
               <EmptyState
                 icon={<IconUserShield size={24} />}
-                message="代理設定がありません"
+                message={tr("代理設定がありません")}
               />
             ) : (
               <ScrollArea>
                 <Table striped withTableBorder>
                   <Table.Thead>
                     <Table.Tr>
-                      <Table.Th>代理人</Table.Th>
-                      {!isMobile && <Table.Th>原承認者</Table.Th>}
-                      {!isMobile && <Table.Th w={200}>期間</Table.Th>}
-                      {!isMobile && <Table.Th w={180}>承認権限</Table.Th>}
-                      {!isMobile && <Table.Th>理由</Table.Th>}
+                      <Table.Th>{tr("代理人")}</Table.Th>
+                      {!isMobile && <Table.Th>{tr("原承認者")}</Table.Th>}
+                      {!isMobile && <Table.Th w={200}>{tr("期間")}</Table.Th>}
+                      {!isMobile && (
+                        <Table.Th w={180}>{tr("承認権限")}</Table.Th>
+                      )}
+                      {!isMobile && <Table.Th>{tr("理由")}</Table.Th>}
                       <Table.Th w={60} />
                     </Table.Tr>
                   </Table.Thead>
@@ -587,7 +612,7 @@ export function ApprovalGroupDetail({
                           <Group gap={4} justify="flex-end" wrap="nowrap">
                             <Tooltip label="削除" withinPortal>
                               <ActionIcon
-                                aria-label="代理設定を削除"
+                                aria-label={tr("代理設定を削除")}
                                 color="red"
                                 onClick={() =>
                                   setRemoveDelegate({

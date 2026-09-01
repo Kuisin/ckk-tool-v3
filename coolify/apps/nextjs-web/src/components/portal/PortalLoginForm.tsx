@@ -30,10 +30,12 @@ import {
   verifyPortalBackupCode,
   verifyPortalOtp,
 } from "@/app/(portal)/portal/login/actions";
+import { useTr } from "@/hooks/useTr";
 
 type Mode = "email" | "code" | "backup";
 
 export function PortalLoginForm() {
+  const tr = useTr();
   const router = useRouter();
   const [pending, start] = useTransition();
   const [mode, setMode] = useState<Mode>("email");
@@ -87,7 +89,7 @@ export function PortalLoginForm() {
 
   return (
     <Stack gap="md" maw={420} mt="xl" mx="auto">
-      <Title order={3}>取引先ポータル</Title>
+      <Title order={3}>{tr("取引先ポータル")}</Title>
 
       <Card padding="lg" radius="md" withBorder>
         <Stack gap="md">
@@ -111,14 +113,14 @@ export function PortalLoginForm() {
             <>
               <TextInput
                 autoComplete="email"
-                label="メールアドレス"
+                label={tr("メールアドレス")}
                 onChange={(e) => setEmail(e.currentTarget.value)}
                 placeholder="you@example.co.jp"
                 type="email"
                 value={email}
               />
               <Button fullWidth loading={pending} onClick={submitEmail}>
-                確認コードを送る
+                {tr("確認コードを送る")}
               </Button>
               <Anchor
                 component="button"
@@ -130,7 +132,7 @@ export function PortalLoginForm() {
                 size="xs"
                 type="button"
               >
-                メールが受け取れない場合
+                {tr("メールが受け取れない場合")}
               </Anchor>
             </>
           ) : null}
@@ -140,13 +142,13 @@ export function PortalLoginForm() {
               <TextInput
                 autoComplete="one-time-code"
                 autoFocus
-                label="確認コード"
+                label={tr("確認コード")}
                 onChange={(e) => setCode(e.currentTarget.value)}
                 placeholder="ABCD-EFGH"
                 value={code}
               />
               <Button fullWidth loading={pending} onClick={submitCode}>
-                ログイン
+                {tr("ログイン")}
               </Button>
               <Group justify="space-between">
                 <Anchor
@@ -159,7 +161,7 @@ export function PortalLoginForm() {
                   size="xs"
                   type="button"
                 >
-                  アドレスを入れ直す
+                  {tr("アドレスを入れ直す")}
                 </Anchor>
                 <Anchor
                   component="button"
@@ -171,7 +173,7 @@ export function PortalLoginForm() {
                   size="xs"
                   type="button"
                 >
-                  メールが受け取れない場合
+                  {tr("メールが受け取れない場合")}
                 </Anchor>
               </Group>
             </>
@@ -180,25 +182,30 @@ export function PortalLoginForm() {
           {mode === "backup" ? (
             <>
               <Text c="dimmed" size="xs">
-                担当営業からお渡ししたバックアップコードを入力してください。 1
-                枚につき 1 回だけ使えます。
+                {tr(
+                  tr(
+                    tr(
+                      "担当営業からお渡ししたバックアップコードを入力してください。 1\n                枚につき 1 回だけ使えます。",
+                    ),
+                  ),
+                )}
               </Text>
               <TextInput
                 autoComplete="email"
-                label="メールアドレス"
+                label={tr("メールアドレス")}
                 onChange={(e) => setEmail(e.currentTarget.value)}
                 placeholder="you@example.co.jp"
                 type="email"
                 value={email}
               />
               <TextInput
-                label="バックアップコード"
+                label={tr("バックアップコード")}
                 onChange={(e) => setCode(e.currentTarget.value)}
                 placeholder="ABCD-EFGH-IJ"
                 value={code}
               />
               <Button fullWidth loading={pending} onClick={submitBackup}>
-                ログイン
+                {tr("ログイン")}
               </Button>
               <Anchor
                 component="button"
@@ -210,7 +217,7 @@ export function PortalLoginForm() {
                 size="xs"
                 type="button"
               >
-                確認コードでログインする
+                {tr("確認コードでログインする")}
               </Anchor>
             </>
           ) : null}

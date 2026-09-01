@@ -11,7 +11,13 @@
  * Canonical source — `_specs/operation-code.md` と同期すること。
  */
 
-import type { AppCategory } from "./app-list";
+import {
+  APP_LABEL_I18N,
+  type AppCategory,
+  appList,
+  categoryLabel,
+} from "./app-list";
+import type { Locale } from "./i18n";
 
 export type OperationCodeKind = "list" | "new" | "detail";
 
@@ -62,6 +68,12 @@ export interface OperationCodeEntry {
   mode: string;
   /** インデックス文字（1文字） */
   index: string;
+  /**
+   * モード接尾辞（新規 / 詳細）を除いた、そのアプリの名前。
+   * `label` は ja の完成形なので、翻訳はこちらを引いて組み立てる
+   * （`operationCodeLabel`）。省略時は `label` をそのまま基底とみなす。
+   */
+  baseLabel?: string;
 }
 
 /**
@@ -83,6 +95,7 @@ function makeResource(
   ): OperationCodeEntry => ({
     code: `${categoryCode}${mode}${index}`,
     label: `${label}${labelSuffix}`,
+    baseLabel: label,
     href,
     category,
     kind,
@@ -151,6 +164,7 @@ export const OPERATION_CODES: OperationCodeEntry[] = [
   {
     code: "SA25",
     label: "注文明細 詳細",
+    baseLabel: "注文明細",
     href: "/sales/order-lines/_search",
     category: "販売",
     kind: "detail",
@@ -676,3 +690,73 @@ export function navigateByOperationCode(
 
 // 内部用エクスポート（テスト用）
 export { KIND_FROM_MODE };
+
+/**
+ * 操作コードの表示名を言語ごとに解決する。
+ *
+ * アプリ名の対訳は **`app-list.ts` の 1 箇所だけ**に置き、ここでは ja の名前で
+ * 引き当てる。同じ 53 個のアプリ名の対訳表を 2 つ持つと、片方だけ直った状態が
+ * 必ず生まれるため（レジストリ 2 本を同期させる規約は CLAUDE.md「Registries」）。
+ *
+ * `label` は ja の完成形（例「見積書 新規」）なので、翻訳は
+ * 基底名（`baseLabel`）+ モード接尾辞で組み立て直す。
+ */
+const OPERATION_MODE_SUFFIX: Record<
+  OperationCodeKind,
+  Record<Locale, string>
+> = {
+  list: { ja: "", en: "", zh: "" },
+  new: { ja: " 新規", en: " – new", zh: " 新建" },
+  detail: { ja: " 詳細", en: " – details", zh: " 详情" },
+};
+
+/** app-list に無い基底名（アプリではない画面）。 */
+const EXTRA_BASE_LABEL_I18N: Record<string, { en: string; zh: string }> = {
+  ダッシュボード: { en: "Dashboard", zh: "仪表板" },
+};
+
+/** ja のアプリ名 → en/zh。`appList` と `APP_LABEL_I18N` から 1 度だけ組む。 */
+const BASE_LABEL_I18N: Record<string, { en: string; zh: string }> = {
+  ...EXTRA_BASE_LABEL_I18N,
+  ...Object.fromEntries(
+    appList
+      .map((app) => [app.label, APP_LABEL_I18N[app.key]] as const)
+      .filter((pair): pair is readonly [string, { en: string; zh: string }] =>
+        Boolean(pair[1]),
+      ),
+  ),
+};
+
+/** 操作コード 1 件の表示名（ja はレジストリの `label` をそのまま返す）。 */
+export function operationCodeLabel(
+  entry: OperationCodeEntry,
+  locale: Locale,
+): string {
+  if (locale === "ja") return entry.label;
+  const base = entry.baseLabel ?? entry.label;
+  const translated = BASE_LABEL_I18N[base]?.[locale];
+  if (!translated) return entry.label;
+  return `${translated}${OPERATION_MODE_SUFFIX[entry.kind][locale]}`;
+}
+
+/**
+ * 操作コードのカテゴリ表示名。
+ *
+ * 「共通」は `AppCategory` に無い — ダッシュボードのように、どの工程にも
+ * 属さない画面のための区分（`_specs/i18n-glossary.md` §3.1）。それ以外は
+ * アプリ一覧のカテゴリ名をそのまま使う。
+ */
+const COMMON_CATEGORY_I18N: Record<Locale, string> = {
+  ja: "共通",
+  en: "Common",
+  zh: "公共",
+};
+
+export function operationCategoryLabel(
+  category: OperationCodeEntry["category"],
+  locale: Locale,
+): string {
+  return category === "共通"
+    ? COMMON_CATEGORY_I18N[locale]
+    : categoryLabel(category, locale);
+}

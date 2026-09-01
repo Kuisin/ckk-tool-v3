@@ -26,6 +26,7 @@ import { useRouter } from "next/navigation";
 import { useLocale, useTranslations } from "next-intl";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { appKeyForPath, useHiddenApps } from "@/components/layout/AppFlags";
+import { useTr } from "@/hooks/useTr";
 import {
   type AppCategory,
   appLabel,
@@ -49,6 +50,7 @@ interface AppLauncherProps {
 }
 
 export function AppLauncher({ onNavigate }: AppLauncherProps) {
+  const tr = useTr();
   const locale = useLocale();
   const t = useTranslations("shell");
   const router = useRouter();
@@ -218,7 +220,7 @@ export function AppLauncher({ onNavigate }: AppLauncherProps) {
                     <Group className="flex-wrap md:flex-nowrap" gap="sm">
                       <ThemeIcon
                         color={
-                          entry.category === "共通"
+                          entry.category === tr("共通")
                             ? "gray"
                             : CATEGORY_COLORS[entry.category as AppCategory]
                         }

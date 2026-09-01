@@ -28,6 +28,7 @@ import {
   useReactFlow,
 } from "@xyflow/react";
 import { useEffect } from "react";
+import { useTr } from "@/hooks/useTr";
 import {
   layoutWorkflowGraph,
   type StepLinkState,
@@ -83,6 +84,7 @@ function Canvas({
   onSelectStep,
   maxHeight = 520,
 }: WorkflowGraphProps) {
+  const tr = useTr();
   const colorScheme = useComputedColorScheme("light", {
     getInitialValueInEffect: false,
   });
@@ -179,7 +181,7 @@ function Canvas({
       <ReactFlow
         // ReactFlow のルート div は role="application" を持ち、残りの props を
         // そのまま流すので、図の名前はここに付ける。
-        aria-label="工程ワークフローのフロー図（分岐・合流）"
+        aria-label={tr("工程ワークフローのフロー図（分岐・合流）")}
         ariaLabelConfig={ARIA_LABELS}
         colorMode={colorScheme}
         edges={flowEdges}

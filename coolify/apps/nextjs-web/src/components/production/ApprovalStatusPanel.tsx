@@ -47,6 +47,7 @@ import {
   ProcedurePanel,
   type ProcedureStage,
 } from "@/components/ui/ProcedurePanel";
+import { useTr } from "@/hooks/useTr";
 import { statusLabel } from "@/lib/status-map";
 import {
   WORK_ORDER_HISTORY_ACTION_LABEL,
@@ -114,6 +115,7 @@ export function WorkOrderProcedurePanel({
   history: WorkOrderHistoryView[];
   trail?: ApprovalTrailView[];
 }) {
+  const tr = useTr();
   const fmt = useFormat();
   const wo = workOrder;
   const records = [...history].reverse();
@@ -127,7 +129,7 @@ export function WorkOrderProcedurePanel({
   const rejected = approval.phase === "REJECTED";
 
   const stages: ProcedureStage[] = [
-    { key: "created", label: "作成", description: fmt.date(wo.createdAt) },
+    { key: "created", label: tr("作成"), description: fmt.date(wo.createdAt) },
     ...approvalSteps.map((s, i) => ({
       key: `approval-${s.stepNo}`,
       label: s.label || `第${s.stepNo}承認`,
@@ -145,17 +147,17 @@ export function WorkOrderProcedurePanel({
     })),
     {
       key: "production",
-      label: "製造",
+      label: tr("製造"),
       description: wo.startedAt
         ? `開始 ${fmt.date(wo.startedAt)}`
         : wo.status === "APPROVED"
-          ? "開始待ち"
+          ? tr("開始待ち")
           : null,
       loading: wo.status === "IN_PROGRESS",
     },
     {
       key: "done",
-      label: "完了",
+      label: tr("完了"),
       description: wo.completedAt ? fmt.date(wo.completedAt) : null,
     },
   ];
@@ -187,7 +189,7 @@ export function WorkOrderProcedurePanel({
   const sourceGroups: HandoffGroup[] = [
     {
       key: "order-lines",
-      title: "注文明細（割当）",
+      title: tr("注文明細（割当）"),
       summary:
         wo.orderLines.length > 0
           ? `割当 ${allocated} 本 / 予定 ${wo.plannedQuantity} 本`
@@ -198,13 +200,13 @@ export function WorkOrderProcedurePanel({
         href: `/sales/order-lines/${l.number}`,
         note: `${l.customerName ?? "—"}・割当 ${l.allocatedQuantity} / 受注 ${l.lineQuantity} 本`,
       })),
-      emptyNote: "割当なし（在庫向けの独立指示書）",
+      emptyNote: tr("割当なし（在庫向けの独立指示書）"),
     },
     ...(wo.woLinksIncoming.length > 0
       ? [
           {
             key: "wo-links-in",
-            title: "前段の指示書（数量受け渡し）",
+            title: tr("前段の指示書（数量受け渡し）"),
             items: wo.woLinksIncoming.map((l) => ({
               key: l.id,
               label: l.docNumber,
@@ -222,7 +224,7 @@ export function WorkOrderProcedurePanel({
   const handoffGroups: HandoffGroup[] = [
     {
       key: "delivery-orders",
-      title: "出荷書",
+      title: tr("出荷書"),
       summary:
         wo.shipments.length > 0
           ? `割当 ${shippedToDo} 本 / 予定 ${wo.plannedQuantity} 本`
@@ -236,14 +238,14 @@ export function WorkOrderProcedurePanel({
       })),
       emptyNote:
         wo.status === "COMPLETED"
-          ? "出荷書への割当はまだありません"
-          : "未割当（完了後に出荷書で引き当てます）",
+          ? tr("出荷書への割当はまだありません")
+          : tr("未割当（完了後に出荷書で引き当てます）"),
     },
     ...(wo.woLinksOutgoing.length > 0
       ? [
           {
             key: "wo-links",
-            title: "後続指示書（数量受け渡し）",
+            title: tr("後続指示書（数量受け渡し）"),
             summary: null,
             items: wo.woLinksOutgoing.map((l) => ({
               key: l.id,
@@ -328,6 +330,7 @@ export function ApprovalStatusPanel({
   /** 正規化された承認記録（fetchApprovalTrail の結果）。 */
   trail?: ApprovalTrailView[];
 }) {
+  const tr = useTr();
   const fmt = useFormat();
   // 操作履歴は新しい順で表示
   const records = [...history].reverse();
@@ -335,7 +338,7 @@ export function ApprovalStatusPanel({
   return (
     <Paper p="md" radius="md" withBorder>
       <Title mb="md" order={5}>
-        承認状況
+        {tr("承認状況")}
       </Title>
 
       <ApprovalStepper

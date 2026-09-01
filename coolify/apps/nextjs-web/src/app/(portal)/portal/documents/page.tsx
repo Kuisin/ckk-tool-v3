@@ -12,10 +12,12 @@ import {
   PORTAL_DOCUMENT_TYPES,
 } from "@/lib/portal-documents";
 import { requirePortalView } from "@/lib/portal-page";
+import { getTr } from "@/lib/ui-text-server";
 
 export const dynamic = "force-dynamic";
 
 export default async function PortalDocumentsPage() {
+  const tr = await getTr();
   const gate = await requirePortalView();
   if (!gate.ok) return gate.view;
 
@@ -28,7 +30,7 @@ export default async function PortalDocumentsPage() {
 
   return (
     <Stack gap="md">
-      <Title order={3}>書類</Title>
+      <Title order={3}>{tr("書類")}</Title>
       <PortalDocumentTabs groups={groups} />
     </Stack>
   );

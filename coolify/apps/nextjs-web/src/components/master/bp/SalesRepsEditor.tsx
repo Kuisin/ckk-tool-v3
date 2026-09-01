@@ -11,6 +11,7 @@
 import { ActionIcon, Group, Radio, Select, Stack, Text } from "@mantine/core";
 import { IconTrash } from "@tabler/icons-react";
 import { SecondaryButton } from "@/components/ui/buttons";
+import { useTr } from "@/hooks/useTr";
 import type { Option } from "@/lib/mock";
 
 export interface SalesRepFormRow {
@@ -30,6 +31,7 @@ export function SalesRepsEditor({
   options: Option[];
   error?: string;
 }) {
+  const tr = useTr();
   const setPrimary = (userId: string) =>
     onChange(value.map((r) => ({ ...r, isPrimary: r.userId === userId })));
 
@@ -54,7 +56,13 @@ export function SalesRepsEditor({
     <Stack gap="xs">
       {value.length === 0 ? (
         <Text c="dimmed" size="xs">
-          未登録。登録すると、この顧客の書類で営業担当を選べるようになります。
+          {tr(
+            tr(
+              tr(
+                "未登録。登録すると、この顧客の書類で営業担当を選べるようになります。",
+              ),
+            ),
+          )}
         </Text>
       ) : (
         <Radio.Group
@@ -72,21 +80,21 @@ export function SalesRepsEditor({
                 wrap="nowrap"
               >
                 <Radio
-                  aria-label="主担当にする"
+                  aria-label={tr("主担当にする")}
                   disabled={!row.userId}
                   value={row.userId}
                 />
                 <Select
-                  aria-label="営業担当"
+                  aria-label={tr("営業担当")}
                   className="flex-1"
                   data={options}
                   onChange={(v) => setUser(index, v)}
-                  placeholder="担当者を選択"
+                  placeholder={tr("担当者を選択")}
                   searchable
                   value={row.userId || null}
                 />
                 <ActionIcon
-                  aria-label="この営業担当を削除"
+                  aria-label={tr("この営業担当を削除")}
                   color="red"
                   onClick={() => remove(index)}
                   variant="subtle"
@@ -104,10 +112,10 @@ export function SalesRepsEditor({
         </Text>
       )}
       <Group>
-        <SecondaryButton onClick={add}>営業担当を追加</SecondaryButton>
+        <SecondaryButton onClick={add}>{tr("営業担当を追加")}</SecondaryButton>
         {value.length > 1 && (
           <Text c="dimmed" size="xs">
-            ラジオで選んだ 1 名が主担当（新規書類の既定値）
+            {tr("ラジオで選んだ 1 名が主担当（新規書類の既定値）")}
           </Text>
         )}
       </Group>

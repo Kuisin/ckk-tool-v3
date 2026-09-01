@@ -3,6 +3,7 @@ import { CriteriaListPanel } from "@/components/settings/CriteriaListPanel";
 import { MasterDetailShell } from "@/components/ui/MasterDetailShell";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { getTrialPricingSettings } from "@/lib/system-settings";
+import { getTr } from "@/lib/ui-text-server";
 
 export const dynamic = "force-dynamic";
 
@@ -15,6 +16,7 @@ export default async function CriteriaLayout({
 }: {
   children: ReactNode;
 }) {
+  const tr = await getTr();
   const settings = await getTrialPricingSettings();
   return (
     <MasterDetailShell
@@ -22,11 +24,11 @@ export default async function CriteriaLayout({
       header={
         <PageHeader
           breadcrumbs={[
-            "システム",
-            { label: "価格試算計算", href: ENGINE },
-            "計算基準",
+            tr("システム"),
+            { label: tr("価格試算計算"), href: ENGINE },
+            tr("計算基準"),
           ]}
-          title="計算基準"
+          title={tr("計算基準")}
         />
       }
       initialMasterWidth={380}

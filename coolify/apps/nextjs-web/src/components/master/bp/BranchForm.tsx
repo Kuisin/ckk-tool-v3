@@ -27,6 +27,7 @@ import {
 } from "@/components/master/bp/BpBaseFields";
 import { ActiveBadge } from "@/components/ui/ActiveBadge";
 import { FormSection, FormShell } from "@/components/ui/shells";
+import { useTr } from "@/hooks/useTr";
 import { useIsMobile } from "@/hooks/useViewport";
 import { zodResolver } from "@/lib/form";
 
@@ -47,6 +48,7 @@ export function BranchForm({
   parentBpCode: string;
   initial?: BpBaseDetail;
 }) {
+  const tr = useTr();
   const router = useRouter();
   const isMobile = useIsMobile();
   const [isPending, startTransition] = useTransition();
@@ -71,15 +73,15 @@ export function BranchForm({
         : await createBranch(parentId, input);
       if (result.ok) {
         notifications.show({
-          title: "保存しました",
-          message: isEdit ? "支店を更新しました" : "支店を作成しました",
+          title: tr("保存しました"),
+          message: isEdit ? "支店を更新しました" : tr("支店を作成しました"),
           color: "green",
         });
         router.push(`${BP_BASE_PATH}/${parentId}/branches/${result.data.id}`);
       } else {
         notifications.show({
-          title: "エラー",
-          message: result.error,
+          title: tr("エラー"),
+          message: tr(result.error),
           color: "red",
         });
       }
@@ -89,10 +91,10 @@ export function BranchForm({
   return (
     <FormShell
       breadcrumbs={[
-        "マスタ",
-        { label: "取引先", href: BP_BASE_PATH },
+        tr("マスタ"),
+        { label: tr("取引先"), href: BP_BASE_PATH },
         { label: parentName, href: `${BP_BASE_PATH}/${parentId}` },
-        isEdit ? "支店 編集" : "支店 新規作成",
+        isEdit ? "支店 編集" : tr("支店 新規作成"),
       ]}
       isDirty={form.isDirty()}
       isPending={isPending}
@@ -119,12 +121,12 @@ export function BranchForm({
 
       {!isEdit && (
         <FormSection
-          description="支店の主担当者を同時に登録できます（任意）。"
-          title="担当者"
+          description={tr("支店の主担当者を同時に登録できます（任意）。")}
+          title={tr("担当者")}
         >
           <SimpleGrid cols={isMobile ? 1 : 2} spacing="sm">
             <TextInput
-              label="担当者名"
+              label={tr("担当者名")}
               placeholder="山田 太郎"
               {...form.getInputProps("contactName")}
             />

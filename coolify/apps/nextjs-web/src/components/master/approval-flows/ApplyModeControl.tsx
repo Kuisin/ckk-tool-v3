@@ -13,6 +13,7 @@ import { Paper, SegmentedControl, Stack, Text, Title } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
 import { useState, useTransition } from "react";
 import { setApprovalApplyMode } from "@/app/(dashboard)/master/approval-settings/actions";
+import { useTr } from "@/hooks/useTr";
 
 export function ApplyModeControl({
   targetType,
@@ -21,6 +22,7 @@ export function ApplyModeControl({
   targetType: string;
   initialMode: string;
 }) {
+  const tr = useTr();
   const [isPending, startTransition] = useTransition();
   const [mode, setMode] = useState(initialMode === "POST" ? "POST" : "PRE");
 
@@ -32,18 +34,18 @@ export function ApplyModeControl({
       const result = await setApprovalApplyMode(targetType, value);
       if (result.ok) {
         notifications.show({
-          title: "適用モードを保存しました",
+          title: tr("適用モードを保存しました"),
           message:
             value === "POST"
-              ? "変更は即時適用され、承認は事後に回ります"
-              : "変更は承認されるまで保留されます",
+              ? tr("変更は即時適用され、承認は事後に回ります")
+              : tr("変更は承認されるまで保留されます"),
           color: "green",
         });
       } else {
         setMode(prev);
         notifications.show({
-          title: "エラー",
-          message: result.error,
+          title: tr("エラー"),
+          message: tr(result.error),
           color: "red",
         });
       }
@@ -53,16 +55,20 @@ export function ApplyModeControl({
   return (
     <Paper p="md" radius="md" shadow="xs">
       <Stack gap="xs">
-        <Title order={4}>適用モード</Title>
+        <Title order={4}>{tr("適用モード")}</Title>
         <Text c="dimmed" size="xs">
-          事前承認 = 承認されるまで変更は保留（既定）。事後承認 =
-          変更を即時適用してから承認を回す（差し戻されても工程は自動では
-          戻りません — 指示書詳細に警告が出ます）。
+          {tr(
+            tr(
+              tr(
+                "事前承認 = 承認されるまで変更は保留（既定）。事後承認 =\n          変更を即時適用してから承認を回す（差し戻されても工程は自動では\n          戻りません — 指示書詳細に警告が出ます）。",
+              ),
+            ),
+          )}
         </Text>
         <SegmentedControl
           data={[
-            { value: "PRE", label: "事前承認（承認後に適用）" },
-            { value: "POST", label: "事後承認（即時適用）" },
+            { value: "PRE", label: tr("事前承認（承認後に適用）") },
+            { value: "POST", label: tr("事後承認（即時適用）") },
           ]}
           disabled={isPending}
           onChange={handleChange}

@@ -146,6 +146,7 @@ DB データは**訳す対象ではないが、入れ物の作り方は決めて
 | マスタ | Master data | 主数据 |
 | ドキュメント | Documents | 文档 |
 | システム | System | 系统 |
+| 共通 | Common | 公共 |
 
 ### 3.2 アプリ名（操作コード順）
 
@@ -545,6 +546,8 @@ DB データは**訳す対象ではないが、入れ物の作り方は決めて
 |---|---|---|---|
 | ダッシュボード / ホーム | Dashboard / Home | 仪表板 / 首页 | |
 | アプリ / 操作コード | Apps / Operation code | 应用 / 操作代码 | |
+| 操作メニュー | Actions | 操作菜单 | アイコンのみの「⋯」ボタンの aria-label |
+| 〜の詳細を開く | Open details of 〜 | 打开〜的详情 | 履歴などの行を開く aria-label |
 | お気に入り | Favorites | 收藏 | |
 | 通知 / すべて既読 | Notifications / Mark all read | 通知 / 全部标记为已读 | |
 | プロフィール | Profile | 个人资料 | |

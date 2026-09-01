@@ -56,6 +56,7 @@ import {
   ResourceActions,
   SummaryGrid,
 } from "@/components/ui/shells";
+import { useTr } from "@/hooks/useTr";
 import type { DisplayDetail } from "@/lib/displays-admin";
 import { OnlineDot } from "../kiosk/KioskDevicesTable";
 import {
@@ -82,6 +83,7 @@ export function DisplayDetailView({
   audit,
   machineScreens = [],
 }: Props) {
+  const tr = useTr();
   const router = useRouter();
   const fmt = useFormat();
   const { presence, live } = useDisplayPresence();
@@ -111,8 +113,8 @@ export function DisplayDetailView({
       const result = await fn();
       if (!result.ok) {
         notifications.show({
-          title: "エラー",
-          message: result.error ?? "操作に失敗しました",
+          title: tr("エラー"),
+          message: result.error ?? tr("操作に失敗しました"),
           color: "red",
         });
         return;
@@ -133,7 +135,7 @@ export function DisplayDetailView({
           plantId: plantId ? Number(plantId) : null,
           scalePercent,
         }),
-      "保存しました",
+      tr("保存しました"),
       () => {
         onSaved?.();
         router.refresh();
@@ -142,16 +144,22 @@ export function DisplayDetailView({
 
   const confirmRevoke = () =>
     modals.openConfirmModal({
-      title: "ディスプレイの失効",
+      title: tr("ディスプレイの失効"),
       children: (
         <Text size="sm">
-          この画面を締め出します。次の再読込で登録画面に戻り、以後は何も映りません。
-          もう一度使うには、現地で出る QR を読み取って登録し直してください。
+          {tr(
+            tr(
+              tr(
+                "この画面を締め出します。次の再読込で登録画面に戻り、以後は何も映りません。\n          もう一度使うには、現地で出る QR を読み取って登録し直してください。",
+              ),
+            ),
+          )}
         </Text>
       ),
-      labels: { confirm: "失効させる", cancel: "戻る" },
+      labels: { confirm: tr("失効させる"), cancel: tr("戻る") },
       confirmProps: { color: "red" },
-      onConfirm: () => run(() => revokeDisplay(display.id), "失効させました"),
+      onConfirm: () =>
+        run(() => revokeDisplay(display.id), tr("失効させました")),
     });
 
   /**
@@ -162,14 +170,18 @@ export function DisplayDetailView({
   const primaryAction =
     display.status === "LINKED"
       ? {
-          label: "有効化",
-          run: () => run(() => activateDisplay(display.id), "有効化しました"),
+          label: tr("有効化"),
+          run: () =>
+            run(() => activateDisplay(display.id), tr("有効化しました")),
         }
       : display.status === "DISABLED"
         ? {
-            label: "再開",
+            label: tr("再開"),
             run: () =>
-              run(() => setDisplayEnabled(display.id, true), "再開しました"),
+              run(
+                () => setDisplayEnabled(display.id, true),
+                tr("再開しました"),
+              ),
           }
         : null;
 
@@ -182,7 +194,7 @@ export function DisplayDetailView({
             onClick: () =>
               run(
                 () => setDisplayEnabled(display.id, false),
-                "一時停止しました",
+                tr("一時停止しました"),
               ),
           },
         ]
@@ -190,10 +202,10 @@ export function DisplayDetailView({
     ...(display.status !== "PENDING" && display.status !== "REVOKED"
       ? [
           {
-            label: "リンク解除",
+            label: tr("リンク解除"),
             icon: <IconUnlink size={14} />,
             onClick: () =>
-              run(() => unlinkDisplay(display.id), "リンクを解除しました"),
+              run(() => unlinkDisplay(display.id), tr("リンクを解除しました")),
           },
         ]
       : []),
@@ -206,7 +218,7 @@ export function DisplayDetailView({
           onClick: () => confirmDelete(),
         }
       : {
-          label: "失効",
+          label: tr("失効"),
           icon: <IconForbid size={14} />,
           color: "red",
           divider: true,
@@ -216,14 +228,14 @@ export function DisplayDetailView({
 
   const confirmDelete = () =>
     modals.openConfirmModal({
-      title: "ディスプレイの削除",
-      children: <Text size="sm">この操作は取り消せません。</Text>,
-      labels: { confirm: "削除", cancel: "戻る" },
+      title: tr("ディスプレイの削除"),
+      children: <Text size="sm">{tr("この操作は取り消せません。")}</Text>,
+      labels: { confirm: "削除", cancel: tr("戻る") },
       confirmProps: { color: "red" },
       onConfirm: () =>
         run(
           () => deleteDisplay(display.id),
-          "削除しました",
+          tr("削除しました"),
           () => router.push("/settings/kiosk-devices"),
         ),
     });
@@ -243,29 +255,39 @@ export function DisplayDetailView({
           />
         }
         breadcrumbs={[
-          "システム",
-          "端末管理",
-          display.name ?? "ディスプレイ詳細",
+          tr("システム"),
+          tr("端末管理"),
+          display.name ?? tr("ディスプレイ詳細"),
         ]}
         status={<StatusBadge entity="DisplayDevice" status={display.status} />}
-        title={display.name ?? "（名称未設定）"}
+        title={display.name ?? tr("（名称未設定）")}
       />
 
       {display.status === "PENDING" && (
         <Alert color="gray">
-          このプロファイルはまだ画面と結びついていません。ディスプレイの画面に
-          出ているリンクコードを、一覧の「リンク」から入力してください。
+          {tr(
+            tr(
+              tr(
+                "このプロファイルはまだ画面と結びついていません。ディスプレイの画面に\n          出ているリンクコードを、一覧の「リンク」から入力してください。",
+              ),
+            ),
+          )}
         </Alert>
       )}
       {display.status === "LINKED" && (
         <Alert color="yellow">
-          画面とリンクしました。「有効化」を押すと表示を開始します。
+          {tr("画面とリンクしました。「有効化」を押すと表示を開始します。")}
         </Alert>
       )}
       {display.status === "REVOKED" && (
         <Alert color="red">
-          このディスプレイは失効しています。もう一度使うには、現地の画面に出る
-          リンクコードで登録し直してください。
+          {tr(
+            tr(
+              tr(
+                "このディスプレイは失効しています。もう一度使うには、現地の画面に出る\n          リンクコードで登録し直してください。",
+              ),
+            ),
+          )}
         </Alert>
       )}
 
@@ -274,7 +296,7 @@ export function DisplayDetailView({
       {machineScreens.length > 1 && (
         <Group gap="sm" wrap="nowrap">
           <Text c="dimmed" size="sm">
-            この機械の画面
+            {tr("この機械の画面")}
           </Text>
           <SegmentedControl
             data={machineScreens.map((screen, i) => ({
@@ -297,24 +319,24 @@ export function DisplayDetailView({
       <Paper p="md" radius="md" withBorder>
         <SimpleGrid cols={{ base: 1, sm: 3 }} spacing="md">
           <FieldValue
-            label="オンライン"
+            label={tr("オンライン")}
             value={
               display.status === "ACTIVE" ? <OnlineDot online={online} /> : "—"
             }
           />
           <FieldValue
-            label="最終確認"
+            label={tr("最終確認")}
             value={display.lastSeenAt ? fmt.dateTime(display.lastSeenAt) : "—"}
           />
           <FieldValue label="拠点" value={display.plantName ?? "—"} />
-          <FieldValue label="設置場所" value={display.location ?? "—"} />
-          <FieldValue label="表示内容" value={display.contentLabel} />
+          <FieldValue label={tr("設置場所")} value={display.location ?? "—"} />
+          <FieldValue label={tr("表示内容")} value={display.contentLabel} />
           <FieldValue
-            label="リンク"
+            label={tr("リンク")}
             value={display.linkedAt ? fmt.dateTime(display.linkedAt) : "—"}
           />
           <FieldValue
-            label="有効化"
+            label={tr("有効化")}
             value={
               display.activatedAt
                 ? `${fmt.dateTime(display.activatedAt)}${
@@ -326,7 +348,7 @@ export function DisplayDetailView({
             }
           />
           <FieldValue
-            label="登録の期限"
+            label={tr("登録の期限")}
             value={
               display.deviceTokenExpiresAt
                 ? fmt.dateTime(display.deviceTokenExpiresAt)
@@ -334,7 +356,7 @@ export function DisplayDetailView({
             }
           />
           <FieldValue
-            label="つないでいる機械"
+            label={tr("つないでいる機械")}
             value={
               display.machineId
                 ? `${display.machineId}${
@@ -344,20 +366,20 @@ export function DisplayDetailView({
             }
           />
           <FieldValue
-            label="最後に見た IP アドレス"
+            label={tr("最後に見た IP アドレス")}
             value={display.lastIpAddress ?? "—"}
           />
           <FieldValue
-            label="アプリのバージョン"
+            label={tr("アプリのバージョン")}
             value={display.appVersion ?? "—"}
           />
           <FieldValue
-            label="作成日時"
+            label={tr("作成日時")}
             value={fmt.dateTime(display.createdAt)}
           />
           <FieldValue
             fullWidth
-            label="ブラウザ"
+            label={tr("ブラウザ")}
             value={display.userAgent ?? "—"}
           />
         </SimpleGrid>
@@ -369,15 +391,17 @@ export function DisplayDetailView({
           重複するので出さない。 */}
       <AppTabs defaultValue="content">
         <Tabs.List>
-          <Tabs.Tab value="content">表示内容</Tabs.Tab>
-          <Tabs.Tab value="settings">設定</Tabs.Tab>
-          <Tabs.Tab value="history">履歴</Tabs.Tab>
+          <Tabs.Tab value="content">{tr("表示内容")}</Tabs.Tab>
+          <Tabs.Tab value="settings">{tr("設定")}</Tabs.Tab>
+          <Tabs.Tab value="history">{tr("履歴")}</Tabs.Tab>
         </Tabs.List>
 
         <Tabs.Panel pt="md" value="content">
           <EditablePanel
             canEdit={display.status !== "REVOKED"}
-            description="保存すると、この画面の表示がその場で切り替わります。"
+            description={tr(
+              tr("保存すると、この画面の表示がその場で切り替わります。"),
+            )}
             edit={({ close }) => (
               <DisplayContentEditor
                 display={display}
@@ -385,7 +409,7 @@ export function DisplayDetailView({
                 plantOptions={plantOptions}
               />
             )}
-            title="映すもの"
+            title={tr("映すもの")}
             view={
               <DisplayContentView
                 display={display}
@@ -405,13 +429,13 @@ export function DisplayDetailView({
               <Stack gap="md">
                 <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="md">
                   <TextInput
-                    label="ディスプレイの名前"
+                    label={tr("ディスプレイの名前")}
                     onChange={(e) => setNameJa(e.currentTarget.value)}
                     value={nameJa}
                     withAsterisk
                   />
                   <TextInput
-                    label="設置場所"
+                    label={tr("設置場所")}
                     onChange={(e) => setLocation(e.currentTarget.value)}
                     value={location}
                   />
@@ -420,7 +444,7 @@ export function DisplayDetailView({
                     data={plantOptions}
                     label="拠点"
                     onChange={setPlantId}
-                    placeholder="選択してください"
+                    placeholder={tr("選択してください")}
                     searchable
                     value={plantId}
                   />
@@ -434,17 +458,20 @@ export function DisplayDetailView({
                 />
               </Stack>
             )}
-            title="この画面の設定"
+            title={tr("この画面の設定")}
             view={
               <SummaryGrid cols={2}>
                 <FieldValue
-                  label="ディスプレイの名前"
+                  label={tr("ディスプレイの名前")}
                   value={display.name ?? "—"}
                 />
-                <FieldValue label="設置場所" value={display.location ?? "—"} />
+                <FieldValue
+                  label={tr("設置場所")}
+                  value={display.location ?? "—"}
+                />
                 <FieldValue label="拠点" value={display.plantName ?? "—"} />
                 <FieldValue
-                  label="表示倍率"
+                  label={tr("表示倍率")}
                   value={`${display.scalePercent}%`}
                 />
               </SummaryGrid>
@@ -475,11 +502,12 @@ function ScaleField({
   value: number;
   onChange: (value: number) => void;
 }) {
+  const tr = useTr();
   // よく使う 3 つ。ここに無い値のときは選択なしにして、スライダーだけ効かせる
   const PRESETS = [
-    { value: "85", label: "小さめ" },
-    { value: "100", label: "標準" },
-    { value: "125", label: "大きめ" },
+    { value: "85", label: tr("小さめ") },
+    { value: "100", label: tr("標準") },
+    { value: "125", label: tr("大きめ") },
   ];
   const preset = PRESETS.some((p) => p.value === String(value))
     ? String(value)
@@ -488,11 +516,16 @@ function ScaleField({
   return (
     <Stack gap="xs">
       <Text fw={500} size="sm">
-        表示倍率
+        {tr("表示倍率")}
       </Text>
       <Text c="dimmed" size="xs">
-        画面の大きさと、どのくらい離れて見るかに合わせて調整します。
-        大きくすると 1 画面に入る件数は減り、あふれた分はページ送りになります。
+        {tr(
+          tr(
+            tr(
+              "画面の大きさと、どのくらい離れて見るかに合わせて調整します。\n        大きくすると 1 画面に入る件数は減り、あふれた分はページ送りになります。",
+            ),
+          ),
+        )}
       </Text>
       <SegmentedControl
         data={PRESETS}

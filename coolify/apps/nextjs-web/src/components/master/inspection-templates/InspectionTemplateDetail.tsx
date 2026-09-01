@@ -50,6 +50,7 @@ import {
   ResourceActions,
   SummaryGrid,
 } from "@/components/ui/shells";
+import { useTr } from "@/hooks/useTr";
 import { useTabParam } from "@/hooks/useUrlState";
 import {
   inspectionDepartmentLabel,
@@ -161,6 +162,7 @@ export function InspectionTemplateDetail({
   /** 検査承認グループの選択肢（承認設定 MS0B の approval_groups）。 */
   groupOptions: { value: string; label: string }[];
 }) {
+  const tr = useTr();
   const locale = useLocale();
   const fmt = useFormat();
   const router = useRouter();
@@ -198,17 +200,17 @@ export function InspectionTemplateDetail({
         <ResourceActions
           menuItems={[
             {
-              label: "新バージョンを作成",
+              label: tr("新バージョンを作成"),
               icon: <IconVersions size={14} />,
               onClick: () => setVersionOpen(true),
             },
             {
-              label: "検査承認の宛先を変更",
+              label: tr("検査承認の宛先を変更"),
               icon: <IconUsersGroup size={14} />,
               onClick: () => setApprovalGroupOpen(true),
             },
             {
-              label: record.isActive ? "無効化" : "有効化",
+              label: record.isActive ? "無効化" : tr("有効化"),
               icon: <IconCircleMinus size={14} />,
               onClick: () => setToggleOpen(true),
             },
@@ -227,13 +229,13 @@ export function InspectionTemplateDetail({
           }
           pdf={{
             href: `/api/pdf/inspection-sheet?templateId=${record.id}`,
-            label: "空欄シート",
+            label: tr("空欄シート"),
           }}
         />
       }
       breadcrumbs={[
-        "マスタ",
-        { label: "検査表テンプレート", href: BASE_PATH },
+        tr("マスタ"),
+        { label: tr("検査表テンプレート"), href: BASE_PATH },
         `${record.code} v${record.version}`,
       ]}
       createdAt={fmt.dateTime(record.createdAt)}
@@ -250,9 +252,11 @@ export function InspectionTemplateDetail({
     >
       {record.isLocked && (
         <Alert color="blue" icon={<IconLock size={16} />}>
-          このバージョンは指示書または検査記録で使用中のため変更できません。
-          内容を変更するには「新バージョンを作成」してください（既存の記録は
-          このバージョンのまま残ります）。
+          {tr(
+            tr(
+              "このバージョンは指示書または検査記録で使用中のため変更できません。\n          内容を変更するには「新バージョンを作成」してください（既存の記録は\n          このバージョンのまま残ります）。",
+            ),
+          )}
         </Alert>
       )}
 
@@ -262,15 +266,21 @@ export function InspectionTemplateDetail({
           value={<DocNumber>{record.code}</DocNumber>}
         />
         <FieldValue
-          label="バージョン"
+          label={tr("バージョン")}
           value={`v${record.version}${record.isLatestVersion ? "（最新）" : ""}`}
         />
-        <FieldValue label="名称" value={record.nameJa} />
-        <FieldValue label="関連工程" value={record.relatedProcessStep || "—"} />
-        <FieldValue label="対象製品" value={record.productName || "汎用"} />
+        <FieldValue label={tr("名称")} value={record.nameJa} />
+        <FieldValue
+          label={tr("関連工程")}
+          value={record.relatedProcessStep || "—"}
+        />
+        <FieldValue
+          label={tr("対象製品")}
+          value={record.productName || tr("汎用")}
+        />
         {record.groupName && (
           <FieldValue
-            label="グループ"
+            label={tr("グループ")}
             value={
               <Badge color="gray" variant="light">
                 {record.groupName}
@@ -279,70 +289,76 @@ export function InspectionTemplateDetail({
           />
         )}
         <FieldValue
-          label="検査対象"
+          label={tr("検査対象")}
           value={samplingLabelJa({
             samplingMode: record.samplingMode,
             samplingValue: record.samplingValue,
           })}
         />
         <FieldValue
-          label="記録方式"
+          label={tr("記録方式")}
           value={
             record.recordStyle === "COUNTS"
-              ? "合格数のみ"
-              : "実測値（製品ごと）"
+              ? tr("合格数のみ")
+              : tr("実測値（製品ごと）")
           }
         />
         <FieldValue
-          label="印刷レイアウト"
+          label={tr("印刷レイアウト")}
           value={inspectionLayoutStyleLabel(record.layoutStyle, locale)}
         />
         {record.recordStyle === "VALUES" && (
           <FieldValue
-            label="サンプル呼称"
+            label={tr("サンプル呼称")}
             value={
               record.sampleNaming === "INITIAL_MID_FINAL"
-                ? "初品・中間品・最終品"
-                : "製品1, 2, 3…"
+                ? tr("初品・中間品・最終品")
+                : tr("製品1, 2, 3…")
             }
           />
         )}
         <FieldValue
-          label="検査承認の宛先"
+          label={tr("検査承認の宛先")}
           value={
             record.approvalGroupName ??
             (record.approvers.length > 0
               ? record.approvers.map((a) => a.label).join("、")
-              : "未設定（誰でも検収可）")
+              : tr("未設定（誰でも検収可）"))
           }
         />
-        <FieldValue label="検査項目数" value={`${record.items.length}件`} />
         <FieldValue
-          label="状態"
+          label={tr("検査項目数")}
+          value={`${record.items.length}件`}
+        />
+        <FieldValue
+          label={tr("状態")}
           value={<ActiveBadge active={record.isActive} />}
         />
       </SummaryGrid>
 
       <AppTabs onChange={setTab} value={tab}>
         <Tabs.List>
-          <Tabs.Tab value="info">テンプレート情報</Tabs.Tab>
-          <Tabs.Tab value="items">検査項目</Tabs.Tab>
-          <Tabs.Tab value="versions">バージョン</Tabs.Tab>
-          <Tabs.Tab value="history">履歴</Tabs.Tab>
+          <Tabs.Tab value="info">{tr("テンプレート情報")}</Tabs.Tab>
+          <Tabs.Tab value="items">{tr("検査項目")}</Tabs.Tab>
+          <Tabs.Tab value="versions">{tr("バージョン")}</Tabs.Tab>
+          <Tabs.Tab value="history">{tr("履歴")}</Tabs.Tab>
         </Tabs.List>
 
         <Tabs.Panel pt="md" value="info">
           <Stack gap="md">
             <Stack gap="sm">
-              <FieldValue label="名称（日本語）" value={record.nameJa} />
-              <FieldValue label="名称（英語）" value={record.nameEn || "—"} />
+              <FieldValue label={tr("名称（日本語）")} value={record.nameJa} />
               <FieldValue
-                label="関連工程"
+                label={tr("名称（英語）")}
+                value={record.nameEn || "—"}
+              />
+              <FieldValue
+                label={tr("関連工程")}
                 value={record.relatedProcessStep || "—"}
               />
               <FieldValue
-                label="対象製品"
-                value={record.productName || "汎用"}
+                label={tr("対象製品")}
+                value={record.productName || tr("汎用")}
               />
             </Stack>
             <InspectionTemplateImagePanel
@@ -360,7 +376,7 @@ export function InspectionTemplateDetail({
                   leftSection={<IconVersions size={14} />}
                   onClick={() => setVersionOpen(true)}
                 >
-                  新バージョンを作成して編集
+                  {tr("新バージョンを作成して編集")}
                 </GhostButton>
               ) : (
                 <GhostButton
@@ -370,26 +386,26 @@ export function InspectionTemplateDetail({
                     setItemModalOpen(true);
                   }}
                 >
-                  項目を追加
+                  {tr("項目を追加")}
                 </GhostButton>
               )}
             </Group>
             {record.items.length === 0 ? (
               <EmptyState
                 icon={<IconListCheck size={24} />}
-                message="検査項目がありません"
+                message={tr("検査項目がありません")}
               />
             ) : (
               <ScrollArea>
                 <Table striped withTableBorder>
                   <Table.Thead>
                     <Table.Tr>
-                      <Table.Th>項目名</Table.Th>
-                      <Table.Th w={110}>種別</Table.Th>
-                      <Table.Th w={170}>合格基準</Table.Th>
-                      <Table.Th w={130}>目標</Table.Th>
-                      <Table.Th w={70}>必須</Table.Th>
-                      <Table.Th w={70}>表示順</Table.Th>
+                      <Table.Th>{tr("項目名")}</Table.Th>
+                      <Table.Th w={110}>{tr("種別")}</Table.Th>
+                      <Table.Th w={170}>{tr("合格基準")}</Table.Th>
+                      <Table.Th w={130}>{tr("目標")}</Table.Th>
+                      <Table.Th w={70}>{tr("必須")}</Table.Th>
+                      <Table.Th w={70}>{tr("表示順")}</Table.Th>
                       {!record.isLocked && <Table.Th w={80} />}
                     </Table.Tr>
                   </Table.Thead>
@@ -419,12 +435,12 @@ export function InspectionTemplateDetail({
                               </Badge>
                               {!item.allowManualOverride && (
                                 <Badge color="orange" size="xs" variant="light">
-                                  上書き不可
+                                  {tr("上書き不可")}
                                 </Badge>
                               )}
                               {item.section === "SHAPE" && (
                                 <Badge color="teal" size="xs" variant="light">
-                                  形状欄
+                                  {tr("形状欄")}
                                 </Badge>
                               )}
                               {item.department && (
@@ -460,11 +476,11 @@ export function InspectionTemplateDetail({
                           <Table.Td>
                             {item.isRequired ? (
                               <Badge color="blue" variant="light">
-                                必須
+                                {tr("必須")}
                               </Badge>
                             ) : (
                               <Badge color="gray" variant="light">
-                                任意
+                                {tr("任意")}
                               </Badge>
                             )}
                           </Table.Td>
@@ -476,9 +492,9 @@ export function InspectionTemplateDetail({
                           {!record.isLocked && (
                             <Table.Td>
                               <Group gap={4} justify="flex-end" wrap="nowrap">
-                                <Tooltip label="編集" withinPortal>
+                                <Tooltip label={tr("編集")} withinPortal>
                                   <ActionIcon
-                                    aria-label="検査項目を編集"
+                                    aria-label={tr("検査項目を編集")}
                                     color="gray"
                                     onClick={() => {
                                       setEditItem(item);
@@ -491,7 +507,7 @@ export function InspectionTemplateDetail({
                                 </Tooltip>
                                 <Tooltip label="削除" withinPortal>
                                   <ActionIcon
-                                    aria-label="検査項目を削除"
+                                    aria-label={tr("検査項目を削除")}
                                     color="red"
                                     onClick={() => setDeleteItem(item)}
                                     variant="subtle"
@@ -516,18 +532,18 @@ export function InspectionTemplateDetail({
           {record.versions.length === 0 ? (
             <EmptyState
               icon={<IconGitBranch size={24} />}
-              message="他のバージョンはありません"
+              message={tr("他のバージョンはありません")}
             />
           ) : (
             <ScrollArea>
               <Table striped withTableBorder>
                 <Table.Thead>
                   <Table.Tr>
-                    <Table.Th w={110}>バージョン</Table.Th>
-                    <Table.Th w={90}>項目数</Table.Th>
-                    <Table.Th w={110}>使用状況</Table.Th>
-                    <Table.Th w={90}>状態</Table.Th>
-                    <Table.Th>更新日時</Table.Th>
+                    <Table.Th w={110}>{tr("バージョン")}</Table.Th>
+                    <Table.Th w={90}>{tr("項目数")}</Table.Th>
+                    <Table.Th w={110}>{tr("使用状況")}</Table.Th>
+                    <Table.Th w={90}>{tr("状態")}</Table.Th>
+                    <Table.Th>{tr("更新日時")}</Table.Th>
                   </Table.Tr>
                 </Table.Thead>
                 <Table.Tbody>
@@ -540,7 +556,7 @@ export function InspectionTemplateDetail({
                               v{v.version}
                             </Text>
                             <Text c="dimmed" size="xs">
-                              （表示中）
+                              {tr("（表示中）")}
                             </Text>
                           </Group>
                         ) : (
@@ -563,11 +579,11 @@ export function InspectionTemplateDetail({
                       <Table.Td>
                         {v.inUse ? (
                           <Badge color="blue" variant="light">
-                            使用中
+                            {tr("使用中")}
                           </Badge>
                         ) : (
                           <Badge color="gray" variant="light">
-                            未使用
+                            {tr("未使用")}
                           </Badge>
                         )}
                       </Table.Td>

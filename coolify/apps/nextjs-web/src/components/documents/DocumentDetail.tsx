@@ -25,6 +25,7 @@ import {
   ResourceActions,
   SummaryGrid,
 } from "@/components/ui/shells";
+import { useTr } from "@/hooks/useTr";
 import type { PageDetailView } from "@/lib/internal-pages";
 import type { ShareGrantView } from "@/lib/share-grants";
 import type { ShareLevel } from "@/lib/share-grants-core";
@@ -59,6 +60,7 @@ export function DocumentDetail({
     grants: { subjectType: string; subjectId: string | null; level: string }[],
   ) => Promise<{ ok: boolean; error?: string }>;
 }) {
+  const tr = useTr();
   const fmt = useFormat();
   const router = useRouter();
   const hasUnpublished =
@@ -71,13 +73,13 @@ export function DocumentDetail({
         <ResourceActions
           menuItems={[
             {
-              label: "レビュー",
+              label: tr("レビュー"),
               icon: <IconMessage size={14} />,
               onClick: () =>
                 router.push(`/general/documents/${page.pageNumber}/review`),
             },
             {
-              label: "履歴・差分",
+              label: tr("履歴・差分"),
               icon: <IconGitCompare size={14} />,
               onClick: () =>
                 router.push(`/general/documents/${page.pageNumber}/revisions`),
@@ -91,8 +93,8 @@ export function DocumentDetail({
         />
       }
       breadcrumbs={[
-        { label: "一般" },
-        { label: "社内文書", href: "/general/documents" },
+        { label: tr("一般") },
+        { label: tr("社内文書"), href: "/general/documents" },
         { label: page.title },
       ]}
       createdAt={fmt.dateTime(page.createdAt)}
@@ -111,10 +113,10 @@ export function DocumentDetail({
       />
 
       <SummaryGrid>
-        <FieldValue label="文書番号" value={page.pageNumber} />
-        <FieldValue label="フォルダ" value={page.folder ?? "—"} />
+        <FieldValue label={tr("文書番号")} value={page.pageNumber} />
+        <FieldValue label={tr("フォルダ")} value={page.folder ?? "—"} />
         <FieldValue
-          label="公開版"
+          label={tr("公開版")}
           value={
             page.publishedRevision ? (
               <Group gap="xs">
@@ -128,33 +130,38 @@ export function DocumentDetail({
                 )}
               </Group>
             ) : (
-              "未公開"
+              tr("未公開")
             )
           }
         />
         <FieldValue
-          label="公開に承認"
-          value={page.approvalRequired ? "必要" : "不要"}
+          label={tr("公開に承認")}
+          value={page.approvalRequired ? "必要" : tr("不要")}
         />
         {page.summary && (
-          <FieldValue fullWidth label="概要" value={page.summary} />
+          <FieldValue fullWidth label={tr("概要")} value={page.summary} />
         )}
       </SummaryGrid>
 
       <AppTabs defaultValue="body">
         <Tabs.List>
           <Tabs.Tab leftSection={<IconEye size={14} />} value="body">
-            本文
+            {tr("本文")}
           </Tabs.Tab>
-          <Tabs.Tab value="share">共有</Tabs.Tab>
-          <Tabs.Tab value="history">履歴</Tabs.Tab>
+          <Tabs.Tab value="share">{tr("共有")}</Tabs.Tab>
+          <Tabs.Tab value="history">{tr("履歴")}</Tabs.Tab>
         </Tabs.List>
 
         <Tabs.Panel pt="md" value="body">
           {page.publishedBody == null ? (
             <Alert color="yellow">
-              まだ公開されていません。編集して公開すると、ここに本文が出ます。
-              下書きの内容は「レビュー」から読めます。
+              {tr(
+                tr(
+                  tr(
+                    "まだ公開されていません。編集して公開すると、ここに本文が出ます。\n              下書きの内容は「レビュー」から読めます。",
+                  ),
+                ),
+              )}
             </Alert>
           ) : (
             <MarkdownView body={page.publishedBody} links={links} />

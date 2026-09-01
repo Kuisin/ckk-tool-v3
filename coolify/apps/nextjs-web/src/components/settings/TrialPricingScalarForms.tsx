@@ -28,6 +28,7 @@ import { updateTrialPricingSettings } from "@/app/(dashboard)/settings/actions";
 import { GhostButton } from "@/components/ui/buttons";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { FormActions, FormSection } from "@/components/ui/shells";
+import { useTr } from "@/hooks/useTr";
 import {
   type CustomInputDef,
   type CustomInputType,
@@ -54,6 +55,7 @@ const SCOPE_OPTIONS = [
 
 /** 全設定を保持しつつ、指定セクションだけ編集する共通フック。 */
 function useSectionSettings(initial: TrialPricingSettings) {
+  const tr = useTr();
   const router = useRouter();
   const [settings, setSettings] = useState(initial);
   const [isPending, startTransition] = useTransition();
@@ -62,22 +64,22 @@ function useSectionSettings(initial: TrialPricingSettings) {
   const save = (validate?: () => string | null) => {
     const err = validate?.();
     if (err) {
-      notifications.show({ title: "エラー", message: err, color: "red" });
+      notifications.show({ title: tr("エラー"), message: err, color: "red" });
       return;
     }
     startTransition(async () => {
       const res = await updateTrialPricingSettings(settings);
       if (res.ok) {
         notifications.show({
-          title: "保存しました",
-          message: "価格試算の設定を更新しました",
+          title: tr("保存しました"),
+          message: tr("価格試算の設定を更新しました"),
           color: "green",
         });
         router.push(BASE);
       } else {
         notifications.show({
-          title: "エラー",
-          message: res.error,
+          title: tr("エラー"),
+          message: tr(res.error),
           color: "red",
         });
       }
@@ -99,10 +101,15 @@ function SectionShell({
   onCancel: () => void;
   children: React.ReactNode;
 }) {
+  const tr = useTr();
   return (
     <Stack gap="md">
       <PageHeader
-        breadcrumbs={["システム", { label: "価格試算計算", href: BASE }, title]}
+        breadcrumbs={[
+          tr("システム"),
+          { label: tr("価格試算計算"), href: BASE },
+          title,
+        ]}
         title={title}
       />
       {children}
@@ -117,6 +124,7 @@ export function MaterialPolicyForm({
 }: {
   initial: TrialPricingSettings;
 }) {
+  const tr = useTr();
   const { settings, patch, save, isPending, router } =
     useSectionSettings(initial);
   return (
@@ -124,17 +132,23 @@ export function MaterialPolicyForm({
       isPending={isPending}
       onCancel={() => router.push(BASE)}
       onSave={() => save()}
-      title="材料参照価格ポリシー"
+      title={tr("材料参照価格ポリシー")}
     >
       <FormSection
-        description="価格試算の材料原価に使う、仕入実績（購買履歴）からの参照価格の決め方です。"
-        title="ポリシー"
+        description={tr(
+          tr(
+            tr(
+              "価格試算の材料原価に使う、仕入実績（購買履歴）からの参照価格の決め方です。",
+            ),
+          ),
+        )}
+        title={tr("ポリシー")}
       >
         <Stack gap="sm" maw={480}>
           <Select
             data={MATERIAL_PRICE_BASIS_OPTIONS}
-            description="期間内の仕入単価から参照価格を決める方法"
-            label="算出方法"
+            description={tr("期間内の仕入単価から参照価格を決める方法")}
+            label={tr("算出方法")}
             onChange={(v) =>
               patch({
                 materialPriceBasis:
@@ -145,8 +159,8 @@ export function MaterialPolicyForm({
             value={settings.materialPriceBasis}
           />
           <NumberInput
-            description="参照する仕入実績をさかのぼる月数"
-            label="参照期間（ヶ月）"
+            description={tr("参照する仕入実績をさかのぼる月数")}
+            label={tr("参照期間（ヶ月）")}
             max={36}
             min={1}
             onChange={(v) =>
@@ -155,8 +169,14 @@ export function MaterialPolicyForm({
             value={settings.materialPriceLookbackMonths}
           />
           <NumberInput
-            description="仕入実績が無い素材の価格試算で使う既定単価（0 = 既定なし）。価格試算では「既定価格」と表示されます。"
-            label="既定材料単価（¥/1000mm）"
+            description={tr(
+              tr(
+                tr(
+                  "仕入実績が無い素材の価格試算で使う既定単価（0 = 既定なし）。価格試算では「既定価格」と表示されます。",
+                ),
+              ),
+            )}
+            label={tr("既定材料単価（¥/1000mm）")}
             min={0}
             onChange={(v) => patch({ defaultMaterialPrice: Number(v) || 0 })}
             prefix="¥"
@@ -177,6 +197,7 @@ export function CustomInputsForm({
 }: {
   initial: TrialPricingSettings;
 }) {
+  const tr = useTr();
   const { settings, patch, save, isPending, router } =
     useSectionSettings(initial);
 
@@ -185,19 +206,19 @@ export function CustomInputsForm({
     const seen = new Map<string, number>();
     settings.customInputs.forEach((d, i) => {
       if (d.scope === "global") return; // 固定係数はキー編集不可・検証対象外
-      if (d.key && RESERVED_KEYS.has(d.key)) errors[i] = "予約語です";
-      if (d.key && seen.has(d.key)) errors[i] = "キーが重複しています";
+      if (d.key && RESERVED_KEYS.has(d.key)) errors[i] = tr("予約語です");
+      if (d.key && seen.has(d.key)) errors[i] = tr("キーが重複しています");
       if (d.key) seen.set(d.key, i);
     });
     return errors;
-  }, [settings.customInputs]);
+  }, [settings.customInputs, tr]);
 
   const setInputs = (customInputs: CustomInputDef[]) =>
     patch({ customInputs: customInputs.map((d, i) => ({ ...d, order: i })) });
 
   const validate = () =>
     Object.keys(keyErrors).length > 0
-      ? "カスタム入力キーを修正してください（予約語・重複）"
+      ? tr("カスタム入力キーを修正してください（予約語・重複）")
       : null;
 
   return (
@@ -205,16 +226,22 @@ export function CustomInputsForm({
       isPending={isPending}
       onCancel={() => router.push(BASE)}
       onSave={() => save(validate)}
-      title="カスタム入力項目"
+      title={tr("カスタム入力項目")}
     >
       <FormSection
-        description="計算基準の式で変数として使える項目。スコープ「見積入力」は価格試算フォームに表示、「グローバル定数」は固定係数（補正値・LDチャージ・加工単価・予備形状本数）で削除・改名不可。"
-        title="カスタム入力項目"
+        description={tr(
+          tr(
+            tr(
+              "計算基準の式で変数として使える項目。スコープ「見積入力」は価格試算フォームに表示、「グローバル定数」は固定係数（補正値・LDチャージ・加工単価・予備形状本数）で削除・改名不可。",
+            ),
+          ),
+        )}
+        title={tr("カスタム入力項目")}
       >
         <Stack gap="sm">
           {settings.customInputs.length === 0 && (
             <Text c="dimmed" size="sm">
-              追加項目はありません。
+              {tr("追加項目はありません。")}
             </Text>
           )}
           {settings.customInputs.map((d, i) => (
@@ -224,7 +251,7 @@ export function CustomInputsForm({
                 <TextInput
                   disabled={d.scope === "global"}
                   error={keyErrors[i]}
-                  label="キー（変数名）"
+                  label={tr("キー（変数名）")}
                   onChange={(e) => {
                     const next = settings.customInputs.slice();
                     next[i] = { ...d, key: e.currentTarget.value };
@@ -235,7 +262,7 @@ export function CustomInputsForm({
                   w={160}
                 />
                 <TextInput
-                  label="ラベル"
+                  label={tr("ラベル")}
                   onChange={(e) => {
                     const next = settings.customInputs.slice();
                     next[i] = { ...d, label: e.currentTarget.value };
@@ -247,7 +274,7 @@ export function CustomInputsForm({
                 <Select
                   data={INPUT_TYPE_OPTIONS}
                   disabled={d.scope === "global"}
-                  label="型"
+                  label={tr("型")}
                   onChange={(v) => {
                     const type = (v as CustomInputType) ?? "number";
                     const next = settings.customInputs.slice();
@@ -262,7 +289,7 @@ export function CustomInputsForm({
                 <Select
                   data={SCOPE_OPTIONS}
                   disabled={d.scope === "global"}
-                  label="スコープ"
+                  label={tr("スコープ")}
                   onChange={(v) => {
                     const next = settings.customInputs.slice();
                     next[i] = {
@@ -276,7 +303,7 @@ export function CustomInputsForm({
                 />
                 {d.type === "number" ? (
                   <NumberInput
-                    label="既定値"
+                    label={tr("既定値")}
                     onChange={(v) => {
                       const next = settings.customInputs.slice();
                       next[i] = {
@@ -291,7 +318,7 @@ export function CustomInputsForm({
                 ) : d.type === "boolean" ? (
                   <Switch
                     checked={d.default === true}
-                    label="既定 ON"
+                    label={tr("既定 ON")}
                     mt={26}
                     onChange={(e) => {
                       const next = settings.customInputs.slice();
@@ -302,7 +329,9 @@ export function CustomInputsForm({
                 ) : (
                   <TextInput
                     label={
-                      d.type === "select" ? "既定値/選択肢(,区切り)" : "既定値"
+                      d.type === "select"
+                        ? tr("既定値/選択肢(,区切り)")
+                        : tr("既定値")
                     }
                     onChange={(e) => {
                       const next = settings.customInputs.slice();
@@ -360,7 +389,7 @@ export function CustomInputsForm({
               ])
             }
           >
-            項目を追加
+            {tr("項目を追加")}
           </GhostButton>
         </Stack>
       </FormSection>

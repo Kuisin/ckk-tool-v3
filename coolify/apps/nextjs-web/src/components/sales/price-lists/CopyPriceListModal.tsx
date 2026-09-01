@@ -17,6 +17,7 @@ import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { copyPriceEntry } from "@/app/(dashboard)/sales/price-lists/actions";
 import { FormModal, type ModalBaseProps } from "@/components/ui/modals";
+import { useTr } from "@/hooks/useTr";
 import type { Option } from "@/lib/mock";
 import { ORDER_TYPE_LABEL } from "@/lib/mock";
 import { type PriceListEntry, requiresEndDate } from "./model";
@@ -32,6 +33,7 @@ export function CopyPriceListModal({
   customerOptions: Option[];
   productOptions: Option[];
 }) {
+  const tr = useTr();
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [customerId, setCustomerId] = useState<string | null>(null);
@@ -58,7 +60,7 @@ export function CopyPriceListModal({
   const orderTypeLabels =
     source?.variants
       .map((v) => ORDER_TYPE_LABEL[v.orderType] ?? v.orderType)
-      .join("・") ?? "—";
+      .join(tr("・")) ?? "—";
 
   return (
     <FormModal
@@ -73,8 +75,14 @@ export function CopyPriceListModal({
         ) {
           setError(
             needsEnd
-              ? "コピー先の顧客・製品・有効期間（開始・終了）を入力してください"
-              : "コピー先の顧客・製品・有効開始日を入力してください",
+              ? tr(
+                  tr(
+                    tr(
+                      "コピー先の顧客・製品・有効期間（開始・終了）を入力してください",
+                    ),
+                  ),
+                )
+              : tr("コピー先の顧客・製品・有効開始日を入力してください"),
           );
           return;
         }
@@ -90,16 +98,16 @@ export function CopyPriceListModal({
           });
           if (result.ok) {
             notifications.show({
-              title: "コピーしました",
-              message: "価格表を別の顧客・製品にコピーしました",
+              title: tr("コピーしました"),
+              message: tr("価格表を別の顧客・製品にコピーしました"),
               color: "green",
             });
             handleClose();
             router.push(`/sales/price-lists/${result.data.entryId}`);
           } else {
             notifications.show({
-              title: "エラー",
-              message: result.error,
+              title: tr("エラー"),
+              message: tr(result.error),
               color: "red",
             });
           }
@@ -107,8 +115,8 @@ export function CopyPriceListModal({
       }}
       opened={opened}
       size="md"
-      submitLabel="コピーして作成"
-      title="価格表を別の顧客・製品へコピー"
+      submitLabel={tr("コピーして作成")}
+      title={tr("価格表を別の顧客・製品へコピー")}
     >
       <Alert color="blue" icon={<IconInfoCircle size={16} />} variant="light">
         <Text size="sm">
@@ -121,9 +129,9 @@ export function CopyPriceListModal({
       <Select
         data={customerOptions}
         error={error && !customerId ? "顧客を選択してください" : undefined}
-        label="コピー先 顧客"
+        label={tr("コピー先 顧客")}
         onChange={setCustomerId}
-        placeholder="顧客を選択"
+        placeholder={tr("顧客を選択")}
         searchable
         value={customerId}
         withAsterisk
@@ -131,19 +139,19 @@ export function CopyPriceListModal({
       <Select
         data={productOptions}
         error={error && !productId ? "製品を選択してください" : undefined}
-        label="コピー先 製品"
+        label={tr("コピー先 製品")}
         onChange={setProductId}
-        placeholder="製品を選択"
+        placeholder={tr("製品を選択")}
         searchable
         value={productId}
         withAsterisk
       />
       <DatePickerInput
         error={error && !validFrom ? "有効開始日を選択してください" : undefined}
-        label="有効開始日"
+        label={tr("有効開始日")}
         leftSection={<IconCalendar size={14} />}
         onChange={setValidFrom}
-        placeholder="日付を選択"
+        placeholder={tr("日付を選択")}
         value={validFrom}
         valueFormat="YYYY/MM/DD"
         withAsterisk
@@ -155,13 +163,13 @@ export function CopyPriceListModal({
         }
         error={
           error && needsEnd && !validUntil
-            ? "有効終了日を選択してください"
+            ? tr("有効終了日を選択してください")
             : undefined
         }
-        label="有効終了日"
+        label={tr("有効終了日")}
         leftSection={<IconCalendar size={14} />}
         onChange={setValidUntil}
-        placeholder={needsEnd ? "日付を選択" : "空欄で無期限"}
+        placeholder={needsEnd ? "日付を選択" : tr("空欄で無期限")}
         value={validUntil}
         valueFormat="YYYY/MM/DD"
         withAsterisk={needsEnd}

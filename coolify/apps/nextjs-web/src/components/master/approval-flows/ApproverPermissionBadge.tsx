@@ -13,6 +13,7 @@
 
 import { Badge, Tooltip } from "@mantine/core";
 import { useLocale } from "next-intl";
+import { useTr } from "@/hooks/useTr";
 import { permissionScopeLabel } from "@/lib/enum-labels";
 
 /** 段の承認グループに今いる 1 人 + 承認権限の有無。 */
@@ -47,15 +48,22 @@ export function ApproverPermissionBadge({
 }: {
   approvers: readonly FlowApprover[];
 }) {
+  const tr = useTr();
   const locale = useLocale();
   if (approvers.length === 0) {
     return (
       <Tooltip
-        label="この段を承認できる人が今いません。承認依頼を出しても止まります。"
+        label={tr(
+          tr(
+            tr(
+              "この段を承認できる人が今いません。承認依頼を出しても止まります。",
+            ),
+          ),
+        )}
         withinPortal
       >
         <Badge color="red" size="sm" variant="light">
-          メンバー0名
+          {tr("メンバー0名")}
         </Badge>
       </Tooltip>
     );

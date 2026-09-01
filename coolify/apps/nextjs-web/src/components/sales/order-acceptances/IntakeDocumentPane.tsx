@@ -15,6 +15,7 @@ import { Box, Collapse, Group, Paper, Text } from "@mantine/core";
 import { IconChevronDown, IconChevronUp, IconFile } from "@tabler/icons-react";
 import { useState } from "react";
 import { GhostButton } from "@/components/ui/buttons";
+import { useTr } from "@/hooks/useTr";
 import { useIsMobile } from "@/hooks/useViewport";
 
 /** ビューア既定の「ページ全体」だと余白が大きいので幅に合わせる。 */
@@ -33,6 +34,7 @@ export function IntakeDocumentPane({
   mimeType?: string | null;
   height?: number;
 }) {
+  const tr = useTr();
   const isMobile = useIsMobile();
   const [open, setOpen] = useState(false);
 
@@ -40,7 +42,7 @@ export function IntakeDocumentPane({
     return (
       <Paper p="md" radius="md" withBorder>
         <Text c="dimmed" size="sm">
-          取込元の書類がありません（手入力）
+          {tr("取込元の書類がありません（手入力）")}
         </Text>
       </Paper>
     );
@@ -58,7 +60,7 @@ export function IntakeDocumentPane({
       h={height}
       src={`${fileUrl}${VIEWER_HASH}`}
       style={{ border: 0, display: "block", width: "100%" }}
-      title={filename ?? "取込元書類"}
+      title={filename ?? tr("取込元書類")}
     />
   ) : isImage ? (
     <Box
@@ -66,7 +68,7 @@ export function IntakeDocumentPane({
       // 画像は原寸だと大きいので幅に合わせ、縦は収まらなければスクロール。
     >
       <Box
-        alt={filename ?? "取込元書類"}
+        alt={filename ?? tr("取込元書類")}
         component="img"
         src={fileUrl}
         style={{ display: "block", width: "100%" }}
@@ -74,7 +76,7 @@ export function IntakeDocumentPane({
     </Box>
   ) : (
     <Text c="dimmed" p="md" size="sm">
-      この形式はインライン表示できません。下のリンクから開いてください。
+      {tr("この形式はインライン表示できません。下のリンクから開いてください。")}
     </Text>
   );
 
@@ -83,12 +85,12 @@ export function IntakeDocumentPane({
       <Group className="min-w-0" gap={6} wrap="nowrap">
         <IconFile size={14} />
         <Text size="sm" truncate>
-          {filename ?? "取込元書類"}
+          {filename ?? tr("取込元書類")}
         </Text>
       </Group>
       <Group gap="xs" wrap="nowrap">
         <GhostButton external href={fileUrl} size="xs">
-          別タブ
+          {tr("別タブ")}
         </GhostButton>
         {isMobile && (
           <GhostButton
@@ -98,7 +100,7 @@ export function IntakeDocumentPane({
             onClick={() => setOpen((v) => !v)}
             size="xs"
           >
-            {open ? "隠す" : "書類を見る"}
+            {open ? "隠す" : tr("書類を見る")}
           </GhostButton>
         )}
       </Group>

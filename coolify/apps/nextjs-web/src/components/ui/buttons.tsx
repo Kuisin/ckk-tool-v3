@@ -33,6 +33,7 @@ import {
   IconTrash,
 } from "@tabler/icons-react";
 import Link from "next/link";
+import { useTranslations } from "next-intl";
 import type { MouseEventHandler, ReactNode } from "react";
 import { keepInAppOnClick } from "@/lib/pwa-display";
 
@@ -128,68 +129,76 @@ export function DangerButton(props: AppButtonProps) {
 
 // ── Action buttons ───────────────────────────────────────────────────────────
 export function SaveButton({ children, ...props }: AppButtonProps) {
+  const t = useTranslations("common");
   return (
     <PrimaryButton
       leftSection={<IconDeviceFloppy size={16} />}
       type="submit"
       {...props}
     >
-      {children ?? "保存"}
+      {children ?? t("save")}
     </PrimaryButton>
   );
 }
 
 export function CancelButton({ children, ...props }: AppButtonProps) {
+  const t = useTranslations("common");
   return (
-    <SecondaryButton {...props}>{children ?? "キャンセル"}</SecondaryButton>
+    <SecondaryButton {...props}>{children ?? t("cancel")}</SecondaryButton>
   );
 }
 
 export function CreateButton({ children, ...props }: AppButtonProps) {
+  const t = useTranslations("common");
   return (
     <PrimaryButton leftSection={<IconPlus size={16} />} {...props}>
-      {children ?? "新規作成"}
+      {children ?? t("create")}
     </PrimaryButton>
   );
 }
 
 export function EditButton({ children, ...props }: AppButtonProps) {
+  const t = useTranslations("common");
   return (
     <SecondaryButton leftSection={<IconEdit size={14} />} {...props}>
-      {children ?? "編集"}
+      {children ?? t("edit")}
     </SecondaryButton>
   );
 }
 
 export function CopyButton({ children, ...props }: AppButtonProps) {
+  const t = useTranslations("common");
   return (
     <SecondaryButton leftSection={<IconCopy size={14} />} {...props}>
-      {children ?? "複製"}
+      {children ?? t("copy")}
     </SecondaryButton>
   );
 }
 
 export function DeleteButton({ children, ...props }: AppButtonProps) {
+  const t = useTranslations("common");
   return (
     <DangerButton leftSection={<IconTrash size={14} />} {...props}>
-      {children ?? "削除"}
+      {children ?? t("delete")}
     </DangerButton>
   );
 }
 
 export function ApproveButton({ children, ...props }: AppButtonProps) {
+  const t = useTranslations("common");
   return (
     <PrimaryButton
       color="green"
       leftSection={<IconCheck size={16} />}
       {...props}
     >
-      {children ?? "承認"}
+      {children ?? t("approve")}
     </PrimaryButton>
   );
 }
 
 export function RejectButton({ children, ...props }: AppButtonProps) {
+  const t = useTranslations("common");
   return (
     <BaseButton
       color="red"
@@ -197,7 +206,7 @@ export function RejectButton({ children, ...props }: AppButtonProps) {
       variant="outline"
       {...props}
     >
-      {children ?? "差し戻し"}
+      {children ?? t("reject")}
     </BaseButton>
   );
 }

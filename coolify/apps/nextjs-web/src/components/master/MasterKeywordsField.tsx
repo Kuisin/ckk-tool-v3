@@ -17,6 +17,7 @@ import { notifications } from "@mantine/notifications";
 import { IconPlus, IconSparkles } from "@tabler/icons-react";
 import { type ReactNode, useState } from "react";
 import { GhostButton, SecondaryButton } from "@/components/ui/buttons";
+import { useTr } from "@/hooks/useTr";
 import { KEYWORD_MAX_COUNT, normalizeKeywords } from "@/lib/master-keywords";
 
 /** 詳細画面などでの読み取り表示（取引先の AI 照合名と同じ見た目）。 */
@@ -62,6 +63,7 @@ export function MasterKeywordsField({
   onChange: (values: string[]) => void;
   subject: KeywordSubject;
 }) {
+  const tr = useTr();
   const [loading, setLoading] = useState(false);
   const [suggestions, setSuggestions] = useState<string[]>([]);
 
@@ -91,8 +93,8 @@ export function MasterKeywordsField({
         .catch(() => null)) as KeywordsResponse | null;
       if (!res.ok || !json?.ok) {
         notifications.show({
-          title: "候補を作れませんでした",
-          message: json?.error ?? "AI サービスの呼び出しに失敗しました",
+          title: tr("候補を作れませんでした"),
+          message: json?.error ?? tr("AI サービスの呼び出しに失敗しました"),
           color: "red",
         });
         return;
@@ -101,15 +103,15 @@ export function MasterKeywordsField({
       setSuggestions(fresh);
       if (fresh.length === 0) {
         notifications.show({
-          title: "新しい候補はありません",
-          message: "登録済みのキーワードで足りているようです",
+          title: tr("新しい候補はありません"),
+          message: tr("登録済みのキーワードで足りているようです"),
           color: "blue",
         });
       }
     } catch {
       notifications.show({
-        title: "候補を作れませんでした",
-        message: "通信エラーが発生しました",
+        title: tr("候補を作れませんでした"),
+        message: tr("通信エラーが発生しました"),
         color: "red",
       });
     } finally {
@@ -124,7 +126,7 @@ export function MasterKeywordsField({
         label={label}
         maxTags={KEYWORD_MAX_COUNT}
         onChange={onChange}
-        placeholder="キーワードを入力して Enter"
+        placeholder={tr("キーワードを入力して Enter")}
         splitChars={[",", "、"]}
         value={value}
       />
@@ -135,11 +137,11 @@ export function MasterKeywordsField({
           loading={loading}
           onClick={generate}
         >
-          AI で候補を出す
+          {tr("AI で候補を出す")}
         </SecondaryButton>
         {subject.name.trim().length === 0 && (
           <Text c="dimmed" size="xs">
-            名称を入れると候補を作れます
+            {tr("名称を入れると候補を作れます")}
           </Text>
         )}
       </Group>
@@ -148,12 +150,18 @@ export function MasterKeywordsField({
         <Alert
           color="blue"
           icon={<IconSparkles size={16} />}
-          title="AI が作ったキーワード候補"
+          title={tr("AI が作ったキーワード候補")}
           variant="light"
         >
           <Stack gap={6}>
             <Text size="sm">
-              採用するものだけを選んでください（押すと上の欄に入ります）。保存するまでは登録されません。
+              {tr(
+                tr(
+                  tr(
+                    "採用するものだけを選んでください（押すと上の欄に入ります）。保存するまでは登録されません。",
+                  ),
+                ),
+              )}
             </Text>
             <Group gap="xs" wrap="wrap">
               {suggestions.map((s) => (
@@ -172,7 +180,7 @@ export function MasterKeywordsField({
                 すべて追加（{suggestions.length} 件）
               </GhostButton>
               <GhostButton onClick={() => setSuggestions([])} size="xs">
-                閉じる
+                {tr("閉じる")}
               </GhostButton>
             </Group>
           </Stack>

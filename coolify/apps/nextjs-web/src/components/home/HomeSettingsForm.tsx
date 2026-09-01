@@ -44,6 +44,7 @@ import {
 } from "@/components/ui/buttons";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { FormActions } from "@/components/ui/shells";
+import { useTr } from "@/hooks/useTr";
 import { useIsMobile } from "@/hooks/useViewport";
 import { type AppEntry, appList, CATEGORY_COLORS } from "@/lib/app-list";
 import {
@@ -126,6 +127,7 @@ function StarToggleCard({
 }
 
 export function HomeSettingsForm({ initial }: { initial: HomeSettings }) {
+  const tr = useTr();
   const hiddenApps = useHiddenApps();
   const isMobile = useIsMobile();
   const [isPending, startTransition] = useTransition();
@@ -169,8 +171,8 @@ export function HomeSettingsForm({ initial }: { initial: HomeSettings }) {
   const save = () => {
     if (mode === "custom" && groups.some((g) => !g.name.trim())) {
       notifications.show({
-        title: "エラー",
-        message: "グループ名を入力してください",
+        title: tr("エラー"),
+        message: tr("グループ名を入力してください"),
         color: "red",
       });
       return;
@@ -183,14 +185,14 @@ export function HomeSettingsForm({ initial }: { initial: HomeSettings }) {
       });
       if (res.ok) {
         notifications.show({
-          title: "保存しました",
-          message: "ホーム画面の設定を更新しました",
+          title: tr("保存しました"),
+          message: tr("ホーム画面の設定を更新しました"),
           color: "green",
         });
       } else {
         notifications.show({
-          title: "エラー",
-          message: res.error,
+          title: tr("エラー"),
+          message: tr(res.error),
           color: "red",
         });
       }
@@ -201,20 +203,26 @@ export function HomeSettingsForm({ initial }: { initial: HomeSettings }) {
     <Stack gap="md" maw={960} mx="auto" w="100%">
       <PageHeader
         breadcrumbs={[
-          { label: "プロフィール", href: "/profile" },
-          { label: "ホーム画面設定" },
+          { label: tr("プロフィール"), href: "/profile" },
+          { label: tr("ホーム画面設定") },
         ]}
-        title="ホーム画面設定"
+        title={tr("ホーム画面設定")}
       />
 
       {/* ── お気に入りアプリ ─────────────────────────────────────────── */}
       <Paper p="md" radius="md" shadow="xs">
         <Title mb="xs" order={4}>
-          お気に入りアプリ
+          {tr("お気に入りアプリ")}
         </Title>
         <Divider mb="md" />
         <Text c="dimmed" mb="md" size="sm">
-          選択したアプリはホーム画面の上部に固定表示されます（選択した順に並びます）。
+          {tr(
+            tr(
+              tr(
+                "選択したアプリはホーム画面の上部に固定表示されます（選択した順に並びます）。",
+              ),
+            ),
+          )}
         </Text>
         <SimpleGrid cols={isMobile ? 2 : 4} spacing="sm">
           {apps.map((app) => (
@@ -231,7 +239,7 @@ export function HomeSettingsForm({ initial }: { initial: HomeSettings }) {
       {/* ── 表示モード ───────────────────────────────────────────────── */}
       <Paper p="md" radius="md" shadow="xs">
         <Title mb="xs" order={4}>
-          表示モード
+          {tr("表示モード")}
         </Title>
         <Divider mb="md" />
         <Radio.Group
@@ -242,13 +250,21 @@ export function HomeSettingsForm({ initial }: { initial: HomeSettings }) {
         >
           <Stack gap="sm">
             <Radio
-              description="カテゴリ（販売・購買・生産…）ごとにアプリを表示します"
-              label="標準（カテゴリ別）"
+              description={tr(
+                tr("カテゴリ（販売・購買・生産…）ごとにアプリを表示します"),
+              )}
+              label={tr("標準（カテゴリ別）")}
               value="default"
             />
             <Radio
-              description="自分で作ったグループごとにアプリを表示します。未所属のアプリは「その他」にまとまります"
-              label="カスタム（グループ別）"
+              description={tr(
+                tr(
+                  tr(
+                    "自分で作ったグループごとにアプリを表示します。未所属のアプリは「その他」にまとまります",
+                  ),
+                ),
+              )}
+              label={tr("カスタム（グループ別）")}
               value="custom"
             />
           </Stack>
@@ -259,14 +275,14 @@ export function HomeSettingsForm({ initial }: { initial: HomeSettings }) {
       {mode === "custom" && (
         <Paper p="md" radius="md" shadow="xs">
           <Title mb="xs" order={4}>
-            カスタムグループ
+            {tr("カスタムグループ")}
           </Title>
           <Divider mb="md" />
           <Stack gap="sm">
             <Group align="flex-end" gap="xs" wrap="nowrap">
               <TextInput
                 flex={1}
-                label="新しいグループ"
+                label={tr("新しいグループ")}
                 maxLength={MAX_GROUP_NAME_LENGTH}
                 onChange={(e) => setNewGroupName(e.currentTarget.value)}
                 onKeyDown={(e) => {
@@ -275,7 +291,7 @@ export function HomeSettingsForm({ initial }: { initial: HomeSettings }) {
                     addGroup();
                   }
                 }}
-                placeholder="グループ名"
+                placeholder={tr("グループ名")}
                 value={newGroupName}
               />
               <PrimaryButton
@@ -285,13 +301,19 @@ export function HomeSettingsForm({ initial }: { initial: HomeSettings }) {
                 leftSection={<IconPlus size={16} />}
                 onClick={addGroup}
               >
-                追加
+                {tr("追加")}
               </PrimaryButton>
             </Group>
 
             {groups.length === 0 ? (
               <Text c="dimmed" size="sm">
-                グループがありません。グループ名を入力して追加してください。
+                {tr(
+                  tr(
+                    tr(
+                      "グループがありません。グループ名を入力して追加してください。",
+                    ),
+                  ),
+                )}
               </Text>
             ) : (
               groups.map((group, index) => {
@@ -306,7 +328,7 @@ export function HomeSettingsForm({ initial }: { initial: HomeSettings }) {
                     <Stack gap="xs">
                       <Group gap="xs" wrap="nowrap">
                         <TextInput
-                          aria-label="グループ名"
+                          aria-label={tr("グループ名")}
                           flex={1}
                           maxLength={MAX_GROUP_NAME_LENGTH}
                           onChange={(e) => {
@@ -320,7 +342,7 @@ export function HomeSettingsForm({ initial }: { initial: HomeSettings }) {
                           value={group.name}
                         />
                         <ActionIcon
-                          aria-label="上へ移動"
+                          aria-label={tr("上へ移動")}
                           disabled={index === 0}
                           onClick={() => moveGroup(index, -1)}
                           variant="subtle"
@@ -328,7 +350,7 @@ export function HomeSettingsForm({ initial }: { initial: HomeSettings }) {
                           <IconArrowUp size={16} />
                         </ActionIcon>
                         <ActionIcon
-                          aria-label="下へ移動"
+                          aria-label={tr("下へ移動")}
                           disabled={index === groups.length - 1}
                           onClick={() => moveGroup(index, 1)}
                           variant="subtle"
@@ -336,7 +358,7 @@ export function HomeSettingsForm({ initial }: { initial: HomeSettings }) {
                           <IconArrowDown size={16} />
                         </ActionIcon>
                         <ActionIcon
-                          aria-label="グループを削除"
+                          aria-label={tr("グループを削除")}
                           color="red"
                           onClick={() =>
                             setGroups((prev) =>

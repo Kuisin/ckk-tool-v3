@@ -13,17 +13,19 @@ import { Group, Stack, Text } from "@mantine/core";
 import { IconDeviceLaptop } from "@tabler/icons-react";
 import { useFormat } from "@/components/layout/PreferencesProvider";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { useTr } from "@/hooks/useTr";
 import type { UserDeviceRow } from "@/lib/login-attempts";
 import { OwnershipBadge } from "./ownership";
 
 export function UserDeviceList({ devices }: { devices: UserDeviceRow[] }) {
+  const tr = useTr();
   const fmt = useFormat();
 
   if (devices.length === 0) {
     return (
       <EmptyState
         icon={<IconDeviceLaptop size={28} />}
-        message="登録された端末はありません"
+        message={tr("登録された端末はありません")}
       />
     );
   }
@@ -39,7 +41,7 @@ export function UserDeviceList({ devices }: { devices: UserDeviceRow[] }) {
         >
           <div className="min-w-0">
             <Text fw={600} size="sm">
-              {d.label ?? "不明な端末"}
+              {d.label ?? tr("不明な端末")}
             </Text>
             <Text c="dimmed" ff="mono" size="xs" truncate>
               {d.fingerprint.slice(0, 24)}…

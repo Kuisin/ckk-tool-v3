@@ -37,6 +37,7 @@ import {
   relativeTime,
   useNotificationSignal,
 } from "@/hooks/useNotifications";
+import { useTr } from "@/hooks/useTr";
 import {
   notificationTypeLabel,
   notificationTypeOptions,
@@ -58,6 +59,7 @@ export function NotificationListView({
   unreadOnly: boolean;
   type: string | null;
 }) {
+  const tr = useTr();
   const locale = useLocale();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -104,8 +106,8 @@ export function NotificationListView({
             </GhostButton>
           ) : undefined
         }
-        breadcrumbs={[{ label: "通知" }]}
-        title="通知"
+        breadcrumbs={[{ label: tr("通知") }]}
+        title={tr("通知")}
       />
 
       <Paper p="sm" radius="md" shadow="xs">
@@ -113,7 +115,7 @@ export function NotificationListView({
         <Group align="center" gap="sm" mb="sm">
           <Switch
             checked={unreadOnly}
-            label="未読のみ"
+            label={tr("未読のみ")}
             onChange={(e) =>
               updateParams({ unread: e.currentTarget.checked ? "1" : null })
             }
@@ -123,7 +125,7 @@ export function NotificationListView({
             clearable
             data={notificationTypeOptions(locale)}
             onChange={(v) => updateParams({ type: v })}
-            placeholder="種別"
+            placeholder={tr("種別")}
             value={type}
             w={160}
           />
@@ -135,7 +137,7 @@ export function NotificationListView({
         {items.length === 0 ? (
           <EmptyState
             icon={<IconBellOff size={24} />}
-            message="通知はありません"
+            message={tr("通知はありません")}
           />
         ) : (
           <Stack gap={0}>

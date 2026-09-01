@@ -27,6 +27,7 @@ import {
   MasterListNav,
   type MasterNavItem,
 } from "@/components/ui/MasterListNav";
+import { useTr } from "@/hooks/useTr";
 import type {
   Criterion,
   CriterionRole,
@@ -54,6 +55,7 @@ function ToolTypesBadge({
   c: Criterion;
   toolTypes: ToolTypeDef[];
 }) {
+  const tr = useTr();
   const toolLabel = (v: string) =>
     toolTypes.find((t) => t.value === v)?.label ?? v;
   if (
@@ -62,18 +64,18 @@ function ToolTypesBadge({
   )
     return (
       <Badge color="teal" size="xs" variant="outline">
-        全工具種
+        {tr("全工具種")}
       </Badge>
     );
   if (c.toolTypes.length === 0)
     return (
       <Badge color="red" size="xs" variant="light">
-        適用なし
+        {tr("適用なし")}
       </Badge>
     );
   return (
     <Badge color="teal" size="xs" variant="outline">
-      {c.toolTypes.map(toolLabel).join("・")}
+      {c.toolTypes.map(toolLabel).join(tr("・"))}
     </Badge>
   );
 }
@@ -86,6 +88,7 @@ export function CriteriaListPanel({
   /** 工具種（管理者定義）— 適用バッジの表示に使う。 */
   toolTypes: ToolTypeDef[];
 }) {
+  const tr = useTr();
   const [criteria, setCriteria] = useState<Criterion[]>(initial);
   const [isPending, startTransition] = useTransition();
   const router = useRouter();
@@ -105,8 +108,8 @@ export function CriteriaListPanel({
       if (!res.ok) {
         setCriteria(prev);
         notifications.show({
-          title: "エラー",
-          message: res.error,
+          title: tr("エラー"),
+          message: tr(res.error),
           color: "red",
         });
       } else {
@@ -147,7 +150,7 @@ export function CriteriaListPanel({
         <ToolTypesBadge c={c} toolTypes={toolTypes} />
         {!c.enabled && (
           <Badge color="gray" size="xs" variant="light">
-            無効
+            {tr("無効")}
           </Badge>
         )}
       </Group>
@@ -157,31 +160,33 @@ export function CriteriaListPanel({
   return (
     <>
       <MasterListNav
-        emptyMessage="計算基準がありません。「基準を追加」から作成してください。"
+        emptyMessage={tr(
+          tr("計算基準がありません。「基準を追加」から作成してください。"),
+        )}
         searchable
-        searchPlaceholder="基準名・ID で絞り込み..."
+        searchPlaceholder={tr("基準名・ID で絞り込み...")}
         sections={[
           {
-            label: "計算基準（加算・中間）",
+            label: tr("計算基準（加算・中間）"),
             items: nonFinal.map(toItem),
           },
           {
-            label: "見積単価（工具種ごとに設定）",
+            label: tr("見積単価（工具種ごとに設定）"),
             items: finals.map(toItem),
-            emptyMessage: "見積単価の基準がありません。",
+            emptyMessage: tr("見積単価の基準がありません。"),
           },
         ]}
         toolbar={
           <Group gap="xs">
             <CreateButton onClick={() => router.push(`${BASE}/new`)}>
-              基準を追加
+              {tr("基準を追加")}
             </CreateButton>
             <SecondaryButton
               disabled={nonFinal.length < 2}
               leftSection={<IconArrowsSort size={14} />}
               onClick={openReorder}
             >
-              並び替え
+              {tr("並び替え")}
             </SecondaryButton>
           </Group>
         }
@@ -190,11 +195,11 @@ export function CriteriaListPanel({
       <Modal
         onClose={() => setReorderOpen(false)}
         opened={reorderOpen}
-        title="計算基準の並び替え"
+        title={tr("計算基準の並び替え")}
       >
         <Stack gap="xs">
           <Text c="dimmed" size="xs">
-            上から順に評価されます（加算基準の合計 → 見積単価）。
+            {tr("上から順に評価されます（加算基準の合計 → 見積単価）。")}
           </Text>
           {reorderList.map((c, i) => (
             <Group gap="xs" key={c.id} wrap="nowrap">
@@ -205,7 +210,7 @@ export function CriteriaListPanel({
                 {ROLE_META[c.role].label}
               </Badge>
               <ActionIcon
-                aria-label="上へ"
+                aria-label={tr("上へ")}
                 disabled={i === 0}
                 onClick={() => moveReorder(i, -1)}
                 variant="subtle"
@@ -213,7 +218,7 @@ export function CriteriaListPanel({
                 <IconArrowUp size={16} />
               </ActionIcon>
               <ActionIcon
-                aria-label="下へ"
+                aria-label={tr("下へ")}
                 disabled={i === reorderList.length - 1}
                 onClick={() => moveReorder(i, 1)}
                 variant="subtle"
@@ -224,7 +229,7 @@ export function CriteriaListPanel({
           ))}
           <Group justify="flex-end" mt="sm">
             <SaveButton loading={isPending} onClick={saveReorder}>
-              並び順を保存
+              {tr("並び順を保存")}
             </SaveButton>
           </Group>
         </Stack>

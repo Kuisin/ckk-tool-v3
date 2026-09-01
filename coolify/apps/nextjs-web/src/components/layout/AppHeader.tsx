@@ -46,6 +46,7 @@ import { useTranslations } from "next-intl";
 import { useEffect, useRef, useState } from "react";
 import { UserAvatar } from "@/components/ui/UserAvatar";
 import { relativeTime, useNotifications } from "@/hooks/useNotifications";
+import { useTr } from "@/hooks/useTr";
 import { appList } from "@/lib/app-list";
 import { installBugReportCapture } from "@/lib/bug-report";
 import { appKeyForPath } from "./AppFlags";
@@ -103,6 +104,7 @@ export function AppHeader({
   user?: HeaderUser | null;
   isDev?: boolean;
 }) {
+  const tr = useTr();
   const sessionUser = user
     ? {
         displayName: user.displayName,
@@ -201,7 +203,7 @@ export function AppHeader({
           style={{ lineHeight: `${DEV_BAR_HEIGHT}px`, letterSpacing: 1 }}
           ta="center"
         >
-          開発環境 — DEV
+          {tr("開発環境 — DEV")}
         </Box>
       )}
       <Group
@@ -214,9 +216,9 @@ export function AppHeader({
         {/* ── Left: back (非ホーム時) + App Launcher (+ code jump on mobile) ── */}
         <Group className="min-w-0" gap="xs" wrap="nowrap">
           {!isHome && canGoBack && (
-            <Tooltip label="戻る" withinPortal>
+            <Tooltip label={tr("戻る")} withinPortal>
               <ActionIcon
-                aria-label="前のページへ戻る"
+                aria-label={tr("前のページへ戻る")}
                 className="header-action"
                 color="gray"
                 onClick={goBack}
@@ -239,7 +241,7 @@ export function AppHeader({
           >
             <Popover.Target>
               <UnstyledButton
-                aria-label="アプリ一覧を開く"
+                aria-label={tr("アプリ一覧を開く")}
                 className="launcher-trigger"
                 onClick={() => setLauncherOpen((o) => !o)}
                 onMouseEnter={() => {
@@ -311,9 +313,9 @@ export function AppHeader({
             />
           </Box>
           {/* ページ共有（tools/demo-system 参照 — 現在の URL を通知として送る） */}
-          <Tooltip label="ページを共有" withinPortal>
+          <Tooltip label={tr("ページを共有")} withinPortal>
             <ActionIcon
-              aria-label="ページを共有"
+              aria-label={tr("ページを共有")}
               className="header-action"
               color="gray"
               onClick={() => setShareOpen(true)}
@@ -328,9 +330,9 @@ export function AppHeader({
             opened={shareOpen}
           />
           {/* バグ報告（ページ状態・コンソールログを添付して管理者へ） */}
-          <Tooltip label="バグを報告" withinPortal>
+          <Tooltip label={tr("バグを報告")} withinPortal>
             <ActionIcon
-              aria-label="バグを報告"
+              aria-label={tr("バグを報告")}
               className="header-action"
               color="gray"
               onClick={() => setBugOpen(true)}
@@ -441,7 +443,7 @@ export function AppHeader({
                 py="6px"
               >
                 <Text c="blue" size="xs" ta="center">
-                  すべて表示
+                  {tr("すべて表示")}
                 </Text>
               </UnstyledButton>
             </Popover.Dropdown>
@@ -451,7 +453,7 @@ export function AppHeader({
           <Menu position="bottom-end" shadow="md" width={PROFILE_MENU_WIDTH}>
             <Menu.Target>
               <UserAvatar
-                aria-label="ユーザーメニュー"
+                aria-label={tr("ユーザーメニュー")}
                 className="cursor-pointer"
                 initials={sessionUser.initials}
                 name={sessionUser.displayName}

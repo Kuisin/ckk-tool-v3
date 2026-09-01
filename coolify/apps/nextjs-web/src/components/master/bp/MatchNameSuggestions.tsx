@@ -20,6 +20,7 @@
 import { Alert, Badge, Group, Stack, Text } from "@mantine/core";
 import { IconBulb, IconPlus } from "@tabler/icons-react";
 import { GhostButton, SecondaryButton } from "@/components/ui/buttons";
+import { useTr } from "@/hooks/useTr";
 import { generateAliases, missingKeywordFormats } from "@/lib/company-aliases";
 
 const FORMAT_LABEL: Record<string, string> = {
@@ -45,6 +46,7 @@ export function MatchNameSuggestions({
   /** 候補を採用したときに呼ばれる（複数まとめて渡すこともある）。 */
   onAdd: (values: string[]) => void;
 }) {
+  const tr = useTr();
   const src = {
     nameJa,
     nameEn,
@@ -66,13 +68,13 @@ export function MatchNameSuggestions({
     <Alert
       color="blue"
       icon={<IconBulb size={16} />}
-      title="AI 照合名の推奨"
+      title={tr("AI 照合名の推奨")}
       variant="light"
     >
       <Stack gap="sm">
         {missingLabels.length > 0 && (
           <Text size="sm">
-            {missingLabels.join("・")}
+            {missingLabels.join(tr("・"))}
             の表記が未登録です。注文書がその形で書かれていると突合できません。
             {missing.needsReading &&
               "　漢字の読みは自動で作れないため、フリガナを入れると候補を出せます。"}
@@ -103,7 +105,7 @@ export function MatchNameSuggestions({
 
         {suggestions.length === 0 && missing.needsReading && (
           <Badge color="orange" size="sm" variant="light">
-            フリガナ未入力
+            {tr("フリガナ未入力")}
           </Badge>
         )}
       </Stack>

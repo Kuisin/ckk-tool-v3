@@ -25,6 +25,7 @@ import { MoneyText } from "@/components/ui/MoneyText";
 import { ModalShell } from "@/components/ui/modals";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { ListShell } from "@/components/ui/shells";
+import { useTr } from "@/hooks/useTr";
 import { useUrlSelectState, useUrlStringState } from "@/hooks/useUrlState";
 import { useIsMobile } from "@/hooks/useViewport";
 import { statusOptions } from "@/lib/status-map";
@@ -54,6 +55,7 @@ function RunClosingModal({
   opened: boolean;
   onClose: () => void;
 }) {
+  const tr = useTr();
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const now = new Date();
@@ -70,7 +72,7 @@ function RunClosingModal({
       if (result.ok) {
         const { created, updated, skipped } = result.data;
         notifications.show({
-          title: "締日処理を実行しました",
+          title: tr("締日処理を実行しました"),
           message: `作成 ${created} 件 / 更新 ${updated} 件${skipped > 0 ? ` / 処理済みスキップ ${skipped} 件` : ""}`,
           color: "green",
         });
@@ -78,8 +80,8 @@ function RunClosingModal({
         router.refresh();
       } else {
         notifications.show({
-          title: "エラー",
-          message: result.error,
+          title: tr("エラー"),
+          message: tr(result.error),
           color: "red",
         });
       }
@@ -88,29 +90,33 @@ function RunClosingModal({
 
   return (
     <ModalShell
-      confirmLabel="実行"
+      confirmLabel={tr("実行")}
       loading={isPending}
       onClose={onClose}
       onConfirm={execute}
       opened={opened}
       size="sm"
-      title="締日処理の実行"
+      title={tr("締日処理の実行")}
     >
       <Text size="sm">
-        対象月の未請求出荷（出荷済み・発送のみ）を顧客ごとに集計し、締日の処理行を作成します。
+        {tr(
+          tr(
+            "対象月の未請求出荷（出荷済み・発送のみ）を顧客ごとに集計し、締日の処理行を作成します。",
+          ),
+        )}
       </Text>
       <Group grow>
         <Select
           allowDeselect={false}
           data={yearOptions()}
-          label="年"
+          label={tr("年")}
           onChange={(v) => v && setYear(v)}
           value={year}
         />
         <Select
           allowDeselect={false}
           data={MONTH_OPTIONS}
-          label="月"
+          label={tr("月")}
           onChange={(v) => v && setMonth(v)}
           value={month}
         />
@@ -120,6 +126,7 @@ function RunClosingModal({
 }
 
 export function ClosingTable({ rows }: { rows: BillingClosing[] }) {
+  const tr = useTr();
   const fmt = useFormat();
   const router = useRouter();
   const isMobile = useIsMobile();
@@ -143,13 +150,13 @@ export function ClosingTable({ rows }: { rows: BillingClosing[] }) {
   const columns: Column<BillingClosing>[] = [
     {
       key: "customerName",
-      header: "顧客",
+      header: tr("顧客"),
       sortable: true,
       render: (c) => <Text size="sm">{c.customerName}</Text>,
     },
     {
       key: "closingDate",
-      header: "締日",
+      header: tr("締日"),
       width: 130,
       sortable: true,
       sortValue: (c) => c.closingDate,
@@ -161,7 +168,7 @@ export function ClosingTable({ rows }: { rows: BillingClosing[] }) {
     },
     {
       key: "totalAmount",
-      header: "合計金額",
+      header: tr("合計金額"),
       width: 130,
       align: "right",
       sortValue: (c) => c.totalAmount ?? 0,
@@ -169,14 +176,14 @@ export function ClosingTable({ rows }: { rows: BillingClosing[] }) {
     },
     {
       key: "status",
-      header: "状態",
+      header: tr("状態"),
       width: 120,
       sortValue: (c) => c.status,
       render: (c) => <StatusBadge entity="BillingClosing" status={c.status} />,
     },
     {
       key: "processedAt",
-      header: "処理日",
+      header: tr("処理日"),
       width: 120,
       sortValue: (c) => c.processedAt ?? "",
       render: (c) => (
@@ -195,17 +202,17 @@ export function ClosingTable({ rows }: { rows: BillingClosing[] }) {
           onClick={() => setRunOpen(true)}
           style={{ flexShrink: 0 }}
         >
-          {isMobile ? "実行" : "締日処理を実行"}
+          {isMobile ? "実行" : tr("締日処理を実行")}
         </PrimaryButton>
       }
-      breadcrumbs={["請求", "締日処理"]}
+      breadcrumbs={[tr("請求"), tr("締日処理")]}
       filters={
         <Select
           clearable
           data={statusOptions("BillingClosing")}
           flex={isMobile ? 1 : undefined}
           onChange={setStatus}
-          placeholder="状態"
+          placeholder={tr("状態")}
           value={status}
           w={isMobile ? undefined : 160}
         />
@@ -215,18 +222,20 @@ export function ClosingTable({ rows }: { rows: BillingClosing[] }) {
         <TextInput
           leftSection={<IconSearch size={14} />}
           onChange={(e) => setSearch(e.currentTarget.value)}
-          placeholder="顧客で検索"
+          placeholder={tr("顧客で検索")}
           value={search}
         />
       }
-      title="締日処理"
+      title={tr("締日処理")}
     >
       <DataTable
         columns={columns}
         data={filtered}
         defaultSort={{ key: "closingDate", dir: "desc" }}
         emptyIcon={<IconCalendarDue size={24} />}
-        emptyMessage="締日処理がありません（「締日処理を実行」から作成します）"
+        emptyMessage={tr(
+          tr("締日処理がありません（「締日処理を実行」から作成します）"),
+        )}
         getRowId={(c) => c.id}
         onRowClick={(c) => router.push(`${BASE_PATH}/${c.id}`)}
         renderCard={(c) => (

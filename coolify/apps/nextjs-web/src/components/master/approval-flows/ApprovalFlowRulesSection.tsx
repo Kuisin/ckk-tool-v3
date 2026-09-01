@@ -48,6 +48,7 @@ import {
 import { GhostButton } from "@/components/ui/buttons";
 import { ModalShell, openConfirm } from "@/components/ui/modals";
 import { FormSection, LocalizedTextInput } from "@/components/ui/shells";
+import { useTr } from "@/hooks/useTr";
 import { useIsMobile } from "@/hooks/useViewport";
 import {
   APPROVAL_CONDITION_FIELDS,
@@ -146,6 +147,7 @@ export function ApprovalFlowRulesSection({
   groupOptions: GroupOption[];
   dynamicOptions: ConditionDynamicOptions;
 }) {
+  const tr = useTr();
   const locale = useLocale();
   const router = useRouter();
   const isMobile = useIsMobile();
@@ -201,7 +203,7 @@ export function ApprovalFlowRulesSection({
   const condPayload = editing ? toConditions(conditions, targetType) : [];
   const issues = editing
     ? [
-        ...(nameJa.trim() ? [] : ["ルール名（日本語）を入力してください"]),
+        ...(nameJa.trim() ? [] : [tr("ルール名（日本語）を入力してください")]),
         ...validateConditions(targetType, condPayload),
         ...validateFlowSteps(
           steps.map((s) => ({
@@ -234,7 +236,7 @@ export function ApprovalFlowRulesSection({
       );
       if (result.ok) {
         notifications.show({
-          title: "保存しました",
+          title: tr("保存しました"),
           message: `${targetLabel}の条件付きフロー「${payload.nameJa}」`,
           color: "green",
         });
@@ -242,8 +244,8 @@ export function ApprovalFlowRulesSection({
         router.refresh();
       } else {
         notifications.show({
-          title: "エラー",
-          message: result.error,
+          title: tr("エラー"),
+          message: tr(result.error),
           color: "red",
         });
       }
@@ -256,8 +258,8 @@ export function ApprovalFlowRulesSection({
       if (result.ok) router.refresh();
       else
         notifications.show({
-          title: "エラー",
-          message: result.error,
+          title: tr("エラー"),
+          message: tr(result.error),
           color: "red",
         });
     });
@@ -265,7 +267,8 @@ export function ApprovalFlowRulesSection({
   /** 条件 1 行の値入力（フィールド型で出し分け）。 */
   const conditionValueInput = (c: ConditionDraft) => {
     const def = c.field ? conditionFieldDef(targetType, c.field) : undefined;
-    if (!def) return <TextInput disabled flex={1} placeholder="項目を選択" />;
+    if (!def)
+      return <TextInput disabled flex={1} placeholder={tr("項目を選択")} />;
     if (def.type === "number") {
       return (
         <NumberInput
@@ -276,7 +279,7 @@ export function ApprovalFlowRulesSection({
               prev.map((x) => (x.key === c.key ? { ...x, numberValue: v } : x)),
             )
           }
-          placeholder="値"
+          placeholder={tr("値")}
           suffix={def.unit ? ` ${def.unit}` : undefined}
           thousandSeparator=","
           value={c.numberValue}
@@ -295,7 +298,7 @@ export function ApprovalFlowRulesSection({
             prev.map((x) => (x.key === c.key ? { ...x, selectValue: v } : x)),
           )
         }
-        placeholder="選択"
+        placeholder={tr("選択")}
         searchable
         value={c.selectValue}
       />
@@ -305,8 +308,14 @@ export function ApprovalFlowRulesSection({
   return (
     <>
       <FormSection
-        description="書類の内容（金額・種別など）で承認フローを分岐します。上から順に評価し、最初に一致したルールの段構成を既定フローの代わりに使います。どれにも一致しない書類は上の既定フローで進みます。変更は次の承認依頼から有効です。"
-        title="条件付きフロー"
+        description={tr(
+          tr(
+            tr(
+              "書類の内容（金額・種別など）で承認フローを分岐します。上から順に評価し、最初に一致したルールの段構成を既定フローの代わりに使います。どれにも一致しない書類は上の既定フローで進みます。変更は次の承認依頼から有効です。",
+            ),
+          ),
+        )}
+        title={tr("条件付きフロー")}
       >
         <Stack gap="sm">
           {rules.length === 0 && (
@@ -328,7 +337,7 @@ export function ApprovalFlowRulesSection({
                     </Text>
                     {!rule.isActive && (
                       <Badge color="gray" size="xs" variant="light">
-                        無効
+                        {tr("無効")}
                       </Badge>
                     )}
                   </Group>
@@ -342,7 +351,7 @@ export function ApprovalFlowRulesSection({
                   <Text c="dimmed" size="xs">
                     段:{" "}
                     {rule.steps.map((s) => s.nameJa).join(" → ") ||
-                      "（未設定）"}
+                      tr("（未設定）")}
                   </Text>
                 </Stack>
                 <Group gap={4} wrap="nowrap">
@@ -360,7 +369,7 @@ export function ApprovalFlowRulesSection({
                     size="xs"
                   />
                   <ActionIcon
-                    aria-label="上へ"
+                    aria-label={tr("上へ")}
                     disabled={i === 0 || isPending}
                     onClick={() =>
                       run(() => moveApprovalFlowRule(targetType, rule.id, "up"))
@@ -370,7 +379,7 @@ export function ApprovalFlowRulesSection({
                     <IconArrowUp size={16} />
                   </ActionIcon>
                   <ActionIcon
-                    aria-label="下へ"
+                    aria-label={tr("下へ")}
                     disabled={i === rules.length - 1 || isPending}
                     onClick={() =>
                       run(() =>
@@ -382,7 +391,7 @@ export function ApprovalFlowRulesSection({
                     <IconArrowDown size={16} />
                   </ActionIcon>
                   <ActionIcon
-                    aria-label="編集"
+                    aria-label={tr("編集")}
                     onClick={() => openEdit(rule)}
                     variant="subtle"
                   >
@@ -393,7 +402,7 @@ export function ApprovalFlowRulesSection({
                     color="red"
                     onClick={() =>
                       openConfirm({
-                        title: "条件付きフローの削除",
+                        title: tr("条件付きフローの削除"),
                         message: `「${rule.nameJa}」を削除します。進行中の承認依頼には影響しません。`,
                         confirmLabel: "削除",
                         onConfirm: () =>
@@ -411,21 +420,23 @@ export function ApprovalFlowRulesSection({
             </Paper>
           ))}
           <GhostButton fullWidth={isMobile} onClick={openNew}>
-            条件付きフローを追加
+            {tr("条件付きフローを追加")}
           </GhostButton>
         </Stack>
       </FormSection>
 
       <ModalShell
         confirmDisabled={issues.length > 0}
-        confirmLabel="保存"
+        confirmLabel={tr("保存")}
         loading={isPending}
         onClose={() => setEditing(null)}
         onConfirm={save}
         opened={editing != null}
         size="lg"
         title={
-          editing?.id == null ? "条件付きフローを追加" : "条件付きフローを編集"
+          editing?.id == null
+            ? tr("条件付きフローを追加")
+            : tr("条件付きフローを編集")
         }
       >
         <Stack gap="md">
@@ -434,8 +445,8 @@ export function ApprovalFlowRulesSection({
               value: nameJa,
               onChange: (e) => setNameJa(e.currentTarget.value),
             }}
-            label="ルール名"
-            placeholder="例: 50万円以上"
+            label={tr("ルール名")}
+            placeholder={tr("例: 50万円以上")}
             required
             translationsProps={{
               value: nameTranslations,
@@ -445,7 +456,7 @@ export function ApprovalFlowRulesSection({
 
           <Stack gap="xs">
             <Text fw={600} size="sm">
-              条件（すべて満たしたとき一致）
+              {tr("条件（すべて満たしたとき一致）")}
             </Text>
             {conditions.length === 0 && (
               <Text c="dimmed" size="xs">
@@ -478,7 +489,7 @@ export function ApprovalFlowRulesSection({
                         ),
                       )
                     }
-                    placeholder="項目"
+                    placeholder={tr("項目")}
                     value={c.field}
                     w={isMobile ? 130 : 180}
                   />
@@ -501,7 +512,7 @@ export function ApprovalFlowRulesSection({
                     w={isMobile ? 110 : 140}
                   />
                   <ActionIcon
-                    aria-label="条件を削除"
+                    aria-label={tr("条件を削除")}
                     color="red"
                     mt={4}
                     onClick={() =>
@@ -530,13 +541,13 @@ export function ApprovalFlowRulesSection({
                 ])
               }
             >
-              条件を追加
+              {tr("条件を追加")}
             </GhostButton>
           </Stack>
 
           <Stack gap="xs">
             <Text fw={600} size="sm">
-              このルールの承認ステップ
+              {tr("このルールの承認ステップ")}
             </Text>
             {steps.map((s, i) => (
               <Paper key={s.key} p="xs" radius="sm" withBorder>
@@ -561,8 +572,8 @@ export function ApprovalFlowRulesSection({
                           );
                         },
                       }}
-                      label="名称"
-                      placeholder="第一承認"
+                      label={tr("名称")}
+                      placeholder={tr("第一承認")}
                       translationsProps={{
                         value: s.nameTranslations,
                         onChange: (value: Record<string, string>) =>
@@ -578,7 +589,7 @@ export function ApprovalFlowRulesSection({
                   </Box>
                   <Select
                     data={groupOptions}
-                    label="承認グループ"
+                    label={tr("承認グループ")}
                     onChange={(v) =>
                       setSteps((prev) =>
                         prev.map((x) =>
@@ -586,7 +597,7 @@ export function ApprovalFlowRulesSection({
                         ),
                       )
                     }
-                    placeholder="選択"
+                    placeholder={tr("選択")}
                     searchable
                     value={s.groupId}
                     w={isMobile ? "100%" : 180}
@@ -606,7 +617,7 @@ export function ApprovalFlowRulesSection({
                   />
                   <Group gap={2} mb={2} wrap="nowrap">
                     <ActionIcon
-                      aria-label="上へ"
+                      aria-label={tr("上へ")}
                       disabled={i === 0}
                       onClick={() =>
                         setSteps((prev) => {
@@ -620,7 +631,7 @@ export function ApprovalFlowRulesSection({
                       <IconArrowUp size={16} />
                     </ActionIcon>
                     <ActionIcon
-                      aria-label="下へ"
+                      aria-label={tr("下へ")}
                       disabled={i === steps.length - 1}
                       onClick={() =>
                         setSteps((prev) => {
@@ -652,7 +663,7 @@ export function ApprovalFlowRulesSection({
                 setSteps((prev) => [...prev, emptyStep(prev.length + 1)])
               }
             >
-              段を追加
+              {tr("段を追加")}
             </GhostButton>
           </Stack>
 

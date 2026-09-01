@@ -17,6 +17,7 @@ import { useEffect, useState } from "react";
 import { FieldValue } from "@/components/ui/FieldValue";
 import { HelpLabel } from "@/components/ui/HelpLabel";
 import { FormModal, type ModalBaseProps } from "@/components/ui/modals";
+import { useTr } from "@/hooks/useTr";
 import { formatMoney } from "@/lib/format";
 import { ORDER_TYPE_LABEL } from "@/lib/mock";
 import {
@@ -33,6 +34,7 @@ export function CreateQuoteModal({
   onClose,
   source,
 }: ModalBaseProps & { source: PriceListEntry | null }) {
+  const tr = useTr();
   const router = useRouter();
   const [variantId, setVariantId] = useState<string | null>(null);
   const [quantity, setQuantity] = useState<number>(1);
@@ -95,8 +97,8 @@ export function CreateQuoteModal({
       }}
       opened={opened}
       size="md"
-      submitLabel="見積書を作成（下書き）"
-      title="見積書を作成"
+      submitLabel={tr("見積書を作成（下書き）")}
+      title={tr("見積書を作成")}
     >
       <Text size="sm">
         {source.customerName} × {source.productName}{" "}
@@ -108,7 +110,7 @@ export function CreateQuoteModal({
           value: v.id,
           label: ORDER_TYPE_LABEL[v.orderType] ?? v.orderType,
         }))}
-        label="注文種別"
+        label={tr("注文種別")}
         onChange={(v) => {
           setVariantId(v);
           const next = source.variants.find((x) => x.id === v);
@@ -121,8 +123,14 @@ export function CreateQuoteModal({
       <NumberInput
         label={
           <HelpLabel
-            help="見積する本数。数量帯（倍率）と値引きルールの適用判定に使われます。"
-            label="数量"
+            help={tr(
+              tr(
+                tr(
+                  "見積する本数。数量帯（倍率）と値引きルールの適用判定に使われます。",
+                ),
+              ),
+            )}
+            label={tr("数量")}
           />
         }
         min={1}
@@ -135,14 +143,14 @@ export function CreateQuoteModal({
       {variant && tier ? (
         <Stack gap="xs">
           <FieldValue
-            label="単価（価格表）"
+            label={tr("単価（価格表）")}
             value={`${formatMoney(unitPrice)}（${quantityRange(
               tier.minQuantity,
               tier.maxQuantity,
             )} ×${tier.multiplier.toFixed(2)}）`}
           />
           <FieldValue
-            label="値引き（自動適用）"
+            label={tr("値引き（自動適用）")}
             value={
               discount
                 ? `-${formatMoney(discountAmount)}（${discount.label} ${discountValueLabel(discount)}）`
@@ -156,23 +164,29 @@ export function CreateQuoteModal({
           icon={<IconAlertTriangle size={16} />}
           variant="light"
         >
-          この数量に該当する価格段階がありません。数量を見直すか、価格表の数量スケールを追加してください。
+          {tr(
+            tr(
+              tr(
+                "この数量に該当する価格段階がありません。数量を見直すか、価格表の数量スケールを追加してください。",
+              ),
+            ),
+          )}
         </Alert>
       )}
 
       <DatePickerInput
         clearable
-        label="納期"
+        label={tr("納期")}
         leftSection={<IconCalendar size={14} />}
         onChange={setDeliveryDate}
-        placeholder="日付を選択"
+        placeholder={tr("日付を選択")}
         value={deliveryDate}
         valueFormat="YYYY/MM/DD"
       />
 
       <Group justify="flex-end">
         <Text c="dimmed" size="sm">
-          金額
+          {tr("金額")}
         </Text>
         <Text className="tabular-nums" ff="mono" fw={700}>
           {formatMoney(amount)}

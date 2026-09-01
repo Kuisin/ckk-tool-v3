@@ -51,6 +51,7 @@ import { ConfirmModal, ModalShell } from "@/components/ui/modals";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { UserAvatar } from "@/components/ui/UserAvatar";
+import { useTr } from "@/hooks/useTr";
 import type { KioskDeviceRecentUser, KioskDeviceRow } from "@/lib/kiosk-admin";
 import type { LoginAttemptRow } from "@/lib/login-attempts";
 import { DeviceProfilePanel } from "./DeviceProfilePanel";
@@ -73,6 +74,7 @@ export function KioskDeviceDetailView({
   /** この端末で弾かれた認証（直近 90 日・最大 30 件）。 */
   authFailures: LoginAttemptRow[];
 }) {
+  const tr = useTr();
   const fmt = useFormat();
   const { presence, live, transport } = useKioskPresence();
   const [isPending, startTransition] = useTransition();
@@ -119,8 +121,8 @@ export function KioskDeviceDetailView({
           scheduleHide();
         } else {
           notifications.show({
-            title: "エラー",
-            message: result.error,
+            title: tr("エラー"),
+            message: tr(result.error),
             color: "red",
           });
         }
@@ -151,8 +153,8 @@ export function KioskDeviceDetailView({
           historyTimerRef.current = setTimeout(() => setHistory(null), 60_000);
         } else {
           notifications.show({
-            title: "エラー",
-            message: result.error,
+            title: tr("エラー"),
+            message: tr(result.error),
             color: "red",
           });
         }
@@ -182,8 +184,8 @@ export function KioskDeviceDetailView({
           heldTimerRef.current = setTimeout(() => setHeld(null), 60_000);
         } else {
           notifications.show({
-            title: "エラー",
-            message: result.error,
+            title: tr("エラー"),
+            message: tr(result.error),
             color: "red",
           });
         }
@@ -202,14 +204,14 @@ export function KioskDeviceDetailView({
           setRevealed((r) => ({ ...r, settings: result.data.code }));
           scheduleHide();
           notifications.show({
-            title: "再生成しました",
-            message: "新しい設定コードを表示しています",
+            title: tr("再生成しました"),
+            message: tr("新しい設定コードを表示しています"),
             color: "green",
           });
         } else {
           notifications.show({
-            title: "エラー",
-            message: result.error,
+            title: tr("エラー"),
+            message: tr(result.error),
             color: "red",
           });
         }
@@ -231,19 +233,23 @@ export function KioskDeviceDetailView({
       <PageHeader
         actions={
           <SecondaryButton href="/settings/kiosk-devices">
-            一覧へ戻る
+            {tr("一覧へ戻る")}
           </SecondaryButton>
         }
-        breadcrumbs={["システム", "端末管理", device.name ?? "端末詳細"]}
+        breadcrumbs={[
+          tr("システム"),
+          tr("端末管理"),
+          device.name ?? tr("端末詳細"),
+        ]}
         status={<StatusBadge entity="KioskDevice" status={device.status} />}
-        title={device.name ?? "（名称未設定）"}
+        title={device.name ?? tr("（名称未設定）")}
       />
 
       {/* サマリ */}
       <Paper p="md" radius="md" withBorder>
         <SimpleGrid cols={{ base: 1, sm: 3 }} spacing="md">
           <FieldValue
-            label="オンライン"
+            label={tr("オンライン")}
             value={
               device.status === "ACTIVE" ? (
                 <Tooltip label={transportLabel(transport)} withinPortal>
@@ -256,19 +262,19 @@ export function KioskDeviceDetailView({
               )
             }
           />
-          <FieldValue label="利用者" value={currentUser ?? "—"} />
+          <FieldValue label={tr("利用者")} value={currentUser ?? "—"} />
           <FieldValue
-            label="最終アクティビティ"
+            label={tr("最終アクティビティ")}
             value={liveActivity ? fmt.dateTime(liveActivity) : "—"}
           />
           <FieldValue label="拠点" value={device.plantLabel ?? "—"} />
-          <FieldValue label="場所" value={device.location ?? "—"} />
+          <FieldValue label={tr("場所")} value={device.location ?? "—"} />
           <FieldValue
-            label="リンク日時"
+            label={tr("リンク日時")}
             value={device.linkedAt ? fmt.dateTime(device.linkedAt) : "—"}
           />
           <FieldValue
-            label="有効化"
+            label={tr("有効化")}
             value={
               device.activatedAt
                 ? `${fmt.dateTime(device.activatedAt)}${
@@ -280,7 +286,7 @@ export function KioskDeviceDetailView({
             }
           />
           <FieldValue
-            label="端末区分"
+            label={tr("端末区分")}
             value={
               <OwnershipBadge
                 size="sm"
@@ -290,11 +296,11 @@ export function KioskDeviceDetailView({
             }
           />
           <FieldValue
-            label="作成日時"
+            label={tr("作成日時")}
             value={device.createdAt ? fmt.dateTime(device.createdAt) : "—"}
           />
           <FieldValue
-            label="GPS 位置（最新）"
+            label={tr("GPS 位置（最新）")}
             value={
               device.latestLocation ? (
                 <Stack gap={2}>
@@ -320,7 +326,7 @@ export function KioskDeviceDetailView({
                   </Text>
                 </Stack>
               ) : (
-                "未取得"
+                tr("未取得")
               )
             }
           />
@@ -333,10 +339,10 @@ export function KioskDeviceDetailView({
           見出しもタブ名と重複するので出さない。 */}
       <AppTabs defaultValue="secrets">
         <Tabs.List>
-          <Tabs.Tab value="secrets">PIN・設定コード</Tabs.Tab>
-          <Tabs.Tab value="device">端末情報</Tabs.Tab>
-          <Tabs.Tab value="usage">利用状況</Tabs.Tab>
-          <Tabs.Tab value="errors">認証エラー</Tabs.Tab>
+          <Tabs.Tab value="secrets">{tr("PIN・設定コード")}</Tabs.Tab>
+          <Tabs.Tab value="device">{tr("端末情報")}</Tabs.Tab>
+          <Tabs.Tab value="usage">{tr("利用状況")}</Tabs.Tab>
+          <Tabs.Tab value="errors">{tr("認証エラー")}</Tabs.Tab>
         </Tabs.List>
 
         <Tabs.Panel pt="md" value="secrets">
@@ -344,7 +350,7 @@ export function KioskDeviceDetailView({
           <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="md">
             <Stack gap={4}>
               <Text c="dimmed" size="xs">
-                メンテナンス PIN（全端末共通・毎日 4:00 自動更新）
+                {tr("メンテナンス PIN（全端末共通・毎日 4:00 自動更新）")}
               </Text>
               <Group gap="xs" wrap="nowrap">
                 <Text ff="monospace" fw={700} size="lg">
@@ -358,7 +364,7 @@ export function KioskDeviceDetailView({
                     onClick={() => setConfirmKind("unlock")}
                     size="xs"
                   >
-                    表示
+                    {tr("表示")}
                   </SecondaryButton>
                 )}
                 <SecondaryButton
@@ -368,25 +374,35 @@ export function KioskDeviceDetailView({
                   onClick={() => setConfirmHistory(true)}
                   size="xs"
                 >
-                  履歴
+                  {tr("履歴")}
                 </SecondaryButton>
               </Group>
               <Text c="dimmed" size="xs">
-                端末画面の右上 5 タップ → この PIN でキオスクロックを一時解除
-                （Wi-Fi 変更等）
+                {tr(
+                  tr(
+                    tr(
+                      "端末画面の右上 5 タップ → この PIN でキオスクロックを一時解除\n                （Wi-Fi 変更等）",
+                    ),
+                  ),
+                )}
               </Text>
               <Text c="dimmed" size="xs">
-                オフラインの端末は PIN を同期できないため、
-                <b>最後に受け取れた時点の PIN</b>
-                しか受け付けない。開けたいときは右の「この端末が保持している
-                PIN」を使う
+                {tr("オフラインの端末は PIN を同期できないため、")}
+                <b>{tr("最後に受け取れた時点の PIN")}</b>
+                {tr(
+                  tr(
+                    tr(
+                      "しか受け付けない。開けたいときは右の「この端末が保持している\n                PIN」を使う",
+                    ),
+                  ),
+                )}
               </Text>
             </Stack>
 
             {/* 端末が実際に受け取れた PIN（推測ではなく受け渡しの記録から引く） */}
             <Stack gap={4}>
               <Text c="dimmed" size="xs">
-                この端末が保持している PIN
+                {tr("この端末が保持している PIN")}
               </Text>
               <Group gap="xs" wrap="nowrap">
                 <Text ff="monospace" fw={700} size="lg">
@@ -400,12 +416,12 @@ export function KioskDeviceDetailView({
                     onClick={() => setConfirmHeld(true)}
                     size="xs"
                   >
-                    表示
+                    {tr("表示")}
                   </SecondaryButton>
                 )}
                 {held?.isCurrent && (
                   <Badge color="green" size="xs" variant="light">
-                    最新
+                    {tr("最新")}
                   </Badge>
                 )}
               </Group>
@@ -413,25 +429,35 @@ export function KioskDeviceDetailView({
                 <Text c="dimmed" size="xs">
                   最終同期 {fmt.dateTime(device.unlockPinSyncedAt)}
                   {held && !held.pin
-                    ? "（当時の PIN は履歴に残っていない）"
+                    ? tr("（当時の PIN は履歴に残っていない）")
                     : ""}
                 </Text>
               ) : (
                 <Text c="orange" size="xs">
-                  <b>未同期</b> — この端末はまだ一度も PIN
-                  を受け取っていない。端末はビルド時の既定 PIN（APK
-                  のビルド設定にのみ存在。サーバーには無い）のまま
+                  <b>{tr("未同期")}</b>{" "}
+                  {tr(
+                    tr(
+                      tr(
+                        "— この端末はまだ一度も PIN\n                  を受け取っていない。端末はビルド時の既定 PIN（APK\n                  のビルド設定にのみ存在。サーバーには無い）のまま",
+                      ),
+                    ),
+                  )}
                 </Text>
               )}
               <Text c="dimmed" size="xs">
-                受け取れたときだけ記録する。通信できていても未リンク・トークン切れ
-                （401）や PinSync 以前の APK では届いていない
+                {tr(
+                  tr(
+                    tr(
+                      "受け取れたときだけ記録する。通信できていても未リンク・トークン切れ\n                （401）や PinSync 以前の APK では届いていない",
+                    ),
+                  ),
+                )}
               </Text>
             </Stack>
 
             <Stack gap={4}>
               <Text c="dimmed" size="xs">
-                端末設定コード（この端末・左下 5 タップ用）
+                {tr("端末設定コード（この端末・左下 5 タップ用）")}
               </Text>
               <Group gap="xs" wrap="nowrap">
                 <Text ff="monospace" fw={700} size="lg">
@@ -445,7 +471,7 @@ export function KioskDeviceDetailView({
                     onClick={() => setConfirmKind("settings")}
                     size="xs"
                   >
-                    表示
+                    {tr("表示")}
                   </SecondaryButton>
                 )}
                 <SecondaryButton
@@ -455,11 +481,17 @@ export function KioskDeviceDetailView({
                   onClick={() => setConfirmRegen(true)}
                   size="xs"
                 >
-                  再生成
+                  {tr("再生成")}
                 </SecondaryButton>
               </Group>
               <Text c="dimmed" size="xs">
-                端末リセット・再リンク用の解錠コード。フロア担当者に伝えて使用
+                {tr(
+                  tr(
+                    tr(
+                      "端末リセット・再リンク用の解錠コード。フロア担当者に伝えて使用",
+                    ),
+                  ),
+                )}
               </Text>
             </Stack>
           </SimpleGrid>
@@ -482,12 +514,12 @@ export function KioskDeviceDetailView({
             <Flex direction="column" style={{ flex: 5, minWidth: 0 }}>
               <Paper h="100%" p="md" radius="md" withBorder>
                 <Title mb="sm" order={5}>
-                  最近の利用者
+                  {tr("最近の利用者")}
                 </Title>
                 {recentUsers.length === 0 ? (
                   <EmptyState
                     icon={<IconUsers size={28} />}
-                    message="この端末での利用はまだありません"
+                    message={tr("この端末での利用はまだありません")}
                   />
                 ) : (
                   <Stack gap="xs">
@@ -531,7 +563,7 @@ export function KioskDeviceDetailView({
             <Flex direction="column" style={{ flex: 7, minWidth: 0 }}>
               <Paper h="100%" p="md" radius="md" withBorder>
                 <Title mb="sm" order={5}>
-                  利用履歴
+                  {tr("利用履歴")}
                 </Title>
                 <DeviceLogList deviceId={device.id} />
               </Paper>
@@ -542,7 +574,7 @@ export function KioskDeviceDetailView({
         <Tabs.Panel keepMounted={false} pt="md" value="errors">
           {/* 認証エラー — 利用履歴（成功したログインとプレゼンス）では見えない分 */}
           <LoginAttemptList
-            emptyMessage="この端末で弾かれた認証はありません"
+            emptyMessage={tr("この端末で弾かれた認証はありません")}
             rows={authFailures}
             showOwnership={false}
           />
@@ -552,74 +584,88 @@ export function KioskDeviceDetailView({
       {/* PIN 表示・再生成の確認 */}
       <ConfirmModal
         confirmColor="blue"
-        confirmLabel="表示"
+        confirmLabel={tr("表示")}
         loading={isPending}
-        message="PIN を表示します。表示した操作は監査ログに記録されます。"
+        message={tr("PIN を表示します。表示した操作は監査ログに記録されます。")}
         onClose={() => setConfirmKind(null)}
         onConfirm={() => {
           if (confirmKind) reveal(confirmKind);
           setConfirmKind(null);
         }}
         opened={confirmKind != null}
-        title="PIN の表示"
+        title={tr("PIN の表示")}
       />
       <ConfirmModal
-        confirmLabel="再生成"
+        confirmLabel={tr("再生成")}
         loading={isPending}
-        message="端末設定コードを再生成します。以前のコードは使えなくなります。"
+        message={tr(
+          tr("端末設定コードを再生成します。以前のコードは使えなくなります。"),
+        )}
         onClose={() => setConfirmRegen(false)}
         onConfirm={() => {
           regenerate();
           setConfirmRegen(false);
         }}
         opened={confirmRegen}
-        title="設定コードの再生成"
+        title={tr("設定コードの再生成")}
       />
       {/* 端末が保持している PIN の表示確認 */}
       <ConfirmModal
         confirmColor="blue"
-        confirmLabel="表示"
+        confirmLabel={tr("表示")}
         loading={isPending}
-        message="この端末に最後に渡したメンテナンス PIN を表示します。表示した操作は監査ログに記録されます。"
+        message={tr(
+          tr(
+            tr(
+              "この端末に最後に渡したメンテナンス PIN を表示します。表示した操作は監査ログに記録されます。",
+            ),
+          ),
+        )}
         onClose={() => setConfirmHeld(false)}
         onConfirm={() => {
           revealHeld();
           setConfirmHeld(false);
         }}
         opened={confirmHeld}
-        title="端末が保持している PIN の表示"
+        title={tr("端末が保持している PIN の表示")}
       />
       {/* PIN 履歴の表示確認 */}
       <ConfirmModal
         confirmColor="blue"
-        confirmLabel="表示"
+        confirmLabel={tr("表示")}
         loading={isPending}
-        message="過去のメンテナンス PIN を表示します。表示した操作は監査ログに記録されます。"
+        message={tr(
+          tr(
+            tr(
+              "過去のメンテナンス PIN を表示します。表示した操作は監査ログに記録されます。",
+            ),
+          ),
+        )}
         onClose={() => setConfirmHistory(false)}
         onConfirm={() => {
           openHistory();
           setConfirmHistory(false);
         }}
         opened={confirmHistory}
-        title="PIN 履歴の表示"
+        title={tr("PIN 履歴の表示")}
       />
       <ModalShell
         hideFooter
         onClose={() => setHistory(null)}
         opened={history != null}
         size="lg"
-        title="メンテナンス PIN の履歴"
+        title={tr("メンテナンス PIN の履歴")}
       >
         <Text c="dimmed" size="xs">
           オフラインの端末が受け付けるのは「最後に通信できた時点の PIN」。
           この端末の最終通信は
-          {liveActivity ? ` ${fmt.dateTime(liveActivity)}` : "（記録なし）"}
+          {liveActivity ? ` ${fmt.dateTime(liveActivity)}` : tr("（記録なし）")}
           {liveActivity ? " — その時刻を含む行を使う" : ""}。
         </Text>
         {history?.length === 0 ? (
           <EmptyState
             icon={<IconHistory size={20} />}
-            message="履歴がまだありません（次の自動更新から記録されます）"
+            message={tr("履歴がまだありません（次の自動更新から記録されます）")}
           />
         ) : (
           <ScrollArea.Autosize mah={420}>
@@ -627,8 +673,8 @@ export function KioskDeviceDetailView({
               <Table.Thead>
                 <Table.Tr>
                   <Table.Th>PIN</Table.Th>
-                  <Table.Th>有効になった時刻</Table.Th>
-                  <Table.Th>置き換わった時刻</Table.Th>
+                  <Table.Th>{tr("有効になった時刻")}</Table.Th>
+                  <Table.Th>{tr("置き換わった時刻")}</Table.Th>
                 </Table.Tr>
               </Table.Thead>
               <Table.Tbody>
@@ -649,12 +695,12 @@ export function KioskDeviceDetailView({
                           </Text>
                           {row.supersededAt == null && (
                             <Badge color="blue" size="xs" variant="light">
-                              現在
+                              {tr("現在")}
                             </Badge>
                           )}
                           {activeThen && (
                             <Badge color="green" size="xs" variant="light">
-                              最終通信時
+                              {tr("最終通信時")}
                             </Badge>
                           )}
                         </Group>

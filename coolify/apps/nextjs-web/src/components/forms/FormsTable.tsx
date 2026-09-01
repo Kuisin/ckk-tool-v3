@@ -9,6 +9,7 @@ import { DataTable } from "@/components/ui/DataTable";
 import { NewButton } from "@/components/ui/NewButton";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { ListShell } from "@/components/ui/shells";
+import { useTr } from "@/hooks/useTr";
 import { AVAILABILITY_LABEL, type FormAvailability } from "@/lib/form-schema";
 import type { FormRow } from "@/lib/forms";
 
@@ -27,6 +28,7 @@ export function FormsTable({
   rows: FormRow[];
   canCreate: boolean;
 }) {
+  const tr = useTr();
   const router = useRouter();
   const fmt = useFormat();
 
@@ -39,20 +41,20 @@ export function FormsTable({
               href="/general/forms/import"
               leftSection={<IconFileImport size={14} />}
             >
-              取り込み
+              {tr("取り込み")}
             </SecondaryButton>
             <NewButton href="/general/forms/new" />
           </Group>
         ) : undefined
       }
-      breadcrumbs={[{ label: "一般" }, { label: "フォーム" }]}
-      title="フォーム"
+      breadcrumbs={[{ label: tr("一般") }, { label: tr("フォーム") }]}
+      title={tr("フォーム")}
     >
       <DataTable
         columns={[
           {
             key: "title",
-            header: "タイトル",
+            header: tr("タイトル"),
             render: (r) => (
               <Stack gap={2}>
                 <Text fw={500} size="sm">
@@ -66,20 +68,20 @@ export function FormsTable({
           },
           {
             key: "kind",
-            header: "種類",
+            header: tr("種類"),
             width: 120,
             render: (r) => (
               <Badge
                 color={r.kind === "REQUEST" ? "indigo" : "cyan"}
                 variant="light"
               >
-                {r.kind === "REQUEST" ? "申請・報告" : "アンケート"}
+                {r.kind === "REQUEST" ? "申請・報告" : tr("アンケート")}
               </Badge>
             ),
           },
           {
             key: "availability",
-            header: "受付",
+            header: tr("受付"),
             width: 110,
             render: (r) => (
               <Badge color={AVAILABILITY_COLOR[r.availability]} variant="light">
@@ -89,13 +91,13 @@ export function FormsTable({
           },
           {
             key: "status",
-            header: "状態",
+            header: tr("状態"),
             width: 110,
             render: (r) => <StatusBadge entity="Form" status={r.status} />,
           },
           {
             key: "responseCount",
-            header: "回答数",
+            header: tr("回答数"),
             width: 90,
             align: "right",
             sortValue: (r) => r.responseCount,
@@ -103,13 +105,13 @@ export function FormsTable({
           },
           {
             key: "closesAt",
-            header: "受付終了",
+            header: tr("受付終了"),
             width: 120,
             render: (r) => (r.closesAt ? fmt.date(r.closesAt) : "—"),
           },
           {
             key: "updatedAt",
-            header: "更新日",
+            header: tr("更新日"),
             width: 120,
             render: (r) => fmt.date(r.updatedAt),
           },
@@ -117,7 +119,7 @@ export function FormsTable({
         data={rows}
         defaultSort={{ key: "updatedAt", dir: "desc" }}
         emptyIcon={<IconForms size={28} />}
-        emptyMessage="表示できるフォームがありません"
+        emptyMessage={tr("表示できるフォームがありません")}
         getRowId={(r) => r.code}
         onRowClick={(r) => router.push(`/general/forms/${r.code}`)}
         renderCard={(r) => (

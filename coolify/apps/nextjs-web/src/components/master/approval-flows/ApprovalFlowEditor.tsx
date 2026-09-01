@@ -55,6 +55,7 @@ import {
   FormSection,
   LocalizedTextInput,
 } from "@/components/ui/shells";
+import { useTr } from "@/hooks/useTr";
 import { useIsMobile } from "@/hooks/useViewport";
 import { type ApprovalMode, validateFlowSteps } from "@/lib/approval-flow";
 import { approvalModeOptions } from "@/lib/enum-labels";
@@ -164,6 +165,7 @@ export function ApprovalFlowEditor({
     query: string,
   ) => Promise<{ value: string; label: string; allowed: boolean }[]>;
 }) {
+  const tr = useTr();
   const locale = useLocale();
   const router = useRouter();
   const isMobile = useIsMobile();
@@ -214,7 +216,7 @@ export function ApprovalFlowEditor({
   const save = () => {
     if (issues.length > 0) {
       notifications.show({
-        title: "エラー",
+        title: tr("エラー"),
         message: issues[0],
         color: "red",
       });
@@ -252,7 +254,7 @@ export function ApprovalFlowEditor({
           );
       if (result.ok) {
         notifications.show({
-          title: "保存しました",
+          title: tr("保存しました"),
           message: `${targetLabel}の承認フロー`,
           color: "green",
         });
@@ -261,8 +263,8 @@ export function ApprovalFlowEditor({
         onSaved?.();
       } else {
         notifications.show({
-          title: "エラー",
-          message: result.error ?? "保存に失敗しました",
+          title: tr("エラー"),
+          message: result.error ?? tr("保存に失敗しました"),
           color: "red",
         });
       }
@@ -274,22 +276,28 @@ export function ApprovalFlowEditor({
       {!embedded && (
         <PageHeader
           breadcrumbs={[
-            "マスタ",
-            { label: "承認設定", href: BASE_PATH },
-            "承認フロー",
+            tr("マスタ"),
+            { label: tr("承認設定"), href: BASE_PATH },
+            tr("承認フロー"),
           ]}
           title={`${targetLabel}の承認フロー`}
         />
       )}
       {!embedded && (
         <Alert color="blue" icon={<IconInfoCircle size={16} />} variant="light">
-          変更は今後の承認依頼から適用されます。進行中の書類は依頼した時点の設定のまま進みます。
+          {tr(
+            tr(
+              tr(
+                "変更は今後の承認依頼から適用されます。進行中の書類は依頼した時点の設定のまま進みます。",
+              ),
+            ),
+          )}
         </Alert>
       )}
       <Alert
         color="gray"
         icon={<IconShieldCheck size={16} />}
-        title="承認に必要な権限"
+        title={tr("承認に必要な権限")}
         variant="light"
       >
         <Text size="sm">
@@ -299,18 +307,23 @@ export function ApprovalFlowEditor({
             {permissionCode}:READ / UPDATE
           </Text>
           ）が要ります。誰が承認するかは、この画面で指定した
-          {allowIndividual ? "承認グループ・承認者" : "承認グループ"}
+          {allowIndividual ? "承認グループ・承認者" : tr("承認グループ")}
           だけで決まります。書類を開けない人は、指定しても承認できません
           （権限はユーザー管理 SY01 のロールで決まります）。
         </Text>
       </Alert>
 
-      <FormSection title="承認ステップ">
+      <FormSection title={tr("承認ステップ")}>
         <Stack gap="sm">
           {steps.length === 0 && (
             <Text c="dimmed" size="sm">
-              承認ステップがありません。「段を追加」で 1
-              段以上設定してください。
+              {tr(
+                tr(
+                  tr(
+                    "承認ステップがありません。「段を追加」で 1\n              段以上設定してください。",
+                  ),
+                ),
+              )}
             </Text>
           )}
           {steps.map((s, i) => {
@@ -334,8 +347,8 @@ export function ApprovalFlowEditor({
                     onChange: (e) =>
                       patch(s.key, { nameJa: e.currentTarget.value }),
                   }}
-                  label="名称"
-                  placeholder="第一承認"
+                  label={tr("名称")}
+                  placeholder={tr("第一承認")}
                   required
                   translationsProps={{
                     value: s.nameTranslations,
@@ -351,7 +364,7 @@ export function ApprovalFlowEditor({
                 data={groupOptions}
                 label={<HelpLabel {...fieldHelp("approvalFlow", "group")} />}
                 onChange={(v) => patch(s.key, { groupId: v })}
-                placeholder="選択"
+                placeholder={tr("選択")}
                 searchable
                 value={s.groupId}
                 w={isMobile ? undefined : 200}
@@ -362,7 +375,7 @@ export function ApprovalFlowEditor({
             const individualField = searchApprovers && (
               <Stack gap={4} w={isMobile ? undefined : 260}>
                 <SearchSelect
-                  label="承認者（複数可）"
+                  label={tr("承認者（複数可）")}
                   onChange={(v, option) => {
                     if (!v || chosen.some((a) => a.value === v)) return;
                     patch(s.key, {
@@ -391,7 +404,7 @@ export function ApprovalFlowEditor({
                         allowed: r.allowed,
                       }));
                   }}
-                  placeholder="検索して追加"
+                  placeholder={tr("検索して追加")}
                   storageKey="form-approver"
                   value={null}
                 />
@@ -415,8 +428,8 @@ export function ApprovalFlowEditor({
             const targetToggle = allowIndividual && (
               <SegmentedControl
                 data={[
-                  { value: "group", label: "グループ" },
-                  { value: "custom", label: "カスタム" },
+                  { value: "group", label: tr("グループ") },
+                  { value: "custom", label: tr("カスタム") },
                 ]}
                 fullWidth={isMobile}
                 onChange={(v) =>
@@ -455,7 +468,7 @@ export function ApprovalFlowEditor({
             const approverRow = approvers && (
               <Group gap="xs" wrap="wrap">
                 <Text c="dimmed" size="xs">
-                  この段を承認できる人
+                  {tr("この段を承認できる人")}
                 </Text>
                 <ApproverPermissionBadge approvers={approvers} />
                 {approvers.length > 0 && (
@@ -468,7 +481,7 @@ export function ApprovalFlowEditor({
             const controls = (
               <Group gap={4} wrap="nowrap">
                 <ActionIcon
-                  aria-label="上へ"
+                  aria-label={tr("上へ")}
                   disabled={i === 0}
                   onClick={() => move(i, -1)}
                   size={isMobile ? "lg" : undefined}
@@ -477,7 +490,7 @@ export function ApprovalFlowEditor({
                   <IconArrowUp size={16} />
                 </ActionIcon>
                 <ActionIcon
-                  aria-label="下へ"
+                  aria-label={tr("下へ")}
                   disabled={i === steps.length - 1}
                   onClick={() => move(i, 1)}
                   size={isMobile ? "lg" : undefined}
@@ -530,7 +543,7 @@ export function ApprovalFlowEditor({
             );
           })}
           <GhostButton fullWidth={isMobile} onClick={add}>
-            段を追加
+            {tr("段を追加")}
           </GhostButton>
         </Stack>
       </FormSection>

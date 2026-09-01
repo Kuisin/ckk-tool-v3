@@ -16,6 +16,7 @@ import { type Column, DataTable } from "@/components/ui/DataTable";
 import { NewButton } from "@/components/ui/NewButton";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { ListShell } from "@/components/ui/shells";
+import { useTr } from "@/hooks/useTr";
 import { useUrlSelectState, useUrlStringState } from "@/hooks/useUrlState";
 import { useIsMobile } from "@/hooks/useViewport";
 import {
@@ -38,6 +39,7 @@ export function DeliveryOrderTypeBadge({ type }: { type: string }) {
 }
 
 export function DeliveryOrderTable({ rows }: { rows: DeliveryOrder[] }) {
+  const tr = useTr();
   const locale = useLocale();
   const fmt = useFormat();
   const router = useRouter();
@@ -68,7 +70,7 @@ export function DeliveryOrderTable({ rows }: { rows: DeliveryOrder[] }) {
   const columns: Column<DeliveryOrder>[] = [
     {
       key: "deliveryOrderNumber",
-      header: "出荷書番号",
+      header: tr("出荷書番号"),
       sortable: true,
       render: (o) => (
         <Text ff="mono" size="sm">
@@ -78,7 +80,7 @@ export function DeliveryOrderTable({ rows }: { rows: DeliveryOrder[] }) {
     },
     {
       key: "customerName",
-      header: "顧客 / 注文明細",
+      header: tr("顧客 / 注文明細"),
       sortable: true,
       render: (o) => (
         <>
@@ -91,14 +93,14 @@ export function DeliveryOrderTable({ rows }: { rows: DeliveryOrder[] }) {
     },
     {
       key: "type",
-      header: "種別",
+      header: tr("種別"),
       width: 110,
       sortValue: (o) => o.type,
       render: (o) => <DeliveryOrderTypeBadge type={o.type} />,
     },
     {
       key: "totalQuantity",
-      header: "数量合計",
+      header: tr("数量合計"),
       align: "right",
       width: 100,
       sortValue: (o) => o.totalQuantity,
@@ -110,14 +112,14 @@ export function DeliveryOrderTable({ rows }: { rows: DeliveryOrder[] }) {
     },
     {
       key: "status",
-      header: "状態",
+      header: tr("状態"),
       width: 100,
       sortValue: (o) => o.status,
       render: (o) => <StatusBadge entity="DeliveryOrder" status={o.status} />,
     },
     {
       key: "shippedAt",
-      header: "出荷日",
+      header: tr("出荷日"),
       width: 120,
       sortValue: (o) => o.shippedAt ?? "",
       render: (o) => (
@@ -131,7 +133,7 @@ export function DeliveryOrderTable({ rows }: { rows: DeliveryOrder[] }) {
   return (
     <ListShell
       action={<NewButton href={`${BASE_PATH}/new`} />}
-      breadcrumbs={["出荷", "出荷書"]}
+      breadcrumbs={[tr("出荷"), tr("出荷書")]}
       filters={
         <>
           <Select
@@ -139,7 +141,7 @@ export function DeliveryOrderTable({ rows }: { rows: DeliveryOrder[] }) {
             data={deliveryOrderTypeOptions(locale)}
             flex={isMobile ? 1 : undefined}
             onChange={setType}
-            placeholder="種別"
+            placeholder={tr("種別")}
             value={type}
             w={isMobile ? undefined : 140}
           />
@@ -148,7 +150,7 @@ export function DeliveryOrderTable({ rows }: { rows: DeliveryOrder[] }) {
             data={statusOptions("DeliveryOrder")}
             flex={isMobile ? 1 : undefined}
             onChange={setStatus}
-            placeholder="状態"
+            placeholder={tr("状態")}
             value={status}
             w={isMobile ? undefined : 140}
           />
@@ -159,11 +161,11 @@ export function DeliveryOrderTable({ rows }: { rows: DeliveryOrder[] }) {
         <TextInput
           leftSection={<IconSearch size={14} />}
           onChange={(e) => setSearch(e.currentTarget.value)}
-          placeholder="出荷書番号・注文明細番号・顧客・製品で検索"
+          placeholder={tr("出荷書番号・注文明細番号・顧客・製品で検索")}
           value={search}
         />
       }
-      title="出荷書"
+      title={tr("出荷書")}
     >
       <DataTable
         columns={columns}
@@ -171,7 +173,7 @@ export function DeliveryOrderTable({ rows }: { rows: DeliveryOrder[] }) {
         defaultSort={{ key: "deliveryOrderNumber", dir: "desc" }}
         emptyAction={<NewButton href={`${BASE_PATH}/new`} />}
         emptyIcon={<IconTruck size={24} />}
-        emptyMessage="出荷書がありません"
+        emptyMessage={tr("出荷書がありません")}
         getRowId={(o) => o.id}
         onRowClick={(o) => router.push(`${BASE_PATH}/${o.id}`)}
         renderCard={(o) => (

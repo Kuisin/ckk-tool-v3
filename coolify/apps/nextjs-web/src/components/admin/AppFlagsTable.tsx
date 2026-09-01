@@ -17,12 +17,14 @@ import { useState, useTransition } from "react";
 import { setAppEnabled } from "@/app/(dashboard)/settings/apps/actions";
 import { type Column, DataTable } from "@/components/ui/DataTable";
 import { ListShell } from "@/components/ui/shells";
+import { useTr } from "@/hooks/useTr";
 import { useUrlSelectState, useUrlStringState } from "@/hooks/useUrlState";
 import { useIsMobile } from "@/hooks/useViewport";
 import type { AppEnv, AppFlagRow } from "@/lib/app-flags";
 import { CATEGORY_COLORS } from "@/lib/app-list";
 
 export function AppFlagsTable({ rows }: { rows: AppFlagRow[] }) {
+  const tr = useTr();
   const router = useRouter();
   const isMobile = useIsMobile();
   const [, startTransition] = useTransition();
@@ -56,7 +58,7 @@ export function AppFlagsTable({ rows }: { rows: AppFlagRow[] }) {
       const result = await setAppEnabled({ appKey: row.key, env, enabled });
       if (result.ok) {
         notifications.show({
-          title: enabled ? "有効化しました" : "無効化しました",
+          title: enabled ? "有効化しました" : tr("無効化しました"),
           message: `${row.label} を ${env} で${enabled ? "表示" : "非表示"}にしました`,
           color: "green",
         });
@@ -67,8 +69,8 @@ export function AppFlagsTable({ rows }: { rows: AppFlagRow[] }) {
           return rest;
         });
         notifications.show({
-          title: "エラー",
-          message: result.error,
+          title: tr("エラー"),
+          message: tr(result.error),
           color: "red",
         });
       }
@@ -80,7 +82,7 @@ export function AppFlagsTable({ rows }: { rows: AppFlagRow[] }) {
 
   const envSwitch = (env: AppEnv) => ({
     key: env,
-    header: env === "dev" ? "dev（検証）" : "main（本番）",
+    header: env === "dev" ? "dev（検証）" : tr("main（本番）"),
     width: 130,
     render: (r: AppFlagRow) => (
       <Switch
@@ -97,7 +99,7 @@ export function AppFlagsTable({ rows }: { rows: AppFlagRow[] }) {
   const columns: Column<AppFlagRow>[] = [
     {
       key: "category",
-      header: "カテゴリ",
+      header: tr("カテゴリ"),
       width: 110,
       sortable: true,
       sortValue: (r) => r.category,
@@ -113,7 +115,7 @@ export function AppFlagsTable({ rows }: { rows: AppFlagRow[] }) {
     },
     {
       key: "label",
-      header: "アプリ",
+      header: tr("アプリ"),
       sortable: true,
       sortValue: (r) => r.label,
       render: (r) => (
@@ -124,7 +126,7 @@ export function AppFlagsTable({ rows }: { rows: AppFlagRow[] }) {
     },
     {
       key: "operationCode",
-      header: "操作コード",
+      header: tr("操作コード"),
       width: 110,
       sortable: true,
       sortValue: (r) => r.operationCode,
@@ -140,13 +142,13 @@ export function AppFlagsTable({ rows }: { rows: AppFlagRow[] }) {
 
   return (
     <ListShell
-      breadcrumbs={["システム", "アプリ管理"]}
+      breadcrumbs={[tr("システム"), tr("アプリ管理")]}
       filters={
         <Select
           clearable
           data={categoryOptions}
           onChange={setCategory}
-          placeholder="カテゴリ"
+          placeholder={tr("カテゴリ")}
           value={category}
           w={isMobile ? 120 : 140}
         />
@@ -156,17 +158,17 @@ export function AppFlagsTable({ rows }: { rows: AppFlagRow[] }) {
         <TextInput
           leftSection={<IconSearch size={14} />}
           onChange={(e) => setSearch(e.currentTarget.value)}
-          placeholder="アプリ名・操作コードで検索"
+          placeholder={tr("アプリ名・操作コードで検索")}
           value={search}
         />
       }
-      title="アプリ管理"
+      title={tr("アプリ管理")}
     >
       <DataTable
         columns={columns}
         data={filtered}
         emptyIcon={<IconApps size={24} />}
-        emptyMessage="アプリがありません"
+        emptyMessage={tr("アプリがありません")}
         getRowId={(r) => r.key}
         urlState
       />

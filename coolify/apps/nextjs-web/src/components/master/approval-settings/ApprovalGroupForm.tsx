@@ -24,6 +24,7 @@ import {
   FormShell,
   LocalizedTextInput,
 } from "@/components/ui/shells";
+import { useTr } from "@/hooks/useTr";
 import { useIsMobile } from "@/hooks/useViewport";
 import { fieldHelp, fieldHelpTip } from "@/lib/field-help";
 import { zodResolver } from "@/lib/form";
@@ -50,6 +51,7 @@ export function ApprovalGroupForm({
 }: {
   initial?: ApprovalGroupFormInitial;
 }) {
+  const tr = useTr();
   const router = useRouter();
   const _isMobile = useIsMobile();
   const [isPending, startTransition] = useTransition();
@@ -76,17 +78,17 @@ export function ApprovalGroupForm({
         : await createApprovalGroup(input);
       if (result.ok) {
         notifications.show({
-          title: "保存しました",
+          title: tr("保存しました"),
           message: isEdit
-            ? "承認グループを更新しました"
-            : "承認グループを作成しました",
+            ? tr("承認グループを更新しました")
+            : tr("承認グループを作成しました"),
           color: "green",
         });
         router.push(`${BASE_PATH}/${result.data.id}`);
       } else {
         notifications.show({
-          title: "エラー",
-          message: result.error,
+          title: tr("エラー"),
+          message: tr(result.error),
           color: "red",
         });
       }
@@ -96,9 +98,9 @@ export function ApprovalGroupForm({
   return (
     <FormShell
       breadcrumbs={[
-        "マスタ",
-        { label: "承認グループ", href: BASE_PATH },
-        isEdit ? "編集" : "新規作成",
+        tr("マスタ"),
+        { label: tr("承認グループ"), href: BASE_PATH },
+        isEdit ? "編集" : tr("新規作成"),
       ]}
       isDirty={form.isDirty()}
       isPending={isPending}
@@ -110,18 +112,18 @@ export function ApprovalGroupForm({
       title={
         isEdit
           ? `承認グループ 編集 — ${initial.nameJa}`
-          : "承認グループ 新規作成"
+          : tr("承認グループ 新規作成")
       }
     >
       <FormSection
-        description="どの書類の何段目で使うかは「承認フロー」で決めます。"
-        title="基本情報"
+        description={tr("どの書類の何段目で使うかは「承認フロー」で決めます。")}
+        title={tr("基本情報")}
       >
         <SimpleGrid cols={1} spacing="sm">
           <LocalizedTextInput
             help={fieldHelpTip("approvalGroup", "name")}
             jaProps={form.getInputProps("nameJa")}
-            label="名称"
+            label={tr("名称")}
             required
             translationsProps={form.getInputProps("nameTranslations")}
           />

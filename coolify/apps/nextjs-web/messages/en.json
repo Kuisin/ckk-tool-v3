@@ -23,7 +23,14 @@
     "disabled": "Disabled",
     "none": "—",
     "back": "Back",
-    "error": "Error"
+    "error": "Error",
+    "run": "Run",
+    "cannotBeUndone": "This cannot be undone.",
+    "actionMenu": "Actions",
+    "translations": "Translations",
+    "openDetailOf": "Open details of {name}",
+    "translationsWithCount": "Translations ({count})",
+    "translationsTitle": "{label} — translations"
   },
   "shell": {
     "appsLabel": "Apps",
@@ -37,11 +44,16 @@
     "noNotifications": "No notifications",
     "profile": "Profile",
     "notificationSettings": "Notification settings",
-    "homeSettings": "Home screen settings",
+    "homeSettings": "Home layout",
     "preferences": "Display settings",
     "myPermissions": "My permissions",
     "logout": "Log out",
-    "devBadge": "DEV"
+    "devBadge": "DEV",
+    "jumpAria": "Go to a screen by operation code",
+    "jumpPlaceholder": "Operation code (e.g. PD02)",
+    "jumpPlaceholderCompact": "Code",
+    "jumpNotFound": "Operation code not found",
+    "jumpNotFoundHint": "Four characters (e.g. PD02)"
   },
   "preferences": {
     "title": "Display settings",

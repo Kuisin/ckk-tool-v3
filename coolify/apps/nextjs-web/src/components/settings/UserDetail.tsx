@@ -34,6 +34,7 @@ import {
 import { SaveButton } from "@/components/ui/buttons";
 import { FieldValue } from "@/components/ui/FieldValue";
 import { DetailShell, SummaryGrid } from "@/components/ui/shells";
+import { useTr } from "@/hooks/useTr";
 import { permissionActionLabel, permissionScopeLabel } from "@/lib/enum-labels";
 import { localized } from "@/lib/format";
 import type { LoginAttemptRow, UserDeviceRow } from "@/lib/login-attempts";
@@ -65,6 +66,7 @@ function UserPlantsCard({
   /** true = 直接は変えられず、変更依頼を出して承認を待つ（管理者以外）。 */
   requiresApproval: boolean;
 }) {
+  const tr = useTr();
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const assignedIds = useMemo(
@@ -105,18 +107,20 @@ function UserPlantsCard({
         // 依頼だったのに「保存しました」と出すと、変わっていないものが変わったと
         // 伝わる。サーバーが返した requested をそのまま文言に反映する。
         notifications.show({
-          title: result.data.requested ? "承認を依頼しました" : "保存しました",
+          title: result.data.requested
+            ? tr("承認を依頼しました")
+            : tr("保存しました"),
           message: result.data.requested
-            ? "承認されると所属拠点が変更されます"
-            : "所属拠点を更新しました",
+            ? tr("承認されると所属拠点が変更されます")
+            : tr("所属拠点を更新しました"),
           color: result.data.requested ? "blue" : "green",
         });
         setReason("");
         router.refresh();
       } else {
         notifications.show({
-          title: "エラー",
-          message: result.error,
+          title: tr("エラー"),
+          message: tr(result.error),
           color: "red",
         });
       }
@@ -126,10 +130,10 @@ function UserPlantsCard({
   return (
     <Paper p="md" radius="md" withBorder>
       <Title mb="sm" order={5}>
-        所属拠点
+        {tr("所属拠点")}
       </Title>
       <Text c="dimmed" mb="sm" size="xs">
-        「拠点」「地域」スコープの権限が適用される対象拠点
+        {tr("「拠点」「地域」スコープの権限が適用される対象拠点")}
       </Text>
       {canEdit ? (
         <>
@@ -144,12 +148,12 @@ function UserPlantsCard({
           {requiresApproval && (
             <Textarea
               autosize
-              description="承認者がこの内容を見て判断します"
-              label="変更の理由"
+              description={tr("承認者がこの内容を見て判断します")}
+              label={tr("変更の理由")}
               minRows={2}
               mt="sm"
               onChange={(e) => setReason(e.currentTarget.value)}
-              placeholder="例: 異動のため所属拠点を変更"
+              placeholder={tr("例: 異動のため所属拠点を変更")}
               value={reason}
               withAsterisk
             />
@@ -167,7 +171,7 @@ function UserPlantsCard({
         </>
       ) : user.plants.length === 0 ? (
         <Text c="dimmed" size="sm">
-          所属拠点がありません
+          {tr("所属拠点がありません")}
         </Text>
       ) : (
         <Group gap="xs">
@@ -200,13 +204,14 @@ export function UserDetail({
   /** この人が Web で使った端末の台帳。 */
   userDevices: UserDeviceRow[];
 }) {
+  const tr = useTr();
   const fmt = useFormat();
   const locale = useLocale();
   return (
     <DetailShell
       breadcrumbs={[
-        "システム",
-        { label: "ユーザー管理", href: "/settings/users" },
+        tr("システム"),
+        { label: tr("ユーザー管理"), href: "/settings/users" },
       ]}
       createdAt={user.createdAt ? fmt.dateTime(user.createdAt) : undefined}
       status={<UserActiveBadge isActive={user.isActive} />}
@@ -215,24 +220,24 @@ export function UserDetail({
     >
       <SummaryGrid>
         <FieldValue
-          label="ユーザー名"
+          label={tr("ユーザー名")}
           value={<Text ff="mono">{user.username}</Text>}
         />
         <FieldValue
-          label="区分"
+          label={tr("区分")}
           value={<UserGroupBadge group={user.group} />}
         />
-        <FieldValue label="メール" value={user.email ?? "—"} />
+        <FieldValue label={tr("メール")} value={user.email ?? "—"} />
         <FieldValue
-          label="ログイン方式"
-          value={user.hasPassword ? "パスワード + SSO" : "SSO のみ"}
+          label={tr("ログイン方式")}
+          value={user.hasPassword ? "パスワード + SSO" : tr("SSO のみ")}
         />
         <FieldValue
-          label="最終ログイン"
+          label={tr("最終ログイン")}
           value={user.lastLoginAt ? fmt.dateTime(user.lastLoginAt) : "—"}
         />
         <FieldValue
-          label="社員 ID"
+          label={tr("社員 ID")}
           value={
             user.employeeId ? <Text ff="mono">{user.employeeId}</Text> : "—"
           }
@@ -241,22 +246,22 @@ export function UserDetail({
 
       <Paper p="md" radius="md" withBorder>
         <Title mb="sm" order={5}>
-          ロール割当
+          {tr("ロール割当")}
         </Title>
         {user.assignments.length === 0 ? (
           <Text c="dimmed" size="sm">
-            ロールが割り当てられていません
+            {tr("ロールが割り当てられていません")}
           </Text>
         ) : (
           <Table.ScrollContainer minWidth={480}>
             <Table>
               <Table.Thead>
                 <Table.Tr>
-                  <Table.Th>ロール</Table.Th>
+                  <Table.Th>{tr("ロール")}</Table.Th>
                   <Table.Th>rolename</Table.Th>
-                  <Table.Th>状態</Table.Th>
-                  <Table.Th>割当日</Table.Th>
-                  <Table.Th>解除日時</Table.Th>
+                  <Table.Th>{tr("状態")}</Table.Th>
+                  <Table.Th>{tr("割当日")}</Table.Th>
+                  <Table.Th>{tr("解除日時")}</Table.Th>
                 </Table.Tr>
               </Table.Thead>
               <Table.Tbody>
@@ -302,23 +307,29 @@ export function UserDetail({
 
       <Paper p="md" radius="md" withBorder>
         <Title mb="sm" order={5}>
-          実効権限
+          {tr("実効権限")}
         </Title>
         <Text c="dimmed" mb="sm" size="xs">
-          有効なロールから与えられている許可の一覧（この人ができることは、下の行すべての合計です）
+          {tr(
+            tr(
+              tr(
+                "有効なロールから与えられている許可の一覧（この人ができることは、下の行すべての合計です）",
+              ),
+            ),
+          )}
         </Text>
         {user.permissions.length === 0 ? (
           <Text c="dimmed" size="sm">
-            権限がありません
+            {tr("権限がありません")}
           </Text>
         ) : (
           <Table.ScrollContainer minWidth={420}>
             <Table>
               <Table.Thead>
                 <Table.Tr>
-                  <Table.Th>権限コード</Table.Th>
-                  <Table.Th>アクション</Table.Th>
-                  <Table.Th>スコープ</Table.Th>
+                  <Table.Th>{tr("権限コード")}</Table.Th>
+                  <Table.Th>{tr("アクション")}</Table.Th>
+                  <Table.Th>{tr("スコープ")}</Table.Th>
                 </Table.Tr>
               </Table.Thead>
               <Table.Tbody>
@@ -368,10 +379,10 @@ export function UserDetail({
       {/* ログイン履歴 — 成功・失敗の両方。失敗が続いていれば異常に気づける。 */}
       <Paper p="md" radius="md" withBorder>
         <Title mb="sm" order={5}>
-          ログイン履歴（直近 30 日）
+          {tr("ログイン履歴（直近 30 日）")}
         </Title>
         <LoginAttemptList
-          emptyMessage="この期間のログイン記録はありません"
+          emptyMessage={tr("この期間のログイン記録はありません")}
           rows={loginAttempts}
         />
       </Paper>
@@ -379,7 +390,7 @@ export function UserDetail({
       {/* 登録端末 — 「いつもの端末か」の目安。端末の同定ではない。 */}
       <Paper p="md" radius="md" withBorder>
         <Title mb="sm" order={5}>
-          登録端末（Web）
+          {tr("登録端末（Web）")}
         </Title>
         <UserDeviceList devices={userDevices} />
       </Paper>

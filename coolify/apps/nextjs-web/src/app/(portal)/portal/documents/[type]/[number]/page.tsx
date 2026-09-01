@@ -19,6 +19,7 @@ import {
   portalTargetOf,
 } from "@/lib/portal-documents";
 import { requirePortalView } from "@/lib/portal-page";
+import { getTr } from "@/lib/ui-text-server";
 
 export const dynamic = "force-dynamic";
 
@@ -27,6 +28,7 @@ export default async function PortalDocumentPage({
 }: {
   params: Promise<{ type: string; number: string }>;
 }) {
+  const tr = await getTr();
   const { type, number } = await params;
   if (!isPortalDocumentType(type)) notFound();
   const key = parseDocKey(decodeURIComponent(number));
@@ -63,7 +65,7 @@ export default async function PortalDocumentPage({
         <Stack gap="sm">
           <Group gap="xs">
             <Text c="dimmed" size="xs">
-              書類番号
+              {tr("書類番号")}
             </Text>
             <Text ff="monospace" fw={600} size="sm">
               {doc.number}
@@ -72,7 +74,7 @@ export default async function PortalDocumentPage({
           {doc.issuedOn ? (
             <Group gap="xs">
               <Text c="dimmed" size="xs">
-                日付
+                {tr("日付")}
               </Text>
               <Text size="sm">{doc.issuedOn.slice(0, 10)}</Text>
             </Group>
@@ -80,7 +82,7 @@ export default async function PortalDocumentPage({
           {doc.totalAmount ? (
             <Group gap="xs">
               <Text c="dimmed" size="xs">
-                合計金額
+                {tr("合計金額")}
               </Text>
               <Text fw={600} size="sm">
                 ¥{Number(doc.totalAmount).toLocaleString("ja-JP")}
@@ -95,7 +97,7 @@ export default async function PortalDocumentPage({
             >
               <Group gap={4}>
                 <IconFileTypePdf size={14} />
-                PDF を開く
+                {tr("PDF を開く")}
               </Group>
             </Anchor>
           ) : null}

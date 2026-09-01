@@ -21,6 +21,7 @@ import {
   useMemo,
   useState,
 } from "react";
+import { useTr } from "@/hooks/useTr";
 import { saveTableColumns } from "./table-settings-actions";
 
 interface TableSettingsValue {
@@ -41,20 +42,24 @@ export function TableSettingsProvider({
   initial: Record<string, string[]>;
   children: ReactNode;
 }) {
+  const tr = useTr();
   const [map, setMap] = useState(initial);
 
-  const setHidden = useCallback((key: string, hidden: string[]) => {
-    setMap((prev) => ({ ...prev, [key]: hidden }));
-    void saveTableColumns(key, hidden).then((r) => {
-      if (!r.ok) {
-        notifications.show({
-          title: "エラー",
-          message: r.error ?? "表示する列を保存できませんでした",
-          color: "red",
-        });
-      }
-    });
-  }, []);
+  const setHidden = useCallback(
+    (key: string, hidden: string[]) => {
+      setMap((prev) => ({ ...prev, [key]: hidden }));
+      void saveTableColumns(key, hidden).then((r) => {
+        if (!r.ok) {
+          notifications.show({
+            title: tr("エラー"),
+            message: r.error ?? tr("表示する列を保存できませんでした"),
+            color: "red",
+          });
+        }
+      });
+    },
+    [tr],
+  );
 
   const value = useMemo<TableSettingsValue>(
     () => ({ hiddenFor: (key) => map[key] ?? [], setHidden }),

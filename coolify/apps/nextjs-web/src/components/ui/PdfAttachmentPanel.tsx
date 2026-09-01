@@ -43,6 +43,7 @@ import type { ReactNode } from "react";
 import { useFormat } from "@/components/layout/PreferencesProvider";
 import { GhostButton, SecondaryButton } from "@/components/ui/buttons";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { useTr } from "@/hooks/useTr";
 import { useIsMobile } from "@/hooks/useViewport";
 import { downloadFile } from "@/lib/download";
 
@@ -102,6 +103,7 @@ export function PdfAttachmentPanel({
   onDownload?: () => void;
   onRegenerate?: () => void;
 }) {
+  const tr = useTr();
   const fmt = useFormat();
   const isMobile = useIsMobile();
 
@@ -149,7 +151,7 @@ export function PdfAttachmentPanel({
                   ? `生成: ${fmt.dateTime(file.generatedAt)}${
                       file.generatedBy ? `（${file.generatedBy}）` : ""
                     }`
-                  : "生成: 表示時に生成されます"}
+                  : tr("生成: 表示時に生成されます")}
               </Text>
             </Stack>
           </Group>
@@ -162,14 +164,14 @@ export function PdfAttachmentPanel({
                   : onDownload
               }
             >
-              ダウンロード
+              {tr("ダウンロード")}
             </SecondaryButton>
             {onRegenerate && (
               <GhostButton
                 leftSection={<IconRefresh size={14} />}
                 onClick={onRegenerate}
               >
-                再生成
+                {tr("再生成")}
               </GhostButton>
             )}
           </Group>
@@ -185,14 +187,14 @@ export function PdfAttachmentPanel({
               <IconFileTypePdf size={32} />
             </ThemeIcon>
             <Text c="dimmed" size="sm" ta="center">
-              この端末ではアプリ内に PDF を表示できません
+              {tr("この端末ではアプリ内に PDF を表示できません")}
             </Text>
             <SecondaryButton
               external
               href={previewSrc}
               leftSection={<IconFileTypePdf size={14} />}
             >
-              PDF を開く
+              {tr("PDF を開く")}
             </SecondaryButton>
           </Stack>
         </Paper>

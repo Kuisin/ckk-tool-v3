@@ -45,6 +45,7 @@ import {
 } from "@tabler/icons-react";
 import { type ChangeEventHandler, type ReactNode, useState } from "react";
 import { useUnsavedChanges } from "@/components/layout/NavigationGuard";
+import { useTr } from "@/hooks/useTr";
 import { useIsMobile } from "@/hooks/useViewport";
 import { LOCALE_LABELS, LOCALES } from "@/lib/i18n";
 import { keepInAppOnClick } from "@/lib/pwa-display";
@@ -100,6 +101,7 @@ export function ResourceActions({
   pdf?: { href?: string; onClick?: () => void; label?: string };
   menuItems?: MenuItemDef[];
 }) {
+  const tr = useTr();
   const isMobile = useIsMobile();
 
   const menu = (extra: MenuItemDef[]) =>
@@ -108,7 +110,7 @@ export function ResourceActions({
         <Menu.Target>
           {/* アイコンのみのボタンには aria-label が必須（design.md §18.2）。 */}
           <Button
-            aria-label="操作メニュー"
+            aria-label={tr("操作メニュー")}
             px="xs"
             size={isMobile ? "sm" : undefined}
             variant="default"
@@ -232,6 +234,7 @@ export function ListShell({
   embedded?: boolean;
   children: ReactNode;
 }) {
+  const tr = useTr();
   const isMobile = useIsMobile();
   const hasFilters = !!(search || filters);
 
@@ -250,7 +253,7 @@ export function ListShell({
               <Group align="flex-end" gap="xs">
                 {filters}
                 {onReset && (
-                  <GhostButton onClick={onReset}>リセット</GhostButton>
+                  <GhostButton onClick={onReset}>{tr("リセット")}</GhostButton>
                 )}
               </Group>
             </Stack>
@@ -258,7 +261,9 @@ export function ListShell({
             <Group align="flex-end" mb="sm">
               {search && <Box className="flex-1">{search}</Box>}
               {filters}
-              {onReset && <GhostButton onClick={onReset}>リセット</GhostButton>}
+              {onReset && (
+                <GhostButton onClick={onReset}>{tr("リセット")}</GhostButton>
+              )}
             </Group>
           ))}
         {children}

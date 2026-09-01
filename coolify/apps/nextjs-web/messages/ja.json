@@ -23,7 +23,14 @@
     "disabled": "無効",
     "none": "—",
     "back": "戻る",
-    "error": "エラー"
+    "error": "エラー",
+    "run": "実行",
+    "cannotBeUndone": "この操作は取り消せません。",
+    "actionMenu": "操作メニュー",
+    "translations": "多言語",
+    "openDetailOf": "{name} の詳細を開く",
+    "translationsWithCount": "多言語（{count}）",
+    "translationsTitle": "{label} — 多言語"
   },
   "shell": {
     "appsLabel": "アプリ",
@@ -41,7 +48,12 @@
     "preferences": "表示設定",
     "myPermissions": "自分の権限",
     "logout": "ログアウト",
-    "devBadge": "DEV"
+    "devBadge": "DEV",
+    "jumpAria": "操作コードで画面へ移動",
+    "jumpPlaceholder": "操作コード（例: PD02）",
+    "jumpPlaceholderCompact": "コード",
+    "jumpNotFound": "操作コードが見つかりません",
+    "jumpNotFoundHint": "4文字（例: PD02）"
   },
   "preferences": {
     "title": "表示設定",

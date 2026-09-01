@@ -27,6 +27,7 @@ import type { PlantFloorMapRef } from "@/components/master/plants/FloorMapsPanel
 import { AppTabs } from "@/components/ui/AppTabs";
 import { GhostButton } from "@/components/ui/buttons";
 import { FloorMapCanvas } from "@/components/ui/FloorMapCanvas";
+import { useTr } from "@/hooks/useTr";
 
 /** フロアマップに配置する保管場所ピン。 */
 export interface StorageMapPin {
@@ -48,6 +49,7 @@ export function StorageLocationMapPanel({
   floorMaps: PlantFloorMapRef[];
   pins: StorageMapPin[];
 }) {
+  const tr = useTr();
   const router = useRouter();
   const [activeMapId, setActiveMapId] = useState<string | null>(null);
   const [overlayIds, setOverlayIds] = useState<string[]>([]);
@@ -72,8 +74,8 @@ export function StorageLocationMapPanel({
       const res = await action();
       if (!res.ok) {
         notifications.show({
-          title: "エラー",
-          message: res.error ?? "操作に失敗しました",
+          title: tr("エラー"),
+          message: res.error ?? tr("操作に失敗しました"),
           color: "red",
         });
         return;
@@ -87,17 +89,22 @@ export function StorageLocationMapPanel({
       <Group gap="xs" mb="sm">
         <IconMap2 color="var(--mantine-color-gray-6)" size={18} />
         <Text fw={600} size="sm">
-          フロアマップ配置
+          {tr("フロアマップ配置")}
         </Text>
         <Text c="dimmed" size="xs">
-          保管場所ピンをドラッグで配置。図面の管理は拠点マスタ (MS0C)
+          {tr("保管場所ピンをドラッグで配置。図面の管理は拠点マスタ (MS0C)")}
         </Text>
       </Group>
 
       {floorMaps.length === 0 ? (
         <Text c="dimmed" size="sm">
-          この拠点にはフロアマップがありません。拠点マスタ (MS0C)
-          の「フロアマップ」タブでフロアと図面を登録してください。
+          {tr(
+            tr(
+              tr(
+                "この拠点にはフロアマップがありません。拠点マスタ (MS0C)\n          の「フロアマップ」タブでフロアと図面を登録してください。",
+              ),
+            ),
+          )}
         </Text>
       ) : (
         <Stack gap="sm">
@@ -123,7 +130,7 @@ export function StorageLocationMapPanel({
           {overlayCandidates.length > 0 && (
             <Group gap="xs" wrap="wrap">
               <Text c="dimmed" size="xs">
-                重ね表示:
+                {tr("重ね表示:")}
               </Text>
               {overlayCandidates.map((m) => (
                 <Chip

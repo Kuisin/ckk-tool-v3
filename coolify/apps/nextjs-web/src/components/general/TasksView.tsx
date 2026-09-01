@@ -28,6 +28,7 @@ import { DocNumber } from "@/components/ui/DocNumber";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { StatusBadge } from "@/components/ui/StatusBadge";
+import { useTr } from "@/hooks/useTr";
 import { useTabParam } from "@/hooks/useUrlState";
 import { useIsMobile } from "@/hooks/useViewport";
 import { resolveActiveTab, visibleTaskTabs } from "@/lib/tasks-tabs";
@@ -163,6 +164,7 @@ export function TasksView({
   /** 本人が隠しているタブ（app.user_view_settings）。 */
   hiddenTabs: string[];
 }) {
+  const tr = useTr();
   const unreadCompletions = completions.filter((c) => !c.readAt).length;
 
   // 出せるタブ = 権限と件数で決まるもの。隠す設定はこの上に効く。
@@ -194,7 +196,7 @@ export function TasksView({
         <Paper p="md" radius="md" withBorder>
           <EmptyState
             icon={<IconCalendarTime size={24} />}
-            message="割り当てられた作業予定はありません"
+            message={tr("割り当てられた作業予定はありません")}
           />
         </Paper>
       ) : (
@@ -219,8 +221,8 @@ export function TasksView({
         actions={
           <TaskTabsSettingsButton available={available} hidden={hiddenTabs} />
         }
-        breadcrumbs={["一般", "承認・予定"]}
-        title="承認・予定"
+        breadcrumbs={[tr("一般"), tr("承認・予定")]}
+        title={tr("承認・予定")}
       />
 
       <AppTabs onChange={setTab} value={tab}>

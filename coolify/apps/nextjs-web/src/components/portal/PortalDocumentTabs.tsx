@@ -1,6 +1,7 @@
 "use client";
 
 import { Anchor, Badge, Table, Tabs, Text } from "@mantine/core";
+import { useTr } from "@/hooks/useTr";
 import type { PortalDocumentListItem } from "@/lib/portal-documents";
 import {
   PORTAL_DOCUMENT_LABEL,
@@ -12,6 +13,7 @@ export function PortalDocumentTabs({
 }: {
   groups: { type: PortalDocumentType; items: PortalDocumentListItem[] }[];
 }) {
+  const tr = useTr();
   const first = groups.find((g) => g.items.length > 0)?.type ?? groups[0]?.type;
   return (
     <Tabs defaultValue={first}>
@@ -43,9 +45,9 @@ export function PortalDocumentTabs({
             <Table highlightOnHover striped withTableBorder>
               <Table.Thead>
                 <Table.Tr>
-                  <Table.Th>書類番号</Table.Th>
-                  <Table.Th>日付</Table.Th>
-                  <Table.Th ta="right">金額</Table.Th>
+                  <Table.Th>{tr("書類番号")}</Table.Th>
+                  <Table.Th>{tr("日付")}</Table.Th>
+                  <Table.Th ta="right">{tr("金額")}</Table.Th>
                 </Table.Tr>
               </Table.Thead>
               <Table.Tbody>

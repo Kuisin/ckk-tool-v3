@@ -30,6 +30,7 @@ import {
 import { GhostButton } from "@/components/ui/buttons";
 import { SearchSelect } from "@/components/ui/SearchSelect";
 import { FormActions } from "@/components/ui/shells";
+import { useTr } from "@/hooks/useTr";
 import { useIsMobile } from "@/hooks/useViewport";
 import type { ShareGrantView } from "@/lib/share-grants";
 import {
@@ -105,6 +106,7 @@ export function ShareGrantsPanel({
     }[],
   ) => Promise<{ ok: boolean; error?: string }>;
 }) {
+  const tr = useTr();
   const router = useRouter();
   const isMobile = useIsMobile();
   const [isPending, startTransition] = useTransition();
@@ -129,7 +131,7 @@ export function ShareGrantsPanel({
       {
         subjectType: "EVERYONE",
         subjectId: null,
-        subjectLabel: "全社（ログインユーザー全員）",
+        subjectLabel: tr("全社（ログインユーザー全員）"),
         level: levels[0],
         condition: EMPTY_CONDITION,
         notifyOnComplete: false,
@@ -155,15 +157,15 @@ export function ShareGrantsPanel({
       );
       if (result.ok) {
         notifications.show({
-          message: "共有設定を保存しました",
+          message: tr("共有設定を保存しました"),
           color: "green",
         });
         router.refresh();
         onSaved?.();
       } else {
         notifications.show({
-          title: "エラー",
-          message: result.error ?? "保存に失敗しました",
+          title: tr("エラー"),
+          message: result.error ?? tr("保存に失敗しました"),
           color: "red",
         });
       }
@@ -174,7 +176,7 @@ export function ShareGrantsPanel({
     <>
       {row.subjectType === "EVERYONE" && (
         <Text c="dimmed" size="sm">
-          ログインユーザー全員
+          {tr("ログインユーザー全員")}
         </Text>
       )}
       {row.subjectType === "ROLE" && (
@@ -187,7 +189,7 @@ export function ShareGrantsPanel({
               subjectLabel: roleOptions.find((o) => o.value === v)?.label ?? "",
             })
           }
-          placeholder="ロールを選択"
+          placeholder={tr("ロールを選択")}
           searchable
           value={row.subjectId}
         />
@@ -204,7 +206,7 @@ export function ShareGrantsPanel({
             update(i, { subjectId: v, subjectLabel: option?.label ?? "" })
           }
           onSearch={searchPlantOptions}
-          placeholder="拠点を検索"
+          placeholder={tr("拠点を検索")}
           storageKey="share-plant"
           value={row.subjectId}
         />
@@ -221,7 +223,7 @@ export function ShareGrantsPanel({
             update(i, { subjectId: v, subjectLabel: option?.label ?? "" })
           }
           onSearch={searchUserOptions}
-          placeholder="ユーザーを検索"
+          placeholder={tr("ユーザーを検索")}
           storageKey="share-user"
           value={row.subjectId}
         />
@@ -289,7 +291,7 @@ export function ShareGrantsPanel({
 
   const removeButton = (i: number) => (
     <ActionIcon
-      aria-label="共有先を削除"
+      aria-label={tr("共有先を削除")}
       color="red"
       disabled={!canManage}
       onClick={() => setRows(rows.filter((_, idx) => idx !== i))}
@@ -302,17 +304,24 @@ export function ShareGrantsPanel({
   return (
     <Stack gap="sm">
       <Alert color="gray" icon={<IconInfoCircle size={16} />} variant="light">
-        共有先を 1
-        つも設定していないフォームは、作成者と管理者にしか見えません。 URL
-        を知っていても開けません。
+        {tr(
+          tr(
+            tr(
+              "共有先を 1\n        つも設定していないフォームは、作成者と管理者にしか見えません。 URL\n        を知っていても開けません。",
+            ),
+          ),
+        )}
       </Alert>
 
       {showNotifyOnComplete && (
         <Alert color="gray" icon={<IconInfoCircle size={16} />} variant="light">
-          「完了通知」を付けた共有先には、申請・報告が完了したとき（承認フローを
-          使うなら全段の承認、使わないなら提出）に通知が届き、承認・予定 (CM01)
-          の「完了した申請」に並びます。条件を付けた共有先には、その条件に
-          当てはまる回答の完了だけが届きます。
+          {tr(
+            tr(
+              tr(
+                "「完了通知」を付けた共有先には、申請・報告が完了したとき（承認フローを\n          使うなら全段の承認、使わないなら提出）に通知が届き、承認・予定 (CM01)\n          の「完了した申請」に並びます。条件を付けた共有先には、その条件に\n          当てはまる回答の完了だけが届きます。",
+              ),
+            ),
+          )}
         </Alert>
       )}
 
@@ -322,7 +331,7 @@ export function ShareGrantsPanel({
         <Stack gap="sm">
           {rows.length === 0 && (
             <Text c="dimmed" size="sm">
-              共有先がありません（非公開）
+              {tr("共有先がありません（非公開）")}
             </Text>
           )}
           {rows.map((row, i) => (
@@ -339,7 +348,7 @@ export function ShareGrantsPanel({
                 {row.subjectType !== "EVERYONE" && (
                   <Stack gap={4}>
                     <Text fw={500} size="sm">
-                      相手
+                      {tr("相手")}
                     </Text>
                     {subjectInput(row, i)}
                   </Stack>
@@ -355,11 +364,11 @@ export function ShareGrantsPanel({
         <Table withTableBorder>
           <Table.Thead>
             <Table.Tr>
-              <Table.Th style={{ width: 140 }}>対象</Table.Th>
-              <Table.Th>相手</Table.Th>
-              <Table.Th style={{ width: 160 }}>権限</Table.Th>
+              <Table.Th style={{ width: 140 }}>{tr("対象")}</Table.Th>
+              <Table.Th>{tr("相手")}</Table.Th>
+              <Table.Th style={{ width: 160 }}>{tr("権限")}</Table.Th>
               {showNotifyOnComplete && (
-                <Table.Th style={{ width: 110 }}>完了通知</Table.Th>
+                <Table.Th style={{ width: 110 }}>{tr("完了通知")}</Table.Th>
               )}
               <Table.Th style={{ width: 48 }} />
             </Table.Tr>
@@ -369,7 +378,7 @@ export function ShareGrantsPanel({
               <Table.Tr>
                 <Table.Td colSpan={showNotifyOnComplete ? 5 : 4}>
                   <Text c="dimmed" size="sm">
-                    共有先がありません（非公開）
+                    {tr("共有先がありません（非公開）")}
                   </Text>
                 </Table.Td>
               </Table.Tr>
@@ -395,7 +404,7 @@ export function ShareGrantsPanel({
                       <Table.Td colSpan={showNotifyOnComplete ? 5 : 4}>
                         <Stack gap={4} pl="md">
                           <Text c="dimmed" size="xs">
-                            見せる回答を絞る（この共有先だけに効きます）
+                            {tr("見せる回答を絞る（この共有先だけに効きます）")}
                           </Text>
                           {condition}
                         </Stack>
@@ -416,7 +425,7 @@ export function ShareGrantsPanel({
             leftSection={<IconPlus size={14} />}
             onClick={add}
           >
-            共有先を追加
+            {tr("共有先を追加")}
           </GhostButton>
           {/* 保存 / キャンセルは共有の FormActions に任せる — PC の sticky と
               スマホの全幅積みがそれで揃う（design.md §8.3）。 */}

@@ -21,6 +21,7 @@ import {
   SecondaryButton,
 } from "@/components/ui/buttons";
 import { openConfirm } from "@/components/ui/modals";
+import { useTr } from "@/hooks/useTr";
 import { useIsMobile } from "@/hooks/useViewport";
 import {
   AVAILABILITY_LABEL,
@@ -74,6 +75,7 @@ export function RespondForm({
   ) => Promise<{ ok: boolean; error?: string }>;
   onCancel?: () => void;
 }) {
+  const tr = useTr();
   const router = useRouter();
   const isMobile = useIsMobile();
   const [isPending, startTransition] = useTransition();
@@ -88,7 +90,7 @@ export function RespondForm({
       setErrors(found);
       if (Object.keys(found).length > 0) {
         notifications.show({
-          title: "入力を確認してください",
+          title: tr("入力を確認してください"),
           message: Object.values(found)[0],
           color: "red",
         });
@@ -99,14 +101,14 @@ export function RespondForm({
       const result = await onSubmit(answers, asDraft);
       if (result.ok) {
         notifications.show({
-          message: asDraft ? "下書きを保存しました" : "送信しました",
+          message: asDraft ? "下書きを保存しました" : tr("送信しました"),
           color: "green",
         });
         router.refresh();
       } else {
         notifications.show({
-          title: "エラー",
-          message: result.error ?? "保存に失敗しました",
+          title: tr("エラー"),
+          message: result.error ?? tr("保存に失敗しました"),
           color: "red",
         });
       }
@@ -145,7 +147,7 @@ export function RespondForm({
           }
         >
           {availability === "SCHEDULED"
-            ? "このフォームはまだ受付前です。"
+            ? tr("このフォームはまだ受付前です。")
             : `このフォームの受付は終了しています（${AVAILABILITY_LABEL[availability]}）。`}
         </Alert>
       )}
@@ -192,7 +194,7 @@ export function RespondForm({
                 loading={isPending}
                 onClick={() => submit(true)}
               >
-                下書き保存
+                {tr("下書き保存")}
               </SecondaryButton>
             )}
             {onCancel && <CancelButton fullWidth onClick={onCancel} />}
@@ -206,7 +208,7 @@ export function RespondForm({
                 loading={isPending}
                 onClick={() => submit(true)}
               >
-                下書き保存
+                {tr("下書き保存")}
               </SecondaryButton>
             )}
             <PrimaryButton
@@ -236,28 +238,29 @@ function DraftResumeList({
 }: {
   drafts: { responseNumber: string; href: string }[];
 }) {
+  const tr = useTr();
   const router = useRouter();
   const [busy, setBusy] = useState<string | null>(null);
 
   const discard = (responseNumber: string) =>
     openConfirm({
-      title: "下書きを削除",
-      message: "この下書きを捨てます。書いた内容は戻せません。",
-      confirmLabel: "削除する",
+      title: tr("下書きを削除"),
+      message: tr("この下書きを捨てます。書いた内容は戻せません。"),
+      confirmLabel: tr("削除する"),
       onConfirm: async () => {
         setBusy(responseNumber);
         const result = await discardDraft(responseNumber);
         setBusy(null);
         if (result.ok) {
           notifications.show({
-            message: "下書きを削除しました",
+            message: tr("下書きを削除しました"),
             color: "green",
           });
           router.refresh();
         } else {
           notifications.show({
-            title: "エラー",
-            message: result.error ?? "削除できませんでした",
+            title: tr("エラー"),
+            message: result.error ?? tr("削除できませんでした"),
             color: "red",
           });
         }
@@ -289,7 +292,7 @@ function DraftResumeList({
           </Group>
         ))}
         <Text c="dimmed" size="xs">
-          下の空のフォームに書けば、新しい 1 件として保存されます。
+          {tr("下の空のフォームに書けば、新しい 1 件として保存されます。")}
         </Text>
       </Stack>
     </Paper>

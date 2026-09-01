@@ -11,6 +11,7 @@ import { notFound } from "next/navigation";
 import { recordPortalAccess } from "@/lib/portal-access-log";
 import { listPortalFormResponses } from "@/lib/portal-forms";
 import { requirePortalView } from "@/lib/portal-page";
+import { getTr } from "@/lib/ui-text-server";
 
 export const dynamic = "force-dynamic";
 
@@ -19,6 +20,7 @@ export default async function PortalFormPage({
 }: {
   params: Promise<{ code: string }>;
 }) {
+  const tr = await getTr();
   const gate = await requirePortalView();
   if (!gate.ok) return gate.view;
 
@@ -40,17 +42,17 @@ export default async function PortalFormPage({
 
   return (
     <Stack gap="md">
-      <Title order={3}>フォームの回答</Title>
+      <Title order={3}>{tr("フォームの回答")}</Title>
       {rows.length === 0 ? (
         <Text c="dimmed" size="sm">
-          表示できる回答はありません。
+          {tr("表示できる回答はありません。")}
         </Text>
       ) : (
         <Table highlightOnHover striped withTableBorder>
           <Table.Thead>
             <Table.Tr>
-              <Table.Th>回答番号</Table.Th>
-              <Table.Th>提出日</Table.Th>
+              <Table.Th>{tr("回答番号")}</Table.Th>
+              <Table.Th>{tr("提出日")}</Table.Th>
             </Table.Tr>
           </Table.Thead>
           <Table.Tbody>

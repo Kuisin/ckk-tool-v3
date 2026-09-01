@@ -48,6 +48,7 @@ import { GhostButton, PrimaryButton } from "@/components/ui/buttons";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { ModalShell } from "@/components/ui/modals";
 import { LocalizedTextInput } from "@/components/ui/shells";
+import { useTr } from "@/hooks/useTr";
 
 interface Draft {
   nameJa: string;
@@ -78,6 +79,7 @@ export function InspectionTemplateGroupModal({
   opened: boolean;
   onClose: () => void;
 }) {
+  const tr = useTr();
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [rows, setRows] = useState<InspectionTemplateGroupRow[]>([]);
@@ -101,7 +103,7 @@ export function InspectionTemplateGroupModal({
   }, [opened]);
 
   const notifyError = (message: string) =>
-    notifications.show({ title: "エラー", message, color: "red" });
+    notifications.show({ title: tr("エラー"), message, color: "red" });
 
   const add = () => {
     if (!newName.trim()) return;
@@ -172,18 +174,19 @@ export function InspectionTemplateGroupModal({
       onClose={onClose}
       opened={opened}
       size="lg"
-      title="検査表グループの管理"
+      title={tr("検査表グループの管理")}
     >
       <Stack gap="sm">
         <Text c="dimmed" size="xs">
-          グループは一覧の絞り込み・見出し分けだけに使います。合否判定や PDF
-          には影響しません。
+          {tr(
+            "グループは一覧の絞り込み・見出し分けだけに使います。合否判定や PDF\n          には影響しません。",
+          )}
         </Text>
 
         {!loading && rows.length === 0 && (
           <EmptyState
             icon={<IconFolders size={24} />}
-            message="グループがありません"
+            message={tr("グループがありません")}
           />
         )}
 
@@ -196,7 +199,7 @@ export function InspectionTemplateGroupModal({
                 <Group align="flex-start" wrap="nowrap">
                   <Stack gap={2}>
                     <ActionIcon
-                      aria-label="上へ"
+                      aria-label={tr("上へ")}
                       disabled={i === 0}
                       onClick={() => move(i, -1)}
                       size="sm"
@@ -205,7 +208,7 @@ export function InspectionTemplateGroupModal({
                       <IconArrowUp size={14} />
                     </ActionIcon>
                     <ActionIcon
-                      aria-label="下へ"
+                      aria-label={tr("下へ")}
                       disabled={i === rows.length - 1}
                       onClick={() => move(i, 1)}
                       size="sm"
@@ -227,7 +230,7 @@ export function InspectionTemplateGroupModal({
                             },
                           })),
                       }}
-                      label="グループ名"
+                      label={tr("グループ名")}
                       translationsProps={{
                         value: draft.nameTranslations,
                         onChange: (v: Record<string, string>) =>
@@ -258,9 +261,9 @@ export function InspectionTemplateGroupModal({
                     </Group>
                   </Stack>
                   <Stack gap={4}>
-                    <Tooltip label="保存" withinPortal>
+                    <Tooltip label={tr("保存")} withinPortal>
                       <ActionIcon
-                        aria-label="グループを保存"
+                        aria-label={tr("グループを保存")}
                         color="blue"
                         disabled={!dirty}
                         loading={isPending}
@@ -277,13 +280,13 @@ export function InspectionTemplateGroupModal({
                     <Tooltip
                       label={
                         row.templateCount > 0
-                          ? "検査表が属しているため削除できません"
+                          ? tr("検査表が属しているため削除できません")
                           : "削除"
                       }
                       withinPortal
                     >
                       <ActionIcon
-                        aria-label="グループを削除"
+                        aria-label={tr("グループを削除")}
                         color="red"
                         disabled={row.templateCount > 0}
                         onClick={() => remove(row)}
@@ -301,7 +304,7 @@ export function InspectionTemplateGroupModal({
 
         <Group align="flex-end" gap="xs">
           <TextInput
-            label="新しいグループ"
+            label={tr("新しいグループ")}
             onChange={(e) => setNewName(e.currentTarget.value)}
             onKeyDown={(e) => {
               if (e.key === "Enter") {
@@ -309,7 +312,7 @@ export function InspectionTemplateGroupModal({
                 add();
               }
             }}
-            placeholder="例: 製品検査記録"
+            placeholder={tr("例: 製品検査記録")}
             style={{ flex: 1 }}
             value={newName}
           />
@@ -319,12 +322,12 @@ export function InspectionTemplateGroupModal({
             loading={isPending}
             onClick={add}
           >
-            追加
+            {tr("追加")}
           </PrimaryButton>
         </Group>
 
         <Group justify="flex-end">
-          <GhostButton onClick={onClose}>閉じる</GhostButton>
+          <GhostButton onClick={onClose}>{tr("閉じる")}</GhostButton>
         </Group>
       </Stack>
     </ModalShell>

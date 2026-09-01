@@ -93,7 +93,7 @@ Permissions fall into four kinds. To see which you hold, open [My permissions](/
 | Billing closing | `billing_closing` | Run billing closings and export for accounting. |
 | Approvals | `approve` | See the pending-approval list. Whether you may actually approve is decided by 承認設定 (MS0B), not by this permission. |
 | Forms | `form` | Create and edit forms and read every response. Who may respond is set per form. |
-| Internal pages | `internal_page` | Use the internal-documents app. Visibility of each document is set per document. |
+| Internal documents | `internal_page` | Use the internal-documents app. Visibility of each document is set per document. |
 
 ### Master data & settings
 

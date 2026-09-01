@@ -70,7 +70,7 @@ export const PERMISSION_GROUP_SUMMARY: Record<PermissionGroup, LocalizedLabel> =
     business: {
       ja: "日々の仕事で使う権限です。見積書・注文請書・指示書・出荷書のように、扱う書類ごとに分かれています。多くの人はここだけを持ちます。",
       en: "Permissions for everyday work, split by the document you handle — quotes, order acceptances, work orders, delivery orders. Most people hold only these.",
-      zh: "日常工作使用的权限，按所处理的单据划分——报价单、订单确认书、作业指示书、出货单。大多数人只持有这一类。",
+      zh: "日常工作使用的权限，按所处理的单据划分——报价单、订单确认书、工单、出货单。大多数人只持有这一类。",
     },
     master: {
       ja: "全員が共通で使う「元になるデータ」を整える権限です。取引先や製品を直すと、その後に作られる書類すべてに影響します。人数を絞って持つのが普通です。",
@@ -165,17 +165,17 @@ export const PERMISSIONS: readonly PermissionMeta[] = [
   },
   {
     code: "material_receipt",
-    label: { ja: "素材入荷", en: "Material receipt", zh: "材料入库" },
+    label: { ja: "素材入荷", en: "Material receipt", zh: "材料到货" },
     summary: {
       ja: "素材の入荷を記録できます。",
       en: "Record incoming material.",
-      zh: "登记材料入库。",
+      zh: "登记材料到货。",
     },
     group: "business",
   },
   {
     code: "outsource_order",
-    label: { ja: "外注依頼", en: "Outsource order", zh: "外协委托" },
+    label: { ja: "外注依頼", en: "Outsource order", zh: "外协委托单" },
     summary: {
       ja: "外注依頼を扱えます。",
       en: "Work with outsourcing orders.",
@@ -185,11 +185,11 @@ export const PERMISSIONS: readonly PermissionMeta[] = [
   },
   {
     code: "work_order",
-    label: { ja: "指示書", en: "Work order", zh: "作业指示书" },
+    label: { ja: "指示書", en: "Work order", zh: "工单" },
     summary: {
       ja: "指示書と工程の実行を扱えます。現場のタブレット（共有端末）の工程実行もこの権限です。",
       en: "Work with work orders and step execution — including the shop-floor kiosk.",
-      zh: "处理作业指示书与工序执行，包括车间平板（共用终端）。",
+      zh: "处理工单与工序执行，包括车间平板（共用终端）。",
     },
     group: "business",
   },
@@ -235,11 +235,11 @@ export const PERMISSIONS: readonly PermissionMeta[] = [
   },
   {
     code: "billing_closing",
-    label: { ja: "締日処理", en: "Billing closing", zh: "结账处理" },
+    label: { ja: "締日処理", en: "Billing closing", zh: "结算处理" },
     summary: {
       ja: "締日処理と、会計へ渡す書き出しができます。",
       en: "Run billing closings and export for accounting.",
-      zh: "执行结账处理并导出至会计。",
+      zh: "执行结算处理并导出至会计。",
     },
     group: "business",
   },
@@ -265,7 +265,7 @@ export const PERMISSIONS: readonly PermissionMeta[] = [
   },
   {
     code: "internal_page",
-    label: { ja: "社内文書", en: "Internal pages", zh: "内部文档" },
+    label: { ja: "社内文書", en: "Internal documents", zh: "内部文档" },
     summary: {
       ja: "社内文書アプリを使えます。個々の文書が見えるかは文書ごとの共有設定が決めます。",
       en: "Use the internal-documents app. Visibility of each document is set per document.",

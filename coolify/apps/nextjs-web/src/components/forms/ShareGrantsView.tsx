@@ -12,6 +12,7 @@
 
 import { Alert, Badge, Group, Paper, Stack, Table, Text } from "@mantine/core";
 import { IconInfoCircle } from "@tabler/icons-react";
+import { useTr } from "@/hooks/useTr";
 import { useIsMobile } from "@/hooks/useViewport";
 import type { ShareGrantView } from "@/lib/share-grants";
 import {
@@ -45,12 +46,18 @@ export function ShareGrantsView({
   grants: ShareGrantView[];
   conditionFields?: ConditionFieldOption[];
 }) {
+  const tr = useTr();
   const isMobile = useIsMobile();
 
   const notice = (
     <Alert color="gray" icon={<IconInfoCircle size={16} />} variant="light">
-      共有先を 1 つも設定していないフォームは、作成者と管理者にしか見えません。
-      URL を知っていても開けません。
+      {tr(
+        tr(
+          tr(
+            "共有先を 1 つも設定していないフォームは、作成者と管理者にしか見えません。\n      URL を知っていても開けません。",
+          ),
+        ),
+      )}
     </Alert>
   );
 
@@ -59,7 +66,7 @@ export function ShareGrantsView({
       <Stack gap="sm">
         {notice}
         <Text c="dimmed" size="sm">
-          共有先がありません（非公開）
+          {tr("共有先がありません（非公開）")}
         </Text>
       </Stack>
     );
@@ -69,7 +76,7 @@ export function ShareGrantsView({
     grant: g,
     subject:
       g.subjectType === "EVERYONE"
-        ? "ログインユーザー全員"
+        ? tr("ログインユーザー全員")
         : (g.subjectLabel ?? g.subjectId ?? "—"),
     condition: conditionText(g, conditionFields),
   }));
@@ -95,7 +102,7 @@ export function ShareGrantsView({
                   <Text size="sm">{SHARE_LEVEL_LABEL[grant.level]}</Text>
                   {grant.notifyOnComplete && (
                     <Badge color="indigo" variant="light">
-                      完了通知
+                      {tr("完了通知")}
                     </Badge>
                   )}
                 </Group>
@@ -112,10 +119,10 @@ export function ShareGrantsView({
         <Table withTableBorder>
           <Table.Thead>
             <Table.Tr>
-              <Table.Th style={{ width: 100 }}>対象</Table.Th>
-              <Table.Th>相手</Table.Th>
-              <Table.Th style={{ width: 200 }}>権限</Table.Th>
-              <Table.Th>条件</Table.Th>
+              <Table.Th style={{ width: 100 }}>{tr("対象")}</Table.Th>
+              <Table.Th>{tr("相手")}</Table.Th>
+              <Table.Th style={{ width: 200 }}>{tr("権限")}</Table.Th>
+              <Table.Th>{tr("条件")}</Table.Th>
             </Table.Tr>
           </Table.Thead>
           <Table.Tbody>
@@ -132,7 +139,7 @@ export function ShareGrantsView({
                     <Text size="sm">{SHARE_LEVEL_LABEL[grant.level]}</Text>
                     {grant.notifyOnComplete && (
                       <Badge color="indigo" variant="light">
-                        完了通知
+                        {tr("完了通知")}
                       </Badge>
                     )}
                   </Group>
@@ -140,7 +147,7 @@ export function ShareGrantsView({
                 <Table.Td>
                   {condition ?? (
                     <Text c="dimmed" size="sm">
-                      すべての回答
+                      {tr("すべての回答")}
                     </Text>
                   )}
                 </Table.Td>

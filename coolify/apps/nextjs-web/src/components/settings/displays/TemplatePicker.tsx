@@ -36,6 +36,7 @@ import {
   UnstyledButton,
 } from "@mantine/core";
 import { useEffect, useRef, useState } from "react";
+import { useTr } from "@/hooks/useTr";
 import { DISPLAY_TEMPLATES } from "@/lib/display-templates";
 import { kioskOrigin } from "@/lib/kiosk-origin";
 
@@ -108,6 +109,7 @@ function Thumbnail({
   templateKey: string;
   label: string;
 }) {
+  const tr = useTr();
   const boxRef = useRef<HTMLDivElement | null>(null);
   // 0 = まだ測れていない。測る前に描くと、一瞬だけ原寸の左上が見えてしまう。
   const [scale, setScale] = useState(0);
@@ -157,7 +159,7 @@ function Thumbnail({
         />
       ) : (
         <Text c="dimmed" p="sm" size="xs">
-          見本を表示できません（キオスクの URL が未設定）
+          {tr("見本を表示できません（キオスクの URL が未設定）")}
         </Text>
       )}
     </Box>

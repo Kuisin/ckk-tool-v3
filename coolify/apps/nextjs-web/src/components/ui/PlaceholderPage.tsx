@@ -8,6 +8,7 @@
 
 import { Paper, Stack, Text } from "@mantine/core";
 import { IconTool } from "@tabler/icons-react";
+import { useTr } from "@/hooks/useTr";
 import { EmptyState } from "./EmptyState";
 import { type Crumb, PageHeader } from "./PageHeader";
 
@@ -20,6 +21,7 @@ export function PlaceholderPage({
   breadcrumbs: Crumb[];
   operationCode?: string;
 }) {
+  const tr = useTr();
   return (
     <Stack gap="md">
       <PageHeader
@@ -36,7 +38,7 @@ export function PlaceholderPage({
       <Paper p="sm" shadow="xs">
         <EmptyState
           icon={<IconTool size={24} />}
-          message="この画面は準備中です"
+          message={tr("この画面は準備中です")}
         />
       </Paper>
     </Stack>

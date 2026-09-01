@@ -63,6 +63,7 @@ import { AppTabs } from "@/components/ui/AppTabs";
 import { GhostButton, SecondaryButton } from "@/components/ui/buttons";
 import { ConfirmModal, ModalShell } from "@/components/ui/modals";
 import { PageHeader } from "@/components/ui/PageHeader";
+import { useTr } from "@/hooks/useTr";
 import { uploadFloorMapImage } from "@/lib/floor-map-client";
 import type {
   KioskDeviceRow,
@@ -94,6 +95,7 @@ export function KioskFloorMapView({
   /** 保管場所ピン（読み取り専用レイヤ — 配置は保管場所マスタ MS0E）。 */
   storagePins: StorageLocationPin[];
 }) {
+  const tr = useTr();
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const { presence, live } = useKioskPresence();
@@ -175,14 +177,14 @@ export function KioskFloorMapView({
       const result = await action();
       if (result.ok) {
         notifications.show({
-          title: "完了",
+          title: tr("完了"),
           message: successMessage,
           color: "green",
         });
       } else {
         notifications.show({
-          title: "エラー",
-          message: result.error,
+          title: tr("エラー"),
+          message: tr(result.error),
           color: "red",
         });
       }
@@ -238,8 +240,8 @@ export function KioskFloorMapView({
         });
       } else {
         notifications.show({
-          title: "エラー",
-          message: result.error,
+          title: tr("エラー"),
+          message: tr(result.error),
           color: "red",
         });
       }
@@ -256,7 +258,7 @@ export function KioskFloorMapView({
           mapX: 50,
           mapY: 50,
         }),
-      "端末を配置しました（ドラッグで移動できます）",
+      tr("端末を配置しました（ドラッグで移動できます）"),
     );
   };
 
@@ -265,8 +267,8 @@ export function KioskFloorMapView({
   const handleFloorSubmit = () => {
     if (!floorName.trim()) {
       notifications.show({
-        title: "エラー",
-        message: "フロア名を入力してください",
+        title: tr("エラー"),
+        message: tr("フロア名を入力してください"),
         color: "red",
       });
       return;
@@ -280,14 +282,14 @@ export function KioskFloorMapView({
           setFloorName("");
           setActiveMapId(result.data.id);
           notifications.show({
-            title: "作成しました",
-            message: "フロアを追加しました",
+            title: tr("作成しました"),
+            message: tr("フロアを追加しました"),
             color: "green",
           });
         } else {
           notifications.show({
-            title: "エラー",
-            message: result.error,
+            title: tr("エラー"),
+            message: tr(result.error),
             color: "red",
           });
         }
@@ -300,14 +302,14 @@ export function KioskFloorMapView({
           setFloorModal(null);
           setFloorName("");
           notifications.show({
-            title: "保存しました",
-            message: "フロア名を変更しました",
+            title: tr("保存しました"),
+            message: tr("フロア名を変更しました"),
             color: "green",
           });
         } else {
           notifications.show({
-            title: "エラー",
-            message: result.error,
+            title: tr("エラー"),
+            message: tr(result.error),
             color: "red",
           });
         }
@@ -320,7 +322,7 @@ export function KioskFloorMapView({
     // 図面は最大 10MB。Server Action ではなく API 経由（lib/floor-map-client.ts）。
     run(
       () => uploadFloorMapImage(activeMap.id, file),
-      "図面画像を更新しました",
+      tr("図面画像を更新しました"),
     );
   };
 
@@ -441,7 +443,7 @@ export function KioskFloorMapView({
             <Group gap={6} wrap="nowrap">
               <OnlineDot online={online} />
               <Text fw={500} size="sm" truncate>
-                {d.name ?? "（未設定）"}
+                {d.name ?? tr("（未設定）")}
               </Text>
             </Group>
             {d.location && (
@@ -455,9 +457,9 @@ export function KioskFloorMapView({
               </Text>
             )}
           </Box>
-          <Tooltip label="端末詳細を開く" withinPortal>
+          <Tooltip label={tr("端末詳細を開く")} withinPortal>
             <ActionIcon
-              aria-label="端末詳細を開く"
+              aria-label={tr("端末詳細を開く")}
               color="gray"
               onClick={(e) => {
                 e.stopPropagation();
@@ -481,11 +483,11 @@ export function KioskFloorMapView({
             href="/settings/kiosk-devices"
             leftSection={<IconArrowLeft size={14} />}
           >
-            端末一覧へ
+            {tr("端末一覧へ")}
           </SecondaryButton>
         }
-        breadcrumbs={["システム", "端末管理", "フロアマップ"]}
-        title="フロアマップ"
+        breadcrumbs={[tr("システム"), tr("端末管理"), tr("フロアマップ")]}
+        title={tr("フロアマップ")}
       />
       <Paper p="sm" shadow="xs">
         <Stack gap="sm">
@@ -505,7 +507,7 @@ export function KioskFloorMapView({
             />
             <Switch
               checked={editMode}
-              label="編集モード"
+              label={tr("編集モード")}
               onChange={(e) => {
                 setEditMode(e.currentTarget.checked);
                 clearSelection();
@@ -517,8 +519,8 @@ export function KioskFloorMapView({
             <Alert color="gray" variant="light">
               この拠点にはフロアマップがありません。
               {editMode
-                ? "下の「フロアを追加」から作成してください。"
-                : "編集モードでフロアを追加できます。"}
+                ? tr("下の「フロアを追加」から作成してください。")
+                : tr("編集モードでフロアを追加できます。")}
             </Alert>
           ) : (
             <AppTabs
@@ -548,7 +550,7 @@ export function KioskFloorMapView({
                   setFloorName("");
                 }}
               >
-                フロアを追加
+                {tr("フロアを追加")}
               </SecondaryButton>
               {activeMap && (
                 <>
@@ -559,28 +561,30 @@ export function KioskFloorMapView({
                       setFloorName(activeMap.name);
                     }}
                   >
-                    名称変更
+                    {tr("名称変更")}
                   </SecondaryButton>
                   <SecondaryButton
                     leftSection={<IconPhotoUp size={14} />}
                     loading={isPending}
                     onClick={() => fileInputRef.current?.click()}
                   >
-                    {activeMap.fileId ? "図面を差し替え" : "図面をアップロード"}
+                    {activeMap.fileId
+                      ? tr("図面を差し替え")
+                      : tr("図面をアップロード")}
                   </SecondaryButton>
                   <GhostButton
                     color="red"
                     leftSection={<IconTrash size={14} />}
                     onClick={() =>
                       setConfirm({
-                        title: "フロア削除の確認",
+                        title: tr("フロア削除の確認"),
                         message: `フロア「${activeMap.name}」を削除します。端末が配置されている場合は削除できません。`,
                         confirmLabel: "削除",
                         run: () => deleteFloorMap(activeMap.id),
                       })
                     }
                   >
-                    フロアを削除
+                    {tr("フロアを削除")}
                   </GhostButton>
                   <input
                     accept="image/png,image/jpeg,image/webp,image/svg+xml"
@@ -681,7 +685,7 @@ export function KioskFloorMapView({
                 <Stack gap="xs" w={{ base: "100%", md: 280 }}>
                   <Group justify="space-between">
                     <Text fw={600} size="sm">
-                      端末一覧
+                      {tr("端末一覧")}
                     </Text>
                     <Text c="dimmed" size="xs">
                       {plantDevices.length} 台
@@ -694,7 +698,7 @@ export function KioskFloorMapView({
                       </Text>
                       {placedDevices.length === 0 ? (
                         <Text c="dimmed" size="xs">
-                          このフロアに配置済みの端末はありません
+                          {tr("このフロアに配置済みの端末はありません")}
                         </Text>
                       ) : (
                         placedDevices.map(deviceRow)
@@ -717,11 +721,11 @@ export function KioskFloorMapView({
               {editMode && (
                 <Stack gap="xs" w={{ base: "100%", md: 260 }}>
                   <Text fw={600} size="sm">
-                    未配置の端末
+                    {tr("未配置の端末")}
                   </Text>
                   {unplacedDevices.length === 0 ? (
                     <Text c="dimmed" size="xs">
-                      この拠点に未配置の端末はありません
+                      {tr("この拠点に未配置の端末はありません")}
                     </Text>
                   ) : (
                     unplacedDevices.map((d) => (
@@ -736,7 +740,7 @@ export function KioskFloorMapView({
                           <IconMapPin size={16} />
                           <Box className="min-w-0">
                             <Text fw={500} size="sm" truncate>
-                              {d.name ?? "（未設定）"}
+                              {d.name ?? tr("（未設定）")}
                             </Text>
                             {d.location && (
                               <Text c="dimmed" size="xs" truncate>
@@ -750,11 +754,11 @@ export function KioskFloorMapView({
                   )}
                   <Divider />
                   <Text fw={600} size="sm">
-                    配置済み
+                    {tr("配置済み")}
                   </Text>
                   {placedDevices.length === 0 ? (
                     <Text c="dimmed" size="xs">
-                      このフロアに配置済みの端末はありません
+                      {tr("このフロアに配置済みの端末はありません")}
                     </Text>
                   ) : (
                     placedDevices.map((d) => (
@@ -765,16 +769,16 @@ export function KioskFloorMapView({
                         wrap="nowrap"
                       >
                         <Text size="sm" truncate>
-                          {d.name ?? "（未設定）"}
+                          {d.name ?? tr("（未設定）")}
                         </Text>
-                        <Tooltip label="ピンを解除" withinPortal>
+                        <Tooltip label={tr("ピンを解除")} withinPortal>
                           <ActionIcon
-                            aria-label="ピンを解除"
+                            aria-label={tr("ピンを解除")}
                             color="gray"
                             onClick={() =>
                               run(
                                 () => unplaceDevice(d.id),
-                                "ピンを解除しました",
+                                tr("ピンを解除しました"),
                               )
                             }
                             variant="subtle"
@@ -794,20 +798,20 @@ export function KioskFloorMapView({
 
       {/* フロア追加・名称変更モーダル */}
       <ModalShell
-        confirmLabel={floorModal?.mode === "create" ? "追加" : "保存"}
+        confirmLabel={floorModal?.mode === "create" ? "追加" : tr("保存")}
         loading={isPending}
         onClose={() => setFloorModal(null)}
         onConfirm={handleFloorSubmit}
         opened={floorModal != null}
         size="sm"
         title={
-          floorModal?.mode === "create" ? "フロアを追加" : "フロア名の変更"
+          floorModal?.mode === "create" ? "フロアを追加" : tr("フロア名の変更")
         }
       >
         <TextInput
-          label="フロア名"
+          label={tr("フロア名")}
           onChange={(e) => setFloorName(e.currentTarget.value)}
-          placeholder="例: 1F 加拠点"
+          placeholder={tr("例: 1F 加拠点")}
           value={floorName}
           withAsterisk
         />
@@ -815,12 +819,12 @@ export function KioskFloorMapView({
 
       {/* 破壊的操作の確認 */}
       <ConfirmModal
-        confirmLabel={confirm?.confirmLabel ?? "実行"}
+        confirmLabel={confirm?.confirmLabel ?? tr("実行")}
         loading={isPending}
         message={confirm?.message ?? ""}
         onClose={() => setConfirm(null)}
         onConfirm={() => {
-          if (confirm) run(confirm.run, "操作が完了しました");
+          if (confirm) run(confirm.run, tr("操作が完了しました"));
         }}
         opened={confirm != null}
         title={confirm?.title ?? ""}

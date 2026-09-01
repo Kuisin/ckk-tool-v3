@@ -27,6 +27,7 @@ import { SecondaryButton } from "@/components/ui/buttons";
 import { DesignFileSlot } from "@/components/ui/DesignFileSlot";
 import { SearchSelect } from "@/components/ui/SearchSelect";
 import { FormActions, FormSection } from "@/components/ui/shells";
+import { useTr } from "@/hooks/useTr";
 import { useIsMobile } from "@/hooks/useViewport";
 
 interface Option {
@@ -56,6 +57,7 @@ export function DesignFileVersionForm({
   /** `?request=` から来たときの依頼。 */
   requestContext: DesignRequestContext | null;
 }) {
+  const tr = useTr();
   const router = useRouter();
   const isMobile = useIsMobile();
 
@@ -108,7 +110,7 @@ export function DesignFileVersionForm({
       } | null;
       if (res.ok && json?.ok) {
         notifications.show({
-          title: "登録しました",
+          title: tr("登録しました"),
           message: `設計図 v${json.version} を追加しました`,
           color: "green",
         });
@@ -120,8 +122,8 @@ export function DesignFileVersionForm({
         );
       } else {
         notifications.show({
-          title: "エラー",
-          message: json?.error ?? "登録に失敗しました",
+          title: tr("エラー"),
+          message: json?.error ?? tr("登録に失敗しました"),
           color: "red",
         });
       }
@@ -138,12 +140,12 @@ export function DesignFileVersionForm({
           製品「{requestContext.productLabel}」
           {requestContext.customerName
             ? `・受注元「${requestContext.customerName}」`
-            : "・汎用"}
+            : tr("・汎用")}
           は依頼で決まっているので変更できません。
         </Alert>
       )}
 
-      <FormSection title="対象">
+      <FormSection title={tr("対象")}>
         {requestContext ? null : (
           <SearchSelect
             initialOption={initialProduct ?? undefined}
@@ -158,30 +160,44 @@ export function DesignFileVersionForm({
         <Select
           clearable
           data={customerOptions}
-          description="空のままなら「汎用」— 顧客専用の図面が無いときに使われます。版番号は受注元ごとに数えます"
+          description={tr(
+            tr(
+              tr(
+                "空のままなら「汎用」— 顧客専用の図面が無いときに使われます。版番号は受注元ごとに数えます",
+              ),
+            ),
+          )}
           disabled={requestContext != null}
-          label="受注元"
+          label={tr("受注元")}
           onChange={setCustomerBpId}
-          placeholder="汎用（すべての顧客）"
+          placeholder={tr("汎用（すべての顧客）")}
           searchable
           value={customerBpId}
         />
       </FormSection>
 
-      <FormSection title="ファイル">
+      <FormSection title={tr("ファイル")}>
         <DesignFileSlot
-          description="加工プログラムを起こす元データ。この系列の最新図面になります"
+          description={tr(
+            tr("加工プログラムを起こす元データ。この系列の最新図面になります"),
+          )}
           file={blueprint}
           fullWidth={isMobile}
-          label="図面データ"
+          label={tr("図面データ")}
           onPick={setBlueprint}
           required
         />
         <DesignFileSlot
-          description="STL など、画面で形を確かめるためのファイル。無くても登録できます"
+          description={tr(
+            tr(
+              tr(
+                "STL など、画面で形を確かめるためのファイル。無くても登録できます",
+              ),
+            ),
+          )}
           file={preview}
           fullWidth={isMobile}
-          label="プレビュー用（3D）"
+          label={tr("プレビュー用（3D）")}
           onPick={setPreview}
         />
 
@@ -196,7 +212,7 @@ export function DesignFileVersionForm({
               key={r.key}
               label={`参考資料 ${i + 1}`}
               note={r.note}
-              notePlaceholder="説明（任意）— 例: 部品図、寸法表"
+              notePlaceholder={tr("説明（任意）— 例: 部品図、寸法表")}
               onNoteChange={(v) =>
                 setReferences((prev) =>
                   prev.map((x, j) => (j === i ? { ...x, note: v } : x)),
@@ -224,21 +240,21 @@ export function DesignFileVersionForm({
                 setNextKey((k) => k + 1);
               }}
             >
-              参考資料を追加
+              {tr("参考資料を追加")}
             </SecondaryButton>
           </Group>
         </Stack>
 
         <Textarea
           autosize
-          label="メモ"
+          label={tr("メモ")}
           minRows={2}
           onChange={(e) => setNotes(e.currentTarget.value)}
-          placeholder="この版で何が変わったか（任意）"
+          placeholder={tr("この版で何が変わったか（任意）")}
           value={notes}
         />
         <Text c="dimmed" size="xs">
-          1 件 20MB まで
+          {tr("1 件 20MB まで")}
         </Text>
       </FormSection>
 

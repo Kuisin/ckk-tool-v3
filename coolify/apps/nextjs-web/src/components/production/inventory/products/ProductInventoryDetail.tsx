@@ -17,6 +17,7 @@ import { DocNumber } from "@/components/ui/DocNumber";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { FieldValue } from "@/components/ui/FieldValue";
 import { DetailShell, SummaryGrid } from "@/components/ui/shells";
+import { useTr } from "@/hooks/useTr";
 import { useTabParam } from "@/hooks/useUrlState";
 import { InventoryTransactionsTable } from "../InventoryTransactionsTable";
 import {
@@ -32,20 +33,25 @@ export function ProductInventoryDetail({
 }: {
   record: ProductInventoryDetailData;
 }) {
+  const tr = useTr();
   const fmt = useFormat();
   // アクティブタブを ?tab= に保持（URL 共有でタブまで再現）
   const [tab, setTab] = useTabParam("reservations");
   return (
     <DetailShell
-      breadcrumbs={["生産", { label: "在庫管理", href: BASE_PATH }, "詳細"]}
+      breadcrumbs={[
+        tr("生産"),
+        { label: tr("在庫管理"), href: BASE_PATH },
+        "詳細",
+      ]}
       status={
         record.isSemiFinished ? (
           <Badge color="orange" variant="light">
-            半製品
+            {tr("半製品")}
           </Badge>
         ) : (
           <Badge color="gray" variant="light">
-            完成品
+            {tr("完成品")}
           </Badge>
         )
       }
@@ -68,7 +74,7 @@ export function ProductInventoryDetail({
         />
         <FieldValue label="拠点" value={record.plantName ?? "—"} />
         <FieldValue
-          label="ロット番号"
+          label={tr("ロット番号")}
           value={
             record.lotNumber != null ? (
               <DocNumber>{record.lotNumber}</DocNumber>
@@ -78,21 +84,21 @@ export function ProductInventoryDetail({
           }
         />
         <FieldValue
-          label="区分"
+          label={tr("区分")}
           value={
             record.isSemiFinished ? (
               <Badge color="orange" variant="light">
-                半製品
+                {tr("半製品")}
               </Badge>
             ) : (
               <Badge color="gray" variant="light">
-                完成品
+                {tr("完成品")}
               </Badge>
             )
           }
         />
         <FieldValue
-          label="在庫数"
+          label={tr("在庫数")}
           value={
             <Text className="tabular-nums" size="sm" span>
               {record.quantity.toLocaleString("ja-JP")} 本
@@ -100,7 +106,7 @@ export function ProductInventoryDetail({
           }
         />
         <FieldValue
-          label="予約数"
+          label={tr("予約数")}
           value={
             <Text className="tabular-nums" size="sm" span>
               {record.reservedQuantity.toLocaleString("ja-JP")} 本
@@ -108,21 +114,21 @@ export function ProductInventoryDetail({
           }
         />
         <FieldValue
-          label="利用可能"
+          label={tr("利用可能")}
           value={
             <InventoryBadge
               available={record.available}
               reserved={record.reservedQuantity}
-              unit="本"
+              unit={tr("本")}
             />
           }
         />
         <FieldValue
-          label="保管場所"
-          value={record.storageLabel ?? record.location ?? "未割当"}
+          label={tr("保管場所")}
+          value={record.storageLabel ?? record.location ?? tr("未割当")}
         />
         {record.sourceStepLabel && (
-          <FieldValue label="発生工程" value={record.sourceStepLabel} />
+          <FieldValue label={tr("発生工程")} value={record.sourceStepLabel} />
         )}
       </SummaryGrid>
 
@@ -141,7 +147,10 @@ export function ProductInventoryDetail({
         </Tabs.Panel>
 
         <Tabs.Panel pt="md" value="transactions">
-          <InventoryTransactionsTable rows={record.transactions} unit="本" />
+          <InventoryTransactionsTable
+            rows={record.transactions}
+            unit={tr("本")}
+          />
         </Tabs.Panel>
       </AppTabs>
     </DetailShell>
@@ -150,12 +159,13 @@ export function ProductInventoryDetail({
 
 /** 引当予約テーブル — 数量 / 状態 / 関連文書 / 日時。 */
 function ReservationsTable({ rows }: { rows: InventoryReservationRow[] }) {
+  const tr = useTr();
   const fmt = useFormat();
   if (rows.length === 0) {
     return (
       <EmptyState
         icon={<IconBookmark size={24} />}
-        message="この在庫への引当予約はありません"
+        message={tr("この在庫への引当予約はありません")}
       />
     );
   }
@@ -166,12 +176,12 @@ function ReservationsTable({ rows }: { rows: InventoryReservationRow[] }) {
         <Table.Thead>
           <Table.Tr>
             <Table.Th ta="right" w={100}>
-              数量
+              {tr("数量")}
             </Table.Th>
-            <Table.Th w={90}>状態</Table.Th>
-            <Table.Th>関連</Table.Th>
-            <Table.Th w={150}>予約日時</Table.Th>
-            <Table.Th w={150}>確定/解除日時</Table.Th>
+            <Table.Th w={90}>{tr("状態")}</Table.Th>
+            <Table.Th>{tr("関連")}</Table.Th>
+            <Table.Th w={150}>{tr("予約日時")}</Table.Th>
+            <Table.Th w={150}>{tr("確定/解除日時")}</Table.Th>
           </Table.Tr>
         </Table.Thead>
         <Table.Tbody>
