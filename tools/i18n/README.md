@@ -19,14 +19,31 @@
 
 同じ ja に 2 通りの訳を当てないのが用語集の芯なので、その 1 点だけは機械が見る。
 
-## なぜ「全部訳す」を条件にしないのか
+## いまどこまで進んでいるか
 
-対象は約 11,000 箇所・600 ファイルある。一度に終わらないのは分かっているし、
-終わっていなくても**壊れない** — 移していない画面は日本語のまま動く
-（`src/i18n/request.ts` の設計どおり）。
+- **対訳（ja→en/zh）は完成している。** 5,342 語。`i18n-todo.mjs` の「まだ訳して
+  いない語」は 0。
+- **画面の文言はほぼ包み終わっている。** 330 ファイル・約 6,000 箇所を
+  `tr()` に通した。
+- **残っている日本語 = 未翻訳ではない。** ja を鍵にしているので、`lib/*.ts` や
+  `actions.ts` が日本語のまま文言を返しても、表示側が `tr()` を通せば訳される。
+  `i18n-scan.mjs` はその内訳を出す（「辞書にある」/「辞書にも無い」）。
 
-なので CI が見るのは残数ではなく **後戻り**だけ。`baseline.json` より増えたら落ちる。
-減ったときは「下げられます」と言うだけで落とさない — 別の作業をしている人の PR を、
+残っている仕事は 2 つだけ:
+
+1. **テンプレート断片 約 1,000 箇所** — `${}` を挟む文。ja 鍵では持てないので
+   （語順が言語で変わる。用語集 §2.6）、next-intl の変数付きキーへ移す。
+   `node tools/i18n/i18n-todo.mjs --templates` で場所が出る。
+2. **`lib/field-help.ts` 462 箇所** — マニュアルから生成しているので、
+   直すのは `content/manual/**` の側（`coolify/apps/nextjs-web/CLAUDE.md`）。
+   マニュアル本体の翻訳と同じ仕事になる。
+
+## なぜ「全部訳す」を CI の条件にしないのか
+
+上の 2 つが残っているうちは 0 にならないし、0 を条件にすると CI は赤のままに
+なって**赤いのが当たり前になり誰も見なくなる**。見たいのは残数そのものではなく
+**後戻り**なので、`baseline.json` より増えたときだけ落とす。減ったときは
+「下げられます」と言うだけで落とさない — 別の作業をしている人の PR を、
 無関係な baseline 更新で止めないため。
 
 ## 使う
@@ -45,25 +62,50 @@ node tools/i18n/i18n-scan.mjs --update-baseline
 
 # 用語集そのものの検査（訳の割れ・重複・空セル）
 node tools/i18n/i18n-glossary-check.mjs
+
+# まだ訳していない語を並べる / 次の N 語を出す / ICU 行きの断片を見る
+node tools/i18n/i18n-todo.mjs
+node tools/i18n/i18n-todo.mjs --next 200
+node tools/i18n/i18n-todo.mjs --templates
+
+# 辞書を書き出す（data/*.json → src/lib/ui-dictionary/{en,zh}.ts）
+node tools/i18n/build-dictionary.mjs
+
+# tr() の鍵が辞書にあるか（抜けは日本語のまま出るのでここでしか捕まらない）
+node tools/i18n/i18n-verify-keys.mjs
+
+# 辞書にある語を tr() へ包む（--dry で下見。当てたら必ず tsc を通すこと）
+node tools/i18n/i18n-codemod.mjs --dry --area components/sales
+node tools/i18n/i18n-codemod.mjs --area components/sales
 ```
 
 `pnpm i18n:scan` / `pnpm i18n:glossary` / `pnpm i18n:baseline` でも同じ
 （`coolify/apps/nextjs-web`）。CI は前 2 つを毎 PR で走らせる。
 
-## 文言をどこに置くか — 2 通りある
+## 文言をどこに置くか — 3 通りある
 
-この製品には i18n の置き場が 2 つあり、**どちらを使うかは文言の性質で決まる**。
+置き場は 3 つあり、**どれを使うかは文言の性質で決まる**。
 新しく足すときに迷ったら下の表を見ること。
 
 | 文言の性質 | 置き場 | 読み方 |
 |---|---|---|
-| 画面の枠・ボタン・見出し・通知（値に属さない） | `messages/{ja,en,zh}.json` | `useTranslations("ns")` / `await getTranslations("ns")` |
+| **変数を含む文**（`{name} を追加しました`） | `messages/{ja,en,zh}.json` | `useTranslations("ns")` / `await getTranslations("ns")` |
 | **値**に属するラベル（enum・状態・権限・アプリ名） | 値の隣の `Record<Locale, string>` | `xxxLabel(value, locale)` |
+| それ以外の画面文言（変数の無い決まり文句） | `data/translations/*.json`（ja が鍵） | `useTr()` / `await getTr()` |
 
-後者を next-intl に寄せない理由は `lib/enum-labels.ts` の冒頭に書いてある —
-**訳をその enum 値の隣に置く**ためで、2 ファイルに割れると片方だけ直る。
-既存の例: `enum-labels.ts` / `permission-labels.ts` / `privileged-operations.ts` /
-`StatusBadge.tsx`。
+3 つ目が今回足した層で、仕組みと「なぜ ja を鍵にするのか」は
+`src/lib/ui-text.ts` の冒頭に書いてある。要点だけ言うと、**6,000 個のキー名を
+発明せずに済み、同じ日本語に 2 つの訳が付く余地が構造的に無くなる**から。
+辞書に無ければ日本語のまま返すので、抜けが画面を壊すこともない。
+
+2 つ目（値に属するラベル）を next-intl に寄せない理由は `lib/enum-labels.ts` の
+冒頭に書いてある — **訳をその enum 値の隣に置く**ためで、2 ファイルに割れると
+片方だけ直る。既存の例: `enum-labels.ts` / `permission-labels.ts` /
+`privileged-operations.ts` / `StatusBadge.tsx`。
+
+なお 3 つ目は「**後から訳せる**」のが効く。`lib/*.ts` や `actions.ts` は
+日本語のまま文言を返してよく、表示する画面が `tr()` を通せば訳される。
+おかげでサーバー側の全関数に locale を引き回さずに済んでいる。
 
 ### messages/*.json の約束
 
