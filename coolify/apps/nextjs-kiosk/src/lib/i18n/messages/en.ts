@@ -5,6 +5,12 @@ export const en: KioskMessages = {
     stepExecution: "Step Execution",
     woScan: "Work Order Scan",
   },
+  userMenu: {
+    title: "User",
+    textSize: "Text size",
+    language: "Language",
+    logout: "Log out",
+  },
   launcher: {
     greeting: (name: string) => name,
     logout: "Log out",

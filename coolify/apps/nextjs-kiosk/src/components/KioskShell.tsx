@@ -4,7 +4,8 @@
  * KioskShell.tsx — Mantine AppShell（nextjs-web の DashboardShell と同型:
  * ヘッダー + フッター、サイドバーなし。design.md §3/§4 準拠のキオスク版）。
  *
- * ヘッダー: 左 = **ログイン中の利用者**（未ログインは「未ログイン」）/ 中央 = 日付時刻 /
+ * ヘッダー: 左 = **ログイン中の利用者**（押すと設定の窓 — 文字の大きさ・言語・
+ *   ログアウト。未ログインは「未ログイン」）/ 中央 = 日付時刻 /
  *   右 = 接続状態 + **端末名**（常時表示、layout がサーバー解決）
  *
  * ★ **ログイン画面では利用者名を出さない。** 名前はサーバー側の layout が
@@ -36,8 +37,10 @@ import {
 import { IconDeviceTablet, IconUserCircle } from "@tabler/icons-react";
 import { usePathname, useRouter } from "next/navigation";
 import { type ReactNode, useRef } from "react";
+import { DEFAULT_TEXT_SCALE, type TextScale } from "@/lib/text-scale";
 import { ConnectionIndicator } from "./ConnectionIndicator";
 import { BatteryStatus, HeaderClock } from "./StatusTray";
+import { UserMenu } from "./UserMenu";
 
 const HEADER_HEIGHT = 56;
 // バッテリー（アイコン 18px + 数値）を載せるため 36 → 40
@@ -72,6 +75,8 @@ type Props = {
   registered: boolean;
   /** ログイン中の利用者名（未ログインは null）。 */
   userName?: string | null;
+  /** 文字の大きさ（設定の窓の初期値。適用自体は layout が :root へ流す）。 */
+  textScale?: TextScale;
   children: ReactNode;
 };
 
@@ -79,6 +84,7 @@ export function KioskShell({
   deviceName,
   registered,
   userName = null,
+  textScale = DEFAULT_TEXT_SCALE,
   children,
 }: Props) {
   const version = process.env.NEXT_PUBLIC_APP_VERSION ?? "0.0.0";
@@ -130,12 +136,9 @@ export function KioskShell({
               未登録端末はまだ登録の話をしている段階なので出さない。 */}
           <Box style={{ minWidth: 0 }}>
             {currentUser ? (
-              <Group gap="xs" wrap="nowrap">
-                <IconUserCircle color="var(--mantine-color-blue-4)" size={26} />
-                <Text fw={600} maw={280} size="md" truncate>
-                  {currentUser}
-                </Text>
-              </Group>
+              // 押すと設定の窓（文字の大きさ・言語・ログアウト）。以前は
+              // ランチャー画面まで戻らないとログアウトも言語も触れなかった。
+              <UserMenu textScale={textScale} userName={currentUser} />
             ) : (
               registered && (
                 <Group gap="xs" wrap="nowrap">

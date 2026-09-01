@@ -13,6 +13,12 @@ export const ja = {
     stepExecution: "工程実行",
     woScan: "指示書スキャン",
   },
+  userMenu: {
+    title: "利用者",
+    textSize: "文字の大きさ",
+    language: "言語",
+    logout: "ログアウト",
+  },
   launcher: {
     greeting: (name: string) => `${name} さん`,
     logout: "ログアウト",
