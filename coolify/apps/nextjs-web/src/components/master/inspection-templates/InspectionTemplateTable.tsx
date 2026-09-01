@@ -22,6 +22,7 @@ import {
   IconCircleMinus,
   IconEdit,
   IconFileExport,
+  IconFolders,
   IconListCheck,
   IconSearch,
   IconTrash,
@@ -32,6 +33,7 @@ import {
   deleteInspectionTemplates,
   setInspectionTemplatesActive,
 } from "@/app/(dashboard)/master/inspection-templates/actions";
+import { InspectionTemplateGroupModal } from "@/components/master/inspection-templates/InspectionTemplateGroupModal";
 import { InspectionTemplateIoModal } from "@/components/master/inspection-templates/InspectionTemplateIoModal";
 import { ActiveBadge } from "@/components/ui/ActiveBadge";
 import { SecondaryButton } from "@/components/ui/buttons";
@@ -57,6 +59,9 @@ export interface InspectionTemplateRow {
   versionCount: number;
   name: string;
   relatedProcessStep: string; // 未設定は ""
+  productName: string; // 未設定（汎用）は ""
+  groupId: number | null;
+  groupName: string; // 未設定は ""
   itemCount: number;
   isActive: boolean;
 }
@@ -68,19 +73,24 @@ const STATUS_OPTIONS = [
 
 export function InspectionTemplateTable({
   rows,
+  groupOptions,
 }: {
   rows: InspectionTemplateRow[];
+  /** グループの絞り込み選択肢（有効グループのみ）。 */
+  groupOptions: { value: string; label: string }[];
 }) {
   const router = useRouter();
   const isMobile = useIsMobile();
   // 書き出し / 取込。選択があればその分だけを書き出す。
   const [ioOpen, setIoOpen] = useState(false);
   const [ioIds, setIoIds] = useState<number[]>([]);
+  const [groupModalOpen, setGroupModalOpen] = useState(false);
   const [, startTransition] = useTransition();
 
   // 検索・フィルタは URL search params に保持（design.md §8.1 / ページ共有）
   const [search, setSearch] = useUrlStringState("q");
   const [statusFilter, setStatusFilter] = useUrlSelectState("status");
+  const [groupFilter, setGroupFilter] = useUrlSelectState("group");
 
   const [deleteRow, setDeleteRow] =
     useState<InspectionTemplateModalTarget | null>(null);
@@ -90,6 +100,7 @@ export function InspectionTemplateTable({
   const reset = () => {
     setSearch(null);
     setStatusFilter(null);
+    setGroupFilter(null);
   };
 
   const filtered = rows.filter((r) => {
@@ -100,7 +111,12 @@ export function InspectionTemplateTable({
       r.relatedProcessStep.includes(search);
     const matchesStatus =
       !statusFilter || (statusFilter === "active" ? r.isActive : !r.isActive);
-    return matchesSearch && matchesStatus;
+    const matchesGroup =
+      !groupFilter ||
+      (groupFilter === "none"
+        ? r.groupId == null
+        : String(r.groupId) === groupFilter);
+    return matchesSearch && matchesStatus && matchesGroup;
   });
 
   const bulkSetActive = (
@@ -204,6 +220,31 @@ export function InspectionTemplateTable({
       render: (r) => r.relatedProcessStep || "—",
     },
     {
+      key: "productName",
+      header: "対象製品",
+      sortable: true,
+      hideable: true,
+      width: 180,
+      sortValue: (r) => r.productName,
+      render: (r) => r.productName || "汎用",
+    },
+    {
+      key: "groupName",
+      header: "グループ",
+      sortable: true,
+      hideable: true,
+      width: 160,
+      sortValue: (r) => r.groupName,
+      render: (r) =>
+        r.groupName ? (
+          <Badge color="gray" variant="light">
+            {r.groupName}
+          </Badge>
+        ) : (
+          "—"
+        ),
+    },
+    {
       key: "itemCount",
       header: "項目数",
       sortable: true,
@@ -227,6 +268,14 @@ export function InspectionTemplateTable({
     <ListShell
       action={
         <Group gap="xs" wrap="nowrap">
+          {/* グループ管理 — 判定・PDF に影響しないナビゲーション用の分類 */}
+          <SecondaryButton
+            leftSection={<IconFolders size={14} />}
+            onClick={() => setGroupModalOpen(true)}
+            style={{ flexShrink: 0 }}
+          >
+            {isMobile ? "グループ" : "グループ管理"}
+          </SecondaryButton>
           {/* 書き出し / 取込 — 環境をまたぐ持ち出しと、Excel で作った検査表の入口 */}
           <SecondaryButton
             leftSection={<IconFileExport size={14} />}
@@ -240,15 +289,26 @@ export function InspectionTemplateTable({
       }
       breadcrumbs={["マスタ", "検査表テンプレート"]}
       filters={
-        <Select
-          clearable
-          data={STATUS_OPTIONS}
-          onChange={setStatusFilter}
-          placeholder="状態"
-          style={isMobile ? { flex: 1 } : undefined}
-          value={statusFilter}
-          w={isMobile ? undefined : 120}
-        />
+        <Group gap="xs" wrap="wrap">
+          <Select
+            clearable
+            data={STATUS_OPTIONS}
+            onChange={setStatusFilter}
+            placeholder="状態"
+            style={isMobile ? { flex: 1 } : undefined}
+            value={statusFilter}
+            w={isMobile ? undefined : 120}
+          />
+          <Select
+            clearable
+            data={[...groupOptions, { value: "none", label: "グループなし" }]}
+            onChange={setGroupFilter}
+            placeholder="グループ"
+            style={isMobile ? { flex: 1 } : undefined}
+            value={groupFilter}
+            w={isMobile ? undefined : 160}
+          />
+        </Group>
       }
       onReset={reset}
       search={
@@ -319,6 +379,16 @@ export function InspectionTemplateTable({
                     {r.itemCount}項目
                   </Text>
                 </Group>
+                {r.groupName && (
+                  <Badge
+                    color="gray"
+                    size="xs"
+                    style={{ alignSelf: "flex-start" }}
+                    variant="light"
+                  >
+                    {r.groupName}
+                  </Badge>
+                )}
               </Stack>
               <ActiveBadge active={r.isActive} />
             </Group>
@@ -357,6 +427,10 @@ export function InspectionTemplateTable({
         onDone={() => router.refresh()}
         opened={!!toggleRow}
         target={toggleRow}
+      />
+      <InspectionTemplateGroupModal
+        onClose={() => setGroupModalOpen(false)}
+        opened={groupModalOpen}
       />
       <InspectionTemplateIoModal
         onClose={() => {

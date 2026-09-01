@@ -102,6 +102,16 @@
       color: #444;
       white-space: pre-wrap;
     }
+
+    /* ─── 参考画像（測定位置の図解・現物写真） ─── */
+    .ref-image { margin-bottom: 10px; }
+    .ref-image-title { font-weight: 600; font-size: 9.5pt; margin-bottom: 4px; }
+    .ref-image img {
+      max-width: 100%;
+      max-height: 220px;
+      border: 1px solid #ccc;
+      border-radius: 2px;
+    }
   </style>
 </head>
 <body>
@@ -135,6 +145,9 @@
       </table>
     </div>
   </div>
+
+  <!-- 参考画像（テンプレートに設定されている場合のみ） -->
+  {{template_image_html}}
 
   <!-- VALUES（実測値）: 旧帳票のグリッド。COUNTS（合格数のみ）テンプレートでは空 -->
   {{grid_html}}

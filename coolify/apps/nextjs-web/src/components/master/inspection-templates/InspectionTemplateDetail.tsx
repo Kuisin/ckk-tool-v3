@@ -63,6 +63,7 @@ import {
   samplingLabelJa,
 } from "@/lib/inspection-core";
 import type { ApproverOption } from "./ApprovalTargetField";
+import { InspectionTemplateImagePanel } from "./InspectionTemplateImagePanel";
 import {
   CreateVersionModal,
   DeleteInspectionTemplateItemModal,
@@ -91,6 +92,12 @@ export interface InspectionTemplateDetailData {
   nameJa: string;
   nameEn: string;
   relatedProcessStep: string; // 未設定は ""
+  /** 対象製品。未設定（汎用）は "" */
+  productName: string;
+  /** ナビゲーション用グループ。未設定は "" */
+  groupName: string;
+  /** 参考画像のファイル名。未設定は null（PDF にも印刷される）。 */
+  imageFilename: string | null;
   /** 検査対象・記録方式（シート単位）。 */
   samplingMode: "ALL" | "PERCENT" | "COUNT";
   samplingValue: number | null;
@@ -260,6 +267,17 @@ export function InspectionTemplateDetail({
         />
         <FieldValue label="名称" value={record.nameJa} />
         <FieldValue label="関連工程" value={record.relatedProcessStep || "—"} />
+        <FieldValue label="対象製品" value={record.productName || "汎用"} />
+        {record.groupName && (
+          <FieldValue
+            label="グループ"
+            value={
+              <Badge color="gray" variant="light">
+                {record.groupName}
+              </Badge>
+            }
+          />
+        )}
         <FieldValue
           label="検査対象"
           value={samplingLabelJa({
@@ -314,12 +332,22 @@ export function InspectionTemplateDetail({
         </Tabs.List>
 
         <Tabs.Panel pt="md" value="info">
-          <Stack gap="sm">
-            <FieldValue label="名称（日本語）" value={record.nameJa} />
-            <FieldValue label="名称（英語）" value={record.nameEn || "—"} />
-            <FieldValue
-              label="関連工程"
-              value={record.relatedProcessStep || "—"}
+          <Stack gap="md">
+            <Stack gap="sm">
+              <FieldValue label="名称（日本語）" value={record.nameJa} />
+              <FieldValue label="名称（英語）" value={record.nameEn || "—"} />
+              <FieldValue
+                label="関連工程"
+                value={record.relatedProcessStep || "—"}
+              />
+              <FieldValue
+                label="対象製品"
+                value={record.productName || "汎用"}
+              />
+            </Stack>
+            <InspectionTemplateImagePanel
+              filename={record.imageFilename}
+              templateId={record.id}
             />
           </Stack>
         </Tabs.Panel>

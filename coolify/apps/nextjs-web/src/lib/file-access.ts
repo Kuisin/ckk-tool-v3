@@ -36,6 +36,8 @@ export const APP_PREFIX_PERMISSIONS: { prefix: string; code: string }[] = [
   // 端末と同じ kiosk 権限で読める。
   { prefix: "display", code: "kiosk" },
   { prefix: "intake", code: "order_acceptance" },
+  // 検査表テンプレートの参考画像（測定位置の図解・写真）。
+  { prefix: "inspection-templates", code: "master" },
 ];
 
 function keyInPrefix(key: string, prefix: string): boolean {
