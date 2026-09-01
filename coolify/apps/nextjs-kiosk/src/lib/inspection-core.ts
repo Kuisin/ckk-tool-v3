@@ -480,7 +480,10 @@ export function sampleLabel(
   index: number,
   naming: InspectionSampleNaming,
 ): string {
-  if (naming === "INITIAL_MID_FINAL" && index < INITIAL_MID_FINAL_LABELS.length) {
+  if (
+    naming === "INITIAL_MID_FINAL" &&
+    index < INITIAL_MID_FINAL_LABELS.length
+  ) {
     return INITIAL_MID_FINAL_LABELS[index];
   }
   return `製品 ${index + 1}`;

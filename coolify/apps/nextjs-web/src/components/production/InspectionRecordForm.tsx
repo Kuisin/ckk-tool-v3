@@ -43,6 +43,7 @@ import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import {
   approveInspectionRecord,
+  confirmInspectionRecord,
   saveInspectionRecord,
 } from "@/app/(dashboard)/production/work-orders/[id]/steps/[stepId]/actions";
 import { useFormat } from "@/components/layout/PreferencesProvider";
@@ -65,6 +66,7 @@ import {
   isSampleEmpty,
   requiredSampleCount,
   resolveItemPass,
+  sampleLabel,
   samplingLabelJa,
 } from "@/lib/inspection-core";
 import type {
@@ -79,7 +81,16 @@ const BOOL_SEGMENT = [
 ];
 
 /** 既存の検査記録 1 件の読み取り専用表示。 */
-function RecordSummary({ record }: { record: InspectionRecordView }) {
+function RecordSummary({
+  record,
+  onConfirm,
+  confirming,
+}: {
+  record: InspectionRecordView;
+  /** 「検査表確認」ボタンを出す（未確認のときだけ）。省略時はボタンを出さない。 */
+  onConfirm?: () => void;
+  confirming?: boolean;
+}) {
   const fmt = useFormat();
   return (
     <Paper p="sm" radius="sm" withBorder>
@@ -100,6 +111,18 @@ function RecordSummary({ record }: { record: InspectionRecordView }) {
             承認: {fmt.dateTime(record.approvedAt)}
             {record.approvedByName ? `（${record.approvedByName}）` : ""}
           </Text>
+        )}
+        {record.confirmedAt ? (
+          <Text c="dimmed" size="xs">
+            検査表確認: {fmt.dateTime(record.confirmedAt)}
+            {record.confirmedByName ? `（${record.confirmedByName}）` : ""}
+          </Text>
+        ) : (
+          onConfirm && (
+            <GhostButton loading={confirming} onClick={onConfirm} size="xs">
+              検査表確認
+            </GhostButton>
+          )
         )}
         <Tooltip label="記入済み検査表を PDF で表示" withinPortal>
           <ActionIcon
@@ -149,14 +172,15 @@ function SampleInput({
   item,
   value,
   onChange,
-  productNo,
+  sampleName,
 }: {
   item: InspectionTemplateItemView;
   value: InspectionSampleValue;
   onChange: (v: InspectionSampleValue) => void;
-  productNo: number;
+  /** サンプルの見出し（inspection-core sampleLabel() の結果 — 製品N / 初品等）。 */
+  sampleName: string;
 }) {
-  const label = `${item.name} — 製品 ${productNo}`;
+  const label = `${item.name} — ${sampleName}`;
   switch (item.inputType) {
     case "BOOLEAN":
       return (
@@ -350,6 +374,31 @@ export function InspectionRecordForm({
     return required ?? 1 + (extraPages[template.id] ?? 0);
   };
 
+  const handleConfirm = (record: InspectionRecordView) => {
+    startTransition(async () => {
+      const result = await confirmInspectionRecord(
+        workOrderNumber,
+        stepId,
+        record.id,
+      );
+      if (result.ok) {
+        notifications.show({
+          title: "検査表確認を記録しました",
+          message: record.templateName,
+          color: "green",
+        });
+        router.refresh();
+      } else {
+        notifications.show({
+          title: "エラー",
+          message:
+            result.errors?.join(" / ") ?? "検査表確認の記録に失敗しました",
+          color: "red",
+        });
+      }
+    });
+  };
+
   const handleSave = (template: InspectionTemplateView) => {
     const style = template.recordStyle;
     const missing = template.items.filter((it) => {
@@ -442,7 +491,12 @@ export function InspectionRecordForm({
         {records.length > 0 && (
           <Stack gap="xs">
             {records.map((r) => (
-              <RecordSummary key={r.id} record={r} />
+              <RecordSummary
+                confirming={isPending}
+                key={r.id}
+                onConfirm={canRecord ? () => handleConfirm(r) : undefined}
+                record={r}
+              />
             ))}
           </Stack>
         )}
@@ -586,7 +640,8 @@ export function InspectionRecordForm({
                           </SecondaryButton>
                           <Group gap="xs" wrap="nowrap">
                             <Text className="tabular-nums" fw={600} size="sm">
-                              製品 {page + 1} / {pages}
+                              {sampleLabel(page, template.sampleNaming)} /{" "}
+                              {pages}
                             </Text>
                             {required == null && (
                               <GhostButton
@@ -646,7 +701,10 @@ export function InspectionRecordForm({
                                     onChange={(v) =>
                                       setSampleAt(template, item, page, v)
                                     }
-                                    productNo={page + 1}
+                                    sampleName={sampleLabel(
+                                      page,
+                                      template.sampleNaming,
+                                    )}
                                     value={value}
                                   />
                                   <Text
@@ -761,6 +819,31 @@ export function InspectionApprovalPanel({
     });
   };
 
+  const handleConfirm = (record: InspectionRecordView) => {
+    startTransition(async () => {
+      const result = await confirmInspectionRecord(
+        workOrderNumber,
+        stepId,
+        record.id,
+      );
+      if (result.ok) {
+        notifications.show({
+          title: "検査表確認を記録しました",
+          message: record.templateName,
+          color: "green",
+        });
+        router.refresh();
+      } else {
+        notifications.show({
+          title: "エラー",
+          message:
+            result.errors?.join(" / ") ?? "検査表確認の記録に失敗しました",
+          color: "red",
+        });
+      }
+    });
+  };
+
   return (
     <Paper p="md" radius="md" withBorder>
       <Stack gap="md">
@@ -774,7 +857,11 @@ export function InspectionApprovalPanel({
             {records.map((r) => (
               <Group align="stretch" gap="sm" key={r.id} wrap="nowrap">
                 <Stack gap={0} style={{ flex: 1, minWidth: 0 }}>
-                  <RecordSummary record={r} />
+                  <RecordSummary
+                    confirming={isPending}
+                    onConfirm={canApprove ? () => handleConfirm(r) : undefined}
+                    record={r}
+                  />
                 </Stack>
                 {canApprove && r.status === "PASS" && (
                   <ApproveButton

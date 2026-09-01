@@ -825,6 +825,7 @@ export async function fetchStepExecution(
   for (const rec of [...step.inspectionRecords, ...woRecordsRaw]) {
     if (rec.recordedBy) userIds.add(rec.recordedBy);
     if (rec.approvedBy) userIds.add(rec.approvedBy);
+    if (rec.confirmedBy) userIds.add(rec.confirmedBy);
   }
   for (const d of step.defectRecords) {
     if (d.recordedBy) userIds.add(d.recordedBy);
@@ -870,6 +871,8 @@ export async function fetchStepExecution(
     recordedByName: nameOf(rec.recordedBy),
     approvedAt: iso(rec.approvedAt),
     approvedByName: nameOf(rec.approvedBy),
+    confirmedAt: iso(rec.confirmedAt),
+    confirmedByName: nameOf(rec.confirmedBy),
     items: rec.items.map((it) => ({
       templateItemId: it.templateItemId,
       itemName: localized(it.templateItem.itemName as LocalizedText | null),
@@ -886,6 +889,7 @@ export async function fetchStepExecution(
       version: t.inspectionTemplate.version,
       name: localized(t.inspectionTemplate.name as LocalizedText | null),
       relatedProcessStepId: t.inspectionTemplate.relatedProcessStepId,
+      sampleNaming: t.inspectionTemplate.sampleNaming,
       ...samplingSpecFromRow(t.inspectionTemplate),
       items: t.inspectionTemplate.items.map((it) => ({
         name: localized(it.itemName as LocalizedText | null),
