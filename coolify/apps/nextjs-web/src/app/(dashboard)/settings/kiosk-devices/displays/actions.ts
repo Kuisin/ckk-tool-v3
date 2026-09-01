@@ -9,8 +9,14 @@
  *   覚えることを増やさないため。関数名と引数も kiosk-devices/actions.ts の
  *   対応する操作にそろえてある。
  *
+ * **何を映すかは画面ごとに持つ。** 以前は「表示内容」を別レコードとして作って
+ * から画面に結びつけていたが、掲示板は 1 枚ずつ違うもの（この壁は生産状況、
+ * あの壁は出荷予定）を映すので、共有される表示内容はほぼ生まれなかった。
+ * 結果、1 枚増やすたびに「表示内容を作る → 画面を作る → 結ぶ」の 3 手順を
+ * 踏むことになっていた。いまは画面の設定として直接編集する。
+ *
  * 権限の分け方（端末と同じ）:
- *   一覧・詳細・名称や設置場所の変更・表示内容の切替 … 素の `kiosk`
+ *   一覧・詳細・名称や設置場所の変更・表示内容の変更 … 素の `kiosk`
  *   リンク・有効化・リンク解除・失効                … 特権操作 `kiosk_device`
  *
  * 変更は必ず対象の画面へ合図を送る（lib/display-events.ts）。合図が落ちても
@@ -27,7 +33,6 @@ import { DISPLAY_CONTENT_SCHEMAS } from "@/lib/display-content";
 import {
   notifyDisplayConfigChanged,
   notifyDisplayRevoked,
-  notifyProfileChanged,
 } from "@/lib/display-events";
 import { mintMonitorToken } from "@/lib/kiosk-ws-token";
 import { useElevation } from "@/lib/privileged-access";
@@ -43,10 +48,30 @@ const BASE_PATH = "/settings/kiosk-devices";
 
 function revalidate() {
   revalidatePath(BASE_PATH);
-  revalidatePath(`${BASE_PATH}/displays/profiles`);
 }
 
 const uuidSchema = z.string().uuid();
+
+const CONTENT_TYPES = ["APP_PAGE", "METABASE", "URL", "IMAGE"] as const;
+
+/**
+ * 種別に応じた content_config の検証。**保存と配信の両方でここを通す。**
+ * 種別ごとに形が違う JSON なので DB では守れない。
+ */
+function validateConfig(
+  contentType: (typeof CONTENT_TYPES)[number],
+  config: unknown,
+): { ok: true; value: unknown } | { ok: false; error: string } {
+  const schema = DISPLAY_CONTENT_SCHEMAS[contentType];
+  const parsed = schema.safeParse(config ?? {});
+  if (!parsed.success) {
+    return {
+      ok: false,
+      error: parsed.error.issues[0]?.message ?? "表示内容の設定が不正です",
+    };
+  }
+  return { ok: true, value: parsed.data };
+}
 
 /** リンクコードの桁数。キオスク端末と同じ 12 桁（スキャナを 1 つに保つため）。 */
 const LINK_CODE_LENGTH = 12;
@@ -100,7 +125,14 @@ const createSchema = z.object({
   nameEn: z.string().trim().optional(),
   location: z.string().trim().optional(),
   plantId: z.number().int().positive().nullable().optional(),
-  profileId: z.string().uuid().nullable().optional(),
+  /**
+   * 何を映すか。**省略できる** — 省略すると DB の既定（生産状況）が入る。
+   * 「作ってすぐ何か映る」ようにしておくのは、設置の日に表示内容まで
+   * 決まっていないことが普通にあるため。真っ黒な画面を作らない。
+   */
+  contentType: z.enum(CONTENT_TYPES).optional(),
+  contentConfig: z.unknown().optional(),
+  refreshIntervalSec: z.number().int().min(0).max(86_400).optional(),
 });
 
 /**
@@ -112,7 +144,9 @@ export async function createDisplayDevice(raw: {
   nameEn?: string;
   location?: string;
   plantId?: number | null;
-  profileId?: string | null;
+  contentType?: (typeof CONTENT_TYPES)[number];
+  contentConfig?: unknown;
+  refreshIntervalSec?: number;
 }): Promise<ActionResult<{ id: string }>> {
   const authz = await checkPermission("kiosk", "CREATE");
   if (!authz.ok) return actionError(authz.error);
@@ -120,7 +154,23 @@ export async function createDisplayDevice(raw: {
   if (!parsed.success) {
     return actionError(parsed.error.issues[0]?.message ?? "入力が不正です");
   }
-  const { nameJa, nameEn, location, plantId, profileId } = parsed.data;
+  const {
+    nameJa,
+    nameEn,
+    location,
+    plantId,
+    contentType,
+    contentConfig,
+    refreshIntervalSec,
+  } = parsed.data;
+
+  // 表示内容は「渡されたときだけ」検証して入れる。渡さなければ DB の既定。
+  let content: object = {};
+  if (contentType) {
+    const config = validateConfig(contentType, contentConfig);
+    if (!config.ok) return actionError(config.error);
+    content = { contentType, contentConfig: config.value as object };
+  }
 
   try {
     const created = await prisma.displayDevice.create({
@@ -128,8 +178,9 @@ export async function createDisplayDevice(raw: {
         name: localizedInput(nameJa, nameEn),
         location: location || null,
         plantId: plantId ?? null,
-        displayProfileId: profileId ?? null,
         status: "PENDING",
+        ...content,
+        ...(refreshIntervalSec === undefined ? {} : { refreshIntervalSec }),
       },
       select: { id: true },
     });
@@ -137,7 +188,12 @@ export async function createDisplayDevice(raw: {
       action: "CREATE",
       tableName: "display_devices",
       recordId: created.id,
-      after: { name: nameJa, location: location || null, status: "PENDING" },
+      after: {
+        name: nameJa,
+        location: location || null,
+        status: "PENDING",
+        ...content,
+      },
     });
     revalidate();
     return actionOk({ id: created.id });
@@ -293,7 +349,9 @@ export async function updateDisplay(raw: {
   nameEn?: string;
   location?: string;
   plantId?: number | null;
-  profileId?: string | null;
+  contentType?: (typeof CONTENT_TYPES)[number];
+  contentConfig?: unknown;
+  refreshIntervalSec?: number;
   scalePercent?: number;
 }): Promise<ActionResult> {
   const authz = await checkPermission("kiosk", "UPDATE");
@@ -302,8 +360,25 @@ export async function updateDisplay(raw: {
   if (!parsed.success) {
     return actionError(parsed.error.issues[0]?.message ?? "入力が不正です");
   }
-  const { id, nameJa, nameEn, location, plantId, profileId, scalePercent } =
-    parsed.data;
+  const {
+    id,
+    nameJa,
+    nameEn,
+    location,
+    plantId,
+    contentType,
+    contentConfig,
+    refreshIntervalSec,
+    scalePercent,
+  } = parsed.data;
+
+  // 名前だけ直す画面からも呼ばれるので、渡された項目だけを触る。
+  let content: object = {};
+  if (contentType) {
+    const config = validateConfig(contentType, contentConfig);
+    if (!config.ok) return actionError(config.error);
+    content = { contentType, contentConfig: config.value as object };
+  }
 
   try {
     const before = await prisma.displayDevice.findUnique({
@@ -312,7 +387,9 @@ export async function updateDisplay(raw: {
         name: true,
         location: true,
         plantId: true,
-        displayProfileId: true,
+        contentType: true,
+        contentConfig: true,
+        refreshIntervalSec: true,
         scalePercent: true,
       },
     });
@@ -324,7 +401,8 @@ export async function updateDisplay(raw: {
         name: localizedInput(nameJa, nameEn),
         location: location || null,
         plantId: plantId ?? null,
-        displayProfileId: profileId ?? null,
+        ...content,
+        ...(refreshIntervalSec === undefined ? {} : { refreshIntervalSec }),
         ...(scalePercent === undefined ? {} : { scalePercent }),
       },
     });
@@ -337,17 +415,22 @@ export async function updateDisplay(raw: {
         name: nameJa,
         location: location || null,
         plantId: plantId ?? null,
-        displayProfileId: profileId ?? null,
+        ...content,
+        refreshIntervalSec: refreshIntervalSec ?? before.refreshIntervalSec,
         scalePercent: scalePercent ?? before.scalePercent,
       },
     });
-    // 表示内容か倍率が変わったなら、その場で画面へ反映する
-    if (
-      before.displayProfileId !== (profileId ?? null) ||
-      (scalePercent !== undefined && scalePercent !== before.scalePercent)
-    ) {
-      await notifyDisplayConfigChanged(id);
-    }
+    // 映るものが変わったなら、その場で画面へ反映する（待たせない）
+    const contentChanged =
+      (contentType !== undefined && contentType !== before.contentType) ||
+      (contentType !== undefined &&
+        JSON.stringify(
+          (content as { contentConfig?: unknown }).contentConfig,
+        ) !== JSON.stringify(before.contentConfig)) ||
+      (refreshIntervalSec !== undefined &&
+        refreshIntervalSec !== before.refreshIntervalSec) ||
+      (scalePercent !== undefined && scalePercent !== before.scalePercent);
+    if (contentChanged) await notifyDisplayConfigChanged(id);
     revalidate();
     return actionOk();
   } catch (e) {
@@ -517,141 +600,6 @@ export async function deleteDisplay(id: string): Promise<ActionResult> {
     await recordAudit({
       action: "DELETE",
       tableName: "display_devices",
-      recordId: id,
-      before,
-    });
-    revalidate();
-    return actionOk();
-  } catch (e) {
-    return actionError(prismaErrorMessage(e, "削除に失敗しました"));
-  }
-}
-
-// ── 表示内容（何を映すか） ──────────────────────────────────────────────────
-
-const CONTENT_TYPES = ["APP_PAGE", "METABASE", "URL", "IMAGE"] as const;
-
-const profileSchema = z.object({
-  id: z.string().uuid().optional(),
-  nameJa: z.string().trim().min(1, "名前を入力してください"),
-  nameEn: z.string().trim().optional(),
-  description: z.string().trim().optional(),
-  contentType: z.enum(CONTENT_TYPES),
-  /** 種別ごとに形が違うので、ここでは受け取るだけ。検証は下の 1 か所で行う。 */
-  contentConfig: z.unknown(),
-  refreshIntervalSec: z.number().int().min(0).max(86_400),
-  isEnabled: z.boolean(),
-});
-
-export type ProfileInput = z.input<typeof profileSchema>;
-
-/** 種別に応じた content_config の検証。**保存と配信の両方でここを通す。** */
-function validateConfig(
-  contentType: (typeof CONTENT_TYPES)[number],
-  config: unknown,
-): { ok: true; value: unknown } | { ok: false; error: string } {
-  const schema = DISPLAY_CONTENT_SCHEMAS[contentType];
-  const parsed = schema.safeParse(config ?? {});
-  if (!parsed.success) {
-    return {
-      ok: false,
-      error: parsed.error.issues[0]?.message ?? "表示内容の設定が不正です",
-    };
-  }
-  return { ok: true, value: parsed.data };
-}
-
-export async function saveDisplayProfile(
-  raw: ProfileInput,
-): Promise<ActionResult<{ id: string }>> {
-  const authz = await checkPermission("kiosk", "UPDATE");
-  if (!authz.ok) return actionError(authz.error);
-  const parsed = profileSchema.safeParse(raw);
-  if (!parsed.success) {
-    return actionError(parsed.error.issues[0]?.message ?? "入力が不正です");
-  }
-  const v = parsed.data;
-  const config = validateConfig(v.contentType, v.contentConfig);
-  if (!config.ok) return actionError(config.error);
-
-  try {
-    const data = {
-      name: localizedInput(v.nameJa, v.nameEn),
-      description: v.description || null,
-      contentType: v.contentType,
-      contentConfig: config.value as object,
-      refreshIntervalSec: v.refreshIntervalSec,
-      isEnabled: v.isEnabled,
-    };
-
-    if (v.id) {
-      const before = await prisma.displayProfile.findUnique({
-        where: { id: v.id },
-        select: {
-          name: true,
-          contentType: true,
-          contentConfig: true,
-          refreshIntervalSec: true,
-          isEnabled: true,
-        },
-      });
-      if (!before) return actionError("対象の表示内容が見つかりません");
-      await prisma.displayProfile.update({ where: { id: v.id }, data });
-      await recordAudit({
-        action: "UPDATE",
-        tableName: "display_profiles",
-        recordId: v.id,
-        before,
-        after: { ...data, name: v.nameJa },
-      });
-      // これを使っている画面すべてを切り替える
-      await notifyProfileChanged(v.id);
-      revalidate();
-      return actionOk({ id: v.id });
-    }
-
-    const created = await prisma.displayProfile.create({
-      data,
-      select: { id: true },
-    });
-    await recordAudit({
-      action: "CREATE",
-      tableName: "display_profiles",
-      recordId: created.id,
-      after: { ...data, name: v.nameJa },
-    });
-    revalidate();
-    return actionOk({ id: created.id });
-  } catch (e) {
-    return actionError(prismaErrorMessage(e, "保存に失敗しました"));
-  }
-}
-
-/** 使っている画面が無いときだけ消せる（黒画面を作らない）。 */
-export async function deleteDisplayProfile(id: string): Promise<ActionResult> {
-  const authz = await checkPermission("kiosk", "UPDATE");
-  if (!authz.ok) return actionError(authz.error);
-  if (!uuidSchema.safeParse(id).success) return actionError("入力が不正です");
-
-  try {
-    const inUse = await prisma.displayDevice.count({
-      where: { displayProfileId: id },
-    });
-    if (inUse > 0) {
-      return actionError(
-        `${inUse} 台のディスプレイが使用中です。先に割り当てを変更してください`,
-      );
-    }
-    const before = await prisma.displayProfile.findUnique({
-      where: { id },
-      select: { name: true, contentType: true },
-    });
-    if (!before) return actionError("対象の表示内容が見つかりません");
-
-    await prisma.displayProfile.delete({ where: { id } });
-    await recordAudit({
-      action: "DELETE",
-      tableName: "display_profiles",
       recordId: id,
       before,
     });

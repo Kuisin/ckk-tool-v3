@@ -13,6 +13,7 @@ import "server-only";
  */
 
 import { prisma } from "./db";
+import { findDisplayTemplate } from "./display-templates";
 import { localized } from "./format";
 
 /** WS 未接続でも直近この時間内に生存していればオンライン扱い。 */
@@ -33,8 +34,12 @@ export interface DisplayRow {
   location: string | null;
   plantId: number | null;
   plantName: string | null;
-  profileId: string | null;
-  profileName: string | null;
+  /** 何を映すか。**画面ごとに持つ** — 共有の「表示内容」レコードは無い。 */
+  contentType: DisplayContentType;
+  contentConfig: unknown;
+  /** 一覧に出す 1 行の要約（「生産状況 / 本社工場」など）。 */
+  contentLabel: string;
+  refreshIntervalSec: number;
   status: DisplayStatus;
   /** 表示倍率（%）。画面の大きさに合わせる微調整。 */
   scalePercent: number;
@@ -57,20 +62,6 @@ export interface DisplayDetail extends DisplayRow {
   activatedByName: string | null;
 }
 
-export interface DisplayProfileRow {
-  id: string;
-  name: string | null;
-  nameJson: { ja?: string; en?: string } | null;
-  description: string | null;
-  contentType: DisplayContentType;
-  contentConfig: unknown;
-  refreshIntervalSec: number;
-  isEnabled: boolean;
-  /** この表示内容を使っている画面の数（削除の可否判断に使う）。 */
-  deviceCount: number;
-  updatedAt: Date;
-}
-
 function jsonName(value: unknown): {
   text: string | null;
   json: { ja?: string; en?: string } | null;
@@ -81,6 +72,27 @@ function jsonName(value: unknown): {
   const json = value as { ja?: string; en?: string };
   const text = localized(json as never);
   return { text: text === "—" ? null : text, json };
+}
+
+/**
+ * 一覧の「表示内容」列に出す 1 行。
+ *
+ * 何を映しているかは JSON なので、そのまま出しても読めない。**一覧で
+ * 知りたいのは「どの画面か」だけ**なので、テンプレート名（か種別名）に
+ * 落とす。設定の中身は詳細で見る。
+ */
+function describeContent(type: string, config: unknown): string {
+  if (type === "APP_PAGE") {
+    const page = (config as { page?: unknown } | null)?.page;
+    return (
+      findDisplayTemplate(typeof page === "string" ? page : null)?.label ??
+      "（画面が未選択）"
+    );
+  }
+  if (type === "METABASE") return "Metabase ダッシュボード";
+  if (type === "URL") return "外部ページ";
+  if (type === "IMAGE") return "画像";
+  return "—";
 }
 
 function onlineAt(now: number, lastSeenAt: Date | null): boolean {
@@ -104,8 +116,10 @@ export async function listDisplays(): Promise<DisplayRow[]> {
       appVersion: true,
       linkedAt: true,
       createdAt: true,
+      contentType: true,
+      contentConfig: true,
+      refreshIntervalSec: true,
       plant: { select: { name: true } },
-      profile: { select: { id: true, name: true } },
     },
   });
   const now = Date.now();
@@ -118,8 +132,10 @@ export async function listDisplays(): Promise<DisplayRow[]> {
       location: r.location,
       plantId: r.plantId,
       plantName: jsonName(r.plant?.name).text,
-      profileId: r.profile?.id ?? null,
-      profileName: jsonName(r.profile?.name).text,
+      contentType: r.contentType as DisplayContentType,
+      contentConfig: r.contentConfig,
+      contentLabel: describeContent(r.contentType, r.contentConfig),
+      refreshIntervalSec: r.refreshIntervalSec,
       status: r.status as DisplayStatus,
       scalePercent: r.scalePercent,
       machineId: r.machineId,
@@ -155,8 +171,10 @@ export async function getDisplayDetail(
       linkedAt: true,
       activatedAt: true,
       createdAt: true,
+      contentType: true,
+      contentConfig: true,
+      refreshIntervalSec: true,
       plant: { select: { name: true } },
-      profile: { select: { id: true, name: true } },
       activatedBy: { select: { displayName: true } },
     },
   });
@@ -169,8 +187,10 @@ export async function getDisplayDetail(
     location: r.location,
     plantId: r.plantId,
     plantName: jsonName(r.plant?.name).text,
-    profileId: r.profile?.id ?? null,
-    profileName: jsonName(r.profile?.name).text,
+    contentType: r.contentType as DisplayContentType,
+    contentConfig: r.contentConfig,
+    contentLabel: describeContent(r.contentType, r.contentConfig),
+    refreshIntervalSec: r.refreshIntervalSec,
     status: r.status as DisplayStatus,
     scalePercent: r.scalePercent,
     machineId: r.machineId,
@@ -186,54 +206,6 @@ export async function getDisplayDetail(
     activatedAt: r.activatedAt,
     activatedByName: r.activatedBy?.displayName ?? null,
   };
-}
-
-export async function listDisplayProfiles(): Promise<DisplayProfileRow[]> {
-  const rows = await prisma.displayProfile.findMany({
-    orderBy: { createdAt: "asc" },
-    select: {
-      id: true,
-      name: true,
-      description: true,
-      contentType: true,
-      contentConfig: true,
-      refreshIntervalSec: true,
-      isEnabled: true,
-      updatedAt: true,
-      _count: { select: { devices: true } },
-    },
-  });
-  return rows.map((r) => {
-    const name = jsonName(r.name);
-    return {
-      id: r.id,
-      name: name.text,
-      nameJson: name.json,
-      description: r.description,
-      contentType: r.contentType as DisplayContentType,
-      contentConfig: r.contentConfig,
-      refreshIntervalSec: r.refreshIntervalSec,
-      isEnabled: r.isEnabled,
-      deviceCount: r._count.devices,
-      updatedAt: r.updatedAt,
-    };
-  });
-}
-
-/** ペアリング画面の選択肢（有効なものだけ出す）。 */
-export async function listPairableProfiles(): Promise<
-  Array<{ id: string; name: string; contentType: DisplayContentType }>
-> {
-  const rows = await prisma.displayProfile.findMany({
-    where: { isEnabled: true },
-    orderBy: { createdAt: "asc" },
-    select: { id: true, name: true, contentType: true },
-  });
-  return rows.map((r) => ({
-    id: r.id,
-    name: jsonName(r.name).text ?? "（名称未設定）",
-    contentType: r.contentType as DisplayContentType,
-  }));
 }
 
 /** 拠点の選択肢。 */

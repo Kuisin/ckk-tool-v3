@@ -10,24 +10,17 @@
  * 4. 管理者が有効化 → 30日デバイストークン取得 → /login（フルリロード）
  *
  * Cookie 消失時は localStorage の deviceId で reactivate を先に試す。
+ *
+ * **見た目は components/LinkCodeScreen.tsx をディスプレイ（/display）と共用する。**
+ * 手順が同じものは画面も同じにする — 別々だと直したつもりで片方だけ直る。
+ * こちらは手に持つので variant="handheld"。
  */
 
-import {
-  Alert,
-  Box,
-  Button,
-  Center,
-  Flex,
-  Loader,
-  Paper,
-  Stack,
-  Text,
-  Title,
-} from "@mantine/core";
-import { IconRefresh } from "@tabler/icons-react";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { formatCode } from "@/lib/crockford";
-import { qrSvg } from "@/lib/qr";
+import {
+  type LinkCodePhase,
+  LinkCodeScreen,
+} from "@/components/LinkCodeScreen";
 
 const DEVICE_ID_KEY = "kiosk_device_id";
 const POLL_INTERVAL_MS = 3000;
@@ -172,112 +165,29 @@ export default function SetupPage() {
     return () => clearInterval(poll);
   }, [state, begin]);
 
+  // 共有部品が読む形へ。linked の文面だけここで組み立てる。
+  const view: LinkCodePhase =
+    state.phase === "linked"
+      ? {
+          phase: "linked",
+          message: (
+            <>
+              {`リンクしました${state.deviceName ? `: ${state.deviceName}` : ""}。管理者がこのプロファイルを`}
+              <b>有効化</b>
+              {"すると利用を開始できます。"}
+            </>
+          ),
+        }
+      : state;
+
   return (
-    <Center p="md" style={{ flex: 1, overflow: "hidden" }}>
-      <Paper
-        maw={state.phase === "showing" ? 880 : 520}
-        p="xl"
-        radius="md"
-        w="100%"
-        withBorder
-      >
-        <Stack align="center" gap="md">
-          {state.phase !== "showing" && <Title order={2}>端末リンク</Title>}
-
-          {state.phase === "loading" && <Loader size="lg" />}
-
-          {/* タブレット横向きでスクロールなしに収まるよう、QR 左 + 情報右の
-              2 カラム（縦向き・狭幅は従来どおり縦積み） */}
-          {state.phase === "showing" && (
-            <Flex
-              align="center"
-              direction={{ base: "column", sm: "row" }}
-              gap="xl"
-              justify="center"
-              w="100%"
-            >
-              <Box
-                bg="white"
-                className="kiosk-qr"
-                // biome-ignore lint/security/noDangerouslySetInnerHtml: 自前生成の静的 SVG（lib/qr.ts）
-                dangerouslySetInnerHTML={{
-                  __html: qrSvg(formatCode(state.code)),
-                }}
-                p="md"
-                style={{
-                  borderRadius: "var(--mantine-radius-md)",
-                  flexShrink: 0,
-                  // 高さの低い画面でもはみ出さない（下限 220px・上限 340px）
-                  width: "clamp(220px, calc(100dvh - 400px), 340px)",
-                }}
-              />
-              <Stack align="center" gap="sm" maw={420}>
-                <Title order={2}>端末リンク</Title>
-                <Text c="dimmed" size="sm" ta="center">
-                  {
-                    "管理者に「設定 → 端末管理」でこのコードをスキャンまたは入力してもらい、端末プロファイルへリンクしてください。"
-                  }
-                </Text>
-                <Stack align="center" gap={4}>
-                  <Text c="dimmed" size="xs">
-                    リンクコード
-                  </Text>
-                  <Text ff="monospace" fw={700} style={{ fontSize: 30 }}>
-                    {formatCode(state.code)}
-                  </Text>
-                </Stack>
-                <Text c="dimmed" size="sm">
-                  有効期限: {(() => {
-                    const remain = Math.max(0, state.expiresAt - now);
-                    const m = Math.floor(remain / 60_000);
-                    const s = Math.floor((remain % 60_000) / 1000);
-                    return `${m}:${String(s).padStart(2, "0")}`;
-                  })()}
-                </Text>
-                <Text c="blue" size="sm">
-                  ● リンクを待っています…
-                </Text>
-              </Stack>
-            </Flex>
-          )}
-
-          {state.phase === "linked" && (
-            <>
-              <Alert color="blue" w="100%">
-                {`リンクしました${state.deviceName ? `: ${state.deviceName}` : ""}。管理者がこのプロファイルを`}
-                <b>有効化</b>
-                {"すると利用を開始できます。"}
-              </Alert>
-              <Loader size="sm" />
-              <Text c="dimmed" size="sm">
-                ● 有効化を待っています…
-              </Text>
-            </>
-          )}
-
-          {state.phase === "expired" && (
-            <>
-              <Alert color="orange" w="100%">
-                リンクコードの有効期限が切れました。
-              </Alert>
-              <Button leftSection={<IconRefresh size={20} />} onClick={begin}>
-                新しいコードを発行
-              </Button>
-            </>
-          )}
-
-          {state.phase === "error" && (
-            <>
-              <Alert color="red" w="100%">
-                {state.message}
-              </Alert>
-              <Button leftSection={<IconRefresh size={20} />} onClick={begin}>
-                再試行
-              </Button>
-            </>
-          )}
-        </Stack>
-      </Paper>
-    </Center>
+    <LinkCodeScreen
+      instruction="管理者に「設定 → 端末管理」でこのコードをスキャンまたは入力してもらい、端末プロファイルへリンクしてください。"
+      now={now}
+      onRetry={begin}
+      state={view}
+      title="端末リンク"
+      variant="handheld"
+    />
   );
 }

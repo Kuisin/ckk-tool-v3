@@ -4,8 +4,11 @@
  * DisplayDetailView — ディスプレイ 1 台の詳細。
  *
  * 「いま何を映していて、生きているか」を上に、素性と履歴を下に。
- * 表示内容の切替はここが主戦場なので、保存を押した瞬間に壁の画面が
- * 変わる（サーバーアクションが合図を送る）。
+ * **何を映すかはこの画面だけが決める**（共有の「表示内容」レコードは無い）。
+ * 保存を押した瞬間に壁の画面が変わる（サーバーアクションが合図を送る）。
+ *
+ * 表示内容タブは EditablePanel（design.md §10.10）— 既定は閲覧で、押して
+ * 編集に入る。読みに来ただけの人に編集フォームを開いて見せない。
  */
 
 import {
@@ -37,6 +40,7 @@ import {
 import { useFormat } from "@/components/layout/PreferencesProvider";
 import { AppTabs } from "@/components/ui/AppTabs";
 import { DangerButton, SecondaryButton } from "@/components/ui/buttons";
+import { EditablePanel } from "@/components/ui/EditablePanel";
 import { FieldValue } from "@/components/ui/FieldValue";
 import { PageHeader } from "@/components/ui/PageHeader";
 import {
@@ -46,6 +50,10 @@ import {
   SummaryGrid,
 } from "@/components/ui/shells";
 import type { DisplayDetail } from "@/lib/displays-admin";
+import {
+  DisplayContentEditor,
+  DisplayContentView,
+} from "./DisplayContentEditor";
 import { useDisplayPresence } from "./useDisplayPresence";
 
 const STATUS_LABEL: Record<string, { label: string; color: string }> = {
@@ -58,17 +66,11 @@ const STATUS_LABEL: Record<string, { label: string; color: string }> = {
 
 type Props = {
   display: DisplayDetail;
-  profiles: Array<{ id: string; name: string }>;
   plantOptions: Array<{ value: string; label: string }>;
   audit: AuditEntry[];
 };
 
-export function DisplayDetailView({
-  display,
-  profiles,
-  plantOptions,
-  audit,
-}: Props) {
+export function DisplayDetailView({ display, plantOptions, audit }: Props) {
   const router = useRouter();
   const fmt = useFormat();
   const { presence, live } = useDisplayPresence();
@@ -81,7 +83,6 @@ export function DisplayDetailView({
   const [plantId, setPlantId] = useState<string | null>(
     display.plantId ? String(display.plantId) : null,
   );
-  const [profileId, setProfileId] = useState<string | null>(display.profileId);
   const [scalePercent, setScalePercent] = useState(display.scalePercent);
 
   const online =
@@ -119,7 +120,6 @@ export function DisplayDetailView({
           nameJa,
           location,
           plantId: plantId ? Number(plantId) : null,
-          profileId,
           scalePercent,
         }),
       "保存しました",
@@ -259,10 +259,7 @@ export function DisplayDetailView({
           />
           <FieldValue label="拠点" value={display.plantName ?? "—"} />
           <FieldValue label="設置場所" value={display.location ?? "—"} />
-          <FieldValue
-            label="表示内容"
-            value={display.profileName ?? "未割当"}
-          />
+          <FieldValue label="表示内容" value={display.contentLabel} />
           <FieldValue
             label="リンク"
             value={display.linkedAt ? fmt.dateTime(display.linkedAt) : "—"}
@@ -290,14 +287,38 @@ export function DisplayDetailView({
         </SummaryGrid>
       </Paper>
 
-      <AppTabs defaultValue="settings">
+      <AppTabs defaultValue="content">
         <Tabs.List>
+          <Tabs.Tab value="content">表示内容</Tabs.Tab>
           <Tabs.Tab value="settings">設定</Tabs.Tab>
           <Tabs.Tab value="device">端末情報</Tabs.Tab>
           <Tabs.Tab value="history">履歴</Tabs.Tab>
         </Tabs.List>
 
-        <Tabs.Panel pt="md" value="settings">
+        <Tabs.Panel pt="md" value="content">
+          <Paper p="md" radius="md" withBorder>
+            <EditablePanel
+              canEdit={display.status !== "REVOKED"}
+              description="保存すると、この画面の表示がその場で切り替わります。"
+              edit={({ close }) => (
+                <DisplayContentEditor
+                  display={display}
+                  onDone={close}
+                  plantOptions={plantOptions}
+                />
+              )}
+              title="映すもの"
+              view={
+                <DisplayContentView
+                  display={display}
+                  plantOptions={plantOptions}
+                />
+              }
+            />
+          </Paper>
+        </Tabs.Panel>
+
+        <Tabs.Panel keepMounted={false} pt="md" value="settings">
           <Paper p="md" radius="md" withBorder>
             <Stack gap="md">
               <Title order={5}>この画面の設定</Title>
@@ -321,17 +342,6 @@ export function DisplayDetailView({
                 searchable
                 value={plantId}
               />
-              <Select
-                clearable
-                data={profiles.map((p) => ({ value: p.id, label: p.name }))}
-                description="保存すると、この画面の表示がその場で切り替わります"
-                label="表示内容"
-                onChange={setProfileId}
-                placeholder="選択してください"
-                searchable
-                value={profileId}
-              />
-
               <ScaleField onChange={setScalePercent} value={scalePercent} />
               <FormActions
                 loading={pending}

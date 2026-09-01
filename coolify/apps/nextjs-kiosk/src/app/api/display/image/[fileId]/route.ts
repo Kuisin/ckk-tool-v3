@@ -32,20 +32,15 @@ export async function GET(
 
   const { fileId } = await params;
 
-  // 「この画面に割り当てられた画像か」を必ず確かめる
+  // 「この画面に設定された画像か」を必ず確かめる
   const device = await prisma.displayDevice.findUnique({
     where: { id: auth.display.id },
-    select: {
-      profile: {
-        select: { contentType: true, contentConfig: true, isEnabled: true },
-      },
-    },
+    select: { contentType: true, contentConfig: true },
   });
-  const profile = device?.profile;
-  if (!profile || !profile.isEnabled || profile.contentType !== "IMAGE") {
+  if (!device || device.contentType !== "IMAGE") {
     return NextResponse.json({ error: "not_found" }, { status: 404 });
   }
-  const parsed = imageConfigSchema.safeParse(profile.contentConfig ?? {});
+  const parsed = imageConfigSchema.safeParse(device.contentConfig ?? {});
   if (!parsed.success || parsed.data.fileId !== fileId) {
     return NextResponse.json({ error: "not_found" }, { status: 404 });
   }

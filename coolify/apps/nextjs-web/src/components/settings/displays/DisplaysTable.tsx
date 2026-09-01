@@ -9,6 +9,10 @@
  *
  * オンライン判定はサーバー計算の初期値から始め、WS / ポーリングが繋がったら
  * そちらで上書きする（useDisplayPresence）。
+ *
+ * **リンクは QR で読める**（共有端末と同じ LinkQrScanner を使う）。以前は
+ * ここだけ手入力しか無く、脚立の上のテレビに出た 12 桁を読み上げてもらう
+ * ことになっていた。どちらの機器も裸の 12 桁を出すので、スキャナは 1 つで足りる。
  */
 
 import {
@@ -34,7 +38,9 @@ import { useFormat } from "@/components/layout/PreferencesProvider";
 import { PrimaryButton, SecondaryButton } from "@/components/ui/buttons";
 import { ListShell } from "@/components/ui/shells";
 import { formatCode, normalizeCode } from "@/lib/crockford";
+import { DISPLAY_TEMPLATES } from "@/lib/display-templates";
 import type { DisplayRow } from "@/lib/displays-admin";
+import { LinkQrScanner } from "../kiosk/LinkQrScanner";
 import {
   type DisplayPresenceEntry,
   useDisplayPresence,
@@ -61,11 +67,10 @@ export function resolveOnline(
 
 type Props = {
   rows: DisplayRow[];
-  profiles: Array<{ id: string; name: string }>;
   plantOptions: Array<{ value: string; label: string }>;
 };
 
-export function DisplaysTable({ rows, profiles, plantOptions }: Props) {
+export function DisplaysTable({ rows, plantOptions }: Props) {
   const { presence, live } = useDisplayPresence();
   const fmt = useFormat();
   const router = useRouter();
@@ -81,7 +86,7 @@ export function DisplaysTable({ rows, profiles, plantOptions }: Props) {
     return rows.filter((r) => {
       if (status && r.status !== status) return false;
       if (!q) return true;
-      return [r.name, r.location, r.profileName, r.plantName]
+      return [r.name, r.location, r.contentLabel, r.plantName]
         .filter(Boolean)
         .some((v) => String(v).toLowerCase().includes(q));
     });
@@ -202,12 +207,8 @@ export function DisplaysTable({ rows, profiles, plantOptions }: Props) {
                     </Stack>
                   </Link>
 
-                  <Text
-                    c={row.profileName ? undefined : "dimmed"}
-                    size="sm"
-                    w={180}
-                  >
-                    {row.profileName ?? "表示内容 未割当"}
+                  <Text size="sm" w={180}>
+                    {row.contentLabel}
                   </Text>
 
                   <Badge color={s.color} size="sm" variant="light" w={90}>
@@ -255,7 +256,6 @@ export function DisplaysTable({ rows, profiles, plantOptions }: Props) {
         opened={createOpen}
         pending={pending}
         plantOptions={plantOptions}
-        profiles={profiles}
       />
 
       <LinkDisplayModal
@@ -277,12 +277,18 @@ export function DisplaysTable({ rows, profiles, plantOptions }: Props) {
 
 // ── 追加（プロファイルを先に作る） ──────────────────────────────────────────
 
+/**
+ * 新しい画面が最初に映すもの。**空にしない** — 設置の日に表示内容まで
+ * 決まっていないことは普通にあり、そこで真っ黒な画面ができると
+ * 「壊れている」と報告されてしまう。細かい設定は詳細画面で詰める。
+ */
+const DEFAULT_TEMPLATE = "production";
+
 function CreateDisplayModal({
   opened,
   onClose,
   onSubmit,
   pending,
-  profiles,
   plantOptions,
 }: {
   opened: boolean;
@@ -291,16 +297,16 @@ function CreateDisplayModal({
     nameJa: string;
     location?: string;
     plantId?: number | null;
-    profileId?: string | null;
+    contentType: "APP_PAGE";
+    contentConfig: unknown;
   }) => void;
   pending: boolean;
-  profiles: Array<{ id: string; name: string }>;
   plantOptions: Array<{ value: string; label: string }>;
 }) {
   const [nameJa, setNameJa] = useState("");
   const [location, setLocation] = useState("");
   const [plantId, setPlantId] = useState<string | null>(null);
-  const [profileId, setProfileId] = useState<string | null>(null);
+  const [templateKey, setTemplateKey] = useState<string>(DEFAULT_TEMPLATE);
 
   return (
     <Modal
@@ -338,14 +344,14 @@ function CreateDisplayModal({
           value={plantId}
         />
         <Select
-          clearable
-          data={profiles.map((p) => ({ value: p.id, label: p.name }))}
-          description="あとから変更できます"
-          label="表示内容"
-          onChange={setProfileId}
-          placeholder="選択してください"
-          searchable
-          value={profileId}
+          data={DISPLAY_TEMPLATES.map((t) => ({
+            value: t.key,
+            label: t.label,
+          }))}
+          description="あとから詳細画面で変更・調整できます"
+          label="映す画面"
+          onChange={(v) => setTemplateKey(v ?? DEFAULT_TEMPLATE)}
+          value={templateKey}
         />
         <Group justify="flex-end">
           <SecondaryButton disabled={pending} onClick={onClose}>
@@ -359,7 +365,9 @@ function CreateDisplayModal({
                 nameJa,
                 location: location || undefined,
                 plantId: plantId ? Number(plantId) : null,
-                profileId,
+                contentType: "APP_PAGE",
+                // 設定は既定のまま作る（詳細画面で詰める）
+                contentConfig: { page: templateKey, options: {} },
               })
             }
           >
@@ -395,9 +403,17 @@ function LinkDisplayModal({
     >
       <Stack gap="md">
         <Text c="dimmed" size="sm">
-          ディスプレイの画面に出ている 12 文字のリンクコードを入力してください。
-          共有端末と同じ形式です。
+          ディスプレイの画面に出ている QR を読み取るか、12 文字のリンクコードを
+          入力してください。共有端末と同じ形式です。
         </Text>
+        {/* 読み取れたらそのままリンクまで進める（脚立の上で読み上げさせない） */}
+        <LinkQrScanner
+          label="ディスプレイのQRをスキャン"
+          onCode={(scanned) => {
+            setCode(scanned);
+            onSubmit(scanned);
+          }}
+        />
         <TextInput
           label="リンクコード"
           onChange={(e) =>

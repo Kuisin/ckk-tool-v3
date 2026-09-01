@@ -27,7 +27,6 @@ export type DisplayAuth = {
   name: string | null;
   location: string | null;
   plantId: number | null;
-  displayProfileId: string | null;
   /** 表示倍率（%）。画面の大きさに合わせる微調整。 */
   scalePercent: number;
 };
@@ -96,7 +95,6 @@ export async function getDisplay(): Promise<DisplayAuthResult> {
       name: true,
       location: true,
       plantId: true,
-      displayProfileId: true,
       scalePercent: true,
       status: true,
       deviceTokenExpiresAt: true,
@@ -116,7 +114,6 @@ export async function getDisplay(): Promise<DisplayAuthResult> {
       name: deviceName(row.name),
       location: row.location,
       plantId: row.plantId,
-      displayProfileId: row.displayProfileId,
       scalePercent: normalizeScalePercent(row.scalePercent),
     },
   };

@@ -16,28 +16,22 @@
  * QR の中身は**裸のコード**（キオスクと同一）。SY09 のスキャナを 1 つに
  * 保つため — 詳細は lib/display-core.ts の extractLinkCode。
  *
+ * **見た目は components/LinkCodeScreen.tsx を共有端末と共用する。** 手順を
+ * 揃えたのに画面が別々だと 2 つ覚えることになるし、実際に余白も文字の
+ * 大きさも見出しの段もずれていた。違うのは見る距離だけなので variant="wall"
+ * を渡す（テレビは数 m 離れて見る）。
+ *
  * 文字は **ja 固定**。ディスプレイに利用者は居ないので言語設定が無い。
  */
 
-import {
-  Alert,
-  Badge,
-  Box,
-  Button,
-  Center,
-  Flex,
-  Loader,
-  Paper,
-  Stack,
-  Text,
-  Title,
-} from "@mantine/core";
-import { IconRefresh } from "@tabler/icons-react";
+import { Badge } from "@mantine/core";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { formatCode } from "@/lib/crockford";
+import {
+  type LinkCodePhase,
+  LinkCodeScreen,
+} from "@/components/LinkCodeScreen";
 import type { DisplayAuthFailReason } from "@/lib/display-auth";
 import type { MachineHint } from "@/lib/display-core";
-import { qrSvg } from "@/lib/qr";
 
 const DEVICE_ID_KEY = "ckk_display_device_id";
 const POLL_INTERVAL_MS = 3000;
@@ -211,130 +205,38 @@ export function DisplaySetup({ reason, hint, screenTotal }: Props) {
       ? `この機械の ${screenTotal} 枚中 ${hint.screenIndex} 枚目`
       : null;
 
+  // 共有部品が読む形へ。linked の文面だけここで組み立てる（端末は
+  // 「利用を開始できます」、ディスプレイは「表示を開始します」）。
+  const view: LinkCodePhase =
+    state.phase === "linked"
+      ? {
+          phase: "linked",
+          message: (
+            <>
+              {`リンクしました${state.deviceName ? `: ${state.deviceName}` : ""}。管理者がこのディスプレイを`}
+              <b>有効化</b>
+              {"すると表示を開始します。"}
+            </>
+          ),
+        }
+      : state;
+
   return (
-    <Center p="xl" style={{ flex: 1 }}>
-      <Paper maw={980} p="xl" radius="md" w="100%" withBorder>
-        <Stack align="center" gap="lg">
-          {note && (
-            <Alert color="orange" w="100%">
-              {note}
-            </Alert>
-          )}
-
-          {state.phase === "loading" && (
-            <>
-              <Title order={2}>ディスプレイの登録</Title>
-              <Loader size="lg" />
-            </>
-          )}
-
-          {state.phase === "showing" && (
-            <Flex
-              align="center"
-              direction={{ base: "column", sm: "row" }}
-              gap="xl"
-              justify="center"
-              w="100%"
-            >
-              <Box
-                bg="white"
-                // biome-ignore lint/security/noDangerouslySetInnerHtml: 自前生成の静的 SVG（lib/qr.ts）
-                dangerouslySetInnerHTML={{
-                  __html: qrSvg(formatCode(state.code)),
-                }}
-                p="md"
-                style={{
-                  borderRadius: "var(--mantine-radius-md)",
-                  flexShrink: 0,
-                  width: "clamp(240px, calc(100dvh - 360px), 380px)",
-                }}
-              />
-              <Stack align="center" gap="md" maw={460}>
-                <Title order={1}>ディスプレイの登録</Title>
-                <Text c="dimmed" size="lg" ta="center">
-                  管理者に「設定 → 端末管理 → ディスプレイ」でこのコードを
-                  スキャンまたは入力してもらい、登録してください。
-                </Text>
-                {screenLabel && (
-                  <Badge color="blue" size="lg" variant="light">
-                    {screenLabel}
-                  </Badge>
-                )}
-                <Stack align="center" gap={4}>
-                  <Text c="dimmed" size="sm">
-                    リンクコード
-                  </Text>
-                  <Text
-                    ff="monospace"
-                    fw={700}
-                    style={{ fontSize: 40, letterSpacing: 2 }}
-                  >
-                    {formatCode(state.code)}
-                  </Text>
-                </Stack>
-                <Text c="dimmed" size="md">
-                  有効期限: {(() => {
-                    const remain = Math.max(0, state.expiresAt - now);
-                    const m = Math.floor(remain / 60_000);
-                    const s = Math.floor((remain % 60_000) / 1000);
-                    return `${m}:${String(s).padStart(2, "0")}`;
-                  })()}
-                </Text>
-                <Text c="blue" size="md">
-                  ● リンクを待っています…
-                </Text>
-              </Stack>
-            </Flex>
-          )}
-
-          {state.phase === "linked" && (
-            <>
-              <Title order={2}>ディスプレイの登録</Title>
-              <Alert color="blue" w="100%">
-                {`リンクしました${state.deviceName ? `: ${state.deviceName}` : ""}。管理者がこのディスプレイを`}
-                <b>有効化</b>
-                {"すると表示を開始します。"}
-              </Alert>
-              <Loader size="sm" />
-              <Text c="dimmed" size="md">
-                ● 有効化を待っています…
-              </Text>
-            </>
-          )}
-
-          {state.phase === "expired" && (
-            <>
-              <Title order={2}>ディスプレイの登録</Title>
-              <Alert color="orange" w="100%">
-                リンクコードの有効期限が切れました。
-              </Alert>
-              <Button
-                leftSection={<IconRefresh size={20} />}
-                onClick={begin}
-                size="lg"
-              >
-                新しいコードを発行
-              </Button>
-            </>
-          )}
-
-          {state.phase === "error" && (
-            <>
-              <Title order={2}>ディスプレイの登録</Title>
-              <Alert color="red" w="100%">
-                {state.message}
-              </Alert>
-              <Button
-                leftSection={<IconRefresh size={20} />}
-                onClick={begin}
-                size="lg"
-              >
-                再試行
-              </Button>
-            </>
-          )}
-        </Stack>
-      </Paper>
-    </Center>
+    <LinkCodeScreen
+      badge={
+        screenLabel ? (
+          <Badge color="blue" size="lg" variant="light">
+            {screenLabel}
+          </Badge>
+        ) : undefined
+      }
+      instruction="管理者に「設定 → 端末管理 → ディスプレイ」でこのコードをスキャンまたは入力してもらい、登録してください。"
+      notice={note}
+      now={now}
+      onRetry={begin}
+      state={view}
+      title="ディスプレイの登録"
+      variant="wall"
+    />
   );
 }

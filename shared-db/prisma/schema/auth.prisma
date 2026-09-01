@@ -166,7 +166,6 @@ model User {
   kioskSessions         KioskSession[] @relation("KioskSessionUser")
   kioskDeviceLogs       KioskDeviceLog[] @relation("KioskDeviceLogUser")
   displayDevicesActivated DisplayDevice[] @relation("DisplayDeviceActivatedBy")
-  displayProfiles       DisplayProfile[] @relation("DisplayProfileCreatedBy")
 
   // 認証イベント（security.prisma）。失敗行は user_id が null のことも多い —
   // ユーザーに解決できなかった試行そのものを残すのがこのテーブルの目的。

@@ -199,10 +199,6 @@ const TABLE_ROUTES: Record<string, TableRoute> = {
     appLabel: "端末管理（ディスプレイ）",
     listPath: "/settings/kiosk-devices",
   },
-  display_profiles: {
-    appLabel: "端末管理（表示内容）",
-    listPath: "/settings/kiosk-devices",
-  },
 };
 
 /** 対象テーブル + recordId から関連ページへのリンクを解決する。 */

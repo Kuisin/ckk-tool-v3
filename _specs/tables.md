@@ -1902,16 +1902,26 @@ Table display_devices {
   name                    json      // { ja, en }（多言語。画面自体は ja 固定）
   location                varchar
   plant_id                int  [ref: > plants.id]
-  display_profile_id      uuid [ref: > display_profiles.id]  // 削除は Restrict
   status                  DISPLAY_DEVICE_STATUS
+  // 何を映すか。**画面ごとに持つ**（共有の「表示内容」レコードは作らない）。
+  // 当初は別表 display_profiles に置いて画面から参照していたが、掲示板は
+  // 1 枚ずつ違うもの（この壁は生産状況、あの壁は出荷予定）を映すので共有される
+  // 内容がほとんど生まれず、1 枚増やすたびに「内容を作る → 画面を作る → 結ぶ」
+  // の 3 手順を踏むだけの構造になっていた。既定は生産状況で、作った直後から
+  // 何かが映る（真っ黒な画面を作らない）。
+  // content_config は種別ごとに形が違う JSON なので DB では検証できない —
+  // 保存時と配信時の 2 か所で lib/display-content.ts の zod を必ず通す
+  // （nextjs-web を原本とする twin file。食い違うと「保存はできるのに何も
+  //   映らない」という最も原因の分かりにくい壊れ方をする）。
+  content_type            DISPLAY_CONTENT_TYPE
+  content_config          json
+  refresh_interval_sec    int   // 0 = 自動再取得しない（変更通知だけで切り替わる）
   // 表示倍率（%）。画面の大きさと見る距離に合わせる微調整で、50〜200 の 5 刻み
-  // （範囲は DB の CHECK でも閉じる）。**端末側に持つ** — これは「その画面の
-  // 物理的な性質」で、表示内容に持たせると 1 つの内容を複数の画面で共有した
-  // 瞬間にどれかが読めなくなる。
+  // （範囲は DB の CHECK でも閉じる）。
   scale_percent           int
   // どの機械の何枚目か（**自己申告の手掛かり**であって身分ではない）。
   // Pi 5 は HDMI 2 口で 1 台 2 枚を回せる。画面ごとにブラウザのプロファイルを
-  // 分けるので **1 枚 = この表の 1 行**（表示内容も倍率も画面ごと）。ただし
+  // 分けるので **1 枚 = この表の 1 行**（映すものも倍率も画面ごと）。ただし
   // 「2 枚まとめて消えた = 箱が落ちた / 1 枚だけ = ケーブルかテレビ側」を
   // 見分けたいので出どころを控える。Pi が URL に載せてくる値なので詐称でき、
   // 表示とまとめ表示にしか使わない（認証にも権限にも使わない）。
@@ -1934,30 +1944,11 @@ Table display_devices {
 }
 
 Enum DISPLAY_DEVICE_STATUS {
-  PENDING    // プロファイル作成済・リンク待ち（= オープン。リンク解除で戻る）
+  PENDING    // 画面レコード作成済・リンク待ち（= オープン。リンク解除で戻る）
   LINKED     // 画面リンク済・有効化待ち（有効化はこの状態からのみ）
   ACTIVE     // 有効
   DISABLED   // 一時停止（トークンは生きたまま）
   REVOKED    // 取り消し（トークン破棄・再リンクが必要）
-}
-
-// 端末と表示内容を分けているのは、1 つの内容を複数の画面に出したいのと、
-// 「この画面をお知らせに切り替える」を端末に触らず行いたいため。
-// content_config は種別ごとに形が違う JSON なので DB では検証できない —
-// 保存時と配信時の 2 か所で lib/display-content.ts の zod を必ず通す
-// （nextjs-web を原本とする twin file。食い違うと「保存はできるのに何も
-//   映らない」という最も原因の分かりにくい壊れ方をする）。
-Table display_profiles {
-  id                   uuid [pk]
-  name                 json
-  description          text
-  content_type         DISPLAY_CONTENT_TYPE
-  content_config       json
-  refresh_interval_sec int   // 0 = 自動再取得しない（変更通知だけで切り替わる）
-  is_enabled           boolean
-  created_by           uuid [ref: > users.id]
-  created_at           timestamp
-  updated_at           timestamp
 }
 
 Enum DISPLAY_CONTENT_TYPE {
