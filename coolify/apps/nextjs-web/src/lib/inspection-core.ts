@@ -20,12 +20,16 @@ export type InspectionItemType =
   | "BOOLEAN"
   | "NUMBER"
   | "SELECT_SINGLE"
-  | "SELECT_MULTI";
+  | "SELECT_MULTI"
+  | "TEXT"; // フリーフォーム文字列（形状確認欄など）。合否は常に手動
 
 export type InspectionSamplingMode = "ALL" | "PERCENT" | "COUNT";
 
 /** 記録方式: VALUES = 製品ごとの実測値 / COUNTS = 合格数のみ（検査数・合格数）。 */
 export type InspectionRecordStyle = "VALUES" | "COUNTS";
+
+/** VALUES のサンプル呼称。INITIAL_MID_FINAL は先頭3件を初品/中間品/最終品と呼ぶ。 */
+export type InspectionSampleNaming = "GENERIC" | "INITIAL_MID_FINAL";
 
 /** 選択肢（inspection_template_items.options の要素）。 */
 export interface InspectionSelectOption {
@@ -155,6 +159,8 @@ export function hasAcceptCriteria(item: InspectionItemSpec): boolean {
     case "SELECT_SINGLE":
     case "SELECT_MULTI":
       return item.acceptOptions != null && item.acceptOptions.length > 0;
+    case "TEXT":
+      return false; // フリーフォームは基準を持たない — 常に手動判定
   }
 }
 
@@ -264,6 +270,8 @@ export function evaluateSample(
       const accept = item.acceptOptions;
       return values.every((v) => accept.includes(v));
     }
+    case "TEXT":
+      return null; // 基準を持たない — 常に手動判定
   }
 }
 
@@ -375,6 +383,8 @@ export function formatSampleValue(
       const values = Array.isArray(value) ? value : [value];
       return values.map((v) => optionLabel(item, v, locale)).join("・");
     }
+    case "TEXT":
+      return Array.isArray(value) ? value.join("・") : value;
   }
 }
 
@@ -406,6 +416,8 @@ export function acceptLabel(
         .map((v) => optionLabel(item, v, locale))
         .join("・");
     }
+    case "TEXT":
+      return null; // 基準を持たない
   }
 }
 
@@ -433,6 +445,8 @@ export function goalLabel(
       if (values == null || values.length === 0) return null;
       return values.map((v) => optionLabel(item, v, locale)).join("・");
     }
+    case "TEXT":
+      return typeof goal === "string" ? goal : null;
   }
 }
 
@@ -456,4 +470,21 @@ export function samplingLabelJa(
     case "COUNT":
       return `抜取 ${required ?? sampling.samplingValue ?? 0}本`;
   }
+}
+
+/** VALUES 記録方式のサンプル呼称（先頭3件だけ初品/中間品/最終品になり得る）。 */
+const INITIAL_MID_FINAL_LABELS = ["初品", "中間品", "最終品"] as const;
+
+/** サンプルページの見出し（index は 0 始まり）。 */
+export function sampleLabel(
+  index: number,
+  naming: InspectionSampleNaming,
+): string {
+  if (
+    naming === "INITIAL_MID_FINAL" &&
+    index < INITIAL_MID_FINAL_LABELS.length
+  ) {
+    return INITIAL_MID_FINAL_LABELS[index];
+  }
+  return `製品 ${index + 1}`;
 }

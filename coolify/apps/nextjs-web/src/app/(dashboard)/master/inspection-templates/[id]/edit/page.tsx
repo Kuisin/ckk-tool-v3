@@ -55,6 +55,8 @@ export default async function MasterInspectionTemplatesEditPage({
         samplingMode: r.samplingMode,
         samplingValue: r.samplingValue == null ? null : Number(r.samplingValue),
         recordStyle: r.recordStyle,
+        layoutStyle: r.layoutStyle,
+        sampleNaming: r.sampleNaming,
         isActive: r.isActive,
       }}
     />

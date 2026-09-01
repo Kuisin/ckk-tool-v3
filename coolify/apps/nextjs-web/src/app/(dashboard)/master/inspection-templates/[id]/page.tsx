@@ -67,6 +67,8 @@ export default async function MasterInspectionTemplatesDetailPage({
     samplingMode: r.samplingMode,
     samplingValue: r.samplingValue == null ? null : Number(r.samplingValue),
     recordStyle: r.recordStyle,
+    layoutStyle: r.layoutStyle,
+    sampleNaming: r.sampleNaming,
     isActive: r.isActive,
     isLocked:
       r._count.workOrderStepTemplates > 0 || r._count.inspectionRecords > 0,

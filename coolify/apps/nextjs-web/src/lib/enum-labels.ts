@@ -384,11 +384,64 @@ const INSPECTION_ITEM_TYPE_LABEL: LabelMap = {
   NUMBER: { ja: "数値", en: "Number", zh: "数值" },
   SELECT_SINGLE: { ja: "単一選択", en: "Single select", zh: "单选" },
   SELECT_MULTI: { ja: "複数選択", en: "Multi select", zh: "多选" },
+  TEXT: { ja: "自由記述", en: "Free text", zh: "自由文本" },
 };
 export const inspectionItemTypeLabel = (value: string, locale: Locale) =>
   resolveLabel(INSPECTION_ITEM_TYPE_LABEL, value, locale);
 export const inspectionItemTypeOptions = (locale: Locale) =>
   labelOptions(INSPECTION_ITEM_TYPE_LABEL, locale);
+
+/** app.InspectionLayoutStyle（検査表の印刷レイアウト） */
+const INSPECTION_LAYOUT_STYLE_LABEL: LabelMap = {
+  DIMENSIONAL: { ja: "寸法測定表", en: "Dimensional sheet", zh: "尺寸测量表" },
+  CHECKLIST: {
+    ja: "外観・工程チェック表",
+    en: "Checklist",
+    zh: "外观工序检查表",
+  },
+};
+export const inspectionLayoutStyleLabel = (value: string, locale: Locale) =>
+  resolveLabel(INSPECTION_LAYOUT_STYLE_LABEL, value, locale);
+export const inspectionLayoutStyleOptions = (locale: Locale) =>
+  labelOptions(INSPECTION_LAYOUT_STYLE_LABEL, locale);
+
+/** app.InspectionSampleNaming（VALUES 記録方式のサンプル呼称） */
+const INSPECTION_SAMPLE_NAMING_LABEL: LabelMap = {
+  GENERIC: { ja: "製品1, 2, 3…", en: "Product 1, 2, 3…", zh: "产品1、2、3…" },
+  INITIAL_MID_FINAL: {
+    ja: "初品・中間品・最終品",
+    en: "Initial / interim / final",
+    zh: "初品・中间品・最终品",
+  },
+};
+export const inspectionSampleNamingLabel = (value: string, locale: Locale) =>
+  resolveLabel(INSPECTION_SAMPLE_NAMING_LABEL, value, locale);
+export const inspectionSampleNamingOptions = (locale: Locale) =>
+  labelOptions(INSPECTION_SAMPLE_NAMING_LABEL, locale);
+
+/** app.InspectionItemSection（項目の掲載区分 — 主表 / 形状フリーフォーム欄） */
+const INSPECTION_ITEM_SECTION_LABEL: LabelMap = {
+  MEASUREMENT: { ja: "主表", en: "Main table", zh: "主表" },
+  SHAPE: { ja: "形状欄", en: "Shape section", zh: "形状栏" },
+};
+export const inspectionItemSectionLabel = (value: string, locale: Locale) =>
+  resolveLabel(INSPECTION_ITEM_SECTION_LABEL, value, locale);
+export const inspectionItemSectionOptions = (locale: Locale) =>
+  labelOptions(INSPECTION_ITEM_SECTION_LABEL, locale);
+
+/** app.InspectionDepartment（CHECKLIST レイアウトの部門区分） */
+const INSPECTION_DEPARTMENT_LABEL: LabelMap = {
+  MANUFACTURING: {
+    ja: "製造課管轄",
+    en: "Manufacturing dept.",
+    zh: "制造课管辖",
+  },
+  QUALITY_ASSURANCE: { ja: "品証課管轄", en: "QA dept.", zh: "品证课管辖" },
+};
+export const inspectionDepartmentLabel = (value: string, locale: Locale) =>
+  resolveLabel(INSPECTION_DEPARTMENT_LABEL, value, locale);
+export const inspectionDepartmentOptions = (locale: Locale) =>
+  labelOptions(INSPECTION_DEPARTMENT_LABEL, locale);
 
 /** app.InspectionSamplingMode（抜取検査モード） */
 const INSPECTION_SAMPLING_MODE_LABEL: LabelMap = {
