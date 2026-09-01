@@ -4,9 +4,11 @@ import "server-only";
  * user-preferences.ts — ログイン中ユーザーの表示設定の読み書き（server-only）。
  *
  * 値は app.users の locale / date_format / time_format / time_zone /
- * text_scale / bold_text。
+ * text_scale / bold_text / font_family。
  * 言語列（locale）はキオスクと共有なので、ここでの変更はタブレット側の
- * 表示にも効く。純ロジック（型・既定値・正規化）は user-preferences-core.ts。
+ * 表示にも効く。font_family は Web だけの設定（キオスクには無い）で、かつ
+ * PDF には効かない（lib/pdf.ts は常に埋め込み Noto Sans JP）。純ロジック
+ * （型・既定値・正規化）は user-preferences-core.ts。
  *
  * サーバーコンポーネントでの使い方:
  *   const fmt = await getServerFormatters();      // 日時整形
@@ -46,6 +48,7 @@ export const getCurrentPreferences = cache(
           timeZone: true,
           textScale: true,
           boldText: true,
+          fontFamily: true,
         },
       });
       return row ? normalizePreferences(row) : DEFAULT_PREFERENCES;
@@ -90,6 +93,7 @@ export async function saveCurrentPreferences(
       timeZone: true,
       textScale: true,
       boldText: true,
+      fontFamily: true,
     },
   });
   if (!current) return null;
@@ -103,6 +107,7 @@ export async function saveCurrentPreferences(
       timeZone: prefs.timeZone,
       textScale: prefs.textScale,
       boldText: prefs.boldText,
+      fontFamily: prefs.fontFamily,
     },
   });
   return { before: normalizePreferences(current), after: prefs };

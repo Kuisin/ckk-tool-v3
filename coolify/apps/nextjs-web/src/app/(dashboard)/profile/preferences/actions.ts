@@ -2,11 +2,12 @@
 
 /**
  * Server Actions — 表示設定（本人のみ）。
- * 言語・日付形式・時刻形式・タイムゾーン・文字の大きさ・文字を太くするを
+ * 言語・日付形式・時刻形式・タイムゾーン・文字の大きさ・文字を太くする・書体を
  * app.users の各列へ保存する。
  *
  * 言語列（locale）はキオスクと共有なので、ここでの変更は共有タブレット側の
- * 表示にも効く。
+ * 表示にも効く。書体は Web だけの設定で、PDF には効かない（帳票は常に埋め込み
+ * Noto Sans JP — lib/pdf.ts）。
  */
 
 import { revalidatePath } from "next/cache";
@@ -18,6 +19,7 @@ import { saveCurrentPreferences } from "@/lib/user-preferences";
 import {
   DATE_FORMATS,
   type DisplayPreferences,
+  FONT_FAMILIES,
   isValidTimeZone,
   TEXT_SCALES,
   TIME_FORMATS,
@@ -35,6 +37,7 @@ const preferencesSchema = z.object({
     .refine(isValidTimeZone, "タイムゾーンを選択してください"),
   textScale: z.enum(TEXT_SCALES),
   boldText: z.boolean(),
+  fontFamily: z.enum(FONT_FAMILIES),
 });
 
 export async function saveDisplayPreferences(
