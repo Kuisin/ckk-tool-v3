@@ -55,12 +55,7 @@ import {
 import { NewButton } from "@/components/ui/NewButton";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { PdfButton } from "@/components/ui/PdfButton";
-import {
-  STATUS_MAPS,
-  StatusBadge,
-  type StatusEntity,
-  statusOptions,
-} from "@/components/ui/StatusBadge";
+import { StatusBadge } from "@/components/ui/StatusBadge";
 import {
   AuditTimeline,
   FormSection,
@@ -70,6 +65,11 @@ import {
 } from "@/components/ui/shells";
 import { formatMoney } from "@/lib/format";
 import { CUSTOMERS, ORDER_TYPE_LABEL } from "@/lib/mock";
+import {
+  STATUS_MAPS,
+  type StatusEntity,
+  statusOptions,
+} from "@/lib/status-map";
 
 // ── Demo data ────────────────────────────────────────────────────────────────
 

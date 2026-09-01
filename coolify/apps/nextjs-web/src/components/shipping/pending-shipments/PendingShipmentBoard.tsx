@@ -21,7 +21,7 @@ import type { DeliveryOrder } from "@/components/shipping/delivery-orders/model"
 import { SecondaryButton } from "@/components/ui/buttons";
 import { type Column, DataTable } from "@/components/ui/DataTable";
 import { QueueTabs } from "@/components/ui/QueueTabs";
-import { StatusBadge, statusOptions } from "@/components/ui/StatusBadge";
+import { StatusBadge } from "@/components/ui/StatusBadge";
 import { ListShell } from "@/components/ui/shells";
 import {
   useTabParam,
@@ -30,6 +30,7 @@ import {
 } from "@/hooks/useUrlState";
 import { useIsMobile } from "@/hooks/useViewport";
 import { deliveryOrderTypeOptions } from "@/lib/enum-labels";
+import { statusOptions } from "@/lib/status-map";
 import type { UnshippedOrderLineRow } from "./model";
 
 const ORDER_LINES_PATH = "/sales/order-lines";

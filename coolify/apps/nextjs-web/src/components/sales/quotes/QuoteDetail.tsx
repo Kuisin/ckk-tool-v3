@@ -43,7 +43,7 @@ import {
   ProcedurePanel,
   type ProcedureStage,
 } from "@/components/ui/ProcedurePanel";
-import { StatusBadge, statusLabel } from "@/components/ui/StatusBadge";
+import { StatusBadge } from "@/components/ui/StatusBadge";
 import {
   type AuditEntry,
   DetailShell,
@@ -54,6 +54,7 @@ import { useTabParam } from "@/hooks/useUrlState";
 import type { MemoView } from "@/lib/document-memos";
 import { downloadFile } from "@/lib/download";
 import { ORDER_TYPE_LABEL } from "@/lib/mock";
+import { statusLabel } from "@/lib/status-map";
 import { entrySummary, type PriceListEntry } from "../price-lists/model";
 import { IssueQuoteModal } from "./IssueQuoteModal";
 import {

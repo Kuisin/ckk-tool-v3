@@ -10,7 +10,6 @@
  */
 
 import { NextResponse } from "next/server";
-import { statusLabel } from "@/components/ui/StatusBadge";
 import { recordAudit } from "@/lib/audit";
 import { requirePermissionResponse, sessionUserId } from "@/lib/authz";
 import {
@@ -22,6 +21,7 @@ import {
   FIXED_EXPORT_COLUMNS,
   parseExportFilter,
 } from "@/lib/form-export-core";
+import { statusLabel } from "@/lib/status-map";
 import { getCurrentPreferences } from "@/lib/user-preferences";
 import {
   buildXlsx,

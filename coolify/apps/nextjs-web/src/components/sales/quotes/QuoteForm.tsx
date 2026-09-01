@@ -39,12 +39,13 @@ import {
 import { GhostButton } from "@/components/ui/buttons";
 import { HelpLabel } from "@/components/ui/HelpLabel";
 import { SalesRepSelect } from "@/components/ui/SalesRepSelect";
-import { StatusBadge, statusOptions } from "@/components/ui/StatusBadge";
+import { StatusBadge } from "@/components/ui/StatusBadge";
 import { FormSection, FormShell } from "@/components/ui/shells";
 import { fieldHelp } from "@/lib/field-help";
 import { zodResolver } from "@/lib/form";
 import { formatMoney } from "@/lib/format";
 import type { Option } from "@/lib/mock";
+import { statusOptions } from "@/lib/status-map";
 import type { PriceListEntry } from "../price-lists/model";
 import { type Quote, resolveUnitPriceFromEntries, TAX_RATE } from "./model";
 

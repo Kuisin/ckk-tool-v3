@@ -19,11 +19,12 @@ import { useFormat } from "@/components/layout/PreferencesProvider";
 import { SecondaryButton } from "@/components/ui/buttons";
 import { type Column, DataTable } from "@/components/ui/DataTable";
 import { MoneyText } from "@/components/ui/MoneyText";
-import { StatusBadge, statusOptions } from "@/components/ui/StatusBadge";
+import { StatusBadge } from "@/components/ui/StatusBadge";
 import { ListShell } from "@/components/ui/shells";
 import { useUrlSelectState, useUrlStringState } from "@/hooks/useUrlState";
 import { useIsMobile } from "@/hooks/useViewport";
 import { orderTypeLabel, orderTypeOptions } from "@/lib/enum-labels";
+import { statusOptions } from "@/lib/status-map";
 import type { OrderLine } from "./model";
 
 const BASE_PATH = "/sales/order-lines";
