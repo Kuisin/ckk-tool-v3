@@ -314,3 +314,48 @@ export function transform(source, dict, { accessor, requireAsync = false } = {})
 
   return { code, changed: true, hooked: bodies.size, replaced, outside };
 }
+
+/**
+ * `tr(` を使っているのに `tr` が束縛されていない関数へ、アクセサを 1 行入れる。
+ *
+ * テンプレートの書き換え（i18n-templates.mjs）は文字列を `tr(鍵, { 穴 })` に
+ * 直すだけで、`tr` をどこから取るかは知らない。入れ先の判定（コンポーネントか /
+ * async か / モジュール直下か）は既にここにあるので、**その 1 箇所を使い回す**
+ * — 判定を 2 つ持つと片方だけ直って静かに壊れる。
+ *
+ * 返り値 `{ code, added, skipped }`。`skipped` は入れ先が無かった `tr(` の数
+ * （素の補助関数など。人が `tr` を引数で受ける形に直す）。
+ */
+export function ensureAccessor(source, { accessor, requireAsync = false } = {}) {
+  const masked = maskLiterals(source);
+  const pairs = bracePairs(masked);
+
+  const positions = [];
+  const re = /\btr\(/g;
+  let m;
+  while ((m = re.exec(masked)) !== null) positions.push(m.index);
+  if (positions.length === 0) return { code: source, added: 0, skipped: 0 };
+
+  const bodies = new Set();
+  let skipped = 0;
+  for (const pos of positions) {
+    const body = componentBodyFor(pairs, masked, pos);
+    if (body === null) { skipped++; continue; }
+    if (!requireAsync && !isComponentLike(masked, body)) { skipped++; continue; }
+    if (requireAsync && !isAsyncBody(masked, body)) { skipped++; continue; }
+    const close = pairs.find(([o]) => o === body)?.[1] ?? source.length;
+    if (/\bconst\s+tr\s*[=:,)]/.test(masked.slice(body, close))) continue;
+    // 引数で `tr` を受けている関数（素の補助関数）にはフックを入れない。
+    const head = masked.slice(Math.max(0, body - 400), body);
+    if (/\btr\s*:\s*Translate\b/.test(head)) continue;
+    bodies.add(body);
+  }
+  if (bodies.size === 0) return { code: source, added: 0, skipped };
+
+  const edits = [...bodies]
+    .sort((a, b) => b - a)
+    .map((open) => ({ start: open + 1, text: `\n  ${accessor}` }));
+  let code = source;
+  for (const e of edits) code = code.slice(0, e.start) + e.text + code.slice(e.start);
+  return { code, added: bodies.size, skipped };
+}

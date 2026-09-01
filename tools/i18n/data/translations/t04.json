@@ -1,0 +1,826 @@
+{
+ "明細 {row} 行目: 製品": [
+  "Line {row}: product",
+  "明细第 {row} 行：产品"
+ ],
+ "明細 {v0} 件・顧客{v1} — 内容を確認してください": [
+  "{v0} lines · customer {v1} — please check the contents",
+  "明细 {v0} 件・客户{v1} — 请确认内容"
+ ],
+ "明細 {v0} 行目: 単価が未入力です": [
+  "Line {v0}: no unit price entered",
+  "明细第 {v0} 行：未输入单价"
+ ],
+ "明細 {v0} 行目: 発送には注文明細の指定が必要です": [
+  "Line {v0}: dispatch requires an order line",
+  "明细第 {v0} 行：发货需要指定订单明细"
+ ],
+ "明細 {v0} 行目: 製品が未特定です": [
+  "Line {v0}: the product is not identified",
+  "明细第 {v0} 行：产品未确定"
+ ],
+ "明細{v0}: 該当する価格表がありません（価格試算から価格表を登録してください）": [
+  "Line {v0}: no matching price list (register one from a price estimate)",
+  "明细 {v0}：没有匹配的价格表（请从价格试算登记价格表）"
+ ],
+ "暗号鍵（{ENCRYPTION_KEY_ENV}）が未設定のため API トークンを保存できません。システム管理者へ連絡してください。": [
+  "The API token cannot be saved because the encryption key ({ENCRYPTION_KEY_ENV}) is not set. Contact a system administrator.",
+  "未设置加密密钥（{ENCRYPTION_KEY_ENV}），无法保存 API 令牌。请联系系统管理员。"
+ ],
+ "暗号鍵（{keyEnv}）が未設定のため、API トークンを保存・使用できません。システム管理者へ連絡してください。": [
+  "The API token cannot be saved or used because the encryption key ({keyEnv}) is not set. Contact a system administrator.",
+  "未设置加密密钥（{keyEnv}），无法保存・使用 API 令牌。请联系系统管理员。"
+ ],
+ "書き出し元と同じコード（{sourceCode}）で作ります。共有 URL が環境をまたいで同じになります": [
+  "It is created with the same code as the source ({sourceCode}). The share URL matches across environments",
+  "将以与导出来源相同的编号（{sourceCode}）创建。共享 URL 将跨环境保持一致"
+ ],
+ "最新バージョン v{version} と同じ構成です（変更がありません）": [
+  "Identical to the latest version v{version} (nothing changed)",
+  "与最新版本 v{version} 构成相同（没有变更）"
+ ],
+ "最終検査「{v0}」を{v1}で記録": [
+  "Recorded the final inspection \"{v0}\" as {v1}",
+  "以{v1}记录最终检查「{v0}」"
+ ],
+ "有効時間は {MIN_DURATION_MINUTES}〜{MAX_DURATION_MINUTES} 分の範囲で指定してください": [
+  "Set the valid time between {MIN_DURATION_MINUTES} and {MAX_DURATION_MINUTES} minutes",
+  "有效时间请指定为 {MIN_DURATION_MINUTES}〜{MAX_DURATION_MINUTES} 分钟"
+ ],
+ "有効期限 {v0}": [
+  "Valid until {v0}",
+  "有效期 {v0}"
+ ],
+ "期間限定メンバー「{v0}」を追加（{validFrom}〜{validUntil}）": [
+  "Added time-limited member \"{v0}\" ({validFrom}–{validUntil})",
+  "添加限期成员「{v0}」（{validFrom}〜{validUntil}）"
+ ],
+ "期限切れ（{v0}）": [
+  "Expired ({v0})",
+  "已过期（{v0}）"
+ ],
+ "未入力なら \"{default}\"": [
+  "\"{default}\" if left blank",
+  "留空则为 \"{default}\""
+ ],
+ "未出荷 {unshipped} 本 — この注文明細を読み込んだ状態で出荷書フォームを開きます": [
+  "{unshipped} pcs unshipped — opens the delivery order form with this line loaded",
+  "未出货 {unshipped} 支 — 以载入此订单明细的状态打开出货单表单"
+ ],
+ "未対応の圧縮方式です ({method}): {name}": [
+  "Unsupported compression method ({method}): {name}",
+  "不支持的压缩方式（{method}）：{name}"
+ ],
+ "未手配 {remainingToAllocate} 本 — この注文明細をプリセレクトした状態で指示書ビルダーを開きます": [
+  "{remainingToAllocate} pcs not planned — opens the work order builder with this line preselected",
+  "未安排 {remainingToAllocate} 支 — 以预选此订单明细的状态打开工单构建器"
+ ],
+ "未知の変更種別です（{kind}）": [
+  "Unknown change kind ({kind})",
+  "未知的变更类别（{kind}）"
+ ],
+ "未知の操作が含まれています（{key}）": [
+  "It includes an unknown operation ({key})",
+  "包含未知的操作（{key}）"
+ ],
+ "未知の特権操作です: {operationKey}（lib/privileged-operations.ts に登録してください）": [
+  "Unknown privileged operation: {operationKey} (register it in lib/privileged-operations.ts)",
+  "未知的特权操作：{operationKey}（请在 lib/privileged-operations.ts 中登记）"
+ ],
+ "未解決 {v0}": [
+  "Unresolved {v0}",
+  "未解决 {v0}"
+ ],
+ "未解決のコメントが {openComments} 件あります。このまま進めますか？": [
+  "There are {openComments} unresolved comments. Continue anyway?",
+  "有 {openComments} 条未解决的评论。要继续吗？"
+ ],
+ "本文が長すぎます（{MAX_DOC_LINES} 行まで）。文書を分けてください": [
+  "The body is too long (up to {MAX_DOC_LINES} lines). Split the document",
+  "正文过长（最多 {MAX_DOC_LINES} 行）。请拆分文档"
+ ],
+ "本文が長すぎます（{lines} 行 / 上限 {MAX_DOC_LINES} 行）。文書を分けてください": [
+  "The body is too long ({lines} lines / limit {MAX_DOC_LINES}). Split the document",
+  "正文过长（{lines} 行／上限 {MAX_DOC_LINES} 行）。请拆分文档"
+ ],
+ "本見積書の有効期限は {validUntil} までとなります。期限内にご注文をお願いいたします。": [
+  "This quote is valid until {validUntil}. Please place your order within that period.",
+  "本报价单有效期至 {validUntil}，请在此期限内下单。"
+ ],
+ "材種 {v0} を作成しました": [
+  "Material type {v0} was created",
+  "已创建材料类别 {v0}"
+ ],
+ "材種 編集 — {v0}": [
+  "Edit material type — {v0}",
+  "编辑材料类别 — {v0}"
+ ],
+ "材種「{v0}」を{v1}しました": [
+  "Material type \"{v0}\" was {v1}",
+  "已{v1}材料类别「{v0}」"
+ ],
+ "材種「{v0}」を削除しました": [
+  "Material type \"{v0}\" was deleted",
+  "已删除材料类别「{v0}」"
+ ],
+ "材種「{v0}」を削除します。この操作は取り消せません。": [
+  "Material type \"{v0}\" will be deleted. This cannot be undone.",
+  "将删除材料类别「{v0}」。此操作无法撤销。"
+ ],
+ "材種「{v0}」を有効化します。再び素材登録で選択できるようになります。": [
+  "Material type \"{v0}\" will be enabled and can be chosen when registering materials again.",
+  "将启用材料类别「{v0}」，可再次在登记材料时选择。"
+ ],
+ "材種「{v0}」を無効化します。新規の素材登録で選択できなくなります。": [
+  "Material type \"{v0}\" will be disabled and can no longer be chosen when registering new materials.",
+  "将停用材料类别「{v0}」，新登记材料时将无法选择。"
+ ],
+ "条件 {no}: {label}に使えない比較です": [
+  "Condition {no}: that comparison cannot be used with {label}",
+  "条件 {no}：该比较无法用于 {label}"
+ ],
+ "条件 {no}: {label}の値を数値で入力してください": [
+  "Condition {no}: enter {label}'s value as a number",
+  "条件 {no}：{label} 的值请输入数值"
+ ],
+ "条件 {no}: {label}の値を選択してください": [
+  "Condition {no}: select a value for {label}",
+  "条件 {no}：请选择 {label} 的值"
+ ],
+ "条件 {no}: 項目が不正です": [
+  "Condition {no}: the field is not valid",
+  "条件 {no}：项目无效"
+ ],
+ "棚「{code}」を削除します。この操作は取り消せません。": [
+  "Shelf \"{code}\" will be deleted. This cannot be undone.",
+  "将删除货架「{code}」。此操作无法撤销。"
+ ],
+ "検査表テンプレート 編集 — {code}": [
+  "Edit inspection template — {code}",
+  "编辑检查表模板 — {code}"
+ ],
+ "検査表テンプレート「{v0}」を{v1}しました": [
+  "Inspection template \"{v0}\" was {v1}",
+  "已{v1}检查表模板「{v0}」"
+ ],
+ "検査表テンプレート「{v0}」を削除しました": [
+  "Inspection template \"{v0}\" was deleted",
+  "已删除检查表模板「{v0}」"
+ ],
+ "検査表テンプレート「{v0}」を削除します。検査項目も同時に削除されます。この操作は取り消せません。": [
+  "Inspection template \"{v0}\" will be deleted, along with its inspection items. This cannot be undone.",
+  "将删除检查表模板「{v0}」。检查项目也将一并删除。此操作无法撤销。"
+ ],
+ "検査表テンプレート「{v0}」を有効化します。再び指示書で選択できるようになります。": [
+  "Inspection template \"{v0}\" will be enabled and can be chosen on work orders again.",
+  "将启用检查表模板「{v0}」，可再次在工单中选择。"
+ ],
+ "検査表テンプレート「{v0}」を無効化します。新規の指示書で選択できなくなります。": [
+  "Inspection template \"{v0}\" will be disabled and can no longer be chosen on new work orders.",
+  "将停用检查表模板「{v0}」，新工单中将无法选择。"
+ ],
+ "検査表名が空です（{code} の最初の行には名前が要ります）": [
+  "The inspection sheet name is empty ({code}'s first row needs a name)",
+  "检查表名称为空（{code} 的第一行需要名称）"
+ ],
+ "検査記録を保存（{v0} / {v1} 項目）": [
+  "Saved the inspection record ({v0} / {v1} items)",
+  "保存检查记录（{v0} / {v1} 个项目）"
+ ],
+ "検査項目「{itemNameJa}」を削除しました": [
+  "Inspection item \"{itemNameJa}\" was deleted",
+  "已删除检查项目「{itemNameJa}」"
+ ],
+ "検査項目「{itemNameJa}」を削除します。この操作は取り消せません。": [
+  "Inspection item \"{itemNameJa}\" will be deleted. This cannot be undone.",
+  "将删除检查项目「{itemNameJa}」。此操作无法撤销。"
+ ],
+ "検査項目「{itemNameJa}」を更新": [
+  "Updated inspection item \"{itemNameJa}\"",
+  "更新检查项目「{itemNameJa}」"
+ ],
+ "検査項目「{itemNameJa}」を更新しました": [
+  "Inspection item \"{itemNameJa}\" was updated",
+  "已更新检查项目「{itemNameJa}」"
+ ],
+ "検査項目「{itemNameJa}」を追加": [
+  "Added inspection item \"{itemNameJa}\"",
+  "添加检查项目「{itemNameJa}」"
+ ],
+ "検査項目「{itemNameJa}」を追加しました": [
+  "Inspection item \"{itemNameJa}\" was added",
+  "已添加检查项目「{itemNameJa}」"
+ ],
+ "検査項目「{v0}」を削除": [
+  "Delete inspection item \"{v0}\"",
+  "删除检查项目「{v0}」"
+ ],
+ "検索とAI取込の突合に使う別名です（略称・読み・英字・寸法の別表記など）。Enter 区切りで最大 {KEYWORD_MAX_COUNT} 件": [
+  "Aliases used for search and AI-import matching (short names, readings, English, alternative dimension notations). Separate with Enter, up to {KEYWORD_MAX_COUNT}",
+  "用于搜索和 AI 导入匹配的别名（简称・读音・字母・尺寸的其他写法等）。以 Enter 分隔，最多 {KEYWORD_MAX_COUNT} 个"
+ ],
+ "正規表現は {MAX_PATTERN_LENGTH} 文字までです": [
+  "The regular expression may be up to {MAX_PATTERN_LENGTH} characters",
+  "正则表达式最多 {MAX_PATTERN_LENGTH} 个字符"
+ ],
+ "残り {v0} 分": [
+  "{v0} min left",
+  "剩余 {v0} 分钟"
+ ],
+ "残り {v0} 時間 {v1} 分": [
+  "{v0} h {v1} min left",
+  "剩余 {v0} 小时 {v1} 分钟"
+ ],
+ "注文明細 {number} には指示書を割り当てられません（キャンセル・出荷済）": [
+  "A work order cannot be allocated to order line {number} (cancelled or shipped)",
+  "无法为订单明细 {number} 分配工单（已作废・已出货）"
+ ],
+ "注文明細 {number} は受注数量まで手配済みです（残 0）": [
+  "Order line {number} is planned up to the ordered quantity (0 left)",
+  "订单明细 {number} 已安排至接单数量（余 0）"
+ ],
+ "注文明細 {number} は製品未特定のため指示書を作成できません": [
+  "A work order cannot be created for order line {number} — the product is not identified",
+  "订单明细 {number} 的产品未确定，无法创建工单"
+ ],
+ "注文明細 {number} への割当が受注残を超えています": [
+  "The allocation to order line {number} exceeds what is left of the order",
+  "对订单明细 {number} 的分配超过接单余量"
+ ],
+ "注文明細 {v0} | CKK 業務管理システム": [
+  "Order line {v0} | CKK business management system",
+  "订单明细 {v0} | CKK 业务管理系统"
+ ],
+ "注文明細 {v0} を作成しました": [
+  "Order line {v0} was created",
+  "已创建订单明细 {v0}"
+ ],
+ "注文種別: {v0}": [
+  "Order type: {v0}",
+  "订单类别：{v0}"
+ ],
+ "注文請書 {number}": [
+  "Order acceptance {number}",
+  "订单确认书 {number}"
+ ],
+ "注文請書 {number} の確定": [
+  "Confirm order acceptance {number}",
+  "确定订单确认书 {number}"
+ ],
+ "注文請書 {number} の自動抽出に失敗しました": [
+  "Automatic extraction failed for order acceptance {number}",
+  "订单确认书 {number} 的自动提取失败"
+ ],
+ "注文請書 {number} を自動取込しました": [
+  "Order acceptance {number} was imported automatically",
+  "已自动导入订单确认书 {number}"
+ ],
+ "注文請書 {number} キャンセルに伴う連鎖キャンセル": [
+  "Cascading cancellation from order acceptance {number}",
+  "因订单确认书 {number} 作废引起的连锁作废"
+ ],
+ "注文請書 {number}（下書き）": [
+  "Order acceptance {number} (draft)",
+  "订单确认书 {number}（草稿）"
+ ],
+ "注文請書 {v0} | CKK 業務管理システム": [
+  "Order acceptance {v0} | CKK business management system",
+  "订单确认书 {v0} | CKK 业务管理系统"
+ ],
+ "添付（未登録）{filename}": [
+  "Attachment (not registered) {filename}",
+  "附件（未登记）{filename}"
+ ],
+ "理由: {reason}｜依頼: {v1}｜{stepLabel}。承認されるまで注文請書と注文明細は変わりません。": [
+  "Reason: {reason} | requested by {v1} | {stepLabel}. The order acceptance and its lines do not change until it is approved.",
+  "理由：{reason}｜申请：{v1}｜{stepLabel}。批准前订单确认书与订单明细不会变更。"
+ ],
+ "申請に含まれていない操作は許可できません（{v0}）": [
+  "Operations not in the request cannot be allowed ({v0})",
+  "无法允许申请中未包含的操作（{v0}）"
+ ],
+ "申請者: {respondent}": [
+  "Requested by: {respondent}",
+  "申请人：{respondent}"
+ ],
+ "画像は {MAX_TEMPLATE_IMAGE_PIXELS}px 四方以下にしてください": [
+  "The image must be {MAX_TEMPLATE_IMAGE_PIXELS}px square or smaller",
+  "图片须为 {MAX_TEMPLATE_IMAGE_PIXELS}px 见方以下"
+ ],
+ "発行前の{label}は PDF を閲覧できません": [
+  "You cannot view the PDF of a {label} before it is issued",
+  "发行前的{label}无法查看 PDF"
+ ],
+ "直径は {DIAMETER_MIN}〜{DIAMETER_MAX}mm で入力してください": [
+  "Enter a diameter between {DIAMETER_MIN} and {DIAMETER_MAX}mm",
+  "直径请输入 {DIAMETER_MIN}〜{DIAMETER_MAX}mm"
+ ],
+ "確定できません: {v0}": [
+  "Cannot confirm: {v0}",
+  "无法确定：{v0}"
+ ],
+ "確認が必要な項目 {v0} 件": [
+  "{v0} fields need checking",
+  "需要确认的项目 {v0} 项"
+ ],
+ "移動可能数を超えています（利用可能 {free} — 予約分は移動できません）": [
+  "It exceeds what can be moved ({free} available — reserved stock cannot be moved)",
+  "超过可调拨数（可用 {free} — 预留部分无法调拨）"
+ ],
+ "種別 id が重複しています: {id}": [
+  "Duplicate type id: {id}",
+  "类别 id 重复：{id}"
+ ],
+ "種別: {l}": [
+  "Type: {l}",
+  "类别：{l}"
+ ],
+ "種別編集 — {v0}": [
+  "Edit type — {v0}",
+  "编辑类别 — {v0}"
+ ],
+ "端末の{note}に失敗しました": [
+  "Could not {note} the device",
+  "终端的{note}失败"
+ ],
+ "端末の時計がサーバーと {v0} 分ずれています": [
+  "The device clock is {v0} minutes off from the server",
+  "终端的时钟与服务器相差 {v0} 分钟"
+ ],
+ "端末リンク — {v0}": [
+  "Device link — {v0}",
+  "终端关联 — {v0}"
+ ],
+ "第 {stepNo}/{stepCount} 段「{stepLabel}」・{groupLabel}": [
+  "Step {stepNo} of {stepCount} \"{stepLabel}\" · {groupLabel}",
+  "第 {stepNo}/{stepCount} 级「{stepLabel}」・{groupLabel}"
+ ],
+ "第 {v0} 承認": [
+  "Approval {v0}",
+  "第 {v0} 级审批"
+ ],
+ "第 {v0} 版": [
+  "Version {v0}",
+  "第 {v0} 版"
+ ],
+ "第{index}承認": [
+  "Approval {index}",
+  "第 {index} 级审批"
+ ],
+ "第{stepNo}承認": [
+  "Approval {stepNo}",
+  "第 {stepNo} 级审批"
+ ],
+ "第{v0}承認": [
+  "Approval {v0}",
+  "第 {v0} 级审批"
+ ],
+ "納品書 {deliveryNumber} を発行しました": [
+  "Delivery note {deliveryNumber} was issued",
+  "已发行送货单 {deliveryNumber}"
+ ],
+ "納品書 {deliveryNumber} を発行します。発行後は編集できません。": [
+  "Delivery note {deliveryNumber} will be issued. It cannot be edited afterwards.",
+  "将发行送货单 {deliveryNumber}。发行后无法编辑。"
+ ],
+ "納品書 {deliveryNumber} を納品済みにしました": [
+  "Delivery note {deliveryNumber} was marked as delivered",
+  "已将送货单 {deliveryNumber} 标记为已交货"
+ ],
+ "納品書 {deliveryNumber} を納品済みにします。納品日は本日で記録されます。": [
+  "Delivery note {deliveryNumber} will be marked as delivered. Today is recorded as the delivery date.",
+  "将送货单 {deliveryNumber} 标记为已交货。交货日期记录为今日。"
+ ],
+ "納品書 {number} を作成しました": [
+  "Delivery note {number} was created",
+  "已创建送货单 {number}"
+ ],
+ "納品書 {v0} | CKK 業務管理システム": [
+  "Delivery note {v0} | CKK business management system",
+  "送货单 {v0} | CKK 业务管理系统"
+ ],
+ "納品書 編集 {v0}": [
+  "Edit delivery note {v0}",
+  "编辑送货单 {v0}"
+ ],
+ "素材 編集 — {code}": [
+  "Edit material — {code}",
+  "编辑材料 — {code}"
+ ],
+ "素材「{v0}」を{v1}しました": [
+  "Material \"{v0}\" was {v1}",
+  "已{v1}材料「{v0}」"
+ ],
+ "素材「{v0}」を削除しました": [
+  "Material \"{v0}\" was deleted",
+  "已删除材料「{v0}」"
+ ],
+ "素材「{v0}」を削除します。この操作は取り消せません。": [
+  "Material \"{v0}\" will be deleted. This cannot be undone.",
+  "将删除材料「{v0}」。此操作无法撤销。"
+ ],
+ "素材「{v0}」を有効化します。再び発注・指示書で選択できるようになります。": [
+  "Material \"{v0}\" will be enabled and can be chosen for orders and work orders again.",
+  "将启用材料「{v0}」，可再次在采购・工单中选择。"
+ ],
+ "素材「{v0}」を無効化します。新規の発注・指示書で選択できなくなります。": [
+  "Material \"{v0}\" will be disabled and can no longer be chosen for new orders or work orders.",
+  "将停用材料「{v0}」，新的采购・工单中将无法选择。"
+ ],
+ "素材入荷 {materialCode}": [
+  "Material receipt {materialCode}",
+  "材料到货 {materialCode}"
+ ],
+ "素材発注書 {poNumber}": [
+  "Material purchase order {poNumber}",
+  "材料采购单 {poNumber}"
+ ],
+ "素材発注書 {poNumber} の入荷が完了しました": [
+  "The receipt for material purchase order {poNumber} is complete",
+  "材料采购单 {poNumber} 的到货已完成"
+ ],
+ "素材発注書 {poNumber} の入荷（分納）": [
+  "Receipt for material purchase order {poNumber} (partial)",
+  "材料采购单 {poNumber} 的到货（分批）"
+ ],
+ "素材発注書 {poNumber} を作成しました": [
+  "Material purchase order {poNumber} was created",
+  "已创建材料采购单 {poNumber}"
+ ],
+ "素材発注書 {poNumber} を更新しました": [
+  "Material purchase order {poNumber} was updated",
+  "已更新材料采购单 {poNumber}"
+ ],
+ "素材発注書 {v0} | CKK 業務管理システム": [
+  "Material purchase order {v0} | CKK business management system",
+  "材料采购单 {v0} | CKK 业务管理系统"
+ ],
+ "素材発注書 編集 {v0}": [
+  "Edit material purchase order {v0}",
+  "编辑材料采购单 {v0}"
+ ],
+ "終了日時は申請から {MAX_WINDOW_DAYS} 日以内にしてください": [
+  "The end time must be within {MAX_WINDOW_DAYS} days of the request",
+  "结束时间须在申请起 {MAX_WINDOW_DAYS} 天以内"
+ ],
+ "組み込み工具種「{label}」は削除できません": [
+  "The built-in tool type \"{label}\" cannot be deleted",
+  "内置刀具类别「{label}」无法删除"
+ ],
+ "自動で再試行します。{MANUAL_HINT}": [
+  "It retries automatically. {MANUAL_HINT}",
+  "将自动重试。{MANUAL_HINT}"
+ ],
+ "自動再試行 {attempt}/{maxAttempts} 回とも失敗しました": [
+  "All {attempt} of {maxAttempts} automatic retries failed",
+  "自动重试 {attempt}/{maxAttempts} 次均失败"
+ ],
+ "自動再試行中（{attempt}/{maxAttempts} 回目が失敗）— まもなくもう一度実行します": [
+  "Retrying automatically (attempt {attempt} of {maxAttempts} failed) — it runs again shortly",
+  "自动重试中（第 {attempt}/{maxAttempts} 次失败）— 即将再次执行"
+ ],
+ "自動判定: {v0}": [
+  "Determined automatically: {v0}",
+  "自动判定：{v0}"
+ ],
+ "自動判定（{v0}）を手動で上書き中": [
+  "Overriding the automatic result ({v0}) by hand",
+  "正在手动覆盖自动判定（{v0}）"
+ ],
+ "自動抽出失敗（{attempt}/{maxAttempts} 回目）: {summary}": [
+  "Automatic extraction failed (attempt {attempt} of {maxAttempts}): {summary}",
+  "自动提取失败（第 {attempt}/{maxAttempts} 次）：{summary}"
+ ],
+ "自動抽出完了（明細 {v0} 件・顧客{v1}）": [
+  "Automatic extraction complete ({v0} lines · customer {v1})",
+  "自动提取完成（明细 {v0} 件・客户{v1}）"
+ ],
+ "自社名「{customerName}」を顧客として読み取っています（書類の宛先＝自社）。発行元・社判のある側が顧客です — 書類を見て選び直してください": [
+  "Our own name \"{customerName}\" was read as the customer (the document is addressed to us). The customer is the side that issued it and bears the seal — check the document and choose again",
+  "将本公司名称「{customerName}」读取为客户（单据的收件方＝本公司）。客户应为发行方・盖章方 — 请查看单据后重新选择"
+ ],
+ "良品 + 不良（半製品・廃棄・工程分岐）の合計（{v0}）が受入数（{input}）と一致しません": [
+  "Good + defective (semi-finished, scrapped, process branch) totals {v0}, which does not match the received count ({input})",
+  "良品 + 不良（半成品・报废・工序分支）的合计（{v0}）与接收数（{input}）不一致"
+ ],
+ "行{row} {v1} ≠ 価格表 {v2}": [
+  "Row {row}: {v1} ≠ price list {v2}",
+  "第 {row} 行 {v1} ≠ 价格表 {v2}"
+ ],
+ "製品 #{id}": [
+  "Product #{id}",
+  "产品 #{id}"
+ ],
+ "製品 #{productId}": [
+  "Product #{productId}",
+  "产品 #{productId}"
+ ],
+ "製品 {v0}": [
+  "Product {v0}",
+  "产品 {v0}"
+ ],
+ "製品 編集 — {v0}": [
+  "Edit product — {v0}",
+  "编辑产品 — {v0}"
+ ],
+ "製品「{code}」を作成しました": [
+  "Product \"{code}\" was created",
+  "已创建产品「{code}」"
+ ],
+ "製品「{v0}」を{v1}しました": [
+  "Product \"{v0}\" was {v1}",
+  "已{v1}产品「{v0}」"
+ ],
+ "製品「{v0}」を削除しました": [
+  "Product \"{v0}\" was deleted",
+  "已删除产品「{v0}」"
+ ],
+ "製品「{v0}」を削除します。この操作は取り消せません。": [
+  "Product \"{v0}\" will be deleted. This cannot be undone.",
+  "将删除产品「{v0}」。此操作无法撤销。"
+ ],
+ "製品「{v0}」を有効化します。再び価格試算・価格表・見積書で選択できるようになります。": [
+  "Product \"{v0}\" will be enabled and can be chosen on price estimates, price lists and quotes again.",
+  "将启用产品「{v0}」，可再次在价格试算・价格表・报价单中选择。"
+ ],
+ "製品「{v0}」を無効化します。新規の価格試算・価格表・見積書で選択できなくなります。": [
+  "Product \"{v0}\" will be disabled and can no longer be chosen on new price estimates, price lists or quotes.",
+  "将停用产品「{v0}」，新的价格试算・价格表・报价单中将无法选择。"
+ ],
+ "見出しに {v0} がありません。雛形を書き出して、その並びで作ってください": [
+  "The header is missing {v0}. Export the template and follow its column order",
+  "表头缺少 {v0}。请导出模板并按其排列创建"
+ ],
+ "見積書 {quoteNumber} を発行し、PDF を保存しました{v1}": [
+  "Quote {quoteNumber} was issued and the PDF saved{v1}",
+  "已发行报价单 {quoteNumber} 并保存 PDF{v1}"
+ ],
+ "見積書 {v0} | CKK 業務管理システム": [
+  "Quote {v0} | CKK business management system",
+  "报价单 {v0} | CKK 业务管理系统"
+ ],
+ "計算基準 {applied} 件 · 価格試算 {used} 件": [
+  "{applied} criteria · {used} price estimates",
+  "计算基准 {applied} 项 · 价格试算 {used} 个"
+ ],
+ "計算基準「{name}」の構文エラー: {err}": [
+  "Syntax error in criterion \"{name}\": {err}",
+  "计算基准「{name}」的语法错误：{err}"
+ ],
+ "設定済み (****{v0}) / {status}": [
+  "Set (****{v0}) / {status}",
+  "已设置 (****{v0}) / {status}"
+ ],
+ "設計依頼 {number} がキャンセルされました": [
+  "Design request {number} was cancelled",
+  "设计委托单 {number} 已作废"
+ ],
+ "設計依頼 {number} が差し戻されました": [
+  "Design request {number} was sent back",
+  "设计委托单 {number} 已被退回"
+ ],
+ "設計依頼 {number} が承認されました": [
+  "Design request {number} was approved",
+  "设计委托单 {number} 已批准"
+ ],
+ "設計依頼 {number} の図面ができました": [
+  "The drawing for design request {number} is ready",
+  "设计委托单 {number} 的图纸已完成"
+ ],
+ "設計依頼 {number} の担当に指定されました": [
+  "You were assigned to design request {number}",
+  "您已被指定为设计委托单 {number} 的负责人"
+ ],
+ "設計依頼 {number} の設計が始まりました": [
+  "Design work on request {number} has started",
+  "设计委托单 {number} 的设计已开始"
+ ],
+ "設計依頼 {requestNumber} の担当に指定されました": [
+  "You were assigned to design request {requestNumber}",
+  "您已被指定为设计委托单 {requestNumber} 的负责人"
+ ],
+ "設計依頼書 {number} を作成しました": [
+  "Design request {number} was created",
+  "已创建设计委托单 {number}"
+ ],
+ "設計依頼書 {requestNumber}": [
+  "Design request {requestNumber}",
+  "设计委托单 {requestNumber}"
+ ],
+ "設計依頼書 {requestNumber} を完了にします。設計図 v{v1} が成果物として紐づきます。": [
+  "Design request {requestNumber} will be completed. Drawing v{v1} is linked as the deliverable.",
+  "将完成设计委托单 {requestNumber}。图纸 v{v1} 将作为成果物关联。"
+ ],
+ "設計依頼書 {requestNumber} を進行中へ差し戻します。完了日時はクリアされますが、承認は取りなおしになりません。": [
+  "Design request {requestNumber} will be sent back to in progress. The completion time is cleared, but the approval is not redone.",
+  "将设计委托单 {requestNumber} 退回至进行中。完成时间将被清除，但审批无需重新进行。"
+ ],
+ "設計依頼書 {v0} | CKK 業務管理システム": [
+  "Design request {v0} | CKK business management system",
+  "设计委托单 {v0} | CKK 业务管理系统"
+ ],
+ "設計依頼書 編集 {v0}": [
+  "Edit design request {v0}",
+  "编辑设计委托单 {v0}"
+ ],
+ "設計図 v{v0} が登録済みです。完了すると依頼者へ通知します": [
+  "Drawing v{v0} is registered. Completing it notifies the requester",
+  "图纸 v{v0} 已登记。完成后将通知申请人"
+ ],
+ "設計図 v{v0}（{v1} 件）": [
+  "Drawing v{v0} ({v1} files)",
+  "图纸 v{v0}（{v1} 件）"
+ ],
+ "設計図 v{version} のメモを更新": [
+  "Updated the memo on drawing v{version}",
+  "更新图纸 v{version} 的备忘"
+ ],
+ "設計図 v{version} を削除": [
+  "Delete drawing v{version}",
+  "删除图纸 v{version}"
+ ],
+ "設計図 v{version} を登録（{v1} ファイル{v2}）": [
+  "Registered drawing v{version} ({v1} files{v2})",
+  "登记图纸 v{version}（{v1} 个文件{v2}）"
+ ],
+ "設計図 v{version} を追加しました": [
+  "Drawing v{version} was added",
+  "已添加图纸 v{version}"
+ ],
+ "証憑を削除: {filename}": [
+  "Supporting document deleted: {filename}",
+  "删除凭证：{filename}"
+ ],
+ "証憑を添付: {name}": [
+  "Supporting document attached: {name}",
+  "添加凭证：{name}"
+ ],
+ "説明は {DESCRIPTION_MAX} 文字以内で入力してください": [
+  "Keep the description within {DESCRIPTION_MAX} characters",
+  "说明请控制在 {DESCRIPTION_MAX} 个字符以内"
+ ],
+ "請求書 {invoiceNumber} を作成しました": [
+  "Invoice {invoiceNumber} was created",
+  "已创建请款单 {invoiceNumber}"
+ ],
+ "請求書 {invoiceNumber} を入金済みにしました": [
+  "Invoice {invoiceNumber} was marked as paid",
+  "已将请款单 {invoiceNumber} 标记为已付款"
+ ],
+ "請求書 {invoiceNumber} を入金済みにします。": [
+  "Invoice {invoiceNumber} will be marked as paid.",
+  "将请款单 {invoiceNumber} 标记为已付款。"
+ ],
+ "請求書 {invoiceNumber} を発行しました": [
+  "Invoice {invoiceNumber} was issued",
+  "已发行请款单 {invoiceNumber}"
+ ],
+ "請求書 {invoiceNumber} を発行します。発行日は本日で記録されます。": [
+  "Invoice {invoiceNumber} will be issued. Today is recorded as the issue date.",
+  "将发行请款单 {invoiceNumber}。发行日期记录为今日。"
+ ],
+ "請求書 {invoiceNumber} を送付済みにしました": [
+  "Invoice {invoiceNumber} was marked as sent",
+  "已将请款单 {invoiceNumber} 标记为已寄送"
+ ],
+ "請求書 {invoiceNumber} を送付済みにします。": [
+  "Invoice {invoiceNumber} will be marked as sent.",
+  "将请款单 {invoiceNumber} 标记为已寄送。"
+ ],
+ "請求書 {v0} | CKK 業務管理システム": [
+  "Invoice {v0} | CKK business management system",
+  "请款单 {v0} | CKK 业务管理系统"
+ ],
+ "購買依頼 {requestNumber}": [
+  "Purchase request {requestNumber}",
+  "采购申请 {requestNumber}"
+ ],
+ "購買依頼 {requestNumber} から作成": [
+  "Created from purchase request {requestNumber}",
+  "由采购申请 {requestNumber} 创建"
+ ],
+ "購買依頼 {requestNumber} から変換": [
+  "Converted from purchase request {requestNumber}",
+  "由采购申请 {requestNumber} 转换"
+ ],
+ "購買依頼 {requestNumber} を作成しました": [
+  "Purchase request {requestNumber} was created",
+  "已创建采购申请 {requestNumber}"
+ ],
+ "購買依頼 {requestNumber} を更新しました": [
+  "Purchase request {requestNumber} was updated",
+  "已更新采购申请 {requestNumber}"
+ ],
+ "購買依頼 {v0} | CKK 業務管理システム": [
+  "Purchase request {v0} | CKK business management system",
+  "采购申请 {v0} | CKK 业务管理系统"
+ ],
+ "購買依頼 編集 {v0}": [
+  "Edit purchase request {v0}",
+  "编辑采购申请 {v0}"
+ ],
+ "選択中の {v0} 件を書き出します。": [
+  "The {v0} selected will be exported.",
+  "将导出所选的 {v0} 件。"
+ ],
+ "選択中の{v0}件の不良種類を削除します。この操作は取り消せません。": [
+  "The {v0} selected defect types will be deleted. This cannot be undone.",
+  "将删除所选的 {v0} 个不良类别。此操作无法撤销。"
+ ],
+ "選択中の{v0}件の価格表（段階・値引きルール含む）を削除します。この操作は取り消せません。": [
+  "The {v0} selected price lists (including tiers and discount rules) will be deleted. This cannot be undone.",
+  "将删除所选的 {v0} 张价格表（含档次・折扣规则）。此操作无法撤销。"
+ ],
+ "選択中の{v0}件の取引先を削除します。この操作は取り消せません。": [
+  "The {v0} selected business partners will be deleted. This cannot be undone.",
+  "将删除所选的 {v0} 个业务伙伴。此操作无法撤销。"
+ ],
+ "選択中の{v0}件の工程を削除します。他の工程が依存している工程は削除できません。この操作は取り消せません。": [
+  "The {v0} selected steps will be deleted. Steps other steps depend on cannot be deleted. This cannot be undone.",
+  "将删除所选的 {v0} 道工序。其他工序依赖的工序无法删除。此操作无法撤销。"
+ ],
+ "選択中の{v0}件の承認グループを削除します。この操作は取り消せません。": [
+  "The {v0} selected approval groups will be deleted. This cannot be undone.",
+  "将删除所选的 {v0} 个审批组。此操作无法撤销。"
+ ],
+ "選択中の{v0}件の拠点を削除します。この操作は取り消せません。": [
+  "The {v0} selected sites will be deleted. This cannot be undone.",
+  "将删除所选的 {v0} 个据点。此操作无法撤销。"
+ ],
+ "選択中の{v0}件の材種を削除します。この操作は取り消せません。": [
+  "The {v0} selected material types will be deleted. This cannot be undone.",
+  "将删除所选的 {v0} 个材料类别。此操作无法撤销。"
+ ],
+ "選択中の{v0}件の検査表テンプレートを削除します。この操作は取り消せません。": [
+  "The {v0} selected inspection templates will be deleted. This cannot be undone.",
+  "将删除所选的 {v0} 个检查表模板。此操作无法撤销。"
+ ],
+ "選択中の{v0}件の素材を削除します。この操作は取り消せません。": [
+  "The {v0} selected materials will be deleted. This cannot be undone.",
+  "将删除所选的 {v0} 个材料。此操作无法撤销。"
+ ],
+ "選択中の{v0}件の製品を削除します。この操作は取り消せません。": [
+  "The {v0} selected products will be deleted. This cannot be undone.",
+  "将删除所选的 {v0} 个产品。此操作无法撤销。"
+ ],
+ "選択肢 {v0} を削除": [
+  "Remove option {v0}",
+  "删除选项 {v0}"
+ ],
+ "選択肢 {v0}（English）": [
+  "Option {v0} (English)",
+  "选项 {v0}（English）"
+ ],
+ "選択肢 {v0}（日本語）": [
+  "Option {v0} (Japanese)",
+  "选项 {v0}（日语）"
+ ],
+ "開始 {v0}": [
+  "Started {v0}",
+  "开始 {v0}"
+ ],
+ "関連工程「{relatedProcessStepCode}」が見つかりません": [
+  "Related step \"{relatedProcessStepCode}\" was not found",
+  "未找到关联工序「{relatedProcessStepCode}」"
+ ],
+ "集計 — {formTitle}": [
+  "Summary — {formTitle}",
+  "汇总 — {formTitle}"
+ ],
+ "集計_{formTitle}_{formCode}.csv": [
+  "summary_{formTitle}_{formCode}.csv",
+  "汇总_{formTitle}_{formCode}.csv"
+ ],
+ "項目 {n}": [
+  "Item {n}",
+  "项目 {n}"
+ ],
+ "項目キー \"{key}\" が重複しています": [
+  "Duplicate field key \"{key}\"",
+  "项目键 \"{key}\" 重复"
+ ],
+ "項目キーが重複しています: {key}": [
+  "Duplicate field key: {key}",
+  "项目键重复：{key}"
+ ],
+ "項目定義が不正です: {error}": [
+  "The field definition is not valid: {error}",
+  "项目定义无效：{error}"
+ ],
+ "項目定義をバージョン {version} として公開": [
+  "Published the field definitions as version {version}",
+  "将项目定义作为版本 {version} 发布"
+ ],
+ "項目編集 — {v0}": [
+  "Edit fields — {v0}",
+  "编辑项目 — {v0}"
+ ],
+ "（{v0} に開始・{useCount} 回使用）": [
+  "(started {v0} · used {useCount} times)",
+  "（{v0} 开始・使用 {useCount} 次）"
+ ],
+ "（受注数量 {lineQuantity} − 手配済 {otherAllocated} = 残 {remaining}）": [
+  "(ordered {lineQuantity} − planned {otherAllocated} = {remaining} left)",
+  "（接单数量 {lineQuantity} − 已安排 {otherAllocated} = 余 {remaining}）"
+ ]
+}

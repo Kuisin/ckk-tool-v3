@@ -13,6 +13,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { EXCLUDED } from "./lib/scan.mjs";
+import { ensureAccessor } from "./lib/codemod.mjs";
 import { findTemplates, parseTemplateBody } from "./lib/template.mjs";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
@@ -71,13 +72,28 @@ for (const file of files) {
   edits.sort((a, b) => b.start - a.start);
   let code = source;
   for (const e of edits) code = code.slice(0, e.start) + e.text + code.slice(e.end);
+  // `tr` をどこから取るかは codemod.mjs の判定を使い回す。
+  const acc = ensureAccessor(code, {
+    accessor: isClient ? "const tr = useTr();" : "const tr = await getTr();",
+    requireAsync: !isClient,
+  });
+  code = acc.code;
+  if (acc.added > 0) {
+    const imp = isClient
+      ? 'import { useTr } from "@/hooks/useTr";'
+      : 'import { getTr } from "@/lib/ui-text-server";';
+    if (!code.includes(imp)) {
+      const first = code.search(/^import\s/m);
+      code = first >= 0 ? `${code.slice(0, first)}${imp}\n${code.slice(first)}` : `${imp}\n${code}`;
+    }
+  }
   touched++; rewritten += edits.length;
-  if (!/\bconst tr = (?:useTr\(\)|await getTr\(\))/.test(code)) needHook.push(path.relative(REPO, file) + (isClient ? "" : "  [server]"));
+  if (acc.skipped > 0) needHook.push(`${path.relative(REPO, file)}  (${acc.skipped} tr() with nowhere to put the accessor)`);
   console.log(`  ${path.relative(REPO, file)}  (${edits.length})`);
   if (!has("--dry")) fs.writeFileSync(file, code);
 }
 console.log(`\n${has("--dry") ? "[dry] " : ""}files ${touched}, templates ${rewritten}`);
 if (needHook.length) {
-  console.log(`\n${needHook.length} files need tr in scope:`);
+  console.log(`\n${needHook.length} files still need tr by hand:`);
   for (const f of needHook.slice(0, 40)) console.log("  ", f);
 }
