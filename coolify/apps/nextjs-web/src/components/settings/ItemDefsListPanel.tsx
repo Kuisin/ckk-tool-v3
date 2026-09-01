@@ -39,7 +39,7 @@ export function ItemDefsListPanel({ initial }: { initial: ProductItemDef[] }) {
       )}
       emptyIcon={<IconListDetails size={24} />}
       emptyMessage={tr(
-        tr("項目がありません。「項目を追加」から作成してください。"),
+        "項目がありません。「項目を追加」から作成してください。",
       )}
       initial={[...initial].sort((a, b) => a.order - b.order)}
       newHref={`${BASE}/new`}

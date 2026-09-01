@@ -234,7 +234,7 @@ export function ClosingTable({ rows }: { rows: BillingClosing[] }) {
         defaultSort={{ key: "closingDate", dir: "desc" }}
         emptyIcon={<IconCalendarDue size={24} />}
         emptyMessage={tr(
-          tr("締日処理がありません（「締日処理を実行」から作成します）"),
+          "締日処理がありません（「締日処理を実行」から作成します）",
         )}
         getRowId={(c) => c.id}
         onRowClick={(c) => router.push(`${BASE_PATH}/${c.id}`)}

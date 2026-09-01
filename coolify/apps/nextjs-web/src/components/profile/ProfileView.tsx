@@ -189,7 +189,7 @@ export function ProfileView({ user }: { user: ProfileData }) {
         notifications.show({
           title: tr("保存しました"),
           message: tr(
-            tr("メールアドレスを更新しました（通知メールの宛先になります）"),
+            "メールアドレスを更新しました（通知メールの宛先になります）",
           ),
           color: "green",
         });

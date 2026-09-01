@@ -34,7 +34,7 @@ export function ProductTypesListPanel({ initial }: { initial: ProductType[] }) {
       )}
       emptyIcon={<IconCategory size={24} />}
       emptyMessage={tr(
-        tr("種別がありません。「種別を追加」から作成してください。"),
+        "種別がありません。「種別を追加」から作成してください。",
       )}
       initial={[...initial].sort((a, b) => a.order - b.order)}
       newHref={`${BASE}/new`}

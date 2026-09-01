@@ -1311,7 +1311,7 @@ export function WorkflowBuilder({
               ) : (
                 <TextInput
                   description={tr(
-                    tr("この工程構成を製品の工程リスト v1 として保存します"),
+                    "この工程構成を製品の工程リスト v1 として保存します",
                   )}
                   label={
                     <HelpLabel {...fieldHelp("workOrder", "newRouteName")} />
@@ -1337,7 +1337,7 @@ export function WorkflowBuilder({
                       { value: "generic", label: tr("汎用（全顧客）") },
                     ]}
                     description={tr(
-                      tr("専用にすると同じ顧客×製品の指示書で優先選択されます"),
+                      "専用にすると同じ顧客×製品の指示書で優先選択されます",
                     )}
                     label={tr("対象顧客")}
                     onChange={(v) =>

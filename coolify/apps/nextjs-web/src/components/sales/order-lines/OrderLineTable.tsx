@@ -189,7 +189,7 @@ export function OrderLineTable({ rows }: { rows: OrderLine[] }) {
         }
         emptyIcon={<IconClipboardList size={24} />}
         emptyMessage={tr(
-          tr("注文明細がありません（注文請書を確定すると作られます）"),
+          "注文明細がありません（注文請書を確定すると作られます）",
         )}
         getRowId={(o) => o.id}
         onRowClick={(o) => router.push(`${BASE_PATH}/${o.id}`)}

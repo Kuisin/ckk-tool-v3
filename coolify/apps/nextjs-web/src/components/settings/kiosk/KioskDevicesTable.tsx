@@ -548,7 +548,7 @@ export function KioskDevicesTable({
             confirmLabel: tr("有効化"),
             confirmColor: "green",
             successMessage: tr(
-              tr("端末を有効化しました。端末側の画面が自動で切り替わります"),
+              "端末を有効化しました。端末側の画面が自動で切り替わります",
             ),
             run: () => activateDevice(r.id),
           }),

@@ -400,7 +400,7 @@ export function DisplayDetailView({
           <EditablePanel
             canEdit={display.status !== "REVOKED"}
             description={tr(
-              tr("保存すると、この画面の表示がその場で切り替わります。"),
+              "保存すると、この画面の表示がその場で切り替わります。",
             )}
             edit={({ close }) => (
               <DisplayContentEditor

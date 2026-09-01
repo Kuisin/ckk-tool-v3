@@ -393,7 +393,7 @@ export function MaterialForm({
             <SimpleGrid cols={isMobile ? 1 : 2} mb="sm" spacing="sm">
               <SearchSelect
                 description={tr(
-                  tr("変換済（コード構成あり）の材種のみ選択できます"),
+                  "変換済（コード構成あり）の材種のみ選択できます",
                 )}
                 f4={materialTypeF4(manufacturerOptions, shapeOptions)}
                 label={<HelpLabel {...fieldHelp("material", "materialType")} />}

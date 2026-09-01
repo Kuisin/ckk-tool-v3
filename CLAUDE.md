@@ -98,6 +98,87 @@ pnpm prisma migrate dev
 pnpm prisma db push                  # dev-only
 ```
 
+## Code memory (codebase-memory MCP)
+
+**A local index of `origin/dev`, queried over MCP.** `codebase-memory-mcp`
+([DeusData/codebase-memory-mcp](https://github.com/DeusData/codebase-memory-mcp), MIT)
+parses the tree into a knowledge graph (~46k nodes / ~149k edges, ~13s) and serves it as
+MCP tools — `search_graph`, `trace_path`, `get_architecture`, `get_code_snippet`,
+`search_code`, `index_status`, `detect_changes`. **The project key is
+`ckk-tool-v3-dev`**; queries take it as `--project` / the `project` argument.
+
+**Reach for it before a repo-wide grep**, for the questions that span files rather than sit
+in one: *where is this used, what calls this, what does this subsystem consist of, what
+would this change break.* It answers with **locations**, so the graph tells you where to
+look and then you read the files. It is **not** a source of truth about behaviour —
+`_specs/` and the code remain that, and a graph edge is not a reason to skip reading the
+function. For a keyword you can already name in a file you can already name, plain
+`grep`/`Explore` is still faster.
+
+**What it holds is `origin/dev`, not your branch.** The index is built from a dedicated
+detached worktree at `~/.local/share/ckk-index/ckk-tool-v3-dev` that exists only to be
+indexed — never work in it. Two consequences that will otherwise waste your time:
+
+- **Your in-progress branch is invisible to it.** Code you just wrote is not in the graph,
+  and code you just deleted still is. Trust `git`/`grep` over the index for anything the
+  current branch touched.
+- **It is deliberately not the main checkout.** That checkout is shared with ~20 worktrees
+  and drifts far behind `dev` (it was 311 commits behind when this was set up), so indexing
+  it produced a graph that looked current and was not. Pointing the index at a checkout
+  nobody works in is what makes "current" true by construction.
+
+**Refresh is automatic.** The `SessionStart` hook in `.claude/settings.json` runs
+`tools/codebase-memory/refresh-index.sh` in the background at session start: fetch
+`origin/dev` → move the index worktree to it → re-index. It is `async`, so it never delays
+startup, and it **exits 0 silently on every failure path** — binary absent, worktree
+missing, another session already refreshing (a lock dir guards that). Losing the index is
+not worth interrupting anyone. Run it by hand, or check what the index actually holds, with:
+
+```bash
+tools/codebase-memory/refresh-index.sh                              # 手動更新（〜13 秒）
+codebase-memory-mcp cli index_status --project ckk-tool-v3-dev --verbose   # git.head_sha を見る
+codebase-memory-mcp cli list_projects
+```
+
+`index_status --verbose` prints `git.head_sha` — **compare it with `origin/dev` whenever an
+answer looks wrong.** A stale index is worse than none, because it answers confidently with
+line numbers that have since moved.
+
+Traps, all of them found the hard way:
+
+- **The project name is normally derived from the absolute path**, which yields an unusable
+  key; `--name` overrides it, which is why `refresh-index.sh` passes `--name`. Re-indexing
+  without it silently creates a *second*, path-named project instead of updating this one.
+- **Querying the wrong project returns an empty answer, not an error.** There is nothing to
+  distinguish "no such project" from "nothing matched".
+- **`.claude/` is excluded from indexing**, so `.claude/worktrees/*` never leaks in.
+- **Never pass `--persistence`.** It writes `.codebase-memory/graph.db.zst` *into the repo*
+  for team sharing. `.gitignore` blocks it; sharing the artifact is a decision to make
+  deliberately, not a flag to leave on.
+- The binary is **not a repo dependency and not in `pnpm-lock.yaml`** — it is installed per
+  machine and registered at **user scope** (`~/.claude.json`), so it is available in every
+  repo and committed to none. Nothing here breaks when it is absent; you just lose the
+  tools.
+
+Set up on a new Mac (verify the checksum rather than piping the installer into a shell):
+
+```bash
+mkdir -p ~/.local/bin
+gh release download <tag> --repo DeusData/codebase-memory-mcp \
+  --pattern 'codebase-memory-mcp-darwin-arm64.tar.gz' --pattern 'checksums.txt'
+shasum -a 256 -c checksums.txt --ignore-missing
+tar xzf codebase-memory-mcp-darwin-arm64.tar.gz -C ~/.local/bin codebase-memory-mcp
+claude mcp add --scope user codebase-memory "$HOME/.local/bin/codebase-memory-mcp"
+
+# 索引専用の worktree（作業しない）。あとは SessionStart フックが面倒を見る。
+git worktree add --detach ~/.local/share/ckk-index/ckk-tool-v3-dev origin/dev
+tools/codebase-memory/refresh-index.sh
+```
+
+The index lives in `~/.cache/codebase-memory-mcp` (~200 MB; override with `CBM_CACHE_DIR`),
+the worktree costs ~122 MB. Deleting either costs one re-index and nothing else — but
+`git worktree prune` after removing the worktree, or git keeps its registration.
+
 ## Key Patterns
 
 **RBAC** — Always query the `user_permissions` view (not the raw relation tables). It aggregates roles → permissions per user and returns only the highest `SCOPE` per `(user_id, action, permission_code)`. Roles and grants are owned by two idempotent seeds — `shared-db/sql/rbac-seed.sql` (the permission codes + `admin`/`staff`) and `roles-seed.sql` (the 15 operational roles) — **not** by the app. `system` and `kiosk`, plus the five **privileged codes** (`kiosk_secret` / `kiosk_device` / `kiosk_card` / `personal_data` / `user_admin`), are excluded from every business role. **When you add a permission code, check both seeds' exclusion lists**: `roles-seed.sql` grants `manager` / `viewer` / the six `*_manager` roles via `CROSS JOIN app.permissions`, so a new code is handed to all of them unless you exclude it — this already happened once with `kiosk`. `rbac-seed.sql` also deletes every `APPROVE` grant, excluding only the five privileged codes; widening that DELETE empties `privileged_approver` and silently makes every request undecidable. Two derived references are regenerated, never hand-edited: `_docs/rbac-role-matrix.xlsx` (`tools/rbac-matrix/build_rbac_xlsx.py`, reads the live DB + `app-list.ts`) and the DC02 internal doc「ロールと権限」(`content/internal/rbac/`). Launcher visibility is a separate axis — `feature_flags` (`feature-flags-seed.sql`) decides what is published on `main`, so a grant never publishes an app.

@@ -272,7 +272,7 @@ export function DuplicateProductModal({
         <LocalizedTextInput
           jaProps={{
             description: tr(
-              tr("製品コードは保存時に自動採番されます（PRD-YYYYMM-NNNN）"),
+              "製品コードは保存時に自動採番されます（PRD-YYYYMM-NNNN）",
             ),
             value: nameJa,
             onChange: (e: React.ChangeEvent<HTMLInputElement>) =>

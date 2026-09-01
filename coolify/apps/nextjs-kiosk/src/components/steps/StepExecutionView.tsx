@@ -323,10 +323,22 @@ export function StepExecutionView({
                     {m.steps.location.pendingScanned(pendingLocationCode)}
                   </Text>
                 )}
+              {/* 開始前の案内は**どこが記録されるのかを名指しする**。以前は
+                  「端末の既定作業場所が記録されます」とだけ出していたので、
+                  (1) それがどこなのかは隠し設定画面を開くまで判らず、
+                  (2) 既定が未設定でも同じ文が出て、記録されないのに
+                  「記録されます」と読めていた。 */}
               {step.sessionState === "STARTABLE" &&
                 pendingLocationCode == null && (
-                  <Text c="dimmed" size="sm">
-                    {m.steps.location.deviceDefaultHint}
+                  <Text
+                    c={locationGate.deviceDefaultLabel ? "dimmed" : "orange"}
+                    size="sm"
+                  >
+                    {locationGate.deviceDefaultLabel
+                      ? m.steps.location.deviceDefaultHint(
+                          locationGate.deviceDefaultLabel,
+                        )
+                      : m.steps.location.deviceDefaultNone}
                   </Text>
                 )}
               {locationNotice && (

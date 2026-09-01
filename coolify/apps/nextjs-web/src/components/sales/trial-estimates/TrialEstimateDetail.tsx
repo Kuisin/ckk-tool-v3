@@ -224,7 +224,7 @@ export function TrialEstimateDetail({
         notifications.show({
           title: tr("確定しました"),
           message: tr(
-            tr("価格表（顧客×製品）の作成時に基準単価ソースとして選択できます"),
+            "価格表（顧客×製品）の作成時に基準単価ソースとして選択できます",
           ),
           color: "green",
         });
