@@ -21,6 +21,7 @@ import {
   IconCheck,
   IconCircleMinus,
   IconEdit,
+  IconFileExport,
   IconListCheck,
   IconSearch,
   IconTrash,
@@ -31,7 +32,9 @@ import {
   deleteInspectionTemplates,
   setInspectionTemplatesActive,
 } from "@/app/(dashboard)/master/inspection-templates/actions";
+import { InspectionTemplateIoModal } from "@/components/master/inspection-templates/InspectionTemplateIoModal";
 import { ActiveBadge } from "@/components/ui/ActiveBadge";
+import { SecondaryButton } from "@/components/ui/buttons";
 import { type Column, DataTable } from "@/components/ui/DataTable";
 import { DocNumber } from "@/components/ui/DocNumber";
 import { openConfirm } from "@/components/ui/modals";
@@ -70,6 +73,9 @@ export function InspectionTemplateTable({
 }) {
   const router = useRouter();
   const isMobile = useIsMobile();
+  // 書き出し / 取込。選択があればその分だけを書き出す。
+  const [ioOpen, setIoOpen] = useState(false);
+  const [ioIds, setIoIds] = useState<number[]>([]);
   const [, startTransition] = useTransition();
 
   // 検索・フィルタは URL search params に保持（design.md §8.1 / ページ共有）
@@ -219,7 +225,19 @@ export function InspectionTemplateTable({
 
   return (
     <ListShell
-      action={<NewButton href={`${BASE_PATH}/new`} />}
+      action={
+        <Group gap="xs" wrap="nowrap">
+          {/* 書き出し / 取込 — 環境をまたぐ持ち出しと、Excel で作った検査表の入口 */}
+          <SecondaryButton
+            leftSection={<IconFileExport size={14} />}
+            onClick={() => setIoOpen(true)}
+            style={{ flexShrink: 0 }}
+          >
+            {isMobile ? "入出力" : "書き出し / 取込"}
+          </SecondaryButton>
+          <NewButton href={`${BASE_PATH}/new`} />
+        </Group>
+      }
       breadcrumbs={["マスタ", "検査表テンプレート"]}
       filters={
         <Select
@@ -245,6 +263,14 @@ export function InspectionTemplateTable({
     >
       <DataTable
         bulkActions={[
+          {
+            label: "選択を書き出し",
+            icon: <IconFileExport size={16} />,
+            onAction: (rs) => {
+              setIoIds(rs.map((r) => r.id));
+              setIoOpen(true);
+            },
+          },
           {
             label: "一括有効化",
             icon: <IconCheck size={16} />,
@@ -331,6 +357,14 @@ export function InspectionTemplateTable({
         onDone={() => router.refresh()}
         opened={!!toggleRow}
         target={toggleRow}
+      />
+      <InspectionTemplateIoModal
+        onClose={() => {
+          setIoOpen(false);
+          setIoIds([]);
+        }}
+        opened={ioOpen}
+        selectedIds={ioIds}
       />
     </ListShell>
   );
