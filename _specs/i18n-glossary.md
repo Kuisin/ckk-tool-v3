@@ -205,7 +205,7 @@ DB データは**訳す対象ではないが、入れ物の作り方は決めて
 | SY0E | AI プロバイダ | AI provider | AI 服务商 |
 | SY0F | 通知メール | Notification email | 通知邮件 |
 | SY0G | 特権アクセス | Privileged access | 特权访问 |
-| SY0H | 取引先ポータル | Partner portal | 业务伙伴门户 |
+| SY0H | 取引先ポータル | Partner portal | 客户门户 |
 
 ### 3.3 書類・番号
 
@@ -250,7 +250,7 @@ DB データは**訳す対象ではないが、入れ物の作り方は決めて
 | 請求先 | Bill-to | 请款对象 |
 | 納品先・出荷先 | Ship-to | 送货对象 |
 | 担当者（取引先側） | Contact | 联系人 |
-| 取引先ポータル | Partner portal | 业务伙伴门户 | 社外の人が自社宛の書類を見る面（SY0H / `/portal`） |
+| 取引先ポータル | Partner portal | 客户门户 | 社外の人が自社宛の書類を見る面（SY0H / `/portal`） |
 | ポータルアカウント | Portal account | 门户账号 | app.portal_accounts。**社員（app.users）とは別の主体** |
 | 確認コード | Verification code | 验证码 | メール OTP。「認証コード」と混ぜない |
 | バックアップコード | Backup code | 备用码 | メールが受け取れないときの使い捨てコード |

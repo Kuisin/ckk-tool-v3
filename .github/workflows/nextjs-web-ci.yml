@@ -112,6 +112,11 @@ jobs:
       - name: i18n regression guard (no new Japanese literals)
         run: node ../../../tools/i18n/i18n-scan.mjs
 
+      # 用語集そのものの検査。同じ ja に違う訳が当たっていないか
+      # （_specs/i18n-glossary.md が i18n 用語の正 — §2.11 の手順）。
+      - name: i18n glossary consistency
+        run: node ../../../tools/i18n/i18n-glossary-check.mjs
+
       # "use server" は async 関数しか export できない。定数を export すると
       # クライアントにはアクション参照が渡り、実行時に画面ごと落ちる
       # （tsc も biome も next build も検出しない）。
