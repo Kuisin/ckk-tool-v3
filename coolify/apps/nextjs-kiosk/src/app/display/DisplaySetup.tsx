@@ -230,6 +230,15 @@ export function DisplaySetup({ reason, hint, screenTotal }: Props) {
           </Badge>
         ) : undefined
       }
+      brand={
+        // 登録前の画面こそ「誰の何なのか」が分からない。ロゴを出しておく。
+        // biome-ignore lint/performance/noImgElement: 静的 SVG 1 枚
+        <img
+          alt=""
+          src="/design-assets/dark_logo.svg"
+          style={{ display: "block", height: "3rem" }}
+        />
+      }
       instruction="管理者に「設定 → 端末管理 → ディスプレイ」でこのコードをスキャンまたは入力してもらい、登録してください。"
       notice={note}
       now={now}

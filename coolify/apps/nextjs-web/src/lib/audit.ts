@@ -10,6 +10,7 @@
  */
 
 import type { AuditEntry } from "@/components/ui/shells";
+import { auditFieldLabel } from "@/lib/audit-field-labels";
 import { avatarUrl } from "@/lib/avatar";
 import { prisma } from "@/lib/db";
 import type { Formatters } from "@/lib/format";
@@ -114,21 +115,6 @@ export function auditTableLabel(tableName: string): string {
   return AUDIT_TABLE_LABELS[tableName] ?? tableName;
 }
 
-/** 主要フィールドの日本語ラベル（UPDATE 差分表示用）。未登録キーはそのまま表示。 */
-const FIELD_LABELS: Record<string, string> = {
-  status: "ステータス",
-  isActive: "有効",
-  notes: "備考",
-  unitPrice: "単価",
-  baseUnitPrice: "基準単価",
-  validFrom: "有効開始日",
-  validUntil: "有効終了日",
-  quantity: "数量",
-  name: "名称",
-  nameJa: "名称",
-  unit: "単位",
-};
-
 /**
  * 現在の操作ユーザー ID。認証が未実装（セッションなし）のため現状はシステム
  * ユーザーを返す（履歴上は「システム」表示）。
@@ -218,6 +204,7 @@ function describeChange(
   action: string,
   before: unknown,
   after: unknown,
+  tableName?: string,
 ): string {
   // システムイベント（SEED/MIGRATE 等）は after.note に人間向け説明を持つ。
   const note = (after as { note?: unknown } | null)?.note;
@@ -239,7 +226,9 @@ function describeChange(
       continue;
     }
     if (fmtValue(bv) === fmtValue(av)) continue;
-    const label = FIELD_LABELS[k] ?? k;
+    // ラベルも整形も詳細表（AuditChangeTable）と同じものを使う。
+    // 別々に持つと、一覧と詳細で違う言葉が出る。
+    const label = auditFieldLabel(k, tableName);
     diffs.push(`${label}: ${fmtValue(bv)} → ${fmtValue(av)}`);
     if (diffs.length >= 6) break;
   }
@@ -284,7 +273,12 @@ function mapAudit(fmt: Formatters, row: AuditRow): AuditEntry {
     // 操作元の共有タブレット（Web からの操作は null → バッジを出さない）。
     device: row.kioskDevice ? fmt.deviceName(row.kioskDevice.name) : null,
     at: fmt.dateTime(row.createdAt),
-    detail: describeChange(row.action, row.beforeData, row.afterData),
+    detail: describeChange(
+      row.action,
+      row.beforeData,
+      row.afterData,
+      row.tableName,
+    ),
   };
 }
 

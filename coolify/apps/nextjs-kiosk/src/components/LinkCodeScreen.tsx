@@ -81,6 +81,12 @@ type Props = {
   notice?: ReactNode;
   /** コードの上に出す補足（何枚目か etc.）。無ければ出さない。 */
   badge?: ReactNode;
+  /**
+   * 一番上に出す会社の印（ロゴ）。**壁のディスプレイだけが渡す。**
+   * 通りがかりに見られる画面なので「これは会社のものだ」が要る。
+   * 手に持つ端末は誰の何かが自明なので渡さない。
+   */
+  brand?: ReactNode;
   /** いまの時刻（カウントダウン用）。呼び出し側が 1 秒ごとに更新する。 */
   now: number;
 };
@@ -93,6 +99,7 @@ export function LinkCodeScreen({
   onRetry,
   notice,
   badge,
+  brand,
   now,
 }: Props) {
   const s = SIZES[variant];
@@ -108,6 +115,7 @@ export function LinkCodeScreen({
         withBorder
       >
         <Stack align="center" gap="md">
+          {brand}
           {notice && (
             <Alert color="orange" w="100%">
               {notice}
