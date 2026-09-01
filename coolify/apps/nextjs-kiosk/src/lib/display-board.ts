@@ -273,7 +273,11 @@ export async function loadQualityBoard(
   const records = await displayDb.defectRecord.findMany({
     where: {
       recordedAt: { gte: startOfDay(days) },
-      ...(filter.plantId ? { workOrderStep: { plantId: filter.plantId } } : {}),
+      // ★ リレーション名は `step`（`workOrderStep` ではない — 列名は
+      //   work_order_step_id だが Prisma 側の名前は step）。条件付きスプレッドで
+      //   足していたので tsc の余剰プロパティ検査をすり抜け、拠点を絞ったときだけ
+      //   実行時に落ちていた。
+      ...(filter.plantId ? { step: { plantId: filter.plantId } } : {}),
     },
     select: { id: true, defectType: { select: { id: true, name: true } } },
     take: 2000,

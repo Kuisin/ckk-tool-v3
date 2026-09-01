@@ -301,18 +301,79 @@ export function DisplayRenderer({
   }
 
   return (
-    <iframe
-      key={`${config.profile.id}-${generation}`}
+    <SwappingFrame
       src={src}
+      title={config.profile.name ?? "ディスプレイ"}
+      zoomStyle={zoomStyle}
+    />
+  );
+}
+
+/**
+ * 二重化したフレーム。**次の中身が読み終わるまで、いまの中身を出したままにする。**
+ *
+ * 再取得のたびに 1 枚の iframe の src（と key）を差し替えていたので、更新の
+ * たびに画面が真っ白になってから描き直されていた。誰も触らない壁の画面では
+ * これがいちばん目立つ壊れ方で、通りがかりに見ると「消えた」ようにしか
+ * 見えない。
+ *
+ * 新しい URL は**裏の 1 枚**で読み込み、`load` が来たときに初めて表に出す。
+ * 読み込みに失敗しても表は古い中身のまま残るので、次の再取得まで何も
+ * 起きない（白い画面を出すより、少し古い情報を出し続けるほうがよい）。
+ */
+function SwappingFrame({
+  src,
+  title,
+  zoomStyle,
+}: {
+  src: string;
+  title: string;
+  zoomStyle: { zoom: string } | undefined;
+}) {
+  const [shown, setShown] = useState(src);
+  const [pending, setPending] = useState<string | null>(null);
+
+  // 表と同じ URL になったら裏は要らない（WS の合図と再取得が重なった場合）。
+  useEffect(() => {
+    setPending(src === shown ? null : src);
+  }, [src, shown]);
+
+  const frameStyle = {
+    border: 0,
+    height: "100%",
+    left: 0,
+    position: "absolute" as const,
+    top: 0,
+    width: "100%",
+  };
+
+  return (
+    <div
       style={{
         flex: 1,
-        width: "100%",
         height: "100dvh",
-        border: 0,
+        position: "relative",
+        width: "100%",
         ...zoomStyle,
       }}
-      title={config.profile.name ?? "ディスプレイ"}
-    />
+    >
+      {/* 表 — いま見えている中身。差し替え中も消さない */}
+      <iframe key={shown} src={shown} style={frameStyle} title={title} />
+
+      {/* 裏 — 読み込み中の次の中身。読み終わったら入れ替える */}
+      {pending && pending !== shown && (
+        <iframe
+          key={pending}
+          onLoad={() => {
+            setShown(pending);
+            setPending(null);
+          }}
+          src={pending}
+          style={{ ...frameStyle, opacity: 0, pointerEvents: "none" }}
+          title={title}
+        />
+      )}
+    </div>
   );
 }
 
