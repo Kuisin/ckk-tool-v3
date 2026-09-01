@@ -432,7 +432,7 @@ export function ApprovalFlowRulesSection({
           <LocalizedTextInput
             jaProps={{
               value: nameJa,
-              onChange: (v: string) => setNameJa(v),
+              onChange: (e) => setNameJa(e.currentTarget.value),
             }}
             label="ルール名"
             placeholder="例: 50万円以上"
@@ -552,12 +552,14 @@ export function ApprovalFlowRulesSection({
                     <LocalizedTextInput
                       jaProps={{
                         value: s.nameJa,
-                        onChange: (value: string) =>
+                        onChange: (e) => {
+                          const value = e.currentTarget.value;
                           setSteps((prev) =>
                             prev.map((x) =>
                               x.key === s.key ? { ...x, nameJa: value } : x,
                             ),
-                          ),
+                          );
+                        },
                       }}
                       label="名称"
                       placeholder="第一承認"

@@ -121,7 +121,10 @@ function RegionModal({
           withAsterisk
         />
         <LocalizedTextInput
-          jaProps={{ value: nameJa, onChange: setNameJa }}
+          jaProps={{
+            value: nameJa,
+            onChange: (e) => setNameJa(e.currentTarget.value),
+          }}
           label="名称"
           placeholder="例: 日本"
           required

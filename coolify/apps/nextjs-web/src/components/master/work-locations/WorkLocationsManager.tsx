@@ -257,7 +257,10 @@ function GroupModal({
         </SimpleGrid>
         <LocalizedTextInput
           help={fieldHelpTip("workLocation", "code")}
-          jaProps={{ value: nameJa, onChange: setNameJa }}
+          jaProps={{
+            value: nameJa,
+            onChange: (e) => setNameJa(e.currentTarget.value),
+          }}
           label="名称"
           placeholder="例: NC旋盤"
           required
@@ -409,7 +412,10 @@ function LocationModal({
         </SimpleGrid>
         <LocalizedTextInput
           help={fieldHelpTip("workLocation", "code")}
-          jaProps={{ value: nameJa, onChange: setNameJa }}
+          jaProps={{
+            value: nameJa,
+            onChange: (e) => setNameJa(e.currentTarget.value),
+          }}
           label="名称"
           placeholder="例: NC旋盤 1号機"
           required

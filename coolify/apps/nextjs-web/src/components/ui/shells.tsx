@@ -43,7 +43,7 @@ import {
   IconFileTypePdf,
   IconLanguage,
 } from "@tabler/icons-react";
-import { type ReactNode, useState } from "react";
+import { type ChangeEventHandler, type ReactNode, useState } from "react";
 import { useUnsavedChanges } from "@/components/layout/NavigationGuard";
 import { useIsMobile } from "@/hooks/useViewport";
 import { LOCALE_LABELS, LOCALES } from "@/lib/i18n";
@@ -603,15 +603,34 @@ export function LocalizedTextInput({
   /**
    * 既定言語（日本語）の値。本文に常時表示する唯一の欄。`description` を
    * 追加で渡してよい（`TextInput` へそのまま伝わる）。
+   *
+   * **`onChange` は「値」ではなく「イベント」を受け取る** — 中身は素の
+   * Mantine `TextInput` にそのまま流し込むため。`form.getInputProps("nameJa")`
+   * をそのまま渡すか、`useState` 直書きなら
+   * `onChange: (e) => setNameJa(e.currentTarget.value)` と書くこと。
+   * `onChange: setNameJa` と書くと **state にイベントそのものが入り**、
+   * 入力欄が `[object Object]` になったうえ、保存時に Server Action の
+   * 直列化が落ちる（関数を含むオブジェクトは渡せない）。実際に MS0D
+   * 作業場所と地域で起きたので、`GetInputPropsReturnType`（`onChange: any`）
+   * をそのまま使わず**ここだけ型を締めて**コンパイルで止める。
+   * `getInputProps` の戻り値は `any` なので従来どおり渡せる。
    */
-  jaProps: GetInputPropsReturnType & { description?: ReactNode };
+  jaProps: Omit<GetInputPropsReturnType, "onChange"> & {
+    onChange?: ChangeEventHandler<HTMLInputElement>;
+    description?: ReactNode;
+  };
   /**
    * 日本語以外の翻訳をまとめて持つ 1 フィールド（`Record<言語コード, 値>`）。
    * `form.getInputProps("xxxTranslations")` をそのまま渡せる — 生の
    * `{value, onChange}` オブジェクトでもよい（編集モーダルなど useState 直書きの
    * 画面向け）。
+   *
+   * こちらは `jaProps` と逆で **値（`Record<言語コード, 値>`）を受け取る** —
+   * モーダルの確定時にまとめて渡すため。`onChange: setNameTranslations` が正しい。
    */
-  translationsProps: GetInputPropsReturnType;
+  translationsProps: Omit<GetInputPropsReturnType, "onChange"> & {
+    onChange: (value: Record<string, string>) => void;
+  };
   required?: boolean;
   placeholder?: string;
   /**
