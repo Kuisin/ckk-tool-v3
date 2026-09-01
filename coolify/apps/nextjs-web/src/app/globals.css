@@ -386,6 +386,50 @@ html {
   }
 
   /*
+   * 畳んだときの見出しボタン。**タブ列と同じ見た目にする** — 枠も背景も持たず、
+   * 下線 1 本だけ。以前は variant="default" の Button だったためフォームの
+   * Select と同じ形になり、「いま開いているタブ」ではなく「入力欄」に見えて
+   * いた。開けることは右端の ▾ だけで示す。
+   *
+   * 下線は**タブ列の線と同じ色・太さ**（--tab-border-color の 1px）。開いて
+   * いるタブの primary 色（2px）は使わない — 幅いっぱいの青い線は、区切りでは
+   * なく「選択中の入力欄」の強調に見える。
+   */
+  .app-tabs-trigger {
+    display: flex;
+    align-items: center;
+    gap: var(--mantine-spacing-xs);
+    width: 100%;
+    padding: var(--mantine-spacing-xs) var(--mantine-spacing-md);
+    font-size: var(--mantine-font-size-sm);
+    line-height: 1;
+    background-color: transparent;
+    border-bottom: calc(0.0625rem * var(--mantine-scale)) solid
+      var(--tab-border-color, var(--mantine-color-default-border));
+  }
+  .app-tabs-trigger-label {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-align: start;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .app-tabs-trigger-chevron {
+    flex-shrink: 0;
+    color: var(--mantine-color-dimmed);
+  }
+  /* ホバーの薄い地色だけはタブと同じに置く（触れることが判るように）。 */
+  @media (hover: hover) {
+    .app-tabs-trigger:hover {
+      background-color: var(--mantine-color-gray-0);
+    }
+    [data-mantine-color-scheme="dark"] .app-tabs-trigger:hover {
+      background-color: var(--mantine-color-dark-6);
+    }
+  }
+
+  /*
    * Form action bar (キャンセル / 保存) — pinned to the bottom of the viewport
    * on desktop so the buttons stay reachable however long the form is.
    * `bottom` clears the fixed AppShell footer (--app-shell-footer-offset), and
