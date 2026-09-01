@@ -14,6 +14,8 @@
  *      完了できること、製品マスタ側からは書けないこと
  *   6. リッチテキスト — 設計依頼のコメント（スレッド）と設計図の版メモ
  *      （1 版 1 件）が書けて、読み込み直しても残ること
+ *   7. 多言語の名称欄（LocalizedTextInput）— 打った文字がそのまま欄に入り、
+ *      日本語も他言語も保存されること（MS0D 作業場所・地域）
  *
  * 落ちたときに原因を追えるよう、check() には**実測値**（URL・幅・ラベル）を
  * 添えること。合否だけだと「なぜ」が残らない。
@@ -515,6 +517,135 @@ async function main(): Promise<void> {
     "PD06: 版ごとのメモを書ける",
     (await page.getByText(memoText).count()) > 0,
     memoText,
+  );
+
+  // ── 8. 多言語の名称欄（LocalizedTextInput）が本当に保存できる ────────
+  //
+  // `jaProps.onChange` は **値ではなくイベント**を受け取る（中身は素の Mantine
+  // TextInput にそのまま流すため）。値のつもりで `onChange: setNameJa` と
+  // 書くと state にイベントが入り、欄が "[object Object]" になったうえ、
+  // 保存で Server Action の直列化が落ちる（関数を含むオブジェクトは渡せない）。
+  // MS0D 作業場所 / 地域 / 承認フロー / SY09 端末名がまとめてこれで壊れていた。
+  // 型でも止めている（shells.tsx の jaProps）が、**入力→保存が通ること**は
+  // 画面で見ないと分からないのでここで見る。
+  await page.setViewportSize({ width: 1440, height: 900 });
+
+  /**
+   * いま開いているダイアログの「名称（日本語）」を埋め、多言語モーダルで
+   * 英語も入れる。**欄に実際に入った文字列を返す** — バグると
+   * "[object Object]" が返るので、保存の成否とは別に入力自体を検証できる。
+   */
+  async function fillLocalizedName(
+    label: string,
+    ja: string,
+    en: string,
+  ): Promise<string> {
+    const dialog = page.getByRole("dialog").last();
+    const jaInput = dialog
+      .getByRole("textbox", { name: new RegExp(`${label}（日本語）`) })
+      .first();
+    await jaInput.fill(ja);
+    const typed = await jaInput.inputValue();
+    await dialog.getByRole("button", { name: /多言語/ }).first().click();
+    await page.waitForTimeout(400);
+    const langDialog = page.getByRole("dialog").last();
+    await langDialog
+      .getByRole("textbox", { name: new RegExp(`${label}（English）`) })
+      .first()
+      .fill(en);
+    await langDialog.getByRole("button", { name: "実行" }).click();
+    await page.waitForTimeout(400);
+    return typed;
+  }
+
+  const stamp = Date.now().toString().slice(-6);
+
+  // MS0D 作業場所 — グループ追加
+  await page.goto(`${APP}/master/work-locations`, { waitUntil: "networkidle" });
+  await page.getByRole("button", { name: "グループ追加" }).click();
+  await page.waitForTimeout(600);
+  const groupCode = `E2E-G${stamp}`;
+  await page
+    .getByRole("dialog")
+    .getByRole("textbox", { name: /コード/ })
+    .first()
+    .fill(groupCode);
+  const groupTyped = await fillLocalizedName("名称", `E2E 機械群 ${stamp}`, `E2E group ${stamp}`);
+  check("MS0D: 名称欄に打った文字がそのまま入る", groupTyped === `E2E 機械群 ${stamp}`, `欄の値「${groupTyped}」`);
+  await page.getByRole("dialog").getByRole("button", { name: "作成" }).click();
+  await page.waitForTimeout(2000);
+  check(
+    "MS0D: グループを保存できる",
+    (await page.getByText(groupCode).count()) > 0,
+    groupCode,
+  );
+
+  // MS0D 作業場所 — 場所追加（グループとは別のモーダル。両方直っているか）
+  const groupCard = page
+    .locator("div")
+    .filter({ has: page.getByText(groupCode, { exact: true }) })
+    .filter({ has: page.getByRole("button", { name: "場所を追加" }) })
+    .last();
+  await groupCard.getByRole("button", { name: "場所を追加" }).first().click();
+  await page.waitForTimeout(600);
+  const locCode = `E2E-L${stamp}`;
+  await page
+    .getByRole("dialog")
+    .getByRole("textbox", { name: /コード/ })
+    .first()
+    .fill(locCode);
+  const locTyped = await fillLocalizedName("名称", `E2E 機械 ${stamp}`, `E2E machine ${stamp}`);
+  check("MS0D: 場所の名称欄も文字がそのまま入る", locTyped === `E2E 機械 ${stamp}`, `欄の値「${locTyped}」`);
+  await page.getByRole("dialog").getByRole("button", { name: "追加" }).click();
+  await page.waitForTimeout(2000);
+  check(
+    "MS0D: 作業場所を保存できる",
+    (await page.getByText(locCode).count()) > 0,
+    locCode,
+  );
+
+  // 保存した多言語（英語）が本当に DB へ入ったか — 編集で開き直して見る
+  await page.reload({ waitUntil: "networkidle" });
+  await page.waitForTimeout(600);
+  await page
+    .locator("tr")
+    .filter({ hasText: locCode })
+    .getByRole("button", { name: "作業場所を編集" })
+    .first()
+    .click();
+  await page.waitForTimeout(600);
+  await page.getByRole("dialog").getByRole("button", { name: /多言語/ }).first().click();
+  await page.waitForTimeout(400);
+  const savedEn = await page
+    .getByRole("dialog")
+    .last()
+    .getByRole("textbox", { name: /名称（English）/ })
+    .first()
+    .inputValue();
+  check("MS0D: 多言語（English）も保存されている", savedEn === `E2E machine ${stamp}`, `「${savedEn}」`);
+  await page.keyboard.press("Escape");
+  await page.waitForTimeout(300);
+  await page.keyboard.press("Escape");
+  await page.waitForTimeout(300);
+
+  // 地域（拠点マスタ配下）— 同じ部品を使う別画面
+  await page.goto(`${APP}/master/plants/regions`, { waitUntil: "networkidle" });
+  await page.getByRole("button", { name: "地域を追加" }).click();
+  await page.waitForTimeout(600);
+  const regionCode = `e2e${stamp}`;
+  await page
+    .getByRole("dialog")
+    .getByRole("textbox", { name: /コード/ })
+    .first()
+    .fill(regionCode);
+  const regionTyped = await fillLocalizedName("名称", `E2E 地域 ${stamp}`, `E2E region ${stamp}`);
+  check("地域: 名称欄に打った文字がそのまま入る", regionTyped === `E2E 地域 ${stamp}`, `欄の値「${regionTyped}」`);
+  await page.getByRole("dialog").getByRole("button", { name: "作成" }).click();
+  await page.waitForTimeout(2000);
+  check(
+    "地域: 保存できる",
+    (await page.getByText(regionCode).count()) > 0,
+    regionCode,
   );
 
   console.log("\n---- 結果 ----");

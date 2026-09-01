@@ -745,8 +745,10 @@ export function KioskDevicesTable({
             help={fieldHelpTip("kioskDevice", "name")}
             jaProps={{
               value: createForm.nameJa,
-              onChange: (v: string) =>
-                setCreateForm((s) => ({ ...s, nameJa: v })),
+              onChange: (e) => {
+                const v = e.currentTarget.value;
+                setCreateForm((s) => ({ ...s, nameJa: v }));
+              },
             }}
             label="端末名"
             placeholder="例: 1F 加工場 タブレット1"
@@ -828,8 +830,10 @@ export function KioskDevicesTable({
             help={fieldHelpTip("kioskDevice", "name")}
             jaProps={{
               value: editForm.nameJa,
-              onChange: (v: string) =>
-                setEditForm((s) => ({ ...s, nameJa: v })),
+              onChange: (e) => {
+                const v = e.currentTarget.value;
+                setEditForm((s) => ({ ...s, nameJa: v }));
+              },
             }}
             label="端末名"
             required
