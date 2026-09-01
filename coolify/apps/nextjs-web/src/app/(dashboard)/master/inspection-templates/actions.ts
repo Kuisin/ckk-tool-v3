@@ -23,6 +23,7 @@ import {
   localized,
   localizedTranslations,
 } from "@/lib/format";
+import { discardTemplateImageFile } from "@/lib/inspection-template-image";
 import {
   type ActionResult,
   actionError,
@@ -41,6 +42,10 @@ const templateFields = z.object({
   nameJa: z.string().min(1, "名称（日本語）を入力してください"),
   nameTranslations: z.record(z.string(), z.string()).optional(),
   relatedProcessStepId: z.number().int().positive().nullable(),
+  // 対象製品。null = どの製品にも使える（汎用）。
+  productId: z.number().int().positive().nullable(),
+  // ナビゲーション用グループ（任意）。
+  groupId: z.number().int().positive().nullable(),
   // 検査対象（シート単位）: 全数 / 割合(%) / 本数
   samplingMode: z.enum(["ALL", "PERCENT", "COUNT"]),
   samplingValue: z.number().nullable(),
@@ -301,6 +306,8 @@ export async function createInspectionTemplate(
         code: v.code.trim(),
         name: localizedInput(v.nameJa, undefined, v.nameTranslations),
         relatedProcessStepId: v.relatedProcessStepId,
+        productId: v.productId,
+        groupId: v.groupId,
         samplingMode: v.samplingMode,
         samplingValue: v.samplingMode === "ALL" ? null : v.samplingValue,
         recordStyle: v.recordStyle,
@@ -328,6 +335,7 @@ export async function createInspectionTemplate(
         code: v.code.trim(),
         nameJa: v.nameJa,
         relatedProcessStepId: v.relatedProcessStepId,
+        productId: v.productId,
         isActive: v.isActive,
       },
     });
@@ -357,6 +365,7 @@ export async function updateInspectionTemplate(
       select: {
         name: true,
         relatedProcessStepId: true,
+        productId: true,
         samplingMode: true,
         samplingValue: true,
         recordStyle: true,
@@ -396,8 +405,10 @@ export async function updateInspectionTemplate(
         recordStyle: v.recordStyle,
         layoutStyle: v.layoutStyle,
         sampleNaming: v.sampleNaming,
-        // ロック中でも変更可（誰が検収できるかの入れ替えは測定定義に触れない —
-        // isActive と同じ扱い）。
+        // ロック中でも変更可（対象製品・グループ・誰が検収できるかの入れ替えは
+        // 測定定義に触れない — isActive と同じ扱い）。
+        productId: v.productId,
+        groupId: v.groupId,
         approvalGroupId: v.approvalGroupId,
         approvers: {
           deleteMany: {},
@@ -416,11 +427,13 @@ export async function updateInspectionTemplate(
       before: {
         nameJa: localized(priorName),
         relatedProcessStepId: prior.relatedProcessStepId,
+        productId: prior.productId,
         isActive: prior.isActive,
       },
       after: {
         nameJa: v.nameJa,
         relatedProcessStepId: v.relatedProcessStepId,
+        productId: v.productId,
         isActive: v.isActive,
       },
     });
@@ -464,6 +477,12 @@ export async function createInspectionTemplateVersion(
           version,
           name: source.name as object,
           relatedProcessStepId: source.relatedProcessStepId,
+          productId: source.productId,
+          groupId: source.groupId,
+          // 参考画像は複写しない — files 行は 1 テンプレート 1 枚の前提で
+          // 削除時に実体ごと消すため、複写すると旧バージョン側の削除で
+          // 新バージョンの画像まで消える（共有ミュータブル資源の罠）。
+          // 要る場合は新バージョン側で改めてアップロードする。
           samplingMode: source.samplingMode,
           samplingValue: source.samplingValue,
           recordStyle: source.recordStyle,
@@ -601,9 +620,18 @@ export async function deleteInspectionTemplates(
   if (!authz.ok) return actionError(authz.error);
   if (ids.length === 0) return actionError("対象が選択されていません");
   try {
+    // 参考画像の実体は onDelete: SetNull では消えない（files 行は残る）ため、
+    // テンプレート削除前に対象を控えておき、削除できた分だけ掃除する。
+    const withImage = await prisma.inspectionTemplate.findMany({
+      where: { id: { in: ids }, imageFileId: { not: null } },
+      select: { id: true, imageFileId: true },
+    });
     // 検査項目は onDelete: Cascade で一括削除。指示書リンク・検査記録が
     // 参照しているバージョンは P2003 で拒否される（= ロック中は消えない）。
     await prisma.inspectionTemplate.deleteMany({ where: { id: { in: ids } } });
+    for (const t of withImage) {
+      if (t.imageFileId) await discardTemplateImageFile(t.imageFileId);
+    }
     for (const id of ids) {
       await recordAudit({
         action: "DELETE",
@@ -726,5 +754,170 @@ export async function deleteTemplateItem(
     return actionOk();
   } catch (e) {
     return actionError(prismaErrorMessage(e, "検査項目の削除に失敗しました"));
+  }
+}
+
+// ── 検査表グループ（ナビゲーション用。判定・PDF には無関係） ─────────────────
+
+const groupInput = z.object({
+  nameJa: z.string().min(1, "グループ名（日本語）を入力してください"),
+  nameTranslations: z.record(z.string(), z.string()).optional(),
+  isActive: z.boolean(),
+});
+
+export type InspectionTemplateGroupInput = z.infer<typeof groupInput>;
+
+export interface InspectionTemplateGroupRow {
+  id: number;
+  nameJa: string;
+  nameEn: string;
+  sortOrder: number;
+  isActive: boolean;
+  templateCount: number;
+}
+
+export async function fetchInspectionTemplateGroups(): Promise<
+  InspectionTemplateGroupRow[]
+> {
+  const rows = await prisma.inspectionTemplateGroup.findMany({
+    orderBy: [{ sortOrder: "asc" }, { id: "asc" }],
+    include: { _count: { select: { templates: true } } },
+  });
+  return rows.map((r) => {
+    const name = r.name as LocalizedText | null;
+    return {
+      id: r.id,
+      nameJa: name?.ja ?? "",
+      nameEn: name?.en ?? "",
+      sortOrder: r.sortOrder,
+      isActive: r.isActive,
+      templateCount: r._count.templates,
+    };
+  });
+}
+
+function revalidateGroups() {
+  revalidatePath(BASE_PATH);
+}
+
+export async function createInspectionTemplateGroup(
+  input: InspectionTemplateGroupInput,
+): Promise<ActionResult<{ id: number }>> {
+  const authz = await checkPermission("master", "CREATE");
+  if (!authz.ok) return actionError(authz.error);
+  const parsed = groupInput.safeParse(input);
+  if (!parsed.success) {
+    return actionError(parsed.error.issues[0]?.message ?? "入力が不正です");
+  }
+  const v = parsed.data;
+  try {
+    const max = await prisma.inspectionTemplateGroup.aggregate({
+      _max: { sortOrder: true },
+    });
+    const created = await prisma.inspectionTemplateGroup.create({
+      data: {
+        name: localizedInput(v.nameJa, undefined, v.nameTranslations),
+        sortOrder: (max._max.sortOrder ?? 0) + 10,
+        isActive: v.isActive,
+      },
+      select: { id: true },
+    });
+    await recordAudit({
+      action: "CREATE",
+      tableName: "inspection_template_groups",
+      recordId: String(created.id),
+      after: { nameJa: v.nameJa, isActive: v.isActive },
+    });
+    revalidateGroups();
+    return actionOk({ id: created.id });
+  } catch (e) {
+    return actionError(prismaErrorMessage(e, "グループの作成に失敗しました"));
+  }
+}
+
+export async function updateInspectionTemplateGroup(
+  id: number,
+  input: InspectionTemplateGroupInput,
+): Promise<ActionResult> {
+  const authz = await checkPermission("master", "UPDATE");
+  if (!authz.ok) return actionError(authz.error);
+  const parsed = groupInput.safeParse(input);
+  if (!parsed.success) {
+    return actionError(parsed.error.issues[0]?.message ?? "入力が不正です");
+  }
+  const v = parsed.data;
+  try {
+    const prior = await prisma.inspectionTemplateGroup.findUnique({
+      where: { id },
+      select: { name: true, isActive: true },
+    });
+    if (!prior) return actionError("対象のグループが見つかりません");
+    await prisma.inspectionTemplateGroup.update({
+      where: { id },
+      data: {
+        name: localizedInput(v.nameJa, undefined, v.nameTranslations),
+        isActive: v.isActive,
+      },
+    });
+    await recordAudit({
+      action: "UPDATE",
+      tableName: "inspection_template_groups",
+      recordId: String(id),
+      before: { nameJa: localized(prior.name as LocalizedText | null) },
+      after: { nameJa: v.nameJa, isActive: v.isActive },
+    });
+    revalidateGroups();
+    return actionOk();
+  } catch (e) {
+    return actionError(prismaErrorMessage(e, "グループの更新に失敗しました"));
+  }
+}
+
+/** 表示順の入れ替え（並び替え UI が新しい順序の全 id を渡す）。 */
+export async function reorderInspectionTemplateGroups(
+  orderedIds: number[],
+): Promise<ActionResult> {
+  const authz = await checkPermission("master", "UPDATE");
+  if (!authz.ok) return actionError(authz.error);
+  try {
+    await prisma.$transaction(
+      orderedIds.map((id, i) =>
+        prisma.inspectionTemplateGroup.update({
+          where: { id },
+          data: { sortOrder: (i + 1) * 10 },
+        }),
+      ),
+    );
+    revalidateGroups();
+    return actionOk();
+  } catch (e) {
+    return actionError(prismaErrorMessage(e, "並び順の更新に失敗しました"));
+  }
+}
+
+export async function deleteInspectionTemplateGroup(
+  id: number,
+): Promise<ActionResult> {
+  const authz = await checkPermission("master", "DELETE");
+  if (!authz.ok) return actionError(authz.error);
+  try {
+    const count = await prisma.inspectionTemplate.count({
+      where: { groupId: id },
+    });
+    if (count > 0) {
+      return actionError(
+        "このグループに属する検査表テンプレートがあるため削除できません。先に各テンプレートのグループを外してください",
+      );
+    }
+    await prisma.inspectionTemplateGroup.delete({ where: { id } });
+    await recordAudit({
+      action: "DELETE",
+      tableName: "inspection_template_groups",
+      recordId: String(id),
+    });
+    revalidateGroups();
+    return actionOk();
+  } catch (e) {
+    return actionError(prismaErrorMessage(e, "グループの削除に失敗しました"));
   }
 }

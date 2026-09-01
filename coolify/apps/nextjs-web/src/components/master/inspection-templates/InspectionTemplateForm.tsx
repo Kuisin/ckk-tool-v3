@@ -13,6 +13,7 @@ import {
   Group,
   NumberInput,
   SegmentedControl,
+  Select,
   SimpleGrid,
   Stack,
   Switch,
@@ -27,6 +28,7 @@ import { useTransition } from "react";
 import { z } from "zod";
 import {
   searchProcessStepOptions,
+  searchProductOptions,
   searchUserOptions,
 } from "@/app/(dashboard)/_shared/option-search";
 import {
@@ -68,6 +70,8 @@ const templateSchema = z
     nameJa: z.string().min(1, "名称（日本語）を入力してください"),
     nameTranslations: z.record(z.string(), z.string()).default({}),
     relatedProcessStepId: z.string().nullable(),
+    productId: z.string().nullable(),
+    groupId: z.string().nullable(),
     samplingMode: z.enum(["ALL", "PERCENT", "COUNT"]),
     samplingValue: z.union([z.number(), z.literal("")]),
     recordStyle: z.enum(["VALUES", "COUNTS"]),
@@ -113,6 +117,11 @@ export interface InspectionTemplateFormInitial {
   nameTranslations: Record<string, string>;
   relatedProcessStepId: string | null;
   relatedProcessStepLabel: string;
+  /** 対象製品。null = どの製品にも使える（汎用）。 */
+  productId: string | null;
+  productLabel: string;
+  /** ナビゲーション用グループ（任意）。 */
+  groupId: string | null;
   samplingMode: "ALL" | "PERCENT" | "COUNT";
   samplingValue: number | null;
   recordStyle: "VALUES" | "COUNTS";
@@ -128,10 +137,13 @@ export interface InspectionTemplateFormInitial {
 export function InspectionTemplateForm({
   initial,
   groupOptions,
+  templateGroupOptions,
 }: {
   initial?: InspectionTemplateFormInitial;
   /** 検査承認グループの選択肢（承認設定 MS0B の approval_groups）。 */
   groupOptions: { value: string; label: string }[];
+  /** 検査表のナビゲーション用グループの選択肢（有効のみ）。 */
+  templateGroupOptions: { value: string; label: string }[];
 }) {
   const locale = useLocale();
   const router = useRouter();
@@ -146,6 +158,8 @@ export function InspectionTemplateForm({
       nameJa: initial?.nameJa ?? "",
       nameTranslations: initial?.nameTranslations ?? {},
       relatedProcessStepId: initial?.relatedProcessStepId ?? null,
+      productId: initial?.productId ?? null,
+      groupId: initial?.groupId ?? null,
       samplingMode: initial?.samplingMode ?? "ALL",
       samplingValue: initial?.samplingValue ?? "",
       recordStyle: initial?.recordStyle ?? "VALUES",
@@ -166,6 +180,8 @@ export function InspectionTemplateForm({
         nameJa: values.nameJa,
         nameTranslations: values.nameTranslations,
         relatedProcessStepId,
+        productId: values.productId ? Number(values.productId) : null,
+        groupId: values.groupId ? Number(values.groupId) : null,
         samplingMode: values.samplingMode,
         samplingValue:
           values.samplingMode === "ALL" || values.samplingValue === ""
@@ -260,6 +276,30 @@ export function InspectionTemplateForm({
             placeholder="工程コード・名称で検索"
             storageKey="inspection-template-process-step"
             value={form.values.relatedProcessStepId}
+          />
+          <SearchSelect
+            description="対象を絞る製品（空 = どの製品にも使える汎用）"
+            initialOption={
+              initial?.productId
+                ? { value: initial.productId, label: initial.productLabel }
+                : undefined
+            }
+            label="対象製品"
+            onChange={(value) => form.setFieldValue("productId", value)}
+            onSearch={searchProductOptions}
+            placeholder="製品コード・名称で検索"
+            storageKey="inspection-template-product"
+            value={form.values.productId}
+          />
+          <Select
+            clearable
+            data={templateGroupOptions}
+            description="一覧の絞り込み・見出し分けだけに使う表示軸（任意）"
+            label="グループ"
+            onChange={(v) => form.setFieldValue("groupId", v)}
+            placeholder="グループを選択"
+            searchable
+            value={form.values.groupId}
           />
         </SimpleGrid>
         <SimpleGrid cols={1} mt="sm" spacing="sm">

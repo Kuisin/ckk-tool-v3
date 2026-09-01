@@ -477,6 +477,25 @@ export function finalInspectionSectionHtml(
   `;
 }
 
+/**
+ * 参考画像の欄（テンプレートに設定されていれば印刷する。無ければ空文字）。
+ * Gotenberg は同梱ファイルしか読めず、テンプレート画像はレコードごとに違う
+ * 実体（SeaweedFS）なので、同梱アセットのように file 添付できない —
+ * 呼び出し側（route.ts）が SeaweedFS から読んだバイト列を data URI にして渡す。
+ */
+export function templateImageHtml(
+  dataUri: string | null,
+  filename: string | null,
+): string {
+  if (!dataUri) return "";
+  return `
+    <div class="ref-image">
+      <div class="ref-image-title">参考画像</div>
+      <img alt="${esc(filename ?? "参考画像")}" src="${dataUri}" />
+    </div>
+  `;
+}
+
 /** テンプレートヘッダ部の共通データ（検査対象・記録方式を含む）。 */
 export function sheetTemplateHead(t: TemplateHead, lotQuantity: number | null) {
   const sampling: InspectionSamplingSpec = {

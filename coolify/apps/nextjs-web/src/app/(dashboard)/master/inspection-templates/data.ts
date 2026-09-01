@@ -31,6 +31,21 @@ export async function fetchApprovalGroupOptions(): Promise<
   }));
 }
 
+/** 検査表グループの選択肢（ナビゲーション用。有効のみ・並び順）。 */
+export async function fetchInspectionTemplateGroupOptions(): Promise<
+  { value: string; label: string }[]
+> {
+  const groups = await prisma.inspectionTemplateGroup.findMany({
+    where: { isActive: true },
+    orderBy: [{ sortOrder: "asc" }, { id: "asc" }],
+    select: { id: true, name: true },
+  });
+  return groups.map((g) => ({
+    value: String(g.id),
+    label: localized(g.name as LocalizedText | null),
+  }));
+}
+
 /** inspection_template_items 行のうち変換に使うフィールド（Prisma include 由来）。 */
 export interface InspectionItemRecord extends CoreItemRecord {
   itemName: unknown;

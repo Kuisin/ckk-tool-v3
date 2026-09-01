@@ -336,6 +336,20 @@ model InspectionTemplate {
   version               Int      @default(1) // code 内 1 始まりの連番
   name                  Json
   relatedProcessStepId  Int?     @map("related_process_step_id")
+  // 対象製品。null = どの製品にも使える（汎用）。工程単位の既定選択
+  // （lib/workflow.ts の分岐追加・WorkflowBuilder の初期選択）は
+  // 関連工程が一致する検査表のうち、対象製品が null か指示書の製品と
+  // 一致するものだけに絞る — 製品専用の検査表が別製品の指示書に紛れ込まない
+  // ようにするため。絞り込みは既定選択だけで、割当自体（MultiSelect）は
+  // 引き続きどのテンプレートも選べる（現場判断で汎用外の検査表を使うことも
+  // ある）。
+  productId             Int?     @map("product_id")
+  // ナビゲーション用のグループ（例: 製品検査記録／外観検査 等）。
+  // 判定・PDF には影響しない — 一覧の絞り込み・見出し分けのためだけの表示軸。
+  groupId               Int?     @map("group_id")
+  // 参考画像（測定位置の図解・写真等）。設定すると PDF（空欄シート・記入済み
+  // シートの両方）にも印刷される（lib/inspection-sheet-pdf.ts templateImageHtml）。
+  imageFileId           String?  @db.Uuid @map("image_file_id")
   // 検査対象（シート単位）: 全数 / 割合(%) / 本数 — 各項目はこの数の製品に対して記録する
   samplingMode          InspectionSamplingMode @default(ALL) @map("sampling_mode")
   samplingValue         Decimal? @map("sampling_value") @db.Decimal(10, 2)
@@ -360,6 +374,9 @@ model InspectionTemplate {
   updatedAt             DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
 
   relatedProcessStep ProcessStepCatalog?      @relation(fields: [relatedProcessStepId], references: [id])
+  product            Product?                 @relation(fields: [productId], references: [id])
+  group              InspectionTemplateGroup? @relation(fields: [groupId], references: [id])
+  imageFile          File?                    @relation("InspectionTemplateImage", fields: [imageFileId], references: [id], onDelete: SetNull)
   approvalGroup      ApprovalGroup?           @relation(fields: [approvalGroupId], references: [id])
   approvers          InspectionTemplateApprover[]
   items              InspectionTemplateItem[]
@@ -367,7 +384,27 @@ model InspectionTemplate {
   inspectionRecords  InspectionRecord[]            @relation("InspectionRecordTemplate")
 
   @@unique([code, version])
+  @@index([productId])
+  @@index([groupId])
   @@map("inspection_templates")
+  @@schema("app")
+}
+
+// 検査表テンプレートのナビゲーション用グループ（例:「製品検査記録」
+// 「外観・コーティング検査」等）。判定・PDF には無関係 — MS09 一覧の
+// 絞り込み・見出し分けだけに使う表示軸。承認グループ（ApprovalGroup）とは
+// 別物。
+model InspectionTemplateGroup {
+  id        Int      @id @default(autoincrement())
+  name      Json
+  sortOrder Int      @default(0) @map("sort_order")
+  isActive  Boolean  @default(true) @map("is_active")
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  templates InspectionTemplate[]
+
+  @@map("inspection_template_groups")
   @@schema("app")
 }
 

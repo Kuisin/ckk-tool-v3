@@ -1,6 +1,9 @@
 import { InspectionTemplateForm } from "@/components/master/inspection-templates/InspectionTemplateForm";
 import { requireAppRead } from "@/lib/authz-page";
-import { fetchApprovalGroupOptions } from "../data";
+import {
+  fetchApprovalGroupOptions,
+  fetchInspectionTemplateGroupOptions,
+} from "../data";
 
 export const dynamic = "force-dynamic";
 
@@ -8,6 +11,14 @@ export const dynamic = "force-dynamic";
 export default async function MasterInspectionTemplatesNewPage() {
   const denied = await requireAppRead("master-inspection-templates");
   if (denied) return denied;
-  const groupOptions = await fetchApprovalGroupOptions();
-  return <InspectionTemplateForm groupOptions={groupOptions} />;
+  const [groupOptions, templateGroupOptions] = await Promise.all([
+    fetchApprovalGroupOptions(),
+    fetchInspectionTemplateGroupOptions(),
+  ]);
+  return (
+    <InspectionTemplateForm
+      groupOptions={groupOptions}
+      templateGroupOptions={templateGroupOptions}
+    />
+  );
 }
