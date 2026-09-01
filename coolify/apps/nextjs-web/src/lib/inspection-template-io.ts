@@ -54,6 +54,26 @@ export const RECORD_STYLE_LABELS = {
   COUNTS: "合格数のみ",
 } as const;
 
+export const LAYOUT_STYLE_LABELS = {
+  DIMENSIONAL: "寸法表",
+  CHECKLIST: "チェックリスト",
+} as const;
+
+export const SAMPLE_NAMING_LABELS = {
+  GENERIC: "製品1・2・3…",
+  INITIAL_MID_FINAL: "初品・中間品・最終品",
+} as const;
+
+export const SECTION_LABELS = {
+  MEASUREMENT: "測定",
+  SHAPE: "形状",
+} as const;
+
+export const DEPARTMENT_LABELS = {
+  MANUFACTURING: "製造",
+  QUALITY_ASSURANCE: "品証",
+} as const;
+
 /** ラベル（日本語）→ enum。enum そのものを書かれても受ける。 */
 function fromLabel<T extends string>(
   labels: Record<T, string>,
@@ -89,6 +109,17 @@ export const portableItemSchema = z.object({
   goalValue: z.unknown().nullable().default(null),
   allowManualOverride: z.boolean().default(true),
   isRequired: z.boolean().default(true),
+  // ── 旧帳票（製品検査記録）に合わせた項目（#703）──────────────────────
+  // **既定つきなので、これらを持たない古いファイルもそのまま取り込める。**
+  section: z.enum(["MEASUREMENT", "SHAPE"]).default("MEASUREMENT"),
+  department: z
+    .enum(["MANUFACTURING", "QUALITY_ASSURANCE"])
+    .nullable()
+    .default(null),
+  measurementEquipment: z.string().nullable().default(null),
+  nominalValue: z.number().nullable().default(null),
+  toleranceTopDelta: z.number().nullable().default(null),
+  toleranceBottomDelta: z.number().nullable().default(null),
 });
 
 export const portableTemplateSchema = z.object({
@@ -99,6 +130,8 @@ export const portableTemplateSchema = z.object({
   samplingMode: z.enum(["ALL", "PERCENT", "COUNT"]).default("ALL"),
   samplingValue: z.number().nullable().default(null),
   recordStyle: z.enum(["VALUES", "COUNTS"]).default("VALUES"),
+  layoutStyle: z.enum(["DIMENSIONAL", "CHECKLIST"]).default("DIMENSIONAL"),
+  sampleNaming: z.enum(["GENERIC", "INITIAL_MID_FINAL"]).default("GENERIC"),
   isActive: z.boolean().default(true),
   items: z.array(portableItemSchema),
 });
@@ -125,6 +158,8 @@ export const EXCEL_COLUMNS = [
   { key: "samplingMode", header: "検査対象", width: 12 },
   { key: "samplingValue", header: "検査対象の値", width: 12 },
   { key: "recordStyle", header: "記録方式", width: 12 },
+  { key: "layoutStyle", header: "レイアウト", width: 14 },
+  { key: "sampleNaming", header: "サンプル呼称", width: 18 },
   { key: "itemName", header: "項目名", width: 24 },
   { key: "inputType", header: "型", width: 12 },
   { key: "unit", header: "単位", width: 8 },
@@ -136,6 +171,12 @@ export const EXCEL_COLUMNS = [
   { key: "goalValue", header: "目標値", width: 12 },
   { key: "isRequired", header: "必須", width: 8 },
   { key: "allowManualOverride", header: "手動上書き", width: 12 },
+  { key: "section", header: "掲載区分", width: 10 },
+  { key: "department", header: "担当部門", width: 10 },
+  { key: "measurementEquipment", header: "測定機器", width: 12 },
+  { key: "nominalValue", header: "基本値", width: 10 },
+  { key: "toleranceTopDelta", header: "公差Top", width: 10 },
+  { key: "toleranceBottomDelta", header: "公差Bottom", width: 12 },
 ] as const;
 
 export type ExcelColumnKey = (typeof EXCEL_COLUMNS)[number]["key"];
@@ -266,6 +307,12 @@ export function rowsToPortable(rows: string[][]): {
         samplingMode,
         samplingValue,
         recordStyle,
+        layoutStyle:
+          fromLabel(LAYOUT_STYLE_LABELS, cell(row, "layoutStyle")) ??
+          "DIMENSIONAL",
+        sampleNaming:
+          fromLabel(SAMPLE_NAMING_LABELS, cell(row, "sampleNaming")) ??
+          "GENERIC",
         isActive: true,
         items: [],
       };
@@ -305,9 +352,26 @@ export function rowsToPortable(rows: string[][]): {
       continue;
     }
 
+    // 旧帳票の数値欄（基本値・公差 Top/Bottom）も同じ扱いで読む
+    const nominal = parseNumber(cell(row, "nominalValue"));
+    const topDelta = parseNumber(cell(row, "toleranceTopDelta"));
+    const bottomDelta = parseNumber(cell(row, "toleranceBottomDelta"));
+    if (
+      nominal === undefined ||
+      topDelta === undefined ||
+      bottomDelta === undefined
+    ) {
+      errors.push({
+        row: rowNo,
+        message: "基本値・公差 Top/Bottom が数値ではありません",
+      });
+      continue;
+    }
+
     const optionValues = splitList(cell(row, "options"));
     const goalRaw = cell(row, "goalValue");
 
+    if (!template) continue; // 上で必ず作っているが、型のうえで閉じる
     template.items.push({
       itemName: { ja: itemName },
       inputType,
@@ -323,6 +387,12 @@ export function rowsToPortable(rows: string[][]): {
       goalValue: goalRaw || null,
       allowManualOverride,
       isRequired,
+      section: fromLabel(SECTION_LABELS, cell(row, "section")) ?? "MEASUREMENT",
+      department: fromLabel(DEPARTMENT_LABELS, cell(row, "department")),
+      measurementEquipment: cell(row, "measurementEquipment") || null,
+      nominalValue: nominal,
+      toleranceTopDelta: topDelta,
+      toleranceBottomDelta: bottomDelta,
     });
   }
 

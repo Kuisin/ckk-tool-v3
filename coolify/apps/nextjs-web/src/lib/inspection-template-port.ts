@@ -62,6 +62,8 @@ export async function exportTemplates(
       samplingMode: t.samplingMode as PortableTemplate["samplingMode"],
       samplingValue: t.samplingValue ? Number(t.samplingValue) : null,
       recordStyle: t.recordStyle as PortableTemplate["recordStyle"],
+      layoutStyle: t.layoutStyle as PortableTemplate["layoutStyle"],
+      sampleNaming: t.sampleNaming as PortableTemplate["sampleNaming"],
       isActive: t.isActive,
       items: t.items.map((i) => ({
         itemName: i.itemName as PortableTemplate["items"][number]["itemName"],
@@ -75,6 +77,16 @@ export async function exportTemplates(
         goalValue: i.goalValue ?? null,
         allowManualOverride: i.allowManualOverride,
         isRequired: i.isRequired,
+        section: i.section as PortableItem["section"],
+        department: i.department as PortableItem["department"],
+        measurementEquipment: i.measurementEquipment,
+        nominalValue: i.nominalValue ? Number(i.nominalValue) : null,
+        toleranceTopDelta: i.toleranceTopDelta
+          ? Number(i.toleranceTopDelta)
+          : null,
+        toleranceBottomDelta: i.toleranceBottomDelta
+          ? Number(i.toleranceBottomDelta)
+          : null,
       })),
     })),
   });
@@ -149,6 +161,12 @@ export async function importTemplates(
               goalValue: (item.goalValue ?? undefined) as never,
               allowManualOverride: item.allowManualOverride,
               isRequired: item.isRequired,
+              section: item.section,
+              department: item.department,
+              measurementEquipment: item.measurementEquipment,
+              nominalValue: item.nominalValue,
+              toleranceTopDelta: item.toleranceTopDelta,
+              toleranceBottomDelta: item.toleranceBottomDelta,
               sortOrder: index,
             })),
           },
