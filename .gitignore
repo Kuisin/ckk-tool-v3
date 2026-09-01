@@ -11,3 +11,6 @@ node_modules/
 # Python (po-extract をローカルで読み込んだときの副産物)
 __pycache__/
 *.py[cod]
+
+# codebase-memory MCP（--persistence の共有アーティファクト。既定では作らない）
+.codebase-memory/
