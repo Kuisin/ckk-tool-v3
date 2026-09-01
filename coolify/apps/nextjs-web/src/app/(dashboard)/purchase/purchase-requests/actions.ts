@@ -16,6 +16,7 @@
  */
 
 import { revalidatePath } from "next/cache";
+import { getTranslations } from "next-intl/server";
 import { z } from "zod";
 import {
   actOnCurrentStep,
@@ -39,6 +40,8 @@ const BASE_PATH = "/purchase/purchase-requests";
 const PO_PATH = "/purchase/purchase-orders";
 const APPROVALS_PATH = "/general/tasks";
 
+type Tr = Awaited<ReturnType<typeof getTranslations>>;
+
 function revalidate(requestNumber?: string) {
   revalidatePath(BASE_PATH);
   // 承認依頼は承認管理 (PD03) にも横断表示される。
@@ -51,22 +54,34 @@ function revalidate(requestNumber?: string) {
 
 // ── 入力スキーマ ─────────────────────────────────────────────────────────────
 
-const itemInput = z.object({
-  materialId: z.string().min(1, "素材を選択してください"),
-  plantId: z.string().nullable(),
-  quantity: z.number().positive("数量は0より大きい値"),
-  unit: z.string().min(1, "単位を入力してください"),
-  desiredAt: z.string().nullable(),
-  notes: z.string().nullable(),
-});
+function itemInputSchema(tr: Tr) {
+  return z.object({
+    materialId: z
+      .string()
+      .min(1, tr("purchase.purchaseOrderForm.selectMaterial")),
+    plantId: z.string().nullable(),
+    quantity: z
+      .number()
+      .positive(tr("purchase.purchaseRequestActions.quantityPositive")),
+    unit: z.string().min(1, tr("purchase.purchaseRequestActions.unitRequired")),
+    desiredAt: z.string().nullable(),
+    notes: z.string().nullable(),
+  });
+}
 
-const purchaseRequestInput = z.object({
-  purpose: z.string(),
-  notes: z.string(),
-  items: z.array(itemInput).min(1, "明細を1件以上追加してください"),
-});
+function purchaseRequestInputSchema(tr: Tr) {
+  return z.object({
+    purpose: z.string(),
+    notes: z.string(),
+    items: z
+      .array(itemInputSchema(tr))
+      .min(1, tr("common.addAtLeastOneLineItem")),
+  });
+}
 
-export type PurchaseRequestInput = z.infer<typeof purchaseRequestInput>;
+export type PurchaseRequestInput = z.infer<
+  ReturnType<typeof purchaseRequestInputSchema>
+>;
 
 function entry(
   action: string,
@@ -109,11 +124,14 @@ function buildItemCreates(items: PurchaseRequestInput["items"]) {
 export async function createPurchaseRequest(
   payload: PurchaseRequestInput,
 ): Promise<ActionResult<{ requestNumber: string }>> {
+  const tr = await getTranslations();
   const authz = await checkPermission("purchase_order", "CREATE");
   if (!authz.ok) return actionError(authz.error);
-  const parsed = purchaseRequestInput.safeParse(payload);
+  const parsed = purchaseRequestInputSchema(tr).safeParse(payload);
   if (!parsed.success) {
-    return actionError(parsed.error.issues[0]?.message ?? "入力が不正です");
+    return actionError(
+      parsed.error.issues[0]?.message ?? tr("common.invalidInput"),
+    );
   }
   const v = parsed.data;
   try {
@@ -146,7 +164,13 @@ export async function createPurchaseRequest(
     revalidate(requestNumber);
     return actionOk({ requestNumber });
   } catch (e) {
-    return actionError(prismaErrorMessage(e, "購買依頼の作成に失敗しました"));
+    return actionError(
+      prismaErrorMessage(
+        e,
+        tr("purchase.purchaseRequestActions.createFailed"),
+        tr,
+      ),
+    );
   }
 }
 
@@ -155,20 +179,28 @@ export async function updatePurchaseRequest(
   requestNumber: string,
   payload: PurchaseRequestInput,
 ): Promise<ActionResult<{ requestNumber: string }>> {
+  const tr = await getTranslations();
   const authz = await checkPermission("purchase_order", "UPDATE");
   if (!authz.ok) return actionError(authz.error);
-  const parsed = purchaseRequestInput.safeParse(payload);
+  const parsed = purchaseRequestInputSchema(tr).safeParse(payload);
   if (!parsed.success) {
-    return actionError(parsed.error.issues[0]?.message ?? "入力が不正です");
+    return actionError(
+      parsed.error.issues[0]?.message ?? tr("common.invalidInput"),
+    );
   }
   const v = parsed.data;
   try {
     const prior = await prisma.purchaseRequest.findUnique({
       where: { requestNumber },
     });
-    if (!prior) return actionError("対象の購買依頼が見つかりません");
+    if (!prior)
+      return actionError(
+        tr("purchase.purchaseRequestActions.targetRequestNotFound"),
+      );
     if (prior.status !== "DRAFT" && prior.status !== "REJECTED") {
-      return actionError("下書き・差し戻しの購買依頼のみ編集できます");
+      return actionError(
+        tr("purchase.purchaseRequestActions.onlyDraftOrRejectedCanEdit"),
+      );
     }
     const actor = await getCurrentActorId();
     const creates = buildItemCreates(v.items);
@@ -204,7 +236,13 @@ export async function updatePurchaseRequest(
     revalidate(requestNumber);
     return actionOk({ requestNumber });
   } catch (e) {
-    return actionError(prismaErrorMessage(e, "購買依頼の更新に失敗しました"));
+    return actionError(
+      prismaErrorMessage(
+        e,
+        tr("purchase.purchaseRequestActions.updateFailed"),
+        tr,
+      ),
+    );
   }
 }
 
@@ -214,15 +252,23 @@ export async function updatePurchaseRequest(
 export async function requestPurchaseRequestApproval(
   requestNumber: string,
 ): Promise<ActionResult> {
+  const tr = await getTranslations();
   const authz = await checkPermission("purchase_order", "UPDATE");
   if (!authz.ok) return actionError(authz.error);
   try {
     const prior = await prisma.purchaseRequest.findUnique({
       where: { requestNumber },
     });
-    if (!prior) return actionError("対象の購買依頼が見つかりません");
+    if (!prior)
+      return actionError(
+        tr("purchase.purchaseRequestActions.targetRequestNotFound"),
+      );
     if (prior.status !== "DRAFT" && prior.status !== "REJECTED") {
-      return actionError("下書き・差し戻しの購買依頼のみ承認依頼できます");
+      return actionError(
+        tr(
+          "purchase.purchaseRequestActions.onlyDraftOrRejectedCanRequestApproval",
+        ),
+      );
     }
     const actor = await getCurrentActorId();
     // フローが無いと依頼を出しても誰も承認できないので、状態を変える前に確かめる
@@ -246,7 +292,7 @@ export async function requestPurchaseRequestApproval(
       targetId: requestNumber,
     });
     if (!started.ok)
-      return actionError(started.error ?? "承認依頼に失敗しました");
+      return actionError(started.error ?? tr("common.approvalRequestFailed"));
     await recordAudit({
       action: "UPDATE",
       tableName: "purchase_requests",
@@ -257,7 +303,9 @@ export async function requestPurchaseRequestApproval(
     revalidate(requestNumber);
     return actionOk();
   } catch (e) {
-    return actionError(prismaErrorMessage(e, "承認依頼に失敗しました"));
+    return actionError(
+      prismaErrorMessage(e, tr("common.approvalRequestFailed"), tr),
+    );
   }
 }
 
@@ -265,6 +313,7 @@ export async function requestPurchaseRequestApproval(
 export async function approvePurchaseRequest(
   requestNumber: string,
 ): Promise<ActionResult> {
+  const tr = await getTranslations();
   // 権限コード上の APPROVE に加え、承認グループ所属（本人 or 代理）は
   // 引き続き actOnCurrentStep 内で検証する。
   const authz = await checkApprovalDocAccess("purchase_order");
@@ -273,9 +322,14 @@ export async function approvePurchaseRequest(
     const prior = await prisma.purchaseRequest.findUnique({
       where: { requestNumber },
     });
-    if (!prior) return actionError("対象の購買依頼が見つかりません");
+    if (!prior)
+      return actionError(
+        tr("purchase.purchaseRequestActions.targetRequestNotFound"),
+      );
     if (prior.status !== "REQUESTED") {
-      return actionError("承認依頼中の購買依頼ではありません");
+      return actionError(
+        tr("purchase.purchaseRequestActions.notPendingApproval"),
+      );
     }
     // 承認権限（本人 or 代理）を検証しつつ承認記録を書き、依頼を確定する。
     const acted = await actOnCurrentStep({
@@ -283,7 +337,8 @@ export async function approvePurchaseRequest(
       targetId: requestNumber,
       action: "APPROVED",
     });
-    if (!acted.ok) return actionError(acted.error ?? "承認の権限がありません");
+    if (!acted.ok)
+      return actionError(acted.error ?? tr("common.noApprovalPermission"));
     const actor = await getCurrentActorId();
     // 全段を通過して初めて APPROVED。途中の段は REQUESTED のまま進む。
     if (!acted.flowCompleted) {
@@ -293,8 +348,10 @@ export async function approvePurchaseRequest(
         recordId: requestNumber,
         after: {
           note: acted.stepClosed
-            ? "承認（次の段へ）"
-            : `承認（この段の残り ${acted.remaining} 名）`,
+            ? tr("common.approvalNextStep")
+            : tr("common.approvalRemainingMembers", {
+                count: acted.remaining,
+              }),
         },
       });
       revalidate(requestNumber);
@@ -321,7 +378,7 @@ export async function approvePurchaseRequest(
     revalidate(requestNumber);
     return actionOk();
   } catch (e) {
-    return actionError(prismaErrorMessage(e, "承認に失敗しました"));
+    return actionError(prismaErrorMessage(e, tr("common.couldNotApprove"), tr));
   }
 }
 
@@ -330,19 +387,25 @@ export async function rejectPurchaseRequest(
   requestNumber: string,
   reason: string,
 ): Promise<ActionResult> {
+  const tr = await getTranslations();
   // 権限コード上の APPROVE に加え、承認グループ所属（本人 or 代理）は
   // 引き続き actOnCurrentStep 内で検証する。
   const authz = await checkApprovalDocAccess("purchase_order");
   if (!authz.ok) return actionError(authz.error);
   const trimmed = reason.trim();
-  if (!trimmed) return actionError("差し戻し理由を入力してください");
+  if (!trimmed) return actionError(tr("common.enterAReasonForSendingIt"));
   try {
     const prior = await prisma.purchaseRequest.findUnique({
       where: { requestNumber },
     });
-    if (!prior) return actionError("対象の購買依頼が見つかりません");
+    if (!prior)
+      return actionError(
+        tr("purchase.purchaseRequestActions.targetRequestNotFound"),
+      );
     if (prior.status !== "REQUESTED") {
-      return actionError("承認依頼中の購買依頼ではありません");
+      return actionError(
+        tr("purchase.purchaseRequestActions.notPendingApproval"),
+      );
     }
     // 差し戻しを承認記録として書き、依頼を確定する（権限検証込み）。
     const acted = await actOnCurrentStep({
@@ -352,7 +415,7 @@ export async function rejectPurchaseRequest(
       comment: trimmed,
     });
     if (!acted.ok) {
-      return actionError(acted.error ?? "差し戻しの権限がありません");
+      return actionError(acted.error ?? tr("common.noSendBackPermission"));
     }
     const actor = await getCurrentActorId();
     await prisma.purchaseRequest.update({
@@ -374,7 +437,9 @@ export async function rejectPurchaseRequest(
     revalidate(requestNumber);
     return actionOk();
   } catch (e) {
-    return actionError(prismaErrorMessage(e, "差し戻しに失敗しました"));
+    return actionError(
+      prismaErrorMessage(e, tr("common.couldNotSendItBack"), tr),
+    );
   }
 }
 
@@ -383,22 +448,28 @@ export async function cancelPurchaseRequest(
   requestNumber: string,
   reason: string,
 ): Promise<ActionResult> {
+  const tr = await getTranslations();
   const authz = await checkPermission("purchase_order", "UPDATE");
   if (!authz.ok) return actionError(authz.error);
   const trimmed = reason.trim();
-  if (!trimmed) return actionError("キャンセル理由を入力してください");
+  if (!trimmed) return actionError(tr("common.enterAReasonForCancelling"));
   try {
     const prior = await prisma.purchaseRequest.findUnique({
       where: { requestNumber },
     });
-    if (!prior) return actionError("対象の購買依頼が見つかりません");
+    if (!prior)
+      return actionError(
+        tr("purchase.purchaseRequestActions.targetRequestNotFound"),
+      );
     if (
       prior.status !== "DRAFT" &&
       prior.status !== "REQUESTED" &&
       prior.status !== "APPROVED" &&
       prior.status !== "REJECTED"
     ) {
-      return actionError("発注書へ変換前の購買依頼のみキャンセルできます");
+      return actionError(
+        tr("purchase.purchaseRequestActions.onlyPreConversionCanCancel"),
+      );
     }
     const actor = await getCurrentActorId();
     await prisma.$transaction([
@@ -434,7 +505,13 @@ export async function cancelPurchaseRequest(
     revalidate(requestNumber);
     return actionOk();
   } catch (e) {
-    return actionError(prismaErrorMessage(e, "キャンセルに失敗しました"));
+    return actionError(
+      prismaErrorMessage(
+        e,
+        tr("purchase.purchaseRequestActions.cancelFailed"),
+        tr,
+      ),
+    );
   }
 }
 
@@ -450,20 +527,29 @@ export async function convertToPurchaseOrder(
   requestNumber: string,
   supplierBpId: string,
 ): Promise<ActionResult<{ poNumber: string }>> {
+  const tr = await getTranslations();
   const authz = await checkPermission("purchase_order", "CREATE");
   if (!authz.ok) return actionError(authz.error);
-  if (!supplierBpId) return actionError("仕入先を選択してください");
+  if (!supplierBpId)
+    return actionError(tr("purchase.purchaseRequests.selectASupplier"));
   try {
     const prior = await prisma.purchaseRequest.findUnique({
       where: { requestNumber },
       include: { items: { orderBy: { sortOrder: "asc" } } },
     });
-    if (!prior) return actionError("対象の購買依頼が見つかりません");
+    if (!prior)
+      return actionError(
+        tr("purchase.purchaseRequestActions.targetRequestNotFound"),
+      );
     if (prior.status !== "APPROVED") {
-      return actionError("承認済の購買依頼のみ発注書へ変換できます");
+      return actionError(
+        tr("purchase.purchaseRequestActions.onlyApprovedCanConvert"),
+      );
     }
     if (prior.items.length === 0) {
-      return actionError("明細のない購買依頼は変換できません");
+      return actionError(
+        tr("purchase.purchaseRequestActions.cannotConvertWithoutItems"),
+      );
     }
     const actor = await getCurrentActorId();
     const poNumber = await nextDocumentNumber("PURCHASE");
@@ -476,10 +562,18 @@ export async function convertToPurchaseOrder(
           supplierBpId,
           status: "DRAFT",
           totalAmount: 0,
-          notes: `購買依頼 ${requestNumber} から作成`,
+          notes: tr("purchase.purchaseRequestActions.createdFromRequest", {
+            requestNumber,
+          }),
           createdBy: actor,
           history: toHistoryJson([
-            entry("CREATE", actor, `購買依頼 ${requestNumber} から変換`),
+            entry(
+              "CREATE",
+              actor,
+              tr("purchase.purchaseRequestActions.convertedFromRequest", {
+                requestNumber,
+              }),
+            ),
           ]),
           items: {
             create: prior.items.map((it, i) => ({
@@ -534,6 +628,12 @@ export async function convertToPurchaseOrder(
     revalidatePath(`${PO_PATH}/${poNumber}`);
     return actionOk({ poNumber });
   } catch (e) {
-    return actionError(prismaErrorMessage(e, "発注書への変換に失敗しました"));
+    return actionError(
+      prismaErrorMessage(
+        e,
+        tr("purchase.purchaseRequestActions.convertFailed"),
+        tr,
+      ),
+    );
   }
 }

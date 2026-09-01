@@ -27,6 +27,7 @@
  */
 
 import { revalidatePath } from "next/cache";
+import { getTranslations } from "next-intl/server";
 import { z } from "zod";
 import {
   actOnCurrentStep,
@@ -57,41 +58,53 @@ const kindEnum = z.enum(["NEW", "REVISION"]);
 const priorityEnum = z.enum(["NORMAL", "HIGH"]);
 
 /** 作成・更新で共通の項目（トリガと参照元だけが作成時限定）。 */
-const commonInput = {
-  /** 製品は必須 — 依頼区分の自動判定に要る。 */
-  productId: z.string().min(1, "製品を選択してください"),
-  /**
-   * 対象の受注元。完成した版がどの系列に載るかを決める。
-   * null = 汎用（どの顧客の指示書からも使える）。
-   * 見積・受注から起票したときはその顧客が既定になる。
-   */
-  customerBpId: z.string().nullable(),
-  /** 図面をつくる製造担当（必須 — §10 の「依頼通知を製造担当へ」の宛先）。 */
-  assigneeId: z.string().min(1, "担当者を選択してください"),
-  description: z.string().nullable(),
-  /** 区分の手動上書き。null = 自動判定に従う。 */
-  kind: kindEnum.nullable(),
-  /** 改訂の元図面（design_files.id）。null = 判定時の最新版。 */
-  baseDesignFileId: z.string().nullable(),
-  changeReason: z.string().nullable(),
-  /** 希望納期 YYYY-MM-DD。 */
-  desiredAt: z.string().nullable(),
-  priority: priorityEnum,
-};
+function commonInputShape(tr: Awaited<ReturnType<typeof getTranslations>>) {
+  return {
+    /** 製品は必須 — 依頼区分の自動判定に要る。 */
+    productId: z.string().min(1, tr("common.selectAProduct")),
+    /**
+     * 対象の受注元。完成した版がどの系列に載るかを決める。
+     * null = 汎用（どの顧客の指示書からも使える）。
+     * 見積・受注から起票したときはその顧客が既定になる。
+     */
+    customerBpId: z.string().nullable(),
+    /** 図面をつくる製造担当（必須 — §10 の「依頼通知を製造担当へ」の宛先）。 */
+    assigneeId: z
+      .string()
+      .min(1, tr("sales.designRequestForm.selectAnAssignee")),
+    description: z.string().nullable(),
+    /** 区分の手動上書き。null = 自動判定に従う。 */
+    kind: kindEnum.nullable(),
+    /** 改訂の元図面（design_files.id）。null = 判定時の最新版。 */
+    baseDesignFileId: z.string().nullable(),
+    changeReason: z.string().nullable(),
+    /** 希望納期 YYYY-MM-DD。 */
+    desiredAt: z.string().nullable(),
+    priority: priorityEnum,
+  };
+}
 
-const createInput = z.object({
-  trigger: triggerEnum,
-  /** 見積時: 見積書番号 QOT-YYYYMM-NNNNN（任意）。 */
-  quoteNumber: z.string().nullable(),
-  /** 受注時: 注文明細 uuid（任意）。 */
-  orderLineId: z.string().nullable(),
-  ...commonInput,
-});
+function createInputSchema(tr: Awaited<ReturnType<typeof getTranslations>>) {
+  return z.object({
+    trigger: triggerEnum,
+    /** 見積時: 見積書番号 QOT-YYYYMM-NNNNN（任意）。 */
+    quoteNumber: z.string().nullable(),
+    /** 受注時: 注文明細 uuid（任意）。 */
+    orderLineId: z.string().nullable(),
+    ...commonInputShape(tr),
+  });
+}
 
-const updateInput = z.object({ ...commonInput });
+function updateInputSchema(tr: Awaited<ReturnType<typeof getTranslations>>) {
+  return z.object({ ...commonInputShape(tr) });
+}
 
-export type DesignRequestCreateInput = z.infer<typeof createInput>;
-export type DesignRequestUpdateInput = z.infer<typeof updateInput>;
+export type DesignRequestCreateInput = z.infer<
+  ReturnType<typeof createInputSchema>
+>;
+export type DesignRequestUpdateInput = z.infer<
+  ReturnType<typeof updateInputSchema>
+>;
 
 function revalidate(number?: string) {
   revalidatePath(BASE_PATH);
@@ -177,6 +190,7 @@ function resolveKindFields(
     changeReason: string | null;
   },
   detected: Awaited<ReturnType<typeof detectDesignKind>>,
+  tr: Awaited<ReturnType<typeof getTranslations>>,
 ):
   | { error: string }
   | {
@@ -188,7 +202,9 @@ function resolveKindFields(
   const kind = v.kind ?? detected.kind;
   const changeReason = trimOrNull(v.changeReason);
   if (kind === "REVISION" && !changeReason) {
-    return { error: "改訂のときは変更理由を入力してください" };
+    return {
+      error: tr("sales.designRequestActions.changeReasonRequiredForRevision"),
+    };
   }
   return {
     kind,
@@ -237,6 +253,7 @@ async function notifySafe(input: {
       linkPath: `${BASE_PATH}/${encodeURIComponent(input.number)}`,
     });
   } catch (e) {
+    // i18n-ignore — 開発者向けサーバーログ（画面には出ない）
     console.error("[design-requests] 通知に失敗:", e);
   }
 }
@@ -264,11 +281,14 @@ export async function fetchKindContextAction(
 export async function createDesignRequest(
   payload: DesignRequestCreateInput,
 ): Promise<ActionResult<{ number: string }>> {
+  const tr = await getTranslations();
   const authz = await checkPermission("design_request", "CREATE");
   if (!authz.ok) return actionError(authz.error);
-  const parsed = createInput.safeParse(payload);
+  const parsed = createInputSchema(tr).safeParse(payload);
   if (!parsed.success) {
-    return actionError(parsed.error.issues[0]?.message ?? "入力が不正です");
+    return actionError(
+      parsed.error.issues[0]?.message ?? tr("common.invalidInput"),
+    );
   }
   const v = parsed.data;
 
@@ -277,13 +297,14 @@ export async function createDesignRequest(
   const quoteNumber = v.trigger === "QUOTE" ? trimOrNull(v.quoteNumber) : null;
   const quoteKey = quoteNumber ? parseDocKey(quoteNumber, "QOT") : null;
   if (quoteNumber && !quoteKey) {
-    return actionError("見積書番号が不正です");
+    return actionError(tr("sales.designRequestActions.invalidQuoteNumber"));
   }
   const orderLineId =
     v.trigger === "SALES_ORDER" ? trimOrNull(v.orderLineId) : null;
 
   const productId = Number(v.productId);
-  if (!Number.isInteger(productId)) return actionError("製品が不正です");
+  if (!Number.isInteger(productId))
+    return actionError(tr("sales.designRequestActions.invalidProduct"));
 
   try {
     const actor = await getCurrentActorId();
@@ -291,7 +312,7 @@ export async function createDesignRequest(
     // （入力があれば上書き）。
     const customerBpId = trimOrNull(v.customerBpId);
     const detected = await detectDesignKind(productId, customerBpId);
-    const resolved = resolveKindFields(v, detected);
+    const resolved = resolveKindFields(v, detected, tr);
     if ("error" in resolved) return actionError(resolved.error);
 
     const requestNumber = await nextDocumentNumber("DESIGN");
@@ -339,14 +360,18 @@ export async function createDesignRequest(
       userIds: [v.assigneeId],
       actor,
       type: "DESIGN",
-      title: `設計依頼 ${requestNumber} の担当に指定されました`,
-      message: "まだ下書きです。承認され次第、着手できます。",
+      title: tr("sales.designRequestActions.assignedNotificationTitle", {
+        number: requestNumber,
+      }),
+      message: tr("sales.designRequestActions.stillDraftMessage"),
       number: requestNumber,
     });
     revalidate();
     return actionOk({ number: requestNumber });
   } catch (e) {
-    return actionError(prismaErrorMessage(e, "設計依頼書の作成に失敗しました"));
+    return actionError(
+      prismaErrorMessage(e, tr("sales.designRequestActions.createFailed"), tr),
+    );
   }
 }
 
@@ -355,15 +380,19 @@ export async function updateDesignRequest(
   number: string,
   payload: DesignRequestUpdateInput,
 ): Promise<ActionResult<{ number: string }>> {
+  const tr = await getTranslations();
   const authz = await checkPermission("design_request", "UPDATE");
   if (!authz.ok) return actionError(authz.error);
-  const parsed = updateInput.safeParse(payload);
+  const parsed = updateInputSchema(tr).safeParse(payload);
   if (!parsed.success) {
-    return actionError(parsed.error.issues[0]?.message ?? "入力が不正です");
+    return actionError(
+      parsed.error.issues[0]?.message ?? tr("common.invalidInput"),
+    );
   }
   const v = parsed.data;
   const productId = Number(v.productId);
-  if (!Number.isInteger(productId)) return actionError("製品が不正です");
+  if (!Number.isInteger(productId))
+    return actionError(tr("sales.designRequestActions.invalidProduct"));
   try {
     const actor = await getCurrentActorId();
     const prior = await prisma.designRequest.findUnique({
@@ -376,12 +405,12 @@ export async function updateDesignRequest(
         history: true,
       },
     });
-    if (!prior) return actionError("対象の設計依頼書が見つかりません");
+    if (!prior) return actionError(tr("sales.designRequestActions.notFound"));
     // 製品や受注元が変われば区分を判定し直す。編集できるのは承認に出す前だけ
     // なので、ここで動いても承認済みのルートと食い違わない。
     const customerBpId = trimOrNull(v.customerBpId);
     const detected = await detectDesignKind(productId, customerBpId);
-    const resolved = resolveKindFields(v, detected);
+    const resolved = resolveKindFields(v, detected, tr);
     if ("error" in resolved) return actionError(resolved.error);
     // status を where に含めた updateMany で原子的にガードする。
     const updated = await prisma.designRequest.updateMany({
@@ -412,7 +441,9 @@ export async function updateDesignRequest(
       },
     });
     if (updated.count === 0) {
-      return actionError("下書き・差し戻しの設計依頼書のみ編集できます");
+      return actionError(
+        tr("sales.designRequestActions.onlyDraftOrRejectedCanBeEdited"),
+      );
     }
     await recordAudit({
       action: "UPDATE",
@@ -438,14 +469,18 @@ export async function updateDesignRequest(
         userIds: [v.assigneeId],
         actor,
         type: "DESIGN",
-        title: `設計依頼 ${number} の担当に指定されました`,
+        title: tr("sales.designRequestActions.assignedNotificationTitle", {
+          number,
+        }),
         number,
       });
     }
     revalidate(number);
     return actionOk({ number });
   } catch (e) {
-    return actionError(prismaErrorMessage(e, "設計依頼書の更新に失敗しました"));
+    return actionError(
+      prismaErrorMessage(e, tr("sales.designRequestActions.updateFailed"), tr),
+    );
   }
 }
 
@@ -459,16 +494,18 @@ export async function setDesignAssignee(
   number: string,
   assigneeId: string,
 ): Promise<ActionResult> {
+  const tr = await getTranslations();
   const authz = await checkPermission("design_request", "UPDATE");
   if (!authz.ok) return actionError(authz.error);
-  if (!assigneeId.trim()) return actionError("担当者を選択してください");
+  if (!assigneeId.trim())
+    return actionError(tr("sales.designRequestForm.selectAnAssignee"));
   try {
     const actor = await getCurrentActorId();
     const prior = await prisma.designRequest.findUnique({
       where: { requestNumber: number },
       select: { assigneeId: true, history: true },
     });
-    if (!prior) return actionError("対象の設計依頼書が見つかりません");
+    if (!prior) return actionError(tr("sales.designRequestActions.notFound"));
     const updated = await prisma.designRequest.updateMany({
       where: {
         requestNumber: number,
@@ -482,7 +519,11 @@ export async function setDesignAssignee(
       },
     });
     if (updated.count === 0) {
-      return actionError("承認済・進行中の設計依頼書のみ担当者を変更できます");
+      return actionError(
+        tr(
+          "sales.designRequestActions.onlyApprovedOrInProgressCanChangeAssignee",
+        ),
+      );
     }
     await recordAudit({
       action: "UPDATE",
@@ -495,13 +536,21 @@ export async function setDesignAssignee(
       userIds: [assigneeId],
       actor,
       type: "DESIGN",
-      title: `設計依頼 ${number} の担当に指定されました`,
+      title: tr("sales.designRequestActions.assignedNotificationTitle", {
+        number,
+      }),
       number,
     });
     revalidate(number);
     return actionOk();
   } catch (e) {
-    return actionError(prismaErrorMessage(e, "担当者の変更に失敗しました"));
+    return actionError(
+      prismaErrorMessage(
+        e,
+        tr("sales.designRequestActions.assigneeChangeFailed"),
+        tr,
+      ),
+    );
   }
 }
 
@@ -511,15 +560,18 @@ export async function setDesignAssignee(
 export async function requestDesignApproval(
   number: string,
 ): Promise<ActionResult> {
+  const tr = await getTranslations();
   const authz = await checkPermission("design_request", "UPDATE");
   if (!authz.ok) return actionError(authz.error);
   try {
     const prior = await prisma.designRequest.findUnique({
       where: { requestNumber: number },
     });
-    if (!prior) return actionError("対象の設計依頼書が見つかりません");
+    if (!prior) return actionError(tr("sales.designRequestActions.notFound"));
     if (prior.status !== "DRAFT" && prior.status !== "REJECTED") {
-      return actionError("下書き・差し戻しの設計依頼書のみ承認依頼できます");
+      return actionError(
+        tr("sales.designRequestActions.onlyDraftOrRejectedCanRequestApproval"),
+      );
     }
     const actor = await getCurrentActorId();
     // フローが無いと依頼を出しても誰も承認できないので、状態を変える前に確かめる
@@ -543,7 +595,9 @@ export async function requestDesignApproval(
       targetId: number,
     });
     if (!started.ok) {
-      return actionError(started.error ?? "承認依頼に失敗しました");
+      return actionError(
+        started.error ?? tr("sales.designRequestActions.approvalRequestFailed"),
+      );
     }
     await recordAudit({
       action: "UPDATE",
@@ -555,12 +609,19 @@ export async function requestDesignApproval(
     revalidate(number);
     return actionOk();
   } catch (e) {
-    return actionError(prismaErrorMessage(e, "承認依頼に失敗しました"));
+    return actionError(
+      prismaErrorMessage(
+        e,
+        tr("sales.designRequestActions.approvalRequestFailed"),
+        tr,
+      ),
+    );
   }
 }
 
 /** 承認 — 現在の段に承認を記録し、全段通過で PENDING（承認済・着手待ち）。 */
 export async function approveDesign(number: string): Promise<ActionResult> {
+  const tr = await getTranslations();
   // 承認グループ所属（本人 or 代理）は引き続き actOnCurrentStep 内で検証する。
   const authz = await checkApprovalDocAccess("design_request");
   if (!authz.ok) return actionError(authz.error);
@@ -568,16 +629,19 @@ export async function approveDesign(number: string): Promise<ActionResult> {
     const prior = await prisma.designRequest.findUnique({
       where: { requestNumber: number },
     });
-    if (!prior) return actionError("対象の設計依頼書が見つかりません");
+    if (!prior) return actionError(tr("sales.designRequestActions.notFound"));
     if (prior.status !== "REQUESTED") {
-      return actionError("承認依頼中の設計依頼書ではありません");
+      return actionError(tr("sales.designRequestActions.notPendingApproval"));
     }
     const acted = await actOnCurrentStep({
       targetType: "design_requests",
       targetId: number,
       action: "APPROVED",
     });
-    if (!acted.ok) return actionError(acted.error ?? "承認の権限がありません");
+    if (!acted.ok)
+      return actionError(
+        acted.error ?? tr("sales.designRequestActions.noApprovePermission"),
+      );
     const actor = await getCurrentActorId();
     // 全段を通過して初めて PENDING。途中の段は REQUESTED のまま進む。
     if (!acted.flowCompleted) {
@@ -587,8 +651,10 @@ export async function approveDesign(number: string): Promise<ActionResult> {
         recordId: number,
         after: {
           note: acted.stepClosed
-            ? "承認（次の段へ）"
-            : `承認（この段の残り ${acted.remaining} 名）`,
+            ? tr("sales.designRequestActions.approvedToNextStep")
+            : tr("sales.designRequestActions.approvedRemaining", {
+                remaining: acted.remaining,
+              }),
         },
       });
       revalidate(number);
@@ -618,14 +684,16 @@ export async function approveDesign(number: string): Promise<ActionResult> {
       userIds: [prior.assigneeId],
       actor,
       type: "DESIGN",
-      title: `設計依頼 ${number} が承認されました`,
-      message: "着手してください。",
+      title: tr("sales.designRequestActions.approvedNotificationTitle", {
+        number,
+      }),
+      message: tr("sales.designRequestActions.pleaseStartMessage"),
       number,
     });
     revalidate(number);
     return actionOk();
   } catch (e) {
-    return actionError(prismaErrorMessage(e, "承認に失敗しました"));
+    return actionError(prismaErrorMessage(e, tr("common.couldNotApprove"), tr));
   }
 }
 
@@ -634,17 +702,18 @@ export async function rejectDesign(
   number: string,
   reason: string,
 ): Promise<ActionResult> {
+  const tr = await getTranslations();
   const authz = await checkApprovalDocAccess("design_request");
   if (!authz.ok) return actionError(authz.error);
   const trimmed = reason.trim();
-  if (!trimmed) return actionError("差し戻し理由を入力してください");
+  if (!trimmed) return actionError(tr("common.enterAReasonForSendingIt"));
   try {
     const prior = await prisma.designRequest.findUnique({
       where: { requestNumber: number },
     });
-    if (!prior) return actionError("対象の設計依頼書が見つかりません");
+    if (!prior) return actionError(tr("sales.designRequestActions.notFound"));
     if (prior.status !== "REQUESTED") {
-      return actionError("承認依頼中の設計依頼書ではありません");
+      return actionError(tr("sales.designRequestActions.notPendingApproval"));
     }
     const acted = await actOnCurrentStep({
       targetType: "design_requests",
@@ -653,7 +722,9 @@ export async function rejectDesign(
       comment: trimmed,
     });
     if (!acted.ok) {
-      return actionError(acted.error ?? "差し戻しの権限がありません");
+      return actionError(
+        acted.error ?? tr("sales.designRequestActions.noRejectPermission"),
+      );
     }
     const actor = await getCurrentActorId();
     await prisma.designRequest.update({
@@ -675,7 +746,9 @@ export async function rejectDesign(
     revalidate(number);
     return actionOk();
   } catch (e) {
-    return actionError(prismaErrorMessage(e, "差し戻しに失敗しました"));
+    return actionError(
+      prismaErrorMessage(e, tr("common.couldNotSendItBack"), tr),
+    );
   }
 }
 
@@ -684,17 +757,20 @@ export async function cancelDesign(
   number: string,
   reason: string,
 ): Promise<ActionResult> {
+  const tr = await getTranslations();
   const authz = await checkPermission("design_request", "UPDATE");
   if (!authz.ok) return actionError(authz.error);
   const trimmed = reason.trim();
-  if (!trimmed) return actionError("キャンセル理由を入力してください");
+  if (!trimmed) return actionError(tr("common.enterAReasonForCancelling"));
   try {
     const prior = await prisma.designRequest.findUnique({
       where: { requestNumber: number },
     });
-    if (!prior) return actionError("対象の設計依頼書が見つかりません");
+    if (!prior) return actionError(tr("sales.designRequestActions.notFound"));
     if (prior.status === "COMPLETED" || prior.status === "CANCELLED") {
-      return actionError("完了前の設計依頼書のみキャンセルできます");
+      return actionError(
+        tr("sales.designRequestActions.onlyBeforeCompletionCanBeCancelled"),
+      );
     }
     const actor = await getCurrentActorId();
     await prisma.$transaction([
@@ -731,14 +807,18 @@ export async function cancelDesign(
       userIds: [prior.assigneeId, prior.createdBy],
       actor,
       type: "DESIGN",
-      title: `設計依頼 ${number} がキャンセルされました`,
+      title: tr("sales.designRequestActions.cancelledNotificationTitle", {
+        number,
+      }),
       message: trimmed,
       number,
     });
     revalidate(number);
     return actionOk();
   } catch (e) {
-    return actionError(prismaErrorMessage(e, "キャンセルに失敗しました"));
+    return actionError(
+      prismaErrorMessage(e, tr("sales.designRequestActions.cancelFailed"), tr),
+    );
   }
 }
 
@@ -746,6 +826,7 @@ export async function cancelDesign(
 
 /** 着手 (PENDING → IN_PROGRESS)。 */
 export async function startDesign(number: string): Promise<ActionResult> {
+  const tr = await getTranslations();
   const authz = await checkPermission("design_request", "UPDATE");
   if (!authz.ok) return actionError(authz.error);
   try {
@@ -754,7 +835,7 @@ export async function startDesign(number: string): Promise<ActionResult> {
       where: { requestNumber: number },
       select: { createdBy: true, history: true },
     });
-    if (!prior) return actionError("対象の設計依頼書が見つかりません");
+    if (!prior) return actionError(tr("sales.designRequestActions.notFound"));
     const updated = await prisma.designRequest.updateMany({
       where: { requestNumber: number, status: "PENDING" },
       data: {
@@ -766,7 +847,9 @@ export async function startDesign(number: string): Promise<ActionResult> {
       },
     });
     if (updated.count === 0) {
-      return actionError("承認済（未着手）の設計依頼書のみ着手できます");
+      return actionError(
+        tr("sales.designRequestActions.onlyApprovedNotStartedCanStart"),
+      );
     }
     await recordAudit({
       action: "UPDATE",
@@ -779,13 +862,17 @@ export async function startDesign(number: string): Promise<ActionResult> {
       userIds: [prior.createdBy],
       actor,
       type: "DESIGN",
-      title: `設計依頼 ${number} の設計が始まりました`,
+      title: tr("sales.designRequestActions.startedNotificationTitle", {
+        number,
+      }),
       number,
     });
     revalidate(number);
     return actionOk();
   } catch (e) {
-    return actionError(prismaErrorMessage(e, "着手に失敗しました"));
+    return actionError(
+      prismaErrorMessage(e, tr("sales.designRequestActions.startFailed"), tr),
+    );
   }
 }
 
@@ -803,6 +890,7 @@ export async function startDesign(number: string): Promise<ActionResult> {
  * 誘導する（DesignRequestDetail の ActionCard）。
  */
 export async function completeDesign(number: string): Promise<ActionResult> {
+  const tr = await getTranslations();
   const authz = await checkPermission("design_request", "UPDATE");
   if (!authz.ok) return actionError(authz.error);
   try {
@@ -817,7 +905,7 @@ export async function completeDesign(number: string): Promise<ActionResult> {
         quote: { select: { salesRepId: true } },
       },
     });
-    if (!request) return actionError("対象の設計依頼書が見つかりません");
+    if (!request) return actionError(tr("sales.designRequestActions.notFound"));
 
     // 成果物（この依頼から出来た版）。1 版に複数ファイルが載るので、
     // 版番号の種類数で「何版ぶんか」を数える。
@@ -827,10 +915,11 @@ export async function completeDesign(number: string): Promise<ActionResult> {
     });
     if (produced.length === 0) {
       return actionError(
-        "この依頼の図面が設計図に登録されていません。先に設計図で版を登録してください",
+        tr("sales.designRequestActions.noDesignFileRegistered"),
       );
     }
     const versions = [...new Set(produced.map((f) => f.version))];
+    const versionsList = versions.map((v) => `v${v}`).join(", ");
 
     // 依頼中に別の改訂が先に完了していると、この依頼が基にした版はもう最新では
     // ない。止めはしない（描き直させても仕方がない）が、**黙って上書きさせない**
@@ -857,7 +946,12 @@ export async function completeDesign(number: string): Promise<ActionResult> {
               "COMPLETE",
               actor,
               staleBase
-                ? `元図面 v${staleBase.version} は完了時点で最新ではありませんでした`
+                ? tr(
+                    "sales.designRequestActions.baseVersionStaleAtCompletion",
+                    {
+                      version: staleBase.version,
+                    },
+                  )
                 : undefined,
             ),
           ),
@@ -865,7 +959,9 @@ export async function completeDesign(number: string): Promise<ActionResult> {
       },
     });
     if (updated.count === 0) {
-      return actionError("進行中の設計依頼書のみ完了できます");
+      return actionError(
+        tr("sales.designRequestActions.onlyInProgressCanComplete"),
+      );
     }
 
     await recordAudit({
@@ -875,7 +971,10 @@ export async function completeDesign(number: string): Promise<ActionResult> {
       before: { status: "IN_PROGRESS" },
       after: {
         status: "COMPLETED",
-        note: `成果物 ${produced.length} 件（v${versions.join(", v")}）`,
+        note: tr("sales.designRequestActions.deliverablesAudit", {
+          count: produced.length,
+          versions: versionsList,
+        }),
         ...(staleBase ? { staleBaseVersion: staleBase.version } : {}),
       },
     });
@@ -884,14 +983,25 @@ export async function completeDesign(number: string): Promise<ActionResult> {
       userIds: [request.createdBy, request.quote?.salesRepId],
       actor,
       type: "DESIGN",
-      title: `設計依頼 ${number} の図面ができました`,
-      message: `設計図 v${versions.join(", v")}（${produced.length} 件）`,
+      title: tr("sales.designRequestActions.completedNotificationTitle", {
+        number,
+      }),
+      message: tr("sales.designRequestActions.completedNotificationMessage", {
+        versions: versionsList,
+        count: produced.length,
+      }),
       number,
     });
     revalidate(number);
     return actionOk();
   } catch (e) {
-    return actionError(prismaErrorMessage(e, "完了に失敗しました"));
+    return actionError(
+      prismaErrorMessage(
+        e,
+        tr("sales.designRequestActions.completeFailed"),
+        tr,
+      ),
+    );
   }
 }
 
@@ -902,6 +1012,7 @@ export async function completeDesign(number: string): Promise<ActionResult> {
  * やり直すわけではないので approval_requests / approval_records には触らない。
  */
 export async function reopenDesign(number: string): Promise<ActionResult> {
+  const tr = await getTranslations();
   const authz = await checkPermission("design_request", "UPDATE");
   if (!authz.ok) return actionError(authz.error);
   try {
@@ -910,7 +1021,7 @@ export async function reopenDesign(number: string): Promise<ActionResult> {
       where: { requestNumber: number },
       select: { assigneeId: true, history: true },
     });
-    if (!prior) return actionError("対象の設計依頼書が見つかりません");
+    if (!prior) return actionError(tr("sales.designRequestActions.notFound"));
     const updated = await prisma.designRequest.updateMany({
       where: { requestNumber: number, status: "COMPLETED" },
       data: {
@@ -923,7 +1034,9 @@ export async function reopenDesign(number: string): Promise<ActionResult> {
       },
     });
     if (updated.count === 0) {
-      return actionError("完了済みの設計依頼書のみ差し戻しできます");
+      return actionError(
+        tr("sales.designRequestActions.onlyCompletedCanBeReopened"),
+      );
     }
     await recordAudit({
       action: "UPDATE",
@@ -936,13 +1049,17 @@ export async function reopenDesign(number: string): Promise<ActionResult> {
       userIds: [prior.assigneeId],
       actor,
       type: "DESIGN",
-      title: `設計依頼 ${number} が差し戻されました`,
-      message: "図面を修正してください。",
+      title: tr("sales.designRequestActions.reopenedNotificationTitle", {
+        number,
+      }),
+      message: tr("sales.designRequestActions.pleaseReviseMessage"),
       number,
     });
     revalidate(number);
     return actionOk();
   } catch (e) {
-    return actionError(prismaErrorMessage(e, "差し戻しに失敗しました"));
+    return actionError(
+      prismaErrorMessage(e, tr("common.couldNotSendItBack"), tr),
+    );
   }
 }

@@ -12,6 +12,7 @@ import "server-only";
  * 正方形・サムネイルは要らない（図解・写真をそのまま 1 枚印刷するだけ）。
  */
 
+import { getTranslations } from "next-intl/server";
 import { recordAudit } from "@/lib/audit";
 import { checkPermission } from "@/lib/authz";
 import { prisma } from "@/lib/db";
@@ -47,28 +48,33 @@ export const TEMPLATE_IMAGE_EXT_LABEL = "PNG / JPG / WEBP";
  */
 async function checkImage(
   file: File,
+  tr: Awaited<ReturnType<typeof getTranslations>>,
 ): Promise<
   { bytes: ArrayBuffer; contentType: string; filename: string } | string
 > {
-  if (file.size <= 0) return "画像ファイルを選択してください";
+  if (file.size <= 0) return tr("common.selectAnImageFile");
   if (file.size > MAX_TEMPLATE_IMAGE_BYTES) {
-    return "画像サイズは 5MB 以下にしてください";
+    return tr("common.imageSizeMax5Mb");
   }
   const ext = file.name.includes(".")
     ? (file.name.split(".").pop()?.toLowerCase() ?? "")
     : "";
   const allowed = IMAGE_TYPES[ext];
   if (!allowed || !allowed.includes(file.type.toLowerCase())) {
-    return `対応していない画像形式です（${TEMPLATE_IMAGE_EXT_LABEL}）`;
+    return tr("common.unsupportedImageFormat", {
+      formats: TEMPLATE_IMAGE_EXT_LABEL,
+    });
   }
   const bytes = await file.arrayBuffer();
   const size = imageSize(bytes);
-  if (!size) return "画像として読み取れませんでした";
+  if (!size) return tr("common.couldNotReadAsImage");
   if (
     size.width > MAX_TEMPLATE_IMAGE_PIXELS ||
     size.height > MAX_TEMPLATE_IMAGE_PIXELS
   ) {
-    return `画像は ${MAX_TEMPLATE_IMAGE_PIXELS}px 四方以下にしてください`;
+    return tr("common.imageMustBeAtMostPixelsSquareNoLabel", {
+      maxPixels: MAX_TEMPLATE_IMAGE_PIXELS,
+    });
   }
   return { bytes, contentType: allowed[0], filename: file.name };
 }
@@ -124,8 +130,9 @@ export async function saveInspectionTemplateImage(
 ): Promise<ActionResult<{ fileId: string }>> {
   const authz = await checkPermission("master", "UPDATE");
   if (!authz.ok) return actionError(authz.error);
+  const tr = await getTranslations();
 
-  const checked = await checkImage(file);
+  const checked = await checkImage(file, tr);
   if (typeof checked === "string") return actionError(checked);
 
   try {
@@ -133,13 +140,16 @@ export async function saveInspectionTemplateImage(
       where: { id: templateId },
       select: { code: true, imageFileId: true },
     });
-    if (!before) return actionError("対象のテンプレートが見つかりません");
+    if (!before)
+      return actionError(
+        tr("master.inspectionTemplateActions.targetTemplateNotFound"),
+      );
 
     const storageKey = `inspection-templates/${templateId}/${systematicFileName(
       checked.filename,
     )}`;
     if (!(await putObject(storageKey, checked.bytes, checked.contentType))) {
-      return actionError("ストレージへの保存に失敗しました");
+      return actionError(tr("common.storageSaveFailed"));
     }
 
     let fileId: string;
@@ -171,11 +181,13 @@ export async function saveInspectionTemplateImage(
       action: "UPDATE",
       tableName: "inspection_templates",
       recordId: String(templateId),
-      after: { note: `参考画像を設定: ${checked.filename}` },
+      after: {
+        note: tr("common.referenceImageSetNote", { name: checked.filename }),
+      },
     });
     return actionOk({ fileId });
   } catch (e) {
-    return actionError(prismaErrorMessage(e, "画像の保存に失敗しました"));
+    return actionError(prismaErrorMessage(e, tr("common.imageSaveFailed"), tr));
   }
 }
 
@@ -185,12 +197,16 @@ export async function removeInspectionTemplateImage(
 ): Promise<ActionResult> {
   const authz = await checkPermission("master", "UPDATE");
   if (!authz.ok) return actionError(authz.error);
+  const tr = await getTranslations();
   try {
     const before = await prisma.inspectionTemplate.findUnique({
       where: { id: templateId },
       select: { imageFileId: true },
     });
-    if (!before) return actionError("対象のテンプレートが見つかりません");
+    if (!before)
+      return actionError(
+        tr("master.inspectionTemplateActions.targetTemplateNotFound"),
+      );
     if (!before.imageFileId) return actionOk();
 
     await prisma.inspectionTemplate.update({
@@ -202,10 +218,12 @@ export async function removeInspectionTemplateImage(
       action: "UPDATE",
       tableName: "inspection_templates",
       recordId: String(templateId),
-      after: { note: "参考画像を削除" },
+      after: { note: tr("common.referenceImageDeletedNote") },
     });
     return actionOk();
   } catch (e) {
-    return actionError(prismaErrorMessage(e, "画像の削除に失敗しました"));
+    return actionError(
+      prismaErrorMessage(e, tr("common.imageDeleteFailed"), tr),
+    );
   }
 }

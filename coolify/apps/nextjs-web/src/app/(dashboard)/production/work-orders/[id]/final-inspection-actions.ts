@@ -11,6 +11,7 @@
  */
 
 import { revalidatePath } from "next/cache";
+import { getTranslations } from "next-intl/server";
 import { z } from "zod";
 import { getCurrentActorId, recordAudit } from "@/lib/audit";
 import { checkPermission } from "@/lib/authz";
@@ -46,11 +47,17 @@ const CHECKLIST_FIELDS = [
 ] as const;
 type ChecklistField = (typeof CHECKLIST_FIELDS)[number];
 
-const CHECKLIST_LABEL: Record<ChecklistField, string> = {
-  drawingLabel: "図面・ラベル・膜厚・寸法と間違いがないか",
-  protectiveCap: "保護キャップ使用しているか(φ0.6以下)",
-  finishedQuantity: "完成本数は合っているか",
-};
+function checklistLabel(
+  tr: Awaited<ReturnType<typeof getTranslations>>,
+): Record<ChecklistField, string> {
+  return {
+    drawingLabel: tr("production.finalInspectionActions.drawingLabelCheck"),
+    protectiveCap: tr("production.finalInspectionActions.protectiveCapCheck"),
+    finishedQuantity: tr(
+      "production.finalInspectionActions.finishedQuantityCheck",
+    ),
+  };
+}
 
 /** ■最終検査の3項目（画像固定・確認者スタンプ付き）。 */
 export async function setFinalInspectionCheck(
@@ -58,11 +65,14 @@ export async function setFinalInspectionCheck(
   field: ChecklistField,
   ok: boolean,
 ): Promise<ActionResult> {
+  const tr = await getTranslations();
   const denied = await deniedPermission();
   if (denied) return denied;
-  if (!CHECKLIST_FIELDS.includes(field)) return actionError("不正な項目です");
+  if (!CHECKLIST_FIELDS.includes(field))
+    return actionError(tr("production.finalInspectionActions.invalidField"));
   const workOrderId = await findWorkOrderId(workOrderNumber);
-  if (!workOrderId) return actionError("指示書が見つかりません");
+  if (!workOrderId)
+    return actionError(tr("production.finalInspectionActions.woNotFound"));
   const actor = await getCurrentActorId();
   const now = new Date();
   try {
@@ -85,24 +95,35 @@ export async function setFinalInspectionCheck(
       tableName: "work_orders",
       recordId: String(workOrderNumber),
       after: {
-        note: `最終検査「${CHECKLIST_LABEL[field]}」を${ok ? "○" : "×"}で記録`,
+        note: tr("production.finalInspectionActions.checkRecordedNote", {
+          label: checklistLabel(tr)[field],
+          mark: ok
+            ? tr("production.finalInspectionActions.markOk")
+            : tr("production.finalInspectionActions.markNg"),
+        }),
       },
     });
     revalidate(workOrderNumber);
     return actionOk();
   } catch (e) {
     console.error("setFinalInspectionCheck failed", e);
-    return actionError("最終検査の記録に失敗しました");
+    return actionError(tr("production.finalInspectionActions.checkSaveFailed"));
   }
 }
 
 const SPARE_STOCK_FIELDS = ["spareStockUsed", "spareStockReceived"] as const;
 type SpareStockField = (typeof SPARE_STOCK_FIELDS)[number];
 
-const SPARE_STOCK_LABEL: Record<SpareStockField, string> = {
-  spareStockUsed: "予備在庫使用",
-  spareStockReceived: "予備在庫入庫",
-};
+function spareStockLabel(
+  tr: Awaited<ReturnType<typeof getTranslations>>,
+): Record<SpareStockField, string> {
+  return {
+    spareStockUsed: tr("production.finalInspectionActions.spareStockUsed"),
+    spareStockReceived: tr(
+      "production.finalInspectionActions.spareStockReceived",
+    ),
+  };
+}
 
 /** 予備在庫使用・予備在庫入庫（単純なチェック — スタンプなし）。 */
 export async function setFinalInspectionSpareStock(
@@ -110,11 +131,14 @@ export async function setFinalInspectionSpareStock(
   field: SpareStockField,
   value: boolean,
 ): Promise<ActionResult> {
+  const tr = await getTranslations();
   const denied = await deniedPermission();
   if (denied) return denied;
-  if (!SPARE_STOCK_FIELDS.includes(field)) return actionError("不正な項目です");
+  if (!SPARE_STOCK_FIELDS.includes(field))
+    return actionError(tr("production.finalInspectionActions.invalidField"));
   const workOrderId = await findWorkOrderId(workOrderNumber);
-  if (!workOrderId) return actionError("指示書が見つかりません");
+  if (!workOrderId)
+    return actionError(tr("production.finalInspectionActions.woNotFound"));
   try {
     await prisma.workOrderFinalInspection.upsert({
       where: { workOrderId },
@@ -125,13 +149,22 @@ export async function setFinalInspectionSpareStock(
       action: "UPDATE",
       tableName: "work_orders",
       recordId: String(workOrderNumber),
-      after: { note: `${SPARE_STOCK_LABEL[field]}: ${value ? "有" : "無"}` },
+      after: {
+        note: tr("production.finalInspectionActions.spareStockNote", {
+          label: spareStockLabel(tr)[field],
+          value: value
+            ? tr("production.finalInspectionActions.present")
+            : tr("production.finalInspectionActions.absent"),
+        }),
+      },
     });
     revalidate(workOrderNumber);
     return actionOk();
   } catch (e) {
     console.error("setFinalInspectionSpareStock failed", e);
-    return actionError("予備在庫の記録に失敗しました");
+    return actionError(
+      tr("production.finalInspectionActions.spareStockSaveFailed"),
+    );
   }
 }
 
@@ -142,11 +175,19 @@ const SHIPMENT_STAGES = [
 ] as const;
 type ShipmentStage = (typeof SHIPMENT_STAGES)[number];
 
-const SHIPMENT_STAGE_LABEL: Record<ShipmentStage, string> = {
-  shelved: "棚包担当者",
-  deliveryNoteIssued: "納品書発行者",
-  shipmentAuthorized: "出荷許可者",
-};
+function shipmentStageLabel(
+  tr: Awaited<ReturnType<typeof getTranslations>>,
+): Record<ShipmentStage, string> {
+  return {
+    shelved: tr("production.finalInspectionActions.shelvedBy"),
+    deliveryNoteIssued: tr(
+      "production.finalInspectionActions.deliveryNoteIssuedBy",
+    ),
+    shipmentAuthorized: tr(
+      "production.finalInspectionActions.shipmentAuthorizedBy",
+    ),
+  };
+}
 
 /**
  * 出荷前チェーン（棚包→納品書発行→出荷許可）— 紙の記入順のまま、
@@ -156,12 +197,15 @@ export async function advanceShipmentStage(
   workOrderNumber: number,
   stage: ShipmentStage,
 ): Promise<ActionResult> {
+  const tr = await getTranslations();
   const denied = await deniedPermission();
   if (denied) return denied;
   const stageIndex = SHIPMENT_STAGES.indexOf(stage);
-  if (stageIndex < 0) return actionError("不正な段階です");
+  if (stageIndex < 0)
+    return actionError(tr("production.finalInspectionActions.invalidStage"));
   const workOrderId = await findWorkOrderId(workOrderNumber);
-  if (!workOrderId) return actionError("指示書が見つかりません");
+  if (!workOrderId)
+    return actionError(tr("production.finalInspectionActions.woNotFound"));
   try {
     const existing = await prisma.workOrderFinalInspection.findUnique({
       where: { workOrderId },
@@ -176,15 +220,20 @@ export async function advanceShipmentStage(
       deliveryNoteIssued: existing?.deliveryNoteIssuedAt ?? null,
       shipmentAuthorized: existing?.shipmentAuthorizedAt ?? null,
     };
+    const labels = shipmentStageLabel(tr);
     if (stampedAt[stage] != null) {
       return actionError(
-        `${SHIPMENT_STAGE_LABEL[stage]}は既に記録されています`,
+        tr("production.finalInspectionActions.stageAlreadyRecorded", {
+          label: labels[stage],
+        }),
       );
     }
     const priorStage = SHIPMENT_STAGES[stageIndex - 1];
     if (priorStage && stampedAt[priorStage] == null) {
       return actionError(
-        `先に${SHIPMENT_STAGE_LABEL[priorStage]}を記録してください`,
+        tr("production.finalInspectionActions.recordPriorStageFirst", {
+          label: labels[priorStage],
+        }),
       );
     }
     const actor = await getCurrentActorId();
@@ -205,13 +254,19 @@ export async function advanceShipmentStage(
       action: "UPDATE",
       tableName: "work_orders",
       recordId: String(workOrderNumber),
-      after: { note: `${SHIPMENT_STAGE_LABEL[stage]}を記録` },
+      after: {
+        note: tr("production.finalInspectionActions.stageRecordedNote", {
+          label: labels[stage],
+        }),
+      },
     });
     revalidate(workOrderNumber);
     return actionOk();
   } catch (e) {
     console.error("advanceShipmentStage failed", e);
-    return actionError("出荷前確認の記録に失敗しました");
+    return actionError(
+      tr("production.finalInspectionActions.shipmentStageSaveFailed"),
+    );
   }
 }
 
@@ -220,12 +275,14 @@ export async function recordShipDefectReview(
   workOrderNumber: number,
   notes: string,
 ): Promise<ActionResult> {
+  const tr = await getTranslations();
   const denied = await deniedPermission();
   if (denied) return denied;
   const workOrderId = await findWorkOrderId(workOrderNumber);
-  if (!workOrderId) return actionError("指示書が見つかりません");
+  if (!workOrderId)
+    return actionError(tr("production.finalInspectionActions.woNotFound"));
   const parsed = z.string().max(2000).safeParse(notes);
-  if (!parsed.success) return actionError("入力が不正です");
+  if (!parsed.success) return actionError(tr("common.invalidInput"));
   const actor = await getCurrentActorId();
   const now = new Date();
   try {
@@ -247,12 +304,16 @@ export async function recordShipDefectReview(
       action: "UPDATE",
       tableName: "work_orders",
       recordId: String(workOrderNumber),
-      after: { note: "出荷時不良内容確認者印を記録" },
+      after: {
+        note: tr("production.finalInspectionActions.shipDefectReviewedNote"),
+      },
     });
     revalidate(workOrderNumber);
     return actionOk();
   } catch (e) {
     console.error("recordShipDefectReview failed", e);
-    return actionError("出荷時不良内容の記録に失敗しました");
+    return actionError(
+      tr("production.finalInspectionActions.shipDefectSaveFailed"),
+    );
   }
 }

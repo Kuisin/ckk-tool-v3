@@ -9,6 +9,7 @@
  */
 
 import { revalidatePath } from "next/cache";
+import { getTranslations } from "next-intl/server";
 import { z } from "zod";
 import {
   AiProviderConfigError,
@@ -43,34 +44,40 @@ async function missingRequirement(
   settings: AiProviderSettings,
   incomingToken: string,
   clearToken: boolean,
+  tr: Awaited<ReturnType<typeof getTranslations>>,
 ): Promise<string | null> {
   const preset = AI_PROVIDER_PRESETS[settings.provider];
   if (!preset.tokenRequired) return null;
   if (!settings.structModel && !settings.visionModel) {
-    return "モデル名を入力してください";
+    return tr("settings.aiProviderActions.enterModelName");
   }
-  if (clearToken) return "このプロバイダには API トークンが必要です";
+  if (clearToken) {
+    return tr("settings.aiProviderActions.tokenRequiredForProvider");
+  }
   if (incomingToken) return null;
   const current = await getAiProviderSettings();
   // 「読めない」を「設定済み」と数えない — 保存できたのに動かない状態になる。
   if (current.tokenStatus === "set" || current.tokenStatus === "rotate-pending")
     return null;
-  return "API トークンを入力してください";
+  return tr("settings.aiProviderActions.enterApiToken");
 }
 
 export async function updateAiProviderSettings(
   payload: AiProviderPayload,
 ): Promise<ActionResult> {
+  const tr = await getTranslations();
   const authz = await checkPermission("system", "UPDATE");
   if (!authz.ok) return actionError(authz.error);
 
   const parsed = payloadSchema.safeParse(payload);
   if (!parsed.success) {
-    return actionError(parsed.error.issues[0]?.message ?? "入力が不正です");
+    return actionError(
+      parsed.error.issues[0]?.message ?? tr("common.invalidInput"),
+    );
   }
   const { settings, token, clearToken } = parsed.data;
 
-  const missing = await missingRequirement(settings, token, clearToken);
+  const missing = await missingRequirement(settings, token, clearToken, tr);
   if (missing) return actionError(missing);
 
   try {
@@ -104,8 +111,8 @@ export async function updateAiProviderSettings(
     revalidatePath("/settings");
     return actionOk();
   } catch (e) {
-    console.error("[ai-provider] 保存に失敗", e);
-    return actionError("設定の保存に失敗しました");
+    console.error(tr("settings.aiProviderActions.saveFailedLog"), e);
+    return actionError(tr("settings.aiProviderActions.saveFailed"));
   }
 }
 
@@ -132,12 +139,15 @@ export interface ProbeResult {
 export async function testAiProviderConnection(
   payload: AiProviderPayload,
 ): Promise<ActionResult<ProbeResult>> {
+  const tr = await getTranslations();
   const authz = await checkPermission("system", "UPDATE");
   if (!authz.ok) return actionError(authz.error);
 
   const parsed = payloadSchema.safeParse(payload);
   if (!parsed.success) {
-    return actionError(parsed.error.issues[0]?.message ?? "入力が不正です");
+    return actionError(
+      parsed.error.issues[0]?.message ?? tr("common.invalidInput"),
+    );
   }
   const { settings, token } = parsed.data;
 
@@ -162,19 +172,26 @@ export async function testAiProviderConnection(
     if (!res.ok) {
       return actionError(
         body?.detail ??
-          `接続テストに失敗しました（po-extract HTTP ${res.status}）`,
+          tr("settings.aiProviderActions.connectionTestFailedHttp", {
+            status: res.status,
+          }),
       );
     }
-    if (!body?.struct)
-      return actionError("接続テストの結果を読み取れませんでした");
+    if (!body?.struct) {
+      return actionError(
+        tr("settings.aiProviderActions.connectionTestUnreadableResult"),
+      );
+    }
     return actionOk(body);
   } catch (e) {
     if (e instanceof Error && e.name === "TimeoutError") {
-      return actionError("接続テストが時間内に終わりませんでした（90 秒）");
+      return actionError(
+        tr("settings.aiProviderActions.connectionTestTimedOut"),
+      );
     }
-    console.error("[ai-provider] 接続テストに失敗", e);
+    console.error(tr("settings.aiProviderActions.connectionTestFailedLog"), e);
     return actionError(
-      "抽出サーバー（po-extract）に接続できませんでした。更新が必要な可能性があります。",
+      tr("settings.aiProviderActions.extractionServerUnreachable"),
     );
   }
 }

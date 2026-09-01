@@ -15,6 +15,7 @@
  */
 
 import { revalidatePath } from "next/cache";
+import { getTranslations } from "next-intl/server";
 import { z } from "zod";
 import { recordAudit } from "@/lib/audit";
 import { checkPermission, sessionUserId } from "@/lib/authz";
@@ -47,29 +48,40 @@ const BASE_PATH = "/settings/portal";
  * これが無いと、main で管理者が直接アクションを叩いて「使えないポータルの
  * アカウント」を作れてしまう。
  */
-function featureOff(): string | null {
+function featureOff(
+  tr: Awaited<ReturnType<typeof getTranslations>>,
+): string | null {
   return isDevFeatureEnabled("portal")
     ? null
-    : "取引先ポータルはこの環境では利用できません";
+    : tr("settings.portalActions.featureDisabled");
 }
 
-const createSchema = z.object({
-  bpId: z.string().uuid("取引先を選択してください"),
-  email: z.string().trim().email("メールアドレスの形式が正しくありません"),
-  displayName: z.string().trim().min(1, "表示名を入力してください").max(120),
-  bpContactId: z.string().uuid().nullable().optional(),
-});
+function createSchema(tr: Awaited<ReturnType<typeof getTranslations>>) {
+  return z.object({
+    bpId: z.string().uuid(tr("settings.portalActions.selectABusinessPartner")),
+    email: z.string().trim().email(tr("common.invalidEmailFormat")),
+    displayName: z
+      .string()
+      .trim()
+      .min(1, tr("settings.portalActions.enterDisplayName"))
+      .max(120),
+    bpContactId: z.string().uuid().nullable().optional(),
+  });
+}
 
 export async function createPortalAccount(
-  input: z.infer<typeof createSchema>,
+  input: z.infer<ReturnType<typeof createSchema>>,
 ): Promise<ActionResult<{ id: string }>> {
-  const off = featureOff();
+  const tr = await getTranslations();
+  const off = featureOff(tr);
   if (off) return actionError(off);
   const authz = await checkPermission("portal_admin", "CREATE");
   if (!authz.ok) return actionError(authz.error);
-  const parsed = createSchema.safeParse(input);
+  const parsed = createSchema(tr).safeParse(input);
   if (!parsed.success)
-    return actionError(parsed.error.issues[0]?.message ?? "入力が不正です");
+    return actionError(
+      parsed.error.issues[0]?.message ?? tr("common.invalidInput"),
+    );
   const v = parsed.data;
   const email = normalizePortalEmail(v.email);
 
@@ -102,7 +114,9 @@ export async function createPortalAccount(
     revalidatePath(BASE_PATH);
     return actionOk({ id: row.id });
   } catch (e) {
-    return actionError(prismaErrorMessage(e, "作成に失敗しました"));
+    return actionError(
+      prismaErrorMessage(e, tr("settings.portalActions.createFailed"), tr),
+    );
   }
 }
 
@@ -110,7 +124,8 @@ export async function createPortalAccount(
 export async function activatePortalAccount(
   id: string,
 ): Promise<ActionResult<null>> {
-  const off = featureOff();
+  const tr = await getTranslations();
+  const off = featureOff(tr);
   if (off) return actionError(off);
   // useElevation は React のフックではない（サーバー側の昇格チェック。peek と
   // 対にするため use* という名前になっている — lib/privileged-access.ts 参照）。
@@ -139,7 +154,9 @@ export async function activatePortalAccount(
     revalidatePath(BASE_PATH);
     return actionOk(null);
   } catch (e) {
-    return actionError(prismaErrorMessage(e, "有効化に失敗しました"));
+    return actionError(
+      prismaErrorMessage(e, tr("settings.portalActions.activateFailed"), tr),
+    );
   }
 }
 
@@ -152,7 +169,8 @@ export async function deactivatePortalAccount(
   id: string,
   reason: string,
 ): Promise<ActionResult<null>> {
-  const off = featureOff();
+  const tr = await getTranslations();
+  const off = featureOff(tr);
   if (off) return actionError(off);
   const authz = await checkPermission("portal_admin", "UPDATE");
   if (!authz.ok) return actionError(authz.error);
@@ -184,28 +202,35 @@ export async function deactivatePortalAccount(
     revalidatePath(BASE_PATH);
     return actionOk(null);
   } catch (e) {
-    return actionError(prismaErrorMessage(e, "無効化に失敗しました"));
+    return actionError(
+      prismaErrorMessage(e, tr("settings.portalActions.deactivateFailed"), tr),
+    );
   }
 }
 
-const grantSchema = z.object({
-  portalAccountId: z.string().uuid(),
-  bpId: z.string().uuid("取引先を選択してください"),
-  includeBranches: z.boolean(),
-  includeAsEndUser: z.boolean(),
-});
+function grantSchema(tr: Awaited<ReturnType<typeof getTranslations>>) {
+  return z.object({
+    portalAccountId: z.string().uuid(),
+    bpId: z.string().uuid(tr("settings.portalActions.selectABusinessPartner")),
+    includeBranches: z.boolean(),
+    includeAsEndUser: z.boolean(),
+  });
+}
 
 /** BP スコープの共有を足す。作成そのものは承認不要（有効化が門になっている）。 */
 export async function addPortalBpScope(
-  input: z.infer<typeof grantSchema>,
+  input: z.infer<ReturnType<typeof grantSchema>>,
 ): Promise<ActionResult<null>> {
-  const off = featureOff();
+  const tr = await getTranslations();
+  const off = featureOff(tr);
   if (off) return actionError(off);
   const authz = await checkPermission("portal_admin", "UPDATE");
   if (!authz.ok) return actionError(authz.error);
-  const parsed = grantSchema.safeParse(input);
+  const parsed = grantSchema(tr).safeParse(input);
   if (!parsed.success)
-    return actionError(parsed.error.issues[0]?.message ?? "入力が不正です");
+    return actionError(
+      parsed.error.issues[0]?.message ?? tr("common.invalidInput"),
+    );
   const v = parsed.data;
   try {
     await prisma.portalGrant.create({
@@ -227,7 +252,9 @@ export async function addPortalBpScope(
     revalidatePath(BASE_PATH);
     return actionOk(null);
   } catch (e) {
-    return actionError(prismaErrorMessage(e, "共有範囲の追加に失敗しました"));
+    return actionError(
+      prismaErrorMessage(e, tr("settings.portalActions.addGrantFailed"), tr),
+    );
   }
 }
 
@@ -235,7 +262,8 @@ export async function addPortalBpScope(
 export async function revokePortalGrant(
   grantId: string,
 ): Promise<ActionResult<null>> {
-  const off = featureOff();
+  const tr = await getTranslations();
+  const off = featureOff(tr);
   if (off) return actionError(off);
   const authz = await checkPermission("portal_admin", "UPDATE");
   if (!authz.ok) return actionError(authz.error);
@@ -253,7 +281,9 @@ export async function revokePortalGrant(
     revalidatePath(BASE_PATH);
     return actionOk(null);
   } catch (e) {
-    return actionError(prismaErrorMessage(e, "失効に失敗しました"));
+    return actionError(
+      prismaErrorMessage(e, tr("settings.portalActions.revokeFailed"), tr),
+    );
   }
 }
 
@@ -264,7 +294,8 @@ export async function revokePortalGrant(
 export async function issueBackupCodes(
   accountId: string,
 ): Promise<ActionResult<{ codes: string[] }>> {
-  const off = featureOff();
+  const tr = await getTranslations();
+  const off = featureOff(tr);
   if (off) return actionError(off);
   // useElevation は React のフックではない（サーバー側の昇格チェック。peek と
   // 対にするため use* という名前になっている — lib/privileged-access.ts 参照）。
@@ -291,7 +322,9 @@ export async function issueBackupCodes(
     revalidatePath(BASE_PATH);
     return actionOk({ codes });
   } catch (e) {
-    return actionError(prismaErrorMessage(e, "発行に失敗しました"));
+    return actionError(
+      prismaErrorMessage(e, tr("settings.portalActions.issueFailed"), tr),
+    );
   }
 }
 
@@ -328,7 +361,8 @@ export type PortalLinkInput = z.infer<typeof linkSchema>;
 export async function createVerifyLink(
   input: PortalLinkInput,
 ): Promise<ActionResult<{ url: string; expiresAt: string }>> {
-  const off = featureOff();
+  const tr = await getTranslations();
+  const off = featureOff(tr);
   if (off) return actionError(off);
   const authz = await checkPermission("portal_admin", "CREATE");
   if (!authz.ok) return actionError(authz.error);
@@ -342,7 +376,8 @@ export async function createVerifyLink(
 export async function createLinkOnlyUrl(
   input: PortalLinkInput,
 ): Promise<ActionResult<{ url: string; expiresAt: string }>> {
-  const off = featureOff();
+  const tr = await getTranslations();
+  const off = featureOff(tr);
   if (off) return actionError(off);
   // useElevation は React のフックではない（サーバー側の昇格チェック。peek と
   // 対にするため use* という名前になっている — lib/privileged-access.ts 参照）。
@@ -364,9 +399,12 @@ async function mintLink(
   policy: PortalLinkPolicy,
   note: Record<string, unknown>,
 ): Promise<ActionResult<{ url: string; expiresAt: string }>> {
+  const tr = await getTranslations();
   const parsed = linkSchema.safeParse(input);
   if (!parsed.success)
-    return actionError(parsed.error.issues[0]?.message ?? "入力が不正です");
+    return actionError(
+      parsed.error.issues[0]?.message ?? tr("common.invalidInput"),
+    );
   const v = parsed.data;
 
   // その書類自体の READ を持っていること（見えるものしか配れない）。
@@ -377,7 +415,9 @@ async function mintLink(
   if (!docAuthz.ok) return actionError(docAuthz.error);
 
   const actorId = await sessionUserId();
-  if (!actorId) return actionError("操作者を特定できません");
+  if (!actorId) {
+    return actionError(tr("settings.portalActions.actorNotIdentified"));
+  }
 
   const result = await mintPortalLink(
     {
@@ -419,12 +459,15 @@ async function mintLink(
 
 /** リンクを失効させる（承認不要）。 */
 export async function revokeLink(linkId: string): Promise<ActionResult<null>> {
-  const off = featureOff();
+  const tr = await getTranslations();
+  const off = featureOff(tr);
   if (off) return actionError(off);
   const authz = await checkPermission("portal_admin", "UPDATE");
   if (!authz.ok) return actionError(authz.error);
   const actorId = await sessionUserId();
-  if (!actorId) return actionError("操作者を特定できません");
+  if (!actorId) {
+    return actionError(tr("settings.portalActions.actorNotIdentified"));
+  }
   try {
     await revokePortalLink(linkId, actorId);
     await recordAudit({
@@ -436,7 +479,9 @@ export async function revokeLink(linkId: string): Promise<ActionResult<null>> {
     revalidatePath(BASE_PATH);
     return actionOk(null);
   } catch (e) {
-    return actionError(prismaErrorMessage(e, "失効に失敗しました"));
+    return actionError(
+      prismaErrorMessage(e, tr("settings.portalActions.revokeFailed"), tr),
+    );
   }
 }
 

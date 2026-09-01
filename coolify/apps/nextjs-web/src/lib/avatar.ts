@@ -18,6 +18,7 @@ import "server-only";
  * URL が変わらないので、キャッシュを効かせるためファイル ID を `?v=` に載せる。
  */
 
+import { getTranslations } from "next-intl/server";
 import { recordAudit } from "@/lib/audit";
 import { prisma } from "@/lib/db";
 import { avatarStorageKey } from "@/lib/file-naming";
@@ -82,29 +83,30 @@ async function checkImage(
   file: File,
   maxPixels: number,
   label: string,
+  tr: Awaited<ReturnType<typeof getTranslations>>,
 ): Promise<CheckedImage | string> {
-  if (file.size <= 0) return "画像ファイルを選択してください";
+  if (file.size <= 0) return tr("common.selectAnImageFile");
   if (file.size > MAX_AVATAR_BYTES) {
-    return "画像サイズは 5MB 以下にしてください";
+    return tr("common.imageSizeMax5Mb");
   }
   const ext = file.name.includes(".")
     ? (file.name.split(".").pop()?.toLowerCase() ?? "")
     : "";
   const allowed = AVATAR_TYPES[ext];
   if (!allowed || !allowed.includes(file.type.toLowerCase())) {
-    return `対応していない画像形式です（${AVATAR_EXT_LABEL}）`;
+    return tr("common.unsupportedImageFormat", { formats: AVATAR_EXT_LABEL });
   }
 
   const bytes = await file.arrayBuffer();
   // 正方形で保存することを不変条件にする（表示側は丸く抜くだけでよい）。
   // クライアントの切り抜きを信用せず、ヘッダーの寸法で検証する。
   const size = imageSize(bytes);
-  if (!size) return "画像として読み取れませんでした";
+  if (!size) return tr("common.couldNotReadAsImage");
   if (size.width !== size.height) {
-    return "画像は正方形に切り抜いてから保存してください";
+    return tr("common.cropImageToSquareBeforeSaving");
   }
   if (size.width > maxPixels) {
-    return `${label}は ${maxPixels}px 四方以下にしてください`;
+    return tr("common.imageMustBeAtMostPixelsSquare", { label, maxPixels });
   }
   return { bytes, contentType: allowed[0], filename: file.name };
 }
@@ -119,12 +121,19 @@ export async function saveAvatar(
   file: File,
   thumbFile: File,
 ): Promise<ActionResult<{ fileId: string; thumbFileId: string }>> {
-  const full = await checkImage(file, MAX_AVATAR_PIXELS, "画像");
+  const tr = await getTranslations();
+  const full = await checkImage(
+    file,
+    MAX_AVATAR_PIXELS,
+    tr("common.image"),
+    tr,
+  );
   if (typeof full === "string") return actionError(full);
   const thumb = await checkImage(
     thumbFile,
     MAX_AVATAR_THUMB_PIXELS,
-    "サムネイル",
+    tr("common.thumbnail"),
+    tr,
   );
   if (typeof thumb === "string") return actionError(thumb);
 
@@ -137,7 +146,7 @@ export async function saveAvatar(
         avatarThumbFile: { select: { id: true, storageKey: true } },
       },
     });
-    if (!before) return actionError("ユーザーが見つかりません");
+    if (!before) return actionError(tr("common.userNotFound"));
 
     // 同一リクエストの 2 枚は同じ timestamp を共有する（対で追いやすい）。
     const stamp = Date.now();
@@ -155,7 +164,7 @@ export async function saveAvatar(
     if (!stored.every(Boolean)) {
       // 片方だけ書けた場合も含めて掃除する。
       await Promise.all([deleteObject(fullKey), deleteObject(thumbKey)]);
-      return actionError("ストレージへの保存に失敗しました");
+      return actionError(tr("common.storageSaveFailed"));
     }
 
     let ids: { fileId: string; thumbFileId: string };
@@ -205,16 +214,19 @@ export async function saveAvatar(
       action: "UPDATE",
       tableName: "users",
       recordId: before.username,
-      after: { note: `プロフィール写真を設定: ${full.filename}` },
+      after: {
+        note: tr("common.profilePhotoSetNote", { name: full.filename }),
+      },
     });
     return actionOk(ids);
   } catch (e) {
-    return actionError(prismaErrorMessage(e, "写真の保存に失敗しました"));
+    return actionError(prismaErrorMessage(e, tr("common.photoSaveFailed"), tr));
   }
 }
 
 /** プロフィール写真を削除する。 */
 export async function removeAvatar(userId: string): Promise<ActionResult> {
+  const tr = await getTranslations();
   try {
     const before = await prisma.user.findUnique({
       where: { id: userId },
@@ -224,7 +236,7 @@ export async function removeAvatar(userId: string): Promise<ActionResult> {
         avatarThumbFile: { select: { id: true, storageKey: true } },
       },
     });
-    if (!before) return actionError("ユーザーが見つかりません");
+    if (!before) return actionError(tr("common.userNotFound"));
     if (!before.avatarFile && !before.avatarThumbFile) return actionOk();
 
     await prisma.user.update({
@@ -238,11 +250,13 @@ export async function removeAvatar(userId: string): Promise<ActionResult> {
       action: "UPDATE",
       tableName: "users",
       recordId: before.username,
-      after: { note: "プロフィール写真を削除" },
+      after: { note: tr("common.profilePhotoDeletedNote") },
     });
     return actionOk();
   } catch (e) {
-    return actionError(prismaErrorMessage(e, "写真の削除に失敗しました"));
+    return actionError(
+      prismaErrorMessage(e, tr("common.photoDeleteFailed"), tr),
+    );
   }
 }
 

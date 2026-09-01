@@ -16,6 +16,7 @@ import "server-only";
  */
 
 import { revalidatePath } from "next/cache";
+import { getTranslations } from "next-intl/server";
 import { recordAudit } from "@/lib/audit";
 import { checkPermission, sessionUserId } from "@/lib/authz";
 import { prisma } from "@/lib/db";
@@ -27,9 +28,9 @@ import {
 } from "@/lib/server-action";
 import {
   suspendPayloadSchema,
-  USER_CHANGE_LABEL,
   type UserChangeKind,
   updatePlantsPayloadSchema,
+  userChangeLabel,
   validatePayload,
 } from "@/lib/user-change-core";
 import {
@@ -57,15 +58,17 @@ async function applySuspend(
   targetUserId: string,
   payload: unknown,
 ): Promise<ApplyResult> {
+  const tr = await getTranslations();
   const parsed = suspendPayloadSchema.safeParse(payload);
-  if (!parsed.success) return { ok: false, error: "依頼内容が不正です" };
+  if (!parsed.success)
+    return { ok: false, error: tr("common.requestContentInvalid") };
   const v = parsed.data;
 
   const target = await prisma.user.findUnique({
     where: { id: targetUserId },
     select: { id: true, username: true, isActive: true, disabledUntil: true },
   });
-  if (!target) return { ok: false, error: "対象のユーザーが見つかりません" };
+  if (!target) return { ok: false, error: tr("common.targetUserNotFound") };
 
   // 申請時ではなく **適用時** の状況で判定する（間に状況が変わっている）。
   const coverage = await getAdminCoverage(target.id);
@@ -79,7 +82,7 @@ async function applySuspend(
     { actorId, ...coverage },
   );
   if (!decision.ok) {
-    return { ok: false, error: decision.message ?? "停止できません" };
+    return { ok: false, error: decision.message ?? tr("common.cannotSuspend") };
   }
 
   const until = resolveDisabledUntil(
@@ -118,11 +121,12 @@ async function applyRestore(
   _actorId: string,
   targetUserId: string,
 ): Promise<ApplyResult> {
+  const tr = await getTranslations();
   const target = await prisma.user.findUnique({
     where: { id: targetUserId },
     select: { id: true, username: true, isActive: true, disabledUntil: true },
   });
-  if (!target) return { ok: false, error: "対象のユーザーが見つかりません" };
+  if (!target) return { ok: false, error: tr("common.targetUserNotFound") };
 
   const decision = canRestore({
     id: target.id,
@@ -131,7 +135,7 @@ async function applyRestore(
     disabledUntil: target.disabledUntil,
   });
   if (!decision.ok) {
-    return { ok: false, error: decision.message ?? "復帰できません" };
+    return { ok: false, error: decision.message ?? tr("common.cannotRestore") };
   }
 
   await prisma.user.update({
@@ -159,14 +163,16 @@ async function applyUpdatePlants(
   targetUserId: string,
   payload: unknown,
 ): Promise<ApplyResult> {
+  const tr = await getTranslations();
   const parsed = updatePlantsPayloadSchema.safeParse(payload);
-  if (!parsed.success) return { ok: false, error: "依頼内容が不正です" };
+  if (!parsed.success)
+    return { ok: false, error: tr("common.requestContentInvalid") };
 
   const user = await prisma.user.findUnique({
     where: { id: targetUserId },
     select: { id: true },
   });
-  if (!user) return { ok: false, error: "対象のユーザーが見つかりません" };
+  if (!user) return { ok: false, error: tr("common.targetUserNotFound") };
 
   const requested = [...new Set(parsed.data.plantIds)];
   // 申請から承認までの間に拠点が消えていることがある。ここで実在を見て、
@@ -179,7 +185,9 @@ async function applyUpdatePlants(
     const missing = requested.filter((id) => !plants.some((p) => p.id === id));
     return {
       ok: false,
-      error: `存在しない拠点が含まれています（#${missing.join(", #")}）`,
+      error: tr("common.nonexistentSitesIncluded", {
+        ids: missing.map((id) => `#${id}`).join(", "),
+      }),
     };
   }
 
@@ -258,22 +266,23 @@ export async function createUserChangeRequest(input: {
 }): Promise<ActionResult<{ id: string }>> {
   const authz = await checkPermission(USER_ADMIN_CODE, "UPDATE");
   if (!authz.ok) return actionError(authz.error);
+  const tr = await getTranslations();
   const actorId = await sessionUserId();
-  if (!actorId) return actionError("操作者を特定できません");
+  if (!actorId) return actionError(tr("common.actorNotIdentified"));
 
   if (actorId === input.targetUserId) {
-    return actionError("自分自身への変更は依頼できません");
+    return actionError(tr("common.cannotRequestChangeToSelf"));
   }
-  if (!input.reason.trim()) return actionError("理由を入力してください");
+  if (!input.reason.trim()) return actionError(tr("common.enterAReason"));
 
-  const invalid = validatePayload(input.kind, input.payload);
+  const invalid = validatePayload(input.kind, input.payload, tr);
   if (invalid) return actionError(invalid);
 
   const target = await prisma.user.findUnique({
     where: { id: input.targetUserId },
     select: { id: true, username: true },
   });
-  if (!target) return actionError("対象のユーザーが見つかりません");
+  if (!target) return actionError(tr("common.targetUserNotFound"));
 
   try {
     const row = await prisma.userChangeRequest.create({
@@ -302,10 +311,14 @@ export async function createUserChangeRequest(input: {
   } catch (e) {
     if ((e as { code?: string }).code === "P2002") {
       return actionError(
-        `この利用者への「${USER_CHANGE_LABEL[input.kind]}」は既に承認依頼中です`,
+        tr("common.changeAlreadyPendingApproval", {
+          kind: userChangeLabel(input.kind, tr),
+        }),
       );
     }
-    return actionError(prismaErrorMessage(e, "変更依頼の作成に失敗しました"));
+    return actionError(
+      prismaErrorMessage(e, tr("common.changeRequestCreateFailed"), tr),
+    );
   }
 }
 
@@ -322,15 +335,17 @@ export async function approveUserChangeRequest(
 ): Promise<ActionResult<{ applied: boolean; error?: string }>> {
   const authz = await checkPermission(USER_ADMIN_CODE, "APPROVE");
   if (!authz.ok) return actionError(authz.error);
+  const tr = await getTranslations();
   const actorId = await sessionUserId();
-  if (!actorId) return actionError("操作者を特定できません");
+  if (!actorId) return actionError(tr("common.actorNotIdentified"));
 
   const req = await prisma.userChangeRequest.findUnique({ where: { id } });
-  if (!req) return actionError("対象の依頼が見つかりません");
-  if (req.status !== "PENDING") return actionError("この依頼は決裁済みです");
+  if (!req) return actionError(tr("common.targetRequestNotFound"));
+  if (req.status !== "PENDING")
+    return actionError(tr("common.requestAlreadyDecided"));
   // 申請と承認は別の人でなければならない（これがこの機能の本体）。
   if (req.requestedBy === actorId) {
-    return actionError("自分が出した依頼は承認できません");
+    return actionError(tr("common.cannotApproveOwnRequest"));
   }
 
   const applied = await applyUserChange(
@@ -348,7 +363,9 @@ export async function approveUserChangeRequest(
       decidedAt: new Date(),
       decisionComment: comment?.trim() || null,
       appliedAt: applied.ok ? new Date() : null,
-      applyError: applied.ok ? null : (applied.error ?? "適用に失敗しました"),
+      applyError: applied.ok
+        ? null
+        : (applied.error ?? tr("common.applyFailed")),
     },
   });
   await recordAudit({
@@ -374,15 +391,17 @@ export async function rejectUserChangeRequest(
 ): Promise<ActionResult> {
   const authz = await checkPermission(USER_ADMIN_CODE, "APPROVE");
   if (!authz.ok) return actionError(authz.error);
+  const tr = await getTranslations();
   const actorId = await sessionUserId();
-  if (!actorId) return actionError("操作者を特定できません");
-  if (!reason.trim()) return actionError("差し戻しの理由を入力してください");
+  if (!actorId) return actionError(tr("common.actorNotIdentified"));
+  if (!reason.trim()) return actionError(tr("common.enterAReasonForSendingIt"));
 
   const req = await prisma.userChangeRequest.findUnique({ where: { id } });
-  if (!req) return actionError("対象の依頼が見つかりません");
-  if (req.status !== "PENDING") return actionError("この依頼は決裁済みです");
+  if (!req) return actionError(tr("common.targetRequestNotFound"));
+  if (req.status !== "PENDING")
+    return actionError(tr("common.requestAlreadyDecided"));
   if (req.requestedBy === actorId) {
-    return actionError("自分が出した依頼は決裁できません");
+    return actionError(tr("common.cannotDecideOwnRequest"));
   }
 
   await prisma.userChangeRequest.update({
@@ -409,15 +428,17 @@ export async function rejectUserChangeRequest(
 export async function cancelUserChangeRequest(
   id: string,
 ): Promise<ActionResult> {
+  const tr = await getTranslations();
   const actorId = await sessionUserId();
-  if (!actorId) return actionError("操作者を特定できません");
+  if (!actorId) return actionError(tr("common.actorNotIdentified"));
 
   const req = await prisma.userChangeRequest.findUnique({ where: { id } });
-  if (!req) return actionError("対象の依頼が見つかりません");
+  if (!req) return actionError(tr("common.targetRequestNotFound"));
   if (req.requestedBy !== actorId) {
-    return actionError("自分が出した依頼だけ取り下げられます");
+    return actionError(tr("common.canOnlyCancelOwnRequest"));
   }
-  if (req.status !== "PENDING") return actionError("この依頼は決裁済みです");
+  if (req.status !== "PENDING")
+    return actionError(tr("common.requestAlreadyDecided"));
 
   await prisma.userChangeRequest.update({
     where: { id },

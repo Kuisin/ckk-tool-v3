@@ -18,6 +18,7 @@
 
 import { type Access, rowInScope } from "@ckk/authz-core";
 import { revalidatePath } from "next/cache";
+import { getTranslations } from "next-intl/server";
 import { z } from "zod";
 import {
   actOnCurrentStep,
@@ -70,7 +71,6 @@ import { fetchOrderLineRef, type OrderLineRef } from "./data";
 
 const BASE_PATH = "/production/work-orders";
 const APPROVALS_PATH = "/general/tasks";
-const SCOPE_DENIED = "この操作の権限がありません（対象範囲外）";
 
 /**
  * 対象指示書がスコープ内か（PLANT = 工程の実施拠点 ∪ OWN = 作成者）。
@@ -127,82 +127,115 @@ const stepInput = z.object({
 // existing = 既存ルートのバージョンを基準にした構成（変更があれば新バージョン
 // として自動保存）/ new = 新ルート v1 として保存。使用済みバージョンは
 // 不変（変更は常に新バージョン作成 — resolveRouteVersionTx）。
-const routeInput = z.union(
-  [
-    z.object({
-      mode: z.literal("existing"),
-      routeId: z.number().int().positive(),
-      baseVersionId: z.string().uuid(),
-    }),
-    z.object({
-      mode: z.literal("new"),
-      name: z.string().trim().min(1),
-      // 対象の受注元（取引先）。null/未指定 = 汎用ルート。
-      customerBpId: z.string().uuid().nullable().optional(),
-    }),
-  ],
-  { message: "工程リストを選択するか、新しい工程リスト名を入力してください" },
-);
+function routeInputSchema(tr: Awaited<ReturnType<typeof getTranslations>>) {
+  return z.union(
+    [
+      z.object({
+        mode: z.literal("existing"),
+        routeId: z.number().int().positive(),
+        baseVersionId: z.string().uuid(),
+      }),
+      z.object({
+        mode: z.literal("new"),
+        name: z.string().trim().min(1),
+        // 対象の受注元（取引先）。null/未指定 = 汎用ルート。
+        customerBpId: z.string().uuid().nullable().optional(),
+      }),
+    ],
+    { message: tr("production.workOrderActions.selectOrCreateRoute") },
+  );
+}
 
 // allocations = 指示書に割り当てる注文明細（m:n — 分割・統合の両方に対応）。
 // 空配列は在庫向けの独立指示書（在庫積み増し）。type は MANUFACTURE のみ・
 // 製品を直接指定する。顧客注文分（FROM_STOCK 含む）は常に割当を持つ。
-const allocationInput = z.object({
-  orderLineId: z.string().min(1),
-  quantity: z.number().int().min(1, "割当数量は1以上"),
-});
+function allocationInputSchema(
+  tr: Awaited<ReturnType<typeof getTranslations>>,
+) {
+  return z.object({
+    orderLineId: z.string().min(1),
+    quantity: z
+      .number()
+      .int()
+      .min(
+        1,
+        tr("production.workOrderActions.allocationQuantityMustBeAtLeastOne"),
+      ),
+  });
+}
 
 // 作成時の作業計画（工程 × 担当者 × 計画日）。指示書と同時に
 // work_order_step_plans を作る — 担当は指示書ごとに違うため、工程リストと
 // 違ってルートには保存しない。編集（updateWorkOrder）では無視する（計画の
 // 追加・削除は工程実行画面の計画パネルで行う）。
-const planInput = z.object({
-  processStepId: z.number().int().positive(),
-  userId: z.string().min(1),
-  /** 計画日（YYYY-MM-DD, JST）。 */
-  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "計画日が不正です"),
-});
-
-const workOrderInput = z
-  .object({
-    allocations: z.array(allocationInput),
-    productId: z.number().int().positive().nullable(),
-    type: z.enum(["FROM_STOCK", "MANUFACTURE"]),
-    plannedQuantity: z.number().int().min(1, "予定数量は1以上"),
-    materialId: z.number().int().positive().nullable(),
-    storageLocationId: z.number().int().positive().nullable(),
-    /** 使用する図面の版（任意）。null = 固定しない（そのつど最新を引く）。 */
-    designFileId: z.string().uuid().nullable().optional(),
-    notes: z.string(),
-    steps: z.array(stepInput).min(1, "工程を1つ以上選択してください"),
-    // 製造分は必須。在庫分（FROM_STOCK）は固定構成のため工程リストを使わない。
-    route: routeInput.nullable(),
-    plans: z.array(planInput),
-  })
-  .superRefine((v, refCtx) => {
-    if (v.type !== "FROM_STOCK" && v.route == null) {
-      refCtx.addIssue({
-        code: "custom",
-        message: "工程リストを選択するか、新しい工程リスト名を入力してください",
-      });
-    }
-    if (v.allocations.length === 0) {
-      if (v.type !== "MANUFACTURE") {
-        refCtx.addIssue({
-          code: "custom",
-          message: "在庫向けの指示書は製造分のみ作成できます",
-        });
-      }
-      if (v.productId == null) {
-        refCtx.addIssue({
-          code: "custom",
-          message: "在庫向けの指示書は対象製品を選択してください",
-        });
-      }
-    }
+function planInputSchema(tr: Awaited<ReturnType<typeof getTranslations>>) {
+  return z.object({
+    processStepId: z.number().int().positive(),
+    userId: z.string().min(1),
+    /** 計画日（YYYY-MM-DD, JST）。 */
+    date: z
+      .string()
+      .regex(
+        /^\d{4}-\d{2}-\d{2}$/,
+        tr("production.workOrderActions.invalidPlanDate"),
+      ),
   });
+}
 
-export type WorkOrderInput = z.infer<typeof workOrderInput>;
+function workOrderInputSchema(tr: Awaited<ReturnType<typeof getTranslations>>) {
+  return z
+    .object({
+      allocations: z.array(allocationInputSchema(tr)),
+      productId: z.number().int().positive().nullable(),
+      type: z.enum(["FROM_STOCK", "MANUFACTURE"]),
+      plannedQuantity: z
+        .number()
+        .int()
+        .min(
+          1,
+          tr("production.workOrderActions.plannedQuantityMustBeAtLeastOne"),
+        ),
+      materialId: z.number().int().positive().nullable(),
+      storageLocationId: z.number().int().positive().nullable(),
+      /** 使用する図面の版（任意）。null = 固定しない（そのつど最新を引く）。 */
+      designFileId: z.string().uuid().nullable().optional(),
+      notes: z.string(),
+      steps: z
+        .array(stepInput)
+        .min(1, tr("production.workOrderActions.selectAtLeastOneStep")),
+      // 製造分は必須。在庫分（FROM_STOCK）は固定構成のため工程リストを使わない。
+      route: routeInputSchema(tr).nullable(),
+      plans: z.array(planInputSchema(tr)),
+    })
+    .superRefine((v, refCtx) => {
+      if (v.type !== "FROM_STOCK" && v.route == null) {
+        refCtx.addIssue({
+          code: "custom",
+          message: tr("production.workOrderActions.selectOrCreateRoute"),
+        });
+      }
+      if (v.allocations.length === 0) {
+        if (v.type !== "MANUFACTURE") {
+          refCtx.addIssue({
+            code: "custom",
+            message: tr(
+              "production.workOrderActions.stockOrderMustBeManufacture",
+            ),
+          });
+        }
+        if (v.productId == null) {
+          refCtx.addIssue({
+            code: "custom",
+            message: tr(
+              "production.workOrderActions.stockOrderRequiresProduct",
+            ),
+          });
+        }
+      }
+    });
+}
+
+export type WorkOrderInput = z.infer<ReturnType<typeof workOrderInputSchema>>;
 
 /**
  * 割当対象の明細現況を集める（他の指示書の割当合計は キャンセル除く・
@@ -246,6 +279,7 @@ async function loadLineAllocInfos(
  */
 async function resolveWorkOrderTarget(
   v: WorkOrderInput,
+  tr: Awaited<ReturnType<typeof getTranslations>>,
   excludeWorkOrderNumber?: number | null,
 ): Promise<{ productId: number } | string> {
   if (v.allocations.length > 0) {
@@ -264,14 +298,15 @@ async function resolveWorkOrderTarget(
     const productId = lines.find(
       (l) => l.orderLineId === v.allocations[0].orderLineId,
     )?.productId;
-    if (productId == null) return "対象の注文明細が見つかりません";
+    if (productId == null)
+      return tr("production.workOrderActions.orderLineNotFound");
     return { productId };
   }
   const product = await prisma.product.findUnique({
     where: { id: v.productId ?? 0 },
     select: { id: true, isActive: true },
   });
-  if (!product) return "対象の製品が見つかりません";
+  if (!product) return tr("production.workOrderActions.productNotFound");
   return { productId: product.id };
 }
 
@@ -284,28 +319,31 @@ async function resolveWorkOrderTarget(
 async function validateDesignFile(
   designFileId: string | null | undefined,
   productId: number,
+  tr: Awaited<ReturnType<typeof getTranslations>>,
 ): Promise<string | null> {
   if (!designFileId) return null;
   const df = await prisma.designFile.findUnique({
     where: { id: designFileId },
     select: { productId: true },
   });
-  if (!df) return "対象の設計図が見つかりません";
+  if (!df) return tr("production.workOrderActions.designFileNotFound");
   if (df.productId !== productId) {
-    return "この指示書の製品の設計図ではありません";
+    return tr("production.workOrderActions.designFileWrongProduct");
   }
   return null;
 }
 
 async function validateStorageLocation(
   storageLocationId: number | null,
+  tr: Awaited<ReturnType<typeof getTranslations>>,
 ): Promise<string | null> {
   if (storageLocationId == null) return null;
   const loc = await prisma.storageLocation.findUnique({
     where: { id: storageLocationId },
     select: { isActive: true },
   });
-  if (!loc || !loc.isActive) return "指定された保管場所が見つかりません";
+  if (!loc || !loc.isActive)
+    return tr("production.workOrderActions.storageLocationNotFound");
   return null;
 }
 
@@ -385,22 +423,25 @@ export interface LineAllocStatus {
 export async function createWorkOrder(
   payload: WorkOrderInput,
 ): Promise<ActionResult<{ workOrderNumber: number; docNumber: string }>> {
+  const tr = await getTranslations();
   const authz = await checkPermission("work_order", "CREATE");
   if (!authz.ok) return actionError(authz.error);
-  const parsed = workOrderInput.safeParse(payload);
+  const parsed = workOrderInputSchema(tr).safeParse(payload);
   if (!parsed.success) {
-    return actionError(parsed.error.issues[0]?.message ?? "入力が不正です");
+    return actionError(
+      parsed.error.issues[0]?.message ?? tr("common.invalidInput"),
+    );
   }
   const v = parsed.data;
   try {
     const built = await validateAndOrderSteps(v.steps, v.type);
     if (!built.ok) return actionError(built.error);
-    const target = await resolveWorkOrderTarget(v);
+    const target = await resolveWorkOrderTarget(v, tr);
     if (typeof target === "string") return actionError(target);
-    const storageError = await validateStorageLocation(v.storageLocationId);
+    const storageError = await validateStorageLocation(v.storageLocationId, tr);
     if (storageError) return actionError(storageError);
     const { productId } = target;
-    const designError = await validateDesignFile(v.designFileId, productId);
+    const designError = await validateDesignFile(v.designFileId, productId, tr);
     if (designError) return actionError(designError);
     const actor = await getCurrentActorId();
     const workOrderNumber = await nextSerialNumber("WORK_ORDER");
@@ -416,7 +457,9 @@ export async function createWorkOrder(
         built.creates,
         actor,
         productId,
-        `指示書 #${workOrderNumber} 作成時に変更`,
+        tr("production.workOrderActions.routeChangeNoteOnCreate", {
+          number: workOrderNumber,
+        }),
       );
       const created = await tx.workOrder.create({
         data: {
@@ -508,7 +551,9 @@ export async function createWorkOrder(
     }
     return actionOk({ workOrderNumber, docNumber });
   } catch (e) {
-    return actionError(prismaErrorMessage(e, "指示書の作成に失敗しました"));
+    return actionError(
+      prismaErrorMessage(e, tr("production.workOrderActions.createFailed"), tr),
+    );
   }
 }
 
@@ -516,14 +561,17 @@ export async function updateWorkOrder(
   workOrderNumber: number,
   payload: WorkOrderInput,
 ): Promise<ActionResult<{ workOrderNumber: number; docNumber: string }>> {
+  const tr = await getTranslations();
   const authz = await checkPermission("work_order", "UPDATE");
   if (!authz.ok) return actionError(authz.error);
   if (!(await workOrderInScope(authz.access, authz.userId, workOrderNumber))) {
-    return actionError(SCOPE_DENIED);
+    return actionError(tr("common.scopeDenied"));
   }
-  const parsed = workOrderInput.safeParse(payload);
+  const parsed = workOrderInputSchema(tr).safeParse(payload);
   if (!parsed.success) {
-    return actionError(parsed.error.issues[0]?.message ?? "入力が不正です");
+    return actionError(
+      parsed.error.issues[0]?.message ?? tr("common.invalidInput"),
+    );
   }
   const v = parsed.data;
   try {
@@ -536,18 +584,19 @@ export async function updateWorkOrder(
         },
       },
     });
-    if (!prior) return actionError("対象の指示書が見つかりません");
+    if (!prior)
+      return actionError(tr("production.workOrderActions.workOrderNotFound"));
     if (prior.status !== "DRAFT") {
-      return actionError("下書きの指示書のみ編集できます");
+      return actionError(tr("production.workOrderActions.draftOnlyCanEdit"));
     }
     const built = await validateAndOrderSteps(v.steps, v.type);
     if (!built.ok) return actionError(built.error);
-    const target = await resolveWorkOrderTarget(v, workOrderNumber);
+    const target = await resolveWorkOrderTarget(v, tr, workOrderNumber);
     if (typeof target === "string") return actionError(target);
-    const storageError = await validateStorageLocation(v.storageLocationId);
+    const storageError = await validateStorageLocation(v.storageLocationId, tr);
     if (storageError) return actionError(storageError);
     const { productId } = target;
-    const designError = await validateDesignFile(v.designFileId, productId);
+    const designError = await validateDesignFile(v.designFileId, productId, tr);
     if (designError) return actionError(designError);
     const actor = await getCurrentActorId();
     const materialId = v.type === "MANUFACTURE" ? v.materialId : null;
@@ -559,7 +608,9 @@ export async function updateWorkOrder(
         built.creates,
         actor,
         productId,
-        `指示書 #${workOrderNumber} 更新時に変更`,
+        tr("production.workOrderActions.routeChangeNoteOnUpdate", {
+          number: workOrderNumber,
+        }),
       );
       // 工程の作り直し — 工程単位の検査表割当は FK CASCADE で一緒に消える
       await tx.workOrderStep.deleteMany({ where: { workOrderId: prior.id } });
@@ -630,7 +681,9 @@ export async function updateWorkOrder(
     }
     return actionOk({ workOrderNumber, docNumber });
   } catch (e) {
-    return actionError(prismaErrorMessage(e, "指示書の更新に失敗しました"));
+    return actionError(
+      prismaErrorMessage(e, tr("production.workOrderActions.updateFailed"), tr),
+    );
   }
 }
 
@@ -656,21 +709,33 @@ export type WorkOrderLinkInput = z.infer<typeof woLinkInput>;
 export async function addWorkOrderLinkAction(
   input: WorkOrderLinkInput,
 ): Promise<ActionResult> {
+  const tr = await getTranslations();
   const authz = await checkPermission("work_order", "UPDATE");
   if (!authz.ok) return actionError(authz.error);
   const parsed = woLinkInput.safeParse(input);
   if (!parsed.success) {
-    return actionError(parsed.error.issues[0]?.message ?? "入力が不正です");
+    return actionError(
+      parsed.error.issues[0]?.message ?? tr("common.invalidInput"),
+    );
   }
   const v = parsed.data;
   try {
     const result = await addWoLink(v);
-    if (!result.ok) return actionError(result.error ?? "追加に失敗しました");
+    if (!result.ok)
+      return actionError(
+        result.error ?? tr("production.stepPlanActualPanel.couldNotAdd"),
+      );
     revalidate(v.targetWorkOrderNumber);
     revalidate(v.sourceWorkOrderNumber);
     return actionOk();
   } catch (e) {
-    return actionError(prismaErrorMessage(e, "リンクの追加に失敗しました"));
+    return actionError(
+      prismaErrorMessage(
+        e,
+        tr("production.workOrderActions.addLinkFailed"),
+        tr,
+      ),
+    );
   }
 }
 
@@ -679,16 +744,27 @@ export async function removeWorkOrderLinkAction(
   linkId: string,
   workOrderNumber: number,
 ): Promise<ActionResult> {
+  const tr = await getTranslations();
   const authz = await checkPermission("work_order", "UPDATE");
   if (!authz.ok) return actionError(authz.error);
-  if (!linkId) return actionError("対象が不正です");
+  if (!linkId)
+    return actionError(tr("production.workOrderActions.invalidTarget"));
   try {
     const result = await removeWoLink(linkId);
-    if (!result.ok) return actionError(result.error ?? "解除に失敗しました");
+    if (!result.ok)
+      return actionError(
+        result.error ?? tr("production.workOrderActions.removeFailedFallback"),
+      );
     revalidate(workOrderNumber);
     return actionOk();
   } catch (e) {
-    return actionError(prismaErrorMessage(e, "リンクの解除に失敗しました"));
+    return actionError(
+      prismaErrorMessage(
+        e,
+        tr("production.workOrderActions.removeLinkFailed"),
+        tr,
+      ),
+    );
   }
 }
 
@@ -696,12 +772,13 @@ export async function copyWorkOrder(
   sourceWorkOrderNumber: number,
   targetOrderLineId: string,
 ): Promise<ActionResult<{ workOrderNumber: number; docNumber: string }>> {
+  const tr = await getTranslations();
   const authz = await checkPermission("work_order", "CREATE");
   if (!authz.ok) return actionError(authz.error);
   if (
     !(await workOrderInScope(authz.access, authz.userId, sourceWorkOrderNumber))
   ) {
-    return actionError(SCOPE_DENIED);
+    return actionError(tr("common.scopeDenied"));
   }
   try {
     const source = await prisma.workOrder.findUnique({
@@ -713,10 +790,11 @@ export async function copyWorkOrder(
         },
       },
     });
-    if (!source) return actionError("コピー元の指示書が見つかりません");
+    if (!source)
+      return actionError(tr("production.workOrderActions.copySourceNotFound"));
     if (!targetOrderLineId && source.type === "FROM_STOCK") {
       return actionError(
-        "在庫分の指示書は注文明細配下でのみ作成できます（対象の注文明細を選択してください）",
+        tr("production.workOrderActions.stockOrderRequiresOrderLine"),
       );
     }
     // コピー先: 注文明細指定 = その明細の製品 + 割当（受注残の範囲で予定数量
@@ -726,11 +804,14 @@ export async function copyWorkOrder(
     if (targetOrderLineId) {
       const lines = await loadLineAllocInfos([targetOrderLineId]);
       const line = lines[0];
-      if (!line) return actionError("対象の注文明細が見つかりません");
+      if (!line)
+        return actionError(tr("production.workOrderActions.orderLineNotFound"));
       const remaining = remainingAllocatable(line);
       if (remaining <= 0) {
         return actionError(
-          `注文明細 ${line.number} は受注数量まで手配済みです（残 0）`,
+          tr("production.workOrderActions.orderLineFullyAllocated", {
+            number: line.number,
+          }),
         );
       }
       allocations = [
@@ -750,7 +831,9 @@ export async function copyWorkOrder(
       });
       if (error) return actionError(error);
       if (line.productId == null) {
-        return actionError("製品未特定の注文明細には指示書を作成できません");
+        return actionError(
+          tr("production.workOrderActions.orderLineProductUnresolved"),
+        );
       }
       productId = line.productId;
     }
@@ -789,7 +872,13 @@ export async function copyWorkOrder(
           notes: source.notes,
           createdBy: actor,
           history: toHistoryJson([
-            entry("COPY", actor, `#${sourceWorkOrderNumber} からコピー`),
+            entry(
+              "COPY",
+              actor,
+              tr("production.workOrderActions.copiedFromNote", {
+                number: sourceWorkOrderNumber,
+              }),
+            ),
           ]),
           steps: {
             create: source.steps.map((s) => ({
@@ -834,7 +923,9 @@ export async function copyWorkOrder(
     revalidate(sourceWorkOrderNumber);
     return actionOk({ workOrderNumber, docNumber });
   } catch (e) {
-    return actionError(prismaErrorMessage(e, "指示書のコピーに失敗しました"));
+    return actionError(
+      prismaErrorMessage(e, tr("production.workOrderActions.copyFailed"), tr),
+    );
   }
 }
 
@@ -842,19 +933,23 @@ export async function copyWorkOrder(
 export async function cancelWorkOrder(
   workOrderNumber: number,
 ): Promise<ActionResult> {
+  const tr = await getTranslations();
   const authz = await checkPermission("work_order", "UPDATE");
   if (!authz.ok) return actionError(authz.error);
   if (!(await workOrderInScope(authz.access, authz.userId, workOrderNumber))) {
-    return actionError(SCOPE_DENIED);
+    return actionError(tr("common.scopeDenied"));
   }
   try {
     const prior = await prisma.workOrder.findUnique({
       where: { workOrderNumber },
       include: { orderLineLinks: { select: { orderLineId: true } } },
     });
-    if (!prior) return actionError("対象の指示書が見つかりません");
+    if (!prior)
+      return actionError(tr("production.workOrderActions.workOrderNotFound"));
     if (prior.status !== "DRAFT" && prior.status !== "PENDING_APPROVAL") {
-      return actionError("下書き・承認依頼中の指示書のみキャンセルできます");
+      return actionError(
+        tr("production.workOrderActions.draftOrPendingOnlyCanCancel"),
+      );
     }
     const actor = await getCurrentActorId();
     const linkedLineIds = prior.orderLineLinks.map((l) => l.orderLineId);
@@ -897,7 +992,9 @@ export async function cancelWorkOrder(
     revalidate(workOrderNumber);
     return actionOk();
   } catch (e) {
-    return actionError(prismaErrorMessage(e, "キャンセルに失敗しました"));
+    return actionError(
+      prismaErrorMessage(e, tr("production.workOrderActions.cancelFailed"), tr),
+    );
   }
 }
 
@@ -907,20 +1004,24 @@ export async function cancelWorkOrder(
 export async function requestApproval(
   workOrderNumber: number,
 ): Promise<ActionResult> {
+  const tr = await getTranslations();
   // 依頼者は起票側の操作 — "approve" ではなく "work_order":UPDATE（判断メモ）。
   const authz = await checkPermission("work_order", "UPDATE");
   if (!authz.ok) return actionError(authz.error);
   if (!(await workOrderInScope(authz.access, authz.userId, workOrderNumber))) {
-    return actionError(SCOPE_DENIED);
+    return actionError(tr("common.scopeDenied"));
   }
   try {
     const prior = await prisma.workOrder.findUnique({
       where: { workOrderNumber },
       include: { orderLineLinks: { select: { orderLineId: true } } },
     });
-    if (!prior) return actionError("対象の指示書が見つかりません");
+    if (!prior)
+      return actionError(tr("production.workOrderActions.workOrderNotFound"));
     if (prior.status !== "DRAFT") {
-      return actionError("下書きの指示書のみ承認依頼できます");
+      return actionError(
+        tr("production.workOrderActions.draftOnlyCanRequestApproval"),
+      );
     }
     // フローが無いと依頼を出しても誰も承認できないので、状態を変える前に確かめる
     const flowError = await assertFlowConfigured("work_orders");
@@ -959,7 +1060,10 @@ export async function requestApproval(
       targetId: String(workOrderNumber),
     });
     if (!started.ok)
-      return actionError(started.error ?? "承認依頼に失敗しました");
+      return actionError(
+        started.error ??
+          tr("production.workOrderActions.requestApprovalFailed"),
+      );
     await recordAudit({
       action: "UPDATE",
       tableName: "work_orders",
@@ -970,7 +1074,13 @@ export async function requestApproval(
     revalidate(workOrderNumber);
     return actionOk();
   } catch (e) {
-    return actionError(prismaErrorMessage(e, "承認依頼に失敗しました"));
+    return actionError(
+      prismaErrorMessage(
+        e,
+        tr("production.workOrderActions.requestApprovalFailed"),
+        tr,
+      ),
+    );
   }
 }
 
@@ -987,12 +1097,13 @@ export async function requestApproval(
 export async function approveWorkOrder(
   workOrderNumber: number,
 ): Promise<ActionResult<{ remaining: number; completed: boolean }>> {
+  const tr = await getTranslations();
   // 権限チェックは追加ゲート — 実体の承認可否（本人/代理）は
   // actOnCurrentStep のグループ所属判定が引き続き行う。
   const authz = await checkApprovalDocAccess("work_order");
   if (!authz.ok) return actionError(authz.error);
   if (!(await workOrderInScope(authz.access, authz.userId, workOrderNumber))) {
-    return actionError(SCOPE_DENIED);
+    return actionError(tr("common.scopeDenied"));
   }
   try {
     const prior = await prisma.workOrder.findUnique({
@@ -1006,9 +1117,10 @@ export async function approveWorkOrder(
         },
       },
     });
-    if (!prior) return actionError("対象の指示書が見つかりません");
+    if (!prior)
+      return actionError(tr("production.workOrderActions.workOrderNotFound"));
     if (prior.approvalStatus !== "PENDING") {
-      return actionError("承認依頼中の指示書ではありません");
+      return actionError(tr("production.workOrderActions.notPendingApproval"));
     }
     // 承認権限（本人 or 代理）を検証しつつ承認記録を書き、段を進める。
     const acted = await actOnCurrentStep({
@@ -1016,7 +1128,11 @@ export async function approveWorkOrder(
       targetId: String(workOrderNumber),
       action: "APPROVED",
     });
-    if (!acted.ok) return actionError(acted.error ?? "承認の権限がありません");
+    if (!acted.ok)
+      return actionError(
+        acted.error ??
+          tr("production.workOrderActions.approvePermissionDeniedFallback"),
+      );
 
     const actor = await getCurrentActorId();
 
@@ -1033,7 +1149,12 @@ export async function approveWorkOrder(
                 actor,
                 acted.stepClosed
                   ? undefined
-                  : `この段の残り ${acted.remaining} 名`,
+                  : tr(
+                      "production.workOrderActions.stepRemainingApproversNote",
+                      {
+                        remaining: acted.remaining,
+                      },
+                    ),
               ),
             ),
           ),
@@ -1045,8 +1166,10 @@ export async function approveWorkOrder(
         recordId: String(workOrderNumber),
         after: {
           note: acted.stepClosed
-            ? "承認（次の段へ）"
-            : `承認（この段の残り ${acted.remaining} 名）`,
+            ? tr("production.workOrderActions.approvedNextStepNote")
+            : tr("production.workOrderActions.approvedRemainingNote", {
+                remaining: acted.remaining,
+              }),
         },
       });
       revalidate(workOrderNumber);
@@ -1111,7 +1234,9 @@ export async function approveWorkOrder(
             quantity: prior.plannedQuantity,
             referenceType: "work_order",
             referenceId: prior.id,
-            notes: `指示書 #${workOrderNumber} 承認による素材予約`,
+            notes: tr("production.workOrderActions.materialReserveNote", {
+              number: workOrderNumber,
+            }),
           });
           await tx.inventoryReservation.create({
             data: {
@@ -1127,7 +1252,10 @@ export async function approveWorkOrder(
           });
         });
       } catch (err) {
-        console.error("[work-order] 素材予約に失敗:", err);
+        console.error(
+          tr("production.workOrderActions.materialReserveFailedLog"),
+          err,
+        );
       }
     }
     await recordAudit({
@@ -1140,7 +1268,7 @@ export async function approveWorkOrder(
     revalidate(workOrderNumber);
     return actionOk({ remaining: 0, completed: true });
   } catch (e) {
-    return actionError(prismaErrorMessage(e, "承認に失敗しました"));
+    return actionError(prismaErrorMessage(e, tr("common.couldNotApprove"), tr));
   }
 }
 
@@ -1149,21 +1277,23 @@ export async function rejectWorkOrder(
   workOrderNumber: number,
   reason: string,
 ): Promise<ActionResult> {
+  const tr = await getTranslations();
   const authz = await checkApprovalDocAccess("work_order");
   if (!authz.ok) return actionError(authz.error);
   const trimmed = reason.trim();
-  if (!trimmed) return actionError("差し戻し理由を入力してください");
+  if (!trimmed) return actionError(tr("common.enterAReasonForSendingIt"));
   if (!(await workOrderInScope(authz.access, authz.userId, workOrderNumber))) {
-    return actionError(SCOPE_DENIED);
+    return actionError(tr("common.scopeDenied"));
   }
   try {
     const prior = await prisma.workOrder.findUnique({
       where: { workOrderNumber },
       include: { orderLineLinks: { select: { orderLineId: true } } },
     });
-    if (!prior) return actionError("対象の指示書が見つかりません");
+    if (!prior)
+      return actionError(tr("production.workOrderActions.workOrderNotFound"));
     if (prior.approvalStatus !== "PENDING") {
-      return actionError("承認依頼中の指示書ではありません");
+      return actionError(tr("production.workOrderActions.notPendingApproval"));
     }
     // 現在承認依頼中の段に対して差し戻しを記録する。差し戻しは段数に依らず
     // 1 件でフローを止める。権限（本人 or 代理）の検証は actOnCurrentStep が行う。
@@ -1174,7 +1304,10 @@ export async function rejectWorkOrder(
       comment: trimmed,
     });
     if (!acted.ok) {
-      return actionError(acted.error ?? "差し戻しの権限がありません");
+      return actionError(
+        acted.error ??
+          tr("production.workOrderActions.rejectPermissionDeniedFallback"),
+      );
     }
     const actor = await getCurrentActorId();
     await prisma.$transaction([
@@ -1216,7 +1349,9 @@ export async function rejectWorkOrder(
     revalidate(workOrderNumber);
     return actionOk();
   } catch (e) {
-    return actionError(prismaErrorMessage(e, "差し戻しに失敗しました"));
+    return actionError(
+      prismaErrorMessage(e, tr("common.couldNotSendItBack"), tr),
+    );
   }
 }
 
@@ -1357,6 +1492,7 @@ export async function getLineAllocStatus(
 export async function approveFlowChange(
   flowChangeId: string,
 ): Promise<ActionResult<{ completed: boolean; applied: boolean }>> {
+  const tr = await getTranslations();
   const authz = await checkApprovalDocAccess("work_order");
   if (!authz.ok) return actionError(authz.error);
   const change = await prisma.workOrderFlowChange.findUnique({
@@ -1366,9 +1502,10 @@ export async function approveFlowChange(
       workOrder: { select: { workOrderNumber: true } },
     },
   });
-  if (!change) return actionError("対象の変更が見つかりません");
+  if (!change)
+    return actionError(tr("production.workOrderActions.flowChangeNotFound"));
   if (change.status !== "PENDING") {
-    return actionError("承認依頼中の変更ではありません");
+    return actionError(tr("production.workOrderActions.flowChangeNotPending"));
   }
   if (
     !(await workOrderInScope(
@@ -1377,7 +1514,7 @@ export async function approveFlowChange(
       change.workOrder.workOrderNumber,
     ))
   ) {
-    return actionError(SCOPE_DENIED);
+    return actionError(tr("common.scopeDenied"));
   }
   try {
     const acted = await actOnCurrentStep({
@@ -1385,7 +1522,11 @@ export async function approveFlowChange(
       targetId: flowChangeId,
       action: "APPROVED",
     });
-    if (!acted.ok) return actionError(acted.error ?? "承認の権限がありません");
+    if (!acted.ok)
+      return actionError(
+        acted.error ??
+          tr("production.workOrderActions.approvePermissionDeniedFallback"),
+      );
 
     // まだ途中の段 — 工程は触らない。
     if (!acted.flowCompleted) {
@@ -1399,12 +1540,13 @@ export async function approveFlowChange(
     revalidate(change.workOrder.workOrderNumber);
     if (!applied.ok) {
       return actionError(
-        applied.errors?.join(" / ") ?? "変更の適用に失敗しました",
+        applied.errors?.join(" / ") ??
+          tr("production.workOrderActions.flowChangeApplyFailedFallback"),
       );
     }
     return actionOk({ completed: true, applied: true });
   } catch (e) {
-    return actionError(prismaErrorMessage(e, "承認に失敗しました"));
+    return actionError(prismaErrorMessage(e, tr("common.couldNotApprove"), tr));
   }
 }
 
@@ -1416,22 +1558,35 @@ export async function acknowledgeFlowChangeAction(
   flowChangeId: string,
   workOrderNumber: number,
 ): Promise<ActionResult> {
+  const tr = await getTranslations();
   const authz = await checkPermission("work_order", "UPDATE");
   if (!authz.ok) return actionError(authz.error);
-  if (!flowChangeId) return actionError("対象が不正です");
+  if (!flowChangeId)
+    return actionError(tr("production.workOrderActions.invalidTarget"));
   try {
     const done = await acknowledgeFlowChange(flowChangeId);
-    if (!done) return actionError("対象の変更が見つかりません（確認済み？）");
+    if (!done)
+      return actionError(
+        tr("production.workOrderActions.flowChangeNotFoundMaybeAck"),
+      );
     await recordAudit({
       action: "UPDATE",
       tableName: "work_orders",
       recordId: String(workOrderNumber),
-      after: { note: "差し戻された工程フロー変更を確認済みにした" },
+      after: {
+        note: tr("production.workOrderActions.flowChangeAcknowledgedNote"),
+      },
     });
     revalidate(workOrderNumber);
     return actionOk();
   } catch (e) {
-    return actionError(prismaErrorMessage(e, "確認の記録に失敗しました"));
+    return actionError(
+      prismaErrorMessage(
+        e,
+        tr("production.workOrderActions.acknowledgeFailed"),
+        tr,
+      ),
+    );
   }
 }
 
@@ -1440,9 +1595,10 @@ export async function rejectFlowChange(
   flowChangeId: string,
   reason: string,
 ): Promise<ActionResult> {
+  const tr = await getTranslations();
   const authz = await checkApprovalDocAccess("work_order");
   if (!authz.ok) return actionError(authz.error);
-  if (!reason.trim()) return actionError("差し戻し理由を入力してください");
+  if (!reason.trim()) return actionError(tr("common.enterAReasonForSendingIt"));
   const change = await prisma.workOrderFlowChange.findUnique({
     where: { id: flowChangeId },
     select: {
@@ -1450,9 +1606,10 @@ export async function rejectFlowChange(
       workOrder: { select: { workOrderNumber: true } },
     },
   });
-  if (!change) return actionError("対象の変更が見つかりません");
+  if (!change)
+    return actionError(tr("production.workOrderActions.flowChangeNotFound"));
   if (change.status !== "PENDING") {
-    return actionError("承認依頼中の変更ではありません");
+    return actionError(tr("production.workOrderActions.flowChangeNotPending"));
   }
   if (
     !(await workOrderInScope(
@@ -1461,7 +1618,7 @@ export async function rejectFlowChange(
       change.workOrder.workOrderNumber,
     ))
   ) {
-    return actionError(SCOPE_DENIED);
+    return actionError(tr("common.scopeDenied"));
   }
   try {
     const acted = await actOnCurrentStep({
@@ -1471,18 +1628,27 @@ export async function rejectFlowChange(
       comment: reason,
     });
     if (!acted.ok)
-      return actionError(acted.error ?? "差し戻しの権限がありません");
+      return actionError(
+        acted.error ??
+          tr("production.workOrderActions.rejectPermissionDeniedFallback"),
+      );
     await closeFlowChange(flowChangeId, "REJECTED");
     await recordAudit({
       action: "UPDATE",
       tableName: "work_orders",
       recordId: String(change.workOrder.workOrderNumber),
-      after: { note: `工程フロー変更を差し戻し（${reason}）` },
+      after: {
+        note: tr("production.workOrderActions.flowChangeRejectedNote", {
+          reason,
+        }),
+      },
     });
     revalidate(change.workOrder.workOrderNumber);
     return actionOk();
   } catch (e) {
-    return actionError(prismaErrorMessage(e, "差し戻しに失敗しました"));
+    return actionError(
+      prismaErrorMessage(e, tr("common.couldNotSendItBack"), tr),
+    );
   }
 }
 
@@ -1501,6 +1667,7 @@ export async function setWorkOrderDesignFile(
   workOrderNumber: number,
   designFileId: string | null,
 ): Promise<ActionResult> {
+  const tr = await getTranslations();
   const authz = await checkPermission("work_order", "UPDATE");
   if (!authz.ok) return actionError(authz.error);
   try {
@@ -1508,7 +1675,8 @@ export async function setWorkOrderDesignFile(
       where: { workOrderNumber },
       select: { id: true, productId: true, yearMonth: true, seq: true },
     });
-    if (!wo) return actionError("対象の指示書が見つかりません");
+    if (!wo)
+      return actionError(tr("production.workOrderActions.workOrderNotFound"));
 
     if (designFileId) {
       // 別の製品の図面を貼れないようにする（画面では選べないが、
@@ -1517,9 +1685,14 @@ export async function setWorkOrderDesignFile(
         where: { id: designFileId },
         select: { productId: true, version: true },
       });
-      if (!df) return actionError("対象の設計図が見つかりません");
+      if (!df)
+        return actionError(
+          tr("production.workOrderActions.designFileNotFound"),
+        );
       if (df.productId !== wo.productId) {
-        return actionError("この指示書の製品の設計図ではありません");
+        return actionError(
+          tr("production.workOrderActions.designFileWrongProduct"),
+        );
       }
     }
 
@@ -1532,14 +1705,22 @@ export async function setWorkOrderDesignFile(
       tableName: "work_orders",
       recordId: String(workOrderNumber),
       after: {
-        note: designFileId ? "使用する図面を固定" : "図面の固定を解除",
+        note: designFileId
+          ? tr("production.workOrderActions.designFilePinnedNote")
+          : tr("production.workOrderActions.designFileUnpinnedNote"),
         designFileId,
       },
     });
     revalidate(workOrderNumber, formatDocNumber("WOR", wo));
     return actionOk();
   } catch (e) {
-    return actionError(prismaErrorMessage(e, "図面の設定に失敗しました"));
+    return actionError(
+      prismaErrorMessage(
+        e,
+        tr("production.workOrderActions.setDesignFileFailed"),
+        tr,
+      ),
+    );
   }
 }
 
@@ -1558,6 +1739,7 @@ export async function getDesignVersionsForProduct(
   /** 固定しない場合に使われる版の説明（無ければ null）。 */
   autoLabel: string | null;
 }> {
+  const tr = await getTranslations();
   const authz = await checkPermission("work_order", "READ");
   if (!authz.ok || !Number.isInteger(productId) || productId <= 0) {
     return { options: [], autoLabel: null };
@@ -1580,8 +1762,9 @@ export async function getDesignVersionsForProduct(
 
   const seriesName = (r: (typeof rows)[number]) =>
     r.customerBpId == null
-      ? "汎用"
-      : localized(r.customerBp?.name as LocalizedText | null) || "受注元";
+      ? tr("common.generic")
+      : localized(r.customerBp?.name as LocalizedText | null) ||
+        tr("common.orderingCustomer");
 
   // 自動解決の結果（詳細画面と同じ規則を通す）。
   const series = resolveSeriesCustomer(
@@ -1606,10 +1789,21 @@ export async function getDesignVersionsForProduct(
     // あるので両方出し、どちらか判るようにラベルへ役割を書く。
     options: rows.map((r) => ({
       value: r.id,
-      label: `${seriesName(r)} / v${r.version}${r.isLatest ? "（最新）" : ""} ${r.file.filename}`,
+      label: `${seriesName(r)} / ${
+        r.isLatest
+          ? tr("master.productDesignFiles.latestVersionCaption", {
+              version: r.version,
+            })
+          : `v${r.version}`
+      } ${r.file.filename}`,
     })),
     autoLabel: auto
-      ? `${seriesName(auto)} / v${auto.version}（最新）${auto.file.filename}`
+      ? `${seriesName(auto)} / ${tr(
+          "master.productDesignFiles.latestVersionCaption",
+          {
+            version: auto.version,
+          },
+        )}${auto.file.filename}`
       : null,
   };
 }

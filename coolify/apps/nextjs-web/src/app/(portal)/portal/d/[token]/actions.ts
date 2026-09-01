@@ -10,6 +10,7 @@
  */
 
 import { headers } from "next/headers";
+import { getTranslations } from "next-intl/server";
 import { z } from "zod";
 import { resolveDeviceContext } from "@/lib/device-signals";
 import type { LoginFailureReason } from "@/lib/login-attempt-core";
@@ -25,10 +26,6 @@ import {
   recordPortalLimitFailure,
 } from "@/lib/portal-rate-limit";
 
-const ISSUE_MESSAGE =
-  "ご登録のアドレスへ確認コードを送信しました。10 分以内に入力してください。";
-const VERIFY_ERROR = "確認コードが正しくないか、有効期限が切れています。";
-
 const tokenSchema = z.string().trim().min(20).max(200);
 const codeSchema = z.string().trim().min(4).max(32);
 const refSchema = z.string().trim().min(10).max(64);
@@ -42,25 +39,27 @@ async function ctx() {
 export async function requestLinkOtp(
   formData: FormData,
 ): Promise<{ ok: true; challengeRef: string | null; message: string }> {
+  const tr = await getTranslations();
+  const issueMessage = tr("portal.linkActions.otpIssued");
   requirePortalFeature();
   const { device, ip, userAgent } = await ctx();
   const token = tokenSchema.safeParse(String(formData.get("token") ?? ""));
   if (!token.success) {
-    return { ok: true, challengeRef: null, message: ISSUE_MESSAGE };
+    return { ok: true, challengeRef: null, message: issueMessage };
   }
 
   if ((await checkPortalLimit("OTP_ISSUE_IP", ip ?? "anon")).locked) {
-    return { ok: true, challengeRef: null, message: ISSUE_MESSAGE };
+    return { ok: true, challengeRef: null, message: issueMessage };
   }
   await recordPortalLimitFailure("OTP_ISSUE_IP", ip ?? "anon");
 
   const resolved = await resolvePortalLink(token.data);
   if (!resolved.ok || resolved.link.policy !== "VERIFY") {
     // 応答は変えない（リンクの生死を教えない）。
-    return { ok: true, challengeRef: null, message: ISSUE_MESSAGE };
+    return { ok: true, challengeRef: null, message: issueMessage };
   }
   const to = resolved.link.boundEmail;
-  if (!to) return { ok: true, challengeRef: null, message: ISSUE_MESSAGE };
+  if (!to) return { ok: true, challengeRef: null, message: issueMessage };
 
   const issued = await issuePortalChallenge({
     // **リンクの宛先**であって、訪問者の入力ではない。
@@ -93,13 +92,15 @@ export async function requestLinkOtp(
   return {
     ok: true,
     challengeRef: issued.challengeRef,
-    message: ISSUE_MESSAGE,
+    message: issueMessage,
   };
 }
 
 export async function verifyLinkOtp(
   formData: FormData,
 ): Promise<{ ok: true; href: string } | { ok: false; error: string }> {
+  const tr = await getTranslations();
+  const verifyError = tr("portal.linkActions.otpInvalid");
   requirePortalFeature();
   const { device, ip, userAgent } = await ctx();
   const token = tokenSchema.safeParse(String(formData.get("token") ?? ""));
@@ -108,11 +109,11 @@ export async function verifyLinkOtp(
   const limitKey = ref.success ? ref.data : (ip ?? "anon");
 
   if ((await checkPortalLimit("OTP_VERIFY", limitKey)).locked) {
-    return { ok: false, error: VERIFY_ERROR };
+    return { ok: false, error: verifyError };
   }
   if (!token.success || !ref.success || !code.success) {
     await recordPortalLimitFailure("OTP_VERIFY", limitKey);
-    return { ok: false, error: VERIFY_ERROR };
+    return { ok: false, error: verifyError };
   }
 
   const result = await verifyPortalChallenge({
@@ -133,16 +134,16 @@ export async function verifyLinkOtp(
       reason,
       device,
     });
-    return { ok: false, error: VERIFY_ERROR };
+    return { ok: false, error: verifyError };
   }
 
   // チャレンジが指すリンクと、いま開いているリンクが一致すること。
   const resolved = await resolvePortalLink(token.data);
   if (!resolved.ok || resolved.link.id !== result.linkId) {
-    return { ok: false, error: VERIFY_ERROR };
+    return { ok: false, error: verifyError };
   }
   if (!(await consumePortalLink(resolved.link.id))) {
-    return { ok: false, error: VERIFY_ERROR };
+    return { ok: false, error: verifyError };
   }
 
   await clearPortalLimit("OTP_VERIFY", limitKey);

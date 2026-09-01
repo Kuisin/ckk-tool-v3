@@ -13,6 +13,7 @@
  */
 
 import { revalidatePath } from "next/cache";
+import { getTranslations } from "next-intl/server";
 import { z } from "zod";
 import { recordAudit } from "@/lib/audit";
 import { checkPermission, sessionUserId } from "@/lib/authz";
@@ -54,18 +55,24 @@ export async function cancelUserChangeRequest(id: string) {
   return cancelUserChange(id);
 }
 
-const requestSchema = z.object({
-  code: z.enum(ELEVATION_CODES),
-  operations: z
-    .array(z.string().min(1))
-    .min(1, "操作を 1 つ以上選んでください"),
-  reason: z.string().trim().min(1, "理由を入力してください").max(1000),
-  windowStartsAt: z.string().min(1, "開始日時を指定してください"),
-  windowEndsAt: z.string().min(1, "終了日時を指定してください"),
-  durationMinutes: z.number().int(),
-});
+function requestSchema(tr: Awaited<ReturnType<typeof getTranslations>>) {
+  return z.object({
+    code: z.enum(ELEVATION_CODES),
+    operations: z
+      .array(z.string().min(1))
+      .min(1, tr("settings.privileged.selectAtLeastOneOperation")),
+    reason: z.string().trim().min(1, tr("common.enterAReason2")).max(1000),
+    windowStartsAt: z
+      .string()
+      .min(1, tr("settings.privilegedAccessActions.specifyStartDateTime")),
+    windowEndsAt: z
+      .string()
+      .min(1, tr("settings.privilegedAccessActions.specifyEndDateTime")),
+    durationMinutes: z.number().int(),
+  });
+}
 
-export type PrivilegedRequestInput = z.infer<typeof requestSchema>;
+export type PrivilegedRequestInput = z.infer<ReturnType<typeof requestSchema>>;
 
 /**
  * 時限昇格を申請する。
@@ -77,27 +84,39 @@ export type PrivilegedRequestInput = z.infer<typeof requestSchema>;
 export async function requestPrivilegedAccess(
   input: PrivilegedRequestInput,
 ): Promise<ActionResult<{ id: string }>> {
-  const parsed = requestSchema.safeParse(input);
+  const tr = await getTranslations();
+  const parsed = requestSchema(tr).safeParse(input);
   if (!parsed.success) {
-    return actionError(parsed.error.issues[0]?.message ?? "入力が不正です");
+    return actionError(
+      parsed.error.issues[0]?.message ?? tr("common.invalidInput"),
+    );
   }
   const v = parsed.data;
 
   const userId = await sessionUserId();
-  if (!userId) return actionError("ログインが必要です");
+  if (!userId) return actionError(tr("common.loginRequired"));
 
   const ops = [...new Set(v.operations)];
   for (const key of ops) {
     const op = findOperation(key);
-    if (!op) return actionError(`未知の操作が含まれています（${key}）`);
+    if (!op)
+      return actionError(
+        tr("settings.privilegedAccessActions.unknownOperation", { key }),
+      );
     if (op.code !== v.code) {
       return actionError(
-        `1 件の申請に複数の権限を混ぜられません（${op.label.ja}）`,
+        tr("settings.privilegedAccessActions.mixedPermissionsInOneRequest", {
+          label: op.label.ja,
+        }),
       );
     }
     const authz = await checkPermission(op.code, op.action);
     if (!authz.ok) {
-      return actionError(`この操作は申請できません（${op.label.ja}）`);
+      return actionError(
+        tr("settings.privilegedAccessActions.operationCannotBeRequested", {
+          label: op.label.ja,
+        }),
+      );
     }
   }
 
@@ -143,10 +162,16 @@ export async function requestPrivilegedAccess(
   } catch (e) {
     if ((e as { code?: string }).code === "P2002") {
       return actionError(
-        "この権限の申請は既に承認依頼中です（決裁されてから次を出してください）",
+        tr("settings.privilegedAccessActions.alreadyPendingApproval"),
       );
     }
-    return actionError(prismaErrorMessage(e, "申請の作成に失敗しました"));
+    return actionError(
+      prismaErrorMessage(
+        e,
+        tr("settings.privilegedAccessActions.createRequestFailed"),
+        tr,
+      ),
+    );
   }
 }
 
@@ -166,27 +191,39 @@ const approveSchema = z.object({
 export async function approvePrivilegedAccess(
   input: z.infer<typeof approveSchema>,
 ): Promise<ActionResult> {
+  const tr = await getTranslations();
   const parsed = approveSchema.safeParse(input);
   if (!parsed.success) {
-    return actionError(parsed.error.issues[0]?.message ?? "入力が不正です");
+    return actionError(
+      parsed.error.issues[0]?.message ?? tr("common.invalidInput"),
+    );
   }
   const v = parsed.data;
   const actorId = await sessionUserId();
-  if (!actorId) return actionError("操作者を特定できません");
+  if (!actorId)
+    return actionError(tr("settings.privilegedAccessActions.actorUnresolved"));
 
   const req = await prisma.privilegedAccessRequest.findUnique({
     where: { id: v.id },
     include: { operations: { select: { operation: true } } },
   });
-  if (!req) return actionError("対象の申請が見つかりません");
-  if (req.status !== "PENDING") return actionError("この申請は決裁済みです");
+  if (!req)
+    return actionError(tr("settings.privilegedAccessActions.requestNotFound"));
+  if (req.status !== "PENDING")
+    return actionError(tr("settings.privilegedAccessActions.alreadyDecided"));
 
   const authz = await checkPermission(req.code, "APPROVE");
   if (!authz.ok) {
-    return actionError(`この申請を承認する権限がありません（${req.code}）`);
+    return actionError(
+      tr("settings.privilegedAccessActions.approvePermissionDenied", {
+        code: req.code,
+      }),
+    );
   }
   if (req.requestedBy === actorId) {
-    return actionError("自分が出した申請は承認できません");
+    return actionError(
+      tr("settings.privilegedAccessActions.cannotApproveOwnRequest"),
+    );
   }
 
   const requested = new Set(req.operations.map((o) => o.operation));
@@ -194,12 +231,14 @@ export async function approvePrivilegedAccess(
   const stray = granted.find((k) => !requested.has(k));
   if (stray) {
     return actionError(
-      `申請に含まれていない操作は許可できません（${operationLabel(stray)}）`,
+      tr("settings.privilegedAccessActions.operationNotInRequest", {
+        label: operationLabel(stray),
+      }),
     );
   }
   if (granted.length === 0) {
     return actionError(
-      "許可する操作を 1 つ以上選んでください（すべて外す場合は差し戻してください）",
+      tr("settings.privilegedAccessActions.selectAtLeastOneOperationToGrant"),
     );
   }
 
@@ -238,20 +277,30 @@ export async function rejectPrivilegedAccess(
   id: string,
   reason: string,
 ): Promise<ActionResult> {
+  const tr = await getTranslations();
   const actorId = await sessionUserId();
-  if (!actorId) return actionError("操作者を特定できません");
-  if (!reason.trim()) return actionError("差し戻しの理由を入力してください");
+  if (!actorId)
+    return actionError(tr("settings.privilegedAccessActions.actorUnresolved"));
+  if (!reason.trim())
+    return actionError(tr("general.documentActions.rejectReasonRequired"));
 
   const req = await prisma.privilegedAccessRequest.findUnique({
     where: { id },
   });
-  if (!req) return actionError("対象の申請が見つかりません");
-  if (req.status !== "PENDING") return actionError("この申請は決裁済みです");
+  if (!req)
+    return actionError(tr("settings.privilegedAccessActions.requestNotFound"));
+  if (req.status !== "PENDING")
+    return actionError(tr("settings.privilegedAccessActions.alreadyDecided"));
 
   const authz = await checkPermission(req.code, "APPROVE");
-  if (!authz.ok) return actionError("この申請を決裁する権限がありません");
+  if (!authz.ok)
+    return actionError(
+      tr("settings.privilegedAccessActions.decidePermissionDenied"),
+    );
   if (req.requestedBy === actorId) {
-    return actionError("自分が出した申請は決裁できません");
+    return actionError(
+      tr("settings.privilegedAccessActions.cannotDecideOwnRequest"),
+    );
   }
 
   await prisma.privilegedAccessRequest.update({
@@ -282,19 +331,30 @@ export async function revokePrivilegedAccess(
   id: string,
   reason: string,
 ): Promise<ActionResult> {
+  const tr = await getTranslations();
   const actorId = await sessionUserId();
-  if (!actorId) return actionError("操作者を特定できません");
-  if (!reason.trim()) return actionError("取り消しの理由を入力してください");
+  if (!actorId)
+    return actionError(tr("settings.privilegedAccessActions.actorUnresolved"));
+  if (!reason.trim())
+    return actionError(
+      tr("settings.privilegedAccessActions.revokeReasonRequired"),
+    );
 
   const req = await prisma.privilegedAccessRequest.findUnique({
     where: { id },
   });
-  if (!req) return actionError("対象の申請が見つかりません");
+  if (!req)
+    return actionError(tr("settings.privilegedAccessActions.requestNotFound"));
   if (req.status !== "APPROVED") {
-    return actionError("有効な付与だけ取り消せます");
+    return actionError(
+      tr("settings.privilegedAccessActions.onlyActiveGrantsCanBeRevoked"),
+    );
   }
   const authz = await checkPermission(req.code, "APPROVE");
-  if (!authz.ok) return actionError("この付与を取り消す権限がありません");
+  if (!authz.ok)
+    return actionError(
+      tr("settings.privilegedAccessActions.revokePermissionDenied"),
+    );
 
   await prisma.privilegedAccessRequest.update({
     where: { id },
@@ -320,17 +380,23 @@ export async function revokePrivilegedAccess(
 export async function cancelPrivilegedAccess(
   id: string,
 ): Promise<ActionResult> {
+  const tr = await getTranslations();
   const actorId = await sessionUserId();
-  if (!actorId) return actionError("操作者を特定できません");
+  if (!actorId)
+    return actionError(tr("settings.privilegedAccessActions.actorUnresolved"));
 
   const req = await prisma.privilegedAccessRequest.findUnique({
     where: { id },
   });
-  if (!req) return actionError("対象の申請が見つかりません");
+  if (!req)
+    return actionError(tr("settings.privilegedAccessActions.requestNotFound"));
   if (req.requestedBy !== actorId) {
-    return actionError("自分が出した申請だけ取り下げられます");
+    return actionError(
+      tr("settings.privilegedAccessActions.canOnlyCancelOwnRequest"),
+    );
   }
-  if (req.status !== "PENDING") return actionError("この申請は決裁済みです");
+  if (req.status !== "PENDING")
+    return actionError(tr("settings.privilegedAccessActions.alreadyDecided"));
 
   await prisma.privilegedAccessRequest.update({
     where: { id },

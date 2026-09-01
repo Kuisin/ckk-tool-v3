@@ -8,6 +8,7 @@
  * Server Action のボディは既定 1MB 上限で、写真が 413 になるため。
  */
 
+import { getTranslations } from "next-intl/server";
 import { z } from "zod";
 import { auth } from "@/auth";
 import { recordAudit } from "@/lib/audit";
@@ -20,16 +21,21 @@ async function currentUserId(): Promise<string | null> {
   return (session?.user as { id?: string } | undefined)?.id ?? null;
 }
 
-const emailSchema = z.email("メールアドレスの形式が正しくありません");
+function emailSchema(tr: Awaited<ReturnType<typeof getTranslations>>) {
+  return z.email(tr("common.invalidEmailFormat"));
+}
 
 export async function updateEmailAction(email: string): Promise<ActionResult> {
+  const tr = await getTranslations();
   const userId = await currentUserId();
-  if (!userId) return actionError("ログインが必要です");
+  if (!userId) return actionError(tr("common.loginRequired"));
   const trimmed = email.trim();
   if (trimmed) {
-    const parsed = emailSchema.safeParse(trimmed);
+    const parsed = emailSchema(tr).safeParse(trimmed);
     if (!parsed.success) {
-      return actionError(parsed.error.issues[0]?.message ?? "入力エラー");
+      return actionError(
+        parsed.error.issues[0]?.message ?? tr("common.inputError"),
+      );
     }
   }
   const before = await prisma.user.findUniqueOrThrow({
@@ -54,24 +60,27 @@ export async function changePasswordAction(input: {
   currentPassword: string;
   newPassword: string;
 }): Promise<ActionResult> {
+  const tr = await getTranslations();
   const userId = await currentUserId();
-  if (!userId) return actionError("ログインが必要です");
+  if (!userId) return actionError(tr("common.loginRequired"));
   const user = await prisma.user.findUniqueOrThrow({
     where: { id: userId },
     select: { username: true, passwordHash: true },
   });
   if (!user.passwordHash) {
-    return actionError("SSO ユーザーのパスワードはここでは変更できません");
+    return actionError(tr("profile.profileActions.ssoPasswordCannotBeChanged"));
   }
   if (!verifyPassword(input.currentPassword, user.passwordHash)) {
-    return actionError("現在のパスワードが一致しません");
+    return actionError(
+      tr("profile.profileActions.currentPasswordDoesNotMatch"),
+    );
   }
   if (input.newPassword.length < 8) {
-    return actionError("新しいパスワードは 8 文字以上にしてください");
+    return actionError(tr("profile.profileActions.newPasswordTooShort"));
   }
   await prisma.user.update({
     where: { id: userId },
-    // 変更が済んだので強制フラグを下ろす（初期管理者のブートストラップ用）。
+    // 変更が済んだので強制フラグを下ろす(初期管理者のブートストラップ用)。
     data: {
       passwordHash: hashPassword(input.newPassword),
       passwordChangeRequired: false,
@@ -81,15 +90,16 @@ export async function changePasswordAction(input: {
     action: "UPDATE",
     tableName: "users",
     recordId: user.username,
-    after: { note: "パスワード変更" },
+    after: { note: tr("profile.profileView.changePassword") },
   });
   return actionOk();
 }
 
-/** 本人のプッシュ購読（デバイス）を削除。 */
+/** 本人のプッシュ購読(デバイス)を削除。 */
 export async function removeDeviceAction(id: string): Promise<ActionResult> {
+  const tr = await getTranslations();
   const userId = await currentUserId();
-  if (!userId) return actionError("ログインが必要です");
+  if (!userId) return actionError(tr("common.loginRequired"));
   await prisma.pushSubscription.deleteMany({ where: { id, userId } });
   return actionOk();
 }

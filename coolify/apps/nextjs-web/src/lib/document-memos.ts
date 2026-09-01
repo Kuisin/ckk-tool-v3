@@ -22,6 +22,7 @@
 
 import "server-only";
 
+import { getTranslations } from "next-intl/server";
 import { actorAvatarUrl, getCurrentActorId, recordAudit } from "@/lib/audit";
 import { checkPermission, type PermissionAction } from "@/lib/authz";
 import { prisma } from "@/lib/db";
@@ -198,22 +199,24 @@ export async function listMemosByOwnerIds(
   const ids = [...new Set(ownerIds)];
   if (!owner || ids.length === 0) return {};
   try {
-    const [rows, actorId, canUpdate, canDelete, isAdmin] = await Promise.all([
-      prisma.documentMemo.findMany({
-        where: { ownerType, ownerId: { in: ids } },
-        // COMMENT は新しい順。MEMO は 1 件なので実質どちらでも同じ。
-        orderBy: { createdAt: "desc" },
-        include: {
-          createdByUser: USER_SELECT,
-          updatedByUser: { select: { displayName: true } },
-          archivedByUser: { select: { displayName: true } },
-        },
-      }),
-      getCurrentActorId(),
-      checkPermission(owner.permission, "UPDATE").then((r) => r.ok),
-      checkPermission(owner.permission, "DELETE").then((r) => r.ok),
-      checkPermission(owner.permission, "ADMIN").then((r) => r.ok),
-    ]);
+    const [rows, actorId, canUpdate, canDelete, isAdmin, tr] =
+      await Promise.all([
+        prisma.documentMemo.findMany({
+          where: { ownerType, ownerId: { in: ids } },
+          // COMMENT は新しい順。MEMO は 1 件なので実質どちらでも同じ。
+          orderBy: { createdAt: "desc" },
+          include: {
+            createdByUser: USER_SELECT,
+            updatedByUser: { select: { displayName: true } },
+            archivedByUser: { select: { displayName: true } },
+          },
+        }),
+        getCurrentActorId(),
+        checkPermission(owner.permission, "UPDATE").then((r) => r.ok),
+        checkPermission(owner.permission, "DELETE").then((r) => r.ok),
+        checkPermission(owner.permission, "ADMIN").then((r) => r.ok),
+        getTranslations(),
+      ]);
     const actor: Actor = { userId: actorId ?? "", isAdmin };
 
     // 本文中の短縮リンクをまとめて解決する（行ごとに引くと N+1 になる）。
@@ -234,13 +237,13 @@ export async function listMemosByOwnerIds(
         // 保存時に parseRichText を通した doc のみが入る。万一壊れた行があっても
         // RichTextView / isEmptyDoc は未知の形を無視するので表示は壊れない。
         content: doc,
-        authorName: r.createdByUser?.displayName ?? "システム",
+        authorName: r.createdByUser?.displayName ?? tr("common.system"),
         authorAvatarUrl: r.createdByUser
           ? actorAvatarUrl(r.createdByUser as UserRow)
           : null,
         editorName:
           r.updatedBy && r.updatedBy !== r.createdBy
-            ? (r.updatedByUser?.displayName ?? "システム")
+            ? (r.updatedByUser?.displayName ?? tr("common.system"))
             : null,
         createdAt: r.createdAt.toISOString(),
         updatedAt: r.updatedAt.toISOString(),
@@ -282,10 +285,11 @@ export async function listMemos(
 export async function saveMemo(
   input: SaveMemoInput,
 ): Promise<ActionResult<{ id: string }>> {
+  const tr = await getTranslations();
   const ownerType = input.ownerType.trim();
   const ownerId = input.ownerId.trim();
   const owner = MEMO_OWNERS[ownerType];
-  if (!owner || !ownerId) return actionError("メモの対象が不正です");
+  if (!owner || !ownerId) return actionError(tr("common.invalidMemoTarget"));
 
   const auth = await actorFor(owner.permission, "UPDATE");
   if (!auth.ok) return actionError(auth.error);
@@ -305,9 +309,10 @@ export async function saveMemo(
     });
     return actionError(parsed.error);
   }
-  if (isEmptyDoc(parsed.doc)) return actionError("本文を入力してください");
+  if (isEmptyDoc(parsed.doc)) return actionError(tr("common.enterTheBody"));
 
-  const label = owner.kind === "MEMO" ? "メモ" : "コメント";
+  const label =
+    owner.kind === "MEMO" ? tr("common.memo") : tr("common.comment");
 
   // 外部 URL は索引に登録して `/l/<code>` へ置き換える。ブロック対象は
   // ここで弾く（クリック時にも再判定するので、後から足したルールも効く）。
@@ -318,9 +323,14 @@ export async function saveMemo(
     if (blocked.length > 0) {
       const first = blocked[0];
       return actionError(
-        `このリンクは登録できません（${first.hostname}）${
-          first.reason ? `: ${first.reason}` : ""
-        }`,
+        first.reason
+          ? tr("common.linkCannotBeRegisteredWithReason", {
+              hostname: first.hostname,
+              reason: first.reason,
+            })
+          : tr("common.linkCannotBeRegistered", {
+              hostname: first.hostname,
+            }),
       );
     }
     doc = rewriteLinkHrefs(parsed.doc, await mintShortLinks(externalUrls));
@@ -370,10 +380,10 @@ export async function saveMemo(
       }
 
       if (existing.ownerType !== ownerType || existing.ownerId !== ownerId) {
-        throw new MemoError("メモの対象が一致しません");
+        throw new MemoError(tr("common.memoTargetMismatch"));
       }
       if (!mayMutate(existing.kind, existing.createdBy, actor)) {
-        throw new MemoError("他のユーザーの投稿は編集できません");
+        throw new MemoError(tr("common.cannotEditOthersPosts"));
       }
       const row = await tx.documentMemo.update({
         where: { id: existing.id },
@@ -405,16 +415,23 @@ export async function saveMemo(
       recordId: ownerId,
       before: outcome.created
         ? undefined
-        : { note: `${label}を更新（変更前）`, text: outcome.before },
+        : {
+            note: tr("common.labelUpdatedBeforeNote", { label }),
+            text: outcome.before,
+          },
       after: {
-        note: `${label}を${outcome.created ? "追加" : "更新"}`,
+        note: outcome.created
+          ? tr("common.labelAddedNote", { label })
+          : tr("common.labelUpdatedNote", { label }),
         text: parsed.plainText,
       },
     });
     return actionOk({ id: outcome.id });
   } catch (e) {
     if (e instanceof MemoError) return actionError(e.message);
-    return actionError(prismaErrorMessage(e, `${label}の保存に失敗しました`));
+    return actionError(
+      prismaErrorMessage(e, tr("common.labelSaveFailed", { label }), tr),
+    );
   }
 }
 
@@ -447,16 +464,19 @@ export async function listMemoRevisions(
   if (!authz.ok) return [];
 
   try {
-    const rows = await prisma.documentMemoRevision.findMany({
-      where: { memoId },
-      orderBy: { editedAt: "desc" },
-      include: { editedByUser: USER_SELECT },
-    });
+    const [rows, tr] = await Promise.all([
+      prisma.documentMemoRevision.findMany({
+        where: { memoId },
+        orderBy: { editedAt: "desc" },
+        include: { editedByUser: USER_SELECT },
+      }),
+      getTranslations(),
+    ]);
     return rows.map((r) => ({
       id: r.id,
       action: r.action as MemoRevisionView["action"],
       content: r.content as unknown as RichTextDoc,
-      editorName: r.editedByUser?.displayName ?? "システム",
+      editorName: r.editedByUser?.displayName ?? tr("common.system"),
       editorAvatarUrl: r.editedByUser
         ? actorAvatarUrl(r.editedByUser as UserRow)
         : null,
@@ -470,17 +490,18 @@ export async function listMemoRevisions(
 
 /** メモ / コメントを削除する（<code>:DELETE、COMMENT は本人 or ADMIN のみ）。 */
 export async function deleteMemo(id: string): Promise<ActionResult> {
+  const tr = await getTranslations();
   try {
     const row = await prisma.documentMemo.findUnique({ where: { id } });
-    if (!row) return actionError("対象が見つかりません");
+    if (!row) return actionError(tr("common.targetNotFound"));
 
     const owner = MEMO_OWNERS[row.ownerType];
-    if (!owner) return actionError("メモの対象が不正です");
+    if (!owner) return actionError(tr("common.invalidMemoTarget"));
 
     const auth = await actorFor(owner.permission, "DELETE");
     if (!auth.ok) return actionError(auth.error);
     if (!mayMutate(row.kind, row.createdBy, auth.actor)) {
-      return actionError("他のユーザーの投稿は削除できません");
+      return actionError(tr("common.cannotDeleteOthersPosts"));
     }
 
     // 削除の証跡を先に積んでから本体を消す（memo_id は ON DELETE SET NULL
@@ -506,13 +527,15 @@ export async function deleteMemo(id: string): Promise<ActionResult> {
       tableName: row.ownerType,
       recordId: row.ownerId,
       before: {
-        note: `${row.kind === "MEMO" ? "メモ" : "コメント"}を削除`,
+        note: tr("common.labelDeletedNote", {
+          label: row.kind === "MEMO" ? tr("common.memo") : tr("common.comment"),
+        }),
         text: row.plainText,
       },
     });
     return actionOk();
   } catch (e) {
-    return actionError(prismaErrorMessage(e, "削除に失敗しました"));
+    return actionError(prismaErrorMessage(e, tr("common.couldNotDelete"), tr));
   }
 }
 
@@ -524,20 +547,21 @@ export async function setMemoArchived(
   id: string,
   archived: boolean,
 ): Promise<ActionResult> {
+  const tr = await getTranslations();
   try {
     const row = await prisma.documentMemo.findUnique({ where: { id } });
-    if (!row) return actionError("対象が見つかりません");
+    if (!row) return actionError(tr("common.targetNotFound"));
     if (row.kind !== "COMMENT") {
-      return actionError("メモはアーカイブできません");
+      return actionError(tr("common.memoCannotBeArchived"));
     }
 
     const owner = MEMO_OWNERS[row.ownerType];
-    if (!owner) return actionError("メモの対象が不正です");
+    if (!owner) return actionError(tr("common.invalidMemoTarget"));
 
     const auth = await actorFor(owner.permission, "UPDATE");
     if (!auth.ok) return actionError(auth.error);
     if (!mayMutate(row.kind, row.createdBy, auth.actor)) {
-      return actionError("他のユーザーの投稿は操作できません");
+      return actionError(tr("common.cannotOperateOnOthersPosts"));
     }
 
     await prisma.$transaction(async (tx) => {
@@ -566,12 +590,14 @@ export async function setMemoArchived(
       tableName: row.ownerType,
       recordId: row.ownerId,
       after: {
-        note: `コメントを${archived ? "アーカイブ" : "復元"}`,
+        note: archived
+          ? tr("common.commentArchivedNote")
+          : tr("common.commentRestoredNote"),
         text: row.plainText,
       },
     });
     return actionOk();
   } catch (e) {
-    return actionError(prismaErrorMessage(e, "操作に失敗しました"));
+    return actionError(prismaErrorMessage(e, tr("common.theActionFailed"), tr));
   }
 }

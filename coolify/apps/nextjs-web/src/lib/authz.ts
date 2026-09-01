@@ -30,6 +30,7 @@ import {
   type ScopeContext,
   visibleAppKeys,
 } from "@ckk/authz-core";
+import { getLocale, getTranslations } from "next-intl/server";
 import { cache } from "react";
 import { auth } from "@/auth";
 import { prisma } from "./db";
@@ -87,7 +88,8 @@ export async function checkPermission(
   action: PermissionAction,
 ): Promise<AuthzResult> {
   const userId = await sessionUserId();
-  if (!userId) return { ok: false, error: "ログインが必要です" };
+  const [tr, locale] = await Promise.all([getTranslations(), getLocale()]);
+  if (!userId) return { ok: false, error: tr("common.loginRequired") };
 
   const [set, ctx] = await Promise.all([
     permissionSetFor(userId),
@@ -101,7 +103,12 @@ export async function checkPermission(
   // 括弧のコードは残す — 管理者への問い合わせではコードで指定されることがある。
   return {
     ok: false,
-    error: `${permissionLabel(code)}の${actionLabel(action)}権限がありません（${code}:${action}）`,
+    error: tr("common.permissionActionDenied", {
+      permission: permissionLabel(code, locale),
+      action: actionLabel(action, locale),
+      code,
+      actionCode: action,
+    }),
   };
 }
 
@@ -122,9 +129,13 @@ export async function checkApprovalDocAccess(
   if (read.ok) return read;
   const update = await checkPermission(code, "UPDATE");
   if (update.ok) return update;
+  const [tr, locale] = await Promise.all([getTranslations(), getLocale()]);
   return {
     ok: false,
-    error: `${permissionLabel(code)}の閲覧または編集の権限がありません（${code}:READ / UPDATE）`,
+    error: tr("common.permissionReadOrUpdateDenied", {
+      permission: permissionLabel(code, locale),
+      code,
+    }),
   };
 }
 
@@ -135,7 +146,9 @@ export async function requirePermissionResponse(
 ): Promise<Response | null> {
   const res = await checkPermission(code, action);
   if (res.ok) return null;
-  const status = res.error.startsWith("ログイン") ? 401 : 403;
+  // 文言は locale で変わるので前綴りでは判定しない — 未ログインかどうかを
+  // 元の判定条件で直接確かめる（sessionUserId は cache() 済みで安い）。
+  const status = (await sessionUserId()) ? 403 : 401;
   return Response.json({ error: res.error }, { status });
 }
 

@@ -24,6 +24,7 @@
  */
 
 import { revalidatePath } from "next/cache";
+import { getTranslations } from "next-intl/server";
 import { z } from "zod";
 import { recordAudit } from "@/lib/audit";
 import { checkPermission } from "@/lib/authz";
@@ -61,13 +62,16 @@ const CONTENT_TYPES = ["APP_PAGE", "METABASE", "URL", "IMAGE"] as const;
 function validateConfig(
   contentType: (typeof CONTENT_TYPES)[number],
   config: unknown,
+  tr: Awaited<ReturnType<typeof getTranslations>>,
 ): { ok: true; value: unknown } | { ok: false; error: string } {
   const schema = DISPLAY_CONTENT_SCHEMAS[contentType];
   const parsed = schema.safeParse(config ?? {});
   if (!parsed.success) {
     return {
       ok: false,
-      error: parsed.error.issues[0]?.message ?? "表示内容の設定が不正です",
+      error:
+        parsed.error.issues[0]?.message ??
+        tr("settings.displaysActions.invalidContentConfig"),
     };
   }
   return { ok: true, value: parsed.data };
@@ -120,20 +124,25 @@ export async function fetchDisplayPresence(): Promise<
 
 // ── ① プロファイルを作る（ハードウェアより先） ───────────────────────────────
 
-const createSchema = z.object({
-  nameJa: z.string().trim().min(1, "名前を入力してください"),
-  nameEn: z.string().trim().optional(),
-  location: z.string().trim().optional(),
-  plantId: z.number().int().positive().nullable().optional(),
-  /**
-   * 何を映すか。**省略できる** — 省略すると DB の既定（生産状況）が入る。
-   * 「作ってすぐ何か映る」ようにしておくのは、設置の日に表示内容まで
-   * 決まっていないことが普通にあるため。真っ黒な画面を作らない。
-   */
-  contentType: z.enum(CONTENT_TYPES).optional(),
-  contentConfig: z.unknown().optional(),
-  refreshIntervalSec: z.number().int().min(0).max(86_400).optional(),
-});
+function createSchema(tr: Awaited<ReturnType<typeof getTranslations>>) {
+  return z.object({
+    nameJa: z
+      .string()
+      .trim()
+      .min(1, tr("settings.displaysActions.nameRequired")),
+    nameEn: z.string().trim().optional(),
+    location: z.string().trim().optional(),
+    plantId: z.number().int().positive().nullable().optional(),
+    /**
+     * 何を映すか。**省略できる** — 省略すると DB の既定（生産状況）が入る。
+     * 「作ってすぐ何か映る」ようにしておくのは、設置の日に表示内容まで
+     * 決まっていないことが普通にあるため。真っ黒な画面を作らない。
+     */
+    contentType: z.enum(CONTENT_TYPES).optional(),
+    contentConfig: z.unknown().optional(),
+    refreshIntervalSec: z.number().int().min(0).max(86_400).optional(),
+  });
+}
 
 /**
  * ディスプレイのプロファイルを作る。**この時点ではまだ画面と結びついていない**
@@ -148,11 +157,14 @@ export async function createDisplayDevice(raw: {
   contentConfig?: unknown;
   refreshIntervalSec?: number;
 }): Promise<ActionResult<{ id: string }>> {
+  const tr = await getTranslations();
   const authz = await checkPermission("kiosk", "CREATE");
   if (!authz.ok) return actionError(authz.error);
-  const parsed = createSchema.safeParse(raw);
+  const parsed = createSchema(tr).safeParse(raw);
   if (!parsed.success) {
-    return actionError(parsed.error.issues[0]?.message ?? "入力が不正です");
+    return actionError(
+      parsed.error.issues[0]?.message ?? tr("common.invalidInput"),
+    );
   }
   const {
     nameJa,
@@ -167,7 +179,7 @@ export async function createDisplayDevice(raw: {
   // 表示内容は「渡されたときだけ」検証して入れる。渡さなければ DB の既定。
   let content: object = {};
   if (contentType) {
-    const config = validateConfig(contentType, contentConfig);
+    const config = validateConfig(contentType, contentConfig, tr);
     if (!config.ok) return actionError(config.error);
     content = { contentType, contentConfig: config.value as object };
   }
@@ -198,7 +210,9 @@ export async function createDisplayDevice(raw: {
     revalidate();
     return actionOk({ id: created.id });
   } catch (e) {
-    return actionError(prismaErrorMessage(e, "作成に失敗しました"));
+    return actionError(
+      prismaErrorMessage(e, tr("settings.displaysActions.createFailed"), tr),
+    );
   }
 }
 
@@ -212,14 +226,19 @@ export async function linkDisplayToProfile(
   displayId: string,
   code: string,
 ): Promise<ActionResult> {
+  const tr = await getTranslations();
   const gate = await useElevation("kiosk_device.pair_display");
   if (!gate.ok) return actionError(gate.error);
   if (!uuidSchema.safeParse(displayId).success) {
-    return actionError("入力が不正です");
+    return actionError(tr("common.invalidInput"));
   }
   const normalized = normalizeCode(code);
   if (normalized.length !== LINK_CODE_LENGTH) {
-    return actionError("リンクコードは 12 文字です");
+    return actionError(
+      tr("settings.displaysActions.linkCodeLength", {
+        length: LINK_CODE_LENGTH,
+      }),
+    );
   }
 
   try {
@@ -227,10 +246,11 @@ export async function linkDisplayToProfile(
       where: { id: displayId },
       select: { status: true },
     });
-    if (!device) return actionError("対象のディスプレイが見つかりません");
+    if (!device)
+      return actionError(tr("settings.displaysActions.displayNotFound"));
     if (device.status !== "PENDING") {
       return actionError(
-        "オープンな（未リンクの）プロファイルにのみリンクできます",
+        tr("settings.displaysActions.onlyOpenProfilesCanLink"),
       );
     }
 
@@ -244,7 +264,7 @@ export async function linkDisplayToProfile(
     });
     if (!request) {
       return actionError(
-        "リンクコードが見つからないか、有効期限が切れています。画面に出ている新しいコードを読み取ってください",
+        tr("settings.displaysActions.linkCodeNotFoundOrExpired"),
       );
     }
 
@@ -278,7 +298,9 @@ export async function linkDisplayToProfile(
     revalidate();
     return actionOk();
   } catch (e) {
-    return actionError(prismaErrorMessage(e, "リンクに失敗しました"));
+    return actionError(
+      prismaErrorMessage(e, tr("settings.displaysActions.linkFailed"), tr),
+    );
   }
 }
 
@@ -289,24 +311,27 @@ export async function linkDisplayToProfile(
  * 自分で受け取る（端末と同じ。管理画面が端末の秘密に触らない）。
  */
 export async function activateDisplay(id: string): Promise<ActionResult> {
+  const tr = await getTranslations();
   const gate = await useElevation("kiosk_device.pair_display");
   if (!gate.ok) return actionError(gate.error);
-  if (!uuidSchema.safeParse(id).success) return actionError("入力が不正です");
+  if (!uuidSchema.safeParse(id).success)
+    return actionError(tr("common.invalidInput"));
 
   try {
     const device = await prisma.displayDevice.findUnique({
       where: { id },
       select: { status: true },
     });
-    if (!device) return actionError("対象のディスプレイが見つかりません");
+    if (!device)
+      return actionError(tr("settings.displaysActions.displayNotFound"));
     if (device.status === "PENDING") {
-      return actionError("リンクされていないプロファイルは有効化できません");
+      return actionError(tr("settings.displaysActions.pendingCannotActivate"));
     }
     if (device.status === "ACTIVE") {
-      return actionError("このディスプレイは既に有効です");
+      return actionError(tr("settings.displaysActions.alreadyActive"));
     }
     if (device.status !== "LINKED") {
-      return actionError("このディスプレイは有効化できる状態ではありません");
+      return actionError(tr("settings.displaysActions.notActivatable"));
     }
 
     await prisma.displayDevice.update({
@@ -331,17 +356,21 @@ export async function activateDisplay(id: string): Promise<ActionResult> {
     revalidate();
     return actionOk();
   } catch (e) {
-    return actionError(prismaErrorMessage(e, "有効化に失敗しました"));
+    return actionError(
+      prismaErrorMessage(e, tr("settings.displaysActions.activateFailed"), tr),
+    );
   }
 }
 
 // ── 変更（素の kiosk 権限） ──────────────────────────────────────────────────
 
-const updateSchema = createSchema.extend({
-  id: z.string().uuid(),
-  /** 表示倍率（%）。範囲は DB の CHECK と同じ 50〜200。 */
-  scalePercent: z.number().int().min(50).max(200).optional(),
-});
+function updateSchema(tr: Awaited<ReturnType<typeof getTranslations>>) {
+  return createSchema(tr).extend({
+    id: z.string().uuid(),
+    /** 表示倍率（%）。範囲は DB の CHECK と同じ 50〜200。 */
+    scalePercent: z.number().int().min(50).max(200).optional(),
+  });
+}
 
 export async function updateDisplay(raw: {
   id: string;
@@ -354,11 +383,14 @@ export async function updateDisplay(raw: {
   refreshIntervalSec?: number;
   scalePercent?: number;
 }): Promise<ActionResult> {
+  const tr = await getTranslations();
   const authz = await checkPermission("kiosk", "UPDATE");
   if (!authz.ok) return actionError(authz.error);
-  const parsed = updateSchema.safeParse(raw);
+  const parsed = updateSchema(tr).safeParse(raw);
   if (!parsed.success) {
-    return actionError(parsed.error.issues[0]?.message ?? "入力が不正です");
+    return actionError(
+      parsed.error.issues[0]?.message ?? tr("common.invalidInput"),
+    );
   }
   const {
     id,
@@ -375,7 +407,7 @@ export async function updateDisplay(raw: {
   // 名前だけ直す画面からも呼ばれるので、渡された項目だけを触る。
   let content: object = {};
   if (contentType) {
-    const config = validateConfig(contentType, contentConfig);
+    const config = validateConfig(contentType, contentConfig, tr);
     if (!config.ok) return actionError(config.error);
     content = { contentType, contentConfig: config.value as object };
   }
@@ -393,7 +425,8 @@ export async function updateDisplay(raw: {
         scalePercent: true,
       },
     });
-    if (!before) return actionError("対象のディスプレイが見つかりません");
+    if (!before)
+      return actionError(tr("settings.displaysActions.displayNotFound"));
 
     await prisma.displayDevice.update({
       where: { id },
@@ -434,7 +467,9 @@ export async function updateDisplay(raw: {
     revalidate();
     return actionOk();
   } catch (e) {
-    return actionError(prismaErrorMessage(e, "更新に失敗しました"));
+    return actionError(
+      prismaErrorMessage(e, tr("settings.displaysActions.updateFailed"), tr),
+    );
   }
 }
 
@@ -443,21 +478,26 @@ export async function setDisplayEnabled(
   id: string,
   enabled: boolean,
 ): Promise<ActionResult> {
+  const tr = await getTranslations();
   const authz = await checkPermission("kiosk", "UPDATE");
   if (!authz.ok) return actionError(authz.error);
-  if (!uuidSchema.safeParse(id).success) return actionError("入力が不正です");
+  if (!uuidSchema.safeParse(id).success)
+    return actionError(tr("common.invalidInput"));
 
   try {
     const before = await prisma.displayDevice.findUnique({
       where: { id },
       select: { status: true },
     });
-    if (!before) return actionError("対象のディスプレイが見つかりません");
+    if (!before)
+      return actionError(tr("settings.displaysActions.displayNotFound"));
     if (before.status === "REVOKED") {
-      return actionError("失効したディスプレイは操作できません");
+      return actionError(tr("settings.displaysActions.revokedCannotOperate"));
     }
     if (before.status === "PENDING" || before.status === "LINKED") {
-      return actionError("有効化前のディスプレイは停止できません");
+      return actionError(
+        tr("settings.displaysActions.cannotDisableBeforeActivation"),
+      );
     }
     const next = enabled ? "ACTIVE" : "DISABLED";
     if (before.status === next) return actionOk();
@@ -478,7 +518,9 @@ export async function setDisplayEnabled(
     revalidate();
     return actionOk();
   } catch (e) {
-    return actionError(prismaErrorMessage(e, "更新に失敗しました"));
+    return actionError(
+      prismaErrorMessage(e, tr("settings.displaysActions.updateFailed"), tr),
+    );
   }
 }
 
@@ -490,18 +532,21 @@ export async function setDisplayEnabled(
  * 同じ設定へ新しいハードウェアを結び直せるようにするため（端末と同じ）。
  */
 export async function unlinkDisplay(id: string): Promise<ActionResult> {
+  const tr = await getTranslations();
   const gate = await useElevation("kiosk_device.revoke_display");
   if (!gate.ok) return actionError(gate.error);
-  if (!uuidSchema.safeParse(id).success) return actionError("入力が不正です");
+  if (!uuidSchema.safeParse(id).success)
+    return actionError(tr("common.invalidInput"));
 
   try {
     const before = await prisma.displayDevice.findUnique({
       where: { id },
       select: { status: true },
     });
-    if (!before) return actionError("対象のディスプレイが見つかりません");
+    if (!before)
+      return actionError(tr("settings.displaysActions.displayNotFound"));
     if (before.status === "PENDING") {
-      return actionError("このプロファイルはまだリンクされていません");
+      return actionError(tr("settings.displaysActions.notLinkedYet"));
     }
 
     await prisma.$transaction([
@@ -537,22 +582,27 @@ export async function unlinkDisplay(id: string): Promise<ActionResult> {
     revalidate();
     return actionOk();
   } catch (e) {
-    return actionError(prismaErrorMessage(e, "リンク解除に失敗しました"));
+    return actionError(
+      prismaErrorMessage(e, tr("settings.displaysActions.unlinkFailed"), tr),
+    );
   }
 }
 
 /** 失効。次の再読込で登録画面に戻る。**現場に行かずに取り上げられる**。 */
 export async function revokeDisplay(id: string): Promise<ActionResult> {
+  const tr = await getTranslations();
   const gate = await useElevation("kiosk_device.revoke_display");
   if (!gate.ok) return actionError(gate.error);
-  if (!uuidSchema.safeParse(id).success) return actionError("入力が不正です");
+  if (!uuidSchema.safeParse(id).success)
+    return actionError(tr("common.invalidInput"));
 
   try {
     const before = await prisma.displayDevice.findUnique({
       where: { id },
       select: { status: true },
     });
-    if (!before) return actionError("対象のディスプレイが見つかりません");
+    if (!before)
+      return actionError(tr("settings.displaysActions.displayNotFound"));
 
     await prisma.displayDevice.update({
       where: { id },
@@ -577,24 +627,31 @@ export async function revokeDisplay(id: string): Promise<ActionResult> {
     revalidate();
     return actionOk();
   } catch (e) {
-    return actionError(prismaErrorMessage(e, "失効に失敗しました"));
+    return actionError(
+      prismaErrorMessage(e, tr("settings.displaysActions.revokeFailed"), tr),
+    );
   }
 }
 
 /** プロファイルごと消す（オープン or 失効済みのときだけ）。 */
 export async function deleteDisplay(id: string): Promise<ActionResult> {
+  const tr = await getTranslations();
   const gate = await useElevation("kiosk_device.revoke_display");
   if (!gate.ok) return actionError(gate.error);
-  if (!uuidSchema.safeParse(id).success) return actionError("入力が不正です");
+  if (!uuidSchema.safeParse(id).success)
+    return actionError(tr("common.invalidInput"));
 
   try {
     const before = await prisma.displayDevice.findUnique({
       where: { id },
       select: { status: true, name: true },
     });
-    if (!before) return actionError("対象のディスプレイが見つかりません");
+    if (!before)
+      return actionError(tr("settings.displaysActions.displayNotFound"));
     if (before.status !== "REVOKED" && before.status !== "PENDING") {
-      return actionError("先にリンク解除または失効させてください");
+      return actionError(
+        tr("settings.displaysActions.mustUnlinkOrRevokeFirst"),
+      );
     }
     await prisma.displayDevice.delete({ where: { id } });
     await recordAudit({
@@ -606,6 +663,6 @@ export async function deleteDisplay(id: string): Promise<ActionResult> {
     revalidate();
     return actionOk();
   } catch (e) {
-    return actionError(prismaErrorMessage(e, "削除に失敗しました"));
+    return actionError(prismaErrorMessage(e, tr("common.couldNotDelete"), tr));
   }
 }

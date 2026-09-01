@@ -17,6 +17,7 @@ import "server-only";
  *   状態が作れてしまい、現場からは「反映されない」としか見えない。
  */
 
+import { getTranslations } from "next-intl/server";
 import { getCurrentActorId, recordAudit } from "@/lib/audit";
 import { checkPermission } from "@/lib/authz";
 import { prisma } from "@/lib/db";
@@ -55,10 +56,11 @@ export async function saveDisplayImage(
 ): Promise<ActionResult> {
   const authz = await checkPermission("kiosk", "UPDATE");
   if (!authz.ok) return actionError(authz.error);
+  const tr = await getTranslations();
 
-  if (file.size <= 0) return actionError("画像ファイルを選択してください");
+  if (file.size <= 0) return actionError(tr("common.selectAnImageFile"));
   if (file.size > MAX_DISPLAY_IMAGE_BYTES) {
-    return actionError("画像サイズは 10MB 以下にしてください");
+    return actionError(tr("common.imageSizeMax10Mb"));
   }
   const ext = file.name.includes(".")
     ? (file.name.split(".").pop()?.toLowerCase() ?? "")
@@ -66,7 +68,9 @@ export async function saveDisplayImage(
   const allowed = IMAGE_TYPES[ext];
   if (!allowed || !allowed.includes(file.type.toLowerCase())) {
     return actionError(
-      "対応していない画像形式です（PNG / JPG / WEBP / GIF / SVG）",
+      tr("common.unsupportedImageFormat", {
+        formats: "PNG / JPG / WEBP / GIF / SVG",
+      }),
     );
   }
 
@@ -75,9 +79,10 @@ export async function saveDisplayImage(
       where: { id: displayId },
       select: { contentType: true, contentConfig: true, status: true },
     });
-    if (!display) return actionError("対象のディスプレイが見つかりません");
+    if (!display)
+      return actionError(tr("settings.displaysActions.displayNotFound"));
     if (display.status === "REVOKED") {
-      return actionError("失効したディスプレイは変更できません");
+      return actionError(tr("settings.displaysActions.revokedCannotOperate"));
     }
 
     // 差し替え前に映していた画像（あれば）。新しい行を作ってから消す。
@@ -99,7 +104,7 @@ export async function saveDisplayImage(
     const bytes = await file.arrayBuffer();
     const storageKey = `display/images/${systematicFileName(file.name)}`;
     if (!(await putObject(storageKey, bytes, allowed[0]))) {
-      return actionError("ストレージへの保存に失敗しました");
+      return actionError(tr("common.storageSaveFailed"));
     }
 
     const actor = await getCurrentActorId();
@@ -156,6 +161,6 @@ export async function saveDisplayImage(
     await notifyDisplayConfigChanged(displayId);
     return actionOk();
   } catch (e) {
-    return actionError(prismaErrorMessage(e, "画像の保存に失敗しました"));
+    return actionError(prismaErrorMessage(e, tr("common.imageSaveFailed"), tr));
   }
 }

@@ -12,6 +12,7 @@
  */
 
 import { revalidatePath } from "next/cache";
+import { getTranslations } from "next-intl/server";
 import { z } from "zod";
 import { recordAudit } from "@/lib/audit";
 import { checkPermission } from "@/lib/authz";
@@ -28,9 +29,14 @@ import {
 const BASE_PATH = "/settings/kiosk-cards";
 
 /** カード ID（Crockford 16桁・正規化形）。 */
-const cardIdSchema = z
-  .string()
-  .regex(/^[A-Z2-9]{16}$/, "カードIDの形式が正しくありません");
+function cardIdSchema(tr: Awaited<ReturnType<typeof getTranslations>>) {
+  return z
+    .string()
+    .regex(
+      /^[A-Z2-9]{16}$/,
+      tr("settings.kioskCardActions.invalidCardIdFormat"),
+    );
+}
 
 function revalidate(cardId?: string) {
   revalidatePath(BASE_PATH);
@@ -42,26 +48,34 @@ function revalidate(cardId?: string) {
  * ブラウザのタイムゾーンで 開始日 00:00:00 / 終了日 23:59:59.999 に変換して
  * 送る（サーバーの TZ に依存させない）。
  */
-const validitySchema = z
-  .object({
-    validFrom: z.string().nullable(),
-    validUntil: z.string().nullable(),
-  })
-  .transform(({ validFrom, validUntil }) => ({
-    validFrom: validFrom ? new Date(validFrom) : null,
-    validUntil: validUntil ? new Date(validUntil) : null,
-  }))
-  .refine(
-    ({ validFrom, validUntil }) =>
-      (!validFrom || !Number.isNaN(validFrom.getTime())) &&
-      (!validUntil || !Number.isNaN(validUntil.getTime())),
-    { message: "日付の形式が正しくありません" },
-  )
-  .refine(
-    ({ validFrom, validUntil }) =>
-      !validFrom || !validUntil || validFrom.getTime() <= validUntil.getTime(),
-    { message: "有効期間の開始日は終了日以前にしてください" },
-  );
+function validitySchema(tr: Awaited<ReturnType<typeof getTranslations>>) {
+  return z
+    .object({
+      validFrom: z.string().nullable(),
+      validUntil: z.string().nullable(),
+    })
+    .transform(({ validFrom, validUntil }) => ({
+      validFrom: validFrom ? new Date(validFrom) : null,
+      validUntil: validUntil ? new Date(validUntil) : null,
+    }))
+    .refine(
+      ({ validFrom, validUntil }) =>
+        (!validFrom || !Number.isNaN(validFrom.getTime())) &&
+        (!validUntil || !Number.isNaN(validUntil.getTime())),
+      { message: tr("settings.kioskCardActions.invalidDateFormat") },
+    )
+    .refine(
+      ({ validFrom, validUntil }) =>
+        !validFrom ||
+        !validUntil ||
+        validFrom.getTime() <= validUntil.getTime(),
+      {
+        message: tr(
+          "settings.kioskCardActions.validFromMustBeBeforeValidUntil",
+        ),
+      },
+    );
+}
 
 // ── 発行 ────────────────────────────────────────────────────────────────────
 
@@ -73,11 +87,12 @@ const issueInput = z.object({
 export async function issueCards(raw: {
   count: number;
 }): Promise<ActionResult<{ ids: string[] }>> {
+  const tr = await getTranslations();
   const gate = await useElevation("kiosk_card.issue");
   if (!gate.ok) return actionError(gate.error);
   const parsed = issueInput.safeParse(raw);
   if (!parsed.success)
-    return actionError("発行枚数は 1〜100 で指定してください");
+    return actionError(tr("settings.kiosk.setTheNumberOfCardsBetween"));
   const { count } = parsed.data;
 
   try {
@@ -102,28 +117,40 @@ export async function issueCards(raw: {
         ids.push(...created.map((c) => c.id));
       }
     }
-    if (ids.length < count) return actionError("カードの発行に失敗しました");
+    if (ids.length < count) {
+      return actionError(tr("settings.kioskCardActions.issueFailed"));
+    }
     await recordAudit({
       action: "CREATE",
       tableName: "kiosk_cards",
       recordId: ids.join(","),
-      after: { note: `QRカードを ${ids.length} 枚発行` },
+      after: {
+        note: tr("settings.kioskCardActions.auditCardsIssued", {
+          count: ids.length,
+        }),
+      },
     });
     revalidate();
     return actionOk({ ids });
   } catch (e) {
-    return actionError(prismaErrorMessage(e, "カードの発行に失敗しました"));
+    return actionError(
+      prismaErrorMessage(e, tr("settings.kioskCardActions.issueFailed"), tr),
+    );
   }
 }
 
 // ── 割当 ────────────────────────────────────────────────────────────────────
 
-const assignInput = z.object({
-  cardId: cardIdSchema,
-  userId: z.string().uuid("ユーザーの指定が不正です"),
-  // 任意: テンポラリカードとして割当時に有効期間を設定
-  validity: validitySchema.optional(),
-});
+function assignInput(tr: Awaited<ReturnType<typeof getTranslations>>) {
+  return z.object({
+    cardId: cardIdSchema(tr),
+    userId: z
+      .string()
+      .uuid(tr("settings.kioskCardActions.invalidUserSpecified")),
+    // 任意: テンポラリカードとして割当時に有効期間を設定
+    validity: validitySchema(tr).optional(),
+  });
+}
 
 /** 未割当カードをユーザーに割り当てる（1 ユーザー 1 枚）。 */
 export async function assignCard(raw: {
@@ -131,30 +158,35 @@ export async function assignCard(raw: {
   userId: string;
   validity?: { validFrom: string | null; validUntil: string | null };
 }): Promise<ActionResult> {
+  const tr = await getTranslations();
   const gate = await useElevation("kiosk_card.assign");
   if (!gate.ok) return actionError(gate.error);
-  const parsed = assignInput.safeParse(raw);
+  const parsed = assignInput(tr).safeParse(raw);
   if (!parsed.success)
-    return actionError(parsed.error.issues[0]?.message ?? "入力が不正です");
+    return actionError(
+      parsed.error.issues[0]?.message ?? tr("common.invalidInput"),
+    );
   const { cardId, userId, validity } = parsed.data;
 
   try {
     const card = await prisma.kioskCard.findUnique({ where: { id: cardId } });
-    if (!card) return actionError("対象のカードが見つかりません");
+    if (!card) return actionError(tr("settings.kioskCardActions.cardNotFound"));
     if (card.status === "ASSIGNED") {
-      return actionError(
-        "このカードは割当済です。別のユーザーに割り当てるには先に取り消してください",
-      );
+      return actionError(tr("settings.kioskCardActions.cardAlreadyAssigned"));
     }
     if (card.status !== "UNASSIGNED") {
-      return actionError("未割当のカードのみ割り当てできます");
+      return actionError(
+        tr("settings.kioskCardActions.onlyUnassignedCardsCanBeAssigned"),
+      );
     }
     const user = await prisma.user.findUnique({
       where: { id: userId },
       select: { displayName: true, isActive: true },
     });
     if (!user || !user.isActive) {
-      return actionError("対象のユーザーが見つかりません（無効ユーザー不可）");
+      return actionError(
+        tr("settings.kioskCardActions.targetUserNotFoundOrInactive"),
+      );
     }
     const existing = await prisma.kioskCard.findFirst({
       where: { userId, status: "ASSIGNED" },
@@ -162,7 +194,7 @@ export async function assignCard(raw: {
     });
     if (existing) {
       return actionError(
-        "このユーザーには既に割当済のカードがあります。先に既存カードを取り消してください",
+        tr("settings.kioskCardActions.userAlreadyHasAssignedCardLong"),
       );
     }
     await prisma.kioskCard.update({
@@ -192,10 +224,14 @@ export async function assignCard(raw: {
     return actionOk();
   } catch (e) {
     // partial unique index (user_id WHERE status='ASSIGNED') のレース。
-    const message = prismaErrorMessage(e, "カードの割当に失敗しました");
+    const message = prismaErrorMessage(
+      e,
+      tr("settings.kioskCardActions.assignFailed"),
+      tr,
+    );
     return actionError(
-      message === "同じコードのレコードが既に存在します"
-        ? "このユーザーには既に割当済のカードがあります"
+      message === tr("common.duplicateCodeExists")
+        ? tr("settings.kioskCardActions.userAlreadyHasAssignedCardShort")
         : message,
     );
   }
@@ -209,18 +245,21 @@ async function transitionCard(
   to: "ASSIGNED" | "SUSPENDED",
   note: string,
 ): Promise<ActionResult> {
+  const tr = await getTranslations();
   const authz = await checkPermission("kiosk", "UPDATE");
   if (!authz.ok) return actionError(authz.error);
-  const parsed = cardIdSchema.safeParse(cardId);
-  if (!parsed.success) return actionError("入力が不正です");
+  const parsed = cardIdSchema(tr).safeParse(cardId);
+  if (!parsed.success) return actionError(tr("common.invalidInput"));
 
   try {
     const card = await prisma.kioskCard.findUnique({
       where: { id: parsed.data },
     });
-    if (!card) return actionError("対象のカードが見つかりません");
+    if (!card) return actionError(tr("settings.kioskCardActions.cardNotFound"));
     if (card.status !== from) {
-      return actionError(`このカードは${note}できる状態ではありません`);
+      return actionError(
+        tr("settings.kioskCardActions.cardNotInStateForTransition", { note }),
+      );
     }
     await prisma.kioskCard.update({
       where: { id: parsed.data },
@@ -236,34 +275,48 @@ async function transitionCard(
     revalidate(parsed.data);
     return actionOk();
   } catch (e) {
-    return actionError(prismaErrorMessage(e, `カードの${note}に失敗しました`));
+    return actionError(
+      prismaErrorMessage(
+        e,
+        tr("settings.kioskCardActions.transitionFailed", { note }),
+        tr,
+      ),
+    );
   }
 }
 
 /** 割当済カードを一時停止する（ログイン不可）。 */
 export async function suspendCard(cardId: string): Promise<ActionResult> {
-  return transitionCard(cardId, "ASSIGNED", "SUSPENDED", "一時停止");
+  const tr = await getTranslations();
+  return transitionCard(
+    cardId,
+    "ASSIGNED",
+    "SUSPENDED",
+    tr("settings.kioskCardDetailView.suspend"),
+  );
 }
 
 /** 一時停止中のカードを再開する。 */
 export async function resumeCard(cardId: string): Promise<ActionResult> {
-  return transitionCard(cardId, "SUSPENDED", "ASSIGNED", "再開");
+  const tr = await getTranslations();
+  return transitionCard(cardId, "SUSPENDED", "ASSIGNED", tr("common.resume"));
 }
 
 /** カードを取り消す（復元不可）。オープン中のキオスクセッションも失効させる。 */
 export async function revokeCard(cardId: string): Promise<ActionResult> {
+  const tr = await getTranslations();
   const gate = await useElevation("kiosk_card.revoke");
   if (!gate.ok) return actionError(gate.error);
-  const parsed = cardIdSchema.safeParse(cardId);
-  if (!parsed.success) return actionError("入力が不正です");
+  const parsed = cardIdSchema(tr).safeParse(cardId);
+  if (!parsed.success) return actionError(tr("common.invalidInput"));
 
   try {
     const card = await prisma.kioskCard.findUnique({
       where: { id: parsed.data },
     });
-    if (!card) return actionError("対象のカードが見つかりません");
+    if (!card) return actionError(tr("settings.kioskCardActions.cardNotFound"));
     if (card.status === "REVOKED") {
-      return actionError("このカードは既に取り消し済みです");
+      return actionError(tr("settings.kioskCardActions.cardAlreadyRevoked"));
     }
     const now = new Date();
     await prisma.$transaction([
@@ -290,16 +343,20 @@ export async function revokeCard(cardId: string): Promise<ActionResult> {
     revalidate(parsed.data);
     return actionOk();
   } catch (e) {
-    return actionError(prismaErrorMessage(e, "カードの取り消しに失敗しました"));
+    return actionError(
+      prismaErrorMessage(e, tr("settings.kioskCardActions.revokeFailed"), tr),
+    );
   }
 }
 
 // ── 有効期間（テンポラリカード） ─────────────────────────────────────────────
 
-const updateValidityInput = z.object({
-  cardId: cardIdSchema,
-  validity: validitySchema,
-});
+function updateValidityInput(tr: Awaited<ReturnType<typeof getTranslations>>) {
+  return z.object({
+    cardId: cardIdSchema(tr),
+    validity: validitySchema(tr),
+  });
+}
 
 /**
  * カードの有効期間を設定・変更・解除する（両方 null = 無期限に戻す）。
@@ -310,11 +367,14 @@ export async function updateCardValidity(raw: {
   cardId: string;
   validity: { validFrom: string | null; validUntil: string | null };
 }): Promise<ActionResult> {
+  const tr = await getTranslations();
   const gate = await useElevation("kiosk_card.update_validity");
   if (!gate.ok) return actionError(gate.error);
-  const parsed = updateValidityInput.safeParse(raw);
+  const parsed = updateValidityInput(tr).safeParse(raw);
   if (!parsed.success)
-    return actionError(parsed.error.issues[0]?.message ?? "入力が不正です");
+    return actionError(
+      parsed.error.issues[0]?.message ?? tr("common.invalidInput"),
+    );
   const { cardId, validity } = parsed.data;
 
   try {
@@ -322,9 +382,11 @@ export async function updateCardValidity(raw: {
       where: { id: cardId },
       select: { status: true, validFrom: true, validUntil: true },
     });
-    if (!card) return actionError("対象のカードが見つかりません");
+    if (!card) return actionError(tr("settings.kioskCardActions.cardNotFound"));
     if (card.status === "REVOKED") {
-      return actionError("取り消し済みのカードは変更できません");
+      return actionError(
+        tr("settings.kioskCardActions.revokedCardCannotBeChanged"),
+      );
     }
     await prisma.kioskCard.update({
       where: { id: cardId },
@@ -349,20 +411,30 @@ export async function updateCardValidity(raw: {
     revalidate(cardId);
     return actionOk();
   } catch (e) {
-    return actionError(prismaErrorMessage(e, "有効期間の更新に失敗しました"));
+    return actionError(
+      prismaErrorMessage(
+        e,
+        tr("settings.kioskCardActions.validityUpdateFailed"),
+        tr,
+      ),
+    );
   }
 }
 
 // ── 同時ログイン上限 ─────────────────────────────────────────────────────────
 
-const updateSessionLimitInput = z.object({
-  cardId: cardIdSchema,
-  maxActiveSessions: z
-    .number()
-    .int()
-    .min(1, "同時ログイン上限は 1〜10 で指定してください")
-    .max(10, "同時ログイン上限は 1〜10 で指定してください"),
-});
+function updateSessionLimitInput(
+  tr: Awaited<ReturnType<typeof getTranslations>>,
+) {
+  return z.object({
+    cardId: cardIdSchema(tr),
+    maxActiveSessions: z
+      .number()
+      .int()
+      .min(1, tr("settings.kiosk.setTheConcurrentLoginLimitBetween"))
+      .max(10, tr("settings.kiosk.setTheConcurrentLoginLimitBetween")),
+  });
+}
 
 /**
  * カードの同時ログイン上限を変更する（既定 1 台）。超過分はキオスクの
@@ -374,11 +446,14 @@ export async function updateCardSessionLimit(raw: {
   cardId: string;
   maxActiveSessions: number;
 }): Promise<ActionResult> {
+  const tr = await getTranslations();
   const gate = await useElevation("kiosk_card.update_session_limit");
   if (!gate.ok) return actionError(gate.error);
-  const parsed = updateSessionLimitInput.safeParse(raw);
+  const parsed = updateSessionLimitInput(tr).safeParse(raw);
   if (!parsed.success)
-    return actionError(parsed.error.issues[0]?.message ?? "入力が不正です");
+    return actionError(
+      parsed.error.issues[0]?.message ?? tr("common.invalidInput"),
+    );
   const { cardId, maxActiveSessions } = parsed.data;
 
   try {
@@ -386,9 +461,11 @@ export async function updateCardSessionLimit(raw: {
       where: { id: cardId },
       select: { status: true, maxActiveSessions: true },
     });
-    if (!card) return actionError("対象のカードが見つかりません");
+    if (!card) return actionError(tr("settings.kioskCardActions.cardNotFound"));
     if (card.status === "REVOKED") {
-      return actionError("取り消し済みのカードは変更できません");
+      return actionError(
+        tr("settings.kioskCardActions.revokedCardCannotBeChanged"),
+      );
     }
     await prisma.kioskCard.update({
       where: { id: cardId },
@@ -405,7 +482,11 @@ export async function updateCardSessionLimit(raw: {
     return actionOk();
   } catch (e) {
     return actionError(
-      prismaErrorMessage(e, "同時ログイン上限の更新に失敗しました"),
+      prismaErrorMessage(
+        e,
+        tr("settings.kioskCardActions.sessionLimitUpdateFailed"),
+        tr,
+      ),
     );
   }
 }
@@ -414,17 +495,18 @@ export async function updateCardSessionLimit(raw: {
 
 /** PIN をリセットする（次回ログインで再設定必須）。 */
 export async function resetPin(cardId: string): Promise<ActionResult> {
+  const tr = await getTranslations();
   const gate = await useElevation("kiosk_card.reset_pin");
   if (!gate.ok) return actionError(gate.error);
-  const parsed = cardIdSchema.safeParse(cardId);
-  if (!parsed.success) return actionError("入力が不正です");
+  const parsed = cardIdSchema(tr).safeParse(cardId);
+  if (!parsed.success) return actionError(tr("common.invalidInput"));
 
   try {
     const card = await prisma.kioskCard.findUnique({
       where: { id: parsed.data },
       select: { status: true },
     });
-    if (!card) return actionError("対象のカードが見つかりません");
+    if (!card) return actionError(tr("settings.kioskCardActions.cardNotFound"));
     await prisma.kioskCard.update({
       where: { id: parsed.data },
       data: {
@@ -439,28 +521,31 @@ export async function resetPin(cardId: string): Promise<ActionResult> {
       action: "UPDATE",
       tableName: "kiosk_cards",
       recordId: parsed.data,
-      after: { note: "PIN をリセット" },
+      after: { note: tr("settings.kioskCardActions.auditPinReset") },
     });
     revalidate(parsed.data);
     return actionOk();
   } catch (e) {
-    return actionError(prismaErrorMessage(e, "PIN のリセットに失敗しました"));
+    return actionError(
+      prismaErrorMessage(e, tr("settings.kioskCardActions.pinResetFailed"), tr),
+    );
   }
 }
 
 /** PIN 連続失敗ロックを解除する（PIN 自体は保持）。 */
 export async function unlockPin(cardId: string): Promise<ActionResult> {
+  const tr = await getTranslations();
   const gate = await useElevation("kiosk_card.unlock_pin");
   if (!gate.ok) return actionError(gate.error);
-  const parsed = cardIdSchema.safeParse(cardId);
-  if (!parsed.success) return actionError("入力が不正です");
+  const parsed = cardIdSchema(tr).safeParse(cardId);
+  if (!parsed.success) return actionError(tr("common.invalidInput"));
 
   try {
     const card = await prisma.kioskCard.findUnique({
       where: { id: parsed.data },
       select: { status: true },
     });
-    if (!card) return actionError("対象のカードが見つかりません");
+    if (!card) return actionError(tr("settings.kioskCardActions.cardNotFound"));
     await prisma.kioskCard.update({
       where: { id: parsed.data },
       data: { pinFailedAttempts: 0, pinLockedUntil: null },
@@ -469,11 +554,17 @@ export async function unlockPin(cardId: string): Promise<ActionResult> {
       action: "UPDATE",
       tableName: "kiosk_cards",
       recordId: parsed.data,
-      after: { note: "PIN ロックを解除" },
+      after: { note: tr("settings.kioskCardActions.auditPinUnlocked") },
     });
     revalidate(parsed.data);
     return actionOk();
   } catch (e) {
-    return actionError(prismaErrorMessage(e, "PIN ロックの解除に失敗しました"));
+    return actionError(
+      prismaErrorMessage(
+        e,
+        tr("settings.kioskCardActions.pinUnlockFailed"),
+        tr,
+      ),
+    );
   }
 }

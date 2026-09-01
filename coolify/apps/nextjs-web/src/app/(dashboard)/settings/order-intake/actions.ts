@@ -9,6 +9,7 @@
  */
 
 import { revalidatePath } from "next/cache";
+import { getTranslations } from "next-intl/server";
 import { z } from "zod";
 import { recordAudit } from "@/lib/audit";
 import { checkPermission } from "@/lib/authz";
@@ -25,6 +26,7 @@ const BASE_PATH = "/settings/order-intake";
  * 時間がかかる。画面は「開始した」ことだけ返して待たない。
  */
 export async function scanIntakeFolderNow(): Promise<ActionResult> {
+  const tr = await getTranslations();
   const authz = await checkPermission("system", "UPDATE");
   if (!authz.ok) return actionError(authz.error);
   try {
@@ -37,7 +39,7 @@ export async function scanIntakeFolderNow(): Promise<ActionResult> {
     return actionOk();
   } catch (e) {
     console.error("[order-intake] scan", e);
-    return actionError("スキャンの開始に失敗しました");
+    return actionError(tr("settings.orderIntakeActions.scanStartFailed"));
   }
 }
 
@@ -47,10 +49,12 @@ const fileNameInput = z.string().min(1).max(255);
 export async function retryFailedIntakeFile(
   fileName: string,
 ): Promise<ActionResult<{ name: string }>> {
+  const tr = await getTranslations();
   const authz = await checkPermission("system", "UPDATE");
   if (!authz.ok) return actionError(authz.error);
   const parsed = fileNameInput.safeParse(fileName);
-  if (!parsed.success) return actionError("ファイル名が不正です");
+  if (!parsed.success)
+    return actionError(tr("settings.orderIntakeActions.invalidFileName"));
   try {
     const name = await retryFailedIntake(parsed.data);
     await recordAudit({
@@ -63,6 +67,10 @@ export async function retryFailedIntakeFile(
     return actionOk({ name });
   } catch (e) {
     console.error("[order-intake] retry", e);
-    return actionError(e instanceof Error ? e.message : "再取込に失敗しました");
+    return actionError(
+      e instanceof Error
+        ? e.message
+        : tr("settings.orderIntakeActions.retryFailed"),
+    );
   }
 }

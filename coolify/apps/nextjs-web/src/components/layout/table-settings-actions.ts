@@ -11,6 +11,7 @@
  * そこに載せるものではない。
  */
 
+import { getTranslations } from "next-intl/server";
 import { sessionUserId } from "@/lib/authz";
 import { type ActionResult, actionError, actionOk } from "@/lib/server-action";
 import {
@@ -23,10 +24,13 @@ export async function saveTableColumns(
   key: string,
   hidden: string[],
 ): Promise<ActionResult> {
+  const tr = await getTranslations();
   const userId = await sessionUserId();
-  if (!userId) return actionError("ログインしてください");
+  if (!userId)
+    return actionError(tr("layout.tableSettingsActions.loginRequired"));
   // 画面が正しく送っていても受け取り側で確かめる（キーは DB の主キーの一部）。
-  if (!isTableSettingKey(key)) return actionError("表の指定が不正です");
+  if (!isTableSettingKey(key))
+    return actionError(tr("layout.tableSettingsActions.invalidTable"));
 
   try {
     await writeViewSetting(userId, key, {
@@ -34,6 +38,6 @@ export async function saveTableColumns(
     });
     return actionOk();
   } catch {
-    return actionError("表示する列の保存に失敗しました");
+    return actionError(tr("layout.tableSettingsActions.saveFailed"));
   }
 }

@@ -18,6 +18,7 @@
  */
 
 import { headers } from "next/headers";
+import { getTranslations } from "next-intl/server";
 import { z } from "zod";
 import { prisma } from "@/lib/db";
 import { resolveDeviceContext } from "@/lib/device-signals";
@@ -37,14 +38,6 @@ import {
   clearPortalLimit,
   recordPortalLimitFailure,
 } from "@/lib/portal-rate-limit";
-
-/** 利用者に見せる唯一の文言（成功・未登録・無効・送信失敗すべて共通）。 */
-const ISSUE_MESSAGE =
-  "入力されたアドレスが登録されていれば、確認コードを送信しました。10 分以内に入力してください。届かない場合は迷惑メールをご確認のうえ、担当営業へご連絡ください。";
-
-/** 照合の失敗も 1 文言に畳む（どこで外したかを教えない）。 */
-const VERIFY_ERROR = "確認コードが正しくないか、有効期限が切れています。";
-const BACKUP_ERROR = "バックアップコードが正しくありません。";
 
 export interface PortalIssueResult {
   ok: true;
@@ -101,6 +94,9 @@ export async function requestPortalOtp(
   formData: FormData,
 ): Promise<PortalIssueResult> {
   requirePortalFeature();
+  const tr = await getTranslations();
+  // 利用者に見せる唯一の文言（成功・未登録・無効・送信失敗すべて共通）。
+  const issueMessage = tr("portal.loginActions.issueMessage");
   const { ip, userAgent, device } = await requestContext();
   const raw = String(formData.get("email") ?? "");
   const parsed = emailSchema.safeParse(raw);
@@ -110,7 +106,7 @@ export async function requestPortalOtp(
   if (ip) await recordPortalLimitFailure("OTP_ISSUE_IP", ip);
   if (!parsed.success) {
     if (raw.trim()) await recordPortalLimitFailure("OTP_ISSUE_EMAIL", raw);
-    return { ok: true, challengeRef: null, message: ISSUE_MESSAGE };
+    return { ok: true, challengeRef: null, message: issueMessage };
   }
 
   const [byEmail, byIp] = await Promise.all([
@@ -122,7 +118,7 @@ export async function requestPortalOtp(
   if (byEmail.locked || byIp.locked) {
     record("FAILURE", "PORTAL_OTP", "RATE_LIMITED", null, email, device);
     // ロックされていることも伝えない（応答を変えない）。
-    return { ok: true, challengeRef: null, message: ISSUE_MESSAGE };
+    return { ok: true, challengeRef: null, message: issueMessage };
   }
   // 発行そのものを数える（成功でも積む — 連打でメールを撃たせない）。
   await recordPortalLimitFailure("OTP_ISSUE_EMAIL", email);
@@ -146,7 +142,7 @@ export async function requestPortalOtp(
     return {
       ok: true,
       challengeRef: issued.challengeRef,
-      message: ISSUE_MESSAGE,
+      message: issueMessage,
     };
   }
 
@@ -164,7 +160,7 @@ export async function requestPortalOtp(
   return {
     ok: true,
     challengeRef: issued.challengeRef,
-    message: ISSUE_MESSAGE,
+    message: issueMessage,
   };
 }
 
@@ -173,6 +169,9 @@ export async function verifyPortalOtp(
   formData: FormData,
 ): Promise<{ ok: true } | PortalActionError> {
   requirePortalFeature();
+  const tr = await getTranslations();
+  // 照合の失敗も 1 文言に畳む（どこで外したかを教えない）。
+  const verifyError = tr("portal.linkActions.otpInvalid");
   const { ip, userAgent, device } = await requestContext();
 
   const ref = refSchema.safeParse(String(formData.get("challengeRef") ?? ""));
@@ -181,11 +180,11 @@ export async function verifyPortalOtp(
 
   if ((await checkPortalLimit("OTP_VERIFY", limitKey)).locked) {
     record("FAILURE", "PORTAL_OTP", "RATE_LIMITED", null, null, device);
-    return { ok: false, error: VERIFY_ERROR };
+    return { ok: false, error: verifyError };
   }
   if (!ref.success || !code.success) {
     await recordPortalLimitFailure("OTP_VERIFY", limitKey);
-    return { ok: false, error: VERIFY_ERROR };
+    return { ok: false, error: verifyError };
   }
 
   const result = await verifyPortalChallenge({
@@ -202,7 +201,7 @@ export async function verifyPortalOtp(
           ? "PORTAL_CODE_ATTEMPTS"
           : "PORTAL_CODE_MISMATCH";
     record("FAILURE", "PORTAL_OTP", reason, null, null, device);
-    return { ok: false, error: VERIFY_ERROR };
+    return { ok: false, error: verifyError };
   }
 
   await clearPortalLimit("OTP_VERIFY", limitKey);
@@ -225,6 +224,8 @@ export async function verifyPortalBackupCode(
   formData: FormData,
 ): Promise<{ ok: true } | PortalActionError> {
   requirePortalFeature();
+  const tr = await getTranslations();
+  const backupError = tr("portal.loginActions.backupCodeInvalid");
   const { ip, userAgent, device } = await requestContext();
 
   const email = emailSchema.safeParse(String(formData.get("email") ?? ""));
@@ -235,11 +236,11 @@ export async function verifyPortalBackupCode(
 
   if ((await checkPortalLimit("BACKUP_VERIFY", limitKey)).locked) {
     record("FAILURE", "PORTAL_BACKUP", "RATE_LIMITED", null, null, device);
-    return { ok: false, error: BACKUP_ERROR };
+    return { ok: false, error: backupError };
   }
   if (!email.success || !code.success) {
     await recordPortalLimitFailure("BACKUP_VERIFY", limitKey);
-    return { ok: false, error: BACKUP_ERROR };
+    return { ok: false, error: backupError };
   }
 
   const result = await consumePortalBackupCode({
@@ -257,7 +258,7 @@ export async function verifyPortalBackupCode(
       null,
       device,
     );
-    return { ok: false, error: BACKUP_ERROR };
+    return { ok: false, error: backupError };
   }
 
   await clearPortalLimit("BACKUP_VERIFY", limitKey);

@@ -12,6 +12,7 @@
  */
 
 import { revalidatePath } from "next/cache";
+import { getTranslations } from "next-intl/server";
 import { z } from "zod";
 import {
   actOnCurrentStep,
@@ -57,21 +58,33 @@ function revalidate(pageNumber?: string) {
   }
 }
 
-const pageInput = z.object({
-  title: z.string().trim().min(1, "タイトルを入力してください").max(200),
-  summary: z.string().max(1000),
-  folder: z.string().max(200),
-  approvalRequired: z.boolean(),
-});
+function pageInputSchema(tr: Awaited<ReturnType<typeof getTranslations>>) {
+  return z.object({
+    title: z
+      .string()
+      .trim()
+      .min(1, tr("general.documentActions.titleRequired"))
+      .max(200),
+    summary: z.string().max(1000),
+    folder: z.string().max(200),
+    approvalRequired: z.boolean(),
+  });
+}
 
-const bodyInput = z.object({
-  title: z.string().trim().min(1, "タイトルを入力してください").max(200),
-  body: z.string(),
-  note: z.string().max(500),
-});
+function bodyInputSchema(tr: Awaited<ReturnType<typeof getTranslations>>) {
+  return z.object({
+    title: z
+      .string()
+      .trim()
+      .min(1, tr("general.documentActions.titleRequired"))
+      .max(200),
+    body: z.string(),
+    note: z.string().max(500),
+  });
+}
 
-export type PageInput = z.infer<typeof pageInput>;
-export type PageBodyInput = z.infer<typeof bodyInput>;
+export type PageInput = z.infer<ReturnType<typeof pageInputSchema>>;
+export type PageBodyInput = z.infer<ReturnType<typeof bodyInputSchema>>;
 
 const shareGrantInput = z.object({
   subjectType: z.enum(["EVERYONE", "PLANT", "ROLE", "USER"]),
@@ -81,6 +94,7 @@ const shareGrantInput = z.object({
 
 async function requirePageEdit(
   pageNumber: string,
+  tr: Awaited<ReturnType<typeof getTranslations>>,
 ): Promise<
   | { ok: true; page: { id: string; createdBy: string | null } }
   | { ok: false; error: string }
@@ -91,26 +105,33 @@ async function requirePageEdit(
     where: { pageNumber },
     select: { id: true, createdBy: true },
   });
-  if (!page) return { ok: false, error: "文書が見つかりません" };
+  if (!page)
+    return { ok: false, error: tr("general.documentActions.pageNotFound") };
   const access = await shareAccessFor(
     PAGE_OWNER_TYPE,
     pageNumber,
     page.createdBy,
   );
   if (!access.canEdit)
-    return { ok: false, error: "この文書を編集する権限がありません" };
+    return {
+      ok: false,
+      error: tr("general.documentActions.editPermissionDenied"),
+    };
   return { ok: true, page };
 }
 
 export async function createPage(
   input: PageInput,
 ): Promise<ActionResult<{ pageNumber: string }>> {
+  const tr = await getTranslations();
   const authz = await checkPermission("internal_page", "CREATE");
   if (!authz.ok) return actionError(authz.error);
 
-  const parsed = pageInput.safeParse(input);
+  const parsed = pageInputSchema(tr).safeParse(input);
   if (!parsed.success)
-    return actionError(parsed.error.issues[0]?.message ?? "入力が不正です");
+    return actionError(
+      parsed.error.issues[0]?.message ?? tr("common.invalidInput"),
+    );
 
   try {
     const actor = await getCurrentActorId();
@@ -148,7 +169,9 @@ export async function createPage(
     revalidate(pageNumber);
     return actionOk({ pageNumber });
   } catch (e) {
-    return actionError(prismaErrorMessage(e, "作成に失敗しました"));
+    return actionError(
+      prismaErrorMessage(e, tr("general.documentActions.createFailed"), tr),
+    );
   }
 }
 
@@ -156,12 +179,15 @@ export async function updatePageSettings(
   pageNumber: string,
   input: PageInput,
 ): Promise<ActionResult> {
-  const gate = await requirePageEdit(pageNumber);
+  const tr = await getTranslations();
+  const gate = await requirePageEdit(pageNumber, tr);
   if (!gate.ok) return actionError(gate.error);
 
-  const parsed = pageInput.safeParse(input);
+  const parsed = pageInputSchema(tr).safeParse(input);
   if (!parsed.success)
-    return actionError(parsed.error.issues[0]?.message ?? "入力が不正です");
+    return actionError(
+      parsed.error.issues[0]?.message ?? tr("common.invalidInput"),
+    );
 
   try {
     await prisma.internalPage.update({
@@ -183,7 +209,7 @@ export async function updatePageSettings(
     revalidate(pageNumber);
     return actionOk();
   } catch (e) {
-    return actionError(prismaErrorMessage(e, "保存に失敗しました"));
+    return actionError(prismaErrorMessage(e, tr("common.saveFailed"), tr));
   }
 }
 
@@ -198,17 +224,20 @@ export async function savePageBody(
   input: PageBodyInput,
   action: "UPDATE" | "RESTORE" = "UPDATE",
 ): Promise<ActionResult<{ revision: number }>> {
-  const gate = await requirePageEdit(pageNumber);
+  const tr = await getTranslations();
+  const gate = await requirePageEdit(pageNumber, tr);
   if (!gate.ok) return actionError(gate.error);
 
-  const parsed = bodyInput.safeParse(input);
+  const parsed = bodyInputSchema(tr).safeParse(input);
   if (!parsed.success)
-    return actionError(parsed.error.issues[0]?.message ?? "入力が不正です");
+    return actionError(
+      parsed.error.issues[0]?.message ?? tr("common.invalidInput"),
+    );
 
   const body = normalizeBody(parsed.data.body);
   if (lineCountOf(body) > MAX_DOC_LINES) {
     return actionError(
-      `本文が長すぎます（${MAX_DOC_LINES} 行まで）。文書を分けてください`,
+      tr("general.documentActions.bodyTooLong", { maxLines: MAX_DOC_LINES }),
     );
   }
 
@@ -325,14 +354,14 @@ export async function savePageBody(
       after: {
         note:
           action === "RESTORE"
-            ? `リビジョン ${revision} として復元`
-            : `リビジョン ${revision} を保存`,
+            ? tr("general.documentActions.restoredAsRevisionNote", { revision })
+            : tr("general.documentActions.savedRevisionNote", { revision }),
       },
     });
     revalidate(pageNumber);
     return actionOk({ revision });
   } catch (e) {
-    return actionError(prismaErrorMessage(e, "保存に失敗しました"));
+    return actionError(prismaErrorMessage(e, tr("common.saveFailed"), tr));
   }
 }
 
@@ -341,21 +370,25 @@ export async function restoreRevision(
   pageNumber: string,
   revision: number,
 ): Promise<ActionResult<{ revision: number }>> {
-  const gate = await requirePageEdit(pageNumber);
+  const tr = await getTranslations();
+  const gate = await requirePageEdit(pageNumber, tr);
   if (!gate.ok) return actionError(gate.error);
 
   const source = await prisma.internalPageRevision.findUnique({
     where: { pageId_revision: { pageId: gate.page.id, revision } },
     select: { title: true, body: true },
   });
-  if (!source) return actionError("そのリビジョンが見つかりません");
+  if (!source)
+    return actionError(tr("general.documentActions.revisionNotFound"));
 
   return savePageBody(
     pageNumber,
     {
       title: source.title,
       body: source.body,
-      note: `リビジョン ${revision} から復元`,
+      note: tr("general.documentActions.restoredFromRevisionNote", {
+        revision,
+      }),
     },
     "RESTORE",
   );
@@ -366,23 +399,25 @@ export async function restoreRevision(
  * **未解決コメントがあっても止めない** — 画面側で件数を警告するだけ。
  */
 export async function publishPage(pageNumber: string): Promise<ActionResult> {
-  const gate = await requirePageEdit(pageNumber);
+  const tr = await getTranslations();
+  const gate = await requirePageEdit(pageNumber, tr);
   if (!gate.ok) return actionError(gate.error);
 
   const page = await prisma.internalPage.findUnique({
     where: { pageNumber },
     select: { id: true, approvalRequired: true, status: true },
   });
-  if (!page) return actionError("文書が見つかりません");
+  if (!page) return actionError(tr("general.documentActions.pageNotFound"));
   if (page.status === "PENDING")
-    return actionError("すでに公開の承認依頼中です");
+    return actionError(tr("general.documentActions.alreadyPendingPublish"));
 
   const latest = await prisma.internalPageRevision.findFirst({
     where: { pageId: page.id },
     orderBy: { revision: "desc" },
     select: { revision: true, body: true },
   });
-  if (!latest || latest.body.trim() === "") return actionError("本文が空です");
+  if (!latest || latest.body.trim() === "")
+    return actionError(tr("general.documentActions.bodyIsEmpty"));
 
   try {
     if (page.approvalRequired) {
@@ -393,7 +428,10 @@ export async function publishPage(pageNumber: string): Promise<ActionResult> {
         targetId: pageNumber,
       });
       if (!started.ok)
-        return actionError(started.error ?? "承認依頼に失敗しました");
+        return actionError(
+          started.error ??
+            tr("production.workOrderActions.requestApprovalFailed"),
+        );
       await prisma.internalPage.update({
         where: { id: page.id },
         data: { status: "PENDING", updatedBy: await getCurrentActorId() },
@@ -402,7 +440,11 @@ export async function publishPage(pageNumber: string): Promise<ActionResult> {
         action: "UPDATE",
         tableName: "internal_pages",
         recordId: pageNumber,
-        after: { note: `リビジョン ${latest.revision} の公開を申請` },
+        after: {
+          note: tr("general.documentActions.publishRequestedNote", {
+            revision: latest.revision,
+          }),
+        },
       });
     } else {
       await prisma.internalPage.update({
@@ -417,13 +459,19 @@ export async function publishPage(pageNumber: string): Promise<ActionResult> {
         action: "UPDATE",
         tableName: "internal_pages",
         recordId: pageNumber,
-        after: { note: `リビジョン ${latest.revision} を公開` },
+        after: {
+          note: tr("general.documentActions.publishedNote", {
+            revision: latest.revision,
+          }),
+        },
       });
     }
     revalidate(pageNumber);
     return actionOk();
   } catch (e) {
-    return actionError(prismaErrorMessage(e, "公開に失敗しました"));
+    return actionError(
+      prismaErrorMessage(e, tr("general.documentActions.publishFailed"), tr),
+    );
   }
 }
 
@@ -432,6 +480,7 @@ async function actOnPage(
   action: "APPROVED" | "REJECTED",
   comment?: string,
 ): Promise<ActionResult> {
+  const tr = await getTranslations();
   const authz = await checkApprovalDocAccess("internal_page");
   if (!authz.ok) return actionError(authz.error);
 
@@ -439,9 +488,9 @@ async function actOnPage(
     where: { pageNumber },
     select: { id: true, status: true },
   });
-  if (!page) return actionError("文書が見つかりません");
+  if (!page) return actionError(tr("general.documentActions.pageNotFound"));
   if (page.status !== "PENDING")
-    return actionError("この文書は承認依頼中ではありません");
+    return actionError(tr("general.documentActions.pageNotPendingApproval"));
 
   const result = await actOnCurrentStep({
     targetType: "internal_pages",
@@ -449,7 +498,8 @@ async function actOnPage(
     action,
     comment,
   });
-  if (!result.ok) return actionError(result.error ?? "処理に失敗しました");
+  if (!result.ok)
+    return actionError(result.error ?? tr("common.theOperationFailed"));
 
   try {
     if (action === "REJECTED") {
@@ -479,15 +529,19 @@ async function actOnPage(
         note:
           action === "APPROVED"
             ? result.flowCompleted
-              ? "公開を承認（全段完了）"
-              : "公開を承認（次の段へ）"
-            : `公開を差し戻し: ${comment ?? ""}`,
+              ? tr("general.documentActions.publishApprovedFinalNote")
+              : tr("general.documentActions.publishApprovedNextStepNote")
+            : tr("general.documentActions.publishRejectedNote", {
+                reason: comment ?? "",
+              }),
       },
     });
     revalidate(pageNumber);
     return actionOk();
   } catch (e) {
-    return actionError(prismaErrorMessage(e, "処理に失敗しました"));
+    return actionError(
+      prismaErrorMessage(e, tr("common.theOperationFailed"), tr),
+    );
   }
 }
 
@@ -502,8 +556,10 @@ export async function rejectPagePublish(
   pageNumber: string,
   reason: string,
 ): Promise<ActionResult> {
+  const tr = await getTranslations();
   const trimmed = reason.trim();
-  if (!trimmed) return actionError("差し戻しの理由を入力してください");
+  if (!trimmed)
+    return actionError(tr("general.documentActions.rejectReasonRequired"));
   return actOnPage(pageNumber, "REJECTED", trimmed);
 }
 
@@ -511,24 +567,28 @@ export async function savePageShareGrants(
   pageNumber: string,
   grants: z.infer<typeof shareGrantInput>[],
 ): Promise<ActionResult> {
+  const tr = await getTranslations();
   const authz = await checkPermission("internal_page", "UPDATE");
   if (!authz.ok) return actionError(authz.error);
   const page = await prisma.internalPage.findUnique({
     where: { pageNumber },
     select: { createdBy: true },
   });
-  if (!page) return actionError("文書が見つかりません");
+  if (!page) return actionError(tr("general.documentActions.pageNotFound"));
   const access = await shareAccessFor(
     PAGE_OWNER_TYPE,
     pageNumber,
     page.createdBy,
   );
   if (!access.canManage)
-    return actionError("この文書の共有を変更する権限がありません");
+    return actionError(tr("general.documentActions.managePermissionDenied"));
 
   const parsed = z.array(shareGrantInput).max(200).safeParse(grants);
   if (!parsed.success)
-    return actionError(parsed.error.issues[0]?.message ?? "共有設定が不正です");
+    return actionError(
+      parsed.error.issues[0]?.message ??
+        tr("general.documentActions.invalidShareSettings"),
+    );
 
   try {
     await replaceShareGrants(
@@ -541,12 +601,22 @@ export async function savePageShareGrants(
       action: "UPDATE",
       tableName: "internal_pages",
       recordId: pageNumber,
-      after: { note: `共有設定を更新（${parsed.data.length} 件）` },
+      after: {
+        note: tr("general.documentActions.shareSettingsUpdatedNote", {
+          count: parsed.data.length,
+        }),
+      },
     });
     revalidate(pageNumber);
     return actionOk();
   } catch (e) {
-    return actionError(prismaErrorMessage(e, "共有設定の保存に失敗しました"));
+    return actionError(
+      prismaErrorMessage(
+        e,
+        tr("general.documentActions.saveShareSettingsFailed"),
+        tr,
+      ),
+    );
   }
 }
 
@@ -554,6 +624,7 @@ export async function savePageShareGrants(
 
 async function requirePageRead(
   pageNumber: string,
+  tr: Awaited<ReturnType<typeof getTranslations>>,
 ): Promise<
   | { ok: true; page: { id: string; createdBy: string | null }; userId: string }
   | { ok: false; error: string }
@@ -561,19 +632,24 @@ async function requirePageRead(
   const authz = await checkPermission("internal_page", "READ");
   if (!authz.ok) return { ok: false, error: authz.error };
   const userId = await sessionUserId();
-  if (!userId) return { ok: false, error: "ログインしてください" };
+  if (!userId)
+    return { ok: false, error: tr("general.documentActions.loginRequired") };
   const page = await prisma.internalPage.findUnique({
     where: { pageNumber },
     select: { id: true, createdBy: true },
   });
-  if (!page) return { ok: false, error: "文書が見つかりません" };
+  if (!page)
+    return { ok: false, error: tr("general.documentActions.pageNotFound") };
   const access = await shareAccessFor(
     PAGE_OWNER_TYPE,
     pageNumber,
     page.createdBy,
   );
   if (!access.canRead)
-    return { ok: false, error: "この文書を閲覧する権限がありません" };
+    return {
+      ok: false,
+      error: tr("general.documentActions.readPermissionDenied"),
+    };
   return { ok: true, page, userId };
 }
 
@@ -581,12 +657,14 @@ export async function addLineComment(
   pageNumber: string,
   input: { line: number; body: string; threadId?: string },
 ): Promise<ActionResult> {
-  const gate = await requirePageRead(pageNumber);
+  const tr = await getTranslations();
+  const gate = await requirePageRead(pageNumber, tr);
   if (!gate.ok) return actionError(gate.error);
 
   const body = input.body.trim();
-  if (!body) return actionError("コメントを入力してください");
-  if (body.length > 5000) return actionError("コメントが長すぎます");
+  if (!body) return actionError(tr("general.documentActions.commentRequired"));
+  if (body.length > 5000)
+    return actionError(tr("general.documentActions.commentTooLong"));
 
   try {
     const latest = await prisma.internalPageRevision.findFirst({
@@ -594,7 +672,7 @@ export async function addLineComment(
       orderBy: { revision: "desc" },
       select: { revision: true, body: true },
     });
-    if (!latest) return actionError("本文がありません");
+    if (!latest) return actionError(tr("general.documentActions.noBodyYet"));
 
     const lines = normalizeBody(latest.body).split("\n");
     const anchorText = lines[input.line - 1] ?? "";
@@ -623,12 +701,22 @@ export async function addLineComment(
       action: "UPDATE",
       tableName: "internal_pages",
       recordId: pageNumber,
-      after: { note: `${input.line} 行目にコメント` },
+      after: {
+        note: tr("general.documentActions.commentAddedNote", {
+          line: input.line,
+        }),
+      },
     });
     revalidate(pageNumber);
     return actionOk();
   } catch (e) {
-    return actionError(prismaErrorMessage(e, "コメントの保存に失敗しました"));
+    return actionError(
+      prismaErrorMessage(
+        e,
+        tr("general.documentActions.saveCommentFailed"),
+        tr,
+      ),
+    );
   }
 }
 
@@ -637,7 +725,8 @@ export async function setCommentResolved(
   threadId: string,
   resolved: boolean,
 ): Promise<ActionResult> {
-  const gate = await requirePageRead(pageNumber);
+  const tr = await getTranslations();
+  const gate = await requirePageRead(pageNumber, tr);
   if (!gate.ok) return actionError(gate.error);
 
   try {
@@ -652,7 +741,9 @@ export async function setCommentResolved(
     revalidate(pageNumber);
     return actionOk();
   } catch (e) {
-    return actionError(prismaErrorMessage(e, "更新に失敗しました"));
+    return actionError(
+      prismaErrorMessage(e, tr("general.documentActions.updateFailed"), tr),
+    );
   }
 }
 
@@ -660,7 +751,8 @@ export async function deleteLineComment(
   pageNumber: string,
   commentId: string,
 ): Promise<ActionResult> {
-  const gate = await requirePageRead(pageNumber);
+  const tr = await getTranslations();
+  const gate = await requirePageRead(pageNumber, tr);
   if (!gate.ok) return actionError(gate.error);
 
   try {
@@ -669,16 +761,16 @@ export async function deleteLineComment(
       select: { createdBy: true, pageId: true },
     });
     if (!row || row.pageId !== gate.page.id)
-      return actionError("コメントが見つかりません");
+      return actionError(tr("general.documentActions.commentNotFound"));
     // 消せるのは本人だけ（管理者は system:ADMIN で別途）。
     const admin = await checkPermission("internal_page", "ADMIN");
     if (row.createdBy !== gate.userId && !admin.ok)
-      return actionError("自分のコメントだけ削除できます");
+      return actionError(tr("general.documentActions.canOnlyDeleteOwnComment"));
 
     await prisma.internalPageLineComment.delete({ where: { id: commentId } });
     revalidate(pageNumber);
     return actionOk();
   } catch (e) {
-    return actionError(prismaErrorMessage(e, "削除に失敗しました"));
+    return actionError(prismaErrorMessage(e, tr("common.couldNotDelete"), tr));
   }
 }

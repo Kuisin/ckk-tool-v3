@@ -14,6 +14,7 @@
 
 import { type Access, rowInScope } from "@ckk/authz-core";
 import { revalidatePath } from "next/cache";
+import { getTranslations } from "next-intl/server";
 import { z } from "zod";
 import { recordAudit } from "@/lib/audit";
 import { checkPermission } from "@/lib/authz";
@@ -35,7 +36,6 @@ import {
 } from "@/lib/server-action";
 
 const BASE_PATH = "/shipping/delivery-notes";
-const SCOPE_DENIED = "この操作の権限がありません（対象範囲外）";
 
 /**
  * 対象納品書がスコープ内か（PLANT = 出荷書の出荷元拠点 ∪ OWN = 作成者）。
@@ -62,32 +62,49 @@ async function deliveryNoteInScope(
   );
 }
 
-const itemInput = z.object({
-  productId: z.string().min(1, "製品を選択してください"),
-  quantity: z.number().int().min(1, "数量は1以上"),
-  unitPrice: z.number().min(0).nullable(),
-  notes: z.string().nullable(),
-});
+function itemInputSchema(tr: Awaited<ReturnType<typeof getTranslations>>) {
+  return z.object({
+    productId: z.string().min(1, tr("common.selectAProduct")),
+    quantity: z
+      .number()
+      .int()
+      .min(1, tr("shipping.deliveryNoteActions.quantityMustBeAtLeastOne")),
+    unitPrice: z.number().min(0).nullable(),
+    notes: z.string().nullable(),
+  });
+}
 
-const baseInput = z.object({
-  /**
-   * 営業担当。未指定なら出荷書の担当を引き継ぎ、それも無ければ納品先の
-   * 主担当が入る（lib/sales-rep）。納品先は作成後不変。
-   */
-  salesRepId: z.string().nullable().optional(),
-  deliveryMethod: z.enum(["NORMAL", "DIRECT_TO_USER"]),
-  endUserBpId: z.string().nullable(),
-  includePrice: z.boolean(),
-  notes: z.string().nullable(),
-  items: z.array(itemInput).min(1, "明細を1件以上追加してください"),
-});
+function baseInputSchema(tr: Awaited<ReturnType<typeof getTranslations>>) {
+  return z.object({
+    /**
+     * 営業担当。未指定なら出荷書の担当を引き継ぎ、それも無ければ納品先の
+     * 主担当が入る（lib/sales-rep）。納品先は作成後不変。
+     */
+    salesRepId: z.string().nullable().optional(),
+    deliveryMethod: z.enum(["NORMAL", "DIRECT_TO_USER"]),
+    endUserBpId: z.string().nullable(),
+    includePrice: z.boolean(),
+    notes: z.string().nullable(),
+    items: z
+      .array(itemInputSchema(tr))
+      .min(1, tr("common.addAtLeastOneLineItem")),
+  });
+}
 
-const createInput = baseInput.extend({
-  deliveryOrderNumber: z.string().min(1, "出荷書を選択してください"),
-});
+function createInputSchema(tr: Awaited<ReturnType<typeof getTranslations>>) {
+  return baseInputSchema(tr).extend({
+    deliveryOrderNumber: z
+      .string()
+      .min(1, tr("shipping.deliveryNoteForm.selectADeliveryOrder")),
+  });
+}
 
-export type DeliveryNoteCreateInput = z.infer<typeof createInput>;
-export type DeliveryNoteUpdateInput = z.infer<typeof baseInput>;
+export type DeliveryNoteCreateInput = z.infer<
+  ReturnType<typeof createInputSchema>
+>;
+export type DeliveryNoteUpdateInput = z.infer<
+  ReturnType<typeof baseInputSchema>
+>;
 
 function revalidate(number?: string) {
   revalidatePath(BASE_PATH);
@@ -102,12 +119,15 @@ const trimOrNull = (v: string | null | undefined) => {
   return t || null;
 };
 
+interface ItemInputValue {
+  productId: string;
+  quantity: number;
+  unitPrice: number | null;
+  notes: string | null;
+}
+
 /** 明細行 → DB 値。価格記載なしのときは単価・金額を保存しない。 */
-function toItemData(
-  it: z.infer<typeof itemInput>,
-  i: number,
-  includePrice: boolean,
-) {
+function toItemData(it: ItemInputValue, i: number, includePrice: boolean) {
   const unitPrice = includePrice ? (it.unitPrice ?? 0) : null;
   return {
     productId: Number(it.productId),
@@ -156,6 +176,7 @@ export async function searchEndUserOptions(
 async function validateItemsAgainstShipment(
   shpKey: { yearMonth: string; seq: number },
   items: { productId: string | number; quantity: number }[],
+  tr: Awaited<ReturnType<typeof getTranslations>>,
 ): Promise<string | null> {
   const shipItems = await prisma.deliveryOrderItem.findMany({
     where: {
@@ -188,15 +209,23 @@ async function validateItemsAgainstShipment(
       return [p.id, code ? `${name}（${code}）` : name];
     }),
   );
-  const labelOf = (id: number) => labelById.get(id) ?? `製品 #${id}`;
+  const labelOf = (id: number) =>
+    labelById.get(id) ??
+    tr("shipping.deliveryNoteActions.productFallbackLabel", { id });
 
   for (const [productId, qty] of requested) {
     const shipped = shippedByProduct.get(productId);
     if (shipped == null) {
-      return `${labelOf(productId)} は出荷書に含まれていません`;
+      return tr("shipping.deliveryNoteActions.productNotInShipment", {
+        label: labelOf(productId),
+      });
     }
     if (qty > shipped) {
-      return `${labelOf(productId)} の数量 ${qty} が出荷数量 ${shipped} を超えています`;
+      return tr("shipping.deliveryNoteActions.exceedsShippedQuantity", {
+        label: labelOf(productId),
+        quantity: qty,
+        shipped,
+      });
     }
   }
   return null;
@@ -205,17 +234,25 @@ async function validateItemsAgainstShipment(
 export async function createDeliveryNote(
   payload: DeliveryNoteCreateInput,
 ): Promise<ActionResult<{ number: string }>> {
+  const tr = await getTranslations();
   const authz = await checkPermission("delivery_note", "CREATE");
   if (!authz.ok) return actionError(authz.error);
-  const parsed = createInput.safeParse(payload);
+  const parsed = createInputSchema(tr).safeParse(payload);
   if (!parsed.success) {
-    return actionError(parsed.error.issues[0]?.message ?? "入力が不正です");
+    return actionError(
+      parsed.error.issues[0]?.message ?? tr("common.invalidInput"),
+    );
   }
   const v = parsed.data;
   const shpKey = parseDocKey(v.deliveryOrderNumber, "DOR");
-  if (!shpKey) return actionError("出荷書番号が不正です");
+  if (!shpKey)
+    return actionError(
+      tr("shipping.deliveryNoteActions.invalidDeliveryOrderNumber"),
+    );
   if (v.deliveryMethod === "DIRECT_TO_USER" && !v.endUserBpId) {
-    return actionError("ユーザー直送では最終需要家を選択してください");
+    return actionError(
+      tr("shipping.deliveryNoteActions.selectEndUserForDirectToUser"),
+    );
   }
   try {
     // 納品先は出荷書ヘッダの顧客（+支店）から確定する。1 出荷書は複数の
@@ -233,18 +270,25 @@ export async function createDeliveryNote(
         },
       },
     });
-    if (!shp) return actionError("対象の出荷書が見つかりません");
+    if (!shp)
+      return actionError(
+        tr("shipping.deliveryNoteActions.deliveryOrderNotFound"),
+      );
     // スコープ行チェック（PLANT）: 対象出荷書の出荷元拠点がスコープ内であること。
     if (
       authz.access.kind !== "ALL" &&
       !rowInScope(authz.access, { plantIds: [shp.fromPlantId] }, authz.userId)
     ) {
-      return actionError(SCOPE_DENIED);
+      return actionError(tr("common.scopeDenied"));
     }
     if (shp.status !== "CONFIRMED" && shp.status !== "SHIPPED") {
-      return actionError("確定済み・出荷済みの出荷書のみ納品書を作成できます");
+      return actionError(
+        tr(
+          "shipping.deliveryNoteActions.deliveryOrderMustBeConfirmedOrShipped",
+        ),
+      );
     }
-    const itemsError = await validateItemsAgainstShipment(shpKey, v.items);
+    const itemsError = await validateItemsAgainstShipment(shpKey, v.items, tr);
     if (itemsError) return actionError(itemsError);
 
     const { yearMonth, seq } = await allocateDocumentKey("DELIVERY");
@@ -303,7 +347,13 @@ export async function createDeliveryNote(
     revalidatePath(`/shipping/delivery-orders/${v.deliveryOrderNumber}`);
     return actionOk({ number });
   } catch (e) {
-    return actionError(prismaErrorMessage(e, "納品書の作成に失敗しました"));
+    return actionError(
+      prismaErrorMessage(
+        e,
+        tr("shipping.deliveryNoteActions.createFailed"),
+        tr,
+      ),
+    );
   }
 }
 
@@ -312,20 +362,28 @@ export async function updateDeliveryNote(
   number: string,
   payload: DeliveryNoteUpdateInput,
 ): Promise<ActionResult<{ number: string }>> {
+  const tr = await getTranslations();
   const authz = await checkPermission("delivery_note", "UPDATE");
   if (!authz.ok) return actionError(authz.error);
   const key = parseDocKey(number, "DRN");
-  if (!key) return actionError("納品番号が不正です");
-  const parsed = baseInput.safeParse(payload);
+  if (!key)
+    return actionError(
+      tr("shipping.deliveryNoteActions.invalidDeliveryNoteNumber"),
+    );
+  const parsed = baseInputSchema(tr).safeParse(payload);
   if (!parsed.success) {
-    return actionError(parsed.error.issues[0]?.message ?? "入力が不正です");
+    return actionError(
+      parsed.error.issues[0]?.message ?? tr("common.invalidInput"),
+    );
   }
   const v = parsed.data;
   if (v.deliveryMethod === "DIRECT_TO_USER" && !v.endUserBpId) {
-    return actionError("ユーザー直送では最終需要家を選択してください");
+    return actionError(
+      tr("shipping.deliveryNoteActions.selectEndUserForDirectToUser"),
+    );
   }
   if (!(await deliveryNoteInScope(authz.access, authz.userId, key))) {
-    return actionError(SCOPE_DENIED);
+    return actionError(tr("common.scopeDenied"));
   }
   try {
     const prior = await prisma.deliveryNote.findUnique({
@@ -351,6 +409,7 @@ export async function updateDeliveryNote(
           seq: prior.deliveryOrderSeq,
         },
         v.items,
+        tr,
       );
       if (itemsError) return actionError(itemsError);
     }
@@ -368,7 +427,9 @@ export async function updateDeliveryNote(
         },
       });
       if (updated.count === 0) {
-        throw new Error("GUARD:下書きの納品書のみ編集できます");
+        throw new Error(
+          `GUARD:${tr("shipping.deliveryNoteActions.draftOnlyCanEdit")}`,
+        );
       }
       // 明細は全置換（DRAFT のみのため参照はまだ無い）。
       await tx.deliveryNoteItem.deleteMany({
@@ -406,18 +467,28 @@ export async function updateDeliveryNote(
     if (e instanceof Error && e.message.startsWith("GUARD:")) {
       return actionError(e.message.slice("GUARD:".length));
     }
-    return actionError(prismaErrorMessage(e, "納品書の更新に失敗しました"));
+    return actionError(
+      prismaErrorMessage(
+        e,
+        tr("shipping.deliveryNoteActions.updateFailed"),
+        tr,
+      ),
+    );
   }
 }
 
 /** 発行 (DRAFT → ISSUED)。 */
 export async function issueDeliveryNote(number: string): Promise<ActionResult> {
+  const tr = await getTranslations();
   const authz = await checkPermission("delivery_note", "UPDATE");
   if (!authz.ok) return actionError(authz.error);
   const key = parseDocKey(number, "DRN");
-  if (!key) return actionError("納品番号が不正です");
+  if (!key)
+    return actionError(
+      tr("shipping.deliveryNoteActions.invalidDeliveryNoteNumber"),
+    );
   if (!(await deliveryNoteInScope(authz.access, authz.userId, key))) {
-    return actionError(SCOPE_DENIED);
+    return actionError(tr("common.scopeDenied"));
   }
   try {
     const updated = await prisma.deliveryNote.updateMany({
@@ -425,7 +496,7 @@ export async function issueDeliveryNote(number: string): Promise<ActionResult> {
       data: { status: "ISSUED" },
     });
     if (updated.count === 0) {
-      return actionError("下書きの納品書のみ発行できます");
+      return actionError(tr("shipping.deliveryNoteActions.draftOnlyCanIssue"));
     }
     await recordAudit({
       action: "UPDATE",
@@ -437,18 +508,24 @@ export async function issueDeliveryNote(number: string): Promise<ActionResult> {
     revalidate(number);
     return actionOk();
   } catch (e) {
-    return actionError(prismaErrorMessage(e, "発行に失敗しました"));
+    return actionError(
+      prismaErrorMessage(e, tr("shipping.deliveryNoteActions.issueFailed"), tr),
+    );
   }
 }
 
 /** 納品済み (ISSUED → DELIVERED + deliveredAt=now)。 */
 export async function markDelivered(number: string): Promise<ActionResult> {
+  const tr = await getTranslations();
   const authz = await checkPermission("delivery_note", "UPDATE");
   if (!authz.ok) return actionError(authz.error);
   const key = parseDocKey(number, "DRN");
-  if (!key) return actionError("納品番号が不正です");
+  if (!key)
+    return actionError(
+      tr("shipping.deliveryNoteActions.invalidDeliveryNoteNumber"),
+    );
   if (!(await deliveryNoteInScope(authz.access, authz.userId, key))) {
-    return actionError(SCOPE_DENIED);
+    return actionError(tr("common.scopeDenied"));
   }
   try {
     const updated = await prisma.deliveryNote.updateMany({
@@ -456,7 +533,9 @@ export async function markDelivered(number: string): Promise<ActionResult> {
       data: { status: "DELIVERED", deliveredAt: new Date() },
     });
     if (updated.count === 0) {
-      return actionError("発行済みの納品書のみ納品済みにできます");
+      return actionError(
+        tr("shipping.deliveryNoteActions.issuedOnlyCanDeliver"),
+      );
     }
     await recordAudit({
       action: "UPDATE",
@@ -468,6 +547,12 @@ export async function markDelivered(number: string): Promise<ActionResult> {
     revalidate(number);
     return actionOk();
   } catch (e) {
-    return actionError(prismaErrorMessage(e, "納品処理に失敗しました"));
+    return actionError(
+      prismaErrorMessage(
+        e,
+        tr("shipping.deliveryNoteActions.deliverFailed"),
+        tr,
+      ),
+    );
   }
 }
