@@ -9,7 +9,7 @@
 
 import { deflateRawSync } from "node:zlib";
 import { describe, expect, it } from "vitest";
-import { cellNumber, cellText, buildXlsx } from "./xlsx";
+import { buildXlsx, cellNumber, cellText } from "./xlsx";
 import { columnIndex, readXlsx } from "./xlsx-read";
 
 describe("columnIndex", () => {
@@ -101,9 +101,10 @@ const sheet = (rows: string) =>
   `<?xml version="1.0"?><worksheet><sheetData>${rows}</sheetData></worksheet>`;
 
 describe("Excel が実際に使う書き方", () => {
-  it("共有文字列（t=\"s\"）を引ける", () => {
+  it('共有文字列（t="s"）を引ける', () => {
     const buf = zipOf({
-      "xl/sharedStrings.xml": '<sst><si><t>外径</t></si><si><t>mm</t></si></sst>',
+      "xl/sharedStrings.xml":
+        "<sst><si><t>外径</t></si><si><t>mm</t></si></sst>",
       "xl/worksheets/sheet1.xml": sheet(
         '<row r="1"><c r="A1" t="s"><v>0</v></c><c r="B1" t="s"><v>1</v></c></row>',
       ),
@@ -123,7 +124,7 @@ describe("Excel が実際に使う書き方", () => {
     expect(readXlsx(buf)[0]).toEqual(["外径"]);
   });
 
-  it("インライン文字列（t=\"inlineStr\"）も読む", () => {
+  it('インライン文字列（t="inlineStr"）も読む', () => {
     const buf = zipOf({
       "xl/worksheets/sheet1.xml": sheet(
         '<row r="1"><c r="A1" t="inlineStr"><is><t>直接</t></is></c></row>',
