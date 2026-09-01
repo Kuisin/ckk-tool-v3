@@ -281,6 +281,21 @@ function isInsideLocaleBlock(keyPath) {
   return keyPath.some((k) => k === "ja" || k === "en" || k === "zh");
 }
 
+/**
+ * `tr("…")` / `translate("…", …)` の引数か = **既に訳を引いている**。
+ *
+ * ja 鍵の対訳（src/lib/ui-text.ts）では日本語がそのまま鍵なので、包んだ後も
+ * ソースには日本語が残る。ここを数えると移行しても残数が減らず、ratchet が
+ * 働かない。
+ *
+ * 「鍵が辞書に有るか」はここでは見ない — それは i18n-verify-keys.mjs の仕事。
+ * 走査は「包まれているか」だけを見る。
+ */
+function isTranslationCall(source, stringStart) {
+  const before = source.slice(Math.max(0, stringStart - 12), stringStart);
+  return /\b(?:tr|translate)\(\s*$/.test(before);
+}
+
 /** 日本語のオブジェクトキー（`本: {...}`, `"本": {...}`）— 値であって文言ではない。 */
 function isObjectKey(source, stringStart, raw) {
   const after = source.slice(
@@ -306,6 +321,7 @@ export function scanFile(filePath, source) {
     if (!JAPANESE.test(s.value)) continue;
     if (isLocaleValue(source, s.start)) continue;
     if (isInsideLocaleBlock(s.keyPath ?? [])) continue;
+    if (isTranslationCall(source, s.start)) continue;
     if (isObjectKey(source, s.start, s.value)) continue;
     if (isIgnored(lines, s.line)) continue;
     findings.push({

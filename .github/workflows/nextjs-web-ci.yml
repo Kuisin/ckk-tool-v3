@@ -117,6 +117,11 @@ jobs:
       - name: i18n glossary consistency
         run: node ../../../tools/i18n/i18n-glossary-check.mjs
 
+      # ja を鍵にした対訳は、辞書に無ければ日本語をそのまま返す（壊れない代わりに
+      # 抜けが静かに日本語で出る）。tr() の鍵が辞書にあることはここでしか見られない。
+      - name: i18n translation keys exist
+        run: node ../../../tools/i18n/i18n-verify-keys.mjs
+
       # "use server" は async 関数しか export できない。定数を export すると
       # クライアントにはアクション参照が渡り、実行時に画面ごと落ちる
       # （tsc も biome も next build も検出しない）。

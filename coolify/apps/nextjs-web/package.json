@@ -14,6 +14,8 @@
     "test:watch": "vitest",
     "i18n:scan": "node ../../../tools/i18n/i18n-scan.mjs",
     "i18n:glossary": "node ../../../tools/i18n/i18n-glossary-check.mjs",
+    "i18n:keys": "node ../../../tools/i18n/i18n-verify-keys.mjs",
+    "i18n:todo": "node ../../../tools/i18n/i18n-todo.mjs",
     "i18n:baseline": "node ../../../tools/i18n/i18n-scan.mjs --update-baseline",
     "db:sync-schema": "rm -rf prisma/schema && cp -R ../../../shared-db/prisma/schema prisma/schema",
     "db:generate": "prisma generate"

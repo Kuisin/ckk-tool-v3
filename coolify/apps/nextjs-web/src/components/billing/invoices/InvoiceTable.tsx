@@ -16,6 +16,7 @@ import { type Column, DataTable } from "@/components/ui/DataTable";
 import { MoneyText } from "@/components/ui/MoneyText";
 import { StatusBadge, statusOptions } from "@/components/ui/StatusBadge";
 import { ListShell } from "@/components/ui/shells";
+import { useTr } from "@/hooks/useTr";
 import { useUrlSelectState, useUrlStringState } from "@/hooks/useUrlState";
 import { useIsMobile } from "@/hooks/useViewport";
 import type { Formatters } from "@/lib/format";
@@ -29,6 +30,7 @@ function periodLabel(fmt: Formatters, inv: Invoice): string {
 }
 
 export function InvoiceTable({ rows }: { rows: Invoice[] }) {
+  const tr = useTr();
   const fmt = useFormat();
   const router = useRouter();
   const isMobile = useIsMobile();
@@ -55,7 +57,7 @@ export function InvoiceTable({ rows }: { rows: Invoice[] }) {
   const columns: Column<Invoice>[] = [
     {
       key: "invoiceNumber",
-      header: "請求番号",
+      header: tr("請求番号"),
       sortable: true,
       render: (inv) => (
         <Text ff="mono" size="sm">
@@ -65,7 +67,7 @@ export function InvoiceTable({ rows }: { rows: Invoice[] }) {
     },
     {
       key: "customerName",
-      header: "顧客",
+      header: tr("顧客"),
       sortable: true,
       render: (inv) => (
         <>
@@ -80,7 +82,7 @@ export function InvoiceTable({ rows }: { rows: Invoice[] }) {
     },
     {
       key: "billingPeriod",
-      header: "請求期間",
+      header: tr("請求期間"),
       sortValue: (inv) => inv.billingPeriodTo,
       render: (inv) => (
         <Text className="tabular-nums" size="sm">
@@ -90,7 +92,7 @@ export function InvoiceTable({ rows }: { rows: Invoice[] }) {
     },
     {
       key: "totalAmount",
-      header: "合計金額",
+      header: tr("合計金額"),
       width: 130,
       align: "right",
       sortable: true,
@@ -99,14 +101,14 @@ export function InvoiceTable({ rows }: { rows: Invoice[] }) {
     },
     {
       key: "status",
-      header: "状態",
+      header: tr("状態"),
       width: 100,
       sortValue: (inv) => inv.status,
       render: (inv) => <StatusBadge entity="Invoice" status={inv.status} />,
     },
     {
       key: "issuedAt",
-      header: "発行日",
+      header: tr("発行日"),
       width: 120,
       sortValue: (inv) => inv.issuedAt ?? "",
       render: (inv) => (
@@ -119,14 +121,14 @@ export function InvoiceTable({ rows }: { rows: Invoice[] }) {
 
   return (
     <ListShell
-      breadcrumbs={["請求", "請求書"]}
+      breadcrumbs={[tr("請求"), tr("請求書")]}
       filters={
         <Select
           clearable
           data={statusOptions("Invoice")}
           flex={isMobile ? 1 : undefined}
           onChange={setStatus}
-          placeholder="状態"
+          placeholder={tr("状態")}
           value={status}
           w={isMobile ? undefined : 140}
         />
@@ -140,7 +142,7 @@ export function InvoiceTable({ rows }: { rows: Invoice[] }) {
           value={search}
         />
       }
-      title="請求書"
+      title={tr("請求書")}
     >
       <DataTable
         columns={columns}
