@@ -16,6 +16,8 @@
  *      （1 版 1 件）が書けて、読み込み直しても残ること
  *   7. 多言語の名称欄（LocalizedTextInput）— 打った文字がそのまま欄に入り、
  *      日本語も他言語も保存されること（MS0D 作業場所・地域）
+ *   8. MS0D 作業場所が携帯幅で読めること — 表は 1 行 = 1 件へ、操作は「⋯」へ
+ *      畳み、広げれば表に戻る
  *
  * 落ちたときに原因を追えるよう、check() には**実測値**（URL・幅・ラベル）を
  * 添えること。合否だけだと「なぜ」が残らない。
@@ -646,6 +648,82 @@ async function main(): Promise<void> {
     "地域: 保存できる",
     (await page.getByText(regionCode).count()) > 0,
     regionCode,
+  );
+
+  // ── 9. MS0D 作業場所が携帯幅で読める ──────────────────────────────────
+  //
+  // 6 列の表を 390px に置くと 1 列 40px になり、操作 4 つのボタン列は幅を
+  // 食い切る。design.md §20.2 のとおり「表 → 1 行 = 1 件」「ボタン列 →
+  // メニュー」へ落とす。**幅で決まる**ので、広げれば表に戻ること
+  // （デスクトップを犠牲にしていないこと）まで見る。
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto(`${APP}/master/work-locations`, { waitUntil: "networkidle" });
+  await page.waitForTimeout(700);
+  const overflowPx = await page.evaluate(
+    () => document.documentElement.scrollWidth - window.innerWidth,
+  );
+  check(
+    "MS0D 390px: 横にはみ出さない",
+    overflowPx <= 0,
+    `はみ出し ${overflowPx}px`,
+  );
+  const theadCount = await page.locator("table thead").count();
+  check(
+    "MS0D 390px: 6 列の表をやめて 1 行 = 1 件にする",
+    theadCount === 0,
+    `thead ${theadCount} 個`,
+  );
+  // グループの「⋯」は「操作メニュー」、行の「⋯」は「操作」（用語集の既存語）。
+  // exact を付けないと「操作」が「操作メニュー」にも当たる。
+  const groupMenus = await page
+    .getByRole("button", { exact: true, name: "操作メニュー" })
+    .count();
+  check("MS0D 390px: 操作は「⋯」に畳む", groupMenus > 0, `${groupMenus} 個`);
+  const rowMenus = await page
+    .getByRole("button", { exact: true, name: "操作" })
+    .count();
+  check("MS0D 390px: 場所ごとの操作も「⋯」", rowMenus > 0, `${rowMenus} 個`);
+  await page
+    .getByRole("button", { exact: true, name: "操作メニュー" })
+    .first()
+    .click();
+  await page.waitForTimeout(400);
+  const menuItems = await page.getByRole("menuitem").allInnerTexts();
+  check(
+    "MS0D 390px: 畳んでも操作は 4 つとも残る",
+    menuItems.length === 4,
+    menuItems.join(" / "),
+  );
+  await page.keyboard.press("Escape");
+  await page.waitForTimeout(300);
+
+  // 種別管理は入力 3 つが横に並ぶので、携帯では縦積み（1 行 = 1 カード）
+  await page.getByRole("button", { name: "種別" }).first().click();
+  await page.waitForTimeout(700);
+  const keyBox = await page
+    .getByRole("dialog")
+    .getByRole("textbox", { name: /種別キー/ })
+    .first()
+    .boundingBox();
+  check(
+    "MS0D 390px: 種別管理の入力欄が細切れにならない",
+    (keyBox?.width ?? 0) > 200,
+    `幅 ${Math.round(keyBox?.width ?? 0)}px`,
+  );
+  await page.keyboard.press("Escape");
+  await page.waitForTimeout(400);
+
+  // 広げれば元の表に戻る（携帯対応でデスクトップを削っていない）
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.reload({ waitUntil: "networkidle" });
+  await page.waitForTimeout(700);
+  const wideThead = await page.locator("table thead").count();
+  check("MS0D 1440px: 表に戻る", wideThead > 0, `thead ${wideThead} 個`);
+  check(
+    "MS0D 1440px: 「⋯」は出さない",
+    (await page
+      .getByRole("button", { exact: true, name: "操作メニュー" })
+      .count()) === 0,
   );
 
   console.log("\n---- 結果 ----");
