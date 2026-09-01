@@ -16,9 +16,9 @@ import {
   Text,
   Textarea,
 } from "@mantine/core";
+import { useTranslations } from "next-intl";
 import { useState } from "react";
 import { GhostButton } from "@/components/ui/buttons";
-import { useTr } from "@/hooks/useTr";
 import { useIsMobile } from "@/hooks/useViewport";
 import { lineCountOf, MAX_DOC_LINES } from "@/lib/line-anchor";
 import { MarkdownView } from "./MarkdownView";
@@ -50,7 +50,7 @@ export function MarkdownEditor({
   onChange: (next: string) => void;
   minRows?: number;
 }) {
-  const tr = useTr();
+  const tr = useTranslations();
   const isMobile = useIsMobile();
   // スマホに分割表示は無い。横 375px を 2 つに割ると、どちらも読めない。
   const [mode, setMode] = useState<Mode>("split");
@@ -69,24 +69,24 @@ export function MarkdownEditor({
     <Stack gap="xs">
       <Group gap="xs" wrap="wrap">
         <GhostButton onClick={() => apply((e) => wrapSelection(e, "**"))}>
-          {tr("太字")}
+          {tr("documents.markdownEditor.bold")}
         </GhostButton>
         <GhostButton onClick={() => apply((e) => wrapSelection(e, "_"))}>
-          {tr("斜体")}
+          {tr("documents.markdownEditor.italic")}
         </GhostButton>
         <GhostButton onClick={() => apply((e) => wrapSelection(e, "`"))}>
           コード
         </GhostButton>
         <GhostButton onClick={() => apply((e) => prefixLine(e, "## "))}>
-          {tr("見出し")}
+          {tr("common.heading")}
         </GhostButton>
         <GhostButton onClick={() => apply((e) => prefixLine(e, "- "))}>
-          {tr("箇条書き")}
+          {tr("documents.markdownEditor.bulletedList")}
         </GhostButton>
         <GhostButton
           onClick={() => apply((e) => wrapSelection(e, "[", "](/)"))}
         >
-          {tr("リンク")}
+          {tr("common.link")}
         </GhostButton>
       </Group>
       <Textarea
@@ -123,13 +123,19 @@ export function MarkdownEditor({
         data={
           isMobile
             ? [
-                { value: "edit", label: tr("編集") },
-                { value: "preview", label: tr("プレビュー") },
+                { value: "edit", label: tr("common.edit2") },
+                {
+                  value: "preview",
+                  label: tr("documents.markdownEditor.preview"),
+                },
               ]
             : [
-                { value: "edit", label: tr("編集") },
-                { value: "split", label: tr("分割") },
-                { value: "preview", label: tr("プレビュー") },
+                { value: "edit", label: tr("common.edit2") },
+                { value: "split", label: tr("documents.markdownEditor.split") },
+                {
+                  value: "preview",
+                  label: tr("documents.markdownEditor.preview"),
+                },
               ]
         }
         fullWidth={isMobile}

@@ -34,7 +34,7 @@ import {
 } from "@tabler/icons-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useLocale } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { useState } from "react";
 import { useFormat } from "@/components/layout/PreferencesProvider";
 import { ActiveBadge } from "@/components/ui/ActiveBadge";
@@ -50,7 +50,6 @@ import {
   ResourceActions,
   SummaryGrid,
 } from "@/components/ui/shells";
-import { useTr } from "@/hooks/useTr";
 import { useTabParam } from "@/hooks/useUrlState";
 import {
   inspectionDepartmentLabel,
@@ -162,7 +161,7 @@ export function InspectionTemplateDetail({
   /** 検査承認グループの選択肢（承認設定 MS0B の approval_groups）。 */
   groupOptions: { value: string; label: string }[];
 }) {
-  const tr = useTr();
+  const tr = useTranslations();
   const locale = useLocale();
   const fmt = useFormat();
   const router = useRouter();
@@ -200,17 +199,19 @@ export function InspectionTemplateDetail({
         <ResourceActions
           menuItems={[
             {
-              label: tr("新バージョンを作成"),
+              label: tr("common.createANewVersion"),
               icon: <IconVersions size={14} />,
               onClick: () => setVersionOpen(true),
             },
             {
-              label: tr("検査承認の宛先を変更"),
+              label: tr(
+                "master.inspectionTemplates.changeTheInspectionApprovalRecipient",
+              ),
               icon: <IconUsersGroup size={14} />,
               onClick: () => setApprovalGroupOpen(true),
             },
             {
-              label: record.isActive ? "無効化" : tr("有効化"),
+              label: record.isActive ? "無効化" : tr("common.enable"),
               icon: <IconCircleMinus size={14} />,
               onClick: () => setToggleOpen(true),
             },
@@ -229,13 +230,13 @@ export function InspectionTemplateDetail({
           }
           pdf={{
             href: `/api/pdf/inspection-sheet?templateId=${record.id}`,
-            label: tr("空欄シート"),
+            label: tr("master.inspectionTemplates.blankSheet"),
           }}
         />
       }
       breadcrumbs={[
-        tr("マスタ"),
-        { label: tr("検査表テンプレート"), href: BASE_PATH },
+        tr("common.masterData"),
+        { label: tr("common.inspectionTemplates"), href: BASE_PATH },
         `${record.code} v${record.version}`,
       ]}
       createdAt={fmt.dateTime(record.createdAt)}
@@ -252,9 +253,7 @@ export function InspectionTemplateDetail({
     >
       {record.isLocked && (
         <Alert color="blue" icon={<IconLock size={16} />}>
-          {tr(
-            "このバージョンは指示書または検査記録で使用中のため変更できません。\n          内容を変更するには「新バージョンを作成」してください（既存の記録は\n          このバージョンのまま残ります）。",
-          )}
+          {tr("master.inspectionTemplates.thisVersionCannotBeChangedWhile")}
         </Alert>
       )}
 
@@ -264,21 +263,21 @@ export function InspectionTemplateDetail({
           value={<DocNumber>{record.code}</DocNumber>}
         />
         <FieldValue
-          label={tr("バージョン")}
+          label={tr("common.version")}
           value={`v${record.version}${record.isLatestVersion ? "（最新）" : ""}`}
         />
-        <FieldValue label={tr("名称")} value={record.nameJa} />
+        <FieldValue label={tr("common.name2")} value={record.nameJa} />
         <FieldValue
-          label={tr("関連工程")}
+          label={tr("common.relatedStep")}
           value={record.relatedProcessStep || "—"}
         />
         <FieldValue
-          label={tr("対象製品")}
-          value={record.productName || tr("汎用")}
+          label={tr("common.targetProduct")}
+          value={record.productName || tr("common.generic")}
         />
         {record.groupName && (
           <FieldValue
-            label={tr("グループ")}
+            label={tr("common.group")}
             value={
               <Badge color="gray" variant="light">
                 {record.groupName}
@@ -287,76 +286,83 @@ export function InspectionTemplateDetail({
           />
         )}
         <FieldValue
-          label={tr("検査対象")}
+          label={tr("master.inspectionTemplates.inspectionTarget")}
           value={samplingLabelJa({
             samplingMode: record.samplingMode,
             samplingValue: record.samplingValue,
           })}
         />
         <FieldValue
-          label={tr("記録方式")}
+          label={tr("common.recordingMode")}
           value={
             record.recordStyle === "COUNTS"
-              ? tr("合格数のみ")
-              : tr("実測値（製品ごと）")
+              ? tr("common.passCountOnly")
+              : tr("common.measuredValuePerProduct")
           }
         />
         <FieldValue
-          label={tr("印刷レイアウト")}
+          label={tr("common.printLayout")}
           value={inspectionLayoutStyleLabel(record.layoutStyle, locale)}
         />
         {record.recordStyle === "VALUES" && (
           <FieldValue
-            label={tr("サンプル呼称")}
+            label={tr("common.sampleName")}
             value={
               record.sampleNaming === "INITIAL_MID_FINAL"
-                ? tr("初品・中間品・最終品")
-                : tr("製品1, 2, 3…")
+                ? tr("master.inspectionTemplates.initialInterimFinal")
+                : tr("master.inspectionTemplates.product123")
             }
           />
         )}
         <FieldValue
-          label={tr("検査承認の宛先")}
+          label={tr("common.inspectionApprovalRecipient")}
           value={
             record.approvalGroupName ??
             (record.approvers.length > 0
               ? record.approvers.map((a) => a.label).join("、")
-              : tr("未設定（誰でも検収可）"))
+              : tr("master.inspectionTemplates.notSetAnyoneCanAccept"))
           }
         />
         <FieldValue
-          label={tr("検査項目数")}
+          label={tr("master.inspectionTemplates.inspectionItems")}
           value={`${record.items.length}件`}
         />
         <FieldValue
-          label={tr("状態")}
+          label={tr("common.status")}
           value={<ActiveBadge active={record.isActive} />}
         />
       </SummaryGrid>
 
       <AppTabs onChange={setTab} value={tab}>
         <Tabs.List>
-          <Tabs.Tab value="info">{tr("テンプレート情報")}</Tabs.Tab>
-          <Tabs.Tab value="items">{tr("検査項目")}</Tabs.Tab>
-          <Tabs.Tab value="versions">{tr("バージョン")}</Tabs.Tab>
-          <Tabs.Tab value="history">{tr("履歴")}</Tabs.Tab>
+          <Tabs.Tab value="info">
+            {tr("master.inspectionTemplates.templateInformation")}
+          </Tabs.Tab>
+          <Tabs.Tab value="items">
+            {tr("master.inspectionTemplates.inspectionItem")}
+          </Tabs.Tab>
+          <Tabs.Tab value="versions">{tr("common.version")}</Tabs.Tab>
+          <Tabs.Tab value="history">{tr("common.history")}</Tabs.Tab>
         </Tabs.List>
 
         <Tabs.Panel pt="md" value="info">
           <Stack gap="md">
             <Stack gap="sm">
-              <FieldValue label={tr("名称（日本語）")} value={record.nameJa} />
               <FieldValue
-                label={tr("名称（英語）")}
+                label={tr("common.nameJapanese")}
+                value={record.nameJa}
+              />
+              <FieldValue
+                label={tr("common.nameEnglish")}
                 value={record.nameEn || "—"}
               />
               <FieldValue
-                label={tr("関連工程")}
+                label={tr("common.relatedStep")}
                 value={record.relatedProcessStep || "—"}
               />
               <FieldValue
-                label={tr("対象製品")}
-                value={record.productName || tr("汎用")}
+                label={tr("common.targetProduct")}
+                value={record.productName || tr("common.generic")}
               />
             </Stack>
             <InspectionTemplateImagePanel
@@ -374,7 +380,7 @@ export function InspectionTemplateDetail({
                   leftSection={<IconVersions size={14} />}
                   onClick={() => setVersionOpen(true)}
                 >
-                  {tr("新バージョンを作成して編集")}
+                  {tr("master.inspectionTemplates.createANewVersionAndEdit")}
                 </GhostButton>
               ) : (
                 <GhostButton
@@ -384,26 +390,32 @@ export function InspectionTemplateDetail({
                     setItemModalOpen(true);
                   }}
                 >
-                  {tr("項目を追加")}
+                  {tr("common.addAnItem")}
                 </GhostButton>
               )}
             </Group>
             {record.items.length === 0 ? (
               <EmptyState
                 icon={<IconListCheck size={24} />}
-                message={tr("検査項目がありません")}
+                message={tr(
+                  "master.inspectionTemplates.thereAreNoInspectionItems",
+                )}
               />
             ) : (
               <ScrollArea>
                 <Table striped withTableBorder>
                   <Table.Thead>
                     <Table.Tr>
-                      <Table.Th>{tr("項目名")}</Table.Th>
-                      <Table.Th w={110}>{tr("種別")}</Table.Th>
-                      <Table.Th w={170}>{tr("合格基準")}</Table.Th>
-                      <Table.Th w={130}>{tr("目標")}</Table.Th>
-                      <Table.Th w={70}>{tr("必須")}</Table.Th>
-                      <Table.Th w={70}>{tr("表示順")}</Table.Th>
+                      <Table.Th>{tr("common.itemName")}</Table.Th>
+                      <Table.Th w={110}>{tr("common.type2")}</Table.Th>
+                      <Table.Th w={170}>
+                        {tr("master.inspectionTemplates.passCriteria")}
+                      </Table.Th>
+                      <Table.Th w={130}>
+                        {tr("master.inspectionTemplates.target")}
+                      </Table.Th>
+                      <Table.Th w={70}>{tr("common.required2")}</Table.Th>
+                      <Table.Th w={70}>{tr("common.sortOrder")}</Table.Th>
                       {!record.isLocked && <Table.Th w={80} />}
                     </Table.Tr>
                   </Table.Thead>
@@ -433,12 +445,16 @@ export function InspectionTemplateDetail({
                               </Badge>
                               {!item.allowManualOverride && (
                                 <Badge color="orange" size="xs" variant="light">
-                                  {tr("上書き不可")}
+                                  {tr(
+                                    "master.inspectionTemplates.cannotBeOverwritten",
+                                  )}
                                 </Badge>
                               )}
                               {item.section === "SHAPE" && (
                                 <Badge color="teal" size="xs" variant="light">
-                                  {tr("形状欄")}
+                                  {tr(
+                                    "master.inspectionTemplates.shapeSection",
+                                  )}
                                 </Badge>
                               )}
                               {item.department && (
@@ -474,11 +490,11 @@ export function InspectionTemplateDetail({
                           <Table.Td>
                             {item.isRequired ? (
                               <Badge color="blue" variant="light">
-                                {tr("必須")}
+                                {tr("common.required2")}
                               </Badge>
                             ) : (
                               <Badge color="gray" variant="light">
-                                {tr("任意")}
+                                {tr("common.optional")}
                               </Badge>
                             )}
                           </Table.Td>
@@ -490,9 +506,14 @@ export function InspectionTemplateDetail({
                           {!record.isLocked && (
                             <Table.Td>
                               <Group gap={4} justify="flex-end" wrap="nowrap">
-                                <Tooltip label={tr("編集")} withinPortal>
+                                <Tooltip
+                                  label={tr("common.edit2")}
+                                  withinPortal
+                                >
                                   <ActionIcon
-                                    aria-label={tr("検査項目を編集")}
+                                    aria-label={tr(
+                                      "master.inspectionTemplates.editTheInspectionItem",
+                                    )}
                                     color="gray"
                                     onClick={() => {
                                       setEditItem(item);
@@ -505,7 +526,9 @@ export function InspectionTemplateDetail({
                                 </Tooltip>
                                 <Tooltip label="削除" withinPortal>
                                   <ActionIcon
-                                    aria-label={tr("検査項目を削除")}
+                                    aria-label={tr(
+                                      "master.inspectionTemplates.deleteTheInspectionItem",
+                                    )}
                                     color="red"
                                     onClick={() => setDeleteItem(item)}
                                     variant="subtle"
@@ -530,18 +553,20 @@ export function InspectionTemplateDetail({
           {record.versions.length === 0 ? (
             <EmptyState
               icon={<IconGitBranch size={24} />}
-              message={tr("他のバージョンはありません")}
+              message={tr("master.inspectionTemplates.thereAreNoOtherVersions")}
             />
           ) : (
             <ScrollArea>
               <Table striped withTableBorder>
                 <Table.Thead>
                   <Table.Tr>
-                    <Table.Th w={110}>{tr("バージョン")}</Table.Th>
-                    <Table.Th w={90}>{tr("項目数")}</Table.Th>
-                    <Table.Th w={110}>{tr("使用状況")}</Table.Th>
-                    <Table.Th w={90}>{tr("状態")}</Table.Th>
-                    <Table.Th>{tr("更新日時")}</Table.Th>
+                    <Table.Th w={110}>{tr("common.version")}</Table.Th>
+                    <Table.Th w={90}>{tr("common.items")}</Table.Th>
+                    <Table.Th w={110}>
+                      {tr("master.inspectionTemplates.usage")}
+                    </Table.Th>
+                    <Table.Th w={90}>{tr("common.status")}</Table.Th>
+                    <Table.Th>{tr("common.updatedAt")}</Table.Th>
                   </Table.Tr>
                 </Table.Thead>
                 <Table.Tbody>
@@ -554,7 +579,7 @@ export function InspectionTemplateDetail({
                               v{v.version}
                             </Text>
                             <Text c="dimmed" size="xs">
-                              {tr("（表示中）")}
+                              {tr("master.inspectionTemplates.showing")}
                             </Text>
                           </Group>
                         ) : (
@@ -577,11 +602,11 @@ export function InspectionTemplateDetail({
                       <Table.Td>
                         {v.inUse ? (
                           <Badge color="blue" variant="light">
-                            {tr("使用中")}
+                            {tr("master.inspectionTemplates.inUse")}
                           </Badge>
                         ) : (
                           <Badge color="gray" variant="light">
-                            {tr("未使用")}
+                            {tr("master.inspectionTemplates.unused")}
                           </Badge>
                         )}
                       </Table.Td>

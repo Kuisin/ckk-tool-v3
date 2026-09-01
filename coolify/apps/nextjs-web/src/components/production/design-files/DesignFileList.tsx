@@ -24,10 +24,10 @@ import {
   Text,
 } from "@mantine/core";
 import { IconMessage2, IconPencil, IconTrash } from "@tabler/icons-react";
+import { useTranslations } from "next-intl";
 import { useFormat } from "@/components/layout/PreferencesProvider";
 import { GhostButton } from "@/components/ui/buttons";
 import { DesignFileViewButton } from "@/components/ui/DesignFileViewer";
-import { useTr } from "@/hooks/useTr";
 import { useIsMobile } from "@/hooks/useViewport";
 import { isViewable } from "@/lib/design-file-kind";
 import {
@@ -84,7 +84,7 @@ export function DesignFileList({
   /** 「依頼 / 手動」のタグを出すか（製品マスタでは出す）。 */
   showSource?: boolean;
 }) {
-  const tr = useTr();
+  const tr = useTranslations();
   const fmt = useFormat();
   const isMobile = useIsMobile();
   const showNotes = rows.some((r) => r.notes);
@@ -122,7 +122,7 @@ export function DesignFileList({
         leftSection={<IconMessage2 size={14} />}
         onClick={() => onMemo(f)}
       >
-        {tr("メモ")}
+        {tr("common.memo")}
       </GhostButton>
     );
     if (!canEdit && !canDelete) {
@@ -146,7 +146,7 @@ export function DesignFileList({
             leftSection={<IconPencil size={14} />}
             onClick={() => onEdit?.(f)}
           >
-            {tr("備考")}
+            {tr("common.notes")}
           </GhostButton>
         )}
         {canDelete && (
@@ -222,13 +222,17 @@ export function DesignFileList({
       <Table highlightOnHover>
         <Table.Thead>
           <Table.Tr>
-            <Table.Th w={250}>{tr("バージョン")}</Table.Th>
-            <Table.Th>{tr("ファイル名")}</Table.Th>
-            {showNotes && <Table.Th>{tr("備考")}</Table.Th>}
-            {onOpenRequest && <Table.Th w={170}>{tr("元依頼")}</Table.Th>}
-            <Table.Th w={150}>{tr("登録日時")}</Table.Th>
+            <Table.Th w={250}>{tr("common.version")}</Table.Th>
+            <Table.Th>{tr("common.fileName")}</Table.Th>
+            {showNotes && <Table.Th>{tr("common.notes")}</Table.Th>}
+            {onOpenRequest && (
+              <Table.Th w={170}>
+                {tr("production.designFiles.originalRequest")}
+              </Table.Th>
+            )}
+            <Table.Th w={150}>{tr("common.registeredAt")}</Table.Th>
             {(onEdit || onDelete || onMemo) && (
-              <Table.Th w={230}>{tr("操作")}</Table.Th>
+              <Table.Th w={230}>{tr("common.actions")}</Table.Th>
             )}
           </Table.Tr>
         </Table.Thead>

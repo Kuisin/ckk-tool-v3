@@ -24,7 +24,7 @@ import {
 } from "@mantine/core";
 import { IconBellOff } from "@tabler/icons-react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useLocale } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import {
   markAllReadAction,
   markReadAction,
@@ -37,7 +37,6 @@ import {
   relativeTime,
   useNotificationSignal,
 } from "@/hooks/useNotifications";
-import { useTr } from "@/hooks/useTr";
 import {
   notificationTypeLabel,
   notificationTypeOptions,
@@ -59,7 +58,7 @@ export function NotificationListView({
   unreadOnly: boolean;
   type: string | null;
 }) {
-  const tr = useTr();
+  const tr = useTranslations();
   const locale = useLocale();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -106,8 +105,10 @@ export function NotificationListView({
             </GhostButton>
           ) : undefined
         }
-        breadcrumbs={[{ label: tr("通知") }]}
-        title={tr("通知")}
+        breadcrumbs={[
+          { label: tr("notifications.notificationListView.notifications") },
+        ]}
+        title={tr("notifications.notificationListView.notifications")}
       />
 
       <Paper p="sm" radius="md" shadow="xs">
@@ -115,7 +116,7 @@ export function NotificationListView({
         <Group align="center" gap="sm" mb="sm">
           <Switch
             checked={unreadOnly}
-            label={tr("未読のみ")}
+            label={tr("notifications.notificationListView.unreadOnly")}
             onChange={(e) =>
               updateParams({ unread: e.currentTarget.checked ? "1" : null })
             }
@@ -125,7 +126,7 @@ export function NotificationListView({
             clearable
             data={notificationTypeOptions(locale)}
             onChange={(v) => updateParams({ type: v })}
-            placeholder={tr("種別")}
+            placeholder={tr("common.type2")}
             value={type}
             w={160}
           />
@@ -137,7 +138,7 @@ export function NotificationListView({
         {items.length === 0 ? (
           <EmptyState
             icon={<IconBellOff size={24} />}
-            message={tr("通知はありません")}
+            message={tr("notifications.notificationListView.noNotifications")}
           />
         ) : (
           <Stack gap={0}>

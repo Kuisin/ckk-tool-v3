@@ -20,11 +20,11 @@ import {
 import { IconPackageImport, IconSearch } from "@tabler/icons-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { useFormat } from "@/components/layout/PreferencesProvider";
 import { type Column, DataTable } from "@/components/ui/DataTable";
 import { NewButton } from "@/components/ui/NewButton";
 import { ListShell } from "@/components/ui/shells";
-import { useTr } from "@/hooks/useTr";
 import { useUrlSelectState, useUrlStringState } from "@/hooks/useUrlState";
 import { useIsMobile } from "@/hooks/useViewport";
 import type { MaterialReceiptView } from "./model";
@@ -42,7 +42,7 @@ export function MaterialReceiptTable({
 }: {
   rows: MaterialReceiptView[];
 }) {
-  const tr = useTr();
+  const tr = useTranslations();
   const fmt = useFormat();
   const router = useRouter();
   const isMobile = useIsMobile();
@@ -71,7 +71,7 @@ export function MaterialReceiptTable({
   const columns: Column<MaterialReceiptView>[] = [
     {
       key: "material",
-      header: tr("素材"),
+      header: tr("common.materials"),
       sortable: true,
       sortValue: (r) => r.materialCode,
       render: (r) => (
@@ -87,20 +87,20 @@ export function MaterialReceiptTable({
     },
     {
       key: "supplierName",
-      header: tr("仕入先"),
+      header: tr("common.supplier"),
       sortable: true,
       sortValue: (r) => r.supplierName ?? "",
       render: (r) => r.supplierName ?? "—",
     },
     {
       key: "plantName",
-      header: tr("入荷拠点"),
+      header: tr("purchase.materialReceipts.receivingSite"),
       sortValue: (r) => r.plantName ?? "",
       render: (r) => r.plantName ?? "—",
     },
     {
       key: "quantity",
-      header: tr("数量"),
+      header: tr("common.quantity"),
       align: "right",
       width: 110,
       sortValue: (r) => r.quantity,
@@ -112,7 +112,7 @@ export function MaterialReceiptTable({
     },
     {
       key: "receivedAt",
-      header: tr("入荷日"),
+      header: tr("common.receivedDate"),
       width: 120,
       sortable: true,
       sortValue: (r) => r.receivedAt,
@@ -124,7 +124,7 @@ export function MaterialReceiptTable({
     },
     {
       key: "poNumber",
-      header: tr("発注明細"),
+      header: tr("common.orderLines"),
       width: 170,
       sortValue: (r) => r.poNumber ?? "",
       render: (r) =>
@@ -141,7 +141,7 @@ export function MaterialReceiptTable({
           </Anchor>
         ) : (
           <Badge color="gray" variant="light">
-            {tr("直接調達")}
+            {tr("common.directPurchase")}
           </Badge>
         ),
     },
@@ -150,14 +150,14 @@ export function MaterialReceiptTable({
   return (
     <ListShell
       action={<NewButton href={`${BASE_PATH}/new`} />}
-      breadcrumbs={[tr("購買"), tr("素材入荷")]}
+      breadcrumbs={[tr("common.purchasing"), tr("common.materialReceipt")]}
       filters={
         <Select
           clearable
           data={SOURCE_OPTIONS}
           flex={isMobile ? 1 : undefined}
           onChange={setSource}
-          placeholder={tr("入荷区分")}
+          placeholder={tr("purchase.materialReceipts.receiptType")}
           value={source}
           w={isMobile ? undefined : 150}
         />
@@ -167,11 +167,13 @@ export function MaterialReceiptTable({
         <TextInput
           leftSection={<IconSearch size={14} />}
           onChange={(e) => setSearch(e.currentTarget.value)}
-          placeholder={tr("素材コード・名称・仕入先・発注番号で検索")}
+          placeholder={tr(
+            "purchase.materialReceipts.searchByMaterialCodeNameSupplier",
+          )}
           value={search}
         />
       }
-      title={tr("素材入荷")}
+      title={tr("common.materialReceipt")}
     >
       <DataTable
         columns={columns}
@@ -179,7 +181,9 @@ export function MaterialReceiptTable({
         defaultSort={{ key: "receivedAt", dir: "desc" }}
         emptyAction={<NewButton href={`${BASE_PATH}/new`} />}
         emptyIcon={<IconPackageImport size={24} />}
-        emptyMessage={tr("素材入荷がありません")}
+        emptyMessage={tr(
+          "purchase.materialReceipts.thereAreNoMaterialReceipts",
+        )}
         getRowId={(r) => r.id}
         onRowClick={(r) => router.push(`${BASE_PATH}/${r.id}`)}
         renderCard={(r) => (
@@ -192,7 +196,7 @@ export function MaterialReceiptTable({
                 {r.materialName}
               </Text>
               <Text c="dimmed" size="xs" truncate>
-                {r.supplierName ?? tr("仕入先なし")}
+                {r.supplierName ?? tr("purchase.materialReceipts.noSupplier")}
                 {r.plantName ? ` / ${r.plantName}` : ""}
               </Text>
               <Group gap="md" mt={2}>
@@ -208,7 +212,7 @@ export function MaterialReceiptTable({
                 </Text>
               ) : (
                 <Badge color="gray" variant="light">
-                  {tr("直接調達")}
+                  {tr("common.directPurchase")}
                 </Badge>
               )}
               <Text c="dimmed" size="xs">

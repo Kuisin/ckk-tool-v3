@@ -11,12 +11,12 @@
 import { Center, Stack, Text, ThemeIcon, Title } from "@mantine/core";
 import { IconArrowLeft, IconError404, IconHome } from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { useEffect, useState } from "react";
 import { PrimaryButton, SecondaryButton } from "@/components/ui/buttons";
-import { useTr } from "@/hooks/useTr";
 
 export function NotFoundContent() {
-  const tr = useTr();
+  const tr = useTranslations();
   const router = useRouter();
   const [canGoBack, setCanGoBack] = useState(false);
 
@@ -31,11 +31,9 @@ export function NotFoundContent() {
         <ThemeIcon color="gray" radius="xl" size={72} variant="light">
           <IconError404 size={40} />
         </ThemeIcon>
-        <Title order={3}>{tr("ページが見つかりません")}</Title>
+        <Title order={3}>{tr("ui.notFoundContent.pageNotFound")}</Title>
         <Text c="dimmed" size="sm" ta="center">
-          {tr(
-            "URL が間違っているか、ページが移動・削除された可能性があります。",
-          )}
+          {tr("ui.notFoundContent.theUrlMayBeWrongOr")}
         </Text>
         <Stack gap="xs" mt="sm" w={240}>
           <PrimaryButton
@@ -43,7 +41,7 @@ export function NotFoundContent() {
             href="/"
             leftSection={<IconHome size={16} />}
           >
-            {tr("ホームへ戻る")}
+            {tr("common.backToHome")}
           </PrimaryButton>
           {canGoBack && (
             <SecondaryButton
@@ -51,7 +49,7 @@ export function NotFoundContent() {
               leftSection={<IconArrowLeft size={16} />}
               onClick={() => router.back()}
             >
-              {tr("前のページへ戻る")}
+              {tr("common.backToThePreviousPage")}
             </SecondaryButton>
           )}
         </Stack>

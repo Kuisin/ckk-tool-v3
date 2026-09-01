@@ -31,6 +31,7 @@ import {
 import { notifications } from "@mantine/notifications";
 import { IconDeviceTablet, IconMap2, IconSearch } from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { useState, useTransition } from "react";
 import {
   activateDevice,
@@ -56,7 +57,6 @@ import { HelpLabel } from "@/components/ui/HelpLabel";
 import { ConfirmModal, ModalShell } from "@/components/ui/modals";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { ListShell, LocalizedTextInput } from "@/components/ui/shells";
-import { useTr } from "@/hooks/useTr";
 import { useUrlSelectState, useUrlStringState } from "@/hooks/useUrlState";
 import { useIsMobile } from "@/hooks/useViewport";
 import { formatCode, normalizeCode } from "@/lib/crockford";
@@ -81,7 +81,7 @@ export function OnlineDot({
   online: boolean;
   label?: string;
 }) {
-  const tr = useTr();
+  const tr = useTranslations();
   return (
     <Group gap={6} wrap="nowrap">
       <Box
@@ -96,7 +96,7 @@ export function OnlineDot({
         }}
       />
       <Text c={online ? "green" : "dimmed"} size="sm">
-        {label ?? (online ? "オンライン" : tr("オフライン"))}
+        {label ?? (online ? "オンライン" : tr("settings.kiosk.offline"))}
       </Text>
     </Group>
   );
@@ -165,7 +165,7 @@ export function KioskDevicesTable({
     plantId: number | null;
   }[];
 }) {
-  const tr = useTr();
+  const tr = useTranslations();
   const fmt = useFormat();
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
@@ -223,14 +223,14 @@ export function KioskDevicesTable({
       const result = await action();
       if (result.ok) {
         notifications.show({
-          title: tr("完了"),
+          title: tr("common.completed"),
           message: successMessage,
           color: "green",
         });
       } else {
         notifications.show({
-          title: tr("エラー"),
-          message: tr(result.error),
+          title: tr("common.error2"),
+          message: result.error,
           color: "red",
         });
       }
@@ -241,8 +241,8 @@ export function KioskDevicesTable({
     const plantId = Number(createForm.plantId);
     if (!createForm.nameJa.trim() || !plantId) {
       notifications.show({
-        title: tr("エラー"),
-        message: tr("端末名・拠点は必須です"),
+        title: tr("common.error2"),
+        message: tr("settings.kiosk.theDeviceNameAndSiteAre"),
         color: "red",
       });
       return;
@@ -258,16 +258,14 @@ export function KioskDevicesTable({
         setCreateOpen(false);
         setCreateForm(EMPTY_FORM);
         notifications.show({
-          title: tr("作成しました"),
-          message: tr(
-            "端末プロファイルを作成しました。「端末をリンク」からタブレットのコードでリンクしてください",
-          ),
+          title: tr("common.created"),
+          message: tr("settings.kiosk.theDeviceProfileWasCreatedUse"),
           color: "green",
         });
       } else {
         notifications.show({
-          title: tr("エラー"),
-          message: tr(result.error),
+          title: tr("common.error2"),
+          message: result.error,
           color: "red",
         });
       }
@@ -284,8 +282,8 @@ export function KioskDevicesTable({
     const code = normalizeCode(linkCode);
     if (code.length !== 12) {
       notifications.show({
-        title: tr("エラー"),
-        message: tr("コードは 12 文字で入力してください"),
+        title: tr("common.error2"),
+        message: tr("settings.kiosk.enterA12CharacterCode"),
         color: "red",
       });
       return;
@@ -297,14 +295,14 @@ export function KioskDevicesTable({
         setLinkTarget(null);
         setLinkCode("");
         notifications.show({
-          title: tr("リンクしました"),
-          message: tr("リンクしました。有効化できます"),
+          title: tr("common.linked"),
+          message: tr("settings.kiosk.linkedYouCanEnableItNow"),
           color: "green",
         });
       } else {
         notifications.show({
-          title: tr("エラー"),
-          message: tr(result.error),
+          title: tr("common.error2"),
+          message: result.error,
           color: "red",
         });
       }
@@ -330,8 +328,8 @@ export function KioskDevicesTable({
     const plantId = Number(editForm.plantId);
     if (!editForm.nameJa.trim() || !plantId) {
       notifications.show({
-        title: tr("エラー"),
-        message: tr("端末名・拠点は必須です"),
+        title: tr("common.error2"),
+        message: tr("settings.kiosk.theDeviceNameAndSiteAre"),
         color: "red",
       });
       return;
@@ -351,14 +349,14 @@ export function KioskDevicesTable({
       if (result.ok) {
         setEditTarget(null);
         notifications.show({
-          title: tr("保存しました"),
-          message: tr("端末情報を更新しました"),
+          title: tr("common.saved2"),
+          message: tr("settings.kiosk.theDeviceInformationWasUpdated"),
           color: "green",
         });
       } else {
         notifications.show({
-          title: tr("エラー"),
-          message: tr(result.error),
+          title: tr("common.error2"),
+          message: result.error,
           color: "red",
         });
       }
@@ -368,7 +366,7 @@ export function KioskDevicesTable({
   const columns: Column<KioskDeviceRow>[] = [
     {
       key: "name",
-      header: tr("端末名"),
+      header: tr("settings.kiosk.deviceName"),
       sortable: true,
       render: (r) => (
         <div>
@@ -378,7 +376,7 @@ export function KioskDevicesTable({
             </Text>
           ) : (
             <Text c="dimmed" size="sm">
-              {tr("（未設定）")}
+              {tr("common.notSet")}
             </Text>
           )}
           {r.fingerprint && (
@@ -397,7 +395,7 @@ export function KioskDevicesTable({
     },
     {
       key: "location",
-      header: tr("場所"),
+      header: tr("common.location2"),
       hideable: true,
       render: (r) => (
         <Text c={r.location ? undefined : "dimmed"} size="sm" truncate>
@@ -418,7 +416,7 @@ export function KioskDevicesTable({
     },
     {
       key: "status",
-      header: tr("状態"),
+      header: tr("common.status"),
       width: 110,
       sortable: true,
       // PENDING=リンク待ち（灰）/ LINKED=有効化待ち（黄）— StatusBadge のマップ。
@@ -428,7 +426,7 @@ export function KioskDevicesTable({
     {
       // 所有区分（自動判定）。根拠の強さはバッジのツールチップに出る。
       key: "ownership",
-      header: tr("端末区分"),
+      header: tr("common.deviceType"),
       width: 130,
       hideable: true,
       sortable: true,
@@ -439,14 +437,14 @@ export function KioskDevicesTable({
     },
     {
       key: "link",
-      header: tr("リンク"),
+      header: tr("common.link"),
       width: 150,
       hideable: true,
       render: (r) => {
         if (r.status === "PENDING") {
           return (
             <Text c="dimmed" size="sm">
-              {tr("未リンク")}
+              {tr("settings.kiosk.notLinked")}
             </Text>
           );
         }
@@ -460,7 +458,7 @@ export function KioskDevicesTable({
     },
     {
       key: "online",
-      header: tr("オンライン"),
+      header: tr("common.online"),
       width: 120,
       sortable: true,
       render: (r) =>
@@ -479,7 +477,7 @@ export function KioskDevicesTable({
     },
     {
       key: "currentUser",
-      header: tr("利用者"),
+      header: tr("common.user2"),
       width: 140,
       sortable: true,
       render: (r) => {
@@ -494,7 +492,7 @@ export function KioskDevicesTable({
     },
     {
       key: "lastActivityAt",
-      header: tr("最終アクティビティ"),
+      header: tr("common.lastActivity"),
       width: 160,
       sortable: true,
       render: (r) => {
@@ -510,7 +508,7 @@ export function KioskDevicesTable({
     },
     {
       key: "activatedBy",
-      header: tr("有効化者"),
+      header: tr("settings.kiosk.enabledBy"),
       width: 140,
       hideable: true,
       render: (r) => (
@@ -525,65 +523,65 @@ export function KioskDevicesTable({
     const actions: RowAction<KioskDeviceRow>[] = [];
     if (r.status === "PENDING") {
       actions.push({
-        label: tr("端末をリンク"),
+        label: tr("settings.kiosk.linkTheDevice"),
         onAction: () => openLink(r),
       });
     }
     if (r.status === "LINKED") {
       actions.push({
-        label: tr("有効化"),
+        label: tr("common.enable"),
         onAction: () =>
           setConfirm({
-            title: tr("有効化の確認"),
+            title: tr("settings.kiosk.confirmEnabling"),
             message: `この端末を有効化します（タブレットとのリンク: ${
               r.linkedAt ? fmt.dateTime(r.linkedAt) : "—"
             }）。有効化するとタブレットが自動でキオスクとして使用可能になります。`,
-            confirmLabel: tr("有効化"),
+            confirmLabel: tr("common.enable"),
             confirmColor: "green",
-            successMessage: tr(
-              "端末を有効化しました。端末側の画面が自動で切り替わります",
-            ),
+            successMessage: tr("settings.kiosk.theDeviceWasEnabledItsScreen"),
             run: () => activateDevice(r.id),
           }),
       });
     }
     if (r.status !== "REVOKED") {
-      actions.push({ label: tr("編集"), onAction: () => openEdit(r) });
+      actions.push({ label: tr("common.edit2"), onAction: () => openEdit(r) });
     }
-    actions.push({ label: tr("利用履歴"), onAction: () => setLogsTarget(r) });
+    actions.push({
+      label: tr("common.usageHistory"),
+      onAction: () => setLogsTarget(r),
+    });
     if (r.status === "ACTIVE") {
       actions.push({
-        label: tr("無効化"),
+        label: tr("common.disable"),
         color: "orange",
         onAction: () =>
           setConfirm({
-            title: tr("無効化の確認"),
-            message: tr(
-              "この端末を一時的に無効化します（再有効化できます）。無効化中はキオスクとして使用できません。",
-            ),
-            confirmLabel: tr("無効化"),
+            title: tr("common.confirmDisabling"),
+            message: tr("settings.kiosk.temporarilyDisablesThisDeviceItCan"),
+            confirmLabel: tr("common.disable"),
             run: () => disableDevice(r.id),
           }),
       });
     }
     if (r.status === "DISABLED") {
       actions.push({
-        label: tr("再有効化"),
+        label: tr("settings.kiosk.reEnable"),
         onAction: () =>
-          run(() => enableDevice(r.id), tr("端末を再有効化しました")),
+          run(
+            () => enableDevice(r.id),
+            tr("settings.kiosk.theDeviceWasReEnabled"),
+          ),
       });
     }
     if (r.fingerprint) {
       actions.push({
-        label: tr("鍵リセット"),
+        label: tr("settings.kiosk.resetTheKey"),
         color: "orange",
         onAction: () =>
           setConfirm({
-            title: tr("鍵リセットの確認"),
-            message: tr(
-              "端末アプリのアテステーション鍵を解除します。次回この端末のアプリが接続したときに新しい鍵が束縛されます（端末を交換・初期化した場合に使用）。",
-            ),
-            confirmLabel: tr("鍵リセット"),
+            title: tr("settings.kiosk.confirmResettingTheKey"),
+            message: tr("settings.kiosk.releasesTheDeviceAppSAttestation"),
+            confirmLabel: tr("settings.kiosk.resetTheKey"),
             run: () => resetDeviceKey(r.id),
           }),
       });
@@ -594,18 +592,14 @@ export function KioskDevicesTable({
       r.status === "DISABLED"
     ) {
       actions.push({
-        label: tr("リンク解除"),
+        label: tr("common.unlink"),
         color: "red",
         onAction: () =>
           setConfirm({
-            title: tr("リンク解除の確認"),
-            message: tr(
-              "この端末のリンクを解除します。セッション・デバイストークン・アテステーション鍵が破棄され、プロファイルはオープン（リンク待ち）に戻ります。端末を交換・再リンクする場合に使用してください。",
-            ),
-            confirmLabel: tr("リンク解除"),
-            successMessage: tr(
-              "リンクを解除しました。プロファイルはオープン（リンク待ち）に戻りました",
-            ),
+            title: tr("settings.kiosk.confirmUnlinking"),
+            message: tr("settings.kiosk.unlinksThisDeviceSessionsTheDevice"),
+            confirmLabel: tr("common.unlink"),
+            successMessage: tr("settings.kiosk.unlinkedTheProfileIsOpenAgain"),
             run: () => unlinkDevice(r.id),
           }),
       });
@@ -616,26 +610,22 @@ export function KioskDevicesTable({
         color: "red",
         onAction: () =>
           setConfirm({
-            title: tr("削除の確認"),
-            message: tr(
-              "リンク前の端末プロファイルを削除します。この操作は取り消せません。",
-            ),
+            title: tr("common.confirmDeletion"),
+            message: tr("settings.kiosk.deletesAnUnlinkedDeviceProfileThis"),
             confirmLabel: "削除",
-            successMessage: tr("端末プロファイルを削除しました"),
+            successMessage: tr("settings.kiosk.theDeviceProfileWasDeleted"),
             run: () => deleteDeviceProfile(r.id),
           }),
       });
     } else if (r.status !== "REVOKED") {
       actions.push({
-        label: tr("取り消し"),
+        label: tr("common.revoked2"),
         color: "red",
         onAction: () =>
           setConfirm({
-            title: tr("取り消しの確認"),
-            message: tr(
-              "端末を取り消します。デバイストークンは破棄され、再登録が必要になります。この操作は取り消せません。",
-            ),
-            confirmLabel: tr("取り消し"),
+            title: tr("common.confirmRevocation"),
+            message: tr("settings.kiosk.revokesTheDeviceTheDeviceToken"),
+            confirmLabel: tr("common.revoked2"),
             run: () => revokeDevice(r.id),
           }),
       });
@@ -652,18 +642,18 @@ export function KioskDevicesTable({
             leftSection={<IconMap2 size={14} />}
             style={{ flexShrink: 0 }}
           >
-            {isMobile ? "マップ" : tr("フロアマップ")}
+            {isMobile ? "マップ" : tr("common.floorMap")}
           </SecondaryButton>
           <CreateButton
             loading={isPending}
             onClick={() => setCreateOpen(true)}
             style={{ flexShrink: 0 }}
           >
-            {isMobile ? "作成" : tr("端末プロファイル作成")}
+            {isMobile ? "作成" : tr("settings.kiosk.createADeviceProfile")}
           </CreateButton>
         </Group>
       }
-      breadcrumbs={[tr("システム"), tr("端末管理")]}
+      breadcrumbs={[tr("common.system"), tr("common.devices")]}
       filters={
         <>
           <Select
@@ -680,7 +670,7 @@ export function KioskDevicesTable({
             clearable
             data={statusOptions("KioskDevice")}
             onChange={setStatus}
-            placeholder={tr("状態")}
+            placeholder={tr("common.status")}
             style={isMobile ? { flex: 1 } : undefined}
             value={status}
             w={isMobile ? undefined : 140}
@@ -692,17 +682,17 @@ export function KioskDevicesTable({
         <TextInput
           leftSection={<IconSearch size={14} />}
           onChange={(e) => setSearch(e.currentTarget.value || null)}
-          placeholder={tr("端末名 / 場所 / 拠点...")}
+          placeholder={tr("settings.kiosk.deviceNameLocationSite")}
           value={search}
         />
       }
-      title={tr("端末管理")}
+      title={tr("common.devices")}
     >
       <DataTable
         columns={columns}
         data={filtered}
         emptyIcon={<IconDeviceTablet size={28} />}
-        emptyMessage={tr("キオスク端末がありません")}
+        emptyMessage={tr("settings.kiosk.thereAreNoSharedDevices")}
         getRowId={(r) => r.id}
         onRowClick={(r) => router.push(`/settings/kiosk-devices/${r.id}`)}
         renderCard={(r) => {
@@ -713,7 +703,7 @@ export function KioskDevicesTable({
           return (
             <Stack gap={3} style={{ minWidth: 0 }}>
               <Text fw={600} size="sm" truncate>
-                {r.name ?? tr("（未設定）")}
+                {r.name ?? tr("common.notSet")}
               </Text>
               <Text c="dimmed" size="xs" truncate>
                 {[r.plantLabel, r.location].filter(Boolean).join(" / ") || "—"}
@@ -739,19 +729,17 @@ export function KioskDevicesTable({
 
       {/* プロファイル作成モーダル */}
       <ModalShell
-        confirmLabel={tr("作成")}
+        confirmLabel={tr("common.create2")}
         loading={isPending}
         onClose={() => setCreateOpen(false)}
         onConfirm={handleCreate}
         opened={createOpen}
         size="md"
-        title={tr("端末プロファイル作成")}
+        title={tr("settings.kiosk.createADeviceProfile")}
       >
         <Stack gap="sm">
           <Alert color="blue" variant="light">
-            {tr(
-              "プロファイルはオープン（リンク待ち）で作成されます。タブレットの\n            設定画面（/setup）に表示されるコードを「端末をリンク」で\n            入力またはスキャンしてリンクした後、この画面から有効化できます。",
-            )}
+            {tr("settings.kiosk.theProfileIsCreatedOpenAwaiting")}
           </Alert>
           <LocalizedTextInput
             help={fieldHelpTip("kioskDevice", "name")}
@@ -762,8 +750,8 @@ export function KioskDevicesTable({
                 setCreateForm((s) => ({ ...s, nameJa: v }));
               },
             }}
-            label={tr("端末名")}
-            placeholder={tr("例: 1F 加工場 タブレット1")}
+            label={tr("settings.kiosk.deviceName")}
+            placeholder={tr("settings.kiosk.eG1fMachiningAreaTablet")}
             required
             translationsProps={{
               value: createForm.nameTranslations,
@@ -775,7 +763,7 @@ export function KioskDevicesTable({
             data={plantOptions}
             label={<HelpLabel {...fieldHelp("kioskDevice", "plant")} />}
             onChange={(v) => setCreateForm((s) => ({ ...s, plantId: v }))}
-            placeholder={tr("拠点を選択")}
+            placeholder={tr("common.selectASite")}
             searchable
             value={createForm.plantId}
             withAsterisk
@@ -786,7 +774,7 @@ export function KioskDevicesTable({
               const location = e.currentTarget.value;
               setCreateForm((s) => ({ ...s, location }));
             }}
-            placeholder={tr("例: 検査室入口")}
+            placeholder={tr("settings.kiosk.eGInspectionRoomEntrance")}
             value={createForm.location}
           />
         </Stack>
@@ -794,7 +782,7 @@ export function KioskDevicesTable({
 
       {/* 端末リンクモーダル */}
       <ModalShell
-        confirmLabel={tr("リンク")}
+        confirmLabel={tr("common.link")}
         loading={isPending}
         onClose={() => {
           setLinkTarget(null);
@@ -807,9 +795,7 @@ export function KioskDevicesTable({
       >
         <Stack gap="sm">
           <Alert color="blue" variant="light">
-            {tr(
-              "タブレットの設定画面（/setup）に表示された 12\n            文字のコードを入力するか、QR をカメラでスキャンしてください。\n            リンク後、この画面から有効化できます。",
-            )}
+            {tr("settings.kiosk.typeThe12CharacterCodeShown")}
           </Alert>
           <TextInput
             label={<HelpLabel {...fieldHelp("kioskDevice", "linkCode")} />}
@@ -829,13 +815,13 @@ export function KioskDevicesTable({
 
       {/* 編集モーダル */}
       <ModalShell
-        confirmLabel={tr("保存")}
+        confirmLabel={tr("common.save2")}
         loading={isPending}
         onClose={() => setEditTarget(null)}
         onConfirm={handleEdit}
         opened={editTarget != null}
         size="md"
-        title={tr("端末の編集")}
+        title={tr("settings.kiosk.editTheDevice")}
       >
         <Stack gap="sm">
           <LocalizedTextInput
@@ -847,7 +833,7 @@ export function KioskDevicesTable({
                 setEditForm((s) => ({ ...s, nameJa: v }));
               },
             }}
-            label={tr("端末名")}
+            label={tr("settings.kiosk.deviceName")}
             required
             translationsProps={{
               value: editForm.nameTranslations,
@@ -884,21 +870,19 @@ export function KioskDevicesTable({
               (o) =>
                 o.plantId == null || String(o.plantId) === editForm.plantId,
             )}
-            description={tr(
-              "工程の開始・再開時に、この端末からの作業実績へ自動で記録されます",
-            )}
+            description={tr("settings.kiosk.itIsRecordedAutomaticallyOnWork")}
             label={
               <HelpLabel {...fieldHelp("kioskDevice", "defaultWorkLocation")} />
             }
             onChange={(v) =>
               setEditForm((s) => ({ ...s, defaultWorkLocationId: v }))
             }
-            placeholder={tr("機械・エリア（任意）")}
+            placeholder={tr("settings.kiosk.machineAreaOptional")}
             searchable
             value={editForm.defaultWorkLocationId}
           />
           <Text c="dimmed" size="xs">
-            {tr("拠点を変更するとフロアマップ上のピン配置は解除されます。")}
+            {tr("settings.kiosk.changingTheSiteRemovesItsPin")}
           </Text>
         </Stack>
       </ModalShell>
@@ -913,16 +897,13 @@ export function KioskDevicesTable({
       {/* 有効化・破壊的操作の確認 */}
       <ConfirmModal
         confirmColor={confirm?.confirmColor ?? "red"}
-        confirmLabel={confirm?.confirmLabel ?? tr("実行")}
+        confirmLabel={confirm?.confirmLabel ?? tr("common.run2")}
         loading={isPending}
         message={confirm?.message ?? ""}
         onClose={() => setConfirm(null)}
         onConfirm={() => {
           if (confirm) {
-            run(
-              confirm.run,
-              confirm.successMessage ?? tr("操作が完了しました"),
-            );
+            run(confirm.run, confirm.successMessage ?? tr("common.done"));
           }
         }}
         opened={confirm != null}

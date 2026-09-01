@@ -16,7 +16,7 @@
 import { Select, Stack, TextInput } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
 import { useRouter } from "next/navigation";
-import { useLocale } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { useState, useTransition } from "react";
 import {
   createProduct,
@@ -29,9 +29,8 @@ import {
   type ModalBaseProps,
 } from "@/components/ui/modals";
 import { LocalizedTextInput } from "@/components/ui/shells";
-import { useTr } from "@/hooks/useTr";
 import { unitOptions } from "@/lib/enum-labels";
-import type { Translate } from "@/lib/ui-text";
+import type { Tr } from "@/lib/i18n";
 
 export interface ProductModalTarget {
   id: number;
@@ -47,8 +46,8 @@ export interface ProductModalTarget {
 }
 
 // フックを使えない素の関数なので、解決済みの `tr` を引数で受ける。
-function label(t: ProductModalTarget, tr: Translate) {
-  const code = t.code ?? tr("未採番");
+function label(t: ProductModalTarget, tr: Tr) {
+  const code = t.code ?? tr("common.notNumbered");
   return t.name !== "—" ? `${t.name}（${code}）` : code;
 }
 
@@ -61,11 +60,11 @@ export function DeleteProductModal({
   target: ProductModalTarget | null;
   onDone?: () => void;
 }) {
-  const tr = useTr();
+  const tr = useTranslations();
   const [isPending, startTransition] = useTransition();
   return (
     <ConfirmModal
-      confirmLabel={tr("削除する")}
+      confirmLabel={tr("common.delete2")}
       loading={isPending}
       message={
         target
@@ -79,25 +78,23 @@ export function DeleteProductModal({
           const result = await deleteProducts([target.id]);
           if (result.ok) {
             notifications.show({
-              title: tr("削除しました"),
+              title: tr("common.deleted"),
               message: `製品「${label(target, tr)}」を削除しました`,
               color: "green",
             });
             onDone?.();
           } else {
             notifications.show({
-              title: tr("エラー"),
-              message: tr(result.error),
+              title: tr("common.error2"),
+              message: result.error,
               color: "red",
             });
           }
         });
       }}
       opened={opened}
-      title={tr("製品の削除")}
-      warning={tr(
-        "この製品を参照する価格試算・価格表・見積書が存在する場合は削除できません。無効化をご検討ください。",
-      )}
+      title={tr("master.products.deleteTheProduct")}
+      warning={tr("master.products.itCannotBeDeletedWhilePrice")}
     />
   );
 }
@@ -111,13 +108,13 @@ export function ToggleProductActiveModal({
   target: ProductModalTarget | null;
   onDone?: () => void;
 }) {
-  const tr = useTr();
+  const tr = useTranslations();
   const [isPending, startTransition] = useTransition();
   const isActive = target?.isActive ?? true;
   return (
     <ConfirmModal
       confirmColor={isActive ? "red" : "blue"}
-      confirmLabel={isActive ? "無効化する" : tr("有効化する")}
+      confirmLabel={isActive ? "無効化する" : tr("common.enable2")}
       loading={isPending}
       message={
         target
@@ -133,22 +130,22 @@ export function ToggleProductActiveModal({
           const result = await setProductsActive([target.id], !isActive);
           if (result.ok) {
             notifications.show({
-              title: isActive ? "無効化しました" : tr("有効化しました"),
+              title: isActive ? "無効化しました" : tr("common.enabled2"),
               message: `製品「${label(target, tr)}」を${isActive ? "無効化" : "有効化"}しました`,
               color: "green",
             });
             onDone?.();
           } else {
             notifications.show({
-              title: tr("エラー"),
-              message: tr(result.error),
+              title: tr("common.error2"),
+              message: result.error,
               color: "red",
             });
           }
         });
       }}
       opened={opened}
-      title={isActive ? "製品の無効化" : tr("製品の有効化")}
+      title={isActive ? "製品の無効化" : tr("master.products.enableTheProduct")}
     />
   );
 }
@@ -160,7 +157,7 @@ export function DuplicateProductModal({
 }: ModalBaseProps & {
   source: ProductModalTarget | null;
 }) {
-  const tr = useTr();
+  const tr = useTranslations();
   const locale = useLocale();
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
@@ -204,7 +201,7 @@ export function DuplicateProductModal({
       });
       if (result.ok) {
         notifications.show({
-          title: tr("複製しました"),
+          title: tr("master.products.duplicated"),
           message: `製品「${result.data.code}」を作成しました`,
           color: "green",
         });
@@ -213,8 +210,8 @@ export function DuplicateProductModal({
         router.push(`/master/products/${result.data.id}`);
       } else {
         notifications.show({
-          title: tr("エラー"),
-          message: tr(result.error),
+          title: tr("common.error2"),
+          message: result.error,
           color: "red",
         });
       }
@@ -231,14 +228,14 @@ export function DuplicateProductModal({
       onSubmit={handleSubmit}
       opened={opened}
       size="md"
-      submitLabel={tr("複製して新規作成")}
-      title={tr("製品の複製")}
+      submitLabel={tr("master.products.duplicateToCreateANewOne")}
+      title={tr("master.products.duplicateTheProduct")}
     >
       <Stack gap="sm">
         {/* 内部 ID ではなく製品名と採番済みコードを見せる */}
         <TextInput
           disabled
-          label={tr("複製元")}
+          label={tr("master.products.duplicatedFrom")}
           readOnly
           value={
             source
@@ -251,13 +248,13 @@ export function DuplicateProductModal({
         <LocalizedTextInput
           jaProps={{
             description: tr(
-              "製品コードは保存時に自動採番されます（PRD-YYYYMM-NNNN）",
+              "master.products.theProductCodeIsAssignedAutomatically",
             ),
             value: nameJa,
             onChange: (e: React.ChangeEvent<HTMLInputElement>) =>
               setNameJa(e.currentTarget.value),
           }}
-          label={tr("名称")}
+          label={tr("common.name2")}
           required
           translationsProps={{
             value: nameTranslations,
@@ -265,17 +262,15 @@ export function DuplicateProductModal({
           }}
         />
         <TextInput
-          description={tr(
-            "複製元の材種・直径・全長を引き継ぎます（作成後に編集できます）",
-          )}
+          description={tr("master.products.carriesOverTheSourceSMaterial")}
           disabled
-          label={tr("素材仕様")}
+          label={tr("common.materialSpecification")}
           readOnly
           value={materialSpecText}
         />
         <Select
           data={unitOptions(locale)}
-          label={tr("単位")}
+          label={tr("common.unit")}
           onChange={setUnit}
           value={unit}
           withAsterisk

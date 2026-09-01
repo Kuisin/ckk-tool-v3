@@ -21,6 +21,7 @@ import {
   IconSend,
 } from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { useState } from "react";
 import { issueQuote } from "@/app/(dashboard)/sales/quotes/actions";
 import { useFormat } from "@/components/layout/PreferencesProvider";
@@ -50,7 +51,6 @@ import {
   ResourceActions,
   SummaryGrid,
 } from "@/components/ui/shells";
-import { useTr } from "@/hooks/useTr";
 import { useTabParam } from "@/hooks/useUrlState";
 import type { MemoView } from "@/lib/document-memos";
 import { downloadFile } from "@/lib/download";
@@ -90,7 +90,7 @@ export function QuoteDetail({
   /** この見積から起きた注文請書（手続き状況の「次の書類へ」）。 */
   acceptances?: AcceptanceLink[];
 }) {
-  const tr = useTr();
+  const tr = useTranslations();
   const fmt = useFormat();
   const router = useRouter();
   // アクティブタブを ?tab= に保持（URL 共有でタブまで再現）
@@ -116,29 +116,29 @@ export function QuoteDetail({
   const stages: ProcedureStage[] = [
     {
       key: "draft",
-      label: tr("下書き"),
+      label: tr("common.draft"),
       description: fmt.date(quote.createdAt),
       loading: status === "DRAFT",
     },
     {
       key: "issued",
-      label: tr("発行"),
-      description: status === "DRAFT" ? "PDF を発行" : tr("発行済"),
+      label: tr("common.issue"),
+      description: status === "DRAFT" ? "PDF を発行" : tr("common.issued2"),
       loading: status === "ISSUED",
     },
     {
       key: "accepted",
-      label: tr("受諾"),
+      label: tr("sales.quotes.accept"),
       description:
         status === "REJECTED"
           ? "却下"
           : status === "EXPIRED"
             ? `期限切れ（${fmt.date(quote.validUntil)}）`
             : status === "ACCEPTED"
-              ? tr("受注へ")
+              ? tr("sales.quotes.toTheOrder")
               : quote.validUntil
                 ? `有効期限 ${fmt.date(quote.validUntil)}`
-                : tr("受注へ"),
+                : tr("sales.quotes.toTheOrder"),
       color:
         status === "REJECTED"
           ? "red"
@@ -156,13 +156,13 @@ export function QuoteDetail({
       ? [
           {
             key: "price-lists",
-            title: tr("価格表"),
+            title: tr("common.priceList"),
             summary: `${relatedEntries.length} 件`,
             items: relatedEntries.map((e) => ({
               key: e.entryId,
               label: `${e.customerName} × ${e.productName}`,
               href: `/sales/price-lists/${e.entryId}`,
-              note: tr("単価の解決元"),
+              note: tr("sales.quotes.whereTheUnitPriceCameFrom"),
             })),
             emptyNote: "—",
           },
@@ -173,7 +173,7 @@ export function QuoteDetail({
   const handoffGroups: HandoffGroup[] = [
     {
       key: "order-acceptances",
-      title: tr("注文請書"),
+      title: tr("common.orderAcceptance"),
       summary: acceptances.length > 0 ? `${acceptances.length} 件` : null,
       items: acceptances.map((a) => ({
         key: a.number,
@@ -186,8 +186,8 @@ export function QuoteDetail({
       })),
       emptyNote:
         status === "ACCEPTED"
-          ? tr("未受注（注文請書はまだありません）")
-          : tr("未受注（受諾後に注文請書を作成します）"),
+          ? tr("sales.quotes.noOrderYetNoOrderAcceptance")
+          : tr("sales.quotes.noOrderYetTheOrderAcceptance"),
     },
   ];
 
@@ -202,14 +202,14 @@ export function QuoteDetail({
       });
       setPdfNonce((n) => n + 1);
       notifications.show({
-        title: tr("再生成しました"),
-        message: tr("PDF を再生成・保存しました"),
+        title: tr("common.regenerated"),
+        message: tr("common.pDFRegeneratedAndSaved"),
         color: "green",
       });
     } catch {
       notifications.show({
-        title: tr("エラー"),
-        message: tr("PDF の再生成に失敗しました"),
+        title: tr("common.error2"),
+        message: tr("common.couldNotRegenerateThePdf"),
         color: "red",
       });
     }
@@ -223,7 +223,7 @@ export function QuoteDetail({
             ...(status === "DRAFT"
               ? [
                   {
-                    label: tr("発行"),
+                    label: tr("common.issue"),
                     icon: <IconSend size={14} />,
                     onClick: () => setIssueOpen(true),
                   },
@@ -233,7 +233,7 @@ export function QuoteDetail({
             ...(canViewPdf
               ? [
                   {
-                    label: tr("PDFをダウンロード"),
+                    label: tr("common.downloadThePdf"),
                     icon: <IconDownload size={14} />,
                     onClick: () =>
                       void downloadFile(pdfUrl("&download=1"), pdfFilename),
@@ -243,17 +243,17 @@ export function QuoteDetail({
             // §10 設計依頼は「唯一の次の一歩」ではなく任意の側枝なので、
             // NextStepCard ではなくメニュー項目に置く。
             {
-              label: tr("設計依頼を起票"),
+              label: tr("common.raiseADesignRequest"),
               icon: <IconRuler2 size={14} />,
               disabled: status === "REJECTED" || status === "EXPIRED",
-              disabledReason: tr("却下・期限切れの見積書からは起票できません"),
+              disabledReason: tr("sales.quotes.youCannotRaiseThisFromA"),
               onClick: () =>
                 router.push(
                   `/sales/design-requests/new?quote=${encodeURIComponent(quote.quoteNumber)}`,
                 ),
             },
             {
-              label: tr("複製"),
+              label: tr("common.duplicate"),
               icon: <IconCopy size={14} />,
               divider: true,
               onClick: () => router.push(`${BASE_PATH}/new?from=${quote.id}`),
@@ -264,8 +264,8 @@ export function QuoteDetail({
         />
       }
       breadcrumbs={[
-        tr("販売"),
-        { label: tr("見積書"), href: BASE_PATH },
+        tr("common.sales"),
+        { label: tr("common.quote"), href: BASE_PATH },
         "詳細",
       ]}
       createdAt={fmt.dateTime(quote.createdAt)}
@@ -274,14 +274,23 @@ export function QuoteDetail({
       updatedAt={fmt.dateTime(quote.updatedAt)}
     >
       <SummaryGrid>
-        <FieldValue label={tr("顧客")} value={quote.customerName} />
-        <FieldValue label={tr("支店")} value={quote.customerBranchName} />
-        <FieldValue label={tr("営業担当")} value={quote.salesRepName} />
-        <FieldValue label={tr("作成者")} value={quote.createdBy} />
-        <FieldValue label={tr("有効期限")} value={fmt.date(quote.validUntil)} />
-        <FieldValue label={tr("明細数")} value={`${quote.items.length}件`} />
+        <FieldValue label={tr("common.customer")} value={quote.customerName} />
         <FieldValue
-          label={tr("合計金額（税込）")}
+          label={tr("sales.quotes.branch")}
+          value={quote.customerBranchName}
+        />
+        <FieldValue label={tr("common.salesRep")} value={quote.salesRepName} />
+        <FieldValue label={tr("common.createdBy")} value={quote.createdBy} />
+        <FieldValue
+          label={tr("common.validUntil2")}
+          value={fmt.date(quote.validUntil)}
+        />
+        <FieldValue
+          label={tr("common.lineCount")}
+          value={`${quote.items.length}件`}
+        />
+        <FieldValue
+          label={tr("common.totalAmountInclTax")}
           value={<MoneyText ta="left" value={totals.grandTotal} />}
         />
       </SummaryGrid>
@@ -295,11 +304,11 @@ export function QuoteDetail({
 
       <AppTabs onChange={setTab} value={tab}>
         <Tabs.List>
-          <Tabs.Tab value="items">{tr("明細")}</Tabs.Tab>
+          <Tabs.Tab value="items">{tr("common.lineItems")}</Tabs.Tab>
           <Tabs.Tab value="pdf">PDF</Tabs.Tab>
-          <Tabs.Tab value="related">{tr("関連")}</Tabs.Tab>
-          <Tabs.Tab value="memo">{tr("メモ")}</Tabs.Tab>
-          <Tabs.Tab value="history">{tr("履歴")}</Tabs.Tab>
+          <Tabs.Tab value="related">{tr("common.related")}</Tabs.Tab>
+          <Tabs.Tab value="memo">{tr("common.memo")}</Tabs.Tab>
+          <Tabs.Tab value="history">{tr("common.history")}</Tabs.Tab>
         </Tabs.List>
 
         <Tabs.Panel pt="md" value="items">
@@ -308,13 +317,13 @@ export function QuoteDetail({
               <Table.Thead>
                 <Table.Tr>
                   <Table.Th>製品</Table.Th>
-                  <Table.Th>{tr("注文種別")}</Table.Th>
-                  <Table.Th ta="right">{tr("数量")}</Table.Th>
-                  <Table.Th ta="right">{tr("単価")}</Table.Th>
-                  <Table.Th ta="right">{tr("値引き")}</Table.Th>
-                  <Table.Th ta="right">{tr("金額")}</Table.Th>
-                  <Table.Th>{tr("納期")}</Table.Th>
-                  <Table.Th>{tr("適用価格表")}</Table.Th>
+                  <Table.Th>{tr("common.orderType")}</Table.Th>
+                  <Table.Th ta="right">{tr("common.quantity")}</Table.Th>
+                  <Table.Th ta="right">{tr("common.unitPrice")}</Table.Th>
+                  <Table.Th ta="right">{tr("common.discount")}</Table.Th>
+                  <Table.Th ta="right">{tr("common.amount")}</Table.Th>
+                  <Table.Th>{tr("common.deliveryDate")}</Table.Th>
+                  <Table.Th>{tr("sales.quotes.priceListApplied")}</Table.Th>
                 </Table.Tr>
               </Table.Thead>
               <Table.Tbody>
@@ -374,7 +383,7 @@ export function QuoteDetail({
                           </Text>
                         ) : (
                           <Text c="orange" size="xs">
-                            {tr("価格表なし")}
+                            {tr("common.noPriceList")}
                           </Text>
                         )}
                       </Table.Td>
@@ -386,7 +395,7 @@ export function QuoteDetail({
                 <Table.Tr>
                   <Table.Td colSpan={5} ta="right">
                     <Text c="dimmed" size="sm">
-                      {tr("小計")}
+                      {tr("common.subtotal")}
                     </Text>
                   </Table.Td>
                   <Table.Td ta="right">
@@ -397,7 +406,7 @@ export function QuoteDetail({
                 <Table.Tr>
                   <Table.Td colSpan={5} ta="right">
                     <Text c="dimmed" size="sm">
-                      {tr("消費税（10%）")}
+                      {tr("sales.quotes.tax10")}
                     </Text>
                   </Table.Td>
                   <Table.Td ta="right">
@@ -408,7 +417,7 @@ export function QuoteDetail({
                 <Table.Tr>
                   <Table.Td colSpan={5} ta="right">
                     <Text fw={700} size="sm">
-                      {tr("合計（税込）")}
+                      {tr("sales.quotes.totalInclTax")}
                     </Text>
                   </Table.Td>
                   <Table.Td ta="right">
@@ -430,11 +439,11 @@ export function QuoteDetail({
                   leftSection={<IconSend size={14} />}
                   onClick={() => setIssueOpen(true)}
                 >
-                  {tr("発行")}
+                  {tr("common.issue")}
                 </PrimaryButton>
               ) : undefined
             }
-            emptyMessage={tr("発行後に PDF を閲覧できます。")}
+            emptyMessage={tr("common.thePdfBecomesAvailableOnceIt")}
             file={pdfFile}
             filename={pdfFilename}
             onRegenerate={regenerate}
@@ -446,12 +455,12 @@ export function QuoteDetail({
           <Stack gap="md">
             <div>
               <Text c="dimmed" mb={4} size="xs">
-                {tr("設計依頼")}
+                {tr("common.designRequest")}
               </Text>
               <DesignRequestLinks
                 createDisabledReason={
                   status === "REJECTED" || status === "EXPIRED"
-                    ? tr("却下・期限切れの見積書からは起票できません")
+                    ? tr("sales.quotes.youCannotRaiseThisFromA")
                     : undefined
                 }
                 createHref={`/sales/design-requests/new?quote=${encodeURIComponent(quote.quoteNumber)}`}
@@ -461,7 +470,7 @@ export function QuoteDetail({
 
             <div>
               <Text c="dimmed" mb={4} size="xs">
-                {tr("適用価格表")}
+                {tr("sales.quotes.priceListApplied")}
               </Text>
               {relatedEntries.length > 0 ? (
                 <Stack gap={4}>
@@ -478,21 +487,21 @@ export function QuoteDetail({
                         .map(
                           (v) => ORDER_TYPE_LABEL[v.orderType] ?? v.orderType,
                         )
-                        .join(tr("・"))}
+                        .join(tr("common.s1"))}
                       ・{entrySummary(e).tierCount}段階）
                     </Anchor>
                   ))}
                 </Stack>
               ) : (
                 <Text c="dimmed" size="sm">
-                  {tr("—（全明細が手動入力です）")}
+                  {tr("sales.quotes.everyLineWasEnteredByHand")}
                 </Text>
               )}
             </div>
 
             <div>
               <Text c="dimmed" mb={4} size="xs">
-                {tr("価格試算元")}
+                {tr("common.priceEstimateSource")}
               </Text>
               {relatedEntries.some((e) =>
                 e.variants.some((v) => v.estimateId),
@@ -515,17 +524,17 @@ export function QuoteDetail({
                 </Stack>
               ) : (
                 <Text c="dimmed" size="sm">
-                  {tr("—（手動登録の価格表です）")}
+                  {tr("sales.quotes.thisPriceListWasRegisteredBy")}
                 </Text>
               )}
             </div>
 
             <div>
               <Text c="dimmed" mb={4} size="xs">
-                {tr("注文受諾書")}
+                {tr("sales.quotes.orderAcceptance")}
               </Text>
               <Text c="dimmed" size="sm">
-                {tr("—（受諾後に作成されます）")}
+                {tr("sales.quotes.createdOnceAccepted")}
               </Text>
             </div>
           </Stack>
@@ -554,8 +563,8 @@ export function QuoteDetail({
           const result = await issueQuote(quote.quoteNumber, validUntil);
           if (!result.ok) {
             notifications.show({
-              title: tr("エラー"),
-              message: tr(result.error),
+              title: tr("common.error2"),
+              message: result.error,
               color: "red",
             });
           }

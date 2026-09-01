@@ -10,13 +10,13 @@ import { ActionIcon, Badge, Group, Table, Text } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
 import { IconPlus, IconTrash, IconUsers } from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { useState, useTransition } from "react";
 import { deleteContact } from "@/app/(dashboard)/master/_shared/bp-actions";
 import type { ContactRow } from "@/app/(dashboard)/master/_shared/bp-data";
 import { GhostButton } from "@/components/ui/buttons";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { openConfirm } from "@/components/ui/modals";
-import { useTr } from "@/hooks/useTr";
 import { useIsMobile } from "@/hooks/useViewport";
 import { AddContactModal } from "./BpModals";
 
@@ -32,7 +32,7 @@ export function ContactsTable({
   /** 見出しを持つセクションの中で使うとき（取引先詳細）は「担当者」を二重に出さない。 */
   hideHeading?: boolean;
 }) {
-  const tr = useTr();
+  const tr = useTranslations();
   const router = useRouter();
   const isMobile = useIsMobile();
   const [, startTransition] = useTransition();
@@ -40,23 +40,23 @@ export function ContactsTable({
 
   const handleDelete = (c: ContactRow) => {
     openConfirm({
-      title: tr("担当者の削除"),
+      title: tr("master.bp.deleteTheContact"),
       message: `担当者「${c.name}」を削除します。この操作は取り消せません。`,
-      confirmLabel: tr("削除する"),
+      confirmLabel: tr("common.delete2"),
       onConfirm: () => {
         startTransition(async () => {
           const result = await deleteContact(bpId, c.id);
           if (result.ok) {
             notifications.show({
-              title: tr("削除しました"),
+              title: tr("common.deleted"),
               message: `担当者「${c.name}」を削除しました`,
               color: "green",
             });
             router.refresh();
           } else {
             notifications.show({
-              title: tr("エラー"),
-              message: tr(result.error),
+              title: tr("common.error2"),
+              message: result.error,
               color: "red",
             });
           }
@@ -70,28 +70,30 @@ export function ContactsTable({
       <Group justify={hideHeading ? "flex-end" : "space-between"} mb="xs">
         {!hideHeading && (
           <Text fw={600} size="sm">
-            {tr("担当者")}
+            {tr("common.assignee")}
           </Text>
         )}
         <GhostButton
           leftSection={<IconPlus size={14} />}
           onClick={() => setAddOpen(true)}
         >
-          {tr("担当者を追加")}
+          {tr("master.bp.addAContact")}
         </GhostButton>
       </Group>
       {contacts.length === 0 ? (
         <EmptyState
           icon={<IconUsers size={24} />}
-          message={tr("担当者は登録されていません")}
+          message={tr("master.bp.noContactsAreRegistered")}
         />
       ) : (
         <Table highlightOnHover striped withTableBorder>
           <Table.Thead>
             <Table.Tr>
-              <Table.Th>{tr("氏名")}</Table.Th>
-              {!isMobile && <Table.Th>{tr("部署 / 役職")}</Table.Th>}
-              <Table.Th>{tr("連絡先")}</Table.Th>
+              <Table.Th>{tr("common.name3")}</Table.Th>
+              {!isMobile && (
+                <Table.Th>{tr("master.bp.departmentJobTitle")}</Table.Th>
+              )}
+              <Table.Th>{tr("master.bp.contact")}</Table.Th>
               <Table.Th w={60} />
             </Table.Tr>
           </Table.Thead>
@@ -103,7 +105,7 @@ export function ContactsTable({
                     <Text size="sm">{c.name}</Text>
                     {c.isPrimary && (
                       <Badge color="blue" size="xs" variant="light">
-                        {tr("主担当")}
+                        {tr("common.primaryContact")}
                       </Badge>
                     )}
                   </Group>
@@ -121,7 +123,7 @@ export function ContactsTable({
                 </Table.Td>
                 <Table.Td>
                   <ActionIcon
-                    aria-label={tr("担当者を削除")}
+                    aria-label={tr("master.bp.removeTheContact")}
                     color="red"
                     onClick={() => handleDelete(c)}
                     variant="subtle"

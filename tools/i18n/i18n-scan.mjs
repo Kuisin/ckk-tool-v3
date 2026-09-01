@@ -8,13 +8,18 @@
  *   node tools/i18n/i18n-scan.mjs --update-baseline   # 移行を進めた後に基準を下げる
  *
  * ■ なぜ「0 でなければ失敗」にしないのか
- * 対象は約 7,500 文字列で、1 回の作業では終わらない。全消しを条件にすると
+ * 対象は数千文字列で、1 回の作業では終わらない。全消しを条件にすると
  * CI は初日から赤のままになり、**赤いのが当たり前になって誰も見なくなる**。
  * 見たいのは残数そのものではなく後戻りなので、baseline より増えたときだけ
  * 落とす（ratchet）。減ったときは「下げられます」と教えるだけで落とさない —
  * 別の作業をしている人の PR を、無関係な baseline 更新で止めないため。
  *
- * 数え方と除外の定義は lib/scan.mjs。
+ * 数え方と除外の定義は lib/scan.mjs。ここが数えるのは「`tr()`/`translate()`
+ * に包まれていない生の日本語リテラル」だけ。ja を鍵にした旧辞書は退役済み
+ * ——文言は `messages/*.json` 1 本に統合した（`coolify/apps/nextjs-web/CLAUDE.md`
+ * の i18n 節）。ここに挙がった文字列を包むときは
+ * `tools/i18n-unify/generate-keys.mjs` + `rewrite-call-sites.mjs` で
+ * 本物の next-intl 鍵を発番する。
  */
 
 import fs from "node:fs";
@@ -79,26 +84,6 @@ if (has("--list")) {
   process.exit(0);
 }
 
-/**
- * 残っている日本語のうち、**辞書に載っている**ものの数。
- *
- * ja を鍵にしているので、`lib/*.ts` や `actions.ts` が日本語の文言を返しても、
- * それを表示する画面が `tr()` を通せば訳される（「後から訳す」）。
- * つまりソースに日本語が残っていること自体は未翻訳を意味しない。
- * 数を素直に出すと実態より悪く見えるので、内訳を添える。
- */
-function dictionaryCoverage(findings) {
-  const dict = {};
-  const dataDir = path.join(HERE, "data");
-  Object.assign(dict, JSON.parse(fs.readFileSync(path.join(dataDir, "seed.json"), "utf8")));
-  for (const f of fs.readdirSync(path.join(dataDir, "translations")))
-    if (f.endsWith(".json"))
-      Object.assign(dict, JSON.parse(fs.readFileSync(path.join(dataDir, "translations", f), "utf8")));
-  let known = 0;
-  for (const f of findings) if (Object.hasOwn(dict, f.text)) known++;
-  return known;
-}
-
 const total = Object.values(results).reduce((a, b) => a + b, 0);
 
 if (has("--update-baseline")) {
@@ -112,13 +97,6 @@ for (const [app, count] of Object.entries(results)) {
   console.log(`${app.padEnd(6)} untranslated: ${count}`);
 }
 console.log(`${"total".padEnd(6)} untranslated: ${total}`);
-if (!onlyApp && !areaFilter) {
-  const known = dictionaryCoverage(allFindings);
-  console.log(
-    `\n  うち辞書にある語: ${known}（表示側が tr() を通せば訳される）`,
-  );
-  console.log(`  辞書にも無い語:   ${total - known}`);
-}
 
 if (!fs.existsSync(BASELINE)) {
   console.log("\nno baseline yet — run with --update-baseline to create one");
@@ -140,11 +118,12 @@ if (regressions.length > 0) {
     console.error(`    ${app}: ${baseline[app]} → ${count}`);
   }
   console.error(
-    "\n  新しい画面の文言は messages/*.json（chrome）か Record<Locale, string>",
+    "\n  新しい画面の文言は messages/*.json（next-intl の実キー）か",
   );
   console.error(
-    "  （enum・状態・ラベル）に置いてください。詳しくは tools/i18n/README.md。",
+    "  値に属するラベル（enum・状態・権限）なら lib/messages.ts 経由で置いてください。",
   );
+  console.error("  詳しくは tools/i18n/README.md。");
   console.error(
     "  意図的に日本語のままにする 1 行には // i18n-ignore を付けます。",
   );

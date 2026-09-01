@@ -16,6 +16,7 @@
 import { Badge, Group, Paper, Stack, Text } from "@mantine/core";
 import { IconForms } from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import type { ReactNode } from "react";
 import type { CompletedRequestRow } from "@/app/(dashboard)/general/tasks/completions-data";
 import type {
@@ -25,7 +26,6 @@ import type {
 import { useFormat } from "@/components/layout/PreferencesProvider";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { StatusBadge } from "@/components/ui/StatusBadge";
-import { useTr } from "@/hooks/useTr";
 import { useIsMobile } from "@/hooks/useViewport";
 
 function Empty({ message }: { message: string }) {
@@ -89,13 +89,15 @@ function Row({
 }
 
 export function PendingFormsList({ rows }: { rows: PendingFormRow[] }) {
-  const tr = useTr();
+  const tr = useTranslations();
   const router = useRouter();
   const fmt = useFormat();
   const isMobile = useIsMobile();
 
   if (rows.length === 0)
-    return <Empty message={tr("回答待ちのフォームはありません")} />;
+    return (
+      <Empty message={tr("general.formTasksPanel.thereAreNoFormsAwaitingA")} />
+    );
 
   return (
     <Stack gap="xs">
@@ -117,7 +119,7 @@ export function PendingFormsList({ rows }: { rows: PendingFormRow[] }) {
                   size="sm"
                   variant="light"
                 >
-                  {row.kind === "REQUEST" ? "申請・報告" : tr("アンケート")}
+                  {row.kind === "REQUEST" ? "申請・報告" : tr("common.survey")}
                 </Badge>
               </>
             )
@@ -131,13 +133,13 @@ export function PendingFormsList({ rows }: { rows: PendingFormRow[] }) {
                   size="sm"
                   variant="light"
                 >
-                  {row.kind === "REQUEST" ? "申請・報告" : tr("アンケート")}
+                  {row.kind === "REQUEST" ? "申請・報告" : tr("common.survey")}
                 </Badge>
               )}
               <Text c="dimmed" size="xs">
                 {row.closesAt
                   ? `${fmt.dateTime(row.closesAt)} まで`
-                  : tr("期限なし")}
+                  : tr("general.formTasksPanel.noDeadline")}
               </Text>
             </>
           }
@@ -148,13 +150,17 @@ export function PendingFormsList({ rows }: { rows: PendingFormRow[] }) {
 }
 
 export function MyResponsesList({ rows }: { rows: MyResponseRow[] }) {
-  const tr = useTr();
+  const tr = useTranslations();
   const router = useRouter();
   const fmt = useFormat();
   const isMobile = useIsMobile();
 
   if (rows.length === 0)
-    return <Empty message={tr("まだフォームに回答していません")} />;
+    return (
+      <Empty
+        message={tr("general.formTasksPanel.youHaveNotAnsweredAnyForms")}
+      />
+    );
 
   return (
     <Stack gap="xs">
@@ -209,11 +215,13 @@ export function MyResponsesList({ rows }: { rows: MyResponseRow[] }) {
                 <Badge color="blue" size="sm" variant="light">
                   {row.editDeadline
                     ? `${fmt.dateTime(row.editDeadline)} まで編集可`
-                    : tr("編集可")}
+                    : tr("general.formTasksPanel.editable")}
                 </Badge>
               )}
               <Text c="dimmed" size="xs">
-                {row.submittedAt ? fmt.dateTime(row.submittedAt) : tr("下書き")}
+                {row.submittedAt
+                  ? fmt.dateTime(row.submittedAt)
+                  : tr("common.draft")}
               </Text>
             </>
           }
@@ -233,13 +241,15 @@ export function CompletedRequestsList({
 }: {
   rows: CompletedRequestRow[];
 }) {
-  const tr = useTr();
+  const tr = useTranslations();
   const router = useRouter();
   const fmt = useFormat();
   const isMobile = useIsMobile();
 
   if (rows.length === 0)
-    return <Empty message={tr("完了の通知はありません")} />;
+    return (
+      <Empty message={tr("general.formTasksPanel.thereIsNoCompletionNotice")} />
+    );
 
   return (
     <Stack gap="xs">
@@ -300,7 +310,7 @@ export function CompletedRequestsList({
               <>
                 {!row.readAt && (
                   <Badge color="blue" size="sm" variant="light">
-                    {tr("未読")}
+                    {tr("general.formTasksPanel.unread")}
                   </Badge>
                 )}
                 <Text c="dimmed" size="xs">

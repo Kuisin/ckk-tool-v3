@@ -19,6 +19,7 @@ import {
 } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
 import { IconFolder, IconTrash } from "@tabler/icons-react";
+import { useTranslations } from "next-intl";
 import { useEffect, useState, useTransition } from "react";
 import {
   deleteFolderGrant,
@@ -30,7 +31,6 @@ import {
 import { GhostButton, PrimaryButton } from "@/components/ui/buttons";
 import { HelpLabel } from "@/components/ui/HelpLabel";
 import { openConfirm } from "@/components/ui/modals";
-import { useTr } from "@/hooks/useTr";
 import { fieldHelp } from "@/lib/field-help";
 
 export function FolderGrantsModal({
@@ -46,7 +46,7 @@ export function FolderGrantsModal({
   /** 既知のフォルダ候補（サジェスト用）。 */
   folders: string[];
 }) {
-  const tr = useTr();
+  const tr = useTranslations();
   const [loading, setLoading] = useState(true);
   const [grants, setGrants] = useState<FolderGrantRow[]>([]);
   const [users, setUsers] = useState<GrantUserOption[]>([]);
@@ -67,8 +67,8 @@ export function FolderGrantsModal({
         setUsers(res.data.users);
       } else {
         notifications.show({
-          title: tr("読み込み失敗"),
-          message: tr(res.error),
+          title: tr("admin.folderGrantsModal.couldNotLoad"),
+          message: res.error,
           color: "red",
         });
       }
@@ -86,14 +86,14 @@ export function FolderGrantsModal({
       });
       if (!res.ok) {
         notifications.show({
-          title: tr("保存失敗"),
-          message: tr(res.error),
+          title: tr("common.saveFailed2"),
+          message: res.error,
           color: "red",
         });
         return;
       }
       notifications.show({
-        title: tr("権限を付与しました"),
+        title: tr("admin.folderGrantsModal.thePermissionWasGranted"),
         message: prefix,
         color: "green",
       });
@@ -105,7 +105,7 @@ export function FolderGrantsModal({
 
   function onDelete(row: FolderGrantRow) {
     openConfirm({
-      title: tr("権限の削除"),
+      title: tr("admin.folderGrantsModal.removeThePermission"),
       message: `「${row.pathPrefix}」への ${row.userName} さんのアクセス権を削除します。`,
       confirmLabel: "削除",
       onConfirm: () => {
@@ -113,8 +113,8 @@ export function FolderGrantsModal({
           const res = await deleteFolderGrant(row.id);
           if (!res.ok) {
             notifications.show({
-              title: tr("削除失敗"),
-              message: tr(res.error),
+              title: tr("common.deleteFailed"),
+              message: res.error,
               color: "red",
             });
             return;
@@ -130,7 +130,7 @@ export function FolderGrantsModal({
       onClose={onClose}
       opened={opened}
       size="lg"
-      title={tr("フォルダ権限")}
+      title={tr("common.folderPermissions")}
     >
       {loading ? (
         <Group justify="center" py="xl">
@@ -140,7 +140,7 @@ export function FolderGrantsModal({
         <Stack gap="md">
           <Stack gap="xs">
             <Text fw={600} size="sm">
-              {tr("権限を付与")}
+              {tr("admin.folderGrantsModal.grantAPermission")}
             </Text>
             <Group align="flex-end" gap="xs" wrap="wrap">
               <TextInput
@@ -165,7 +165,7 @@ export function FolderGrantsModal({
                   <HelpLabel {...fieldHelp("fileManagement", "grantUser")} />
                 }
                 onChange={setUserId}
-                placeholder={tr("選択")}
+                placeholder={tr("common.select")}
                 searchable
                 style={{ flex: 1, minWidth: 200 }}
                 value={userId}
@@ -184,31 +184,29 @@ export function FolderGrantsModal({
                 loading={pending}
                 onClick={onAdd}
               >
-                {tr("付与")}
+                {tr("admin.folderGrantsModal.grant")}
               </PrimaryButton>
             </Group>
             <Text c="dimmed" size="xs">
-              {tr(
-                "指定フォルダ以下のすべてのファイルが対象。system\n              権限の管理者は常に全フォルダへアクセスできます。",
-              )}
+              {tr("admin.folderGrantsModal.everyFileBeneathTheFolderGiven")}
             </Text>
           </Stack>
 
           <Stack gap="xs">
             <Text fw={600} size="sm">
-              {tr("付与済み")}
+              {tr("admin.folderGrantsModal.granted")}
             </Text>
             {grants.length === 0 ? (
               <Text c="dimmed" size="sm">
-                {tr("個別付与はありません")}
+                {tr("admin.folderGrantsModal.thereAreNoIndividualGrants")}
               </Text>
             ) : (
               <Table>
                 <Table.Thead>
                   <Table.Tr>
-                    <Table.Th>{tr("フォルダ")}</Table.Th>
-                    <Table.Th>{tr("ユーザー")}</Table.Th>
-                    <Table.Th>{tr("権限")}</Table.Th>
+                    <Table.Th>{tr("common.folder")}</Table.Th>
+                    <Table.Th>{tr("common.user")}</Table.Th>
+                    <Table.Th>{tr("common.permission")}</Table.Th>
                     <Table.Th />
                   </Table.Tr>
                 </Table.Thead>
@@ -233,7 +231,9 @@ export function FolderGrantsModal({
                           color={g.canWrite ? "blue" : "gray"}
                           variant="light"
                         >
-                          {g.canWrite ? "読み書き" : tr("読み取り")}
+                          {g.canWrite
+                            ? "読み書き"
+                            : tr("admin.folderGrantsModal.read")}
                         </Badge>
                       </Table.Td>
                       <Table.Td align="right">

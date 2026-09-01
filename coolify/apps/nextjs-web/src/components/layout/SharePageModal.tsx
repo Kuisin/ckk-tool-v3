@@ -21,10 +21,9 @@ import {
 import { notifications } from "@mantine/notifications";
 import { IconInfoCircle, IconShare2 } from "@tabler/icons-react";
 import { usePathname, useSearchParams } from "next/navigation";
-import { useLocale } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { useEffect, useMemo, useState, useTransition } from "react";
 import { CancelButton, PrimaryButton } from "@/components/ui/buttons";
-import { useTr } from "@/hooks/useTr";
 import { appLabel, appList } from "@/lib/app-list";
 import type { Locale } from "@/lib/i18n";
 import { fetchShareOptionsAction, sharePageAction } from "./share-actions";
@@ -36,7 +35,7 @@ export function SharePageModal({
   opened: boolean;
   onClose: () => void;
 }) {
-  const tr = useTr();
+  const tr = useTranslations();
   const locale = useLocale() as Locale;
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -84,7 +83,7 @@ export function SharePageModal({
   const submit = () => {
     setError(null);
     if (!everyone && users.length === 0 && groups.length === 0) {
-      setError(tr("宛先を 1 件以上選択してください"));
+      setError(tr("layout.sharePageModal.selectAtLeastOneRecipient"));
       return;
     }
     startTransition(async () => {
@@ -98,8 +97,8 @@ export function SharePageModal({
       });
       if (res.ok) {
         notifications.show({
-          title: tr("共有しました"),
-          message: tr("{recipientCount} 名に通知を送信しました", {
+          title: tr("layout.sharePageModal.shared"),
+          message: tr("layout.sharePageModal.notifiedRecipientcountPeople", {
             recipientCount: res.data.recipientCount,
           }),
           color: "green",
@@ -116,13 +115,13 @@ export function SharePageModal({
     <Modal
       onClose={onClose}
       opened={opened}
-      title={tr("ページを共有")}
+      title={tr("common.shareThisPage")}
       withinPortal
     >
       <Stack gap="sm">
         <div>
           <Text c="dimmed" mb={4} size="xs">
-            {tr("共有するページ（現在の表示状態を含む）")}
+            {tr("layout.sharePageModal.thePageToShareIncludingIts")}
           </Text>
           <Code block>{currentUrl}</Code>
         </div>
@@ -135,7 +134,7 @@ export function SharePageModal({
 
         <Switch
           checked={everyone}
-          label={tr("全員に共有")}
+          label={tr("layout.sharePageModal.shareWithEveryone")}
           onChange={(e) => setEveryone(e.currentTarget.checked)}
           size="sm"
         />
@@ -143,9 +142,11 @@ export function SharePageModal({
           clearable
           data={options?.users ?? []}
           disabled={everyone}
-          label={tr("ユーザー")}
+          label={tr("common.user")}
           onChange={setUsers}
-          placeholder={options ? "ユーザーを選択" : tr("読み込み中...")}
+          placeholder={
+            options ? "ユーザーを選択" : tr("layout.sharePageModal.loading")
+          }
           searchable
           value={users}
         />
@@ -153,17 +154,17 @@ export function SharePageModal({
           clearable
           data={options?.groups ?? []}
           disabled={everyone}
-          label={tr("承認グループ")}
+          label={tr("common.approvalGroup")}
           onChange={setGroups}
-          placeholder={tr("グループを選択")}
+          placeholder={tr("common.selectAGroup")}
           searchable
           value={groups}
         />
         <Textarea
-          label={tr("コメント（任意）")}
+          label={tr("common.commentOptional")}
           minRows={2}
           onChange={(e) => setComment(e.currentTarget.value)}
-          placeholder={tr("共有の目的・確認してほしい点など")}
+          placeholder={tr("layout.sharePageModal.whyYouAreSharingItWhat")}
           value={comment}
         />
 
@@ -174,7 +175,7 @@ export function SharePageModal({
             loading={isPending}
             onClick={submit}
           >
-            {tr("共有")}
+            {tr("common.sharing")}
           </PrimaryButton>
           <CancelButton fullWidth onClick={onClose} />
         </Stack>

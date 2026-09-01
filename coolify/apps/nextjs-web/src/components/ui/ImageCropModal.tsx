@@ -24,8 +24,8 @@
 
 import { Box, Group, Modal, Slider, Stack, Text } from "@mantine/core";
 import { IconZoomIn, IconZoomOut } from "@tabler/icons-react";
+import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { useTr } from "@/hooks/useTr";
 import { CancelButton, GhostButton, PrimaryButton } from "./buttons";
 
 /** ビューポート（切り抜き枠）の 1 辺 px。 */
@@ -71,7 +71,7 @@ export function ImageCropModal({
   circular = true,
   loading = false,
 }: ImageCropModalProps) {
-  const tr = useTr();
+  const tr = useTranslations();
   const [url, setUrl] = useState<string | null>(null);
   const [image, setImage] = useState<HTMLImageElement | null>(null);
   const [scale, setScale] = useState(1);
@@ -108,7 +108,7 @@ export function ImageCropModal({
     setError(null);
     const img = new Image();
     img.onload = () => setImage(img);
-    img.onerror = () => setError(tr("画像を読み込めませんでした"));
+    img.onerror = () => setError(tr("ui.imageCropModal.couldNotLoadTheImage"));
     img.src = objectUrl;
     return () => URL.revokeObjectURL(objectUrl);
   }, [file, tr]);
@@ -237,7 +237,7 @@ export function ImageCropModal({
       renderSquare(image, rect, thumbPx),
     ]);
     if (!fullBlob || !thumbBlob) {
-      setError(tr("切り抜きに失敗しました"));
+      setError(tr("ui.imageCropModal.couldNotCropIt"));
       return;
     }
     const base = file.name.replace(/\.[^.]+$/, "") || "photo";
@@ -264,7 +264,7 @@ export function ImageCropModal({
     >
       <Stack align="center" gap="md">
         <Text c="dimmed" size="xs" ta="center">
-          {tr("ドラッグで位置を、スライダーで大きさを調整します")}
+          {tr("ui.imageCropModal.dragToPositionItUseThe")}
         </Text>
 
         {/* 切り抜きビューポート */}
@@ -347,7 +347,7 @@ export function ImageCropModal({
             }}
             size="xs"
           >
-            {tr("リセット")}
+            {tr("common.reset2")}
           </GhostButton>
           <Group gap="xs">
             <CancelButton onClick={onCancel} />

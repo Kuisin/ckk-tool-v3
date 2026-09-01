@@ -33,12 +33,12 @@ import {
   IconExternalLink,
 } from "@tabler/icons-react";
 import { useRouter, useSearchParams } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { useFormat } from "@/components/layout/PreferencesProvider";
 import { GhostButton, SecondaryButton } from "@/components/ui/buttons";
 import { CopyableValue } from "@/components/ui/CopyableValue";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { PageHeader } from "@/components/ui/PageHeader";
-import { useTr } from "@/hooks/useTr";
 import { useIsMobile } from "@/hooks/useViewport";
 import { downloadCsv, toCsv } from "@/lib/csv";
 import { FORM_FIELD_TYPES } from "@/lib/form-schema";
@@ -67,7 +67,7 @@ function Body({
   chartMode: ChartMode;
   isMobile: boolean;
 }) {
-  const tr = useTr();
+  const tr = useTranslations();
   const body = summary.body;
 
   switch (body.kind) {
@@ -116,9 +116,7 @@ function Body({
           )}
           {chartMode === "pie" && !canDonut && (
             <Text c="dimmed" size="xs">
-              {tr(
-                "この項目は円グラフにできません（複数選べる質問、区分が 1 つだけ、\n              区分が多すぎる、または上位のみの表示）",
-              )}
+              {tr("forms.formSummaryView.thisFieldCannotBeAPie")}
             </Text>
           )}
         </Stack>
@@ -130,11 +128,11 @@ function Body({
         <Stack gap="md">
           <StatRow
             stats={[
-              { label: tr("回答"), value: body.answered },
-              { label: tr("最小"), value: body.min },
-              { label: tr("平均"), value: body.mean },
-              { label: tr("中央"), value: body.median },
-              { label: tr("最大"), value: body.max },
+              { label: tr("common.response"), value: body.answered },
+              { label: tr("forms.formSummaryView.smallest"), value: body.min },
+              { label: tr("forms.formSummaryView.average"), value: body.mean },
+              { label: tr("forms.formSummaryView.center"), value: body.median },
+              { label: tr("forms.formSummaryView.largest"), value: body.max },
             ]}
           />
           {isMobile ? (
@@ -201,7 +199,7 @@ function Body({
     default:
       return (
         <Text c="dimmed" size="sm">
-          {tr("この項目は集計しません（表示専用）")}
+          {tr("forms.formSummaryView.thisFieldIsNotSummarizedDisplay")}
         </Text>
       );
   }
@@ -246,7 +244,7 @@ export function FormSummaryView({
   /** 未設定なら Metabase へのリンクは出さない（LAN 限定の URL を焼き込まない）。 */
   metabaseUrl: string | null;
 }) {
-  const tr = useTr();
+  const tr = useTranslations();
   const fmt = useFormat();
   const router = useRouter();
   const params = useSearchParams();
@@ -261,24 +259,30 @@ export function FormSummaryView({
 
   // 集計そのものを CSV で出す（画面の数字をそのまま持ち出せるように）。
   const exportCsv = () => {
-    const rows: (string | number)[][] = [[tr("項目"), tr("区分"), tr("件数")]];
+    const rows: (string | number)[][] = [
+      [tr("common.item"), tr("common.type"), tr("forms.formSummaryView.count")],
+    ];
     for (const s of summaries) {
       const b = s.body;
       if (b.kind === "categories" || b.kind === "periods") {
         const items = b.kind === "categories" ? b.items : b.buckets;
         for (const i of items) rows.push([s.label, i.label, i.count]);
       } else if (b.kind === "numbers") {
-        rows.push([s.label, tr("回答数"), b.answered]);
-        rows.push([s.label, tr("最小"), b.min]);
-        rows.push([s.label, tr("平均"), b.mean]);
-        rows.push([s.label, tr("中央"), b.median]);
-        rows.push([s.label, tr("最大"), b.max]);
+        rows.push([s.label, tr("common.responses"), b.answered]);
+        rows.push([s.label, tr("forms.formSummaryView.smallest"), b.min]);
+        rows.push([s.label, tr("forms.formSummaryView.average"), b.mean]);
+        rows.push([s.label, tr("forms.formSummaryView.center"), b.median]);
+        rows.push([s.label, tr("forms.formSummaryView.largest"), b.max]);
         for (const i of b.buckets) rows.push([s.label, i.label, i.count]);
       } else if (b.kind === "text" || b.kind === "amount") {
-        rows.push([s.label, tr("回答数"), b.answered]);
+        rows.push([s.label, tr("common.responses"), b.answered]);
       }
       if (b.kind !== "none")
-        rows.push([s.label, tr("未回答"), Math.max(0, s.total - b.answered)]);
+        rows.push([
+          s.label,
+          tr("forms.formSummaryView.noAnswer"),
+          Math.max(0, s.total - b.answered),
+        ]);
     }
     downloadCsv(`集計_${formTitle}_${formCode}.csv`, toCsv(rows));
   };
@@ -295,15 +299,15 @@ export function FormSummaryView({
               CSV
             </GhostButton>
             <SecondaryButton href={`/general/forms/${formCode}`}>
-              {tr("フォームへ戻る")}
+              {tr("forms.formSummaryView.backToTheForm")}
             </SecondaryButton>
           </Group>
         }
         breadcrumbs={[
-          { label: tr("一般") },
-          { label: tr("フォーム"), href: "/general/forms" },
+          { label: tr("common.general") },
+          { label: tr("common.forms"), href: "/general/forms" },
           { label: formTitle, href: `/general/forms/${formCode}` },
-          { label: tr("集計") },
+          { label: tr("forms.formSummaryView.summary") },
         ]}
         title={`集計 — ${formTitle}`}
       />
@@ -311,9 +315,9 @@ export function FormSummaryView({
       <Card padding="md" radius="md" withBorder>
         <StatRow
           stats={[
-            { label: tr("回答数"), value: responseCount },
+            { label: tr("common.responses"), value: responseCount },
             {
-              label: tr("最新の回答"),
+              label: tr("forms.formSummaryView.latestResponse"),
               value: lastResponseAt ? fmt.dateTime(lastResponseAt) : "—",
             },
           ]}
@@ -326,12 +330,18 @@ export function FormSummaryView({
             <Group gap="xl" wrap="wrap">
               <Stack gap={4}>
                 <Text c="dimmed" size="xs">
-                  {tr("選択肢の並び")}
+                  {tr("forms.formSummaryView.optionOrder")}
                 </Text>
                 <SegmentedControl
                   data={[
-                    { value: "count", label: tr("多い順") },
-                    { value: "definition", label: tr("定義順") },
+                    {
+                      value: "count",
+                      label: tr("forms.formSummaryView.mostFirst"),
+                    },
+                    {
+                      value: "definition",
+                      label: tr("forms.formSummaryView.definitionOrder"),
+                    },
                   ]}
                   onChange={(v) => setParam("order", v)}
                   size="xs"
@@ -340,13 +350,16 @@ export function FormSummaryView({
               </Stack>
               <Stack gap={4}>
                 <Text c="dimmed" size="xs">
-                  {tr("選択肢のグラフ")}
+                  {tr("forms.formSummaryView.optionChart")}
                 </Text>
                 <SegmentedControl
                   data={[
-                    { value: "auto", label: tr("自動") },
-                    { value: "pie", label: tr("円") },
-                    { value: "bar", label: tr("棒") },
+                    {
+                      value: "auto",
+                      label: tr("forms.formSummaryView.automatic"),
+                    },
+                    { value: "pie", label: tr("forms.formSummaryView.jPY") },
+                    { value: "bar", label: tr("forms.formSummaryView.bar") },
                   ]}
                   onChange={(v) => setParam("chart", v)}
                   size="xs"
@@ -355,12 +368,15 @@ export function FormSummaryView({
               </Stack>
               <Stack gap={4}>
                 <Text c="dimmed" size="xs">
-                  {tr("日付のまとめ方")}
+                  {tr("forms.formSummaryView.howDatesAreGrouped")}
                 </Text>
                 <SegmentedControl
                   data={[
-                    { value: "month", label: tr("月別") },
-                    { value: "day", label: tr("日別") },
+                    {
+                      value: "month",
+                      label: tr("forms.formSummaryView.byMonth"),
+                    },
+                    { value: "day", label: tr("forms.formSummaryView.byDay") },
                   ]}
                   onChange={(v) => setParam("grain", v)}
                   size="xs"
@@ -370,7 +386,7 @@ export function FormSummaryView({
             </Group>
             <Stack gap={4}>
               <Text fw={600} size="sm">
-                {tr("提出の推移")}
+                {tr("forms.formSummaryView.submissionsOverTime")}
               </Text>
               {isMobile ? (
                 <SummaryBars
@@ -389,16 +405,14 @@ export function FormSummaryView({
       <Alert
         color="gray"
         icon={<IconChartBar size={16} />}
-        title={tr("もっと詳しく分析するには")}
+        title={tr("forms.formSummaryView.toAnalyseThisInMoreDepth")}
         variant="light"
       >
         <Stack gap="xs">
           <Text size="sm">
-            {tr(
-              "この画面は「何がどれだけ選ばれたか」までです。項目どうしの掛け合わせ、\n            期間の比較、他の業務データ（受注・出荷など）との突き合わせは",
-            )}
+            {tr("forms.formSummaryView.thisScreenGoesOnlyAsFar")}
             <strong> Metabase </strong>
-            {tr("で行えます。")}
+            {tr("forms.formSummaryView.isWhereYouDoIt")}
             <br />
             フォームの回答は{" "}
             <Text component="span" ff="mono" size="sm">
@@ -411,10 +425,8 @@ export function FormSummaryView({
           {/* Metabase の「フォームコード」フィルタに貼る値。手で書き写すと
               打ち間違えるので、そのままコピーできる形で出す。 */}
           <CopyableValue
-            description={tr(
-              "Metabase の「フォームコード」に貼り付けると、このフォームの回答だけに絞れます。",
-            )}
-            label={tr("フォームコード")}
+            description={tr("forms.formSummaryView.pasteItIntoMetabaseSForm")}
+            label={tr("common.formCode")}
             value={formCode}
           />
 
@@ -425,7 +437,7 @@ export function FormSummaryView({
                 href={metabaseUrl}
                 leftSection={<IconExternalLink size={14} />}
               >
-                {tr("Metabase を開く")}
+                {tr("forms.formSummaryView.openMetabase")}
               </SecondaryButton>
             )}
             <SecondaryButton
@@ -433,7 +445,7 @@ export function FormSummaryView({
               href="/manual/ja/operations/general/forms/user#metabase"
               leftSection={<IconBook2 size={14} />}
             >
-              {tr("集計のしかたを読む")}
+              {tr("forms.formSummaryView.readHowItIsSummarized")}
             </SecondaryButton>
           </Group>
         </Stack>
@@ -443,7 +455,7 @@ export function FormSummaryView({
         <Paper p="md" radius="md" withBorder>
           <EmptyState
             icon={<IconChartBar size={28} />}
-            message={tr("まだ回答がありません")}
+            message={tr("common.noResponsesYet")}
           />
         </Paper>
       ) : (

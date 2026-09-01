@@ -8,6 +8,7 @@
  */
 
 import { NextResponse } from "next/server";
+import { getTranslations } from "next-intl/server";
 import { currentAppEnv } from "@/lib/app-flags";
 import { getCurrentActorId } from "@/lib/audit";
 import { checkPermission } from "@/lib/authz";
@@ -18,7 +19,6 @@ import {
   serializeFormExport,
 } from "@/lib/form-transfer";
 import { fetchForm, formAccess } from "@/lib/forms";
-import { getTr } from "@/lib/ui-text-server";
 
 export const dynamic = "force-dynamic";
 
@@ -26,7 +26,7 @@ export async function GET(
   _request: Request,
   { params }: { params: Promise<{ code: string }> },
 ) {
-  const tr = await getTr();
+  const tr = await getTranslations();
   const authz = await checkPermission("form", "READ");
   if (!authz.ok) {
     return new NextResponse(authz.error, { status: 403 });
@@ -41,7 +41,7 @@ export async function GET(
   if (!access.canRead) return new NextResponse("Not found", { status: 404 });
 
   if (form.currentVersion === 0 || form.fields.length === 0) {
-    return new NextResponse(tr("このフォームはまだ項目が公開されていません"), {
+    return new NextResponse(tr("api.forms.thisFormSFieldsHaveNot"), {
       status: 409,
     });
   }

@@ -16,6 +16,7 @@ import {
   IconSearch,
 } from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { useState, useTransition } from "react";
 import { runClosing } from "@/app/(dashboard)/billing/closings/actions";
 import { useFormat } from "@/components/layout/PreferencesProvider";
@@ -25,7 +26,6 @@ import { MoneyText } from "@/components/ui/MoneyText";
 import { ModalShell } from "@/components/ui/modals";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { ListShell } from "@/components/ui/shells";
-import { useTr } from "@/hooks/useTr";
 import { useUrlSelectState, useUrlStringState } from "@/hooks/useUrlState";
 import { useIsMobile } from "@/hooks/useViewport";
 import { statusOptions } from "@/lib/status-map";
@@ -55,7 +55,7 @@ function RunClosingModal({
   opened: boolean;
   onClose: () => void;
 }) {
-  const tr = useTr();
+  const tr = useTranslations();
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const now = new Date();
@@ -72,7 +72,7 @@ function RunClosingModal({
       if (result.ok) {
         const { created, updated, skipped } = result.data;
         notifications.show({
-          title: tr("締日処理を実行しました"),
+          title: tr("billing.closings.theBillingClosingWasRun"),
           message: `作成 ${created} 件 / 更新 ${updated} 件${skipped > 0 ? ` / 処理済みスキップ ${skipped} 件` : ""}`,
           color: "green",
         });
@@ -80,8 +80,8 @@ function RunClosingModal({
         router.refresh();
       } else {
         notifications.show({
-          title: tr("エラー"),
-          message: tr(result.error),
+          title: tr("common.error2"),
+          message: result.error,
           color: "red",
         });
       }
@@ -90,31 +90,29 @@ function RunClosingModal({
 
   return (
     <ModalShell
-      confirmLabel={tr("実行")}
+      confirmLabel={tr("common.run2")}
       loading={isPending}
       onClose={onClose}
       onConfirm={execute}
       opened={opened}
       size="sm"
-      title={tr("締日処理の実行")}
+      title={tr("billing.closings.runTheBillingClosing")}
     >
       <Text size="sm">
-        {tr(
-          "対象月の未請求出荷（出荷済み・発送のみ）を顧客ごとに集計し、締日の処理行を作成します。",
-        )}
+        {tr("billing.closings.aggregatesTheMonthSUnbilledShipments")}
       </Text>
       <Group grow>
         <Select
           allowDeselect={false}
           data={yearOptions()}
-          label={tr("年")}
+          label={tr("billing.closings.years")}
           onChange={(v) => v && setYear(v)}
           value={year}
         />
         <Select
           allowDeselect={false}
           data={MONTH_OPTIONS}
-          label={tr("月")}
+          label={tr("billing.closings.months")}
           onChange={(v) => v && setMonth(v)}
           value={month}
         />
@@ -124,7 +122,7 @@ function RunClosingModal({
 }
 
 export function ClosingTable({ rows }: { rows: BillingClosing[] }) {
-  const tr = useTr();
+  const tr = useTranslations();
   const fmt = useFormat();
   const router = useRouter();
   const isMobile = useIsMobile();
@@ -148,13 +146,13 @@ export function ClosingTable({ rows }: { rows: BillingClosing[] }) {
   const columns: Column<BillingClosing>[] = [
     {
       key: "customerName",
-      header: tr("顧客"),
+      header: tr("common.customer"),
       sortable: true,
       render: (c) => <Text size="sm">{c.customerName}</Text>,
     },
     {
       key: "closingDate",
-      header: tr("締日"),
+      header: tr("common.closingDay"),
       width: 130,
       sortable: true,
       sortValue: (c) => c.closingDate,
@@ -166,7 +164,7 @@ export function ClosingTable({ rows }: { rows: BillingClosing[] }) {
     },
     {
       key: "totalAmount",
-      header: tr("合計金額"),
+      header: tr("common.totalAmount"),
       width: 130,
       align: "right",
       sortValue: (c) => c.totalAmount ?? 0,
@@ -174,14 +172,14 @@ export function ClosingTable({ rows }: { rows: BillingClosing[] }) {
     },
     {
       key: "status",
-      header: tr("状態"),
+      header: tr("common.status"),
       width: 120,
       sortValue: (c) => c.status,
       render: (c) => <StatusBadge entity="BillingClosing" status={c.status} />,
     },
     {
       key: "processedAt",
-      header: tr("処理日"),
+      header: tr("common.processedOn"),
       width: 120,
       sortValue: (c) => c.processedAt ?? "",
       render: (c) => (
@@ -200,17 +198,17 @@ export function ClosingTable({ rows }: { rows: BillingClosing[] }) {
           onClick={() => setRunOpen(true)}
           style={{ flexShrink: 0 }}
         >
-          {isMobile ? "実行" : tr("締日処理を実行")}
+          {isMobile ? "実行" : tr("billing.closings.runTheBillingClosing2")}
         </PrimaryButton>
       }
-      breadcrumbs={[tr("請求"), tr("締日処理")]}
+      breadcrumbs={[tr("common.billing"), tr("common.billingClosing")]}
       filters={
         <Select
           clearable
           data={statusOptions("BillingClosing")}
           flex={isMobile ? 1 : undefined}
           onChange={setStatus}
-          placeholder={tr("状態")}
+          placeholder={tr("common.status")}
           value={status}
           w={isMobile ? undefined : 160}
         />
@@ -220,20 +218,18 @@ export function ClosingTable({ rows }: { rows: BillingClosing[] }) {
         <TextInput
           leftSection={<IconSearch size={14} />}
           onChange={(e) => setSearch(e.currentTarget.value)}
-          placeholder={tr("顧客で検索")}
+          placeholder={tr("billing.closings.searchByCustomer")}
           value={search}
         />
       }
-      title={tr("締日処理")}
+      title={tr("common.billingClosing")}
     >
       <DataTable
         columns={columns}
         data={filtered}
         defaultSort={{ key: "closingDate", dir: "desc" }}
         emptyIcon={<IconCalendarDue size={24} />}
-        emptyMessage={tr(
-          "締日処理がありません（「締日処理を実行」から作成します）",
-        )}
+        emptyMessage={tr("billing.closings.thereAreNoBillingClosingsCreate")}
         getRowId={(c) => c.id}
         onRowClick={(c) => router.push(`${BASE_PATH}/${c.id}`)}
         renderCard={(c) => (

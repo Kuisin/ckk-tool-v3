@@ -6,18 +6,18 @@
  */
 
 import { Stack, Title } from "@mantine/core";
+import { getTranslations } from "next-intl/server";
 import { PortalDocumentTabs } from "@/components/portal/PortalDocumentTabs";
 import {
   listPortalDocuments,
   PORTAL_DOCUMENT_TYPES,
 } from "@/lib/portal-documents";
 import { requirePortalView } from "@/lib/portal-page";
-import { getTr } from "@/lib/ui-text-server";
 
 export const dynamic = "force-dynamic";
 
 export default async function PortalDocumentsPage() {
-  const tr = await getTr();
+  const tr = await getTranslations();
   const gate = await requirePortalView();
   if (!gate.ok) return gate.view;
 
@@ -30,7 +30,7 @@ export default async function PortalDocumentsPage() {
 
   return (
     <Stack gap="md">
-      <Title order={3}>{tr("書類")}</Title>
+      <Title order={3}>{tr("portal.documents.document")}</Title>
       <PortalDocumentTabs groups={groups} />
     </Stack>
   );

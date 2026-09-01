@@ -24,6 +24,7 @@ import {
 } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
 import { IconPlus } from "@tabler/icons-react";
+import { useTranslations } from "next-intl";
 import { useState, useTransition } from "react";
 import {
   activatePortalAccount,
@@ -32,7 +33,6 @@ import {
   deactivatePortalAccount,
   issueBackupCodes,
 } from "@/app/(dashboard)/settings/portal/actions";
-import { useTr } from "@/hooks/useTr";
 import type { PortalAccountRow } from "@/lib/portal-admin";
 
 type Option = { value: string; label: string };
@@ -48,7 +48,7 @@ export function PortalAccountsTable({
   canActivate?: boolean;
   canIssueBackup?: boolean;
 }) {
-  const tr = useTr();
+  const tr = useTranslations();
   const [pending, start] = useTransition();
   const [creating, setCreating] = useState(false);
   const [bpId, setBpId] = useState<string | null>(null);
@@ -60,12 +60,16 @@ export function PortalAccountsTable({
 
   function notify(res: { ok: boolean; error?: string }, ok: string) {
     if (res.ok) {
-      notifications.show({ color: "green", message: ok, title: tr("完了") });
+      notifications.show({
+        color: "green",
+        message: ok,
+        title: tr("common.completed"),
+      });
     } else {
       notifications.show({
         color: "red",
-        message: res.error ?? tr("失敗しました"),
-        title: tr("エラー"),
+        message: res.error ?? tr("common.failed"),
+        title: tr("common.error2"),
       });
     }
   }
@@ -74,7 +78,7 @@ export function PortalAccountsTable({
     if (!bpId) return;
     start(async () => {
       const res = await createPortalAccount({ bpId, email, displayName });
-      notify(res, tr("アカウントを作成しました（既定は無効です）"));
+      notify(res, tr("settings.portal.theAccountWasCreatedDisabledBy"));
       if (res.ok) {
         // 作った直後に BP スコープを 1 本入れておく（無いと何も見えない）。
         await addPortalBpScope({
@@ -97,7 +101,7 @@ export function PortalAccountsTable({
           leftSection={<IconPlus size={14} />}
           onClick={() => setCreating(true)}
         >
-          {tr("新規作成")}
+          {tr("common.new2")}
         </Button>
       </Group>
 
@@ -105,12 +109,12 @@ export function PortalAccountsTable({
         <Table highlightOnHover striped withTableBorder>
           <Table.Thead>
             <Table.Tr>
-              <Table.Th>{tr("取引先")}</Table.Th>
-              <Table.Th>{tr("担当者")}</Table.Th>
-              <Table.Th>{tr("メール")}</Table.Th>
-              <Table.Th>{tr("状態")}</Table.Th>
-              <Table.Th>{tr("最終ログイン")}</Table.Th>
-              <Table.Th>{tr("操作")}</Table.Th>
+              <Table.Th>{tr("common.businessPartners")}</Table.Th>
+              <Table.Th>{tr("common.assignee")}</Table.Th>
+              <Table.Th>{tr("common.email")}</Table.Th>
+              <Table.Th>{tr("common.status")}</Table.Th>
+              <Table.Th>{tr("common.lastLogin")}</Table.Th>
+              <Table.Th>{tr("common.actions")}</Table.Th>
             </Table.Tr>
           </Table.Thead>
           <Table.Tbody>
@@ -118,7 +122,7 @@ export function PortalAccountsTable({
               <Table.Tr>
                 <Table.Td colSpan={6}>
                   <Text c="dimmed" size="sm">
-                    {tr("アカウントはまだありません。")}
+                    {tr("settings.portal.thereAreNoAccountsYet")}
                   </Text>
                 </Table.Td>
               </Table.Tr>
@@ -142,7 +146,7 @@ export function PortalAccountsTable({
                       size="sm"
                       variant="light"
                     >
-                      {a.isActive ? "有効" : tr("無効")}
+                      {a.isActive ? "有効" : tr("common.disabled3")}
                     </Badge>
                   </Table.Td>
                   <Table.Td>
@@ -160,16 +164,18 @@ export function PortalAccountsTable({
                               notify(
                                 await deactivatePortalAccount(
                                   a.id,
-                                  tr("管理画面から無効化"),
+                                  tr(
+                                    "settings.portal.disabledFromTheAdminScreen",
+                                  ),
                                 ),
-                                tr("無効にしました"),
+                                tr("settings.portal.disabled"),
                               ),
                             )
                           }
                           size="compact-xs"
                           variant="default"
                         >
-                          {tr("無効にする")}
+                          {tr("settings.portal.disable")}
                         </Button>
                       ) : (
                         <Button
@@ -179,7 +185,7 @@ export function PortalAccountsTable({
                             start(async () =>
                               notify(
                                 await activatePortalAccount(a.id),
-                                tr("有効にしました"),
+                                tr("settings.portal.enabled"),
                               ),
                             )
                           }
@@ -188,11 +194,11 @@ export function PortalAccountsTable({
                             canActivate
                               ? undefined
                               : tr(
-                                  "有効化には特権アクセス（SY0G）の承認が必要です",
+                                  "settings.portal.enablingRequiresPrivilegedAccessSy0gApproval",
                                 )
                           }
                         >
-                          {tr("有効にする")}
+                          {tr("settings.portal.enable")}
                         </Button>
                       )}
                       <Button
@@ -202,18 +208,23 @@ export function PortalAccountsTable({
                           start(async () => {
                             const res = await issueBackupCodes(a.id);
                             if (res.ok) setIssued(res.data.codes);
-                            notify(res, tr("バックアップコードを発行しました"));
+                            notify(
+                              res,
+                              tr("settings.portal.aBackupCodeWasIssued"),
+                            );
                           })
                         }
                         size="compact-xs"
                         title={
                           canIssueBackup
                             ? undefined
-                            : tr("発行には特権アクセス（SY0G）の承認が必要です")
+                            : tr(
+                                "settings.portal.issuingRequiresPrivilegedAccessSy0gApproval",
+                              )
                         }
                         variant="default"
                       >
-                        {tr("バックアップコード")}
+                        {tr("common.backupCode")}
                       </Button>
                     </Group>
                   </Table.Td>
@@ -227,25 +238,25 @@ export function PortalAccountsTable({
       <Modal
         onClose={() => setCreating(false)}
         opened={creating}
-        title={tr("ポータルアカウントの作成")}
+        title={tr("settings.portal.createAPortalAccount")}
       >
         <Stack gap="sm">
           <Select
             data={bpOptions}
-            label={tr("取引先")}
+            label={tr("common.businessPartners")}
             onChange={setBpId}
             searchable
             value={bpId}
             withAsterisk
           />
           <TextInput
-            label={tr("担当者名")}
+            label={tr("common.contactName")}
             onChange={(e) => setDisplayName(e.currentTarget.value)}
             value={displayName}
             withAsterisk
           />
           <TextInput
-            label={tr("メールアドレス")}
+            label={tr("common.emailAddress")}
             onChange={(e) => setEmail(e.currentTarget.value)}
             type="email"
             value={email}
@@ -254,26 +265,20 @@ export function PortalAccountsTable({
           <SimpleGrid cols={1} spacing="xs">
             <Checkbox
               checked={scopeBranches}
-              description={tr(
-                "親の取引先で共有すると、その支店宛の書類も見えます（支店から親へは遡りません）",
-              )}
-              label={tr("支店宛の書類も含める")}
+              description={tr("settings.portal.sharingAtTheParentPartnerAlso")}
+              label={tr("settings.portal.includeDocumentsAddressedToBranches")}
               onChange={(e) => setScopeBranches(e.currentTarget.checked)}
             />
             <Checkbox
               checked={scopeEndUser}
-              description={tr(
-                "卸し先の価格が需要家に見えることがあります。必要なときだけ。",
-              )}
-              label={tr("需要家・出荷先としての書類も含める")}
+              description={tr("settings.portal.theResellerSPriceMayBecome")}
+              label={tr("settings.portal.alsoIncludeDocumentsWhereTheyAre")}
               onChange={(e) => setScopeEndUser(e.currentTarget.checked)}
             />
           </SimpleGrid>
           <Alert color="gray" variant="light">
             <Text size="xs">
-              {tr(
-                "作成しただけでは何も見えません。「有効にする」で初めてログインできます\n              （有効化には承認が必要です）。",
-              )}
+              {tr("settings.portal.creatingItAloneShowsNothingThey")}
             </Text>
           </Alert>
           <Group justify="flex-end">
@@ -285,7 +290,7 @@ export function PortalAccountsTable({
               loading={pending}
               onClick={create}
             >
-              {tr("作成")}
+              {tr("common.create2")}
             </Button>
           </Group>
         </Stack>
@@ -294,20 +299,18 @@ export function PortalAccountsTable({
       <Modal
         onClose={() => setIssued(null)}
         opened={issued !== null}
-        title={tr("バックアップコード")}
+        title={tr("common.backupCode")}
       >
         <Stack gap="sm">
           <Alert color="orange" variant="light">
             <Text size="xs">
-              {tr(
-                "この画面を閉じると**二度と表示できません**。印刷するか書き写して、\n              担当者ご本人へ直接お渡しください。メールで送らないでください\n              （メールが使えないときのための手段です）。",
-              )}
+              {tr("settings.portal.onceYouCloseThisScreenIt")}
             </Text>
           </Alert>
           <Code block>{(issued ?? []).join("\n")}</Code>
           <Group justify="flex-end">
             <Button onClick={() => setIssued(null)}>
-              {tr("閉じた（控えました）")}
+              {tr("settings.portal.closedDeclined")}
             </Button>
           </Group>
         </Stack>

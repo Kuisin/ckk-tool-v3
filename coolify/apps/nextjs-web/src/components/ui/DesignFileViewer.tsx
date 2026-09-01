@@ -35,11 +35,11 @@ import {
 } from "@mantine/core";
 import { IconFile, IconFileTypePdf, IconPhoto } from "@tabler/icons-react";
 import dynamic from "next/dynamic";
+import { useTranslations } from "next-intl";
 import { useRef, useState } from "react";
 import { SecondaryButton } from "@/components/ui/buttons";
 import { ModalShell } from "@/components/ui/modals";
 import { useInView } from "@/hooks/useInView";
-import { useTr } from "@/hooks/useTr";
 import { useIsMobile } from "@/hooks/useViewport";
 import { designFileKind, notViewableReason } from "@/lib/design-file-kind";
 
@@ -68,7 +68,7 @@ export function DesignFileViewerModal({
   onClose: () => void;
   target: DesignFileViewerTarget | null;
 }) {
-  const tr = useTr();
+  const tr = useTranslations();
   const isMobile = useIsMobile();
   if (!target) return null;
   const kind = designFileKind(target.filename, target.mimeType);
@@ -135,7 +135,7 @@ export function DesignFileViewerModal({
         )}
         <Group justify="flex-end">
           <SecondaryButton external fullWidth={isMobile} href={target.src}>
-            {tr("ダウンロード")}
+            {tr("common.download")}
           </SecondaryButton>
         </Group>
       </Stack>
@@ -156,7 +156,7 @@ export function DesignFileThumb({
   target: DesignFileViewerTarget;
   height?: number;
 }) {
-  const tr = useTr();
+  const tr = useTranslations();
   const [open, setOpen] = useState(false);
   const isMobile = useIsMobile();
   const holder = useRef<HTMLButtonElement>(null);
@@ -221,7 +221,9 @@ export function DesignFileThumb({
                     <IconFile size={28} />
                   )}
                   <Text c="dimmed" size="xs">
-                    {kind === "pdf" ? "PDF" : tr("プレビューなし")}
+                    {kind === "pdf"
+                      ? "PDF"
+                      : tr("ui.designFileViewer.noPreview")}
                   </Text>
                 </Stack>
               </Center>

@@ -29,6 +29,7 @@ import {
   IconUpload,
 } from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { useState, useTransition } from "react";
 import {
   type ImportPreview,
@@ -44,7 +45,6 @@ import {
 import { FieldValue } from "@/components/ui/FieldValue";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { FormSection } from "@/components/ui/shells";
-import { useTr } from "@/hooks/useTr";
 import { useIsMobile } from "@/hooks/useViewport";
 
 const KIND_LABEL: Record<string, string> = {
@@ -53,7 +53,7 @@ const KIND_LABEL: Record<string, string> = {
 };
 
 export function FormImport() {
-  const tr = useTr();
+  const tr = useTranslations();
   const router = useRouter();
   const fmt = useFormat();
   const isMobile = useIsMobile();
@@ -85,8 +85,8 @@ export function FormImport() {
       } else {
         setPreview(null);
         notifications.show({
-          title: tr("読み取れません"),
-          message: tr(result.error),
+          title: tr("forms.formImport.cannotBeRead"),
+          message: result.error,
           color: "red",
         });
       }
@@ -100,14 +100,14 @@ export function FormImport() {
           message:
             result.data.mode === "version"
               ? `バージョン ${result.data.version} として取り込みました`
-              : tr("取り込みました"),
+              : tr("common.imported"),
           color: "green",
         });
         router.push(`/general/forms/${result.data.code}`);
       } else {
         notifications.show({
-          title: tr("エラー"),
-          message: tr(result.error),
+          title: tr("common.error2"),
+          message: result.error,
           color: "red",
         });
       }
@@ -117,38 +117,38 @@ export function FormImport() {
     <Stack gap="md">
       <PageHeader
         breadcrumbs={[
-          { label: tr("一般") },
-          { label: tr("フォーム"), href: "/general/forms" },
-          { label: tr("取り込み") },
+          { label: tr("common.general") },
+          { label: tr("common.forms"), href: "/general/forms" },
+          { label: tr("common.import") },
         ]}
-        title={tr("フォームを取り込む")}
+        title={tr("forms.formImport.importAForm")}
       />
 
-      <FormSection title={tr("ファイルまたは貼り付け")}>
+      <FormSection title={tr("forms.formImport.aFileOrPaste")}>
         <Alert color="gray" icon={<IconFileImport size={16} />} variant="light">
-          {tr(
-            "書き出したファイル（.txt）に含まれるのは**フォームの作りだけ**です。\n          回答と共有設定は含まれないので、取り込んだフォームは非公開で始まります。\n          受付期間も設定し直してください。",
-          )}
+          {tr("forms.formImport.theExportedFileTxtContainsOnly")}
         </Alert>
         <FileInput
           accept="text/plain,.txt"
           clearable
-          label={tr("書き出したファイル")}
+          label={tr("forms.formImport.exportedFile")}
           leftSection={<IconUpload size={16} />}
           onChange={readFile}
-          placeholder={tr("フォーム_....txt を選ぶ")}
+          placeholder={tr("forms.formImport.chooseFormTxt")}
         />
         <Textarea
           autosize
-          description={tr("ファイルの中身を直接貼っても取り込めます")}
-          label={tr("または貼り付け")}
+          description={tr("forms.formImport.youCanAlsoPasteTheFile")}
+          label={tr("forms.formImport.orPaste")}
           maxRows={14}
           minRows={6}
           onChange={(e) => {
             setText(e.currentTarget.value);
             setPreview(null);
           }}
-          placeholder={tr("# CKK 業務管理システム — フォーム定義 ...")}
+          placeholder={tr(
+            "forms.formImport.cKKBusinessManagementSystemFormDefinition",
+          )}
           styles={{
             input: { fontFamily: "var(--mantine-font-family-monospace)" },
           }}
@@ -161,39 +161,39 @@ export function FormImport() {
             loading={isPending}
             onClick={() => check(text)}
           >
-            {tr("内容を確認")}
+            {tr("forms.formImport.reviewTheContents")}
           </SecondaryButton>
         </Group>
       </FormSection>
 
       {preview && (
-        <FormSection title={tr("取り込む内容")}>
+        <FormSection title={tr("forms.formImport.whatIsImported")}>
           <Card padding="md" radius="md" withBorder>
             <Stack gap="sm">
               <Group gap="xl" wrap="wrap">
-                <FieldValue label={tr("タイトル")} value={preview.title} />
+                <FieldValue label={tr("common.title")} value={preview.title} />
                 <FieldValue
-                  label={tr("種類")}
+                  label={tr("common.kind")}
                   value={KIND_LABEL[preview.kind] ?? preview.kind}
                 />
                 <FieldValue
-                  label={tr("項目数")}
+                  label={tr("common.items")}
                   value={`${preview.fieldCount} 個`}
                 />
               </Group>
               <Group gap="xl" wrap="wrap">
                 <FieldValue
-                  label={tr("書き出し元")}
+                  label={tr("forms.formImport.exportedFrom")}
                   value={`${preview.sourceEnv} / ${preview.sourceCode} (v${preview.sourceVersion})`}
                 />
                 <FieldValue
-                  label={tr("書き出し日時")}
+                  label={tr("forms.formImport.exportedAt")}
                   value={
                     preview.exportedAt ? fmt.dateTime(preview.exportedAt) : "—"
                   }
                 />
                 <FieldValue
-                  label={tr("書き出した人")}
+                  label={tr("forms.formImport.exportedBy")}
                   value={preview.exportedBy ?? "—"}
                 />
               </Group>
@@ -204,7 +204,7 @@ export function FormImport() {
             <Alert
               color="yellow"
               icon={<IconAlertTriangle size={16} />}
-              title={tr("取り込んだあとに確認してください")}
+              title={tr("forms.formImport.checkItAfterImporting")}
             >
               <List size="sm">
                 {preview.warnings.map((w) => (
@@ -215,7 +215,7 @@ export function FormImport() {
           )}
 
           <Radio.Group
-            label={tr("取り込み方")}
+            label={tr("forms.formImport.howItIsImported")}
             onChange={(v) => setMode(v as "new" | "version")}
             value={mode}
           >
@@ -224,23 +224,21 @@ export function FormImport() {
                 description={
                   preview.codeAvailable
                     ? `書き出し元と同じコード（${preview.sourceCode}）で作ります。共有 URL が環境をまたいで同じになります`
-                    : tr("同じコードは使われているので、新しいコードで作ります")
+                    : tr("forms.formImport.thatCodeIsTakenSoA")
                 }
-                label={tr("新しいフォームとして取り込む")}
+                label={tr("forms.formImport.importItAsANewForm")}
                 value="new"
               />
               <Radio
                 description={
                   preview.codeAvailable
-                    ? tr("同じコードのフォームがこの環境にありません")
+                    ? tr("forms.formImport.thereIsNoFormWithThe")
                     : preview.existingEditable
                       ? `「${preview.existingTitle}」に新しいバージョンとして重ねます。これまでの回答は回答時点の内容のまま残ります`
-                      : tr(
-                          "同じコードのフォームはありますが、編集する権限がありません",
-                        )
+                      : tr("forms.formImport.aFormWithTheSameCode")
                 }
                 disabled={preview.codeAvailable || !preview.existingEditable}
-                label={tr("既存のフォームを更新する（新しいバージョン）")}
+                label={tr("forms.formImport.updateTheExistingFormANew")}
                 value="version"
               />
             </Stack>
@@ -257,7 +255,7 @@ export function FormImport() {
               loading={isPending}
               onClick={run}
             >
-              {tr("取り込む")}
+              {tr("forms.formImport.import")}
             </PrimaryButton>
             <CancelButton
               fullWidth
@@ -272,7 +270,7 @@ export function FormImport() {
               loading={isPending}
               onClick={run}
             >
-              {tr("取り込む")}
+              {tr("forms.formImport.import")}
             </PrimaryButton>
           </Group>
         )}

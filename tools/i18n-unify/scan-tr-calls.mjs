@@ -155,7 +155,11 @@ for (const file of files) {
       hasVars: hasSecondArg,
       argSource: litValue === null ? source.slice(open + 1, arg0End).trim() : undefined,
     });
-    re.lastIndex = close;
+    // ★ 外側の呼び出しの**閉じ括弧まで**丸ごと飛ばすと、vars 引数の中に
+    // ある入れ子の tr(...)（`v2: enabled ? tr("表示") : tr("非表示")` のような
+    // 形）を見つけられなくなる。第 1 引数の終わりまでだけ飛ばし、
+    // vars 引数の中も引き続き探せるようにする。
+    re.lastIndex = arg0End;
   }
 }
 

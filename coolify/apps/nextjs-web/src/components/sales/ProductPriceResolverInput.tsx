@@ -15,11 +15,11 @@
  */
 
 import { Anchor, Group, NumberInput, Select, Stack, Text } from "@mantine/core";
+import { useTranslations } from "next-intl";
 import { searchProductOptions } from "@/app/(dashboard)/_shared/option-search";
 import { PRODUCT_F4 } from "@/components/ui/f4-presets";
 import { HelpLabel } from "@/components/ui/HelpLabel";
 import { SearchSelect } from "@/components/ui/SearchSelect";
-import { useTr } from "@/hooks/useTr";
 import { useIsMobile } from "@/hooks/useViewport";
 import { formatMoney } from "@/lib/format";
 import { ORDER_TYPE_OPTIONS } from "@/lib/mock";
@@ -59,7 +59,7 @@ export function ProductPriceResolverInput({
    */
   designRequestHref?: (productId: string) => string;
 }) {
-  const tr = useTr();
+  const tr = useTranslations();
   const isMobile = useIsMobile();
 
   /** Re-resolve 単価・値引き from the 価格表 when 製品/種別/数量 changes. */
@@ -105,7 +105,7 @@ export function ProductPriceResolverInput({
           )
         }
         onSearch={searchProductOptions}
-        placeholder={tr("製品を検索")}
+        placeholder={tr("common.searchProducts")}
         storageKey="product"
         value={value.productId || null}
         withAsterisk
@@ -113,14 +113,14 @@ export function ProductPriceResolverInput({
       <Select
         data={ORDER_TYPE_OPTIONS}
         flex={isMobile ? 1 : 1}
-        label={tr("注文種別")}
+        label={tr("common.orderType")}
         onChange={(v) => onChange(reresolve({ orderType: v ?? "PRODUCTION" }))}
         value={value.orderType}
         withAsterisk
       />
       <NumberInput
         flex={isMobile ? 1 : 1}
-        label={tr("数量")}
+        label={tr("common.quantity")}
         min={1}
         onChange={(v) =>
           onChange(reresolve({ quantity: typeof v === "number" ? v : 0 }))
@@ -136,15 +136,15 @@ export function ProductPriceResolverInput({
         <Text c="dimmed" size="xs">
           <HelpLabel
             help={tr(
-              "顧客×製品×注文種別×数量の価格表から自動解決（基準単価 × 数量倍率、行の手動上書きがあればそれ）。",
+              "sales.productPriceResolverInput.resolvedAutomaticallyFromThePriceList",
             )}
-            label={tr("単価（価格表）")}
+            label={tr("common.unitPricePriceList")}
           />
         </Text>
         {unresolved ? (
           <Stack align={isMobile ? "flex-start" : "flex-end"} gap={0}>
             <Text c="orange" fw={600} size="xs">
-              {tr("価格表なし")}
+              {tr("common.noPriceList")}
             </Text>
             {designRequestHref && (
               <Anchor
@@ -152,7 +152,7 @@ export function ProductPriceResolverInput({
                 size="xs"
                 target="_blank"
               >
-                {tr("設計依頼を起票")}
+                {tr("common.raiseADesignRequest")}
               </Anchor>
             )}
           </Stack>
@@ -170,9 +170,9 @@ export function ProductPriceResolverInput({
         <Text c="dimmed" size="xs">
           <HelpLabel
             help={tr(
-              "価格表の値引きルール（期間・数量条件）から自動適用。複数該当時は値引き額が最大のルール。",
+              "sales.productPriceResolverInput.appliedAutomaticallyFromThePriceList",
             )}
-            label={tr("値引き（自動）")}
+            label={tr("sales.productPriceResolverInput.discountAutomatic")}
           />
         </Text>
         {value.discountAmount > 0 ? (
@@ -204,7 +204,7 @@ export function ProductPriceResolverInput({
         gap={2}
       >
         <Text c="dimmed" size="xs">
-          {tr("金額")}
+          {tr("common.amount")}
         </Text>
         <Text className="tabular-nums" ff="mono" fw={600} size="sm">
           {formatMoney(amount)}

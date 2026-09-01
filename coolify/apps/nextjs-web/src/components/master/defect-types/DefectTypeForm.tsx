@@ -17,6 +17,7 @@ import {
 import { useForm } from "@mantine/form";
 import { notifications } from "@mantine/notifications";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { useTransition } from "react";
 import { z } from "zod";
 import { createDefectType } from "@/app/(dashboard)/master/defect-types/actions";
@@ -26,7 +27,6 @@ import {
   FormShell,
   LocalizedTextInput,
 } from "@/components/ui/shells";
-import { useTr } from "@/hooks/useTr";
 import { useIsMobile } from "@/hooks/useViewport";
 import { fieldHelp, fieldHelpTip } from "@/lib/field-help";
 import { zodResolver } from "@/lib/form";
@@ -44,7 +44,7 @@ const defectTypeSchema = z.object({
 type FormValues = z.infer<typeof defectTypeSchema>;
 
 export function DefectTypeForm() {
-  const tr = useTr();
+  const tr = useTranslations();
   const router = useRouter();
   const isMobile = useIsMobile();
   const [isPending, startTransition] = useTransition();
@@ -65,16 +65,16 @@ export function DefectTypeForm() {
       const result = await createDefectType(values);
       if (result.ok) {
         notifications.show({
-          title: tr("保存しました"),
-          message: tr("不良種類を作成しました"),
+          title: tr("common.saved2"),
+          message: tr("master.defectTypes.theDefectTypeWasCreated"),
           color: "green",
         });
         // 詳細ページがないため一覧へ戻る。
         router.push(BASE_PATH);
       } else {
         notifications.show({
-          title: tr("エラー"),
-          message: tr(result.error),
+          title: tr("common.error2"),
+          message: result.error,
           color: "red",
         });
       }
@@ -84,32 +84,34 @@ export function DefectTypeForm() {
   return (
     <FormShell
       breadcrumbs={[
-        tr("マスタ"),
+        tr("common.masterData"),
         { label: "不良種類", href: BASE_PATH },
-        tr("新規作成"),
+        tr("common.new2"),
       ]}
       isDirty={form.isDirty()}
       isPending={isPending}
       onCancel={() => router.push(BASE_PATH)}
       onSubmit={form.onSubmit(handleSubmit)}
-      title={tr("不良種類 新規作成")}
+      title={tr("master.defectTypes.newDefectType")}
     >
-      <FormSection title={tr("基本情報")}>
+      <FormSection title={tr("common.basicInformation")}>
         <SimpleGrid cols={isMobile ? 1 : 2} spacing="sm">
           <TextInput
-            description={tr("不良種類を識別する一意のコード")}
+            description={tr(
+              "master.defectTypes.aUniqueCodeIdentifyingTheDefect",
+            )}
             label={
               <HelpLabel
                 {...fieldHelp("defectType", "code", { label: "コード" })}
               />
             }
-            placeholder={tr("例: SCRATCH")}
+            placeholder={tr("master.defectTypes.eGScratch")}
             withAsterisk
             {...form.getInputProps("code")}
           />
           <NumberInput
             allowDecimal={false}
-            description={tr("一覧・不良入力での並び順")}
+            description={tr("master.defectTypes.orderInListsAndDefectEntry")}
             label={<HelpLabel {...fieldHelp("defectType", "sortOrder")} />}
             min={0}
             {...form.getInputProps("sortOrder")}
@@ -119,7 +121,7 @@ export function DefectTypeForm() {
           <LocalizedTextInput
             help={fieldHelpTip("defectType", "code")}
             jaProps={form.getInputProps("nameJa")}
-            label={tr("名称")}
+            label={tr("common.name2")}
             required
             translationsProps={form.getInputProps("nameTranslations")}
           />

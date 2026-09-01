@@ -23,12 +23,12 @@ import {
 import { notifications } from "@mantine/notifications";
 import { IconPlus, IconTrash } from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { useMemo, useState, useTransition } from "react";
 import { updateTrialPricingSettings } from "@/app/(dashboard)/settings/actions";
 import { GhostButton } from "@/components/ui/buttons";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { FormActions, FormSection } from "@/components/ui/shells";
-import { useTr } from "@/hooks/useTr";
 import {
   type CustomInputDef,
   type CustomInputType,
@@ -55,7 +55,7 @@ const SCOPE_OPTIONS = [
 
 /** 全設定を保持しつつ、指定セクションだけ編集する共通フック。 */
 function useSectionSettings(initial: TrialPricingSettings) {
-  const tr = useTr();
+  const tr = useTranslations();
   const router = useRouter();
   const [settings, setSettings] = useState(initial);
   const [isPending, startTransition] = useTransition();
@@ -64,22 +64,28 @@ function useSectionSettings(initial: TrialPricingSettings) {
   const save = (validate?: () => string | null) => {
     const err = validate?.();
     if (err) {
-      notifications.show({ title: tr("エラー"), message: err, color: "red" });
+      notifications.show({
+        title: tr("common.error2"),
+        message: err,
+        color: "red",
+      });
       return;
     }
     startTransition(async () => {
       const res = await updateTrialPricingSettings(settings);
       if (res.ok) {
         notifications.show({
-          title: tr("保存しました"),
-          message: tr("価格試算の設定を更新しました"),
+          title: tr("common.saved2"),
+          message: tr(
+            "settings.trialPricingScalarForms.thePriceEstimateSettingsWereUpdated",
+          ),
           color: "green",
         });
         router.push(BASE);
       } else {
         notifications.show({
-          title: tr("エラー"),
-          message: tr(res.error),
+          title: tr("common.error2"),
+          message: res.error,
           color: "red",
         });
       }
@@ -101,13 +107,13 @@ function SectionShell({
   onCancel: () => void;
   children: React.ReactNode;
 }) {
-  const tr = useTr();
+  const tr = useTranslations();
   return (
     <Stack gap="md">
       <PageHeader
         breadcrumbs={[
-          tr("システム"),
-          { label: tr("価格試算計算"), href: BASE },
+          tr("common.system"),
+          { label: tr("common.priceEstimateEngine"), href: BASE },
           title,
         ]}
         title={title}
@@ -124,7 +130,7 @@ export function MaterialPolicyForm({
 }: {
   initial: TrialPricingSettings;
 }) {
-  const tr = useTr();
+  const tr = useTranslations();
   const { settings, patch, save, isPending, router } =
     useSectionSettings(initial);
   return (
@@ -132,19 +138,21 @@ export function MaterialPolicyForm({
       isPending={isPending}
       onCancel={() => router.push(BASE)}
       onSave={() => save()}
-      title={tr("材料参照価格ポリシー")}
+      title={tr("common.materialReferencePricePolicy")}
     >
       <FormSection
         description={tr(
-          "価格試算の材料原価に使う、仕入実績（購買履歴）からの参照価格の決め方です。",
+          "settings.trialPricingScalarForms.howTheReferencePriceForThe",
         )}
-        title={tr("ポリシー")}
+        title={tr("settings.trialPricingScalarForms.policy")}
       >
         <Stack gap="sm" maw={480}>
           <Select
             data={MATERIAL_PRICE_BASIS_OPTIONS}
-            description={tr("期間内の仕入単価から参照価格を決める方法")}
-            label={tr("算出方法")}
+            description={tr(
+              "settings.trialPricingScalarForms.howTheReferencePriceIsDerived",
+            )}
+            label={tr("settings.trialPricingScalarForms.howItIsCalculated")}
             onChange={(v) =>
               patch({
                 materialPriceBasis:
@@ -155,8 +163,10 @@ export function MaterialPolicyForm({
             value={settings.materialPriceBasis}
           />
           <NumberInput
-            description={tr("参照する仕入実績をさかのぼる月数")}
-            label={tr("参照期間（ヶ月）")}
+            description={tr(
+              "settings.trialPricingScalarForms.howManyMonthsOfPurchaseHistory",
+            )}
+            label={tr("settings.trialPricingScalarForms.lookbackPeriodMonths")}
             max={36}
             min={1}
             onChange={(v) =>
@@ -166,9 +176,11 @@ export function MaterialPolicyForm({
           />
           <NumberInput
             description={tr(
-              "仕入実績が無い素材の価格試算で使う既定単価（0 = 既定なし）。価格試算では「既定価格」と表示されます。",
+              "settings.trialPricingScalarForms.theDefaultPriceUsedWhenA",
             )}
-            label={tr("既定材料単価（¥/1000mm）")}
+            label={tr(
+              "settings.trialPricingScalarForms.defaultMaterialUnitPrice1000mm",
+            )}
             min={0}
             onChange={(v) => patch({ defaultMaterialPrice: Number(v) || 0 })}
             prefix="¥"
@@ -189,7 +201,7 @@ export function CustomInputsForm({
 }: {
   initial: TrialPricingSettings;
 }) {
-  const tr = useTr();
+  const tr = useTranslations();
   const { settings, patch, save, isPending, router } =
     useSectionSettings(initial);
 
@@ -198,8 +210,10 @@ export function CustomInputsForm({
     const seen = new Map<string, number>();
     settings.customInputs.forEach((d, i) => {
       if (d.scope === "global") return; // 固定係数はキー編集不可・検証対象外
-      if (d.key && RESERVED_KEYS.has(d.key)) errors[i] = tr("予約語です");
-      if (d.key && seen.has(d.key)) errors[i] = tr("キーが重複しています");
+      if (d.key && RESERVED_KEYS.has(d.key))
+        errors[i] = tr("settings.trialPricingScalarForms.thatIsAReservedWord");
+      if (d.key && seen.has(d.key))
+        errors[i] = tr("settings.trialPricingScalarForms.theKeyIsDuplicated");
       if (d.key) seen.set(d.key, i);
     });
     return errors;
@@ -210,7 +224,7 @@ export function CustomInputsForm({
 
   const validate = () =>
     Object.keys(keyErrors).length > 0
-      ? tr("カスタム入力キーを修正してください（予約語・重複）")
+      ? tr("settings.trialPricingScalarForms.fixTheCustomInputKeysReserved")
       : null;
 
   return (
@@ -218,18 +232,18 @@ export function CustomInputsForm({
       isPending={isPending}
       onCancel={() => router.push(BASE)}
       onSave={() => save(validate)}
-      title={tr("カスタム入力項目")}
+      title={tr("common.customInputs")}
     >
       <FormSection
         description={tr(
-          "計算基準の式で変数として使える項目。スコープ「見積入力」は価格試算フォームに表示、「グローバル定数」は固定係数（補正値・LDチャージ・加工単価・予備形状本数）で削除・改名不可。",
+          "settings.trialPricingScalarForms.fieldsUsableAsVariablesInCriterion",
         )}
-        title={tr("カスタム入力項目")}
+        title={tr("common.customInputs")}
       >
         <Stack gap="sm">
           {settings.customInputs.length === 0 && (
             <Text c="dimmed" size="sm">
-              {tr("追加項目はありません。")}
+              {tr("settings.trialPricingScalarForms.thereAreNoExtraFields")}
             </Text>
           )}
           {settings.customInputs.map((d, i) => (
@@ -239,7 +253,7 @@ export function CustomInputsForm({
                 <TextInput
                   disabled={d.scope === "global"}
                   error={keyErrors[i]}
-                  label={tr("キー（変数名）")}
+                  label={tr("settings.trialPricingScalarForms.keyVariableName")}
                   onChange={(e) => {
                     const next = settings.customInputs.slice();
                     next[i] = { ...d, key: e.currentTarget.value };
@@ -250,7 +264,7 @@ export function CustomInputsForm({
                   w={160}
                 />
                 <TextInput
-                  label={tr("ラベル")}
+                  label={tr("settings.trialPricingScalarForms.label")}
                   onChange={(e) => {
                     const next = settings.customInputs.slice();
                     next[i] = { ...d, label: e.currentTarget.value };
@@ -262,7 +276,7 @@ export function CustomInputsForm({
                 <Select
                   data={INPUT_TYPE_OPTIONS}
                   disabled={d.scope === "global"}
-                  label={tr("型")}
+                  label={tr("settings.trialPricingScalarForms.type")}
                   onChange={(v) => {
                     const type = (v as CustomInputType) ?? "number";
                     const next = settings.customInputs.slice();
@@ -277,7 +291,7 @@ export function CustomInputsForm({
                 <Select
                   data={SCOPE_OPTIONS}
                   disabled={d.scope === "global"}
-                  label={tr("スコープ")}
+                  label={tr("common.scope")}
                   onChange={(v) => {
                     const next = settings.customInputs.slice();
                     next[i] = {
@@ -291,7 +305,7 @@ export function CustomInputsForm({
                 />
                 {d.type === "number" ? (
                   <NumberInput
-                    label={tr("既定値")}
+                    label={tr("common.default")}
                     onChange={(v) => {
                       const next = settings.customInputs.slice();
                       next[i] = {
@@ -306,7 +320,7 @@ export function CustomInputsForm({
                 ) : d.type === "boolean" ? (
                   <Switch
                     checked={d.default === true}
-                    label={tr("既定 ON")}
+                    label={tr("settings.trialPricingScalarForms.onByDefault")}
                     mt={26}
                     onChange={(e) => {
                       const next = settings.customInputs.slice();
@@ -318,8 +332,10 @@ export function CustomInputsForm({
                   <TextInput
                     label={
                       d.type === "select"
-                        ? tr("既定値/選択肢(,区切り)")
-                        : tr("既定値")
+                        ? tr(
+                            "settings.trialPricingScalarForms.defaultOptionsCommaSeparated",
+                          )
+                        : tr("common.default")
                     }
                     onChange={(e) => {
                       const next = settings.customInputs.slice();
@@ -377,7 +393,7 @@ export function CustomInputsForm({
               ])
             }
           >
-            {tr("項目を追加")}
+            {tr("common.addAnItem")}
           </GhostButton>
         </Stack>
       </FormSection>

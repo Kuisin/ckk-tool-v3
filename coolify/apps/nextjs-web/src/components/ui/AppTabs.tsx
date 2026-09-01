@@ -25,6 +25,7 @@
 import { Button, Menu, Tabs, type TabsProps } from "@mantine/core";
 import { useIsomorphicEffect } from "@mantine/hooks";
 import { IconChevronDown } from "@tabler/icons-react";
+import { useTranslations } from "next-intl";
 import {
   Children,
   isValidElement,
@@ -34,7 +35,6 @@ import {
   useRef,
   useState,
 } from "react";
-import { useTr } from "@/hooks/useTr";
 import { nextTabsCollapsed } from "@/lib/tab-overflow";
 
 interface TabItem {
@@ -97,7 +97,7 @@ export function AppTabs({
   onChange,
   ...rest
 }: TabsProps) {
-  const tr = useTr();
+  const tr = useTranslations();
   // 制御 / 非制御のどちらでも受ける（呼び出し側は Mantine と同じ書き方）。
   // 畳んだときの見出しに「いま開いているタブ」が要るので、非制御でも中で持つ。
   const [internal, setInternal] = useState<string | null>(defaultValue ?? null);
@@ -174,7 +174,7 @@ export function AppTabs({
                   rightSection={<IconChevronDown size={16} />}
                   variant="default"
                 >
-                  {activeItem?.label ?? tr("タブ")}
+                  {activeItem?.label ?? tr("ui.appTabs.tab")}
                 </Button>
               </Menu.Target>
               <Menu.Dropdown>

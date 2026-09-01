@@ -10,8 +10,8 @@
 
 import { CopyButton, Group, Text, Tooltip } from "@mantine/core";
 import { IconCheck, IconCopy } from "@tabler/icons-react";
+import { useTranslations } from "next-intl";
 import { GhostButton } from "@/components/ui/buttons";
-import { useTr } from "@/hooks/useTr";
 
 export function CopyableValue({
   value,
@@ -23,7 +23,7 @@ export function CopyableValue({
   /** 値の下に出す一言（何に使う値なのか）。 */
   description?: string;
 }) {
-  const tr = useTr();
+  const tr = useTranslations();
   return (
     <Group align="center" gap="xs" wrap="wrap">
       {label && (
@@ -42,7 +42,7 @@ export function CopyableValue({
       <CopyButton value={value}>
         {({ copied, copy }) => (
           <Tooltip
-            label={copied ? "コピーしました" : tr("コピー")}
+            label={copied ? "コピーしました" : tr("common.copy2")}
             withinPortal
           >
             <GhostButton
@@ -52,7 +52,7 @@ export function CopyableValue({
               }
               onClick={copy}
             >
-              {copied ? "コピーしました" : tr("コピー")}
+              {copied ? "コピーしました" : tr("common.copy2")}
             </GhostButton>
           </Tooltip>
         )}

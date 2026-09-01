@@ -11,6 +11,7 @@ import { SimpleGrid, Switch } from "@mantine/core";
 import { useForm } from "@mantine/form";
 import { notifications } from "@mantine/notifications";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { useTransition } from "react";
 import { z } from "zod";
 import {
@@ -24,7 +25,6 @@ import {
   FormShell,
   LocalizedTextInput,
 } from "@/components/ui/shells";
-import { useTr } from "@/hooks/useTr";
 import { useIsMobile } from "@/hooks/useViewport";
 import { fieldHelp, fieldHelpTip } from "@/lib/field-help";
 import { zodResolver } from "@/lib/form";
@@ -51,7 +51,7 @@ export function ApprovalGroupForm({
 }: {
   initial?: ApprovalGroupFormInitial;
 }) {
-  const tr = useTr();
+  const tr = useTranslations();
   const router = useRouter();
   const _isMobile = useIsMobile();
   const [isPending, startTransition] = useTransition();
@@ -78,17 +78,17 @@ export function ApprovalGroupForm({
         : await createApprovalGroup(input);
       if (result.ok) {
         notifications.show({
-          title: tr("保存しました"),
+          title: tr("common.saved2"),
           message: isEdit
-            ? tr("承認グループを更新しました")
-            : tr("承認グループを作成しました"),
+            ? tr("master.approvalSettings.theApprovalGroupWasUpdated")
+            : tr("master.approvalSettings.theApprovalGroupWasCreated"),
           color: "green",
         });
         router.push(`${BASE_PATH}/${result.data.id}`);
       } else {
         notifications.show({
-          title: tr("エラー"),
-          message: tr(result.error),
+          title: tr("common.error2"),
+          message: result.error,
           color: "red",
         });
       }
@@ -98,9 +98,9 @@ export function ApprovalGroupForm({
   return (
     <FormShell
       breadcrumbs={[
-        tr("マスタ"),
-        { label: tr("承認グループ"), href: BASE_PATH },
-        isEdit ? "編集" : tr("新規作成"),
+        tr("common.masterData"),
+        { label: tr("common.approvalGroup"), href: BASE_PATH },
+        isEdit ? "編集" : tr("common.new2"),
       ]}
       isDirty={form.isDirty()}
       isPending={isPending}
@@ -112,18 +112,18 @@ export function ApprovalGroupForm({
       title={
         isEdit
           ? `承認グループ 編集 — ${initial.nameJa}`
-          : tr("承認グループ 新規作成")
+          : tr("master.approvalSettings.newApprovalGroup")
       }
     >
       <FormSection
-        description={tr("どの書類の何段目で使うかは「承認フロー」で決めます。")}
-        title={tr("基本情報")}
+        description={tr("master.approvalSettings.whichDocumentAndWhichStepIt")}
+        title={tr("common.basicInformation")}
       >
         <SimpleGrid cols={1} spacing="sm">
           <LocalizedTextInput
             help={fieldHelpTip("approvalGroup", "name")}
             jaProps={form.getInputProps("nameJa")}
-            label={tr("名称")}
+            label={tr("common.name2")}
             required
             translationsProps={form.getInputProps("nameTranslations")}
           />

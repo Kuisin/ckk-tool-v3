@@ -10,13 +10,13 @@
 
 import { Alert, Stack, Tabs, Text } from "@mantine/core";
 import { IconInfoCircle } from "@tabler/icons-react";
+import { useTranslations } from "next-intl";
 import { useState } from "react";
 import type { ComponentTableKind } from "@/app/(dashboard)/master/material-numbering/actions";
 import { AppTabs } from "@/components/ui/AppTabs";
 import { PrimaryButton } from "@/components/ui/buttons";
 import { DocNumber } from "@/components/ui/DocNumber";
 import { PageHeader } from "@/components/ui/PageHeader";
-import { useTr } from "@/hooks/useTr";
 import { useTabParam } from "@/hooks/useUrlState";
 import type { Option } from "@/lib/mock";
 import { AddComponentModal } from "./AddComponentModal";
@@ -68,7 +68,7 @@ export function MaterialNumberingTabs({
 }: {
   data: MaterialNumberingData;
 }) {
-  const tr = useTr();
+  const tr = useTranslations();
   // アクティブタブを ?tab= に保持（URL 共有でタブまで再現）
   const [tabParam, setTab] = useTabParam("manufacturer");
   const active: ComponentTableKind = TABS.some((t) => t.value === tabParam)
@@ -94,19 +94,24 @@ export function MaterialNumberingTabs({
             {tab.label}を追加
           </PrimaryButton>
         }
-        breadcrumbs={[tr("マスタ"), tr("採番構成")]}
-        title={tr("採番構成")}
+        breadcrumbs={[
+          tr("common.masterData"),
+          tr("master.materialNumbering.codeNumbering"),
+        ]}
+        title={tr("master.materialNumbering.codeNumbering")}
       />
 
       <Alert color="blue" icon={<IconInfoCircle size={16} />} variant="light">
         <Text size="xs">
-          {tr("材種コード =")}{" "}
-          <DocNumber>{tr("[メーカー][材種2桁][形状][種類4桁]")}</DocNumber>
+          {tr("master.materialNumbering.materialTypeCode")}{" "}
+          <DocNumber>
+            {tr("master.materialNumbering.manufacturerGrade2ShapeKind4")}
+          </DocNumber>
           、素材コード ={" "}
-          <DocNumber>{tr("[材種]-[黒皮研磨][径×10 3桁]-[全長3桁]")}</DocNumber>
-          {tr(
-            "。\n          コードは合成コードに埋め込まれるため削除できません（無効化のみ）。\n          直径・全長は素材作成時にも自動登録されます。",
-          )}
+          <DocNumber>
+            {tr("master.materialNumbering.materialTypeFinishDia103")}
+          </DocNumber>
+          {tr("master.materialNumbering.codesAreEmbeddedInCompositeCodes")}
         </Text>
       </Alert>
 

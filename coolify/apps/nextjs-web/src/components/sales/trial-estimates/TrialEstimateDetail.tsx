@@ -35,6 +35,7 @@ import {
   IconMessage2,
 } from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { useState, useTransition } from "react";
 import { searchProductOptions } from "@/app/(dashboard)/_shared/option-search";
 import {
@@ -63,7 +64,6 @@ import {
   ResourceActions,
   SummaryGrid,
 } from "@/components/ui/shells";
-import { useTr } from "@/hooks/useTr";
 import { useTabParam } from "@/hooks/useUrlState";
 import type { MemoView } from "@/lib/document-memos";
 import type { MaterialPricePoint } from "@/lib/material-pricing-core";
@@ -111,7 +111,7 @@ export function TrialEstimateDetail({
   /** 工具種の選択肢（管理者定義。未指定は組み込み 3 種）. */
   toolTypeOptions?: { value: string; label: string }[];
 }) {
-  const tr = useTr();
+  const tr = useTranslations();
   const fmt = useFormat();
   const toolLabel = (v: string) =>
     toolTypeOptions.find((o) => o.value === v)?.label ?? v;
@@ -133,23 +133,25 @@ export function TrialEstimateDetail({
   const stages: ProcedureStage[] = [
     {
       key: "draft",
-      label: tr("下書き"),
+      label: tr("common.draft"),
       description: fmt.date(record.createdAt),
       loading: status === "DRAFT",
     },
     {
       key: "confirmed",
-      label: tr("確定"),
+      label: tr("common.confirmed"),
       description:
-        status === "DRAFT" ? "価格表の基準単価にできる状態へ" : tr("確定済み"),
+        status === "DRAFT"
+          ? "価格表の基準単価にできる状態へ"
+          : tr("sales.trialEstimates.confirmed"),
       loading: status === "CONFIRMED",
     },
     {
       key: "registered",
-      label: tr("価格表登録済"),
+      label: tr("sales.trialEstimates.registered"),
       description: record.registeredAt
         ? fmt.date(record.registeredAt)
-        : tr("価格表で使用されると確定（以後ロック）"),
+        : tr("sales.trialEstimates.confirmedOnceUsedInAPrice"),
     },
   ];
   const active = status === "DRAFT" ? 0 : status === "CONFIRMED" ? 1 : 3;
@@ -158,7 +160,7 @@ export function TrialEstimateDetail({
   const handoffGroups: HandoffGroup[] = [
     {
       key: "price-lists",
-      title: tr("価格表"),
+      title: tr("common.priceList"),
       summary: linkedEntries.length > 0 ? `${linkedEntries.length} 件` : null,
       items: linkedEntries.map((e) => ({
         key: e.entryId,
@@ -169,8 +171,8 @@ export function TrialEstimateDetail({
       })),
       emptyNote:
         status === "CONFIRMED"
-          ? tr("未使用（価格表の作成時に基準単価ソースとして選べます）")
-          : tr("未使用（確定すると価格表の基準単価に選べます）"),
+          ? tr("sales.trialEstimates.unusedSelectableAsABasePrice")
+          : tr("sales.trialEstimates.unusedOnceConfirmedItCanBe"),
     },
   ];
 
@@ -187,20 +189,18 @@ export function TrialEstimateDetail({
       );
       if (res.ok) {
         notifications.show({
-          title: tr("保存しました"),
+          title: tr("common.saved2"),
           message: linkProductId
-            ? tr(
-                "製品にリンクしました。確定後、価格表（顧客×製品）の作成時に基準単価ソースとして選択できます",
-              )
-            : tr("製品リンクを解除しました"),
+            ? tr("sales.trialEstimates.linkedToTheProductOnceConfirmed")
+            : tr("sales.trialEstimates.theProductLinkWasRemoved"),
           color: "green",
         });
         setLinkOpen(false);
         router.refresh();
       } else {
         notifications.show({
-          title: tr("エラー"),
-          message: tr(res.error),
+          title: tr("common.error2"),
+          message: res.error,
           color: "red",
         });
       }
@@ -212,17 +212,15 @@ export function TrialEstimateDetail({
       const res = await confirmTrialEstimate(record.estimateNumber);
       if (res.ok) {
         notifications.show({
-          title: tr("確定しました"),
-          message: tr(
-            "価格表（顧客×製品）の作成時に基準単価ソースとして選択できます",
-          ),
+          title: tr("common.confirmed2"),
+          message: tr("sales.trialEstimates.itCanBeChosenAsThe"),
           color: "green",
         });
         router.refresh();
       } else {
         notifications.show({
-          title: tr("エラー"),
-          message: tr(res.error),
+          title: tr("common.error2"),
+          message: res.error,
           color: "red",
         });
       }
@@ -237,7 +235,7 @@ export function TrialEstimateDetail({
             ...(status === "DRAFT"
               ? [
                   {
-                    label: tr("確定"),
+                    label: tr("common.confirmed"),
                     icon: <IconCheck size={14} />,
                     onClick: confirm,
                   },
@@ -247,15 +245,15 @@ export function TrialEstimateDetail({
               ? [
                   {
                     label: record.productId
-                      ? tr("製品リンクを変更")
-                      : tr("製品にリンク"),
+                      ? tr("sales.trialEstimates.changeTheProductLink")
+                      : tr("sales.trialEstimates.linkToAProduct"),
                     icon: <IconCylinder size={14} />,
                     onClick: openProductLink,
                   },
                 ]
               : []),
             {
-              label: tr("複製して再価格試算"),
+              label: tr("common.duplicateAndReEstimate"),
               icon: <IconCopy size={14} />,
               onClick: () => router.push(`${BASE_PATH}/new?from=${record.id}`),
             },
@@ -263,8 +261,8 @@ export function TrialEstimateDetail({
         />
       }
       breadcrumbs={[
-        tr("販売"),
-        { label: tr("価格試算"), href: BASE_PATH },
+        tr("common.sales"),
+        { label: tr("common.priceEstimate"), href: BASE_PATH },
         "詳細",
       ]}
       createdAt={fmt.dateTime(record.createdAt)}
@@ -276,7 +274,7 @@ export function TrialEstimateDetail({
           </Badge>
           {record.isCustomPrice && (
             <Badge color="orange" variant="light">
-              {tr("カスタム")}
+              {tr("common.custom")}
             </Badge>
           )}
         </Group>
@@ -286,45 +284,47 @@ export function TrialEstimateDetail({
     >
       {status === "REGISTERED" && (
         <Alert color="blue" icon={<IconInfoCircle size={16} />} variant="light">
-          {tr(
-            "この価格試算は価格表で使用済みのため編集できません。単価を見直す場合は複製して再価格試算してください。",
-          )}
+          {tr("sales.trialEstimates.thisEstimateIsAlreadyUsedIn")}
         </Alert>
       )}
       {status === "CONFIRMED" && (
         <Alert color="blue" icon={<IconInfoCircle size={16} />} variant="light">
-          {tr(
-            "確定済み —\n          価格表（顧客×製品）の作成時に、この価格試算を基準単価ソースとして選択できます。",
-          )}
+          {tr("sales.trialEstimates.confirmedThisEstimateCanBeChosen")}
         </Alert>
       )}
       <SummaryGrid>
         <FieldValue
-          label={tr("価格試算番号")}
+          label={tr("common.priceEstimateNumber")}
           value={<DocNumber>{record.estimateNumber}</DocNumber>}
         />
-        <FieldValue label={tr("見積り先")} value={record.customerName ?? "—"} />
-        <FieldValue label={tr("営業担当")} value={record.salesRepName} />
-        <FieldValue label={tr("作成者")} value={record.createdBy} />
+        <FieldValue
+          label={tr("sales.trialEstimates.quoteRecipient")}
+          value={record.customerName ?? "—"}
+        />
+        <FieldValue label={tr("common.salesRep")} value={record.salesRepName} />
+        <FieldValue label={tr("common.createdBy")} value={record.createdBy} />
         <FieldValue label="製品" value={record.productName ?? "—"} />
         <FieldValue
-          label={tr("工具種")}
+          label={tr("common.toolType")}
           value={toolLabel(record.input.toolType)}
         />
-        <FieldValue label={tr("素材")} value={record.materialLabel} />
         <FieldValue
-          label={tr("最大径")}
+          label={tr("common.materials")}
+          value={record.materialLabel}
+        />
+        <FieldValue
+          label={tr("sales.trialEstimates.maxDiameter")}
           value={`${record.input.maxDiameter} mm`}
         />
         <FieldValue
-          label={tr("全長")}
+          label={tr("common.overallLength")}
           value={`${record.input.totalLength} mm`}
         />
         <FieldValue
-          label={tr("参照単価（¥/1000mm）")}
+          label={tr("common.referenceUnitPrice1000mm")}
           value={
             record.input.toolType === "CYLINDER" ? (
-              tr("—（円筒：手入力）")
+              tr("sales.trialEstimates.cylinderEnteredByHand")
             ) : (
               <MoneyText value={record.input.materialBarPrice} />
             )
@@ -341,38 +341,38 @@ export function TrialEstimateDetail({
       <AppTabs onChange={setTab} value={tab}>
         <Tabs.List>
           <Tabs.Tab leftSection={<IconCalculator size={14} />} value="result">
-            {tr("価格試算結果")}
+            {tr("common.priceEstimateResult")}
           </Tabs.Tab>
           <Tabs.Tab leftSection={<IconChartLine size={14} />} value="history">
-            {tr("素材価格推移")}
+            {tr("common.materialPriceHistory")}
           </Tabs.Tab>
           <Tabs.Tab leftSection={<IconLink size={14} />} value="related">
-            {tr("関連")}
+            {tr("common.related")}
           </Tabs.Tab>
           <Tabs.Tab leftSection={<IconMessage2 size={14} />} value="comments">
-            {tr("コメント")}
+            {tr("common.comment")}
           </Tabs.Tab>
-          <Tabs.Tab value="audit">{tr("履歴")}</Tabs.Tab>
+          <Tabs.Tab value="audit">{tr("common.history")}</Tabs.Tab>
         </Tabs.List>
 
         <Tabs.Panel pt="md" value="result">
           <Stack gap="md">
             <div>
               <Text c="dimmed" mb={4} size="xs">
-                {tr("基準単価（数量スケールは価格表の倍率で設定）")}
+                {tr("common.baseUnitPriceQuantityScalingIs")}
               </Text>
               <Table>
                 <Table.Tbody>
                   {result.lots[0] && (
                     <>
                       <Table.Tr>
-                        <Table.Td>{tr("基準数量")}</Table.Td>
+                        <Table.Td>{tr("common.baseQuantity")}</Table.Td>
                         <Table.Td ta="right">
                           {result.lots[0].quantity}本
                         </Table.Td>
                       </Table.Tr>
                       <Table.Tr>
-                        <Table.Td>{tr("最低単価")}</Table.Td>
+                        <Table.Td>{tr("common.minimumUnitPrice")}</Table.Td>
                         <Table.Td ta="right">
                           <MoneyText
                             value={Math.round(result.lots[0].minimumPrice)}
@@ -382,7 +382,7 @@ export function TrialEstimateDetail({
                       <Table.Tr>
                         <Table.Td>
                           <Text fw={600} size="sm">
-                            {tr("見積単価（基準）")}
+                            {tr("common.estimatedUnitPriceBase")}
                           </Text>
                         </Table.Td>
                         <Table.Td ta="right">
@@ -400,7 +400,7 @@ export function TrialEstimateDetail({
             </div>
             <div>
               <Text c="dimmed" mb={4} size="xs">
-                {tr("原価内訳（1本あたり）")}
+                {tr("common.costBreakdownPerPiece")}
               </Text>
               <Table>
                 <Table.Tbody>
@@ -431,7 +431,7 @@ export function TrialEstimateDetail({
           <Stack gap="md">
             <div>
               <Text c="dimmed" mb={4} size="xs">
-                {tr("価格表")}
+                {tr("common.priceList")}
               </Text>
               {linkedEntries.length > 0 ? (
                 <Stack gap={4}>
@@ -450,18 +450,16 @@ export function TrialEstimateDetail({
                 </Stack>
               ) : (
                 <Text c="dimmed" size="sm">
-                  {tr(
-                    "未使用 —\n                  価格表（顧客×製品）の作成時にこの価格試算を基準単価ソースとして選択できます",
-                  )}
+                  {tr("sales.trialEstimates.unusedThisEstimateCanBeChosen")}
                 </Text>
               )}
             </div>
             <div>
               <Text c="dimmed" mb={4} size="xs">
-                {tr("見積書")}
+                {tr("common.quote")}
               </Text>
               <Text c="dimmed" size="sm">
-                {tr("—（価格表の作成後に価格表から作成できます）")}
+                {tr("sales.trialEstimates.youCanCreateItFromThe")}
               </Text>
             </div>
           </Stack>
@@ -483,18 +481,20 @@ export function TrialEstimateDetail({
       </AppTabs>
 
       <ModalShell
-        confirmLabel={tr("保存")}
+        confirmLabel={tr("common.save2")}
         loading={isPending}
         onClose={() => setLinkOpen(false)}
         onConfirm={saveProductLink}
         opened={linkOpen}
-        title={record.productId ? "製品リンクを変更" : tr("製品にリンク")}
+        title={
+          record.productId
+            ? "製品リンクを変更"
+            : tr("sales.trialEstimates.linkToAProduct")
+        }
       >
         <Stack gap="sm">
           <Text c="dimmed" size="sm">
-            {tr(
-              "対象製品（任意）。リンクした価格試算は確定後、価格表（顧客×製品）の作成時に基準単価ソースとして選択できます。クリアして保存するとリンクを解除します。",
-            )}
+            {tr("sales.trialEstimates.targetProductOptionalALinkedEstimate")}
           </Text>
           <SearchSelect
             clearable
@@ -507,7 +507,7 @@ export function TrialEstimateDetail({
             label="製品"
             onChange={setLinkProductId}
             onSearch={searchProductOptions}
-            placeholder={tr("製品を検索")}
+            placeholder={tr("common.searchProducts")}
             storageKey="product"
             value={linkProductId}
           />

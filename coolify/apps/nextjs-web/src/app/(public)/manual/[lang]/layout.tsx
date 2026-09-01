@@ -4,11 +4,11 @@
  */
 
 import { notFound } from "next/navigation";
+import { getTranslations } from "next-intl/server";
 import type { ReactNode } from "react";
 import { DocsShell } from "@/components/docs/DocsShell";
 import { isDocLang } from "@/lib/docs-i18n";
 import { manualSource } from "@/lib/manual-source";
-import { getTr } from "@/lib/ui-text-server";
 
 export default async function ManualLayout({
   params,
@@ -17,17 +17,20 @@ export default async function ManualLayout({
   params: Promise<{ lang: string }>;
   children: ReactNode;
 }) {
-  const tr = await getTr();
+  const tr = await getTranslations();
   const { lang } = await params;
   if (!isDocLang(lang)) notFound();
   return (
     <DocsShell
       // 管理マニュアルは要ログイン — 未ログインで押すとログイン画面へ。
       // リンク先が認証されるので、公開ページに出しても中身は漏れない。
-      crossLink={{ text: tr("管理マニュアル"), url: `/admin-manual/${lang}` }}
+      crossLink={{
+        text: tr("manual.layout.adminManual"),
+        url: `/admin-manual/${lang}`,
+      }}
       lang={lang}
       searchApi="/manual/search"
-      title={tr("CKK マニュアル")}
+      title={tr("manual.layout.cKKManual")}
       tree={manualSource.getPageTree(lang)}
     >
       {children}

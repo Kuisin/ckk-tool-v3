@@ -26,7 +26,6 @@ import { useState } from "react";
 import { useFormat } from "@/components/layout/PreferencesProvider";
 import { type Column, DataTable } from "@/components/ui/DataTable";
 import { ListShell } from "@/components/ui/shells";
-import { useTr } from "@/hooks/useTr";
 import { useUrlSelectState, useUrlStringState } from "@/hooks/useUrlState";
 import { useIsMobile } from "@/hooks/useViewport";
 import { loginMethodLabel, loginReasonLabel } from "@/lib/login-attempt-core";
@@ -80,7 +79,7 @@ export function LoginHistoryView({
   summary: LoginAttemptSummary;
   hasMore: boolean;
 }) {
-  const tr = useTr();
+  const tr = useTranslations();
   const isMobile = useIsMobile();
   const fmt = useFormat();
   const t = useTranslations("loginHistory");
@@ -105,13 +104,13 @@ export function LoginHistoryView({
   const APP_OPTIONS = [
     { value: "WEB", label: t("appWeb") },
     { value: "KIOSK", label: t("appKiosk") },
-    { value: "PORTAL", label: tr("取引先ポータル") },
+    { value: "PORTAL", label: tr("common.partnerPortal") },
   ];
 
   const columns: Column<LoginAttemptRow>[] = [
     {
       key: "at",
-      header: tr("日時"),
+      header: tr("common.dateAndTime"),
       width: 150,
       render: (r) => (
         <Text c="dimmed" className="tabular-nums" size="xs">
@@ -121,7 +120,7 @@ export function LoginHistoryView({
     },
     {
       key: "outcome",
-      header: tr("結果"),
+      header: tr("settings.security.result"),
       width: 70,
       render: (r) => (
         <Badge
@@ -129,18 +128,18 @@ export function LoginHistoryView({
           size="xs"
           variant="light"
         >
-          {r.outcome === "SUCCESS" ? "成功" : tr("失敗")}
+          {r.outcome === "SUCCESS" ? "成功" : tr("common.failure")}
         </Badge>
       ),
     },
     {
       key: "app",
-      header: tr("アプリ"),
+      header: tr("common.apps"),
       width: 80,
       render: (r) => (
         <Text size="xs">
           {r.isPortal
-            ? tr("取引先ポータル")
+            ? tr("common.partnerPortal")
             : r.app === "KIOSK"
               ? t("appKiosk")
               : t("appWeb")}
@@ -149,13 +148,13 @@ export function LoginHistoryView({
     },
     {
       key: "method",
-      header: tr("方式"),
+      header: tr("common.method"),
       width: 130,
       render: (r) => <Text size="xs">{loginMethodLabel(r.method)}</Text>,
     },
     {
       key: "user",
-      header: tr("ユーザー"),
+      header: tr("common.user"),
       width: 150,
       render: (r) =>
         r.userName ? (
@@ -164,7 +163,7 @@ export function LoginHistoryView({
           // 社外の主体（app.users ではない）。**アドレスは出さない**。
           <Group gap={4} wrap="nowrap">
             <Badge color="cyan" size="xs" variant="light">
-              {tr("社外")}
+              {tr("settings.security.external")}
             </Badge>
             <Text size="sm" truncate>
               {r.portalAccountName}
@@ -173,9 +172,7 @@ export function LoginHistoryView({
         ) : (
           // 未解決の入力は生値を残していない（相関キーの先頭だけ出す）
           <Tooltip
-            label={tr(
-              "ユーザーに解決できなかった試行。入力値は保存していません（相関キーのみ）。",
-            )}
+            label={tr("settings.security.attemptsThatCouldNotBeResolved")}
             withinPortal
           >
             <Text c="dimmed" ff="mono" size="xs">
@@ -186,7 +183,7 @@ export function LoginHistoryView({
     },
     {
       key: "reason",
-      header: tr("理由"),
+      header: tr("common.reason"),
       width: 150,
       render: (r) => (
         <Text c={r.outcome === "FAILURE" ? undefined : "dimmed"} size="xs">
@@ -206,7 +203,7 @@ export function LoginHistoryView({
     },
     {
       key: "ownership",
-      header: tr("端末区分"),
+      header: tr("common.deviceType"),
       width: 130,
       render: (r) => (
         <OwnershipBadge source={r.ownershipSource} value={r.ownership} />
@@ -214,7 +211,7 @@ export function LoginHistoryView({
     },
     {
       key: "device",
-      header: tr("端末"),
+      header: tr("common.device"),
       width: 170,
       render: (r) => (
         <Text size="xs" truncate>
@@ -229,14 +226,17 @@ export function LoginHistoryView({
   return (
     <>
       <ListShell
-        breadcrumbs={[tr("システム"), tr("ログイン履歴")]}
+        breadcrumbs={[
+          tr("common.system"),
+          tr("settings.security.loginHistory"),
+        ]}
         filters={
           <>
             <Select
               data={DAY_OPTIONS}
               flex={isMobile ? 1 : undefined}
               onChange={setDays}
-              placeholder={tr("期間")}
+              placeholder={tr("common.period")}
               value={days ?? "7"}
               w={isMobile ? undefined : 110}
             />
@@ -245,7 +245,7 @@ export function LoginHistoryView({
               data={OUTCOME_OPTIONS}
               flex={isMobile ? 1 : undefined}
               onChange={setOutcome}
-              placeholder={tr("結果")}
+              placeholder={tr("settings.security.result")}
               value={outcome}
               w={isMobile ? undefined : 100}
             />
@@ -254,7 +254,7 @@ export function LoginHistoryView({
               data={APP_OPTIONS}
               flex={isMobile ? 1 : undefined}
               onChange={setApp}
-              placeholder={tr("アプリ")}
+              placeholder={tr("common.apps")}
               value={app}
               w={isMobile ? undefined : 110}
             />
@@ -263,7 +263,7 @@ export function LoginHistoryView({
               data={OWNERSHIP_OPTIONS}
               flex={isMobile ? 1 : undefined}
               onChange={setOwnership}
-              placeholder={tr("端末区分")}
+              placeholder={tr("common.deviceType")}
               value={ownership}
               w={isMobile ? undefined : 160}
             />
@@ -275,26 +275,26 @@ export function LoginHistoryView({
             leftSection={<IconSearch size={14} />}
             onChange={(e) => setIp(e.currentTarget.value)}
             // CIDR をそのまま受ける（サーバー側で inet の <<= に落とす）
-            placeholder={tr("IP / CIDR（例 192.168.50.0/24）")}
+            placeholder={tr("settings.security.iPCidrEG192168")}
             value={ip}
           />
         }
-        title={tr("ログイン履歴")}
+        title={tr("settings.security.loginHistory")}
       >
         <Stack gap="md">
           <SimpleGrid cols={{ base: 2, sm: 4 }} spacing="sm">
             <SummaryCard
               color={summary.failures24h > 0 ? "red" : undefined}
-              label={tr("24時間の失敗")}
+              label={tr("settings.security.failuresIn24Hours")}
               value={String(summary.failures24h)}
             />
             <SummaryCard
-              label={tr("24時間の成功")}
+              label={tr("settings.security.successesIn24Hours")}
               value={String(summary.successes24h)}
             />
             <Paper p="sm" radius="md" withBorder>
               <Text c="dimmed" size="xs">
-                {tr("失敗の多い IP（24h）")}
+                {tr("settings.security.mostFailuresByIp24h")}
               </Text>
               {summary.topFailureIps.length === 0 ? (
                 <Text c="dimmed" size="xs">
@@ -315,7 +315,7 @@ export function LoginHistoryView({
             </Paper>
             <Paper p="sm" radius="md" withBorder>
               <Text c="dimmed" size="xs">
-                {tr("失敗の多い相手（24h）")}
+                {tr("settings.security.mostFailuresByCounterparty24h")}
               </Text>
               {summary.topFailureUsers.length === 0 ? (
                 <Text c="dimmed" size="xs">
@@ -340,7 +340,9 @@ export function LoginHistoryView({
             columns={columns}
             data={rows}
             emptyIcon={<IconShieldLock size={24} />}
-            emptyMessage={tr("該当するログイン記録がありません")}
+            emptyMessage={tr(
+              "settings.security.thereAreNoMatchingLoginRecords",
+            )}
             getRowId={(r) => r.id}
             onRowClick={(r) => setOpenId(r.id)}
             renderCard={(r) => (
@@ -352,7 +354,7 @@ export function LoginHistoryView({
                       size="xs"
                       variant="light"
                     >
-                      {r.outcome === "SUCCESS" ? "成功" : tr("失敗")}
+                      {r.outcome === "SUCCESS" ? "成功" : tr("common.failure")}
                     </Badge>
                     <Text size="xs">{loginMethodLabel(r.method)}</Text>
                   </Group>
@@ -386,7 +388,7 @@ export function LoginHistoryView({
 
           {hasMore && (
             <Text c="dimmed" size="xs" ta="center">
-              {tr("さらに古い記録があります。期間や絞り込みを狭めてください。")}
+              {tr("settings.security.thereAreOlderRecordsNarrowThe")}
             </Text>
           )}
         </Stack>

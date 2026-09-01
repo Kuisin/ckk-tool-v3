@@ -43,9 +43,9 @@ import {
   IconInbox,
 } from "@tabler/icons-react";
 import { usePathname } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { type ReactNode, useMemo, useRef, useState } from "react";
 import { useTableSettings } from "@/components/layout/TableSettingsProvider";
-import { useTr } from "@/hooks/useTr";
 import { useUrlTableState } from "@/hooks/useUrlState";
 import { useIsMobile } from "@/hooks/useViewport";
 import { tableSettingKey } from "@/lib/table-settings-core";
@@ -136,7 +136,7 @@ export function DataTable<T>({
   emptyMessage = "データがありません",
   emptyAction,
 }: DataTableProps<T>) {
-  const tr = useTr();
+  const tr = useTranslations();
   const isMobile = useIsMobile();
   // URL 同期モード（urlState=true）はページ・サイズ・ソートを search params に
   // 保持し、ローカル state を使わない。フック自体は無条件に呼ぶ（React の規則）。
@@ -333,7 +333,7 @@ export function DataTable<T>({
               onClick={() => setSelected(new Set())}
               size="xs"
             >
-              {tr("選択解除")}
+              {tr("ui.dataTable.clearSelection")}
             </Text>
           </Group>
         )}
@@ -347,9 +347,9 @@ export function DataTable<T>({
             withinPortal
           >
             <Menu.Target>
-              <Tooltip label={tr("列の表示")} withinPortal>
+              <Tooltip label={tr("ui.dataTable.columns")} withinPortal>
                 <ActionIcon
-                  aria-label={tr("列の表示")}
+                  aria-label={tr("ui.dataTable.columns")}
                   color="gray"
                   variant="subtle"
                 >
@@ -358,7 +358,7 @@ export function DataTable<T>({
               </Tooltip>
             </Menu.Target>
             <Menu.Dropdown>
-              <Menu.Label>{tr("表示する列")}</Menu.Label>
+              <Menu.Label>{tr("common.columnsToShow")}</Menu.Label>
               <Stack gap="xs" px="sm" py={4}>
                 {hideableColumns.map((c) => (
                   <Checkbox
@@ -386,7 +386,7 @@ export function DataTable<T>({
             <Group gap="sm" justify="space-between" py="xs" wrap="nowrap">
               <Group gap="sm" wrap="nowrap">
                 <Checkbox
-                  aria-label={tr("すべて選択")}
+                  aria-label={tr("ui.dataTable.selectAll")}
                   checked={allOnPageSelected}
                   indeterminate={someOnPageSelected && !allOnPageSelected}
                   onChange={toggleAll}
@@ -395,7 +395,7 @@ export function DataTable<T>({
                 <Text c="dimmed" fw={600} size="xs">
                   {selected.size > 0
                     ? `${selected.size}件選択中`
-                    : tr("すべて選択")}
+                    : tr("ui.dataTable.selectAll")}
                 </Text>
               </Group>
               {selected.size > 0 && (
@@ -418,7 +418,7 @@ export function DataTable<T>({
                     onClick={() => setSelected(new Set())}
                     size="xs"
                   >
-                    {tr("選択解除")}
+                    {tr("ui.dataTable.clearSelection")}
                   </Text>
                 </Group>
               )}
@@ -447,7 +447,7 @@ export function DataTable<T>({
                       }}
                     >
                       <Checkbox
-                        aria-label={tr("行を選択")}
+                        aria-label={tr("ui.dataTable.selectRows")}
                         checked={selected.has(id)}
                         onChange={() => toggleOne(id)}
                         size="xs"
@@ -475,7 +475,7 @@ export function DataTable<T>({
                       <Menu position="bottom-end" shadow="md" withinPortal>
                         <Menu.Target>
                           <ActionIcon
-                            aria-label={tr("操作")}
+                            aria-label={tr("common.actions")}
                             color="gray"
                             variant="subtle"
                           >
@@ -543,7 +543,7 @@ export function DataTable<T>({
               {selectable && (
                 <Table.Th style={{ width: 40, ...headerPad }}>
                   <Checkbox
-                    aria-label={tr("すべて選択")}
+                    aria-label={tr("ui.dataTable.selectAll")}
                     checked={allOnPageSelected}
                     indeterminate={someOnPageSelected && !allOnPageSelected}
                     onChange={toggleAll}
@@ -630,7 +630,7 @@ export function DataTable<T>({
                       style={{ width: 40, ...cellPad }}
                     >
                       <Checkbox
-                        aria-label={tr("行を選択")}
+                        aria-label={tr("ui.dataTable.selectRows")}
                         checked={selected.has(id)}
                         onChange={() => toggleOne(id)}
                         size="xs"
@@ -672,7 +672,7 @@ export function DataTable<T>({
                         <Menu position="bottom-end" shadow="md" withinPortal>
                           <Menu.Target>
                             <ActionIcon
-                              aria-label={tr("操作")}
+                              aria-label={tr("common.actions")}
                               color="gray"
                               variant="subtle"
                             >
@@ -740,7 +740,7 @@ function PaginationBar({
   onPageSize: (s: number) => void;
   isMobile?: boolean;
 }) {
-  const tr = useTr();
+  const tr = useTranslations();
   return (
     <Group justify="space-between" mt={4} wrap="nowrap">
       <Text c="dimmed" className="whitespace-nowrap" size="xs">
@@ -750,7 +750,7 @@ function PaginationBar({
         {!isMobile && (
           <Select
             allowDeselect={false}
-            aria-label={tr("表示件数")}
+            aria-label={tr("ui.dataTable.rowsToShow")}
             data={PAGE_SIZES.map((s) => ({ value: s, label: `${s}件` }))}
             onChange={(v) => v && onPageSize(Number(v))}
             size="xs"

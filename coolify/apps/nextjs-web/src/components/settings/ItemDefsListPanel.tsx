@@ -9,9 +9,9 @@
 
 import { Badge, Group, Text } from "@mantine/core";
 import { IconListDetails } from "@tabler/icons-react";
+import { useTranslations } from "next-intl";
 import { updateProductItemDefs } from "@/app/(dashboard)/settings/actions";
 import { SettingsReorderableList } from "@/components/settings/SettingsReorderableList";
-import { useTr } from "@/hooks/useTr";
 import { PRODUCT_FIELD_TYPES, type ProductItemDef } from "@/lib/product-types";
 
 const BASE = "/settings/product-items";
@@ -20,21 +20,19 @@ const typeLabel = (v: string) =>
   PRODUCT_FIELD_TYPES.find((o) => o.value === v)?.label ?? v;
 
 export function ItemDefsListPanel({ initial }: { initial: ProductItemDef[] }) {
-  const tr = useTr();
+  const tr = useTranslations();
   return (
     <SettingsReorderableList
-      addLabel={tr("項目を追加")}
+      addLabel={tr("common.addAnItem")}
       deleteConfirm={(d) => ({
-        title: tr("項目定義の削除"),
+        title: tr("settings.itemDefsListPanel.deleteTheItemDefinition"),
         message: `「${d.label.ja || d.key}」を削除しますか？種別への割り当ても外れます。`,
       })}
       description={tr(
-        "再利用できる入力項目のライブラリです。製品種別に割り当てて使います。",
+        "settings.itemDefsListPanel.aLibraryOfReusableInputFields",
       )}
       emptyIcon={<IconListDetails size={24} />}
-      emptyMessage={tr(
-        "項目がありません。「項目を追加」から作成してください。",
-      )}
+      emptyMessage={tr("settings.itemDefsListPanel.thereAreNoItemsCreateOne")}
       initial={[...initial].sort((a, b) => a.order - b.order)}
       newHref={`${BASE}/new`}
       persistAction={(next) =>
@@ -55,7 +53,7 @@ export function ItemDefsListPanel({ initial }: { initial: ProductItemDef[] }) {
             </Badge>
             {d.required && (
               <Badge color="red" size="xs" variant="outline">
-                {tr("必須")}
+                {tr("common.required2")}
               </Badge>
             )}
           </Group>

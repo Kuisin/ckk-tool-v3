@@ -1,6 +1,7 @@
 import { Group, Stack, Text, Title } from "@mantine/core";
 import { IconSearchOff } from "@tabler/icons-react";
 import { redirect } from "next/navigation";
+import { getTranslations } from "next-intl/server";
 import { FormStateScreen } from "@/components/forms/FormStateScreen";
 import { PublicResponsesTable } from "@/components/forms/PublicResponsesTable";
 import { SecondaryButton } from "@/components/ui/buttons";
@@ -12,7 +13,6 @@ import {
   listResponses,
 } from "@/lib/forms";
 import { NO_SHARE_ACCESS } from "@/lib/share-grants";
-import { getTr } from "@/lib/ui-text-server";
 
 export const dynamic = "force-dynamic";
 
@@ -35,7 +35,7 @@ export default async function PublicResponsesPage({
 }: {
   params: Promise<{ code: string }>;
 }) {
-  const tr = await getTr();
+  const tr = await getTranslations();
   const { code } = await params;
 
   const userId = await sessionUserId();
@@ -47,14 +47,14 @@ export default async function PublicResponsesPage({
   if (!form || !access.canRead) {
     return (
       <FormStateScreen
-        actions={[{ label: tr("ホームへ戻る"), href: "/", variant: "filled" }]}
+        actions={[
+          { label: tr("common.backToHome"), href: "/", variant: "filled" },
+        ]}
         color="gray"
-        description={tr(
-          "URL が間違っているか、このフォームの回答を見る権限がありません。",
-        )}
+        description={tr("f.responses.theUrlIsWrongOrYou")}
         formTitle={null}
         icon={<IconSearchOff size={24} />}
-        title={tr("回答を見られません")}
+        title={tr("f.responses.youCannotViewTheResponses")}
       />
     );
   }
@@ -73,13 +73,13 @@ export default async function PublicResponsesPage({
           <Title order={3}>{form.title}</Title>
           <Text c="dimmed" size="sm">
             回答 {responses.length} 件
-            {limited && tr("（共有の条件に当てはまるものだけ）")}
+            {limited && tr("f.responses.onlyThoseMatchingTheSharingConditions")}
           </Text>
         </Stack>
         <Group gap="xs">
           {access.canRespond && form.availability === "OPEN" && (
             <SecondaryButton href={`/f/${code}`}>
-              {tr("回答する")}
+              {tr("f.responses.respond")}
             </SecondaryButton>
           )}
         </Group>

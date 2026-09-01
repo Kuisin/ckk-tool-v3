@@ -24,6 +24,7 @@ import {
 import { notifications } from "@mantine/notifications";
 import { IconInfoCircle } from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { useMemo, useState, useTransition } from "react";
 import { updateCriteria } from "@/app/(dashboard)/settings/actions";
 import {
@@ -35,7 +36,6 @@ import {
 } from "@/components/ui/buttons";
 import { openConfirm } from "@/components/ui/modals";
 import { FormActions, FormSection } from "@/components/ui/shells";
-import { useTr } from "@/hooks/useTr";
 import { localized } from "@/lib/format";
 import type { ToolType, TrialInput } from "@/lib/trial-pricing";
 import type {
@@ -142,7 +142,7 @@ export function CriterionEditForm({
   /** 工具種（管理者定義）— 適用工具種チップ・テスト実行の選択肢。 */
   toolTypes: ToolTypeDef[];
 }) {
-  const tr = useTr();
+  const tr = useTranslations();
   const existing = criterionId
     ? allCriteria.find((c) => c.id === criterionId)
     : undefined;
@@ -155,7 +155,7 @@ export function CriterionEditForm({
         { ...existing, toolTypes: existing.toolTypes ?? allToolValues }
       : {
           id: "",
-          name: tr("新しい基準"),
+          name: tr("settings.criterionEditForm.newCriterion"),
           role: "component",
           expression: "0",
           order: allCriteria.length * 10,
@@ -174,20 +174,29 @@ export function CriterionEditForm({
   // 式エディタの「利用可能な変数」パレット。
   const variableGroups: VariableGroup[] = useMemo(() => {
     const groups: VariableGroup[] = [
-      { group: tr("入力"), items: INPUT_VARS.map((t) => ({ token: t })) },
       {
-        group: tr("状態"),
+        group: tr("settings.criterionEditForm.input"),
+        items: INPUT_VARS.map((t) => ({ token: t })),
+      },
+      {
+        group: tr("common.status"),
         items: [
           ...STATE_VARS.map((t) => ({ token: t })),
           { token: "r.", label: "r.<id>" },
         ],
       },
-      { group: tr("係数"), items: COEFF_VARS.map((t) => ({ token: t })) },
-      { group: tr("関数"), items: HELPER_TOKENS.map((t) => ({ token: t })) },
+      {
+        group: tr("settings.criterionEditForm.coefficient"),
+        items: COEFF_VARS.map((t) => ({ token: t })),
+      },
+      {
+        group: tr("settings.criterionEditForm.function"),
+        items: HELPER_TOKENS.map((t) => ({ token: t })),
+      },
     ];
     if (customInputs.length > 0) {
       groups.push({
-        group: tr("カスタム入力"),
+        group: tr("settings.criterionEditForm.customInput"),
         items: customInputs
           .filter((d) => d.key)
           .map((d) => ({ token: d.key, label: d.label || d.key })),
@@ -195,7 +204,7 @@ export function CriterionEditForm({
     }
     if (lookupTables.length > 0) {
       groups.push({
-        group: tr("ルックアップ"),
+        group: tr("settings.criterionEditForm.lookup"),
         items: lookupTables
           .filter((t) => t.id)
           .map((t) => ({
@@ -218,15 +227,15 @@ export function CriterionEditForm({
   const save = () => {
     if (!criterion.id.trim()) {
       notifications.show({
-        title: tr("エラー"),
-        message: tr("ID を入力してください"),
+        title: tr("common.error2"),
+        message: tr("settings.criterionEditForm.enterAnId"),
         color: "red",
       });
       return;
     }
     if (isNew && allCriteria.some((c) => c.id === criterion.id)) {
       notifications.show({
-        title: tr("エラー"),
+        title: tr("common.error2"),
         message: `ID「${criterion.id}」は既に存在します`,
         color: "red",
       });
@@ -236,16 +245,16 @@ export function CriterionEditForm({
       const res = await updateCriteria(buildList());
       if (res.ok) {
         notifications.show({
-          title: tr("保存しました"),
-          message: tr("計算基準を更新しました"),
+          title: tr("common.saved2"),
+          message: tr("settings.criterionEditForm.theCriterionWasUpdated"),
           color: "green",
         });
         router.push(`${BASE}/criteria`);
         router.refresh();
       } else {
         notifications.show({
-          title: tr("エラー"),
-          message: tr(res.error),
+          title: tr("common.error2"),
+          message: res.error,
           color: "red",
         });
       }
@@ -254,7 +263,7 @@ export function CriterionEditForm({
 
   const remove = () =>
     openConfirm({
-      title: tr("計算基準の削除"),
+      title: tr("settings.criterionEditForm.deleteTheCriterion"),
       message: `「${criterion.name}」を削除します。この操作は取り消せません。`,
       confirmLabel: "削除",
       onConfirm: () =>
@@ -264,7 +273,7 @@ export function CriterionEditForm({
           );
           if (res.ok) {
             notifications.show({
-              title: tr("削除しました"),
+              title: tr("common.deleted"),
               message: `「${criterion.name}」を削除しました`,
               color: "green",
             });
@@ -272,8 +281,8 @@ export function CriterionEditForm({
             router.refresh();
           } else {
             notifications.show({
-              title: tr("エラー"),
-              message: tr(res.error),
+              title: tr("common.error2"),
+              message: res.error,
               color: "red",
             });
           }
@@ -311,11 +320,13 @@ export function CriterionEditForm({
 
   return (
     <Stack gap="md">
-      <FormSection title={tr("基準")}>
+      <FormSection title={tr("settings.criterionEditForm.basis")}>
         <Stack gap="sm">
           <Group gap="sm" wrap="wrap">
             <TextInput
-              description={tr("式で r.<id> として参照されます")}
+              description={tr(
+                "settings.criterionEditForm.referencedInFormulasAsRId",
+              )}
               disabled={!isNew}
               label="ID"
               onChange={(e) => set({ id: e.currentTarget.value })}
@@ -323,14 +334,14 @@ export function CriterionEditForm({
               w={180}
             />
             <TextInput
-              label={tr("基準名")}
+              label={tr("settings.criterionEditForm.criterionName")}
               onChange={(e) => set({ name: e.currentTarget.value })}
               value={criterion.name}
               w={220}
             />
             <Select
               data={ROLE_OPTIONS}
-              label={tr("役割")}
+              label={tr("common.role2")}
               onChange={(v) =>
                 set({ role: (v as CriterionRole) ?? "component" })
               }
@@ -347,7 +358,7 @@ export function CriterionEditForm({
 
           <Group align="center" gap="xs">
             <Text c="dimmed" size="xs">
-              {tr("適用工具種")}
+              {tr("settings.criterionEditForm.toolTypesItAppliesTo")}
             </Text>
             <Chip.Group
               multiple
@@ -366,11 +377,13 @@ export function CriterionEditForm({
               onClick={() => set({ toolTypes: allToolValues })}
               size="compact-xs"
             >
-              {tr("全選択")}
+              {tr("settings.criterionEditForm.selectAll")}
             </GhostButton>
             {!criterion.toolTypes?.length && (
               <Text c="red" size="xs">
-                {tr("⚠ 未選択 — この基準はどの工具種にも適用されません")}
+                {tr(
+                  "settings.criterionEditForm.nothingSelectedThisCriterionAppliesTo",
+                )}
               </Text>
             )}
           </Group>
@@ -379,9 +392,9 @@ export function CriterionEditForm({
 
       <FormSection
         description={tr(
-          "数値を返す JS 式。入力項目・カスタム入力・quantity・subtotal・r.<id>・round()/lookup 系ヘルパーが使えます。",
+          "settings.criterionEditForm.aJsExpressionReturningANumber",
         )}
-        title={tr("式")}
+        title={tr("settings.criterionEditForm.formula")}
       >
         <Stack gap="sm">
           <CodeExpressionEditor
@@ -391,7 +404,7 @@ export function CriterionEditForm({
           />
           <Group gap="xs">
             <Text c="dimmed" size="xs">
-              {tr("テスト工具種")}
+              {tr("settings.criterionEditForm.testToolType")}
             </Text>
             <SegmentedControl
               data={toolTypes.map((o) => ({
@@ -403,7 +416,7 @@ export function CriterionEditForm({
               value={testToolType}
             />
             <SecondaryButton onClick={runTest}>
-              {tr("テスト実行")}
+              {tr("settings.criterionEditForm.testRun")}
             </SecondaryButton>
           </Group>
 
@@ -429,8 +442,10 @@ export function CriterionEditForm({
                 <Table withColumnBorders={false}>
                   <Table.Thead>
                     <Table.Tr>
-                      <Table.Th>{tr("ロット")}</Table.Th>
-                      <Table.Th ta="right">{tr("見積単価")}</Table.Th>
+                      <Table.Th>{tr("common.lot")}</Table.Th>
+                      <Table.Th ta="right">
+                        {tr("settings.criterionEditForm.estimatedUnitPrice")}
+                      </Table.Th>
                     </Table.Tr>
                   </Table.Thead>
                   <Table.Tbody>
@@ -449,8 +464,9 @@ export function CriterionEditForm({
           )}
 
           <Text c="dimmed" size="xs">
-            {tr("数値を返す JS 式。ルックアップ表は")}{" "}
-            <Code>{tr('lookup("ID", キー)')}</Code> {tr("で参照します。")}
+            {tr("settings.criterionEditForm.aJsExpressionReturningANumber2")}{" "}
+            <Code>{tr("settings.criterionEditForm.lookupIdKey")}</Code>{" "}
+            {tr("settings.criterionEditForm.isWhereItIsReferenced")}
           </Text>
         </Stack>
       </FormSection>
@@ -461,7 +477,7 @@ export function CriterionEditForm({
           <Group gap="sm">
             <CancelButton onClick={() => router.push(`${BASE}/criteria`)} />
             <SaveButton loading={isPending} onClick={save}>
-              {tr("保存")}
+              {tr("common.save2")}
             </SaveButton>
           </Group>
         </Group>

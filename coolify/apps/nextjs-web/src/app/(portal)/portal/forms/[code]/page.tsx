@@ -8,10 +8,10 @@
 import { Stack, Table, Text, Title } from "@mantine/core";
 import { headers } from "next/headers";
 import { notFound } from "next/navigation";
+import { getTranslations } from "next-intl/server";
 import { recordPortalAccess } from "@/lib/portal-access-log";
 import { listPortalFormResponses } from "@/lib/portal-forms";
 import { requirePortalView } from "@/lib/portal-page";
-import { getTr } from "@/lib/ui-text-server";
 
 export const dynamic = "force-dynamic";
 
@@ -20,7 +20,7 @@ export default async function PortalFormPage({
 }: {
   params: Promise<{ code: string }>;
 }) {
-  const tr = await getTr();
+  const tr = await getTranslations();
   const gate = await requirePortalView();
   if (!gate.ok) return gate.view;
 
@@ -42,17 +42,17 @@ export default async function PortalFormPage({
 
   return (
     <Stack gap="md">
-      <Title order={3}>{tr("フォームの回答")}</Title>
+      <Title order={3}>{tr("common.formResponses")}</Title>
       {rows.length === 0 ? (
         <Text c="dimmed" size="sm">
-          {tr("表示できる回答はありません。")}
+          {tr("portal.forms.thereAreNoResponsesToShow")}
         </Text>
       ) : (
         <Table highlightOnHover striped withTableBorder>
           <Table.Thead>
             <Table.Tr>
-              <Table.Th>{tr("回答番号")}</Table.Th>
-              <Table.Th>{tr("提出日")}</Table.Th>
+              <Table.Th>{tr("common.responseNumber")}</Table.Th>
+              <Table.Th>{tr("common.submittedOn")}</Table.Th>
             </Table.Tr>
           </Table.Thead>
           <Table.Tbody>

@@ -41,7 +41,6 @@ import { useEffect, useMemo, useState, useTransition } from "react";
 import { saveDisplayPreferences } from "@/app/(dashboard)/profile/preferences/actions";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { FormActions } from "@/components/ui/shells";
-import { useTr } from "@/hooks/useTr";
 import { createFormatters } from "@/lib/format";
 import { LOCALE_LABELS, LOCALES } from "@/lib/i18n";
 import {
@@ -119,7 +118,6 @@ function PreferencesFormBody({
   const t = useTranslations("preferences");
   const tc = useTranslations("common");
   const tShell = useTranslations("shell");
-  const tr = useTr();
 
   const fmt = useMemo(() => createFormatters(prefs), [prefs]);
 
@@ -183,7 +181,7 @@ function PreferencesFormBody({
               message: t("saved"),
               color: "green",
             }
-          : { title: tc("error"), message: tr(result.error), color: "red" },
+          : { title: tc("error"), message: result.error, color: "red" },
       );
     });
   };

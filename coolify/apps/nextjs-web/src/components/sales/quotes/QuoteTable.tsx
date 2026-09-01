@@ -11,13 +11,13 @@
 import { Group, Select, Stack, Text, TextInput } from "@mantine/core";
 import { IconFileText, IconSearch } from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { useFormat } from "@/components/layout/PreferencesProvider";
 import { type Column, DataTable } from "@/components/ui/DataTable";
 import { MoneyText } from "@/components/ui/MoneyText";
 import { NewButton } from "@/components/ui/NewButton";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { ListShell } from "@/components/ui/shells";
-import { useTr } from "@/hooks/useTr";
 import { useUrlSelectState, useUrlStringState } from "@/hooks/useUrlState";
 import { useIsMobile } from "@/hooks/useViewport";
 import type { Option } from "@/lib/mock";
@@ -33,7 +33,7 @@ export function QuoteTable({
   rows: Quote[];
   customerOptions: Option[];
 }) {
-  const tr = useTr();
+  const tr = useTranslations();
   const fmt = useFormat();
   const router = useRouter();
   const isMobile = useIsMobile();
@@ -62,7 +62,7 @@ export function QuoteTable({
   const columns: Column<Quote>[] = [
     {
       key: "quoteNumber",
-      header: tr("見積番号"),
+      header: tr("common.quoteNumber"),
       sortable: true,
       render: (q) => (
         <Text ff="mono" size="sm">
@@ -72,13 +72,13 @@ export function QuoteTable({
     },
     {
       key: "customerName",
-      header: tr("顧客"),
+      header: tr("common.customer"),
       sortable: true,
       render: (q) => q.customerName,
     },
     {
       key: "validUntil",
-      header: tr("有効期限"),
+      header: tr("common.validUntil2"),
       width: 130,
       sortValue: (q) => q.validUntil ?? "",
       render: (q) => (
@@ -89,7 +89,7 @@ export function QuoteTable({
     },
     {
       key: "total",
-      header: tr("合計金額"),
+      header: tr("common.totalAmount"),
       align: "right",
       hideable: true,
       width: 140,
@@ -98,14 +98,14 @@ export function QuoteTable({
     },
     {
       key: "status",
-      header: tr("状態"),
+      header: tr("common.status"),
       width: 100,
       sortValue: (q) => q.status,
       render: (q) => <StatusBadge entity="Quote" status={q.status} />,
     },
     {
       key: "updatedAt",
-      header: tr("更新日"),
+      header: tr("common.updated"),
       hideable: true,
       width: 150,
       sortValue: (q) => q.updatedAt,
@@ -120,7 +120,7 @@ export function QuoteTable({
   return (
     <ListShell
       action={<NewButton href={`${BASE_PATH}/new`} />}
-      breadcrumbs={[tr("販売"), tr("見積書")]}
+      breadcrumbs={[tr("common.sales"), tr("common.quote")]}
       filters={
         <>
           <Select
@@ -128,7 +128,7 @@ export function QuoteTable({
             data={customerOptions}
             flex={isMobile ? 1 : undefined}
             onChange={setCustomer}
-            placeholder={tr("顧客")}
+            placeholder={tr("common.customer")}
             searchable
             value={customer}
             w={isMobile ? undefined : 180}
@@ -138,7 +138,7 @@ export function QuoteTable({
             data={statusOptions("Quote")}
             flex={isMobile ? 1 : undefined}
             onChange={setStatus}
-            placeholder={tr("状態")}
+            placeholder={tr("common.status")}
             value={status}
             w={isMobile ? undefined : 140}
           />
@@ -149,11 +149,11 @@ export function QuoteTable({
         <TextInput
           leftSection={<IconSearch size={14} />}
           onChange={(e) => setSearch(e.currentTarget.value)}
-          placeholder={tr("見積番号・顧客で検索")}
+          placeholder={tr("sales.quotes.searchByQuoteNumberOrCustomer")}
           value={search}
         />
       }
-      title={tr("見積書")}
+      title={tr("common.quote")}
     >
       <DataTable
         columns={columns}
@@ -161,7 +161,7 @@ export function QuoteTable({
         defaultSort={{ key: "updatedAt", dir: "desc" }}
         emptyAction={<NewButton href={`${BASE_PATH}/new`} />}
         emptyIcon={<IconFileText size={24} />}
-        emptyMessage={tr("見積書がありません")}
+        emptyMessage={tr("sales.quotes.thereAreNoQuotes")}
         getRowId={(q) => q.id}
         onRowClick={(q) => router.push(`${BASE_PATH}/${q.id}`)}
         renderCard={(q) => (

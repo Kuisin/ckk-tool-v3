@@ -27,7 +27,7 @@ import { useForm } from "@mantine/form";
 import { notifications } from "@mantine/notifications";
 import { IconCalendar, IconPlus, IconTrash } from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
-import { useLocale } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { useTransition } from "react";
 import { z } from "zod";
 import { searchMaterialOptions } from "@/app/(dashboard)/_shared/option-search";
@@ -40,7 +40,6 @@ import { HelpLabel } from "@/components/ui/HelpLabel";
 import { SearchSelect } from "@/components/ui/SearchSelect";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { FormSection, FormShell } from "@/components/ui/shells";
-import { useTr } from "@/hooks/useTr";
 import { unitOptions } from "@/lib/enum-labels";
 import { fieldHelp } from "@/lib/field-help";
 import { zodResolver } from "@/lib/form";
@@ -124,7 +123,7 @@ export function PurchaseOrderForm({
   /** 入荷先拠点（有効のみ）。value = String(内部 id)。 */
   plantOptions: Option[];
 }) {
-  const tr = useTr();
+  const tr = useTranslations();
   const locale = useLocale();
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
@@ -170,7 +169,7 @@ export function PurchaseOrderForm({
           : await createPurchaseOrder(payload);
       if (result.ok) {
         notifications.show({
-          title: tr("保存しました"),
+          title: tr("common.saved2"),
           message:
             mode === "edit"
               ? `素材発注書 ${result.data.poNumber} を更新しました`
@@ -180,8 +179,8 @@ export function PurchaseOrderForm({
         router.push(`${BASE_PATH}/${result.data.poNumber}`);
       } else {
         notifications.show({
-          title: tr("エラー"),
-          message: tr(result.error),
+          title: tr("common.error2"),
+          message: result.error,
           color: "red",
         });
       }
@@ -191,9 +190,9 @@ export function PurchaseOrderForm({
   return (
     <FormShell
       breadcrumbs={[
-        tr("購買"),
-        { label: tr("素材発注書"), href: BASE_PATH },
-        mode === "edit" ? "編集" : tr("新規作成"),
+        tr("common.purchasing"),
+        { label: tr("common.materialPurchaseOrder"), href: BASE_PATH },
+        mode === "edit" ? "編集" : tr("common.new2"),
       ]}
       isDirty={form.isDirty()}
       isPending={isPending}
@@ -212,45 +211,45 @@ export function PurchaseOrderForm({
       title={
         mode === "edit"
           ? `素材発注書 編集 ${poNumber ?? ""}`
-          : tr("素材発注書 新規作成")
+          : tr("purchase.purchaseOrders.newMaterialPurchaseOrder")
       }
     >
-      <FormSection title={tr("基本情報")}>
+      <FormSection title={tr("common.basicInformation")}>
         <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="sm">
           <Select
             clearable
             data={supplierOptions}
             label={<HelpLabel {...fieldHelp("purchaseOrder", "supplier")} />}
-            placeholder={tr("仕入先を選択")}
+            placeholder={tr("common.selectASupplier")}
             searchable
             withAsterisk
             {...form.getInputProps("supplierBpId")}
           />
           <DatePickerInput
             clearable
-            description={tr("未入力の場合は発注実行時に自動設定されます")}
+            description={tr("purchase.purchaseOrders.ifLeftBlankItIsSet")}
             label={<HelpLabel {...fieldHelp("purchaseOrder", "orderDate")} />}
             leftSection={<IconCalendar size={14} />}
-            placeholder={tr("日付を選択")}
+            placeholder={tr("common.pickADate")}
             valueFormat="YYYY/MM/DD"
             {...form.getInputProps("purchaseDate")}
           />
         </SimpleGrid>
         <Textarea
           autosize
-          label={tr("備考")}
+          label={tr("common.notes")}
           minRows={2}
           mt="sm"
-          placeholder={tr("備考（任意）")}
+          placeholder={tr("common.notesOptional")}
           {...form.getInputProps("notes")}
         />
       </FormSection>
 
       <FormSection
         description={tr(
-          "金額は 数量 × 単価 でサーバー側で計算されます。発注（ORDERED）後は明細が素材 ATP の入荷予定に反映されます。",
+          "purchase.purchaseOrders.theAmountIsComputedServerSide",
         )}
-        title={tr("明細")}
+        title={tr("common.lineItems")}
       >
         <Group justify="flex-end" mb="xs">
           {typeof form.errors.items === "string" && (
@@ -277,7 +276,7 @@ export function PurchaseOrderForm({
                         ? { value: item.materialId, label: item.materialLabel }
                         : null
                     }
-                    label={tr("素材")}
+                    label={tr("common.materials")}
                     onChange={(v, opt) => {
                       form.setFieldValue(`items.${ri}.materialId`, v ?? "");
                       form.setFieldValue(
@@ -286,7 +285,7 @@ export function PurchaseOrderForm({
                       );
                     }}
                     onSearch={searchMaterialOptions}
-                    placeholder={tr("素材を検索")}
+                    placeholder={tr("common.searchMaterials")}
                     storageKey="material"
                     value={item.materialId || null}
                     withAsterisk
@@ -298,13 +297,13 @@ export function PurchaseOrderForm({
                       <HelpLabel {...fieldHelp("purchaseOrder", "plant")} />
                     }
                     maw={180}
-                    placeholder={tr("拠点を選択")}
+                    placeholder={tr("common.selectASite")}
                     {...form.getInputProps(`items.${ri}.plantId`)}
                   />
                   <NumberInput
                     decimalScale={3}
                     error={form.errors[`items.${ri}.quantity`]}
-                    label={tr("数量")}
+                    label={tr("common.quantity")}
                     maw={110}
                     min={0}
                     {...form.getInputProps(`items.${ri}.quantity`)}
@@ -312,7 +311,7 @@ export function PurchaseOrderForm({
                   />
                   <Select
                     data={unitOptions(locale)}
-                    label={tr("単位")}
+                    label={tr("common.unit")}
                     maw={90}
                     withAsterisk
                     {...form.getInputProps(`items.${ri}.unit`)}
@@ -333,7 +332,7 @@ export function PurchaseOrderForm({
                 </Group>
               </Box>
               <ActionIcon
-                aria-label={tr("明細を削除")}
+                aria-label={tr("common.removeLine")}
                 color="red"
                 disabled={form.values.items.length <= 1}
                 mb={4}
@@ -351,14 +350,14 @@ export function PurchaseOrderForm({
                 }
                 leftSection={<IconCalendar size={14} />}
                 maw={200}
-                placeholder={tr("日付を選択")}
+                placeholder={tr("common.pickADate")}
                 valueFormat="YYYY/MM/DD"
                 {...form.getInputProps(`items.${ri}.expectedAt`)}
               />
               <TextInput
                 flex={1}
-                label={tr("備考")}
-                placeholder={tr("行の備考（任意）")}
+                label={tr("common.notes")}
+                placeholder={tr("common.lineNotesOptional")}
                 {...form.getInputProps(`items.${ri}.notes`)}
               />
               <Text
@@ -381,7 +380,7 @@ export function PurchaseOrderForm({
           onClick={() => form.insertListItem("items", emptyItem())}
           size="xs"
         >
-          {tr("明細を追加")}
+          {tr("common.addLine")}
         </GhostButton>
 
         <Divider my="md" />

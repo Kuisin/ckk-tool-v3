@@ -51,6 +51,7 @@ import {
   IconX,
 } from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { useMemo, useRef, useState, useTransition } from "react";
 import {
   createFloorMap,
@@ -63,7 +64,6 @@ import { AppTabs } from "@/components/ui/AppTabs";
 import { GhostButton, SecondaryButton } from "@/components/ui/buttons";
 import { ConfirmModal, ModalShell } from "@/components/ui/modals";
 import { PageHeader } from "@/components/ui/PageHeader";
-import { useTr } from "@/hooks/useTr";
 import { uploadFloorMapImage } from "@/lib/floor-map-client";
 import type {
   KioskDeviceRow,
@@ -95,7 +95,7 @@ export function KioskFloorMapView({
   /** 保管場所ピン（読み取り専用レイヤ — 配置は保管場所マスタ MS0E）。 */
   storagePins: StorageLocationPin[];
 }) {
-  const tr = useTr();
+  const tr = useTranslations();
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const { presence, live } = useKioskPresence();
@@ -177,14 +177,14 @@ export function KioskFloorMapView({
       const result = await action();
       if (result.ok) {
         notifications.show({
-          title: tr("完了"),
+          title: tr("common.completed"),
           message: successMessage,
           color: "green",
         });
       } else {
         notifications.show({
-          title: tr("エラー"),
-          message: tr(result.error),
+          title: tr("common.error2"),
+          message: result.error,
           color: "red",
         });
       }
@@ -240,8 +240,8 @@ export function KioskFloorMapView({
         });
       } else {
         notifications.show({
-          title: tr("エラー"),
-          message: tr(result.error),
+          title: tr("common.error2"),
+          message: result.error,
           color: "red",
         });
       }
@@ -258,7 +258,7 @@ export function KioskFloorMapView({
           mapX: 50,
           mapY: 50,
         }),
-      tr("端末を配置しました（ドラッグで移動できます）"),
+      tr("settings.kiosk.theDeviceWasPlacedDragTo"),
     );
   };
 
@@ -267,8 +267,8 @@ export function KioskFloorMapView({
   const handleFloorSubmit = () => {
     if (!floorName.trim()) {
       notifications.show({
-        title: tr("エラー"),
-        message: tr("フロア名を入力してください"),
+        title: tr("common.error2"),
+        message: tr("settings.kiosk.enterAFloorName"),
         color: "red",
       });
       return;
@@ -282,14 +282,14 @@ export function KioskFloorMapView({
           setFloorName("");
           setActiveMapId(result.data.id);
           notifications.show({
-            title: tr("作成しました"),
-            message: tr("フロアを追加しました"),
+            title: tr("common.created"),
+            message: tr("settings.kiosk.theFloorWasAdded"),
             color: "green",
           });
         } else {
           notifications.show({
-            title: tr("エラー"),
-            message: tr(result.error),
+            title: tr("common.error2"),
+            message: result.error,
             color: "red",
           });
         }
@@ -302,14 +302,14 @@ export function KioskFloorMapView({
           setFloorModal(null);
           setFloorName("");
           notifications.show({
-            title: tr("保存しました"),
-            message: tr("フロア名を変更しました"),
+            title: tr("common.saved2"),
+            message: tr("settings.kiosk.theFloorNameWasChanged"),
             color: "green",
           });
         } else {
           notifications.show({
-            title: tr("エラー"),
-            message: tr(result.error),
+            title: tr("common.error2"),
+            message: result.error,
             color: "red",
           });
         }
@@ -322,7 +322,7 @@ export function KioskFloorMapView({
     // 図面は最大 10MB。Server Action ではなく API 経由（lib/floor-map-client.ts）。
     run(
       () => uploadFloorMapImage(activeMap.id, file),
-      tr("図面画像を更新しました"),
+      tr("settings.kiosk.theDrawingImageWasUpdated"),
     );
   };
 
@@ -443,7 +443,7 @@ export function KioskFloorMapView({
             <Group gap={6} wrap="nowrap">
               <OnlineDot online={online} />
               <Text fw={500} size="sm" truncate>
-                {d.name ?? tr("（未設定）")}
+                {d.name ?? tr("common.notSet")}
               </Text>
             </Group>
             {d.location && (
@@ -457,9 +457,9 @@ export function KioskFloorMapView({
               </Text>
             )}
           </Box>
-          <Tooltip label={tr("端末詳細を開く")} withinPortal>
+          <Tooltip label={tr("settings.kiosk.openDeviceDetails")} withinPortal>
             <ActionIcon
-              aria-label={tr("端末詳細を開く")}
+              aria-label={tr("settings.kiosk.openDeviceDetails")}
               color="gray"
               onClick={(e) => {
                 e.stopPropagation();
@@ -483,11 +483,15 @@ export function KioskFloorMapView({
             href="/settings/kiosk-devices"
             leftSection={<IconArrowLeft size={14} />}
           >
-            {tr("端末一覧へ")}
+            {tr("settings.kiosk.toTheDeviceList")}
           </SecondaryButton>
         }
-        breadcrumbs={[tr("システム"), tr("端末管理"), tr("フロアマップ")]}
-        title={tr("フロアマップ")}
+        breadcrumbs={[
+          tr("common.system"),
+          tr("common.devices"),
+          tr("common.floorMap"),
+        ]}
+        title={tr("common.floorMap")}
       />
       <Paper p="sm" shadow="xs">
         <Stack gap="sm">
@@ -507,7 +511,7 @@ export function KioskFloorMapView({
             />
             <Switch
               checked={editMode}
-              label={tr("編集モード")}
+              label={tr("settings.kiosk.editMode")}
               onChange={(e) => {
                 setEditMode(e.currentTarget.checked);
                 clearSelection();
@@ -519,8 +523,8 @@ export function KioskFloorMapView({
             <Alert color="gray" variant="light">
               この拠点にはフロアマップがありません。
               {editMode
-                ? tr("下の「フロアを追加」から作成してください。")
-                : tr("編集モードでフロアを追加できます。")}
+                ? tr("settings.kiosk.createOneUnderAddAFloor")
+                : tr("settings.kiosk.youCanAddFloorsInEdit")}
             </Alert>
           ) : (
             <AppTabs
@@ -550,7 +554,7 @@ export function KioskFloorMapView({
                   setFloorName("");
                 }}
               >
-                {tr("フロアを追加")}
+                {tr("common.addAFloor")}
               </SecondaryButton>
               {activeMap && (
                 <>
@@ -561,7 +565,7 @@ export function KioskFloorMapView({
                       setFloorName(activeMap.name);
                     }}
                   >
-                    {tr("名称変更")}
+                    {tr("common.rename")}
                   </SecondaryButton>
                   <SecondaryButton
                     leftSection={<IconPhotoUp size={14} />}
@@ -569,22 +573,22 @@ export function KioskFloorMapView({
                     onClick={() => fileInputRef.current?.click()}
                   >
                     {activeMap.fileId
-                      ? tr("図面を差し替え")
-                      : tr("図面をアップロード")}
+                      ? tr("common.replaceTheDrawing")
+                      : tr("common.uploadADrawing")}
                   </SecondaryButton>
                   <GhostButton
                     color="red"
                     leftSection={<IconTrash size={14} />}
                     onClick={() =>
                       setConfirm({
-                        title: tr("フロア削除の確認"),
+                        title: tr("common.confirmDeletingTheFloor"),
                         message: `フロア「${activeMap.name}」を削除します。端末が配置されている場合は削除できません。`,
                         confirmLabel: "削除",
                         run: () => deleteFloorMap(activeMap.id),
                       })
                     }
                   >
-                    {tr("フロアを削除")}
+                    {tr("common.deleteTheFloor")}
                   </GhostButton>
                   <input
                     accept="image/png,image/jpeg,image/webp,image/svg+xml"
@@ -685,7 +689,7 @@ export function KioskFloorMapView({
                 <Stack gap="xs" w={{ base: "100%", md: 280 }}>
                   <Group justify="space-between">
                     <Text fw={600} size="sm">
-                      {tr("端末一覧")}
+                      {tr("settings.kiosk.devices")}
                     </Text>
                     <Text c="dimmed" size="xs">
                       {plantDevices.length} 台
@@ -698,7 +702,7 @@ export function KioskFloorMapView({
                       </Text>
                       {placedDevices.length === 0 ? (
                         <Text c="dimmed" size="xs">
-                          {tr("このフロアに配置済みの端末はありません")}
+                          {tr("settings.kiosk.noDevicesArePlacedOnThis")}
                         </Text>
                       ) : (
                         placedDevices.map(deviceRow)
@@ -721,11 +725,11 @@ export function KioskFloorMapView({
               {editMode && (
                 <Stack gap="xs" w={{ base: "100%", md: 260 }}>
                   <Text fw={600} size="sm">
-                    {tr("未配置の端末")}
+                    {tr("settings.kiosk.devicesNotPlaced")}
                   </Text>
                   {unplacedDevices.length === 0 ? (
                     <Text c="dimmed" size="xs">
-                      {tr("この拠点に未配置の端末はありません")}
+                      {tr("settings.kiosk.everyDeviceAtThisSiteIs")}
                     </Text>
                   ) : (
                     unplacedDevices.map((d) => (
@@ -740,7 +744,7 @@ export function KioskFloorMapView({
                           <IconMapPin size={16} />
                           <Box className="min-w-0">
                             <Text fw={500} size="sm" truncate>
-                              {d.name ?? tr("（未設定）")}
+                              {d.name ?? tr("common.notSet")}
                             </Text>
                             {d.location && (
                               <Text c="dimmed" size="xs" truncate>
@@ -754,11 +758,11 @@ export function KioskFloorMapView({
                   )}
                   <Divider />
                   <Text fw={600} size="sm">
-                    {tr("配置済み")}
+                    {tr("settings.kiosk.placed")}
                   </Text>
                   {placedDevices.length === 0 ? (
                     <Text c="dimmed" size="xs">
-                      {tr("このフロアに配置済みの端末はありません")}
+                      {tr("settings.kiosk.noDevicesArePlacedOnThis")}
                     </Text>
                   ) : (
                     placedDevices.map((d) => (
@@ -769,16 +773,19 @@ export function KioskFloorMapView({
                         wrap="nowrap"
                       >
                         <Text size="sm" truncate>
-                          {d.name ?? tr("（未設定）")}
+                          {d.name ?? tr("common.notSet")}
                         </Text>
-                        <Tooltip label={tr("ピンを解除")} withinPortal>
+                        <Tooltip
+                          label={tr("settings.kiosk.removeThePin")}
+                          withinPortal
+                        >
                           <ActionIcon
-                            aria-label={tr("ピンを解除")}
+                            aria-label={tr("settings.kiosk.removeThePin")}
                             color="gray"
                             onClick={() =>
                               run(
                                 () => unplaceDevice(d.id),
-                                tr("ピンを解除しました"),
+                                tr("settings.kiosk.thePinWasRemoved"),
                               )
                             }
                             variant="subtle"
@@ -798,20 +805,24 @@ export function KioskFloorMapView({
 
       {/* フロア追加・名称変更モーダル */}
       <ModalShell
-        confirmLabel={floorModal?.mode === "create" ? "追加" : tr("保存")}
+        confirmLabel={
+          floorModal?.mode === "create" ? "追加" : tr("common.save2")
+        }
         loading={isPending}
         onClose={() => setFloorModal(null)}
         onConfirm={handleFloorSubmit}
         opened={floorModal != null}
         size="sm"
         title={
-          floorModal?.mode === "create" ? "フロアを追加" : tr("フロア名の変更")
+          floorModal?.mode === "create"
+            ? "フロアを追加"
+            : tr("common.renameTheFloor")
         }
       >
         <TextInput
-          label={tr("フロア名")}
+          label={tr("common.floorName")}
           onChange={(e) => setFloorName(e.currentTarget.value)}
-          placeholder={tr("例: 1F 加拠点")}
+          placeholder={tr("settings.kiosk.eG1fSite")}
           value={floorName}
           withAsterisk
         />
@@ -819,12 +830,12 @@ export function KioskFloorMapView({
 
       {/* 破壊的操作の確認 */}
       <ConfirmModal
-        confirmLabel={confirm?.confirmLabel ?? tr("実行")}
+        confirmLabel={confirm?.confirmLabel ?? tr("common.run2")}
         loading={isPending}
         message={confirm?.message ?? ""}
         onClose={() => setConfirm(null)}
         onConfirm={() => {
-          if (confirm) run(confirm.run, tr("操作が完了しました"));
+          if (confirm) run(confirm.run, tr("common.done"));
         }}
         opened={confirm != null}
         title={confirm?.title ?? ""}

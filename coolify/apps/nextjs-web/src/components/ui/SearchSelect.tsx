@@ -28,8 +28,8 @@ import {
 } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
 import { IconZoomScan } from "@tabler/icons-react";
+import { useTranslations } from "next-intl";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useTr } from "@/hooks/useTr";
 import { pushRecent, type RecentOption, readRecents } from "@/lib/recents";
 import { type F4Config, F4SearchModal } from "./F4SearchModal";
 
@@ -67,7 +67,7 @@ export function SearchSelect({
   f4,
   ...selectProps
 }: SearchSelectProps) {
-  const tr = useTr();
+  const tr = useTranslations();
   const [search, setSearch] = useState("");
   const [results, setResults] = useState<RecentOption[]>([]);
   const [recents, setRecents] = useState<RecentOption[]>([]);
@@ -116,10 +116,8 @@ export function SearchSelect({
           if (!errorNotified.current) {
             errorNotified.current = true;
             notifications.show({
-              title: tr("検索に失敗しました"),
-              message: tr(
-                "通信エラーか、アプリが更新された可能性があります。ページを再読み込みしてください",
-              ),
+              title: tr("ui.searchSelect.theSearchFailed"),
+              message: tr("ui.searchSelect.aCommunicationErrorOrTheApp"),
               color: "red",
             });
           }
@@ -144,7 +142,10 @@ export function SearchSelect({
     const groups: { group: string; items: RecentOption[] }[] = [];
     // 空クエリのときだけ最近使用を先頭に
     if (!search.trim() && recents.length > 0) {
-      groups.push({ group: tr("最近使用"), items: dedupe(recents) });
+      groups.push({
+        group: tr("ui.searchSelect.recentlyUsed"),
+        items: dedupe(recents),
+      });
     }
     // 選択中 option を**先**に置く — 同じ value が検索結果に別ラベルで
     // 現れても、表示ラベルが選択時のものから変わらないようにする。
@@ -154,7 +155,7 @@ export function SearchSelect({
     const rest = dedupe(selected ? [selected, ...results] : results);
     if (rest.length > 0) {
       groups.push({
-        group: search.trim() ? "検索結果" : tr("一覧（先頭のみ）"),
+        group: search.trim() ? "検索結果" : tr("ui.searchSelect.listFirstOnly"),
         items: rest,
       });
     }
@@ -176,9 +177,12 @@ export function SearchSelect({
         filter={({ options }) => options}
         leftSection={
           f4 ? (
-            <Tooltip label={tr("詳細検索（フィルタ）")} withArrow>
+            <Tooltip
+              label={tr("ui.searchSelect.advancedSearchFilters")}
+              withArrow
+            >
               <ActionIcon
-                aria-label={tr("詳細検索")}
+                aria-label={tr("ui.searchSelect.advancedSearch")}
                 color="gray"
                 onClick={() => setF4Open(true)}
                 size="sm"
@@ -190,7 +194,9 @@ export function SearchSelect({
           ) : undefined
         }
         leftSectionPointerEvents={f4 ? "auto" : undefined}
-        nothingFoundMessage={loading ? "検索中…" : tr("該当なし")}
+        nothingFoundMessage={
+          loading ? "検索中…" : tr("ui.searchSelect.noResults")
+        }
         onChange={(v, option) => {
           if (v && option) {
             pick({ value: v, label: option.label });

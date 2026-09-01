@@ -12,6 +12,7 @@ import { notifications } from "@mantine/notifications";
 import { IconClock, IconLock } from "@tabler/icons-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { useState, useTransition } from "react";
 import { discardDraft } from "@/app/(dashboard)/general/forms/actions";
 import {
@@ -21,7 +22,6 @@ import {
   SecondaryButton,
 } from "@/components/ui/buttons";
 import { openConfirm } from "@/components/ui/modals";
-import { useTr } from "@/hooks/useTr";
 import { useIsMobile } from "@/hooks/useViewport";
 import {
   AVAILABILITY_LABEL,
@@ -75,7 +75,7 @@ export function RespondForm({
   ) => Promise<{ ok: boolean; error?: string }>;
   onCancel?: () => void;
 }) {
-  const tr = useTr();
+  const tr = useTranslations();
   const router = useRouter();
   const isMobile = useIsMobile();
   const [isPending, startTransition] = useTransition();
@@ -90,7 +90,7 @@ export function RespondForm({
       setErrors(found);
       if (Object.keys(found).length > 0) {
         notifications.show({
-          title: tr("入力を確認してください"),
+          title: tr("forms.respondForm.checkWhatYouEntered"),
           message: Object.values(found)[0],
           color: "red",
         });
@@ -101,14 +101,16 @@ export function RespondForm({
       const result = await onSubmit(answers, asDraft);
       if (result.ok) {
         notifications.show({
-          message: asDraft ? "下書きを保存しました" : tr("送信しました"),
+          message: asDraft
+            ? "下書きを保存しました"
+            : tr("forms.respondForm.sent"),
           color: "green",
         });
         router.refresh();
       } else {
         notifications.show({
-          title: tr("エラー"),
-          message: result.error ?? tr("保存に失敗しました"),
+          title: tr("common.error2"),
+          message: result.error ?? tr("common.couldNotSave"),
           color: "red",
         });
       }
@@ -147,7 +149,7 @@ export function RespondForm({
           }
         >
           {availability === "SCHEDULED"
-            ? tr("このフォームはまだ受付前です。")
+            ? tr("forms.respondForm.thisFormIsNotOpenYet")
             : `このフォームの受付は終了しています（${AVAILABILITY_LABEL[availability]}）。`}
         </Alert>
       )}
@@ -194,7 +196,7 @@ export function RespondForm({
                 loading={isPending}
                 onClick={() => submit(true)}
               >
-                {tr("下書き保存")}
+                {tr("forms.respondForm.saveAsDraft")}
               </SecondaryButton>
             )}
             {onCancel && <CancelButton fullWidth onClick={onCancel} />}
@@ -208,7 +210,7 @@ export function RespondForm({
                 loading={isPending}
                 onClick={() => submit(true)}
               >
-                {tr("下書き保存")}
+                {tr("forms.respondForm.saveAsDraft")}
               </SecondaryButton>
             )}
             <PrimaryButton
@@ -238,29 +240,29 @@ function DraftResumeList({
 }: {
   drafts: { responseNumber: string; href: string }[];
 }) {
-  const tr = useTr();
+  const tr = useTranslations();
   const router = useRouter();
   const [busy, setBusy] = useState<string | null>(null);
 
   const discard = (responseNumber: string) =>
     openConfirm({
-      title: tr("下書きを削除"),
-      message: tr("この下書きを捨てます。書いた内容は戻せません。"),
-      confirmLabel: tr("削除する"),
+      title: tr("forms.respondForm.deleteTheDraft"),
+      message: tr("forms.respondForm.thisDiscardsTheDraftWhatYou"),
+      confirmLabel: tr("common.delete2"),
       onConfirm: async () => {
         setBusy(responseNumber);
         const result = await discardDraft(responseNumber);
         setBusy(null);
         if (result.ok) {
           notifications.show({
-            message: tr("下書きを削除しました"),
+            message: tr("forms.respondForm.theDraftWasDeleted"),
             color: "green",
           });
           router.refresh();
         } else {
           notifications.show({
-            title: tr("エラー"),
-            message: result.error ?? tr("削除できませんでした"),
+            title: tr("common.error2"),
+            message: result.error ?? tr("forms.respondForm.couldNotBeDeleted"),
             color: "red",
           });
         }
@@ -292,7 +294,7 @@ function DraftResumeList({
           </Group>
         ))}
         <Text c="dimmed" size="xs">
-          {tr("下の空のフォームに書けば、新しい 1 件として保存されます。")}
+          {tr("forms.respondForm.fillInTheBlankFormBelow")}
         </Text>
       </Stack>
     </Paper>

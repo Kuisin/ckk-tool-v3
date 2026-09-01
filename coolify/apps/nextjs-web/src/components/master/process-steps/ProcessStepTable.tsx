@@ -26,7 +26,7 @@ import {
   IconTrash,
 } from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
-import { useLocale } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { useState, useTransition } from "react";
 import {
   deleteProcessSteps,
@@ -38,7 +38,6 @@ import { DocNumber } from "@/components/ui/DocNumber";
 import { openConfirm } from "@/components/ui/modals";
 import { NewButton } from "@/components/ui/NewButton";
 import { ListShell } from "@/components/ui/shells";
-import { useTr } from "@/hooks/useTr";
 import { useUrlSelectState, useUrlStringState } from "@/hooks/useUrlState";
 import { useIsMobile } from "@/hooks/useViewport";
 import {
@@ -113,7 +112,7 @@ function FlagBadge({
 }
 
 export function ProcessStepTable({ rows }: { rows: ProcessStepRow[] }) {
-  const tr = useTr();
+  const tr = useTranslations();
   const locale = useLocale();
   const router = useRouter();
   const isMobile = useIsMobile();
@@ -156,15 +155,15 @@ export function ProcessStepTable({ rows }: { rows: ProcessStepRow[] }) {
       );
       if (result.ok) {
         notifications.show({
-          title: isActive ? "有効化しました" : tr("無効化しました"),
+          title: isActive ? "有効化しました" : tr("common.disabled2"),
           message: `${targets.length}件の工程を${isActive ? "有効化" : "無効化"}しました`,
           color: "green",
         });
         router.refresh();
       } else {
         notifications.show({
-          title: tr("エラー"),
-          message: tr(result.error),
+          title: tr("common.error2"),
+          message: result.error,
           color: "red",
         });
       }
@@ -173,23 +172,23 @@ export function ProcessStepTable({ rows }: { rows: ProcessStepRow[] }) {
 
   const bulkDelete = (targets: ProcessStepRow[]) => {
     openConfirm({
-      title: tr("工程の一括削除"),
+      title: tr("master.processSteps.bulkDeleteSteps"),
       message: `選択中の${targets.length}件の工程を削除します。他の工程が依存している工程は削除できません。この操作は取り消せません。`,
-      confirmLabel: tr("削除する"),
+      confirmLabel: tr("common.delete2"),
       onConfirm: () => {
         startTransition(async () => {
           const result = await deleteProcessSteps(targets.map((r) => r.id));
           if (result.ok) {
             notifications.show({
-              title: tr("削除しました"),
+              title: tr("common.deleted"),
               message: `${targets.length}件の工程を削除しました`,
               color: "green",
             });
             router.refresh();
           } else {
             notifications.show({
-              title: tr("エラー"),
-              message: tr(result.error),
+              title: tr("common.error2"),
+              message: result.error,
               color: "red",
             });
           }
@@ -209,14 +208,14 @@ export function ProcessStepTable({ rows }: { rows: ProcessStepRow[] }) {
     },
     {
       key: "name",
-      header: tr("名称"),
+      header: tr("common.name2"),
       sortable: true,
       sortValue: (r) => r.name,
       render: (r) => r.name,
     },
     {
       key: "category",
-      header: tr("カテゴリ"),
+      header: tr("common.category"),
       sortable: true,
       width: 130,
       sortValue: (r) => processCategoryLabel(r.category, locale) ?? r.category,
@@ -231,7 +230,7 @@ export function ProcessStepTable({ rows }: { rows: ProcessStepRow[] }) {
     },
     {
       key: "executionLocation",
-      header: tr("実施場所"),
+      header: tr("common.executionLocation"),
       sortable: true,
       hideable: true,
       width: 110,
@@ -245,24 +244,32 @@ export function ProcessStepTable({ rows }: { rows: ProcessStepRow[] }) {
     },
     {
       key: "isSyncCapable",
-      header: tr("同期可"),
+      header: tr("common.syncCapable"),
       sortable: true,
       hideable: true,
       width: 80,
       sortValue: (r) => (r.isSyncCapable ? 1 : 0),
       render: (r) => (
-        <FlagBadge color="cyan" label={tr("同期可")} on={r.isSyncCapable} />
+        <FlagBadge
+          color="cyan"
+          label={tr("common.syncCapable")}
+          on={r.isSyncCapable}
+        />
       ),
     },
     {
       key: "isInspection",
-      header: tr("検査"),
+      header: tr("common.inspection"),
       sortable: true,
       hideable: true,
       width: 80,
       sortValue: (r) => (r.isInspection ? 1 : 0),
       render: (r) => (
-        <FlagBadge color="blue" label={tr("検査")} on={r.isInspection} />
+        <FlagBadge
+          color="blue"
+          label={tr("common.inspection")}
+          on={r.isInspection}
+        />
       ),
     },
     {
@@ -278,7 +285,7 @@ export function ProcessStepTable({ rows }: { rows: ProcessStepRow[] }) {
     },
     {
       key: "quantityTracking",
-      header: tr("数量管理"),
+      header: tr("common.quantityTracking"),
       sortable: true,
       hideable: true,
       width: 100,
@@ -300,7 +307,7 @@ export function ProcessStepTable({ rows }: { rows: ProcessStepRow[] }) {
     },
     {
       key: "sortOrder",
-      header: tr("表示順"),
+      header: tr("common.sortOrder"),
       sortable: true,
       hideable: true,
       width: 90,
@@ -314,7 +321,7 @@ export function ProcessStepTable({ rows }: { rows: ProcessStepRow[] }) {
     },
     {
       key: "isActive",
-      header: tr("状態"),
+      header: tr("common.status"),
       sortable: true,
       width: 90,
       sortValue: (r) => (r.isActive ? 1 : 0),
@@ -325,14 +332,14 @@ export function ProcessStepTable({ rows }: { rows: ProcessStepRow[] }) {
   return (
     <ListShell
       action={<NewButton href={`${BASE_PATH}/new`} />}
-      breadcrumbs={[tr("マスタ"), tr("工程マスタ")]}
+      breadcrumbs={[tr("common.masterData"), tr("common.processSteps")]}
       filters={
         <>
           <Select
             clearable
             data={processCategoryOptions(locale)}
             onChange={setCategoryFilter}
-            placeholder={tr("カテゴリ")}
+            placeholder={tr("common.category")}
             value={categoryFilter}
             w={isMobile ? 130 : 150}
           />
@@ -340,7 +347,7 @@ export function ProcessStepTable({ rows }: { rows: ProcessStepRow[] }) {
             clearable
             data={STATUS_OPTIONS}
             onChange={setStatusFilter}
-            placeholder={tr("状態")}
+            placeholder={tr("common.status")}
             value={statusFilter}
             w={isMobile ? 110 : 120}
           />
@@ -351,28 +358,28 @@ export function ProcessStepTable({ rows }: { rows: ProcessStepRow[] }) {
         <TextInput
           leftSection={<IconSearch size={14} />}
           onChange={(e) => setSearch(e.currentTarget.value)}
-          placeholder={tr("コード・名称で検索")}
+          placeholder={tr("common.searchByCodeOrName")}
           value={search}
         />
       }
-      title={tr("工程マスタ")}
+      title={tr("common.processSteps")}
     >
       <DataTable
         bulkActions={[
           {
-            label: tr("一括有効化"),
+            label: tr("common.bulkEnable"),
             icon: <IconCheck size={16} />,
             color: "green",
             onAction: (rs) => bulkSetActive(rs, true),
           },
           {
-            label: tr("一括無効化"),
+            label: tr("common.bulkDisable"),
             icon: <IconCircleMinus size={16} />,
             color: "orange",
             onAction: (rs) => bulkSetActive(rs, false),
           },
           {
-            label: tr("一括削除"),
+            label: tr("common.bulkDelete"),
             icon: <IconTrash size={16} />,
             color: "red",
             onAction: bulkDelete,
@@ -383,7 +390,7 @@ export function ProcessStepTable({ rows }: { rows: ProcessStepRow[] }) {
         defaultSort={{ key: "sortOrder", dir: "asc" }}
         emptyAction={<NewButton href={`${BASE_PATH}/new`} />}
         emptyIcon={<IconGitBranch size={24} />}
-        emptyMessage={tr("工程がありません")}
+        emptyMessage={tr("common.thereAreNoSteps")}
         getRowId={(r) => String(r.id)}
         onRowClick={(r) => router.push(`${BASE_PATH}/${r.id}`)}
         pageSize={50}
@@ -409,12 +416,12 @@ export function ProcessStepTable({ rows }: { rows: ProcessStepRow[] }) {
                   </Text>
                   {r.isSyncCapable && (
                     <Badge color="cyan" size="xs" variant="light">
-                      {tr("同期可")}
+                      {tr("common.syncCapable")}
                     </Badge>
                   )}
                   {r.isInspection && (
                     <Badge color="blue" size="xs" variant="light">
-                      {tr("検査")}
+                      {tr("common.inspection")}
                     </Badge>
                   )}
                   {r.isApprovalStep && (
@@ -430,12 +437,12 @@ export function ProcessStepTable({ rows }: { rows: ProcessStepRow[] }) {
         )}
         rowActions={(row) => [
           {
-            label: tr("編集"),
+            label: tr("common.edit2"),
             icon: <IconEdit size={14} />,
             onAction: (r) => router.push(`${BASE_PATH}/${r.id}/edit`),
           },
           {
-            label: row.isActive ? "無効化" : tr("有効化"),
+            label: row.isActive ? "無効化" : tr("common.enable"),
             icon: <IconCircleMinus size={14} />,
             onAction: (r) => setToggleRow(r),
           },

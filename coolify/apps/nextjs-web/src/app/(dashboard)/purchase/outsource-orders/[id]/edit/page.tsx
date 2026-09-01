@@ -1,20 +1,20 @@
+import { getTranslations } from "next-intl/server";
 import { PlaceholderPage } from "@/components/ui/PlaceholderPage";
 import { requireAppRead } from "@/lib/authz-page";
-import { getTr } from "@/lib/ui-text-server";
 
 export default async function PurchaseOutsourceOrdersEditPage({
   params,
 }: {
   params: Promise<{ id: string }>;
 }) {
-  const tr = await getTr();
+  const tr = await getTranslations();
   const denied = await requireAppRead("outsource-orders");
   if (denied) return denied;
   const { id } = await params;
   return (
     <PlaceholderPage
-      breadcrumbs={[tr("購買"), tr("外注依頼"), id]}
-      title={tr("外注依頼 編集")}
+      breadcrumbs={[tr("common.purchasing"), tr("common.outsourceOrder"), id]}
+      title={tr("purchase.outsourceOrders.editOutsourceOrder")}
     />
   );
 }

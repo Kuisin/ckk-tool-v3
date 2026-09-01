@@ -17,6 +17,7 @@ import { Badge, Box, Group, Stack, Text, Textarea } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
 import { IconPlus } from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { useState, useTransition } from "react";
 import {
   deleteDesignFile,
@@ -27,7 +28,6 @@ import { DesignFileThumb } from "@/components/ui/DesignFileViewer";
 import { MemoPanel } from "@/components/ui/MemoPanel";
 import { ConfirmModal, ModalShell } from "@/components/ui/modals";
 import { DetailShell } from "@/components/ui/shells";
-import { useTr } from "@/hooks/useTr";
 import { groupBySeries, pickThumbFile } from "@/lib/design-files-core";
 import type { MemoView } from "@/lib/document-memos";
 import { DesignFileList, type DesignFileListRow } from "./DesignFileList";
@@ -53,7 +53,7 @@ export function ProductDrawings({
    */
   memosByFile?: Record<string, MemoView[]>;
 }) {
-  const tr = useTr();
+  const tr = useTranslations();
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [editing, setEditing] = useState<DesignFileListRow | null>(null);
@@ -76,8 +76,8 @@ export function ProductDrawings({
         router.refresh();
       } else {
         notifications.show({
-          title: tr("エラー"),
-          message: res.error ?? tr("失敗しました"),
+          title: tr("common.error2"),
+          message: res.error ?? tr("common.failed"),
           color: "red",
         });
       }
@@ -94,17 +94,21 @@ export function ProductDrawings({
             href={`${BASE_PATH}/new?product=${productId}`}
             leftSection={<IconPlus size={14} />}
           >
-            {tr("版を登録")}
+            {tr("production.designFiles.registerAVersion")}
           </SecondaryButton>
         ) : undefined
       }
-      breadcrumbs={[tr("生産"), tr("設計図"), productLabel]}
+      breadcrumbs={[
+        tr("common.production"),
+        tr("common.drawing"),
+        productLabel,
+      ]}
       title={productLabel}
     >
       <Stack gap="lg">
         {series.length === 0 ? (
           <Text c="dimmed" size="sm">
-            {tr("この製品の設計図はまだありません")}
+            {tr("common.thereIsNoDrawingForThis")}
           </Text>
         ) : (
           series.map((g) => {
@@ -119,12 +123,12 @@ export function ProductDrawings({
                 <Group gap="xs" wrap="wrap">
                   {g.customerBpId == null ? (
                     <Badge color="gray" variant="light">
-                      {tr("汎用")}
+                      {tr("common.generic")}
                     </Badge>
                   ) : (
                     <Badge color="blue" variant="light">
                       {g.files.find((f) => f.customerName)?.customerName ??
-                        tr("受注元")}
+                        tr("common.orderingCustomer")}
                     </Badge>
                   )}
                   <Text c="dimmed" size="xs">
@@ -165,25 +169,25 @@ export function ProductDrawings({
       </Stack>
 
       <ModalShell
-        confirmLabel={tr("保存")}
+        confirmLabel={tr("common.save2")}
         loading={isPending}
         onClose={() => setEditing(null)}
         onConfirm={() =>
           editing &&
           run(
             () => updateDesignFileNotes({ id: editing.id, notes }),
-            tr("保存しました"),
+            tr("common.saved2"),
           )
         }
         opened={editing != null}
-        title={editing ? `v${editing.version} のメモ` : tr("メモ")}
+        title={editing ? `v${editing.version} のメモ` : tr("common.memo")}
       >
         <Textarea
           autosize
-          label={tr("メモ")}
+          label={tr("common.memo")}
           minRows={3}
           onChange={(e) => setNotes(e.currentTarget.value)}
-          placeholder={tr("この版で何が変わったか")}
+          placeholder={tr("production.designFiles.whatChangedInThisVersion")}
           value={notes}
         />
       </ModalShell>
@@ -194,7 +198,7 @@ export function ProductDrawings({
         onClose={() => setMemoFor(null)}
         opened={memoFor != null}
         size="lg"
-        title={memoFor ? `v${memoFor.version} のメモ` : tr("メモ")}
+        title={memoFor ? `v${memoFor.version} のメモ` : tr("common.memo")}
       >
         {memoFor && (
           <MemoPanel
@@ -217,10 +221,10 @@ export function ProductDrawings({
         onClose={() => setDeleting(null)}
         onConfirm={() =>
           deleting &&
-          run(() => deleteDesignFile(deleting.id), tr("削除しました"))
+          run(() => deleteDesignFile(deleting.id), tr("common.deleted"))
         }
         opened={deleting != null}
-        title={tr("設計図の削除")}
+        title={tr("production.designFiles.deleteTheDrawing")}
       />
     </DetailShell>
   );

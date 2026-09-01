@@ -1,9 +1,9 @@
 import { Stack } from "@mantine/core";
+import { getTranslations } from "next-intl/server";
 import { OrderIntakeFolderPanel } from "@/components/settings/order-intake/OrderIntakeFolderPanel";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { requireAppRead } from "@/lib/authz-page";
 import { readIntakeFolder } from "@/lib/intake-folder";
-import { getTr } from "@/lib/ui-text-server";
 import { fetchIntakeDocs } from "./data";
 
 export const dynamic = "force-dynamic";
@@ -19,7 +19,7 @@ export const dynamic = "force-dynamic";
  * 焼き込まれている — lib/intake.ts）ので、結果を追うのに番号を探し回らない。
  */
 export default async function OrderIntakeSettingsPage() {
-  const tr = await getTr();
+  const tr = await getTranslations();
   const denied = await requireAppRead("order-intake");
   if (denied) return denied;
 
@@ -29,8 +29,8 @@ export default async function OrderIntakeSettingsPage() {
   return (
     <Stack gap="md">
       <PageHeader
-        breadcrumbs={[tr("システム"), tr("注文書取込")]}
-        title={tr("注文書取込")}
+        breadcrumbs={[tr("common.system"), tr("common.orderIntake")]}
+        title={tr("common.orderIntake")}
       />
       <OrderIntakeFolderPanel docs={docs} status={status} />
     </Stack>

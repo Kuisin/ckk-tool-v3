@@ -2,9 +2,9 @@
 
 import { Alert, Badge, Group, Stack, Text } from "@mantine/core";
 import { IconAlertTriangle, IconForms } from "@tabler/icons-react";
+import { useTranslations } from "next-intl";
 import { DataTable } from "@/components/ui/DataTable";
 import { EmptyState } from "@/components/ui/EmptyState";
-import { useTr } from "@/hooks/useTr";
 import {
   FORM_FIELD_TYPES,
   type FormFieldDef,
@@ -73,7 +73,7 @@ export function FormFieldsPanel({
   schemaError: string | null;
   currentVersion: number;
 }) {
-  const tr = useTr();
+  const tr = useTranslations();
   // 定義が壊れているのと、項目をまだ作っていないのは別の話。取り違えると
   // 「編集で直す」のか「作る」のか分からなくなるので、先に切り分ける。
   if (schemaError) {
@@ -81,7 +81,7 @@ export function FormFieldsPanel({
       <Alert
         color="red"
         icon={<IconAlertTriangle size={16} />}
-        title={tr("項目の定義を読み取れません")}
+        title={tr("forms.formFieldsPanel.cannotReadTheItemDefinition")}
       >
         <Stack gap="xs">
           <Text size="sm">{schemaError}</Text>
@@ -100,8 +100,8 @@ export function FormFieldsPanel({
         icon={<IconForms size={22} />}
         message={
           currentVersion === 0
-            ? tr("項目がまだありません。「編集」から追加してください")
-            : tr("この版には項目がありません")
+            ? tr("forms.formFieldsPanel.thereAreNoItemsYetAdd")
+            : tr("forms.formFieldsPanel.thisVersionHasNoItems")
         }
       />
     );
@@ -115,27 +115,27 @@ export function FormFieldsPanel({
       columns={[
         {
           key: "order",
-          header: tr("順"),
+          header: tr("forms.formFieldsPanel.order"),
           width: 60,
           align: "right",
           render: (f) => position.get(f.key) ?? "—",
         },
         {
           key: "label",
-          header: tr("項目名"),
+          header: tr("common.itemName"),
           render: (f) => (
             <Group gap="xs" wrap="nowrap">
               <Text fw={500} size="sm">
-                {f.label.ja || tr("（名称未設定）")}
+                {f.label.ja || tr("common.unnamed")}
               </Text>
               {f.required && (
                 <Badge color="red" size="xs" variant="light">
-                  {tr("必須")}
+                  {tr("common.required2")}
                 </Badge>
               )}
               {f.isTitle && (
                 <Badge color="blue" size="xs" variant="light">
-                  {tr("見出し")}
+                  {tr("common.heading")}
                 </Badge>
               )}
             </Group>
@@ -143,7 +143,7 @@ export function FormFieldsPanel({
         },
         {
           key: "type",
-          header: tr("種類"),
+          header: tr("common.kind"),
           width: 220,
           render: (f) => (
             <Text size="sm">{TYPE_LABEL.get(f.type) ?? f.type}</Text>
@@ -151,7 +151,7 @@ export function FormFieldsPanel({
         },
         {
           key: "detail",
-          header: tr("設定"),
+          header: tr("common.settings"),
           render: (f) => {
             const detail = detailOf(f);
             return detail ? (
@@ -167,7 +167,7 @@ export function FormFieldsPanel({
         },
       ]}
       data={fields}
-      emptyMessage={tr("項目がありません")}
+      emptyMessage={tr("forms.formFieldsPanel.thereAreNoItems")}
       getRowId={(f) => f.key}
       // 項目定義は「順番のある 1 枚のリスト」なので区切らない。既定の 10 件
       // ページングだと 11 個目以降が 2 ページ目に隠れ、項目が無いように見える。
@@ -183,16 +183,16 @@ export function FormFieldsPanel({
                 {position.get(f.key)}
               </Text>
               <Text fw={600} size="sm">
-                {f.label.ja || tr("（名称未設定）")}
+                {f.label.ja || tr("common.unnamed")}
               </Text>
               {f.required && (
                 <Badge color="red" size="xs" variant="light">
-                  {tr("必須")}
+                  {tr("common.required2")}
                 </Badge>
               )}
               {f.isTitle && (
                 <Badge color="blue" size="xs" variant="light">
-                  {tr("見出し")}
+                  {tr("common.heading")}
                 </Badge>
               )}
             </Group>

@@ -45,7 +45,7 @@ import {
 } from "@tabler/icons-react";
 import { format } from "date-fns";
 import { useRouter } from "next/navigation";
-import { useLocale } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import {
   useCallback,
   useEffect,
@@ -86,7 +86,6 @@ import { GhostButton } from "@/components/ui/buttons";
 import { HelpLabel } from "@/components/ui/HelpLabel";
 import { SearchSelect } from "@/components/ui/SearchSelect";
 import { FormSection, FormShell } from "@/components/ui/shells";
-import { useTr } from "@/hooks/useTr";
 import { useIsMobile } from "@/hooks/useViewport";
 // type-only import — lib/atp は server-only（型はバンドルされない）。
 import type { MaterialAtp } from "@/lib/atp";
@@ -293,7 +292,7 @@ export function WorkflowBuilder({
   /** 担当者候補（有効な従業員）— 作成時の作業計画 MultiSelect。 */
   employeeOptions: Option[];
 }) {
-  const tr = useTr();
+  const tr = useTranslations();
   const locale = useLocale();
   const fmt = useFormat();
   const router = useRouter();
@@ -600,9 +599,9 @@ export function WorkflowBuilder({
         const usable = steps.filter((s) => knownIds.has(s.processStepId));
         if (usable.length < steps.length) {
           notifications.show({
-            title: tr("一部の工程を除外しました"),
+            title: tr("production.workOrders.someStepsWereExcluded"),
             message: tr(
-              "このバージョンには現在無効な工程が含まれていたため除外しました。保存時は新バージョンとして保存されます",
+              "production.workOrders.thisVersionContainedStepsThatAre",
             ),
             color: "yellow",
           });
@@ -725,8 +724,8 @@ export function WorkflowBuilder({
     }
     if (allocRows.some((r) => r.key !== key && r.orderLineId === value)) {
       notifications.show({
-        title: tr("既に割り当て済みです"),
-        message: tr("同じ注文明細を複数行に割り当てることはできません"),
+        title: tr("production.workOrders.itIsAlreadyAllocated"),
+        message: tr("production.workOrders.theSameOrderLineCannotBe"),
         color: "yellow",
       });
       return;
@@ -740,7 +739,7 @@ export function WorkflowBuilder({
       // 検索と選択の間に別の指示書が割当を埋めた場合の最終ガード）。
       if (remaining <= 0) {
         notifications.show({
-          title: tr("割り当てできません"),
+          title: tr("production.workOrders.cannotBeAllocated"),
           message: `注文明細 ${info.number} は受注数量まで手配済みです（残 0）`,
           color: "yellow",
         });
@@ -815,8 +814,8 @@ export function WorkflowBuilder({
   const handleSubmit = (values: FormValues) => {
     if (blockers.length > 0) {
       notifications.show({
-        title: tr("工程構成にエラーがあります"),
-        message: tr("赤色の警告を解消してから保存してください"),
+        title: tr("common.thereIsAnErrorInThe"),
+        message: tr("common.clearTheRedWarningsBeforeSaving"),
         color: "red",
       });
       return;
@@ -829,22 +828,25 @@ export function WorkflowBuilder({
       }));
     if (target === "SALES_ORDER" && allocations.length === 0) {
       notifications.show({
-        title: tr("注文明細が必要です"),
-        message: tr("指示書に割り当てる注文明細を選択してください"),
+        title: tr("production.workOrders.anOrderLineIsRequired"),
+        message: tr("production.workOrders.selectTheOrderLinesToAllocate"),
         color: "red",
       });
       return;
     }
     if (target === "SALES_ORDER" && productMismatch) {
       notifications.show({
-        title: tr("製品が混在しています"),
-        message: tr("1 つの指示書に割り当てる注文明細は同一製品にしてください"),
+        title: tr("production.workOrders.productsAreMixed"),
+        message: tr("production.workOrders.orderLinesAllocatedToOneWork"),
         color: "red",
       });
       return;
     }
     if (target === "STOCK" && !values.productId) {
-      form.setFieldError("productId", tr("対象製品を選択してください"));
+      form.setFieldError(
+        "productId",
+        tr("production.workOrders.selectTheTargetProduct"),
+      );
       return;
     }
     if (
@@ -853,7 +855,7 @@ export function WorkflowBuilder({
     ) {
       form.setFieldError(
         "plannedQuantity",
-        tr("予定数量は割当合計以上で入力してください"),
+        tr("production.workOrders.thePlannedQuantityMustBeAt"),
       );
       return;
     }
@@ -880,10 +882,8 @@ export function WorkflowBuilder({
             : null;
     if (values.type !== "FROM_STOCK" && route == null) {
       notifications.show({
-        title: tr("工程リストが必要です"),
-        message: tr(
-          "既存の工程リストを選択するか、新しい工程リスト名を入力してください",
-        ),
+        title: tr("production.workOrders.aStepListIsRequired"),
+        message: tr("production.workOrders.selectAnExistingStepListOr"),
         color: "red",
       });
       return;
@@ -935,7 +935,7 @@ export function WorkflowBuilder({
           : await createWorkOrder(payload);
       if (result.ok) {
         notifications.show({
-          title: tr("保存しました"),
+          title: tr("common.saved2"),
           message:
             mode === "edit"
               ? `指示書 ${result.data.docNumber} を更新しました`
@@ -945,8 +945,8 @@ export function WorkflowBuilder({
         router.push(`${BASE_PATH}/${result.data.docNumber}`);
       } else {
         notifications.show({
-          title: tr("エラー"),
-          message: tr(result.error),
+          title: tr("common.error2"),
+          message: result.error,
           color: "red",
         });
       }
@@ -972,9 +972,9 @@ export function WorkflowBuilder({
   return (
     <FormShell
       breadcrumbs={[
-        tr("生産"),
-        { label: tr("指示書"), href: BASE_PATH },
-        mode === "edit" ? "編集" : tr("新規作成"),
+        tr("common.production"),
+        { label: tr("common.workOrder"), href: BASE_PATH },
+        mode === "edit" ? "編集" : tr("common.new2"),
       ]}
       isDirty={form.isDirty()}
       isPending={isPending}
@@ -987,18 +987,21 @@ export function WorkflowBuilder({
       title={
         mode === "edit"
           ? `指示書 ${workOrder?.docNumber ?? ""} 編集`
-          : tr("指示書 新規作成")
+          : tr("production.workOrders.newWorkOrder")
       }
     >
-      <FormSection required title={tr("基本情報")}>
+      <FormSection required title={tr("common.basicInformation")}>
         <Stack gap={4} mb="sm">
           <Text fw={500} size="sm">
-            {tr("対象")}
+            {tr("common.target")}
           </Text>
           <SegmentedControl
             data={[
-              { value: "SALES_ORDER", label: tr("注文明細に紐づく") },
-              { value: "STOCK", label: tr("在庫向け（注文明細なし）") },
+              {
+                value: "SALES_ORDER",
+                label: tr("production.workOrders.tiedToAnOrderLine"),
+              },
+              { value: "STOCK", label: tr("common.forStockNoOrderLine") },
             ]}
             onChange={(v) => {
               const next = v as BuilderTarget;
@@ -1012,12 +1015,10 @@ export function WorkflowBuilder({
         {target === "SALES_ORDER" && (
           <Stack gap="xs" mb="sm">
             <Text fw={500} size="sm">
-              {tr("注文明細の割当")}
+              {tr("production.workOrders.orderLineAllocation")}
             </Text>
             <Text c="dimmed" size="xs">
-              {tr(
-                "1 つの明細を複数の指示書に分けて手配（分割）することも、同一製品の\n              複数明細を 1 つの指示書にまとめる（統合ロット）こともできます。\n              割当数は明細ごとの受注残が上限です",
-              )}
+              {tr("production.workOrders.youCanSplitOneLineAcross")}
             </Text>
             {allocRows.map((row) => {
               const remaining = rowRemaining(row);
@@ -1040,7 +1041,9 @@ export function WorkflowBuilder({
                         }
                         onChange={(v) => onRowLineChange(row.key, v)}
                         onSearch={searchAllocatableOrderLineOptions}
-                        placeholder={tr("注文明細番号・製品・顧客で検索")}
+                        placeholder={tr(
+                          "production.workOrders.searchByOrderLineNumberProduct",
+                        )}
                         storageKey="sales-order"
                         value={row.orderLineId}
                         withAsterisk
@@ -1069,7 +1072,9 @@ export function WorkflowBuilder({
                       withAsterisk
                     />
                     <ActionIcon
-                      aria-label={tr("割当行を削除")}
+                      aria-label={tr(
+                        "production.workOrders.removeTheAllocationRow",
+                      )}
                       color="red"
                       mb={4}
                       onClick={() => removeAllocRow(row.key)}
@@ -1095,9 +1100,7 @@ export function WorkflowBuilder({
                 p="xs"
                 variant="light"
               >
-                {tr(
-                  "割当明細の製品が混在しています — 1\n                つの指示書に割り当てる注文明細は同一製品にしてください",
-                )}
+                {tr("production.workOrders.theAllocatedLinesMixProductsOrder")}
               </Alert>
             )}
             {form.values.type !== "FROM_STOCK" && (
@@ -1106,7 +1109,7 @@ export function WorkflowBuilder({
                 onClick={addAllocRow}
                 style={{ alignSelf: "flex-start" }}
               >
-                {tr("明細を追加（統合ロット）")}
+                {tr("production.workOrders.addALineCombinedLot")}
               </GhostButton>
             )}
           </Stack>
@@ -1127,21 +1130,19 @@ export function WorkflowBuilder({
                 label={<HelpLabel {...fieldHelp("workOrder", "product")} />}
                 onChange={(v) => form.setFieldValue("productId", v)}
                 onSearch={searchProductOptions}
-                placeholder={tr("製品コード・名称で検索")}
+                placeholder={tr("common.searchByProductCodeOrName")}
                 storageKey="product"
                 value={form.values.productId}
                 withAsterisk
               />
               <Text c="dimmed" size="xs">
-                {tr(
-                  "完成品は指示書番号のロットで在庫入庫され、後日任意の注文明細の\n                出荷に充当できます",
-                )}
+                {tr("production.workOrders.finishedGoodsEnterStockUnderThe")}
               </Text>
             </Stack>
           )}
           <Stack gap={4}>
             <Text fw={500} size="sm">
-              {tr("種別")}
+              {tr("common.type2")}
             </Text>
             <SegmentedControl
               data={workOrderTypeOptions(locale).map((o) => ({
@@ -1175,7 +1176,7 @@ export function WorkflowBuilder({
             description={
               target === "SALES_ORDER" && allocTotal > 0
                 ? form.values.type === "FROM_STOCK"
-                  ? tr("在庫分は割当合計と一致します")
+                  ? tr("production.workOrders.theFromStockQuantityMatchesThe")
                   : `割当合計 ${allocTotal} 以上（不良予備分は上乗せ可）`
                 : undefined
             }
@@ -1197,7 +1198,9 @@ export function WorkflowBuilder({
               label={<HelpLabel {...fieldHelp("workOrder", "material")} />}
               onChange={(v) => form.setFieldValue("materialId", v)}
               onSearch={searchMaterialOptions}
-              placeholder={tr("素材コード・名称で検索")}
+              placeholder={tr(
+                "production.workOrders.searchByMaterialCodeOrName",
+              )}
               storageKey="material"
               value={form.values.materialId}
             />
@@ -1206,7 +1209,9 @@ export function WorkflowBuilder({
             clearable
             data={storageLocationOptions}
             label={<HelpLabel {...fieldHelp("workOrder", "storageLocation")} />}
-            placeholder={tr("完成品の保管場所を選択")}
+            placeholder={tr(
+              "production.workOrders.selectWhereTheFinishedGoodsGo",
+            )}
             searchable={storageLocationOptions.length > 5}
             {...form.getInputProps("storageLocationId")}
           />
@@ -1219,10 +1224,10 @@ export function WorkflowBuilder({
               description={
                 designInfo.autoLabel
                   ? `固定しない場合: ${designInfo.autoLabel}`
-                  : tr("この製品の図面はまだありません")
+                  : tr("production.workOrders.thereIsNoDrawingForThis")
               }
-              label={tr("使用する図面")}
-              placeholder={tr("固定しない（そのつど最新）")}
+              label={tr("production.workOrders.drawingUsed")}
+              placeholder={tr("production.workOrders.doNotPinAlwaysTheLatest")}
               searchable={designInfo.options.length > 5}
               {...form.getInputProps("designFileId")}
             />
@@ -1243,22 +1248,20 @@ export function WorkflowBuilder({
           ? allocRows.some((r) => r.info != null)
           : !!productIdValue) && (
           <FormSection
-            description={tr(
-              "指示書は常に製品の工程リストに基づきます。既存のリストを選ぶと工程構成をプリフィル、未登録の製品はこの画面から新しいリストを作成します。構成を変更した場合は保存時に新バージョンとして自動保存されます（使用済みバージョンは変更されません）。",
-            )}
+            description={tr("production.workOrders.aWorkOrderAlwaysFollowsThe")}
             required
-            title={tr("工程リスト")}
+            title={tr("production.workOrders.stepList")}
           >
             <SimpleGrid cols={isMobile ? 1 : 2} spacing="sm">
               <Select
                 clearable
                 data={routeOptions}
-                label={tr("工程リスト")}
+                label={tr("production.workOrders.stepList")}
                 onChange={onRouteChange}
                 placeholder={
                   routeOptions.length
-                    ? tr("工程リストを選択")
-                    : tr("この製品の工程リストは未登録です（下で新規作成）")
+                    ? tr("production.workOrders.selectAStepList")
+                    : tr("production.workOrders.noStepListIsRegisteredFor")
                 }
                 searchable
                 value={routeSel}
@@ -1267,20 +1270,20 @@ export function WorkflowBuilder({
                 <Select
                   allowDeselect={false}
                   data={versionOptions}
-                  label={tr("バージョン")}
+                  label={tr("common.version")}
                   onChange={(v) => applyVersion(v)}
                   value={versionSel}
                 />
               ) : (
                 <TextInput
                   description={tr(
-                    "この工程構成を製品の工程リスト v1 として保存します",
+                    "production.workOrders.savesThisStepCompositionAsThe",
                   )}
                   label={
                     <HelpLabel {...fieldHelp("workOrder", "newRouteName")} />
                   }
                   onChange={(e) => setNewRouteName(e.currentTarget.value)}
-                  placeholder={tr("例: 標準工程")}
+                  placeholder={tr("common.eGStandardRoute")}
                   value={newRouteName}
                   withAsterisk
                 />
@@ -1295,12 +1298,15 @@ export function WorkflowBuilder({
                         value: "customer",
                         label: `${routesInfo.customerName ?? "この顧客"} 専用`,
                       },
-                      { value: "generic", label: tr("汎用（全顧客）") },
+                      {
+                        value: "generic",
+                        label: tr("common.genericAllCustomers"),
+                      },
                     ]}
                     description={tr(
-                      "専用にすると同じ顧客×製品の指示書で優先選択されます",
+                      "production.workOrders.markingItDedicatedMakesItPreferred",
                     )}
-                    label={tr("対象顧客")}
+                    label={tr("common.targetCustomer")}
                     onChange={(v) =>
                       setNewRouteScope(v === "generic" ? "generic" : "customer")
                     }
@@ -1358,9 +1364,9 @@ export function WorkflowBuilder({
       {inspectionSnapshots.length > 0 && (
         <FormSection
           description={tr(
-            "検査表は検査工程ごとに割り当てます。工程を追加すると、その工程を関連工程に持つ検査表が自動で選ばれます。",
+            "production.workOrders.inspectionSheetsAreAssignedPerInspection",
           )}
-          title={tr("検査表")}
+          title={tr("common.inspectionSheet")}
         >
           <Stack gap="xs">
             {inspectionSnapshots.map((s) => {
@@ -1387,7 +1393,9 @@ export function WorkflowBuilder({
                       placeholder={
                         templatesFor(s.processStepId).length
                           ? undefined
-                          : tr("検査表テンプレートを選択")
+                          : tr(
+                              "production.workOrders.selectAnInspectionTemplate",
+                            )
                       }
                       searchable
                       size="xs"
@@ -1408,9 +1416,9 @@ export function WorkflowBuilder({
       {mode === "create" && currentSnapshots.length > 0 && (
         <FormSection
           description={tr(
-            "工程ごとの担当者を割り当てます（任意）。担当を入れた工程に、計画日付きの作業計画が作成されます。時間帯・数量まで決める場合は、作成後に各工程の計画パネルで追加してください。",
+            "production.workOrders.assignSomeonePerStepOptionalA",
           )}
-          title={tr("作業計画（担当者）")}
+          title={tr("production.workOrders.workPlanAssignees")}
         >
           <Stack gap="xs">
             {currentSnapshots.map((s, i) => {
@@ -1446,7 +1454,7 @@ export function WorkflowBuilder({
                       placeholder={
                         (plan?.userIds.length ?? 0) > 0
                           ? undefined
-                          : tr("担当者")
+                          : tr("common.assignee")
                       }
                       searchable
                       size="xs"
@@ -1458,7 +1466,7 @@ export function WorkflowBuilder({
                       onChange={(v) =>
                         setStepPlan(s.processStepId, { date: v })
                       }
-                      placeholder={tr("計画日")}
+                      placeholder={tr("production.workOrders.plannedDate")}
                       size="xs"
                       value={plan?.date ?? todayStr}
                       valueFormat="YYYY/MM/DD"

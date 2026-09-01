@@ -22,11 +22,11 @@ import {
   Text,
 } from "@mantine/core";
 import { IconAlertTriangle } from "@tabler/icons-react";
+import { useTranslations } from "next-intl";
 import { useEffect, useState } from "react";
 import { fetchLoginAttemptDetail } from "@/app/(dashboard)/settings/login-history/actions";
 import { useFormat } from "@/components/layout/PreferencesProvider";
 import { FieldValue } from "@/components/ui/FieldValue";
-import { useTr } from "@/hooks/useTr";
 import { loginMethodLabel, loginReasonLabel } from "@/lib/login-attempt-core";
 import type { LoginAttemptDetail } from "@/lib/login-attempts";
 import { OwnershipBadge } from "./ownership";
@@ -66,7 +66,7 @@ export function LoginAttemptDrawer({
   id: string | null;
   onClose: () => void;
 }) {
-  const tr = useTr();
+  const tr = useTranslations();
   const fmt = useFormat();
   const [row, setRow] = useState<LoginAttemptDetail | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -100,7 +100,7 @@ export function LoginAttemptDrawer({
       padding="md"
       position="right"
       size="lg"
-      title={tr("ログイン記録")}
+      title={tr("settings.security.loginRecords")}
     >
       {!row && !error && (
         <Group justify="center" py="xl">
@@ -108,7 +108,7 @@ export function LoginAttemptDrawer({
         </Group>
       )}
       {error && (
-        <Alert color="red" title={tr("読み込めませんでした")}>
+        <Alert color="red" title={tr("settings.security.couldNotBeLoaded")}>
           {error}
         </Alert>
       )}
@@ -118,7 +118,7 @@ export function LoginAttemptDrawer({
             <Alert
               color="orange"
               icon={<IconAlertTriangle size={16} />}
-              title={tr("注意すべき兆候")}
+              title={tr("settings.security.signsToWatchFor")}
             >
               <Stack gap={2}>
                 {flags.map((f) => (
@@ -135,7 +135,7 @@ export function LoginAttemptDrawer({
               color={row.outcome === "SUCCESS" ? "green" : "red"}
               variant="light"
             >
-              {row.outcome === "SUCCESS" ? "成功" : tr("失敗")}
+              {row.outcome === "SUCCESS" ? "成功" : tr("common.failure")}
             </Badge>
             <Badge color="gray" variant="light">
               {row.app === "KIOSK" ? "共有端末" : "Web"}
@@ -149,61 +149,67 @@ export function LoginAttemptDrawer({
 
           <Stack gap="xs">
             <FieldValue
-              label={tr("日時")}
+              label={tr("common.dateAndTime")}
               value={fmt.dateTime(row.createdAt)}
             />
             <FieldValue
-              label={tr("方式")}
+              label={tr("common.method")}
               value={loginMethodLabel(row.method)}
             />
             <FieldValue
-              label={tr("理由")}
+              label={tr("common.reason")}
               value={
                 row.outcome === "FAILURE" ? loginReasonLabel(row.reason) : "—"
               }
             />
             <FieldValue
-              label={tr("ユーザー")}
+              label={tr("common.user")}
               value={
                 row.userName
                   ? `${row.userName}${row.userUsername ? `（${row.userUsername}）` : ""}`
-                  : tr("解決できず（入力値は保存していません）")
+                  : tr("settings.security.couldNotBeResolvedTheInput")
               }
             />
             {row.identifierRef && !row.userId && (
               <FieldValue
-                label={tr("入力の相関キー")}
+                label={tr("settings.security.inputCorrelationKey")}
                 value={<Code>{row.identifierRef.slice(0, 16)}…</Code>}
               />
             )}
-            <FieldValue label={tr("送信元 IP")} value={row.ipAddress ?? "—"} />
+            <FieldValue
+              label={tr("settings.security.sourceIp")}
+              value={row.ipAddress ?? "—"}
+            />
             {row.ipChain && (
               <FieldValue
-                label={tr("プロキシチェーン")}
+                label={tr("settings.security.proxyChain")}
                 value={<Code>{row.ipChain}</Code>}
               />
             )}
             <FieldValue
-              label={tr("判定理由")}
+              label={tr("settings.security.reasonForTheDecision")}
               value={<Code>{row.ownershipSource ?? "—"}</Code>}
             />
             <FieldValue
-              label={tr("端末シグネチャ")}
+              label={tr("settings.security.deviceSignature")}
               value={
                 row.fingerprint ? (
                   <Code>{row.fingerprint}</Code>
                 ) : (
                   // IdP 起点の SSO はログイン画面を通らないので付かない。異常ではない
-                  tr("—（この経路では収集されません）")
+                  tr("settings.security.notCollectedOnThisRoute")
                 )
               }
             />
             {row.kioskDeviceName && (
-              <FieldValue label={tr("共有端末")} value={row.kioskDeviceName} />
+              <FieldValue
+                label={tr("common.sharedDevice")}
+                value={row.kioskDeviceName}
+              />
             )}
             {row.scanKind && (
               <FieldValue
-                label={tr("読み取り種別")}
+                label={tr("settings.security.scanType")}
                 value={`${row.scanKind}（内容は保存していません）`}
               />
             )}

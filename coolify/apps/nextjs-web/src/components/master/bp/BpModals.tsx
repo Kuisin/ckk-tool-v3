@@ -10,6 +10,7 @@
 
 import { Checkbox, SimpleGrid, Stack, TextInput } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
+import { useTranslations } from "next-intl";
 import { useState, useTransition } from "react";
 import {
   addContact,
@@ -21,7 +22,6 @@ import {
   FormModal,
   type ModalBaseProps,
 } from "@/components/ui/modals";
-import { useTr } from "@/hooks/useTr";
 
 export interface BpModalTarget {
   id: string;
@@ -45,11 +45,11 @@ export function DeleteBpModal({
   entityLabel: string;
   onDone?: () => void;
 }) {
-  const tr = useTr();
+  const tr = useTranslations();
   const [isPending, startTransition] = useTransition();
   return (
     <ConfirmModal
-      confirmLabel={tr("削除する")}
+      confirmLabel={tr("common.delete2")}
       loading={isPending}
       message={
         target
@@ -63,7 +63,7 @@ export function DeleteBpModal({
           const result = await deleteBps([target.id]);
           if (result.ok) {
             notifications.show({
-              title: tr("削除しました"),
+              title: tr("common.deleted"),
               message: `${entityLabel}「${label(target)}」を削除しました`,
               color: "green",
             });
@@ -71,8 +71,8 @@ export function DeleteBpModal({
             onDone?.();
           } else {
             notifications.show({
-              title: tr("エラー"),
-              message: tr(result.error),
+              title: tr("common.error2"),
+              message: result.error,
               color: "red",
             });
           }
@@ -80,9 +80,7 @@ export function DeleteBpModal({
       }}
       opened={opened}
       title={`${entityLabel}の削除`}
-      warning={tr(
-        "この取引先を参照する価格試算・価格表・見積書、または支店が存在する場合は削除できません。無効化をご検討ください。",
-      )}
+      warning={tr("master.bp.itCannotBeDeletedWhilePrice")}
     />
   );
 }
@@ -98,13 +96,13 @@ export function ToggleBpActiveModal({
   entityLabel: string;
   onDone?: () => void;
 }) {
-  const tr = useTr();
+  const tr = useTranslations();
   const [isPending, startTransition] = useTransition();
   const isActive = target?.isActive ?? true;
   return (
     <ConfirmModal
       confirmColor={isActive ? "red" : "blue"}
-      confirmLabel={isActive ? "無効化する" : tr("有効化する")}
+      confirmLabel={isActive ? "無効化する" : tr("common.enable2")}
       loading={isPending}
       message={
         target
@@ -120,7 +118,7 @@ export function ToggleBpActiveModal({
           const result = await setBpsActive([target.id], !isActive);
           if (result.ok) {
             notifications.show({
-              title: isActive ? "無効化しました" : tr("有効化しました"),
+              title: isActive ? "無効化しました" : tr("common.enabled2"),
               message: `${entityLabel}「${label(target)}」を${isActive ? "無効化" : "有効化"}しました`,
               color: "green",
             });
@@ -128,8 +126,8 @@ export function ToggleBpActiveModal({
             onDone?.();
           } else {
             notifications.show({
-              title: tr("エラー"),
-              message: tr(result.error),
+              title: tr("common.error2"),
+              message: result.error,
               color: "red",
             });
           }
@@ -152,7 +150,7 @@ export function AddContactModal({
   bpName: string;
   onDone?: () => void;
 }) {
-  const tr = useTr();
+  const tr = useTranslations();
   const [isPending, startTransition] = useTransition();
 
   const [name, setName] = useState("");
@@ -188,7 +186,7 @@ export function AddContactModal({
       });
       if (result.ok) {
         notifications.show({
-          title: tr("追加しました"),
+          title: tr("common.added"),
           message: `担当者「${name}」を追加しました`,
           color: "green",
         });
@@ -197,8 +195,8 @@ export function AddContactModal({
         onDone?.();
       } else {
         notifications.show({
-          title: tr("エラー"),
-          message: tr(result.error),
+          title: tr("common.error2"),
+          message: result.error,
           color: "red",
         });
       }
@@ -215,45 +213,45 @@ export function AddContactModal({
       onSubmit={handleSubmit}
       opened={opened}
       size="md"
-      submitLabel={tr("追加")}
+      submitLabel={tr("common.add")}
       title={`担当者の追加 — ${bpName}`}
     >
       <Stack gap="sm">
         <SimpleGrid cols={2} spacing="sm">
           <TextInput
-            label={tr("氏名")}
+            label={tr("common.name3")}
             onChange={(e) => setName(e.currentTarget.value)}
             placeholder="山田 太郎"
             value={name}
             withAsterisk
           />
           <TextInput
-            label={tr("フリガナ")}
+            label={tr("common.kana")}
             onChange={(e) => setNameKana(e.currentTarget.value)}
             placeholder="ヤマダ タロウ"
             value={nameKana}
           />
           <TextInput
-            label={tr("部署")}
+            label={tr("master.bp.department")}
             onChange={(e) => setDepartment(e.currentTarget.value)}
-            placeholder={tr("購買部")}
+            placeholder={tr("master.bp.purchasingDepartment")}
             value={department}
           />
           <TextInput
-            label={tr("役職")}
+            label={tr("master.bp.jobTitle")}
             onChange={(e) => setTitle(e.currentTarget.value)}
-            placeholder={tr("課長")}
+            placeholder={tr("master.bp.sectionManager")}
             value={title}
           />
           <TextInput
-            label={tr("メールアドレス")}
+            label={tr("common.emailAddress")}
             onChange={(e) => setEmail(e.currentTarget.value)}
             placeholder="taro@example.co.jp"
             type="email"
             value={email}
           />
           <TextInput
-            label={tr("電話番号")}
+            label={tr("common.phoneNumber")}
             onChange={(e) => setPhone(e.currentTarget.value)}
             placeholder="03-1234-5678"
             value={phone}
@@ -261,7 +259,7 @@ export function AddContactModal({
         </SimpleGrid>
         <Checkbox
           checked={isPrimary}
-          label={tr("主担当にする")}
+          label={tr("common.makePrimary")}
           onChange={(e) => setIsPrimary(e.currentTarget.checked)}
         />
       </Stack>

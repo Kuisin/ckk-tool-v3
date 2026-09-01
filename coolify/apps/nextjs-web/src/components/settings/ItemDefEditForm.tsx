@@ -19,13 +19,13 @@ import {
 import { notifications } from "@mantine/notifications";
 import { IconPlus, IconTrash } from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { useState, useTransition } from "react";
 import { updateProductItemDefs } from "@/app/(dashboard)/settings/actions";
 import { CancelButton, GhostButton, SaveButton } from "@/components/ui/buttons";
 import { HelpLabel } from "@/components/ui/HelpLabel";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { FormActions, FormSection } from "@/components/ui/shells";
-import { useTr } from "@/hooks/useTr";
 import { useIsMobile } from "@/hooks/useViewport";
 import { fieldHelp } from "@/lib/field-help";
 import {
@@ -53,7 +53,7 @@ export function ItemDefEditForm({
   allDefs: ProductItemDef[];
   itemKey?: string;
 }) {
-  const tr = useTr();
+  const tr = useTranslations();
   const router = useRouter();
   const isMobile = useIsMobile();
   const [isPending, startTransition] = useTransition();
@@ -72,20 +72,21 @@ export function ItemDefEditForm({
   const handleSave = () => {
     // ローカル検証。
     if (!def.label.ja.trim())
-      return setError(tr("項目名（日本語）を入力してください"));
+      return setError(tr("common.enterTheItemNameInJapanese"));
     if (!IDENTIFIER.test(def.key))
-      return setError(
-        tr("キーは英字/アンダースコア始まりの識別子にしてください"),
-      );
+      return setError(tr("settings.itemDefEditForm.theKeyMustBeAnIdentifier"));
     const dup = allDefs.some((d) => d.key === def.key && d.key !== itemKey);
-    if (dup) return setError(tr("同じキーの項目が既に存在します"));
+    if (dup)
+      return setError(tr("settings.itemDefEditForm.anItemWithTheSameKey"));
     if (def.type === "select" && (def.options ?? []).length === 0)
-      return setError(tr("選択肢を1つ以上追加してください"));
+      return setError(tr("settings.itemDefEditForm.addAtLeastOneOption"));
     if (def.type === "string" && def.pattern) {
       try {
         new RegExp(def.pattern);
       } catch {
-        return setError(tr("正規表現が不正です"));
+        return setError(
+          tr("settings.itemDefEditForm.theRegularExpressionIsNotValid"),
+        );
       }
     }
     setError(null);
@@ -99,15 +100,17 @@ export function ItemDefEditForm({
       const res = await updateProductItemDefs(next);
       if (res.ok) {
         notifications.show({
-          title: tr("保存しました"),
-          message: isEdit ? "項目を更新しました" : tr("項目を作成しました"),
+          title: tr("common.saved2"),
+          message: isEdit
+            ? "項目を更新しました"
+            : tr("settings.itemDefEditForm.theItemWasCreated"),
           color: "green",
         });
         router.push(BASE);
       } else {
         notifications.show({
-          title: tr("エラー"),
-          message: tr(res.error),
+          title: tr("common.error2"),
+          message: res.error,
           color: "red",
         });
       }
@@ -118,29 +121,31 @@ export function ItemDefEditForm({
     <Stack gap="md">
       <PageHeader
         breadcrumbs={[
-          tr("システム"),
-          { label: tr("製品項目"), href: BASE },
-          isEdit ? "項目編集" : tr("項目追加"),
+          tr("common.system"),
+          { label: tr("common.productItems"), href: BASE },
+          isEdit ? "項目編集" : tr("settings.itemDefEditForm.addAnItem"),
         ]}
         title={
-          isEdit ? `項目編集 — ${def.label.ja || def.key}` : tr("項目追加")
+          isEdit
+            ? `項目編集 — ${def.label.ja || def.key}`
+            : tr("settings.itemDefEditForm.addAnItem")
         }
       />
 
-      <FormSection title={tr("項目定義")}>
+      <FormSection title={tr("settings.itemDefEditForm.itemDefinition")}>
         <SimpleGrid cols={isMobile ? 1 : 2} spacing="sm">
           <TextInput
             label={
               <HelpLabel
                 {...fieldHelp("productType", "itemName", {
-                  label: tr("項目名（日本語）"),
+                  label: tr("common.itemNameJapanese"),
                 })}
               />
             }
             onChange={(e) =>
               patch({ label: { ...def.label, ja: e.currentTarget.value } })
             }
-            placeholder={tr("例: 表面処理")}
+            placeholder={tr("settings.itemDefEditForm.eGSurfaceTreatment")}
             value={def.label.ja}
             withAsterisk
           />
@@ -148,7 +153,7 @@ export function ItemDefEditForm({
             label={
               <HelpLabel
                 {...fieldHelp("productType", "itemName", {
-                  label: tr("項目名（英語）"),
+                  label: tr("settings.itemDefEditForm.itemNameEnglish"),
                 })}
               />
             }
@@ -161,13 +166,11 @@ export function ItemDefEditForm({
           <TextInput
             description={
               isEdit
-                ? tr("作成後は変更できません（割り当ての参照を保つため）")
-                : tr(
-                    "英字/アンダースコア始まりの識別子（例: surfaceTreatment）",
-                  )
+                ? tr("settings.itemDefEditForm.itCannotBeChangedOnceCreated")
+                : tr("settings.itemDefEditForm.anIdentifierStartingWithALetter")
             }
             disabled={isEdit}
-            error={error?.includes(tr("キー")) ? error : undefined}
+            error={error?.includes(tr("common.key")) ? error : undefined}
             label={<HelpLabel {...fieldHelp("productType", "key")} />}
             onChange={(e) => patch({ key: e.currentTarget.value })}
             placeholder="surfaceTreatment"
@@ -183,18 +186,20 @@ export function ItemDefEditForm({
             value={def.type}
           />
           <TextInput
-            description={tr("種別への割り当て時に上書きできます")}
+            description={tr(
+              "settings.itemDefEditForm.itCanBeOverriddenWhenAssigned",
+            )}
             label={<HelpLabel {...fieldHelp("productType", "default")} />}
             onChange={(e) => patch({ default: e.currentTarget.value })}
             placeholder={
-              def.type === "boolean" ? "true / false" : tr("（任意）")
+              def.type === "boolean" ? "true / false" : tr("common.optional2")
             }
             value={def.default ?? ""}
           />
           <TextInput
             label={<HelpLabel {...fieldHelp("productType", "placeholder")} />}
             onChange={(e) => patch({ placeholder: e.currentTarget.value })}
-            placeholder={tr("入力例など（任意）")}
+            placeholder={tr("settings.itemDefEditForm.exampleInputEtcOptional")}
             value={def.placeholder ?? ""}
           />
         </SimpleGrid>
@@ -209,9 +214,13 @@ export function ItemDefEditForm({
         {def.type === "string" && (
           <TextInput
             description={tr(
-              "入力形式を制限する正規表現（例: ^[A-Z]{2}-d{4}$）。空欄なら制限なし。",
+              "settings.itemDefEditForm.aRegularExpressionConstrainingTheInput",
             )}
-            error={error?.includes(tr("正規表現")) ? error : undefined}
+            error={
+              error?.includes(tr("settings.itemDefEditForm.regularExpression"))
+                ? error
+                : undefined
+            }
             label={<HelpLabel {...fieldHelp("productType", "pattern")} />}
             mt="sm"
             onChange={(e) =>
@@ -228,7 +237,7 @@ export function ItemDefEditForm({
               label={
                 <HelpLabel
                   {...fieldHelp("productType", "range", {
-                    label: tr("最小値"),
+                    label: tr("common.minimum"),
                   })}
                 />
               }
@@ -241,7 +250,7 @@ export function ItemDefEditForm({
               label={
                 <HelpLabel
                   {...fieldHelp("productType", "range", {
-                    label: tr("最大値"),
+                    label: tr("common.maximum"),
                   })}
                 />
               }
@@ -256,7 +265,7 @@ export function ItemDefEditForm({
         {def.type === "select" && (
           <Stack gap={4} mt="sm">
             <Text c="dimmed" size="xs">
-              {tr("選択肢（値 = 保存される値、ラベル = 画面表示）")}
+              {tr("settings.itemDefEditForm.optionsValueWhatIsStoredLabel")}
             </Text>
             {(def.options ?? []).map((o, i) => (
               // biome-ignore lint/suspicious/noArrayIndexKey: option rows have no stable id
@@ -269,7 +278,7 @@ export function ItemDefEditForm({
                       ),
                     )
                   }
-                  placeholder={tr("値")}
+                  placeholder={tr("common.value")}
                   style={{ flex: 1 }}
                   value={o.value}
                 />
@@ -281,12 +290,12 @@ export function ItemDefEditForm({
                       ),
                     )
                   }
-                  placeholder={tr("表示ラベル")}
+                  placeholder={tr("settings.itemDefEditForm.displayLabel")}
                   style={{ flex: 1 }}
                   value={o.label}
                 />
                 <ActionIcon
-                  aria-label={tr("選択肢を削除")}
+                  aria-label={tr("common.removeOption")}
                   color="red"
                   onClick={() =>
                     setOptions((def.options ?? []).filter((_, j) => j !== i))
@@ -304,12 +313,12 @@ export function ItemDefEditForm({
               }
               size="compact-xs"
             >
-              {tr("選択肢を追加")}
+              {tr("common.addAnOption")}
             </GhostButton>
           </Stack>
         )}
 
-        {error && !error.includes(tr("キー")) && (
+        {error && !error.includes(tr("common.key")) && (
           <Text c="red" mt="sm" size="sm">
             {error}
           </Text>
@@ -327,7 +336,7 @@ export function ItemDefEditForm({
             loading={isPending}
             onClick={handleSave}
           >
-            {tr("保存")}
+            {tr("common.save2")}
           </SaveButton>
         </Group>
       </FormActions>

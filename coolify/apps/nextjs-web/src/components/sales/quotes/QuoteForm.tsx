@@ -26,6 +26,7 @@ import { useForm } from "@mantine/form";
 import { notifications } from "@mantine/notifications";
 import { IconCalendar, IconPlus, IconTrash } from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { useTransition } from "react";
 import { z } from "zod";
 import {
@@ -41,7 +42,6 @@ import { HelpLabel } from "@/components/ui/HelpLabel";
 import { SalesRepSelect } from "@/components/ui/SalesRepSelect";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { FormSection, FormShell } from "@/components/ui/shells";
-import { useTr } from "@/hooks/useTr";
 import { fieldHelp } from "@/lib/field-help";
 import { zodResolver } from "@/lib/form";
 import { formatMoney } from "@/lib/format";
@@ -193,7 +193,7 @@ export function QuoteForm({
   /** 全顧客の価格表エントリ — 行のライブ解決に使用。 */
   entries: PriceListEntry[];
 }) {
-  const tr = useTr();
+  const tr = useTranslations();
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const quoteId = mode === "edit" ? quote?.id : undefined;
@@ -263,19 +263,19 @@ export function QuoteForm({
           : await createQuote(payload);
       if (result.ok) {
         notifications.show({
-          title: tr("保存しました"),
+          title: tr("common.saved2"),
           message:
             mode === "edit"
-              ? tr("見積書を更新しました")
-              : tr("見積書を作成しました"),
+              ? tr("sales.quotes.theQuoteWasUpdated")
+              : tr("sales.quotes.theQuoteWasCreated"),
           color: "green",
         });
         // 作成・更新後は詳細（ビュー）ページへ。
         router.push(`${BASE_PATH}/${result.data.number}`);
       } else {
         notifications.show({
-          title: tr("エラー"),
-          message: tr(result.error),
+          title: tr("common.error2"),
+          message: result.error,
           color: "red",
         });
       }
@@ -285,9 +285,9 @@ export function QuoteForm({
   return (
     <FormShell
       breadcrumbs={[
-        tr("販売"),
-        { label: tr("見積書"), href: BASE_PATH },
-        mode === "edit" ? "編集" : tr("新規作成"),
+        tr("common.sales"),
+        { label: tr("common.quote"), href: BASE_PATH },
+        mode === "edit" ? "編集" : tr("common.new2"),
       ]}
       isDirty={form.isDirty()}
       isPending={isPending}
@@ -300,16 +300,16 @@ export function QuoteForm({
           <StatusBadge entity="Quote" status={form.values.status} />
         ) : undefined
       }
-      title={mode === "edit" ? "見積書 編集" : tr("見積書 新規作成")}
+      title={mode === "edit" ? "見積書 編集" : tr("sales.quotes.newQuote")}
     >
-      <FormSection title={tr("基本情報")}>
+      <FormSection title={tr("common.basicInformation")}>
         <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="sm">
           <Select
             data={customerOptions}
             error={form.errors.customerId}
             label={<HelpLabel {...fieldHelp("quote", "customer")} />}
             onChange={(v) => onCustomerChange(v ?? "")}
-            placeholder={tr("顧客を選択")}
+            placeholder={tr("common.selectACustomer")}
             searchable
             value={form.values.customerId || null}
             withAsterisk
@@ -319,7 +319,7 @@ export function QuoteForm({
             data={branches}
             disabled={branches.length === 0}
             label={<HelpLabel {...fieldHelp("quote", "customerBranch")} />}
-            placeholder={branches.length ? "支店を選択" : tr("支店なし")}
+            placeholder={branches.length ? "支店を選択" : tr("common.noBranch")}
             {...form.getInputProps("customerBranchId")}
           />
           <SalesRepSelect
@@ -336,23 +336,21 @@ export function QuoteForm({
             clearable
             label={<HelpLabel {...fieldHelp("quote", "validUntil")} />}
             leftSection={<IconCalendar size={14} />}
-            placeholder={tr("日付を選択")}
+            placeholder={tr("common.pickADate")}
             valueFormat="YYYY/MM/DD"
             {...form.getInputProps("validUntil")}
           />
           <Select
             data={statusOptions("Quote")}
-            label={tr("状態")}
+            label={tr("common.status")}
             {...form.getInputProps("status")}
           />
         </SimpleGrid>
       </FormSection>
 
       <FormSection
-        description={tr(
-          "単価（基準単価 × 数量倍率）と値引き（値引きルール）は顧客の価格表から自動計算されます。手入力はありません — 価格を変える場合は価格表側で設定してください。",
-        )}
-        title={tr("明細")}
+        description={tr("sales.quotes.unitPriceBaseQuantityMultiplierAnd")}
+        title={tr("common.lineItems")}
       >
         <Stack gap="md">
           {form.values.items.map((item, ri) => (
@@ -403,7 +401,7 @@ export function QuoteForm({
                   />
                 </Box>
                 <ActionIcon
-                  aria-label={tr("明細を削除")}
+                  aria-label={tr("common.removeLine")}
                   color="red"
                   disabled={form.values.items.length <= 1}
                   mb={4}
@@ -419,7 +417,7 @@ export function QuoteForm({
                 leftSection={<IconCalendar size={14} />}
                 maw={220}
                 mt="xs"
-                placeholder={tr("日付を選択")}
+                placeholder={tr("common.pickADate")}
                 valueFormat="YYYY/MM/DD"
                 {...form.getInputProps(`items.${ri}.deliveryDate`)}
               />
@@ -439,7 +437,7 @@ export function QuoteForm({
           onClick={() => form.insertListItem("items", emptyItem())}
           size="xs"
         >
-          {tr("明細を追加")}
+          {tr("common.addLine")}
         </GhostButton>
 
         <Divider my="md" />

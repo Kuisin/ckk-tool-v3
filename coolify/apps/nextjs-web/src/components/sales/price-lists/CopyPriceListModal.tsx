@@ -14,10 +14,10 @@ import { DatePickerInput } from "@mantine/dates";
 import { notifications } from "@mantine/notifications";
 import { IconCalendar, IconInfoCircle } from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { useState, useTransition } from "react";
 import { copyPriceEntry } from "@/app/(dashboard)/sales/price-lists/actions";
 import { FormModal, type ModalBaseProps } from "@/components/ui/modals";
-import { useTr } from "@/hooks/useTr";
 import type { Option } from "@/lib/mock";
 import { ORDER_TYPE_LABEL } from "@/lib/mock";
 import { type PriceListEntry, requiresEndDate } from "./model";
@@ -33,7 +33,7 @@ export function CopyPriceListModal({
   customerOptions: Option[];
   productOptions: Option[];
 }) {
-  const tr = useTr();
+  const tr = useTranslations();
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [customerId, setCustomerId] = useState<string | null>(null);
@@ -60,7 +60,7 @@ export function CopyPriceListModal({
   const orderTypeLabels =
     source?.variants
       .map((v) => ORDER_TYPE_LABEL[v.orderType] ?? v.orderType)
-      .join(tr("・")) ?? "—";
+      .join(tr("common.s1")) ?? "—";
 
   return (
     <FormModal
@@ -75,10 +75,8 @@ export function CopyPriceListModal({
         ) {
           setError(
             needsEnd
-              ? tr(
-                  "コピー先の顧客・製品・有効期間（開始・終了）を入力してください",
-                )
-              : tr("コピー先の顧客・製品・有効開始日を入力してください"),
+              ? tr("sales.priceLists.enterTheDestinationCustomerProductAnd")
+              : tr("sales.priceLists.enterTheDestinationCustomerProductAnd2"),
           );
           return;
         }
@@ -94,16 +92,16 @@ export function CopyPriceListModal({
           });
           if (result.ok) {
             notifications.show({
-              title: tr("コピーしました"),
-              message: tr("価格表を別の顧客・製品にコピーしました"),
+              title: tr("common.copied"),
+              message: tr("sales.priceLists.thePriceListWasCopiedTo"),
               color: "green",
             });
             handleClose();
             router.push(`/sales/price-lists/${result.data.entryId}`);
           } else {
             notifications.show({
-              title: tr("エラー"),
-              message: tr(result.error),
+              title: tr("common.error2"),
+              message: result.error,
               color: "red",
             });
           }
@@ -111,8 +109,8 @@ export function CopyPriceListModal({
       }}
       opened={opened}
       size="md"
-      submitLabel={tr("コピーして作成")}
-      title={tr("価格表を別の顧客・製品へコピー")}
+      submitLabel={tr("sales.priceLists.createByCopying")}
+      title={tr("sales.priceLists.copyThePriceListToAnother")}
     >
       <Alert color="blue" icon={<IconInfoCircle size={16} />} variant="light">
         <Text size="sm">
@@ -125,9 +123,9 @@ export function CopyPriceListModal({
       <Select
         data={customerOptions}
         error={error && !customerId ? "顧客を選択してください" : undefined}
-        label={tr("コピー先 顧客")}
+        label={tr("sales.priceLists.copyToCustomer")}
         onChange={setCustomerId}
-        placeholder={tr("顧客を選択")}
+        placeholder={tr("common.selectACustomer")}
         searchable
         value={customerId}
         withAsterisk
@@ -135,19 +133,19 @@ export function CopyPriceListModal({
       <Select
         data={productOptions}
         error={error && !productId ? "製品を選択してください" : undefined}
-        label={tr("コピー先 製品")}
+        label={tr("sales.priceLists.copyToProduct")}
         onChange={setProductId}
-        placeholder={tr("製品を選択")}
+        placeholder={tr("sales.priceLists.selectAProduct")}
         searchable
         value={productId}
         withAsterisk
       />
       <DatePickerInput
         error={error && !validFrom ? "有効開始日を選択してください" : undefined}
-        label={tr("有効開始日")}
+        label={tr("common.validFrom")}
         leftSection={<IconCalendar size={14} />}
         onChange={setValidFrom}
-        placeholder={tr("日付を選択")}
+        placeholder={tr("common.pickADate")}
         value={validFrom}
         valueFormat="YYYY/MM/DD"
         withAsterisk
@@ -159,13 +157,15 @@ export function CopyPriceListModal({
         }
         error={
           error && needsEnd && !validUntil
-            ? tr("有効終了日を選択してください")
+            ? tr("common.selectAnEndDate")
             : undefined
         }
-        label={tr("有効終了日")}
+        label={tr("common.validUntil")}
         leftSection={<IconCalendar size={14} />}
         onChange={setValidUntil}
-        placeholder={needsEnd ? "日付を選択" : tr("空欄で無期限")}
+        placeholder={
+          needsEnd ? "日付を選択" : tr("common.leaveBlankForNoEndDate")
+        }
         value={validUntil}
         valueFormat="YYYY/MM/DD"
         withAsterisk={needsEnd}

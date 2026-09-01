@@ -17,6 +17,7 @@ import {
   IconTrash,
 } from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { useState } from "react";
 import { useFormat } from "@/components/layout/PreferencesProvider";
 import { KeywordBadges } from "@/components/master/MasterKeywordsField";
@@ -34,7 +35,6 @@ import {
   ResourceActions,
   SummaryGrid,
 } from "@/components/ui/shells";
-import { useTr } from "@/hooks/useTr";
 import { useTabParam } from "@/hooks/useUrlState";
 import { useIsMobile } from "@/hooks/useViewport";
 import type { RouteView } from "@/lib/product-routes-core";
@@ -106,7 +106,7 @@ export function ProductDetail({
   /** この製品に紐づく設計依頼 — 関連タブ。 */
   designRequests?: DesignRequestLink[];
 }) {
-  const tr = useTr();
+  const tr = useTranslations();
   const fmt = useFormat();
   const router = useRouter();
   const isMobile = useIsMobile();
@@ -143,18 +143,18 @@ export function ProductDetail({
             // 設計図を差し替える唯一の入口。マスタ側で直接置き換えさせない
             // （版と is_latest の整合は設計依頼の完了が 1 tx で守っている）。
             {
-              label: tr("設計依頼を起票"),
+              label: tr("common.raiseADesignRequest"),
               icon: <IconRuler2 size={14} />,
               onClick: () =>
                 router.push(`/sales/design-requests/new?product=${record.id}`),
             },
             {
-              label: tr("複製"),
+              label: tr("common.duplicate"),
               icon: <IconCopy size={14} />,
               onClick: () => setDuplicateOpen(true),
             },
             {
-              label: record.isActive ? "無効化" : tr("有効化"),
+              label: record.isActive ? "無効化" : tr("common.enable"),
               icon: <IconCircleMinus size={14} />,
               onClick: () => setToggleOpen(true),
             },
@@ -170,7 +170,7 @@ export function ProductDetail({
         />
       }
       breadcrumbs={[
-        tr("マスタ"),
+        tr("common.masterData"),
         { label: "製品", href: BASE_PATH },
         record.code ?? record.nameJa,
       ]}
@@ -181,13 +181,18 @@ export function ProductDetail({
     >
       <SummaryGrid>
         <FieldValue
-          label={tr("製品コード")}
-          value={<DocNumber>{record.code ?? tr("未採番")}</DocNumber>}
+          label={tr("common.productCode")}
+          value={
+            <DocNumber>{record.code ?? tr("common.notNumbered")}</DocNumber>
+          }
         />
-        <FieldValue label={tr("名称（日本語）")} value={record.nameJa} />
-        <FieldValue label={tr("名称（英語）")} value={record.nameEn || "—"} />
+        <FieldValue label={tr("common.nameJapanese")} value={record.nameJa} />
         <FieldValue
-          label={tr("材種")}
+          label={tr("common.nameEnglish")}
+          value={record.nameEn || "—"}
+        />
+        <FieldValue
+          label={tr("common.materialTypes")}
           value={
             record.materialTypeId ? (
               <DocNumber c="blue">{materialTypeLabel}</DocNumber>
@@ -197,35 +202,35 @@ export function ProductDetail({
           }
         />
         <FieldValue
-          label={tr("直径")}
+          label={tr("common.diameter")}
           value={record.diameterMm != null ? `φ${record.diameterMm} mm` : "—"}
         />
         <FieldValue
-          label={tr("全長")}
+          label={tr("common.overallLength")}
           value={record.lengthMm != null ? `${record.lengthMm} mm` : "—"}
         />
-        <FieldValue label={tr("単位")} value={record.unit} />
+        <FieldValue label={tr("common.unit")} value={record.unit} />
       </SummaryGrid>
 
       <AppTabs onChange={setTab} value={tab}>
         <Tabs.List>
-          <Tabs.Tab value="overview">{tr("概要")}</Tabs.Tab>
+          <Tabs.Tab value="overview">{tr("common.overview")}</Tabs.Tab>
           <Tabs.Tab value="routes">工程</Tabs.Tab>
-          <Tabs.Tab value="related">{tr("関連")}</Tabs.Tab>
-          <Tabs.Tab value="history">{tr("履歴")}</Tabs.Tab>
+          <Tabs.Tab value="related">{tr("common.related")}</Tabs.Tab>
+          <Tabs.Tab value="history">{tr("common.history")}</Tabs.Tab>
         </Tabs.List>
 
         <Tabs.Panel pt="md" value="overview">
           <Stack gap="md">
             {record.productTypeName && (
               <FieldValue
-                label={tr("製品種別")}
+                label={tr("common.productTypes")}
                 value={record.productTypeName}
               />
             )}
             <Stack gap="xs">
               <Text fw={600} size="sm">
-                {tr("仕様")}
+                {tr("master.products.specification")}
               </Text>
               {(() => {
                 const specRows = record.spec.filter(
@@ -233,7 +238,7 @@ export function ProductDetail({
                 );
                 return specRows.length === 0 ? (
                   <Text c="dimmed" size="sm">
-                    {tr("仕様は登録されていません")}
+                    {tr("master.products.noSpecificationIsRegistered")}
                   </Text>
                 ) : (
                   <Table striped withTableBorder>
@@ -250,10 +255,13 @@ export function ProductDetail({
               })()}
             </Stack>
             <FieldValue
-              label={tr("キーワード")}
+              label={tr("common.keywords")}
               value={<KeywordBadges values={record.matchNames} />}
             />
-            <FieldValue label={tr("備考")} value={record.notes || "—"} />
+            <FieldValue
+              label={tr("common.notes")}
+              value={record.notes || "—"}
+            />
           </Stack>
         </Tabs.Panel>
 
@@ -271,7 +279,7 @@ export function ProductDetail({
 
             <Stack gap="xs">
               <Text fw={600} size="sm">
-                {tr("設計依頼")}
+                {tr("common.designRequest")}
               </Text>
               <DesignRequestLinks
                 createHref={`/sales/design-requests/new?product=${record.id}`}
@@ -281,20 +289,22 @@ export function ProductDetail({
 
             <Stack gap="xs">
               <Text fw={600} size="sm">
-                {tr("価格表エントリ")}
+                {tr("master.products.priceListEntry")}
               </Text>
               {record.priceListEntries.length === 0 ? (
                 <Text c="dimmed" size="sm">
-                  {tr("この製品の価格表エントリはありません")}
+                  {tr("master.products.thereAreNoPriceListEntries")}
                 </Text>
               ) : (
                 <Table highlightOnHover striped withTableBorder>
                   <Table.Thead>
                     <Table.Tr>
-                      <Table.Th>{tr("顧客")}</Table.Th>
-                      <Table.Th>{tr("注文種別")}</Table.Th>
-                      {!isMobile && <Table.Th>{tr("有効期間")}</Table.Th>}
-                      <Table.Th>{tr("状態")}</Table.Th>
+                      <Table.Th>{tr("common.customer")}</Table.Th>
+                      <Table.Th>{tr("common.orderType")}</Table.Th>
+                      {!isMobile && (
+                        <Table.Th>{tr("common.validPeriod")}</Table.Th>
+                      )}
+                      <Table.Th>{tr("common.status")}</Table.Th>
                     </Table.Tr>
                   </Table.Thead>
                   <Table.Tbody>
@@ -317,7 +327,7 @@ export function ProductDetail({
                             {fmt.date(e.validFrom)} 〜{" "}
                             {e.validUntil
                               ? fmt.date(e.validUntil)
-                              : tr("無期限")}
+                              : tr("common.noEndDate")}
                           </Table.Td>
                         )}
                         <Table.Td>

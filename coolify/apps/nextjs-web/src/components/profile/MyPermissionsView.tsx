@@ -31,8 +31,8 @@ import {
   IconX,
 } from "@tabler/icons-react";
 import Link from "next/link";
+import { useTranslations } from "next-intl";
 import { ListShell } from "@/components/ui/shells";
-import { useTr } from "@/hooks/useTr";
 import type {
   MyPermissionRow,
   MyPermissionsView as View,
@@ -53,7 +53,7 @@ function remainingLabel(ms: number | null): string | null {
 
 /** 権限 1 件。持っている / 持っていないを、色と枠でひと目で分ける。 */
 function PermissionCard({ row }: { row: MyPermissionRow }) {
-  const tr = useTr();
+  const tr = useTranslations();
   return (
     <Card
       padding="sm"
@@ -84,7 +84,7 @@ function PermissionCard({ row }: { row: MyPermissionRow }) {
               </Text>
               {row.canApprove && (
                 <Badge color="violet" variant="light">
-                  {tr("承認できる")}
+                  {tr("profile.myPermissionsView.youCanApprove")}
                 </Badge>
               )}
             </Group>
@@ -103,7 +103,7 @@ function PermissionCard({ row }: { row: MyPermissionRow }) {
             ))
           ) : (
             <Badge color="gray" variant="outline">
-              {tr("権限なし")}
+              {tr("profile.myPermissionsView.noPermission")}
             </Badge>
           )}
         </Group>
@@ -131,8 +131,9 @@ function PermissionCard({ row }: { row: MyPermissionRow }) {
                     variant="filled"
                   >
                     {op.viaAdmin
-                      ? tr("管理者権限")
-                      : (remaining ?? tr("利用可能（未使用）"))}
+                      ? tr("profile.myPermissionsView.administratorRights")
+                      : (remaining ??
+                        tr("profile.myPermissionsView.availableUnused"))}
                   </Badge>
                 ) : op.pending ? (
                   <Badge
@@ -140,7 +141,7 @@ function PermissionCard({ row }: { row: MyPermissionRow }) {
                     leftSection={<IconClock size={11} />}
                     variant="light"
                   >
-                    {tr("承認依頼中")}
+                    {tr("common.pendingApproval")}
                   </Badge>
                 ) : (
                   <Badge
@@ -148,7 +149,9 @@ function PermissionCard({ row }: { row: MyPermissionRow }) {
                     leftSection={<IconLock size={11} />}
                     variant="light"
                   >
-                    {op.canRequest ? "申請が必要" : tr("権限なし")}
+                    {op.canRequest
+                      ? "申請が必要"
+                      : tr("profile.myPermissionsView.noPermission")}
                   </Badge>
                 )}
                 <Text size="xs">{op.label}</Text>
@@ -162,24 +165,25 @@ function PermissionCard({ row }: { row: MyPermissionRow }) {
 }
 
 export function MyPermissionsView({ view }: { view: View }) {
-  const tr = useTr();
+  const tr = useTranslations();
   return (
     <ListShell
-      breadcrumbs={[tr("プロフィール"), tr("自分の権限")]}
-      title={tr("自分の権限")}
+      breadcrumbs={[
+        tr("common.profile"),
+        tr("profile.myPermissionsView.myPermissions"),
+      ]}
+      title={tr("profile.myPermissionsView.myPermissions")}
     >
       {view.superuser ? (
         <Alert
           color="blue"
           icon={<IconShieldCheck size={16} />}
           mb="md"
-          title={tr("管理者")}
+          title={tr("profile.myPermissionsView.administrator")}
           variant="light"
         >
           <Text size="sm">
-            {tr(
-              "すべての権限を持っています。特権操作も申請なしで実行できますが、\n            その場合は「管理者権限で実行した」ことが操作履歴に残ります。",
-            )}
+            {tr("profile.myPermissionsView.theyHoldEveryPermissionTheyCan")}
           </Text>
         </Alert>
       ) : (
@@ -195,9 +199,9 @@ export function MyPermissionsView({ view }: { view: View }) {
             です。権限は役割（ロール）を通して付きます。足りないときは管理者に
             相談してください。読み方は{" "}
             <Link href="/manual/ja/permissions">
-              {tr("マニュアルの「権限とロール」")}
+              {tr("profile.myPermissionsView.permissionsAndRolesInTheManual")}
             </Link>
-            {tr("にあります。")}
+            {tr("profile.myPermissionsView.isWhereItLives")}
           </Text>
         </Alert>
       )}
@@ -216,12 +220,12 @@ export function MyPermissionsView({ view }: { view: View }) {
             {group === "privileged" && (
               <Paper bg="var(--mantine-color-gray-0)" p="xs" radius="sm">
                 <Text size="xs">
-                  {tr("ここにある操作は、権限を持っていても")}
-                  <b>{tr("そのままでは実行できません")}</b>。
+                  {tr("profile.myPermissionsView.evenIfYouHoldThePermission")}
+                  <b>{tr("profile.myPermissionsView.itCannotBeRunAsIt")}</b>。
                   <Link href="/settings/privileged-access">
-                    {tr("特権アクセス")}
+                    {tr("common.privilegedAccess")}
                   </Link>
-                  {tr("で申請し、別の人の承認を受けた期間だけ行えます。")}
+                  {tr("profile.myPermissionsView.andCanOnlyBeDoneFor")}
                 </Text>
               </Paper>
             )}

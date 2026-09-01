@@ -23,7 +23,7 @@ import { useForm } from "@mantine/form";
 import { notifications } from "@mantine/notifications";
 import { IconInfoCircle } from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
-import { useLocale } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { useEffect, useRef, useState, useTransition } from "react";
 import { z } from "zod";
 import { searchStructuredMaterialTypeOptions } from "@/app/(dashboard)/_shared/option-search";
@@ -43,7 +43,6 @@ import {
   FormShell,
   LocalizedTextInput,
 } from "@/components/ui/shells";
-import { useTr } from "@/hooks/useTr";
 import { useIsMobile } from "@/hooks/useViewport";
 import { unitOptions } from "@/lib/enum-labels";
 import { fieldHelp, fieldHelpTip } from "@/lib/field-help";
@@ -121,7 +120,7 @@ export function MaterialForm({
   manufacturerOptions?: Option[];
   shapeOptions?: Option[];
 }) {
-  const tr = useTr();
+  const tr = useTranslations();
   const locale = useLocale();
   const router = useRouter();
   const isMobile = useIsMobile();
@@ -145,7 +144,7 @@ export function MaterialForm({
       kindCode: "",
       nameJa: initial?.nameJa ?? "",
       nameTranslations: initial?.nameTranslations ?? {},
-      unit: initial?.unit ?? tr("本"),
+      unit: initial?.unit ?? tr("common.pcs"),
       manufacturerModel: initial?.manufacturerModel ?? "",
       nominalDiameterMm: initial?.nominalDiameterMm ?? "",
       matchNames: initial?.matchNames ?? [],
@@ -183,8 +182,8 @@ export function MaterialForm({
       const res = await fetchStructuredMaterialType(Number(value));
       if (!res.ok) {
         notifications.show({
-          title: tr("エラー"),
-          message: tr(res.error),
+          title: tr("common.error2"),
+          message: res.error,
           color: "red",
         });
         return;
@@ -231,35 +230,47 @@ export function MaterialForm({
     name: form.values.nameJa || form.values.nameTranslations.en || "",
     code: isEdit ? initial.code : preview,
     attributes: [
-      { label: tr("英語名"), value: form.values.nameTranslations.en ?? "" },
       {
-        label: tr("材種"),
+        label: tr("common.englishName"),
+        value: form.values.nameTranslations.en ?? "",
+      },
+      {
+        label: tr("common.materialTypes"),
         value: isEdit
           ? initial.materialTypeLabel
           : [typeCode, typeNameJa].filter(Boolean).join(" — "),
       },
       {
-        label: tr("黒皮・研磨"),
+        label: tr("common.surfaceFinish"),
         value: isEdit
           ? initial.surfaceFinishLabel
           : form.values.surfaceFinishCode,
       },
-      { label: tr("直径 (mm)"), value: String(form.values.diameterMm ?? "") },
-      { label: tr("全長 (mm)"), value: String(form.values.lengthMm ?? "") },
       {
-        label: tr("種類"),
+        label: tr("common.diameterMm"),
+        value: String(form.values.diameterMm ?? ""),
+      },
+      {
+        label: tr("common.overallLengthMm"),
+        value: String(form.values.lengthMm ?? ""),
+      },
+      {
+        label: tr("common.kind"),
         value: isEdit ? initial.kindLabel : form.values.kindCode,
       },
-      { label: tr("単位"), value: form.values.unit },
-      { label: tr("メーカ型式"), value: form.values.manufacturerModel },
+      { label: tr("common.unit"), value: form.values.unit },
       {
-        label: tr("呼び径 (mm)"),
+        label: tr("common.manufacturerModel"),
+        value: form.values.manufacturerModel,
+      },
+      {
+        label: tr("master.materials.nominalDiameterMm"),
         value:
           form.values.nominalDiameterMm === ""
             ? ""
             : String(form.values.nominalDiameterMm),
       },
-      { label: tr("備考"), value: form.values.notes },
+      { label: tr("common.notes"), value: form.values.notes },
     ].filter((a) => a.value.trim() !== ""),
   };
 
@@ -288,15 +299,17 @@ export function MaterialForm({
           });
       if (result.ok) {
         notifications.show({
-          title: tr("保存しました"),
-          message: isEdit ? "素材を更新しました" : tr("素材を作成しました"),
+          title: tr("common.saved2"),
+          message: isEdit
+            ? "素材を更新しました"
+            : tr("master.materials.theMaterialWasCreated"),
           color: "green",
         });
         router.push(`${BASE_PATH}/${result.data.id}`);
       } else {
         notifications.show({
-          title: tr("エラー"),
-          message: tr(result.error),
+          title: tr("common.error2"),
+          message: result.error,
           color: "red",
         });
       }
@@ -306,9 +319,9 @@ export function MaterialForm({
   return (
     <FormShell
       breadcrumbs={[
-        tr("マスタ"),
-        { label: tr("素材"), href: BASE_PATH },
-        isEdit ? "編集" : tr("新規作成"),
+        tr("common.masterData"),
+        { label: tr("common.materials"), href: BASE_PATH },
+        isEdit ? "編集" : tr("common.new2"),
       ]}
       isDirty={form.isDirty()}
       isPending={isPending}
@@ -317,19 +330,19 @@ export function MaterialForm({
       }
       onSubmit={form.onSubmit(handleSubmit)}
       status={isEdit ? <ActiveBadge active={initial.isActive} /> : undefined}
-      title={isEdit ? `素材 編集 — ${initial.code}` : tr("素材 新規作成")}
+      title={
+        isEdit
+          ? `素材 編集 — ${initial.code}`
+          : tr("master.materials.newMaterial")
+      }
     >
       <FormSection
         description={
           isEdit
-            ? tr(
-                "コード構成（材種・黒皮研磨・直径・全長・種類）は作成後変更できません。",
-              )
-            : tr(
-                "素材コードは構成から自動で組み立てられます: [材種]-[黒皮研磨][径×10]-[全長]",
-              )
+            ? tr("master.materials.theCodeStructureMaterialTypeFinish")
+            : tr("master.materials.theMaterialCodeIsBuiltAutomatically")
         }
-        title={tr("コード構成")}
+        title={tr("common.codeStructure")}
       >
         {isEdit ? (
           <SimpleGrid cols={isMobile ? 1 : 3} spacing="sm">
@@ -353,7 +366,7 @@ export function MaterialForm({
               label={
                 <HelpLabel
                   {...fieldHelp("material", "dimensions", {
-                    label: tr("直径 (mm)"),
+                    label: tr("common.diameterMm"),
                   })}
                 />
               }
@@ -364,7 +377,7 @@ export function MaterialForm({
               label={
                 <HelpLabel
                   {...fieldHelp("material", "dimensions", {
-                    label: tr("全長 (mm)"),
+                    label: tr("common.overallLengthMm"),
                   })}
                 />
               }
@@ -380,14 +393,12 @@ export function MaterialForm({
           <>
             <SimpleGrid cols={isMobile ? 1 : 2} mb="sm" spacing="sm">
               <SearchSelect
-                description={tr(
-                  "変換済（コード構成あり）の材種のみ選択できます",
-                )}
+                description={tr("common.onlyConvertedMaterialTypesWithA")}
                 f4={materialTypeF4(manufacturerOptions, shapeOptions)}
                 label={<HelpLabel {...fieldHelp("material", "materialType")} />}
                 onChange={onTypeChange}
                 onSearch={searchStructuredMaterialTypeOptions}
-                placeholder={tr("材種コード・名称で検索")}
+                placeholder={tr("common.searchByMaterialTypeCodeOr")}
                 storageKey="material-type-structured"
                 value={form.values.materialTypeId || null}
                 withAsterisk
@@ -397,7 +408,7 @@ export function MaterialForm({
                 label={
                   <HelpLabel {...fieldHelp("material", "surfaceFinish")} />
                 }
-                placeholder={tr("区分を選択")}
+                placeholder={tr("master.materials.selectAType")}
                 withAsterisk
                 {...form.getInputProps("surfaceFinishCode")}
               />
@@ -412,7 +423,7 @@ export function MaterialForm({
                 label={
                   <HelpLabel
                     {...fieldHelp("material", "dimensions", {
-                      label: tr("直径 (mm)"),
+                      label: tr("common.diameterMm"),
                     })}
                   />
                 }
@@ -432,7 +443,7 @@ export function MaterialForm({
                 label={
                   <HelpLabel
                     {...fieldHelp("material", "dimensions", {
-                      label: tr("全長 (mm)"),
+                      label: tr("common.overallLengthMm"),
                     })}
                   />
                 }
@@ -443,13 +454,15 @@ export function MaterialForm({
               />
               <Select
                 data={kindOptions}
-                description={tr("親材種の形状に属する種類のみ")}
+                description={tr(
+                  "master.materials.onlyKindsBelongingToTheParent",
+                )}
                 disabled={kindOptions.length === 0}
                 label={<HelpLabel {...fieldHelp("material", "kind")} />}
                 placeholder={
                   form.values.materialTypeId
-                    ? tr("種類を選択")
-                    : tr("先に材種を選択してください")
+                    ? tr("master.materials.selectAKind")
+                    : tr("master.materials.selectAMaterialTypeFirst")
                 }
                 withAsterisk
                 {...form.getInputProps("kindCode")}
@@ -461,18 +474,19 @@ export function MaterialForm({
               variant="light"
             >
               <Text size="sm">
-                {tr("素材コード:")} <DocNumber>{preview}</DocNumber>
+                {tr("master.materials.materialCode")}{" "}
+                <DocNumber>{preview}</DocNumber>
               </Text>
             </Alert>
           </>
         )}
       </FormSection>
 
-      <FormSection title={tr("基本情報")}>
+      <FormSection title={tr("common.basicInformation")}>
         <LocalizedTextInput
           help={fieldHelpTip("material", "name")}
           jaProps={form.getInputProps("nameJa")}
-          label={tr("名称")}
+          label={tr("common.name2")}
           placeholder="K40UF φ3×330"
           required
           translationsProps={form.getInputProps("nameTranslations")}
@@ -487,7 +501,9 @@ export function MaterialForm({
           <TextInput
             label={
               <HelpLabel
-                {...fieldHelp("material", "model", { label: tr("メーカ型式") })}
+                {...fieldHelp("material", "model", {
+                  label: tr("common.manufacturerModel"),
+                })}
               />
             }
             placeholder="103.70.083"
@@ -498,7 +514,7 @@ export function MaterialForm({
             label={
               <HelpLabel
                 {...fieldHelp("material", "model", {
-                  label: tr("呼び径 (mm)"),
+                  label: tr("master.materials.nominalDiameterMm"),
                 })}
               />
             }
@@ -514,7 +530,7 @@ export function MaterialForm({
         <Textarea
           label={<HelpLabel {...fieldHelp("material", "notes")} />}
           mt="sm"
-          placeholder={tr("備考・特記事項")}
+          placeholder={tr("common.notesAndRemarks")}
           rows={3}
           {...form.getInputProps("notes")}
         />

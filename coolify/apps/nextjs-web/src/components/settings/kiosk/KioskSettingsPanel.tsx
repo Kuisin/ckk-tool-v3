@@ -21,10 +21,10 @@ import {
 } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
 import { IconInfoCircle } from "@tabler/icons-react";
+import { useTranslations } from "next-intl";
 import { useState, useTransition } from "react";
 import { updateKioskAppFlags } from "@/app/(dashboard)/settings/kiosk/actions";
 import { FormActions } from "@/components/ui/shells";
-import { useTr } from "@/hooks/useTr";
 import type { KioskAppCatalogEntry } from "@/lib/kiosk-settings";
 
 type PolicyRow = { label: string; value: string };
@@ -38,7 +38,7 @@ export function KioskSettingsPanel({
   initialFlags: Record<string, boolean>;
   policy: PolicyRow[];
 }) {
-  const tr = useTr();
+  const tr = useTranslations();
   const [flags, setFlags] = useState<Record<string, boolean>>(initialFlags);
   const [isPending, startTransition] = useTransition();
 
@@ -49,14 +49,14 @@ export function KioskSettingsPanel({
       const result = await updateKioskAppFlags(flags);
       if (result.ok) {
         notifications.show({
-          title: tr("保存しました"),
-          message: tr("共有端末のアプリ表示設定を更新しました"),
+          title: tr("common.saved2"),
+          message: tr("settings.kiosk.theSharedDeviceAppDisplaySettings"),
           color: "green",
         });
       } else {
         notifications.show({
-          title: tr("エラー"),
-          message: tr(result.error),
+          title: tr("common.error2"),
+          message: result.error,
           color: "red",
         });
       }
@@ -67,11 +67,9 @@ export function KioskSettingsPanel({
     <Stack gap="lg">
       <Paper p="md" radius="md" shadow="xs">
         <Stack gap="sm">
-          <Title order={4}>{tr("ランチャーに表示するアプリ")}</Title>
+          <Title order={4}>{tr("settings.kiosk.appsShownInTheLauncher")}</Title>
           <Text c="dimmed" size="sm">
-            {tr(
-              "共有端末（キオスク）のランチャーに載せるアプリを選びます。無効にすると、\n            権限を持つ利用者にも表示されません。",
-            )}
+            {tr("settings.kiosk.chooseWhichAppsAppearInThe")}
           </Text>
           <Stack gap="xs" mt="xs">
             {catalog.map((app) => (
@@ -101,15 +99,13 @@ export function KioskSettingsPanel({
       <Paper p="md" radius="md" shadow="xs">
         <Stack gap="sm">
           <Group gap="xs">
-            <Title order={4}>{tr("認証ポリシー")}</Title>
+            <Title order={4}>{tr("settings.kiosk.authenticationPolicy")}</Title>
             <Badge color="gray" variant="light">
-              {tr("参照のみ")}
+              {tr("settings.kiosk.readOnly")}
             </Badge>
           </Group>
           <Alert color="gray" icon={<IconInfoCircle size={18} />}>
-            {tr(
-              "現在の値は端末アプリ側で固定です。編集可能化は次回対応予定です。",
-            )}
+            {tr("settings.kiosk.theCurrentValueIsFixedIn")}
           </Alert>
           <Table.ScrollContainer minWidth={420}>
             <Table striped withTableBorder>

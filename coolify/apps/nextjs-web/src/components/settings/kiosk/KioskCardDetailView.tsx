@@ -29,6 +29,7 @@ import {
   IconHistory,
   IconPrinter,
 } from "@tabler/icons-react";
+import { useTranslations } from "next-intl";
 import { useState, useTransition } from "react";
 import {
   assignCard,
@@ -52,7 +53,6 @@ import { FieldValue } from "@/components/ui/FieldValue";
 import { ConfirmModal, ModalShell } from "@/components/ui/modals";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { StatusBadge } from "@/components/ui/StatusBadge";
-import { useTr } from "@/hooks/useTr";
 import type {
   KioskCardDetail,
   KioskCardSessionRow,
@@ -92,7 +92,7 @@ export function KioskCardDetailView({
   sessions: KioskCardSessionRow[];
   userOptions: KioskUserOption[];
 }) {
-  const tr = useTr();
+  const tr = useTranslations();
   const fmt = useFormat();
   const [isPending, startTransition] = useTransition();
   const now = Date.now();
@@ -127,14 +127,14 @@ export function KioskCardDetailView({
       const result = await action();
       if (result.ok) {
         notifications.show({
-          title: tr("完了"),
+          title: tr("common.completed"),
           message: successMessage,
           color: "green",
         });
       } else {
         notifications.show({
-          title: tr("エラー"),
-          message: tr(result.error),
+          title: tr("common.error2"),
+          message: result.error,
           color: "red",
         });
       }
@@ -144,8 +144,8 @@ export function KioskCardDetailView({
   const handleAssign = () => {
     if (!assignUserId) {
       notifications.show({
-        title: tr("エラー"),
-        message: tr("割当先ユーザーを選択してください"),
+        title: tr("common.error2"),
+        message: tr("common.selectTheUserToAssignIt"),
         color: "red",
       });
       return;
@@ -167,14 +167,14 @@ export function KioskCardDetailView({
       if (result.ok) {
         setAssignOpen(false);
         notifications.show({
-          title: tr("割当しました"),
-          message: tr("カードをユーザーに割り当てました"),
+          title: tr("common.assigned"),
+          message: tr("common.theCardWasAssignedToThe"),
           color: "green",
         });
       } else {
         notifications.show({
-          title: tr("エラー"),
-          message: tr(result.error),
+          title: tr("common.error2"),
+          message: result.error,
           color: "red",
         });
       }
@@ -185,8 +185,8 @@ export function KioskCardDetailView({
     const limit = typeof editLimit === "number" ? editLimit : Number(editLimit);
     if (!Number.isInteger(limit) || limit < 1 || limit > 10) {
       notifications.show({
-        title: tr("エラー"),
-        message: tr("同時ログイン上限は 1〜10 で指定してください"),
+        title: tr("common.error2"),
+        message: tr("settings.kiosk.setTheConcurrentLoginLimitBetween"),
         color: "red",
       });
       return;
@@ -199,14 +199,14 @@ export function KioskCardDetailView({
       if (result.ok) {
         setLimitOpen(false);
         notifications.show({
-          title: tr("保存しました"),
-          message: tr("同時ログイン上限を更新しました"),
+          title: tr("common.saved2"),
+          message: tr("settings.kiosk.theConcurrentLoginLimitWasUpdated"),
           color: "green",
         });
       } else {
         notifications.show({
-          title: tr("エラー"),
-          message: tr(result.error),
+          title: tr("common.error2"),
+          message: result.error,
           color: "red",
         });
       }
@@ -231,14 +231,14 @@ export function KioskCardDetailView({
       if (result.ok) {
         setValidityOpen(false);
         notifications.show({
-          title: tr("保存しました"),
-          message: tr("有効期間を更新しました"),
+          title: tr("common.saved2"),
+          message: tr("settings.kiosk.theValidPeriodWasUpdated"),
           color: "green",
         });
       } else {
         notifications.show({
-          title: tr("エラー"),
-          message: tr(result.error),
+          title: tr("common.error2"),
+          message: result.error,
           color: "red",
         });
       }
@@ -250,10 +250,14 @@ export function KioskCardDetailView({
       <PageHeader
         actions={
           <SecondaryButton href="/settings/kiosk-cards">
-            {tr("一覧へ戻る")}
+            {tr("common.backToTheList")}
           </SecondaryButton>
         }
-        breadcrumbs={[tr("システム"), tr("QRカード管理"), tr("カード詳細")]}
+        breadcrumbs={[
+          tr("common.system"),
+          tr("common.qRCards"),
+          tr("settings.kiosk.cardDetails"),
+        ]}
         status={
           <Group gap={4} wrap="nowrap">
             <StatusBadge entity="KioskCard" status={card.status} />
@@ -270,9 +274,7 @@ export function KioskCardDetailView({
           icon={<IconClockExclamation size={16} />}
           variant="light"
         >
-          {tr(
-            "このカードは有効期間を過ぎているため、キオスクでログインできません。\n          期間を延長するか、カードを取り消してください。",
-          )}
+          {tr("settings.kiosk.thisCardIsPastItsValid")}
         </Alert>
       )}
       {card.status === "ASSIGNED" && validity === "NOT_YET" && (
@@ -281,9 +283,7 @@ export function KioskCardDetailView({
           icon={<IconClockExclamation size={16} />}
           variant="light"
         >
-          {tr(
-            "このカードは有効期間の開始前のため、まだキオスクでログインできません。",
-          )}
+          {tr("settings.kiosk.thisCardSValidPeriodHas")}
         </Alert>
       )}
 
@@ -291,7 +291,7 @@ export function KioskCardDetailView({
       <Paper p="md" radius="md" withBorder>
         <SimpleGrid cols={{ base: 1, sm: 3 }} spacing="md">
           <FieldValue
-            label={tr("割当ユーザー")}
+            label={tr("common.assignedUser")}
             value={
               card.userDisplayName ? (
                 <Group gap={6} wrap="nowrap">
@@ -305,12 +305,12 @@ export function KioskCardDetailView({
                   )}
                 </Group>
               ) : (
-                tr("未割当")
+                tr("common.unassigned")
               )
             }
           />
           <FieldValue
-            label={tr("有効期間")}
+            label={tr("common.validPeriod")}
             value={
               <Group gap={6} wrap="nowrap">
                 <Text fw={500} size="sm">
@@ -325,27 +325,30 @@ export function KioskCardDetailView({
             value={
               <Group gap={4} wrap="nowrap">
                 <Badge color={card.pinSet ? "blue" : "gray"} variant="light">
-                  {card.pinSet ? "設定済" : tr("未設定")}
+                  {card.pinSet ? "設定済" : tr("common.notSet2")}
                 </Badge>
                 {card.pinLocked && (
                   <Badge color="red" variant="light">
-                    {tr("ロック中")}
+                    {tr("common.locked")}
                   </Badge>
                 )}
               </Group>
             }
           />
           <FieldValue
-            label={tr("同時ログイン上限")}
+            label={tr("settings.kiosk.concurrentLoginLimit")}
             value={`${card.maxActiveSessions} 台`}
           />
           <FieldValue
-            label={tr("最終使用")}
+            label={tr("common.lastUsed")}
             value={card.lastUsedAt ? fmt.dateTime(card.lastUsedAt) : "—"}
           />
-          <FieldValue label={tr("使用回数")} value={`${card.useCount} 回`} />
           <FieldValue
-            label={tr("PIN 最終確認")}
+            label={tr("common.timesUsed")}
+            value={`${card.useCount} 回`}
+          />
+          <FieldValue
+            label={tr("settings.kiosk.pINLastVerified")}
             value={
               card.pinLastVerifiedAt
                 ? fmt.dateTime(card.pinLastVerifiedAt)
@@ -353,7 +356,7 @@ export function KioskCardDetailView({
             }
           />
           <FieldValue
-            label={tr("割当")}
+            label={tr("common.allocation")}
             value={
               card.assignedAt
                 ? `${fmt.dateTime(card.assignedAt)}${
@@ -364,14 +367,14 @@ export function KioskCardDetailView({
           />
           {card.revokedAt && (
             <FieldValue
-              label={tr("取り消し")}
+              label={tr("common.revoked2")}
               value={`${fmt.dateTime(card.revokedAt)}${
                 card.revokedByName ? `（${card.revokedByName}）` : ""
               }`}
             />
           )}
           <FieldValue
-            label={tr("発行日時")}
+            label={tr("settings.kiosk.issuedAt")}
             value={card.createdAt ? fmt.dateTime(card.createdAt) : "—"}
           />
         </SimpleGrid>
@@ -381,7 +384,7 @@ export function KioskCardDetailView({
       {card.status !== "REVOKED" && (
         <Paper p="md" radius="md" withBorder>
           <Title mb="sm" order={5}>
-            {tr("操作")}
+            {tr("common.actions")}
           </Title>
           <Group gap="xs" wrap="wrap">
             {card.status === "UNASSIGNED" && (
@@ -394,11 +397,11 @@ export function KioskCardDetailView({
                   setAssignOpen(true);
                 }}
               >
-                {tr("ユーザーに割当")}
+                {tr("common.assignToAUser")}
               </PrimaryButton>
             )}
             <EditButton loading={isPending} onClick={openValidityModal}>
-              {tr("有効期間を編集")}
+              {tr("settings.kiosk.editTheValidPeriod")}
             </EditButton>
             <SecondaryButton
               loading={isPending}
@@ -407,21 +410,21 @@ export function KioskCardDetailView({
                 setLimitOpen(true);
               }}
             >
-              {tr("同時ログイン上限")}
+              {tr("settings.kiosk.concurrentLoginLimit")}
             </SecondaryButton>
             <SecondaryButton
               leftSection={<IconPrinter size={14} />}
               onClick={() => openPrintSheet([card.id])}
             >
-              {tr("印刷")}
+              {tr("common.print2")}
             </SecondaryButton>
             {card.status === "ASSIGNED" && (
               <SecondaryButton
                 loading={isPending}
                 onClick={() =>
                   setConfirm({
-                    title: tr("一時停止の確認"),
-                    message: tr("このカードでのログインを一時停止します。"),
+                    title: tr("common.confirmSuspension"),
+                    message: tr("common.loginsWithThisCardWillBe"),
                     confirmLabel: "一時停止",
                     run: () => suspendCard(card.id),
                   })
@@ -434,20 +437,23 @@ export function KioskCardDetailView({
               <SecondaryButton
                 loading={isPending}
                 onClick={() =>
-                  run(() => resumeCard(card.id), tr("カードを再開しました"))
+                  run(() => resumeCard(card.id), tr("common.theCardWasResumed"))
                 }
               >
-                {tr("再開")}
+                {tr("common.resume")}
               </SecondaryButton>
             )}
             {card.pinLocked && (
               <SecondaryButton
                 loading={isPending}
                 onClick={() =>
-                  run(() => unlockPin(card.id), tr("PIN ロックを解除しました"))
+                  run(
+                    () => unlockPin(card.id),
+                    tr("common.thePinLockWasReleased"),
+                  )
                 }
               >
-                {tr("PINロック解除")}
+                {tr("common.unlockThePin")}
               </SecondaryButton>
             )}
             {card.pinSet && (
@@ -455,32 +461,28 @@ export function KioskCardDetailView({
                 loading={isPending}
                 onClick={() =>
                   setConfirm({
-                    title: tr("PINリセットの確認"),
-                    message: tr(
-                      "PIN を消去します。次回ログイン時に PIN の再設定が必要になります。",
-                    ),
-                    confirmLabel: tr("リセット"),
+                    title: tr("common.confirmResettingThePin"),
+                    message: tr("common.clearsThePinItWillHave"),
+                    confirmLabel: tr("common.reset2"),
                     run: () => resetPin(card.id),
                   })
                 }
               >
-                {tr("PINリセット")}
+                {tr("common.resetThePin")}
               </SecondaryButton>
             )}
             <DangerButton
               loading={isPending}
               onClick={() =>
                 setConfirm({
-                  title: tr("取り消しの確認"),
-                  message: tr(
-                    "カードを取り消します。この操作は取り消せません。オープン中のセッションも失効します。",
-                  ),
-                  confirmLabel: tr("取り消し"),
+                  title: tr("common.confirmRevocation"),
+                  message: tr("common.theCardWillBeRevokedThis"),
+                  confirmLabel: tr("common.revoked2"),
                   run: () => revokeCard(card.id),
                 })
               }
             >
-              {tr("取り消し")}
+              {tr("common.revoked2")}
             </DangerButton>
           </Group>
         </Paper>
@@ -489,28 +491,28 @@ export function KioskCardDetailView({
       {/* 最近のログイン */}
       <Paper p="md" radius="md" withBorder>
         <Title mb="sm" order={5}>
-          {tr("最近のログイン")}
+          {tr("settings.kiosk.recentLogins")}
         </Title>
         {sessions.length === 0 ? (
           <EmptyState
             icon={<IconHistory size={28} />}
-            message={tr("このカードでのログインはまだありません")}
+            message={tr("settings.kiosk.thereHaveBeenNoLoginsWith")}
           />
         ) : (
           <Table.ScrollContainer minWidth={480}>
             <Table>
               <Table.Thead>
                 <Table.Tr>
-                  <Table.Th>{tr("端末")}</Table.Th>
+                  <Table.Th>{tr("common.device")}</Table.Th>
                   <Table.Th>拠点</Table.Th>
-                  <Table.Th>{tr("ログイン")}</Table.Th>
-                  <Table.Th>{tr("最終アクティビティ")}</Table.Th>
+                  <Table.Th>{tr("common.logIn")}</Table.Th>
+                  <Table.Th>{tr("common.lastActivity")}</Table.Th>
                 </Table.Tr>
               </Table.Thead>
               <Table.Tbody>
                 {sessions.map((s) => (
                   <Table.Tr key={s.id}>
-                    <Table.Td>{s.deviceName ?? tr("（名称未設定）")}</Table.Td>
+                    <Table.Td>{s.deviceName ?? tr("common.unnamed")}</Table.Td>
                     <Table.Td>{s.plantLabel ?? "—"}</Table.Td>
                     <Table.Td>{fmt.dateTime(s.createdAt)}</Table.Td>
                     <Table.Td>{fmt.dateTime(s.lastActivityAt)}</Table.Td>
@@ -524,13 +526,13 @@ export function KioskCardDetailView({
 
       {/* 割当モーダル（任意で有効期間 = テンポラリカード） */}
       <ModalShell
-        confirmLabel={tr("割当")}
+        confirmLabel={tr("common.allocation")}
         loading={isPending}
         onClose={() => setAssignOpen(false)}
         onConfirm={handleAssign}
         opened={assignOpen}
         size="sm"
-        title={tr("カードの割当")}
+        title={tr("common.cardAssignment")}
       >
         <Stack gap="xs">
           <Text ff="mono" size="sm">
@@ -538,9 +540,9 @@ export function KioskCardDetailView({
           </Text>
           <Select
             data={userOptions}
-            label={tr("割当先ユーザー")}
+            label={tr("settings.kiosk.assignedUser")}
             onChange={setAssignUserId}
-            placeholder={tr("ユーザーを選択")}
+            placeholder={tr("common.selectAUser")}
             searchable
             value={assignUserId}
             withAsterisk
@@ -548,84 +550,84 @@ export function KioskCardDetailView({
           <Group grow>
             <DatePickerInput
               clearable
-              label={tr("有効開始日")}
+              label={tr("common.validFrom")}
               leftSection={<IconCalendar size={14} />}
               onChange={setAssignFrom}
-              placeholder={tr("空欄で即時有効")}
+              placeholder={tr(
+                "settings.kiosk.leaveBlankToTakeEffectImmediately",
+              )}
               value={assignFrom}
               valueFormat="YYYY/MM/DD"
             />
             <DatePickerInput
               clearable
-              label={tr("有効終了日")}
+              label={tr("common.validUntil")}
               leftSection={<IconCalendar size={14} />}
               onChange={setAssignUntil}
-              placeholder={tr("空欄で無期限")}
+              placeholder={tr("common.leaveBlankForNoEndDate")}
               value={assignUntil}
               valueFormat="YYYY/MM/DD"
             />
           </Group>
           <Text c="dimmed" size="xs">
-            {tr(
-              "期間を設定するとテンポラリカードになり、期間外はログインできません\n            （終了日はその日いっぱい有効）。1 ユーザーに割当できるカードは 1\n            枚です。",
-            )}
+            {tr("settings.kiosk.settingAPeriodMakesItA")}
           </Text>
         </Stack>
       </ModalShell>
 
       {/* 有効期間の編集モーダル */}
       <ModalShell
-        confirmLabel={tr("保存")}
+        confirmLabel={tr("common.save2")}
         loading={isPending}
         onClose={() => setValidityOpen(false)}
         onConfirm={handleValiditySave}
         opened={validityOpen}
         size="sm"
-        title={tr("有効期間の編集")}
+        title={tr("settings.kiosk.editTheValidPeriod2")}
       >
         <Stack gap="xs">
           <Group grow>
             <DatePickerInput
               clearable
-              label={tr("有効開始日")}
+              label={tr("common.validFrom")}
               leftSection={<IconCalendar size={14} />}
               onChange={setEditFrom}
-              placeholder={tr("空欄で即時有効")}
+              placeholder={tr(
+                "settings.kiosk.leaveBlankToTakeEffectImmediately",
+              )}
               value={editFrom}
               valueFormat="YYYY/MM/DD"
             />
             <DatePickerInput
               clearable
-              label={tr("有効終了日")}
+              label={tr("common.validUntil")}
               leftSection={<IconCalendar size={14} />}
               onChange={setEditUntil}
-              placeholder={tr("空欄で無期限")}
+              placeholder={tr("common.leaveBlankForNoEndDate")}
               value={editUntil}
               valueFormat="YYYY/MM/DD"
             />
           </Group>
           <Text c="dimmed" size="xs">
-            {tr(
-              "期間外のカードはキオスクでログインできません（終了日はその日\n            いっぱい有効）。両方空欄で無期限に戻ります。ログイン中の\n            セッションは最長 8 時間で自然失効します。",
-            )}
+            {tr("settings.kiosk.aCardOutsideItsPeriodCannot")}
           </Text>
         </Stack>
       </ModalShell>
 
       {/* 同時ログイン上限の編集モーダル */}
       <ModalShell
-        confirmLabel={tr("保存")}
+        confirmLabel={tr("common.save2")}
         loading={isPending}
         onClose={() => setLimitOpen(false)}
         onConfirm={handleLimitSave}
         opened={limitOpen}
         size="sm"
-        title={tr("同時ログイン上限")}
+        title={tr("settings.kiosk.concurrentLoginLimit")}
       >
         <Stack gap="xs">
           <NumberInput
             allowDecimal={false}
-            label={tr("同時にログインできる端末数")}
+            label={tr("settings.kiosk.howManyDevicesCanBeLogged")}
             max={10}
             min={1}
             onChange={setEditLimit}
@@ -633,22 +635,20 @@ export function KioskCardDetailView({
             withAsterisk
           />
           <Text c="dimmed" size="xs">
-            {tr(
-              "上限を超えてログインすると、最も古い端末のセッションから自動的に\n            ログアウトされます。上限を下げても既存のセッションは即時には\n            失効しません（次のログイン時に整理されます）。",
-            )}
+            {tr("settings.kiosk.loggingInBeyondTheLimitLogs")}
           </Text>
         </Stack>
       </ModalShell>
 
       {/* 破壊的操作の確認 */}
       <ConfirmModal
-        confirmLabel={confirm?.confirmLabel ?? tr("実行")}
+        confirmLabel={confirm?.confirmLabel ?? tr("common.run2")}
         loading={isPending}
         message={confirm?.message ?? ""}
         onClose={() => setConfirm(null)}
         onConfirm={() => {
           if (confirm) {
-            run(confirm.run, tr("操作が完了しました"));
+            run(confirm.run, tr("common.done"));
             setConfirm(null);
           }
         }}

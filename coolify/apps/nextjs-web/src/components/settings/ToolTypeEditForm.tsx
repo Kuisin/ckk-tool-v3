@@ -21,6 +21,7 @@ import {
 import { notifications } from "@mantine/notifications";
 import { IconInfoCircle } from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { useState, useTransition } from "react";
 import {
   removeToolType,
@@ -33,7 +34,6 @@ import {
 } from "@/components/ui/buttons";
 import { openConfirm } from "@/components/ui/modals";
 import { FormActions, FormSection } from "@/components/ui/shells";
-import { useTr } from "@/hooks/useTr";
 import {
   type Criterion,
   criterionAppliesTo,
@@ -56,7 +56,7 @@ export function ToolTypeEditForm({
   criteria: Criterion[];
   usageCount: number;
 }) {
-  const tr = useTr();
+  const tr = useTranslations();
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
 
@@ -95,8 +95,10 @@ export function ToolTypeEditForm({
   const save = () => {
     if (!finalId) {
       notifications.show({
-        title: tr("エラー"),
-        message: tr("見積単価（final）基準を選択してください"),
+        title: tr("common.error2"),
+        message: tr(
+          "settings.toolTypeEditForm.selectTheFinalEstimatedUnitPrice",
+        ),
         color: "red",
       });
       return;
@@ -109,7 +111,7 @@ export function ToolTypeEditForm({
       });
       if (res.ok) {
         notifications.show({
-          title: tr("保存しました"),
+          title: tr("common.saved2"),
           message: `工具種「${toolType.label}」の適用基準を更新しました`,
           color: "green",
         });
@@ -117,8 +119,8 @@ export function ToolTypeEditForm({
         router.refresh();
       } else {
         notifications.show({
-          title: tr("エラー"),
-          message: tr(res.error),
+          title: tr("common.error2"),
+          message: res.error,
           color: "red",
         });
       }
@@ -127,7 +129,7 @@ export function ToolTypeEditForm({
 
   const remove = () =>
     openConfirm({
-      title: tr("工具種の削除"),
+      title: tr("settings.toolTypeEditForm.deleteTheToolType"),
       message: `工具種「${toolType.label}」を削除します。各計算基準の適用工具種からも取り除かれます。この操作は取り消せません。`,
       confirmLabel: "削除",
       onConfirm: () =>
@@ -135,7 +137,7 @@ export function ToolTypeEditForm({
           const res = await removeToolType(toolType.value);
           if (res.ok) {
             notifications.show({
-              title: tr("削除しました"),
+              title: tr("common.deleted"),
               message: `工具種「${toolType.label}」を削除しました`,
               color: "green",
             });
@@ -143,8 +145,8 @@ export function ToolTypeEditForm({
             router.refresh();
           } else {
             notifications.show({
-              title: tr("エラー"),
-              message: tr(res.error),
+              title: tr("common.error2"),
+              message: res.error,
               color: "red",
             });
           }
@@ -165,11 +167,11 @@ export function ToolTypeEditForm({
         </Text>
         {toolType.builtin ? (
           <Badge color="gray" size="xs" variant="light">
-            {tr("組み込み")}
+            {tr("common.builtIn")}
           </Badge>
         ) : (
           <Badge color="blue" size="xs" variant="light">
-            {tr("カスタム")}
+            {tr("common.custom")}
           </Badge>
         )}
         <Text c="dimmed" size="xs">
@@ -178,16 +180,14 @@ export function ToolTypeEditForm({
       </Group>
 
       <Alert color="blue" icon={<IconInfoCircle size={16} />} variant="light">
-        {tr(
-          "ここでの設定は各計算基準の「適用工具種」と同じデータです（計算基準\n        ページのチップと連動）。式の内容・順序は計算基準ページで編集します。",
-        )}
+        {tr("settings.toolTypeEditForm.whatYouSetHereIsThe")}
       </Alert>
 
       <FormSection
         description={tr(
-          "チェックした基準がこの工具種の価格試算で評価されます（加算 = 合計に足す / 中間 = r.<id> で参照）。",
+          "settings.toolTypeEditForm.tickedCriteriaAreEvaluatedForThis",
         )}
-        title={tr("適用する計算基準")}
+        title={tr("settings.toolTypeEditForm.criteriaApplied")}
       >
         <Stack gap="xs">
           {nonFinal.map((c) => (
@@ -206,7 +206,7 @@ export function ToolTypeEditForm({
                   </Badge>
                   {!c.enabled && (
                     <Badge color="gray" size="xs" variant="light">
-                      {tr("無効")}
+                      {tr("common.disabled3")}
                     </Badge>
                   )}
                 </Group>
@@ -216,7 +216,7 @@ export function ToolTypeEditForm({
           ))}
           {nonFinal.length === 0 && (
             <Text c="dimmed" size="sm">
-              {tr("計算基準がありません。計算基準ページで作成してください。")}
+              {tr("settings.toolTypeEditForm.thereAreNoCriteriaCreateThem")}
             </Text>
           )}
         </Stack>
@@ -224,9 +224,9 @@ export function ToolTypeEditForm({
 
       <FormSection
         description={tr(
-          "この工具種の見積単価（final）を計算する基準。工具種ごとにちょうど1つ必要です。",
+          "settings.toolTypeEditForm.theCriterionThatComputesThisTool",
         )}
-        title={tr("使用する見積単価")}
+        title={tr("settings.toolTypeEditForm.estimatedUnitPriceUsed")}
       >
         <Select
           data={finals.map((c) => ({
@@ -234,7 +234,7 @@ export function ToolTypeEditForm({
             label: c.enabled ? c.name : `${c.name}（無効）`,
           }))}
           onChange={setFinalId}
-          placeholder={tr("final 基準を選択")}
+          placeholder={tr("settings.toolTypeEditForm.selectTheFinalCriterion")}
           value={finalId}
           w={320}
         />
@@ -250,7 +250,7 @@ export function ToolTypeEditForm({
           <Group gap="sm">
             <CancelButton onClick={() => router.push(BASE)} />
             <SaveButton loading={isPending} onClick={save}>
-              {tr("保存")}
+              {tr("common.save2")}
             </SaveButton>
           </Group>
         </Group>

@@ -28,6 +28,7 @@ import {
   IconTrash,
 } from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { useState, useTransition } from "react";
 import {
   deleteInspectionTemplates,
@@ -42,7 +43,6 @@ import { DocNumber } from "@/components/ui/DocNumber";
 import { openConfirm } from "@/components/ui/modals";
 import { NewButton } from "@/components/ui/NewButton";
 import { ListShell } from "@/components/ui/shells";
-import { useTr } from "@/hooks/useTr";
 import { useUrlSelectState, useUrlStringState } from "@/hooks/useUrlState";
 import { useIsMobile } from "@/hooks/useViewport";
 import {
@@ -80,7 +80,7 @@ export function InspectionTemplateTable({
   /** グループの絞り込み選択肢（有効グループのみ）。 */
   groupOptions: { value: string; label: string }[];
 }) {
-  const tr = useTr();
+  const tr = useTranslations();
   const router = useRouter();
   const isMobile = useIsMobile();
   // 書き出し / 取込。選択があればその分だけを書き出す。
@@ -132,15 +132,15 @@ export function InspectionTemplateTable({
       );
       if (result.ok) {
         notifications.show({
-          title: isActive ? "有効化しました" : tr("無効化しました"),
+          title: isActive ? "有効化しました" : tr("common.disabled2"),
           message: `${targets.length}件の検査表テンプレートを${isActive ? "有効化" : "無効化"}しました`,
           color: "green",
         });
         router.refresh();
       } else {
         notifications.show({
-          title: tr("エラー"),
-          message: tr(result.error),
+          title: tr("common.error2"),
+          message: result.error,
           color: "red",
         });
       }
@@ -149,9 +149,9 @@ export function InspectionTemplateTable({
 
   const bulkDelete = (targets: InspectionTemplateRow[]) => {
     openConfirm({
-      title: tr("検査表テンプレートの一括削除"),
+      title: tr("master.inspectionTemplates.bulkDeleteInspectionTemplates"),
       message: `選択中の${targets.length}件の検査表テンプレートを削除します。この操作は取り消せません。`,
-      confirmLabel: tr("削除する"),
+      confirmLabel: tr("common.delete2"),
       onConfirm: () => {
         startTransition(async () => {
           const result = await deleteInspectionTemplates(
@@ -159,15 +159,15 @@ export function InspectionTemplateTable({
           );
           if (result.ok) {
             notifications.show({
-              title: tr("削除しました"),
+              title: tr("common.deleted"),
               message: `${targets.length}件の検査表テンプレートを削除しました`,
               color: "green",
             });
             router.refresh();
           } else {
             notifications.show({
-              title: tr("エラー"),
-              message: tr(result.error),
+              title: tr("common.error2"),
+              message: result.error,
               color: "red",
             });
           }
@@ -207,14 +207,14 @@ export function InspectionTemplateTable({
     },
     {
       key: "name",
-      header: tr("名称"),
+      header: tr("common.name2"),
       sortable: true,
       sortValue: (r) => r.name,
       render: (r) => r.name,
     },
     {
       key: "relatedProcessStep",
-      header: tr("関連工程"),
+      header: tr("common.relatedStep"),
       sortable: true,
       hideable: true,
       width: 220,
@@ -223,16 +223,16 @@ export function InspectionTemplateTable({
     },
     {
       key: "productName",
-      header: tr("対象製品"),
+      header: tr("common.targetProduct"),
       sortable: true,
       hideable: true,
       width: 180,
       sortValue: (r) => r.productName,
-      render: (r) => r.productName || tr("汎用"),
+      render: (r) => r.productName || tr("common.generic"),
     },
     {
       key: "groupName",
-      header: tr("グループ"),
+      header: tr("common.group"),
       sortable: true,
       hideable: true,
       width: 160,
@@ -248,7 +248,7 @@ export function InspectionTemplateTable({
     },
     {
       key: "itemCount",
-      header: tr("項目数"),
+      header: tr("common.items"),
       sortable: true,
       hideable: true,
       width: 90,
@@ -258,7 +258,7 @@ export function InspectionTemplateTable({
     },
     {
       key: "isActive",
-      header: tr("状態"),
+      header: tr("common.status"),
       sortable: true,
       width: 90,
       sortValue: (r) => (r.isActive ? 1 : 0),
@@ -276,7 +276,7 @@ export function InspectionTemplateTable({
             onClick={() => setGroupModalOpen(true)}
             style={{ flexShrink: 0 }}
           >
-            {isMobile ? "グループ" : tr("グループ管理")}
+            {isMobile ? "グループ" : tr("master.inspectionTemplates.groups")}
           </SecondaryButton>
           {/* 書き出し / 取込 — 環境をまたぐ持ち出しと、Excel で作った検査表の入口 */}
           <SecondaryButton
@@ -284,19 +284,21 @@ export function InspectionTemplateTable({
             onClick={() => setIoOpen(true)}
             style={{ flexShrink: 0 }}
           >
-            {isMobile ? "入出力" : tr("書き出し / 取込")}
+            {isMobile
+              ? "入出力"
+              : tr("master.inspectionTemplates.exportImport")}
           </SecondaryButton>
           <NewButton href={`${BASE_PATH}/new`} />
         </Group>
       }
-      breadcrumbs={[tr("マスタ"), tr("検査表テンプレート")]}
+      breadcrumbs={[tr("common.masterData"), tr("common.inspectionTemplates")]}
       filters={
         <Group gap="xs" wrap="wrap">
           <Select
             clearable
             data={STATUS_OPTIONS}
             onChange={setStatusFilter}
-            placeholder={tr("状態")}
+            placeholder={tr("common.status")}
             style={isMobile ? { flex: 1 } : undefined}
             value={statusFilter}
             w={isMobile ? undefined : 120}
@@ -305,10 +307,13 @@ export function InspectionTemplateTable({
             clearable
             data={[
               ...groupOptions,
-              { value: "none", label: tr("グループなし") },
+              {
+                value: "none",
+                label: tr("master.inspectionTemplates.noGroup"),
+              },
             ]}
             onChange={setGroupFilter}
-            placeholder={tr("グループ")}
+            placeholder={tr("common.group")}
             style={isMobile ? { flex: 1 } : undefined}
             value={groupFilter}
             w={isMobile ? undefined : 160}
@@ -320,16 +325,18 @@ export function InspectionTemplateTable({
         <TextInput
           leftSection={<IconSearch size={14} />}
           onChange={(e) => setSearch(e.currentTarget.value)}
-          placeholder={tr("コード・名称・関連工程で検索")}
+          placeholder={tr(
+            "master.inspectionTemplates.searchByCodeNameOrRelated",
+          )}
           value={search}
         />
       }
-      title={tr("検査表テンプレート")}
+      title={tr("common.inspectionTemplates")}
     >
       <DataTable
         bulkActions={[
           {
-            label: tr("選択を書き出し"),
+            label: tr("master.inspectionTemplates.exportTheSelection"),
             icon: <IconFileExport size={16} />,
             onAction: (rs) => {
               setIoIds(rs.map((r) => r.id));
@@ -337,19 +344,19 @@ export function InspectionTemplateTable({
             },
           },
           {
-            label: tr("一括有効化"),
+            label: tr("common.bulkEnable"),
             icon: <IconCheck size={16} />,
             color: "green",
             onAction: (rs) => bulkSetActive(rs, true),
           },
           {
-            label: tr("一括無効化"),
+            label: tr("common.bulkDisable"),
             icon: <IconCircleMinus size={16} />,
             color: "orange",
             onAction: (rs) => bulkSetActive(rs, false),
           },
           {
-            label: tr("一括削除"),
+            label: tr("common.bulkDelete"),
             icon: <IconTrash size={16} />,
             color: "red",
             onAction: bulkDelete,
@@ -360,7 +367,9 @@ export function InspectionTemplateTable({
         defaultSort={{ key: "code", dir: "asc" }}
         emptyAction={<NewButton href={`${BASE_PATH}/new`} />}
         emptyIcon={<IconListCheck size={24} />}
-        emptyMessage={tr("検査表テンプレートがありません")}
+        emptyMessage={tr(
+          "master.inspectionTemplates.thereAreNoInspectionTemplates",
+        )}
         getRowId={(r) => String(r.id)}
         onRowClick={(r) => router.push(`${BASE_PATH}/${r.id}`)}
         renderCard={(r) => (
@@ -378,7 +387,8 @@ export function InspectionTemplateTable({
                 </Text>
                 <Group gap="md" mt={2}>
                   <Text c="dimmed" size="xs" truncate>
-                    {r.relatedProcessStep || tr("関連工程なし")}
+                    {r.relatedProcessStep ||
+                      tr("master.inspectionTemplates.noRelatedStep")}
                   </Text>
                   <Text c="dimmed" size="xs">
                     {r.itemCount}項目
@@ -401,12 +411,12 @@ export function InspectionTemplateTable({
         )}
         rowActions={(row) => [
           {
-            label: tr("編集"),
+            label: tr("common.edit2"),
             icon: <IconEdit size={14} />,
             onAction: (r) => router.push(`${BASE_PATH}/${r.id}/edit`),
           },
           {
-            label: row.isActive ? "無効化" : tr("有効化"),
+            label: row.isActive ? "無効化" : tr("common.enable"),
             icon: <IconCircleMinus size={14} />,
             onAction: (r) => setToggleRow(r),
           },

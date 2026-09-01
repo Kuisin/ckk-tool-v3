@@ -23,7 +23,7 @@ import {
 import { useForm } from "@mantine/form";
 import { notifications } from "@mantine/notifications";
 import { useRouter } from "next/navigation";
-import { useLocale } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { useTransition } from "react";
 import { z } from "zod";
 import {
@@ -43,7 +43,6 @@ import {
   FormShell,
   LocalizedTextInput,
 } from "@/components/ui/shells";
-import { useTr } from "@/hooks/useTr";
 import { useIsMobile } from "@/hooks/useViewport";
 import {
   inspectionLayoutStyleOptions,
@@ -83,7 +82,7 @@ const templateSchema = z
     isActive: z.boolean(),
   })
   .superRefine((v, ctx) => {
-    const tr = useTr();
+    const tr = useTranslations();
     const issue = (message: string) =>
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
@@ -96,7 +95,7 @@ const templateSchema = z
         v.samplingValue <= 0 ||
         v.samplingValue > 100
       ) {
-        issue(tr("検査対象の割合（0〜100%）を入力してください"));
+        issue(tr("master.inspectionTemplates.enterThePercentageToInspect0"));
       }
     }
     if (v.samplingMode === "COUNT") {
@@ -105,7 +104,7 @@ const templateSchema = z
         v.samplingValue < 1 ||
         !Number.isInteger(v.samplingValue)
       ) {
-        issue(tr("検査対象の本数（1 以上の整数）を入力してください"));
+        issue(tr("master.inspectionTemplates.enterHowManyPiecesToInspect"));
       }
     }
   });
@@ -147,7 +146,7 @@ export function InspectionTemplateForm({
   /** 検査表のナビゲーション用グループの選択肢（有効のみ）。 */
   templateGroupOptions: { value: string; label: string }[];
 }) {
-  const tr = useTr();
+  const tr = useTranslations();
   const locale = useLocale();
   const router = useRouter();
   const isMobile = useIsMobile();
@@ -204,17 +203,17 @@ export function InspectionTemplateForm({
         : await createInspectionTemplate({ ...input, code: values.code });
       if (result.ok) {
         notifications.show({
-          title: tr("保存しました"),
+          title: tr("common.saved2"),
           message: isEdit
-            ? tr("検査表テンプレートを更新しました")
-            : tr("検査表テンプレートを作成しました"),
+            ? tr("master.inspectionTemplates.theInspectionTemplateWasUpdated")
+            : tr("master.inspectionTemplates.theInspectionTemplateWasCreated"),
           color: "green",
         });
         router.push(`${BASE_PATH}/${result.data.id}`);
       } else {
         notifications.show({
-          title: tr("エラー"),
-          message: tr(result.error),
+          title: tr("common.error2"),
+          message: result.error,
           color: "red",
         });
       }
@@ -224,9 +223,9 @@ export function InspectionTemplateForm({
   return (
     <FormShell
       breadcrumbs={[
-        tr("マスタ"),
-        { label: tr("検査表テンプレート"), href: BASE_PATH },
-        isEdit ? "編集" : tr("新規作成"),
+        tr("common.masterData"),
+        { label: tr("common.inspectionTemplates"), href: BASE_PATH },
+        isEdit ? "編集" : tr("common.new2"),
       ]}
       isDirty={form.isDirty()}
       isPending={isPending}
@@ -238,16 +237,16 @@ export function InspectionTemplateForm({
       title={
         isEdit
           ? `検査表テンプレート 編集 — ${initial.code}`
-          : tr("検査表テンプレート 新規作成")
+          : tr("master.inspectionTemplates.newInspectionTemplate")
       }
     >
-      <FormSection title={tr("基本情報")}>
+      <FormSection title={tr("common.basicInformation")}>
         <SimpleGrid cols={isMobile ? 1 : 2} spacing="sm">
           <TextInput
             description={
               isEdit
-                ? tr("コードは作成後変更できません")
-                : tr("英数字・-・_（一意）")
+                ? tr("master.inspectionTemplates.theCodeCannotBeChangedOnce")
+                : tr("master.inspectionTemplates.lettersDigitsAndUnique")
             }
             disabled={isEdit}
             label={
@@ -257,12 +256,14 @@ export function InspectionTemplateForm({
                 })}
               />
             }
-            placeholder={tr("例: INSP-DIM-01")}
+            placeholder={tr("master.inspectionTemplates.eGInspDim01")}
             withAsterisk={!isEdit}
             {...form.getInputProps("code")}
           />
           <SearchSelect
-            description={tr("このテンプレートを既定で使う検査工程（任意）")}
+            description={tr(
+              "master.inspectionTemplates.theInspectionStepThatUsesThis",
+            )}
             initialOption={
               initial?.relatedProcessStepId
                 ? {
@@ -278,21 +279,25 @@ export function InspectionTemplateForm({
               form.setFieldValue("relatedProcessStepId", value)
             }
             onSearch={searchProcessStepOptions}
-            placeholder={tr("工程コード・名称で検索")}
+            placeholder={tr(
+              "master.inspectionTemplates.searchByStepCodeOrName",
+            )}
             storageKey="inspection-template-process-step"
             value={form.values.relatedProcessStepId}
           />
           <SearchSelect
-            description={tr("対象を絞る製品（空 = どの製品にも使える汎用）")}
+            description={tr(
+              "master.inspectionTemplates.theProductItIsNarrowedTo",
+            )}
             initialOption={
               initial?.productId
                 ? { value: initial.productId, label: initial.productLabel }
                 : undefined
             }
-            label={tr("対象製品")}
+            label={tr("common.targetProduct")}
             onChange={(value) => form.setFieldValue("productId", value)}
             onSearch={searchProductOptions}
-            placeholder={tr("製品コード・名称で検索")}
+            placeholder={tr("common.searchByProductCodeOrName")}
             storageKey="inspection-template-product"
             value={form.values.productId}
           />
@@ -300,11 +305,11 @@ export function InspectionTemplateForm({
             clearable
             data={templateGroupOptions}
             description={tr(
-              "一覧の絞り込み・見出し分けだけに使う表示軸（任意）",
+              "master.inspectionTemplates.aDisplayAxisUsedOnlyFor",
             )}
-            label={tr("グループ")}
+            label={tr("common.group")}
             onChange={(v) => form.setFieldValue("groupId", v)}
-            placeholder={tr("グループを選択")}
+            placeholder={tr("common.selectAGroup")}
             searchable
             value={form.values.groupId}
           />
@@ -313,13 +318,15 @@ export function InspectionTemplateForm({
           <LocalizedTextInput
             help={fieldHelpTip("inspectionTemplate", "code")}
             jaProps={form.getInputProps("nameJa")}
-            label={tr("名称")}
+            label={tr("common.name2")}
             required
             translationsProps={form.getInputProps("nameTranslations")}
           />
           <Stack gap={4}>
             <Text fw={500} size="sm">
-              {tr("検査対象（このシートで検査する製品数）")}
+              {tr(
+                "master.inspectionTemplates.inspectionTargetHowManyProductsThis",
+              )}
             </Text>
             <Group gap="sm" wrap="wrap">
               <SegmentedControl
@@ -337,8 +344,8 @@ export function InspectionTemplateForm({
                 <NumberInput
                   aria-label={
                     form.values.samplingMode === "PERCENT"
-                      ? tr("検査対象の割合(%)")
-                      : tr("検査対象の本数")
+                      ? tr("master.inspectionTemplates.percentageToInspect")
+                      : tr("master.inspectionTemplates.piecesToInspect")
                   }
                   max={form.values.samplingMode === "PERCENT" ? 100 : undefined}
                   min={form.values.samplingMode === "PERCENT" ? 0.01 : 1}
@@ -349,17 +356,20 @@ export function InspectionTemplateForm({
               )}
             </Group>
             <Text c="dimmed" size="xs">
-              {tr("全数 = ロット全数 / 割合・本数 = 一部を抜き取って検査")}
+              {tr("master.inspectionTemplates.allTheWholeLotPercentOr")}
             </Text>
           </Stack>
           <Stack gap={4}>
             <Text fw={500} size="sm">
-              {tr("記録方式")}
+              {tr("common.recordingMode")}
             </Text>
             <SegmentedControl
               data={[
-                { value: "VALUES", label: tr("実測値（製品ごと）") },
-                { value: "COUNTS", label: tr("合格数のみ") },
+                {
+                  value: "VALUES",
+                  label: tr("common.measuredValuePerProduct"),
+                },
+                { value: "COUNTS", label: tr("common.passCountOnly") },
               ]}
               onChange={(v) =>
                 form.setFieldValue("recordStyle", v as "VALUES" | "COUNTS")
@@ -368,13 +378,13 @@ export function InspectionTemplateForm({
             />
             <Text c="dimmed" size="xs">
               {tr(
-                "実測値 = 製品ごとにページ送りで全項目を記録 / 合格数のみ =\n              項目ごとに検査数・合格数だけを記録",
+                "master.inspectionTemplates.measuredValuesRecordEveryItemPer",
               )}
             </Text>
           </Stack>
           <Stack gap={4}>
             <Text fw={500} size="sm">
-              {tr("印刷レイアウト")}
+              {tr("common.printLayout")}
             </Text>
             <SegmentedControl
               data={inspectionLayoutStyleOptions(locale)}
@@ -387,15 +397,13 @@ export function InspectionTemplateForm({
               value={form.values.layoutStyle}
             />
             <Text c="dimmed" size="xs">
-              {tr(
-                "寸法測定表 = 基本値/目標値/公差のグリッド / 外観・工程チェック表 =\n              製造課・品証課の部門別チェックリスト",
-              )}
+              {tr("master.inspectionTemplates.dimensionSheetAGridOfBase")}
             </Text>
           </Stack>
           {form.values.recordStyle === "VALUES" && (
             <Stack gap={4}>
               <Text fw={500} size="sm">
-                {tr("サンプル呼称")}
+                {tr("common.sampleName")}
               </Text>
               <SegmentedControl
                 data={inspectionSampleNamingOptions(locale)}
@@ -409,7 +417,7 @@ export function InspectionTemplateForm({
               />
               <Text c="dimmed" size="xs">
                 {tr(
-                  "初品・中間品・最終品 は先頭 3 件の見出しだけを差し替えます （4\n                件目以降は製品4…と同じ）",
+                  "master.inspectionTemplates.firstArticleIntermediateAndFinalOnly",
                 )}
               </Text>
             </Stack>

@@ -10,8 +10,8 @@
  */
 
 import { Badge, Group, Stack, Text } from "@mantine/core";
+import { useTranslations } from "next-intl";
 import { useFormat } from "@/components/layout/PreferencesProvider";
-import { useTr } from "@/hooks/useTr";
 
 /** 承認記録 1 件（lib/approvals fetchApprovalTrail の records と同形）。 */
 export interface ApprovalTrailRecordView {
@@ -46,7 +46,7 @@ export function countTrailRecords(trail: ApprovalTrailView[]): number {
 }
 
 export function ApprovalTrailList({ trail }: { trail: ApprovalTrailView[] }) {
-  const tr = useTr();
+  const tr = useTranslations();
   const fmt = useFormat();
   const records = trail
     .flatMap((req) =>
@@ -62,7 +62,7 @@ export function ApprovalTrailList({ trail }: { trail: ApprovalTrailView[] }) {
   return (
     <Stack gap="xs">
       <Text c="dimmed" fw={600} size="xs">
-        {tr("承認記録")}
+        {tr("approvals.approvalTrailList.approvalRecord")}
       </Text>
       {records.map((r) => (
         <Group gap="sm" key={r.key} wrap="nowrap">

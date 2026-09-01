@@ -3,6 +3,7 @@
 import { Checkbox, Stack, Textarea, TextInput } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { useState, useTransition } from "react";
 import {
   createPage,
@@ -12,7 +13,6 @@ import {
 import { PrimaryButton } from "@/components/ui/buttons";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { FormActions, FormSection } from "@/components/ui/shells";
-import { useTr } from "@/hooks/useTr";
 import { useIsMobile } from "@/hooks/useViewport";
 import { MarkdownEditor } from "./MarkdownEditor";
 
@@ -31,7 +31,7 @@ export function DocumentEditor({
     body: string;
   };
 }) {
-  const tr = useTr();
+  const tr = useTranslations();
   const router = useRouter();
   const isMobile = useIsMobile();
   const [isPending, startTransition] = useTransition();
@@ -51,12 +51,12 @@ export function DocumentEditor({
       if (mode === "new") {
         const r = await createPage(settings);
         if (r.ok) {
-          notifications.show({ message: tr("作成しました"), color: "green" });
+          notifications.show({ message: tr("common.created"), color: "green" });
           router.push(`/general/documents/${r.data.pageNumber}/edit`);
         } else {
           notifications.show({
-            title: tr("エラー"),
-            message: tr(r.error),
+            title: tr("common.error2"),
+            message: r.error,
             color: "red",
           });
         }
@@ -64,12 +64,12 @@ export function DocumentEditor({
       }
       const r = await updatePageSettings(pageNumber as string, settings);
       if (r.ok) {
-        notifications.show({ message: tr("保存しました"), color: "green" });
+        notifications.show({ message: tr("common.saved2"), color: "green" });
         router.push(`/general/documents/${pageNumber}`);
       } else {
         notifications.show({
-          title: tr("エラー"),
-          message: tr(r.error),
+          title: tr("common.error2"),
+          message: r.error,
           color: "red",
         });
       }
@@ -87,8 +87,8 @@ export function DocumentEditor({
         router.refresh();
       } else {
         notifications.show({
-          title: tr("エラー"),
-          message: tr(r.error),
+          title: tr("common.error2"),
+          message: r.error,
           color: "red",
         });
       }
@@ -98,53 +98,59 @@ export function DocumentEditor({
     <Stack gap="md">
       <PageHeader
         breadcrumbs={[
-          { label: tr("一般") },
-          { label: tr("社内文書"), href: "/general/documents" },
-          { label: mode === "new" ? "新規" : tr("編集") },
+          { label: tr("common.general") },
+          { label: tr("common.internalDocuments"), href: "/general/documents" },
+          { label: mode === "new" ? "新規" : tr("common.edit2") },
         ]}
-        title={mode === "new" ? "文書を作る" : tr("文書を編集")}
+        title={
+          mode === "new"
+            ? "文書を作る"
+            : tr("documents.documentEditor.editTheDocument")
+        }
       />
 
-      <FormSection title={tr("文書の情報")}>
+      <FormSection title={tr("documents.documentEditor.documentInformation")}>
         <TextInput
-          label={tr("タイトル")}
+          label={tr("common.title")}
           onChange={(e) => setTitle(e.currentTarget.value)}
-          placeholder={tr("出荷手順")}
+          placeholder={tr("documents.documentEditor.shippingSteps")}
           value={title}
           withAsterisk
         />
         <TextInput
           description={tr(
-            "スラッシュ区切りで階層にできます（例: 手順書/出荷）",
+            "documents.documentEditor.useSlashesToMakeAHierarchy",
           )}
-          label={tr("フォルダ")}
+          label={tr("common.folder")}
           onChange={(e) => setFolder(e.currentTarget.value)}
-          placeholder={tr("手順書/出荷")}
+          placeholder={tr("documents.documentEditor.procedureShipping")}
           value={folder}
         />
         <Textarea
           autosize
-          label={tr("概要")}
+          label={tr("common.overview")}
           minRows={2}
           onChange={(e) => setSummary(e.currentTarget.value)}
           value={summary}
         />
         <Checkbox
           checked={approvalRequired}
-          description={tr("承認の段数と承認者は 承認設定（MS0B）で決めます")}
-          label={tr("公開に承認を必要とする")}
+          description={tr("documents.documentEditor.theNumberOfStepsAndThe")}
+          label={tr("documents.documentEditor.requireApprovalToPublish")}
           onChange={(e) => setApprovalRequired(e.currentTarget.checked)}
         />
       </FormSection>
 
       {mode === "edit" && (
-        <FormSection title={tr("本文（Markdown）")}>
+        <FormSection title={tr("documents.documentEditor.bodyMarkdown")}>
           <MarkdownEditor onChange={setBody} value={body} />
           <TextInput
-            description={tr("何を直したかを一言（リビジョンの履歴に出ます）")}
-            label={tr("変更理由")}
+            description={tr("documents.documentEditor.aLineOnWhatYouFixed")}
+            label={tr("documents.documentEditor.reasonForTheChange")}
             onChange={(e) => setNote(e.currentTarget.value)}
-            placeholder={tr("出荷前チェックの項目を追加")}
+            placeholder={tr(
+              "documents.documentEditor.addAPreShipmentCheckItem",
+            )}
             value={note}
           />
           <PrimaryButton
@@ -153,7 +159,7 @@ export function DocumentEditor({
             onClick={saveBody}
             type="button"
           >
-            {tr("本文を保存（新しいリビジョン）")}
+            {tr("documents.documentEditor.saveTheBodyNewRevision")}
           </PrimaryButton>
         </FormSection>
       )}

@@ -17,9 +17,9 @@ import {
   Stack,
   Text,
 } from "@mantine/core";
+import { useTranslations } from "next-intl";
 import { useState } from "react";
 import { SearchSelect } from "@/components/ui/SearchSelect";
-import { useTr } from "@/hooks/useTr";
 
 export interface ApproverOption {
   value: string;
@@ -41,7 +41,7 @@ export function ApprovalTargetField({
   onApproversChange: (v: ApproverOption[]) => void;
   onSearchApprovers: (query: string) => Promise<ApproverOption[]>;
 }) {
-  const tr = useTr();
+  const tr = useTranslations();
   const [mode, setMode] = useState<"group" | "custom">(
     approvers.length > 0 ? "custom" : "group",
   );
@@ -49,13 +49,13 @@ export function ApprovalTargetField({
   return (
     <Stack gap={4}>
       <Text fw={500} size="sm">
-        {tr("検査承認の宛先")}
+        {tr("common.inspectionApprovalRecipient")}
       </Text>
       <Group gap="sm" wrap="wrap">
         <SegmentedControl
           data={[
-            { value: "group", label: tr("グループ") },
-            { value: "custom", label: tr("カスタム") },
+            { value: "group", label: tr("common.group") },
+            { value: "custom", label: tr("common.custom") },
           ]}
           onChange={(v) => {
             const next = v as "group" | "custom";
@@ -71,7 +71,7 @@ export function ApprovalTargetField({
             clearable
             data={groupOptions}
             onChange={onGroupChange}
-            placeholder={tr("選択")}
+            placeholder={tr("common.select")}
             value={groupId}
             w={260}
           />
@@ -92,7 +92,7 @@ export function ApprovalTargetField({
                   (r) => !approvers.some((a) => a.value === r.value),
                 );
               }}
-              placeholder={tr("検索して追加")}
+              placeholder={tr("common.searchAndAdd")}
               storageKey="inspection-template-approver"
               value={null}
             />
@@ -117,9 +117,7 @@ export function ApprovalTargetField({
         )}
       </Group>
       <Text c="dimmed" size="xs">
-        {tr(
-          "宛先は承認グループか、この検査表だけの承認者（カスタム・複数可）から選べます。\n        未設定 = 誰でも検収できます",
-        )}
+        {tr("master.inspectionTemplates.theTargetCanBeAnApproval")}
       </Text>
     </Stack>
   );

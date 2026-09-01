@@ -10,8 +10,8 @@
 
 import { ActionIcon, Group, Radio, Select, Stack, Text } from "@mantine/core";
 import { IconTrash } from "@tabler/icons-react";
+import { useTranslations } from "next-intl";
 import { SecondaryButton } from "@/components/ui/buttons";
-import { useTr } from "@/hooks/useTr";
 import type { Option } from "@/lib/mock";
 
 export interface SalesRepFormRow {
@@ -31,7 +31,7 @@ export function SalesRepsEditor({
   options: Option[];
   error?: string;
 }) {
-  const tr = useTr();
+  const tr = useTranslations();
   const setPrimary = (userId: string) =>
     onChange(value.map((r) => ({ ...r, isPrimary: r.userId === userId })));
 
@@ -56,9 +56,7 @@ export function SalesRepsEditor({
     <Stack gap="xs">
       {value.length === 0 ? (
         <Text c="dimmed" size="xs">
-          {tr(
-            "未登録。登録すると、この顧客の書類で営業担当を選べるようになります。",
-          )}
+          {tr("master.bp.notRegisteredOnceRegisteredYouCan")}
         </Text>
       ) : (
         <Radio.Group
@@ -76,21 +74,21 @@ export function SalesRepsEditor({
                 wrap="nowrap"
               >
                 <Radio
-                  aria-label={tr("主担当にする")}
+                  aria-label={tr("common.makePrimary")}
                   disabled={!row.userId}
                   value={row.userId}
                 />
                 <Select
-                  aria-label={tr("営業担当")}
+                  aria-label={tr("common.salesRep")}
                   className="flex-1"
                   data={options}
                   onChange={(v) => setUser(index, v)}
-                  placeholder={tr("担当者を選択")}
+                  placeholder={tr("master.bp.selectAContact")}
                   searchable
                   value={row.userId || null}
                 />
                 <ActionIcon
-                  aria-label={tr("この営業担当を削除")}
+                  aria-label={tr("master.bp.removeThisSalesRep")}
                   color="red"
                   onClick={() => remove(index)}
                   variant="subtle"
@@ -108,10 +106,12 @@ export function SalesRepsEditor({
         </Text>
       )}
       <Group>
-        <SecondaryButton onClick={add}>{tr("営業担当を追加")}</SecondaryButton>
+        <SecondaryButton onClick={add}>
+          {tr("master.bp.addASalesRep")}
+        </SecondaryButton>
         {value.length > 1 && (
           <Text c="dimmed" size="xs">
-            {tr("ラジオで選んだ 1 名が主担当（新規書類の既定値）")}
+            {tr("master.bp.theOneSelectedByRadioButton")}
           </Text>
         )}
       </Group>

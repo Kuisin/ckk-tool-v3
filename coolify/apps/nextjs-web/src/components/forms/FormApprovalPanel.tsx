@@ -2,6 +2,7 @@
 
 import { Alert, Stack, Text } from "@mantine/core";
 import { IconInfoCircle } from "@tabler/icons-react";
+import { useTranslations } from "next-intl";
 import {
   saveFormApprovalFlow,
   searchFormApproverOptions,
@@ -9,7 +10,6 @@ import {
 import { ApprovalFlowEditor } from "@/components/master/approval-flows/ApprovalFlowEditor";
 import type { FlowApprover } from "@/components/master/approval-flows/ApproverPermissionBadge";
 import { EditablePanel } from "@/components/ui/EditablePanel";
-import { useTr } from "@/hooks/useTr";
 import type { ApprovalMode } from "@/lib/approval-flow";
 import { FormFlowSummary } from "./FormFlowSummary";
 
@@ -55,34 +55,28 @@ export function FormApprovalPanel({
   permissionLabel: string;
   canManage: boolean;
 }) {
-  const tr = useTr();
+  const tr = useTranslations();
   return (
     <Stack gap="md">
       {!approvalEnabled && (
         <Alert color="yellow" icon={<IconInfoCircle size={16} />}>
-          {tr(
-            "このフォームは承認フローを使わない設定です。ここで段を作っても動きません\n          — 「編集」の基本設定で「承認フローを使う」を有効にしてください。",
-          )}
+          {tr("forms.formApprovalPanel.thisFormIsSetNotTo")}
         </Alert>
       )}
 
       <Alert color="gray" icon={<IconInfoCircle size={16} />} variant="light">
         <Stack gap={4}>
           <Text size="sm">
-            {tr(
-              "承認の段はこのフォーム専用です。ほかのフォームや書類には影響しません。\n            宛先は承認グループか、この段だけの承認者（カスタム・複数可）から選べます。",
-            )}
+            {tr("forms.formApprovalPanel.theApprovalStepsBelongToThis")}
           </Text>
           <Text c="dimmed" size="xs">
-            {tr(
-              "進行中の承認依頼は、依頼した時点の段構成のまま進みます（ここを変えても\n            途中の依頼は変わりません）。",
-            )}
+            {tr("forms.formApprovalPanel.requestsAlreadyInFlightKeepThe")}
           </Text>
           <Text c="dimmed" size="xs">
             承認依頼中の編集:{" "}
             {editableUntilFirstApproval
-              ? tr("最初の承認が下りるまでは回答者が直せます")
-              : tr("依頼した時点で締まります")}
+              ? tr("forms.formApprovalPanel.theRespondentCanFixItUntil")
+              : tr("forms.formApprovalPanel.itClosesTheMomentYouSubmit")}
             。差し戻したときは、設定に関係なく回答者が直せます。
           </Text>
         </Stack>
@@ -108,7 +102,7 @@ export function FormApprovalPanel({
             targetType="form_responses"
           />
         )}
-        title={tr("承認の段")}
+        title={tr("forms.formApprovalPanel.approvalStep")}
         view={
           <FormFlowSummary
             approvalEnabled={approvalEnabled}
@@ -121,7 +115,7 @@ export function FormApprovalPanel({
 
       {!canManage && (
         <Text c="dimmed" size="sm">
-          {tr("承認フローを変更する権限がありません。")}
+          {tr("forms.formApprovalPanel.youDoNotHavePermissionTo")}
         </Text>
       )}
     </Stack>

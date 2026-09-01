@@ -39,11 +39,11 @@ import {
   IconFileTypePdf,
   IconRefresh,
 } from "@tabler/icons-react";
+import { useTranslations } from "next-intl";
 import type { ReactNode } from "react";
 import { useFormat } from "@/components/layout/PreferencesProvider";
 import { GhostButton, SecondaryButton } from "@/components/ui/buttons";
 import { EmptyState } from "@/components/ui/EmptyState";
-import { useTr } from "@/hooks/useTr";
 import { useIsMobile } from "@/hooks/useViewport";
 import { downloadFile } from "@/lib/download";
 
@@ -103,7 +103,7 @@ export function PdfAttachmentPanel({
   onDownload?: () => void;
   onRegenerate?: () => void;
 }) {
-  const tr = useTr();
+  const tr = useTranslations();
   const fmt = useFormat();
   const isMobile = useIsMobile();
 
@@ -151,7 +151,7 @@ export function PdfAttachmentPanel({
                   ? `生成: ${fmt.dateTime(file.generatedAt)}${
                       file.generatedBy ? `（${file.generatedBy}）` : ""
                     }`
-                  : tr("生成: 表示時に生成されます")}
+                  : tr("ui.pdfAttachmentPanel.generatedProducedWhenDisplayed")}
               </Text>
             </Stack>
           </Group>
@@ -164,14 +164,14 @@ export function PdfAttachmentPanel({
                   : onDownload
               }
             >
-              {tr("ダウンロード")}
+              {tr("common.download")}
             </SecondaryButton>
             {onRegenerate && (
               <GhostButton
                 leftSection={<IconRefresh size={14} />}
                 onClick={onRegenerate}
               >
-                {tr("再生成")}
+                {tr("common.regenerate")}
               </GhostButton>
             )}
           </Group>
@@ -187,14 +187,14 @@ export function PdfAttachmentPanel({
               <IconFileTypePdf size={32} />
             </ThemeIcon>
             <Text c="dimmed" size="sm" ta="center">
-              {tr("この端末ではアプリ内に PDF を表示できません")}
+              {tr("ui.pdfAttachmentPanel.thisDeviceCannotShowPdfsInside")}
             </Text>
             <SecondaryButton
               external
               href={previewSrc}
               leftSection={<IconFileTypePdf size={14} />}
             >
-              {tr("PDF を開く")}
+              {tr("common.openThePdf")}
             </SecondaryButton>
           </Stack>
         </Paper>

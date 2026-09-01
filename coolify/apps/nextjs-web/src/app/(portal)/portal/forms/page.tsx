@@ -6,14 +6,14 @@
  */
 
 import { Anchor, Card, Group, Stack, Text, Title } from "@mantine/core";
+import { getTranslations } from "next-intl/server";
 import { listPortalForms } from "@/lib/portal-forms";
 import { requirePortalView } from "@/lib/portal-page";
-import { getTr } from "@/lib/ui-text-server";
 
 export const dynamic = "force-dynamic";
 
 export default async function PortalFormsPage() {
-  const tr = await getTr();
+  const tr = await getTranslations();
   const gate = await requirePortalView();
   if (!gate.ok) return gate.view;
 
@@ -21,10 +21,10 @@ export default async function PortalFormsPage() {
 
   return (
     <Stack gap="md">
-      <Title order={3}>{tr("フォーム")}</Title>
+      <Title order={3}>{tr("common.forms")}</Title>
       {forms.length === 0 ? (
         <Text c="dimmed" size="sm">
-          {tr("共有されているフォームはありません。")}
+          {tr("portal.forms.noFormsAreSharedWithYou")}
         </Text>
       ) : (
         forms.map((f) => (

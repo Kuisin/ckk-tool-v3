@@ -1,9 +1,9 @@
+import { getTranslations } from "next-intl/server";
 import type { ReactNode } from "react";
 import { LookupTablesList } from "@/components/settings/LookupTablesList";
 import { MasterDetailShell } from "@/components/ui/MasterDetailShell";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { getTrialPricingSettings } from "@/lib/system-settings";
-import { getTr } from "@/lib/ui-text-server";
 
 export const dynamic = "force-dynamic";
 
@@ -16,7 +16,7 @@ export default async function LookupsLayout({
 }: {
   children: ReactNode;
 }) {
-  const tr = await getTr();
+  const tr = await getTranslations();
   const settings = await getTrialPricingSettings();
   return (
     <MasterDetailShell
@@ -24,11 +24,11 @@ export default async function LookupsLayout({
       header={
         <PageHeader
           breadcrumbs={[
-            tr("システム"),
-            { label: tr("価格試算計算"), href: ENGINE },
-            tr("ルックアップ表"),
+            tr("common.system"),
+            { label: tr("common.priceEstimateEngine"), href: ENGINE },
+            tr("common.lookupTable"),
           ]}
-          title={tr("ルックアップ表")}
+          title={tr("common.lookupTable")}
         />
       }
       master={<LookupTablesList tables={settings.lookupTables} />}

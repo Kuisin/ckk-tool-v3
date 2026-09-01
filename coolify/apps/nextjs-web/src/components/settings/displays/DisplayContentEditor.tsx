@@ -38,12 +38,12 @@ import {
 } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { useState, useTransition } from "react";
 import { updateDisplay } from "@/app/(dashboard)/settings/kiosk-devices/displays/actions";
 import { SecondaryButton } from "@/components/ui/buttons";
 import { FieldValue } from "@/components/ui/FieldValue";
 import { FormActions, SummaryGrid } from "@/components/ui/shells";
-import { useTr } from "@/hooks/useTr";
 import type { ImageFit } from "@/lib/display-content";
 import { uploadDisplayImage } from "@/lib/display-image-client";
 import {
@@ -84,7 +84,7 @@ function initialOptions(
 }
 
 export function DisplayContentEditor({ display, plantOptions, onDone }: Props) {
-  const tr = useTr();
+  const tr = useTranslations();
   const router = useRouter();
   const [pending, startTransition] = useTransition();
 
@@ -131,13 +131,16 @@ export function DisplayContentEditor({ display, plantOptions, onDone }: Props) {
       const result = await uploadDisplayImage(display.id, file);
       if (!result.ok) {
         notifications.show({
-          title: tr("エラー"),
-          message: result.error ?? tr("画像の保存に失敗しました"),
+          title: tr("common.error2"),
+          message: result.error ?? tr("settings.displays.couldNotSaveTheImage"),
           color: "red",
         });
         return;
       }
-      notifications.show({ message: tr("画像を設定しました"), color: "green" });
+      notifications.show({
+        message: tr("settings.displays.theImageWasSet"),
+        color: "green",
+      });
       router.refresh();
       onDone();
     });
@@ -164,8 +167,8 @@ export function DisplayContentEditor({ display, plantOptions, onDone }: Props) {
       });
       if (!result.ok) {
         notifications.show({
-          title: tr("エラー"),
-          message: result.error ?? tr("保存に失敗しました"),
+          title: tr("common.error2"),
+          message: result.error ?? tr("common.couldNotSave"),
           color: "red",
         });
         return;
@@ -188,13 +191,13 @@ export function DisplayContentEditor({ display, plantOptions, onDone }: Props) {
       });
       if (!result.ok) {
         notifications.show({
-          title: tr("エラー"),
-          message: result.error ?? tr("保存に失敗しました"),
+          title: tr("common.error2"),
+          message: result.error ?? tr("common.couldNotSave"),
           color: "red",
         });
         return;
       }
-      notifications.show({ message: tr("保存しました"), color: "green" });
+      notifications.show({ message: tr("common.saved2"), color: "green" });
       router.refresh();
       onDone();
     });
@@ -205,11 +208,11 @@ export function DisplayContentEditor({ display, plantOptions, onDone }: Props) {
           Paper の中に置かれているので、節ごとに Paper を足すとカードが
           入れ子になり、さらにテンプレートの見本カードで 3 枚重なる。
           見出しだけの軽い節にする。 */}
-      <Section title={tr("映すもの")}>
+      <Section title={tr("common.whatToShow")}>
         <SegmentedControl
           data={[
-            { value: "APP_PAGE", label: tr("アプリの画面") },
-            { value: "IMAGE", label: tr("画像") },
+            { value: "APP_PAGE", label: tr("settings.displays.anAppScreen") },
+            { value: "IMAGE", label: tr("settings.displays.image") },
           ]}
           onChange={(v) => setMode(v as "APP_PAGE" | "IMAGE")}
           value={mode}
@@ -217,7 +220,7 @@ export function DisplayContentEditor({ display, plantOptions, onDone }: Props) {
       </Section>
 
       {mode === "IMAGE" && (
-        <Section title={tr("画像")}>
+        <Section title={tr("settings.displays.image")}>
           <ImageContent
             display={display}
             fit={fit}
@@ -229,7 +232,7 @@ export function DisplayContentEditor({ display, plantOptions, onDone }: Props) {
       )}
 
       {mode === "APP_PAGE" && (
-        <Section title={tr("映す画面")}>
+        <Section title={tr("common.screenToShow")}>
           <TemplatePicker onChange={pickTemplate} value={templateKey} />
         </Section>
       )}
@@ -252,10 +255,8 @@ export function DisplayContentEditor({ display, plantOptions, onDone }: Props) {
       {mode === "APP_PAGE" && (
         <Section title="更新">
           <NumberInput
-            description={tr(
-              "この間隔で内容を取り直します。0 にすると自動更新しません",
-            )}
-            label={tr("更新間隔")}
+            description={tr("settings.displays.itRefetchesAtThisIntervalSet")}
+            label={tr("settings.displays.refreshInterval")}
             max={86_400}
             min={0}
             onChange={(v) => setRefreshSec(Number(v) || 0)}
@@ -272,7 +273,9 @@ export function DisplayContentEditor({ display, plantOptions, onDone }: Props) {
         <FormActions loading={pending} onCancel={onDone} onSave={save} />
       ) : (
         <FormActions>
-          <SecondaryButton onClick={onDone}>{tr("閉じる")}</SecondaryButton>
+          <SecondaryButton onClick={onDone}>
+            {tr("common.close2")}
+          </SecondaryButton>
         </FormActions>
       )}
     </Stack>
@@ -327,7 +330,7 @@ function ImageContent({
   fit: ImageFit;
   onFitChange: (fit: ImageFit) => void;
 }) {
-  const tr = useTr();
+  const tr = useTranslations();
   const current = display.contentType === "IMAGE" ? display.image : null;
   const fitHelp = FIT_CHOICES.find((c) => c.value === fit)?.help;
 
@@ -363,9 +366,7 @@ function ImageContent({
         </Stack>
       ) : (
         <Alert color="gray" variant="light">
-          {tr(
-            "まだ画像が設定されていません。画像を選ぶと、その場でこの画面に映ります。",
-          )}
+          {tr("settings.displays.noImageIsSetYetChoosing")}
         </Alert>
       )}
 
@@ -373,7 +374,7 @@ function ImageContent({
         <Select
           data={FIT_CHOICES.map((c) => ({ value: c.value, label: c.label }))}
           description={fitHelp}
-          label={tr("画面への収め方")}
+          label={tr("settings.displays.howItFitsTheScreen")}
           onChange={(v) => v && onFitChange(v as ImageFit)}
           value={fit}
         />
@@ -386,12 +387,14 @@ function ImageContent({
         >
           {(props) => (
             <SecondaryButton {...props} loading={pending}>
-              {current ? "画像を差し替える" : tr("画像を選ぶ")}
+              {current
+                ? "画像を差し替える"
+                : tr("settings.displays.chooseAnImage")}
             </SecondaryButton>
           )}
         </FileButton>
         <Text c="dimmed" size="xs">
-          {tr("PNG / JPG / WEBP / GIF / SVG・10MB まで")}
+          {tr("settings.displays.pNGJpgWebpGifSvgUp")}
         </Text>
       </Group>
     </Stack>
@@ -429,7 +432,7 @@ export function DisplayContentView({
   display: DisplayDetail;
   plantOptions: Array<{ value: string; label: string }>;
 }) {
-  const tr = useTr();
+  const tr = useTranslations();
   // 画像表示のときはテンプレートではないので、先に分けて出す。
   if (display.contentType === "IMAGE") {
     return display.image ? (
@@ -463,12 +466,12 @@ export function DisplayContentView({
               c.value ===
               ((display.contentConfig as { fit?: unknown } | null)?.fit ??
                 "contain"),
-          )?.label ?? tr("全体を表示")}
+          )?.label ?? tr("settings.displays.showAll")}
         </Text>
       </Stack>
     ) : (
       <Text c="dimmed" size="sm">
-        {tr("画像が設定されていません（元のファイルが見つかりません）。")}
+        {tr("settings.displays.noImageIsSetTheOriginal")}
       </Text>
     );
   }
@@ -485,14 +488,14 @@ export function DisplayContentView({
   if (!template) {
     return (
       <Text c="dimmed" size="sm">
-        {tr("映す画面が選ばれていません。「編集」から選んでください。")}
+        {tr("settings.displays.noScreenIsChosenPickOne")}
       </Text>
     );
   }
 
   return (
     <SummaryGrid cols={2}>
-      <FieldValue label={tr("映す画面")} value={template.label} />
+      <FieldValue label={tr("common.screenToShow")} value={template.label} />
       {template.options.map((spec) => (
         <FieldValue
           key={spec.key}
@@ -501,11 +504,11 @@ export function DisplayContentView({
         />
       ))}
       <FieldValue
-        label={tr("更新間隔")}
+        label={tr("settings.displays.refreshInterval")}
         value={
           display.refreshIntervalSec > 0
             ? `${display.refreshIntervalSec} 秒`
-            : tr("自動更新しない")
+            : tr("settings.displays.doNotRefreshAutomatically")
         }
       />
     </SummaryGrid>

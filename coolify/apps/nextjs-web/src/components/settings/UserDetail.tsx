@@ -21,7 +21,7 @@ import {
 } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
 import { useRouter } from "next/navigation";
-import { useLocale } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { useMemo, useState, useTransition } from "react";
 import { updateUserPlants } from "@/app/(dashboard)/settings/users/actions";
 import { useFormat } from "@/components/layout/PreferencesProvider";
@@ -34,7 +34,6 @@ import {
 import { SaveButton } from "@/components/ui/buttons";
 import { FieldValue } from "@/components/ui/FieldValue";
 import { DetailShell, SummaryGrid } from "@/components/ui/shells";
-import { useTr } from "@/hooks/useTr";
 import { permissionActionLabel, permissionScopeLabel } from "@/lib/enum-labels";
 import { localized } from "@/lib/format";
 import type { LoginAttemptRow, UserDeviceRow } from "@/lib/login-attempts";
@@ -66,7 +65,7 @@ function UserPlantsCard({
   /** true = 直接は変えられず、変更依頼を出して承認を待つ（管理者以外）。 */
   requiresApproval: boolean;
 }) {
-  const tr = useTr();
+  const tr = useTranslations();
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const assignedIds = useMemo(
@@ -108,19 +107,19 @@ function UserPlantsCard({
         // 伝わる。サーバーが返した requested をそのまま文言に反映する。
         notifications.show({
           title: result.data.requested
-            ? tr("承認を依頼しました")
-            : tr("保存しました"),
+            ? tr("settings.userDetail.approvalWasRequested")
+            : tr("common.saved2"),
           message: result.data.requested
-            ? tr("承認されると所属拠点が変更されます")
-            : tr("所属拠点を更新しました"),
+            ? tr("settings.userDetail.theAssignedSitesChangeOnceApproved")
+            : tr("settings.userDetail.theAssignedSitesWereUpdated"),
           color: result.data.requested ? "blue" : "green",
         });
         setReason("");
         router.refresh();
       } else {
         notifications.show({
-          title: tr("エラー"),
-          message: tr(result.error),
+          title: tr("common.error2"),
+          message: result.error,
           color: "red",
         });
       }
@@ -130,10 +129,10 @@ function UserPlantsCard({
   return (
     <Paper p="md" radius="md" withBorder>
       <Title mb="sm" order={5}>
-        {tr("所属拠点")}
+        {tr("settings.userDetail.assignedSites")}
       </Title>
       <Text c="dimmed" mb="sm" size="xs">
-        {tr("「拠点」「地域」スコープの権限が適用される対象拠点")}
+        {tr("settings.userDetail.theSitesThatSiteAndRegion")}
       </Text>
       {canEdit ? (
         <>
@@ -148,12 +147,12 @@ function UserPlantsCard({
           {requiresApproval && (
             <Textarea
               autosize
-              description={tr("承認者がこの内容を見て判断します")}
-              label={tr("変更の理由")}
+              description={tr("common.theApproverDecidesBasedOnWhat")}
+              label={tr("settings.userDetail.reasonForTheChange")}
               minRows={2}
               mt="sm"
               onChange={(e) => setReason(e.currentTarget.value)}
-              placeholder={tr("例: 異動のため所属拠点を変更")}
+              placeholder={tr("settings.userDetail.eGChangingSitesDueTo")}
               value={reason}
               withAsterisk
             />
@@ -171,7 +170,7 @@ function UserPlantsCard({
         </>
       ) : user.plants.length === 0 ? (
         <Text c="dimmed" size="sm">
-          {tr("所属拠点がありません")}
+          {tr("settings.userDetail.thereAreNoAssignedSites")}
         </Text>
       ) : (
         <Group gap="xs">
@@ -204,14 +203,14 @@ export function UserDetail({
   /** この人が Web で使った端末の台帳。 */
   userDevices: UserDeviceRow[];
 }) {
-  const tr = useTr();
+  const tr = useTranslations();
   const fmt = useFormat();
   const locale = useLocale();
   return (
     <DetailShell
       breadcrumbs={[
-        tr("システム"),
-        { label: tr("ユーザー管理"), href: "/settings/users" },
+        tr("common.system"),
+        { label: tr("common.users"), href: "/settings/users" },
       ]}
       createdAt={user.createdAt ? fmt.dateTime(user.createdAt) : undefined}
       status={<UserActiveBadge isActive={user.isActive} />}
@@ -220,24 +219,28 @@ export function UserDetail({
     >
       <SummaryGrid>
         <FieldValue
-          label={tr("ユーザー名")}
+          label={tr("common.username")}
           value={<Text ff="mono">{user.username}</Text>}
         />
         <FieldValue
-          label={tr("区分")}
+          label={tr("common.type")}
           value={<UserGroupBadge group={user.group} />}
         />
-        <FieldValue label={tr("メール")} value={user.email ?? "—"} />
+        <FieldValue label={tr("common.email")} value={user.email ?? "—"} />
         <FieldValue
-          label={tr("ログイン方式")}
-          value={user.hasPassword ? "パスワード + SSO" : tr("SSO のみ")}
+          label={tr("settings.userDetail.loginMethod")}
+          value={
+            user.hasPassword
+              ? "パスワード + SSO"
+              : tr("settings.userDetail.sSOOnly")
+          }
         />
         <FieldValue
-          label={tr("最終ログイン")}
+          label={tr("common.lastLogin")}
           value={user.lastLoginAt ? fmt.dateTime(user.lastLoginAt) : "—"}
         />
         <FieldValue
-          label={tr("社員 ID")}
+          label={tr("settings.userDetail.employeeId")}
           value={
             user.employeeId ? <Text ff="mono">{user.employeeId}</Text> : "—"
           }
@@ -246,22 +249,22 @@ export function UserDetail({
 
       <Paper p="md" radius="md" withBorder>
         <Title mb="sm" order={5}>
-          {tr("ロール割当")}
+          {tr("settings.userDetail.roleAssignment")}
         </Title>
         {user.assignments.length === 0 ? (
           <Text c="dimmed" size="sm">
-            {tr("ロールが割り当てられていません")}
+            {tr("settings.userDetail.noRoleIsAssigned")}
           </Text>
         ) : (
           <Table.ScrollContainer minWidth={480}>
             <Table>
               <Table.Thead>
                 <Table.Tr>
-                  <Table.Th>{tr("ロール")}</Table.Th>
+                  <Table.Th>{tr("common.role")}</Table.Th>
                   <Table.Th>rolename</Table.Th>
-                  <Table.Th>{tr("状態")}</Table.Th>
-                  <Table.Th>{tr("割当日")}</Table.Th>
-                  <Table.Th>{tr("解除日時")}</Table.Th>
+                  <Table.Th>{tr("common.status")}</Table.Th>
+                  <Table.Th>{tr("settings.userDetail.assignedOn")}</Table.Th>
+                  <Table.Th>{tr("settings.userDetail.releasedAt")}</Table.Th>
                 </Table.Tr>
               </Table.Thead>
               <Table.Tbody>
@@ -307,25 +310,25 @@ export function UserDetail({
 
       <Paper p="md" radius="md" withBorder>
         <Title mb="sm" order={5}>
-          {tr("実効権限")}
+          {tr("settings.userDetail.effectivePermissions")}
         </Title>
         <Text c="dimmed" mb="sm" size="xs">
-          {tr(
-            "有効なロールから与えられている許可の一覧（この人ができることは、下の行すべての合計です）",
-          )}
+          {tr("settings.userDetail.thePermissionsGrantedByTheirActive")}
         </Text>
         {user.permissions.length === 0 ? (
           <Text c="dimmed" size="sm">
-            {tr("権限がありません")}
+            {tr("settings.userDetail.youDoNotHavePermission")}
           </Text>
         ) : (
           <Table.ScrollContainer minWidth={420}>
             <Table>
               <Table.Thead>
                 <Table.Tr>
-                  <Table.Th>{tr("権限コード")}</Table.Th>
-                  <Table.Th>{tr("アクション")}</Table.Th>
-                  <Table.Th>{tr("スコープ")}</Table.Th>
+                  <Table.Th>
+                    {tr("settings.userDetail.permissionCode")}
+                  </Table.Th>
+                  <Table.Th>{tr("settings.userDetail.action")}</Table.Th>
+                  <Table.Th>{tr("common.scope")}</Table.Th>
                 </Table.Tr>
               </Table.Thead>
               <Table.Tbody>
@@ -375,10 +378,10 @@ export function UserDetail({
       {/* ログイン履歴 — 成功・失敗の両方。失敗が続いていれば異常に気づける。 */}
       <Paper p="md" radius="md" withBorder>
         <Title mb="sm" order={5}>
-          {tr("ログイン履歴（直近 30 日）")}
+          {tr("settings.userDetail.loginHistoryLast30Days")}
         </Title>
         <LoginAttemptList
-          emptyMessage={tr("この期間のログイン記録はありません")}
+          emptyMessage={tr("settings.userDetail.thereAreNoLoginRecordsIn")}
           rows={loginAttempts}
         />
       </Paper>
@@ -386,7 +389,7 @@ export function UserDetail({
       {/* 登録端末 — 「いつもの端末か」の目安。端末の同定ではない。 */}
       <Paper p="md" radius="md" withBorder>
         <Title mb="sm" order={5}>
-          {tr("登録端末（Web）")}
+          {tr("settings.userDetail.registeredDevicesWeb")}
         </Title>
         <UserDeviceList devices={userDevices} />
       </Paper>
