@@ -115,6 +115,14 @@ export async function renderPdf(
     const svg = await readFile(path.join(TEMPLATES_DIR, asset), "utf8");
     form.append("files", new Blob([svg], { type: "image/svg+xml" }), asset);
   }
+  // Upload the self-hosted Noto Sans JP font files so `@font-face { url(...) }`
+  // in base.css / kiosk-cards.html resolves — アプリ本体（next/font）と同じ
+  // 実体を使うため。allow-list は file:///tmp/.* のみなので同梱以外の手段は無い。
+  for (const asset of await readdir(TEMPLATES_DIR)) {
+    if (!asset.toLowerCase().endsWith(".woff2")) continue;
+    const font = await readFile(path.join(TEMPLATES_DIR, asset));
+    form.append("files", new Blob([font], { type: "font/woff2" }), asset);
+  }
   // A4 (210mm × 297mm); Gotenberg otherwise defaults to US Letter.
   form.append("paperWidth", options.paperWidth ?? "210mm");
   form.append("paperHeight", options.paperHeight ?? "297mm");

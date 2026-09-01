@@ -13,8 +13,44 @@
   padding: 0;
 }
 
+/*
+ * アプリ本体（layout.tsx の next/font）と**同じ実体**を埋め込む。名前を
+ * 揃えるだけでは Gotenberg（Linux コンテナ）に "Noto Sans JP" という名前の
+ * フォントは存在しない（fonts-noto-cjk が入れるのは別名の "Noto Sans CJK
+ * JP"）ため、環境ごとに違う字形になってしまう。同じ Google Fonts 配布物
+ * （Noto Sans JP, OFL-1.1 — NotoSansJP-OFL.txt）から静的 4 ウェイトを取得し
+ * woff2 化したものをここに同梱し、lib/pdf.ts がアップロードする
+ * （SVG と同じ仕組み。allow-list は file:///tmp/.* のみなので同梱以外の
+ * 手段＝外部フォント CDN 参照は使えない）。
+ */
+@font-face {
+  font-family: 'Noto Sans JP';
+  font-style: normal;
+  font-weight: 400;
+  src: url('NotoSansJP-Regular.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Noto Sans JP';
+  font-style: normal;
+  font-weight: 500;
+  src: url('NotoSansJP-Medium.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Noto Sans JP';
+  font-style: normal;
+  font-weight: 600;
+  src: url('NotoSansJP-SemiBold.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Noto Sans JP';
+  font-style: normal;
+  font-weight: 700;
+  src: url('NotoSansJP-Bold.woff2') format('woff2');
+}
+
 body {
-  font-family: 'Noto Sans JP', 'Hiragino Kaku Gothic ProN', 'Yu Gothic', sans-serif;
+  font-family: 'Noto Sans JP', 'Noto Sans CJK JP', system-ui, -apple-system,
+    sans-serif;
   font-size: 10pt;
   color: #1a1a1a;
   line-height: 1.5;
