@@ -16,6 +16,13 @@
  * 「幅が狭いときの見た目」ではなく**テレビでの見た目**が出る。
  * （CSS zoom だと中の viewport 幅ごと変わるため、ここでは使えない。）
  *
+ * ★ **倍率は JS で測って渡す。** 最初 `scale(calc(100cqw / 1280))` と書いていたが、
+ *   これは無効な CSS で（`scale()` は単位なしの数値しか取らない。長さ ÷ 数値は
+ *   長さのまま）、宣言ごと捨てられて iframe が原寸のまま描かれていた。枠は
+ *   overflow:hidden なので、症状は「拡大されすぎて左上しか見えない」になる。
+ *   CSS では書けないので ResizeObserver で幅を測る（design.md §20.3 —
+ *   入れ物の寸法が変わったときに測り直す）。
+ *
  * キオスクの URL が分からない環境では見本を出さず、名前と説明だけにする
  * （選べなくなるほうが困る）。
  */
@@ -28,6 +35,7 @@ import {
   Text,
   UnstyledButton,
 } from "@mantine/core";
+import { useEffect, useRef, useState } from "react";
 import { DISPLAY_TEMPLATES } from "@/lib/display-templates";
 import { kioskOrigin } from "@/lib/kiosk-origin";
 
@@ -100,13 +108,28 @@ function Thumbnail({
   templateKey: string;
   label: string;
 }) {
+  const boxRef = useRef<HTMLDivElement | null>(null);
+  // 0 = まだ測れていない。測る前に描くと、一瞬だけ原寸の左上が見えてしまう。
+  const [scale, setScale] = useState(0);
+
+  useEffect(() => {
+    const el = boxRef.current;
+    if (!el) return;
+    const observer = new ResizeObserver((entries) => {
+      const width = entries[0]?.contentRect.width ?? 0;
+      if (width > 0) setScale(width / FRAME_W);
+    });
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
+
   return (
     <Box
       bg="var(--mantine-color-default-hover)"
+      ref={boxRef}
       style={{
         aspectRatio: "16 / 9",
         borderRadius: "var(--mantine-radius-sm)",
-        containerType: "inline-size",
         overflow: "hidden",
         position: "relative",
       }}
@@ -124,8 +147,10 @@ function Thumbnail({
             pointerEvents: "none",
             position: "absolute",
             top: 0,
-            transform: `scale(calc(100cqw / ${FRAME_W}))`,
+            transform: `scale(${scale})`,
             transformOrigin: "top left",
+            // 測れるまでは出さない（原寸のちらつきを見せない）
+            visibility: scale > 0 ? "visible" : "hidden",
             width: FRAME_W,
           }}
           title={`${label}の見本`}

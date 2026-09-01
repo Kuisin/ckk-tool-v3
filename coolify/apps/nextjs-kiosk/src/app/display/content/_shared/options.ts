@@ -21,7 +21,14 @@ import {
 
 export type BoardContext = {
   options: DisplayTemplateOptions;
-  /** 設定の拠点 → 無ければこのディスプレイの拠点。 */
+  /**
+   * 絞り込む拠点。**null = 全拠点**。
+   *
+   * 以前はここでディスプレイ自身の拠点へ落としていたが、「拠点で絞る」を
+   * 空にした人が求めているのは全社の状況で、その画面が置かれている拠点では
+   * ない。空欄が「全部」ではなく「ここだけ」になっていると、絞っていない
+   * つもりの画面に一部しか出ず、しかも理由が画面から読み取れない。
+   */
   plantId: number | null;
 };
 
@@ -60,8 +67,8 @@ export async function boardContext(
 
   return {
     options,
-    // 設定で拠点を決めていない画面でも、その端末の拠点ぶんは自然に絞れる
-    plantId: optionPlantId(options) ?? auth.display.plantId ?? null,
+    // 未選択は全拠点。ディスプレイの拠点へは落とさない（上の注記）。
+    plantId: optionPlantId(options),
   };
 }
 

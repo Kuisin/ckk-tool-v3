@@ -54,7 +54,17 @@ export interface DisplayRow {
   createdAt: Date;
 }
 
+/** IMAGE 表示のときに映している画像（管理画面のプレビュー用）。 */
+export interface DisplayImageInfo {
+  fileId: string;
+  filename: string;
+  /** /api/admin/files/raw?key=… で引くためのキー。 */
+  storageKey: string;
+}
+
 export interface DisplayDetail extends DisplayRow {
+  /** contentType が IMAGE のときだけ入る。ファイルが消えていれば null。 */
+  image: DisplayImageInfo | null;
   lastIpAddress: string | null;
   userAgent: string | null;
   deviceTokenExpiresAt: Date | null;
@@ -180,7 +190,30 @@ export async function getDisplayDetail(
   });
   if (!r) return null;
   const name = jsonName(r.name);
+
+  // 画像表示のときだけ、映している画像の実体を引く（プレビュー用）。
+  // 参照先が消えていることはありうる（ファイル管理から消された等）ので、
+  // 見つからなければ null のままにして「未設定」として扱う。
+  let image: DisplayImageInfo | null = null;
+  if (r.contentType === "IMAGE") {
+    const fileId = (r.contentConfig as { fileId?: unknown } | null)?.fileId;
+    if (typeof fileId === "string") {
+      const file = await prisma.file.findUnique({
+        where: { id: fileId },
+        select: { id: true, filename: true, storageKey: true },
+      });
+      if (file) {
+        image = {
+          fileId: file.id,
+          filename: file.filename,
+          storageKey: file.storageKey,
+        };
+      }
+    }
+  }
+
   return {
+    image,
     id: r.id,
     name: name.text,
     nameJson: name.json,
