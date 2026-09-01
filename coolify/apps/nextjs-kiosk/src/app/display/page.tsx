@@ -3,6 +3,7 @@ import { displayRegistrationBlocked, machineHint } from "@/lib/display-core";
 import { DisplayBlocked } from "./DisplayBlocked";
 import { DisplayRenderer } from "./DisplayRenderer";
 import { DisplaySetup } from "./DisplaySetup";
+import { ScreenSlotGuard } from "./ScreenSlotGuard";
 
 /**
  * /display — Raspberry Pi が開く唯一の URL。
@@ -13,6 +14,9 @@ import { DisplaySetup } from "./DisplaySetup";
  *   停止・失効     → **理由だけを出す。リンクコードは出さない** — 出すと
  *                    その場で登録し直せてしまい、管理者が止めたはずの画面が
  *                    復活し、同じ実機のプロファイルが二重にできる
+ *
+ * `?screen=` が無いときは、同じブラウザで開いている窓を見て**自分で番号を取る**
+ * （ScreenSlotGuard）。普通のパソコンで窓を 2 つ開くだけで多画面にできる。
  *
  * Pi 側には設定が無いので、**この判断はすべてサーバーが持つ**。
  * 失効させると次の再読込でペアリング画面に戻る（現場に行かなくてよい）。
@@ -39,6 +43,10 @@ export default async function DisplayPage({
   // 認証は**この窓の画面番号**で引く（窓ごとに別の登録になる）
   const auth = await getDisplay(hint.screenIndex);
 
+  // `?screen=` が無い窓だけ、自分で番号を取りに行く（2 枚目以降は開き直す）。
+  // 明示されているときは何もしない = Pi や固定運用の指定を勝手に変えない。
+  const slotGuard = <ScreenSlotGuard explicitScreen={hint.screenIndex} />;
+
   if (!auth.ok) {
     // 止められている画面は登録し直させない（上の注記）。
     if (displayRegistrationBlocked(auth.reason)) {
@@ -47,22 +55,28 @@ export default async function DisplayPage({
     // それ以外（新品・Cookie 消失・期限切れ）は理由を出してからペアリングへ。
     // 現場の人が「壊れた」ではなく「取り消されたのだ」と分かるようにする。
     return (
-      <DisplaySetup
-        hint={hint}
-        reason={auth.reason}
-        screenTotal={screenTotal}
-      />
+      <>
+        {slotGuard}
+        <DisplaySetup
+          hint={hint}
+          reason={auth.reason}
+          screenTotal={screenTotal}
+        />
+      </>
     );
   }
 
   return (
-    <DisplayRenderer
-      displayId={auth.display.id}
-      displayName={auth.display.name}
-      hint={hint}
-      location={auth.display.location}
-      scalePercent={auth.display.scalePercent}
-      screenTotal={screenTotal}
-    />
+    <>
+      {slotGuard}
+      <DisplayRenderer
+        displayId={auth.display.id}
+        displayName={auth.display.name}
+        hint={hint}
+        location={auth.display.location}
+        scalePercent={auth.display.scalePercent}
+        screenTotal={screenTotal}
+      />
+    </>
   );
 }

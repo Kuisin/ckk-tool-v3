@@ -169,8 +169,16 @@ screen, or while you wait for a Pi to arrive.
 
 ### Two screens from one PC
 
-**Number each window.** Different numbers register as different displays, so each
-can show something different.
+**Just open the same URL in a second window.** It becomes screen 2 on its own and
+can be registered as a separate display — no URL editing needed.
+
+> ⚠️ What is detected is **the order windows were opened**, not which monitor each
+> is on. To pin "the left monitor is screen 1", give the numbers explicitly below.
+
+#### Pinning the numbers
+
+Different numbers register as different displays, so each can show something
+different.
 
 | Window | URL to open |
 |---|---|
