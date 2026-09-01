@@ -9,9 +9,10 @@
  * 詳細ページへリンクする。
  */
 
-import { Anchor, Badge, Code, Group, Paper, Stack, Text } from "@mantine/core";
+import { Anchor, Badge, Group, Paper, Stack, Text } from "@mantine/core";
 import { IconExternalLink, IconUser } from "@tabler/icons-react";
 import Link from "next/link";
+import { AuditChangeTable } from "@/components/ui/AuditChangeTable";
 import { SecondaryButton } from "@/components/ui/buttons";
 import { FieldValue } from "@/components/ui/FieldValue";
 import { DetailShell, SummaryGrid } from "@/components/ui/shells";
@@ -19,25 +20,6 @@ import type { ActivityDetailEntry } from "@/lib/audit";
 import { auditRecordLink } from "@/lib/audit-links";
 
 const BASE_PATH = "/settings/activity";
-
-function JsonBlock({ title, value }: { title: string; value: unknown }) {
-  return (
-    <Paper p="md" radius="md" withBorder>
-      <Text c="dimmed" fw={600} mb="xs" size="xs">
-        {title}
-      </Text>
-      {value == null ? (
-        <Text c="dimmed" size="sm">
-          なし
-        </Text>
-      ) : (
-        <Code block style={{ whiteSpace: "pre-wrap", wordBreak: "break-all" }}>
-          {JSON.stringify(value, null, 2)}
-        </Code>
-      )}
-    </Paper>
-  );
-}
 
 export function ActivityLogDetail({ entry }: { entry: ActivityDetailEntry }) {
   const link = auditRecordLink(entry.tableName, entry.recordId);
@@ -125,8 +107,20 @@ export function ActivityLogDetail({ entry }: { entry: ActivityDetailEntry }) {
       </Paper>
 
       <Stack gap="md">
-        <JsonBlock title="変更前（before）" value={entry.beforeData} />
-        <JsonBlock title="変更後（after）" value={entry.afterData} />
+        {/* 何が変わったかを**列名と値で**出す。生の JSON だけだと、
+            読む人が JSON を解読する作業になっていた。元データは
+            この中の「生データを表示」で見られる。 */}
+        <Paper p="md" radius="md" withBorder>
+          <Text c="dimmed" fw={600} mb="xs" size="xs">
+            変更内容
+          </Text>
+          <AuditChangeTable
+            action={entry.action}
+            after={entry.afterData}
+            before={entry.beforeData}
+            tableName={entry.tableName}
+          />
+        </Paper>
       </Stack>
     </DetailShell>
   );
