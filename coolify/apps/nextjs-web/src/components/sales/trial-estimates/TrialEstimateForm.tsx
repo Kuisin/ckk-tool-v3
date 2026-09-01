@@ -236,7 +236,7 @@ export function TrialEstimateForm({
       if (!res.ok) {
         notifications.show({
           title: tr("エラー"),
-          message: res.error,
+          message: tr(res.error),
           color: "red",
         });
         return;
@@ -344,7 +344,7 @@ export function TrialEstimateForm({
       } else {
         notifications.show({
           title: tr("エラー"),
-          message: res.error,
+          message: tr(res.error),
           color: "red",
         });
       }

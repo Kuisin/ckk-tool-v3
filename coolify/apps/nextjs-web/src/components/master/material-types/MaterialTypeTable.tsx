@@ -126,7 +126,7 @@ export function MaterialTypeTable({ rows }: { rows: MaterialTypeRow[] }) {
       } else {
         notifications.show({
           title: tr("エラー"),
-          message: result.error,
+          message: tr(result.error),
           color: "red",
         });
       }
@@ -151,7 +151,7 @@ export function MaterialTypeTable({ rows }: { rows: MaterialTypeRow[] }) {
           } else {
             notifications.show({
               title: tr("エラー"),
-              message: result.error,
+              message: tr(result.error),
               color: "red",
             });
           }

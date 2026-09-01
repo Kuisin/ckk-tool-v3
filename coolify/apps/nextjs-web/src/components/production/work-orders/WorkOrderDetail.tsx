@@ -181,7 +181,7 @@ export function WorkOrderDetail({
       } else {
         notifications.show({
           title: tr("エラー"),
-          message: result.error,
+          message: tr(result.error),
           color: "red",
         });
       }
@@ -206,7 +206,7 @@ export function WorkOrderDetail({
           } else {
             notifications.show({
               title: tr("エラー"),
-              message: result.error,
+              message: tr(result.error),
               color: "red",
             });
           }
@@ -439,7 +439,7 @@ export function WorkOrderDetail({
                   } else {
                     notifications.show({
                       title: tr("エラー"),
-                      message: result.error,
+                      message: tr(result.error),
                       color: "red",
                     });
                   }

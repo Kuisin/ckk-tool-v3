@@ -62,7 +62,7 @@ export function DeletePlantModal({
           } else {
             notifications.show({
               title: tr("エラー"),
-              message: result.error,
+              message: tr(result.error),
               color: "red",
             });
           }
@@ -118,7 +118,7 @@ export function TogglePlantActiveModal({
           } else {
             notifications.show({
               title: tr("エラー"),
-              message: result.error,
+              message: tr(result.error),
               color: "red",
             });
           }

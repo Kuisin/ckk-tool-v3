@@ -68,7 +68,7 @@ export function FolderGrantsModal({
       } else {
         notifications.show({
           title: tr("読み込み失敗"),
-          message: res.error,
+          message: tr(res.error),
           color: "red",
         });
       }
@@ -87,7 +87,7 @@ export function FolderGrantsModal({
       if (!res.ok) {
         notifications.show({
           title: tr("保存失敗"),
-          message: res.error,
+          message: tr(res.error),
           color: "red",
         });
         return;
@@ -114,7 +114,7 @@ export function FolderGrantsModal({
           if (!res.ok) {
             notifications.show({
               title: tr("削除失敗"),
-              message: res.error,
+              message: tr(res.error),
               color: "red",
             });
             return;

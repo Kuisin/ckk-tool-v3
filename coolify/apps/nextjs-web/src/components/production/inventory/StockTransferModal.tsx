@@ -119,7 +119,7 @@ export function StockTransferModal({
       if (!res.ok) {
         notifications.show({
           title: tr("在庫移動に失敗しました"),
-          message: res.error,
+          message: tr(res.error),
           color: "red",
         });
         return;

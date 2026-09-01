@@ -70,7 +70,7 @@ export function AppFlagsTable({ rows }: { rows: AppFlagRow[] }) {
         });
         notifications.show({
           title: tr("エラー"),
-          message: result.error,
+          message: tr(result.error),
           color: "red",
         });
       }

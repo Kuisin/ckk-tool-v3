@@ -362,7 +362,7 @@ export function OrderAcceptanceDetail({
       } else {
         notifications.show({
           title: tr("エラー"),
-          message: result.error,
+          message: tr(result.error),
           color: "red",
         });
       }
@@ -384,7 +384,7 @@ export function OrderAcceptanceDetail({
       } else {
         notifications.show({
           title: tr("エラー"),
-          message: result.error,
+          message: tr(result.error),
           color: "red",
         });
       }
@@ -1229,7 +1229,7 @@ export function OrderAcceptanceDetail({
             } else {
               notifications.show({
                 title: tr("エラー"),
-                message: result.error,
+                message: tr(result.error),
                 color: "red",
               });
             }
@@ -1375,7 +1375,7 @@ function DraftEditor({
       } else {
         notifications.show({
           title: tr("エラー"),
-          message: result.error,
+          message: tr(result.error),
           color: "red",
         });
       }

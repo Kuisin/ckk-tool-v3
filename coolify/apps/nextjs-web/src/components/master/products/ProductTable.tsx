@@ -142,7 +142,7 @@ export function ProductTable({ rows }: { rows: ProductRow[] }) {
       } else {
         notifications.show({
           title: tr("エラー"),
-          message: result.error,
+          message: tr(result.error),
           color: "red",
         });
       }
@@ -167,7 +167,7 @@ export function ProductTable({ rows }: { rows: ProductRow[] }) {
           } else {
             notifications.show({
               title: tr("エラー"),
-              message: result.error,
+              message: tr(result.error),
               color: "red",
             });
           }

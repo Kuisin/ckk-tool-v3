@@ -80,7 +80,7 @@ export function DeleteApprovalGroupModal({
           } else {
             notifications.show({
               title: tr("エラー"),
-              message: result.error,
+              message: tr(result.error),
               color: "red",
             });
           }
@@ -136,7 +136,7 @@ export function ToggleApprovalGroupActiveModal({
           } else {
             notifications.show({
               title: tr("エラー"),
-              message: result.error,
+              message: tr(result.error),
               color: "red",
             });
           }
@@ -351,7 +351,7 @@ export function AddApprovalGroupMemberModal({
           } else {
             notifications.show({
               title: tr("エラー"),
-              message: result.error,
+              message: tr(result.error),
               color: "red",
             });
           }
@@ -450,7 +450,7 @@ export function EditMemberPeriodModal({
           } else {
             notifications.show({
               title: tr("エラー"),
-              message: result.error,
+              message: tr(result.error),
               color: "red",
             });
           }
@@ -555,7 +555,7 @@ export function AddApprovalDelegateModal({
           } else {
             notifications.show({
               title: tr("エラー"),
-              message: result.error,
+              message: tr(result.error),
               color: "red",
             });
           }
@@ -667,7 +667,7 @@ export function RemoveApprovalDelegateModal({
           } else {
             notifications.show({
               title: tr("エラー"),
-              message: result.error,
+              message: tr(result.error),
               color: "red",
             });
           }
@@ -716,7 +716,7 @@ export function RemoveApprovalGroupMemberModal({
           } else {
             notifications.show({
               title: tr("エラー"),
-              message: result.error,
+              message: tr(result.error),
               color: "red",
             });
           }

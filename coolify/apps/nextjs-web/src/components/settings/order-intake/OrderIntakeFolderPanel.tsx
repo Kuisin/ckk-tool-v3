@@ -206,7 +206,7 @@ export function OrderIntakeFolderPanel({
               ),
               color: "green",
             }
-          : { title: tr("エラー"), message: result.error, color: "red" },
+          : { title: tr("エラー"), message: tr(result.error), color: "red" },
       );
       router.refresh();
     });
@@ -222,7 +222,7 @@ export function OrderIntakeFolderPanel({
               message: tr("採番済みの注文請書はそのまま、抽出だけやり直します"),
               color: "green",
             }
-          : { title: tr("エラー"), message: result.error, color: "red" },
+          : { title: tr("エラー"), message: tr(result.error), color: "red" },
       );
       router.refresh();
     });

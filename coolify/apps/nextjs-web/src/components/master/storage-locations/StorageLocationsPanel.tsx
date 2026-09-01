@@ -118,7 +118,7 @@ export function StorageLocationsPanel({
           if (!res.ok) {
             notifications.show({
               title: tr("削除失敗"),
-              message: res.error,
+              message: tr(res.error),
               color: "red",
             });
             return;
@@ -145,7 +145,7 @@ export function StorageLocationsPanel({
           if (!res.ok) {
             notifications.show({
               title: tr("削除失敗"),
-              message: res.error,
+              message: tr(res.error),
               color: "red",
             });
             return;
@@ -356,7 +356,7 @@ function ShelfModal({
       if (!res.ok) {
         notifications.show({
           title: tr("保存失敗"),
-          message: res.error,
+          message: tr(res.error),
           color: "red",
         });
         return;

@@ -92,7 +92,7 @@ export function EditDefectTypeModal({
       } else {
         notifications.show({
           title: tr("エラー"),
-          message: result.error,
+          message: tr(result.error),
           color: "red",
         });
       }
@@ -182,7 +182,7 @@ export function DeleteDefectTypeModal({
           } else {
             notifications.show({
               title: tr("エラー"),
-              message: result.error,
+              message: tr(result.error),
               color: "red",
             });
           }
@@ -238,7 +238,7 @@ export function ToggleDefectTypeActiveModal({
           } else {
             notifications.show({
               title: tr("エラー"),
-              message: result.error,
+              message: tr(result.error),
               color: "red",
             });
           }

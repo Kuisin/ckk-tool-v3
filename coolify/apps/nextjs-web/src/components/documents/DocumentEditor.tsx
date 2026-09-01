@@ -56,7 +56,7 @@ export function DocumentEditor({
         } else {
           notifications.show({
             title: tr("エラー"),
-            message: r.error,
+            message: tr(r.error),
             color: "red",
           });
         }
@@ -69,7 +69,7 @@ export function DocumentEditor({
       } else {
         notifications.show({
           title: tr("エラー"),
-          message: r.error,
+          message: tr(r.error),
           color: "red",
         });
       }
@@ -88,7 +88,7 @@ export function DocumentEditor({
       } else {
         notifications.show({
           title: tr("エラー"),
-          message: r.error,
+          message: tr(r.error),
           color: "red",
         });
       }

@@ -55,9 +55,22 @@ export function hasTranslation(ja: string, locale: Exclude<Locale, "ja">) {
   return Object.hasOwn(DICTIONARIES[locale], ja);
 }
 
-export type Translate = (ja: string) => string;
+/**
+ * locale を束ねた翻訳関数。
+ *
+ * `undefined` / `null` をそのまま通すのは、**Server Action の
+ * `ActionResult.error` をそのまま包めるようにする**ため。エラー文言は
+ * サーバー側（`lib/*.ts` や `actions.ts`）で日本語のまま作られ、画面で
+ * 表示するときに訳す — ja を鍵にしているからできる「後から訳す」形で、
+ * これのおかげでサーバー側の全関数に locale を引き回さずに済む。
+ */
+export interface Translate {
+  (ja: string): string;
+  (ja: string | null | undefined): string | undefined;
+}
 
 /** `translate` を locale で束ねた関数を作る。 */
 export function createTranslate(locale: Locale): Translate {
-  return (ja: string) => translate(ja, locale);
+  return ((ja: string | null | undefined) =>
+    ja == null ? undefined : translate(ja, locale)) as Translate;
 }

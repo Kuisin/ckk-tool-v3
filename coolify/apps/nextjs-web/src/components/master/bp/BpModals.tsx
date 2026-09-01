@@ -72,7 +72,7 @@ export function DeleteBpModal({
           } else {
             notifications.show({
               title: tr("エラー"),
-              message: result.error,
+              message: tr(result.error),
               color: "red",
             });
           }
@@ -131,7 +131,7 @@ export function ToggleBpActiveModal({
           } else {
             notifications.show({
               title: tr("エラー"),
-              message: result.error,
+              message: tr(result.error),
               color: "red",
             });
           }
@@ -200,7 +200,7 @@ export function AddContactModal({
       } else {
         notifications.show({
           title: tr("エラー"),
-          message: result.error,
+          message: tr(result.error),
           color: "red",
         });
       }

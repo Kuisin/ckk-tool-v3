@@ -86,7 +86,7 @@ export function FormImport() {
         setPreview(null);
         notifications.show({
           title: tr("読み取れません"),
-          message: result.error,
+          message: tr(result.error),
           color: "red",
         });
       }
@@ -107,7 +107,7 @@ export function FormImport() {
       } else {
         notifications.show({
           title: tr("エラー"),
-          message: result.error,
+          message: tr(result.error),
           color: "red",
         });
       }

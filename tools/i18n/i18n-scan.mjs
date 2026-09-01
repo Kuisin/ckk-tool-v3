@@ -79,6 +79,26 @@ if (has("--list")) {
   process.exit(0);
 }
 
+/**
+ * 残っている日本語のうち、**辞書に載っている**ものの数。
+ *
+ * ja を鍵にしているので、`lib/*.ts` や `actions.ts` が日本語の文言を返しても、
+ * それを表示する画面が `tr()` を通せば訳される（「後から訳す」）。
+ * つまりソースに日本語が残っていること自体は未翻訳を意味しない。
+ * 数を素直に出すと実態より悪く見えるので、内訳を添える。
+ */
+function dictionaryCoverage(findings) {
+  const dict = {};
+  const dataDir = path.join(HERE, "data");
+  Object.assign(dict, JSON.parse(fs.readFileSync(path.join(dataDir, "seed.json"), "utf8")));
+  for (const f of fs.readdirSync(path.join(dataDir, "translations")))
+    if (f.endsWith(".json"))
+      Object.assign(dict, JSON.parse(fs.readFileSync(path.join(dataDir, "translations", f), "utf8")));
+  let known = 0;
+  for (const f of findings) if (Object.hasOwn(dict, f.text)) known++;
+  return known;
+}
+
 const total = Object.values(results).reduce((a, b) => a + b, 0);
 
 if (has("--update-baseline")) {
@@ -92,6 +112,13 @@ for (const [app, count] of Object.entries(results)) {
   console.log(`${app.padEnd(6)} untranslated: ${count}`);
 }
 console.log(`${"total".padEnd(6)} untranslated: ${total}`);
+if (!onlyApp && !areaFilter) {
+  const known = dictionaryCoverage(allFindings);
+  console.log(
+    `\n  うち辞書にある語: ${known}（表示側が tr() を通せば訳される）`,
+  );
+  console.log(`  辞書にも無い語:   ${total - known}`);
+}
 
 if (!fs.existsSync(BASELINE)) {
   console.log("\nno baseline yet — run with --update-baseline to create one");

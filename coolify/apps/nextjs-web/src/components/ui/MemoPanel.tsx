@@ -59,6 +59,7 @@ import { UserAvatar } from "@/components/ui/UserAvatar";
 import { useTr } from "@/hooks/useTr";
 import type { MemoView } from "@/lib/document-memos";
 import { emptyDoc, isEmptyDoc, type RichTextDoc } from "@/lib/rich-text-core";
+import type { Translate } from "@/lib/ui-text";
 import {
   deleteMemoAction,
   saveMemoAction,
@@ -87,14 +88,15 @@ export function MemoPanel(props: MemoPanelProps) {
 
 /** 失敗は赤トースト。成功したら true。 */
 function notifyResult(
+  tr: Translate,
   result: { ok: true } | { ok: false; error: string },
   successTitle: string,
   successMessage: string,
 ): boolean {
   if (!result.ok) {
     notifications.show({
-      title: "エラー",
-      message: result.error,
+      title: tr("エラー"),
+      message: tr(result.error),
       color: "red",
     });
     return false;
@@ -128,7 +130,9 @@ function MemoBlock({ ownerType, ownerId, memos }: MemoPanelProps) {
         ownerId,
         content: draft,
       });
-      if (!notifyResult(result, tr("保存しました"), tr("メモを更新しました")))
+      if (
+        !notifyResult(tr, result, tr("保存しました"), tr("メモを更新しました"))
+      )
         return;
       setEditing(false);
       router.refresh();
@@ -250,7 +254,12 @@ function CommentThread({ ownerType, ownerId, memos }: MemoPanelProps) {
         content: draft,
       });
       if (
-        !notifyResult(result, tr("投稿しました"), tr("コメントを追加しました"))
+        !notifyResult(
+          tr,
+          result,
+          tr("投稿しました"),
+          tr("コメントを追加しました"),
+        )
       )
         return;
       setDraft(emptyDoc());
@@ -268,7 +277,12 @@ function CommentThread({ ownerType, ownerId, memos }: MemoPanelProps) {
         content: editDraft,
       });
       if (
-        !notifyResult(result, tr("保存しました"), tr("コメントを更新しました"))
+        !notifyResult(
+          tr,
+          result,
+          tr("保存しました"),
+          tr("コメントを更新しました"),
+        )
       )
         return;
       setEditingId(null);
@@ -282,6 +296,7 @@ function CommentThread({ ownerType, ownerId, memos }: MemoPanelProps) {
       const result = await setMemoArchivedAction(memo.id, archiving);
       if (
         !notifyResult(
+          tr,
           result,
           archiving ? "アーカイブしました" : tr("復元しました"),
           archiving
@@ -309,6 +324,7 @@ function CommentThread({ ownerType, ownerId, memos }: MemoPanelProps) {
           const result = await deleteMemoAction(id);
           if (
             !notifyResult(
+              tr,
               result,
               tr("削除しました"),
               tr("コメントを削除しました"),

@@ -109,7 +109,7 @@ export function CriteriaListPanel({
         setCriteria(prev);
         notifications.show({
           title: tr("エラー"),
-          message: res.error,
+          message: tr(res.error),
           color: "red",
         });
       } else {

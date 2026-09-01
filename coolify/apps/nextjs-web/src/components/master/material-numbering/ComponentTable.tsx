@@ -78,7 +78,7 @@ export function ComponentTable({
           } else {
             notifications.show({
               title: tr("エラー"),
-              message: res.error,
+              message: tr(res.error),
               color: "red",
             });
           }

@@ -73,7 +73,7 @@ export function RevisionsView({
           } else {
             notifications.show({
               title: tr("エラー"),
-              message: r.error,
+              message: tr(r.error),
               color: "red",
             });
           }

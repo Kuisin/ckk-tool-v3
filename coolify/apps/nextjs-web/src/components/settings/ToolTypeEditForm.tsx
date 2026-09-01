@@ -118,7 +118,7 @@ export function ToolTypeEditForm({
       } else {
         notifications.show({
           title: tr("エラー"),
-          message: res.error,
+          message: tr(res.error),
           color: "red",
         });
       }
@@ -144,7 +144,7 @@ export function ToolTypeEditForm({
           } else {
             notifications.show({
               title: tr("エラー"),
-              message: res.error,
+              message: tr(res.error),
               color: "red",
             });
           }

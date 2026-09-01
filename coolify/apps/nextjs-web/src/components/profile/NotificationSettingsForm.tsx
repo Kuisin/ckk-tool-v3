@@ -204,7 +204,7 @@ export function NotificationSettingsForm({
       } else {
         notifications.show({
           title: tr("エラー"),
-          message: res.error,
+          message: tr(res.error),
           color: "red",
         });
       }
@@ -252,7 +252,7 @@ export function NotificationSettingsForm({
       } else {
         notifications.show({
           title: tr("エラー"),
-          message: res.error,
+          message: tr(res.error),
           color: "red",
         });
       }
@@ -318,7 +318,7 @@ export function NotificationSettingsForm({
           } else {
             notifications.show({
               title: tr("エラー"),
-              message: res.error,
+              message: tr(res.error),
               color: "red",
             });
           }

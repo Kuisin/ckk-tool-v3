@@ -177,7 +177,7 @@ export function AiProviderForm({ initial }: Props) {
         notifications.show({
           color: "red",
           title: tr("エラー"),
-          message: res.error,
+          message: tr(res.error),
         });
       }
     });
@@ -201,7 +201,7 @@ export function AiProviderForm({ initial }: Props) {
       notifications.show({
         color: "red",
         title: tr("接続テストに失敗"),
-        message: res.error,
+        message: tr(res.error),
       });
     }
   };
