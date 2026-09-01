@@ -1,6 +1,9 @@
-# Weblate — 翻訳の管理画面。`messages/{ja,en,zh}.json` を人が訳すための面。
+# Weblate — 翻訳の管理画面。nextjs-web の `messages/{ja,en,zh}.json` と
+# nextjs-kiosk の `src/lib/i18n/messages/{ja,en,zh}.json` を人が訳すための面
+# （2 プロジェクトぶんのコンポーネントを 1 つの Weblate インスタンスで持つ）。
 #
-#   weblate        host :8080 -> container :8080   (UI)
+#   weblate        host :8080 -> container :8080   (UI。LAN/デバッグ用)
+#                  公開は app-intl.ckk-tool.co.jp（cloudflared のトンネル経由）
 #   weblate-db     internal Postgres（Weblate のメタデータ）
 #   weblate-cache  internal Redis（キュー・キャッシュ）
 #
@@ -27,15 +30,44 @@
 #
 # postgres / redis はコンテナ側が自分で uid を持つので触らなくてよい。
 #
+# ■ 公開は cloudflared のトンネルだけ（nginx-proxy は使わない）
+# LAN 用の TLS 終端（nginx-proxy）は他の `*.ckk-tool.co.jp` と違って**足さない**
+# — SITE_DOMAIN を「LAN 直叩き」と「公開ホスト名」の 2 つに割ろうとすると
+# Django の `SECURE_SSL_REDIRECT`（ENABLE_HTTPS が真の間は**全リクエストを
+# HTTPS へリダイレクトする**）が LAN 直叩きの http を巻き込んで壊れる — 1 つの
+# Django プロセスは `WEBLATE_SITE_DOMAIN` を 1 つしか持てない。そこでアクセス
+# 経路を **`app-intl.ckk-tool.co.jp`（cloudflared）に一本化**した:
+#   - Cloudflare Tunnel の ingress に `app-intl.ckk-tool.co.jp -> http://weblate:8080`
+#     を追加（`weblate` は `mail` ネットワーク経由で `coolify` 網に載っており、
+#     cloudflared から名前解決できる）。
+#   - DNS は他の `*.ckk-tool.co.jp` と同じ形の proxied CNAME
+#     （`<tunnel-id>.cfargotunnel.com`）。
+#   - `WEBLATE_SECURE_PROXY_SSL_HEADER=HTTP_X_FORWARDED_PROTO,https` で
+#     cloudflared が付ける `X-Forwarded-Proto` を信頼させる（無いと
+#     `SECURE_SSL_REDIRECT` がトンネル内部の http 接続を「まだ HTTPS でない」と
+#     誤認し、リダイレクトループになる）。
+#   - ホストの `8080:8080` は緊急時の直接デバッグ用に残す（SSH 経由の
+#     ポートフォワードでしか事実上使わない——ブラウザの通常アクセスは常に
+#     `app-intl.ckk-tool.co.jp`）。
+#
 # ■ 翻訳の書き戻しは **dev へ直接 push しない**
 # CLAUDE.md の「dev / main に直接コミットしない」に従い、Weblate の
-# コンポーネント設定で push 先を専用ブランチにして PR を開かせる:
+# コンポーネント設定で push 先を専用ブランチにして PR を開かせる（両方の
+# コンポーネントとも同じ規約）:
 #   Repository   git@github.com:Kuisin/ckk-tool-v3.git
 #   Branch       dev                      ← 読む側
-#   Push branch  weblate-translations     ← 書く側（PR になる）
-#   File mask    coolify/apps/nextjs-web/messages/*.json
-#   Base file    coolify/apps/nextjs-web/messages/ja.json
-#   File format  JSON nested structure
+#   Push branch  weblate-translations     ← 書く側（PR になる。両コンポーネント共通）
+#
+#   コンポーネント "messages"（nextjs-web）
+#     File mask    coolify/apps/nextjs-web/messages/*.json
+#     Base file    coolify/apps/nextjs-web/messages/ja.json
+#     File format  JSON nested structure
+#
+#   コンポーネント "kiosk-messages"（nextjs-kiosk）
+#     File mask    coolify/apps/nextjs-kiosk/src/lib/i18n/messages/*.json
+#     Base file    coolify/apps/nextjs-kiosk/src/lib/i18n/messages/ja.json
+#     File format  JSON nested structure
+#
 # 詳しい手順は README.md。
 
 services:
@@ -87,8 +119,10 @@ services:
       - POSTGRES_PASSWORD=${WEBLATE_DB_PASS:?set WEBLATE_DB_PASS in .env}
       - REDIS_HOST=weblate-cache
       - REDIS_PORT=6379
-      # LAN 名で開く。公開はしない（社内の翻訳作業用）。
-      - WEBLATE_SITE_DOMAIN=${WEBLATE_SITE_DOMAIN:-192.168.50.15:8080}
+      # 公開ホスト名（cloudflared のトンネル経由。上のコメント参照）。
+      - WEBLATE_SITE_DOMAIN=${WEBLATE_SITE_DOMAIN:-app-intl.ckk-tool.co.jp}
+      - WEBLATE_ENABLE_HTTPS=${WEBLATE_ENABLE_HTTPS:-1}
+      - WEBLATE_SECURE_PROXY_SSL_HEADER=HTTP_X_FORWARDED_PROTO,https
       - WEBLATE_SITE_TITLE=CKK 翻訳
       - WEBLATE_ALLOWED_HOSTS=*
       - WEBLATE_ADMIN_NAME=${WEBLATE_ADMIN_NAME:-admin}

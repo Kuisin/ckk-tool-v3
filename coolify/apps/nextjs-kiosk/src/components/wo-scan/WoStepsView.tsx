@@ -32,6 +32,7 @@ import {
 } from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { fillMessage } from "@/lib/i18n";
 import type { WorkOrderOverview, WorkOrderStepItem } from "@/lib/steps";
 import { ActivityMonitor } from "../ActivityMonitor";
 import { useI18n } from "../I18nProvider";
@@ -94,7 +95,9 @@ export function WoStepsView({ workOrderNumber, overview }: Props) {
             >
               {m.woScan.rescan}
             </Button>
-            <Title order={3}>{m.woScan.workOrder(workOrderNumber)}</Title>
+            <Title order={3}>
+              {fillMessage(m.woScan.workOrder, { n: workOrderNumber })}
+            </Title>
             {overview && (
               <Badge
                 color={WO_STATUS_COLOR[overview.status] ?? "gray"}
@@ -123,7 +126,9 @@ export function WoStepsView({ workOrderNumber, overview }: Props) {
               <ThemeIcon color="orange" radius="md" size={64} variant="light">
                 <IconQrcode size={36} />
               </ThemeIcon>
-              <Text c="dimmed">{m.woScan.notFound(workOrderNumber)}</Text>
+              <Text c="dimmed">
+                {fillMessage(m.woScan.notFound, { n: workOrderNumber })}
+              </Text>
               <Button onClick={() => router.push("/wo-scan")}>
                 {m.woScan.rescan}
               </Button>
@@ -138,11 +143,15 @@ export function WoStepsView({ workOrderNumber, overview }: Props) {
                 </Text>
                 <Group gap="md">
                   <Text c="dimmed" size="sm">
-                    {m.woScan.plannedQty(overview.plannedQuantity)}
+                    {fillMessage(m.woScan.plannedQty, {
+                      n: overview.plannedQuantity,
+                    })}
                   </Text>
                   {overview.materialName && (
                     <Text c="dimmed" size="sm">
-                      {m.woScan.material(overview.materialName)}
+                      {fillMessage(m.woScan.material, {
+                        name: overview.materialName,
+                      })}
                     </Text>
                   )}
                 </Group>
@@ -155,7 +164,10 @@ export function WoStepsView({ workOrderNumber, overview }: Props) {
                       value={(doneCount / countable.length) * 100}
                     />
                     <Text c="dimmed" size="sm" style={{ whiteSpace: "nowrap" }}>
-                      {m.woScan.progress(doneCount, countable.length)}
+                      {fillMessage(m.woScan.progress, {
+                        done: doneCount,
+                        total: countable.length,
+                      })}
                     </Text>
                   </Group>
                 )}
@@ -236,7 +248,9 @@ function WoStepCard({
             </Group>
             <Text c="dimmed" size="sm" truncate>
               {item.assigneeNames.length > 0
-                ? m.woScan.assignees(item.assigneeNames.join(" / "))
+                ? fillMessage(m.woScan.assignees, {
+                    names: item.assigneeNames.join(" / "),
+                  })
                 : m.woScan.unplanned}
               {step.plantName ? ` ・ ${step.plantName}` : ""}
               {step.workLocationName ? ` ・ ${step.workLocationName}` : ""}
@@ -244,18 +258,24 @@ function WoStepCard({
             <Group gap="sm" mt={2} wrap="wrap">
               {step.inputQuantity != null ? (
                 <Text c="dimmed" size="sm">
-                  {m.steps.card.inputRecorded(step.inputQuantity)}
+                  {fillMessage(m.steps.card.inputRecorded, {
+                    n: step.inputQuantity,
+                  })}
                 </Text>
               ) : (
                 step.expectedInputQuantity != null && (
                   <Text c="dimmed" size="sm">
-                    {m.steps.card.expectedInput(step.expectedInputQuantity)}
+                    {fillMessage(m.steps.card.expectedInput, {
+                      n: step.expectedInputQuantity,
+                    })}
                   </Text>
                 )
               )}
               {step.outputSuccessQuantity != null && (
                 <Text c="green" size="sm">
-                  {m.steps.card.okOutput(step.outputSuccessQuantity)}
+                  {fillMessage(m.steps.card.okOutput, {
+                    n: step.outputSuccessQuantity,
+                  })}
                 </Text>
               )}
               {(step.defectSemiFinished ?? 0) > 0 && (
