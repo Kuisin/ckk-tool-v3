@@ -753,6 +753,22 @@ export function appLabel(entry: AppEntry, locale: Locale): string {
   return APP_LABEL_I18N[entry.key]?.[locale] ?? entry.label;
 }
 
+/**
+ * アプリの表示名を **key だけ**から解決する。
+ *
+ * `appLabel` は `AppEntry` を要るが、アプリ一覧を写した行（`lib/app-flags.ts` の
+ * SY05 の行など）は key と ja のラベルしか持っていない。そこで ja のまま出して
+ * いたので、英語・中国語でもアプリ管理の一覧だけ日本語で並んでいた。
+ */
+export function appLabelForKey(
+  key: string,
+  fallbackJa: string,
+  locale: Locale,
+): string {
+  if (locale === "ja") return fallbackJa;
+  return APP_LABEL_I18N[key]?.[locale] ?? fallbackJa;
+}
+
 /** カテゴリの表示名を言語ごとに解決する。 */
 export function categoryLabel(category: AppCategory, locale: Locale): string {
   if (locale === "ja") return category;

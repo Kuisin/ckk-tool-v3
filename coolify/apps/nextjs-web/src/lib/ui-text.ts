@@ -30,29 +30,25 @@
  */
 
 import type { Locale } from "./i18n";
-import { en } from "./ui-dictionary/en";
-import { zh } from "./ui-dictionary/zh";
-
-/** ja を鍵にした対訳表。ja は恒等なので表を持たない。 */
-const DICTIONARIES: Record<Exclude<Locale, "ja">, Record<string, string>> = {
-  en,
-  zh,
-};
+import { hasUiText, uiText } from "./messages";
 
 /**
  * 日本語の文言を `locale` の訳に置き換える。**辞書に無ければ日本語のまま。**
+ *
+ * 中身は `messages/<locale>.json` の `ui` 名前空間（`lib/messages.ts` が
+ * 唯一の読み口）。以前は生成物の `lib/ui-dictionary/{en,zh}.ts` を読んでいたが、
+ * 訳の置き場を言語ファイル 1 本に寄せたので、そちらへ向けた。
  *
  * フックを使えない素の関数用。React の中からは `useTr()` /
  * `getTr()` を使うこと（毎回 locale を引き回さずに済む）。
  */
 export function translate(ja: string, locale: Locale): string {
-  if (locale === "ja") return ja;
-  return DICTIONARIES[locale]?.[ja] ?? ja;
+  return uiText(ja, locale);
 }
 
 /** 辞書に載っているか（未訳の洗い出し用。画面では使わない）。 */
 export function hasTranslation(ja: string, locale: Exclude<Locale, "ja">) {
-  return Object.hasOwn(DICTIONARIES[locale], ja);
+  return hasUiText(ja, locale);
 }
 
 /**
@@ -65,12 +61,36 @@ export function hasTranslation(ja: string, locale: Exclude<Locale, "ja">) {
  * これのおかげでサーバー側の全関数に locale を引き回さずに済む。
  */
 export interface Translate {
-  (ja: string): string;
-  (ja: string | null | undefined): string | undefined;
+  (ja: string, vars?: TemplateVars): string;
+  (ja: string | null | undefined, vars?: TemplateVars): string | undefined;
+}
+
+/** 文の中の穴に入れる値。 */
+export type TemplateVars = Record<string, unknown>;
+
+/**
+ * 文の中の `{name}` を埋める。
+ *
+ * **文まるごとを 1 つの鍵にして穴だけ空ける**のが要点で、連結しないため
+ * （`"残り " + n + " 名"` では語順が動く言語を表現できない。用語集 §2.6）。
+ * 訳す側は穴の位置を自由に動かせる:
+ *   ja "承認（この段の残り {remaining} 名）"
+ *   en "Approve ({remaining} left at this step)"
+ *
+ * 穴が余っても足りなくても落とさない — 訳が古くて穴の名前がずれていても、
+ * 画面が壊れるより表示が少し変なほうがよい。
+ */
+function fill(template: string, vars: TemplateVars): string {
+  return template.replace(/\{(\w+)\}/g, (whole, name: string) =>
+    Object.hasOwn(vars, name) ? String(vars[name] ?? "") : whole,
+  );
 }
 
 /** `translate` を locale で束ねた関数を作る。 */
 export function createTranslate(locale: Locale): Translate {
-  return ((ja: string | null | undefined) =>
-    ja == null ? undefined : translate(ja, locale)) as Translate;
+  return ((ja: string | null | undefined, vars?: TemplateVars) => {
+    if (ja == null) return undefined;
+    const text = translate(ja, locale);
+    return vars ? fill(text, vars) : text;
+  }) as Translate;
 }

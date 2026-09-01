@@ -15,19 +15,36 @@
 import { Anchor, Breadcrumbs, Group, Stack, Text, Title } from "@mantine/core";
 import Link from "next/link";
 import type { ReactNode } from "react";
+import { usePreferences } from "@/components/layout/PreferencesProvider";
+import { useTr } from "@/hooks/useTr";
 import { useIsMobile } from "@/hooks/useViewport";
-import { isAppCategory, workprocessHomeHref } from "@/lib/app-list";
+import {
+  categoryLabel,
+  isAppCategory,
+  workprocessHomeHref,
+} from "@/lib/app-list";
+import type { Locale } from "@/lib/i18n";
+import type { Translate } from "@/lib/ui-text";
 
 /** A breadcrumb: plain label, or a label that links to `href`. */
 export type Crumb = string | { label: string; href?: string };
 
-const HOME_CRUMB = { label: "ホーム", href: "/" };
-
-function normalize(c: Crumb): { label: string; href?: string } {
-  if (typeof c !== "string") return c;
+/**
+ * パンくずは**表示のときに訳す**。以前は `ホーム` をモジュール定数に持っていて、
+ * 表示言語を切り替えてもそこだけ日本語のまま残っていた（定数は読み込み時に 1 度
+ * 評価されるので locale を見ようがない）。呼び出し側が渡してくるカテゴリ名も
+ * ja の素の文字列なので、同じ場所で `categoryLabel()` に通す。
+ */
+function normalize(
+  c: Crumb,
+  locale: Locale,
+  tr: Translate,
+): { label: string; href?: string } {
+  if (typeof c !== "string") return { ...c, label: tr(c.label) };
   // 工程（カテゴリ）名の素のパンくずは、その工程で絞り込んだ Home へリンクする。
-  if (isAppCategory(c)) return { label: c, href: workprocessHomeHref(c) };
-  return { label: c };
+  if (isAppCategory(c))
+    return { label: categoryLabel(c, locale), href: workprocessHomeHref(c) };
+  return { label: tr(c) };
 }
 
 export function PageHeader({
@@ -44,7 +61,12 @@ export function PageHeader({
   align?: "flex-end" | "flex-start";
 }) {
   const isMobile = useIsMobile();
-  const items = [HOME_CRUMB, ...breadcrumbs.map(normalize)];
+  const tr = useTr();
+  const { locale } = usePreferences();
+  const items = [
+    { label: tr("ホーム"), href: "/" },
+    ...breadcrumbs.map((c) => normalize(c, locale, tr)),
+  ];
 
   return (
     <Group align={align} justify="space-between" wrap="nowrap">

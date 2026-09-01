@@ -227,6 +227,24 @@ describe("messages/*.json", () => {
     expect(keysOf(zh), "zh").toEqual(expected);
   });
 
+  /**
+   * **意図して空にしている鍵**だけの許可リスト。
+   *
+   * 空文字は本来「まだ訳していない」の印なので既定では落とす。ただし
+   * 「その言語では**何も出さないのが正しい**」語が実在する — 「御中」は
+   * 日本の商習慣の敬称で、英語・中国語には対応する語が無く、宛名の後ろに
+   * 何も付けないのが正しい（`lib/pdf-labels.ts` に元からそう書いてある）。
+   *
+   * 3 帳票それぞれの名前空間に出てくるのは、どれも共通ラベルを継いでいるため。
+   *
+   * 足すときは**なぜ空が正しいのか**を必ず書くこと。書けないなら、それは
+   * 訳し忘れ。
+   */
+  const INTENTIONALLY_EMPTY = (key: string) =>
+    key.endsWith("pdf.QUOTE.onchu") ||
+    key.endsWith("pdf.DELIVERY_NOTE.onchu") ||
+    key.endsWith("pdf.INVOICE.onchu");
+
   it("空文字の翻訳が無い（未翻訳の取りこぼし検出）", () => {
     const empties = (o: object, prefix = ""): string[] =>
       Object.entries(o).flatMap(([k, v]) =>
@@ -241,7 +259,8 @@ describe("messages/*.json", () => {
       ["en", en],
       ["zh", zh],
     ] as const) {
-      expect(empties(messages), locale).toEqual([]);
+      const found = empties(messages).filter((k) => !INTENTIONALLY_EMPTY(k));
+      expect(found, locale).toEqual([]);
     }
   });
 

@@ -21,10 +21,12 @@ import {
 import { notifications } from "@mantine/notifications";
 import { IconInfoCircle, IconShare2 } from "@tabler/icons-react";
 import { usePathname, useSearchParams } from "next/navigation";
+import { useLocale } from "next-intl";
 import { useEffect, useMemo, useState, useTransition } from "react";
 import { CancelButton, PrimaryButton } from "@/components/ui/buttons";
 import { useTr } from "@/hooks/useTr";
-import { appList } from "@/lib/app-list";
+import { appLabel, appList } from "@/lib/app-list";
+import type { Locale } from "@/lib/i18n";
 import { fetchShareOptionsAction, sharePageAction } from "./share-actions";
 
 export function SharePageModal({
@@ -35,6 +37,7 @@ export function SharePageModal({
   onClose: () => void;
 }) {
   const tr = useTr();
+  const locale = useLocale() as Locale;
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const [users, setUsers] = useState<string[]>([]);
@@ -58,8 +61,8 @@ export function SharePageModal({
     const hit = [...appList]
       .sort((a, b) => b.href.length - a.href.length)
       .find((a) => pathname === a.href || pathname.startsWith(`${a.href}/`));
-    return hit?.label ?? pathname;
-  }, [pathname]);
+    return hit ? appLabel(hit, locale) : pathname;
+  }, [pathname, locale]);
 
   // 宛先候補はモーダルを開いた時に一度だけ取得（demo と同じ）
   useEffect(() => {
@@ -96,7 +99,9 @@ export function SharePageModal({
       if (res.ok) {
         notifications.show({
           title: tr("共有しました"),
-          message: `${res.data.recipientCount} 名に通知を送信しました`,
+          message: tr("{recipientCount} 名に通知を送信しました", {
+            recipientCount: res.data.recipientCount,
+          }),
           color: "green",
         });
         reset();
