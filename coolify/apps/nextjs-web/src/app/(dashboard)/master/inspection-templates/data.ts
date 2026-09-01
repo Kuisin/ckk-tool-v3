@@ -7,12 +7,29 @@ import "server-only";
  */
 
 import type { InspectionTemplateItemRow } from "@/components/master/inspection-templates/InspectionTemplateModals";
+import { prisma } from "@/lib/db";
 import type { LocalizedText } from "@/lib/format";
+import { localized } from "@/lib/format";
 import {
   type InspectionItemRecord as CoreItemRecord,
   parseSelectOptions,
   parseStringArray,
 } from "@/lib/inspection-core";
+
+/** 検査承認グループの選択肢（承認設定 MS0B の approval_groups。有効のみ）。 */
+export async function fetchApprovalGroupOptions(): Promise<
+  { value: string; label: string }[]
+> {
+  const groups = await prisma.approvalGroup.findMany({
+    where: { isActive: true },
+    orderBy: { id: "asc" },
+    select: { id: true, name: true },
+  });
+  return groups.map((g) => ({
+    value: String(g.id),
+    label: localized(g.name as LocalizedText | null),
+  }));
+}
 
 /** inspection_template_items 行のうち変換に使うフィールド（Prisma include 由来）。 */
 export interface InspectionItemRecord extends CoreItemRecord {

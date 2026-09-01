@@ -345,11 +345,19 @@ model InspectionTemplate {
   layoutStyle           InspectionLayoutStyle  @default(DIMENSIONAL) @map("layout_style")
   // VALUES のサンプル呼称（製品1,2,3… / 初品・中間品・最終品）
   sampleNaming          InspectionSampleNaming @default(GENERIC) @map("sample_naming")
+  // 検査承認（InspectionRecord の検収）に要る承認グループ（既存の承認設定
+  // アプリ MS0B が持つ approval_groups をそのまま使う）。null = 未設定 —
+  // 工程実行の一部として扱う従来どおりの挙動（誰でも承認できる）。
+  // 段階を持つ N 段承認フロー（approval_flows）とは別物 — こちらは単段・
+  // テンプレートごとの「このグループのメンバーだけが検収できる」という
+  // シンプルなゲート。
+  approvalGroupId       Int?     @map("approval_group_id")
   isActive              Boolean  @default(true) @map("is_active")
   createdAt             DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt             DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
 
   relatedProcessStep ProcessStepCatalog?      @relation(fields: [relatedProcessStepId], references: [id])
+  approvalGroup      ApprovalGroup?           @relation(fields: [approvalGroupId], references: [id])
   items              InspectionTemplateItem[]
   workOrderStepTemplates WorkOrderStepInspectionTemplate[]
   inspectionRecords  InspectionRecord[]            @relation("InspectionRecordTemplate")
@@ -423,6 +431,7 @@ model ApprovalGroup {
   flowRuleSteps ApprovalFlowRuleStep[]
   formSteps     FormApprovalStep[]
   requests      ApprovalRequest[]
+  inspectionTemplates InspectionTemplate[]
 
   @@map("approval_groups")
   @@schema("app")

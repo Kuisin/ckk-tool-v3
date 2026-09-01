@@ -7,6 +7,7 @@ import {
   localized,
   localizedTranslations,
 } from "@/lib/format";
+import { fetchApprovalGroupOptions } from "../../data";
 
 export const dynamic = "force-dynamic";
 
@@ -37,9 +38,11 @@ export default async function MasterInspectionTemplatesEditPage({
   }
 
   const name = r.name as LocalizedText | null;
+  const groupOptions = await fetchApprovalGroupOptions();
 
   return (
     <InspectionTemplateForm
+      groupOptions={groupOptions}
       initial={{
         id: r.id,
         code: r.code,
@@ -57,6 +60,8 @@ export default async function MasterInspectionTemplatesEditPage({
         recordStyle: r.recordStyle,
         layoutStyle: r.layoutStyle,
         sampleNaming: r.sampleNaming,
+        approvalGroupId:
+          r.approvalGroupId != null ? String(r.approvalGroupId) : null,
         isActive: r.isActive,
       }}
     />

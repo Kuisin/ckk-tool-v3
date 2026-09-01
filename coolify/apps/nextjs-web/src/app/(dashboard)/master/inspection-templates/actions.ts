@@ -50,6 +50,9 @@ const templateFields = z.object({
   layoutStyle: z.enum(["DIMENSIONAL", "CHECKLIST"]),
   // VALUES のサンプル呼称（製品1,2,3… / 初品・中間品・最終品）
   sampleNaming: z.enum(["GENERIC", "INITIAL_MID_FINAL"]),
+  // 検査承認（検収）に要る承認グループ（承認設定 MS0B の approval_groups）。
+  // null = 未設定 = 誰でも承認できる（従来どおり）。
+  approvalGroupId: z.number().int().positive().nullable(),
   isActive: z.boolean(),
 });
 
@@ -283,6 +286,7 @@ export async function createInspectionTemplate(
         recordStyle: v.recordStyle,
         layoutStyle: v.layoutStyle,
         sampleNaming: v.sampleNaming,
+        approvalGroupId: v.approvalGroupId,
         isActive: v.isActive,
       },
       select: { id: true },
@@ -363,6 +367,9 @@ export async function updateInspectionTemplate(
         recordStyle: v.recordStyle,
         layoutStyle: v.layoutStyle,
         sampleNaming: v.sampleNaming,
+        // ロック中でも変更可（誰が検収できるかの入れ替えは測定定義に触れない —
+        // isActive と同じ扱い）。
+        approvalGroupId: v.approvalGroupId,
         isActive: v.isActive,
       },
     });
@@ -423,6 +430,7 @@ export async function createInspectionTemplateVersion(
           recordStyle: source.recordStyle,
           layoutStyle: source.layoutStyle,
           sampleNaming: source.sampleNaming,
+          approvalGroupId: source.approvalGroupId,
           isActive: true,
           items: {
             create: source.items.map((item) => ({
@@ -493,6 +501,38 @@ export async function setInspectionTemplatesActive(
     return actionOk();
   } catch (e) {
     return actionError(prismaErrorMessage(e, "状態の更新に失敗しました"));
+  }
+}
+
+/**
+ * 検査承認グループの変更のみ（ロック中でも可 — 測定定義に触れないため。
+ * isActive の切替と同じ扱い）。既存の updateInspectionTemplate は
+ * ロック中の版へは丸ごと拒否するので、ロック後に承認グループだけ入れ替える
+ * ための専用アクションを別に持つ。
+ */
+export async function setInspectionTemplateApprovalGroup(
+  id: number,
+  approvalGroupId: number | null,
+): Promise<ActionResult> {
+  const authz = await checkPermission("master", "UPDATE");
+  if (!authz.ok) return actionError(authz.error);
+  try {
+    await prisma.inspectionTemplate.update({
+      where: { id },
+      data: { approvalGroupId },
+    });
+    await recordAudit({
+      action: "UPDATE",
+      tableName: "inspection_templates",
+      recordId: String(id),
+      after: { note: "検査承認グループを変更" },
+    });
+    revalidate(id);
+    return actionOk();
+  } catch (e) {
+    return actionError(
+      prismaErrorMessage(e, "承認グループの変更に失敗しました"),
+    );
   }
 }
 

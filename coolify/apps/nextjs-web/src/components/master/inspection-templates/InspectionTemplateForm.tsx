@@ -13,6 +13,7 @@ import {
   Group,
   NumberInput,
   SegmentedControl,
+  Select,
   SimpleGrid,
   Stack,
   Switch,
@@ -66,6 +67,7 @@ const templateSchema = z
     recordStyle: z.enum(["VALUES", "COUNTS"]),
     layoutStyle: z.enum(["DIMENSIONAL", "CHECKLIST"]),
     sampleNaming: z.enum(["GENERIC", "INITIAL_MID_FINAL"]),
+    approvalGroupId: z.string().nullable(),
     isActive: z.boolean(),
   })
   .superRefine((v, ctx) => {
@@ -109,13 +111,18 @@ export interface InspectionTemplateFormInitial {
   recordStyle: "VALUES" | "COUNTS";
   layoutStyle: "DIMENSIONAL" | "CHECKLIST";
   sampleNaming: "GENERIC" | "INITIAL_MID_FINAL";
+  /** 検査承認グループ（承認設定 MS0B）。null = 未設定 = 誰でも承認できる。 */
+  approvalGroupId: string | null;
   isActive: boolean;
 }
 
 export function InspectionTemplateForm({
   initial,
+  groupOptions,
 }: {
   initial?: InspectionTemplateFormInitial;
+  /** 検査承認グループの選択肢（承認設定 MS0B の approval_groups）。 */
+  groupOptions: { value: string; label: string }[];
 }) {
   const locale = useLocale();
   const router = useRouter();
@@ -135,6 +142,7 @@ export function InspectionTemplateForm({
       recordStyle: initial?.recordStyle ?? "VALUES",
       layoutStyle: initial?.layoutStyle ?? "DIMENSIONAL",
       sampleNaming: initial?.sampleNaming ?? "GENERIC",
+      approvalGroupId: initial?.approvalGroupId ?? null,
       isActive: initial?.isActive ?? true,
     },
   });
@@ -156,6 +164,9 @@ export function InspectionTemplateForm({
         recordStyle: values.recordStyle,
         layoutStyle: values.layoutStyle,
         sampleNaming: values.sampleNaming,
+        approvalGroupId: values.approvalGroupId
+          ? Number(values.approvalGroupId)
+          : null,
         isActive: values.isActive,
       };
       const result = isEdit
@@ -342,6 +353,16 @@ export function InspectionTemplateForm({
               </Text>
             </Stack>
           )}
+          <Stack gap={4}>
+            <Select
+              clearable
+              data={groupOptions}
+              description="検査記録の検収（承認）ができる人を絞る（承認設定 MS0B の承認グループ）。未設定 = 誰でも検収できます"
+              label="検査承認グループ"
+              onChange={(v) => form.setFieldValue("approvalGroupId", v)}
+              value={form.values.approvalGroupId}
+            />
+          </Stack>
           <Switch
             label={<HelpLabel {...fieldHelp("inspectionTemplate", "active")} />}
             {...form.getInputProps("isActive", { type: "checkbox" })}

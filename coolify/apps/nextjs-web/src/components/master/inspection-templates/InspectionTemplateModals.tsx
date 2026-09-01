@@ -34,6 +34,7 @@ import {
   deleteInspectionTemplates,
   deleteTemplateItem,
   type InspectionTemplateItemInput,
+  setInspectionTemplateApprovalGroup,
   setInspectionTemplatesActive,
   updateTemplateItem,
 } from "@/app/(dashboard)/master/inspection-templates/actions";
@@ -211,6 +212,75 @@ export function CreateVersionModal({
       opened={opened}
       title="新バージョンの作成"
     />
+  );
+}
+
+/**
+ * 検査承認グループの変更（ロック中でも可 — 測定定義に触れないため）。
+ * 承認設定 MS0B の approval_groups から選ぶ。未設定 = 誰でも検収できる。
+ */
+export function SetApprovalGroupModal({
+  opened,
+  onClose,
+  target,
+  currentGroupId,
+  groupOptions,
+  onDone,
+}: ModalBaseProps & {
+  target: InspectionTemplateModalTarget | null;
+  currentGroupId: string | null;
+  groupOptions: { value: string; label: string }[];
+  onDone?: () => void;
+}) {
+  const [isPending, startTransition] = useTransition();
+  const [groupId, setGroupId] = useState<string | null>(currentGroupId);
+
+  useEffect(() => {
+    if (opened) setGroupId(currentGroupId);
+  }, [opened, currentGroupId]);
+
+  return (
+    <FormModal
+      loading={isPending}
+      onClose={onClose}
+      onSubmit={(e) => {
+        e.preventDefault();
+        if (!target) return;
+        startTransition(async () => {
+          const result = await setInspectionTemplateApprovalGroup(
+            target.id,
+            groupId ? Number(groupId) : null,
+          );
+          if (result.ok) {
+            notifications.show({
+              title: "検査承認グループを変更しました",
+              message: label(target),
+              color: "green",
+            });
+            onClose();
+            onDone?.();
+          } else {
+            notifications.show({
+              title: "エラー",
+              message: result.error,
+              color: "red",
+            });
+          }
+        });
+      }}
+      opened={opened}
+      submitLabel="保存"
+      title="検査承認グループの変更"
+    >
+      <Select
+        clearable
+        data={groupOptions}
+        description="検査記録の検収（承認）ができる人を絞ります。未設定 = 誰でも検収できます"
+        label="検査承認グループ"
+        onChange={setGroupId}
+        value={groupId}
+      />
+    </FormModal>
   );
 }
 
