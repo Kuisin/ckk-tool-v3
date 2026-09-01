@@ -1,6 +1,6 @@
 ---
 title: "Displays (Devices) — how to use"
-description: "The \"Displays\" tab of Devices (SY09). Decides what each shop-floor TV shows. Registration follows the same three steps as a shared tablet (create, link, activate); assigning content and stopping a screen need no visit to the machine."
+description: "The \"Displays\" tab of Devices (SY09). Decides what each shop-floor TV shows. Registration follows the same three steps as a shared tablet (create, link, activate); changing what is shown and stopping a screen need no visit to the machine."
 ---
 
 The **"Displays" tab of Devices (SY09)**. Decides what each shop-floor TV shows.
@@ -26,8 +26,7 @@ and the registration steps are the same (create, link, activate).
 ## Words used on this page
 
 - **Display** … One TV on the shop floor.
-- **Content** … A setting for "what to show". One content can be shared by
-  several TVs.
+- **Screen** … What that TV shows. **Chosen per display.**
 - **Link code** … 12 characters shown on the TV. Same format as a shared
   tablet's, so it is read the same way.
 
@@ -35,8 +34,8 @@ and the registration steps are the same (create, link, activate).
 
 - Set the TV side up first — see
   [Setting up a display (Raspberry Pi)](/admin-manual/en/system/display-setup).
-- It helps to create at least one **content** first, so you can choose it while
-  creating the display.
+- Nothing needs preparing first. A new display **starts on "Production status"**,
+  and you can change it later on the detail page.
 
 ## Display states
 
@@ -55,10 +54,11 @@ answered within the last 5 minutes.
 
 Exactly the same as a shared tablet.
 
-1. **Create** — "Add a display", then set the name, location, site and content.
+1. **Create** — "Add a display", then set the name, location, site and screen.
    It is not tied to a TV yet (awaiting link).
-2. **Link** — type the 12-character link code shown on the TV, from "Link" in
-   the list.
+2. **Link** — press "Link" in the list and **scan the QR shown on the TV**
+   ("Scan the display's QR"); typing the 12 characters works too. It is read
+   exactly the way a shared tablet is.
 3. **Activate** — press "Activate" and the TV starts showing.
 
 Step 1 can be done before the TV is ready, leaving only linking and activating
@@ -83,26 +83,20 @@ single correct percentage.
 > 💡 A larger scale makes each row bigger, so fewer fit on one screen. The rest
 > move to the next page automatically; nothing is dropped.
 
-## Switching what a display shows
+## Changing what a display shows
+
+What is shown is chosen **per display**.
 
 1. Press the display in the list.
-2. On the "Settings" tab, choose a different content.
-3. Press "Save".
+2. On the "Content" tab, press "Edit".
+3. Choose the screen to show. **Each one has a small preview**, so you are not
+   choosing from names alone.
+4. Set that screen's options (site, rows, and so on).
+5. Press "Save".
 
 The TV changes immediately. **You do not need to go to the machine.**
 
-## Creating content
-
-Use "Content" from the list to create and edit what can be shown.
-
-| Type | What it shows |
-|---|---|
-| App page | A screen from this system (choose from the list below) |
-| Dashboard | A Metabase dashboard |
-| External page | A page at a URL you give |
-| Image | A single image |
-
-App pages and their settings:
+The screens you can choose, and their settings:
 
 | Screen | What it shows | Settings |
 |---|---|---|
@@ -114,11 +108,11 @@ App pages and their settings:
 
 Every setting is a choice — there is no special format to type.
 
-"Reload interval (seconds)" is how often the display re-reads what it shows.
-Set it to `0` and it will only change when you change it here.
+"Refresh interval" is how often the display re-reads what it shows. Set it to
+`0` and it will only change when you change it here.
 
-> ⚠️ Content that is in use cannot be deleted. Reassign the displays using it
-> first.
+> 💡 The figures in the previews are **made up for illustration**. They are not
+> real orders or work orders.
 
 ### When showing a dashboard
 
@@ -131,7 +125,7 @@ screen could be made to show another site's data. Ask the IT team how.
 | What you want | How | Reversible |
 |---|---|---|
 | Stop it for now | "Disable" on the detail page | Yes, press "Enable" |
-| Swap the hardware | "Unlink" on the detail page | Name and content are kept |
+| Swap the hardware | "Unlink" on the detail page | Name and screen are kept |
 | Stop using it | "Revoke" on the detail page | Needs registering again |
 | Remove the record | Revoke (or unlink), then "Delete" | No |
 
@@ -145,13 +139,9 @@ or lost — nothing more can be seen on it.
 A. Check the power and LAN cable at the TV and the Raspberry Pi. It returns to
 online by itself once it can reach the network.
 
-**Q. It says no content is assigned**
-A. Nothing has been chosen for that display. Open it, choose a content and
-press Save.
-
 **Q. Linking says the code was not found or has expired**
 A. Use the fresh code now shown on the TV.
 
 **Q. Can several TVs show the same thing?**
-A. Yes. Assign the same content to them. Changing that content switches all of
-them at once.
+A. Yes — choose the same screen and the same options on each. Because the
+settings belong to the display, you can also **change the site on just one of them**.

@@ -15,7 +15,7 @@ It takes about **30 minutes**, and about 15 of those are waiting.
 
 - Prepare the small computer that drives the TV
 - Connect it to the TV and switch it on
-- Drive two TVs from one unit, each with its own content
+- Drive two TVs from one unit, each showing its own screen
 - Register the display using the link code shown on the screen
 - Fix the common problems
 
@@ -119,9 +119,11 @@ On a PC, open **Devices (SY09)** and go to the "Displays" tab.
 
 1. Press "Add a display".
 2. Enter a name people on the floor will use (for example `Line A entrance`).
-3. Choose the location, site and content, then press "Create".
+3. Choose the location, site and screen, then press "Create".
+   (A new display starts on "Production status"; you can change it later.)
 4. Press "Link" on the new row in the list.
-5. Type the 12 characters shown on the TV and press "Link".
+5. Press "Scan the display's QR" and scan the QR shown on the TV.
+   (If it will not scan, type the 12 characters into the box instead.)
 6. When the state becomes "Awaiting activation", press "Activate".
 
 The TV changes within a few seconds. The display is now set up.
@@ -150,7 +152,7 @@ After restarting, **each TV shows its own link code**. Do step 4 once per TV
 (twice in total). Each screen says "screen 1 of 2 on this machine", so you know
 which code you are typing.
 
-Once registered, the two TVs are **entirely separate displays**. Content and
+Once registered, the two TVs are **entirely separate displays**. The screen and
 scale are set per screen, and disabling one leaves the other running.
 
 > ⚠️ If left and right come out swapped, swapping the HDMI cables is the
@@ -163,13 +165,13 @@ scale are set per screen, and disabling one leaves the other running.
 
 | What you want | How |
 |---|---|
-| Change what it shows | Open the display, pick a different content, press Save |
+| Change what it shows | Open the display, "Content" tab, Edit, pick, press Save |
 | Fix the name or location | Open the display, edit, press Save |
 | Stop it for now | Open the display, press "Disable" |
 | Move it elsewhere | Open the display, press "Unlink" (settings are kept) |
 | Stop using it | Open the display, press "Revoke" |
 
-"Unlink" keeps the name and content but releases the screen — handy when you
+"Unlink" keeps the name and screen choice but releases the TV — handy when you
 want to use the same settings with a different Raspberry Pi. After "Revoke" the
 screen goes back to showing a link code.
 
@@ -182,10 +184,6 @@ nothing, move the HDMI cable to the other socket on the Raspberry Pi.
 **Q. The screen says it cannot connect**
 A. Check the LAN cable. The normal display comes back on its own once the
 network returns. You do not have to do anything.
-
-**Q. The screen says no content has been set**
-A. Nothing has been chosen for that display yet. Open it in the Displays tab of Devices (SY09),
-choose a content and press Save.
 
 **Q. It went back to the link code screen**
 A. That display has been revoked or disabled. Check its state in the Displays

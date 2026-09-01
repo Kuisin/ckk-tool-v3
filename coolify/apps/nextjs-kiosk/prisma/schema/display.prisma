@@ -1,24 +1,26 @@
 // 管理ディスプレイ（デジタルサイネージ）— 現場の壁掛けテレビ用。
 //
 // Raspberry Pi は「固定 URL を開くだけのブラウザ」で、何を映すかは**すべて
-// この 3 表が決める**。Pi 側に設定を一切持たせないのが設計の芯 — 持たせた
+// この 2 表が決める**。Pi 側に設定を一切持たせないのが設計の芯 — 持たせた
 // 瞬間、台数ぶんの設定が現場に散り、1 台ごとに違う状態になる。
 //
-//   display_devices          = 「この画面は登録済みディスプレイ」
-//                              （Cookie はトークン生値、DB はハッシュのみ。365日）
-//   display_profiles         = 「何を映すか」（画面と端末を分離する要）
-//   display_pairing_sessions = 据付時の一時コード（10分）
+//   display_devices       = 「この画面は登録済みディスプレイ」＋「何を映すか」
+//                           （Cookie はトークン生値、DB はハッシュのみ。365日）
+//   display_link_requests = 据付時の一時コード（10分）
 //
-// キオスク端末（kiosk_devices）と似ているが、**わざと 2 点違える**:
+// **何を映すかは画面ごとに持つ。** 当初は display_profiles に切り出して画面から
+// 参照していたが、掲示板は 1 枚ずつ違うもの（この壁は生産状況、あの壁は出荷予定）
+// を映すので共有される内容がほとんど生まれず、1 枚増やすたびに「内容を作る →
+// 画面を作る → 結ぶ」の 3 手順を踏むだけの構造になっていた。
 //
-//   1. code-first。キオスクは管理者が先にプロファイルを作って後から端末を
-//      紐づける（profile-first）が、ディスプレイは据付作業者が脚立の上で
-//      1 人で完了できることを優先する。QR を読んだ管理者がその場で名前と
-//      表示内容を決め、行はそのとき初めて生まれる。よって PENDING / LINKED
-//      に相当する状態を持たない。
-//   2. 遷移ログ（kiosk_device_logs 相当）を持たない。あれはフロア端末の
-//      使用実態を追うためのもので、誰も触らない掲示板には要らない。
-//      死活は last_seen_at 1 列から読むときに計算する。
+// **登録の手順はキオスク端末（kiosk_devices）と揃える**: 作る（PENDING）→
+// リンク（LINKED）→ 有効化（ACTIVE）。手順を変えると、現場は「タブレットの
+// ときはこう、テレビのときはこう」を 2 つ覚えることになる。リンクコードの
+// 桁数も QR の中身も同じにしてあるので、読み取りも 1 つの部品で足りる。
+//
+// キオスク端末と違うのは 1 点だけ — **遷移ログ（kiosk_device_logs 相当）を
+// 持たない**。あれはフロア端末の使用実態を追うためのもので、誰も触らない
+// 掲示板には要らない。死活は last_seen_at 1 列から読むときに計算する。
 //
 // 個人データは持たない（人が紐づかない機器なので login_attempts とは無関係）。
 // ただしトークンハッシュと IP は持つので、grants.sql で metabase_ro から
@@ -47,41 +49,6 @@ enum DisplayContentType {
   @@schema("app")
 }
 
-// ─── 表示プロファイル（何を映すか） ──────────────────────────────────────────
-//
-// 端末と表示内容を分けているのは、1 つの内容を複数の画面に出したいのと、
-// 「この画面をお知らせに切り替える」を端末に触らず行いたいため。
-// content_config は種別ごとに形が違う JSON:
-//   APP_PAGE { page, plantId?, workLocationId? }
-//   METABASE { dashboardId, params }      ← params はサーバーが locked で渡す
-//   URL      { url }
-//   IMAGE    { fileId }
-
-model DisplayProfile {
-  id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  // 多言語 JSON { ja, en }（_specs/design.md §17.4）
-  name        Json
-  description String?
-
-  contentType   DisplayContentType @map("content_type")
-  contentConfig Json               @default("{}") @map("content_config")
-
-  // 画面の再取得間隔（秒）。0 = 自動再取得しない（WS の通知だけで更新する）。
-  refreshIntervalSec Int     @default(60) @map("refresh_interval_sec")
-  isEnabled          Boolean @default(true) @map("is_enabled")
-
-  createdById String?  @map("created_by") @db.Uuid
-  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt   DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
-
-  createdBy User?           @relation("DisplayProfileCreatedBy", fields: [createdById], references: [id])
-  devices   DisplayDevice[] @relation("DisplayDeviceProfile")
-
-  @@index([contentType])
-  @@map("display_profiles")
-  @@schema("app")
-}
-
 // ─── ディスプレイ端末 ────────────────────────────────────────────────────────
 
 model DisplayDevice {
@@ -92,24 +59,35 @@ model DisplayDevice {
   location String?
   plantId  Int?    @map("plant_id")
 
-  // 割り当てられた表示プロファイル（null = 未割当。「表示内容がありません」を出す）。
-  // プロファイル削除は Restrict — 使用中の内容を消して画面を黒くしない。
-  displayProfileId String? @map("display_profile_id") @db.Uuid
+  // 何を映すか。**画面ごとに直接持つ。**
+  //
+  // 以前は「表示内容」を別に作って端末へ割り当てる形だったが、1 枚しか
+  // 使わない現場でも 2 つのものを作って結ぶ必要があり、しかも作った直後の
+  // 画面は「未割当」で何も映らなかった。壁のテレビは 1 枚 1 用途がほとんどで、
+  // 共有する必要がまず無い。だから端末の設定として持たせる。
+  //
+  // content_config は種別ごとに形が違う JSON（lib/display-content.ts が正）:
+  //   APP_PAGE { page, options }   ← 既定。作った時点で生産状況が映る
+  //   METABASE { dashboardId, params }
+  //   URL      { url }
+  //   IMAGE    { fileId }
+  contentType   DisplayContentType @default(APP_PAGE) @map("content_type")
+  contentConfig Json               @default("{\"page\": \"production\", \"options\": {}}") @map("content_config")
+
+  // 画面の再取得間隔（秒）。0 = 自動再取得しない（変更の合図だけで更新する）。
+  refreshIntervalSec Int @default(60) @map("refresh_interval_sec")
 
   status DisplayDeviceStatus @default(PENDING)
 
   // 表示倍率（%）。**画面の大きさと見る距離に合わせる**ための微調整で、
-  // 同じ表示内容でも 43 型と 65 型では読みやすい大きさが違う。
-  // 端末側に持たせているのは、これが「その画面の物理的な性質」だから —
-  // 表示内容（display_profiles）に持たせると、1 つの内容を複数の画面で
-  // 共有した瞬間にどれかが読めなくなる。
+  // 同じものを映していても 43 型と 65 型では読みやすい大きさが違う。
   // 50〜200 の 5 刻み（範囲は DB の CHECK でも閉じる）。
   scalePercent Int @default(100) @map("scale_percent")
 
   // どの機械の何枚目か（自己申告の**手掛かり**であって身分ではない）。
   //
   // Raspberry Pi 5 は HDMI が 2 口あり、1 台で 2 枚のテレビを回せる。画面ごとに
-  // ブラウザのプロファイルを分けるので **1 枚 = この表の 1 行**（表示内容も倍率も
+  // ブラウザのプロファイルを分けるので **1 枚 = この表の 1 行**（映すものも倍率も
   // 画面ごとに決まる）。ただし一覧では「2 枚まとめて消えた = 箱が落ちた／
   // 1 枚だけ = ケーブルかテレビ側」を見分けたいので、出どころを控えておく。
   //
@@ -139,15 +117,14 @@ model DisplayDevice {
   createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt     DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
 
-  plant       Plant?          @relation("DisplayDevicePlant", fields: [plantId], references: [id])
-  profile     DisplayProfile? @relation("DisplayDeviceProfile", fields: [displayProfileId], references: [id], onDelete: Restrict)
-  activatedBy User?           @relation("DisplayDeviceActivatedBy", fields: [activatedById], references: [id])
+  plant       Plant? @relation("DisplayDevicePlant", fields: [plantId], references: [id])
+  activatedBy User?  @relation("DisplayDeviceActivatedBy", fields: [activatedById], references: [id])
 
   linkRequests DisplayLinkRequest[] @relation("DisplayLinkRequestDevice")
 
   @@index([plantId])
   @@index([status])
-  @@index([displayProfileId])
+  @@index([contentType])
   @@map("display_devices")
   @@schema("app")
 }

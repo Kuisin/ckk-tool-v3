@@ -53,12 +53,3 @@ export async function notifyDisplayConfigChanged(
 export async function notifyDisplayRevoked(displayId: string): Promise<void> {
   await publish(displayId, "revoked");
 }
-
-/** 表示内容が変わったので、それを使っている全画面へ伝える。 */
-export async function notifyProfileChanged(profileId: string): Promise<void> {
-  const devices = await prisma.displayDevice.findMany({
-    where: { displayProfileId: profileId, status: "ACTIVE" },
-    select: { id: true },
-  });
-  await Promise.all(devices.map((d) => publish(d.id, "config_changed")));
-}

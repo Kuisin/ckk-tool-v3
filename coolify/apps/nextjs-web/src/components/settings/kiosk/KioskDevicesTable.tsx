@@ -19,11 +19,9 @@
  */
 
 import {
-  ActionIcon,
   Alert,
   Box,
   Group,
-  Menu,
   Select,
   Stack,
   Text,
@@ -31,16 +29,9 @@ import {
   Tooltip,
 } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
-import {
-  IconCamera,
-  IconDeviceTablet,
-  IconMap2,
-  IconScan,
-  IconSearch,
-} from "@tabler/icons-react";
+import { IconDeviceTablet, IconMap2, IconSearch } from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
-import QrScanner from "qr-scanner";
-import { useEffect, useRef, useState, useTransition } from "react";
+import { useState, useTransition } from "react";
 import {
   activateDevice,
   createDeviceProfile,
@@ -72,6 +63,7 @@ import { fieldHelp, fieldHelpTip } from "@/lib/field-help";
 import type { KioskDeviceRow, KioskPlantOption } from "@/lib/kiosk-admin";
 import type { ActionResult } from "@/lib/server-action";
 import { KioskDeviceLogsModal } from "./KioskDeviceLogsModal";
+import { LinkQrScanner } from "./LinkQrScanner";
 import {
   type KioskPresenceEntry,
   type KioskPresenceTransport,
@@ -134,126 +126,6 @@ export function transportLabel(transport: KioskPresenceTransport): string {
   if (transport === "ws") return "ライブ (WS)";
   if (transport === "poll") return "自動更新（30秒）";
   return "直近5分の活動から判定";
-}
-
-// ── QR スキャナ（qr-scanner — 全ブラウザ対応。kiosk QrScannerView と同方式） ──
-
-/** タブレットの /setup QR（ペイロード = 表示形コード文字列）から code を抽出。 */
-function parseLinkQr(rawValue: string): string | null {
-  const code = normalizeCode(rawValue);
-  return code.length === 12 ? code : null;
-}
-
-function LinkQrScanner({ onCode }: { onCode: (code: string) => void }) {
-  const [scanning, setScanning] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [cameras, setCameras] = useState<QrScanner.Camera[]>([]);
-  const videoRef = useRef<HTMLVideoElement | null>(null);
-  const scannerRef = useRef<QrScanner | null>(null);
-  const onCodeRef = useRef(onCode);
-  onCodeRef.current = onCode;
-
-  // video がマウントされてから初期化する（マウント前初期化の黒画面 race を回避）
-  useEffect(() => {
-    if (!scanning) return;
-    const video = videoRef.current;
-    if (!video) return;
-    setError(null);
-    const scanner = new QrScanner(
-      video,
-      (result) => {
-        const code = parseLinkQr(result.data);
-        if (!code) return;
-        setScanning(false); // アンマウント → クリーンアップで destroy
-        onCodeRef.current(code);
-      },
-      {
-        preferredCamera: "environment",
-        highlightScanRegion: true,
-        highlightCodeOutline: true,
-        maxScansPerSecond: 5,
-      },
-    );
-    scannerRef.current = scanner;
-    scanner
-      .start()
-      .then(() => QrScanner.listCameras(true))
-      .then(setCameras)
-      .catch(() => {
-        setError(
-          "カメラを起動できません。カメラ権限と HTTPS 接続を確認してください。",
-        );
-      });
-    return () => {
-      scanner.destroy();
-      scannerRef.current = null;
-    };
-  }, [scanning]);
-
-  return (
-    <Stack gap="xs">
-      {scanning ? (
-        <>
-          <Box pos="relative">
-            <Box
-              style={{
-                borderRadius: 8,
-                overflow: "hidden",
-                aspectRatio: "4 / 3",
-                background: "#000",
-              }}
-            >
-              <video
-                muted
-                playsInline
-                ref={videoRef}
-                style={{ width: "100%", height: "100%", objectFit: "cover" }}
-              />
-            </Box>
-            {cameras.length > 1 && (
-              <Menu position="bottom-end" shadow="md" withinPortal>
-                <Menu.Target>
-                  <ActionIcon
-                    aria-label="カメラを切替"
-                    style={{ position: "absolute", top: 8, right: 8 }}
-                    variant="default"
-                  >
-                    <IconCamera size={16} />
-                  </ActionIcon>
-                </Menu.Target>
-                <Menu.Dropdown>
-                  <Menu.Label>カメラを選択</Menu.Label>
-                  {cameras.map((cam) => (
-                    <Menu.Item
-                      key={cam.id}
-                      onClick={() => void scannerRef.current?.setCamera(cam.id)}
-                    >
-                      {cam.label || cam.id}
-                    </Menu.Item>
-                  ))}
-                </Menu.Dropdown>
-              </Menu>
-            )}
-          </Box>
-          <SecondaryButton onClick={() => setScanning(false)}>
-            スキャンを停止
-          </SecondaryButton>
-        </>
-      ) : (
-        <SecondaryButton
-          leftSection={<IconScan size={14} />}
-          onClick={() => setScanning(true)}
-        >
-          タブレットのQRをスキャン
-        </SecondaryButton>
-      )}
-      {error && (
-        <Text c="red" size="xs">
-          {error}
-        </Text>
-      )}
-    </Stack>
-  );
 }
 
 // ── 本体 ────────────────────────────────────────────────────────────────────

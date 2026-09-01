@@ -2,11 +2,7 @@ import { DeviceTabs } from "@/components/settings/kiosk/DeviceTabs";
 import { PrivilegedAccessBanner } from "@/components/settings/privileged/PrivilegedAccessBanner";
 import { requireAppRead } from "@/lib/authz-page";
 import { isDevFeatureEnabled } from "@/lib/dev-features";
-import {
-  listDisplayProfiles,
-  listDisplays,
-  listPairableProfiles,
-} from "@/lib/displays-admin";
+import { listDisplays, listPlantOptions } from "@/lib/displays-admin";
 import { listKioskDevices, listKioskPlantOptions } from "@/lib/kiosk-admin";
 import { fetchWorkLocationOptionsWithPlant } from "@/lib/work-locations";
 
@@ -35,13 +31,10 @@ export default async function KioskDevicesPage() {
     fetchWorkLocationOptionsWithPlant(),
   ]);
 
-  const [displays, displayProfiles, pairableProfiles] = displaysEnabled
-    ? await Promise.all([
-        listDisplays(),
-        listDisplayProfiles(),
-        listPairableProfiles(),
-      ])
-    : [[], [], []];
+  // 表示内容の設定に拠点を選ぶ欄があるので、選択肢も渡す
+  const [displays, displayPlantOptions] = displaysEnabled
+    ? await Promise.all([listDisplays(), listPlantOptions()])
+    : [[], []];
 
   return (
     <>
@@ -49,11 +42,10 @@ export default async function KioskDevicesPage() {
       <PrivilegedAccessBanner code="kiosk_secret" />
       <PrivilegedAccessBanner code="kiosk_device" />
       <DeviceTabs
-        displayProfiles={displayProfiles}
+        displayPlantOptions={displayPlantOptions}
         displays={displays}
         displaysEnabled={displaysEnabled}
         kioskRows={devices}
-        pairableProfiles={pairableProfiles}
         plantOptions={plantOptions}
         workLocationOptions={workLocationOptions}
       />

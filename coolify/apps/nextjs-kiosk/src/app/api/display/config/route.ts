@@ -1,6 +1,7 @@
 /**
  * GET /api/display/config — このディスプレイが今なにを映すか。
  *
+ * 表示内容は**端末の行が直接持つ**（表示内容テーブルは廃止した）。
  * ディスプレイは起動時と、WS の config_changed / revoked を受けたときに引く。
  * **失効の検知点でもある** — 401 が返ったらクライアントは再読込し、
  * サーバー側がペアリング画面を出す（Pi に触らずに再ペアリングできる）。
@@ -41,52 +42,30 @@ export async function GET(req: Request) {
       name: true,
       location: true,
       scalePercent: true,
-      profile: {
-        select: {
-          id: true,
-          name: true,
-          contentType: true,
-          contentConfig: true,
-          refreshIntervalSec: true,
-          isEnabled: true,
-        },
-      },
+      contentType: true,
+      contentConfig: true,
+      refreshIntervalSec: true,
     },
   });
-
-  const profile = row?.profile;
-  // 未割当・無効化されたプロファイルは「割り当て無し」と同じ扱い。
-  // 画面は黒くせず「表示内容が設定されていません」を出す。
-  if (!profile || !profile.isEnabled) {
-    return NextResponse.json({
-      display: {
-        id: auth.display.id,
-        name: deviceName(row?.name ?? null),
-        location: row?.location ?? null,
-        scalePercent: auth.display.scalePercent,
-      },
-      profile: null,
-    });
+  if (!row) {
+    return NextResponse.json({ error: "not_found" }, { status: 404 });
   }
 
-  const content = parseDisplayContent(
-    profile.contentType,
-    profile.contentConfig,
-  );
+  const display = {
+    id: auth.display.id,
+    name: deviceName(row.name),
+    location: row.location,
+    scalePercent: auth.display.scalePercent,
+  };
+
+  const content = parseDisplayContent(row.contentType, row.contentConfig);
   if (!content) {
     // 設定が壊れている（種別と中身が食い違う）。真っ黒より、直せる人に
     // 何が起きたか伝わるほうがよい。
     return NextResponse.json({
-      display: {
-        id: auth.display.id,
-        name: deviceName(row?.name ?? null),
-        location: row?.location ?? null,
-        scalePercent: auth.display.scalePercent,
-      },
+      display,
       profile: {
-        id: profile.id,
-        name: deviceName(profile.name),
-        refreshIntervalSec: profile.refreshIntervalSec,
+        refreshIntervalSec: row.refreshIntervalSec,
         content: { type: "INVALID" as const },
       },
     });
@@ -99,16 +78,9 @@ export async function GET(req: Request) {
       : content;
 
   return NextResponse.json({
-    display: {
-      id: auth.display.id,
-      name: deviceName(row?.name ?? null),
-      location: row?.location ?? null,
-      scalePercent: auth.display.scalePercent,
-    },
+    display,
     profile: {
-      id: profile.id,
-      name: deviceName(profile.name),
-      refreshIntervalSec: profile.refreshIntervalSec,
+      refreshIntervalSec: row.refreshIntervalSec,
       content: resolved,
     },
   });

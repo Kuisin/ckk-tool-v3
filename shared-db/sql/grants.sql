@@ -192,14 +192,15 @@ GRANT SELECT (id, name, location, plant_id, floor_map_id, map_x, map_y, status,
 -- が BI で意味を持つので列単位で許す。
 REVOKE SELECT ON app.display_link_requests FROM metabase_ro;  -- リンクコード（有効中）
 REVOKE SELECT ON app.display_devices FROM metabase_ro;
-GRANT SELECT (id, name, location, plant_id, display_profile_id, status,
+GRANT SELECT (id, name, location, plant_id, status,
+              content_type, content_config, refresh_interval_sec, scale_percent,
+              machine_id, screen_index,
               device_token_expires_at, last_seen_at, app_version,
               linked_at, activated_by, activated_at, created_at, updated_at)
   ON app.display_devices TO metabase_ro;  -- 隠す: device_token_hash, last_ip_address, user_agent
-
--- display_profiles は「何を映しているか」の一覧で、秘密を持たない…と言い切れない:
--- content_config には METABASE の locked パラメータや URL 種別の宛先が入る。
--- ただしどちらも社内の設定値で、閲覧できて困るものではないため制限しない。
+-- content_config は「何を映しているか」で、METABASE の locked パラメータや URL 種別の
+-- 宛先が入る。どちらも社内の設定値で、閲覧できて困るものではないため出している。
+-- ★ 列を足したらここにも足すこと（列単位の GRANT なので、書かない列は見えない）。
 
 -- 取引先ポータル（社外向け）。生きた資格情報とその使われ方が並ぶので、
 -- 生の秘密を持つ表はまるごと外す。閲覧は SY0H に閉じる。
