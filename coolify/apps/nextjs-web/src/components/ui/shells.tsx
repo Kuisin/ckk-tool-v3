@@ -43,6 +43,7 @@ import {
   IconFileTypePdf,
   IconLanguage,
 } from "@tabler/icons-react";
+import { useTranslations } from "next-intl";
 import { type ReactNode, useState } from "react";
 import { useUnsavedChanges } from "@/components/layout/NavigationGuard";
 import { useIsMobile } from "@/hooks/useViewport";
@@ -91,7 +92,7 @@ export interface MenuItemDef {
 // ── ResourceActions (detail header actions) ─────────────────────────────────
 export function ResourceActions({
   onEdit,
-  editLabel = "編集",
+  editLabel,
   pdf,
   menuItems = [],
 }: {
@@ -101,6 +102,8 @@ export function ResourceActions({
   menuItems?: MenuItemDef[];
 }) {
   const isMobile = useIsMobile();
+  const t = useTranslations("common");
+  const resolvedEditLabel = editLabel ?? t("edit");
 
   const menu = (extra: MenuItemDef[]) =>
     extra.length > 0 ? (
@@ -108,7 +111,7 @@ export function ResourceActions({
         <Menu.Target>
           {/* アイコンのみのボタンには aria-label が必須（design.md §18.2）。 */}
           <Button
-            aria-label="操作メニュー"
+            aria-label={t("actionMenu")}
             px="xs"
             size={isMobile ? "sm" : undefined}
             variant="default"
@@ -172,7 +175,13 @@ export function ResourceActions({
   if (isMobile) {
     const all: MenuItemDef[] = [
       ...(onEdit
-        ? [{ label: editLabel, icon: <IconEdit size={14} />, onClick: onEdit }]
+        ? [
+            {
+              label: resolvedEditLabel,
+              icon: <IconEdit size={14} />,
+              onClick: onEdit,
+            },
+          ]
         : []),
       ...(pdf
         ? [
@@ -194,7 +203,7 @@ export function ResourceActions({
 
   return (
     <Group className="shrink-0" gap="xs">
-      {onEdit && <EditButton onClick={onEdit}>{editLabel}</EditButton>}
+      {onEdit && <EditButton onClick={onEdit}>{resolvedEditLabel}</EditButton>}
       {pdf &&
         (pdf.href ? (
           <PdfButton href={pdf.href} label={pdf.label} />
@@ -232,6 +241,7 @@ export function ListShell({
   embedded?: boolean;
   children: ReactNode;
 }) {
+  const t = useTranslations("common");
   const isMobile = useIsMobile();
   const hasFilters = !!(search || filters);
 
@@ -250,7 +260,7 @@ export function ListShell({
               <Group align="flex-end" gap="xs">
                 {filters}
                 {onReset && (
-                  <GhostButton onClick={onReset}>リセット</GhostButton>
+                  <GhostButton onClick={onReset}>{t("reset")}</GhostButton>
                 )}
               </Group>
             </Stack>
@@ -258,7 +268,9 @@ export function ListShell({
             <Group align="flex-end" mb="sm">
               {search && <Box className="flex-1">{search}</Box>}
               {filters}
-              {onReset && <GhostButton onClick={onReset}>リセット</GhostButton>}
+              {onReset && (
+                <GhostButton onClick={onReset}>{t("reset")}</GhostButton>
+              )}
             </Group>
           ))}
         {children}
@@ -344,7 +356,7 @@ export function FormShell({
   isDirty = false,
   onSubmit,
   onCancel,
-  submitLabel = "保存",
+  submitLabel,
   children,
 }: {
   breadcrumbs: Crumb[];
@@ -398,7 +410,7 @@ export function FormActions({
   children,
   onCancel,
   onSave,
-  submitLabel = "保存",
+  submitLabel,
   cancelLabel,
   loading,
   disabled,
@@ -414,6 +426,7 @@ export function FormActions({
   loading?: boolean;
   disabled?: boolean;
 }) {
+  const t = useTranslations("common");
   const isMobile = useIsMobile();
 
   if (children) return <Box className="form-actions">{children}</Box>;
@@ -426,7 +439,7 @@ export function FormActions({
       onClick={onSave}
       type={onSave ? "button" : "submit"}
     >
-      {submitLabel}
+      {submitLabel ?? t("save")}
     </SaveButton>
   );
   const cancel = onCancel ? (
@@ -511,6 +524,7 @@ export interface AuditEntry {
  * 開く — 何がどう変わったかを画面遷移なしで確認できる。
  */
 export function AuditTimeline({ entries }: { entries: AuditEntry[] }) {
+  const t = useTranslations("common");
   const [selected, setSelected] = useState<AuditEntry | null>(null);
   return (
     <>
@@ -541,7 +555,7 @@ export function AuditTimeline({ entries }: { entries: AuditEntry[] }) {
             lineVariant="dotted"
             title={
               <UnstyledButton
-                aria-label={`${log.action} の詳細を開く`}
+                aria-label={t("openDetailOf", { name: log.action })}
                 onClick={() => setSelected(log)}
                 style={{ display: "block", width: "100%" }}
               >
@@ -620,6 +634,7 @@ export function LocalizedTextInput({
    */
   help?: { help: string; manual: string };
 }) {
+  const t = useTranslations("common");
   const [opened, { open, close }] = useDisclosure(false);
   const translations: Record<string, string> = translationsProps.value ?? {};
   const [draft, setDraft] = useState<Record<string, string>>(translations);
@@ -647,7 +662,9 @@ export function LocalizedTextInput({
             open();
           }}
         >
-          多言語{filledCount > 0 ? `（${filledCount}）` : ""}
+          {filledCount > 0
+            ? t("translationsWithCount", { count: filledCount })
+            : t("translations")}
         </SecondaryButton>
       </Group>
       <ModalShell
@@ -657,7 +674,7 @@ export function LocalizedTextInput({
           close();
         }}
         opened={opened}
-        title={`${label} — 多言語`}
+        title={t("translationsTitle", { label })}
       >
         <Stack gap="sm">
           <Text c="dimmed" size="xs">

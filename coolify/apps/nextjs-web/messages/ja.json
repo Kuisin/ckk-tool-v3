@@ -23,7 +23,14 @@
     "disabled": "無効",
     "none": "—",
     "back": "戻る",
-    "error": "エラー"
+    "error": "エラー",
+    "run": "実行",
+    "cannotBeUndone": "この操作は取り消せません。",
+    "actionMenu": "操作メニュー",
+    "translations": "多言語",
+    "openDetailOf": "{name} の詳細を開く",
+    "translationsWithCount": "多言語（{count}）",
+    "translationsTitle": "{label} — 多言語"
   },
   "shell": {
     "appsLabel": "アプリ",

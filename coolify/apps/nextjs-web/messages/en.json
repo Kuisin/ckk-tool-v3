@@ -23,7 +23,14 @@
     "disabled": "Disabled",
     "none": "—",
     "back": "Back",
-    "error": "Error"
+    "error": "Error",
+    "run": "Run",
+    "cannotBeUndone": "This cannot be undone.",
+    "actionMenu": "Actions",
+    "translations": "Translations",
+    "openDetailOf": "Open details of {name}",
+    "translationsWithCount": "Translations ({count})",
+    "translationsTitle": "{label} — translations"
   },
   "shell": {
     "appsLabel": "Apps",

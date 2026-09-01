@@ -17,31 +17,80 @@
 import { Alert, Group, Modal, Stack, Text } from "@mantine/core";
 import { modals } from "@mantine/modals";
 import { IconAlertTriangle } from "@tabler/icons-react";
-import type { ReactNode } from "react";
+import { useLocale, useTranslations } from "next-intl";
+import { type ReactNode, useCallback } from "react";
+import type { Locale } from "@/lib/i18n";
 import { CancelButton, PrimaryButton } from "./buttons";
+
+/**
+ * 命令的な確認ダイアログの既定文言。
+ *
+ * `openConfirm` は**関数**（イベントハンドラから呼ぶ）なのでフックが使えず、
+ * `useTranslations` を中で呼べない。PreferencesProvider の但し書きと同じ扱いで、
+ * フックを使えない素の関数へは解決済みの値を**引数で渡す** — ここでは `locale`。
+ * 画面からは下の `useConfirm()` を使えば自動で渡る。
+ */
+const CONFIRM_DEFAULTS = {
+  message: {
+    ja: "この操作は取り消せません。",
+    en: "This cannot be undone.",
+    zh: "此操作无法撤销。",
+  },
+  confirm: { ja: "実行", en: "Run", zh: "执行" },
+  cancel: { ja: "戻る", en: "Back", zh: "返回" },
+} satisfies Record<string, Record<Locale, string>>;
 
 /**
  * Imperative destructive confirm — wraps `modals.openConfirmModal`
  * exactly per design.md §10.4. Requires <ModalsProvider> (app/providers.tsx).
+ *
+ * `locale` 省略時は ja。**画面からは `useConfirm()` を使うこと** — こちらを
+ * 直に呼ぶと、利用者が英語/中国語でも既定文言が日本語のままになる。
  */
 export function openConfirm({
   title,
-  message = "この操作は取り消せません。",
-  confirmLabel = "実行",
+  message,
+  confirmLabel,
+  cancelLabel,
+  locale = "ja",
   onConfirm,
 }: {
   title: string;
   message?: ReactNode;
   confirmLabel?: string;
+  cancelLabel?: string;
+  locale?: Locale;
   onConfirm: () => void;
 }) {
   modals.openConfirmModal({
     title,
-    children: <Text size="sm">{message}</Text>,
-    labels: { confirm: confirmLabel, cancel: "戻る" },
+    children: (
+      <Text size="sm">{message ?? CONFIRM_DEFAULTS.message[locale]}</Text>
+    ),
+    labels: {
+      confirm: confirmLabel ?? CONFIRM_DEFAULTS.confirm[locale],
+      cancel: cancelLabel ?? CONFIRM_DEFAULTS.cancel[locale],
+    },
     confirmProps: { color: "red" },
     onConfirm,
   });
+}
+
+/**
+ * 画面から使う `openConfirm`。既定文言が利用者の言語で入る。
+ *
+ * ```tsx
+ * const confirm = useConfirm();
+ * confirm({ title: t("deleteTitle"), onConfirm: () => remove(id) });
+ * ```
+ */
+export function useConfirm() {
+  const locale = useLocale() as Locale;
+  return useCallback(
+    (opts: Omit<Parameters<typeof openConfirm>[0], "locale">) =>
+      openConfirm({ ...opts, locale }),
+    [locale],
+  );
 }
 
 export interface ModalBaseProps {
@@ -58,10 +107,10 @@ export function ModalShell({
   title,
   children,
   onConfirm,
-  confirmLabel = "実行",
+  confirmLabel,
   confirmColor,
   confirmDisabled,
-  cancelLabel = "キャンセル",
+  cancelLabel,
   loading,
   size = "md",
   hideFooter,
@@ -85,6 +134,7 @@ export function ModalShell({
    */
   fullScreen?: boolean;
 }) {
+  const t = useTranslations("common");
   return (
     <Modal
       centered
@@ -99,7 +149,9 @@ export function ModalShell({
         {children}
         {!hideFooter && (
           <Group gap="xs" justify="flex-end" mt="xs">
-            <CancelButton onClick={onClose}>{cancelLabel}</CancelButton>
+            <CancelButton onClick={onClose}>
+              {cancelLabel ?? t("cancel")}
+            </CancelButton>
             {onConfirm && (
               <PrimaryButton
                 color={confirmColor}
@@ -107,7 +159,7 @@ export function ModalShell({
                 loading={loading}
                 onClick={onConfirm}
               >
-                {confirmLabel}
+                {confirmLabel ?? t("run")}
               </PrimaryButton>
             )}
           </Group>
@@ -123,7 +175,7 @@ export function ConfirmModal({
   onClose,
   title,
   message,
-  confirmLabel = "実行",
+  confirmLabel,
   confirmColor = "red",
   loading,
   warning,
@@ -138,11 +190,12 @@ export function ConfirmModal({
   /** Action to run on confirm. The modal closes afterwards (preview default: close only). */
   onConfirm?: () => void;
 }) {
+  const t = useTranslations("common");
   return (
     <ModalShell
-      cancelLabel="戻る"
+      cancelLabel={t("back")}
       confirmColor={confirmColor}
-      confirmLabel={confirmLabel}
+      confirmLabel={confirmLabel ?? t("run")}
       loading={loading}
       onClose={onClose}
       onConfirm={() => {
@@ -174,7 +227,7 @@ export function FormModal({
   title,
   children,
   onSubmit,
-  submitLabel = "保存",
+  submitLabel,
   loading,
   size = "lg",
 }: ModalBaseProps & {
@@ -185,6 +238,7 @@ export function FormModal({
   loading?: boolean;
   size?: ModalSize;
 }) {
+  const t = useTranslations("common");
   return (
     <Modal
       centered
@@ -200,7 +254,7 @@ export function FormModal({
           <Group gap="xs" justify="flex-end" mt="xs">
             <CancelButton onClick={onClose} />
             <PrimaryButton loading={loading} type="submit">
-              {submitLabel}
+              {submitLabel ?? t("save")}
             </PrimaryButton>
           </Group>
         </Stack>

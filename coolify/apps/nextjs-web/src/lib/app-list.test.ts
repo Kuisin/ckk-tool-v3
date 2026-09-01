@@ -15,11 +15,11 @@
 import { describe, expect, it } from "vitest";
 import {
   APP_LABEL_I18N,
-  CATEGORY_COLORS,
-  CATEGORY_LABEL_I18N,
   type AppCategory,
   appLabel,
   appList,
+  CATEGORY_COLORS,
+  CATEGORY_LABEL_I18N,
   categoryLabel,
 } from "./app-list";
 import { LOCALES } from "./i18n";

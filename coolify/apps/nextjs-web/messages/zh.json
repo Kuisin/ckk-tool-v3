@@ -23,7 +23,14 @@
     "disabled": "停用",
     "none": "—",
     "back": "返回",
-    "error": "错误"
+    "error": "错误",
+    "run": "执行",
+    "cannotBeUndone": "此操作无法撤销。",
+    "actionMenu": "操作菜单",
+    "translations": "多语言",
+    "openDetailOf": "打开 {name} 的详情",
+    "translationsWithCount": "多语言（{count}）",
+    "translationsTitle": "{label} — 多语言"
   },
   "shell": {
     "appsLabel": "应用",
