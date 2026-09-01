@@ -194,7 +194,7 @@ export function OutsourceTable({ rows }: { rows: OutsourceStepRow[] }) {
         defaultSort={{ key: "workOrderNumber", dir: "desc" }}
         emptyIcon={<IconTruckDelivery size={24} />}
         emptyMessage={tr(
-          tr("外注工程がありません（指示書の工程で外注を選ぶと表示されます）"),
+          "外注工程がありません（指示書の工程で外注を選ぶと表示されます）",
         )}
         getRowId={(r) => r.stepId}
         onRowClick={(r) =>

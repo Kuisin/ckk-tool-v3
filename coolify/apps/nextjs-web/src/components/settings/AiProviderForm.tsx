@@ -361,7 +361,7 @@ export function AiProviderForm({ initial }: Props) {
           )}
           <NumberInput
             description={tr(
-              tr("1 回の応答に許す最大トークン数（Anthropic では必須）"),
+              "1 回の応答に許す最大トークン数（Anthropic では必須）",
             )}
             label={tr("最大出力トークン")}
             max={200000}

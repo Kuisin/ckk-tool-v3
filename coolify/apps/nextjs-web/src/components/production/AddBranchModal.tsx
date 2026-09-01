@@ -234,7 +234,7 @@ export function AddBranchModal({
           <Select
             data={mergeTargets.map((s) => ({ value: s.id, label: s.name }))}
             description={tr(
-              tr("分岐系列の最後の工程から、この工程へ良品を戻します"),
+              "分岐系列の最後の工程から、この工程へ良品を戻します",
             )}
             disabled={isEdit && !editTarget.canEditTermination}
             label={tr("合流先（未着手のメインライン工程）")}

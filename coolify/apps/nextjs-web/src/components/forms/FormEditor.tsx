@@ -275,7 +275,7 @@ export function FormEditor({
         <DateTimePicker
           clearable
           description={tr(
-            tr("この時刻を過ぎると自動で受付を終了します（操作は不要）"),
+            "この時刻を過ぎると自動で受付を終了します（操作は不要）",
           )}
           label={tr("受付終了")}
           onChange={(v) => set({ closesAt: toIso(v) })}

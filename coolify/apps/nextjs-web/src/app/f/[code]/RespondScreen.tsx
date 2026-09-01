@@ -224,7 +224,7 @@ export async function RespondScreen({
           ]}
           color="gray"
           description={tr(
-            tr("このフォームは使い終わったものとして片付けられています。"),
+            "このフォームは使い終わったものとして片付けられています。",
           )}
           formTitle={formTitle}
           icon={<IconLock size={24} />}
