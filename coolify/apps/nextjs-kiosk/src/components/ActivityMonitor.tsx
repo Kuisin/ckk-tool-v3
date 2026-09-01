@@ -44,6 +44,8 @@ export function ActivityMonitor() {
       await fetch("/api/kiosk/session", { method: "DELETE" });
     } finally {
       router.replace("/login");
+      // 同上 — layout が持つ利用者名を捨てさせる
+      router.refresh();
     }
   }, [router]);
 

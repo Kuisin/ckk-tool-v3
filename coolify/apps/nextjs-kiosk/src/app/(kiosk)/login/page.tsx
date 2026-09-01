@@ -105,6 +105,9 @@ export default function LoginPage() {
             router.replace(
               data.userId ? beginUserPageTracking(data.userId) : "/",
             );
+            // ヘッダーの利用者名を出すため layout を作り直す（replace だけでは
+            // 同じ layout が使い回され、「未ログイン」のまま入ってしまう）
+            router.refresh();
             return;
           case "PIN_SETUP_REQUIRED":
             setState({ phase: "pin_setup", ticket: data.ticket ?? "" });

@@ -50,6 +50,9 @@ export function LauncherShell({ displayName, apps }: Props) {
       await fetch("/api/kiosk/session", { method: "DELETE" });
     } finally {
       router.replace("/login");
+      // ヘッダーの利用者名はサーバー側の layout が持つ。router.replace は
+      // 同じ layout を使い回すので再描画されず、名前が残ったままになる。
+      router.refresh();
     }
   };
 
