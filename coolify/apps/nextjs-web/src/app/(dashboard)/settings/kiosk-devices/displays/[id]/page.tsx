@@ -3,7 +3,11 @@ import { DisplayDetailView } from "@/components/settings/displays/DisplayDetailV
 import { PrivilegedAccessBanner } from "@/components/settings/privileged/PrivilegedAccessBanner";
 import { fetchAuditEntries } from "@/lib/audit";
 import { requireAppRead } from "@/lib/authz-page";
-import { getDisplayDetail, listPlantOptions } from "@/lib/displays-admin";
+import {
+  getDisplayDetail,
+  listMachineScreens,
+  listPlantOptions,
+} from "@/lib/displays-admin";
 
 export const dynamic = "force-dynamic";
 
@@ -20,9 +24,11 @@ export default async function DisplayDetailPage({
   const display = await getDisplayDetail(id);
   if (!display) notFound();
 
-  const [plantOptions, audit] = await Promise.all([
+  const [plantOptions, audit, machineScreens] = await Promise.all([
     listPlantOptions(),
     fetchAuditEntries("display_devices", id),
+    // 1 台で 2 枚出している機械なら、もう一方へ行ける選択を出す
+    listMachineScreens(display.machineId),
   ]);
 
   return (
@@ -31,6 +37,7 @@ export default async function DisplayDetailPage({
       <DisplayDetailView
         audit={audit}
         display={display}
+        machineScreens={machineScreens}
         plantOptions={plantOptions}
       />
     </>

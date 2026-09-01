@@ -13,6 +13,7 @@
 
 import {
   Alert,
+  Group,
   Paper,
   SegmentedControl,
   Select,
@@ -67,9 +68,20 @@ type Props = {
   display: DisplayDetail;
   plantOptions: Array<{ value: string; label: string }>;
   audit: AuditEntry[];
+  /** 同じ機械の画面（1 台 2 枚のとき。1 枚運用では空）。 */
+  machineScreens?: Array<{
+    id: string;
+    name: string | null;
+    screenIndex: number | null;
+  }>;
 };
 
-export function DisplayDetailView({ display, plantOptions, audit }: Props) {
+export function DisplayDetailView({
+  display,
+  plantOptions,
+  audit,
+  machineScreens = [],
+}: Props) {
   const router = useRouter();
   const fmt = useFormat();
   const { presence, live } = useDisplayPresence();
@@ -255,6 +267,29 @@ export function DisplayDetailView({ display, plantOptions, audit }: Props) {
           このディスプレイは失効しています。もう一度使うには、現地の画面に出る
           リンクコードで登録し直してください。
         </Alert>
+      )}
+
+      {/* 1 台で 2 枚出している機械は、ここでもう一方へ行ける。一覧と同じで
+          「別々の機械が 2 台」ではなく「1 台が 2 枚」だと分かるようにする。 */}
+      {machineScreens.length > 1 && (
+        <Group gap="sm" wrap="nowrap">
+          <Text c="dimmed" size="sm">
+            この機械の画面
+          </Text>
+          <SegmentedControl
+            data={machineScreens.map((screen, i) => ({
+              value: screen.id,
+              label: `${screen.screenIndex ?? i + 1} 枚目`,
+            }))}
+            onChange={(id) => {
+              if (id !== display.id) {
+                router.push(`/settings/kiosk-devices/displays/${id}`);
+              }
+            }}
+            size="sm"
+            value={display.id}
+          />
+        </Group>
       )}
 
       {/* サマリ（端末詳細と同じ 3 列）。状態は見出しのバッジ、オンラインは
