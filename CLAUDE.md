@@ -98,6 +98,61 @@ pnpm prisma migrate dev
 pnpm prisma db push                  # dev-only
 ```
 
+## Code memory (codebase-memory MCP)
+
+**A local index of this repo, queried over MCP.** `codebase-memory-mcp`
+([DeusData/codebase-memory-mcp](https://github.com/DeusData/codebase-memory-mcp), MIT)
+parses the tree into a knowledge graph (~66k nodes / ~200k edges, ~15s for this repo) and
+serves it as MCP tools — `search_graph`, `trace_path`, `get_architecture`,
+`get_code_snippet`, `search_code`, `index_status`, `detect_changes`.
+
+**Reach for it before a repo-wide grep**, for the questions that span files rather than sit
+in one: *where is this used, what calls this, what does this subsystem consist of, what
+would this change break.* It answers with **locations**, so the graph tells you where to
+look and then you read the files. It is **not** a source of truth about behaviour —
+`_specs/` and the code remain that, and a graph edge is not a reason to skip reading the
+function. For a keyword you can already name in a file you can already name, plain
+`grep`/`Explore` is still faster.
+
+**The index is a snapshot and does not refresh itself.** A stale one is worse than no
+index, because it answers confidently with line numbers that have since moved. **Re-index
+after pulling or merging anything substantial** — the whole run is ~15s:
+
+```bash
+codebase-memory-mcp cli index_repository --repo-path <repo root>
+codebase-memory-mcp cli index_status    --project <project key>   # what it currently holds
+```
+
+Traps, all of them found the hard way:
+
+- **The project key is derived from the absolute path**, so the main checkout and each
+  worktree are *separate projects*. Queries are scoped to one key — ask the wrong one and
+  you get a confidently empty answer rather than an error. `cli list_projects` prints the
+  keys currently held.
+- **`.claude/` is excluded from indexing**, so `.claude/worktrees/*` never leaks into the
+  main checkout's index. A worktree you want covered must be indexed on its own path.
+- **Never pass `--persistence`.** It writes `.codebase-memory/graph.db.zst` *into the repo*
+  for team sharing. `.gitignore` blocks it; sharing the artifact is a decision to make
+  deliberately, not a flag to leave on.
+- The binary is **not a repo dependency and not in `pnpm-lock.yaml`** — it is installed per
+  machine and registered at **user scope** (`~/.claude.json`), so it is available in every
+  repo and committed to none. Nothing here breaks when it is absent; you just lose the
+  tools.
+
+Install on a new Mac (verify the checksum rather than piping the installer into a shell):
+
+```bash
+mkdir -p ~/.local/bin
+gh release download <tag> --repo DeusData/codebase-memory-mcp \
+  --pattern 'codebase-memory-mcp-darwin-arm64.tar.gz' --pattern 'checksums.txt'
+shasum -a 256 -c checksums.txt --ignore-missing
+tar xzf codebase-memory-mcp-darwin-arm64.tar.gz -C ~/.local/bin codebase-memory-mcp
+claude mcp add --scope user codebase-memory "$HOME/.local/bin/codebase-memory-mcp"
+```
+
+The index lives in `~/.cache/codebase-memory-mcp` (~200 MB here; override with
+`CBM_CACHE_DIR`). Deleting it costs one re-index and nothing else.
+
 ## Key Patterns
 
 **RBAC** — Always query the `user_permissions` view (not the raw relation tables). It aggregates roles → permissions per user and returns only the highest `SCOPE` per `(user_id, action, permission_code)`. Roles and grants are owned by two idempotent seeds — `shared-db/sql/rbac-seed.sql` (the permission codes + `admin`/`staff`) and `roles-seed.sql` (the 15 operational roles) — **not** by the app. `system` and `kiosk`, plus the five **privileged codes** (`kiosk_secret` / `kiosk_device` / `kiosk_card` / `personal_data` / `user_admin`), are excluded from every business role. **When you add a permission code, check both seeds' exclusion lists**: `roles-seed.sql` grants `manager` / `viewer` / the six `*_manager` roles via `CROSS JOIN app.permissions`, so a new code is handed to all of them unless you exclude it — this already happened once with `kiosk`. `rbac-seed.sql` also deletes every `APPROVE` grant, excluding only the five privileged codes; widening that DELETE empties `privileged_approver` and silently makes every request undecidable. Two derived references are regenerated, never hand-edited: `_docs/rbac-role-matrix.xlsx` (`tools/rbac-matrix/build_rbac_xlsx.py`, reads the live DB + `app-list.ts`) and the DC02 internal doc「ロールと権限」(`content/internal/rbac/`). Launcher visibility is a separate axis — `feature_flags` (`feature-flags-seed.sql`) decides what is published on `main`, so a grant never publishes an app.
