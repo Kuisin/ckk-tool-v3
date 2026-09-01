@@ -18,7 +18,7 @@
  */
 
 import { useEffect, useRef } from "react";
-import { claimScreenSlot } from "@/lib/screen-slot";
+import { browserMachineId, claimScreenSlot } from "@/lib/screen-slot";
 
 export function ScreenSlotGuard({
   /** URL で明示された画面番号（無ければ null＝自動割り当ての対象）。 */
@@ -45,6 +45,12 @@ export function ScreenSlotGuard({
       const url = new URL(window.location.href);
       url.searchParams.set("screen", String(slot.index));
       url.searchParams.set("of", String(Math.max(slot.total, slot.index)));
+      // **機械の名前も入れる。** 無いと一覧で「1 台が 2 枚」としてまとまらず、
+      // 別々の機械が 2 台あるように見える（実際そうなっていた）。
+      // ブラウザには機械名が無いので、この端末で作った名前を使い回す。
+      if (!url.searchParams.get("machine")) {
+        url.searchParams.set("machine", browserMachineId());
+      }
       window.location.replace(url.toString());
     })();
   }, [explicitScreen]);
