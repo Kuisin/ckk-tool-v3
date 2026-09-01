@@ -63,6 +63,9 @@ const EXCLUDED_TEMPLATE: Record<string, string> = {
   relatedProcessStepId: "id ではなくコードで持つ（relatedProcessStepCode）",
   createdAt: "取込した時刻が正しい",
   updatedAt: "同上",
+  approvalGroupId:
+    "承認グループは環境ごとの id（コードを持たない）で、テンプレートの" +
+    "測定定義とは別の設定。書き出し/取込の対象外（承認設定 MS0B 側で環境ごとに設定）",
 };
 
 const EXCLUDED_ITEM: Record<string, string> = {

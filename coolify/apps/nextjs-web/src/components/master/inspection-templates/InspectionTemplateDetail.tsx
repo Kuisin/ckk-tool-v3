@@ -29,6 +29,7 @@ import {
   IconLock,
   IconPlus,
   IconTrash,
+  IconUsersGroup,
   IconVersions,
 } from "@tabler/icons-react";
 import Link from "next/link";
@@ -61,12 +62,14 @@ import {
   type InspectionItemSpec,
   samplingLabelJa,
 } from "@/lib/inspection-core";
+import type { ApproverOption } from "./ApprovalTargetField";
 import {
   CreateVersionModal,
   DeleteInspectionTemplateItemModal,
   DeleteInspectionTemplateModal,
   InspectionTemplateItemModal,
   type InspectionTemplateItemRow,
+  SetApproversModal,
   ToggleInspectionTemplateActiveModal,
 } from "./InspectionTemplateModals";
 
@@ -94,6 +97,11 @@ export interface InspectionTemplateDetailData {
   recordStyle: "VALUES" | "COUNTS";
   layoutStyle: "DIMENSIONAL" | "CHECKLIST";
   sampleNaming: "GENERIC" | "INITIAL_MID_FINAL";
+  /** 検査承認グループ（承認設定 MS0B）。null = 未設定 = 誰でも検収できる。 */
+  approvalGroupId: string | null;
+  approvalGroupName: string | null;
+  /** カスタム承認者（この検査表だけの承認者）。グループと同時には設定されない。 */
+  approvers: ApproverOption[];
   isActive: boolean;
   /** 指示書割当 or 検査記録あり → 定義変更不可。 */
   isLocked: boolean;
@@ -139,9 +147,12 @@ export function itemRowSpec(
 export function InspectionTemplateDetail({
   record,
   auditEntries,
+  groupOptions,
 }: {
   record: InspectionTemplateDetailData;
   auditEntries: AuditEntry[];
+  /** 検査承認グループの選択肢（承認設定 MS0B の approval_groups）。 */
+  groupOptions: { value: string; label: string }[];
 }) {
   const locale = useLocale();
   const fmt = useFormat();
@@ -152,6 +163,7 @@ export function InspectionTemplateDetail({
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [toggleOpen, setToggleOpen] = useState(false);
   const [versionOpen, setVersionOpen] = useState(false);
+  const [approvalGroupOpen, setApprovalGroupOpen] = useState(false);
   const [itemModalOpen, setItemModalOpen] = useState(false);
   const [editItem, setEditItem] = useState<InspectionTemplateItemRow | null>(
     null,
@@ -182,6 +194,11 @@ export function InspectionTemplateDetail({
               label: "新バージョンを作成",
               icon: <IconVersions size={14} />,
               onClick: () => setVersionOpen(true),
+            },
+            {
+              label: "検査承認の宛先を変更",
+              icon: <IconUsersGroup size={14} />,
+              onClick: () => setApprovalGroupOpen(true),
             },
             {
               label: record.isActive ? "無効化" : "有効化",
@@ -272,6 +289,15 @@ export function InspectionTemplateDetail({
             }
           />
         )}
+        <FieldValue
+          label="検査承認の宛先"
+          value={
+            record.approvalGroupName ??
+            (record.approvers.length > 0
+              ? record.approvers.map((a) => a.label).join("、")
+              : "未設定（誰でも検収可）")
+          }
+        />
         <FieldValue label="検査項目数" value={`${record.items.length}件`} />
         <FieldValue
           label="状態"
@@ -554,6 +580,15 @@ export function InspectionTemplateDetail({
         onClose={() => setVersionOpen(false)}
         onCreated={(newId) => router.push(`${BASE_PATH}/${newId}`)}
         opened={versionOpen}
+        target={target}
+      />
+      <SetApproversModal
+        currentApprovers={record.approvers}
+        currentGroupId={record.approvalGroupId}
+        groupOptions={groupOptions}
+        onClose={() => setApprovalGroupOpen(false)}
+        onDone={() => router.refresh()}
+        opened={approvalGroupOpen}
         target={target}
       />
       <InspectionTemplateItemModal

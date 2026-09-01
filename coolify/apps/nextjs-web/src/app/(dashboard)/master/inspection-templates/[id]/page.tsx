@@ -7,7 +7,7 @@ import { fetchAuditEntries } from "@/lib/audit";
 import { requireAppRead } from "@/lib/authz-page";
 import { prisma } from "@/lib/db";
 import { type LocalizedText, localized } from "@/lib/format";
-import { toItemRow } from "../data";
+import { fetchApprovalGroupOptions, toItemRow } from "../data";
 
 export const dynamic = "force-dynamic";
 
@@ -22,11 +22,16 @@ export default async function MasterInspectionTemplatesDetailPage({
   const { id: idParam } = await params;
   const id = Number(idParam);
   if (!Number.isInteger(id)) notFound();
-  const [r, auditEntries] = await Promise.all([
+  const [r, auditEntries, groupOptions] = await Promise.all([
     prisma.inspectionTemplate.findUnique({
       where: { id },
       include: {
         relatedProcessStep: true,
+        approvalGroup: { select: { name: true } },
+        approvers: {
+          include: { user: { select: { displayName: true } } },
+          orderBy: { sortOrder: "asc" },
+        },
         items: { orderBy: [{ sortOrder: "asc" }, { id: "asc" }] },
         _count: {
           select: { workOrderStepTemplates: true, inspectionRecords: true },
@@ -34,6 +39,7 @@ export default async function MasterInspectionTemplatesDetailPage({
       },
     }),
     fetchAuditEntries("inspection_templates", String(id)),
+    fetchApprovalGroupOptions(),
   ]);
   if (!r) notFound();
 
@@ -69,6 +75,15 @@ export default async function MasterInspectionTemplatesDetailPage({
     recordStyle: r.recordStyle,
     layoutStyle: r.layoutStyle,
     sampleNaming: r.sampleNaming,
+    approvalGroupId:
+      r.approvalGroupId != null ? String(r.approvalGroupId) : null,
+    approvalGroupName: r.approvalGroup
+      ? localized(r.approvalGroup.name as LocalizedText | null)
+      : null,
+    approvers: r.approvers.map((a) => ({
+      value: a.userId,
+      label: a.user.displayName,
+    })),
     isActive: r.isActive,
     isLocked:
       r._count.workOrderStepTemplates > 0 || r._count.inspectionRecords > 0,
@@ -88,6 +103,10 @@ export default async function MasterInspectionTemplatesDetailPage({
   };
 
   return (
-    <InspectionTemplateDetail auditEntries={auditEntries} record={record} />
+    <InspectionTemplateDetail
+      auditEntries={auditEntries}
+      groupOptions={groupOptions}
+      record={record}
+    />
   );
 }

@@ -7,6 +7,7 @@ import {
   localized,
   localizedTranslations,
 } from "@/lib/format";
+import { fetchApprovalGroupOptions } from "../../data";
 
 export const dynamic = "force-dynamic";
 
@@ -25,6 +26,10 @@ export default async function MasterInspectionTemplatesEditPage({
     where: { id },
     include: {
       relatedProcessStep: true,
+      approvers: {
+        include: { user: { select: { displayName: true } } },
+        orderBy: { sortOrder: "asc" },
+      },
       _count: {
         select: { workOrderStepTemplates: true, inspectionRecords: true },
       },
@@ -37,9 +42,11 @@ export default async function MasterInspectionTemplatesEditPage({
   }
 
   const name = r.name as LocalizedText | null;
+  const groupOptions = await fetchApprovalGroupOptions();
 
   return (
     <InspectionTemplateForm
+      groupOptions={groupOptions}
       initial={{
         id: r.id,
         code: r.code,
@@ -57,6 +64,12 @@ export default async function MasterInspectionTemplatesEditPage({
         recordStyle: r.recordStyle,
         layoutStyle: r.layoutStyle,
         sampleNaming: r.sampleNaming,
+        approvalGroupId:
+          r.approvalGroupId != null ? String(r.approvalGroupId) : null,
+        approvers: r.approvers.map((a) => ({
+          value: a.userId,
+          label: a.user.displayName,
+        })),
         isActive: r.isActive,
       }}
     />

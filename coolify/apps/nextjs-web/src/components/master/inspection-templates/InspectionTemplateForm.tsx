@@ -25,7 +25,10 @@ import { useRouter } from "next/navigation";
 import { useLocale } from "next-intl";
 import { useTransition } from "react";
 import { z } from "zod";
-import { searchProcessStepOptions } from "@/app/(dashboard)/_shared/option-search";
+import {
+  searchProcessStepOptions,
+  searchUserOptions,
+} from "@/app/(dashboard)/_shared/option-search";
 import {
   createInspectionTemplate,
   updateInspectionTemplate,
@@ -46,6 +49,10 @@ import {
 } from "@/lib/enum-labels";
 import { fieldHelp, fieldHelpTip } from "@/lib/field-help";
 import { zodResolver } from "@/lib/form";
+import {
+  ApprovalTargetField,
+  type ApproverOption,
+} from "./ApprovalTargetField";
 
 const BASE_PATH = "/master/inspection-templates";
 
@@ -66,6 +73,8 @@ const templateSchema = z
     recordStyle: z.enum(["VALUES", "COUNTS"]),
     layoutStyle: z.enum(["DIMENSIONAL", "CHECKLIST"]),
     sampleNaming: z.enum(["GENERIC", "INITIAL_MID_FINAL"]),
+    approvalGroupId: z.string().nullable(),
+    approvers: z.array(z.object({ value: z.string(), label: z.string() })),
     isActive: z.boolean(),
   })
   .superRefine((v, ctx) => {
@@ -109,13 +118,20 @@ export interface InspectionTemplateFormInitial {
   recordStyle: "VALUES" | "COUNTS";
   layoutStyle: "DIMENSIONAL" | "CHECKLIST";
   sampleNaming: "GENERIC" | "INITIAL_MID_FINAL";
+  /** 検査承認グループ（承認設定 MS0B）。null = 未設定 = 誰でも承認できる。 */
+  approvalGroupId: string | null;
+  /** カスタム承認者（この検査表だけの指名）。approvalGroupId とは排他。 */
+  approvers: ApproverOption[];
   isActive: boolean;
 }
 
 export function InspectionTemplateForm({
   initial,
+  groupOptions,
 }: {
   initial?: InspectionTemplateFormInitial;
+  /** 検査承認グループの選択肢（承認設定 MS0B の approval_groups）。 */
+  groupOptions: { value: string; label: string }[];
 }) {
   const locale = useLocale();
   const router = useRouter();
@@ -135,6 +151,8 @@ export function InspectionTemplateForm({
       recordStyle: initial?.recordStyle ?? "VALUES",
       layoutStyle: initial?.layoutStyle ?? "DIMENSIONAL",
       sampleNaming: initial?.sampleNaming ?? "GENERIC",
+      approvalGroupId: initial?.approvalGroupId ?? null,
+      approvers: initial?.approvers ?? [],
       isActive: initial?.isActive ?? true,
     },
   });
@@ -156,6 +174,10 @@ export function InspectionTemplateForm({
         recordStyle: values.recordStyle,
         layoutStyle: values.layoutStyle,
         sampleNaming: values.sampleNaming,
+        approvalGroupId: values.approvalGroupId
+          ? Number(values.approvalGroupId)
+          : null,
+        approverUserIds: values.approvers.map((a) => a.value),
         isActive: values.isActive,
       };
       const result = isEdit
@@ -342,6 +364,14 @@ export function InspectionTemplateForm({
               </Text>
             </Stack>
           )}
+          <ApprovalTargetField
+            approvers={form.values.approvers}
+            groupId={form.values.approvalGroupId}
+            groupOptions={groupOptions}
+            onApproversChange={(v) => form.setFieldValue("approvers", v)}
+            onGroupChange={(v) => form.setFieldValue("approvalGroupId", v)}
+            onSearchApprovers={searchUserOptions}
+          />
           <Switch
             label={<HelpLabel {...fieldHelp("inspectionTemplate", "active")} />}
             {...form.getInputProps("isActive", { type: "checkbox" })}

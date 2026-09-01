@@ -345,17 +345,47 @@ model InspectionTemplate {
   layoutStyle           InspectionLayoutStyle  @default(DIMENSIONAL) @map("layout_style")
   // VALUES のサンプル呼称（製品1,2,3… / 初品・中間品・最終品）
   sampleNaming          InspectionSampleNaming @default(GENERIC) @map("sample_naming")
+  // 検査承認（InspectionRecord の検収）に要る宛先 — グループかカスタム
+  // （この検査表だけの承認者・複数可）のどちらか一方（両方同時には設定
+  // しない。CM02 フォームの承認フロー（FormApprovalStep/
+  // FormApprovalStepApprover）と同じ形）。グループは既存の承認設定アプリ
+  // MS0B が持つ approval_groups をそのまま使う。カスタムは
+  // inspection_template_approvers（下記 InspectionTemplateApprover）。
+  // どちらも未設定 = 誰でも検収できる（従来どおり）。
+  // 段階を持つ N 段承認フロー（approval_flows）とは別物 — こちらは単段の
+  // シンプルなゲート。
+  approvalGroupId       Int?     @map("approval_group_id")
   isActive              Boolean  @default(true) @map("is_active")
   createdAt             DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt             DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
 
   relatedProcessStep ProcessStepCatalog?      @relation(fields: [relatedProcessStepId], references: [id])
+  approvalGroup      ApprovalGroup?           @relation(fields: [approvalGroupId], references: [id])
+  approvers          InspectionTemplateApprover[]
   items              InspectionTemplateItem[]
   workOrderStepTemplates WorkOrderStepInspectionTemplate[]
   inspectionRecords  InspectionRecord[]            @relation("InspectionRecordTemplate")
 
   @@unique([code, version])
   @@map("inspection_templates")
+  @@schema("app")
+}
+
+// カスタム承認者（この検査表だけの指名。承認グループを作らずに 1..N 人を
+// 指す）。CM02 フォームの FormApprovalStepApprover と同じ形・同じ理由 —
+// 「この検査表は係長と品証の2人が見る」程度の単発の宛先のために毎回
+// 承認グループを作らせない。
+model InspectionTemplateApprover {
+  templateId Int    @map("template_id")
+  userId     String @map("user_id") @db.Uuid
+  sortOrder  Int    @default(0) @map("sort_order")
+
+  template InspectionTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
+  user     User               @relation("InspectionTemplateApprover", fields: [userId], references: [id], onDelete: Restrict)
+
+  @@id([templateId, userId])
+  @@index([userId])
+  @@map("inspection_template_approvers")
   @@schema("app")
 }
 
@@ -423,6 +453,7 @@ model ApprovalGroup {
   flowRuleSteps ApprovalFlowRuleStep[]
   formSteps     FormApprovalStep[]
   requests      ApprovalRequest[]
+  inspectionTemplates InspectionTemplate[]
 
   @@map("approval_groups")
   @@schema("app")

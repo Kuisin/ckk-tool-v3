@@ -11,6 +11,7 @@
 
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
+import { resolveApprover } from "@/lib/approvals";
 import { getCurrentActorId, recordAudit } from "@/lib/audit";
 import { checkPermission, type PermissionAction } from "@/lib/authz";
 import { prisma } from "@/lib/db";
@@ -548,20 +549,54 @@ export async function approveInspectionRecord(
   stepId: string,
   recordId: string,
 ): Promise<StepActionResult> {
-  // 検査承認 — 工程実行と同じ work_order:UPDATE でゲートする。
-  // （承認アクション（APPROVE）は廃止 — N 段承認の可否は承認設定 MS0B の
-  //   グループ所属だけが決め、こちらの検査承認は工程実行の一部として扱う。）
+  // 検査承認 — 工程実行と同じ work_order:UPDATE を RBAC の門番として使う
+  // （承認アクション（APPROVE）は使わない — こちらの検査承認は工程実行の
+  //   一部として扱う）。実ゲートは検査表テンプレートの承認グループ
+  //   （承認設定 MS0B の approval_groups）— 設定されていれば、そのグループの
+  //   実効メンバー（本人 or 期間内の代理）だけが承認できる。未設定の
+  //   テンプレートは従来どおり誰でも承認できる。
   const denied = await deniedStepPermission("UPDATE");
   if (denied) return denied;
   try {
     const record = await prisma.inspectionRecord.findFirst({
       where: { id: recordId, step: { workOrder: { workOrderNumber } } },
+      include: {
+        template: {
+          select: {
+            approvalGroupId: true,
+            approvers: { select: { userId: true } },
+          },
+        },
+      },
     });
     if (!record) return { ok: false, errors: ["検査記録が見つかりません"] };
     if (record.status !== "PASS") {
       return { ok: false, errors: ["合格の検査記録のみ承認できます"] };
     }
     const actor = await getCurrentActorId();
+    if (record.template.approvalGroupId != null) {
+      const { ok } = await resolveApprover(
+        record.template.approvalGroupId,
+        actor,
+        null,
+      );
+      if (!ok) {
+        return {
+          ok: false,
+          errors: ["この検査表の承認グループのメンバーのみ承認できます"],
+        };
+      }
+    } else if (record.template.approvers.length > 0) {
+      const isApprover = record.template.approvers.some(
+        (a) => a.userId === actor,
+      );
+      if (!isApprover) {
+        return {
+          ok: false,
+          errors: ["この検査表の承認者のみ承認できます"],
+        };
+      }
+    }
     await prisma.inspectionRecord.update({
       where: { id: recordId },
       data: { status: "APPROVED", approvedBy: actor, approvedAt: new Date() },
