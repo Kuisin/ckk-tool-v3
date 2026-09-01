@@ -59,15 +59,20 @@ const EXCLUDED = [
  * 無い）。ここに挙げたファイルは丸ごと数えない。
  *
  * **除外して良いのは、対訳の抜けを別のテストが落とすときだけ。**
- * app-list.ts は `src/lib/app-list.test.ts` が全アプリ・全カテゴリに en/zh が
- * あることを検査している。テストの無いファイルをここに足さないこと — 検出も
- * 保証も無くなり、静かに未翻訳が増える。
+ * テストの無いファイルをここに足さないこと — 検出も保証も無くなり、静かに
+ * 未翻訳が増える。現状の担保:
+ *   app-list.ts       → src/lib/app-list.test.ts（全アプリ・全カテゴリに en/zh）
+ *   operation-codes.ts → src/lib/operation-codes.i18n.test.ts
+ *                        （全コードが en/zh で日本語のまま返らない）
  *
  * enum-labels.ts / permission-labels.ts / privileged-operations.ts /
  * StatusBadge.tsx はここに要らない。値の隣に `ja:` `en:` `zh:` が並ぶ形なので、
  * ロケールキーの判定（isLocaleValue）だけで 0 件になる。
  */
-const SOURCE_LABEL_FILES = [/\/lib\/app-list\.ts$/];
+const SOURCE_LABEL_FILES = [
+  /\/lib\/app-list\.ts$/,
+  /\/lib\/operation-codes\.ts$/,
+];
 
 /**
  * コメントと文字列を分ける 1 パスの字句解析。

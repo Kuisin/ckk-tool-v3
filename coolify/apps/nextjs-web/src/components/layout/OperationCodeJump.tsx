@@ -20,11 +20,15 @@ import { useHotkeys } from "@mantine/hooks";
 import { notifications } from "@mantine/notifications";
 import { IconArrowRight } from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
+import { useLocale, useTranslations } from "next-intl";
 import { useRef, useState } from "react";
 import { appKeyForPath, useHiddenApps } from "@/components/layout/AppFlags";
+import type { Locale } from "@/lib/i18n";
 import {
   formatOperationCodeDisplay,
   navigateByOperationCode,
+  operationCategoryLabel,
+  operationCodeLabel,
   sanitizeOperationCodeInput,
   searchOperationCodes,
 } from "@/lib/operation-codes";
@@ -41,6 +45,8 @@ export function OperationCodeJump({
   compact = false,
 }: OperationCodeJumpProps) {
   const router = useRouter();
+  const t = useTranslations("shell");
+  const locale = useLocale() as Locale;
   const inputRef = useRef<HTMLInputElement>(null);
   const [value, setValue] = useState("");
   const combobox = useCombobox({
@@ -73,7 +79,7 @@ export function OperationCodeJump({
     });
     if (entry) {
       notifications.show({
-        title: `${formatOperationCodeDisplay(entry)} ${entry.label}`,
+        title: `${formatOperationCodeDisplay(entry)} ${operationCodeLabel(entry, locale)}`,
         message: entry.href,
         color: "blue",
         autoClose: 2500,
@@ -84,8 +90,8 @@ export function OperationCodeJump({
     }
 
     notifications.show({
-      title: "操作コードが見つかりません",
-      message: "4文字（例: PD02）",
+      title: t("jumpNotFound"),
+      message: t("jumpNotFoundHint"),
       color: "red",
       autoClose: 3000,
     });
@@ -98,7 +104,7 @@ export function OperationCodeJump({
     >
       <Combobox.Target>
         <TextInput
-          aria-label="操作コードで画面へ移動"
+          aria-label={t("jumpAria")}
           leftSection={
             compact ? undefined : (
               <Text c="dimmed" fw={600} size="xs">
@@ -119,7 +125,9 @@ export function OperationCodeJump({
               jump(value);
             }
           }}
-          placeholder={compact ? "コード" : "操作コード（例: PD02）"}
+          placeholder={
+            compact ? t("jumpPlaceholderCompact") : t("jumpPlaceholder")
+          }
           ref={inputRef}
           rightSection={
             compact ? (
@@ -158,10 +166,10 @@ export function OperationCodeJump({
                 <Text className="tabular-nums" fw={600} size="sm">
                   {formatOperationCodeDisplay(entry)}
                 </Text>
-                <Text size="sm">{entry.label}</Text>
+                <Text size="sm">{operationCodeLabel(entry, locale)}</Text>
                 <Box ml="auto" visibleFrom="md">
                   <Text c="dimmed" size="xs">
-                    {entry.category}
+                    {operationCategoryLabel(entry.category, locale)}
                   </Text>
                 </Box>
               </Group>

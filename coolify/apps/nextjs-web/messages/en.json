@@ -48,7 +48,12 @@
     "preferences": "Display settings",
     "myPermissions": "My permissions",
     "logout": "Log out",
-    "devBadge": "DEV"
+    "devBadge": "DEV",
+    "jumpAria": "Go to a screen by operation code",
+    "jumpPlaceholder": "Operation code (e.g. PD02)",
+    "jumpPlaceholderCompact": "Code",
+    "jumpNotFound": "Operation code not found",
+    "jumpNotFoundHint": "Four characters (e.g. PD02)"
   },
   "preferences": {
     "title": "Display settings",

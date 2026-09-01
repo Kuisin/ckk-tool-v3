@@ -48,7 +48,12 @@
     "preferences": "显示设置",
     "myPermissions": "我的权限",
     "logout": "退出登录",
-    "devBadge": "DEV"
+    "devBadge": "DEV",
+    "jumpAria": "通过操作代码跳转画面",
+    "jumpPlaceholder": "操作代码（例: PD02）",
+    "jumpPlaceholderCompact": "代码",
+    "jumpNotFound": "未找到操作代码",
+    "jumpNotFoundHint": "4 个字符（例: PD02）"
   },
   "preferences": {
     "title": "显示设置",

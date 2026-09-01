@@ -146,6 +146,7 @@ DB データは**訳す対象ではないが、入れ物の作り方は決めて
 | マスタ | Master data | 主数据 |
 | ドキュメント | Documents | 文档 |
 | システム | System | 系统 |
+| 共通 | Common | 公共 |
 
 ### 3.2 アプリ名（操作コード順）
 
@@ -205,8 +206,6 @@ DB データは**訳す対象ではないが、入れ物の作り方は決めて
 | SY0F | 通知メール | Notification email | 通知邮件 |
 | SY0G | 特権アクセス | Privileged access | 特权访问 |
 | SY0H | 取引先ポータル | Partner portal | 业务伙伴门户 |
-| SY0G | 特権アクセス | Privileged access | 特权访问 |
-| SY0H | 取引先ポータル | Partner portal | 客户门户 |
 
 ### 3.3 書類・番号
 
@@ -251,7 +250,7 @@ DB データは**訳す対象ではないが、入れ物の作り方は決めて
 | 請求先 | Bill-to | 请款对象 |
 | 納品先・出荷先 | Ship-to | 送货对象 |
 | 担当者（取引先側） | Contact | 联系人 |
-| 取引先ポータル | Partner portal | 客户门户 | 社外の人が自社宛の書類を見る面（SY0H / `/portal`） |
+| 取引先ポータル | Partner portal | 业务伙伴门户 | 社外の人が自社宛の書類を見る面（SY0H / `/portal`） |
 | ポータルアカウント | Portal account | 门户账号 | app.portal_accounts。**社員（app.users）とは別の主体** |
 | 確認コード | Verification code | 验证码 | メール OTP。「認証コード」と混ぜない |
 | バックアップコード | Backup code | 备用码 | メールが受け取れないときの使い捨てコード |
@@ -547,6 +546,8 @@ DB データは**訳す対象ではないが、入れ物の作り方は決めて
 |---|---|---|---|
 | ダッシュボード / ホーム | Dashboard / Home | 仪表板 / 首页 | |
 | アプリ / 操作コード | Apps / Operation code | 应用 / 操作代码 | |
+| 操作メニュー | Actions | 操作菜单 | アイコンのみの「⋯」ボタンの aria-label |
+| 〜の詳細を開く | Open details of 〜 | 打开〜的详情 | 履歴などの行を開く aria-label |
 | お気に入り | Favorites | 收藏 | |
 | 通知 / すべて既読 | Notifications / Mark all read | 通知 / 全部标记为已读 | |
 | プロフィール | Profile | 个人资料 | |
