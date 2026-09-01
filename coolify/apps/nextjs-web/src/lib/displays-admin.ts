@@ -241,6 +241,32 @@ export async function getDisplayDetail(
   };
 }
 
+/**
+ * 同じ機械につながっている画面（自分を含む・何枚目の昇順）。
+ *
+ * 1 台で 2 枚出している機械の詳細から、もう一方へ行けるようにするためだけの
+ * 一覧。**machineId は Pi の自己申告**なので、用途はこの行き来に限る
+ * （権限にも表示内容にも使わない）。1 枚運用（machineId なし）は空を返す。
+ */
+export async function listMachineScreens(
+  machineId: string | null,
+): Promise<
+  Array<{ id: string; name: string | null; screenIndex: number | null }>
+> {
+  if (!machineId) return [];
+  const rows = await prisma.displayDevice.findMany({
+    where: { machineId },
+    orderBy: [{ screenIndex: "asc" }, { createdAt: "asc" }],
+    select: { id: true, name: true, screenIndex: true },
+  });
+  if (rows.length < 2) return []; // まとめる相手が居ない
+  return rows.map((r) => ({
+    id: r.id,
+    name: jsonName(r.name).text,
+    screenIndex: r.screenIndex,
+  }));
+}
+
 /** 拠点の選択肢。 */
 export async function listPlantOptions(): Promise<
   Array<{ value: string; label: string }>

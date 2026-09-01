@@ -20,11 +20,17 @@
  *
  * オンライン判定はサーバー計算の初期値から始め、WS / ポーリングが繋がったら
  * そちらで上書きする（useDisplayPresence）。
+ *
+ * ★ **1 台で 2 枚出している機械は 1 行にまとめる。** Raspberry Pi 5 は HDMI が
+ *   2 口あり、DB は 1 枚 = 1 行（映すものも倍率も画面ごと）だが、一覧に 2 行
+ *   並ぶと「別々の機械が 2 台あるのか、1 台が 2 枚出しているのか」が読めない。
+ *   行の中で「何枚目」を選ぶと、その画面の中身に切り替わる（lib/display-groups.ts）。
  */
 
 import {
   Alert,
   Group,
+  SegmentedControl,
   Select,
   SimpleGrid,
   Stack,
@@ -52,6 +58,11 @@ import { StatusBadge, statusOptions } from "@/components/ui/StatusBadge";
 import { ListShell } from "@/components/ui/shells";
 import { useIsMobile } from "@/hooks/useViewport";
 import { formatCode, normalizeCode } from "@/lib/crockford";
+import {
+  groupByMachine,
+  type MachineGroup,
+  screenLabel,
+} from "@/lib/display-groups";
 import { DISPLAY_TEMPLATES } from "@/lib/display-templates";
 import type { DisplayRow } from "@/lib/displays-admin";
 import { OnlineDot } from "../kiosk/KioskDevicesTable";
@@ -60,6 +71,39 @@ import {
   type DisplayPresenceEntry,
   useDisplayPresence,
 } from "./useDisplayPresence";
+
+/** 表に渡す 1 行 = 選ばれている画面 + その機械のまとめ。 */
+type ViewRow = DisplayRow & { group: MachineGroup<DisplayRow> };
+
+/**
+ * 「何枚目を見るか」の選択。**行の中に置く**ので、押しても行の遷移
+ * （詳細へ移動）を起こさないよう伝播を止める。
+ */
+function ScreenPicker({
+  group,
+  value,
+  onPick,
+}: {
+  group: MachineGroup<DisplayRow>;
+  value: string;
+  onPick: (screenId: string) => void;
+}) {
+  return (
+    // biome-ignore lint/a11y/noStaticElementInteractions: 行クリック（遷移）を止めるためだけの覆い
+    // biome-ignore lint/a11y/useKeyWithClickEvents: 中身のボタンが操作を担う
+    <div onClick={(e) => e.stopPropagation()}>
+      <SegmentedControl
+        data={group.screens.map((screen, i) => ({
+          value: screen.id,
+          label: screenLabel(screen, i),
+        }))}
+        onChange={onPick}
+        size="xs"
+        value={value}
+      />
+    </div>
+  );
+}
 
 /**
  * 新しい画面が最初に映すもの。**空にしない** — 設置の日に表示内容まで
@@ -96,6 +140,8 @@ export function DisplaysTable({ rows, plantOptions }: Props) {
   const [status, setStatus] = useState<string | null>(null);
   const [createOpen, setCreateOpen] = useState(false);
   const [linkTarget, setLinkTarget] = useState<DisplayRow | null>(null);
+  // まとめた行ごとに「いま何枚目を見ているか」（キーは機械の識別子）
+  const [shownScreen, setShownScreen] = useState<Record<string, string>>({});
 
   const filtered = useMemo(() => {
     const q = search?.trim().toLowerCase() ?? "";
@@ -129,21 +175,53 @@ export function DisplaysTable({ rows, plantOptions }: Props) {
       router.refresh();
     });
 
-  const columns: Column<DisplayRow>[] = [
+  /**
+   * 表に渡す行。まとめた機械は**選ばれている画面 1 枚**として振る舞い、
+   * 名前の欄に「何枚目」の選択を添える。並べ替え・ページ送り・行の操作は
+   * その画面に対して効く（DataTable 側は 1 行 = 1 画面のまま）。
+   */
+  const viewRows: ViewRow[] = useMemo(
+    () =>
+      groupByMachine(filtered).map((group) => {
+        const chosen =
+          group.screens.find(
+            (x) => x.id === shownScreen[group.machineId ?? ""],
+          ) ?? group.screens[0];
+        return { ...chosen, group };
+      }),
+    [filtered, shownScreen],
+  );
+
+  const columns: Column<ViewRow>[] = [
     {
       key: "name",
       header: "ディスプレイ名",
       sortable: true,
-      render: (r) =>
-        r.name ? (
-          <Text fw={500} size="sm" truncate>
-            {r.name}
-          </Text>
-        ) : (
-          <Text c="dimmed" size="sm">
-            （未設定）
-          </Text>
-        ),
+      render: (r) => (
+        <Stack gap={4} style={{ minWidth: 0 }}>
+          {r.name ? (
+            <Text fw={500} size="sm" truncate>
+              {r.name}
+            </Text>
+          ) : (
+            <Text c="dimmed" size="sm">
+              （未設定）
+            </Text>
+          )}
+          {r.group.grouped && (
+            <ScreenPicker
+              group={r.group}
+              onPick={(screenId: string) =>
+                setShownScreen((prev) => ({
+                  ...prev,
+                  [r.group.machineId ?? ""]: screenId,
+                }))
+              }
+              value={r.id}
+            />
+          )}
+        </Stack>
+      ),
       sortValue: (r) => r.name ?? "",
     },
     {
@@ -234,7 +312,7 @@ export function DisplaysTable({ rows, plantOptions }: Props) {
    * 行の操作は**次にすべき 1 手だけ**（共有端末と同じ考え方）。
    * 有効になった後の操作は詳細画面に置く — 一覧から失効させない。
    */
-  const rowActions = (r: DisplayRow): RowAction<DisplayRow>[] => {
+  const rowActions = (r: ViewRow): RowAction<ViewRow>[] => {
     if (r.status === "PENDING") {
       return [
         { label: "ディスプレイをリンク", onAction: () => setLinkTarget(r) },
@@ -304,7 +382,7 @@ export function DisplaysTable({ rows, plantOptions }: Props) {
       >
         <DataTable
           columns={columns}
-          data={filtered}
+          data={viewRows}
           emptyIcon={<IconDeviceTv size={28} />}
           emptyMessage={
             rows.length === 0
@@ -320,6 +398,19 @@ export function DisplaysTable({ rows, plantOptions }: Props) {
               <Text fw={600} size="sm" truncate>
                 {r.name ?? "（未設定）"}
               </Text>
+              {/* 何枚目かの選択は携帯でも要る（1 台 2 枚の機械が 1 枚に見える） */}
+              {r.group.grouped && (
+                <ScreenPicker
+                  group={r.group}
+                  onPick={(screenId: string) =>
+                    setShownScreen((prev) => ({
+                      ...prev,
+                      [r.group.machineId ?? ""]: screenId,
+                    }))
+                  }
+                  value={r.id}
+                />
+              )}
               <Text c="dimmed" size="xs" truncate>
                 {[r.plantName, r.location].filter(Boolean).join(" / ") || "—"}
               </Text>
