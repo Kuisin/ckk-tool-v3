@@ -26,11 +26,7 @@ export function ProductTypesListPanel({ initial }: { initial: ProductType[] }) {
         message: `「${t.name.ja || t.id}」を削除しますか？`,
       })}
       description={tr(
-        tr(
-          tr(
-            "新規製品作成時の選択肢になります。各種別に項目を割り当てて構成します。",
-          ),
-        ),
+        "新規製品作成時の選択肢になります。各種別に項目を割り当てて構成します。",
       )}
       emptyIcon={<IconCategory size={24} />}
       emptyMessage={tr(

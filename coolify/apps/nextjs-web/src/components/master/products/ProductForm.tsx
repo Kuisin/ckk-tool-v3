@@ -442,11 +442,7 @@ export function ProductForm({
 
       <FormSection
         description={tr(
-          tr(
-            tr(
-              "製品が要求する素材を「材種 + 直径 + 全長」で指定します。同一材種・直径の素材を全長に合わせて切断して使用します（特定の素材コードには紐付けません）。",
-            ),
-          ),
+          "製品が要求する素材を「材種 + 直径 + 全長」で指定します。同一材種・直径の素材を全長に合わせて切断して使用します（特定の素材コードには紐付けません）。",
         )}
         title={tr("素材仕様")}
       >
@@ -523,11 +519,7 @@ export function ProductForm({
       {typeOptions.length > 0 && (
         <FormSection
           description={tr(
-            tr(
-              tr(
-                "種別を選ぶと、その種別が予め定義した入力項目が展開されます（製品項目 SY03 で編集）。",
-              ),
-            ),
+            "種別を選ぶと、その種別が予め定義した入力項目が展開されます（製品項目 SY03 で編集）。",
           )}
           title={tr("製品種別")}
         >
@@ -559,11 +551,7 @@ export function ProductForm({
       {(extraKeys.length > 0 || addableOptions.length > 0) && (
         <FormSection
           description={tr(
-            tr(
-              tr(
-                "製品項目（SY03）で定義された項目のみ追加できます。自由なキーは使えません。",
-              ),
-            ),
+            "製品項目（SY03）で定義された項目のみ追加できます。自由なキーは使えません。",
           )}
           title={tr("追加項目")}
         >

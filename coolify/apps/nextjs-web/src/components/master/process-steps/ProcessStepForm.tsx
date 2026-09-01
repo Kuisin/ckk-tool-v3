@@ -479,11 +479,7 @@ export function ProcessStepForm({
             allowDeselect={false}
             data={quantityTrackingOptions(locale)}
             description={tr(
-              tr(
-                tr(
-                  "工程実行時の数量入力。なし = 記録せず通過数をそのまま次工程へ",
-                ),
-              ),
+              "工程実行時の数量入力。なし = 記録せず通過数をそのまま次工程へ",
             )}
             label={
               <HelpLabel {...fieldHelp("processStep", "quantityTracking")} />
@@ -494,11 +490,7 @@ export function ProcessStepForm({
             allowDeselect={false}
             data={lotInputModeOptions(locale)}
             description={tr(
-              tr(
-                tr(
-                  "工程開始時のロット/伝票コード入力。必須 = 未入力では開始不可（工程リスト・指示書で工程別に上書き可）",
-                ),
-              ),
+              "工程開始時のロット/伝票コード入力。必須 = 未入力では開始不可（工程リスト・指示書で工程別に上書き可）",
             )}
             label={tr("ロット入力（既定）")}
             {...form.getInputProps("lotInputMode")}
@@ -587,11 +579,7 @@ export function ProcessStepForm({
 
       <FormSection
         description={tr(
-          tr(
-            tr(
-              "この工程をワークフローに含めてよい条件（依存先工程の存在）。排他 = 依存先が存在しないこと（!）。保存時に依存行は全置換されます。",
-            ),
-          ),
+          "この工程をワークフローに含めてよい条件（依存先工程の存在）。排他 = 依存先が存在しないこと（!）。保存時に依存行は全置換されます。",
         )}
         title={tr("使用依存")}
       >
@@ -600,11 +588,7 @@ export function ProcessStepForm({
 
       <FormSection
         description={tr(
-          tr(
-            tr(
-              "この工程を開始してよい条件（依存先工程の完了）。ワークフローに存在しない依存先は満たされた扱いになります。",
-            ),
-          ),
+          "この工程を開始してよい条件（依存先工程の完了）。ワークフローに存在しない依存先は満たされた扱いになります。",
         )}
         title={tr("実行依存")}
       >
@@ -613,11 +597,7 @@ export function ProcessStepForm({
 
       <FormSection
         description={tr(
-          tr(
-            tr(
-              "この工程の計画・実績で使える作業場所を制限します（種別と個別の和集合が許可されます）。両方空 = 制限なし。共有端末でも同じ制限が効きます。",
-            ),
-          ),
+          "この工程の計画・実績で使える作業場所を制限します（種別と個別の和集合が許可されます）。両方空 = 制限なし。共有端末でも同じ制限が効きます。",
         )}
         title={tr("許可作業場所")}
       >

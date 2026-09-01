@@ -158,11 +158,7 @@ export function OrderAcceptanceCreateForm({
     >
       <FormSection
         description={tr(
-          tr(
-            tr(
-              "注文書の自動取込を使わずに注文請書を直接作成します（下書きとして保存）。",
-            ),
-          ),
+          "注文書の自動取込を使わずに注文請書を直接作成します（下書きとして保存）。",
         )}
         title={tr("基本情報")}
       >

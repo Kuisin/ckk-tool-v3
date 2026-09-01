@@ -311,11 +311,7 @@ export function UserDetail({
         </Title>
         <Text c="dimmed" mb="sm" size="xs">
           {tr(
-            tr(
-              tr(
-                "有効なロールから与えられている許可の一覧（この人ができることは、下の行すべての合計です）",
-              ),
-            ),
+            "有効なロールから与えられている許可の一覧（この人ができることは、下の行すべての合計です）",
           )}
         </Text>
         {user.permissions.length === 0 ? (

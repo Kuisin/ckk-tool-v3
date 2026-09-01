@@ -306,11 +306,7 @@ export function DesignRequestForm({
     >
       <FormSection
         description={tr(
-          tr(
-            tr(
-              "トリガー（見積時 / 受注時）と参照元は作成後に変更できません。保存時に依頼番号 DSG-YYYYMM-NNNNN が採番されます。",
-            ),
-          ),
+          "トリガー（見積時 / 受注時）と参照元は作成後に変更できません。保存時に依頼番号 DSG-YYYYMM-NNNNN が採番されます。",
         )}
         title={tr("基本情報")}
       >
@@ -457,11 +453,7 @@ export function DesignRequestForm({
             clearable
             data={customerOptions}
             description={tr(
-              tr(
-                tr(
-                  "空のままなら「汎用」— どの顧客の指示書からも使えます。版番号は受注元ごとに数えます",
-                ),
-              ),
+              "空のままなら「汎用」— どの顧客の指示書からも使えます。版番号は受注元ごとに数えます",
             )}
             label={tr("受注元")}
             onChange={(v) => {
@@ -502,11 +494,7 @@ export function DesignRequestForm({
       {/* 依頼区分 — 製品を選ぶと自動で決まる。根拠を出したうえで上書きも許す。 */}
       <FormSection
         description={tr(
-          tr(
-            tr(
-              "製品に過去の設計書があるかで自動判定します。違うときは手で変えられます。",
-            ),
-          ),
+          "製品に過去の設計書があるかで自動判定します。違うときは手で変えられます。",
         )}
         title={tr("依頼区分")}
       >

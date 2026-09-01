@@ -153,18 +153,10 @@ export function LocationModal({
                 description={
                   selectedPlantId != null && floorOptions.length === 0
                     ? tr(
-                        tr(
-                          tr(
-                            "この拠点にはフロアマップがありません（ピンなしで作成）",
-                          ),
-                        ),
+                        "この拠点にはフロアマップがありません（ピンなしで作成）",
                       )
                     : tr(
-                        tr(
-                          tr(
-                            "任意 — 選択するとマップ中央に仮配置（あとでドラッグ調整）",
-                          ),
-                        ),
+                        "任意 — 選択するとマップ中央に仮配置（あとでドラッグ調整）",
                       )
                 }
                 disabled={selectedPlantId == null || floorOptions.length === 0}

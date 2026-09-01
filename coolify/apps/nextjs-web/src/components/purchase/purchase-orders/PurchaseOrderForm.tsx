@@ -248,11 +248,7 @@ export function PurchaseOrderForm({
 
       <FormSection
         description={tr(
-          tr(
-            tr(
-              "金額は 数量 × 単価 でサーバー側で計算されます。発注（ORDERED）後は明細が素材 ATP の入荷予定に反映されます。",
-            ),
-          ),
+          "金額は 数量 × 単価 でサーバー側で計算されます。発注（ORDERED）後は明細が素材 ATP の入荷予定に反映されます。",
         )}
         title={tr("明細")}
       >

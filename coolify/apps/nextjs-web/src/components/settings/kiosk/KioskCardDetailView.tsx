@@ -271,11 +271,7 @@ export function KioskCardDetailView({
           variant="light"
         >
           {tr(
-            tr(
-              tr(
-                "このカードは有効期間を過ぎているため、キオスクでログインできません。\n          期間を延長するか、カードを取り消してください。",
-              ),
-            ),
+            "このカードは有効期間を過ぎているため、キオスクでログインできません。\n          期間を延長するか、カードを取り消してください。",
           )}
         </Alert>
       )}
@@ -286,11 +282,7 @@ export function KioskCardDetailView({
           variant="light"
         >
           {tr(
-            tr(
-              tr(
-                "このカードは有効期間の開始前のため、まだキオスクでログインできません。",
-              ),
-            ),
+            "このカードは有効期間の開始前のため、まだキオスクでログインできません。",
           )}
         </Alert>
       )}
@@ -465,11 +457,7 @@ export function KioskCardDetailView({
                   setConfirm({
                     title: tr("PINリセットの確認"),
                     message: tr(
-                      tr(
-                        tr(
-                          "PIN を消去します。次回ログイン時に PIN の再設定が必要になります。",
-                        ),
-                      ),
+                      "PIN を消去します。次回ログイン時に PIN の再設定が必要になります。",
                     ),
                     confirmLabel: tr("リセット"),
                     run: () => resetPin(card.id),
@@ -485,11 +473,7 @@ export function KioskCardDetailView({
                 setConfirm({
                   title: tr("取り消しの確認"),
                   message: tr(
-                    tr(
-                      tr(
-                        "カードを取り消します。この操作は取り消せません。オープン中のセッションも失効します。",
-                      ),
-                    ),
+                    "カードを取り消します。この操作は取り消せません。オープン中のセッションも失効します。",
                   ),
                   confirmLabel: tr("取り消し"),
                   run: () => revokeCard(card.id),
@@ -583,11 +567,7 @@ export function KioskCardDetailView({
           </Group>
           <Text c="dimmed" size="xs">
             {tr(
-              tr(
-                tr(
-                  "期間を設定するとテンポラリカードになり、期間外はログインできません\n            （終了日はその日いっぱい有効）。1 ユーザーに割当できるカードは 1\n            枚です。",
-                ),
-              ),
+              "期間を設定するとテンポラリカードになり、期間外はログインできません\n            （終了日はその日いっぱい有効）。1 ユーザーに割当できるカードは 1\n            枚です。",
             )}
           </Text>
         </Stack>
@@ -626,11 +606,7 @@ export function KioskCardDetailView({
           </Group>
           <Text c="dimmed" size="xs">
             {tr(
-              tr(
-                tr(
-                  "期間外のカードはキオスクでログインできません（終了日はその日\n            いっぱい有効）。両方空欄で無期限に戻ります。ログイン中の\n            セッションは最長 8 時間で自然失効します。",
-                ),
-              ),
+              "期間外のカードはキオスクでログインできません（終了日はその日\n            いっぱい有効）。両方空欄で無期限に戻ります。ログイン中の\n            セッションは最長 8 時間で自然失効します。",
             )}
           </Text>
         </Stack>
@@ -658,11 +634,7 @@ export function KioskCardDetailView({
           />
           <Text c="dimmed" size="xs">
             {tr(
-              tr(
-                tr(
-                  "上限を超えてログインすると、最も古い端末のセッションから自動的に\n            ログアウトされます。上限を下げても既存のセッションは即時には\n            失効しません（次のログイン時に整理されます）。",
-                ),
-              ),
+              "上限を超えてログインすると、最も古い端末のセッションから自動的に\n            ログアウトされます。上限を下げても既存のセッションは即時には\n            失効しません（次のログイン時に整理されます）。",
             )}
           </Text>
         </Stack>

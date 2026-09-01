@@ -136,11 +136,7 @@ export function ProductPriceResolverInput({
         <Text c="dimmed" size="xs">
           <HelpLabel
             help={tr(
-              tr(
-                tr(
-                  "顧客×製品×注文種別×数量の価格表から自動解決（基準単価 × 数量倍率、行の手動上書きがあればそれ）。",
-                ),
-              ),
+              "顧客×製品×注文種別×数量の価格表から自動解決（基準単価 × 数量倍率、行の手動上書きがあればそれ）。",
             )}
             label={tr("単価（価格表）")}
           />
@@ -174,11 +170,7 @@ export function ProductPriceResolverInput({
         <Text c="dimmed" size="xs">
           <HelpLabel
             help={tr(
-              tr(
-                tr(
-                  "価格表の値引きルール（期間・数量条件）から自動適用。複数該当時は値引き額が最大のルール。",
-                ),
-              ),
+              "価格表の値引きルール（期間・数量条件）から自動適用。複数該当時は値引き額が最大のルール。",
             )}
             label={tr("値引き（自動）")}
           />

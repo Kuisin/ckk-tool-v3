@@ -61,11 +61,7 @@ export function IntakeReviewPanel({ review }: { review: FieldReview[] }) {
       >
         <Text size="sm">
           {tr(
-            tr(
-              tr(
-                "読み取った内容がマスタと一致しています。書類と見比べて確認してください。",
-              ),
-            ),
+            "読み取った内容がマスタと一致しています。書類と見比べて確認してください。",
           )}
         </Text>
       </Alert>
@@ -83,11 +79,7 @@ export function IntakeReviewPanel({ review }: { review: FieldReview[] }) {
         <Group gap="xs" justify="space-between" wrap="nowrap">
           <Text className="min-w-0" size="sm">
             {tr(
-              tr(
-                tr(
-                  "自動で確定できなかった項目があります。書類を見ながら直してください。",
-                ),
-              ),
+              "自動で確定できなかった項目があります。書類を見ながら直してください。",
             )}
           </Text>
           <GhostButton

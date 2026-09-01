@@ -216,11 +216,7 @@ export function AiProviderForm({ initial }: Props) {
 
       <FormSection
         description={tr(
-          tr(
-            tr(
-              "注文請書の取込（紙 → JSON）と、AI 補助タスクの両方がこの設定を使います。文字の読み取り（OCR）は常に社内で実行され、外部へは送信しません。",
-            ),
-          ),
+          "注文請書の取込（紙 → JSON）と、AI 補助タスクの両方がこの設定を使います。文字の読み取り（OCR）は常に社内で実行され、外部へは送信しません。",
         )}
         title={tr("接続先")}
       >
@@ -283,11 +279,7 @@ export function AiProviderForm({ initial }: Props) {
                 ? tr("現在は既定（社内 GPU の Ollama）です")
                 : hasStoredToken
                   ? tr(
-                      tr(
-                        tr(
-                          "社内 GPU の Ollama に戻します。保存すると API トークンも削除されます",
-                        ),
-                      ),
+                      "社内 GPU の Ollama に戻します。保存すると API トークンも削除されます",
                     )
                   : tr("社内 GPU の Ollama に戻します")}
             </Text>
@@ -296,11 +288,7 @@ export function AiProviderForm({ initial }: Props) {
           {external && (
             <Alert color="orange" icon={<IconWorld size={16} />}>
               {tr(
-                tr(
-                  tr(
-                    "外部の AI\n              サービスを使用します。注文書の画像と読み取り結果が社外へ送信されます。",
-                  ),
-                ),
+                "外部の AI\n              サービスを使用します。注文書の画像と読み取り結果が社外へ送信されます。",
               )}
             </Alert>
           )}
@@ -311,11 +299,7 @@ export function AiProviderForm({ initial }: Props) {
         description={
           external
             ? tr(
-                tr(
-                  tr(
-                    "プロバイダで発行した API トークン。保存後は下 4 桁のみ表示されます。",
-                  ),
-                ),
+                "プロバイダで発行した API トークン。保存後は下 4 桁のみ表示されます。",
               )
             : tr("認証付きの Ollama を使う場合のみ入力してください。")
         }
@@ -381,11 +365,7 @@ export function AiProviderForm({ initial }: Props) {
 
       <FormSection
         description={tr(
-          tr(
-            tr(
-              "抽出サーバー（po-extract）から実際に 1 回ずつ呼び出して確かめます。保存前の入力でも試せます。",
-            ),
-          ),
+          "抽出サーバー（po-extract）から実際に 1 回ずつ呼び出して確かめます。保存前の入力でも試せます。",
         )}
         title={tr("接続テスト")}
       >

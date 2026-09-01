@@ -404,11 +404,7 @@ export function PriceListTypeForm({
           lockCustomerProduct
             ? tr("顧客・製品は作成後に変更できません。")
             : tr(
-                tr(
-                  tr(
-                    "1つの顧客×製品につき価格表は1件です。注文種別ごとの価格は下で追加します。",
-                  ),
-                ),
+                "1つの顧客×製品につき価格表は1件です。注文種別ごとの価格は下で追加します。",
               )
         }
         title={tr("対象")}
@@ -494,11 +490,7 @@ export function PriceListTypeForm({
         {form.values.productId && sources.length === 0 && (
           <Alert color="gray" mt="sm" variant="light">
             {tr(
-              tr(
-                tr(
-                  "この製品にリンクされた確定済みの価格試算はありません。基準単価は手動で設定します（価格試算（SA01）で製品を指定して確定すると、ここで選択できます）。",
-                ),
-              ),
+              "この製品にリンクされた確定済みの価格試算はありません。基準単価は手動で設定します（価格試算（SA01）で製品を指定して確定すると、ここで選択できます）。",
             )}
           </Alert>
         )}
@@ -511,11 +503,7 @@ export function PriceListTypeForm({
         return (
           <FormSection
             description={tr(
-              tr(
-                tr(
-                  "基準単価は価格試算の見積単価から取得します。手動上書きは明示的にカスタムを有効化した場合のみ（確認あり）。各段階の単価 = 基準単価 × 倍率。",
-                ),
-              ),
+              "基準単価は価格試算の見積単価から取得します。手動上書きは明示的にカスタムを有効化した場合のみ（確認あり）。各段階の単価 = 基準単価 × 倍率。",
             )}
             key={form.key(`variants.${vi}`)}
             title={`注文種別: ${ORDER_TYPE_LABEL[variant.orderType] ?? variant.orderType}`}
@@ -625,11 +613,7 @@ export function PriceListTypeForm({
                 label={
                   <HelpLabel
                     help={tr(
-                      tr(
-                        tr(
-                          "既定では価格試算の見積単価をそのまま使います。手動で別の基準単価を設定する場合のみチェックしてください（確認あり）。",
-                        ),
-                      ),
+                      "既定では価格試算の見積単価をそのまま使います。手動で別の基準単価を設定する場合のみチェックしてください（確認あり）。",
                     )}
                     label={tr("カスタム単価を使用")}
                   />
@@ -649,11 +633,7 @@ export function PriceListTypeForm({
                 label={
                   <HelpLabel
                     help={tr(
-                      tr(
-                        tr(
-                          "価格表の基準になる単価。既定は価格試算の見積単価。各数量帯の単価 = 基準単価 × 倍率。",
-                        ),
-                      ),
+                      "価格表の基準になる単価。既定は価格試算の見積単価。各数量帯の単価 = 基準単価 × 倍率。",
                     )}
                     label={
                       <HelpLabel {...fieldHelp("priceList", "basePrice")} />
@@ -705,11 +685,7 @@ export function PriceListTypeForm({
                   <Table.Th>
                     <HelpLabel
                       help={tr(
-                        tr(
-                          tr(
-                            "数量帯ごとの掛け率（例 ×1.05 = 基準単価の5%増し）。単価 = 基準単価 × 倍率。",
-                          ),
-                        ),
+                        "数量帯ごとの掛け率（例 ×1.05 = 基準単価の5%増し）。単価 = 基準単価 × 倍率。",
                       )}
                       label={
                         <HelpLabel {...fieldHelp("priceList", "multiplier")} />
@@ -725,11 +701,7 @@ export function PriceListTypeForm({
                   <Table.Th>
                     <HelpLabel
                       help={tr(
-                        tr(
-                          tr(
-                            "チェックすると自動計算を使わず、この数量帯だけ手動の固定単価にできます（確認あり）。",
-                          ),
-                        ),
+                        "チェックすると自動計算を使わず、この数量帯だけ手動の固定単価にできます（確認あり）。",
                       )}
                       label={
                         <HelpLabel {...fieldHelp("priceList", "customPrice")} />

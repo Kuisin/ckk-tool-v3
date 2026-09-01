@@ -191,11 +191,7 @@ export function DeleteDefectTypeModal({
       opened={opened}
       title={tr("不良種類の削除")}
       warning={tr(
-        tr(
-          tr(
-            "この不良種類を参照する不良記録が存在する場合は削除できません。無効化をご検討ください。",
-          ),
-        ),
+        "この不良種類を参照する不良記録が存在する場合は削除できません。無効化をご検討ください。",
       )}
     />
   );

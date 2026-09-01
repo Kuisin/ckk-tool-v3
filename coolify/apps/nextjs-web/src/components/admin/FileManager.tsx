@@ -749,11 +749,7 @@ export function FileManager() {
           />
           <Tooltip
             label={tr(
-              tr(
-                tr(
-                  "「.DS_Store」「*.tmp」など、OS・ツールが自動生成した残骸ファイルを表示します",
-                ),
-              ),
+              "「.DS_Store」「*.tmp」など、OS・ツールが自動生成した残骸ファイルを表示します",
             )}
             withinPortal
           >
@@ -796,11 +792,7 @@ export function FileManager() {
           variant="light"
         >
           {tr(
-            tr(
-              tr(
-                "ストレージ（SeaweedFS）に接続できません。SEAWEED_FILER_URL\n          とコンテナの稼働状況をご確認ください。",
-              ),
-            ),
+            "ストレージ（SeaweedFS）に接続できません。SEAWEED_FILER_URL\n          とコンテナの稼働状況をご確認ください。",
           )}
         </Alert>
       )}

@@ -56,11 +56,7 @@ export function RevisionsView({
     openConfirm({
       title: `リビジョン ${revision} を復元`,
       message: tr(
-        tr(
-          tr(
-            "この内容で新しいリビジョンを作ります。履歴は巻き戻さず、前に進めて元に戻します。",
-          ),
-        ),
+        "この内容で新しいリビジョンを作ります。履歴は巻き戻さず、前に進めて元に戻します。",
       ),
       confirmLabel: tr("復元する"),
       onConfirm: () =>

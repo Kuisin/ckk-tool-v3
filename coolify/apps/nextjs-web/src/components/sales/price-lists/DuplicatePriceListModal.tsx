@@ -114,11 +114,7 @@ export function DuplicatePriceListModal({
       <Alert color="blue" icon={<IconInfoCircle size={16} />} variant="light">
         <Text size="sm">
           {tr(
-            tr(
-              tr(
-                "選んだ注文種別の内容（基準単価・全段階）はそのままに、有効期間だけを新しい期間へ付け替えます。",
-              ),
-            ),
+            "選んだ注文種別の内容（基準単価・全段階）はそのままに、有効期間だけを新しい期間へ付け替えます。",
           )}
         </Text>
       </Alert>

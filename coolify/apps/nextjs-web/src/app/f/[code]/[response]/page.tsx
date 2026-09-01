@@ -179,11 +179,7 @@ export default async function MyResponsePage({
           <IconPencilOff size={14} />
           <Text c="dimmed" size="xs">
             {tr(
-              tr(
-                tr(
-                  "編集できる期間が終わっています。直したい場合は作成者に連絡してください。",
-                ),
-              ),
+              "編集できる期間が終わっています。直したい場合は作成者に連絡してください。",
             )}
           </Text>
         </Group>

@@ -364,11 +364,7 @@ function ImageContent({
       ) : (
         <Alert color="gray" variant="light">
           {tr(
-            tr(
-              tr(
-                "まだ画像が設定されていません。画像を選ぶと、その場でこの画面に映ります。",
-              ),
-            ),
+            "まだ画像が設定されていません。画像を選ぶと、その場でこの画面に映ります。",
           )}
         </Alert>
       )}

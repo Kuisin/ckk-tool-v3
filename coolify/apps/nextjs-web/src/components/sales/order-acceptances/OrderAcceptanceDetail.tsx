@@ -406,11 +406,7 @@ export function OrderAcceptanceDetail({
         <Stack gap="xs">
           <Text size="sm">
             {tr(
-              tr(
-                tr(
-                  "以下の明細は単価が価格表と一致しません。差異を確認のうえ承認依頼しますか？",
-                ),
-              ),
+              "以下の明細は単価が価格表と一致しません。差異を確認のうえ承認依頼しますか？",
             )}
           </Text>
           {diffLines.map((l) => (
@@ -511,11 +507,7 @@ export function OrderAcceptanceDetail({
       <NextStepCard
         buttonLabel={tr("出荷書を作成")}
         description={tr(
-          tr(
-            tr(
-              "この注文請書の出荷できる注文明細を読み込んだ状態で出荷書フォームを開きます",
-            ),
-          ),
+          "この注文請書の出荷できる注文明細を読み込んだ状態で出荷書フォームを開きます",
         )}
         href={`/shipping/delivery-orders/new?acceptance=${a.number}`}
         icon={<IconTruck size={20} />}
@@ -674,11 +666,7 @@ export function OrderAcceptanceDetail({
                   <Stack gap="xs">
                     <Text size="sm">
                       {tr(
-                        tr(
-                          tr(
-                            "自動抽出の順番待ち・実行中です（1件あたり約1〜3分）。完了すると下書きになります。この画面を閉じても処理は続きます。",
-                          ),
-                        ),
+                        "自動抽出の順番待ち・実行中です（1件あたり約1〜3分）。完了すると下書きになります。この画面を閉じても処理は続きます。",
                       )}
                     </Text>
                     <Group>
@@ -724,11 +712,7 @@ export function OrderAcceptanceDetail({
                 <Stack gap={4}>
                   <Text size="sm">
                     {tr(
-                      tr(
-                        tr(
-                          "明細の単価が価格表と一致しません。承認依頼には差異の確認が必要です。",
-                        ),
-                      ),
+                      "明細の単価が価格表と一致しません。承認依頼には差異の確認が必要です。",
                     )}
                   </Text>
                   {diffLines.map((l) => (
@@ -1599,11 +1583,7 @@ function DraftEditor({
 
       <FormSection
         description={tr(
-          tr(
-            tr(
-              "製品が未特定の行は製品マスタと突合してください（確定には全行の製品特定 + 単価が必要）。",
-            ),
-          ),
+          "製品が未特定の行は製品マスタと突合してください（確定には全行の製品特定 + 単価が必要）。",
         )}
         title={tr("明細")}
       >

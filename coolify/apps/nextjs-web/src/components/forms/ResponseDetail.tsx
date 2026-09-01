@@ -165,11 +165,7 @@ export function ResponseDetail({
           {isOwner && (
             <Text mt={4} size="xs">
               {tr(
-                tr(
-                  tr(
-                    "「回答」タブで内容を直して保存すると、もう一度承認を依頼します。",
-                  ),
-                ),
+                "「回答」タブで内容を直して保存すると、もう一度承認を依頼します。",
               )}
             </Text>
           )}

@@ -179,21 +179,13 @@ export function ToolTypeEditForm({
 
       <Alert color="blue" icon={<IconInfoCircle size={16} />} variant="light">
         {tr(
-          tr(
-            tr(
-              "ここでの設定は各計算基準の「適用工具種」と同じデータです（計算基準\n        ページのチップと連動）。式の内容・順序は計算基準ページで編集します。",
-            ),
-          ),
+          "ここでの設定は各計算基準の「適用工具種」と同じデータです（計算基準\n        ページのチップと連動）。式の内容・順序は計算基準ページで編集します。",
         )}
       </Alert>
 
       <FormSection
         description={tr(
-          tr(
-            tr(
-              "チェックした基準がこの工具種の価格試算で評価されます（加算 = 合計に足す / 中間 = r.<id> で参照）。",
-            ),
-          ),
+          "チェックした基準がこの工具種の価格試算で評価されます（加算 = 合計に足す / 中間 = r.<id> で参照）。",
         )}
         title={tr("適用する計算基準")}
       >
@@ -232,11 +224,7 @@ export function ToolTypeEditForm({
 
       <FormSection
         description={tr(
-          tr(
-            tr(
-              "この工具種の見積単価（final）を計算する基準。工具種ごとにちょうど1つ必要です。",
-            ),
-          ),
+          "この工具種の見積単価（final）を計算する基準。工具種ごとにちょうど1つ必要です。",
         )}
         title={tr("使用する見積単価")}
       >

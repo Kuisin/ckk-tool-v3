@@ -368,11 +368,7 @@ export function InspectionTemplateForm({
             />
             <Text c="dimmed" size="xs">
               {tr(
-                tr(
-                  tr(
-                    "実測値 = 製品ごとにページ送りで全項目を記録 / 合格数のみ =\n              項目ごとに検査数・合格数だけを記録",
-                  ),
-                ),
+                "実測値 = 製品ごとにページ送りで全項目を記録 / 合格数のみ =\n              項目ごとに検査数・合格数だけを記録",
               )}
             </Text>
           </Stack>
@@ -392,11 +388,7 @@ export function InspectionTemplateForm({
             />
             <Text c="dimmed" size="xs">
               {tr(
-                tr(
-                  tr(
-                    "寸法測定表 = 基本値/目標値/公差のグリッド / 外観・工程チェック表 =\n              製造課・品証課の部門別チェックリスト",
-                  ),
-                ),
+                "寸法測定表 = 基本値/目標値/公差のグリッド / 外観・工程チェック表 =\n              製造課・品証課の部門別チェックリスト",
               )}
             </Text>
           </Stack>
@@ -417,11 +409,7 @@ export function InspectionTemplateForm({
               />
               <Text c="dimmed" size="xs">
                 {tr(
-                  tr(
-                    tr(
-                      "初品・中間品・最終品 は先頭 3 件の見出しだけを差し替えます （4\n                件目以降は製品4…と同じ）",
-                    ),
-                  ),
+                  "初品・中間品・最終品 は先頭 3 件の見出しだけを差し替えます （4\n                件目以降は製品4…と同じ）",
                 )}
               </Text>
             </Stack>

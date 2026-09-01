@@ -486,11 +486,7 @@ export function DesignRequestDetail({
           </SecondaryButton>
         }
         description={tr(
-          tr(
-            tr(
-              "この依頼の図面がまだ設計図に登録されていません。版を登録すると完了できます",
-            ),
-          ),
+          "この依頼の図面がまだ設計図に登録されていません。版を登録すると完了できます",
         )}
         icon={<IconFile size={20} />}
         title={tr("図面を登録してください")}
@@ -810,11 +806,7 @@ export function DesignRequestDetail({
               ownerId={request.requestNumber}
               ownerType="design_requests"
               title={tr(
-                tr(
-                  tr(
-                    "作業ファイル（メモ・下書きなど。成果物の版は設計図で登録します）",
-                  ),
-                ),
+                "作業ファイル（メモ・下書きなど。成果物の版は設計図で登録します）",
               )}
             />
             <Stack gap="xs">

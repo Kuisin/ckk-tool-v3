@@ -222,11 +222,7 @@ export function FloorMapsPanel({
       {floorMaps.length === 0 ? (
         <Text c="dimmed" size="sm">
           {tr(
-            tr(
-              tr(
-                "フロアマップがありません。「フロアを追加」から作成し、図面画像を\n          アップロードしてください。",
-              ),
-            ),
+            "フロアマップがありません。「フロアを追加」から作成し、図面画像を\n          アップロードしてください。",
           )}
         </Text>
       ) : (

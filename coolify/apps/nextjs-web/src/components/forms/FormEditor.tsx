@@ -168,11 +168,7 @@ export function FormEditor({
         <Textarea
           autosize
           description={tr(
-            tr(
-              tr(
-                "回答画面の先頭に出る説明。匿名で集計する場合はその旨もここに書く",
-              ),
-            ),
+            "回答画面の先頭に出る説明。匿名で集計する場合はその旨もここに書く",
           )}
           label={tr("説明")}
           minRows={2}
@@ -202,11 +198,7 @@ export function FormEditor({
             { value: "HIDDEN", label: tr("回答者を表示しない（匿名で集計）") },
           ]}
           description={tr(
-            tr(
-              tr(
-                "「表示しない」でも回答者はシステムに記録されます（本人の編集と操作履歴のため）。完全な匿名ではありません",
-              ),
-            ),
+            "「表示しない」でも回答者はシステムに記録されます（本人の編集と操作履歴のため）。完全な匿名ではありません",
           )}
           label={tr("回答者の表示")}
           onChange={(v) =>
@@ -218,11 +210,7 @@ export function FormEditor({
           <Checkbox
             checked={values.approvalEnabled}
             description={tr(
-              tr(
-                tr(
-                  "承認の段と承認グループは、このフォームの「承認」タブで決めます",
-                ),
-              ),
+              "承認の段と承認グループは、このフォームの「承認」タブで決めます",
             )}
             label={tr("承認フローを使う")}
             onChange={(e) => set({ approvalEnabled: e.currentTarget.checked })}
@@ -232,11 +220,7 @@ export function FormEditor({
           <Checkbox
             checked={values.editableUntilFirstApproval}
             description={tr(
-              tr(
-                tr(
-                  "承認者が「ここを直して」と言う場面のための設定。1 人でも承認したら締まります（差し戻しは設定に関係なく直せます）",
-                ),
-              ),
+              "承認者が「ここを直して」と言う場面のための設定。1 人でも承認したら締まります（差し戻しは設定に関係なく直せます）",
             )}
             label={tr("承認依頼中でも、最初の承認が下りるまでは回答者が直せる")}
             ml="md"
@@ -248,11 +232,7 @@ export function FormEditor({
         {values.kind === "REQUEST" && (
           <Text c="dimmed" size="xs">
             {tr(
-              tr(
-                tr(
-                  "完了（承認フローを使うなら全段の承認、使わないなら提出）したときの\n            通知先は、「共有」タブで共有先ごとに「完了通知」を付けて決めます。\n            通知を受け取った人は、承認・予定 (CM01) の「完了した申請」でも\n            一覧を見られます。",
-                ),
-              ),
+              "完了（承認フローを使うなら全段の承認、使わないなら提出）したときの\n            通知先は、「共有」タブで共有先ごとに「完了通知」を付けて決めます。\n            通知を受け取った人は、承認・予定 (CM01) の「完了した申請」でも\n            一覧を見られます。",
             )}
           </Text>
         )}
@@ -317,11 +297,7 @@ export function FormEditor({
         <FormSection title={tr("項目")}>
           <Text c="dimmed" size="sm">
             {tr(
-              tr(
-                tr(
-                  "下の「保存」で、設定と一緒に保存されます。項目に手を入れた場合は\n            新しいバージョンとして公開され、これまでの回答は回答した時点の\n            項目のまま残ります。",
-                ),
-              ),
+              "下の「保存」で、設定と一緒に保存されます。項目に手を入れた場合は\n            新しいバージョンとして公開され、これまでの回答は回答した時点の\n            項目のまま残ります。",
             )}
           </Text>
           <FormBuilder fields={fields} onChange={setFields} />

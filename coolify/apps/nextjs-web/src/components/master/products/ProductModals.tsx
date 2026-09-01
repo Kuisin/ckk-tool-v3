@@ -96,11 +96,7 @@ export function DeleteProductModal({
       opened={opened}
       title={tr("製品の削除")}
       warning={tr(
-        tr(
-          tr(
-            "この製品を参照する価格試算・価格表・見積書が存在する場合は削除できません。無効化をご検討ください。",
-          ),
-        ),
+        "この製品を参照する価格試算・価格表・見積書が存在する場合は削除できません。無効化をご検討ください。",
       )}
     />
   );
@@ -270,11 +266,7 @@ export function DuplicateProductModal({
         />
         <TextInput
           description={tr(
-            tr(
-              tr(
-                "複製元の材種・直径・全長を引き継ぎます（作成後に編集できます）",
-              ),
-            ),
+            "複製元の材種・直径・全長を引き継ぎます（作成後に編集できます）",
           )}
           disabled
           label={tr("素材仕様")}

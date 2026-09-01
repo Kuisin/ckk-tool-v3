@@ -29,11 +29,7 @@ export function ItemDefsListPanel({ initial }: { initial: ProductItemDef[] }) {
         message: `「${d.label.ja || d.key}」を削除しますか？種別への割り当ても外れます。`,
       })}
       description={tr(
-        tr(
-          tr(
-            "再利用できる入力項目のライブラリです。製品種別に割り当てて使います。",
-          ),
-        ),
+        "再利用できる入力項目のライブラリです。製品種別に割り当てて使います。",
       )}
       emptyIcon={<IconListDetails size={24} />}
       emptyMessage={tr(

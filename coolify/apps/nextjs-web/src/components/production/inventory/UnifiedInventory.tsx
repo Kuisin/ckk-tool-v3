@@ -928,11 +928,7 @@ function LocationView({
         <EmptyState
           icon={<IconBuildingWarehouse size={24} />}
           message={tr(
-            tr(
-              tr(
-                "この拠点には保管場所も在庫もありません（保管場所は 保管場所マスタ MS0E で登録）",
-              ),
-            ),
+            "この拠点には保管場所も在庫もありません（保管場所は 保管場所マスタ MS0E で登録）",
           )}
         />
       ) : (

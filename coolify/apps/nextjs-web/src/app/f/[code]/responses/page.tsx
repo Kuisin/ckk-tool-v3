@@ -50,11 +50,7 @@ export default async function PublicResponsesPage({
         actions={[{ label: tr("ホームへ戻る"), href: "/", variant: "filled" }]}
         color="gray"
         description={tr(
-          tr(
-            tr(
-              "URL が間違っているか、このフォームの回答を見る権限がありません。",
-            ),
-          ),
+          "URL が間違っているか、このフォームの回答を見る権限がありません。",
         )}
         formTitle={null}
         icon={<IconSearchOff size={24} />}

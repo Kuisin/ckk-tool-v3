@@ -60,11 +60,7 @@ export function AcceptanceCancelCard({
             : tr("承認しました"),
           message: result.data?.applied
             ? tr(
-                tr(
-                  tr(
-                    "全明細をキャンセルしました（予約解放・未着手指示書の連鎖キャンセル含む）",
-                  ),
-                ),
+                "全明細をキャンセルしました（予約解放・未着手指示書の連鎖キャンセル含む）",
               )
             : tr("次の承認者へ回りました"),
           color: "green",
@@ -137,11 +133,7 @@ export function AcceptanceCancelCard({
       >
         <Text size="sm">
           {tr(
-            tr(
-              tr(
-                "差し戻すと、この依頼は適用されずに閉じます（注文請書はいまのままです）。",
-              ),
-            ),
+            "差し戻すと、この依頼は適用されずに閉じます（注文請書はいまのままです）。",
           )}
         </Text>
         <Textarea

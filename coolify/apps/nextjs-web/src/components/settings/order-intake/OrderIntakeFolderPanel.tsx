@@ -202,9 +202,7 @@ export function OrderIntakeFolderPanel({
           ? {
               title: tr("スキャンを開始しました"),
               message: tr(
-                tr(
-                  "取込は順番に実行されます。結果はこの画面と注文請書（SA04）で確認できます",
-                ),
+                "取込は順番に実行されます。結果はこの画面と注文請書（SA04）で確認できます",
               ),
               color: "green",
             }
@@ -246,16 +244,12 @@ export function OrderIntakeFolderPanel({
           <Text size="sm">
             {status.error ??
               tr(
-                tr(
-                  "この環境には監視フォルダ（環境変数 INTAKE_DIR）が設定されていません。設定すると、フォルダに置かれた注文書が自動で注文請書として取り込まれます。",
-                ),
+                "この環境には監視フォルダ（環境変数 INTAKE_DIR）が設定されていません。設定すると、フォルダに置かれた注文書が自動で注文請書として取り込まれます。",
               )}
           </Text>
           <Text c="dimmed" size="xs">
             {tr(
-              tr(
-                "フォルダを使わない場合でも、注文請書（SA04）の「優先取込」から 1\n            件ずつ取り込めます。",
-              ),
+              "フォルダを使わない場合でも、注文請書（SA04）の「優先取込」から 1\n            件ずつ取り込めます。",
             )}
           </Text>
           <Group gap="xs">
@@ -299,9 +293,7 @@ export function OrderIntakeFolderPanel({
           </Group>
           <Text c="dimmed" size="sm">
             {tr(
-              tr(
-                "受け取った注文書（PDF / PNG / JPG / WEBP、1 件 20MB\n            まで）をまとめて選ぶと、取込フォルダにそのまま置かれます。共有フォルダへ\n            直接コピーしたときと同じ経路で、順番に注文請書へ取り込まれます。",
-              ),
+              "受け取った注文書（PDF / PNG / JPG / WEBP、1 件 20MB\n            まで）をまとめて選ぶと、取込フォルダにそのまま置かれます。共有フォルダへ\n            直接コピーしたときと同じ経路で、順番に注文請書へ取り込まれます。",
             )}
           </Text>
           <Group gap="xs">
@@ -346,9 +338,7 @@ export function OrderIntakeFolderPanel({
       <FolderSection
         color="blue"
         description={tr(
-          tr(
-            "次のスキャンで取り込まれます。抽出中の 1 件は終わる（約 1〜3 分）までここに残ります。",
-          ),
+          "次のスキャンで取り込まれます。抽出中の 1 件は終わる（約 1〜3 分）までここに残ります。",
         )}
         emptyMessage={tr("取込待ちのファイルはありません")}
         rows={pendingRows}
@@ -359,9 +349,7 @@ export function OrderIntakeFolderPanel({
       <FolderSection
         color="red"
         description={tr(
-          tr(
-            "抽出に失敗したファイル。原因を直したら取込待ちへ戻せます — 採番済みの注文請書はそのままで、抽出だけやり直します（二重には登録されません）。",
-          ),
+          "抽出に失敗したファイル。原因を直したら取込待ちへ戻せます — 採番済みの注文請書はそのままで、抽出だけやり直します（二重には登録されません）。",
         )}
         emptyMessage={tr("失敗したファイルはありません")}
         onRetry={retry}
@@ -375,9 +363,7 @@ export function OrderIntakeFolderPanel({
       <FolderSection
         color="green"
         description={tr(
-          tr(
-            "注文請書として取り込み済み。番号から書類を開いて内容を確認できます。",
-          ),
+          "注文請書として取り込み済み。番号から書類を開いて内容を確認できます。",
         )}
         emptyMessage={tr("取込済のファイルはありません")}
         rows={processedRows}

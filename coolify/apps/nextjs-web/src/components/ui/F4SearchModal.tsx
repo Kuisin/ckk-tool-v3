@@ -206,11 +206,7 @@ export function F4SearchModal({
         </ScrollArea.Autosize>
         <Text c="dimmed" size="xs">
           {tr(
-            tr(
-              tr(
-                "行をクリックして選択（結果は最大50件 — 条件で絞り込んでください）",
-              ),
-            ),
+            "行をクリックして選択（結果は最大50件 — 条件で絞り込んでください）",
           )}
         </Text>
       </Stack>

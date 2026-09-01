@@ -217,11 +217,7 @@ export function DesignFileTable({
       {truncated && (
         <Text c="orange" mb="xs" size="xs">
           {tr(
-            tr(
-              tr(
-                "版が多いため一部の系列を読み込んでいません。製品マスタから個別に開いてください。",
-              ),
-            ),
+            "版が多いため一部の系列を読み込んでいません。製品マスタから個別に開いてください。",
           )}
         </Text>
       )}

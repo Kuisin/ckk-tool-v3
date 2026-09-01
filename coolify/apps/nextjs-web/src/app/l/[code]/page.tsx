@@ -105,11 +105,7 @@ export default async function ShortLinkPage({
 
             <Text size="sm">
               {tr(
-                tr(
-                  tr(
-                    "このリンクは社内システムの外へ移動します。移動先を確認してください。",
-                  ),
-                ),
+                "このリンクは社内システムの外へ移動します。移動先を確認してください。",
               )}
             </Text>
 
@@ -133,11 +129,7 @@ export default async function ShortLinkPage({
             <Alert color="yellow" variant="light">
               <Text size="xs">
                 {tr(
-                  tr(
-                    tr(
-                      "社内のパスワードや業務データを、移動先のサイトへ入力しないでください。",
-                    ),
-                  ),
+                  "社内のパスワードや業務データを、移動先のサイトへ入力しないでください。",
                 )}
               </Text>
             </Alert>

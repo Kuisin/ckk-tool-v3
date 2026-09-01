@@ -359,11 +359,7 @@ export function NotificationSettingsForm({
               mailerConfigured
                 ? tr("承認依頼・取込結果などをメールで受け取る")
                 : tr(
-                    tr(
-                      tr(
-                        "メールサーバー未設定のため現在は送信されません（設定は保存できます）",
-                      ),
-                    ),
+                    "メールサーバー未設定のため現在は送信されません（設定は保存できます）",
                   )
             }
             label={tr("メール通知")}
@@ -399,11 +395,7 @@ export function NotificationSettingsForm({
           {!pushConfigured || !vapidPublicKey ? (
             <Alert color="orange" icon={<IconInfoCircle size={16} />}>
               {tr(
-                tr(
-                  tr(
-                    "サーバーの VAPID 鍵が未設定のため、プッシュ通知は利用できません。",
-                  ),
-                ),
+                "サーバーの VAPID 鍵が未設定のため、プッシュ通知は利用できません。",
               )}
             </Alert>
           ) : showIosGuide ? (
@@ -411,11 +403,7 @@ export function NotificationSettingsForm({
               color="blue"
               icon={<IconDeviceMobile size={16} />}
               title={tr(
-                tr(
-                  tr(
-                    "iPhone / iPad はホーム画面に追加して使います（iOS 16.4 以降）",
-                  ),
-                ),
+                "iPhone / iPad はホーム画面に追加して使います（iOS 16.4 以降）",
               )}
             >
               <List size="sm" spacing={4} type="ordered">
@@ -427,11 +415,7 @@ export function NotificationSettingsForm({
                 <List.Item>{tr("「ホーム画面に追加」を選ぶ")}</List.Item>
                 <List.Item>
                   {tr(
-                    tr(
-                      tr(
-                        "ホーム画面の「CKK」アイコンから開き直し、この画面で「このデバイスで有効化」を押す",
-                      ),
-                    ),
+                    "ホーム画面の「CKK」アイコンから開き直し、この画面で「このデバイスで有効化」を押す",
                   )}
                 </List.Item>
               </List>
@@ -439,11 +423,7 @@ export function NotificationSettingsForm({
           ) : !pushSupported ? (
             <Alert color="orange" icon={<IconInfoCircle size={16} />}>
               {tr(
-                tr(
-                  tr(
-                    "このブラウザはプッシュ通知に対応していません。Chrome / Edge /\n              Firefox の最新版をご利用ください。",
-                  ),
-                ),
+                "このブラウザはプッシュ通知に対応していません。Chrome / Edge /\n              Firefox の最新版をご利用ください。",
               )}
             </Alert>
           ) : permission === "denied" ? (
@@ -453,22 +433,14 @@ export function NotificationSettingsForm({
               title={tr("通知がブロックされています")}
             >
               {tr(
-                tr(
-                  tr(
-                    "ブラウザの設定でこのサイトの通知を許可し直してください（Chrome:\n              アドレスバーの鍵アイコン → サイトの設定 → 通知 → 許可。Android:\n              サイト設定に加えて OS の通知設定でも Chrome\n              の通知を許可）。解除後に再度有効化できます。",
-                  ),
-                ),
+                "ブラウザの設定でこのサイトの通知を許可し直してください（Chrome:\n              アドレスバーの鍵アイコン → サイトの設定 → 通知 → 許可。Android:\n              サイト設定に加えて OS の通知設定でも Chrome\n              の通知を許可）。解除後に再度有効化できます。",
               )}
             </Alert>
           ) : subscribed ? (
             <>
               <Text c="dimmed" size="xs">
                 {tr(
-                  tr(
-                    tr(
-                      "このデバイスは登録済みです。ロック画面・デスクトップに通知が届きます。",
-                    ),
-                  ),
+                  "このデバイスは登録済みです。ロック画面・デスクトップに通知が届きます。",
                 )}
               </Text>
               <div>
@@ -484,11 +456,7 @@ export function NotificationSettingsForm({
             <>
               <Text c="dimmed" size="xs">
                 {tr(
-                  tr(
-                    tr(
-                      "有効化するとブラウザの通知許可を求めます。デバイスごとに設定が必要です。",
-                    ),
-                  ),
+                  "有効化するとブラウザの通知許可を求めます。デバイスごとに設定が必要です。",
                 )}
               </Text>
               <Group gap="sm">
@@ -511,11 +479,7 @@ export function NotificationSettingsForm({
               {installPrompt && (
                 <Text c="dimmed" size="xs">
                   {tr(
-                    tr(
-                      tr(
-                        "インストールするとホーム画面 /\n                  デスクトップから起動でき、アプリとして通知を受け取れます（任意\n                  — ブラウザのままでも通知は届きます）。",
-                      ),
-                    ),
+                    "インストールするとホーム画面 /\n                  デスクトップから起動でき、アプリとして通知を受け取れます（任意\n                  — ブラウザのままでも通知は届きます）。",
                   )}
                 </Text>
               )}
@@ -532,11 +496,7 @@ export function NotificationSettingsForm({
           {devices.length === 0 ? (
             <Text c="dimmed" size="sm">
               {tr(
-                tr(
-                  tr(
-                    "登録済みのデバイスはありません。上の「このデバイスで有効化」から登録できます。",
-                  ),
-                ),
+                "登録済みのデバイスはありません。上の「このデバイスで有効化」から登録できます。",
               )}
             </Text>
           ) : (

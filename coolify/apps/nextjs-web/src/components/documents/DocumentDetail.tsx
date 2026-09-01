@@ -156,11 +156,7 @@ export function DocumentDetail({
           {page.publishedBody == null ? (
             <Alert color="yellow">
               {tr(
-                tr(
-                  tr(
-                    "まだ公開されていません。編集して公開すると、ここに本文が出ます。\n              下書きの内容は「レビュー」から読めます。",
-                  ),
-                ),
+                "まだ公開されていません。編集して公開すると、ここに本文が出ます。\n              下書きの内容は「レビュー」から読めます。",
               )}
             </Alert>
           ) : (

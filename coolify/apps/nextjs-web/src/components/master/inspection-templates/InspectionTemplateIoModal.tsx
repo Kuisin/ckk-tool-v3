@@ -103,11 +103,7 @@ export function InspectionTemplateIoModal({
             {selectedIds.length > 0
               ? `選択中の ${selectedIds.length} 件を書き出します。`
               : tr(
-                  tr(
-                    tr(
-                      "有効な検査表をすべて書き出します（一覧で選ぶと、その分だけになります）。",
-                    ),
-                  ),
+                  "有効な検査表をすべて書き出します（一覧で選ぶと、その分だけになります）。",
                 )}
             別の環境へ持っていくときや、控えを取るときに使います。
           </Text>
@@ -128,21 +124,13 @@ export function InspectionTemplateIoModal({
           </Text>
           <Text c="dimmed" size="xs">
             {tr(
-              tr(
-                tr(
-                  "書き出した JSON か、Excel の雛形に書いたファイルを取り込みます。",
-                ),
-              ),
+              "書き出した JSON か、Excel の雛形に書いたファイルを取り込みます。",
             )}
             <b>
               {tr("同じコードの検査表があるときは、新しいバージョンとして追加")}
             </b>
             {tr(
-              tr(
-                tr(
-                  "します（既存の版は書き換えません —\n            過去の検査記録が指しているためです）。",
-                ),
-              ),
+              "します（既存の版は書き換えません —\n            過去の検査記録が指しているためです）。",
             )}
           </Text>
           <Group gap="xs">

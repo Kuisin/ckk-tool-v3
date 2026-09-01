@@ -70,11 +70,7 @@ export function KioskSettingsPanel({
           <Title order={4}>{tr("ランチャーに表示するアプリ")}</Title>
           <Text c="dimmed" size="sm">
             {tr(
-              tr(
-                tr(
-                  "共有端末（キオスク）のランチャーに載せるアプリを選びます。無効にすると、\n            権限を持つ利用者にも表示されません。",
-                ),
-              ),
+              "共有端末（キオスク）のランチャーに載せるアプリを選びます。無効にすると、\n            権限を持つ利用者にも表示されません。",
             )}
           </Text>
           <Stack gap="xs" mt="xs">
@@ -112,11 +108,7 @@ export function KioskSettingsPanel({
           </Group>
           <Alert color="gray" icon={<IconInfoCircle size={18} />}>
             {tr(
-              tr(
-                tr(
-                  "現在の値は端末アプリ側で固定です。編集可能化は次回対応予定です。",
-                ),
-              ),
+              "現在の値は端末アプリ側で固定です。編集可能化は次回対応予定です。",
             )}
           </Alert>
           <Table.ScrollContainer minWidth={420}>

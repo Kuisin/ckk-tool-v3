@@ -486,11 +486,7 @@ export function PurchaseOrderDetail({
             {!canAttachEvidence(po) && (
               <Text c="dimmed" size="xs">
                 {tr(
-                  tr(
-                    tr(
-                      "証憑の添付は承認後（承認済・発注済・入荷完了）に可能になります",
-                    ),
-                  ),
+                  "証憑の添付は承認後（承認済・発注済・入荷完了）に可能になります",
                 )}
               </Text>
             )}

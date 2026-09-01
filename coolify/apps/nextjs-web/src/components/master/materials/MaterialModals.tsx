@@ -71,11 +71,7 @@ export function DeleteMaterialModal({
       opened={opened}
       title={tr("素材の削除")}
       warning={tr(
-        tr(
-          tr(
-            "この素材を参照する製品・発注・在庫が存在する場合は削除できません。無効化をご検討ください。",
-          ),
-        ),
+        "この素材を参照する製品・発注・在庫が存在する場合は削除できません。無効化をご検討ください。",
       )}
     />
   );

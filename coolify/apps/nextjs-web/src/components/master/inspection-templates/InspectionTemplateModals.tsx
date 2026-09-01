@@ -114,11 +114,7 @@ export function DeleteInspectionTemplateModal({
       opened={opened}
       title={tr("検査表テンプレートの削除")}
       warning={tr(
-        tr(
-          tr(
-            "このバージョンを参照する指示書・検査記録が存在する場合は削除できません。無効化をご検討ください。",
-          ),
-        ),
+        "このバージョンを参照する指示書・検査記録が存在する場合は削除できません。無効化をご検討ください。",
       )}
     />
   );
@@ -624,11 +620,7 @@ export function InspectionTemplateItemModal({
           <Stack gap="xs">
             <Text c="dimmed" size="xs">
               {tr(
-                tr(
-                  tr(
-                    "旧帳票（基本値・公差 Top/Bottom）—\n              入力すると合格範囲（下限/上限）を\n              目標値からの差分で自動計算します。直接入力する場合は空欄のままで\n              構いません。",
-                  ),
-                ),
+                "旧帳票（基本値・公差 Top/Bottom）—\n              入力すると合格範囲（下限/上限）を\n              目標値からの差分で自動計算します。直接入力する場合は空欄のままで\n              構いません。",
               )}
             </Text>
             <SimpleGrid cols={{ base: 1, sm: 3 }} spacing="sm">
@@ -801,11 +793,7 @@ export function InspectionTemplateItemModal({
         <Switch
           checked={allowManualOverride}
           description={tr(
-            tr(
-              tr(
-                "オフにすると合格基準からの自動判定のみ（基準未設定の項目は常に手動）",
-              ),
-            ),
+            "オフにすると合格基準からの自動判定のみ（基準未設定の項目は常に手動）",
           )}
           label={tr("合否の手動上書きを許可")}
           onChange={(e) => setAllowManualOverride(e.currentTarget.checked)}

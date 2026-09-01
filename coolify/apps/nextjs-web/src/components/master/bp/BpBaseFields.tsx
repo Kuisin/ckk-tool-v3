@@ -131,11 +131,7 @@ export function BpBaseFields<T extends BpBaseFormValues>({
             clearable
             data={DOCUMENT_LOCALE_OPTIONS}
             description={tr(
-              tr(
-                tr(
-                  "見積書・納品書・請求書をこの言語で発行する。未設定は既定言語（日本語）",
-                ),
-              ),
+              "見積書・納品書・請求書をこの言語で発行する。未設定は既定言語（日本語）",
             )}
             label={tr("書類の言語")}
             placeholder={tr("既定言語（日本語）")}
@@ -187,11 +183,7 @@ export function BpBaseFields<T extends BpBaseFormValues>({
         </SimpleGrid>
         <TagsInput
           description={tr(
-            tr(
-              tr(
-                "AI 抽出（注文書の読み取り）がこの取引先へ社名を解決するための照合リスト。表記ゆれ（㈱/株式会社・全角半角・旧社名など）を Enter 区切りで登録",
-              ),
-            ),
+            "AI 抽出（注文書の読み取り）がこの取引先へ社名を解決するための照合リスト。表記ゆれ（㈱/株式会社・全角半角・旧社名など）を Enter 区切りで登録",
           )}
           label={
             <HelpLabel

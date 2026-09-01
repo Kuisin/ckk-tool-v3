@@ -189,11 +189,7 @@ export function FolderGrantsModal({
             </Group>
             <Text c="dimmed" size="xs">
               {tr(
-                tr(
-                  tr(
-                    "指定フォルダ以下のすべてのファイルが対象。system\n              権限の管理者は常に全フォルダへアクセスできます。",
-                  ),
-                ),
+                "指定フォルダ以下のすべてのファイルが対象。system\n              権限の管理者は常に全フォルダへアクセスできます。",
               )}
             </Text>
           </Stack>

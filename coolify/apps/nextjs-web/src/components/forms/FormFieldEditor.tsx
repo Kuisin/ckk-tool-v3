@@ -142,11 +142,7 @@ export function FormFieldEditor({
         <Checkbox
           checked={field.isTitle === true}
           description={tr(
-            tr(
-              tr(
-                "一覧（CM02 の回答一覧・CM01 の回答行）でこの項目の値を見出しとして表示します。フォームにつき 1 つだけ選べます",
-              ),
-            ),
+            "一覧（CM02 の回答一覧・CM01 の回答行）でこの項目の値を見出しとして表示します。フォームにつき 1 つだけ選べます",
           )}
           disabled={!canBeTitleField(field.type)}
           label={tr("一覧の見出しにする")}
@@ -202,11 +198,7 @@ export function FormFieldEditor({
         <Select
           data={LOOKUP_SOURCES.map((s) => ({ value: s.value, label: s.label }))}
           description={tr(
-            tr(
-              tr(
-                "選んだ値は、その業務データの詳細画面へのリンクとして表示される",
-              ),
-            ),
+            "選んだ値は、その業務データの詳細画面へのリンクとして表示される",
           )}
           label={tr("検索するデータ")}
           onChange={(v) =>
@@ -317,11 +309,7 @@ export function FormFieldEditor({
           </Text>
           <Text c="dimmed" size="xs">
             {tr(
-              tr(
-                tr(
-                  "サブテーブルの中にサブテーブル・関連レコード一覧・リッチテキストは置けません。",
-                ),
-              ),
+              "サブテーブルの中にサブテーブル・関連レコード一覧・リッチテキストは置けません。",
             )}
           </Text>
           {(field.columns ?? []).map((col, i) => (

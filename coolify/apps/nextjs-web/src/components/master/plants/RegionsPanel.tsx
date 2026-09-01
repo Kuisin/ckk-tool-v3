@@ -118,9 +118,7 @@ function RegionModal({
           description={
             isEdit
               ? tr(
-                  tr(
-                    "REGION スコープ権限（scope_values）が参照する識別子のため変更できません",
-                  ),
+                  "REGION スコープ権限（scope_values）が参照する識別子のため変更できません",
                 )
               : undefined
           }
@@ -212,9 +210,7 @@ export function RegionsPanel({ rows }: { rows: RegionRow[] }) {
                 <Table.Td colSpan={5}>
                   <Text c="dimmed" py="sm" size="sm" ta="center">
                     {tr(
-                      tr(
-                        "地域がありません — 「地域を追加」から作成してください",
-                      ),
+                      "地域がありません — 「地域を追加」から作成してください",
                     )}
                   </Text>
                 </Table.Td>
@@ -264,9 +260,7 @@ export function RegionsPanel({ rows }: { rows: RegionRow[] }) {
       </Table.ScrollContainer>
       <Text c="dimmed" mt="sm" size="xs">
         {tr(
-          tr(
-            "地域コードは REGION スコープ権限（scope_values）が参照する識別子のため\n        作成後は変更できません。削除は拠点から参照されていない地域のみ可能です。",
-          ),
+          "地域コードは REGION スコープ権限（scope_values）が参照する識別子のため\n        作成後は変更できません。削除は拠点から参照されていない地域のみ可能です。",
         )}
       </Text>
       {modal && (

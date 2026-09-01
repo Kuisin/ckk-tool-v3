@@ -379,22 +379,14 @@ export function KioskDeviceDetailView({
               </Group>
               <Text c="dimmed" size="xs">
                 {tr(
-                  tr(
-                    tr(
-                      "端末画面の右上 5 タップ → この PIN でキオスクロックを一時解除\n                （Wi-Fi 変更等）",
-                    ),
-                  ),
+                  "端末画面の右上 5 タップ → この PIN でキオスクロックを一時解除\n                （Wi-Fi 変更等）",
                 )}
               </Text>
               <Text c="dimmed" size="xs">
                 {tr("オフラインの端末は PIN を同期できないため、")}
                 <b>{tr("最後に受け取れた時点の PIN")}</b>
                 {tr(
-                  tr(
-                    tr(
-                      "しか受け付けない。開けたいときは右の「この端末が保持している\n                PIN」を使う",
-                    ),
-                  ),
+                  "しか受け付けない。開けたいときは右の「この端末が保持している\n                PIN」を使う",
                 )}
               </Text>
             </Stack>
@@ -436,21 +428,13 @@ export function KioskDeviceDetailView({
                 <Text c="orange" size="xs">
                   <b>{tr("未同期")}</b>{" "}
                   {tr(
-                    tr(
-                      tr(
-                        "— この端末はまだ一度も PIN\n                  を受け取っていない。端末はビルド時の既定 PIN（APK\n                  のビルド設定にのみ存在。サーバーには無い）のまま",
-                      ),
-                    ),
+                    "— この端末はまだ一度も PIN\n                  を受け取っていない。端末はビルド時の既定 PIN（APK\n                  のビルド設定にのみ存在。サーバーには無い）のまま",
                   )}
                 </Text>
               )}
               <Text c="dimmed" size="xs">
                 {tr(
-                  tr(
-                    tr(
-                      "受け取れたときだけ記録する。通信できていても未リンク・トークン切れ\n                （401）や PinSync 以前の APK では届いていない",
-                    ),
-                  ),
+                  "受け取れたときだけ記録する。通信できていても未リンク・トークン切れ\n                （401）や PinSync 以前の APK では届いていない",
                 )}
               </Text>
             </Stack>
@@ -486,11 +470,7 @@ export function KioskDeviceDetailView({
               </Group>
               <Text c="dimmed" size="xs">
                 {tr(
-                  tr(
-                    tr(
-                      "端末リセット・再リンク用の解錠コード。フロア担当者に伝えて使用",
-                    ),
-                  ),
+                  "端末リセット・再リンク用の解錠コード。フロア担当者に伝えて使用",
                 )}
               </Text>
             </Stack>
@@ -615,11 +595,7 @@ export function KioskDeviceDetailView({
         confirmLabel={tr("表示")}
         loading={isPending}
         message={tr(
-          tr(
-            tr(
-              "この端末に最後に渡したメンテナンス PIN を表示します。表示した操作は監査ログに記録されます。",
-            ),
-          ),
+          "この端末に最後に渡したメンテナンス PIN を表示します。表示した操作は監査ログに記録されます。",
         )}
         onClose={() => setConfirmHeld(false)}
         onConfirm={() => {
@@ -635,11 +611,7 @@ export function KioskDeviceDetailView({
         confirmLabel={tr("表示")}
         loading={isPending}
         message={tr(
-          tr(
-            tr(
-              "過去のメンテナンス PIN を表示します。表示した操作は監査ログに記録されます。",
-            ),
-          ),
+          "過去のメンテナンス PIN を表示します。表示した操作は監査ログに記録されます。",
         )}
         onClose={() => setConfirmHistory(false)}
         onConfirm={() => {

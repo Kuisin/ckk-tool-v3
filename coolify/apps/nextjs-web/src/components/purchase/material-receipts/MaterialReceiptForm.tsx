@@ -221,11 +221,7 @@ export function MaterialReceiptForm({
     >
       <FormSection
         description={tr(
-          tr(
-            tr(
-              "直接調達（発注書を経由しない入荷）を登録します。登録と同時に入荷先拠点の素材在庫へ入庫されます。発注入荷は素材発注書の「入荷完了」から自動登録されます。",
-            ),
-          ),
+          "直接調達（発注書を経由しない入荷）を登録します。登録と同時に入荷先拠点の素材在庫へ入庫されます。発注入荷は素材発注書の「入荷完了」から自動登録されます。",
         )}
         title={tr("入荷情報")}
       >
@@ -291,11 +287,7 @@ export function MaterialReceiptForm({
       {/* 証憑（任意） — 登録成功後に順次アップロードして詳細へ */}
       <FormSection
         description={tr(
-          tr(
-            tr(
-              "納品書控え・検収書等を添付できます（PDF / PNG / JPG / WEBP / HEIC / XLSX / CSV、各 20MB まで）。入荷登録の完了後にアップロードされます。",
-            ),
-          ),
+          "納品書控え・検収書等を添付できます（PDF / PNG / JPG / WEBP / HEIC / XLSX / CSV、各 20MB まで）。入荷登録の完了後にアップロードされます。",
         )}
         title={tr("証憑（任意）")}
       >

@@ -107,11 +107,7 @@ export function DiscountRuleModal({
         <Text fw={500} mb={4} size="sm">
           <HelpLabel
             help={tr(
-              tr(
-                tr(
-                  "率（%）は単価に対する割合、金額（¥/本）は1本あたりの値引き額です。",
-                ),
-              ),
+              "率（%）は単価に対する割合、金額（¥/本）は1本あたりの値引き額です。",
             )}
             label={tr("値引き種別")}
           />
@@ -179,11 +175,7 @@ export function DiscountRuleModal({
           label={
             <HelpLabel
               help={tr(
-                tr(
-                  tr(
-                    "このルールが適用される期間。見積書作成日の時点で期間内のルールだけが適用されます。",
-                  ),
-                ),
+                "このルールが適用される期間。見積書作成日の時点で期間内のルールだけが適用されます。",
               )}
               label={tr("有効開始日")}
             />
@@ -214,11 +206,7 @@ export function DiscountRuleModal({
 
       <Alert color="blue" icon={<IconInfoCircle size={16} />} variant="light">
         {tr(
-          tr(
-            tr(
-              "条件（数量・期間）を満たすルールが見積書作成時に自動適用されます。複数該当する場合は値引き額が最大のルールを採用します。",
-            ),
-          ),
+          "条件（数量・期間）を満たすルールが見積書作成時に自動適用されます。複数該当する場合は値引き額が最大のルールを採用します。",
         )}
       </Alert>
 

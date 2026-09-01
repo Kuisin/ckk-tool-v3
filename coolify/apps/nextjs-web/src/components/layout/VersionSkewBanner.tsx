@@ -67,11 +67,7 @@ export function VersionSkewBanner() {
       <Group justify="space-between" wrap="wrap">
         <Text fw={600} size="sm">
           {tr(
-            tr(
-              tr(
-                "アプリが新しいバージョンに更新されました —\n          このページは古いまま動いています。操作が失敗する前に再読み込みしてください。",
-              ),
-            ),
+            "アプリが新しいバージョンに更新されました —\n          このページは古いまま動いています。操作が失敗する前に再読み込みしてください。",
           )}
         </Text>
         <Button

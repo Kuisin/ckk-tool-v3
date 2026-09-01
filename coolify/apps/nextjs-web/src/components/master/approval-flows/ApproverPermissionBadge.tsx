@@ -54,11 +54,7 @@ export function ApproverPermissionBadge({
     return (
       <Tooltip
         label={tr(
-          tr(
-            tr(
-              "この段を承認できる人が今いません。承認依頼を出しても止まります。",
-            ),
-          ),
+          "この段を承認できる人が今いません。承認依頼を出しても止まります。",
         )}
         withinPortal
       >

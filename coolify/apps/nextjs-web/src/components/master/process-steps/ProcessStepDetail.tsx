@@ -328,11 +328,7 @@ export function ProcessStepDetail({
               </Text>
               <DependencyTable
                 emptyMessage={tr(
-                  tr(
-                    tr(
-                      "使用依存はありません（単独でワークフローに含められます）",
-                    ),
-                  ),
+                  "使用依存はありません（単独でワークフローに含められます）",
                 )}
                 rows={record.useDependencies}
                 withNegation

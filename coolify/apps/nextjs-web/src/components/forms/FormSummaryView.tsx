@@ -117,11 +117,7 @@ function Body({
           {chartMode === "pie" && !canDonut && (
             <Text c="dimmed" size="xs">
               {tr(
-                tr(
-                  tr(
-                    "この項目は円グラフにできません（複数選べる質問、区分が 1 つだけ、\n              区分が多すぎる、または上位のみの表示）",
-                  ),
-                ),
+                "この項目は円グラフにできません（複数選べる質問、区分が 1 つだけ、\n              区分が多すぎる、または上位のみの表示）",
               )}
             </Text>
           )}
@@ -399,11 +395,7 @@ export function FormSummaryView({
         <Stack gap="xs">
           <Text size="sm">
             {tr(
-              tr(
-                tr(
-                  "この画面は「何がどれだけ選ばれたか」までです。項目どうしの掛け合わせ、\n            期間の比較、他の業務データ（受注・出荷など）との突き合わせは",
-                ),
-              ),
+              "この画面は「何がどれだけ選ばれたか」までです。項目どうしの掛け合わせ、\n            期間の比較、他の業務データ（受注・出荷など）との突き合わせは",
             )}
             <strong> Metabase </strong>
             {tr("で行えます。")}
@@ -420,11 +412,7 @@ export function FormSummaryView({
               打ち間違えるので、そのままコピーできる形で出す。 */}
           <CopyableValue
             description={tr(
-              tr(
-                tr(
-                  "Metabase の「フォームコード」に貼り付けると、このフォームの回答だけに絞れます。",
-                ),
-              ),
+              "Metabase の「フォームコード」に貼り付けると、このフォームの回答だけに絞れます。",
             )}
             label={tr("フォームコード")}
             value={formCode}

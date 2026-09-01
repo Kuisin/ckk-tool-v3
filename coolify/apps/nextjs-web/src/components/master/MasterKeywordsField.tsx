@@ -156,11 +156,7 @@ export function MasterKeywordsField({
           <Stack gap={6}>
             <Text size="sm">
               {tr(
-                tr(
-                  tr(
-                    "採用するものだけを選んでください（押すと上の欄に入ります）。保存するまでは登録されません。",
-                  ),
-                ),
+                "採用するものだけを選んでください（押すと上の欄に入ります）。保存するまでは登録されません。",
               )}
             </Text>
             <Group gap="xs" wrap="wrap">

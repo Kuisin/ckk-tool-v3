@@ -118,11 +118,7 @@ export function SearchSelect({
             notifications.show({
               title: tr("検索に失敗しました"),
               message: tr(
-                tr(
-                  tr(
-                    "通信エラーか、アプリが更新された可能性があります。ページを再読み込みしてください",
-                  ),
-                ),
+                "通信エラーか、アプリが更新された可能性があります。ページを再読み込みしてください",
               ),
               color: "red",
             });

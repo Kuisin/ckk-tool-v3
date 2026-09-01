@@ -513,9 +513,7 @@ function TypesModal({
       <Stack gap="xs">
         <Text c="dimmed" size="xs">
           {tr(
-            tr(
-              "machine / area\n          は組み込み（削除不可）。グループが使用中の種別は削除できません。",
-            ),
+            "machine / area\n          は組み込み（削除不可）。グループが使用中の種別は削除できません。",
           )}
         </Text>
         {rows.map((r, idx) => (
@@ -683,9 +681,7 @@ export function WorkLocationsManager({
         <EmptyState
           icon={<IconMapPin size={24} />}
           message={tr(
-            tr(
-              "作業場所が未登録です。グループ（機械種別・エリアなど）を作成し、配下に物理的な場所（機械 1 台・1 区画）を追加してください。",
-            ),
+            "作業場所が未登録です。グループ（機械種別・エリアなど）を作成し、配下に物理的な場所（機械 1 台・1 区画）を追加してください。",
           )}
         />
       ) : (

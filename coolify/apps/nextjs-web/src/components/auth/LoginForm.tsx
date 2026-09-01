@@ -162,11 +162,7 @@ export function LoginForm({
                 <Stack gap="sm">
                   <Text c="dimmed" size="xs">
                     {tr(
-                      tr(
-                        tr(
-                          "開発・検証用です。通常のユーザーは SSO をご利用ください。",
-                        ),
-                      ),
+                      "開発・検証用です。通常のユーザーは SSO をご利用ください。",
                     )}
                   </Text>
                   <TextInput

@@ -118,11 +118,7 @@ export function ApprovalTargetField({
       </Group>
       <Text c="dimmed" size="xs">
         {tr(
-          tr(
-            tr(
-              "宛先は承認グループか、この検査表だけの承認者（カスタム・複数可）から選べます。\n        未設定 = 誰でも検収できます",
-            ),
-          ),
+          "宛先は承認グループか、この検査表だけの承認者（カスタム・複数可）から選べます。\n        未設定 = 誰でも検収できます",
         )}
       </Text>
     </Stack>

@@ -220,9 +220,7 @@ export function ProductTypeEditForm({
 
       <FormSection
         description={tr(
-          tr(
-            "項目定義ライブラリから割り当てます。既定値は空欄なら項目定義の既定値を使います。",
-          ),
+          "項目定義ライブラリから割り当てます。既定値は空欄なら項目定義の既定値を使います。",
         )}
         title={tr("割り当て項目")}
       >
@@ -331,9 +329,7 @@ export function ProductTypeEditForm({
           {defOptions.length === 0 && (
             <Text c="dimmed" size="xs">
               {tr(
-                tr(
-                  "割り当て可能な項目がありません。先に「項目定義」で項目を作成してください。",
-                ),
+                "割り当て可能な項目がありません。先に「項目定義」で項目を作成してください。",
               )}
             </Text>
           )}

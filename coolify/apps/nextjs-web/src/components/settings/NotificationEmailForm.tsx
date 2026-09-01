@@ -69,22 +69,14 @@ export function NotificationEmailForm({
       <Alert color="blue" icon={<IconInfoCircle size={16} />} variant="light">
         <Text size="sm">
           {tr(
-            tr(
-              tr(
-                "アプリやプッシュ通知で先に読んだ通知はメールされません。\n          メールが届くのは「見逃したまま残っている通知」だけです。",
-              ),
-            ),
+            "アプリやプッシュ通知で先に読んだ通知はメールされません。\n          メールが届くのは「見逃したまま残っている通知」だけです。",
           )}
         </Text>
       </Alert>
 
       <FormSection
         description={tr(
-          tr(
-            tr(
-              "通知 1 件ごとに 1 通ではなく、見逃した未読をまとめて 1 通にします。切ると従来どおり 1 件ずつ届きます。",
-            ),
-          ),
+          "通知 1 件ごとに 1 通ではなく、見逃した未読をまとめて 1 通にします。切ると従来どおり 1 件ずつ届きます。",
         )}
         title={tr("まとめて送る")}
       >
@@ -97,11 +89,7 @@ export function NotificationEmailForm({
 
       <FormSection
         description={tr(
-          tr(
-            tr(
-              "同じ人へ次のまとめを送るまでの最短間隔と、「見逃し」とみなすまでの待ち時間。待ち時間の間に読まれた通知はメールされません。",
-            ),
-          ),
+          "同じ人へ次のまとめを送るまでの最短間隔と、「見逃し」とみなすまでの待ち時間。待ち時間の間に読まれた通知はメールされません。",
         )}
         title={tr("送る間隔")}
       >
@@ -117,11 +105,7 @@ export function NotificationEmailForm({
           />
           <NumberInput
             description={tr(
-              tr(
-                tr(
-                  "作成からこれだけ経っても未読なら見逃しとみなす（0〜1440 分）",
-                ),
-              ),
+              "作成からこれだけ経っても未読なら見逃しとみなす（0〜1440 分）",
             )}
             disabled={!settings.digestEnabled}
             label={tr("猶予（分）")}
@@ -135,11 +119,7 @@ export function NotificationEmailForm({
 
       <FormSection
         description={tr(
-          tr(
-            tr(
-              "選んだ種別はまとめを待たずに 1 通で届きます。既定は「なし」— 待たせたくないものが出てきたときだけ足してください。",
-            ),
-          ),
+          "選んだ種別はまとめを待たずに 1 通で届きます。既定は「なし」— 待たせたくないものが出てきたときだけ足してください。",
         )}
         title={tr("待たせない種別")}
       >
@@ -156,11 +136,7 @@ export function NotificationEmailForm({
 
       <FormSection
         description={tr(
-          tr(
-            tr(
-              "1 通に並べる件数の上限。超えた分は「ほか N 件」に畳まれます（畳まれた通知も送信済みとして扱われ、次の回には載りません）。",
-            ),
-          ),
+          "1 通に並べる件数の上限。超えた分は「ほか N 件」に畳まれます（畳まれた通知も送信済みとして扱われ、次の回には載りません）。",
         )}
         title={tr("1 通の件数")}
       >

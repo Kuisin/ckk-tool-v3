@@ -130,11 +130,7 @@ function CommentThread({
             {outdated && (
               <Tooltip
                 label={tr(
-                  tr(
-                    tr(
-                      "この行は編集で変更・削除されました。当時の内容だけが残っています",
-                    ),
-                  ),
+                  "この行は編集で変更・削除されました。当時の内容だけが残っています",
                 )}
               >
                 <Badge color="gray" size="xs" variant="light">

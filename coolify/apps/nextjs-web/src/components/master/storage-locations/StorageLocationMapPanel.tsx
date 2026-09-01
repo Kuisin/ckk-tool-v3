@@ -99,11 +99,7 @@ export function StorageLocationMapPanel({
       {floorMaps.length === 0 ? (
         <Text c="dimmed" size="sm">
           {tr(
-            tr(
-              tr(
-                "この拠点にはフロアマップがありません。拠点マスタ (MS0C)\n          の「フロアマップ」タブでフロアと図面を登録してください。",
-              ),
-            ),
+            "この拠点にはフロアマップがありません。拠点マスタ (MS0C)\n          の「フロアマップ」タブでフロアと図面を登録してください。",
           )}
         </Text>
       ) : (

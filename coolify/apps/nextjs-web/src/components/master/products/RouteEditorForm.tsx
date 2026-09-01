@@ -224,11 +224,7 @@ export function RouteEditorForm({
                 clearable
                 data={customerOptions ?? []}
                 description={tr(
-                  tr(
-                    tr(
-                      "指定すると同じ顧客×製品の指示書で優先選択されます（空 = 汎用）",
-                    ),
-                  ),
+                  "指定すると同じ顧客×製品の指示書で優先選択されます（空 = 汎用）",
                 )}
                 label={tr("対象顧客")}
                 onChange={setCustomerBpId}

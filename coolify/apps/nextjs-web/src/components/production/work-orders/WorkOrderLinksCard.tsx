@@ -176,11 +176,7 @@ export function WorkOrderLinksCard({
           <Stack gap={6}>
             <Text c="dimmed" size="xs">
               {tr(
-                tr(
-                  tr(
-                    "先行（完了までこの指示書の先頭工程は開始不可・完成数が受入に渡る）",
-                  ),
-                ),
+                "先行（完了までこの指示書の先頭工程は開始不可・完成数が受入に渡る）",
               )}
             </Text>
             {incoming.map((l) => (
@@ -209,11 +205,7 @@ export function WorkOrderLinksCard({
         {incoming.length === 0 && outgoing.length === 0 && (
           <Text c="dimmed" size="sm">
             {tr(
-              tr(
-                tr(
-                  "リンクなし — 先行指示書（例: 母材の製造）を追加すると、その完了を\n            待ってから開始し、完成数を受入として引き継ぎます",
-                ),
-              ),
+              "リンクなし — 先行指示書（例: 母材の製造）を追加すると、その完了を\n            待ってから開始し、完成数を受入として引き継ぎます",
             )}
           </Text>
         )}

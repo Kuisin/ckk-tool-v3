@@ -227,11 +227,7 @@ export function HomeSettingsForm({ initial }: { initial: HomeSettings }) {
         <Divider mb="md" />
         <Text c="dimmed" mb="md" size="sm">
           {tr(
-            tr(
-              tr(
-                "選択したアプリはホーム画面の上部に固定表示されます（選択した順に並びます）。",
-              ),
-            ),
+            "選択したアプリはホーム画面の上部に固定表示されます（選択した順に並びます）。",
           )}
         </Text>
         <SimpleGrid cols={isMobile ? 2 : 4} spacing="sm">
@@ -268,11 +264,7 @@ export function HomeSettingsForm({ initial }: { initial: HomeSettings }) {
             />
             <Radio
               description={tr(
-                tr(
-                  tr(
-                    "自分で作ったグループごとにアプリを表示します。未所属のアプリは「その他」にまとまります",
-                  ),
-                ),
+                "自分で作ったグループごとにアプリを表示します。未所属のアプリは「その他」にまとまります",
               )}
               label={tr("カスタム（グループ別）")}
               value="custom"
@@ -318,11 +310,7 @@ export function HomeSettingsForm({ initial }: { initial: HomeSettings }) {
             {groups.length === 0 ? (
               <Text c="dimmed" size="sm">
                 {tr(
-                  tr(
-                    tr(
-                      "グループがありません。グループ名を入力して追加してください。",
-                    ),
-                  ),
+                  "グループがありません。グループ名を入力して追加してください。",
                 )}
               </Text>
             ) : (

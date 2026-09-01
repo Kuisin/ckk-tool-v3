@@ -321,11 +321,7 @@ export function StepExecutionView({ data }: { data: StepExecutionData }) {
         (!woExecutable ? (
           <Alert color="yellow" title={tr("開始できません")} variant="light">
             {tr(
-              tr(
-                tr(
-                  "指示書が承認済み / 進行中ではないため、工程を開始できません。",
-                ),
-              ),
+              "指示書が承認済み / 進行中ではないため、工程を開始できません。",
             )}
           </Alert>
         ) : data.canStart.ok && !lockedByOther ? (
@@ -657,18 +653,10 @@ export function StepExecutionView({ data }: { data: StepExecutionData }) {
           <Text size="sm">
             {reasonMode === "abort"
               ? tr(
-                  tr(
-                    tr(
-                      "進行中の工程を未着手へ戻します。入力中の数量は保存されません。",
-                    ),
-                  ),
+                  "進行中の工程を未着手へ戻します。入力中の数量は保存されません。",
                 )
               : tr(
-                  tr(
-                    tr(
-                      "完了済みの工程を未着手へ戻し、記録済みの数量をクリアします。後続工程が着手済みの場合は巻き戻せません。",
-                    ),
-                  ),
+                  "完了済みの工程を未着手へ戻し、記録済みの数量をクリアします。後続工程が着手済みの場合は巻き戻せません。",
                 )}
           </Text>
           <Textarea

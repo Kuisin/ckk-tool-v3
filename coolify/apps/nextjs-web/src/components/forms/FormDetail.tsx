@@ -172,11 +172,7 @@ export function FormDetail({
                   openConfirm({
                     title: tr("下書きに戻す"),
                     message: tr(
-                      tr(
-                        tr(
-                          "受付を止めます。共有 URL を開いても回答できなくなります（今ある回答は残ります）。",
-                        ),
-                      ),
+                      "受付を止めます。共有 URL を開いても回答できなくなります（今ある回答は残ります）。",
                     ),
                     confirmLabel: tr("下書きに戻す"),
                     onConfirm: () =>
@@ -198,11 +194,7 @@ export function FormDetail({
                   openConfirm({
                     title: tr("アーカイブする"),
                     message: tr(
-                      tr(
-                        tr(
-                          "使い終わったフォームとして片付けます。受付は止まりますが、回答と集計は残ります。",
-                        ),
-                      ),
+                      "使い終わったフォームとして片付けます。受付は止まりますが、回答と集計は残ります。",
                     ),
                     confirmLabel: tr("アーカイブする"),
                     onConfirm: () =>
@@ -259,11 +251,7 @@ export function FormDetail({
       {form.currentVersion === 0 && (
         <Alert color="yellow">
           {tr(
-            tr(
-              tr(
-                "まだ項目が公開されていません。「編集」から項目を組んで公開してください。",
-              ),
-            ),
+            "まだ項目が公開されていません。「編集」から項目を組んで公開してください。",
           )}
         </Alert>
       )}

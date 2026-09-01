@@ -343,11 +343,7 @@ export function PriceListDetail({
         <Tabs.Panel pt="md" value="discounts">
           <Text c="dimmed" mb="sm" size="xs">
             {tr(
-              tr(
-                tr(
-                  "期間・数量条件を満たすルールが見積書作成時に自動適用されます（複数該当時は値引き額が最大のもの）。ルールは注文種別ごとに登録します。",
-                ),
-              ),
+              "期間・数量条件を満たすルールが見積書作成時に自動適用されます（複数該当時は値引き額が最大のもの）。ルールは注文種別ごとに登録します。",
             )}
           </Text>
           <Stack gap="lg">
@@ -530,11 +526,7 @@ export function PriceListDetail({
               ) : (
                 <Text c="dimmed" size="sm">
                   {tr(
-                    tr(
-                      tr(
-                        "—（「見積書を作成」でこの価格表から見積書を作成できます）",
-                      ),
-                    ),
+                    "—（「見積書を作成」でこの価格表から見積書を作成できます）",
                   )}
                 </Text>
               )}

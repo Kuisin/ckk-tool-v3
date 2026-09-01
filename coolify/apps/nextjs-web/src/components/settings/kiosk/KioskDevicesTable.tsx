@@ -260,11 +260,7 @@ export function KioskDevicesTable({
         notifications.show({
           title: tr("作成しました"),
           message: tr(
-            tr(
-              tr(
-                "端末プロファイルを作成しました。「端末をリンク」からタブレットのコードでリンクしてください",
-              ),
-            ),
+            "端末プロファイルを作成しました。「端末をリンク」からタブレットのコードでリンクしてください",
           ),
           color: "green",
         });
@@ -563,11 +559,7 @@ export function KioskDevicesTable({
           setConfirm({
             title: tr("無効化の確認"),
             message: tr(
-              tr(
-                tr(
-                  "この端末を一時的に無効化します（再有効化できます）。無効化中はキオスクとして使用できません。",
-                ),
-              ),
+              "この端末を一時的に無効化します（再有効化できます）。無効化中はキオスクとして使用できません。",
             ),
             confirmLabel: tr("無効化"),
             run: () => disableDevice(r.id),
@@ -589,11 +581,7 @@ export function KioskDevicesTable({
           setConfirm({
             title: tr("鍵リセットの確認"),
             message: tr(
-              tr(
-                tr(
-                  "端末アプリのアテステーション鍵を解除します。次回この端末のアプリが接続したときに新しい鍵が束縛されます（端末を交換・初期化した場合に使用）。",
-                ),
-              ),
+              "端末アプリのアテステーション鍵を解除します。次回この端末のアプリが接続したときに新しい鍵が束縛されます（端末を交換・初期化した場合に使用）。",
             ),
             confirmLabel: tr("鍵リセット"),
             run: () => resetDeviceKey(r.id),
@@ -612,19 +600,11 @@ export function KioskDevicesTable({
           setConfirm({
             title: tr("リンク解除の確認"),
             message: tr(
-              tr(
-                tr(
-                  "この端末のリンクを解除します。セッション・デバイストークン・アテステーション鍵が破棄され、プロファイルはオープン（リンク待ち）に戻ります。端末を交換・再リンクする場合に使用してください。",
-                ),
-              ),
+              "この端末のリンクを解除します。セッション・デバイストークン・アテステーション鍵が破棄され、プロファイルはオープン（リンク待ち）に戻ります。端末を交換・再リンクする場合に使用してください。",
             ),
             confirmLabel: tr("リンク解除"),
             successMessage: tr(
-              tr(
-                tr(
-                  "リンクを解除しました。プロファイルはオープン（リンク待ち）に戻りました",
-                ),
-              ),
+              "リンクを解除しました。プロファイルはオープン（リンク待ち）に戻りました",
             ),
             run: () => unlinkDevice(r.id),
           }),
@@ -638,11 +618,7 @@ export function KioskDevicesTable({
           setConfirm({
             title: tr("削除の確認"),
             message: tr(
-              tr(
-                tr(
-                  "リンク前の端末プロファイルを削除します。この操作は取り消せません。",
-                ),
-              ),
+              "リンク前の端末プロファイルを削除します。この操作は取り消せません。",
             ),
             confirmLabel: "削除",
             successMessage: tr("端末プロファイルを削除しました"),
@@ -657,11 +633,7 @@ export function KioskDevicesTable({
           setConfirm({
             title: tr("取り消しの確認"),
             message: tr(
-              tr(
-                tr(
-                  "端末を取り消します。デバイストークンは破棄され、再登録が必要になります。この操作は取り消せません。",
-                ),
-              ),
+              "端末を取り消します。デバイストークンは破棄され、再登録が必要になります。この操作は取り消せません。",
             ),
             confirmLabel: tr("取り消し"),
             run: () => revokeDevice(r.id),
@@ -778,11 +750,7 @@ export function KioskDevicesTable({
         <Stack gap="sm">
           <Alert color="blue" variant="light">
             {tr(
-              tr(
-                tr(
-                  "プロファイルはオープン（リンク待ち）で作成されます。タブレットの\n            設定画面（/setup）に表示されるコードを「端末をリンク」で\n            入力またはスキャンしてリンクした後、この画面から有効化できます。",
-                ),
-              ),
+              "プロファイルはオープン（リンク待ち）で作成されます。タブレットの\n            設定画面（/setup）に表示されるコードを「端末をリンク」で\n            入力またはスキャンしてリンクした後、この画面から有効化できます。",
             )}
           </Alert>
           <LocalizedTextInput
@@ -840,11 +808,7 @@ export function KioskDevicesTable({
         <Stack gap="sm">
           <Alert color="blue" variant="light">
             {tr(
-              tr(
-                tr(
-                  "タブレットの設定画面（/setup）に表示された 12\n            文字のコードを入力するか、QR をカメラでスキャンしてください。\n            リンク後、この画面から有効化できます。",
-                ),
-              ),
+              "タブレットの設定画面（/setup）に表示された 12\n            文字のコードを入力するか、QR をカメラでスキャンしてください。\n            リンク後、この画面から有効化できます。",
             )}
           </Alert>
           <TextInput
@@ -921,11 +885,7 @@ export function KioskDevicesTable({
                 o.plantId == null || String(o.plantId) === editForm.plantId,
             )}
             description={tr(
-              tr(
-                tr(
-                  "工程の開始・再開時に、この端末からの作業実績へ自動で記録されます",
-                ),
-              ),
+              "工程の開始・再開時に、この端末からの作業実績へ自動で記録されます",
             )}
             label={
               <HelpLabel {...fieldHelp("kioskDevice", "defaultWorkLocation")} />

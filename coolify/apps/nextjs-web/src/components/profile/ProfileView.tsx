@@ -352,9 +352,7 @@ export function ProfileView({ user }: { user: ProfileData }) {
           </Text>
           <Text c="dimmed" size="xs">
             {tr(
-              tr(
-                "通知メール（承認依頼・取込結果など）の宛先に使われます。空にすると\n            メール通知は届きません。",
-              ),
+              "通知メール（承認依頼・取込結果など）の宛先に使われます。空にすると\n            メール通知は届きません。",
             )}
           </Text>
           <Group align="flex-end" gap="sm">
@@ -431,9 +429,7 @@ export function ProfileView({ user }: { user: ProfileData }) {
           {devices.length === 0 ? (
             <Text c="dimmed" size="xs">
               {tr(
-                tr(
-                  "登録されたデバイスはありません。通知設定から有効化できます。",
-                ),
+                "登録されたデバイスはありません。通知設定から有効化できます。",
               )}
             </Text>
           ) : (

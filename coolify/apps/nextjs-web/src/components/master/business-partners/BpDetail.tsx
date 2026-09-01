@@ -198,11 +198,7 @@ export function BpDetail({
               <OverviewSection title={tr("ロール")}>
                 <Text c="dimmed" size="sm">
                   {tr(
-                    tr(
-                      tr(
-                        "ロールが設定されていません。「編集」から顧客・最終需要家・\n                  仕入先・外注先のいずれかを付与すると、各書類で選べるように\n                  なります。",
-                      ),
-                    ),
+                    "ロールが設定されていません。「編集」から顧客・最終需要家・\n                  仕入先・外注先のいずれかを付与すると、各書類で選べるように\n                  なります。",
                   )}
                 </Text>
               </OverviewSection>

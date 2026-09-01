@@ -183,11 +183,7 @@ export function PortalLoginForm() {
             <>
               <Text c="dimmed" size="xs">
                 {tr(
-                  tr(
-                    tr(
-                      "担当営業からお渡ししたバックアップコードを入力してください。 1\n                枚につき 1 回だけ使えます。",
-                    ),
-                  ),
+                  "担当営業からお渡ししたバックアップコードを入力してください。 1\n                枚につき 1 回だけ使えます。",
                 )}
               </Text>
               <TextInput

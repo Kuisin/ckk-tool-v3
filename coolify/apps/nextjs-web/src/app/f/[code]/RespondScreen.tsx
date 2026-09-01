@@ -126,11 +126,7 @@ export async function RespondScreen({
           actions={[{ ...HOME, variant: "filled" }]}
           color="gray"
           description={tr(
-            tr(
-              tr(
-                "URL が間違っているか、このフォームがあなたに共有されていません。共有した人に URL と公開範囲を確認してください。",
-              ),
-            ),
+            "URL が間違っているか、このフォームがあなたに共有されていません。共有した人に URL と公開範囲を確認してください。",
           )}
           icon={<IconSearchOff size={24} />}
           title={tr("このフォームは開けません")}
@@ -143,11 +139,7 @@ export async function RespondScreen({
           actions={[HOME]}
           color="yellow"
           description={tr(
-            tr(
-              tr(
-                "作成者がまだ項目を公開していません。公開されると回答できるようになります。",
-              ),
-            ),
+            "作成者がまだ項目を公開していません。公開されると回答できるようになります。",
           )}
           formTitle={formTitle}
           icon={<IconProgress size={24} />}
@@ -194,11 +186,7 @@ export async function RespondScreen({
             state.myResponseNumber
               ? tr("受付は終了しました。提出済みの回答は引き続き読めます。")
               : tr(
-                  tr(
-                    tr(
-                      "受付は終了しました。回答が必要な場合は作成者に連絡してください。",
-                    ),
-                  ),
+                  "受付は終了しました。回答が必要な場合は作成者に連絡してください。",
                 )
           }
           formTitle={formTitle}
@@ -256,11 +244,7 @@ export async function RespondScreen({
           description={
             state.canEdit
               ? tr(
-                  tr(
-                    tr(
-                      "このフォームは 1 人 1 回までです。期限内なら内容を直せます。",
-                    ),
-                  ),
+                  "このフォームは 1 人 1 回までです。期限内なら内容を直せます。",
                 )
               : tr("このフォームは 1 人 1 回までです。")
           }
@@ -295,26 +279,14 @@ export async function RespondScreen({
           description={
             !state.exists
               ? tr(
-                  tr(
-                    tr(
-                      "編集の対象が見つかりません。URL が間違っているか、自分の回答ではありません。",
-                    ),
-                  ),
+                  "編集の対象が見つかりません。URL が間違っているか、自分の回答ではありません。",
                 )
               : state.reason === "in-approval"
                 ? tr(
-                    tr(
-                      tr(
-                        "承認が進んでいるため直せません。内容を変えたい場合は、承認者に差し戻してもらってください（差し戻されたら直せます）。",
-                      ),
-                    ),
+                    "承認が進んでいるため直せません。内容を変えたい場合は、承認者に差し戻してもらってください（差し戻されたら直せます）。",
                   )
                 : tr(
-                    tr(
-                      tr(
-                        "編集できる期間が終わっています。内容を直したい場合は作成者に連絡してください。",
-                      ),
-                    ),
+                    "編集できる期間が終わっています。内容を直したい場合は作成者に連絡してください。",
                   )
           }
           formTitle={formTitle}

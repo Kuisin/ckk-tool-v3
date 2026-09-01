@@ -127,11 +127,7 @@ export function FormImport() {
       <FormSection title={tr("ファイルまたは貼り付け")}>
         <Alert color="gray" icon={<IconFileImport size={16} />} variant="light">
           {tr(
-            tr(
-              tr(
-                "書き出したファイル（.txt）に含まれるのは**フォームの作りだけ**です。\n          回答と共有設定は含まれないので、取り込んだフォームは非公開で始まります。\n          受付期間も設定し直してください。",
-              ),
-            ),
+            "書き出したファイル（.txt）に含まれるのは**フォームの作りだけ**です。\n          回答と共有設定は含まれないので、取り込んだフォームは非公開で始まります。\n          受付期間も設定し直してください。",
           )}
         </Alert>
         <FileInput
@@ -240,11 +236,7 @@ export function FormImport() {
                     : preview.existingEditable
                       ? `「${preview.existingTitle}」に新しいバージョンとして重ねます。これまでの回答は回答時点の内容のまま残ります`
                       : tr(
-                          tr(
-                            tr(
-                              "同じコードのフォームはありますが、編集する権限がありません",
-                            ),
-                          ),
+                          "同じコードのフォームはありますが、編集する権限がありません",
                         )
                 }
                 disabled={preview.codeAvailable || !preview.existingEditable}

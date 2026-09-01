@@ -127,11 +127,7 @@ export function MaterialTypePriceGrid({
     <Stack gap="sm">
       <Text c="dimmed" size="xs">
         {tr(
-          tr(
-            tr(
-              "材種 × 直径 × 黒皮/研磨\n        ごとの既定材料単価（¥/1000mm）。仕入実績が無いとき\n        価格試算のフォールバック単価に使います。空欄は「価格なし」。",
-            ),
-          ),
+          "材種 × 直径 × 黒皮/研磨\n        ごとの既定材料単価（¥/1000mm）。仕入実績が無いとき\n        価格試算のフォールバック単価に使います。空欄は「価格なし」。",
         )}
       </Text>
       <EditableCellTable<GridRow>

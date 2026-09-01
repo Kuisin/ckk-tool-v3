@@ -314,11 +314,7 @@ function CommentThread({ ownerType, ownerId, memos }: MemoPanelProps) {
     openConfirm({
       title: tr("コメントの削除"),
       message: tr(
-        tr(
-          tr(
-            "このコメントを完全に削除します。この操作は取り消せません。残したまま畳むだけならアーカイブを使ってください。",
-          ),
-        ),
+        "このコメントを完全に削除します。この操作は取り消せません。残したまま畳むだけならアーカイブを使ってください。",
       ),
       confirmLabel: "削除",
       onConfirm: () =>

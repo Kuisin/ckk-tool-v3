@@ -70,11 +70,7 @@ export function IssueQuoteModal({
       notifications.show({
         title: tr("発行しました（PDF 生成に失敗）"),
         message: tr(
-          tr(
-            tr(
-              "PDF の生成に失敗しました。PDF タブの「再生成」で再試行できます。",
-            ),
-          ),
+          "PDF の生成に失敗しました。PDF タブの「再生成」で再試行できます。",
         ),
         color: "orange",
       });

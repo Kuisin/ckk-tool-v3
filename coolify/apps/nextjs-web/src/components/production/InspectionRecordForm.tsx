@@ -859,11 +859,7 @@ export function InspectionApprovalPanel({
         {records.length === 0 ? (
           <Text c="dimmed" size="sm">
             {tr(
-              tr(
-                tr(
-                  "承認対象の検査記録がありません（先に検査工程で記録してください）",
-                ),
-              ),
+              "承認対象の検査記録がありません（先に検査工程で記録してください）",
             )}
           </Text>
         ) : (

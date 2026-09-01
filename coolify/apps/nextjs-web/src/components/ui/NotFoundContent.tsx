@@ -34,11 +34,7 @@ export function NotFoundContent() {
         <Title order={3}>{tr("ページが見つかりません")}</Title>
         <Text c="dimmed" size="sm" ta="center">
           {tr(
-            tr(
-              tr(
-                "URL が間違っているか、ページが移動・削除された可能性があります。",
-              ),
-            ),
+            "URL が間違っているか、ページが移動・削除された可能性があります。",
           )}
         </Text>
         <Stack gap="xs" mt="sm" w={240}>

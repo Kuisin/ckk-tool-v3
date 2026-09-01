@@ -379,11 +379,7 @@ export function CriterionEditForm({
 
       <FormSection
         description={tr(
-          tr(
-            tr(
-              "数値を返す JS 式。入力項目・カスタム入力・quantity・subtotal・r.<id>・round()/lookup 系ヘルパーが使えます。",
-            ),
-          ),
+          "数値を返す JS 式。入力項目・カスタム入力・quantity・subtotal・r.<id>・round()/lookup 系ヘルパーが使えます。",
         )}
         title={tr("式")}
       >

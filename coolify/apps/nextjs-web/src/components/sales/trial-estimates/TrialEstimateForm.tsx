@@ -261,11 +261,7 @@ export function TrialEstimateForm({
     openConfirm({
       title: tr("材料単価のカスタム設定"),
       message: tr(
-        tr(
-          tr(
-            "この素材の単価を手動で設定しますか？カスタム単価を使った価格試算は「カスタム」として記録されます。",
-          ),
-        ),
+        "この素材の単価を手動で設定しますか？カスタム単価を使った価格試算は「カスタム」として記録されます。",
       ),
       confirmLabel: tr("カスタム設定する"),
       onConfirm: () => {
@@ -429,11 +425,7 @@ export function TrialEstimateForm({
                     label={
                       <HelpLabel
                         help={tr(
-                          tr(
-                            tr(
-                              "対象製品（任意）。指定して確定すると、価格表（顧客×製品）の作成時にこの価格試算を基準単価ソースとして選択できます。",
-                            ),
-                          ),
+                          "対象製品（任意）。指定して確定すると、価格表（顧客×製品）の作成時にこの価格試算を基準単価ソースとして選択できます。",
                         )}
                         label={
                           <HelpLabel
@@ -452,11 +444,7 @@ export function TrialEstimateForm({
                     label={
                       <HelpLabel
                         help={tr(
-                          tr(
-                            tr(
-                              "工具の最大外径。加工費マトリクスの参照キーになります。",
-                            ),
-                          ),
+                          "工具の最大外径。加工費マトリクスの参照キーになります。",
                         )}
                         label={
                           <HelpLabel
@@ -473,11 +461,7 @@ export function TrialEstimateForm({
                     label={
                       <HelpLabel
                         help={tr(
-                          tr(
-                            tr(
-                              "工具全長。材料原価 = 参照単価 × (全長 ÷ 1000mm)。",
-                            ),
-                          ),
+                          "工具全長。材料原価 = 参照単価 × (全長 ÷ 1000mm)。",
                         )}
                         label={
                           <HelpLabel
@@ -496,11 +480,7 @@ export function TrialEstimateForm({
 
             <FormSection
               description={tr(
-                tr(
-                  tr(
-                    "材料は「材種 × 直径 × 黒皮/研磨」で指定します。参照価格は仕入実績、無ければ材種の既定単価（¥/1000mm）から算出します。",
-                  ),
-                ),
+                "材料は「材種 × 直径 × 黒皮/研磨」で指定します。参照価格は仕入実績、無ければ材種の既定単価（¥/1000mm）から算出します。",
               )}
               title={tr("素材")}
             >
@@ -578,11 +558,7 @@ export function TrialEstimateForm({
                       <Group gap={6} wrap="nowrap">
                         <HelpLabel
                           help={tr(
-                            tr(
-                              tr(
-                                "素材の仕入実績単価（¥/1000mm）。既定はポリシー（直近Nヶ月の最高値など）で自動選択され、「単価を編集」で手動上書きできます。",
-                              ),
-                            ),
+                            "素材の仕入実績単価（¥/1000mm）。既定はポリシー（直近Nヶ月の最高値など）で自動選択され、「単価を編集」で手動上書きできます。",
                           )}
                           label={tr("参照単価（¥/1000mm）")}
                         />
@@ -710,11 +686,7 @@ export function TrialEstimateForm({
                   label={
                     <HelpLabel
                       help={tr(
-                        tr(
-                          tr(
-                            "1本あたりの機械加工時間。加工単価 = 加工時間 × 加工レート（/10分）。",
-                          ),
-                        ),
+                        "1本あたりの機械加工時間。加工単価 = 加工時間 × 加工レート（/10分）。",
                       )}
                       label={
                         <HelpLabel
@@ -831,11 +803,7 @@ export function TrialEstimateForm({
             {settings.customInputs.some((d) => d.scope !== "global") && (
               <FormSection
                 description={tr(
-                  tr(
-                    tr(
-                      "価格試算計算（SY02）で定義された追加入力。計算基準の式で変数として使われます。",
-                    ),
-                  ),
+                  "価格試算計算（SY02）で定義された追加入力。計算基準の式で変数として使われます。",
                 )}
                 title={tr("カスタム項目")}
               >
@@ -894,11 +862,7 @@ export function TrialEstimateForm({
 
             <FormSection
               description={tr(
-                tr(
-                  tr(
-                    "形状出し（予備形状分）の按分にのみ使用します。数量ごとの価格スケール（×倍率）は価格表側で設定します。",
-                  ),
-                ),
+                "形状出し（予備形状分）の按分にのみ使用します。数量ごとの価格スケール（×倍率）は価格表側で設定します。",
               )}
               title={tr("基準数量")}
             >
@@ -906,11 +870,7 @@ export function TrialEstimateForm({
                 label={
                   <HelpLabel
                     help={tr(
-                      tr(
-                        tr(
-                          "形状出し（予備形状分）を按分する数量。数量ごとの価格スケールは掛けず、価格表の倍率（×1.01 など）で設定します。",
-                        ),
-                      ),
+                      "形状出し（予備形状分）を按分する数量。数量ごとの価格スケールは掛けず、価格表の倍率（×1.01 など）で設定します。",
                     )}
                     label={tr("基準数量（本）")}
                   />
@@ -977,11 +937,7 @@ export function TrialEstimateForm({
               {isCylinder && (
                 <Alert color="gray" variant="light">
                   {tr(
-                    tr(
-                      tr(
-                        "円筒見積は素材価格を手入力します（仕入実績は参考表示）。",
-                      ),
-                    ),
+                    "円筒見積は素材価格を手入力します（仕入実績は参考表示）。",
                   )}
                 </Alert>
               )}
