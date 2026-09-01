@@ -113,6 +113,13 @@ const TABLE_FIELD_LABELS: Record<string, Record<string, string>> = {
   },
   display_devices: {
     name: "ディスプレイ名",
+    // 入れ子（contentConfig の中身）は**ドット付きの道**でも引ける。
+    // 下の auditFieldLabel が「全体の道 → 最後の 1 つ」の順に見る。
+    "contentConfig.page": "映す画面",
+    "contentConfig.fit": "画像の収め方",
+    "contentConfig.fileId": "画像ファイル",
+    "contentConfig.url": "URL",
+    "contentConfig.dashboardId": "ダッシュボード",
     location: "設置場所",
     contentType: "表示内容の種別",
     contentConfig: "表示内容の設定",
@@ -126,13 +133,73 @@ const TABLE_FIELD_LABELS: Record<string, Record<string, string>> = {
   users: { name: "氏名", isActive: "在籍" },
 };
 
+/**
+ * 値の読み替え。**enum を生で出さない**（`APP_PAGE` は画面のどこにも出ていない
+ * 言葉なので、履歴で初めて見ることになる）。キーは列名（入れ子は最後の 1 つ）。
+ */
+const VALUE_LABELS: Record<string, Record<string, string>> = {
+  contentType: {
+    APP_PAGE: "アプリの画面",
+    METABASE: "集計ダッシュボード",
+    URL: "外部ページ",
+    IMAGE: "画像",
+  },
+  fit: {
+    contain: "全体を表示",
+    cover: "画面を埋める",
+    fill: "引き伸ばす",
+  },
+  page: {
+    production: "生産状況",
+    pending: "未処理・手配待ち",
+    shipping: "出荷予定",
+    quality: "品質・不良",
+    announcement: "お知らせ",
+  },
+};
+
 /** 列名 → 表示ラベル。**未登録はキーをそのまま**返す。 */
 export function auditFieldLabel(key: string, tableName?: string): string {
+  // 入れ子は「contentConfig.fit」のようなドット付きの道で来る。
+  // 道そのもの → 最後の 1 つ、の順に探す。
+  const leaf = key.includes(".") ? (key.split(".").pop() ?? key) : key;
   if (tableName) {
-    const override = TABLE_FIELD_LABELS[tableName]?.[key];
+    const table = TABLE_FIELD_LABELS[tableName];
+    const override = table?.[key] ?? table?.[leaf];
     if (override) return override;
   }
-  return FIELD_LABELS[key] ?? key;
+  return FIELD_LABELS[key] ?? FIELD_LABELS[leaf] ?? leaf;
+}
+
+/**
+ * 入れ子のオブジェクトを**葉だけの平らな対応表**にする。
+ *
+ * `{ contentConfig: { fit: "cover" } }` → `{ "contentConfig.fit": "cover" }`。
+ * こうしておくと、差分が「設定オブジェクトが変わった」ではなく
+ * 「画像の収め方が変わった」という粒度で出せる。
+ *
+ * 配列と多言語 JSON はそれ以上ほどかない（1 つの値として読めるため）。
+ */
+export function flattenAuditValue(
+  value: unknown,
+  prefix = "",
+): Record<string, unknown> {
+  if (
+    !value ||
+    typeof value !== "object" ||
+    Array.isArray(value) ||
+    typeof (value as Record<string, unknown>).ja === "string"
+  ) {
+    return prefix ? { [prefix]: value } : {};
+  }
+  const out: Record<string, unknown> = {};
+  for (const [key, child] of Object.entries(value as Record<string, unknown>)) {
+    const path = prefix ? `${prefix}.${key}` : key;
+    Object.assign(out, flattenAuditValue(child, path));
+  }
+  // 中身が空のオブジェクトは、そのままの値として置く（消してしまわない）
+  if (Object.keys(out).length === 0 && prefix) return { [prefix]: value };
+  return out;
 }
 
 /** ISO 8601 らしい文字列か（日付だけ整形したいので緩く見る）。 */
@@ -144,7 +211,12 @@ const ISO_DATE = /^\d{4}-\d{2}-\d{2}(?:[T ]\d{2}:\d{2})?/;
  * **推測して整形しすぎない** — 分からない形は JSON のまま出すほうが、
  * 間違った要約を出すより安全（生データの折りたたみと突き合わせられる）。
  */
-export function formatAuditValue(value: unknown): string {
+export function formatAuditValue(value: unknown, key?: string): string {
+  if (key !== undefined && typeof value === "string") {
+    const leaf = key.includes(".") ? (key.split(".").pop() ?? key) : key;
+    const mapped = VALUE_LABELS[leaf]?.[value];
+    if (mapped) return mapped;
+  }
   if (value === null || value === undefined || value === "") return "—";
   if (typeof value === "boolean") return value ? "はい" : "いいえ";
   if (typeof value === "number") return String(value);
@@ -165,7 +237,7 @@ export function formatAuditValue(value: unknown): string {
   if (Array.isArray(value)) {
     return value.length === 0
       ? "（なし）"
-      : value.map(formatAuditValue).join(", ");
+      : value.map((v) => formatAuditValue(v)).join(", ");
   }
   if (typeof value === "object") {
     const o = value as Record<string, unknown>;
@@ -193,13 +265,19 @@ export function auditFieldDiffs(
   after: unknown,
   tableName?: string,
 ): AuditFieldDiff[] {
-  const b = (before ?? {}) as Record<string, unknown>;
-  const a = (after ?? {}) as Record<string, unknown>;
-  if (typeof b !== "object" || typeof a !== "object") return [];
+  if (before !== null && typeof before === "object" && Array.isArray(before)) {
+    return [];
+  }
+  // **平らにしてから比べる。** そうしないと「表示内容の設定」が丸ごと 1 行に
+  // なり、JSON 同士を目で突き合わせる作業になる（実際そうなっていた）。
+  const b = flattenAuditValue(before ?? {});
+  const a = flattenAuditValue(after ?? {});
   const keys = [...new Set([...Object.keys(b), ...Object.keys(a)])];
   const diffs: AuditFieldDiff[] = [];
   for (const key of keys) {
-    if (formatAuditValue(b[key]) === formatAuditValue(a[key])) continue;
+    if (formatAuditValue(b[key], key) === formatAuditValue(a[key], key)) {
+      continue;
+    }
     diffs.push({
       key,
       label: auditFieldLabel(key, tableName),

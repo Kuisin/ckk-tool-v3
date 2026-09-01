@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   auditFieldDiffs,
   auditFieldLabel,
+  flattenAuditValue,
   formatAuditValue,
 } from "./audit-field-labels";
 
@@ -87,5 +88,59 @@ describe("auditFieldDiffs", () => {
 
   it("オブジェクトでない入力では落ちない", () => {
     expect(auditFieldDiffs(null, null)).toEqual([]);
+  });
+});
+
+describe("入れ子の設定（実機で JSON のまま出ていたもの）", () => {
+  it("平らにして葉ごとに見る", () => {
+    expect(
+      flattenAuditValue({ contentConfig: { fit: "cover", fileId: "abc" } }),
+    ).toEqual({
+      "contentConfig.fit": "cover",
+      "contentConfig.fileId": "abc",
+    });
+  });
+
+  it("多言語 JSON と配列はそれ以上ほどかない", () => {
+    expect(flattenAuditValue({ name: { ja: "本社", en: "HQ" } })).toEqual({
+      name: { ja: "本社", en: "HQ" },
+    });
+    expect(flattenAuditValue({ tags: ["a", "b"] })).toEqual({
+      tags: ["a", "b"],
+    });
+  });
+
+  /**
+   * 実機のスクリーンショットで出ていた形。
+   * 変わったのは fit だけなのに「表示内容の設定」1 行に JSON 同士が並んでいた。
+   */
+  it("画像の収め方だけを変えた記録は、その 1 行だけになる", () => {
+    const diffs = auditFieldDiffs(
+      { contentConfig: { fit: "cover", fileId: "b684594a" } },
+      { contentConfig: { fit: "contain", fileId: "b684594a" } },
+      "display_devices",
+    );
+    expect(diffs).toHaveLength(1);
+    expect(diffs[0].label).toBe("画像の収め方");
+    expect(formatAuditValue(diffs[0].before, diffs[0].key)).toBe(
+      "画面を埋める",
+    );
+    expect(formatAuditValue(diffs[0].after, diffs[0].key)).toBe("全体を表示");
+  });
+
+  it("enum は画面に出ている言葉にする（履歴で初めて見る語を作らない）", () => {
+    expect(formatAuditValue("APP_PAGE", "contentType")).toBe("アプリの画面");
+    expect(formatAuditValue("IMAGE", "contentType")).toBe("画像");
+    expect(formatAuditValue("production", "contentConfig.page")).toBe(
+      "生産状況",
+    );
+  });
+
+  it("入れ子のラベルは道でも葉でも引ける", () => {
+    expect(auditFieldLabel("contentConfig.fit", "display_devices")).toBe(
+      "画像の収め方",
+    );
+    // 表の指定が無くても、葉の名前で拾えるものは拾う
+    expect(auditFieldLabel("some.nested.status")).toBe("ステータス");
   });
 });
