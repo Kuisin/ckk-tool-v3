@@ -16,8 +16,16 @@
  * 文字は ja 固定 — ディスプレイに利用者は居ない。
  */
 
-import { Center, Loader, Stack, Text, Title } from "@mantine/core";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { Center, Group, Loader, Stack, Text, Title } from "@mantine/core";
+import {
+  type ReactNode,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
+import { Clock } from "@/app/display/content/_shared/Clock";
+import type { ImageFit } from "@/lib/display-content";
 import {
   DISPLAY_HEARTBEAT_MIN_INTERVAL_MS,
   type MachineHint,
@@ -34,7 +42,7 @@ type Content =
     }
   | { type: "METABASE"; url: string | null }
   | { type: "URL"; config: { url: string } }
-  | { type: "IMAGE"; config: { fileId: string } }
+  | { type: "IMAGE"; config: { fileId: string; fit: ImageFit } }
   | { type: "INVALID" };
 
 type Config = {
@@ -220,92 +228,102 @@ export function DisplayRenderer({
    */
   const zoomStyle = scale === 100 ? undefined : { zoom: `${scale}%` };
 
+  // どの分岐でも共通の枠（見出し + 中身）に入れて返す。見出しは
+  // 「この画面がどれか」を示す唯一の手掛かりなので、失敗中も出す。
+  const shell = (body: ReactNode, opts?: { zoom: boolean }) => (
+    <DisplayShell
+      name={name}
+      place={place}
+      // 画像だけは倍率を当てない（object-fit とぶつかる）
+      zoomStyle={opts?.zoom === false ? undefined : zoomStyle}
+    >
+      {body}
+    </DisplayShell>
+  );
+
   if (failed) {
-    return (
+    return shell(
       <Message
         detail="サーバーに接続できません。回復すると自動で表示に戻ります。"
         note={`${name ?? "この画面"}${place ? `（${place}）` : ""}`}
         title="接続できません"
-      />
+      />,
     );
   }
 
   if (!config) {
-    return (
-      <Center style={{ flex: 1 }}>
+    return shell(
+      <Center style={{ flex: 1, height: "100%" }}>
         <Loader size="xl" />
-      </Center>
+      </Center>,
     );
   }
 
   if (!config.profile) {
-    return (
+    return shell(
       <Message
         detail="管理画面「ディスプレイ管理」で、この画面に表示内容を割り当ててください。"
         note={`${name ?? displayId}${place ? `（${place}）` : ""}`}
         title="表示内容が設定されていません"
-      />
+      />,
     );
   }
 
   const content = config.profile.content;
 
   if (content.type === "INVALID") {
-    return (
+    return shell(
       <Message
         detail="割り当てられた表示内容の設定が正しくありません。"
         note={config.profile.name ?? ""}
         title="表示内容の設定を確認してください"
-      />
+      />,
     );
   }
 
   if (content.type === "METABASE" && !content.url) {
-    return (
+    return shell(
       <Message
         detail="Metabase の接続設定（URL と署名鍵）が未設定です。"
         note={config.profile.name ?? ""}
         title="集計画面が設定されていません"
-      />
+      />,
     );
   }
 
   if (content.type === "IMAGE") {
-    // 画像は「収まるように」出すので倍率を当てない — 倍率を掛けると
-    // objectFit の計算とぶつかって、意図せず端が切れる
-    return (
+    // 収め方は設定どおり（contain = 全体 / cover = 埋める / fill = 引き伸ばす）。
+    // 倍率（zoom）は当てない — object-fit の計算とぶつかって、意図せず端が切れる。
+    return shell(
       // biome-ignore lint/performance/noImgElement: 全画面 1 枚。next/image の最適化は不要
       <img
         alt={config.profile.name ?? ""}
         src={`/api/display/image/${content.config.fileId}`}
         style={{
-          flex: 1,
-          width: "100%",
-          height: "100dvh",
-          objectFit: "contain",
           background: "#000",
+          display: "block",
+          height: "100%",
+          objectFit: content.config.fit,
+          width: "100%",
         }}
-      />
+      />,
+      { zoom: false },
     );
   }
 
   const src = contentSrc(content, generation);
   if (!src) {
-    return (
+    return shell(
       <Message
         detail="表示内容の種別に対応していません。"
         note={config.profile.name ?? ""}
         title="表示できません"
-      />
+      />,
     );
   }
 
-  return (
-    <SwappingFrame
-      src={src}
-      title={config.profile.name ?? "ディスプレイ"}
-      zoomStyle={zoomStyle}
-    />
+  return shell(
+    <SwappingFrame src={src} title={config.profile.name ?? "ディスプレイ"} />,
   );
 }
 
@@ -321,15 +339,7 @@ export function DisplayRenderer({
  * 読み込みに失敗しても表は古い中身のまま残るので、次の再取得まで何も
  * 起きない（白い画面を出すより、少し古い情報を出し続けるほうがよい）。
  */
-function SwappingFrame({
-  src,
-  title,
-  zoomStyle,
-}: {
-  src: string;
-  title: string;
-  zoomStyle: { zoom: string } | undefined;
-}) {
+function SwappingFrame({ src, title }: { src: string; title: string }) {
   const [shown, setShown] = useState(src);
   const [pending, setPending] = useState<string | null>(null);
 
@@ -348,15 +358,7 @@ function SwappingFrame({
   };
 
   return (
-    <div
-      style={{
-        flex: 1,
-        height: "100dvh",
-        position: "relative",
-        width: "100%",
-        ...zoomStyle,
-      }}
-    >
+    <div style={{ height: "100%", position: "relative", width: "100%" }}>
       {/* 表 — いま見えている中身。差し替え中も消さない */}
       <iframe key={shown} src={shown} style={frameStyle} title={title} />
 
@@ -373,6 +375,72 @@ function SwappingFrame({
           title={title}
         />
       )}
+    </div>
+  );
+}
+
+/**
+ * どの表示内容にも共通の枠 — **細い見出し + 残り全部が中身**。
+ *
+ * 見出しに端末名を出すのは、**壁に何枚も並んだときに見分けるため**。
+ * 中身（生産状況・画像・外部ページ…）は種別ごとに違うので、そこに頼ると
+ * 「どれがどれか」を示す場所が種別ごとにバラバラになる。枠に置けば、
+ * 何を映していても必ず同じ位置に同じ形で出る。
+ *
+ * 中身は**残りの高さを正確に埋める**（`flex: 1` + `minHeight: 0`）。
+ * minHeight を切らないと flex の子は中身より小さくならず、はみ出した分が
+ * 画面の外に出る — 壁の画面はスクロールできないので、出た分は存在しないのと
+ * 同じになる。
+ *
+ * 倍率（zoom）は**中身にだけ**当てる。見出しは中身ではなく画面の付属物なので、
+ * 倍率を上げたときに一緒に太らせる意味が無い。
+ */
+function DisplayShell({
+  name,
+  place,
+  zoomStyle,
+  children,
+}: {
+  name: string | null;
+  place: string | null;
+  zoomStyle: { zoom: string } | undefined;
+  children: ReactNode;
+}) {
+  return (
+    <div
+      style={{
+        display: "flex",
+        flexDirection: "column",
+        height: "100dvh",
+        overflow: "hidden",
+        width: "100vw",
+      }}
+    >
+      <Group
+        gap="md"
+        justify="space-between"
+        style={{
+          background: "var(--mantine-color-dark-9)",
+          borderBottom: "1px solid var(--mantine-color-dark-5)",
+          flexShrink: 0,
+          padding: "0.35rem 1.25rem",
+        }}
+        wrap="nowrap"
+      >
+        <Group gap="md" style={{ minWidth: 0 }} wrap="nowrap">
+          <Text fw={700} style={{ fontSize: "1.15rem" }} truncate>
+            {name ?? "（名称未設定）"}
+          </Text>
+          {place && (
+            <Text c="dimmed" style={{ fontSize: "1rem" }} truncate>
+              {place}
+            </Text>
+          )}
+        </Group>
+        <Clock fontSize="1.15rem" />
+      </Group>
+
+      <div style={{ flex: 1, minHeight: 0, ...zoomStyle }}>{children}</div>
     </div>
   );
 }

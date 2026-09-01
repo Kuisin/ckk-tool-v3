@@ -81,9 +81,23 @@ export const urlConfigSchema = z.object({
     ),
 });
 
+/**
+ * 画像の収め方。テレビと画像の縦横比はまず一致しないので、**どう妥協するかを
+ * 選べないと必ずどれかが不満**になる（余白が出る / 端が切れる / 歪む）。
+ * 値は CSS の object-fit そのままで、描画側は当てるだけ。
+ */
+export const IMAGE_FITS = ["contain", "cover", "fill"] as const;
+export type ImageFit = (typeof IMAGE_FITS)[number];
+
 export const imageConfigSchema = z.object({
   /** files テーブルの id。表示は /api/display/image/[fileId] 経由。 */
   fileId: z.string().uuid(),
+  /**
+   * 既定は contain（全体を表示）。**切れるより余白のほうが安全** —
+   * 掲示物は端に日付や連絡先が入っていることが多く、cover を既定にすると
+   * それが黙って切り落とされる。
+   */
+  fit: z.enum(IMAGE_FITS).catch("contain"),
 });
 
 /** 種別 → スキーマ。保存時も配信時もこの 1 表を通す。 */

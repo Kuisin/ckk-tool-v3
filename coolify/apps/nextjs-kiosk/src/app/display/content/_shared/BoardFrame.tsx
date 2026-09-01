@@ -99,9 +99,11 @@ export function BoardFrame<T>({
   const page = pages[pageIndex] ?? [];
 
   return (
+    // height:100% — 外側（iframe）が既に画面ぶんの高さを持っているので、
+    // ここで 100dvh を取り直すと共通見出しのぶんだけはみ出す
     <Stack
       gap={0}
-      style={{ height: "100dvh", overflow: "hidden", padding: "1.5rem 2rem" }}
+      style={{ height: "100%", overflow: "hidden", padding: "1.5rem 2rem" }}
     >
       <Group justify="space-between" mb="md" wrap="nowrap">
         <Group align="baseline" gap="lg" wrap="nowrap">
@@ -115,14 +117,12 @@ export function BoardFrame<T>({
           )}
           {badge}
         </Group>
-        <Group gap="lg" wrap="nowrap">
-          {pages.length > 1 && (
-            <Text c="dimmed" style={{ fontSize: "1.2rem" }}>
-              {pageIndex + 1} / {pages.length}
-            </Text>
-          )}
-          <Clock />
-        </Group>
+        {/* 時計は画面共通の見出し（DisplayShell）に出るので、ここには置かない */}
+        {pages.length > 1 && (
+          <Text c="dimmed" style={{ fontSize: "1.2rem" }}>
+            {pageIndex + 1} / {pages.length}
+          </Text>
+        )}
       </Group>
 
       {header}
@@ -175,25 +175,5 @@ export function BoardRowShell({
     >
       {children}
     </Group>
-  );
-}
-
-export function Clock() {
-  const [now, setNow] = useState<string>("");
-  useEffect(() => {
-    const tick = () => {
-      const d = new Date();
-      setNow(
-        `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`,
-      );
-    };
-    tick();
-    const id = setInterval(tick, 10_000);
-    return () => clearInterval(id);
-  }, []);
-  return (
-    <Text ff="monospace" fw={600} style={{ fontSize: "1.8rem" }}>
-      {now}
-    </Text>
   );
 }

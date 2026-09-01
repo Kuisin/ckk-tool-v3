@@ -19,9 +19,9 @@ import {
   SimpleGrid,
   Slider,
   Stack,
+  Tabs,
   Text,
   TextInput,
-  Title,
 } from "@mantine/core";
 import { modals } from "@mantine/modals";
 import { notifications } from "@mantine/notifications";
@@ -42,6 +42,7 @@ import {
   updateDisplay,
 } from "@/app/(dashboard)/settings/kiosk-devices/displays/actions";
 import { useFormat } from "@/components/layout/PreferencesProvider";
+import { AppTabs } from "@/components/ui/AppTabs";
 import { EditablePanel } from "@/components/ui/EditablePanel";
 import { FieldValue } from "@/components/ui/FieldValue";
 import { PageHeader } from "@/components/ui/PageHeader";
@@ -321,75 +322,75 @@ export function DisplayDetailView({ display, plantOptions, audit }: Props) {
         </SimpleGrid>
       </Paper>
 
-      {/* ここから下は**端末詳細と同じ「見出し付きの Paper を積む」形**。
-          タブに分けていたのを畳んだ — ディスプレイ 1 枚の設定は多くないので、
-          4 枚のタブは中身より入れ物のほうが目立っていた。端末詳細と並べて
-          見たときに同じ読み方ができるほうがよい。 */}
+      {/* タブは共有端末の詳細と同じ構成（design.md §8.2 — 詳細画面は
+          サマリ + Tabs）。**タブの中に Paper を置かない** — パネル自体が
+          中身の領域なので、置くとカードが入れ子になる。見出しもタブ名と
+          重複するので出さない。 */}
+      <AppTabs defaultValue="content">
+        <Tabs.List>
+          <Tabs.Tab value="content">表示内容</Tabs.Tab>
+          <Tabs.Tab value="settings">設定</Tabs.Tab>
+          <Tabs.Tab value="history">履歴</Tabs.Tab>
+        </Tabs.List>
 
-      {/* 映すもの（既定は閲覧、押して編集 — design.md §10.10）。
-          EditablePanel 自身は Paper を持たないので、カードはこの 1 枚だけ。 */}
-      <Paper p="md" radius="md" withBorder>
-        <EditablePanel
-          canEdit={display.status !== "REVOKED"}
-          description="保存すると、この画面の表示がその場で切り替わります。"
-          edit={({ close }) => (
-            <DisplayContentEditor
-              display={display}
-              onDone={close}
-              plantOptions={plantOptions}
-            />
-          )}
-          title="映すもの"
-          view={
-            <DisplayContentView display={display} plantOptions={plantOptions} />
-          }
-        />
-      </Paper>
-
-      {/* この画面の設定（名前・場所・拠点・表示倍率） */}
-      <Paper p="md" radius="md" withBorder>
-        <Title mb="sm" order={5}>
-          この画面の設定
-        </Title>
-        <Stack gap="md">
-          <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="md">
-            <TextInput
-              label="ディスプレイの名前"
-              onChange={(e) => setNameJa(e.currentTarget.value)}
-              value={nameJa}
-              withAsterisk
-            />
-            <TextInput
-              label="設置場所"
-              onChange={(e) => setLocation(e.currentTarget.value)}
-              value={location}
-            />
-            <Select
-              clearable
-              data={plantOptions}
-              label="拠点"
-              onChange={setPlantId}
-              placeholder="選択してください"
-              searchable
-              value={plantId}
-            />
-          </SimpleGrid>
-          <ScaleField onChange={setScalePercent} value={scalePercent} />
-          <FormActions
-            loading={pending}
-            onCancel={() => router.push("/settings/kiosk-devices")}
-            onSave={save}
+        <Tabs.Panel pt="md" value="content">
+          <EditablePanel
+            canEdit={display.status !== "REVOKED"}
+            description="保存すると、この画面の表示がその場で切り替わります。"
+            edit={({ close }) => (
+              <DisplayContentEditor
+                display={display}
+                onDone={close}
+                plantOptions={plantOptions}
+              />
+            )}
+            title="映すもの"
+            view={
+              <DisplayContentView
+                display={display}
+                plantOptions={plantOptions}
+              />
+            }
           />
-        </Stack>
-      </Paper>
+        </Tabs.Panel>
 
-      {/* 履歴 */}
-      <Paper p="md" radius="md" withBorder>
-        <Title mb="sm" order={5}>
-          履歴
-        </Title>
-        <AuditTimeline entries={audit} />
-      </Paper>
+        <Tabs.Panel keepMounted={false} pt="md" value="settings">
+          <Stack gap="md">
+            <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="md">
+              <TextInput
+                label="ディスプレイの名前"
+                onChange={(e) => setNameJa(e.currentTarget.value)}
+                value={nameJa}
+                withAsterisk
+              />
+              <TextInput
+                label="設置場所"
+                onChange={(e) => setLocation(e.currentTarget.value)}
+                value={location}
+              />
+              <Select
+                clearable
+                data={plantOptions}
+                label="拠点"
+                onChange={setPlantId}
+                placeholder="選択してください"
+                searchable
+                value={plantId}
+              />
+            </SimpleGrid>
+            <ScaleField onChange={setScalePercent} value={scalePercent} />
+            <FormActions
+              loading={pending}
+              onCancel={() => router.push("/settings/kiosk-devices")}
+              onSave={save}
+            />
+          </Stack>
+        </Tabs.Panel>
+
+        <Tabs.Panel keepMounted={false} pt="md" value="history">
+          <AuditTimeline entries={audit} />
+        </Tabs.Panel>
+      </AppTabs>
     </Stack>
   );
 }
