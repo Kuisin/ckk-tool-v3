@@ -43,9 +43,9 @@ import {
   IconFileTypePdf,
   IconLanguage,
 } from "@tabler/icons-react";
-import { useTranslations } from "next-intl";
-import { type ReactNode, useState } from "react";
+import { type ChangeEventHandler, type ReactNode, useState } from "react";
 import { useUnsavedChanges } from "@/components/layout/NavigationGuard";
+import { useTr } from "@/hooks/useTr";
 import { useIsMobile } from "@/hooks/useViewport";
 import { LOCALE_LABELS, LOCALES } from "@/lib/i18n";
 import { keepInAppOnClick } from "@/lib/pwa-display";
@@ -92,7 +92,7 @@ export interface MenuItemDef {
 // ── ResourceActions (detail header actions) ─────────────────────────────────
 export function ResourceActions({
   onEdit,
-  editLabel,
+  editLabel = "編集",
   pdf,
   menuItems = [],
 }: {
@@ -101,9 +101,8 @@ export function ResourceActions({
   pdf?: { href?: string; onClick?: () => void; label?: string };
   menuItems?: MenuItemDef[];
 }) {
+  const tr = useTr();
   const isMobile = useIsMobile();
-  const t = useTranslations("common");
-  const resolvedEditLabel = editLabel ?? t("edit");
 
   const menu = (extra: MenuItemDef[]) =>
     extra.length > 0 ? (
@@ -111,7 +110,7 @@ export function ResourceActions({
         <Menu.Target>
           {/* アイコンのみのボタンには aria-label が必須（design.md §18.2）。 */}
           <Button
-            aria-label={t("actionMenu")}
+            aria-label={tr("操作メニュー")}
             px="xs"
             size={isMobile ? "sm" : undefined}
             variant="default"
@@ -175,13 +174,7 @@ export function ResourceActions({
   if (isMobile) {
     const all: MenuItemDef[] = [
       ...(onEdit
-        ? [
-            {
-              label: resolvedEditLabel,
-              icon: <IconEdit size={14} />,
-              onClick: onEdit,
-            },
-          ]
+        ? [{ label: editLabel, icon: <IconEdit size={14} />, onClick: onEdit }]
         : []),
       ...(pdf
         ? [
@@ -203,7 +196,7 @@ export function ResourceActions({
 
   return (
     <Group className="shrink-0" gap="xs">
-      {onEdit && <EditButton onClick={onEdit}>{resolvedEditLabel}</EditButton>}
+      {onEdit && <EditButton onClick={onEdit}>{editLabel}</EditButton>}
       {pdf &&
         (pdf.href ? (
           <PdfButton href={pdf.href} label={pdf.label} />
@@ -241,7 +234,7 @@ export function ListShell({
   embedded?: boolean;
   children: ReactNode;
 }) {
-  const t = useTranslations("common");
+  const tr = useTr();
   const isMobile = useIsMobile();
   const hasFilters = !!(search || filters);
 
@@ -260,7 +253,7 @@ export function ListShell({
               <Group align="flex-end" gap="xs">
                 {filters}
                 {onReset && (
-                  <GhostButton onClick={onReset}>{t("reset")}</GhostButton>
+                  <GhostButton onClick={onReset}>{tr("リセット")}</GhostButton>
                 )}
               </Group>
             </Stack>
@@ -269,7 +262,7 @@ export function ListShell({
               {search && <Box className="flex-1">{search}</Box>}
               {filters}
               {onReset && (
-                <GhostButton onClick={onReset}>{t("reset")}</GhostButton>
+                <GhostButton onClick={onReset}>{tr("リセット")}</GhostButton>
               )}
             </Group>
           ))}
@@ -356,7 +349,7 @@ export function FormShell({
   isDirty = false,
   onSubmit,
   onCancel,
-  submitLabel,
+  submitLabel = "保存",
   children,
 }: {
   breadcrumbs: Crumb[];
@@ -410,7 +403,7 @@ export function FormActions({
   children,
   onCancel,
   onSave,
-  submitLabel,
+  submitLabel = "保存",
   cancelLabel,
   loading,
   disabled,
@@ -426,7 +419,6 @@ export function FormActions({
   loading?: boolean;
   disabled?: boolean;
 }) {
-  const t = useTranslations("common");
   const isMobile = useIsMobile();
 
   if (children) return <Box className="form-actions">{children}</Box>;
@@ -439,7 +431,7 @@ export function FormActions({
       onClick={onSave}
       type={onSave ? "button" : "submit"}
     >
-      {submitLabel ?? t("save")}
+      {submitLabel}
     </SaveButton>
   );
   const cancel = onCancel ? (
@@ -524,7 +516,6 @@ export interface AuditEntry {
  * 開く — 何がどう変わったかを画面遷移なしで確認できる。
  */
 export function AuditTimeline({ entries }: { entries: AuditEntry[] }) {
-  const t = useTranslations("common");
   const [selected, setSelected] = useState<AuditEntry | null>(null);
   return (
     <>
@@ -555,7 +546,7 @@ export function AuditTimeline({ entries }: { entries: AuditEntry[] }) {
             lineVariant="dotted"
             title={
               <UnstyledButton
-                aria-label={t("openDetailOf", { name: log.action })}
+                aria-label={`${log.action} の詳細を開く`}
                 onClick={() => setSelected(log)}
                 style={{ display: "block", width: "100%" }}
               >
@@ -617,15 +608,34 @@ export function LocalizedTextInput({
   /**
    * 既定言語（日本語）の値。本文に常時表示する唯一の欄。`description` を
    * 追加で渡してよい（`TextInput` へそのまま伝わる）。
+   *
+   * **`onChange` は「値」ではなく「イベント」を受け取る** — 中身は素の
+   * Mantine `TextInput` にそのまま流し込むため。`form.getInputProps("nameJa")`
+   * をそのまま渡すか、`useState` 直書きなら
+   * `onChange: (e) => setNameJa(e.currentTarget.value)` と書くこと。
+   * `onChange: setNameJa` と書くと **state にイベントそのものが入り**、
+   * 入力欄が `[object Object]` になったうえ、保存時に Server Action の
+   * 直列化が落ちる（関数を含むオブジェクトは渡せない）。実際に MS0D
+   * 作業場所と地域で起きたので、`GetInputPropsReturnType`（`onChange: any`）
+   * をそのまま使わず**ここだけ型を締めて**コンパイルで止める。
+   * `getInputProps` の戻り値は `any` なので従来どおり渡せる。
    */
-  jaProps: GetInputPropsReturnType & { description?: ReactNode };
+  jaProps: Omit<GetInputPropsReturnType, "onChange"> & {
+    onChange?: ChangeEventHandler<HTMLInputElement>;
+    description?: ReactNode;
+  };
   /**
    * 日本語以外の翻訳をまとめて持つ 1 フィールド（`Record<言語コード, 値>`）。
    * `form.getInputProps("xxxTranslations")` をそのまま渡せる — 生の
    * `{value, onChange}` オブジェクトでもよい（編集モーダルなど useState 直書きの
    * 画面向け）。
+   *
+   * こちらは `jaProps` と逆で **値（`Record<言語コード, 値>`）を受け取る** —
+   * モーダルの確定時にまとめて渡すため。`onChange: setNameTranslations` が正しい。
    */
-  translationsProps: GetInputPropsReturnType;
+  translationsProps: Omit<GetInputPropsReturnType, "onChange"> & {
+    onChange: (value: Record<string, string>) => void;
+  };
   required?: boolean;
   placeholder?: string;
   /**
@@ -634,7 +644,6 @@ export function LocalizedTextInput({
    */
   help?: { help: string; manual: string };
 }) {
-  const t = useTranslations("common");
   const [opened, { open, close }] = useDisclosure(false);
   const translations: Record<string, string> = translationsProps.value ?? {};
   const [draft, setDraft] = useState<Record<string, string>>(translations);
@@ -662,9 +671,7 @@ export function LocalizedTextInput({
             open();
           }}
         >
-          {filledCount > 0
-            ? t("translationsWithCount", { count: filledCount })
-            : t("translations")}
+          多言語{filledCount > 0 ? `（${filledCount}）` : ""}
         </SecondaryButton>
       </Group>
       <ModalShell
@@ -674,7 +681,7 @@ export function LocalizedTextInput({
           close();
         }}
         opened={opened}
-        title={t("translationsTitle", { label })}
+        title={`${label} — 多言語`}
       >
         <Stack gap="sm">
           <Text c="dimmed" size="xs">

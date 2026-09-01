@@ -24,7 +24,9 @@ import {
   finalInspectionSectionHtml,
   shapeSectionHtml,
   sheetTemplateHead,
+  templateImageHtml,
 } from "@/lib/inspection-sheet-pdf";
+import { templateImageDataUri } from "@/lib/inspection-template-image";
 import { renderPdf } from "@/lib/pdf";
 import { documentQrSvg } from "@/lib/pdf-qr";
 import { QR_KINDS } from "@/lib/qr-payload";
@@ -106,6 +108,8 @@ export async function GET(request: Request): Promise<Response> {
       ? await fetchFinalInspectionPdfData(workOrderNumber)
       : null;
 
+  const image = await templateImageDataUri(template.imageFileId);
+
   const pdf = await renderPdf("inspection-sheet.html", {
     // 検査表は指示書に属する紙なので QR は指示書番号（CKK:WO:<番号>）。
     // 指示書の無い白紙（マスタ印刷）では空 = QR を描かない。
@@ -120,6 +124,10 @@ export async function GET(request: Request): Promise<Response> {
       produced_by: BLANK_LINE,
       approved: BLANK_LINE,
     },
+    template_image_html: templateImageHtml(
+      image?.dataUri ?? null,
+      image?.filename ?? null,
+    ),
     grid_html,
     counts_table_html,
     shape_html: shapeSectionHtml(template.items),

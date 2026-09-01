@@ -16,7 +16,15 @@
  * 文字は ja 固定 — ディスプレイに利用者は居ない。
  */
 
-import { Center, Group, Loader, Stack, Text, Title } from "@mantine/core";
+import {
+  Badge,
+  Center,
+  Group,
+  Loader,
+  Stack,
+  Text,
+  Title,
+} from "@mantine/core";
 import {
   type ReactNode,
   useCallback,
@@ -68,10 +76,16 @@ type Props = {
   scalePercent: number;
   /** どの機械の何枚目か（Pi が URL に載せてくる。1 枚運用では空）。 */
   hint: MachineHint;
+  /** その機械につながっている画面の総数（見出しの「何枚目」に使う）。 */
+  screenTotal: number;
 };
 
 /** 中身 → フレームに載せる URL。載せられないものは null。 */
-function contentSrc(content: Content, bust: number): string | null {
+function contentSrc(
+  content: Content,
+  bust: number,
+  screenIndex: number | null,
+): string | null {
   switch (content.type) {
     case "APP_PAGE": {
       // 設定は base64url の JSON 1 つで渡す。項目ごとにクエリを増やすと、
@@ -93,6 +107,8 @@ function contentSrc(content: Content, bust: number): string | null {
         );
       }
       params.set("t", String(bust));
+      // 中身（iframe）も**この窓の Cookie**で引く必要がある
+      if (screenIndex !== null) params.set("screen", String(screenIndex));
       return `/display/content/${content.config.page}?${params.toString()}`;
     }
     case "METABASE":
@@ -112,6 +128,7 @@ export function DisplayRenderer({
   location,
   scalePercent,
   hint,
+  screenTotal,
 }: Props) {
   const [config, setConfig] = useState<Config | null>(null);
   const [failed, setFailed] = useState(false);
@@ -120,9 +137,22 @@ export function DisplayRenderer({
   const wsRef = useRef<WebSocket | null>(null);
   const retryRef = useRef(RECONNECT_MIN_MS);
 
+  // ★ hint は毎描画で作り直されるオブジェクト。**そのまま依存に入れると
+  //   再取得と WS 再接続が止まらない**ので、中身の値だけを取り出して使う。
+  const screenIndex = hint.screenIndex;
+  const machineId = hint.machineId;
+
   const loadConfig = useCallback(async () => {
     try {
-      const res = await fetch("/api/display/config", { cache: "no-store" });
+      // 「どの機械の何枚目か」を毎回送る。挿し替え・入れ替えに追従させるため
+      // （サーバー側の注記を参照）。1 枚運用では空なので何も付かない。
+      const q = new URLSearchParams();
+      if (machineId) q.set("machine", machineId);
+      if (screenIndex !== null) q.set("screen", String(screenIndex));
+      const res = await fetch(
+        q.size > 0 ? `/api/display/config?${q}` : "/api/display/config",
+        { cache: "no-store" },
+      );
       if (res.status === 401) {
         // 失効・停止・期限切れ。サーバーに判断させ直す = 登録画面へ戻る
         window.location.reload();
@@ -138,7 +168,7 @@ export function DisplayRenderer({
     } catch {
       setFailed(true);
     }
-  }, []);
+  }, [machineId, screenIndex]);
 
   useEffect(() => {
     void loadConfig();
@@ -152,7 +182,11 @@ export function DisplayRenderer({
     const connect = () => {
       if (closed) return;
       const proto = window.location.protocol === "https:" ? "wss:" : "ws:";
-      const ws = new WebSocket(`${proto}//${window.location.host}${WS_PATH}`);
+      // 窓ごとの Cookie を見てもらうため、画面番号を載せる
+      const q = screenIndex !== null ? `?screen=${screenIndex}` : "";
+      const ws = new WebSocket(
+        `${proto}//${window.location.host}${WS_PATH}${q}`,
+      );
       wsRef.current = ws;
 
       ws.onopen = () => {
@@ -182,25 +216,27 @@ export function DisplayRenderer({
       if (timer) clearTimeout(timer);
       wsRef.current?.close();
     };
-  }, [loadConfig]);
+  }, [loadConfig, screenIndex]);
 
   // ハートビート: WS が張れない経路のときだけ意味を持つ（張れていれば
   // サーバー側が刻んでいるので、ここは二重に打っても同じ結果になる）。
   useEffect(() => {
     const id = setInterval(() => {
       if (wsRef.current?.readyState === WebSocket.OPEN) return;
-      void fetch("/api/display/heartbeat", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        // 手掛かりも一緒に送る（Pi を差し替えたら追従する）
-        body: JSON.stringify({
-          machineId: hint.machineId,
-          screenIndex: hint.screenIndex,
-        }),
-      }).catch(() => undefined);
+      void fetch(
+        screenIndex !== null
+          ? `/api/display/heartbeat?screen=${screenIndex}`
+          : "/api/display/heartbeat",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          // 手掛かりも一緒に送る（Pi を差し替えたら追従する）
+          body: JSON.stringify({ machineId, screenIndex }),
+        },
+      ).catch(() => undefined);
     }, DISPLAY_HEARTBEAT_MIN_INTERVAL_MS);
     return () => clearInterval(id);
-  }, [hint]);
+  }, [machineId, screenIndex]);
 
   // プロファイルの再取得間隔（0 = 自動再取得しない）
   useEffect(() => {
@@ -234,6 +270,8 @@ export function DisplayRenderer({
     <DisplayShell
       name={name}
       place={place}
+      screenIndex={screenIndex}
+      screenTotal={screenTotal}
       // 画像だけは倍率を当てない（object-fit とぶつかる）
       zoomStyle={opts?.zoom === false ? undefined : zoomStyle}
     >
@@ -298,7 +336,11 @@ export function DisplayRenderer({
       // biome-ignore lint/performance/noImgElement: 全画面 1 枚。next/image の最適化は不要
       <img
         alt={config.profile.name ?? ""}
-        src={`/api/display/image/${content.config.fileId}`}
+        src={
+          screenIndex !== null
+            ? `/api/display/image/${content.config.fileId}?screen=${screenIndex}`
+            : `/api/display/image/${content.config.fileId}`
+        }
         style={{
           background: "#000",
           display: "block",
@@ -311,7 +353,7 @@ export function DisplayRenderer({
     );
   }
 
-  const src = contentSrc(content, generation);
+  const src = contentSrc(content, generation, screenIndex);
   if (!src) {
     return shell(
       <Message
@@ -398,11 +440,17 @@ function SwappingFrame({ src, title }: { src: string; title: string }) {
 function DisplayShell({
   name,
   place,
+  screenIndex,
+  screenTotal,
   zoomStyle,
   children,
 }: {
   name: string | null;
   place: string | null;
+  /** この機械の何枚目か（Pi の自己申告。1 枚運用では null）。 */
+  screenIndex: number | null;
+  /** その機械につながっている画面の総数。 */
+  screenTotal: number;
   zoomStyle: { zoom: string } | undefined;
   children: ReactNode;
 }) {
@@ -445,6 +493,15 @@ function DisplayShell({
             <Text c="dimmed" style={{ fontSize: "1rem" }} truncate>
               {place}
             </Text>
+          )}
+          {/* 1 台で 2 枚出しているときだけ「何枚目か」を出す。**壁に同じような
+              画面が並ぶので、どれを直せばよいか言えるようにする**ため
+              （「右の画面が変」ではなく「2 枚目が変」と言える）。
+              1 枚運用では意味が無いので出さない。 */}
+          {screenTotal > 1 && screenIndex !== null && (
+            <Badge color="gray" size="lg" variant="light">
+              {screenIndex} / {screenTotal} 枚目
+            </Badge>
           )}
         </Group>
         <Clock fontSize="1.15rem" />

@@ -40,7 +40,7 @@ import {
 } from "@/components/ui/DataTable";
 import { HelpLabel } from "@/components/ui/HelpLabel";
 import { ConfirmModal, ModalShell } from "@/components/ui/modals";
-import { StatusBadge, statusOptions } from "@/components/ui/StatusBadge";
+import { StatusBadge } from "@/components/ui/StatusBadge";
 import { ListShell } from "@/components/ui/shells";
 import { useTr } from "@/hooks/useTr";
 import { useUrlSelectState, useUrlStringState } from "@/hooks/useUrlState";
@@ -51,6 +51,7 @@ import type { Formatters } from "@/lib/format";
 import type { KioskCardRow, KioskUserOption } from "@/lib/kiosk-admin";
 import { openInNewContext } from "@/lib/pwa-display";
 import type { ActionResult } from "@/lib/server-action";
+import { statusOptions } from "@/lib/status-map";
 
 const PRINT_PATH = "/settings/kiosk-cards/print";
 

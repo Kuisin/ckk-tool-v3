@@ -32,9 +32,21 @@ import {
 } from "@/components/LinkCodeScreen";
 import type { DisplayAuthFailReason } from "@/lib/display-auth";
 import type { MachineHint } from "@/lib/display-core";
+import { claimScreenSlot } from "@/lib/screen-slot";
 
-const DEVICE_ID_KEY = "ckk_display_device_id";
+/**
+ * 端末 id の控え（Cookie 消失時の復帰用）。**窓ごとに分ける** —
+ * localStorage はブラウザのプロファイル単位で共有されるので、1 つの鍵にすると
+ * 2 枚目の窓が 1 枚目の控えを上書きし、復帰で取り違える。
+ */
+function deviceIdKey(screenIndex: number | null): string {
+  return screenIndex === null || screenIndex <= 1
+    ? "ckk_display_device_id"
+    : `ckk_display_device_id_${screenIndex}`;
+}
 const POLL_INTERVAL_MS = 3000;
+/** 何枚開いているかを見直す間隔（増減はゆっくりなので長めで足りる）。 */
+const SLOT_WATCH_MS = 5000;
 
 /**
  * 失効・停止のときに現場へ出す一言（「壊れた」と誤解させない）。
@@ -66,7 +78,44 @@ type Props = {
   screenTotal: number;
 };
 
+/**
+ * この窓が何枚目で、いま何枚開いているか。**開いたあとに増減するので見張る。**
+ * Web Locks が使えないブラウザでは null（URL の値に任せる）。
+ */
+function useScreenSlot(
+  explicitScreen: number | null,
+): { index: number; total: number } | null {
+  const [slot, setSlot] = useState<{ index: number; total: number } | null>(
+    null,
+  );
+
+  useEffect(() => {
+    let stopped = false;
+    const look = async () => {
+      try {
+        // 既に錠を握っていれば同じ番号が返る（何度呼んでも動かない）
+        const got = await claimScreenSlot(explicitScreen);
+        if (!stopped) setSlot({ index: got.index, total: got.total });
+      } catch {
+        // 使えないブラウザ・拒否されたときは URL の値のまま
+      }
+    };
+    void look();
+    const id = setInterval(look, SLOT_WATCH_MS);
+    return () => {
+      stopped = true;
+      clearInterval(id);
+    };
+  }, [explicitScreen]);
+
+  return slot;
+}
+
 export function DisplaySetup({ reason, hint, screenTotal }: Props) {
+  const storageKey = deviceIdKey(hint.screenIndex);
+  // 窓ごとの登録にするため、どの経路にも画面番号を載せる
+  const screenQuery =
+    hint.screenIndex !== null ? `?screen=${hint.screenIndex}` : "";
   const [state, setState] = useState<SetupState>({ phase: "loading" });
   const [now, setNow] = useState(() => Date.now());
   const startedRef = useRef(false);
@@ -74,7 +123,9 @@ export function DisplaySetup({ reason, hint, screenTotal }: Props) {
   const begin = useCallback(async () => {
     setState({ phase: "loading" });
     try {
-      const res = await fetch("/api/display/setup/begin", { method: "POST" });
+      const res = await fetch(`/api/display/setup/begin${screenQuery}`, {
+        method: "POST",
+      });
       const data = (await res.json()) as {
         status: string;
         code?: string;
@@ -96,7 +147,7 @@ export function DisplaySetup({ reason, hint, screenTotal }: Props) {
     } catch {
       setState({ phase: "error", message: "サーバーに接続できません" });
     }
-  }, []);
+  }, [screenQuery]);
 
   // 初期化: Cookie 消失なら reactivate → だめなら begin（キオスクと同じ）
   useEffect(() => {
@@ -104,13 +155,16 @@ export function DisplaySetup({ reason, hint, screenTotal }: Props) {
     startedRef.current = true;
     (async () => {
       try {
-        const savedId = localStorage.getItem(DEVICE_ID_KEY);
+        const savedId = localStorage.getItem(storageKey);
         if (savedId) {
-          const res = await fetch("/api/display/setup/reactivate", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ deviceId: savedId }),
-          });
+          const res = await fetch(
+            `/api/display/setup/reactivate${screenQuery}`,
+            {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ deviceId: savedId }),
+            },
+          );
           if (res.ok) {
             window.location.reload();
             return;
@@ -121,7 +175,7 @@ export function DisplaySetup({ reason, hint, screenTotal }: Props) {
       }
       void begin();
     })();
-  }, [begin]);
+  }, [begin, screenQuery, storageKey]);
 
   // 表示中: リンク成立ポーリング + 期限カウントダウン
   useEffect(() => {
@@ -137,7 +191,7 @@ export function DisplaySetup({ reason, hint, screenTotal }: Props) {
           deviceName?: string | null;
         };
         if (data.status === "LINKED" && data.deviceId) {
-          localStorage.setItem(DEVICE_ID_KEY, data.deviceId);
+          localStorage.setItem(storageKey, data.deviceId);
           setState({
             phase: "linked",
             deviceId: data.deviceId,
@@ -158,12 +212,21 @@ export function DisplaySetup({ reason, hint, screenTotal }: Props) {
       clearInterval(poll);
       clearInterval(tick);
     };
-  }, [state]);
+  }, [state, storageKey]);
 
-  // リンク後: 有効化待ちポーリング
+  // リンク後: 有効化待ちポーリング。
+  //
+  // ★ **入った直後に 1 回見る。** 間隔だけだと、管理者がリンクと有効化を続けて
+  //   行ったときに最初の 1 回ぶん（3 秒）待たされ、しかもそこで取りこぼすと
+  //   「有効化を待っています」から進まないように見える。
+  // ★ **どの分岐でも必ず次の手を打つ。** 以前は再有効化に失敗すると何もせず
+  //   待ち続けていたので、そこで永久に止まっていた（黙って詰まるのが一番悪い）。
   useEffect(() => {
     if (state.phase !== "linked") return;
-    const poll = setInterval(async () => {
+    let stopped = false;
+
+    const check = async () => {
+      if (stopped) return;
       try {
         const res = await fetch("/api/display/setup/confirm", {
           method: "POST",
@@ -174,36 +237,66 @@ export function DisplaySetup({ reason, hint, screenTotal }: Props) {
             screenIndex: hint.screenIndex,
           }),
         });
-        const data = (await res.json()) as { status: string };
-        if (data.status === "CONFIRMED") {
+        const data = (await res.json().catch(() => null)) as {
+          status?: string;
+        } | null;
+
+        if (data?.status === "CONFIRMED") {
           window.location.reload();
-        } else if (data.status === "ALREADY_CONFIRMED") {
-          const re = await fetch("/api/display/setup/reactivate", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ deviceId: state.deviceId }),
-          });
-          if (re.ok) window.location.reload();
-        } else if (data.status === "PENDING") {
-          // リンク解除された（プロファイルがオープンに戻った）→ 最初から
-          localStorage.removeItem(DEVICE_ID_KEY);
-          void begin();
+          return;
         }
-        // LINKED はそのまま待つ
+        if (data?.status === "ALREADY_CONFIRMED") {
+          const re = await fetch(
+            `/api/display/setup/reactivate${screenQuery}`,
+            {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ deviceId: state.deviceId }),
+            },
+          );
+          if (re.ok) {
+            window.location.reload();
+            return;
+          }
+          // 取り直せない = この控えはもう使えない。最初からやり直す。
+          localStorage.removeItem(storageKey);
+          void begin();
+          return;
+        }
+        if (data?.status === "PENDING" || data?.status === "NOT_FOUND") {
+          // リンク解除された / 行が消えた → 最初から
+          localStorage.removeItem(storageKey);
+          void begin();
+          return;
+        }
+        // LINKED（有効化待ち）はそのまま待つ。それ以外の見慣れない返事も、
+        // 次の周回で見直す（勝手に登録をやり直さない）。
       } catch {
-        // 通信断は次のポーリングで再試行
+        // 通信断は次の周回で再試行
       }
-    }, POLL_INTERVAL_MS);
-    return () => clearInterval(poll);
-  }, [state, begin, hint]);
+    };
+
+    void check(); // まず 1 回
+    const poll = setInterval(check, POLL_INTERVAL_MS);
+    return () => {
+      stopped = true;
+      clearInterval(poll);
+    };
+  }, [state, begin, hint, screenQuery, storageKey]);
 
   const note = REASON_NOTE[reason];
-  // 1 台に複数つないでいるときは「何枚目か」を出す。同時に 2 枚のテレビが
-  // コードを出すので、どちらのコードを入力しているのか分からなくなるため。
+  // 1 台に複数つないでいるときは「何枚目か」を出す。**同時に 2 枚が同じような
+  // コード画面を出すので、これが無いとどちらのコードを入力しているのか
+  // 分からなくなる。**
+  //
+  // URL の `of` は開いた時点の数なので当てにしない — 1 枚目は「自分だけ」の
+  // つもりで開いており、あとから 2 枚目が増えても URL は変わらない。
+  // 実際に握られている錠を数えて、**両方の窓が自分の番号を出せる**ようにする。
+  const live = useScreenSlot(hint.screenIndex);
+  const index = live?.index ?? hint.screenIndex;
+  const total = Math.max(live?.total ?? 1, screenTotal);
   const screenLabel =
-    screenTotal > 1 && hint.screenIndex
-      ? `この機械の ${screenTotal} 枚中 ${hint.screenIndex} 枚目`
-      : null;
+    total > 1 && index ? `この機械の ${total} 枚中 ${index} 枚目` : null;
 
   // 共有部品が読む形へ。linked の文面だけここで組み立てる（端末は
   // 「利用を開始できます」、ディスプレイは「表示を開始します」）。

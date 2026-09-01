@@ -3,13 +3,14 @@
 /**
  * DisplayPreferencesForm — 表示設定（/profile/preferences、本人のみ）。
  *
- * 言語 / 日付形式 / 時刻形式 / タイムゾーン / 文字の大きさ / 文字を太くする、を
- * 選ぶ。選んだ内容は保存前にプレビューへ即反映する（設定名だけでは結果が
- * 想像しにくいため）。
+ * 言語 / 日付形式 / 時刻形式 / タイムゾーン / 文字の大きさ / 文字を太くする /
+ * 書体、を選ぶ。選んだ内容は保存前にプレビューへ即反映する（設定名だけでは
+ * 結果が想像しにくいため）。**書体は PDF には効かない** — 帳票は常に埋め込み
+ * Noto Sans JP（lib/pdf.ts）。
  *
- * ★ 文字の大きさ・太さは**画面全体に**その場で当てる（プレビュー枠の中だけに
- *   当てない）。読めるかどうかは一覧やボタンを含めた画面全体で決まるもので、
- *   小さな見本では判断できないため。保存せずに離れれば元に戻る
+ * ★ 文字の大きさ・太さ・書体は**画面全体に**その場で当てる（プレビュー枠の中
+ *   だけに当てない）。読めるかどうかは一覧やボタンを含めた画面全体で決まる
+ *   もので、小さな見本では判断できないため。保存せずに離れれば元に戻る
  *   （html へ載せた上書きを片付ける）。
  *
  * ★ 言語も保存前に反映したいので、この画面だけ 3 言語ぶんの文言を読み込み、
@@ -50,6 +51,9 @@ import {
   type DisplayPreferences,
   dateFormatExample,
   displayCssVariables,
+  FONT_FAMILIES,
+  FONT_FAMILY_STACKS,
+  type FontFamilyPref,
   type Locale,
   TEXT_SCALE_FACTORS,
   TEXT_SCALES,
@@ -73,6 +77,12 @@ const TEXT_SCALE_LABEL_KEYS = {
   lg: "textScaleLg",
   xl: "textScaleXl",
 } as const satisfies Record<TextScale, string>;
+
+/** 書体 → 文言キー。 */
+const FONT_FAMILY_LABEL_KEYS = {
+  noto: "fontFamilyNoto",
+  system: "fontFamilySystem",
+} as const satisfies Record<FontFamilyPref, string>;
 
 /** 選択中の言語で文言を差し替えるための入れ子プロバイダ。 */
 export function DisplayPreferencesForm({
@@ -274,6 +284,27 @@ function PreferencesFormBody({
           description={t("boldTextHelp")}
           label={t("boldText")}
           onChange={(event) => set("boldText", event.currentTarget.checked)}
+        />
+        <Divider my="md" />
+        <Select
+          allowDeselect={false}
+          data={FONT_FAMILIES.map((f) => ({
+            value: f,
+            label: t(FONT_FAMILY_LABEL_KEYS[f]),
+          }))}
+          description={t("fontFamilyHelp")}
+          label={t("fontFamily")}
+          onChange={(v) => set("fontFamily", v as FontFamilyPref)}
+          renderOption={({ option }) => (
+            <span
+              style={{
+                fontFamily: FONT_FAMILY_STACKS[option.value as FontFamilyPref],
+              }}
+            >
+              {option.label}
+            </span>
+          )}
+          value={prefs.fontFamily}
         />
       </Paper>
 

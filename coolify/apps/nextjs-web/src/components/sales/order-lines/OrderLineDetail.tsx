@@ -54,7 +54,7 @@ import {
   ProcedurePanel,
   type ProcedureStage,
 } from "@/components/ui/ProcedurePanel";
-import { StatusBadge, statusLabel } from "@/components/ui/StatusBadge";
+import { StatusBadge } from "@/components/ui/StatusBadge";
 import {
   type AuditEntry,
   DetailShell,
@@ -72,6 +72,7 @@ import {
 // type-only import — lib/inventory は server-only（型はバンドルされない）。
 import type { StockCheckResult } from "@/lib/inventory";
 import { isLineStockCheckable } from "@/lib/order-line-core";
+import { statusLabel } from "@/lib/status-map";
 import type { OrderLine } from "./model";
 
 const BASE_PATH = "/sales/order-lines";

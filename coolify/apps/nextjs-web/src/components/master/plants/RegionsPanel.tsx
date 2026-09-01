@@ -58,7 +58,7 @@ function notifyResult(
   } else {
     notifications.show({
       title: tr("エラー"),
-      message: result.error ?? tr("失敗しました"),
+      message: tr(result.error) ?? tr("失敗しました"),
       color: "red",
     });
   }
@@ -97,7 +97,7 @@ function RegionModal({
         tr,
         router,
         result,
-        isEdit ? tr("地域を更新しました") : tr("地域を追加しました"),
+        isEdit ? "地域を更新しました" : tr("地域を追加しました"),
         onClose,
       );
     });
@@ -118,9 +118,7 @@ function RegionModal({
           description={
             isEdit
               ? tr(
-                  tr(
-                    "REGION スコープ権限（scope_values）が参照する識別子のため変更できません",
-                  ),
+                  "REGION スコープ権限（scope_values）が参照する識別子のため変更できません",
                 )
               : undefined
           }
@@ -132,7 +130,10 @@ function RegionModal({
           withAsterisk
         />
         <LocalizedTextInput
-          jaProps={{ value: nameJa, onChange: setNameJa }}
+          jaProps={{
+            value: nameJa,
+            onChange: (e) => setNameJa(e.currentTarget.value),
+          }}
           label={tr("名称")}
           placeholder={tr("例: 日本")}
           required
@@ -159,7 +160,7 @@ export function RegionsPanel({ rows }: { rows: RegionRow[] }) {
         tr,
         router,
         result,
-        row.isActive ? tr("地域を無効化しました") : tr("地域を有効化しました"),
+        row.isActive ? "地域を無効化しました" : tr("地域を有効化しました"),
       );
     });
   };
@@ -209,9 +210,7 @@ export function RegionsPanel({ rows }: { rows: RegionRow[] }) {
                 <Table.Td colSpan={5}>
                   <Text c="dimmed" py="sm" size="sm" ta="center">
                     {tr(
-                      tr(
-                        "地域がありません — 「地域を追加」から作成してください",
-                      ),
+                      "地域がありません — 「地域を追加」から作成してください",
                     )}
                   </Text>
                 </Table.Td>
@@ -261,9 +260,7 @@ export function RegionsPanel({ rows }: { rows: RegionRow[] }) {
       </Table.ScrollContainer>
       <Text c="dimmed" mt="sm" size="xs">
         {tr(
-          tr(
-            "地域コードは REGION スコープ権限（scope_values）が参照する識別子のため\n        作成後は変更できません。削除は拠点から参照されていない地域のみ可能です。",
-          ),
+          "地域コードは REGION スコープ権限（scope_values）が参照する識別子のため\n        作成後は変更できません。削除は拠点から参照されていない地域のみ可能です。",
         )}
       </Text>
       {modal && (

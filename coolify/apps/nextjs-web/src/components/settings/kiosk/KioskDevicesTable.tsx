@@ -54,7 +54,7 @@ import {
 } from "@/components/ui/DataTable";
 import { HelpLabel } from "@/components/ui/HelpLabel";
 import { ConfirmModal, ModalShell } from "@/components/ui/modals";
-import { StatusBadge, statusOptions } from "@/components/ui/StatusBadge";
+import { StatusBadge } from "@/components/ui/StatusBadge";
 import { ListShell, LocalizedTextInput } from "@/components/ui/shells";
 import { useTr } from "@/hooks/useTr";
 import { useUrlSelectState, useUrlStringState } from "@/hooks/useUrlState";
@@ -63,6 +63,7 @@ import { formatCode, normalizeCode } from "@/lib/crockford";
 import { fieldHelp, fieldHelpTip } from "@/lib/field-help";
 import type { KioskDeviceRow, KioskPlantOption } from "@/lib/kiosk-admin";
 import type { ActionResult } from "@/lib/server-action";
+import { statusOptions } from "@/lib/status-map";
 import { KioskDeviceLogsModal } from "./KioskDeviceLogsModal";
 import { LinkQrScanner } from "./LinkQrScanner";
 import {
@@ -772,8 +773,10 @@ export function KioskDevicesTable({
             help={fieldHelpTip("kioskDevice", "name")}
             jaProps={{
               value: createForm.nameJa,
-              onChange: (v: string) =>
-                setCreateForm((s) => ({ ...s, nameJa: v })),
+              onChange: (e) => {
+                const v = e.currentTarget.value;
+                setCreateForm((s) => ({ ...s, nameJa: v }));
+              },
             }}
             label={tr("端末名")}
             placeholder={tr("例: 1F 加工場 タブレット1")}
@@ -857,8 +860,10 @@ export function KioskDevicesTable({
             help={fieldHelpTip("kioskDevice", "name")}
             jaProps={{
               value: editForm.nameJa,
-              onChange: (v: string) =>
-                setEditForm((s) => ({ ...s, nameJa: v })),
+              onChange: (e) => {
+                const v = e.currentTarget.value;
+                setEditForm((s) => ({ ...s, nameJa: v }));
+              },
             }}
             label={tr("端末名")}
             required

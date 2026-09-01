@@ -47,8 +47,8 @@ import {
   ProcedurePanel,
   type ProcedureStage,
 } from "@/components/ui/ProcedurePanel";
-import { statusLabel } from "@/components/ui/StatusBadge";
 import { useTr } from "@/hooks/useTr";
+import { statusLabel } from "@/lib/status-map";
 import {
   WORK_ORDER_HISTORY_ACTION_LABEL,
   type WorkOrderHistoryView,

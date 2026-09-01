@@ -122,14 +122,57 @@ function isAsyncBody(masked, open) {
  * Formatters と同じ約束）。
  */
 function isComponentLike(masked, open) {
-  const head = masked.slice(Math.max(0, open - 600), open);
-  const m = head.match(
-    /(?:function\s+|const\s+|let\s+|var\s+)([A-Za-z_$][\w$]*)\s*[=(][^=]*$/,
-  );
-  const name = m?.[1];
-  if (!name) return true; // 名前が読めないときは既定どおり入れる（型検査が拾う）
-  return /^[A-Z]/.test(name) || /^use[A-Z]/.test(name);
+  return /^[A-Z]/.test(enclosingFunctionName(masked, open) ?? "C")
+    || /^use[A-Z]/.test(enclosingFunctionName(masked, open) ?? "");
 }
+
+/**
+ * その関数本体の名前。読めなければ null。
+ *
+ * **括弧を数えて引数リストを飛び越える。** 正規表現で
+ * `function 名前( … ) {` を一発で取ろうとすると、引数の中の `=>`
+ * （`onOk?: () => void`）や既定値の `=` で外れる。実際に外れて、
+ * `notifyResult` を「名前が読めない = たぶんコンポーネント」と誤判定し、
+ * 素の関数にフックを入れてしまった。
+ */
+function enclosingFunctionName(masked, open) {
+  let i = open - 1;
+  while (i >= 0 && /\s/.test(masked[i])) i--;
+
+  // アロー関数（`… => {`）は名前が更に手前。`=>` を飛ばす。
+  if (masked[i] === ">" && masked[i - 1] === "=") {
+    i -= 2;
+    while (i >= 0 && /\s/.test(masked[i])) i--;
+  }
+
+  // 戻り値の型注釈（`): Foo {`）を飛ばす。
+  if (masked[i] !== ")") {
+    const colon = masked.lastIndexOf(":", i);
+    if (colon < 0) return null;
+    i = colon - 1;
+    while (i >= 0 && /\s/.test(masked[i])) i--;
+  }
+  if (masked[i] !== ")") return null;
+
+  // 引数リストの `(` まで括弧を数えて戻る。
+  let depth = 0;
+  for (; i >= 0; i--) {
+    if (masked[i] === ")") depth++;
+    else if (masked[i] === "(") {
+      depth--;
+      if (depth === 0) break;
+    }
+  }
+  if (i < 0) return null;
+
+  const head = masked.slice(Math.max(0, i - 200), i);
+  return (
+    head.match(/([A-Za-z_$][\w$]*)\s*$/)?.[1] ??
+    head.match(/(?:const|let|var)\s+([A-Za-z_$][\w$]*)\s*=\s*(?:async\s*)?$/)?.[1] ??
+    null
+  );
+}
+
 
 /**
  * 置換位置を含む、**モジュール直下**の関数本体を探す。

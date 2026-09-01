@@ -122,7 +122,8 @@ interface Option {
   label: string;
 }
 
-// フックを使えない素の関数なので、解決済みの `tr` を引数で受ける。
+// フックを使えない素の関数なので、解決済みの `tr` を引数で受ける
+// （lib/format.ts の Formatters と同じ約束）。
 function notifyResult(
   tr: Translate,
   result: { ok: boolean; error?: string },
@@ -135,7 +136,7 @@ function notifyResult(
   } else {
     notifications.show({
       title: tr("エラー"),
-      message: result.error ?? tr("処理に失敗しました"),
+      message: tr(result.error) ?? tr("処理に失敗しました"),
       color: "red",
     });
   }
@@ -265,7 +266,10 @@ function GroupModal({
         </SimpleGrid>
         <LocalizedTextInput
           help={fieldHelpTip("workLocation", "code")}
-          jaProps={{ value: nameJa, onChange: setNameJa }}
+          jaProps={{
+            value: nameJa,
+            onChange: (e) => setNameJa(e.currentTarget.value),
+          }}
           label={tr("名称")}
           placeholder={tr("例: NC旋盤")}
           required
@@ -421,7 +425,10 @@ function LocationModal({
         </SimpleGrid>
         <LocalizedTextInput
           help={fieldHelpTip("workLocation", "code")}
-          jaProps={{ value: nameJa, onChange: setNameJa }}
+          jaProps={{
+            value: nameJa,
+            onChange: (e) => setNameJa(e.currentTarget.value),
+          }}
           label={tr("名称")}
           placeholder={tr("例: NC旋盤 1号機")}
           required
@@ -492,9 +499,7 @@ function TypesModal({
       <Stack gap="xs">
         <Text c="dimmed" size="xs">
           {tr(
-            tr(
-              "machine / area\n          は組み込み（削除不可）。グループが使用中の種別は削除できません。",
-            ),
+            "machine / area\n          は組み込み（削除不可）。グループが使用中の種別は削除できません。",
           )}
         </Text>
         {rows.map((r, idx) => (
@@ -640,9 +645,7 @@ export function WorkLocationsManager({
         <EmptyState
           icon={<IconMapPin size={24} />}
           message={tr(
-            tr(
-              "作業場所が未登録です。グループ（機械種別・エリアなど）を作成し、配下に物理的な場所（機械 1 台・1 区画）を追加してください。",
-            ),
+            "作業場所が未登録です。グループ（機械種別・エリアなど）を作成し、配下に物理的な場所（機械 1 台・1 区画）を追加してください。",
           )}
         />
       ) : (
@@ -719,9 +722,7 @@ export function WorkLocationsManager({
               {group.locations.length === 0 ? (
                 <Text c="dimmed" size="sm">
                   {tr(
-                    tr(
-                      "場所が未登録です（「場所を追加」から機械 1 台・1 区画を登録）",
-                    ),
+                    "場所が未登録です（「場所を追加」から機械 1 台・1 区画を登録）",
                   )}
                 </Text>
               ) : (
@@ -865,7 +866,7 @@ export function WorkLocationsManager({
         opened={!!deleteGroup}
         title={tr("グループの削除")}
         warning={tr(
-          tr("作業計画・実績で使用中の場所が含まれる場合は削除できません。"),
+          "作業計画・実績で使用中の場所が含まれる場合は削除できません。",
         )}
       />
       <ConfirmModal

@@ -30,7 +30,6 @@ import {
   SecondaryButton,
 } from "@/components/ui/buttons";
 import { ModalShell } from "@/components/ui/modals";
-import { statusLabel as statusMapLabel } from "@/components/ui/StatusBadge";
 import { useTr } from "@/hooks/useTr";
 import { useIsMobile } from "@/hooks/useViewport";
 import { downloadFile } from "@/lib/download";
@@ -39,6 +38,7 @@ import {
   exportFilterToParams,
 } from "@/lib/form-export-core";
 import type { FormFieldDef } from "@/lib/form-schema";
+import { statusLabel as statusMapLabel } from "@/lib/status-map";
 
 export function ResponseExportModal({
   opened,
@@ -156,9 +156,7 @@ export function ResponseExportModal({
           </Group>
           <Text c="dimmed" size="xs">
             {tr(
-              tr(
-                "指定した日に提出されたものを含みます。日付で絞ると、まだ提出していない\n            回答は外れます。",
-              ),
+              "指定した日に提出されたものを含みます。日付で絞ると、まだ提出していない\n            回答は外れます。",
             )}
           </Text>
         </Stack>
@@ -179,9 +177,7 @@ export function ResponseExportModal({
           <Text c="dimmed" size="xs">
             {allFieldsChecked
               ? tr(
-                  tr(
-                    "すべての項目を列にします。減らしたいものだけ外してください。",
-                  ),
+                  "すべての項目を列にします。減らしたいものだけ外してください。",
                 )
               : `${fieldKeys.length} 項目を選択中`}
           </Text>

@@ -53,7 +53,8 @@ export async function POST(req: Request) {
   }
 
   const hint = machineHint(parsed.data.machineId, parsed.data.screenIndex);
-  const { hash, expiresAt } = await setDisplayCookie();
+  // この窓（画面）専用の Cookie に入れる
+  const { hash, expiresAt } = await setDisplayCookie(hint.screenIndex);
   await prisma.displayDevice.update({
     where: { id: device.id },
     data: {

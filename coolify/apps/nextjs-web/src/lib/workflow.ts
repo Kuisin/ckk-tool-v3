@@ -762,6 +762,9 @@ export async function addBranchSeries(input: {
   // 分岐で追加される検査工程には、その工程を関連工程に持つ検査表
   // （有効・code ごとに最新バージョン）を既定で割り当てる — 検査表は
   // 工程単位の割当なので、後から足した工程が空にならないようにする。
+  // 対象製品が指定された検査表（productId）は、この指示書の製品と一致する
+  // ものだけを候補にする（他製品専用の検査表を混ぜない）。null = 汎用は
+  // 常に候補。
   const inspectionCatalogIds = (
     await prisma.processStepCatalog.findMany({
       where: { id: { in: catalogStepIds }, isInspection: true },
@@ -773,6 +776,7 @@ export async function addBranchSeries(input: {
         where: {
           isActive: true,
           relatedProcessStepId: { in: inspectionCatalogIds },
+          OR: [{ productId: null }, { productId: wo.productId }],
         },
         orderBy: [{ code: "asc" }, { version: "desc" }],
         select: { id: true, code: true, relatedProcessStepId: true },

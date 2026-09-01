@@ -19,7 +19,7 @@ import "server-only";
  * rich-text-core.toHtml が内部で全てのテキストと href をエスケープしている。
  */
 
-import { statusLabel as statusMapLabel } from "@/components/ui/StatusBadge";
+import { statusLabel as statusMapLabel } from "@/lib/status-map";
 import type { ApprovalTrailEntry } from "./approvals";
 import {
   answerShape,

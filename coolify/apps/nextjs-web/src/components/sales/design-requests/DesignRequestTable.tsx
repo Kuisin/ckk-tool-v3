@@ -17,7 +17,7 @@ import { useLocale } from "next-intl";
 import { useFormat } from "@/components/layout/PreferencesProvider";
 import { type Column, DataTable } from "@/components/ui/DataTable";
 import { NewButton } from "@/components/ui/NewButton";
-import { StatusBadge, statusOptions } from "@/components/ui/StatusBadge";
+import { StatusBadge } from "@/components/ui/StatusBadge";
 import { ListShell } from "@/components/ui/shells";
 import { useTr } from "@/hooks/useTr";
 import { useUrlSelectState, useUrlStringState } from "@/hooks/useUrlState";
@@ -28,6 +28,7 @@ import {
   designTriggerLabel,
   designTriggerOptions,
 } from "@/lib/enum-labels";
+import { statusOptions } from "@/lib/status-map";
 import {
   DESIGN_KIND_COLOR,
   DESIGN_TRIGGER_COLOR,

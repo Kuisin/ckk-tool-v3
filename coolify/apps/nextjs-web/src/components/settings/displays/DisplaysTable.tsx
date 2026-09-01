@@ -54,7 +54,7 @@ import {
   type RowAction,
 } from "@/components/ui/DataTable";
 import { ModalShell } from "@/components/ui/modals";
-import { StatusBadge, statusOptions } from "@/components/ui/StatusBadge";
+import { StatusBadge } from "@/components/ui/StatusBadge";
 import { ListShell } from "@/components/ui/shells";
 import { useTr } from "@/hooks/useTr";
 import { useIsMobile } from "@/hooks/useViewport";
@@ -66,6 +66,7 @@ import {
 } from "@/lib/display-groups";
 import { DISPLAY_TEMPLATES } from "@/lib/display-templates";
 import type { DisplayRow } from "@/lib/displays-admin";
+import { statusOptions } from "@/lib/status-map";
 import { OnlineDot } from "../kiosk/KioskDevicesTable";
 import { LinkQrScanner } from "../kiosk/LinkQrScanner";
 import {

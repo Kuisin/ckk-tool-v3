@@ -427,13 +427,31 @@ export function WorkflowBuilder({
       return next;
     });
   }, [selected]);
+  // この指示書の対象製品（注文明細向け = 割当明細の製品 / 在庫向け =
+  // 直接指定した製品）。検査表の既定選択を製品専用テンプレートに絞るためだけ
+  // に使う — 割当明細の製品解決を待つ routesInfo（サーバー往復）は使わず、
+  // 既にクライアントにある値から同期的に出す。
+  const workOrderProductId = useMemo(() => {
+    if (target === "SALES_ORDER") {
+      return (
+        allocRows.find((r) => r.info && r.orderLineId)?.info?.productId ?? null
+      );
+    }
+    return form.values.productId ? Number(form.values.productId) : null;
+  }, [target, allocRows, form.values.productId]);
   const templatesFor = useCallback(
     (stepId: number): string[] =>
       stepTemplates[stepId] ??
       templateOptions
-        .filter((t) => t.relatedProcessStepId === stepId)
+        .filter(
+          (t) =>
+            t.relatedProcessStepId === stepId &&
+            (t.productId == null ||
+              workOrderProductId == null ||
+              t.productId === workOrderProductId),
+        )
         .map((t) => t.value),
-    [stepTemplates, templateOptions],
+    [stepTemplates, templateOptions, workOrderProductId],
   );
 
   // 編集時: 割当済みだが最新でないバージョンも選択肢に残す（バージョン固定）

@@ -66,6 +66,15 @@ const EXCLUDED_TEMPLATE: Record<string, string> = {
   approvalGroupId:
     "承認グループは環境ごとの id（コードを持たない）で、テンプレートの" +
     "測定定義とは別の設定。書き出し/取込の対象外（承認設定 MS0B 側で環境ごとに設定）",
+  productId:
+    "対象製品は環境ごとの id（製品は業務キーを持たない）。測定定義とは" +
+    "別のナビゲーション用の絞り込みなので、取込側で改めて設定する",
+  groupId:
+    "ナビゲーション用グループも環境ごとの id。判定・PDF に影響しない" +
+    "表示軸なので、取込側で改めて設定する",
+  imageFileId:
+    "参考画像は SeaweedFS の実体を指す環境ごとの id。バイナリは" +
+    "JSON に載らないため、取込側で改めてアップロードする",
 };
 
 const EXCLUDED_ITEM: Record<string, string> = {

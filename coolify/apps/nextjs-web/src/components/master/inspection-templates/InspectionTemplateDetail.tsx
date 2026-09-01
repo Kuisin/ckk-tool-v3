@@ -64,6 +64,7 @@ import {
   samplingLabelJa,
 } from "@/lib/inspection-core";
 import type { ApproverOption } from "./ApprovalTargetField";
+import { InspectionTemplateImagePanel } from "./InspectionTemplateImagePanel";
 import {
   CreateVersionModal,
   DeleteInspectionTemplateItemModal,
@@ -92,6 +93,12 @@ export interface InspectionTemplateDetailData {
   nameJa: string;
   nameEn: string;
   relatedProcessStep: string; // 未設定は ""
+  /** 対象製品。未設定（汎用）は "" */
+  productName: string;
+  /** ナビゲーション用グループ。未設定は "" */
+  groupName: string;
+  /** 参考画像のファイル名。未設定は null（PDF にも印刷される）。 */
+  imageFilename: string | null;
   /** 検査対象・記録方式（シート単位）。 */
   samplingMode: "ALL" | "PERCENT" | "COUNT";
   samplingValue: number | null;
@@ -246,9 +253,7 @@ export function InspectionTemplateDetail({
       {record.isLocked && (
         <Alert color="blue" icon={<IconLock size={16} />}>
           {tr(
-            tr(
-              "このバージョンは指示書または検査記録で使用中のため変更できません。\n          内容を変更するには「新バージョンを作成」してください（既存の記録は\n          このバージョンのまま残ります）。",
-            ),
+            "このバージョンは指示書または検査記録で使用中のため変更できません。\n          内容を変更するには「新バージョンを作成」してください（既存の記録は\n          このバージョンのまま残ります）。",
           )}
         </Alert>
       )}
@@ -267,6 +272,20 @@ export function InspectionTemplateDetail({
           label={tr("関連工程")}
           value={record.relatedProcessStep || "—"}
         />
+        <FieldValue
+          label={tr("対象製品")}
+          value={record.productName || tr("汎用")}
+        />
+        {record.groupName && (
+          <FieldValue
+            label={tr("グループ")}
+            value={
+              <Badge color="gray" variant="light">
+                {record.groupName}
+              </Badge>
+            }
+          />
+        )}
         <FieldValue
           label={tr("検査対象")}
           value={samplingLabelJa({
@@ -324,15 +343,25 @@ export function InspectionTemplateDetail({
         </Tabs.List>
 
         <Tabs.Panel pt="md" value="info">
-          <Stack gap="sm">
-            <FieldValue label={tr("名称（日本語）")} value={record.nameJa} />
-            <FieldValue
-              label={tr("名称（英語）")}
-              value={record.nameEn || "—"}
-            />
-            <FieldValue
-              label={tr("関連工程")}
-              value={record.relatedProcessStep || "—"}
+          <Stack gap="md">
+            <Stack gap="sm">
+              <FieldValue label={tr("名称（日本語）")} value={record.nameJa} />
+              <FieldValue
+                label={tr("名称（英語）")}
+                value={record.nameEn || "—"}
+              />
+              <FieldValue
+                label={tr("関連工程")}
+                value={record.relatedProcessStep || "—"}
+              />
+              <FieldValue
+                label={tr("対象製品")}
+                value={record.productName || tr("汎用")}
+              />
+            </Stack>
+            <InspectionTemplateImagePanel
+              filename={record.imageFilename}
+              templateId={record.id}
             />
           </Stack>
         </Tabs.Panel>

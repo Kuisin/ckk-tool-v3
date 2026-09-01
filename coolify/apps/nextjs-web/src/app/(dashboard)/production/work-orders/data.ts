@@ -1136,11 +1136,13 @@ export async function fetchStorageLocationOptions(): Promise<Option[]> {
   }));
 }
 
-/** 検査表テンプレートの選択肢（関連工程の自動選択に使う）。 */
+/** 検査表テンプレートの選択肢（関連工程・対象製品の自動選択に使う）。 */
 export interface InspectionTemplateOption {
   value: string; // String(内部 id)
   label: string;
   relatedProcessStepId: number | null;
+  /** 対象製品。null = どの製品にも使える（汎用）。 */
+  productId: number | null;
 }
 
 /**
@@ -1160,6 +1162,7 @@ export async function fetchInspectionTemplateOptions(): Promise<
       value: String(r.id),
       label: `${r.code} v${r.version} ${localized(r.name as LocalizedText | null)}`,
       relatedProcessStepId: r.relatedProcessStepId,
+      productId: r.productId,
     }));
 }
 

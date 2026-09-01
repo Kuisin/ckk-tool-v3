@@ -12,6 +12,7 @@ import "server-only";
 
 import { notFound } from "next/navigation";
 import { getDisplay } from "@/lib/display-auth";
+import { normalizeScreenIndex } from "@/lib/display-core";
 import {
   type DisplayTemplateOptions,
   findDisplayTemplate,
@@ -51,13 +52,19 @@ export async function boardContext(
   templateKey: string,
   searchParams: Promise<SearchParams>,
 ): Promise<BoardContext | null> {
-  const auth = await getDisplay();
+  const params = await searchParams;
+  const one = (k: string) => {
+    const v = params[k];
+    return Array.isArray(v) ? v[0] : v;
+  };
+  // **この窓（画面）の Cookie で引く。** 同じブラウザで 2 画面を出している
+  // ときに、どちらの中身かを取り違えないため。
+  const auth = await getDisplay(normalizeScreenIndex(one("screen")));
   if (!auth.ok) return null;
 
   const template = findDisplayTemplate(templateKey);
   if (!template) notFound();
 
-  const params = await searchParams;
   const raw = params.opt;
   const decoded = decodeOptions(Array.isArray(raw) ? raw[0] : raw);
   const parsed = templateOptionsSchema(template).safeParse(decoded ?? {});

@@ -52,7 +52,7 @@ import {
   ProcedurePanel,
   type ProcedureStage,
 } from "@/components/ui/ProcedurePanel";
-import { StatusBadge, statusLabel } from "@/components/ui/StatusBadge";
+import { StatusBadge } from "@/components/ui/StatusBadge";
 import {
   type AuditEntry,
   DetailShell,
@@ -64,6 +64,7 @@ import { useTabParam } from "@/hooks/useUrlState";
 import { downloadFile } from "@/lib/download";
 import { formatMoney } from "@/lib/format";
 import type { ActionResult } from "@/lib/server-action";
+import { statusLabel } from "@/lib/status-map";
 import { DeliveryMethodBadge } from "./DeliveryNoteTable";
 import { type DeliveryNote, isEditable } from "./model";
 

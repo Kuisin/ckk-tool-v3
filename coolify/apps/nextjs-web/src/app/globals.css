@@ -60,7 +60,7 @@ body {
 }
 
 /*
- * 表示設定 — 文字の大きさ / 文字を太くする（/profile/preferences）。
+ * 表示設定 — 文字の大きさ / 文字を太くする / 書体（/profile/preferences）。
  *
  * 変数はログイン中ユーザーの設定から
  * components/layout/DisplayPreferencesStyle が :root へ流し込む（未ログイン・
@@ -78,7 +78,13 @@ body {
  * （逆転する）。500 なら並ぶだけで反転しない — 理由は
  * lib/user-preferences-core.ts の BOLD_TEXT_WEIGHTS に書いてある。
  *
- * どちらもレイヤ外に置く（Mantine のスタイルは @layer mantine の中なので、
+ * 書体は Mantine の --mantine-font-family を丸ごと差し替える。既定
+ * （--app-font-family 未設定）は theme.ts と同じ Noto Sans JP スタック — 未ログイン
+ * 画面でも見た目は変わらない。**PDF はこの変数を読まない** — lib/pdf.ts は
+ * 常に埋め込みの Noto Sans JP を Gotenberg へアップロードするので、ここを
+ * "system" にしても帳票の書体は変わらない（意図どおり）。
+ *
+ * いずれもレイヤ外に置く（Mantine のスタイルは @layer mantine の中なので、
  * 同じ :root でもレイヤ外のこちらが勝つ）。
  */
 html {
@@ -86,6 +92,14 @@ html {
 }
 
 :root {
+  --mantine-font-family: var(
+    --app-font-family,
+    "Noto Sans JP",
+    "Noto Sans CJK JP",
+    system-ui,
+    -apple-system,
+    sans-serif
+  );
   --mantine-font-weight-regular: var(--app-font-weight-regular, 400);
   --mantine-font-weight-medium: var(--app-font-weight-medium, 600);
 }

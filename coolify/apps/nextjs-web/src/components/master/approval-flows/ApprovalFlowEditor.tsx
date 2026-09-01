@@ -340,7 +340,8 @@ export function ApprovalFlowEditor({
                   help={fieldHelpTip("approvalFlow", "stepName")}
                   jaProps={{
                     value: s.nameJa,
-                    onChange: (v: string) => patch(s.key, { nameJa: v }),
+                    onChange: (e) =>
+                      patch(s.key, { nameJa: e.currentTarget.value }),
                   }}
                   label={tr("名称")}
                   placeholder={tr("第一承認")}

@@ -17,11 +17,12 @@ import { useRouter } from "next/navigation";
 import { useMemo } from "react";
 import { useFormat } from "@/components/layout/PreferencesProvider";
 import { type Column, DataTable } from "@/components/ui/DataTable";
-import { StatusBadge, statusOptions } from "@/components/ui/StatusBadge";
+import { StatusBadge } from "@/components/ui/StatusBadge";
 import { ListShell } from "@/components/ui/shells";
 import { useTr } from "@/hooks/useTr";
 import { useUrlSelectState, useUrlStringState } from "@/hooks/useUrlState";
 import { useIsMobile } from "@/hooks/useViewport";
+import { statusOptions } from "@/lib/status-map";
 import type { OutsourceStepRow } from "./model";
 
 const WORK_ORDERS_PATH = "/production/work-orders";

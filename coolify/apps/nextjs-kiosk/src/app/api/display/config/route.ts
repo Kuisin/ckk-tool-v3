@@ -15,6 +15,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { getDisplay, touchDisplay } from "@/lib/display-auth";
 import { parseDisplayContent } from "@/lib/display-content";
+import { machineHint, normalizeScreenIndex } from "@/lib/display-core";
 import { deviceName } from "@/lib/format";
 import { metabaseEmbedUrl } from "@/lib/metabase-embed";
 import { clientIpOf, userAgentOf } from "@/lib/request-ip";
@@ -22,7 +23,11 @@ import { clientIpOf, userAgentOf } from "@/lib/request-ip";
 export const dynamic = "force-dynamic";
 
 export async function GET(req: Request) {
-  const auth = await getDisplay();
+  // 窓ごとに別の Cookie を見る（同じブラウザで 2 画面を出せるように）
+  const screen = normalizeScreenIndex(
+    new URL(req.url).searchParams.get("screen"),
+  );
+  const auth = await getDisplay(screen);
   if (!auth.ok) {
     return NextResponse.json(
       { error: "unauthorized", reason: auth.reason },
@@ -30,9 +35,24 @@ export async function GET(req: Request) {
     );
   }
 
+  // どの機械の何枚目か。**ここで毎回更新するのが要点** — 以前は有効化のとき
+  // （confirm）にしか書いていなかったので、
+  //   HDMI の口を挿し替えた / Pi を入れ替えた / ホスト名を変えた
+  // のいずれでも値が古いまま残り、一覧のまとめ表示や「何枚目」が実際と
+  // 食い違っていた。heartbeat も書くが、あれは **WS が張れないときだけ**
+  // 動く（＝通常は動かない）ので、当てにできない。
+  // config は読み込み時と再取得間隔ごとに必ず来るので、ここが確実。
+  const url = new URL(req.url);
+  const hint = machineHint(
+    url.searchParams.get("machine"),
+    url.searchParams.get("screen"),
+  );
   await touchDisplay(auth.display.id, {
     ipAddress: clientIpOf(req),
     userAgent: userAgentOf(req),
+    // 手掛かりが URL に無いときは触らない（既存の値を null で潰さない）
+    ...(hint.machineId !== null ? { machineId: hint.machineId } : {}),
+    ...(hint.screenIndex !== null ? { screenIndex: hint.screenIndex } : {}),
   });
 
   const row = await prisma.displayDevice.findUnique({

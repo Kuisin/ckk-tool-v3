@@ -46,7 +46,7 @@ import {
   ProcedurePanel,
   type ProcedureStage,
 } from "@/components/ui/ProcedurePanel";
-import { StatusBadge, statusLabel } from "@/components/ui/StatusBadge";
+import { StatusBadge } from "@/components/ui/StatusBadge";
 import {
   type AuditEntry,
   DetailShell,
@@ -58,6 +58,7 @@ import { useTabParam } from "@/hooks/useUrlState";
 import type { MemoView } from "@/lib/document-memos";
 import { deliveryMethodLabel } from "@/lib/enum-labels";
 import type { ActionResult } from "@/lib/server-action";
+import { statusLabel } from "@/lib/status-map";
 import { DeliveryOrderTypeBadge } from "./DeliveryOrderTable";
 import { canCreateDeliveryNote, type DeliveryOrder, isEditable } from "./model";
 

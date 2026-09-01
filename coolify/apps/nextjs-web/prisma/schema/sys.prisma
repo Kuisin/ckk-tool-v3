@@ -21,6 +21,7 @@ model File {
   kioskFloorMaps   KioskFloorMap[]      @relation("KioskFloorMapFile")
   userAvatars      User[]               @relation("UserAvatarFile")
   userAvatarThumbs User[]               @relation("UserAvatarThumbFile")
+  inspectionTemplateImages InspectionTemplate[] @relation("InspectionTemplateImage")
 
   @@map("files")
   @@schema("app")

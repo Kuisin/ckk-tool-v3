@@ -259,6 +259,7 @@ model Product {
   orderLines         OrderLine[]
   processRoutes      ProductProcessRoute[]
   workOrders         WorkOrder[]
+  inspectionTemplates InspectionTemplate[]
 
   @@unique([yearMonth, seq])
   @@index([materialTypeId])
