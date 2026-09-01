@@ -306,16 +306,31 @@ Server: `await getTranslations("shell")`. Client: `useTranslations("shell")`.
 move it to the root layout, or the public `/manual` pages lose static rendering
 (the request config touches the session).
 
-**Migration status: most screens still have Japanese hard-coded in JSX**, and
-that's fine — they render Japanese regardless of the setting. Move strings into
-`messages/*.json` as you touch a screen; keep `messages/*.json` key-identical
-across the three languages (`lib/user-preferences-core.test.ts` enforces it).
-`lib/enum-labels.ts` (~30 ja-only `Record<string,string>` maps feeding `Select`
-`data`/badge text — tax type, unit, process category, order type, …) is the same
-kind of not-yet-migrated hard-coded Japanese, just concentrated in one file
-instead of JSX — it is imported by ~120 call sites across the app, so migrating
-it is a dedicated project (new `next-intl` namespace(s) + a translated-lookup
-hook + a pass over every call site), not a drive-by fix.
+**文言の置き場は `messages/{ja,en,zh}.json` の 1 本だけ。** コードの中に訳を
+書かない（2026-09-01 に統合。以前は next-intl のカタログ / コードの中の
+`Record<Locale, string>` / 生成物の ja 鍵辞書 の 3 か所に散っていた）。
+読み口は **`lib/messages.ts`** に閉じている:
+
+| 名前空間 | 中身 | 引き方 |
+|---|---|---|
+| `common` / `shell` / `preferences` / … | 変数を含む文（ICU） | `useTranslations("shell")` / `await getTranslations("shell")` |
+| `enum` / `status` / `permission` / `privilegedOp` / `pdf` | 値に付くラベル | `xxxLabel(value, locale)`（中身は `label()` / `labelOptions()`）|
+| `ui` | 変数の無い決まり文句。**鍵は日本語の原文** | `useTr()` / `await getTr()` / `translate()` |
+
+- **`ui` だけ平ら**にしてある。鍵が日本語の原文で、44 件は `.` を含む
+  （`直径は 0.1〜99.9mm…`）。next-intl の `t("a.b")` は `.` を入れ子の区切りと
+  して読むので入れ子には置けない。`tr()` は**直接プロパティを引く**ので安全で、
+  ついでに ICU を通らないから `^[A-Z]{2}-d{4}$` のような正規表現の例も壊れない。
+- **3 言語で鍵の集合が完全一致**していること（`lib/user-preferences-core.test.ts`）。
+  意図して空にする鍵はそこの許可リストに理由付きで足す（現状は「御中」だけ —
+  en/zh では何も出さないのが正しい）。
+- 新しい文言は `messages/ja.json` に足してから en/zh を埋める。ja が正。
+- 人が訳す面は **Weblate**（`coolify/common/weblate/`）。`dev` を読み、
+  `weblate-translations` ブランチへ push して PR を開く。
+
+**画面にはまだ日本語の直書きが残っている**が、それは壊れていない — `ui` の鍵が
+日本語なので、表示側が `tr()` を通せば後から訳せる（`lib/*.ts` や `actions.ts`
+は日本語のまま返してよい）。残数は `node tools/i18n/i18n-scan.mjs`。
 
 **Dates/times are NOT next-intl's job here.** The user picks an explicit order
 (`YYYY/MM/DD` … `MM/DD/YYYY`) which no `Intl` option expresses, so `lib/format.ts`

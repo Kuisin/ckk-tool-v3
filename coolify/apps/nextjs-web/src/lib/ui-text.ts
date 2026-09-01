@@ -30,29 +30,25 @@
  */
 
 import type { Locale } from "./i18n";
-import { en } from "./ui-dictionary/en";
-import { zh } from "./ui-dictionary/zh";
-
-/** ja を鍵にした対訳表。ja は恒等なので表を持たない。 */
-const DICTIONARIES: Record<Exclude<Locale, "ja">, Record<string, string>> = {
-  en,
-  zh,
-};
+import { hasUiText, uiText } from "./messages";
 
 /**
  * 日本語の文言を `locale` の訳に置き換える。**辞書に無ければ日本語のまま。**
+ *
+ * 中身は `messages/<locale>.json` の `ui` 名前空間（`lib/messages.ts` が
+ * 唯一の読み口）。以前は生成物の `lib/ui-dictionary/{en,zh}.ts` を読んでいたが、
+ * 訳の置き場を言語ファイル 1 本に寄せたので、そちらへ向けた。
  *
  * フックを使えない素の関数用。React の中からは `useTr()` /
  * `getTr()` を使うこと（毎回 locale を引き回さずに済む）。
  */
 export function translate(ja: string, locale: Locale): string {
-  if (locale === "ja") return ja;
-  return DICTIONARIES[locale]?.[ja] ?? ja;
+  return uiText(ja, locale);
 }
 
 /** 辞書に載っているか（未訳の洗い出し用。画面では使わない）。 */
 export function hasTranslation(ja: string, locale: Exclude<Locale, "ja">) {
-  return Object.hasOwn(DICTIONARIES[locale], ja);
+  return hasUiText(ja, locale);
 }
 
 /**

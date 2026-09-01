@@ -1,0 +1,131 @@
+# Weblate — 翻訳の管理画面。`messages/{ja,en,zh}.json` を人が訳すための面。
+#
+#   weblate        host :8080 -> container :8080   (UI)
+#   weblate-db     internal Postgres（Weblate のメタデータ）
+#   weblate-cache  internal Redis（キュー・キャッシュ）
+#
+# ⚠️ **このスタックは deploy-stack.sh で建てる**（Coolify 管理ではない）。
+# `coolify/common/` の他のスタックはほぼ Coolify 管理だが、これは
+# **リポジトリからビルドするアプリではなく、出来合いの 3 コンテナ構成**で、
+# 既存の登録スクリプト（add-*-app.sh はいずれも Dockerfile ビルド前提）が
+# そのまま使えない。Coolify の compose アプリとして登録し直すのは後からでき、
+# その場合もこのファイルがそのまま素材になる。
+#
+#   cd coolify/common && ./deploy-stack.sh weblate --dry-run && ./deploy-stack.sh weblate
+#
+# ■ データはホストのバインドマウント
+# `/data/weblate`。名前付きボリュームを避けるのは repo の決まり（Coolify が
+# 名前を書き換えるため）に揃えるのと、バックアップ対象を 1 か所にまとめるため。
+#
+# ⚠️ **uid 1000 で書ける状態にしてから起動すること。** weblate は uid 1000 で
+# 走るので、root 所有のまま作ると `/app/data volume is not writable` で
+# **起動ループに入る**（コンテナは Restarting を繰り返すだけで、画面には何も
+# 出ない）。新しいホストに建てるときは先に:
+#
+#   sudo mkdir -p /data/weblate/{postgres,data,cache,redis}
+#   sudo chown -R 1000:1000 /data/weblate/data /data/weblate/cache
+#
+# postgres / redis はコンテナ側が自分で uid を持つので触らなくてよい。
+#
+# ■ 翻訳の書き戻しは **dev へ直接 push しない**
+# CLAUDE.md の「dev / main に直接コミットしない」に従い、Weblate の
+# コンポーネント設定で push 先を専用ブランチにして PR を開かせる:
+#   Repository   git@github.com:Kuisin/ckk-tool-v3.git
+#   Branch       dev                      ← 読む側
+#   Push branch  weblate-translations     ← 書く側（PR になる）
+#   File mask    coolify/apps/nextjs-web/messages/*.json
+#   Base file    coolify/apps/nextjs-web/messages/ja.json
+#   File format  JSON nested structure
+# 詳しい手順は README.md。
+
+services:
+  weblate-db:
+    image: postgres:17-alpine
+    container_name: weblate-db
+    restart: unless-stopped
+    environment:
+      - POSTGRES_DB=weblate
+      - POSTGRES_USER=weblate
+      - POSTGRES_PASSWORD=${WEBLATE_DB_PASS:?set WEBLATE_DB_PASS in .env}
+      # Weblate は照合順序に敏感なので、初期化時に固定しておく
+      - POSTGRES_INITDB_ARGS=--encoding=UTF8 --locale=C
+    volumes:
+      - /data/weblate/postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U weblate"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  weblate-cache:
+    image: redis:7-alpine
+    container_name: weblate-cache
+    restart: unless-stopped
+    command: ["redis-server", "--save", "60", "1", "--loglevel", "warning"]
+    volumes:
+      - /data/weblate/redis:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  weblate:
+    image: weblate/weblate:5.17
+    container_name: weblate
+    restart: unless-stopped
+    depends_on:
+      weblate-db:
+        condition: service_healthy
+      weblate-cache:
+        condition: service_healthy
+    environment:
+      - POSTGRES_HOST=weblate-db
+      - POSTGRES_PORT=5432
+      - POSTGRES_DATABASE=weblate
+      - POSTGRES_USER=weblate
+      - POSTGRES_PASSWORD=${WEBLATE_DB_PASS:?set WEBLATE_DB_PASS in .env}
+      - REDIS_HOST=weblate-cache
+      - REDIS_PORT=6379
+      # LAN 名で開く。公開はしない（社内の翻訳作業用）。
+      - WEBLATE_SITE_DOMAIN=${WEBLATE_SITE_DOMAIN:-192.168.50.15:8080}
+      - WEBLATE_SITE_TITLE=CKK 翻訳
+      - WEBLATE_ALLOWED_HOSTS=*
+      - WEBLATE_ADMIN_NAME=${WEBLATE_ADMIN_NAME:-admin}
+      - WEBLATE_ADMIN_EMAIL=${WEBLATE_ADMIN_EMAIL:?set WEBLATE_ADMIN_EMAIL in .env}
+      - WEBLATE_ADMIN_PASSWORD=${WEBLATE_ADMIN_PASSWORD:?set WEBLATE_ADMIN_PASSWORD in .env}
+      # Django の署名鍵。**変えると既存セッションが切れる**だけで壊れはしない。
+      - WEBLATE_SECRET_KEY=${WEBLATE_SECRET_KEY:?set WEBLATE_SECRET_KEY in .env}
+      # 誰でも登録できる面にはしない（社内の作業者だけを管理者が招く）。
+      - WEBLATE_REGISTRATION_OPEN=0
+      # 送信は既存の mailrelay に寄せる（他の OSS ツールと同じ扱い）。
+      - WEBLATE_EMAIL_HOST=${WEBLATE_EMAIL_HOST:-mailrelay}
+      - WEBLATE_EMAIL_PORT=${WEBLATE_EMAIL_PORT:-25}
+      - WEBLATE_EMAIL_USE_TLS=0
+      - WEBLATE_DEFAULT_FROM_EMAIL=${WEBLATE_DEFAULT_FROM_EMAIL:-weblate@ckk-tool.co.jp}
+      # git commit の名前（PR の author として出る）
+      - WEBLATE_DEFAULT_COMMITER_NAME=CKK Weblate
+      - WEBLATE_DEFAULT_COMMITER_EMAIL=${WEBLATE_DEFAULT_FROM_EMAIL:-weblate@ckk-tool.co.jp}
+      # GitHub へ PR を出すための資格情報（README の「書き戻し」節）
+      - WEBLATE_GITHUB_USERNAME=${WEBLATE_GITHUB_USERNAME:-}
+      - WEBLATE_GITHUB_TOKEN=${WEBLATE_GITHUB_TOKEN:-}
+    volumes:
+      - /data/weblate/data:/app/data
+      - /data/weblate/cache:/app/cache
+    networks:
+      - default   # weblate-db / weblate-cache
+      - mail      # mailrelay:25
+    ports:
+      - "8080:8080"
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:8080/healthz/"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 180s
+
+networks:
+  # 送信メールを既存のリレーに通すための網（../mailrelay と同じ 1 本）。
+  mail:
+    external: true
+    name: coolify

@@ -21,11 +21,7 @@
 
 import { Badge, type BadgeProps } from "@mantine/core";
 import { useLocale } from "next-intl";
-import {
-  STATUS_MAPS,
-  type StatusEntity,
-  type StatusMap,
-} from "@/lib/status-map";
+import { type StatusEntity, statusColor, statusLabel } from "@/lib/status-map";
 
 interface StatusBadgeProps extends Omit<BadgeProps, "color" | "children"> {
   entity: StatusEntity;
@@ -35,9 +31,9 @@ interface StatusBadgeProps extends Omit<BadgeProps, "color" | "children"> {
 /** Maps an entity status enum to its themed Badge. */
 export function StatusBadge({ entity, status, ...props }: StatusBadgeProps) {
   const locale = useLocale();
-  const def = (STATUS_MAPS[entity] as StatusMap)[status];
-  const label = def ? (def.label[locale] ?? def.label.ja) : status;
-  const color = def?.color ?? "gray";
+  // ラベルは messages/<locale>.json、色は status-map.ts（設計の取り決め）。
+  const label = statusLabel(entity, status, locale);
+  const color = statusColor(entity, status);
   return (
     <Badge color={color} {...props}>
       {label}

@@ -61,7 +61,8 @@ const EXCLUDED = [
   /\/lib\/i18n\/messages\//,
   // 生成した ja 鍵の対訳表（tools/i18n/build-dictionary.mjs の出力）。
   // 鍵が日本語・値が訳なので、走査すると自分の辞書を「未翻訳」と数える。
-  /\/lib\/ui-dictionary\//,
+  // 言語ファイルそのもの（`messages/*.json`）は対象外 — 訳の置き場であって画面ではない
+  /\/messages\/[a-z-]+\.json$/,
   // 画面確認用の見本データ。「田中 太郎」「株式会社ABC製作所」のような
   // **架空の取引先名・人名**で、DB に入るデータと同じ扱い = 訳す対象ではない
   // （_specs/i18n-glossary.md §1）。mock.ts 自身が "preview only" と書いている。
