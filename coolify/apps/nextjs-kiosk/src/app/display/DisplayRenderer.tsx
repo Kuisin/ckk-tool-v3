@@ -428,6 +428,16 @@ function DisplayShell({
         wrap="nowrap"
       >
         <Group gap="md" style={{ minWidth: 0 }} wrap="nowrap">
+          {/* 会社のロゴ。**「これは会社が出している画面だ」を一目で示す**ため
+              （壁のテレビは通りがかりに見られるもので、誰の何なのかが
+              分からないと私物のモニタと区別が付かない）。
+              暗い背景なので dark 版（明るい色のロゴ）を使う。
+              biome-ignore lint/performance/noImgElement: 静的 SVG 1 枚。next/image の最適化は不要 */}
+          <img
+            alt=""
+            src="/design-assets/dark_logo.svg"
+            style={{ display: "block", flexShrink: 0, height: "1.6rem" }}
+          />
           <Text fw={700} style={{ fontSize: "1.15rem" }} truncate>
             {name ?? "（名称未設定）"}
           </Text>

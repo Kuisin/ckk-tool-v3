@@ -53,6 +53,7 @@ import {
   FormActions,
   type MenuItemDef,
   ResourceActions,
+  SummaryGrid,
 } from "@/components/ui/shells";
 import type { DisplayDetail } from "@/lib/displays-admin";
 import { OnlineDot } from "../kiosk/KioskDevicesTable";
@@ -109,7 +110,8 @@ export function DisplayDetailView({ display, plantOptions, audit }: Props) {
     });
   };
 
-  const save = () =>
+  /** 保存 → 成功したら閲覧へ戻す（§10.10）。 */
+  const save = (onSaved?: () => void) =>
     run(
       () =>
         updateDisplay({
@@ -120,6 +122,10 @@ export function DisplayDetailView({ display, plantOptions, audit }: Props) {
           scalePercent,
         }),
       "保存しました",
+      () => {
+        onSaved?.();
+        router.refresh();
+      },
     );
 
   const confirmRevoke = () =>
@@ -354,37 +360,61 @@ export function DisplayDetailView({ display, plantOptions, audit }: Props) {
           />
         </Tabs.Panel>
 
+        {/* ★ 既定は閲覧、押して編集（design.md §10.10 の全画面共通の決まり）。
+            詳細画面に生のフォームを置かない — 読みに来た人には
+            「いま何が設定されているか」が要るのであって、入力欄ではない。 */}
         <Tabs.Panel keepMounted={false} pt="md" value="settings">
-          <Stack gap="md">
-            <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="md">
-              <TextInput
-                label="ディスプレイの名前"
-                onChange={(e) => setNameJa(e.currentTarget.value)}
-                value={nameJa}
-                withAsterisk
-              />
-              <TextInput
-                label="設置場所"
-                onChange={(e) => setLocation(e.currentTarget.value)}
-                value={location}
-              />
-              <Select
-                clearable
-                data={plantOptions}
-                label="拠点"
-                onChange={setPlantId}
-                placeholder="選択してください"
-                searchable
-                value={plantId}
-              />
-            </SimpleGrid>
-            <ScaleField onChange={setScalePercent} value={scalePercent} />
-            <FormActions
-              loading={pending}
-              onCancel={() => router.push("/settings/kiosk-devices")}
-              onSave={save}
-            />
-          </Stack>
+          <EditablePanel
+            canEdit={display.status !== "REVOKED"}
+            edit={({ close }) => (
+              <Stack gap="md">
+                <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="md">
+                  <TextInput
+                    label="ディスプレイの名前"
+                    onChange={(e) => setNameJa(e.currentTarget.value)}
+                    value={nameJa}
+                    withAsterisk
+                  />
+                  <TextInput
+                    label="設置場所"
+                    onChange={(e) => setLocation(e.currentTarget.value)}
+                    value={location}
+                  />
+                  <Select
+                    clearable
+                    data={plantOptions}
+                    label="拠点"
+                    onChange={setPlantId}
+                    placeholder="選択してください"
+                    searchable
+                    value={plantId}
+                  />
+                </SimpleGrid>
+                <ScaleField onChange={setScalePercent} value={scalePercent} />
+                {/* 保存に成功したら閲覧へ戻す。キャンセルも同じ close。 */}
+                <FormActions
+                  loading={pending}
+                  onCancel={close}
+                  onSave={() => save(close)}
+                />
+              </Stack>
+            )}
+            title="この画面の設定"
+            view={
+              <SummaryGrid cols={2}>
+                <FieldValue
+                  label="ディスプレイの名前"
+                  value={display.name ?? "—"}
+                />
+                <FieldValue label="設置場所" value={display.location ?? "—"} />
+                <FieldValue label="拠点" value={display.plantName ?? "—"} />
+                <FieldValue
+                  label="表示倍率"
+                  value={`${display.scalePercent}%`}
+                />
+              </SummaryGrid>
+            }
+          />
         </Tabs.Panel>
 
         <Tabs.Panel keepMounted={false} pt="md" value="history">
