@@ -265,12 +265,22 @@ export function OrderAcceptanceIntakeTable({
               v0: numbers.length,
               v1: problems.join(" ・ "),
             })
-          : tr(
-              "{v0} 件を一覧に追加しました。AI抽出はこのあと順番に実行されます",
-              { v0: numbers.length },
-            ) + `${pending > 1 ? `（抽出待ち ${pending} 件）` : ""}`,
+          : pending > 1
+            ? // 待ち件数の有無で**文をまるごと分ける**。訳した文に断片を足すと、
+              // 足したほうは訳されないうえ、語順が言語で変わる文を表現できない
+              // （用語集 §2.6「文を連結しない」）。
+              tr(
+                "{v0} 件を一覧に追加しました。AI抽出はこのあと順番に実行されます（抽出待ち {v1} 件）",
+                { v0: numbers.length, v1: pending },
+              )
+            : tr(
+                "{v0} 件を一覧に追加しました。AI抽出はこのあと順番に実行されます",
+                { v0: numbers.length },
+              ),
       title:
-        problems.length > 0 ? "優先取込 受付（一部失敗）" : tr("優先取込 受付"),
+        problems.length > 0
+          ? tr("優先取込 受付（一部失敗）")
+          : tr("優先取込 受付"),
       withCloseButton: true,
     });
     // ボタンはここで戻る — 抽出の完了は待たない。

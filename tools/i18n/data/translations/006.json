@@ -30,6 +30,7 @@
 "編集の取り消し": ["Undo the edit", "撤销编辑"],
 "指示書（割当）": ["Work orders (allocated)", "工单（分配）"],
 "優先取込 受付": ["Priority intake accepted", "优先导入受理"],
+"優先取込 受付（一部失敗）": ["Priority intake accepted (some failed)", "优先导入受理（部分失败）"],
 "コピーして作成": ["Create by copying", "复制并创建"],
 "コピー先 顧客": ["Copy to customer", "复制目标客户"],
 "コピー先 製品": ["Copy to product", "复制目标产品"],

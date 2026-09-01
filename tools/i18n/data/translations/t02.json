@@ -25,6 +25,7 @@
 "{v0} 件を一覧に追加しています…": ["Adding {v0} to the list…", "正在将 {v0} 件添加到列表…"],
 "{v0} 件を一覧に追加しました / {v1}": ["{v0} added to the list / {v1}", "已将 {v0} 件添加到列表 / {v1}"],
 "{v0} 件を一覧に追加しました。AI抽出はこのあと順番に実行されます": ["{v0} added to the list. AI extraction runs in turn from here", "已将 {v0} 件添加到列表。AI 提取将随后依次执行"],
+"{v0} 件を一覧に追加しました。AI抽出はこのあと順番に実行されます（抽出待ち {v1} 件）": ["{v0} added to the list. AI extraction runs in turn from here ({v1} waiting)", "已将 {v0} 件添加到列表。AI 提取将随后依次执行（{v1} 件等待提取）"],
 "{v0} 件を取り込みました": ["{v0} imported", "已导入 {v0} 件"],
 "{v0} 件を追加しました": ["{v0} added", "已添加 {v0} 件"],
 "{v0} 件・{totalQuantity} 本": ["{v0} items · {totalQuantity} pcs", "{v0} 件・{totalQuantity} 支"],
