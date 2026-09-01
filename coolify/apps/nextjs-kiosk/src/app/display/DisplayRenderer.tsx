@@ -16,7 +16,15 @@
  * 文字は ja 固定 — ディスプレイに利用者は居ない。
  */
 
-import { Center, Group, Loader, Stack, Text, Title } from "@mantine/core";
+import {
+  Badge,
+  Center,
+  Group,
+  Loader,
+  Stack,
+  Text,
+  Title,
+} from "@mantine/core";
 import {
   type ReactNode,
   useCallback,
@@ -68,6 +76,8 @@ type Props = {
   scalePercent: number;
   /** どの機械の何枚目か（Pi が URL に載せてくる。1 枚運用では空）。 */
   hint: MachineHint;
+  /** その機械につながっている画面の総数（見出しの「何枚目」に使う）。 */
+  screenTotal: number;
 };
 
 /** 中身 → フレームに載せる URL。載せられないものは null。 */
@@ -112,6 +122,7 @@ export function DisplayRenderer({
   location,
   scalePercent,
   hint,
+  screenTotal,
 }: Props) {
   const [config, setConfig] = useState<Config | null>(null);
   const [failed, setFailed] = useState(false);
@@ -122,7 +133,15 @@ export function DisplayRenderer({
 
   const loadConfig = useCallback(async () => {
     try {
-      const res = await fetch("/api/display/config", { cache: "no-store" });
+      // 「どの機械の何枚目か」を毎回送る。挿し替え・入れ替えに追従させるため
+      // （サーバー側の注記を参照）。1 枚運用では空なので何も付かない。
+      const q = new URLSearchParams();
+      if (hint.machineId) q.set("machine", hint.machineId);
+      if (hint.screenIndex !== null) q.set("screen", String(hint.screenIndex));
+      const res = await fetch(
+        q.size > 0 ? `/api/display/config?${q}` : "/api/display/config",
+        { cache: "no-store" },
+      );
       if (res.status === 401) {
         // 失効・停止・期限切れ。サーバーに判断させ直す = 登録画面へ戻る
         window.location.reload();
@@ -138,7 +157,7 @@ export function DisplayRenderer({
     } catch {
       setFailed(true);
     }
-  }, []);
+  }, [hint]);
 
   useEffect(() => {
     void loadConfig();
@@ -234,6 +253,8 @@ export function DisplayRenderer({
     <DisplayShell
       name={name}
       place={place}
+      screenIndex={hint.screenIndex}
+      screenTotal={screenTotal}
       // 画像だけは倍率を当てない（object-fit とぶつかる）
       zoomStyle={opts?.zoom === false ? undefined : zoomStyle}
     >
@@ -398,11 +419,17 @@ function SwappingFrame({ src, title }: { src: string; title: string }) {
 function DisplayShell({
   name,
   place,
+  screenIndex,
+  screenTotal,
   zoomStyle,
   children,
 }: {
   name: string | null;
   place: string | null;
+  /** この機械の何枚目か（Pi の自己申告。1 枚運用では null）。 */
+  screenIndex: number | null;
+  /** その機械につながっている画面の総数。 */
+  screenTotal: number;
   zoomStyle: { zoom: string } | undefined;
   children: ReactNode;
 }) {
@@ -445,6 +472,15 @@ function DisplayShell({
             <Text c="dimmed" style={{ fontSize: "1rem" }} truncate>
               {place}
             </Text>
+          )}
+          {/* 1 台で 2 枚出しているときだけ「何枚目か」を出す。**壁に同じような
+              画面が並ぶので、どれを直せばよいか言えるようにする**ため
+              （「右の画面が変」ではなく「2 枚目が変」と言える）。
+              1 枚運用では意味が無いので出さない。 */}
+          {screenTotal > 1 && screenIndex !== null && (
+            <Badge color="gray" size="lg" variant="light">
+              {screenIndex} / {screenTotal} 枚目
+            </Badge>
           )}
         </Group>
         <Clock fontSize="1.15rem" />

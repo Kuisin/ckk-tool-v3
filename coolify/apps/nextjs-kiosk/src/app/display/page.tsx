@@ -60,6 +60,7 @@ export default async function DisplayPage({
       hint={hint}
       location={auth.display.location}
       scalePercent={auth.display.scalePercent}
+      screenTotal={screenTotal}
     />
   );
 }
