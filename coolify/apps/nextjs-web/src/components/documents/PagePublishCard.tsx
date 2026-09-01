@@ -70,7 +70,7 @@ export function PagePublishCard({
       } else {
         notifications.show({
           title: tr("エラー"),
-          message: r.error ?? tr("処理に失敗しました"),
+          message: tr(r.error) ?? tr("処理に失敗しました"),
           color: "red",
         });
       }

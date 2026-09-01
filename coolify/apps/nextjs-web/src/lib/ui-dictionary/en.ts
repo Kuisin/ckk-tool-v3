@@ -5745,6 +5745,7 @@ export const en: Record<string, string> = {
   "分岐の変更": "Change the branch",
   "分岐の編集 — {v0}": "Edit the branch — {v0}",
   "分岐を更新（数量 {nextQuantity}, {v1}）": "Updated the branch (quantity {nextQuantity}, {v1})",
+  "分岐を更新しました": "The branch was updated",
   "分岐を削除": "Delete the branch",
   "分岐を削除（{v0} 工程）": "Deleted the branch ({v0} steps)",
   "分岐を削除しました": "The branch was deleted",

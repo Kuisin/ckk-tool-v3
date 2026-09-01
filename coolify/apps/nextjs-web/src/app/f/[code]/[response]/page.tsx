@@ -71,7 +71,7 @@ export default async function MyResponsePage({
         actions={[{ ...HOME, variant: "filled" }]}
         color="gray"
         description={tr(
-          tr("URL が間違っているか、この回答を見る権限がありません。"),
+          "URL が間違っているか、この回答を見る権限がありません。",
         )}
         formTitle={null}
         icon={<IconSearchOff size={24} />}

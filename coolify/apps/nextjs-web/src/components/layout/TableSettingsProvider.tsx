@@ -52,7 +52,7 @@ export function TableSettingsProvider({
         if (!r.ok) {
           notifications.show({
             title: tr("エラー"),
-            message: r.error ?? tr("表示する列を保存できませんでした"),
+            message: tr(r.error) ?? tr("表示する列を保存できませんでした"),
             color: "red",
           });
         }

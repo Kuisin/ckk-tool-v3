@@ -362,6 +362,7 @@
 "種別を保存しました": ["The type was saved", "已保存类别"],
 "アドレスを入れ直す": ["Enter the address again", "重新输入地址"],
 "分岐を追加しました": ["The branch was added", "已添加分支"],
+"分岐を更新しました": ["The branch was updated", "已更新分支"],
 "出荷前検査（任意）": ["Pre-shipment inspection (optional)", "出货前检查（可选）"],
 "分岐を削除しました": ["The branch was deleted", "已删除分支"],
 "製品・受注元で検索": ["Search by product or ordering customer", "按产品或订货方搜索"],

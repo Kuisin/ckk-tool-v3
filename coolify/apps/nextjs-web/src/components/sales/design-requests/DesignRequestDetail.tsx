@@ -456,7 +456,7 @@ export function DesignRequestDetail({
           </PrimaryButton>
         }
         description={tr("承認済みです。{v0} が図面の作成を始められます", {
-          v0: request.assigneeName ?? "担当者",
+          v0: request.assigneeName ?? tr("担当者"),
         })}
         icon={<IconPlayerPlay size={20} />}
         title={tr("着手できます")}

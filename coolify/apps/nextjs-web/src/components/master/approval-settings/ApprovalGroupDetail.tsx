@@ -251,7 +251,7 @@ function ApprovalPermissionCell({
                   label: a.label,
                   v1: a.scopes
                     .map((s) => permissionScopeLabel(s, locale))
-                    .join("・"),
+                    .join(tr("・")),
                 },
               )
           : tr(
@@ -338,7 +338,7 @@ export function ApprovalGroupDetail({
           title: member.isActive ? "無効化しました" : tr("有効化しました"),
           message: tr("メンバー「{displayName}」を{v1}しました", {
             displayName: member.displayName,
-            v1: member.isActive ? "無効化" : "有効化",
+            v1: member.isActive ? "無効化" : tr("有効化"),
           }),
           color: "green",
         });

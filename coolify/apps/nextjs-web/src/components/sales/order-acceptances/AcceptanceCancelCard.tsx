@@ -73,7 +73,7 @@ export function AcceptanceCancelCard({
       } else {
         notifications.show({
           title: tr("エラー"),
-          message: result.error ?? tr("承認に失敗しました"),
+          message: tr(result.error) ?? tr("承認に失敗しました"),
           color: "red",
         });
       }
@@ -95,7 +95,7 @@ export function AcceptanceCancelCard({
       } else {
         notifications.show({
           title: tr("エラー"),
-          message: result.error ?? tr("差し戻しに失敗しました"),
+          message: tr(result.error) ?? tr("差し戻しに失敗しました"),
           color: "red",
         });
       }

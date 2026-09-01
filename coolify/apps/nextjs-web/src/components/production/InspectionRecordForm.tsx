@@ -293,9 +293,9 @@ function ItemVerdict({
                 entry.manualPass !== auto &&
                 item.allowManualOverride
               ? tr("自動判定（{v0}）を手動で上書き中", {
-                  v0: auto ? "合格" : "不合格",
+                  v0: auto ? "合格" : tr("不合格"),
                 })
-              : tr("自動判定: {v0}", { v0: auto ? "合格" : "不合格" })}
+              : tr("自動判定: {v0}", { v0: auto ? "合格" : tr("不合格") })}
       </Text>
     </Group>
   );
@@ -416,7 +416,7 @@ export function InspectionRecordForm({
       notifications.show({
         title: tr("入力不足"),
         message: tr("必須項目を入力してください（{v0}）", {
-          v0: missing.map((m) => m.name).join("・"),
+          v0: missing.map((m) => m.name).join(tr("・")),
         }),
         color: "red",
       });
@@ -435,7 +435,7 @@ export function InspectionRecordForm({
         notifications.show({
           title: tr("入力エラー"),
           message: tr("合格数が検査数を超えています（{v0}）", {
-            v0: invalid.map((m) => m.name).join("・"),
+            v0: invalid.map((m) => m.name).join(tr("・")),
           }),
           color: "red",
         });

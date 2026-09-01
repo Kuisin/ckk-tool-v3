@@ -157,7 +157,9 @@ export function ResponseExportModal({
           <Text c="dimmed" size="xs">
             {tr(
               tr(
-                "指定した日に提出されたものを含みます。日付で絞ると、まだ提出していない\n            回答は外れます。",
+                tr(
+                  "指定した日に提出されたものを含みます。日付で絞ると、まだ提出していない\n            回答は外れます。",
+                ),
               ),
             )}
           </Text>
@@ -180,7 +182,9 @@ export function ResponseExportModal({
             {allFieldsChecked
               ? tr(
                   tr(
-                    "すべての項目を列にします。減らしたいものだけ外してください。",
+                    tr(
+                      "すべての項目を列にします。減らしたいものだけ外してください。",
+                    ),
                   ),
                 )
               : tr("{v0} 項目を選択中", { v0: fieldKeys.length })}

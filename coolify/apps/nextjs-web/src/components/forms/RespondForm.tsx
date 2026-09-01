@@ -108,7 +108,7 @@ export function RespondForm({
       } else {
         notifications.show({
           title: tr("エラー"),
-          message: result.error ?? tr("保存に失敗しました"),
+          message: tr(result.error) ?? tr("保存に失敗しました"),
           color: "red",
         });
       }
@@ -262,7 +262,7 @@ function DraftResumeList({
         } else {
           notifications.show({
             title: tr("エラー"),
-            message: result.error ?? tr("削除できませんでした"),
+            message: tr(result.error) ?? tr("削除できませんでした"),
             color: "red",
           });
         }

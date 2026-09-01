@@ -435,7 +435,7 @@ export function ProcessStepForm({
           ) : (
             <TextInput
               description={tr(
-                tr("英大文字・数字・アンダースコア（例: CYLINDER_MACHINING）"),
+                "英大文字・数字・アンダースコア（例: CYLINDER_MACHINING）",
               )}
               label={
                 <HelpLabel
@@ -451,7 +451,7 @@ export function ProcessStepForm({
           )}
           <NumberInput
             description={tr(
-              tr("一覧・カタログの既定の並び順（実行順は依存解決で決定）"),
+              "一覧・カタログの既定の並び順（実行順は依存解決で決定）",
             )}
             label={<HelpLabel {...fieldHelp("processStep", "sortOrder")} />}
             {...form.getInputProps("sortOrder")}
@@ -510,7 +510,7 @@ export function ProcessStepForm({
           <NumberInput
             decimalScale={2}
             description={tr(
-              tr("ルート/指示書の工程に入る初期値（任意・上書き可）"),
+              "ルート/指示書の工程に入る初期値（任意・上書き可）",
             )}
             label={<HelpLabel {...fieldHelp("processStep", "defaultTime")} />}
             min={0.01}
@@ -630,7 +630,7 @@ export function ProcessStepForm({
             clearable
             data={workLocationTypeOptions}
             description={tr(
-              tr("種別に属する全場所を許可（種別は MS0D の種別管理で定義）"),
+              "種別に属する全場所を許可（種別は MS0D の種別管理で定義）",
             )}
             label={
               <HelpLabel

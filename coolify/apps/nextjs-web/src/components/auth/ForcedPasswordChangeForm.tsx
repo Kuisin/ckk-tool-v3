@@ -59,7 +59,7 @@ export function ForcedPasswordChangeForm() {
     const res = await changePasswordAction({ currentPassword, newPassword });
     setLoading(false);
     if (!res.ok) {
-      setError(res.error ?? tr("変更に失敗しました"));
+      setError(tr(res.error) ?? tr("変更に失敗しました"));
       return;
     }
     router.push("/");

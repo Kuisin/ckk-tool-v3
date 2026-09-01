@@ -61,7 +61,7 @@ export function PortalShareCard({
         ? { color: "green", message: ok, title: tr("完了") }
         : {
             color: "red",
-            message: res.error ?? tr("失敗しました"),
+            message: tr(res.error) ?? tr("失敗しました"),
             title: tr("エラー"),
           },
     );

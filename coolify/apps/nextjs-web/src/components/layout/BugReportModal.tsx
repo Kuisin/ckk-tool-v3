@@ -73,7 +73,7 @@ export function BugReportModal({
         reset();
         onClose();
       } else {
-        setError(res.error);
+        setError(tr(res.error));
       }
     });
   };

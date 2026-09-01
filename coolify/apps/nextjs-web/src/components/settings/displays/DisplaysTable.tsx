@@ -167,7 +167,7 @@ export function DisplaysTable({ rows, plantOptions }: Props) {
       if (!result.ok) {
         notifications.show({
           title: tr("エラー"),
-          message: result.error ?? tr("操作に失敗しました"),
+          message: tr(result.error) ?? tr("操作に失敗しました"),
           color: "red",
         });
         return;

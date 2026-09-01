@@ -123,7 +123,7 @@ export function ToggleMaterialActiveModal({
               title: isActive ? "無効化しました" : tr("有効化しました"),
               message: tr("素材「{v0}」を{v1}しました", {
                 v0: label(target),
-                v1: isActive ? "無効化" : "有効化",
+                v1: isActive ? "無効化" : tr("有効化"),
               }),
               color: "green",
             });

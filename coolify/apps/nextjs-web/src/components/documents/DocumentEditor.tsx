@@ -117,7 +117,7 @@ export function DocumentEditor({
         />
         <TextInput
           description={tr(
-            tr("スラッシュ区切りで階層にできます（例: 手順書/出荷）"),
+            "スラッシュ区切りで階層にできます（例: 手順書/出荷）",
           )}
           label={tr("フォルダ")}
           onChange={(e) => setFolder(e.currentTarget.value)}

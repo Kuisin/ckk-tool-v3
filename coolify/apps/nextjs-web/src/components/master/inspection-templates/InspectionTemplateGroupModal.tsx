@@ -103,7 +103,11 @@ export function InspectionTemplateGroupModal({
   }, [opened]);
 
   const notifyError = (message: string) =>
-    notifications.show({ title: tr("エラー"), message, color: "red" });
+    notifications.show({
+      title: tr("エラー"),
+      message: tr(message),
+      color: "red",
+    });
 
   const add = () => {
     if (!newName.trim()) return;

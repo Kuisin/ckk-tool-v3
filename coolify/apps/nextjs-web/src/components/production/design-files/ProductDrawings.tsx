@@ -77,7 +77,7 @@ export function ProductDrawings({
       } else {
         notifications.show({
           title: tr("エラー"),
-          message: res.error ?? tr("失敗しました"),
+          message: tr(res.error) ?? tr("失敗しました"),
           color: "red",
         });
       }

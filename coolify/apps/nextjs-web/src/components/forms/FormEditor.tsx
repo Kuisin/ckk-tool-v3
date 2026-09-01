@@ -110,7 +110,7 @@ export function FormEditor({
       if (!saved.ok) {
         notifications.show({
           title: tr("エラー"),
-          message: saved.error ?? tr("保存に失敗しました"),
+          message: saved.error ? tr(saved.error) : tr("保存に失敗しました"),
           color: "red",
         });
         return;
@@ -125,7 +125,9 @@ export function FormEditor({
           notifications.show({
             title: tr("項目を保存できませんでした"),
             message: tr("{v0}（設定は保存しました）", {
-              v0: published.error ?? "項目定義が不正です",
+              v0: published.error
+                ? tr(published.error)
+                : tr("項目定義が不正です"),
             }),
             color: "red",
           });
@@ -277,7 +279,7 @@ export function FormEditor({
         <DateTimePicker
           clearable
           description={tr(
-            tr("この時刻を過ぎると自動で受付を終了します（操作は不要）"),
+            "この時刻を過ぎると自動で受付を終了します（操作は不要）",
           )}
           label={tr("受付終了")}
           onChange={(v) => set({ closesAt: toIso(v) })}

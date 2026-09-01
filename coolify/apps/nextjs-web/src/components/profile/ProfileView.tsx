@@ -189,7 +189,7 @@ export function ProfileView({ user }: { user: ProfileData }) {
         notifications.show({
           title: tr("保存しました"),
           message: tr(
-            tr("メールアドレスを更新しました（通知メールの宛先になります）"),
+            "メールアドレスを更新しました（通知メールの宛先になります）",
           ),
           color: "green",
         });
@@ -353,7 +353,9 @@ export function ProfileView({ user }: { user: ProfileData }) {
           <Text c="dimmed" size="xs">
             {tr(
               tr(
-                "通知メール（承認依頼・取込結果など）の宛先に使われます。空にすると\n            メール通知は届きません。",
+                tr(
+                  "通知メール（承認依頼・取込結果など）の宛先に使われます。空にすると\n            メール通知は届きません。",
+                ),
               ),
             )}
           </Text>
@@ -432,7 +434,9 @@ export function ProfileView({ user }: { user: ProfileData }) {
             <Text c="dimmed" size="xs">
               {tr(
                 tr(
-                  "登録されたデバイスはありません。通知設定から有効化できます。",
+                  tr(
+                    "登録されたデバイスはありません。通知設定から有効化できます。",
+                  ),
                 ),
               )}
             </Text>

@@ -150,7 +150,7 @@ export function ToggleProductActiveModal({
               title: isActive ? "無効化しました" : tr("有効化しました"),
               message: tr("製品「{v0}」を{v1}しました", {
                 v0: label(target, tr),
-                v1: isActive ? "無効化" : "有効化",
+                v1: isActive ? "無効化" : tr("有効化"),
               }),
               color: "green",
             });
@@ -272,7 +272,7 @@ export function DuplicateProductModal({
         <LocalizedTextInput
           jaProps={{
             description: tr(
-              tr("製品コードは保存時に自動採番されます（PRD-YYYYMM-NNNN）"),
+              "製品コードは保存時に自動採番されます（PRD-YYYYMM-NNNN）",
             ),
             value: nameJa,
             onChange: (e: React.ChangeEvent<HTMLInputElement>) =>

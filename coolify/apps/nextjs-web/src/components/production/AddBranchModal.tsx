@@ -154,7 +154,7 @@ export function AddBranchModal({
       if (result == null) return;
       if (result.ok) {
         notifications.show({
-          title: isEdit ? "分岐を更新しました" : tr("分岐を追加しました"),
+          title: isEdit ? tr("分岐を更新しました") : tr("分岐を追加しました"),
           message: isEdit
             ? editTarget.stepNames.join(" → ")
             : tr("{v0} から {v1} 工程", {
@@ -169,7 +169,7 @@ export function AddBranchModal({
         notifications.show({
           title: tr("エラー"),
           message:
-            result.errors?.join(" / ") ??
+            result.errors?.map((e) => tr(e)).join(" / ") ??
             (isEdit
               ? tr("分岐の更新に失敗しました")
               : tr("分岐の追加に失敗しました")),
@@ -237,7 +237,7 @@ export function AddBranchModal({
           <Select
             data={mergeTargets.map((s) => ({ value: s.id, label: s.name }))}
             description={tr(
-              tr("分岐系列の最後の工程から、この工程へ良品を戻します"),
+              "分岐系列の最後の工程から、この工程へ良品を戻します",
             )}
             disabled={isEdit && !editTarget.canEditTermination}
             label={tr("合流先（未着手のメインライン工程）")}

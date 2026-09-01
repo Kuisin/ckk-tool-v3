@@ -172,7 +172,7 @@ export function ToggleInspectionTemplateActiveModal({
               title: isActive ? "無効化しました" : tr("有効化しました"),
               message: tr("検査表テンプレート「{v0}」を{v1}しました", {
                 v0: label(target),
-                v1: isActive ? "無効化" : "有効化",
+                v1: isActive ? "無効化" : tr("有効化"),
               }),
               color: "green",
             });
@@ -860,7 +860,7 @@ export function InspectionTemplateItemModal({
           )}
           <TextInput
             description={tr(
-              tr("LE/PR/P/S/K/H/M/N/Z 等（列見出しの接尾辞・凡例に使用）"),
+              "LE/PR/P/S/K/H/M/N/Z 等（列見出しの接尾辞・凡例に使用）",
             )}
             label={tr("測定機器コード")}
             onChange={(e) => setMeasurementEquipment(e.currentTarget.value)}

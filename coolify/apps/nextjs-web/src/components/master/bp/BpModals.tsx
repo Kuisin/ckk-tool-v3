@@ -140,7 +140,7 @@ export function ToggleBpActiveModal({
               message: tr("{entityLabel}「{v1}」を{v2}しました", {
                 entityLabel: entityLabel,
                 v1: label(target),
-                v2: isActive ? "無効化" : "有効化",
+                v2: isActive ? "無効化" : tr("有効化"),
               }),
               color: "green",
             });

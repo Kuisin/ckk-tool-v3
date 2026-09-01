@@ -303,7 +303,7 @@ export function OrderAcceptanceCreateForm({
 
       <FormSection
         description={tr(
-          tr("明細ごとに製品・数量を入力します（単価は下書きで後入力も可）。"),
+          "明細ごとに製品・数量を入力します（単価は下書きで後入力も可）。",
         )}
         title={tr("明細")}
       >

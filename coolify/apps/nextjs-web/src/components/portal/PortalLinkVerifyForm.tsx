@@ -43,7 +43,7 @@ export function PortalLinkVerifyForm({ token }: { token: string }) {
         router.replace(res.href);
         return;
       }
-      setError(res.error);
+      setError(tr(res.error));
     });
   }
 

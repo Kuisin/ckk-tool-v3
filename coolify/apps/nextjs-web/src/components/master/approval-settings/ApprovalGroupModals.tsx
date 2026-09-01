@@ -144,7 +144,7 @@ export function ToggleApprovalGroupActiveModal({
               title: isActive ? "無効化しました" : tr("有効化しました"),
               message: tr("承認グループ「{name}」を{v1}しました", {
                 name: target.name,
-                v1: isActive ? "無効化" : "有効化",
+                v1: isActive ? "無効化" : tr("有効化"),
               }),
               color: "green",
             });
@@ -351,7 +351,7 @@ export function AddApprovalGroupMemberModal({
         if (payload.error) {
           notifications.show({
             title: tr("エラー"),
-            message: payload.error,
+            message: tr(payload.error),
             color: "red",
           });
           return;
@@ -448,7 +448,7 @@ export function EditMemberPeriodModal({
         if (payload.error) {
           notifications.show({
             title: tr("エラー"),
-            message: payload.error,
+            message: tr(payload.error),
             color: "red",
           });
           return;

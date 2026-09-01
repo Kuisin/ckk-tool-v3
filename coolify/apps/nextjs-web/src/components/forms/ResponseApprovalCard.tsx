@@ -60,7 +60,7 @@ export function ResponseApprovalCard({
       } else {
         notifications.show({
           title: tr("エラー"),
-          message: result.error ?? tr("処理に失敗しました"),
+          message: tr(result.error) ?? tr("処理に失敗しました"),
           color: "red",
         });
       }

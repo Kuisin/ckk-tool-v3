@@ -227,7 +227,7 @@ export function PrivilegedRequestForm({
         />
         <NumberInput
           description={tr(
-            tr("最初に操作した時点から測ります。使わなければ減りません"),
+            "最初に操作した時点から測ります。使わなければ減りません",
           )}
           label={tr("1 回あたりの有効時間（分）")}
           max={MAX_DURATION_MINUTES}

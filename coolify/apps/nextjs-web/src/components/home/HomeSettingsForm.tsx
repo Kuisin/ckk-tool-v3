@@ -261,7 +261,7 @@ export function HomeSettingsForm({ initial }: { initial: HomeSettings }) {
           <Stack gap="sm">
             <Radio
               description={tr(
-                tr("カテゴリ（販売・購買・生産…）ごとにアプリを表示します"),
+                "カテゴリ（販売・購買・生産…）ごとにアプリを表示します",
               )}
               label={tr("標準（カテゴリ別）")}
               value="default"

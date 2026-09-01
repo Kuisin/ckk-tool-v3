@@ -121,7 +121,7 @@ export function MaterialTypeTable({ rows }: { rows: MaterialTypeRow[] }) {
           title: isActive ? "有効化しました" : tr("無効化しました"),
           message: tr("{v0}件の材種を{v1}しました", {
             v0: targets.length,
-            v1: isActive ? "有効化" : "無効化",
+            v1: isActive ? "有効化" : tr("無効化"),
           }),
           color: "green",
         });

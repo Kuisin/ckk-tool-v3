@@ -64,7 +64,7 @@ export function PortalAccountsTable({
     } else {
       notifications.show({
         color: "red",
-        message: res.error ?? tr("失敗しました"),
+        message: tr(res.error) ?? tr("失敗しました"),
         title: tr("エラー"),
       });
     }

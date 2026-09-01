@@ -79,7 +79,7 @@ export function ComponentTable({
               title: next ? "有効化しました" : tr("無効化しました"),
               message: tr("「{code}」を{v1}しました", {
                 code: row.code,
-                v1: next ? "有効化" : "無効化",
+                v1: next ? "有効化" : tr("無効化"),
               }),
               color: "green",
             });

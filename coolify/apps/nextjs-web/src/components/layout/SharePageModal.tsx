@@ -69,9 +69,9 @@ export function SharePageModal({
     if (!opened || options) return;
     fetchShareOptionsAction().then((res) => {
       if (res.ok) setOptions(res.data);
-      else setError(res.error);
+      else setError(tr(res.error));
     });
-  }, [opened, options]);
+  }, [opened, options, tr]);
 
   const reset = () => {
     setUsers([]);
@@ -107,7 +107,7 @@ export function SharePageModal({
         reset();
         onClose();
       } else {
-        setError(res.error);
+        setError(tr(res.error));
       }
     });
   };

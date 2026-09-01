@@ -86,7 +86,7 @@ export function FloorMapsPanel({
       if (!res.ok) {
         notifications.show({
           title: tr("エラー"),
-          message: res.error ?? tr("操作に失敗しました"),
+          message: tr(res.error) ?? tr("操作に失敗しました"),
           color: "red",
         });
         return;

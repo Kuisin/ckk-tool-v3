@@ -136,7 +136,9 @@ export function FormDetail({
           ? { title: done, message: form.title, color: "green" }
           : {
               title: tr("変更できませんでした"),
-              message: result.error ?? tr("もう一度お試しください"),
+              message: result.error
+                ? tr(result.error)
+                : tr("もう一度お試しください"),
               color: "red",
             },
       );

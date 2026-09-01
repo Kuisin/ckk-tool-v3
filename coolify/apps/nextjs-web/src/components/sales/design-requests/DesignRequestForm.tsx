@@ -359,7 +359,7 @@ export function DesignRequestForm({
                   clearable
                   data={quoteOptions}
                   description={tr(
-                    tr("§1 見積と並行して設計を依頼する場合の見積元（任意）"),
+                    "§1 見積と並行して設計を依頼する場合の見積元（任意）",
                   )}
                   label={<HelpLabel {...fieldHelp("designRequest", "quote")} />}
                   placeholder={tr("直近の見積書から選択")}
@@ -369,7 +369,7 @@ export function DesignRequestForm({
               ) : form.values.trigger === "SALES_ORDER" ? (
                 <SearchSelect
                   description={tr(
-                    tr("§3 受注と並行して設計を依頼する場合の注文明細（任意）"),
+                    "§3 受注と並行して設計を依頼する場合の注文明細（任意）",
                   )}
                   label={
                     <HelpLabel {...fieldHelp("designRequest", "orderLine")} />
@@ -477,7 +477,7 @@ export function DesignRequestForm({
           <Select
             data={assigneeOptions}
             description={tr(
-              tr("承認されると、この人に「着手してください」の通知が届きます"),
+              "承認されると、この人に「着手してください」の通知が届きます",
             )}
             label={<HelpLabel {...fieldHelp("designRequest", "assignee")} />}
             placeholder={tr("図面をつくる担当者")}

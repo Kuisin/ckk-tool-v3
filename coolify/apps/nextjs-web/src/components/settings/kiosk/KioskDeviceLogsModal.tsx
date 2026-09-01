@@ -64,7 +64,7 @@ export function DeviceLogList({ deviceId }: { deviceId: string }) {
     startTransition(async () => {
       const result = await fetchDeviceSessions(deviceId, cursor);
       if (!result.ok) {
-        setError(result.error);
+        setError(tr(result.error));
         setLoaded(true);
         return;
       }

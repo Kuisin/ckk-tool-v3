@@ -121,7 +121,7 @@ export function StepExecutionView({ data }: { data: StepExecutionData }) {
     } else {
       notifications.show({
         title: tr("エラー"),
-        message: result.errors?.join(" / ") ?? fallback,
+        message: result.errors?.map((e) => tr(e)).join(" / ") ?? fallback,
         color: "red",
       });
     }
@@ -333,7 +333,7 @@ export function StepExecutionView({ data }: { data: StepExecutionData }) {
             {step.lotInputMode !== "NONE" && (
               <TextInput
                 description={tr(
-                  tr("素材ロット・伝票コードなど（開始時に記録されます）"),
+                  "素材ロット・伝票コードなど（開始時に記録されます）",
                 )}
                 label={tr("ロット/伝票コード")}
                 maxLength={100}

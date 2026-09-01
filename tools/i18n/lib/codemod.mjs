@@ -221,9 +221,17 @@ export function transform(source, dict, { accessor, requireAsync = false } = {})
     const end = t.end; // tokenize が記録したソース上の終端（エスケープに強い）
     if (isKey(source, end)) continue;
     if (isModuleSpecifier(source, t.start)) continue;
-    // すでに tr("…") になっている
-    if (/\btr\(\s*$/.test(source.slice(Math.max(0, t.start - 6), t.start)))
-      continue;
+    // すでに tr("…") になっている。
+    //
+    // **`masked` を見て、手前を無制限に遡る。** 以前は `source` の直前 6 文字
+    // だけを見ていたため、Biome が長い呼び出しを複数行に整形すると
+    // （`tr(\n              "…"`）改行とインデントで 6 文字をすぐ超え、
+    // 「まだ包まれていない」と誤判定して**もう一度包んでいた**。繰り返し実行
+    // するたびに `tr(tr(tr("…")))` と何重にも重なっていき、実際に 170 ファイルで
+    // 起きていた。`masked` はコメント・文字列を空白に潰した写しなので、
+    // 空白しか挟まっていなければ何文字離れていても安全に判定できる。
+    const before = masked.slice(0, t.start);
+    if (/\btr\(\s*$/.test(before)) continue;
     // JSX の属性値（`label="顧客"`）は式なので波括弧が要る:
     //   label="顧客"  →  label={tr("顧客")}
     // 見分けは「`=` の直後に空白なく引用符が来る」— Biome が整形しているので

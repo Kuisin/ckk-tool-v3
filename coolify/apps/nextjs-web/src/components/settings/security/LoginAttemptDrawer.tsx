@@ -83,12 +83,12 @@ export function LoginAttemptDrawer({
     fetchLoginAttemptDetail(id).then((res) => {
       if (cancelled) return;
       if (res.ok) setRow(res.data);
-      else setError(res.error);
+      else setError(tr(res.error));
     });
     return () => {
       cancelled = true;
     };
-  }, [id]);
+  }, [id, tr]);
 
   const signals = (row?.signals ?? null) as Signals | null;
   const flags = row ? riskFlags(signals, row.createdAt) : [];

@@ -64,7 +64,11 @@ export function LinkAdminPanel({
   // 戻り値は void に固定する（notifications.show は id を返すので、
   // `return notifyError(...)` が useTransition の TransitionFunction に合わなくなる）。
   const notifyError = (message: string): void => {
-    notifications.show({ title: tr("エラー"), message, color: "red" });
+    notifications.show({
+      title: tr("エラー"),
+      message: tr(message),
+      color: "red",
+    });
   };
 
   const add = () => {

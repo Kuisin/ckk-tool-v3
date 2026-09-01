@@ -247,7 +247,7 @@ export function WorkOrderLinksCard({
             allowDecimal={false}
             allowNegative={false}
             description={tr(
-              tr("未入力 = 先行指示書の完了時の完成数を全量受け取る"),
+              "未入力 = 先行指示書の完了時の完成数を全量受け取る",
             )}
             label={tr("受け渡し数量（任意）")}
             min={1}

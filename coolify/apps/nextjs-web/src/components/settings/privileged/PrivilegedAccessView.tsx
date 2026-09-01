@@ -74,7 +74,7 @@ export function PrivilegedAccessView({
       } else {
         notifications.show({
           title: tr("エラー"),
-          message: res.error ?? tr("失敗しました"),
+          message: tr(res.error) ?? tr("失敗しました"),
           color: "red",
         });
       }
@@ -154,7 +154,7 @@ export function PrivilegedAccessView({
             } else {
               notifications.show({
                 title: tr("承認しましたが適用できませんでした"),
-                message: res.data.error ?? tr("前提が変わっています"),
+                message: tr(res.data.error) ?? tr("前提が変わっています"),
                 color: "orange",
                 autoClose: false,
               });

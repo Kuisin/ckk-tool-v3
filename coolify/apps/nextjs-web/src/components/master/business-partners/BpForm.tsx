@@ -458,7 +458,7 @@ export function BpForm({
         <>
           <FormSection
             description={tr(
-              tr("種別・支払条件・標準リードタイム（bp_vendor_attrs）。"),
+              "種別・支払条件・標準リードタイム（bp_vendor_attrs）。",
             )}
             title={tr("仕入先・外注先情報")}
           >

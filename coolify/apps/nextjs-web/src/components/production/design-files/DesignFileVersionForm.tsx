@@ -183,7 +183,7 @@ export function DesignFileVersionForm({
       <FormSection title={tr("ファイル")}>
         <DesignFileSlot
           description={tr(
-            tr("加工プログラムを起こす元データ。この系列の最新図面になります"),
+            "加工プログラムを起こす元データ。この系列の最新図面になります",
           )}
           file={blueprint}
           fullWidth={isMobile}

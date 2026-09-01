@@ -68,7 +68,7 @@ export function PortalLoginForm() {
         router.replace("/portal");
         return;
       }
-      setError(res.error);
+      setError(tr(res.error));
     });
   }
 
@@ -83,7 +83,7 @@ export function PortalLoginForm() {
         router.replace("/portal");
         return;
       }
-      setError(res.error);
+      setError(tr(res.error));
     });
   }
 
