@@ -5,6 +5,12 @@ export const zh: KioskMessages = {
     stepExecution: "工序执行",
     woScan: "工单扫码",
   },
+  userMenu: {
+    title: "用户",
+    textSize: "文字大小",
+    language: "语言",
+    logout: "退出登录",
+  },
   launcher: {
     greeting: (name: string) => name,
     logout: "退出登录",

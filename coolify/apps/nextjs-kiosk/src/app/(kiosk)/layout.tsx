@@ -1,8 +1,17 @@
 import { DevicePresence } from "@/components/DevicePresence";
+import { I18nProvider } from "@/components/I18nProvider";
 import { KioskShell } from "@/components/KioskShell";
 import { LastPageTracker } from "@/components/LastPageTracker";
 import { LocationReporter } from "@/components/LocationReporter";
+import { prisma } from "@/lib/db";
+import type { Locale } from "@/lib/i18n";
 import { getDevice, getSession } from "@/lib/kiosk-auth";
+import {
+  DEFAULT_TEXT_SCALE,
+  normalizeTextScale,
+  type TextScale,
+  textScaleRootCss,
+} from "@/lib/text-scale";
 
 /**
  * (kiosk) レイアウト — 共有タブレットの画面まわり（ヘッダー・フッター・
@@ -33,27 +42,55 @@ export default async function KioskLayout({
   // ログイン中の利用者名をヘッダー左に出す（未ログインは null＝非表示）。
   // getSession は読み取りのみ（期限切れセッションの失効だけは書く）で
   // lastActivityAt には触らないので、ここで呼んでも滞留時間は伸びない。
+  // ログイン中の利用者名 + 文字の大きさ。大きさは users.text_scale
+  // （nextjs-web と同じ列）なので、Web で決めた設定がそのまま付いてくる。
   let userName: string | null = null;
+  let textScale: TextScale = DEFAULT_TEXT_SCALE;
+  // ヘッダーの設定の窓も利用者の言語で出す。**辞書はここで配る** —
+  // 以前は各ページが個別に包んでいたので、layout にあるヘッダーは
+  // Provider の外側にあり、常に既定（ja）になっていた（言語の切替も
+  // 効いていないように見える）。ページ側の包みはそのままでも害は無い
+  // （内側が勝つだけで、同じ値になる）。
+  let locale: Locale = "ja";
   try {
-    userName = (await getSession())?.displayName ?? null;
+    const session = await getSession();
+    userName = session?.displayName ?? null;
+    if (session) {
+      locale = session.locale;
+      const user = await prisma.user.findUnique({
+        where: { id: session.userId },
+        select: { textScale: true },
+      });
+      textScale = normalizeTextScale(user?.textScale);
+    }
   } catch {
-    // 端末名と同じくビルド時・DB 不通時は出さないだけ
+    // 端末名と同じくビルド時・DB 不通時は既定のまま
   }
 
   return (
     <>
+      {/* 文字の大きさは **サーバーで** 流す。クライアントで当てると、最初の
+          描画だけ既定の大きさで出てから切り替わり、文字がひと呼吸おいて跳ねる。 */}
+      <style
+        // biome-ignore lint/security/noDangerouslySetInnerHtml: 列挙から作った数値だけ（lib/text-scale.ts）
+        dangerouslySetInnerHTML={{ __html: textScaleRootCss(textScale) }}
+      />
+
       {/* 登録済み端末はログイン前でも WS 接続を保持（プレゼンス）+ GPS 報告 */}
       {registered && <DevicePresence />}
       {registered && <LocationReporter />}
       <LastPageTracker />
 
-      <KioskShell
-        deviceName={deviceName}
-        registered={registered}
-        userName={userName}
-      >
-        {children}
-      </KioskShell>
+      <I18nProvider locale={locale}>
+        <KioskShell
+          deviceName={deviceName}
+          registered={registered}
+          textScale={textScale}
+          userName={userName}
+        >
+          {children}
+        </KioskShell>
+      </I18nProvider>
     </>
   );
 }
