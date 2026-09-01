@@ -226,3 +226,71 @@ describe("JSON の形", () => {
     });
   });
 });
+
+describe("旧帳票の項目（#703 で増えた列）", () => {
+  it("Excel から読める", () => {
+    const { templates, errors } = rowsToPortable(
+      sheet([
+        {
+          code: "A",
+          name: "n",
+          layoutStyle: "チェックリスト",
+          sampleNaming: "初品・中間品・最終品",
+          itemName: "外径",
+          section: "形状",
+          department: "品証",
+          measurementEquipment: "LE",
+          nominalValue: "8.3",
+          toleranceTopDelta: "0.02",
+          toleranceBottomDelta: "0.02",
+        },
+      ]),
+    );
+    expect(errors).toEqual([]);
+    expect(templates[0]).toMatchObject({
+      layoutStyle: "CHECKLIST",
+      sampleNaming: "INITIAL_MID_FINAL",
+    });
+    expect(templates[0].items[0]).toMatchObject({
+      section: "SHAPE",
+      department: "QUALITY_ASSURANCE",
+      measurementEquipment: "LE",
+      nominalValue: 8.3,
+      toleranceTopDelta: 0.02,
+      toleranceBottomDelta: 0.02,
+    });
+  });
+
+  it("基本値・公差が数値でなければ行ごと知らせる", () => {
+    const { errors } = rowsToPortable(
+      sheet([
+        { code: "A", name: "n", itemName: "i", nominalValue: "だいたい" },
+      ]),
+    );
+    expect(errors[0].message).toContain("基本値・公差");
+  });
+
+  // これらを持たない古い書き出しファイルも、そのまま取り込めること
+  it("古いファイル（新しい列を持たない）は既定値で埋まる", () => {
+    const parsed = portableFileSchema.parse({
+      kind: PORTABLE_KIND,
+      version: 1,
+      templates: [
+        {
+          code: "A",
+          name: { ja: "n" },
+          items: [{ itemName: { ja: "i" }, inputType: "NUMBER" }],
+        },
+      ],
+    });
+    expect(parsed.templates[0]).toMatchObject({
+      layoutStyle: "DIMENSIONAL",
+      sampleNaming: "GENERIC",
+    });
+    expect(parsed.templates[0].items[0]).toMatchObject({
+      section: "MEASUREMENT",
+      department: null,
+      nominalValue: null,
+    });
+  });
+});

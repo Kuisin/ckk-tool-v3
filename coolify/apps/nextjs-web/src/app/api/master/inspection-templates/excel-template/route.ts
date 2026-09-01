@@ -12,8 +12,11 @@ import { checkPermission } from "@/lib/authz";
 import {
   EXCEL_COLUMNS,
   ITEM_TYPE_LABELS,
+  LAYOUT_STYLE_LABELS,
   RECORD_STYLE_LABELS,
+  SAMPLE_NAMING_LABELS,
   SAMPLING_LABELS,
+  SECTION_LABELS,
 } from "@/lib/inspection-template-io";
 import { buildXlsx, cellText } from "@/lib/xlsx";
 
@@ -27,6 +30,8 @@ const EXAMPLE: Record<string, string> = {
   samplingMode: SAMPLING_LABELS.ALL,
   samplingValue: "",
   recordStyle: RECORD_STYLE_LABELS.VALUES,
+  layoutStyle: LAYOUT_STYLE_LABELS.DIMENSIONAL,
+  sampleNaming: SAMPLE_NAMING_LABELS.GENERIC,
   itemName: "外径",
   inputType: ITEM_TYPE_LABELS.NUMBER,
   unit: "mm",
@@ -38,6 +43,12 @@ const EXAMPLE: Record<string, string> = {
   goalValue: "8.00",
   isRequired: "はい",
   allowManualOverride: "はい",
+  section: SECTION_LABELS.MEASUREMENT,
+  department: "",
+  measurementEquipment: "LE",
+  nominalValue: "8.00",
+  toleranceTopDelta: "0.02",
+  toleranceBottomDelta: "0.02",
 };
 
 export async function GET(): Promise<NextResponse | Response> {
