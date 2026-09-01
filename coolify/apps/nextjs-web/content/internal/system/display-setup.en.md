@@ -172,6 +172,10 @@ screen, or while you wait for a Pi to arrive.
 **Just open the same URL in a second window.** It becomes screen 2 on its own and
 can be registered as a separate display — no URL editing needed.
 
+**Each window shows its own link code (QR).** Register them one at a time in
+Devices. Each screen labels itself above the code — "screen 1 of 2" — so you can
+tell which window you are registering.
+
 > ⚠️ What is detected is **the order windows were opened**, not which monitor each
 > is on. To pin "the left monitor is screen 1", give the numbers explicitly below.
 

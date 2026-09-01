@@ -32,6 +32,7 @@ import {
 } from "@/components/LinkCodeScreen";
 import type { DisplayAuthFailReason } from "@/lib/display-auth";
 import type { MachineHint } from "@/lib/display-core";
+import { claimScreenSlot } from "@/lib/screen-slot";
 
 /**
  * 端末 id の控え（Cookie 消失時の復帰用）。**窓ごとに分ける** —
@@ -44,6 +45,8 @@ function deviceIdKey(screenIndex: number | null): string {
     : `ckk_display_device_id_${screenIndex}`;
 }
 const POLL_INTERVAL_MS = 3000;
+/** 何枚開いているかを見直す間隔（増減はゆっくりなので長めで足りる）。 */
+const SLOT_WATCH_MS = 5000;
 
 /**
  * 失効・停止のときに現場へ出す一言（「壊れた」と誤解させない）。
@@ -74,6 +77,39 @@ type Props = {
   /** この機械につながっている画面の総数。 */
   screenTotal: number;
 };
+
+/**
+ * この窓が何枚目で、いま何枚開いているか。**開いたあとに増減するので見張る。**
+ * Web Locks が使えないブラウザでは null（URL の値に任せる）。
+ */
+function useScreenSlot(
+  explicitScreen: number | null,
+): { index: number; total: number } | null {
+  const [slot, setSlot] = useState<{ index: number; total: number } | null>(
+    null,
+  );
+
+  useEffect(() => {
+    let stopped = false;
+    const look = async () => {
+      try {
+        // 既に錠を握っていれば同じ番号が返る（何度呼んでも動かない）
+        const got = await claimScreenSlot(explicitScreen);
+        if (!stopped) setSlot({ index: got.index, total: got.total });
+      } catch {
+        // 使えないブラウザ・拒否されたときは URL の値のまま
+      }
+    };
+    void look();
+    const id = setInterval(look, SLOT_WATCH_MS);
+    return () => {
+      stopped = true;
+      clearInterval(id);
+    };
+  }, [explicitScreen]);
+
+  return slot;
+}
 
 export function DisplaySetup({ reason, hint, screenTotal }: Props) {
   const storageKey = deviceIdKey(hint.screenIndex);
@@ -249,12 +285,18 @@ export function DisplaySetup({ reason, hint, screenTotal }: Props) {
   }, [state, begin, hint, screenQuery, storageKey]);
 
   const note = REASON_NOTE[reason];
-  // 1 台に複数つないでいるときは「何枚目か」を出す。同時に 2 枚のテレビが
-  // コードを出すので、どちらのコードを入力しているのか分からなくなるため。
+  // 1 台に複数つないでいるときは「何枚目か」を出す。**同時に 2 枚が同じような
+  // コード画面を出すので、これが無いとどちらのコードを入力しているのか
+  // 分からなくなる。**
+  //
+  // URL の `of` は開いた時点の数なので当てにしない — 1 枚目は「自分だけ」の
+  // つもりで開いており、あとから 2 枚目が増えても URL は変わらない。
+  // 実際に握られている錠を数えて、**両方の窓が自分の番号を出せる**ようにする。
+  const live = useScreenSlot(hint.screenIndex);
+  const index = live?.index ?? hint.screenIndex;
+  const total = Math.max(live?.total ?? 1, screenTotal);
   const screenLabel =
-    screenTotal > 1 && hint.screenIndex
-      ? `この機械の ${screenTotal} 枚中 ${hint.screenIndex} 枚目`
-      : null;
+    total > 1 && index ? `この機械の ${total} 枚中 ${index} 枚目` : null;
 
   // 共有部品が読む形へ。linked の文面だけここで組み立てる（端末は
   // 「利用を開始できます」、ディスプレイは「表示を開始します」）。
