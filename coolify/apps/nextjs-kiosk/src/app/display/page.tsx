@@ -1,14 +1,18 @@
 import { getDisplay } from "@/lib/display-auth";
-import { machineHint } from "@/lib/display-core";
+import { displayRegistrationBlocked, machineHint } from "@/lib/display-core";
+import { DisplayBlocked } from "./DisplayBlocked";
 import { DisplayRenderer } from "./DisplayRenderer";
 import { DisplaySetup } from "./DisplaySetup";
 
 /**
  * /display — Raspberry Pi が開く唯一の URL。
  *
- * ここから先の分岐は 2 つだけ:
- *   未登録   → リンクコードを出して待つ（キオスク端末の /setup と同じ 4 段）
- *   登録済み → 割り当てられた表示内容を出す
+ * ここから先の分岐は 3 つ:
+ *   未登録         → リンクコードを出して待つ（端末の /setup と同じ 4 段）
+ *   登録済み       → 割り当てられた表示内容を出す
+ *   停止・失効     → **理由だけを出す。リンクコードは出さない** — 出すと
+ *                    その場で登録し直せてしまい、管理者が止めたはずの画面が
+ *                    復活し、同じ実機のプロファイルが二重にできる
  *
  * Pi 側には設定が無いので、**この判断はすべてサーバーが持つ**。
  * 失効させると次の再読込でペアリング画面に戻る（現場に行かなくてよい）。
@@ -34,7 +38,11 @@ export default async function DisplayPage({
   const screenTotal = Number(one("of")) || 1;
 
   if (!auth.ok) {
-    // NO_COOKIE 以外（失効・停止・期限切れ）は理由を出してからペアリングへ。
+    // 止められている画面は登録し直させない（上の注記）。
+    if (displayRegistrationBlocked(auth.reason)) {
+      return <DisplayBlocked reason={auth.reason} />;
+    }
+    // それ以外（新品・Cookie 消失・期限切れ）は理由を出してからペアリングへ。
     // 現場の人が「壊れた」ではなく「取り消されたのだ」と分かるようにする。
     return (
       <DisplaySetup

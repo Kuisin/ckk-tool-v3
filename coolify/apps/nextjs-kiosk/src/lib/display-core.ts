@@ -196,3 +196,14 @@ export function extractLinkCode(raw: string): string {
   const normalized = normalizeCode(candidate);
   return normalized.length === LINK_CODE_LENGTH ? normalized : "";
 }
+
+/**
+ * その状態の画面に**新しいリンクコードを出してよいか**（端末側と同じ判断 —
+ * kiosk-auth-core.ts の registrationBlocked と揃えてある）。
+ *
+ * 止められている画面（DISABLED / REVOKED）に出すと、停止が迂回でき、
+ * 同じ実機のプロファイルが二重にできる。
+ */
+export function displayRegistrationBlocked(reason: string): boolean {
+  return reason === "DISABLED" || reason === "REVOKED";
+}

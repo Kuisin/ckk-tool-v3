@@ -150,3 +150,21 @@ export function extractCardId(payload: string): string {
     return normalizeCode(trimmed);
   }
 }
+
+/**
+ * その状態の端末に**新しいリンクコードを出してよいか**。
+ *
+ * 出してはいけないのは「Cookie はあるが、その端末は止められている」場合
+ * （DISABLED / REVOKED）。ここで新しいコードを出すと:
+ *
+ *   1. **停止・失効が迂回できる。** 管理者が止めた端末が、自分で登録し直して
+ *      別のプロファイルとして復活する。
+ *   2. **同じ実機のプロファイルが二重にできる。** 元の行は残ったままなので、
+ *      一覧に同じタブレットが 2 つ並び、どちらが本物か分からなくなる。
+ *
+ * NO_COOKIE / NOT_FOUND は素の新品・行ごと消された端末なので、登録してよい。
+ * EXPIRED は行が生きている（ACTIVE）ので、まず再有効化を試す道がある。
+ */
+export function registrationBlocked(reason: string): boolean {
+  return reason === "DISABLED" || reason === "REVOKED";
+}

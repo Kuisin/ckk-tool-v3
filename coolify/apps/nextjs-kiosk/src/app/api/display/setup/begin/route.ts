@@ -14,7 +14,11 @@ import { NextResponse } from "next/server";
 import { generateCode } from "@/lib/crockford";
 import { prisma } from "@/lib/db";
 import { getDisplay } from "@/lib/display-auth";
-import { LINK_CODE_LENGTH, LINK_REQUEST_TTL_MS } from "@/lib/display-core";
+import {
+  displayRegistrationBlocked,
+  LINK_CODE_LENGTH,
+  LINK_REQUEST_TTL_MS,
+} from "@/lib/display-core";
 import { clientIpOf, userAgentOf } from "@/lib/request-ip";
 
 export const dynamic = "force-dynamic";
@@ -26,6 +30,11 @@ export async function POST(req: Request) {
       status: "ALREADY_REGISTERED",
       deviceId: existing.display.id,
     });
+  }
+  // 止められている画面には新しいコードを出さない（端末側と同じ理由 —
+  // 停止の迂回と、同じ実機のプロファイルの二重化を防ぐ）。
+  if (displayRegistrationBlocked(existing.reason)) {
+    return NextResponse.json({ status: "BLOCKED", reason: existing.reason });
   }
 
   const now = new Date();

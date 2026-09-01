@@ -14,6 +14,7 @@ import { getDevice } from "@/lib/kiosk-auth";
 import {
   LINK_REQUEST_TTL_MS,
   REGISTRATION_CODE_LENGTH,
+  registrationBlocked,
 } from "@/lib/kiosk-auth-core";
 import { clientIpOf, userAgentOf } from "@/lib/request-ip";
 
@@ -23,6 +24,15 @@ export async function POST(req: Request) {
     return NextResponse.json({
       status: "ALREADY_REGISTERED",
       deviceId: existing.device.id,
+    });
+  }
+  // **止められている端末には新しいコードを出さない。** 出すと停止・失効が
+  // 迂回でき（自分で登録し直して復活する）、同じ実機のプロファイルが
+  // 二重にできる。画面は端末エラーへ送る（lib/kiosk-auth-core.ts）。
+  if (registrationBlocked(existing.reason)) {
+    return NextResponse.json({
+      status: "BLOCKED",
+      reason: existing.reason,
     });
   }
 
