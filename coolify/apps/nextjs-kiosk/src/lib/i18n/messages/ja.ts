@@ -216,7 +216,10 @@ export const ja = {
       scan: "作業場所を読み取り",
       close: "読み取りをやめる",
       pendingScanned: (code: string) => `読み取り済み: ${code}（開始時に記録）`,
-      deviceDefaultHint: "未読み取りの場合は端末の既定作業場所が記録されます",
+      deviceDefaultHint: (label: string) =>
+        `未読み取りの場合は「${label}」が記録されます`,
+      deviceDefaultNone:
+        "この端末には既定の作業場所が設定されていないため、読み取らないと記録されません",
       invalidQr: "作業場所の QR コードではありません",
       updated: "作業場所を記録しました",
       deviceBlockedTitle: "この端末では実行できません",

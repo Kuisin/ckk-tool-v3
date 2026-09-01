@@ -34,7 +34,11 @@ import {
   Text,
   UnstyledButton,
 } from "@mantine/core";
-import { IconDeviceTablet, IconUserCircle } from "@tabler/icons-react";
+import {
+  IconDeviceTablet,
+  IconMapPin,
+  IconUserCircle,
+} from "@tabler/icons-react";
 import { usePathname, useRouter } from "next/navigation";
 import { type ReactNode, useRef } from "react";
 import { DEFAULT_TEXT_SCALE, type TextScale } from "@/lib/text-scale";
@@ -73,6 +77,14 @@ const SETTINGS_TAP_WINDOW_MS = 2500;
 type Props = {
   deviceName: string | null;
   registered: boolean;
+  /**
+   * 端末の既定作業場所「グループ / 場所」。未設定は null。
+   *
+   * **未設定を「未設定」と書かない。** 作業場所を使っていない拠点では全端末の
+   * ヘッダーに永久に出続ける文字になる。設定されていないことが本当に効くのは
+   * 工程を開始する瞬間だけなので、その注意は工程実行画面が出す。
+   */
+  workLocation?: string | null;
   /** ログイン中の利用者名（未ログインは null）。 */
   userName?: string | null;
   /** 文字の大きさ（設定の窓の初期値。適用自体は layout が :root へ流す）。 */
@@ -84,6 +96,7 @@ export function KioskShell({
   deviceName,
   registered,
   userName = null,
+  workLocation = null,
   textScale = DEFAULT_TEXT_SCALE,
   children,
 }: Props) {
@@ -159,9 +172,26 @@ export function KioskShell({
                 点滅=不安定）+ オフライン時の全画面オーバーレイ */}
             <ConnectionIndicator registered={registered} />
             {registered ? (
-              <Text fw={600} maw={300} size="md" truncate>
-                {deviceName ?? "（名称未設定）"}
-              </Text>
+              <>
+                <Text fw={600} maw={240} size="md" truncate>
+                  {deviceName ?? "（名称未設定）"}
+                </Text>
+                {/* 既定の作業場所。端末名と並べるのは、ヘッダーが 56px 固定で
+                    文字の大きさ設定（最大 1.25 倍）まで動くため — 縦に積むと
+                    大きい設定で切れる。横なら truncate で詰むだけで済む。 */}
+                {workLocation && (
+                  <Group gap={4} maw={260} wrap="nowrap">
+                    <IconMapPin
+                      color="var(--mantine-color-dimmed)"
+                      size={16}
+                      style={{ flexShrink: 0 }}
+                    />
+                    <Text c="dimmed" size="sm" truncate>
+                      {workLocation}
+                    </Text>
+                  </Group>
+                )}
+              </>
             ) : (
               <Badge color="gray" variant="outline">
                 未登録端末
