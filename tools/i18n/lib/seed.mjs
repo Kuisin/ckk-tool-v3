@@ -98,7 +98,11 @@ export function seedFromGlossary(file) {
 function add(map, ja, en, zh) {
   if (!ja || !en || !zh) return;
   if (!JAPANESE.test(ja)) return; // 英字だけの行（PIN, DEV …）は訳す対象でない
-  if (ja === "〜" || ja.length > 120) return;
+  // 語ではなく**断片**を種にしない:
+  //   「〜の詳細を開く」… 用語集で 〜 を語の置き場所に使っている行
+  //   「 新規」「 詳細」  … 操作コードのモード接尾辞（前後の空白がその印）
+  if (ja.includes("〜") || ja !== ja.trim()) return;
+  if (ja.length > 120) return;
   if (!map.has(ja)) map.set(ja, { en, zh });
 }
 

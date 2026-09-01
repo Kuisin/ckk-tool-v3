@@ -1,24 +1,4 @@
 {
- " 新規": {
-  "en": " – new",
-  "zh": " 新建"
- },
- " 詳細": {
-  "en": " – details",
-  "zh": " 详情"
- },
- "〜の詳細を開く": {
-  "en": "Open details of 〜",
-  "zh": "打开〜的详情"
- },
- "〜を入力してください": {
-  "en": "Enter 〜",
-  "zh": "请输入〜"
- },
- "〜を選択してください": {
-  "en": "Select 〜",
-  "zh": "请选择〜"
- },
  "1 件の操作の変更前後（before / after）まで開く": {
   "en": "Opens one operation down to its before/after payload.",
   "zh": "展开单次操作变更前后（before / after）的内容。"

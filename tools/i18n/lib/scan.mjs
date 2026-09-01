@@ -48,6 +48,9 @@ const EXCLUDED = [
   // 辞書そのもの。ここの日本語は**原文**であって未翻訳ではない
   // （キオスクの in-house 辞書 — ja.ts の隣に en.ts / zh.ts が揃っている）。
   /\/lib\/i18n\/messages\//,
+  // 生成した ja 鍵の対訳表（tools/i18n/build-dictionary.mjs の出力）。
+  // 鍵が日本語・値が訳なので、走査すると自分の辞書を「未翻訳」と数える。
+  /\/lib\/ui-dictionary\//,
   // 画面確認用の見本データ。「田中 太郎」「株式会社ABC製作所」のような
   // **架空の取引先名・人名**で、DB に入るデータと同じ扱い = 訳す対象ではない
   // （_specs/i18n-glossary.md §1）。mock.ts 自身が "preview only" と書いている。
@@ -90,12 +93,22 @@ const SOURCE_LABEL_FILES = [
  * 返すのは「コードとして有効な文字列リテラル」と「JSX のテキスト」の位置。
  */
 export function tokenize(source) {
-  const strings = []; // { value, quote, start, line }
+  const strings = []; // { value, quote, start, line, keyPath }
   let i = 0;
   let line = 1;
   const n = source.length;
   // 直前の意味のあるトークン。正規表現リテラルと除算の区別に使う。
   let prevSignificant = "";
+  /**
+   * いま居るオブジェクトのキーの入れ子（`{ ja: { notes: "備考" } }` なら
+   * ["ja","notes"]）。`Record<Locale, X>` の形——**文字列ごとではなく
+   * オブジェクトごとに言語で分かれている**書き方（lib/pdf-labels.ts）を
+   * 訳済みと判定するために要る。直前の `ja:` だけを見ていた頃は、この形の
+   * 中国語 105 件が「未翻訳」に数えられていた。
+   */
+  const keyStack = [];
+  let lastWord = "";
+  let pendingKey = null;
 
   const at = (k) => (k < n ? source[k] : "");
 
@@ -159,7 +172,14 @@ export function tokenize(source) {
         value += d;
         i++;
       }
-      strings.push({ value, quote, start, line: startLine });
+      strings.push({
+        value,
+        quote,
+        start,
+        line: startLine,
+        keyPath: [...keyStack],
+      });
+      pendingKey = value; // `"ja": {` のように文字列キーで書かれる場合
       prevSignificant = quote;
       continue;
     }
@@ -187,6 +207,21 @@ export function tokenize(source) {
       }
       prevSignificant = "/";
       continue;
+    }
+
+    // オブジェクトキーの追跡（`ja: {` / `"en": {`）。
+    if (/[A-Za-z0-9_$]/.test(c)) {
+      lastWord += c;
+    } else {
+      if (c === ":" && lastWord) pendingKey = lastWord;
+      else if (c === ":" && pendingKey === null) pendingKey = null;
+      if (c === "{") {
+        keyStack.push(pendingKey);
+        pendingKey = null;
+      } else if (c === "}") {
+        keyStack.pop();
+      }
+      if (!/\s/.test(c)) lastWord = "";
     }
 
     if (!/\s/.test(c)) prevSignificant = c;
@@ -234,6 +269,18 @@ function isLocaleValue(source, stringStart) {
   return /\b(?:ja|en|zh)\s*:\s*$/.test(before);
 }
 
+/**
+ * 囲っているオブジェクトのキーが言語コードか（`Record<Locale, X>` の形）。
+ *
+ * `const COMMON: Record<Locale, Labels> = { ja: { notes: "備考" },
+ *  en: { notes: "Notes" }, zh: { notes: "备注" } }` — 言語で分かれているのは
+ * **文字列ではなくオブジェクト**なので、直前の `ja:` を見るだけでは判らない。
+ * lib/pdf-labels.ts がこの形。
+ */
+function isInsideLocaleBlock(keyPath) {
+  return keyPath.some((k) => k === "ja" || k === "en" || k === "zh");
+}
+
 /** 日本語のオブジェクトキー（`本: {...}`, `"本": {...}`）— 値であって文言ではない。 */
 function isObjectKey(source, stringStart, raw) {
   const after = source.slice(
@@ -258,6 +305,7 @@ export function scanFile(filePath, source) {
   for (const s of tokenize(source)) {
     if (!JAPANESE.test(s.value)) continue;
     if (isLocaleValue(source, s.start)) continue;
+    if (isInsideLocaleBlock(s.keyPath ?? [])) continue;
     if (isObjectKey(source, s.start, s.value)) continue;
     if (isIgnored(lines, s.line)) continue;
     findings.push({
