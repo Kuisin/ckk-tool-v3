@@ -13,14 +13,12 @@
 
 import {
   Alert,
-  Badge,
-  Group,
   Paper,
   SegmentedControl,
   Select,
+  SimpleGrid,
   Slider,
   Stack,
-  Tabs,
   Text,
   TextInput,
   Title,
@@ -44,7 +42,6 @@ import {
   updateDisplay,
 } from "@/app/(dashboard)/settings/kiosk-devices/displays/actions";
 import { useFormat } from "@/components/layout/PreferencesProvider";
-import { AppTabs } from "@/components/ui/AppTabs";
 import { EditablePanel } from "@/components/ui/EditablePanel";
 import { FieldValue } from "@/components/ui/FieldValue";
 import { PageHeader } from "@/components/ui/PageHeader";
@@ -55,9 +52,9 @@ import {
   FormActions,
   type MenuItemDef,
   ResourceActions,
-  SummaryGrid,
 } from "@/components/ui/shells";
 import type { DisplayDetail } from "@/lib/displays-admin";
+import { OnlineDot } from "../kiosk/KioskDevicesTable";
 import {
   DisplayContentEditor,
   DisplayContentView,
@@ -227,25 +224,13 @@ export function DisplayDetailView({ display, plantOptions, audit }: Props) {
           />
         }
         breadcrumbs={[
-          { label: "システム" },
-          { label: "ディスプレイ管理", href: "/settings/kiosk-devices" },
-          { label: display.name ?? "ディスプレイ" },
+          "システム",
+          "端末管理",
+          display.name ?? "ディスプレイ詳細",
         ]}
+        status={<StatusBadge entity="DisplayDevice" status={display.status} />}
         title={display.name ?? "（名称未設定）"}
       />
-
-      {/* 状態の言葉は共有端末と共通（StatusBadge の DisplayDevice）。
-          オンラインは状態とは別の軸なので、同じ行に並べて出す。 */}
-      <Group gap="sm">
-        <Badge
-          color={online ? "green" : "gray"}
-          size="lg"
-          variant={online ? "filled" : "light"}
-        >
-          {online ? "オンライン" : "オフライン"}
-        </Badge>
-        <StatusBadge entity="DisplayDevice" size="lg" status={display.status} />
-      </Group>
 
       {display.status === "PENDING" && (
         <Alert color="gray">
@@ -265,8 +250,16 @@ export function DisplayDetailView({ display, plantOptions, audit }: Props) {
         </Alert>
       )}
 
+      {/* サマリ（端末詳細と同じ 3 列）。状態は見出しのバッジ、オンラインは
+          別の軸なのでここに置く。 */}
       <Paper p="md" radius="md" withBorder>
-        <SummaryGrid>
+        <SimpleGrid cols={{ base: 1, sm: 3 }} spacing="md">
+          <FieldValue
+            label="オンライン"
+            value={
+              display.status === "ACTIVE" ? <OnlineDot online={online} /> : "—"
+            }
+          />
           <FieldValue
             label="最終確認"
             value={display.lastSeenAt ? fmt.dateTime(display.lastSeenAt) : "—"}
@@ -298,110 +291,105 @@ export function DisplayDetailView({ display, plantOptions, audit }: Props) {
                 : "—"
             }
           />
-        </SummaryGrid>
+          <FieldValue
+            label="つないでいる機械"
+            value={
+              display.machineId
+                ? `${display.machineId}${
+                    display.screenIndex ? ` / ${display.screenIndex} 枚目` : ""
+                  }`
+                : "—"
+            }
+          />
+          <FieldValue
+            label="最後に見た IP アドレス"
+            value={display.lastIpAddress ?? "—"}
+          />
+          <FieldValue
+            label="アプリのバージョン"
+            value={display.appVersion ?? "—"}
+          />
+          <FieldValue
+            label="作成日時"
+            value={fmt.dateTime(display.createdAt)}
+          />
+          <FieldValue
+            fullWidth
+            label="ブラウザ"
+            value={display.userAgent ?? "—"}
+          />
+        </SimpleGrid>
       </Paper>
 
-      <AppTabs defaultValue="content">
-        <Tabs.List>
-          <Tabs.Tab value="content">表示内容</Tabs.Tab>
-          <Tabs.Tab value="settings">設定</Tabs.Tab>
-          <Tabs.Tab value="device">端末情報</Tabs.Tab>
-          <Tabs.Tab value="history">履歴</Tabs.Tab>
-        </Tabs.List>
+      {/* ここから下は**端末詳細と同じ「見出し付きの Paper を積む」形**。
+          タブに分けていたのを畳んだ — ディスプレイ 1 枚の設定は多くないので、
+          4 枚のタブは中身より入れ物のほうが目立っていた。端末詳細と並べて
+          見たときに同じ読み方ができるほうがよい。 */}
 
-        <Tabs.Panel pt="md" value="content">
-          <Paper p="md" radius="md" withBorder>
-            <EditablePanel
-              canEdit={display.status !== "REVOKED"}
-              description="保存すると、この画面の表示がその場で切り替わります。"
-              edit={({ close }) => (
-                <DisplayContentEditor
-                  display={display}
-                  onDone={close}
-                  plantOptions={plantOptions}
-                />
-              )}
-              title="映すもの"
-              view={
-                <DisplayContentView
-                  display={display}
-                  plantOptions={plantOptions}
-                />
-              }
+      {/* 映すもの（既定は閲覧、押して編集 — design.md §10.10）。
+          EditablePanel 自身は Paper を持たないので、カードはこの 1 枚だけ。 */}
+      <Paper p="md" radius="md" withBorder>
+        <EditablePanel
+          canEdit={display.status !== "REVOKED"}
+          description="保存すると、この画面の表示がその場で切り替わります。"
+          edit={({ close }) => (
+            <DisplayContentEditor
+              display={display}
+              onDone={close}
+              plantOptions={plantOptions}
             />
-          </Paper>
-        </Tabs.Panel>
+          )}
+          title="映すもの"
+          view={
+            <DisplayContentView display={display} plantOptions={plantOptions} />
+          }
+        />
+      </Paper>
 
-        <Tabs.Panel keepMounted={false} pt="md" value="settings">
-          <Paper p="md" radius="md" withBorder>
-            <Stack gap="md">
-              <Title order={5}>この画面の設定</Title>
-              <TextInput
-                label="ディスプレイの名前"
-                onChange={(e) => setNameJa(e.currentTarget.value)}
-                value={nameJa}
-                withAsterisk
-              />
-              <TextInput
-                label="設置場所"
-                onChange={(e) => setLocation(e.currentTarget.value)}
-                value={location}
-              />
-              <Select
-                clearable
-                data={plantOptions}
-                label="拠点"
-                onChange={setPlantId}
-                placeholder="選択してください"
-                searchable
-                value={plantId}
-              />
-              <ScaleField onChange={setScalePercent} value={scalePercent} />
-              <FormActions
-                loading={pending}
-                onCancel={() => router.push("/settings/kiosk-devices")}
-                onSave={save}
-              />
-            </Stack>
-          </Paper>
-        </Tabs.Panel>
+      {/* この画面の設定（名前・場所・拠点・表示倍率） */}
+      <Paper p="md" radius="md" withBorder>
+        <Title mb="sm" order={5}>
+          この画面の設定
+        </Title>
+        <Stack gap="md">
+          <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="md">
+            <TextInput
+              label="ディスプレイの名前"
+              onChange={(e) => setNameJa(e.currentTarget.value)}
+              value={nameJa}
+              withAsterisk
+            />
+            <TextInput
+              label="設置場所"
+              onChange={(e) => setLocation(e.currentTarget.value)}
+              value={location}
+            />
+            <Select
+              clearable
+              data={plantOptions}
+              label="拠点"
+              onChange={setPlantId}
+              placeholder="選択してください"
+              searchable
+              value={plantId}
+            />
+          </SimpleGrid>
+          <ScaleField onChange={setScalePercent} value={scalePercent} />
+          <FormActions
+            loading={pending}
+            onCancel={() => router.push("/settings/kiosk-devices")}
+            onSave={save}
+          />
+        </Stack>
+      </Paper>
 
-        <Tabs.Panel keepMounted={false} pt="md" value="device">
-          <Paper p="md" radius="md" withBorder>
-            <SummaryGrid cols={2}>
-              <FieldValue
-                label="最後に見た IP アドレス"
-                value={display.lastIpAddress ?? "—"}
-              />
-              <FieldValue
-                label="アプリのバージョン"
-                value={display.appVersion ?? "—"}
-              />
-              <FieldValue
-                label="つないでいる機械"
-                value={
-                  display.machineId
-                    ? `${display.machineId}${
-                        display.screenIndex
-                          ? ` / ${display.screenIndex} 枚目`
-                          : ""
-                      }`
-                    : "—"
-                }
-              />
-              <FieldValue
-                fullWidth
-                label="ブラウザ"
-                value={display.userAgent ?? "—"}
-              />
-            </SummaryGrid>
-          </Paper>
-        </Tabs.Panel>
-
-        <Tabs.Panel keepMounted={false} pt="md" value="history">
-          <AuditTimeline entries={audit} />
-        </Tabs.Panel>
-      </AppTabs>
+      {/* 履歴 */}
+      <Paper p="md" radius="md" withBorder>
+        <Title mb="sm" order={5}>
+          履歴
+        </Title>
+        <AuditTimeline entries={audit} />
+      </Paper>
     </Stack>
   );
 }

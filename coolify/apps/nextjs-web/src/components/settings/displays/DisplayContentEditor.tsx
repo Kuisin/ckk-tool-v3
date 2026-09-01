@@ -22,7 +22,7 @@ import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { updateDisplay } from "@/app/(dashboard)/settings/kiosk-devices/displays/actions";
 import { FieldValue } from "@/components/ui/FieldValue";
-import { FormActions, FormSection, SummaryGrid } from "@/components/ui/shells";
+import { FormActions, SummaryGrid } from "@/components/ui/shells";
 import {
   type DisplayOptionSpec,
   type DisplayTemplateOptions,
@@ -115,12 +115,16 @@ export function DisplayContentEditor({ display, plantOptions, onDone }: Props) {
 
   return (
     <Stack gap="md">
-      <FormSection title="映す画面">
+      {/* ★ FormSection（= Paper）は使わない。この編集画面は既に詳細ページの
+          Paper の中に置かれているので、節ごとに Paper を足すとカードが
+          入れ子になり、さらにテンプレートの見本カードで 3 枚重なる。
+          見出しだけの軽い節にする。 */}
+      <Section title="映す画面">
         <TemplatePicker onChange={pickTemplate} value={templateKey} />
-      </FormSection>
+      </Section>
 
       {template && template.options.length > 0 && (
-        <FormSection title={`${template.label}の設定`}>
+        <Section title={`${template.label}の設定`}>
           <TemplateOptionFields
             onChange={(key, value) =>
               setOptions((prev) => ({ ...prev, [key]: value }))
@@ -129,10 +133,10 @@ export function DisplayContentEditor({ display, plantOptions, onDone }: Props) {
             template={template}
             values={options}
           />
-        </FormSection>
+        </Section>
       )}
 
-      <FormSection title="更新">
+      <Section title="更新">
         <NumberInput
           description="この間隔で内容を取り直します。0 にすると自動更新しません"
           label="更新間隔"
@@ -142,9 +146,27 @@ export function DisplayContentEditor({ display, plantOptions, onDone }: Props) {
           suffix=" 秒"
           value={refreshSec}
         />
-      </FormSection>
+      </Section>
 
       <FormActions loading={pending} onCancel={onDone} onSave={save} />
+    </Stack>
+  );
+}
+
+/** 枠を持たない節（見出し + 中身）。カードを入れ子にしないための最小の器。 */
+function Section({
+  title,
+  children,
+}: {
+  title: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <Stack gap="xs">
+      <Text fw={600} size="sm">
+        {title}
+      </Text>
+      {children}
     </Stack>
   );
 }
