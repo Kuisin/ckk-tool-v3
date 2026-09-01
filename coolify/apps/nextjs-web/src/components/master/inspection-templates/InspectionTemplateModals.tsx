@@ -28,13 +28,14 @@ import { notifications } from "@mantine/notifications";
 import { IconPlus, IconTrash } from "@tabler/icons-react";
 import { useLocale } from "next-intl";
 import { useEffect, useState, useTransition } from "react";
+import { searchUserOptions } from "@/app/(dashboard)/_shared/option-search";
 import {
   addTemplateItem,
   createInspectionTemplateVersion,
   deleteInspectionTemplates,
   deleteTemplateItem,
   type InspectionTemplateItemInput,
-  setInspectionTemplateApprovalGroup,
+  setInspectionTemplateApprovers,
   setInspectionTemplatesActive,
   updateTemplateItem,
 } from "@/app/(dashboard)/master/inspection-templates/actions";
@@ -50,6 +51,10 @@ import {
   inspectionItemTypeOptions,
 } from "@/lib/enum-labels";
 import type { InspectionItemType } from "@/lib/inspection-core";
+import {
+  ApprovalTargetField,
+  type ApproverOption,
+} from "./ApprovalTargetField";
 
 export interface InspectionTemplateModalTarget {
   id: number;
@@ -219,25 +224,33 @@ export function CreateVersionModal({
  * 検査承認グループの変更（ロック中でも可 — 測定定義に触れないため）。
  * 承認設定 MS0B の approval_groups から選ぶ。未設定 = 誰でも検収できる。
  */
-export function SetApprovalGroupModal({
+export function SetApproversModal({
   opened,
   onClose,
   target,
   currentGroupId,
+  currentApprovers,
   groupOptions,
   onDone,
 }: ModalBaseProps & {
   target: InspectionTemplateModalTarget | null;
   currentGroupId: string | null;
+  currentApprovers: ApproverOption[];
   groupOptions: { value: string; label: string }[];
   onDone?: () => void;
 }) {
   const [isPending, startTransition] = useTransition();
   const [groupId, setGroupId] = useState<string | null>(currentGroupId);
+  const [approvers, setApprovers] =
+    useState<ApproverOption[]>(currentApprovers);
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: 開いた瞬間の値だけでよい
   useEffect(() => {
-    if (opened) setGroupId(currentGroupId);
-  }, [opened, currentGroupId]);
+    if (opened) {
+      setGroupId(currentGroupId);
+      setApprovers(currentApprovers);
+    }
+  }, [opened]);
 
   return (
     <FormModal
@@ -247,13 +260,14 @@ export function SetApprovalGroupModal({
         e.preventDefault();
         if (!target) return;
         startTransition(async () => {
-          const result = await setInspectionTemplateApprovalGroup(
+          const result = await setInspectionTemplateApprovers(
             target.id,
             groupId ? Number(groupId) : null,
+            approvers.map((a) => a.value),
           );
           if (result.ok) {
             notifications.show({
-              title: "検査承認グループを変更しました",
+              title: "検査承認の宛先を変更しました",
               message: label(target),
               color: "green",
             });
@@ -270,15 +284,15 @@ export function SetApprovalGroupModal({
       }}
       opened={opened}
       submitLabel="保存"
-      title="検査承認グループの変更"
+      title="検査承認の宛先の変更"
     >
-      <Select
-        clearable
-        data={groupOptions}
-        description="検査記録の検収（承認）ができる人を絞ります。未設定 = 誰でも検収できます"
-        label="検査承認グループ"
-        onChange={setGroupId}
-        value={groupId}
+      <ApprovalTargetField
+        approvers={approvers}
+        groupId={groupId}
+        groupOptions={groupOptions}
+        onApproversChange={setApprovers}
+        onGroupChange={setGroupId}
+        onSearchApprovers={searchUserOptions}
       />
     </FormModal>
   );

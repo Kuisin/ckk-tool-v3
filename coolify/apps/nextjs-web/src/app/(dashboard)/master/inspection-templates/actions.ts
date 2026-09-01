@@ -50,9 +50,10 @@ const templateFields = z.object({
   layoutStyle: z.enum(["DIMENSIONAL", "CHECKLIST"]),
   // VALUES のサンプル呼称（製品1,2,3… / 初品・中間品・最終品）
   sampleNaming: z.enum(["GENERIC", "INITIAL_MID_FINAL"]),
-  // 検査承認（検収）に要る承認グループ（承認設定 MS0B の approval_groups）。
-  // null = 未設定 = 誰でも承認できる（従来どおり）。
+  // 検査承認（検収）の宛先 — グループかカスタム（この検査表だけの承認者・
+  // 複数可）のどちらか一方。両方未設定 = 誰でも承認できる（従来どおり）。
   approvalGroupId: z.number().int().positive().nullable(),
+  approverUserIds: z.array(z.string()).max(50).default([]),
   isActive: z.boolean(),
 });
 
@@ -85,7 +86,25 @@ function refineSampling(
   }
 }
 
-const templateUpdateInput = templateFields.superRefine(refineSampling);
+/** 検査承認の宛先検証（グループとカスタムは同時に設定しない — CM02 フォームの
+ * 承認フロー段と同じ約束。両方未設定は「誰でも承認できる」として許可）。 */
+function refineApprovalTarget(
+  v: { approvalGroupId: number | null; approverUserIds: string[] },
+  ctx: z.RefinementCtx,
+) {
+  if (v.approvalGroupId != null && v.approverUserIds.length > 0) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["approverUserIds"],
+      message:
+        "承認グループとカスタム承認者は同時に設定できません（どちらか一方にしてください）",
+    });
+  }
+}
+
+const templateUpdateInput = templateFields
+  .superRefine(refineSampling)
+  .superRefine(refineApprovalTarget);
 
 const templateCreateInput = templateFields
   .extend({
@@ -97,7 +116,8 @@ const templateCreateInput = templateFields
         "コードは英数字・ハイフン・アンダースコアで入力してください",
       ),
   })
-  .superRefine(refineSampling);
+  .superRefine(refineSampling)
+  .superRefine(refineApprovalTarget);
 
 export type InspectionTemplateUpdateInput = z.infer<typeof templateUpdateInput>;
 export type InspectionTemplateCreateInput = z.infer<typeof templateCreateInput>;
@@ -287,6 +307,15 @@ export async function createInspectionTemplate(
         layoutStyle: v.layoutStyle,
         sampleNaming: v.sampleNaming,
         approvalGroupId: v.approvalGroupId,
+        approvers:
+          v.approverUserIds.length > 0
+            ? {
+                create: v.approverUserIds.map((userId, i) => ({
+                  userId,
+                  sortOrder: i,
+                })),
+              }
+            : undefined,
         isActive: v.isActive,
       },
       select: { id: true },
@@ -370,6 +399,13 @@ export async function updateInspectionTemplate(
         // ロック中でも変更可（誰が検収できるかの入れ替えは測定定義に触れない —
         // isActive と同じ扱い）。
         approvalGroupId: v.approvalGroupId,
+        approvers: {
+          deleteMany: {},
+          create: v.approverUserIds.map((userId, i) => ({
+            userId,
+            sortOrder: i,
+          })),
+        },
         isActive: v.isActive,
       },
     });
@@ -410,7 +446,10 @@ export async function createInspectionTemplateVersion(
   try {
     const source = await prisma.inspectionTemplate.findUnique({
       where: { id },
-      include: { items: { orderBy: [{ sortOrder: "asc" }, { id: "asc" }] } },
+      include: {
+        items: { orderBy: [{ sortOrder: "asc" }, { id: "asc" }] },
+        approvers: { orderBy: { sortOrder: "asc" } },
+      },
     });
     if (!source) return actionError("対象のテンプレートが見つかりません");
     const created = await prisma.$transaction(async (tx) => {
@@ -431,6 +470,12 @@ export async function createInspectionTemplateVersion(
           layoutStyle: source.layoutStyle,
           sampleNaming: source.sampleNaming,
           approvalGroupId: source.approvalGroupId,
+          approvers: {
+            create: source.approvers.map((a) => ({
+              userId: a.userId,
+              sortOrder: a.sortOrder,
+            })),
+          },
           isActive: true,
           items: {
             create: source.items.map((item) => ({
@@ -510,29 +555,42 @@ export async function setInspectionTemplatesActive(
  * ロック中の版へは丸ごと拒否するので、ロック後に承認グループだけ入れ替える
  * ための専用アクションを別に持つ。
  */
-export async function setInspectionTemplateApprovalGroup(
+export async function setInspectionTemplateApprovers(
   id: number,
   approvalGroupId: number | null,
+  approverUserIds: string[],
 ): Promise<ActionResult> {
   const authz = await checkPermission("master", "UPDATE");
   if (!authz.ok) return actionError(authz.error);
+  if (approvalGroupId != null && approverUserIds.length > 0) {
+    return actionError(
+      "承認グループとカスタム承認者は同時に設定できません（どちらか一方にしてください）",
+    );
+  }
   try {
     await prisma.inspectionTemplate.update({
       where: { id },
-      data: { approvalGroupId },
+      data: {
+        approvalGroupId,
+        approvers: {
+          deleteMany: {},
+          create: approverUserIds.map((userId, i) => ({
+            userId,
+            sortOrder: i,
+          })),
+        },
+      },
     });
     await recordAudit({
       action: "UPDATE",
       tableName: "inspection_templates",
       recordId: String(id),
-      after: { note: "検査承認グループを変更" },
+      after: { note: "検査承認の宛先を変更" },
     });
     revalidate(id);
     return actionOk();
   } catch (e) {
-    return actionError(
-      prismaErrorMessage(e, "承認グループの変更に失敗しました"),
-    );
+    return actionError(prismaErrorMessage(e, "承認の宛先の変更に失敗しました"));
   }
 }
 

@@ -26,6 +26,10 @@ export default async function MasterInspectionTemplatesEditPage({
     where: { id },
     include: {
       relatedProcessStep: true,
+      approvers: {
+        include: { user: { select: { displayName: true } } },
+        orderBy: { sortOrder: "asc" },
+      },
       _count: {
         select: { workOrderStepTemplates: true, inspectionRecords: true },
       },
@@ -62,6 +66,10 @@ export default async function MasterInspectionTemplatesEditPage({
         sampleNaming: r.sampleNaming,
         approvalGroupId:
           r.approvalGroupId != null ? String(r.approvalGroupId) : null,
+        approvers: r.approvers.map((a) => ({
+          value: a.userId,
+          label: a.user.displayName,
+        })),
         isActive: r.isActive,
       }}
     />

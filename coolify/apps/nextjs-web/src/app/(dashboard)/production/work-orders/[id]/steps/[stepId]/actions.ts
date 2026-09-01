@@ -560,7 +560,14 @@ export async function approveInspectionRecord(
   try {
     const record = await prisma.inspectionRecord.findFirst({
       where: { id: recordId, step: { workOrder: { workOrderNumber } } },
-      include: { template: { select: { approvalGroupId: true } } },
+      include: {
+        template: {
+          select: {
+            approvalGroupId: true,
+            approvers: { select: { userId: true } },
+          },
+        },
+      },
     });
     if (!record) return { ok: false, errors: ["検査記録が見つかりません"] };
     if (record.status !== "PASS") {
@@ -577,6 +584,16 @@ export async function approveInspectionRecord(
         return {
           ok: false,
           errors: ["この検査表の承認グループのメンバーのみ承認できます"],
+        };
+      }
+    } else if (record.template.approvers.length > 0) {
+      const isApprover = record.template.approvers.some(
+        (a) => a.userId === actor,
+      );
+      if (!isApprover) {
+        return {
+          ok: false,
+          errors: ["この検査表の承認者のみ承認できます"],
         };
       }
     }

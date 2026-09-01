@@ -28,6 +28,10 @@ export default async function MasterInspectionTemplatesDetailPage({
       include: {
         relatedProcessStep: true,
         approvalGroup: { select: { name: true } },
+        approvers: {
+          include: { user: { select: { displayName: true } } },
+          orderBy: { sortOrder: "asc" },
+        },
         items: { orderBy: [{ sortOrder: "asc" }, { id: "asc" }] },
         _count: {
           select: { workOrderStepTemplates: true, inspectionRecords: true },
@@ -76,6 +80,10 @@ export default async function MasterInspectionTemplatesDetailPage({
     approvalGroupName: r.approvalGroup
       ? localized(r.approvalGroup.name as LocalizedText | null)
       : null,
+    approvers: r.approvers.map((a) => ({
+      value: a.userId,
+      label: a.user.displayName,
+    })),
     isActive: r.isActive,
     isLocked:
       r._count.workOrderStepTemplates > 0 || r._count.inspectionRecords > 0,
