@@ -31,6 +31,7 @@ import {
 } from "@/components/ui/buttons";
 import { ModalShell } from "@/components/ui/modals";
 import { statusLabel as statusMapLabel } from "@/components/ui/StatusBadge";
+import { useTr } from "@/hooks/useTr";
 import { useIsMobile } from "@/hooks/useViewport";
 import { downloadFile } from "@/lib/download";
 import {
@@ -55,6 +56,7 @@ export function ResponseExportModal({
   fields: FormFieldDef[];
   responseCount: number;
 }) {
+  const tr = useTr();
   const isMobile = useIsMobile();
   const [statuses, setStatuses] = useState<string[]>([]);
   const [from, setFrom] = useState<Date | null>(null);
@@ -79,8 +81,8 @@ export function ResponseExportModal({
       onClose();
     } catch {
       notifications.show({
-        title: "エラー",
-        message: "書き出しに失敗しました",
+        title: tr("エラー"),
+        message: tr("書き出しに失敗しました"),
         color: "red",
       });
     } finally {
@@ -96,7 +98,7 @@ export function ResponseExportModal({
       onClose={onClose}
       opened={opened}
       size="lg"
-      title="回答を書き出す"
+      title={tr("回答を書き出す")}
     >
       <Stack gap="md">
         {/* 件数を「一覧に出ている数」と結び付けない — 一覧は 500 件までしか
@@ -108,7 +110,7 @@ export function ResponseExportModal({
 
         <Stack gap="xs">
           <Text fw={600} size="sm">
-            状態
+            {tr("状態")}
           </Text>
           <Checkbox.Group onChange={setStatuses} value={statuses}>
             <Group gap="md">
@@ -122,7 +124,7 @@ export function ResponseExportModal({
             </Group>
           </Checkbox.Group>
           <Text c="dimmed" size="xs">
-            選ばなければすべての状態。下書きは書き出せません。
+            {tr("選ばなければすべての状態。下書きは書き出せません。")}
           </Text>
         </Stack>
 
@@ -130,31 +132,34 @@ export function ResponseExportModal({
 
         <Stack gap="xs">
           <Text fw={600} size="sm">
-            提出日
+            {tr("提出日")}
           </Text>
           <Group gap="sm" grow={!isMobile}>
             <DatePickerInput
               clearable
-              label="開始"
+              label={tr("開始")}
               maxDate={to ?? undefined}
               onChange={setFrom as never}
-              placeholder="指定なし"
+              placeholder={tr("指定なし")}
               value={from}
               valueFormat="YYYY/MM/DD"
             />
             <DatePickerInput
               clearable
-              label="終了"
+              label={tr("終了")}
               minDate={from ?? undefined}
               onChange={setTo as never}
-              placeholder="指定なし"
+              placeholder={tr("指定なし")}
               value={to}
               valueFormat="YYYY/MM/DD"
             />
           </Group>
           <Text c="dimmed" size="xs">
-            指定した日に提出されたものを含みます。日付で絞ると、まだ提出していない
-            回答は外れます。
+            {tr(
+              tr(
+                "指定した日に提出されたものを含みます。日付で絞ると、まだ提出していない\n            回答は外れます。",
+              ),
+            )}
           </Text>
         </Stack>
 
@@ -163,17 +168,21 @@ export function ResponseExportModal({
         <Stack gap="xs">
           <Group justify="space-between">
             <Text fw={600} size="sm">
-              書き出す項目
+              {tr("書き出す項目")}
             </Text>
             {!allFieldsChecked && (
               <GhostButton onClick={() => setFieldKeys([])}>
-                すべてに戻す
+                {tr("すべてに戻す")}
               </GhostButton>
             )}
           </Group>
           <Text c="dimmed" size="xs">
             {allFieldsChecked
-              ? "すべての項目を列にします。減らしたいものだけ外してください。"
+              ? tr(
+                  tr(
+                    "すべての項目を列にします。減らしたいものだけ外してください。",
+                  ),
+                )
               : `${fieldKeys.length} 項目を選択中`}
           </Text>
           <ScrollArea.Autosize mah={180}>
@@ -206,7 +215,7 @@ export function ResponseExportModal({
               loading={busy}
               onClick={() => run("xlsx")}
             >
-              Excel でダウンロード
+              {tr("Excel でダウンロード")}
             </PrimaryButton>
             <SecondaryButton
               fullWidth
@@ -214,7 +223,7 @@ export function ResponseExportModal({
               loading={busy}
               onClick={() => run("pdf")}
             >
-              PDF でまとめて印刷
+              {tr("PDF でまとめて印刷")}
             </SecondaryButton>
           </Stack>
         ) : (
@@ -224,14 +233,14 @@ export function ResponseExportModal({
               loading={busy}
               onClick={() => run("pdf")}
             >
-              PDF でまとめて印刷
+              {tr("PDF でまとめて印刷")}
             </SecondaryButton>
             <PrimaryButton
               leftSection={<IconTableExport size={14} />}
               loading={busy}
               onClick={() => run("xlsx")}
             >
-              Excel でダウンロード
+              {tr("Excel でダウンロード")}
             </PrimaryButton>
           </Group>
         )}

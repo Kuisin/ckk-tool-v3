@@ -15,10 +15,12 @@ import { requireAppRead } from "@/lib/authz-page";
 import { isDevFeatureEnabled } from "@/lib/dev-features";
 import { listPortalAccounts, listPortalBpOptions } from "@/lib/portal-admin";
 import { peekElevations } from "@/lib/privileged-access";
+import { getTr } from "@/lib/ui-text-server";
 
 export const dynamic = "force-dynamic";
 
 export default async function PortalAdminPage() {
+  const tr = await getTr();
   const denied = await requireAppRead("portal-admin");
   if (denied) return denied;
   // 機能そのものが無効な環境では画面ごと出さない（AppAvailabilityGuard は
@@ -38,8 +40,8 @@ export default async function PortalAdminPage() {
   return (
     <Stack gap="md">
       <PageHeader
-        breadcrumbs={["システム", "取引先ポータル"]}
-        title="取引先ポータル"
+        breadcrumbs={[tr("システム"), tr("取引先ポータル")]}
+        title={tr("取引先ポータル")}
       />
       <PortalAccountsTable
         accounts={accounts}

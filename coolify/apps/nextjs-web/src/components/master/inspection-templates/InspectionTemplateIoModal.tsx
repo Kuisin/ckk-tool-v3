@@ -25,6 +25,7 @@ import { useRouter } from "next/navigation";
 import { useRef, useState } from "react";
 import { PrimaryButton, SecondaryButton } from "@/components/ui/buttons";
 import { ModalShell } from "@/components/ui/modals";
+import { useTr } from "@/hooks/useTr";
 
 const API = "/api/master/inspection-templates";
 
@@ -44,6 +45,7 @@ export function InspectionTemplateIoModal({
   onClose: () => void;
   selectedIds: number[];
 }) {
+  const tr = useTr();
   const router = useRouter();
   const fileRef = useRef<HTMLInputElement | null>(null);
   const [busy, setBusy] = useState(false);
@@ -69,7 +71,7 @@ export function InspectionTemplateIoModal({
         data?: ImportOutcome;
       } | null;
       if (!json?.ok) {
-        setError(json?.error ?? "取込に失敗しました");
+        setError(json?.error ?? tr("取込に失敗しました"));
         // 行の誤りだけは、失敗時でも見せる（直す場所が分かる）
         if (json?.data) setOutcome(json.data);
         return;
@@ -77,7 +79,7 @@ export function InspectionTemplateIoModal({
       setOutcome(json.data ?? null);
       router.refresh();
     } catch {
-      setError("通信に失敗しました");
+      setError(tr("通信に失敗しました"));
     } finally {
       setBusy(false);
     }
@@ -85,22 +87,26 @@ export function InspectionTemplateIoModal({
 
   return (
     <ModalShell
-      confirmLabel="閉じる"
+      confirmLabel={tr("閉じる")}
       onClose={onClose}
       onConfirm={onClose}
       opened={opened}
       size="lg"
-      title="検査表の書き出し / 取込"
+      title={tr("検査表の書き出し / 取込")}
     >
       <Stack gap="lg">
         <Stack gap="xs">
           <Text fw={600} size="sm">
-            書き出し（JSON）
+            {tr("書き出し（JSON）")}
           </Text>
           <Text c="dimmed" size="xs">
             {selectedIds.length > 0
               ? `選択中の ${selectedIds.length} 件を書き出します。`
-              : "有効な検査表をすべて書き出します（一覧で選ぶと、その分だけになります）。"}
+              : tr(
+                  tr(
+                    "有効な検査表をすべて書き出します（一覧で選ぶと、その分だけになります）。",
+                  ),
+                )}
             別の環境へ持っていくときや、控えを取るときに使います。
           </Text>
           <Group>
@@ -109,26 +115,35 @@ export function InspectionTemplateIoModal({
               href={exportHref}
               leftSection={<IconDownload size={14} />}
             >
-              JSON で書き出す
+              {tr("JSON で書き出す")}
             </SecondaryButton>
           </Group>
         </Stack>
 
         <Stack gap="xs">
           <Text fw={600} size="sm">
-            取込（JSON / Excel）
+            {tr("取込（JSON / Excel）")}
           </Text>
           <Text c="dimmed" size="xs">
-            書き出した JSON か、Excel の雛形に書いたファイルを取り込みます。
-            <b>同じコードの検査表があるときは、新しいバージョンとして追加</b>
-            します（既存の版は書き換えません —
-            過去の検査記録が指しているためです）。
+            {tr(
+              tr(
+                "書き出した JSON か、Excel の雛形に書いたファイルを取り込みます。",
+              ),
+            )}
+            <b>
+              {tr("同じコードの検査表があるときは、新しいバージョンとして追加")}
+            </b>
+            {tr(
+              tr(
+                "します（既存の版は書き換えません —\n            過去の検査記録が指しているためです）。",
+              ),
+            )}
           </Text>
           <Group gap="xs">
             <Anchor href={`${API}/excel-template`} size="xs">
               <Group gap={4}>
                 <IconFileSpreadsheet size={14} />
-                Excel の雛形を落とす
+                {tr("Excel の雛形を落とす")}
               </Group>
             </Anchor>
           </Group>
@@ -138,7 +153,7 @@ export function InspectionTemplateIoModal({
               loading={busy}
               onClick={() => fileRef.current?.click()}
             >
-              ファイルを選ぶ
+              {tr("ファイルを選ぶ")}
             </PrimaryButton>
             <input
               accept=".json,.xlsx"
@@ -187,7 +202,7 @@ export function InspectionTemplateIoModal({
               </Alert>
             )}
             {outcome.rowErrors.length > 0 && (
-              <Alert color="orange" title="読めなかった行">
+              <Alert color="orange" title={tr("読めなかった行")}>
                 <List size="sm">
                   {outcome.rowErrors.map((e) => (
                     <List.Item key={`${e.row}-${e.message}`}>

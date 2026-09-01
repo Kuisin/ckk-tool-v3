@@ -34,6 +34,7 @@ import {
   useRef,
   useState,
 } from "react";
+import { useTr } from "@/hooks/useTr";
 import { nextTabsCollapsed } from "@/lib/tab-overflow";
 
 interface TabItem {
@@ -96,6 +97,7 @@ export function AppTabs({
   onChange,
   ...rest
 }: TabsProps) {
+  const tr = useTr();
   // 制御 / 非制御のどちらでも受ける（呼び出し側は Mantine と同じ書き方）。
   // 畳んだときの見出しに「いま開いているタブ」が要るので、非制御でも中で持つ。
   const [internal, setInternal] = useState<string | null>(defaultValue ?? null);
@@ -172,7 +174,7 @@ export function AppTabs({
                   rightSection={<IconChevronDown size={16} />}
                   variant="default"
                 >
-                  {activeItem?.label ?? "タブ"}
+                  {activeItem?.label ?? tr("タブ")}
                 </Button>
               </Menu.Target>
               <Menu.Dropdown>

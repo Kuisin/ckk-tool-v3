@@ -24,6 +24,7 @@ import { IconCalendar, IconInfoCircle } from "@tabler/icons-react";
 import { useEffect, useState } from "react";
 import { HelpLabel } from "@/components/ui/HelpLabel";
 import { FormModal, type ModalBaseProps } from "@/components/ui/modals";
+import { useTr } from "@/hooks/useTr";
 import type { PriceDiscount } from "./mock";
 
 const EMPTY: Omit<PriceDiscount, "id"> = {
@@ -47,6 +48,7 @@ export function DiscountRuleModal({
   initial: PriceDiscount | null;
   onSave: (rule: PriceDiscount) => void;
 }) {
+  const tr = useTr();
   const [draft, setDraft] = useState<Omit<PriceDiscount, "id">>(EMPTY);
   const [error, setError] = useState<string | null>(null);
 
@@ -67,18 +69,18 @@ export function DiscountRuleModal({
       onSubmit={(e) => {
         e.preventDefault();
         if (!draft.label.trim() || draft.value <= 0 || !draft.validFrom) {
-          setError("名称・値・有効開始日を入力してください");
+          setError(tr("名称・値・有効開始日を入力してください"));
           return;
         }
         if (draft.discountType === "RATE" && draft.value >= 100) {
-          setError("率は100%未満を入力してください");
+          setError(tr("率は100%未満を入力してください"));
           return;
         }
         if (
           draft.maxQuantity != null &&
           draft.maxQuantity < draft.minQuantity
         ) {
-          setError("数量上限は下限以上を入力してください");
+          setError(tr("数量上限は下限以上を入力してください"));
           return;
         }
         // id は編集時のみ（新規は空 → saveDiscountRule が create する）。
@@ -87,16 +89,16 @@ export function DiscountRuleModal({
       }}
       opened={opened}
       size="md"
-      submitLabel={initial ? "更新" : "追加"}
-      title={initial ? "値引きルールを編集" : "値引きルールを追加"}
+      submitLabel={initial ? "更新" : tr("追加")}
+      title={initial ? "値引きルールを編集" : tr("値引きルールを追加")}
     >
       <TextInput
         error={
           error && !draft.label.trim() ? "名称を入力してください" : undefined
         }
-        label="名称"
+        label={tr("名称")}
         onChange={(e) => patch({ label: e.currentTarget.value })}
-        placeholder="例: 夏季キャンペーン"
+        placeholder={tr("例: 夏季キャンペーン")}
         value={draft.label}
         withAsterisk
       />
@@ -104,14 +106,18 @@ export function DiscountRuleModal({
       <div>
         <Text fw={500} mb={4} size="sm">
           <HelpLabel
-            help="率（%）は単価に対する割合、金額（¥/本）は1本あたりの値引き額です。"
-            label="値引き種別"
+            help={tr(
+              tr(
+                "率（%）は単価に対する割合、金額（¥/本）は1本あたりの値引き額です。",
+              ),
+            )}
+            label={tr("値引き種別")}
           />
         </Text>
         <SegmentedControl
           data={[
-            { value: "RATE", label: "率（%）" },
-            { value: "AMOUNT", label: "金額（¥/本）" },
+            { value: "RATE", label: tr("率（%）") },
+            { value: "AMOUNT", label: tr("金額（¥/本）") },
           ]}
           fullWidth
           onChange={(v) => patch({ discountType: v as "RATE" | "AMOUNT" })}
@@ -123,7 +129,9 @@ export function DiscountRuleModal({
         error={
           error && draft.value <= 0 ? "1以上を入力してください" : undefined
         }
-        label={draft.discountType === "RATE" ? "率" : "値引き額（1本あたり）"}
+        label={
+          draft.discountType === "RATE" ? "率" : tr("値引き額（1本あたり）")
+        }
         min={0}
         onChange={(v) => patch({ value: typeof v === "number" ? v : 0 })}
         prefix={draft.discountType === "AMOUNT" ? "¥" : undefined}
@@ -137,8 +145,8 @@ export function DiscountRuleModal({
         <NumberInput
           label={
             <HelpLabel
-              help="このルールが適用される最小数量。上限は空欄で無制限。"
-              label="数量下限"
+              help={tr("このルールが適用される最小数量。上限は空欄で無制限。")}
+              label={tr("数量下限")}
             />
           }
           min={1}
@@ -150,12 +158,12 @@ export function DiscountRuleModal({
           withAsterisk
         />
         <NumberInput
-          label="数量上限"
+          label={tr("数量上限")}
           min={1}
           onChange={(v) =>
             patch({ maxQuantity: typeof v === "number" ? v : null })
           }
-          placeholder="空欄で上限なし"
+          placeholder={tr("空欄で上限なし")}
           suffix=" 本"
           value={draft.maxQuantity ?? ""}
         />
@@ -168,23 +176,27 @@ export function DiscountRuleModal({
           }
           label={
             <HelpLabel
-              help="このルールが適用される期間。見積書作成日の時点で期間内のルールだけが適用されます。"
-              label="有効開始日"
+              help={tr(
+                tr(
+                  "このルールが適用される期間。見積書作成日の時点で期間内のルールだけが適用されます。",
+                ),
+              )}
+              label={tr("有効開始日")}
             />
           }
           leftSection={<IconCalendar size={14} />}
           onChange={(v) => patch({ validFrom: v ?? "" })}
-          placeholder="日付を選択"
+          placeholder={tr("日付を選択")}
           value={draft.validFrom || null}
           valueFormat="YYYY/MM/DD"
           withAsterisk
         />
         <DatePickerInput
           clearable
-          label="有効終了日"
+          label={tr("有効終了日")}
           leftSection={<IconCalendar size={14} />}
           onChange={(v) => patch({ validUntil: v })}
-          placeholder="空欄で無期限"
+          placeholder={tr("空欄で無期限")}
           value={draft.validUntil}
           valueFormat="YYYY/MM/DD"
         />
@@ -197,7 +209,11 @@ export function DiscountRuleModal({
       />
 
       <Alert color="blue" icon={<IconInfoCircle size={16} />} variant="light">
-        条件（数量・期間）を満たすルールが見積書作成時に自動適用されます。複数該当する場合は値引き額が最大のルールを採用します。
+        {tr(
+          tr(
+            "条件（数量・期間）を満たすルールが見積書作成時に自動適用されます。複数該当する場合は値引き額が最大のルールを採用します。",
+          ),
+        )}
       </Alert>
 
       <Stack gap={0}>

@@ -48,6 +48,7 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { HelpLabel } from "@/components/ui/HelpLabel";
 import { openConfirm } from "@/components/ui/modals";
 import { LocalizedTextInput } from "@/components/ui/shells";
+import { useTr } from "@/hooks/useTr";
 import { fieldHelp, fieldHelpTip } from "@/lib/field-help";
 import { type FloorMapOption, LocationModal } from "./LocationModal";
 import { StorageLocationMapPanel } from "./StorageLocationMapPanel";
@@ -100,6 +101,7 @@ export function StorageLocationsPanel({
   /** 全拠点の有効なフロアマップ（新規作成モーダルのフロア Select 用）。 */
   allFloorMaps: FloorMapOption[];
 }) {
+  const tr = useTr();
   const router = useRouter();
   const [locationModal, setLocationModal] = useState<LocationModalState>(null);
   const [shelfModal, setShelfModal] = useState<ShelfModalState>(null);
@@ -107,7 +109,7 @@ export function StorageLocationsPanel({
 
   function onDeleteLocation(loc: StorageLocationRow) {
     openConfirm({
-      title: "保管場所の削除",
+      title: tr("保管場所の削除"),
       message: `「${loc.nameJa}」（棚 ${loc.shelves.length} 件を含む）を削除します。この操作は取り消せません。`,
       confirmLabel: "削除",
       onConfirm: () => {
@@ -115,14 +117,14 @@ export function StorageLocationsPanel({
           const res = await deleteStorageLocation(loc.id);
           if (!res.ok) {
             notifications.show({
-              title: "削除失敗",
+              title: tr("削除失敗"),
               message: res.error,
               color: "red",
             });
             return;
           }
           notifications.show({
-            title: "削除しました",
+            title: tr("削除しました"),
             message: loc.nameJa,
             color: "green",
           });
@@ -134,7 +136,7 @@ export function StorageLocationsPanel({
 
   function onDeleteShelf(shelf: StorageShelfRow) {
     openConfirm({
-      title: "棚の削除",
+      title: tr("棚の削除"),
       message: `棚「${shelf.code}」を削除します。この操作は取り消せません。`,
       confirmLabel: "削除",
       onConfirm: () => {
@@ -142,7 +144,7 @@ export function StorageLocationsPanel({
           const res = await deleteStorageShelf(shelf.id);
           if (!res.ok) {
             notifications.show({
-              title: "削除失敗",
+              title: tr("削除失敗"),
               message: res.error,
               color: "red",
             });
@@ -158,15 +160,18 @@ export function StorageLocationsPanel({
     <Stack gap="md">
       <Group justify="space-between">
         <Text c="dimmed" size="sm">
-          拠点内の倉庫・置場と棚。在庫はこの単位で保管され、在庫管理（PD04）
-          の在庫移動で場所間を動かせます。
+          {tr(
+            tr(
+              "拠点内の倉庫・置場と棚。在庫はこの単位で保管され、在庫管理（PD04）\n          の在庫移動で場所間を動かせます。",
+            ),
+          )}
         </Text>
         <PrimaryButton
           leftSection={<IconPlus size={14} />}
           onClick={() => setLocationModal({ location: null })}
           size="xs"
         >
-          保管場所を追加
+          {tr("保管場所を追加")}
         </PrimaryButton>
       </Group>
 
@@ -187,7 +192,7 @@ export function StorageLocationsPanel({
       {locations.length === 0 ? (
         <EmptyState
           icon={<IconBuildingWarehouse size={22} />}
-          message="保管場所はまだ登録されていません"
+          message={tr("保管場所はまだ登録されていません")}
         />
       ) : (
         locations.map((loc) => (
@@ -208,7 +213,7 @@ export function StorageLocationsPanel({
                     </Text>
                     {!loc.isActive && (
                       <Badge color="gray" size="xs" variant="light">
-                        無効
+                        {tr("無効")}
                       </Badge>
                     )}
                   </Group>
@@ -227,14 +232,14 @@ export function StorageLocationsPanel({
                   }
                   size="xs"
                 >
-                  棚を追加
+                  {tr("棚を追加")}
                 </GhostButton>
                 <GhostButton
                   leftSection={<IconEdit size={14} />}
                   onClick={() => setLocationModal({ location: loc })}
                   size="xs"
                 >
-                  編集
+                  {tr("編集")}
                 </GhostButton>
                 <GhostButton
                   color="red"
@@ -263,7 +268,7 @@ export function StorageLocationsPanel({
                       )}
                       {!shelf.isActive && (
                         <Badge color="gray" size="xs" variant="light">
-                          無効
+                          {tr("無効")}
                         </Badge>
                       )}
                       <GhostButton
@@ -331,6 +336,7 @@ function ShelfModal({
   onClose: () => void;
   onDone: () => void;
 }) {
+  const tr = useTr();
   const [pending, startTransition] = useTransition();
   const form = useForm<StorageShelfInput>({
     initialValues: {
@@ -349,7 +355,7 @@ function ShelfModal({
         : await createStorageShelf(locationId, values);
       if (!res.ok) {
         notifications.show({
-          title: "保存失敗",
+          title: tr("保存失敗"),
           message: res.error,
           color: "red",
         });
@@ -360,13 +366,15 @@ function ShelfModal({
   }
 
   return (
-    <Modal onClose={onClose} opened title={shelf ? "棚の編集" : "棚の追加"}>
+    <Modal onClose={onClose} opened title={shelf ? "棚の編集" : tr("棚の追加")}>
       <form onSubmit={form.onSubmit(submit)}>
         <Stack gap="sm">
           <TextInput
             label={
               <HelpLabel
-                {...fieldHelp("storageLocation", "code", { label: "棚コード" })}
+                {...fieldHelp("storageLocation", "code", {
+                  label: tr("棚コード"),
+                })}
               />
             }
             placeholder="A-1"
@@ -376,7 +384,7 @@ function ShelfModal({
           <LocalizedTextInput
             help={fieldHelpTip("storageLocation", "code")}
             jaProps={form.getInputProps("nameJa")}
-            label="名称（任意）"
+            label={tr("名称（任意）")}
             translationsProps={form.getInputProps("nameTranslations")}
           />
           <NumberInput

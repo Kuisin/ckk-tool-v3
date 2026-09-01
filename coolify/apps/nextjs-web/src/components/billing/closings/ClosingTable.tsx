@@ -71,7 +71,7 @@ function RunClosingModal({
       if (result.ok) {
         const { created, updated, skipped } = result.data;
         notifications.show({
-          title: "締日処理を実行しました",
+          title: tr("締日処理を実行しました"),
           message: `作成 ${created} 件 / 更新 ${updated} 件${skipped > 0 ? ` / 処理済みスキップ ${skipped} 件` : ""}`,
           color: "green",
         });
@@ -95,10 +95,12 @@ function RunClosingModal({
       onConfirm={execute}
       opened={opened}
       size="sm"
-      title="締日処理の実行"
+      title={tr("締日処理の実行")}
     >
       <Text size="sm">
-        対象月の未請求出荷（出荷済み・発送のみ）を顧客ごとに集計し、締日の処理行を作成します。
+        {tr(
+          "対象月の未請求出荷（出荷済み・発送のみ）を顧客ごとに集計し、締日の処理行を作成します。",
+        )}
       </Text>
       <Group grow>
         <Select
@@ -197,7 +199,7 @@ export function ClosingTable({ rows }: { rows: BillingClosing[] }) {
           onClick={() => setRunOpen(true)}
           style={{ flexShrink: 0 }}
         >
-          {isMobile ? "実行" : "締日処理を実行"}
+          {isMobile ? "実行" : tr("締日処理を実行")}
         </PrimaryButton>
       }
       breadcrumbs={[tr("請求"), tr("締日処理")]}
@@ -217,7 +219,7 @@ export function ClosingTable({ rows }: { rows: BillingClosing[] }) {
         <TextInput
           leftSection={<IconSearch size={14} />}
           onChange={(e) => setSearch(e.currentTarget.value)}
-          placeholder="顧客で検索"
+          placeholder={tr("顧客で検索")}
           value={search}
         />
       }
@@ -228,7 +230,9 @@ export function ClosingTable({ rows }: { rows: BillingClosing[] }) {
         data={filtered}
         defaultSort={{ key: "closingDate", dir: "desc" }}
         emptyIcon={<IconCalendarDue size={24} />}
-        emptyMessage="締日処理がありません（「締日処理を実行」から作成します）"
+        emptyMessage={tr(
+          "締日処理がありません（「締日処理を実行」から作成します）",
+        )}
         getRowId={(c) => c.id}
         onRowClick={(c) => router.push(`${BASE_PATH}/${c.id}`)}
         renderCard={(c) => (

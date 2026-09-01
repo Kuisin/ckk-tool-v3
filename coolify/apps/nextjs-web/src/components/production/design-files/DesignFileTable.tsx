@@ -20,6 +20,7 @@ import { useFormat } from "@/components/layout/PreferencesProvider";
 import { type Column, DataTable } from "@/components/ui/DataTable";
 import { NewButton } from "@/components/ui/NewButton";
 import { ListShell } from "@/components/ui/shells";
+import { useTr } from "@/hooks/useTr";
 import { useUrlSelectState, useUrlStringState } from "@/hooks/useUrlState";
 import { useIsMobile } from "@/hooks/useViewport";
 import {
@@ -49,6 +50,7 @@ export function DesignFileTable({
   /** 取得上限に当たったか。当たったことは黙らせない（§「no silent caps」）。 */
   truncated: boolean;
 }) {
+  const tr = useTr();
   const fmt = useFormat();
   const router = useRouter();
   const isMobile = useIsMobile();
@@ -98,23 +100,23 @@ export function DesignFileTable({
     },
     {
       key: "customerName",
-      header: "受注元",
+      header: tr("受注元"),
       sortable: true,
       sortValue: (r) => r.customerName ?? "",
       render: (r) =>
         r.customerBpId == null ? (
           <Badge color="gray" variant="light">
-            汎用
+            {tr("汎用")}
           </Badge>
         ) : (
           <Badge color="blue" variant="light">
-            {r.customerName ?? "受注元"}
+            {r.customerName ?? tr("受注元")}
           </Badge>
         ),
     },
     {
       key: "latestVersion",
-      header: "最新版",
+      header: tr("最新版"),
       width: 110,
       sortable: true,
       render: (r) => (
@@ -131,7 +133,7 @@ export function DesignFileTable({
     },
     {
       key: "latestRoles",
-      header: "役割",
+      header: tr("役割"),
       // 最新版に何が揃っているか。図面データが無い系列は作れないはずだが、
       // 手で入れたデータや将来の変更で欠けうるので、揃っているものを出す。
       render: (r) => (
@@ -150,18 +152,18 @@ export function DesignFileTable({
     },
     {
       key: "hasRequestSourced",
-      header: "出どころ",
+      header: tr("出どころ"),
       width: 100,
       sortValue: (r) => (r.hasRequestSourced ? 1 : 0),
       render: (r) => (
         <Badge color={r.hasRequestSourced ? "blue" : "gray"} variant="light">
-          {r.hasRequestSourced ? "依頼" : "手動"}
+          {r.hasRequestSourced ? "依頼" : tr("手動")}
         </Badge>
       ),
     },
     {
       key: "updatedAt",
-      header: "更新日",
+      header: tr("更新日"),
       width: 120,
       sortable: true,
       sortValue: (r) => r.updatedAt,
@@ -175,8 +177,10 @@ export function DesignFileTable({
 
   return (
     <ListShell
-      action={<NewButton href={`${BASE_PATH}/new`} label="設計図を登録" />}
-      breadcrumbs={["生産", "設計図"]}
+      action={
+        <NewButton href={`${BASE_PATH}/new`} label={tr("設計図を登録")} />
+      }
+      breadcrumbs={[tr("生産"), tr("設計図")]}
       filters={
         <>
           <Select
@@ -184,7 +188,7 @@ export function DesignFileTable({
             data={SERIES_OPTIONS}
             flex={isMobile ? 1 : undefined}
             onChange={setSeries}
-            placeholder="受注元"
+            placeholder={tr("受注元")}
             value={series}
             w={isMobile ? undefined : 120}
           />
@@ -193,7 +197,7 @@ export function DesignFileTable({
             data={SOURCE_OPTIONS}
             flex={isMobile ? 1 : undefined}
             onChange={setSource}
-            placeholder="出どころ"
+            placeholder={tr("出どころ")}
             value={source}
             w={isMobile ? undefined : 130}
           />
@@ -204,15 +208,19 @@ export function DesignFileTable({
         <TextInput
           leftSection={<IconSearch size={14} />}
           onChange={(e) => setSearch(e.currentTarget.value)}
-          placeholder="製品・受注元で検索"
+          placeholder={tr("製品・受注元で検索")}
           value={search}
         />
       }
-      title="設計図"
+      title={tr("設計図")}
     >
       {truncated && (
         <Text c="orange" mb="xs" size="xs">
-          版が多いため一部の系列を読み込んでいません。製品マスタから個別に開いてください。
+          {tr(
+            tr(
+              "版が多いため一部の系列を読み込んでいません。製品マスタから個別に開いてください。",
+            ),
+          )}
         </Text>
       )}
       <DataTable
@@ -220,10 +228,10 @@ export function DesignFileTable({
         data={filtered}
         defaultSort={{ key: "updatedAt", dir: "desc" }}
         emptyAction={
-          <NewButton href={`${BASE_PATH}/new`} label="設計図を登録" />
+          <NewButton href={`${BASE_PATH}/new`} label={tr("設計図を登録")} />
         }
         emptyIcon={<IconRuler2 size={24} />}
-        emptyMessage="設計図がありません"
+        emptyMessage={tr("設計図がありません")}
         getRowId={(r) => r.key}
         onRowClick={(r) => router.push(`${BASE_PATH}/${r.productId}`)}
       />

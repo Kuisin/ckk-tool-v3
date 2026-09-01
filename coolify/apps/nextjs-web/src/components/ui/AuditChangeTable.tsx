@@ -29,6 +29,7 @@ import {
 } from "@mantine/core";
 import { IconArrowRight, IconChevronDown } from "@tabler/icons-react";
 import { useState } from "react";
+import { useTr } from "@/hooks/useTr";
 import { useIsMobile } from "@/hooks/useViewport";
 import {
   auditFieldDiffs,
@@ -55,6 +56,7 @@ export function AuditChangeTable({
   tableName,
   emptyMessage = "変更点はありません",
 }: Props) {
+  const tr = useTr();
   const [rawOpen, setRawOpen] = useState(false);
   const isMobile = useIsMobile();
   const diffs = auditFieldDiffs(before, after, tableName);
@@ -96,9 +98,9 @@ export function AuditChangeTable({
           <Table highlightOnHover striped withTableBorder>
             <Table.Thead>
               <Table.Tr>
-                <Table.Th style={{ width: 180 }}>項目</Table.Th>
-                <Table.Th>変更前</Table.Th>
-                <Table.Th>変更後</Table.Th>
+                <Table.Th style={{ width: 180 }}>{tr("項目")}</Table.Th>
+                <Table.Th>{tr("変更前")}</Table.Th>
+                <Table.Th>{tr("変更後")}</Table.Th>
               </Table.Tr>
             </Table.Thead>
             <Table.Tbody>
@@ -141,8 +143,8 @@ export function AuditChangeTable({
           <Table highlightOnHover striped withTableBorder>
             <Table.Thead>
               <Table.Tr>
-                <Table.Th style={{ width: 180 }}>項目</Table.Th>
-                <Table.Th>値</Table.Th>
+                <Table.Th style={{ width: 180 }}>{tr("項目")}</Table.Th>
+                <Table.Th>{tr("値")}</Table.Th>
               </Table.Tr>
             </Table.Thead>
             <Table.Tbody>
@@ -174,7 +176,7 @@ export function AuditChangeTable({
               onClick={() => setRawOpen((v) => !v)}
               size="xs"
             >
-              {rawOpen ? "生データを隠す" : "生データを表示"}
+              {rawOpen ? "生データを隠す" : tr("生データを表示")}
             </GhostButton>
           </Group>
           <Collapse expanded={rawOpen}>
@@ -182,7 +184,7 @@ export function AuditChangeTable({
               {before != null && (
                 <div>
                   <Text c="dimmed" fw={600} mb={4} size="xs">
-                    変更前（before）
+                    {tr("変更前（before）")}
                   </Text>
                   <Code block style={{ whiteSpace: "pre-wrap" }}>
                     {JSON.stringify(before, null, 2)}
@@ -192,7 +194,7 @@ export function AuditChangeTable({
               {after != null && (
                 <div>
                   <Text c="dimmed" fw={600} mb={4} size="xs">
-                    変更後（after）
+                    {tr("変更後（after）")}
                   </Text>
                   <Code block style={{ whiteSpace: "pre-wrap" }}>
                     {JSON.stringify(after, null, 2)}

@@ -45,6 +45,7 @@ import {
   FormModal,
   type ModalBaseProps,
 } from "@/components/ui/modals";
+import { useTr } from "@/hooks/useTr";
 import {
   inspectionDepartmentOptions,
   inspectionItemSectionOptions,
@@ -78,10 +79,11 @@ export function DeleteInspectionTemplateModal({
   target: InspectionTemplateModalTarget | null;
   onDone?: () => void;
 }) {
+  const tr = useTr();
   const [isPending, startTransition] = useTransition();
   return (
     <ConfirmModal
-      confirmLabel="削除する"
+      confirmLabel={tr("削除する")}
       loading={isPending}
       message={
         target
@@ -95,14 +97,14 @@ export function DeleteInspectionTemplateModal({
           const result = await deleteInspectionTemplates([target.id]);
           if (result.ok) {
             notifications.show({
-              title: "削除しました",
+              title: tr("削除しました"),
               message: `検査表テンプレート「${label(target)}」を削除しました`,
               color: "green",
             });
             onDone?.();
           } else {
             notifications.show({
-              title: "エラー",
+              title: tr("エラー"),
               message: result.error,
               color: "red",
             });
@@ -110,8 +112,12 @@ export function DeleteInspectionTemplateModal({
         });
       }}
       opened={opened}
-      title="検査表テンプレートの削除"
-      warning="このバージョンを参照する指示書・検査記録が存在する場合は削除できません。無効化をご検討ください。"
+      title={tr("検査表テンプレートの削除")}
+      warning={tr(
+        tr(
+          "このバージョンを参照する指示書・検査記録が存在する場合は削除できません。無効化をご検討ください。",
+        ),
+      )}
     />
   );
 }
@@ -125,12 +131,13 @@ export function ToggleInspectionTemplateActiveModal({
   target: InspectionTemplateModalTarget | null;
   onDone?: () => void;
 }) {
+  const tr = useTr();
   const [isPending, startTransition] = useTransition();
   const isActive = target?.isActive ?? true;
   return (
     <ConfirmModal
       confirmColor={isActive ? "red" : "blue"}
-      confirmLabel={isActive ? "無効化する" : "有効化する"}
+      confirmLabel={isActive ? "無効化する" : tr("有効化する")}
       loading={isPending}
       message={
         target
@@ -149,14 +156,14 @@ export function ToggleInspectionTemplateActiveModal({
           );
           if (result.ok) {
             notifications.show({
-              title: isActive ? "無効化しました" : "有効化しました",
+              title: isActive ? "無効化しました" : tr("有効化しました"),
               message: `検査表テンプレート「${label(target)}」を${isActive ? "無効化" : "有効化"}しました`,
               color: "green",
             });
             onDone?.();
           } else {
             notifications.show({
-              title: "エラー",
+              title: tr("エラー"),
               message: result.error,
               color: "red",
             });
@@ -165,7 +172,9 @@ export function ToggleInspectionTemplateActiveModal({
       }}
       opened={opened}
       title={
-        isActive ? "検査表テンプレートの無効化" : "検査表テンプレートの有効化"
+        isActive
+          ? "検査表テンプレートの無効化"
+          : tr("検査表テンプレートの有効化")
       }
     />
   );
@@ -181,11 +190,12 @@ export function CreateVersionModal({
   target: InspectionTemplateModalTarget | null;
   onCreated: (newId: number) => void;
 }) {
+  const tr = useTr();
   const [isPending, startTransition] = useTransition();
   return (
     <ConfirmModal
       confirmColor="blue"
-      confirmLabel="新バージョンを作成"
+      confirmLabel={tr("新バージョンを作成")}
       loading={isPending}
       message={
         target
@@ -199,7 +209,7 @@ export function CreateVersionModal({
           const result = await createInspectionTemplateVersion(target.id);
           if (result.ok) {
             notifications.show({
-              title: "新バージョンを作成しました",
+              title: tr("新バージョンを作成しました"),
               message: `${target.code} v${result.data.version} を作成しました`,
               color: "green",
             });
@@ -207,7 +217,7 @@ export function CreateVersionModal({
             onCreated(result.data.id);
           } else {
             notifications.show({
-              title: "エラー",
+              title: tr("エラー"),
               message: result.error,
               color: "red",
             });
@@ -215,7 +225,7 @@ export function CreateVersionModal({
         });
       }}
       opened={opened}
-      title="新バージョンの作成"
+      title={tr("新バージョンの作成")}
     />
   );
 }
@@ -239,6 +249,7 @@ export function SetApproversModal({
   groupOptions: { value: string; label: string }[];
   onDone?: () => void;
 }) {
+  const tr = useTr();
   const [isPending, startTransition] = useTransition();
   const [groupId, setGroupId] = useState<string | null>(currentGroupId);
   const [approvers, setApprovers] =
@@ -267,7 +278,7 @@ export function SetApproversModal({
           );
           if (result.ok) {
             notifications.show({
-              title: "検査承認の宛先を変更しました",
+              title: tr("検査承認の宛先を変更しました"),
               message: label(target),
               color: "green",
             });
@@ -275,7 +286,7 @@ export function SetApproversModal({
             onDone?.();
           } else {
             notifications.show({
-              title: "エラー",
+              title: tr("エラー"),
               message: result.error,
               color: "red",
             });
@@ -283,8 +294,8 @@ export function SetApproversModal({
         });
       }}
       opened={opened}
-      submitLabel="保存"
-      title="検査承認の宛先の変更"
+      submitLabel={tr("保存")}
+      title={tr("検査承認の宛先の変更")}
     >
       <ApprovalTargetField
         approvers={approvers}
@@ -366,6 +377,7 @@ export function InspectionTemplateItemModal({
   layoutStyle?: "DIMENSIONAL" | "CHECKLIST";
   onDone?: () => void;
 }) {
+  const tr = useTr();
   const locale = useLocale();
   const [isPending, startTransition] = useTransition();
   const isEdit = !!item;
@@ -448,7 +460,7 @@ export function InspectionTemplateItemModal({
   const validate = (): boolean => {
     const next: Record<string, string> = {};
     if (!itemNameJa.trim()) {
-      next.itemNameJa = "項目名（日本語）を入力してください";
+      next.itemNameJa = tr("項目名（日本語）を入力してください");
     }
     if (inputType === "NUMBER") {
       if (
@@ -456,14 +468,14 @@ export function InspectionTemplateItemModal({
         toleranceMax != null &&
         toleranceMin > toleranceMax
       ) {
-        next.toleranceMax = "合格範囲の上限は下限以上にしてください";
+        next.toleranceMax = tr("合格範囲の上限は下限以上にしてください");
       }
     }
     if (isSelect) {
       if (options.length === 0 || options.every((o) => !o.labelJa.trim())) {
-        next.options = "選択肢を 1 つ以上登録してください";
+        next.options = tr("選択肢を 1 つ以上登録してください");
       } else if (options.some((o) => !o.labelJa.trim())) {
-        next.options = "選択肢の表示名（日本語）を入力してください";
+        next.options = tr("選択肢の表示名（日本語）を入力してください");
       }
     }
     setErrors(next);
@@ -508,7 +520,7 @@ export function InspectionTemplateItemModal({
         : await addTemplateItem(templateId, input);
       if (result.ok) {
         notifications.show({
-          title: "保存しました",
+          title: tr("保存しました"),
           message: isEdit
             ? `検査項目「${input.itemNameJa}」を更新しました`
             : `検査項目「${input.itemNameJa}」を追加しました`,
@@ -518,7 +530,7 @@ export function InspectionTemplateItemModal({
         onDone?.();
       } else {
         notifications.show({
-          title: "エラー",
+          title: tr("エラー"),
           message: result.error,
           color: "red",
         });
@@ -539,21 +551,21 @@ export function InspectionTemplateItemModal({
       onSubmit={handleSubmit}
       opened={opened}
       size="lg"
-      submitLabel={isEdit ? "保存" : "追加"}
-      title={isEdit ? "検査項目の編集" : "検査項目の追加"}
+      submitLabel={isEdit ? "保存" : tr("追加")}
+      title={isEdit ? "検査項目の編集" : tr("検査項目の追加")}
     >
       <Stack gap="sm">
         <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="sm">
           <TextInput
             error={errors.itemNameJa}
-            label="項目名（日本語）"
+            label={tr("項目名（日本語）")}
             onChange={(e) => setItemNameJa(e.currentTarget.value)}
-            placeholder="例: 外径"
+            placeholder={tr("例: 外径")}
             value={itemNameJa}
             withAsterisk
           />
           <TextInput
-            label="項目名（English）"
+            label={tr("項目名（English）")}
             onChange={(e) => setItemNameEn(e.currentTarget.value)}
             value={itemNameEn}
           />
@@ -562,7 +574,7 @@ export function InspectionTemplateItemModal({
         <Select
           allowDeselect={false}
           data={inspectionItemTypeOptions(locale)}
-          label="入力種別"
+          label={tr("入力種別")}
           onChange={(v) => {
             if (v) setInputType(v as InspectionItemType);
           }}
@@ -572,14 +584,14 @@ export function InspectionTemplateItemModal({
         {inputType === "NUMBER" && (
           <SimpleGrid cols={{ base: 1, sm: 4 }} spacing="sm">
             <TextInput
-              label="単位"
+              label={tr("単位")}
               onChange={(e) => setUnit(e.currentTarget.value)}
-              placeholder="例: mm"
+              placeholder={tr("例: mm")}
               value={unit}
             />
             <NumberInput
               decimalScale={4}
-              label="合格範囲（下限）"
+              label={tr("合格範囲（下限）")}
               onChange={(val) =>
                 setToleranceMin(val === "" || val == null ? null : Number(val))
               }
@@ -588,7 +600,7 @@ export function InspectionTemplateItemModal({
             <NumberInput
               decimalScale={4}
               error={errors.toleranceMax}
-              label="合格範囲（上限）"
+              label={tr("合格範囲（上限）")}
               onChange={(val) =>
                 setToleranceMax(val === "" || val == null ? null : Number(val))
               }
@@ -596,8 +608,8 @@ export function InspectionTemplateItemModal({
             />
             <NumberInput
               decimalScale={4}
-              description="狙い値（合否には影響しません）"
-              label="目標値"
+              description={tr("狙い値（合否には影響しません）")}
+              label={tr("目標値")}
               onChange={(val) =>
                 setGoalNumber(val === "" || val == null ? null : Number(val))
               }
@@ -609,16 +621,17 @@ export function InspectionTemplateItemModal({
         {inputType === "NUMBER" && (
           <Stack gap="xs">
             <Text c="dimmed" size="xs">
-              旧帳票（基本値・公差 Top/Bottom）—
-              入力すると合格範囲（下限/上限）を
-              目標値からの差分で自動計算します。直接入力する場合は空欄のままで
-              構いません。
+              {tr(
+                tr(
+                  "旧帳票（基本値・公差 Top/Bottom）—\n              入力すると合格範囲（下限/上限）を\n              目標値からの差分で自動計算します。直接入力する場合は空欄のままで\n              構いません。",
+                ),
+              )}
             </Text>
             <SimpleGrid cols={{ base: 1, sm: 3 }} spacing="sm">
               <NumberInput
                 decimalScale={4}
-                description="図面等の基準値（表示のみ）"
-                label="基本値"
+                description={tr("図面等の基準値（表示のみ）")}
+                label={tr("基本値")}
                 onChange={(val) =>
                   setNominalValue(
                     val === "" || val == null ? null : Number(val),
@@ -629,7 +642,7 @@ export function InspectionTemplateItemModal({
               <NumberInput
                 decimalScale={4}
                 error={errors.toleranceTopDelta}
-                label="公差 Top（上振れ許容）"
+                label={tr("公差 Top（上振れ許容）")}
                 onChange={(val) =>
                   setToleranceTopDelta(
                     val === "" || val == null ? null : Number(val),
@@ -639,7 +652,7 @@ export function InspectionTemplateItemModal({
               />
               <NumberInput
                 decimalScale={4}
-                label="公差 Bottom（下振れ許容）"
+                label={tr("公差 Bottom（下振れ許容）")}
                 onChange={(val) =>
                   setToleranceBottomDelta(
                     val === "" || val == null ? null : Number(val),
@@ -661,7 +674,7 @@ export function InspectionTemplateItemModal({
           <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="sm">
             <Stack gap={4}>
               <Text fw={500} size="sm">
-                合格とする回答
+                {tr("合格とする回答")}
               </Text>
               <SegmentedControl
                 data={BOOL_SEGMENT}
@@ -671,10 +684,10 @@ export function InspectionTemplateItemModal({
             </Stack>
             <Stack gap={4}>
               <Text fw={500} size="sm">
-                目標回答（任意）
+                {tr("目標回答（任意）")}
               </Text>
               <SegmentedControl
-                data={[{ value: "none", label: "未設定" }, ...BOOL_SEGMENT]}
+                data={[{ value: "none", label: tr("未設定") }, ...BOOL_SEGMENT]}
                 onChange={(v) =>
                   setGoalBool(v === "none" ? null : v === "true")
                 }
@@ -687,7 +700,7 @@ export function InspectionTemplateItemModal({
         {isSelect && (
           <Stack gap="xs">
             <Text fw={500} size="sm">
-              選択肢
+              {tr("選択肢")}
             </Text>
             {options.map((o, idx) => (
               <Group gap="xs" key={o.value} wrap="nowrap">
@@ -701,7 +714,7 @@ export function InspectionTemplateItemModal({
                       ),
                     );
                   }}
-                  placeholder="表示名（日本語）"
+                  placeholder={tr("表示名（日本語）")}
                   style={{ flex: 1 }}
                   value={o.labelJa}
                 />
@@ -719,7 +732,7 @@ export function InspectionTemplateItemModal({
                   style={{ flex: 1 }}
                   value={o.labelEn}
                 />
-                <Tooltip label="選択肢を削除" withinPortal>
+                <Tooltip label={tr("選択肢を削除")} withinPortal>
                   <ActionIcon
                     aria-label={`選択肢 ${idx + 1} を削除`}
                     color="red"
@@ -746,14 +759,14 @@ export function InspectionTemplateItemModal({
                   ])
                 }
               >
-                選択肢を追加
+                {tr("選択肢を追加")}
               </GhostButton>
             </Group>
             <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="sm">
               <MultiSelect
                 data={selectData}
-                description="未設定の場合は手動で合否を判定します"
-                label="合格とする選択肢"
+                description={tr("未設定の場合は手動で合否を判定します")}
+                label={tr("合格とする選択肢")}
                 onChange={setAcceptOptions}
                 value={acceptOptions.filter((v) =>
                   selectData.some((d) => d.value === v),
@@ -763,14 +776,14 @@ export function InspectionTemplateItemModal({
                 <Select
                   clearable
                   data={selectData}
-                  label="目標（任意）"
+                  label={tr("目標（任意）")}
                   onChange={(v) => setGoalOptions(v ? [v] : [])}
                   value={goalOptions[0] ?? null}
                 />
               ) : (
                 <MultiSelect
                   data={selectData}
-                  label="目標（任意）"
+                  label={tr("目標（任意）")}
                   onChange={setGoalOptions}
                   value={goalOptions.filter((v) =>
                     selectData.some((d) => d.value === v),
@@ -783,8 +796,12 @@ export function InspectionTemplateItemModal({
 
         <Switch
           checked={allowManualOverride}
-          description="オフにすると合格基準からの自動判定のみ（基準未設定の項目は常に手動）"
-          label="合否の手動上書きを許可"
+          description={tr(
+            tr(
+              "オフにすると合格基準からの自動判定のみ（基準未設定の項目は常に手動）",
+            ),
+          )}
+          label={tr("合否の手動上書きを許可")}
           onChange={(e) => setAllowManualOverride(e.currentTarget.checked)}
         />
 
@@ -795,8 +812,8 @@ export function InspectionTemplateItemModal({
           <Select
             allowDeselect={false}
             data={inspectionItemSectionOptions(locale)}
-            description="形状欄は主表と別枠のフリーフォーム欄に載ります"
-            label="掲載区分"
+            description={tr("形状欄は主表と別枠のフリーフォーム欄に載ります")}
+            label={tr("掲載区分")}
             onChange={(v) => {
               if (v) setSection(v as InspectionItemSection);
             }}
@@ -806,14 +823,16 @@ export function InspectionTemplateItemModal({
             <Select
               clearable
               data={inspectionDepartmentOptions(locale)}
-              label="部門"
+              label={tr("部門")}
               onChange={(v) => setDepartment(v as InspectionDepartment | null)}
               value={department}
             />
           )}
           <TextInput
-            description="LE/PR/P/S/K/H/M/N/Z 等（列見出しの接尾辞・凡例に使用）"
-            label="測定機器コード"
+            description={tr(
+              tr("LE/PR/P/S/K/H/M/N/Z 等（列見出しの接尾辞・凡例に使用）"),
+            )}
+            label={tr("測定機器コード")}
             onChange={(e) => setMeasurementEquipment(e.currentTarget.value)}
             value={measurementEquipment}
           />
@@ -821,8 +840,8 @@ export function InspectionTemplateItemModal({
 
         <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="sm">
           <NumberInput
-            description="小さい順に表示されます"
-            label="表示順"
+            description={tr("小さい順に表示されます")}
+            label={tr("表示順")}
             onChange={(val) =>
               setSortOrder(val === "" || val == null ? 0 : Number(val))
             }
@@ -830,7 +849,7 @@ export function InspectionTemplateItemModal({
           />
           <Switch
             checked={isRequired}
-            label="必須項目"
+            label={tr("必須項目")}
             mt="lg"
             onChange={(e) => setIsRequired(e.currentTarget.checked)}
           />
@@ -849,10 +868,11 @@ export function DeleteInspectionTemplateItemModal({
   item: InspectionTemplateItemRow | null;
   onDone?: () => void;
 }) {
+  const tr = useTr();
   const [isPending, startTransition] = useTransition();
   return (
     <ConfirmModal
-      confirmLabel="削除する"
+      confirmLabel={tr("削除する")}
       loading={isPending}
       message={
         item
@@ -866,14 +886,14 @@ export function DeleteInspectionTemplateItemModal({
           const result = await deleteTemplateItem(item.id);
           if (result.ok) {
             notifications.show({
-              title: "削除しました",
+              title: tr("削除しました"),
               message: `検査項目「${item.itemNameJa}」を削除しました`,
               color: "green",
             });
             onDone?.();
           } else {
             notifications.show({
-              title: "エラー",
+              title: tr("エラー"),
               message: result.error,
               color: "red",
             });
@@ -881,7 +901,7 @@ export function DeleteInspectionTemplateItemModal({
         });
       }}
       opened={opened}
-      title="検査項目の削除"
+      title={tr("検査項目の削除")}
     />
   );
 }

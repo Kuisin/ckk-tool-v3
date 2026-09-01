@@ -21,6 +21,7 @@ import {
   FormModal,
   type ModalBaseProps,
 } from "@/components/ui/modals";
+import { useTr } from "@/hooks/useTr";
 
 export interface BpModalTarget {
   id: string;
@@ -44,10 +45,11 @@ export function DeleteBpModal({
   entityLabel: string;
   onDone?: () => void;
 }) {
+  const tr = useTr();
   const [isPending, startTransition] = useTransition();
   return (
     <ConfirmModal
-      confirmLabel="削除する"
+      confirmLabel={tr("削除する")}
       loading={isPending}
       message={
         target
@@ -61,7 +63,7 @@ export function DeleteBpModal({
           const result = await deleteBps([target.id]);
           if (result.ok) {
             notifications.show({
-              title: "削除しました",
+              title: tr("削除しました"),
               message: `${entityLabel}「${label(target)}」を削除しました`,
               color: "green",
             });
@@ -69,7 +71,7 @@ export function DeleteBpModal({
             onDone?.();
           } else {
             notifications.show({
-              title: "エラー",
+              title: tr("エラー"),
               message: result.error,
               color: "red",
             });
@@ -78,7 +80,11 @@ export function DeleteBpModal({
       }}
       opened={opened}
       title={`${entityLabel}の削除`}
-      warning="この取引先を参照する価格試算・価格表・見積書、または支店が存在する場合は削除できません。無効化をご検討ください。"
+      warning={tr(
+        tr(
+          "この取引先を参照する価格試算・価格表・見積書、または支店が存在する場合は削除できません。無効化をご検討ください。",
+        ),
+      )}
     />
   );
 }
@@ -94,12 +100,13 @@ export function ToggleBpActiveModal({
   entityLabel: string;
   onDone?: () => void;
 }) {
+  const tr = useTr();
   const [isPending, startTransition] = useTransition();
   const isActive = target?.isActive ?? true;
   return (
     <ConfirmModal
       confirmColor={isActive ? "red" : "blue"}
-      confirmLabel={isActive ? "無効化する" : "有効化する"}
+      confirmLabel={isActive ? "無効化する" : tr("有効化する")}
       loading={isPending}
       message={
         target
@@ -115,7 +122,7 @@ export function ToggleBpActiveModal({
           const result = await setBpsActive([target.id], !isActive);
           if (result.ok) {
             notifications.show({
-              title: isActive ? "無効化しました" : "有効化しました",
+              title: isActive ? "無効化しました" : tr("有効化しました"),
               message: `${entityLabel}「${label(target)}」を${isActive ? "無効化" : "有効化"}しました`,
               color: "green",
             });
@@ -123,7 +130,7 @@ export function ToggleBpActiveModal({
             onDone?.();
           } else {
             notifications.show({
-              title: "エラー",
+              title: tr("エラー"),
               message: result.error,
               color: "red",
             });
@@ -147,6 +154,7 @@ export function AddContactModal({
   bpName: string;
   onDone?: () => void;
 }) {
+  const tr = useTr();
   const [isPending, startTransition] = useTransition();
 
   const [name, setName] = useState("");
@@ -182,7 +190,7 @@ export function AddContactModal({
       });
       if (result.ok) {
         notifications.show({
-          title: "追加しました",
+          title: tr("追加しました"),
           message: `担当者「${name}」を追加しました`,
           color: "green",
         });
@@ -191,7 +199,7 @@ export function AddContactModal({
         onDone?.();
       } else {
         notifications.show({
-          title: "エラー",
+          title: tr("エラー"),
           message: result.error,
           color: "red",
         });
@@ -209,45 +217,45 @@ export function AddContactModal({
       onSubmit={handleSubmit}
       opened={opened}
       size="md"
-      submitLabel="追加"
+      submitLabel={tr("追加")}
       title={`担当者の追加 — ${bpName}`}
     >
       <Stack gap="sm">
         <SimpleGrid cols={2} spacing="sm">
           <TextInput
-            label="氏名"
+            label={tr("氏名")}
             onChange={(e) => setName(e.currentTarget.value)}
             placeholder="山田 太郎"
             value={name}
             withAsterisk
           />
           <TextInput
-            label="フリガナ"
+            label={tr("フリガナ")}
             onChange={(e) => setNameKana(e.currentTarget.value)}
             placeholder="ヤマダ タロウ"
             value={nameKana}
           />
           <TextInput
-            label="部署"
+            label={tr("部署")}
             onChange={(e) => setDepartment(e.currentTarget.value)}
-            placeholder="購買部"
+            placeholder={tr("購買部")}
             value={department}
           />
           <TextInput
-            label="役職"
+            label={tr("役職")}
             onChange={(e) => setTitle(e.currentTarget.value)}
-            placeholder="課長"
+            placeholder={tr("課長")}
             value={title}
           />
           <TextInput
-            label="メールアドレス"
+            label={tr("メールアドレス")}
             onChange={(e) => setEmail(e.currentTarget.value)}
             placeholder="taro@example.co.jp"
             type="email"
             value={email}
           />
           <TextInput
-            label="電話番号"
+            label={tr("電話番号")}
             onChange={(e) => setPhone(e.currentTarget.value)}
             placeholder="03-1234-5678"
             value={phone}
@@ -255,7 +263,7 @@ export function AddContactModal({
         </SimpleGrid>
         <Checkbox
           checked={isPrimary}
-          label="主担当にする"
+          label={tr("主担当にする")}
           onChange={(e) => setIsPrimary(e.currentTarget.checked)}
         />
       </Stack>

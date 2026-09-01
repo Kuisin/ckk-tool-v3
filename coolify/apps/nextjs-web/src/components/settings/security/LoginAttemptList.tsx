@@ -12,6 +12,7 @@ import { Badge, Group, Stack, Text } from "@mantine/core";
 import { IconShieldLock } from "@tabler/icons-react";
 import { useFormat } from "@/components/layout/PreferencesProvider";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { useTr } from "@/hooks/useTr";
 import { loginMethodLabel, loginReasonLabel } from "@/lib/login-attempt-core";
 import type { LoginAttemptRow } from "@/lib/login-attempts";
 import { OwnershipBadge } from "./ownership";
@@ -25,6 +26,7 @@ export function LoginAttemptList({
   emptyMessage?: string;
   showOwnership?: boolean;
 }) {
+  const tr = useTr();
   const fmt = useFormat();
 
   if (rows.length === 0) {
@@ -50,7 +52,7 @@ export function LoginAttemptList({
                 size="xs"
                 variant="light"
               >
-                {r.outcome === "SUCCESS" ? "成功" : "失敗"}
+                {r.outcome === "SUCCESS" ? "成功" : tr("失敗")}
               </Badge>
               <Text size="xs">{loginMethodLabel(r.method)}</Text>
               {r.outcome === "FAILURE" && (

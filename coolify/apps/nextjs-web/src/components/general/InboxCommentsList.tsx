@@ -6,9 +6,11 @@ import { useRouter } from "next/navigation";
 import type { InboxCommentRow } from "@/app/(dashboard)/general/tasks/comments-data";
 import { useFormat } from "@/components/layout/PreferencesProvider";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { useTr } from "@/hooks/useTr";
 import { useIsMobile } from "@/hooks/useViewport";
 
 export function InboxCommentsList({ rows }: { rows: InboxCommentRow[] }) {
+  const tr = useTr();
   const router = useRouter();
   const fmt = useFormat();
   const isMobile = useIsMobile();
@@ -18,7 +20,7 @@ export function InboxCommentsList({ rows }: { rows: InboxCommentRow[] }) {
       <Paper p="md" radius="md" withBorder>
         <EmptyState
           icon={<IconMessage size={28} />}
-          message="自分の文書に未解決のコメントはありません"
+          message={tr("自分の文書に未解決のコメントはありません")}
         />
       </Paper>
     );
@@ -54,7 +56,7 @@ export function InboxCommentsList({ rows }: { rows: InboxCommentRow[] }) {
                 </Badge>
               </Group>
               <Text c="dimmed" size="xs" style={{ flexShrink: 0 }}>
-                {row.author ?? "（不明）"} · {fmt.dateTime(row.createdAt)}
+                {row.author ?? tr("（不明）")} · {fmt.dateTime(row.createdAt)}
               </Text>
             </Group>
             <Text lineClamp={2} size="sm">

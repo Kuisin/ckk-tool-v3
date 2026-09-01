@@ -22,6 +22,7 @@ import { notifications } from "@mantine/notifications";
 import { IconBug, IconInfoCircle } from "@tabler/icons-react";
 import { useState, useTransition } from "react";
 import { CancelButton, PrimaryButton } from "@/components/ui/buttons";
+import { useTr } from "@/hooks/useTr";
 import { capturedLogs, collectDiagnostics } from "@/lib/bug-report";
 import { submitBugReportAction } from "./bug-report-actions";
 
@@ -32,6 +33,7 @@ export function BugReportModal({
   opened: boolean;
   onClose: () => void;
 }) {
+  const tr = useTr();
   const [description, setDescription] = useState("");
   const [includeLogs, setIncludeLogs] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -53,7 +55,7 @@ export function BugReportModal({
   const submit = () => {
     setError(null);
     if (!description.trim()) {
-      setError("問題の内容を入力してください");
+      setError(tr("問題の内容を入力してください"));
       return;
     }
     startTransition(async () => {
@@ -64,8 +66,8 @@ export function BugReportModal({
       });
       if (res.ok) {
         notifications.show({
-          title: "報告しました",
-          message: "バグ報告を送信しました。ご協力ありがとうございます",
+          title: tr("報告しました"),
+          message: tr("バグ報告を送信しました。ご協力ありがとうございます"),
           color: "green",
         });
         reset();
@@ -77,11 +79,16 @@ export function BugReportModal({
   };
 
   return (
-    <Modal onClose={onClose} opened={opened} title="バグを報告" withinPortal>
+    <Modal
+      onClose={onClose}
+      opened={opened}
+      title={tr("バグを報告")}
+      withinPortal
+    >
       <Stack gap="sm">
         <div>
           <Text c="dimmed" mb={4} size="xs">
-            対象ページ（自動添付）
+            {tr("対象ページ（自動添付）")}
           </Text>
           <Code block>{currentUrl}</Code>
         </div>
@@ -94,10 +101,10 @@ export function BugReportModal({
 
         <Textarea
           autosize
-          label="問題の内容"
+          label={tr("問題の内容")}
           minRows={3}
           onChange={(e) => setDescription(e.currentTarget.value)}
-          placeholder="発生した問題・操作手順・期待した動作など"
+          placeholder={tr("発生した問題・操作手順・期待した動作など")}
           value={description}
           withAsterisk
         />
@@ -109,8 +116,11 @@ export function BugReportModal({
           size="sm"
         />
         <Text c="dimmed" size="xs">
-          ページ URL・ブラウザ情報・画面サイズ・アプリバージョンが自動で
-          添付されます。報告は操作履歴に記録され、管理者へ通知されます。
+          {tr(
+            tr(
+              "ページ URL・ブラウザ情報・画面サイズ・アプリバージョンが自動で\n          添付されます。報告は操作履歴に記録され、管理者へ通知されます。",
+            ),
+          )}
         </Text>
 
         <Stack gap="xs">
@@ -120,7 +130,7 @@ export function BugReportModal({
             loading={isPending}
             onClick={submit}
           >
-            報告する
+            {tr("報告する")}
           </PrimaryButton>
           <CancelButton fullWidth onClick={onClose} />
         </Stack>

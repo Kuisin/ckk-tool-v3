@@ -16,6 +16,7 @@ import type { ContactRow } from "@/app/(dashboard)/master/_shared/bp-data";
 import { GhostButton } from "@/components/ui/buttons";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { openConfirm } from "@/components/ui/modals";
+import { useTr } from "@/hooks/useTr";
 import { useIsMobile } from "@/hooks/useViewport";
 import { AddContactModal } from "./BpModals";
 
@@ -31,6 +32,7 @@ export function ContactsTable({
   /** 見出しを持つセクションの中で使うとき（取引先詳細）は「担当者」を二重に出さない。 */
   hideHeading?: boolean;
 }) {
+  const tr = useTr();
   const router = useRouter();
   const isMobile = useIsMobile();
   const [, startTransition] = useTransition();
@@ -38,22 +40,22 @@ export function ContactsTable({
 
   const handleDelete = (c: ContactRow) => {
     openConfirm({
-      title: "担当者の削除",
+      title: tr("担当者の削除"),
       message: `担当者「${c.name}」を削除します。この操作は取り消せません。`,
-      confirmLabel: "削除する",
+      confirmLabel: tr("削除する"),
       onConfirm: () => {
         startTransition(async () => {
           const result = await deleteContact(bpId, c.id);
           if (result.ok) {
             notifications.show({
-              title: "削除しました",
+              title: tr("削除しました"),
               message: `担当者「${c.name}」を削除しました`,
               color: "green",
             });
             router.refresh();
           } else {
             notifications.show({
-              title: "エラー",
+              title: tr("エラー"),
               message: result.error,
               color: "red",
             });
@@ -68,28 +70,28 @@ export function ContactsTable({
       <Group justify={hideHeading ? "flex-end" : "space-between"} mb="xs">
         {!hideHeading && (
           <Text fw={600} size="sm">
-            担当者
+            {tr("担当者")}
           </Text>
         )}
         <GhostButton
           leftSection={<IconPlus size={14} />}
           onClick={() => setAddOpen(true)}
         >
-          担当者を追加
+          {tr("担当者を追加")}
         </GhostButton>
       </Group>
       {contacts.length === 0 ? (
         <EmptyState
           icon={<IconUsers size={24} />}
-          message="担当者は登録されていません"
+          message={tr("担当者は登録されていません")}
         />
       ) : (
         <Table highlightOnHover striped withTableBorder>
           <Table.Thead>
             <Table.Tr>
-              <Table.Th>氏名</Table.Th>
-              {!isMobile && <Table.Th>部署 / 役職</Table.Th>}
-              <Table.Th>連絡先</Table.Th>
+              <Table.Th>{tr("氏名")}</Table.Th>
+              {!isMobile && <Table.Th>{tr("部署 / 役職")}</Table.Th>}
+              <Table.Th>{tr("連絡先")}</Table.Th>
               <Table.Th w={60} />
             </Table.Tr>
           </Table.Thead>
@@ -101,7 +103,7 @@ export function ContactsTable({
                     <Text size="sm">{c.name}</Text>
                     {c.isPrimary && (
                       <Badge color="blue" size="xs" variant="light">
-                        主担当
+                        {tr("主担当")}
                       </Badge>
                     )}
                   </Group>
@@ -119,7 +121,7 @@ export function ContactsTable({
                 </Table.Td>
                 <Table.Td>
                   <ActionIcon
-                    aria-label="担当者を削除"
+                    aria-label={tr("担当者を削除")}
                     color="red"
                     onClick={() => handleDelete(c)}
                     variant="subtle"

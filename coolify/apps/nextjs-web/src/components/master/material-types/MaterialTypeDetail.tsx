@@ -24,6 +24,7 @@ import {
   ResourceActions,
   SummaryGrid,
 } from "@/components/ui/shells";
+import { useTr } from "@/hooks/useTr";
 import { useTabParam } from "@/hooks/useUrlState";
 import { useIsMobile } from "@/hooks/useViewport";
 import type { Option } from "@/lib/mock";
@@ -80,6 +81,7 @@ export function MaterialTypeDetail({
   surfaceOptions: Option[];
   prices: MaterialTypePriceSeed[];
 }) {
+  const tr = useTr();
   const fmt = useFormat();
   const router = useRouter();
   const isMobile = useIsMobile();
@@ -101,7 +103,7 @@ export function MaterialTypeDetail({
         <ResourceActions
           menuItems={[
             {
-              label: record.isActive ? "無効化" : "有効化",
+              label: record.isActive ? "無効化" : tr("有効化"),
               icon: <IconCircleMinus size={14} />,
               onClick: () => setToggleOpen(true),
             },
@@ -117,8 +119,8 @@ export function MaterialTypeDetail({
         />
       }
       breadcrumbs={[
-        "マスタ",
-        { label: "材種", href: BASE_PATH },
+        tr("マスタ"),
+        { label: tr("材種"), href: BASE_PATH },
         record.code ?? record.nameJa,
       ]}
       createdAt={fmt.dateTime(record.createdAt)}
@@ -128,34 +130,37 @@ export function MaterialTypeDetail({
     >
       <SummaryGrid>
         <FieldValue
-          label="材種コード"
+          label={tr("材種コード")}
           value={
             record.code ? (
               <DocNumber>{record.code}</DocNumber>
             ) : (
               <Group gap={6} wrap="nowrap">
                 <Badge color="gray" size="xs" variant="light">
-                  未変換（レガシー）
+                  {tr("未変換（レガシー）")}
                 </Badge>
               </Group>
             )
           }
         />
-        <FieldValue label="名称（日本語）" value={record.nameJa} />
-        <FieldValue label="名称（英語）" value={record.nameEn || "—"} />
+        <FieldValue label={tr("名称（日本語）")} value={record.nameJa} />
+        <FieldValue label={tr("名称（英語）")} value={record.nameEn || "—"} />
         {record.composition && (
           <>
             <FieldValue
-              label="メーカー"
+              label={tr("メーカー")}
               value={record.composition.manufacturerLabel}
             />
             <FieldValue
-              label="メーカー材種"
+              label={tr("メーカー材種")}
               value={record.composition.gradeLabel}
             />
-            <FieldValue label="形状" value={record.composition.shapeLabel} />
             <FieldValue
-              label="種類（自動採番）"
+              label={tr("形状")}
+              value={record.composition.shapeLabel}
+            />
+            <FieldValue
+              label={tr("種類（自動採番）")}
               value={<DocNumber>{record.composition.kindCode}</DocNumber>}
             />
           </>
@@ -164,20 +169,20 @@ export function MaterialTypeDetail({
 
       <AppTabs onChange={setTab} value={tab}>
         <Tabs.List>
-          <Tabs.Tab value="overview">概要</Tabs.Tab>
-          <Tabs.Tab value="prices">既定単価</Tabs.Tab>
-          <Tabs.Tab value="related">関連</Tabs.Tab>
-          <Tabs.Tab value="history">履歴</Tabs.Tab>
+          <Tabs.Tab value="overview">{tr("概要")}</Tabs.Tab>
+          <Tabs.Tab value="prices">{tr("既定単価")}</Tabs.Tab>
+          <Tabs.Tab value="related">{tr("関連")}</Tabs.Tab>
+          <Tabs.Tab value="history">{tr("履歴")}</Tabs.Tab>
         </Tabs.List>
 
         <Tabs.Panel pt="md" value="overview">
           <Stack gap="md">
             <FieldValue
-              label="説明（日本語）"
+              label={tr("説明（日本語）")}
               value={record.descriptionJa || "—"}
             />
             <FieldValue
-              label="説明（英語）"
+              label={tr("説明（英語）")}
               value={record.descriptionEn || "—"}
             />
           </Stack>
@@ -195,21 +200,21 @@ export function MaterialTypeDetail({
         <Tabs.Panel pt="md" value="related">
           <Stack gap="xs">
             <Text fw={600} size="sm">
-              この材種の素材
+              {tr("この材種の素材")}
             </Text>
             {record.materials.length === 0 ? (
               <Text c="dimmed" size="sm">
-                この材種に紐づく素材はありません
+                {tr("この材種に紐づく素材はありません")}
               </Text>
             ) : (
               <Table highlightOnHover striped withTableBorder>
                 <Table.Thead>
                   <Table.Tr>
-                    <Table.Th>素材コード</Table.Th>
-                    <Table.Th>名称</Table.Th>
-                    {!isMobile && <Table.Th>寸法</Table.Th>}
-                    {!isMobile && <Table.Th>単位</Table.Th>}
-                    <Table.Th>状態</Table.Th>
+                    <Table.Th>{tr("素材コード")}</Table.Th>
+                    <Table.Th>{tr("名称")}</Table.Th>
+                    {!isMobile && <Table.Th>{tr("寸法")}</Table.Th>}
+                    {!isMobile && <Table.Th>{tr("単位")}</Table.Th>}
+                    <Table.Th>{tr("状態")}</Table.Th>
                   </Table.Tr>
                 </Table.Thead>
                 <Table.Tbody>

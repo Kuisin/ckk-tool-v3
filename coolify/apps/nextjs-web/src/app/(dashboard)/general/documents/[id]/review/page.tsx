@@ -10,6 +10,7 @@ import {
   listLineComments,
   pageAccess,
 } from "@/lib/internal-pages";
+import { getTr } from "@/lib/ui-text-server";
 
 export const dynamic = "force-dynamic";
 
@@ -22,6 +23,7 @@ export default async function ReviewPage({
 }: {
   params: Promise<{ id: string }>;
 }) {
+  const tr = await getTr();
   const denied = await requireAppRead("internal-pages");
   if (denied) return denied;
 
@@ -42,10 +44,10 @@ export default async function ReviewPage({
     <Stack gap="md">
       <PageHeader
         breadcrumbs={[
-          { label: "一般" },
-          { label: "社内文書", href: "/general/documents" },
+          { label: tr("一般") },
+          { label: tr("社内文書"), href: "/general/documents" },
           { label: page.title, href: `/general/documents/${page.pageNumber}` },
-          { label: "レビュー" },
+          { label: tr("レビュー") },
         ]}
         title={`レビュー — ${page.title}`}
       />

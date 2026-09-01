@@ -32,6 +32,7 @@ import {
 } from "@/app/(dashboard)/production/work-orders/[id]/final-inspection-actions";
 import { useFormat } from "@/components/layout/PreferencesProvider";
 import { GhostButton, SecondaryButton } from "@/components/ui/buttons";
+import { useTr } from "@/hooks/useTr";
 import type { ActionResult } from "@/lib/server-action";
 import type { WorkOrderFinalInspectionView } from "./work-orders/model";
 
@@ -80,6 +81,7 @@ export function WorkOrderFinalInspectionPanel({
   workOrderNumber: number;
   finalInspection: WorkOrderFinalInspectionView | null;
 }) {
+  const tr = useTr();
   const fmt = useFormat();
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
@@ -92,7 +94,7 @@ export function WorkOrderFinalInspectionPanel({
       router.refresh();
     } else {
       notifications.show({
-        title: "エラー",
+        title: tr("エラー"),
         message: result.error,
         color: "red",
       });
@@ -102,7 +104,7 @@ export function WorkOrderFinalInspectionPanel({
   return (
     <Paper p="md" radius="md" withBorder>
       <Stack gap="md">
-        <Title order={4}>最終検査</Title>
+        <Title order={4}>{tr("最終検査")}</Title>
 
         <Stack gap="xs">
           {CHECK_ITEMS.map(({ field, label }) => {
@@ -162,7 +164,7 @@ export function WorkOrderFinalInspectionPanel({
         <Group gap="lg" wrap="wrap">
           <Checkbox
             checked={fi.spareStockUsed}
-            label="予備在庫使用"
+            label={tr("予備在庫使用")}
             onChange={(e) =>
               startTransition(async () => {
                 const result = await setFinalInspectionSpareStock(
@@ -170,13 +172,13 @@ export function WorkOrderFinalInspectionPanel({
                   "spareStockUsed",
                   e.currentTarget.checked,
                 );
-                afterResult(result, "予備在庫使用を記録しました");
+                afterResult(result, tr("予備在庫使用を記録しました"));
               })
             }
           />
           <Checkbox
             checked={fi.spareStockReceived}
-            label="予備在庫入庫"
+            label={tr("予備在庫入庫")}
             onChange={(e) =>
               startTransition(async () => {
                 const result = await setFinalInspectionSpareStock(
@@ -184,7 +186,7 @@ export function WorkOrderFinalInspectionPanel({
                   "spareStockReceived",
                   e.currentTarget.checked,
                 );
-                afterResult(result, "予備在庫入庫を記録しました");
+                afterResult(result, tr("予備在庫入庫を記録しました"));
               })
             }
           />
@@ -192,7 +194,7 @@ export function WorkOrderFinalInspectionPanel({
 
         <Stack gap="xs">
           <Text fw={500} size="sm">
-            出荷前確認（棚包 → 納品書発行 → 出荷許可）
+            {tr("出荷前確認（棚包 → 納品書発行 → 出荷許可）")}
           </Text>
           <Group gap="sm" wrap="wrap">
             {SHIPMENT_STAGES.map(({ stage, label }, idx) => {
@@ -227,7 +229,7 @@ export function WorkOrderFinalInspectionPanel({
                         }
                         size="xs"
                       >
-                        記録する
+                        {tr("記録する")}
                       </GhostButton>
                     )}
                   </Stack>
@@ -239,7 +241,7 @@ export function WorkOrderFinalInspectionPanel({
 
         <Stack gap="xs">
           <Text fw={500} size="sm">
-            出荷時不良内容確認者印
+            {tr("出荷時不良内容確認者印")}
           </Text>
           {fi.shipDefectReviewedAt && (
             <Text c="dimmed" size="xs">
@@ -252,7 +254,7 @@ export function WorkOrderFinalInspectionPanel({
           <Textarea
             minRows={2}
             onChange={(e) => setNotes(e.currentTarget.value)}
-            placeholder="出荷前検査での不良内容等（任意）"
+            placeholder={tr("出荷前検査での不良内容等（任意）")}
             value={notes}
           />
           <Group justify="flex-end">
@@ -264,11 +266,14 @@ export function WorkOrderFinalInspectionPanel({
                     workOrderNumber,
                     notes,
                   );
-                  afterResult(result, "出荷時不良内容確認者印を記録しました");
+                  afterResult(
+                    result,
+                    tr("出荷時不良内容確認者印を記録しました"),
+                  );
                 })
               }
             >
-              確認する
+              {tr("確認する")}
             </SecondaryButton>
           </Group>
         </Stack>

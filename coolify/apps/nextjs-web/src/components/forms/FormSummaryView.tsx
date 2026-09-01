@@ -38,6 +38,7 @@ import { GhostButton, SecondaryButton } from "@/components/ui/buttons";
 import { CopyableValue } from "@/components/ui/CopyableValue";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { PageHeader } from "@/components/ui/PageHeader";
+import { useTr } from "@/hooks/useTr";
 import { useIsMobile } from "@/hooks/useViewport";
 import { downloadCsv, toCsv } from "@/lib/csv";
 import { FORM_FIELD_TYPES } from "@/lib/form-schema";
@@ -66,6 +67,7 @@ function Body({
   chartMode: ChartMode;
   isMobile: boolean;
 }) {
+  const tr = useTr();
   const body = summary.body;
 
   switch (body.kind) {
@@ -114,8 +116,11 @@ function Body({
           )}
           {chartMode === "pie" && !canDonut && (
             <Text c="dimmed" size="xs">
-              この項目は円グラフにできません（複数選べる質問、区分が 1 つだけ、
-              区分が多すぎる、または上位のみの表示）
+              {tr(
+                tr(
+                  "この項目は円グラフにできません（複数選べる質問、区分が 1 つだけ、\n              区分が多すぎる、または上位のみの表示）",
+                ),
+              )}
             </Text>
           )}
         </Stack>
@@ -127,11 +132,11 @@ function Body({
         <Stack gap="md">
           <StatRow
             stats={[
-              { label: "回答", value: body.answered },
-              { label: "最小", value: body.min },
-              { label: "平均", value: body.mean },
-              { label: "中央", value: body.median },
-              { label: "最大", value: body.max },
+              { label: tr("回答"), value: body.answered },
+              { label: tr("最小"), value: body.min },
+              { label: tr("平均"), value: body.mean },
+              { label: tr("中央"), value: body.median },
+              { label: tr("最大"), value: body.max },
             ]}
           />
           {isMobile ? (
@@ -198,7 +203,7 @@ function Body({
     default:
       return (
         <Text c="dimmed" size="sm">
-          この項目は集計しません（表示専用）
+          {tr("この項目は集計しません（表示専用）")}
         </Text>
       );
   }
@@ -243,6 +248,7 @@ export function FormSummaryView({
   /** 未設定なら Metabase へのリンクは出さない（LAN 限定の URL を焼き込まない）。 */
   metabaseUrl: string | null;
 }) {
+  const tr = useTr();
   const fmt = useFormat();
   const router = useRouter();
   const params = useSearchParams();
@@ -257,24 +263,24 @@ export function FormSummaryView({
 
   // 集計そのものを CSV で出す（画面の数字をそのまま持ち出せるように）。
   const exportCsv = () => {
-    const rows: (string | number)[][] = [["項目", "区分", "件数"]];
+    const rows: (string | number)[][] = [[tr("項目"), tr("区分"), tr("件数")]];
     for (const s of summaries) {
       const b = s.body;
       if (b.kind === "categories" || b.kind === "periods") {
         const items = b.kind === "categories" ? b.items : b.buckets;
         for (const i of items) rows.push([s.label, i.label, i.count]);
       } else if (b.kind === "numbers") {
-        rows.push([s.label, "回答数", b.answered]);
-        rows.push([s.label, "最小", b.min]);
-        rows.push([s.label, "平均", b.mean]);
-        rows.push([s.label, "中央", b.median]);
-        rows.push([s.label, "最大", b.max]);
+        rows.push([s.label, tr("回答数"), b.answered]);
+        rows.push([s.label, tr("最小"), b.min]);
+        rows.push([s.label, tr("平均"), b.mean]);
+        rows.push([s.label, tr("中央"), b.median]);
+        rows.push([s.label, tr("最大"), b.max]);
         for (const i of b.buckets) rows.push([s.label, i.label, i.count]);
       } else if (b.kind === "text" || b.kind === "amount") {
-        rows.push([s.label, "回答数", b.answered]);
+        rows.push([s.label, tr("回答数"), b.answered]);
       }
       if (b.kind !== "none")
-        rows.push([s.label, "未回答", Math.max(0, s.total - b.answered)]);
+        rows.push([s.label, tr("未回答"), Math.max(0, s.total - b.answered)]);
     }
     downloadCsv(`集計_${formTitle}_${formCode}.csv`, toCsv(rows));
   };
@@ -291,15 +297,15 @@ export function FormSummaryView({
               CSV
             </GhostButton>
             <SecondaryButton href={`/general/forms/${formCode}`}>
-              フォームへ戻る
+              {tr("フォームへ戻る")}
             </SecondaryButton>
           </Group>
         }
         breadcrumbs={[
-          { label: "一般" },
-          { label: "フォーム", href: "/general/forms" },
+          { label: tr("一般") },
+          { label: tr("フォーム"), href: "/general/forms" },
           { label: formTitle, href: `/general/forms/${formCode}` },
-          { label: "集計" },
+          { label: tr("集計") },
         ]}
         title={`集計 — ${formTitle}`}
       />
@@ -307,9 +313,9 @@ export function FormSummaryView({
       <Card padding="md" radius="md" withBorder>
         <StatRow
           stats={[
-            { label: "回答数", value: responseCount },
+            { label: tr("回答数"), value: responseCount },
             {
-              label: "最新の回答",
+              label: tr("最新の回答"),
               value: lastResponseAt ? fmt.dateTime(lastResponseAt) : "—",
             },
           ]}
@@ -322,12 +328,12 @@ export function FormSummaryView({
             <Group gap="xl" wrap="wrap">
               <Stack gap={4}>
                 <Text c="dimmed" size="xs">
-                  選択肢の並び
+                  {tr("選択肢の並び")}
                 </Text>
                 <SegmentedControl
                   data={[
-                    { value: "count", label: "多い順" },
-                    { value: "definition", label: "定義順" },
+                    { value: "count", label: tr("多い順") },
+                    { value: "definition", label: tr("定義順") },
                   ]}
                   onChange={(v) => setParam("order", v)}
                   size="xs"
@@ -336,13 +342,13 @@ export function FormSummaryView({
               </Stack>
               <Stack gap={4}>
                 <Text c="dimmed" size="xs">
-                  選択肢のグラフ
+                  {tr("選択肢のグラフ")}
                 </Text>
                 <SegmentedControl
                   data={[
-                    { value: "auto", label: "自動" },
-                    { value: "pie", label: "円" },
-                    { value: "bar", label: "棒" },
+                    { value: "auto", label: tr("自動") },
+                    { value: "pie", label: tr("円") },
+                    { value: "bar", label: tr("棒") },
                   ]}
                   onChange={(v) => setParam("chart", v)}
                   size="xs"
@@ -351,12 +357,12 @@ export function FormSummaryView({
               </Stack>
               <Stack gap={4}>
                 <Text c="dimmed" size="xs">
-                  日付のまとめ方
+                  {tr("日付のまとめ方")}
                 </Text>
                 <SegmentedControl
                   data={[
-                    { value: "month", label: "月別" },
-                    { value: "day", label: "日別" },
+                    { value: "month", label: tr("月別") },
+                    { value: "day", label: tr("日別") },
                   ]}
                   onChange={(v) => setParam("grain", v)}
                   size="xs"
@@ -366,7 +372,7 @@ export function FormSummaryView({
             </Group>
             <Stack gap={4}>
               <Text fw={600} size="sm">
-                提出の推移
+                {tr("提出の推移")}
               </Text>
               {isMobile ? (
                 <SummaryBars
@@ -385,14 +391,18 @@ export function FormSummaryView({
       <Alert
         color="gray"
         icon={<IconChartBar size={16} />}
-        title="もっと詳しく分析するには"
+        title={tr("もっと詳しく分析するには")}
         variant="light"
       >
         <Stack gap="xs">
           <Text size="sm">
-            この画面は「何がどれだけ選ばれたか」までです。項目どうしの掛け合わせ、
-            期間の比較、他の業務データ（受注・出荷など）との突き合わせは
-            <strong> Metabase </strong>で行えます。
+            {tr(
+              tr(
+                "この画面は「何がどれだけ選ばれたか」までです。項目どうしの掛け合わせ、\n            期間の比較、他の業務データ（受注・出荷など）との突き合わせは",
+              ),
+            )}
+            <strong> Metabase </strong>
+            {tr("で行えます。")}
             <br />
             フォームの回答は{" "}
             <Text component="span" ff="mono" size="sm">
@@ -405,8 +415,12 @@ export function FormSummaryView({
           {/* Metabase の「フォームコード」フィルタに貼る値。手で書き写すと
               打ち間違えるので、そのままコピーできる形で出す。 */}
           <CopyableValue
-            description="Metabase の「フォームコード」に貼り付けると、このフォームの回答だけに絞れます。"
-            label="フォームコード"
+            description={tr(
+              tr(
+                "Metabase の「フォームコード」に貼り付けると、このフォームの回答だけに絞れます。",
+              ),
+            )}
+            label={tr("フォームコード")}
             value={formCode}
           />
 
@@ -417,7 +431,7 @@ export function FormSummaryView({
                 href={metabaseUrl}
                 leftSection={<IconExternalLink size={14} />}
               >
-                Metabase を開く
+                {tr("Metabase を開く")}
               </SecondaryButton>
             )}
             <SecondaryButton
@@ -425,7 +439,7 @@ export function FormSummaryView({
               href="/manual/ja/operations/general/forms/user#metabase"
               leftSection={<IconBook2 size={14} />}
             >
-              集計のしかたを読む
+              {tr("集計のしかたを読む")}
             </SecondaryButton>
           </Group>
         </Stack>
@@ -435,7 +449,7 @@ export function FormSummaryView({
         <Paper p="md" radius="md" withBorder>
           <EmptyState
             icon={<IconChartBar size={28} />}
-            message="まだ回答がありません"
+            message={tr("まだ回答がありません")}
           />
         </Paper>
       ) : (

@@ -53,6 +53,7 @@ import {
   DetailShell,
   ResourceActions,
 } from "@/components/ui/shells";
+import { useTr } from "@/hooks/useTr";
 import { useTabParam } from "@/hooks/useUrlState";
 import { useIsMobile } from "@/hooks/useViewport";
 import {
@@ -108,6 +109,7 @@ export function BpDetail({
   record: BpDetailData;
   auditEntries: AuditEntry[];
 }) {
+  const tr = useTr();
   const locale = useLocale();
   const fmt = useFormat();
   const router = useRouter();
@@ -135,7 +137,7 @@ export function BpDetail({
         <ResourceActions
           menuItems={[
             {
-              label: record.isActive ? "無効化" : "有効化",
+              label: record.isActive ? "無効化" : tr("有効化"),
               icon: <IconCircleMinus size={14} />,
               onClick: () => setToggleOpen(true),
             },
@@ -151,8 +153,8 @@ export function BpDetail({
         />
       }
       breadcrumbs={[
-        "マスタ",
-        { label: "取引先", href: BP_BASE_PATH },
+        tr("マスタ"),
+        { label: tr("取引先"), href: BP_BASE_PATH },
         record.bpCode,
       ]}
       createdAt={fmt.dateTime(record.createdAt)}
@@ -163,7 +165,7 @@ export function BpDetail({
       <BpBaseSummary
         extra={
           <FieldValue
-            label="ロール"
+            label={tr("ロール")}
             value={
               <BpRoleBadges
                 roles={record.roles}
@@ -177,60 +179,68 @@ export function BpDetail({
 
       <AppTabs onChange={setTab} value={tab}>
         <Tabs.List>
-          <Tabs.Tab value="overview">概要</Tabs.Tab>
-          <Tabs.Tab value="contacts">担当者</Tabs.Tab>
-          <Tabs.Tab value="branches">支店一覧</Tabs.Tab>
-          <Tabs.Tab value="history">見積・受注履歴</Tabs.Tab>
-          <Tabs.Tab value="audit">履歴</Tabs.Tab>
+          <Tabs.Tab value="overview">{tr("概要")}</Tabs.Tab>
+          <Tabs.Tab value="contacts">{tr("担当者")}</Tabs.Tab>
+          <Tabs.Tab value="branches">{tr("支店一覧")}</Tabs.Tab>
+          <Tabs.Tab value="history">{tr("見積・受注履歴")}</Tabs.Tab>
+          <Tabs.Tab value="audit">{tr("履歴")}</Tabs.Tab>
         </Tabs.List>
 
         <Tabs.Panel pt="md" value="overview">
           <Stack gap="md">
             {/* 一般 — ロールに関係なく取引先そのものに紐づく情報。 */}
-            <OverviewSection title="一般">
-              <FieldValue label="備考" value={record.notes || "—"} />
+            <OverviewSection title={tr("一般")}>
+              <FieldValue label={tr("備考")} value={record.notes || "—"} />
             </OverviewSection>
 
             {/* ロール別 — 付与されているロールの分だけセクションが並ぶ。 */}
             {record.roles.length === 0 && (
-              <OverviewSection title="ロール">
+              <OverviewSection title={tr("ロール")}>
                 <Text c="dimmed" size="sm">
-                  ロールが設定されていません。「編集」から顧客・最終需要家・
-                  仕入先・外注先のいずれかを付与すると、各書類で選べるように
-                  なります。
+                  {tr(
+                    tr(
+                      "ロールが設定されていません。「編集」から顧客・最終需要家・\n                  仕入先・外注先のいずれかを付与すると、各書類で選べるように\n                  なります。",
+                    ),
+                  )}
                 </Text>
               </OverviewSection>
             )}
 
             {customer && (
-              <OverviewSection bpRole="CUSTOMER" title="顧客">
+              <OverviewSection bpRole="CUSTOMER" title={tr("顧客")}>
                 <Group gap="xl" wrap="wrap">
                   <FieldValue
-                    label="旧システムコード"
+                    label={tr("旧システムコード")}
                     value={customer.customerCode || "—"}
                   />
-                  <FieldValue label="請求先" value={customer.billingName} />
-                  <FieldValue label="締日" value={day(customer.closingDay)} />
                   <FieldValue
-                    label="支払サイト"
+                    label={tr("請求先")}
+                    value={customer.billingName}
+                  />
+                  <FieldValue
+                    label={tr("締日")}
+                    value={day(customer.closingDay)}
+                  />
+                  <FieldValue
+                    label={tr("支払サイト")}
                     value={days(customer.paymentTermsDays)}
                   />
                   <FieldValue
-                    label="支払日"
+                    label={tr("支払日")}
                     value={days(customer.paymentDay)}
                   />
                   <FieldValue
-                    label="与信限度額"
+                    label={tr("与信限度額")}
                     value={formatMoney(customer.creditLimit)}
                   />
                   <FieldValue
-                    label="課税区分"
+                    label={tr("課税区分")}
                     value={
                       taxTypeLabel(customer.taxType, locale) ?? customer.taxType
                     }
                   />
                   <FieldValue
-                    label="請求書送付方法"
+                    label={tr("請求書送付方法")}
                     value={
                       invoiceMethodLabel(customer.invoiceMethod, locale) ??
                       customer.invoiceMethod
@@ -239,13 +249,13 @@ export function BpDetail({
                 </Group>
                 <Checkbox
                   checked={customer.isConsignment}
-                  label="委託先"
+                  label={tr("委託先")}
                   mt="sm"
                   readOnly
                 />
                 <Box mt="sm">
                   <FieldValue
-                    label="営業担当"
+                    label={tr("営業担当")}
                     value={
                       customer.salesReps.length > 0 ? (
                         <Group gap="xs" wrap="wrap">
@@ -270,18 +280,21 @@ export function BpDetail({
             )}
 
             {endUser && (
-              <OverviewSection bpRole="END_USER" title="最終需要家">
+              <OverviewSection bpRole="END_USER" title={tr("最終需要家")}>
                 <Group gap="xl" wrap="wrap">
-                  <FieldValue label="業種" value={endUser.industry || "—"} />
+                  <FieldValue
+                    label={tr("業種")}
+                    value={endUser.industry || "—"}
+                  />
                 </Group>
               </OverviewSection>
             )}
 
             {vendor && (
-              <OverviewSection bpRole="VENDOR" title="仕入先・外注先">
+              <OverviewSection bpRole="VENDOR" title={tr("仕入先・外注先")}>
                 <Group gap="xl" wrap="wrap">
                   <FieldValue
-                    label="外注種別"
+                    label={tr("外注種別")}
                     value={
                       <Badge color="teal" size="sm" variant="light">
                         {vendorTypeLabel(vendor.vendorType, locale) ??
@@ -290,30 +303,42 @@ export function BpDetail({
                     }
                   />
                   <FieldValue
-                    label="旧システムコード"
+                    label={tr("旧システムコード")}
                     value={vendor.vendorCode || "—"}
                   />
-                  <FieldValue label="締日" value={day(vendor.closingDay)} />
                   <FieldValue
-                    label="支払サイト"
+                    label={tr("締日")}
+                    value={day(vendor.closingDay)}
+                  />
+                  <FieldValue
+                    label={tr("支払サイト")}
                     value={days(vendor.paymentTermsDays)}
                   />
-                  <FieldValue label="支払日" value={days(vendor.paymentDay)} />
                   <FieldValue
-                    label="標準リードタイム"
+                    label={tr("支払日")}
+                    value={days(vendor.paymentDay)}
+                  />
+                  <FieldValue
+                    label={tr("標準リードタイム")}
                     value={days(vendor.leadTimeDays)}
                   />
                 </Group>
-                <Divider label="振込先" labelPosition="left" my="sm" />
+                <Divider label={tr("振込先")} labelPosition="left" my="sm" />
                 <Group gap="xl" wrap="wrap">
-                  <FieldValue label="銀行名" value={vendor.bankName || "—"} />
-                  <FieldValue label="支店名" value={vendor.bankBranch || "—"} />
                   <FieldValue
-                    label="口座種別"
+                    label={tr("銀行名")}
+                    value={vendor.bankName || "—"}
+                  />
+                  <FieldValue
+                    label={tr("支店名")}
+                    value={vendor.bankBranch || "—"}
+                  />
+                  <FieldValue
+                    label={tr("口座種別")}
                     value={vendor.bankAccountType || "—"}
                   />
                   <FieldValue
-                    label="口座番号"
+                    label={tr("口座番号")}
                     value={vendor.bankAccountNumber || "—"}
                   />
                 </Group>
@@ -341,21 +366,21 @@ export function BpDetail({
                 router.push(`${BP_BASE_PATH}/${record.id}/branches/new`)
               }
             >
-              支店を追加
+              {tr("支店を追加")}
             </GhostButton>
           </Group>
           {record.branches.length === 0 ? (
             <EmptyState
               icon={<IconBuildingStore size={24} />}
-              message="支店は登録されていません"
+              message={tr("支店は登録されていません")}
             />
           ) : (
             <Table highlightOnHover striped withTableBorder>
               <Table.Thead>
                 <Table.Tr>
-                  <Table.Th>支店名</Table.Th>
-                  {!isMobile && <Table.Th>電話番号</Table.Th>}
-                  <Table.Th>主担当</Table.Th>
+                  <Table.Th>{tr("支店名")}</Table.Th>
+                  {!isMobile && <Table.Th>{tr("電話番号")}</Table.Th>}
+                  <Table.Th>{tr("主担当")}</Table.Th>
                 </Table.Tr>
               </Table.Thead>
               <Table.Tbody>
@@ -383,17 +408,19 @@ export function BpDetail({
           {record.history.length === 0 ? (
             <EmptyState
               icon={<IconFileText size={24} />}
-              message="見積・受注はまだありません"
+              message={tr("見積・受注はまだありません")}
             />
           ) : (
             <Table highlightOnHover striped withTableBorder>
               <Table.Thead>
                 <Table.Tr>
-                  <Table.Th>番号</Table.Th>
-                  {!isMobile && <Table.Th>種別</Table.Th>}
-                  <Table.Th style={{ textAlign: "right" }}>金額</Table.Th>
-                  <Table.Th>状態</Table.Th>
-                  {!isMobile && <Table.Th>作成日</Table.Th>}
+                  <Table.Th>{tr("番号")}</Table.Th>
+                  {!isMobile && <Table.Th>{tr("種別")}</Table.Th>}
+                  <Table.Th style={{ textAlign: "right" }}>
+                    {tr("金額")}
+                  </Table.Th>
+                  <Table.Th>{tr("状態")}</Table.Th>
+                  {!isMobile && <Table.Th>{tr("作成日")}</Table.Th>}
                 </Table.Tr>
               </Table.Thead>
               <Table.Tbody>
@@ -436,14 +463,14 @@ export function BpDetail({
       </AppTabs>
 
       <DeleteBpModal
-        entityLabel="取引先"
+        entityLabel={tr("取引先")}
         onClose={() => setDeleteOpen(false)}
         onDone={() => router.push(BP_BASE_PATH)}
         opened={deleteOpen}
         target={target}
       />
       <ToggleBpActiveModal
-        entityLabel="取引先"
+        entityLabel={tr("取引先")}
         onClose={() => setToggleOpen(false)}
         onDone={() => router.refresh()}
         opened={toggleOpen}

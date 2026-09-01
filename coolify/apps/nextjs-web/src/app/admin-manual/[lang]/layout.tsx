@@ -14,6 +14,7 @@ import { DocsShell } from "@/components/docs/DocsShell";
 import { checkPermission } from "@/lib/authz";
 import { isDocLang } from "@/lib/docs-i18n";
 import { internalSource } from "@/lib/internal-source";
+import { getTr } from "@/lib/ui-text-server";
 
 export const dynamic = "force-dynamic";
 
@@ -24,6 +25,7 @@ export default async function InternalDocsLayout({
   params: Promise<{ lang: string }>;
   children: ReactNode;
 }) {
+  const tr = await getTr();
   const session = await auth();
   if (!session?.user) redirect("/login");
   const authz = await checkPermission("admin_manual", "READ");
@@ -33,10 +35,10 @@ export default async function InternalDocsLayout({
   if (!isDocLang(lang)) notFound();
   return (
     <DocsShell
-      crossLink={{ text: "マニュアル", url: `/manual/${lang}` }}
+      crossLink={{ text: tr("マニュアル"), url: `/manual/${lang}` }}
       lang={lang}
       searchApi="/admin-manual/search"
-      title="CKK 管理マニュアル"
+      title={tr("CKK 管理マニュアル")}
       tree={internalSource.getPageTree(lang)}
     >
       {children}

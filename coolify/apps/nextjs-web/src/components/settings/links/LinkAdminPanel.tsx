@@ -43,6 +43,7 @@ import { AppTabs } from "@/components/ui/AppTabs";
 import { PrimaryButton } from "@/components/ui/buttons";
 import { type Column, DataTable } from "@/components/ui/DataTable";
 import { openConfirm } from "@/components/ui/modals";
+import { useTr } from "@/hooks/useTr";
 import type { BlacklistRow, LinkIndexRow } from "@/lib/link-index";
 
 export function LinkAdminPanel({
@@ -52,6 +53,7 @@ export function LinkAdminPanel({
   links: LinkIndexRow[];
   blacklist: BlacklistRow[];
 }) {
+  const tr = useTr();
   const fmt = useFormat();
   const router = useRouter();
   const [tab, setTab] = useState<string | null>("index");
@@ -62,7 +64,7 @@ export function LinkAdminPanel({
   // 戻り値は void に固定する（notifications.show は id を返すので、
   // `return notifyError(...)` が useTransition の TransitionFunction に合わなくなる）。
   const notifyError = (message: string): void => {
-    notifications.show({ title: "エラー", message, color: "red" });
+    notifications.show({ title: tr("エラー"), message, color: "red" });
   };
 
   const add = () => {
@@ -70,7 +72,7 @@ export function LinkAdminPanel({
       const result = await addBlacklistAction({ pattern, reason });
       if (!result.ok) return notifyError(result.error);
       notifications.show({
-        title: "追加しました",
+        title: tr("追加しました"),
         message: `${pattern} へのリンクをブロックします`,
         color: "green",
       });
@@ -90,7 +92,7 @@ export function LinkAdminPanel({
 
   const remove = (row: BlacklistRow) => {
     openConfirm({
-      title: "ブロック指定の削除",
+      title: tr("ブロック指定の削除"),
       message: `${row.pattern} のブロックを解除します。以後このホストへのリンクは通常どおり開けます。`,
       confirmLabel: "削除",
       onConfirm: () =>
@@ -105,7 +107,7 @@ export function LinkAdminPanel({
   const linkColumns: Column<LinkIndexRow>[] = [
     {
       key: "code",
-      header: "短縮コード",
+      header: tr("短縮コード"),
       width: 130,
       render: (r) => (
         <Anchor ff="mono" href={`/l/${r.code}`} size="sm" target="_blank">
@@ -115,14 +117,14 @@ export function LinkAdminPanel({
     },
     {
       key: "hostname",
-      header: "ホスト",
+      header: tr("ホスト"),
       width: 200,
       render: (r) => (
         <Group gap="xs" wrap="nowrap">
           <Text size="sm">{r.hostname}</Text>
           {r.blocked && (
             <Badge color="red" size="xs" variant="light">
-              ブロック中
+              {tr("ブロック中")}
             </Badge>
           )}
         </Group>
@@ -130,7 +132,7 @@ export function LinkAdminPanel({
     },
     {
       key: "url",
-      header: "遷移先",
+      header: tr("遷移先"),
       width: 380,
       render: (r) => (
         <Tooltip label={r.url} multiline w={420} withArrow>
@@ -140,14 +142,14 @@ export function LinkAdminPanel({
     },
     {
       key: "hitCount",
-      header: "利用",
+      header: tr("利用"),
       width: 80,
       align: "right",
       render: (r) => <Text size="sm">{r.hitCount}</Text>,
     },
     {
       key: "lastUsedAt",
-      header: "最終利用",
+      header: tr("最終利用"),
       width: 150,
       render: (r) => (
         <Text c="dimmed" size="xs">
@@ -160,7 +162,7 @@ export function LinkAdminPanel({
   const blockColumns: Column<BlacklistRow>[] = [
     {
       key: "pattern",
-      header: "ホスト名",
+      header: tr("ホスト名"),
       width: 240,
       render: (r) => (
         <Text fw={600} size="sm">
@@ -170,7 +172,7 @@ export function LinkAdminPanel({
     },
     {
       key: "reason",
-      header: "理由",
+      header: tr("理由"),
       width: 300,
       render: (r) => (
         <Text c={r.reason ? undefined : "dimmed"} size="sm">
@@ -180,7 +182,7 @@ export function LinkAdminPanel({
     },
     {
       key: "matchCount",
-      header: "該当リンク",
+      header: tr("該当リンク"),
       width: 110,
       align: "right",
       render: (r) => <Text size="sm">{r.matchCount}</Text>,
@@ -200,7 +202,7 @@ export function LinkAdminPanel({
     },
     {
       key: "createdAt",
-      header: "登録",
+      header: tr("登録"),
       width: 170,
       render: (r) => (
         <Text c="dimmed" size="xs">
@@ -229,15 +231,18 @@ export function LinkAdminPanel({
             variant="light"
           >
             <Text size="xs">
-              メモ / コメントに貼られた外部リンクは短縮リンクに置き換えられ、
-              閲覧者は確認ページで遷移先を見てから外部へ移動します。
+              {tr(
+                tr(
+                  "メモ / コメントに貼られた外部リンクは短縮リンクに置き換えられ、\n              閲覧者は確認ページで遷移先を見てから外部へ移動します。",
+                ),
+              )}
             </Text>
           </Alert>
           <DataTable
             columns={linkColumns}
             data={links}
             emptyIcon={<IconLink size={24} />}
-            emptyMessage="外部リンクはまだ登録されていません"
+            emptyMessage={tr("外部リンクはまだ登録されていません")}
             getRowId={(r) => r.code}
             pageSize={20}
             settingsKey="links"
@@ -250,21 +255,21 @@ export function LinkAdminPanel({
           <Paper p="sm" radius="md" withBorder>
             <Stack gap="sm">
               <Text fw={600} size="sm">
-                ブロックを追加
+                {tr("ブロックを追加")}
               </Text>
               <Group align="flex-end" gap="sm">
                 <TextInput
-                  description="サブドメインも含めてブロックします"
-                  label="ホスト名"
+                  description={tr("サブドメインも含めてブロックします")}
+                  label={tr("ホスト名")}
                   onChange={(e) => setPattern(e.currentTarget.value)}
                   placeholder="evil.example"
                   style={{ flex: 1 }}
                   value={pattern}
                 />
                 <TextInput
-                  label="理由（任意）"
+                  label={tr("理由（任意）")}
                   onChange={(e) => setReason(e.currentTarget.value)}
-                  placeholder="フィッシング報告あり"
+                  placeholder={tr("フィッシング報告あり")}
                   style={{ flex: 1 }}
                   value={reason}
                 />
@@ -273,7 +278,7 @@ export function LinkAdminPanel({
                   loading={pending}
                   onClick={add}
                 >
-                  追加
+                  {tr("追加")}
                 </PrimaryButton>
               </Group>
             </Stack>
@@ -283,7 +288,7 @@ export function LinkAdminPanel({
             columns={blockColumns}
             data={blacklist}
             emptyIcon={<IconShieldOff size={24} />}
-            emptyMessage="ブロック指定はありません"
+            emptyMessage={tr("ブロック指定はありません")}
             getRowId={(r) => r.id}
             pageSize={20}
             rowActions={() => [

@@ -19,6 +19,7 @@ import {
 } from "@mantine/core";
 import { useState } from "react";
 import { SearchSelect } from "@/components/ui/SearchSelect";
+import { useTr } from "@/hooks/useTr";
 
 export interface ApproverOption {
   value: string;
@@ -40,6 +41,7 @@ export function ApprovalTargetField({
   onApproversChange: (v: ApproverOption[]) => void;
   onSearchApprovers: (query: string) => Promise<ApproverOption[]>;
 }) {
+  const tr = useTr();
   const [mode, setMode] = useState<"group" | "custom">(
     approvers.length > 0 ? "custom" : "group",
   );
@@ -47,13 +49,13 @@ export function ApprovalTargetField({
   return (
     <Stack gap={4}>
       <Text fw={500} size="sm">
-        検査承認の宛先
+        {tr("検査承認の宛先")}
       </Text>
       <Group gap="sm" wrap="wrap">
         <SegmentedControl
           data={[
-            { value: "group", label: "グループ" },
-            { value: "custom", label: "カスタム" },
+            { value: "group", label: tr("グループ") },
+            { value: "custom", label: tr("カスタム") },
           ]}
           onChange={(v) => {
             const next = v as "group" | "custom";
@@ -69,7 +71,7 @@ export function ApprovalTargetField({
             clearable
             data={groupOptions}
             onChange={onGroupChange}
-            placeholder="選択"
+            placeholder={tr("選択")}
             value={groupId}
             w={260}
           />
@@ -90,7 +92,7 @@ export function ApprovalTargetField({
                   (r) => !approvers.some((a) => a.value === r.value),
                 );
               }}
-              placeholder="検索して追加"
+              placeholder={tr("検索して追加")}
               storageKey="inspection-template-approver"
               value={null}
             />
@@ -115,8 +117,11 @@ export function ApprovalTargetField({
         )}
       </Group>
       <Text c="dimmed" size="xs">
-        宛先は承認グループか、この検査表だけの承認者（カスタム・複数可）から選べます。
-        未設定 = 誰でも検収できます
+        {tr(
+          tr(
+            "宛先は承認グループか、この検査表だけの承認者（カスタム・複数可）から選べます。\n        未設定 = 誰でも検収できます",
+          ),
+        )}
       </Text>
     </Stack>
   );

@@ -27,6 +27,7 @@ import {
 import { useFormat } from "@/components/layout/PreferencesProvider";
 import { PrimaryButton, SecondaryButton } from "@/components/ui/buttons";
 import { UserAvatar } from "@/components/ui/UserAvatar";
+import { useTr } from "@/hooks/useTr";
 import type { WorkOrderStepView } from "./work-orders/model";
 
 /** 担当者を顔写真つきで並べる上限（超えた分は「ほか N 名」）。 */
@@ -60,6 +61,7 @@ export function StepCard({
   /** フロー図側で選択中（強調枠で表示）。 */
   selected?: boolean;
 }) {
+  const tr = useTr();
   const fmt = useFormat();
   const icon = STEP_STATUS_ICON[step.status] ?? STEP_STATUS_ICON.PENDING;
   const isOutsource = step.executionLocation === "OUTSOURCE";
@@ -77,12 +79,14 @@ export function StepCard({
   } else if (executeHref && step.status !== "CANCELLED") {
     if (step.status === "PENDING") {
       executeButton = step.canStart ? (
-        <PrimaryButton href={executeHref}>開始</PrimaryButton>
+        <PrimaryButton href={executeHref}>{tr("開始")}</PrimaryButton>
       ) : (
-        <SecondaryButton href={executeHref}>開始</SecondaryButton>
+        <SecondaryButton href={executeHref}>{tr("開始")}</SecondaryButton>
       );
     } else if (step.status === "IN_PROGRESS") {
-      executeButton = <PrimaryButton href={executeHref}>実行</PrimaryButton>;
+      executeButton = (
+        <PrimaryButton href={executeHref}>{tr("実行")}</PrimaryButton>
+      );
     } else {
       executeButton = (
         <SecondaryButton href={executeHref}>詳細</SecondaryButton>
@@ -117,11 +121,11 @@ export function StepCard({
             size="xs"
             variant="outline"
           >
-            {isOutsource ? "外注" : "社内"}
+            {isOutsource ? "外注" : tr("社内")}
           </Badge>
           {step.isInspection && (
             <Badge color="blue" size="xs" variant="light">
-              検査
+              {tr("検査")}
             </Badge>
           )}
           {step.isApprovalStep && (
@@ -141,7 +145,7 @@ export function StepCard({
             <Menu position="bottom-end" shadow="sm" withinPortal>
               <Menu.Target>
                 <ActionIcon
-                  aria-label="工程メニュー"
+                  aria-label={tr("工程メニュー")}
                   color="gray"
                   variant="subtle"
                 >
@@ -153,7 +157,7 @@ export function StepCard({
                   leftSection={<IconArrowsSplit size={14} />}
                   onClick={onAddBranch}
                 >
-                  分岐追加
+                  {tr("分岐追加")}
                 </Menu.Item>
               </Menu.Dropdown>
             </Menu>
@@ -166,7 +170,7 @@ export function StepCard({
           {step.assignees.length > 0 && (
             <Group gap={6} wrap="wrap">
               <Text c="dimmed" size="xs">
-                担当
+                {tr("担当")}
               </Text>
               {step.assignees.slice(0, MAX_SHOWN_ASSIGNEES).map((a) => (
                 <Group gap={4} key={a.userId} wrap="nowrap">
@@ -237,12 +241,12 @@ export function StepCard({
         ) : (
           <Group gap="sm" mt="xs" pl={28} wrap="wrap">
             <Text size="xs">
-              {step.quantityTracking === "INSPECTION" ? "検査" : "受入"}{" "}
+              {step.quantityTracking === "INSPECTION" ? "検査" : tr("受入")}{" "}
               {step.inputQuantity}
             </Text>
             {step.outputSuccessQuantity != null && (
               <Text c="green" size="xs">
-                {step.quantityTracking === "INSPECTION" ? "合格" : "良品"}{" "}
+                {step.quantityTracking === "INSPECTION" ? "合格" : tr("良品")}{" "}
                 {step.outputSuccessQuantity}
               </Text>
             )}

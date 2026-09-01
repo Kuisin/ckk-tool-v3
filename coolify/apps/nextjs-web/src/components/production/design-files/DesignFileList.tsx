@@ -27,6 +27,7 @@ import { IconMessage2, IconPencil, IconTrash } from "@tabler/icons-react";
 import { useFormat } from "@/components/layout/PreferencesProvider";
 import { GhostButton } from "@/components/ui/buttons";
 import { DesignFileViewButton } from "@/components/ui/DesignFileViewer";
+import { useTr } from "@/hooks/useTr";
 import { useIsMobile } from "@/hooks/useViewport";
 import { isViewable } from "@/lib/design-file-kind";
 import {
@@ -83,6 +84,7 @@ export function DesignFileList({
   /** 「依頼 / 手動」のタグを出すか（製品マスタでは出す）。 */
   showSource?: boolean;
 }) {
+  const tr = useTr();
   const fmt = useFormat();
   const isMobile = useIsMobile();
   const showNotes = rows.some((r) => r.notes);
@@ -120,7 +122,7 @@ export function DesignFileList({
         leftSection={<IconMessage2 size={14} />}
         onClick={() => onMemo(f)}
       >
-        メモ
+        {tr("メモ")}
       </GhostButton>
     );
     if (!canEdit && !canDelete) {
@@ -144,7 +146,7 @@ export function DesignFileList({
             leftSection={<IconPencil size={14} />}
             onClick={() => onEdit?.(f)}
           >
-            備考
+            {tr("備考")}
           </GhostButton>
         )}
         {canDelete && (
@@ -220,13 +222,13 @@ export function DesignFileList({
       <Table highlightOnHover>
         <Table.Thead>
           <Table.Tr>
-            <Table.Th w={250}>バージョン</Table.Th>
-            <Table.Th>ファイル名</Table.Th>
-            {showNotes && <Table.Th>備考</Table.Th>}
-            {onOpenRequest && <Table.Th w={170}>元依頼</Table.Th>}
-            <Table.Th w={150}>登録日時</Table.Th>
+            <Table.Th w={250}>{tr("バージョン")}</Table.Th>
+            <Table.Th>{tr("ファイル名")}</Table.Th>
+            {showNotes && <Table.Th>{tr("備考")}</Table.Th>}
+            {onOpenRequest && <Table.Th w={170}>{tr("元依頼")}</Table.Th>}
+            <Table.Th w={150}>{tr("登録日時")}</Table.Th>
             {(onEdit || onDelete || onMemo) && (
-              <Table.Th w={230}>操作</Table.Th>
+              <Table.Th w={230}>{tr("操作")}</Table.Th>
             )}
           </Table.Tr>
         </Table.Thead>

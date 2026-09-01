@@ -16,6 +16,7 @@ import { addToolType } from "@/app/(dashboard)/settings/actions";
 import { CreateButton } from "@/components/ui/buttons";
 import { MasterListNav } from "@/components/ui/MasterListNav";
 import { ModalShell } from "@/components/ui/modals";
+import { useTr } from "@/hooks/useTr";
 import {
   type Criterion,
   criterionAppliesTo,
@@ -35,6 +36,7 @@ export function ToolTypesPanel({
   /** 工具種 → 価格試算（estimates）の使用件数。 */
   usage: Record<string, number>;
 }) {
+  const tr = useTr();
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [addOpen, setAddOpen] = useState(false);
@@ -47,8 +49,8 @@ export function ToolTypesPanel({
     const value = newValue.trim().toUpperCase();
     if (!TOOL_TYPE_VALUE.test(value)) {
       notifications.show({
-        title: "エラー",
-        message: "値は英大文字・数字・_（英大文字始まり）です",
+        title: tr("エラー"),
+        message: tr("値は英大文字・数字・_（英大文字始まり）です"),
         color: "red",
       });
       return;
@@ -57,7 +59,7 @@ export function ToolTypesPanel({
       const res = await addToolType({ value, label: newLabel.trim() });
       if (res.ok) {
         notifications.show({
-          title: "追加しました",
+          title: tr("追加しました"),
           message: `工具種「${newLabel.trim()}」を追加しました。適用する計算基準を確認してください`,
           color: "green",
         });
@@ -68,7 +70,7 @@ export function ToolTypesPanel({
         router.refresh();
       } else {
         notifications.show({
-          title: "エラー",
+          title: tr("エラー"),
           message: res.error,
           color: "red",
         });
@@ -79,7 +81,9 @@ export function ToolTypesPanel({
   return (
     <>
       <MasterListNav
-        emptyMessage="工具種がありません。「工具種を追加」から作成してください。"
+        emptyMessage={tr(
+          tr("工具種がありません。「工具種を追加」から作成してください。"),
+        )}
         sections={[
           {
             items: toolTypes.map((t) => {
@@ -100,11 +104,11 @@ export function ToolTypesPanel({
                     </Text>
                     {t.builtin ? (
                       <Badge color="gray" size="xs" variant="light">
-                        組み込み
+                        {tr("組み込み")}
                       </Badge>
                     ) : (
                       <Badge color="blue" size="xs" variant="light">
-                        カスタム
+                        {tr("カスタム")}
                       </Badge>
                     )}
                   </Group>
@@ -116,37 +120,41 @@ export function ToolTypesPanel({
         ]}
         toolbar={
           <CreateButton onClick={() => setAddOpen(true)}>
-            工具種を追加
+            {tr("工具種を追加")}
           </CreateButton>
         }
       />
 
       <ModalShell
-        confirmLabel="追加"
+        confirmLabel={tr("追加")}
         loading={isPending}
         onClose={() => setAddOpen(false)}
         onConfirm={add}
         opened={addOpen}
-        title="工具種を追加"
+        title={tr("工具種を追加")}
       >
         <Stack gap="sm">
           <Text c="dimmed" size="xs">
-            追加した工具種は価格試算フォームの工具種として選択できます。計算入力は
-            丸棒系（参照単価ベース）です。現在「全工具種」に適用中の計算基準は
-            新しい種にも適用されます（追加後に調整できます）。
+            {tr(
+              tr(
+                "追加した工具種は価格試算フォームの工具種として選択できます。計算入力は\n            丸棒系（参照単価ベース）です。現在「全工具種」に適用中の計算基準は\n            新しい種にも適用されます（追加後に調整できます）。",
+              ),
+            )}
           </Text>
           <TextInput
-            description="英大文字・数字・_（例: BALL_END）。作成後は変更できません"
-            label="値"
+            description={tr(
+              tr("英大文字・数字・_（例: BALL_END）。作成後は変更できません"),
+            )}
+            label={tr("値")}
             onChange={(e) => setNewValue(e.currentTarget.value.toUpperCase())}
             placeholder="BALL_END"
             value={newValue}
             withAsterisk
           />
           <TextInput
-            label="表示名"
+            label={tr("表示名")}
             onChange={(e) => setNewLabel(e.currentTarget.value)}
-            placeholder="ボールエンド"
+            placeholder={tr("ボールエンド")}
             value={newLabel}
             withAsterisk
           />

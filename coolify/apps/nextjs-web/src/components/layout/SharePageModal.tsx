@@ -23,6 +23,7 @@ import { IconInfoCircle, IconShare2 } from "@tabler/icons-react";
 import { usePathname, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useState, useTransition } from "react";
 import { CancelButton, PrimaryButton } from "@/components/ui/buttons";
+import { useTr } from "@/hooks/useTr";
 import { appList } from "@/lib/app-list";
 import { fetchShareOptionsAction, sharePageAction } from "./share-actions";
 
@@ -33,6 +34,7 @@ export function SharePageModal({
   opened: boolean;
   onClose: () => void;
 }) {
+  const tr = useTr();
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const [users, setUsers] = useState<string[]>([]);
@@ -79,7 +81,7 @@ export function SharePageModal({
   const submit = () => {
     setError(null);
     if (!everyone && users.length === 0 && groups.length === 0) {
-      setError("宛先を 1 件以上選択してください");
+      setError(tr("宛先を 1 件以上選択してください"));
       return;
     }
     startTransition(async () => {
@@ -93,7 +95,7 @@ export function SharePageModal({
       });
       if (res.ok) {
         notifications.show({
-          title: "共有しました",
+          title: tr("共有しました"),
           message: `${res.data.recipientCount} 名に通知を送信しました`,
           color: "green",
         });
@@ -106,11 +108,16 @@ export function SharePageModal({
   };
 
   return (
-    <Modal onClose={onClose} opened={opened} title="ページを共有" withinPortal>
+    <Modal
+      onClose={onClose}
+      opened={opened}
+      title={tr("ページを共有")}
+      withinPortal
+    >
       <Stack gap="sm">
         <div>
           <Text c="dimmed" mb={4} size="xs">
-            共有するページ（現在の表示状態を含む）
+            {tr("共有するページ（現在の表示状態を含む）")}
           </Text>
           <Code block>{currentUrl}</Code>
         </div>
@@ -123,7 +130,7 @@ export function SharePageModal({
 
         <Switch
           checked={everyone}
-          label="全員に共有"
+          label={tr("全員に共有")}
           onChange={(e) => setEveryone(e.currentTarget.checked)}
           size="sm"
         />
@@ -131,9 +138,9 @@ export function SharePageModal({
           clearable
           data={options?.users ?? []}
           disabled={everyone}
-          label="ユーザー"
+          label={tr("ユーザー")}
           onChange={setUsers}
-          placeholder={options ? "ユーザーを選択" : "読み込み中..."}
+          placeholder={options ? "ユーザーを選択" : tr("読み込み中...")}
           searchable
           value={users}
         />
@@ -141,17 +148,17 @@ export function SharePageModal({
           clearable
           data={options?.groups ?? []}
           disabled={everyone}
-          label="承認グループ"
+          label={tr("承認グループ")}
           onChange={setGroups}
-          placeholder="グループを選択"
+          placeholder={tr("グループを選択")}
           searchable
           value={groups}
         />
         <Textarea
-          label="コメント（任意）"
+          label={tr("コメント（任意）")}
           minRows={2}
           onChange={(e) => setComment(e.currentTarget.value)}
-          placeholder="共有の目的・確認してほしい点など"
+          placeholder={tr("共有の目的・確認してほしい点など")}
           value={comment}
         />
 
@@ -162,7 +169,7 @@ export function SharePageModal({
             loading={isPending}
             onClick={submit}
           >
-            共有
+            {tr("共有")}
           </PrimaryButton>
           <CancelButton fullWidth onClick={onClose} />
         </Stack>

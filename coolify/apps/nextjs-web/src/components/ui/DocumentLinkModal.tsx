@@ -23,6 +23,7 @@ import { IconSearch } from "@tabler/icons-react";
 import { useEffect, useState, useTransition } from "react";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { ModalShell } from "@/components/ui/modals";
+import { useTr } from "@/hooks/useTr";
 import { searchDocuments } from "./document-link-actions";
 import {
   DOCUMENT_LINK_TYPES,
@@ -40,6 +41,7 @@ export function DocumentLinkModal({
   /** 選択された文書のパスと既定のリンク文字列。 */
   onSelect: (hit: DocumentHit) => void;
 }) {
+  const tr = useTr();
   const [type, setType] = useState<DocumentLinkType>("quote");
   const [query, setQuery] = useState("");
   const [hits, setHits] = useState<DocumentHit[]>([]);
@@ -59,20 +61,20 @@ export function DocumentLinkModal({
       hideFooter
       onClose={onClose}
       opened={opened}
-      title="文書リンクを挿入"
+      title={tr("文書リンクを挿入")}
     >
       <Stack gap="sm">
         <Select
           data={DOCUMENT_LINK_TYPES.map((t) => ({ ...t }))}
-          label="文書種別"
+          label={tr("文書種別")}
           onChange={(v) => v && setType(v as DocumentLinkType)}
           value={type}
         />
         <TextInput
-          label="文書番号"
+          label={tr("文書番号")}
           leftSection={<IconSearch size={14} />}
           onChange={(e) => setQuery(e.currentTarget.value)}
-          placeholder="番号の一部（数字だけでも可）"
+          placeholder={tr("番号の一部（数字だけでも可）")}
           rightSection={pending ? <Loader size="xs" /> : null}
           value={query}
         />
@@ -81,7 +83,7 @@ export function DocumentLinkModal({
           {hits.length === 0 ? (
             <EmptyState
               icon={<IconSearch size={20} />}
-              message={pending ? "検索中…" : "該当する文書がありません"}
+              message={pending ? "検索中…" : tr("該当する文書がありません")}
             />
           ) : (
             <Stack gap={0}>

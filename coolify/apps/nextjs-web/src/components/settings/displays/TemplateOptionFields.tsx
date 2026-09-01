@@ -20,6 +20,7 @@ import {
   Textarea,
   TextInput,
 } from "@mantine/core";
+import { useTr } from "@/hooks/useTr";
 import type {
   DisplayOptionSpec,
   DisplayTemplate,
@@ -65,6 +66,7 @@ function OptionField({
   onChange: (key: string, value: unknown) => void;
   plantOptions: Array<{ value: string; label: string }>;
 }) {
+  const tr = useTr();
   switch (spec.kind) {
     case "plant":
       return (
@@ -74,7 +76,7 @@ function OptionField({
           description={spec.help}
           label={spec.label}
           onChange={(v) => onChange(spec.key, v ? Number(v) : null)}
-          placeholder="すべて"
+          placeholder={tr("すべて")}
           searchable
           value={typeof value === "number" ? String(value) : null}
         />

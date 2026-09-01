@@ -138,7 +138,7 @@ export function InvoiceTable({ rows }: { rows: Invoice[] }) {
         <TextInput
           leftSection={<IconSearch size={14} />}
           onChange={(e) => setSearch(e.currentTarget.value)}
-          placeholder="請求番号・顧客で検索"
+          placeholder={tr("請求番号・顧客で検索")}
           value={search}
         />
       }
@@ -149,7 +149,7 @@ export function InvoiceTable({ rows }: { rows: Invoice[] }) {
         data={filtered}
         defaultSort={{ key: "invoiceNumber", dir: "desc" }}
         emptyIcon={<IconFileInvoice size={24} />}
-        emptyMessage="請求書がありません（締日処理から生成します）"
+        emptyMessage={tr("請求書がありません（締日処理から生成します）")}
         getRowId={(inv) => inv.id}
         onRowClick={(inv) => router.push(`${BASE_PATH}/${inv.id}`)}
         renderCard={(inv) => (

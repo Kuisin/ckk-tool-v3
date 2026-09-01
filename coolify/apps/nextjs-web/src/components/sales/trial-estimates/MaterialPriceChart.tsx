@@ -10,6 +10,7 @@
 
 import { Badge, Box, Group, Stack, Text } from "@mantine/core";
 import { useFormat } from "@/components/layout/PreferencesProvider";
+import { useTr } from "@/hooks/useTr";
 import { formatMoney } from "@/lib/format";
 import type { MaterialPricePoint } from "@/lib/material-pricing-core";
 
@@ -30,11 +31,12 @@ export function MaterialPriceChart({
   windowDates?: string[];
   onSelect?: (p: MaterialPricePoint) => void;
 }) {
+  const tr = useTr();
   const fmt = useFormat();
   if (points.length === 0) {
     return (
       <Text c="dimmed" size="sm">
-        この素材の仕入実績がありません。
+        {tr("この素材の仕入実績がありません。")}
       </Text>
     );
   }
@@ -69,15 +71,15 @@ export function MaterialPriceChart({
     <Stack gap="xs">
       <Group justify="space-between">
         <Text fw={600} size="sm">
-          仕入単価の推移
+          {tr("仕入単価の推移")}
         </Text>
         <Text c="dimmed" size="xs">
-          ポイントをクリックして参照価格を変更
+          {tr("ポイントをクリックして参照価格を変更")}
         </Text>
       </Group>
 
       <Box
-        aria-label="素材仕入単価の推移"
+        aria-label={tr("素材仕入単価の推移")}
         component="svg"
         role="img"
         style={{ width: "100%", height: "auto", overflow: "visible" }}

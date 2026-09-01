@@ -16,6 +16,7 @@ import { type Column, DataTable } from "@/components/ui/DataTable";
 import { NewButton } from "@/components/ui/NewButton";
 import { StatusBadge, statusOptions } from "@/components/ui/StatusBadge";
 import { ListShell } from "@/components/ui/shells";
+import { useTr } from "@/hooks/useTr";
 import { useUrlSelectState, useUrlStringState } from "@/hooks/useUrlState";
 import { useIsMobile } from "@/hooks/useViewport";
 import { deliveryMethodLabel, deliveryMethodOptions } from "@/lib/enum-labels";
@@ -37,6 +38,7 @@ export function DeliveryMethodBadge({ method }: { method: string }) {
 }
 
 export function DeliveryNoteTable({ rows }: { rows: DeliveryNote[] }) {
+  const tr = useTr();
   const locale = useLocale();
   const fmt = useFormat();
   const router = useRouter();
@@ -68,7 +70,7 @@ export function DeliveryNoteTable({ rows }: { rows: DeliveryNote[] }) {
   const columns: Column<DeliveryNote>[] = [
     {
       key: "deliveryNumber",
-      header: "納品番号",
+      header: tr("納品番号"),
       sortable: true,
       render: (n) => (
         <Text ff="mono" size="sm">
@@ -78,7 +80,7 @@ export function DeliveryNoteTable({ rows }: { rows: DeliveryNote[] }) {
     },
     {
       key: "deliveryOrderNumber",
-      header: "出荷書番号",
+      header: tr("出荷書番号"),
       sortable: true,
       render: (n) => (
         <Text ff="mono" size="sm">
@@ -88,7 +90,7 @@ export function DeliveryNoteTable({ rows }: { rows: DeliveryNote[] }) {
     },
     {
       key: "recipientName",
-      header: "納品先",
+      header: tr("納品先"),
       sortable: true,
       render: (n) => (
         <>
@@ -107,21 +109,21 @@ export function DeliveryNoteTable({ rows }: { rows: DeliveryNote[] }) {
     },
     {
       key: "deliveryMethod",
-      header: "方法",
+      header: tr("方法"),
       width: 130,
       sortValue: (n) => n.deliveryMethod,
       render: (n) => <DeliveryMethodBadge method={n.deliveryMethod} />,
     },
     {
       key: "status",
-      header: "状態",
+      header: tr("状態"),
       width: 100,
       sortValue: (n) => n.status,
       render: (n) => <StatusBadge entity="DeliveryNote" status={n.status} />,
     },
     {
       key: "deliveredAt",
-      header: "納品日",
+      header: tr("納品日"),
       width: 120,
       sortValue: (n) => n.deliveredAt ?? "",
       render: (n) => (
@@ -135,7 +137,7 @@ export function DeliveryNoteTable({ rows }: { rows: DeliveryNote[] }) {
   return (
     <ListShell
       action={<NewButton href={`${BASE_PATH}/new`} />}
-      breadcrumbs={["出荷", "納品書"]}
+      breadcrumbs={[tr("出荷"), tr("納品書")]}
       filters={
         <>
           <Select
@@ -143,7 +145,7 @@ export function DeliveryNoteTable({ rows }: { rows: DeliveryNote[] }) {
             data={deliveryMethodOptions(locale)}
             flex={isMobile ? 1 : undefined}
             onChange={setMethod}
-            placeholder="方法"
+            placeholder={tr("方法")}
             value={method}
             w={isMobile ? undefined : 150}
           />
@@ -152,7 +154,7 @@ export function DeliveryNoteTable({ rows }: { rows: DeliveryNote[] }) {
             data={statusOptions("DeliveryNote")}
             flex={isMobile ? 1 : undefined}
             onChange={setStatus}
-            placeholder="状態"
+            placeholder={tr("状態")}
             value={status}
             w={isMobile ? undefined : 140}
           />
@@ -163,11 +165,11 @@ export function DeliveryNoteTable({ rows }: { rows: DeliveryNote[] }) {
         <TextInput
           leftSection={<IconSearch size={14} />}
           onChange={(e) => setSearch(e.currentTarget.value)}
-          placeholder="納品番号・出荷書番号・納品先で検索"
+          placeholder={tr("納品番号・出荷書番号・納品先で検索")}
           value={search}
         />
       }
-      title="納品書"
+      title={tr("納品書")}
     >
       <DataTable
         columns={columns}
@@ -175,7 +177,7 @@ export function DeliveryNoteTable({ rows }: { rows: DeliveryNote[] }) {
         defaultSort={{ key: "deliveryNumber", dir: "desc" }}
         emptyAction={<NewButton href={`${BASE_PATH}/new`} />}
         emptyIcon={<IconReceipt size={24} />}
-        emptyMessage="納品書がありません"
+        emptyMessage={tr("納品書がありません")}
         getRowId={(n) => n.id}
         onRowClick={(n) => router.push(`${BASE_PATH}/${n.id}`)}
         renderCard={(n) => (

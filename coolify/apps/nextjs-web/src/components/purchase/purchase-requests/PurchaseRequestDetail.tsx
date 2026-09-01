@@ -68,6 +68,7 @@ import {
   ResourceActions,
   SummaryGrid,
 } from "@/components/ui/shells";
+import { useTr } from "@/hooks/useTr";
 import { useTabParam } from "@/hooks/useUrlState";
 import type { ActionResult } from "@/lib/server-action";
 import {
@@ -120,6 +121,7 @@ export function PurchaseRequestDetail({
   /** 正規化された承認記録（approval_records — 代理承認マーカー付き）。 */
   approvalTrail?: ApprovalTrailView[];
 }) {
+  const tr = useTr();
   const fmt = useFormat();
   const router = useRouter();
   // アクティブタブを ?tab= に保持（URL 共有でタブまで再現）
@@ -147,7 +149,7 @@ export function PurchaseRequestDetail({
         router.refresh();
       } else {
         notifications.show({
-          title: "エラー",
+          title: tr("エラー"),
           message: result.error,
           color: "red",
         });
@@ -158,8 +160,8 @@ export function PurchaseRequestDetail({
   const handleConvert = () => {
     if (!convertSupplier) {
       notifications.show({
-        title: "エラー",
-        message: "仕入先を選択してください",
+        title: tr("エラー"),
+        message: tr("仕入先を選択してください"),
         color: "red",
       });
       return;
@@ -172,7 +174,7 @@ export function PurchaseRequestDetail({
       );
       if (result.ok) {
         notifications.show({
-          title: "発注書へ変換しました",
+          title: tr("発注書へ変換しました"),
           message: `素材発注書 ${result.data.poNumber} を作成しました`,
           color: "green",
         });
@@ -180,7 +182,7 @@ export function PurchaseRequestDetail({
         router.push(`${PO_PATH}/${result.data.poNumber}`);
       } else {
         notifications.show({
-          title: "エラー",
+          title: tr("エラー"),
           message: result.error,
           color: "red",
         });
@@ -197,8 +199,8 @@ export function PurchaseRequestDetail({
   const stages: ProcedureStage[] = [
     {
       key: "requested",
-      label: "依頼",
-      description: rq.requestedAt ? fmt.date(rq.requestedAt) : "下書き",
+      label: tr("依頼"),
+      description: rq.requestedAt ? fmt.date(rq.requestedAt) : tr("下書き"),
       // 差し戻し中は赤（_specs/design.md §9 REJECTED = red）。
       color: rq.status === "REJECTED" ? "red" : undefined,
       loading: rq.status === "DRAFT",
@@ -209,8 +211,8 @@ export function PurchaseRequestDetail({
     }),
     {
       key: "ordered",
-      label: "発注書へ変換",
-      description: rq.orderedAt ? fmt.date(rq.orderedAt) : "仕入先を指定",
+      label: tr("発注書へ変換"),
+      description: rq.orderedAt ? fmt.date(rq.orderedAt) : tr("仕入先を指定"),
       loading: rq.status === "APPROVED",
     },
   ];
@@ -219,7 +221,7 @@ export function PurchaseRequestDetail({
   const handoffGroups: HandoffGroup[] = [
     {
       key: "purchase-order",
-      title: "素材発注書",
+      title: tr("素材発注書"),
       items: rq.purchaseOrderNumber
         ? [
             {
@@ -227,14 +229,14 @@ export function PurchaseRequestDetail({
               label: rq.purchaseOrderNumber,
               href: `${PO_PATH}/${rq.purchaseOrderNumber}`,
               done: true,
-              note: "この依頼から生成",
+              note: tr("この依頼から生成"),
             },
           ]
         : [],
       emptyNote:
         rq.status === "APPROVED"
-          ? "未変換（仕入先を指定して発注書を作成します）"
-          : "未変換（承認後に発注書へ変換します）",
+          ? tr("未変換（仕入先を指定して発注書を作成します）")
+          : tr("未変換（承認後に発注書へ変換します）"),
     },
   ];
 
@@ -265,12 +267,12 @@ export function PurchaseRequestDetail({
             loading={isPending}
             onClick={() => setConvertOpen(true)}
           >
-            発注書へ変換
+            {tr("発注書へ変換")}
           </PrimaryButton>
         }
-        description="仕入先を指定すると素材発注書（下書き）を生成します"
+        description={tr("仕入先を指定すると素材発注書（下書き）を生成します")}
         icon={<IconShoppingCart size={20} />}
-        title="発注書へ変換できます"
+        title={tr("発注書へ変換できます")}
         tone="action"
       />
     );
@@ -299,7 +301,11 @@ export function PurchaseRequestDetail({
           }
         />
       }
-      breadcrumbs={["購買", { label: "購買依頼", href: BASE_PATH }, "詳細"]}
+      breadcrumbs={[
+        tr("購買"),
+        { label: tr("購買依頼"), href: BASE_PATH },
+        "詳細",
+      ]}
       createdAt={fmt.dateTime(rq.createdAt)}
       status={<StatusBadge entity="PurchaseRequest" status={rq.status} />}
       title={rq.requestNumber}
@@ -309,30 +315,30 @@ export function PurchaseRequestDetail({
 
       <SummaryGrid>
         <FieldValue
-          label="依頼番号"
+          label={tr("依頼番号")}
           value={<DocNumber>{rq.requestNumber}</DocNumber>}
         />
-        <FieldValue label="依頼者" value={rq.requesterName} />
+        <FieldValue label={tr("依頼者")} value={rq.requesterName} />
         <FieldValue
-          label="明細数"
+          label={tr("明細数")}
           value={
             <Text className="tabular-nums" size="sm" span>
               {rq.items.length} 件
             </Text>
           }
         />
-        <FieldValue label="依頼理由" value={rq.purpose ?? "—"} />
+        <FieldValue label={tr("依頼理由")} value={rq.purpose ?? "—"} />
         <FieldValue
-          label="依頼日時"
+          label={tr("依頼日時")}
           value={rq.requestedAt ? fmt.dateTime(rq.requestedAt) : "—"}
         />
         <FieldValue
-          label="承認日時"
+          label={tr("承認日時")}
           value={rq.approvedAt ? fmt.dateTime(rq.approvedAt) : "—"}
         />
         {rq.purchaseOrderNumber && (
           <FieldValue
-            label="変換先発注書"
+            label={tr("変換先発注書")}
             value={
               <Anchor
                 component={Link}
@@ -390,8 +396,8 @@ export function PurchaseRequestDetail({
       <AppTabs onChange={setTab} value={tab}>
         <Tabs.List>
           <Tabs.Tab value="items">明細（{rq.items.length}）</Tabs.Tab>
-          <Tabs.Tab value="overview">概要</Tabs.Tab>
-          <Tabs.Tab value="history">履歴</Tabs.Tab>
+          <Tabs.Tab value="overview">{tr("概要")}</Tabs.Tab>
+          <Tabs.Tab value="history">{tr("履歴")}</Tabs.Tab>
         </Tabs.List>
 
         <Tabs.Panel pt="md" value="items">
@@ -399,11 +405,11 @@ export function PurchaseRequestDetail({
             <Table highlightOnHover striped>
               <Table.Thead>
                 <Table.Tr>
-                  <Table.Th>素材</Table.Th>
-                  <Table.Th>入荷先拠点</Table.Th>
-                  <Table.Th ta="right">数量</Table.Th>
-                  <Table.Th>希望納期</Table.Th>
-                  <Table.Th>備考</Table.Th>
+                  <Table.Th>{tr("素材")}</Table.Th>
+                  <Table.Th>{tr("入荷先拠点")}</Table.Th>
+                  <Table.Th ta="right">{tr("数量")}</Table.Th>
+                  <Table.Th>{tr("希望納期")}</Table.Th>
+                  <Table.Th>{tr("備考")}</Table.Th>
                 </Table.Tr>
               </Table.Thead>
               <Table.Tbody>
@@ -440,7 +446,7 @@ export function PurchaseRequestDetail({
           <Stack gap="md">
             <div>
               <Text c="dimmed" mb={4} size="xs">
-                依頼理由
+                {tr("依頼理由")}
               </Text>
               <Text size="sm" style={{ whiteSpace: "pre-wrap" }}>
                 {rq.purpose || "—"}
@@ -448,7 +454,7 @@ export function PurchaseRequestDetail({
             </div>
             <div>
               <Text c="dimmed" mb={4} size="xs">
-                備考
+                {tr("備考")}
               </Text>
               <Text size="sm" style={{ whiteSpace: "pre-wrap" }}>
                 {rq.notes || "—"}
@@ -465,26 +471,26 @@ export function PurchaseRequestDetail({
       {/* キャンセル（変換前のみ・理由必須） */}
       <ModalShell
         confirmColor="red"
-        confirmLabel="キャンセルする"
+        confirmLabel={tr("キャンセルする")}
         loading={isPending}
         onClose={() => setCancelOpen(false)}
         onConfirm={() => {
           if (!cancelReason.trim()) {
             notifications.show({
-              title: "エラー",
-              message: "キャンセル理由を入力してください",
+              title: tr("エラー"),
+              message: tr("キャンセル理由を入力してください"),
               color: "red",
             });
             return;
           }
           run(
             () => cancelPurchaseRequest(rq.requestNumber, cancelReason),
-            "キャンセルしました",
+            tr("キャンセルしました"),
           );
         }}
         opened={cancelOpen}
         size="sm"
-        title="キャンセルの確認"
+        title={tr("キャンセルの確認")}
       >
         <Text size="sm">
           購買依頼 {rq.requestNumber}{" "}
@@ -492,10 +498,10 @@ export function PurchaseRequestDetail({
         </Text>
         <Textarea
           autosize
-          label="キャンセル理由"
+          label={tr("キャンセル理由")}
           minRows={3}
           onChange={(e) => setCancelReason(e.currentTarget.value)}
-          placeholder="理由を入力"
+          placeholder={tr("理由を入力")}
           value={cancelReason}
           withAsterisk
         />
@@ -503,13 +509,13 @@ export function PurchaseRequestDetail({
 
       {/* 発注書へ変換（仕入先必須 — 依頼は仕入先を持たない） */}
       <ModalShell
-        confirmLabel="変換する"
+        confirmLabel={tr("変換する")}
         loading={isPending}
         onClose={() => setConvertOpen(false)}
         onConfirm={handleConvert}
         opened={convertOpen}
         size="sm"
-        title="発注書へ変換の確認"
+        title={tr("発注書へ変換の確認")}
       >
         <Text mb="sm" size="sm">
           購買依頼 {rq.requestNumber} の明細 {rq.items.length}{" "}
@@ -518,9 +524,9 @@ export function PurchaseRequestDetail({
         <Select
           clearable
           data={supplierOptions}
-          label="仕入先"
+          label={tr("仕入先")}
           onChange={setConvertSupplier}
-          placeholder="仕入先を選択"
+          placeholder={tr("仕入先を選択")}
           searchable
           value={convertSupplier}
           withAsterisk

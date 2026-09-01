@@ -29,6 +29,17 @@ import path from "node:path";
 /** ひらがな・カタカナ・漢字。半角記号や英数字は含めない。 */
 const JAPANESE = /[぀-ヿ㐀-䶿一-鿿]/;
 
+/** 文字列リテラルのエスケープ → 実際の文字（表に無いものはその文字自身）。 */
+const ESCAPES = {
+  n: "\n",
+  t: "\t",
+  r: "\r",
+  b: "\b",
+  f: "\f",
+  v: "\v",
+  0: "\0",
+};
+
 /** この行が来たら次の行の検出を 1 つ黙らせる（意図的な直書きの逃げ道）。 */
 const IGNORE_LINE = /i18n-ignore/;
 
@@ -148,7 +159,12 @@ export function tokenize(source) {
       while (i < n) {
         const d = source[i];
         if (d === "\\") {
-          value += source[i + 1] ?? "";
+          // **エスケープは実際の文字へ復号する。** バックスラッシュを落として
+          // 次の 1 文字をそのまま足すと、`"a\\nb"` の値が改行ではなく "anb" に
+          // なり、`tr("…\\n…")` の鍵が辞書と一致しなくなる（実際に 2 件
+          // 取りこぼした）。実行時の JS 文字列と同じ値にするのが正。
+          const esc = source[i + 1] ?? "";
+          value += ESCAPES[esc] ?? esc;
           i += 2;
           continue;
         }
@@ -176,6 +192,10 @@ export function tokenize(source) {
         value,
         quote,
         start,
+        // 引用符を含むソース上の終端。**value の長さから計算してはいけない** —
+        // `"^[A-Z]{2}-\\d{4}$"` のようにエスケープを含むと value は元より
+        // 短くなり、置換が 1 文字ぶんずれて引用符が取り残される（実際に壊れた）。
+        end: i,
         line: startLine,
         keyPath: [...keyStack],
       });

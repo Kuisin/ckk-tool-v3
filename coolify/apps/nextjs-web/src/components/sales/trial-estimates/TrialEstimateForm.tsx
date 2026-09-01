@@ -51,6 +51,7 @@ import { PageHeader } from "@/components/ui/PageHeader";
 import { SalesRepSelect } from "@/components/ui/SalesRepSelect";
 import { SearchSelect } from "@/components/ui/SearchSelect";
 import { FormActions, FormSection } from "@/components/ui/shells";
+import { useTr } from "@/hooks/useTr";
 import { fieldHelp } from "@/lib/field-help";
 import type { Option } from "@/lib/mock";
 import {
@@ -105,6 +106,7 @@ export function TrialEstimateForm({
   initialPricing: MaterialPricing;
   source?: TrialEstimateRecord | null;
 }) {
+  const tr = useTr();
   const fmt = useFormat();
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
@@ -233,7 +235,7 @@ export function TrialEstimateForm({
       const res = await fetchMaterialPricing(key);
       if (!res.ok) {
         notifications.show({
-          title: "エラー",
+          title: tr("エラー"),
           message: res.error,
           color: "red",
         });
@@ -257,10 +259,13 @@ export function TrialEstimateForm({
   // Prompt before unlocking the price for a custom value.
   const promptCustomPrice = () => {
     openConfirm({
-      title: "材料単価のカスタム設定",
-      message:
-        "この素材の単価を手動で設定しますか？カスタム単価を使った価格試算は「カスタム」として記録されます。",
-      confirmLabel: "カスタム設定する",
+      title: tr("材料単価のカスタム設定"),
+      message: tr(
+        tr(
+          "この素材の単価を手動で設定しますか？カスタム単価を使った価格試算は「カスタム」として記録されます。",
+        ),
+      ),
+      confirmLabel: tr("カスタム設定する"),
       onConfirm: () => {
         setCustomMode(true);
         setOverridden(true);
@@ -305,8 +310,8 @@ export function TrialEstimateForm({
   const save = () => {
     if (!name.trim()) {
       notifications.show({
-        title: "エラー",
-        message: "価格試算名を入力してください",
+        title: tr("エラー"),
+        message: tr("価格試算名を入力してください"),
         color: "red",
       });
       return;
@@ -328,17 +333,17 @@ export function TrialEstimateForm({
       });
       if (res.ok) {
         notifications.show({
-          title: "保存しました",
+          title: tr("保存しました"),
           message: overridden
-            ? "価格試算を保存しました（カスタム単価）"
-            : "価格試算を保存しました",
+            ? tr("価格試算を保存しました（カスタム単価）")
+            : tr("価格試算を保存しました"),
           color: "green",
         });
         // 作成後は詳細（ビュー）ページへ。
         router.push(`${BASE_PATH}/${res.data.number}`);
       } else {
         notifications.show({
-          title: "エラー",
+          title: tr("エラー"),
           message: res.error,
           color: "red",
         });
@@ -352,31 +357,35 @@ export function TrialEstimateForm({
     <Stack gap="md">
       {/* 保存 / キャンセルはヘッダーではなく画面下端の FormActions に置く。 */}
       <PageHeader
-        breadcrumbs={["販売", { label: "価格試算", href: BASE_PATH }, "新規"]}
+        breadcrumbs={[
+          tr("販売"),
+          { label: tr("価格試算"), href: BASE_PATH },
+          tr("新規"),
+        ]}
         status={
           overridden ? (
             <Badge color="orange" variant="light">
-              カスタム
+              {tr("カスタム")}
             </Badge>
           ) : undefined
         }
-        title="価格試算"
+        title={tr("価格試算")}
       />
 
       <AppTabs defaultValue="calc">
         <Tabs.List>
           <Tabs.Tab leftSection={<IconCalculator size={14} />} value="calc">
-            価格試算
+            {tr("価格試算")}
           </Tabs.Tab>
           <Tabs.Tab leftSection={<IconChartLine size={14} />} value="history">
-            素材価格推移
+            {tr("素材価格推移")}
           </Tabs.Tab>
         </Tabs.List>
 
         {/* ── 価格試算 tab ───────────────────────────────────────────────────── */}
         <Tabs.Panel pt="md" value="calc">
           <Stack gap="md">
-            <FormSection title="基本">
+            <FormSection title={tr("基本")}>
               <Stack gap="sm">
                 <SegmentedControl
                   data={toToolTypeOptions(settings)}
@@ -391,7 +400,7 @@ export function TrialEstimateForm({
                       <HelpLabel {...fieldHelp("trialEstimate", "customer")} />
                     }
                     onChange={setCustomerId}
-                    placeholder="顧客"
+                    placeholder={tr("顧客")}
                     searchable
                     value={customerId}
                   />
@@ -417,7 +426,11 @@ export function TrialEstimateForm({
                     }
                     label={
                       <HelpLabel
-                        help="対象製品（任意）。指定して確定すると、価格表（顧客×製品）の作成時にこの価格試算を基準単価ソースとして選択できます。"
+                        help={tr(
+                          tr(
+                            "対象製品（任意）。指定して確定すると、価格表（顧客×製品）の作成時にこの価格試算を基準単価ソースとして選択できます。",
+                          ),
+                        )}
                         label={
                           <HelpLabel
                             {...fieldHelp("trialEstimate", "product")}
@@ -427,14 +440,18 @@ export function TrialEstimateForm({
                     }
                     onChange={setProductId}
                     onSearch={searchProductOptions}
-                    placeholder="製品を検索（任意）"
+                    placeholder={tr("製品を検索（任意）")}
                     storageKey="product"
                     value={productId}
                   />
                   <NumberInput
                     label={
                       <HelpLabel
-                        help="工具の最大外径。加工費マトリクスの参照キーになります。"
+                        help={tr(
+                          tr(
+                            "工具の最大外径。加工費マトリクスの参照キーになります。",
+                          ),
+                        )}
                         label={
                           <HelpLabel
                             {...fieldHelp("trialEstimate", "maxDiameter")}
@@ -449,7 +466,11 @@ export function TrialEstimateForm({
                   <NumberInput
                     label={
                       <HelpLabel
-                        help="工具全長。材料原価 = 参照単価 × (全長 ÷ 1000mm)。"
+                        help={tr(
+                          tr(
+                            "工具全長。材料原価 = 参照単価 × (全長 ÷ 1000mm)。",
+                          ),
+                        )}
                         label={
                           <HelpLabel
                             {...fieldHelp("trialEstimate", "length")}
@@ -466,8 +487,12 @@ export function TrialEstimateForm({
             </FormSection>
 
             <FormSection
-              description="材料は「材種 × 直径 × 黒皮/研磨」で指定します。参照価格は仕入実績、無ければ材種の既定単価（¥/1000mm）から算出します。"
-              title="素材"
+              description={tr(
+                tr(
+                  "材料は「材種 × 直径 × 黒皮/研磨」で指定します。参照価格は仕入実績、無ければ材種の既定単価（¥/1000mm）から算出します。",
+                ),
+              )}
+              title={tr("素材")}
             >
               <SimpleGrid cols={{ base: 1, sm: 3 }} mb="sm" spacing="sm">
                 <Select
@@ -521,7 +546,7 @@ export function TrialEstimateForm({
               <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="sm">
                 {isCylinder ? (
                   <NumberInput
-                    label="素材価格（手入力 ¥/本）"
+                    label={tr("素材価格（手入力 ¥/本）")}
                     min={0}
                     onChange={setCylinderMaterialPrice}
                     prefix="¥"
@@ -532,18 +557,22 @@ export function TrialEstimateForm({
                   <NumberInput
                     description={
                       customMode
-                        ? "カスタム単価（手動）"
+                        ? tr("カスタム単価（手動）")
                         : overridden
-                          ? "カスタム単価"
+                          ? tr("カスタム単価")
                           : policyRef.usedDefault
-                            ? "仕入実績なし → 設定の既定材料単価を使用"
+                            ? tr("仕入実績なし → 設定の既定材料単価を使用")
                             : `参照: ${basisLabel}（直近${settings.materialPriceLookbackMonths}ヶ月）`
                     }
                     label={
                       <Group gap={6} wrap="nowrap">
                         <HelpLabel
-                          help="素材の仕入実績単価（¥/1000mm）。既定はポリシー（直近Nヶ月の最高値など）で自動選択され、「単価を編集」で手動上書きできます。"
-                          label="参照単価（¥/1000mm）"
+                          help={tr(
+                            tr(
+                              "素材の仕入実績単価（¥/1000mm）。既定はポリシー（直近Nヶ月の最高値など）で自動選択され、「単価を編集」で手動上書きできます。",
+                            ),
+                          )}
+                          label={tr("参照単価（¥/1000mm）")}
                         />
                         <Badge
                           color={
@@ -556,9 +585,9 @@ export function TrialEstimateForm({
                           variant="light"
                         >
                           {overridden
-                            ? "カスタム"
+                            ? tr("カスタム")
                             : policyRef.usedDefault
-                              ? "既定価格"
+                              ? tr("既定価格")
                               : `参照価格 ${referenceDate ? fmt.date(referenceDate) : "—"}`}
                         </Badge>
                       </Group>
@@ -579,7 +608,7 @@ export function TrialEstimateForm({
                 <Group gap="sm" justify="space-between" mt="xs" wrap="nowrap">
                   <Switch
                     checked={isBlackSkin}
-                    label="黒皮材（センタレス加算）"
+                    label={tr("黒皮材（センタレス加算）")}
                     onChange={(e) => setIsBlackSkin(e.currentTarget.checked)}
                     size="sm"
                   />
@@ -590,11 +619,11 @@ export function TrialEstimateForm({
                       onClick={resetToPolicy}
                       size="xs"
                     >
-                      ポリシー値に戻す
+                      {tr("ポリシー値に戻す")}
                     </Text>
                   ) : (
                     <EditButton onClick={promptCustomPrice} size="compact-xs">
-                      単価を編集
+                      {tr("単価を編集")}
                     </EditButton>
                   )}
                 </Group>
@@ -615,13 +644,13 @@ export function TrialEstimateForm({
               )}
             </FormSection>
 
-            <FormSection title="加工">
+            <FormSection title={tr("加工")}>
               <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="sm">
                 <NumberInput
                   label={
                     <HelpLabel
                       {...fieldHelp("trialEstimate", "stepMachining", {
-                        label: "段加工長 (mm)",
+                        label: tr("段加工長 (mm)"),
                       })}
                     />
                   }
@@ -634,7 +663,7 @@ export function TrialEstimateForm({
                   label={
                     <HelpLabel
                       {...fieldHelp("trialEstimate", "stepMachining", {
-                        label: "段加工種類",
+                        label: tr("段加工種類"),
                       })}
                     />
                   }
@@ -645,7 +674,7 @@ export function TrialEstimateForm({
                   label={
                     <HelpLabel
                       {...fieldHelp("trialEstimate", "neckMachining", {
-                        label: "首下加工長 (mm)",
+                        label: tr("首下加工長 (mm)"),
                       })}
                     />
                   }
@@ -658,7 +687,7 @@ export function TrialEstimateForm({
                   label={
                     <HelpLabel
                       {...fieldHelp("trialEstimate", "neckMachining", {
-                        label: "首下加工種類",
+                        label: tr("首下加工種類"),
                       })}
                     />
                   }
@@ -668,7 +697,11 @@ export function TrialEstimateForm({
                 <NumberInput
                   label={
                     <HelpLabel
-                      help="1本あたりの機械加工時間。加工単価 = 加工時間 × 加工レート（/10分）。"
+                      help={tr(
+                        tr(
+                          "1本あたりの機械加工時間。加工単価 = 加工時間 × 加工レート（/10分）。",
+                        ),
+                      )}
                       label={
                         <HelpLabel
                           {...fieldHelp("trialEstimate", "machiningTime")}
@@ -692,14 +725,14 @@ export function TrialEstimateForm({
               </Text>
             </FormSection>
 
-            <FormSection title="コート・処理">
+            <FormSection title={tr("コート・処理")}>
               <SimpleGrid cols={{ base: 1, sm: 3 }} spacing="sm">
                 <Select
                   data={COATING_OPTIONS.map((c) => ({ value: c, label: c }))}
                   label={
                     <HelpLabel {...fieldHelp("trialEstimate", "coating")} />
                   }
-                  onChange={(v) => setCoating(v ?? "無")}
+                  onChange={(v) => setCoating(v ?? tr("無"))}
                   searchable
                   value={coating}
                 />
@@ -731,7 +764,7 @@ export function TrialEstimateForm({
                   label={
                     <HelpLabel
                       {...fieldHelp("trialEstimate", "ld", {
-                        label: "LD加工あり",
+                        label: tr("LD加工あり"),
                       })}
                     />
                   }
@@ -746,7 +779,7 @@ export function TrialEstimateForm({
                     label={
                       <HelpLabel
                         {...fieldHelp("trialEstimate", "ld", {
-                          label: "LD部位",
+                          label: tr("LD部位"),
                         })}
                       />
                     }
@@ -757,7 +790,7 @@ export function TrialEstimateForm({
                     label={
                       <HelpLabel
                         {...fieldHelp("trialEstimate", "ld", {
-                          label: "LD外径 (mm)",
+                          label: tr("LD外径 (mm)"),
                         })}
                       />
                     }
@@ -769,7 +802,7 @@ export function TrialEstimateForm({
                     label={
                       <HelpLabel
                         {...fieldHelp("trialEstimate", "ld", {
-                          label: "LD刃長 (mm)",
+                          label: tr("LD刃長 (mm)"),
                         })}
                       />
                     }
@@ -783,8 +816,12 @@ export function TrialEstimateForm({
 
             {settings.customInputs.some((d) => d.scope !== "global") && (
               <FormSection
-                description="価格試算計算（SY02）で定義された追加入力。計算基準の式で変数として使われます。"
-                title="カスタム項目"
+                description={tr(
+                  tr(
+                    "価格試算計算（SY02）で定義された追加入力。計算基準の式で変数として使われます。",
+                  ),
+                )}
+                title={tr("カスタム項目")}
               >
                 <SimpleGrid cols={{ base: 1, sm: 2 }} maw={640} spacing="sm">
                   {settings.customInputs
@@ -840,14 +877,22 @@ export function TrialEstimateForm({
             )}
 
             <FormSection
-              description="形状出し（予備形状分）の按分にのみ使用します。数量ごとの価格スケール（×倍率）は価格表側で設定します。"
-              title="基準数量"
+              description={tr(
+                tr(
+                  "形状出し（予備形状分）の按分にのみ使用します。数量ごとの価格スケール（×倍率）は価格表側で設定します。",
+                ),
+              )}
+              title={tr("基準数量")}
             >
               <NumberInput
                 label={
                   <HelpLabel
-                    help="形状出し（予備形状分）を按分する数量。数量ごとの価格スケールは掛けず、価格表の倍率（×1.01 など）で設定します。"
-                    label="基準数量（本）"
+                    help={tr(
+                      tr(
+                        "形状出し（予備形状分）を按分する数量。数量ごとの価格スケールは掛けず、価格表の倍率（×1.01 など）で設定します。",
+                      ),
+                    )}
+                    label={tr("基準数量（本）")}
                   />
                 }
                 min={1}
@@ -864,11 +909,11 @@ export function TrialEstimateForm({
               warnings={result.warnings}
             />
 
-            <FormSection required title="価格試算名">
+            <FormSection required title={tr("価格試算名")}>
               <TextInput
                 maw={480}
                 onChange={(e) => setName(e.currentTarget.value)}
-                placeholder="例: 精密軸 φ3×38 BAL ｱﾙｸﾛｰﾅ"
+                placeholder={tr("例: 精密軸 φ3×38 BAL ｱﾙｸﾛｰﾅ")}
                 value={name}
                 withAsterisk
               />
@@ -911,7 +956,11 @@ export function TrialEstimateForm({
               />
               {isCylinder && (
                 <Alert color="gray" variant="light">
-                  円筒見積は素材価格を手入力します（仕入実績は参考表示）。
+                  {tr(
+                    tr(
+                      "円筒見積は素材価格を手入力します（仕入実績は参考表示）。",
+                    ),
+                  )}
                 </Alert>
               )}
             </Stack>
@@ -920,7 +969,7 @@ export function TrialEstimateForm({
       </AppTabs>
 
       <FormActions
-        cancelLabel="一覧へ"
+        cancelLabel={tr("一覧へ")}
         loading={isPending}
         onCancel={() => router.push(BASE_PATH)}
         onSave={save}
@@ -944,21 +993,22 @@ function ResultsPanel({
   correctionFactor: number;
   warnings: string[];
 }) {
+  const tr = useTr();
   const rows: { label: string; value: number }[] = [
-    { label: "材料原価", value: breakdown.material },
-    { label: "段加工費", value: breakdown.step },
-    { label: "首下加工費", value: breakdown.neck },
-    { label: "加工単価", value: breakdown.machining },
-    { label: "コート代", value: breakdown.coating },
-    { label: "ラップ処理", value: breakdown.lap },
+    { label: tr("材料原価"), value: breakdown.material },
+    { label: tr("段加工費"), value: breakdown.step },
+    { label: tr("首下加工費"), value: breakdown.neck },
+    { label: tr("加工単価"), value: breakdown.machining },
+    { label: tr("コート代"), value: breakdown.coating },
+    { label: tr("ラップ処理"), value: breakdown.lap },
     { label: "LD", value: breakdown.ld },
-    { label: "検査成績書", value: breakdown.inspection },
+    { label: tr("検査成績書"), value: breakdown.inspection },
   ];
 
   return (
     <Paper p="md" radius="md" withBorder>
       <Stack gap="md">
-        <Text fw={600}>価格試算結果</Text>
+        <Text fw={600}>{tr("価格試算結果")}</Text>
 
         {warnings.length > 0 && (
           <Alert
@@ -979,7 +1029,7 @@ function ResultsPanel({
         <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="md">
           <div>
             <Text c="dimmed" mb={4} size="xs">
-              原価内訳（1本あたり）
+              {tr("原価内訳（1本あたり）")}
             </Text>
             <Table>
               <Table.Tbody>
@@ -997,19 +1047,19 @@ function ResultsPanel({
 
           <div>
             <Text c="dimmed" mb={4} size="xs">
-              基準単価（数量スケールは価格表の倍率で設定）
+              {tr("基準単価（数量スケールは価格表の倍率で設定）")}
             </Text>
             {lot ? (
               <Table>
                 <Table.Tbody>
                   <Table.Tr>
-                    <Table.Td>最低単価</Table.Td>
+                    <Table.Td>{tr("最低単価")}</Table.Td>
                     <Table.Td ta="right">
                       <MoneyText value={Math.round(lot.minimumPrice)} />
                     </Table.Td>
                   </Table.Tr>
                   <Table.Tr>
-                    <Table.Td>補正値</Table.Td>
+                    <Table.Td>{tr("補正値")}</Table.Td>
                     <Table.Td ta="right">
                       <Text className="tabular-nums" ff="mono" size="sm">
                         ×{correctionFactor}
@@ -1019,7 +1069,7 @@ function ResultsPanel({
                   <Table.Tr>
                     <Table.Td>
                       <Text fw={600} size="sm">
-                        見積単価（基準）
+                        {tr("見積単価（基準）")}
                       </Text>
                     </Table.Td>
                     <Table.Td ta="right">
@@ -1032,7 +1082,7 @@ function ResultsPanel({
               </Table>
             ) : (
               <Text c="dimmed" size="xs">
-                基準数量を入力してください
+                {tr("基準数量を入力してください")}
               </Text>
             )}
           </div>

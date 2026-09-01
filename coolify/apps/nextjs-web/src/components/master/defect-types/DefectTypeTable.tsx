@@ -29,6 +29,7 @@ import { DocNumber } from "@/components/ui/DocNumber";
 import { openConfirm } from "@/components/ui/modals";
 import { NewButton } from "@/components/ui/NewButton";
 import { ListShell } from "@/components/ui/shells";
+import { useTr } from "@/hooks/useTr";
 import { useUrlSelectState, useUrlStringState } from "@/hooks/useUrlState";
 import { useIsMobile } from "@/hooks/useViewport";
 import {
@@ -57,6 +58,7 @@ const STATUS_OPTIONS = [
 ];
 
 export function DefectTypeTable({ rows }: { rows: DefectTypeRow[] }) {
+  const tr = useTr();
   const router = useRouter();
   const isMobile = useIsMobile();
   const [, startTransition] = useTransition();
@@ -94,14 +96,14 @@ export function DefectTypeTable({ rows }: { rows: DefectTypeRow[] }) {
       );
       if (result.ok) {
         notifications.show({
-          title: isActive ? "有効化しました" : "無効化しました",
+          title: isActive ? "有効化しました" : tr("無効化しました"),
           message: `${targets.length}件の不良種類を${isActive ? "有効化" : "無効化"}しました`,
           color: "green",
         });
         router.refresh();
       } else {
         notifications.show({
-          title: "エラー",
+          title: tr("エラー"),
           message: result.error,
           color: "red",
         });
@@ -111,22 +113,22 @@ export function DefectTypeTable({ rows }: { rows: DefectTypeRow[] }) {
 
   const bulkDelete = (targets: DefectTypeRow[]) => {
     openConfirm({
-      title: "不良種類の一括削除",
+      title: tr("不良種類の一括削除"),
       message: `選択中の${targets.length}件の不良種類を削除します。この操作は取り消せません。`,
-      confirmLabel: "削除する",
+      confirmLabel: tr("削除する"),
       onConfirm: () => {
         startTransition(async () => {
           const result = await deleteDefectTypes(targets.map((r) => r.id));
           if (result.ok) {
             notifications.show({
-              title: "削除しました",
+              title: tr("削除しました"),
               message: `${targets.length}件の不良種類を削除しました`,
               color: "green",
             });
             router.refresh();
           } else {
             notifications.show({
-              title: "エラー",
+              title: tr("エラー"),
               message: result.error,
               color: "red",
             });
@@ -147,14 +149,14 @@ export function DefectTypeTable({ rows }: { rows: DefectTypeRow[] }) {
     },
     {
       key: "name",
-      header: "名称",
+      header: tr("名称"),
       sortable: true,
       sortValue: (r) => r.name,
       render: (r) => r.name,
     },
     {
       key: "sortOrder",
-      header: "表示順",
+      header: tr("表示順"),
       sortable: true,
       hideable: true,
       align: "right",
@@ -168,7 +170,7 @@ export function DefectTypeTable({ rows }: { rows: DefectTypeRow[] }) {
     },
     {
       key: "isActive",
-      header: "状態",
+      header: tr("状態"),
       sortable: true,
       width: 90,
       sortValue: (r) => (r.isActive ? 1 : 0),
@@ -179,13 +181,13 @@ export function DefectTypeTable({ rows }: { rows: DefectTypeRow[] }) {
   return (
     <ListShell
       action={<NewButton href={`${BASE_PATH}/new`} />}
-      breadcrumbs={["マスタ", "不良種類"]}
+      breadcrumbs={[tr("マスタ"), "不良種類"]}
       filters={
         <Select
           clearable
           data={STATUS_OPTIONS}
           onChange={setStatusFilter}
-          placeholder="状態"
+          placeholder={tr("状態")}
           value={statusFilter}
           w={isMobile ? 110 : 120}
         />
@@ -195,7 +197,7 @@ export function DefectTypeTable({ rows }: { rows: DefectTypeRow[] }) {
         <TextInput
           leftSection={<IconSearch size={14} />}
           onChange={(e) => setSearch(e.currentTarget.value)}
-          placeholder="コード・名称で検索"
+          placeholder={tr("コード・名称で検索")}
           value={search}
         />
       }
@@ -204,19 +206,19 @@ export function DefectTypeTable({ rows }: { rows: DefectTypeRow[] }) {
       <DataTable
         bulkActions={[
           {
-            label: "一括有効化",
+            label: tr("一括有効化"),
             icon: <IconCheck size={16} />,
             color: "green",
             onAction: (rs) => bulkSetActive(rs, true),
           },
           {
-            label: "一括無効化",
+            label: tr("一括無効化"),
             icon: <IconCircleMinus size={16} />,
             color: "orange",
             onAction: (rs) => bulkSetActive(rs, false),
           },
           {
-            label: "一括削除",
+            label: tr("一括削除"),
             icon: <IconTrash size={16} />,
             color: "red",
             onAction: bulkDelete,
@@ -227,7 +229,7 @@ export function DefectTypeTable({ rows }: { rows: DefectTypeRow[] }) {
         defaultSort={{ key: "sortOrder", dir: "asc" }}
         emptyAction={<NewButton href={`${BASE_PATH}/new`} />}
         emptyIcon={<IconAlertTriangle size={24} />}
-        emptyMessage="不良種類がありません"
+        emptyMessage={tr("不良種類がありません")}
         getRowId={(r) => String(r.id)}
         onRowClick={(r) => setEditRow(r)}
         renderCard={(r) => (
@@ -248,12 +250,12 @@ export function DefectTypeTable({ rows }: { rows: DefectTypeRow[] }) {
         )}
         rowActions={(row) => [
           {
-            label: "編集",
+            label: tr("編集"),
             icon: <IconEdit size={14} />,
             onAction: (r) => setEditRow(r),
           },
           {
-            label: row.isActive ? "無効化" : "有効化",
+            label: row.isActive ? "無効化" : tr("有効化"),
             icon: <IconCircleMinus size={14} />,
             onAction: (r) => setToggleRow(r),
           },

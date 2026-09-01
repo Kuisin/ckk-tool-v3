@@ -59,12 +59,14 @@ import { DocNumber } from "@/components/ui/DocNumber";
 import { FieldValue } from "@/components/ui/FieldValue";
 import { ModalShell } from "@/components/ui/modals";
 import { StatusBadge } from "@/components/ui/StatusBadge";
+import { useTr } from "@/hooks/useTr";
 import { QUANTITY_LABELS } from "@/lib/workflow-core";
 import type { StepExecutionData } from "./model";
 
 const BASE_PATH = "/production/work-orders";
 
 export function StepExecutionView({ data }: { data: StepExecutionData }) {
+  const tr = useTr();
   const fmt = useFormat();
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
@@ -118,7 +120,7 @@ export function StepExecutionView({ data }: { data: StepExecutionData }) {
       router.refresh();
     } else {
       notifications.show({
-        title: "エラー",
+        title: tr("エラー"),
         message: result.errors?.join(" / ") ?? fallback,
         color: "red",
       });
@@ -132,7 +134,11 @@ export function StepExecutionView({ data }: { data: StepExecutionData }) {
         step.id,
         lotText.trim() || null,
       );
-      notifyResult(result, "工程を開始しました", "工程の開始に失敗しました");
+      notifyResult(
+        result,
+        tr("工程を開始しました"),
+        tr("工程の開始に失敗しました"),
+      );
     });
   };
 
@@ -141,8 +147,8 @@ export function StepExecutionView({ data }: { data: StepExecutionData }) {
       const result = await updateStepLot(workOrderNumber, step.id, lotText);
       notifyResult(
         result,
-        "ロット/伝票コードを保存しました",
-        "ロット/伝票コードの保存に失敗しました",
+        tr("ロット/伝票コードを保存しました"),
+        tr("ロット/伝票コードの保存に失敗しました"),
       );
     });
   };
@@ -151,15 +157,19 @@ export function StepExecutionView({ data }: { data: StepExecutionData }) {
   const handleCompleteWithoutQuantities = () => {
     startTransition(async () => {
       const result = await completeStep(workOrderNumber, step.id, null);
-      notifyResult(result, "工程を完了しました", "工程の完了に失敗しました");
+      notifyResult(
+        result,
+        tr("工程を完了しました"),
+        tr("工程の完了に失敗しました"),
+      );
     });
   };
 
   const handleReasonConfirm = () => {
     if (!reason.trim()) {
       notifications.show({
-        title: "入力不足",
-        message: "理由を入力してください",
+        title: tr("入力不足"),
+        message: tr("理由を入力してください"),
         color: "red",
       });
       return;
@@ -176,8 +186,8 @@ export function StepExecutionView({ data }: { data: StepExecutionData }) {
       }
       notifyResult(
         result,
-        mode === "abort" ? "工程を中断しました" : "工程を巻き戻しました",
-        "操作に失敗しました",
+        mode === "abort" ? "工程を中断しました" : tr("工程を巻き戻しました"),
+        tr("操作に失敗しました"),
       );
     });
   };
@@ -194,8 +204,8 @@ export function StepExecutionView({ data }: { data: StepExecutionData }) {
       });
       notifyResult(
         result,
-        "外注日程を保存しました",
-        "外注日程の保存に失敗しました",
+        tr("外注日程を保存しました"),
+        tr("外注日程の保存に失敗しました"),
       );
     });
   };
@@ -214,16 +224,16 @@ export function StepExecutionView({ data }: { data: StepExecutionData }) {
                 size="sm"
                 variant="outline"
               >
-                {isOutsource ? "外注" : "社内"}
+                {isOutsource ? "外注" : tr("社内")}
               </Badge>
               {step.isInspection && (
                 <Badge color="blue" size="sm" variant="light">
-                  検査
+                  {tr("検査")}
                 </Badge>
               )}
               {step.isApprovalStep && (
                 <Badge color="teal" size="sm" variant="light">
-                  検査承認
+                  {tr("検査承認")}
                 </Badge>
               )}
             </Group>
@@ -265,10 +275,10 @@ export function StepExecutionView({ data }: { data: StepExecutionData }) {
         <Alert
           color="red"
           icon={<IconLock size={16} />}
-          title="別のユーザーがセッション中です"
+          title={tr("別のユーザーがセッション中です")}
           variant="filled"
         >
-          {step.sessionLockedByName ?? "別のユーザー"}
+          {step.sessionLockedByName ?? tr("別のユーザー")}
           がこの工程を操作しています。完了または中断されるまで操作できません。
         </Alert>
       )}
@@ -280,7 +290,7 @@ export function StepExecutionView({ data }: { data: StepExecutionData }) {
           <Paper p="md" radius="md" withBorder>
             <Group align="flex-end" gap="sm">
               <TextInput
-                label="ロット/伝票コード"
+                label={tr("ロット/伝票コード")}
                 maxLength={100}
                 onChange={(e) => setLotText(e.currentTarget.value)}
                 style={{ flex: 1 }}
@@ -293,34 +303,43 @@ export function StepExecutionView({ data }: { data: StepExecutionData }) {
                 onClick={handleSaveLot}
                 variant="default"
               >
-                保存
+                {tr("保存")}
               </Button>
             </Group>
           </Paper>
         ) : (
           <Paper p="md" radius="md" withBorder>
-            <FieldValue label="ロット/伝票コード" value={step.lotText ?? "—"} />
+            <FieldValue
+              label={tr("ロット/伝票コード")}
+              value={step.lotText ?? "—"}
+            />
           </Paper>
         ))}
 
       {/* ── PENDING: 開始可否・工程開始 ── */}
       {step.status === "PENDING" &&
         (!woExecutable ? (
-          <Alert color="yellow" title="開始できません" variant="light">
-            指示書が承認済み / 進行中ではないため、工程を開始できません。
+          <Alert color="yellow" title={tr("開始できません")} variant="light">
+            {tr(
+              tr(
+                "指示書が承認済み / 進行中ではないため、工程を開始できません。",
+              ),
+            )}
           </Alert>
         ) : data.canStart.ok && !lockedByOther ? (
           <Stack gap="sm" mt="md">
             {step.lotInputMode !== "NONE" && (
               <TextInput
-                description="素材ロット・伝票コードなど（開始時に記録されます）"
-                label="ロット/伝票コード"
+                description={tr(
+                  tr("素材ロット・伝票コードなど（開始時に記録されます）"),
+                )}
+                label={tr("ロット/伝票コード")}
                 maxLength={100}
                 onChange={(e) => setLotText(e.currentTarget.value)}
                 placeholder={
                   step.lotInputMode === "REQUIRED"
-                    ? "ロット/伝票コード（必須）"
-                    : "ロット/伝票コード（任意）"
+                    ? tr("ロット/伝票コード（必須）")
+                    : tr("ロット/伝票コード（任意）")
                 }
                 value={lotText}
                 withAsterisk={step.lotInputMode === "REQUIRED"}
@@ -336,12 +355,12 @@ export function StepExecutionView({ data }: { data: StepExecutionData }) {
                 loading={isPending}
                 onClick={handleStart}
               >
-                工程開始
+                {tr("工程開始")}
               </Button>
             </Group>
           </Stack>
         ) : (
-          <Alert color="yellow" title="開始できません" variant="light">
+          <Alert color="yellow" title={tr("開始できません")} variant="light">
             <List size="sm">
               {data.canStart.reasons.map((r) => (
                 <List.Item key={r}>{r}</List.Item>
@@ -366,7 +385,7 @@ export function StepExecutionView({ data }: { data: StepExecutionData }) {
                 loading={isPending}
                 onClick={handleCompleteWithoutQuantities}
               >
-                工程完了
+                {tr("工程完了")}
               </Button>
             </Stack>
           </Paper>
@@ -386,8 +405,8 @@ export function StepExecutionView({ data }: { data: StepExecutionData }) {
         (step.quantityTracking === "NONE" ? (
           <Paper p="md" radius="md" withBorder>
             <Stack gap="md">
-              <Title order={5}>数量（記録なし・パススルー）</Title>
-              <FieldValue label="通過数" value={step.inputQuantity} />
+              <Title order={5}>{tr("数量（記録なし・パススルー）")}</Title>
+              <FieldValue label={tr("通過数")} value={step.inputQuantity} />
             </Stack>
           </Paper>
         ) : (
@@ -395,8 +414,8 @@ export function StepExecutionView({ data }: { data: StepExecutionData }) {
             <Stack gap="md">
               <Title order={4}>
                 {step.quantityTracking === "INSPECTION"
-                  ? "検査数・合否（記録済み）"
-                  : "数量・不良（記録済み）"}
+                  ? tr("検査数・合否（記録済み）")
+                  : tr("数量・不良（記録済み）")}
               </Title>
               <SimpleGrid cols={{ base: 2, sm: 5 }} spacing="md">
                 <FieldValue
@@ -423,7 +442,7 @@ export function StepExecutionView({ data }: { data: StepExecutionData }) {
               {step.defectReasons.length > 0 && (
                 <Stack gap="xs">
                   <Text c="dimmed" fw={600} size="sm">
-                    不良内訳（種別・理由・数）
+                    {tr("不良内訳（種別・理由・数）")}
                   </Text>
                   {step.defectReasons.map((r, i) => (
                     <Group
@@ -473,8 +492,12 @@ export function StepExecutionView({ data }: { data: StepExecutionData }) {
 
       {/* ── CANCELLED ── */}
       {step.status === "CANCELLED" && (
-        <Alert color="red" title="キャンセル済みの工程です" variant="light">
-          {step.cancelReason ?? "この工程はキャンセルされています。"}
+        <Alert
+          color="red"
+          title={tr("キャンセル済みの工程です")}
+          variant="light"
+        >
+          {step.cancelReason ?? tr("この工程はキャンセルされています。")}
         </Alert>
       )}
 
@@ -529,42 +552,42 @@ export function StepExecutionView({ data }: { data: StepExecutionData }) {
       {isOutsource && (
         <Paper p="md" radius="md" withBorder>
           <Stack gap="md">
-            <Title order={5}>外注日程</Title>
+            <Title order={5}>{tr("外注日程")}</Title>
             <SimpleGrid cols={{ base: 1, sm: 3 }} spacing="md">
               <DatePickerInput
                 clearable
                 disabled={!canOperate}
-                label="依頼日"
+                label={tr("依頼日")}
                 leftSection={<IconCalendar size={16} />}
                 onChange={setRequestedAt}
-                placeholder="日付を選択"
+                placeholder={tr("日付を選択")}
                 value={requestedAt}
                 valueFormat="YYYY/MM/DD"
               />
               <DatePickerInput
                 clearable
                 disabled={!canOperate}
-                label="入荷予定日"
+                label={tr("入荷予定日")}
                 leftSection={<IconCalendar size={16} />}
                 onChange={setExpectedAt}
-                placeholder="日付を選択"
+                placeholder={tr("日付を選択")}
                 value={expectedAt}
                 valueFormat="YYYY/MM/DD"
               />
               <DatePickerInput
                 clearable
                 disabled={!canOperate}
-                label="入荷日"
+                label={tr("入荷日")}
                 leftSection={<IconCalendar size={16} />}
                 onChange={setReceivedAt}
-                placeholder="日付を選択"
+                placeholder={tr("日付を選択")}
                 value={receivedAt}
                 valueFormat="YYYY/MM/DD"
               />
               <NumberInput
                 allowNegative={false}
                 disabled={!canOperate}
-                label="外注費"
+                label={tr("外注費")}
                 min={0}
                 onChange={(v) =>
                   setOutsourceCost(typeof v === "number" ? v : "")
@@ -580,7 +603,7 @@ export function StepExecutionView({ data }: { data: StepExecutionData }) {
                   loading={isPending}
                   onClick={handleSaveOutsourceDates}
                 >
-                  外注日程を保存
+                  {tr("外注日程を保存")}
                 </PrimaryButton>
               </Group>
             )}
@@ -596,7 +619,7 @@ export function StepExecutionView({ data }: { data: StepExecutionData }) {
             onClick={() => setReasonMode("abort")}
             variant="outline"
           >
-            中断（巻き戻し）
+            {tr("中断（巻き戻し）")}
           </Button>
         </Group>
       )}
@@ -608,7 +631,7 @@ export function StepExecutionView({ data }: { data: StepExecutionData }) {
             onClick={() => setReasonMode("rollback")}
             variant="outline"
           >
-            巻き戻し
+            {tr("巻き戻し")}
           </Button>
         </Group>
       )}
@@ -616,7 +639,7 @@ export function StepExecutionView({ data }: { data: StepExecutionData }) {
       {/* ── 理由入力モーダル ── */}
       <ModalShell
         confirmColor={reasonMode === "abort" ? "red" : "orange"}
-        confirmLabel={reasonMode === "abort" ? "中断する" : "巻き戻す"}
+        confirmLabel={reasonMode === "abort" ? "中断する" : tr("巻き戻す")}
         loading={isPending}
         onClose={() => setReasonMode(null)}
         onConfirm={handleReasonConfirm}
@@ -624,19 +647,27 @@ export function StepExecutionView({ data }: { data: StepExecutionData }) {
         size="md"
         title={
           reasonMode === "abort"
-            ? "工程の中断（巻き戻し）"
-            : "完了工程の巻き戻し"
+            ? tr("工程の中断（巻き戻し）")
+            : tr("完了工程の巻き戻し")
         }
       >
         <Stack gap="sm">
           <Text size="sm">
             {reasonMode === "abort"
-              ? "進行中の工程を未着手へ戻します。入力中の数量は保存されません。"
-              : "完了済みの工程を未着手へ戻し、記録済みの数量をクリアします。後続工程が着手済みの場合は巻き戻せません。"}
+              ? tr(
+                  tr(
+                    "進行中の工程を未着手へ戻します。入力中の数量は保存されません。",
+                  ),
+                )
+              : tr(
+                  tr(
+                    "完了済みの工程を未着手へ戻し、記録済みの数量をクリアします。後続工程が着手済みの場合は巻き戻せません。",
+                  ),
+                )}
           </Text>
           <Textarea
             autosize
-            label="理由"
+            label={tr("理由")}
             minRows={3}
             onChange={(e) => setReason(e.currentTarget.value)}
             value={reason}

@@ -57,15 +57,27 @@ let touched = 0, replaced = 0, hooked = 0;
 for (const file of files) {
   const source = fs.readFileSync(file, "utf8");
   const isClient = /^\s*["']use client["']/.test(source);
-  const r = transform(source, dict);
+  // サーバー側（Server Component / Server Action）は await getTr()。
+  // async でない関数には置けないので、そこは触らずに残す（`outside` で数える）。
+  const r = transform(source, dict, {
+    accessor: isClient ? "const tr = useTr();" : "const tr = await getTr();",
+    requireAsync: !isClient,
+  });
   if (!r.changed) continue;
 
   let code = r.code;
   if (r.hooked > 0) {
     if (!isClient) {
-      // サーバー側は await getTr() が要る＝機械的には入れられない。
-      // 手で移す対象として名前だけ出す。
-      console.log(`  server (skipped, needs getTr): ${path.relative(REPO, file)}`);
+      if (!/from "@\/lib\/ui-text-server"/.test(code)) {
+        const first = code.search(/^import\s/m);
+        code =
+          first >= 0
+            ? `${code.slice(0, first)}import { getTr } from "@/lib/ui-text-server";\n${code.slice(first)}`
+            : `import { getTr } from "@/lib/ui-text-server";\n${code}`;
+      }
+      touched++; replaced += r.replaced; hooked += r.hooked;
+      console.log(`  ${path.relative(REPO, file)}  (${r.replaced} strings, ${r.hooked} server fns)`);
+      if (!dry) fs.writeFileSync(file, code);
       continue;
     }
     if (!/from "@\/hooks\/useTr"/.test(code)) {

@@ -20,8 +20,10 @@ import { DocNumber } from "@/components/ui/DocNumber";
 import { FieldValue } from "@/components/ui/FieldValue";
 import { openConfirm } from "@/components/ui/modals";
 import { DetailShell, ResourceActions } from "@/components/ui/shells";
+import { useTr } from "@/hooks/useTr";
 
 export function BranchDetail({ record }: { record: BranchDetailData }) {
+  const tr = useTr();
   const fmt = useFormat();
   const router = useRouter();
   const [, startTransition] = useTransition();
@@ -29,22 +31,22 @@ export function BranchDetail({ record }: { record: BranchDetailData }) {
 
   const handleDelete = () => {
     openConfirm({
-      title: "支店の削除",
+      title: tr("支店の削除"),
       message: `支店「${record.nameJa}（${record.bpCode}）」を削除します。この操作は取り消せません。`,
-      confirmLabel: "削除する",
+      confirmLabel: tr("削除する"),
       onConfirm: () => {
         startTransition(async () => {
           const result = await deleteBranch(record.parentId, record.id);
           if (result.ok) {
             notifications.show({
-              title: "削除しました",
+              title: tr("削除しました"),
               message: `支店「${record.nameJa}」を削除しました`,
               color: "green",
             });
             router.push(parentPath);
           } else {
             notifications.show({
-              title: "エラー",
+              title: tr("エラー"),
               message: result.error,
               color: "red",
             });
@@ -70,8 +72,8 @@ export function BranchDetail({ record }: { record: BranchDetailData }) {
         />
       }
       breadcrumbs={[
-        "マスタ",
-        { label: "取引先", href: BP_BASE_PATH },
+        tr("マスタ"),
+        { label: tr("取引先"), href: BP_BASE_PATH },
         { label: record.parentName, href: parentPath },
         record.bpCode,
       ]}
@@ -83,7 +85,7 @@ export function BranchDetail({ record }: { record: BranchDetailData }) {
       <BpBaseSummary
         extra={
           <FieldValue
-            label="親法人"
+            label={tr("親法人")}
             value={
               <DocNumber c="blue">
                 {record.parentBpCode}（{record.parentName}）
@@ -102,7 +104,7 @@ export function BranchDetail({ record }: { record: BranchDetailData }) {
         />
       </Stack>
 
-      <FieldValue label="備考" value={record.notes || "—"} />
+      <FieldValue label={tr("備考")} value={record.notes || "—"} />
     </DetailShell>
   );
 }

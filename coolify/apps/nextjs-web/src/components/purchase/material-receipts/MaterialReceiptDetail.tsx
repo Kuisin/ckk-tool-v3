@@ -19,6 +19,7 @@ import { DocNumber } from "@/components/ui/DocNumber";
 import { FieldValue } from "@/components/ui/FieldValue";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { DetailShell, SummaryGrid } from "@/components/ui/shells";
+import { useTr } from "@/hooks/useTr";
 import type { MaterialReceiptView } from "./model";
 
 const BASE_PATH = "/purchase/material-receipts";
@@ -32,11 +33,16 @@ export function MaterialReceiptDetail({
   /** 証憑（document_attachments 由来）。 */
   attachments: AttachmentView[];
 }) {
+  const tr = useTr();
   const fmt = useFormat();
   const r = receipt;
   return (
     <DetailShell
-      breadcrumbs={["購買", { label: "素材入荷", href: BASE_PATH }, "詳細"]}
+      breadcrumbs={[
+        tr("購買"),
+        { label: tr("素材入荷"), href: BASE_PATH },
+        "詳細",
+      ]}
       createdAt={fmt.dateTime(r.createdAt)}
       status={
         r.poNumber ? (
@@ -44,7 +50,7 @@ export function MaterialReceiptDetail({
           <StatusBadge entity="MaterialPurchaseOrder" status="COMPLETED" />
         ) : (
           <Badge color="gray" variant="light">
-            直接調達
+            {tr("直接調達")}
           </Badge>
         )
       }
@@ -52,7 +58,7 @@ export function MaterialReceiptDetail({
     >
       <SummaryGrid>
         <FieldValue
-          label="素材"
+          label={tr("素材")}
           value={
             <>
               <DocNumber>{r.materialCode}</DocNumber>
@@ -62,20 +68,20 @@ export function MaterialReceiptDetail({
             </>
           }
         />
-        <FieldValue label="仕入先" value={r.supplierName ?? "—"} />
-        <FieldValue label="入荷先拠点" value={r.plantName ?? "—"} />
+        <FieldValue label={tr("仕入先")} value={r.supplierName ?? "—"} />
+        <FieldValue label={tr("入荷先拠点")} value={r.plantName ?? "—"} />
         <FieldValue
-          label="数量"
+          label={tr("数量")}
           value={
             <Text className="tabular-nums" size="sm" span>
               {r.quantity} {r.unit}
             </Text>
           }
         />
-        <FieldValue label="入荷日" value={fmt.date(r.receivedAt)} />
-        <FieldValue label="作成者" value={r.createdByName} />
+        <FieldValue label={tr("入荷日")} value={fmt.date(r.receivedAt)} />
+        <FieldValue label={tr("作成者")} value={r.createdByName} />
         <FieldValue
-          label="発注明細"
+          label={tr("発注明細")}
           value={
             r.poNumber ? (
               <Anchor
@@ -87,12 +93,12 @@ export function MaterialReceiptDetail({
               </Anchor>
             ) : (
               <Text c="dimmed" size="sm" span>
-                直接調達（発注書なし）
+                {tr("直接調達（発注書なし）")}
               </Text>
             )
           }
         />
-        <FieldValue label="備考" value={r.notes ?? "—"} />
+        <FieldValue label={tr("備考")} value={r.notes ?? "—"} />
       </SummaryGrid>
 
       {/* 証憑（納品書控え・検収書等） — 常時添付可 */}
@@ -103,7 +109,7 @@ export function MaterialReceiptDetail({
           canUpload
           ownerId={r.id}
           ownerType="material_receipts"
-          title="証憑"
+          title={tr("証憑")}
         />
       </Paper>
     </DetailShell>

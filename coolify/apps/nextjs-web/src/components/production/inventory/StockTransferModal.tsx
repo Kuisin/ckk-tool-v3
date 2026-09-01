@@ -23,6 +23,7 @@ import { useMemo, useState, useTransition } from "react";
 import { transferStock } from "@/app/(dashboard)/production/inventory/actions";
 import { CancelButton, PrimaryButton } from "@/components/ui/buttons";
 import { HelpLabel } from "@/components/ui/HelpLabel";
+import { useTr } from "@/hooks/useTr";
 import { fieldHelp } from "@/lib/field-help";
 
 /** 移動先の選択肢（拠点 → 保管場所 → 棚。サーバーで有効行のみに整形済み）。 */
@@ -71,6 +72,7 @@ export function StockTransferModal({
   onClose: () => void;
   onDone: () => void;
 }) {
+  const tr = useTr();
   const [plantId, setPlantId] = useState<string | null>(null);
   const [locationId, setLocationId] = useState<string | null>(null);
   const [shelfId, setShelfId] = useState<string | null>(null);
@@ -116,14 +118,14 @@ export function StockTransferModal({
       });
       if (!res.ok) {
         notifications.show({
-          title: "在庫移動に失敗しました",
+          title: tr("在庫移動に失敗しました"),
           message: res.error,
           color: "red",
         });
         return;
       }
       notifications.show({
-        title: "在庫を移動しました",
+        title: tr("在庫を移動しました"),
         message: `${source.label} × ${qty}${source.unit}`,
         color: "green",
       });
@@ -139,7 +141,7 @@ export function StockTransferModal({
         <Group gap="xs">
           <IconArrowsExchange size={16} />
           <Text fw={600} size="sm">
-            在庫移動
+            {tr("在庫移動")}
           </Text>
         </Group>
       }
@@ -171,7 +173,7 @@ export function StockTransferModal({
             setLocationId(null);
             setShelfId(null);
           }}
-          placeholder="選択"
+          placeholder={tr("選択")}
           searchable
           value={plantId}
           withAsterisk
@@ -183,7 +185,7 @@ export function StockTransferModal({
           label={
             <HelpLabel
               {...fieldHelp("productInventory", "location", {
-                label: "保管場所",
+                label: tr("保管場所"),
               })}
             />
           }
@@ -193,8 +195,8 @@ export function StockTransferModal({
           }}
           placeholder={
             plant && locationOptions.length === 0
-              ? "保管場所なし（未割当のまま移動）"
-              : "未割当"
+              ? tr("保管場所なし（未割当のまま移動）")
+              : tr("未割当")
           }
           value={locationId}
         />
@@ -204,12 +206,14 @@ export function StockTransferModal({
           disabled={!location || shelfOptions.length === 0}
           label={
             <HelpLabel
-              {...fieldHelp("productInventory", "location", { label: "棚" })}
+              {...fieldHelp("productInventory", "location", {
+                label: tr("棚"),
+              })}
             />
           }
           onChange={setShelfId}
           placeholder={
-            location && shelfOptions.length === 0 ? "棚なし" : "棚未割当"
+            location && shelfOptions.length === 0 ? "棚なし" : tr("棚未割当")
           }
           value={shelfId}
         />
@@ -226,7 +230,7 @@ export function StockTransferModal({
           label={
             <HelpLabel
               {...fieldHelp("productInventory", "notes", {
-                label: "備考（任意）",
+                label: tr("備考（任意）"),
               })}
             />
           }
@@ -242,7 +246,7 @@ export function StockTransferModal({
             loading={pending}
             onClick={submit}
           >
-            移動する
+            {tr("移動する")}
           </PrimaryButton>
         </Group>
       </Stack>

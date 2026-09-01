@@ -3,6 +3,7 @@ import { LookupTablesList } from "@/components/settings/LookupTablesList";
 import { MasterDetailShell } from "@/components/ui/MasterDetailShell";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { getTrialPricingSettings } from "@/lib/system-settings";
+import { getTr } from "@/lib/ui-text-server";
 
 export const dynamic = "force-dynamic";
 
@@ -15,6 +16,7 @@ export default async function LookupsLayout({
 }: {
   children: ReactNode;
 }) {
+  const tr = await getTr();
   const settings = await getTrialPricingSettings();
   return (
     <MasterDetailShell
@@ -22,11 +24,11 @@ export default async function LookupsLayout({
       header={
         <PageHeader
           breadcrumbs={[
-            "システム",
-            { label: "価格試算計算", href: ENGINE },
-            "ルックアップ表",
+            tr("システム"),
+            { label: tr("価格試算計算"), href: ENGINE },
+            tr("ルックアップ表"),
           ]}
-          title="ルックアップ表"
+          title={tr("ルックアップ表")}
         />
       }
       master={<LookupTablesList tables={settings.lookupTables} />}

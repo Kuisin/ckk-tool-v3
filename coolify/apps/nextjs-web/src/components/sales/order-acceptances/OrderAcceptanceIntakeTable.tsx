@@ -45,6 +45,7 @@ import { type Column, DataTable } from "@/components/ui/DataTable";
 import { NewButton } from "@/components/ui/NewButton";
 import { StatusBadge, statusOptions } from "@/components/ui/StatusBadge";
 import { ListShell } from "@/components/ui/shells";
+import { useTr } from "@/hooks/useTr";
 import { useUrlSelectState, useUrlStringState } from "@/hooks/useUrlState";
 import { useIsMobile } from "@/hooks/useViewport";
 import { parseExtractError } from "@/lib/intake-extract-error";
@@ -58,6 +59,7 @@ function ExtractErrorBadge({
   stored: string;
   size?: "xs" | "sm";
 }) {
+  const tr = useTr();
   const failure = parseExtractError(stored);
   return (
     <Tooltip
@@ -78,7 +80,7 @@ function ExtractErrorBadge({
         size={size}
         variant="light"
       >
-        {failure.retrying ? "再試行中" : "抽出失敗"}
+        {failure.retrying ? "再試行中" : tr("抽出失敗")}
       </Badge>
     </Tooltip>
   );
@@ -116,6 +118,7 @@ export function OrderAcceptanceIntakeTable({
   /** INTAKE_DIR（監視フォルダ）が設定されているか（サーバーから渡す）。 */
   intakeDirConfigured: boolean;
 }) {
+  const tr = useTr();
   const fmt = useFormat();
   const router = useRouter();
   const isMobile = useIsMobile();
@@ -172,7 +175,7 @@ export function OrderAcceptanceIntakeTable({
       color: "blue",
       loading: true,
       message: `${files.length} 件を一覧に追加しています…`,
-      title: "優先取込",
+      title: tr("優先取込"),
       withCloseButton: false,
     });
     // 1 段目: 保存 + 採番だけ（defer=1）。ここでは抽出を積まない。
@@ -185,7 +188,7 @@ export function OrderAcceptanceIntakeTable({
         color: "blue",
         loading: true,
         message: `${i + 1} / ${files.length} 件目: ${file.name} を追加中…`,
-        title: "優先取込",
+        title: tr("優先取込"),
         withCloseButton: false,
       });
       try {
@@ -218,7 +221,7 @@ export function OrderAcceptanceIntakeTable({
         color: "blue",
         loading: true,
         message: `${numbers.length} 件をAI抽出の待ち行列に入れています…`,
-        title: "優先取込",
+        title: tr("優先取込"),
         withCloseButton: false,
       });
       try {
@@ -234,10 +237,10 @@ export function OrderAcceptanceIntakeTable({
             queueError = `抽出を開始できなかった書類: ${json.skipped.join(" ・ ")}`;
           }
         } else {
-          queueError = json?.error ?? "AI抽出の開始に失敗しました";
+          queueError = json?.error ?? tr("AI抽出の開始に失敗しました");
         }
       } catch {
-        queueError = "AI抽出の開始に失敗しました（通信エラー）";
+        queueError = tr("AI抽出の開始に失敗しました（通信エラー）");
       }
     }
 
@@ -253,7 +256,7 @@ export function OrderAcceptanceIntakeTable({
           : `${numbers.length} 件を一覧に追加しました。AI抽出はこのあと順番に実行されます` +
             `${pending > 1 ? `（抽出待ち ${pending} 件）` : ""}`,
       title:
-        problems.length > 0 ? "優先取込 受付（一部失敗）" : "優先取込 受付",
+        problems.length > 0 ? "優先取込 受付（一部失敗）" : tr("優先取込 受付"),
       withCloseButton: true,
     });
     // ボタンはここで戻る — 抽出の完了は待たない。
@@ -264,7 +267,7 @@ export function OrderAcceptanceIntakeTable({
   const columns: Column<OrderAcceptanceListRow>[] = [
     {
       key: "number",
-      header: "番号",
+      header: tr("番号"),
       sortable: true,
       render: (r) => (
         <Text ff="mono" size="sm">
@@ -274,7 +277,7 @@ export function OrderAcceptanceIntakeTable({
     },
     {
       key: "source",
-      header: "取込元",
+      header: tr("取込元"),
       width: 110,
       sortValue: (r) => r.source,
       render: (r) => {
@@ -288,7 +291,7 @@ export function OrderAcceptanceIntakeTable({
     },
     {
       key: "sourceFilename",
-      header: "ファイル名",
+      header: tr("ファイル名"),
       hideable: true,
       render: (r) => (
         <Text c={r.sourceFilename ? undefined : "dimmed"} size="sm" truncate>
@@ -298,7 +301,7 @@ export function OrderAcceptanceIntakeTable({
     },
     {
       key: "customerName",
-      header: "顧客",
+      header: tr("顧客"),
       sortable: true,
       sortValue: (r) => r.customerName ?? "",
       render: (r) =>
@@ -308,13 +311,13 @@ export function OrderAcceptanceIntakeTable({
           </Text>
         ) : (
           <Badge color="orange" size="sm" variant="light">
-            未特定
+            {tr("未特定")}
           </Badge>
         ),
     },
     {
       key: "itemCount",
-      header: "明細数",
+      header: tr("明細数"),
       align: "right",
       width: 80,
       sortValue: (r) => r.itemCount,
@@ -326,7 +329,7 @@ export function OrderAcceptanceIntakeTable({
     },
     {
       key: "orderDate",
-      header: "注文日",
+      header: tr("注文日"),
       width: 110,
       sortable: true,
       sortValue: (r) => r.orderDate ?? "",
@@ -338,7 +341,7 @@ export function OrderAcceptanceIntakeTable({
     },
     {
       key: "status",
-      header: "状態",
+      header: tr("状態"),
       width: 110,
       sortValue: (r) => r.status,
       render: (r) => (
@@ -347,7 +350,7 @@ export function OrderAcceptanceIntakeTable({
     },
     {
       key: "extractError",
-      header: "エラー",
+      header: tr("エラー"),
       width: 90,
       sortValue: (r) => (r.extractError ? 1 : 0),
       render: (r) =>
@@ -361,7 +364,7 @@ export function OrderAcceptanceIntakeTable({
     },
     {
       key: "createdAt",
-      header: "取込日時",
+      header: tr("取込日時"),
       width: 140,
       sortable: true,
       sortValue: (r) => r.createdAt,
@@ -382,7 +385,7 @@ export function OrderAcceptanceIntakeTable({
               href="/sales/order-lines"
               leftSection={<IconClipboardList size={14} />}
             >
-              注文明細一覧
+              {tr("注文明細一覧")}
             </SecondaryButton>
           )}
           <FileButton
@@ -396,21 +399,21 @@ export function OrderAcceptanceIntakeTable({
                 loading={uploading}
                 {...props}
               >
-                優先取込
+                {tr("優先取込")}
               </PrimaryButton>
             )}
           </FileButton>
-          <NewButton href={`${BASE_PATH}/new`} label="手入力で新規" />
+          <NewButton href={`${BASE_PATH}/new`} label={tr("手入力で新規")} />
         </Group>
       }
-      breadcrumbs={["販売", "注文請書"]}
+      breadcrumbs={[tr("販売"), tr("注文請書")]}
       filters={
         <Select
           clearable
           data={statusOptions("OrderAcceptanceIntake")}
           flex={isMobile ? 1 : undefined}
           onChange={setStatus}
-          placeholder="状態"
+          placeholder={tr("状態")}
           value={status}
           w={isMobile ? undefined : 150}
         />
@@ -420,11 +423,11 @@ export function OrderAcceptanceIntakeTable({
         <TextInput
           leftSection={<IconSearch size={14} />}
           onChange={(e) => setSearch(e.currentTarget.value)}
-          placeholder="番号・ファイル名・顧客で検索"
+          placeholder={tr("番号・ファイル名・顧客で検索")}
           value={search}
         />
       }
-      title="注文請書"
+      title={tr("注文請書")}
     >
       <Stack gap="xs">
         <Group gap="sm">
@@ -433,10 +436,14 @@ export function OrderAcceptanceIntakeTable({
             size="sm"
             variant="dot"
           >
-            監視フォルダ取込: {intakeDirConfigured ? "有効" : "未設定"}
+            監視フォルダ取込: {intakeDirConfigured ? "有効" : tr("未設定")}
           </Badge>
           <Text c="dimmed" size="xs">
-            優先取込は選んだファイルを先にすべて一覧へ追加し、そのあとAI抽出をまとめて待ち行列に入れます。抽出はバックグラウンドで順に実行します（1件あたり約1〜3分）。取込中の行がある間は30秒ごとに自動更新します。
+            {tr(
+              tr(
+                "優先取込は選んだファイルを先にすべて一覧へ追加し、そのあとAI抽出をまとめて待ち行列に入れます。抽出はバックグラウンドで順に実行します（1件あたり約1〜3分）。取込中の行がある間は30秒ごとに自動更新します。",
+              ),
+            )}
           </Text>
         </Group>
         <DataTable
@@ -444,7 +451,7 @@ export function OrderAcceptanceIntakeTable({
           data={filtered}
           defaultSort={{ key: "number", dir: "desc" }}
           emptyIcon={<IconClipboardCheck size={24} />}
-          emptyMessage="注文請書がありません"
+          emptyMessage={tr("注文請書がありません")}
           getRowId={(r) => r.number}
           onRowClick={(r) => router.push(`${BASE_PATH}/${r.number}`)}
           renderCard={(r) => {
@@ -461,11 +468,11 @@ export function OrderAcceptanceIntakeTable({
                     </Text>
                   ) : (
                     <Badge color="orange" size="xs" variant="light">
-                      顧客未特定
+                      {tr("顧客未特定")}
                     </Badge>
                   )}
                   <Text c="dimmed" size="xs" truncate>
-                    {r.sourceFilename ?? "（手入力）"}
+                    {r.sourceFilename ?? tr("（手入力）")}
                   </Text>
                   <Group gap="md" mt={2}>
                     <Badge color={def.color} size="xs" variant="light">

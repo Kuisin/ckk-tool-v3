@@ -13,7 +13,8 @@
       "!.next",
       "!dist",
       "!build",
-      "!src/pdf-templates"
+      "!src/pdf-templates",
+      "!src/lib/ui-dictionary"
     ]
   },
   "formatter": {
@@ -44,8 +45,15 @@
         "useSortedClasses": {
           "level": "error",
           "options": {
-            "attributes": ["className"],
-            "functions": ["clsx", "cva", "cn", "tw"]
+            "attributes": [
+              "className"
+            ],
+            "functions": [
+              "clsx",
+              "cva",
+              "cn",
+              "tw"
+            ]
           }
         }
       }
@@ -65,7 +73,9 @@
   },
   "overrides": [
     {
-      "includes": ["src/app/layout.tsx"],
+      "includes": [
+        "src/app/layout.tsx"
+      ],
       "linter": {
         "rules": {
           "security": {

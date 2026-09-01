@@ -41,6 +41,7 @@ import { HelpLabel } from "@/components/ui/HelpLabel";
 import { SalesRepSelect } from "@/components/ui/SalesRepSelect";
 import { StatusBadge, statusOptions } from "@/components/ui/StatusBadge";
 import { FormSection, FormShell } from "@/components/ui/shells";
+import { useTr } from "@/hooks/useTr";
 import { fieldHelp } from "@/lib/field-help";
 import { zodResolver } from "@/lib/form";
 import { formatMoney } from "@/lib/format";
@@ -191,6 +192,7 @@ export function QuoteForm({
   /** 全顧客の価格表エントリ — 行のライブ解決に使用。 */
   entries: PriceListEntry[];
 }) {
+  const tr = useTr();
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const quoteId = mode === "edit" ? quote?.id : undefined;
@@ -260,16 +262,18 @@ export function QuoteForm({
           : await createQuote(payload);
       if (result.ok) {
         notifications.show({
-          title: "保存しました",
+          title: tr("保存しました"),
           message:
-            mode === "edit" ? "見積書を更新しました" : "見積書を作成しました",
+            mode === "edit"
+              ? "見積書を更新しました"
+              : tr("見積書を作成しました"),
           color: "green",
         });
         // 作成・更新後は詳細（ビュー）ページへ。
         router.push(`${BASE_PATH}/${result.data.number}`);
       } else {
         notifications.show({
-          title: "エラー",
+          title: tr("エラー"),
           message: result.error,
           color: "red",
         });
@@ -280,9 +284,9 @@ export function QuoteForm({
   return (
     <FormShell
       breadcrumbs={[
-        "販売",
-        { label: "見積書", href: BASE_PATH },
-        mode === "edit" ? "編集" : "新規作成",
+        tr("販売"),
+        { label: tr("見積書"), href: BASE_PATH },
+        mode === "edit" ? "編集" : tr("新規作成"),
       ]}
       isDirty={form.isDirty()}
       isPending={isPending}
@@ -295,16 +299,16 @@ export function QuoteForm({
           <StatusBadge entity="Quote" status={form.values.status} />
         ) : undefined
       }
-      title={mode === "edit" ? "見積書 編集" : "見積書 新規作成"}
+      title={mode === "edit" ? "見積書 編集" : tr("見積書 新規作成")}
     >
-      <FormSection title="基本情報">
+      <FormSection title={tr("基本情報")}>
         <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="sm">
           <Select
             data={customerOptions}
             error={form.errors.customerId}
             label={<HelpLabel {...fieldHelp("quote", "customer")} />}
             onChange={(v) => onCustomerChange(v ?? "")}
-            placeholder="顧客を選択"
+            placeholder={tr("顧客を選択")}
             searchable
             value={form.values.customerId || null}
             withAsterisk
@@ -314,7 +318,7 @@ export function QuoteForm({
             data={branches}
             disabled={branches.length === 0}
             label={<HelpLabel {...fieldHelp("quote", "customerBranch")} />}
-            placeholder={branches.length ? "支店を選択" : "支店なし"}
+            placeholder={branches.length ? "支店を選択" : tr("支店なし")}
             {...form.getInputProps("customerBranchId")}
           />
           <SalesRepSelect
@@ -331,21 +335,25 @@ export function QuoteForm({
             clearable
             label={<HelpLabel {...fieldHelp("quote", "validUntil")} />}
             leftSection={<IconCalendar size={14} />}
-            placeholder="日付を選択"
+            placeholder={tr("日付を選択")}
             valueFormat="YYYY/MM/DD"
             {...form.getInputProps("validUntil")}
           />
           <Select
             data={statusOptions("Quote")}
-            label="状態"
+            label={tr("状態")}
             {...form.getInputProps("status")}
           />
         </SimpleGrid>
       </FormSection>
 
       <FormSection
-        description="単価（基準単価 × 数量倍率）と値引き（値引きルール）は顧客の価格表から自動計算されます。手入力はありません — 価格を変える場合は価格表側で設定してください。"
-        title="明細"
+        description={tr(
+          tr(
+            "単価（基準単価 × 数量倍率）と値引き（値引きルール）は顧客の価格表から自動計算されます。手入力はありません — 価格を変える場合は価格表側で設定してください。",
+          ),
+        )}
+        title={tr("明細")}
       >
         <Stack gap="md">
           {form.values.items.map((item, ri) => (
@@ -396,7 +404,7 @@ export function QuoteForm({
                   />
                 </Box>
                 <ActionIcon
-                  aria-label="明細を削除"
+                  aria-label={tr("明細を削除")}
                   color="red"
                   disabled={form.values.items.length <= 1}
                   mb={4}
@@ -412,7 +420,7 @@ export function QuoteForm({
                 leftSection={<IconCalendar size={14} />}
                 maw={220}
                 mt="xs"
-                placeholder="日付を選択"
+                placeholder={tr("日付を選択")}
                 valueFormat="YYYY/MM/DD"
                 {...form.getInputProps(`items.${ri}.deliveryDate`)}
               />
@@ -432,7 +440,7 @@ export function QuoteForm({
           onClick={() => form.insertListItem("items", emptyItem())}
           size="xs"
         >
-          明細を追加
+          {tr("明細を追加")}
         </GhostButton>
 
         <Divider my="md" />

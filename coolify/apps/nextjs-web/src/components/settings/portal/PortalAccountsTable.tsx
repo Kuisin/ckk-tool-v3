@@ -32,6 +32,7 @@ import {
   deactivatePortalAccount,
   issueBackupCodes,
 } from "@/app/(dashboard)/settings/portal/actions";
+import { useTr } from "@/hooks/useTr";
 import type { PortalAccountRow } from "@/lib/portal-admin";
 
 type Option = { value: string; label: string };
@@ -47,6 +48,7 @@ export function PortalAccountsTable({
   canActivate?: boolean;
   canIssueBackup?: boolean;
 }) {
+  const tr = useTr();
   const [pending, start] = useTransition();
   const [creating, setCreating] = useState(false);
   const [bpId, setBpId] = useState<string | null>(null);
@@ -58,12 +60,12 @@ export function PortalAccountsTable({
 
   function notify(res: { ok: boolean; error?: string }, ok: string) {
     if (res.ok) {
-      notifications.show({ color: "green", message: ok, title: "完了" });
+      notifications.show({ color: "green", message: ok, title: tr("完了") });
     } else {
       notifications.show({
         color: "red",
-        message: res.error ?? "失敗しました",
-        title: "エラー",
+        message: res.error ?? tr("失敗しました"),
+        title: tr("エラー"),
       });
     }
   }
@@ -72,7 +74,7 @@ export function PortalAccountsTable({
     if (!bpId) return;
     start(async () => {
       const res = await createPortalAccount({ bpId, email, displayName });
-      notify(res, "アカウントを作成しました（既定は無効です）");
+      notify(res, tr("アカウントを作成しました（既定は無効です）"));
       if (res.ok) {
         // 作った直後に BP スコープを 1 本入れておく（無いと何も見えない）。
         await addPortalBpScope({
@@ -95,7 +97,7 @@ export function PortalAccountsTable({
           leftSection={<IconPlus size={14} />}
           onClick={() => setCreating(true)}
         >
-          新規作成
+          {tr("新規作成")}
         </Button>
       </Group>
 
@@ -103,12 +105,12 @@ export function PortalAccountsTable({
         <Table highlightOnHover striped withTableBorder>
           <Table.Thead>
             <Table.Tr>
-              <Table.Th>取引先</Table.Th>
-              <Table.Th>担当者</Table.Th>
-              <Table.Th>メール</Table.Th>
-              <Table.Th>状態</Table.Th>
-              <Table.Th>最終ログイン</Table.Th>
-              <Table.Th>操作</Table.Th>
+              <Table.Th>{tr("取引先")}</Table.Th>
+              <Table.Th>{tr("担当者")}</Table.Th>
+              <Table.Th>{tr("メール")}</Table.Th>
+              <Table.Th>{tr("状態")}</Table.Th>
+              <Table.Th>{tr("最終ログイン")}</Table.Th>
+              <Table.Th>{tr("操作")}</Table.Th>
             </Table.Tr>
           </Table.Thead>
           <Table.Tbody>
@@ -116,7 +118,7 @@ export function PortalAccountsTable({
               <Table.Tr>
                 <Table.Td colSpan={6}>
                   <Text c="dimmed" size="sm">
-                    アカウントはまだありません。
+                    {tr("アカウントはまだありません。")}
                   </Text>
                 </Table.Td>
               </Table.Tr>
@@ -140,7 +142,7 @@ export function PortalAccountsTable({
                       size="sm"
                       variant="light"
                     >
-                      {a.isActive ? "有効" : "無効"}
+                      {a.isActive ? "有効" : tr("無効")}
                     </Badge>
                   </Table.Td>
                   <Table.Td>
@@ -158,16 +160,16 @@ export function PortalAccountsTable({
                               notify(
                                 await deactivatePortalAccount(
                                   a.id,
-                                  "管理画面から無効化",
+                                  tr("管理画面から無効化"),
                                 ),
-                                "無効にしました",
+                                tr("無効にしました"),
                               ),
                             )
                           }
                           size="compact-xs"
                           variant="default"
                         >
-                          無効にする
+                          {tr("無効にする")}
                         </Button>
                       ) : (
                         <Button
@@ -177,7 +179,7 @@ export function PortalAccountsTable({
                             start(async () =>
                               notify(
                                 await activatePortalAccount(a.id),
-                                "有効にしました",
+                                tr("有効にしました"),
                               ),
                             )
                           }
@@ -185,10 +187,14 @@ export function PortalAccountsTable({
                           title={
                             canActivate
                               ? undefined
-                              : "有効化には特権アクセス（SY0G）の承認が必要です"
+                              : tr(
+                                  tr(
+                                    "有効化には特権アクセス（SY0G）の承認が必要です",
+                                  ),
+                                )
                           }
                         >
-                          有効にする
+                          {tr("有効にする")}
                         </Button>
                       )}
                       <Button
@@ -198,18 +204,18 @@ export function PortalAccountsTable({
                           start(async () => {
                             const res = await issueBackupCodes(a.id);
                             if (res.ok) setIssued(res.data.codes);
-                            notify(res, "バックアップコードを発行しました");
+                            notify(res, tr("バックアップコードを発行しました"));
                           })
                         }
                         size="compact-xs"
                         title={
                           canIssueBackup
                             ? undefined
-                            : "発行には特権アクセス（SY0G）の承認が必要です"
+                            : tr("発行には特権アクセス（SY0G）の承認が必要です")
                         }
                         variant="default"
                       >
-                        バックアップコード
+                        {tr("バックアップコード")}
                       </Button>
                     </Group>
                   </Table.Td>
@@ -223,25 +229,25 @@ export function PortalAccountsTable({
       <Modal
         onClose={() => setCreating(false)}
         opened={creating}
-        title="ポータルアカウントの作成"
+        title={tr("ポータルアカウントの作成")}
       >
         <Stack gap="sm">
           <Select
             data={bpOptions}
-            label="取引先"
+            label={tr("取引先")}
             onChange={setBpId}
             searchable
             value={bpId}
             withAsterisk
           />
           <TextInput
-            label="担当者名"
+            label={tr("担当者名")}
             onChange={(e) => setDisplayName(e.currentTarget.value)}
             value={displayName}
             withAsterisk
           />
           <TextInput
-            label="メールアドレス"
+            label={tr("メールアドレス")}
             onChange={(e) => setEmail(e.currentTarget.value)}
             type="email"
             value={email}
@@ -250,21 +256,32 @@ export function PortalAccountsTable({
           <SimpleGrid cols={1} spacing="xs">
             <Checkbox
               checked={scopeBranches}
-              description="親の取引先で共有すると、その支店宛の書類も見えます（支店から親へは遡りません）"
-              label="支店宛の書類も含める"
+              description={tr(
+                tr(
+                  "親の取引先で共有すると、その支店宛の書類も見えます（支店から親へは遡りません）",
+                ),
+              )}
+              label={tr("支店宛の書類も含める")}
               onChange={(e) => setScopeBranches(e.currentTarget.checked)}
             />
             <Checkbox
               checked={scopeEndUser}
-              description="卸し先の価格が需要家に見えることがあります。必要なときだけ。"
-              label="需要家・出荷先としての書類も含める"
+              description={tr(
+                tr(
+                  "卸し先の価格が需要家に見えることがあります。必要なときだけ。",
+                ),
+              )}
+              label={tr("需要家・出荷先としての書類も含める")}
               onChange={(e) => setScopeEndUser(e.currentTarget.checked)}
             />
           </SimpleGrid>
           <Alert color="gray" variant="light">
             <Text size="xs">
-              作成しただけでは何も見えません。「有効にする」で初めてログインできます
-              （有効化には承認が必要です）。
+              {tr(
+                tr(
+                  "作成しただけでは何も見えません。「有効にする」で初めてログインできます\n              （有効化には承認が必要です）。",
+                ),
+              )}
             </Text>
           </Alert>
           <Group justify="flex-end">
@@ -276,7 +293,7 @@ export function PortalAccountsTable({
               loading={pending}
               onClick={create}
             >
-              作成
+              {tr("作成")}
             </Button>
           </Group>
         </Stack>
@@ -285,20 +302,22 @@ export function PortalAccountsTable({
       <Modal
         onClose={() => setIssued(null)}
         opened={issued !== null}
-        title="バックアップコード"
+        title={tr("バックアップコード")}
       >
         <Stack gap="sm">
           <Alert color="orange" variant="light">
             <Text size="xs">
-              この画面を閉じると**二度と表示できません**。印刷するか書き写して、
-              担当者ご本人へ直接お渡しください。メールで送らないでください
-              （メールが使えないときのための手段です）。
+              {tr(
+                tr(
+                  "この画面を閉じると**二度と表示できません**。印刷するか書き写して、\n              担当者ご本人へ直接お渡しください。メールで送らないでください\n              （メールが使えないときのための手段です）。",
+                ),
+              )}
             </Text>
           </Alert>
           <Code block>{(issued ?? []).join("\n")}</Code>
           <Group justify="flex-end">
             <Button onClick={() => setIssued(null)}>
-              閉じた（控えました）
+              {tr("閉じた（控えました）")}
             </Button>
           </Group>
         </Stack>

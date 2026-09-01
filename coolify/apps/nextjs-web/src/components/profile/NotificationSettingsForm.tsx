@@ -53,6 +53,7 @@ import {
 } from "@/components/ui/buttons";
 import { openConfirm } from "@/components/ui/modals";
 import { PageHeader } from "@/components/ui/PageHeader";
+import { useTr } from "@/hooks/useTr";
 
 interface ChannelSettings {
   emailEnabled: boolean;
@@ -129,6 +130,7 @@ export function NotificationSettingsForm({
   vapidPublicKey: string | null;
   devices: PushDevice[];
 }) {
+  const tr = useTr();
   const fmt = useFormat();
   const router = useRouter();
   const [settings, setSettings] = useState(initial);
@@ -195,13 +197,13 @@ export function NotificationSettingsForm({
       const res = await saveNotificationSettingAction(settings);
       if (res.ok) {
         notifications.show({
-          title: "保存しました",
-          message: "通知設定を更新しました",
+          title: tr("保存しました"),
+          message: tr("通知設定を更新しました"),
           color: "green",
         });
       } else {
         notifications.show({
-          title: "エラー",
+          title: tr("エラー"),
           message: res.error,
           color: "red",
         });
@@ -219,8 +221,8 @@ export function NotificationSettingsForm({
       setPermission(result);
       if (result !== "granted") {
         notifications.show({
-          title: "許可されませんでした",
-          message: "ブラウザの通知許可が必要です",
+          title: tr("許可されませんでした"),
+          message: tr("ブラウザの通知許可が必要です"),
           color: "orange",
         });
         return;
@@ -242,14 +244,14 @@ export function NotificationSettingsForm({
         setSubscribed(true);
         setCurrentEndpoint(sub.endpoint);
         notifications.show({
-          title: "有効化しました",
-          message: "このデバイスでプッシュ通知を受け取ります",
+          title: tr("有効化しました"),
+          message: tr("このデバイスでプッシュ通知を受け取ります"),
           color: "green",
         });
         router.refresh();
       } else {
         notifications.show({
-          title: "エラー",
+          title: tr("エラー"),
           message: res.error,
           color: "red",
         });
@@ -257,11 +259,11 @@ export function NotificationSettingsForm({
     } catch (e) {
       console.error("[push] subscribe failed:", e);
       notifications.show({
-        title: "エラー",
+        title: tr("エラー"),
         message:
           isIos && !isStandalone
-            ? "iOS ではホーム画面に追加した PWA からのみ有効化できます"
-            : "プッシュ通知の有効化に失敗しました",
+            ? tr("iOS ではホーム画面に追加した PWA からのみ有効化できます")
+            : tr("プッシュ通知の有効化に失敗しました"),
         color: "red",
       });
     } finally {
@@ -281,8 +283,8 @@ export function NotificationSettingsForm({
       setSubscribed(false);
       setCurrentEndpoint(null);
       notifications.show({
-        title: "無効化しました",
-        message: "このデバイスのプッシュ通知を解除しました",
+        title: tr("無効化しました"),
+        message: tr("このデバイスのプッシュ通知を解除しました"),
         color: "green",
       });
       router.refresh();
@@ -293,7 +295,7 @@ export function NotificationSettingsForm({
 
   const removeDevice = (device: PushDevice) => {
     openConfirm({
-      title: "登録デバイスの削除",
+      title: tr("登録デバイスの削除"),
       message: `「${deviceLabel(device.userAgent)}」へのプッシュ通知を停止します。`,
       confirmLabel: "削除",
       onConfirm: () => {
@@ -315,7 +317,7 @@ export function NotificationSettingsForm({
             router.refresh();
           } else {
             notifications.show({
-              title: "エラー",
+              title: tr("エラー"),
               message: res.error,
               color: "red",
             });
@@ -340,25 +342,29 @@ export function NotificationSettingsForm({
     <Stack gap="md" maw={960} mx="auto" w="100%">
       <PageHeader
         breadcrumbs={[
-          { label: "プロフィール", href: "/profile" },
-          { label: "通知設定" },
+          { label: tr("プロフィール"), href: "/profile" },
+          { label: tr("通知設定") },
         ]}
-        title="通知設定"
+        title={tr("通知設定")}
       />
 
       <Paper p="md" radius="md" shadow="xs">
         <Stack gap="md">
           <Text fw={600} size="sm">
-            通知チャネル
+            {tr("通知チャネル")}
           </Text>
           <Switch
             checked={settings.emailEnabled}
             description={
               mailerConfigured
-                ? "承認依頼・取込結果などをメールで受け取る"
-                : "メールサーバー未設定のため現在は送信されません（設定は保存できます）"
+                ? tr("承認依頼・取込結果などをメールで受け取る")
+                : tr(
+                    tr(
+                      "メールサーバー未設定のため現在は送信されません（設定は保存できます）",
+                    ),
+                  )
             }
-            label="メール通知"
+            label={tr("メール通知")}
             onChange={(e) =>
               setSettings((s) => ({
                 ...s,
@@ -368,8 +374,8 @@ export function NotificationSettingsForm({
           />
           <Switch
             checked={settings.pushEnabled}
-            description="有効化したデバイス（下記）にプッシュ通知を送る"
-            label="プッシュ通知"
+            description={tr("有効化したデバイス（下記）にプッシュ通知を送る")}
+            label={tr("プッシュ通知")}
             onChange={(e) =>
               setSettings((s) => ({
                 ...s,
@@ -386,64 +392,88 @@ export function NotificationSettingsForm({
       <Paper p="md" radius="md" shadow="xs">
         <Stack gap="sm">
           <Text fw={600} size="sm">
-            このデバイスのプッシュ通知
+            {tr("このデバイスのプッシュ通知")}
           </Text>
           {!pushConfigured || !vapidPublicKey ? (
             <Alert color="orange" icon={<IconInfoCircle size={16} />}>
-              サーバーの VAPID 鍵が未設定のため、プッシュ通知は利用できません。
+              {tr(
+                tr(
+                  "サーバーの VAPID 鍵が未設定のため、プッシュ通知は利用できません。",
+                ),
+              )}
             </Alert>
           ) : showIosGuide ? (
             <Alert
               color="blue"
               icon={<IconDeviceMobile size={16} />}
-              title="iPhone / iPad はホーム画面に追加して使います（iOS 16.4 以降）"
+              title={tr(
+                tr(
+                  "iPhone / iPad はホーム画面に追加して使います（iOS 16.4 以降）",
+                ),
+              )}
             >
               <List size="sm" spacing={4} type="ordered">
                 <List.Item>
-                  Safari でこのサイトを開き、共有ボタン（
+                  {tr("Safari でこのサイトを開き、共有ボタン（")}
                   <IconShare2 size={14} style={{ verticalAlign: "-2px" }} />
-                  ）をタップ
+                  {tr("）をタップ")}
                 </List.Item>
-                <List.Item>「ホーム画面に追加」を選ぶ</List.Item>
+                <List.Item>{tr("「ホーム画面に追加」を選ぶ")}</List.Item>
                 <List.Item>
-                  ホーム画面の「CKK」アイコンから開き直し、この画面で「このデバイスで有効化」を押す
+                  {tr(
+                    tr(
+                      "ホーム画面の「CKK」アイコンから開き直し、この画面で「このデバイスで有効化」を押す",
+                    ),
+                  )}
                 </List.Item>
               </List>
             </Alert>
           ) : !pushSupported ? (
             <Alert color="orange" icon={<IconInfoCircle size={16} />}>
-              このブラウザはプッシュ通知に対応していません。Chrome / Edge /
-              Firefox の最新版をご利用ください。
+              {tr(
+                tr(
+                  "このブラウザはプッシュ通知に対応していません。Chrome / Edge /\n              Firefox の最新版をご利用ください。",
+                ),
+              )}
             </Alert>
           ) : permission === "denied" ? (
             <Alert
               color="orange"
               icon={<IconInfoCircle size={16} />}
-              title="通知がブロックされています"
+              title={tr("通知がブロックされています")}
             >
-              ブラウザの設定でこのサイトの通知を許可し直してください（Chrome:
-              アドレスバーの鍵アイコン → サイトの設定 → 通知 → 許可。Android:
-              サイト設定に加えて OS の通知設定でも Chrome
-              の通知を許可）。解除後に再度有効化できます。
+              {tr(
+                tr(
+                  "ブラウザの設定でこのサイトの通知を許可し直してください（Chrome:\n              アドレスバーの鍵アイコン → サイトの設定 → 通知 → 許可。Android:\n              サイト設定に加えて OS の通知設定でも Chrome\n              の通知を許可）。解除後に再度有効化できます。",
+                ),
+              )}
             </Alert>
           ) : subscribed ? (
             <>
               <Text c="dimmed" size="xs">
-                このデバイスは登録済みです。ロック画面・デスクトップに通知が届きます。
+                {tr(
+                  tr(
+                    "このデバイスは登録済みです。ロック画面・デスクトップに通知が届きます。",
+                  ),
+                )}
               </Text>
               <div>
                 <SecondaryButton
                   loading={pushBusy}
                   onClick={disablePushOnDevice}
                 >
-                  このデバイスで無効化
+                  {tr("このデバイスで無効化")}
                 </SecondaryButton>
               </div>
             </>
           ) : (
             <>
               <Text c="dimmed" size="xs">
-                有効化するとブラウザの通知許可を求めます。デバイスごとに設定が必要です。
+                {tr(
+                  tr(
+                    "有効化するとブラウザの通知許可を求めます。デバイスごとに設定が必要です。",
+                  ),
+                )}
               </Text>
               <Group gap="sm">
                 <PrimaryButton
@@ -451,22 +481,24 @@ export function NotificationSettingsForm({
                   loading={pushBusy}
                   onClick={enablePushOnDevice}
                 >
-                  このデバイスで有効化
+                  {tr("このデバイスで有効化")}
                 </PrimaryButton>
                 {installPrompt && (
                   <SecondaryButton
                     leftSection={<IconDownload size={16} />}
                     onClick={installApp}
                   >
-                    アプリをインストール
+                    {tr("アプリをインストール")}
                   </SecondaryButton>
                 )}
               </Group>
               {installPrompt && (
                 <Text c="dimmed" size="xs">
-                  インストールするとホーム画面 /
-                  デスクトップから起動でき、アプリとして通知を受け取れます（任意
-                  — ブラウザのままでも通知は届きます）。
+                  {tr(
+                    tr(
+                      "インストールするとホーム画面 /\n                  デスクトップから起動でき、アプリとして通知を受け取れます（任意\n                  — ブラウザのままでも通知は届きます）。",
+                    ),
+                  )}
                 </Text>
               )}
             </>
@@ -477,19 +509,23 @@ export function NotificationSettingsForm({
       <Paper p="md" radius="md" shadow="xs">
         <Stack gap="sm">
           <Text fw={600} size="sm">
-            登録デバイス
+            {tr("登録デバイス")}
           </Text>
           {devices.length === 0 ? (
             <Text c="dimmed" size="sm">
-              登録済みのデバイスはありません。上の「このデバイスで有効化」から登録できます。
+              {tr(
+                tr(
+                  "登録済みのデバイスはありません。上の「このデバイスで有効化」から登録できます。",
+                ),
+              )}
             </Text>
           ) : (
             <Table.ScrollContainer minWidth={420}>
               <Table>
                 <Table.Thead>
                   <Table.Tr>
-                    <Table.Th>デバイス</Table.Th>
-                    <Table.Th>登録日時</Table.Th>
+                    <Table.Th>{tr("デバイス")}</Table.Th>
+                    <Table.Th>{tr("登録日時")}</Table.Th>
                     <Table.Th w={48} />
                   </Table.Tr>
                 </Table.Thead>
@@ -501,7 +537,7 @@ export function NotificationSettingsForm({
                           <Text size="sm">{deviceLabel(d.userAgent)}</Text>
                           {d.endpoint === currentEndpoint && (
                             <Badge color="blue" size="xs" variant="light">
-                              このデバイス
+                              {tr("このデバイス")}
                             </Badge>
                           )}
                         </Group>
@@ -513,7 +549,7 @@ export function NotificationSettingsForm({
                       </Table.Td>
                       <Table.Td>
                         <ActionIcon
-                          aria-label="このデバイスの登録を削除"
+                          aria-label={tr("このデバイスの登録を削除")}
                           color="red"
                           onClick={() => removeDevice(d)}
                           variant="subtle"

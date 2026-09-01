@@ -123,13 +123,15 @@ export function InvoiceDetail({
     {
       key: "issued",
       label: tr("発行"),
-      description: invoice.issuedAt ? fmt.date(invoice.issuedAt) : "PDF を発行",
+      description: invoice.issuedAt
+        ? fmt.date(invoice.issuedAt)
+        : tr("PDF を発行"),
       loading: invoice.status === "ISSUED",
     },
     {
       key: "sent",
       label: tr("送付"),
-      description: invoice.sentAt ? fmt.date(invoice.sentAt) : "顧客へ送付",
+      description: invoice.sentAt ? fmt.date(invoice.sentAt) : tr("顧客へ送付"),
       loading: invoice.status === "SENT",
     },
     {
@@ -166,7 +168,7 @@ export function InvoiceDetail({
         label: n,
         href: `/shipping/delivery-orders/${n}`,
       })),
-      emptyNote: "—（手入力の明細のみ）",
+      emptyNote: tr("—（手入力の明細のみ）"),
     },
     {
       key: "delivery-notes",
@@ -177,7 +179,7 @@ export function InvoiceDetail({
         label: n,
         href: `/shipping/delivery-notes/${n}`,
       })),
-      emptyNote: "—（納品書未発行の出荷）",
+      emptyNote: tr("—（納品書未発行の出荷）"),
     },
   ];
 
@@ -186,7 +188,7 @@ export function InvoiceDetail({
   const handoffGroups: HandoffGroup[] = [
     {
       key: "yayoi",
-      title: "弥生会計エクスポート",
+      title: tr("弥生会計エクスポート"),
       items: invoice.yayoiExportedAt
         ? [
             {
@@ -197,7 +199,7 @@ export function InvoiceDetail({
             },
           ]
         : [],
-      emptyNote: "未エクスポート（発行後に弥生CSVを出力します）",
+      emptyNote: tr("未エクスポート（発行後に弥生CSVを出力します）"),
     },
   ];
 
@@ -293,7 +295,7 @@ export function InvoiceDetail({
                 ]
               : []),
             {
-              label: "弥生会計CSV",
+              label: tr("弥生会計CSV"),
               icon: <IconFileSpreadsheet size={14} />,
               divider: true,
               // 実アンカーで別タブへ（PWA でもアプリ内ブラウザで開く）。
@@ -347,11 +349,11 @@ export function InvoiceDetail({
         <FieldValue label={tr("支払期限")} value={fmt.date(invoice.dueDate)} />
         <FieldValue label={tr("発行日")} value={fmt.date(invoice.issuedAt)} />
         <FieldValue
-          label="弥生エクスポート"
+          label={tr("弥生エクスポート")}
           value={
             invoice.yayoiExportedAt
               ? fmt.dateTime(invoice.yayoiExportedAt)
-              : "未エクスポート"
+              : tr("未エクスポート")
           }
         />
       </SummaryGrid>
@@ -478,7 +480,7 @@ export function InvoiceDetail({
           <Stack gap="md">
             <div>
               <Text c="dimmed" mb={4} size="xs">
-                送付日時
+                {tr("送付日時")}
               </Text>
               <Text size="sm">{fmt.dateTime(invoice.sentAt)}</Text>
             </div>
@@ -555,12 +557,12 @@ export function InvoiceDetail({
         onConfirm={() =>
           run(
             () => markSent(invoice.invoiceNumber),
-            "送付済みにしました",
+            tr("送付済みにしました"),
             `請求書 ${invoice.invoiceNumber} を送付済みにしました`,
           )
         }
         opened={sentOpen}
-        title="送付の確認"
+        title={tr("送付の確認")}
       />
       <ConfirmModal
         confirmColor="blue"
@@ -571,7 +573,7 @@ export function InvoiceDetail({
         onConfirm={() =>
           run(
             () => markPaid(invoice.invoiceNumber),
-            "入金済みにしました",
+            tr("入金済みにしました"),
             `請求書 ${invoice.invoiceNumber} を入金済みにしました`,
           )
         }

@@ -24,6 +24,7 @@ import {
 import { ActionCard } from "@/components/ui/ActionCard";
 import { ApproveButton, RejectButton } from "@/components/ui/buttons";
 import { ModalShell } from "@/components/ui/modals";
+import { useTr } from "@/hooks/useTr";
 import type { ApprovalActionState } from "@/lib/approvals";
 import type { PendingAcceptanceCancelView } from "@/lib/order-acceptance-cancel";
 
@@ -35,6 +36,7 @@ export function AcceptanceCancelCard({
   /** 依頼そのものの承認状態（order_acceptance_cancel_requests の依頼）。 */
   approval: ApprovalActionState;
 }) {
+  const tr = useTr();
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [rejectOpen, setRejectOpen] = useState(false);
@@ -46,7 +48,7 @@ export function AcceptanceCancelCard({
   const stepLabel =
     approval.stepCount > 0
       ? `${approval.stepLabel || `第${approval.stepNo}承認`}（${approval.stepNo}/${approval.stepCount}）`
-      : "承認依頼中";
+      : tr("承認依頼中");
 
   const handleApprove = () => {
     startTransition(async () => {
@@ -54,18 +56,22 @@ export function AcceptanceCancelCard({
       if (result.ok) {
         notifications.show({
           title: result.data?.applied
-            ? "注文請書をキャンセルしました"
-            : "承認しました",
+            ? tr("注文請書をキャンセルしました")
+            : tr("承認しました"),
           message: result.data?.applied
-            ? "全明細をキャンセルしました（予約解放・未着手指示書の連鎖キャンセル含む）"
-            : "次の承認者へ回りました",
+            ? tr(
+                tr(
+                  "全明細をキャンセルしました（予約解放・未着手指示書の連鎖キャンセル含む）",
+                ),
+              )
+            : tr("次の承認者へ回りました"),
           color: "green",
         });
         router.refresh();
       } else {
         notifications.show({
-          title: "エラー",
-          message: result.error ?? "承認に失敗しました",
+          title: tr("エラー"),
+          message: result.error ?? tr("承認に失敗しました"),
           color: "red",
         });
       }
@@ -79,15 +85,15 @@ export function AcceptanceCancelCard({
         setRejectOpen(false);
         setReason("");
         notifications.show({
-          title: "差し戻しました",
-          message: "注文請書は変更されていません",
+          title: tr("差し戻しました"),
+          message: tr("注文請書は変更されていません"),
           color: "orange",
         });
         router.refresh();
       } else {
         notifications.show({
-          title: "エラー",
-          message: result.error ?? "差し戻しに失敗しました",
+          title: tr("エラー"),
+          message: result.error ?? tr("差し戻しに失敗しました"),
           color: "red",
         });
       }
@@ -111,27 +117,33 @@ export function AcceptanceCancelCard({
         description={`理由: ${request.reason}｜依頼: ${request.requestedByName ?? "—"}｜${stepLabel}。承認されるまで注文請書と注文明細は変わりません。`}
         icon={<IconX size={20} />}
         title={
-          canAct ? "注文請書キャンセルの承認" : "注文請書キャンセルの承認依頼中"
+          canAct
+            ? "注文請書キャンセルの承認"
+            : tr("注文請書キャンセルの承認依頼中")
         }
         tone={canAct ? "approve" : "wait"}
       />
       <ModalShell
         confirmColor="red"
         confirmDisabled={!reason.trim()}
-        confirmLabel="差し戻す"
+        confirmLabel={tr("差し戻す")}
         loading={isPending}
         onClose={() => setRejectOpen(false)}
         onConfirm={handleReject}
         opened={rejectOpen}
-        title="キャンセル依頼の差し戻し"
+        title={tr("キャンセル依頼の差し戻し")}
       >
         <Text size="sm">
-          差し戻すと、この依頼は適用されずに閉じます（注文請書はいまのままです）。
+          {tr(
+            tr(
+              "差し戻すと、この依頼は適用されずに閉じます（注文請書はいまのままです）。",
+            ),
+          )}
         </Text>
         <Textarea
           minRows={3}
           onChange={(e) => setReason(e.currentTarget.value)}
-          placeholder="差し戻し理由"
+          placeholder={tr("差し戻し理由")}
           value={reason}
         />
       </ModalShell>

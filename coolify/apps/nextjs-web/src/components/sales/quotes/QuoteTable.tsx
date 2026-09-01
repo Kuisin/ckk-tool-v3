@@ -17,6 +17,7 @@ import { MoneyText } from "@/components/ui/MoneyText";
 import { NewButton } from "@/components/ui/NewButton";
 import { StatusBadge, statusOptions } from "@/components/ui/StatusBadge";
 import { ListShell } from "@/components/ui/shells";
+import { useTr } from "@/hooks/useTr";
 import { useUrlSelectState, useUrlStringState } from "@/hooks/useUrlState";
 import { useIsMobile } from "@/hooks/useViewport";
 import type { Option } from "@/lib/mock";
@@ -31,6 +32,7 @@ export function QuoteTable({
   rows: Quote[];
   customerOptions: Option[];
 }) {
+  const tr = useTr();
   const fmt = useFormat();
   const router = useRouter();
   const isMobile = useIsMobile();
@@ -59,7 +61,7 @@ export function QuoteTable({
   const columns: Column<Quote>[] = [
     {
       key: "quoteNumber",
-      header: "見積番号",
+      header: tr("見積番号"),
       sortable: true,
       render: (q) => (
         <Text ff="mono" size="sm">
@@ -69,13 +71,13 @@ export function QuoteTable({
     },
     {
       key: "customerName",
-      header: "顧客",
+      header: tr("顧客"),
       sortable: true,
       render: (q) => q.customerName,
     },
     {
       key: "validUntil",
-      header: "有効期限",
+      header: tr("有効期限"),
       width: 130,
       sortValue: (q) => q.validUntil ?? "",
       render: (q) => (
@@ -86,7 +88,7 @@ export function QuoteTable({
     },
     {
       key: "total",
-      header: "合計金額",
+      header: tr("合計金額"),
       align: "right",
       hideable: true,
       width: 140,
@@ -95,14 +97,14 @@ export function QuoteTable({
     },
     {
       key: "status",
-      header: "状態",
+      header: tr("状態"),
       width: 100,
       sortValue: (q) => q.status,
       render: (q) => <StatusBadge entity="Quote" status={q.status} />,
     },
     {
       key: "updatedAt",
-      header: "更新日",
+      header: tr("更新日"),
       hideable: true,
       width: 150,
       sortValue: (q) => q.updatedAt,
@@ -117,7 +119,7 @@ export function QuoteTable({
   return (
     <ListShell
       action={<NewButton href={`${BASE_PATH}/new`} />}
-      breadcrumbs={["販売", "見積書"]}
+      breadcrumbs={[tr("販売"), tr("見積書")]}
       filters={
         <>
           <Select
@@ -125,7 +127,7 @@ export function QuoteTable({
             data={customerOptions}
             flex={isMobile ? 1 : undefined}
             onChange={setCustomer}
-            placeholder="顧客"
+            placeholder={tr("顧客")}
             searchable
             value={customer}
             w={isMobile ? undefined : 180}
@@ -135,7 +137,7 @@ export function QuoteTable({
             data={statusOptions("Quote")}
             flex={isMobile ? 1 : undefined}
             onChange={setStatus}
-            placeholder="状態"
+            placeholder={tr("状態")}
             value={status}
             w={isMobile ? undefined : 140}
           />
@@ -146,11 +148,11 @@ export function QuoteTable({
         <TextInput
           leftSection={<IconSearch size={14} />}
           onChange={(e) => setSearch(e.currentTarget.value)}
-          placeholder="見積番号・顧客で検索"
+          placeholder={tr("見積番号・顧客で検索")}
           value={search}
         />
       }
-      title="見積書"
+      title={tr("見積書")}
     >
       <DataTable
         columns={columns}
@@ -158,7 +160,7 @@ export function QuoteTable({
         defaultSort={{ key: "updatedAt", dir: "desc" }}
         emptyAction={<NewButton href={`${BASE_PATH}/new`} />}
         emptyIcon={<IconFileText size={24} />}
-        emptyMessage="見積書がありません"
+        emptyMessage={tr("見積書がありません")}
         getRowId={(q) => q.id}
         onRowClick={(q) => router.push(`${BASE_PATH}/${q.id}`)}
         renderCard={(q) => (

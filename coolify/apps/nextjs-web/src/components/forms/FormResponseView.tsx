@@ -26,6 +26,7 @@ import { Anchor, Badge, Group, Paper, Stack, Table, Text } from "@mantine/core";
 import Link from "next/link";
 import { useFormat } from "@/components/layout/PreferencesProvider";
 import { RichTextView } from "@/components/ui/RichTextView";
+import { useTr } from "@/hooks/useTr";
 import { useIsMobile } from "@/hooks/useViewport";
 import {
   answerShape,
@@ -276,10 +277,11 @@ function RelatedRecords({
   table: RelatedTable | undefined;
   isMobile: boolean;
 }) {
+  const tr = useTr();
   if (!table || table.rows.length === 0) {
     return (
       <Text c="dimmed" size="sm">
-        参照するレコードがありません。
+        {tr("参照するレコードがありません。")}
       </Text>
     );
   }
@@ -308,7 +310,7 @@ function RelatedRecords({
       <Table withTableBorder>
         <Table.Thead>
           <Table.Tr>
-            <Table.Th style={{ width: 180 }}>番号</Table.Th>
+            <Table.Th style={{ width: 180 }}>{tr("番号")}</Table.Th>
             {table.headers.map((h) => (
               <Table.Th key={h}>{h}</Table.Th>
             ))}

@@ -26,6 +26,7 @@ import { IconPlus, IconTrash } from "@tabler/icons-react";
 import dynamic from "next/dynamic";
 import { GhostButton } from "@/components/ui/buttons";
 import { SearchSelect } from "@/components/ui/SearchSelect";
+import { useTr } from "@/hooks/useTr";
 import { useIsMobile } from "@/hooks/useViewport";
 import type { FormAnswerValue, FormFieldDef } from "@/lib/form-schema";
 import { MAX_TABLE_ROWS } from "@/lib/form-schema";
@@ -66,6 +67,7 @@ export function FormFieldInput({
   disabled,
   onChange,
 }: FieldInputProps) {
+  const tr = useTr();
   const isMobile = useIsMobile();
   const label = field.label.ja || field.key;
   const common = {
@@ -160,7 +162,7 @@ export function FormFieldInput({
             label: o.label.ja || o.value,
           }))}
           onChange={(v) => onChange(v ?? "")}
-          placeholder={field.placeholder ?? "選択してください"}
+          placeholder={field.placeholder ?? tr("選択してください")}
           searchable={(field.options ?? []).length > 5}
           value={asString(value) || null}
         />
@@ -176,7 +178,7 @@ export function FormFieldInput({
             label: o.label.ja || o.value,
           }))}
           onChange={(v) => onChange(v)}
-          placeholder={field.placeholder ?? "選択してください"}
+          placeholder={field.placeholder ?? tr("選択してください")}
           searchable={(field.options ?? []).length > 5}
           value={asArray(value)}
         />
@@ -198,7 +200,7 @@ export function FormFieldInput({
             onChange(v ? { id: v, label: option?.label ?? v } : null)
           }
           onSearch={searcherFor(source)}
-          placeholder={field.placeholder ?? "検索して選択"}
+          placeholder={field.placeholder ?? tr("検索して選択")}
           storageKey={recentsKeyFor(source)}
           value={current?.id ?? null}
         />
@@ -239,7 +241,7 @@ export function FormFieldInput({
             leftSection={<IconPlus size={14} />}
             onClick={() => onChange([...rows, {}])}
           >
-            行を追加
+            {tr("行を追加")}
           </GhostButton>
         </Group>
       );
@@ -250,7 +252,7 @@ export function FormFieldInput({
             {header}
             {rows.length === 0 && (
               <Text c="dimmed" size="sm">
-                行がありません
+                {tr("行がありません")}
               </Text>
             )}
             {rows.map((row, i) => (
@@ -262,7 +264,7 @@ export function FormFieldInput({
                       {i + 1} 行目
                     </Text>
                     <ActionIcon
-                      aria-label="この行を削除"
+                      aria-label={tr("この行を削除")}
                       color="red"
                       disabled={disabled}
                       onClick={() =>
@@ -312,7 +314,7 @@ export function FormFieldInput({
                 <Table.Tr>
                   <Table.Td colSpan={columns.length + 1}>
                     <Text c="dimmed" size="sm">
-                      行がありません
+                      {tr("行がありません")}
                     </Text>
                   </Table.Td>
                 </Table.Tr>
@@ -336,7 +338,7 @@ export function FormFieldInput({
                   ))}
                   <Table.Td>
                     <ActionIcon
-                      aria-label="この行を削除"
+                      aria-label={tr("この行を削除")}
                       color="red"
                       disabled={disabled}
                       onClick={() =>

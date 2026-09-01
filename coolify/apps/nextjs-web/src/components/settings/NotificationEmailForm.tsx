@@ -25,6 +25,7 @@ import { useLocale } from "next-intl";
 import { useState, useTransition } from "react";
 import { updateNotificationEmailSettings } from "@/app/(dashboard)/settings/notification-email/actions";
 import { FormActions, FormSection } from "@/components/ui/shells";
+import { useTr } from "@/hooks/useTr";
 import { notificationTypeOptions } from "@/lib/enum-labels";
 import type { NotificationEmailSettings } from "@/lib/notification-email-core";
 import type { NotificationType } from "@/lib/notifications-core";
@@ -34,6 +35,7 @@ export function NotificationEmailForm({
 }: {
   initial: NotificationEmailSettings;
 }) {
+  const tr = useTr();
   const locale = useLocale();
   const router = useRouter();
   const [pending, startTransition] = useTransition();
@@ -47,14 +49,14 @@ export function NotificationEmailForm({
       const result = await updateNotificationEmailSettings(settings);
       if (result.ok) {
         notifications.show({
-          title: "保存しました",
-          message: "通知メールの設定を更新しました",
+          title: tr("保存しました"),
+          message: tr("通知メールの設定を更新しました"),
           color: "green",
         });
         router.refresh();
       } else {
         notifications.show({
-          title: "エラー",
+          title: tr("エラー"),
           message: result.error,
           color: "red",
         });
@@ -66,40 +68,55 @@ export function NotificationEmailForm({
     <Stack gap="md">
       <Alert color="blue" icon={<IconInfoCircle size={16} />} variant="light">
         <Text size="sm">
-          アプリやプッシュ通知で先に読んだ通知はメールされません。
-          メールが届くのは「見逃したまま残っている通知」だけです。
+          {tr(
+            tr(
+              "アプリやプッシュ通知で先に読んだ通知はメールされません。\n          メールが届くのは「見逃したまま残っている通知」だけです。",
+            ),
+          )}
         </Text>
       </Alert>
 
       <FormSection
-        description="通知 1 件ごとに 1 通ではなく、見逃した未読をまとめて 1 通にします。切ると従来どおり 1 件ずつ届きます。"
-        title="まとめて送る"
+        description={tr(
+          tr(
+            "通知 1 件ごとに 1 通ではなく、見逃した未読をまとめて 1 通にします。切ると従来どおり 1 件ずつ届きます。",
+          ),
+        )}
+        title={tr("まとめて送る")}
       >
         <Switch
           checked={settings.digestEnabled}
-          label="見逃した未読をまとめて送る"
+          label={tr("見逃した未読をまとめて送る")}
           onChange={(e) => patch({ digestEnabled: e.currentTarget.checked })}
         />
       </FormSection>
 
       <FormSection
-        description="同じ人へ次のまとめを送るまでの最短間隔と、「見逃し」とみなすまでの待ち時間。待ち時間の間に読まれた通知はメールされません。"
-        title="送る間隔"
+        description={tr(
+          tr(
+            "同じ人へ次のまとめを送るまでの最短間隔と、「見逃し」とみなすまでの待ち時間。待ち時間の間に読まれた通知はメールされません。",
+          ),
+        )}
+        title={tr("送る間隔")}
       >
         <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="sm">
           <NumberInput
-            description="この間隔より短く続けて送りません（5〜1440 分）"
+            description={tr("この間隔より短く続けて送りません（5〜1440 分）")}
             disabled={!settings.digestEnabled}
-            label="送信間隔（分）"
+            label={tr("送信間隔（分）")}
             max={1440}
             min={5}
             onChange={(v) => patch({ intervalMinutes: Number(v) || 5 })}
             value={settings.intervalMinutes}
           />
           <NumberInput
-            description="作成からこれだけ経っても未読なら見逃しとみなす（0〜1440 分）"
+            description={tr(
+              tr(
+                "作成からこれだけ経っても未読なら見逃しとみなす（0〜1440 分）",
+              ),
+            )}
             disabled={!settings.digestEnabled}
-            label="猶予（分）"
+            label={tr("猶予（分）")}
             max={1440}
             min={0}
             onChange={(v) => patch({ graceMinutes: Number(v) || 0 })}
@@ -109,27 +126,35 @@ export function NotificationEmailForm({
       </FormSection>
 
       <FormSection
-        description="選んだ種別はまとめを待たずに 1 通で届きます。既定は「なし」— 待たせたくないものが出てきたときだけ足してください。"
-        title="待たせない種別"
+        description={tr(
+          tr(
+            "選んだ種別はまとめを待たずに 1 通で届きます。既定は「なし」— 待たせたくないものが出てきたときだけ足してください。",
+          ),
+        )}
+        title={tr("待たせない種別")}
       >
         <MultiSelect
           clearable
           data={notificationTypeOptions(locale)}
           disabled={!settings.digestEnabled}
-          label="即時に送る通知の種別"
+          label={tr("即時に送る通知の種別")}
           onChange={(v) => patch({ immediateTypes: v as NotificationType[] })}
-          placeholder={settings.immediateTypes.length ? undefined : "なし"}
+          placeholder={settings.immediateTypes.length ? undefined : tr("なし")}
           value={settings.immediateTypes}
         />
       </FormSection>
 
       <FormSection
-        description="1 通に並べる件数の上限。超えた分は「ほか N 件」に畳まれます（畳まれた通知も送信済みとして扱われ、次の回には載りません）。"
-        title="1 通の件数"
+        description={tr(
+          tr(
+            "1 通に並べる件数の上限。超えた分は「ほか N 件」に畳まれます（畳まれた通知も送信済みとして扱われ、次の回には載りません）。",
+          ),
+        )}
+        title={tr("1 通の件数")}
       >
         <NumberInput
           disabled={!settings.digestEnabled}
-          label="最大件数"
+          label={tr("最大件数")}
           max={100}
           min={1}
           onChange={(v) => patch({ maxItemsPerMail: Number(v) || 1 })}
@@ -139,7 +164,7 @@ export function NotificationEmailForm({
       </FormSection>
 
       <FormActions
-        cancelLabel="元に戻す"
+        cancelLabel={tr("元に戻す")}
         loading={pending}
         onCancel={() => setSettings(initial)}
         onSave={save}

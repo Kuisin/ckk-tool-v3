@@ -12,6 +12,7 @@ import {
 import { PrimaryButton } from "@/components/ui/buttons";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { FormActions, FormSection } from "@/components/ui/shells";
+import { useTr } from "@/hooks/useTr";
 import { useIsMobile } from "@/hooks/useViewport";
 import { MarkdownEditor } from "./MarkdownEditor";
 
@@ -30,6 +31,7 @@ export function DocumentEditor({
     body: string;
   };
 }) {
+  const tr = useTr();
   const router = useRouter();
   const isMobile = useIsMobile();
   const [isPending, startTransition] = useTransition();
@@ -49,11 +51,11 @@ export function DocumentEditor({
       if (mode === "new") {
         const r = await createPage(settings);
         if (r.ok) {
-          notifications.show({ message: "作成しました", color: "green" });
+          notifications.show({ message: tr("作成しました"), color: "green" });
           router.push(`/general/documents/${r.data.pageNumber}/edit`);
         } else {
           notifications.show({
-            title: "エラー",
+            title: tr("エラー"),
             message: r.error,
             color: "red",
           });
@@ -62,10 +64,14 @@ export function DocumentEditor({
       }
       const r = await updatePageSettings(pageNumber as string, settings);
       if (r.ok) {
-        notifications.show({ message: "保存しました", color: "green" });
+        notifications.show({ message: tr("保存しました"), color: "green" });
         router.push(`/general/documents/${pageNumber}`);
       } else {
-        notifications.show({ title: "エラー", message: r.error, color: "red" });
+        notifications.show({
+          title: tr("エラー"),
+          message: r.error,
+          color: "red",
+        });
       }
     });
 
@@ -80,7 +86,11 @@ export function DocumentEditor({
         setNote("");
         router.refresh();
       } else {
-        notifications.show({ title: "エラー", message: r.error, color: "red" });
+        notifications.show({
+          title: tr("エラー"),
+          message: r.error,
+          color: "red",
+        });
       }
     });
 
@@ -88,51 +98,53 @@ export function DocumentEditor({
     <Stack gap="md">
       <PageHeader
         breadcrumbs={[
-          { label: "一般" },
-          { label: "社内文書", href: "/general/documents" },
-          { label: mode === "new" ? "新規" : "編集" },
+          { label: tr("一般") },
+          { label: tr("社内文書"), href: "/general/documents" },
+          { label: mode === "new" ? "新規" : tr("編集") },
         ]}
-        title={mode === "new" ? "文書を作る" : "文書を編集"}
+        title={mode === "new" ? "文書を作る" : tr("文書を編集")}
       />
 
-      <FormSection title="文書の情報">
+      <FormSection title={tr("文書の情報")}>
         <TextInput
-          label="タイトル"
+          label={tr("タイトル")}
           onChange={(e) => setTitle(e.currentTarget.value)}
-          placeholder="出荷手順"
+          placeholder={tr("出荷手順")}
           value={title}
           withAsterisk
         />
         <TextInput
-          description="スラッシュ区切りで階層にできます（例: 手順書/出荷）"
-          label="フォルダ"
+          description={tr(
+            tr("スラッシュ区切りで階層にできます（例: 手順書/出荷）"),
+          )}
+          label={tr("フォルダ")}
           onChange={(e) => setFolder(e.currentTarget.value)}
-          placeholder="手順書/出荷"
+          placeholder={tr("手順書/出荷")}
           value={folder}
         />
         <Textarea
           autosize
-          label="概要"
+          label={tr("概要")}
           minRows={2}
           onChange={(e) => setSummary(e.currentTarget.value)}
           value={summary}
         />
         <Checkbox
           checked={approvalRequired}
-          description="承認の段数と承認者は 承認設定（MS0B）で決めます"
-          label="公開に承認を必要とする"
+          description={tr("承認の段数と承認者は 承認設定（MS0B）で決めます")}
+          label={tr("公開に承認を必要とする")}
           onChange={(e) => setApprovalRequired(e.currentTarget.checked)}
         />
       </FormSection>
 
       {mode === "edit" && (
-        <FormSection title="本文（Markdown）">
+        <FormSection title={tr("本文（Markdown）")}>
           <MarkdownEditor onChange={setBody} value={body} />
           <TextInput
-            description="何を直したかを一言（リビジョンの履歴に出ます）"
-            label="変更理由"
+            description={tr("何を直したかを一言（リビジョンの履歴に出ます）")}
+            label={tr("変更理由")}
             onChange={(e) => setNote(e.currentTarget.value)}
-            placeholder="出荷前チェックの項目を追加"
+            placeholder={tr("出荷前チェックの項目を追加")}
             value={note}
           />
           <PrimaryButton
@@ -141,7 +153,7 @@ export function DocumentEditor({
             onClick={saveBody}
             type="button"
           >
-            本文を保存（新しいリビジョン）
+            {tr("本文を保存（新しいリビジョン）")}
           </PrimaryButton>
         </FormSection>
       )}

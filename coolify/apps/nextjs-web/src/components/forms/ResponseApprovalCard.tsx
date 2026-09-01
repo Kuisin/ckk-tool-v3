@@ -21,6 +21,7 @@ import { useState, useTransition } from "react";
 import { ActionCard } from "@/components/ui/ActionCard";
 import { ApproveButton, RejectButton } from "@/components/ui/buttons";
 import { ModalShell } from "@/components/ui/modals";
+import { useTr } from "@/hooks/useTr";
 
 export function ResponseApprovalCard({
   responseNumber,
@@ -39,6 +40,7 @@ export function ResponseApprovalCard({
     reason: string,
   ) => Promise<{ ok: boolean; error?: string }>;
 }) {
+  const tr = useTr();
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [rejectOpen, setRejectOpen] = useState(false);
@@ -57,8 +59,8 @@ export function ResponseApprovalCard({
         router.refresh();
       } else {
         notifications.show({
-          title: "エラー",
-          message: result.error ?? "処理に失敗しました",
+          title: tr("エラー"),
+          message: result.error ?? tr("処理に失敗しました"),
           color: "red",
         });
       }
@@ -68,9 +70,9 @@ export function ResponseApprovalCard({
     if (!canAct) {
       return (
         <ActionCard
-          description="承認者の対応を待っています。"
+          description={tr("承認者の対応を待っています。")}
           icon={<IconClock size={20} />}
-          title="承認依頼中"
+          title={tr("承認依頼中")}
           tone="wait"
         />
       );
@@ -83,7 +85,7 @@ export function ResponseApprovalCard({
               <ApproveButton
                 loading={isPending}
                 onClick={() =>
-                  run(() => onApprove(responseNumber), "承認しました")
+                  run(() => onApprove(responseNumber), tr("承認しました"))
                 }
               />
               <RejectButton
@@ -92,25 +94,25 @@ export function ResponseApprovalCard({
               />
             </>
           }
-          description="内容を確認して承認または差し戻してください。"
+          description={tr("内容を確認して承認または差し戻してください。")}
           icon={<IconCheck size={20} />}
-          title="あなたの承認依頼中です"
+          title={tr("あなたの承認依頼中です")}
           tone="approve"
         />
         <ModalShell
           confirmColor="red"
           confirmDisabled={!reason.trim()}
-          confirmLabel="差し戻す"
+          confirmLabel={tr("差し戻す")}
           loading={isPending}
           onClose={() => setRejectOpen(false)}
           onConfirm={() =>
-            run(() => onReject(responseNumber, reason), "差し戻しました")
+            run(() => onReject(responseNumber, reason), tr("差し戻しました"))
           }
           opened={rejectOpen}
           title="差し戻し"
         >
           <Text mb="sm" size="sm">
-            差し戻す理由を入力してください（申請者に表示されます）。
+            {tr("差し戻す理由を入力してください（申請者に表示されます）。")}
           </Text>
           <Textarea
             autosize

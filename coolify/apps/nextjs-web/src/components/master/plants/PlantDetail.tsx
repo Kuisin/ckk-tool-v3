@@ -23,6 +23,7 @@ import {
   ResourceActions,
   SummaryGrid,
 } from "@/components/ui/shells";
+import { useTr } from "@/hooks/useTr";
 import { useTabParam } from "@/hooks/useUrlState";
 import { countryLabel } from "@/lib/enum-labels";
 import { FloorMapsPanel, type PlantFloorMapRef } from "./FloorMapsPanel";
@@ -56,6 +57,7 @@ export function PlantDetail({
   record: PlantDetailData;
   floorMaps: PlantFloorMapRef[];
 }) {
+  const tr = useTr();
   const locale = useLocale();
   const fmt = useFormat();
   const router = useRouter();
@@ -78,7 +80,7 @@ export function PlantDetail({
         <ResourceActions
           menuItems={[
             {
-              label: record.isActive ? "無効化" : "有効化",
+              label: record.isActive ? "無効化" : tr("有効化"),
               icon: <IconCircleMinus size={14} />,
               onClick: () => setToggleOpen(true),
             },
@@ -93,7 +95,11 @@ export function PlantDetail({
           onEdit={() => router.push(`${BASE_PATH}/${record.id}/edit`)}
         />
       }
-      breadcrumbs={["マスタ", { label: "拠点", href: BASE_PATH }, record.code]}
+      breadcrumbs={[
+        tr("マスタ"),
+        { label: "拠点", href: BASE_PATH },
+        record.code,
+      ]}
       createdAt={fmt.dateTime(record.createdAt)}
       status={<ActiveBadge active={record.isActive} />}
       title={record.nameJa}
@@ -101,37 +107,43 @@ export function PlantDetail({
     >
       <SummaryGrid>
         <FieldValue
-          label="拠点コード"
+          label={tr("拠点コード")}
           value={<DocNumber>{record.code}</DocNumber>}
         />
-        <FieldValue label="名称（日本語）" value={record.nameJa} />
-        <FieldValue label="名称（英語）" value={record.nameEn || "—"} />
-        <FieldValue label="よみがな" value={record.nameKana || "—"} />
+        <FieldValue label={tr("名称（日本語）")} value={record.nameJa} />
+        <FieldValue label={tr("名称（英語）")} value={record.nameEn || "—"} />
+        <FieldValue label={tr("よみがな")} value={record.nameKana || "—"} />
         <FieldValue
-          label="国"
+          label={tr("国")}
           value={
             record.countryCode
               ? (countryLabel(record.countryCode, locale) ?? record.countryCode)
               : "—"
           }
         />
-        <FieldValue label="郵便番号" value={record.postalCode || "—"} />
-        <FieldValue label="住所（日本語）" value={record.addressJa || "—"} />
-        <FieldValue label="住所（英語）" value={record.addressEn || "—"} />
-        <FieldValue label="電話番号" value={record.phone || "—"} />
-        <FieldValue label="メールアドレス" value={record.email || "—"} />
-        <FieldValue label="担当者" value={record.contactPerson || "—"} />
+        <FieldValue label={tr("郵便番号")} value={record.postalCode || "—"} />
+        <FieldValue
+          label={tr("住所（日本語）")}
+          value={record.addressJa || "—"}
+        />
+        <FieldValue
+          label={tr("住所（英語）")}
+          value={record.addressEn || "—"}
+        />
+        <FieldValue label={tr("電話番号")} value={record.phone || "—"} />
+        <FieldValue label={tr("メールアドレス")} value={record.email || "—"} />
+        <FieldValue label={tr("担当者")} value={record.contactPerson || "—"} />
       </SummaryGrid>
 
       <AppTabs onChange={setTab} value={tab}>
         <Tabs.List>
-          <Tabs.Tab value="overview">概要</Tabs.Tab>
-          <Tabs.Tab value="floor-maps">フロアマップ</Tabs.Tab>
+          <Tabs.Tab value="overview">{tr("概要")}</Tabs.Tab>
+          <Tabs.Tab value="floor-maps">{tr("フロアマップ")}</Tabs.Tab>
         </Tabs.List>
 
         <Tabs.Panel pt="md" value="overview">
           <Stack gap="md">
-            <FieldValue label="備考" value={record.notes || "—"} />
+            <FieldValue label={tr("備考")} value={record.notes || "—"} />
           </Stack>
         </Tabs.Panel>
 

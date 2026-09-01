@@ -25,6 +25,7 @@ import { useFormat } from "@/components/layout/PreferencesProvider";
 import { SecondaryButton } from "@/components/ui/buttons";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { ModalShell } from "@/components/ui/modals";
+import { useTr } from "@/hooks/useTr";
 import type { Formatters } from "@/lib/format";
 import type { KioskDeviceSessionRow } from "@/lib/kiosk-admin";
 
@@ -51,6 +52,7 @@ function formatEnd(fmt: Formatters, startIso: string, endIso: string): string {
  * モーダルと端末詳細ページの両方から使う。
  */
 export function DeviceLogList({ deviceId }: { deviceId: string }) {
+  const tr = useTr();
   const fmt = useFormat();
   const [rows, setRows] = useState<KioskDeviceSessionRow[]>([]);
   const [nextCursor, setNextCursor] = useState<string | null>(null);
@@ -100,7 +102,7 @@ export function DeviceLogList({ deviceId }: { deviceId: string }) {
       {loaded && !error && rows.length === 0 && (
         <EmptyState
           icon={<IconHistory size={28} />}
-          message="利用履歴はまだありません"
+          message={tr("利用履歴はまだありません")}
         />
       )}
       {rows.map((r, i) => (
@@ -119,7 +121,7 @@ export function DeviceLogList({ deviceId }: { deviceId: string }) {
                 miw={72}
                 variant={r.endedAt ? "light" : "filled"}
               >
-                {r.endedAt ? "終了" : "利用中"}
+                {r.endedAt ? "終了" : tr("利用中")}
               </Badge>
               <Text fw={500} size="sm" truncate>
                 {r.userName}
@@ -135,7 +137,7 @@ export function DeviceLogList({ deviceId }: { deviceId: string }) {
               <Text c="dimmed" size="xs">
                 {r.endedAt
                   ? formatDuration(r.startedAt, r.endedAt)
-                  : "ログイン中"}
+                  : tr("ログイン中")}
               </Text>
             </Stack>
           </Group>
@@ -144,7 +146,7 @@ export function DeviceLogList({ deviceId }: { deviceId: string }) {
       {nextCursor && (
         <Center pt="sm">
           <SecondaryButton loading={isPending} onClick={() => load(nextCursor)}>
-            さらに読み込む
+            {tr("さらに読み込む")}
           </SecondaryButton>
         </Center>
       )}

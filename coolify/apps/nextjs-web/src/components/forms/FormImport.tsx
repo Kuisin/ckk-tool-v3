@@ -44,6 +44,7 @@ import {
 import { FieldValue } from "@/components/ui/FieldValue";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { FormSection } from "@/components/ui/shells";
+import { useTr } from "@/hooks/useTr";
 import { useIsMobile } from "@/hooks/useViewport";
 
 const KIND_LABEL: Record<string, string> = {
@@ -52,6 +53,7 @@ const KIND_LABEL: Record<string, string> = {
 };
 
 export function FormImport() {
+  const tr = useTr();
   const router = useRouter();
   const fmt = useFormat();
   const isMobile = useIsMobile();
@@ -83,7 +85,7 @@ export function FormImport() {
       } else {
         setPreview(null);
         notifications.show({
-          title: "読み取れません",
+          title: tr("読み取れません"),
           message: result.error,
           color: "red",
         });
@@ -98,13 +100,13 @@ export function FormImport() {
           message:
             result.data.mode === "version"
               ? `バージョン ${result.data.version} として取り込みました`
-              : "取り込みました",
+              : tr("取り込みました"),
           color: "green",
         });
         router.push(`/general/forms/${result.data.code}`);
       } else {
         notifications.show({
-          title: "エラー",
+          title: tr("エラー"),
           message: result.error,
           color: "red",
         });
@@ -115,38 +117,40 @@ export function FormImport() {
     <Stack gap="md">
       <PageHeader
         breadcrumbs={[
-          { label: "一般" },
-          { label: "フォーム", href: "/general/forms" },
-          { label: "取り込み" },
+          { label: tr("一般") },
+          { label: tr("フォーム"), href: "/general/forms" },
+          { label: tr("取り込み") },
         ]}
-        title="フォームを取り込む"
+        title={tr("フォームを取り込む")}
       />
 
-      <FormSection title="ファイルまたは貼り付け">
+      <FormSection title={tr("ファイルまたは貼り付け")}>
         <Alert color="gray" icon={<IconFileImport size={16} />} variant="light">
-          書き出したファイル（.txt）に含まれるのは**フォームの作りだけ**です。
-          回答と共有設定は含まれないので、取り込んだフォームは非公開で始まります。
-          受付期間も設定し直してください。
+          {tr(
+            tr(
+              "書き出したファイル（.txt）に含まれるのは**フォームの作りだけ**です。\n          回答と共有設定は含まれないので、取り込んだフォームは非公開で始まります。\n          受付期間も設定し直してください。",
+            ),
+          )}
         </Alert>
         <FileInput
           accept="text/plain,.txt"
           clearable
-          label="書き出したファイル"
+          label={tr("書き出したファイル")}
           leftSection={<IconUpload size={16} />}
           onChange={readFile}
-          placeholder="フォーム_....txt を選ぶ"
+          placeholder={tr("フォーム_....txt を選ぶ")}
         />
         <Textarea
           autosize
-          description="ファイルの中身を直接貼っても取り込めます"
-          label="または貼り付け"
+          description={tr("ファイルの中身を直接貼っても取り込めます")}
+          label={tr("または貼り付け")}
           maxRows={14}
           minRows={6}
           onChange={(e) => {
             setText(e.currentTarget.value);
             setPreview(null);
           }}
-          placeholder="# CKK 業務管理システム — フォーム定義 ..."
+          placeholder={tr("# CKK 業務管理システム — フォーム定義 ...")}
           styles={{
             input: { fontFamily: "var(--mantine-font-family-monospace)" },
           }}
@@ -159,36 +163,39 @@ export function FormImport() {
             loading={isPending}
             onClick={() => check(text)}
           >
-            内容を確認
+            {tr("内容を確認")}
           </SecondaryButton>
         </Group>
       </FormSection>
 
       {preview && (
-        <FormSection title="取り込む内容">
+        <FormSection title={tr("取り込む内容")}>
           <Card padding="md" radius="md" withBorder>
             <Stack gap="sm">
               <Group gap="xl" wrap="wrap">
-                <FieldValue label="タイトル" value={preview.title} />
+                <FieldValue label={tr("タイトル")} value={preview.title} />
                 <FieldValue
-                  label="種類"
+                  label={tr("種類")}
                   value={KIND_LABEL[preview.kind] ?? preview.kind}
                 />
-                <FieldValue label="項目数" value={`${preview.fieldCount} 個`} />
+                <FieldValue
+                  label={tr("項目数")}
+                  value={`${preview.fieldCount} 個`}
+                />
               </Group>
               <Group gap="xl" wrap="wrap">
                 <FieldValue
-                  label="書き出し元"
+                  label={tr("書き出し元")}
                   value={`${preview.sourceEnv} / ${preview.sourceCode} (v${preview.sourceVersion})`}
                 />
                 <FieldValue
-                  label="書き出し日時"
+                  label={tr("書き出し日時")}
                   value={
                     preview.exportedAt ? fmt.dateTime(preview.exportedAt) : "—"
                   }
                 />
                 <FieldValue
-                  label="書き出した人"
+                  label={tr("書き出した人")}
                   value={preview.exportedBy ?? "—"}
                 />
               </Group>
@@ -199,7 +206,7 @@ export function FormImport() {
             <Alert
               color="yellow"
               icon={<IconAlertTriangle size={16} />}
-              title="取り込んだあとに確認してください"
+              title={tr("取り込んだあとに確認してください")}
             >
               <List size="sm">
                 {preview.warnings.map((w) => (
@@ -210,7 +217,7 @@ export function FormImport() {
           )}
 
           <Radio.Group
-            label="取り込み方"
+            label={tr("取り込み方")}
             onChange={(v) => setMode(v as "new" | "version")}
             value={mode}
           >
@@ -219,21 +226,25 @@ export function FormImport() {
                 description={
                   preview.codeAvailable
                     ? `書き出し元と同じコード（${preview.sourceCode}）で作ります。共有 URL が環境をまたいで同じになります`
-                    : "同じコードは使われているので、新しいコードで作ります"
+                    : tr("同じコードは使われているので、新しいコードで作ります")
                 }
-                label="新しいフォームとして取り込む"
+                label={tr("新しいフォームとして取り込む")}
                 value="new"
               />
               <Radio
                 description={
                   preview.codeAvailable
-                    ? "同じコードのフォームがこの環境にありません"
+                    ? tr("同じコードのフォームがこの環境にありません")
                     : preview.existingEditable
                       ? `「${preview.existingTitle}」に新しいバージョンとして重ねます。これまでの回答は回答時点の内容のまま残ります`
-                      : "同じコードのフォームはありますが、編集する権限がありません"
+                      : tr(
+                          tr(
+                            "同じコードのフォームはありますが、編集する権限がありません",
+                          ),
+                        )
                 }
                 disabled={preview.codeAvailable || !preview.existingEditable}
-                label="既存のフォームを更新する（新しいバージョン）"
+                label={tr("既存のフォームを更新する（新しいバージョン）")}
                 value="version"
               />
             </Stack>
@@ -250,7 +261,7 @@ export function FormImport() {
               loading={isPending}
               onClick={run}
             >
-              取り込む
+              {tr("取り込む")}
             </PrimaryButton>
             <CancelButton
               fullWidth
@@ -265,7 +276,7 @@ export function FormImport() {
               loading={isPending}
               onClick={run}
             >
-              取り込む
+              {tr("取り込む")}
             </PrimaryButton>
           </Group>
         )}

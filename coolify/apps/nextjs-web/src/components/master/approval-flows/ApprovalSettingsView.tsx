@@ -16,6 +16,7 @@ import {
 } from "@/components/master/approval-settings/ApprovalGroupTable";
 import { AppTabs } from "@/components/ui/AppTabs";
 import { PageHeader } from "@/components/ui/PageHeader";
+import { useTr } from "@/hooks/useTr";
 import { useTabParam } from "@/hooks/useUrlState";
 import {
   ApprovalFlowOverview,
@@ -29,15 +30,19 @@ export function ApprovalSettingsView({
   flows: FlowOverviewRow[];
   groups: ApprovalGroupRow[];
 }) {
+  const tr = useTr();
   const [tab, setTab] = useTabParam("flows");
 
   return (
     <Stack gap="md">
-      <PageHeader breadcrumbs={["マスタ", "承認設定"]} title="承認設定" />
+      <PageHeader
+        breadcrumbs={[tr("マスタ"), tr("承認設定")]}
+        title={tr("承認設定")}
+      />
       <AppTabs onChange={setTab} value={tab}>
         <Tabs.List>
-          <Tabs.Tab value="flows">承認フロー</Tabs.Tab>
-          <Tabs.Tab value="groups">承認グループ</Tabs.Tab>
+          <Tabs.Tab value="flows">{tr("承認フロー")}</Tabs.Tab>
+          <Tabs.Tab value="groups">{tr("承認グループ")}</Tabs.Tab>
         </Tabs.List>
         <Tabs.Panel pt="md" value="flows">
           <ApprovalFlowOverview rows={flows} />

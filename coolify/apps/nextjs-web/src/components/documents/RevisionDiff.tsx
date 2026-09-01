@@ -6,6 +6,7 @@
 
 import { Box, Group, Paper, Select, Stack, Text } from "@mantine/core";
 import { useMemo } from "react";
+import { useTr } from "@/hooks/useTr";
 import { useIsMobile } from "@/hooks/useViewport";
 import { collapseUnchanged, diffBodies } from "@/lib/line-anchor";
 
@@ -36,6 +37,7 @@ export function RevisionDiff({
   to: string;
   onChange: (from: string, to: string) => void;
 }) {
+  const tr = useTr();
   const isMobile = useIsMobile();
   const rows = useMemo(
     () => collapseUnchanged(diffBodies(fromBody, toBody), 3),
@@ -51,21 +53,21 @@ export function RevisionDiff({
       <Group align="flex-end" gap="sm" grow={isMobile}>
         <Select
           data={revisions}
-          label="比較元"
+          label={tr("比較元")}
           onChange={(v) => onChange(v ?? from, to)}
           value={from}
           w={isMobile ? undefined : 200}
         />
         <Select
           data={revisions}
-          label="比較先"
+          label={tr("比較先")}
           onChange={(v) => onChange(from, v ?? to)}
           value={to}
           w={isMobile ? undefined : 200}
         />
         <Text c="dimmed" size="sm">
           {changed === 0
-            ? "差分はありません"
+            ? tr("差分はありません")
             : `${fromLabel} → ${toLabel}: ${changed} 行の変更`}
         </Text>
       </Group>

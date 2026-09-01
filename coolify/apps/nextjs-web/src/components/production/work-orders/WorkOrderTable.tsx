@@ -22,6 +22,7 @@ import { type Column, DataTable } from "@/components/ui/DataTable";
 import { NewButton } from "@/components/ui/NewButton";
 import { StatusBadge, statusOptions } from "@/components/ui/StatusBadge";
 import { ListShell } from "@/components/ui/shells";
+import { useTr } from "@/hooks/useTr";
 import { useUrlSelectState, useUrlStringState } from "@/hooks/useUrlState";
 import { useIsMobile } from "@/hooks/useViewport";
 import { workOrderTypeLabel, workOrderTypeOptions } from "@/lib/enum-labels";
@@ -50,6 +51,7 @@ export function WorkOrderTable({
   rows: WorkOrderRow[];
   variant?: "workOrders" | "approvals";
 }) {
+  const tr = useTr();
   const locale = useLocale();
   const fmt = useFormat();
   const router = useRouter();
@@ -84,7 +86,7 @@ export function WorkOrderTable({
   const columns: Column<WorkOrderRow>[] = [
     {
       key: "workOrderNumber",
-      header: "指示書番号",
+      header: tr("指示書番号"),
       sortable: true,
       width: 150,
       sortValue: (r) => r.workOrderNumber,
@@ -96,7 +98,7 @@ export function WorkOrderTable({
     },
     {
       key: "orderLineNumber",
-      header: "注文明細番号",
+      header: tr("注文明細番号"),
       sortable: true,
       width: 190,
       render: (r) =>
@@ -106,7 +108,7 @@ export function WorkOrderTable({
           </Text>
         ) : (
           <Badge color="teal" size="xs" variant="light">
-            在庫向け
+            {tr("在庫向け")}
           </Badge>
         ),
     },
@@ -118,14 +120,14 @@ export function WorkOrderTable({
     },
     {
       key: "type",
-      header: "種別",
+      header: tr("種別"),
       width: 100,
       sortValue: (r) => r.type,
       render: (r) => <TypeBadge type={r.type} />,
     },
     {
       key: "plannedQuantity",
-      header: "予定数量",
+      header: tr("予定数量"),
       align: "right",
       width: 100,
       sortValue: (r) => r.plannedQuantity,
@@ -137,7 +139,7 @@ export function WorkOrderTable({
     },
     {
       key: "approvalStatus",
-      header: "承認状態",
+      header: tr("承認状態"),
       width: 130,
       sortValue: (r) => r.approvalStatus,
       render: (r) =>
@@ -153,7 +155,7 @@ export function WorkOrderTable({
       ? [
           {
             key: "requestedAt",
-            header: "依頼日",
+            header: tr("依頼日"),
             width: 130,
             sortValue: (r) => r.requestedAt ?? "",
             render: (r) => (
@@ -166,14 +168,14 @@ export function WorkOrderTable({
       : [
           {
             key: "status",
-            header: "状態",
+            header: tr("状態"),
             width: 110,
             sortValue: (r) => r.status,
             render: (r) => <StatusBadge entity="WorkOrder" status={r.status} />,
           } satisfies Column<WorkOrderRow>,
           {
             key: "updatedAt",
-            header: "更新日",
+            header: tr("更新日"),
             hideable: true,
             width: 150,
             sortValue: (r) => r.updatedAt,
@@ -191,7 +193,7 @@ export function WorkOrderTable({
       action={
         isApprovals ? undefined : <NewButton href={`${WORK_ORDERS_PATH}/new`} />
       }
-      breadcrumbs={["生産", isApprovals ? "承認管理" : "指示書"]}
+      breadcrumbs={[tr("生産"), isApprovals ? "承認管理" : tr("指示書")]}
       filters={
         <>
           <Select
@@ -199,7 +201,7 @@ export function WorkOrderTable({
             data={workOrderTypeOptions(locale)}
             flex={isMobile ? 1 : undefined}
             onChange={setType}
-            placeholder="種別"
+            placeholder={tr("種別")}
             value={type}
             w={isMobile ? undefined : 130}
           />
@@ -214,7 +216,7 @@ export function WorkOrderTable({
             }
             flex={isMobile ? 1 : undefined}
             onChange={setStatus}
-            placeholder={isApprovals ? "承認状態" : "状態"}
+            placeholder={isApprovals ? "承認状態" : tr("状態")}
             value={status}
             w={isMobile ? undefined : 150}
           />
@@ -225,11 +227,11 @@ export function WorkOrderTable({
         <TextInput
           leftSection={<IconSearch size={14} />}
           onChange={(e) => setSearch(e.currentTarget.value)}
-          placeholder="指示書番号・注文明細番号・製品で検索"
+          placeholder={tr("指示書番号・注文明細番号・製品で検索")}
           value={search}
         />
       }
-      title={isApprovals ? "承認管理" : "指示書"}
+      title={isApprovals ? "承認管理" : tr("指示書")}
     >
       <DataTable
         columns={columns}
@@ -252,7 +254,9 @@ export function WorkOrderTable({
           )
         }
         emptyMessage={
-          isApprovals ? "承認依頼中の指示書はありません" : "指示書がありません"
+          isApprovals
+            ? "承認依頼中の指示書はありません"
+            : tr("指示書がありません")
         }
         getRowId={(r) => String(r.workOrderNumber)}
         onRowClick={(r) => router.push(`${basePath}/${r.docNumber}`)}
@@ -260,7 +264,7 @@ export function WorkOrderTable({
           <Group align="flex-start" justify="space-between" wrap="nowrap">
             <Stack className="min-w-0" gap={3}>
               <Text c="dimmed" ff="mono" size="xs">
-                {r.docNumber} · {r.orderLineNumber ?? "在庫向け"}
+                {r.docNumber} · {r.orderLineNumber ?? tr("在庫向け")}
               </Text>
               <Text fw={600} size="sm" truncate>
                 {r.productName}

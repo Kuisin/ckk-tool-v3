@@ -23,10 +23,12 @@ import { useRouter } from "next/navigation";
 import { signOut } from "next-auth/react";
 import { useState } from "react";
 import { changePasswordAction } from "@/app/(dashboard)/profile/actions";
+import { useTr } from "@/hooks/useTr";
 
 const MIN_LENGTH = 8;
 
 export function ForcedPasswordChangeForm() {
+  const tr = useTr();
   const router = useRouter();
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
@@ -42,18 +44,18 @@ export function ForcedPasswordChangeForm() {
       return;
     }
     if (newPassword !== confirmPassword) {
-      setError("確認用のパスワードが一致しません");
+      setError(tr("確認用のパスワードが一致しません"));
       return;
     }
     if (newPassword === currentPassword) {
-      setError("現在のパスワードとは違うものにしてください");
+      setError(tr("現在のパスワードとは違うものにしてください"));
       return;
     }
     setLoading(true);
     const res = await changePasswordAction({ currentPassword, newPassword });
     setLoading(false);
     if (!res.ok) {
-      setError(res.error ?? "変更に失敗しました");
+      setError(res.error ?? tr("変更に失敗しました"));
       return;
     }
     router.push("/");
@@ -66,9 +68,9 @@ export function ForcedPasswordChangeForm() {
         <form onSubmit={submit}>
           <Stack gap="lg">
             <Stack gap={4}>
-              <Title order={3}>パスワードの変更</Title>
+              <Title order={3}>{tr("パスワードの変更")}</Title>
               <Text c="dimmed" size="sm">
-                初期パスワードのままです。続けるには変更してください。
+                {tr("初期パスワードのままです。続けるには変更してください。")}
               </Text>
             </Stack>
 
@@ -77,7 +79,7 @@ export function ForcedPasswordChangeForm() {
               icon={<IconAlertTriangle size={16} />}
               variant="light"
             >
-              変更するまで他の画面は開けません。
+              {tr("変更するまで他の画面は開けません。")}
             </Alert>
 
             {error ? (
@@ -88,7 +90,7 @@ export function ForcedPasswordChangeForm() {
 
             <PasswordInput
               autoComplete="current-password"
-              label="現在のパスワード"
+              label={tr("現在のパスワード")}
               onChange={(e) => setCurrentPassword(e.currentTarget.value)}
               required
               value={currentPassword}
@@ -97,7 +99,7 @@ export function ForcedPasswordChangeForm() {
             <PasswordInput
               autoComplete="new-password"
               description={`${MIN_LENGTH} 文字以上`}
-              label="新しいパスワード"
+              label={tr("新しいパスワード")}
               onChange={(e) => setNewPassword(e.currentTarget.value)}
               required
               value={newPassword}
@@ -105,7 +107,7 @@ export function ForcedPasswordChangeForm() {
             />
             <PasswordInput
               autoComplete="new-password"
-              label="新しいパスワード（確認）"
+              label={tr("新しいパスワード（確認）")}
               onChange={(e) => setConfirmPassword(e.currentTarget.value)}
               required
               value={confirmPassword}
@@ -118,7 +120,7 @@ export function ForcedPasswordChangeForm() {
               loading={loading}
               type="submit"
             >
-              変更する
+              {tr("変更する")}
             </Button>
 
             <Button
@@ -127,7 +129,7 @@ export function ForcedPasswordChangeForm() {
               onClick={() => signOut({ callbackUrl: "/login" })}
               variant="subtle"
             >
-              ログアウト
+              {tr("ログアウト")}
             </Button>
           </Stack>
         </form>

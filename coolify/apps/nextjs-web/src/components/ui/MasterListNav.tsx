@@ -14,6 +14,7 @@ import { IconSearch } from "@tabler/icons-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { type ReactNode, useState } from "react";
+import { useTr } from "@/hooks/useTr";
 
 export type MasterNavItem = {
   href: string;
@@ -46,6 +47,7 @@ export function MasterListNav({
   /** 全セクションが空（絞り込み含む）のときの文言。 */
   emptyMessage?: string;
 }) {
+  const tr = useTr();
   const pathname = usePathname();
   const [query, setQuery] = useState("");
   const q = query.trim().toLowerCase();
@@ -68,7 +70,7 @@ export function MasterListNav({
       {toolbar && <Group gap="xs">{toolbar}</Group>}
       {searchable && (
         <TextInput
-          aria-label="絞り込み"
+          aria-label={tr("絞り込み")}
           leftSection={<IconSearch size={14} />}
           onChange={(e) => setQuery(e.currentTarget.value)}
           placeholder={searchPlaceholder}

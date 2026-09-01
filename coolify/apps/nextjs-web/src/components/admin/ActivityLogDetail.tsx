@@ -16,12 +16,14 @@ import { AuditChangeTable } from "@/components/ui/AuditChangeTable";
 import { SecondaryButton } from "@/components/ui/buttons";
 import { FieldValue } from "@/components/ui/FieldValue";
 import { DetailShell, SummaryGrid } from "@/components/ui/shells";
+import { useTr } from "@/hooks/useTr";
 import type { ActivityDetailEntry } from "@/lib/audit";
 import { auditRecordLink } from "@/lib/audit-links";
 
 const BASE_PATH = "/settings/activity";
 
 export function ActivityLogDetail({ entry }: { entry: ActivityDetailEntry }) {
+  const tr = useTr();
   const link = auditRecordLink(entry.tableName, entry.recordId);
 
   return (
@@ -39,22 +41,22 @@ export function ActivityLogDetail({ entry }: { entry: ActivityDetailEntry }) {
         ) : undefined
       }
       breadcrumbs={[
-        "システム",
-        { label: "操作履歴", href: BASE_PATH },
+        tr("システム"),
+        { label: tr("操作履歴"), href: BASE_PATH },
         `#${entry.id}`,
       ]}
       status={<Badge variant="light">{entry.action}</Badge>}
       title={`操作履歴 #${entry.id}`}
     >
       <SummaryGrid>
-        <FieldValue label="日時" value={entry.at} />
+        <FieldValue label={tr("日時")} value={entry.at} />
         <FieldValue
-          label="操作"
+          label={tr("操作")}
           value={`${entry.action}（${entry.actionRaw}）`}
         />
-        <FieldValue label="対象" value={entry.tableLabel} />
+        <FieldValue label={tr("対象")} value={entry.tableLabel} />
         <FieldValue
-          label="レコード"
+          label={tr("レコード")}
           value={
             entry.recordId ? (
               <Text ff="mono" size="sm">
@@ -66,7 +68,7 @@ export function ActivityLogDetail({ entry }: { entry: ActivityDetailEntry }) {
           }
         />
         <FieldValue
-          label="ユーザー"
+          label={tr("ユーザー")}
           value={
             entry.userId ? (
               <Anchor
@@ -85,12 +87,12 @@ export function ActivityLogDetail({ entry }: { entry: ActivityDetailEntry }) {
           }
         />
         <FieldValue
-          label="関連ページ"
+          label={tr("関連ページ")}
           value={
             link ? (
               <Anchor component={Link} href={link.href} size="sm">
                 {link.appLabel}
-                {link.kind === "list" && "（一覧で表示）"}
+                {link.kind === "list" && tr("（一覧で表示）")}
               </Anchor>
             ) : (
               "—"
@@ -101,7 +103,7 @@ export function ActivityLogDetail({ entry }: { entry: ActivityDetailEntry }) {
 
       <Paper p="md" radius="md" withBorder>
         <Text c="dimmed" fw={600} mb="xs" size="xs">
-          変更内容（要約）
+          {tr("変更内容（要約）")}
         </Text>
         <Text size="sm">{entry.detail}</Text>
       </Paper>
@@ -112,7 +114,7 @@ export function ActivityLogDetail({ entry }: { entry: ActivityDetailEntry }) {
             この中の「生データを表示」で見られる。 */}
         <Paper p="md" radius="md" withBorder>
           <Text c="dimmed" fw={600} mb="xs" size="xs">
-            変更内容
+            {tr("変更内容")}
           </Text>
           <AuditChangeTable
             action={entry.action}

@@ -17,6 +17,7 @@ import { useTransition } from "react";
 import { disableBootstrapAdmin } from "@/app/(dashboard)/settings/users/actions";
 import { ActionCard } from "@/components/ui/ActionCard";
 import { DangerButton } from "@/components/ui/buttons";
+import { useTr } from "@/hooks/useTr";
 import type { BootstrapAdminState } from "@/lib/bootstrap-admin-core";
 
 export function BootstrapAdminCard({
@@ -27,6 +28,7 @@ export function BootstrapAdminCard({
   /** system:ADMIN を持っているか。無ければ状況の表示だけで操作は出さない。 */
   canAdminister: boolean;
 }) {
+  const tr = useTr();
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
 
@@ -34,28 +36,31 @@ export function BootstrapAdminCard({
 
   const confirmDisable = () =>
     modals.openConfirmModal({
-      title: "初期管理者を無効化",
+      title: tr("初期管理者を無効化"),
       children: (
         <Text size="sm">
-          初期管理者アカウント（admin）を無効化します。以後このアカウントでは
-          ログインできません。管理は各自の管理者アカウントで行ってください。
+          {tr(
+            tr(
+              "初期管理者アカウント（admin）を無効化します。以後このアカウントでは\n          ログインできません。管理は各自の管理者アカウントで行ってください。",
+            ),
+          )}
         </Text>
       ),
-      labels: { confirm: "無効化", cancel: "戻る" },
+      labels: { confirm: tr("無効化"), cancel: tr("戻る") },
       confirmProps: { color: "red" },
       onConfirm: () =>
         startTransition(async () => {
           const res = await disableBootstrapAdmin();
           if (res.ok) {
             notifications.show({
-              title: "無効化しました",
-              message: "初期管理者アカウントを無効化しました",
+              title: tr("無効化しました"),
+              message: tr("初期管理者アカウントを無効化しました"),
               color: "green",
             });
             router.refresh();
           } else {
             notifications.show({
-              title: "エラー",
+              title: tr("エラー"),
               message: res.error,
               color: "red",
             });
@@ -69,10 +74,13 @@ export function BootstrapAdminCard({
       color="red"
       icon={<IconAlertTriangle size={16} />}
       mb="md"
-      title="既定パスワードのままです"
+      title={tr("既定パスワードのままです")}
     >
-      このアカウントはまだ既定パスワード（admin）で、誰でもログインできます。
-      すぐに変更するか、下の手順で無効化してください。
+      {tr(
+        tr(
+          "このアカウントはまだ既定パスワード（admin）で、誰でもログインできます。\n      すぐに変更するか、下の手順で無効化してください。",
+        ),
+      )}
     </Alert>
   ) : null;
 
@@ -81,7 +89,7 @@ export function BootstrapAdminCard({
       <ActionCard
         description={state.message ?? ""}
         icon={<IconLock size={20} />}
-        title="初期管理者は無効化済み"
+        title={tr("初期管理者は無効化済み")}
         tone="wait"
       />
     );
@@ -89,8 +97,8 @@ export function BootstrapAdminCard({
 
   const tone = state.canDisable ? "action" : "alert";
   const title = state.canDisable
-    ? "初期管理者を無効化できます"
-    : "先に実ユーザーへ管理者権限を割り当ててください";
+    ? tr("初期管理者を無効化できます")
+    : tr("先に実ユーザーへ管理者権限を割り当ててください");
 
   return (
     <>
@@ -103,7 +111,7 @@ export function BootstrapAdminCard({
               loading={isPending}
               onClick={confirmDisable}
             >
-              無効化
+              {tr("無効化")}
             </DangerButton>
           ) : undefined
         }

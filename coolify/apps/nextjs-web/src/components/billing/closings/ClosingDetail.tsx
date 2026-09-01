@@ -75,7 +75,7 @@ export function ClosingDetail({
       const result = await processClosing(closing.id);
       if (result.ok) {
         notifications.show({
-          title: "請求書を生成しました",
+          title: tr("請求書を生成しました"),
           message: `請求書 ${result.data.invoiceNumber} を作成しました`,
           color: "green",
         });
@@ -106,16 +106,16 @@ export function ClosingDetail({
     },
     {
       key: "processed",
-      label: "請求書生成",
+      label: tr("請求書生成"),
       description: closing.processedAt
         ? fmt.date(closing.processedAt)
-        : "請求書を作成",
+        : tr("請求書を作成"),
       loading: closing.status === "PROCESSED",
     },
     {
       key: "exported",
       label: tr("エクスポート済"),
-      description: "弥生会計 CSV",
+      description: tr("弥生会計 CSV"),
     },
   ];
   const active =
@@ -125,7 +125,7 @@ export function ClosingDetail({
   const sourceGroups: HandoffGroup[] = [
     {
       key: "shipments",
-      title: "対象出荷",
+      title: tr("対象出荷"),
       summary:
         closing.shipments.length > 0
           ? `${closing.shipments.length} 件・${totalQuantity} 本`
@@ -156,7 +156,7 @@ export function ClosingDetail({
             },
           ]
         : [],
-      emptyNote: "未生成（「請求書を生成」で作成します）",
+      emptyNote: tr("未生成（「請求書を生成」で作成します）"),
     },
   ];
 
@@ -186,7 +186,7 @@ export function ClosingDetail({
         <FieldValue label={tr("顧客")} value={closing.customerName} />
         <FieldValue label={tr("締日")} value={fmt.date(closing.closingDate)} />
         <FieldValue
-          label="合計金額（税抜）"
+          label={tr("合計金額（税抜）")}
           value={<MoneyText ta="left" value={closing.totalAmount} />}
         />
         <FieldValue
@@ -196,7 +196,7 @@ export function ClosingDetail({
           }
         />
         <FieldValue
-          label="生成請求書"
+          label={tr("生成請求書")}
           value={
             closing.invoiceNumber ? (
               <Anchor
@@ -323,7 +323,7 @@ export function ClosingDetail({
         onClose={() => setProcessOpen(false)}
         onConfirm={process}
         opened={processOpen}
-        title="請求書生成の確認"
+        title={tr("請求書生成の確認")}
       />
     </DetailShell>
   );

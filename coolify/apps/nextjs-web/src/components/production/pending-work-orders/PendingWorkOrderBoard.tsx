@@ -28,6 +28,7 @@ import { type Column, DataTable } from "@/components/ui/DataTable";
 import { QueueTabs } from "@/components/ui/QueueTabs";
 import { StatusBadge, statusOptions } from "@/components/ui/StatusBadge";
 import { ListShell } from "@/components/ui/shells";
+import { useTr } from "@/hooks/useTr";
 import {
   useTabParam,
   useUrlSelectState,
@@ -52,6 +53,7 @@ export function PendingWorkOrderBoard({
   unplannedRows: UnplannedOrderLineRow[];
   openRows: WorkOrderRow[];
 }) {
+  const tr = useTr();
   const locale = useLocale();
   const fmt = useFormat();
   const router = useRouter();
@@ -94,7 +96,7 @@ export function PendingWorkOrderBoard({
   const unplannedColumns: Column<UnplannedOrderLineRow>[] = [
     {
       key: "orderLineNumber",
-      header: "注文明細番号",
+      header: tr("注文明細番号"),
       sortable: true,
       width: 190,
       render: (r) => (
@@ -105,7 +107,7 @@ export function PendingWorkOrderBoard({
     },
     {
       key: "customerName",
-      header: "顧客",
+      header: tr("顧客"),
       sortable: true,
       truncate: true,
       render: (r) => r.customerName,
@@ -119,7 +121,7 @@ export function PendingWorkOrderBoard({
     },
     {
       key: "quantity",
-      header: "受注数",
+      header: tr("受注数"),
       align: "right",
       width: 90,
       sortable: true,
@@ -132,7 +134,7 @@ export function PendingWorkOrderBoard({
     },
     {
       key: "plannedQuantity",
-      header: "手配済",
+      header: tr("手配済"),
       align: "right",
       width: 90,
       sortable: true,
@@ -145,7 +147,7 @@ export function PendingWorkOrderBoard({
     },
     {
       key: "unplannedQuantity",
-      header: "未手配",
+      header: tr("未手配"),
       align: "right",
       width: 100,
       sortable: true,
@@ -158,7 +160,7 @@ export function PendingWorkOrderBoard({
     },
     {
       key: "reservedStockQuantity",
-      header: "在庫引当",
+      header: tr("在庫引当"),
       align: "right",
       hideable: true,
       width: 95,
@@ -177,7 +179,7 @@ export function PendingWorkOrderBoard({
     },
     {
       key: "deliveryDate",
-      header: "納期",
+      header: tr("納期"),
       width: 110,
       sortable: true,
       sortValue: (r) => r.deliveryDate ?? "",
@@ -189,7 +191,7 @@ export function PendingWorkOrderBoard({
     },
     {
       key: "status",
-      header: "状態",
+      header: tr("状態"),
       width: 110,
       sortValue: (r) => r.status,
       render: (r) => <StatusBadge entity="OrderLine" status={r.status} />,
@@ -205,7 +207,7 @@ export function PendingWorkOrderBoard({
           onClick={(e) => e.stopPropagation()}
           size="xs"
         >
-          指示書作成
+          {tr("指示書作成")}
         </SecondaryButton>
       ),
     },
@@ -214,7 +216,7 @@ export function PendingWorkOrderBoard({
   const openColumns: Column<WorkOrderRow>[] = [
     {
       key: "workOrderNumber",
-      header: "指示書番号",
+      header: tr("指示書番号"),
       sortable: true,
       width: 150,
       sortValue: (r) => r.workOrderNumber,
@@ -226,7 +228,7 @@ export function PendingWorkOrderBoard({
     },
     {
       key: "orderLineNumber",
-      header: "注文明細番号",
+      header: tr("注文明細番号"),
       sortable: true,
       width: 190,
       render: (r) =>
@@ -236,7 +238,7 @@ export function PendingWorkOrderBoard({
           </Text>
         ) : (
           <Badge color="teal" size="xs" variant="light">
-            在庫向け
+            {tr("在庫向け")}
           </Badge>
         ),
     },
@@ -249,7 +251,7 @@ export function PendingWorkOrderBoard({
     },
     {
       key: "type",
-      header: "種別",
+      header: tr("種別"),
       width: 100,
       sortValue: (r) => r.type,
       render: (r) => (
@@ -264,7 +266,7 @@ export function PendingWorkOrderBoard({
     },
     {
       key: "plannedQuantity",
-      header: "予定数量",
+      header: tr("予定数量"),
       align: "right",
       width: 100,
       sortValue: (r) => r.plannedQuantity,
@@ -276,7 +278,7 @@ export function PendingWorkOrderBoard({
     },
     {
       key: "approvalStatus",
-      header: "承認状態",
+      header: tr("承認状態"),
       width: 130,
       sortValue: (r) => r.approvalStatus,
       render: (r) =>
@@ -290,14 +292,14 @@ export function PendingWorkOrderBoard({
     },
     {
       key: "status",
-      header: "状態",
+      header: tr("状態"),
       width: 110,
       sortValue: (r) => r.status,
       render: (r) => <StatusBadge entity="WorkOrder" status={r.status} />,
     },
     {
       key: "updatedAt",
-      header: "更新日",
+      header: tr("更新日"),
       hideable: true,
       width: 150,
       sortValue: (r) => r.updatedAt,
@@ -313,7 +315,7 @@ export function PendingWorkOrderBoard({
 
   return (
     <ListShell
-      breadcrumbs={["生産", "未処理指示書"]}
+      breadcrumbs={[tr("生産"), tr("未処理指示書")]}
       filters={
         <>
           {!isUnplanned && (
@@ -322,7 +324,7 @@ export function PendingWorkOrderBoard({
               data={workOrderTypeOptions(locale)}
               flex={isMobile ? 1 : undefined}
               onChange={setType}
-              placeholder="種別"
+              placeholder={tr("種別")}
               value={type}
               w={isMobile ? undefined : 130}
             />
@@ -347,7 +349,7 @@ export function PendingWorkOrderBoard({
             }
             flex={isMobile ? 1 : undefined}
             onChange={setStatus}
-            placeholder="状態"
+            placeholder={tr("状態")}
             value={status}
             w={isMobile ? undefined : 150}
           />
@@ -360,27 +362,27 @@ export function PendingWorkOrderBoard({
           onChange={(e) => setSearch(e.currentTarget.value)}
           placeholder={
             isUnplanned
-              ? "注文明細番号・顧客・製品で検索"
-              : "指示書番号・注文明細番号・製品で検索"
+              ? tr("注文明細番号・顧客・製品で検索")
+              : tr("指示書番号・注文明細番号・製品で検索")
           }
           value={search}
         />
       }
-      title="未処理指示書"
+      title={tr("未処理指示書")}
     >
       <QueueTabs
         onChange={setTab}
         tabs={[
           {
             value: "unplanned",
-            label: "未手配",
+            label: tr("未手配"),
             icon: <IconClipboardList size={14} />,
             count: unplannedRows.length,
             color: "orange",
           },
           {
             value: "inflight",
-            label: "進行中",
+            label: tr("進行中"),
             icon: <IconProgress size={14} />,
             count: openRows.length,
           },
@@ -393,7 +395,7 @@ export function PendingWorkOrderBoard({
             data={filteredUnplanned}
             defaultSort={{ key: "deliveryDate", dir: "asc" }}
             emptyIcon={<IconClipboardList size={24} />}
-            emptyMessage="指示書待ちの注文明細はありません"
+            emptyMessage={tr("指示書待ちの注文明細はありません")}
             getRowId={(r) => r.id}
             onRowClick={(r) => router.push(`${ORDER_LINES_PATH}/${r.id}`)}
             renderCard={(r) => (
@@ -433,7 +435,7 @@ export function PendingWorkOrderBoard({
             data={filteredOpen}
             defaultSort={{ key: "workOrderNumber", dir: "desc" }}
             emptyIcon={<IconSettings2 size={24} />}
-            emptyMessage="進行中の指示書はありません"
+            emptyMessage={tr("進行中の指示書はありません")}
             getRowId={(r) => String(r.workOrderNumber)}
             onRowClick={(r) =>
               router.push(`${WORK_ORDERS_PATH}/${r.docNumber}`)
@@ -442,7 +444,7 @@ export function PendingWorkOrderBoard({
               <Group align="flex-start" justify="space-between" wrap="nowrap">
                 <Stack className="min-w-0" gap={3}>
                   <Text c="dimmed" ff="mono" size="xs">
-                    {r.docNumber} · {r.orderLineNumber ?? "在庫向け"}
+                    {r.docNumber} · {r.orderLineNumber ?? tr("在庫向け")}
                   </Text>
                   <Text fw={600} size="sm" truncate>
                     {r.productName}

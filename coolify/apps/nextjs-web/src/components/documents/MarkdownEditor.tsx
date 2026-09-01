@@ -18,6 +18,7 @@ import {
 } from "@mantine/core";
 import { useState } from "react";
 import { GhostButton } from "@/components/ui/buttons";
+import { useTr } from "@/hooks/useTr";
 import { useIsMobile } from "@/hooks/useViewport";
 import { lineCountOf, MAX_DOC_LINES } from "@/lib/line-anchor";
 import { MarkdownView } from "./MarkdownView";
@@ -49,6 +50,7 @@ export function MarkdownEditor({
   onChange: (next: string) => void;
   minRows?: number;
 }) {
+  const tr = useTr();
   const isMobile = useIsMobile();
   // スマホに分割表示は無い。横 375px を 2 つに割ると、どちらも読めない。
   const [mode, setMode] = useState<Mode>("split");
@@ -67,24 +69,24 @@ export function MarkdownEditor({
     <Stack gap="xs">
       <Group gap="xs" wrap="wrap">
         <GhostButton onClick={() => apply((e) => wrapSelection(e, "**"))}>
-          太字
+          {tr("太字")}
         </GhostButton>
         <GhostButton onClick={() => apply((e) => wrapSelection(e, "_"))}>
-          斜体
+          {tr("斜体")}
         </GhostButton>
         <GhostButton onClick={() => apply((e) => wrapSelection(e, "`"))}>
           コード
         </GhostButton>
         <GhostButton onClick={() => apply((e) => prefixLine(e, "## "))}>
-          見出し
+          {tr("見出し")}
         </GhostButton>
         <GhostButton onClick={() => apply((e) => prefixLine(e, "- "))}>
-          箇条書き
+          {tr("箇条書き")}
         </GhostButton>
         <GhostButton
           onClick={() => apply((e) => wrapSelection(e, "[", "](/)"))}
         >
-          リンク
+          {tr("リンク")}
         </GhostButton>
       </Group>
       <Textarea
@@ -121,13 +123,13 @@ export function MarkdownEditor({
         data={
           isMobile
             ? [
-                { value: "edit", label: "編集" },
-                { value: "preview", label: "プレビュー" },
+                { value: "edit", label: tr("編集") },
+                { value: "preview", label: tr("プレビュー") },
               ]
             : [
-                { value: "edit", label: "編集" },
-                { value: "split", label: "分割" },
-                { value: "preview", label: "プレビュー" },
+                { value: "edit", label: tr("編集") },
+                { value: "split", label: tr("分割") },
+                { value: "preview", label: tr("プレビュー") },
               ]
         }
         fullWidth={isMobile}

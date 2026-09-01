@@ -39,6 +39,7 @@ import { HelpLabel } from "@/components/ui/HelpLabel";
 import { SearchSelect } from "@/components/ui/SearchSelect";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { FormSection, FormShell } from "@/components/ui/shells";
+import { useTr } from "@/hooks/useTr";
 import { unitOptions } from "@/lib/enum-labels";
 import { fieldHelp } from "@/lib/field-help";
 import { zodResolver } from "@/lib/form";
@@ -113,6 +114,7 @@ export function PurchaseRequestForm({
   /** 入荷先拠点（有効のみ）。value = String(内部 id)。 */
   plantOptions: Option[];
 }) {
+  const tr = useTr();
   const locale = useLocale();
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
@@ -151,7 +153,7 @@ export function PurchaseRequestForm({
           : await createPurchaseRequest(payload);
       if (result.ok) {
         notifications.show({
-          title: "保存しました",
+          title: tr("保存しました"),
           message:
             mode === "edit"
               ? `購買依頼 ${result.data.requestNumber} を更新しました`
@@ -161,7 +163,7 @@ export function PurchaseRequestForm({
         router.push(`${BASE_PATH}/${result.data.requestNumber}`);
       } else {
         notifications.show({
-          title: "エラー",
+          title: tr("エラー"),
           message: result.error,
           color: "red",
         });
@@ -172,9 +174,9 @@ export function PurchaseRequestForm({
   return (
     <FormShell
       breadcrumbs={[
-        "購買",
-        { label: "購買依頼", href: BASE_PATH },
-        mode === "edit" ? "編集" : "新規作成",
+        tr("購買"),
+        { label: tr("購買依頼"), href: BASE_PATH },
+        mode === "edit" ? "編集" : tr("新規作成"),
       ]}
       isDirty={form.isDirty()}
       isPending={isPending}
@@ -193,30 +195,34 @@ export function PurchaseRequestForm({
       title={
         mode === "edit"
           ? `購買依頼 編集 ${requestNumber ?? ""}`
-          : "購買依頼 新規作成"
+          : tr("購買依頼 新規作成")
       }
     >
-      <FormSection title="基本情報">
+      <FormSection title={tr("基本情報")}>
         <Textarea
           autosize
           label={<HelpLabel {...fieldHelp("purchaseRequest", "reason")} />}
           minRows={2}
-          placeholder="依頼理由・用途（任意）"
+          placeholder={tr("依頼理由・用途（任意）")}
           {...form.getInputProps("purpose")}
         />
         <Textarea
           autosize
-          label="備考"
+          label={tr("備考")}
           minRows={2}
           mt="sm"
-          placeholder="備考（任意）"
+          placeholder={tr("備考（任意）")}
           {...form.getInputProps("notes")}
         />
       </FormSection>
 
       <FormSection
-        description="単価・仕入先は持ちません。承認後に発注書へ変換し、発注側で確定します。"
-        title="明細"
+        description={tr(
+          tr(
+            "単価・仕入先は持ちません。承認後に発注書へ変換し、発注側で確定します。",
+          ),
+        )}
+        title={tr("明細")}
       >
         <Group justify="flex-end" mb="xs">
           {typeof form.errors.items === "string" && (
@@ -256,7 +262,7 @@ export function PurchaseRequestForm({
                       );
                     }}
                     onSearch={searchMaterialOptions}
-                    placeholder="素材を検索"
+                    placeholder={tr("素材を検索")}
                     storageKey="material"
                     value={item.materialId || null}
                     withAsterisk
@@ -268,13 +274,13 @@ export function PurchaseRequestForm({
                       <HelpLabel {...fieldHelp("purchaseRequest", "plant")} />
                     }
                     maw={180}
-                    placeholder="拠点を選択"
+                    placeholder={tr("拠点を選択")}
                     {...form.getInputProps(`items.${ri}.plantId`)}
                   />
                   <NumberInput
                     decimalScale={3}
                     error={form.errors[`items.${ri}.quantity`]}
-                    label="数量"
+                    label={tr("数量")}
                     maw={110}
                     min={0}
                     {...form.getInputProps(`items.${ri}.quantity`)}
@@ -282,7 +288,7 @@ export function PurchaseRequestForm({
                   />
                   <Select
                     data={unitOptions(locale)}
-                    label="単位"
+                    label={tr("単位")}
                     maw={90}
                     withAsterisk
                     {...form.getInputProps(`items.${ri}.unit`)}
@@ -290,7 +296,7 @@ export function PurchaseRequestForm({
                 </Group>
               </Box>
               <ActionIcon
-                aria-label="明細を削除"
+                aria-label={tr("明細を削除")}
                 color="red"
                 disabled={form.values.items.length <= 1}
                 mb={4}
@@ -308,14 +314,14 @@ export function PurchaseRequestForm({
                 }
                 leftSection={<IconCalendar size={14} />}
                 maw={200}
-                placeholder="日付を選択"
+                placeholder={tr("日付を選択")}
                 valueFormat="YYYY/MM/DD"
                 {...form.getInputProps(`items.${ri}.desiredAt`)}
               />
               <TextInput
                 flex={1}
-                label="備考"
-                placeholder="行の備考（任意）"
+                label={tr("備考")}
+                placeholder={tr("行の備考（任意）")}
                 {...form.getInputProps(`items.${ri}.notes`)}
               />
             </Group>
@@ -328,7 +334,7 @@ export function PurchaseRequestForm({
           onClick={() => form.insertListItem("items", emptyItem())}
           size="xs"
         >
-          明細を追加
+          {tr("明細を追加")}
         </GhostButton>
       </FormSection>
     </FormShell>

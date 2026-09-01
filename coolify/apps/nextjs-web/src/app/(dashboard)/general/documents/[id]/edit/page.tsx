@@ -3,6 +3,7 @@ import { DocumentEditor } from "@/components/documents/DocumentEditor";
 import { AccessDenied } from "@/components/ui/AccessDenied";
 import { requireAppRead } from "@/lib/authz-page";
 import { fetchPage, pageAccess } from "@/lib/internal-pages";
+import { getTr } from "@/lib/ui-text-server";
 
 export const dynamic = "force-dynamic";
 
@@ -11,6 +12,7 @@ export default async function EditDocumentPage({
 }: {
   params: Promise<{ id: string }>;
 }) {
+  const tr = await getTr();
   const denied = await requireAppRead("internal-pages");
   if (denied) return denied;
 
@@ -23,10 +25,10 @@ export default async function EditDocumentPage({
     return (
       <AccessDenied
         breadcrumbs={[
-          "一般",
-          { label: "社内文書", href: "/general/documents" },
+          tr("一般"),
+          { label: tr("社内文書"), href: "/general/documents" },
         ]}
-        message="この文書を編集する権限がありません。"
+        message={tr("この文書を編集する権限がありません。")}
         title={page.title}
       />
     );

@@ -13,8 +13,10 @@
 import { Group, Text } from "@mantine/core";
 import { IconPrinter } from "@tabler/icons-react";
 import { PrimaryButton } from "@/components/ui/buttons";
+import { useTr } from "@/hooks/useTr";
 
 export function PrintToolbar({ count }: { count: number }) {
+  const tr = useTr();
   return (
     <Group className="wo-strip-toolbar" justify="space-between" mb="md">
       <Text fw={600} size="sm">
@@ -25,7 +27,7 @@ export function PrintToolbar({ count }: { count: number }) {
         leftSection={<IconPrinter size={16} />}
         onClick={() => window.print()}
       >
-        印刷
+        {tr("印刷")}
       </PrimaryButton>
     </Group>
   );

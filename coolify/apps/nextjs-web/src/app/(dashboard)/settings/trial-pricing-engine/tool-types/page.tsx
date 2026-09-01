@@ -1,6 +1,7 @@
 import { IconTool } from "@tabler/icons-react";
 import { MasterDetailPlaceholder } from "@/components/ui/MasterDetailPlaceholder";
 import { requireAppRead } from "@/lib/authz-page";
+import { getTr } from "@/lib/ui-text-server";
 
 export const dynamic = "force-dynamic";
 
@@ -9,12 +10,13 @@ export const dynamic = "force-dynamic";
  * モバイルでは MasterDetailShell が一覧（master）を表示するため、これは出ない。
  */
 export default async function ToolTypesIndexPage() {
+  const tr = await getTr();
   const denied = await requireAppRead("trial-pricing-engine");
   if (denied) return denied;
   return (
     <MasterDetailPlaceholder
       icon={<IconTool size={24} />}
-      message="左の一覧から工具種を選ぶと適用基準を編集できます"
+      message={tr("左の一覧から工具種を選ぶと適用基準を編集できます")}
     />
   );
 }

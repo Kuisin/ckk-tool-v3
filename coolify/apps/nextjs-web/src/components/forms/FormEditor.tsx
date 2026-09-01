@@ -21,6 +21,7 @@ import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { FormActions, FormSection } from "@/components/ui/shells";
+import { useTr } from "@/hooks/useTr";
 import { type FormFieldDef, normalizeOrder } from "@/lib/form-schema";
 import { FormBuilder } from "./FormBuilder";
 
@@ -77,6 +78,7 @@ export function FormEditor({
     fields: FormFieldDef[],
   ) => Promise<{ ok: boolean; error?: string }>;
 }) {
+  const tr = useTr();
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [values, setValues] = useState(initialSettings);
@@ -107,8 +109,8 @@ export function FormEditor({
       const saved = await onSaveSettings(values);
       if (!saved.ok) {
         notifications.show({
-          title: "エラー",
-          message: saved.error ?? "保存に失敗しました",
+          title: tr("エラー"),
+          message: saved.error ?? tr("保存に失敗しました"),
           color: "red",
         });
         return;
@@ -121,18 +123,18 @@ export function FormEditor({
         if (!published.ok) {
           // 設定は保存済み。項目だけ落ちたので、画面はそのまま残して直させる。
           notifications.show({
-            title: "項目を保存できませんでした",
+            title: tr("項目を保存できませんでした"),
             message: `${published.error ?? "項目定義が不正です"}（設定は保存しました）`,
             color: "red",
           });
           return;
         }
         notifications.show({
-          message: "保存しました（項目は新しいバージョンとして公開）",
+          message: tr("保存しました（項目は新しいバージョンとして公開）"),
           color: "green",
         });
       } else {
-        notifications.show({ message: "保存しました", color: "green" });
+        notifications.show({ message: tr("保存しました"), color: "green" });
       }
 
       // 新規作成の直後は、項目を組むために編集画面へ進ませる
@@ -148,38 +150,42 @@ export function FormEditor({
     <Stack gap="md">
       <PageHeader
         breadcrumbs={[
-          { label: "一般" },
-          { label: "フォーム", href: "/general/forms" },
-          { label: mode === "new" ? "新規" : "編集" },
+          { label: tr("一般") },
+          { label: tr("フォーム"), href: "/general/forms" },
+          { label: mode === "new" ? "新規" : tr("編集") },
         ]}
-        title={mode === "new" ? "フォームを作る" : "フォームを編集"}
+        title={mode === "new" ? "フォームを作る" : tr("フォームを編集")}
       />
 
-      <FormSection title="基本設定">
+      <FormSection title={tr("基本設定")}>
         <TextInput
-          label="タイトル"
+          label={tr("タイトル")}
           onChange={(e) => set({ title: e.currentTarget.value })}
-          placeholder="商談メモ"
+          placeholder={tr("商談メモ")}
           value={values.title}
           withAsterisk
         />
         <Textarea
           autosize
-          description="回答画面の先頭に出る説明。匿名で集計する場合はその旨もここに書く"
-          label="説明"
+          description={tr(
+            tr(
+              "回答画面の先頭に出る説明。匿名で集計する場合はその旨もここに書く",
+            ),
+          )}
+          label={tr("説明")}
           minRows={2}
           onChange={(e) => set({ description: e.currentTarget.value })}
           value={values.description}
         />
         <Select
           data={[
-            { value: "SURVEY", label: "アンケート（回答を集める）" },
+            { value: "SURVEY", label: tr("アンケート（回答を集める）") },
             {
               value: "REQUEST",
-              label: "申請・報告（承認ステップを付けられる）",
+              label: tr("申請・報告（承認ステップを付けられる）"),
             },
           ]}
-          label="種類"
+          label={tr("種類")}
           onChange={(v) =>
             set({
               kind: (v as "SURVEY" | "REQUEST") ?? "SURVEY",
@@ -190,11 +196,15 @@ export function FormEditor({
         />
         <Select
           data={[
-            { value: "SHOWN", label: "回答者を表示する" },
-            { value: "HIDDEN", label: "回答者を表示しない（匿名で集計）" },
+            { value: "SHOWN", label: tr("回答者を表示する") },
+            { value: "HIDDEN", label: tr("回答者を表示しない（匿名で集計）") },
           ]}
-          description="「表示しない」でも回答者はシステムに記録されます（本人の編集と操作履歴のため）。完全な匿名ではありません"
-          label="回答者の表示"
+          description={tr(
+            tr(
+              "「表示しない」でも回答者はシステムに記録されます（本人の編集と操作履歴のため）。完全な匿名ではありません",
+            ),
+          )}
+          label={tr("回答者の表示")}
           onChange={(v) =>
             set({ respondentVisibility: (v as "SHOWN" | "HIDDEN") ?? "SHOWN" })
           }
@@ -203,16 +213,24 @@ export function FormEditor({
         {values.kind === "REQUEST" && (
           <Checkbox
             checked={values.approvalEnabled}
-            description="承認の段と承認グループは、このフォームの「承認」タブで決めます"
-            label="承認フローを使う"
+            description={tr(
+              tr(
+                "承認の段と承認グループは、このフォームの「承認」タブで決めます",
+              ),
+            )}
+            label={tr("承認フローを使う")}
             onChange={(e) => set({ approvalEnabled: e.currentTarget.checked })}
           />
         )}
         {values.kind === "REQUEST" && values.approvalEnabled && (
           <Checkbox
             checked={values.editableUntilFirstApproval}
-            description="承認者が「ここを直して」と言う場面のための設定。1 人でも承認したら締まります（差し戻しは設定に関係なく直せます）"
-            label="承認依頼中でも、最初の承認が下りるまでは回答者が直せる"
+            description={tr(
+              tr(
+                "承認者が「ここを直して」と言う場面のための設定。1 人でも承認したら締まります（差し戻しは設定に関係なく直せます）",
+              ),
+            )}
+            label={tr("承認依頼中でも、最初の承認が下りるまでは回答者が直せる")}
             ml="md"
             onChange={(e) =>
               set({ editableUntilFirstApproval: e.currentTarget.checked })
@@ -221,43 +239,46 @@ export function FormEditor({
         )}
         {values.kind === "REQUEST" && (
           <Text c="dimmed" size="xs">
-            完了（承認フローを使うなら全段の承認、使わないなら提出）したときの
-            通知先は、「共有」タブで共有先ごとに「完了通知」を付けて決めます。
-            通知を受け取った人は、承認・予定 (CM01) の「完了した申請」でも
-            一覧を見られます。
+            {tr(
+              tr(
+                "完了（承認フローを使うなら全段の承認、使わないなら提出）したときの\n            通知先は、「共有」タブで共有先ごとに「完了通知」を付けて決めます。\n            通知を受け取った人は、承認・予定 (CM01) の「完了した申請」でも\n            一覧を見られます。",
+              ),
+            )}
           </Text>
         )}
         <Checkbox
           checked={!values.allowMultiple}
-          label="1 人 1 回だけ回答できるようにする"
+          label={tr("1 人 1 回だけ回答できるようにする")}
           onChange={(e) => set({ allowMultiple: !e.currentTarget.checked })}
         />
       </FormSection>
 
-      <FormSection title="受付期間">
+      <FormSection title={tr("受付期間")}>
         <DateTimePicker
           clearable
-          description="空なら公開した時点から受け付けます"
-          label="受付開始"
+          description={tr("空なら公開した時点から受け付けます")}
+          label={tr("受付開始")}
           onChange={(v) => set({ opensAt: toIso(v) })}
           value={values.opensAt ? new Date(values.opensAt) : null}
           valueFormat="YYYY/MM/DD HH:mm"
         />
         <DateTimePicker
           clearable
-          description="この時刻を過ぎると自動で受付を終了します（操作は不要）"
-          label="受付終了"
+          description={tr(
+            tr("この時刻を過ぎると自動で受付を終了します（操作は不要）"),
+          )}
+          label={tr("受付終了")}
           onChange={(v) => set({ closesAt: toIso(v) })}
           value={values.closesAt ? new Date(values.closesAt) : null}
           valueFormat="YYYY/MM/DD HH:mm"
         />
         <Select
           data={[
-            { value: "NONE", label: "編集できない（提出したら確定）" },
-            { value: "UNTIL_CLOSE", label: "受付終了まで編集できる" },
-            { value: "UNTIL_DATE", label: "指定した日時まで編集できる" },
+            { value: "NONE", label: tr("編集できない（提出したら確定）") },
+            { value: "UNTIL_CLOSE", label: tr("受付終了まで編集できる") },
+            { value: "UNTIL_DATE", label: tr("指定した日時まで編集できる") },
           ]}
-          label="回答者による編集"
+          label={tr("回答者による編集")}
           onChange={(v) =>
             set({
               responseEditMode:
@@ -269,7 +290,7 @@ export function FormEditor({
         {values.responseEditMode === "UNTIL_DATE" && (
           <DateTimePicker
             clearable
-            label="編集期限"
+            label={tr("編集期限")}
             onChange={(v) => set({ responseEditableUntil: toIso(v) })}
             value={
               values.responseEditableUntil
@@ -283,16 +304,18 @@ export function FormEditor({
       </FormSection>
 
       {mode === "edit" && onPublishFields && (
-        <FormSection title="項目">
+        <FormSection title={tr("項目")}>
           <Text c="dimmed" size="sm">
-            下の「保存」で、設定と一緒に保存されます。項目に手を入れた場合は
-            新しいバージョンとして公開され、これまでの回答は回答した時点の
-            項目のまま残ります。
+            {tr(
+              tr(
+                "下の「保存」で、設定と一緒に保存されます。項目に手を入れた場合は\n            新しいバージョンとして公開され、これまでの回答は回答した時点の\n            項目のまま残ります。",
+              ),
+            )}
           </Text>
           <FormBuilder fields={fields} onChange={setFields} />
           {fieldsDirty && (
             <Text c="orange" size="xs">
-              項目に未保存の変更があります。
+              {tr("項目に未保存の変更があります。")}
             </Text>
           )}
         </FormSection>

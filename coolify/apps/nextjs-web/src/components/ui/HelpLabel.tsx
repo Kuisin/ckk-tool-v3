@@ -17,6 +17,7 @@
 import { Anchor, HoverCard, Text, ThemeIcon, Tooltip } from "@mantine/core";
 import { IconExternalLink, IconHelp } from "@tabler/icons-react";
 import type { ReactNode } from "react";
+import { useTr } from "@/hooks/useTr";
 
 function HelpIcon({ label }: { label: ReactNode }) {
   return (
@@ -50,6 +51,7 @@ export function HelpLabel({
    */
   manual?: string;
 }) {
+  const tr = useTr();
   return (
     <Text
       component="span"
@@ -87,7 +89,7 @@ export function HelpLabel({
               style={{ display: "inline-flex", alignItems: "center", gap: 4 }}
               target="_blank"
             >
-              もっと読む
+              {tr("もっと読む")}
               <IconExternalLink size={11} />
             </Anchor>
           </HoverCard.Dropdown>

@@ -25,6 +25,7 @@ import {
   toStepSnapshots,
 } from "@/components/production/ProcessListEditor";
 import { FormSection, FormShell } from "@/components/ui/shells";
+import { useTr } from "@/hooks/useTr";
 import { useIsMobile } from "@/hooks/useViewport";
 import type { RouteStepSnapshot } from "@/lib/product-routes-core";
 import type { CatalogStep, UseDep } from "@/lib/workflow-core";
@@ -64,6 +65,7 @@ export function RouteEditorForm({
   /** create 時のみ: 対象顧客の選択肢（未指定 = 汎用のみ）。 */
   customerOptions?: Option[];
 }) {
+  const tr = useTr();
   const router = useRouter();
   const isMobile = useIsMobile();
   const [isPending, startTransition] = useTransition();
@@ -124,17 +126,17 @@ export function RouteEditorForm({
     setNameError(null);
     setStepsError(null);
     if (mode === "create" && !nameJa.trim()) {
-      setNameError("ルート名（日本語）を入力してください");
+      setNameError(tr("ルート名（日本語）を入力してください"));
       return;
     }
     if (selected.length === 0) {
-      setStepsError("工程を1つ以上選択してください");
+      setStepsError(tr("工程を1つ以上選択してください"));
       return;
     }
     if (blockers.length > 0) {
       notifications.show({
-        title: "工程構成にエラーがあります",
-        message: "赤色の警告を解消してから保存してください",
+        title: tr("工程構成にエラーがあります"),
+        message: tr("赤色の警告を解消してから保存してください"),
         color: "red",
       });
       return;
@@ -165,17 +167,17 @@ export function RouteEditorForm({
             });
       if (result.ok) {
         notifications.show({
-          title: "保存しました",
+          title: tr("保存しました"),
           message:
             mode === "create"
-              ? "工程ルートを作成しました（v1）"
-              : "新バージョンを作成しました",
+              ? tr("工程ルートを作成しました（v1）")
+              : tr("新バージョンを作成しました"),
           color: "green",
         });
         router.push(backPath);
       } else {
         notifications.show({
-          title: "エラー",
+          title: tr("エラー"),
           message: result.error,
           color: "red",
         });
@@ -186,10 +188,10 @@ export function RouteEditorForm({
   return (
     <FormShell
       breadcrumbs={[
-        "マスタ",
+        tr("マスタ"),
         { label: "製品", href: "/master/products" },
         { label: productLabel, href: backPath },
-        mode === "create" ? "工程ルート新規作成" : "新バージョン作成",
+        mode === "create" ? "工程ルート新規作成" : tr("新バージョン作成"),
       ]}
       isDirty={selected.length > 0 || !!nameJa}
       isPending={isPending}
@@ -197,48 +199,56 @@ export function RouteEditorForm({
       onSubmit={handleSubmit}
       title={
         mode === "create"
-          ? "工程ルート 新規作成"
+          ? tr("工程ルート 新規作成")
           : `工程ルート「${routeName}」新バージョン作成（v${(latestVersion ?? 0) + 1}）`
       }
     >
-      <FormSection required title="基本情報">
+      <FormSection required title={tr("基本情報")}>
         <SimpleGrid cols={isMobile ? 1 : 2} spacing="sm">
           {mode === "create" ? (
             <>
               <TextInput
                 error={nameError}
-                label="ルート名（日本語）"
+                label={tr("ルート名（日本語）")}
                 onChange={(e2) => setNameJa(e2.currentTarget.value)}
-                placeholder="例: 標準工程"
+                placeholder={tr("例: 標準工程")}
                 value={nameJa}
                 withAsterisk
               />
               <TextInput
-                label="ルート名（英語）"
+                label={tr("ルート名（英語）")}
                 onChange={(e2) => setNameEn(e2.currentTarget.value)}
                 value={nameEn}
               />
               <Select
                 clearable
                 data={customerOptions ?? []}
-                description="指定すると同じ顧客×製品の指示書で優先選択されます（空 = 汎用）"
-                label="対象顧客"
+                description={tr(
+                  tr(
+                    "指定すると同じ顧客×製品の指示書で優先選択されます（空 = 汎用）",
+                  ),
+                )}
+                label={tr("対象顧客")}
                 onChange={setCustomerBpId}
-                placeholder="汎用（全顧客）"
+                placeholder={tr("汎用（全顧客）")}
                 searchable
                 value={customerBpId}
               />
             </>
           ) : (
-            <TextInput disabled label="ルート名" value={routeName ?? ""} />
+            <TextInput
+              disabled
+              label={tr("ルート名")}
+              value={routeName ?? ""}
+            />
           )}
           <TextInput
             description={
               mode === "new-version"
-                ? "変更内容のメモ（バージョン履歴に表示）"
+                ? tr("変更内容のメモ（バージョン履歴に表示）")
                 : undefined
             }
-            label="備考"
+            label={tr("備考")}
             onChange={(e2) => setNotes(e2.currentTarget.value)}
             value={notes}
           />

@@ -22,6 +22,7 @@ import type { Editor } from "@tiptap/react";
 import { useEditor } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import { useState } from "react";
+import { useTr } from "@/hooks/useTr";
 import { emptyDoc, type RichTextDoc } from "@/lib/rich-text-core";
 import { DocumentLinkModal } from "./DocumentLinkModal";
 import type { DocumentHit } from "./document-link-types";
@@ -62,10 +63,11 @@ export function RichTextEditorField({
   placeholder?: string;
   minHeight?: number;
 }) {
+  const tr = useTr();
   // React Compiler（next.config.ts の reactCompiler: true）は useEditor が返す
   // 可変のエディタインスタンスをメモ化して壊す。tiptap 公式の回避策どおり
   // このコンポーネントだけコンパイラの対象から外す。
-  "use no memo";
+  ("use no memo");
 
   const editor = useEditor({
     // App Router の SSR ではハイドレーション不一致を避けるため必須。
@@ -118,9 +120,9 @@ export function RichTextEditorField({
           <RichTextEditor.Link />
           <RichTextEditor.Unlink />
           {/* 文書リンク — 他の業務文書の詳細ページへのアプリ内リンクを挿す。 */}
-          <Tooltip label="文書リンク" withArrow>
+          <Tooltip label={tr("文書リンク")} withArrow>
             <RichTextEditor.Control
-              aria-label="文書リンク"
+              aria-label={tr("文書リンク")}
               onClick={() => setDocPickerOpen(true)}
             >
               <IconFileSymlink size={16} stroke={1.5} />

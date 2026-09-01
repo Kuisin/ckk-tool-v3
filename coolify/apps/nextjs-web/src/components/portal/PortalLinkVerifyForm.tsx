@@ -7,8 +7,10 @@ import {
   requestLinkOtp,
   verifyLinkOtp,
 } from "@/app/(portal)/portal/d/[token]/actions";
+import { useTr } from "@/hooks/useTr";
 
 export function PortalLinkVerifyForm({ token }: { token: string }) {
+  const tr = useTr();
   const router = useRouter();
   const [pending, start] = useTransition();
   const [sent, setSent] = useState(false);
@@ -60,20 +62,20 @@ export function PortalLinkVerifyForm({ token }: { token: string }) {
 
       {!sent ? (
         <Button fullWidth loading={pending} onClick={send}>
-          確認コードを送る
+          {tr("確認コードを送る")}
         </Button>
       ) : (
         <>
           <TextInput
             autoComplete="one-time-code"
             autoFocus
-            label="確認コード"
+            label={tr("確認コード")}
             onChange={(e) => setCode(e.currentTarget.value)}
             placeholder="ABCD-EFGH"
             value={code}
           />
           <Button fullWidth loading={pending} onClick={verify}>
-            書類を開く
+            {tr("書類を開く")}
           </Button>
         </>
       )}

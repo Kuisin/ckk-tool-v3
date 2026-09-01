@@ -29,9 +29,9 @@
  * 約束（`src/i18n/request.ts`）をそのまま引き継ぐ。
  */
 
+import type { Locale } from "./i18n";
 import { en } from "./ui-dictionary/en";
 import { zh } from "./ui-dictionary/zh";
-import type { Locale } from "./i18n";
 
 /** ja を鍵にした対訳表。ja は恒等なので表を持たない。 */
 const DICTIONARIES: Record<Exclude<Locale, "ja">, Record<string, string>> = {

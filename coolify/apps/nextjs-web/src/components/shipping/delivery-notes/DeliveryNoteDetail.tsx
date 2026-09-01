@@ -59,6 +59,7 @@ import {
   ResourceActions,
   SummaryGrid,
 } from "@/components/ui/shells";
+import { useTr } from "@/hooks/useTr";
 import { useTabParam } from "@/hooks/useUrlState";
 import { downloadFile } from "@/lib/download";
 import { formatMoney } from "@/lib/format";
@@ -82,6 +83,7 @@ export function DeliveryNoteDetail({
   /** この納品書を請求した請求書（手続き状況の「次の書類へ」）。 */
   invoices?: InvoiceLink[];
 }) {
+  const tr = useTr();
   const fmt = useFormat();
   const router = useRouter();
   // アクティブタブを ?tab= に保持（URL 共有でタブまで再現）
@@ -104,20 +106,22 @@ export function DeliveryNoteDetail({
   const stages: ProcedureStage[] = [
     {
       key: "draft",
-      label: "下書き",
+      label: tr("下書き"),
       description: fmt.date(note.createdAt),
       loading: note.status === "DRAFT",
     },
     {
       key: "issued",
-      label: "発行",
-      description: note.status === "DRAFT" ? "PDF を発行" : "発行済",
+      label: tr("発行"),
+      description: note.status === "DRAFT" ? "PDF を発行" : tr("発行済"),
       loading: note.status === "ISSUED",
     },
     {
       key: "delivered",
-      label: "納品済",
-      description: note.deliveredAt ? fmt.date(note.deliveredAt) : "納品の確認",
+      label: tr("納品済"),
+      description: note.deliveredAt
+        ? fmt.date(note.deliveredAt)
+        : tr("納品の確認"),
     },
   ];
   const active = note.status === "DRAFT" ? 0 : note.status === "ISSUED" ? 1 : 3;
@@ -126,20 +130,20 @@ export function DeliveryNoteDetail({
   const sourceGroups: HandoffGroup[] = [
     {
       key: "delivery-order",
-      title: "出荷書",
+      title: tr("出荷書"),
       items: [
         {
           key: note.deliveryOrderNumber,
           label: note.deliveryOrderNumber,
           href: `/shipping/delivery-orders/${note.deliveryOrderNumber}`,
-          note: "この納品書の出荷元",
+          note: tr("この納品書の出荷元"),
         },
       ],
       emptyNote: "—",
     },
     {
       key: "order-lines",
-      title: "注文明細",
+      title: tr("注文明細"),
       summary:
         note.orderLineNumbers.length > 0
           ? `${note.orderLineNumbers.length} 件`
@@ -149,7 +153,7 @@ export function DeliveryNoteDetail({
         label: n,
         href: `/sales/order-lines/${n}`,
       })),
-      emptyNote: "—（在庫保管など、注文明細に紐づかない出荷）",
+      emptyNote: tr("—（在庫保管など、注文明細に紐づかない出荷）"),
     },
   ];
 
@@ -157,7 +161,7 @@ export function DeliveryNoteDetail({
   const handoffGroups: HandoffGroup[] = [
     {
       key: "invoices",
-      title: "請求書",
+      title: tr("請求書"),
       items: invoices.map((inv) => ({
         key: inv.number,
         label: inv.number,
@@ -167,8 +171,8 @@ export function DeliveryNoteDetail({
       })),
       emptyNote:
         note.status === "DELIVERED"
-          ? "未請求（締日処理で請求書を作成します）"
-          : "未請求（納品後に締日処理で請求します）",
+          ? tr("未請求（締日処理で請求書を作成します）")
+          : tr("未請求（納品後に締日処理で請求します）"),
     },
   ];
 
@@ -183,14 +187,14 @@ export function DeliveryNoteDetail({
       });
       setPdfNonce((n) => n + 1);
       notifications.show({
-        title: "再生成しました",
-        message: "PDF を再生成・保存しました",
+        title: tr("再生成しました"),
+        message: tr("PDF を再生成・保存しました"),
         color: "green",
       });
     } catch {
       notifications.show({
-        title: "エラー",
-        message: "PDF の再生成に失敗しました",
+        title: tr("エラー"),
+        message: tr("PDF の再生成に失敗しました"),
         color: "red",
       });
     }
@@ -212,7 +216,7 @@ export function DeliveryNoteDetail({
         router.refresh();
       } else {
         notifications.show({
-          title: "エラー",
+          title: tr("エラー"),
           message: result.error,
           color: "red",
         });
@@ -228,7 +232,7 @@ export function DeliveryNoteDetail({
             ...(note.status === "DRAFT"
               ? [
                   {
-                    label: "発行",
+                    label: tr("発行"),
                     icon: <IconCheck size={14} />,
                     onClick: () => setIssueOpen(true),
                   },
@@ -237,7 +241,7 @@ export function DeliveryNoteDetail({
             ...(note.status === "ISSUED"
               ? [
                   {
-                    label: "納品済みにする",
+                    label: tr("納品済みにする"),
                     icon: <IconTruckDelivery size={14} />,
                     onClick: () => setDeliverOpen(true),
                   },
@@ -247,7 +251,7 @@ export function DeliveryNoteDetail({
             ...(canViewPdf
               ? [
                   {
-                    label: "PDFをダウンロード",
+                    label: tr("PDFをダウンロード"),
                     icon: <IconDownload size={14} />,
                     onClick: () =>
                       void downloadFile(pdfUrl("&download=1"), pdfFilename),
@@ -263,7 +267,11 @@ export function DeliveryNoteDetail({
           pdf={canViewPdf ? { href: pdfUrl() } : undefined}
         />
       }
-      breadcrumbs={["出荷", { label: "納品書", href: BASE_PATH }, "詳細"]}
+      breadcrumbs={[
+        tr("出荷"),
+        { label: tr("納品書"), href: BASE_PATH },
+        "詳細",
+      ]}
       createdAt={fmt.dateTime(note.createdAt)}
       status={<StatusBadge entity="DeliveryNote" status={note.status} />}
       title={note.deliveryNumber}
@@ -271,11 +279,11 @@ export function DeliveryNoteDetail({
     >
       <SummaryGrid>
         <FieldValue
-          label="納品番号"
+          label={tr("納品番号")}
           value={<DocNumber>{note.deliveryNumber}</DocNumber>}
         />
         <FieldValue
-          label="出荷書番号"
+          label={tr("出荷書番号")}
           value={
             <Anchor
               onClick={() =>
@@ -290,7 +298,7 @@ export function DeliveryNoteDetail({
           }
         />
         <FieldValue
-          label="注文明細番号"
+          label={tr("注文明細番号")}
           value={
             note.orderLineNumbers.length > 0 ? (
               <Stack gap={2}>
@@ -302,7 +310,7 @@ export function DeliveryNoteDetail({
           }
         />
         <FieldValue
-          label="納品先"
+          label={tr("納品先")}
           value={
             note.recipientBranchName
               ? `${note.recipientName} / ${note.recipientBranchName}`
@@ -310,30 +318,30 @@ export function DeliveryNoteDetail({
           }
         />
         <FieldValue
-          label="届け先（最終需要家）"
+          label={tr("届け先（最終需要家）")}
           value={
             note.deliveryMethod === "DIRECT_TO_USER"
               ? (note.endUserName ?? "—")
               : "—"
           }
         />
-        <FieldValue label="営業担当" value={note.salesRepName} />
-        <FieldValue label="作成者" value={note.createdByName} />
+        <FieldValue label={tr("営業担当")} value={note.salesRepName} />
+        <FieldValue label={tr("作成者")} value={note.createdByName} />
         <FieldValue
-          label="納品方法"
+          label={tr("納品方法")}
           value={<DeliveryMethodBadge method={note.deliveryMethod} />}
         />
         <FieldValue
-          label="価格記載"
+          label={tr("価格記載")}
           value={
             <Badge color={note.includePrice ? "green" : "gray"} variant="light">
-              {note.includePrice ? "あり" : "なし"}
+              {note.includePrice ? "あり" : tr("なし")}
             </Badge>
           }
         />
-        <FieldValue label="納品日" value={fmt.date(note.deliveredAt)} />
+        <FieldValue label={tr("納品日")} value={fmt.date(note.deliveredAt)} />
         <FieldValue
-          label="合計金額"
+          label={tr("合計金額")}
           value={
             note.includePrice ? (
               <MoneyText ta="left" value={note.totalAmount} />
@@ -360,14 +368,14 @@ export function DeliveryNoteDetail({
             <Table.Thead>
               <Table.Tr>
                 <Table.Th>製品</Table.Th>
-                <Table.Th ta="right">数量</Table.Th>
+                <Table.Th ta="right">{tr("数量")}</Table.Th>
                 {note.includePrice && (
                   <>
-                    <Table.Th ta="right">単価</Table.Th>
-                    <Table.Th ta="right">金額</Table.Th>
+                    <Table.Th ta="right">{tr("単価")}</Table.Th>
+                    <Table.Th ta="right">{tr("金額")}</Table.Th>
                   </>
                 )}
-                <Table.Th>備考</Table.Th>
+                <Table.Th>{tr("備考")}</Table.Th>
               </Table.Tr>
             </Table.Thead>
             <Table.Tbody>
@@ -398,7 +406,7 @@ export function DeliveryNoteDetail({
             {note.includePrice && (
               <Table.Tfoot>
                 <Table.Tr>
-                  <Table.Td fw={700}>合計</Table.Td>
+                  <Table.Td fw={700}>{tr("合計")}</Table.Td>
                   <Table.Td className="tabular-nums" fw={700} ta="right">
                     {note.totalQuantity}
                   </Table.Td>
@@ -416,16 +424,16 @@ export function DeliveryNoteDetail({
 
       <AppTabs onChange={setTab} value={tab}>
         <Tabs.List>
-          <Tabs.Tab value="overview">概要</Tabs.Tab>
+          <Tabs.Tab value="overview">{tr("概要")}</Tabs.Tab>
           <Tabs.Tab value="pdf">PDF</Tabs.Tab>
-          <Tabs.Tab value="history">履歴</Tabs.Tab>
+          <Tabs.Tab value="history">{tr("履歴")}</Tabs.Tab>
         </Tabs.List>
 
         <Tabs.Panel pt="md" value="overview">
           <Stack gap="md">
             <div>
               <Text c="dimmed" mb={4} size="xs">
-                備考
+                {tr("備考")}
               </Text>
               <Text size="sm" style={{ whiteSpace: "pre-wrap" }}>
                 {note.notes || "—"}
@@ -444,11 +452,11 @@ export function DeliveryNoteDetail({
                   leftSection={<IconCheck size={14} />}
                   onClick={() => setIssueOpen(true)}
                 >
-                  発行
+                  {tr("発行")}
                 </PrimaryButton>
               ) : undefined
             }
-            emptyMessage="発行後に PDF を閲覧できます。"
+            emptyMessage={tr("発行後に PDF を閲覧できます。")}
             file={pdfFile}
             filename={pdfFilename}
             onRegenerate={regenerate}
@@ -463,35 +471,35 @@ export function DeliveryNoteDetail({
 
       <ConfirmModal
         confirmColor="blue"
-        confirmLabel="発行"
+        confirmLabel={tr("発行")}
         loading={isPending}
         message={`納品書 ${note.deliveryNumber} を発行します。発行後は編集できません。`}
         onClose={() => setIssueOpen(false)}
         onConfirm={() =>
           run(
             () => issueDeliveryNote(note.deliveryNumber),
-            "発行しました",
+            tr("発行しました"),
             `納品書 ${note.deliveryNumber} を発行しました`,
           )
         }
         opened={issueOpen}
-        title="発行の確認"
+        title={tr("発行の確認")}
       />
       <ConfirmModal
         confirmColor="blue"
-        confirmLabel="納品済みにする"
+        confirmLabel={tr("納品済みにする")}
         loading={isPending}
         message={`納品書 ${note.deliveryNumber} を納品済みにします。納品日は本日で記録されます。`}
         onClose={() => setDeliverOpen(false)}
         onConfirm={() =>
           run(
             () => markDelivered(note.deliveryNumber),
-            "納品済みにしました",
+            tr("納品済みにしました"),
             `納品書 ${note.deliveryNumber} を納品済みにしました`,
           )
         }
         opened={deliverOpen}
-        title="納品の確認"
+        title={tr("納品の確認")}
       />
     </DetailShell>
   );

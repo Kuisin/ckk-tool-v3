@@ -97,6 +97,41 @@ function isFunctionBody(masked, open) {
 }
 
 /**
+ * その関数本体が `async` の関数のものか。
+ *
+ * サーバー側の入口は `const tr = await getTr()` なので、**async でない関数には
+ * 入れられない**（構文エラーになる）。引数リストの手前まで戻って `async` を探す。
+ */
+function isAsyncBody(masked, open) {
+  const head = masked.slice(Math.max(0, open - 600), open);
+  const paren = head.lastIndexOf("(");
+  if (paren < 0) return /\basync\s*$/.test(head);
+  return /\basync\b[^()]*$/.test(head.slice(0, paren));
+}
+
+/**
+ * その関数本体が **React コンポーネント（または自前フック）** のものか。
+ *
+ * モジュール直下にあっても、`notifyResult(...)` や `label(t)` のような
+ * ただの補助関数はコンポーネントではない。そこへ `useTr()` を入れると
+ * 「フックをコンポーネント以外から呼ぶ」ことになり実行時に壊れる
+ * （実際に 3 ファイルでやってしまい、Biome の useHookAtTopLevel が拾った）。
+ *
+ * 判定は React の慣習どおり **名前が大文字で始まる / `use` で始まる**。
+ * 弾かれた関数は `tr` を引数で受ける形に人が直す（lib/format.ts の
+ * Formatters と同じ約束）。
+ */
+function isComponentLike(masked, open) {
+  const head = masked.slice(Math.max(0, open - 600), open);
+  const m = head.match(
+    /(?:function\s+|const\s+|let\s+|var\s+)([A-Za-z_$][\w$]*)\s*[=(][^=]*$/,
+  );
+  const name = m?.[1];
+  if (!name) return true; // 名前が読めないときは既定どおり入れる（型検査が拾う）
+  return /^[A-Z]/.test(name) || /^use[A-Z]/.test(name);
+}
+
+/**
  * 置換位置を含む、**モジュール直下**の関数本体を探す。
  * 見つからなければ null（= コンポーネントの外なので包まない）。
  */
@@ -130,7 +165,7 @@ function isKey(source, end) {
  * 返り値 `{ code, changed, needsHook }` — `needsHook` は
  * `const tr = ...` を足すべき関数本体の開き位置の集合（呼び出し側が使う）。
  */
-export function transform(source, dict) {
+export function transform(source, dict, { accessor, requireAsync = false } = {}) {
   const edits = [];
   const masked = maskLiterals(source);
   const pairs = bracePairs(masked);
@@ -140,7 +175,7 @@ export function transform(source, dict) {
     if (t.quote === "`") continue; // テンプレートは ICU 行き
     if (!JAPANESE.test(t.value)) continue;
     if (!Object.hasOwn(dict, t.value)) continue;
-    const end = t.start + t.value.length + 2; // 引用符ぶん
+    const end = t.end; // tokenize が記録したソース上の終端（エスケープに強い）
     if (isKey(source, end)) continue;
     if (isModuleSpecifier(source, t.start)) continue;
     // すでに tr("…") になっている
@@ -196,6 +231,16 @@ export function transform(source, dict) {
       outside++;
       continue;
     }
+    // コンポーネントでない素の関数にフックは置けない。
+    if (!requireAsync && !isComponentLike(masked, body)) {
+      outside++;
+      continue;
+    }
+    // サーバー側は async でない関数に `await getTr()` を置けない。
+    if (requireAsync && !isAsyncBody(masked, body)) {
+      outside++;
+      continue;
+    }
     bodies.add(body);
     inside.push(e);
   }
@@ -213,7 +258,7 @@ export function transform(source, dict) {
     edits.push({
       start: open + 1,
       end: open + 1,
-      text: "\n  const tr = useTr();",
+      text: `\n  ${accessor ?? "const tr = useTr();"}`,
       pos: open,
     });
   }

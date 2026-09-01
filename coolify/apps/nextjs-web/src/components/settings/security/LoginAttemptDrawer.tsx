@@ -26,6 +26,7 @@ import { useEffect, useState } from "react";
 import { fetchLoginAttemptDetail } from "@/app/(dashboard)/settings/login-history/actions";
 import { useFormat } from "@/components/layout/PreferencesProvider";
 import { FieldValue } from "@/components/ui/FieldValue";
+import { useTr } from "@/hooks/useTr";
 import { loginMethodLabel, loginReasonLabel } from "@/lib/login-attempt-core";
 import type { LoginAttemptDetail } from "@/lib/login-attempts";
 import { OwnershipBadge } from "./ownership";
@@ -65,6 +66,7 @@ export function LoginAttemptDrawer({
   id: string | null;
   onClose: () => void;
 }) {
+  const tr = useTr();
   const fmt = useFormat();
   const [row, setRow] = useState<LoginAttemptDetail | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -98,7 +100,7 @@ export function LoginAttemptDrawer({
       padding="md"
       position="right"
       size="lg"
-      title="ログイン記録"
+      title={tr("ログイン記録")}
     >
       {!row && !error && (
         <Group justify="center" py="xl">
@@ -106,7 +108,7 @@ export function LoginAttemptDrawer({
         </Group>
       )}
       {error && (
-        <Alert color="red" title="読み込めませんでした">
+        <Alert color="red" title={tr("読み込めませんでした")}>
           {error}
         </Alert>
       )}
@@ -116,7 +118,7 @@ export function LoginAttemptDrawer({
             <Alert
               color="orange"
               icon={<IconAlertTriangle size={16} />}
-              title="注意すべき兆候"
+              title={tr("注意すべき兆候")}
             >
               <Stack gap={2}>
                 {flags.map((f) => (
@@ -133,7 +135,7 @@ export function LoginAttemptDrawer({
               color={row.outcome === "SUCCESS" ? "green" : "red"}
               variant="light"
             >
-              {row.outcome === "SUCCESS" ? "成功" : "失敗"}
+              {row.outcome === "SUCCESS" ? "成功" : tr("失敗")}
             </Badge>
             <Badge color="gray" variant="light">
               {row.app === "KIOSK" ? "共有端末" : "Web"}
@@ -146,56 +148,62 @@ export function LoginAttemptDrawer({
           </Group>
 
           <Stack gap="xs">
-            <FieldValue label="日時" value={fmt.dateTime(row.createdAt)} />
-            <FieldValue label="方式" value={loginMethodLabel(row.method)} />
             <FieldValue
-              label="理由"
+              label={tr("日時")}
+              value={fmt.dateTime(row.createdAt)}
+            />
+            <FieldValue
+              label={tr("方式")}
+              value={loginMethodLabel(row.method)}
+            />
+            <FieldValue
+              label={tr("理由")}
               value={
                 row.outcome === "FAILURE" ? loginReasonLabel(row.reason) : "—"
               }
             />
             <FieldValue
-              label="ユーザー"
+              label={tr("ユーザー")}
               value={
                 row.userName
                   ? `${row.userName}${row.userUsername ? `（${row.userUsername}）` : ""}`
-                  : "解決できず（入力値は保存していません）"
+                  : tr("解決できず（入力値は保存していません）")
               }
             />
             {row.identifierRef && !row.userId && (
               <FieldValue
-                label="入力の相関キー"
+                label={tr("入力の相関キー")}
                 value={<Code>{row.identifierRef.slice(0, 16)}…</Code>}
               />
             )}
-            <FieldValue label="送信元 IP" value={row.ipAddress ?? "—"} />
+            <FieldValue label={tr("送信元 IP")} value={row.ipAddress ?? "—"} />
             {row.ipChain && (
               <FieldValue
-                label="プロキシチェーン"
+                label={tr("プロキシチェーン")}
                 value={<Code>{row.ipChain}</Code>}
               />
             )}
             <FieldValue
-              label="判定理由"
+              label={tr("判定理由")}
               value={<Code>{row.ownershipSource ?? "—"}</Code>}
             />
             <FieldValue
-              label="端末シグネチャ"
+              label={tr("端末シグネチャ")}
               value={
                 row.fingerprint ? (
                   <Code>{row.fingerprint}</Code>
                 ) : (
                   // IdP 起点の SSO はログイン画面を通らないので付かない。異常ではない
-                  "—（この経路では収集されません）"
+                  tr("—（この経路では収集されません）")
                 )
               }
             />
             {row.kioskDeviceName && (
-              <FieldValue label="共有端末" value={row.kioskDeviceName} />
+              <FieldValue label={tr("共有端末")} value={row.kioskDeviceName} />
             )}
             {row.scanKind && (
               <FieldValue
-                label="読み取り種別"
+                label={tr("読み取り種別")}
                 value={`${row.scanKind}（内容は保存していません）`}
               />
             )}

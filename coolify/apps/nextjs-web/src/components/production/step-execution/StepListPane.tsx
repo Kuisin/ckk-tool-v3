@@ -12,6 +12,7 @@ import { Badge, Group, Stack, Text, ThemeIcon } from "@mantine/core";
 import { IconCheck, IconClock, IconLoader, IconX } from "@tabler/icons-react";
 import type { StepNavItem } from "@/app/(dashboard)/production/work-orders/data";
 import { MasterListNav } from "@/components/ui/MasterListNav";
+import { useTr } from "@/hooks/useTr";
 
 const STATUS_ICON: Record<string, { color: string; icon: typeof IconClock }> = {
   PENDING: { color: "gray", icon: IconClock },
@@ -28,11 +29,12 @@ export function StepListPane({
   basePath: string;
   steps: StepNavItem[];
 }) {
+  const tr = useTr();
   return (
     <MasterListNav
-      emptyMessage="工程がありません。"
+      emptyMessage={tr("工程がありません。")}
       searchable={steps.length > 8}
-      searchPlaceholder="工程名・コードで絞り込み..."
+      searchPlaceholder={tr("工程名・コードで絞り込み...")}
       sections={[
         {
           items: steps.map((s) => {
@@ -56,12 +58,12 @@ export function StepListPane({
                   </Text>
                   {isOutsource && (
                     <Badge color="orange" size="xs" variant="outline">
-                      外注
+                      {tr("外注")}
                     </Badge>
                   )}
                   {s.isInspection && (
                     <Badge color="blue" size="xs" variant="light">
-                      検査
+                      {tr("検査")}
                     </Badge>
                   )}
                   {s.isApprovalStep && (

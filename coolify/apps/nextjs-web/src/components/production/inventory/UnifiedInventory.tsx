@@ -44,6 +44,7 @@ import { type Column, DataTable } from "@/components/ui/DataTable";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { FloorMapCanvas } from "@/components/ui/FloorMapCanvas";
 import { ListShell } from "@/components/ui/shells";
+import { useTr } from "@/hooks/useTr";
 import {
   useTabParam,
   useUrlSelectState,
@@ -85,6 +86,7 @@ export function UnifiedInventory({
   wipRows: WipRow[];
   plants: TransferPlantOption[];
 }) {
+  const tr = useTr();
   const fmt = useFormat();
   const router = useRouter();
   const isMobile = useIsMobile();
@@ -148,7 +150,7 @@ export function UnifiedInventory({
       }}
       size="xs"
     >
-      移動
+      {tr("移動")}
     </GhostButton>
   );
 
@@ -178,7 +180,7 @@ export function UnifiedInventory({
     },
     {
       key: "storage",
-      header: "保管場所",
+      header: tr("保管場所"),
       sortable: true,
       width: 150,
       sortValue: (r) => storageCell(r),
@@ -190,7 +192,7 @@ export function UnifiedInventory({
     },
     {
       key: "lotNumber",
-      header: "ロット",
+      header: tr("ロット"),
       align: "right",
       width: 80,
       sortable: true,
@@ -206,7 +208,7 @@ export function UnifiedInventory({
     },
     {
       key: "quantity",
-      header: "在庫数",
+      header: tr("在庫数"),
       align: "right",
       width: 85,
       sortable: true,
@@ -219,7 +221,7 @@ export function UnifiedInventory({
     },
     {
       key: "available",
-      header: "利用可能",
+      header: tr("利用可能"),
       width: 130,
       sortable: true,
       sortValue: (r) => r.available,
@@ -227,29 +229,29 @@ export function UnifiedInventory({
         <InventoryBadge
           available={r.available}
           reserved={r.reservedQuantity}
-          unit="本"
+          unit={tr("本")}
         />
       ),
     },
     {
       key: "kind",
-      header: "区分",
+      header: tr("区分"),
       width: 85,
       sortValue: (r) => (r.isSemiFinished ? 1 : 0),
       render: (r) =>
         r.isSemiFinished ? (
           <Badge color="orange" variant="light">
-            半製品
+            {tr("半製品")}
           </Badge>
         ) : (
           <Badge color="gray" variant="light">
-            完成品
+            {tr("完成品")}
           </Badge>
         ),
     },
     {
       key: "updatedAt",
-      header: "更新日",
+      header: tr("更新日"),
       width: 105,
       sortable: true,
       sortValue: (r) => r.updatedAt,
@@ -273,7 +275,7 @@ export function UnifiedInventory({
             : r.productName,
           detail: r.lotNumber != null ? `ロット ${r.lotNumber}` : null,
           available: r.available,
-          unit: "本",
+          unit: tr("本"),
           integerOnly: true,
           currentLabel: `${r.plantName ?? "拠点未設定"} / ${storageCell(r)}`,
         }),
@@ -283,7 +285,7 @@ export function UnifiedInventory({
   const materialColumns: Column<MaterialInventoryRow>[] = [
     {
       key: "materialCode",
-      header: "素材",
+      header: tr("素材"),
       sortable: true,
       sortValue: (r) => r.materialCode,
       render: (r) => (
@@ -307,7 +309,7 @@ export function UnifiedInventory({
     },
     {
       key: "storage",
-      header: "保管場所",
+      header: tr("保管場所"),
       sortable: true,
       width: 150,
       sortValue: (r) => storageCell(r),
@@ -319,7 +321,7 @@ export function UnifiedInventory({
     },
     {
       key: "quantity",
-      header: "在庫数",
+      header: tr("在庫数"),
       align: "right",
       width: 110,
       sortable: true,
@@ -332,7 +334,7 @@ export function UnifiedInventory({
     },
     {
       key: "available",
-      header: "利用可能",
+      header: tr("利用可能"),
       width: 130,
       sortable: true,
       sortValue: (r) => r.available,
@@ -346,7 +348,7 @@ export function UnifiedInventory({
     },
     {
       key: "nextReceiptDate",
-      header: "次回入荷",
+      header: tr("次回入荷"),
       width: 105,
       sortable: true,
       sortValue: (r) => r.nextReceiptDate ?? "",
@@ -361,7 +363,7 @@ export function UnifiedInventory({
     },
     {
       key: "updatedAt",
-      header: "更新日",
+      header: tr("更新日"),
       width: 105,
       sortable: true,
       sortValue: (r) => r.updatedAt,
@@ -392,7 +394,7 @@ export function UnifiedInventory({
 
   return (
     <ListShell
-      breadcrumbs={["生産", "在庫管理"]}
+      breadcrumbs={[tr("生産"), tr("在庫管理")]}
       filters={
         tab === "products" || tab === "materials" ? (
           <>
@@ -411,7 +413,7 @@ export function UnifiedInventory({
                 data={KIND_OPTIONS}
                 flex={isMobile ? 1 : undefined}
                 onChange={setKind}
-                placeholder="区分"
+                placeholder={tr("区分")}
                 value={kind}
                 w={isMobile ? undefined : 130}
               />
@@ -427,16 +429,16 @@ export function UnifiedInventory({
             onChange={(e) => setSearch(e.currentTarget.value)}
             placeholder={
               tab === "materials"
-                ? "素材コード・素材名で検索"
+                ? tr("素材コード・素材名で検索")
                 : tab === "wip"
-                  ? "製品名・指示書番号で検索"
-                  : "製品名・製品コードで検索"
+                  ? tr("製品名・指示書番号で検索")
+                  : tr("製品名・製品コードで検索")
             }
             value={search}
           />
         )
       }
-      title="在庫管理"
+      title={tr("在庫管理")}
     >
       <AppTabs onChange={setTab} value={tab}>
         <Tabs.List mb="sm">
@@ -444,16 +446,16 @@ export function UnifiedInventory({
             製品
           </Tabs.Tab>
           <Tabs.Tab leftSection={<IconStack2 size={14} />} value="materials">
-            素材
+            {tr("素材")}
           </Tabs.Tab>
           <Tabs.Tab leftSection={<IconProgress size={14} />} value="wip">
-            仕掛品
+            {tr("仕掛品")}
           </Tabs.Tab>
           <Tabs.Tab
             leftSection={<IconBuildingWarehouse size={14} />}
             value="locations"
           >
-            ロケーション
+            {tr("ロケーション")}
           </Tabs.Tab>
         </Tabs.List>
 
@@ -463,7 +465,7 @@ export function UnifiedInventory({
             data={filteredProducts}
             defaultSort={{ key: "updatedAt", dir: "desc" }}
             emptyIcon={<IconBoxSeam size={24} />}
-            emptyMessage="製品在庫がありません"
+            emptyMessage={tr("製品在庫がありません")}
             getRowId={(r) => r.id}
             onRowClick={(r) =>
               router.push(`/production/inventory/products/${r.id}`)
@@ -476,7 +478,7 @@ export function UnifiedInventory({
                   </Text>
                   <Group gap="md">
                     <Text c="dimmed" size="xs">
-                      {r.plantName ?? "拠点未設定"} / {storageCell(r)}
+                      {r.plantName ?? tr("拠点未設定")} / {storageCell(r)}
                     </Text>
                     {r.lotNumber != null && (
                       <Text c="dimmed" ff="mono" size="xs">
@@ -492,7 +494,7 @@ export function UnifiedInventory({
                 <Stack align="flex-end" className="shrink-0" gap={4}>
                   {r.isSemiFinished && (
                     <Badge color="orange" variant="light">
-                      半製品
+                      {tr("半製品")}
                     </Badge>
                   )}
                   <Text c="dimmed" size="xs">
@@ -512,7 +514,7 @@ export function UnifiedInventory({
             data={filteredMaterials}
             defaultSort={{ key: "updatedAt", dir: "desc" }}
             emptyIcon={<IconStack2 size={24} />}
-            emptyMessage="素材在庫がありません"
+            emptyMessage={tr("素材在庫がありません")}
             getRowId={(r) => r.id}
             onRowClick={(r) =>
               router.push(`/production/inventory/materials/${r.id}`)
@@ -527,7 +529,7 @@ export function UnifiedInventory({
                     {r.materialName}
                   </Text>
                   <Text c="dimmed" size="xs">
-                    {r.plantName ?? "拠点未設定"} / {storageCell(r)}
+                    {r.plantName ?? tr("拠点未設定")} / {storageCell(r)}
                   </Text>
                   <Text size="xs">
                     在庫 {r.quantity.toLocaleString("ja-JP")} {r.unit} /
@@ -575,11 +577,12 @@ export function UnifiedInventory({
 
 /** 仕掛品リスト — 製品ごとにグループ化した工程別仕掛数テーブル（旧 PD04）。 */
 function WipList({ rows }: { rows: WipRow[] }) {
+  const tr = useTr();
   if (rows.length === 0) {
     return (
       <EmptyState
         icon={<IconProgress size={24} />}
-        message="進行中の仕掛品はありません"
+        message={tr("進行中の仕掛品はありません")}
       />
     );
   }
@@ -604,10 +607,10 @@ function WipList({ rows }: { rows: WipRow[] }) {
       <Table>
         <Table.Thead>
           <Table.Tr>
-            <Table.Th w={120}>指示書番号</Table.Th>
+            <Table.Th w={120}>{tr("指示書番号")}</Table.Th>
             <Table.Th>工程</Table.Th>
             <Table.Th ta="right" w={110}>
-              仕掛数
+              {tr("仕掛数")}
             </Table.Th>
           </Table.Tr>
         </Table.Thead>
@@ -691,6 +694,7 @@ function LocationView({
   materialRows: MaterialInventoryRow[];
   onTransfer: (source: TransferSource) => void;
 }) {
+  const tr = useTr();
   const [plantId, setPlantId] = useState<string | null>(
     plants[0] ? String(plants[0].id) : null,
   );
@@ -705,7 +709,7 @@ function LocationView({
     return (
       <EmptyState
         icon={<IconBuildingWarehouse size={24} />}
-        message="拠点が登録されていません"
+        message={tr("拠点が登録されていません")}
       />
     );
   }
@@ -733,7 +737,7 @@ function LocationView({
             label: p.productName,
             sub: p.lotNumber != null ? `ロット ${p.lotNumber}` : null,
             quantity: p.quantity,
-            unit: "本",
+            unit: tr("本"),
             source: {
               inventoryType: "PRODUCT",
               inventoryId: p.id,
@@ -742,7 +746,7 @@ function LocationView({
                 : p.productName,
               detail: p.lotNumber != null ? `ロット ${p.lotNumber}` : null,
               available: p.available,
-              unit: "本",
+              unit: tr("本"),
               integerOnly: true,
               currentLabel: `${p.plantName ?? "—"} / ${storageCell(p)}`,
             },
@@ -861,10 +865,10 @@ function LocationView({
             <Group gap="xs">
               <IconMap2 color="var(--mantine-color-gray-6)" size={18} />
               <Text fw={600} size="sm">
-                フロアマップ
+                {tr("フロアマップ")}
               </Text>
               <Text c="dimmed" size="xs">
-                ピンをクリックで棚の内訳へ
+                {tr("ピンをクリックで棚の内訳へ")}
               </Text>
             </Group>
             {selected.floorMaps.length > 1 && (
@@ -923,7 +927,11 @@ function LocationView({
       {selected.locations.length === 0 && unassigned.length === 0 ? (
         <EmptyState
           icon={<IconBuildingWarehouse size={24} />}
-          message="この拠点には保管場所も在庫もありません（保管場所は 保管場所マスタ MS0E で登録）"
+          message={tr(
+            tr(
+              "この拠点には保管場所も在庫もありません（保管場所は 保管場所マスタ MS0E で登録）",
+            ),
+          )}
         />
       ) : (
         <>
@@ -960,7 +968,7 @@ function LocationView({
                 </Group>
                 {loc.shelves.length === 0 && atLocation.length === 0 ? (
                   <Text c="dimmed" size="xs">
-                    在庫なし
+                    {tr("在庫なし")}
                   </Text>
                 ) : (
                   <SimpleGrid cols={{ base: 1, sm: 2, lg: 3 }} spacing="sm">
@@ -985,7 +993,7 @@ function LocationView({
                           </Group>
                           {atShelf.length === 0 ? (
                             <Text c="dimmed" size="xs">
-                              空き
+                              {tr("空き")}
                             </Text>
                           ) : (
                             <Stack gap={4}>{atShelf.map(chip)}</Stack>
@@ -1000,7 +1008,7 @@ function LocationView({
                         radius="sm"
                       >
                         <Text c="dimmed" fw={600} mb={6} size="xs">
-                          棚未割当
+                          {tr("棚未割当")}
                         </Text>
                         <Stack gap={4}>{atLocation.map(chip)}</Stack>
                       </Paper>
@@ -1014,7 +1022,7 @@ function LocationView({
           {unassigned.length > 0 && (
             <Paper p="md" radius="md" withBorder>
               <Text c="dimmed" fw={600} mb="sm" size="sm">
-                未割当（保管場所なし）
+                {tr("未割当（保管場所なし）")}
               </Text>
               <Group gap="xs" wrap="wrap">
                 {unassigned.map(chip)}

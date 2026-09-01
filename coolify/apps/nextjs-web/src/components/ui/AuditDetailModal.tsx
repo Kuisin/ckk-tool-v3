@@ -13,6 +13,7 @@
 
 import { Badge, Group, Modal, Paper, Stack, Text } from "@mantine/core";
 import { IconDeviceTablet } from "@tabler/icons-react";
+import { useTr } from "@/hooks/useTr";
 import { AuditChangeTable } from "./AuditChangeTable";
 import { FieldValue } from "./FieldValue";
 import type { AuditEntry } from "./shells";
@@ -26,6 +27,7 @@ export function AuditDetailModal({
   entry: AuditEntry | null;
   onClose: () => void;
 }) {
+  const tr = useTr();
   // 差分が取れない（CREATE/DELETE、メモだけの記録）ときは after をそのまま出す。
   const note =
     entry?.after && typeof entry.after === "object"
@@ -37,7 +39,7 @@ export function AuditDetailModal({
       onClose={onClose}
       opened={entry !== null}
       size="lg"
-      title="操作の詳細"
+      title={tr("操作の詳細")}
     >
       {entry && (
         <Stack gap="md">
@@ -68,13 +70,13 @@ export function AuditDetailModal({
               )}
             </Group>
             <Group gap="xl">
-              <FieldValue label="操作" value={entry.action} />
+              <FieldValue label={tr("操作")} value={entry.action} />
               {entry.tableLabel && (
-                <FieldValue label="対象" value={entry.tableLabel} />
+                <FieldValue label={tr("対象")} value={entry.tableLabel} />
               )}
               {entry.recordId && (
                 <FieldValue
-                  label="レコード"
+                  label={tr("レコード")}
                   value={
                     <Text ff="mono" size="sm">
                       {entry.recordId}
@@ -93,7 +95,7 @@ export function AuditDetailModal({
             emptyMessage={
               (typeof note === "string" ? note : undefined) ??
               (typeof entry.detail === "string" ? entry.detail : undefined) ??
-              "詳細はありません"
+              tr("詳細はありません")
             }
             tableName={entry.tableName}
           />

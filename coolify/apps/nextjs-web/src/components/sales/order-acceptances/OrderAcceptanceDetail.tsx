@@ -124,6 +124,7 @@ import {
   ResourceActions,
   SummaryGrid,
 } from "@/components/ui/shells";
+import { useTr } from "@/hooks/useTr";
 import { useTabParam } from "@/hooks/useUrlState";
 import type { MemoView } from "@/lib/document-memos";
 import {
@@ -217,6 +218,7 @@ export function OrderAcceptanceDetail({
   /** キャンセル依頼の承認状態（cancelRequest があるときだけ使う）。 */
   cancelApproval?: ApprovalActionState | null;
 }) {
+  const tr = useTr();
   const locale = useLocale();
   const fmt = useFormat();
   const router = useRouter();
@@ -263,21 +265,21 @@ export function OrderAcceptanceDetail({
   const stages: ProcedureStage[] = [
     {
       key: "import",
-      label: "取込",
+      label: tr("取込"),
       description: sourceDef.label,
       loading: a.status === "IMPORT",
     },
     {
       key: "draft",
-      label: "下書き",
-      description: "内容確認・編集",
+      label: tr("下書き"),
+      description: tr("内容確認・編集"),
       loading: a.status === "DRAFT",
     },
     approvalStage(approval, { fmtDate: (v) => fmt.date(v) }),
     {
       key: "completed",
-      label: "確定",
-      description: a.completedAt ? fmt.date(a.completedAt) : "注文明細へ",
+      label: tr("確定"),
+      description: a.completedAt ? fmt.date(a.completedAt) : tr("注文明細へ"),
       loading: a.status === "APPROVED",
     },
   ];
@@ -287,13 +289,13 @@ export function OrderAcceptanceDetail({
     ? [
         {
           key: "quote",
-          title: "見積書",
+          title: tr("見積書"),
           items: [
             {
               key: a.quoteNumber,
               label: a.quoteNumber,
               href: `/sales/quotes/${a.quoteNumber}`,
-              note: "この注文請書の見積元",
+              note: tr("この注文請書の見積元"),
             },
           ],
           emptyNote: "—",
@@ -305,7 +307,7 @@ export function OrderAcceptanceDetail({
   const handoffGroups: HandoffGroup[] = [
     {
       key: "order-lines",
-      title: "注文明細",
+      title: tr("注文明細"),
       summary:
         a.orderLineNumbers.length > 0
           ? `${a.orderLineNumbers.length} 件`
@@ -319,8 +321,8 @@ export function OrderAcceptanceDetail({
       })),
       emptyNote:
         a.status === "APPROVED"
-          ? "未展開（確定すると注文明細を作成します）"
-          : "未展開（承認・確定後に注文明細へ展開します）",
+          ? tr("未展開（確定すると注文明細を作成します）")
+          : tr("未展開（承認・確定後に注文明細へ展開します）"),
     },
   ];
 
@@ -359,7 +361,7 @@ export function OrderAcceptanceDetail({
         router.refresh();
       } else {
         notifications.show({
-          title: "エラー",
+          title: tr("エラー"),
           message: result.error,
           color: "red",
         });
@@ -373,7 +375,7 @@ export function OrderAcceptanceDetail({
       const result = await confirmOrderLines(a.number);
       if (result.ok) {
         notifications.show({
-          title: "確定しました",
+          title: tr("確定しました"),
           message: `注文明細 ${result.data.numbers.join(", ")} を作成しました`,
           color: "green",
         });
@@ -381,7 +383,7 @@ export function OrderAcceptanceDetail({
         router.refresh();
       } else {
         notifications.show({
-          title: "エラー",
+          title: tr("エラー"),
           message: result.error,
           color: "red",
         });
@@ -395,15 +397,19 @@ export function OrderAcceptanceDetail({
    */
   const requestApproval = () => {
     if (diffLines.length === 0) {
-      run(() => submitForApproval(a.number), "承認依頼しました");
+      run(() => submitForApproval(a.number), tr("承認依頼しました"));
       return;
     }
     modals.openConfirmModal({
-      title: "価格差異の確認",
+      title: tr("価格差異の確認"),
       children: (
         <Stack gap="xs">
           <Text size="sm">
-            以下の明細は単価が価格表と一致しません。差異を確認のうえ承認依頼しますか？
+            {tr(
+              tr(
+                "以下の明細は単価が価格表と一致しません。差異を確認のうえ承認依頼しますか？",
+              ),
+            )}
           </Text>
           {diffLines.map((l) => (
             <Text key={l.itemId} size="sm">
@@ -413,10 +419,10 @@ export function OrderAcceptanceDetail({
           ))}
         </Stack>
       ),
-      labels: { confirm: "差異を確認して依頼", cancel: "戻る" },
+      labels: { confirm: tr("差異を確認して依頼"), cancel: tr("戻る") },
       confirmProps: { color: "orange" },
       onConfirm: () =>
-        run(() => submitForApproval(a.number, true), "承認依頼しました"),
+        run(() => submitForApproval(a.number, true), tr("承認依頼しました")),
     });
   };
 
@@ -434,9 +440,9 @@ export function OrderAcceptanceDetail({
       // 編集中は承認依頼を出さない — 押した瞬間に未保存の編集が消えるため。
       // 保存 / キャンセル（画面下に貼り付く FormActions）に集中させる。
       <ActionCard
-        description="変更したら保存してください。保存すると閲覧に戻ります"
+        description={tr("変更したら保存してください。保存すると閲覧に戻ります")}
         icon={<IconPencil size={20} />}
-        title="編集中"
+        title={tr("編集中")}
         tone="action"
       />
     ) : (
@@ -448,18 +454,18 @@ export function OrderAcceptanceDetail({
             loading={isPending}
             onClick={requestApproval}
           >
-            承認依頼
+            {tr("承認依頼")}
           </PrimaryButton>
         }
         description={
           readiness.ok
-            ? "書類と見比べて、直すところがあれば「編集」で直してください"
+            ? tr("書類と見比べて、直すところがあれば「編集」で直してください")
             : `「編集」で直してください — ${readinessSummary(readiness.issues)}`
         }
         icon={<IconSend size={20} />}
         title={
           readiness.ok
-            ? "内容を確認して承認依頼してください"
+            ? tr("内容を確認して承認依頼してください")
             : `承認依頼にはあと ${readiness.issues.length} 件の入力が必要です`
         }
         tone="action"
@@ -487,12 +493,12 @@ export function OrderAcceptanceDetail({
             loading={isPending}
             onClick={() => setDeployOpen(true)}
           >
-            確定
+            {tr("確定")}
           </PrimaryButton>
         }
-        description="明細ごとに注文明細（ORD-…-NN）を一括作成します"
+        description={tr("明細ごとに注文明細（ORD-…-NN）を一括作成します")}
         icon={<IconTransform size={20} />}
-        title="確定できます"
+        title={tr("確定できます")}
         tone="action"
       />
     );
@@ -501,11 +507,15 @@ export function OrderAcceptanceDetail({
     // アーカイブ・キャンセル依頼は例外操作なのでメニューに置く。
     actionCard = (
       <NextStepCard
-        buttonLabel="出荷書を作成"
-        description="この注文請書の出荷できる注文明細を読み込んだ状態で出荷書フォームを開きます"
+        buttonLabel={tr("出荷書を作成")}
+        description={tr(
+          tr(
+            "この注文請書の出荷できる注文明細を読み込んだ状態で出荷書フォームを開きます",
+          ),
+        )}
         href={`/shipping/delivery-orders/new?acceptance=${a.number}`}
         icon={<IconTruck size={20} />}
-        title="次のステップ: 出荷書の作成"
+        title={tr("次のステップ: 出荷書の作成")}
       />
     );
   }
@@ -518,37 +528,41 @@ export function OrderAcceptanceDetail({
           // 操作は状態に依らず全て並べ、押せないものはグレーアウトで理由を出す。
           menuItems={[
             {
-              label: "出荷書を作成",
+              label: tr("出荷書を作成"),
               icon: <IconTruck size={14} />,
               disabled: a.status !== "COMPLETED",
               disabledReason:
-                a.status === "COMPLETED" ? undefined : "確定後に作成できます",
+                a.status === "COMPLETED"
+                  ? undefined
+                  : tr("確定後に作成できます"),
               onClick: () =>
                 router.push(
                   `/shipping/delivery-orders/new?acceptance=${a.number}`,
                 ),
             },
             {
-              label: "アーカイブ",
+              label: tr("アーカイブ"),
               icon: <IconArchive size={14} />,
               disabled: a.status !== "COMPLETED",
               disabledReason:
-                a.status === "COMPLETED" ? undefined : "確定後に実行できます",
+                a.status === "COMPLETED"
+                  ? undefined
+                  : tr("確定後に実行できます"),
               onClick: () => setArchiveOpen(true),
             },
             // 明細単位のキャンセルは無い — 注文請書ごと依頼して
             // 承認設定（MS0B）の「注文請書キャンセル」フローを通す。
             {
-              label: "キャンセル依頼",
+              label: tr("キャンセル依頼"),
               icon: <IconX size={14} />,
               color: "red",
               divider: true,
               disabled: a.status !== "COMPLETED" || cancelRequest != null,
               disabledReason:
                 cancelRequest != null
-                  ? "承認依頼中のキャンセル依頼があります"
+                  ? tr("承認依頼中のキャンセル依頼があります")
                   : a.status !== "COMPLETED"
-                    ? "確定後に依頼できます"
+                    ? tr("確定後に依頼できます")
                     : undefined,
               onClick: () => setCancelReqOpen(true),
             },
@@ -560,7 +574,11 @@ export function OrderAcceptanceDetail({
           }
         />
       }
-      breadcrumbs={["販売", { label: "注文請書", href: BASE_PATH }, "詳細"]}
+      breadcrumbs={[
+        tr("販売"),
+        { label: tr("注文請書"), href: BASE_PATH },
+        "詳細",
+      ]}
       createdAt={fmt.dateTime(a.createdAt)}
       status={<StatusBadge entity="OrderAcceptanceIntake" status={a.status} />}
       title={a.number}
@@ -621,11 +639,11 @@ export function OrderAcceptanceDetail({
                         onClick={() =>
                           run(
                             () => retryExtraction(a.number),
-                            "再抽出を受け付けました（順番に実行されます）",
+                            tr("再抽出を受け付けました（順番に実行されます）"),
                           )
                         }
                       >
-                        再抽出
+                        {tr("再抽出")}
                       </SecondaryButton>
                       <SecondaryButton
                         leftSection={<IconPencil size={14} />}
@@ -633,11 +651,11 @@ export function OrderAcceptanceDetail({
                         onClick={() =>
                           run(
                             () => takeOverManually(a.number),
-                            "手入力に切り替えました",
+                            tr("手入力に切り替えました"),
                           )
                         }
                       >
-                        手入力に切り替え
+                        {tr("手入力に切り替え")}
                       </SecondaryButton>
                     </Group>
                   </Stack>
@@ -646,12 +664,16 @@ export function OrderAcceptanceDetail({
                 <Alert
                   color="blue"
                   icon={<IconInfoCircle size={16} />}
-                  title="抽出処理中"
+                  title={tr("抽出処理中")}
                   variant="light"
                 >
                   <Stack gap="xs">
                     <Text size="sm">
-                      自動抽出の順番待ち・実行中です（1件あたり約1〜3分）。完了すると下書きになります。この画面を閉じても処理は続きます。
+                      {tr(
+                        tr(
+                          "自動抽出の順番待ち・実行中です（1件あたり約1〜3分）。完了すると下書きになります。この画面を閉じても処理は続きます。",
+                        ),
+                      )}
                     </Text>
                     <Group>
                       {/* 待ち行列はプロセス内 — 取込直後にブラウザやサーバーが
@@ -662,11 +684,11 @@ export function OrderAcceptanceDetail({
                         onClick={() =>
                           run(
                             () => retryExtraction(a.number),
-                            "抽出を受け付けました（順番に実行されます）",
+                            tr("抽出を受け付けました（順番に実行されます）"),
                           )
                         }
                       >
-                        抽出を実行
+                        {tr("抽出を実行")}
                       </SecondaryButton>
                       <SecondaryButton
                         leftSection={<IconPencil size={14} />}
@@ -674,11 +696,11 @@ export function OrderAcceptanceDetail({
                         onClick={() =>
                           run(
                             () => takeOverManually(a.number),
-                            "手入力に切り替えました",
+                            tr("手入力に切り替えました"),
                           )
                         }
                       >
-                        待たずに手入力する
+                        {tr("待たずに手入力する")}
                       </SecondaryButton>
                     </Group>
                   </Stack>
@@ -695,7 +717,11 @@ export function OrderAcceptanceDetail({
               >
                 <Stack gap={4}>
                   <Text size="sm">
-                    明細の単価が価格表と一致しません。承認依頼には差異の確認が必要です。
+                    {tr(
+                      tr(
+                        "明細の単価が価格表と一致しません。承認依頼には差異の確認が必要です。",
+                      ),
+                    )}
                   </Text>
                   {diffLines.map((l) => (
                     <Text key={l.itemId} size="sm">
@@ -723,11 +749,11 @@ export function OrderAcceptanceDetail({
                 )}
                 <SummaryGrid>
                   <FieldValue
-                    label="番号"
+                    label={tr("番号")}
                     value={<DocNumber>{a.number}</DocNumber>}
                   />
                   <FieldValue
-                    label="取込元"
+                    label={tr("取込元")}
                     value={
                       <Badge color={sourceDef.color} size="sm" variant="light">
                         {sourceDef.label}
@@ -735,7 +761,7 @@ export function OrderAcceptanceDetail({
                     }
                   />
                   <FieldValue
-                    label="取込元ファイル"
+                    label={tr("取込元ファイル")}
                     value={
                       fileUrl ? (
                         <Anchor
@@ -755,36 +781,42 @@ export function OrderAcceptanceDetail({
                     }
                   />
                   <FieldValue
-                    label="顧客"
+                    label={tr("顧客")}
                     value={
                       a.customerName ?? (
                         <Badge color="orange" size="sm" variant="light">
-                          未特定
+                          {tr("未特定")}
                         </Badge>
                       )
                     }
                   />
-                  <FieldValue label="営業担当" value={a.salesRepName} />
-                  <FieldValue label="出荷先" value={a.shipToName} />
+                  <FieldValue label={tr("営業担当")} value={a.salesRepName} />
+                  <FieldValue label={tr("出荷先")} value={a.shipToName} />
                   <FieldValue
-                    label="配送方法"
+                    label={tr("配送方法")}
                     value={acceptanceDeliveryMethodLabel(
                       a.deliveryMethod,
                       locale,
                     )}
                   />
-                  <FieldValue label="エンドユーザー" value={a.endUserName} />
-                  <FieldValue label="担当拠点" value={a.assignedPlantName} />
                   <FieldValue
-                    label="出荷作業場所"
+                    label={tr("エンドユーザー")}
+                    value={a.endUserName}
+                  />
+                  <FieldValue
+                    label={tr("担当拠点")}
+                    value={a.assignedPlantName}
+                  />
+                  <FieldValue
+                    label={tr("出荷作業場所")}
                     value={a.shippingWorkLocationName}
                   />
                   <FieldValue
-                    label="顧客注文書番号"
+                    label={tr("顧客注文書番号")}
                     value={a.customerOrderRef}
                   />
                   <FieldValue
-                    label="見積書"
+                    label={tr("見積書")}
                     value={
                       a.quoteNumber ? (
                         <Anchor
@@ -799,7 +831,10 @@ export function OrderAcceptanceDetail({
                       )
                     }
                   />
-                  <FieldValue label="注文日" value={fmt.date(a.orderDate)} />
+                  <FieldValue
+                    label={tr("注文日")}
+                    value={fmt.date(a.orderDate)}
+                  />
                   {/*
                     何を・どれだけ・いくらで受けた書類なのかは、これまで明細表を
                     開かないと分からなかった。ヘッダの 3 項目で足りるようにする。
@@ -824,7 +859,7 @@ export function OrderAcceptanceDetail({
                     }
                   />
                   <FieldValue
-                    label="明細数 / 合計数量"
+                    label={tr("明細数 / 合計数量")}
                     value={
                       <Text className="tabular-nums" size="sm" span>
                         {totals.lineCount} 件 /{" "}
@@ -833,7 +868,7 @@ export function OrderAcceptanceDetail({
                     }
                   />
                   <FieldValue
-                    label="合計金額"
+                    label={tr("合計金額")}
                     value={
                       <Group gap="xs" wrap="wrap">
                         <MoneyText value={totals.amount} />
@@ -846,13 +881,13 @@ export function OrderAcceptanceDetail({
                       </Group>
                     }
                   />
-                  <FieldValue label="作成者" value={a.createdByName} />
+                  <FieldValue label={tr("作成者")} value={a.createdByName} />
                   <FieldValue
-                    label="展開日時"
+                    label={tr("展開日時")}
                     value={a.completedAt ? fmt.dateTime(a.completedAt) : "—"}
                   />
                   {/* 備考は 1 行まるごと使う — 3 列の枠だと読めない */}
-                  <FieldValue fullWidth label="備考" value={a.notes} />
+                  <FieldValue fullWidth label={tr("備考")} value={a.notes} />
                 </SummaryGrid>
 
                 {/* 明細（読み取り専用） */}
@@ -864,16 +899,16 @@ export function OrderAcceptanceDetail({
                     <Table highlightOnHover striped>
                       <Table.Thead>
                         <Table.Tr>
-                          <Table.Th>注文明細</Table.Th>
-                          <Table.Th>指示書（割当）</Table.Th>
+                          <Table.Th>{tr("注文明細")}</Table.Th>
+                          <Table.Th>{tr("指示書（割当）")}</Table.Th>
                           <Table.Th>製品</Table.Th>
-                          <Table.Th>品名（抽出）</Table.Th>
-                          <Table.Th>種別</Table.Th>
-                          <Table.Th ta="right">数量</Table.Th>
-                          <Table.Th ta="right">単価</Table.Th>
-                          <Table.Th ta="right">金額</Table.Th>
-                          <Table.Th>納期</Table.Th>
-                          <Table.Th>備考</Table.Th>
+                          <Table.Th>{tr("品名（抽出）")}</Table.Th>
+                          <Table.Th>{tr("種別")}</Table.Th>
+                          <Table.Th ta="right">{tr("数量")}</Table.Th>
+                          <Table.Th ta="right">{tr("単価")}</Table.Th>
+                          <Table.Th ta="right">{tr("金額")}</Table.Th>
+                          <Table.Th>{tr("納期")}</Table.Th>
+                          <Table.Th>{tr("備考")}</Table.Th>
                         </Table.Tr>
                       </Table.Thead>
                       <Table.Tbody>
@@ -939,7 +974,7 @@ export function OrderAcceptanceDetail({
                                     size="sm"
                                     variant="light"
                                   >
-                                    製品未特定
+                                    {tr("製品未特定")}
                                   </Badge>
                                 )}
                               </Table.Td>
@@ -961,7 +996,7 @@ export function OrderAcceptanceDetail({
                                     <MoneyText value={it.unitPrice} />
                                   ) : (
                                     <Text c="dimmed" size="sm">
-                                      未入力
+                                      {tr("未入力")}
                                     </Text>
                                   )}
                                   {lc?.diff && (
@@ -980,7 +1015,7 @@ export function OrderAcceptanceDetail({
                                       size="xs"
                                       variant="light"
                                     >
-                                      価格表なし
+                                      {tr("価格表なし")}
                                     </Badge>
                                   )}
                                 </Stack>
@@ -1014,7 +1049,7 @@ export function OrderAcceptanceDetail({
                         <Table.Tfoot>
                           <Table.Tr>
                             <Table.Th colSpan={5} ta="right">
-                              合計
+                              {tr("合計")}
                             </Table.Th>
                             <Table.Th className="tabular-nums" ta="right">
                               {totals.quantity.toLocaleString("ja-JP")}
@@ -1064,8 +1099,8 @@ export function OrderAcceptanceDetail({
                 <Tabs.Tab value="attachments">
                   添付（{attachments.length}）
                 </Tabs.Tab>
-                <Tabs.Tab value="memo">メモ</Tabs.Tab>
-                <Tabs.Tab value="history">履歴</Tabs.Tab>
+                <Tabs.Tab value="memo">{tr("メモ")}</Tabs.Tab>
+                <Tabs.Tab value="history">{tr("履歴")}</Tabs.Tab>
               </Tabs.List>
 
               <Tabs.Panel pt="md" value="attachments">
@@ -1099,30 +1134,33 @@ export function OrderAcceptanceDetail({
       {/* 差し戻し（理由必須 → DRAFT へ戻す） */}
       <ModalShell
         confirmColor="red"
-        confirmLabel="差し戻す"
+        confirmLabel={tr("差し戻す")}
         loading={isPending}
         onClose={() => setRejectOpen(false)}
         onConfirm={() => {
           if (!rejectReason.trim()) {
             notifications.show({
-              title: "エラー",
-              message: "差し戻し理由を入力してください",
+              title: tr("エラー"),
+              message: tr("差し戻し理由を入力してください"),
               color: "red",
             });
             return;
           }
-          run(() => rejectAcceptance(a.number, rejectReason), "差し戻しました");
+          run(
+            () => rejectAcceptance(a.number, rejectReason),
+            tr("差し戻しました"),
+          );
         }}
         opened={rejectOpen}
         size="sm"
-        title="差し戻しの確認"
+        title={tr("差し戻しの確認")}
       >
         <Textarea
           autosize
-          label="差し戻し理由"
+          label={tr("差し戻し理由")}
           minRows={3}
           onChange={(e) => setRejectReason(e.currentTarget.value)}
-          placeholder="理由を入力"
+          placeholder={tr("理由を入力")}
           value={rejectReason}
           withAsterisk
         />
@@ -1130,13 +1168,13 @@ export function OrderAcceptanceDetail({
 
       {/* 確定の確認 */}
       <ModalShell
-        confirmLabel="展開する"
+        confirmLabel={tr("展開する")}
         loading={isPending}
         onClose={() => setDeployOpen(false)}
         onConfirm={deploy}
         opened={deployOpen}
         size="sm"
-        title="確定の確認"
+        title={tr("確定の確認")}
       >
         <Text size="sm">
           明細 {a.items.length} 件を注文明細（{a.number}-01〜-
@@ -1147,15 +1185,15 @@ export function OrderAcceptanceDetail({
 
       {/* アーカイブの確認 */}
       <ModalShell
-        confirmLabel="アーカイブする"
+        confirmLabel={tr("アーカイブする")}
         loading={isPending}
         onClose={() => setArchiveOpen(false)}
         onConfirm={() =>
-          run(() => archiveAcceptance(a.number), "アーカイブしました")
+          run(() => archiveAcceptance(a.number), tr("アーカイブしました"))
         }
         opened={archiveOpen}
         size="sm"
-        title="アーカイブの確認"
+        title={tr("アーカイブの確認")}
       >
         <Text size="sm">
           注文請書 {a.number} をアーカイブします。以後の編集はできません。
@@ -1166,7 +1204,7 @@ export function OrderAcceptanceDetail({
       <ModalShell
         confirmColor="red"
         confirmDisabled={!cancelReason.trim()}
-        confirmLabel="キャンセルを依頼する"
+        confirmLabel={tr("キャンセルを依頼する")}
         loading={isPending}
         onClose={() => setCancelReqOpen(false)}
         onConfirm={() =>
@@ -1180,17 +1218,17 @@ export function OrderAcceptanceDetail({
               setCancelReason("");
               notifications.show({
                 title: result.data?.pending
-                  ? "キャンセルを承認依頼しました"
-                  : "キャンセルしました",
+                  ? tr("キャンセルを承認依頼しました")
+                  : tr("キャンセルしました"),
                 message: result.data?.pending
-                  ? "承認されるまで注文請書と注文明細は変わりません"
-                  : "全明細をキャンセルしました",
+                  ? tr("承認されるまで注文請書と注文明細は変わりません")
+                  : tr("全明細をキャンセルしました"),
                 color: result.data?.pending ? "yellow" : "green",
               });
               router.refresh();
             } else {
               notifications.show({
-                title: "エラー",
+                title: tr("エラー"),
                 message: result.error,
                 color: "red",
               });
@@ -1199,7 +1237,7 @@ export function OrderAcceptanceDetail({
         }
         opened={cancelReqOpen}
         size="sm"
-        title="キャンセル依頼"
+        title={tr("キャンセル依頼")}
       >
         <Text size="sm">
           注文請書 {a.number} と配下の注文明細をすべてキャンセルします。
@@ -1207,10 +1245,10 @@ export function OrderAcceptanceDetail({
           何も変わりません。出荷済みの明細があるとキャンセルできません。
         </Text>
         <Textarea
-          label="キャンセル理由"
+          label={tr("キャンセル理由")}
           minRows={3}
           onChange={(e) => setCancelReason(e.currentTarget.value)}
-          placeholder="理由を入力"
+          placeholder={tr("理由を入力")}
           value={cancelReason}
           withAsterisk
         />
@@ -1243,6 +1281,7 @@ function DraftEditor({
   /** 出荷作業場所の選択肢（グループ / 場所）。 */
   workLocationOptions: { value: string; label: string }[];
 }) {
+  const tr = useTr();
   const locale = useLocale();
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
@@ -1305,7 +1344,7 @@ function DraftEditor({
 
   const save = () => {
     if (deliveryMethod === "DIRECT_TO_USER" && !endUserBpId) {
-      setEndUserError("ユーザー直送ではエンドユーザーを選択してください");
+      setEndUserError(tr("ユーザー直送ではエンドユーザーを選択してください"));
       return;
     }
     startTransition(async () => {
@@ -1327,7 +1366,7 @@ function DraftEditor({
       });
       if (result.ok) {
         notifications.show({
-          title: "保存しました",
+          title: tr("保存しました"),
           message: `注文請書 ${a.number}`,
           color: "green",
         });
@@ -1335,7 +1374,7 @@ function DraftEditor({
         router.refresh();
       } else {
         notifications.show({
-          title: "エラー",
+          title: tr("エラー"),
           message: result.error,
           color: "red",
         });
@@ -1350,11 +1389,13 @@ function DraftEditor({
       return;
     }
     modals.openConfirmModal({
-      title: "編集の取り消し",
+      title: tr("編集の取り消し"),
       children: (
-        <Text size="sm">保存していない変更は失われます。取り消しますか？</Text>
+        <Text size="sm">
+          {tr("保存していない変更は失われます。取り消しますか？")}
+        </Text>
       ),
-      labels: { confirm: "変更を破棄", cancel: "編集に戻る" },
+      labels: { confirm: tr("変更を破棄"), cancel: tr("編集に戻る") },
       confirmProps: { color: "red" },
       onConfirm: onClose,
     });
@@ -1364,8 +1405,10 @@ function DraftEditor({
     <Stack gap="md">
       <IntakeReviewPanel review={a.review} />
       <FormSection
-        description="AI 抽出結果を確認し、顧客・明細を修正して保存します。"
-        title="基本情報"
+        description={tr(
+          tr("AI 抽出結果を確認し、顧客・明細を修正して保存します。"),
+        )}
+        title={tr("基本情報")}
       >
         <Stack gap="sm">
           <Group gap="md">
@@ -1376,11 +1419,11 @@ function DraftEditor({
           <Group align="flex-end" gap="sm" grow preventGrowOverflow={false}>
             <SearchSelect
               description={
-                customerId ? undefined : "顧客未特定 — 承認依頼には必須です"
+                customerId ? undefined : tr("顧客未特定 — 承認依頼には必須です")
               }
               f4={CUSTOMER_F4}
               initialOption={customerOption}
-              label="顧客"
+              label={tr("顧客")}
               onChange={(v, option) => {
                 setCustomerId(v);
                 setCustomerOption(
@@ -1388,7 +1431,7 @@ function DraftEditor({
                 );
               }}
               onSearch={searchCustomerOptions}
-              placeholder="顧客を検索"
+              placeholder={tr("顧客を検索")}
               storageKey="customer"
               value={customerId}
               withAsterisk
@@ -1404,9 +1447,9 @@ function DraftEditor({
               value={salesRepId}
             />
             <TextInput
-              label="顧客注文書番号"
+              label={tr("顧客注文書番号")}
               onChange={(e) => setCustomerOrderRef(e.currentTarget.value)}
-              placeholder="注文書の番号"
+              placeholder={tr("注文書の番号")}
               value={customerOrderRef}
             />
             {/*
@@ -1421,21 +1464,21 @@ function DraftEditor({
                   ? { value: a.quoteNumber, label: a.quoteNumber }
                   : null
               }
-              label="見積書（任意）"
+              label={tr("見積書（任意）")}
               onChange={(v) => setQuoteNumber(v ?? "")}
               onSearch={(q) => searchQuoteOptions(q, customerId)}
               placeholder={
-                customerId ? "見積書を検索" : "先に顧客を選ぶと絞り込めます"
+                customerId ? "見積書を検索" : tr("先に顧客を選ぶと絞り込めます")
               }
               storageKey="quote"
               value={quoteNumber || null}
             />
             <DatePickerInput
               clearable
-              label="注文日"
+              label={tr("注文日")}
               leftSection={<IconCalendar size={14} />}
               onChange={setOrderDate}
-              placeholder="日付を選択"
+              placeholder={tr("日付を選択")}
               value={orderDate}
               valueFormat="YYYY/MM/DD"
             />
@@ -1452,7 +1495,7 @@ function DraftEditor({
               label={<HelpLabel {...fieldHelp("orderAcceptance", "shipTo")} />}
               onChange={setShipToBpId}
               onSearch={searchShipToOptions}
-              placeholder="出荷先を検索（任意）"
+              placeholder={tr("出荷先を検索（任意）")}
               storageKey="ship-to"
               value={shipToBpId}
             />
@@ -1491,8 +1534,8 @@ function DraftEditor({
               onSearch={searchEndUserOptions}
               placeholder={
                 deliveryMethod === "DIRECT_TO_USER"
-                  ? "エンドユーザーを検索"
-                  : "エンドユーザーを検索（任意）"
+                  ? tr("エンドユーザーを検索")
+                  : tr("エンドユーザーを検索（任意）")
               }
               storageKey="end-user"
               value={endUserBpId}
@@ -1505,7 +1548,7 @@ function DraftEditor({
                 <HelpLabel {...fieldHelp("orderAcceptance", "assignedPlant")} />
               }
               onChange={setAssignedPlantId}
-              placeholder="拠点を選択（任意）"
+              placeholder={tr("拠点を選択（任意）")}
               searchable
               value={assignedPlantId}
             />
@@ -1518,7 +1561,7 @@ function DraftEditor({
                 />
               }
               onChange={setShippingWorkLocationId}
-              placeholder="作業場所を選択（任意）"
+              placeholder={tr("作業場所を選択（任意）")}
               searchable
               value={shippingWorkLocationId}
             />
@@ -1538,17 +1581,21 @@ function DraftEditor({
             />
           )}
           <TextInput
-            label="備考"
+            label={tr("備考")}
             onChange={(e) => setNotes(e.currentTarget.value)}
-            placeholder="備考（任意）"
+            placeholder={tr("備考（任意）")}
             value={notes}
           />
         </Stack>
       </FormSection>
 
       <FormSection
-        description="製品が未特定の行は製品マスタと突合してください（確定には全行の製品特定 + 単価が必要）。"
-        title="明細"
+        description={tr(
+          tr(
+            "製品が未特定の行は製品マスタと突合してください（確定には全行の製品特定 + 単価が必要）。",
+          ),
+        )}
+        title={tr("明細")}
       >
         <OrderAcceptanceItemsEditor
           items={items}

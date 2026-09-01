@@ -3,6 +3,7 @@ import { NotificationEmailForm } from "@/components/settings/NotificationEmailFo
 import { PageHeader } from "@/components/ui/PageHeader";
 import { requireAppRead } from "@/lib/authz-page";
 import { getNotificationEmailSettings } from "@/lib/notification-email-settings";
+import { getTr } from "@/lib/ui-text-server";
 
 export const dynamic = "force-dynamic";
 
@@ -15,6 +16,7 @@ export const dynamic = "force-dynamic";
  * **見逃した（猶予を過ぎても未読の）通知だけをまとめて 1 通**にする。
  */
 export default async function NotificationEmailSettingsPage() {
+  const tr = await getTr();
   const denied = await requireAppRead("notification-email");
   if (denied) return denied;
 
@@ -22,7 +24,10 @@ export default async function NotificationEmailSettingsPage() {
 
   return (
     <Stack gap="md">
-      <PageHeader breadcrumbs={["システム", "通知メール"]} title="通知メール" />
+      <PageHeader
+        breadcrumbs={[tr("システム"), tr("通知メール")]}
+        title={tr("通知メール")}
+      />
       <NotificationEmailForm initial={initial} />
     </Stack>
   );

@@ -6,6 +6,7 @@ import { fetchKioskCardsForPrint } from "@/lib/kiosk-admin";
 import { A4, CARD_SHEET, CARDS_PER_PAGE } from "@/lib/kiosk-card-sheet";
 import { qrSvg } from "@/lib/qr";
 import { encodeQrPayload, QR_KINDS } from "@/lib/qr-payload";
+import { getTr } from "@/lib/ui-text-server";
 import { PrintToolbar } from "./print-toolbar";
 
 export const dynamic = "force-dynamic";
@@ -48,6 +49,7 @@ export default async function KioskCardsPrintPage({
 }: {
   searchParams: Promise<{ ids?: string }>;
 }) {
+  const tr = await getTr();
   const authz = await checkPermission("kiosk", "READ");
   if (!authz.ok) {
     return <EmptyState icon={<IconLock size={28} />} message={authz.error} />;
@@ -78,7 +80,9 @@ export default async function KioskCardsPrintPage({
       />
 
       {cards.length === 0 ? (
-        <p className="kiosk-print-empty">印刷対象のカードがありません。</p>
+        <p className="kiosk-print-empty">
+          {tr("印刷対象のカードがありません。")}
+        </p>
       ) : (
         sheets.map((sheet) => (
           <div className="kiosk-print-sheet" key={sheet[0]?.id}>
@@ -87,7 +91,7 @@ export default async function KioskCardsPrintPage({
             <div className="kiosk-print-scale">
               <span className="kiosk-print-scale-bar" />
               <span className="kiosk-print-scale-label">
-                50mm（原寸確認 / 用紙 A4・倍率 100%）
+                {tr("50mm（原寸確認 / 用紙 A4・倍率 100%）")}
               </span>
             </div>
             <div className="kiosk-print-grid">

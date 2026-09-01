@@ -26,6 +26,7 @@ import { useState, useTransition } from "react";
 import { saveDefectRecords } from "@/app/(dashboard)/production/work-orders/[id]/steps/[stepId]/actions";
 import { useFormat } from "@/components/layout/PreferencesProvider";
 import { GhostButton, PrimaryButton } from "@/components/ui/buttons";
+import { useTr } from "@/hooks/useTr";
 import type {
   SelectOption,
   StepDefectRecordView,
@@ -51,6 +52,7 @@ export function DefectRecordForm({
   records: StepDefectRecordView[];
   canRecord: boolean;
 }) {
+  const tr = useTr();
   const fmt = useFormat();
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
@@ -79,8 +81,8 @@ export function DefectRecordForm({
     const invalid = rows.some((r) => !r.defectTypeId || !r.description.trim());
     if (invalid) {
       notifications.show({
-        title: "入力不足",
-        message: "各行の不良種類と内容を入力してください",
+        title: tr("入力不足"),
+        message: tr("各行の不良種類と内容を入力してください"),
         color: "red",
       });
       return;
@@ -96,7 +98,7 @@ export function DefectRecordForm({
       });
       if (result.ok) {
         notifications.show({
-          title: "不良記録を保存しました",
+          title: tr("不良記録を保存しました"),
           message: `${rows.length} 件を追加しました`,
           color: "green",
         });
@@ -104,8 +106,9 @@ export function DefectRecordForm({
         router.refresh();
       } else {
         notifications.show({
-          title: "エラー",
-          message: result.errors?.join(" / ") ?? "不良記録の保存に失敗しました",
+          title: tr("エラー"),
+          message:
+            result.errors?.join(" / ") ?? tr("不良記録の保存に失敗しました"),
           color: "red",
         });
       }
@@ -115,7 +118,7 @@ export function DefectRecordForm({
   return (
     <Paper p="md" radius="md" withBorder>
       <Stack gap="md">
-        <Title order={4}>不良記録（任意）</Title>
+        <Title order={4}>{tr("不良記録（任意）")}</Title>
 
         {records.length > 0 && (
           <Stack gap="xs">
@@ -152,18 +155,18 @@ export function DefectRecordForm({
                   w={220}
                 />
                 <Textarea
-                  aria-label="不良内容"
+                  aria-label={tr("不良内容")}
                   autosize
                   minRows={2}
                   onChange={(e) =>
                     updateRow(row.key, { description: e.currentTarget.value })
                   }
-                  placeholder="不良内容"
+                  placeholder={tr("不良内容")}
                   style={{ flex: 1 }}
                   value={row.description}
                 />
                 <ActionIcon
-                  aria-label="行を削除"
+                  aria-label={tr("行を削除")}
                   color="red"
                   mt={8}
                   onClick={() => removeRow(row.key)}
@@ -178,11 +181,11 @@ export function DefectRecordForm({
                 leftSection={<IconPlus size={16} />}
                 onClick={addRow}
               >
-                追加
+                {tr("追加")}
               </GhostButton>
               {rows.length > 0 && (
                 <PrimaryButton loading={isPending} onClick={handleSave}>
-                  不良記録を保存
+                  {tr("不良記録を保存")}
                 </PrimaryButton>
               )}
             </Group>
@@ -191,7 +194,7 @@ export function DefectRecordForm({
 
         {!canRecord && records.length === 0 && (
           <Text c="dimmed" size="sm">
-            不良記録はありません
+            {tr("不良記録はありません")}
           </Text>
         )}
       </Stack>

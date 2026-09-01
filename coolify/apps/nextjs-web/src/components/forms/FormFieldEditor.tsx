@@ -27,6 +27,7 @@ import {
   searchFormOptions,
 } from "@/app/(dashboard)/general/forms/actions";
 import { GhostButton } from "@/components/ui/buttons";
+import { useTr } from "@/hooks/useTr";
 import { useIsMobile } from "@/hooks/useViewport";
 import {
   canBeTitleField,
@@ -78,6 +79,7 @@ export function FormFieldEditor({
    */
   onSetTitle?: () => void;
 }) {
+  const tr = useTr();
   const isMobile = useIsMobile();
   const set = (patch: Partial<FormFieldDef>) =>
     onChange({ ...field, ...patch });
@@ -101,11 +103,11 @@ export function FormFieldEditor({
         なる。壊れた定義を取り込んだときだけ、下にエラーとして出る。
       */}
       <TextInput
-        label="表示名"
+        label={tr("表示名")}
         onChange={(e) =>
           set({ label: { ...field.label, ja: e.currentTarget.value } })
         }
-        placeholder="会社名"
+        placeholder={tr("会社名")}
         value={field.label.ja}
         withAsterisk
       />
@@ -118,30 +120,34 @@ export function FormFieldEditor({
       <Group align="flex-start" grow={!isMobile}>
         <Select
           data={types.map((t) => ({ value: t.value, label: t.label }))}
-          label="種類"
+          label={tr("種類")}
           onChange={(v) => set({ type: (v as FormFieldType) ?? "text" })}
           value={field.type}
         />
         <TextInput
-          label="補足説明"
+          label={tr("補足説明")}
           onChange={(e) => set({ help: e.currentTarget.value })}
-          placeholder="入力のヒント（任意）"
+          placeholder={tr("入力のヒント（任意）")}
           value={field.help ?? ""}
         />
       </Group>
 
       <Checkbox
         checked={field.required}
-        label="必須にする"
+        label={tr("必須にする")}
         onChange={(e) => set({ required: e.currentTarget.checked })}
       />
 
       {!nestedOnly && (
         <Checkbox
           checked={field.isTitle === true}
-          description="一覧（CM02 の回答一覧・CM01 の回答行）でこの項目の値を見出しとして表示します。フォームにつき 1 つだけ選べます"
+          description={tr(
+            tr(
+              "一覧（CM02 の回答一覧・CM01 の回答行）でこの項目の値を見出しとして表示します。フォームにつき 1 つだけ選べます",
+            ),
+          )}
           disabled={!canBeTitleField(field.type)}
-          label="一覧の見出しにする"
+          label={tr("一覧の見出しにする")}
           onChange={(e) => {
             if (e.currentTarget.checked) {
               onSetTitle?.();
@@ -155,12 +161,12 @@ export function FormFieldEditor({
       {field.type === "number" && (
         <Group grow={!isMobile}>
           <NumberInput
-            label="最小値"
+            label={tr("最小値")}
             onChange={(v) => set({ min: v === "" ? undefined : Number(v) })}
             value={field.min ?? ""}
           />
           <NumberInput
-            label="最大値"
+            label={tr("最大値")}
             onChange={(v) => set({ max: v === "" ? undefined : Number(v) })}
             value={field.max ?? ""}
           />
@@ -170,9 +176,9 @@ export function FormFieldEditor({
       {NEEDS_PATTERN.includes(field.type) && (
         <Group align="flex-start" grow={!isMobile}>
           <TextInput
-            description="入力の形式を縛りたいときだけ。空なら自由入力"
+            description={tr("入力の形式を縛りたいときだけ。空なら自由入力")}
             error={patternError}
-            label="形式（正規表現）"
+            label={tr("形式（正規表現）")}
             onChange={(e) =>
               set({ pattern: e.currentTarget.value || undefined })
             }
@@ -180,11 +186,11 @@ export function FormFieldEditor({
             value={field.pattern ?? ""}
           />
           <TextInput
-            label="形式が違うときのメッセージ"
+            label={tr("形式が違うときのメッセージ")}
             onChange={(e) =>
               set({ patternMessage: e.currentTarget.value || undefined })
             }
-            placeholder="郵便番号の形式で入力してください"
+            placeholder={tr("郵便番号の形式で入力してください")}
             value={field.patternMessage ?? ""}
           />
         </Group>
@@ -193,8 +199,12 @@ export function FormFieldEditor({
       {field.type === "lookup" && (
         <Select
           data={LOOKUP_SOURCES.map((s) => ({ value: s.value, label: s.label }))}
-          description="選んだ値は、その業務データの詳細画面へのリンクとして表示される"
-          label="検索するデータ"
+          description={tr(
+            tr(
+              "選んだ値は、その業務データの詳細画面へのリンクとして表示される",
+            ),
+          )}
+          label={tr("検索するデータ")}
           onChange={(v) =>
             set({
               lookup: {
@@ -210,13 +220,13 @@ export function FormFieldEditor({
       {NEEDS_OPTIONS.includes(field.type) && (
         <Stack gap="xs">
           <Text fw={500} size="sm">
-            選択肢
+            {tr("選択肢")}
           </Text>
           <Table withTableBorder>
             <Table.Thead>
               <Table.Tr>
-                <Table.Th>値</Table.Th>
-                <Table.Th>表示名</Table.Th>
+                <Table.Th>{tr("値")}</Table.Th>
+                <Table.Th>{tr("表示名")}</Table.Th>
                 <Table.Th style={{ width: 48 }} />
               </Table.Tr>
             </Table.Thead>
@@ -260,7 +270,7 @@ export function FormFieldEditor({
                   </Table.Td>
                   <Table.Td>
                     <ActionIcon
-                      aria-label="選択肢を削除"
+                      aria-label={tr("選択肢を削除")}
                       color="red"
                       onClick={() =>
                         set({
@@ -290,7 +300,7 @@ export function FormFieldEditor({
                 })
               }
             >
-              選択肢を追加
+              {tr("選択肢を追加")}
             </GhostButton>
           </Group>
         </Stack>
@@ -299,10 +309,14 @@ export function FormFieldEditor({
       {field.type === "table" && (
         <Stack gap="xs">
           <Text fw={500} size="sm">
-            列
+            {tr("列")}
           </Text>
           <Text c="dimmed" size="xs">
-            サブテーブルの中にサブテーブル・関連レコード一覧・リッチテキストは置けません。
+            {tr(
+              tr(
+                "サブテーブルの中にサブテーブル・関連レコード一覧・リッチテキストは置けません。",
+              ),
+            )}
           </Text>
           {(field.columns ?? []).map((col, i) => (
             <Stack
@@ -317,7 +331,7 @@ export function FormFieldEditor({
                   列 {i + 1}
                 </Text>
                 <ActionIcon
-                  aria-label="列を削除"
+                  aria-label={tr("列を削除")}
                   color="red"
                   onClick={() =>
                     set({
@@ -368,7 +382,7 @@ export function FormFieldEditor({
                 })
               }
             >
-              列を追加
+              {tr("列を追加")}
             </GhostButton>
           </Group>
         </Stack>
@@ -399,6 +413,7 @@ function RelatedConfigEditor({
   siblings: FormFieldDef[];
   onChange: (related: RelatedConfig) => void;
 }) {
+  const tr = useTr();
   const isMobile = useIsMobile();
   const current: RelatedConfig = field.related ?? {
     targetFormCode: "",
@@ -454,49 +469,49 @@ function RelatedConfigEditor({
     <Stack gap="xs">
       <Select
         data={forms}
-        description="この項目に一覧として埋め込むフォーム"
-        label="参照先のフォーム"
+        description={tr("この項目に一覧として埋め込むフォーム")}
+        label={tr("参照先のフォーム")}
         onChange={(v) =>
           set({ targetFormCode: v ?? "", targetFieldKey: "", columns: [] })
         }
-        placeholder="フォームを選ぶ"
+        placeholder={tr("フォームを選ぶ")}
         searchable
         value={current.targetFormCode || null}
       />
       <Group align="flex-start" grow={!isMobile}>
         <Select
           data={ownOptions}
-          description="このフォームの項目"
-          label="突き合わせる項目（自分）"
+          description={tr("このフォームの項目")}
+          label={tr("突き合わせる項目（自分）")}
           onChange={(v) => set({ thisFieldKey: v ?? "" })}
-          placeholder="項目を選ぶ"
+          placeholder={tr("項目を選ぶ")}
           searchable
           value={current.thisFieldKey || null}
         />
         <Select
           data={targetFields}
-          description="参照先フォームの項目"
+          description={tr("参照先フォームの項目")}
           disabled={!current.targetFormCode || loading}
-          label="突き合わせる項目（参照先）"
+          label={tr("突き合わせる項目（参照先）")}
           onChange={(v) => set({ targetFieldKey: v ?? "" })}
-          placeholder={loading ? "読み込み中…" : "項目を選ぶ"}
+          placeholder={loading ? "読み込み中…" : tr("項目を選ぶ")}
           searchable
           value={current.targetFieldKey || null}
         />
       </Group>
       <MultiSelect
         data={targetFields}
-        description="参照先の一覧に出す列（最大 8 つ）"
+        description={tr("参照先の一覧に出す列（最大 8 つ）")}
         disabled={!current.targetFormCode || loading}
-        label="表示する列"
+        label={tr("表示する列")}
         maxValues={8}
         onChange={(v) => set({ columns: v })}
-        placeholder="列を選ぶ"
+        placeholder={tr("列を選ぶ")}
         searchable
         value={current.columns}
       />
       <NumberInput
-        label="最大表示件数"
+        label={tr("最大表示件数")}
         max={100}
         min={1}
         onChange={(v) => set({ limit: Number(v) || 20 })}

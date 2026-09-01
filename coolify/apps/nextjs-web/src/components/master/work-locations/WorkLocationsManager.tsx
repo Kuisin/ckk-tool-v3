@@ -64,8 +64,10 @@ import {
 } from "@/components/ui/modals";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { LocalizedTextInput } from "@/components/ui/shells";
+import { useTr } from "@/hooks/useTr";
 import { fieldHelp, fieldHelpTip } from "@/lib/field-help";
 import { openInNewContext } from "@/lib/pwa-display";
+import type { Translate } from "@/lib/ui-text";
 
 /**
  * QR ラベル印刷シートを新しいタブで開く（SY08 と同じ `openInNewContext` —
@@ -120,18 +122,20 @@ interface Option {
   label: string;
 }
 
+// フックを使えない素の関数なので、解決済みの `tr` を引数で受ける。
 function notifyResult(
+  tr: Translate,
   result: { ok: boolean; error?: string },
   message: string,
   onOk: () => void,
 ) {
   if (result.ok) {
-    notifications.show({ title: "保存しました", message, color: "green" });
+    notifications.show({ title: tr("保存しました"), message, color: "green" });
     onOk();
   } else {
     notifications.show({
-      title: "エラー",
-      message: result.error ?? "処理に失敗しました",
+      title: tr("エラー"),
+      message: result.error ?? tr("処理に失敗しました"),
       color: "red",
     });
   }
@@ -152,6 +156,7 @@ function GroupModal({
   plantOptions: Option[];
   onDone: () => void;
 }) {
+  const tr = useTr();
   const [isPending, startTransition] = useTransition();
   const isEdit = !!group;
   const [code, setCode] = useState("");
@@ -194,8 +199,9 @@ function GroupModal({
         ? await updateWorkLocationGroup(group.id, input)
         : await createWorkLocationGroup(input);
       notifyResult(
+        tr,
         result,
-        isEdit ? "グループを更新しました" : "グループを作成しました",
+        isEdit ? "グループを更新しました" : tr("グループを作成しました"),
         () => {
           onClose();
           onDone();
@@ -211,8 +217,8 @@ function GroupModal({
       onSubmit={handleSubmit}
       opened={opened}
       size="lg"
-      submitLabel={isEdit ? "保存" : "作成"}
-      title={isEdit ? "グループの編集" : "グループの追加"}
+      submitLabel={isEdit ? "保存" : tr("作成")}
+      title={isEdit ? "グループの編集" : tr("グループの追加")}
     >
       <Stack gap="sm">
         <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="sm">
@@ -223,7 +229,7 @@ function GroupModal({
               />
             }
             onChange={(e) => setCode(e.currentTarget.value)}
-            placeholder="例: NC-LATHE"
+            placeholder={tr("例: NC-LATHE")}
             value={code}
             withAsterisk
           />
@@ -246,7 +252,9 @@ function GroupModal({
           <NumberInput
             label={
               <HelpLabel
-                {...fieldHelp("workLocation", "sortOrder", { label: "表示順" })}
+                {...fieldHelp("workLocation", "sortOrder", {
+                  label: tr("表示順"),
+                })}
               />
             }
             onChange={(v) =>
@@ -258,8 +266,8 @@ function GroupModal({
         <LocalizedTextInput
           help={fieldHelpTip("workLocation", "code")}
           jaProps={{ value: nameJa, onChange: setNameJa }}
-          label="名称"
-          placeholder="例: NC旋盤"
+          label={tr("名称")}
+          placeholder={tr("例: NC旋盤")}
           required
           translationsProps={{
             value: nameTranslations,
@@ -269,7 +277,7 @@ function GroupModal({
         <TextInput
           label={
             <HelpLabel
-              {...fieldHelp("workLocation", "sortOrder", { label: "備考" })}
+              {...fieldHelp("workLocation", "sortOrder", { label: tr("備考") })}
             />
           }
           onChange={(e) => setNotes(e.currentTarget.value)}
@@ -304,6 +312,7 @@ function LocationModal({
   defaultSortOrder: number;
   onDone: () => void;
 }) {
+  const tr = useTr();
   const [isPending, startTransition] = useTransition();
   const isEdit = !!location;
   const [code, setCode] = useState("");
@@ -343,8 +352,9 @@ function LocationModal({
         ? await updateWorkLocation(location.id, input)
         : await addWorkLocation(groupId, input);
       notifyResult(
+        tr,
         result,
-        isEdit ? "作業場所を更新しました" : "作業場所を追加しました",
+        isEdit ? "作業場所を更新しました" : tr("作業場所を追加しました"),
         () => {
           onClose();
           onDone();
@@ -360,8 +370,8 @@ function LocationModal({
       onSubmit={handleSubmit}
       opened={opened}
       size="lg"
-      submitLabel={isEdit ? "保存" : "追加"}
-      title={isEdit ? "作業場所の編集" : "作業場所の追加"}
+      submitLabel={isEdit ? "保存" : tr("追加")}
+      title={isEdit ? "作業場所の編集" : tr("作業場所の追加")}
     >
       <Stack gap="sm">
         <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="sm">
@@ -372,12 +382,12 @@ function LocationModal({
               />
             }
             onChange={(e) => setCode(e.currentTarget.value)}
-            placeholder="例: NC-01"
+            placeholder={tr("例: NC-01")}
             value={code}
             withAsterisk
           />
           <NumberInput
-            description="同時に割り当て可能な作業数（空欄 = 制限なし）"
+            description={tr("同時に割り当て可能な作業数（空欄 = 制限なし）")}
             label={<HelpLabel {...fieldHelp("workLocation", "capacity")} />}
             min={1}
             onChange={(v) =>
@@ -388,7 +398,9 @@ function LocationModal({
           <NumberInput
             label={
               <HelpLabel
-                {...fieldHelp("workLocation", "sortOrder", { label: "表示順" })}
+                {...fieldHelp("workLocation", "sortOrder", {
+                  label: tr("表示順"),
+                })}
               />
             }
             onChange={(v) =>
@@ -410,8 +422,8 @@ function LocationModal({
         <LocalizedTextInput
           help={fieldHelpTip("workLocation", "code")}
           jaProps={{ value: nameJa, onChange: setNameJa }}
-          label="名称"
-          placeholder="例: NC旋盤 1号機"
+          label={tr("名称")}
+          placeholder={tr("例: NC旋盤 1号機")}
           required
           translationsProps={{
             value: nameTranslations,
@@ -421,7 +433,7 @@ function LocationModal({
         <TextInput
           label={
             <HelpLabel
-              {...fieldHelp("workLocation", "sortOrder", { label: "備考" })}
+              {...fieldHelp("workLocation", "sortOrder", { label: tr("備考") })}
             />
           }
           onChange={(e) => setNotes(e.currentTarget.value)}
@@ -440,6 +452,7 @@ function TypesModal({
   types,
   onDone,
 }: ModalBaseProps & { types: WorkLocationTypeRow[]; onDone: () => void }) {
+  const tr = useTr();
   const [isPending, startTransition] = useTransition();
   const [rows, setRows] = useState<WorkLocationTypeRow[]>(types);
 
@@ -459,7 +472,7 @@ function TypesModal({
             labelEn: r.labelEn,
           })),
       );
-      notifyResult(result, "種別を保存しました", () => {
+      notifyResult(tr, result, tr("種別を保存しました"), () => {
         onClose();
         onDone();
       });
@@ -473,18 +486,21 @@ function TypesModal({
       onSubmit={handleSubmit}
       opened={opened}
       size="lg"
-      submitLabel="保存"
-      title="種別管理"
+      submitLabel={tr("保存")}
+      title={tr("種別管理")}
     >
       <Stack gap="xs">
         <Text c="dimmed" size="xs">
-          machine / area
-          は組み込み（削除不可）。グループが使用中の種別は削除できません。
+          {tr(
+            tr(
+              "machine / area\n          は組み込み（削除不可）。グループが使用中の種別は削除できません。",
+            ),
+          )}
         </Text>
         {rows.map((r, idx) => (
           <Group gap="xs" key={r.builtin ? r.key : `row-${idx}`} wrap="nowrap">
             <TextInput
-              aria-label="種別キー"
+              aria-label={tr("種別キー")}
               disabled={r.builtin}
               onChange={(e) => {
                 const key = e.currentTarget.value;
@@ -492,12 +508,12 @@ function TypesModal({
                   prev.map((p, i) => (i === idx ? { ...p, key } : p)),
                 );
               }}
-              placeholder="キー（例: line）"
+              placeholder={tr("キー（例: line）")}
               value={r.key}
               w={150}
             />
             <TextInput
-              aria-label="種別表示名（日本語）"
+              aria-label={tr("種別表示名（日本語）")}
               disabled={r.builtin}
               onChange={(e) => {
                 const labelJa = e.currentTarget.value;
@@ -505,12 +521,12 @@ function TypesModal({
                   prev.map((p, i) => (i === idx ? { ...p, labelJa } : p)),
                 );
               }}
-              placeholder="表示名（日本語）"
+              placeholder={tr("表示名（日本語）")}
               style={{ flex: 1 }}
               value={r.labelJa}
             />
             <TextInput
-              aria-label="種別表示名（English）"
+              aria-label={tr("種別表示名（English）")}
               disabled={r.builtin}
               onChange={(e) => {
                 const labelEn = e.currentTarget.value;
@@ -524,12 +540,12 @@ function TypesModal({
             />
             {r.builtin ? (
               <Badge color="gray" variant="light">
-                組み込み
+                {tr("組み込み")}
               </Badge>
             ) : (
               <Tooltip label="削除" withinPortal>
                 <ActionIcon
-                  aria-label="種別を削除"
+                  aria-label={tr("種別を削除")}
                   color="red"
                   onClick={() =>
                     setRows((prev) => prev.filter((_, i) => i !== idx))
@@ -552,7 +568,7 @@ function TypesModal({
               ])
             }
           >
-            種別を追加
+            {tr("種別を追加")}
           </GhostButton>
         </Group>
       </Stack>
@@ -571,6 +587,7 @@ export function WorkLocationsManager({
   types: WorkLocationTypeRow[];
   plantOptions: Option[];
 }) {
+  const tr = useTr();
   const router = useRouter();
   const [, startTransition] = useTransition();
 
@@ -605,24 +622,28 @@ export function WorkLocationsManager({
               leftSection={<IconAdjustments size={14} />}
               onClick={() => setTypesOpen(true)}
             >
-              種別管理
+              {tr("種別管理")}
             </SecondaryButton>
             <PrimaryButton
               leftSection={<IconPlus size={14} />}
               onClick={() => setGroupModal({ opened: true, group: null })}
             >
-              グループ追加
+              {tr("グループ追加")}
             </PrimaryButton>
           </Group>
         }
-        breadcrumbs={["マスタ", "作業場所"]}
+        breadcrumbs={[tr("マスタ"), "作業場所"]}
         title="作業場所"
       />
 
       {groups.length === 0 ? (
         <EmptyState
           icon={<IconMapPin size={24} />}
-          message="作業場所が未登録です。グループ（機械種別・エリアなど）を作成し、配下に物理的な場所（機械 1 台・1 区画）を追加してください。"
+          message={tr(
+            tr(
+              "作業場所が未登録です。グループ（機械種別・エリアなど）を作成し、配下に物理的な場所（機械 1 台・1 区画）を追加してください。",
+            ),
+          )}
         />
       ) : (
         groups.map((group) => (
@@ -665,7 +686,7 @@ export function WorkLocationsManager({
                     }
                     size="xs"
                   >
-                    場所を追加
+                    {tr("場所を追加")}
                   </GhostButton>
                   <GhostButton
                     disabled={group.locations.length === 0}
@@ -675,14 +696,14 @@ export function WorkLocationsManager({
                     }
                     size="xs"
                   >
-                    QR印刷
+                    {tr("QR印刷")}
                   </GhostButton>
                   <GhostButton
                     leftSection={<IconEdit size={14} />}
                     onClick={() => setGroupModal({ opened: true, group })}
                     size="xs"
                   >
-                    編集
+                    {tr("編集")}
                   </GhostButton>
                   <GhostButton
                     color="red"
@@ -697,17 +718,21 @@ export function WorkLocationsManager({
 
               {group.locations.length === 0 ? (
                 <Text c="dimmed" size="sm">
-                  場所が未登録です（「場所を追加」から機械 1 台・1 区画を登録）
+                  {tr(
+                    tr(
+                      "場所が未登録です（「場所を追加」から機械 1 台・1 区画を登録）",
+                    ),
+                  )}
                 </Text>
               ) : (
                 <Table striped withTableBorder>
                   <Table.Thead>
                     <Table.Tr>
                       <Table.Th w={140}>コード</Table.Th>
-                      <Table.Th>名称</Table.Th>
-                      <Table.Th w={120}>キャパシティ</Table.Th>
-                      <Table.Th w={110}>計画 / 実績</Table.Th>
-                      <Table.Th w={80}>状態</Table.Th>
+                      <Table.Th>{tr("名称")}</Table.Th>
+                      <Table.Th w={120}>{tr("キャパシティ")}</Table.Th>
+                      <Table.Th w={110}>{tr("計画 / 実績")}</Table.Th>
+                      <Table.Th w={80}>{tr("状態")}</Table.Th>
                       <Table.Th w={80} />
                     </Table.Tr>
                   </Table.Thead>
@@ -729,7 +754,7 @@ export function WorkLocationsManager({
                           <Text className="tabular-nums" size="sm">
                             {loc.capacity != null
                               ? `${loc.capacity} 作業`
-                              : "制限なし"}
+                              : tr("制限なし")}
                           </Text>
                         </Table.Td>
                         <Table.Td>
@@ -742,9 +767,9 @@ export function WorkLocationsManager({
                         </Table.Td>
                         <Table.Td>
                           <Group gap={4} justify="flex-end" wrap="nowrap">
-                            <Tooltip label="QRラベルを印刷" withinPortal>
+                            <Tooltip label={tr("QRラベルを印刷")} withinPortal>
                               <ActionIcon
-                                aria-label="作業場所のQRラベルを印刷"
+                                aria-label={tr("作業場所のQRラベルを印刷")}
                                 color="gray"
                                 onClick={() => openQrPrintSheet([loc.id])}
                                 variant="subtle"
@@ -752,9 +777,9 @@ export function WorkLocationsManager({
                                 <IconQrcode size={14} />
                               </ActionIcon>
                             </Tooltip>
-                            <Tooltip label="編集" withinPortal>
+                            <Tooltip label={tr("編集")} withinPortal>
                               <ActionIcon
-                                aria-label="作業場所を編集"
+                                aria-label={tr("作業場所を編集")}
                                 color="gray"
                                 onClick={() =>
                                   setLocationModal({
@@ -771,7 +796,7 @@ export function WorkLocationsManager({
                             </Tooltip>
                             <Tooltip label="削除" withinPortal>
                               <ActionIcon
-                                aria-label="作業場所を削除"
+                                aria-label={tr("作業場所を削除")}
                                 color="red"
                                 onClick={() => setDeleteLocation(loc)}
                                 variant="subtle"
@@ -814,7 +839,7 @@ export function WorkLocationsManager({
         types={types}
       />
       <ConfirmModal
-        confirmLabel="削除する"
+        confirmLabel={tr("削除する")}
         message={
           deleteGroup
             ? `グループ「${deleteGroup.nameJa}」を削除します。配下の場所（${deleteGroup.locations.length}件）も削除されます。この操作は取り消せません。`
@@ -827,6 +852,7 @@ export function WorkLocationsManager({
           startTransition(async () => {
             const result = await deleteWorkLocationGroup(target.id);
             notifyResult(
+              tr,
               result,
               `グループ「${target.nameJa}」を削除しました`,
               () => {
@@ -837,11 +863,13 @@ export function WorkLocationsManager({
           });
         }}
         opened={!!deleteGroup}
-        title="グループの削除"
-        warning="作業計画・実績で使用中の場所が含まれる場合は削除できません。"
+        title={tr("グループの削除")}
+        warning={tr(
+          tr("作業計画・実績で使用中の場所が含まれる場合は削除できません。"),
+        )}
       />
       <ConfirmModal
-        confirmLabel="削除する"
+        confirmLabel={tr("削除する")}
         message={
           deleteLocation
             ? `作業場所「${deleteLocation.nameJa}」を削除します。この操作は取り消せません。`
@@ -854,6 +882,7 @@ export function WorkLocationsManager({
           startTransition(async () => {
             const result = await deleteWorkLocation(target.id);
             notifyResult(
+              tr,
               result,
               `作業場所「${target.nameJa}」を削除しました`,
               () => {
@@ -864,7 +893,7 @@ export function WorkLocationsManager({
           });
         }}
         opened={!!deleteLocation}
-        title="作業場所の削除"
+        title={tr("作業場所の削除")}
         warning={
           deleteLocation &&
           deleteLocation.planCount + deleteLocation.actualCount > 0

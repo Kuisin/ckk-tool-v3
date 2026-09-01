@@ -22,6 +22,7 @@
 import { Badge, Group, Paper, Text, ThemeIcon } from "@mantine/core";
 import { Handle, type Node, type NodeProps, Position } from "@xyflow/react";
 import { useLocale } from "next-intl";
+import { useTr } from "@/hooks/useTr";
 import {
   PROCESS_CATEGORY_COLOR,
   processCategoryLabel,
@@ -46,6 +47,7 @@ export type StepFlowNode = Node<StepNodeData, "workflowStep">;
 const HANDLE_STYLE = { opacity: 0, pointerEvents: "none" } as const;
 
 export function WorkflowStepNode({ data }: NodeProps<StepFlowNode>) {
+  const tr = useTr();
   const locale = useLocale();
   const { step, highlighted } = data;
   const icon = STEP_STATUS_ICON[step.status] ?? STEP_STATUS_ICON.PENDING;
@@ -106,12 +108,12 @@ export function WorkflowStepNode({ data }: NodeProps<StepFlowNode>) {
           </Badge>
           {startable && (
             <Badge color="green" size="xs" variant="filled">
-              開始可
+              {tr("開始可")}
             </Badge>
           )}
           {isOutsource && (
             <Badge color="orange" size="xs" variant="outline">
-              外注
+              {tr("外注")}
             </Badge>
           )}
           {hasQuantities ? (
@@ -148,7 +150,7 @@ export function WorkflowStepNode({ data }: NodeProps<StepFlowNode>) {
             // 開始可のときは「開始可」バッジが出ているので重ねて言わない。
             !startable && (
               <Text c="dimmed" size="xs">
-                未着手
+                {tr("未着手")}
               </Text>
             )
           )}

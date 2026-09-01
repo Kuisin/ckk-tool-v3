@@ -41,6 +41,7 @@ import type {
 } from "@/components/production/step-execution/model";
 import { PrimaryButton } from "@/components/ui/buttons";
 import { SearchSelect } from "@/components/ui/SearchSelect";
+import { useTr } from "@/hooks/useTr";
 
 function RecordTable({
   rows,
@@ -56,11 +57,12 @@ function RecordTable({
   /** 作業場所列。 */
   showLocation?: boolean;
 }) {
+  const tr = useTr();
   const fmt = useFormat();
   if (rows.length === 0) {
     return (
       <Text c="dimmed" size="sm">
-        記録はありません
+        {tr("記録はありません")}
       </Text>
     );
   }
@@ -68,14 +70,14 @@ function RecordTable({
     <Table striped withTableBorder>
       <Table.Thead>
         <Table.Tr>
-          <Table.Th>担当者</Table.Th>
-          <Table.Th w={120}>日付</Table.Th>
-          <Table.Th w={130}>時間</Table.Th>
+          <Table.Th>{tr("担当者")}</Table.Th>
+          <Table.Th w={120}>{tr("日付")}</Table.Th>
+          <Table.Th w={130}>{tr("時間")}</Table.Th>
           <Table.Th ta="right" w={90}>
-            数量
+            {tr("数量")}
           </Table.Th>
           {showLocation && <Table.Th w={180}>作業場所</Table.Th>}
-          <Table.Th>備考</Table.Th>
+          <Table.Th>{tr("備考")}</Table.Th>
           {canEdit && <Table.Th w={50} />}
         </Table.Tr>
       </Table.Thead>
@@ -91,7 +93,9 @@ function RecordTable({
             <Table.Td>
               <Group gap={6} wrap="nowrap">
                 <Text size="sm">
-                  {r.startTime ? `${r.startTime}〜${r.endTime ?? ""}` : "終日"}
+                  {r.startTime
+                    ? `${r.startTime}〜${r.endTime ?? ""}`
+                    : tr("終日")}
                 </Text>
                 {(r.concurrentCount ?? 1) > 1 && (
                   <Badge color="grape" size="xs" variant="light">
@@ -120,7 +124,7 @@ function RecordTable({
             {canEdit && (
               <Table.Td>
                 <ActionIcon
-                  aria-label="この記録を削除"
+                  aria-label={tr("この記録を削除")}
                   color="red"
                   disabled={deleting}
                   onClick={() => onDelete(r.id)}
@@ -160,6 +164,7 @@ function RecordSection({
   /** 作業場所の選択肢。 */
   workLocationOptions?: { value: string; label: string }[];
 }) {
+  const tr = useTr();
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [userId, setUserId] = useState<string | null>(null);
@@ -174,16 +179,16 @@ function RecordSection({
   const handleAdd = () => {
     if (!userId) {
       notifications.show({
-        title: "入力不足",
-        message: "担当者を選択してください",
+        title: tr("入力不足"),
+        message: tr("担当者を選択してください"),
         color: "red",
       });
       return;
     }
     if (!date) {
       notifications.show({
-        title: "入力不足",
-        message: "日付を選択してください",
+        title: tr("入力不足"),
+        message: tr("日付を選択してください"),
         color: "red",
       });
       return;
@@ -206,11 +211,11 @@ function RecordSection({
           : await addStepActual(payload);
       if (result.ok) {
         notifications.show({
-          title: "追加しました",
+          title: tr("追加しました"),
           message:
             kind === "plan"
-              ? "作業計画を追加しました"
-              : "作業実績を追加しました",
+              ? tr("作業計画を追加しました")
+              : tr("作業実績を追加しました"),
           color: "green",
         });
         setStartTime("");
@@ -220,8 +225,8 @@ function RecordSection({
         router.refresh();
       } else {
         notifications.show({
-          title: "エラー",
-          message: result.errors?.join(" / ") ?? "追加に失敗しました",
+          title: tr("エラー"),
+          message: result.errors?.join(" / ") ?? tr("追加に失敗しました"),
           color: "red",
         });
       }
@@ -238,8 +243,8 @@ function RecordSection({
         router.refresh();
       } else {
         notifications.show({
-          title: "エラー",
-          message: result.errors?.join(" / ") ?? "削除に失敗しました",
+          title: tr("エラー"),
+          message: result.errors?.join(" / ") ?? tr("削除に失敗しました"),
           color: "red",
         });
       }
@@ -269,38 +274,38 @@ function RecordSection({
             <Group align="flex-end" gap="xs" wrap="wrap">
               <div style={{ flex: 2, minWidth: 200 }}>
                 <SearchSelect
-                  label="担当者"
+                  label={tr("担当者")}
                   onChange={setUserId}
                   onSearch={searchUserOptions}
-                  placeholder="従業員を検索"
+                  placeholder={tr("従業員を検索")}
                   storageKey={`step-${kind}-user`}
                   value={userId}
                 />
               </div>
               <DatePickerInput
-                label="日付"
+                label={tr("日付")}
                 leftSection={<IconCalendar size={16} />}
                 onChange={setDate}
-                placeholder="日付"
+                placeholder={tr("日付")}
                 value={date}
                 valueFormat="YYYY/MM/DD"
                 w={150}
               />
               <TimeInput
-                label="開始（任意）"
+                label={tr("開始（任意）")}
                 onChange={(e) => setStartTime(e.currentTarget.value)}
                 value={startTime}
                 w={110}
               />
               <TimeInput
-                label="終了（任意）"
+                label={tr("終了（任意）")}
                 onChange={(e) => setEndTime(e.currentTarget.value)}
                 value={endTime}
                 w={110}
               />
               <NumberInput
                 allowNegative={false}
-                label="数量（任意）"
+                label={tr("数量（任意）")}
                 min={1}
                 onChange={(v) => setQuantity(typeof v === "number" ? v : "")}
                 placeholder={
@@ -315,16 +320,16 @@ function RecordSection({
                 <Select
                   clearable
                   data={workLocationOptions}
-                  label="作業場所（任意）"
+                  label={tr("作業場所（任意）")}
                   onChange={setWorkLocationId}
-                  placeholder="機械・エリア"
+                  placeholder={tr("機械・エリア")}
                   searchable
                   value={workLocationId}
                   w={220}
                 />
               )}
               <TextInput
-                label="備考"
+                label={tr("備考")}
                 onChange={(e) => setNotes(e.currentTarget.value)}
                 style={{ flex: 1, minWidth: 140 }}
                 value={notes}
@@ -334,7 +339,7 @@ function RecordSection({
                 loading={isPending}
                 onClick={handleAdd}
               >
-                追加
+                {tr("追加")}
               </PrimaryButton>
             </Group>
           </Stack>
@@ -365,6 +370,7 @@ export function StepPlanActualPanel({
   /** 作業場所の選択肢（計画・実績フォーム用）。 */
   workLocationOptions: { value: string; label: string }[];
 }) {
+  const tr = useTr();
   const planEditable =
     canOperate && (stepStatus === "PENDING" || stepStatus === "IN_PROGRESS");
   const actualEditable = canOperate && stepStatus === "IN_PROGRESS";
@@ -373,23 +379,31 @@ export function StepPlanActualPanel({
     <>
       <RecordSection
         canEdit={planEditable}
-        description="担当者・日付（または時刻）ごとに分割して計画できます。作業場所（機械・エリア）も任意で割り当てられます。"
+        description={tr(
+          tr(
+            "担当者・日付（または時刻）ごとに分割して計画できます。作業場所（機械・エリア）も任意で割り当てられます。",
+          ),
+        )}
         kind="plan"
         rows={plans}
         stepId={stepId}
         suggestedQuantity={expectedInputQuantity}
-        title="作業計画"
+        title={tr("作業計画")}
         workLocationOptions={workLocationOptions}
         workOrderNumber={workOrderNumber}
       />
       <RecordSection
         canEdit={actualEditable}
-        description="実施した作業を担当者・日付ごとに記録します（進行中のみ追加可）。共有端末からの実績には端末の既定作業場所が入ります。"
+        description={tr(
+          tr(
+            "実施した作業を担当者・日付ごとに記録します（進行中のみ追加可）。共有端末からの実績には端末の既定作業場所が入ります。",
+          ),
+        )}
         kind="actual"
         rows={actuals}
         stepId={stepId}
         suggestedQuantity={expectedInputQuantity}
-        title="作業実績"
+        title={tr("作業実績")}
         workLocationOptions={workLocationOptions}
         workOrderNumber={workOrderNumber}
       />

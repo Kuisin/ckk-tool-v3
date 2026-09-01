@@ -39,6 +39,7 @@ import {
 import { EmptyState } from "@/components/ui/EmptyState";
 import { NewButton } from "@/components/ui/NewButton";
 import { ListShell } from "@/components/ui/shells";
+import { useTr } from "@/hooks/useTr";
 import type { PrivilegedRequestRow } from "@/lib/privileged-requests";
 
 type ActionFn = () => Promise<{ ok: boolean; error?: string }>;
@@ -56,6 +57,7 @@ export function PrivilegedAccessView({
   canApprove: boolean;
   canRequest: boolean;
 }) {
+  const tr = useTr();
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   // 承認モーダル: 一部だけ許可できるので、対象の行とチェック状態を持つ。
@@ -71,8 +73,8 @@ export function PrivilegedAccessView({
         router.refresh();
       } else {
         notifications.show({
-          title: "エラー",
-          message: res.error ?? "失敗しました",
+          title: tr("エラー"),
+          message: res.error ?? tr("失敗しました"),
           color: "red",
         });
       }
@@ -100,12 +102,12 @@ export function PrivilegedAccessView({
           withAsterisk
         />
       ),
-      labels: { confirm: confirmLabel, cancel: "戻る" },
+      labels: { confirm: confirmLabel, cancel: tr("戻る") },
       confirmProps: { color: "red" },
       onConfirm: () => {
         if (!value.trim()) {
           notifications.show({
-            title: "理由を入力してください",
+            title: tr("理由を入力してください"),
             message: "",
             color: "red",
           });
@@ -120,23 +122,23 @@ export function PrivilegedAccessView({
     if (row.kind === "user-change") {
       // 方式 B は「その変更を当てるか否か」の二択。部分承認の余地が無い。
       modals.openConfirmModal({
-        title: "変更を承認",
+        title: tr("変更を承認"),
         children: (
           <Stack gap="xs">
             <Text size="sm">{row.title}</Text>
             <Text c="dimmed" size="sm">
               {row.detail}
             </Text>
-            <Text size="sm">承認するとこの変更が適用されます。</Text>
+            <Text size="sm">{tr("承認するとこの変更が適用されます。")}</Text>
           </Stack>
         ),
-        labels: { confirm: "承認して適用", cancel: "戻る" },
+        labels: { confirm: tr("承認して適用"), cancel: tr("戻る") },
         onConfirm: () =>
           startTransition(async () => {
             const res = await approveUserChangeRequest(row.id);
             if (!res.ok) {
               notifications.show({
-                title: "エラー",
+                title: tr("エラー"),
                 message: res.error,
                 color: "red",
               });
@@ -145,14 +147,14 @@ export function PrivilegedAccessView({
             // 承認はできたが当てられなかった、を成功として流さない。
             if (res.data.applied) {
               notifications.show({
-                title: "承認して適用しました",
+                title: tr("承認して適用しました"),
                 message: "",
                 color: "green",
               });
             } else {
               notifications.show({
-                title: "承認しましたが適用できませんでした",
-                message: res.data.error ?? "前提が変わっています",
+                title: tr("承認しましたが適用できませんでした"),
+                message: res.data.error ?? tr("前提が変わっています"),
                 color: "orange",
                 autoClose: false,
               });
@@ -178,7 +180,7 @@ export function PrivilegedAccessView({
       });
       if (res.ok) {
         notifications.show({
-          title: "承認しました",
+          title: tr("承認しました"),
           message: "",
           color: "green",
         });
@@ -186,7 +188,7 @@ export function PrivilegedAccessView({
         router.refresh();
       } else {
         notifications.show({
-          title: "エラー",
+          title: tr("エラー"),
           message: res.error,
           color: "red",
         });
@@ -201,16 +203,16 @@ export function PrivilegedAccessView({
         loading={isPending}
         onClick={() =>
           promptReason(
-            "申請を差し戻す",
-            "差し戻しの理由",
-            "差し戻す",
+            tr("申請を差し戻す"),
+            tr("差し戻しの理由"),
+            tr("差し戻す"),
             (reason) =>
               run(
                 () =>
                   row.kind === "elevation"
                     ? rejectPrivilegedAccess(row.id, reason)
                     : rejectUserChangeRequest(row.id, reason),
-                "差し戻しました",
+                tr("差し戻しました"),
               ),
           )
         }
@@ -229,11 +231,11 @@ export function PrivilegedAccessView({
                 row.kind === "elevation"
                   ? cancelPrivilegedAccess(row.id)
                   : cancelUserChangeRequest(row.id),
-              "取り下げました",
+              tr("取り下げました"),
             )
           }
         >
-          取り下げ
+          {tr("取り下げ")}
         </GhostButton>
       );
     }
@@ -244,11 +246,14 @@ export function PrivilegedAccessView({
     <ListShell
       action={
         canRequest ? (
-          <NewButton href="/settings/privileged-access/new" label="申請する" />
+          <NewButton
+            href="/settings/privileged-access/new"
+            label={tr("申請する")}
+          />
         ) : undefined
       }
-      breadcrumbs={["システム", "特権アクセス"]}
-      title="特権アクセス"
+      breadcrumbs={[tr("システム"), tr("特権アクセス")]}
+      title={tr("特権アクセス")}
     >
       <Alert
         color="blue"
@@ -257,28 +262,36 @@ export function PrivilegedAccessView({
         variant="light"
       >
         <Text size="sm">
-          端末の秘密・QRカード・個人データの閲覧は、申請して承認を受けた期間だけ
-          使えます。<b>持ち時間は最初に操作した時点から測りはじめ</b>、
-          承認された終了日時か持ち時間のどちらか早いほうで切れます。
+          {tr(
+            tr(
+              "端末の秘密・QRカード・個人データの閲覧は、申請して承認を受けた期間だけ\n          使えます。",
+            ),
+          )}
+          <b>{tr("持ち時間は最初に操作した時点から測りはじめ")}</b>
+          {tr(
+            tr(
+              "、\n          承認された終了日時か持ち時間のどちらか早いほうで切れます。",
+            ),
+          )}
         </Text>
       </Alert>
 
       <Tabs defaultValue={toApprove.length > 0 ? "approve" : "mine"}>
         <Tabs.List>
-          <Tabs.Tab value="mine">自分の申請</Tabs.Tab>
+          <Tabs.Tab value="mine">{tr("自分の申請")}</Tabs.Tab>
           {canApprove && (
             <Tabs.Tab value="approve">
               承認する{toApprove.length > 0 ? `（${toApprove.length}）` : ""}
             </Tabs.Tab>
           )}
-          {canApprove && <Tabs.Tab value="history">履歴</Tabs.Tab>}
+          {canApprove && <Tabs.Tab value="history">{tr("履歴")}</Tabs.Tab>}
         </Tabs.List>
 
         <Tabs.Panel pt="md" value="mine">
           {mine.length === 0 ? (
             <EmptyState
               icon={<IconShieldCheck size={20} />}
-              message="まだ申請はありません"
+              message={tr("まだ申請はありません")}
             />
           ) : (
             <Stack gap="sm">
@@ -298,7 +311,7 @@ export function PrivilegedAccessView({
             {toApprove.length === 0 ? (
               <EmptyState
                 icon={<IconShieldCheck size={20} />}
-                message="決裁待ちの申請はありません"
+                message={tr("決裁待ちの申請はありません")}
               />
             ) : (
               <Stack gap="sm">
@@ -319,7 +332,7 @@ export function PrivilegedAccessView({
             {decided.length === 0 ? (
               <EmptyState
                 icon={<IconShieldCheck size={20} />}
-                message="決裁済みの申請はありません"
+                message={tr("決裁済みの申請はありません")}
               />
             ) : (
               <Stack gap="sm">
@@ -331,18 +344,18 @@ export function PrivilegedAccessView({
                           loading={isPending}
                           onClick={() =>
                             promptReason(
-                              "付与を取り消す",
-                              "取り消しの理由",
-                              "取り消す",
+                              tr("付与を取り消す"),
+                              tr("取り消しの理由"),
+                              tr("取り消す"),
                               (reason) =>
                                 run(
                                   () => revokePrivilegedAccess(row.id, reason),
-                                  "取り消しました",
+                                  tr("取り消しました"),
                                 ),
                             )
                           }
                         >
-                          取り消し
+                          {tr("取り消し")}
                         </GhostButton>
                       ) : null
                     }
@@ -360,7 +373,7 @@ export function PrivilegedAccessView({
       <Modal
         onClose={() => setApproving(null)}
         opened={approving !== null}
-        title="申請を承認"
+        title={tr("申請を承認")}
       >
         {approving && (
           <Stack gap="sm">
@@ -369,10 +382,14 @@ export function PrivilegedAccessView({
               理由: {approving.reason}
             </Text>
             <Text fw={600} size="sm">
-              許可する操作
+              {tr("許可する操作")}
             </Text>
             <Text c="dimmed" size="xs">
-              外した操作は承認後も使えません。すべて外す場合は差し戻してください。
+              {tr(
+                tr(
+                  "外した操作は承認後も使えません。すべて外す場合は差し戻してください。",
+                ),
+              )}
             </Text>
             <Stack gap={4}>
               {approving.operations.map((op) => (
@@ -396,7 +413,7 @@ export function PrivilegedAccessView({
             </Stack>
             <Textarea
               autosize
-              label="コメント（任意）"
+              label={tr("コメント（任意）")}
               minRows={2}
               onChange={(e) => setComment(e.currentTarget.value)}
               value={comment}
@@ -410,7 +427,7 @@ export function PrivilegedAccessView({
                 loading={isPending}
                 onClick={submitApprove}
               >
-                承認する
+                {tr("承認する")}
               </ApproveButton>
             </Group>
           </Stack>

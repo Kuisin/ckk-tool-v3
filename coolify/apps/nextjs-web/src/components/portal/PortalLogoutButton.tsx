@@ -5,8 +5,10 @@ import { IconLogout } from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
 import { useTransition } from "react";
 import { portalLogout } from "@/app/(portal)/portal/logout-action";
+import { useTr } from "@/hooks/useTr";
 
 export function PortalLogoutButton() {
+  const tr = useTr();
   const router = useRouter();
   const [pending, start] = useTransition();
   return (
@@ -22,7 +24,7 @@ export function PortalLogoutButton() {
       variant="default"
       w="fit-content"
     >
-      ログアウト
+      {tr("ログアウト")}
     </Button>
   );
 }

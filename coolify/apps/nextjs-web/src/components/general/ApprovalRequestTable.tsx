@@ -28,6 +28,7 @@ import type { ApprovalRequestRow } from "@/app/(dashboard)/general/tasks/approva
 import { useFormat } from "@/components/layout/PreferencesProvider";
 import { type Column, DataTable } from "@/components/ui/DataTable";
 import { ListShell } from "@/components/ui/shells";
+import { useTr } from "@/hooks/useTr";
 import { useUrlSelectState, useUrlStringState } from "@/hooks/useUrlState";
 import { useIsMobile } from "@/hooks/useViewport";
 import {
@@ -70,9 +71,14 @@ function TargetTypeBadge({ targetType }: { targetType: string }) {
  * 遷移は止めず、押す前に分かるようにするだけ。
  */
 function NoAccessBadge() {
+  const tr = useTr();
   return (
     <Tooltip
-      label="この書類を開く権限がありません。承認は書類の詳細画面で行うため、管理者に権限の付与を依頼してください。"
+      label={tr(
+        tr(
+          "この書類を開く権限がありません。承認は書類の詳細画面で行うため、管理者に権限の付与を依頼してください。",
+        ),
+      )}
       multiline
       w={260}
       withinPortal
@@ -83,7 +89,7 @@ function NoAccessBadge() {
         size="xs"
         variant="outline"
       >
-        閲覧権限なし
+        {tr("閲覧権限なし")}
       </Badge>
     </Tooltip>
   );
@@ -120,6 +126,7 @@ export function ApprovalRequestTable({
   /** 承認・予定 (CM01) のセクションとして埋め込む（見出しは親が出す）。 */
   embedded?: boolean;
 }) {
+  const tr = useTr();
   const fmt = useFormat();
   const router = useRouter();
   const isMobile = useIsMobile();
@@ -147,7 +154,7 @@ export function ApprovalRequestTable({
   const columns: Column<ApprovalRequestRow>[] = [
     {
       key: "targetType",
-      header: "種別",
+      header: tr("種別"),
       width: 120,
       sortable: true,
       sortValue: (r) => r.targetType,
@@ -155,7 +162,7 @@ export function ApprovalRequestTable({
     },
     {
       key: "targetId",
-      header: "対象番号",
+      header: tr("対象番号"),
       sortable: true,
       width: 180,
       sortValue: (r) => r.targetId,
@@ -170,7 +177,7 @@ export function ApprovalRequestTable({
     },
     {
       key: "step",
-      header: "段階",
+      header: tr("段階"),
       width: 170,
       sortable: true,
       sortValue: (r) => r.stepNo,
@@ -178,14 +185,14 @@ export function ApprovalRequestTable({
     },
     {
       key: "requestedBy",
-      header: "依頼者",
+      header: tr("依頼者"),
       sortable: true,
       width: 160,
       render: (r) => <Text size="sm">{r.requestedBy}</Text>,
     },
     {
       key: "requestedAt",
-      header: "依頼日時",
+      header: tr("依頼日時"),
       sortable: true,
       width: 150,
       sortValue: (r) => r.requestedAt ?? "",
@@ -197,7 +204,7 @@ export function ApprovalRequestTable({
     },
     {
       key: "notes",
-      header: "備考",
+      header: tr("備考"),
       hideable: true,
       render: (r) => (
         <Text c="dimmed" size="xs" truncate>
@@ -209,14 +216,14 @@ export function ApprovalRequestTable({
 
   return (
     <ListShell
-      breadcrumbs={["一般", "承認・予定"]}
+      breadcrumbs={[tr("一般"), tr("承認・予定")]}
       embedded={embedded}
       filters=<Select
         clearable
         data={TARGET_TYPE_OPTIONS}
         flex={isMobile ? 1 : undefined}
         onChange={setTargetType}
-        placeholder="種別"
+        placeholder={tr("種別")}
         value={targetType}
         w={isMobile ? undefined : 150}
       />
@@ -225,18 +232,18 @@ export function ApprovalRequestTable({
         <TextInput
           leftSection={<IconSearch size={14} />}
           onChange={(e) => setSearch(e.currentTarget.value)}
-          placeholder="対象番号・依頼者・備考で検索"
+          placeholder={tr("対象番号・依頼者・備考で検索")}
           value={search}
         />
       }
-      title="承認・予定"
+      title={tr("承認・予定")}
     >
       <DataTable
         columns={columns}
         data={filtered}
         defaultSort={{ key: "requestedAt", dir: "asc" }}
         emptyIcon={<IconShieldCheck size={24} />}
-        emptyMessage="承認依頼中の依頼はありません"
+        emptyMessage={tr("承認依頼中の依頼はありません")}
         getRowId={(r) => r.id}
         onRowClick={(r) => {
           const href = targetHref(r);

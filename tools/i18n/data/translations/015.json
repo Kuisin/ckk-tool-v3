@@ -602,5 +602,13 @@
  "この端末は未登録です（端末情報がありません）。\n              初期設定をやり直す場合はローカル情報を消去してください。": [
   "This device is not registered (there is no device information). To start setup again, clear the local data.",
   "此终端未登记（没有终端信息）。若要重新进行初始设置，请清除本地信息。"
+ ],
+ "地域を更新しました": [
+  "The region was updated",
+  "已更新地区"
+ ],
+ "地域を無効化しました": [
+  "The region was disabled",
+  "已停用地区"
  ]
 }

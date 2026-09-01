@@ -31,6 +31,7 @@ import {
 import { CancelButton, SaveButton } from "@/components/ui/buttons";
 import { HelpLabel } from "@/components/ui/HelpLabel";
 import { LocalizedTextInput } from "@/components/ui/shells";
+import { useTr } from "@/hooks/useTr";
 import { fieldHelp, fieldHelpTip } from "@/lib/field-help";
 import type { StorageLocationRow } from "./StorageLocationsPanel";
 
@@ -65,6 +66,7 @@ export function LocationModal({
   onClose: () => void;
   onDone: () => void;
 }) {
+  const tr = useTr();
   const [pending, startTransition] = useTransition();
   const isCreate = location == null;
   const form = useForm<LocationFormValues>({
@@ -102,14 +104,14 @@ export function LocationModal({
           });
       if (!res.ok) {
         notifications.show({
-          title: "保存失敗",
+          title: tr("保存失敗"),
           message: res.error,
           color: "red",
         });
         return;
       }
       notifications.show({
-        title: "保存しました",
+        title: tr("保存しました"),
         message: values.nameJa,
         color: "green",
       });
@@ -121,7 +123,7 @@ export function LocationModal({
     <Modal
       onClose={onClose}
       opened
-      title={isCreate ? "保管場所の追加" : "保管場所の編集"}
+      title={isCreate ? "保管場所の追加" : tr("保管場所の編集")}
     >
       <form onSubmit={form.onSubmit(submit)}>
         <Stack gap="sm">
@@ -136,7 +138,7 @@ export function LocationModal({
                     })}
                   />
                 }
-                placeholder="拠点を選択"
+                placeholder={tr("拠点を選択")}
                 searchable
                 withAsterisk
                 {...form.getInputProps("plantId")}
@@ -150,23 +152,31 @@ export function LocationModal({
                 data={floorOptions}
                 description={
                   selectedPlantId != null && floorOptions.length === 0
-                    ? "この拠点にはフロアマップがありません（ピンなしで作成）"
-                    : "任意 — 選択するとマップ中央に仮配置（あとでドラッグ調整）"
+                    ? tr(
+                        tr(
+                          "この拠点にはフロアマップがありません（ピンなしで作成）",
+                        ),
+                      )
+                    : tr(
+                        tr(
+                          "任意 — 選択するとマップ中央に仮配置（あとでドラッグ調整）",
+                        ),
+                      )
                 }
                 disabled={selectedPlantId == null || floorOptions.length === 0}
                 label={
                   <HelpLabel
                     {...fieldHelp("storageLocation", "plant", {
-                      label: "フロア",
+                      label: tr("フロア"),
                     })}
                   />
                 }
                 placeholder={
                   selectedPlantId == null
-                    ? "先に拠点を選択"
+                    ? tr("先に拠点を選択")
                     : floorOptions.length === 0
-                      ? "フロアマップなし"
-                      : "フロアを選択（任意）"
+                      ? tr("フロアマップなし")
+                      : tr("フロアを選択（任意）")
                 }
                 {...form.getInputProps("floorMapId")}
               />
@@ -185,8 +195,8 @@ export function LocationModal({
           <LocalizedTextInput
             help={fieldHelpTip("storageLocation", "code")}
             jaProps={form.getInputProps("nameJa")}
-            label="名称"
-            placeholder="第一倉庫"
+            label={tr("名称")}
+            placeholder={tr("第一倉庫")}
             required
             translationsProps={form.getInputProps("nameTranslations")}
           />
@@ -208,7 +218,9 @@ export function LocationModal({
           <Textarea
             label={
               <HelpLabel
-                {...fieldHelp("storageLocation", "active", { label: "備考" })}
+                {...fieldHelp("storageLocation", "active", {
+                  label: tr("備考"),
+                })}
               />
             }
             {...form.getInputProps("notes")}

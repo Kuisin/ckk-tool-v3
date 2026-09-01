@@ -39,6 +39,7 @@ import { useRef, useState } from "react";
 import { SecondaryButton } from "@/components/ui/buttons";
 import { ModalShell } from "@/components/ui/modals";
 import { useInView } from "@/hooks/useInView";
+import { useTr } from "@/hooks/useTr";
 import { useIsMobile } from "@/hooks/useViewport";
 import { designFileKind, notViewableReason } from "@/lib/design-file-kind";
 
@@ -67,6 +68,7 @@ export function DesignFileViewerModal({
   onClose: () => void;
   target: DesignFileViewerTarget | null;
 }) {
+  const tr = useTr();
   const isMobile = useIsMobile();
   if (!target) return null;
   const kind = designFileKind(target.filename, target.mimeType);
@@ -133,7 +135,7 @@ export function DesignFileViewerModal({
         )}
         <Group justify="flex-end">
           <SecondaryButton external fullWidth={isMobile} href={target.src}>
-            ダウンロード
+            {tr("ダウンロード")}
           </SecondaryButton>
         </Group>
       </Stack>
@@ -154,6 +156,7 @@ export function DesignFileThumb({
   target: DesignFileViewerTarget;
   height?: number;
 }) {
+  const tr = useTr();
   const [open, setOpen] = useState(false);
   const isMobile = useIsMobile();
   const holder = useRef<HTMLButtonElement>(null);
@@ -218,7 +221,7 @@ export function DesignFileThumb({
                     <IconFile size={28} />
                   )}
                   <Text c="dimmed" size="xs">
-                    {kind === "pdf" ? "PDF" : "プレビューなし"}
+                    {kind === "pdf" ? "PDF" : tr("プレビューなし")}
                   </Text>
                 </Stack>
               </Center>

@@ -41,6 +41,7 @@ import {
 } from "@/components/ui/ImageCropModal";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { UserAvatar } from "@/components/ui/UserAvatar";
+import { useTr } from "@/hooks/useTr";
 import { type LocalizedText, localized } from "@/lib/format";
 
 export interface ProfileData {
@@ -101,6 +102,7 @@ function deviceLabel(ua: string | null): string {
 }
 
 export function ProfileView({ user }: { user: ProfileData }) {
+  const tr = useTr();
   const photoInputRef = useRef<HTMLInputElement>(null);
   const [avatarUrl, setAvatarUrl] = useState(user.avatarUrl);
   const [avatarThumbUrl, setAvatarThumbUrl] = useState(user.avatarThumbUrl);
@@ -143,14 +145,14 @@ export function ProfileView({ user }: { user: ProfileData }) {
         setAvatarThumbUrl(json.avatarThumbUrl);
         setCropTarget(null);
         notifications.show({
-          title: "設定しました",
-          message: "プロフィール写真を更新しました",
+          title: tr("設定しました"),
+          message: tr("プロフィール写真を更新しました"),
           color: "green",
         });
       } catch (err) {
         notifications.show({
-          title: "エラー",
-          message: err instanceof Error ? err.message : "不明なエラー",
+          title: tr("エラー"),
+          message: err instanceof Error ? err.message : tr("不明なエラー"),
           color: "red",
         });
       } finally {
@@ -166,14 +168,14 @@ export function ProfileView({ user }: { user: ProfileData }) {
         setAvatarUrl(null);
         setAvatarThumbUrl(null);
         notifications.show({
-          title: "削除しました",
-          message: "プロフィール写真を削除しました",
+          title: tr("削除しました"),
+          message: tr("プロフィール写真を削除しました"),
           color: "green",
         });
       } catch (err) {
         notifications.show({
-          title: "エラー",
-          message: err instanceof Error ? err.message : "不明なエラー",
+          title: tr("エラー"),
+          message: err instanceof Error ? err.message : tr("不明なエラー"),
           color: "red",
         });
       }
@@ -185,13 +187,15 @@ export function ProfileView({ user }: { user: ProfileData }) {
       const res = await updateEmailAction(email);
       if (res.ok) {
         notifications.show({
-          title: "保存しました",
-          message: "メールアドレスを更新しました（通知メールの宛先になります）",
+          title: tr("保存しました"),
+          message: tr(
+            "メールアドレスを更新しました（通知メールの宛先になります）",
+          ),
           color: "green",
         });
       } else {
         notifications.show({
-          title: "エラー",
+          title: tr("エラー"),
           message: res.error,
           color: "red",
         });
@@ -202,8 +206,8 @@ export function ProfileView({ user }: { user: ProfileData }) {
   const savePassword = () => {
     if (newPassword !== newPassword2) {
       notifications.show({
-        title: "エラー",
-        message: "新しいパスワードが一致しません",
+        title: tr("エラー"),
+        message: tr("新しいパスワードが一致しません"),
         color: "red",
       });
       return;
@@ -215,13 +219,13 @@ export function ProfileView({ user }: { user: ProfileData }) {
         setNewPassword("");
         setNewPassword2("");
         notifications.show({
-          title: "変更しました",
-          message: "次回から新しいパスワードでログインしてください",
+          title: tr("変更しました"),
+          message: tr("次回から新しいパスワードでログインしてください"),
           color: "green",
         });
       } else {
         notifications.show({
-          title: "エラー",
+          title: tr("エラー"),
           message: res.error,
           color: "red",
         });
@@ -234,20 +238,24 @@ export function ProfileView({ user }: { user: ProfileData }) {
     if (res.ok) {
       setDevices((d) => d.filter((x) => x.id !== id));
       notifications.show({
-        title: "解除しました",
-        message: "このデバイスへのプッシュ通知を停止しました",
+        title: tr("解除しました"),
+        message: tr("このデバイスへのプッシュ通知を停止しました"),
         color: "green",
       });
     } else {
-      notifications.show({ title: "エラー", message: res.error, color: "red" });
+      notifications.show({
+        title: tr("エラー"),
+        message: res.error,
+        color: "red",
+      });
     }
   };
 
   return (
     <Stack gap="md" maw={960} mx="auto" w="100%">
       <PageHeader
-        breadcrumbs={[{ label: "プロフィール" }]}
-        title="プロフィール"
+        breadcrumbs={[{ label: tr("プロフィール") }]}
+        title={tr("プロフィール")}
       />
 
       {/* 正方形に切り抜いてから保存する（表示は常に真円）。 */}
@@ -279,11 +287,11 @@ export function ProfileView({ user }: { user: ProfileData }) {
                 onClick={() => photoInputRef.current?.click()}
                 size="xs"
               >
-                {avatarUrl ? "変更" : "写真を設定"}
+                {avatarUrl ? "変更" : tr("写真を設定")}
               </GhostButton>
               {avatarUrl && (
                 <GhostButton
-                  aria-label="プロフィール写真を削除"
+                  aria-label={tr("プロフィール写真を削除")}
                   color="red"
                   disabled={photoPending}
                   onClick={deletePhoto}
@@ -305,18 +313,18 @@ export function ProfileView({ user }: { user: ProfileData }) {
           </Stack>
           <Stack className="min-w-0 flex-1" gap="md">
             <SimpleGrid cols={{ base: 1, md: 3 }} spacing="md">
-              <FieldValue label="表示名" value={user.displayName} />
-              <FieldValue label="ユーザー名" value={user.username} />
+              <FieldValue label={tr("表示名")} value={user.displayName} />
+              <FieldValue label={tr("ユーザー名")} value={user.username} />
               <FieldValue
-                label="種別"
+                label={tr("種別")}
                 value={USER_GROUP_LABEL[user.group] ?? user.group}
               />
               <FieldValue
-                label="最終ログイン"
+                label={tr("最終ログイン")}
                 value={formatTs(user.lastLoginAt)}
               />
               <FieldValue
-                label="承認グループ"
+                label={tr("承認グループ")}
                 value={
                   user.approvalGroups.length === 0 ? (
                     "—"
@@ -340,11 +348,12 @@ export function ProfileView({ user }: { user: ProfileData }) {
       <Paper p="md" radius="md" shadow="xs">
         <Stack gap="sm">
           <Text fw={600} size="sm">
-            メールアドレス
+            {tr("メールアドレス")}
           </Text>
           <Text c="dimmed" size="xs">
-            通知メール（承認依頼・取込結果など）の宛先に使われます。空にすると
-            メール通知は届きません。
+            {tr(
+              "通知メール（承認依頼・取込結果など）の宛先に使われます。空にすると\n            メール通知は届きません。",
+            )}
           </Text>
           <Group align="flex-end" gap="sm">
             <TextInput
@@ -369,24 +378,24 @@ export function ProfileView({ user }: { user: ProfileData }) {
         <Paper p="md" radius="md" shadow="xs">
           <Stack gap="sm">
             <Text fw={600} size="sm">
-              パスワード変更
+              {tr("パスワード変更")}
             </Text>
             <SimpleGrid cols={{ base: 1, md: 3 }} spacing="sm">
               <PasswordInput
-                label="現在のパスワード"
+                label={tr("現在のパスワード")}
                 onChange={(e) => setCurrentPassword(e.currentTarget.value)}
                 value={currentPassword}
                 withAsterisk
               />
               <PasswordInput
-                description="8 文字以上"
-                label="新しいパスワード"
+                description={tr("8 文字以上")}
+                label={tr("新しいパスワード")}
                 onChange={(e) => setNewPassword(e.currentTarget.value)}
                 value={newPassword}
                 withAsterisk
               />
               <PasswordInput
-                label="新しいパスワード（確認）"
+                label={tr("新しいパスワード（確認）")}
                 onChange={(e) => setNewPassword2(e.currentTarget.value)}
                 value={newPassword2}
                 withAsterisk
@@ -399,7 +408,7 @@ export function ProfileView({ user }: { user: ProfileData }) {
                 onClick={savePassword}
                 type="button"
               >
-                パスワードを変更
+                {tr("パスワードを変更")}
               </SaveButton>
             </div>
           </Stack>
@@ -411,15 +420,17 @@ export function ProfileView({ user }: { user: ProfileData }) {
         <Stack gap="sm">
           <Group justify="space-between">
             <Text fw={600} size="sm">
-              プッシュ通知の登録デバイス
+              {tr("プッシュ通知の登録デバイス")}
             </Text>
             <SecondaryButton href="/profile/notifications">
-              通知設定
+              {tr("通知設定")}
             </SecondaryButton>
           </Group>
           {devices.length === 0 ? (
             <Text c="dimmed" size="xs">
-              登録されたデバイスはありません。通知設定から有効化できます。
+              {tr(
+                "登録されたデバイスはありません。通知設定から有効化できます。",
+              )}
             </Text>
           ) : (
             devices.map((d) => (
@@ -434,7 +445,7 @@ export function ProfileView({ user }: { user: ProfileData }) {
                   </Stack>
                 </Group>
                 <DangerButton onClick={() => removeDevice(d.id)}>
-                  解除
+                  {tr("解除")}
                 </DangerButton>
               </Group>
             ))

@@ -25,6 +25,7 @@
 import { Box, Center, Loader, Stack, Text } from "@mantine/core";
 import { IconCube } from "@tabler/icons-react";
 import { useEffect, useRef, useState } from "react";
+import { useTr } from "@/hooks/useTr";
 
 export function Model3dCanvas({
   src,
@@ -47,6 +48,7 @@ export function Model3dCanvas({
   /** 小さい枠向けの控えめな読み込み表示（文言を出さない）。 */
   compact?: boolean;
 }) {
+  const tr = useTr();
   const holder = useRef<HTMLDivElement>(null);
   const [state, setState] = useState<"loading" | "ready" | "error">("loading");
 
@@ -141,7 +143,7 @@ export function Model3dCanvas({
               <Loader size="sm" />
               {!compact && (
                 <Text c="dimmed" size="xs">
-                  3D モデルを読み込んでいます…
+                  {tr("3D モデルを読み込んでいます…")}
                 </Text>
               )}
             </Stack>
@@ -149,12 +151,16 @@ export function Model3dCanvas({
             <Stack align="center" gap={4}>
               <IconCube size={28} />
               <Text c="dimmed" size="xs">
-                3D モデル
+                {tr("3D モデル")}
               </Text>
             </Stack>
           ) : (
             <Text c="dimmed" size="sm" ta="center">
-              このファイルは表示できませんでした（ダウンロードしてご覧ください）
+              {tr(
+                tr(
+                  "このファイルは表示できませんでした（ダウンロードしてご覧ください）",
+                ),
+              )}
             </Text>
           )}
         </Center>

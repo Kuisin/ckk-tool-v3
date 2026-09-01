@@ -3,6 +3,7 @@ import { EditFormClient } from "@/components/forms/EditFormClient";
 import { AccessDenied } from "@/components/ui/AccessDenied";
 import { requireAppRead } from "@/lib/authz-page";
 import { fetchForm, formAccess } from "@/lib/forms";
+import { getTr } from "@/lib/ui-text-server";
 
 export const dynamic = "force-dynamic";
 
@@ -11,6 +12,7 @@ export default async function EditFormPage({
 }: {
   params: Promise<{ code: string }>;
 }) {
+  const tr = await getTr();
   const denied = await requireAppRead("forms");
   if (denied) return denied;
 
@@ -22,8 +24,11 @@ export default async function EditFormPage({
   if (!access.canEdit) {
     return (
       <AccessDenied
-        breadcrumbs={["一般", { label: "フォーム", href: "/general/forms" }]}
-        message="このフォームを編集する権限がありません。"
+        breadcrumbs={[
+          tr("一般"),
+          { label: tr("フォーム"), href: "/general/forms" },
+        ]}
+        message={tr("このフォームを編集する権限がありません。")}
         title={form.title}
       />
     );

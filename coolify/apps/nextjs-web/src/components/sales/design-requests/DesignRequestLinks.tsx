@@ -15,6 +15,7 @@ import { useFormat } from "@/components/layout/PreferencesProvider";
 import { SecondaryButton } from "@/components/ui/buttons";
 import { DocNumber } from "@/components/ui/DocNumber";
 import { StatusBadge } from "@/components/ui/StatusBadge";
+import { useTr } from "@/hooks/useTr";
 import type { DesignRequestLink } from "./model";
 
 const BASE_PATH = "/sales/design-requests";
@@ -30,6 +31,7 @@ export function DesignRequestLinks({
   /** 起票できない理由（あると起票ボタンの代わりに文言を出す）。 */
   createDisabledReason?: string;
 }) {
+  const tr = useTr();
   const fmt = useFormat();
 
   return (
@@ -64,7 +66,7 @@ export function DesignRequestLinks({
         </Stack>
       ) : (
         <Text c="dimmed" size="sm">
-          —（設計依頼はありません）
+          {tr("—（設計依頼はありません）")}
         </Text>
       )}
 
@@ -78,7 +80,7 @@ export function DesignRequestLinks({
             href={createHref}
             leftSection={<IconRuler2 size={14} />}
           >
-            設計依頼を起票
+            {tr("設計依頼を起票")}
           </SecondaryButton>
         </Group>
       ) : null}

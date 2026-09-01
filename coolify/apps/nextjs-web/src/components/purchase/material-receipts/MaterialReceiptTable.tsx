@@ -24,6 +24,7 @@ import { useFormat } from "@/components/layout/PreferencesProvider";
 import { type Column, DataTable } from "@/components/ui/DataTable";
 import { NewButton } from "@/components/ui/NewButton";
 import { ListShell } from "@/components/ui/shells";
+import { useTr } from "@/hooks/useTr";
 import { useUrlSelectState, useUrlStringState } from "@/hooks/useUrlState";
 import { useIsMobile } from "@/hooks/useViewport";
 import type { MaterialReceiptView } from "./model";
@@ -41,6 +42,7 @@ export function MaterialReceiptTable({
 }: {
   rows: MaterialReceiptView[];
 }) {
+  const tr = useTr();
   const fmt = useFormat();
   const router = useRouter();
   const isMobile = useIsMobile();
@@ -69,7 +71,7 @@ export function MaterialReceiptTable({
   const columns: Column<MaterialReceiptView>[] = [
     {
       key: "material",
-      header: "素材",
+      header: tr("素材"),
       sortable: true,
       sortValue: (r) => r.materialCode,
       render: (r) => (
@@ -85,20 +87,20 @@ export function MaterialReceiptTable({
     },
     {
       key: "supplierName",
-      header: "仕入先",
+      header: tr("仕入先"),
       sortable: true,
       sortValue: (r) => r.supplierName ?? "",
       render: (r) => r.supplierName ?? "—",
     },
     {
       key: "plantName",
-      header: "入荷拠点",
+      header: tr("入荷拠点"),
       sortValue: (r) => r.plantName ?? "",
       render: (r) => r.plantName ?? "—",
     },
     {
       key: "quantity",
-      header: "数量",
+      header: tr("数量"),
       align: "right",
       width: 110,
       sortValue: (r) => r.quantity,
@@ -110,7 +112,7 @@ export function MaterialReceiptTable({
     },
     {
       key: "receivedAt",
-      header: "入荷日",
+      header: tr("入荷日"),
       width: 120,
       sortable: true,
       sortValue: (r) => r.receivedAt,
@@ -122,7 +124,7 @@ export function MaterialReceiptTable({
     },
     {
       key: "poNumber",
-      header: "発注明細",
+      header: tr("発注明細"),
       width: 170,
       sortValue: (r) => r.poNumber ?? "",
       render: (r) =>
@@ -139,7 +141,7 @@ export function MaterialReceiptTable({
           </Anchor>
         ) : (
           <Badge color="gray" variant="light">
-            直接調達
+            {tr("直接調達")}
           </Badge>
         ),
     },
@@ -148,14 +150,14 @@ export function MaterialReceiptTable({
   return (
     <ListShell
       action={<NewButton href={`${BASE_PATH}/new`} />}
-      breadcrumbs={["購買", "素材入荷"]}
+      breadcrumbs={[tr("購買"), tr("素材入荷")]}
       filters={
         <Select
           clearable
           data={SOURCE_OPTIONS}
           flex={isMobile ? 1 : undefined}
           onChange={setSource}
-          placeholder="入荷区分"
+          placeholder={tr("入荷区分")}
           value={source}
           w={isMobile ? undefined : 150}
         />
@@ -165,11 +167,11 @@ export function MaterialReceiptTable({
         <TextInput
           leftSection={<IconSearch size={14} />}
           onChange={(e) => setSearch(e.currentTarget.value)}
-          placeholder="素材コード・名称・仕入先・発注番号で検索"
+          placeholder={tr("素材コード・名称・仕入先・発注番号で検索")}
           value={search}
         />
       }
-      title="素材入荷"
+      title={tr("素材入荷")}
     >
       <DataTable
         columns={columns}
@@ -177,7 +179,7 @@ export function MaterialReceiptTable({
         defaultSort={{ key: "receivedAt", dir: "desc" }}
         emptyAction={<NewButton href={`${BASE_PATH}/new`} />}
         emptyIcon={<IconPackageImport size={24} />}
-        emptyMessage="素材入荷がありません"
+        emptyMessage={tr("素材入荷がありません")}
         getRowId={(r) => r.id}
         onRowClick={(r) => router.push(`${BASE_PATH}/${r.id}`)}
         renderCard={(r) => (
@@ -190,7 +192,7 @@ export function MaterialReceiptTable({
                 {r.materialName}
               </Text>
               <Text c="dimmed" size="xs" truncate>
-                {r.supplierName ?? "仕入先なし"}
+                {r.supplierName ?? tr("仕入先なし")}
                 {r.plantName ? ` / ${r.plantName}` : ""}
               </Text>
               <Group gap="md" mt={2}>
@@ -206,7 +208,7 @@ export function MaterialReceiptTable({
                 </Text>
               ) : (
                 <Badge color="gray" variant="light">
-                  直接調達
+                  {tr("直接調達")}
                 </Badge>
               )}
               <Text c="dimmed" size="xs">

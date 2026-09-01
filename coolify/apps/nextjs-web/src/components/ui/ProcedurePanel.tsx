@@ -36,6 +36,7 @@ import {
 } from "@mantine/core";
 import { IconBan } from "@tabler/icons-react";
 import Link from "next/link";
+import { useTr } from "@/hooks/useTr";
 import { useIsMobile } from "@/hooks/useViewport";
 import {
   type ApprovalPhase,
@@ -120,6 +121,7 @@ function LinkGroups({
   heading: string;
   groups: HandoffGroup[];
 }) {
+  const tr = useTr();
   return (
     <Stack gap="sm" mt="md">
       <Text c="dimmed" fw={600} size="sm">
@@ -151,7 +153,7 @@ function LinkGroups({
                       size="sm"
                       variant="light"
                     >
-                      {it.done ? "済" : "未"}
+                      {it.done ? "済" : tr("未")}
                     </Badge>
                   )}
                   {it.href ? (
@@ -204,6 +206,7 @@ export function ProcedurePanel({
   /** 追加コンテンツ（承認記録・操作履歴など）。 */
   children?: React.ReactNode;
 }) {
+  const tr = useTr();
   const isMobile = useIsMobile();
   return (
     <Paper p="md" radius="md" withBorder>
@@ -216,15 +219,15 @@ export function ProcedurePanel({
           color="red"
           icon={<IconBan size={16} />}
           mb="md"
-          title="キャンセル済み"
+          title={tr("キャンセル済み")}
           variant="light"
         >
-          {cancelledNote ?? "この書類はキャンセルされています。"}
+          {cancelledNote ?? tr("この書類はキャンセルされています。")}
         </Alert>
       )}
 
       {sourceGroups && sourceGroups.length > 0 && (
-        <LinkGroups groups={sourceGroups} heading="前の書類から" />
+        <LinkGroups groups={sourceGroups} heading={tr("前の書類から")} />
       )}
 
       <Stepper
@@ -245,7 +248,7 @@ export function ProcedurePanel({
       </Stepper>
 
       {handoffGroups && handoffGroups.length > 0 && (
-        <LinkGroups groups={handoffGroups} heading="次の書類へ" />
+        <LinkGroups groups={handoffGroups} heading={tr("次の書類へ")} />
       )}
 
       {children}

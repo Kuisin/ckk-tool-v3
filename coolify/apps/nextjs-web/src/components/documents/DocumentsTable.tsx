@@ -8,6 +8,7 @@ import { DataTable } from "@/components/ui/DataTable";
 import { NewButton } from "@/components/ui/NewButton";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { ListShell } from "@/components/ui/shells";
+import { useTr } from "@/hooks/useTr";
 import type { PageRow } from "@/lib/internal-pages";
 
 export function DocumentsTable({
@@ -17,6 +18,7 @@ export function DocumentsTable({
   rows: PageRow[];
   canCreate: boolean;
 }) {
+  const tr = useTr();
   const router = useRouter();
   const fmt = useFormat();
 
@@ -24,17 +26,17 @@ export function DocumentsTable({
     <ListShell
       action={
         canCreate ? (
-          <NewButton href="/general/documents/new" label="文書を作る" />
+          <NewButton href="/general/documents/new" label={tr("文書を作る")} />
         ) : undefined
       }
-      breadcrumbs={[{ label: "一般" }, { label: "社内文書" }]}
-      title="社内文書"
+      breadcrumbs={[{ label: tr("一般") }, { label: tr("社内文書") }]}
+      title={tr("社内文書")}
     >
       <DataTable
         columns={[
           {
             key: "title",
-            header: "タイトル",
+            header: tr("タイトル"),
             render: (r) => (
               <Stack gap={2}>
                 <Text fw={500} size="sm">
@@ -55,7 +57,7 @@ export function DocumentsTable({
           },
           {
             key: "status",
-            header: "状態",
+            header: tr("状態"),
             width: 120,
             render: (r) => (
               <StatusBadge entity="InternalPage" status={r.status} />
@@ -63,7 +65,7 @@ export function DocumentsTable({
           },
           {
             key: "publishedRevision",
-            header: "公開版",
+            header: tr("公開版"),
             width: 90,
             align: "right",
             render: (r) =>
@@ -71,7 +73,7 @@ export function DocumentsTable({
           },
           {
             key: "openComments",
-            header: "未解決",
+            header: tr("未解決"),
             width: 90,
             align: "right",
             sortValue: (r) => r.openComments,
@@ -86,7 +88,7 @@ export function DocumentsTable({
           },
           {
             key: "updatedAt",
-            header: "更新日",
+            header: tr("更新日"),
             width: 120,
             render: (r) => fmt.date(r.updatedAt),
           },
@@ -94,7 +96,7 @@ export function DocumentsTable({
         data={rows}
         defaultSort={{ key: "updatedAt", dir: "desc" }}
         emptyIcon={<IconFileDescription size={28} />}
-        emptyMessage="表示できる文書がありません"
+        emptyMessage={tr("表示できる文書がありません")}
         getRowId={(r) => r.pageNumber}
         onRowClick={(r) => router.push(`/general/documents/${r.pageNumber}`)}
         renderCard={(r) => (

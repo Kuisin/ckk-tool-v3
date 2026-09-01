@@ -24,6 +24,7 @@ import {
   ResourceActions,
   SummaryGrid,
 } from "@/components/ui/shells";
+import { useTr } from "@/hooks/useTr";
 import type { MemoView } from "@/lib/document-memos";
 import type {
   FormAnswerValue,
@@ -85,6 +86,7 @@ export function ResponseDetail({
   createdAt: string;
   updatedAt: string;
 }) {
+  const tr = useTr();
   const fmt = useFormat();
 
   return (
@@ -94,14 +96,14 @@ export function ResponseDetail({
           menuItems={[
             {
               // 1 件だけの控え。承認の記録まで載るので、紙で回す申請にも使える。
-              label: "PDF で印刷",
+              label: tr("PDF で印刷"),
               icon: <IconFileTypePdf size={14} />,
               href: `/api/pdf/form-response?id=${encodeURIComponent(responseNumber)}`,
             },
             {
               // 回答者に配っている画面。作成者が「相手にはこう見える」を
               // 確かめられるように残す（編集は回答タブの中でする）。
-              label: "回答者向けの画面で開く",
+              label: tr("回答者向けの画面で開く"),
               icon: <IconLink size={14} />,
               href: `/f/${formCode}/${encodeURIComponent(responseNumber)}`,
             },
@@ -109,8 +111,8 @@ export function ResponseDetail({
         />
       }
       breadcrumbs={[
-        { label: "一般" },
-        { label: "フォーム", href: "/general/forms" },
+        { label: tr("一般") },
+        { label: tr("フォーム"), href: "/general/forms" },
         { label: formTitle, href: `/general/forms/${formCode}` },
         { label: `No. ${recordNo}` },
       ]}
@@ -138,7 +140,7 @@ export function ResponseDetail({
       <SummaryGrid>
         <FieldValue label="No." value={recordNo} />
         <FieldValue
-          label="回答番号"
+          label={tr("回答番号")}
           value={
             <Text ff="mono" size="sm">
               {responseNumber}
@@ -147,22 +149,26 @@ export function ResponseDetail({
         />
         {/* 回答者は「表示する」フォームだけ。HIDDEN のときはサーバが null にしている。 */}
         {respondent !== null && (
-          <FieldValue label="回答者" value={respondent} />
+          <FieldValue label={tr("回答者")} value={respondent} />
         )}
         <FieldValue
-          label="提出日時"
+          label={tr("提出日時")}
           value={submittedAt ? fmt.dateTime(submittedAt) : "—"}
         />
       </SummaryGrid>
 
       {status === "REJECTED" && rejectReason && (
-        <Alert color="red" title="差し戻されています">
+        <Alert color="red" title={tr("差し戻されています")}>
           <Text size="sm" style={{ whiteSpace: "pre-wrap" }}>
             {rejectReason}
           </Text>
           {isOwner && (
             <Text mt={4} size="xs">
-              「回答」タブで内容を直して保存すると、もう一度承認を依頼します。
+              {tr(
+                tr(
+                  "「回答」タブで内容を直して保存すると、もう一度承認を依頼します。",
+                ),
+              )}
             </Text>
           )}
         </Alert>
@@ -170,11 +176,11 @@ export function ResponseDetail({
 
       <AppTabs defaultValue="answers">
         <Tabs.List>
-          <Tabs.Tab value="answers">回答</Tabs.Tab>
+          <Tabs.Tab value="answers">{tr("回答")}</Tabs.Tab>
           {approvalEnabled && <Tabs.Tab value="approval">承認</Tabs.Tab>}
-          <Tabs.Tab value="attachments">添付</Tabs.Tab>
-          <Tabs.Tab value="memo">コメント</Tabs.Tab>
-          {!hideHistory && <Tabs.Tab value="history">履歴</Tabs.Tab>}
+          <Tabs.Tab value="attachments">{tr("添付")}</Tabs.Tab>
+          <Tabs.Tab value="memo">{tr("コメント")}</Tabs.Tab>
+          {!hideHistory && <Tabs.Tab value="history">{tr("履歴")}</Tabs.Tab>}
         </Tabs.List>
 
         <Tabs.Panel pt="md" value="answers">

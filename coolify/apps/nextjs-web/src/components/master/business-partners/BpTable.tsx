@@ -40,6 +40,7 @@ import { DocNumber } from "@/components/ui/DocNumber";
 import { openConfirm } from "@/components/ui/modals";
 import { NewButton } from "@/components/ui/NewButton";
 import { ListShell } from "@/components/ui/shells";
+import { useTr } from "@/hooks/useTr";
 import { useUrlSelectState, useUrlStringState } from "@/hooks/useUrlState";
 import { useIsMobile } from "@/hooks/useViewport";
 import { bpMatchesQuery } from "@/lib/bp-search";
@@ -51,6 +52,7 @@ const STATUS_OPTIONS = [
 ];
 
 export function BpTable({ rows }: { rows: BpRow[] }) {
+  const tr = useTr();
   const locale = useLocale();
   const fmt = useFormat();
   const router = useRouter();
@@ -92,14 +94,14 @@ export function BpTable({ rows }: { rows: BpRow[] }) {
       );
       if (result.ok) {
         notifications.show({
-          title: isActive ? "有効化しました" : "無効化しました",
+          title: isActive ? "有効化しました" : tr("無効化しました"),
           message: `${targets.length}件の取引先を${isActive ? "有効化" : "無効化"}しました`,
           color: "green",
         });
         router.refresh();
       } else {
         notifications.show({
-          title: "エラー",
+          title: tr("エラー"),
           message: result.error,
           color: "red",
         });
@@ -109,22 +111,22 @@ export function BpTable({ rows }: { rows: BpRow[] }) {
 
   const bulkDelete = (targets: BpRow[]) => {
     openConfirm({
-      title: "取引先の一括削除",
+      title: tr("取引先の一括削除"),
       message: `選択中の${targets.length}件の取引先を削除します。この操作は取り消せません。`,
-      confirmLabel: "削除する",
+      confirmLabel: tr("削除する"),
       onConfirm: () => {
         startTransition(async () => {
           const result = await deleteBps(targets.map((r) => r.id));
           if (result.ok) {
             notifications.show({
-              title: "削除しました",
+              title: tr("削除しました"),
               message: `${targets.length}件の取引先を削除しました`,
               color: "green",
             });
             router.refresh();
           } else {
             notifications.show({
-              title: "エラー",
+              title: tr("エラー"),
               message: result.error,
               color: "red",
             });
@@ -137,27 +139,27 @@ export function BpTable({ rows }: { rows: BpRow[] }) {
   const columns: Column<BpRow>[] = [
     {
       key: "bpCode",
-      header: "BPコード",
+      header: tr("BPコード"),
       sortable: true,
       width: 130,
       render: (r) => <DocNumber>{r.bpCode}</DocNumber>,
     },
     {
       key: "name",
-      header: "名称",
+      header: tr("名称"),
       sortable: true,
       sortValue: (r) => r.name,
       render: (r) => r.name,
     },
     {
       key: "roles",
-      header: "ロール",
+      header: tr("ロール"),
       width: 220,
       render: (r) => <BpRoleBadges roles={r.roles} vendorType={r.vendorType} />,
     },
     {
       key: "branchCount",
-      header: "支店数",
+      header: tr("支店数"),
       sortable: true,
       hideable: true,
       width: 90,
@@ -166,7 +168,7 @@ export function BpTable({ rows }: { rows: BpRow[] }) {
     },
     {
       key: "isActive",
-      header: "状態",
+      header: tr("状態"),
       sortable: true,
       width: 90,
       sortValue: (r) => (r.isActive ? 1 : 0),
@@ -174,7 +176,7 @@ export function BpTable({ rows }: { rows: BpRow[] }) {
     },
     {
       key: "updatedAt",
-      header: "更新日",
+      header: tr("更新日"),
       sortable: true,
       hideable: true,
       width: 120,
@@ -186,14 +188,14 @@ export function BpTable({ rows }: { rows: BpRow[] }) {
   return (
     <ListShell
       action={<NewButton href={`${BP_BASE_PATH}/new`} />}
-      breadcrumbs={["マスタ", "取引先"]}
+      breadcrumbs={[tr("マスタ"), tr("取引先")]}
       filters={
         <>
           <Select
             clearable
             data={bpRoleOptions(locale)}
             onChange={setRoleFilter}
-            placeholder="ロール"
+            placeholder={tr("ロール")}
             value={roleFilter}
             w={isMobile ? 130 : 160}
           />
@@ -201,7 +203,7 @@ export function BpTable({ rows }: { rows: BpRow[] }) {
             clearable
             data={STATUS_OPTIONS}
             onChange={setStatusFilter}
-            placeholder="状態"
+            placeholder={tr("状態")}
             value={statusFilter}
             w={isMobile ? 110 : 120}
           />
@@ -212,28 +214,28 @@ export function BpTable({ rows }: { rows: BpRow[] }) {
         <TextInput
           leftSection={<IconSearch size={14} />}
           onChange={(e) => setSearch(e.currentTarget.value)}
-          placeholder="BPコード・名称で検索"
+          placeholder={tr("BPコード・名称で検索")}
           value={search}
         />
       }
-      title="取引先"
+      title={tr("取引先")}
     >
       <DataTable
         bulkActions={[
           {
-            label: "一括有効化",
+            label: tr("一括有効化"),
             icon: <IconCheck size={16} />,
             color: "green",
             onAction: (rs) => bulkSetActive(rs, true),
           },
           {
-            label: "一括無効化",
+            label: tr("一括無効化"),
             icon: <IconCircleMinus size={16} />,
             color: "orange",
             onAction: (rs) => bulkSetActive(rs, false),
           },
           {
-            label: "一括削除",
+            label: tr("一括削除"),
             icon: <IconTrash size={16} />,
             color: "red",
             onAction: bulkDelete,
@@ -244,7 +246,7 @@ export function BpTable({ rows }: { rows: BpRow[] }) {
         defaultSort={{ key: "bpCode", dir: "asc" }}
         emptyAction={<NewButton href={`${BP_BASE_PATH}/new`} />}
         emptyIcon={<IconBuilding size={24} />}
-        emptyMessage="取引先がありません"
+        emptyMessage={tr("取引先がありません")}
         getRowId={(r) => r.id}
         onRowClick={(r) => router.push(`${BP_BASE_PATH}/${r.id}`)}
         renderCard={(r) => (
@@ -258,7 +260,9 @@ export function BpTable({ rows }: { rows: BpRow[] }) {
                 <BpRoleBadges roles={r.roles} vendorType={r.vendorType} />
                 <Group gap="md" mt={2}>
                   <Text c="dimmed" size="xs">
-                    {r.branchCount > 0 ? `${r.branchCount} 支店` : "支店なし"}
+                    {r.branchCount > 0
+                      ? `${r.branchCount} 支店`
+                      : tr("支店なし")}
                   </Text>
                   <Text c="dimmed" size="xs">
                     {fmt.date(r.updatedAt)}
@@ -271,12 +275,12 @@ export function BpTable({ rows }: { rows: BpRow[] }) {
         )}
         rowActions={(row) => [
           {
-            label: "編集",
+            label: tr("編集"),
             icon: <IconEdit size={14} />,
             onAction: (r) => router.push(`${BP_BASE_PATH}/${r.id}/edit`),
           },
           {
-            label: row.isActive ? "無効化" : "有効化",
+            label: row.isActive ? "無効化" : tr("有効化"),
             icon: <IconCircleMinus size={14} />,
             onAction: (r) => setToggleRow(r),
           },
@@ -292,14 +296,14 @@ export function BpTable({ rows }: { rows: BpRow[] }) {
       />
 
       <DeleteBpModal
-        entityLabel="取引先"
+        entityLabel={tr("取引先")}
         onClose={() => setDeleteRow(null)}
         onDone={() => router.refresh()}
         opened={!!deleteRow}
         target={deleteRow}
       />
       <ToggleBpActiveModal
-        entityLabel="取引先"
+        entityLabel={tr("取引先")}
         onClose={() => setToggleRow(null)}
         onDone={() => router.refresh()}
         opened={!!toggleRow}

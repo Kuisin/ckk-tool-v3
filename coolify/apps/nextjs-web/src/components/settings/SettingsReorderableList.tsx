@@ -17,6 +17,7 @@ import { type ReactNode, useState, useTransition } from "react";
 import { CreateButton } from "@/components/ui/buttons";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { openConfirm } from "@/components/ui/modals";
+import { useTr } from "@/hooks/useTr";
 import type { ActionResult } from "@/lib/server-action";
 import classes from "./SettingsReorderableList.module.css";
 
@@ -59,6 +60,7 @@ export function SettingsReorderableList<T>({
   /** 削除確認モーダルの文言。 */
   deleteConfirm: (item: T) => { title: string; message: string };
 }) {
+  const tr = useTr();
   const [items, setItems] = useState<T[]>(initial);
   const [isPending, startTransition] = useTransition();
   const router = useRouter();
@@ -71,7 +73,7 @@ export function SettingsReorderableList<T>({
       if (!res.ok) {
         setItems(prev);
         notifications.show({
-          title: "エラー",
+          title: tr("エラー"),
           message: res.error,
           color: "red",
         });
@@ -139,7 +141,7 @@ export function SettingsReorderableList<T>({
               </Link>
               <Group gap={4} wrap="nowrap">
                 <ActionIcon
-                  aria-label="上へ"
+                  aria-label={tr("上へ")}
                   disabled={i === 0 || isPending}
                   onClick={() => moveRow(i, -1)}
                   variant="subtle"
@@ -147,7 +149,7 @@ export function SettingsReorderableList<T>({
                   <IconArrowUp size={16} />
                 </ActionIcon>
                 <ActionIcon
-                  aria-label="下へ"
+                  aria-label={tr("下へ")}
                   disabled={i === items.length - 1 || isPending}
                   onClick={() => moveRow(i, 1)}
                   variant="subtle"

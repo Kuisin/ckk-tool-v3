@@ -23,6 +23,7 @@ import {
   ResourceActions,
   SummaryGrid,
 } from "@/components/ui/shells";
+import { useTr } from "@/hooks/useTr";
 import { useTabParam } from "@/hooks/useUrlState";
 import { useIsMobile } from "@/hooks/useViewport";
 import {
@@ -85,6 +86,7 @@ function DependencyTable({
   withNegation: boolean;
   emptyMessage: string;
 }) {
+  const tr = useTr();
   const locale = useLocale();
   const router = useRouter();
   const isMobile = useIsMobile();
@@ -100,10 +102,10 @@ function DependencyTable({
     <Table highlightOnHover striped withTableBorder>
       <Table.Thead>
         <Table.Tr>
-          <Table.Th>依存先工程</Table.Th>
-          <Table.Th w={140}>結合</Table.Th>
-          {withNegation && <Table.Th w={80}>排他</Table.Th>}
-          {!isMobile && <Table.Th>備考</Table.Th>}
+          <Table.Th>{tr("依存先工程")}</Table.Th>
+          <Table.Th w={140}>{tr("結合")}</Table.Th>
+          {withNegation && <Table.Th w={80}>{tr("排他")}</Table.Th>}
+          {!isMobile && <Table.Th>{tr("備考")}</Table.Th>}
         </Table.Tr>
       </Table.Thead>
       <Table.Tbody>
@@ -128,7 +130,7 @@ function DependencyTable({
               <Table.Td>
                 {d.isNegation ? (
                   <Badge color="red" size="xs" variant="light">
-                    排他
+                    {tr("排他")}
                   </Badge>
                 ) : (
                   <Text c="dimmed" size="sm">
@@ -162,6 +164,7 @@ export function ProcessStepDetail({
   createdAt?: string;
   updatedAt?: string;
 }) {
+  const tr = useTr();
   const locale = useLocale();
   const router = useRouter();
   // アクティブタブを ?tab= に保持（URL 共有でタブまで再現）
@@ -181,17 +184,17 @@ export function ProcessStepDetail({
     <Group gap={6}>
       {record.isSyncCapable && (
         <Badge color="cyan" size="xs" variant="light">
-          同期可
+          {tr("同期可")}
         </Badge>
       )}
       {record.isInspection && (
         <Badge color="blue" size="xs" variant="light">
-          検査工程
+          {tr("検査工程")}
         </Badge>
       )}
       {record.isApprovalStep && (
         <Badge color="green" size="xs" variant="light">
-          検査承認
+          {tr("検査承認")}
         </Badge>
       )}
       {!record.isSyncCapable &&
@@ -207,7 +210,7 @@ export function ProcessStepDetail({
         <ResourceActions
           menuItems={[
             {
-              label: record.isActive ? "無効化" : "有効化",
+              label: record.isActive ? "無効化" : tr("有効化"),
               icon: <IconCircleMinus size={14} />,
               onClick: () => setToggleOpen(true),
             },
@@ -223,8 +226,8 @@ export function ProcessStepDetail({
         />
       }
       breadcrumbs={[
-        "マスタ",
-        { label: "工程マスタ", href: BASE_PATH },
+        tr("マスタ"),
+        { label: tr("工程マスタ"), href: BASE_PATH },
         record.code,
       ]}
       createdAt={createdAt}
@@ -234,13 +237,13 @@ export function ProcessStepDetail({
     >
       <SummaryGrid>
         <FieldValue
-          label="工程コード"
+          label={tr("工程コード")}
           value={<DocNumber>{record.code}</DocNumber>}
         />
-        <FieldValue label="名称（日本語）" value={record.nameJa} />
-        <FieldValue label="名称（英語）" value={record.nameEn || "—"} />
+        <FieldValue label={tr("名称（日本語）")} value={record.nameJa} />
+        <FieldValue label={tr("名称（英語）")} value={record.nameEn || "—"} />
         <FieldValue
-          label="カテゴリ"
+          label={tr("カテゴリ")}
           value={
             <Badge
               color={PROCESS_CATEGORY_COLOR[record.category] ?? "gray"}
@@ -251,60 +254,60 @@ export function ProcessStepDetail({
           }
         />
         <FieldValue
-          label="実施場所"
+          label={tr("実施場所")}
           value={
             processExecutionLabel(record.executionLocation, locale) ??
             record.executionLocation
           }
         />
         <FieldValue
-          label="数量管理"
+          label={tr("数量管理")}
           value={
             quantityTrackingLabel(record.quantityTracking, locale) ??
             record.quantityTracking
           }
         />
         <FieldValue
-          label="ロット入力（既定）"
+          label={tr("ロット入力（既定）")}
           value={
             lotInputModeLabel(record.lotInputMode, locale) ??
             record.lotInputMode
           }
         />
         <FieldValue
-          label="既定作業時間"
+          label={tr("既定作業時間")}
           value={
             record.defaultWorkHours != null
               ? `${record.defaultWorkHours} h`
               : "—"
           }
         />
-        <FieldValue label="工程フラグ" value={flagBadges} />
+        <FieldValue label={tr("工程フラグ")} value={flagBadges} />
         {record.isApprovalStep && (
           <FieldValue
-            label="承認必要役職"
+            label={tr("承認必要役職")}
             value={record.approvalMinRank || "—"}
           />
         )}
-        <FieldValue label="表示順" value={record.sortOrder} />
+        <FieldValue label={tr("表示順")} value={record.sortOrder} />
       </SummaryGrid>
 
       <AppTabs onChange={setTab} value={tab}>
         <Tabs.List>
-          <Tabs.Tab value="overview">概要</Tabs.Tab>
-          <Tabs.Tab value="dependencies">依存関係</Tabs.Tab>
-          <Tabs.Tab value="history">履歴</Tabs.Tab>
+          <Tabs.Tab value="overview">{tr("概要")}</Tabs.Tab>
+          <Tabs.Tab value="dependencies">{tr("依存関係")}</Tabs.Tab>
+          <Tabs.Tab value="history">{tr("履歴")}</Tabs.Tab>
         </Tabs.List>
 
         <Tabs.Panel pt="md" value="overview">
           <Stack gap="md">
             <FieldValue
-              label="許可作業場所"
+              label={tr("許可作業場所")}
               value={
                 record.allowedLocationTypeLabels.length +
                   record.allowedLocationLabels.length ===
                 0
-                  ? "制限なし（すべての作業場所を使用可）"
+                  ? tr("制限なし（すべての作業場所を使用可）")
                   : [
                       ...record.allowedLocationTypeLabels.map(
                         (l) => `種別: ${l}`,
@@ -313,7 +316,7 @@ export function ProcessStepDetail({
                     ].join(" / ")
               }
             />
-            <FieldValue label="備考" value={record.notes || "—"} />
+            <FieldValue label={tr("備考")} value={record.notes || "—"} />
           </Stack>
         </Tabs.Panel>
 
@@ -321,20 +324,26 @@ export function ProcessStepDetail({
           <Stack gap="md">
             <Stack gap="xs">
               <Text fw={600} size="sm">
-                使用依存（ワークフローに含めてよい条件）
+                {tr("使用依存（ワークフローに含めてよい条件）")}
               </Text>
               <DependencyTable
-                emptyMessage="使用依存はありません（単独でワークフローに含められます）"
+                emptyMessage={tr(
+                  tr(
+                    "使用依存はありません（単独でワークフローに含められます）",
+                  ),
+                )}
                 rows={record.useDependencies}
                 withNegation
               />
             </Stack>
             <Stack gap="xs">
               <Text fw={600} size="sm">
-                実行依存（開始してよい条件 = 依存先工程の完了）
+                {tr("実行依存（開始してよい条件 = 依存先工程の完了）")}
               </Text>
               <DependencyTable
-                emptyMessage="実行依存はありません（先行工程なしで開始できます）"
+                emptyMessage={tr(
+                  tr("実行依存はありません（先行工程なしで開始できます）"),
+                )}
                 rows={record.execDependencies}
                 withNegation={false}
               />

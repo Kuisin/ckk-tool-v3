@@ -31,6 +31,7 @@ import {
   updateBranch,
 } from "@/app/(dashboard)/production/work-orders/[id]/steps/[stepId]/actions";
 import { ModalShell } from "@/components/ui/modals";
+import { useTr } from "@/hooks/useTr";
 import type { WorkOrderStepView } from "./work-orders/model";
 
 /** 終端の選び方（画面の state）。 */
@@ -83,6 +84,7 @@ export function AddBranchModal({
   /** 指定すると編集モード。 */
   editTarget?: BranchEditTarget | null;
 }) {
+  const tr = useTr();
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [catalogStepIds, setCatalogStepIds] = useState<string[]>([]);
@@ -152,7 +154,7 @@ export function AddBranchModal({
       if (result == null) return;
       if (result.ok) {
         notifications.show({
-          title: isEdit ? "分岐を更新しました" : "分岐を追加しました",
+          title: isEdit ? "分岐を更新しました" : tr("分岐を追加しました"),
           message: isEdit
             ? editTarget.stepNames.join(" → ")
             : `${sourceStep?.name ?? ""} から ${catalogStepIds.length} 工程`,
@@ -162,10 +164,12 @@ export function AddBranchModal({
         router.refresh();
       } else {
         notifications.show({
-          title: "エラー",
+          title: tr("エラー"),
           message:
             result.errors?.join(" / ") ??
-            (isEdit ? "分岐の更新に失敗しました" : "分岐の追加に失敗しました"),
+            (isEdit
+              ? tr("分岐の更新に失敗しました")
+              : tr("分岐の追加に失敗しました")),
           color: "red",
         });
       }
@@ -175,7 +179,7 @@ export function AddBranchModal({
   return (
     <ModalShell
       confirmDisabled={!canConfirm}
-      confirmLabel={isEdit ? "分岐を更新" : "分岐を追加"}
+      confirmLabel={isEdit ? "分岐を更新" : tr("分岐を追加")}
       loading={isPending}
       onClose={onClose}
       onConfirm={handleConfirm}
@@ -191,9 +195,9 @@ export function AddBranchModal({
         {!isEdit && (
           <MultiSelect
             data={catalogOptions}
-            label="追加する工程（実行順）"
+            label={tr("追加する工程（実行順）")}
             onChange={setCatalogStepIds}
-            placeholder="工程を選択"
+            placeholder={tr("工程を選択")}
             searchable
             value={catalogStepIds}
             withAsterisk
@@ -202,13 +206,13 @@ export function AddBranchModal({
         <NumberInput
           description={
             isEdit && !editTarget.canEditQuantity
-              ? "着手済みのため数量は変更できません"
+              ? tr("着手済みのため数量は変更できません")
               : max != null
                 ? `分岐可能: ${max}（工程分岐の未割当分）`
                 : undefined
           }
           disabled={isEdit && !editTarget.canEditQuantity}
-          label="分岐数量"
+          label={tr("分岐数量")}
           max={isEdit ? undefined : (max ?? undefined)}
           min={1}
           onChange={setRoutedQuantity}
@@ -218,8 +222,8 @@ export function AddBranchModal({
 
         <SegmentedControl
           data={[
-            { value: "MERGE", label: "本流へ合流" },
-            { value: "STOCK", label: "在庫へ" },
+            { value: "MERGE", label: tr("本流へ合流") },
+            { value: "STOCK", label: tr("在庫へ") },
           ]}
           disabled={isEdit && !editTarget.canEditTermination}
           fullWidth
@@ -229,20 +233,26 @@ export function AddBranchModal({
         {terminationKind === "MERGE" ? (
           <Select
             data={mergeTargets.map((s) => ({ value: s.id, label: s.name }))}
-            description="分岐系列の最後の工程から、この工程へ良品を戻します"
+            description={tr(
+              tr("分岐系列の最後の工程から、この工程へ良品を戻します"),
+            )}
             disabled={isEdit && !editTarget.canEditTermination}
-            label="合流先（未着手のメインライン工程）"
+            label={tr("合流先（未着手のメインライン工程）")}
             onChange={setMergeTargetStepId}
-            placeholder="合流先を選択"
+            placeholder={tr("合流先を選択")}
             value={mergeTargetStepId}
             withAsterisk
           />
         ) : (
           <Select
             data={STOCK_OPTIONS}
-            description="分岐系列の最後の工程の良品を、指示書の完了時にこの在庫へ入れます"
+            description={tr(
+              tr(
+                "分岐系列の最後の工程の良品を、指示書の完了時にこの在庫へ入れます",
+              ),
+            )}
             disabled={isEdit && !editTarget.canEditTermination}
-            label="入庫先"
+            label={tr("入庫先")}
             onChange={(v) => setStockKind((v as StockKind) ?? "SEMI_FINISHED")}
             value={stockKind}
             withAsterisk
@@ -250,15 +260,18 @@ export function AddBranchModal({
         )}
         {terminationKind === "MERGE" && mergeTargetStepId == null && (
           <Alert color="orange" variant="light">
-            合流先を選ぶか、「在庫へ」を選んでください。分岐は必ず合流か在庫で
-            終わります。
+            {tr(
+              tr(
+                "合流先を選ぶか、「在庫へ」を選んでください。分岐は必ず合流か在庫で\n            終わります。",
+              ),
+            )}
           </Alert>
         )}
 
         <Text c="dimmed" size="xs">
           分岐元の完了後に、指定数量を追加工程の系列へ流します。系列内の
           受入数は前工程の良品数に自動で追従します。
-          {isEdit && "工程の入れ替えは、分岐を削除して作り直してください。"}
+          {isEdit && tr("工程の入れ替えは、分岐を削除して作り直してください。")}
         </Text>
       </Stack>
     </ModalShell>

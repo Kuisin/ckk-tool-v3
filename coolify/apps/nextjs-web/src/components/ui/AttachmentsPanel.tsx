@@ -44,6 +44,7 @@ import { useFormat } from "@/components/layout/PreferencesProvider";
 import { SecondaryButton } from "@/components/ui/buttons";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { ModalShell } from "@/components/ui/modals";
+import { useTr } from "@/hooks/useTr";
 
 /** 一覧 1 行の view model（server 側 listAttachments が生成）。 */
 export interface AttachmentView {
@@ -108,6 +109,7 @@ export function AttachmentsPanel({
   canDelete?: boolean;
   title?: string;
 }) {
+  const tr = useTr();
   const fmt = useFormat();
   const router = useRouter();
   const [pendingFile, setPendingFile] = useState<File | null>(null);
@@ -120,8 +122,8 @@ export function AttachmentsPanel({
     if (!file) return;
     if (file.size > ATTACHMENT_MAX_BYTES) {
       notifications.show({
-        title: "エラー",
-        message: "ファイルサイズは 20MB 以下にしてください",
+        title: tr("エラー"),
+        message: tr("ファイルサイズは 20MB 以下にしてください"),
         color: "red",
       });
       return;
@@ -149,7 +151,7 @@ export function AttachmentsPanel({
       } | null;
       if (res.ok && json?.ok) {
         notifications.show({
-          title: "添付しました",
+          title: tr("添付しました"),
           message: pendingFile.name,
           color: "green",
         });
@@ -158,15 +160,15 @@ export function AttachmentsPanel({
         router.refresh();
       } else {
         notifications.show({
-          title: "エラー",
-          message: json?.error ?? "アップロードに失敗しました",
+          title: tr("エラー"),
+          message: json?.error ?? tr("アップロードに失敗しました"),
           color: "red",
         });
       }
     } catch {
       notifications.show({
-        title: "エラー",
-        message: "アップロードに失敗しました",
+        title: tr("エラー"),
+        message: tr("アップロードに失敗しました"),
         color: "red",
       });
     } finally {
@@ -187,7 +189,7 @@ export function AttachmentsPanel({
       } | null;
       if (res.ok && json?.ok) {
         notifications.show({
-          title: "削除しました",
+          title: tr("削除しました"),
           message: deleteTarget.filename,
           color: "green",
         });
@@ -195,15 +197,15 @@ export function AttachmentsPanel({
         router.refresh();
       } else {
         notifications.show({
-          title: "エラー",
-          message: json?.error ?? "削除に失敗しました",
+          title: tr("エラー"),
+          message: json?.error ?? tr("削除に失敗しました"),
           color: "red",
         });
       }
     } catch {
       notifications.show({
-        title: "エラー",
-        message: "削除に失敗しました",
+        title: tr("エラー"),
+        message: tr("削除に失敗しました"),
         color: "red",
       });
     } finally {
@@ -229,7 +231,7 @@ export function AttachmentsPanel({
                 leftSection={<IconUpload size={14} />}
                 {...props}
               >
-                アップロード
+                {tr("アップロード")}
               </SecondaryButton>
             )}
           </FileButton>
@@ -239,7 +241,7 @@ export function AttachmentsPanel({
       {attachments.length === 0 ? (
         <EmptyState
           icon={<IconPaperclip size={24} />}
-          message="添付ファイルはありません"
+          message={tr("添付ファイルはありません")}
         />
       ) : (
         <Stack gap="xs">
@@ -289,11 +291,11 @@ export function AttachmentsPanel({
                   {a.isLocked ? (
                     // 取込元の原本など。消せない理由がその場で分かるようにする。
                     <Tooltip
-                      label="取込元の原本のため削除できません"
+                      label={tr("取込元の原本のため削除できません")}
                       withinPortal
                     >
                       <ThemeIcon
-                        aria-label="ロック済み添付"
+                        aria-label={tr("ロック済み添付")}
                         color="gray"
                         size="sm"
                         variant="light"
@@ -322,13 +324,13 @@ export function AttachmentsPanel({
 
       {/* アップロード（ラベル入力 → 確定で POST） */}
       <ModalShell
-        confirmLabel="アップロード"
+        confirmLabel={tr("アップロード")}
         loading={uploading}
         onClose={() => setPendingFile(null)}
         onConfirm={upload}
         opened={pendingFile !== null}
         size="sm"
-        title="証憑のアップロード"
+        title={tr("証憑のアップロード")}
       >
         <Text ff="mono" size="sm" style={{ wordBreak: "break-all" }}>
           {pendingFile?.name}
@@ -337,9 +339,9 @@ export function AttachmentsPanel({
           </Text>
         </Text>
         <TextInput
-          label="ラベル（任意）"
+          label={tr("ラベル（任意）")}
           onChange={(e) => setLabel(e.currentTarget.value)}
-          placeholder="注文書控え 等"
+          placeholder={tr("注文書控え 等")}
           value={label}
         />
       </ModalShell>
@@ -347,13 +349,13 @@ export function AttachmentsPanel({
       {/* 削除の確認 */}
       <ModalShell
         confirmColor="red"
-        confirmLabel="削除する"
+        confirmLabel={tr("削除する")}
         loading={deleting}
         onClose={() => setDeleteTarget(null)}
         onConfirm={remove}
         opened={deleteTarget !== null}
         size="sm"
-        title="添付ファイル削除の確認"
+        title={tr("添付ファイル削除の確認")}
       >
         <Text size="sm">
           {deleteTarget?.filename} を削除します。この操作は取り消せません。
