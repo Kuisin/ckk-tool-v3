@@ -39,6 +39,8 @@
     "GUARD:確定済みの出荷書のみ出荷できます",
     "GUARD:未処理の締日のみ請求書を生成できます",
     "[form-completion] 完了通知に失敗:",
-    "[form-completion] 既読の記録に失敗:"
+    "[form-completion] 既読の記録に失敗:",
+    "[notification-digest] 掃き出しに失敗:",
+    "[realtime] LISTEN 開始に失敗（再試行します）:"
   ]
 }
