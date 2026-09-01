@@ -39,6 +39,7 @@ import { CATEGORY_SECTION_ICONS, resolveAppIcon } from "@/lib/icons";
 import {
   formatOperationCodeDisplay,
   navigateByOperationCode,
+  operationCodeLabel,
   resolveOperationCode,
   sanitizeOperationCodeInput,
   searchOperationCodes,
@@ -234,7 +235,9 @@ export function AppLauncher({ onNavigate }: AppLauncherProps) {
                         {formatOperationCodeDisplay(entry)}
                       </Text>
                       <Text size="sm">
-                        {app ? appLabel(app, locale) : entry.label}
+                        {app
+                          ? appLabel(app, locale)
+                          : operationCodeLabel(entry, locale)}
                       </Text>
                       <Text c="dimmed" size="xs" visibleFrom="md">
                         {categoryLabel(entry.category as AppCategory, locale)}

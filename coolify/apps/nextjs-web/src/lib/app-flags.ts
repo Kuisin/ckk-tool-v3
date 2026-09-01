@@ -14,7 +14,7 @@
  */
 
 import { APP_ENVS, type AppEnv, currentAppEnv } from "./app-env";
-import { appList } from "./app-list";
+import { type AppCategory, appList } from "./app-list";
 import { prisma } from "./db";
 import { hiddenDevFeatureAppKeys } from "./dev-features";
 
@@ -69,7 +69,7 @@ export interface AppFlagRow {
   key: string;
   label: string;
   operationCode: string;
-  category: string;
+  category: AppCategory;
   /** 環境ごとの有効状態（行が無ければ true）。 */
   enabled: Record<AppEnv, boolean>;
   /**
