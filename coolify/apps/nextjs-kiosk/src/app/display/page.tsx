@@ -4,6 +4,7 @@ import { DisplayBlocked } from "./DisplayBlocked";
 import { DisplayRenderer } from "./DisplayRenderer";
 import { DisplaySetup } from "./DisplaySetup";
 import { ScreenSlotGuard } from "./ScreenSlotGuard";
+import { StuckGuard } from "./StuckGuard";
 
 /**
  * /display — Raspberry Pi が開く唯一の URL。
@@ -50,13 +51,20 @@ export default async function DisplayPage({
   if (!auth.ok) {
     // 止められている画面は登録し直させない（上の注記）。
     if (displayRegistrationBlocked(auth.reason)) {
-      return <DisplayBlocked reason={auth.reason} />;
+      return (
+        <>
+          <StuckGuard />
+          <DisplayBlocked reason={auth.reason} />
+        </>
+      );
     }
     // それ以外（新品・Cookie 消失・期限切れ）は理由を出してからペアリングへ。
     // 現場の人が「壊れた」ではなく「取り消されたのだ」と分かるようにする。
     return (
       <>
         {slotGuard}
+        {/* 登録前は誰も気づけないまま止まりうるので、一定時間で読み込み直す */}
+        <StuckGuard />
         <DisplaySetup
           hint={hint}
           reason={auth.reason}

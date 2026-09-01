@@ -116,3 +116,37 @@ describe("Web Locks が無いブラウザ", () => {
     expect((await claimScreenSlot(3)).index).toBe(3);
   });
 });
+
+describe("browserMachineId", () => {
+  beforeEach(() => {
+    const store = new Map<string, string>();
+    vi.stubGlobal("localStorage", {
+      getItem: (k: string) => store.get(k) ?? null,
+      setItem: (k: string, v: string) => store.set(k, v),
+    });
+  });
+
+  it("同じブラウザでは同じ名前（窓をまたいでまとまる）", async () => {
+    const { browserMachineId } = await freshModule();
+    const first = browserMachineId();
+    expect(browserMachineId()).toBe(first);
+  });
+
+  it("作った名前は残す（読み込み直しても変わらない）", async () => {
+    const a = (await freshModule()).browserMachineId();
+    const b = (await freshModule()).browserMachineId();
+    expect(b).toBe(a);
+  });
+
+  // 名前が無いと一覧でまとまらないだけ。画面は動き続けること
+  it("localStorage が使えなくても落ちない", async () => {
+    vi.stubGlobal("localStorage", {
+      getItem: () => {
+        throw new Error("denied");
+      },
+      setItem: () => undefined,
+    });
+    const { browserMachineId } = await freshModule();
+    expect(browserMachineId()).toBe("pc");
+  });
+});

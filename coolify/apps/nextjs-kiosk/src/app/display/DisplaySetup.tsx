@@ -178,10 +178,19 @@ export function DisplaySetup({ reason, hint, screenTotal }: Props) {
     };
   }, [state, storageKey]);
 
-  // リンク後: 有効化待ちポーリング
+  // リンク後: 有効化待ちポーリング。
+  //
+  // ★ **入った直後に 1 回見る。** 間隔だけだと、管理者がリンクと有効化を続けて
+  //   行ったときに最初の 1 回ぶん（3 秒）待たされ、しかもそこで取りこぼすと
+  //   「有効化を待っています」から進まないように見える。
+  // ★ **どの分岐でも必ず次の手を打つ。** 以前は再有効化に失敗すると何もせず
+  //   待ち続けていたので、そこで永久に止まっていた（黙って詰まるのが一番悪い）。
   useEffect(() => {
     if (state.phase !== "linked") return;
-    const poll = setInterval(async () => {
+    let stopped = false;
+
+    const check = async () => {
+      if (stopped) return;
       try {
         const res = await fetch("/api/display/setup/confirm", {
           method: "POST",
@@ -192,10 +201,15 @@ export function DisplaySetup({ reason, hint, screenTotal }: Props) {
             screenIndex: hint.screenIndex,
           }),
         });
-        const data = (await res.json()) as { status: string };
-        if (data.status === "CONFIRMED") {
+        const data = (await res.json().catch(() => null)) as {
+          status?: string;
+        } | null;
+
+        if (data?.status === "CONFIRMED") {
           window.location.reload();
-        } else if (data.status === "ALREADY_CONFIRMED") {
+          return;
+        }
+        if (data?.status === "ALREADY_CONFIRMED") {
           const re = await fetch(
             `/api/display/setup/reactivate${screenQuery}`,
             {
@@ -204,18 +218,34 @@ export function DisplaySetup({ reason, hint, screenTotal }: Props) {
               body: JSON.stringify({ deviceId: state.deviceId }),
             },
           );
-          if (re.ok) window.location.reload();
-        } else if (data.status === "PENDING") {
-          // リンク解除された（プロファイルがオープンに戻った）→ 最初から
+          if (re.ok) {
+            window.location.reload();
+            return;
+          }
+          // 取り直せない = この控えはもう使えない。最初からやり直す。
           localStorage.removeItem(storageKey);
           void begin();
+          return;
         }
-        // LINKED はそのまま待つ
+        if (data?.status === "PENDING" || data?.status === "NOT_FOUND") {
+          // リンク解除された / 行が消えた → 最初から
+          localStorage.removeItem(storageKey);
+          void begin();
+          return;
+        }
+        // LINKED（有効化待ち）はそのまま待つ。それ以外の見慣れない返事も、
+        // 次の周回で見直す（勝手に登録をやり直さない）。
       } catch {
-        // 通信断は次のポーリングで再試行
+        // 通信断は次の周回で再試行
       }
-    }, POLL_INTERVAL_MS);
-    return () => clearInterval(poll);
+    };
+
+    void check(); // まず 1 回
+    const poll = setInterval(check, POLL_INTERVAL_MS);
+    return () => {
+      stopped = true;
+      clearInterval(poll);
+    };
   }, [state, begin, hint, screenQuery, storageKey]);
 
   const note = REASON_NOTE[reason];

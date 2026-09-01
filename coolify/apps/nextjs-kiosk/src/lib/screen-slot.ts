@@ -116,3 +116,32 @@ export async function countHeldSlots(): Promise<number> {
     return 1;
   }
 }
+
+/**
+ * このブラウザ（＝この 1 台）につける名前。
+ *
+ * Pi は `hostname` を送ってくるが、ブラウザには機械名が無い。無いままだと
+ * 一覧で「1 台が 2 枚」としてまとまらず、別々の機械が 2 台あるように見える。
+ *
+ * そこで**この端末で 1 度だけ作って localStorage に残す**。localStorage は
+ * ブラウザのプロファイル単位なので、同じパソコンの窓は同じ名前になり、
+ * 別のパソコンとは必ず違う名前になる — まとめ表示に必要な性質はこれだけ。
+ *
+ * ★ **身分ではない。** 自己申告の手掛かりで、消せば変わる。用途はまとめ表示に
+ *   限る（認証にも権限にも使わない — display_devices の注記どおり）。
+ */
+const MACHINE_ID_KEY = "ckk_display_machine_id";
+
+export function browserMachineId(): string {
+  try {
+    const saved = localStorage.getItem(MACHINE_ID_KEY);
+    if (saved) return saved;
+    // 読みやすさより衝突しないことを優先（一覧に出るのは端末名で、これではない）
+    const made = `pc-${Math.random().toString(36).slice(2, 10)}`;
+    localStorage.setItem(MACHINE_ID_KEY, made);
+    return made;
+  } catch {
+    // localStorage が使えない設定でも動きは止めない（まとまらないだけ）
+    return "pc";
+  }
+}
