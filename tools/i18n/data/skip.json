@@ -23,6 +23,20 @@
     "[shipping] 出荷通知に失敗:",
     "[outsource] 入荷通知に失敗:",
     "GUARD:明細が見つかりません",
-    "GUARD:対象のルールが見つかりません"
+    "GUARD:対象のルールが見つかりません",
+    "[work-order] 素材予約に失敗:",
+    "[purchase] 入荷完了通知に失敗:",
+    "[notify] 外部チャネル配信エラー:",
+    "[ai-provider] 接続テストに失敗",
+    "[approvals] 承認依頼通知に失敗:",
+    "[approvals] 承認結果通知に失敗:",
+    "[realtime] 購読ハンドラでエラー:",
+    "[realtime] LISTEN 接続エラー:",
+    "[design-requests] 通知に失敗:",
+    "[notification-email] 保存に失敗",
+    "GUARD:下書きの納品書のみ編集できます",
+    "GUARD:下書きの出荷書のみ編集できます",
+    "GUARD:確定済みの出荷書のみ出荷できます",
+    "GUARD:未処理の締日のみ請求書を生成できます"
   ]
 }
