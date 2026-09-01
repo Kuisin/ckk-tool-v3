@@ -47,6 +47,10 @@
     "o.value === id)?.label ?? \"（不明）\") : null;\n\n  return (",
     "a.label).join(\"、\") ||\n            \"承認者が未設定\";\n        return (",
     "[portal-mail] send failed: MAIL_API_URL / MAIL_API_TOKEN が未設定",
-    "[portal-mail] blocked (allowlist): PORTAL_MAIL_ALLOWLIST に無い宛先"
+    "[portal-mail] blocked (allowlist): PORTAL_MAIL_ALLOWLIST に無い宛先",
+    "0\n      ? \"カスタム入力キーを修正してください（予約語・重複）\"\n      : null;\n\n  return (",
+    "ORDER_TYPE_LABEL[v.orderType] ?? v.orderType)\n      .join(\"・\") ?? \"—\";\n\n  return (",
+    "s.status === \"PENDING\"))\n      errors.push(\"着手済みの分岐は数量を変更できません\");\n    if (nextQuantity",
+    ") : (\n        \"この顧客に営業担当が未登録です（取引先マスタの管理者に登録を依頼）\"\n      )\n    ) : undefined;\n\n  return ("
   ]
 }
