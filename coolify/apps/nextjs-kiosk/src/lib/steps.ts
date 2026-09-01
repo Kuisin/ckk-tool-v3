@@ -21,6 +21,7 @@ import {
   jstDateString,
   type LocalizedText,
   localized,
+  workLocationLabel,
 } from "./format";
 import type { Locale } from "./i18n";
 import { allowedWorkLocationIdsForStep } from "./step-execution";
@@ -666,11 +667,10 @@ export async function getStepLocationGate(
       },
     }),
   ]);
-  const label = (l: { name: unknown; group: { name: unknown } }): string =>
-    `${localized(asText(l.group.name), locale)} / ${localized(asText(l.name), locale)}`;
-  const deviceDefaultLabel = deviceRow?.defaultWorkLocation
-    ? label(deviceRow.defaultWorkLocation)
-    : null;
+  const deviceDefaultLabel = workLocationLabel(
+    deviceRow?.defaultWorkLocation,
+    locale,
+  );
   const enforced = deviceRow?.enforceWorkLocation ?? false;
 
   const allowedIds = stepRow
@@ -714,7 +714,7 @@ export async function getStepLocationGate(
       allowedIds.has(deviceRow.defaultWorkLocationId),
     deviceDefaultLabel,
     allowed: locations.map((l) => ({
-      label: label(l),
+      label: workLocationLabel(l, locale) ?? "—",
       deviceNames: devicesByLocation.get(l.id) ?? [],
     })),
   };

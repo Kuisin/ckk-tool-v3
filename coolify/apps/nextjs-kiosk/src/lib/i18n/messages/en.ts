@@ -209,8 +209,10 @@ export const en: KioskMessages = {
       scan: "Scan work location",
       close: "Stop scanning",
       pendingScanned: (code: string) => `Scanned: ${code} (recorded on start)`,
-      deviceDefaultHint:
-        "If not scanned, this device's default work location is recorded",
+      deviceDefaultHint: (label: string) =>
+        `If not scanned, "${label}" is recorded`,
+      deviceDefaultNone:
+        "This device has no default work location, so nothing is recorded unless you scan",
       invalidQr: "Not a work-location QR code",
       updated: "Work location recorded",
       deviceBlockedTitle: "This step cannot run on this device",

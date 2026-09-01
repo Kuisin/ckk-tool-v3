@@ -4,6 +4,7 @@ import { KioskShell } from "@/components/KioskShell";
 import { LastPageTracker } from "@/components/LastPageTracker";
 import { LocationReporter } from "@/components/LocationReporter";
 import { prisma } from "@/lib/db";
+import { getDeviceDefaultWorkLocationLabel } from "@/lib/device-work-location";
 import type { Locale } from "@/lib/i18n";
 import { getDevice, getSession } from "@/lib/kiosk-auth";
 import {
@@ -28,11 +29,13 @@ export default async function KioskLayout({
   // 端末名をヘッダーに常時表示（未登録/ビルド時は「未登録端末」表示）。
   // skipAttest: アテスト前の画面（/setup, /login 初期）でも名前は出す。
   let deviceName: string | null = null;
+  let deviceId: string | null = null;
   let registered = false;
   try {
     const device = await getDevice({ skipAttest: true });
     if (device.ok) {
       deviceName = device.device.name;
+      deviceId = device.device.id;
       registered = true;
     }
   } catch {
@@ -67,6 +70,21 @@ export default async function KioskLayout({
     // 端末名と同じくビルド時・DB 不通時は既定のまま
   }
 
+  // 端末の既定作業場所をヘッダーに添える。**実績の作業場所は端末で決まる**
+  // （読み取った QR > 端末の既定）のに、その既定は隠し設定画面の中にあって
+  // 普段は確認できなかった。据え置きのタブレットが別の場所へ動かされたまま
+  // 設定だけ残っている、というのが一番起きやすい取り違えなので、名前の隣に
+  // 常時出しておく。**利用者の言語**で出す（端末名だけは登録前の画面でも
+  // 読める必要があるため ja 固定 — lib/kiosk-auth.ts の方針）。
+  let workLocation: string | null = null;
+  if (deviceId) {
+    try {
+      workLocation = await getDeviceDefaultWorkLocationLabel(deviceId, locale);
+    } catch {
+      // 表示の添え物なので、引けなければ出さないだけ
+    }
+  }
+
   return (
     <>
       {/* 文字の大きさは **サーバーで** 流す。クライアントで当てると、最初の
@@ -87,6 +105,7 @@ export default async function KioskLayout({
           registered={registered}
           textScale={textScale}
           userName={userName}
+          workLocation={workLocation}
         >
           {children}
         </KioskShell>
