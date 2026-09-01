@@ -41,7 +41,9 @@ export function ContactsTable({
   const handleDelete = (c: ContactRow) => {
     openConfirm({
       title: tr("master.bp.deleteTheContact"),
-      message: `担当者「${c.name}」を削除します。この操作は取り消せません。`,
+      message: tr("master.contactsTable.deleteConfirmMessage", {
+        name: c.name,
+      }),
       confirmLabel: tr("common.delete2"),
       onConfirm: () => {
         startTransition(async () => {
@@ -49,7 +51,9 @@ export function ContactsTable({
           if (result.ok) {
             notifications.show({
               title: tr("common.deleted"),
-              message: `担当者「${c.name}」を削除しました`,
+              message: tr("master.contactsTable.deletedMessage", {
+                name: c.name,
+              }),
               color: "green",
             });
             router.refresh();

@@ -39,27 +39,22 @@ import { zodResolver } from "@/lib/form";
 
 const BASE_PATH = "/master/plants";
 
-const plantSchema = z.object({
-  code: z.string().min(1, "拠点コードを入力してください"),
-  nameJa: z.string().min(1, "名称（日本語）を入力してください"),
-  nameTranslations: z.record(z.string(), z.string()).default({}),
-  nameKana: z.string(),
-  countryCode: z.string().nullable(),
-  regionId: z.string().nullable(),
-  postalCode: z.string(),
-  addressJa: z.string(),
-  addressTranslations: z.record(z.string(), z.string()).default({}),
-  phone: z.string(),
-  email: z
-    .string()
-    .email("メールアドレスの形式が正しくありません")
-    .or(z.literal("")),
-  contactPerson: z.string(),
-  isActive: z.boolean(),
-  notes: z.string(),
-});
-
-type FormValues = z.infer<typeof plantSchema>;
+interface FormValues {
+  code: string;
+  nameJa: string;
+  nameTranslations: Record<string, string>;
+  nameKana: string;
+  countryCode: string | null;
+  regionId: string | null;
+  postalCode: string;
+  addressJa: string;
+  addressTranslations: Record<string, string>;
+  phone: string;
+  email: string;
+  contactPerson: string;
+  isActive: boolean;
+  notes: string;
+}
 
 export interface PlantFormInitial {
   id: number;
@@ -94,6 +89,23 @@ export function PlantForm({
   const [isPending, startTransition] = useTransition();
   const isEdit = !!initial;
 
+  const plantSchema = z.object({
+    code: z.string().min(1, tr("master.plantForm.enterSiteCode")),
+    nameJa: z.string().min(1, tr("common.enterNameInJapanese")),
+    nameTranslations: z.record(z.string(), z.string()).default({}),
+    nameKana: z.string(),
+    countryCode: z.string().nullable(),
+    regionId: z.string().nullable(),
+    postalCode: z.string(),
+    addressJa: z.string(),
+    addressTranslations: z.record(z.string(), z.string()).default({}),
+    phone: z.string(),
+    email: z.string().email(tr("common.invalidEmailFormat")).or(z.literal("")),
+    contactPerson: z.string(),
+    isActive: z.boolean(),
+    notes: z.string(),
+  });
+
   const form = useForm<FormValues>({
     validate: zodResolver(plantSchema),
     initialValues: {
@@ -127,7 +139,7 @@ export function PlantForm({
         notifications.show({
           title: tr("common.saved2"),
           message: isEdit
-            ? "拠点を更新しました"
+            ? tr("master.plantForm.siteUpdatedMessage")
             : tr("master.plants.theSiteWasCreated"),
           color: "green",
         });
@@ -146,8 +158,8 @@ export function PlantForm({
     <FormShell
       breadcrumbs={[
         tr("common.masterData"),
-        { label: "拠点", href: BASE_PATH },
-        isEdit ? "編集" : tr("common.new2"),
+        { label: tr("master.plantTable.title"), href: BASE_PATH },
+        isEdit ? tr("common.edit2") : tr("common.new2"),
       ]}
       isDirty={form.isDirty()}
       isPending={isPending}
@@ -157,7 +169,9 @@ export function PlantForm({
       onSubmit={form.onSubmit(handleSubmit)}
       status={isEdit ? <ActiveBadge active={initial.isActive} /> : undefined}
       title={
-        isEdit ? `拠点 編集 — ${initial.code}` : tr("master.plants.newSite")
+        isEdit
+          ? tr("master.plantForm.editTitle", { code: initial.code })
+          : tr("master.plants.newSite")
       }
     >
       <FormSection title={tr("common.basicInformation")}>

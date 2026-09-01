@@ -10,6 +10,7 @@
  * ここは純粋な描画だけ（データを渡せば DB 無しでも描ける）。
  */
 
+import { useTranslations } from "next-intl";
 import type { WorkOrderStripView } from "@/app/(dashboard)/production/work-orders/data";
 import { workOrderTypeLabel } from "@/lib/enum-labels";
 import { qrSvg } from "@/lib/qr";
@@ -21,13 +22,16 @@ export function WorkOrderStripSheets({
 }: {
   strips: WorkOrderStripView[];
 }) {
+  const tr = useTranslations();
   const sheets = chunkForSheets(strips);
   const { stripWidth, stripHeight, marginX, marginY, qrSize } = STRIP_SHEET;
 
   return (
     <>
       {strips.length === 0 ? (
-        <p className="wo-strip-empty">印刷対象の指示書がありません。</p>
+        <p className="wo-strip-empty">
+          {tr("production.workOrderStripSheets.noWorkOrdersToPrint")}
+        </p>
       ) : (
         sheets.map((sheet) => (
           <div className="wo-strip-sheet" key={sheet[0]?.workOrderNumber}>
@@ -35,7 +39,7 @@ export function WorkOrderStripSheets({
             <div className="wo-strip-scale">
               <span className="wo-strip-scale-bar" />
               <span className="wo-strip-scale-label">
-                50mm（原寸確認 / 用紙 A4・倍率 100%）
+                {tr("production.workOrderStripSheets.actualSizeCheck50mm")}
               </span>
             </div>
             <div className="wo-strip-grid">
@@ -83,7 +87,9 @@ export function WorkOrderStripSheets({
                       <div className="wo-strip-order">
                         {wo.orderLineNumber
                           ? `${wo.orderLineNumber}${wo.customerName ? ` / ${wo.customerName}` : ""}`
-                          : "在庫向け（注文明細なし）"}
+                          : tr(
+                              "production.workOrderStripSheets.forStockNoOrderLine",
+                            )}
                       </div>
                     </div>
                   </div>

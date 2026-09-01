@@ -111,7 +111,9 @@ export function BugReportModal({
 
         <Switch
           checked={includeLogs}
-          label={`コンソールログを添付する（直近 ${logCount} 件）`}
+          label={tr("layout.bugReportModal.attachConsoleLogsWithCount", {
+            count: logCount,
+          })}
           onChange={(e) => setIncludeLogs(e.currentTarget.checked)}
           size="sm"
         />

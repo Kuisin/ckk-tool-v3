@@ -156,7 +156,7 @@ function MemoBlock({ ownerType, ownerId, memos }: MemoPanelProps) {
               setEditing(false);
             }}
           >
-            キャンセル
+            {tr("common.cancel")}
           </SecondaryButton>
           <PrimaryButton
             disabled={isEmptyDoc(draft)}
@@ -224,8 +224,10 @@ function MemoBlock({ ownerType, ownerId, memos }: MemoPanelProps) {
               linkTargets={existing.linkTargets}
             />
             <Text c="dimmed" size="xs">
-              最終更新: {fmt.dateTime(existing.updatedAt)}（
-              {existing.editorName ?? existing.authorName}）
+              {tr("ui.memoPanel.lastUpdated", {
+                date: fmt.dateTime(existing.updatedAt),
+                name: existing.editorName ?? existing.authorName,
+              })}
             </Text>
           </Stack>
         </Paper>
@@ -303,7 +305,7 @@ function CommentThread({ ownerType, ownerId, memos }: MemoPanelProps) {
         !notifyResult(
           tr,
           result,
-          archiving ? "アーカイブしました" : tr("ui.memoPanel.restored"),
+          archiving ? tr("common.archived") : tr("ui.memoPanel.restored"),
           archiving
             ? tr("ui.memoPanel.theCommentWasCollapsed")
             : tr("ui.memoPanel.theCommentWasExpandedAgain"),
@@ -319,7 +321,7 @@ function CommentThread({ ownerType, ownerId, memos }: MemoPanelProps) {
     openConfirm({
       title: tr("ui.memoPanel.deleteTheComment"),
       message: tr("ui.memoPanel.deletesThisCommentCompletelyThisCannot"),
-      confirmLabel: "削除",
+      confirmLabel: tr("common.delete"),
       onConfirm: () =>
         start(async () => {
           const result = await deleteMemoAction(id);
@@ -434,7 +436,9 @@ function CommentRow({
         <Group align="center" gap="xs" style={{ minWidth: 0 }} wrap="nowrap">
           {archived && (
             <ActionIcon
-              aria-label={open ? "折りたたむ" : tr("common.expand")}
+              aria-label={
+                open ? tr("ui.memoPanel.collapse") : tr("common.expand")
+              }
               color="gray"
               onClick={() => setOpen((v) => !v)}
               size="sm"
@@ -461,7 +465,7 @@ function CommentRow({
           </Text>
           {archived && (
             <Text c="dimmed" size="xs" style={{ whiteSpace: "nowrap" }}>
-              · アーカイブ済み
+              {tr("ui.memoPanel.archivedMark")}
               {memo.archivedByName ? `（${memo.archivedByName}）` : ""}
             </Text>
           )}
@@ -503,11 +507,17 @@ function CommentRow({
             )}
             {memo.canArchive && (
               <Tooltip
-                label={archived ? "復元" : tr("common.archived2")}
+                label={
+                  archived ? tr("ui.memoPanel.restore") : tr("common.archived2")
+                }
                 withArrow
               >
                 <ActionIcon
-                  aria-label={archived ? "復元" : tr("common.archived2")}
+                  aria-label={
+                    archived
+                      ? tr("ui.memoPanel.restore")
+                      : tr("common.archived2")
+                  }
                   color="gray"
                   disabled={pending}
                   onClick={onToggleArchive}
@@ -523,9 +533,9 @@ function CommentRow({
               </Tooltip>
             )}
             {memo.canDelete && (
-              <Tooltip label="削除" withArrow>
+              <Tooltip label={tr("common.delete")} withArrow>
                 <ActionIcon
-                  aria-label="削除"
+                  aria-label={tr("common.delete")}
                   color="red"
                   disabled={pending}
                   onClick={onDelete}
@@ -545,7 +555,7 @@ function CommentRow({
           <RichTextEditorField onChange={onEditDraftChange} value={editDraft} />
           <Group justify="flex-end">
             <SecondaryButton disabled={pending} onClick={onCancelEdit}>
-              キャンセル
+              {tr("common.cancel")}
             </SecondaryButton>
             <PrimaryButton
               disabled={isEmptyDoc(editDraft)}

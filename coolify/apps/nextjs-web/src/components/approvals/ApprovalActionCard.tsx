@@ -57,10 +57,18 @@ export interface ApprovalActionState {
 
 const MAX_NAMES = 3;
 
-function remainingText(remaining: { name: string }[]): string {
+function remainingText(
+  remaining: { name: string }[],
+  tr: ReturnType<typeof useTranslations>,
+): string {
   const names = remaining.slice(0, MAX_NAMES).map((r) => r.name);
   const rest = remaining.length - names.length;
-  return rest > 0 ? `${names.join("、")} ほか ${rest} 名` : names.join("、");
+  return rest > 0
+    ? tr("approvals.approvalActionCard.remainingNamesWithOthers", {
+        names: names.join("、"),
+        rest,
+      })
+    : names.join("、");
 }
 
 export function ApprovalActionCard({
@@ -115,8 +123,16 @@ export function ApprovalActionCard({
   // 「第2/3段「部門承認」・製造部長」— 何段あって今どこかを 1 行で出す
   const where =
     stepCount > 1
-      ? `第 ${stepNo}/${stepCount} 段「${stepLabel}」・${groupLabel}`
-      : `${stepLabel}・${groupLabel}`;
+      ? tr("approvals.approvalActionCard.stepAndGroupLabel", {
+          stepNo,
+          stepCount,
+          stepLabel,
+          groupLabel,
+        })
+      : tr("approvals.approvalActionCard.stepAndGroupLabelSingle", {
+          stepLabel,
+          groupLabel,
+        });
 
   let card: ReactNode = null;
 
@@ -131,14 +147,18 @@ export function ApprovalActionCard({
             loading={isPending}
             onClick={() => run(onRequest, tr("common.approvalRequested"))}
           >
-            {isRejected ? "再承認依頼" : tr("common.approvalRequest")}
+            {isRejected
+              ? tr("approvals.approvalActionCard.reRequestApproval")
+              : tr("common.approvalRequest")}
           </PrimaryButton>
         }
         description={
           blocked
             ? requestBlockedReason
             : isRejected
-              ? `差し戻し理由: ${rejectReason ?? "—"}（修正して再依頼できます）`
+              ? tr("approvals.approvalActionCard.rejectReasonCanReRequest", {
+                  reason: rejectReason ?? "—",
+                })
               : tr("approvals.approvalActionCard.itIsSentToTheFirst")
         }
         icon={
@@ -146,7 +166,7 @@ export function ApprovalActionCard({
         }
         title={
           isRejected
-            ? "差し戻されました"
+            ? tr("approvals.approvalActionCard.itWasSentBack")
             : tr("approvals.approvalActionCard.anApprovalRequestIsRequired")
         }
         tone={isRejected ? "alert" : "action"}
@@ -162,15 +182,24 @@ export function ApprovalActionCard({
                 loading={isPending}
                 onClick={() => run(onApprove, tr("common.approved"))}
               >
-                承認
+                {tr("common.approve")}
               </ApproveButton>
               <RejectButton onClick={() => setRejectOpen(true)} />
             </>
           }
           description={
             mode === "ALL"
-              ? `${where} — 全員の承認が必要です（残り ${approval.remaining.length} 名: ${remainingText(approval.remaining)}）`
-              : `${where} の承認者としてこの書類を承認できます`
+              ? tr(
+                  "approvals.approvalActionCard.allMembersMustApproveRemaining",
+                  {
+                    where,
+                    count: approval.remaining.length,
+                    names: remainingText(approval.remaining, tr),
+                  },
+                )
+              : tr("approvals.approvalActionCard.youCanApproveAsAnApprover", {
+                  where,
+                })
           }
           icon={<IconShieldCheck size={20} />}
           title={tr("approvals.approvalActionCard.pleaseApprove")}
@@ -180,7 +209,11 @@ export function ApprovalActionCard({
     } else if (approval.alreadyActed) {
       card = (
         <ActionCard
-          description={`${where} — 残り ${approval.remaining.length} 名: ${remainingText(approval.remaining)}`}
+          description={tr("approvals.approvalActionCard.remainingApprovers", {
+            where,
+            count: approval.remaining.length,
+            names: remainingText(approval.remaining, tr),
+          })}
           icon={<IconClock size={20} />}
           title={tr("approvals.approvalActionCard.yourApprovalHasBeenRecorded")}
           tone="wait"
@@ -189,9 +222,16 @@ export function ApprovalActionCard({
     } else {
       card = (
         <ActionCard
-          description={`${groupLabel} のメンバーのみ承認・差し戻しできます`}
+          description={tr(
+            "approvals.approvalActionCard.onlyGroupMembersCanAct",
+            {
+              groupLabel,
+            },
+          )}
           icon={<IconClock size={20} />}
-          title={`${stepLabel}待ち`}
+          title={tr("approvals.approvalActionCard.stepLabelWaiting", {
+            stepLabel,
+          })}
           tone="wait"
         />
       );

@@ -21,6 +21,7 @@
  */
 
 import { Group, Stack, Text } from "@mantine/core";
+import { useTranslations } from "next-intl";
 import { type ReactNode, useState } from "react";
 import { EditButton } from "@/components/ui/buttons";
 import { useIsMobile } from "@/hooks/useViewport";
@@ -29,7 +30,7 @@ export function EditablePanel({
   canEdit,
   view,
   edit,
-  editLabel = "編集",
+  editLabel: editLabelProp,
   title,
   description,
 }: {
@@ -43,6 +44,8 @@ export function EditablePanel({
   /** 見出しの下に置く補足。編集中も出したままにする。 */
   description?: ReactNode;
 }) {
+  const tr = useTranslations();
+  const editLabel = editLabelProp ?? tr("common.edit");
   const isMobile = useIsMobile();
   const [editing, setEditing] = useState(false);
   const close = () => setEditing(false);

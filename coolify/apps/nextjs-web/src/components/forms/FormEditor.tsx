@@ -124,7 +124,11 @@ export function FormEditor({
           // 設定は保存済み。項目だけ落ちたので、画面はそのまま残して直させる。
           notifications.show({
             title: tr("forms.formEditor.couldNotSaveTheItem"),
-            message: `${published.error ?? "項目定義が不正です"}（設定は保存しました）`,
+            message: tr("forms.formEditor.itemErrorButSettingsSaved", {
+              error:
+                published.error ??
+                tr("forms.formEditor.fieldDefinitionIsInvalid"),
+            }),
             color: "red",
           });
           return;
@@ -152,10 +156,12 @@ export function FormEditor({
         breadcrumbs={[
           { label: tr("common.general") },
           { label: tr("common.forms"), href: "/general/forms" },
-          { label: mode === "new" ? "新規" : tr("common.edit2") },
+          { label: mode === "new" ? tr("common.new") : tr("common.edit2") },
         ]}
         title={
-          mode === "new" ? "フォームを作る" : tr("forms.formEditor.editTheForm")
+          mode === "new"
+            ? tr("general.forms.createAForm")
+            : tr("forms.formEditor.editTheForm")
         }
       />
 

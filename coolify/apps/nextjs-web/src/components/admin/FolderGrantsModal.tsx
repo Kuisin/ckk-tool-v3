@@ -106,8 +106,11 @@ export function FolderGrantsModal({
   function onDelete(row: FolderGrantRow) {
     openConfirm({
       title: tr("admin.folderGrantsModal.removeThePermission"),
-      message: `「${row.pathPrefix}」への ${row.userName} さんのアクセス権を削除します。`,
-      confirmLabel: "削除",
+      message: tr("admin.folderGrantsModal.removeAccessConfirmMessage", {
+        pathPrefix: row.pathPrefix,
+        userName: row.userName,
+      }),
+      confirmLabel: tr("common.delete"),
       onConfirm: () => {
         startTransition(async () => {
           const res = await deleteFolderGrant(row.id);
@@ -232,7 +235,7 @@ export function FolderGrantsModal({
                           variant="light"
                         >
                           {g.canWrite
-                            ? "読み書き"
+                            ? tr("admin.folderGrantsModal.readWrite")
                             : tr("admin.folderGrantsModal.read")}
                         </Badge>
                       </Table.Td>
@@ -243,7 +246,7 @@ export function FolderGrantsModal({
                           onClick={() => onDelete(g)}
                           size="xs"
                         >
-                          削除
+                          {tr("common.delete")}
                         </GhostButton>
                       </Table.Td>
                     </Table.Tr>

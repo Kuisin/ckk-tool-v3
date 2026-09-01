@@ -116,12 +116,6 @@ type FormValues = z.infer<typeof bpFormSchema>;
 
 const ROLE_ORDER = ["CUSTOMER", "END_USER", "VENDOR"] as const;
 
-const ROLE_DESCRIPTION: Record<string, string> = {
-  CUSTOMER: "見積書・注文請書・請求書の宛先として選べるようになる",
-  END_USER: "納品書・注文明細の最終需要家として選べるようになる",
-  VENDOR: "素材発注書・外注依頼・工程の外注先として選べるようになる",
-};
-
 const nullIfBlank = (v: number | "") => (v === "" ? null : v);
 
 export function BpForm({
@@ -140,6 +134,11 @@ export function BpForm({
   const isMobile = useIsMobile();
   const [isPending, startTransition] = useTransition();
   const isEdit = !!initial;
+  const ROLE_DESCRIPTION: Record<string, string> = {
+    CUSTOMER: tr("master.bpForm.customerRoleDescription"),
+    END_USER: tr("master.bpForm.endUserRoleDescription"),
+    VENDOR: tr("master.bpForm.vendorRoleDescription"),
+  };
 
   const form = useForm<FormValues>({
     validate: zodResolver(bpFormSchema),
@@ -247,7 +246,7 @@ export function BpForm({
         notifications.show({
           title: tr("common.saved2"),
           message: isEdit
-            ? "取引先を更新しました"
+            ? tr("master.bpForm.updatedMessage")
             : tr("master.businessPartners.theBusinessPartnerWasCreated"),
           color: "green",
         });
@@ -267,7 +266,7 @@ export function BpForm({
       breadcrumbs={[
         tr("common.masterData"),
         { label: tr("common.businessPartners"), href: BP_BASE_PATH },
-        isEdit ? "編集" : tr("common.new2"),
+        isEdit ? tr("common.edit2") : tr("common.new2"),
       ]}
       isDirty={form.isDirty()}
       isPending={isPending}
@@ -278,7 +277,7 @@ export function BpForm({
       status={isEdit ? <ActiveBadge active={initial.isActive} /> : undefined}
       title={
         isEdit
-          ? `取引先 編集 — ${initial.bpCode}`
+          ? tr("master.bpForm.editTitle", { code: initial.bpCode })
           : tr("master.businessPartners.newBusinessPartner")
       }
     >

@@ -141,7 +141,7 @@ function RouteCard({
               onClick={() => setDeleteOpen(true)}
               size="xs"
             >
-              削除
+              {tr("common.delete")}
             </GhostButton>
           </Group>
         </Group>
@@ -168,7 +168,7 @@ function RouteCard({
             <Table.Thead>
               <Table.Tr>
                 <Table.Th w={40}>#</Table.Th>
-                <Table.Th>工程</Table.Th>
+                <Table.Th>{tr("master.productDetail.routesTab")}</Table.Th>
                 {!isMobile && (
                   <Table.Th w={140}>{tr("common.category")}</Table.Th>
                 )}
@@ -307,11 +307,13 @@ function EditRouteModal({
         </SimpleGrid>
         <Switch
           checked={isActive}
-          label="有効"
+          label={tr("common.enabled")}
           onChange={(e) => setIsActive(e.currentTarget.checked)}
         />
         <Group justify="flex-end">
-          <SecondaryButton onClick={onClose}>キャンセル</SecondaryButton>
+          <SecondaryButton onClick={onClose}>
+            {tr("common.cancel")}
+          </SecondaryButton>
           <PrimaryButton loading={isPending} onClick={submit}>
             {tr("common.save2")}
           </PrimaryButton>
@@ -340,7 +342,9 @@ function DeleteRouteModal({
       if (result.ok) {
         notifications.show({
           title: tr("common.deleted"),
-          message: `工程ルート「${route.name}」を削除しました`,
+          message: tr("master.productRoutesPanel.routeDeletedMessage", {
+            name: route.name,
+          }),
           color: "green",
         });
         onClose();
@@ -363,15 +367,16 @@ function DeleteRouteModal({
     >
       <Stack gap="sm">
         <Text size="sm">
-          工程ルート「{route.name}」を全バージョンごと削除します。
-          この操作は取り消せません。
+          {tr("master.productRoutesPanel.deleteRouteConfirmMessage", {
+            name: route.name,
+          })}
         </Text>
         <Group justify="flex-end">
           <SecondaryButton onClick={onClose}>
             {tr("common.back2")}
           </SecondaryButton>
           <DangerButton loading={isPending} onClick={submit}>
-            削除
+            {tr("common.delete")}
           </DangerButton>
         </Group>
       </Stack>

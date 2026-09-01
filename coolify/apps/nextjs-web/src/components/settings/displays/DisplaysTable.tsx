@@ -239,7 +239,7 @@ export function DisplaysTable({ rows, plantOptions }: Props) {
     },
     {
       key: "plant",
-      header: "拠点",
+      header: tr("common.site"),
       sortable: true,
       render: (r) => (
         <Text c={r.plantName ? undefined : "dimmed"} size="sm" truncate>
@@ -345,7 +345,9 @@ export function DisplaysTable({ rows, plantOptions }: Props) {
             onClick={() => setCreateOpen(true)}
             style={{ flexShrink: 0 }}
           >
-            {isMobile ? "作成" : tr("settings.displays.addADisplay")}
+            {isMobile
+              ? tr("common.create2")
+              : tr("settings.displays.addADisplay")}
           </CreateButton>
         }
         breadcrumbs={[tr("common.system"), tr("common.devices")]}
@@ -355,7 +357,7 @@ export function DisplaysTable({ rows, plantOptions }: Props) {
               clearable
               data={plantOptions}
               onChange={setPlant}
-              placeholder="拠点"
+              placeholder={tr("common.site")}
               searchable
               style={isMobile ? { flex: 1 } : undefined}
               value={plant}
@@ -431,7 +433,8 @@ export function DisplaysTable({ rows, plantOptions }: Props) {
                 </Text>
               </Group>
               <Text c="dimmed" size="xs">
-                最終確認 {r.lastSeenAt ? fmt.dateTime(r.lastSeenAt) : "—"}
+                {tr("common.lastChecked")}{" "}
+                {r.lastSeenAt ? fmt.dateTime(r.lastSeenAt) : "—"}
               </Text>
             </Stack>
           )}
@@ -535,7 +538,7 @@ function CreateDisplayModal({
           <Select
             clearable
             data={plantOptions}
-            label="拠点"
+            label={tr("common.site")}
             onChange={setPlantId}
             placeholder={tr("common.selectOne")}
             searchable
@@ -582,7 +585,9 @@ function LinkDisplayModal({
       onConfirm={() => onSubmit(code)}
       opened={display !== null}
       size="md"
-      title={`ディスプレイをリンク: ${display?.name ?? ""}`}
+      title={tr("settings.displays.linkThisDisplay", {
+        name: display?.name ?? "",
+      })}
     >
       <Stack gap="sm">
         <Text c="dimmed" size="sm">

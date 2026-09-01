@@ -105,13 +105,16 @@ function Body({
           )}
           {summary.type === "multiselect" && (
             <Text c="dimmed" size="xs">
-              割合は回答した {body.answered} 件に対するもの（複数選べるので
-              合計は 100% を超えます）
+              {tr("forms.formSummaryView.percentIsOfAnsweredCount", {
+                answered: body.answered,
+              })}
             </Text>
           )}
           {body.otherCount > 0 && (
             <Text c="dimmed" size="xs">
-              ほかに {body.otherCount} 件（上位のみ表示）
+              {tr("forms.formSummaryView.othersCountTopOnly", {
+                count: body.otherCount,
+              })}
             </Text>
           )}
           {chartMode === "pie" && !canDonut && (
@@ -163,8 +166,9 @@ function Body({
       return (
         <Stack gap="xs">
           <Text c="dimmed" size="sm">
-            自由記述はグラフにしません。最近の回答を{body.samples.length}
-            件まで並べます。
+            {tr("forms.formSummaryView.freeTextNotCharted", {
+              count: body.samples.length,
+            })}
           </Text>
           {body.samples.map((sample, i) => (
             <Paper
@@ -186,8 +190,9 @@ function Body({
           ))}
           {body.answered > body.samples.length && (
             <Text c="dimmed" size="xs">
-              ほかに {body.answered - body.samples.length} 件（すべて読むには
-              回答一覧か Excel の書き出しへ）
+              {tr("forms.formSummaryView.moreSamplesSeeResponseListOrExport", {
+                count: body.answered - body.samples.length,
+              })}
             </Text>
           )}
         </Stack>
@@ -207,14 +212,17 @@ function Body({
 
 /** 回答 / 未回答の件数。必須でない質問では「答えなかった」ことも結果。 */
 function AnsweredCount({ summary }: { summary: FieldSummary }) {
+  const tr = useTranslations();
   const body = summary.body;
   if (body.kind === "none") return null;
   const answered = body.answered;
   const unanswered = Math.max(0, summary.total - answered);
   return (
     <Text c="dimmed" size="xs" style={{ marginLeft: "auto" }}>
-      回答 {answered}
-      {unanswered > 0 ? ` / 未回答 ${unanswered}` : ""}
+      {tr("common.response")} {answered}
+      {unanswered > 0
+        ? ` / ${tr("forms.formSummaryView.noAnswer")} ${unanswered}`
+        : ""}
     </Text>
   );
 }
@@ -284,7 +292,10 @@ export function FormSummaryView({
           Math.max(0, s.total - b.answered),
         ]);
     }
-    downloadCsv(`集計_${formTitle}_${formCode}.csv`, toCsv(rows));
+    downloadCsv(
+      tr("forms.formSummaryView.summaryCsvFilename", { formTitle, formCode }),
+      toCsv(rows),
+    );
   };
 
   return (
@@ -309,7 +320,7 @@ export function FormSummaryView({
           { label: formTitle, href: `/general/forms/${formCode}` },
           { label: tr("forms.formSummaryView.summary") },
         ]}
-        title={`集計 — ${formTitle}`}
+        title={tr("forms.formSummaryView.summaryTitle", { formTitle })}
       />
 
       <Card padding="md" radius="md" withBorder>

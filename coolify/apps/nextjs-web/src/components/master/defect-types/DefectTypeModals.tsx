@@ -84,7 +84,9 @@ export function EditDefectTypeModal({
       if (result.ok) {
         notifications.show({
           title: tr("common.saved2"),
-          message: `不良種類「${label(target)}」を更新しました`,
+          message: tr("master.defectTypeModals.updated", {
+            name: label(target),
+          }),
           color: "green",
         });
         resetAndClose();
@@ -113,7 +115,7 @@ export function EditDefectTypeModal({
         <TextInput
           description={tr("common.itCannotBeChangedOnceCreated")}
           disabled
-          label="コード"
+          label={tr("master.defectTypeModals.code")}
           readOnly
           value={target?.code ?? ""}
         />
@@ -139,7 +141,7 @@ export function EditDefectTypeModal({
         />
         <Switch
           checked={isActive}
-          label="有効"
+          label={tr("common.enabled")}
           onChange={(e) => setIsActive(e.currentTarget.checked)}
         />
       </Stack>
@@ -164,7 +166,7 @@ export function DeleteDefectTypeModal({
       loading={isPending}
       message={
         target
-          ? `不良種類「${label(target)}」を削除します。この操作は取り消せません。`
+          ? tr("master.defectTypeModals.deleteConfirm", { name: label(target) })
           : ""
       }
       onClose={onClose}
@@ -175,7 +177,9 @@ export function DeleteDefectTypeModal({
           if (result.ok) {
             notifications.show({
               title: tr("common.deleted"),
-              message: `不良種類「${label(target)}」を削除しました`,
+              message: tr("master.defectTypeModals.deleted", {
+                name: label(target),
+              }),
               color: "green",
             });
             onDone?.();
@@ -210,13 +214,21 @@ export function ToggleDefectTypeActiveModal({
   return (
     <ConfirmModal
       confirmColor={isActive ? "red" : "blue"}
-      confirmLabel={isActive ? "無効化する" : tr("common.enable2")}
+      confirmLabel={
+        isActive
+          ? tr("master.defectTypeModals.disableAction")
+          : tr("common.enable2")
+      }
       loading={isPending}
       message={
         target
           ? isActive
-            ? `不良種類「${label(target)}」を無効化します。新規の不良記録で選択できなくなります。`
-            : `不良種類「${label(target)}」を有効化します。再び不良記録で選択できるようになります。`
+            ? tr("master.defectTypeModals.disableConfirm", {
+                name: label(target),
+              })
+            : tr("master.defectTypeModals.enableConfirm", {
+                name: label(target),
+              })
           : ""
       }
       onClose={onClose}
@@ -226,8 +238,14 @@ export function ToggleDefectTypeActiveModal({
           const result = await setDefectTypesActive([target.id], !isActive);
           if (result.ok) {
             notifications.show({
-              title: isActive ? "無効化しました" : tr("common.enabled2"),
-              message: `不良種類「${label(target)}」を${isActive ? "無効化" : "有効化"}しました`,
+              title: isActive ? tr("common.disabled2") : tr("common.enabled2"),
+              message: isActive
+                ? tr("master.defectTypeModals.disabled", {
+                    name: label(target),
+                  })
+                : tr("master.defectTypeModals.enabled", {
+                    name: label(target),
+                  }),
               color: "green",
             });
             onDone?.();
@@ -243,7 +261,7 @@ export function ToggleDefectTypeActiveModal({
       opened={opened}
       title={
         isActive
-          ? "不良種類の無効化"
+          ? tr("master.defectTypeModals.disableTitle")
           : tr("master.defectTypes.enableTheDefectType")
       }
     />

@@ -80,7 +80,9 @@ export function DocumentEditor({
       const r = await savePageBody(pageNumber as string, { title, body, note });
       if (r.ok) {
         notifications.show({
-          message: `リビジョン ${r.data.revision} として保存しました`,
+          message: tr("documents.documentEditor.savedAsRevision", {
+            revision: r.data.revision,
+          }),
           color: "green",
         });
         setNote("");
@@ -100,11 +102,11 @@ export function DocumentEditor({
         breadcrumbs={[
           { label: tr("common.general") },
           { label: tr("common.internalDocuments"), href: "/general/documents" },
-          { label: mode === "new" ? "新規" : tr("common.edit2") },
+          { label: mode === "new" ? tr("common.new") : tr("common.edit2") },
         ]}
         title={
           mode === "new"
-            ? "文書を作る"
+            ? tr("general.documents.createADocument")
             : tr("documents.documentEditor.editTheDocument")
         }
       />

@@ -252,7 +252,7 @@ export function KioskDeviceDetailView({
             label={tr("common.online")}
             value={
               device.status === "ACTIVE" ? (
-                <Tooltip label={transportLabel(transport)} withinPortal>
+                <Tooltip label={transportLabel(tr, transport)} withinPortal>
                   <span>
                     <OnlineDot online={online} />
                   </span>
@@ -267,7 +267,10 @@ export function KioskDeviceDetailView({
             label={tr("common.lastActivity")}
             value={liveActivity ? fmt.dateTime(liveActivity) : "—"}
           />
-          <FieldValue label="拠点" value={device.plantLabel ?? "—"} />
+          <FieldValue
+            label={tr("common.site")}
+            value={device.plantLabel ?? "—"}
+          />
           <FieldValue
             label={tr("common.location2")}
             value={device.location ?? "—"}
@@ -325,7 +328,9 @@ export function KioskDeviceDetailView({
                       ` (±${Math.round(device.latestLocation.accuracyM)}m)`}
                   </Anchor>
                   <Text c="dimmed" size="xs">
-                    {fmt.dateTime(device.latestLocation.recordedAt)} 時点
+                    {tr("settings.kioskDeviceDetailView.asOfLabel", {
+                      date: fmt.dateTime(device.latestLocation.recordedAt),
+                    })}
                   </Text>
                 </Stack>
               ) : (
@@ -422,7 +427,9 @@ export function KioskDeviceDetailView({
               </Group>
               {device.unlockPinSyncedAt ? (
                 <Text c="dimmed" size="xs">
-                  最終同期 {fmt.dateTime(device.unlockPinSyncedAt)}
+                  {tr("settings.kioskDeviceDetailView.lastSyncedLabel", {
+                    date: fmt.dateTime(device.unlockPinSyncedAt),
+                  })}
                   {held && !held.pin
                     ? tr("settings.kiosk.thePinAtThatTimeIs")
                     : ""}
@@ -526,7 +533,9 @@ export function KioskDeviceDetailView({
                             {fmt.dateTime(u.lastLoginAt)}
                           </Text>
                           <Text c="dimmed" size="xs">
-                            {u.loginCount} 回
+                            {tr("settings.kiosk.useCountTimes", {
+                              count: u.loginCount,
+                            })}
                           </Text>
                         </div>
                       </Group>
@@ -622,12 +631,13 @@ export function KioskDeviceDetailView({
         title={tr("settings.kiosk.maintenancePinHistory")}
       >
         <Text c="dimmed" size="xs">
-          オフラインの端末が受け付けるのは「最後に通信できた時点の PIN」。
-          この端末の最終通信は
+          {tr("settings.kioskDeviceDetailView.offlineAcceptsLastSyncedPin")}
           {liveActivity
             ? ` ${fmt.dateTime(liveActivity)}`
             : tr("settings.kiosk.noRecord")}
-          {liveActivity ? " — その時刻を含む行を使う" : ""}。
+          {liveActivity
+            ? tr("settings.kioskDeviceDetailView.usesRowIncludingThatTime")
+            : "。"}
         </Text>
         {history?.length === 0 ? (
           <EmptyState

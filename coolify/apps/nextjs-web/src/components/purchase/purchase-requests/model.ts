@@ -80,17 +80,6 @@ export interface PurchaseRequestView {
   updatedAt: string;
 }
 
-/** history Json の action → 日本語ラベル。 */
-export const PURCHASE_REQUEST_HISTORY_ACTION_LABEL: Record<string, string> = {
-  CREATE: "作成",
-  UPDATE: "更新",
-  REQUEST_APPROVAL: "承認依頼",
-  APPROVE: "承認",
-  REJECT: "差し戻し",
-  CONVERT: "発注書へ変換",
-  CANCEL: "キャンセル",
-};
-
 /** 編集可能か — 下書き（DRAFT）/ 差し戻し（REJECTED）のみ。 */
 export function isEditable(r: Pick<PurchaseRequestView, "status">) {
   return r.status === "DRAFT" || r.status === "REJECTED";

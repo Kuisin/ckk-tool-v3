@@ -31,13 +31,14 @@ export function parseLinkQr(rawValue: string): string | null {
 
 export function LinkQrScanner({
   onCode,
-  label = "QR をスキャン",
+  label,
 }: {
   onCode: (code: string) => void;
   /** ボタンの文言（端末 / ディスプレイで呼び分ける）。 */
   label?: string;
 }) {
   const tr = useTranslations();
+  const buttonLabel = label ?? tr("settings.kiosk.scanQr");
   const [scanning, setScanning] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [cameras, setCameras] = useState<QrScanner.Camera[]>([]);
@@ -135,7 +136,7 @@ export function LinkQrScanner({
           leftSection={<IconScan size={14} />}
           onClick={() => setScanning(true)}
         >
-          {label}
+          {buttonLabel}
         </SecondaryButton>
       )}
       {error && (

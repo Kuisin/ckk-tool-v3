@@ -18,15 +18,6 @@ import {
 } from "@/lib/privileged-access-core";
 import type { PrivilegedRequestRow } from "@/lib/privileged-requests";
 
-const STATUS_LABEL: Record<string, string> = {
-  PENDING: "承認依頼中",
-  APPROVED: "承認済み",
-  REJECTED: "差し戻し",
-  CANCELLED: "取り下げ",
-  REVOKED: "取り消し",
-  EXPIRED: "期限切れ",
-};
-
 const STATUS_COLOR: Record<string, string> = {
   PENDING: "yellow",
   APPROVED: "green",
@@ -37,14 +28,18 @@ const STATUS_COLOR: Record<string, string> = {
 };
 
 /** 残り時間を「12 分 30 秒」の形に。1 秒ごとに動かすのは利用中のときだけ。 */
-function formatRemaining(ms: number): string {
+function formatRemaining(
+  ms: number,
+  tr: ReturnType<typeof useTranslations>,
+): string {
   const total = Math.max(0, Math.floor(ms / 1000));
   const h = Math.floor(total / 3600);
   const m = Math.floor((total % 3600) / 60);
   const s = total % 60;
-  if (h > 0) return `${h} 時間 ${m} 分`;
-  if (m > 0) return `${m} 分 ${s} 秒`;
-  return `${s} 秒`;
+  if (h > 0) return tr("settings.privilegedRequestCard.hoursMinutes", { h, m });
+  if (m > 0)
+    return tr("settings.privilegedRequestCard.minutesSeconds", { m, s });
+  return tr("settings.privilegedRequestCard.secondsOnly", { s });
 }
 
 /**
@@ -66,7 +61,9 @@ function Countdown({ initialMs }: { initialMs: number }) {
   if (ms <= 0) return <Badge color="gray">{tr("common.expired")}</Badge>;
   return (
     <Badge color="violet" variant="filled">
-      残り {formatRemaining(ms)}
+      {tr("settings.privilegedRequestCard.remainingTime", {
+        time: formatRemaining(ms, tr),
+      })}
     </Badge>
   );
 }
@@ -81,6 +78,14 @@ export function PrivilegedRequestCard({
 }) {
   const tr = useTranslations();
   const fmt = useFormat();
+  const STATUS_LABEL: Record<string, string> = {
+    PENDING: tr("common.pendingApproval"),
+    APPROVED: tr("settings.privilegedRequestCard.approved"),
+    REJECTED: tr("common.reject"),
+    CANCELLED: tr("settings.privileged.withdraw"),
+    REVOKED: tr("common.revoked2"),
+    EXPIRED: tr("common.expired"),
+  };
   // 方式 A で「利用中」のときだけ実時間のカウントダウンを出す。承認依頼中や
   // 期限切れに秒を出しても読む意味が無い。
   // **未使用（ARMED）ではカウントダウンしない。** あの残り時間は窓の終わりまで
@@ -121,7 +126,7 @@ export function PrivilegedRequestCard({
           {row.status === "APPROVED" &&
             row.operations.some((o) => !o.granted) && (
               <Text c="orange" size="xs">
-                許可されなかった操作:{" "}
+                {tr("settings.privilegedRequestCard.operationsNotGranted")}{" "}
                 {row.operations
                   .filter((o) => !o.granted)
                   .map((o) => o.label)
@@ -129,27 +134,46 @@ export function PrivilegedRequestCard({
               </Text>
             )}
 
-          <Text size="xs">理由: {row.reason}</Text>
+          <Text size="xs">
+            {tr("settings.privilegedRequestCard.reasonLabel", {
+              reason: row.reason,
+            })}
+          </Text>
 
           {row.kind === "elevation" && row.windowEndsAt && (
             <Text c="dimmed" size="xs">
-              利用できる期間: {fmt.dateTime(row.windowStartsAt)} 〜{" "}
-              {fmt.dateTime(row.windowEndsAt)} / 1 回 {row.durationMinutes} 分
+              {tr("settings.privilegedRequestCard.usablePeriodLabel")}
+              {fmt.dateTime(row.windowStartsAt)} 〜{" "}
+              {fmt.dateTime(row.windowEndsAt)}
+              {tr("settings.privilegedRequestCard.perUseMinutes", {
+                minutes: row.durationMinutes ?? 0,
+              })}
               {row.activatedAt
-                ? `（${fmt.dateTime(row.activatedAt)} に開始・${row.useCount} 回使用）`
+                ? tr("settings.privilegedRequestCard.startedAndUsedCount", {
+                    date: fmt.dateTime(row.activatedAt),
+                    count: row.useCount ?? 0,
+                  })
                 : tr("settings.privileged.unusedMeasuredFromTheFirstUse")}
             </Text>
           )}
 
           <Text c="dimmed" size="xs">
-            申請: {row.requestedByName} / {fmt.dateTime(row.requestedAt)}
+            {tr("settings.privilegedRequestCard.requestedByLabel", {
+              name: row.requestedByName,
+              date: fmt.dateTime(row.requestedAt),
+            })}
             {row.decidedByName &&
-              ` ・ 決裁: ${row.decidedByName} / ${fmt.dateTime(row.decidedAt)}`}
+              tr("settings.privilegedRequestCard.decidedByLabel", {
+                name: row.decidedByName,
+                date: fmt.dateTime(row.decidedAt),
+              })}
           </Text>
 
           {row.decisionComment && (
             <Text c="dimmed" size="xs">
-              決裁コメント: {row.decisionComment}
+              {tr("settings.privilegedRequestCard.decisionCommentLabel", {
+                comment: row.decisionComment,
+              })}
             </Text>
           )}
 
@@ -157,12 +181,16 @@ export function PrivilegedRequestCard({
               別の色で出す。 */}
           {row.applyError && (
             <Text c="red" size="xs">
-              適用できませんでした: {row.applyError}
+              {tr("settings.privilegedRequestCard.applyFailedLabel", {
+                error: row.applyError,
+              })}
             </Text>
           )}
           {row.appliedAt && (
             <Text c="green" size="xs">
-              {fmt.dateTime(row.appliedAt)} に適用しました
+              {tr("settings.privilegedRequestCard.appliedAtLabel", {
+                date: fmt.dateTime(row.appliedAt),
+              })}
             </Text>
           )}
         </Stack>

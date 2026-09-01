@@ -41,7 +41,7 @@ export function MaterialReceiptDetail({
       breadcrumbs={[
         tr("common.purchasing"),
         { label: tr("common.materialReceipt"), href: BASE_PATH },
-        "詳細",
+        tr("common.detail"),
       ]}
       createdAt={fmt.dateTime(r.createdAt)}
       status={
@@ -54,7 +54,9 @@ export function MaterialReceiptDetail({
           </Badge>
         )
       }
-      title={`素材入荷 ${r.materialCode}`}
+      title={tr("purchase.materialReceiptDetail.titleWithCode", {
+        materialCode: r.materialCode,
+      })}
     >
       <SummaryGrid>
         <FieldValue

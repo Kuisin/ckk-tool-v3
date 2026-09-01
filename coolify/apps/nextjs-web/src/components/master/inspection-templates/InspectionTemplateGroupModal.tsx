@@ -241,7 +241,7 @@ export function InspectionTemplateGroupModal({
                     <Group gap="md" justify="space-between">
                       <Switch
                         checked={draft.isActive}
-                        label="有効"
+                        label={tr("common.enabled")}
                         onChange={(e) =>
                           setDrafts((d) => ({
                             ...d,
@@ -254,7 +254,9 @@ export function InspectionTemplateGroupModal({
                         size="sm"
                       />
                       <Text c="dimmed" size="xs">
-                        {row.templateCount}件の検査表
+                        {tr("master.inspectionTemplates.templateCountValue", {
+                          count: row.templateCount,
+                        })}
                       </Text>
                     </Group>
                   </Stack>
@@ -283,7 +285,7 @@ export function InspectionTemplateGroupModal({
                           ? tr(
                               "master.inspectionTemplates.itCannotBeDeletedWhileInspection",
                             )
-                          : "削除"
+                          : tr("common.delete")
                       }
                       withinPortal
                     >

@@ -175,7 +175,7 @@ export function DesignFileThumb({
       <UnstyledButton
         onClick={() => setOpen(true)}
         ref={holder}
-        title={`${target.filename} を拡大`}
+        title={tr("ui.designFileViewer.enlarge", { filename: target.filename })}
         w="100%"
       >
         <Paper radius="md" style={{ overflow: "hidden" }} withBorder>
@@ -243,7 +243,7 @@ export function DesignFileThumb({
 /** 小さな起動口（表の行・カードなど、場所が無いとき）。 */
 export function DesignFileViewButton({
   target,
-  label = "表示",
+  label: labelProp,
   fullWidth,
 }: {
   target: DesignFileViewerTarget;
@@ -251,6 +251,8 @@ export function DesignFileViewButton({
   /** モバイルのカード内で使うときに全幅（44px の当たり判定）にする。 */
   fullWidth?: boolean;
 }) {
+  const tr = useTranslations();
+  const label = labelProp ?? tr("common.display");
   const [open, setOpen] = useState(false);
   return (
     <>

@@ -59,17 +59,15 @@ import {
   type TransferSource,
 } from "./StockTransferModal";
 
-const KIND_OPTIONS = [
-  { value: "FINISHED", label: "完成品" },
-  { value: "SEMI_FINISHED", label: "半製品" },
-];
-
 /** 保管場所 / 棚 のセル表示。 */
-function storageCell(r: {
-  storageLocationName: string | null;
-  shelfCode: string | null;
-}): string {
-  if (!r.storageLocationName) return "未割当";
+function storageCell(
+  tr: (key: string) => string,
+  r: {
+    storageLocationName: string | null;
+    shelfCode: string | null;
+  },
+): string {
+  if (!r.storageLocationName) return tr("common.unassigned");
   return r.shelfCode
     ? `${r.storageLocationName} / ${r.shelfCode}`
     : r.storageLocationName;
@@ -87,6 +85,10 @@ export function UnifiedInventory({
   plants: TransferPlantOption[];
 }) {
   const tr = useTranslations();
+  const KIND_OPTIONS = [
+    { value: "FINISHED", label: tr("common.finishedGoods") },
+    { value: "SEMI_FINISHED", label: tr("common.semiFinished") },
+  ];
   const fmt = useFormat();
   const router = useRouter();
   const isMobile = useIsMobile();
@@ -157,7 +159,7 @@ export function UnifiedInventory({
   const productColumns: Column<ProductInventoryRow>[] = [
     {
       key: "productName",
-      header: "製品",
+      header: tr("common.product"),
       sortable: true,
       render: (r) => (
         <>
@@ -172,7 +174,7 @@ export function UnifiedInventory({
     },
     {
       key: "plantName",
-      header: "拠点",
+      header: tr("common.site"),
       sortable: true,
       width: 120,
       sortValue: (r) => r.plantName ?? "",
@@ -183,10 +185,10 @@ export function UnifiedInventory({
       header: tr("common.storageLocations"),
       sortable: true,
       width: 150,
-      sortValue: (r) => storageCell(r),
+      sortValue: (r) => storageCell(tr, r),
       render: (r) => (
         <Text c={r.storageLocationName ? undefined : "dimmed"} size="sm">
-          {storageCell(r)}
+          {storageCell(tr, r)}
         </Text>
       ),
     },
@@ -273,11 +275,14 @@ export function UnifiedInventory({
           label: r.productCode
             ? `${r.productName}（${r.productCode}）`
             : r.productName,
-          detail: r.lotNumber != null ? `ロット ${r.lotNumber}` : null,
+          detail:
+            r.lotNumber != null
+              ? tr("production.inventory.lotN", { number: r.lotNumber })
+              : null,
           available: r.available,
           unit: tr("common.pcs"),
           integerOnly: true,
-          currentLabel: `${r.plantName ?? "拠点未設定"} / ${storageCell(r)}`,
+          currentLabel: `${r.plantName ?? tr("production.inventory.noSiteSet")} / ${storageCell(tr, r)}`,
         }),
     },
   ];
@@ -301,7 +306,7 @@ export function UnifiedInventory({
     },
     {
       key: "plantName",
-      header: "拠点",
+      header: tr("common.site"),
       sortable: true,
       width: 120,
       sortValue: (r) => r.plantName ?? "",
@@ -312,10 +317,10 @@ export function UnifiedInventory({
       header: tr("common.storageLocations"),
       sortable: true,
       width: 150,
-      sortValue: (r) => storageCell(r),
+      sortValue: (r) => storageCell(tr, r),
       render: (r) => (
         <Text c={r.storageLocationName ? undefined : "dimmed"} size="sm">
-          {storageCell(r)}
+          {storageCell(tr, r)}
         </Text>
       ),
     },
@@ -387,7 +392,7 @@ export function UnifiedInventory({
           available: r.available,
           unit: r.unit,
           integerOnly: false,
-          currentLabel: `${r.plantName ?? "拠点未設定"} / ${storageCell(r)}`,
+          currentLabel: `${r.plantName ?? tr("production.inventory.noSiteSet")} / ${storageCell(tr, r)}`,
         }),
     },
   ];
@@ -403,7 +408,7 @@ export function UnifiedInventory({
               data={plantOptions}
               flex={isMobile ? 1 : undefined}
               onChange={setPlant}
-              placeholder="拠点"
+              placeholder={tr("common.site")}
               value={plant}
               w={isMobile ? undefined : 160}
             />
@@ -443,7 +448,7 @@ export function UnifiedInventory({
       <AppTabs onChange={setTab} value={tab}>
         <Tabs.List mb="sm">
           <Tabs.Tab leftSection={<IconBoxSeam size={14} />} value="products">
-            製品
+            {tr("common.product")}
           </Tabs.Tab>
           <Tabs.Tab leftSection={<IconStack2 size={14} />} value="materials">
             {tr("common.materials")}
@@ -479,11 +484,13 @@ export function UnifiedInventory({
                   <Group gap="md">
                     <Text c="dimmed" size="xs">
                       {r.plantName ?? tr("production.inventory.noSiteSet")} /{" "}
-                      {storageCell(r)}
+                      {storageCell(tr, r)}
                     </Text>
                     {r.lotNumber != null && (
                       <Text c="dimmed" ff="mono" size="xs">
-                        ロット {r.lotNumber}
+                        {tr("production.inventory.lotN", {
+                          number: r.lotNumber,
+                        })}
                       </Text>
                     )}
                   </Group>
@@ -531,7 +538,7 @@ export function UnifiedInventory({
                   </Text>
                   <Text c="dimmed" size="xs">
                     {r.plantName ?? tr("production.inventory.noSiteSet")} /{" "}
-                    {storageCell(r)}
+                    {storageCell(tr, r)}
                   </Text>
                   <Text size="xs">
                     在庫 {r.quantity.toLocaleString("ja-JP")} {r.unit} /
@@ -610,7 +617,7 @@ function WipList({ rows }: { rows: WipRow[] }) {
         <Table.Thead>
           <Table.Tr>
             <Table.Th w={120}>{tr("common.workOrderNumber")}</Table.Th>
-            <Table.Th>工程</Table.Th>
+            <Table.Th>{tr("production.inventory.step")}</Table.Th>
             <Table.Th ta="right" w={110}>
               {tr("production.inventory.wIP2")}
             </Table.Th>
@@ -737,7 +744,10 @@ function LocationView({
             key: `p:${p.id}`,
             kind,
             label: p.productName,
-            sub: p.lotNumber != null ? `ロット ${p.lotNumber}` : null,
+            sub:
+              p.lotNumber != null
+                ? tr("production.inventory.lotN", { number: p.lotNumber })
+                : null,
             quantity: p.quantity,
             unit: tr("common.pcs"),
             source: {
@@ -746,11 +756,14 @@ function LocationView({
               label: p.productCode
                 ? `${p.productName}（${p.productCode}）`
                 : p.productName,
-              detail: p.lotNumber != null ? `ロット ${p.lotNumber}` : null,
+              detail:
+                p.lotNumber != null
+                  ? tr("production.inventory.lotN", { number: p.lotNumber })
+                  : null,
               available: p.available,
               unit: tr("common.pcs"),
               integerOnly: true,
-              currentLabel: `${p.plantName ?? "—"} / ${storageCell(p)}`,
+              currentLabel: `${p.plantName ?? "—"} / ${storageCell(tr, p)}`,
             },
           };
         })()
@@ -771,7 +784,7 @@ function LocationView({
               available: m.available,
               unit: m.unit,
               integerOnly: false,
-              currentLabel: `${m.plantName ?? "—"} / ${storageCell(m)}`,
+              currentLabel: `${m.plantName ?? "—"} / ${storageCell(tr, m)}`,
             },
           };
         })();
@@ -851,7 +864,7 @@ function LocationView({
       <Select
         allowDeselect={false}
         data={plants.map((f) => ({ value: String(f.id), label: f.name }))}
-        label="拠点"
+        label={tr("common.site")}
         onChange={(v) => {
           setPlantId(v);
           setActiveMapId(null);
@@ -886,7 +899,9 @@ function LocationView({
             )}
           </Group>
           <FloorMapCanvas
-            imageAlt={`フロアマップ: ${activeMap.name}`}
+            imageAlt={tr("production.inventory.floorMapAlt", {
+              name: activeMap.name,
+            })}
             imageUrl={
               activeMap.hasImage
                 ? `/api/kiosk/floor-maps/${activeMap.id}/image`
@@ -902,7 +917,11 @@ function LocationView({
                 id: String(l.id),
                 x: l.mapX ?? 50,
                 y: l.mapY ?? 50,
-                label: `${l.name}（${l.code}）｜在庫 ${count} 件`,
+                label: tr("production.inventory.pinLabelWithStockCount", {
+                  name: l.name,
+                  code: l.code,
+                  count,
+                }),
                 selected: selectedLocId === l.id,
                 icon: (
                   <IconBuildingWarehouse

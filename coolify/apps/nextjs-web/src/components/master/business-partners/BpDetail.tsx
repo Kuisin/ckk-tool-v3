@@ -62,11 +62,18 @@ import {
   vendorTypeLabel,
 } from "@/lib/enum-labels";
 import { formatMoney } from "@/lib/format";
+import type { Tr } from "@/lib/i18n";
 
-const day = (v: number | null) =>
-  v == null ? "—" : v === 31 ? "月末" : `${v}日`;
+// フックを使えない素の関数なので、解決済みの `tr` を引数で受ける。
+const day = (v: number | null, tr: Tr) =>
+  v == null
+    ? "—"
+    : v === 31
+      ? tr("master.businessPartners.endOfMonth")
+      : tr("master.businessPartners.daySuffix", { value: v });
 
-const days = (v: number | null) => (v == null ? "—" : `${v}日`);
+const days = (v: number | null, tr: Tr) =>
+  v == null ? "—" : tr("master.businessPartners.daySuffix", { value: v });
 
 /**
  * 概要タブの 1 セクション。「一般」（取引先そのものの情報）と、付与されている
@@ -136,12 +143,14 @@ export function BpDetail({
         <ResourceActions
           menuItems={[
             {
-              label: record.isActive ? "無効化" : tr("common.enable"),
+              label: record.isActive
+                ? tr("common.disable")
+                : tr("common.enable"),
               icon: <IconCircleMinus size={14} />,
               onClick: () => setToggleOpen(true),
             },
             {
-              label: "削除",
+              label: tr("common.delete"),
               icon: <IconTrash size={14} />,
               color: "red",
               divider: true,
@@ -221,15 +230,15 @@ export function BpDetail({
                   />
                   <FieldValue
                     label={tr("common.closingDay")}
-                    value={day(customer.closingDay)}
+                    value={day(customer.closingDay, tr)}
                   />
                   <FieldValue
                     label={tr("master.businessPartners.paymentTerms")}
-                    value={days(customer.paymentTermsDays)}
+                    value={days(customer.paymentTermsDays, tr)}
                   />
                   <FieldValue
                     label={tr("common.paymentDay")}
-                    value={days(customer.paymentDay)}
+                    value={days(customer.paymentDay, tr)}
                   />
                   <FieldValue
                     label={tr("master.businessPartners.creditLimit")}
@@ -268,7 +277,11 @@ export function BpDetail({
                               variant="light"
                             >
                               {rep.name}
-                              {rep.isPrimary ? "（主担当）" : ""}
+                              {rep.isPrimary
+                                ? tr(
+                                    "master.businessPartners.primaryContactTag",
+                                  )
+                                : ""}
                             </Badge>
                           ))}
                         </Group>
@@ -313,19 +326,19 @@ export function BpDetail({
                   />
                   <FieldValue
                     label={tr("common.closingDay")}
-                    value={day(vendor.closingDay)}
+                    value={day(vendor.closingDay, tr)}
                   />
                   <FieldValue
                     label={tr("master.businessPartners.paymentTerms")}
-                    value={days(vendor.paymentTermsDays)}
+                    value={days(vendor.paymentTermsDays, tr)}
                   />
                   <FieldValue
                     label={tr("common.paymentDay")}
-                    value={days(vendor.paymentDay)}
+                    value={days(vendor.paymentDay, tr)}
                   />
                   <FieldValue
                     label={tr("master.businessPartners.standardLeadTime")}
-                    value={days(vendor.leadTimeDays)}
+                    value={days(vendor.leadTimeDays, tr)}
                   />
                 </Group>
                 <Divider

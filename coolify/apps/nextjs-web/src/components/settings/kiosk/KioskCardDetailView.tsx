@@ -314,7 +314,7 @@ export function KioskCardDetailView({
             value={
               <Group gap={6} wrap="nowrap">
                 <Text fw={500} size="sm">
-                  {formatValidityRange(fmt, card)}
+                  {formatValidityRange(fmt, card, tr)}
                 </Text>
                 <ValidityBadge validity={validity} />
               </Group>
@@ -337,7 +337,9 @@ export function KioskCardDetailView({
           />
           <FieldValue
             label={tr("settings.kiosk.concurrentLoginLimit")}
-            value={`${card.maxActiveSessions} 台`}
+            value={tr("settings.kioskCardDetailView.countDevices", {
+              count: card.maxActiveSessions,
+            })}
           />
           <FieldValue
             label={tr("common.lastUsed")}
@@ -345,7 +347,9 @@ export function KioskCardDetailView({
           />
           <FieldValue
             label={tr("common.timesUsed")}
-            value={`${card.useCount} 回`}
+            value={tr("settings.kioskCardDetailView.countTimes", {
+              count: card.useCount,
+            })}
           />
           <FieldValue
             label={tr("settings.kiosk.pINLastVerified")}
@@ -425,12 +429,12 @@ export function KioskCardDetailView({
                   setConfirm({
                     title: tr("common.confirmSuspension"),
                     message: tr("common.loginsWithThisCardWillBe"),
-                    confirmLabel: "一時停止",
+                    confirmLabel: tr("settings.kioskCardDetailView.suspend"),
                     run: () => suspendCard(card.id),
                   })
                 }
               >
-                一時停止
+                {tr("settings.kioskCardDetailView.suspend")}
               </SecondaryButton>
             )}
             {card.status === "SUSPENDED" && (
@@ -504,7 +508,7 @@ export function KioskCardDetailView({
               <Table.Thead>
                 <Table.Tr>
                   <Table.Th>{tr("common.device")}</Table.Th>
-                  <Table.Th>拠点</Table.Th>
+                  <Table.Th>{tr("common.site")}</Table.Th>
                   <Table.Th>{tr("common.logIn")}</Table.Th>
                   <Table.Th>{tr("common.lastActivity")}</Table.Th>
                 </Table.Tr>

@@ -173,7 +173,9 @@ export function ResponseDetail({
       <AppTabs defaultValue="answers">
         <Tabs.List>
           <Tabs.Tab value="answers">{tr("common.response")}</Tabs.Tab>
-          {approvalEnabled && <Tabs.Tab value="approval">承認</Tabs.Tab>}
+          {approvalEnabled && (
+            <Tabs.Tab value="approval">{tr("common.approve")}</Tabs.Tab>
+          )}
           <Tabs.Tab value="attachments">
             {tr("forms.responseDetail.attach")}
           </Tabs.Tab>
@@ -203,7 +205,9 @@ export function ResponseDetail({
                   if (r.ok && !asDraft) close();
                   return r.ok ? { ok: true } : { ok: false, error: r.error };
                 }}
-                submitLabel={status === "DRAFT" ? "提出する" : "更新"}
+                submitLabel={
+                  status === "DRAFT" ? tr("common.submit") : tr("common.update")
+                }
                 // 編集は受付終了後も許される設定があるので送信可否は別扱い。
                 // 最終判定はサーバ（canEditResponse / formAvailability）。
                 submittable={

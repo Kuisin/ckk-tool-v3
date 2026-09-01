@@ -123,7 +123,10 @@ export function QuoteDetail({
     {
       key: "issued",
       label: tr("common.issue"),
-      description: status === "DRAFT" ? "PDF を発行" : tr("common.issued2"),
+      description:
+        status === "DRAFT"
+          ? tr("sales.quoteDetail.issuePdfDesc")
+          : tr("common.issued2"),
       loading: status === "ISSUED",
     },
     {
@@ -131,13 +134,17 @@ export function QuoteDetail({
       label: tr("sales.quotes.accept"),
       description:
         status === "REJECTED"
-          ? "却下"
+          ? tr("sales.quoteDetail.rejected")
           : status === "EXPIRED"
-            ? `期限切れ（${fmt.date(quote.validUntil)}）`
+            ? tr("sales.quoteDetail.expiredOn", {
+                date: fmt.date(quote.validUntil),
+              })
             : status === "ACCEPTED"
               ? tr("sales.quotes.toTheOrder")
               : quote.validUntil
-                ? `有効期限 ${fmt.date(quote.validUntil)}`
+                ? tr("sales.quoteDetail.validUntilLabel", {
+                    date: fmt.date(quote.validUntil),
+                  })
                 : tr("sales.quotes.toTheOrder"),
       color:
         status === "REJECTED"
@@ -157,7 +164,7 @@ export function QuoteDetail({
           {
             key: "price-lists",
             title: tr("common.priceList"),
-            summary: `${relatedEntries.length} 件`,
+            summary: tr("common.itemsCount", { count: relatedEntries.length }),
             items: relatedEntries.map((e) => ({
               key: e.entryId,
               label: `${e.customerName} × ${e.productName}`,
@@ -174,15 +181,22 @@ export function QuoteDetail({
     {
       key: "order-acceptances",
       title: tr("common.orderAcceptance"),
-      summary: acceptances.length > 0 ? `${acceptances.length} 件` : null,
+      summary:
+        acceptances.length > 0
+          ? tr("common.itemsCount", { count: acceptances.length })
+          : null,
       items: acceptances.map((a) => ({
         key: a.number,
         label: a.number,
         href: `/sales/order-acceptances/${a.number}`,
         done: a.status === "COMPLETED" || a.status === "ARCHIVED",
-        note: `${statusLabel("OrderAcceptanceIntake", a.status)}${
-          a.orderLineCount > 0 ? `・明細 ${a.orderLineCount} 件` : ""
-        }`,
+        note:
+          a.orderLineCount > 0
+            ? tr("sales.quoteDetail.acceptanceNoteWithLines", {
+                status: statusLabel("OrderAcceptanceIntake", a.status),
+                count: a.orderLineCount,
+              })
+            : statusLabel("OrderAcceptanceIntake", a.status),
       })),
       emptyNote:
         status === "ACCEPTED"
@@ -266,7 +280,7 @@ export function QuoteDetail({
       breadcrumbs={[
         tr("common.sales"),
         { label: tr("common.quote"), href: BASE_PATH },
-        "詳細",
+        tr("common.detailBreadcrumb"),
       ]}
       createdAt={fmt.dateTime(quote.createdAt)}
       status={<StatusBadge entity="Quote" status={status} />}
@@ -287,7 +301,9 @@ export function QuoteDetail({
         />
         <FieldValue
           label={tr("common.lineCount")}
-          value={`${quote.items.length}件`}
+          value={tr("sales.quoteDetail.itemCountNoSpace", {
+            count: quote.items.length,
+          })}
         />
         <FieldValue
           label={tr("common.totalAmountInclTax")}
@@ -316,7 +332,7 @@ export function QuoteDetail({
             <Table>
               <Table.Thead>
                 <Table.Tr>
-                  <Table.Th>製品</Table.Th>
+                  <Table.Th>{tr("common.product")}</Table.Th>
                   <Table.Th>{tr("common.orderType")}</Table.Th>
                   <Table.Th ta="right">{tr("common.quantity")}</Table.Th>
                   <Table.Th ta="right">{tr("common.unitPrice")}</Table.Th>
@@ -483,12 +499,15 @@ export function QuoteDetail({
                       size="sm"
                     >
                       {e.customerName} × {e.productName}（
-                      {e.variants
-                        .map(
-                          (v) => ORDER_TYPE_LABEL[v.orderType] ?? v.orderType,
-                        )
-                        .join(tr("common.s1"))}
-                      ・{entrySummary(e).tierCount}段階）
+                      {tr("sales.quoteDetail.orderTypesAndTierCount", {
+                        orderTypes: e.variants
+                          .map(
+                            (v) => ORDER_TYPE_LABEL[v.orderType] ?? v.orderType,
+                          )
+                          .join(tr("common.s1")),
+                        tierCount: entrySummary(e).tierCount,
+                      })}
+                      ）
                     </Anchor>
                   ))}
                 </Stack>

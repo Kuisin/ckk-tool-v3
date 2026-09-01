@@ -115,7 +115,9 @@ export function DeliveryNoteDetail({
       key: "issued",
       label: tr("common.issue"),
       description:
-        note.status === "DRAFT" ? "PDF を発行" : tr("common.issued2"),
+        note.status === "DRAFT"
+          ? tr("billing.invoices.issueThePdf")
+          : tr("common.issued2"),
       loading: note.status === "ISSUED",
     },
     {
@@ -148,7 +150,7 @@ export function DeliveryNoteDetail({
       title: tr("common.orderLine"),
       summary:
         note.orderLineNumbers.length > 0
-          ? `${note.orderLineNumbers.length} 件`
+          ? tr("common.itemsCount", { count: note.orderLineNumbers.length })
           : null,
       items: note.orderLineNumbers.map((n) => ({
         key: n,
@@ -169,7 +171,10 @@ export function DeliveryNoteDetail({
         label: inv.number,
         href: `/billing/invoices/${inv.number}`,
         done: inv.status === "PAID",
-        note: `${statusLabel("Invoice", inv.status)}・${formatMoney(inv.totalAmount)}`,
+        note: tr("shipping.deliveryNotes.invoiceNote", {
+          status: statusLabel("Invoice", inv.status),
+          amount: formatMoney(inv.totalAmount),
+        }),
       })),
       emptyNote:
         note.status === "DELIVERED"
@@ -272,7 +277,7 @@ export function DeliveryNoteDetail({
       breadcrumbs={[
         tr("common.shipping"),
         { label: tr("common.deliveryNote"), href: BASE_PATH },
-        "詳細",
+        tr("common.detailBreadcrumb"),
       ]}
       createdAt={fmt.dateTime(note.createdAt)}
       status={<StatusBadge entity="DeliveryNote" status={note.status} />}
@@ -337,7 +342,7 @@ export function DeliveryNoteDetail({
           label={tr("shipping.deliveryNotes.showPrices")}
           value={
             <Badge color={note.includePrice ? "green" : "gray"} variant="light">
-              {note.includePrice ? "あり" : tr("common.none2")}
+              {note.includePrice ? tr("common.included") : tr("common.none2")}
             </Badge>
           }
         />
@@ -366,13 +371,13 @@ export function DeliveryNoteDetail({
 
       <Paper p="md" radius="md" withBorder>
         <Title mb="sm" order={5}>
-          明細（{note.items.length}）
+          {tr("common.lineItemsWithCount", { count: note.items.length })}
         </Title>
         <Table.ScrollContainer minWidth={560}>
           <Table highlightOnHover>
             <Table.Thead>
               <Table.Tr>
-                <Table.Th>製品</Table.Th>
+                <Table.Th>{tr("common.product")}</Table.Th>
                 <Table.Th ta="right">{tr("common.quantity")}</Table.Th>
                 {note.includePrice && (
                   <>
@@ -478,13 +483,17 @@ export function DeliveryNoteDetail({
         confirmColor="blue"
         confirmLabel={tr("common.issue")}
         loading={isPending}
-        message={`納品書 ${note.deliveryNumber} を発行します。発行後は編集できません。`}
+        message={tr("shipping.deliveryNotes.confirmIssueBody", {
+          number: note.deliveryNumber,
+        })}
         onClose={() => setIssueOpen(false)}
         onConfirm={() =>
           run(
             () => issueDeliveryNote(note.deliveryNumber),
             tr("common.issued"),
-            `納品書 ${note.deliveryNumber} を発行しました`,
+            tr("shipping.deliveryNotes.issuedBody", {
+              number: note.deliveryNumber,
+            }),
           )
         }
         opened={issueOpen}
@@ -494,13 +503,17 @@ export function DeliveryNoteDetail({
         confirmColor="blue"
         confirmLabel={tr("shipping.deliveryNotes.markAsDelivered")}
         loading={isPending}
-        message={`納品書 ${note.deliveryNumber} を納品済みにします。納品日は本日で記録されます。`}
+        message={tr("shipping.deliveryNotes.confirmDeliveredBody", {
+          number: note.deliveryNumber,
+        })}
         onClose={() => setDeliverOpen(false)}
         onConfirm={() =>
           run(
             () => markDelivered(note.deliveryNumber),
             tr("shipping.deliveryNotes.markedAsDelivered"),
-            `納品書 ${note.deliveryNumber} を納品済みにしました`,
+            tr("shipping.deliveryNotes.deliveredBody", {
+              number: note.deliveryNumber,
+            }),
           )
         }
         opened={deliverOpen}

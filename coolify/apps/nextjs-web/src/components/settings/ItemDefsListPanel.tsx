@@ -26,7 +26,10 @@ export function ItemDefsListPanel({ initial }: { initial: ProductItemDef[] }) {
       addLabel={tr("common.addAnItem")}
       deleteConfirm={(d) => ({
         title: tr("settings.itemDefsListPanel.deleteTheItemDefinition"),
-        message: `「${d.label.ja || d.key}」を削除しますか？種別への割り当ても外れます。`,
+        message: tr(
+          "settings.itemDefsListPanel.deleteNameConfirmUnassignsFromTypes",
+          { name: d.label.ja || d.key },
+        ),
       })}
       description={tr(
         "settings.itemDefsListPanel.aLibraryOfReusableInputFields",

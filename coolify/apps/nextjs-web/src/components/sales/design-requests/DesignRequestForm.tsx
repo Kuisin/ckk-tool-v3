@@ -50,7 +50,7 @@ import {
 import type { QuoteOption } from "@/app/(dashboard)/sales/design-requests/data";
 import { GhostButton } from "@/components/ui/buttons";
 import { FieldValue } from "@/components/ui/FieldValue";
-import { PRODUCT_F4 } from "@/components/ui/f4-presets";
+import { productF4 } from "@/components/ui/f4-presets";
 import { HelpLabel } from "@/components/ui/HelpLabel";
 import { SearchSelect } from "@/components/ui/SearchSelect";
 import { StatusBadge } from "@/components/ui/StatusBadge";
@@ -77,39 +77,47 @@ const BASE_PATH = "/sales/design-requests";
 const TRIGGERS = ["QUOTE", "SALES_ORDER", "STANDALONE"] as const;
 type Trigger = (typeof TRIGGERS)[number];
 
-const schema = z
-  .object({
-    trigger: z.enum(TRIGGERS),
-    quoteNumber: z.string().nullable(),
-    orderLineId: z.string().nullable(),
-    // 依頼区分の自動判定に要るので必須。名称と単位だけで製品は登録できるので、
-    // 新規品でも「先に製品を登録する」で運用が回る。
-    productId: z.string().min(1, "製品を選択してください"),
-    productName: z.string(),
-    /** 版が載る系列。null = 汎用（どの顧客の指示書からも使える）。 */
-    customerBpId: z.string().nullable(),
-    assigneeId: z.string().min(1, "担当者を選択してください"),
-    /** null = 自動判定に従う。値が入っていれば手動指定。 */
-    kind: z.enum(["NEW", "REVISION"]).nullable(),
-    baseDesignFileId: z.string().nullable(),
-    changeReason: z.string(),
-    desiredAt: z.string().nullable(),
-    priority: z.enum(["NORMAL", "HIGH"]),
-    description: z.string(),
-  })
-  .superRefine((v, ctx) => {
-    const tr = useTranslations();
-    // 改訂は「なぜ描き直すか」が要る（サーバー側でも同じ条件で弾く）。
-    if (v.kind === "REVISION" && !v.changeReason.trim()) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        path: ["changeReason"],
-        message: tr("sales.designRequests.enterAReasonForTheChange"),
-      });
-    }
-  });
+/**
+ * バリデーションメッセージが訳を必要とするため、スキーマはコンポーネント内で
+ * `tr` を受け取って組み立てる（型だけはモジュールスコープで使えるよう
+ * `ReturnType` から導出する）。
+ */
+function buildSchema(tr: ReturnType<typeof useTranslations>) {
+  return z
+    .object({
+      trigger: z.enum(TRIGGERS),
+      quoteNumber: z.string().nullable(),
+      orderLineId: z.string().nullable(),
+      // 依頼区分の自動判定に要るので必須。名称と単位だけで製品は登録できるので、
+      // 新規品でも「先に製品を登録する」で運用が回る。
+      productId: z.string().min(1, tr("common.selectAProduct")),
+      productName: z.string(),
+      /** 版が載る系列。null = 汎用（どの顧客の指示書からも使える）。 */
+      customerBpId: z.string().nullable(),
+      assigneeId: z
+        .string()
+        .min(1, tr("sales.designRequestForm.selectAnAssignee")),
+      /** null = 自動判定に従う。値が入っていれば手動指定。 */
+      kind: z.enum(["NEW", "REVISION"]).nullable(),
+      baseDesignFileId: z.string().nullable(),
+      changeReason: z.string(),
+      desiredAt: z.string().nullable(),
+      priority: z.enum(["NORMAL", "HIGH"]),
+      description: z.string(),
+    })
+    .superRefine((v, ctx) => {
+      // 改訂は「なぜ描き直すか」が要る（サーバー側でも同じ条件で弾く）。
+      if (v.kind === "REVISION" && !v.changeReason.trim()) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["changeReason"],
+          message: tr("sales.designRequests.enterAReasonForTheChange"),
+        });
+      }
+    });
+}
 
-type FormValues = z.infer<typeof schema>;
+type FormValues = z.infer<ReturnType<typeof buildSchema>>;
 
 function toFormValues(request: DesignRequest): FormValues {
   return {
@@ -184,7 +192,7 @@ export function DesignRequestForm({
   } | null>(null);
 
   const form = useForm<FormValues>({
-    validate: zodResolver(schema),
+    validate: zodResolver(buildSchema(tr)),
     initialValues:
       mode === "edit" && request
         ? toFormValues(request)
@@ -265,7 +273,9 @@ export function DesignRequestForm({
           message:
             mode === "edit"
               ? tr("sales.designRequests.theDesignRequestWasUpdated")
-              : `設計依頼書 ${result.data.number} を作成しました`,
+              : tr("sales.designRequestForm.createdMessage", {
+                  number: result.data.number,
+                }),
           color: "green",
         });
         router.push(`${BASE_PATH}/${result.data.number}`);
@@ -284,7 +294,7 @@ export function DesignRequestForm({
       breadcrumbs={[
         tr("common.sales"),
         { label: tr("common.designRequest2"), href: BASE_PATH },
-        mode === "edit" ? "編集" : tr("common.new2"),
+        mode === "edit" ? tr("common.edit") : tr("common.new2"),
       ]}
       isDirty={form.isDirty()}
       isPending={isPending}
@@ -299,7 +309,9 @@ export function DesignRequestForm({
       }
       title={
         mode === "edit"
-          ? `設計依頼書 編集 ${requestId ?? ""}`
+          ? tr("sales.designRequestForm.editTitle", {
+              requestId: requestId ?? "",
+            })
           : tr("sales.designRequests.newDesignRequest")
       }
     >
@@ -327,7 +339,7 @@ export function DesignRequestForm({
               <FieldValue
                 label={
                   prefilledTrigger === "QUOTE"
-                    ? "見積書"
+                    ? tr("common.quote")
                     : tr("common.orderLine")
                 }
                 value={prefilled?.label ?? "—"}
@@ -428,7 +440,7 @@ export function DesignRequestForm({
           )}
           <SearchSelect
             error={form.errors.productId}
-            f4={PRODUCT_F4}
+            f4={productF4(tr)}
             initialOption={
               form.values.productId
                 ? {
@@ -512,12 +524,12 @@ export function DesignRequestForm({
             </Badge>
             <Badge color="gray" size="sm" variant="outline">
               {form.values.kind
-                ? "手動指定"
+                ? tr("sales.designRequests.setManually")
                 : tr("sales.designRequests.determinedAutomatically")}
             </Badge>
             <Text c="dimmed" size="xs">
               {kindContext
-                ? describeDetection(kindContext.detection)
+                ? describeDetection(kindContext.detection, tr)
                 : form.values.productId
                   ? tr("sales.designRequests.checking")
                   : tr("sales.designRequests.itIsDeterminedOnceYouChoose")}

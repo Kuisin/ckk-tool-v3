@@ -25,6 +25,7 @@ import type { ConditionFieldOption } from "./ShareConditionEditor";
 function conditionText(
   grant: ShareGrantView,
   fields: ConditionFieldOption[],
+  tr: ReturnType<typeof useTranslations>,
 ): string | null {
   if (!grant.conditionFieldKey) return null;
   const field = fields.find((f) => f.key === grant.conditionFieldKey);
@@ -36,7 +37,10 @@ function conditionText(
       ? grant.conditionLabels
       : (grant.conditionValues ?? []);
   if (values.length === 0) return null;
-  return `${label} が ${values.join(" / ")} の回答だけ`;
+  return tr("forms.shareGrantsView.fieldIsOneOfValuesResponsesOnly", {
+    label,
+    values: values.join(" / "),
+  });
 }
 
 export function ShareGrantsView({
@@ -72,7 +76,7 @@ export function ShareGrantsView({
       g.subjectType === "EVERYONE"
         ? tr("common.everyoneWhoCanLogIn")
         : (g.subjectLabel ?? g.subjectId ?? "—"),
-    condition: conditionText(g, conditionFields),
+    condition: conditionText(g, conditionFields, tr),
   }));
 
   return (

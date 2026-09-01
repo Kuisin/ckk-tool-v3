@@ -46,7 +46,7 @@ import { useFormat } from "@/components/layout/PreferencesProvider";
 import { AppTabs } from "@/components/ui/AppTabs";
 import { DocNumber } from "@/components/ui/DocNumber";
 import { FieldValue } from "@/components/ui/FieldValue";
-import { PRODUCT_F4 } from "@/components/ui/f4-presets";
+import { productF4 } from "@/components/ui/f4-presets";
 import { HistoryPanel } from "@/components/ui/HistoryPanel";
 import { MemoPanel } from "@/components/ui/MemoPanel";
 import { MoneyText } from "@/components/ui/MoneyText";
@@ -78,15 +78,16 @@ import type { LinkedPriceEntry, TrialEstimateRecord } from "./types";
 
 const BASE_PATH = "/sales/trial-estimates";
 
+/** LD is a fixed in-house term (glossary §1) — never translated. */
 const BREAKDOWN_ROWS = [
-  ["材料原価", "material"],
-  ["段加工費", "step"],
-  ["首下加工費", "neck"],
-  ["加工単価", "machining"],
-  ["コート代", "coating"],
-  ["ラップ処理", "lap"],
-  ["LD", "ld"],
-  ["検査成績書", "inspection"],
+  ["sales.trialEstimates.materialCost", "material"],
+  ["sales.trialEstimates.stepMachiningCost", "step"],
+  ["sales.trialEstimates.neckMachiningCost", "neck"],
+  ["sales.trialEstimates.machiningRate", "machining"],
+  ["sales.trialEstimates.coatingCost", "coating"],
+  ["sales.trialEstimates.lapping", "lap"],
+  [null, "ld"],
+  ["sales.trialEstimates.inspectionCertificate", "inspection"],
 ] as const;
 
 export function TrialEstimateDetail({
@@ -142,7 +143,7 @@ export function TrialEstimateDetail({
       label: tr("common.confirmed"),
       description:
         status === "DRAFT"
-          ? "価格表の基準単価にできる状態へ"
+          ? tr("sales.trialEstimateDetail.readyForPriceListBase")
           : tr("sales.trialEstimates.confirmed"),
       loading: status === "CONFIRMED",
     },
@@ -161,13 +162,19 @@ export function TrialEstimateDetail({
     {
       key: "price-lists",
       title: tr("common.priceList"),
-      summary: linkedEntries.length > 0 ? `${linkedEntries.length} 件` : null,
+      summary:
+        linkedEntries.length > 0
+          ? tr("common.itemsCount", { count: linkedEntries.length })
+          : null,
       items: linkedEntries.map((e) => ({
         key: e.entryId,
         label: `${e.customerName} × ${e.productName}`,
         href: `/sales/price-lists/${e.entryId}`,
         done: true,
-        note: `${ORDER_TYPE_LABEL[e.orderType] ?? e.orderType}・${e.tierCount}段階`,
+        note: tr("sales.trialEstimateDetail.orderTypeTierCount", {
+          orderType: ORDER_TYPE_LABEL[e.orderType] ?? e.orderType,
+          tierCount: e.tierCount,
+        }),
       })),
       emptyNote:
         status === "CONFIRMED"
@@ -263,7 +270,7 @@ export function TrialEstimateDetail({
       breadcrumbs={[
         tr("common.sales"),
         { label: tr("common.priceEstimate"), href: BASE_PATH },
-        "詳細",
+        tr("common.detailBreadcrumb"),
       ]}
       createdAt={fmt.dateTime(record.createdAt)}
       status={
@@ -303,7 +310,10 @@ export function TrialEstimateDetail({
         />
         <FieldValue label={tr("common.salesRep")} value={record.salesRepName} />
         <FieldValue label={tr("common.createdBy")} value={record.createdBy} />
-        <FieldValue label="製品" value={record.productName ?? "—"} />
+        <FieldValue
+          label={tr("common.product")}
+          value={record.productName ?? "—"}
+        />
         <FieldValue
           label={tr("common.toolType")}
           value={toolLabel(record.input.toolType)}
@@ -368,7 +378,9 @@ export function TrialEstimateDetail({
                       <Table.Tr>
                         <Table.Td>{tr("common.baseQuantity")}</Table.Td>
                         <Table.Td ta="right">
-                          {result.lots[0].quantity}本
+                          {tr("common.quantityPcs", {
+                            quantity: result.lots[0].quantity,
+                          })}
                         </Table.Td>
                       </Table.Tr>
                       <Table.Tr>
@@ -404,9 +416,9 @@ export function TrialEstimateDetail({
               </Text>
               <Table>
                 <Table.Tbody>
-                  {BREAKDOWN_ROWS.map(([label, key]) => (
+                  {BREAKDOWN_ROWS.map(([labelKey, key]) => (
                     <Table.Tr key={key}>
-                      <Table.Td>{label}</Table.Td>
+                      <Table.Td>{labelKey ? tr(labelKey) : "LD"}</Table.Td>
                       <Table.Td ta="right">
                         <MoneyText value={Math.round(result.breakdown[key])} />
                       </Table.Td>
@@ -444,7 +456,11 @@ export function TrialEstimateDetail({
                       size="sm"
                     >
                       {e.customerName} × {e.productName}（
-                      {ORDER_TYPE_LABEL[e.orderType]}・{e.tierCount}段階）
+                      {tr("sales.trialEstimateDetail.orderTypeTierCount", {
+                        orderType: ORDER_TYPE_LABEL[e.orderType],
+                        tierCount: e.tierCount,
+                      })}
+                      ）
                     </Anchor>
                   ))}
                 </Stack>
@@ -488,7 +504,7 @@ export function TrialEstimateDetail({
         opened={linkOpen}
         title={
           record.productId
-            ? "製品リンクを変更"
+            ? tr("sales.trialEstimates.changeTheProductLink")
             : tr("sales.trialEstimates.linkToAProduct")
         }
       >
@@ -498,13 +514,13 @@ export function TrialEstimateDetail({
           </Text>
           <SearchSelect
             clearable
-            f4={PRODUCT_F4}
+            f4={productF4(tr)}
             initialOption={
               record.productId && record.productName
                 ? { value: record.productId, label: record.productName }
                 : null
             }
-            label="製品"
+            label={tr("common.product")}
             onChange={setLinkProductId}
             onSearch={searchProductOptions}
             placeholder={tr("common.searchProducts")}

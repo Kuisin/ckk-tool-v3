@@ -70,14 +70,21 @@ export function ProductDesignFiles({
                   </Badge>
                 )}
                 <Text c="dimmed" size="xs">
-                  最新 v{g.latestVersion}
+                  {tr("master.productDesignFiles.latestVersion", {
+                    version: g.latestVersion,
+                  })}
                 </Text>
               </Group>
               {thumb && (
                 <Box maw={320}>
                   <DesignFileThumb
                     target={{
-                      caption: `v${thumb.version}（最新）`,
+                      caption: tr(
+                        "master.productDesignFiles.latestVersionCaption",
+                        {
+                          version: thumb.version,
+                        },
+                      ),
                       filename: thumb.filename,
                       mimeType: thumb.mimeType,
                       src: `/api/design-files/${encodeURIComponent(thumb.id)}`,

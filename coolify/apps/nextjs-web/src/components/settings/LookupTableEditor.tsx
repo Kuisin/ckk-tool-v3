@@ -60,17 +60,6 @@ import type {
 const BASE = "/settings/trial-pricing-engine";
 const LIST = `${BASE}/lookups`;
 
-const VALUE_TYPE_OPTIONS: { value: LookupValueType; label: string }[] = [
-  { value: "number", label: "数値" },
-  { value: "string", label: "文字列" },
-];
-
-const MATCH_OPTIONS: { value: LookupKeyMatch; label: string }[] = [
-  { value: "exact", label: "完全一致" },
-  { value: "ge", label: "≥ 以上で最小（径×長）" },
-  { value: "le", label: "≤ 以下で最大（LD/割引）" },
-];
-
 const safeName = (n: string) =>
   (n.trim() ? n.trim() : "table").replace(/[^A-Za-z0-9_-]+/g, "_");
 
@@ -89,6 +78,21 @@ export function LookupTableEditor({
   const tr = useTranslations();
   const isMobile = useIsMobile();
   const router = useRouter();
+  const VALUE_TYPE_OPTIONS: { value: LookupValueType; label: string }[] = [
+    { value: "number", label: tr("settings.lookupTableEditor.number") },
+    { value: "string", label: tr("settings.lookupTableEditor.text") },
+  ];
+  const MATCH_OPTIONS: { value: LookupKeyMatch; label: string }[] = [
+    { value: "exact", label: tr("settings.lookupTableEditor.exactMatch") },
+    {
+      value: "ge",
+      label: tr("settings.lookupTableEditor.geTakeTheSmallest"),
+    },
+    {
+      value: "le",
+      label: tr("settings.lookupTableEditor.leTakeTheLargest"),
+    },
+  ];
   const [table, setTable] = useState<LookupTable>({
     ...initial,
     keyColumns: initial.keyColumns.length ? initial.keyColumns : ["key"],
@@ -187,7 +191,9 @@ export function LookupTableEditor({
     }));
     notifications.show({
       title: tr("common.imported"),
-      message: `${dataRows.length} 行を読み込みました（保存で確定）`,
+      message: tr("settings.lookupTableEditor.rowsLoadedConfirmOnSave", {
+        count: dataRows.length,
+      }),
       color: "green",
     });
     if (fileRef.current) fileRef.current.value = "";
@@ -200,7 +206,9 @@ export function LookupTableEditor({
       if (res.ok) {
         notifications.show({
           title: tr("common.saved2"),
-          message: `「${localized(table.name)}」を更新しました`,
+          message: tr("settings.lookupTableEditor.tableWasUpdated", {
+            name: localized(table.name),
+          }),
           color: "green",
         });
         router.push(LIST);
@@ -216,15 +224,19 @@ export function LookupTableEditor({
   const remove = () =>
     openConfirm({
       title: tr("settings.lookupTableEditor.deleteTheTable"),
-      message: `「${localized(table.name)}」を削除します。この操作は取り消せません。`,
-      confirmLabel: "削除",
+      message: tr("settings.lookupTableEditor.deleteTableConfirm", {
+        name: localized(table.name),
+      }),
+      confirmLabel: tr("common.delete"),
       onConfirm: () =>
         startTransition(async () => {
           const res = await deleteLookupTable(table.id);
           if (res.ok) {
             notifications.show({
               title: tr("common.deleted"),
-              message: `「${localized(table.name)}」を削除しました`,
+              message: tr("settings.lookupTableEditor.tableWasDeleted", {
+                name: localized(table.name),
+              }),
               color: "green",
             });
             router.push(LIST);
@@ -241,10 +253,13 @@ export function LookupTableEditor({
   return (
     <Stack gap="md">
       <Text c="dimmed" size="sm">
-        {isNew ? "新規ルックアップ表。" : ""}式内では{" "}
-        <Code>lookup("{table.id || "id"}", キー1, ...)</Code>{" "}
-        で参照します。照合方法（完全一致 / ≥ / ≤）で Excel の MATCH/VLOOKUP
-        近似照合を再現します。一致なしは「既定値」を返します。
+        {isNew ? tr("settings.lookupTableEditor.newLookupTable") : ""}
+        {tr("settings.lookupTableEditor.usedInTheFormulaAs")}{" "}
+        <Code>
+          lookup("{table.id || "id"}",{" "}
+          {tr("settings.lookupTableEditor.key1Placeholder")}, ...)
+        </Code>{" "}
+        {tr("settings.lookupTableEditor.matchDescription")}
       </Text>
 
       <input
@@ -340,15 +355,28 @@ export function LookupTableEditor({
             // biome-ignore lint/suspicious/noArrayIndexKey: column has no stable id
             <Group align="flex-end" gap="sm" key={ci} wrap="nowrap">
               <TextInput
-                label={ci === 0 ? "キー列名" : undefined}
+                label={
+                  ci === 0
+                    ? tr("settings.lookupTableEditor.keyColumnName")
+                    : undefined
+                }
                 onChange={(e) => renameColumn(ci, e.currentTarget.value)}
-                placeholder={`キー列${ci + 1}`}
+                placeholder={tr(
+                  "settings.lookupTableEditor.keyColumnWithIndex",
+                  {
+                    index: ci + 1,
+                  },
+                )}
                 style={{ flex: 1 }}
                 value={c}
               />
               <Select
                 data={MATCH_OPTIONS}
-                label={ci === 0 ? "照合方法" : undefined}
+                label={
+                  ci === 0
+                    ? tr("settings.lookupTableEditor.matchMethod")
+                    : undefined
+                }
                 onChange={(v) =>
                   setColumnMatch(ci, (v as LookupKeyMatch) ?? "exact")
                 }
@@ -392,14 +420,20 @@ export function LookupTableEditor({
             {tr("settings.lookupTableEditor.importCsv")}
           </SecondaryButton>
           <Badge color="gray" variant="light">
-            {table.rows.length} 行
+            {tr("settings.lookupTableEditor.rowsCount", {
+              count: table.rows.length,
+            })}
           </Badge>
         </Group>
         <EditableCellTable
           addLabel={tr("common.addRow")}
           columns={[
             ...table.keyColumns.map((c, ci) => ({
-              header: c || `キー列${ci + 1}`,
+              header:
+                c ||
+                tr("settings.lookupTableEditor.keyColumnWithIndex", {
+                  index: ci + 1,
+                }),
               minWidth: 110,
             })),
             { header: tr("common.value"), minWidth: 110 },
@@ -438,7 +472,7 @@ export function LookupTableEditor({
                 }
                 placeholder={
                   table.valueType === "number"
-                    ? "数値"
+                    ? tr("settings.lookupTableEditor.number")
                     : tr("settings.lookupTableEditor.text")
                 }
                 size="xs"

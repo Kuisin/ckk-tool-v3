@@ -82,7 +82,9 @@ function DeliveryOrderProcedurePanel({
     { key: "confirmed", label: tr("common.confirmed"), description: null },
     {
       key: "shipped",
-      label: isStock ? "保管（在庫へ）" : tr("common.shipping"),
+      label: isStock
+        ? tr("shipping.deliveryOrders.storedToStock")
+        : tr("common.shipping"),
       description: order.shippedAt ? fmtDate(order.shippedAt) : null,
     },
   ];
@@ -96,7 +98,7 @@ function DeliveryOrderProcedurePanel({
       title: tr("common.orderLine"),
       summary:
         order.orderLineNumbers.length > 0
-          ? `${order.orderLineNumbers.length} 件`
+          ? tr("common.itemsCount", { count: order.orderLineNumbers.length })
           : null,
       items: order.orderLineNumbers.map((n) => ({
         key: n,
@@ -135,14 +137,17 @@ function DeliveryOrderProcedurePanel({
           title: tr("common.deliveryNote"),
           summary:
             order.deliveryNotes.length > 0
-              ? `${order.deliveryNotes.length} 件`
+              ? tr("common.itemsCount", { count: order.deliveryNotes.length })
               : null,
           items: order.deliveryNotes.map((dn) => ({
             key: dn.deliveryNumber,
             label: dn.deliveryNumber,
             href: `/shipping/delivery-notes/${dn.deliveryNumber}`,
             done: dn.status === "DELIVERED",
-            note: `${statusLabel("DeliveryNote", dn.status)}・${dn.recipientName}`,
+            note: tr("shipping.deliveryOrders.deliveryNoteNote", {
+              status: statusLabel("DeliveryNote", dn.status),
+              recipient: dn.recipientName,
+            }),
           })),
           emptyNote:
             order.status === "SHIPPED"
@@ -235,7 +240,7 @@ export function DeliveryOrderDetail({
             ...(order.status === "DRAFT"
               ? [
                   {
-                    label: "キャンセル",
+                    label: tr("common.cancel"),
                     icon: <IconX size={14} />,
                     color: "red",
                     divider: true,
@@ -254,7 +259,7 @@ export function DeliveryOrderDetail({
       breadcrumbs={[
         tr("common.shipping"),
         { label: tr("common.deliveryOrder"), href: BASE_PATH },
-        "詳細",
+        tr("common.detailBreadcrumb"),
       ]}
       createdAt={fmt.dateTime(order.createdAt)}
       status={<StatusBadge entity="DeliveryOrder" status={order.status} />}
@@ -347,13 +352,13 @@ export function DeliveryOrderDetail({
 
       <Paper p="md" radius="md" withBorder>
         <Title mb="sm" order={5}>
-          明細（{order.items.length}）
+          {tr("common.lineItemsWithCount", { count: order.items.length })}
         </Title>
         <Table.ScrollContainer minWidth={560}>
           <Table highlightOnHover>
             <Table.Thead>
               <Table.Tr>
-                <Table.Th>製品</Table.Th>
+                <Table.Th>{tr("common.product")}</Table.Th>
                 <Table.Th>{tr("common.lot")}</Table.Th>
                 <Table.Th ta="right">{tr("common.quantity")}</Table.Th>
                 <Table.Th>{tr("common.notes")}</Table.Th>
@@ -391,7 +396,9 @@ export function DeliveryOrderDetail({
         <Tabs.List>
           <Tabs.Tab value="overview">{tr("common.overview")}</Tabs.Tab>
           <Tabs.Tab value="delivery-notes">
-            納品書（{order.deliveryNotes.length}）
+            {tr("common.deliveryNotesWithCount", {
+              count: order.deliveryNotes.length,
+            })}
           </Tabs.Tab>
           <Tabs.Tab value="memo">{tr("common.memo")}</Tabs.Tab>
           <Tabs.Tab value="history">{tr("common.history")}</Tabs.Tab>
@@ -511,13 +518,17 @@ export function DeliveryOrderDetail({
         confirmColor="blue"
         confirmLabel={tr("common.confirmed")}
         loading={isPending}
-        message={`出荷書 ${order.deliveryOrderNumber} を確定します。確定後は編集できません。`}
+        message={tr("shipping.deliveryOrders.confirmConfirmBody", {
+          number: order.deliveryOrderNumber,
+        })}
         onClose={() => setConfirmOpen(false)}
         onConfirm={() =>
           run(
             () => confirmDeliveryOrder(order.deliveryOrderNumber),
             tr("common.confirmed2"),
-            `出荷書 ${order.deliveryOrderNumber} を確定しました`,
+            tr("shipping.deliveryOrders.confirmedBody", {
+              number: order.deliveryOrderNumber,
+            }),
           )
         }
         opened={confirmOpen}
@@ -529,15 +540,21 @@ export function DeliveryOrderDetail({
         loading={isPending}
         message={
           order.type === "DISPATCH"
-            ? `出荷書 ${order.deliveryOrderNumber} を出荷済みにします。注文明細の出荷状態も再計算されます。`
-            : `出荷書 ${order.deliveryOrderNumber} を出荷済みにします（在庫保管のため注文明細の出荷状態は変わりません）。`
+            ? tr("shipping.deliveryOrders.confirmShipBodyDispatch", {
+                number: order.deliveryOrderNumber,
+              })
+            : tr("shipping.deliveryOrders.confirmShipBodyStock", {
+                number: order.deliveryOrderNumber,
+              })
         }
         onClose={() => setShipOpen(false)}
         onConfirm={() =>
           run(
             () => shipDeliveryOrder(order.deliveryOrderNumber),
             tr("shipping.deliveryOrders.shipped"),
-            `出荷書 ${order.deliveryOrderNumber} を出荷済みにしました`,
+            tr("shipping.deliveryOrders.shippedBody", {
+              number: order.deliveryOrderNumber,
+            }),
           )
         }
         opened={shipOpen}
@@ -546,13 +563,17 @@ export function DeliveryOrderDetail({
       <ConfirmModal
         confirmLabel={tr("common.cancelDocument")}
         loading={isPending}
-        message={`出荷書 ${order.deliveryOrderNumber} を削除します。この操作は取り消せません。`}
+        message={tr("shipping.deliveryOrders.confirmDeleteBody", {
+          number: order.deliveryOrderNumber,
+        })}
         onClose={() => setCancelOpen(false)}
         onConfirm={() =>
           run(
             () => deleteDeliveryOrder(order.deliveryOrderNumber),
             tr("common.cancelled"),
-            `出荷書 ${order.deliveryOrderNumber} を削除しました`,
+            tr("shipping.deliveryOrders.deletedBody", {
+              number: order.deliveryOrderNumber,
+            }),
             () => router.push(BASE_PATH),
           )
         }

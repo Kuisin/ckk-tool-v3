@@ -39,7 +39,7 @@ export function MaterialInventoryDetail({
       breadcrumbs={[
         tr("common.production"),
         { label: tr("common.inventory"), href: BASE_PATH },
-        "詳細",
+        tr("common.detail"),
       ]}
       title={record.materialCode}
       updatedAt={fmt.dateTime(record.updatedAt)}
@@ -56,7 +56,7 @@ export function MaterialInventoryDetail({
             </>
           }
         />
-        <FieldValue label="拠点" value={record.plantName ?? "—"} />
+        <FieldValue label={tr("common.site")} value={record.plantName ?? "—"} />
         <FieldValue
           label={tr("common.onHand")}
           value={

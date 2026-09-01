@@ -50,7 +50,7 @@ import {
 import type { EstimateSource } from "@/app/(dashboard)/sales/price-lists/data";
 import { GhostButton } from "@/components/ui/buttons";
 import { FieldValue } from "@/components/ui/FieldValue";
-import { CUSTOMER_F4, PRODUCT_F4 } from "@/components/ui/f4-presets";
+import { customerF4, productF4 } from "@/components/ui/f4-presets";
 import { HelpLabel } from "@/components/ui/HelpLabel";
 import { openConfirm } from "@/components/ui/modals";
 import { SalesRepSelect } from "@/components/ui/SalesRepSelect";
@@ -67,64 +67,79 @@ import {
   requiresEndDate,
 } from "./model";
 
-const tierSchema = z.object({
-  minQuantity: z.number().int().min(1, "1以上"),
-  maxQuantity: z.number().int().nullable(),
-  /** 数量倍率（×1.01 など）. */
-  multiplier: z.number().min(0.01, "0より大きい倍率"),
-  /** 手動上書き単価（null = 基準単価 × 倍率）. */
-  priceOverride: z.number().min(0).nullable(),
-});
-
-const variantFormSchema = z.object({
-  /** 保存済みバリアントの id（新規は null）. */
-  id: z.string().nullable(),
-  orderType: z.enum(["PRODUCTION", "TEST", "SAMPLE", "OTHER"]),
-  /** 基準単価ソースの価格試算番号（null = 手動設定）. */
-  sourceEstimate: z.string().nullable(),
-  /** 価格試算値を使わず手動の基準単価を使う（送信時に除去）. */
-  customBase: z.boolean(),
-  baseUnitPrice: z.number().min(0),
-  validFrom: z.string().min(1, "有効開始日を選択してください"),
-  validUntil: z.string().nullable(),
-  isActive: z.boolean(),
-  tiers: z.array(tierSchema).min(1, "段階を1件以上追加してください"),
-});
-
-const schema = z
-  .object({
-    customerId: z.string().min(1, "顧客を選択してください"),
-    productId: z.string().min(1, "製品を選択してください"),
-    /** 営業担当 — 顧客の担当一覧から選ぶ（未設定なら主担当が既定で入る）。 */
-    salesRepId: z.string().nullable(),
-    isActive: z.boolean(),
-    variants: z
-      .array(variantFormSchema)
-      .min(1, "注文種別の価格を1件以上追加してください"),
-  })
-  .superRefine((val, ctx) => {
-    const tr = useTranslations();
-    const seen = new Set<string>();
-    val.variants.forEach((v, i) => {
-      if (seen.has(v.orderType)) {
-        ctx.addIssue({
-          code: z.ZodIssueCode.custom,
-          path: ["variants", i, "orderType"],
-          message: tr("sales.priceLists.theSameOrderTypeAppearsTwice"),
-        });
-      }
-      seen.add(v.orderType);
-      if (requiresEndDate(v.orderType) && !v.validUntil) {
-        ctx.addIssue({
-          code: z.ZodIssueCode.custom,
-          path: ["variants", i, "validUntil"],
-          message: tr("common.testAndSamplePricesNeedAn"),
-        });
-      }
-    });
+/**
+ * バリデーションメッセージが訳を必要とするため、スキーマはコンポーネント内で
+ * `tr` を受け取って組み立てる（型だけはモジュールスコープで使えるよう
+ * `ReturnType` から導出する）。
+ */
+function buildSchema(tr: ReturnType<typeof useTranslations>) {
+  const tierSchema = z.object({
+    minQuantity: z
+      .number()
+      .int()
+      .min(1, tr("sales.priceListTypeForm.atLeast1")),
+    maxQuantity: z.number().int().nullable(),
+    /** 数量倍率（×1.01 など）. */
+    multiplier: z
+      .number()
+      .min(0.01, tr("sales.priceListTypeForm.multiplierMustBePositive")),
+    /** 手動上書き単価（null = 基準単価 × 倍率）. */
+    priceOverride: z.number().min(0).nullable(),
   });
 
-type FormValues = z.infer<typeof schema>;
+  const variantFormSchema = z.object({
+    /** 保存済みバリアントの id（新規は null）. */
+    id: z.string().nullable(),
+    orderType: z.enum(["PRODUCTION", "TEST", "SAMPLE", "OTHER"]),
+    /** 基準単価ソースの価格試算番号（null = 手動設定）. */
+    sourceEstimate: z.string().nullable(),
+    /** 価格試算値を使わず手動の基準単価を使う（送信時に除去）. */
+    customBase: z.boolean(),
+    baseUnitPrice: z.number().min(0),
+    validFrom: z.string().min(1, tr("sales.priceLists.selectAStartDate")),
+    validUntil: z.string().nullable(),
+    isActive: z.boolean(),
+    tiers: z
+      .array(tierSchema)
+      .min(1, tr("sales.priceListTypeForm.addAtLeastOneTier")),
+  });
+
+  return z
+    .object({
+      customerId: z
+        .string()
+        .min(1, tr("sales.orderAcceptances.selectACustomer")),
+      productId: z.string().min(1, tr("common.selectAProduct")),
+      /** 営業担当 — 顧客の担当一覧から選ぶ（未設定なら主担当が既定で入る）。 */
+      salesRepId: z.string().nullable(),
+      isActive: z.boolean(),
+      variants: z
+        .array(variantFormSchema)
+        .min(1, tr("sales.priceListTypeForm.addAtLeastOneOrderTypePrice")),
+    })
+    .superRefine((val, ctx) => {
+      const seen = new Set<string>();
+      val.variants.forEach((v, i) => {
+        if (seen.has(v.orderType)) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            path: ["variants", i, "orderType"],
+            message: tr("sales.priceLists.theSameOrderTypeAppearsTwice"),
+          });
+        }
+        seen.add(v.orderType);
+        if (requiresEndDate(v.orderType) && !v.validUntil) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            path: ["variants", i, "validUntil"],
+            message: tr("common.testAndSamplePricesNeedAn"),
+          });
+        }
+      });
+    });
+}
+
+type FormValues = z.infer<ReturnType<typeof buildSchema>>;
 type VariantForm = FormValues["variants"][number];
 type TierForm = VariantForm["tiers"][number];
 
@@ -228,7 +243,7 @@ export function PriceListTypeForm({
     mode === "edit" || Boolean(lockedCustomerId && lockedProductId);
 
   const form = useForm<FormValues>({
-    validate: zodResolver(schema),
+    validate: zodResolver(buildSchema(tr)),
     initialValues: buildInitial({
       entry,
       estimateBases,
@@ -271,14 +286,18 @@ export function PriceListTypeForm({
     if (next) {
       openConfirm({
         title: tr("sales.priceLists.useACustomBaseUnitPrice"),
-        message: `価格試算の見積単価（${formatMoney(estimateBase)}）を使わず、基準単価を手動で設定します。よろしいですか？`,
+        message: tr("sales.priceListTypeForm.confirmUseCustomBaseMessage", {
+          price: formatMoney(estimateBase),
+        }),
         confirmLabel: tr("common.customize"),
         onConfirm: () => form.setFieldValue(`variants.${vi}.customBase`, true),
       });
     } else {
       openConfirm({
         title: tr("sales.priceLists.backToTheEstimatedValue"),
-        message: `手動で設定した基準単価を破棄し、価格試算の見積単価（${formatMoney(estimateBase)}）に戻します。`,
+        message: tr("sales.priceListTypeForm.confirmBackToEstimatedMessage", {
+          price: formatMoney(estimateBase),
+        }),
         confirmLabel: tr("sales.priceLists.backToTheEstimatedValue"),
         onConfirm: () => {
           form.setFieldValue(`variants.${vi}.customBase`, false);
@@ -299,14 +318,18 @@ export function PriceListTypeForm({
     if (next) {
       openConfirm({
         title: tr("sales.priceLists.useACustomUnitPrice"),
-        message: `この数量帯の自動計算単価（${formatMoney(autoPrice)} = 基準単価 × 倍率）を使わず、手動で単価を設定します。`,
+        message: tr("sales.priceListTypeForm.confirmUseCustomTierMessage", {
+          price: formatMoney(autoPrice),
+        }),
         confirmLabel: tr("common.customize"),
         onConfirm: () => form.setFieldValue(path, autoPrice),
       });
     } else {
       openConfirm({
         title: tr("sales.priceLists.backToAutomaticCalculation"),
-        message: `手動で設定した単価を破棄し、自動計算値（${formatMoney(autoPrice)}）に戻します。`,
+        message: tr("sales.priceListTypeForm.confirmBackToAutoTierMessage", {
+          price: formatMoney(autoPrice),
+        }),
         confirmLabel: tr("sales.priceLists.backToAutomaticCalculation"),
         onConfirm: () => form.setFieldValue(path, null),
       });
@@ -388,7 +411,7 @@ export function PriceListTypeForm({
       breadcrumbs={[
         tr("common.sales"),
         { label: tr("common.priceList"), href: BASE_PATH },
-        mode === "edit" ? "編集" : tr("common.new2"),
+        mode === "edit" ? tr("common.edit") : tr("common.new2"),
       ]}
       isDirty={form.isDirty()}
       isPending={isPending}
@@ -397,7 +420,9 @@ export function PriceListTypeForm({
       }
       onSubmit={form.onSubmit(handleSubmit)}
       title={
-        mode === "edit" ? "価格表 編集" : tr("sales.priceLists.newPriceList")
+        mode === "edit"
+          ? tr("sales.priceListTypeForm.editTitle")
+          : tr("sales.priceLists.newPriceList")
       }
     >
       {/* Identity keys — editable only on first creation, then locked. */}
@@ -418,7 +443,7 @@ export function PriceListTypeForm({
           ) : (
             <SearchSelect
               error={form.errors.customerId}
-              f4={CUSTOMER_F4}
+              f4={customerF4(tr)}
               initialOption={customerOption}
               label={<HelpLabel {...fieldHelp("priceList", "customer")} />}
               onChange={(v) => form.setFieldValue("customerId", v ?? "")}
@@ -431,13 +456,13 @@ export function PriceListTypeForm({
           )}
           {lockCustomerProduct ? (
             <FieldValue
-              label="製品"
+              label={tr("common.product")}
               value={productOption?.label ?? (form.values.productId || "—")}
             />
           ) : (
             <SearchSelect
               error={form.errors.productId}
-              f4={PRODUCT_F4}
+              f4={productF4(tr)}
               initialOption={productOption}
               label={<HelpLabel {...fieldHelp("priceList", "product")} />}
               onChange={(v) => form.setFieldValue("productId", v ?? "")}
@@ -473,18 +498,18 @@ export function PriceListTypeForm({
             mt="sm"
             variant="light"
           >
-            この顧客×製品の価格表{" "}
+            {tr("sales.priceListTypeForm.duplicateEntryPrefix")}{" "}
             <Anchor
               href={`${BASE_PATH}/${duplicateEntry.entryId}/edit`}
               size="sm"
             >
               {duplicateEntry.entryId}
             </Anchor>{" "}
-            が既に存在します（
-            {duplicateEntry.orderTypes
-              .map((t) => ORDER_TYPE_LABEL[t] ?? t)
-              .join(tr("common.s1"))}
-            ）。注文種別の追加は既存の価格表を編集してください。
+            {tr("sales.priceListTypeForm.duplicateEntrySuffix", {
+              orderTypes: duplicateEntry.orderTypes
+                .map((t) => ORDER_TYPE_LABEL[t] ?? t)
+                .join(tr("common.s1")),
+            })}
           </Alert>
         )}
         {form.values.productId && sources.length === 0 && (
@@ -502,7 +527,10 @@ export function PriceListTypeForm({
           <FormSection
             description={tr("sales.priceLists.theBasePriceComesFromThe")}
             key={form.key(`variants.${vi}`)}
-            title={`注文種別: ${ORDER_TYPE_LABEL[variant.orderType] ?? variant.orderType}`}
+            title={tr("sales.priceListTypeForm.orderTypeSectionTitle", {
+              orderType:
+                ORDER_TYPE_LABEL[variant.orderType] ?? variant.orderType,
+            })}
           >
             <SimpleGrid cols={{ base: 1, sm: 3 }} spacing="sm">
               {savedVariant ? (
@@ -567,7 +595,7 @@ export function PriceListTypeForm({
                 wrap="nowrap"
               >
                 <Switch
-                  label="有効"
+                  label={tr("common.enabled")}
                   {...form.getInputProps(`variants.${vi}.isActive`, {
                     type: "checkbox",
                   })}
@@ -579,8 +607,11 @@ export function PriceListTypeForm({
                   onClick={() =>
                     openConfirm({
                       title: tr("sales.priceLists.deleteTheOrderType"),
-                      message: `${ORDER_TYPE_LABEL[variant.orderType]} の価格（数量段階・値引きルール含む）を削除します。保存時に反映されます。`,
-                      confirmLabel: "削除",
+                      message: tr(
+                        "sales.priceListTypeForm.confirmDeleteOrderTypeMessage",
+                        { orderType: ORDER_TYPE_LABEL[variant.orderType] },
+                      ),
+                      confirmLabel: tr("common.delete"),
                       onConfirm: () => form.removeListItem("variants", vi),
                     })
                   }
@@ -621,7 +652,9 @@ export function PriceListTypeForm({
                 description={
                   customBase
                     ? estimateBase != null
-                      ? `手動設定（価格試算値: ${formatMoney(estimateBase)}）`
+                      ? tr("sales.priceListTypeForm.manualWithEstimateValue", {
+                          price: formatMoney(estimateBase),
+                        })
                       : tr("common.setManually")
                     : tr("sales.priceLists.useTheEstimatedValueAsIt")
                 }

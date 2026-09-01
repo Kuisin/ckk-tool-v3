@@ -103,7 +103,9 @@ export function InspectionTemplateIoModal({
           </Text>
           <Text c="dimmed" size="xs">
             {selectedIds.length > 0
-              ? `選択中の ${selectedIds.length} 件を書き出します。`
+              ? tr("master.inspectionTemplateIoModal.exportSelectedCount", {
+                  count: selectedIds.length,
+                })
               : tr(
                   "master.inspectionTemplates.exportsEveryActiveInspectionSheetSelecting",
                 )}
@@ -168,7 +170,9 @@ export function InspectionTemplateIoModal({
             {outcome.created.length > 0 && (
               <Alert
                 color="green"
-                title={`${outcome.created.length} 件を取り込みました`}
+                title={tr("master.inspectionTemplateIoModal.importedCount", {
+                  count: outcome.created.length,
+                })}
               >
                 <List size="sm">
                   {outcome.created.map((c) => (
@@ -182,7 +186,9 @@ export function InspectionTemplateIoModal({
             {outcome.skipped.length > 0 && (
               <Alert
                 color="orange"
-                title={`${outcome.skipped.length} 件は取り込めませんでした`}
+                title={tr("master.inspectionTemplateIoModal.skippedCount", {
+                  count: outcome.skipped.length,
+                })}
               >
                 <List size="sm">
                   {outcome.skipped.map((s) => (

@@ -94,8 +94,9 @@ export function resolveCardValidity(
 export function formatValidityRange(
   fmt: Formatters,
   r: Pick<KioskCardRow, "validFrom" | "validUntil">,
+  tr: ReturnType<typeof useTranslations>,
 ): string {
-  if (!r.validFrom && !r.validUntil) return "無期限";
+  if (!r.validFrom && !r.validUntil) return tr("common.noEndDate");
   const from = r.validFrom ? fmt.date(r.validFrom) : "";
   const until = r.validUntil ? fmt.date(r.validUntil) : "";
   return `${from} 〜 ${until}`;
@@ -202,7 +203,9 @@ export function KioskCardsTable({
         setIssueOpen(false);
         notifications.show({
           title: tr("common.issued"),
-          message: `QRカードを ${result.data.ids.length} 枚発行しました`,
+          message: tr("settings.kiosk.issuedCardsCount", {
+            count: result.data.ids.length,
+          }),
           color: "green",
         });
       } else {
@@ -297,7 +300,9 @@ export function KioskCardsTable({
       render: (r) => (
         <Group gap={4} wrap="nowrap">
           <Badge color={r.pinSet ? "blue" : "gray"} variant="light">
-            {r.pinSet ? "設定済" : tr("common.notSet2")}
+            {r.pinSet
+              ? tr("settings.kiosk.pinConfigured")
+              : tr("common.notSet2")}
           </Badge>
           {r.pinLocked && (
             <Badge color="red" variant="light">
@@ -318,7 +323,7 @@ export function KioskCardsTable({
             c={r.validFrom || r.validUntil ? undefined : "dimmed"}
             size="sm"
           >
-            {formatValidityRange(fmt, r)}
+            {formatValidityRange(fmt, r, tr)}
           </Text>
           <ValidityBadge validity={resolveCardValidity(now, r)} />
         </Group>
@@ -372,13 +377,13 @@ export function KioskCardsTable({
     }
     if (r.status === "ASSIGNED") {
       actions.push({
-        label: "一時停止",
+        label: tr("status.STATUS_MAPS.KioskCard.SUSPENDED.label"),
         color: "orange",
         onAction: () =>
           setConfirm({
             title: tr("common.confirmSuspension"),
             message: tr("common.loginsWithThisCardWillBe"),
-            confirmLabel: "一時停止",
+            confirmLabel: tr("status.STATUS_MAPS.KioskCard.SUSPENDED.label"),
             run: () => suspendCard(r.id),
           }),
       });
@@ -433,7 +438,7 @@ export function KioskCardsTable({
           onClick={() => setIssueOpen(true)}
           style={{ flexShrink: 0 }}
         >
-          {isMobile ? "発行" : tr("settings.kiosk.issueACard")}
+          {isMobile ? tr("common.issue") : tr("settings.kiosk.issueACard")}
         </CreateButton>
       }
       breadcrumbs={[tr("common.system"), tr("common.qRCards")]}
@@ -484,7 +489,9 @@ export function KioskCardsTable({
             <Group gap={4} wrap="wrap">
               <StatusBadge entity="KioskCard" status={r.status} />
               <Badge color={r.pinSet ? "blue" : "gray"} variant="light">
-                {r.pinSet ? "PIN設定済" : tr("settings.kiosk.noPinSet")}
+                {r.pinSet
+                  ? tr("settings.kiosk.pinIsConfigured")
+                  : tr("settings.kiosk.noPinSet")}
               </Badge>
               {r.pinLocked && (
                 <Badge color="red" variant="light">
@@ -495,15 +502,19 @@ export function KioskCardsTable({
             </Group>
             {(r.validFrom || r.validUntil) && (
               <Text c="dimmed" size="xs">
-                有効期間 {formatValidityRange(fmt, r)}
+                {tr("settings.kiosk.validPeriodLabel", {
+                  range: formatValidityRange(fmt, r, tr),
+                })}
               </Text>
             )}
             <Group gap="md" mt={2}>
               <Text c="dimmed" size="xs">
-                最終使用 {r.lastUsedAt ? fmt.dateTime(r.lastUsedAt) : "—"}
+                {tr("settings.kiosk.lastUsedLabel", {
+                  date: r.lastUsedAt ? fmt.dateTime(r.lastUsedAt) : "—",
+                })}
               </Text>
               <Text c="dimmed" size="xs">
-                {r.useCount} 回
+                {tr("settings.kiosk.useCountTimes", { count: r.useCount })}
               </Text>
             </Group>
           </Stack>

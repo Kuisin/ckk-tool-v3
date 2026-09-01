@@ -62,7 +62,10 @@ export function ToolTypesPanel({
       if (res.ok) {
         notifications.show({
           title: tr("common.added"),
-          message: `工具種「${newLabel.trim()}」を追加しました。適用する計算基準を確認してください`,
+          message: tr(
+            "settings.toolTypesPanel.addedToolTypeNameCheckWhichCriteria",
+            { name: newLabel.trim() },
+          ),
           color: "green",
         });
         setAddOpen(false);
@@ -113,7 +116,10 @@ export function ToolTypesPanel({
                     )}
                   </Group>
                 ),
-                description: `計算基準 ${applied} 件 · 価格試算 ${used} 件`,
+                description: tr(
+                  "settings.toolTypesPanel.criteriaCountEstimatesCount",
+                  { applied, used },
+                ),
               };
             }),
           },

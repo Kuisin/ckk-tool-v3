@@ -2,9 +2,11 @@
  * f4-presets.ts — SearchSelect の F4（詳細検索ポップアップ）標準設定。
  *
  * フィルタ定義・結果列と、_shared/option-search.ts のサーバー検索を束ねる。
- * 画面側は `f4={PRODUCT_F4}` を渡すだけでよい（ui/SearchSelect.tsx）。
+ * 画面側は `f4={productF4(tr)}` のように呼び出し側の `tr` を渡すだけでよい
+ * （ui/SearchSelect.tsx）。
  */
 
+import type { useTranslations } from "next-intl";
 import {
   f4SearchCustomers,
   f4SearchProducts,
@@ -13,54 +15,78 @@ import {
 import type { Option } from "@/lib/mock";
 import type { F4Config } from "./F4SearchModal";
 
-export const PRODUCT_F4: F4Config = {
-  title: "製品の詳細検索",
-  description:
-    "名称・材種で絞り込んで選択します（レガシー製品はコード未採番）。",
-  filters: [
-    { key: "name", label: "名称" },
-    { key: "materialType", label: "材種コード" },
-  ],
-  columns: ["製品コード", "名称", "材種", "単位"],
-  onSearch: f4SearchProducts,
-};
+type Tr = ReturnType<typeof useTranslations>;
 
-export const CUSTOMER_F4: F4Config = {
-  title: "顧客の詳細検索",
-  description: "BPコード・名称（かな・AI照合名を含む）で絞り込みます。",
-  filters: [
-    { key: "code", label: "BPコード", placeholder: "例: BP-" },
-    { key: "name", label: "名称・かな" },
-  ],
-  columns: ["BPコード", "名称", "かな"],
-  onSearch: f4SearchCustomers,
-};
+export function productF4(tr: Tr): F4Config {
+  return {
+    title: tr("ui.f4Presets.productTitle"),
+    description: tr("ui.f4Presets.productDescription"),
+    filters: [
+      { key: "name", label: tr("ui.f4Presets.name") },
+      { key: "materialType", label: tr("ui.f4Presets.materialTypeCode") },
+    ],
+    columns: [
+      tr("ui.f4Presets.productCode"),
+      tr("ui.f4Presets.name"),
+      tr("ui.f4Presets.materialType"),
+      tr("ui.f4Presets.unit"),
+    ],
+    onSearch: f4SearchProducts,
+  };
+}
+
+export function customerF4(tr: Tr): F4Config {
+  return {
+    title: tr("ui.f4Presets.customerTitle"),
+    description: tr("ui.f4Presets.customerDescription"),
+    filters: [
+      {
+        key: "code",
+        label: tr("ui.f4Presets.bpCode"),
+        placeholder: tr("ui.f4Presets.bpCodePlaceholder"),
+      },
+      { key: "name", label: tr("ui.f4Presets.nameKana") },
+    ],
+    columns: [
+      tr("ui.f4Presets.bpCode"),
+      tr("ui.f4Presets.name"),
+      tr("ui.f4Presets.kana"),
+    ],
+    onSearch: f4SearchCustomers,
+  };
+}
 
 /** 変換済材種の F4 — メーカー / 形状は呼び出し画面が options を渡す。 */
 export function materialTypeF4(
+  tr: Tr,
   manufacturerOptions: Option[],
   shapeOptions: Option[],
 ): F4Config {
   return {
-    title: "材種の詳細検索",
-    description: "変換済（コード構成あり）の材種のみが対象です。",
+    title: tr("ui.f4Presets.materialTypeTitle"),
+    description: tr("ui.f4Presets.materialTypeDescription"),
     filters: [
       {
         key: "manufacturerCode",
-        label: "メーカー",
+        label: tr("ui.f4Presets.manufacturer"),
         type: "select",
         options: manufacturerOptions,
       },
       {
         key: "shapeCode",
-        label: "形状",
+        label: tr("ui.f4Presets.shape"),
         type: "select",
         options: shapeOptions,
       },
-      { key: "code", label: "材種コード" },
-      { key: "name", label: "名称" },
+      { key: "code", label: tr("ui.f4Presets.materialTypeCode") },
+      { key: "name", label: tr("ui.f4Presets.name") },
     ],
-    columns: ["材種コード", "メーカー", "形状", "名称"],
+    columns: [
+      tr("ui.f4Presets.materialTypeCode"),
+      tr("ui.f4Presets.manufacturer"),
+      tr("ui.f4Presets.shape"),
+      tr("ui.f4Presets.name"),
+    ],
     onSearch: f4SearchStructuredMaterialTypes,
   };
 }

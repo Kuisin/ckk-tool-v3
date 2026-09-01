@@ -75,7 +75,7 @@ export function BranchForm({
         notifications.show({
           title: tr("common.saved2"),
           message: isEdit
-            ? "支店を更新しました"
+            ? tr("master.branchForm.theBranchWasUpdated")
             : tr("master.bp.theBranchWasCreated"),
           color: "green",
         });
@@ -96,7 +96,7 @@ export function BranchForm({
         tr("common.masterData"),
         { label: tr("common.businessPartners"), href: BP_BASE_PATH },
         { label: parentName, href: `${BP_BASE_PATH}/${parentId}` },
-        isEdit ? "支店 編集" : tr("master.bp.newBranch"),
+        isEdit ? tr("master.branchForm.editBranch") : tr("master.bp.newBranch"),
       ]}
       isDirty={form.isDirty()}
       isPending={isPending}
@@ -111,13 +111,13 @@ export function BranchForm({
       status={isEdit ? <ActiveBadge active={initial.isActive} /> : undefined}
       title={
         isEdit
-          ? `支店 編集 — ${initial.bpCode}`
-          : `支店 新規作成 — ${parentName}`
+          ? tr("master.branchForm.editTitle", { code: initial.bpCode })
+          : tr("master.branchForm.newTitle", { parentName })
       }
     >
       <BpBaseFields
         bpCode={initial?.bpCode}
-        codeDescription={`形式: ${parentBpCode}-NN（自動採番）`}
+        codeDescription={tr("master.branchForm.codeFormat", { parentBpCode })}
         form={form}
       />
 
@@ -129,7 +129,7 @@ export function BranchForm({
           <SimpleGrid cols={isMobile ? 1 : 2} spacing="sm">
             <TextInput
               label={tr("common.contactName")}
-              placeholder="山田 太郎"
+              placeholder={tr("master.bpModals.namePlaceholder")}
               {...form.getInputProps("contactName")}
             />
           </SimpleGrid>

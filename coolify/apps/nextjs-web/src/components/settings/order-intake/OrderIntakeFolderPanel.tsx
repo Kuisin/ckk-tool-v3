@@ -143,7 +143,9 @@ export function OrderIntakeFolderPanel({
       autoClose: false,
       color: "blue",
       loading: true,
-      message: `${files.length} 件をフォルダへ投入しています…`,
+      message: tr("settings.orderIntakeFolderPanel.puttingFilesIntoTheFolder", {
+        count: files.length,
+      }),
       title: tr("common.orderIntake"),
       withCloseButton: false,
     });
@@ -156,7 +158,11 @@ export function OrderIntakeFolderPanel({
         autoClose: false,
         color: "blue",
         loading: true,
-        message: `${i + 1} / ${files.length} 件目: ${file.name}`,
+        message: tr("settings.orderIntakeFolderPanel.fileNOfTotal", {
+          n: i + 1,
+          total: files.length,
+          name: file.name,
+        }),
         title: tr("common.orderIntake"),
         withCloseButton: false,
       });
@@ -172,9 +178,15 @@ export function OrderIntakeFolderPanel({
           .catch(() => null)) as UploadResponse | null;
         if (res.ok && json?.ok) okCount += 1;
         else
-          failures.push(`${file.name}: ${json?.error ?? "投入に失敗しました"}`);
+          failures.push(
+            `${file.name}: ${
+              json?.error ?? tr("settings.orderIntakeFolderPanel.failedToPutIn")
+            }`,
+          );
       } catch {
-        failures.push(`${file.name}: 通信エラー`);
+        failures.push(
+          `${file.name}: ${tr("settings.orderIntakeFolderPanel.communicationError")}`,
+        );
       }
     }
 
@@ -185,11 +197,18 @@ export function OrderIntakeFolderPanel({
       loading: false,
       message:
         failures.length > 0
-          ? `${okCount} 件を投入 / 失敗: ${failures.join(" ・ ")}`
-          : `${okCount} 件を取込待ちに入れました。取込はこのあと順番に実行されます`,
+          ? tr("settings.orderIntakeFolderPanel.putInCountFailures", {
+              count: okCount,
+              failures: failures.join(
+                tr("settings.orderIntakeFolderPanel.listSeparator"),
+              ),
+            })
+          : tr("settings.orderIntakeFolderPanel.putCountFilesInTheQueue", {
+              count: okCount,
+            }),
       title:
         failures.length > 0
-          ? "投入（一部失敗）"
+          ? tr("settings.orderIntakeFolderPanel.putInPartialFailure")
           : tr("settings.orderIntake.queued"),
       withCloseButton: true,
     });
@@ -282,13 +301,13 @@ export function OrderIntakeFolderPanel({
             </Title>
             <Group gap="xs">
               <Badge color="blue" variant="light">
-                取込待ち {pendingRows.length}
+                {tr("settings.orderIntake.awaitingImport")} {pendingRows.length}
               </Badge>
               <Badge color="red" variant="light">
-                失敗 {status.failedTotal}
+                {tr("common.failure")} {status.failedTotal}
               </Badge>
               <Badge color="green" variant="light">
-                取込済 {status.processedTotal}
+                {tr("settings.orderIntake.imported")} {status.processedTotal}
               </Badge>
             </Group>
           </Group>
@@ -327,7 +346,9 @@ export function OrderIntakeFolderPanel({
             </Text>
             <Code>{status.dir}</Code>
             <Text c="dimmed" size="xs">
-              自動スキャン {Math.round(status.pollIntervalMs / 1000)} 秒ごと
+              {tr("settings.orderIntakeFolderPanel.autoScanEverySSeconds", {
+                seconds: Math.round(status.pollIntervalMs / 1000),
+              })}
             </Text>
           </Group>
         </Stack>
@@ -421,11 +442,19 @@ function DocumentCell({ row }: { row: FolderRow }) {
             {row.doc.customerName ?? tr("common.customerNotIdentified")}
           </Text>
           <Text c="dimmed" size="xs">
-            明細 {row.doc.itemCount} 件
+            {tr("settings.orderIntakeFolderPanel.lineItemsCountLines", {
+              count: row.doc.itemCount,
+            })}
           </Text>
           {failure && (
             <Tooltip
-              label={[failure.summary, failure.cause, `対処: ${failure.hint}`]
+              label={[
+                failure.summary,
+                failure.cause,
+                tr("settings.orderIntakeFolderPanel.remedyHint", {
+                  hint: failure.hint,
+                }),
+              ]
                 .filter(Boolean)
                 .join("\n")}
               multiline
@@ -437,7 +466,9 @@ function DocumentCell({ row }: { row: FolderRow }) {
                 size="xs"
                 variant="light"
               >
-                {failure.retrying ? "再試行中" : tr("common.extractionFailed")}
+                {failure.retrying
+                  ? tr("settings.orderIntakeFolderPanel.retrying")
+                  : tr("common.extractionFailed")}
               </Badge>
             </Tooltip>
           )}
@@ -502,7 +533,9 @@ function FolderSection({
                     <Table.Th style={{ width: 90, textAlign: "right" }}>
                       {tr("common.size")}
                     </Table.Th>
-                    <Table.Th style={{ width: 150 }}>更新</Table.Th>
+                    <Table.Th style={{ width: 150 }}>
+                      {tr("settings.orderIntakeFolderPanel.updatedColumn")}
+                    </Table.Th>
                     {onRetry && <Table.Th style={{ width: 120 }} />}
                   </Table.Tr>
                 </Table.Thead>
@@ -545,7 +578,10 @@ function FolderSection({
             </Table.ScrollContainer>
             {all > shown && (
               <Text c="dimmed" size="xs">
-                新しい {shown} 件を表示（全 {all} 件）
+                {tr("settings.orderIntakeFolderPanel.showingNewestOfTotal", {
+                  shown,
+                  all,
+                })}
               </Text>
             )}
           </>

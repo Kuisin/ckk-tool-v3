@@ -79,17 +79,6 @@ export interface ProcessStepRow {
   isActive: boolean;
 }
 
-/** 数量管理モードの短縮ラベル（一覧列用）。 */
-const QUANTITY_TRACKING_SHORT: Record<string, string> = {
-  FLOW: "数量",
-  INSPECTION: "検査",
-};
-
-const STATUS_OPTIONS = [
-  { value: "active", label: "有効" },
-  { value: "inactive", label: "無効" },
-];
-
 /** boolean フラグ列: 真なら小さな light Badge、偽は "—"。 */
 function FlagBadge({
   on,
@@ -113,6 +102,15 @@ function FlagBadge({
 
 export function ProcessStepTable({ rows }: { rows: ProcessStepRow[] }) {
   const tr = useTranslations();
+  const STATUS_OPTIONS = [
+    { value: "active", label: tr("common.enabled") },
+    { value: "inactive", label: tr("common.disabled") },
+  ];
+  /** 数量管理モードの短縮ラベル（一覧列用）。 */
+  const QUANTITY_TRACKING_SHORT: Record<string, string> = {
+    FLOW: tr("common.quantity"),
+    INSPECTION: tr("common.inspection"),
+  };
   const locale = useLocale();
   const router = useRouter();
   const isMobile = useIsMobile();
@@ -155,8 +153,14 @@ export function ProcessStepTable({ rows }: { rows: ProcessStepRow[] }) {
       );
       if (result.ok) {
         notifications.show({
-          title: isActive ? "有効化しました" : tr("common.disabled2"),
-          message: `${targets.length}件の工程を${isActive ? "有効化" : "無効化"}しました`,
+          title: isActive ? tr("common.enabled2") : tr("common.disabled2"),
+          message: isActive
+            ? tr("master.processStepTable.bulkEnabledMessage", {
+                count: targets.length,
+              })
+            : tr("master.processStepTable.bulkDisabledMessage", {
+                count: targets.length,
+              }),
           color: "green",
         });
         router.refresh();
@@ -173,7 +177,9 @@ export function ProcessStepTable({ rows }: { rows: ProcessStepRow[] }) {
   const bulkDelete = (targets: ProcessStepRow[]) => {
     openConfirm({
       title: tr("master.processSteps.bulkDeleteSteps"),
-      message: `選択中の${targets.length}件の工程を削除します。他の工程が依存している工程は削除できません。この操作は取り消せません。`,
+      message: tr("master.processStepTable.bulkDeleteConfirmMessage", {
+        count: targets.length,
+      }),
       confirmLabel: tr("common.delete2"),
       onConfirm: () => {
         startTransition(async () => {
@@ -181,7 +187,9 @@ export function ProcessStepTable({ rows }: { rows: ProcessStepRow[] }) {
           if (result.ok) {
             notifications.show({
               title: tr("common.deleted"),
-              message: `${targets.length}件の工程を削除しました`,
+              message: tr("master.processStepTable.bulkDeletedMessage", {
+                count: targets.length,
+              }),
               color: "green",
             });
             router.refresh();
@@ -200,7 +208,7 @@ export function ProcessStepTable({ rows }: { rows: ProcessStepRow[] }) {
   const columns: Column<ProcessStepRow>[] = [
     {
       key: "code",
-      header: "コード",
+      header: tr("common.code"),
       sortable: true,
       width: 220,
       sortValue: (r) => r.code,
@@ -274,13 +282,17 @@ export function ProcessStepTable({ rows }: { rows: ProcessStepRow[] }) {
     },
     {
       key: "isApprovalStep",
-      header: "承認",
+      header: tr("common.approve"),
       sortable: true,
       hideable: true,
       width: 80,
       sortValue: (r) => (r.isApprovalStep ? 1 : 0),
       render: (r) => (
-        <FlagBadge color="green" label="承認" on={r.isApprovalStep} />
+        <FlagBadge
+          color="green"
+          label={tr("common.approve")}
+          on={r.isApprovalStep}
+        />
       ),
     },
     {
@@ -426,7 +438,7 @@ export function ProcessStepTable({ rows }: { rows: ProcessStepRow[] }) {
                   )}
                   {r.isApprovalStep && (
                     <Badge color="green" size="xs" variant="light">
-                      承認
+                      {tr("common.approve")}
                     </Badge>
                   )}
                 </Group>
@@ -442,12 +454,12 @@ export function ProcessStepTable({ rows }: { rows: ProcessStepRow[] }) {
             onAction: (r) => router.push(`${BASE_PATH}/${r.id}/edit`),
           },
           {
-            label: row.isActive ? "無効化" : tr("common.enable"),
+            label: row.isActive ? tr("common.disable") : tr("common.enable"),
             icon: <IconCircleMinus size={14} />,
             onAction: (r) => setToggleRow(r),
           },
           {
-            label: "削除",
+            label: tr("common.delete"),
             icon: <IconTrash size={14} />,
             color: "red",
             onAction: (r) => setDeleteRow(r),

@@ -114,7 +114,7 @@ export function WorkOrderTable({
     },
     {
       key: "productName",
-      header: "製品",
+      header: tr("common.product"),
       sortable: true,
       render: (r) => r.productName,
     },

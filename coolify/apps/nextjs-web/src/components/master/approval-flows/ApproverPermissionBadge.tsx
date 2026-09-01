@@ -65,11 +65,16 @@ export function ApproverPermissionBadge({
   if (missing.length > 0) {
     return (
       <Tooltip
-        label={`この書類を閲覧・編集できる権限がありません: ${missing.map((a) => a.displayName).join("、")}`}
+        label={tr("master.approvalFlows.noDocumentPermission", {
+          names: missing.map((a) => a.displayName).join(tr("common.s3")),
+        })}
         withinPortal
       >
         <Badge color="red" size="sm" variant="light">
-          {approvers.length}名中 {missing.length}名 権限なし
+          {tr("master.approvalFlows.noPermissionCount", {
+            total: approvers.length,
+            count: missing.length,
+          })}
         </Badge>
       </Tooltip>
     );
@@ -77,23 +82,34 @@ export function ApproverPermissionBadge({
   if (limited.length > 0) {
     return (
       <Tooltip
-        label={`権限の範囲が限定されています（対象外の書類は承認できません）: ${limited
-          .map(
-            (a) =>
-              `${a.displayName}（${a.scopes.map((s) => permissionScopeLabel(s, locale)).join("・")}）`,
-          )
-          .join("、")}`}
+        label={tr("master.approvalFlows.scopeIsLimited", {
+          names: limited
+            .map((a) =>
+              tr("master.approvalFlows.approverScopeItem", {
+                name: a.displayName,
+                scopes: a.scopes
+                  .map((s) => permissionScopeLabel(s, locale))
+                  .join(tr("common.s1")),
+              }),
+            )
+            .join(tr("common.s3")),
+        })}
         withinPortal
       >
         <Badge color="yellow" size="sm" variant="light">
-          {approvers.length}名 承認可（{limited.length}名は範囲限定）
+          {tr("master.approvalFlows.canApproveScopeLimited", {
+            total: approvers.length,
+            count: limited.length,
+          })}
         </Badge>
       </Tooltip>
     );
   }
   return (
     <Badge color="green" size="sm" variant="light">
-      {approvers.length}名 承認可
+      {tr("master.approvalFlows.canApproveCount", {
+        total: approvers.length,
+      })}
     </Badge>
   );
 }

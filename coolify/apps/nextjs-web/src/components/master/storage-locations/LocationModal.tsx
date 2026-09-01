@@ -81,7 +81,8 @@ export function LocationModal({
       notes: location?.notes ?? "",
     },
     validate: {
-      plantId: (v) => (isCreate && !v ? "拠点を選択してください" : null),
+      plantId: (v) =>
+        isCreate && !v ? tr("master.locationModal.selectASite") : null,
     },
   });
 
@@ -125,7 +126,7 @@ export function LocationModal({
       opened
       title={
         isCreate
-          ? "保管場所の追加"
+          ? tr("master.locationModal.addStorageLocationTitle")
           : tr("master.storageLocations.editTheStorageLocation")
       }
     >
@@ -138,7 +139,7 @@ export function LocationModal({
                 label={
                   <HelpLabel
                     {...fieldHelp("storageLocation", "plant", {
-                      label: "拠点",
+                      label: tr("master.plantTable.title"),
                     })}
                   />
                 }
@@ -183,7 +184,9 @@ export function LocationModal({
           <TextInput
             label={
               <HelpLabel
-                {...fieldHelp("storageLocation", "code", { label: "コード" })}
+                {...fieldHelp("storageLocation", "code", {
+                  label: tr("common.code"),
+                })}
               />
             }
             placeholder="WH1"
@@ -206,7 +209,9 @@ export function LocationModal({
             checked={form.values.isActive}
             label={
               <HelpLabel
-                {...fieldHelp("storageLocation", "active", { label: "有効" })}
+                {...fieldHelp("storageLocation", "active", {
+                  label: tr("common.enabled"),
+                })}
               />
             }
             onChange={(e) =>

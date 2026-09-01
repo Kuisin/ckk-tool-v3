@@ -76,15 +76,6 @@ function canHoverOpen(): boolean {
   );
 }
 
-/** 未ログイン時のフォールバック（デモ ID は出さない）。 */
-const GUEST_USER = {
-  displayName: "ゲスト",
-  initials: "—",
-  department: "",
-  avatarUrl: null as string | null,
-  avatarThumbUrl: null as string | null,
-};
-
 export interface HeaderUser {
   displayName: string;
   username: string;
@@ -106,6 +97,14 @@ export function AppHeader({
 }) {
   const tr = useTranslations();
   const locale = useLocale() as Locale;
+  /** 未ログイン時のフォールバック（デモ ID は出さない）。 */
+  const guestUser = {
+    displayName: tr("common.guest"),
+    initials: "—",
+    department: "",
+    avatarUrl: null as string | null,
+    avatarThumbUrl: null as string | null,
+  };
   const sessionUser = user
     ? {
         displayName: user.displayName,
@@ -115,7 +114,7 @@ export function AppHeader({
         avatarUrl: user.avatarUrl,
         avatarThumbUrl: user.avatarThumbUrl,
       }
-    : GUEST_USER;
+    : guestUser;
   const t = useTranslations("shell");
   const [launcherOpen, setLauncherOpen] = useState(false);
   const [notifOpen, setNotifOpen] = useState(false);

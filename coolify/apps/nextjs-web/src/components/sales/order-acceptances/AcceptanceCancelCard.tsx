@@ -47,7 +47,15 @@ export function AcceptanceCancelCard({
   const canAct = approval.canAct;
   const stepLabel =
     approval.stepCount > 0
-      ? `${approval.stepLabel || `第${approval.stepNo}承認`}（${approval.stepNo}/${approval.stepCount}）`
+      ? tr("sales.acceptanceCancelCard.stepProgress", {
+          label:
+            approval.stepLabel ||
+            tr("sales.acceptanceCancelCard.stepOrdinal", {
+              stepNo: approval.stepNo,
+            }),
+          stepNo: approval.stepNo,
+          stepCount: approval.stepCount,
+        })
       : tr("common.pendingApproval");
 
   const handleApprove = () => {
@@ -112,7 +120,11 @@ export function AcceptanceCancelCard({
             </>
           ) : null
         }
-        description={`理由: ${request.reason}｜依頼: ${request.requestedByName ?? "—"}｜${stepLabel}。承認されるまで注文請書と注文明細は変わりません。`}
+        description={tr("sales.acceptanceCancelCard.description", {
+          reason: request.reason,
+          requestedBy: request.requestedByName ?? "—",
+          step: stepLabel,
+        })}
         icon={<IconX size={20} />}
         title={
           canAct

@@ -143,7 +143,7 @@ export function WorkflowStepNode({ data }: NodeProps<StepFlowNode>) {
             </>
           ) : step.status === "CANCELLED" ? (
             <Badge color="red" size="xs" variant="light">
-              キャンセル
+              {tr("common.cancel")}
             </Badge>
           ) : (
             // 開始可のときは「開始可」バッジが出ているので重ねて言わない。

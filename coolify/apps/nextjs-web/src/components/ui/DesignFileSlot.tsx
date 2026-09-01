@@ -25,7 +25,7 @@ export function DesignFileSlot({
   onPick,
   note,
   onNoteChange,
-  notePlaceholder = "説明（任意）",
+  notePlaceholder: notePlaceholderProp,
   required,
   fullWidth,
   error,
@@ -43,6 +43,8 @@ export function DesignFileSlot({
   error?: string;
 }) {
   const tr = useTranslations();
+  const notePlaceholder =
+    notePlaceholderProp ?? tr("ui.designFileSlot.descriptionOptional");
   return (
     <Stack gap={4}>
       <Text fw={500} size="sm">

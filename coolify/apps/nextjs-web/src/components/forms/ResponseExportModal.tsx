@@ -175,7 +175,9 @@ export function ResponseExportModal({
           <Text c="dimmed" size="xs">
             {allFieldsChecked
               ? tr("forms.responseExportModal.everyFieldBecomesAColumnUncheck")
-              : `${fieldKeys.length} 項目を選択中`}
+              : tr("forms.responseExportModal.fieldsSelectedCount", {
+                  count: fieldKeys.length,
+                })}
           </Text>
           <ScrollArea.Autosize mah={180}>
             <Checkbox.Group

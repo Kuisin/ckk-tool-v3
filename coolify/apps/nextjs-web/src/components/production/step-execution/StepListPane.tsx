@@ -68,7 +68,7 @@ export function StepListPane({
                   )}
                   {s.isApprovalStep && (
                     <Badge color="teal" size="xs" variant="light">
-                      承認
+                      {tr("common.approve")}
                     </Badge>
                   )}
                 </Group>

@@ -140,7 +140,7 @@ export function InvoiceDetail({
       key: "paid",
       label: tr("billing.invoices.payment"),
       description: invoice.dueDate
-        ? `支払期限 ${fmt.date(invoice.dueDate)}`
+        ? `${tr("billing.invoices.paymentDue")} ${fmt.date(invoice.dueDate)}`
         : tr("billing.invoices.confirmPayment"),
     },
   ];
@@ -164,7 +164,10 @@ export function InvoiceDetail({
     {
       key: "delivery-orders",
       title: tr("common.deliveryOrder"),
-      summary: orderNumbers.length > 0 ? `${orderNumbers.length} 件` : null,
+      summary:
+        orderNumbers.length > 0
+          ? tr("common.countItems", { count: orderNumbers.length })
+          : null,
       items: orderNumbers.map((n) => ({
         key: n,
         label: n,
@@ -175,7 +178,10 @@ export function InvoiceDetail({
     {
       key: "delivery-notes",
       title: tr("common.deliveryNote"),
-      summary: noteNumbers.length > 0 ? `${noteNumbers.length} 件` : null,
+      summary:
+        noteNumbers.length > 0
+          ? tr("common.countItems", { count: noteNumbers.length })
+          : null,
       items: noteNumbers.map((n) => ({
         key: n,
         label: n,
@@ -197,7 +203,9 @@ export function InvoiceDetail({
               key: "yayoi",
               label: invoice.invoiceNumber,
               done: true,
-              note: `エクスポート済・${fmt.dateTime(invoice.yayoiExportedAt)}`,
+              note: tr("billing.invoices.exportedAtLabel", {
+                dateTime: fmt.dateTime(invoice.yayoiExportedAt),
+              }),
             },
           ]
         : [],
@@ -310,7 +318,7 @@ export function InvoiceDetail({
       breadcrumbs={[
         tr("common.billing"),
         { label: tr("common.invoice"), href: BASE_PATH },
-        "詳細",
+        tr("common.detail"),
       ]}
       createdAt={fmt.dateTime(invoice.createdAt)}
       status={<StatusBadge entity="Invoice" status={invoice.status} />}
@@ -381,7 +389,7 @@ export function InvoiceDetail({
 
       <Paper p="md" radius="md" withBorder>
         <Title mb="sm" order={5}>
-          明細（{invoice.items.length}）
+          {tr("common.lineItemsWithCount", { count: invoice.items.length })}
         </Title>
         <Table.ScrollContainer minWidth={640}>
           <Table highlightOnHover>
@@ -550,13 +558,17 @@ export function InvoiceDetail({
         confirmColor="blue"
         confirmLabel={tr("common.issue")}
         loading={isPending}
-        message={`請求書 ${invoice.invoiceNumber} を発行します。発行日は本日で記録されます。`}
+        message={tr("billing.invoiceDetail.confirmIssueMessage", {
+          invoiceNumber: invoice.invoiceNumber,
+        })}
         onClose={() => setIssueOpen(false)}
         onConfirm={() =>
           run(
             () => issueInvoice(invoice.invoiceNumber),
             tr("common.issued"),
-            `請求書 ${invoice.invoiceNumber} を発行しました`,
+            tr("billing.invoiceDetail.issuedWithNumber", {
+              invoiceNumber: invoice.invoiceNumber,
+            }),
           )
         }
         opened={issueOpen}
@@ -566,13 +578,17 @@ export function InvoiceDetail({
         confirmColor="blue"
         confirmLabel={tr("billing.invoices.markAsSent")}
         loading={isPending}
-        message={`請求書 ${invoice.invoiceNumber} を送付済みにします。`}
+        message={tr("billing.invoiceDetail.confirmMarkSentMessage", {
+          invoiceNumber: invoice.invoiceNumber,
+        })}
         onClose={() => setSentOpen(false)}
         onConfirm={() =>
           run(
             () => markSent(invoice.invoiceNumber),
             tr("billing.invoices.markedAsSent"),
-            `請求書 ${invoice.invoiceNumber} を送付済みにしました`,
+            tr("billing.invoiceDetail.markedSentWithNumber", {
+              invoiceNumber: invoice.invoiceNumber,
+            }),
           )
         }
         opened={sentOpen}
@@ -582,13 +598,17 @@ export function InvoiceDetail({
         confirmColor="blue"
         confirmLabel={tr("billing.invoices.markAsPaid")}
         loading={isPending}
-        message={`請求書 ${invoice.invoiceNumber} を入金済みにします。`}
+        message={tr("billing.invoiceDetail.confirmMarkPaidMessage", {
+          invoiceNumber: invoice.invoiceNumber,
+        })}
         onClose={() => setPaidOpen(false)}
         onConfirm={() =>
           run(
             () => markPaid(invoice.invoiceNumber),
             tr("billing.invoices.markedAsPaid"),
-            `請求書 ${invoice.invoiceNumber} を入金済みにしました`,
+            tr("billing.invoiceDetail.markedPaidWithNumber", {
+              invoiceNumber: invoice.invoiceNumber,
+            }),
           )
         }
         opened={paidOpen}

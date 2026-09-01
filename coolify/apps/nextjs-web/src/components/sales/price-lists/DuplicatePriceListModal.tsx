@@ -116,7 +116,7 @@ export function DuplicatePriceListModal({
       </Alert>
 
       <FieldValue label={tr("common.customer")} value={source?.customerName} />
-      <FieldValue label="製品" value={source?.productName} />
+      <FieldValue label={tr("common.product")} value={source?.productName} />
       <Select
         data={
           source?.variants.map((v) => ({
@@ -174,7 +174,11 @@ export function DuplicatePriceListModal({
       />
       <DatePickerInput
         clearable={!needsEnd}
-        description={needsEnd ? "テスト・サンプルは終了日が必須" : undefined}
+        description={
+          needsEnd
+            ? tr("sales.priceLists.testAndSampleEntriesNeedAn")
+            : undefined
+        }
         error={
           error && needsEnd && !validUntil
             ? tr("common.selectAnEndDate")
@@ -184,7 +188,9 @@ export function DuplicatePriceListModal({
         leftSection={<IconCalendar size={14} />}
         onChange={setValidUntil}
         placeholder={
-          needsEnd ? "日付を選択" : tr("common.leaveBlankForNoEndDate")
+          needsEnd
+            ? tr("common.pickADate")
+            : tr("common.leaveBlankForNoEndDate")
         }
         value={validUntil}
         valueFormat="YYYY/MM/DD"

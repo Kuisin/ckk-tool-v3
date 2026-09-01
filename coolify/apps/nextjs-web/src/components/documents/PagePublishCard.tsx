@@ -135,7 +135,7 @@ export function PagePublishCard({
             )
           }
           opened={rejectOpen}
-          title="差し戻し"
+          title={tr("common.reject")}
         >
           <Text mb="sm" size="sm">
             {tr("documents.pagePublishCard.enterAReasonForSendingIt")}
@@ -163,7 +163,9 @@ export function PagePublishCard({
             loading={isPending}
             onClick={() => setConfirmOpen(true)}
           >
-            {approvalRequired ? "公開を申請" : tr("common.publish")}
+            {approvalRequired
+              ? tr("documents.pagePublishCard.requestToPublish")
+              : tr("common.publish")}
           </PrimaryButton>
         }
         description={
@@ -182,7 +184,9 @@ export function PagePublishCard({
         tone="action"
       />
       <ModalShell
-        confirmLabel={approvalRequired ? "申請する" : tr("common.publish")}
+        confirmLabel={
+          approvalRequired ? tr("common.request2") : tr("common.publish")
+        }
         loading={isPending}
         onClose={() => setConfirmOpen(false)}
         onConfirm={() =>
@@ -192,19 +196,23 @@ export function PagePublishCard({
                 ok: r.ok,
                 error: r.ok ? undefined : r.error,
               })),
-            approvalRequired ? "公開を申請しました" : tr("common.published"),
+            approvalRequired
+              ? tr("documents.pagePublishCard.requestedToPublish")
+              : tr("common.published"),
           )
         }
         opened={confirmOpen}
         title={
           approvalRequired
-            ? "公開の申請"
+            ? tr("documents.pagePublishCard.requestToPublishTitle")
             : tr("documents.pagePublishCard.confirmPublishing")
         }
       >
         <Text size="sm">
           {openComments > 0
-            ? `未解決のコメントが ${openComments} 件あります。このまま進めますか？`
+            ? tr("documents.pagePublishCard.thereAreUnresolvedComments", {
+                count: openComments,
+              })
             : tr("documents.pagePublishCard.theLatestRevisionWillBePublished")}
         </Text>
       </ModalShell>

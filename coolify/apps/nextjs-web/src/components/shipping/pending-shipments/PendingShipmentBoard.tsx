@@ -104,7 +104,7 @@ export function PendingShipmentBoard({
     },
     {
       key: "productName",
-      header: "製品",
+      header: tr("common.product"),
       sortable: true,
       truncate: true,
       render: (r) => r.productName,

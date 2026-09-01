@@ -101,8 +101,10 @@ export function CreateQuoteModal({
       title={tr("common.createAQuote")}
     >
       <Text size="sm">
-        {source.customerName} × {source.productName}{" "}
-        の価格表から見積書を作成します。単価・値引きは価格表から自動計算されます。
+        {tr("sales.createQuoteModal.createQuoteFromPriceListMessage", {
+          customer: source.customerName,
+          product: source.productName,
+        })}
       </Text>
 
       <Select
@@ -129,7 +131,7 @@ export function CreateQuoteModal({
         }
         min={1}
         onChange={(v) => setQuantity(typeof v === "number" ? v : 1)}
-        suffix=" 本"
+        suffix={` ${tr("common.pcs")}`}
         value={quantity}
         withAsterisk
       />

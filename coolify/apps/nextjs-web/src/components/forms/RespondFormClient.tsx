@@ -89,9 +89,9 @@ export function RespondFormClient({
       // 最終判定はサーバ（canEditResponse / formAvailability）がやり直す。
       submitLabel={
         editingDraft
-          ? "提出する"
+          ? tr("common.submit")
           : existing
-            ? "更新"
+            ? tr("common.update")
             : tr("forms.respondFormClient.send")
       }
       submittable={

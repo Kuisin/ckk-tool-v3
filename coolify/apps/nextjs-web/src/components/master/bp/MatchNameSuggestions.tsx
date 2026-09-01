@@ -23,12 +23,6 @@ import { useTranslations } from "next-intl";
 import { GhostButton, SecondaryButton } from "@/components/ui/buttons";
 import { generateAliases, missingKeywordFormats } from "@/lib/company-aliases";
 
-const FORMAT_LABEL: Record<string, string> = {
-  hiragana: "ひらがな",
-  katakana: "カタカナ",
-  romaji: "ローマ字",
-};
-
 export function MatchNameSuggestions({
   nameJa,
   nameEn,
@@ -47,6 +41,11 @@ export function MatchNameSuggestions({
   onAdd: (values: string[]) => void;
 }) {
   const tr = useTranslations();
+  const FORMAT_LABEL: Record<string, string> = {
+    hiragana: tr("master.bp.hiragana"),
+    katakana: tr("master.bp.katakana"),
+    romaji: tr("master.bp.romaji"),
+  };
   const src = {
     nameJa,
     nameEn,
@@ -74,10 +73,10 @@ export function MatchNameSuggestions({
       <Stack gap="sm">
         {missingLabels.length > 0 && (
           <Text size="sm">
-            {missingLabels.join(tr("common.s1"))}
-            の表記が未登録です。注文書がその形で書かれていると突合できません。
-            {missing.needsReading &&
-              "　漢字の読みは自動で作れないため、フリガナを入れると候補を出せます。"}
+            {tr("master.bp.missingFormatsNotice", {
+              formats: missingLabels.join(tr("common.s1")),
+            })}
+            {missing.needsReading && tr("master.bp.needsReadingNote")}
           </Text>
         )}
 
@@ -97,7 +96,7 @@ export function MatchNameSuggestions({
             </Group>
             <Group>
               <GhostButton onClick={() => onAdd(suggestions)} size="xs">
-                すべて追加（{suggestions.length} 件）
+                {tr("master.bp.addAllCount", { count: suggestions.length })}
               </GhostButton>
             </Group>
           </Stack>

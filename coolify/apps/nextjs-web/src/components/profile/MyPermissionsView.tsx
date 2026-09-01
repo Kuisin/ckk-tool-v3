@@ -43,12 +43,20 @@ import {
   scopeLabel,
 } from "@/lib/permission-labels";
 
-function remainingLabel(ms: number | null): string | null {
+function remainingLabel(
+  ms: number | null,
+  tr: ReturnType<typeof useTranslations>,
+): string | null {
   if (ms == null || ms <= 0) return null;
   const m = Math.floor(ms / 60_000);
   return m >= 60
-    ? `残り ${Math.floor(m / 60)} 時間 ${m % 60} 分`
-    : `残り ${Math.max(1, m)} 分`;
+    ? tr("profile.myPermissionsView.remainingHoursMinutes", {
+        hours: Math.floor(m / 60),
+        minutes: m % 60,
+      })
+    : tr("profile.myPermissionsView.remainingMinutes", {
+        minutes: Math.max(1, m),
+      });
 }
 
 /** 権限 1 件。持っている / 持っていないを、色と枠でひと目で分ける。 */
@@ -111,7 +119,9 @@ function PermissionCard({ row }: { row: MyPermissionRow }) {
 
       {row.granted && row.scopes.length > 0 && (
         <Text c="dimmed" mt={6} size="xs">
-          範囲: {row.scopes.map((s) => scopeLabel(s)).join(" / ")}
+          {tr("profile.myPermissionsView.scopeLabel", {
+            scopes: row.scopes.map((s) => scopeLabel(s)).join(" / "),
+          })}
         </Text>
       )}
 
@@ -122,7 +132,7 @@ function PermissionCard({ row }: { row: MyPermissionRow }) {
             // 未使用（ARMED）の付与で窓の残りを出すと、1 回あたりの持ち時間より
             // 長く見えて誤解を招く。時計が動いてから（ACTIVE）だけ残りを出す。
             const remaining =
-              op.state === "ACTIVE" ? remainingLabel(op.remainingMs) : null;
+              op.state === "ACTIVE" ? remainingLabel(op.remainingMs, tr) : null;
             return (
               <Group gap="xs" key={op.key} wrap="nowrap">
                 {op.allowed ? (
@@ -150,7 +160,7 @@ function PermissionCard({ row }: { row: MyPermissionRow }) {
                     variant="light"
                   >
                     {op.canRequest
-                      ? "申請が必要"
+                      ? tr("profile.myPermissionsView.requestRequired")
                       : tr("profile.myPermissionsView.noPermission")}
                   </Badge>
                 )}

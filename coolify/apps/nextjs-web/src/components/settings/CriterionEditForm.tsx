@@ -92,12 +92,6 @@ const HELPER_TOKENS = [
 
 const BASE = "/settings/trial-pricing-engine";
 
-const ROLE_OPTIONS: { value: CriterionRole; label: string }[] = [
-  { value: "component", label: "加算（合計に足す）" },
-  { value: "intermediate", label: "中間（r.<id> で参照）" },
-  { value: "final", label: "見積単価（最終）" },
-];
-
 const SAMPLE_INPUT: TrialInput = {
   toolType: "ROUND_BAR",
   maxDiameter: 12,
@@ -143,6 +137,20 @@ export function CriterionEditForm({
   toolTypes: ToolTypeDef[];
 }) {
   const tr = useTranslations();
+  const ROLE_OPTIONS: { value: CriterionRole; label: string }[] = [
+    {
+      value: "component",
+      label: tr("settings.criterionEditForm.componentAddToTotal"),
+    },
+    {
+      value: "intermediate",
+      label: tr("settings.criterionEditForm.intermediateReferencedAsRId"),
+    },
+    {
+      value: "final",
+      label: tr("settings.criterionEditForm.finalEstimatedUnitPrice"),
+    },
+  ];
   const existing = criterionId
     ? allCriteria.find((c) => c.id === criterionId)
     : undefined;
@@ -236,7 +244,9 @@ export function CriterionEditForm({
     if (isNew && allCriteria.some((c) => c.id === criterion.id)) {
       notifications.show({
         title: tr("common.error2"),
-        message: `ID「${criterion.id}」は既に存在します`,
+        message: tr("settings.criterionEditForm.idAlreadyExists", {
+          id: criterion.id,
+        }),
         color: "red",
       });
       return;
@@ -264,8 +274,10 @@ export function CriterionEditForm({
   const remove = () =>
     openConfirm({
       title: tr("settings.criterionEditForm.deleteTheCriterion"),
-      message: `「${criterion.name}」を削除します。この操作は取り消せません。`,
-      confirmLabel: "削除",
+      message: tr("settings.criterionEditForm.deleteCriterionConfirm", {
+        name: criterion.name,
+      }),
+      confirmLabel: tr("common.delete"),
       onConfirm: () =>
         startTransition(async () => {
           const res = await updateCriteria(
@@ -274,7 +286,9 @@ export function CriterionEditForm({
           if (res.ok) {
             notifications.show({
               title: tr("common.deleted"),
-              message: `「${criterion.name}」を削除しました`,
+              message: tr("settings.criterionEditForm.criterionWasDeleted", {
+                name: criterion.name,
+              }),
               color: "green",
             });
             router.push(`${BASE}/criteria`);
@@ -350,7 +364,7 @@ export function CriterionEditForm({
             />
             <Switch
               checked={criterion.enabled}
-              label="有効"
+              label={tr("common.enabled")}
               mt={26}
               onChange={(e) => set({ enabled: e.currentTarget.checked })}
             />
@@ -428,9 +442,13 @@ export function CriterionEditForm({
             >
               <Stack gap="xs">
                 <Text size="sm">
-                  この基準の値:{" "}
+                  {tr("settings.criterionEditForm.thisCriterionsValueLabel")}{" "}
                   <Code>
-                    {test.value === null ? "（中間/対象外）" : test.value}
+                    {test.value === null
+                      ? tr(
+                          "settings.criterionEditForm.intermediateOrNotApplicable",
+                        )
+                      : test.value}
                   </Code>
                 </Text>
                 {test.warnings.map((w) => (
@@ -451,7 +469,11 @@ export function CriterionEditForm({
                   <Table.Tbody>
                     {test.lots.map((l) => (
                       <Table.Tr key={l.quantity}>
-                        <Table.Td>{l.quantity} 本</Table.Td>
+                        <Table.Td>
+                          {tr("settings.criterionEditForm.quantityPcs", {
+                            quantity: l.quantity,
+                          })}
+                        </Table.Td>
                         <Table.Td className="tabular-nums" ta="right">
                           ¥{l.estimateUnitPrice.toLocaleString()}
                         </Table.Td>

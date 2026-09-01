@@ -104,7 +104,9 @@ export function MaterialTypePriceGrid({
       if (res.ok) {
         notifications.show({
           title: tr("common.saved2"),
-          message: `既定単価 ${out.length} 件を保存しました`,
+          message: tr("master.materialTypePriceGrid.savedMessage", {
+            count: out.length,
+          }),
           color: "green",
         });
         router.refresh();

@@ -126,7 +126,9 @@ export function MasterKeywordsField({
   return (
     <Stack gap="xs" mt="sm">
       <TagsInput
-        description={`検索とAI取込の突合に使う別名です（略称・読み・英字・寸法の別表記など）。Enter 区切りで最大 ${KEYWORD_MAX_COUNT} 件`}
+        description={tr("master.masterKeywordsField.fieldDescription", {
+          max: KEYWORD_MAX_COUNT,
+        })}
         label={label}
         maxTags={KEYWORD_MAX_COUNT}
         onChange={onChange}
@@ -177,7 +179,9 @@ export function MasterKeywordsField({
             </Group>
             <Group>
               <GhostButton onClick={() => add(suggestions)} size="xs">
-                すべて追加（{suggestions.length} 件）
+                {tr("master.masterKeywordsField.addAllCount", {
+                  count: suggestions.length,
+                })}
               </GhostButton>
               <GhostButton onClick={() => setSuggestions([])} size="xs">
                 {tr("common.close2")}

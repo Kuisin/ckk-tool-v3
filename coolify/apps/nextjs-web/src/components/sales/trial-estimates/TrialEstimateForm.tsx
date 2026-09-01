@@ -44,7 +44,7 @@ import {
 import { useFormat } from "@/components/layout/PreferencesProvider";
 import { AppTabs } from "@/components/ui/AppTabs";
 import { EditButton } from "@/components/ui/buttons";
-import { PRODUCT_F4 } from "@/components/ui/f4-presets";
+import { productF4 } from "@/components/ui/f4-presets";
 import { HelpLabel } from "@/components/ui/HelpLabel";
 import { MoneyText } from "@/components/ui/MoneyText";
 import { openConfirm } from "@/components/ui/modals";
@@ -119,7 +119,9 @@ export function TrialEstimateForm({
     src?.toolType ?? "ROUND_BAR",
   );
   const [name, setName] = useState(
-    source ? `${source.name}（再価格試算）` : "",
+    source
+      ? tr("sales.trialEstimateForm.reEstimatedName", { name: source.name })
+      : "",
   );
   const [customerId, setCustomerId] = useState<string | null>(
     source?.customerId ?? null,
@@ -411,7 +413,7 @@ export function TrialEstimateForm({
                     value={salesRepId}
                   />
                   <SearchSelect
-                    f4={PRODUCT_F4}
+                    f4={productF4(tr)}
                     initialOption={
                       source?.productId && source.productName
                         ? {
@@ -556,7 +558,13 @@ export function TrialEstimateForm({
                             ? tr(
                                 "sales.trialEstimates.noPurchaseHistoryTheConfiguredDefault",
                               )
-                            : `参照: ${basisLabel}（直近${settings.materialPriceLookbackMonths}ヶ月）`
+                            : tr(
+                                "sales.trialEstimateForm.referenceBasisMonths",
+                                {
+                                  basis: basisLabel,
+                                  months: settings.materialPriceLookbackMonths,
+                                },
+                              )
                     }
                     label={
                       <Group gap={6} wrap="nowrap">
@@ -580,7 +588,11 @@ export function TrialEstimateForm({
                             ? tr("common.custom")
                             : policyRef.usedDefault
                               ? tr("sales.trialEstimates.defaultPrice")
-                              : `参照価格 ${referenceDate ? fmt.date(referenceDate) : "—"}`}
+                              : tr("sales.trialEstimateForm.referencePriceOn", {
+                                  date: referenceDate
+                                    ? fmt.date(referenceDate)
+                                    : "—",
+                                })}
                         </Badge>
                       </Group>
                     }
@@ -707,13 +719,12 @@ export function TrialEstimateForm({
                 />
               </SimpleGrid>
               <Text c="dimmed" mt="xs" size="xs">
-                加工単価（¥
-                {Number(
-                  customValues.machiningRatePer10min ?? 2000,
-                ).toLocaleString()}
-                /10分）・予備形状本数（
-                {Number(customValues.spareShapeCount ?? 3)}
-                本）は価格試算計算のグローバル固定係数を使用します。
+                {tr("sales.trialEstimateForm.machiningRateSpareShapeNote", {
+                  rate: Number(
+                    customValues.machiningRatePer10min ?? 2000,
+                  ).toLocaleString(),
+                  count: Number(customValues.spareShapeCount ?? 3),
+                })}
               </Text>
             </FormSection>
 
@@ -918,8 +929,10 @@ export function TrialEstimateForm({
             <Stack gap="sm">
               <Group gap="sm">
                 <Badge color="blue" variant="light">
-                  ポリシー: {basisLabel}・直近
-                  {settings.materialPriceLookbackMonths}ヶ月
+                  {tr("sales.trialEstimateForm.policyBasisMonths", {
+                    basis: basisLabel,
+                    months: settings.materialPriceLookbackMonths,
+                  })}
                 </Badge>
                 <Text c="dimmed" size="xs">
                   {[

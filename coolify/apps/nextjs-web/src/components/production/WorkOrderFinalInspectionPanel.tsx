@@ -36,21 +36,6 @@ import { GhostButton, SecondaryButton } from "@/components/ui/buttons";
 import type { ActionResult } from "@/lib/server-action";
 import type { WorkOrderFinalInspectionView } from "./work-orders/model";
 
-const CHECK_ITEMS = [
-  {
-    field: "drawingLabel",
-    label: "図面・ラベル・膜厚・寸法と間違いがないか",
-  },
-  { field: "protectiveCap", label: "保護キャップ使用しているか（φ0.6以下）" },
-  { field: "finishedQuantity", label: "完成本数は合っているか" },
-] as const;
-
-const SHIPMENT_STAGES = [
-  { stage: "shelved", label: "棚包担当者" },
-  { stage: "deliveryNoteIssued", label: "納品書発行者" },
-  { stage: "shipmentAuthorized", label: "出荷許可者" },
-] as const;
-
 const EMPTY: WorkOrderFinalInspectionView = {
   drawingLabelOk: null,
   drawingLabelCheckedByName: null,
@@ -87,6 +72,42 @@ export function WorkOrderFinalInspectionPanel({
   const [isPending, startTransition] = useTransition();
   const fi = finalInspection ?? EMPTY;
   const [notes, setNotes] = useState(fi.shipDefectNotes ?? "");
+
+  const CHECK_ITEMS = [
+    {
+      field: "drawingLabel",
+      label: tr("production.workOrderFinalInspectionPanel.checkDrawingLabel"),
+    },
+    {
+      field: "protectiveCap",
+      label: tr("production.workOrderFinalInspectionPanel.checkProtectiveCap"),
+    },
+    {
+      field: "finishedQuantity",
+      label: tr(
+        "production.workOrderFinalInspectionPanel.checkFinishedQuantity",
+      ),
+    },
+  ] as const;
+
+  const SHIPMENT_STAGES = [
+    {
+      stage: "shelved",
+      label: tr("production.workOrderFinalInspectionPanel.shelvedBy"),
+    },
+    {
+      stage: "deliveryNoteIssued",
+      label: tr(
+        "production.workOrderFinalInspectionPanel.deliveryNoteIssuedBy",
+      ),
+    },
+    {
+      stage: "shipmentAuthorized",
+      label: tr(
+        "production.workOrderFinalInspectionPanel.shipmentAuthorizedBy",
+      ),
+    },
+  ] as const;
 
   const afterResult = (result: ActionResult, successTitle: string) => {
     if (result.ok) {
@@ -133,7 +154,13 @@ export function WorkOrderFinalInspectionPanel({
                           field,
                           true,
                         );
-                        afterResult(result, `「${label}」を記録しました`);
+                        afterResult(
+                          result,
+                          tr(
+                            "production.workOrderFinalInspectionPanel.itemRecorded",
+                            { item: label },
+                          ),
+                        );
                       })
                     }
                     size="xs"
@@ -150,7 +177,13 @@ export function WorkOrderFinalInspectionPanel({
                           field,
                           false,
                         );
-                        afterResult(result, `「${label}」を記録しました`);
+                        afterResult(
+                          result,
+                          tr(
+                            "production.workOrderFinalInspectionPanel.itemRecorded",
+                            { item: label },
+                          ),
+                        );
                       })
                     }
                     size="xs"
@@ -240,7 +273,13 @@ export function WorkOrderFinalInspectionPanel({
                               workOrderNumber,
                               stage,
                             );
-                            afterResult(result, `${label}を記録しました`);
+                            afterResult(
+                              result,
+                              tr(
+                                "production.workOrderFinalInspectionPanel.stageRecorded",
+                                { stage: label },
+                              ),
+                            );
                           })
                         }
                         size="xs"

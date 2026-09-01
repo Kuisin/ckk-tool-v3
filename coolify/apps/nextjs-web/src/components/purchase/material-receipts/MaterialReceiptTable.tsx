@@ -32,17 +32,16 @@ import type { MaterialReceiptView } from "./model";
 const BASE_PATH = "/purchase/material-receipts";
 const PO_PATH = "/purchase/purchase-orders";
 
-const SOURCE_OPTIONS = [
-  { value: "po", label: "発注入荷" },
-  { value: "direct", label: "直接調達" },
-];
-
 export function MaterialReceiptTable({
   rows,
 }: {
   rows: MaterialReceiptView[];
 }) {
   const tr = useTranslations();
+  const SOURCE_OPTIONS = [
+    { value: "po", label: tr("purchase.materialReceiptTable.poReceipt") },
+    { value: "direct", label: tr("common.directPurchase") },
+  ];
   const fmt = useFormat();
   const router = useRouter();
   const isMobile = useIsMobile();

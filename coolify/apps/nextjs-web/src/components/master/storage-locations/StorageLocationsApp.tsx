@@ -98,7 +98,7 @@ export function StorageLocationsApp({
   const columns: Column<StorageLocationListRow>[] = [
     {
       key: "plant",
-      header: "拠点",
+      header: tr("common.plants"),
       sortable: true,
       width: 200,
       sortValue: (r) => r.plantCode,
@@ -111,7 +111,7 @@ export function StorageLocationsApp({
     },
     {
       key: "code",
-      header: "コード",
+      header: tr("common.code"),
       sortable: true,
       width: 130,
       sortValue: (r) => r.code,
@@ -174,7 +174,7 @@ export function StorageLocationsApp({
       action={
         selected ? undefined : (
           <CreateButton onClick={() => setCreateOpen(true)}>
-            {isMobile ? "新規" : tr("common.new2")}
+            {isMobile ? tr("common.new") : tr("common.new2")}
           </CreateButton>
         )
       }
@@ -235,7 +235,9 @@ export function StorageLocationsApp({
                       {r.plantName}
                     </Text>
                     <Text c="dimmed" size="xs">
-                      棚 {r.shelfCount} 件
+                      {tr("master.storageLocations.shelfCountValue", {
+                        count: r.shelfCount,
+                      })}
                     </Text>
                   </Group>
                 </Stack>

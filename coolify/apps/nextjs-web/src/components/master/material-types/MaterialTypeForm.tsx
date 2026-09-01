@@ -43,18 +43,23 @@ import type { Option } from "@/lib/mock";
 
 const BASE_PATH = "/master/material-types";
 
-const materialTypeSchema = (isEdit: boolean) =>
+const materialTypeSchema = (
+  tr: ReturnType<typeof useTranslations>,
+  isEdit: boolean,
+) =>
   z.object({
     manufacturerCode: isEdit
       ? z.string()
-      : z.string().min(1, "メーカーを選択してください"),
+      : z.string().min(1, tr("master.materialTypeForm.selectAManufacturer2")),
     gradeCode: isEdit
       ? z.string()
-      : z.string().min(1, "メーカー材種を選択してください"),
+      : z
+          .string()
+          .min(1, tr("master.materialTypeForm.selectAManufacturerGrade")),
     shapeCode: isEdit
       ? z.string()
-      : z.string().min(1, "形状を選択してください"),
-    nameJa: z.string().min(1, "名称（日本語）を入力してください"),
+      : z.string().min(1, tr("master.materialTypeForm.selectAShape2")),
+    nameJa: z.string().min(1, tr("common.enterNameInJapanese")),
     nameTranslations: z.record(z.string(), z.string()).default({}),
     descriptionJa: z.string(),
     descriptionEn: z.string(),
@@ -103,7 +108,7 @@ export function MaterialTypeForm({
   const isEdit = !!initial;
 
   const form = useForm<FormValues>({
-    validate: zodResolver(materialTypeSchema(isEdit)),
+    validate: zodResolver(materialTypeSchema(tr, isEdit)),
     initialValues: {
       manufacturerCode: "",
       gradeCode: "",
@@ -138,7 +143,9 @@ export function MaterialTypeForm({
           title: tr("common.saved2"),
           message: isEdit
             ? tr("master.materialTypes.theMaterialTypeWasUpdated")
-            : `材種 ${"code" in result.data ? result.data.code : ""} を作成しました`,
+            : tr("master.materialTypeForm.createdMessage", {
+                code: "code" in result.data ? String(result.data.code) : "",
+              }),
           color: "green",
         });
         router.push(`${BASE_PATH}/${result.data.id}`);
@@ -157,7 +164,7 @@ export function MaterialTypeForm({
       breadcrumbs={[
         tr("common.masterData"),
         { label: tr("common.materialTypes"), href: BASE_PATH },
-        isEdit ? "編集" : tr("common.new2"),
+        isEdit ? tr("common.edit2") : tr("common.new2"),
       ]}
       isDirty={form.isDirty()}
       isPending={isPending}
@@ -168,7 +175,9 @@ export function MaterialTypeForm({
       status={isEdit ? <ActiveBadge active={initial.isActive} /> : undefined}
       title={
         isEdit
-          ? `材種 編集 — ${initial.code ?? initial.nameJa}`
+          ? tr("master.materialTypeForm.editTitle", {
+              code: initial.code ?? initial.nameJa,
+            })
           : tr("master.materialTypes.newMaterialType")
       }
     >

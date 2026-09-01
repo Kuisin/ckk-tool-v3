@@ -148,7 +148,9 @@ export function StorageLocationMapPanel({
           {activeMap && (
             <FloorMapCanvas
               editable
-              imageAlt={`フロアマップ: ${activeMap.name}`}
+              imageAlt={tr("master.storageLocations.floorMapAlt", {
+                name: activeMap.name,
+              })}
               imageUrl={
                 activeMap.hasImage
                   ? `/api/kiosk/floor-maps/${activeMap.id}/image`
@@ -169,7 +171,11 @@ export function StorageLocationMapPanel({
                 id: String(l.id),
                 x: l.mapX ?? 50,
                 y: l.mapY ?? 50,
-                label: `${l.nameJa}（${l.code}）｜棚 ${l.shelfCount} 件`,
+                label: tr("master.storageLocations.pinLabel", {
+                  name: l.nameJa,
+                  code: l.code,
+                  count: l.shelfCount,
+                }),
                 icon: (
                   <IconBuildingWarehouse
                     color="var(--mantine-color-violet-6)"
@@ -214,7 +220,9 @@ export function StorageLocationMapPanel({
                   }
                   size="compact-xs"
                 >
-                  {l.nameJa} を配置
+                  {tr("master.storageLocations.placeThisLocation", {
+                    name: l.nameJa,
+                  })}
                 </GhostButton>
               ))}
             </Group>

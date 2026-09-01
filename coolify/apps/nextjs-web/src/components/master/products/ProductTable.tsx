@@ -82,13 +82,12 @@ function materialSpecLabel(r: {
   return `${r.materialTypeLabel}${size}`;
 }
 
-const STATUS_OPTIONS = [
-  { value: "active", label: "有効" },
-  { value: "inactive", label: "無効" },
-];
-
 export function ProductTable({ rows }: { rows: ProductRow[] }) {
   const tr = useTranslations();
+  const STATUS_OPTIONS = [
+    { value: "active", label: tr("common.enabled") },
+    { value: "inactive", label: tr("common.disabled") },
+  ];
   const router = useRouter();
   const isMobile = useIsMobile();
   const [, startTransition] = useTransition();
@@ -134,8 +133,10 @@ export function ProductTable({ rows }: { rows: ProductRow[] }) {
       );
       if (result.ok) {
         notifications.show({
-          title: isActive ? "有効化しました" : tr("common.disabled2"),
-          message: `${targets.length}件の製品を${isActive ? "有効化" : "無効化"}しました`,
+          title: isActive ? tr("common.enabled2") : tr("common.disabled2"),
+          message: isActive
+            ? tr("master.productTable.bulkEnabled", { count: targets.length })
+            : tr("master.productTable.bulkDisabled", { count: targets.length }),
           color: "green",
         });
         router.refresh();
@@ -152,7 +153,9 @@ export function ProductTable({ rows }: { rows: ProductRow[] }) {
   const bulkDelete = (targets: ProductRow[]) => {
     openConfirm({
       title: tr("master.products.bulkDeleteProducts"),
-      message: `選択中の${targets.length}件の製品を削除します。この操作は取り消せません。`,
+      message: tr("master.productTable.bulkDeleteConfirm", {
+        count: targets.length,
+      }),
       confirmLabel: tr("common.delete2"),
       onConfirm: () => {
         startTransition(async () => {
@@ -160,7 +163,9 @@ export function ProductTable({ rows }: { rows: ProductRow[] }) {
           if (result.ok) {
             notifications.show({
               title: tr("common.deleted"),
-              message: `${targets.length}件の製品を削除しました`,
+              message: tr("master.productTable.bulkDeleted", {
+                count: targets.length,
+              }),
               color: "green",
             });
             router.refresh();
@@ -229,7 +234,10 @@ export function ProductTable({ rows }: { rows: ProductRow[] }) {
   return (
     <ListShell
       action={<NewButton href={`${BASE_PATH}/new`} />}
-      breadcrumbs={[tr("common.masterData"), "製品"]}
+      breadcrumbs={[
+        tr("common.masterData"),
+        tr("master.productTable.pageTitle"),
+      ]}
       filters={
         <Select
           clearable
@@ -249,7 +257,7 @@ export function ProductTable({ rows }: { rows: ProductRow[] }) {
           value={search}
         />
       }
-      title="製品"
+      title={tr("master.productTable.pageTitle")}
     >
       <DataTable
         bulkActions={[
@@ -317,12 +325,12 @@ export function ProductTable({ rows }: { rows: ProductRow[] }) {
             onAction: (r) => setDuplicateRow(r),
           },
           {
-            label: row.isActive ? "無効化" : tr("common.enable"),
+            label: row.isActive ? tr("common.disable") : tr("common.enable"),
             icon: <IconCircleMinus size={14} />,
             onAction: (r) => setToggleRow(r),
           },
           {
-            label: "削除",
+            label: tr("common.delete"),
             icon: <IconTrash size={14} />,
             color: "red",
             onAction: (r) => setDeleteRow(r),

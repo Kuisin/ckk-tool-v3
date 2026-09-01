@@ -126,7 +126,7 @@ function CommentThread({
               variant="light"
             >
               {thread.status === "RESOLVED"
-                ? "解決済"
+                ? tr("common.resolved")
                 : tr("common.unresolved")}
             </Badge>
             {outdated && (
@@ -140,8 +140,12 @@ function CommentThread({
             )}
             <Text c="dimmed" size="xs">
               {outdated
-                ? `旧 ${thread.anchorLine} 行目`
-                : `${thread.line} 行目`}
+                ? tr("documents.reviewView.oldLineNumber", {
+                    n: thread.anchorLine ?? thread.line ?? 0,
+                  })
+                : tr("documents.reviewView.lineNumber", {
+                    n: thread.line ?? 0,
+                  })}
             </Text>
           </Group>
           <GhostButton
@@ -161,7 +165,7 @@ function CommentThread({
             }
           >
             {thread.status === "RESOLVED"
-              ? "未解決に戻す"
+              ? tr("documents.reviewView.markAsUnresolved")
               : tr("documents.reviewView.markAsResolved")}
           </GhostButton>
         </Group>
@@ -396,7 +400,9 @@ export function ReviewView({
                   </Text>
 
                   <ActionIcon
-                    aria-label={`${no} 行目にコメント`}
+                    aria-label={tr("documents.reviewView.commentOnLine", {
+                      n: no,
+                    })}
                     color="blue"
                     mr={4}
                     mt={2}
@@ -419,7 +425,10 @@ export function ReviewView({
                         autosize
                         minRows={2}
                         onChange={(e) => setDraft(e.currentTarget.value)}
-                        placeholder={`${no} 行目へのコメント`}
+                        placeholder={tr(
+                          "documents.reviewView.commentPlaceholderForLine",
+                          { n: no },
+                        )}
                         value={draft}
                       />
                       <Group grow={isMobile} justify="flex-end">

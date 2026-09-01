@@ -51,6 +51,7 @@ import {
 } from "@/lib/enum-labels";
 import { fieldHelp, fieldHelpTip } from "@/lib/field-help";
 import { zodResolver } from "@/lib/form";
+import type { Tr } from "@/lib/i18n";
 import {
   ApprovalTargetField,
   type ApproverOption,
@@ -58,58 +59,61 @@ import {
 
 const BASE_PATH = "/master/inspection-templates";
 
-const templateSchema = z
-  .object({
-    code: z
-      .string()
-      .min(1, "コードを入力してください")
-      .regex(
-        /^[A-Za-z0-9_-]+$/,
-        "コードは英数字・ハイフン・アンダースコアで入力してください",
-      ),
-    nameJa: z.string().min(1, "名称（日本語）を入力してください"),
-    nameTranslations: z.record(z.string(), z.string()).default({}),
-    relatedProcessStepId: z.string().nullable(),
-    productId: z.string().nullable(),
-    groupId: z.string().nullable(),
-    samplingMode: z.enum(["ALL", "PERCENT", "COUNT"]),
-    samplingValue: z.union([z.number(), z.literal("")]),
-    recordStyle: z.enum(["VALUES", "COUNTS"]),
-    layoutStyle: z.enum(["DIMENSIONAL", "CHECKLIST"]),
-    sampleNaming: z.enum(["GENERIC", "INITIAL_MID_FINAL"]),
-    approvalGroupId: z.string().nullable(),
-    approvers: z.array(z.object({ value: z.string(), label: z.string() })),
-    isActive: z.boolean(),
-  })
-  .superRefine((v, ctx) => {
-    const tr = useTranslations();
-    const issue = (message: string) =>
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        path: ["samplingValue"],
-        message,
-      });
-    if (v.samplingMode === "PERCENT") {
-      if (
-        v.samplingValue === "" ||
-        v.samplingValue <= 0 ||
-        v.samplingValue > 100
-      ) {
-        issue(tr("master.inspectionTemplates.enterThePercentageToInspect0"));
+function buildTemplateSchema(tr: Tr) {
+  return z
+    .object({
+      code: z
+        .string()
+        .min(1, tr("master.inspectionTemplateForm.enterCode"))
+        .regex(
+          /^[A-Za-z0-9_-]+$/,
+          tr("master.inspectionTemplateForm.codeFormat"),
+        ),
+      nameJa: z
+        .string()
+        .min(1, tr("master.inspectionTemplateForm.enterNameJa")),
+      nameTranslations: z.record(z.string(), z.string()).default({}),
+      relatedProcessStepId: z.string().nullable(),
+      productId: z.string().nullable(),
+      groupId: z.string().nullable(),
+      samplingMode: z.enum(["ALL", "PERCENT", "COUNT"]),
+      samplingValue: z.union([z.number(), z.literal("")]),
+      recordStyle: z.enum(["VALUES", "COUNTS"]),
+      layoutStyle: z.enum(["DIMENSIONAL", "CHECKLIST"]),
+      sampleNaming: z.enum(["GENERIC", "INITIAL_MID_FINAL"]),
+      approvalGroupId: z.string().nullable(),
+      approvers: z.array(z.object({ value: z.string(), label: z.string() })),
+      isActive: z.boolean(),
+    })
+    .superRefine((v, ctx) => {
+      const issue = (message: string) =>
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["samplingValue"],
+          message,
+        });
+      if (v.samplingMode === "PERCENT") {
+        if (
+          v.samplingValue === "" ||
+          v.samplingValue <= 0 ||
+          v.samplingValue > 100
+        ) {
+          issue(tr("master.inspectionTemplates.enterThePercentageToInspect0"));
+        }
       }
-    }
-    if (v.samplingMode === "COUNT") {
-      if (
-        v.samplingValue === "" ||
-        v.samplingValue < 1 ||
-        !Number.isInteger(v.samplingValue)
-      ) {
-        issue(tr("master.inspectionTemplates.enterHowManyPiecesToInspect"));
+      if (v.samplingMode === "COUNT") {
+        if (
+          v.samplingValue === "" ||
+          v.samplingValue < 1 ||
+          !Number.isInteger(v.samplingValue)
+        ) {
+          issue(tr("master.inspectionTemplates.enterHowManyPiecesToInspect"));
+        }
       }
-    }
-  });
+    });
+}
 
-type FormValues = z.infer<typeof templateSchema>;
+type FormValues = z.infer<ReturnType<typeof buildTemplateSchema>>;
 
 export interface InspectionTemplateFormInitial {
   id: number;
@@ -154,7 +158,7 @@ export function InspectionTemplateForm({
   const isEdit = !!initial;
 
   const form = useForm<FormValues>({
-    validate: zodResolver(templateSchema),
+    validate: zodResolver(buildTemplateSchema(tr)),
     initialValues: {
       code: initial?.code ?? "",
       nameJa: initial?.nameJa ?? "",
@@ -225,7 +229,7 @@ export function InspectionTemplateForm({
       breadcrumbs={[
         tr("common.masterData"),
         { label: tr("common.inspectionTemplates"), href: BASE_PATH },
-        isEdit ? "編集" : tr("common.new2"),
+        isEdit ? tr("common.edit") : tr("common.new2"),
       ]}
       isDirty={form.isDirty()}
       isPending={isPending}
@@ -236,7 +240,9 @@ export function InspectionTemplateForm({
       status={isEdit ? <ActiveBadge active={initial.isActive} /> : undefined}
       title={
         isEdit
-          ? `検査表テンプレート 編集 — ${initial.code}`
+          ? tr("master.inspectionTemplateForm.editTitle", {
+              code: initial.code,
+            })
           : tr("master.inspectionTemplates.newInspectionTemplate")
       }
     >
@@ -252,7 +258,7 @@ export function InspectionTemplateForm({
             label={
               <HelpLabel
                 {...fieldHelp("inspectionTemplate", "code", {
-                  label: "コード",
+                  label: tr("master.inspectionTemplateForm.code"),
                 })}
               />
             }
@@ -349,7 +355,11 @@ export function InspectionTemplateForm({
                   }
                   max={form.values.samplingMode === "PERCENT" ? 100 : undefined}
                   min={form.values.samplingMode === "PERCENT" ? 0.01 : 1}
-                  suffix={form.values.samplingMode === "PERCENT" ? " %" : " 本"}
+                  suffix={
+                    form.values.samplingMode === "PERCENT"
+                      ? " %"
+                      : ` ${tr("common.pcs")}`
+                  }
                   w={140}
                   {...form.getInputProps("samplingValue")}
                 />

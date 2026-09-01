@@ -51,24 +51,28 @@ interface Option {
   label: string;
 }
 
-const itemSchema = z.object({
-  rowId: z.string(),
-  materialId: z.string().min(1, "素材を選択してください"),
-  materialLabel: z.string(),
-  plantId: z.string().nullable(),
-  quantity: z.number().positive("0より大きい値"),
-  unit: z.string().min(1, "必須"),
-  desiredAt: z.string().nullable(),
-  notes: z.string(),
-});
+function buildSchema(tr: ReturnType<typeof useTranslations>) {
+  const itemSchema = z.object({
+    rowId: z.string(),
+    materialId: z
+      .string()
+      .min(1, tr("purchase.purchaseOrderForm.selectMaterial")),
+    materialLabel: z.string(),
+    plantId: z.string().nullable(),
+    quantity: z.number().positive(tr("common.mustBeGreaterThanZero")),
+    unit: z.string().min(1, tr("common.required")),
+    desiredAt: z.string().nullable(),
+    notes: z.string(),
+  });
 
-const schema = z.object({
-  purpose: z.string(),
-  notes: z.string(),
-  items: z.array(itemSchema).min(1, "明細を1件以上追加してください"),
-});
+  return z.object({
+    purpose: z.string(),
+    notes: z.string(),
+    items: z.array(itemSchema).min(1, tr("common.addAtLeastOneLineItem")),
+  });
+}
 
-type FormValues = z.infer<typeof schema>;
+type FormValues = z.infer<ReturnType<typeof buildSchema>>;
 type ItemForm = FormValues["items"][number];
 
 let rowSeq = 0;
@@ -119,6 +123,7 @@ export function PurchaseRequestForm({
   const [isPending, startTransition] = useTransition();
   const requestNumber =
     mode === "edit" ? purchaseRequest?.requestNumber : undefined;
+  const schema = buildSchema(tr);
 
   const form = useForm<FormValues>({
     validate: zodResolver(schema),
@@ -155,8 +160,12 @@ export function PurchaseRequestForm({
           title: tr("common.saved2"),
           message:
             mode === "edit"
-              ? `購買依頼 ${result.data.requestNumber} を更新しました`
-              : `購買依頼 ${result.data.requestNumber} を作成しました`,
+              ? tr("purchase.purchaseRequestForm.updatedWithNumber", {
+                  requestNumber: result.data.requestNumber,
+                })
+              : tr("purchase.purchaseRequestForm.createdWithNumber", {
+                  requestNumber: result.data.requestNumber,
+                }),
           color: "green",
         });
         router.push(`${BASE_PATH}/${result.data.requestNumber}`);
@@ -175,7 +184,7 @@ export function PurchaseRequestForm({
       breadcrumbs={[
         tr("common.purchasing"),
         { label: tr("common.purchaseRequest"), href: BASE_PATH },
-        mode === "edit" ? "編集" : tr("common.new2"),
+        mode === "edit" ? tr("common.edit") : tr("common.new2"),
       ]}
       isDirty={form.isDirty()}
       isPending={isPending}
@@ -193,7 +202,9 @@ export function PurchaseRequestForm({
       }
       title={
         mode === "edit"
-          ? `購買依頼 編集 ${requestNumber ?? ""}`
+          ? tr("purchase.purchaseRequestForm.editWithNumber", {
+              requestNumber: requestNumber ?? "",
+            })
           : tr("purchase.purchaseRequests.newPurchaseRequest")
       }
     >

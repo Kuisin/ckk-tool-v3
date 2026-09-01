@@ -133,10 +133,11 @@ export function DataTable<T>({
   settingsKey,
   stickyHeader = true,
   emptyIcon,
-  emptyMessage = "データがありません",
+  emptyMessage: emptyMessageProp,
   emptyAction,
 }: DataTableProps<T>) {
   const tr = useTranslations();
+  const emptyMessage = emptyMessageProp ?? tr("ui.dataTable.noData");
   const isMobile = useIsMobile();
   // URL 同期モード（urlState=true）はページ・サイズ・ソートを search params に
   // 保持し、ローカル state を使わない。フック自体は無条件に呼ぶ（React の規則）。
@@ -311,7 +312,7 @@ export function DataTable<T>({
         {selectable && selected.size > 0 && (
           <Group gap="xs" wrap="nowrap">
             <Text fw={600} size="sm">
-              {selected.size}件選択中
+              {tr("ui.dataTable.selectedCount", { count: selected.size })}
             </Text>
             {bulkActions.map((a) => (
               <ActionIcon.Group key={a.label}>
@@ -394,7 +395,7 @@ export function DataTable<T>({
                 />
                 <Text c="dimmed" fw={600} size="xs">
                   {selected.size > 0
-                    ? `${selected.size}件選択中`
+                    ? tr("ui.dataTable.selectedCount", { count: selected.size })
                     : tr("ui.dataTable.selectAll")}
                 </Text>
               </Group>
@@ -744,14 +745,23 @@ function PaginationBar({
   return (
     <Group justify="space-between" mt={4} wrap="nowrap">
       <Text c="dimmed" className="whitespace-nowrap" size="xs">
-        {total === 0 ? "0件" : `${start + 1}–${start + count} / ${total}件`}
+        {total === 0
+          ? tr("ui.dataTable.zeroItems")
+          : tr("ui.dataTable.itemRange", {
+              start: start + 1,
+              end: start + count,
+              total,
+            })}
       </Text>
       <Group gap="xs" wrap="nowrap">
         {!isMobile && (
           <Select
             allowDeselect={false}
             aria-label={tr("ui.dataTable.rowsToShow")}
-            data={PAGE_SIZES.map((s) => ({ value: s, label: `${s}件` }))}
+            data={PAGE_SIZES.map((s) => ({
+              value: s,
+              label: tr("ui.dataTable.itemsCount", { count: s }),
+            }))}
             onChange={(v) => v && onPageSize(Number(v))}
             size="xs"
             value={String(pageSize)}

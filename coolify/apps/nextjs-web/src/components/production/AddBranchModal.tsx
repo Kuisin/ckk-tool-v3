@@ -38,11 +38,6 @@ import type { WorkOrderStepView } from "./work-orders/model";
 type TerminationKind = "MERGE" | "STOCK";
 type StockKind = "SEMI_FINISHED" | "PRODUCT";
 
-const STOCK_OPTIONS = [
-  { value: "SEMI_FINISHED", label: "半製品在庫" },
-  { value: "PRODUCT", label: "製品在庫" },
-];
-
 export interface BranchEditTarget {
   /** 系列の先頭工程 id。 */
   headId: string;
@@ -85,6 +80,13 @@ export function AddBranchModal({
   editTarget?: BranchEditTarget | null;
 }) {
   const tr = useTranslations();
+  const STOCK_OPTIONS = [
+    {
+      value: "SEMI_FINISHED",
+      label: tr("production.addBranchModal.semiFinishedStock"),
+    },
+    { value: "PRODUCT", label: tr("production.addBranchModal.productStock") },
+  ];
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [catalogStepIds, setCatalogStepIds] = useState<string[]>([]);
@@ -155,11 +157,14 @@ export function AddBranchModal({
       if (result.ok) {
         notifications.show({
           title: isEdit
-            ? "分岐を更新しました"
+            ? tr("production.addBranchModal.theBranchWasUpdated")
             : tr("production.addBranchModal.theBranchWasAdded"),
           message: isEdit
             ? editTarget.stepNames.join(" → ")
-            : `${sourceStep?.name ?? ""} から ${catalogStepIds.length} 工程`,
+            : tr("production.addBranchModal.fromSourceNSteps", {
+                source: sourceStep?.name ?? "",
+                count: catalogStepIds.length,
+              }),
           color: "green",
         });
         onClose();
@@ -182,7 +187,9 @@ export function AddBranchModal({
     <ModalShell
       confirmDisabled={!canConfirm}
       confirmLabel={
-        isEdit ? "分岐を更新" : tr("production.addBranchModal.addABranch")
+        isEdit
+          ? tr("production.addBranchModal.updateBranch")
+          : tr("production.addBranchModal.addABranch")
       }
       loading={isPending}
       onClose={onClose}
@@ -191,8 +198,12 @@ export function AddBranchModal({
       size="md"
       title={
         isEdit
-          ? `分岐の編集 — ${editTarget.stepNames.join(" → ")}`
-          : `分岐追加 — ${sourceStep?.name ?? ""}`
+          ? tr("production.addBranchModal.editBranchTitle", {
+              steps: editTarget.stepNames.join(" → "),
+            })
+          : tr("production.addBranchModal.addBranchTitle", {
+              source: sourceStep?.name ?? "",
+            })
       }
     >
       <Stack gap="sm">
@@ -212,7 +223,7 @@ export function AddBranchModal({
             isEdit && !editTarget.canEditQuantity
               ? tr("production.addBranchModal.theQuantityCannotBeChangedOnce")
               : max != null
-                ? `分岐可能: ${max}（工程分岐の未割当分）`
+                ? tr("production.addBranchModal.branchableQuantity", { max })
                 : undefined
           }
           disabled={isEdit && !editTarget.canEditQuantity}
@@ -270,8 +281,7 @@ export function AddBranchModal({
         )}
 
         <Text c="dimmed" size="xs">
-          分岐元の完了後に、指定数量を追加工程の系列へ流します。系列内の
-          受入数は前工程の良品数に自動で追従します。
+          {tr("production.addBranchModal.branchFlowExplanation")}
           {isEdit &&
             tr("production.addBranchModal.toReorderStepsDeleteTheBranch")}
         </Text>

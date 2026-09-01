@@ -86,7 +86,9 @@ export function DeleteInspectionTemplateModal({
       loading={isPending}
       message={
         target
-          ? `検査表テンプレート「${label(target)}」を削除します。検査項目も同時に削除されます。この操作は取り消せません。`
+          ? tr("master.inspectionTemplateModals.deleteConfirmMessage", {
+              name: label(target),
+            })
           : ""
       }
       onClose={onClose}
@@ -97,7 +99,9 @@ export function DeleteInspectionTemplateModal({
           if (result.ok) {
             notifications.show({
               title: tr("common.deleted"),
-              message: `検査表テンプレート「${label(target)}」を削除しました`,
+              message: tr("master.inspectionTemplateModals.deletedMessage", {
+                name: label(target),
+              }),
               color: "green",
             });
             onDone?.();
@@ -132,13 +136,19 @@ export function ToggleInspectionTemplateActiveModal({
   return (
     <ConfirmModal
       confirmColor={isActive ? "red" : "blue"}
-      confirmLabel={isActive ? "無効化する" : tr("common.enable2")}
+      confirmLabel={
+        isActive ? tr("master.materialNumbering.disable") : tr("common.enable2")
+      }
       loading={isPending}
       message={
         target
           ? isActive
-            ? `検査表テンプレート「${label(target)}」を無効化します。新規の指示書で選択できなくなります。`
-            : `検査表テンプレート「${label(target)}」を有効化します。再び指示書で選択できるようになります。`
+            ? tr("master.inspectionTemplateModals.disableConfirmMessage", {
+                name: label(target),
+              })
+            : tr("master.inspectionTemplateModals.enableConfirmMessage", {
+                name: label(target),
+              })
           : ""
       }
       onClose={onClose}
@@ -151,8 +161,14 @@ export function ToggleInspectionTemplateActiveModal({
           );
           if (result.ok) {
             notifications.show({
-              title: isActive ? "無効化しました" : tr("common.enabled2"),
-              message: `検査表テンプレート「${label(target)}」を${isActive ? "無効化" : "有効化"}しました`,
+              title: isActive ? tr("common.disabled2") : tr("common.enabled2"),
+              message: isActive
+                ? tr("master.inspectionTemplateModals.disabledMessage", {
+                    name: label(target),
+                  })
+                : tr("master.inspectionTemplateModals.enabledMessage", {
+                    name: label(target),
+                  }),
               color: "green",
             });
             onDone?.();
@@ -194,7 +210,10 @@ export function CreateVersionModal({
       loading={isPending}
       message={
         target
-          ? `「${label(target)}」の検査項目をコピーして v${target.version + 1} 以降の新バージョンを作成します。既存の指示書・検査記録は現在のバージョンのまま変わりません。`
+          ? tr("master.inspectionTemplateModals.createVersionConfirmMessage", {
+              name: label(target),
+              version: target.version + 1,
+            })
           : ""
       }
       onClose={onClose}
@@ -205,7 +224,10 @@ export function CreateVersionModal({
           if (result.ok) {
             notifications.show({
               title: tr("common.aNewVersionWasCreated"),
-              message: `${target.code} v${result.data.version} を作成しました`,
+              message: tr(
+                "master.inspectionTemplateModals.versionCreatedMessage",
+                { code: target.code, version: result.data.version },
+              ),
               color: "green",
             });
             onClose();
@@ -353,11 +375,6 @@ function nextOptionValue(options: InspectionOptionRow[]): string {
   return `o${max + 1}`;
 }
 
-const BOOL_SEGMENT = [
-  { value: "true", label: "はい" },
-  { value: "false", label: "いいえ" },
-];
-
 /** 検査項目の追加・編集（item = null で追加モード）。 */
 export function InspectionTemplateItemModal({
   opened,
@@ -380,6 +397,10 @@ export function InspectionTemplateItemModal({
   const locale = useLocale();
   const [isPending, startTransition] = useTransition();
   const isEdit = !!item;
+  const BOOL_SEGMENT = [
+    { value: "true", label: tr("common.yes") },
+    { value: "false", label: tr("common.no") },
+  ];
 
   const [itemNameJa, setItemNameJa] = useState("");
   const [itemNameEn, setItemNameEn] = useState("");
@@ -527,8 +548,12 @@ export function InspectionTemplateItemModal({
         notifications.show({
           title: tr("common.saved2"),
           message: isEdit
-            ? `検査項目「${input.itemNameJa}」を更新しました`
-            : `検査項目「${input.itemNameJa}」を追加しました`,
+            ? tr("master.inspectionTemplateModals.itemUpdatedMessage", {
+                name: input.itemNameJa,
+              })
+            : tr("master.inspectionTemplateModals.itemAddedMessage", {
+                name: input.itemNameJa,
+              }),
           color: "green",
         });
         onClose();
@@ -556,10 +581,10 @@ export function InspectionTemplateItemModal({
       onSubmit={handleSubmit}
       opened={opened}
       size="lg"
-      submitLabel={isEdit ? "保存" : tr("common.add")}
+      submitLabel={isEdit ? tr("common.save") : tr("common.add")}
       title={
         isEdit
-          ? "検査項目の編集"
+          ? tr("master.inspectionTemplateModals.editItemTitle")
           : tr("master.inspectionTemplates.addAnInspectionItem")
       }
     >
@@ -721,7 +746,10 @@ export function InspectionTemplateItemModal({
             {options.map((o, idx) => (
               <Group gap="xs" key={o.value} wrap="nowrap">
                 <TextInput
-                  aria-label={`選択肢 ${idx + 1}（日本語）`}
+                  aria-label={tr(
+                    "master.inspectionTemplateModals.optionLabelJaAria",
+                    { n: idx + 1 },
+                  )}
                   onChange={(e) => {
                     const labelJa = e.currentTarget.value;
                     setOptions((prev) =>
@@ -735,7 +763,10 @@ export function InspectionTemplateItemModal({
                   value={o.labelJa}
                 />
                 <TextInput
-                  aria-label={`選択肢 ${idx + 1}（English）`}
+                  aria-label={tr(
+                    "master.inspectionTemplateModals.optionLabelEnAria",
+                    { n: idx + 1 },
+                  )}
                   onChange={(e) => {
                     const labelEn = e.currentTarget.value;
                     setOptions((prev) =>
@@ -750,7 +781,10 @@ export function InspectionTemplateItemModal({
                 />
                 <Tooltip label={tr("common.removeOption")} withinPortal>
                   <ActionIcon
-                    aria-label={`選択肢 ${idx + 1} を削除`}
+                    aria-label={tr(
+                      "master.inspectionTemplateModals.removeOptionAria",
+                      { n: idx + 1 },
+                    )}
                     color="red"
                     onClick={() => removeOption(o.value)}
                     variant="subtle"
@@ -894,7 +928,9 @@ export function DeleteInspectionTemplateItemModal({
       loading={isPending}
       message={
         item
-          ? `検査項目「${item.itemNameJa}」を削除します。この操作は取り消せません。`
+          ? tr("master.inspectionTemplateModals.itemDeleteConfirmMessage", {
+              name: item.itemNameJa,
+            })
           : ""
       }
       onClose={onClose}
@@ -905,7 +941,10 @@ export function DeleteInspectionTemplateItemModal({
           if (result.ok) {
             notifications.show({
               title: tr("common.deleted"),
-              message: `検査項目「${item.itemNameJa}」を削除しました`,
+              message: tr(
+                "master.inspectionTemplateModals.itemDeletedMessage",
+                { name: item.itemNameJa },
+              ),
               color: "green",
             });
             onDone?.();

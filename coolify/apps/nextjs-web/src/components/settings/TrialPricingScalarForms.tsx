@@ -41,18 +41,6 @@ import {
 
 const BASE = "/settings/trial-pricing-engine";
 
-const INPUT_TYPE_OPTIONS: { value: CustomInputType; label: string }[] = [
-  { value: "number", label: "数値" },
-  { value: "boolean", label: "ON/OFF" },
-  { value: "text", label: "文字列" },
-  { value: "select", label: "選択" },
-];
-
-const SCOPE_OPTIONS = [
-  { value: "estimate", label: "見積入力（フォームに表示）" },
-  { value: "global", label: "グローバル定数（固定係数）" },
-];
-
 /** 全設定を保持しつつ、指定セクションだけ編集する共通フック。 */
 function useSectionSettings(initial: TrialPricingSettings) {
   const tr = useTranslations();
@@ -204,6 +192,26 @@ export function CustomInputsForm({
   const tr = useTranslations();
   const { settings, patch, save, isPending, router } =
     useSectionSettings(initial);
+
+  const INPUT_TYPE_OPTIONS: { value: CustomInputType; label: string }[] = [
+    { value: "number", label: tr("settings.trialPricingScalarForms.number") },
+    { value: "boolean", label: "ON/OFF" },
+    { value: "text", label: tr("settings.trialPricingScalarForms.string") },
+    { value: "select", label: tr("settings.trialPricingScalarForms.select") },
+  ];
+
+  const SCOPE_OPTIONS = [
+    {
+      value: "estimate",
+      label: tr("settings.trialPricingScalarForms.estimateInputShownInThe"),
+    },
+    {
+      value: "global",
+      label: tr(
+        "settings.trialPricingScalarForms.globalConstantFixedCoefficient",
+      ),
+    },
+  ];
 
   const keyErrors = useMemo(() => {
     const errors: Record<number, string> = {};
@@ -364,7 +372,7 @@ export function CustomInputsForm({
                 )}
                 {d.scope !== "global" && (
                   <ActionIcon
-                    aria-label="削除"
+                    aria-label={tr("common.delete")}
                     color="red"
                     mt={26}
                     onClick={() =>

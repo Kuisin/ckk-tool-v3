@@ -27,31 +27,6 @@ import { emptyDoc, type RichTextDoc } from "@/lib/rich-text-core";
 import { DocumentLinkModal } from "./DocumentLinkModal";
 import type { DocumentHit } from "./document-link-types";
 
-/** ツールバーの aria-label（Mantine の既定は英語）。 */
-const LABELS = {
-  boldControlLabel: "太字",
-  italicControlLabel: "斜体",
-  underlineControlLabel: "下線",
-  strikeControlLabel: "打ち消し線",
-  codeControlLabel: "インラインコード",
-  codeBlockControlLabel: "コードブロック",
-  h3ControlLabel: "見出し",
-  h4ControlLabel: "小見出し",
-  bulletListControlLabel: "箇条書き",
-  orderedListControlLabel: "番号付きリスト",
-  blockquoteControlLabel: "引用",
-  hrControlLabel: "区切り線",
-  linkControlLabel: "リンク",
-  unlinkControlLabel: "リンク解除",
-  undoControlLabel: "元に戻す",
-  redoControlLabel: "やり直す",
-  linkEditorInputLabel: "リンク先 URL",
-  linkEditorInputPlaceholder: "https://example.com",
-  linkEditorSave: "保存",
-  linkEditorExternalLink: "新しいタブで開く",
-  linkEditorInternalLink: "同じタブで開く",
-};
-
 export function RichTextEditorField({
   value,
   onChange,
@@ -68,6 +43,31 @@ export function RichTextEditorField({
   // 可変のエディタインスタンスをメモ化して壊す。tiptap 公式の回避策どおり
   // このコンポーネントだけコンパイラの対象から外す。
   ("use no memo");
+
+  /** ツールバーの aria-label（Mantine の既定は英語）。 */
+  const LABELS = {
+    boldControlLabel: tr("ui.richTextEditorField.bold"),
+    italicControlLabel: tr("ui.richTextEditorField.italic"),
+    underlineControlLabel: tr("ui.richTextEditorField.underline"),
+    strikeControlLabel: tr("ui.richTextEditorField.strikethrough"),
+    codeControlLabel: tr("ui.richTextEditorField.inlineCode"),
+    codeBlockControlLabel: tr("ui.richTextEditorField.codeBlock"),
+    h3ControlLabel: tr("ui.richTextEditorField.heading"),
+    h4ControlLabel: tr("ui.richTextEditorField.subheading"),
+    bulletListControlLabel: tr("ui.richTextEditorField.bulletList"),
+    orderedListControlLabel: tr("ui.richTextEditorField.orderedList"),
+    blockquoteControlLabel: tr("ui.richTextEditorField.blockquote"),
+    hrControlLabel: tr("ui.richTextEditorField.horizontalRule"),
+    linkControlLabel: tr("ui.richTextEditorField.link"),
+    unlinkControlLabel: tr("ui.richTextEditorField.unlink"),
+    undoControlLabel: tr("ui.richTextEditorField.undo"),
+    redoControlLabel: tr("ui.richTextEditorField.redo"),
+    linkEditorInputLabel: tr("ui.richTextEditorField.linkUrl"),
+    linkEditorInputPlaceholder: "https://example.com",
+    linkEditorSave: tr("common.save"),
+    linkEditorExternalLink: tr("ui.richTextEditorField.openInNewTab"),
+    linkEditorInternalLink: tr("ui.richTextEditorField.openInSameTab"),
+  };
 
   const editor = useEditor({
     // App Router の SSR ではハイドレーション不一致を避けるため必須。

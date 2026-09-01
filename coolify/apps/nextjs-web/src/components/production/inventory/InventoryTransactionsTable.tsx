@@ -12,7 +12,11 @@ import { IconArrowsExchange } from "@tabler/icons-react";
 import { useTranslations } from "next-intl";
 import { useFormat } from "@/components/layout/PreferencesProvider";
 import { EmptyState } from "@/components/ui/EmptyState";
-import { type InventoryTransactionRow, TRANSACTION_TYPE_BADGE } from "./model";
+import {
+  type InventoryTransactionRow,
+  TRANSACTION_TYPE_COLOR,
+  transactionTypeLabel,
+} from "./model";
 
 export function InventoryTransactionsTable({
   rows,
@@ -49,10 +53,10 @@ export function InventoryTransactionsTable({
         </Table.Thead>
         <Table.Tbody>
           {rows.map((t) => {
-            const def = TRANSACTION_TYPE_BADGE[t.transactionType] ?? {
-              label: t.transactionType,
-              color: "gray",
-            };
+            const color = TRANSACTION_TYPE_COLOR[t.transactionType] ?? "gray";
+            const label = TRANSACTION_TYPE_COLOR[t.transactionType]
+              ? transactionTypeLabel(tr, t.transactionType)
+              : t.transactionType;
             return (
               <Table.Tr key={t.id}>
                 <Table.Td>
@@ -61,8 +65,8 @@ export function InventoryTransactionsTable({
                   </Text>
                 </Table.Td>
                 <Table.Td>
-                  <Badge color={def.color} variant="light">
-                    {def.label}
+                  <Badge color={color} variant="light">
+                    {label}
                   </Badge>
                 </Table.Td>
                 <Table.Td className="tabular-nums" ta="right">

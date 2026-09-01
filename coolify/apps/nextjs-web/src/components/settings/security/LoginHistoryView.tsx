@@ -34,20 +34,7 @@ import type {
   LoginAttemptSummary,
 } from "@/lib/login-attempts";
 import { LoginAttemptDrawer } from "./LoginAttemptDrawer";
-import { OWNERSHIP_OPTIONS, OwnershipBadge } from "./ownership";
-
-const DAY_OPTIONS = [
-  { value: "1", label: "24 時間" },
-  { value: "7", label: "7 日" },
-  { value: "30", label: "30 日" },
-  { value: "90", label: "90 日" },
-  { value: "400", label: "全期間" },
-];
-
-const OUTCOME_OPTIONS = [
-  { value: "FAILURE", label: "失敗" },
-  { value: "SUCCESS", label: "成功" },
-];
+import { OwnershipBadge, ownershipOptions } from "./ownership";
 
 function SummaryCard({
   label,
@@ -99,6 +86,19 @@ export function LoginHistoryView({
     setIp(null);
   };
 
+  const DAY_OPTIONS = [
+    { value: "1", label: tr("settings.loginHistoryView.hours24") },
+    { value: "7", label: tr("settings.loginHistoryView.days7") },
+    { value: "30", label: tr("settings.loginHistoryView.days30") },
+    { value: "90", label: tr("settings.loginHistoryView.days90") },
+    { value: "400", label: tr("settings.loginHistoryView.allTime") },
+  ];
+
+  const OUTCOME_OPTIONS = [
+    { value: "FAILURE", label: tr("common.failure") },
+    { value: "SUCCESS", label: tr("settings.security.success") },
+  ];
+
   // 面（どの入口からのログインか）。ポータルは app 列では区別できない —
   // nextjs-web が配信しているので app は WEB で、method の PORTAL_ 接頭辞で見る。
   const APP_OPTIONS = [
@@ -128,7 +128,9 @@ export function LoginHistoryView({
           size="xs"
           variant="light"
         >
-          {r.outcome === "SUCCESS" ? "成功" : tr("common.failure")}
+          {r.outcome === "SUCCESS"
+            ? tr("settings.security.success")
+            : tr("common.failure")}
         </Badge>
       ),
     },
@@ -176,7 +178,11 @@ export function LoginHistoryView({
             withinPortal
           >
             <Text c="dimmed" ff="mono" size="xs">
-              {r.identifierRef ? `未解決 ${r.identifierRef.slice(0, 8)}` : "—"}
+              {r.identifierRef
+                ? tr("settings.loginHistoryView.unresolvedWithRef", {
+                    ref: r.identifierRef.slice(0, 8),
+                  })
+                : "—"}
             </Text>
           </Tooltip>
         ),
@@ -260,7 +266,7 @@ export function LoginHistoryView({
             />
             <Select
               clearable
-              data={OWNERSHIP_OPTIONS}
+              data={ownershipOptions(tr)}
               flex={isMobile ? 1 : undefined}
               onChange={setOwnership}
               placeholder={tr("common.deviceType")}
@@ -354,7 +360,9 @@ export function LoginHistoryView({
                       size="xs"
                       variant="light"
                     >
-                      {r.outcome === "SUCCESS" ? "成功" : tr("common.failure")}
+                      {r.outcome === "SUCCESS"
+                        ? tr("settings.security.success")
+                        : tr("common.failure")}
                     </Badge>
                     <Text size="xs">{loginMethodLabel(r.method)}</Text>
                   </Group>
@@ -362,7 +370,9 @@ export function LoginHistoryView({
                     {r.userName ??
                       r.portalAccountName ??
                       (r.identifierRef
-                        ? `未解決 ${r.identifierRef.slice(0, 8)}`
+                        ? tr("settings.loginHistoryView.unresolvedWithRef", {
+                            ref: r.identifierRef.slice(0, 8),
+                          })
                         : "—")}
                   </Text>
                   <Text c="dimmed" size="xs">

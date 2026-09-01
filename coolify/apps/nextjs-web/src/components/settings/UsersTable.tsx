@@ -18,11 +18,15 @@ import { useUrlSelectState, useUrlStringState } from "@/hooks/useUrlState";
 import { localized } from "@/lib/format";
 import type { AdminUserRow } from "@/lib/users-admin";
 
-export const USER_GROUP_LABELS: Record<AdminUserRow["group"], string> = {
-  SYSTEM: "システム",
-  EMPLOYEE: "社員",
-  GUEST: "ゲスト",
-};
+export function userGroupLabels(
+  tr: ReturnType<typeof useTranslations>,
+): Record<AdminUserRow["group"], string> {
+  return {
+    SYSTEM: tr("common.system"),
+    EMPLOYEE: tr("settings.usersTable.employee"),
+    GUEST: tr("common.guest"),
+  };
+}
 
 const GROUP_COLORS: Record<AdminUserRow["group"], string> = {
   SYSTEM: "dark",
@@ -31,9 +35,10 @@ const GROUP_COLORS: Record<AdminUserRow["group"], string> = {
 };
 
 export function UserGroupBadge({ group }: { group: AdminUserRow["group"] }) {
+  const tr = useTranslations();
   return (
     <Badge color={GROUP_COLORS[group]} variant="light">
-      {USER_GROUP_LABELS[group]}
+      {userGroupLabels(tr)[group]}
     </Badge>
   );
 }
@@ -42,7 +47,7 @@ export function UserActiveBadge({ isActive }: { isActive: boolean }) {
   const tr = useTranslations();
   return (
     <Badge color={isActive ? "green" : "gray"} variant="light">
-      {isActive ? "有効" : tr("common.disabled3")}
+      {isActive ? tr("common.enabled") : tr("common.disabled3")}
     </Badge>
   );
 }
@@ -166,7 +171,7 @@ export function UsersTable({ rows }: { rows: AdminUserRow[] }) {
         <>
           <Select
             clearable
-            data={Object.entries(USER_GROUP_LABELS).map(([value, label]) => ({
+            data={Object.entries(userGroupLabels(tr)).map(([value, label]) => ({
               value,
               label,
             }))}
@@ -178,7 +183,7 @@ export function UsersTable({ rows }: { rows: AdminUserRow[] }) {
           <Select
             clearable
             data={[
-              { value: "active", label: "有効" },
+              { value: "active", label: tr("common.enabled") },
               { value: "inactive", label: tr("common.disabled3") },
             ]}
             onChange={setActive}

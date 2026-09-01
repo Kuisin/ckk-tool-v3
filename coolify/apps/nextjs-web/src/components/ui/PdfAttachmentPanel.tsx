@@ -148,9 +148,10 @@ export function PdfAttachmentPanel({
               </Group>
               <Text c="dimmed" size="xs">
                 {file?.generatedAt
-                  ? `生成: ${fmt.dateTime(file.generatedAt)}${
-                      file.generatedBy ? `（${file.generatedBy}）` : ""
-                    }`
+                  ? tr("ui.pdfAttachmentPanel.generatedAt", {
+                      date: fmt.dateTime(file.generatedAt),
+                      by: file.generatedBy ? `（${file.generatedBy}）` : "",
+                    })
                   : tr("ui.pdfAttachmentPanel.generatedProducedWhenDisplayed")}
               </Text>
             </Stack>

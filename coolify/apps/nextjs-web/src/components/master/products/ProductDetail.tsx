@@ -17,7 +17,7 @@ import {
   IconTrash,
 } from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { useState } from "react";
 import { useFormat } from "@/components/layout/PreferencesProvider";
 import { KeywordBadges } from "@/components/master/MasterKeywordsField";
@@ -37,6 +37,7 @@ import {
 } from "@/components/ui/shells";
 import { useTabParam } from "@/hooks/useUrlState";
 import { useIsMobile } from "@/hooks/useViewport";
+import { orderTypeLabel } from "@/lib/enum-labels";
 import type { RouteView } from "@/lib/product-routes-core";
 import { isReservedSpecKey } from "@/lib/product-types";
 import { ProductDesignFiles } from "./ProductDesignFiles";
@@ -80,13 +81,6 @@ export interface ProductDetailData {
   }[];
 }
 
-const ORDER_TYPE_LABEL: Record<string, string> = {
-  PRODUCTION: "本番",
-  TEST: "テスト",
-  SAMPLE: "サンプル",
-  OTHER: "その他",
-};
-
 export function ProductDetail({
   record,
   auditEntries,
@@ -107,6 +101,7 @@ export function ProductDetail({
   designRequests?: DesignRequestLink[];
 }) {
   const tr = useTranslations();
+  const locale = useLocale();
   const fmt = useFormat();
   const router = useRouter();
   const isMobile = useIsMobile();
@@ -154,12 +149,14 @@ export function ProductDetail({
               onClick: () => setDuplicateOpen(true),
             },
             {
-              label: record.isActive ? "無効化" : tr("common.enable"),
+              label: record.isActive
+                ? tr("common.disable")
+                : tr("common.enable"),
               icon: <IconCircleMinus size={14} />,
               onClick: () => setToggleOpen(true),
             },
             {
-              label: "削除",
+              label: tr("common.delete"),
               icon: <IconTrash size={14} />,
               color: "red",
               divider: true,
@@ -171,7 +168,7 @@ export function ProductDetail({
       }
       breadcrumbs={[
         tr("common.masterData"),
-        { label: "製品", href: BASE_PATH },
+        { label: tr("master.productTable.pageTitle"), href: BASE_PATH },
         record.code ?? record.nameJa,
       ]}
       createdAt={fmt.dateTime(record.createdAt)}
@@ -215,7 +212,9 @@ export function ProductDetail({
       <AppTabs onChange={setTab} value={tab}>
         <Tabs.List>
           <Tabs.Tab value="overview">{tr("common.overview")}</Tabs.Tab>
-          <Tabs.Tab value="routes">工程</Tabs.Tab>
+          <Tabs.Tab value="routes">
+            {tr("master.productDetail.routesTab")}
+          </Tabs.Tab>
           <Tabs.Tab value="related">{tr("common.related")}</Tabs.Tab>
           <Tabs.Tab value="history">{tr("common.history")}</Tabs.Tab>
         </Tabs.List>
@@ -319,7 +318,7 @@ export function ProductDetail({
                         <Table.Td>{e.customerName}</Table.Td>
                         <Table.Td>
                           <Badge color="gray" variant="light">
-                            {ORDER_TYPE_LABEL[e.orderType] ?? e.orderType}
+                            {orderTypeLabel(e.orderType, locale)}
                           </Badge>
                         </Table.Td>
                         {!isMobile && (

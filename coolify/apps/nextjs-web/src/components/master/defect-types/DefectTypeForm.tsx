@@ -33,15 +33,19 @@ import { zodResolver } from "@/lib/form";
 
 const BASE_PATH = "/master/defect-types";
 
-const defectTypeSchema = z.object({
-  code: z.string().min(1, "コードを入力してください"),
-  nameJa: z.string().min(1, "名称（日本語）を入力してください"),
-  nameTranslations: z.record(z.string(), z.string()).default({}),
-  sortOrder: z.number().int("表示順は整数で入力してください").min(0),
-  isActive: z.boolean(),
-});
+const defectTypeSchema = (tr: (key: string) => string) =>
+  z.object({
+    code: z.string().min(1, tr("common.codeRequired")),
+    nameJa: z.string().min(1, tr("common.nameJaRequired")),
+    nameTranslations: z.record(z.string(), z.string()).default({}),
+    sortOrder: z
+      .number()
+      .int(tr("master.processSteps.sortOrderInteger"))
+      .min(0),
+    isActive: z.boolean(),
+  });
 
-type FormValues = z.infer<typeof defectTypeSchema>;
+type FormValues = z.infer<ReturnType<typeof defectTypeSchema>>;
 
 export function DefectTypeForm() {
   const tr = useTranslations();
@@ -50,7 +54,7 @@ export function DefectTypeForm() {
   const [isPending, startTransition] = useTransition();
 
   const form = useForm<FormValues>({
-    validate: zodResolver(defectTypeSchema),
+    validate: zodResolver(defectTypeSchema(tr)),
     initialValues: {
       code: "",
       nameJa: "",
@@ -85,7 +89,7 @@ export function DefectTypeForm() {
     <FormShell
       breadcrumbs={[
         tr("common.masterData"),
-        { label: "不良種類", href: BASE_PATH },
+        { label: tr("common.defectTypes"), href: BASE_PATH },
         tr("common.new2"),
       ]}
       isDirty={form.isDirty()}
@@ -102,7 +106,9 @@ export function DefectTypeForm() {
             )}
             label={
               <HelpLabel
-                {...fieldHelp("defectType", "code", { label: "コード" })}
+                {...fieldHelp("defectType", "code", {
+                  label: tr("common.code"),
+                })}
               />
             }
             placeholder={tr("master.defectTypes.eGScratch")}

@@ -79,12 +79,14 @@ export function PlantDetail({
         <ResourceActions
           menuItems={[
             {
-              label: record.isActive ? "無効化" : tr("common.enable"),
+              label: record.isActive
+                ? tr("common.disable")
+                : tr("common.enable"),
               icon: <IconCircleMinus size={14} />,
               onClick: () => setToggleOpen(true),
             },
             {
-              label: "削除",
+              label: tr("common.delete"),
               icon: <IconTrash size={14} />,
               color: "red",
               divider: true,
@@ -96,7 +98,7 @@ export function PlantDetail({
       }
       breadcrumbs={[
         tr("common.masterData"),
-        { label: "拠点", href: BASE_PATH },
+        { label: tr("master.plantDetail.plantsLabel"), href: BASE_PATH },
         record.code,
       ]}
       createdAt={fmt.dateTime(record.createdAt)}

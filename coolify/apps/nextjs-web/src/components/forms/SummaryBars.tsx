@@ -17,6 +17,7 @@
  */
 
 import { Box, Group, Stack, Text } from "@mantine/core";
+import { useTranslations } from "next-intl";
 
 export interface BarItem {
   label: string;
@@ -36,7 +37,7 @@ export function SummaryBars({
   total,
   /** 割合を出すか（複数選択は合計が回答数を超えるので出さない）。 */
   showPercent = true,
-  emptyMessage = "回答がありません",
+  emptyMessage,
 }: {
   items: BarItem[];
   /** 割合の分母。既定は最大値ではなく回答数。 */
@@ -44,10 +45,11 @@ export function SummaryBars({
   showPercent?: boolean;
   emptyMessage?: string;
 }) {
+  const tr = useTranslations();
   if (items.length === 0) {
     return (
       <Text c="dimmed" size="sm">
-        {emptyMessage}
+        {emptyMessage ?? tr("forms.summaryCharts.noResponses")}
       </Text>
     );
   }

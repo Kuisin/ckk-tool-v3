@@ -28,16 +28,19 @@ import {
 import { useIsMobile } from "@/hooks/useViewport";
 import { fieldHelp, fieldHelpTip } from "@/lib/field-help";
 import { zodResolver } from "@/lib/form";
+import type { Tr } from "@/lib/i18n";
 
 const BASE_PATH = "/master/approval-settings";
 
-const groupSchema = z.object({
-  nameJa: z.string().min(1, "名称（日本語）を入力してください"),
-  nameTranslations: z.record(z.string(), z.string()).default({}),
-  isActive: z.boolean(),
-});
+function buildGroupSchema(tr: Tr) {
+  return z.object({
+    nameJa: z.string().min(1, tr("master.approvalGroupForm.enterNameJa")),
+    nameTranslations: z.record(z.string(), z.string()).default({}),
+    isActive: z.boolean(),
+  });
+}
 
-type FormValues = z.infer<typeof groupSchema>;
+type FormValues = z.infer<ReturnType<typeof buildGroupSchema>>;
 
 export interface ApprovalGroupFormInitial {
   id: number;
@@ -58,7 +61,7 @@ export function ApprovalGroupForm({
   const isEdit = !!initial;
 
   const form = useForm<FormValues>({
-    validate: zodResolver(groupSchema),
+    validate: zodResolver(buildGroupSchema(tr)),
     initialValues: {
       nameJa: initial?.nameJa ?? "",
       nameTranslations: initial?.nameTranslations ?? {},
@@ -100,7 +103,7 @@ export function ApprovalGroupForm({
       breadcrumbs={[
         tr("common.masterData"),
         { label: tr("common.approvalGroup"), href: BASE_PATH },
-        isEdit ? "編集" : tr("common.new2"),
+        isEdit ? tr("common.edit") : tr("common.new2"),
       ]}
       isDirty={form.isDirty()}
       isPending={isPending}
@@ -111,7 +114,7 @@ export function ApprovalGroupForm({
       status={isEdit ? <ActiveBadge active={initial.isActive} /> : undefined}
       title={
         isEdit
-          ? `承認グループ 編集 — ${initial.nameJa}`
+          ? tr("master.approvalGroupForm.editTitle", { name: initial.nameJa })
           : tr("master.approvalSettings.newApprovalGroup")
       }
     >

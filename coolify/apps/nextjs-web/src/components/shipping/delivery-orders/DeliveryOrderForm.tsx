@@ -54,12 +54,12 @@ import {
 } from "@/app/(dashboard)/shipping/delivery-orders/actions";
 import { GhostButton } from "@/components/ui/buttons";
 import { DocNumber } from "@/components/ui/DocNumber";
-import { PRODUCT_F4 } from "@/components/ui/f4-presets";
+import { productF4 } from "@/components/ui/f4-presets";
 import { HelpLabel } from "@/components/ui/HelpLabel";
 import { SearchSelect } from "@/components/ui/SearchSelect";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { FormSection, FormShell } from "@/components/ui/shells";
-import { deliveryOrderTypeLabel } from "@/lib/enum-labels";
+import { deliveryMethodLabel, deliveryOrderTypeLabel } from "@/lib/enum-labels";
 import { fieldHelp } from "@/lib/field-help";
 import { zodResolver } from "@/lib/form";
 import type { Option } from "@/lib/mock";
@@ -74,28 +74,34 @@ const BASE_PATH = "/shipping/delivery-orders";
 
 const DELIVERY_ORDER_TYPES = ["DISPATCH", "STOCK_STORAGE"] as const;
 
-const itemSchema = z.object({
-  rowId: z.string(),
-  /** 出荷元の注文明細（m:n — 1 出荷書に複数、1 注文明細も複数の出荷書へ）。 */
-  orderLineId: z.string().nullable(),
-  orderLineNumber: z.string().nullable(),
-  productId: z.string().min(1, "製品を選択してください"),
-  productName: z.string(),
-  lotNumber: z.number().int().min(1).nullable(),
-  quantity: z.number().int().min(1, "1以上"),
-  notes: z.string(),
-});
+function buildSchema(tr: ReturnType<typeof useTranslations>) {
+  const itemSchema = z.object({
+    rowId: z.string(),
+    /** 出荷元の注文明細（m:n — 1 出荷書に複数、1 注文明細も複数の出荷書へ）。 */
+    orderLineId: z.string().nullable(),
+    orderLineNumber: z.string().nullable(),
+    productId: z
+      .string()
+      .min(1, tr("shipping.deliveryOrderForm.selectProduct")),
+    productName: z.string(),
+    lotNumber: z.number().int().min(1).nullable(),
+    quantity: z.number().int().min(1, tr("common.mustBeAtLeastOne")),
+    notes: z.string(),
+  });
 
-const schema = z.object({
-  /** 顧客はヘッダが権威（1 出荷書 = 1 顧客）。 */
-  customerBpId: z.string().min(1, "注文請書を選択してください"),
-  type: z.enum(DELIVERY_ORDER_TYPES),
-  fromPlantId: z.string().nullable(),
-  notes: z.string(),
-  items: z.array(itemSchema).min(1, "明細を1件以上追加してください"),
-});
+  return z.object({
+    /** 顧客はヘッダが権威（1 出荷書 = 1 顧客）。 */
+    customerBpId: z
+      .string()
+      .min(1, tr("shipping.deliveryOrderForm.selectAnOrderAcceptance")),
+    type: z.enum(DELIVERY_ORDER_TYPES),
+    fromPlantId: z.string().nullable(),
+    notes: z.string(),
+    items: z.array(itemSchema).min(1, tr("common.addAtLeastOneLineItem")),
+  });
+}
 
-type FormValues = z.infer<typeof schema>;
+type FormValues = z.infer<ReturnType<typeof buildSchema>>;
 type ItemForm = FormValues["items"][number];
 
 let rowSeq = 0;
@@ -197,6 +203,7 @@ export function DeliveryOrderForm({
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const orderId = mode === "edit" ? order?.id : undefined;
+  const schema = buildSchema(tr);
 
   // 注文明細ごとの受注情報（完了指示書・在庫ロット・受注数量）。
   // グループのロットピッカーは必ず**自分の注文明細**の情報から選択肢を作る。
@@ -330,7 +337,11 @@ export function DeliveryOrderForm({
       const covered = usage.reduce((sum, u) => sum + u.quantity, 0);
       if (usage.length > 0 && covered < remaining) {
         shortfalls.push(
-          `${info.orderLineNumber}（未出荷 ${remaining} / 充当 ${covered}）`,
+          tr("shipping.deliveryOrderForm.shortfallLine", {
+            orderLineNumber: info.orderLineNumber,
+            remaining,
+            covered,
+          }),
         );
       }
       newItems.push(...defaults);
@@ -342,14 +353,18 @@ export function DeliveryOrderForm({
     if (alreadyShipped.length > 0) {
       notifications.show({
         title: tr("shipping.deliveryOrders.linesAlreadyShippedWereSkipped"),
-        message: `${alreadyShipped.join("、")} は受注数量まで出荷済みです`,
+        message: tr("shipping.deliveryOrderForm.alreadyShippedMessage", {
+          lines: alreadyShipped.join("、"),
+        }),
         color: "orange",
       });
     }
     if (shortfalls.length > 0) {
       notifications.show({
         title: tr("shipping.deliveryOrders.thereIsNotEnoughStock"),
-        message: `${shortfalls.join("、")} — 不足分は指示書の完了・在庫引当が必要です`,
+        message: tr("shipping.deliveryOrderForm.shortfallMessage", {
+          lines: shortfalls.join("、"),
+        }),
         color: "orange",
       });
     }
@@ -395,7 +410,9 @@ export function DeliveryOrderForm({
           // ことを伝える（プリフィルが「効いていない」ように見えるため）。
           notifications.show({
             title: tr("shipping.deliveryOrders.couldNotLoadTheOrderLines"),
-            message: `${initialOrderLine.label} — 確定済みの注文明細のみ出荷書に追加できます`,
+            message: tr("shipping.deliveryOrderForm.couldNotAddOrderLine", {
+              label: initialOrderLine.label,
+            }),
             color: "red",
           });
         }
@@ -476,7 +493,9 @@ export function DeliveryOrderForm({
           message:
             mode === "edit"
               ? tr("shipping.deliveryOrders.theDeliveryOrderWasUpdated")
-              : `出荷書 ${result.data.number} を作成しました`,
+              : tr("shipping.deliveryOrderForm.createdWithNumber", {
+                  number: result.data.number,
+                }),
           color: "green",
         });
         // 保存後は必ず**詳細（閲覧）画面**へ。フォームが dirty のままだと
@@ -505,9 +524,20 @@ export function DeliveryOrderForm({
     if (over.length > 0) {
       notifications.show({
         title: tr("shipping.deliveryOrders.itExceedsTheOrderedQuantity"),
-        message: `${over
-          .map((c) => `${c.number}（残 ${c.remaining} / 出荷 ${c.total}）`)
-          .join("、")} — 受注数を超える出荷はできません`,
+        message: tr(
+          "shipping.deliveryOrderForm.exceedsOrderedQuantityMessage",
+          {
+            lines: over
+              .map((c) =>
+                tr("shipping.deliveryOrderForm.exceedsOrderedQuantityLine", {
+                  number: c.number,
+                  remaining: c.remaining,
+                  total: c.total,
+                }),
+              )
+              .join("、"),
+          },
+        ),
         color: "red",
       });
       return;
@@ -525,14 +555,20 @@ export function DeliveryOrderForm({
         <Box>
           {notReady.map((c) => (
             <Text key={`nr-${c.number}`} size="sm">
-              {c.number} は完成品が受注残に足りません（引当可能 {c.coverable} /
-              残 {c.remaining}）
+              {tr("shipping.deliveryOrderForm.notEnoughFinishedGoodsLine", {
+                number: c.number,
+                coverable: c.coverable,
+                remaining: c.remaining,
+              })}
             </Text>
           ))}
           {partial.map((c) => (
             <Text key={`pt-${c.number}`} size="sm">
-              {c.number} の出荷数が受注残に満たしていません（出荷 {c.total} / 残{" "}
-              {c.remaining}）
+              {tr("shipping.deliveryOrderForm.partialShipmentLine", {
+                number: c.number,
+                total: c.total,
+                remaining: c.remaining,
+              })}
             </Text>
           ))}
           <Text c="dimmed" mt="xs" size="sm">
@@ -557,7 +593,7 @@ export function DeliveryOrderForm({
           <Group align="flex-end" gap="sm" grow preventGrowOverflow={false}>
             <SearchSelect
               error={form.errors[`items.${ri}.productId`]}
-              f4={PRODUCT_F4}
+              f4={productF4(tr)}
               initialOption={
                 item.productId
                   ? { value: item.productId, label: item.productName }
@@ -581,9 +617,17 @@ export function DeliveryOrderForm({
                 clearable
                 data={lotOptions.map((lot) => ({
                   value: String(lot.lotNumber),
-                  label: `#${lot.lotNumber}（現物 ${lot.quantity}${
-                    lot.reserved > 0 ? ` / 予約 ${lot.reserved}` : ""
-                  }）`,
+                  label:
+                    lot.reserved > 0
+                      ? tr("shipping.deliveryOrderForm.lotOptionWithReserved", {
+                          lotNumber: lot.lotNumber,
+                          quantity: lot.quantity,
+                          reserved: lot.reserved,
+                        })
+                      : tr("shipping.deliveryOrderForm.lotOption", {
+                          lotNumber: lot.lotNumber,
+                          quantity: lot.quantity,
+                        }),
                 }))}
                 label={tr("shipping.deliveryOrders.lotsWorkOrdersForThisOrder")}
                 maw={240}
@@ -651,7 +695,7 @@ export function DeliveryOrderForm({
       breadcrumbs={[
         tr("common.shipping"),
         { label: tr("common.deliveryOrder"), href: BASE_PATH },
-        mode === "edit" ? "編集" : tr("common.new2"),
+        mode === "edit" ? tr("common.edit") : tr("common.new2"),
       ]}
       isDirty={form.isDirty()}
       isPending={isPending}
@@ -666,7 +710,9 @@ export function DeliveryOrderForm({
       }
       title={
         mode === "edit"
-          ? `出荷書 編集 ${orderId ?? ""}`
+          ? tr("shipping.deliveryOrderForm.editWithNumber", {
+              orderId: orderId ?? "",
+            })
           : tr("shipping.deliveryOrders.newDeliveryOrder")
       }
     >
@@ -767,26 +813,42 @@ export function DeliveryOrderForm({
                       </DocNumber>
                       {info && (
                         <Text c="dimmed" size="xs">
-                          {info.customerName} / {info.productName}
                           {/* 束ねの条件（出荷先・配送方法）が見えるようにする */}
-                          {info.shipToName
-                            ? ` · 出荷先 ${info.shipToName}`
-                            : ""}
-                          {info.deliveryMethod === "DIRECT_TO_USER"
-                            ? " · ユーザー直送"
-                            : ""}{" "}
-                          · 受注 {info.quantity}
-                          {info.shippedQuantity > 0
-                            ? ` · 出荷済 ${info.shippedQuantity}`
-                            : ""}{" "}
-                          {/* 完成 = 接続された指示書の完成数のうちこの明細への配分
-                              （distributeFinished）— DO の数量はこれが源泉 */}
-                          · 完成{" "}
-                          {info.completedWorkOrders.reduce(
-                            (sum, wo) => sum + wo.outputQuantity,
-                            0,
-                          )}
-                          （完了指示書 {info.completedWorkOrders.length} 件）
+                          {[
+                            `${info.customerName} / ${info.productName}`,
+                            info.shipToName
+                              ? `${tr("sales.orderAcceptances.shipTo")} ${info.shipToName}`
+                              : null,
+                            info.deliveryMethod === "DIRECT_TO_USER"
+                              ? deliveryMethodLabel("DIRECT_TO_USER", locale)
+                              : null,
+                            tr(
+                              "shipping.deliveryOrderForm.orderedQuantityLabel",
+                              {
+                                quantity: info.quantity,
+                              },
+                            ),
+                            info.shippedQuantity > 0
+                              ? tr(
+                                  "shipping.deliveryOrderForm.shippedQuantityLabel",
+                                  { quantity: info.shippedQuantity },
+                                )
+                              : null,
+                            // 完成 = 接続された指示書の完成数のうちこの明細への配分
+                            // （distributeFinished）— DO の数量はこれが源泉
+                            tr(
+                              "shipping.deliveryOrderForm.completedQuantityLabel",
+                              {
+                                quantity: info.completedWorkOrders.reduce(
+                                  (sum, wo) => sum + wo.outputQuantity,
+                                  0,
+                                ),
+                                count: info.completedWorkOrders.length,
+                              },
+                            ),
+                          ]
+                            .filter((part): part is string => Boolean(part))
+                            .join(" · ")}
                         </Text>
                       )}
                       {info &&
@@ -801,15 +863,20 @@ export function DeliveryOrderForm({
                           if (total > remaining) {
                             return (
                               <Text c="red" fw={600} size="xs">
-                                受注残 {remaining} を超えています（出荷 {total}
-                                ）
+                                {tr(
+                                  "shipping.deliveryOrderForm.exceedsRemainingLabel",
+                                  { remaining, total },
+                                )}
                               </Text>
                             );
                           }
                           if (total < remaining) {
                             return (
                               <Text c="orange" size="xs">
-                                一部出荷（出荷 {total} / 受注残 {remaining}）
+                                {tr(
+                                  "shipping.deliveryOrderForm.partialShipmentLabel",
+                                  { total, remaining },
+                                )}
                               </Text>
                             );
                           }
@@ -867,7 +934,9 @@ export function DeliveryOrderForm({
 
         <Divider my="md" />
         <Group justify="flex-end">
-          <Text fw={700}>数量合計 {totalQuantity}</Text>
+          <Text fw={700}>
+            {tr("common.totalQuantity")} {totalQuantity}
+          </Text>
         </Group>
       </FormSection>
     </FormShell>

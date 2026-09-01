@@ -98,7 +98,7 @@ export function AttachmentsPanel({
   attachments,
   canUpload = false,
   canDelete = false,
-  title = "添付ファイル",
+  title: titleProp,
 }: {
   /** 添付対象のテーブル名（@@map 値）。例: "material_purchase_orders" */
   ownerType: string;
@@ -110,6 +110,7 @@ export function AttachmentsPanel({
   title?: string;
 }) {
   const tr = useTranslations();
+  const title = titleProp ?? tr("ui.attachmentsPanel.defaultTitle");
   const fmt = useFormat();
   const router = useRouter();
   const [pendingFile, setPendingFile] = useState<File | null>(null);
@@ -308,7 +309,9 @@ export function AttachmentsPanel({
                   ) : (
                     canDelete && (
                       <ActionIcon
-                        aria-label={`${a.filename} を削除`}
+                        aria-label={tr("ui.attachmentsPanel.deleteAttachment", {
+                          filename: a.filename,
+                        })}
                         color="red"
                         onClick={() => setDeleteTarget(a)}
                         variant="subtle"
@@ -360,7 +363,9 @@ export function AttachmentsPanel({
         title={tr("ui.attachmentsPanel.confirmDeletingTheAttachment")}
       >
         <Text size="sm">
-          {deleteTarget?.filename} を削除します。この操作は取り消せません。
+          {tr("ui.attachmentsPanel.deleteConfirmBody", {
+            filename: deleteTarget?.filename ?? "",
+          })}
         </Text>
       </ModalShell>
     </Stack>

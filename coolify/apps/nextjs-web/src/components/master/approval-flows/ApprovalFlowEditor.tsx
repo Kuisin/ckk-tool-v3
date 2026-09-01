@@ -195,7 +195,9 @@ export function ApprovalFlowEditor({
       ...prev,
       {
         key: nextKey(),
-        nameJa: `第${prev.length + 1}承認`,
+        nameJa: tr("master.approvalFlowEditor.nthApproval", {
+          n: prev.length + 1,
+        }),
         nameTranslations: {},
         groupId: null,
         mode: "ANY",
@@ -254,7 +256,9 @@ export function ApprovalFlowEditor({
       if (result.ok) {
         notifications.show({
           title: tr("common.saved2"),
-          message: `${targetLabel}の承認フロー`,
+          message: tr("master.approvalFlowEditor.approvalFlowFor", {
+            label: targetLabel,
+          }),
           color: "green",
         });
         if (afterSaveHref) router.refresh();
@@ -279,7 +283,9 @@ export function ApprovalFlowEditor({
             { label: tr("common.approvalSettings"), href: BASE_PATH },
             tr("common.approvalFlow"),
           ]}
-          title={`${targetLabel}の承認フロー`}
+          title={tr("master.approvalFlowEditor.approvalFlowFor", {
+            label: targetLabel,
+          })}
         />
       )}
       {!embedded && (
@@ -301,7 +307,7 @@ export function ApprovalFlowEditor({
           </Text>
           ）が要ります。誰が承認するかは、この画面で指定した
           {allowIndividual
-            ? "承認グループ・承認者"
+            ? tr("master.approvalFlowEditor.approvalGroupAndApprovers")
             : tr("common.approvalGroup")}
           だけで決まります。書類を開けない人は、指定しても承認できません
           （権限はユーザー管理 SY01 のロールで決まります）。
@@ -389,7 +395,10 @@ export function ApprovalFlowEditor({
                         value: r.value,
                         label: r.allowed
                           ? r.label
-                          : `${r.label}（承認権限なし）`,
+                          : tr(
+                              "master.approvalFlowEditor.noApprovalPermission",
+                              { label: r.label },
+                            ),
                         allowed: r.allowed,
                       }));
                   }}
@@ -488,7 +497,7 @@ export function ApprovalFlowEditor({
                   <IconArrowDown size={16} />
                 </ActionIcon>
                 <ActionIcon
-                  aria-label="削除"
+                  aria-label={tr("common.delete")}
                   color="red"
                   onClick={() => remove(s.key)}
                   size={isMobile ? "lg" : undefined}

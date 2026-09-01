@@ -89,12 +89,18 @@ export function DiscountRuleModal({
       }}
       opened={opened}
       size="md"
-      submitLabel={initial ? "更新" : tr("common.add")}
-      title={initial ? "値引きルールを編集" : tr("common.addADiscountRule")}
+      submitLabel={initial ? tr("common.update") : tr("common.add")}
+      title={
+        initial
+          ? tr("sales.priceLists.editTheDiscountRule")
+          : tr("common.addADiscountRule")
+      }
     >
       <TextInput
         error={
-          error && !draft.label.trim() ? "名称を入力してください" : undefined
+          error && !draft.label.trim()
+            ? tr("sales.discountRuleModal.enterAName")
+            : undefined
         }
         label={tr("common.name2")}
         onChange={(e) => patch({ label: e.currentTarget.value })}
@@ -123,11 +129,13 @@ export function DiscountRuleModal({
 
       <NumberInput
         error={
-          error && draft.value <= 0 ? "1以上を入力してください" : undefined
+          error && draft.value <= 0
+            ? tr("sales.discountRuleModal.enterAtLeast1")
+            : undefined
         }
         label={
           draft.discountType === "RATE"
-            ? "率"
+            ? tr("sales.discountRuleModal.rateLabel")
             : tr("sales.priceLists.discountAmountPerPiece")
         }
         min={0}
@@ -151,7 +159,7 @@ export function DiscountRuleModal({
           onChange={(v) =>
             patch({ minQuantity: typeof v === "number" ? v : 1 })
           }
-          suffix=" 本"
+          suffix={` ${tr("common.pcs")}`}
           value={draft.minQuantity}
           withAsterisk
         />
@@ -162,7 +170,7 @@ export function DiscountRuleModal({
             patch({ maxQuantity: typeof v === "number" ? v : null })
           }
           placeholder={tr("sales.priceLists.leaveBlankForNoMaximum")}
-          suffix=" 本"
+          suffix={` ${tr("common.pcs")}`}
           value={draft.maxQuantity ?? ""}
         />
       </Group>
@@ -170,7 +178,9 @@ export function DiscountRuleModal({
       <Group grow>
         <DatePickerInput
           error={
-            error && !draft.validFrom ? "開始日を選択してください" : undefined
+            error && !draft.validFrom
+              ? tr("master.approvalSettings.selectAStartDate")
+              : undefined
           }
           label={
             <HelpLabel
@@ -198,7 +208,7 @@ export function DiscountRuleModal({
 
       <Switch
         checked={draft.isActive}
-        label="有効"
+        label={tr("common.enabled")}
         onChange={(e) => patch({ isActive: e.currentTarget.checked })}
       />
 

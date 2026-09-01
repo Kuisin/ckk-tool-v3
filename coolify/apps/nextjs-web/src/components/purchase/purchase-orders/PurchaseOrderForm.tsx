@@ -53,26 +53,32 @@ interface Option {
   label: string;
 }
 
-const itemSchema = z.object({
-  rowId: z.string(),
-  materialId: z.string().min(1, "素材を選択してください"),
-  materialLabel: z.string(),
-  plantId: z.string().nullable(),
-  quantity: z.number().positive("0より大きい値"),
-  unit: z.string().min(1, "必須"),
-  unitPrice: z.number().min(0, "0以上"),
-  expectedAt: z.string().nullable(),
-  notes: z.string(),
-});
+function buildSchema(tr: ReturnType<typeof useTranslations>) {
+  const itemSchema = z.object({
+    rowId: z.string(),
+    materialId: z
+      .string()
+      .min(1, tr("purchase.purchaseOrderForm.selectMaterial")),
+    materialLabel: z.string(),
+    plantId: z.string().nullable(),
+    quantity: z.number().positive(tr("common.mustBeGreaterThanZero")),
+    unit: z.string().min(1, tr("common.required")),
+    unitPrice: z.number().min(0, tr("common.mustBeZeroOrMore")),
+    expectedAt: z.string().nullable(),
+    notes: z.string(),
+  });
 
-const schema = z.object({
-  supplierBpId: z.string().min(1, "仕入先を選択してください"),
-  purchaseDate: z.string().nullable(),
-  notes: z.string(),
-  items: z.array(itemSchema).min(1, "明細を1件以上追加してください"),
-});
+  return z.object({
+    supplierBpId: z
+      .string()
+      .min(1, tr("purchase.purchaseRequests.selectASupplier")),
+    purchaseDate: z.string().nullable(),
+    notes: z.string(),
+    items: z.array(itemSchema).min(1, tr("common.addAtLeastOneLineItem")),
+  });
+}
 
-type FormValues = z.infer<typeof schema>;
+type FormValues = z.infer<ReturnType<typeof buildSchema>>;
 type ItemForm = FormValues["items"][number];
 
 let rowSeq = 0;
@@ -128,6 +134,7 @@ export function PurchaseOrderForm({
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const poNumber = mode === "edit" ? purchaseOrder?.poNumber : undefined;
+  const schema = buildSchema(tr);
 
   const form = useForm<FormValues>({
     validate: zodResolver(schema),
@@ -172,8 +179,12 @@ export function PurchaseOrderForm({
           title: tr("common.saved2"),
           message:
             mode === "edit"
-              ? `素材発注書 ${result.data.poNumber} を更新しました`
-              : `素材発注書 ${result.data.poNumber} を作成しました`,
+              ? tr("purchase.purchaseOrderForm.updatedWithNumber", {
+                  poNumber: result.data.poNumber,
+                })
+              : tr("purchase.purchaseOrderForm.createdWithNumber", {
+                  poNumber: result.data.poNumber,
+                }),
           color: "green",
         });
         router.push(`${BASE_PATH}/${result.data.poNumber}`);
@@ -192,7 +203,7 @@ export function PurchaseOrderForm({
       breadcrumbs={[
         tr("common.purchasing"),
         { label: tr("common.materialPurchaseOrder"), href: BASE_PATH },
-        mode === "edit" ? "編集" : tr("common.new2"),
+        mode === "edit" ? tr("common.edit") : tr("common.new2"),
       ]}
       isDirty={form.isDirty()}
       isPending={isPending}
@@ -210,7 +221,9 @@ export function PurchaseOrderForm({
       }
       title={
         mode === "edit"
-          ? `素材発注書 編集 ${poNumber ?? ""}`
+          ? tr("purchase.purchaseOrderForm.editWithNumber", {
+              poNumber: poNumber ?? "",
+            })
           : tr("purchase.purchaseOrders.newMaterialPurchaseOrder")
       }
     >
@@ -385,7 +398,9 @@ export function PurchaseOrderForm({
 
         <Divider my="md" />
         <Group justify="flex-end">
-          <Text fw={700}>合計金額 {formatMoney(total)}</Text>
+          <Text fw={700}>
+            {tr("common.totalAmount")} {formatMoney(total)}
+          </Text>
         </Group>
       </FormSection>
     </FormShell>

@@ -102,7 +102,7 @@ export function ItemDefEditForm({
         notifications.show({
           title: tr("common.saved2"),
           message: isEdit
-            ? "項目を更新しました"
+            ? tr("settings.itemDefEditForm.theItemWasUpdated")
             : tr("settings.itemDefEditForm.theItemWasCreated"),
           color: "green",
         });
@@ -123,11 +123,15 @@ export function ItemDefEditForm({
         breadcrumbs={[
           tr("common.system"),
           { label: tr("common.productItems"), href: BASE },
-          isEdit ? "項目編集" : tr("settings.itemDefEditForm.addAnItem"),
+          isEdit
+            ? tr("settings.itemDefEditForm.editItem")
+            : tr("settings.itemDefEditForm.addAnItem"),
         ]}
         title={
           isEdit
-            ? `項目編集 — ${def.label.ja || def.key}`
+            ? tr("settings.itemDefEditForm.editItemTitle", {
+                name: def.label.ja || def.key,
+              })
             : tr("settings.itemDefEditForm.addAnItem")
         }
       />

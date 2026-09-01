@@ -53,7 +53,10 @@ export function DeleteBpModal({
       loading={isPending}
       message={
         target
-          ? `${entityLabel}「${label(target)}」を削除します。この操作は取り消せません。`
+          ? tr("master.bpModals.deleteConfirm", {
+              entityLabel,
+              name: label(target),
+            })
           : ""
       }
       onClose={onClose}
@@ -64,7 +67,10 @@ export function DeleteBpModal({
           if (result.ok) {
             notifications.show({
               title: tr("common.deleted"),
-              message: `${entityLabel}「${label(target)}」を削除しました`,
+              message: tr("master.bpModals.deleted", {
+                entityLabel,
+                name: label(target),
+              }),
               color: "green",
             });
             onClose();
@@ -79,7 +85,7 @@ export function DeleteBpModal({
         });
       }}
       opened={opened}
-      title={`${entityLabel}の削除`}
+      title={tr("master.bpModals.deleteTitle", { entityLabel })}
       warning={tr("master.bp.itCannotBeDeletedWhilePrice")}
     />
   );
@@ -102,13 +108,21 @@ export function ToggleBpActiveModal({
   return (
     <ConfirmModal
       confirmColor={isActive ? "red" : "blue"}
-      confirmLabel={isActive ? "無効化する" : tr("common.enable2")}
+      confirmLabel={
+        isActive ? tr("master.bpModals.disableAction") : tr("common.enable2")
+      }
       loading={isPending}
       message={
         target
           ? isActive
-            ? `${entityLabel}「${label(target)}」を無効化します。新規のドキュメントで選択できなくなります。`
-            : `${entityLabel}「${label(target)}」を有効化します。再びドキュメントで選択できるようになります。`
+            ? tr("master.bpModals.disableConfirm", {
+                entityLabel,
+                name: label(target),
+              })
+            : tr("master.bpModals.enableConfirm", {
+                entityLabel,
+                name: label(target),
+              })
           : ""
       }
       onClose={onClose}
@@ -118,8 +132,16 @@ export function ToggleBpActiveModal({
           const result = await setBpsActive([target.id], !isActive);
           if (result.ok) {
             notifications.show({
-              title: isActive ? "無効化しました" : tr("common.enabled2"),
-              message: `${entityLabel}「${label(target)}」を${isActive ? "無効化" : "有効化"}しました`,
+              title: isActive ? tr("common.disabled2") : tr("common.enabled2"),
+              message: isActive
+                ? tr("master.bpModals.disabledEntity", {
+                    entityLabel,
+                    name: label(target),
+                  })
+                : tr("master.bpModals.enabledEntity", {
+                    entityLabel,
+                    name: label(target),
+                  }),
               color: "green",
             });
             onClose();
@@ -134,7 +156,11 @@ export function ToggleBpActiveModal({
         });
       }}
       opened={opened}
-      title={isActive ? `${entityLabel}の無効化` : `${entityLabel}の有効化`}
+      title={
+        isActive
+          ? tr("master.bpModals.disableTitle", { entityLabel })
+          : tr("master.bpModals.enableTitle", { entityLabel })
+      }
     />
   );
 }
@@ -187,7 +213,7 @@ export function AddContactModal({
       if (result.ok) {
         notifications.show({
           title: tr("common.added"),
-          message: `担当者「${name}」を追加しました`,
+          message: tr("master.bpModals.contactAdded", { name }),
           color: "green",
         });
         resetFields();
@@ -214,21 +240,21 @@ export function AddContactModal({
       opened={opened}
       size="md"
       submitLabel={tr("common.add")}
-      title={`担当者の追加 — ${bpName}`}
+      title={tr("master.bpModals.addContactTitle", { bpName })}
     >
       <Stack gap="sm">
         <SimpleGrid cols={2} spacing="sm">
           <TextInput
             label={tr("common.name3")}
             onChange={(e) => setName(e.currentTarget.value)}
-            placeholder="山田 太郎"
+            placeholder={tr("master.bpModals.namePlaceholder")}
             value={name}
             withAsterisk
           />
           <TextInput
             label={tr("common.kana")}
             onChange={(e) => setNameKana(e.currentTarget.value)}
-            placeholder="ヤマダ タロウ"
+            placeholder={tr("master.bpModals.kanaPlaceholder")}
             value={nameKana}
           />
           <TextInput

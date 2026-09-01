@@ -66,12 +66,14 @@ export function ImageCropModal({
   file,
   onCancel,
   onConfirm,
-  title = "写真の切り抜き",
-  confirmLabel = "この範囲で設定",
+  title: titleProp,
+  confirmLabel: confirmLabelProp,
   circular = true,
   loading = false,
 }: ImageCropModalProps) {
   const tr = useTranslations();
+  const title = titleProp ?? tr("ui.imageCropModal.cropThePhoto");
+  const confirmLabel = confirmLabelProp ?? tr("ui.imageCropModal.setThisRange");
   const [url, setUrl] = useState<string | null>(null);
   const [image, setImage] = useState<HTMLImageElement | null>(null);
   const [scale, setScale] = useState(1);

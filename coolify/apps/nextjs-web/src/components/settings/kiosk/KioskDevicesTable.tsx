@@ -125,10 +125,14 @@ export function resolveCurrentUserName(
 }
 
 /** オンライン列ツールチップ: プレゼンスの供給元表示。 */
-export function transportLabel(transport: KioskPresenceTransport): string {
-  if (transport === "ws") return "ライブ (WS)";
-  if (transport === "poll") return "自動更新（30秒）";
-  return "直近5分の活動から判定";
+export function transportLabel(
+  tr: ReturnType<typeof useTranslations>,
+  transport: KioskPresenceTransport,
+): string {
+  if (transport === "ws") return tr("settings.kioskDevicesTable.liveWs");
+  if (transport === "poll")
+    return tr("settings.kioskDevicesTable.autoRefresh30S");
+  return tr("settings.kioskDevicesTable.determinedFromActivityInThe");
 }
 
 // ── 本体 ────────────────────────────────────────────────────────────────────
@@ -381,7 +385,9 @@ export function KioskDevicesTable({
           )}
           {r.fingerprint && (
             <Tooltip
-              label={`アテステーション鍵: ${r.fingerprint}`}
+              label={tr("settings.kioskDevicesTable.attestationKey", {
+                fingerprint: r.fingerprint,
+              })}
               withinPortal
             >
               <Text c="dimmed" ff="monospace" size="xs">
@@ -405,7 +411,7 @@ export function KioskDevicesTable({
     },
     {
       key: "plant",
-      header: "拠点",
+      header: tr("common.site"),
       sortable: true,
       render: (r) => (
         <Text c={r.plantLabel ? undefined : "dimmed"} size="sm" truncate>
@@ -463,7 +469,7 @@ export function KioskDevicesTable({
       sortable: true,
       render: (r) =>
         r.status === "ACTIVE" ? (
-          <Tooltip label={transportLabel(transport)} withinPortal>
+          <Tooltip label={transportLabel(tr, transport)} withinPortal>
             <Box>
               <OnlineDot online={resolveOnline(r, presence, live)} />
             </Box>
@@ -533,9 +539,9 @@ export function KioskDevicesTable({
         onAction: () =>
           setConfirm({
             title: tr("settings.kiosk.confirmEnabling"),
-            message: `この端末を有効化します（タブレットとのリンク: ${
-              r.linkedAt ? fmt.dateTime(r.linkedAt) : "—"
-            }）。有効化するとタブレットが自動でキオスクとして使用可能になります。`,
+            message: tr("settings.kioskDevicesTable.enableThisDeviceLinked", {
+              linkedAt: r.linkedAt ? fmt.dateTime(r.linkedAt) : "—",
+            }),
             confirmLabel: tr("common.enable"),
             confirmColor: "green",
             successMessage: tr("settings.kiosk.theDeviceWasEnabledItsScreen"),
@@ -606,13 +612,13 @@ export function KioskDevicesTable({
     }
     if (r.status === "PENDING") {
       actions.push({
-        label: "削除",
+        label: tr("common.delete"),
         color: "red",
         onAction: () =>
           setConfirm({
             title: tr("common.confirmDeletion"),
             message: tr("settings.kiosk.deletesAnUnlinkedDeviceProfileThis"),
-            confirmLabel: "削除",
+            confirmLabel: tr("common.delete"),
             successMessage: tr("settings.kiosk.theDeviceProfileWasDeleted"),
             run: () => deleteDeviceProfile(r.id),
           }),
@@ -660,7 +666,7 @@ export function KioskDevicesTable({
             clearable
             data={plantOptions}
             onChange={setPlant}
-            placeholder="拠点"
+            placeholder={tr("common.site")}
             searchable
             style={isMobile ? { flex: 1 } : undefined}
             value={plant}
@@ -791,7 +797,9 @@ export function KioskDevicesTable({
         onConfirm={handleLink}
         opened={linkTarget != null}
         size="md"
-        title={`端末リンク — ${linkTarget?.name ?? ""}`}
+        title={tr("settings.kioskDevicesTable.deviceLinkName", {
+          name: linkTarget?.name ?? "",
+        })}
       >
         <Stack gap="sm">
           <Alert color="blue" variant="light">

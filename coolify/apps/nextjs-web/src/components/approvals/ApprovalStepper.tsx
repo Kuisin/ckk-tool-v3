@@ -46,7 +46,11 @@ export function ApprovalStepper({
       {steps.map((s) => (
         <Stepper.Step
           description={
-            s.mode === "ALL" ? `${s.groupLabel}（全員承認）` : s.groupLabel
+            s.mode === "ALL"
+              ? tr("approvals.approvalStepper.groupAllMustApprove", {
+                  group: s.groupLabel,
+                })
+              : s.groupLabel
           }
           key={s.stepNo}
           label={s.label}

@@ -21,7 +21,7 @@ import {
   searchShipToOptions,
 } from "@/app/(dashboard)/_shared/option-search";
 import { createManualAcceptance } from "@/app/(dashboard)/sales/order-acceptances/actions";
-import { CUSTOMER_F4 } from "@/components/ui/f4-presets";
+import { customerF4 } from "@/components/ui/f4-presets";
 import { HelpLabel } from "@/components/ui/HelpLabel";
 import { SalesRepSelect } from "@/components/ui/SalesRepSelect";
 import { SearchSelect } from "@/components/ui/SearchSelect";
@@ -100,7 +100,9 @@ export function OrderAcceptanceCreateForm({
       if (result.ok) {
         notifications.show({
           title: tr("common.created"),
-          message: `注文請書 ${result.data.number}（下書き）`,
+          message: tr("sales.orderAcceptanceCreateForm.createdDraftMessage", {
+            number: result.data.number,
+          }),
           color: "green",
         });
         router.push(`${BASE_PATH}/${result.data.number}`);
@@ -164,7 +166,7 @@ export function OrderAcceptanceCreateForm({
         <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="sm">
           <SearchSelect
             error={customerError}
-            f4={CUSTOMER_F4}
+            f4={customerF4(tr)}
             label={<HelpLabel {...fieldHelp("orderAcceptance", "customer")} />}
             onChange={(v) => {
               setCustomerId(v);
@@ -272,7 +274,7 @@ export function OrderAcceptanceCreateForm({
             onSearch={(q) => searchQuoteOptions(q, customerId)}
             placeholder={
               customerId
-                ? "見積書を検索"
+                ? tr("common.searchQuotes")
                 : tr("common.chooseACustomerFirstToNarrow")
             }
             storageKey="quote"

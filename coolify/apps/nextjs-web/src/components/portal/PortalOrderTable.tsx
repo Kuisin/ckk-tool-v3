@@ -24,7 +24,7 @@ export function PortalOrderTable({ rows }: { rows: PortalOrderLineRow[] }) {
       <Table.Thead>
         <Table.Tr>
           <Table.Th>{tr("portal.portalOrderTable.orderNumber")}</Table.Th>
-          <Table.Th>製品</Table.Th>
+          <Table.Th>{tr("common.product")}</Table.Th>
           <Table.Th ta="right">{tr("common.quantity")}</Table.Th>
           <Table.Th>{tr("common.deliveryDate")}</Table.Th>
           <Table.Th>{tr("portal.portalOrderTable.status")}</Table.Th>

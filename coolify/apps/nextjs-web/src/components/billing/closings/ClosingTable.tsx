@@ -33,20 +33,6 @@ import type { BillingClosing } from "./model";
 
 const BASE_PATH = "/billing/closings";
 
-/** 対象月の選択肢 — 前年〜当年（実行は過去月が主）。 */
-function yearOptions(): { value: string; label: string }[] {
-  const current = new Date().getFullYear();
-  return [current - 1, current].map((y) => ({
-    value: String(y),
-    label: `${y}年`,
-  }));
-}
-
-const MONTH_OPTIONS = Array.from({ length: 12 }, (_, i) => ({
-  value: String(i + 1).padStart(2, "0"),
-  label: `${i + 1}月`,
-}));
-
 /** 「締日処理を実行」モーダル — 対象月を選んで runClosing。 */
 function RunClosingModal({
   opened,
@@ -57,6 +43,20 @@ function RunClosingModal({
 }) {
   const tr = useTranslations();
   const router = useRouter();
+
+  /** 対象月の選択肢 — 前年〜当年（実行は過去月が主）。 */
+  const yearOptions = (): { value: string; label: string }[] => {
+    const current = new Date().getFullYear();
+    return [current - 1, current].map((y) => ({
+      value: String(y),
+      label: tr("billing.closingTable.yearLabel", { year: y }),
+    }));
+  };
+
+  const monthOptions = Array.from({ length: 12 }, (_, i) => ({
+    value: String(i + 1).padStart(2, "0"),
+    label: tr("billing.closingTable.monthLabel", { month: i + 1 }),
+  }));
   const [isPending, startTransition] = useTransition();
   const now = new Date();
   // 対象月は URL に保持（既定 = 当年・当月のときはパラメータ省略）
@@ -73,7 +73,14 @@ function RunClosingModal({
         const { created, updated, skipped } = result.data;
         notifications.show({
           title: tr("billing.closings.theBillingClosingWasRun"),
-          message: `作成 ${created} 件 / 更新 ${updated} 件${skipped > 0 ? ` / 処理済みスキップ ${skipped} 件` : ""}`,
+          message:
+            tr("billing.closingTable.createdAndUpdatedCounts", {
+              created,
+              updated,
+            }) +
+            (skipped > 0
+              ? ` / ${tr("billing.closingTable.skippedCount", { skipped })}`
+              : ""),
           color: "green",
         });
         onClose();
@@ -111,7 +118,7 @@ function RunClosingModal({
         />
         <Select
           allowDeselect={false}
-          data={MONTH_OPTIONS}
+          data={monthOptions}
           label={tr("billing.closings.months")}
           onChange={(v) => v && setMonth(v)}
           value={month}
@@ -198,7 +205,9 @@ export function ClosingTable({ rows }: { rows: BillingClosing[] }) {
           onClick={() => setRunOpen(true)}
           style={{ flexShrink: 0 }}
         >
-          {isMobile ? "実行" : tr("billing.closings.runTheBillingClosing2")}
+          {isMobile
+            ? tr("common.run2")
+            : tr("billing.closings.runTheBillingClosing2")}
         </PrimaryButton>
       }
       breadcrumbs={[tr("common.billing"), tr("common.billingClosing")]}
@@ -239,7 +248,7 @@ export function ClosingTable({ rows }: { rows: BillingClosing[] }) {
                 {c.customerName}
               </Text>
               <Text c="dimmed" size="xs">
-                締日: {fmt.date(c.closingDate)}
+                {tr("common.closingDay")}: {fmt.date(c.closingDate)}
               </Text>
               <Group gap="md" mt={2}>
                 <MoneyText ta="left" value={c.totalAmount} />

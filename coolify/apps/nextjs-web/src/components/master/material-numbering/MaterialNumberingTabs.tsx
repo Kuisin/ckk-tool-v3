@@ -32,43 +32,55 @@ export interface MaterialNumberingData {
   lengths: ComponentRow[];
 }
 
-const TABS: {
-  value: ComponentTableKind;
-  label: string;
-  dataKey: keyof MaterialNumberingData;
-  parentHeader?: string;
-  extraHeader?: string;
-}[] = [
-  { value: "manufacturer", label: "メーカー", dataKey: "manufacturers" },
-  {
-    value: "grade",
-    label: "メーカー材種",
-    dataKey: "grades",
-    parentHeader: "メーカー",
-  },
-  { value: "shape", label: "形状", dataKey: "shapes" },
-  { value: "kind", label: "種類", dataKey: "kinds", parentHeader: "形状" },
-  { value: "finish", label: "黒皮・研磨", dataKey: "finishes" },
-  {
-    value: "diameter",
-    label: "直径",
-    dataKey: "diameters",
-    extraHeader: "直径 (mm)",
-  },
-  {
-    value: "length",
-    label: "全長",
-    dataKey: "lengths",
-    extraHeader: "全長 (mm)",
-  },
-];
-
 export function MaterialNumberingTabs({
   data,
 }: {
   data: MaterialNumberingData;
 }) {
   const tr = useTranslations();
+  const TABS: {
+    value: ComponentTableKind;
+    label: string;
+    dataKey: keyof MaterialNumberingData;
+    parentHeader?: string;
+    extraHeader?: string;
+  }[] = [
+    {
+      value: "manufacturer",
+      label: tr("common.manufacturer"),
+      dataKey: "manufacturers",
+    },
+    {
+      value: "grade",
+      label: tr("master.materialTypes.manufacturerGrade"),
+      dataKey: "grades",
+      parentHeader: tr("common.manufacturer"),
+    },
+    { value: "shape", label: tr("common.shape"), dataKey: "shapes" },
+    {
+      value: "kind",
+      label: tr("common.kind"),
+      dataKey: "kinds",
+      parentHeader: tr("common.shape"),
+    },
+    {
+      value: "finish",
+      label: tr("common.surfaceFinish"),
+      dataKey: "finishes",
+    },
+    {
+      value: "diameter",
+      label: tr("common.diameter"),
+      dataKey: "diameters",
+      extraHeader: tr("common.diameterMm"),
+    },
+    {
+      value: "length",
+      label: tr("common.overallLength"),
+      dataKey: "lengths",
+      extraHeader: tr("common.overallLengthMm"),
+    },
+  ];
   // アクティブタブを ?tab= に保持（URL 共有でタブまで再現）
   const [tabParam, setTab] = useTabParam("manufacturer");
   const active: ComponentTableKind = TABS.some((t) => t.value === tabParam)
@@ -91,7 +103,9 @@ export function MaterialNumberingTabs({
       <PageHeader
         actions={
           <PrimaryButton onClick={() => setAddOpen(true)}>
-            {tab.label}を追加
+            {tr("master.materialNumberingTabs.addButtonLabel", {
+              label: tab.label,
+            })}
           </PrimaryButton>
         }
         breadcrumbs={[

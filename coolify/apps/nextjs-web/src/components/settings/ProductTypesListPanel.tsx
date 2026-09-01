@@ -23,7 +23,9 @@ export function ProductTypesListPanel({ initial }: { initial: ProductType[] }) {
       addLabel={tr("common.addAType")}
       deleteConfirm={(t) => ({
         title: tr("settings.productTypesListPanel.deleteTheProductType"),
-        message: `「${t.name.ja || t.id}」を削除しますか？`,
+        message: tr("settings.productTypesListPanel.deleteNameConfirm", {
+          name: t.name.ja || t.id,
+        }),
       })}
       description={tr(
         "settings.productTypesListPanel.theyBecomeTheChoicesWhenCreating",

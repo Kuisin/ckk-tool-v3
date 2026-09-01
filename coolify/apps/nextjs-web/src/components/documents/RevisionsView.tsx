@@ -15,14 +15,6 @@ import { useIsMobile } from "@/hooks/useViewport";
 import type { RevisionRow } from "@/lib/internal-pages";
 import { RevisionDiff } from "./RevisionDiff";
 
-const ACTION_LABEL: Record<string, string> = {
-  CREATE: "作成",
-  UPDATE: "編集",
-  PUBLISH: "公開",
-  RESTORE: "復元",
-  ARCHIVE: "アーカイブ",
-};
-
 export function RevisionsView({
   pageNumber,
   pageTitle,
@@ -43,6 +35,14 @@ export function RevisionsView({
   const isMobile = useIsMobile();
   const [isPending, startTransition] = useTransition();
 
+  const ACTION_LABEL: Record<string, string> = {
+    CREATE: tr("common.create2"),
+    UPDATE: tr("common.edit"),
+    PUBLISH: tr("documents.revisionsView.actionPublish"),
+    RESTORE: tr("documents.revisionsView.restore2"),
+    ARCHIVE: tr("common.archived2"),
+  };
+
   const options = revisions.map((r) => ({
     value: String(r.revision),
     label: `r${r.revision}（${ACTION_LABEL[r.action] ?? r.action}）`,
@@ -54,7 +54,7 @@ export function RevisionsView({
 
   const restore = (revision: number) =>
     openConfirm({
-      title: `リビジョン ${revision} を復元`,
+      title: tr("documents.revisionsView.restoreRevisionTitle", { revision }),
       message: tr("documents.revisionsView.thisCreatesANewRevisionWith"),
       confirmLabel: tr("documents.revisionsView.restore"),
       onConfirm: () =>
@@ -62,7 +62,9 @@ export function RevisionsView({
           const r = await restoreRevision(pageNumber, revision);
           if (r.ok) {
             notifications.show({
-              message: `リビジョン ${r.data.revision} として復元しました`,
+              message: tr("documents.revisionsView.restoredAsRevision", {
+                revision: r.data.revision,
+              }),
               color: "green",
             });
             router.refresh();
@@ -91,7 +93,11 @@ export function RevisionsView({
       <AppTabs defaultValue="diff">
         <Tabs.List>
           <Tabs.Tab value="diff">{tr("documents.revisionsView.diff")}</Tabs.Tab>
-          <Tabs.Tab value="list">版一覧（{revisions.length}）</Tabs.Tab>
+          <Tabs.Tab value="list">
+            {tr("documents.revisionsView.versionListWithCount", {
+              count: revisions.length,
+            })}
+          </Tabs.Tab>
         </Tabs.List>
 
         <Tabs.Panel pt="md" value="diff">

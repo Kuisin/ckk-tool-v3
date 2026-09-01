@@ -26,6 +26,13 @@ const { provider } = defineI18nUI(docsI18n, {
   zh: { displayName: "中文" },
 });
 
+/** 「アプリへ戻る」リンク文言 — 閲覧者の表示設定ではなく docs の言語（lang）で決まる。 */
+const BACK_TO_APP_LABEL: Record<string, string> = {
+  ja: "アプリへ戻る",
+  en: "Back to the app",
+  zh: "返回应用",
+};
+
 export function DocsShell({
   lang,
   tree,
@@ -47,7 +54,10 @@ export function DocsShell({
       <DocsLayout
         links={[
           ...(crossLink ? [crossLink] : []),
-          { text: "アプリへ戻る", url: "/" },
+          {
+            text: BACK_TO_APP_LABEL[lang] ?? BACK_TO_APP_LABEL.ja,
+            url: "/",
+          },
         ]}
         nav={{ title }}
         sidebar={{

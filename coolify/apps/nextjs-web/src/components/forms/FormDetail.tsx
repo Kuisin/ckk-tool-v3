@@ -354,9 +354,19 @@ export function FormDetail({
 
       <AppTabs defaultValue="fields">
         <Tabs.List>
-          <Tabs.Tab value="fields">項目（{form.fields.length}）</Tabs.Tab>
-          <Tabs.Tab value="responses">回答（{responses.length}）</Tabs.Tab>
-          {approval && <Tabs.Tab value="approval">承認</Tabs.Tab>}
+          <Tabs.Tab value="fields">
+            {tr("forms.formDetail.fieldsWithCount", {
+              count: form.fields.length,
+            })}
+          </Tabs.Tab>
+          <Tabs.Tab value="responses">
+            {tr("forms.formDetail.responsesWithCount", {
+              count: responses.length,
+            })}
+          </Tabs.Tab>
+          {approval && (
+            <Tabs.Tab value="approval">{tr("common.approve")}</Tabs.Tab>
+          )}
           <Tabs.Tab value="share">{tr("common.sharing")}</Tabs.Tab>
           <Tabs.Tab value="history">{tr("common.history")}</Tabs.Tab>
         </Tabs.List>

@@ -627,7 +627,43 @@
     "method2": "方法",
     "totalQuantity": "数量合計",
     "customerOrderLine": "顧客 / 注文明細",
-    "changeHistory": "変更履歴"
+    "changeHistory": "変更履歴",
+    "lineItemsWithCount": "明細（{count}）",
+    "supportingDocumentsWithCount": "証憑（{count}）",
+    "filesWithCount": "ファイル（{count}）",
+    "code": "コード",
+    "codeRequired": "コードを入力してください",
+    "defectTypes": "不良種類",
+    "disableAction": "無効化する",
+    "nameJaRequired": "名称（日本語）を入力してください",
+    "plants": "拠点",
+    "s3": "、",
+    "enterNameInJapanese": "名称（日本語）を入力してください",
+    "invalidEmailFormat": "メールアドレスの形式が正しくありません",
+    "products": "製品",
+    "defectType": "不良種類",
+    "product": "製品",
+    "guest": "ゲスト",
+    "site": "拠点",
+    "detail": "詳細",
+    "update": "更新",
+    "itemsCount": "{count} 件",
+    "detailBreadcrumb": "詳細",
+    "deliveryNotesWithCount": "納品書（{count}）",
+    "included": "あり",
+    "submit": "提出する",
+    "resolved": "解決済",
+    "mustBeGreaterThanZero": "0より大きい値",
+    "mustBeZeroOrMore": "0以上",
+    "addAtLeastOneLineItem": "明細を1件以上追加してください",
+    "mustBeAtLeastOne": "1以上",
+    "countItems": "{count} 件",
+    "requestOrReport": "申請・報告",
+    "attachmentsWithCount": "添付（{count}）",
+    "quantityPcs": "{quantity} 本",
+    "searchQuotes": "見積書を検索",
+    "selectAProduct": "製品を選択してください",
+    "other": "その他"
   },
   "shell": {
     "appsLabel": "アプリ",
@@ -1633,7 +1669,13 @@
       "months": "月",
       "runTheBillingClosing2": "締日処理を実行",
       "searchByCustomer": "顧客で検索",
-      "thereAreNoBillingClosingsCreate": "締日処理がありません（「締日処理を実行」から作成します）"
+      "thereAreNoBillingClosingsCreate": "締日処理がありません（「締日処理を実行」から作成します）",
+      "createdInvoice": "請求書 {number} を作成しました",
+      "shipmentsSummary": "{count} 件・{quantity} 本",
+      "shipmentNote": "{quantity} 本・{amount}",
+      "titleWithClosingDate": "{customer}（{date} 締め）",
+      "shipmentsCoveredWithCount": "対象出荷（{count}）",
+      "confirmGenerateBody": "{customer} の {date} 締め分から請求書（下書き）を生成します。対象出荷 {count} 件が明細になります。"
     },
     "invoices": {
       "issueThePdf": "PDF を発行",
@@ -1658,7 +1700,22 @@
       "confirmSending": "送付の確認",
       "markedAsPaid": "入金済みにしました",
       "searchByInvoiceNumberOrCustomer": "請求番号・顧客で検索",
-      "thereAreNoInvoicesGenerateThem": "請求書がありません（締日処理から生成します）"
+      "thereAreNoInvoicesGenerateThem": "請求書がありません（締日処理から生成します）",
+      "exportedAtLabel": "エクスポート済・{dateTime}"
+    },
+    "invoiceDetail": {
+      "confirmIssueMessage": "請求書 {invoiceNumber} を発行します。発行日は本日で記録されます。",
+      "issuedWithNumber": "請求書 {invoiceNumber} を発行しました",
+      "confirmMarkSentMessage": "請求書 {invoiceNumber} を送付済みにします。",
+      "markedSentWithNumber": "請求書 {invoiceNumber} を送付済みにしました",
+      "confirmMarkPaidMessage": "請求書 {invoiceNumber} を入金済みにします。",
+      "markedPaidWithNumber": "請求書 {invoiceNumber} を入金済みにしました"
+    },
+    "closingTable": {
+      "yearLabel": "{year}年",
+      "monthLabel": "{month}月",
+      "createdAndUpdatedCounts": "作成 {created} 件 / 更新 {updated} 件",
+      "skippedCount": "処理済みスキップ {skipped} 件"
     }
   },
   "general": {
@@ -1779,7 +1836,11 @@
       "selectAnInspectionTemplate": "検査表テンプレートを選択",
       "assignSomeonePerStepOptionalA": "工程ごとの担当者を割り当てます（任意）。担当を入れた工程に、計画日付きの作業計画が作成されます。時間帯・数量まで決める場合は、作成後に各工程の計画パネルで追加してください。",
       "workPlanAssignees": "作業計画（担当者）",
-      "plannedDate": "計画日"
+      "plannedDate": "計画日",
+      "flowChangeAlreadyApplied": "適用済みです（事後承認 — 差し戻されても自動では戻りません）。",
+      "flowChangeApprovalTitle": "工程フロー変更の承認",
+      "flowChangeDescription": "{summary}｜依頼: {requestedBy}｜{stepLabel}。{note}",
+      "flowChangeNotAppliedYet": "承認されるまで工程は変わりません。"
     },
     "addBranchModal": {
       "theBranchWasAdded": "分岐を追加しました",
@@ -1798,7 +1859,16 @@
       "goodPiecesFromTheBranchSeries": "分岐系列の最後の工程の良品を、指示書の完了時にこの在庫へ入れます",
       "receivingLocation": "入庫先",
       "chooseAMergeTargetOrTo": "合流先を選ぶか、「在庫へ」を選んでください。分岐は必ず合流か在庫で\n            終わります。",
-      "toReorderStepsDeleteTheBranch": "工程の入れ替えは、分岐を削除して作り直してください。"
+      "toReorderStepsDeleteTheBranch": "工程の入れ替えは、分岐を削除して作り直してください。",
+      "addBranchTitle": "分岐追加 — {source}",
+      "branchFlowExplanation": "分岐元の完了後に、指定数量を追加工程の系列へ流します。系列内の受入数は前工程の良品数に自動で追従します。",
+      "branchableQuantity": "分岐可能: {max}（工程分岐の未割当分）",
+      "editBranchTitle": "分岐の編集 — {steps}",
+      "fromSourceNSteps": "{source} から {count} 工程",
+      "productStock": "製品在庫",
+      "semiFinishedStock": "半製品在庫",
+      "theBranchWasUpdated": "分岐を更新しました",
+      "updateBranch": "分岐を更新"
     },
     "approvalStatusPanel": {
       "awaitingStart": "開始待ち",
@@ -1807,7 +1877,19 @@
       "nothingIsAllocatedToADelivery": "出荷書への割当はまだありません",
       "unallocatedAllocatedOnADeliveryOrder": "未割当（完了後に出荷書で引き当てます）",
       "followingWorkOrderQuantityHandover": "後続指示書（数量受け渡し）",
-      "approvalStatus": "承認状況"
+      "approvalStatus": "承認状況",
+      "allMembersApproval": "{group}（全員承認）",
+      "allocatedVsPlanned": "割当 {allocated} 本 / 予定 {planned} 本",
+      "customerAllocatedOfOrdered": "{customer}・割当 {allocated} / 受注 {ordered} 本",
+      "deliveryStatusQuantity": "{status}・{quantity} 本{stockNote}",
+      "fullCompletedQuantity": "完成数全量",
+      "handedOverQuantity": "{quantity}を受け渡し",
+      "nPcs": "{quantity} 本",
+      "receivedQuantity": "{quantity}を受け取り",
+      "startedOn": "開始 {date}",
+      "stepNumberApproval": "第{step}承認",
+      "stockStorageNote": "（在庫保管）",
+      "workOrderSubject": "指示書 #{number}"
     },
     "defectRecordForm": {
       "enterTheDefectTypeAndDetails": "各行の不良種類と内容を入力してください",
@@ -1816,7 +1898,9 @@
       "defectRecordOptional": "不良記録（任意）",
       "defectDetails": "不良内容",
       "saveDefectRecords": "不良記録を保存",
-      "thereAreNoDefectRecords": "不良記録はありません"
+      "thereAreNoDefectRecords": "不良記録はありません",
+      "addedNItems": "{count} 件を追加しました",
+      "defectType": "不良種類"
     },
     "inspectionRecordForm": {
       "inspectionSheetCheck": "検査表確認",
@@ -1843,7 +1927,13 @@
       "thereAreNoInspectionRecords": "検査記録はありません",
       "theInspectionRecordWasApproved": "検査記録を承認しました",
       "couldNotApproveTheInspectionRecord": "検査記録の承認に失敗しました",
-      "thereIsNoInspectionRecordTo": "承認対象の検査記録がありません（先に検査工程で記録してください）"
+      "thereIsNoInspectionRecordTo": "承認対象の検査記録がありません（先に検査工程で記録してください）",
+      "autoJudgmentOverridden": "自動判定（{result}）を手動で上書き中",
+      "autoJudgmentResult": "自動判定: {result}",
+      "enterTheRequiredItems": "必須項目を入力してください（{items}）",
+      "failCount": "不合格 {count}",
+      "measuredValue": "実測値",
+      "passedCountExceedsInspectedCountFor": "合格数が検査数を超えています（{items}）"
     },
     "processListEditor": {
       "theChosenStepListSComposition": "選択した工程リストの構成です。工程・作業時間を変えるときは「工程を編集」を押してください（変更は保存時に新バージョンとして保存されます）。",
@@ -1865,14 +1955,25 @@
       "lotRequired": "ロット必須",
       "lotOptional": "ロット任意",
       "noLot": "ロットなし",
-      "supplierSubcontractor": "仕入先（外注先）"
+      "supplierSubcontractor": "仕入先（外注先）",
+      "stepFallbackWithId": "工程#{id}",
+      "requiresWithNames": "要: {names}",
+      "cannotBeUsedWithNames": "{names}とは併用不可",
+      "lotInputWithName": "{name} のロット入力",
+      "defaultWithLabel": "既定（{label}）",
+      "workHoursWithName": "{name} の作業時間 (h)",
+      "site": "拠点"
     },
     "stepCard": {
       "stepMenu": "工程メニュー",
       "addABranch": "分岐追加",
       "assignedTo": "担当",
       "received": "受入",
-      "good": "良品"
+      "good": "良品",
+      "viewDetails": "詳細",
+      "pass": "合格",
+      "plannedHoursWithValue": "予定 {hours}h",
+      "actualHoursWithValue": "実績 {hours}h"
     },
     "stepPlanActualPanel": {
       "thereAreNoRecords": "記録はありません",
@@ -1893,7 +1994,8 @@
       "youCanSplitThePlanBy": "担当者・日付（または時刻）ごとに分割して計画できます。作業場所（機械・エリア）も任意で割り当てられます。",
       "workPlan": "作業計画",
       "recordsTheWorkDonePerAssignee": "実施した作業を担当者・日付ごとに記録します（進行中のみ追加可）。共有端末からの実績には端末の既定作業場所が入ります。",
-      "workActuals": "作業実績"
+      "workActuals": "作業実績",
+      "workLocation": "作業場所"
     },
     "stepQuantityForm": {
       "quantityAndDefects": "数量・不良",
@@ -1905,7 +2007,10 @@
       "defectDetailRequired": "不良の詳細（必須）",
       "addDefect": "不良を追加",
       "quantitiesMustBeWholeNumbersOf": "数量は 0 以上の整数で入力してください",
-      "enterADefectTypeAndDetail": "不良の各行に種類と詳細を入力してください"
+      "enterADefectTypeAndDetail": "不良の各行に種類と詳細を入力してください",
+      "inspectedCountAndResult": "検査数・合否",
+      "detail": "詳細",
+      "defectTotalWithSumExceedsInput": "不良の合計（{sum}）が受入数（{input}）を超えています"
     },
     "workOrderFinalInspectionPanel": {
       "finalInspection": "最終検査",
@@ -1918,7 +2023,15 @@
       "checkedByStampForDefectsAt": "出荷時不良内容確認者印",
       "defectsFoundAtThePreShipment": "出荷前検査での不良内容等（任意）",
       "theShippingDefectCheckStampWas": "出荷時不良内容確認者印を記録しました",
-      "check": "確認する"
+      "check": "確認する",
+      "checkDrawingLabel": "図面・ラベル・膜厚・寸法と間違いがないか",
+      "checkFinishedQuantity": "完成本数は合っているか",
+      "checkProtectiveCap": "保護キャップ使用しているか（φ0.6以下）",
+      "deliveryNoteIssuedBy": "納品書発行者",
+      "itemRecorded": "「{item}」を記録しました",
+      "shelvedBy": "棚包担当者",
+      "shipmentAuthorizedBy": "出荷許可者",
+      "stageRecorded": "{stage}を記録しました"
     },
     "workOrderStepsPanel": {
       "deleteTheBranch": "分岐の削除",
@@ -1935,10 +2048,18 @@
       "viewOnly": "（閲覧のみ）",
       "runsAfterApproval": "（実行は承認後）",
       "stepsCanBeRunOnceThe": "工程実行は指示書の承認後に可能になります",
-      "showTheFlowDiagram": "フロー図を表示"
+      "showTheFlowDiagram": "フロー図を表示",
+      "deleteBranchSeriesConfirm": "分岐系列（{steps}）を削除します。この操作は取り消せません。",
+      "deletedNSteps": "{count} 工程を削除",
+      "hideTheFlowDiagram": "フロー図を隠す",
+      "openTheStepExecutionView": "工程実行ビューを開く"
     },
     "workflowGraphCanvas": {
-      "workflowDiagramBranchesAndMerges": "工程ワークフローのフロー図（分岐・合流）"
+      "workflowDiagramBranchesAndMerges": "工程ワークフローのフロー図（分岐・合流）",
+      "fitView": "全体を表示",
+      "flowDiagramControls": "フロー図の操作",
+      "zoomIn": "拡大",
+      "zoomOut": "縮小"
     },
     "workflowStepNode": {
       "ready": "開始可",
@@ -1999,7 +2120,11 @@
       "stepItOccurredAt": "発生工程",
       "nothingIsReservedAgainstThisStock": "この在庫への引当予約はありません",
       "reservedAt": "予約日時",
-      "confirmedReleasedAt": "確定/解除日時"
+      "confirmedReleasedAt": "確定/解除日時",
+      "floorMapAlt": "フロアマップ: {name}",
+      "lotN": "ロット {number}",
+      "pinLabelWithStockCount": "{name}（{code}）｜在庫 {count} 件",
+      "step": "工程"
     },
     "pendingWorkOrders": {
       "orderedQuantity": "受注数",
@@ -2047,6 +2172,74 @@
       "returnsACompletedStepToNot": "完了済みの工程を未着手へ戻し、記録済みの数量をクリアします。後続工程が着手済みの場合は巻き戻せません。",
       "thereAreNoSteps": "工程がありません。",
       "filterByStepNameOrCode": "工程名・コードで絞り込み..."
+    },
+    "workflowBuilder": {
+      "plannedQuantityMustBeAtLeast1": "予定数量は1以上",
+      "selectAtLeastOneStep": "工程を1つ以上選択してください",
+      "orderLineAlreadyFullyPlannedWithNumber": "注文明細 {number} は受注数量まで手配済みです（残 0）",
+      "workOrderWasUpdatedWithDoc": "指示書 {docNumber} を更新しました",
+      "workOrderWasCreatedWithDoc": "指示書 {docNumber} を作成しました",
+      "editWorkOrderWithDoc": "指示書 {docNumber} 編集",
+      "orderQuantityWithCount": "受注数量 {count}",
+      "allocatableRemainingWithCount": "割当可能残 {count}",
+      "atLeastAllocationTotalWithCount": "割当合計 {count} 以上（不良予備分は上乗せ可）",
+      "ifNotPinnedWithLabel": "固定しない場合: {label}",
+      "dedicatedToCustomerWithName": "{name} 専用",
+      "thisCustomer": "この顧客",
+      "stepFallbackWithId": "工程#{id}"
+    },
+    "workOrderDetail": {
+      "pinned": "固定しました",
+      "workOrderWasCreatedWithDoc": "指示書 {docNumber} を作成しました",
+      "cancelWorkOrderWithLabel": "指示書 {label} をキャンセルします。この操作は取り消せません。",
+      "workOrderWithLabel": "指示書 {label}",
+      "approvalWithLabel": "承認 {label}",
+      "copyWorkOrderWithLabel": "指示書 {label} をコピー",
+      "unpinDesignFile": "固定を解除"
+    },
+    "workOrderStripSheets": {
+      "noWorkOrdersToPrint": "印刷対象の指示書がありません。",
+      "actualSizeCheck50mm": "50mm（原寸確認 / 用紙 A4・倍率 100%）",
+      "forStockNoOrderLine": "在庫向け（注文明細なし）"
+    },
+    "designFileTable": {
+      "byCustomer": "顧客別",
+      "hasARequest": "依頼あり",
+      "manualOnly": "手動のみ"
+    },
+    "designFileVersionForm": {
+      "registeringAsResultOfRequest": "設計依頼 {requestNumber} の成果物として登録します。製品「{productLabel}」{customerPart}は依頼で決まっているので変更できません。",
+      "andCustomerWithName": "・受注元「{name}」",
+      "referenceWithNumber": "参考資料 {number}",
+      "designFileWasAddedWithVersion": "設計図 v{version} を追加しました"
+    },
+    "stepExecutionView": {
+      "stepWithName": "工程: {name}",
+      "theStepWasAborted": "工程を中断しました",
+      "abort": "中断する"
+    },
+    "workOrderLinksCard": {
+      "quantityPiecesWithCount": "{count} 本",
+      "canStartAfterSourceCompletesWithNumber": "#{number} の完了後にこの指示書を開始できます"
+    },
+    "stockTransferModal": {
+      "noShelves": "棚なし",
+      "quantityWithUnit": "数量（{unit}）"
+    },
+    "inventoryBadge": {
+      "reservedLabel": "予約 {reserved}",
+      "reservedTooltip": "予約中: {reserved} {unit}"
+    },
+    "inventoryModel": {
+      "adjust": "調整",
+      "in": "入庫",
+      "out": "出庫",
+      "reserve": "予約"
+    },
+    "productDrawings": {
+      "deleteVersionConfirm": "{filename}（v{version}）を削除します。この操作は取り消せません。",
+      "versionLatest": "v{version}（最新）",
+      "versionMemo": "v{version} のメモ"
     }
   },
   "purchase": {
@@ -2068,7 +2261,16 @@
       "receiptType": "入荷区分",
       "searchByMaterialCodeNameSupplier": "素材コード・名称・仕入先・発注番号で検索",
       "thereAreNoMaterialReceipts": "素材入荷がありません",
-      "noSupplier": "仕入先なし"
+      "noSupplier": "仕入先なし",
+      "selectAMaterial": "素材を選択してください",
+      "mustBeGreaterThanZero": "0より大きい値",
+      "enterAReceivedDate": "入荷日を入力してください",
+      "filesTooLargeToAttach": "20MB を超えるファイルは添付できません: {files}",
+      "uploadProgress": "{current} / {total} 件",
+      "uploadProgressWithFile": "{current} / {total} 件: {name}",
+      "failedFilesRetryFromDetail": "{files} — 詳細画面から再度添付してください",
+      "filesCount": "{count} 件",
+      "removeFile": "{name} を取り消す"
     },
     "outsourceOrders": {
       "editOutsourceOrder": "外注依頼 編集",
@@ -2105,7 +2307,13 @@
       "ifLeftBlankItIsSet": "未入力の場合は発注実行時に自動設定されます",
       "theAmountIsComputedServerSide": "金額は 数量 × 単価 でサーバー側で計算されます。発注（ORDERED）後は明細が素材 ATP の入荷予定に反映されます。",
       "searchByPoNumberOrSupplier": "発注番号・仕入先で検索",
-      "thereAreNoMaterialPurchaseOrders": "素材発注書がありません"
+      "thereAreNoMaterialPurchaseOrders": "素材発注書がありません",
+      "receiptsSummary": "{count} 件・合計 {total} {unit}",
+      "receiptNote": "{quantity} {unit}・{date}",
+      "receivedSoFar": "入荷済 {count}",
+      "confirmCancelBody": "素材発注書 {number} をキャンセルします。この操作は取り消せません。",
+      "confirmOrderBody": "素材発注書 {number} を発注済にします。明細は素材在庫の入荷予定（ATP）に反映されます。",
+      "confirmCompleteBody": "明細 {count} 件を全量入荷として素材入荷を登録し、入荷先拠点の素材在庫へ入庫します。分納（部分入荷）が必要な場合は素材入荷 (PU03) から直接登録してください。"
     },
     "purchaseRequests": {
       "selectASupplier": "仕入先を選択してください",
@@ -2126,7 +2334,30 @@
       "itCarriesNoUnitPriceOr": "単価・仕入先は持ちません。承認後に発注書へ変換し、発注側で確定します。",
       "mainMaterial": "主要素材",
       "searchByRequestNumberRequesterOr": "依頼番号・依頼者・素材で検索",
-      "thereAreNoPurchaseRequests": "購買依頼がありません"
+      "thereAreNoPurchaseRequests": "購買依頼がありません",
+      "createdPurchaseOrder": "素材発注書 {number} を作成しました",
+      "confirmCancelBody": "購買依頼 {number} をキャンセルします。この操作は取り消せません。",
+      "confirmConvertBody": "購買依頼 {number} の明細 {count} 件から素材発注書（下書き）を作成します。単価は発注書側で入力してください。"
+    },
+    "purchaseOrderForm": {
+      "selectMaterial": "素材を選択してください",
+      "updatedWithNumber": "素材発注書 {poNumber} を更新しました",
+      "createdWithNumber": "素材発注書 {poNumber} を作成しました",
+      "editWithNumber": "素材発注書 編集 {poNumber}"
+    },
+    "purchaseRequestForm": {
+      "updatedWithNumber": "購買依頼 {requestNumber} を更新しました",
+      "createdWithNumber": "購買依頼 {requestNumber} を作成しました",
+      "editWithNumber": "購買依頼 編集 {requestNumber}"
+    },
+    "materialReceiptTable": {
+      "poReceipt": "発注入荷"
+    },
+    "materialReceiptDetail": {
+      "titleWithCode": "素材入荷 {materialCode}"
+    },
+    "purchaseRequestTable": {
+      "othersWithCount": "他{count}件"
     }
   },
   "settings": {
@@ -2296,7 +2527,14 @@
       "cannotStartTheCameraCheckThe": "カメラを起動できません。カメラ権限と HTTPS 接続を確認してください。",
       "switchCamera": "カメラを切替",
       "selectACamera": "カメラを選択",
-      "stopScanning": "スキャンを停止"
+      "stopScanning": "スキャンを停止",
+      "validPeriodLabel": "有効期間 {range}",
+      "lastUsedLabel": "最終使用 {date}",
+      "useCountTimes": "{count} 回",
+      "issuedCardsCount": "QRカードを {count} 枚発行しました",
+      "pinConfigured": "設定済",
+      "pinIsConfigured": "PIN設定済",
+      "scanQr": "QR をスキャン"
     },
     "links": {
       "links": "リンク管理",
@@ -2314,7 +2552,11 @@
       "addABlock": "ブロックを追加",
       "subdomainsAreBlockedToo": "サブドメインも含めてブロックします",
       "reportedAsPhishing": "フィッシング報告あり",
-      "thereAreNoBlocks": "ブロック指定はありません"
+      "thereAreNoBlocks": "ブロック指定はありません",
+      "blockingLinksToHost": "{pattern} へのリンクをブロックします",
+      "unblockConfirm": "{pattern} のブロックを解除します。以後このホストへのリンクは通常どおり開けます。",
+      "indexTabLabel": "索引（{count}）",
+      "blockedTabLabel": "ブロック（{count}）"
     },
     "notificationEmail": {
       "notificationEmail": "通知メール"
@@ -2368,7 +2610,13 @@
       "callsTheExtractionServerPoExtract": "抽出サーバー（po-extract）から実際に 1 回ずつ呼び出して確かめます。保存前の入力でも試せます。",
       "testConnection": "接続テスト",
       "structured": "構造化",
-      "imageReading": "画像読み取り"
+      "imageReading": "画像読み取り",
+      "keyRotatedMessage": "暗号鍵が更新されています。設定を保存し直すと、新しい鍵で暗号化されます。",
+      "cannotDecryptTokenMessage": "API トークンを復号できません（暗号鍵が変わった可能性があります）。トークンを入力し直してください。",
+      "noEncryptionKeyMessage": "暗号鍵（{keyEnv}）が未設定のため、API トークンを保存・使用できません。システム管理者へ連絡してください。",
+      "connectionSucceeded": "接続できました",
+      "savedTokenMasked": "保存済み: ●●●●●●{last4}（空欄のままにすると変更しません）",
+      "enterOnlyToChange": "変更する場合のみ入力"
     },
     "bootstrapAdminCard": {
       "disableTheInitialAdministrator": "初期管理者を無効化",
@@ -2396,7 +2644,9 @@
       "sort": "並び替え",
       "reorderTheCriteria": "計算基準の並び替え",
       "theyAreEvaluatedTopToBottom": "上から順に評価されます（加算基準の合計 → 見積単価）。",
-      "saveTheOrder": "並び順を保存"
+      "saveTheOrder": "並び順を保存",
+      "additive": "加算",
+      "intermediate": "中間"
     },
     "criterionEditForm": {
       "newCriterion": "新しい基準",
@@ -2421,7 +2671,16 @@
       "estimatedUnitPrice": "見積単価",
       "aJsExpressionReturningANumber2": "数値を返す JS 式。ルックアップ表は",
       "lookupIdKey": "lookup(\"ID\", キー)",
-      "isWhereItIsReferenced": "で参照します。"
+      "isWhereItIsReferenced": "で参照します。",
+      "componentAddToTotal": "加算（合計に足す）",
+      "intermediateReferencedAsRId": "中間（r.<id> で参照）",
+      "finalEstimatedUnitPrice": "見積単価（最終）",
+      "idAlreadyExists": "ID「{id}」は既に存在します",
+      "deleteCriterionConfirm": "「{name}」を削除します。この操作は取り消せません。",
+      "criterionWasDeleted": "「{name}」を削除しました",
+      "thisCriterionsValueLabel": "この基準の値:",
+      "intermediateOrNotApplicable": "（中間/対象外）",
+      "quantityPcs": "{quantity} 本"
     },
     "itemDefEditForm": {
       "theKeyMustBeAnIdentifier": "キーは英字/アンダースコア始まりの識別子にしてください",
@@ -2440,12 +2699,16 @@
       "aRegularExpressionConstrainingTheInput": "入力形式を制限する正規表現（例: ^[A-Z][A-Z]-[0-9][0-9][0-9][0-9]$）。空欄なら制限なし。",
       "regularExpression": "正規表現",
       "optionsValueWhatIsStoredLabel": "選択肢（値 = 保存される値、ラベル = 画面表示）",
-      "displayLabel": "表示ラベル"
+      "displayLabel": "表示ラベル",
+      "theItemWasUpdated": "項目を更新しました",
+      "editItem": "項目編集",
+      "editItemTitle": "項目編集 — {name}"
     },
     "itemDefsListPanel": {
       "deleteTheItemDefinition": "項目定義の削除",
       "aLibraryOfReusableInputFields": "再利用できる入力項目のライブラリです。製品種別に割り当てて使います。",
-      "thereAreNoItemsCreateOne": "項目がありません。「項目を追加」から作成してください。"
+      "thereAreNoItemsCreateOne": "項目がありません。「項目を追加」から作成してください。",
+      "deleteNameConfirmUnassignsFromTypes": "「{name}」を削除しますか？種別への割り当ても外れます。"
     },
     "lookupTableEditor": {
       "theCsvIsEmpty": "CSV が空です",
@@ -2465,12 +2728,29 @@
       "data": "データ",
       "templateCsv": "テンプレート/CSV",
       "importCsv": "CSV 取込",
-      "text": "文字列"
+      "text": "文字列",
+      "number": "数値",
+      "exactMatch": "完全一致",
+      "geTakeTheSmallest": "≥ 以上で最小（径×長）",
+      "leTakeTheLargest": "≤ 以下で最大（LD/割引）",
+      "rowsLoadedConfirmOnSave": "{count} 行を読み込みました（保存で確定）",
+      "tableWasUpdated": "「{name}」を更新しました",
+      "deleteTableConfirm": "「{name}」を削除します。この操作は取り消せません。",
+      "tableWasDeleted": "「{name}」を削除しました",
+      "newLookupTable": "新規ルックアップ表。",
+      "usedInTheFormulaAs": "式内では",
+      "key1Placeholder": "キー1",
+      "matchDescription": "で参照します。照合方法（完全一致 / ≥ / ≤）で Excel の MATCH/VLOOKUP 近似照合を再現します。一致なしは「既定値」を返します。",
+      "keyColumnName": "キー列名",
+      "keyColumnWithIndex": "キー列{index}",
+      "matchMethod": "照合方法",
+      "rowsCount": "{count} 行"
     },
     "lookupTablesList": {
       "thereAreNoTablesCreateOne": "表がありません。「表を追加」から作成してください。",
       "filterByTableNameOrId": "表名・ID で絞り込み...",
-      "addATable": "表を追加"
+      "addATable": "表を追加",
+      "lookupIdKeysRows": "lookup(\"{id}\", …) · {keys}キー · {rows}行"
     },
     "notificationEmailForm": {
       "theNotificationEmailSettingsWereUpdated": "通知メールの設定を更新しました",
@@ -2511,12 +2791,16 @@
       "defaultOverrideOptional": "既定値（上書き・任意）",
       "removeTheAssignment": "割り当てを削除",
       "assignAField": "項目を割り当て",
-      "thereAreNoFieldsToAssign": "割り当て可能な項目がありません。先に「項目定義」で項目を作成してください。"
+      "thereAreNoFieldsToAssign": "割り当て可能な項目がありません。先に「項目定義」で項目を作成してください。",
+      "editType": "種別編集",
+      "editTypeName": "種別編集 — {name}",
+      "defaultValueIfEmptyDefault": "未入力なら \"{default}\""
     },
     "productTypesListPanel": {
       "deleteTheProductType": "製品種別の削除",
       "theyBecomeTheChoicesWhenCreating": "新規製品作成時の選択肢になります。各種別に項目を割り当てて構成します。",
-      "thereAreNoTypesCreateOne": "種別がありません。「種別を追加」から作成してください。"
+      "thereAreNoTypesCreateOne": "種別がありません。「種別を追加」から作成してください。",
+      "deleteNameConfirm": "「{name}」を削除しますか？"
     },
     "toolTypeEditForm": {
       "selectTheFinalEstimatedUnitPrice": "見積単価（final）基準を選択してください",
@@ -2527,7 +2811,14 @@
       "thereAreNoCriteriaCreateThem": "計算基準がありません。計算基準ページで作成してください。",
       "theCriterionThatComputesThisTool": "この工具種の見積単価（final）を計算する基準。工具種ごとにちょうど1つ必要です。",
       "estimatedUnitPriceUsed": "使用する見積単価",
-      "selectTheFinalCriterion": "final 基準を選択"
+      "selectTheFinalCriterion": "final 基準を選択",
+      "componentLabel": "加算",
+      "intermediateLabel": "中間",
+      "toolTypeCriteriaUpdated": "工具種「{label}」の適用基準を更新しました",
+      "deleteToolTypeConfirm": "工具種「{label}」を削除します。各計算基準の適用工具種からも取り除かれます。この操作は取り消せません。",
+      "toolTypeWasDeleted": "工具種「{label}」を削除しました",
+      "usedInEstimatesCount": "価格試算 {count} 件",
+      "nameDisabled": "{name}（無効）"
     },
     "toolTypesPanel": {
       "useUppercaseLettersDigitsAndStarting": "値は英大文字・数字・_（英大文字始まり）です",
@@ -2535,7 +2826,9 @@
       "addAToolType": "工具種を追加",
       "toolTypesYouAddBecomeSelectable": "追加した工具種は価格試算フォームの工具種として選択できます。計算入力は\n            丸棒系（参照単価ベース）です。現在「全工具種」に適用中の計算基準は\n            新しい種にも適用されます（追加後に調整できます）。",
       "uppercaseLettersDigitsAndEG": "英大文字・数字・_（例: BALL_END）。作成後は変更できません",
-      "ballEnd": "ボールエンド"
+      "ballEnd": "ボールエンド",
+      "addedToolTypeNameCheckWhichCriteria": "工具種「{name}」を追加しました。適用する計算基準を確認してください",
+      "criteriaCountEstimatesCount": "計算基準 {applied} 件 · 価格試算 {used} 件"
     },
     "trialPricingScalarForms": {
       "thePriceEstimateSettingsWereUpdated": "価格試算の設定を更新しました",
@@ -2556,7 +2849,12 @@
       "label": "ラベル",
       "type": "型",
       "onByDefault": "既定 ON",
-      "defaultOptionsCommaSeparated": "既定値/選択肢(,区切り)"
+      "defaultOptionsCommaSeparated": "既定値/選択肢(,区切り)",
+      "number": "数値",
+      "string": "文字列",
+      "select": "選択",
+      "estimateInputShownInThe": "見積入力（フォームに表示）",
+      "globalConstantFixedCoefficient": "グローバル定数（固定係数）"
     },
     "userDetail": {
       "approvalWasRequested": "承認を依頼しました",
@@ -2581,7 +2879,10 @@
       "action": "アクション",
       "loginHistoryLast30Days": "ログイン履歴（直近 30 日）",
       "thereAreNoLoginRecordsIn": "この期間のログイン記録はありません",
-      "registeredDevicesWeb": "登録端末（Web）"
+      "registeredDevicesWeb": "登録端末（Web）",
+      "passwordAndSso": "パスワード + SSO",
+      "plantLabelDisabled": "{label}（無効）",
+      "requestApprovalButton": "承認を依頼"
     },
     "userSuspensionPanel": {
       "suspendTheUser": "ユーザーを停止",
@@ -2601,11 +2902,22 @@
       "scheduledToBeReleasedAt": "解除予定日時",
       "whenToRestore": "いつ戻すか",
       "theApproverDecidesBasedOnThis": "承認者がこの内容を見て判断します。停止の記録にも残ります",
-      "suspend3": "停止する"
+      "suspend3": "停止する",
+      "approvalAppliesThisChange": "承認されるとこの変更が適用されます",
+      "requestSuspensionApproval": "停止の承認を依頼",
+      "indefinitely": "無期限で",
+      "suspendConfirmSentence": "{name}（{username}）を{duration}停止{tail}",
+      "requestButtonLabel": "依頼する",
+      "releaseScheduledLabel": "解除予定: {date}",
+      "reasonLabel": "理由: {reason}",
+      "requestRestoreApproval": "復帰の承認を依頼",
+      "temporarySuspension": "一時停止",
+      "reasonForSuspension": "停止の理由"
     },
     "usersTable": {
       "usernameDisplayNameEmailRole": "ユーザー名 / 表示名 / メール / ロール...",
-      "noMatchingUsers": "該当するユーザーがありません"
+      "noMatchingUsers": "該当するユーザーがありません",
+      "employee": "社員"
     },
     "displays": {
       "couldNotSaveTheImage": "画像の保存に失敗しました",
@@ -2660,7 +2972,9 @@
       "scanTheQrShownOnThe": "テレビの画面に出ている QR を読み取るか、12 文字のリンクコードを\n          入力してください。共有端末と同じ形式です。",
       "scanTheDisplaySQrCode": "ディスプレイのQRをスキャン",
       "linkCode": "リンクコード",
-      "cannotShowTheSampleTheShared": "見本を表示できません（キオスクの URL が未設定）"
+      "cannotShowTheSampleTheShared": "見本を表示できません（キオスクの URL が未設定）",
+      "sampleOfLabel": "{label}の見本",
+      "linkThisDisplay": "ディスプレイをリンク: {name}"
     },
     "orderIntake": {
       "queued": "投入しました",
@@ -2726,7 +3040,9 @@
       "issueALink": "リンクを発行",
       "issuedHandOverThisUrl": "発行しました。この URL をお渡しください。",
       "issuedLinks": "発行済みのリンク",
-      "revoked": "失効済み"
+      "revoked": "失効済み",
+      "linkSummary": "{email} / {count} 回 / {date} まで",
+      "verified": "本人確認あり"
     },
     "privileged": {
       "pendingApproval": "（承認依頼中）",
@@ -2796,7 +3112,134 @@
       "thereAreNoMatchingLoginRecords": "該当するログイン記録がありません",
       "thereAreOlderRecordsNarrowThe": "さらに古い記録があります。期間や絞り込みを狭めてください。",
       "thereAreNoRegisteredDevices": "登録された端末はありません",
-      "unknownDevice": "不明な端末"
+      "unknownDevice": "不明な端末",
+      "success": "成功"
+    },
+    "displayContentEditor": {
+      "templateSettings": "{name}の設定",
+      "refresh": "更新",
+      "seconds": "秒",
+      "fitContainLabel": "全体を表示",
+      "fitContainHelp": "画像すべてが映ります。縦横比が違うと余白が出ます",
+      "fitCoverLabel": "画面を埋める",
+      "fitCoverHelp": "余白は出ませんが、はみ出す部分が切れます",
+      "fitFillLabel": "引き伸ばす",
+      "fitFillHelp": "画面ぴったりにしますが、縦横比が変わって歪みます",
+      "replaceTheImage": "画像を差し替える",
+      "imagePrefix": "画像: ",
+      "thisScreensSite": "この画面の拠点",
+      "siteNumber": "拠点 #{id}"
+    },
+    "kioskDevicesTable": {
+      "liveWs": "ライブ (WS)",
+      "autoRefresh30S": "自動更新（30秒）",
+      "determinedFromActivityInThe": "直近5分の活動から判定",
+      "attestationKey": "アテステーション鍵: {fingerprint}",
+      "enableThisDeviceLinked": "この端末を有効化します（タブレットとのリンク: {linkedAt}）。有効化するとタブレットが自動でキオスクとして使用可能になります。",
+      "deviceLinkName": "端末リンク — {name}"
+    },
+    "ownership": {
+      "companyManagedDevice": "会社（管理端末）",
+      "companyInHouseNetwork": "会社（社内NW）",
+      "unmanaged": "未管理",
+      "undetermined": "未判定",
+      "confirmedByTheDeviceSKey": "端末が持つ鍵の署名で確認済み（暗号的な証拠）。デバイストークンだけの場合は状況証拠どまり — 根拠は下の判定理由を参照。",
+      "theSourceIpIsWithinThe": "送信元 IP が社内ネットワークの範囲内。**社内にいる証拠であって、社給端末である証拠ではありません**（持ち込み PC も VPN も同じ判定になります）。",
+      "thereIsNoEvidenceItIs": "社用である証拠がありません。私用端末の可能性はありますが、断定はできません。",
+      "noJudgmentMaterialIpUnknown": "判定材料がありません（IP 不明、または社内 CIDR が未設定）。",
+      "judgmentReason": "判定理由: {source}"
+    },
+    "orderIntakeFolderPanel": {
+      "puttingFilesIntoTheFolder": "{count} 件をフォルダへ投入しています…",
+      "fileNOfTotal": "{n} / {total} 件目: {name}",
+      "failedToPutIn": "投入に失敗しました",
+      "communicationError": "通信エラー",
+      "putInCountFailures": "{count} 件を投入 / 失敗: {failures}",
+      "putCountFilesInTheQueue": "{count} 件を取込待ちに入れました。取込はこのあと順番に実行されます",
+      "putInPartialFailure": "投入（一部失敗）",
+      "listSeparator": "  ・  ",
+      "lineItemsCountLines": "明細 {count} 件",
+      "remedyHint": "対処: {hint}",
+      "retrying": "再試行中",
+      "autoScanEverySSeconds": "自動スキャン {seconds} 秒ごと",
+      "updatedColumn": "更新",
+      "showingNewestOfTotal": "新しい {shown} 件を表示（全 {all} 件）"
+    },
+    "displayDetailView": {
+      "pause": "一時停止",
+      "screenNumber": "{n} 枚目"
+    },
+    "kioskFloorMapView": {
+      "thisSiteHasNoFloorMaps": "この拠点にはフロアマップがありません。",
+      "deleteFloorNameCannotIfDevices": "フロア「{name}」を削除します。端末が配置されている場合は削除できません。",
+      "floorMapName": "フロアマップ: {name}",
+      "storageLocationNameCodeShelfCount": "保管場所: {name}（{code}）｜棚 {count} 件",
+      "addAFloor": "フロアを追加"
+    },
+    "privilegedAccessBanner": {
+      "remainingHM": "残り {hours} 時間 {minutes} 分",
+      "remainingM": "残り {minutes} 分",
+      "labelNOperationsAreAvailable": "{label}: {count} 件の操作が使えます",
+      "labelNoOperationsAreApproved": "{label}: 承認された操作はありません",
+      "pleaseWaitForApprovalOfThe": "申請中のものは承認をお待ちください。"
+    },
+    "kioskCardDetailView": {
+      "countDevices": "{count} 台",
+      "countTimes": "{count} 回",
+      "suspend": "一時停止"
+    },
+    "loginAttemptDrawer": {
+      "theAutomationFlagNavigatorwebdriverIs": "自動操作フラグ（navigator.webdriver）が立っています",
+      "theDeviceSClockIsMinutes": "端末の時計がサーバーと {minutes} 分ずれています",
+      "scanKindContentNotStored": "{scanKind}（内容は保存していません）"
+    },
+    "kioskDeviceLogsModal": {
+      "durationMinutes": "{minutes}分",
+      "durationHoursMinutes": "{hours}時間{minutes}分",
+      "durationHours": "{hours}時間",
+      "ended": "終了",
+      "usageHistoryName": "利用履歴 — {name}"
+    },
+    "privilegedRequestForm": {
+      "theUsablePeriodIsAtMost": "利用できる期間は申請から最長 {days} 日です"
+    },
+    "kioskSettingsPanel": {
+      "permissionCode": "権限コード: {code}",
+      "showLabel": "{label} を表示"
+    },
+    "privilegedRequestCard": {
+      "approved": "承認済み",
+      "hoursMinutes": "{h} 時間 {m} 分",
+      "minutesSeconds": "{m} 分 {s} 秒",
+      "secondsOnly": "{s} 秒",
+      "remainingTime": "残り {time}",
+      "operationsNotGranted": "許可されなかった操作:",
+      "reasonLabel": "理由: {reason}",
+      "usablePeriodLabel": "利用できる期間:",
+      "perUseMinutes": "/ 1 回 {minutes} 分",
+      "startedAndUsedCount": "（{date} に開始・{count} 回使用）",
+      "requestedByLabel": "申請: {name} / {date}",
+      "decidedByLabel": " ・ 決裁: {name} / {date}",
+      "decisionCommentLabel": "決裁コメント: {comment}",
+      "applyFailedLabel": "適用できませんでした: {error}",
+      "appliedAtLabel": "{date} に適用しました"
+    },
+    "loginHistoryView": {
+      "hours24": "24 時間",
+      "days7": "7 日",
+      "days30": "30 日",
+      "days90": "90 日",
+      "allTime": "全期間",
+      "unresolvedWithRef": "未解決 {ref}"
+    },
+    "loginAttemptList": {
+      "noRecords": "記録がありません"
+    },
+    "kioskDeviceDetailView": {
+      "asOfLabel": "{date} 時点",
+      "lastSyncedLabel": "最終同期 {date}",
+      "offlineAcceptsLastSyncedPin": "オフラインの端末が受け付けるのは「最後に通信できた時点の PIN」。この端末の最終通信は",
+      "usesRowIncludingThatTime": " — その時刻を含む行を使う。"
     }
   },
   "portal": {
@@ -2883,7 +3326,9 @@
       "suggestWithAi": "AI で候補を出す",
       "enterANameAndItCan": "名称を入れると候補を作れます",
       "keywordSuggestionsProducedByAi": "AI が作ったキーワード候補",
-      "pickOnlyTheOnesYouWant": "採用するものだけを選んでください（押すと上の欄に入ります）。保存するまでは登録されません。"
+      "pickOnlyTheOnesYouWant": "採用するものだけを選んでください（押すと上の欄に入ります）。保存するまでは登録されません。",
+      "fieldDescription": "検索とAI取込の突合に使う別名です（略称・読み・英字・寸法の別表記など）。Enter 区切りで最大 {max} 件",
+      "addAllCount": "すべて追加（{count} 件）"
     },
     "approvalFlows": {
       "theApplyModeWasSaved": "適用モードを保存しました",
@@ -2915,7 +3360,13 @@
       "addACondition": "条件を追加",
       "approvalStepsForThisRule": "このルールの承認ステップ",
       "nobodyCanApproveThisStepRight": "この段を承認できる人が今いません。承認依頼を出しても止まります。",
-      "noMembers": "メンバー0名"
+      "noMembers": "メンバー0名",
+      "approverScopeItem": "{name}（{scopes}）",
+      "canApproveCount": "{total}名 承認可",
+      "canApproveScopeLimited": "{total}名 承認可（{count}名は範囲限定）",
+      "noDocumentPermission": "この書類を閲覧・編集できる権限がありません: {names}",
+      "noPermissionCount": "{total}名中 {count}名 権限なし",
+      "scopeIsLimited": "権限の範囲が限定されています（対象外の書類は承認できません）: {names}"
     },
     "approvalSettings": {
       "thisGroupIsNotUsedIn": "このグループはどの承認フローにも使われていません（承認設定の「承認フロー」で段に割り当てます）。",
@@ -2964,7 +3415,26 @@
       "removeTheMember2": "メンバーの削除",
       "bulkDeleteApprovalGroups": "承認グループの一括削除",
       "searchByName": "名称で検索",
-      "thereAreNoApprovalGroups": "承認グループがありません"
+      "thereAreNoApprovalGroups": "承認グループがありません",
+      "bulkDeleteConfirm": "選択中の{count}件の承認グループを削除します。この操作は取り消せません。",
+      "bulkDeleted": "{count}件の承認グループを削除しました",
+      "bulkDisabled": "{count}件の承認グループを無効化しました",
+      "bulkEnabled": "{count}件の承認グループを有効化しました",
+      "delegateAdded": "代理人「{name}」の代理設定を追加しました",
+      "delegateDeleted": "代理人「{name}」の代理設定を削除しました",
+      "deleteDelegateConfirm": "代理設定（原承認者「{delegator}」→ 代理人「{delegate}」）を削除します。代理人はこのグループの承認を行えなくなります。",
+      "deleteGroupConfirm": "承認グループ「{name}」を削除します。メンバー割当も同時に削除されます。この操作は取り消せません。",
+      "deleteMemberConfirm": "メンバー「{name}（{username}）」をこのグループから削除します。",
+      "disableGroupConfirm": "承認グループ「{name}」を無効化します。新規の承認依頼で使用できなくなります。",
+      "disableTheApprovalGroup": "承認グループの無効化",
+      "enableGroupConfirm": "承認グループ「{name}」を有効化します。再び承認依頼で使用できるようになります。",
+      "groupDeleted": "承認グループ「{name}」を削除しました",
+      "groupDisabled": "承認グループ「{name}」を無効化しました",
+      "groupEnabled": "承認グループ「{name}」を有効化しました",
+      "memberAdded": "メンバー「{name}」を追加しました",
+      "memberCountValue": "{count}名",
+      "memberDeleted": "メンバー「{name}」を削除しました",
+      "periodUpdated": "「{name}」の在籍期間を更新しました"
     },
     "bp": {
       "issueQuotesDeliveryNotesAndInvoices": "見積書・納品書・請求書をこの言語で発行する。未設定は既定言語（日本語）",
@@ -2997,7 +3467,13 @@
       "selectAContact": "担当者を選択",
       "removeThisSalesRep": "この営業担当を削除",
       "addASalesRep": "営業担当を追加",
-      "theOneSelectedByRadioButton": "ラジオで選んだ 1 名が主担当（新規書類の既定値）"
+      "theOneSelectedByRadioButton": "ラジオで選んだ 1 名が主担当（新規書類の既定値）",
+      "addAllCount": "すべて追加（{count} 件）",
+      "hiragana": "ひらがな",
+      "katakana": "カタカナ",
+      "missingFormatsNotice": "{formats}の表記が未登録です。注文書がその形で書かれていると突合できません。",
+      "needsReadingNote": "　漢字の読みは自動で作れないため、フリガナを入れると候補を出せます。",
+      "romaji": "ローマ字"
     },
     "businessPartners": {
       "branches": "支店一覧",
@@ -3044,7 +3520,15 @@
       "bulkDeleteBusinessPartners": "取引先の一括削除",
       "branches2": "支店数",
       "searchByBpCodeOrName": "BPコード・名称で検索",
-      "thereAreNoBusinessPartners": "取引先がありません"
+      "thereAreNoBusinessPartners": "取引先がありません",
+      "branchCountValue": "{count} 支店",
+      "bulkDeleteConfirm": "選択中の{count}件の取引先を削除します。この操作は取り消せません。",
+      "bulkDeleted": "{count}件の取引先を削除しました",
+      "bulkDisabled": "{count}件の取引先を無効化しました",
+      "bulkEnabled": "{count}件の取引先を有効化しました",
+      "daySuffix": "{value}日",
+      "endOfMonth": "月末",
+      "primaryContactTag": "（主担当）"
     },
     "defectTypes": {
       "theDefectTypeWasCreated": "不良種類を作成しました",
@@ -3057,7 +3541,12 @@
       "itCannotBeDeletedWhileDefect": "この不良種類を参照する不良記録が存在する場合は削除できません。無効化をご検討ください。",
       "enableTheDefectType": "不良種類の有効化",
       "bulkDeleteDefectTypes": "不良種類の一括削除",
-      "thereAreNoDefectTypes": "不良種類がありません"
+      "thereAreNoDefectTypes": "不良種類がありません",
+      "bulkDeleteConfirm": "選択中の{count}件の不良種類を削除します。この操作は取り消せません。",
+      "bulkDeleted": "{count}件の不良種類を削除しました",
+      "bulkDisabled": "{count}件の不良種類を無効化しました",
+      "bulkEnabled": "{count}件の不良種類を有効化しました",
+      "sortOrderValue": "表示順 {value}"
     },
     "inspectionTemplates": {
       "theTargetCanBeAnApproval": "宛先は承認グループか、この検査表だけの承認者（カスタム・複数可）から選べます。\n        未設定 = 誰でも検収できます",
@@ -3173,7 +3662,10 @@
       "searchByCodeNameOrRelated": "コード・名称・関連工程で検索",
       "exportTheSelection": "選択を書き出し",
       "thereAreNoInspectionTemplates": "検査表テンプレートがありません",
-      "noRelatedStep": "関連工程なし"
+      "noRelatedStep": "関連工程なし",
+      "referenceImageHelp": "測定位置の図解・現物写真など。設定すると空欄シート・記入済みシートの PDF にも印刷されます（{ext} / 5MB まで）。",
+      "reselect": "選び直す",
+      "templateCountValue": "{count}件の検査表"
     },
     "materialNumbering": {
       "theComponentWasAdded": "構成要素を追加しました",
@@ -3188,7 +3680,15 @@
       "materialTypeCode": "材種コード =",
       "manufacturerGrade2ShapeKind4": "[メーカー][材種2桁][形状][種類4桁]",
       "materialTypeFinishDia103": "[材種]-[黒皮研磨][径×10 3桁]-[全長3桁]",
-      "codesAreEmbeddedInCompositeCodes": "。\n          コードは合成コードに埋め込まれるため削除できません（無効化のみ）。\n          直径・全長は素材作成時にも自動登録されます。"
+      "codesAreEmbeddedInCompositeCodes": "。\n          コードは合成コードに埋め込まれるため削除できません（無効化のみ）。\n          直径・全長は素材作成時にも自動登録されます。",
+      "addDiameter": "直径の追加",
+      "addKind": "種類の追加",
+      "addLengthVariant": "全長の追加",
+      "addManufacturer": "メーカーの追加",
+      "addManufacturerGrade": "メーカー材種の追加",
+      "addShape": "形状の追加",
+      "addSurfaceFinish": "黒皮・研磨区分の追加",
+      "codePreview": "コード: {code}"
     },
     "materialTypes": {
       "notConvertedLegacy": "未変換（レガシー）",
@@ -3218,7 +3718,14 @@
       "bulkDeleteMaterialTypes": "材種の一括削除",
       "notConverted": "未変換",
       "conversionStatus": "変換状態",
-      "thereAreNoMaterialTypes": "材種がありません"
+      "thereAreNoMaterialTypes": "材種がありません",
+      "deleteConfirm": "材種「{name}」を削除します。この操作は取り消せません。",
+      "deleted": "材種「{name}」を削除しました",
+      "disableConfirm": "材種「{name}」を無効化します。新規の素材登録で選択できなくなります。",
+      "disableTheMaterialType": "材種の無効化",
+      "disabled": "材種「{name}」を無効化しました",
+      "enableConfirm": "材種「{name}」を有効化します。再び素材登録で選択できるようになります。",
+      "enabled": "材種「{name}」を有効化しました"
     },
     "materials": {
       "nominalDiameter": "呼び径",
@@ -3240,7 +3747,11 @@
       "bulkDeleteMaterials": "素材の一括削除",
       "surfaceFinish": "黒皮研磨",
       "searchByMaterialCodeNameOr": "素材コード・名称・キーワードで検索",
-      "thereAreNoMaterials": "素材がありません"
+      "thereAreNoMaterials": "素材がありません",
+      "diameterCodePreview": "コード: {code}（径×10）",
+      "editTitle": "素材 編集 — {code}",
+      "lengthCodePreview": "コード: {code}",
+      "materialUpdated": "素材を更新しました"
     },
     "plants": {
       "siteDrawingsSharedWithDevicesSy09": "端末管理 (SY09) と共用の拠点図面",
@@ -3278,7 +3789,18 @@
       "addARegion2": "地域を追加",
       "sites": "拠点数",
       "thereAreNoRegionsCreateOne": "地域がありません — 「地域を追加」から作成してください",
-      "theRegionCodeIsTheIdentifier": "地域コードは REGION スコープ権限（scope_values）が参照する識別子のため\n        作成後は変更できません。削除は拠点から参照されていない地域のみ可能です。"
+      "theRegionCodeIsTheIdentifier": "地域コードは REGION スコープ権限（scope_values）が参照する識別子のため\n        作成後は変更できません。削除は拠点から参照されていない地域のみ可能です。",
+      "deleteConfirm": "拠点「{name}」を削除します。この操作は取り消せません。",
+      "deleteRegionConfirm": "地域「{code} {name}」を削除します。この操作は取り消せません。",
+      "deleted": "拠点「{name}」を削除しました",
+      "disableConfirm": "拠点「{name}」を無効化します。新規の在庫・出荷・工程で選択できなくなります。",
+      "disableTheSite": "拠点の無効化",
+      "disabled": "拠点「{name}」を無効化しました",
+      "editRegion": "地域の編集",
+      "enableConfirm": "拠点「{name}」を有効化します。再び在庫・出荷・工程で選択できるようになります。",
+      "enabled": "拠点「{name}」を有効化しました",
+      "regionDisabled": "地域を無効化しました",
+      "regionUpdated": "地域を更新しました"
     },
     "processSteps": {
       "stepItDependsOn": "依存先工程",
@@ -3322,7 +3844,20 @@
       "deleteTheStep": "工程の削除",
       "itCannotBeDeletedWhileOther": "他の工程がこの工程に依存している場合や、検査表テンプレート・指示書が参照している場合は削除できません。無効化をご検討ください。",
       "enableTheStep": "工程の有効化",
-      "bulkDeleteSteps": "工程の一括削除"
+      "bulkDeleteSteps": "工程の一括削除",
+      "categoryRequired": "カテゴリを選択してください",
+      "defaultWorkHoursPositive": "既定作業時間は正の数で入力してください",
+      "deleteConfirm": "工程「{name}」を削除します。この操作は取り消せません。",
+      "deleted": "工程「{name}」を削除しました",
+      "disableConfirm": "工程「{name}」を無効化します。新規のワークフロー・依存先として選択できなくなります。",
+      "disableTheStep": "工程の無効化",
+      "disabled": "工程「{name}」を無効化しました",
+      "editTitle": "工程 編集 — {code}",
+      "enableConfirm": "工程「{name}」を有効化します。再びワークフロー・依存先として選択できるようになります。",
+      "enabled": "工程「{name}」を有効化しました",
+      "executionLocationRequired": "実施場所を選択してください",
+      "sortOrderInteger": "表示順は整数で入力してください",
+      "stepUpdated": "工程を更新しました"
     },
     "products": {
       "specification": "仕様",
@@ -3367,7 +3902,16 @@
       "newProcessRoute": "工程ルート 新規作成",
       "settingItMakesItPreferredFor": "指定すると同じ顧客×製品の指示書で優先選択されます（空 = 汎用）",
       "routeName": "ルート名",
-      "aNoteOnWhatChangedShown": "変更内容のメモ（バージョン履歴に表示）"
+      "aNoteOnWhatChangedShown": "変更内容のメモ（バージョン履歴に表示）",
+      "copyOfName": "{name}（コピー）",
+      "deleteProductConfirm": "製品「{name}」を削除します。この操作は取り消せません。",
+      "disableProductConfirm": "製品「{name}」を無効化します。新規の価格試算・価格表・見積書で選択できなくなります。",
+      "disableTheProduct": "製品の無効化",
+      "enableProductConfirm": "製品「{name}」を有効化します。再び価格試算・価格表・見積書で選択できるようになります。",
+      "productCreated": "製品「{code}」を作成しました",
+      "productDeleted": "製品「{name}」を削除しました",
+      "productDisabled": "製品「{name}」を無効化しました",
+      "productEnabled": "製品「{name}」を有効化しました"
     },
     "storageLocations": {
       "editTheStorageLocation": "保管場所の編集",
@@ -3395,7 +3939,268 @@
       "addAShelf": "棚を追加",
       "addAShelf2": "棚の追加",
       "shelfCode": "棚コード",
-      "nameOptional": "名称（任意）"
+      "nameOptional": "名称（任意）",
+      "floorMapAlt": "フロアマップ: {name}",
+      "pinLabel": "{name}（{code}）｜棚 {count} 件",
+      "placeThisLocation": "{name} を配置",
+      "shelfCountValue": "棚 {count} 件"
+    },
+    "productDetail": {
+      "routesTab": "工程"
+    },
+    "workLocationsManager": {
+      "editGroup": "グループの編集",
+      "editWorkLocation": "作業場所の編集",
+      "theGroupWasUpdated": "グループを更新しました",
+      "code": "コード",
+      "theWorkLocationWasUpdated": "作業場所を更新しました",
+      "pageTitle": "作業場所",
+      "deleteGroupConfirm": "グループ「{name}」を削除します。配下の場所（{count}件）も削除されます。この操作は取り消せません。",
+      "groupDeleted": "グループ「{name}」を削除しました",
+      "deleteWorkLocationConfirm": "作業場所「{name}」を削除します。この操作は取り消せません。",
+      "workLocationDeleted": "作業場所「{name}」を削除しました",
+      "workLocationInUse": "この場所は 作業計画 {planCount} 件 / 作業実績 {actualCount} 件 から参照されています（削除できません — 無効化をご検討ください）。",
+      "jobsWithCount": "{count} 作業"
+    },
+    "bpModals": {
+      "deleteConfirm": "{entityLabel}「{name}」を削除します。この操作は取り消せません。",
+      "deleted": "{entityLabel}「{name}」を削除しました",
+      "deleteTitle": "{entityLabel}の削除",
+      "disableAction": "無効化する",
+      "disableConfirm": "{entityLabel}「{name}」を無効化します。新規のドキュメントで選択できなくなります。",
+      "enableConfirm": "{entityLabel}「{name}」を有効化します。再びドキュメントで選択できるようになります。",
+      "disabledEntity": "{entityLabel}「{name}」を無効化しました",
+      "enabledEntity": "{entityLabel}「{name}」を有効化しました",
+      "disableTitle": "{entityLabel}の無効化",
+      "enableTitle": "{entityLabel}の有効化",
+      "contactAdded": "担当者「{name}」を追加しました",
+      "addContactTitle": "担当者の追加 — {bpName}",
+      "namePlaceholder": "山田 太郎",
+      "kanaPlaceholder": "ヤマダ タロウ"
+    },
+    "productForm": {
+      "enterNameJa": "名称（日本語）を入力してください",
+      "selectUnit": "単位を選択してください",
+      "diameterRange": "直径は {min}〜{max}mm で入力してください",
+      "lengthRange": "全長は {min}〜{max}mm で入力してください",
+      "theProductWasUpdated": "製品を更新しました",
+      "productLabel": "製品",
+      "editProductTitle": "製品 編集 — {name}",
+      "diameterCodeLabel": "コード: {code}（径×10）",
+      "lengthCodeLabel": "コード: {code}"
+    },
+    "defectTypeModals": {
+      "updated": "不良種類「{name}」を更新しました",
+      "code": "コード",
+      "deleteConfirm": "不良種類「{name}」を削除します。この操作は取り消せません。",
+      "deleted": "不良種類「{name}」を削除しました",
+      "disableAction": "無効化する",
+      "disableConfirm": "不良種類「{name}」を無効化します。新規の不良記録で選択できなくなります。",
+      "enableConfirm": "不良種類「{name}」を有効化します。再び不良記録で選択できるようになります。",
+      "disabled": "不良種類「{name}」を無効化しました",
+      "enabled": "不良種類「{name}」を有効化しました",
+      "disableTitle": "不良種類の無効化"
+    },
+    "inspectionTemplateTable": {
+      "bulkEnabled": "{count}件の検査表テンプレートを有効化しました",
+      "bulkDisabled": "{count}件の検査表テンプレートを無効化しました",
+      "bulkDeleteConfirm": "選択中の{count}件の検査表テンプレートを削除します。この操作は取り消せません。",
+      "bulkDeleted": "{count}件の検査表テンプレートを削除しました",
+      "code": "コード",
+      "itemCountWithUnit": "{count}件",
+      "groupsShort": "グループ",
+      "ioShort": "入出力"
+    },
+    "productTable": {
+      "bulkEnabled": "{count}件の製品を有効化しました",
+      "bulkDisabled": "{count}件の製品を無効化しました",
+      "bulkDeleteConfirm": "選択中の{count}件の製品を削除します。この操作は取り消せません。",
+      "bulkDeleted": "{count}件の製品を削除しました",
+      "pageTitle": "製品"
+    },
+    "materialTypeTable": {
+      "structured": "変換済",
+      "legacy": "未変換",
+      "bulkEnabled": "{count}件の材種を有効化しました",
+      "bulkDisabled": "{count}件の材種を無効化しました",
+      "bulkDeleteConfirm": "選択中の{count}件の材種を削除します。この操作は取り消せません。",
+      "bulkDeleted": "{count}件の材種を削除しました"
+    },
+    "inspectionTemplateForm": {
+      "enterCode": "コードを入力してください",
+      "codeFormat": "コードは英数字・ハイフン・アンダースコアで入力してください",
+      "enterNameJa": "名称（日本語）を入力してください",
+      "editTitle": "検査表テンプレート 編集 — {code}",
+      "code": "コード"
+    },
+    "approvalFlowEditor": {
+      "nthApproval": "第{n}承認",
+      "approvalFlowFor": "{label}の承認フロー",
+      "approvalGroupAndApprovers": "承認グループ・承認者",
+      "noApprovalPermission": "{label}（承認権限なし）"
+    },
+    "componentTable": {
+      "code": "コード",
+      "confirmEnabling": "有効化の確認",
+      "enableConfirm": "「{code} — {name}」を有効化します。",
+      "disableConfirm": "「{code} — {name}」を無効化します。新規の材種・素材作成で選択できなくなります（既存コードには影響しません）。",
+      "enabled": "「{code}」を有効化しました",
+      "disabled": "「{code}」を無効化しました"
+    },
+    "branchForm": {
+      "theBranchWasUpdated": "支店を更新しました",
+      "editBranch": "支店 編集",
+      "editTitle": "支店 編集 — {code}",
+      "newTitle": "支店 新規作成 — {parentName}",
+      "codeFormat": "形式: {parentBpCode}-NN（自動採番）"
+    },
+    "floorMapsPanel": {
+      "deleteFloorConfirm": "フロア「{name}」を削除します。端末・保管場所のピンが残っている場合は削除できません。",
+      "floorMapAlt": "フロアマップ: {name}",
+      "addFloor": "フロアを追加"
+    },
+    "inspectionTemplateDetail": {
+      "code": "コード"
+    },
+    "inspectionTemplateIoModal": {
+      "exportSelectedCount": "選択中の {count} 件を書き出します。",
+      "importedCount": "{count} 件を取り込みました",
+      "skippedCount": "{count} 件は取り込めませんでした"
+    },
+    "bpBaseFields": {
+      "kanaPlaceholder": "エービーシーセイサクショ"
+    },
+    "plantDetail": {
+      "plantsLabel": "拠点"
+    },
+    "approvalGroupForm": {
+      "enterNameJa": "名称（日本語）を入力してください",
+      "editTitle": "承認グループ 編集 — {name}"
+    },
+    "materialForm": {
+      "diameterRange": "直径は 0.1〜99.9mm で入力してください",
+      "diameterRequired": "直径を入力してください",
+      "kindRequired": "種類を選択してください",
+      "lengthRange": "全長は 1〜999mm で入力してください",
+      "lengthRequired": "全長を入力してください",
+      "materialTypeRequired": "材種を選択してください",
+      "surfaceFinishRequired": "黒皮・研磨を選択してください",
+      "unitRequired": "単位を選択してください"
+    },
+    "inspectionTemplateModals": {
+      "deleteConfirmMessage": "検査表テンプレート「{name}」を削除します。検査項目も同時に削除されます。この操作は取り消せません。",
+      "deletedMessage": "検査表テンプレート「{name}」を削除しました",
+      "disableConfirmMessage": "検査表テンプレート「{name}」を無効化します。新規の指示書で選択できなくなります。",
+      "enableConfirmMessage": "検査表テンプレート「{name}」を有効化します。再び指示書で選択できるようになります。",
+      "disabledMessage": "検査表テンプレート「{name}」を無効化しました",
+      "enabledMessage": "検査表テンプレート「{name}」を有効化しました",
+      "createVersionConfirmMessage": "「{name}」の検査項目をコピーして v{version} 以降の新バージョンを作成します。既存の指示書・検査記録は現在のバージョンのまま変わりません。",
+      "versionCreatedMessage": "{code} v{version} を作成しました",
+      "itemUpdatedMessage": "検査項目「{name}」を更新しました",
+      "itemAddedMessage": "検査項目「{name}」を追加しました",
+      "editItemTitle": "検査項目の編集",
+      "optionLabelJaAria": "選択肢 {n}（日本語）",
+      "optionLabelEnAria": "選択肢 {n}（English）",
+      "removeOptionAria": "選択肢 {n} を削除",
+      "itemDeleteConfirmMessage": "検査項目「{name}」を削除します。この操作は取り消せません。",
+      "itemDeletedMessage": "検査項目「{name}」を削除しました"
+    },
+    "materialNumberingTabs": {
+      "addButtonLabel": "{label}を追加"
+    },
+    "processStepTable": {
+      "bulkEnabledMessage": "{count}件の工程を有効化しました",
+      "bulkDisabledMessage": "{count}件の工程を無効化しました",
+      "bulkDeleteConfirmMessage": "選択中の{count}件の工程を削除します。他の工程が依存している工程は削除できません。この操作は取り消せません。",
+      "bulkDeletedMessage": "{count}件の工程を削除しました"
+    },
+    "approvalGroupDetail": {
+      "canApprove": "{label}を承認できます",
+      "canApproveScoped": "{label}を承認できますが、権限の範囲が{scopes}に限定されています（範囲外の書類は承認できません）",
+      "cannotApprove": "{label}を閲覧・編集できる権限（{code}:READ / UPDATE）がありません — 承認ボタンを押しても弾かれます",
+      "memberDisabledMessage": "メンバー「{name}」を無効化しました",
+      "memberEnabledMessage": "メンバー「{name}」を有効化しました",
+      "activeMemberCount": "{active}名（有効） / {total}名"
+    },
+    "plantTable": {
+      "title": "拠点",
+      "bulkEnabledMessage": "{count}件の拠点を有効化しました",
+      "bulkDisabledMessage": "{count}件の拠点を無効化しました",
+      "bulkDeleteConfirmMessage": "選択中の{count}件の拠点を削除します。この操作は取り消せません。",
+      "bulkDeletedMessage": "{count}件の拠点を削除しました"
+    },
+    "storageLocationsPanel": {
+      "deleteLocationConfirmMessage": "「{name}」（棚 {count} 件を含む）を削除します。この操作は取り消せません。",
+      "deleteShelfConfirmMessage": "棚「{code}」を削除します。この操作は取り消せません。",
+      "editShelfTitle": "棚の編集"
+    },
+    "productRoutesPanel": {
+      "routeDeletedMessage": "工程ルート「{name}」を削除しました",
+      "deleteRouteConfirmMessage": "工程ルート「{name}」を全バージョンごと削除します。この操作は取り消せません。"
+    },
+    "plantForm": {
+      "enterSiteCode": "拠点コードを入力してください",
+      "siteUpdatedMessage": "拠点を更新しました",
+      "editTitle": "拠点 編集 — {code}"
+    },
+    "materialTypeForm": {
+      "selectAManufacturer2": "メーカーを選択してください",
+      "selectAManufacturerGrade": "メーカー材種を選択してください",
+      "selectAShape2": "形状を選択してください",
+      "createdMessage": "材種 {code} を作成しました",
+      "editTitle": "材種 編集 — {code}"
+    },
+    "approvalFlowRulesSection": {
+      "savedMessage": "{target}の条件付きフロー「{name}」",
+      "deleteConfirmMessage": "「{name}」を削除します。進行中の承認依頼には影響しません。"
+    },
+    "materialModals": {
+      "deleteConfirmMessage": "素材「{name}」を削除します。この操作は取り消せません。",
+      "deletedMessage": "素材「{name}」を削除しました",
+      "disableConfirmMessage": "素材「{name}」を無効化します。新規の発注・指示書で選択できなくなります。",
+      "enableConfirmMessage": "素材「{name}」を有効化します。再び発注・指示書で選択できるようになります。",
+      "disabledMessage": "素材「{name}」を無効化しました",
+      "enabledMessage": "素材「{name}」を有効化しました",
+      "disableTheMaterial": "素材の無効化"
+    },
+    "bpForm": {
+      "customerRoleDescription": "見積書・注文請書・請求書の宛先として選べるようになる",
+      "endUserRoleDescription": "納品書・注文明細の最終需要家として選べるようになる",
+      "vendorRoleDescription": "素材発注書・外注依頼・工程の外注先として選べるようになる",
+      "updatedMessage": "取引先を更新しました",
+      "editTitle": "取引先 編集 — {code}"
+    },
+    "locationModal": {
+      "selectASite": "拠点を選択してください",
+      "addStorageLocationTitle": "保管場所の追加"
+    },
+    "materialTable": {
+      "bulkEnabledMessage": "{count}件の素材を有効化しました",
+      "bulkDisabledMessage": "{count}件の素材を無効化しました",
+      "bulkDeleteConfirmMessage": "選択中の{count}件の素材を削除します。この操作は取り消せません。",
+      "bulkDeletedMessage": "{count}件の素材を削除しました"
+    },
+    "routeEditorForm": {
+      "newRouteBreadcrumb": "工程ルート新規作成",
+      "newVersionTitle": "工程ルート「{name}」新バージョン作成（v{version}）"
+    },
+    "branchDetail": {
+      "deleteConfirmMessage": "支店「{name}（{code}）」を削除します。この操作は取り消せません。",
+      "deletedMessage": "支店「{name}」を削除しました"
+    },
+    "processStepDetail": {
+      "typeLabel": "種別: {label}"
+    },
+    "contactsTable": {
+      "deleteConfirmMessage": "担当者「{name}」を削除します。この操作は取り消せません。",
+      "deletedMessage": "担当者「{name}」を削除しました"
+    },
+    "productDesignFiles": {
+      "latestVersion": "最新 v{version}",
+      "latestVersionCaption": "v{version}（最新）"
+    },
+    "materialTypePriceGrid": {
+      "savedMessage": "既定単価 {count} 件を保存しました"
     }
   },
   "manual": {
@@ -3509,7 +4314,10 @@
       "loading": "読み込み中…",
       "thereAreNoFilesYouCan": "閲覧できるファイルはありません",
       "thereAreNoFilesInThis": "このフォルダにファイルはありません",
-      "cannotReachTheStorage": "ストレージに接続できません"
+      "cannotReachTheStorage": "ストレージに接続できません",
+      "deleteFileConfirm": "「{name}」を削除します。この操作は取り消せません。",
+      "systemFilesWithCount": "システムファイル ({count})",
+      "refresh": "更新"
     },
     "folderGrantsModal": {
       "couldNotLoad": "読み込み失敗",
@@ -3520,7 +4328,9 @@
       "everyFileBeneathTheFolderGiven": "指定フォルダ以下のすべてのファイルが対象。system\n              権限の管理者は常に全フォルダへアクセスできます。",
       "granted": "付与済み",
       "thereAreNoIndividualGrants": "個別付与はありません",
-      "read": "読み取り"
+      "read": "読み取り",
+      "removeAccessConfirmMessage": "「{pathPrefix}」への {userName} さんのアクセス権を削除します。",
+      "readWrite": "読み書き"
     }
   },
   "approvals": {
@@ -3529,10 +4339,22 @@
       "anApprovalRequestIsRequired": "承認依頼が必要です",
       "pleaseApprove": "承認してください",
       "yourApprovalHasBeenRecorded": "あなたの承認は記録済みです",
-      "sendingItBackStopsTheApproval": "差し戻すと承認フローは止まり、書類は編集できる状態に戻ります。"
+      "sendingItBackStopsTheApproval": "差し戻すと承認フローは止まり、書類は編集できる状態に戻ります。",
+      "remainingNamesWithOthers": "{names} ほか {rest} 名",
+      "stepAndGroupLabel": "第 {stepNo}/{stepCount} 段「{stepLabel}」・{groupLabel}",
+      "stepAndGroupLabelSingle": "{stepLabel}・{groupLabel}",
+      "reRequestApproval": "再承認依頼",
+      "rejectReasonCanReRequest": "差し戻し理由: {reason}（修正して再依頼できます）",
+      "itWasSentBack": "差し戻されました",
+      "allMembersMustApproveRemaining": "{where} — 全員の承認が必要です（残り {count} 名: {names}）",
+      "youCanApproveAsAnApprover": "{where} の承認者としてこの書類を承認できます",
+      "remainingApprovers": "{where} — 残り {count} 名: {names}",
+      "onlyGroupMembersCanAct": "{groupLabel} のメンバーのみ承認・差し戻しできます",
+      "stepLabelWaiting": "{stepLabel}待ち"
     },
     "approvalStepper": {
-      "noApprovalFlowIsSet": "承認フローが未設定です"
+      "noApprovalFlowIsSet": "承認フローが未設定です",
+      "groupAllMustApprove": "{group}（全員承認）"
     },
     "approvalTrailList": {
       "approvalRecord": "承認記録"
@@ -3545,7 +4367,9 @@
       "couldNotChangeIt": "変更に失敗しました",
       "changeThePassword": "パスワードの変更",
       "thePasswordIsStillTheInitial": "初期パスワードのままです。続けるには変更してください。",
-      "youCannotOpenOtherScreensUntil": "変更するまで他の画面は開けません。"
+      "youCannotOpenOtherScreensUntil": "変更するまで他の画面は開けません。",
+      "newPasswordMustBeAtLeast": "新しいパスワードは {minLength} 文字以上にしてください",
+      "atLeastNCharacters": "{minLength} 文字以上"
     },
     "loginForm": {
       "theUsernameOrPasswordIsIncorrect": "ユーザー名またはパスワードが正しくありません",
@@ -3555,7 +4379,12 @@
       "sSOIsNotConfiguredPleaseContact": "SSO は未設定です（管理者にお問い合わせください）",
       "logInWithADevelopmentAccount": "開発用アカウントでログイン",
       "forDevelopmentAndTestingOrdinaryUsers": "開発・検証用です。通常のユーザーは SSO をご利用ください。",
-      "password": "パスワード"
+      "password": "パスワード",
+      "accessDeniedAccountDisabledOrSso": "アクセスが拒否されました。アカウントが無効、または SSO から必要な情報（ユーザー名/メール）が取得できませんでした。管理者にお問い合わせください。",
+      "ssoResponseProcessingFailed": "SSO の応答処理に失敗しました（トークン取得/検証エラー）。時間をおいて再度お試しください。",
+      "thereIsAnErrorInTheAuthentication": "認証設定にエラーがあります。管理者にお問い合わせください。",
+      "theLinkIsInvalidOrExpired": "リンクが無効か期限切れです。もう一度お試しください。",
+      "loginError": "ログインエラー: {code}"
     }
   },
   "documents": {
@@ -3564,7 +4393,9 @@
       "approvalToPublish": "公開に承認",
       "notRequired": "不要",
       "bodyText": "本文",
-      "itIsNotPublishedYetEdit": "まだ公開されていません。編集して公開すると、ここに本文が出ます。\n              下書きの内容は「レビュー」から読めます。"
+      "itIsNotPublishedYetEdit": "まだ公開されていません。編集して公開すると、ここに本文が出ます。\n              下書きの内容は「レビュー」から読めます。",
+      "required": "必要",
+      "hasUnpublishedChangesRevision": "未公開の変更あり（r{revision}）"
     },
     "documentEditor": {
       "editTheDocument": "文書を編集",
@@ -3578,7 +4409,8 @@
       "aLineOnWhatYouFixed": "何を直したかを一言（リビジョンの履歴に出ます）",
       "reasonForTheChange": "変更理由",
       "addAPreShipmentCheckItem": "出荷前チェックの項目を追加",
-      "saveTheBodyNewRevision": "本文を保存（新しいリビジョン）"
+      "saveTheBodyNewRevision": "本文を保存（新しいリビジョン）",
+      "savedAsRevision": "リビジョン {revision} として保存しました"
     },
     "documentsTable": {
       "createADocument": "文書を作る",
@@ -3589,7 +4421,9 @@
       "italic": "斜体",
       "bulletedList": "箇条書き",
       "preview": "プレビュー",
-      "split": "分割"
+      "split": "分割",
+      "bodyTooLong": "本文が長すぎます（{lines} 行 / 上限 {max} 行）。文書を分けてください",
+      "lineCountLabel": "{lines} 行"
     },
     "pagePublishCard": {
       "itIsPublishedOnceApproved": "承認されると公開されます。",
@@ -3599,7 +4433,11 @@
       "thePublishedVersionIsReplacedWith": "公開版が最新のリビジョンに入れ替わります。",
       "thereAreUnpublishedChanges": "公開されていない変更があります",
       "confirmPublishing": "公開の確認",
-      "theLatestRevisionWillBePublished": "最新のリビジョンを公開します。"
+      "theLatestRevisionWillBePublished": "最新のリビジョンを公開します。",
+      "requestToPublish": "公開を申請",
+      "requestedToPublish": "公開を申請しました",
+      "requestToPublishTitle": "公開の申請",
+      "thereAreUnresolvedComments": "未解決のコメントが {count} 件あります。このまま進めますか？"
     },
     "reviewView": {
       "thisRowWasChangedOrDeleted": "この行は編集で変更・削除されました。当時の内容だけが残っています",
@@ -3610,18 +4448,28 @@
       "reply": "返信",
       "includeResolved": "解決済みも表示",
       "stop": "やめる",
-      "comment": "コメントする"
+      "comment": "コメントする",
+      "markAsUnresolved": "未解決に戻す",
+      "oldLineNumber": "旧 {n} 行目",
+      "lineNumber": "{n} 行目",
+      "commentOnLine": "{n} 行目にコメント",
+      "commentPlaceholderForLine": "{n} 行目へのコメント"
     },
     "revisionDiff": {
       "compareFrom": "比較元",
       "compareTo": "比較先",
-      "thereIsNoDifference": "差分はありません"
+      "thereIsNoDifference": "差分はありません",
+      "lineChangesSummary": "{from} → {to}: {count} 行の変更"
     },
     "revisionsView": {
       "thisCreatesANewRevisionWith": "この内容で新しいリビジョンを作ります。履歴は巻き戻さず、前に進めて元に戻します。",
       "restore": "復元する",
       "diff": "差分",
-      "restore2": "復元"
+      "restore2": "復元",
+      "versionListWithCount": "版一覧（{count}）",
+      "actionPublish": "公開",
+      "restoreRevisionTitle": "リビジョン {revision} を復元",
+      "restoredAsRevision": "リビジョン {revision} として復元しました"
     }
   },
   "forms": {
@@ -3659,7 +4507,9 @@
       "viewTheSummary": "集計を見る",
       "export": "書き出す",
       "notSubmitted": "未提出",
-      "sharedWith": "共有先"
+      "sharedWith": "共有先",
+      "fieldsWithCount": "項目（{count}）",
+      "responsesWithCount": "回答（{count}）"
     },
     "formEditor": {
       "couldNotSaveTheItem": "項目を保存できませんでした",
@@ -3688,7 +4538,9 @@
       "editingByTheRespondent": "回答者による編集",
       "editableUntil": "編集期限",
       "saveBelowStoresItTogetherWith": "下の「保存」で、設定と一緒に保存されます。項目に手を入れた場合は\n            新しいバージョンとして公開され、これまでの回答は回答した時点の\n            項目のまま残ります。",
-      "thereAreUnsavedChangesToThe": "項目に未保存の変更があります。"
+      "thereAreUnsavedChangesToThe": "項目に未保存の変更があります。",
+      "itemErrorButSettingsSaved": "{error}（設定は保存しました）",
+      "fieldDefinitionIsInvalid": "項目定義が不正です"
     },
     "formFieldEditor": {
       "companyName": "会社名",
@@ -3717,7 +4569,12 @@
       "fieldToMatchOnReferencedForm": "突き合わせる項目（参照先）",
       "columnsShownInTheReferencedList": "参照先の一覧に出す列（最大 8 つ）",
       "chooseAColumn": "列を選ぶ",
-      "maximumRowsShown": "最大表示件数"
+      "maximumRowsShown": "最大表示件数",
+      "noInternalKey": "内部キーがありません",
+      "invalidInternalKeyFormat": "内部キーの形式が不正です（英字で始まる英数字・_）",
+      "duplicateInternalKey": "内部キーが重複しています",
+      "unusableRegularExpression": "使えない正規表現です（構文エラー、量指定の入れ子、または {max} 文字超）",
+      "keyErrorImportedDefinitionIsBroken": "{error}（取り込んだ定義が壊れています）"
     },
     "formFieldInput": {
       "searchAndSelect": "検索して選択",
@@ -3729,7 +4586,20 @@
       "thereAreNoItemsYetAdd": "項目がまだありません。「編集」から追加してください",
       "thisVersionHasNoItems": "この版には項目がありません",
       "order": "順",
-      "thereAreNoItems": "項目がありません"
+      "thereAreNoItems": "項目がありません",
+      "noOptionsSet": "選択肢が未設定",
+      "shownPlusMore": "{shown} ほか {count} 件",
+      "searchFromLabel": "{label}から検索",
+      "noSearchSourceSet": "検索先が未設定",
+      "columnsLabel": "列: {columns}",
+      "noColumnsSet": "列が未設定",
+      "filteredResponsesOfForm": "フォーム {target} の回答を絞り込んで表示",
+      "noReferenceTargetSet": "参照先が未設定",
+      "inputFormatLabel": "入力形式: {pattern}",
+      "minOrMore": "{min} 以上",
+      "maxOrLess": "{max} 以下",
+      "savedDefinitionCannotBeRead": "保存されている定義（バージョン {version}）が、いまのアプリが読める形になっていません。「編集」から組み直して保存してください。",
+      "typeAndDetail": "{type} ・ {detail}"
     },
     "formFlowSummary": {
       "thereAreNoApprovalStepsYet": "承認の段がまだありません。このままだと提出しても承認依頼が始まらず、回答は「提出済」で止まります。「編集」から段を追加してください。",
@@ -3758,7 +4628,11 @@
       "thereIsNoFormWithThe": "同じコードのフォームがこの環境にありません",
       "aFormWithTheSameCode": "同じコードのフォームはありますが、編集する権限がありません",
       "updateTheExistingFormANew": "既存のフォームを更新する（新しいバージョン）",
-      "import": "取り込む"
+      "import": "取り込む",
+      "fieldCountLabel": "{count} 個",
+      "importedAsVersion": "バージョン {version} として取り込みました",
+      "willCreateWithSameCode": "書き出し元と同じコード（{sourceCode}）で作ります。共有 URL が環境をまたいで同じになります",
+      "willOverlayAsNewVersion": "「{existingTitle}」に新しいバージョンとして重ねます。これまでの回答は回答時点の内容のまま残ります"
     },
     "formResponseView": {
       "thereAreNoRecordsToReference": "参照するレコードがありません。"
@@ -3791,7 +4665,13 @@
       "isWhereYouDoIt": "で行えます。",
       "pasteItIntoMetabaseSForm": "Metabase の「フォームコード」に貼り付けると、このフォームの回答だけに絞れます。",
       "openMetabase": "Metabase を開く",
-      "readHowItIsSummarized": "集計のしかたを読む"
+      "readHowItIsSummarized": "集計のしかたを読む",
+      "percentIsOfAnsweredCount": "割合は回答した {answered} 件に対するもの（複数選べるので合計は 100% を超えます）",
+      "othersCountTopOnly": "ほかに {count} 件（上位のみ表示）",
+      "freeTextNotCharted": "自由記述はグラフにしません。最近の回答を{count}件まで並べます。",
+      "moreSamplesSeeResponseListOrExport": "ほかに {count} 件（すべて読むには回答一覧か Excel の書き出しへ）",
+      "summaryCsvFilename": "集計_{formTitle}_{formCode}.csv",
+      "summaryTitle": "集計 — {formTitle}"
     },
     "formsTable": {
       "thereAreNoFormsToShow": "表示できるフォームがありません"
@@ -3808,7 +4688,11 @@
       "thisDiscardsTheDraftWhatYou": "この下書きを捨てます。書いた内容は戻せません。",
       "theDraftWasDeleted": "下書きを削除しました",
       "couldNotBeDeleted": "削除できませんでした",
-      "fillInTheBlankFormBelow": "下の空のフォームに書けば、新しい 1 件として保存されます。"
+      "fillInTheBlankFormBelow": "下の空のフォームに書けば、新しい 1 件として保存されます。",
+      "draftSaved": "下書きを保存しました",
+      "receptionClosedWithLabel": "このフォームの受付は終了しています（{label}）。",
+      "receptionClosesAt": "受付終了",
+      "draftsInProgressWithCount": "書きかけの下書き（{count}）"
     },
     "respondFormClient": {
       "send": "送信"
@@ -3838,7 +4722,8 @@
       "resetAll": "すべてに戻す",
       "everyFieldBecomesAColumnUncheck": "すべての項目を列にします。減らしたいものだけ外してください。",
       "downloadAsExcel": "Excel でダウンロード",
-      "printThemTogetherAsAPdf": "PDF でまとめて印刷"
+      "printThemTogetherAsAPdf": "PDF でまとめて印刷",
+      "fieldsSelectedCount": "{count} 項目を選択中"
     },
     "shareConditionEditor": {
       "thereAreNoFieldsUsableAs": "条件に使える項目がありません（ドロップダウン・複数選択・業務データ検索の\n        項目を作ると使えます）",
@@ -3864,7 +4749,12 @@
     "shareGrantsView": {
       "aFormWithNoSharesSet": "共有先を 1 つも設定していないフォームは、作成者と管理者にしか見えません。\n      URL を知っていても開けません。",
       "condition": "条件",
-      "allResponses": "すべての回答"
+      "allResponses": "すべての回答",
+      "fieldIsOneOfValuesResponsesOnly": "{label} が {values} の回答だけ"
+    },
+    "summaryCharts": {
+      "donutSliceLabel": "{label} {count}件（{percent}%）",
+      "noResponses": "回答がありません"
     }
   },
   "layout": {
@@ -3889,7 +4779,8 @@
       "whatTheProblemIs": "問題の内容",
       "whatWentWrongTheStepsYou": "発生した問題・操作手順・期待した動作など",
       "thePageUrlBrowserDetailsScreen": "ページ URL・ブラウザ情報・画面サイズ・アプリバージョンが自動で\n          添付されます。報告は操作履歴に記録され、管理者へ通知されます。",
-      "report": "報告する"
+      "report": "報告する",
+      "attachConsoleLogsWithCount": "コンソールログを添付する（直近 {count} 件）"
     },
     "sharePageModal": {
       "selectAtLeastOneRecipient": "宛先を 1 件以上選択してください",
@@ -3906,6 +4797,12 @@
     "versionSkewBanner": {
       "theAppWasUpdatedThisPage": "アプリが新しいバージョンに更新されました —\n          このページは古いまま動いています。操作が失敗する前に再読み込みしてください。",
       "reload": "再読み込み"
+    },
+    "navigationGuard": {
+      "unsavedChangesTitle": "保存されていない変更があります",
+      "unsavedChangesMessage": "このページを離れると、入力した内容は保存されません。移動してもよろしいですか？",
+      "leave": "移動する",
+      "stay": "このページに留まる"
     }
   },
   "notifications": {
@@ -3928,7 +4825,11 @@
       "isWhereItLives": "にあります。",
       "evenIfYouHoldThePermission": "ここにある操作は、権限を持っていても",
       "itCannotBeRunAsIt": "そのままでは実行できません",
-      "andCanOnlyBeDoneFor": "で申請し、別の人の承認を受けた期間だけ行えます。"
+      "andCanOnlyBeDoneFor": "で申請し、別の人の承認を受けた期間だけ行えます。",
+      "remainingHoursMinutes": "残り {hours} 時間 {minutes} 分",
+      "remainingMinutes": "残り {minutes} 分",
+      "requestRequired": "申請が必要",
+      "scopeLabel": "範囲: {scopes}"
     },
     "notificationSettingsForm": {
       "theNotificationSettingsWereUpdated": "通知設定を更新しました",
@@ -3965,7 +4866,10 @@
       "noDevicesAreRegisteredUseEnable": "登録済みのデバイスはありません。上の「このデバイスで有効化」から登録できます。",
       "device": "デバイス",
       "thisDevice": "このデバイス",
-      "removeThisDeviceSRegistration": "このデバイスの登録を削除"
+      "removeThisDeviceSRegistration": "このデバイスの登録を削除",
+      "unknownDevice": "不明なデバイス",
+      "browser": "ブラウザ",
+      "stopsPushNotificationsToDevice": "「{device}」へのプッシュ通知を停止します。"
     },
     "profileView": {
       "theProfilePhotoWasUpdated": "プロフィール写真を更新しました",
@@ -3983,7 +4887,9 @@
       "n8CharactersOrMore": "8 文字以上",
       "changeThePassword": "パスワードを変更",
       "devicesRegisteredForPush": "プッシュ通知の登録デバイス",
-      "noDevicesAreRegisteredYouCan": "登録されたデバイスはありません。通知設定から有効化できます。"
+      "noDevicesAreRegisteredYouCan": "登録されたデバイスはありません。通知設定から有効化できます。",
+      "employee": "従業員",
+      "unknownDevice": "不明なデバイス"
     }
   },
   "sales": {
@@ -4053,7 +4959,9 @@
       "thereAreNoDesignRequests": "—（設計依頼はありません）",
       "searchByRequestNumberProductDetails": "依頼番号・製品・依頼内容・担当者で検索",
       "thereAreNoDesignRequests2": "設計依頼書がありません",
-      "noProductSpecified": "製品未指定"
+      "noProductSpecified": "製品未指定",
+      "hasVersionsSoRevision": "この製品には v{versionCount} まであります → 改訂",
+      "noDesignYetSoNew": "この製品にはまだ設計書がありません → 新規"
     },
     "orderAcceptances": {
       "theOrderAcceptanceWasCancelled": "注文請書をキャンセルしました",
@@ -4145,7 +5053,9 @@
       "matchAgainstTheProductMaster": "製品マスタと突合",
       "itemNameExtractedText": "品名（抽出テキスト）",
       "itemNameOnTheOrder": "注文書の品名",
-      "mayBeLeftBlank": "未入力可"
+      "mayBeLeftBlank": "未入力可",
+      "watchedFolder": "監視フォルダ取込",
+      "manualEntry": "手入力"
     },
     "orderLines": {
       "parentDocumentOfThisLine": "この明細の親書類",
@@ -4383,6 +5293,180 @@
       "representativeEstimatedUnitPrice": "代表見積単価",
       "searchByPriceEstimateNumberName": "価格試算番号・名称・顧客で検索",
       "thereAreNoPriceEstimates": "価格試算がありません"
+    },
+    "orderLineDetail": {
+      "designWithCount": "設計（{count}）",
+      "workOrdersWithCount": "指示書（{count}）",
+      "shippingWithCount": "出荷（{count}）",
+      "allocatedProgress": "手配済 {allocated} / 受注 {quantity} 本",
+      "allocatedProgressWithReserved": "手配済 {allocated} / 受注 {quantity} 本・在庫引当 {reserved} 本",
+      "deliveryOrderNote": "{status}・{quantity} 本",
+      "deliveryOrderNoteStockStorage": "{status}・{quantity} 本（在庫保管）",
+      "manufactureWorkOrderButton": "製造分の指示書（{quantity} 本）",
+      "partiallyShippedProgress": "一部出荷 {shipped}/{quantity}",
+      "reservedOfQuantity": "{reserved} / {quantity} 本",
+      "shippedOfQuantity": "{shipped} / {quantity} 本",
+      "shippedProgress": "出荷済 {shipped} / 受注 {quantity} 本",
+      "shortageManufactureMessage": "不足分 {shortage} 本は製造分の指示書を作成してください。",
+      "stockAllocatedSplitMessage": "在庫 {reserved} 本を引当済み。在庫分と不足 {shortage} 本の製造分に分割して指示書を作成してください。",
+      "stockWorkOrderButton": "在庫分の指示書（{quantity} 本）",
+      "unplannedOpenWorkOrderBuilder": "未手配 {quantity} 本 — この注文明細をプリセレクトした状態で指示書ビルダーを開きます",
+      "unshippedOpenDeliveryOrderForm": "未出荷 {quantity} 本 — この注文明細を読み込んだ状態で出荷書フォームを開きます",
+      "workOrderNote": "{status}・割当 {quantity} 本",
+      "workOrdersCount": "指示書 {count} 件"
+    },
+    "acceptanceCancelCard": {
+      "description": "理由: {reason}｜依頼: {requestedBy}｜{step}。承認されるまで注文請書と注文明細は変わりません。",
+      "stepOrdinal": "第{stepNo}承認",
+      "stepProgress": "{label}（{stepNo}/{stepCount}）"
+    },
+    "createQuoteModal": {
+      "createQuoteFromPriceListMessage": "{customer} × {product} の価格表から見積書を作成します。単価・値引きは価格表から自動計算されます。"
+    },
+    "deletePriceListModal": {
+      "confirmDeleteMessage": "「{productName}」の価格表を削除します。この操作は取り消せません。",
+      "deletedMessage": "「{productName}」の価格表を削除しました"
+    },
+    "designRequestDetail": {
+      "approvedReadyToStartDesc": "承認済みです。{assignee} が図面の作成を始められます",
+      "baseDrawingLabel": "元図面: ",
+      "changeReasonLabel": "変更理由: {reason}",
+      "confirmCancelMessage": "設計依頼書 {number} をキャンセルします。承認依頼中の場合は承認依頼中の一覧からも取り下げられます。",
+      "confirmCompleteMessage": "設計依頼書 {number} を完了にします。設計図 v{versions} が成果物として紐づきます。",
+      "confirmReopenMessage": "設計依頼書 {number} を進行中へ差し戻します。完了日時はクリアされますが、承認は取りなおしになりません。",
+      "designRequestWithNumber": "設計依頼書 {number}",
+      "drawingRegisteredNotifyDesc": "設計図 v{version} が登録済みです。完了すると依頼者へ通知します",
+      "unregisteredAttachmentCaption": "添付（未登録）{filename}",
+      "versionCaption": "v{version} {filename}",
+      "versionCaptionLatest": "v{version}（最新） {filename}",
+      "versionOrdinal": "第 {version} 版"
+    },
+    "designRequestForm": {
+      "createdMessage": "設計依頼書 {number} を作成しました",
+      "editTitle": "設計依頼書 編集 {requestId}",
+      "selectAnAssignee": "担当者を選択してください"
+    },
+    "designRequestTable": {
+      "desiredAtLabel": "納期 {date}"
+    },
+    "discountRuleModal": {
+      "enterAName": "名称を入力してください",
+      "enterAtLeast1": "1以上を入力してください",
+      "rateLabel": "率"
+    },
+    "intakeReviewPanel": {
+      "couldNotBeRead": "読み取れず",
+      "hideTheBreakdown": "内訳を隠す",
+      "itemsNeedingConfirmation": "確認が必要な項目 {count} 件",
+      "notInTheMaster": "マスタに無い",
+      "readAsValue": "— 読み取り「{value}」"
+    },
+    "issueQuoteModal": {
+      "confirmIssueMessage": "見積書「{number}」を発行します。発行と同時に PDF が生成・保存され、詳細画面の PDF タブで閲覧できます。",
+      "issuedAndSaved": "見積書 {number} を発行し、PDF を保存しました",
+      "issuedAndSavedWithMail": "見積書 {number} を発行し、PDF を保存しました（メール送付予約済み）"
+    },
+    "materialPriceChart": {
+      "referencePriceAmount": "参照価格 {amount}",
+      "setAsReferencePrice": "{date} {price} を参照価格に設定"
+    },
+    "orderAcceptanceCreateForm": {
+      "createdDraftMessage": "注文請書 {number}（下書き）"
+    },
+    "orderAcceptanceDetail": {
+      "approvalNeedsMoreInputs": "承認依頼にはあと {count} 件の入力が必要です",
+      "archivedAtNote": "アーカイブ済み（{date}）",
+      "autoRetryAllFailed": "自動再試行 {attempt}/{maxAttempts} 回とも失敗しました",
+      "autoRetryInProgress": "自動再試行中（{attempt}/{maxAttempts} 回目が失敗）— まもなくもう一度実行します",
+      "confirmArchiveMessage": "注文請書 {number} をアーカイブします。以後の編集はできません。",
+      "confirmCancelRequestMessage": "注文請書 {number} と配下の注文明細をすべてキャンセルします。承認設定（MS0B）に「注文請書キャンセル」の段があれば、承認されるまで何も変わりません。出荷済みの明細があるとキャンセルできません。",
+      "confirmDeployMessage": "明細 {count} 件を注文明細（{number}-01〜-{lastBranch}）として一括作成します。全明細が製品特定済み・単価入力済みであることが必要です。",
+      "excludingUnpricedCount": "単価未入力 {count} 件を除く",
+      "fixViaEditMessage": "「編集」で直してください — {summary}",
+      "lineDiffText": "行{row}: {actual} ≠ 価格表 {expected}",
+      "orderAcceptanceWithNumber": "注文請書 {number}",
+      "orderLinesCreatedMessage": "注文明細 {numbers} を作成しました",
+      "priceMismatchCount": "価格差異 {count} 件",
+      "priceMismatchExpected": "価格差異（価格表 {expected}）",
+      "unenteredCount": "未入力 {count} 件"
+    },
+    "orderAcceptanceIntakeTable": {
+      "addedQueuedForExtraction": "{count} 件を一覧に追加しました。AI抽出はこのあと順番に実行されます",
+      "addedQueuedForExtractionWithPending": "{count} 件を一覧に追加しました。AI抽出はこのあと順番に実行されます（抽出待ち {pending} 件）",
+      "addedWithProblems": "{count} 件を一覧に追加しました / {problems}",
+      "addingItemProgress": "{index} / {total} 件目: {filename} を追加中…",
+      "addingToListMessage": "{count} 件を一覧に追加しています…",
+      "communicationError": "通信エラー",
+      "extractionCouldNotStartDocs": "抽出を開始できなかった書類: {documents}",
+      "hintPrefix": "対処: {hint}",
+      "intakeFailed": "取込に失敗しました",
+      "lineCountLabel": "明細 {count} 件",
+      "orderDateLabel": "注文日 {date}",
+      "priorityIntakeAcceptedPartialFailure": "優先取込 受付（一部失敗）",
+      "queueingForExtraction": "{count} 件をAI抽出の待ち行列に入れています…",
+      "retrying": "再試行中",
+      "watchedFolderIntakeLabel": "監視フォルダ取込: "
+    },
+    "orderAcceptanceItemsEditor": {
+      "lineCountAndTotalQuantity": "明細 {count} 件 / 合計数量",
+      "lineOrdinal": "明細 {index}"
+    },
+    "priceListDetail": {
+      "confirmDeleteDiscountMessage": "「{label}」を削除します。この操作は取り消せません。",
+      "discountRuleSavedMessage": "値引きルール「{label}」を保存しました"
+    },
+    "priceListTable": {
+      "bulkActiveChangedMessage": "{count}件の価格表を{action}しました",
+      "bulkDeletedMessage": "{count}件の価格表を削除しました",
+      "confirmBulkDeleteMessage": "選択中の{count}件の価格表（段階・値引きルール含む）を削除します。この操作は取り消せません。",
+      "itemCountNoSpace": "{count}件",
+      "tierCountLabel": "{count}段階"
+    },
+    "priceListTypeForm": {
+      "addAtLeastOneOrderTypePrice": "注文種別の価格を1件以上追加してください",
+      "addAtLeastOneTier": "段階を1件以上追加してください",
+      "atLeast1": "1以上",
+      "confirmBackToAutoTierMessage": "手動で設定した単価を破棄し、自動計算値（{price}）に戻します。",
+      "confirmBackToEstimatedMessage": "手動で設定した基準単価を破棄し、価格試算の見積単価（{price}）に戻します。",
+      "confirmDeleteOrderTypeMessage": "{orderType} の価格（数量段階・値引きルール含む）を削除します。保存時に反映されます。",
+      "confirmUseCustomBaseMessage": "価格試算の見積単価（{price}）を使わず、基準単価を手動で設定します。よろしいですか？",
+      "confirmUseCustomTierMessage": "この数量帯の自動計算単価（{price} = 基準単価 × 倍率）を使わず、手動で単価を設定します。",
+      "duplicateEntryPrefix": "この顧客×製品の価格表",
+      "duplicateEntrySuffix": "が既に存在します（{orderTypes}）。注文種別の追加は既存の価格表を編集してください。",
+      "editTitle": "価格表 編集",
+      "manualWithEstimateValue": "手動設定（価格試算値: {price}）",
+      "multiplierMustBePositive": "0より大きい倍率",
+      "orderTypeSectionTitle": "注文種別: {orderType}"
+    },
+    "quoteDetail": {
+      "acceptanceNoteWithLines": "{status}・明細 {count} 件",
+      "expiredOn": "期限切れ（{date}）",
+      "issuePdfDesc": "PDF を発行",
+      "itemCountNoSpace": "{count}件",
+      "orderTypesAndTierCount": "{orderTypes}・{tierCount}段階",
+      "rejected": "却下",
+      "validUntilLabel": "有効期限 {date}"
+    },
+    "quoteForm": {
+      "addAtLeastOneLine": "明細を1件以上追加してください",
+      "atLeast1": "1以上",
+      "editTitle": "見積書 編集",
+      "noMatchingPriceList": "該当する価格表がありません（価格試算から価格表を登録してください）",
+      "selectABranch": "支店を選択",
+      "subtotalAmount": "小計 {amount}",
+      "taxAmount": "消費税 {amount}",
+      "totalInclTaxAmount": "合計（税込） {amount}"
+    },
+    "trialEstimateDetail": {
+      "orderTypeTierCount": "{orderType}・{tierCount}段階",
+      "readyForPriceListBase": "価格表の基準単価にできる状態へ"
+    },
+    "trialEstimateForm": {
+      "machiningRateSpareShapeNote": "加工単価（¥{rate}/10分）・予備形状本数（{count}本）は価格試算計算のグローバル固定係数を使用します。",
+      "policyBasisMonths": "ポリシー: {basis}・直近{months}ヶ月",
+      "reEstimatedName": "{name}（再価格試算）",
+      "referenceBasisMonths": "参照: {basis}（直近{months}ヶ月）",
+      "referencePriceOn": "参照価格 {date}"
     }
   },
   "shipping": {
@@ -4407,7 +5491,12 @@
       "showPricesPrintUnitPriceAnd": "価格記載（納品書に単価・金額を記載する）",
       "choosingADeliveryOrderPrefillsThe": "出荷書を選択すると明細が既定生成されます（単価は注文明細の単価）。価格記載 OFF のときは単価・金額を保存しません。",
       "searchByDeliveryNoteNumberDelivery": "納品番号・出荷書番号・納品先で検索",
-      "thereAreNoDeliveryNotes": "納品書がありません"
+      "thereAreNoDeliveryNotes": "納品書がありません",
+      "invoiceNote": "{status}・{amount}",
+      "confirmIssueBody": "納品書 {number} を発行します。発行後は編集できません。",
+      "issuedBody": "納品書 {number} を発行しました",
+      "confirmDeliveredBody": "納品書 {number} を納品済みにします。納品日は本日で記録されます。",
+      "deliveredBody": "納品書 {number} を納品済みにしました"
     },
     "deliveryOrders": {
       "stockStorageSoNotTiedTo": "—（在庫保管のため注文明細に紐づかない）",
@@ -4443,7 +5532,16 @@
       "noOrderLineStockStorageEtc": "注文明細なし（在庫保管など）",
       "addALineNoOrderLine": "明細を追加（注文明細なし）",
       "searchByDeliveryOrderNumberOrder": "出荷書番号・注文明細番号・顧客・製品で検索",
-      "thereAreNoDeliveryOrders": "出荷書がありません"
+      "thereAreNoDeliveryOrders": "出荷書がありません",
+      "storedToStock": "保管（在庫へ）",
+      "deliveryNoteNote": "{status}・{recipient}",
+      "confirmConfirmBody": "出荷書 {number} を確定します。確定後は編集できません。",
+      "confirmedBody": "出荷書 {number} を確定しました",
+      "confirmShipBodyDispatch": "出荷書 {number} を出荷済みにします。注文明細の出荷状態も再計算されます。",
+      "confirmShipBodyStock": "出荷書 {number} を出荷済みにします（在庫保管のため注文明細の出荷状態は変わりません）。",
+      "shippedBody": "出荷書 {number} を出荷済みにしました",
+      "confirmDeleteBody": "出荷書 {number} を削除します。この操作は取り消せません。",
+      "deletedBody": "出荷書 {number} を削除しました"
     },
     "pendingShipments": {
       "completedLots": "完了ロット",
@@ -4456,6 +5554,35 @@
       "preparingToShip": "出荷準備中",
       "thereAreNoOrderLinesAwaiting": "出荷書待ちの注文明細はありません",
       "thereAreNoDeliveryOrdersBeing": "出荷準備中の出荷書はありません"
+    },
+    "deliveryOrderForm": {
+      "selectProduct": "製品を選択してください",
+      "selectAnOrderAcceptance": "注文請書を選択してください",
+      "shortfallLine": "{orderLineNumber}（未出荷 {remaining} / 充当 {covered}）",
+      "alreadyShippedMessage": "{lines} は受注数量まで出荷済みです",
+      "shortfallMessage": "{lines} — 不足分は指示書の完了・在庫引当が必要です",
+      "couldNotAddOrderLine": "{label} — 確定済みの注文明細のみ出荷書に追加できます",
+      "createdWithNumber": "出荷書 {number} を作成しました",
+      "exceedsOrderedQuantityMessage": "{lines} — 受注数を超える出荷はできません",
+      "exceedsOrderedQuantityLine": "{number}（残 {remaining} / 出荷 {total}）",
+      "notEnoughFinishedGoodsLine": "{number} は完成品が受注残に足りません（引当可能 {coverable} / 残 {remaining}）",
+      "partialShipmentLine": "{number} の出荷数が受注残に満たしていません（出荷 {total} / 残 {remaining}）",
+      "lotOption": "#{lotNumber}（現物 {quantity}）",
+      "lotOptionWithReserved": "#{lotNumber}（現物 {quantity} / 予約 {reserved}）",
+      "editWithNumber": "出荷書 編集 {orderId}",
+      "orderedQuantityLabel": "受注 {quantity}",
+      "shippedQuantityLabel": "出荷済 {quantity}",
+      "completedQuantityLabel": "完成 {quantity}（完了指示書 {count} 件）",
+      "exceedsRemainingLabel": "受注残 {remaining} を超えています（出荷 {total}）",
+      "partialShipmentLabel": "一部出荷（出荷 {total} / 受注残 {remaining}）"
+    },
+    "deliveryNoteForm": {
+      "selectADeliveryOrder": "出荷書を選択してください",
+      "createdWithNumber": "納品書 {number} を作成しました",
+      "editWithNumber": "納品書 編集 {noteId}"
+    },
+    "deliveryNoteTable": {
+      "destinationLabel": "届け先: {name}"
     }
   },
   "ui": {
@@ -4471,14 +5598,19 @@
       "uploadASupportingDocument": "証憑のアップロード",
       "labelOptional": "ラベル（任意）",
       "orderCopyEtc": "注文書控え 等",
-      "confirmDeletingTheAttachment": "添付ファイル削除の確認"
+      "confirmDeletingTheAttachment": "添付ファイル削除の確認",
+      "defaultTitle": "添付ファイル",
+      "deleteAttachment": "{filename} を削除",
+      "deleteConfirmBody": "{filename} を削除します。この操作は取り消せません。"
     },
     "auditChangeTable": {
       "before": "変更前",
       "after": "変更後",
       "showTheRawData": "生データを表示",
       "before2": "変更前（before）",
-      "after2": "変更後（after）"
+      "after2": "変更後（after）",
+      "noChanges": "変更点はありません",
+      "hideTheRawData": "生データを隠す"
     },
     "auditDetailModal": {
       "operationDetails": "操作の詳細",
@@ -4489,13 +5621,20 @@
       "columns": "列の表示",
       "selectAll": "すべて選択",
       "selectRows": "行を選択",
-      "rowsToShow": "表示件数"
+      "rowsToShow": "表示件数",
+      "noData": "データがありません",
+      "selectedCount": "{count}件選択中",
+      "zeroItems": "0件",
+      "itemRange": "{start}–{end} / {total}件",
+      "itemsCount": "{count}件"
     },
     "designFileSlot": {
-      "cancel": "取消"
+      "cancel": "取消",
+      "descriptionOptional": "説明（任意）"
     },
     "designFileViewer": {
-      "noPreview": "プレビューなし"
+      "noPreview": "プレビューなし",
+      "enlarge": "{filename} を拡大"
     },
     "documentLinkModal": {
       "insertADocumentLink": "文書リンクを挿入",
@@ -4510,23 +5649,32 @@
       "clickARowToSelectIt": "行をクリックして選択（結果は最大50件 — 条件で絞り込んでください）"
     },
     "helpLabel": {
-      "readMore": "もっと読む"
+      "readMore": "もっと読む",
+      "descriptionOf": "{name}の説明",
+      "readTheDescriptionOf": "{name}の説明を読む"
     },
     "imageCropModal": {
       "couldNotLoadTheImage": "画像を読み込めませんでした",
       "couldNotCropIt": "切り抜きに失敗しました",
-      "dragToPositionItUseThe": "ドラッグで位置を、スライダーで大きさを調整します"
+      "dragToPositionItUseThe": "ドラッグで位置を、スライダーで大きさを調整します",
+      "cropThePhoto": "写真の切り抜き",
+      "setThisRange": "この範囲で設定"
     },
     "masterDetailShell": {
       "adjustThePaneWidth": "ペイン幅を調整"
     },
     "masterListNav": {
-      "filter": "絞り込み"
+      "filter": "絞り込み",
+      "filterPlaceholder": "絞り込み...",
+      "noItems": "項目がありません。",
+      "noItemsMatchTheFilter": "絞り込みに一致する項目がありません。"
     },
     "memoHistoryModal": {
       "thereIsNoChangeHistoryYet": "変更履歴はまだありません",
       "bodyJustBeforeDeletion": "削除直前の本文",
-      "bodyAfterThisOperation": "この操作後の本文"
+      "bodyAfterThisOperation": "この操作後の本文",
+      "actionUpdated": "更新",
+      "actionRestored": "復元"
     },
     "memoPanel": {
       "theMemoWasUpdated": "メモを更新しました",
@@ -4543,7 +5691,11 @@
       "theCommentWasDeleted": "コメントを削除しました",
       "post": "投稿",
       "thereAreNoCommentsYet": "コメントはまだありません",
-      "edited": "（編集済み）"
+      "edited": "（編集済み）",
+      "collapse": "折りたたむ",
+      "archivedMark": "· アーカイブ済み",
+      "restore": "復元",
+      "lastUpdated": "最終更新: {date}（{name}）"
     },
     "model3dCanvas": {
       "loadingThe3dModel": "3D モデルを読み込んでいます…",
@@ -4559,7 +5711,8 @@
     },
     "pdfAttachmentPanel": {
       "generatedProducedWhenDisplayed": "生成: 表示時に生成されます",
-      "thisDeviceCannotShowPdfsInside": "この端末ではアプリ内に PDF を表示できません"
+      "thisDeviceCannotShowPdfsInside": "この端末ではアプリ内に PDF を表示できません",
+      "generatedAt": "生成: {date}{by}"
     },
     "placeholderPage": {
       "thisScreenIsNotReadyYet": "この画面は準備中です"
@@ -4569,16 +5722,39 @@
       "cancelled": "キャンセル済み",
       "thisDocumentHasBeenCancelled": "この書類はキャンセルされています。",
       "from": "前の書類から",
-      "to": "次の書類へ"
+      "to": "次の書類へ",
+      "title": "手続き状況"
     },
     "richTextEditorField": {
-      "documentLink": "文書リンク"
+      "documentLink": "文書リンク",
+      "bold": "太字",
+      "italic": "斜体",
+      "underline": "下線",
+      "strikethrough": "打ち消し線",
+      "inlineCode": "インラインコード",
+      "codeBlock": "コードブロック",
+      "heading": "見出し",
+      "subheading": "小見出し",
+      "bulletList": "箇条書き",
+      "orderedList": "番号付きリスト",
+      "blockquote": "引用",
+      "horizontalRule": "区切り線",
+      "link": "リンク",
+      "unlink": "リンク解除",
+      "undo": "元に戻す",
+      "redo": "やり直す",
+      "linkUrl": "リンク先 URL",
+      "openInNewTab": "新しいタブで開く",
+      "openInSameTab": "同じタブで開く"
     },
     "salesRepSelect": {
       "noSalesRepIsRegisteredFor": "この顧客に営業担当が未登録です。",
       "checkInTheBusinessPartnerMaster": "取引先マスタで確認",
       "noSalesRepIsRegisteredFor2": "この顧客に営業担当が未登録です（取引先マスタの管理者に登録を依頼）",
-      "selectACustomerFirst": "先に顧客を選択"
+      "selectACustomerFirst": "先に顧客を選択",
+      "notACandidate": "{name}（候補外）",
+      "registerInTheBusinessPartnerMaster": "取引先マスタで登録",
+      "selectARep": "担当者を選択"
     },
     "searchSelect": {
       "theSearchFailed": "検索に失敗しました",
@@ -4588,6 +5764,39 @@
       "advancedSearchFilters": "詳細検索（フィルタ）",
       "advancedSearch": "詳細検索",
       "noResults": "該当なし"
+    },
+    "f4Presets": {
+      "productTitle": "製品の詳細検索",
+      "productDescription": "名称・材種で絞り込んで選択します（レガシー製品はコード未採番）。",
+      "name": "名称",
+      "materialTypeCode": "材種コード",
+      "productCode": "製品コード",
+      "materialType": "材種",
+      "unit": "単位",
+      "customerTitle": "顧客の詳細検索",
+      "customerDescription": "BPコード・名称（かな・AI照合名を含む）で絞り込みます。",
+      "bpCode": "BPコード",
+      "bpCodePlaceholder": "例: BP-",
+      "nameKana": "名称・かな",
+      "kana": "かな",
+      "materialTypeTitle": "材種の詳細検索",
+      "materialTypeDescription": "変換済（コード構成あり）の材種のみが対象です。",
+      "manufacturer": "メーカー",
+      "shape": "形状"
+    },
+    "localizedTextInput": {
+      "editDefaultLocaleAbove": "{locale}（{value}）は上の欄で編集します。ここでは他の言語だけを設定します。"
+    },
+    "richTextView": {
+      "couldNotResolveTheLinkTarget": "リンク先を解決できませんでした",
+      "blockedPrefix": "⚠ ブロック中: ",
+      "externalSitePrefix": "外部サイト: "
+    },
+    "historyPanel": {
+      "noChangeHistoryRecordedYet": "変更履歴はまだ記録されていません"
+    },
+    "copyableValue": {
+      "copyX": "{name}をコピー"
     }
   }
 }

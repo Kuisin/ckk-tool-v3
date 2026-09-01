@@ -23,16 +23,16 @@ import type { PurchaseRequestRow } from "./model";
 
 const BASE_PATH = "/purchase/purchase-requests";
 
-/** 主要素材（先頭明細）+ 他 N 件の表示文字列。 */
-function materialSummary(r: PurchaseRequestRow): string {
-  if (!r.primaryMaterial) return "—";
-  return r.itemCount > 1
-    ? `${r.primaryMaterial} 他${r.itemCount - 1}件`
-    : r.primaryMaterial;
-}
-
 export function PurchaseRequestTable({ rows }: { rows: PurchaseRequestRow[] }) {
   const tr = useTranslations();
+
+  /** 主要素材（先頭明細）+ 他 N 件の表示文字列。 */
+  const materialSummary = (r: PurchaseRequestRow): string => {
+    if (!r.primaryMaterial) return "—";
+    return r.itemCount > 1
+      ? `${r.primaryMaterial} ${tr("purchase.purchaseRequestTable.othersWithCount", { count: r.itemCount - 1 })}`
+      : r.primaryMaterial;
+  };
   const fmt = useFormat();
   const router = useRouter();
   const isMobile = useIsMobile();
