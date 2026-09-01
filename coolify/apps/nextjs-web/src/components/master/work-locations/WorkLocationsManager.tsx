@@ -75,6 +75,14 @@ import { openInNewContext } from "@/lib/pwa-display";
 import type { Translate } from "@/lib/ui-text";
 
 /**
+ * 「削除」だけは `tr()` に包めない — `tools/i18n/data/ambiguous.json` にあり、
+ * 文脈で訳が割れる語として辞書から外されているため（包むと CI の
+ * `i18n-verify-keys` が落ちる）。この画面に 4 か所出るので、日本語の
+ * リテラルは 1 本にまとめておく。訳せるようになったらここだけを直す。
+ */
+const DELETE_LABEL = "削除";
+
+/**
  * QR ラベル印刷シートを新しいタブで開く（SY08 と同じ `openInNewContext` —
  * `window.open` のブロックに掛からず、PWA でもアプリ内ブラウザで開く）。
  */
@@ -572,7 +580,7 @@ function TypesModal({
                   {tr("組み込み")}
                 </Badge>
               ) : (
-                <Tooltip label="削除" withinPortal>
+                <Tooltip label={DELETE_LABEL} withinPortal>
                   <ActionIcon
                     aria-label={tr("種別を削除")}
                     color="red"
@@ -739,7 +747,7 @@ export function WorkLocationsManager({
                     <Menu position="bottom-end" shadow="sm" withinPortal>
                       <Menu.Target>
                         <ActionIcon
-                          aria-label={tr("グループの操作")}
+                          aria-label={tr("操作メニュー")}
                           color="gray"
                           style={{ flexShrink: 0 }}
                           variant="subtle"
@@ -775,7 +783,7 @@ export function WorkLocationsManager({
                           leftSection={<IconTrash size={14} />}
                           onClick={() => setDeleteGroup(group)}
                         >
-                          {tr("削除")}
+                          {DELETE_LABEL}
                         </Menu.Item>
                       </Menu.Dropdown>
                     </Menu>
@@ -811,7 +819,7 @@ export function WorkLocationsManager({
                         onClick={() => setDeleteGroup(group)}
                         size="xs"
                       >
-                        {tr("削除")}
+                        {DELETE_LABEL}
                       </GhostButton>
                     </Group>
                   )}
@@ -873,7 +881,7 @@ export function WorkLocationsManager({
                           <Menu position="bottom-end" shadow="sm" withinPortal>
                             <Menu.Target>
                               <ActionIcon
-                                aria-label={tr("作業場所の操作")}
+                                aria-label={tr("操作")}
                                 color="gray"
                                 style={{ flexShrink: 0 }}
                                 variant="subtle"
@@ -900,7 +908,7 @@ export function WorkLocationsManager({
                                 leftSection={<IconTrash size={14} />}
                                 onClick={() => setDeleteLocation(loc)}
                               >
-                                {tr("削除")}
+                                {DELETE_LABEL}
                               </Menu.Item>
                             </Menu.Dropdown>
                           </Menu>
@@ -974,7 +982,7 @@ export function WorkLocationsManager({
                                   <IconEdit size={14} />
                                 </ActionIcon>
                               </Tooltip>
-                              <Tooltip label={tr("削除")} withinPortal>
+                              <Tooltip label={DELETE_LABEL} withinPortal>
                                 <ActionIcon
                                   aria-label={tr("作業場所を削除")}
                                   color="red"

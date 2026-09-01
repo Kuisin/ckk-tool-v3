@@ -673,11 +673,20 @@ async function main(): Promise<void> {
     theadCount === 0,
     `thead ${theadCount} 個`,
   );
+  // グループの「⋯」は「操作メニュー」、行の「⋯」は「操作」（用語集の既存語）。
+  // exact を付けないと「操作」が「操作メニュー」にも当たる。
   const groupMenus = await page
-    .getByRole("button", { name: "グループの操作" })
+    .getByRole("button", { exact: true, name: "操作メニュー" })
     .count();
   check("MS0D 390px: 操作は「⋯」に畳む", groupMenus > 0, `${groupMenus} 個`);
-  await page.getByRole("button", { name: "グループの操作" }).first().click();
+  const rowMenus = await page
+    .getByRole("button", { exact: true, name: "操作" })
+    .count();
+  check("MS0D 390px: 場所ごとの操作も「⋯」", rowMenus > 0, `${rowMenus} 個`);
+  await page
+    .getByRole("button", { exact: true, name: "操作メニュー" })
+    .first()
+    .click();
   await page.waitForTimeout(400);
   const menuItems = await page.getByRole("menuitem").allInnerTexts();
   check(
@@ -712,7 +721,9 @@ async function main(): Promise<void> {
   check("MS0D 1440px: 表に戻る", wideThead > 0, `thead ${wideThead} 個`);
   check(
     "MS0D 1440px: 「⋯」は出さない",
-    (await page.getByRole("button", { name: "グループの操作" }).count()) === 0,
+    (await page
+      .getByRole("button", { exact: true, name: "操作メニュー" })
+      .count()) === 0,
   );
 
   console.log("\n---- 結果 ----");

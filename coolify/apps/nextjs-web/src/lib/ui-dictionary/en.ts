@@ -4828,6 +4828,7 @@ export const en: Record<string, string> = {
   "表示倍率": "Zoom",
   "表示倍率（%）": "Zoom (%)",
   "表示名": "Display name",
+  "表示名（English）": "Display name (English)",
   "表示名（日本語）": "Display name (Japanese)",
   "表示名（日本語）を入力してください": "Enter the display name in Japanese",
   "表示名を入力してください": "Enter a display name",
