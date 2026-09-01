@@ -278,15 +278,65 @@ export function jsxTextNodes(source) {
 }
 
 /**
+ * 文字列・コメントを空白に潰した写し（改行は残す）。`isLocaleValue` /
+ * `isTranslationCall` の「直前が何か」判定を、行をまたいでも安全に**無制限に
+ * 遡れる**ようにするために使う。
+ *
+ * 以前はどちらも `source` の直前を固定の文字数（40 / 12）だけ見ていた。
+ * Biome が長い呼び出しを複数行に整形すると
+ * （`tr(\n              "…"`）改行とインデントですぐその文字数を超え、
+ * 「訳を引いていない」と誤判定していた —
+ * `tools/i18n/lib/codemod.mjs` で実際に起きた `tr(tr(tr("…")))` の多重包みと
+ * 同じ根っこのバグで、走査側にも同じ形で潜んでいた（気づいた誤検出の分だけ
+ * 「未翻訳」の数が実態より多く出ていた）。
+ */
+function maskForLookback(source) {
+  const out = source.split("");
+  const n = source.length;
+  const blank = (from, to) => {
+    for (let k = from; k < to && k < n; k++) if (out[k] !== "\n") out[k] = " ";
+  };
+  let i = 0;
+  while (i < n) {
+    const c = source[i];
+    if (c === "/" && source[i + 1] === "/") {
+      const e = source.indexOf("\n", i);
+      blank(i, e === -1 ? n : e);
+      i = e === -1 ? n : e;
+      continue;
+    }
+    if (c === "/" && source[i + 1] === "*") {
+      const e = source.indexOf("*/", i + 2);
+      blank(i, e === -1 ? n : e + 2);
+      i = e === -1 ? n : e + 2;
+      continue;
+    }
+    if (c === '"' || c === "'" || c === "`") {
+      const q = c;
+      let j = i + 1;
+      while (j < n) {
+        if (source[j] === "\\") { j += 2; continue; }
+        if (source[j] === q) break;
+        j++;
+      }
+      blank(i, Math.min(j + 1, n));
+      i = j + 1;
+      continue;
+    }
+    i++;
+  }
+  return out.join("");
+}
+
+/**
  * `ja: "..."` / `en: "..."` / `zh: "..."` の右辺か。
  *
  * ja は原文、en/zh は**その訳**なので、どれも「未翻訳」ではない。
  * ja だけを除外していたとき、中国語の訳（`zh: "已确定"`）が漢字を含むために
  * 未翻訳として数えられ、翻訳済みの StatusBadge が 102 件の違反に見えていた。
  */
-function isLocaleValue(source, stringStart) {
-  const before = source.slice(Math.max(0, stringStart - 40), stringStart);
-  return /\b(?:ja|en|zh)\s*:\s*$/.test(before);
+function isLocaleValue(masked, stringStart) {
+  return /\b(?:ja|en|zh)\s*:\s*$/.test(masked.slice(0, stringStart));
 }
 
 /**
@@ -311,9 +361,8 @@ function isInsideLocaleBlock(keyPath) {
  * 「鍵が辞書に有るか」はここでは見ない — それは i18n-verify-keys.mjs の仕事。
  * 走査は「包まれているか」だけを見る。
  */
-function isTranslationCall(source, stringStart) {
-  const before = source.slice(Math.max(0, stringStart - 12), stringStart);
-  return /\b(?:tr|translate)\(\s*$/.test(before);
+function isTranslationCall(masked, stringStart) {
+  return /\b(?:tr|translate)\(\s*$/.test(masked.slice(0, stringStart));
 }
 
 /** 日本語のオブジェクトキー（`本: {...}`, `"本": {...}`）— 値であって文言ではない。 */
@@ -336,12 +385,13 @@ function isIgnored(lines, lineNo) {
 export function scanFile(filePath, source) {
   const lines = source.split("\n");
   const findings = [];
+  const masked = maskForLookback(source);
 
   for (const s of tokenize(source)) {
     if (!JAPANESE.test(s.value)) continue;
-    if (isLocaleValue(source, s.start)) continue;
+    if (isLocaleValue(masked, s.start)) continue;
     if (isInsideLocaleBlock(s.keyPath ?? [])) continue;
-    if (isTranslationCall(source, s.start)) continue;
+    if (isTranslationCall(masked, s.start)) continue;
     if (isObjectKey(source, s.start, s.value)) continue;
     if (isIgnored(lines, s.line)) continue;
     findings.push({
