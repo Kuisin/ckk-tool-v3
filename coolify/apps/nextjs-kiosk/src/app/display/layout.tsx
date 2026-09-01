@@ -27,11 +27,16 @@ export default function DisplayLayout({
   return (
     <div
       style={{
-        // dvh — Pi のブラウザでもアドレスバーの有無で高さがずれない
-        minHeight: "100dvh",
+        background: "var(--mantine-color-dark-8)",
         display: "flex",
         flexDirection: "column",
-        background: "var(--mantine-color-dark-8)",
+        // **画面ちょうど**を占める。min ではなく固定なのは、中身が伸びたときに
+        // 下へはみ出させないため — 壁の画面はスクロールできないので、はみ出した
+        // 分は存在しないのと同じになる。
+        // dvh/dvw — Pi のブラウザでもアドレスバーの有無で寸法がずれない
+        height: "100dvh",
+        overflow: "hidden",
+        width: "100dvw",
       }}
     >
       {children}

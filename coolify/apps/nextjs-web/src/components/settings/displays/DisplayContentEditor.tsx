@@ -32,6 +32,7 @@ import {
   Group,
   NumberInput,
   SegmentedControl,
+  Select,
   Stack,
   Text,
 } from "@mantine/core";
@@ -42,6 +43,7 @@ import { updateDisplay } from "@/app/(dashboard)/settings/kiosk-devices/displays
 import { SecondaryButton } from "@/components/ui/buttons";
 import { FieldValue } from "@/components/ui/FieldValue";
 import { FormActions, SummaryGrid } from "@/components/ui/shells";
+import type { ImageFit } from "@/lib/display-content";
 import { uploadDisplayImage } from "@/lib/display-image-client";
 import {
   type DisplayOptionSpec,
@@ -95,6 +97,14 @@ export function DisplayContentEditor({ display, plantOptions, onDone }: Props) {
     initialOptions(templateKey, display.contentConfig),
   );
   const [refreshSec, setRefreshSec] = useState(display.refreshIntervalSec);
+  // 画像の収め方。保存済みの値から開く（未設定は「全体を表示」）。
+  const [fit, setFit] = useState<ImageFit>(() => {
+    const saved = (display.contentConfig as { fit?: unknown } | null)?.fit;
+    return typeof saved === "string" &&
+      FIT_CHOICES.some((c) => c.value === saved)
+      ? (saved as ImageFit)
+      : "contain";
+  });
   // 「アプリの画面」か「画像」か。保存されている種別から開く。
   const [mode, setMode] = useState<"APP_PAGE" | "IMAGE">(
     display.contentType === "IMAGE" ? "IMAGE" : "APP_PAGE",
@@ -128,6 +138,37 @@ export function DisplayContentEditor({ display, plantOptions, onDone }: Props) {
       notifications.show({ message: "画像を設定しました", color: "green" });
       router.refresh();
       onDone();
+    });
+  };
+
+  /**
+   * 収め方だけを変えて保存する。画像と同じく**選んだ時点で効く** —
+   * 「選んだのに保存を押していないから変わらない」を作らない。
+   */
+  const saveFit = (next: ImageFit) => {
+    setFit(next);
+    const fileId = (display.contentConfig as { fileId?: unknown } | null)
+      ?.fileId;
+    if (typeof fileId !== "string") return; // 画像未設定なら保存するものが無い
+    startTransition(async () => {
+      const result = await updateDisplay({
+        id: display.id,
+        nameJa: display.nameJson?.ja ?? display.name ?? "",
+        nameEn: display.nameJson?.en,
+        location: display.location ?? undefined,
+        plantId: display.plantId,
+        contentType: "IMAGE",
+        contentConfig: { fileId, fit: next },
+      });
+      if (!result.ok) {
+        notifications.show({
+          title: "エラー",
+          message: result.error ?? "保存に失敗しました",
+          color: "red",
+        });
+        return;
+      }
+      router.refresh();
     });
   };
 
@@ -177,6 +218,8 @@ export function DisplayContentEditor({ display, plantOptions, onDone }: Props) {
         <Section title="画像">
           <ImageContent
             display={display}
+            fit={fit}
+            onFitChange={saveFit}
             onPick={uploadImage}
             pending={pending}
           />
@@ -232,6 +275,29 @@ export function DisplayContentEditor({ display, plantOptions, onDone }: Props) {
   );
 }
 
+/**
+ * 画像の収め方。**CSS の値ではなく、起きることで説明する** — テレビと画像の
+ * 縦横比はまず一致しないので、選ぶ人が知りたいのは「余白が出るのか、端が
+ * 切れるのか、歪むのか」だけ。
+ */
+const FIT_CHOICES: Array<{ value: ImageFit; label: string; help: string }> = [
+  {
+    value: "contain",
+    label: "全体を表示",
+    help: "画像すべてが映ります。縦横比が違うと余白が出ます",
+  },
+  {
+    value: "cover",
+    label: "画面を埋める",
+    help: "余白は出ませんが、はみ出す部分が切れます",
+  },
+  {
+    value: "fill",
+    label: "引き伸ばす",
+    help: "画面ぴったりにしますが、縦横比が変わって歪みます",
+  },
+];
+
 /** 保存済みの画像を admin 経由で引く URL（キオスクの口は端末 Cookie が要る）。 */
 export function displayImageUrl(storageKey: string): string {
   return `/api/admin/files/raw?key=${encodeURIComponent(storageKey)}`;
@@ -248,12 +314,17 @@ function ImageContent({
   display,
   onPick,
   pending,
+  fit,
+  onFitChange,
 }: {
   display: DisplayDetail;
   onPick: (file: File | null) => void;
   pending: boolean;
+  fit: ImageFit;
+  onFitChange: (fit: ImageFit) => void;
 }) {
   const current = display.contentType === "IMAGE" ? display.image : null;
+  const fitHelp = FIT_CHOICES.find((c) => c.value === fit)?.help;
 
   return (
     <Stack gap="sm">
@@ -268,6 +339,7 @@ function ImageContent({
               overflow: "hidden",
             }}
           >
+            {/* 見本にも同じ収め方を当てる — 選んだ結果がその場で分かる */}
             {/* biome-ignore lint/performance/noImgElement: 保存済みオブジェクトの実体をそのまま出す（next/image の最適化対象ではない） */}
             <img
               alt={current.filename}
@@ -275,7 +347,7 @@ function ImageContent({
               style={{
                 display: "block",
                 height: "100%",
-                objectFit: "contain",
+                objectFit: fit,
                 width: "100%",
               }}
             />
@@ -288,6 +360,16 @@ function ImageContent({
         <Alert color="gray" variant="light">
           まだ画像が設定されていません。画像を選ぶと、その場でこの画面に映ります。
         </Alert>
+      )}
+
+      {current && (
+        <Select
+          data={FIT_CHOICES.map((c) => ({ value: c.value, label: c.label }))}
+          description={fitHelp}
+          label="画面への収め方"
+          onChange={(v) => v && onFitChange(v as ImageFit)}
+          value={fit}
+        />
       )}
 
       <Group gap="xs">
@@ -367,6 +449,13 @@ export function DisplayContentView({
         </Box>
         <Text c="dimmed" size="xs">
           画像: {display.image.filename}
+          {" / "}
+          {FIT_CHOICES.find(
+            (c) =>
+              c.value ===
+              ((display.contentConfig as { fit?: unknown } | null)?.fit ??
+                "contain"),
+          )?.label ?? "全体を表示"}
         </Text>
       </Stack>
     ) : (

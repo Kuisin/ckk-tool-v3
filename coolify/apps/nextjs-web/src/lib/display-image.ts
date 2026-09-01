@@ -20,6 +20,7 @@ import "server-only";
 import { getCurrentActorId, recordAudit } from "@/lib/audit";
 import { checkPermission } from "@/lib/authz";
 import { prisma } from "@/lib/db";
+import { IMAGE_FITS } from "@/lib/display-content";
 import { notifyDisplayConfigChanged } from "@/lib/display-events";
 import { systematicFileName } from "@/lib/file-naming";
 import {
@@ -80,11 +81,20 @@ export async function saveDisplayImage(
     }
 
     // 差し替え前に映していた画像（あれば）。新しい行を作ってから消す。
+    const previous = display.contentConfig as {
+      fileId?: unknown;
+      fit?: unknown;
+    } | null;
     const previousFileId =
-      display.contentType === "IMAGE"
-        ? ((display.contentConfig as { fileId?: unknown } | null)?.fileId ??
-          null)
-        : null;
+      display.contentType === "IMAGE" ? (previous?.fileId ?? null) : null;
+    // **収め方は引き継ぐ。** 画像を差し替えるたびに contain へ戻ると、
+    // 合わせ込んだ設定が黙って消える。
+    const fit =
+      display.contentType === "IMAGE" &&
+      typeof previous?.fit === "string" &&
+      (IMAGE_FITS as readonly string[]).includes(previous.fit)
+        ? (previous.fit as (typeof IMAGE_FITS)[number])
+        : "contain";
 
     const bytes = await file.arrayBuffer();
     const storageKey = `display/images/${systematicFileName(file.name)}`;
@@ -110,7 +120,7 @@ export async function saveDisplayImage(
           where: { id: displayId },
           data: {
             contentType: "IMAGE",
-            contentConfig: { fileId: created.id },
+            contentConfig: { fileId: created.id, fit },
           },
         });
         return created.id;
@@ -140,7 +150,7 @@ export async function saveDisplayImage(
       tableName: "display_devices",
       recordId: displayId,
       before: { contentType: display.contentType },
-      after: { contentType: "IMAGE", image: file.name },
+      after: { contentType: "IMAGE", image: file.name, fit },
     });
     // 壁の画面をその場で切り替える（待たせない）
     await notifyDisplayConfigChanged(displayId);

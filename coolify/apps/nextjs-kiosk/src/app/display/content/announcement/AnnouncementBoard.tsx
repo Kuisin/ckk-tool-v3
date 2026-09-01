@@ -1,7 +1,7 @@
 "use client";
 
 import { Center, Stack, Text } from "@mantine/core";
-import { Clock } from "../_shared/BoardFrame";
+import { Clock } from "../_shared/Clock";
 
 /**
  * お知らせの見た目。文章 1 つを画面いっぱいに出すだけ。
@@ -41,7 +41,9 @@ export function AnnouncementBoard({
   return (
     <Center
       p="xl"
-      style={{ background: style.background, flex: 1, height: "100dvh" }}
+      // height:100% — 外側（iframe）が画面ぶんの高さを持っているので、
+      // ここで 100dvh を取り直すと共通見出しのぶんだけはみ出す
+      style={{ background: style.background, flex: 1, height: "100%" }}
     >
       <Stack align="center" gap="xl" maw="90%">
         {text ? (
