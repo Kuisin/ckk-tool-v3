@@ -282,7 +282,7 @@ export function PurchaseOrderDetail({
           </ApproveButton>
         }
         description={tr(
-          tr("入荷完了で明細ごとに入荷を記録し、素材在庫へ入庫します"),
+          "入荷完了で明細ごとに入荷を記録し、素材在庫へ入庫します",
         )}
         icon={<IconPackageImport size={20} />}
         title={tr("入荷を待っています")}

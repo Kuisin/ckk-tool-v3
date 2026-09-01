@@ -405,7 +405,7 @@ export function DeliveryNoteForm({
           {form.values.deliveryMethod === "DIRECT_TO_USER" && (
             <SearchSelect
               description={tr(
-                tr("ユーザー直送の届け先（配送完了書に価格なし・納品書別送）"),
+                "ユーザー直送の届け先（配送完了書に価格なし・納品書別送）",
               )}
               error={form.errors.endUserBpId}
               initialOption={endUserInitialOption}

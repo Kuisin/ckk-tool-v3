@@ -82,7 +82,7 @@ export function ToolTypesPanel({
     <>
       <MasterListNav
         emptyMessage={tr(
-          tr("工具種がありません。「工具種を追加」から作成してください。"),
+          "工具種がありません。「工具種を追加」から作成してください。",
         )}
         sections={[
           {
@@ -145,7 +145,7 @@ export function ToolTypesPanel({
           </Text>
           <TextInput
             description={tr(
-              tr("英大文字・数字・_（例: BALL_END）。作成後は変更できません"),
+              "英大文字・数字・_（例: BALL_END）。作成後は変更できません",
             )}
             label={tr("値")}
             onChange={(e) => setNewValue(e.currentTarget.value.toUpperCase())}

@@ -253,7 +253,7 @@ export function DisplayContentEditor({ display, plantOptions, onDone }: Props) {
         <Section title="更新">
           <NumberInput
             description={tr(
-              tr("この間隔で内容を取り直します。0 にすると自動更新しません"),
+              "この間隔で内容を取り直します。0 にすると自動更新しません",
             )}
             label={tr("更新間隔")}
             max={86_400}

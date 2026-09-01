@@ -161,7 +161,7 @@ export function CriteriaListPanel({
     <>
       <MasterListNav
         emptyMessage={tr(
-          tr("計算基準がありません。「基準を追加」から作成してください。"),
+          "計算基準がありません。「基準を追加」から作成してください。",
         )}
         searchable
         searchPlaceholder={tr("基準名・ID で絞り込み...")}

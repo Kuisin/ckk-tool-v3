@@ -1054,7 +1054,7 @@ export function WorkLocationsManager({
         opened={!!deleteGroup}
         title={tr("グループの削除")}
         warning={tr(
-          tr("作業計画・実績で使用中の場所が含まれる場合は削除できません。"),
+          "作業計画・実績で使用中の場所が含まれる場合は削除できません。",
         )}
       />
       <ConfirmModal

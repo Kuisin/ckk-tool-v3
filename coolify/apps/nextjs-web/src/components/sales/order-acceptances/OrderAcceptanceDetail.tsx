@@ -1414,7 +1414,7 @@ function DraftEditor({
       <IntakeReviewPanel review={a.review} />
       <FormSection
         description={tr(
-          tr("AI 抽出結果を確認し、顧客・明細を修正して保存します。"),
+          "AI 抽出結果を確認し、顧客・明細を修正して保存します。",
         )}
         title={tr("基本情報")}
       >

@@ -836,7 +836,7 @@ export function InspectionTemplateItemModal({
           )}
           <TextInput
             description={tr(
-              tr("LE/PR/P/S/K/H/M/N/Z 等（列見出しの接尾辞・凡例に使用）"),
+              "LE/PR/P/S/K/H/M/N/Z 等（列見出しの接尾辞・凡例に使用）",
             )}
             label={tr("測定機器コード")}
             onChange={(e) => setMeasurementEquipment(e.currentTarget.value)}

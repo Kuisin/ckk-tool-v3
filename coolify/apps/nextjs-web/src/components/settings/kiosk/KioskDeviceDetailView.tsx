@@ -599,7 +599,7 @@ export function KioskDeviceDetailView({
         confirmLabel={tr("再生成")}
         loading={isPending}
         message={tr(
-          tr("端末設定コードを再生成します。以前のコードは使えなくなります。"),
+          "端末設定コードを再生成します。以前のコードは使えなくなります。",
         )}
         onClose={() => setConfirmRegen(false)}
         onConfirm={() => {

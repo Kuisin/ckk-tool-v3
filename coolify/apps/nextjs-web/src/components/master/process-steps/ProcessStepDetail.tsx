@@ -344,7 +344,7 @@ export function ProcessStepDetail({
               </Text>
               <DependencyTable
                 emptyMessage={tr(
-                  tr("実行依存はありません（先行工程なしで開始できます）"),
+                  "実行依存はありません（先行工程なしで開始できます）",
                 )}
                 rows={record.execDependencies}
                 withNegation={false}
