@@ -18,13 +18,18 @@ import {
   displayRegistrationBlocked,
   LINK_CODE_LENGTH,
   LINK_REQUEST_TTL_MS,
+  normalizeScreenIndex,
 } from "@/lib/display-core";
 import { clientIpOf, userAgentOf } from "@/lib/request-ip";
 
 export const dynamic = "force-dynamic";
 
 export async function POST(req: Request) {
-  const existing = await getDisplay();
+  // 窓ごとに別の Cookie（同じブラウザの 2 枚目は別の登録として扱う）
+  const screen = normalizeScreenIndex(
+    new URL(req.url).searchParams.get("screen"),
+  );
+  const existing = await getDisplay(screen);
   if (existing.ok) {
     return NextResponse.json({
       status: "ALREADY_REGISTERED",

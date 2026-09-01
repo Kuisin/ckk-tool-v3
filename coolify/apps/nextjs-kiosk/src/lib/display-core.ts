@@ -207,3 +207,24 @@ export function extractLinkCode(raw: string): string {
 export function displayRegistrationBlocked(reason: string): boolean {
   return reason === "DISABLED" || reason === "REVOKED";
 }
+
+/**
+ * 画面ごとの Cookie 名。**1 台のブラウザで複数の画面を別々に登録するため。**
+ *
+ * Raspberry Pi では画面ごとに Chromium のプロファイルを分けているので、
+ * Cookie も自然に別々になる。ところが**普通のパソコンで窓を 2 つ開く**と、
+ * 同じプロファイル = 同じ Cookie なので、2 つの窓が同じ 1 台の登録を共有して
+ * しまい、同じものしか映せない（＝多画面にならない）。
+ *
+ * そこで **URL の `screen` ごとに Cookie の名前を変える**。窓ごとに別の
+ * トークンを持てるので、Pi でなくても 1 台で複数の画面を出せる。
+ *
+ * ★ **1 枚目（screen 無し / screen=1）は従来どおりの名前**にする。
+ *   ここを変えると、すでに登録済みの画面が全部ログアウトして、現場を
+ *   回って登録し直すことになる。
+ */
+export function displayCookieName(screenIndex: number | null): string {
+  return screenIndex === null || screenIndex <= 1
+    ? "ckk_display"
+    : `ckk_display_${screenIndex}`;
+}

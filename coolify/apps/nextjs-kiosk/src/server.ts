@@ -92,7 +92,16 @@ async function authenticateDisplayUpgrade(
     return null;
   }
 
-  const raw = parseCookies(req).ckk_display;
+  // **窓ごとの Cookie。** 同じブラウザで 2 画面を出しているとき、どちらの
+  // 画面として繋いだのかを取り違えないため（?screen= はクライアントが付ける）。
+  // tsc の CJS ビルドなので lib/display-core は読み込まず、名前の規則だけ写す
+  // （規則の正は displayCookieName — 変えるときは両方直すこと）。
+  const screen = Number(url.searchParams.get("screen"));
+  const cookieName =
+    Number.isInteger(screen) && screen > 1
+      ? `ckk_display_${screen}`
+      : "ckk_display";
+  const raw = parseCookies(req)[cookieName];
   if (!raw) return null;
   const hash = createHash("sha256").update(raw).digest("hex");
   const displayId = await findActiveDisplayByTokenHash(hash);

@@ -14,6 +14,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { getDisplay } from "@/lib/display-auth";
 import { imageConfigSchema } from "@/lib/display-content";
+import { normalizeScreenIndex } from "@/lib/display-core";
 
 export const dynamic = "force-dynamic";
 
@@ -22,10 +23,14 @@ const FILER_URL = (
 ).replace(/\/$/, "");
 
 export async function GET(
-  _req: Request,
+  req: Request,
   { params }: { params: Promise<{ fileId: string }> },
 ) {
-  const auth = await getDisplay();
+  // 窓ごとに別の Cookie（描画側が ?screen= を付けて呼ぶ）
+  const screen = normalizeScreenIndex(
+    new URL(req.url).searchParams.get("screen"),
+  );
+  const auth = await getDisplay(screen);
   if (!auth.ok) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
