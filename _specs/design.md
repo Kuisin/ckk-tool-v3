@@ -963,6 +963,10 @@ Paper (withBorder, p="md", radius="md")
 - 中身（`Tabs.List` / `Tabs.Tab` / `Tabs.Panel`）は書き換えない。ドロップダウンの
   項目は `Tabs.List` の子から読み取る（`leftSection` / `rightSection` のバッジも
   そのまま出る）。
+- **畳んだときの見出しはタブ列と同じ見た目にする** — 枠も背景も持たず、下線
+  1 本（タブ列の線と同じ色・太さ。青い強調線は引かない）だけ。開けることは
+  右端の ▾ で示す。以前はフォームの `Select` と同じ枠付きボタンだったので、
+  タブではなく入力欄に見えていた。
 - 制御・非制御のどちらでも使える（`value`+`onChange` / `defaultValue`）。
 - 畳んでも `Tabs.List` は**消さずに隠す**（`visibility: hidden`）。自然な幅を測り
   続けて広くなったら横並びへ戻すためと、`Tabs.Panel` の `aria-labelledby` が指す
