@@ -107,13 +107,19 @@ MCP tools — `search_graph`, `trace_path`, `get_architecture`, `get_code_snippe
 `search_code`, `index_status`, `detect_changes`. **The project key is
 `ckk-tool-v3-dev`**; queries take it as `--project` / the `project` argument.
 
-**Reach for it before a repo-wide grep**, for the questions that span files rather than sit
-in one: *where is this used, what calls this, what does this subsystem consist of, what
-would this change break.* It answers with **locations**, so the graph tells you where to
-look and then you read the files. It is **not** a source of truth about behaviour —
-`_specs/` and the code remain that, and a graph edge is not a reason to skip reading the
-function. For a keyword you can already name in a file you can already name, plain
-`grep`/`Explore` is still faster.
+**Use it first — it is the default move, not an option.** Every question that spans files
+rather than sitting in one goes to the graph before `grep`, `Explore` or a subagent sweep:
+*where is this used, what calls this, what does this subsystem consist of, what would this
+change break.* Orient with `get_architecture`, find symbols with `search_graph`, follow
+callers with `trace_path`, read the exact source with `get_code_snippet`. It answers with
+**locations**, so the graph tells you where to look and then you read the files. It is
+**not** a source of truth about behaviour — `_specs/` and the code remain that, and a graph
+edge is not a reason to skip reading the function.
+
+**Two narrow exceptions, and only these two.** A keyword you can already name in a file you
+can already name — plain `grep` is faster. And anything the current branch touched — the
+index holds `origin/dev`, so `git`/`grep` win there (next paragraph). Everything else starts
+at the graph.
 
 **What it holds is `origin/dev`, not your branch.** The index is built from a dedicated
 detached worktree at `~/.local/share/ckk-index/ckk-tool-v3-dev` that exists only to be
