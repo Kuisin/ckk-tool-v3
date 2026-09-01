@@ -48,6 +48,12 @@ const EXCLUDED = [
   // 辞書そのもの。ここの日本語は**原文**であって未翻訳ではない
   // （キオスクの in-house 辞書 — ja.ts の隣に en.ts / zh.ts が揃っている）。
   /\/lib\/i18n\/messages\//,
+  // 画面確認用の見本データ。「田中 太郎」「株式会社ABC製作所」のような
+  // **架空の取引先名・人名**で、DB に入るデータと同じ扱い = 訳す対象ではない
+  // （_specs/i18n-glossary.md §1）。mock.ts 自身が "preview only" と書いている。
+  /\/mock\.ts$/,
+  /\/fixtures\.ts$/,
+  /\/display-sample\.ts$/,
 ];
 
 /**
@@ -254,12 +260,21 @@ export function scanFile(filePath, source) {
     if (isLocaleValue(source, s.start)) continue;
     if (isObjectKey(source, s.start, s.value)) continue;
     if (isIgnored(lines, s.line)) continue;
-    findings.push({ file: filePath, line: s.line, text: s.value.trim() });
+    findings.push({
+      file: filePath,
+      line: s.line,
+      text: s.value.trim(),
+      // テンプレートリテラルは `${...}` を挟んだ**文の断片**（「第」+「承認」）に
+      // なる。断片を辞書の鍵にすると語順が言語で変わって壊れるので、ja 鍵の
+      // 対訳ではなく next-intl の変数付きキーへ移す対象として区別する
+      // （用語集 §2.6「文を連結しない」）。
+      kind: s.quote === "`" ? "template" : "string",
+    });
   }
 
   for (const t of jsxTextNodes(source)) {
     if (isIgnored(lines, t.line)) continue;
-    findings.push({ file: filePath, line: t.line, text: t.value });
+    findings.push({ file: filePath, line: t.line, text: t.value, kind: "jsx" });
   }
 
   return findings;
