@@ -106,6 +106,12 @@ jobs:
       - name: Page gate guard (requireAppRead)
         run: bash scripts/check-page-gates.sh
 
+      # 英語・中国語対応は段階的に進める（約 11,000 箇所）。全部訳し終わって
+      # いなくても落とさない — 見るのは **後戻り** だけで、baseline より
+      # 増えたときに失敗する。使い方は tools/i18n/README.md。
+      - name: i18n regression guard (no new Japanese literals)
+        run: node ../../../tools/i18n/i18n-scan.mjs
+
       # "use server" は async 関数しか export できない。定数を export すると
       # クライアントにはアクション参照が渡り、実行時に画面ごと落ちる
       # （tsc も biome も next build も検出しない）。
