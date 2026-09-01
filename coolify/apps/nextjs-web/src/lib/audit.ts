@@ -10,7 +10,7 @@
  */
 
 import type { AuditEntry } from "@/components/ui/shells";
-import { auditFieldLabel } from "@/lib/audit-field-labels";
+import { auditFieldDiffs, formatAuditValue } from "@/lib/audit-field-labels";
 import { avatarUrl } from "@/lib/avatar";
 import { prisma } from "@/lib/db";
 import type { Formatters } from "@/lib/format";
@@ -192,11 +192,9 @@ export async function recordSystemEvent(input: {
 
 // ── read side ────────────────────────────────────────────────────────────────
 
-function fmtValue(v: unknown): string {
-  if (v === null || v === undefined || v === "") return "—";
-  if (typeof v === "boolean") return v ? "有効" : "無効";
-  if (typeof v === "object") return JSON.stringify(v);
-  return String(v);
+/** 一覧の要約に出す値。詳細表と同じ整形を使う（言葉を割らない）。 */
+function fmtValue(v: unknown, key?: string): string {
+  return formatAuditValue(v, key);
 }
 
 /** UPDATE の before/after からスカラー変更点を「ラベル: 旧 → 新」で要約。 */
@@ -211,27 +209,15 @@ function describeChange(
   if (typeof note === "string" && note) return note;
   if (action === "CREATE") return "新規作成";
   if (action === "DELETE") return "削除";
-  const b = (before ?? {}) as Record<string, unknown>;
-  const a = (after ?? {}) as Record<string, unknown>;
-  const keys = new Set([...Object.keys(b), ...Object.keys(a)]);
-  const diffs: string[] = [];
-  for (const k of keys) {
-    const bv = b[k];
-    const av = a[k];
-    // ネスト（配列・オブジェクト）は差分表示から除外（明細等）。
-    if (
-      (bv !== null && typeof bv === "object") ||
-      (av !== null && typeof av === "object")
-    ) {
-      continue;
-    }
-    if (fmtValue(bv) === fmtValue(av)) continue;
-    // ラベルも整形も詳細表（AuditChangeTable）と同じものを使う。
-    // 別々に持つと、一覧と詳細で違う言葉が出る。
-    const label = auditFieldLabel(k, tableName);
-    diffs.push(`${label}: ${fmtValue(bv)} → ${fmtValue(av)}`);
-    if (diffs.length >= 6) break;
-  }
+  // 詳細表と同じ差分（入れ子は平らにして葉ごとに見る）。以前はここで
+  // オブジェクトを丸ごと飛ばしていたので、設定 JSON だけが変わった操作は
+  // 一覧に「更新」としか出ず、何をしたのか分からなかった。
+  const diffs = auditFieldDiffs(before, after, tableName)
+    .slice(0, 6)
+    .map(
+      (d) =>
+        `${d.label}: ${fmtValue(d.before, d.key)} → ${fmtValue(d.after, d.key)}`,
+    );
   return diffs.length > 0 ? diffs.join(" / ") : "更新";
 }
 
