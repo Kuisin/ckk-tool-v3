@@ -26,9 +26,8 @@ export default async function DisplayPage({
 }: {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
-  const auth = await getDisplay();
-
-  // Pi が URL に載せてくる手掛かり（どの機械の何枚目か）。1 枚運用では付かない。
+  // 手掛かり（どの機械の何枚目か）。Pi が URL に載せてくるが、**普通の
+  // パソコンでも手で付ければ同じように多画面にできる**（窓ごとに別の Cookie）。
   const params = await searchParams;
   const one = (k: string) => {
     const v = params[k];
@@ -36,6 +35,9 @@ export default async function DisplayPage({
   };
   const hint = machineHint(one("machine"), one("screen"));
   const screenTotal = Number(one("of")) || 1;
+
+  // 認証は**この窓の画面番号**で引く（窓ごとに別の登録になる）
+  const auth = await getDisplay(hint.screenIndex);
 
   if (!auth.ok) {
     // 止められている画面は登録し直させない（上の注記）。

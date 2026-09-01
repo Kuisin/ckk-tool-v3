@@ -15,7 +15,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { getDisplay, touchDisplay } from "@/lib/display-auth";
 import { parseDisplayContent } from "@/lib/display-content";
-import { machineHint } from "@/lib/display-core";
+import { machineHint, normalizeScreenIndex } from "@/lib/display-core";
 import { deviceName } from "@/lib/format";
 import { metabaseEmbedUrl } from "@/lib/metabase-embed";
 import { clientIpOf, userAgentOf } from "@/lib/request-ip";
@@ -23,7 +23,11 @@ import { clientIpOf, userAgentOf } from "@/lib/request-ip";
 export const dynamic = "force-dynamic";
 
 export async function GET(req: Request) {
-  const auth = await getDisplay();
+  // 窓ごとに別の Cookie を見る（同じブラウザで 2 画面を出せるように）
+  const screen = normalizeScreenIndex(
+    new URL(req.url).searchParams.get("screen"),
+  );
+  const auth = await getDisplay(screen);
   if (!auth.ok) {
     return NextResponse.json(
       { error: "unauthorized", reason: auth.reason },

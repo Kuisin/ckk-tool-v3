@@ -158,6 +158,35 @@ scale are set per screen, and disabling one leaves the other running.
 > ⚠️ If left and right come out swapped, swapping the HDMI cables is the
 > easiest fix.
 
+## You do not need a Raspberry Pi
+
+**Any Windows or Mac browser can be a display.** Useful for a demo, a temporary
+screen, or while you wait for a Pi to arrive.
+
+1. Open `https://ckk-kiosk.kai-lab.net/display` in a browser
+2. Register the link code it shows, from Devices (SY09) → Displays
+3. Press `F11` for full screen and it looks the same as a TV
+
+### Two screens from one PC
+
+**Number each window.** Different numbers register as different displays, so each
+can show something different.
+
+| Window | URL to open |
+|---|---|
+| First | `.../display?machine=pc-1&screen=1&of=2` |
+| Second | `.../display?machine=pc-1&screen=2&of=2` |
+
+- `machine` — a name for that one PC (anything, but **the same in both windows**)
+- `screen` — which screen it is (**starting at 1**)
+- `of` — how many screens that machine drives
+
+The devices list then shows them as **one row**, with a 1 枚目 / 2 枚目 selector.
+Without the numbers, both windows share one registration and show the same thing.
+
+> 💡 `machine` and `screen` are used only to tell screens apart. They play no part
+> in permissions or in deciding what is shown.
+
 ## Changing things later
 
 **You never need to touch the Raspberry Pi.** Use the "Displays" tab of

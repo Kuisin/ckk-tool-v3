@@ -12,13 +12,18 @@
 
 import { NextResponse } from "next/server";
 import { getDisplay, touchDisplay } from "@/lib/display-auth";
-import { machineHint } from "@/lib/display-core";
+import { machineHint, normalizeScreenIndex } from "@/lib/display-core";
 import { clientIpOf, userAgentOf } from "@/lib/request-ip";
 
 export const dynamic = "force-dynamic";
 
 export async function POST(req: Request) {
-  const auth = await getDisplay();
+  // 窓ごとに別の Cookie。screen は下で読む body にも入っているが、
+  // 認証の前に要るので URL から取る（クライアントは両方に載せる）。
+  const screen = normalizeScreenIndex(
+    new URL(req.url).searchParams.get("screen"),
+  );
+  const auth = await getDisplay(screen);
   if (!auth.ok) {
     return NextResponse.json(
       { error: "unauthorized", reason: auth.reason },

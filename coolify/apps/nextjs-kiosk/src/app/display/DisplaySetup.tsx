@@ -33,7 +33,16 @@ import {
 import type { DisplayAuthFailReason } from "@/lib/display-auth";
 import type { MachineHint } from "@/lib/display-core";
 
-const DEVICE_ID_KEY = "ckk_display_device_id";
+/**
+ * 端末 id の控え（Cookie 消失時の復帰用）。**窓ごとに分ける** —
+ * localStorage はブラウザのプロファイル単位で共有されるので、1 つの鍵にすると
+ * 2 枚目の窓が 1 枚目の控えを上書きし、復帰で取り違える。
+ */
+function deviceIdKey(screenIndex: number | null): string {
+  return screenIndex === null || screenIndex <= 1
+    ? "ckk_display_device_id"
+    : `ckk_display_device_id_${screenIndex}`;
+}
 const POLL_INTERVAL_MS = 3000;
 
 /**
@@ -67,6 +76,10 @@ type Props = {
 };
 
 export function DisplaySetup({ reason, hint, screenTotal }: Props) {
+  const storageKey = deviceIdKey(hint.screenIndex);
+  // 窓ごとの登録にするため、どの経路にも画面番号を載せる
+  const screenQuery =
+    hint.screenIndex !== null ? `?screen=${hint.screenIndex}` : "";
   const [state, setState] = useState<SetupState>({ phase: "loading" });
   const [now, setNow] = useState(() => Date.now());
   const startedRef = useRef(false);
@@ -74,7 +87,9 @@ export function DisplaySetup({ reason, hint, screenTotal }: Props) {
   const begin = useCallback(async () => {
     setState({ phase: "loading" });
     try {
-      const res = await fetch("/api/display/setup/begin", { method: "POST" });
+      const res = await fetch(`/api/display/setup/begin${screenQuery}`, {
+        method: "POST",
+      });
       const data = (await res.json()) as {
         status: string;
         code?: string;
@@ -96,7 +111,7 @@ export function DisplaySetup({ reason, hint, screenTotal }: Props) {
     } catch {
       setState({ phase: "error", message: "サーバーに接続できません" });
     }
-  }, []);
+  }, [screenQuery]);
 
   // 初期化: Cookie 消失なら reactivate → だめなら begin（キオスクと同じ）
   useEffect(() => {
@@ -104,13 +119,16 @@ export function DisplaySetup({ reason, hint, screenTotal }: Props) {
     startedRef.current = true;
     (async () => {
       try {
-        const savedId = localStorage.getItem(DEVICE_ID_KEY);
+        const savedId = localStorage.getItem(storageKey);
         if (savedId) {
-          const res = await fetch("/api/display/setup/reactivate", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ deviceId: savedId }),
-          });
+          const res = await fetch(
+            `/api/display/setup/reactivate${screenQuery}`,
+            {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ deviceId: savedId }),
+            },
+          );
           if (res.ok) {
             window.location.reload();
             return;
@@ -121,7 +139,7 @@ export function DisplaySetup({ reason, hint, screenTotal }: Props) {
       }
       void begin();
     })();
-  }, [begin]);
+  }, [begin, screenQuery, storageKey]);
 
   // 表示中: リンク成立ポーリング + 期限カウントダウン
   useEffect(() => {
@@ -137,7 +155,7 @@ export function DisplaySetup({ reason, hint, screenTotal }: Props) {
           deviceName?: string | null;
         };
         if (data.status === "LINKED" && data.deviceId) {
-          localStorage.setItem(DEVICE_ID_KEY, data.deviceId);
+          localStorage.setItem(storageKey, data.deviceId);
           setState({
             phase: "linked",
             deviceId: data.deviceId,
@@ -158,7 +176,7 @@ export function DisplaySetup({ reason, hint, screenTotal }: Props) {
       clearInterval(poll);
       clearInterval(tick);
     };
-  }, [state]);
+  }, [state, storageKey]);
 
   // リンク後: 有効化待ちポーリング
   useEffect(() => {
@@ -178,15 +196,18 @@ export function DisplaySetup({ reason, hint, screenTotal }: Props) {
         if (data.status === "CONFIRMED") {
           window.location.reload();
         } else if (data.status === "ALREADY_CONFIRMED") {
-          const re = await fetch("/api/display/setup/reactivate", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ deviceId: state.deviceId }),
-          });
+          const re = await fetch(
+            `/api/display/setup/reactivate${screenQuery}`,
+            {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ deviceId: state.deviceId }),
+            },
+          );
           if (re.ok) window.location.reload();
         } else if (data.status === "PENDING") {
           // リンク解除された（プロファイルがオープンに戻った）→ 最初から
-          localStorage.removeItem(DEVICE_ID_KEY);
+          localStorage.removeItem(storageKey);
           void begin();
         }
         // LINKED はそのまま待つ
@@ -195,7 +216,7 @@ export function DisplaySetup({ reason, hint, screenTotal }: Props) {
       }
     }, POLL_INTERVAL_MS);
     return () => clearInterval(poll);
-  }, [state, begin, hint]);
+  }, [state, begin, hint, screenQuery, storageKey]);
 
   const note = REASON_NOTE[reason];
   // 1 台に複数つないでいるときは「何枚目か」を出す。同時に 2 枚のテレビが

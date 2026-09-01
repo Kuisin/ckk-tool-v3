@@ -13,6 +13,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/db";
 import { setDisplayCookie } from "@/lib/display-auth";
+import { normalizeScreenIndex } from "@/lib/display-core";
 
 export const dynamic = "force-dynamic";
 
@@ -35,7 +36,11 @@ export async function POST(req: Request) {
     );
   }
 
-  const { hash, expiresAt } = await setDisplayCookie();
+  // この窓（画面）専用の Cookie に入れる
+  const screen = normalizeScreenIndex(
+    new URL(req.url).searchParams.get("screen"),
+  );
+  const { hash, expiresAt } = await setDisplayCookie(screen);
   await prisma.displayDevice.update({
     where: { id: device.id },
     data: {

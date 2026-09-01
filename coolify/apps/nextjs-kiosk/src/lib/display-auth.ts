@@ -14,12 +14,18 @@ import { cookies } from "next/headers";
 import { prisma } from "./db";
 import {
   DISPLAY_TOKEN_TTL_MS,
+  displayCookieName,
   isDisplayTokenAlive,
   normalizeScalePercent,
 } from "./display-core";
 import { deviceName } from "./format";
 import { mintToken, sha256hex } from "./kiosk-auth";
 
+/**
+ * 1 枚目の Cookie 名（従来どおり）。2 枚目以降は画面ごとに分ける —
+ * `displayCookieName()` を使うこと。**普通のパソコンで窓を 2 つ開いても
+ * 別々の画面として登録できる**のはこの仕組みによる（Pi でなくても多画面）。
+ */
 export const DISPLAY_COOKIE = "ckk_display";
 
 export type DisplayAuth = {
@@ -58,13 +64,19 @@ function cookieOptions(maxAgeMs: number) {
 }
 
 /** 365日トークンを発行し Cookie に設定、ハッシュと期限を返す。 */
-export async function setDisplayCookie(): Promise<{
+export async function setDisplayCookie(
+  screenIndex: number | null = null,
+): Promise<{
   hash: string;
   expiresAt: Date;
 }> {
   const { raw, hash } = mintToken();
   const store = await cookies();
-  store.set(DISPLAY_COOKIE, raw, cookieOptions(DISPLAY_TOKEN_TTL_MS));
+  store.set(
+    displayCookieName(screenIndex),
+    raw,
+    cookieOptions(DISPLAY_TOKEN_TTL_MS),
+  );
   return { hash, expiresAt: new Date(Date.now() + DISPLAY_TOKEN_TTL_MS) };
 }
 
@@ -73,9 +85,11 @@ export async function setDisplayCookie(): Promise<{
  * 管理画面で「取り消し」を押すだけで Pi が自分からペアリング画面へ戻る
  * （現場に行って端末を触る必要がない）。
  */
-export async function clearDisplayCookie(): Promise<void> {
+export async function clearDisplayCookie(
+  screenIndex: number | null = null,
+): Promise<void> {
   const store = await cookies();
-  store.delete(DISPLAY_COOKIE);
+  store.delete(displayCookieName(screenIndex));
 }
 
 /**
@@ -83,9 +97,13 @@ export async function clearDisplayCookie(): Promise<void> {
  * 失敗理由を型付きで返すのは、画面の出し分けに使うため
  * （NO_COOKIE = ペアリング画面 / それ以外 = 理由を出してからペアリングへ）。
  */
-export async function getDisplay(): Promise<DisplayAuthResult> {
+export async function getDisplay(
+  screenIndex: number | null = null,
+): Promise<DisplayAuthResult> {
   const store = await cookies();
-  const raw = store.get(DISPLAY_COOKIE)?.value;
+  // **画面ごとの Cookie。** 同じブラウザの別の窓を別の画面として扱うため
+  // （1 枚目は従来どおりの名前 — 既存の登録を切らない）。
+  const raw = store.get(displayCookieName(screenIndex))?.value;
   if (!raw) return { ok: false, reason: "NO_COOKIE" };
 
   const row = await prisma.displayDevice.findUnique({
