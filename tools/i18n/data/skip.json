@@ -56,6 +56,12 @@
     "a.label).join(\"、\") ||\n            tr(\"承認者が未設定\");\n        return (",
     "0\n      ? tr(\"カスタム入力キーを修正してください（予約語・重複）\")\n      : null;\n\n  return (",
     "ORDER_TYPE_LABEL[v.orderType] ?? v.orderType)\n      .join(tr(\"・\")) ?? \"—\";\n\n  return (",
-    ") : (\n        tr(\"この顧客に営業担当が未登録です（取引先マスタの管理者に登録を依頼）\")\n      )\n    ) : undefined;\n\n  return ("
+    ") : (\n        tr(\"この顧客に営業担当が未登録です（取引先マスタの管理者に登録を依頼）\")\n      )\n    ) : undefined;\n\n  return (",
+    "manual-permissions: 未知のアプリ {app}",
+    "realtime ペイロードが大きすぎます ({bytes} > {REALTIME_MAX_PAYLOAD_BYTES} バイト)",
+    "| 打开画面、查看列表与明细 | {label} — 查看 |",
+    "| 新增・变更・删除 | {label} — 创建 / 更新 / 删除 |",
+    "| 画面を開く・一覧や詳細を見る | {label} の 閲覧 |",
+    "| 追加・変更・削除する | {label} の 作成 / 更新 / 削除 |"
   ]
 }
