@@ -51,6 +51,7 @@ import {
   WorkOrderProcedurePanel,
 } from "@/components/production/ApprovalStatusPanel";
 import type { ProductDesignFile } from "@/components/production/design-files/model";
+import { WorkOrderFinalInspectionPanel } from "@/components/production/WorkOrderFinalInspectionPanel";
 import { WorkOrderStepsPanel } from "@/components/production/WorkOrderStepsPanel";
 import { AppTabs } from "@/components/ui/AppTabs";
 import { GhostButton } from "@/components/ui/buttons";
@@ -487,6 +488,10 @@ export function WorkOrderDetail({
               steps={wo.steps}
               workOrderNumber={wo.workOrderNumber}
               workOrderStatus={wo.status}
+            />
+            <WorkOrderFinalInspectionPanel
+              finalInspection={wo.finalInspection}
+              workOrderNumber={wo.workOrderNumber}
             />
             {wo.notes && (
               <div>

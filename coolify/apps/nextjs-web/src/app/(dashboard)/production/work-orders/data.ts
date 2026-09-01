@@ -175,6 +175,7 @@ const WO_INCLUDE = {
     orderBy: { sortOrder: "asc" as const },
   },
   stepLinks: true,
+  finalInspection: true,
 };
 
 const iso = (d: Date | null | undefined) => d?.toISOString() ?? null;
@@ -454,6 +455,18 @@ export async function fetchWorkOrder(
   const userIds = new Set<string>();
   for (const h of historyRaw) if (h.user) userIds.add(h.user);
   for (const s of r.steps) if (s.completedBy) userIds.add(s.completedBy);
+  const fi = r.finalInspection;
+  for (const id of [
+    fi?.drawingLabelCheckedBy,
+    fi?.protectiveCapCheckedBy,
+    fi?.finishedQuantityCheckedBy,
+    fi?.shelvedBy,
+    fi?.deliveryNoteIssuedBy,
+    fi?.shipmentAuthorizedBy,
+    fi?.shipDefectReviewedBy,
+  ]) {
+    if (id) userIds.add(id);
+  }
   const users = userIds.size
     ? await prisma.user.findMany({
         where: { id: { in: [...userIds] } },
@@ -610,6 +623,42 @@ export async function fetchWorkOrder(
       at: h.at,
       notes: h.notes ?? null,
     })),
+    finalInspection: fi
+      ? {
+          drawingLabelOk: fi.drawingLabelOk,
+          drawingLabelCheckedByName: fi.drawingLabelCheckedBy
+            ? nameOf(fi.drawingLabelCheckedBy)
+            : null,
+          drawingLabelCheckedAt: iso(fi.drawingLabelCheckedAt),
+          protectiveCapOk: fi.protectiveCapOk,
+          protectiveCapCheckedByName: fi.protectiveCapCheckedBy
+            ? nameOf(fi.protectiveCapCheckedBy)
+            : null,
+          protectiveCapCheckedAt: iso(fi.protectiveCapCheckedAt),
+          finishedQuantityOk: fi.finishedQuantityOk,
+          finishedQuantityCheckedByName: fi.finishedQuantityCheckedBy
+            ? nameOf(fi.finishedQuantityCheckedBy)
+            : null,
+          finishedQuantityCheckedAt: iso(fi.finishedQuantityCheckedAt),
+          spareStockUsed: fi.spareStockUsed,
+          spareStockReceived: fi.spareStockReceived,
+          shelvedByName: fi.shelvedBy ? nameOf(fi.shelvedBy) : null,
+          shelvedAt: iso(fi.shelvedAt),
+          deliveryNoteIssuedByName: fi.deliveryNoteIssuedBy
+            ? nameOf(fi.deliveryNoteIssuedBy)
+            : null,
+          deliveryNoteIssuedAt: iso(fi.deliveryNoteIssuedAt),
+          shipmentAuthorizedByName: fi.shipmentAuthorizedBy
+            ? nameOf(fi.shipmentAuthorizedBy)
+            : null,
+          shipmentAuthorizedAt: iso(fi.shipmentAuthorizedAt),
+          shipDefectReviewedByName: fi.shipDefectReviewedBy
+            ? nameOf(fi.shipDefectReviewedBy)
+            : null,
+          shipDefectReviewedAt: iso(fi.shipDefectReviewedAt),
+          shipDefectNotes: fi.shipDefectNotes,
+        }
+      : null,
     createdAt: r.createdAt.toISOString(),
     updatedAt: r.updatedAt.toISOString(),
   };
@@ -825,6 +874,7 @@ export async function fetchStepExecution(
   for (const rec of [...step.inspectionRecords, ...woRecordsRaw]) {
     if (rec.recordedBy) userIds.add(rec.recordedBy);
     if (rec.approvedBy) userIds.add(rec.approvedBy);
+    if (rec.confirmedBy) userIds.add(rec.confirmedBy);
   }
   for (const d of step.defectRecords) {
     if (d.recordedBy) userIds.add(d.recordedBy);
@@ -870,6 +920,8 @@ export async function fetchStepExecution(
     recordedByName: nameOf(rec.recordedBy),
     approvedAt: iso(rec.approvedAt),
     approvedByName: nameOf(rec.approvedBy),
+    confirmedAt: iso(rec.confirmedAt),
+    confirmedByName: nameOf(rec.confirmedBy),
     items: rec.items.map((it) => ({
       templateItemId: it.templateItemId,
       itemName: localized(it.templateItem.itemName as LocalizedText | null),
@@ -886,6 +938,7 @@ export async function fetchStepExecution(
       version: t.inspectionTemplate.version,
       name: localized(t.inspectionTemplate.name as LocalizedText | null),
       relatedProcessStepId: t.inspectionTemplate.relatedProcessStepId,
+      sampleNaming: t.inspectionTemplate.sampleNaming,
       ...samplingSpecFromRow(t.inspectionTemplate),
       items: t.inspectionTemplate.items.map((it) => ({
         name: localized(it.itemName as LocalizedText | null),

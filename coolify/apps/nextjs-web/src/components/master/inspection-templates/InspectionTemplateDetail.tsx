@@ -50,7 +50,11 @@ import {
   SummaryGrid,
 } from "@/components/ui/shells";
 import { useTabParam } from "@/hooks/useUrlState";
-import { inspectionItemTypeLabel } from "@/lib/enum-labels";
+import {
+  inspectionDepartmentLabel,
+  inspectionItemTypeLabel,
+  inspectionLayoutStyleLabel,
+} from "@/lib/enum-labels";
 import {
   acceptLabel,
   goalLabel,
@@ -88,6 +92,8 @@ export interface InspectionTemplateDetailData {
   samplingMode: "ALL" | "PERCENT" | "COUNT";
   samplingValue: number | null;
   recordStyle: "VALUES" | "COUNTS";
+  layoutStyle: "DIMENSIONAL" | "CHECKLIST";
+  sampleNaming: "GENERIC" | "INITIAL_MID_FINAL";
   isActive: boolean;
   /** 指示書割当 or 検査記録あり → 定義変更不可。 */
   isLocked: boolean;
@@ -252,6 +258,20 @@ export function InspectionTemplateDetail({
               : "実測値（製品ごと）"
           }
         />
+        <FieldValue
+          label="印刷レイアウト"
+          value={inspectionLayoutStyleLabel(record.layoutStyle, locale)}
+        />
+        {record.recordStyle === "VALUES" && (
+          <FieldValue
+            label="サンプル呼称"
+            value={
+              record.sampleNaming === "INITIAL_MID_FINAL"
+                ? "初品・中間品・最終品"
+                : "製品1, 2, 3…"
+            }
+          />
+        )}
         <FieldValue label="検査項目数" value={`${record.items.length}件`} />
         <FieldValue
           label="状態"
@@ -346,6 +366,29 @@ export function InspectionTemplateDetail({
                               {!item.allowManualOverride && (
                                 <Badge color="orange" size="xs" variant="light">
                                   上書き不可
+                                </Badge>
+                              )}
+                              {item.section === "SHAPE" && (
+                                <Badge color="teal" size="xs" variant="light">
+                                  形状欄
+                                </Badge>
+                              )}
+                              {item.department && (
+                                <Badge color="violet" size="xs" variant="light">
+                                  {inspectionDepartmentLabel(
+                                    item.department,
+                                    locale,
+                                  )}
+                                </Badge>
+                              )}
+                              {item.measurementEquipment && (
+                                <Badge
+                                  color="gray"
+                                  ff="mono"
+                                  size="xs"
+                                  variant="outline"
+                                >
+                                  {item.measurementEquipment}
                                 </Badge>
                               )}
                             </Group>
@@ -516,6 +559,7 @@ export function InspectionTemplateDetail({
       <InspectionTemplateItemModal
         defaultSortOrder={nextSortOrder}
         item={editItem}
+        layoutStyle={record.layoutStyle}
         onClose={() => setItemModalOpen(false)}
         onDone={() => router.refresh()}
         opened={itemModalOpen}

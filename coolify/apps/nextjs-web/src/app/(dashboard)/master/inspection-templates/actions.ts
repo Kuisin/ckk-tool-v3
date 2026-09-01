@@ -46,6 +46,10 @@ const templateFields = z.object({
   samplingValue: z.number().nullable(),
   // 記録方式（シート単位）: 実測値（製品ごと） / 合格数のみ
   recordStyle: z.enum(["VALUES", "COUNTS"]),
+  // 印刷レイアウト（寸法測定表 / 外観・工程チェック表）
+  layoutStyle: z.enum(["DIMENSIONAL", "CHECKLIST"]),
+  // VALUES のサンプル呼称（製品1,2,3… / 初品・中間品・最終品）
+  sampleNaming: z.enum(["GENERIC", "INITIAL_MID_FINAL"]),
   isActive: z.boolean(),
 });
 
@@ -107,12 +111,23 @@ const templateItemInput = z
   .object({
     itemNameJa: z.string().min(1, "項目名（日本語）を入力してください"),
     itemNameEn: z.string().optional(),
-    inputType: z.enum(["BOOLEAN", "NUMBER", "SELECT_SINGLE", "SELECT_MULTI"]),
+    inputType: z.enum([
+      "BOOLEAN",
+      "NUMBER",
+      "SELECT_SINGLE",
+      "SELECT_MULTI",
+      "TEXT",
+    ]),
     // NUMBER
     unit: z.string().optional(),
     toleranceMin: z.number().nullable(),
     toleranceMax: z.number().nullable(),
     goalNumber: z.number().nullable(),
+    // NUMBER — 旧帳票の基本値・公差Top/Bottom（入力補助。指定時は
+    // toleranceMin/Max を目標値からの差分で自動計算する）
+    nominalValue: z.number().nullable(),
+    toleranceTopDelta: z.number().nullable(),
+    toleranceBottomDelta: z.number().nullable(),
     // BOOLEAN
     acceptBool: z.boolean().nullable(),
     goalBool: z.boolean().nullable(),
@@ -123,6 +138,10 @@ const templateItemInput = z
     allowManualOverride: z.boolean(),
     isRequired: z.boolean(),
     sortOrder: z.number().int(),
+    // 旧 FileMaker 帳票との整合（表示のみ）
+    section: z.enum(["MEASUREMENT", "SHAPE"]),
+    department: z.enum(["MANUFACTURING", "QUALITY_ASSURANCE"]).nullable(),
+    measurementEquipment: z.string().optional(),
   })
   .superRefine((v, ctx) => {
     const issue = (path: string, message: string) =>
@@ -135,6 +154,13 @@ const templateItemInput = z
         v.toleranceMin > v.toleranceMax
       ) {
         issue("toleranceMax", "合格範囲の上限は下限以上にしてください");
+      }
+      if (
+        v.toleranceTopDelta != null &&
+        v.toleranceBottomDelta != null &&
+        v.toleranceTopDelta < v.toleranceBottomDelta
+      ) {
+        issue("toleranceTopDelta", "公差 Top は Bottom 以上にしてください");
       }
     }
     if (v.inputType === "SELECT_SINGLE" || v.inputType === "SELECT_MULTI") {
@@ -175,12 +201,30 @@ function itemData(v: InspectionTemplateItemInput) {
         : v.inputType === "SELECT_SINGLE"
           ? v.goalOptions[0]
           : v.goalOptions;
+  // 基本値/目標値/公差Top/Bottom（旧帳票の入力補助）が揃っていれば、
+  // toleranceMin/Max（唯一の合否根拠）を目標値からの差分で自動計算する。
+  // 揃っていなければ従来どおり toleranceMin/Max を直接の入力値として扱う。
+  const autoRange =
+    isNumber &&
+    v.goalNumber != null &&
+    v.toleranceTopDelta != null &&
+    v.toleranceBottomDelta != null
+      ? {
+          min: v.goalNumber + v.toleranceBottomDelta,
+          max: v.goalNumber + v.toleranceTopDelta,
+        }
+      : null;
+  const toleranceMin = isNumber ? (autoRange?.min ?? v.toleranceMin) : null;
+  const toleranceMax = isNumber ? (autoRange?.max ?? v.toleranceMax) : null;
   return {
     itemName: localizedInput(v.itemNameJa, v.itemNameEn),
     inputType: v.inputType,
     unit: isNumber ? v.unit?.trim() || null : null,
-    toleranceMin: isNumber ? v.toleranceMin : null,
-    toleranceMax: isNumber ? v.toleranceMax : null,
+    toleranceMin,
+    toleranceMax,
+    nominalValue: isNumber ? v.nominalValue : null,
+    toleranceTopDelta: isNumber ? v.toleranceTopDelta : null,
+    toleranceBottomDelta: isNumber ? v.toleranceBottomDelta : null,
     options: isSelect
       ? v.options.map((o) => ({
           value: o.value,
@@ -194,6 +238,9 @@ function itemData(v: InspectionTemplateItemInput) {
     allowManualOverride: v.allowManualOverride,
     isRequired: v.isRequired,
     sortOrder: v.sortOrder,
+    section: v.section,
+    department: v.department,
+    measurementEquipment: v.measurementEquipment?.trim() || null,
   };
 }
 
@@ -234,6 +281,8 @@ export async function createInspectionTemplate(
         samplingMode: v.samplingMode,
         samplingValue: v.samplingMode === "ALL" ? null : v.samplingValue,
         recordStyle: v.recordStyle,
+        layoutStyle: v.layoutStyle,
+        sampleNaming: v.sampleNaming,
         isActive: v.isActive,
       },
       select: { id: true },
@@ -278,6 +327,8 @@ export async function updateInspectionTemplate(
         samplingMode: true,
         samplingValue: true,
         recordStyle: true,
+        layoutStyle: true,
+        sampleNaming: true,
         isActive: true,
       },
     });
@@ -295,6 +346,8 @@ export async function updateInspectionTemplate(
       prior.relatedProcessStepId !== v.relatedProcessStepId ||
       prior.samplingMode !== v.samplingMode ||
       prior.recordStyle !== v.recordStyle ||
+      prior.layoutStyle !== v.layoutStyle ||
+      prior.sampleNaming !== v.sampleNaming ||
       priorSamplingValue !==
         (v.samplingMode === "ALL" ? null : v.samplingValue);
     if (definitionChanged && (await isTemplateLocked(id))) {
@@ -308,6 +361,8 @@ export async function updateInspectionTemplate(
         samplingMode: v.samplingMode,
         samplingValue: v.samplingMode === "ALL" ? null : v.samplingValue,
         recordStyle: v.recordStyle,
+        layoutStyle: v.layoutStyle,
+        sampleNaming: v.sampleNaming,
         isActive: v.isActive,
       },
     });
@@ -366,6 +421,8 @@ export async function createInspectionTemplateVersion(
           samplingMode: source.samplingMode,
           samplingValue: source.samplingValue,
           recordStyle: source.recordStyle,
+          layoutStyle: source.layoutStyle,
+          sampleNaming: source.sampleNaming,
           isActive: true,
           items: {
             create: source.items.map((item) => ({
@@ -374,6 +431,9 @@ export async function createInspectionTemplateVersion(
               unit: item.unit,
               toleranceMin: item.toleranceMin,
               toleranceMax: item.toleranceMax,
+              nominalValue: item.nominalValue,
+              toleranceTopDelta: item.toleranceTopDelta,
+              toleranceBottomDelta: item.toleranceBottomDelta,
               options: item.options ?? undefined,
               acceptBool: item.acceptBool,
               acceptOptions: item.acceptOptions ?? undefined,
@@ -381,6 +441,9 @@ export async function createInspectionTemplateVersion(
               allowManualOverride: item.allowManualOverride,
               isRequired: item.isRequired,
               sortOrder: item.sortOrder,
+              section: item.section,
+              department: item.department,
+              measurementEquipment: item.measurementEquipment,
             })),
           },
         },

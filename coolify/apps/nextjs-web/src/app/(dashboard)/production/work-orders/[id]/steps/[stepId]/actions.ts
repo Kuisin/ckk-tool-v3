@@ -579,6 +579,41 @@ export async function approveInspectionRecord(
   }
 }
 
+/**
+ * 検査表確認（旧帳票「検査表確認」欄）— recordedBy（検査者）/ approvedBy
+ * （検収印）とは別ロールのスタンプ。合否状態に関わらず押せる（第三者が
+ * 記入内容を確認したという記録であって、承認そのものではない）。
+ */
+export async function confirmInspectionRecord(
+  workOrderNumber: number,
+  stepId: string,
+  recordId: string,
+): Promise<StepActionResult> {
+  const denied = await deniedStepPermission("UPDATE");
+  if (denied) return denied;
+  try {
+    const record = await prisma.inspectionRecord.findFirst({
+      where: { id: recordId, step: { workOrder: { workOrderNumber } } },
+    });
+    if (!record) return { ok: false, errors: ["検査記録が見つかりません"] };
+    const actor = await getCurrentActorId();
+    await prisma.inspectionRecord.update({
+      where: { id: recordId },
+      data: { confirmedBy: actor, confirmedAt: new Date() },
+    });
+    await recordAudit({
+      action: "UPDATE",
+      tableName: "work_orders",
+      recordId: String(workOrderNumber),
+      after: { note: "検査表確認を記録" },
+    });
+    revalidate(workOrderNumber, stepId);
+    return { ok: true };
+  } catch (e) {
+    return failed(e, "検査表確認の記録に失敗しました");
+  }
+}
+
 // ── 不良記録 (§7 / design.md §12.6) ─────────────────────────────────────────
 
 const defectsInput = z.object({

@@ -18,6 +18,12 @@ import {
 export interface InspectionItemRecord extends CoreItemRecord {
   itemName: unknown;
   sortOrder: number;
+  section: "MEASUREMENT" | "SHAPE";
+  department: "MANUFACTURING" | "QUALITY_ASSURANCE" | null;
+  measurementEquipment: string | null;
+  nominalValue: unknown; // Prisma Decimal
+  toleranceTopDelta: unknown;
+  toleranceBottomDelta: unknown;
 }
 
 const num = (v: unknown): number | null => (v == null ? null : Number(v));
@@ -58,5 +64,11 @@ export function toItemRow(
     allowManualOverride: item.allowManualOverride,
     isRequired: item.isRequired,
     sortOrder: item.sortOrder,
+    section: item.section,
+    department: item.department,
+    measurementEquipment: item.measurementEquipment ?? "",
+    nominalValue: num(item.nominalValue),
+    toleranceTopDelta: num(item.toleranceTopDelta),
+    toleranceBottomDelta: num(item.toleranceBottomDelta),
   };
 }

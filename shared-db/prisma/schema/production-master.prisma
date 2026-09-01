@@ -271,6 +271,41 @@ enum InspectionItemType {
   NUMBER // 数値（既存互換 — default）
   SELECT_SINGLE // 単一選択
   SELECT_MULTI // 複数選択
+  TEXT // フリーフォーム文字列（形状確認欄など。合否は常に手動）
+
+  @@schema("app")
+}
+
+// シート全体の印刷レイアウト。DIMENSIONAL = 寸法測定表（基本値/目標値/公差Top-Bottom/
+// 上限下限のグリッド）、CHECKLIST = 部門別チェックリスト（頻度/判定方法/検査基準/不良本数）。
+enum InspectionLayoutStyle {
+  DIMENSIONAL
+  CHECKLIST
+
+  @@schema("app")
+}
+
+// VALUES 記録方式のサンプル呼称。INITIAL_MID_FINAL は先頭3ページを
+// 初品/中間品/最終品とラベルする（4本目以降は製品4…と同じ）。
+enum InspectionSampleNaming {
+  GENERIC
+  INITIAL_MID_FINAL
+
+  @@schema("app")
+}
+
+// 項目の掲載区分。SHAPE は主表と別枠の形状フリーフォーム欄に描画する。
+enum InspectionItemSection {
+  MEASUREMENT
+  SHAPE
+
+  @@schema("app")
+}
+
+// CHECKLIST レイアウトのみで使う部門区分（製造課管轄/品証課管轄の見出し分け）。
+enum InspectionDepartment {
+  MANUFACTURING
+  QUALITY_ASSURANCE
 
   @@schema("app")
 }
@@ -306,6 +341,10 @@ model InspectionTemplate {
   samplingValue         Decimal? @map("sampling_value") @db.Decimal(10, 2)
   // 記録方式（シート単位）: VALUES = 製品ごとにページ送りで実測値 / COUNTS = 項目ごとに検査数・合格数のみ
   recordStyle           InspectionRecordStyle @default(VALUES) @map("record_style")
+  // 印刷レイアウト（寸法測定表 / 部門別チェックリスト）— どの PDF テンプレートを使うかを決める
+  layoutStyle           InspectionLayoutStyle  @default(DIMENSIONAL) @map("layout_style")
+  // VALUES のサンプル呼称（製品1,2,3… / 初品・中間品・最終品）
+  sampleNaming          InspectionSampleNaming @default(GENERIC) @map("sample_naming")
   isActive              Boolean  @default(true) @map("is_active")
   createdAt             DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt             DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
@@ -335,6 +374,15 @@ model InspectionTemplateItem {
   allowManualOverride Boolean @default(true) @map("allow_manual_override") // 合否の手動上書きを許可（基準未設定の項目は常に手動）
   isRequired   Boolean  @default(true) @map("is_required")
   sortOrder    Int      @default(0) @map("sort_order")
+
+  // ─── 旧 FileMaker 帳票との整合（すべて表示・入力補助専用。合否判定は
+  //     引き続き toleranceMin/toleranceMax だけで決まる — 下記は変更しない） ───
+  section              InspectionItemSection @default(MEASUREMENT) @map("section")
+  department           InspectionDepartment? @map("department") // CHECKLIST レイアウトのみ
+  measurementEquipment String?  @map("measurement_equipment") // 測定機器コード（LE/PR/K 等）
+  nominalValue         Decimal? @map("nominal_value") @db.Decimal(12, 4) // 基本値（NUMBER のみ）
+  toleranceTopDelta    Decimal? @map("tolerance_top_delta") @db.Decimal(12, 4) // 公差 Top（目標値からの上振れ許容）
+  toleranceBottomDelta Decimal? @map("tolerance_bottom_delta") @db.Decimal(12, 4) // 公差 Bottom（目標値からの下振れ許容）
 
   template InspectionTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
 

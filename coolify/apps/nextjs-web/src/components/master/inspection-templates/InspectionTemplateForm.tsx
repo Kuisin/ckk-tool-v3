@@ -39,7 +39,11 @@ import {
   LocalizedTextInput,
 } from "@/components/ui/shells";
 import { useIsMobile } from "@/hooks/useViewport";
-import { inspectionSamplingModeOptions } from "@/lib/enum-labels";
+import {
+  inspectionLayoutStyleOptions,
+  inspectionSampleNamingOptions,
+  inspectionSamplingModeOptions,
+} from "@/lib/enum-labels";
 import { fieldHelp, fieldHelpTip } from "@/lib/field-help";
 import { zodResolver } from "@/lib/form";
 
@@ -60,6 +64,8 @@ const templateSchema = z
     samplingMode: z.enum(["ALL", "PERCENT", "COUNT"]),
     samplingValue: z.union([z.number(), z.literal("")]),
     recordStyle: z.enum(["VALUES", "COUNTS"]),
+    layoutStyle: z.enum(["DIMENSIONAL", "CHECKLIST"]),
+    sampleNaming: z.enum(["GENERIC", "INITIAL_MID_FINAL"]),
     isActive: z.boolean(),
   })
   .superRefine((v, ctx) => {
@@ -101,6 +107,8 @@ export interface InspectionTemplateFormInitial {
   samplingMode: "ALL" | "PERCENT" | "COUNT";
   samplingValue: number | null;
   recordStyle: "VALUES" | "COUNTS";
+  layoutStyle: "DIMENSIONAL" | "CHECKLIST";
+  sampleNaming: "GENERIC" | "INITIAL_MID_FINAL";
   isActive: boolean;
 }
 
@@ -125,6 +133,8 @@ export function InspectionTemplateForm({
       samplingMode: initial?.samplingMode ?? "ALL",
       samplingValue: initial?.samplingValue ?? "",
       recordStyle: initial?.recordStyle ?? "VALUES",
+      layoutStyle: initial?.layoutStyle ?? "DIMENSIONAL",
+      sampleNaming: initial?.sampleNaming ?? "GENERIC",
       isActive: initial?.isActive ?? true,
     },
   });
@@ -144,6 +154,8 @@ export function InspectionTemplateForm({
             ? null
             : values.samplingValue,
         recordStyle: values.recordStyle,
+        layoutStyle: values.layoutStyle,
+        sampleNaming: values.sampleNaming,
         isActive: values.isActive,
       };
       const result = isEdit
@@ -290,6 +302,46 @@ export function InspectionTemplateForm({
               項目ごとに検査数・合格数だけを記録
             </Text>
           </Stack>
+          <Stack gap={4}>
+            <Text fw={500} size="sm">
+              印刷レイアウト
+            </Text>
+            <SegmentedControl
+              data={inspectionLayoutStyleOptions(locale)}
+              onChange={(v) =>
+                form.setFieldValue(
+                  "layoutStyle",
+                  v as "DIMENSIONAL" | "CHECKLIST",
+                )
+              }
+              value={form.values.layoutStyle}
+            />
+            <Text c="dimmed" size="xs">
+              寸法測定表 = 基本値/目標値/公差のグリッド / 外観・工程チェック表 =
+              製造課・品証課の部門別チェックリスト
+            </Text>
+          </Stack>
+          {form.values.recordStyle === "VALUES" && (
+            <Stack gap={4}>
+              <Text fw={500} size="sm">
+                サンプル呼称
+              </Text>
+              <SegmentedControl
+                data={inspectionSampleNamingOptions(locale)}
+                onChange={(v) =>
+                  form.setFieldValue(
+                    "sampleNaming",
+                    v as "GENERIC" | "INITIAL_MID_FINAL",
+                  )
+                }
+                value={form.values.sampleNaming}
+              />
+              <Text c="dimmed" size="xs">
+                初品・中間品・最終品 は先頭 3 件の見出しだけを差し替えます （4
+                件目以降は製品4…と同じ）
+              </Text>
+            </Stack>
+          )}
           <Switch
             label={<HelpLabel {...fieldHelp("inspectionTemplate", "active")} />}
             {...form.getInputProps("isActive", { type: "checkbox" })}

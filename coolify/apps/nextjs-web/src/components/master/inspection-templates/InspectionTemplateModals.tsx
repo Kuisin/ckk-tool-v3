@@ -43,7 +43,11 @@ import {
   FormModal,
   type ModalBaseProps,
 } from "@/components/ui/modals";
-import { inspectionItemTypeOptions } from "@/lib/enum-labels";
+import {
+  inspectionDepartmentOptions,
+  inspectionItemSectionOptions,
+  inspectionItemTypeOptions,
+} from "@/lib/enum-labels";
 import type { InspectionItemType } from "@/lib/inspection-core";
 
 export interface InspectionTemplateModalTarget {
@@ -218,6 +222,9 @@ export interface InspectionOptionRow {
   labelEn: string;
 }
 
+export type InspectionItemSection = "MEASUREMENT" | "SHAPE";
+export type InspectionDepartment = "MANUFACTURING" | "QUALITY_ASSURANCE";
+
 export interface InspectionTemplateItemRow {
   id: number;
   itemNameJa: string;
@@ -235,6 +242,12 @@ export interface InspectionTemplateItemRow {
   allowManualOverride: boolean;
   isRequired: boolean;
   sortOrder: number;
+  section: InspectionItemSection;
+  department: InspectionDepartment | null;
+  measurementEquipment: string;
+  nominalValue: number | null;
+  toleranceTopDelta: number | null;
+  toleranceBottomDelta: number | null;
 }
 
 /** 追加行の value 採番（既存の "oN" の最大 + 1。ラベル変更でも value は不変）。 */
@@ -258,12 +271,15 @@ export function InspectionTemplateItemModal({
   templateId,
   item,
   defaultSortOrder = 10,
+  layoutStyle = "DIMENSIONAL",
   onDone,
 }: ModalBaseProps & {
   templateId: number;
   item: InspectionTemplateItemRow | null;
   /** 追加時の表示順初期値（既存項目の最大 + 10）。 */
   defaultSortOrder?: number;
+  /** 部門欄（製造課管轄/品証課管轄）は CHECKLIST レイアウトのときだけ出す。 */
+  layoutStyle?: "DIMENSIONAL" | "CHECKLIST";
   onDone?: () => void;
 }) {
   const locale = useLocale();
@@ -285,6 +301,18 @@ export function InspectionTemplateItemModal({
   const [allowManualOverride, setAllowManualOverride] = useState(true);
   const [isRequired, setIsRequired] = useState(true);
   const [sortOrder, setSortOrder] = useState(defaultSortOrder);
+  const [section, setSection] = useState<InspectionItemSection>("MEASUREMENT");
+  const [department, setDepartment] = useState<InspectionDepartment | null>(
+    null,
+  );
+  const [measurementEquipment, setMeasurementEquipment] = useState("");
+  const [nominalValue, setNominalValue] = useState<number | null>(null);
+  const [toleranceTopDelta, setToleranceTopDelta] = useState<number | null>(
+    null,
+  );
+  const [toleranceBottomDelta, setToleranceBottomDelta] = useState<
+    number | null
+  >(null);
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   // 開くたびに対象項目（または追加の初期値）でフォームをリセットする
@@ -305,8 +333,27 @@ export function InspectionTemplateItemModal({
     setAllowManualOverride(item?.allowManualOverride ?? true);
     setIsRequired(item?.isRequired ?? true);
     setSortOrder(item?.sortOrder ?? defaultSortOrder);
+    setSection(item?.section ?? "MEASUREMENT");
+    setDepartment(item?.department ?? null);
+    setMeasurementEquipment(item?.measurementEquipment ?? "");
+    setNominalValue(item?.nominalValue ?? null);
+    setToleranceTopDelta(item?.toleranceTopDelta ?? null);
+    setToleranceBottomDelta(item?.toleranceBottomDelta ?? null);
     setErrors({});
   }, [opened, item, defaultSortOrder]);
+
+  // 基本値+目標値+公差Top/Bottom が揃っているときのプレビュー（保存時の
+  // toleranceMin/Max 自動計算と同じ規則 — actions.ts itemData() を参照）。
+  const computedRange =
+    inputType === "NUMBER" &&
+    goalNumber != null &&
+    toleranceTopDelta != null &&
+    toleranceBottomDelta != null
+      ? {
+          min: goalNumber + toleranceBottomDelta,
+          max: goalNumber + toleranceTopDelta,
+        }
+      : null;
 
   const isSelect =
     inputType === "SELECT_SINGLE" || inputType === "SELECT_MULTI";
@@ -351,6 +398,9 @@ export function InspectionTemplateItemModal({
         toleranceMin,
         toleranceMax,
         goalNumber,
+        nominalValue,
+        toleranceTopDelta,
+        toleranceBottomDelta,
         acceptBool: inputType === "BOOLEAN" ? acceptBool : null,
         goalBool,
         options: options
@@ -365,6 +415,9 @@ export function InspectionTemplateItemModal({
         allowManualOverride,
         isRequired,
         sortOrder,
+        section,
+        department: layoutStyle === "CHECKLIST" ? department : null,
+        measurementEquipment,
       };
       const result = isEdit
         ? await updateTemplateItem(item.id, input)
@@ -467,6 +520,57 @@ export function InspectionTemplateItemModal({
               value={goalNumber ?? ""}
             />
           </SimpleGrid>
+        )}
+
+        {inputType === "NUMBER" && (
+          <Stack gap="xs">
+            <Text c="dimmed" size="xs">
+              旧帳票（基本値・公差 Top/Bottom）—
+              入力すると合格範囲（下限/上限）を
+              目標値からの差分で自動計算します。直接入力する場合は空欄のままで
+              構いません。
+            </Text>
+            <SimpleGrid cols={{ base: 1, sm: 3 }} spacing="sm">
+              <NumberInput
+                decimalScale={4}
+                description="図面等の基準値（表示のみ）"
+                label="基本値"
+                onChange={(val) =>
+                  setNominalValue(
+                    val === "" || val == null ? null : Number(val),
+                  )
+                }
+                value={nominalValue ?? ""}
+              />
+              <NumberInput
+                decimalScale={4}
+                error={errors.toleranceTopDelta}
+                label="公差 Top（上振れ許容）"
+                onChange={(val) =>
+                  setToleranceTopDelta(
+                    val === "" || val == null ? null : Number(val),
+                  )
+                }
+                value={toleranceTopDelta ?? ""}
+              />
+              <NumberInput
+                decimalScale={4}
+                label="公差 Bottom（下振れ許容）"
+                onChange={(val) =>
+                  setToleranceBottomDelta(
+                    val === "" || val == null ? null : Number(val),
+                  )
+                }
+                value={toleranceBottomDelta ?? ""}
+              />
+            </SimpleGrid>
+            {computedRange && (
+              <Text c="dimmed" size="xs">
+                自動計算: 下限 {computedRange.min} 〜 上限 {computedRange.max}
+                {unit ? ` ${unit}` : ""}
+              </Text>
+            )}
+          </Stack>
         )}
 
         {inputType === "BOOLEAN" && (
@@ -599,6 +703,37 @@ export function InspectionTemplateItemModal({
           label="合否の手動上書きを許可"
           onChange={(e) => setAllowManualOverride(e.currentTarget.checked)}
         />
+
+        <SimpleGrid
+          cols={{ base: 1, sm: layoutStyle === "CHECKLIST" ? 3 : 2 }}
+          spacing="sm"
+        >
+          <Select
+            allowDeselect={false}
+            data={inspectionItemSectionOptions(locale)}
+            description="形状欄は主表と別枠のフリーフォーム欄に載ります"
+            label="掲載区分"
+            onChange={(v) => {
+              if (v) setSection(v as InspectionItemSection);
+            }}
+            value={section}
+          />
+          {layoutStyle === "CHECKLIST" && (
+            <Select
+              clearable
+              data={inspectionDepartmentOptions(locale)}
+              label="部門"
+              onChange={(v) => setDepartment(v as InspectionDepartment | null)}
+              value={department}
+            />
+          )}
+          <TextInput
+            description="LE/PR/P/S/K/H/M/N/Z 等（列見出しの接尾辞・凡例に使用）"
+            label="測定機器コード"
+            onChange={(e) => setMeasurementEquipment(e.currentTarget.value)}
+            value={measurementEquipment}
+          />
+        </SimpleGrid>
 
         <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="sm">
           <NumberInput

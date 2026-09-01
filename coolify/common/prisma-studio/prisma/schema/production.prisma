@@ -142,6 +142,8 @@ model WorkOrder {
   outgoingWoLinks WorkOrderLink[] @relation("WoLinkSource")
   incomingWoLinks WorkOrderLink[] @relation("WoLinkTarget")
 
+  finalInspection WorkOrderFinalInspection?
+
   @@unique([yearMonth, seq])
   @@index([productId])
   @@index([status])
@@ -426,6 +428,10 @@ model InspectionRecord {
   approvedBy      String?          @map("approved_by") @db.Uuid
   recordedAt      DateTime?        @map("recorded_at") @db.Timestamptz(6)
   approvedAt      DateTime?        @map("approved_at") @db.Timestamptz(6)
+  // 検査表確認（旧帳票「検査表確認」欄）— recordedBy（検査者）/ approvedBy（検収印）とは
+  // 別ロール。第三者がシートの記入内容を確認したことのスタンプ。
+  confirmedBy     String?          @map("confirmed_by") @db.Uuid
+  confirmedAt     DateTime?        @map("confirmed_at") @db.Timestamptz(6)
   notes           String?
 
   step     WorkOrderStep      @relation(fields: [workOrderStepId], references: [id], onDelete: Cascade)
@@ -470,5 +476,52 @@ model DefectRecord {
 
   @@index([workOrderStepId])
   @@map("defect_records")
+  @@schema("app")
+}
+
+// ─── 最終検査・出荷前確認（旧帳票「■最終検査」欄。指示書 1 件に 1 行） ───────
+//
+// 検査表（inspection_records）はステップ・テンプレートごとに複数あり得るが、
+// これは出荷直前のゲートとして指示書単位で一度だけ持つ。各役割は「押した人が
+// 誰か」を都度スタンプする（recordedBy/approvedBy と同じ作法）。
+// 棚包→納品書発行→出荷許可は紙の記入順そのままの前提（アプリ側で前段が
+// 済むまで次段を押させない）。
+model WorkOrderFinalInspection {
+  id          String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  workOrderId String @unique @map("work_order_id") @db.Uuid
+
+  // ■最終検査（3項目。文言は帳票固定なので列で持つ）
+  drawingLabelOk            Boolean?  @map("drawing_label_ok") // 図面・ラベル・膜厚・寸法と間違いがないか
+  drawingLabelCheckedBy     String?   @map("drawing_label_checked_by") @db.Uuid
+  drawingLabelCheckedAt     DateTime? @map("drawing_label_checked_at") @db.Timestamptz(6)
+  protectiveCapOk           Boolean?  @map("protective_cap_ok") // 保護キャップ使用しているか(φ0.6以下)
+  protectiveCapCheckedBy    String?   @map("protective_cap_checked_by") @db.Uuid
+  protectiveCapCheckedAt    DateTime? @map("protective_cap_checked_at") @db.Timestamptz(6)
+  finishedQuantityOk        Boolean?  @map("finished_quantity_ok") // 完成本数は合っているか
+  finishedQuantityCheckedBy String?   @map("finished_quantity_checked_by") @db.Uuid
+  finishedQuantityCheckedAt DateTime? @map("finished_quantity_checked_at") @db.Timestamptz(6)
+
+  spareStockUsed     Boolean @default(false) @map("spare_stock_used") // 予備在庫使用
+  spareStockReceived Boolean @default(false) @map("spare_stock_received") // 予備在庫入庫
+
+  // 出荷前チェーン（棚包→納品書発行→出荷許可の順で埋まる）
+  shelvedBy            String?   @map("shelved_by") @db.Uuid
+  shelvedAt            DateTime? @map("shelved_at") @db.Timestamptz(6)
+  deliveryNoteIssuedBy String?   @map("delivery_note_issued_by") @db.Uuid
+  deliveryNoteIssuedAt DateTime? @map("delivery_note_issued_at") @db.Timestamptz(6)
+  shipmentAuthorizedBy String?   @map("shipment_authorized_by") @db.Uuid
+  shipmentAuthorizedAt DateTime? @map("shipment_authorized_at") @db.Timestamptz(6)
+
+  // 出荷時不良内容確認者印
+  shipDefectReviewedBy String?   @map("ship_defect_reviewed_by") @db.Uuid
+  shipDefectReviewedAt DateTime? @map("ship_defect_reviewed_at") @db.Timestamptz(6)
+  shipDefectNotes      String?   @map("ship_defect_notes")
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  workOrder WorkOrder @relation(fields: [workOrderId], references: [id], onDelete: Cascade)
+
+  @@map("work_order_final_inspections")
   @@schema("app")
 }
