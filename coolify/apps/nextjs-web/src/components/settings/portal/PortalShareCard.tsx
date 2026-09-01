@@ -91,7 +91,9 @@ export function PortalShareCard({
           <Text size="sm">
             {tr(
               tr(
-                "このリンクを持つ人は誰でも、金額を含む内容を開けます。\n            転送された場合、その相手も開けます。",
+                tr(
+                  "このリンクを持つ人は誰でも、金額を含む内容を開けます。\n            転送された場合、その相手も開けます。",
+                ),
               ),
             )}
           </Text>
@@ -123,7 +125,9 @@ export function PortalShareCard({
             <Radio
               description={tr(
                 tr(
-                  "登録アドレスへ確認コードを送ります。転送されても本人以外は開けません。",
+                  tr(
+                    "登録アドレスへ確認コードを送ります。転送されても本人以外は開けません。",
+                  ),
                 ),
               )}
               label={tr("本人確認あり（推奨）")}
@@ -134,7 +138,9 @@ export function PortalShareCard({
                 canMintLinkOnly
                   ? tr(
                       tr(
-                        "URL を知っていれば誰でも開けます。転送に注意してください。",
+                        tr(
+                          "URL を知っていれば誰でも開けます。転送に注意してください。",
+                        ),
                       ),
                     )
                   : tr("特権アクセス（SY0G）の承認が必要です")

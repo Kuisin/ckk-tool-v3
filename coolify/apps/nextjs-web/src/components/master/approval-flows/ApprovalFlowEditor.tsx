@@ -287,7 +287,9 @@ export function ApprovalFlowEditor({
         <Alert color="blue" icon={<IconInfoCircle size={16} />} variant="light">
           {tr(
             tr(
-              "変更は今後の承認依頼から適用されます。進行中の書類は依頼した時点の設定のまま進みます。",
+              tr(
+                "変更は今後の承認依頼から適用されます。進行中の書類は依頼した時点の設定のまま進みます。",
+              ),
             ),
           )}
         </Alert>
@@ -317,7 +319,9 @@ export function ApprovalFlowEditor({
             <Text c="dimmed" size="sm">
               {tr(
                 tr(
-                  "承認ステップがありません。「段を追加」で 1\n              段以上設定してください。",
+                  tr(
+                    "承認ステップがありません。「段を追加」で 1\n              段以上設定してください。",
+                  ),
                 ),
               )}
             </Text>

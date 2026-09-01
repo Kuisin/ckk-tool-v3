@@ -860,7 +860,9 @@ export function InspectionApprovalPanel({
           <Text c="dimmed" size="sm">
             {tr(
               tr(
-                "承認対象の検査記録がありません（先に検査工程で記録してください）",
+                tr(
+                  "承認対象の検査記録がありません（先に検査工程で記録してください）",
+                ),
               ),
             )}
           </Text>

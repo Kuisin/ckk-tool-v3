@@ -218,7 +218,9 @@ export function HomeSettingsForm({ initial }: { initial: HomeSettings }) {
         <Text c="dimmed" mb="md" size="sm">
           {tr(
             tr(
-              "選択したアプリはホーム画面の上部に固定表示されます（選択した順に並びます）。",
+              tr(
+                "選択したアプリはホーム画面の上部に固定表示されます（選択した順に並びます）。",
+              ),
             ),
           )}
         </Text>
@@ -257,7 +259,9 @@ export function HomeSettingsForm({ initial }: { initial: HomeSettings }) {
             <Radio
               description={tr(
                 tr(
-                  "自分で作ったグループごとにアプリを表示します。未所属のアプリは「その他」にまとまります",
+                  tr(
+                    "自分で作ったグループごとにアプリを表示します。未所属のアプリは「その他」にまとまります",
+                  ),
                 ),
               )}
               label={tr("カスタム（グループ別）")}
@@ -305,7 +309,9 @@ export function HomeSettingsForm({ initial }: { initial: HomeSettings }) {
               <Text c="dimmed" size="sm">
                 {tr(
                   tr(
-                    "グループがありません。グループ名を入力して追加してください。",
+                    tr(
+                      "グループがありません。グループ名を入力して追加してください。",
+                    ),
                   ),
                 )}
               </Text>

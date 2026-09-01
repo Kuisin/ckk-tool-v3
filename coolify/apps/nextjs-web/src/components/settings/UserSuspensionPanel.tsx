@@ -164,7 +164,9 @@ export function UserSuspensionPanel({
                 <Text c="dimmed" size="xs">
                   {tr(
                     tr(
-                      "期限は過ぎています。自動復帰は毎分の処理で行われるため、\n                  反映まで最大 1 分かかります。",
+                      tr(
+                        "期限は過ぎています。自動復帰は毎分の処理で行われるため、\n                  反映まで最大 1 分かかります。",
+                      ),
                     ),
                   )}
                 </Text>
@@ -240,7 +242,9 @@ export function UserSuspensionPanel({
                   requiresApproval
                     ? tr(
                         tr(
-                          "承認者がこの内容を見て判断します。停止の記録にも残ります",
+                          tr(
+                            "承認者がこの内容を見て判断します。停止の記録にも残ります",
+                          ),
                         ),
                       )
                     : undefined

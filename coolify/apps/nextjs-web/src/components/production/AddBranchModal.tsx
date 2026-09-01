@@ -248,7 +248,9 @@ export function AddBranchModal({
             data={STOCK_OPTIONS}
             description={tr(
               tr(
-                "分岐系列の最後の工程の良品を、指示書の完了時にこの在庫へ入れます",
+                tr(
+                  "分岐系列の最後の工程の良品を、指示書の完了時にこの在庫へ入れます",
+                ),
               ),
             )}
             disabled={isEdit && !editTarget.canEditTermination}
@@ -262,7 +264,9 @@ export function AddBranchModal({
           <Alert color="orange" variant="light">
             {tr(
               tr(
-                "合流先を選ぶか、「在庫へ」を選んでください。分岐は必ず合流か在庫で\n            終わります。",
+                tr(
+                  "合流先を選ぶか、「在庫へ」を選んでください。分岐は必ず合流か在庫で\n            終わります。",
+                ),
               ),
             )}
           </Alert>

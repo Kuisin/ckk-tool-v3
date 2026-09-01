@@ -27,7 +27,9 @@ export function ProductTypesListPanel({ initial }: { initial: ProductType[] }) {
       })}
       description={tr(
         tr(
-          "新規製品作成時の選択肢になります。各種別に項目を割り当てて構成します。",
+          tr(
+            "新規製品作成時の選択肢になります。各種別に項目を割り当てて構成します。",
+          ),
         ),
       )}
       emptyIcon={<IconCategory size={24} />}

@@ -286,7 +286,9 @@ export function BpForm({
       <FormSection
         description={tr(
           tr(
-            "この取引先をどの立場で使うかを選ぶ（bp_role_assignments）。複数選択でき、後から付け外しできる。",
+            tr(
+              "この取引先をどの立場で使うかを選ぶ（bp_role_assignments）。複数選択でき、後から付け外しできる。",
+            ),
           ),
         )}
         title={tr("ロール")}
@@ -307,7 +309,9 @@ export function BpForm({
           <Text c="dimmed" mt="sm" size="xs">
             {tr(
               tr(
-                "ロール未設定でも登録できます。書類で選べるようにするには、あとで\n            ロールを付けてください。",
+                tr(
+                  "ロール未設定でも登録できます。書類で選べるようにするには、あとで\n            ロールを付けてください。",
+                ),
               ),
             )}
           </Text>
@@ -413,7 +417,9 @@ export function BpForm({
         <FormSection
           description={tr(
             tr(
-              "この顧客を担当する営業（bp_sales_reps）。複数登録でき、見積書・注文請書などの営業担当はこの一覧から選ぶ。主担当が新規書類の既定値になる。",
+              tr(
+                "この顧客を担当する営業（bp_sales_reps）。複数登録でき、見積書・注文請書などの営業担当はこの一覧から選ぶ。主担当が新規書類の既定値になる。",
+              ),
             ),
           )}
           title={tr("営業担当")}

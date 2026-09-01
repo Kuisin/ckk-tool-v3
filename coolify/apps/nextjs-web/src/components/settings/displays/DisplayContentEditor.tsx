@@ -253,7 +253,7 @@ export function DisplayContentEditor({ display, plantOptions, onDone }: Props) {
         <Section title="更新">
           <NumberInput
             description={tr(
-              "この間隔で内容を取り直します。0 にすると自動更新しません",
+              tr("この間隔で内容を取り直します。0 にすると自動更新しません"),
             )}
             label={tr("更新間隔")}
             max={86_400}
@@ -365,7 +365,9 @@ function ImageContent({
         <Alert color="gray" variant="light">
           {tr(
             tr(
-              "まだ画像が設定されていません。画像を選ぶと、その場でこの画面に映ります。",
+              tr(
+                "まだ画像が設定されていません。画像を選ぶと、その場でこの画面に映ります。",
+              ),
             ),
           )}
         </Alert>

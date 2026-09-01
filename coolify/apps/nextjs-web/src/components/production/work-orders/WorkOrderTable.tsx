@@ -256,7 +256,7 @@ export function WorkOrderTable({
         }
         emptyMessage={
           isApprovals
-            ? "承認依頼中の指示書はありません"
+            ? tr("承認依頼中の指示書はありません")
             : tr("指示書がありません")
         }
         getRowId={(r) => String(r.workOrderNumber)}

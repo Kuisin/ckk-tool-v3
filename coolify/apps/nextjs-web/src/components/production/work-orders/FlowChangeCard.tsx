@@ -96,7 +96,9 @@ export function FlowChangeCard({
             change.appliedAt != null
               ? tr(
                   tr(
-                    "変更は適用済みです — 工程は自動では戻りません（詳細に警告が出ます）",
+                    tr(
+                      "変更は適用済みです — 工程は自動では戻りません（詳細に警告が出ます）",
+                    ),
                   ),
                 )
               : tr("工程は変更されていません"),
@@ -151,7 +153,9 @@ export function FlowChangeCard({
         <Text size="sm">
           {tr(
             tr(
-              "差し戻すと、この変更は適用されずに閉じます（工程はいまのままです）。",
+              tr(
+                "差し戻すと、この変更は適用されずに閉じます（工程はいまのままです）。",
+              ),
             ),
           )}
         </Text>

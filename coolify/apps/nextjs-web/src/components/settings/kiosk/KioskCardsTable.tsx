@@ -404,7 +404,9 @@ export function KioskCardsTable({
             title: tr("PINリセットの確認"),
             message: tr(
               tr(
-                "PIN を消去します。次回ログイン時に PIN の再設定が必要になります。",
+                tr(
+                  "PIN を消去します。次回ログイン時に PIN の再設定が必要になります。",
+                ),
               ),
             ),
             confirmLabel: tr("リセット"),
@@ -421,7 +423,9 @@ export function KioskCardsTable({
             title: tr("取り消しの確認"),
             message: tr(
               tr(
-                "カードを取り消します。この操作は取り消せません。オープン中のセッションも失効します。",
+                tr(
+                  "カードを取り消します。この操作は取り消せません。オープン中のセッションも失効します。",
+                ),
               ),
             ),
             confirmLabel: tr("取り消し"),
@@ -534,7 +538,9 @@ export function KioskCardsTable({
           <Text c="dimmed" size="sm">
             {tr(
               tr(
-                "未割当のカードをまとめて発行します。発行後にユーザーへ割り当て、\n            印刷 PDF から QR カードを印刷してください。",
+                tr(
+                  "未割当のカードをまとめて発行します。発行後にユーザーへ割り当て、\n            印刷 PDF から QR カードを印刷してください。",
+                ),
               ),
             )}
           </Text>

@@ -156,7 +156,9 @@ export function ResponseExportModal({
           </Group>
           <Text c="dimmed" size="xs">
             {tr(
-              "指定した日に提出されたものを含みます。日付で絞ると、まだ提出していない\n            回答は外れます。",
+              tr(
+                "指定した日に提出されたものを含みます。日付で絞ると、まだ提出していない\n            回答は外れます。",
+              ),
             )}
           </Text>
         </Stack>
@@ -177,7 +179,9 @@ export function ResponseExportModal({
           <Text c="dimmed" size="xs">
             {allFieldsChecked
               ? tr(
-                  "すべての項目を列にします。減らしたいものだけ外してください。",
+                  tr(
+                    "すべての項目を列にします。減らしたいものだけ外してください。",
+                  ),
                 )
               : `${fieldKeys.length} 項目を選択中`}
           </Text>

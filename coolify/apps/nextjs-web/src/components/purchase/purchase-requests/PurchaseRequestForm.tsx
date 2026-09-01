@@ -219,7 +219,9 @@ export function PurchaseRequestForm({
       <FormSection
         description={tr(
           tr(
-            "単価・仕入先は持ちません。承認後に発注書へ変換し、発注側で確定します。",
+            tr(
+              "単価・仕入先は持ちません。承認後に発注書へ変換し、発注側で確定します。",
+            ),
           ),
         )}
         title={tr("明細")}

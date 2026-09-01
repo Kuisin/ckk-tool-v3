@@ -166,7 +166,9 @@ export function ResponseDetail({
             <Text mt={4} size="xs">
               {tr(
                 tr(
-                  "「回答」タブで内容を直して保存すると、もう一度承認を依頼します。",
+                  tr(
+                    "「回答」タブで内容を直して保存すると、もう一度承認を依頼します。",
+                  ),
                 ),
               )}
             </Text>

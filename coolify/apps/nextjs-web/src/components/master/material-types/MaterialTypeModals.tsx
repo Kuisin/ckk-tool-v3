@@ -72,7 +72,9 @@ export function DeleteMaterialTypeModal({
       title={tr("材種の削除")}
       warning={tr(
         tr(
-          "この材種に紐づく素材が存在する場合は削除できません。無効化をご検討ください。",
+          tr(
+            "この材種に紐づく素材が存在する場合は削除できません。無効化をご検討ください。",
+          ),
         ),
       )}
     />

@@ -104,7 +104,9 @@ export function InspectionTemplateIoModal({
               ? `選択中の ${selectedIds.length} 件を書き出します。`
               : tr(
                   tr(
-                    "有効な検査表をすべて書き出します（一覧で選ぶと、その分だけになります）。",
+                    tr(
+                      "有効な検査表をすべて書き出します（一覧で選ぶと、その分だけになります）。",
+                    ),
                   ),
                 )}
             別の環境へ持っていくときや、控えを取るときに使います。
@@ -127,7 +129,9 @@ export function InspectionTemplateIoModal({
           <Text c="dimmed" size="xs">
             {tr(
               tr(
-                "書き出した JSON か、Excel の雛形に書いたファイルを取り込みます。",
+                tr(
+                  "書き出した JSON か、Excel の雛形に書いたファイルを取り込みます。",
+                ),
               ),
             )}
             <b>
@@ -135,7 +139,9 @@ export function InspectionTemplateIoModal({
             </b>
             {tr(
               tr(
-                "します（既存の版は書き換えません —\n            過去の検査記録が指しているためです）。",
+                tr(
+                  "します（既存の版は書き換えません —\n            過去の検査記録が指しているためです）。",
+                ),
               ),
             )}
           </Text>

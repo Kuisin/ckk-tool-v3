@@ -51,6 +51,11 @@
     "0\n      ? \"カスタム入力キーを修正してください（予約語・重複）\"\n      : null;\n\n  return (",
     "ORDER_TYPE_LABEL[v.orderType] ?? v.orderType)\n      .join(\"・\") ?? \"—\";\n\n  return (",
     "s.status === \"PENDING\"))\n      errors.push(\"着手済みの分岐は数量を変更できません\");\n    if (nextQuantity",
-    ") : (\n        \"この顧客に営業担当が未登録です（取引先マスタの管理者に登録を依頼）\"\n      )\n    ) : undefined;\n\n  return ("
+    ") : (\n        \"この顧客に営業担当が未登録です（取引先マスタの管理者に登録を依頼）\"\n      )\n    ) : undefined;\n\n  return (",
+    "o.value === id)?.label ?? tr(\"（不明）\"))\n      : null;\n\n  return (",
+    "a.label).join(\"、\") ||\n            tr(\"承認者が未設定\");\n        return (",
+    "0\n      ? tr(\"カスタム入力キーを修正してください（予約語・重複）\")\n      : null;\n\n  return (",
+    "ORDER_TYPE_LABEL[v.orderType] ?? v.orderType)\n      .join(tr(\"・\")) ?? \"—\";\n\n  return (",
+    ") : (\n        tr(\"この顧客に営業担当が未登録です（取引先マスタの管理者に登録を依頼）\")\n      )\n    ) : undefined;\n\n  return ("
   ]
 }

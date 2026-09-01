@@ -569,7 +569,7 @@ export function KioskFloorMapView({
                     onClick={() => fileInputRef.current?.click()}
                   >
                     {activeMap.fileId
-                      ? "図面を差し替え"
+                      ? tr("図面を差し替え")
                       : tr("図面をアップロード")}
                   </SecondaryButton>
                   <GhostButton

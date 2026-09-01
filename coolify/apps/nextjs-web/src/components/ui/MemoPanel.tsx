@@ -315,7 +315,9 @@ function CommentThread({ ownerType, ownerId, memos }: MemoPanelProps) {
       title: tr("コメントの削除"),
       message: tr(
         tr(
-          "このコメントを完全に削除します。この操作は取り消せません。残したまま畳むだけならアーカイブを使ってください。",
+          tr(
+            "このコメントを完全に削除します。この操作は取り消せません。残したまま畳むだけならアーカイブを使ってください。",
+          ),
         ),
       ),
       confirmLabel: "削除",

@@ -58,7 +58,9 @@ export function SalesRepsEditor({
         <Text c="dimmed" size="xs">
           {tr(
             tr(
-              "未登録。登録すると、この顧客の書類で営業担当を選べるようになります。",
+              tr(
+                "未登録。登録すると、この顧客の書類で営業担当を選べるようになります。",
+              ),
             ),
           )}
         </Text>

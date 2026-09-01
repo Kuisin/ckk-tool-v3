@@ -123,7 +123,9 @@ export function PrivilegedRequestForm({
       <Text c="dimmed" p="md" size="sm">
         {tr(
           tr(
-            "申請できる特権操作がありません。必要な場合は管理者にロールの付与を依頼して\n        ください。",
+            tr(
+              "申請できる特権操作がありません。必要な場合は管理者にロールの付与を依頼して\n        ください。",
+            ),
           ),
         )}
       </Text>
@@ -162,7 +164,9 @@ export function PrivilegedRequestForm({
       <FormSection
         description={tr(
           tr(
-            "承認者はここで選んだ操作を 1 つずつ見て判断します。使わない操作は外してください",
+            tr(
+              "承認者はここで選んだ操作を 1 つずつ見て判断します。使わない操作は外してください",
+            ),
           ),
         )}
         title={tr("操作")}
@@ -186,7 +190,9 @@ export function PrivilegedRequestForm({
           autosize
           description={tr(
             tr(
-              "なぜこの操作が必要かを書いてください。承認者はこれを読んで判断します",
+              tr(
+                "なぜこの操作が必要かを書いてください。承認者はこれを読んで判断します",
+              ),
             ),
           )}
           label={tr("申請理由")}

@@ -201,7 +201,9 @@ export function DeviceProfilePanel({ device }: { device: KioskDeviceRow }) {
         <Text c="dimmed" mt="sm" size="xs">
           {tr(
             tr(
-              "端末プロファイルは専用アプリ v0.6.0 以降が送ります。旧版の端末では\n          空欄のままで、アテステーション自体は従来どおり動作します。",
+              tr(
+                "端末プロファイルは専用アプリ v0.6.0 以降が送ります。旧版の端末では\n          空欄のままで、アテステーション自体は従来どおり動作します。",
+              ),
             ),
           )}
         </Text>

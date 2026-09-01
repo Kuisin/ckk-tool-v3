@@ -30,7 +30,9 @@ export function ItemDefsListPanel({ initial }: { initial: ProductItemDef[] }) {
       })}
       description={tr(
         tr(
-          "再利用できる入力項目のライブラリです。製品種別に割り当てて使います。",
+          tr(
+            "再利用できる入力項目のライブラリです。製品種別に割り当てて使います。",
+          ),
         ),
       )}
       emptyIcon={<IconListDetails size={24} />}

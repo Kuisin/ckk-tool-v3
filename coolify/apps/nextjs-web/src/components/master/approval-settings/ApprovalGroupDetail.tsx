@@ -180,7 +180,9 @@ function GroupUsageNote({ usages }: { usages: GroupFlowUsage[] }) {
       <Alert color="gray" icon={<IconShieldCheck size={16} />} variant="light">
         {tr(
           tr(
-            "このグループはどの承認フローにも使われていません（承認設定の「承認フロー」で段に割り当てます）。",
+            tr(
+              "このグループはどの承認フローにも使われていません（承認設定の「承認フロー」で段に割り当てます）。",
+            ),
           ),
         )}
       </Alert>
@@ -210,7 +212,9 @@ function GroupUsageNote({ usages }: { usages: GroupFlowUsage[] }) {
         <Text c="dimmed" size="xs">
           {tr(
             tr(
-              "承認に必要なのは、その書類を閲覧または編集できる権限です。書類を\n          開けないメンバーは、承認ボタンを押しても弾かれます。権限は\n          ユーザー管理 (SY01) のロールで決まります。",
+              tr(
+                "承認に必要なのは、その書類を閲覧または編集できる権限です。書類を\n          開けないメンバーは、承認ボタンを押しても弾かれます。権限は\n          ユーザー管理 (SY01) のロールで決まります。",
+              ),
             ),
           )}
         </Text>

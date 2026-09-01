@@ -100,7 +100,9 @@ function RunClosingModal({
     >
       <Text size="sm">
         {tr(
-          "対象月の未請求出荷（出荷済み・発送のみ）を顧客ごとに集計し、締日の処理行を作成します。",
+          tr(
+            "対象月の未請求出荷（出荷済み・発送のみ）を顧客ごとに集計し、締日の処理行を作成します。",
+          ),
         )}
       </Text>
       <Group grow>
@@ -232,7 +234,7 @@ export function ClosingTable({ rows }: { rows: BillingClosing[] }) {
         defaultSort={{ key: "closingDate", dir: "desc" }}
         emptyIcon={<IconCalendarDue size={24} />}
         emptyMessage={tr(
-          "締日処理がありません（「締日処理を実行」から作成します）",
+          tr("締日処理がありません（「締日処理を実行」から作成します）"),
         )}
         getRowId={(c) => c.id}
         onRowClick={(c) => router.push(`${BASE_PATH}/${c.id}`)}

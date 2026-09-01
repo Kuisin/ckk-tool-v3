@@ -164,7 +164,9 @@ export function ItemDefEditForm({
                 ? tr("作成後は変更できません（割り当ての参照を保つため）")
                 : tr(
                     tr(
-                      "英字/アンダースコア始まりの識別子（例: surfaceTreatment）",
+                      tr(
+                        "英字/アンダースコア始まりの識別子（例: surfaceTreatment）",
+                      ),
                     ),
                   )
             }
@@ -212,7 +214,9 @@ export function ItemDefEditForm({
           <TextInput
             description={tr(
               tr(
-                "入力形式を制限する正規表現（例: ^[A-Z]{2}-d{4}$）。空欄なら制限なし。",
+                tr(
+                  "入力形式を制限する正規表現（例: ^[A-Z]{2}-d{4}$）。空欄なら制限なし。",
+                ),
               ),
             )}
             error={error?.includes(tr("正規表現")) ? error : undefined}

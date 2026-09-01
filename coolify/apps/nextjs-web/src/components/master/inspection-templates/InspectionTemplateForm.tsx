@@ -246,7 +246,7 @@ export function InspectionTemplateForm({
           <TextInput
             description={
               isEdit
-                ? "コードは作成後変更できません"
+                ? tr("コードは作成後変更できません")
                 : tr("英数字・-・_（一意）")
             }
             disabled={isEdit}
@@ -283,26 +283,28 @@ export function InspectionTemplateForm({
             value={form.values.relatedProcessStepId}
           />
           <SearchSelect
-            description="対象を絞る製品（空 = どの製品にも使える汎用）"
+            description={tr("対象を絞る製品（空 = どの製品にも使える汎用）")}
             initialOption={
               initial?.productId
                 ? { value: initial.productId, label: initial.productLabel }
                 : undefined
             }
-            label="対象製品"
+            label={tr("対象製品")}
             onChange={(value) => form.setFieldValue("productId", value)}
             onSearch={searchProductOptions}
-            placeholder="製品コード・名称で検索"
+            placeholder={tr("製品コード・名称で検索")}
             storageKey="inspection-template-product"
             value={form.values.productId}
           />
           <Select
             clearable
             data={templateGroupOptions}
-            description="一覧の絞り込み・見出し分けだけに使う表示軸（任意）"
-            label="グループ"
+            description={tr(
+              "一覧の絞り込み・見出し分けだけに使う表示軸（任意）",
+            )}
+            label={tr("グループ")}
             onChange={(v) => form.setFieldValue("groupId", v)}
-            placeholder="グループを選択"
+            placeholder={tr("グループを選択")}
             searchable
             value={form.values.groupId}
           />
@@ -367,7 +369,9 @@ export function InspectionTemplateForm({
             <Text c="dimmed" size="xs">
               {tr(
                 tr(
-                  "実測値 = 製品ごとにページ送りで全項目を記録 / 合格数のみ =\n              項目ごとに検査数・合格数だけを記録",
+                  tr(
+                    "実測値 = 製品ごとにページ送りで全項目を記録 / 合格数のみ =\n              項目ごとに検査数・合格数だけを記録",
+                  ),
                 ),
               )}
             </Text>
@@ -389,7 +393,9 @@ export function InspectionTemplateForm({
             <Text c="dimmed" size="xs">
               {tr(
                 tr(
-                  "寸法測定表 = 基本値/目標値/公差のグリッド / 外観・工程チェック表 =\n              製造課・品証課の部門別チェックリスト",
+                  tr(
+                    "寸法測定表 = 基本値/目標値/公差のグリッド / 外観・工程チェック表 =\n              製造課・品証課の部門別チェックリスト",
+                  ),
                 ),
               )}
             </Text>
@@ -412,7 +418,9 @@ export function InspectionTemplateForm({
               <Text c="dimmed" size="xs">
                 {tr(
                   tr(
-                    "初品・中間品・最終品 は先頭 3 件の見出しだけを差し替えます （4\n                件目以降は製品4…と同じ）",
+                    tr(
+                      "初品・中間品・最終品 は先頭 3 件の見出しだけを差し替えます （4\n                件目以降は製品4…と同じ）",
+                    ),
                   ),
                 )}
               </Text>

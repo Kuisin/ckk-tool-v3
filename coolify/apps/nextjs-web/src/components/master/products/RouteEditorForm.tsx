@@ -225,7 +225,9 @@ export function RouteEditorForm({
                 data={customerOptions ?? []}
                 description={tr(
                   tr(
-                    "指定すると同じ顧客×製品の指示書で優先選択されます（空 = 汎用）",
+                    tr(
+                      "指定すると同じ顧客×製品の指示書で優先選択されます（空 = 汎用）",
+                    ),
                   ),
                 )}
                 label={tr("対象顧客")}

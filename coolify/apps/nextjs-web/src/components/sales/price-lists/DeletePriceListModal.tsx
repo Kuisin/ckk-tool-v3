@@ -58,7 +58,9 @@ export function DeletePriceListModal({
       title={tr("価格表の削除")}
       warning={tr(
         tr(
-          "この価格表を参照中の見積書がある場合、単価の自動入力ができなくなります。",
+          tr(
+            "この価格表を参照中の見積書がある場合、単価の自動入力ができなくなります。",
+          ),
         ),
       )}
     />

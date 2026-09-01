@@ -143,7 +143,9 @@ export function FormFieldEditor({
           checked={field.isTitle === true}
           description={tr(
             tr(
-              "一覧（CM02 の回答一覧・CM01 の回答行）でこの項目の値を見出しとして表示します。フォームにつき 1 つだけ選べます",
+              tr(
+                "一覧（CM02 の回答一覧・CM01 の回答行）でこの項目の値を見出しとして表示します。フォームにつき 1 つだけ選べます",
+              ),
             ),
           )}
           disabled={!canBeTitleField(field.type)}
@@ -201,7 +203,9 @@ export function FormFieldEditor({
           data={LOOKUP_SOURCES.map((s) => ({ value: s.value, label: s.label }))}
           description={tr(
             tr(
-              "選んだ値は、その業務データの詳細画面へのリンクとして表示される",
+              tr(
+                "選んだ値は、その業務データの詳細画面へのリンクとして表示される",
+              ),
             ),
           )}
           label={tr("検索するデータ")}
@@ -314,7 +318,9 @@ export function FormFieldEditor({
           <Text c="dimmed" size="xs">
             {tr(
               tr(
-                "サブテーブルの中にサブテーブル・関連レコード一覧・リッチテキストは置けません。",
+                tr(
+                  "サブテーブルの中にサブテーブル・関連レコード一覧・リッチテキストは置けません。",
+                ),
               ),
             )}
           </Text>

@@ -74,7 +74,9 @@ export function ProductRoutesPanel({
           icon={<IconGitBranch size={24} />}
           message={tr(
             tr(
-              "この製品の工程リストは未登録です。ルートを作成すると指示書作成時に工程構成をプリフィルできます。",
+              tr(
+                "この製品の工程リストは未登録です。ルートを作成すると指示書作成時に工程構成をプリフィルできます。",
+              ),
             ),
           )}
         />

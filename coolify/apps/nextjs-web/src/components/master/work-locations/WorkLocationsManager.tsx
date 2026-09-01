@@ -499,7 +499,9 @@ function TypesModal({
       <Stack gap="xs">
         <Text c="dimmed" size="xs">
           {tr(
-            "machine / area\n          は組み込み（削除不可）。グループが使用中の種別は削除できません。",
+            tr(
+              "machine / area\n          は組み込み（削除不可）。グループが使用中の種別は削除できません。",
+            ),
           )}
         </Text>
         {rows.map((r, idx) => (
@@ -645,7 +647,9 @@ export function WorkLocationsManager({
         <EmptyState
           icon={<IconMapPin size={24} />}
           message={tr(
-            "作業場所が未登録です。グループ（機械種別・エリアなど）を作成し、配下に物理的な場所（機械 1 台・1 区画）を追加してください。",
+            tr(
+              "作業場所が未登録です。グループ（機械種別・エリアなど）を作成し、配下に物理的な場所（機械 1 台・1 区画）を追加してください。",
+            ),
           )}
         />
       ) : (
@@ -722,7 +726,9 @@ export function WorkLocationsManager({
               {group.locations.length === 0 ? (
                 <Text c="dimmed" size="sm">
                   {tr(
-                    "場所が未登録です（「場所を追加」から機械 1 台・1 区画を登録）",
+                    tr(
+                      "場所が未登録です（「場所を追加」から機械 1 台・1 区画を登録）",
+                    ),
                   )}
                 </Text>
               ) : (
@@ -866,7 +872,7 @@ export function WorkLocationsManager({
         opened={!!deleteGroup}
         title={tr("グループの削除")}
         warning={tr(
-          "作業計画・実績で使用中の場所が含まれる場合は削除できません。",
+          tr("作業計画・実績で使用中の場所が含まれる場合は削除できません。"),
         )}
       />
       <ConfirmModal

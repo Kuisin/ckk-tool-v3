@@ -21,6 +21,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { GhostButton, SecondaryButton } from "@/components/ui/buttons";
 import { openConfirm } from "@/components/ui/modals";
+import { useTr } from "@/hooks/useTr";
 
 const ACCEPT = ".png,.jpg,.jpeg,.webp";
 // lib/inspection-template-image.ts の TEMPLATE_IMAGE_EXT_LABEL と同じ文言。
@@ -36,6 +37,7 @@ export function InspectionTemplateImagePanel({
   /** null = 未設定。 */
   filename: string | null;
 }) {
+  const tr = useTr();
   const router = useRouter();
   const [busy, setBusy] = useState(false);
   // 差し替え直後も同じ URL のまま更新されて見えるよう、キャッシュ破棄用に
@@ -60,16 +62,16 @@ export function InspectionTemplateImagePanel({
       } | null;
       if (res.ok && json?.ok) {
         notifications.show({
-          title: "設定しました",
-          message: "参考画像を設定しました",
+          title: tr("設定しました"),
+          message: tr("参考画像を設定しました"),
           color: "green",
         });
         setCacheBust(Date.now());
         router.refresh();
       } else {
         notifications.show({
-          title: "エラー",
-          message: json?.error ?? "アップロードに失敗しました",
+          title: tr("エラー"),
+          message: json?.error ?? tr("アップロードに失敗しました"),
           color: "red",
         });
       }
@@ -80,9 +82,9 @@ export function InspectionTemplateImagePanel({
 
   const remove = () => {
     openConfirm({
-      title: "参考画像の削除",
-      message: "参考画像を削除します。この操作は取り消せません。",
-      confirmLabel: "削除する",
+      title: tr("参考画像の削除"),
+      message: tr("参考画像を削除します。この操作は取り消せません。"),
+      confirmLabel: tr("削除する"),
       onConfirm: () => {
         setBusy(true);
         fetch(`/api/inspection-templates/${templateId}/image`, {
@@ -95,15 +97,15 @@ export function InspectionTemplateImagePanel({
             } | null;
             if (res.ok && json?.ok) {
               notifications.show({
-                title: "削除しました",
-                message: "参考画像を削除しました",
+                title: tr("削除しました"),
+                message: tr("参考画像を削除しました"),
                 color: "green",
               });
               router.refresh();
             } else {
               notifications.show({
-                title: "エラー",
-                message: json?.error ?? "削除に失敗しました",
+                title: tr("エラー"),
+                message: json?.error ?? tr("削除に失敗しました"),
                 color: "red",
               });
             }
@@ -116,7 +118,7 @@ export function InspectionTemplateImagePanel({
   return (
     <Stack gap="xs">
       <Text fw={500} size="sm">
-        参考画像
+        {tr("参考画像")}
       </Text>
       <Text c="dimmed" size="xs">
         測定位置の図解・現物写真など。設定すると空欄シート・記入済みシートの PDF
@@ -145,7 +147,7 @@ export function InspectionTemplateImagePanel({
         >
           <IconPhoto color="var(--mantine-color-dimmed)" size={24} />
           <Text c="dimmed" size="xs">
-            画像は未設定です
+            {tr("画像は未設定です")}
           </Text>
         </Stack>
       )}
@@ -158,7 +160,7 @@ export function InspectionTemplateImagePanel({
               loading={busy}
               mr="xs"
             >
-              {filename ? "選び直す" : "アップロード"}
+              {filename ? "選び直す" : tr("アップロード")}
             </SecondaryButton>
           )}
         </FileButton>

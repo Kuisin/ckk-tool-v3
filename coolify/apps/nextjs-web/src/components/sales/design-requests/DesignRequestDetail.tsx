@@ -487,7 +487,9 @@ export function DesignRequestDetail({
         }
         description={tr(
           tr(
-            "この依頼の図面がまだ設計図に登録されていません。版を登録すると完了できます",
+            tr(
+              "この依頼の図面がまだ設計図に登録されていません。版を登録すると完了できます",
+            ),
           ),
         )}
         icon={<IconFile size={20} />}
@@ -809,7 +811,9 @@ export function DesignRequestDetail({
               ownerType="design_requests"
               title={tr(
                 tr(
-                  "作業ファイル（メモ・下書きなど。成果物の版は設計図で登録します）",
+                  tr(
+                    "作業ファイル（メモ・下書きなど。成果物の版は設計図で登録します）",
+                  ),
                 ),
               )}
             />

@@ -929,7 +929,9 @@ function LocationView({
           icon={<IconBuildingWarehouse size={24} />}
           message={tr(
             tr(
-              "この拠点には保管場所も在庫もありません（保管場所は 保管場所マスタ MS0E で登録）",
+              tr(
+                "この拠点には保管場所も在庫もありません（保管場所は 保管場所マスタ MS0E で登録）",
+              ),
             ),
           )}
         />

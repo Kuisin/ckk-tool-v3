@@ -61,7 +61,9 @@ export function AcceptanceCancelCard({
           message: result.data?.applied
             ? tr(
                 tr(
-                  "全明細をキャンセルしました（予約解放・未着手指示書の連鎖キャンセル含む）",
+                  tr(
+                    "全明細をキャンセルしました（予約解放・未着手指示書の連鎖キャンセル含む）",
+                  ),
                 ),
               )
             : tr("次の承認者へ回りました"),
@@ -118,7 +120,7 @@ export function AcceptanceCancelCard({
         icon={<IconX size={20} />}
         title={
           canAct
-            ? "注文請書キャンセルの承認"
+            ? tr("注文請書キャンセルの承認")
             : tr("注文請書キャンセルの承認依頼中")
         }
         tone={canAct ? "approve" : "wait"}
@@ -136,7 +138,9 @@ export function AcceptanceCancelCard({
         <Text size="sm">
           {tr(
             tr(
-              "差し戻すと、この依頼は適用されずに閉じます（注文請書はいまのままです）。",
+              tr(
+                "差し戻すと、この依頼は適用されずに閉じます（注文請書はいまのままです）。",
+              ),
             ),
           )}
         </Text>

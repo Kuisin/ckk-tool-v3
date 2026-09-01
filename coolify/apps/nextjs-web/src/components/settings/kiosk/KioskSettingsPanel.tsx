@@ -71,7 +71,9 @@ export function KioskSettingsPanel({
           <Text c="dimmed" size="sm">
             {tr(
               tr(
-                "共有端末（キオスク）のランチャーに載せるアプリを選びます。無効にすると、\n            権限を持つ利用者にも表示されません。",
+                tr(
+                  "共有端末（キオスク）のランチャーに載せるアプリを選びます。無効にすると、\n            権限を持つ利用者にも表示されません。",
+                ),
               ),
             )}
           </Text>
@@ -111,7 +113,9 @@ export function KioskSettingsPanel({
           <Alert color="gray" icon={<IconInfoCircle size={18} />}>
             {tr(
               tr(
-                "現在の値は端末アプリ側で固定です。編集可能化は次回対応予定です。",
+                tr(
+                  "現在の値は端末アプリ側で固定です。編集可能化は次回対応予定です。",
+                ),
               ),
             )}
           </Alert>

@@ -53,7 +53,9 @@ export function ShareGrantsView({
     <Alert color="gray" icon={<IconInfoCircle size={16} />} variant="light">
       {tr(
         tr(
-          "共有先を 1 つも設定していないフォームは、作成者と管理者にしか見えません。\n      URL を知っていても開けません。",
+          tr(
+            "共有先を 1 つも設定していないフォームは、作成者と管理者にしか見えません。\n      URL を知っていても開けません。",
+          ),
         ),
       )}
     </Alert>

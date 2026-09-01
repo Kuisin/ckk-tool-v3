@@ -380,7 +380,9 @@ export function KioskDeviceDetailView({
               <Text c="dimmed" size="xs">
                 {tr(
                   tr(
-                    "端末画面の右上 5 タップ → この PIN でキオスクロックを一時解除\n                （Wi-Fi 変更等）",
+                    tr(
+                      "端末画面の右上 5 タップ → この PIN でキオスクロックを一時解除\n                （Wi-Fi 変更等）",
+                    ),
                   ),
                 )}
               </Text>
@@ -389,7 +391,9 @@ export function KioskDeviceDetailView({
                 <b>{tr("最後に受け取れた時点の PIN")}</b>
                 {tr(
                   tr(
-                    "しか受け付けない。開けたいときは右の「この端末が保持している\n                PIN」を使う",
+                    tr(
+                      "しか受け付けない。開けたいときは右の「この端末が保持している\n                PIN」を使う",
+                    ),
                   ),
                 )}
               </Text>
@@ -433,7 +437,9 @@ export function KioskDeviceDetailView({
                   <b>{tr("未同期")}</b>{" "}
                   {tr(
                     tr(
-                      "— この端末はまだ一度も PIN\n                  を受け取っていない。端末はビルド時の既定 PIN（APK\n                  のビルド設定にのみ存在。サーバーには無い）のまま",
+                      tr(
+                        "— この端末はまだ一度も PIN\n                  を受け取っていない。端末はビルド時の既定 PIN（APK\n                  のビルド設定にのみ存在。サーバーには無い）のまま",
+                      ),
                     ),
                   )}
                 </Text>
@@ -441,7 +447,9 @@ export function KioskDeviceDetailView({
               <Text c="dimmed" size="xs">
                 {tr(
                   tr(
-                    "受け取れたときだけ記録する。通信できていても未リンク・トークン切れ\n                （401）や PinSync 以前の APK では届いていない",
+                    tr(
+                      "受け取れたときだけ記録する。通信できていても未リンク・トークン切れ\n                （401）や PinSync 以前の APK では届いていない",
+                    ),
                   ),
                 )}
               </Text>
@@ -479,7 +487,9 @@ export function KioskDeviceDetailView({
               <Text c="dimmed" size="xs">
                 {tr(
                   tr(
-                    "端末リセット・再リンク用の解錠コード。フロア担当者に伝えて使用",
+                    tr(
+                      "端末リセット・再リンク用の解錠コード。フロア担当者に伝えて使用",
+                    ),
                   ),
                 )}
               </Text>
@@ -606,7 +616,9 @@ export function KioskDeviceDetailView({
         loading={isPending}
         message={tr(
           tr(
-            "この端末に最後に渡したメンテナンス PIN を表示します。表示した操作は監査ログに記録されます。",
+            tr(
+              "この端末に最後に渡したメンテナンス PIN を表示します。表示した操作は監査ログに記録されます。",
+            ),
           ),
         )}
         onClose={() => setConfirmHeld(false)}
@@ -624,7 +636,9 @@ export function KioskDeviceDetailView({
         loading={isPending}
         message={tr(
           tr(
-            "過去のメンテナンス PIN を表示します。表示した操作は監査ログに記録されます。",
+            tr(
+              "過去のメンテナンス PIN を表示します。表示した操作は監査ログに記録されます。",
+            ),
           ),
         )}
         onClose={() => setConfirmHistory(false)}

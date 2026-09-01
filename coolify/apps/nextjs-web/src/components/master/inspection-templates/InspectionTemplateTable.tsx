@@ -276,7 +276,7 @@ export function InspectionTemplateTable({
             onClick={() => setGroupModalOpen(true)}
             style={{ flexShrink: 0 }}
           >
-            {isMobile ? "グループ" : "グループ管理"}
+            {isMobile ? "グループ" : tr("グループ管理")}
           </SecondaryButton>
           {/* 書き出し / 取込 — 環境をまたぐ持ち出しと、Excel で作った検査表の入口 */}
           <SecondaryButton
@@ -303,7 +303,10 @@ export function InspectionTemplateTable({
           />
           <Select
             clearable
-            data={[...groupOptions, { value: "none", label: "グループなし" }]}
+            data={[
+              ...groupOptions,
+              { value: "none", label: tr("グループなし") },
+            ]}
             onChange={setGroupFilter}
             placeholder={tr("グループ")}
             style={isMobile ? { flex: 1 } : undefined}

@@ -100,7 +100,9 @@ export function StorageLocationMapPanel({
         <Text c="dimmed" size="sm">
           {tr(
             tr(
-              "この拠点にはフロアマップがありません。拠点マスタ (MS0C)\n          の「フロアマップ」タブでフロアと図面を登録してください。",
+              tr(
+                "この拠点にはフロアマップがありません。拠点マスタ (MS0C)\n          の「フロアマップ」タブでフロアと図面を登録してください。",
+              ),
             ),
           )}
         </Text>

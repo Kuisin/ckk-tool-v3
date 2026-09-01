@@ -173,7 +173,9 @@ export function FormDetail({
                     title: tr("下書きに戻す"),
                     message: tr(
                       tr(
-                        "受付を止めます。共有 URL を開いても回答できなくなります（今ある回答は残ります）。",
+                        tr(
+                          "受付を止めます。共有 URL を開いても回答できなくなります（今ある回答は残ります）。",
+                        ),
                       ),
                     ),
                     confirmLabel: tr("下書きに戻す"),
@@ -197,7 +199,9 @@ export function FormDetail({
                     title: tr("アーカイブする"),
                     message: tr(
                       tr(
-                        "使い終わったフォームとして片付けます。受付は止まりますが、回答と集計は残ります。",
+                        tr(
+                          "使い終わったフォームとして片付けます。受付は止まりますが、回答と集計は残ります。",
+                        ),
                       ),
                     ),
                     confirmLabel: tr("アーカイブする"),
@@ -256,7 +260,9 @@ export function FormDetail({
         <Alert color="yellow">
           {tr(
             tr(
-              "まだ項目が公開されていません。「編集」から項目を組んで公開してください。",
+              tr(
+                "まだ項目が公開されていません。「編集」から項目を組んで公開してください。",
+              ),
             ),
           )}
         </Alert>

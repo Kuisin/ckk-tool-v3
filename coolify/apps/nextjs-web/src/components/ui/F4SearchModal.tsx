@@ -207,7 +207,9 @@ export function F4SearchModal({
         <Text c="dimmed" size="xs">
           {tr(
             tr(
-              "行をクリックして選択（結果は最大50件 — 条件で絞り込んでください）",
+              tr(
+                "行をクリックして選択（結果は最大50件 — 条件で絞り込んでください）",
+              ),
             ),
           )}
         </Text>

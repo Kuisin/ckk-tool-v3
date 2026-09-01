@@ -189,7 +189,9 @@ export function PortalAccountsTable({
                               ? undefined
                               : tr(
                                   tr(
-                                    "有効化には特権アクセス（SY0G）の承認が必要です",
+                                    tr(
+                                      "有効化には特権アクセス（SY0G）の承認が必要です",
+                                    ),
                                   ),
                                 )
                           }
@@ -258,7 +260,9 @@ export function PortalAccountsTable({
               checked={scopeBranches}
               description={tr(
                 tr(
-                  "親の取引先で共有すると、その支店宛の書類も見えます（支店から親へは遡りません）",
+                  tr(
+                    "親の取引先で共有すると、その支店宛の書類も見えます（支店から親へは遡りません）",
+                  ),
                 ),
               )}
               label={tr("支店宛の書類も含める")}
@@ -268,7 +272,9 @@ export function PortalAccountsTable({
               checked={scopeEndUser}
               description={tr(
                 tr(
-                  "卸し先の価格が需要家に見えることがあります。必要なときだけ。",
+                  tr(
+                    "卸し先の価格が需要家に見えることがあります。必要なときだけ。",
+                  ),
                 ),
               )}
               label={tr("需要家・出荷先としての書類も含める")}
@@ -279,7 +285,9 @@ export function PortalAccountsTable({
             <Text size="xs">
               {tr(
                 tr(
-                  "作成しただけでは何も見えません。「有効にする」で初めてログインできます\n              （有効化には承認が必要です）。",
+                  tr(
+                    "作成しただけでは何も見えません。「有効にする」で初めてログインできます\n              （有効化には承認が必要です）。",
+                  ),
                 ),
               )}
             </Text>
@@ -309,7 +317,9 @@ export function PortalAccountsTable({
             <Text size="xs">
               {tr(
                 tr(
-                  "この画面を閉じると**二度と表示できません**。印刷するか書き写して、\n              担当者ご本人へ直接お渡しください。メールで送らないでください\n              （メールが使えないときのための手段です）。",
+                  tr(
+                    "この画面を閉じると**二度と表示できません**。印刷するか書き写して、\n              担当者ご本人へ直接お渡しください。メールで送らないでください\n              （メールが使えないときのための手段です）。",
+                  ),
                 ),
               )}
             </Text>

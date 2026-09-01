@@ -175,7 +175,9 @@ export function LoginHistoryView({
           <Tooltip
             label={tr(
               tr(
-                "ユーザーに解決できなかった試行。入力値は保存していません（相関キーのみ）。",
+                tr(
+                  "ユーザーに解決できなかった試行。入力値は保存していません（相関キーのみ）。",
+                ),
               ),
             )}
             withinPortal

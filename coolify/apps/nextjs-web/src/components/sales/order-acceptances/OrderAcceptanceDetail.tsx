@@ -407,7 +407,9 @@ export function OrderAcceptanceDetail({
           <Text size="sm">
             {tr(
               tr(
-                "以下の明細は単価が価格表と一致しません。差異を確認のうえ承認依頼しますか？",
+                tr(
+                  "以下の明細は単価が価格表と一致しません。差異を確認のうえ承認依頼しますか？",
+                ),
               ),
             )}
           </Text>
@@ -510,7 +512,9 @@ export function OrderAcceptanceDetail({
         buttonLabel={tr("出荷書を作成")}
         description={tr(
           tr(
-            "この注文請書の出荷できる注文明細を読み込んだ状態で出荷書フォームを開きます",
+            tr(
+              "この注文請書の出荷できる注文明細を読み込んだ状態で出荷書フォームを開きます",
+            ),
           ),
         )}
         href={`/shipping/delivery-orders/new?acceptance=${a.number}`}
@@ -671,7 +675,9 @@ export function OrderAcceptanceDetail({
                     <Text size="sm">
                       {tr(
                         tr(
-                          "自動抽出の順番待ち・実行中です（1件あたり約1〜3分）。完了すると下書きになります。この画面を閉じても処理は続きます。",
+                          tr(
+                            "自動抽出の順番待ち・実行中です（1件あたり約1〜3分）。完了すると下書きになります。この画面を閉じても処理は続きます。",
+                          ),
                         ),
                       )}
                     </Text>
@@ -719,7 +725,9 @@ export function OrderAcceptanceDetail({
                   <Text size="sm">
                     {tr(
                       tr(
-                        "明細の単価が価格表と一致しません。承認依頼には差異の確認が必要です。",
+                        tr(
+                          "明細の単価が価格表と一致しません。承認依頼には差異の確認が必要です。",
+                        ),
                       ),
                     )}
                   </Text>
@@ -1592,7 +1600,9 @@ function DraftEditor({
       <FormSection
         description={tr(
           tr(
-            "製品が未特定の行は製品マスタと突合してください（確定には全行の製品特定 + 単価が必要）。",
+            tr(
+              "製品が未特定の行は製品マスタと突合してください（確定には全行の製品特定 + 単価が必要）。",
+            ),
           ),
         )}
         title={tr("明細")}

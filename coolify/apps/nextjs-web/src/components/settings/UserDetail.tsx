@@ -108,7 +108,7 @@ function UserPlantsCard({
         // 伝わる。サーバーが返した requested をそのまま文言に反映する。
         notifications.show({
           title: result.data.requested
-            ? "承認を依頼しました"
+            ? tr("承認を依頼しました")
             : tr("保存しました"),
           message: result.data.requested
             ? tr("承認されると所属拠点が変更されます")
@@ -312,7 +312,9 @@ export function UserDetail({
         <Text c="dimmed" mb="sm" size="xs">
           {tr(
             tr(
-              "有効なロールから与えられている許可の一覧（この人ができることは、下の行すべての合計です）",
+              tr(
+                "有効なロールから与えられている許可の一覧（この人ができることは、下の行すべての合計です）",
+              ),
             ),
           )}
         </Text>

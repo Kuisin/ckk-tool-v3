@@ -162,7 +162,9 @@ export function StorageLocationsPanel({
         <Text c="dimmed" size="sm">
           {tr(
             tr(
-              "拠点内の倉庫・置場と棚。在庫はこの単位で保管され、在庫管理（PD04）\n          の在庫移動で場所間を動かせます。",
+              tr(
+                "拠点内の倉庫・置場と棚。在庫はこの単位で保管され、在庫管理（PD04）\n          の在庫移動で場所間を動かせます。",
+              ),
             ),
           )}
         </Text>

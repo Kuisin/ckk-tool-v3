@@ -445,7 +445,9 @@ export function DeliveryNoteForm({
       <FormSection
         description={tr(
           tr(
-            "出荷書を選択すると明細が既定生成されます（単価は注文明細の単価）。価格記載 OFF のときは単価・金額を保存しません。",
+            tr(
+              "出荷書を選択すると明細が既定生成されます（単価は注文明細の単価）。価格記載 OFF のときは単価・金額を保存しません。",
+            ),
           ),
         )}
         title={tr("明細")}

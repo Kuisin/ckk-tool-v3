@@ -162,7 +162,9 @@ export function DesignFileVersionForm({
           data={customerOptions}
           description={tr(
             tr(
-              "空のままなら「汎用」— 顧客専用の図面が無いときに使われます。版番号は受注元ごとに数えます",
+              tr(
+                "空のままなら「汎用」— 顧客専用の図面が無いときに使われます。版番号は受注元ごとに数えます",
+              ),
             ),
           )}
           disabled={requestContext != null}
@@ -188,7 +190,9 @@ export function DesignFileVersionForm({
         <DesignFileSlot
           description={tr(
             tr(
-              "STL など、画面で形を確かめるためのファイル。無くても登録できます",
+              tr(
+                "STL など、画面で形を確かめるためのファイル。無くても登録できます",
+              ),
             ),
           )}
           file={preview}

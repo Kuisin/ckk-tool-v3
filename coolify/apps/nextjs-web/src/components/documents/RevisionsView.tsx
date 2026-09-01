@@ -57,7 +57,9 @@ export function RevisionsView({
       title: `リビジョン ${revision} を復元`,
       message: tr(
         tr(
-          "この内容で新しいリビジョンを作ります。履歴は巻き戻さず、前に進めて元に戻します。",
+          tr(
+            "この内容で新しいリビジョンを作ります。履歴は巻き戻さず、前に進めて元に戻します。",
+          ),
         ),
       ),
       confirmLabel: tr("復元する"),

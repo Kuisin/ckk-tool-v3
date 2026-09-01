@@ -193,7 +193,7 @@ export function FloorMapsPanel({
                 size="xs"
               >
                 {activeMap.hasImage
-                  ? "図面を差し替え"
+                  ? tr("図面を差し替え")
                   : tr("図面をアップロード")}
               </GhostButton>
               <GhostButton
@@ -223,7 +223,9 @@ export function FloorMapsPanel({
         <Text c="dimmed" size="sm">
           {tr(
             tr(
-              "フロアマップがありません。「フロアを追加」から作成し、図面画像を\n          アップロードしてください。",
+              tr(
+                "フロアマップがありません。「フロアを追加」から作成し、図面画像を\n          アップロードしてください。",
+              ),
             ),
           )}
         </Text>

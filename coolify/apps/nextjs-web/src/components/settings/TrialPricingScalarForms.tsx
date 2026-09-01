@@ -137,7 +137,9 @@ export function MaterialPolicyForm({
       <FormSection
         description={tr(
           tr(
-            "価格試算の材料原価に使う、仕入実績（購買履歴）からの参照価格の決め方です。",
+            tr(
+              "価格試算の材料原価に使う、仕入実績（購買履歴）からの参照価格の決め方です。",
+            ),
           ),
         )}
         title={tr("ポリシー")}
@@ -169,7 +171,9 @@ export function MaterialPolicyForm({
           <NumberInput
             description={tr(
               tr(
-                "仕入実績が無い素材の価格試算で使う既定単価（0 = 既定なし）。価格試算では「既定価格」と表示されます。",
+                tr(
+                  "仕入実績が無い素材の価格試算で使う既定単価（0 = 既定なし）。価格試算では「既定価格」と表示されます。",
+                ),
               ),
             )}
             label={tr("既定材料単価（¥/1000mm）")}
@@ -227,7 +231,9 @@ export function CustomInputsForm({
       <FormSection
         description={tr(
           tr(
-            "計算基準の式で変数として使える項目。スコープ「見積入力」は価格試算フォームに表示、「グローバル定数」は固定係数（補正値・LDチャージ・加工単価・予備形状本数）で削除・改名不可。",
+            tr(
+              "計算基準の式で変数として使える項目。スコープ「見積入力」は価格試算フォームに表示、「グローバル定数」は固定係数（補正値・LDチャージ・加工単価・予備形状本数）で削除・改名不可。",
+            ),
           ),
         )}
         title={tr("カスタム入力項目")}
@@ -324,7 +330,7 @@ export function CustomInputsForm({
                   <TextInput
                     label={
                       d.type === "select"
-                        ? "既定値/選択肢(,区切り)"
+                        ? tr("既定値/選択肢(,区切り)")
                         : tr("既定値")
                     }
                     onChange={(e) => {

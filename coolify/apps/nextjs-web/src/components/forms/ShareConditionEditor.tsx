@@ -61,7 +61,9 @@ export function ShareConditionEditor({
       <Text c="dimmed" size="xs">
         {tr(
           tr(
-            "条件に使える項目がありません（ドロップダウン・複数選択・業務データ検索の\n        項目を作ると使えます）",
+            tr(
+              "条件に使える項目がありません（ドロップダウン・複数選択・業務データ検索の\n        項目を作ると使えます）",
+            ),
           ),
         )}
       </Text>
@@ -143,7 +145,9 @@ export function ShareConditionEditor({
         <Text c="dimmed" size="xs">
           {tr(
             tr(
-              "値を 1\n          つ以上選ぶまで、条件は保存されません（全件見える状態のままです）",
+              tr(
+                "値を 1\n          つ以上選ぶまで、条件は保存されません（全件見える状態のままです）",
+              ),
             ),
           )}
         </Text>

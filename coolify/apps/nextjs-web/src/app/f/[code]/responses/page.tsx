@@ -51,7 +51,9 @@ export default async function PublicResponsesPage({
         color="gray"
         description={tr(
           tr(
-            "URL が間違っているか、このフォームの回答を見る権限がありません。",
+            tr(
+              "URL が間違っているか、このフォームの回答を見る権限がありません。",
+            ),
           ),
         )}
         formTitle={null}

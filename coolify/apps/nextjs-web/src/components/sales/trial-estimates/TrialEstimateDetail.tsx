@@ -191,7 +191,9 @@ export function TrialEstimateDetail({
           message: linkProductId
             ? tr(
                 tr(
-                  "製品にリンクしました。確定後、価格表（顧客×製品）の作成時に基準単価ソースとして選択できます",
+                  tr(
+                    "製品にリンクしました。確定後、価格表（顧客×製品）の作成時に基準単価ソースとして選択できます",
+                  ),
                 ),
               )
             : tr("製品リンクを解除しました"),
@@ -290,7 +292,9 @@ export function TrialEstimateDetail({
         <Alert color="blue" icon={<IconInfoCircle size={16} />} variant="light">
           {tr(
             tr(
-              "この価格試算は価格表で使用済みのため編集できません。単価を見直す場合は複製して再価格試算してください。",
+              tr(
+                "この価格試算は価格表で使用済みのため編集できません。単価を見直す場合は複製して再価格試算してください。",
+              ),
             ),
           )}
         </Alert>
@@ -299,7 +303,9 @@ export function TrialEstimateDetail({
         <Alert color="blue" icon={<IconInfoCircle size={16} />} variant="light">
           {tr(
             tr(
-              "確定済み —\n          価格表（顧客×製品）の作成時に、この価格試算を基準単価ソースとして選択できます。",
+              tr(
+                "確定済み —\n          価格表（顧客×製品）の作成時に、この価格試算を基準単価ソースとして選択できます。",
+              ),
             ),
           )}
         </Alert>
@@ -458,7 +464,9 @@ export function TrialEstimateDetail({
                 <Text c="dimmed" size="sm">
                   {tr(
                     tr(
-                      "未使用 —\n                  価格表（顧客×製品）の作成時にこの価格試算を基準単価ソースとして選択できます",
+                      tr(
+                        "未使用 —\n                  価格表（顧客×製品）の作成時にこの価格試算を基準単価ソースとして選択できます",
+                      ),
                     ),
                   )}
                 </Text>
@@ -502,7 +510,9 @@ export function TrialEstimateDetail({
           <Text c="dimmed" size="sm">
             {tr(
               tr(
-                "対象製品（任意）。リンクした価格試算は確定後、価格表（顧客×製品）の作成時に基準単価ソースとして選択できます。クリアして保存するとリンクを解除します。",
+                tr(
+                  "対象製品（任意）。リンクした価格試算は確定後、価格表（顧客×製品）の作成時に基準単価ソースとして選択できます。クリアして保存するとリンクを解除します。",
+                ),
               ),
             )}
           </Text>

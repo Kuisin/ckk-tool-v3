@@ -158,7 +158,9 @@ export function Model3dCanvas({
             <Text c="dimmed" size="sm" ta="center">
               {tr(
                 tr(
-                  "このファイルは表示できませんでした（ダウンロードしてご覧ください）",
+                  tr(
+                    "このファイルは表示できませんでした（ダウンロードしてご覧ください）",
+                  ),
                 ),
               )}
             </Text>

@@ -35,7 +35,9 @@ export function NotFoundContent() {
         <Text c="dimmed" size="sm" ta="center">
           {tr(
             tr(
-              "URL が間違っているか、ページが移動・削除された可能性があります。",
+              tr(
+                "URL が間違っているか、ページが移動・削除された可能性があります。",
+              ),
             ),
           )}
         </Text>

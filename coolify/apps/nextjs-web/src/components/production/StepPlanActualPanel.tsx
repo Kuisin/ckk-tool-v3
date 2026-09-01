@@ -381,7 +381,9 @@ export function StepPlanActualPanel({
         canEdit={planEditable}
         description={tr(
           tr(
-            "担当者・日付（または時刻）ごとに分割して計画できます。作業場所（機械・エリア）も任意で割り当てられます。",
+            tr(
+              "担当者・日付（または時刻）ごとに分割して計画できます。作業場所（機械・エリア）も任意で割り当てられます。",
+            ),
           ),
         )}
         kind="plan"
@@ -396,7 +398,9 @@ export function StepPlanActualPanel({
         canEdit={actualEditable}
         description={tr(
           tr(
-            "実施した作業を担当者・日付ごとに記録します（進行中のみ追加可）。共有端末からの実績には端末の既定作業場所が入ります。",
+            tr(
+              "実施した作業を担当者・日付ごとに記録します（進行中のみ追加可）。共有端末からの実績には端末の既定作業場所が入ります。",
+            ),
           ),
         )}
         kind="actual"

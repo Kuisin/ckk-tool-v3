@@ -76,7 +76,9 @@ export function LinkQrScanner({
         setError(
           tr(
             tr(
-              "カメラを起動できません。カメラ権限と HTTPS 接続を確認してください。",
+              tr(
+                "カメラを起動できません。カメラ権限と HTTPS 接続を確認してください。",
+              ),
             ),
           ),
         );
