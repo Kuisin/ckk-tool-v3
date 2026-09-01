@@ -15,6 +15,7 @@
  */
 
 import { revalidatePath } from "next/cache";
+import { getTranslations } from "next-intl/server";
 import { z } from "zod";
 import { validateConditions } from "@/lib/approval-conditions";
 import { validateFlowSteps } from "@/lib/approval-flow";
@@ -42,16 +43,24 @@ import {
 const BASE_PATH = "/master/approval-settings";
 
 // 編集可能フィールド（type は識別 — 作成後不変）
-const groupUpdateInput = z.object({
-  nameJa: z.string().min(1, "名称（日本語）を入力してください"),
-  nameTranslations: z.record(z.string(), z.string()).optional(),
-  isActive: z.boolean(),
-});
+function groupUpdateInputSchema(
+  tr: Awaited<ReturnType<typeof getTranslations>>,
+) {
+  return z.object({
+    nameJa: z.string().min(1, tr("master.approvalGroupForm.enterNameJa")),
+    nameTranslations: z.record(z.string(), z.string()).optional(),
+    isActive: z.boolean(),
+  });
+}
 
-const groupCreateInput = groupUpdateInput;
+const groupCreateInputSchema = groupUpdateInputSchema;
 
-export type ApprovalGroupUpdateInput = z.infer<typeof groupUpdateInput>;
-export type ApprovalGroupCreateInput = z.infer<typeof groupCreateInput>;
+export type ApprovalGroupUpdateInput = z.infer<
+  ReturnType<typeof groupUpdateInputSchema>
+>;
+export type ApprovalGroupCreateInput = z.infer<
+  ReturnType<typeof groupCreateInputSchema>
+>;
 
 function revalidate(id?: number) {
   revalidatePath(BASE_PATH);
@@ -68,11 +77,14 @@ function prismaErrorCode(e: unknown): string | undefined {
 export async function createApprovalGroup(
   input: ApprovalGroupCreateInput,
 ): Promise<ActionResult<{ id: number }>> {
+  const tr = await getTranslations();
   const authz = await checkPermission("master", "CREATE");
   if (!authz.ok) return actionError(authz.error);
-  const parsed = groupCreateInput.safeParse(input);
+  const parsed = groupCreateInputSchema(tr).safeParse(input);
   if (!parsed.success) {
-    return actionError(parsed.error.issues[0]?.message ?? "入力が不正です");
+    return actionError(
+      parsed.error.issues[0]?.message ?? tr("common.invalidInput"),
+    );
   }
   const v = parsed.data;
   try {
@@ -93,7 +105,11 @@ export async function createApprovalGroup(
     return actionOk({ id: created.id });
   } catch (e) {
     return actionError(
-      prismaErrorMessage(e, "承認グループの作成に失敗しました"),
+      prismaErrorMessage(
+        e,
+        tr("master.approvalSettingsActions.groupCreateFailed"),
+        tr,
+      ),
     );
   }
 }
@@ -102,11 +118,14 @@ export async function updateApprovalGroup(
   id: number,
   input: ApprovalGroupUpdateInput,
 ): Promise<ActionResult<{ id: number }>> {
+  const tr = await getTranslations();
   const authz = await checkPermission("master", "UPDATE");
   if (!authz.ok) return actionError(authz.error);
-  const parsed = groupUpdateInput.safeParse(input);
+  const parsed = groupUpdateInputSchema(tr).safeParse(input);
   if (!parsed.success) {
-    return actionError(parsed.error.issues[0]?.message ?? "入力が不正です");
+    return actionError(
+      parsed.error.issues[0]?.message ?? tr("common.invalidInput"),
+    );
   }
   const v = parsed.data;
   try {
@@ -137,7 +156,11 @@ export async function updateApprovalGroup(
     return actionOk({ id });
   } catch (e) {
     return actionError(
-      prismaErrorMessage(e, "承認グループの更新に失敗しました"),
+      prismaErrorMessage(
+        e,
+        tr("master.approvalSettingsActions.groupUpdateFailed"),
+        tr,
+      ),
     );
   }
 }
@@ -146,9 +169,10 @@ export async function setApprovalGroupsActive(
   ids: number[],
   isActive: boolean,
 ): Promise<ActionResult> {
+  const tr = await getTranslations();
   const authz = await checkPermission("master", "UPDATE");
   if (!authz.ok) return actionError(authz.error);
-  if (ids.length === 0) return actionError("対象が選択されていません");
+  if (ids.length === 0) return actionError(tr("common.noTargetSelected"));
   try {
     await prisma.approvalGroup.updateMany({
       where: { id: { in: ids } },
@@ -166,16 +190,23 @@ export async function setApprovalGroupsActive(
     for (const id of ids) revalidatePath(`${BASE_PATH}/${id}`);
     return actionOk();
   } catch (e) {
-    return actionError(prismaErrorMessage(e, "状態の更新に失敗しました"));
+    return actionError(
+      prismaErrorMessage(
+        e,
+        tr("master.approvalSettingsActions.statusUpdateFailed"),
+        tr,
+      ),
+    );
   }
 }
 
 export async function deleteApprovalGroups(
   ids: number[],
 ): Promise<ActionResult> {
+  const tr = await getTranslations();
   const authz = await checkPermission("master", "DELETE");
   if (!authz.ok) return actionError(authz.error);
-  if (ids.length === 0) return actionError("対象が選択されていません");
+  if (ids.length === 0) return actionError(tr("common.noTargetSelected"));
   try {
     // メンバーは onDelete: Cascade で一括削除。将来 承認依頼・代理設定が
     // グループを参照するようになると P2003 で拒否される。
@@ -191,7 +222,11 @@ export async function deleteApprovalGroups(
     return actionOk();
   } catch (e) {
     return actionError(
-      prismaErrorMessage(e, "承認グループの削除に失敗しました"),
+      prismaErrorMessage(
+        e,
+        tr("master.approvalSettingsActions.groupDeleteFailed"),
+        tr,
+      ),
     );
   }
 }
@@ -218,10 +253,11 @@ export async function addGroupMember(
   userId: string,
   period?: { validFrom: string; validUntil: string; note?: string },
 ): Promise<ActionResult> {
+  const tr = await getTranslations();
   // メンバー・代理の増減はグループ本体の編集扱い（監査も UPDATE で記録）。
   const authz = await checkPermission("master", "UPDATE");
   if (!authz.ok) return actionError(authz.error);
-  if (!userId) return actionError("ユーザーを選択してください");
+  if (!userId) return actionError(tr("master.approvalSettings.selectAUser"));
   const periodError = validateMemberPeriod({
     validFrom: period?.validFrom ?? null,
     validUntil: period?.validUntil ?? null,
@@ -244,17 +280,29 @@ export async function addGroupMember(
       recordId: String(groupId),
       after: {
         note: period
-          ? `期間限定メンバー「${await memberLabel(userId)}」を追加（${period.validFrom}〜${period.validUntil}）`
-          : `メンバー「${await memberLabel(userId)}」を追加`,
+          ? tr("master.approvalSettingsActions.periodMemberAddedAudit", {
+              name: await memberLabel(userId),
+              from: period.validFrom,
+              until: period.validUntil,
+            })
+          : tr("master.approvalSettingsActions.memberAddedAudit", {
+              name: await memberLabel(userId),
+            }),
       },
     });
     revalidate(groupId);
     return actionOk();
   } catch (e) {
     if (prismaErrorCode(e) === "P2002") {
-      return actionError("既にメンバーです");
+      return actionError(tr("master.approvalSettingsActions.alreadyAMember"));
     }
-    return actionError(prismaErrorMessage(e, "メンバーの追加に失敗しました"));
+    return actionError(
+      prismaErrorMessage(
+        e,
+        tr("master.approvalSettingsActions.memberAddFailed"),
+        tr,
+      ),
+    );
   }
 }
 
@@ -263,6 +311,7 @@ export async function removeGroupMember(
   groupId: number,
   userId: string,
 ): Promise<ActionResult> {
+  const tr = await getTranslations();
   // メンバー・代理の増減はグループ本体の編集扱い（監査も UPDATE で記録）。
   const authz = await checkPermission("master", "UPDATE");
   if (!authz.ok) return actionError(authz.error);
@@ -274,33 +323,55 @@ export async function removeGroupMember(
       action: "UPDATE",
       tableName: "approval_groups",
       recordId: String(groupId),
-      after: { note: `メンバー「${await memberLabel(userId)}」を削除` },
+      after: {
+        note: tr("master.approvalSettingsActions.memberRemovedAudit", {
+          name: await memberLabel(userId),
+        }),
+      },
     });
     revalidate(groupId);
     return actionOk();
   } catch (e) {
-    return actionError(prismaErrorMessage(e, "メンバーの削除に失敗しました"));
+    return actionError(
+      prismaErrorMessage(
+        e,
+        tr("master.approvalSettingsActions.memberRemoveFailed"),
+        tr,
+      ),
+    );
   }
 }
 
 // ── 期間限定代理（グループ詳細の代理設定タブから操作） ───────────────────────
 
-const delegateInput = z
-  .object({
-    delegatorId: z.string().min(1, "原承認者を選択してください"),
-    delegateId: z.string().min(1, "代理人を選択してください"),
-    validFrom: z.string().min(1, "開始日を選択してください"),
-    validUntil: z.string().min(1, "終了日を選択してください"),
-    reason: z.string().optional(),
-  })
-  .refine((v) => v.delegatorId !== v.delegateId, {
-    message: "原承認者と代理人は別のユーザーを選択してください",
-  })
-  .refine((v) => v.validFrom <= v.validUntil, {
-    message: "終了日は開始日以降の日付を選択してください",
-  });
+function delegateInputSchema(tr: Awaited<ReturnType<typeof getTranslations>>) {
+  return z
+    .object({
+      delegatorId: z
+        .string()
+        .min(1, tr("master.approvalSettings.selectTheOriginalApprover")),
+      delegateId: z
+        .string()
+        .min(1, tr("master.approvalSettings.selectADelegate")),
+      validFrom: z
+        .string()
+        .min(1, tr("master.approvalSettings.selectAStartDate")),
+      validUntil: z
+        .string()
+        .min(1, tr("master.approvalSettings.selectAnEndDate")),
+      reason: z.string().optional(),
+    })
+    .refine((v) => v.delegatorId !== v.delegateId, {
+      message: tr("master.approvalSettings.theOriginalApproverAndTheDelegate"),
+    })
+    .refine((v) => v.validFrom <= v.validUntil, {
+      message: tr("master.approvalSettings.chooseAnEndDateOnOr"),
+    });
+}
 
-export type ApprovalDelegateInput = z.infer<typeof delegateInput>;
+export type ApprovalDelegateInput = z.infer<
+  ReturnType<typeof delegateInputSchema>
+>;
 
 /**
  * 代理設定の追加。原承認者はグループの有効メンバーであること。
@@ -310,11 +381,14 @@ export async function addDelegate(
   groupId: number,
   input: ApprovalDelegateInput,
 ): Promise<ActionResult> {
+  const tr = await getTranslations();
   const authz = await checkPermission("master", "UPDATE");
   if (!authz.ok) return actionError(authz.error);
-  const parsed = delegateInput.safeParse(input);
+  const parsed = delegateInputSchema(tr).safeParse(input);
   if (!parsed.success) {
-    return actionError(parsed.error.issues[0]?.message ?? "入力が不正です");
+    return actionError(
+      parsed.error.issues[0]?.message ?? tr("common.invalidInput"),
+    );
   }
   const v = parsed.data;
   try {
@@ -325,7 +399,11 @@ export async function addDelegate(
       select: { isActive: true, validFrom: true, validUntil: true },
     });
     if (!member || !isMemberEffective(member, new Date())) {
-      return actionError("原承認者はこのグループの有効なメンバーのみ選べます");
+      return actionError(
+        tr(
+          "master.approvalSettingsActions.originalApproverMustBeEffectiveMember",
+        ),
+      );
     }
     const actor = await getCurrentActorId();
     await prisma.approvalDelegate.create({
@@ -344,13 +422,24 @@ export async function addDelegate(
       tableName: "approval_groups",
       recordId: String(groupId),
       after: {
-        note: `代理設定を追加（原承認者「${await memberLabel(v.delegatorId)}」→ 代理人「${await memberLabel(v.delegateId)}」、期間 ${v.validFrom}〜${v.validUntil}）`,
+        note: tr("master.approvalSettingsActions.delegateAddedAudit", {
+          delegator: await memberLabel(v.delegatorId),
+          delegate: await memberLabel(v.delegateId),
+          from: v.validFrom,
+          until: v.validUntil,
+        }),
       },
     });
     revalidate(groupId);
     return actionOk();
   } catch (e) {
-    return actionError(prismaErrorMessage(e, "代理設定の追加に失敗しました"));
+    return actionError(
+      prismaErrorMessage(
+        e,
+        tr("master.approvalSettingsActions.delegateAddFailed"),
+        tr,
+      ),
+    );
   }
 }
 
@@ -359,6 +448,7 @@ export async function removeDelegate(
   groupId: number,
   delegateRowId: string,
 ): Promise<ActionResult> {
+  const tr = await getTranslations();
   const authz = await checkPermission("master", "UPDATE");
   if (!authz.ok) return actionError(authz.error);
   try {
@@ -369,20 +459,30 @@ export async function removeDelegate(
         delegate: { select: { displayName: true } },
       },
     });
-    if (!prior) return actionError("対象の代理設定が見つかりません");
+    if (!prior)
+      return actionError(tr("master.approvalSettingsActions.delegateNotFound"));
     await prisma.approvalDelegate.delete({ where: { id: prior.id } });
     await recordAudit({
       action: "UPDATE",
       tableName: "approval_groups",
       recordId: String(groupId),
       after: {
-        note: `代理設定を削除（原承認者「${prior.delegator.displayName}」→ 代理人「${prior.delegate.displayName}」）`,
+        note: tr("master.approvalSettingsActions.delegateRemovedAudit", {
+          delegator: prior.delegator.displayName,
+          delegate: prior.delegate.displayName,
+        }),
       },
     });
     revalidate(groupId);
     return actionOk();
   } catch (e) {
-    return actionError(prismaErrorMessage(e, "代理設定の削除に失敗しました"));
+    return actionError(
+      prismaErrorMessage(
+        e,
+        tr("master.approvalSettingsActions.delegateRemoveFailed"),
+        tr,
+      ),
+    );
   }
 }
 
@@ -391,6 +491,7 @@ export async function setGroupMemberActive(
   userId: string,
   isActive: boolean,
 ): Promise<ActionResult> {
+  const tr = await getTranslations();
   const authz = await checkPermission("master", "UPDATE");
   if (!authz.ok) return actionError(authz.error);
   try {
@@ -403,35 +504,51 @@ export async function setGroupMemberActive(
       tableName: "approval_groups",
       recordId: String(groupId),
       after: {
-        note: `メンバー「${await memberLabel(userId)}」を${isActive ? "有効化" : "無効化"}`,
+        note: tr("master.approvalSettingsActions.memberStatusChangedAudit", {
+          name: await memberLabel(userId),
+          action: isActive ? tr("common.enable") : tr("common.disable"),
+        }),
       },
     });
     revalidate(groupId);
     return actionOk();
   } catch (e) {
     return actionError(
-      prismaErrorMessage(e, "メンバー状態の更新に失敗しました"),
+      prismaErrorMessage(
+        e,
+        tr("master.approvalSettingsActions.memberStatusUpdateFailed"),
+        tr,
+      ),
     );
   }
 }
 
 // ── 承認フロー（書類種別ごとに 1 本） ───────────────────────────────────────
 
-const flowStepInput = z.object({
-  nameJa: z.string().min(1, "名称を入力してください"),
-  nameTranslations: z.record(z.string(), z.string()).optional(),
-  groupId: z.number().int().positive("承認グループを選択してください"),
-  mode: z.enum(["ANY", "ALL"]),
-});
+function flowStepInputSchema(tr: Awaited<ReturnType<typeof getTranslations>>) {
+  return z.object({
+    nameJa: z.string().min(1, tr("sales.discountRuleModal.enterAName")),
+    nameTranslations: z.record(z.string(), z.string()).optional(),
+    groupId: z
+      .number()
+      .int()
+      .positive(tr("master.approvalSettingsActions.selectAnApprovalGroup")),
+    mode: z.enum(["ANY", "ALL"]),
+  });
+}
 
-const flowInput = z.object({
-  targetType: z.enum(APPROVAL_TARGET_TYPES),
-  steps: z
-    .array(flowStepInput)
-    .min(1, "承認ステップを 1 段以上設定してください"),
-});
+function flowInputSchema(tr: Awaited<ReturnType<typeof getTranslations>>) {
+  return z.object({
+    targetType: z.enum(APPROVAL_TARGET_TYPES),
+    steps: z
+      .array(flowStepInputSchema(tr))
+      .min(1, tr("master.approvalSettingsActions.setAtLeastOneApprovalStep")),
+  });
+}
 
-export type ApprovalFlowStepInput = z.infer<typeof flowStepInput>;
+export type ApprovalFlowStepInput = z.infer<
+  ReturnType<typeof flowStepInputSchema>
+>;
 
 /**
  * 承認フローの保存（全段を置き換える）。
@@ -448,11 +565,14 @@ export async function saveApprovalFlow(
   targetType: string,
   steps: ApprovalFlowStepInput[],
 ): Promise<ActionResult> {
+  const tr = await getTranslations();
   const authz = await checkPermission("master", "UPDATE");
   if (!authz.ok) return actionError(authz.error);
-  const parsed = flowInput.safeParse({ targetType, steps });
+  const parsed = flowInputSchema(tr).safeParse({ targetType, steps });
   if (!parsed.success) {
-    return actionError(parsed.error.issues[0]?.message ?? "入力が不正です");
+    return actionError(
+      parsed.error.issues[0]?.message ?? tr("common.invalidInput"),
+    );
   }
   const v = parsed.data;
   // 画面と同じ検証をサーバー側でも通す（lib/approval-flow）
@@ -516,7 +636,13 @@ export async function saveApprovalFlow(
     revalidatePath(`${BASE_PATH}/flows/${v.targetType}`);
     return actionOk();
   } catch (e) {
-    return actionError(prismaErrorMessage(e, "承認フローの保存に失敗しました"));
+    return actionError(
+      prismaErrorMessage(
+        e,
+        tr("master.approvalSettingsActions.flowSaveFailed"),
+        tr,
+      ),
+    );
   }
 }
 
@@ -528,6 +654,7 @@ export async function updateGroupMemberValidity(
   userId: string,
   period?: { validFrom: string; validUntil: string; note?: string },
 ): Promise<ActionResult> {
+  const tr = await getTranslations();
   const authz = await checkPermission("master", "UPDATE");
   if (!authz.ok) return actionError(authz.error);
   const periodError = validateMemberPeriod({
@@ -550,14 +677,26 @@ export async function updateGroupMemberValidity(
       recordId: String(groupId),
       after: {
         note: period
-          ? `メンバー「${await memberLabel(userId)}」の期間を ${period.validFrom}〜${period.validUntil} に変更`
-          : `メンバー「${await memberLabel(userId)}」を常任に変更`,
+          ? tr("master.approvalSettingsActions.memberPeriodChangedAudit", {
+              name: await memberLabel(userId),
+              from: period.validFrom,
+              until: period.validUntil,
+            })
+          : tr("master.approvalSettingsActions.memberSetToPermanentAudit", {
+              name: await memberLabel(userId),
+            }),
       },
     });
     revalidate(groupId);
     return actionOk();
   } catch (e) {
-    return actionError(prismaErrorMessage(e, "在籍期間の更新に失敗しました"));
+    return actionError(
+      prismaErrorMessage(
+        e,
+        tr("master.approvalSettingsActions.memberPeriodUpdateFailed"),
+        tr,
+      ),
+    );
   }
 }
 
@@ -568,24 +707,34 @@ export async function updateGroupMemberValidity(
 // 検証は lib/approval-conditions.ts が唯一の定義。監査は recordId =
 // `<target_type>#<rule id>` で残す。
 
-const flowConditionInput = z.object({
-  field: z.string().min(1, "条件の項目を選択してください"),
-  op: z.enum(["eq", "ne", "gte", "lte"]),
-  value: z.union([z.string(), z.number()]),
-});
+function flowConditionInputSchema(
+  tr: Awaited<ReturnType<typeof getTranslations>>,
+) {
+  return z.object({
+    field: z
+      .string()
+      .min(1, tr("master.approvalSettingsActions.selectAConditionField")),
+    op: z.enum(["eq", "ne", "gte", "lte"]),
+    value: z.union([z.string(), z.number()]),
+  });
+}
 
-const flowRuleInput = z.object({
-  targetType: z.enum(APPROVAL_TARGET_TYPES),
-  nameJa: z.string().min(1, "ルール名（日本語）を入力してください"),
-  nameTranslations: z.record(z.string(), z.string()).optional(),
-  conditions: z.array(flowConditionInput),
-  steps: z
-    .array(flowStepInput)
-    .min(1, "承認ステップを 1 段以上設定してください"),
-});
+function flowRuleInputSchema(tr: Awaited<ReturnType<typeof getTranslations>>) {
+  return z.object({
+    targetType: z.enum(APPROVAL_TARGET_TYPES),
+    nameJa: z
+      .string()
+      .min(1, tr("master.approvalFlows.enterTheRuleNameInJapanese")),
+    nameTranslations: z.record(z.string(), z.string()).optional(),
+    conditions: z.array(flowConditionInputSchema(tr)),
+    steps: z
+      .array(flowStepInputSchema(tr))
+      .min(1, tr("master.approvalSettingsActions.setAtLeastOneApprovalStep")),
+  });
+}
 
 export type ApprovalFlowRuleInput = Omit<
-  z.infer<typeof flowRuleInput>,
+  z.infer<ReturnType<typeof flowRuleInputSchema>>,
   "targetType"
 >;
 
@@ -600,11 +749,14 @@ export async function saveApprovalFlowRule(
   ruleId: number | null,
   input: ApprovalFlowRuleInput,
 ): Promise<ActionResult<{ ruleId: number }>> {
+  const tr = await getTranslations();
   const authz = await checkPermission("master", "UPDATE");
   if (!authz.ok) return actionError(authz.error);
-  const parsed = flowRuleInput.safeParse({ targetType, ...input });
+  const parsed = flowRuleInputSchema(tr).safeParse({ targetType, ...input });
   if (!parsed.success) {
-    return actionError(parsed.error.issues[0]?.message ?? "入力が不正です");
+    return actionError(
+      parsed.error.issues[0]?.message ?? tr("common.invalidInput"),
+    );
   }
   const v = parsed.data;
   // 画面と同じ検証をサーバー側でも通す（段: approval-flow / 条件: approval-conditions）
@@ -656,7 +808,9 @@ export async function saveApprovalFlowRule(
           },
         });
         if (updated.count === 0) {
-          throw new Error("GUARD:対象のルールが見つかりません");
+          throw new Error(
+            `GUARD:${tr("master.approvalSettingsActions.ruleNotFound")}`,
+          );
         }
         id = ruleId;
         await tx.approvalFlowRuleStep.deleteMany({ where: { ruleId: id } });
@@ -694,7 +848,11 @@ export async function saveApprovalFlowRule(
       return actionError(e.message.slice("GUARD:".length));
     }
     return actionError(
-      prismaErrorMessage(e, "条件付きフローの保存に失敗しました"),
+      prismaErrorMessage(
+        e,
+        tr("master.approvalSettingsActions.conditionalFlowSaveFailed"),
+        tr,
+      ),
     );
   }
 }
@@ -704,6 +862,7 @@ export async function deleteApprovalFlowRule(
   targetType: string,
   ruleId: number,
 ): Promise<ActionResult> {
+  const tr = await getTranslations();
   const authz = await checkPermission("master", "UPDATE");
   if (!authz.ok) return actionError(authz.error);
   try {
@@ -711,7 +870,8 @@ export async function deleteApprovalFlowRule(
       where: { id: ruleId, targetType },
       select: { name: true, conditions: true },
     });
-    if (!prior) return actionError("対象のルールが見つかりません");
+    if (!prior)
+      return actionError(tr("master.approvalSettingsActions.ruleNotFound"));
     await prisma.approvalFlowRule.delete({ where: { id: ruleId } });
     await recordAudit({
       action: "DELETE",
@@ -726,7 +886,11 @@ export async function deleteApprovalFlowRule(
     return actionOk();
   } catch (e) {
     return actionError(
-      prismaErrorMessage(e, "条件付きフローの削除に失敗しました"),
+      prismaErrorMessage(
+        e,
+        tr("master.approvalSettingsActions.conditionalFlowDeleteFailed"),
+        tr,
+      ),
     );
   }
 }
@@ -737,6 +901,7 @@ export async function toggleApprovalFlowRule(
   ruleId: number,
   isActive: boolean,
 ): Promise<ActionResult> {
+  const tr = await getTranslations();
   const authz = await checkPermission("master", "UPDATE");
   if (!authz.ok) return actionError(authz.error);
   try {
@@ -745,7 +910,7 @@ export async function toggleApprovalFlowRule(
       data: { isActive },
     });
     if (updated.count === 0) {
-      return actionError("対象のルールが見つかりません");
+      return actionError(tr("master.approvalSettingsActions.ruleNotFound"));
     }
     await recordAudit({
       action: "UPDATE",
@@ -756,7 +921,13 @@ export async function toggleApprovalFlowRule(
     revalidateFlow(targetType);
     return actionOk();
   } catch (e) {
-    return actionError(prismaErrorMessage(e, "切り替えに失敗しました"));
+    return actionError(
+      prismaErrorMessage(
+        e,
+        tr("master.approvalSettingsActions.toggleFailed"),
+        tr,
+      ),
+    );
   }
 }
 
@@ -766,6 +937,7 @@ export async function moveApprovalFlowRule(
   ruleId: number,
   direction: "up" | "down",
 ): Promise<ActionResult> {
+  const tr = await getTranslations();
   const authz = await checkPermission("master", "UPDATE");
   if (!authz.ok) return actionError(authz.error);
   try {
@@ -775,7 +947,8 @@ export async function moveApprovalFlowRule(
       select: { id: true },
     });
     const index = rows.findIndex((r) => r.id === ruleId);
-    if (index < 0) return actionError("対象のルールが見つかりません");
+    if (index < 0)
+      return actionError(tr("master.approvalSettingsActions.ruleNotFound"));
     const to = index + (direction === "up" ? -1 : 1);
     if (to < 0 || to >= rows.length) return actionOk(); // 端 — 何もしない
     const order = [...rows];
@@ -791,7 +964,13 @@ export async function moveApprovalFlowRule(
     revalidateFlow(targetType);
     return actionOk();
   } catch (e) {
-    return actionError(prismaErrorMessage(e, "並べ替えに失敗しました"));
+    return actionError(
+      prismaErrorMessage(
+        e,
+        tr("master.approvalSettingsActions.reorderFailed"),
+        tr,
+      ),
+    );
   }
 }
 
@@ -804,13 +983,16 @@ export async function setApprovalApplyMode(
   targetType: string,
   applyMode: "PRE" | "POST",
 ): Promise<ActionResult> {
+  const tr = await getTranslations();
   const authz = await checkPermission("master", "UPDATE");
   if (!authz.ok) return actionError(authz.error);
   if (!APPLY_MODE_TARGETS.includes(targetType as ApprovalTargetType)) {
-    return actionError("この書類種別では適用モードを設定できません");
+    return actionError(
+      tr("master.approvalSettingsActions.applyModeNotSupportedForTargetType"),
+    );
   }
   if (applyMode !== "PRE" && applyMode !== "POST") {
-    return actionError("適用モードが不正です");
+    return actionError(tr("master.approvalSettingsActions.invalidApplyMode"));
   }
   try {
     const actor = await getCurrentActorId();
@@ -834,6 +1016,12 @@ export async function setApprovalApplyMode(
     revalidatePath(`${BASE_PATH}/flows/${targetType}`);
     return actionOk();
   } catch (e) {
-    return actionError(prismaErrorMessage(e, "適用モードの保存に失敗しました"));
+    return actionError(
+      prismaErrorMessage(
+        e,
+        tr("master.approvalSettingsActions.applyModeSaveFailed"),
+        tr,
+      ),
+    );
   }
 }

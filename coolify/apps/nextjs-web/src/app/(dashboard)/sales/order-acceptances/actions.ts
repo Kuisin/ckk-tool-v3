@@ -19,6 +19,7 @@
 
 import { type Access, rowInScope } from "@ckk/authz-core";
 import { revalidatePath } from "next/cache";
+import { getTranslations } from "next-intl/server";
 import { z } from "zod";
 import {
   actOnCurrentStep,
@@ -62,6 +63,8 @@ const BASE_PATH = "/sales/order-acceptances";
 const SALES_ORDERS_PATH = "/sales/order-lines";
 const APPROVALS_PATH = "/general/tasks";
 
+type Tr = Awaited<ReturnType<typeof getTranslations>>;
+
 function revalidate(number?: string) {
   revalidatePath(BASE_PATH);
   revalidatePath(APPROVALS_PATH);
@@ -77,8 +80,6 @@ const trimOrNull = (v: string | null | undefined) => {
 function keyOf(number: string): DocKey | null {
   return parseDocKey(number.trim(), "ORD");
 }
-
-const SCOPE_DENIED = "この操作の権限がありません（対象範囲外）";
 
 /**
  * 対象注文請書がスコープ内か（OWN 行チェック）。ALL は素通し。
@@ -102,47 +103,67 @@ async function acceptanceInScope(
 
 const orderTypeEnum = z.enum(["PRODUCTION", "TEST", "SAMPLE", "OTHER"]);
 
-const itemInput = z.object({
-  /** 製品マスタ内部 id（文字列）。null = 未突合（productText のみ）。 */
-  productId: z.string().nullable(),
-  productText: z.string().nullable(),
-  orderType: orderTypeEnum,
-  quantity: z.number().int().min(1, "数量は1以上"),
-  unitPrice: z.number().min(0, "単価は0以上").nullable(),
-  deliveryDate: z.string().nullable(),
-  notes: z.string().nullable(),
-});
+function itemInputSchema(tr: Tr) {
+  return z.object({
+    /** 製品マスタ内部 id（文字列）。null = 未突合（productText のみ）。 */
+    productId: z.string().nullable(),
+    productText: z.string().nullable(),
+    orderType: orderTypeEnum,
+    quantity: z
+      .number()
+      .int()
+      .min(1, tr("sales.orderAcceptanceActions.quantityMin1")),
+    unitPrice: z
+      .number()
+      .min(0, tr("sales.orderAcceptanceActions.unitPriceMin0"))
+      .nullable(),
+    deliveryDate: z.string().nullable(),
+    notes: z.string().nullable(),
+  });
+}
 
-const draftInput = z.object({
-  customerBpId: z.string().nullable(),
-  // 営業担当 — 顧客の担当一覧（bp_sales_reps）から選ぶ。未指定のまま顧客を
-  // 変えたときは、その顧客の主担当を既定として入れる（lib/sales-rep）。
-  salesRepId: z.string().nullable().optional(),
-  // 出荷先（顧客と異なり得る取引先。任意）
-  shipToBpId: z.string().nullable().optional(),
-  // 配送方法（通常配送 / ユーザー直送）。省略時は通常配送。
-  deliveryMethod: z.enum(["NORMAL", "DIRECT_TO_USER"]).default("NORMAL"),
-  // エンドユーザー（最終需要家）— ユーザー直送では必須（headerRefsError で強制）
-  endUserBpId: z.string().nullable().optional(),
-  // 担当拠点（任意）
-  assignedPlantId: z.number().int().positive().nullable().optional(),
-  // 出荷作業場所（作業場所マスタ MS0D。任意）
-  shippingWorkLocationId: z.number().int().positive().nullable().optional(),
-  customerOrderRef: z.string().nullable(),
-  // 参照する見積書番号 QOT-YYYYMM-NNNNN（任意 — P2-2 トレーサビリティ）
-  quoteNumber: z.string().nullable().optional(),
-  orderDate: z.string().nullable(),
-  notes: z.string().nullable(),
-  items: z.array(itemInput),
-});
+function draftInputSchema(tr: Tr) {
+  return z.object({
+    customerBpId: z.string().nullable(),
+    // 営業担当 — 顧客の担当一覧（bp_sales_reps）から選ぶ。未指定のまま顧客を
+    // 変えたときは、その顧客の主担当を既定として入れる（lib/sales-rep）。
+    salesRepId: z.string().nullable().optional(),
+    // 出荷先（顧客と異なり得る取引先。任意）
+    shipToBpId: z.string().nullable().optional(),
+    // 配送方法（通常配送 / ユーザー直送）。省略時は通常配送。
+    deliveryMethod: z.enum(["NORMAL", "DIRECT_TO_USER"]).default("NORMAL"),
+    // エンドユーザー（最終需要家）— ユーザー直送では必須（headerRefsError で強制）
+    endUserBpId: z.string().nullable().optional(),
+    // 担当拠点（任意）
+    assignedPlantId: z.number().int().positive().nullable().optional(),
+    // 出荷作業場所（作業場所マスタ MS0D。任意）
+    shippingWorkLocationId: z.number().int().positive().nullable().optional(),
+    customerOrderRef: z.string().nullable(),
+    // 参照する見積書番号 QOT-YYYYMM-NNNNN（任意 — P2-2 トレーサビリティ）
+    quoteNumber: z.string().nullable().optional(),
+    orderDate: z.string().nullable(),
+    notes: z.string().nullable(),
+    items: z.array(itemInputSchema(tr)),
+  });
+}
 
-const manualInput = draftInput.extend({
-  customerBpId: z.string().min(1, "顧客を選択してください"),
-  items: z.array(itemInput).min(1, "明細を1件以上追加してください"),
-});
+function manualInputSchema(tr: Tr) {
+  return draftInputSchema(tr).extend({
+    customerBpId: z
+      .string()
+      .min(1, tr("sales.orderAcceptances.selectACustomer")),
+    items: z
+      .array(itemInputSchema(tr))
+      .min(1, tr("common.addAtLeastOneLineItem")),
+  });
+}
 
-export type OrderAcceptanceDraftInput = z.infer<typeof draftInput>;
-export type OrderAcceptanceManualInput = z.infer<typeof manualInput>;
+export type OrderAcceptanceDraftInput = z.infer<
+  ReturnType<typeof draftInputSchema>
+>;
+export type OrderAcceptanceManualInput = z.infer<
+  ReturnType<typeof manualInputSchema>
+>;
 
 /** 見積書番号（QOT-…）→ 複合キー。空・不正は null。 */
 function quoteKeyOf(quoteNumber: string | null | undefined) {
@@ -159,39 +180,43 @@ function quoteKeyOf(quoteNumber: string | null | undefined) {
  * いずれも任意項目 — 指定されているものだけを検証し、問題があれば
  * エラーメッセージを返す（null = OK）。
  */
-async function headerRefsError(v: {
-  shipToBpId?: string | null;
-  deliveryMethod?: "NORMAL" | "DIRECT_TO_USER";
-  endUserBpId?: string | null;
-  assignedPlantId?: number | null;
-  shippingWorkLocationId?: number | null;
-}): Promise<string | null> {
+async function headerRefsError(
+  tr: Tr,
+  v: {
+    shipToBpId?: string | null;
+    deliveryMethod?: "NORMAL" | "DIRECT_TO_USER";
+    endUserBpId?: string | null;
+    assignedPlantId?: number | null;
+    shippingWorkLocationId?: number | null;
+  },
+): Promise<string | null> {
   const shipToBpId = trimOrNull(v.shipToBpId);
   if (shipToBpId) {
     const bp = await prisma.businessPartner.findUnique({
       where: { id: shipToBpId },
       select: { isActive: true },
     });
-    if (!bp?.isActive) return "出荷先の取引先が存在しないか無効です";
+    if (!bp?.isActive) return tr("sales.orderAcceptanceActions.shipToInvalid");
   }
   // ユーザー直送は届け先（エンドユーザー）が無いと出荷・納品書まで進めない。
   const endUserBpId = trimOrNull(v.endUserBpId);
   if (v.deliveryMethod === "DIRECT_TO_USER" && !endUserBpId) {
-    return "ユーザー直送ではエンドユーザーの指定が必要です";
+    return tr("sales.orderAcceptanceActions.directToUserRequiresEndUser");
   }
   if (endUserBpId) {
     const bp = await prisma.businessPartner.findUnique({
       where: { id: endUserBpId },
       select: { isActive: true },
     });
-    if (!bp?.isActive) return "エンドユーザーの取引先が存在しないか無効です";
+    if (!bp?.isActive) return tr("sales.orderAcceptanceActions.endUserInvalid");
   }
   if (v.assignedPlantId != null) {
     const plant = await prisma.plant.findUnique({
       where: { id: v.assignedPlantId },
       select: { isActive: true },
     });
-    if (!plant?.isActive) return "担当拠点が存在しないか無効です";
+    if (!plant?.isActive)
+      return tr("sales.orderAcceptanceActions.assignedPlantInvalid");
   }
   if (v.shippingWorkLocationId != null) {
     const loc = await prisma.workLocation.findUnique({
@@ -199,7 +224,7 @@ async function headerRefsError(v: {
       include: { group: { select: { isActive: true } } },
     });
     if (!loc?.isActive || !loc.group.isActive) {
-      return "出荷作業場所が存在しないか無効です";
+      return tr("sales.orderAcceptanceActions.shippingWorkLocationInvalid");
     }
   }
   return null;
@@ -229,21 +254,26 @@ function buildItemCreates(items: OrderAcceptanceDraftInput["items"]) {
  * （GPU は 1 件ずつ）。結果は行の状態（取込中 → 下書き / 抽出失敗）で見る。
  */
 export async function retryExtraction(number: string): Promise<ActionResult> {
+  const tr = await getTranslations();
   const key = keyOf(number);
-  if (!key) return actionError("注文請書番号が不正です");
+  if (!key)
+    return actionError(tr("sales.orderAcceptanceActions.invalidNumber"));
   const authz = await checkPermission("order_acceptance", "UPDATE");
   if (!authz.ok) return actionError(authz.error);
   if (!(await acceptanceInScope(authz.access, authz.userId, key))) {
-    return actionError(SCOPE_DENIED);
+    return actionError(tr("sales.orderAcceptanceActions.scopeDenied"));
   }
   try {
     const prior = await prisma.orderAcceptance.findUnique({
       where: { yearMonth_seq: key },
       select: { status: true },
     });
-    if (!prior) return actionError("対象の注文請書が見つかりません");
+    if (!prior)
+      return actionError(tr("sales.orderAcceptanceActions.targetNotFound"));
     if (prior.status !== "IMPORT") {
-      return actionError("取込中（未抽出）の注文請書のみ再抽出できます");
+      return actionError(
+        tr("sales.orderAcceptanceActions.onlyImportCanRetryExtraction"),
+      );
     }
     // 前回のエラー表示を消してから積む（画面上は「取込中」に戻る）。
     await prisma.orderAcceptance.update({
@@ -254,7 +284,13 @@ export async function retryExtraction(number: string): Promise<ActionResult> {
     revalidate(number);
     return actionOk();
   } catch (e) {
-    return actionError(prismaErrorMessage(e, "再抽出に失敗しました"));
+    return actionError(
+      prismaErrorMessage(
+        e,
+        tr("sales.orderAcceptanceActions.retryExtractionFailed"),
+        tr,
+      ),
+    );
   }
 }
 
@@ -267,21 +303,26 @@ export async function retryExtraction(number: string): Promise<ActionResult> {
  * 書き込まない）ので、切り替えたあとの入力が消えることはない。
  */
 export async function takeOverManually(number: string): Promise<ActionResult> {
+  const tr = await getTranslations();
   const key = keyOf(number);
-  if (!key) return actionError("注文請書番号が不正です");
+  if (!key)
+    return actionError(tr("sales.orderAcceptanceActions.invalidNumber"));
   const authz = await checkPermission("order_acceptance", "UPDATE");
   if (!authz.ok) return actionError(authz.error);
   if (!(await acceptanceInScope(authz.access, authz.userId, key))) {
-    return actionError(SCOPE_DENIED);
+    return actionError(tr("sales.orderAcceptanceActions.scopeDenied"));
   }
   try {
     const prior = await prisma.orderAcceptance.findUnique({
       where: { yearMonth_seq: key },
       select: { status: true },
     });
-    if (!prior) return actionError("対象の注文請書が見つかりません");
+    if (!prior)
+      return actionError(tr("sales.orderAcceptanceActions.targetNotFound"));
     if (prior.status !== "IMPORT") {
-      return actionError("取込中の注文請書のみ手入力へ切り替えられます");
+      return actionError(
+        tr("sales.orderAcceptanceActions.onlyImportCanTakeOverManually"),
+      );
     }
     await prisma.orderAcceptance.update({
       where: { yearMonth_seq: key },
@@ -293,12 +334,21 @@ export async function takeOverManually(number: string): Promise<ActionResult> {
       tableName: "order_acceptances",
       recordId: number,
       before: { status: "IMPORT" },
-      after: { status: "DRAFT", note: "自動抽出を待たず手入力へ切り替え" },
+      after: {
+        status: "DRAFT",
+        note: tr("sales.orderAcceptanceActions.takenOverManually"),
+      },
     });
     revalidate(number);
     return actionOk();
   } catch (e) {
-    return actionError(prismaErrorMessage(e, "切り替えに失敗しました"));
+    return actionError(
+      prismaErrorMessage(
+        e,
+        tr("sales.orderAcceptanceActions.takeOverFailed"),
+        tr,
+      ),
+    );
   }
 }
 
@@ -309,16 +359,20 @@ export async function saveDraft(
   number: string,
   payload: OrderAcceptanceDraftInput,
 ): Promise<ActionResult> {
+  const tr = await getTranslations();
   const key = keyOf(number);
-  if (!key) return actionError("注文請書番号が不正です");
-  const parsed = draftInput.safeParse(payload);
+  if (!key)
+    return actionError(tr("sales.orderAcceptanceActions.invalidNumber"));
+  const parsed = draftInputSchema(tr).safeParse(payload);
   if (!parsed.success) {
-    return actionError(parsed.error.issues[0]?.message ?? "入力が不正です");
+    return actionError(
+      parsed.error.issues[0]?.message ?? tr("common.invalidInput"),
+    );
   }
   const authz = await checkPermission("order_acceptance", "UPDATE");
   if (!authz.ok) return actionError(authz.error);
   if (!(await acceptanceInScope(authz.access, authz.userId, key))) {
-    return actionError(SCOPE_DENIED);
+    return actionError(tr("sales.orderAcceptanceActions.scopeDenied"));
   }
   const v = parsed.data;
   try {
@@ -341,8 +395,9 @@ export async function saveDraft(
         items: { select: { productId: true, productText: true } },
       },
     });
-    if (!prior) return actionError("対象の注文請書が見つかりません");
-    const refsError = await headerRefsError(v);
+    if (!prior)
+      return actionError(tr("sales.orderAcceptanceActions.targetNotFound"));
+    const refsError = await headerRefsError(tr, v);
     if (refsError) return actionError(refsError);
     const creates = buildItemCreates(v.items);
     const customerBpId = trimOrNull(v.customerBpId);
@@ -444,7 +499,13 @@ export async function saveDraft(
     revalidate(number);
     return actionOk();
   } catch (e) {
-    return actionError(prismaErrorMessage(e, "注文請書の保存に失敗しました"));
+    return actionError(
+      prismaErrorMessage(
+        e,
+        tr("sales.orderAcceptanceActions.saveDraftFailed"),
+        tr,
+      ),
+    );
   }
 }
 
@@ -462,12 +523,14 @@ export async function submitForApproval(
   number: string,
   acknowledgePriceDiff = false,
 ): Promise<ActionResult> {
+  const tr = await getTranslations();
   const key = keyOf(number);
-  if (!key) return actionError("注文請書番号が不正です");
+  if (!key)
+    return actionError(tr("sales.orderAcceptanceActions.invalidNumber"));
   const authz = await checkPermission("order_acceptance", "UPDATE");
   if (!authz.ok) return actionError(authz.error);
   if (!(await acceptanceInScope(authz.access, authz.userId, key))) {
-    return actionError(SCOPE_DENIED);
+    return actionError(tr("sales.orderAcceptanceActions.scopeDenied"));
   }
   try {
     const prior = await prisma.orderAcceptance.findUnique({
@@ -483,9 +546,12 @@ export async function submitForApproval(
         },
       },
     });
-    if (!prior) return actionError("対象の注文請書が見つかりません");
+    if (!prior)
+      return actionError(tr("sales.orderAcceptanceActions.targetNotFound"));
     if (prior.status !== "DRAFT") {
-      return actionError("下書きの注文請書のみ承認依頼できます");
+      return actionError(
+        tr("sales.orderAcceptanceActions.onlyDraftCanRequestApproval"),
+      );
     }
     // 確定と同じ完成条件を入口で確かめる（lib/order-acceptance-readiness）。
     // 画面のボタンも同じ判定で押せなくなっているので、ここに来るのは
@@ -501,7 +567,9 @@ export async function submitForApproval(
     });
     if (!readiness.ok) {
       return actionError(
-        `承認依頼できません: ${readinessSummary(readiness.issues)}`,
+        tr("sales.orderAcceptanceActions.readinessIssues", {
+          summary: readinessSummary(readiness.issues),
+        }),
       );
     }
     // 価格照合はサーバー側で必ず再計算する（クライアント表示値は信用しない）。
@@ -509,7 +577,9 @@ export async function submitForApproval(
     const diffLines = priceDiffSummary(priceCheck);
     if (priceCheck.diffCount > 0 && !acknowledgePriceDiff) {
       return actionError(
-        `価格差異があります: ${diffLines.join(" / ")}（差異を確認のうえ再実行）`,
+        tr("sales.orderAcceptanceActions.priceDiffFound", {
+          diffs: diffLines.join(" / "),
+        }),
       );
     }
     // フローが無いと依頼を出しても誰も承認できないので、状態を変える前に確かめる
@@ -525,7 +595,7 @@ export async function submitForApproval(
       targetId: number,
     });
     if (!started.ok)
-      return actionError(started.error ?? "承認依頼に失敗しました");
+      return actionError(started.error ?? tr("common.approvalRequestFailed"));
     await recordAudit({
       action: "UPDATE",
       tableName: "order_acceptances",
@@ -535,7 +605,12 @@ export async function submitForApproval(
         status: "REQUESTED",
         ...(priceCheck.diffCount > 0
           ? {
-              note: `価格差異 ${priceCheck.diffCount} 件を承認者確認前提で依頼`,
+              note: tr(
+                "sales.orderAcceptanceActions.priceDiffAcknowledgedNote",
+                {
+                  count: priceCheck.diffCount,
+                },
+              ),
               priceDiffs: diffLines,
             }
           : {}),
@@ -544,34 +619,40 @@ export async function submitForApproval(
     revalidate(number);
     return actionOk();
   } catch (e) {
-    return actionError(prismaErrorMessage(e, "承認依頼に失敗しました"));
+    return actionError(
+      prismaErrorMessage(e, tr("common.approvalRequestFailed"), tr),
+    );
   }
 }
 
 /** 承認 — 現在の段に承認を記録し、全段通過で APPROVED。 */
 export async function approveAcceptance(number: string): Promise<ActionResult> {
+  const tr = await getTranslations();
   const key = keyOf(number);
-  if (!key) return actionError("注文請書番号が不正です");
+  if (!key)
+    return actionError(tr("sales.orderAcceptanceActions.invalidNumber"));
   const authz = await checkApprovalDocAccess("order_acceptance");
   if (!authz.ok) return actionError(authz.error);
   if (!(await acceptanceInScope(authz.access, authz.userId, key))) {
-    return actionError(SCOPE_DENIED);
+    return actionError(tr("sales.orderAcceptanceActions.scopeDenied"));
   }
   try {
     const prior = await prisma.orderAcceptance.findUnique({
       where: { yearMonth_seq: key },
       select: { status: true },
     });
-    if (!prior) return actionError("対象の注文請書が見つかりません");
+    if (!prior)
+      return actionError(tr("sales.orderAcceptanceActions.targetNotFound"));
     if (prior.status !== "REQUESTED") {
-      return actionError("承認依頼中の注文請書ではありません");
+      return actionError(tr("sales.orderAcceptanceActions.notPendingApproval"));
     }
     const acted = await actOnCurrentStep({
       targetType: "order_acceptances",
       targetId: number,
       action: "APPROVED",
     });
-    if (!acted.ok) return actionError(acted.error ?? "承認の権限がありません");
+    if (!acted.ok)
+      return actionError(acted.error ?? tr("common.noApprovalPermission"));
     // 全段を通過して初めて APPROVED。途中の段は REQUESTED のまま進む。
     if (!acted.flowCompleted) {
       await recordAudit({
@@ -580,8 +661,10 @@ export async function approveAcceptance(number: string): Promise<ActionResult> {
         recordId: number,
         after: {
           note: acted.stepClosed
-            ? "承認（次の段へ）"
-            : `承認（この段の残り ${acted.remaining} 名）`,
+            ? tr("common.approvalNextStep")
+            : tr("common.approvalRemainingMembers", {
+                count: acted.remaining,
+              }),
         },
       });
       revalidate(number);
@@ -601,7 +684,7 @@ export async function approveAcceptance(number: string): Promise<ActionResult> {
     revalidate(number);
     return actionOk();
   } catch (e) {
-    return actionError(prismaErrorMessage(e, "承認に失敗しました"));
+    return actionError(prismaErrorMessage(e, tr("common.couldNotApprove"), tr));
   }
 }
 
@@ -610,23 +693,26 @@ export async function rejectAcceptance(
   number: string,
   reason: string,
 ): Promise<ActionResult> {
+  const tr = await getTranslations();
   const key = keyOf(number);
-  if (!key) return actionError("注文請書番号が不正です");
+  if (!key)
+    return actionError(tr("sales.orderAcceptanceActions.invalidNumber"));
   const trimmed = reason.trim();
-  if (!trimmed) return actionError("差し戻し理由を入力してください");
+  if (!trimmed) return actionError(tr("common.enterAReasonForSendingIt"));
   const authz = await checkApprovalDocAccess("order_acceptance");
   if (!authz.ok) return actionError(authz.error);
   if (!(await acceptanceInScope(authz.access, authz.userId, key))) {
-    return actionError(SCOPE_DENIED);
+    return actionError(tr("sales.orderAcceptanceActions.scopeDenied"));
   }
   try {
     const prior = await prisma.orderAcceptance.findUnique({
       where: { yearMonth_seq: key },
       select: { status: true },
     });
-    if (!prior) return actionError("対象の注文請書が見つかりません");
+    if (!prior)
+      return actionError(tr("sales.orderAcceptanceActions.targetNotFound"));
     if (prior.status !== "REQUESTED") {
-      return actionError("承認依頼中の注文請書ではありません");
+      return actionError(tr("sales.orderAcceptanceActions.notPendingApproval"));
     }
     const acted = await actOnCurrentStep({
       targetType: "order_acceptances",
@@ -635,7 +721,7 @@ export async function rejectAcceptance(
       comment: trimmed,
     });
     if (!acted.ok) {
-      return actionError(acted.error ?? "差し戻しの権限がありません");
+      return actionError(acted.error ?? tr("common.noSendBackPermission"));
     }
     await prisma.orderAcceptance.update({
       where: { yearMonth_seq: key },
@@ -651,7 +737,9 @@ export async function rejectAcceptance(
     revalidate(number);
     return actionOk();
   } catch (e) {
-    return actionError(prismaErrorMessage(e, "差し戻しに失敗しました"));
+    return actionError(
+      prismaErrorMessage(e, tr("common.couldNotSendItBack"), tr),
+    );
   }
 }
 
@@ -665,21 +753,27 @@ export async function rejectAcceptance(
 export async function confirmOrderLines(
   number: string,
 ): Promise<ActionResult<{ numbers: string[] }>> {
+  const tr = await getTranslations();
   const key = keyOf(number);
-  if (!key) return actionError("注文請書番号が不正です");
+  if (!key)
+    return actionError(tr("sales.orderAcceptanceActions.invalidNumber"));
   const authz = await checkPermission("order_acceptance", "CREATE");
   if (!authz.ok) return actionError(authz.error);
   if (!(await acceptanceInScope(authz.access, authz.userId, key))) {
-    return actionError(SCOPE_DENIED);
+    return actionError(tr("sales.orderAcceptanceActions.scopeDenied"));
   }
+  const onlyApprovedCanConfirm = tr(
+    "sales.orderAcceptanceActions.onlyApprovedCanConfirm",
+  );
   try {
     const prior = await prisma.orderAcceptance.findUnique({
       where: { yearMonth_seq: key },
       include: { items: { orderBy: { sortOrder: "asc" } } },
     });
-    if (!prior) return actionError("対象の注文請書が見つかりません");
+    if (!prior)
+      return actionError(tr("sales.orderAcceptanceActions.targetNotFound"));
     if (prior.status !== "APPROVED") {
-      return actionError("承認済の注文請書のみ確定できます");
+      return actionError(onlyApprovedCanConfirm);
     }
     // 承認依頼と同じ完成条件（lib/order-acceptance-readiness）。通常は
     // 依頼の時点で満たされているが、承認中に明細が壊れる筋道が無いとは
@@ -695,7 +789,9 @@ export async function confirmOrderLines(
     });
     if (!readiness.ok) {
       return actionError(
-        `確定できません: ${readinessSummary(readiness.issues)}`,
+        tr("sales.orderAcceptanceActions.confirmIssues", {
+          summary: readinessSummary(readiness.issues),
+        }),
       );
     }
 
@@ -707,7 +803,7 @@ export async function confirmOrderLines(
         data: { status: "COMPLETED", completedAt },
       });
       if (updated.count === 0) {
-        throw new Error("承認済の注文請書のみ確定できます");
+        throw new Error(onlyApprovedCanConfirm);
       }
       // 明細行はすでに存在する — 確定は「枝番の採番 + 金額の凍結」だけ。
       // sortOrder 順に 1..N。以後 branch は不変（公開番号 ORD-…-NN の一部）。
@@ -746,7 +842,9 @@ export async function confirmOrderLines(
         tableName: "order_lines",
         recordId: numbers[i],
         after: {
-          note: `注文請書 ${number} の確定`,
+          note: tr("sales.orderAcceptanceActions.orderLineConfirmedNote", {
+            number,
+          }),
           customerBpId: prior.customerBpId,
           productId: it.productId,
           orderType: it.orderType,
@@ -767,21 +865,29 @@ export async function confirmOrderLines(
     revalidatePath(SALES_ORDERS_PATH);
     return actionOk({ numbers });
   } catch (e) {
-    if (e instanceof Error && e.message.includes("確定")) {
+    if (e instanceof Error && e.message === onlyApprovedCanConfirm) {
       return actionError(e.message);
     }
-    return actionError(prismaErrorMessage(e, "注文確定に失敗しました"));
+    return actionError(
+      prismaErrorMessage(
+        e,
+        tr("sales.orderAcceptanceActions.confirmFailed"),
+        tr,
+      ),
+    );
   }
 }
 
 /** アーカイブ — COMPLETED → ARCHIVED。 */
 export async function archiveAcceptance(number: string): Promise<ActionResult> {
+  const tr = await getTranslations();
   const key = keyOf(number);
-  if (!key) return actionError("注文請書番号が不正です");
+  if (!key)
+    return actionError(tr("sales.orderAcceptanceActions.invalidNumber"));
   const authz = await checkPermission("order_acceptance", "UPDATE");
   if (!authz.ok) return actionError(authz.error);
   if (!(await acceptanceInScope(authz.access, authz.userId, key))) {
-    return actionError(SCOPE_DENIED);
+    return actionError(tr("sales.orderAcceptanceActions.scopeDenied"));
   }
   try {
     const updated = await prisma.orderAcceptance.updateMany({
@@ -789,7 +895,9 @@ export async function archiveAcceptance(number: string): Promise<ActionResult> {
       data: { status: "ARCHIVED", archivedAt: new Date() },
     });
     if (updated.count === 0) {
-      return actionError("確定済の注文請書のみアーカイブできます");
+      return actionError(
+        tr("sales.orderAcceptanceActions.onlyCompletedCanArchive"),
+      );
     }
     await recordAudit({
       action: "UPDATE",
@@ -801,7 +909,13 @@ export async function archiveAcceptance(number: string): Promise<ActionResult> {
     revalidate(number);
     return actionOk();
   } catch (e) {
-    return actionError(prismaErrorMessage(e, "アーカイブに失敗しました"));
+    return actionError(
+      prismaErrorMessage(
+        e,
+        tr("sales.orderAcceptanceActions.archiveFailed"),
+        tr,
+      ),
+    );
   }
 }
 
@@ -811,15 +925,18 @@ export async function archiveAcceptance(number: string): Promise<ActionResult> {
 export async function createManualAcceptance(
   payload: OrderAcceptanceManualInput,
 ): Promise<ActionResult<{ number: string }>> {
-  const parsed = manualInput.safeParse(payload);
+  const tr = await getTranslations();
+  const parsed = manualInputSchema(tr).safeParse(payload);
   if (!parsed.success) {
-    return actionError(parsed.error.issues[0]?.message ?? "入力が不正です");
+    return actionError(
+      parsed.error.issues[0]?.message ?? tr("common.invalidInput"),
+    );
   }
   const authz = await checkPermission("order_acceptance", "CREATE");
   if (!authz.ok) return actionError(authz.error);
   const v = parsed.data;
   try {
-    const refsError = await headerRefsError(v);
+    const refsError = await headerRefsError(tr, v);
     if (refsError) return actionError(refsError);
     const shipToBpId = trimOrNull(v.shipToBpId);
     // エンドユーザーは配送方法に依らず保持できる（直送では必須）。
@@ -861,7 +978,7 @@ export async function createManualAcceptance(
       tableName: "order_acceptances",
       recordId: number,
       after: {
-        note: "手入力で作成",
+        note: tr("sales.orderAcceptanceActions.createdManually"),
         customerBpId: v.customerBpId,
         salesRepId,
         shipToBpId,
@@ -876,7 +993,13 @@ export async function createManualAcceptance(
     revalidate(number);
     return actionOk({ number });
   } catch (e) {
-    return actionError(prismaErrorMessage(e, "注文請書の作成に失敗しました"));
+    return actionError(
+      prismaErrorMessage(
+        e,
+        tr("sales.orderAcceptanceActions.createFailed"),
+        tr,
+      ),
+    );
   }
 }
 
@@ -892,23 +1015,34 @@ export async function requestAcceptanceCancel(
   number: string,
   reason: string,
 ): Promise<ActionResult<{ pending: boolean }>> {
+  const tr = await getTranslations();
   const key = keyOf(number);
-  if (!key) return actionError("注文請書番号が不正です");
+  if (!key)
+    return actionError(tr("sales.orderAcceptanceActions.invalidNumber"));
   const authz = await checkPermission("order_acceptance", "UPDATE");
   if (!authz.ok) return actionError(authz.error);
   if (!(await acceptanceInScope(authz.access, authz.userId, key))) {
-    return actionError(SCOPE_DENIED);
+    return actionError(tr("sales.orderAcceptanceActions.scopeDenied"));
   }
   try {
     const result = await submitAcceptanceCancelRequest({ key, reason });
     if (!result.ok) {
-      return actionError(result.errors?.join(" / ") ?? "依頼に失敗しました");
+      return actionError(
+        result.errors?.join(" / ") ??
+          tr("sales.orderAcceptanceActions.cancelRequestFailed"),
+      );
     }
     revalidate(number);
     revalidatePath(SALES_ORDERS_PATH);
     return actionOk({ pending: result.pending ?? false });
   } catch (e) {
-    return actionError(prismaErrorMessage(e, "キャンセル依頼に失敗しました"));
+    return actionError(
+      prismaErrorMessage(
+        e,
+        tr("sales.orderAcceptanceActions.cancelRequestSubmitFailed"),
+        tr,
+      ),
+    );
   }
 }
 
@@ -916,19 +1050,25 @@ export async function requestAcceptanceCancel(
 export async function approveAcceptanceCancel(
   requestId: string,
 ): Promise<ActionResult<{ completed: boolean; applied: boolean }>> {
+  const tr = await getTranslations();
   const authz = await checkApprovalDocAccess("order_acceptance");
   if (!authz.ok) return actionError(authz.error);
   const row = await prisma.orderAcceptanceCancelRequest.findUnique({
     where: { id: requestId },
     select: { status: true, acceptanceYearMonth: true, acceptanceSeq: true },
   });
-  if (!row) return actionError("対象のキャンセル依頼が見つかりません");
+  if (!row)
+    return actionError(
+      tr("sales.orderAcceptanceActions.targetCancelRequestNotFound"),
+    );
   if (row.status !== "PENDING") {
-    return actionError("承認依頼中のキャンセル依頼ではありません");
+    return actionError(
+      tr("sales.orderAcceptanceActions.cancelRequestNotPending"),
+    );
   }
   const key = { yearMonth: row.acceptanceYearMonth, seq: row.acceptanceSeq };
   if (!(await acceptanceInScope(authz.access, authz.userId, key))) {
-    return actionError(SCOPE_DENIED);
+    return actionError(tr("sales.orderAcceptanceActions.scopeDenied"));
   }
   try {
     const acted = await actOnCurrentStep({
@@ -936,7 +1076,8 @@ export async function approveAcceptanceCancel(
       targetId: requestId,
       action: "APPROVED",
     });
-    if (!acted.ok) return actionError(acted.error ?? "承認の権限がありません");
+    if (!acted.ok)
+      return actionError(acted.error ?? tr("common.noApprovalPermission"));
 
     const number = formatDocNumber("ORD", key);
     if (!acted.flowCompleted) {
@@ -951,12 +1092,13 @@ export async function approveAcceptanceCancel(
     revalidatePath(SALES_ORDERS_PATH);
     if (!applied.ok) {
       return actionError(
-        applied.errors?.join(" / ") ?? "キャンセルの適用に失敗しました",
+        applied.errors?.join(" / ") ??
+          tr("sales.orderAcceptanceActions.cancelApplyFailed"),
       );
     }
     return actionOk({ completed: true, applied: true });
   } catch (e) {
-    return actionError(prismaErrorMessage(e, "承認に失敗しました"));
+    return actionError(prismaErrorMessage(e, tr("common.couldNotApprove"), tr));
   }
 }
 
@@ -965,21 +1107,27 @@ export async function rejectAcceptanceCancel(
   requestId: string,
   reason: string,
 ): Promise<ActionResult> {
+  const tr = await getTranslations();
   const authz = await checkApprovalDocAccess("order_acceptance");
   if (!authz.ok) return actionError(authz.error);
   const trimmed = reason.trim();
-  if (!trimmed) return actionError("差し戻し理由を入力してください");
+  if (!trimmed) return actionError(tr("common.enterAReasonForSendingIt"));
   const row = await prisma.orderAcceptanceCancelRequest.findUnique({
     where: { id: requestId },
     select: { status: true, acceptanceYearMonth: true, acceptanceSeq: true },
   });
-  if (!row) return actionError("対象のキャンセル依頼が見つかりません");
+  if (!row)
+    return actionError(
+      tr("sales.orderAcceptanceActions.targetCancelRequestNotFound"),
+    );
   if (row.status !== "PENDING") {
-    return actionError("承認依頼中のキャンセル依頼ではありません");
+    return actionError(
+      tr("sales.orderAcceptanceActions.cancelRequestNotPending"),
+    );
   }
   const key = { yearMonth: row.acceptanceYearMonth, seq: row.acceptanceSeq };
   if (!(await acceptanceInScope(authz.access, authz.userId, key))) {
-    return actionError(SCOPE_DENIED);
+    return actionError(tr("sales.orderAcceptanceActions.scopeDenied"));
   }
   try {
     const acted = await actOnCurrentStep({
@@ -989,7 +1137,7 @@ export async function rejectAcceptanceCancel(
       comment: trimmed,
     });
     if (!acted.ok) {
-      return actionError(acted.error ?? "差し戻しの権限がありません");
+      return actionError(acted.error ?? tr("common.noSendBackPermission"));
     }
     await closeAcceptanceCancelRequest(requestId, "REJECTED");
     const number = formatDocNumber("ORD", key);
@@ -997,11 +1145,17 @@ export async function rejectAcceptanceCancel(
       action: "UPDATE",
       tableName: "order_acceptances",
       recordId: number,
-      after: { note: `キャンセル依頼を差し戻し（${trimmed}）` },
+      after: {
+        note: tr("sales.orderAcceptanceActions.cancelRequestRejectedNote", {
+          reason: trimmed,
+        }),
+      },
     });
     revalidate(number);
     return actionOk();
   } catch (e) {
-    return actionError(prismaErrorMessage(e, "差し戻しに失敗しました"));
+    return actionError(
+      prismaErrorMessage(e, tr("common.couldNotSendItBack"), tr),
+    );
   }
 }

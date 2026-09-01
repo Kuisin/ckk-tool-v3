@@ -23,19 +23,27 @@ export function actionError<T = undefined>(error: string): ActionResult<T> {
   return { ok: false, error };
 }
 
-/** Prisma known error codes → user-facing Japanese message. */
-export function prismaErrorMessage(e: unknown, fallback: string): string {
+/**
+ * Prisma known error codes → user-facing message (locale-aware).
+ * `tr` is the caller's `await getTranslations()` result — Server Actions
+ * are outside React, so there is no hook to reach for the current locale.
+ */
+export function prismaErrorMessage(
+  e: unknown,
+  fallback: string,
+  tr: (key: string) => string,
+): string {
   const code =
     typeof e === "object" && e !== null && "code" in e
       ? String((e as { code: unknown }).code)
       : undefined;
   switch (code) {
     case "P2002":
-      return "同じコードのレコードが既に存在します";
+      return tr("common.duplicateCodeExists");
     case "P2003":
-      return "関連するデータが存在するため実行できません";
+      return tr("common.relatedDataExistsCannotExecute");
     case "P2025":
-      return "対象のレコードが見つかりません";
+      return tr("common.targetRecordNotFound");
     default:
       return fallback;
   }

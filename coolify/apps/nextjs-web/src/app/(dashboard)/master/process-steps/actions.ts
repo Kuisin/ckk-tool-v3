@@ -11,6 +11,7 @@
  */
 
 import { revalidatePath } from "next/cache";
+import { getTranslations } from "next-intl/server";
 import { z } from "zod";
 import { recordAudit } from "@/lib/audit";
 import { checkPermission } from "@/lib/authz";
@@ -24,69 +25,89 @@ import {
 } from "@/lib/server-action";
 import { readWorkLocationTypes } from "@/lib/work-locations";
 
+type Tr = Awaited<ReturnType<typeof getTranslations>>;
+
 const BASE_PATH = "/master/process-steps";
 
 const relationSchema = z.enum(["AND", "OR"]);
 
 // 使用依存の 1 行（is_negation = 排他条件 !）
-const useDependencyInput = z.object({
-  dependsOnStepId: z.number().int().min(1, "依存先の工程を選択してください"),
-  relation: relationSchema,
-  isNegation: z.boolean(),
-  notes: z.string().optional(),
-});
+function usageDependencyInputSchema(tr: Tr) {
+  return z.object({
+    dependsOnStepId: z
+      .number()
+      .int()
+      .min(1, tr("master.processStepsActions.selectDependencyStep")),
+    relation: relationSchema,
+    isNegation: z.boolean(),
+    notes: z.string().optional(),
+  });
+}
 
 // 実行依存の 1 行（排他なし）
-const execDependencyInput = z.object({
-  dependsOnStepId: z.number().int().min(1, "依存先の工程を選択してください"),
-  relation: relationSchema,
-  notes: z.string().optional(),
-});
+function execDependencyInputSchema(tr: Tr) {
+  return z.object({
+    dependsOnStepId: z
+      .number()
+      .int()
+      .min(1, tr("master.processStepsActions.selectDependencyStep")),
+    relation: relationSchema,
+    notes: z.string().optional(),
+  });
+}
 
-const processStepUpdateInput = z.object({
-  nameJa: z.string().min(1, "名称（日本語）を入力してください"),
-  nameTranslations: z.record(z.string(), z.string()).optional(),
-  category: z.enum([
-    "MATERIAL_PREP",
-    "MACHINING",
-    "COATING",
-    "INSPECTION",
-    "APPROVAL",
-    "SHIPPING",
-  ]),
-  executionLocation: z.enum(["INTERNAL", "INTERNAL_OR_OUTSOURCE"]),
-  isSyncCapable: z.boolean(),
-  isInspection: z.boolean(),
-  isApprovalStep: z.boolean(),
-  approvalMinRank: z.string().optional(),
-  quantityTracking: z.enum(["NONE", "FLOW", "INSPECTION"]),
-  // 実行時のロット/伝票コード入力の既定（工程リスト/指示書で上書き可）
-  lotInputMode: z.enum(["REQUIRED", "OPTIONAL", "NONE"]).default("NONE"),
-  // 既定作業時間 (h) — 任意。ルート/指示書ビルダーの初期値
-  defaultWorkHours: z.number().positive().max(9999.99).nullable(),
-  sortOrder: z.number().int(),
-  isActive: z.boolean(),
-  notes: z.string().optional(),
-  useDependencies: z.array(useDependencyInput),
-  execDependencies: z.array(execDependencyInput),
-  // 許可作業場所（種別キー + 個別 id）。両方空 = 無制限。保存時は全置換。
-  allowedLocationTypeKeys: z.array(z.string().min(1)).max(50),
-  allowedLocationIds: z.array(z.number().int().positive()).max(500),
-});
+function processStepUpdateInputSchema(tr: Tr) {
+  return z.object({
+    nameJa: z.string().min(1, tr("common.enterNameInJapanese")),
+    nameTranslations: z.record(z.string(), z.string()).optional(),
+    category: z.enum([
+      "MATERIAL_PREP",
+      "MACHINING",
+      "COATING",
+      "INSPECTION",
+      "APPROVAL",
+      "SHIPPING",
+    ]),
+    executionLocation: z.enum(["INTERNAL", "INTERNAL_OR_OUTSOURCE"]),
+    isSyncCapable: z.boolean(),
+    isInspection: z.boolean(),
+    isApprovalStep: z.boolean(),
+    approvalMinRank: z.string().optional(),
+    quantityTracking: z.enum(["NONE", "FLOW", "INSPECTION"]),
+    // 実行時のロット/伝票コード入力の既定（工程リスト/指示書で上書き可）
+    lotInputMode: z.enum(["REQUIRED", "OPTIONAL", "NONE"]).default("NONE"),
+    // 既定作業時間 (h) — 任意。ルート/指示書ビルダーの初期値
+    defaultWorkHours: z.number().positive().max(9999.99).nullable(),
+    sortOrder: z.number().int(),
+    isActive: z.boolean(),
+    notes: z.string().optional(),
+    useDependencies: z.array(usageDependencyInputSchema(tr)),
+    execDependencies: z.array(execDependencyInputSchema(tr)),
+    // 許可作業場所（種別キー + 個別 id）。両方空 = 無制限。保存時は全置換。
+    allowedLocationTypeKeys: z.array(z.string().min(1)).max(50),
+    allowedLocationIds: z.array(z.number().int().positive()).max(500),
+  });
+}
 
 // 工程コードは作成後不変（識別キー）。例: CYLINDER_MACHINING
-const processStepCreateInput = processStepUpdateInput.extend({
-  code: z
-    .string()
-    .min(1, "工程コードを入力してください")
-    .regex(
-      /^[A-Z][A-Z0-9_]*$/,
-      "工程コードは英大文字はじまりの英大文字・数字・アンダースコアで入力してください",
-    ),
-});
+function processStepCreateInputSchema(tr: Tr) {
+  return processStepUpdateInputSchema(tr).extend({
+    code: z
+      .string()
+      .min(1, tr("master.processStepsActions.enterCode"))
+      .regex(
+        /^[A-Z][A-Z0-9_]*$/,
+        tr("master.processStepsActions.codePatternHint"),
+      ),
+  });
+}
 
-export type ProcessStepUpdateInput = z.infer<typeof processStepUpdateInput>;
-export type ProcessStepCreateInput = z.infer<typeof processStepCreateInput>;
+export type ProcessStepUpdateInput = z.infer<
+  ReturnType<typeof processStepUpdateInputSchema>
+>;
+export type ProcessStepCreateInput = z.infer<
+  ReturnType<typeof processStepCreateInputSchema>
+>;
 
 type DependencyRows = Pick<
   ProcessStepUpdateInput,
@@ -104,25 +125,30 @@ function revalidate(id?: number) {
  * エラー時はメッセージ、問題なければ null を返す。
  */
 async function validateDependencies(
+  tr: Tr,
   selfId: number | null,
   deps: DependencyRows,
 ): Promise<string | null> {
   const groups = [
     {
-      label: "使用依存",
+      label: tr("master.processStepsActions.dependencyGroupUse"),
       ids: deps.useDependencies.map((d) => d.dependsOnStepId),
     },
     {
-      label: "実行依存",
+      label: tr("master.processStepsActions.dependencyGroupExec"),
       ids: deps.execDependencies.map((d) => d.dependsOnStepId),
     },
   ];
   for (const g of groups) {
     if (selfId != null && g.ids.includes(selfId)) {
-      return `${g.label}に自分自身の工程は指定できません`;
+      return tr("master.processStepsActions.selfDependencyNotAllowed", {
+        group: g.label,
+      });
     }
     if (new Set(g.ids).size !== g.ids.length) {
-      return `${g.label}の依存先工程が重複しています`;
+      return tr("master.processStepsActions.duplicateDependencyTarget", {
+        group: g.label,
+      });
     }
   }
   const targetIds = [...new Set(groups.flatMap((g) => g.ids))];
@@ -131,7 +157,7 @@ async function validateDependencies(
       where: { id: { in: targetIds } },
     });
     if (found !== targetIds.length) {
-      return "依存先に存在しない工程が含まれています";
+      return tr("master.processStepsActions.unknownDependencyTarget");
     }
   }
   return null;
@@ -141,10 +167,13 @@ async function validateDependencies(
  * 許可作業場所の整合性チェック（種別キーの存在・場所 id の存在）。
  * エラー時はメッセージ、問題なければ正規化済み（重複除去）の値を返す。
  */
-async function validateAllowedLocations(v: {
-  allowedLocationTypeKeys: string[];
-  allowedLocationIds: number[];
-}): Promise<
+async function validateAllowedLocations(
+  tr: Tr,
+  v: {
+    allowedLocationTypeKeys: string[];
+    allowedLocationIds: number[];
+  },
+): Promise<
   { error: string } | { error: null; typeKeys: string[]; locationIds: number[] }
 > {
   const typeKeys = [...new Set(v.allowedLocationTypeKeys)];
@@ -153,7 +182,11 @@ async function validateAllowedLocations(v: {
     const known = new Set((await readWorkLocationTypes()).map((t) => t.key));
     const unknown = typeKeys.filter((k) => !known.has(k));
     if (unknown.length > 0) {
-      return { error: `存在しない作業場所種別です: ${unknown.join(", ")}` };
+      return {
+        error: tr("master.processStepsActions.unknownWorkLocationType", {
+          keys: unknown.join(", "),
+        }),
+      };
     }
   }
   if (locationIds.length > 0) {
@@ -161,7 +194,9 @@ async function validateAllowedLocations(v: {
       where: { id: { in: locationIds } },
     });
     if (found !== locationIds.length) {
-      return { error: "許可作業場所に存在しない場所が含まれています" };
+      return {
+        error: tr("master.processStepsActions.unknownAllowedLocation"),
+      };
     }
   }
   return { error: null, typeKeys, locationIds };
@@ -187,17 +222,20 @@ function approvalMinRankValue(v: ProcessStepUpdateInput): string | null {
 export async function createProcessStep(
   input: ProcessStepCreateInput,
 ): Promise<ActionResult<{ id: number; code: string }>> {
+  const tr = await getTranslations();
   const authz = await checkPermission("master", "CREATE");
   if (!authz.ok) return actionError(authz.error);
-  const parsed = processStepCreateInput.safeParse(input);
+  const parsed = processStepCreateInputSchema(tr).safeParse(input);
   if (!parsed.success) {
-    return actionError(parsed.error.issues[0]?.message ?? "入力が不正です");
+    return actionError(
+      parsed.error.issues[0]?.message ?? tr("common.invalidInput"),
+    );
   }
   const v = parsed.data;
   try {
-    const depError = await validateDependencies(null, v);
+    const depError = await validateDependencies(tr, null, v);
     if (depError) return actionError(depError);
-    const allowed = await validateAllowedLocations(v);
+    const allowed = await validateAllowedLocations(tr, v);
     if (allowed.error != null) return actionError(allowed.error);
 
     const created = await prisma.$transaction(async (tx) => {
@@ -283,9 +321,11 @@ export async function createProcessStep(
         ? String((e as { code: unknown }).code)
         : undefined;
     if (code === "P2002") {
-      return actionError("同じ工程コードの工程が既に存在します");
+      return actionError(tr("master.processStepsActions.duplicateCode"));
     }
-    return actionError(prismaErrorMessage(e, "工程の作成に失敗しました"));
+    return actionError(
+      prismaErrorMessage(e, tr("master.processStepsActions.createFailed"), tr),
+    );
   }
 }
 
@@ -293,17 +333,20 @@ export async function updateProcessStep(
   id: number,
   input: ProcessStepUpdateInput,
 ): Promise<ActionResult<{ id: number }>> {
+  const tr = await getTranslations();
   const authz = await checkPermission("master", "UPDATE");
   if (!authz.ok) return actionError(authz.error);
-  const parsed = processStepUpdateInput.safeParse(input);
+  const parsed = processStepUpdateInputSchema(tr).safeParse(input);
   if (!parsed.success) {
-    return actionError(parsed.error.issues[0]?.message ?? "入力が不正です");
+    return actionError(
+      parsed.error.issues[0]?.message ?? tr("common.invalidInput"),
+    );
   }
   const v = parsed.data;
   try {
-    const depError = await validateDependencies(id, v);
+    const depError = await validateDependencies(tr, id, v);
     if (depError) return actionError(depError);
-    const allowed = await validateAllowedLocations(v);
+    const allowed = await validateAllowedLocations(tr, v);
     if (allowed.error != null) return actionError(allowed.error);
 
     const prior = await prisma.processStepCatalog.findUnique({
@@ -330,7 +373,8 @@ export async function updateProcessStep(
         },
       },
     });
-    if (!prior) return actionError("対象の工程が見つかりません");
+    if (!prior)
+      return actionError(tr("master.processStepsActions.stepNotFound"));
 
     // 依存行は全置換（deleteMany → createMany）でアトミックに反映する。
     await prisma.$transaction(async (tx) => {
@@ -434,7 +478,9 @@ export async function updateProcessStep(
     revalidate(id);
     return actionOk({ id });
   } catch (e) {
-    return actionError(prismaErrorMessage(e, "工程の更新に失敗しました"));
+    return actionError(
+      prismaErrorMessage(e, tr("master.processStepsActions.updateFailed"), tr),
+    );
   }
 }
 
@@ -442,9 +488,10 @@ export async function setProcessStepsActive(
   ids: number[],
   isActive: boolean,
 ): Promise<ActionResult> {
+  const tr = await getTranslations();
   const authz = await checkPermission("master", "UPDATE");
   if (!authz.ok) return actionError(authz.error);
-  if (ids.length === 0) return actionError("対象が選択されていません");
+  if (ids.length === 0) return actionError(tr("common.noTargetSelected"));
   try {
     await prisma.processStepCatalog.updateMany({
       where: { id: { in: ids } },
@@ -462,14 +509,17 @@ export async function setProcessStepsActive(
     for (const id of ids) revalidatePath(`${BASE_PATH}/${id}`);
     return actionOk();
   } catch (e) {
-    return actionError(prismaErrorMessage(e, "状態の更新に失敗しました"));
+    return actionError(
+      prismaErrorMessage(e, tr("common.statusUpdateFailed"), tr),
+    );
   }
 }
 
 export async function deleteProcessSteps(ids: number[]): Promise<ActionResult> {
+  const tr = await getTranslations();
   const authz = await checkPermission("master", "DELETE");
   if (!authz.ok) return actionError(authz.error);
-  if (ids.length === 0) return actionError("対象が選択されていません");
+  if (ids.length === 0) return actionError(tr("common.noTargetSelected"));
   try {
     // Guard: 削除対象「以外」の工程がこの工程を依存先にしている場合は拒否。
     // （削除対象同士の相互依存はまとめて消えるので許容。）
@@ -486,12 +536,12 @@ export async function deleteProcessSteps(ids: number[]): Promise<ActionResult> {
     ]);
     if (useRefs + execRefs > 0) {
       return actionError(
-        "他の工程がこの工程に依存しているため削除できません。無効化を検討してください。",
+        tr("master.processStepsActions.referencedByOtherStepsCannotDelete"),
       );
     }
     if (templates > 0) {
       return actionError(
-        "この工程に関連する検査表テンプレートが存在するため削除できません。無効化を検討してください。",
+        tr("master.processStepsActions.referencedByTemplateCannotDelete"),
       );
     }
     // 自身が持つ依存行（両側）を先に消してから本体を削除する。
@@ -514,6 +564,8 @@ export async function deleteProcessSteps(ids: number[]): Promise<ActionResult> {
     revalidate();
     return actionOk();
   } catch (e) {
-    return actionError(prismaErrorMessage(e, "工程の削除に失敗しました"));
+    return actionError(
+      prismaErrorMessage(e, tr("master.processStepsActions.deleteFailed"), tr),
+    );
   }
 }

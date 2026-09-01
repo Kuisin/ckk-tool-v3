@@ -14,6 +14,7 @@
  */
 
 import { revalidatePath } from "next/cache";
+import { getTranslations } from "next-intl/server";
 import { z } from "zod";
 import { recordAudit } from "@/lib/audit";
 import { checkPermission } from "@/lib/authz";
@@ -34,185 +35,228 @@ import {
 
 const BASE_PATH = "/master/inspection-templates";
 
-const LOCKED_MESSAGE =
-  "このバージョンは指示書または検査記録で使用中のため変更できません。新バージョンを作成してください";
+type Tr = Awaited<ReturnType<typeof getTranslations>>;
 
 // 編集可能フィールド（code は識別子 — 作成後不変）
-const templateFields = z.object({
-  nameJa: z.string().min(1, "名称（日本語）を入力してください"),
-  nameTranslations: z.record(z.string(), z.string()).optional(),
-  relatedProcessStepId: z.number().int().positive().nullable(),
-  // 対象製品。null = どの製品にも使える（汎用）。
-  productId: z.number().int().positive().nullable(),
-  // ナビゲーション用グループ（任意）。
-  groupId: z.number().int().positive().nullable(),
-  // 検査対象（シート単位）: 全数 / 割合(%) / 本数
-  samplingMode: z.enum(["ALL", "PERCENT", "COUNT"]),
-  samplingValue: z.number().nullable(),
-  // 記録方式（シート単位）: 実測値（製品ごと） / 合格数のみ
-  recordStyle: z.enum(["VALUES", "COUNTS"]),
-  // 印刷レイアウト（寸法測定表 / 外観・工程チェック表）
-  layoutStyle: z.enum(["DIMENSIONAL", "CHECKLIST"]),
-  // VALUES のサンプル呼称（製品1,2,3… / 初品・中間品・最終品）
-  sampleNaming: z.enum(["GENERIC", "INITIAL_MID_FINAL"]),
-  // 検査承認（検収）の宛先 — グループかカスタム（この検査表だけの承認者・
-  // 複数可）のどちらか一方。両方未設定 = 誰でも承認できる（従来どおり）。
-  approvalGroupId: z.number().int().positive().nullable(),
-  approverUserIds: z.array(z.string()).max(50).default([]),
-  isActive: z.boolean(),
-});
+function templateFieldsSchema(tr: Tr) {
+  return z.object({
+    nameJa: z.string().min(1, tr("common.nameJaRequired")),
+    nameTranslations: z.record(z.string(), z.string()).optional(),
+    relatedProcessStepId: z.number().int().positive().nullable(),
+    // 対象製品。null = どの製品にも使える（汎用）。
+    productId: z.number().int().positive().nullable(),
+    // ナビゲーション用グループ（任意）。
+    groupId: z.number().int().positive().nullable(),
+    // 検査対象（シート単位）: 全数 / 割合(%) / 本数
+    samplingMode: z.enum(["ALL", "PERCENT", "COUNT"]),
+    samplingValue: z.number().nullable(),
+    // 記録方式（シート単位）: 実測値（製品ごと） / 合格数のみ
+    recordStyle: z.enum(["VALUES", "COUNTS"]),
+    // 印刷レイアウト（寸法測定表 / 外観・工程チェック表）
+    layoutStyle: z.enum(["DIMENSIONAL", "CHECKLIST"]),
+    // VALUES のサンプル呼称（製品1,2,3… / 初品・中間品・最終品）
+    sampleNaming: z.enum(["GENERIC", "INITIAL_MID_FINAL"]),
+    // 検査承認（検収）の宛先 — グループかカスタム（この検査表だけの承認者・
+    // 複数可）のどちらか一方。両方未設定 = 誰でも承認できる（従来どおり）。
+    approvalGroupId: z.number().int().positive().nullable(),
+    approverUserIds: z.array(z.string()).max(50).default([]),
+    isActive: z.boolean(),
+  });
+}
 
 /** 検査対象の値検証（PERCENT は 0–100、COUNT は 1 以上の整数）。 */
-function refineSampling(
-  v: { samplingMode: string; samplingValue: number | null },
-  ctx: z.RefinementCtx,
-) {
-  const issue = (message: string) =>
-    ctx.addIssue({
-      code: z.ZodIssueCode.custom,
-      path: ["samplingValue"],
-      message,
-    });
-  if (v.samplingMode === "PERCENT") {
-    if (v.samplingValue == null || v.samplingValue <= 0) {
-      issue("検査対象の割合(%)を入力してください");
-    } else if (v.samplingValue > 100) {
-      issue("検査対象の割合は 100% 以下にしてください");
+function refineSampling(tr: Tr) {
+  return (
+    v: { samplingMode: string; samplingValue: number | null },
+    ctx: z.RefinementCtx,
+  ) => {
+    const issue = (message: string) =>
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["samplingValue"],
+        message,
+      });
+    if (v.samplingMode === "PERCENT") {
+      if (v.samplingValue == null || v.samplingValue <= 0) {
+        issue(tr("master.inspectionTemplateActions.samplingPercentRequired"));
+      } else if (v.samplingValue > 100) {
+        issue(tr("master.inspectionTemplateActions.samplingPercentMax"));
+      }
     }
-  }
-  if (v.samplingMode === "COUNT") {
-    if (
-      v.samplingValue == null ||
-      v.samplingValue < 1 ||
-      !Number.isInteger(v.samplingValue)
-    ) {
-      issue("検査対象の本数（1 以上の整数）を入力してください");
+    if (v.samplingMode === "COUNT") {
+      if (
+        v.samplingValue == null ||
+        v.samplingValue < 1 ||
+        !Number.isInteger(v.samplingValue)
+      ) {
+        issue(tr("master.inspectionTemplates.enterHowManyPiecesToInspect"));
+      }
     }
-  }
+  };
 }
 
 /** 検査承認の宛先検証（グループとカスタムは同時に設定しない — CM02 フォームの
  * 承認フロー段と同じ約束。両方未設定は「誰でも承認できる」として許可）。 */
-function refineApprovalTarget(
-  v: { approvalGroupId: number | null; approverUserIds: string[] },
-  ctx: z.RefinementCtx,
-) {
-  if (v.approvalGroupId != null && v.approverUserIds.length > 0) {
-    ctx.addIssue({
-      code: z.ZodIssueCode.custom,
-      path: ["approverUserIds"],
-      message:
-        "承認グループとカスタム承認者は同時に設定できません（どちらか一方にしてください）",
-    });
-  }
+function refineApprovalTarget(tr: Tr) {
+  return (
+    v: { approvalGroupId: number | null; approverUserIds: string[] },
+    ctx: z.RefinementCtx,
+  ) => {
+    if (v.approvalGroupId != null && v.approverUserIds.length > 0) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["approverUserIds"],
+        message: tr("master.inspectionTemplateActions.approvalTargetConflict"),
+      });
+    }
+  };
 }
 
-const templateUpdateInput = templateFields
-  .superRefine(refineSampling)
-  .superRefine(refineApprovalTarget);
+function templateUpdateInputSchema(tr: Tr) {
+  return templateFieldsSchema(tr)
+    .superRefine(refineSampling(tr))
+    .superRefine(refineApprovalTarget(tr));
+}
 
-const templateCreateInput = templateFields
-  .extend({
-    code: z
-      .string()
-      .min(1, "コードを入力してください")
-      .regex(
-        /^[A-Za-z0-9_-]+$/,
-        "コードは英数字・ハイフン・アンダースコアで入力してください",
-      ),
-  })
-  .superRefine(refineSampling)
-  .superRefine(refineApprovalTarget);
+function templateCreateInputSchema(tr: Tr) {
+  return templateFieldsSchema(tr)
+    .extend({
+      code: z
+        .string()
+        .min(1, tr("common.codeRequired"))
+        .regex(
+          /^[A-Za-z0-9_-]+$/,
+          tr("master.inspectionTemplateForm.codeFormat"),
+        ),
+    })
+    .superRefine(refineSampling(tr))
+    .superRefine(refineApprovalTarget(tr));
+}
 
-export type InspectionTemplateUpdateInput = z.infer<typeof templateUpdateInput>;
-export type InspectionTemplateCreateInput = z.infer<typeof templateCreateInput>;
+export type InspectionTemplateUpdateInput = z.infer<
+  ReturnType<typeof templateUpdateInputSchema>
+>;
+export type InspectionTemplateCreateInput = z.infer<
+  ReturnType<typeof templateCreateInputSchema>
+>;
 
 // ── 検査項目（型別バリデーション） ───────────────────────────────────────────
 
-const selectOptionInput = z.object({
-  value: z.string().min(1),
-  labelJa: z.string().min(1, "選択肢の表示名（日本語）を入力してください"),
-  labelEn: z.string().optional(),
-});
-
-const templateItemInput = z
-  .object({
-    itemNameJa: z.string().min(1, "項目名（日本語）を入力してください"),
-    itemNameEn: z.string().optional(),
-    inputType: z.enum([
-      "BOOLEAN",
-      "NUMBER",
-      "SELECT_SINGLE",
-      "SELECT_MULTI",
-      "TEXT",
-    ]),
-    // NUMBER
-    unit: z.string().optional(),
-    toleranceMin: z.number().nullable(),
-    toleranceMax: z.number().nullable(),
-    goalNumber: z.number().nullable(),
-    // NUMBER — 旧帳票の基本値・公差Top/Bottom（入力補助。指定時は
-    // toleranceMin/Max を目標値からの差分で自動計算する）
-    nominalValue: z.number().nullable(),
-    toleranceTopDelta: z.number().nullable(),
-    toleranceBottomDelta: z.number().nullable(),
-    // BOOLEAN
-    acceptBool: z.boolean().nullable(),
-    goalBool: z.boolean().nullable(),
-    // SELECT_*
-    options: z.array(selectOptionInput),
-    acceptOptions: z.array(z.string()),
-    goalOptions: z.array(z.string()),
-    allowManualOverride: z.boolean(),
-    isRequired: z.boolean(),
-    sortOrder: z.number().int(),
-    // 旧 FileMaker 帳票との整合（表示のみ）
-    section: z.enum(["MEASUREMENT", "SHAPE"]),
-    department: z.enum(["MANUFACTURING", "QUALITY_ASSURANCE"]).nullable(),
-    measurementEquipment: z.string().optional(),
-  })
-  .superRefine((v, ctx) => {
-    const issue = (path: string, message: string) =>
-      ctx.addIssue({ code: z.ZodIssueCode.custom, path: [path], message });
-
-    if (v.inputType === "NUMBER") {
-      if (
-        v.toleranceMin != null &&
-        v.toleranceMax != null &&
-        v.toleranceMin > v.toleranceMax
-      ) {
-        issue("toleranceMax", "合格範囲の上限は下限以上にしてください");
-      }
-      if (
-        v.toleranceTopDelta != null &&
-        v.toleranceBottomDelta != null &&
-        v.toleranceTopDelta < v.toleranceBottomDelta
-      ) {
-        issue("toleranceTopDelta", "公差 Top は Bottom 以上にしてください");
-      }
-    }
-    if (v.inputType === "SELECT_SINGLE" || v.inputType === "SELECT_MULTI") {
-      if (v.options.length === 0) {
-        issue("options", "選択肢を 1 つ以上登録してください");
-      }
-      const values = v.options.map((o) => o.value);
-      if (new Set(values).size !== values.length) {
-        issue("options", "選択肢が重複しています");
-      }
-      const valueSet = new Set(values);
-      if (!v.acceptOptions.every((a) => valueSet.has(a))) {
-        issue("acceptOptions", "合格選択肢は登録した選択肢から選んでください");
-      }
-      if (!v.goalOptions.every((g) => valueSet.has(g))) {
-        issue("goalOptions", "目標は登録した選択肢から選んでください");
-      }
-      if (v.inputType === "SELECT_SINGLE" && v.goalOptions.length > 1) {
-        issue("goalOptions", "単一選択の目標は 1 つまでです");
-      }
-    }
+function selectOptionInputSchema(tr: Tr) {
+  return z.object({
+    value: z.string().min(1),
+    labelJa: z
+      .string()
+      .min(1, tr("master.inspectionTemplates.enterTheOptionSDisplayName")),
+    labelEn: z.string().optional(),
   });
+}
 
-export type InspectionTemplateItemInput = z.infer<typeof templateItemInput>;
+function templateItemInputSchema(tr: Tr) {
+  return z
+    .object({
+      itemNameJa: z.string().min(1, tr("common.enterTheItemNameInJapanese")),
+      itemNameEn: z.string().optional(),
+      inputType: z.enum([
+        "BOOLEAN",
+        "NUMBER",
+        "SELECT_SINGLE",
+        "SELECT_MULTI",
+        "TEXT",
+      ]),
+      // NUMBER
+      unit: z.string().optional(),
+      toleranceMin: z.number().nullable(),
+      toleranceMax: z.number().nullable(),
+      goalNumber: z.number().nullable(),
+      // NUMBER — 旧帳票の基本値・公差Top/Bottom（入力補助。指定時は
+      // toleranceMin/Max を目標値からの差分で自動計算する）
+      nominalValue: z.number().nullable(),
+      toleranceTopDelta: z.number().nullable(),
+      toleranceBottomDelta: z.number().nullable(),
+      // BOOLEAN
+      acceptBool: z.boolean().nullable(),
+      goalBool: z.boolean().nullable(),
+      // SELECT_*
+      options: z.array(selectOptionInputSchema(tr)),
+      acceptOptions: z.array(z.string()),
+      goalOptions: z.array(z.string()),
+      allowManualOverride: z.boolean(),
+      isRequired: z.boolean(),
+      sortOrder: z.number().int(),
+      // 旧 FileMaker 帳票との整合（表示のみ）
+      section: z.enum(["MEASUREMENT", "SHAPE"]),
+      department: z.enum(["MANUFACTURING", "QUALITY_ASSURANCE"]).nullable(),
+      measurementEquipment: z.string().optional(),
+    })
+    .superRefine((v, ctx) => {
+      const issue = (path: string, message: string) =>
+        ctx.addIssue({ code: z.ZodIssueCode.custom, path: [path], message });
+
+      if (v.inputType === "NUMBER") {
+        if (
+          v.toleranceMin != null &&
+          v.toleranceMax != null &&
+          v.toleranceMin > v.toleranceMax
+        ) {
+          issue(
+            "toleranceMax",
+            tr("master.inspectionTemplates.theUpperLimitMustBeAt"),
+          );
+        }
+        if (
+          v.toleranceTopDelta != null &&
+          v.toleranceBottomDelta != null &&
+          v.toleranceTopDelta < v.toleranceBottomDelta
+        ) {
+          issue(
+            "toleranceTopDelta",
+            tr("master.inspectionTemplateActions.toleranceTopBottomOrder"),
+          );
+        }
+      }
+      if (v.inputType === "SELECT_SINGLE" || v.inputType === "SELECT_MULTI") {
+        if (v.options.length === 0) {
+          issue(
+            "options",
+            tr("master.inspectionTemplates.registerAtLeastOneOption"),
+          );
+        }
+        const values = v.options.map((o) => o.value);
+        if (new Set(values).size !== values.length) {
+          issue(
+            "options",
+            tr("master.inspectionTemplateActions.optionsDuplicate"),
+          );
+        }
+        const valueSet = new Set(values);
+        if (!v.acceptOptions.every((a) => valueSet.has(a))) {
+          issue(
+            "acceptOptions",
+            tr(
+              "master.inspectionTemplateActions.acceptOptionsMustBeRegistered",
+            ),
+          );
+        }
+        if (!v.goalOptions.every((g) => valueSet.has(g))) {
+          issue(
+            "goalOptions",
+            tr("master.inspectionTemplateActions.goalOptionsMustBeRegistered"),
+          );
+        }
+        if (v.inputType === "SELECT_SINGLE" && v.goalOptions.length > 1) {
+          issue(
+            "goalOptions",
+            tr("master.inspectionTemplateActions.singleSelectGoalMax"),
+          );
+        }
+      }
+    });
+}
+
+export type InspectionTemplateItemInput = z.infer<
+  ReturnType<typeof templateItemInputSchema>
+>;
 
 /** 入力を inputType に応じた DB カラム値へ正規化（無関係な型の値は null に落とす）。 */
 function itemData(v: InspectionTemplateItemInput) {
@@ -293,11 +337,14 @@ function revalidate(id?: number) {
 export async function createInspectionTemplate(
   input: InspectionTemplateCreateInput,
 ): Promise<ActionResult<{ id: number }>> {
+  const tr = await getTranslations();
   const authz = await checkPermission("master", "CREATE");
   if (!authz.ok) return actionError(authz.error);
-  const parsed = templateCreateInput.safeParse(input);
+  const parsed = templateCreateInputSchema(tr).safeParse(input);
   if (!parsed.success) {
-    return actionError(parsed.error.issues[0]?.message ?? "入力が不正です");
+    return actionError(
+      parsed.error.issues[0]?.message ?? tr("common.invalidInput"),
+    );
   }
   const v = parsed.data;
   try {
@@ -343,7 +390,11 @@ export async function createInspectionTemplate(
     return actionOk({ id: created.id });
   } catch (e) {
     return actionError(
-      prismaErrorMessage(e, "検査表テンプレートの作成に失敗しました"),
+      prismaErrorMessage(
+        e,
+        tr("master.inspectionTemplateActions.createFailed"),
+        tr,
+      ),
     );
   }
 }
@@ -352,11 +403,14 @@ export async function updateInspectionTemplate(
   id: number,
   input: InspectionTemplateUpdateInput,
 ): Promise<ActionResult<{ id: number }>> {
+  const tr = await getTranslations();
   const authz = await checkPermission("master", "UPDATE");
   if (!authz.ok) return actionError(authz.error);
-  const parsed = templateUpdateInput.safeParse(input);
+  const parsed = templateUpdateInputSchema(tr).safeParse(input);
   if (!parsed.success) {
-    return actionError(parsed.error.issues[0]?.message ?? "入力が不正です");
+    return actionError(
+      parsed.error.issues[0]?.message ?? tr("common.invalidInput"),
+    );
   }
   const v = parsed.data;
   try {
@@ -374,7 +428,10 @@ export async function updateInspectionTemplate(
         isActive: true,
       },
     });
-    if (!prior) return actionError("対象のテンプレートが見つかりません");
+    if (!prior)
+      return actionError(
+        tr("master.inspectionTemplateActions.targetTemplateNotFound"),
+      );
     // ロック中は状態（有効/無効）の切替のみ許可
     const priorName = prior.name as LocalizedText | null;
     const priorSamplingValue =
@@ -393,7 +450,7 @@ export async function updateInspectionTemplate(
       priorSamplingValue !==
         (v.samplingMode === "ALL" ? null : v.samplingValue);
     if (definitionChanged && (await isTemplateLocked(id))) {
-      return actionError(LOCKED_MESSAGE);
+      return actionError(tr("master.inspectionTemplateActions.versionLocked"));
     }
     await prisma.inspectionTemplate.update({
       where: { id },
@@ -441,7 +498,11 @@ export async function updateInspectionTemplate(
     return actionOk({ id });
   } catch (e) {
     return actionError(
-      prismaErrorMessage(e, "検査表テンプレートの更新に失敗しました"),
+      prismaErrorMessage(
+        e,
+        tr("master.inspectionTemplateActions.updateFailed"),
+        tr,
+      ),
     );
   }
 }
@@ -454,6 +515,7 @@ export async function updateInspectionTemplate(
 export async function createInspectionTemplateVersion(
   id: number,
 ): Promise<ActionResult<{ id: number; version: number }>> {
+  const tr = await getTranslations();
   const authz = await checkPermission("master", "CREATE");
   if (!authz.ok) return actionError(authz.error);
   try {
@@ -464,7 +526,10 @@ export async function createInspectionTemplateVersion(
         approvers: { orderBy: { sortOrder: "asc" } },
       },
     });
-    if (!source) return actionError("対象のテンプレートが見つかりません");
+    if (!source)
+      return actionError(
+        tr("master.inspectionTemplateActions.targetTemplateNotFound"),
+      );
     const created = await prisma.$transaction(async (tx) => {
       const max = await tx.inspectionTemplate.aggregate({
         where: { code: source.code },
@@ -527,7 +592,11 @@ export async function createInspectionTemplateVersion(
       tableName: "inspection_templates",
       recordId: String(created.id),
       after: {
-        note: `${source.code} v${created.version} を v${source.version} からコピー作成`,
+        note: tr("master.inspectionTemplateActions.copiedFromVersion", {
+          code: source.code,
+          newVersion: created.version,
+          sourceVersion: source.version,
+        }),
       },
     });
     revalidate(created.id);
@@ -535,7 +604,11 @@ export async function createInspectionTemplateVersion(
     return actionOk(created);
   } catch (e) {
     return actionError(
-      prismaErrorMessage(e, "新バージョンの作成に失敗しました"),
+      prismaErrorMessage(
+        e,
+        tr("master.inspectionTemplateActions.newVersionCreateFailed"),
+        tr,
+      ),
     );
   }
 }
@@ -544,9 +617,10 @@ export async function setInspectionTemplatesActive(
   ids: number[],
   isActive: boolean,
 ): Promise<ActionResult> {
+  const tr = await getTranslations();
   const authz = await checkPermission("master", "UPDATE");
   if (!authz.ok) return actionError(authz.error);
-  if (ids.length === 0) return actionError("対象が選択されていません");
+  if (ids.length === 0) return actionError(tr("common.noTargetSelected"));
   try {
     await prisma.inspectionTemplate.updateMany({
       where: { id: { in: ids } },
@@ -564,7 +638,9 @@ export async function setInspectionTemplatesActive(
     for (const id of ids) revalidatePath(`${BASE_PATH}/${id}`);
     return actionOk();
   } catch (e) {
-    return actionError(prismaErrorMessage(e, "状態の更新に失敗しました"));
+    return actionError(
+      prismaErrorMessage(e, tr("common.statusUpdateFailed"), tr),
+    );
   }
 }
 
@@ -579,11 +655,12 @@ export async function setInspectionTemplateApprovers(
   approvalGroupId: number | null,
   approverUserIds: string[],
 ): Promise<ActionResult> {
+  const tr = await getTranslations();
   const authz = await checkPermission("master", "UPDATE");
   if (!authz.ok) return actionError(authz.error);
   if (approvalGroupId != null && approverUserIds.length > 0) {
     return actionError(
-      "承認グループとカスタム承認者は同時に設定できません（どちらか一方にしてください）",
+      tr("master.inspectionTemplateActions.approvalTargetConflict"),
     );
   }
   try {
@@ -604,21 +681,28 @@ export async function setInspectionTemplateApprovers(
       action: "UPDATE",
       tableName: "inspection_templates",
       recordId: String(id),
-      after: { note: "検査承認の宛先を変更" },
+      after: { note: tr("master.inspectionTemplateActions.approversChanged") },
     });
     revalidate(id);
     return actionOk();
   } catch (e) {
-    return actionError(prismaErrorMessage(e, "承認の宛先の変更に失敗しました"));
+    return actionError(
+      prismaErrorMessage(
+        e,
+        tr("master.inspectionTemplateActions.approversUpdateFailed"),
+        tr,
+      ),
+    );
   }
 }
 
 export async function deleteInspectionTemplates(
   ids: number[],
 ): Promise<ActionResult> {
+  const tr = await getTranslations();
   const authz = await checkPermission("master", "DELETE");
   if (!authz.ok) return actionError(authz.error);
-  if (ids.length === 0) return actionError("対象が選択されていません");
+  if (ids.length === 0) return actionError(tr("common.noTargetSelected"));
   try {
     // 参考画像の実体は onDelete: SetNull では消えない（files 行は残る）ため、
     // テンプレート削除前に対象を控えておき、削除できた分だけ掃除する。
@@ -643,7 +727,11 @@ export async function deleteInspectionTemplates(
     return actionOk();
   } catch (e) {
     return actionError(
-      prismaErrorMessage(e, "検査表テンプレートの削除に失敗しました"),
+      prismaErrorMessage(
+        e,
+        tr("master.inspectionTemplateActions.deleteFailed"),
+        tr,
+      ),
     );
   }
 }
@@ -654,14 +742,18 @@ export async function addTemplateItem(
   templateId: number,
   input: InspectionTemplateItemInput,
 ): Promise<ActionResult<{ id: number }>> {
+  const tr = await getTranslations();
   // 検査項目の増減はテンプレート本体の編集扱い（監査も UPDATE で記録）。
   const authz = await checkPermission("master", "UPDATE");
   if (!authz.ok) return actionError(authz.error);
-  const parsed = templateItemInput.safeParse(input);
+  const parsed = templateItemInputSchema(tr).safeParse(input);
   if (!parsed.success) {
-    return actionError(parsed.error.issues[0]?.message ?? "入力が不正です");
+    return actionError(
+      parsed.error.issues[0]?.message ?? tr("common.invalidInput"),
+    );
   }
-  if (await isTemplateLocked(templateId)) return actionError(LOCKED_MESSAGE);
+  if (await isTemplateLocked(templateId))
+    return actionError(tr("master.inspectionTemplateActions.versionLocked"));
   const v = parsed.data;
   try {
     const created = await prisma.inspectionTemplateItem.create({
@@ -672,12 +764,22 @@ export async function addTemplateItem(
       action: "UPDATE",
       tableName: "inspection_templates",
       recordId: String(templateId),
-      after: { note: `検査項目「${v.itemNameJa}」を追加` },
+      after: {
+        note: tr("master.inspectionTemplateActions.itemAdded", {
+          name: v.itemNameJa,
+        }),
+      },
     });
     revalidate(templateId);
     return actionOk({ id: created.id });
   } catch (e) {
-    return actionError(prismaErrorMessage(e, "検査項目の追加に失敗しました"));
+    return actionError(
+      prismaErrorMessage(
+        e,
+        tr("master.inspectionTemplateActions.addItemFailed"),
+        tr,
+      ),
+    );
   }
 }
 
@@ -685,11 +787,14 @@ export async function updateTemplateItem(
   itemId: number,
   input: InspectionTemplateItemInput,
 ): Promise<ActionResult<{ id: number }>> {
+  const tr = await getTranslations();
   const authz = await checkPermission("master", "UPDATE");
   if (!authz.ok) return actionError(authz.error);
-  const parsed = templateItemInput.safeParse(input);
+  const parsed = templateItemInputSchema(tr).safeParse(input);
   if (!parsed.success) {
-    return actionError(parsed.error.issues[0]?.message ?? "入力が不正です");
+    return actionError(
+      parsed.error.issues[0]?.message ?? tr("common.invalidInput"),
+    );
   }
   const v = parsed.data;
   try {
@@ -697,9 +802,12 @@ export async function updateTemplateItem(
       where: { id: itemId },
       select: { templateId: true },
     });
-    if (!prior) return actionError("対象の検査項目が見つかりません");
+    if (!prior)
+      return actionError(
+        tr("master.inspectionTemplateActions.targetItemNotFound"),
+      );
     if (await isTemplateLocked(prior.templateId)) {
-      return actionError(LOCKED_MESSAGE);
+      return actionError(tr("master.inspectionTemplateActions.versionLocked"));
     }
     // Prisma は Json カラムに undefined を渡すと「変更なし」になるため、
     // 型切替で無関係になった JSON 値は DbNull で明示的にクリアする。
@@ -717,18 +825,29 @@ export async function updateTemplateItem(
       action: "UPDATE",
       tableName: "inspection_templates",
       recordId: String(prior.templateId),
-      after: { note: `検査項目「${v.itemNameJa}」を更新` },
+      after: {
+        note: tr("master.inspectionTemplateActions.itemUpdated", {
+          name: v.itemNameJa,
+        }),
+      },
     });
     revalidate(prior.templateId);
     return actionOk({ id: itemId });
   } catch (e) {
-    return actionError(prismaErrorMessage(e, "検査項目の更新に失敗しました"));
+    return actionError(
+      prismaErrorMessage(
+        e,
+        tr("master.inspectionTemplateActions.updateItemFailed"),
+        tr,
+      ),
+    );
   }
 }
 
 export async function deleteTemplateItem(
   itemId: number,
 ): Promise<ActionResult> {
+  const tr = await getTranslations();
   // 検査項目の増減はテンプレート本体の編集扱い（監査も UPDATE で記録）。
   const authz = await checkPermission("master", "UPDATE");
   if (!authz.ok) return actionError(authz.error);
@@ -737,9 +856,12 @@ export async function deleteTemplateItem(
       where: { id: itemId },
       select: { templateId: true, itemName: true },
     });
-    if (!prior) return actionError("対象の検査項目が見つかりません");
+    if (!prior)
+      return actionError(
+        tr("master.inspectionTemplateActions.targetItemNotFound"),
+      );
     if (await isTemplateLocked(prior.templateId)) {
-      return actionError(LOCKED_MESSAGE);
+      return actionError(tr("master.inspectionTemplateActions.versionLocked"));
     }
     await prisma.inspectionTemplateItem.delete({ where: { id: itemId } });
     await recordAudit({
@@ -747,25 +869,39 @@ export async function deleteTemplateItem(
       tableName: "inspection_templates",
       recordId: String(prior.templateId),
       after: {
-        note: `検査項目「${localized(prior.itemName as LocalizedText | null)}」を削除`,
+        note: tr("master.inspectionTemplateActions.itemDeleted", {
+          name: localized(prior.itemName as LocalizedText | null),
+        }),
       },
     });
     revalidate(prior.templateId);
     return actionOk();
   } catch (e) {
-    return actionError(prismaErrorMessage(e, "検査項目の削除に失敗しました"));
+    return actionError(
+      prismaErrorMessage(
+        e,
+        tr("master.inspectionTemplateActions.deleteItemFailed"),
+        tr,
+      ),
+    );
   }
 }
 
 // ── 検査表グループ（ナビゲーション用。判定・PDF には無関係） ─────────────────
 
-const groupInput = z.object({
-  nameJa: z.string().min(1, "グループ名（日本語）を入力してください"),
-  nameTranslations: z.record(z.string(), z.string()).optional(),
-  isActive: z.boolean(),
-});
+function groupInputSchema(tr: Tr) {
+  return z.object({
+    nameJa: z
+      .string()
+      .min(1, tr("master.inspectionTemplateActions.groupNameJaRequired")),
+    nameTranslations: z.record(z.string(), z.string()).optional(),
+    isActive: z.boolean(),
+  });
+}
 
-export type InspectionTemplateGroupInput = z.infer<typeof groupInput>;
+export type InspectionTemplateGroupInput = z.infer<
+  ReturnType<typeof groupInputSchema>
+>;
 
 export interface InspectionTemplateGroupRow {
   id: number;
@@ -803,11 +939,14 @@ function revalidateGroups() {
 export async function createInspectionTemplateGroup(
   input: InspectionTemplateGroupInput,
 ): Promise<ActionResult<{ id: number }>> {
+  const tr = await getTranslations();
   const authz = await checkPermission("master", "CREATE");
   if (!authz.ok) return actionError(authz.error);
-  const parsed = groupInput.safeParse(input);
+  const parsed = groupInputSchema(tr).safeParse(input);
   if (!parsed.success) {
-    return actionError(parsed.error.issues[0]?.message ?? "入力が不正です");
+    return actionError(
+      parsed.error.issues[0]?.message ?? tr("common.invalidInput"),
+    );
   }
   const v = parsed.data;
   try {
@@ -831,7 +970,13 @@ export async function createInspectionTemplateGroup(
     revalidateGroups();
     return actionOk({ id: created.id });
   } catch (e) {
-    return actionError(prismaErrorMessage(e, "グループの作成に失敗しました"));
+    return actionError(
+      prismaErrorMessage(
+        e,
+        tr("master.inspectionTemplateActions.groupCreateFailed"),
+        tr,
+      ),
+    );
   }
 }
 
@@ -839,11 +984,14 @@ export async function updateInspectionTemplateGroup(
   id: number,
   input: InspectionTemplateGroupInput,
 ): Promise<ActionResult> {
+  const tr = await getTranslations();
   const authz = await checkPermission("master", "UPDATE");
   if (!authz.ok) return actionError(authz.error);
-  const parsed = groupInput.safeParse(input);
+  const parsed = groupInputSchema(tr).safeParse(input);
   if (!parsed.success) {
-    return actionError(parsed.error.issues[0]?.message ?? "入力が不正です");
+    return actionError(
+      parsed.error.issues[0]?.message ?? tr("common.invalidInput"),
+    );
   }
   const v = parsed.data;
   try {
@@ -851,7 +999,10 @@ export async function updateInspectionTemplateGroup(
       where: { id },
       select: { name: true, isActive: true },
     });
-    if (!prior) return actionError("対象のグループが見つかりません");
+    if (!prior)
+      return actionError(
+        tr("master.inspectionTemplateActions.targetGroupNotFound"),
+      );
     await prisma.inspectionTemplateGroup.update({
       where: { id },
       data: {
@@ -869,7 +1020,13 @@ export async function updateInspectionTemplateGroup(
     revalidateGroups();
     return actionOk();
   } catch (e) {
-    return actionError(prismaErrorMessage(e, "グループの更新に失敗しました"));
+    return actionError(
+      prismaErrorMessage(
+        e,
+        tr("master.inspectionTemplateActions.groupUpdateFailed"),
+        tr,
+      ),
+    );
   }
 }
 
@@ -877,6 +1034,7 @@ export async function updateInspectionTemplateGroup(
 export async function reorderInspectionTemplateGroups(
   orderedIds: number[],
 ): Promise<ActionResult> {
+  const tr = await getTranslations();
   const authz = await checkPermission("master", "UPDATE");
   if (!authz.ok) return actionError(authz.error);
   try {
@@ -891,13 +1049,20 @@ export async function reorderInspectionTemplateGroups(
     revalidateGroups();
     return actionOk();
   } catch (e) {
-    return actionError(prismaErrorMessage(e, "並び順の更新に失敗しました"));
+    return actionError(
+      prismaErrorMessage(
+        e,
+        tr("master.inspectionTemplateActions.reorderFailed"),
+        tr,
+      ),
+    );
   }
 }
 
 export async function deleteInspectionTemplateGroup(
   id: number,
 ): Promise<ActionResult> {
+  const tr = await getTranslations();
   const authz = await checkPermission("master", "DELETE");
   if (!authz.ok) return actionError(authz.error);
   try {
@@ -906,7 +1071,7 @@ export async function deleteInspectionTemplateGroup(
     });
     if (count > 0) {
       return actionError(
-        "このグループに属する検査表テンプレートがあるため削除できません。先に各テンプレートのグループを外してください",
+        tr("master.inspectionTemplateActions.groupInUseCannotDelete"),
       );
     }
     await prisma.inspectionTemplateGroup.delete({ where: { id } });
@@ -918,6 +1083,12 @@ export async function deleteInspectionTemplateGroup(
     revalidateGroups();
     return actionOk();
   } catch (e) {
-    return actionError(prismaErrorMessage(e, "グループの削除に失敗しました"));
+    return actionError(
+      prismaErrorMessage(
+        e,
+        tr("master.inspectionTemplateActions.groupDeleteFailed"),
+        tr,
+      ),
+    );
   }
 }

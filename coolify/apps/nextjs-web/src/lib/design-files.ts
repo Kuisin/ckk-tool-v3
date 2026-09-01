@@ -15,6 +15,7 @@
 
 import "server-only";
 
+import { getTranslations } from "next-intl/server";
 import { validateFile } from "@/lib/attachments";
 import { getCurrentActorId, recordAudit } from "@/lib/audit";
 import { prisma } from "@/lib/db";
@@ -138,18 +139,19 @@ export async function createVersionInTx(
 async function storeOne(
   productId: number,
   file: { name: string; type: string; bytes: ArrayBuffer },
+  tr: Awaited<ReturnType<typeof getTranslations>>,
 ): Promise<
   | { ok: true; fileId: string; storageKey: string }
   | { ok: false; error: string }
 > {
-  const checked = validateFile(file.name, file.type, file.bytes.byteLength);
+  const checked = validateFile(file.name, file.type, file.bytes.byteLength, tr);
   if (!checked.ok) return { ok: false, error: checked.error };
   const storageKey = `design-files/${productId}/${systematicFileName(
     file.name,
     `PRD-${productId}`,
   )}`;
   if (!(await putObject(storageKey, file.bytes, checked.contentType))) {
-    return { ok: false, error: "ストレージへの保存に失敗しました" };
+    return { ok: false, error: tr("common.storageSaveFailed") };
   }
   try {
     const actor = await getCurrentActorId();
@@ -166,7 +168,10 @@ async function storeOne(
     return { ok: true, fileId: row.id, storageKey };
   } catch (e) {
     await deleteObject(storageKey);
-    return { ok: false, error: prismaErrorMessage(e, "保存に失敗しました") };
+    return {
+      ok: false,
+      error: prismaErrorMessage(e, tr("common.couldNotSave"), tr),
+    };
   }
 }
 
@@ -202,18 +207,19 @@ export interface UploadVersionInput {
 export async function uploadDesignVersion(
   input: UploadVersionInput,
 ): Promise<ActionResult<{ version: number }>> {
+  const tr = await getTranslations();
   const product = await prisma.product.findUnique({
     where: { id: input.productId },
     select: { id: true },
   });
-  if (!product) return actionError("対象の製品が見つかりません");
+  if (!product) return actionError(tr("common.targetProductNotFound"));
 
   if (input.customerBpId) {
     const bp = await prisma.businessPartner.findUnique({
       where: { id: input.customerBpId },
       select: { id: true },
     });
-    if (!bp) return actionError("対象の取引先が見つかりません");
+    if (!bp) return actionError(tr("common.targetBusinessPartnerNotFound"));
   }
 
   // 依頼に紐づけるときは、**その依頼が同じ製品のものか**を確かめる。
@@ -224,9 +230,9 @@ export async function uploadDesignVersion(
       where: { id: input.designRequestId },
       select: { id: true, productId: true },
     });
-    if (!req) return actionError("対象の設計依頼が見つかりません");
+    if (!req) return actionError(tr("common.targetDesignRequestNotFound"));
     if (req.productId != null && req.productId !== input.productId) {
-      return actionError("設計依頼と製品が一致しません");
+      return actionError(tr("common.designRequestProductMismatch"));
     }
   }
 
@@ -260,7 +266,7 @@ export async function uploadDesignVersion(
   ];
 
   for (const item of queue) {
-    const res = await storeOne(input.productId, item.f);
+    const res = await storeOne(input.productId, item.f, tr);
     if (!res.ok) {
       await rollback();
       return actionError(res.error);
@@ -293,7 +299,12 @@ export async function uploadDesignVersion(
       tableName: "design_files",
       recordId: String(input.productId),
       after: {
-        note: `設計図 v${version} を登録（${stored.length} ファイル${input.designRequestId ? "・設計依頼の成果物" : "・手動"}）`,
+        note: tr(
+          input.designRequestId
+            ? "common.designFileRegisteredFromRequestNote"
+            : "common.designFileRegisteredManuallyNote",
+          { version, count: stored.length },
+        ),
         productId: input.productId,
         customerBpId: input.customerBpId,
         designRequestId: input.designRequestId ?? null,
@@ -302,6 +313,8 @@ export async function uploadDesignVersion(
     return actionOk({ version });
   } catch (e) {
     await rollback();
-    return actionError(prismaErrorMessage(e, "設計図の登録に失敗しました"));
+    return actionError(
+      prismaErrorMessage(e, tr("common.designFileRegisterFailed"), tr),
+    );
   }
 }

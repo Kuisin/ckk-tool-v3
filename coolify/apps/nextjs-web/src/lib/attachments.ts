@@ -11,6 +11,7 @@
  * レコードの操作履歴（audit_logs, action=UPDATE）に note として残す。
  */
 
+import { getTranslations } from "next-intl/server";
 import type { AttachmentView } from "@/components/ui/AttachmentsPanel";
 import { getCurrentActorId, recordAudit } from "@/lib/audit";
 import { prisma } from "@/lib/db";
@@ -22,6 +23,8 @@ import {
   prismaErrorMessage,
 } from "@/lib/server-action";
 import { deleteObject, putObject } from "@/lib/storage";
+
+type Tr = Awaited<ReturnType<typeof getTranslations>>;
 
 /** 最大ファイルサイズ（20MB）。 */
 export const MAX_ATTACHMENT_BYTES = 20 * 1024 * 1024;
@@ -114,10 +117,11 @@ export function validateFile(
   name: string,
   declaredType: string,
   size: number,
+  tr: Tr,
 ): { ok: true; contentType: string } | { ok: false; error: string } {
-  if (size <= 0) return { ok: false, error: "ファイルが空です" };
+  if (size <= 0) return { ok: false, error: tr("common.fileIsEmpty") };
   if (size > MAX_ATTACHMENT_BYTES) {
-    return { ok: false, error: "ファイルサイズは 20MB 以下にしてください" };
+    return { ok: false, error: tr("common.fileSizeMax20Mb") };
   }
   const ext = name.includes(".")
     ? (name.split(".").pop()?.toLowerCase() ?? "")
@@ -145,14 +149,17 @@ export async function listAttachments(
   ownerId: string,
 ): Promise<AttachmentView[]> {
   try {
-    const rows = await prisma.documentAttachment.findMany({
-      where: { ownerType, ownerId },
-      orderBy: { createdAt: "desc" },
-      include: {
-        file: true,
-        uploadedByUser: { select: { displayName: true } },
-      },
-    });
+    const [rows, tr] = await Promise.all([
+      prisma.documentAttachment.findMany({
+        where: { ownerType, ownerId },
+        orderBy: { createdAt: "desc" },
+        include: {
+          file: true,
+          uploadedByUser: { select: { displayName: true } },
+        },
+      }),
+      getTranslations(),
+    ]);
     return rows.map((r) => ({
       id: r.id,
       fileId: r.fileId,
@@ -161,7 +168,7 @@ export async function listAttachments(
       isLocked: r.isLocked,
       mimeType: r.file.mimeType,
       sizeBytes: Number(r.file.sizeBytes ?? 0),
-      uploadedBy: r.uploadedByUser?.displayName ?? "システム",
+      uploadedBy: r.uploadedByUser?.displayName ?? tr("common.system"),
       createdAt: r.createdAt.toISOString(),
     }));
   } catch (e) {
@@ -199,20 +206,21 @@ export async function fetchAttachmentFile(id: string): Promise<{
 export async function saveAttachment(
   input: SaveAttachmentInput,
 ): Promise<ActionResult<{ id: string }>> {
+  const tr = await getTranslations();
   const ownerType = input.ownerType.trim();
   const ownerId = input.ownerId.trim();
   if (!ownerType || !ownerId) {
-    return actionError("添付対象が指定されていません");
+    return actionError(tr("common.attachmentTargetNotSpecified"));
   }
 
   const { name, type, bytes } = input.file;
-  const checked = validateFile(name, type, bytes.byteLength);
+  const checked = validateFile(name, type, bytes.byteLength, tr);
   if (!checked.ok) return actionError(checked.error);
 
   // 系統的リネーム（lib/file-naming）: 時刻+乱数で一意、業務キーで判別可能。
   const storageKey = `attachments/${ownerType}/${systematicFileName(name, ownerId)}`;
   if (!(await putObject(storageKey, bytes, checked.contentType))) {
-    return actionError("ストレージへの保存に失敗しました");
+    return actionError(tr("common.storageSaveFailed"));
   }
 
   try {
@@ -245,13 +253,15 @@ export async function saveAttachment(
       action: "UPDATE",
       tableName: ownerType,
       recordId: ownerId,
-      after: { note: `証憑を添付: ${name}` },
+      after: { note: tr("common.attachmentAddedNote", { name }) },
     });
     return actionOk({ id: attachment.id });
   } catch (e) {
     // DB 書き込みに失敗したらストレージ側の孤児を掃除（best-effort）。
     await deleteObject(storageKey);
-    return actionError(prismaErrorMessage(e, "証憑の保存に失敗しました"));
+    return actionError(
+      prismaErrorMessage(e, tr("common.attachmentSaveFailed"), tr),
+    );
   }
 }
 
@@ -260,17 +270,16 @@ export async function saveAttachment(
  * ストレージのオブジェクトは best-effort で消す（失敗しても成功扱い）。
  */
 export async function deleteAttachment(id: string): Promise<ActionResult> {
+  const tr = await getTranslations();
   try {
     const row = await prisma.documentAttachment.findUnique({
       where: { id },
       include: { file: true },
     });
-    if (!row) return actionError("添付ファイルが見つかりません");
+    if (!row) return actionError(tr("common.attachmentNotFound"));
     // 取込元の原本など、システムが付けた添付は消させない（内容を確かめる唯一の根拠）。
     if (row.isLocked) {
-      return actionError(
-        "この添付は削除できません（取込元の原本としてロックされています）",
-      );
+      return actionError(tr("common.attachmentLockedCannotDelete"));
     }
 
     await prisma.documentAttachment.delete({ where: { id } });
@@ -287,10 +296,16 @@ export async function deleteAttachment(id: string): Promise<ActionResult> {
       action: "UPDATE",
       tableName: row.ownerType,
       recordId: row.ownerId,
-      after: { note: `証憑を削除: ${row.file.filename}` },
+      after: {
+        note: tr("common.attachmentDeletedNote", {
+          name: row.file.filename,
+        }),
+      },
     });
     return actionOk();
   } catch (e) {
-    return actionError(prismaErrorMessage(e, "証憑の削除に失敗しました"));
+    return actionError(
+      prismaErrorMessage(e, tr("common.attachmentDeleteFailed"), tr),
+    );
   }
 }

@@ -8,6 +8,7 @@
  */
 
 import { revalidatePath } from "next/cache";
+import { getTranslations } from "next-intl/server";
 import { z } from "zod";
 import { recordAudit } from "@/lib/audit";
 import { checkPermission } from "@/lib/authz";
@@ -23,28 +24,30 @@ import {
 
 const BASE_PATH = "/master/plants";
 
-const plantInput = z.object({
-  code: z.string().min(1, "拠点コードを入力してください"),
-  nameJa: z.string().min(1, "名称（日本語）を入力してください"),
-  nameTranslations: z.record(z.string(), z.string()).optional(),
-  nameKana: z.string().optional(),
-  countryCode: z.string().nullable(),
-  regionId: z.number().int().positive().nullable(),
-  postalCode: z.string().optional(),
-  addressJa: z.string().optional(),
-  addressTranslations: z.record(z.string(), z.string()).optional(),
-  phone: z.string().optional(),
-  email: z
-    .string()
-    .email("メールアドレスの形式が正しくありません")
-    .or(z.literal(""))
-    .optional(),
-  contactPerson: z.string().optional(),
-  isActive: z.boolean(),
-  notes: z.string().optional(),
-});
+function plantInputSchema(tr: Awaited<ReturnType<typeof getTranslations>>) {
+  return z.object({
+    code: z.string().min(1, tr("master.plantForm.enterSiteCode")),
+    nameJa: z.string().min(1, tr("common.nameJaRequired")),
+    nameTranslations: z.record(z.string(), z.string()).optional(),
+    nameKana: z.string().optional(),
+    countryCode: z.string().nullable(),
+    regionId: z.number().int().positive().nullable(),
+    postalCode: z.string().optional(),
+    addressJa: z.string().optional(),
+    addressTranslations: z.record(z.string(), z.string()).optional(),
+    phone: z.string().optional(),
+    email: z
+      .string()
+      .email(tr("common.invalidEmailFormat"))
+      .or(z.literal(""))
+      .optional(),
+    contactPerson: z.string().optional(),
+    isActive: z.boolean(),
+    notes: z.string().optional(),
+  });
+}
 
-export type PlantInput = z.infer<typeof plantInput>;
+export type PlantInput = z.infer<ReturnType<typeof plantInputSchema>>;
 
 function revalidate(id?: number) {
   revalidatePath(BASE_PATH);
@@ -90,11 +93,14 @@ function auditSnapshot(v: PlantInput) {
 export async function createPlant(
   input: PlantInput,
 ): Promise<ActionResult<{ id: number }>> {
+  const tr = await getTranslations();
   const authz = await checkPermission("master", "CREATE");
   if (!authz.ok) return actionError(authz.error);
-  const parsed = plantInput.safeParse(input);
+  const parsed = plantInputSchema(tr).safeParse(input);
   if (!parsed.success) {
-    return actionError(parsed.error.issues[0]?.message ?? "入力が不正です");
+    return actionError(
+      parsed.error.issues[0]?.message ?? tr("common.invalidInput"),
+    );
   }
   const v = parsed.data;
   try {
@@ -111,7 +117,9 @@ export async function createPlant(
     revalidate(created.id);
     return actionOk({ id: created.id });
   } catch (e) {
-    return actionError(prismaErrorMessage(e, "拠点の作成に失敗しました"));
+    return actionError(
+      prismaErrorMessage(e, tr("master.plantActions.createFailed"), tr),
+    );
   }
 }
 
@@ -119,11 +127,14 @@ export async function updatePlant(
   id: number,
   input: PlantInput,
 ): Promise<ActionResult<{ id: number }>> {
+  const tr = await getTranslations();
   const authz = await checkPermission("master", "UPDATE");
   if (!authz.ok) return actionError(authz.error);
-  const parsed = plantInput.safeParse(input);
+  const parsed = plantInputSchema(tr).safeParse(input);
   if (!parsed.success) {
-    return actionError(parsed.error.issues[0]?.message ?? "入力が不正です");
+    return actionError(
+      parsed.error.issues[0]?.message ?? tr("common.invalidInput"),
+    );
   }
   const v = parsed.data;
   try {
@@ -152,7 +163,9 @@ export async function updatePlant(
     revalidate(id);
     return actionOk({ id });
   } catch (e) {
-    return actionError(prismaErrorMessage(e, "拠点の更新に失敗しました"));
+    return actionError(
+      prismaErrorMessage(e, tr("master.plantActions.updateFailed"), tr),
+    );
   }
 }
 
@@ -160,9 +173,11 @@ export async function setPlantsActive(
   ids: number[],
   isActive: boolean,
 ): Promise<ActionResult> {
+  const tr = await getTranslations();
   const authz = await checkPermission("master", "UPDATE");
   if (!authz.ok) return actionError(authz.error);
-  if (ids.length === 0) return actionError("対象が選択されていません");
+  if (ids.length === 0)
+    return actionError(tr("master.plantActions.noTargetSelected"));
   try {
     await prisma.plant.updateMany({
       where: { id: { in: ids } },
@@ -180,7 +195,9 @@ export async function setPlantsActive(
     for (const id of ids) revalidatePath(`${BASE_PATH}/${id}`);
     return actionOk();
   } catch (e) {
-    return actionError(prismaErrorMessage(e, "状態の更新に失敗しました"));
+    return actionError(
+      prismaErrorMessage(e, tr("master.plantActions.statusUpdateFailed"), tr),
+    );
   }
 }
 
@@ -188,14 +205,16 @@ export async function setPlantsActive(
 
 const REGIONS_PATH = "/master/plants/regions";
 
-const regionInput = z.object({
-  code: z.string().min(1, "地域コードを入力してください"),
-  nameJa: z.string().min(1, "名称（日本語）を入力してください"),
-  nameTranslations: z.record(z.string(), z.string()).optional(),
-  isActive: z.boolean(),
-});
+function regionInputSchema(tr: Awaited<ReturnType<typeof getTranslations>>) {
+  return z.object({
+    code: z.string().min(1, tr("master.plantActions.enterRegionCode")),
+    nameJa: z.string().min(1, tr("common.nameJaRequired")),
+    nameTranslations: z.record(z.string(), z.string()).optional(),
+    isActive: z.boolean(),
+  });
+}
 
-export type RegionInput = z.infer<typeof regionInput>;
+export type RegionInput = z.infer<ReturnType<typeof regionInputSchema>>;
 
 function revalidateRegions() {
   revalidatePath(REGIONS_PATH);
@@ -205,11 +224,14 @@ function revalidateRegions() {
 export async function createRegion(
   input: RegionInput,
 ): Promise<ActionResult<{ id: number }>> {
+  const tr = await getTranslations();
   const authz = await checkPermission("master", "CREATE");
   if (!authz.ok) return actionError(authz.error);
-  const parsed = regionInput.safeParse(input);
+  const parsed = regionInputSchema(tr).safeParse(input);
   if (!parsed.success) {
-    return actionError(parsed.error.issues[0]?.message ?? "入力が不正です");
+    return actionError(
+      parsed.error.issues[0]?.message ?? tr("common.invalidInput"),
+    );
   }
   const v = parsed.data;
   try {
@@ -230,7 +252,9 @@ export async function createRegion(
     revalidateRegions();
     return actionOk({ id: created.id });
   } catch (e) {
-    return actionError(prismaErrorMessage(e, "地域の作成に失敗しました"));
+    return actionError(
+      prismaErrorMessage(e, tr("master.plantActions.regionCreateFailed"), tr),
+    );
   }
 }
 
@@ -238,11 +262,14 @@ export async function updateRegion(
   id: number,
   input: RegionInput,
 ): Promise<ActionResult<{ id: number }>> {
+  const tr = await getTranslations();
   const authz = await checkPermission("master", "UPDATE");
   if (!authz.ok) return actionError(authz.error);
-  const parsed = regionInput.safeParse(input);
+  const parsed = regionInputSchema(tr).safeParse(input);
   if (!parsed.success) {
-    return actionError(parsed.error.issues[0]?.message ?? "入力が不正です");
+    return actionError(
+      parsed.error.issues[0]?.message ?? tr("common.invalidInput"),
+    );
   }
   const v = parsed.data;
   try {
@@ -250,7 +277,7 @@ export async function updateRegion(
       where: { id },
       select: { code: true, name: true, isActive: true },
     });
-    if (!prior) return actionError("対象の地域が見つかりません");
+    if (!prior) return actionError(tr("master.plantActions.regionNotFound"));
     // code は識別子（authz-core の scope_values が参照）のため更新しない。
     await prisma.region.update({
       where: { id },
@@ -273,7 +300,9 @@ export async function updateRegion(
     revalidateRegions();
     return actionOk({ id });
   } catch (e) {
-    return actionError(prismaErrorMessage(e, "地域の更新に失敗しました"));
+    return actionError(
+      prismaErrorMessage(e, tr("master.plantActions.regionUpdateFailed"), tr),
+    );
   }
 }
 
@@ -281,6 +310,7 @@ export async function setRegionActive(
   id: number,
   isActive: boolean,
 ): Promise<ActionResult> {
+  const tr = await getTranslations();
   const authz = await checkPermission("master", "UPDATE");
   if (!authz.ok) return actionError(authz.error);
   try {
@@ -294,19 +324,22 @@ export async function setRegionActive(
     revalidateRegions();
     return actionOk();
   } catch (e) {
-    return actionError(prismaErrorMessage(e, "状態の更新に失敗しました"));
+    return actionError(
+      prismaErrorMessage(e, tr("master.plantActions.statusUpdateFailed"), tr),
+    );
   }
 }
 
 /** 削除 — 拠点から参照されていない地域のみ。 */
 export async function deleteRegion(id: number): Promise<ActionResult> {
+  const tr = await getTranslations();
   const authz = await checkPermission("master", "DELETE");
   if (!authz.ok) return actionError(authz.error);
   try {
     const plantCount = await prisma.plant.count({ where: { regionId: id } });
     if (plantCount > 0) {
       return actionError(
-        `この地域は ${plantCount} 件の拠点から参照されているため削除できません（先に拠点の地域を変更してください）`,
+        tr("master.plantActions.regionInUse", { count: plantCount }),
       );
     }
     await prisma.region.delete({ where: { id } });
@@ -318,14 +351,18 @@ export async function deleteRegion(id: number): Promise<ActionResult> {
     revalidateRegions();
     return actionOk();
   } catch (e) {
-    return actionError(prismaErrorMessage(e, "地域の削除に失敗しました"));
+    return actionError(
+      prismaErrorMessage(e, tr("master.plantActions.regionDeleteFailed"), tr),
+    );
   }
 }
 
 export async function deletePlants(ids: number[]): Promise<ActionResult> {
+  const tr = await getTranslations();
   const authz = await checkPermission("master", "DELETE");
   if (!authz.ok) return actionError(authz.error);
-  if (ids.length === 0) return actionError("対象が選択されていません");
+  if (ids.length === 0)
+    return actionError(tr("master.plantActions.noTargetSelected"));
   try {
     // Guard: 現時点で拠点を参照するテーブルは未実装（在庫・工程ステップは後続）。
     // 参照テーブルが増えたら products と同様の count ガードを追加する。
@@ -341,6 +378,8 @@ export async function deletePlants(ids: number[]): Promise<ActionResult> {
     revalidate();
     return actionOk();
   } catch (e) {
-    return actionError(prismaErrorMessage(e, "拠点の削除に失敗しました"));
+    return actionError(
+      prismaErrorMessage(e, tr("master.plantActions.deleteFailed"), tr),
+    );
   }
 }

@@ -11,6 +11,7 @@
  */
 
 import { findUserIdsWithPermission } from "@ckk/authz-core";
+import { getTranslations } from "next-intl/server";
 import { auth } from "@/auth";
 import type { BugReportDiagnostics, CapturedLog } from "@/lib/bug-report";
 import { prisma } from "@/lib/db";
@@ -38,14 +39,20 @@ function clip(value: unknown, max: number): string {
 export async function submitBugReportAction(
   input: BugReportSubmitInput,
 ): Promise<ActionResult<{ id: string }>> {
+  const tr = await getTranslations();
   const session = await auth();
   const su = session?.user as { id?: string; name?: string | null } | undefined;
-  if (!su?.id) return actionError("ログインが必要です");
+  if (!su?.id) return actionError(tr("common.loginRequired"));
 
   const description = input.description?.trim() ?? "";
-  if (!description) return actionError("問題の内容を入力してください");
+  if (!description)
+    return actionError(tr("layout.bugReportModal.describeTheProblem"));
   if (description.length > DESCRIPTION_MAX) {
-    return actionError(`説明は ${DESCRIPTION_MAX} 文字以内で入力してください`);
+    return actionError(
+      tr("layout.bugReportActions.descriptionTooLong", {
+        max: DESCRIPTION_MAX,
+      }),
+    );
   }
 
   const d = input.diagnostics ?? ({} as BugReportDiagnostics);
@@ -81,16 +88,14 @@ export async function submitBugReportAction(
         tableName: "system",
         recordId: `bug-report:${id}`,
         afterData: {
-          note: `バグ報告: ${excerpt}`,
+          note: tr("layout.bugReportActions.auditNote", { excerpt }),
           bugReport: { description, diagnostics, logs },
         },
       },
     });
   } catch (e) {
     console.error("submitBugReportAction: audit write failed", e);
-    return actionError(
-      "報告の保存に失敗しました。時間をおいて再試行してください",
-    );
+    return actionError(tr("layout.bugReportActions.saveFailed"));
   }
 
   // system:ADMIN 保持者へ通知（失敗しても報告自体は成立）
@@ -101,7 +106,9 @@ export async function submitBugReportAction(
       await notify({
         userIds: recipients,
         type: "SYSTEM",
-        title: `${su.name ?? "ユーザー"} さんからバグ報告`,
+        title: tr("layout.bugReportActions.notificationTitle", {
+          name: su.name ?? tr("common.user"),
+        }),
         message: excerpt,
         linkPath: "/settings/activity",
       });

@@ -11,6 +11,7 @@
 
 import "server-only";
 
+import { getTranslations } from "next-intl/server";
 import { getCurrentActorId, recordAudit } from "@/lib/audit";
 import { checkPermission } from "@/lib/authz";
 import { generateCode, normalizeCode } from "@/lib/crockford";
@@ -273,19 +274,20 @@ export interface BlacklistRow {
 /** ブロック指定一覧（管理画面）。失敗時は空配列。 */
 export async function listBlacklist(): Promise<BlacklistRow[]> {
   try {
-    const [rows, links] = await Promise.all([
+    const [rows, links, tr] = await Promise.all([
       prisma.linkBlacklist.findMany({
         orderBy: { pattern: "asc" },
         include: { createdByUser: { select: { displayName: true } } },
       }),
       prisma.linkIndex.findMany({ select: { hostname: true } }),
+      getTranslations(),
     ]);
     return rows.map((r) => ({
       id: r.id,
       pattern: r.pattern,
       reason: r.reason,
       isActive: r.isActive,
-      createdBy: r.createdByUser?.displayName ?? "システム",
+      createdBy: r.createdByUser?.displayName ?? tr("common.system"),
       createdAt: r.createdAt.toISOString(),
       matchCount: links.filter((l) => matchBlacklist(l.hostname, [r.pattern]))
         .length,
@@ -303,10 +305,11 @@ export async function addBlacklistEntry(input: {
 }): Promise<ActionResult<{ id: string }>> {
   const authz = await checkPermission(BLACKLIST_PERMISSION, "UPDATE");
   if (!authz.ok) return actionError(authz.error);
+  const tr = await getTranslations();
 
   const pattern = normalizeBlacklistPattern(input.pattern);
   if (!pattern) {
-    return actionError("ホスト名の形式で入力してください（例: evil.example）");
+    return actionError(tr("common.enterAsHostnameFormat"));
   }
   try {
     const row = await prisma.linkBlacklist.create({
@@ -321,11 +324,11 @@ export async function addBlacklistEntry(input: {
       action: "CREATE",
       tableName: "link_blacklist",
       recordId: pattern,
-      after: { note: `リンクをブロック: ${pattern}` },
+      after: { note: tr("common.linkBlockedNote", { pattern }) },
     });
     return actionOk({ id: row.id });
   } catch (e) {
-    return actionError(prismaErrorMessage(e, "追加に失敗しました"));
+    return actionError(prismaErrorMessage(e, tr("common.couldNotAdd"), tr));
   }
 }
 
@@ -336,6 +339,7 @@ export async function setBlacklistActive(
 ): Promise<ActionResult> {
   const authz = await checkPermission(BLACKLIST_PERMISSION, "UPDATE");
   if (!authz.ok) return actionError(authz.error);
+  const tr = await getTranslations();
   try {
     const row = await prisma.linkBlacklist.update({
       where: { id },
@@ -347,12 +351,14 @@ export async function setBlacklistActive(
       tableName: "link_blacklist",
       recordId: row.pattern,
       after: {
-        note: `リンクブロックを${isActive ? "有効化" : "無効化"}: ${row.pattern}`,
+        note: isActive
+          ? tr("common.linkBlockEnabledNote", { pattern: row.pattern })
+          : tr("common.linkBlockDisabledNote", { pattern: row.pattern }),
       },
     });
     return actionOk();
   } catch (e) {
-    return actionError(prismaErrorMessage(e, "更新に失敗しました"));
+    return actionError(prismaErrorMessage(e, tr("common.couldNotUpdate"), tr));
   }
 }
 
@@ -360,6 +366,7 @@ export async function setBlacklistActive(
 export async function deleteBlacklistEntry(id: string): Promise<ActionResult> {
   const authz = await checkPermission(BLACKLIST_PERMISSION, "DELETE");
   if (!authz.ok) return actionError(authz.error);
+  const tr = await getTranslations();
   try {
     const row = await prisma.linkBlacklist.delete({
       where: { id },
@@ -369,11 +376,13 @@ export async function deleteBlacklistEntry(id: string): Promise<ActionResult> {
       action: "DELETE",
       tableName: "link_blacklist",
       recordId: row.pattern,
-      before: { note: `リンクブロックを削除: ${row.pattern}` },
+      before: {
+        note: tr("common.linkBlockDeletedNote", { pattern: row.pattern }),
+      },
     });
     return actionOk();
   } catch (e) {
-    return actionError(prismaErrorMessage(e, "削除に失敗しました"));
+    return actionError(prismaErrorMessage(e, tr("common.couldNotDelete"), tr));
   }
 }
 

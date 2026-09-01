@@ -15,6 +15,7 @@
 
 import { type Access, rowInScope } from "@ckk/authz-core";
 import { revalidatePath } from "next/cache";
+import { getTranslations } from "next-intl/server";
 import { z } from "zod";
 import { requiresEndDate } from "@/components/sales/price-lists/model";
 import { recordAudit } from "@/lib/audit";
@@ -35,8 +36,9 @@ import {
 } from "@/lib/server-action";
 import { type EstimateSource, fetchEstimateSourcesForProduct } from "./data";
 
+type Tr = Awaited<ReturnType<typeof getTranslations>>;
+
 const BASE_PATH = "/sales/price-lists";
-const SCOPE_DENIED = "この操作の権限がありません（対象範囲外）";
 
 /**
  * 対象エントリ（複数可）がスコープ内か（OWN 行チェック）。ALL は素通し。
@@ -60,14 +62,18 @@ async function entriesInScope(
 const orderTypeSchema = z.enum(["PRODUCTION", "TEST", "SAMPLE", "OTHER"]);
 
 // 自然キー（新規作成・コピー先の識別に使用）
-const identitySchema = z.object({
-  customerBpId: z.string().min(1, "顧客を選択してください"),
-  // UI からは文字列（Select 値）で届く — DB は内部 id（int）
-  productId: z
-    .union([z.string(), z.number()])
-    .transform((v) => Number(v))
-    .pipe(z.number().int().min(1)),
-});
+function identitySchema(tr: Tr) {
+  return z.object({
+    customerBpId: z
+      .string()
+      .min(1, tr("sales.orderAcceptances.selectACustomer")),
+    // UI からは文字列（Select 値）で届く — DB は内部 id（int）
+    productId: z
+      .union([z.string(), z.number()])
+      .transform((v) => Number(v))
+      .pipe(z.number().int().min(1)),
+  });
+}
 
 const tierSchema = z.object({
   minQuantity: z.number().int().min(1),
@@ -76,23 +82,27 @@ const tierSchema = z.object({
   priceOverride: z.number().min(0).nullable(),
 });
 
-const variantSchema = z.object({
-  /** price_list_variants.id — null = 新規バリアント。 */
-  id: z.string().nullable(),
-  orderType: orderTypeSchema,
-  baseUnitPrice: z.number().min(0),
-  validFrom: z.string().min(1, "有効開始日を選択してください"),
-  validUntil: z.string().nullable(),
-  isActive: z.boolean(),
-  /** 基準単価ソースの価格試算番号 EST-…（手動設定は null。新規バリアントのみ有効）。 */
-  estimateNumber: z.string().nullable(),
-  tiers: z.array(tierSchema).min(1, "段階を1件以上追加してください"),
-});
+function variantSchema(tr: Tr) {
+  return z.object({
+    /** price_list_variants.id — null = 新規バリアント。 */
+    id: z.string().nullable(),
+    orderType: orderTypeSchema,
+    baseUnitPrice: z.number().min(0),
+    validFrom: z.string().min(1, tr("sales.priceLists.selectAStartDate")),
+    validUntil: z.string().nullable(),
+    isActive: z.boolean(),
+    /** 基準単価ソースの価格試算番号 EST-…（手動設定は null。新規バリアントのみ有効）。 */
+    estimateNumber: z.string().nullable(),
+    tiers: z
+      .array(tierSchema)
+      .min(1, tr("sales.priceListTypeForm.addAtLeastOneTier")),
+  });
+}
 
-export type PriceVariantInput = z.input<typeof variantSchema>;
+export type PriceVariantInput = z.input<ReturnType<typeof variantSchema>>;
 
 /** クライアントから受け取る自然キー（productId は文字列でも可）。 */
-export type EntryIdentityPayload = z.input<typeof identitySchema>;
+export type EntryIdentityPayload = z.input<ReturnType<typeof identitySchema>>;
 
 function keyOf(entryNumber: string): DocKey | null {
   return parseDocKey(entryNumber, "PRC");
@@ -126,14 +136,16 @@ function parseNumbers(entryNumbers: string[]): DocKey[] | null {
 
 /** バリアント配列の共通検証（種別重複・TEST/SAMPLE の終了日必須）。 */
 function validateVariants(
-  variants: z.infer<typeof variantSchema>[],
+  tr: Tr,
+  variants: z.infer<ReturnType<typeof variantSchema>>[],
 ): string | null {
   const seen = new Set<string>();
   for (const v of variants) {
-    if (seen.has(v.orderType)) return "同じ注文種別が重複しています";
+    if (seen.has(v.orderType))
+      return tr("sales.priceLists.theSameOrderTypeAppearsTwice");
     seen.add(v.orderType);
     if (requiresEndDate(v.orderType) && !v.validUntil) {
-      return "テスト・サンプルの価格は有効終了日が必要です";
+      return tr("sales.priceListsActions.testSampleRequiresEndDate");
     }
   }
   return null;
@@ -144,19 +156,28 @@ function validateVariants(
  * 返り値の needsLock = 初回使用（CONFIRMED → REGISTERED へのロックが必要）。
  */
 async function resolveEstimateSource(
+  tr: Tr,
   estimateNumber: string,
 ): Promise<
   { ok: true; key: DocKey; needsLock: boolean } | { ok: false; error: string }
 > {
   const key = parseDocKey(estimateNumber, "EST");
-  if (!key) return { ok: false, error: "価格試算番号が不正です" };
+  if (!key)
+    return {
+      ok: false,
+      error: tr("sales.priceListsActions.invalidEstimateNumber"),
+    };
   const estimate = await prisma.estimate.findUnique({
     where: whereKey(key),
     select: { status: true },
   });
-  if (!estimate) return { ok: false, error: "価格試算が見つかりません" };
+  if (!estimate)
+    return { ok: false, error: tr("sales.priceListsActions.estimateNotFound") };
   if (estimate.status === "DRAFT") {
-    return { ok: false, error: "確定済みの価格試算のみ価格表に使用できます" };
+    return {
+      ok: false,
+      error: tr("sales.priceListsActions.onlyConfirmedEstimateUsable"),
+    };
   }
   return { ok: true, key, needsLock: estimate.status === "CONFIRMED" };
 }
@@ -175,6 +196,7 @@ function tierCreates(tiers: z.infer<typeof tierSchema>[]) {
 export async function fetchEstimateSources(
   productId: string | number,
 ): Promise<ActionResult<EstimateSource[]>> {
+  const tr = await getTranslations();
   const authz = await checkPermission("price_list", "READ");
   if (!authz.ok) return actionError(authz.error);
   const id = Number(productId);
@@ -182,34 +204,47 @@ export async function fetchEstimateSources(
   try {
     return actionOk(await fetchEstimateSourcesForProduct(id));
   } catch (e) {
-    return actionError(prismaErrorMessage(e, "価格試算の取得に失敗しました"));
+    return actionError(
+      prismaErrorMessage(
+        e,
+        tr("sales.priceListsActions.fetchEstimateSourcesFailed"),
+        tr,
+      ),
+    );
   }
 }
 
 // ── 新規作成（顧客×製品 + バリアント一式） ───────────────────────────────────
 
-const createInput = z.object({
-  identity: identitySchema,
-  /** 営業担当 — 未指定なら顧客の主担当が入る（lib/sales-rep）。 */
-  salesRepId: z.string().nullable().optional(),
-  variants: z
-    .array(variantSchema)
-    .min(1, "注文種別の価格を1件以上追加してください"),
-});
+function createInputSchema(tr: Tr) {
+  return z.object({
+    identity: identitySchema(tr),
+    /** 営業担当 — 未指定なら顧客の主担当が入る（lib/sales-rep）。 */
+    salesRepId: z.string().nullable().optional(),
+    variants: z
+      .array(variantSchema(tr))
+      .min(1, tr("sales.priceListTypeForm.addAtLeastOneOrderTypePrice")),
+  });
+}
 
-export type PriceEntryCreateInput = z.input<typeof createInput>;
+export type PriceEntryCreateInput = z.input<
+  ReturnType<typeof createInputSchema>
+>;
 
 export async function createPriceEntry(
   payload: PriceEntryCreateInput,
 ): Promise<ActionResult<{ entryId: string }>> {
-  const parsed = createInput.safeParse(payload);
+  const tr = await getTranslations();
+  const parsed = createInputSchema(tr).safeParse(payload);
   if (!parsed.success) {
-    return actionError(parsed.error.issues[0]?.message ?? "入力が不正です");
+    return actionError(
+      parsed.error.issues[0]?.message ?? tr("common.invalidInput"),
+    );
   }
   const authz = await checkPermission("price_list", "CREATE");
   if (!authz.ok) return actionError(authz.error);
   const v = parsed.data;
-  const variantError = validateVariants(v.variants);
+  const variantError = validateVariants(tr, v.variants);
   if (variantError) return actionError(variantError);
   try {
     // 価格試算ソースを検証（初回使用の価格試算はロック対象として控える）。
@@ -217,7 +252,7 @@ export async function createPriceEntry(
     const estimateKeys = new Map<string, DocKey>();
     for (const variant of v.variants) {
       if (!variant.estimateNumber) continue;
-      const source = await resolveEstimateSource(variant.estimateNumber);
+      const source = await resolveEstimateSource(tr, variant.estimateNumber);
       if (!source.ok) return actionError(source.error);
       estimateKeys.set(variant.estimateNumber, source.key);
       if (source.needsLock) {
@@ -299,44 +334,52 @@ export async function createPriceEntry(
         ? String((e as { code: unknown }).code)
         : undefined;
     if (code === "P2002") {
-      return actionError(
-        "同一の顧客・製品の価格表が既に存在します。既存の価格表を編集してください。",
-      );
+      return actionError(tr("sales.priceListsActions.duplicateEntry"));
     }
-    return actionError(prismaErrorMessage(e, "価格表の作成に失敗しました"));
+    return actionError(
+      prismaErrorMessage(e, tr("sales.priceListsActions.createFailed"), tr),
+    );
   }
 }
 
 // ── entry update（状態 + バリアント一式の追加・変更・削除） ──────────────────
 
-const updateInput = z.object({
-  entryNumber: z.string().min(1),
-  isActive: z.boolean(),
-  /** 営業担当。顧客は作成後不変なので、ここは選ばれた値をそのまま保存する。 */
-  salesRepId: z.string().nullable().optional(),
-  variants: z
-    .array(variantSchema)
-    .min(1, "注文種別の価格を1件以上追加してください"),
-});
+function updateInputSchema(tr: Tr) {
+  return z.object({
+    entryNumber: z.string().min(1),
+    isActive: z.boolean(),
+    /** 営業担当。顧客は作成後不変なので、ここは選ばれた値をそのまま保存する。 */
+    salesRepId: z.string().nullable().optional(),
+    variants: z
+      .array(variantSchema(tr))
+      .min(1, tr("sales.priceListTypeForm.addAtLeastOneOrderTypePrice")),
+  });
+}
 
-export type PriceEntryUpdateInput = z.input<typeof updateInput>;
+export type PriceEntryUpdateInput = z.input<
+  ReturnType<typeof updateInputSchema>
+>;
 
 export async function updatePriceEntry(
   payload: PriceEntryUpdateInput,
 ): Promise<ActionResult<{ entryId: string }>> {
-  const parsed = updateInput.safeParse(payload);
+  const tr = await getTranslations();
+  const parsed = updateInputSchema(tr).safeParse(payload);
   if (!parsed.success) {
-    return actionError(parsed.error.issues[0]?.message ?? "入力が不正です");
+    return actionError(
+      parsed.error.issues[0]?.message ?? tr("common.invalidInput"),
+    );
   }
   const v = parsed.data;
   const key = keyOf(v.entryNumber);
-  if (!key) return actionError("価格表番号が不正です");
+  if (!key)
+    return actionError(tr("sales.priceListsActions.invalidEntryNumber"));
   const authz = await checkPermission("price_list", "UPDATE");
   if (!authz.ok) return actionError(authz.error);
   if (!(await entriesInScope(authz.access, authz.userId, [key]))) {
-    return actionError(SCOPE_DENIED);
+    return actionError(tr("common.scopeDenied"));
   }
-  const variantError = validateVariants(v.variants);
+  const variantError = validateVariants(tr, v.variants);
   if (variantError) return actionError(variantError);
   try {
     const existing = await prisma.priceListVariant.findMany({
@@ -348,7 +391,8 @@ export async function updatePriceEntry(
       v.variants.map((x) => x.id).filter((id): id is string => !!id),
     );
     for (const id of keptIds) {
-      if (!existingIds.has(id)) return actionError("バリアントが不正です");
+      if (!existingIds.has(id))
+        return actionError(tr("sales.priceListsActions.invalidVariant"));
     }
     const removedIds = [...existingIds].filter((id) => !keptIds.has(id));
 
@@ -357,7 +401,7 @@ export async function updatePriceEntry(
     const estimateKeys = new Map<string, DocKey>();
     for (const variant of v.variants) {
       if (variant.id || !variant.estimateNumber) continue;
-      const source = await resolveEstimateSource(variant.estimateNumber);
+      const source = await resolveEstimateSource(tr, variant.estimateNumber);
       if (!source.ok) return actionError(source.error);
       estimateKeys.set(variant.estimateNumber, source.key);
       if (source.needsLock) {
@@ -461,7 +505,9 @@ export async function updatePriceEntry(
     revalidate(v.entryNumber);
     return actionOk({ entryId: v.entryNumber });
   } catch (e) {
-    return actionError(prismaErrorMessage(e, "価格表の更新に失敗しました"));
+    return actionError(
+      prismaErrorMessage(e, tr("sales.priceListsActions.updateFailed"), tr),
+    );
   }
 }
 
@@ -478,18 +524,21 @@ export async function copyPriceEntry(payload: {
   validFrom: string;
   validUntil: string | null;
 }): Promise<ActionResult<{ entryId: string }>> {
+  const tr = await getTranslations();
   const authz = await checkPermission("price_list", "CREATE");
   if (!authz.ok) return actionError(authz.error);
   const sourceKey = keyOf(payload.sourceEntryNumber);
-  if (!sourceKey) return actionError("コピー元の価格表番号が不正です");
+  if (!sourceKey)
+    return actionError(tr("sales.priceListsActions.invalidSourceEntryNumber"));
   if (!(await entriesInScope(authz.access, authz.userId, [sourceKey]))) {
-    return actionError(SCOPE_DENIED);
+    return actionError(tr("common.scopeDenied"));
   }
   const source = await prisma.priceListEntry.findUnique({
     where: whereKey(sourceKey),
     include: { variants: { include: { tiers: true } } },
   });
-  if (!source) return actionError("コピー元の価格表が見つかりません");
+  if (!source)
+    return actionError(tr("sales.priceListsActions.sourceEntryNotFound"));
   return createPriceEntry({
     identity: payload.targetIdentity,
     variants: source.variants.map((variant) => ({
@@ -520,22 +569,28 @@ export async function changePriceEntryPeriod(payload: {
   validFrom: string;
   validUntil: string | null;
 }): Promise<ActionResult> {
+  const tr = await getTranslations();
   const period = z
     .object({
-      variantId: z.string().min(1, "注文種別を選択してください"),
-      validFrom: z.string().min(1, "有効開始日を選択してください"),
+      variantId: z
+        .string()
+        .min(1, tr("sales.priceListsActions.selectOrderType")),
+      validFrom: z.string().min(1, tr("sales.priceLists.selectAStartDate")),
       validUntil: z.string().nullable(),
     })
     .safeParse(payload);
   if (!period.success) {
-    return actionError(period.error.issues[0]?.message ?? "入力が不正です");
+    return actionError(
+      period.error.issues[0]?.message ?? tr("common.invalidInput"),
+    );
   }
   const key = keyOf(payload.entryNumber);
-  if (!key) return actionError("価格表番号が不正です");
+  if (!key)
+    return actionError(tr("sales.priceListsActions.invalidEntryNumber"));
   const authz = await checkPermission("price_list", "UPDATE");
   if (!authz.ok) return actionError(authz.error);
   if (!(await entriesInScope(authz.access, authz.userId, [key]))) {
-    return actionError(SCOPE_DENIED);
+    return actionError(tr("common.scopeDenied"));
   }
   try {
     const variant = await prisma.priceListVariant.findUnique({
@@ -547,10 +602,12 @@ export async function changePriceEntryPeriod(payload: {
       variant.entryYearMonth !== key.yearMonth ||
       variant.entrySeq !== key.seq
     ) {
-      return actionError("バリアントが不正です");
+      return actionError(tr("sales.priceListsActions.invalidVariant"));
     }
     if (requiresEndDate(variant.orderType) && !payload.validUntil) {
-      return actionError("テスト・サンプルの価格は有効終了日が必要です");
+      return actionError(
+        tr("sales.priceListsActions.testSampleRequiresEndDate"),
+      );
     }
     await prisma.priceListVariant.update({
       where: { id: payload.variantId },
@@ -572,7 +629,13 @@ export async function changePriceEntryPeriod(payload: {
     revalidate(payload.entryNumber);
     return actionOk();
   } catch (e) {
-    return actionError(prismaErrorMessage(e, "有効期間の変更に失敗しました"));
+    return actionError(
+      prismaErrorMessage(
+        e,
+        tr("sales.priceListsActions.periodChangeFailed"),
+        tr,
+      ),
+    );
   }
 }
 
@@ -582,13 +645,16 @@ export async function setPriceEntriesActive(
   entryNumbers: string[],
   isActive: boolean,
 ): Promise<ActionResult> {
-  if (entryNumbers.length === 0) return actionError("対象が選択されていません");
+  const tr = await getTranslations();
+  if (entryNumbers.length === 0)
+    return actionError(tr("common.noTargetSelected"));
   const keys = parseNumbers(entryNumbers);
-  if (!keys) return actionError("価格表番号が不正です");
+  if (!keys)
+    return actionError(tr("sales.priceListsActions.invalidEntryNumber"));
   const authz = await checkPermission("price_list", "UPDATE");
   if (!authz.ok) return actionError(authz.error);
   if (!(await entriesInScope(authz.access, authz.userId, keys))) {
-    return actionError(SCOPE_DENIED);
+    return actionError(tr("common.scopeDenied"));
   }
   try {
     await prisma.$transaction(
@@ -611,20 +677,25 @@ export async function setPriceEntriesActive(
     }
     return actionOk();
   } catch (e) {
-    return actionError(prismaErrorMessage(e, "状態の更新に失敗しました"));
+    return actionError(
+      prismaErrorMessage(e, tr("common.statusUpdateFailed"), tr),
+    );
   }
 }
 
 export async function deletePriceEntries(
   entryNumbers: string[],
 ): Promise<ActionResult> {
-  if (entryNumbers.length === 0) return actionError("対象が選択されていません");
+  const tr = await getTranslations();
+  if (entryNumbers.length === 0)
+    return actionError(tr("common.noTargetSelected"));
   const keys = parseNumbers(entryNumbers);
-  if (!keys) return actionError("価格表番号が不正です");
+  if (!keys)
+    return actionError(tr("sales.priceListsActions.invalidEntryNumber"));
   const authz = await checkPermission("price_list", "DELETE");
   if (!authz.ok) return actionError(authz.error);
   if (!(await entriesInScope(authz.access, authz.userId, keys))) {
-    return actionError(SCOPE_DENIED);
+    return actionError(tr("common.scopeDenied"));
   }
   try {
     await prisma.$transaction(
@@ -649,42 +720,52 @@ export async function deletePriceEntries(
     }
     return actionOk();
   } catch (e) {
-    return actionError(prismaErrorMessage(e, "価格表の削除に失敗しました"));
+    return actionError(
+      prismaErrorMessage(e, tr("sales.priceListsActions.deleteFailed"), tr),
+    );
   }
 }
 
 // ── 値引きルール（バリアント単位） ───────────────────────────────────────────
 
-const discountInput = z.object({
-  entryNumber: z.string().min(1),
-  variantId: z.string().min(1, "注文種別を選択してください"),
-  id: z.string().nullable(),
-  label: z.string().min(1, "名称を入力してください"),
-  discountType: z.enum(["RATE", "AMOUNT"]),
-  value: z.number().gt(0, "1以上を入力してください"),
-  minQuantity: z.number().int().min(1),
-  maxQuantity: z.number().int().nullable(),
-  validFrom: z.string().min(1, "開始日を選択してください"),
-  validUntil: z.string().nullable(),
-  isActive: z.boolean(),
-});
+function discountInputSchema(tr: Tr) {
+  return z.object({
+    entryNumber: z.string().min(1),
+    variantId: z.string().min(1, tr("sales.priceListsActions.selectOrderType")),
+    id: z.string().nullable(),
+    label: z.string().min(1, tr("sales.discountRuleModal.enterAName")),
+    discountType: z.enum(["RATE", "AMOUNT"]),
+    value: z.number().gt(0, tr("sales.discountRuleModal.enterAtLeast1")),
+    minQuantity: z.number().int().min(1),
+    maxQuantity: z.number().int().nullable(),
+    validFrom: z
+      .string()
+      .min(1, tr("master.approvalSettings.selectAStartDate")),
+    validUntil: z.string().nullable(),
+    isActive: z.boolean(),
+  });
+}
 
-export type DiscountRuleInput = z.input<typeof discountInput>;
+export type DiscountRuleInput = z.input<ReturnType<typeof discountInputSchema>>;
 
 export async function saveDiscountRule(
   payload: DiscountRuleInput,
 ): Promise<ActionResult> {
-  const parsed = discountInput.safeParse(payload);
+  const tr = await getTranslations();
+  const parsed = discountInputSchema(tr).safeParse(payload);
   if (!parsed.success) {
-    return actionError(parsed.error.issues[0]?.message ?? "入力が不正です");
+    return actionError(
+      parsed.error.issues[0]?.message ?? tr("common.invalidInput"),
+    );
   }
   const v = parsed.data;
   const key = keyOf(v.entryNumber);
-  if (!key) return actionError("価格表番号が不正です");
+  if (!key)
+    return actionError(tr("sales.priceListsActions.invalidEntryNumber"));
   const authz = await checkPermission("price_list", "UPDATE");
   if (!authz.ok) return actionError(authz.error);
   if (!(await entriesInScope(authz.access, authz.userId, [key]))) {
-    return actionError(SCOPE_DENIED);
+    return actionError(tr("common.scopeDenied"));
   }
   const data = {
     label: v.label,
@@ -706,7 +787,7 @@ export async function saveDiscountRule(
       variant.entryYearMonth !== key.yearMonth ||
       variant.entrySeq !== key.seq
     ) {
-      return actionError("バリアントが不正です");
+      return actionError(tr("sales.priceListsActions.invalidVariant"));
     }
     if (v.id) {
       await prisma.priceListDiscount.update({ where: { id: v.id }, data });
@@ -730,7 +811,11 @@ export async function saveDiscountRule(
     return actionOk();
   } catch (e) {
     return actionError(
-      prismaErrorMessage(e, "値引きルールの保存に失敗しました"),
+      prismaErrorMessage(
+        e,
+        tr("sales.priceListsActions.saveDiscountRuleFailed"),
+        tr,
+      ),
     );
   }
 }
@@ -739,12 +824,14 @@ export async function deleteDiscountRule(
   entryNumber: string,
   id: string,
 ): Promise<ActionResult> {
+  const tr = await getTranslations();
   const key = keyOf(entryNumber);
-  if (!key) return actionError("価格表番号が不正です");
+  if (!key)
+    return actionError(tr("sales.priceListsActions.invalidEntryNumber"));
   const authz = await checkPermission("price_list", "DELETE");
   if (!authz.ok) return actionError(authz.error);
   if (!(await entriesInScope(authz.access, authz.userId, [key]))) {
-    return actionError(SCOPE_DENIED);
+    return actionError(tr("common.scopeDenied"));
   }
   try {
     await prisma.priceListDiscount.delete({ where: { id } });
@@ -758,7 +845,11 @@ export async function deleteDiscountRule(
     return actionOk();
   } catch (e) {
     return actionError(
-      prismaErrorMessage(e, "値引きルールの削除に失敗しました"),
+      prismaErrorMessage(
+        e,
+        tr("sales.priceListsActions.deleteDiscountRuleFailed"),
+        tr,
+      ),
     );
   }
 }

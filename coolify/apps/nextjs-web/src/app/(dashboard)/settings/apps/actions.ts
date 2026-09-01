@@ -9,6 +9,7 @@
  */
 
 import { revalidatePath } from "next/cache";
+import { getTranslations } from "next-intl/server";
 import { z } from "zod";
 import { APP_ENVS, type AppEnv, appFlagKey } from "@/lib/app-flags";
 import { appList } from "@/lib/app-list";
@@ -33,15 +34,17 @@ export async function setAppEnabled(raw: {
   env: AppEnv;
   enabled: boolean;
 }): Promise<ActionResult> {
+  const tr = await getTranslations();
   const authz = await checkPermission("system", "UPDATE");
   if (!authz.ok) return actionError(authz.error);
   const parsed = input.safeParse(raw);
-  if (!parsed.success) return actionError("入力が不正です");
+  if (!parsed.success) return actionError(tr("common.invalidInput"));
   const { appKey, env, enabled } = parsed.data;
 
   const app = appList.find((a) => a.key === appKey);
-  if (!app) return actionError("対象のアプリが見つかりません");
-  if (!APP_ENVS.includes(env)) return actionError("環境の指定が不正です");
+  if (!app) return actionError(tr("settings.appsActions.appNotFound"));
+  if (!APP_ENVS.includes(env))
+    return actionError(tr("settings.appsActions.invalidEnv"));
 
   const key = appFlagKey(appKey, env);
   try {
@@ -52,7 +55,11 @@ export async function setAppEnabled(raw: {
       create: {
         key,
         isEnabled: enabled,
-        description: `${app.label}（${app.operationCode}）の ${env} 表示`,
+        description: tr("settings.appsActions.flagDescription", {
+          label: app.label,
+          operationCode: app.operationCode,
+          env,
+        }),
         updatedBy,
       },
       update: { isEnabled: enabled, updatedBy },
@@ -68,6 +75,8 @@ export async function setAppEnabled(raw: {
     revalidatePath("/", "layout");
     return actionOk();
   } catch (e) {
-    return actionError(prismaErrorMessage(e, "フラグの更新に失敗しました"));
+    return actionError(
+      prismaErrorMessage(e, tr("settings.appsActions.updateFailed"), tr),
+    );
   }
 }

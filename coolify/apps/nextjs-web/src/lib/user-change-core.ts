@@ -14,7 +14,10 @@
  * マイグレーションは要らない。
  */
 
+import type { getTranslations } from "next-intl/server";
 import { z } from "zod";
+
+type Tr = Awaited<ReturnType<typeof getTranslations>>;
 
 export const USER_CHANGE_KINDS = [
   "SUSPEND",
@@ -28,11 +31,17 @@ export function isUserChangeKind(v: string): v is UserChangeKind {
   return (USER_CHANGE_KINDS as readonly string[]).includes(v);
 }
 
-export const USER_CHANGE_LABEL: Record<UserChangeKind, string> = {
-  SUSPEND: "利用停止",
-  RESTORE: "利用停止の解除",
-  UPDATE_PLANTS: "所属拠点の変更",
-};
+/** 訳は呼び出し側の `tr` に委ねる（このファイルは pure / server-safe のみ）。 */
+export function userChangeLabel(kind: UserChangeKind, tr: Tr): string {
+  switch (kind) {
+    case "SUSPEND":
+      return tr("common.userChangeSuspend");
+    case "RESTORE":
+      return tr("common.userChangeRestore");
+    case "UPDATE_PLANTS":
+      return tr("common.userChangeUpdatePlants");
+  }
+}
 
 /** 一覧のバッジ色（_specs/design.md §9 の考え方に合わせる）。 */
 export const USER_CHANGE_COLOR: Record<UserChangeKind, string> = {
@@ -79,10 +88,11 @@ export function payloadSchemaFor(kind: UserChangeKind) {
 export function validatePayload(
   kind: UserChangeKind,
   payload: unknown,
+  tr: Tr,
 ): string | null {
   const parsed = payloadSchemaFor(kind).safeParse(payload);
   if (parsed.success) return null;
-  return parsed.error.issues[0]?.message ?? "依頼内容が不正です";
+  return parsed.error.issues[0]?.message ?? tr("common.requestContentInvalid");
 }
 
 /**
@@ -92,27 +102,29 @@ export function validatePayload(
 export function describeUserChange(
   kind: UserChangeKind,
   payload: unknown,
+  tr: Tr,
   plantNames?: ReadonlyMap<number, string>,
 ): string {
   switch (kind) {
     case "SUSPEND": {
       const p = suspendPayloadSchema.safeParse(payload);
-      if (!p.success) return USER_CHANGE_LABEL.SUSPEND;
-      if (p.data.kind === "permanent") return "恒久的に利用停止";
+      if (!p.success) return userChangeLabel("SUSPEND", tr);
+      if (p.data.kind === "permanent") return tr("common.suspendPermanently");
       return p.data.until
-        ? `${p.data.until} まで利用停止`
-        : "期限つきで利用停止";
+        ? tr("common.suspendUntil", { until: p.data.until })
+        : tr("common.suspendWithDeadline");
     }
     case "RESTORE":
-      return "利用停止を解除して有効に戻す";
+      return tr("common.restoreFromSuspension");
     case "UPDATE_PLANTS": {
       const p = updatePlantsPayloadSchema.safeParse(payload);
-      if (!p.success) return USER_CHANGE_LABEL.UPDATE_PLANTS;
-      if (p.data.plantIds.length === 0) return "所属拠点をすべて外す";
+      if (!p.success) return userChangeLabel("UPDATE_PLANTS", tr);
+      if (p.data.plantIds.length === 0)
+        return tr("common.removeAllAssignedSites");
       const names = p.data.plantIds.map(
-        (id) => plantNames?.get(id) ?? `拠点 #${id}`,
+        (id) => plantNames?.get(id) ?? tr("common.siteHash", { id }),
       );
-      return `所属拠点を ${names.join(" / ")} にする`;
+      return tr("common.setAssignedSitesTo", { names: names.join(" / ") });
     }
   }
 }

@@ -12,6 +12,7 @@
  */
 
 import { revalidatePath } from "next/cache";
+import { getTranslations } from "next-intl/server";
 import { recordAudit } from "@/lib/audit";
 import { checkPermission } from "@/lib/authz";
 import { prisma } from "@/lib/db";
@@ -32,8 +33,9 @@ function revalidate(number: string) {
 
 /** 発行 (DRAFT → ISSUED + issuedAt=now)。 */
 export async function issueInvoice(number: string): Promise<ActionResult> {
+  const tr = await getTranslations();
   const key = parseDocKey(number, "INV");
-  if (!key) return actionError("請求番号が不正です");
+  if (!key) return actionError(tr("billing.invoicesActions.invalidNumber"));
   const authz = await checkPermission("invoice", "UPDATE");
   if (!authz.ok) return actionError(authz.error);
   try {
@@ -42,7 +44,7 @@ export async function issueInvoice(number: string): Promise<ActionResult> {
       data: { status: "ISSUED", issuedAt: new Date() },
     });
     if (updated.count === 0) {
-      return actionError("下書きの請求書のみ発行できます");
+      return actionError(tr("billing.invoicesActions.onlyDraftCanIssue"));
     }
     await recordAudit({
       action: "UPDATE",
@@ -54,14 +56,17 @@ export async function issueInvoice(number: string): Promise<ActionResult> {
     revalidate(number);
     return actionOk();
   } catch (e) {
-    return actionError(prismaErrorMessage(e, "発行に失敗しました"));
+    return actionError(
+      prismaErrorMessage(e, tr("billing.invoicesActions.issueFailed"), tr),
+    );
   }
 }
 
 /** 送付済み (ISSUED → SENT + sentAt=now)。 */
 export async function markSent(number: string): Promise<ActionResult> {
+  const tr = await getTranslations();
   const key = parseDocKey(number, "INV");
-  if (!key) return actionError("請求番号が不正です");
+  if (!key) return actionError(tr("billing.invoicesActions.invalidNumber"));
   const authz = await checkPermission("invoice", "UPDATE");
   if (!authz.ok) return actionError(authz.error);
   try {
@@ -70,7 +75,7 @@ export async function markSent(number: string): Promise<ActionResult> {
       data: { status: "SENT", sentAt: new Date() },
     });
     if (updated.count === 0) {
-      return actionError("発行済みの請求書のみ送付済みにできます");
+      return actionError(tr("billing.invoicesActions.onlyIssuedCanMarkSent"));
     }
     await recordAudit({
       action: "UPDATE",
@@ -82,14 +87,17 @@ export async function markSent(number: string): Promise<ActionResult> {
     revalidate(number);
     return actionOk();
   } catch (e) {
-    return actionError(prismaErrorMessage(e, "送付処理に失敗しました"));
+    return actionError(
+      prismaErrorMessage(e, tr("billing.invoicesActions.markSentFailed"), tr),
+    );
   }
 }
 
 /** 入金済み (SENT → PAID)。 */
 export async function markPaid(number: string): Promise<ActionResult> {
+  const tr = await getTranslations();
   const key = parseDocKey(number, "INV");
-  if (!key) return actionError("請求番号が不正です");
+  if (!key) return actionError(tr("billing.invoicesActions.invalidNumber"));
   const authz = await checkPermission("invoice", "UPDATE");
   if (!authz.ok) return actionError(authz.error);
   try {
@@ -98,7 +106,7 @@ export async function markPaid(number: string): Promise<ActionResult> {
       data: { status: "PAID" },
     });
     if (updated.count === 0) {
-      return actionError("送付済みの請求書のみ入金済みにできます");
+      return actionError(tr("billing.invoicesActions.onlySentCanMarkPaid"));
     }
     await recordAudit({
       action: "UPDATE",
@@ -110,6 +118,8 @@ export async function markPaid(number: string): Promise<ActionResult> {
     revalidate(number);
     return actionOk();
   } catch (e) {
-    return actionError(prismaErrorMessage(e, "入金処理に失敗しました"));
+    return actionError(
+      prismaErrorMessage(e, tr("billing.invoicesActions.markPaidFailed"), tr),
+    );
   }
 }
