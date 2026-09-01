@@ -109,13 +109,15 @@ export function BranchForm({
       status={isEdit ? <ActiveBadge active={initial.isActive} /> : undefined}
       title={
         isEdit
-          ? `支店 編集 — ${initial.bpCode}`
-          : `支店 新規作成 — ${parentName}`
+          ? tr("支店 編集 — {bpCode}", { bpCode: initial.bpCode })
+          : tr("支店 新規作成 — {parentName}", { parentName: parentName })
       }
     >
       <BpBaseFields
         bpCode={initial?.bpCode}
-        codeDescription={`形式: ${parentBpCode}-NN（自動採番）`}
+        codeDescription={tr("形式: {parentBpCode}-NN（自動採番）", {
+          parentBpCode: parentBpCode,
+        })}
         form={form}
       />
 

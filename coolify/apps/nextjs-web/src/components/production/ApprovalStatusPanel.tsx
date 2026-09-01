@@ -81,6 +81,7 @@ export function WorkOrderApprovalCard({
   approval: ApprovalActionState;
   rejectReason: string | null;
 }) {
+  const tr = useTr();
   return (
     <ApprovalActionCard
       approval={approval}
@@ -89,7 +90,9 @@ export function WorkOrderApprovalCard({
       onReject={(reason) => rejectWorkOrder(workOrderNumber, reason)}
       onRequest={() => requestApproval(workOrderNumber)}
       rejectReason={rejectReason}
-      subject={`指示書 #${workOrderNumber}`}
+      subject={tr("指示書 #{workOrderNumber}", {
+        workOrderNumber: workOrderNumber,
+      })}
     />
   );
 }
@@ -132,7 +135,7 @@ export function WorkOrderProcedurePanel({
     { key: "created", label: tr("作成"), description: fmt.date(wo.createdAt) },
     ...approvalSteps.map((s, i) => ({
       key: `approval-${s.stepNo}`,
-      label: s.label || `第${s.stepNo}承認`,
+      label: s.label || tr("第{stepNo}承認", { stepNo: s.stepNo }),
       description:
         rejected && s.stepNo === approval.stepNo
           ? "差し戻し"
@@ -140,7 +143,7 @@ export function WorkOrderProcedurePanel({
             ? fmt.date(wo.approvedAt)
             : s.groupLabel
               ? s.mode === "ALL"
-                ? `${s.groupLabel}（全員承認）`
+                ? tr("{groupLabel}（全員承認）", { groupLabel: s.groupLabel })
                 : s.groupLabel
               : null,
       color: rejected && s.stepNo === approval.stepNo ? "red" : undefined,
@@ -149,7 +152,7 @@ export function WorkOrderProcedurePanel({
       key: "production",
       label: tr("製造"),
       description: wo.startedAt
-        ? `開始 ${fmt.date(wo.startedAt)}`
+        ? tr("開始 {v0}", { v0: fmt.date(wo.startedAt) })
         : wo.status === "APPROVED"
           ? tr("開始待ち")
           : null,
@@ -192,13 +195,20 @@ export function WorkOrderProcedurePanel({
       title: tr("注文明細（割当）"),
       summary:
         wo.orderLines.length > 0
-          ? `割当 ${allocated} 本 / 予定 ${wo.plannedQuantity} 本`
+          ? tr("割当 {allocated} 本 / 予定 {plannedQuantity} 本", {
+              allocated: allocated,
+              plannedQuantity: wo.plannedQuantity,
+            })
           : null,
       items: wo.orderLines.map((l) => ({
         key: l.orderLineId,
         label: l.number,
         href: `/sales/order-lines/${l.number}`,
-        note: `${l.customerName ?? "—"}・割当 ${l.allocatedQuantity} / 受注 ${l.lineQuantity} 本`,
+        note: tr("{v0}・割当 {allocatedQuantity} / 受注 {lineQuantity} 本", {
+          v0: l.customerName ?? "—",
+          allocatedQuantity: l.allocatedQuantity,
+          lineQuantity: l.lineQuantity,
+        }),
       })),
       emptyNote: tr("割当なし（在庫向けの独立指示書）"),
     },
@@ -227,14 +237,21 @@ export function WorkOrderProcedurePanel({
       title: tr("出荷書"),
       summary:
         wo.shipments.length > 0
-          ? `割当 ${shippedToDo} 本 / 予定 ${wo.plannedQuantity} 本`
+          ? tr("割当 {shippedToDo} 本 / 予定 {plannedQuantity} 本", {
+              shippedToDo: shippedToDo,
+              plannedQuantity: wo.plannedQuantity,
+            })
           : null,
       items: wo.shipments.map((s, i) => ({
         key: `${s.number}-${i}`,
         label: s.number,
         href: `/shipping/delivery-orders/${s.number}`,
         done: s.status === "SHIPPED",
-        note: `${statusLabel("DeliveryOrder", s.status)}・${s.quantity} 本${s.type === "STOCK_STORAGE" ? "（在庫保管）" : ""}`,
+        note: tr("{v0}・{quantity} 本{v2}", {
+          v0: statusLabel("DeliveryOrder", s.status),
+          quantity: s.quantity,
+          v2: s.type === "STOCK_STORAGE" ? "（在庫保管）" : "",
+        }),
       })),
       emptyNote:
         wo.status === "COMPLETED"

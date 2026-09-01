@@ -482,7 +482,9 @@ export function ProcessListEditor({
           >
             必須工程を自動追加しました:{" "}
             {autoAdded
-              .map((id) => stepById.get(id)?.nameJa ?? `工程#${id}`)
+              .map(
+                (id) => stepById.get(id)?.nameJa ?? tr("工程#{id}", { id: id }),
+              )
               .join(tr("・"))}
           </Alert>
         )}
@@ -604,11 +606,18 @@ export function ProcessListEditor({
                     <Group gap="xs" wrap={isMobile ? "wrap" : "nowrap"}>
                       <Select
                         allowDeselect={false}
-                        aria-label={`${cat.nameJa} のロット入力`}
+                        aria-label={tr("{nameJa} のロット入力", {
+                          nameJa: cat.nameJa,
+                        })}
                         data={[
                           {
                             value: "INHERIT",
-                            label: `既定（${lotInputModeLabel(cat.lotInputMode ?? "NONE", locale)}）`,
+                            label: tr("既定（{v0}）", {
+                              v0: lotInputModeLabel(
+                                cat.lotInputMode ?? "NONE",
+                                locale,
+                              ),
+                            }),
                           },
                           { value: "REQUIRED", label: tr("ロット必須") },
                           { value: "OPTIONAL", label: tr("ロット任意") },
@@ -627,7 +636,9 @@ export function ProcessListEditor({
                         w={140}
                       />
                       <NumberInput
-                        aria-label={`${cat.nameJa} の作業時間 (h)`}
+                        aria-label={tr("{nameJa} の作業時間 (h)", {
+                          nameJa: cat.nameJa,
+                        })}
                         decimalScale={2}
                         min={0.01}
                         onChange={(v) =>

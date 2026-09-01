@@ -359,3 +359,28 @@ export function ensureAccessor(source, { accessor, requireAsync = false } = {}) 
   for (const e of edits) code = code.slice(0, e.start) + e.text + code.slice(e.start);
   return { code, added: bodies.size, skipped };
 }
+
+/**
+ * その位置に `tr` を用意できるか（＝そこを書き換えてよいか）を先に見る。
+ *
+ * 書き換えてからフックを入れられずに落ちる、という順序だと **型検査が通らない
+ * コードを一旦書いてしまう**。テンプレートの書き換えは対象が広いので、
+ * 先に「置ける場所か」を聞いてから書き換える。
+ *
+ * 返り値は「その位置を書き換えてよいか」を返す関数。
+ */
+export function accessorPlanner(source, { requireAsync = false } = {}) {
+  const masked = maskLiterals(source);
+  const pairs = bracePairs(masked);
+  return (pos) => {
+    const body = componentBodyFor(pairs, masked, pos);
+    if (body === null) return false;
+    if (!requireAsync && !isComponentLike(masked, body)) {
+      // 素の補助関数でも、引数で `tr` を受けていれば書き換えてよい。
+      const head = masked.slice(Math.max(0, body - 400), body);
+      return /\btr\s*:\s*Translate\b/.test(head);
+    }
+    if (requireAsync && !isAsyncBody(masked, body)) return false;
+    return true;
+  };
+}

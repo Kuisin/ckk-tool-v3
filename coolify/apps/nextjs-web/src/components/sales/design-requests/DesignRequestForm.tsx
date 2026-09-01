@@ -266,7 +266,9 @@ export function DesignRequestForm({
           message:
             mode === "edit"
               ? tr("設計依頼書を更新しました")
-              : `設計依頼書 ${result.data.number} を作成しました`,
+              : tr("設計依頼書 {number} を作成しました", {
+                  number: result.data.number,
+                }),
           color: "green",
         });
         router.push(`${BASE_PATH}/${result.data.number}`);
@@ -300,7 +302,7 @@ export function DesignRequestForm({
       }
       title={
         mode === "edit"
-          ? `設計依頼書 編集 ${requestId ?? ""}`
+          ? tr("設計依頼書 編集 {v0}", { v0: requestId ?? "" })
           : tr("設計依頼書 新規作成")
       }
     >

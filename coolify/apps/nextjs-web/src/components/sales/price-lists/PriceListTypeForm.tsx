@@ -271,14 +271,20 @@ export function PriceListTypeForm({
     if (next) {
       openConfirm({
         title: tr("カスタム基準単価の使用"),
-        message: `価格試算の見積単価（${formatMoney(estimateBase)}）を使わず、基準単価を手動で設定します。よろしいですか？`,
+        message: tr(
+          "価格試算の見積単価（{v0}）を使わず、基準単価を手動で設定します。よろしいですか？",
+          { v0: formatMoney(estimateBase) },
+        ),
         confirmLabel: tr("カスタム設定する"),
         onConfirm: () => form.setFieldValue(`variants.${vi}.customBase`, true),
       });
     } else {
       openConfirm({
         title: tr("価格試算値に戻す"),
-        message: `手動で設定した基準単価を破棄し、価格試算の見積単価（${formatMoney(estimateBase)}）に戻します。`,
+        message: tr(
+          "手動で設定した基準単価を破棄し、価格試算の見積単価（{v0}）に戻します。",
+          { v0: formatMoney(estimateBase) },
+        ),
         confirmLabel: tr("価格試算値に戻す"),
         onConfirm: () => {
           form.setFieldValue(`variants.${vi}.customBase`, false);
@@ -299,14 +305,20 @@ export function PriceListTypeForm({
     if (next) {
       openConfirm({
         title: tr("カスタム単価の使用"),
-        message: `この数量帯の自動計算単価（${formatMoney(autoPrice)} = 基準単価 × 倍率）を使わず、手動で単価を設定します。`,
+        message: tr(
+          "この数量帯の自動計算単価（{v0} = 基準単価 × 倍率）を使わず、手動で単価を設定します。",
+          { v0: formatMoney(autoPrice) },
+        ),
         confirmLabel: tr("カスタム設定する"),
         onConfirm: () => form.setFieldValue(path, autoPrice),
       });
     } else {
       openConfirm({
         title: tr("自動計算に戻す"),
-        message: `手動で設定した単価を破棄し、自動計算値（${formatMoney(autoPrice)}）に戻します。`,
+        message: tr(
+          "手動で設定した単価を破棄し、自動計算値（{v0}）に戻します。",
+          { v0: formatMoney(autoPrice) },
+        ),
         confirmLabel: tr("自動計算に戻す"),
         onConfirm: () => form.setFieldValue(path, null),
       });
@@ -518,7 +530,9 @@ export function PriceListTypeForm({
               ),
             )}
             key={form.key(`variants.${vi}`)}
-            title={`注文種別: ${ORDER_TYPE_LABEL[variant.orderType] ?? variant.orderType}`}
+            title={tr("注文種別: {v0}", {
+              v0: ORDER_TYPE_LABEL[variant.orderType] ?? variant.orderType,
+            })}
           >
             <SimpleGrid cols={{ base: 1, sm: 3 }} spacing="sm">
               {savedVariant ? (
@@ -593,7 +607,10 @@ export function PriceListTypeForm({
                   onClick={() =>
                     openConfirm({
                       title: tr("注文種別の削除"),
-                      message: `${ORDER_TYPE_LABEL[variant.orderType]} の価格（数量段階・値引きルール含む）を削除します。保存時に反映されます。`,
+                      message: tr(
+                        "{v0} の価格（数量段階・値引きルール含む）を削除します。保存時に反映されます。",
+                        { v0: ORDER_TYPE_LABEL[variant.orderType] },
+                      ),
                       confirmLabel: "削除",
                       onConfirm: () => form.removeListItem("variants", vi),
                     })
@@ -641,7 +658,9 @@ export function PriceListTypeForm({
                 description={
                   customBase
                     ? estimateBase != null
-                      ? `手動設定（価格試算値: ${formatMoney(estimateBase)}）`
+                      ? tr("手動設定（価格試算値: {v0}）", {
+                          v0: formatMoney(estimateBase),
+                        })
                       : tr("手動設定")
                     : tr("価格試算値をそのまま使用")
                 }

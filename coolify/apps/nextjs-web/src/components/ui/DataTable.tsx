@@ -394,7 +394,7 @@ export function DataTable<T>({
                 />
                 <Text c="dimmed" fw={600} size="xs">
                   {selected.size > 0
-                    ? `${selected.size}件選択中`
+                    ? tr("{size}件選択中", { size: selected.size })
                     : tr("すべて選択")}
                 </Text>
               </Group>
@@ -744,14 +744,23 @@ function PaginationBar({
   return (
     <Group justify="space-between" mt={4} wrap="nowrap">
       <Text c="dimmed" className="whitespace-nowrap" size="xs">
-        {total === 0 ? "0件" : `${start + 1}–${start + count} / ${total}件`}
+        {total === 0
+          ? "0件"
+          : tr("{v0}–{v1} / {total}件", {
+              v0: start + 1,
+              v1: start + count,
+              total: total,
+            })}
       </Text>
       <Group gap="xs" wrap="nowrap">
         {!isMobile && (
           <Select
             allowDeselect={false}
             aria-label={tr("表示件数")}
-            data={PAGE_SIZES.map((s) => ({ value: s, label: `${s}件` }))}
+            data={PAGE_SIZES.map((s) => ({
+              value: s,
+              label: tr("{s}件", { s: s }),
+            }))}
             onChange={(v) => v && onPageSize(Number(v))}
             size="xs"
             value={String(pageSize)}

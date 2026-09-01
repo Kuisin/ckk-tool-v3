@@ -32,7 +32,10 @@ export function BranchDetail({ record }: { record: BranchDetailData }) {
   const handleDelete = () => {
     openConfirm({
       title: tr("支店の削除"),
-      message: `支店「${record.nameJa}（${record.bpCode}）」を削除します。この操作は取り消せません。`,
+      message: tr(
+        "支店「{nameJa}（{bpCode}）」を削除します。この操作は取り消せません。",
+        { nameJa: record.nameJa, bpCode: record.bpCode },
+      ),
       confirmLabel: tr("削除する"),
       onConfirm: () => {
         startTransition(async () => {
@@ -40,7 +43,9 @@ export function BranchDetail({ record }: { record: BranchDetailData }) {
           if (result.ok) {
             notifications.show({
               title: tr("削除しました"),
-              message: `支店「${record.nameJa}」を削除しました`,
+              message: tr("支店「{nameJa}」を削除しました", {
+                nameJa: record.nameJa,
+              }),
               color: "green",
             });
             router.push(parentPath);

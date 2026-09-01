@@ -170,7 +170,10 @@ export function RegionsPanel({ rows }: { rows: RegionRow[] }) {
   const handleDelete = (row: RegionRow) => {
     openConfirm({
       title: tr("地域の削除"),
-      message: `地域「${row.code} ${row.nameJa}」を削除します。この操作は取り消せません。`,
+      message: tr(
+        "地域「{code} {nameJa}」を削除します。この操作は取り消せません。",
+        { code: row.code, nameJa: row.nameJa },
+      ),
       confirmLabel: tr("削除する"),
       onConfirm: () => {
         startTransition(async () => {

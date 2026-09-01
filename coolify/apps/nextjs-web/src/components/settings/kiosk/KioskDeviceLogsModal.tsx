@@ -164,13 +164,14 @@ export function KioskDeviceLogsModal({
   deviceName: string | null;
   onClose: () => void;
 }) {
+  const tr = useTr();
   return (
     <ModalShell
       hideFooter
       onClose={onClose}
       opened={deviceId != null}
       size="lg"
-      title={`利用履歴 — ${deviceName ?? ""}`}
+      title={tr("利用履歴 — {v0}", { v0: deviceName ?? "" })}
     >
       {deviceId != null && <DeviceLogList deviceId={deviceId} />}
     </ModalShell>

@@ -23,7 +23,7 @@ export function ProductTypesListPanel({ initial }: { initial: ProductType[] }) {
       addLabel={tr("種別を追加")}
       deleteConfirm={(t) => ({
         title: tr("製品種別の削除"),
-        message: `「${t.name.ja || t.id}」を削除しますか？`,
+        message: tr("「{v0}」を削除しますか？", { v0: t.name.ja || t.id }),
       })}
       description={tr(
         tr(

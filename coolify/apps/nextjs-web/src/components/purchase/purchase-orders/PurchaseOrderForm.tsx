@@ -173,8 +173,12 @@ export function PurchaseOrderForm({
           title: tr("保存しました"),
           message:
             mode === "edit"
-              ? `素材発注書 ${result.data.poNumber} を更新しました`
-              : `素材発注書 ${result.data.poNumber} を作成しました`,
+              ? tr("素材発注書 {poNumber} を更新しました", {
+                  poNumber: result.data.poNumber,
+                })
+              : tr("素材発注書 {poNumber} を作成しました", {
+                  poNumber: result.data.poNumber,
+                }),
           color: "green",
         });
         router.push(`${BASE_PATH}/${result.data.poNumber}`);
@@ -211,7 +215,7 @@ export function PurchaseOrderForm({
       }
       title={
         mode === "edit"
-          ? `素材発注書 編集 ${poNumber ?? ""}`
+          ? tr("素材発注書 編集 {v0}", { v0: poNumber ?? "" })
           : tr("素材発注書 新規作成")
       }
     >

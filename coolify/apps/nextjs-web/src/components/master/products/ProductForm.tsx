@@ -80,6 +80,7 @@ const productSchema = z
     spec: z.array(z.object({ key: z.string(), value: z.string() })),
   })
   .superRefine((v, ctx) => {
+    const tr = useTr();
     if (!v.materialTypeId) return;
     if (
       v.diameterMm == null ||
@@ -89,7 +90,10 @@ const productSchema = z
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         path: ["diameterMm"],
-        message: `直径は ${DIAMETER_MIN}〜${DIAMETER_MAX}mm で入力してください`,
+        message: tr(
+          "直径は {DIAMETER_MIN}〜{DIAMETER_MAX}mm で入力してください",
+          { DIAMETER_MIN: DIAMETER_MIN, DIAMETER_MAX: DIAMETER_MAX },
+        ),
       });
     }
     if (
@@ -100,7 +104,10 @@ const productSchema = z
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         path: ["lengthMm"],
-        message: `全長は ${LENGTH_MIN}〜${LENGTH_MAX}mm で入力してください`,
+        message: tr("全長は {LENGTH_MIN}〜{LENGTH_MAX}mm で入力してください", {
+          LENGTH_MIN: LENGTH_MIN,
+          LENGTH_MAX: LENGTH_MAX,
+        }),
       });
     }
   });
@@ -388,7 +395,7 @@ export function ProductForm({
       status={isEdit ? <ActiveBadge active={initial.isActive} /> : undefined}
       title={
         isEdit
-          ? `製品 編集 — ${initial.code ?? initial.nameJa}`
+          ? tr("製品 編集 — {v0}", { v0: initial.code ?? initial.nameJa })
           : tr("製品 新規作成")
       }
     >
@@ -465,13 +472,14 @@ export function ProductForm({
         <SimpleGrid cols={isMobile ? 1 : 2} mt="sm" spacing="sm">
           <NumberInput
             decimalScale={1}
-            description={`コード: ${
-              form.values.diameterMm != null &&
-              form.values.diameterMm >= DIAMETER_MIN &&
-              form.values.diameterMm <= DIAMETER_MAX
-                ? diameterCodeFromMm(form.values.diameterMm)
-                : "—"
-            }（径×10）`}
+            description={tr("コード: {v0}（径×10）", {
+              v0:
+                form.values.diameterMm != null &&
+                form.values.diameterMm >= DIAMETER_MIN &&
+                form.values.diameterMm <= DIAMETER_MAX
+                  ? diameterCodeFromMm(form.values.diameterMm)
+                  : "—",
+            })}
             error={form.errors.diameterMm}
             label={
               <HelpLabel
@@ -492,13 +500,14 @@ export function ProductForm({
             value={form.values.diameterMm ?? ""}
           />
           <NumberInput
-            description={`コード: ${
-              form.values.lengthMm != null &&
-              form.values.lengthMm >= LENGTH_MIN &&
-              form.values.lengthMm <= LENGTH_MAX
-                ? lengthCodeFromMm(form.values.lengthMm)
-                : "—"
-            }`}
+            description={tr("コード: {v0}", {
+              v0:
+                form.values.lengthMm != null &&
+                form.values.lengthMm >= LENGTH_MIN &&
+                form.values.lengthMm <= LENGTH_MAX
+                  ? lengthCodeFromMm(form.values.lengthMm)
+                  : "—",
+            })}
             error={form.errors.lengthMm}
             label={
               <HelpLabel

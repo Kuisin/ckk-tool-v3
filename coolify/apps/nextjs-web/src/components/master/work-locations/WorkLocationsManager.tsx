@@ -760,7 +760,9 @@ export function WorkLocationsManager({
                         <Table.Td>
                           <Text className="tabular-nums" size="sm">
                             {loc.capacity != null
-                              ? `${loc.capacity} 作業`
+                              ? tr("{capacity} 作業", {
+                                  capacity: loc.capacity,
+                                })
                               : tr("制限なし")}
                           </Text>
                         </Table.Td>
@@ -849,7 +851,13 @@ export function WorkLocationsManager({
         confirmLabel={tr("削除する")}
         message={
           deleteGroup
-            ? `グループ「${deleteGroup.nameJa}」を削除します。配下の場所（${deleteGroup.locations.length}件）も削除されます。この操作は取り消せません。`
+            ? tr(
+                "グループ「{nameJa}」を削除します。配下の場所（{v1}件）も削除されます。この操作は取り消せません。",
+                {
+                  nameJa: deleteGroup.nameJa,
+                  v1: deleteGroup.locations.length,
+                },
+              )
             : ""
         }
         onClose={() => setDeleteGroup(null)}
@@ -861,7 +869,9 @@ export function WorkLocationsManager({
             notifyResult(
               tr,
               result,
-              `グループ「${target.nameJa}」を削除しました`,
+              tr("グループ「{nameJa}」を削除しました", {
+                nameJa: target.nameJa,
+              }),
               () => {
                 setDeleteGroup(null);
                 refresh();
@@ -879,7 +889,10 @@ export function WorkLocationsManager({
         confirmLabel={tr("削除する")}
         message={
           deleteLocation
-            ? `作業場所「${deleteLocation.nameJa}」を削除します。この操作は取り消せません。`
+            ? tr(
+                "作業場所「{nameJa}」を削除します。この操作は取り消せません。",
+                { nameJa: deleteLocation.nameJa },
+              )
             : ""
         }
         onClose={() => setDeleteLocation(null)}
@@ -891,7 +904,9 @@ export function WorkLocationsManager({
             notifyResult(
               tr,
               result,
-              `作業場所「${target.nameJa}」を削除しました`,
+              tr("作業場所「{nameJa}」を削除しました", {
+                nameJa: target.nameJa,
+              }),
               () => {
                 setDeleteLocation(null);
                 refresh();
@@ -904,7 +919,13 @@ export function WorkLocationsManager({
         warning={
           deleteLocation &&
           deleteLocation.planCount + deleteLocation.actualCount > 0
-            ? `この場所は 作業計画 ${deleteLocation.planCount} 件 / 作業実績 ${deleteLocation.actualCount} 件 から参照されています（削除できません — 無効化をご検討ください）。`
+            ? tr(
+                "この場所は 作業計画 {planCount} 件 / 作業実績 {actualCount} 件 から参照されています（削除できません — 無効化をご検討ください）。",
+                {
+                  planCount: deleteLocation.planCount,
+                  actualCount: deleteLocation.actualCount,
+                },
+              )
             : undefined
         }
       />

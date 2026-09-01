@@ -13,7 +13,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { EXCLUDED } from "./lib/scan.mjs";
-import { ensureAccessor } from "./lib/codemod.mjs";
+import { accessorPlanner, ensureAccessor } from "./lib/codemod.mjs";
 import { findTemplates, parseTemplateBody } from "./lib/template.mjs";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
@@ -54,17 +54,33 @@ if (has("--keys")) {
   process.exit(0);
 }
 
-let touched = 0, rewritten = 0;
+let touched = 0, rewritten = 0, skippedNoScope = 0;
 const needHook = [];
 for (const file of files) {
   const source = fs.readFileSync(file, "utf8");
   const isClient = /^\s*["']use client["']/.test(source);
+  // **クライアントコンポーネントだけを書き換える。**
+  //
+  // サーバー側（actions.ts / data.ts / lib/*.ts）の変数入り文字列は、画面の
+  // 文言・サーバーログ・**DB に書く値**が混ざっていて機械的に見分けられない。
+  // 実際 `billing/closings/actions.ts` の `` `${name}（ロット ${lot}）` `` は
+  // 請求明細の `description` として保存される DB の値で、操作した人の言語で
+  // 訳してしまうと**データが壊れる**（帳票は受取先の言語で出す — 用語集 §2.7）。
+  //
+  // 変数の無い文字列は「後から訳す」でサーバー側も救えるが、変数入りは値を
+  // 埋めた後では鍵に戻せないので late translation が効かない。ここは線を引いて
+  // 触らない。残りは locale を引数で受ける形へ人が直す仕事として残す。
+  if (!isClient) continue;
   const edits = [];
+  // 先に「そこに tr を置けるか」を聞く。置けない場所は書き換えない
+  // （書き換えてから置けずに落ちる、という順序を避ける）。
+  const canPlace = accessorPlanner(source, { requireAsync: !isClient });
   for (const t of findTemplates(source)) {
     const p = parseTemplateBody(t.body);
     if (!p || skip.has(p.key) || !Object.hasOwn(dict, p.key)) continue;
     // すでに trf(...) の引数なら触らない
     if (/\btr\(\s*$/.test(source.slice(Math.max(0, t.start - 6), t.start))) continue;
+    if (!canPlace(t.start)) { skippedNoScope++; continue; }
     const vars = p.slots.map((s) => `${s.name}: ${s.expr.trim()}`).join(", ");
     edits.push({ start: t.start, end: t.end, text: `tr(${JSON.stringify(p.key)}, { ${vars} })` });
   }
@@ -88,11 +104,12 @@ for (const file of files) {
     }
   }
   touched++; rewritten += edits.length;
-  if (acc.skipped > 0) needHook.push(`${path.relative(REPO, file)}  (${acc.skipped} tr() with nowhere to put the accessor)`);
   console.log(`  ${path.relative(REPO, file)}  (${edits.length})`);
   if (!has("--dry")) fs.writeFileSync(file, code);
 }
 console.log(`\n${has("--dry") ? "[dry] " : ""}files ${touched}, templates ${rewritten}`);
+if (skippedNoScope > 0)
+  console.log(`skipped ${skippedNoScope} (no place to put tr — plain helper functions; pass tr as an argument by hand)`);
 if (needHook.length) {
   console.log(`\n${needHook.length} files still need tr by hand:`);
   for (const f of needHook.slice(0, 40)) console.log("  ", f);

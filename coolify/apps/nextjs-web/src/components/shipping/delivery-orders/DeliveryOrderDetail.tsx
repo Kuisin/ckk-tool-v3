@@ -97,7 +97,7 @@ function DeliveryOrderProcedurePanel({
       title: tr("注文明細"),
       summary:
         order.orderLineNumbers.length > 0
-          ? `${order.orderLineNumbers.length} 件`
+          ? tr("{v0} 件", { v0: order.orderLineNumbers.length })
           : null,
       items: order.orderLineNumbers.map((n) => ({
         key: n,
@@ -136,14 +136,17 @@ function DeliveryOrderProcedurePanel({
           title: tr("納品書"),
           summary:
             order.deliveryNotes.length > 0
-              ? `${order.deliveryNotes.length} 件`
+              ? tr("{v0} 件", { v0: order.deliveryNotes.length })
               : null,
           items: order.deliveryNotes.map((dn) => ({
             key: dn.deliveryNumber,
             label: dn.deliveryNumber,
             href: `/shipping/delivery-notes/${dn.deliveryNumber}`,
             done: dn.status === "DELIVERED",
-            note: `${statusLabel("DeliveryNote", dn.status)}・${dn.recipientName}`,
+            note: tr("{v0}・{recipientName}", {
+              v0: statusLabel("DeliveryNote", dn.status),
+              recipientName: dn.recipientName,
+            }),
           })),
           emptyNote:
             order.status === "SHIPPED"
@@ -506,13 +509,18 @@ export function DeliveryOrderDetail({
         confirmColor="blue"
         confirmLabel={tr("確定")}
         loading={isPending}
-        message={`出荷書 ${order.deliveryOrderNumber} を確定します。確定後は編集できません。`}
+        message={tr(
+          "出荷書 {deliveryOrderNumber} を確定します。確定後は編集できません。",
+          { deliveryOrderNumber: order.deliveryOrderNumber },
+        )}
         onClose={() => setConfirmOpen(false)}
         onConfirm={() =>
           run(
             () => confirmDeliveryOrder(order.deliveryOrderNumber),
             tr("確定しました"),
-            `出荷書 ${order.deliveryOrderNumber} を確定しました`,
+            tr("出荷書 {deliveryOrderNumber} を確定しました", {
+              deliveryOrderNumber: order.deliveryOrderNumber,
+            }),
           )
         }
         opened={confirmOpen}
@@ -524,15 +532,23 @@ export function DeliveryOrderDetail({
         loading={isPending}
         message={
           order.type === "DISPATCH"
-            ? `出荷書 ${order.deliveryOrderNumber} を出荷済みにします。注文明細の出荷状態も再計算されます。`
-            : `出荷書 ${order.deliveryOrderNumber} を出荷済みにします（在庫保管のため注文明細の出荷状態は変わりません）。`
+            ? tr(
+                "出荷書 {deliveryOrderNumber} を出荷済みにします。注文明細の出荷状態も再計算されます。",
+                { deliveryOrderNumber: order.deliveryOrderNumber },
+              )
+            : tr(
+                "出荷書 {deliveryOrderNumber} を出荷済みにします（在庫保管のため注文明細の出荷状態は変わりません）。",
+                { deliveryOrderNumber: order.deliveryOrderNumber },
+              )
         }
         onClose={() => setShipOpen(false)}
         onConfirm={() =>
           run(
             () => shipDeliveryOrder(order.deliveryOrderNumber),
             tr("出荷しました"),
-            `出荷書 ${order.deliveryOrderNumber} を出荷済みにしました`,
+            tr("出荷書 {deliveryOrderNumber} を出荷済みにしました", {
+              deliveryOrderNumber: order.deliveryOrderNumber,
+            }),
           )
         }
         opened={shipOpen}
@@ -541,13 +557,18 @@ export function DeliveryOrderDetail({
       <ConfirmModal
         confirmLabel={tr("キャンセルする")}
         loading={isPending}
-        message={`出荷書 ${order.deliveryOrderNumber} を削除します。この操作は取り消せません。`}
+        message={tr(
+          "出荷書 {deliveryOrderNumber} を削除します。この操作は取り消せません。",
+          { deliveryOrderNumber: order.deliveryOrderNumber },
+        )}
         onClose={() => setCancelOpen(false)}
         onConfirm={() =>
           run(
             () => deleteDeliveryOrder(order.deliveryOrderNumber),
             tr("キャンセルしました"),
-            `出荷書 ${order.deliveryOrderNumber} を削除しました`,
+            tr("出荷書 {deliveryOrderNumber} を削除しました", {
+              deliveryOrderNumber: order.deliveryOrderNumber,
+            }),
             () => router.push(BASE_PATH),
           )
         }

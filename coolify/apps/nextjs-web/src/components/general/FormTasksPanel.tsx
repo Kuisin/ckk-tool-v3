@@ -136,7 +136,7 @@ export function PendingFormsList({ rows }: { rows: PendingFormRow[] }) {
               )}
               <Text c="dimmed" size="xs">
                 {row.closesAt
-                  ? `${fmt.dateTime(row.closesAt)} まで`
+                  ? tr("{v0} まで", { v0: fmt.dateTime(row.closesAt) })
                   : tr("期限なし")}
               </Text>
             </>
@@ -208,7 +208,9 @@ export function MyResponsesList({ rows }: { rows: MyResponseRow[] }) {
               {row.canEdit && (
                 <Badge color="blue" size="sm" variant="light">
                   {row.editDeadline
-                    ? `${fmt.dateTime(row.editDeadline)} まで編集可`
+                    ? tr("{v0} まで編集可", {
+                        v0: fmt.dateTime(row.editDeadline),
+                      })
                     : tr("編集可")}
                 </Badge>
               )}

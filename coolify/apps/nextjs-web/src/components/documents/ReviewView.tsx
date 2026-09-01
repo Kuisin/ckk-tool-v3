@@ -144,8 +144,8 @@ function CommentThread({
             )}
             <Text c="dimmed" size="xs">
               {outdated
-                ? `旧 ${thread.anchorLine} 行目`
-                : `${thread.line} 行目`}
+                ? tr("旧 {anchorLine} 行目", { anchorLine: thread.anchorLine })
+                : tr("{line} 行目", { line: thread.line })}
             </Text>
           </Group>
           <GhostButton
@@ -398,7 +398,7 @@ export function ReviewView({
                   </Text>
 
                   <ActionIcon
-                    aria-label={`${no} 行目にコメント`}
+                    aria-label={tr("{no} 行目にコメント", { no: no })}
                     color="blue"
                     mr={4}
                     mt={2}
@@ -421,7 +421,7 @@ export function ReviewView({
                         autosize
                         minRows={2}
                         onChange={(e) => setDraft(e.currentTarget.value)}
-                        placeholder={`${no} 行目へのコメント`}
+                        placeholder={tr("{no} 行目へのコメント", { no: no })}
                         value={draft}
                       />
                       <Group grow={isMobile} justify="flex-end">

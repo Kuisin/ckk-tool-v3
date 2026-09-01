@@ -72,7 +72,9 @@ export function ApproverPermissionBadge({
   if (missing.length > 0) {
     return (
       <Tooltip
-        label={`この書類を閲覧・編集できる権限がありません: ${missing.map((a) => a.displayName).join("、")}`}
+        label={tr("この書類を閲覧・編集できる権限がありません: {v0}", {
+          v0: missing.map((a) => a.displayName).join("、"),
+        })}
         withinPortal
       >
         <Badge color="red" size="sm" variant="light">

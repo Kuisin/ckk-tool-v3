@@ -175,7 +175,7 @@ export function DesignFileThumb({
       <UnstyledButton
         onClick={() => setOpen(true)}
         ref={holder}
-        title={`${target.filename} を拡大`}
+        title={tr("{filename} を拡大", { filename: target.filename })}
         w="100%"
       >
         <Paper radius="md" style={{ overflow: "hidden" }} withBorder>

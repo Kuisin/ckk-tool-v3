@@ -578,7 +578,10 @@ export function KioskFloorMapView({
                     onClick={() =>
                       setConfirm({
                         title: tr("フロア削除の確認"),
-                        message: `フロア「${activeMap.name}」を削除します。端末が配置されている場合は削除できません。`,
+                        message: tr(
+                          "フロア「{name}」を削除します。端末が配置されている場合は削除できません。",
+                          { name: activeMap.name },
+                        ),
                         confirmLabel: "削除",
                         run: () => deleteFloorMap(activeMap.id),
                       })
@@ -628,7 +631,7 @@ export function KioskFloorMapView({
                 {activeMap.fileId ? (
                   // biome-ignore lint/performance/noImgElement: SeaweedFS プロキシ配信の等倍図面（next/image 最適化対象外）
                   <img
-                    alt={`フロアマップ: ${activeMap.name}`}
+                    alt={tr("フロアマップ: {name}", { name: activeMap.name })}
                     draggable={false}
                     src={`/api/kiosk/floor-maps/${activeMap.id}/image`}
                     style={{ width: "100%", display: "block" }}
@@ -654,7 +657,14 @@ export function KioskFloorMapView({
                       <Tooltip
                         events={{ hover: true, focus: true, touch: true }}
                         key={`storage-${p.id}`}
-                        label={`保管場所: ${p.name}（${p.code}）｜棚 ${p.shelfCount} 件`}
+                        label={tr(
+                          "保管場所: {name}（{code}）｜棚 {shelfCount} 件",
+                          {
+                            name: p.name,
+                            code: p.code,
+                            shelfCount: p.shelfCount,
+                          },
+                        )}
                         withinPortal
                       >
                         <Box

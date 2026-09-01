@@ -98,7 +98,7 @@ function OrderLineProcedurePanel({
       label: tr("製造"),
       description:
         order.workOrders.length > 0
-          ? `指示書 ${order.workOrders.length} 件`
+          ? tr("指示書 {v0} 件", { v0: order.workOrders.length })
           : null,
       loading:
         order.status === "IN_PRODUCTION" || order.status === "PARTIAL_SHIPPED",
@@ -108,9 +108,14 @@ function OrderLineProcedurePanel({
       label: tr("出荷"),
       description:
         order.status === "PARTIAL_SHIPPED"
-          ? `一部出荷 ${order.shippedQuantity}/${order.quantity}`
+          ? tr("一部出荷 {shippedQuantity}/{quantity}", {
+              shippedQuantity: order.shippedQuantity,
+              quantity: order.quantity,
+            })
           : order.status === "SHIPPED"
-            ? `${order.shippedQuantity} 本`
+            ? tr("{shippedQuantity} 本", {
+                shippedQuantity: order.shippedQuantity,
+              })
             : null,
     },
   ];
@@ -183,20 +188,30 @@ function OrderLineProcedurePanel({
         label: w.docNumber,
         href: `/production/work-orders/${w.workOrderNumber}`,
         done: w.status === "COMPLETED",
-        note: `${statusLabel("WorkOrder", w.status)}・割当 ${w.allocatedQuantity} 本`,
+        note: tr("{v0}・割当 {allocatedQuantity} 本", {
+          v0: statusLabel("WorkOrder", w.status),
+          allocatedQuantity: w.allocatedQuantity,
+        }),
       })),
       emptyNote: tr("未手配（指示書なし）"),
     },
     {
       key: "delivery-orders",
       title: tr("出荷書"),
-      summary: `出荷済 ${order.shippedQuantity} / 受注 ${order.quantity} 本`,
+      summary: tr("出荷済 {shippedQuantity} / 受注 {quantity} 本", {
+        shippedQuantity: order.shippedQuantity,
+        quantity: order.quantity,
+      }),
       items: order.deliveryOrders.map((s, i) => ({
         key: `${s.number}-${i}`,
         label: s.number,
         href: `/shipping/delivery-orders/${s.number}`,
         done: s.status === "SHIPPED",
-        note: `${statusLabel("DeliveryOrder", s.status)}・${s.quantity} 本${s.type === "STOCK_STORAGE" ? "（在庫保管）" : ""}`,
+        note: tr("{v0}・{quantity} 本{v2}", {
+          v0: statusLabel("DeliveryOrder", s.status),
+          quantity: s.quantity,
+          v2: s.type === "STOCK_STORAGE" ? "（在庫保管）" : "",
+        }),
       })),
       emptyNote: tr("未手配（出荷書なし）"),
     },
@@ -362,7 +377,10 @@ export function OrderLineDetail({
       {woCreatable ? (
         <NextStepCard
           buttonLabel={tr("指示書を作成")}
-          description={`未手配 ${remainingToAllocate} 本 — この注文明細をプリセレクトした状態で指示書ビルダーを開きます`}
+          description={tr(
+            "未手配 {remainingToAllocate} 本 — この注文明細をプリセレクトした状態で指示書ビルダーを開きます",
+            { remainingToAllocate: remainingToAllocate },
+          )}
           href={woCreateHref}
           icon={<IconSettings2 size={20} />}
           title={tr("次のステップ: 指示書の作成")}
@@ -370,7 +388,10 @@ export function OrderLineDetail({
       ) : doCreatable ? (
         <NextStepCard
           buttonLabel={tr("出荷書を作成")}
-          description={`未出荷 ${unshipped} 本 — この注文明細を読み込んだ状態で出荷書フォームを開きます`}
+          description={tr(
+            "未出荷 {unshipped} 本 — この注文明細を読み込んだ状態で出荷書フォームを開きます",
+            { unshipped: unshipped },
+          )}
           href={doCreateHref}
           icon={<IconTruck size={20} />}
           title={tr("次のステップ: 出荷書の作成")}
@@ -757,8 +778,17 @@ export function OrderLineDetail({
                 <Stack gap="xs">
                   <Text size="sm">
                     {stockResult.reservedNow > 0
-                      ? `在庫 ${stockResult.reservedNow} 本を引当済み。在庫分と不足 ${stockResult.shortage} 本の製造分に分割して指示書を作成してください。`
-                      : `不足分 ${stockResult.shortage} 本は製造分の指示書を作成してください。`}
+                      ? tr(
+                          "在庫 {reservedNow} 本を引当済み。在庫分と不足 {shortage} 本の製造分に分割して指示書を作成してください。",
+                          {
+                            reservedNow: stockResult.reservedNow,
+                            shortage: stockResult.shortage,
+                          },
+                        )
+                      : tr(
+                          "不足分 {shortage} 本は製造分の指示書を作成してください。",
+                          { shortage: stockResult.shortage },
+                        )}
                   </Text>
                   <Group>
                     {stockResult.reservedNow > 0 && (

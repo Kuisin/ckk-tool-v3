@@ -148,7 +148,9 @@ export function RespondForm({
         >
           {availability === "SCHEDULED"
             ? tr("このフォームはまだ受付前です。")
-            : `このフォームの受付は終了しています（${AVAILABILITY_LABEL[availability]}）。`}
+            : tr("このフォームの受付は終了しています（{v0}）。", {
+                v0: AVAILABILITY_LABEL[availability],
+              })}
         </Alert>
       )}
 

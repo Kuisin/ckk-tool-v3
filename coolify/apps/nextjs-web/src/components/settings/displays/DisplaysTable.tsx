@@ -591,7 +591,7 @@ function LinkDisplayModal({
       onConfirm={() => onSubmit(code)}
       opened={display !== null}
       size="md"
-      title={`ディスプレイをリンク: ${display?.name ?? ""}`}
+      title={tr("ディスプレイをリンク: {v0}", { v0: display?.name ?? "" })}
     >
       <Stack gap="sm">
         <Text c="dimmed" size="sm">

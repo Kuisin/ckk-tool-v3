@@ -76,7 +76,9 @@ export function ClosingDetail({
       if (result.ok) {
         notifications.show({
           title: tr("請求書を生成しました"),
-          message: `請求書 ${result.data.invoiceNumber} を作成しました`,
+          message: tr("請求書 {invoiceNumber} を作成しました", {
+            invoiceNumber: result.data.invoiceNumber,
+          }),
           color: "green",
         });
         router.push(`${INVOICES_PATH}/${result.data.invoiceNumber}`);
@@ -101,7 +103,7 @@ export function ClosingDetail({
     {
       key: "pending",
       label: tr("未処理"),
-      description: `対象出荷 ${closing.shipments.length} 件`,
+      description: tr("対象出荷 {v0} 件", { v0: closing.shipments.length }),
       loading: closing.status === "PENDING",
     },
     {
@@ -128,13 +130,19 @@ export function ClosingDetail({
       title: tr("対象出荷"),
       summary:
         closing.shipments.length > 0
-          ? `${closing.shipments.length} 件・${totalQuantity} 本`
+          ? tr("{v0} 件・{totalQuantity} 本", {
+              v0: closing.shipments.length,
+              totalQuantity: totalQuantity,
+            })
           : null,
       items: closing.shipments.map((sp) => ({
         key: sp.deliveryOrderNumber,
         label: sp.deliveryOrderNumber,
         href: `/shipping/delivery-orders/${sp.deliveryOrderNumber}`,
-        note: `${sp.quantity} 本・${formatMoney(sp.amount)}`,
+        note: tr("{quantity} 本・{v1}", {
+          quantity: sp.quantity,
+          v1: formatMoney(sp.amount),
+        }),
       })),
       emptyNote: tr("請求対象の出荷がありません"),
     },
@@ -180,7 +188,10 @@ export function ClosingDetail({
       ]}
       createdAt={fmt.dateTime(closing.createdAt)}
       status={<StatusBadge entity="BillingClosing" status={closing.status} />}
-      title={`${closing.customerName}（${fmt.date(closing.closingDate)} 締め）`}
+      title={tr("{customerName}（{v1} 締め）", {
+        customerName: closing.customerName,
+        v1: fmt.date(closing.closingDate),
+      })}
     >
       <SummaryGrid>
         <FieldValue label={tr("顧客")} value={closing.customerName} />
@@ -319,7 +330,14 @@ export function ClosingDetail({
         confirmColor="blue"
         confirmLabel={tr("請求書を生成")}
         loading={isPending}
-        message={`${closing.customerName} の ${fmt.date(closing.closingDate)} 締め分から請求書（下書き）を生成します。対象出荷 ${closing.shipments.length} 件が明細になります。`}
+        message={tr(
+          "{customerName} の {v1} 締め分から請求書（下書き）を生成します。対象出荷 {v2} 件が明細になります。",
+          {
+            customerName: closing.customerName,
+            v1: fmt.date(closing.closingDate),
+            v2: closing.shipments.length,
+          },
+        )}
         onClose={() => setProcessOpen(false)}
         onConfirm={process}
         opened={processOpen}

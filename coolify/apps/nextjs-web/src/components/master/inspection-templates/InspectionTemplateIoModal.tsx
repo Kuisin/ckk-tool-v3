@@ -101,7 +101,9 @@ export function InspectionTemplateIoModal({
           </Text>
           <Text c="dimmed" size="xs">
             {selectedIds.length > 0
-              ? `選択中の ${selectedIds.length} 件を書き出します。`
+              ? tr("選択中の {v0} 件を書き出します。", {
+                  v0: selectedIds.length,
+                })
               : tr(
                   tr(
                     tr(
@@ -182,7 +184,9 @@ export function InspectionTemplateIoModal({
             {outcome.created.length > 0 && (
               <Alert
                 color="green"
-                title={`${outcome.created.length} 件を取り込みました`}
+                title={tr("{v0} 件を取り込みました", {
+                  v0: outcome.created.length,
+                })}
               >
                 <List size="sm">
                   {outcome.created.map((c) => (
@@ -196,7 +200,9 @@ export function InspectionTemplateIoModal({
             {outcome.skipped.length > 0 && (
               <Alert
                 color="orange"
-                title={`${outcome.skipped.length} 件は取り込めませんでした`}
+                title={tr("{v0} 件は取り込めませんでした", {
+                  v0: outcome.skipped.length,
+                })}
               >
                 <List size="sm">
                   {outcome.skipped.map((s) => (

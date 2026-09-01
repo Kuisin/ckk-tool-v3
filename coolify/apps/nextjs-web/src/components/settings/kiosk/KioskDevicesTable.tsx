@@ -387,7 +387,9 @@ export function KioskDevicesTable({
           )}
           {r.fingerprint && (
             <Tooltip
-              label={`アテステーション鍵: ${r.fingerprint}`}
+              label={tr("アテステーション鍵: {fingerprint}", {
+                fingerprint: r.fingerprint,
+              })}
               withinPortal
             >
               <Text c="dimmed" ff="monospace" size="xs">
@@ -539,9 +541,10 @@ export function KioskDevicesTable({
         onAction: () =>
           setConfirm({
             title: tr("有効化の確認"),
-            message: `この端末を有効化します（タブレットとのリンク: ${
-              r.linkedAt ? fmt.dateTime(r.linkedAt) : "—"
-            }）。有効化するとタブレットが自動でキオスクとして使用可能になります。`,
+            message: tr(
+              "この端末を有効化します（タブレットとのリンク: {v0}）。有効化するとタブレットが自動でキオスクとして使用可能になります。",
+              { v0: r.linkedAt ? fmt.dateTime(r.linkedAt) : "—" },
+            ),
             confirmLabel: tr("有効化"),
             confirmColor: "green",
             successMessage: tr(
@@ -835,7 +838,7 @@ export function KioskDevicesTable({
         onConfirm={handleLink}
         opened={linkTarget != null}
         size="md"
-        title={`端末リンク — ${linkTarget?.name ?? ""}`}
+        title={tr("端末リンク — {v0}", { v0: linkTarget?.name ?? "" })}
       >
         <Stack gap="sm">
           <Alert color="blue" variant="light">

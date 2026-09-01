@@ -84,7 +84,7 @@ export function EditDefectTypeModal({
       if (result.ok) {
         notifications.show({
           title: tr("保存しました"),
-          message: `不良種類「${label(target)}」を更新しました`,
+          message: tr("不良種類「{v0}」を更新しました", { v0: label(target) }),
           color: "green",
         });
         resetAndClose();
@@ -164,7 +164,9 @@ export function DeleteDefectTypeModal({
       loading={isPending}
       message={
         target
-          ? `不良種類「${label(target)}」を削除します。この操作は取り消せません。`
+          ? tr("不良種類「{v0}」を削除します。この操作は取り消せません。", {
+              v0: label(target),
+            })
           : ""
       }
       onClose={onClose}
@@ -175,7 +177,9 @@ export function DeleteDefectTypeModal({
           if (result.ok) {
             notifications.show({
               title: tr("削除しました"),
-              message: `不良種類「${label(target)}」を削除しました`,
+              message: tr("不良種類「{v0}」を削除しました", {
+                v0: label(target),
+              }),
               color: "green",
             });
             onDone?.();
@@ -221,8 +225,14 @@ export function ToggleDefectTypeActiveModal({
       message={
         target
           ? isActive
-            ? `不良種類「${label(target)}」を無効化します。新規の不良記録で選択できなくなります。`
-            : `不良種類「${label(target)}」を有効化します。再び不良記録で選択できるようになります。`
+            ? tr(
+                "不良種類「{v0}」を無効化します。新規の不良記録で選択できなくなります。",
+                { v0: label(target) },
+              )
+            : tr(
+                "不良種類「{v0}」を有効化します。再び不良記録で選択できるようになります。",
+                { v0: label(target) },
+              )
           : ""
       }
       onClose={onClose}
@@ -233,7 +243,10 @@ export function ToggleDefectTypeActiveModal({
           if (result.ok) {
             notifications.show({
               title: isActive ? "無効化しました" : tr("有効化しました"),
-              message: `不良種類「${label(target)}」を${isActive ? "無効化" : "有効化"}しました`,
+              message: tr("不良種類「{v0}」を{v1}しました", {
+                v0: label(target),
+                v1: isActive ? "無効化" : "有効化",
+              }),
               color: "green",
             });
             onDone?.();

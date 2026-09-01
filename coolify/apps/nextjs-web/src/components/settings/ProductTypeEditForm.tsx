@@ -160,7 +160,9 @@ export function ProductTypeEditForm({
           isEdit ? "種別編集" : tr("種別追加"),
         ]}
         title={
-          isEdit ? `種別編集 — ${type.name.ja || type.id}` : tr("種別追加")
+          isEdit
+            ? tr("種別編集 — {v0}", { v0: type.name.ja || type.id })
+            : tr("種別追加")
         }
       />
 
@@ -273,7 +275,9 @@ export function ProductTypeEditForm({
                     <TextInput
                       description={
                         def?.default
-                          ? `未入力なら "${def.default}"`
+                          ? tr('未入力なら "{default}"', {
+                              default: def.default,
+                            })
                           : tr("任意")
                       }
                       label={

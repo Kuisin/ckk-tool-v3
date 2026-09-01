@@ -89,9 +89,9 @@ export function MaterialReceiptForm({
     if (tooLarge.length > 0) {
       notifications.show({
         title: tr("エラー"),
-        message: `20MB を超えるファイルは添付できません: ${tooLarge
-          .map((f) => f.name)
-          .join(", ")}`,
+        message: tr("20MB を超えるファイルは添付できません: {v0}", {
+          v0: tooLarge.map((f) => f.name).join(", "),
+        }),
         color: "red",
       });
     }
@@ -105,7 +105,7 @@ export function MaterialReceiptForm({
   const uploadAttachments = async (receiptId: string) => {
     const notificationId = notifications.show({
       title: tr("証憑をアップロード中"),
-      message: `0 / ${files.length} 件`,
+      message: tr("0 / {v0} 件", { v0: files.length }),
       loading: true,
       autoClose: false,
       withCloseButton: false,
@@ -115,7 +115,11 @@ export function MaterialReceiptForm({
       notifications.update({
         id: notificationId,
         title: tr("証憑をアップロード中"),
-        message: `${index + 1} / ${files.length} 件: ${file.name}`,
+        message: tr("{v0} / {v1} 件: {name}", {
+          v0: index + 1,
+          v1: files.length,
+          name: file.name,
+        }),
         loading: true,
         autoClose: false,
         withCloseButton: false,
@@ -141,7 +145,9 @@ export function MaterialReceiptForm({
       notifications.update({
         id: notificationId,
         title: tr("一部の証憑を添付できませんでした"),
-        message: `${failed.join(", ")} — 詳細画面から再度添付してください`,
+        message: tr("{v0} — 詳細画面から再度添付してください", {
+          v0: failed.join(", "),
+        }),
         color: "orange",
         loading: false,
         autoClose: 8000,
@@ -151,7 +157,7 @@ export function MaterialReceiptForm({
       notifications.update({
         id: notificationId,
         title: tr("証憑を添付しました"),
-        message: `${files.length} 件`,
+        message: tr("{v0} 件", { v0: files.length }),
         color: "green",
         loading: false,
         autoClose: 4000,
@@ -315,7 +321,7 @@ export function MaterialReceiptForm({
                   </Text>
                 </Group>
                 <ActionIcon
-                  aria-label={`${file.name} を取り消す`}
+                  aria-label={tr("{name} を取り消す", { name: file.name })}
                   color="gray"
                   onClick={() =>
                     setFiles((cur) => cur.filter((_, i) => i !== index))

@@ -99,7 +99,7 @@ export function DefectRecordForm({
       if (result.ok) {
         notifications.show({
           title: tr("不良記録を保存しました"),
-          message: `${rows.length} 件を追加しました`,
+          message: tr("{v0} 件を追加しました", { v0: rows.length }),
           color: "green",
         });
         setRows([]);

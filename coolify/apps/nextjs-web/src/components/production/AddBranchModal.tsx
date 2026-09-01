@@ -157,7 +157,10 @@ export function AddBranchModal({
           title: isEdit ? "分岐を更新しました" : tr("分岐を追加しました"),
           message: isEdit
             ? editTarget.stepNames.join(" → ")
-            : `${sourceStep?.name ?? ""} から ${catalogStepIds.length} 工程`,
+            : tr("{v0} から {v1} 工程", {
+                v0: sourceStep?.name ?? "",
+                v1: catalogStepIds.length,
+              }),
           color: "green",
         });
         onClose();
@@ -187,8 +190,8 @@ export function AddBranchModal({
       size="md"
       title={
         isEdit
-          ? `分岐の編集 — ${editTarget.stepNames.join(" → ")}`
-          : `分岐追加 — ${sourceStep?.name ?? ""}`
+          ? tr("分岐の編集 — {v0}", { v0: editTarget.stepNames.join(" → ") })
+          : tr("分岐追加 — {v0}", { v0: sourceStep?.name ?? "" })
       }
     >
       <Stack gap="sm">
@@ -208,7 +211,7 @@ export function AddBranchModal({
             isEdit && !editTarget.canEditQuantity
               ? tr("着手済みのため数量は変更できません")
               : max != null
-                ? `分岐可能: ${max}（工程分岐の未割当分）`
+                ? tr("分岐可能: {max}（工程分岐の未割当分）", { max: max })
                 : undefined
           }
           disabled={isEdit && !editTarget.canEditQuantity}

@@ -173,7 +173,9 @@ export function WorkOrderDetail({
       if (result.ok) {
         notifications.show({
           title: tr("コピーしました"),
-          message: `指示書 ${result.data.docNumber} を作成しました`,
+          message: tr("指示書 {docNumber} を作成しました", {
+            docNumber: result.data.docNumber,
+          }),
           color: "green",
         });
         setCopyOpen(false);
@@ -191,7 +193,10 @@ export function WorkOrderDetail({
   const handleCancel = () => {
     openConfirm({
       title: tr("キャンセルの確認"),
-      message: `指示書 ${woLabel} をキャンセルします。この操作は取り消せません。`,
+      message: tr(
+        "指示書 {woLabel} をキャンセルします。この操作は取り消せません。",
+        { woLabel: woLabel },
+      ),
       confirmLabel: tr("キャンセルする"),
       onConfirm: () => {
         startTransition(async () => {
@@ -199,7 +204,7 @@ export function WorkOrderDetail({
           if (result.ok) {
             notifications.show({
               title: tr("キャンセルしました"),
-              message: `指示書 ${woLabel}`,
+              message: tr("指示書 {woLabel}", { woLabel: woLabel }),
               color: "green",
             });
             router.refresh();
@@ -401,7 +406,11 @@ export function WorkOrderDetail({
           )}
         </>
       }
-      title={isApproval ? `承認 ${woLabel}` : `指示書 ${woLabel}`}
+      title={
+        isApproval
+          ? tr("承認 {woLabel}", { woLabel: woLabel })
+          : tr("指示書 {woLabel}", { woLabel: woLabel })
+      }
       updatedAt={fmt.dateTime(wo.updatedAt)}
     >
       {/* 「いまやること」カードは常に最上部。承認画面は承認状況もサマリより上 */}
@@ -678,7 +687,7 @@ export function WorkOrderDetail({
         onConfirm={handleCopy}
         opened={copyOpen}
         size="md"
-        title={`指示書 ${woLabel} をコピー`}
+        title={tr("指示書 {woLabel} をコピー", { woLabel: woLabel })}
       >
         <Stack gap="sm">
           {wo.copies.length > 0 && (

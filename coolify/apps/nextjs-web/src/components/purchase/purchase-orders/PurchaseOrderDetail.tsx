@@ -143,7 +143,7 @@ export function PurchaseOrderDetail({
       if (result.ok) {
         notifications.show({
           title: done,
-          message: `素材発注書 ${po.poNumber}`,
+          message: tr("素材発注書 {poNumber}", { poNumber: po.poNumber }),
           color: "green",
         });
         setCancelOpen(false);
@@ -217,14 +217,22 @@ export function PurchaseOrderDetail({
       title: tr("素材入荷"),
       summary:
         receipts.length > 0
-          ? `${receipts.length} 件・合計 ${receivedQuantity} ${receipts[0]?.unit ?? ""}`
+          ? tr("{v0} 件・合計 {receivedQuantity} {v2}", {
+              v0: receipts.length,
+              receivedQuantity: receivedQuantity,
+              v2: receipts[0]?.unit ?? "",
+            })
           : null,
       items: receipts.map((r) => ({
         key: r.id,
         label: r.materialCode,
         href: `/purchase/material-receipts/${r.id}`,
         done: true,
-        note: `${r.quantity} ${r.unit}・${fmt.date(r.receivedAt)}`,
+        note: tr("{quantity} {unit}・{v2}", {
+          quantity: r.quantity,
+          unit: r.unit,
+          v2: fmt.date(r.receivedAt),
+        }),
       })),
       emptyNote:
         po.status === "ORDERED"
@@ -248,7 +256,7 @@ export function PurchaseOrderDetail({
         onReject={(reason) => rejectPurchaseOrder(po.poNumber, reason)}
         onRequest={() => requestPurchaseApproval(po.poNumber)}
         rejectReason={null}
-        subject={`素材発注書 ${po.poNumber}`}
+        subject={tr("素材発注書 {poNumber}", { poNumber: po.poNumber })}
       />
     );
   } else if (po.status === "APPROVED") {

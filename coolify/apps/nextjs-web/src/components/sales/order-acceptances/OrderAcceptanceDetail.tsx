@@ -310,7 +310,7 @@ export function OrderAcceptanceDetail({
       title: tr("注文明細"),
       summary:
         a.orderLineNumbers.length > 0
-          ? `${a.orderLineNumbers.length} 件`
+          ? tr("{v0} 件", { v0: a.orderLineNumbers.length })
           : null,
       items: a.orderLineNumbers.map((n) => ({
         key: n,
@@ -351,7 +351,7 @@ export function OrderAcceptanceDetail({
       if (result.ok) {
         notifications.show({
           title: done,
-          message: `注文請書 ${a.number}`,
+          message: tr("注文請書 {number}", { number: a.number }),
           color: "green",
         });
         setRejectOpen(false);
@@ -376,7 +376,9 @@ export function OrderAcceptanceDetail({
       if (result.ok) {
         notifications.show({
           title: tr("確定しました"),
-          message: `注文明細 ${result.data.numbers.join(", ")} を作成しました`,
+          message: tr("注文明細 {v0} を作成しました", {
+            v0: result.data.numbers.join(", "),
+          }),
           color: "green",
         });
         setDeployOpen(false);
@@ -462,13 +464,17 @@ export function OrderAcceptanceDetail({
         description={
           readiness.ok
             ? tr("書類と見比べて、直すところがあれば「編集」で直してください")
-            : `「編集」で直してください — ${readinessSummary(readiness.issues)}`
+            : tr("「編集」で直してください — {v0}", {
+                v0: readinessSummary(readiness.issues),
+              })
         }
         icon={<IconSend size={20} />}
         title={
           readiness.ok
             ? tr("内容を確認して承認依頼してください")
-            : `承認依頼にはあと ${readiness.issues.length} 件の入力が必要です`
+            : tr("承認依頼にはあと {v0} 件の入力が必要です", {
+                v0: readiness.issues.length,
+              })
         }
         tone="action"
       />
@@ -483,7 +489,7 @@ export function OrderAcceptanceDetail({
         onApprove={() => approveAcceptance(a.number)}
         onReject={(reason) => rejectAcceptance(a.number, reason)}
         rejectReason={null}
-        subject={`注文請書 ${a.number}`}
+        subject={tr("注文請書 {number}", { number: a.number })}
       />
     );
   } else if (a.status === "APPROVED") {
@@ -627,8 +633,20 @@ export function OrderAcceptanceDetail({
                     {failure.attempt && failure.maxAttempts ? (
                       <Text c="dimmed" size="xs">
                         {failure.retrying
-                          ? `自動再試行中（${failure.attempt}/${failure.maxAttempts} 回目が失敗）— まもなくもう一度実行します`
-                          : `自動再試行 ${failure.attempt}/${failure.maxAttempts} 回とも失敗しました`}
+                          ? tr(
+                              "自動再試行中（{attempt}/{maxAttempts} 回目が失敗）— まもなくもう一度実行します",
+                              {
+                                attempt: failure.attempt,
+                                maxAttempts: failure.maxAttempts,
+                              },
+                            )
+                          : tr(
+                              "自動再試行 {attempt}/{maxAttempts} 回とも失敗しました",
+                              {
+                                attempt: failure.attempt,
+                                maxAttempts: failure.maxAttempts,
+                              },
+                            )}
                       </Text>
                     ) : null}
                     {failure.detail && (
@@ -718,7 +736,9 @@ export function OrderAcceptanceDetail({
               <Alert
                 color="orange"
                 icon={<IconAlertTriangle size={16} />}
-                title={`価格差異 ${priceCheck.diffCount} 件`}
+                title={tr("価格差異 {diffCount} 件", {
+                  diffCount: priceCheck.diffCount,
+                })}
                 variant="light"
               >
                 <Stack gap={4}>
@@ -1375,7 +1395,7 @@ function DraftEditor({
       if (result.ok) {
         notifications.show({
           title: tr("保存しました"),
-          message: `注文請書 ${a.number}`,
+          message: tr("注文請書 {number}", { number: a.number }),
           color: "green",
         });
         onClose();

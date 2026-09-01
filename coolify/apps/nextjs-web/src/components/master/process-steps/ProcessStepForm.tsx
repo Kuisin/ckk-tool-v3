@@ -411,7 +411,11 @@ export function ProcessStepForm({
       }
       onSubmit={form.onSubmit(handleSubmit)}
       status={isEdit ? <ActiveBadge active={initial.isActive} /> : undefined}
-      title={isEdit ? `工程 編集 — ${initial.code}` : tr("工程 新規作成")}
+      title={
+        isEdit
+          ? tr("工程 編集 — {code}", { code: initial.code })
+          : tr("工程 新規作成")
+      }
     >
       <FormSection title={tr("基本情報")}>
         <SimpleGrid cols={isMobile ? 1 : 2} spacing="sm">

@@ -123,7 +123,9 @@ export function ItemDefEditForm({
           isEdit ? "項目編集" : tr("項目追加"),
         ]}
         title={
-          isEdit ? `項目編集 — ${def.label.ja || def.key}` : tr("項目追加")
+          isEdit
+            ? tr("項目編集 — {v0}", { v0: def.label.ja || def.key })
+            : tr("項目追加")
         }
       />
 

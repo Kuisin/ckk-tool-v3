@@ -296,7 +296,9 @@ export function NotificationSettingsForm({
   const removeDevice = (device: PushDevice) => {
     openConfirm({
       title: tr("登録デバイスの削除"),
-      message: `「${deviceLabel(device.userAgent)}」へのプッシュ通知を停止します。`,
+      message: tr("「{v0}」へのプッシュ通知を停止します。", {
+        v0: deviceLabel(device.userAgent),
+      }),
       confirmLabel: "削除",
       onConfirm: () => {
         startTransition(async () => {

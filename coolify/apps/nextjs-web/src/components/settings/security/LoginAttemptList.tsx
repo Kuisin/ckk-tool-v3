@@ -64,7 +64,7 @@ export function LoginAttemptList({
             <Text c="dimmed" size="xs" truncate>
               {r.userName ??
                 (r.identifierRef
-                  ? `未解決 ${r.identifierRef.slice(0, 8)}`
+                  ? tr("未解決 {v0}", { v0: r.identifierRef.slice(0, 8) })
                   : "—")}
               {r.ipAddress ? ` / ${r.ipAddress}` : ""}
             </Text>

@@ -87,7 +87,7 @@ export function KioskSettingsPanel({
                   </Text>
                 </Stack>
                 <Switch
-                  aria-label={`${app.label} を表示`}
+                  aria-label={tr("{label} を表示", { label: app.label })}
                   checked={flags[app.key] ?? true}
                   onChange={(e) =>
                     setFlags((prev) => ({

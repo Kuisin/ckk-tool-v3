@@ -124,7 +124,9 @@ export function FormEditor({
           // 設定は保存済み。項目だけ落ちたので、画面はそのまま残して直させる。
           notifications.show({
             title: tr("項目を保存できませんでした"),
-            message: `${published.error ?? "項目定義が不正です"}（設定は保存しました）`,
+            message: tr("{v0}（設定は保存しました）", {
+              v0: published.error ?? "項目定義が不正です",
+            }),
             color: "red",
           });
           return;

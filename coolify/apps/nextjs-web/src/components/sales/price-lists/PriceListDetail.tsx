@@ -137,7 +137,9 @@ export function PriceListDetail({
       if (result.ok) {
         notifications.show({
           title: tr("保存しました"),
-          message: `値引きルール「${rule.label}」を保存しました`,
+          message: tr("値引きルール「{label}」を保存しました", {
+            label: rule.label,
+          }),
           color: "green",
         });
         router.refresh();
@@ -154,7 +156,9 @@ export function PriceListDetail({
   const removeDiscount = (rule: PriceDiscount) => {
     openConfirm({
       title: tr("値引きルールの削除"),
-      message: `「${rule.label}」を削除します。この操作は取り消せません。`,
+      message: tr("「{label}」を削除します。この操作は取り消せません。", {
+        label: rule.label,
+      }),
       confirmLabel: "削除",
       onConfirm: () => {
         startTransition(async () => {
@@ -241,7 +245,10 @@ export function PriceListDetail({
             </Group>
           }
         />
-        <FieldValue label={tr("段階数")} value={`${summary.tierCount}段階`} />
+        <FieldValue
+          label={tr("段階数")}
+          value={tr("{tierCount}段階", { tierCount: summary.tierCount })}
+        />
         <FieldValue
           label={tr("単価範囲")}
           value={priceRangeLabel(summary.minPrice, summary.maxPrice)}

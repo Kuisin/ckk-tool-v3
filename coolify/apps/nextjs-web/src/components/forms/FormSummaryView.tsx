@@ -213,6 +213,7 @@ function Body({
 
 /** 回答 / 未回答の件数。必須でない質問では「答えなかった」ことも結果。 */
 function AnsweredCount({ summary }: { summary: FieldSummary }) {
+  const tr = useTr();
   const body = summary.body;
   if (body.kind === "none") return null;
   const answered = body.answered;
@@ -220,7 +221,9 @@ function AnsweredCount({ summary }: { summary: FieldSummary }) {
   return (
     <Text c="dimmed" size="xs" style={{ marginLeft: "auto" }}>
       回答 {answered}
-      {unanswered > 0 ? ` / 未回答 ${unanswered}` : ""}
+      {unanswered > 0
+        ? tr(" / 未回答 {unanswered}", { unanswered: unanswered })
+        : ""}
     </Text>
   );
 }
@@ -284,7 +287,13 @@ export function FormSummaryView({
       if (b.kind !== "none")
         rows.push([s.label, tr("未回答"), Math.max(0, s.total - b.answered)]);
     }
-    downloadCsv(`集計_${formTitle}_${formCode}.csv`, toCsv(rows));
+    downloadCsv(
+      tr("集計_{formTitle}_{formCode}.csv", {
+        formTitle: formTitle,
+        formCode: formCode,
+      }),
+      toCsv(rows),
+    );
   };
 
   return (
@@ -309,7 +318,7 @@ export function FormSummaryView({
           { label: formTitle, href: `/general/forms/${formCode}` },
           { label: tr("集計") },
         ]}
-        title={`集計 — ${formTitle}`}
+        title={tr("集計 — {formTitle}", { formTitle: formTitle })}
       />
 
       <Card padding="md" radius="md" withBorder>

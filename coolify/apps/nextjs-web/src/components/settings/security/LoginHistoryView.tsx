@@ -183,7 +183,9 @@ export function LoginHistoryView({
             withinPortal
           >
             <Text c="dimmed" ff="mono" size="xs">
-              {r.identifierRef ? `未解決 ${r.identifierRef.slice(0, 8)}` : "—"}
+              {r.identifierRef
+                ? tr("未解決 {v0}", { v0: r.identifierRef.slice(0, 8) })
+                : "—"}
             </Text>
           </Tooltip>
         ),
@@ -364,7 +366,7 @@ export function LoginHistoryView({
                     {r.userName ??
                       r.portalAccountName ??
                       (r.identifierRef
-                        ? `未解決 ${r.identifierRef.slice(0, 8)}`
+                        ? tr("未解決 {v0}", { v0: r.identifierRef.slice(0, 8) })
                         : "—")}
                   </Text>
                   <Text c="dimmed" size="xs">

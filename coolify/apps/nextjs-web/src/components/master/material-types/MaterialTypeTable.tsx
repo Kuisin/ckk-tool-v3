@@ -119,7 +119,10 @@ export function MaterialTypeTable({ rows }: { rows: MaterialTypeRow[] }) {
       if (result.ok) {
         notifications.show({
           title: isActive ? "有効化しました" : tr("無効化しました"),
-          message: `${targets.length}件の材種を${isActive ? "有効化" : "無効化"}しました`,
+          message: tr("{v0}件の材種を{v1}しました", {
+            v0: targets.length,
+            v1: isActive ? "有効化" : "無効化",
+          }),
           color: "green",
         });
         router.refresh();
@@ -136,7 +139,10 @@ export function MaterialTypeTable({ rows }: { rows: MaterialTypeRow[] }) {
   const bulkDelete = (targets: MaterialTypeRow[]) => {
     openConfirm({
       title: tr("材種の一括削除"),
-      message: `選択中の${targets.length}件の材種を削除します。この操作は取り消せません。`,
+      message: tr(
+        "選択中の{v0}件の材種を削除します。この操作は取り消せません。",
+        { v0: targets.length },
+      ),
       confirmLabel: tr("削除する"),
       onConfirm: () => {
         startTransition(async () => {
@@ -144,7 +150,7 @@ export function MaterialTypeTable({ rows }: { rows: MaterialTypeRow[] }) {
           if (result.ok) {
             notifications.show({
               title: tr("削除しました"),
-              message: `${targets.length}件の材種を削除しました`,
+              message: tr("{v0}件の材種を削除しました", { v0: targets.length }),
               color: "green",
             });
             router.refresh();

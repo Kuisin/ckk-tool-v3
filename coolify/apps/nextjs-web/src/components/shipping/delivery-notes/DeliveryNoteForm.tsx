@@ -314,7 +314,9 @@ export function DeliveryNoteForm({
           message:
             mode === "edit"
               ? tr("納品書を更新しました")
-              : `納品書 ${result.data.number} を作成しました`,
+              : tr("納品書 {number} を作成しました", {
+                  number: result.data.number,
+                }),
           color: "green",
         });
         router.push(`${BASE_PATH}/${result.data.number}`);
@@ -347,7 +349,9 @@ export function DeliveryNoteForm({
         ) : undefined
       }
       title={
-        mode === "edit" ? `納品書 編集 ${noteId ?? ""}` : tr("納品書 新規作成")
+        mode === "edit"
+          ? tr("納品書 編集 {v0}", { v0: noteId ?? "" })
+          : tr("納品書 新規作成")
       }
     >
       <FormSection title={tr("基本情報")}>

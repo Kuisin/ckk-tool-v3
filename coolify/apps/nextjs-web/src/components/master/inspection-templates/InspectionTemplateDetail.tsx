@@ -328,7 +328,7 @@ export function InspectionTemplateDetail({
         />
         <FieldValue
           label={tr("検査項目数")}
-          value={`${record.items.length}件`}
+          value={tr("{v0}件", { v0: record.items.length })}
         />
         <FieldValue
           label={tr("状態")}

@@ -157,7 +157,10 @@ export function ProcessStepTable({ rows }: { rows: ProcessStepRow[] }) {
       if (result.ok) {
         notifications.show({
           title: isActive ? "有効化しました" : tr("無効化しました"),
-          message: `${targets.length}件の工程を${isActive ? "有効化" : "無効化"}しました`,
+          message: tr("{v0}件の工程を{v1}しました", {
+            v0: targets.length,
+            v1: isActive ? "有効化" : "無効化",
+          }),
           color: "green",
         });
         router.refresh();
@@ -174,7 +177,10 @@ export function ProcessStepTable({ rows }: { rows: ProcessStepRow[] }) {
   const bulkDelete = (targets: ProcessStepRow[]) => {
     openConfirm({
       title: tr("工程の一括削除"),
-      message: `選択中の${targets.length}件の工程を削除します。他の工程が依存している工程は削除できません。この操作は取り消せません。`,
+      message: tr(
+        "選択中の{v0}件の工程を削除します。他の工程が依存している工程は削除できません。この操作は取り消せません。",
+        { v0: targets.length },
+      ),
       confirmLabel: tr("削除する"),
       onConfirm: () => {
         startTransition(async () => {
@@ -182,7 +188,7 @@ export function ProcessStepTable({ rows }: { rows: ProcessStepRow[] }) {
           if (result.ok) {
             notifications.show({
               title: tr("削除しました"),
-              message: `${targets.length}件の工程を削除しました`,
+              message: tr("{v0}件の工程を削除しました", { v0: targets.length }),
               color: "green",
             });
             router.refresh();

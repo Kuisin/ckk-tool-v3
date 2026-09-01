@@ -89,7 +89,10 @@ export function PriceListTable({
       if (result.ok) {
         notifications.show({
           title: isActive ? "有効化しました" : tr("無効化しました"),
-          message: `${rows.length}件の価格表を${isActive ? "有効化" : "無効化"}しました`,
+          message: tr("{v0}件の価格表を{v1}しました", {
+            v0: rows.length,
+            v1: isActive ? "有効化" : "無効化",
+          }),
           color: "green",
         });
         router.refresh();
@@ -106,7 +109,10 @@ export function PriceListTable({
   const bulkDelete = (rows: PriceListEntry[]) => {
     openConfirm({
       title: tr("価格表の一括削除"),
-      message: `選択中の${rows.length}件の価格表（段階・値引きルール含む）を削除します。この操作は取り消せません。`,
+      message: tr(
+        "選択中の{v0}件の価格表（段階・値引きルール含む）を削除します。この操作は取り消せません。",
+        { v0: rows.length },
+      ),
       confirmLabel: tr("削除する"),
       onConfirm: () => {
         startTransition(async () => {
@@ -114,7 +120,7 @@ export function PriceListTable({
           if (result.ok) {
             notifications.show({
               title: tr("削除しました"),
-              message: `${rows.length}件の価格表を削除しました`,
+              message: tr("{v0}件の価格表を削除しました", { v0: rows.length }),
               color: "green",
             });
             router.refresh();
@@ -182,7 +188,7 @@ export function PriceListTable({
       header: tr("段階"),
       width: 80,
       sortValue: (e) => entrySummary(e).tierCount,
-      render: (e) => `${entrySummary(e).tierCount}段階`,
+      render: (e) => tr("{v0}段階", { v0: entrySummary(e).tierCount }),
     },
     {
       key: "price",

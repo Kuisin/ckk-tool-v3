@@ -110,7 +110,9 @@ export function ToolTypeEditForm({
       if (res.ok) {
         notifications.show({
           title: tr("保存しました"),
-          message: `工具種「${toolType.label}」の適用基準を更新しました`,
+          message: tr("工具種「{label}」の適用基準を更新しました", {
+            label: toolType.label,
+          }),
           color: "green",
         });
         router.push(BASE);
@@ -128,7 +130,10 @@ export function ToolTypeEditForm({
   const remove = () =>
     openConfirm({
       title: tr("工具種の削除"),
-      message: `工具種「${toolType.label}」を削除します。各計算基準の適用工具種からも取り除かれます。この操作は取り消せません。`,
+      message: tr(
+        "工具種「{label}」を削除します。各計算基準の適用工具種からも取り除かれます。この操作は取り消せません。",
+        { label: toolType.label },
+      ),
       confirmLabel: "削除",
       onConfirm: () =>
         startTransition(async () => {
@@ -136,7 +141,9 @@ export function ToolTypeEditForm({
           if (res.ok) {
             notifications.show({
               title: tr("削除しました"),
-              message: `工具種「${toolType.label}」を削除しました`,
+              message: tr("工具種「{label}」を削除しました", {
+                label: toolType.label,
+              }),
               color: "green",
             });
             router.push(BASE);
@@ -243,7 +250,7 @@ export function ToolTypeEditForm({
         <Select
           data={finals.map((c) => ({
             value: c.id,
-            label: c.enabled ? c.name : `${c.name}（無効）`,
+            label: c.enabled ? c.name : tr("{name}（無効）", { name: c.name }),
           }))}
           onChange={setFinalId}
           placeholder={tr("final 基準を選択")}

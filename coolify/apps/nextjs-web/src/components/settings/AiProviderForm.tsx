@@ -325,7 +325,9 @@ export function AiProviderForm({ initial }: Props) {
           <PasswordInput
             description={
               hasStoredToken
-                ? `保存済み: ●●●●●●${initial.tokenLast4 ?? ""}（空欄のままにすると変更しません）`
+                ? tr("保存済み: ●●●●●●{v0}（空欄のままにすると変更しません）", {
+                    v0: initial.tokenLast4 ?? "",
+                  })
                 : tr("未設定")
             }
             disabled={clearToken}

@@ -80,7 +80,9 @@ export function DocumentEditor({
       const r = await savePageBody(pageNumber as string, { title, body, note });
       if (r.ok) {
         notifications.show({
-          message: `リビジョン ${r.data.revision} として保存しました`,
+          message: tr("リビジョン {revision} として保存しました", {
+            revision: r.data.revision,
+          }),
           color: "green",
         });
         setNote("");

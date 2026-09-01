@@ -54,7 +54,7 @@ export function RevisionsView({
 
   const restore = (revision: number) =>
     openConfirm({
-      title: `リビジョン ${revision} を復元`,
+      title: tr("リビジョン {revision} を復元", { revision: revision }),
       message: tr(
         tr(
           tr(
@@ -68,7 +68,9 @@ export function RevisionsView({
           const r = await restoreRevision(pageNumber, revision);
           if (r.ok) {
             notifications.show({
-              message: `リビジョン ${r.data.revision} として復元しました`,
+              message: tr("リビジョン {revision} として復元しました", {
+                revision: r.data.revision,
+              }),
               color: "green",
             });
             router.refresh();

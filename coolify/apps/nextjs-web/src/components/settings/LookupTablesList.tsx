@@ -34,7 +34,11 @@ export function LookupTablesList({ tables }: { tables: LookupTable[] }) {
                 {localized(t.name)}
               </Text>
             ),
-            description: `lookup("${t.id}", …) · ${t.keyColumns.length}キー · ${t.rows.length}行`,
+            description: tr('lookup("{id}", …) · {v1}キー · {v2}行', {
+              id: t.id,
+              v1: t.keyColumns.length,
+              v2: t.rows.length,
+            }),
           })),
         },
       ]}

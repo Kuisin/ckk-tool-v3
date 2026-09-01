@@ -136,7 +136,10 @@ export function PrivilegedRequestCard({
               利用できる期間: {fmt.dateTime(row.windowStartsAt)} 〜{" "}
               {fmt.dateTime(row.windowEndsAt)} / 1 回 {row.durationMinutes} 分
               {row.activatedAt
-                ? `（${fmt.dateTime(row.activatedAt)} に開始・${row.useCount} 回使用）`
+                ? tr("（{v0} に開始・{useCount} 回使用）", {
+                    v0: fmt.dateTime(row.activatedAt),
+                    useCount: row.useCount,
+                  })
                 : tr("（未使用 — 最初に使った時点から測ります）")}
             </Text>
           )}
@@ -144,7 +147,10 @@ export function PrivilegedRequestCard({
           <Text c="dimmed" size="xs">
             申請: {row.requestedByName} / {fmt.dateTime(row.requestedAt)}
             {row.decidedByName &&
-              ` ・ 決裁: ${row.decidedByName} / ${fmt.dateTime(row.decidedAt)}`}
+              tr(" ・ 決裁: {decidedByName} / {v1}", {
+                decidedByName: row.decidedByName,
+                v1: fmt.dateTime(row.decidedAt),
+              })}
           </Text>
 
           {row.decisionComment && (

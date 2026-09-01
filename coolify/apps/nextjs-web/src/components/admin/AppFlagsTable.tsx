@@ -13,6 +13,7 @@ import { Badge, Select, Switch, Text, TextInput } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
 import { IconApps, IconSearch } from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
+import { useLocale } from "next-intl";
 import { useState, useTransition } from "react";
 import { setAppEnabled } from "@/app/(dashboard)/settings/apps/actions";
 import { type Column, DataTable } from "@/components/ui/DataTable";
@@ -21,10 +22,14 @@ import { useTr } from "@/hooks/useTr";
 import { useUrlSelectState, useUrlStringState } from "@/hooks/useUrlState";
 import { useIsMobile } from "@/hooks/useViewport";
 import type { AppEnv, AppFlagRow } from "@/lib/app-flags";
-import { CATEGORY_COLORS } from "@/lib/app-list";
+import { appLabelForKey, CATEGORY_COLORS, categoryLabel } from "@/lib/app-list";
+import type { Locale } from "@/lib/i18n";
 
 export function AppFlagsTable({ rows }: { rows: AppFlagRow[] }) {
   const tr = useTr();
+  const locale = useLocale() as Locale;
+  // 行は key と ja のラベルしか持たないので、key から訳を引く。
+  const nameOf = (r: AppFlagRow) => appLabelForKey(r.key, r.label, locale);
   const router = useRouter();
   const isMobile = useIsMobile();
   const [, startTransition] = useTransition();
@@ -36,7 +41,7 @@ export function AppFlagsTable({ rows }: { rows: AppFlagRow[] }) {
   const [pending, setPending] = useState<Record<string, boolean>>({});
 
   const categoryOptions = [...new Set(rows.map((r) => r.category))].map(
-    (c) => ({ value: c, label: c }),
+    (c) => ({ value: c, label: categoryLabel(c, locale) }),
   );
 
   const reset = () => {
@@ -47,7 +52,10 @@ export function AppFlagsTable({ rows }: { rows: AppFlagRow[] }) {
   const filtered = rows.filter((r) => {
     const q = search.trim();
     const matchesSearch =
-      !q || r.label.includes(q) || r.operationCode.includes(q.toUpperCase());
+      !q ||
+      r.label.includes(q) ||
+      nameOf(r).toLowerCase().includes(q.toLowerCase()) ||
+      r.operationCode.includes(q.toUpperCase());
     const matchesCategory = !category || r.category === category;
     return matchesSearch && matchesCategory;
   });
@@ -58,8 +66,12 @@ export function AppFlagsTable({ rows }: { rows: AppFlagRow[] }) {
       const result = await setAppEnabled({ appKey: row.key, env, enabled });
       if (result.ok) {
         notifications.show({
-          title: enabled ? "有効化しました" : tr("無効化しました"),
-          message: `${row.label} を ${env} で${enabled ? "表示" : "非表示"}にしました`,
+          title: enabled ? tr("有効化しました") : tr("無効化しました"),
+          message: tr("{label} を {env} で{v2}にしました", {
+            label: nameOf(row),
+            env: env,
+            v2: enabled ? tr("表示") : tr("非表示"),
+          }),
           color: "green",
         });
         router.refresh();
@@ -86,7 +98,10 @@ export function AppFlagsTable({ rows }: { rows: AppFlagRow[] }) {
     width: 130,
     render: (r: AppFlagRow) => (
       <Switch
-        aria-label={`${r.label} を ${env} で有効化`}
+        aria-label={tr("{label} を {env} で有効化", {
+          label: r.label,
+          env: env,
+        })}
         checked={enabledValue(r, env)}
         color={env === "main" ? "blue" : "teal"}
         onChange={(e) => toggle(r, env, e.currentTarget.checked)}
@@ -109,7 +124,7 @@ export function AppFlagsTable({ rows }: { rows: AppFlagRow[] }) {
           size="sm"
           variant="light"
         >
-          {r.category}
+          {categoryLabel(r.category, locale)}
         </Badge>
       ),
     },
@@ -117,10 +132,10 @@ export function AppFlagsTable({ rows }: { rows: AppFlagRow[] }) {
       key: "label",
       header: tr("アプリ"),
       sortable: true,
-      sortValue: (r) => r.label,
+      sortValue: (r) => nameOf(r),
       render: (r) => (
         <Text fw={500} size="sm">
-          {r.label}
+          {nameOf(r)}
         </Text>
       ),
     },

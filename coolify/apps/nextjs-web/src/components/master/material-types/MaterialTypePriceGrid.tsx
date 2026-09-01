@@ -104,7 +104,7 @@ export function MaterialTypePriceGrid({
       if (res.ok) {
         notifications.show({
           title: tr("保存しました"),
-          message: `既定単価 ${out.length} 件を保存しました`,
+          message: tr("既定単価 {v0} 件を保存しました", { v0: out.length }),
           color: "green",
         });
         router.refresh();

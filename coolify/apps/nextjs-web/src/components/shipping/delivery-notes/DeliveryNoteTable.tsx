@@ -192,7 +192,11 @@ export function DeliveryNoteTable({ rows }: { rows: DeliveryNote[] }) {
               </Text>
               <Text c="dimmed" size="xs" truncate>
                 {n.deliveryOrderNumber}
-                {n.endUserName ? ` · 届け先: ${n.endUserName}` : ""}
+                {n.endUserName
+                  ? tr(" · 届け先: {endUserName}", {
+                      endUserName: n.endUserName,
+                    })
+                  : ""}
               </Text>
               <Group gap="md" mt={2}>
                 <DeliveryMethodBadge method={n.deliveryMethod} />

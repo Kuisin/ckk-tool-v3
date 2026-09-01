@@ -106,7 +106,10 @@ export function FolderGrantsModal({
   function onDelete(row: FolderGrantRow) {
     openConfirm({
       title: tr("権限の削除"),
-      message: `「${row.pathPrefix}」への ${row.userName} さんのアクセス権を削除します。`,
+      message: tr(
+        "「{pathPrefix}」への {userName} さんのアクセス権を削除します。",
+        { pathPrefix: row.pathPrefix, userName: row.userName },
+      ),
       confirmLabel: "削除",
       onConfirm: () => {
         startTransition(async () => {

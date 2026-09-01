@@ -202,7 +202,9 @@ export function KioskCardsTable({
         setIssueOpen(false);
         notifications.show({
           title: tr("発行しました"),
-          message: `QRカードを ${result.data.ids.length} 枚発行しました`,
+          message: tr("QRカードを {v0} 枚発行しました", {
+            v0: result.data.ids.length,
+          }),
           color: "green",
         });
       } else {

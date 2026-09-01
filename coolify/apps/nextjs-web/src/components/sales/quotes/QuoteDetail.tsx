@@ -133,11 +133,11 @@ export function QuoteDetail({
         status === "REJECTED"
           ? "却下"
           : status === "EXPIRED"
-            ? `期限切れ（${fmt.date(quote.validUntil)}）`
+            ? tr("期限切れ（{v0}）", { v0: fmt.date(quote.validUntil) })
             : status === "ACCEPTED"
               ? tr("受注へ")
               : quote.validUntil
-                ? `有効期限 ${fmt.date(quote.validUntil)}`
+                ? tr("有効期限 {v0}", { v0: fmt.date(quote.validUntil) })
                 : tr("受注へ"),
       color:
         status === "REJECTED"
@@ -157,7 +157,7 @@ export function QuoteDetail({
           {
             key: "price-lists",
             title: tr("価格表"),
-            summary: `${relatedEntries.length} 件`,
+            summary: tr("{v0} 件", { v0: relatedEntries.length }),
             items: relatedEntries.map((e) => ({
               key: e.entryId,
               label: `${e.customerName} × ${e.productName}`,
@@ -174,7 +174,10 @@ export function QuoteDetail({
     {
       key: "order-acceptances",
       title: tr("注文請書"),
-      summary: acceptances.length > 0 ? `${acceptances.length} 件` : null,
+      summary:
+        acceptances.length > 0
+          ? tr("{v0} 件", { v0: acceptances.length })
+          : null,
       items: acceptances.map((a) => ({
         key: a.number,
         label: a.number,
@@ -279,7 +282,10 @@ export function QuoteDetail({
         <FieldValue label={tr("営業担当")} value={quote.salesRepName} />
         <FieldValue label={tr("作成者")} value={quote.createdBy} />
         <FieldValue label={tr("有効期限")} value={fmt.date(quote.validUntil)} />
-        <FieldValue label={tr("明細数")} value={`${quote.items.length}件`} />
+        <FieldValue
+          label={tr("明細数")}
+          value={tr("{v0}件", { v0: quote.items.length })}
+        />
         <FieldValue
           label={tr("合計金額（税込）")}
           value={<MoneyText ta="left" value={totals.grandTotal} />}

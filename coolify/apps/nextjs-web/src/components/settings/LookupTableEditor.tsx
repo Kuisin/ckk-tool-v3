@@ -187,7 +187,9 @@ export function LookupTableEditor({
     }));
     notifications.show({
       title: tr("取り込みました"),
-      message: `${dataRows.length} 行を読み込みました（保存で確定）`,
+      message: tr("{v0} 行を読み込みました（保存で確定）", {
+        v0: dataRows.length,
+      }),
       color: "green",
     });
     if (fileRef.current) fileRef.current.value = "";
@@ -200,7 +202,7 @@ export function LookupTableEditor({
       if (res.ok) {
         notifications.show({
           title: tr("保存しました"),
-          message: `「${localized(table.name)}」を更新しました`,
+          message: tr("「{v0}」を更新しました", { v0: localized(table.name) }),
           color: "green",
         });
         router.push(LIST);
@@ -216,7 +218,9 @@ export function LookupTableEditor({
   const remove = () =>
     openConfirm({
       title: tr("表の削除"),
-      message: `「${localized(table.name)}」を削除します。この操作は取り消せません。`,
+      message: tr("「{v0}」を削除します。この操作は取り消せません。", {
+        v0: localized(table.name),
+      }),
       confirmLabel: "削除",
       onConfirm: () =>
         startTransition(async () => {
@@ -224,7 +228,9 @@ export function LookupTableEditor({
           if (res.ok) {
             notifications.show({
               title: tr("削除しました"),
-              message: `「${localized(table.name)}」を削除しました`,
+              message: tr("「{v0}」を削除しました", {
+                v0: localized(table.name),
+              }),
               color: "green",
             });
             router.push(LIST);
@@ -340,7 +346,7 @@ export function LookupTableEditor({
               <TextInput
                 label={ci === 0 ? "キー列名" : undefined}
                 onChange={(e) => renameColumn(ci, e.currentTarget.value)}
-                placeholder={`キー列${ci + 1}`}
+                placeholder={tr("キー列{v0}", { v0: ci + 1 })}
                 style={{ flex: 1 }}
                 value={c}
               />
@@ -397,7 +403,7 @@ export function LookupTableEditor({
           addLabel={tr("行を追加")}
           columns={[
             ...table.keyColumns.map((c, ci) => ({
-              header: c || `キー列${ci + 1}`,
+              header: c || tr("キー列{v0}", { v0: ci + 1 }),
               minWidth: 110,
             })),
             { header: tr("値"), minWidth: 110 },

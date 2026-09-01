@@ -219,7 +219,7 @@ export function DesignRequestDetail({
     const a = attachments.find((x) => isViewable(x.filename, x.mimeType));
     return a
       ? {
-          caption: `添付（未登録）${a.filename}`,
+          caption: tr("添付（未登録）{filename}", { filename: a.filename }),
           filename: a.filename,
           mimeType: a.mimeType,
           src: `/api/attachments/${encodeURIComponent(a.id)}`,
@@ -290,7 +290,9 @@ export function DesignRequestDetail({
       if (result.ok) {
         notifications.show({
           title: successMessage,
-          message: `設計依頼書 ${request.requestNumber}`,
+          message: tr("設計依頼書 {requestNumber}", {
+            requestNumber: request.requestNumber,
+          }),
           color: "green",
         });
         closeAll();
@@ -385,7 +387,9 @@ export function DesignRequestDetail({
       key: "design-files",
       title: tr("図面"),
       summary:
-        latestFiles.length > 0 ? `第 ${latestFiles[0]?.version} 版` : null,
+        latestFiles.length > 0
+          ? tr("第 {v0} 版", { v0: latestFiles[0]?.version })
+          : null,
       items: latestFiles.map((f) => ({
         key: f.id,
         label: f.filename,
@@ -432,7 +436,9 @@ export function DesignRequestDetail({
         onReject={(reason) => rejectDesign(request.requestNumber, reason)}
         onRequest={() => requestDesignApproval(request.requestNumber)}
         rejectReason={lastReject?.notes ?? null}
-        subject={`設計依頼書 ${request.requestNumber}`}
+        subject={tr("設計依頼書 {requestNumber}", {
+          requestNumber: request.requestNumber,
+        })}
       />
     );
   } else if (canStart(request)) {
@@ -449,7 +455,9 @@ export function DesignRequestDetail({
             {tr("着手")}
           </PrimaryButton>
         }
-        description={`承認済みです。${request.assigneeName ?? "担当者"} が図面の作成を始められます`}
+        description={tr("承認済みです。{v0} が図面の作成を始められます", {
+          v0: request.assigneeName ?? "担当者",
+        })}
         icon={<IconPlayerPlay size={20} />}
         title={tr("着手できます")}
         tone="action"
@@ -470,7 +478,10 @@ export function DesignRequestDetail({
             {tr("完了")}
           </PrimaryButton>
         }
-        description={`設計図 v${latestFiles[0]?.version ?? producedVersions[0]} が登録済みです。完了すると依頼者へ通知します`}
+        description={tr(
+          "設計図 v{v0} が登録済みです。完了すると依頼者へ通知します",
+          { v0: latestFiles[0]?.version ?? producedVersions[0] },
+        )}
         icon={<IconCheck size={20} />}
         title={tr("図面ができたら完了できます")}
         tone="action"
@@ -872,7 +883,13 @@ export function DesignRequestDetail({
       <ConfirmModal
         confirmLabel={tr("完了する")}
         loading={isPending}
-        message={`設計依頼書 ${request.requestNumber} を完了にします。設計図 v${producedVersions.join(", v")} が成果物として紐づきます。`}
+        message={tr(
+          "設計依頼書 {requestNumber} を完了にします。設計図 v{v1} が成果物として紐づきます。",
+          {
+            requestNumber: request.requestNumber,
+            v1: producedVersions.join(", v"),
+          },
+        )}
         onClose={() => setCompleteOpen(false)}
         onConfirm={() =>
           run(() => completeDesign(request.requestNumber), tr("完了しました"))
@@ -883,7 +900,10 @@ export function DesignRequestDetail({
       <ConfirmModal
         confirmLabel={tr("差し戻す")}
         loading={isPending}
-        message={`設計依頼書 ${request.requestNumber} を進行中へ差し戻します。完了日時はクリアされますが、承認は取りなおしになりません。`}
+        message={tr(
+          "設計依頼書 {requestNumber} を進行中へ差し戻します。完了日時はクリアされますが、承認は取りなおしになりません。",
+          { requestNumber: request.requestNumber },
+        )}
         onClose={() => setReopenOpen(false)}
         onConfirm={() =>
           run(() => reopenDesign(request.requestNumber), tr("差し戻しました"))

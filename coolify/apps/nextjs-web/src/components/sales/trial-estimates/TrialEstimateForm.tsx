@@ -119,7 +119,7 @@ export function TrialEstimateForm({
     src?.toolType ?? "ROUND_BAR",
   );
   const [name, setName] = useState(
-    source ? `${source.name}（再価格試算）` : "",
+    source ? tr("{name}（再価格試算）", { name: source.name }) : "",
   );
   const [customerId, setCustomerId] = useState<string | null>(
     source?.customerId ?? null,
@@ -572,7 +572,14 @@ export function TrialEstimateForm({
                           ? tr("カスタム単価")
                           : policyRef.usedDefault
                             ? tr("仕入実績なし → 設定の既定材料単価を使用")
-                            : `参照: ${basisLabel}（直近${settings.materialPriceLookbackMonths}ヶ月）`
+                            : tr(
+                                "参照: {basisLabel}（直近{materialPriceLookbackMonths}ヶ月）",
+                                {
+                                  basisLabel: basisLabel,
+                                  materialPriceLookbackMonths:
+                                    settings.materialPriceLookbackMonths,
+                                },
+                              )
                     }
                     label={
                       <Group gap={6} wrap="nowrap">
@@ -600,7 +607,11 @@ export function TrialEstimateForm({
                             ? tr("カスタム")
                             : policyRef.usedDefault
                               ? tr("既定価格")
-                              : `参照価格 ${referenceDate ? fmt.date(referenceDate) : "—"}`}
+                              : tr("参照価格 {v0}", {
+                                  v0: referenceDate
+                                    ? fmt.date(referenceDate)
+                                    : "—",
+                                })}
                         </Badge>
                       </Group>
                     }

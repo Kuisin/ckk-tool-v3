@@ -204,7 +204,9 @@ export function LoginAttemptDrawer({
             {row.scanKind && (
               <FieldValue
                 label={tr("読み取り種別")}
-                value={`${row.scanKind}（内容は保存していません）`}
+                value={tr("{scanKind}（内容は保存していません）", {
+                  scanKind: row.scanKind,
+                })}
               />
             )}
             <FieldValue label="User-Agent" value={row.userAgent ?? "—"} />

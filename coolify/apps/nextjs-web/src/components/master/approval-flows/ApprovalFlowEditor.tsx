@@ -196,7 +196,7 @@ export function ApprovalFlowEditor({
       ...prev,
       {
         key: nextKey(),
-        nameJa: `第${prev.length + 1}承認`,
+        nameJa: tr("第{v0}承認", { v0: prev.length + 1 }),
         nameTranslations: {},
         groupId: null,
         mode: "ANY",
@@ -255,7 +255,9 @@ export function ApprovalFlowEditor({
       if (result.ok) {
         notifications.show({
           title: tr("保存しました"),
-          message: `${targetLabel}の承認フロー`,
+          message: tr("{targetLabel}の承認フロー", {
+            targetLabel: targetLabel,
+          }),
           color: "green",
         });
         if (afterSaveHref) router.refresh();
@@ -280,7 +282,7 @@ export function ApprovalFlowEditor({
             { label: tr("承認設定"), href: BASE_PATH },
             tr("承認フロー"),
           ]}
-          title={`${targetLabel}の承認フロー`}
+          title={tr("{targetLabel}の承認フロー", { targetLabel: targetLabel })}
         />
       )}
       {!embedded && (
@@ -400,7 +402,7 @@ export function ApprovalFlowEditor({
                         value: r.value,
                         label: r.allowed
                           ? r.label
-                          : `${r.label}（承認権限なし）`,
+                          : tr("{label}（承認権限なし）", { label: r.label }),
                         allowed: r.allowed,
                       }));
                   }}

@@ -97,7 +97,10 @@ export function ApprovalGroupTable({
       if (result.ok) {
         notifications.show({
           title: isActive ? "有効化しました" : tr("無効化しました"),
-          message: `${targets.length}件の承認グループを${isActive ? "有効化" : "無効化"}しました`,
+          message: tr("{v0}件の承認グループを{v1}しました", {
+            v0: targets.length,
+            v1: isActive ? "有効化" : "無効化",
+          }),
           color: "green",
         });
         router.refresh();
@@ -114,7 +117,10 @@ export function ApprovalGroupTable({
   const bulkDelete = (targets: ApprovalGroupRow[]) => {
     openConfirm({
       title: tr("承認グループの一括削除"),
-      message: `選択中の${targets.length}件の承認グループを削除します。この操作は取り消せません。`,
+      message: tr(
+        "選択中の{v0}件の承認グループを削除します。この操作は取り消せません。",
+        { v0: targets.length },
+      ),
       confirmLabel: tr("削除する"),
       onConfirm: () => {
         startTransition(async () => {
@@ -122,7 +128,9 @@ export function ApprovalGroupTable({
           if (result.ok) {
             notifications.show({
               title: tr("削除しました"),
-              message: `${targets.length}件の承認グループを削除しました`,
+              message: tr("{v0}件の承認グループを削除しました", {
+                v0: targets.length,
+              }),
               color: "green",
             });
             router.refresh();
@@ -154,7 +162,7 @@ export function ApprovalGroupTable({
       width: 110,
       align: "right",
       sortValue: (r) => r.memberCount,
-      render: (r) => `${r.memberCount}名`,
+      render: (r) => tr("{memberCount}名", { memberCount: r.memberCount }),
     },
     {
       key: "isActive",

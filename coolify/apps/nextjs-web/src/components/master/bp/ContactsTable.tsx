@@ -41,7 +41,9 @@ export function ContactsTable({
   const handleDelete = (c: ContactRow) => {
     openConfirm({
       title: tr("担当者の削除"),
-      message: `担当者「${c.name}」を削除します。この操作は取り消せません。`,
+      message: tr("担当者「{name}」を削除します。この操作は取り消せません。", {
+        name: c.name,
+      }),
       confirmLabel: tr("削除する"),
       onConfirm: () => {
         startTransition(async () => {
@@ -49,7 +51,7 @@ export function ContactsTable({
           if (result.ok) {
             notifications.show({
               title: tr("削除しました"),
-              message: `担当者「${c.name}」を削除しました`,
+              message: tr("担当者「{name}」を削除しました", { name: c.name }),
               color: "green",
             });
             router.refresh();

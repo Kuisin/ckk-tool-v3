@@ -183,7 +183,7 @@ export function ResponseExportModal({
                     "すべての項目を列にします。減らしたいものだけ外してください。",
                   ),
                 )
-              : `${fieldKeys.length} 項目を選択中`}
+              : tr("{v0} 項目を選択中", { v0: fieldKeys.length })}
           </Text>
           <ScrollArea.Autosize mah={180}>
             <Checkbox.Group

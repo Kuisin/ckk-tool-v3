@@ -76,7 +76,7 @@ export function IntakeReviewPanel({ review }: { review: FieldReview[] }) {
     <Alert
       color="orange"
       icon={<IconAlertTriangle size={16} />}
-      title={`確認が必要な項目 ${unresolved.length} 件`}
+      title={tr("確認が必要な項目 {v0} 件", { v0: unresolved.length })}
       variant="light"
     >
       <Stack gap="xs">

@@ -77,7 +77,9 @@ export function ProductDesignFiles({
                 <Box maw={320}>
                   <DesignFileThumb
                     target={{
-                      caption: `v${thumb.version}（最新）`,
+                      caption: tr("v{version}（最新）", {
+                        version: thumb.version,
+                      }),
                       filename: thumb.filename,
                       mimeType: thumb.mimeType,
                       src: `/api/design-files/${encodeURIComponent(thumb.id)}`,

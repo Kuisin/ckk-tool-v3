@@ -219,7 +219,7 @@ export function StockTransferModal({
         />
         <NumberInput
           allowDecimal={!source.integerOnly}
-          label={`数量（${source.unit}）`}
+          label={tr("数量（{unit}）", { unit: source.unit })}
           max={source.available}
           min={source.integerOnly ? 1 : 0.001}
           onChange={setQuantity}

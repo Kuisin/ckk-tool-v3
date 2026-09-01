@@ -138,7 +138,9 @@ export function MaterialTypeForm({
           title: tr("保存しました"),
           message: isEdit
             ? tr("材種を更新しました")
-            : `材種 ${"code" in result.data ? result.data.code : ""} を作成しました`,
+            : tr("材種 {v0} を作成しました", {
+                v0: "code" in result.data ? result.data.code : "",
+              }),
           color: "green",
         });
         router.push(`${BASE_PATH}/${result.data.id}`);
@@ -168,7 +170,7 @@ export function MaterialTypeForm({
       status={isEdit ? <ActiveBadge active={initial.isActive} /> : undefined}
       title={
         isEdit
-          ? `材種 編集 — ${initial.code ?? initial.nameJa}`
+          ? tr("材種 編集 — {v0}", { v0: initial.code ?? initial.nameJa })
           : tr("材種 新規作成")
       }
     >

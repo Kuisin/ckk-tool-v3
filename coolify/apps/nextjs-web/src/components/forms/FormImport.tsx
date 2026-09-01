@@ -99,7 +99,9 @@ export function FormImport() {
         notifications.show({
           message:
             result.data.mode === "version"
-              ? `バージョン ${result.data.version} として取り込みました`
+              ? tr("バージョン {version} として取り込みました", {
+                  version: result.data.version,
+                })
               : tr("取り込みました"),
           color: "green",
         });
@@ -182,7 +184,9 @@ export function FormImport() {
                 />
                 <FieldValue
                   label={tr("項目数")}
-                  value={`${preview.fieldCount} 個`}
+                  value={tr("{fieldCount} 個", {
+                    fieldCount: preview.fieldCount,
+                  })}
                 />
               </Group>
               <Group gap="xl" wrap="wrap">
@@ -227,7 +231,10 @@ export function FormImport() {
               <Radio
                 description={
                   preview.codeAvailable
-                    ? `書き出し元と同じコード（${preview.sourceCode}）で作ります。共有 URL が環境をまたいで同じになります`
+                    ? tr(
+                        "書き出し元と同じコード（{sourceCode}）で作ります。共有 URL が環境をまたいで同じになります",
+                        { sourceCode: preview.sourceCode },
+                      )
                     : tr("同じコードは使われているので、新しいコードで作ります")
                 }
                 label={tr("新しいフォームとして取り込む")}
@@ -238,7 +245,10 @@ export function FormImport() {
                   preview.codeAvailable
                     ? tr("同じコードのフォームがこの環境にありません")
                     : preview.existingEditable
-                      ? `「${preview.existingTitle}」に新しいバージョンとして重ねます。これまでの回答は回答時点の内容のまま残ります`
+                      ? tr(
+                          "「{existingTitle}」に新しいバージョンとして重ねます。これまでの回答は回答時点の内容のまま残ります",
+                          { existingTitle: preview.existingTitle },
+                        )
                       : tr(
                           tr(
                             tr(

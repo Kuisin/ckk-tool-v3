@@ -61,9 +61,10 @@ export function IssueQuoteModal({
       meta = { sizeBytes: blob.size, generatedAt: new Date().toISOString() };
       notifications.show({
         title: tr("発行しました"),
-        message: `見積書 ${quoteNumber} を発行し、PDF を保存しました${
-          sendMail ? "（メール送付予約済み）" : ""
-        }`,
+        message: tr("見積書 {quoteNumber} を発行し、PDF を保存しました{v1}", {
+          quoteNumber: quoteNumber,
+          v1: sendMail ? "（メール送付予約済み）" : "",
+        }),
         color: "green",
       });
     } catch {

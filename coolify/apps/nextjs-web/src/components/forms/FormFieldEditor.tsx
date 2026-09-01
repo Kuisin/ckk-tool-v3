@@ -92,7 +92,10 @@ export function FormFieldEditor({
   );
   const patternError =
     field.pattern && !isSafePattern(field.pattern)
-      ? `使えない正規表現です（構文エラー、量指定の入れ子、または ${MAX_PATTERN_LENGTH} 文字超）`
+      ? tr(
+          "使えない正規表現です（構文エラー、量指定の入れ子、または {MAX_PATTERN_LENGTH} 文字超）",
+          { MAX_PATTERN_LENGTH: MAX_PATTERN_LENGTH },
+        )
       : undefined;
 
   return (
@@ -377,7 +380,9 @@ export function FormFieldEditor({
                         (field.columns ?? []).map((c) => c.key),
                       ),
                       label: {
-                        ja: `列 ${(field.columns ?? []).length + 1}`,
+                        ja: tr("列 {v0}", {
+                          v0: (field.columns ?? []).length + 1,
+                        }),
                         en: "",
                       },
                       type: "text",

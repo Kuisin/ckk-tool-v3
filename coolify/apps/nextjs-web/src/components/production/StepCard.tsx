@@ -188,11 +188,16 @@ export function StepCard({
           {hasWorkHours && (
             <Text c="dimmed" className="tabular-nums" size="xs">
               {step.plannedWorkHours != null &&
-                `予定 ${step.plannedWorkHours}h`}
+                tr("予定 {plannedWorkHours}h", {
+                  plannedWorkHours: step.plannedWorkHours,
+                })}
               {step.plannedWorkHours != null &&
                 step.actualWorkHours != null &&
                 " / "}
-              {step.actualWorkHours != null && `実績 ${step.actualWorkHours}h`}
+              {step.actualWorkHours != null &&
+                tr("実績 {actualWorkHours}h", {
+                  actualWorkHours: step.actualWorkHours,
+                })}
             </Text>
           )}
           {step.lotText != null && (

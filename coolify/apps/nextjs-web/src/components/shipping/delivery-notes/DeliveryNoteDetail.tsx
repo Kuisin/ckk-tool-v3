@@ -147,7 +147,7 @@ export function DeliveryNoteDetail({
       title: tr("注文明細"),
       summary:
         note.orderLineNumbers.length > 0
-          ? `${note.orderLineNumbers.length} 件`
+          ? tr("{v0} 件", { v0: note.orderLineNumbers.length })
           : null,
       items: note.orderLineNumbers.map((n) => ({
         key: n,
@@ -168,7 +168,10 @@ export function DeliveryNoteDetail({
         label: inv.number,
         href: `/billing/invoices/${inv.number}`,
         done: inv.status === "PAID",
-        note: `${statusLabel("Invoice", inv.status)}・${formatMoney(inv.totalAmount)}`,
+        note: tr("{v0}・{v1}", {
+          v0: statusLabel("Invoice", inv.status),
+          v1: formatMoney(inv.totalAmount),
+        }),
       })),
       emptyNote:
         note.status === "DELIVERED"
@@ -474,13 +477,18 @@ export function DeliveryNoteDetail({
         confirmColor="blue"
         confirmLabel={tr("発行")}
         loading={isPending}
-        message={`納品書 ${note.deliveryNumber} を発行します。発行後は編集できません。`}
+        message={tr(
+          "納品書 {deliveryNumber} を発行します。発行後は編集できません。",
+          { deliveryNumber: note.deliveryNumber },
+        )}
         onClose={() => setIssueOpen(false)}
         onConfirm={() =>
           run(
             () => issueDeliveryNote(note.deliveryNumber),
             tr("発行しました"),
-            `納品書 ${note.deliveryNumber} を発行しました`,
+            tr("納品書 {deliveryNumber} を発行しました", {
+              deliveryNumber: note.deliveryNumber,
+            }),
           )
         }
         opened={issueOpen}
@@ -490,13 +498,18 @@ export function DeliveryNoteDetail({
         confirmColor="blue"
         confirmLabel={tr("納品済みにする")}
         loading={isPending}
-        message={`納品書 ${note.deliveryNumber} を納品済みにします。納品日は本日で記録されます。`}
+        message={tr(
+          "納品書 {deliveryNumber} を納品済みにします。納品日は本日で記録されます。",
+          { deliveryNumber: note.deliveryNumber },
+        )}
         onClose={() => setDeliverOpen(false)}
         onConfirm={() =>
           run(
             () => markDelivered(note.deliveryNumber),
             tr("納品済みにしました"),
-            `納品書 ${note.deliveryNumber} を納品済みにしました`,
+            tr("納品書 {deliveryNumber} を納品済みにしました", {
+              deliveryNumber: note.deliveryNumber,
+            }),
           )
         }
         opened={deliverOpen}

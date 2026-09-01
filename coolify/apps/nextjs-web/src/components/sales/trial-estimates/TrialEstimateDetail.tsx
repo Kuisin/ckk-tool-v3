@@ -159,13 +159,19 @@ export function TrialEstimateDetail({
     {
       key: "price-lists",
       title: tr("価格表"),
-      summary: linkedEntries.length > 0 ? `${linkedEntries.length} 件` : null,
+      summary:
+        linkedEntries.length > 0
+          ? tr("{v0} 件", { v0: linkedEntries.length })
+          : null,
       items: linkedEntries.map((e) => ({
         key: e.entryId,
         label: `${e.customerName} × ${e.productName}`,
         href: `/sales/price-lists/${e.entryId}`,
         done: true,
-        note: `${ORDER_TYPE_LABEL[e.orderType] ?? e.orderType}・${e.tierCount}段階`,
+        note: tr("{v0}・{tierCount}段階", {
+          v0: ORDER_TYPE_LABEL[e.orderType] ?? e.orderType,
+          tierCount: e.tierCount,
+        }),
       })),
       emptyNote:
         status === "CONFIRMED"

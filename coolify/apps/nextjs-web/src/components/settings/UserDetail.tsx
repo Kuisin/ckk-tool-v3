@@ -85,12 +85,12 @@ function UserPlantsCard({
       if (!byId.has(String(p.id))) {
         byId.set(String(p.id), {
           value: String(p.id),
-          label: `${plantLabel(p)}（無効）`,
+          label: tr("{v0}（無効）", { v0: plantLabel(p) }),
         });
       }
     }
     return [...byId.values()];
-  }, [plantOptions, user.plants]);
+  }, [plantOptions, user.plants, tr]);
 
   const dirty =
     value.length !== assignedIds.length ||

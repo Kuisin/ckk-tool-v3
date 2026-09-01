@@ -237,7 +237,9 @@ export function WorkOrderStepsPanel({
     if (workOrderNumber == null) return;
     openConfirm({
       title: tr("分岐の削除"),
-      message: `分岐系列（${group.steps.map((s) => s.name).join(" → ")}）を削除します。この操作は取り消せません。`,
+      message: tr("分岐系列（{v0}）を削除します。この操作は取り消せません。", {
+        v0: group.steps.map((s) => s.name).join(" → "),
+      }),
       confirmLabel: "削除",
       onConfirm: () =>
         startTransition(async () => {
@@ -248,7 +250,7 @@ export function WorkOrderStepsPanel({
           if (result.ok) {
             notifications.show({
               title: tr("分岐を削除しました"),
-              message: `${group.steps.length} 工程を削除`,
+              message: tr("{v0} 工程を削除", { v0: group.steps.length }),
               color: "green",
             });
             router.refresh();

@@ -73,7 +73,9 @@ export function LinkAdminPanel({
       if (!result.ok) return notifyError(result.error);
       notifications.show({
         title: tr("追加しました"),
-        message: `${pattern} へのリンクをブロックします`,
+        message: tr("{pattern} へのリンクをブロックします", {
+          pattern: pattern,
+        }),
         color: "green",
       });
       setPattern("");
@@ -93,7 +95,10 @@ export function LinkAdminPanel({
   const remove = (row: BlacklistRow) => {
     openConfirm({
       title: tr("ブロック指定の削除"),
-      message: `${row.pattern} のブロックを解除します。以後このホストへのリンクは通常どおり開けます。`,
+      message: tr(
+        "{pattern} のブロックを解除します。以後このホストへのリンクは通常どおり開けます。",
+        { pattern: row.pattern },
+      ),
       confirmLabel: "削除",
       onConfirm: () =>
         start(async () => {

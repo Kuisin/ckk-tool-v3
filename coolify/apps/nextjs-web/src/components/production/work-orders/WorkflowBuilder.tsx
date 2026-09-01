@@ -745,7 +745,9 @@ export function WorkflowBuilder({
       if (remaining <= 0) {
         notifications.show({
           title: tr("割り当てできません"),
-          message: `注文明細 ${info.number} は受注数量まで手配済みです（残 0）`,
+          message: tr("注文明細 {number} は受注数量まで手配済みです（残 0）", {
+            number: info.number,
+          }),
           color: "yellow",
         });
         updateAllocRow(key, { orderLineId: null, info: null });
@@ -946,8 +948,12 @@ export function WorkflowBuilder({
           title: tr("保存しました"),
           message:
             mode === "edit"
-              ? `指示書 ${result.data.docNumber} を更新しました`
-              : `指示書 ${result.data.docNumber} を作成しました`,
+              ? tr("指示書 {docNumber} を更新しました", {
+                  docNumber: result.data.docNumber,
+                })
+              : tr("指示書 {docNumber} を作成しました", {
+                  docNumber: result.data.docNumber,
+                }),
           color: "green",
         });
         router.push(`${BASE_PATH}/${result.data.docNumber}`);
@@ -994,7 +1000,7 @@ export function WorkflowBuilder({
       onSubmit={form.onSubmit(handleSubmit)}
       title={
         mode === "edit"
-          ? `指示書 ${workOrder?.docNumber ?? ""} 編集`
+          ? tr("指示書 {v0} 編集", { v0: workOrder?.docNumber ?? "" })
           : tr("指示書 新規作成")
       }
     >
@@ -1094,7 +1100,10 @@ export function WorkflowBuilder({
                     <Text c="dimmed" mt={4} size="xs">
                       {row.info.customerName} / {row.info.productName} /
                       受注数量 {row.info.quantity}
-                      {remaining != null && ` / 割当可能残 ${remaining}`}
+                      {remaining != null &&
+                        tr(" / 割当可能残 {remaining}", {
+                          remaining: remaining,
+                        })}
                     </Text>
                   )}
                 </Paper>
@@ -1196,7 +1205,9 @@ export function WorkflowBuilder({
               target === "SALES_ORDER" && allocTotal > 0
                 ? form.values.type === "FROM_STOCK"
                   ? tr("在庫分は割当合計と一致します")
-                  : `割当合計 ${allocTotal} 以上（不良予備分は上乗せ可）`
+                  : tr("割当合計 {allocTotal} 以上（不良予備分は上乗せ可）", {
+                      allocTotal: allocTotal,
+                    })
                 : undefined
             }
             label={<HelpLabel {...fieldHelp("workOrder", "plannedQuantity")} />}
@@ -1238,7 +1249,9 @@ export function WorkflowBuilder({
               data={designInfo.options}
               description={
                 designInfo.autoLabel
-                  ? `固定しない場合: ${designInfo.autoLabel}`
+                  ? tr("固定しない場合: {autoLabel}", {
+                      autoLabel: designInfo.autoLabel,
+                    })
                   : tr("この製品の図面はまだありません")
               }
               label={tr("使用する図面")}
@@ -1317,7 +1330,9 @@ export function WorkflowBuilder({
                     data={[
                       {
                         value: "customer",
-                        label: `${routesInfo.customerName ?? "この顧客"} 専用`,
+                        label: tr("{v0} 専用", {
+                          v0: routesInfo.customerName ?? "この顧客",
+                        }),
                       },
                       { value: "generic", label: tr("汎用（全顧客）") },
                     ]}
@@ -1401,7 +1416,10 @@ export function WorkflowBuilder({
                     wrap={isMobile ? "wrap" : "nowrap"}
                   >
                     <Text fw={600} size="sm" style={{ flexShrink: 0 }}>
-                      {cat?.nameJa ?? `工程#${s.processStepId}`}
+                      {cat?.nameJa ??
+                        tr("工程#{processStepId}", {
+                          processStepId: s.processStepId,
+                        })}
                     </Text>
                     <MultiSelect
                       clearable

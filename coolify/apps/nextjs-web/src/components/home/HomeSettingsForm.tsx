@@ -34,6 +34,7 @@ import {
   IconStarFilled,
   IconTrash,
 } from "@tabler/icons-react";
+import { useLocale } from "next-intl";
 import { useState, useTransition } from "react";
 import { saveHomeSettingsAction } from "@/app/(dashboard)/profile/home/actions";
 import { useHiddenApps } from "@/components/layout/AppFlags";
@@ -46,13 +47,20 @@ import { PageHeader } from "@/components/ui/PageHeader";
 import { FormActions } from "@/components/ui/shells";
 import { useTr } from "@/hooks/useTr";
 import { useIsMobile } from "@/hooks/useViewport";
-import { type AppEntry, appList, CATEGORY_COLORS } from "@/lib/app-list";
+import {
+  type AppEntry,
+  appLabel,
+  appList,
+  CATEGORY_COLORS,
+  categoryLabel,
+} from "@/lib/app-list";
 import {
   type HomeMode,
   type HomeSettings,
   MAX_GROUP_NAME_LENGTH,
   MAX_HOME_GROUPS,
 } from "@/lib/home-settings-core";
+import type { Locale } from "@/lib/i18n";
 import { resolveAppIcon } from "@/lib/icons";
 
 interface EditableGroup {
@@ -78,6 +86,7 @@ function StarToggleCard({
   starred: boolean;
   onToggle: () => void;
 }) {
+  const locale = useLocale() as Locale;
   const IconComponent = resolveAppIcon(app.icon);
   return (
     <UnstyledButton
@@ -118,7 +127,7 @@ function StarToggleCard({
             <IconComponent size={22} />
           </ThemeIcon>
           <Text fw={500} lh={1.3} size="xs" ta="center">
-            {app.label}
+            {appLabel(app, locale)}
           </Text>
         </Stack>
       </Paper>
@@ -128,6 +137,7 @@ function StarToggleCard({
 
 export function HomeSettingsForm({ initial }: { initial: HomeSettings }) {
   const tr = useTr();
+  const locale = useLocale() as Locale;
   const hiddenApps = useHiddenApps();
   const isMobile = useIsMobile();
   const [isPending, startTransition] = useTransition();
@@ -374,7 +384,10 @@ export function HomeSettingsForm({ initial }: { initial: HomeSettings }) {
                         clearable
                         data={apps.map((a) => ({
                           value: a.key,
-                          label: `${a.label}（${a.category}）`,
+                          label: tr("{label}（{category}）", {
+                            label: appLabel(a, locale),
+                            category: categoryLabel(a.category, locale),
+                          }),
                           disabled: assignedElsewhere.has(a.key),
                         }))}
                         onChange={(value) =>

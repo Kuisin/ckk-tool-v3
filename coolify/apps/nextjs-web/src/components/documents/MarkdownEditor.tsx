@@ -93,7 +93,10 @@ export function MarkdownEditor({
         autosize
         error={
           tooLong
-            ? `本文が長すぎます（${lines} 行 / 上限 ${MAX_DOC_LINES} 行）。文書を分けてください`
+            ? tr(
+                "本文が長すぎます（{lines} 行 / 上限 {MAX_DOC_LINES} 行）。文書を分けてください",
+                { lines: lines, MAX_DOC_LINES: MAX_DOC_LINES },
+              )
             : undefined
         }
         minRows={minRows}

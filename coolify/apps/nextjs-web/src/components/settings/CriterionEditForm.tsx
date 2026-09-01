@@ -227,7 +227,7 @@ export function CriterionEditForm({
     if (isNew && allCriteria.some((c) => c.id === criterion.id)) {
       notifications.show({
         title: tr("エラー"),
-        message: `ID「${criterion.id}」は既に存在します`,
+        message: tr("ID「{id}」は既に存在します", { id: criterion.id }),
         color: "red",
       });
       return;
@@ -255,7 +255,9 @@ export function CriterionEditForm({
   const remove = () =>
     openConfirm({
       title: tr("計算基準の削除"),
-      message: `「${criterion.name}」を削除します。この操作は取り消せません。`,
+      message: tr("「{name}」を削除します。この操作は取り消せません。", {
+        name: criterion.name,
+      }),
       confirmLabel: "削除",
       onConfirm: () =>
         startTransition(async () => {
@@ -265,7 +267,7 @@ export function CriterionEditForm({
           if (res.ok) {
             notifications.show({
               title: tr("削除しました"),
-              message: `「${criterion.name}」を削除しました`,
+              message: tr("「{name}」を削除しました", { name: criterion.name }),
               color: "green",
             });
             router.push(`${BASE}/criteria`);

@@ -26,7 +26,9 @@ export function ItemDefsListPanel({ initial }: { initial: ProductItemDef[] }) {
       addLabel={tr("項目を追加")}
       deleteConfirm={(d) => ({
         title: tr("項目定義の削除"),
-        message: `「${d.label.ja || d.key}」を削除しますか？種別への割り当ても外れます。`,
+        message: tr("「{v0}」を削除しますか？種別への割り当ても外れます。", {
+          v0: d.label.ja || d.key,
+        }),
       })}
       description={tr(
         tr(

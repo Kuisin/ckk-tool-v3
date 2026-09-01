@@ -204,7 +204,10 @@ export function PrivilegedRequestForm({
       </FormSection>
 
       <FormSection
-        description={`利用できる期間は申請から最長 ${MAX_WINDOW_DAYS} 日です`}
+        description={tr(
+          "利用できる期間は申請から最長 {MAX_WINDOW_DAYS} 日です",
+          { MAX_WINDOW_DAYS: MAX_WINDOW_DAYS },
+        )}
         title={tr("期間")}
       >
         <DateTimePicker

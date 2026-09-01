@@ -30,7 +30,10 @@ export function DeletePriceListModal({
       loading={isPending}
       message={
         target
-          ? `「${target.productName}」の価格表を削除します。この操作は取り消せません。`
+          ? tr(
+              "「{productName}」の価格表を削除します。この操作は取り消せません。",
+              { productName: target.productName },
+            )
           : ""
       }
       onClose={onClose}
@@ -41,7 +44,9 @@ export function DeletePriceListModal({
           if (result.ok) {
             notifications.show({
               title: tr("削除しました"),
-              message: `「${target.productName}」の価格表を削除しました`,
+              message: tr("「{productName}」の価格表を削除しました", {
+                productName: target.productName,
+              }),
               color: "green",
             });
             onDone?.();

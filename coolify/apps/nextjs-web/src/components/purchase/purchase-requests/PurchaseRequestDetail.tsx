@@ -140,7 +140,9 @@ export function PurchaseRequestDetail({
       if (result.ok) {
         notifications.show({
           title: done,
-          message: `購買依頼 ${rq.requestNumber}`,
+          message: tr("購買依頼 {requestNumber}", {
+            requestNumber: rq.requestNumber,
+          }),
           color: "green",
         });
         setCancelOpen(false);
@@ -175,7 +177,9 @@ export function PurchaseRequestDetail({
       if (result.ok) {
         notifications.show({
           title: tr("発注書へ変換しました"),
-          message: `素材発注書 ${result.data.poNumber} を作成しました`,
+          message: tr("素材発注書 {poNumber} を作成しました", {
+            poNumber: result.data.poNumber,
+          }),
           color: "green",
         });
         setConvertOpen(false);
@@ -255,7 +259,9 @@ export function PurchaseRequestDetail({
         onReject={(reason) => rejectPurchaseRequest(rq.requestNumber, reason)}
         onRequest={() => requestPurchaseRequestApproval(rq.requestNumber)}
         rejectReason={lastReject?.notes ?? null}
-        subject={`購買依頼 ${rq.requestNumber}`}
+        subject={tr("購買依頼 {requestNumber}", {
+          requestNumber: rq.requestNumber,
+        })}
       />
     );
   } else if (rq.status === "APPROVED") {

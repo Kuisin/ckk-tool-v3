@@ -317,7 +317,11 @@ export function MaterialForm({
       }
       onSubmit={form.onSubmit(handleSubmit)}
       status={isEdit ? <ActiveBadge active={initial.isActive} /> : undefined}
-      title={isEdit ? `素材 編集 — ${initial.code}` : tr("素材 新規作成")}
+      title={
+        isEdit
+          ? tr("素材 編集 — {code}", { code: initial.code })
+          : tr("素材 新規作成")
+      }
     >
       <FormSection
         description={
@@ -411,12 +415,13 @@ export function MaterialForm({
               />
               <NumberInput
                 decimalScale={1}
-                description={`コード: ${
-                  Number(form.values.diameterMm) >= 0.1 &&
-                  Number(form.values.diameterMm) <= 99.9
-                    ? diameterCodeFromMm(Number(form.values.diameterMm))
-                    : "—"
-                }（径×10）`}
+                description={tr("コード: {v0}（径×10）", {
+                  v0:
+                    Number(form.values.diameterMm) >= 0.1 &&
+                    Number(form.values.diameterMm) <= 99.9
+                      ? diameterCodeFromMm(Number(form.values.diameterMm))
+                      : "—",
+                })}
                 label={
                   <HelpLabel
                     {...fieldHelp("material", "dimensions", {
@@ -431,12 +436,13 @@ export function MaterialForm({
                 {...form.getInputProps("diameterMm")}
               />
               <NumberInput
-                description={`コード: ${
-                  Number(form.values.lengthMm) >= 1 &&
-                  Number(form.values.lengthMm) <= 999
-                    ? lengthCodeFromMm(Number(form.values.lengthMm))
-                    : "—"
-                }`}
+                description={tr("コード: {v0}", {
+                  v0:
+                    Number(form.values.lengthMm) >= 1 &&
+                    Number(form.values.lengthMm) <= 999
+                      ? lengthCodeFromMm(Number(form.values.lengthMm))
+                      : "—",
+                })}
                 label={
                   <HelpLabel
                     {...fieldHelp("material", "dimensions", {

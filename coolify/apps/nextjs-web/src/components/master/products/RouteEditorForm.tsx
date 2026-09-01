@@ -200,7 +200,10 @@ export function RouteEditorForm({
       title={
         mode === "create"
           ? tr("工程ルート 新規作成")
-          : `工程ルート「${routeName}」新バージョン作成（v${(latestVersion ?? 0) + 1}）`
+          : tr("工程ルート「{routeName}」新バージョン作成（v{v1}）", {
+              routeName: routeName,
+              v1: (latestVersion ?? 0) + 1,
+            })
       }
     >
       <FormSection required title={tr("基本情報")}>

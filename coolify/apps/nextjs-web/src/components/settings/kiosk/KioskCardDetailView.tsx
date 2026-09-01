@@ -345,13 +345,18 @@ export function KioskCardDetailView({
           />
           <FieldValue
             label={tr("同時ログイン上限")}
-            value={`${card.maxActiveSessions} 台`}
+            value={tr("{maxActiveSessions} 台", {
+              maxActiveSessions: card.maxActiveSessions,
+            })}
           />
           <FieldValue
             label={tr("最終使用")}
             value={card.lastUsedAt ? fmt.dateTime(card.lastUsedAt) : "—"}
           />
-          <FieldValue label={tr("使用回数")} value={`${card.useCount} 回`} />
+          <FieldValue
+            label={tr("使用回数")}
+            value={tr("{useCount} 回", { useCount: card.useCount })}
+          />
           <FieldValue
             label={tr("PIN 最終確認")}
             value={

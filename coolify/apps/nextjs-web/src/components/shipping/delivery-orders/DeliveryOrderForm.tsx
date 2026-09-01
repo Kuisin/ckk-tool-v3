@@ -331,7 +331,11 @@ export function DeliveryOrderForm({
       const covered = usage.reduce((sum, u) => sum + u.quantity, 0);
       if (usage.length > 0 && covered < remaining) {
         shortfalls.push(
-          `${info.orderLineNumber}（未出荷 ${remaining} / 充当 ${covered}）`,
+          tr("{orderLineNumber}（未出荷 {remaining} / 充当 {covered}）", {
+            orderLineNumber: info.orderLineNumber,
+            remaining: remaining,
+            covered: covered,
+          }),
         );
       }
       newItems.push(...defaults);
@@ -343,14 +347,18 @@ export function DeliveryOrderForm({
     if (alreadyShipped.length > 0) {
       notifications.show({
         title: tr("出荷済みの明細をスキップしました"),
-        message: `${alreadyShipped.join("、")} は受注数量まで出荷済みです`,
+        message: tr("{v0} は受注数量まで出荷済みです", {
+          v0: alreadyShipped.join("、"),
+        }),
         color: "orange",
       });
     }
     if (shortfalls.length > 0) {
       notifications.show({
         title: tr("在庫が不足しています"),
-        message: `${shortfalls.join("、")} — 不足分は指示書の完了・在庫引当が必要です`,
+        message: tr("{v0} — 不足分は指示書の完了・在庫引当が必要です", {
+          v0: shortfalls.join("、"),
+        }),
         color: "orange",
       });
     }
@@ -402,7 +410,10 @@ export function DeliveryOrderForm({
           // ことを伝える（プリフィルが「効いていない」ように見えるため）。
           notifications.show({
             title: tr("注文明細を読み込めませんでした"),
-            message: `${initialOrderLine.label} — 確定済みの注文明細のみ出荷書に追加できます`,
+            message: tr(
+              "{label} — 確定済みの注文明細のみ出荷書に追加できます",
+              { label: initialOrderLine.label },
+            ),
             color: "red",
           });
         }
@@ -489,7 +500,9 @@ export function DeliveryOrderForm({
           message:
             mode === "edit"
               ? tr("出荷書を更新しました")
-              : `出荷書 ${result.data.number} を作成しました`,
+              : tr("出荷書 {number} を作成しました", {
+                  number: result.data.number,
+                }),
           color: "green",
         });
         // 保存後は必ず**詳細（閲覧）画面**へ。フォームが dirty のままだと
@@ -681,7 +694,9 @@ export function DeliveryOrderForm({
         ) : undefined
       }
       title={
-        mode === "edit" ? `出荷書 編集 ${orderId ?? ""}` : tr("出荷書 新規作成")
+        mode === "edit"
+          ? tr("出荷書 編集 {v0}", { v0: orderId ?? "" })
+          : tr("出荷書 新規作成")
       }
     >
       <FormSection title={tr("基本情報")}>
@@ -790,14 +805,18 @@ export function DeliveryOrderForm({
                           {info.customerName} / {info.productName}
                           {/* 束ねの条件（出荷先・配送方法）が見えるようにする */}
                           {info.shipToName
-                            ? ` · 出荷先 ${info.shipToName}`
+                            ? tr(" · 出荷先 {shipToName}", {
+                                shipToName: info.shipToName,
+                              })
                             : ""}
                           {info.deliveryMethod === "DIRECT_TO_USER"
                             ? " · ユーザー直送"
                             : ""}{" "}
                           · 受注 {info.quantity}
                           {info.shippedQuantity > 0
-                            ? ` · 出荷済 ${info.shippedQuantity}`
+                            ? tr(" · 出荷済 {shippedQuantity}", {
+                                shippedQuantity: info.shippedQuantity,
+                              })
                             : ""}{" "}
                           {/* 完成 = 接続された指示書の完成数のうちこの明細への配分
                               （distributeFinished）— DO の数量はこれが源泉 */}

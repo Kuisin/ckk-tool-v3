@@ -44,7 +44,9 @@ export function DeleteMaterialTypeModal({
       loading={isPending}
       message={
         target
-          ? `材種「${label(target)}」を削除します。この操作は取り消せません。`
+          ? tr("材種「{v0}」を削除します。この操作は取り消せません。", {
+              v0: label(target),
+            })
           : ""
       }
       onClose={onClose}
@@ -55,7 +57,7 @@ export function DeleteMaterialTypeModal({
           if (result.ok) {
             notifications.show({
               title: tr("削除しました"),
-              message: `材種「${label(target)}」を削除しました`,
+              message: tr("材種「{v0}」を削除しました", { v0: label(target) }),
               color: "green",
             });
             onDone?.();
@@ -101,8 +103,14 @@ export function ToggleMaterialTypeActiveModal({
       message={
         target
           ? isActive
-            ? `材種「${label(target)}」を無効化します。新規の素材登録で選択できなくなります。`
-            : `材種「${label(target)}」を有効化します。再び素材登録で選択できるようになります。`
+            ? tr(
+                "材種「{v0}」を無効化します。新規の素材登録で選択できなくなります。",
+                { v0: label(target) },
+              )
+            : tr(
+                "材種「{v0}」を有効化します。再び素材登録で選択できるようになります。",
+                { v0: label(target) },
+              )
           : ""
       }
       onClose={onClose}
@@ -113,7 +121,10 @@ export function ToggleMaterialTypeActiveModal({
           if (result.ok) {
             notifications.show({
               title: isActive ? "無効化しました" : tr("有効化しました"),
-              message: `材種「${label(target)}」を${isActive ? "無効化" : "有効化"}しました`,
+              message: tr("材種「{v0}」を{v1}しました", {
+                v0: label(target),
+                v1: isActive ? "無効化" : "有効化",
+              }),
               color: "green",
             });
             onDone?.();

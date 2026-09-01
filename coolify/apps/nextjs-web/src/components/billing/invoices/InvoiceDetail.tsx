@@ -138,7 +138,7 @@ export function InvoiceDetail({
       key: "paid",
       label: tr("入金"),
       description: invoice.dueDate
-        ? `支払期限 ${fmt.date(invoice.dueDate)}`
+        ? tr("支払期限 {v0}", { v0: fmt.date(invoice.dueDate) })
         : tr("入金の確認"),
     },
   ];
@@ -162,7 +162,10 @@ export function InvoiceDetail({
     {
       key: "delivery-orders",
       title: tr("出荷書"),
-      summary: orderNumbers.length > 0 ? `${orderNumbers.length} 件` : null,
+      summary:
+        orderNumbers.length > 0
+          ? tr("{v0} 件", { v0: orderNumbers.length })
+          : null,
       items: orderNumbers.map((n) => ({
         key: n,
         label: n,
@@ -173,7 +176,10 @@ export function InvoiceDetail({
     {
       key: "delivery-notes",
       title: tr("納品書"),
-      summary: noteNumbers.length > 0 ? `${noteNumbers.length} 件` : null,
+      summary:
+        noteNumbers.length > 0
+          ? tr("{v0} 件", { v0: noteNumbers.length })
+          : null,
       items: noteNumbers.map((n) => ({
         key: n,
         label: n,
@@ -195,7 +201,9 @@ export function InvoiceDetail({
               key: "yayoi",
               label: invoice.invoiceNumber,
               done: true,
-              note: `エクスポート済・${fmt.dateTime(invoice.yayoiExportedAt)}`,
+              note: tr("エクスポート済・{v0}", {
+                v0: fmt.dateTime(invoice.yayoiExportedAt),
+              }),
             },
           ]
         : [],
@@ -536,13 +544,18 @@ export function InvoiceDetail({
         confirmColor="blue"
         confirmLabel={tr("発行")}
         loading={isPending}
-        message={`請求書 ${invoice.invoiceNumber} を発行します。発行日は本日で記録されます。`}
+        message={tr(
+          "請求書 {invoiceNumber} を発行します。発行日は本日で記録されます。",
+          { invoiceNumber: invoice.invoiceNumber },
+        )}
         onClose={() => setIssueOpen(false)}
         onConfirm={() =>
           run(
             () => issueInvoice(invoice.invoiceNumber),
             tr("発行しました"),
-            `請求書 ${invoice.invoiceNumber} を発行しました`,
+            tr("請求書 {invoiceNumber} を発行しました", {
+              invoiceNumber: invoice.invoiceNumber,
+            }),
           )
         }
         opened={issueOpen}
@@ -552,13 +565,17 @@ export function InvoiceDetail({
         confirmColor="blue"
         confirmLabel={tr("送付済みにする")}
         loading={isPending}
-        message={`請求書 ${invoice.invoiceNumber} を送付済みにします。`}
+        message={tr("請求書 {invoiceNumber} を送付済みにします。", {
+          invoiceNumber: invoice.invoiceNumber,
+        })}
         onClose={() => setSentOpen(false)}
         onConfirm={() =>
           run(
             () => markSent(invoice.invoiceNumber),
             tr("送付済みにしました"),
-            `請求書 ${invoice.invoiceNumber} を送付済みにしました`,
+            tr("請求書 {invoiceNumber} を送付済みにしました", {
+              invoiceNumber: invoice.invoiceNumber,
+            }),
           )
         }
         opened={sentOpen}
@@ -568,13 +585,17 @@ export function InvoiceDetail({
         confirmColor="blue"
         confirmLabel={tr("入金済みにする")}
         loading={isPending}
-        message={`請求書 ${invoice.invoiceNumber} を入金済みにします。`}
+        message={tr("請求書 {invoiceNumber} を入金済みにします。", {
+          invoiceNumber: invoice.invoiceNumber,
+        })}
         onClose={() => setPaidOpen(false)}
         onConfirm={() =>
           run(
             () => markPaid(invoice.invoiceNumber),
             tr("入金済みにしました"),
-            `請求書 ${invoice.invoiceNumber} を入金済みにしました`,
+            tr("請求書 {invoiceNumber} を入金済みにしました", {
+              invoiceNumber: invoice.invoiceNumber,
+            }),
           )
         }
         opened={paidOpen}

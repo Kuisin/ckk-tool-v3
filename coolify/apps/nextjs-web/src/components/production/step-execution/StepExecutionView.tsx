@@ -114,7 +114,7 @@ export function StepExecutionView({ data }: { data: StepExecutionData }) {
     if (result.ok) {
       notifications.show({
         title: successTitle,
-        message: `工程: ${step.name}`,
+        message: tr("工程: {name}", { name: step.name }),
         color: "green",
       });
       router.refresh();

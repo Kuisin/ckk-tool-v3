@@ -292,8 +292,10 @@ function ItemVerdict({
             : entry.manualPass != null &&
                 entry.manualPass !== auto &&
                 item.allowManualOverride
-              ? `自動判定（${auto ? "合格" : "不合格"}）を手動で上書き中`
-              : `自動判定: ${auto ? "合格" : "不合格"}`}
+              ? tr("自動判定（{v0}）を手動で上書き中", {
+                  v0: auto ? "合格" : "不合格",
+                })
+              : tr("自動判定: {v0}", { v0: auto ? "合格" : "不合格" })}
       </Text>
     </Group>
   );
@@ -413,9 +415,9 @@ export function InspectionRecordForm({
     if (missing.length > 0) {
       notifications.show({
         title: tr("入力不足"),
-        message: `必須項目を入力してください（${missing
-          .map((m) => m.name)
-          .join("・")}）`,
+        message: tr("必須項目を入力してください（{v0}）", {
+          v0: missing.map((m) => m.name).join("・"),
+        }),
         color: "red",
       });
       return;
@@ -432,9 +434,9 @@ export function InspectionRecordForm({
       if (invalid.length > 0) {
         notifications.show({
           title: tr("入力エラー"),
-          message: `合格数が検査数を超えています（${invalid
-            .map((m) => m.name)
-            .join("・")}）`,
+          message: tr("合格数が検査数を超えています（{v0}）", {
+            v0: invalid.map((m) => m.name).join("・"),
+          }),
           color: "red",
         });
         return;
@@ -615,7 +617,11 @@ export function InspectionRecordForm({
                                 >
                                   {entry.passedCount > entry.inspectedCount
                                     ? tr("合格数が検査数を超えています")
-                                    : `不合格 ${entry.inspectedCount - entry.passedCount}`}
+                                    : tr("不合格 {v0}", {
+                                        v0:
+                                          entry.inspectedCount -
+                                          entry.passedCount,
+                                      })}
                                 </Text>
                               )}
                           </Group>

@@ -198,7 +198,7 @@ export function FormFieldsPanel({
             </Group>
             <Text c="dimmed" size="xs">
               {TYPE_LABEL.get(f.type) ?? f.type}
-              {detail ? ` ・ ${detail}` : ""}
+              {detail ? tr(" ・ {detail}", { detail: detail }) : ""}
             </Text>
           </Stack>
         );

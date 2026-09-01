@@ -290,7 +290,9 @@ export function FileManager() {
   function confirmDelete(f: StoredFile) {
     openConfirm({
       title: tr("ファイルの削除"),
-      message: `「${f.name}」を削除します。この操作は取り消せません。`,
+      message: tr("「{name}」を削除します。この操作は取り消せません。", {
+        name: f.name,
+      }),
       confirmLabel: "削除",
       onConfirm: () => onDelete(f),
     });
@@ -761,7 +763,9 @@ export function FileManager() {
               checked={showSystem}
               label={
                 hiddenSystemCount > 0
-                  ? `システムファイル (${hiddenSystemCount})`
+                  ? tr("システムファイル ({hiddenSystemCount})", {
+                      hiddenSystemCount: hiddenSystemCount,
+                    })
                   : tr("システムファイル")
               }
               onChange={(e) => {

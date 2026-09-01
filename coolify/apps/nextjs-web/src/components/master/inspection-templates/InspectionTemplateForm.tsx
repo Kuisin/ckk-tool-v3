@@ -237,7 +237,7 @@ export function InspectionTemplateForm({
       status={isEdit ? <ActiveBadge active={initial.isActive} /> : undefined}
       title={
         isEdit
-          ? `検査表テンプレート 編集 — ${initial.code}`
+          ? tr("検査表テンプレート 編集 — {code}", { code: initial.code })
           : tr("検査表テンプレート 新規作成")
       }
     >

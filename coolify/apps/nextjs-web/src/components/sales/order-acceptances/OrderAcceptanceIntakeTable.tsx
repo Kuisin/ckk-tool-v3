@@ -67,7 +67,7 @@ function ExtractErrorBadge({
       label={[
         failure.summary,
         failure.cause,
-        `対処: ${failure.hint}`,
+        tr("対処: {hint}", { hint: failure.hint }),
         failure.detail,
       ]
         .filter(Boolean)
@@ -175,7 +175,7 @@ export function OrderAcceptanceIntakeTable({
       autoClose: false,
       color: "blue",
       loading: true,
-      message: `${files.length} 件を一覧に追加しています…`,
+      message: tr("{v0} 件を一覧に追加しています…", { v0: files.length }),
       title: tr("優先取込"),
       withCloseButton: false,
     });
@@ -188,7 +188,11 @@ export function OrderAcceptanceIntakeTable({
         autoClose: false,
         color: "blue",
         loading: true,
-        message: `${i + 1} / ${files.length} 件目: ${file.name} を追加中…`,
+        message: tr("{v0} / {v1} 件目: {name} を追加中…", {
+          v0: i + 1,
+          v1: files.length,
+          name: file.name,
+        }),
         title: tr("優先取込"),
         withCloseButton: false,
       });
@@ -206,7 +210,7 @@ export function OrderAcceptanceIntakeTable({
           failures.push(`${file.name}: ${json?.error ?? "取込に失敗しました"}`);
         }
       } catch {
-        failures.push(`${file.name}: 通信エラー`);
+        failures.push(tr("{name}: 通信エラー", { name: file.name }));
       }
     }
     // 全件が一覧に並んだ状態を先に見せてから抽出を始める。
@@ -221,7 +225,9 @@ export function OrderAcceptanceIntakeTable({
         autoClose: false,
         color: "blue",
         loading: true,
-        message: `${numbers.length} 件をAI抽出の待ち行列に入れています…`,
+        message: tr("{v0} 件をAI抽出の待ち行列に入れています…", {
+          v0: numbers.length,
+        }),
         title: tr("優先取込"),
         withCloseButton: false,
       });
@@ -235,7 +241,9 @@ export function OrderAcceptanceIntakeTable({
         if (res.ok && json?.ok) {
           pending = json.pending ?? 0;
           if (json.skipped && json.skipped.length > 0) {
-            queueError = `抽出を開始できなかった書類: ${json.skipped.join(" ・ ")}`;
+            queueError = tr("抽出を開始できなかった書類: {v0}", {
+              v0: json.skipped.join(" ・ "),
+            });
           }
         } else {
           queueError = json?.error ?? tr("AI抽出の開始に失敗しました");
@@ -253,9 +261,14 @@ export function OrderAcceptanceIntakeTable({
       loading: false,
       message:
         problems.length > 0
-          ? `${numbers.length} 件を一覧に追加しました / ${problems.join(" ・ ")}`
-          : `${numbers.length} 件を一覧に追加しました。AI抽出はこのあと順番に実行されます` +
-            `${pending > 1 ? `（抽出待ち ${pending} 件）` : ""}`,
+          ? tr("{v0} 件を一覧に追加しました / {v1}", {
+              v0: numbers.length,
+              v1: problems.join(" ・ "),
+            })
+          : tr(
+              "{v0} 件を一覧に追加しました。AI抽出はこのあと順番に実行されます",
+              { v0: numbers.length },
+            ) + `${pending > 1 ? `（抽出待ち ${pending} 件）` : ""}`,
       title:
         problems.length > 0 ? "優先取込 受付（一部失敗）" : tr("優先取込 受付"),
       withCloseButton: true,

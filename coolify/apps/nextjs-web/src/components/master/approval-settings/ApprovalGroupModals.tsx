@@ -62,7 +62,10 @@ export function DeleteApprovalGroupModal({
       loading={isPending}
       message={
         target
-          ? `承認グループ「${target.name}」を削除します。メンバー割当も同時に削除されます。この操作は取り消せません。`
+          ? tr(
+              "承認グループ「{name}」を削除します。メンバー割当も同時に削除されます。この操作は取り消せません。",
+              { name: target.name },
+            )
           : ""
       }
       onClose={onClose}
@@ -73,7 +76,9 @@ export function DeleteApprovalGroupModal({
           if (result.ok) {
             notifications.show({
               title: tr("削除しました"),
-              message: `承認グループ「${target.name}」を削除しました`,
+              message: tr("承認グループ「{name}」を削除しました", {
+                name: target.name,
+              }),
               color: "green",
             });
             onDone?.();
@@ -119,8 +124,14 @@ export function ToggleApprovalGroupActiveModal({
       message={
         target
           ? isActive
-            ? `承認グループ「${target.name}」を無効化します。新規の承認依頼で使用できなくなります。`
-            : `承認グループ「${target.name}」を有効化します。再び承認依頼で使用できるようになります。`
+            ? tr(
+                "承認グループ「{name}」を無効化します。新規の承認依頼で使用できなくなります。",
+                { name: target.name },
+              )
+            : tr(
+                "承認グループ「{name}」を有効化します。再び承認依頼で使用できるようになります。",
+                { name: target.name },
+              )
           : ""
       }
       onClose={onClose}
@@ -131,7 +142,10 @@ export function ToggleApprovalGroupActiveModal({
           if (result.ok) {
             notifications.show({
               title: isActive ? "無効化しました" : tr("有効化しました"),
-              message: `承認グループ「${target.name}」を${isActive ? "無効化" : "有効化"}しました`,
+              message: tr("承認グループ「{name}」を{v1}しました", {
+                name: target.name,
+                v1: isActive ? "無効化" : "有効化",
+              }),
               color: "green",
             });
             onDone?.();
@@ -347,7 +361,9 @@ export function AddApprovalGroupMemberModal({
           if (result.ok) {
             notifications.show({
               title: tr("追加しました"),
-              message: `メンバー「${userLabel}」を追加しました`,
+              message: tr("メンバー「{userLabel}」を追加しました", {
+                userLabel: userLabel,
+              }),
               color: "green",
             });
             closeAndReset();
@@ -446,7 +462,9 @@ export function EditMemberPeriodModal({
           if (result.ok) {
             notifications.show({
               title: tr("保存しました"),
-              message: `「${target.displayName}」の在籍期間を更新しました`,
+              message: tr("「{displayName}」の在籍期間を更新しました", {
+                displayName: target.displayName,
+              }),
               color: "green",
             });
             close();
@@ -551,7 +569,9 @@ export function AddApprovalDelegateModal({
           if (result.ok) {
             notifications.show({
               title: tr("追加しました"),
-              message: `代理人「${delegateLabel}」の代理設定を追加しました`,
+              message: tr("代理人「{delegateLabel}」の代理設定を追加しました", {
+                delegateLabel: delegateLabel,
+              }),
               color: "green",
             });
             closeAndReset();
@@ -653,7 +673,13 @@ export function RemoveApprovalDelegateModal({
       loading={isPending}
       message={
         delegate
-          ? `代理設定（原承認者「${delegate.delegatorName}」→ 代理人「${delegate.delegateName}」）を削除します。代理人はこのグループの承認を行えなくなります。`
+          ? tr(
+              "代理設定（原承認者「{delegatorName}」→ 代理人「{delegateName}」）を削除します。代理人はこのグループの承認を行えなくなります。",
+              {
+                delegatorName: delegate.delegatorName,
+                delegateName: delegate.delegateName,
+              },
+            )
           : ""
       }
       onClose={onClose}
@@ -664,7 +690,9 @@ export function RemoveApprovalDelegateModal({
           if (result.ok) {
             notifications.show({
               title: tr("削除しました"),
-              message: `代理人「${delegate.delegateName}」の代理設定を削除しました`,
+              message: tr("代理人「{delegateName}」の代理設定を削除しました", {
+                delegateName: delegate.delegateName,
+              }),
               color: "green",
             });
             onDone?.();
@@ -702,7 +730,10 @@ export function RemoveApprovalGroupMemberModal({
       loading={isPending}
       message={
         member
-          ? `メンバー「${member.displayName}（${member.username}）」をこのグループから削除します。`
+          ? tr(
+              "メンバー「{displayName}（{username}）」をこのグループから削除します。",
+              { displayName: member.displayName, username: member.username },
+            )
           : ""
       }
       onClose={onClose}
@@ -713,7 +744,9 @@ export function RemoveApprovalGroupMemberModal({
           if (result.ok) {
             notifications.show({
               title: tr("削除しました"),
-              message: `メンバー「${member.displayName}」を削除しました`,
+              message: tr("メンバー「{displayName}」を削除しました", {
+                displayName: member.displayName,
+              }),
               color: "green",
             });
             onDone?.();

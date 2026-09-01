@@ -101,7 +101,9 @@ export function OrderAcceptanceCreateForm({
       if (result.ok) {
         notifications.show({
           title: tr("作成しました"),
-          message: `注文請書 ${result.data.number}（下書き）`,
+          message: tr("注文請書 {number}（下書き）", {
+            number: result.data.number,
+          }),
           color: "green",
         });
         router.push(`${BASE_PATH}/${result.data.number}`);

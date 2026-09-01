@@ -111,7 +111,9 @@ export function DesignFileVersionForm({
       if (res.ok && json?.ok) {
         notifications.show({
           title: tr("登録しました"),
-          message: `設計図 v${json.version} を追加しました`,
+          message: tr("設計図 v{version} を追加しました", {
+            version: json.version,
+          }),
           color: "green",
         });
         // 依頼から来たなら依頼へ戻す（次にやることは「完了」なので）。
@@ -139,7 +141,9 @@ export function DesignFileVersionForm({
           設計依頼 {requestContext.requestNumber} の成果物として登録します。
           製品「{requestContext.productLabel}」
           {requestContext.customerName
-            ? `・受注元「${requestContext.customerName}」`
+            ? tr("・受注元「{customerName}」", {
+                customerName: requestContext.customerName,
+              })
             : tr("・汎用")}
           は依頼で決まっているので変更できません。
         </Alert>
@@ -210,7 +214,7 @@ export function DesignFileVersionForm({
               file={r.file}
               fullWidth={isMobile}
               key={r.key}
-              label={`参考資料 ${i + 1}`}
+              label={tr("参考資料 {v0}", { v0: i + 1 })}
               note={r.note}
               notePlaceholder={tr("説明（任意）— 例: 部品図、寸法表")}
               onNoteChange={(v) =>

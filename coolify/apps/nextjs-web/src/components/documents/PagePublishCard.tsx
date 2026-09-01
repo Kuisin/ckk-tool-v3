@@ -198,7 +198,10 @@ export function PagePublishCard({
       >
         <Text size="sm">
           {openComments > 0
-            ? `未解決のコメントが ${openComments} 件あります。このまま進めますか？`
+            ? tr(
+                "未解決のコメントが {openComments} 件あります。このまま進めますか？",
+                { openComments: openComments },
+              )
             : tr("最新のリビジョンを公開します。")}
         </Text>
       </ModalShell>

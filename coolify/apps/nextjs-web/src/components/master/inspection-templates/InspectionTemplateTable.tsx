@@ -133,7 +133,10 @@ export function InspectionTemplateTable({
       if (result.ok) {
         notifications.show({
           title: isActive ? "有効化しました" : tr("無効化しました"),
-          message: `${targets.length}件の検査表テンプレートを${isActive ? "有効化" : "無効化"}しました`,
+          message: tr("{v0}件の検査表テンプレートを{v1}しました", {
+            v0: targets.length,
+            v1: isActive ? "有効化" : "無効化",
+          }),
           color: "green",
         });
         router.refresh();
@@ -150,7 +153,10 @@ export function InspectionTemplateTable({
   const bulkDelete = (targets: InspectionTemplateRow[]) => {
     openConfirm({
       title: tr("検査表テンプレートの一括削除"),
-      message: `選択中の${targets.length}件の検査表テンプレートを削除します。この操作は取り消せません。`,
+      message: tr(
+        "選択中の{v0}件の検査表テンプレートを削除します。この操作は取り消せません。",
+        { v0: targets.length },
+      ),
       confirmLabel: tr("削除する"),
       onConfirm: () => {
         startTransition(async () => {
@@ -160,7 +166,9 @@ export function InspectionTemplateTable({
           if (result.ok) {
             notifications.show({
               title: tr("削除しました"),
-              message: `${targets.length}件の検査表テンプレートを削除しました`,
+              message: tr("{v0}件の検査表テンプレートを削除しました", {
+                v0: targets.length,
+              }),
               color: "green",
             });
             router.refresh();
@@ -254,7 +262,7 @@ export function InspectionTemplateTable({
       width: 90,
       align: "right",
       sortValue: (r) => r.itemCount,
-      render: (r) => `${r.itemCount}件`,
+      render: (r) => tr("{itemCount}件", { itemCount: r.itemCount }),
     },
     {
       key: "isActive",

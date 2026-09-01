@@ -38,6 +38,7 @@ export function useSalesRepOptions(
   onChange: (value: string | null) => void,
   initial?: { id: string; name: string } | null,
 ) {
+  const tr = useTr();
   const [options, setOptions] = useState<Option[]>(() =>
     initial ? [{ value: initial.id, label: initial.name }] : [],
   );
@@ -115,7 +116,9 @@ export function useSalesRepOptions(
           ...options,
           {
             value,
-            label: `${initial?.id === value ? initial.name : value}（候補外）`,
+            label: tr("{v0}（候補外）", {
+              v0: initial?.id === value ? initial.name : value,
+            }),
           },
         ]
       : options;

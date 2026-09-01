@@ -237,7 +237,10 @@ export function ApprovalFlowRulesSection({
       if (result.ok) {
         notifications.show({
           title: tr("保存しました"),
-          message: `${targetLabel}の条件付きフロー「${payload.nameJa}」`,
+          message: tr("{targetLabel}の条件付きフロー「{nameJa}」", {
+            targetLabel: targetLabel,
+            nameJa: payload.nameJa,
+          }),
           color: "green",
         });
         setEditing(null);
@@ -403,7 +406,10 @@ export function ApprovalFlowRulesSection({
                     onClick={() =>
                       openConfirm({
                         title: tr("条件付きフローの削除"),
-                        message: `「${rule.nameJa}」を削除します。進行中の承認依頼には影響しません。`,
+                        message: tr(
+                          "「{nameJa}」を削除します。進行中の承認依頼には影響しません。",
+                          { nameJa: rule.nameJa },
+                        ),
                         confirmLabel: "削除",
                         onConfirm: () =>
                           run(() =>

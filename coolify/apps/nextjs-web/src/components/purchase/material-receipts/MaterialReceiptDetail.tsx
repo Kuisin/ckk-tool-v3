@@ -54,7 +54,7 @@ export function MaterialReceiptDetail({
           </Badge>
         )
       }
-      title={`素材入荷 ${r.materialCode}`}
+      title={tr("素材入荷 {materialCode}", { materialCode: r.materialCode })}
     >
       <SummaryGrid>
         <FieldValue

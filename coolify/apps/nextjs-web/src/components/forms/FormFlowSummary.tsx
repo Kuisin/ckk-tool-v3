@@ -91,7 +91,7 @@ export function FormFlowSummary({
                 {i + 1}
               </Badge>
               <Text fw={600} size="sm">
-                {step.nameJa || `第 ${i + 1} 承認`}
+                {step.nameJa || tr("第 {v0} 承認", { v0: i + 1 })}
               </Text>
               <IconArrowRight size={14} />
               <Text size="sm">{target}</Text>

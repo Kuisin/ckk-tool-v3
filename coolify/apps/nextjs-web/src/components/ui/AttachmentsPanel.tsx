@@ -306,7 +306,9 @@ export function AttachmentsPanel({
                   ) : (
                     canDelete && (
                       <ActionIcon
-                        aria-label={`${a.filename} を削除`}
+                        aria-label={tr("{filename} を削除", {
+                          filename: a.filename,
+                        })}
                         color="red"
                         onClick={() => setDeleteTarget(a)}
                         variant="subtle"

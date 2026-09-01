@@ -42,13 +42,14 @@ import {
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { signOut } from "next-auth/react";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { useEffect, useRef, useState } from "react";
 import { UserAvatar } from "@/components/ui/UserAvatar";
 import { relativeTime, useNotifications } from "@/hooks/useNotifications";
 import { useTr } from "@/hooks/useTr";
-import { appList } from "@/lib/app-list";
+import { appLabel, appList } from "@/lib/app-list";
 import { installBugReportCapture } from "@/lib/bug-report";
+import type { Locale } from "@/lib/i18n";
 import { appKeyForPath } from "./AppFlags";
 import { AppLauncher } from "./AppLauncher";
 import { BugReportModal } from "./BugReportModal";
@@ -105,6 +106,7 @@ export function AppHeader({
   isDev?: boolean;
 }) {
   const tr = useTr();
+  const locale = useLocale() as Locale;
   const sessionUser = user
     ? {
         displayName: user.displayName,
@@ -267,7 +269,7 @@ export function AppHeader({
                   {currentApp ? (
                     // 開いているアプリ名を表示（モバイルでも表示）。
                     <Text className="truncate" fw={600} size="md">
-                      {currentApp.label}
+                      {appLabel(currentApp, locale)}
                     </Text>
                   ) : (
                     <Text

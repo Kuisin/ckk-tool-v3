@@ -115,8 +115,16 @@ export function ApprovalActionCard({
   // 「第2/3段「部門承認」・製造部長」— 何段あって今どこかを 1 行で出す
   const where =
     stepCount > 1
-      ? `第 ${stepNo}/${stepCount} 段「${stepLabel}」・${groupLabel}`
-      : `${stepLabel}・${groupLabel}`;
+      ? tr("第 {stepNo}/{stepCount} 段「{stepLabel}」・{groupLabel}", {
+          stepNo: stepNo,
+          stepCount: stepCount,
+          stepLabel: stepLabel,
+          groupLabel: groupLabel,
+        })
+      : tr("{stepLabel}・{groupLabel}", {
+          stepLabel: stepLabel,
+          groupLabel: groupLabel,
+        });
 
   let card: ReactNode = null;
 
@@ -138,7 +146,9 @@ export function ApprovalActionCard({
           blocked
             ? requestBlockedReason
             : isRejected
-              ? `差し戻し理由: ${rejectReason ?? "—"}（修正して再依頼できます）`
+              ? tr("差し戻し理由: {v0}（修正して再依頼できます）", {
+                  v0: rejectReason ?? "—",
+                })
               : tr("承認フローの最初の段へ依頼します")
         }
         icon={
@@ -165,8 +175,14 @@ export function ApprovalActionCard({
           }
           description={
             mode === "ALL"
-              ? `${where} — 全員の承認が必要です（残り ${approval.remaining.length} 名: ${remainingText(approval.remaining)}）`
-              : `${where} の承認者としてこの書類を承認できます`
+              ? tr("{where} — 全員の承認が必要です（残り {v1} 名: {v2}）", {
+                  where: where,
+                  v1: approval.remaining.length,
+                  v2: remainingText(approval.remaining),
+                })
+              : tr("{where} の承認者としてこの書類を承認できます", {
+                  where: where,
+                })
           }
           icon={<IconShieldCheck size={20} />}
           title={tr("承認してください")}
@@ -176,7 +192,11 @@ export function ApprovalActionCard({
     } else if (approval.alreadyActed) {
       card = (
         <ActionCard
-          description={`${where} — 残り ${approval.remaining.length} 名: ${remainingText(approval.remaining)}`}
+          description={tr("{where} — 残り {v1} 名: {v2}", {
+            where: where,
+            v1: approval.remaining.length,
+            v2: remainingText(approval.remaining),
+          })}
           icon={<IconClock size={20} />}
           title={tr("あなたの承認は記録済みです")}
           tone="wait"
@@ -185,9 +205,11 @@ export function ApprovalActionCard({
     } else {
       card = (
         <ActionCard
-          description={`${groupLabel} のメンバーのみ承認・差し戻しできます`}
+          description={tr("{groupLabel} のメンバーのみ承認・差し戻しできます", {
+            groupLabel: groupLabel,
+          })}
           icon={<IconClock size={20} />}
-          title={`${stepLabel}待ち`}
+          title={tr("{stepLabel}待ち", { stepLabel: stepLabel })}
           tone="wait"
         />
       );

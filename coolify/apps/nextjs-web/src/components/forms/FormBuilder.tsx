@@ -193,7 +193,7 @@ export function FormBuilder({
         ...fields,
         {
           key,
-          label: { ja: `項目 ${n}`, en: "" },
+          label: { ja: tr("項目 {n}", { n: n }), en: "" },
           type: "text",
           required: false,
           order: fields.length,

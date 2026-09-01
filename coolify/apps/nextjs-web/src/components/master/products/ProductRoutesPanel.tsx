@@ -339,7 +339,9 @@ function DeleteRouteModal({
       if (result.ok) {
         notifications.show({
           title: tr("削除しました"),
-          message: `工程ルート「${route.name}」を削除しました`,
+          message: tr("工程ルート「{name}」を削除しました", {
+            name: route.name,
+          }),
           color: "green",
         });
         onClose();

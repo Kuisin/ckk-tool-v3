@@ -275,7 +275,11 @@ export function BpForm({
       }
       onSubmit={form.onSubmit(handleSubmit)}
       status={isEdit ? <ActiveBadge active={initial.isActive} /> : undefined}
-      title={isEdit ? `取引先 編集 — ${initial.bpCode}` : tr("取引先 新規作成")}
+      title={
+        isEdit
+          ? tr("取引先 編集 — {bpCode}", { bpCode: initial.bpCode })
+          : tr("取引先 新規作成")
+      }
     >
       <BpBaseFields
         bpCode={initial?.bpCode}

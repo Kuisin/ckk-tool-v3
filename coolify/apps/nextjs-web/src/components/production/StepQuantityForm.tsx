@@ -294,7 +294,10 @@ export function StepQuantityForm({
               ? tr("数量は 0 以上の整数で入力してください")
               : issue.kind === "INCOMPLETE"
                 ? tr("不良の各行に種類と詳細を入力してください")
-                : `不良の合計（${issue.sum}）が受入数（${issue.input}）を超えています`}
+                : tr("不良の合計（{sum}）が受入数（{input}）を超えています", {
+                    sum: issue.sum,
+                    input: issue.input,
+                  })}
           </Alert>
         )}
 

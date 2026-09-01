@@ -64,7 +64,8 @@ export function LoginForm({
   const [ssoLoading, setSsoLoading] = useState(false);
   const [ssoError, setSsoError] = useState<string | null>(
     urlError
-      ? (AUTH_ERROR_MESSAGES[urlError] ?? `ログインエラー: ${urlError}`)
+      ? (AUTH_ERROR_MESSAGES[urlError] ??
+          tr("ログインエラー: {urlError}", { urlError: urlError }))
       : null,
   );
 

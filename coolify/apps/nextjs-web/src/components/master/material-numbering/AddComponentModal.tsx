@@ -171,7 +171,9 @@ export function AddComponentModal({
           <>
             <NumberInput
               decimalScale={kind === "diameter" ? 1 : 0}
-              description={`コード: ${derivedCode}`}
+              description={tr("コード: {derivedCode}", {
+                derivedCode: derivedCode,
+              })}
               label={kind === "diameter" ? "直径 (mm)" : tr("全長 (mm)")}
               max={kind === "diameter" ? 99.9 : 999}
               min={kind === "diameter" ? 0.1 : 1}

@@ -116,7 +116,14 @@ export function AcceptanceCancelCard({
             </>
           ) : null
         }
-        description={`理由: ${request.reason}｜依頼: ${request.requestedByName ?? "—"}｜${stepLabel}。承認されるまで注文請書と注文明細は変わりません。`}
+        description={tr(
+          "理由: {reason}｜依頼: {v1}｜{stepLabel}。承認されるまで注文請書と注文明細は変わりません。",
+          {
+            reason: request.reason,
+            v1: request.requestedByName ?? "—",
+            stepLabel: stepLabel,
+          },
+        )}
         icon={<IconX size={20} />}
         title={
           canAct

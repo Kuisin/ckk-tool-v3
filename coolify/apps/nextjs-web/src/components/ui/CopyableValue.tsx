@@ -46,7 +46,7 @@ export function CopyableValue({
             withinPortal
           >
             <GhostButton
-              aria-label={`${label ?? "値"}をコピー`}
+              aria-label={tr("{v0}をコピー", { v0: label ?? "値" })}
               leftSection={
                 copied ? <IconCheck size={14} /> : <IconCopy size={14} />
               }

@@ -57,8 +57,14 @@ export function ComponentTable({
     openConfirm({
       title: next ? "有効化の確認" : tr("無効化の確認"),
       message: next
-        ? `「${row.code} — ${row.name}」を有効化します。`
-        : `「${row.code} — ${row.name}」を無効化します。新規の材種・素材作成で選択できなくなります（既存コードには影響しません）。`,
+        ? tr("「{code} — {name}」を有効化します。", {
+            code: row.code,
+            name: row.name,
+          })
+        : tr(
+            "「{code} — {name}」を無効化します。新規の材種・素材作成で選択できなくなります（既存コードには影響しません）。",
+            { code: row.code, name: row.name },
+          ),
       confirmLabel: next ? "有効化する" : tr("無効化する"),
       onConfirm: () => {
         startTransition(async () => {
@@ -71,7 +77,10 @@ export function ComponentTable({
           if (res.ok) {
             notifications.show({
               title: next ? "有効化しました" : tr("無効化しました"),
-              message: `「${row.code}」を${next ? "有効化" : "無効化"}しました`,
+              message: tr("「{code}」を{v1}しました", {
+                code: row.code,
+                v1: next ? "有効化" : "無効化",
+              }),
               color: "green",
             });
             router.refresh();

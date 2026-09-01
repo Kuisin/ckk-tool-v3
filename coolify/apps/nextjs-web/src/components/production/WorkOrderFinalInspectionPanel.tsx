@@ -131,7 +131,10 @@ export function WorkOrderFinalInspectionPanel({
                           field,
                           true,
                         );
-                        afterResult(result, `「${label}」を記録しました`);
+                        afterResult(
+                          result,
+                          tr("「{label}」を記録しました", { label: label }),
+                        );
                       })
                     }
                     size="xs"
@@ -148,7 +151,10 @@ export function WorkOrderFinalInspectionPanel({
                           field,
                           false,
                         );
-                        afterResult(result, `「${label}」を記録しました`);
+                        afterResult(
+                          result,
+                          tr("「{label}」を記録しました", { label: label }),
+                        );
                       })
                     }
                     size="xs"
@@ -224,7 +230,10 @@ export function WorkOrderFinalInspectionPanel({
                               workOrderNumber,
                               stage,
                             );
-                            afterResult(result, `${label}を記録しました`);
+                            afterResult(
+                              result,
+                              tr("{label}を記録しました", { label: label }),
+                            );
                           })
                         }
                         size="xs"

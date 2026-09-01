@@ -135,7 +135,9 @@ export function ProductDrawings({
                   <Box maw={320}>
                     <DesignFileThumb
                       target={{
-                        caption: `v${thumb.version}（最新）`,
+                        caption: tr("v{version}（最新）", {
+                          version: thumb.version,
+                        }),
                         filename: thumb.filename,
                         mimeType: thumb.mimeType,
                         src: `/api/design-files/${encodeURIComponent(thumb.id)}`,
@@ -176,7 +178,11 @@ export function ProductDrawings({
           )
         }
         opened={editing != null}
-        title={editing ? `v${editing.version} のメモ` : tr("メモ")}
+        title={
+          editing
+            ? tr("v{version} のメモ", { version: editing.version })
+            : tr("メモ")
+        }
       >
         <Textarea
           autosize
@@ -194,7 +200,11 @@ export function ProductDrawings({
         onClose={() => setMemoFor(null)}
         opened={memoFor != null}
         size="lg"
-        title={memoFor ? `v${memoFor.version} のメモ` : tr("メモ")}
+        title={
+          memoFor
+            ? tr("v{version} のメモ", { version: memoFor.version })
+            : tr("メモ")
+        }
       >
         {memoFor && (
           <MemoPanel
@@ -211,7 +221,10 @@ export function ProductDrawings({
         loading={isPending}
         message={
           deleting
-            ? `${deleting.filename}（v${deleting.version}）を削除します。この操作は取り消せません。`
+            ? tr(
+                "{filename}（v{version}）を削除します。この操作は取り消せません。",
+                { filename: deleting.filename, version: deleting.version },
+              )
             : ""
         }
         onClose={() => setDeleting(null)}

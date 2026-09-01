@@ -235,7 +235,7 @@ export function DisplayContentEditor({ display, plantOptions, onDone }: Props) {
       )}
 
       {mode === "APP_PAGE" && template && template.options.length > 0 && (
-        <Section title={`${template.label}の設定`}>
+        <Section title={tr("{label}の設定", { label: template.label })}>
           <TemplateOptionFields
             onChange={(key, value) =>
               setOptions((prev) => ({ ...prev, [key]: value }))
@@ -508,7 +508,9 @@ export function DisplayContentView({
         label={tr("更新間隔")}
         value={
           display.refreshIntervalSec > 0
-            ? `${display.refreshIntervalSec} 秒`
+            ? tr("{refreshIntervalSec} 秒", {
+                refreshIntervalSec: display.refreshIntervalSec,
+              })
             : tr("自動更新しない")
         }
       />

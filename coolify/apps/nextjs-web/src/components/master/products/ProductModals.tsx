@@ -69,7 +69,9 @@ export function DeleteProductModal({
       loading={isPending}
       message={
         target
-          ? `製品「${label(target, tr)}」を削除します。この操作は取り消せません。`
+          ? tr("製品「{v0}」を削除します。この操作は取り消せません。", {
+              v0: label(target, tr),
+            })
           : ""
       }
       onClose={onClose}
@@ -80,7 +82,9 @@ export function DeleteProductModal({
           if (result.ok) {
             notifications.show({
               title: tr("削除しました"),
-              message: `製品「${label(target, tr)}」を削除しました`,
+              message: tr("製品「{v0}」を削除しました", {
+                v0: label(target, tr),
+              }),
               color: "green",
             });
             onDone?.();
@@ -126,8 +130,14 @@ export function ToggleProductActiveModal({
       message={
         target
           ? isActive
-            ? `製品「${label(target, tr)}」を無効化します。新規の価格試算・価格表・見積書で選択できなくなります。`
-            : `製品「${label(target, tr)}」を有効化します。再び価格試算・価格表・見積書で選択できるようになります。`
+            ? tr(
+                "製品「{v0}」を無効化します。新規の価格試算・価格表・見積書で選択できなくなります。",
+                { v0: label(target, tr) },
+              )
+            : tr(
+                "製品「{v0}」を有効化します。再び価格試算・価格表・見積書で選択できるようになります。",
+                { v0: label(target, tr) },
+              )
           : ""
       }
       onClose={onClose}
@@ -138,7 +148,10 @@ export function ToggleProductActiveModal({
           if (result.ok) {
             notifications.show({
               title: isActive ? "無効化しました" : tr("有効化しました"),
-              message: `製品「${label(target, tr)}」を${isActive ? "無効化" : "有効化"}しました`,
+              message: tr("製品「{v0}」を{v1}しました", {
+                v0: label(target, tr),
+                v1: isActive ? "無効化" : "有効化",
+              }),
               color: "green",
             });
             onDone?.();
@@ -179,7 +192,9 @@ export function DuplicateProductModal({
   // Seed the fields from the copy source each time a new source opens.
   if (opened && source && seededFrom !== source.id) {
     setSeededFrom(source.id);
-    setNameJa(source.name !== "—" ? `${source.name}（コピー）` : "");
+    setNameJa(
+      source.name !== "—" ? tr("{name}（コピー）", { name: source.name }) : "",
+    );
     setNameTranslations({});
     setUnit(source.unit);
   }
@@ -209,7 +224,9 @@ export function DuplicateProductModal({
       if (result.ok) {
         notifications.show({
           title: tr("複製しました"),
-          message: `製品「${result.data.code}」を作成しました`,
+          message: tr("製品「{code}」を作成しました", {
+            code: result.data.code,
+          }),
           color: "green",
         });
         setSeededFrom(null);

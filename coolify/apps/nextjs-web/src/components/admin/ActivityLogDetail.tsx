@@ -35,8 +35,8 @@ export function ActivityLogDetail({ entry }: { entry: ActivityDetailEntry }) {
             leftSection={<IconExternalLink size={14} />}
           >
             {link.kind === "detail"
-              ? `${link.appLabel}を開く`
-              : `${link.appLabel}で表示`}
+              ? tr("{appLabel}を開く", { appLabel: tr(link.appLabel) })
+              : tr("{appLabel}で表示", { appLabel: tr(link.appLabel) })}
           </SecondaryButton>
         ) : undefined
       }
@@ -46,7 +46,7 @@ export function ActivityLogDetail({ entry }: { entry: ActivityDetailEntry }) {
         `#${entry.id}`,
       ]}
       status={<Badge variant="light">{entry.action}</Badge>}
-      title={`操作履歴 #${entry.id}`}
+      title={tr("操作履歴 #{id}", { id: entry.id })}
     >
       <SummaryGrid>
         <FieldValue label={tr("日時")} value={entry.at} />
@@ -91,7 +91,7 @@ export function ActivityLogDetail({ entry }: { entry: ActivityDetailEntry }) {
           value={
             link ? (
               <Anchor component={Link} href={link.href} size="sm">
-                {link.appLabel}
+                {tr(link.appLabel)}
                 {link.kind === "list" && tr("（一覧で表示）")}
               </Anchor>
             ) : (

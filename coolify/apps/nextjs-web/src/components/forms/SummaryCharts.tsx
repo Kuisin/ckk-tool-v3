@@ -18,6 +18,7 @@
  */
 
 import { Box, Group, Stack, Text } from "@mantine/core";
+import { useTr } from "@/hooks/useTr";
 import { type CountItem, donutArcs } from "@/lib/form-summary";
 
 /**
@@ -65,13 +66,20 @@ export function DonutChart({
   /** 割合の分母。回答した件数。 */
   total: number;
 }) {
+  const tr = useTr();
   const circumference = 2 * Math.PI * DONUT_RADIUS;
   // 寸法の計算は lib/form-summary.ts が持つ（部品の中に閉じ込めると、
   // 確かめるのに画面を開かないといけなくなる）。
   const arcs = donutArcs(items, total, circumference);
 
   const label = items
-    .map((i) => `${i.label} ${i.count}件（${percent(i.count, total)}%）`)
+    .map((i) =>
+      tr("{label} {count}件（{v2}%）", {
+        label: i.label,
+        count: i.count,
+        v2: percent(i.count, total),
+      }),
+    )
     .join("、");
 
   return (

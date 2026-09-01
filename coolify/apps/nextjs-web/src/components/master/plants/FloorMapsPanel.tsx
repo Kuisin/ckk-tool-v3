@@ -142,7 +142,10 @@ export function FloorMapsPanel({
     if (!activeMap) return;
     openConfirm({
       title: tr("フロア削除の確認"),
-      message: `フロア「${activeMap.name}」を削除します。端末・保管場所のピンが残っている場合は削除できません。`,
+      message: tr(
+        "フロア「{name}」を削除します。端末・保管場所のピンが残っている場合は削除できません。",
+        { name: activeMap.name },
+      ),
       confirmLabel: "削除",
       onConfirm: () => {
         setActiveMapId(null);
@@ -276,7 +279,7 @@ export function FloorMapsPanel({
 
           {activeMap && (
             <FloorMapCanvas
-              imageAlt={`フロアマップ: ${activeMap.name}`}
+              imageAlt={tr("フロアマップ: {name}", { name: activeMap.name })}
               imageUrl={
                 activeMap.hasImage
                   ? `/api/kiosk/floor-maps/${activeMap.id}/image`

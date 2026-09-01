@@ -309,8 +309,8 @@ export function ProcessStepDetail({
                 0
                   ? tr("制限なし（すべての作業場所を使用可）")
                   : [
-                      ...record.allowedLocationTypeLabels.map(
-                        (l) => `種別: ${l}`,
+                      ...record.allowedLocationTypeLabels.map((l) =>
+                        tr("種別: {l}", { l: l }),
                       ),
                       ...record.allowedLocationLabels,
                     ].join(" / ")

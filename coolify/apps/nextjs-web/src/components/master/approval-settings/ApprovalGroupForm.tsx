@@ -111,7 +111,7 @@ export function ApprovalGroupForm({
       status={isEdit ? <ActiveBadge active={initial.isActive} /> : undefined}
       title={
         isEdit
-          ? `承認グループ 編集 — ${initial.nameJa}`
+          ? tr("承認グループ 編集 — {nameJa}", { nameJa: initial.nameJa })
           : tr("承認グループ 新規作成")
       }
     >

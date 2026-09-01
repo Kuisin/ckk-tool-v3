@@ -53,7 +53,10 @@ export function DeleteBpModal({
       loading={isPending}
       message={
         target
-          ? `${entityLabel}「${label(target)}」を削除します。この操作は取り消せません。`
+          ? tr(
+              "{entityLabel}「{v1}」を削除します。この操作は取り消せません。",
+              { entityLabel: entityLabel, v1: label(target) },
+            )
           : ""
       }
       onClose={onClose}
@@ -64,7 +67,10 @@ export function DeleteBpModal({
           if (result.ok) {
             notifications.show({
               title: tr("削除しました"),
-              message: `${entityLabel}「${label(target)}」を削除しました`,
+              message: tr("{entityLabel}「{v1}」を削除しました", {
+                entityLabel: entityLabel,
+                v1: label(target),
+              }),
               color: "green",
             });
             onClose();
@@ -79,7 +85,7 @@ export function DeleteBpModal({
         });
       }}
       opened={opened}
-      title={`${entityLabel}の削除`}
+      title={tr("{entityLabel}の削除", { entityLabel: entityLabel })}
       warning={tr(
         tr(
           tr(
@@ -113,8 +119,14 @@ export function ToggleBpActiveModal({
       message={
         target
           ? isActive
-            ? `${entityLabel}「${label(target)}」を無効化します。新規のドキュメントで選択できなくなります。`
-            : `${entityLabel}「${label(target)}」を有効化します。再びドキュメントで選択できるようになります。`
+            ? tr(
+                "{entityLabel}「{v1}」を無効化します。新規のドキュメントで選択できなくなります。",
+                { entityLabel: entityLabel, v1: label(target) },
+              )
+            : tr(
+                "{entityLabel}「{v1}」を有効化します。再びドキュメントで選択できるようになります。",
+                { entityLabel: entityLabel, v1: label(target) },
+              )
           : ""
       }
       onClose={onClose}
@@ -125,7 +137,11 @@ export function ToggleBpActiveModal({
           if (result.ok) {
             notifications.show({
               title: isActive ? "無効化しました" : tr("有効化しました"),
-              message: `${entityLabel}「${label(target)}」を${isActive ? "無効化" : "有効化"}しました`,
+              message: tr("{entityLabel}「{v1}」を{v2}しました", {
+                entityLabel: entityLabel,
+                v1: label(target),
+                v2: isActive ? "無効化" : "有効化",
+              }),
               color: "green",
             });
             onClose();
@@ -140,7 +156,11 @@ export function ToggleBpActiveModal({
         });
       }}
       opened={opened}
-      title={isActive ? `${entityLabel}の無効化` : `${entityLabel}の有効化`}
+      title={
+        isActive
+          ? tr("{entityLabel}の無効化", { entityLabel: entityLabel })
+          : tr("{entityLabel}の有効化", { entityLabel: entityLabel })
+      }
     />
   );
 }
@@ -193,7 +213,7 @@ export function AddContactModal({
       if (result.ok) {
         notifications.show({
           title: tr("追加しました"),
-          message: `担当者「${name}」を追加しました`,
+          message: tr("担当者「{name}」を追加しました", { name: name }),
           color: "green",
         });
         resetFields();
@@ -220,7 +240,7 @@ export function AddContactModal({
       opened={opened}
       size="md"
       submitLabel={tr("追加")}
-      title={`担当者の追加 — ${bpName}`}
+      title={tr("担当者の追加 — {bpName}", { bpName: bpName })}
     >
       <Stack gap="sm">
         <SimpleGrid cols={2} spacing="sm">

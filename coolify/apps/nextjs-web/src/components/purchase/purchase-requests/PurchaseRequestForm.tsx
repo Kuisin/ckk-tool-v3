@@ -156,8 +156,12 @@ export function PurchaseRequestForm({
           title: tr("保存しました"),
           message:
             mode === "edit"
-              ? `購買依頼 ${result.data.requestNumber} を更新しました`
-              : `購買依頼 ${result.data.requestNumber} を作成しました`,
+              ? tr("購買依頼 {requestNumber} を更新しました", {
+                  requestNumber: result.data.requestNumber,
+                })
+              : tr("購買依頼 {requestNumber} を作成しました", {
+                  requestNumber: result.data.requestNumber,
+                }),
           color: "green",
         });
         router.push(`${BASE_PATH}/${result.data.requestNumber}`);
@@ -194,7 +198,7 @@ export function PurchaseRequestForm({
       }
       title={
         mode === "edit"
-          ? `購買依頼 編集 ${requestNumber ?? ""}`
+          ? tr("購買依頼 編集 {v0}", { v0: requestNumber ?? "" })
           : tr("購買依頼 新規作成")
       }
     >

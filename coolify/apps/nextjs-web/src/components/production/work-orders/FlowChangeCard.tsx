@@ -129,11 +129,15 @@ export function FlowChangeCard({
             </>
           ) : null
         }
-        description={`${change.summary}｜依頼: ${change.requestedByName ?? "—"}｜${stepLabel}。${
-          change.appliedAt != null
-            ? "適用済みです（事後承認 — 差し戻されても自動では戻りません）。"
-            : "承認されるまで工程は変わりません。"
-        }`}
+        description={tr("{summary}｜依頼: {v1}｜{stepLabel}。{v3}", {
+          summary: change.summary,
+          v1: change.requestedByName ?? "—",
+          stepLabel: stepLabel,
+          v3:
+            change.appliedAt != null
+              ? "適用済みです（事後承認 — 差し戻されても自動では戻りません）。"
+              : "承認されるまで工程は変わりません。",
+        })}
         icon={<IconGitBranch size={20} />}
         title={
           canAct ? "工程フロー変更の承認" : tr("工程フロー変更の承認依頼中")

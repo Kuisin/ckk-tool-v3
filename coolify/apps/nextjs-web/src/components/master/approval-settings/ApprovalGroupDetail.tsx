@@ -229,6 +229,7 @@ function ApprovalPermissionCell({
 }: {
   approvals: MemberApproval[];
 }) {
+  const tr = useTr();
   const locale = useLocale();
   if (approvals.length === 0) {
     return (
@@ -243,11 +244,20 @@ function ApprovalPermissionCell({
         const color = a.allowed ? (a.unrestricted ? "green" : "yellow") : "red";
         const label = a.allowed
           ? a.unrestricted
-            ? `${a.label}を承認できます`
-            : `${a.label}を承認できますが、権限の範囲が${a.scopes
-                .map((s) => permissionScopeLabel(s, locale))
-                .join("・")}に限定されています（範囲外の書類は承認できません）`
-          : `${a.label}を閲覧・編集できる権限（${a.permissionCode}:READ / UPDATE）がありません — 承認ボタンを押しても弾かれます`;
+            ? tr("{label}を承認できます", { label: a.label })
+            : tr(
+                "{label}を承認できますが、権限の範囲が{v1}に限定されています（範囲外の書類は承認できません）",
+                {
+                  label: a.label,
+                  v1: a.scopes
+                    .map((s) => permissionScopeLabel(s, locale))
+                    .join("・"),
+                },
+              )
+          : tr(
+              "{label}を閲覧・編集できる権限（{permissionCode}:READ / UPDATE）がありません — 承認ボタンを押しても弾かれます",
+              { label: a.label, permissionCode: a.permissionCode },
+            );
         return (
           <Tooltip key={a.targetType} label={label} withinPortal>
             <Badge color={color} size="sm" variant="light">
@@ -326,7 +336,10 @@ export function ApprovalGroupDetail({
       if (result.ok) {
         notifications.show({
           title: member.isActive ? "無効化しました" : tr("有効化しました"),
-          message: `メンバー「${member.displayName}」を${member.isActive ? "無効化" : "有効化"}しました`,
+          message: tr("メンバー「{displayName}」を{v1}しました", {
+            displayName: member.displayName,
+            v1: member.isActive ? "無効化" : "有効化",
+          }),
           color: "green",
         });
         router.refresh();
@@ -373,7 +386,10 @@ export function ApprovalGroupDetail({
         <FieldValue label={tr("名称")} value={record.nameJa} />
         <FieldValue
           label={tr("メンバー数")}
-          value={`${activeCount}名（有効） / ${record.members.length}名`}
+          value={tr("{activeCount}名（有効） / {v1}名", {
+            activeCount: activeCount,
+            v1: record.members.length,
+          })}
         />
         <FieldValue
           label={tr("状態")}

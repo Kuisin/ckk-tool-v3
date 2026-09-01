@@ -301,7 +301,7 @@ export function DisplayDetailView({
           <SegmentedControl
             data={machineScreens.map((screen, i) => ({
               value: screen.id,
-              label: `${screen.screenIndex ?? i + 1} 枚目`,
+              label: tr("{v0} 枚目", { v0: screen.screenIndex ?? i + 1 }),
             }))}
             onChange={(id) => {
               if (id !== display.id) {

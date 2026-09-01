@@ -110,7 +110,10 @@ export function StorageLocationsPanel({
   function onDeleteLocation(loc: StorageLocationRow) {
     openConfirm({
       title: tr("保管場所の削除"),
-      message: `「${loc.nameJa}」（棚 ${loc.shelves.length} 件を含む）を削除します。この操作は取り消せません。`,
+      message: tr(
+        "「{nameJa}」（棚 {v1} 件を含む）を削除します。この操作は取り消せません。",
+        { nameJa: loc.nameJa, v1: loc.shelves.length },
+      ),
       confirmLabel: "削除",
       onConfirm: () => {
         startTransition(async () => {
@@ -137,7 +140,9 @@ export function StorageLocationsPanel({
   function onDeleteShelf(shelf: StorageShelfRow) {
     openConfirm({
       title: tr("棚の削除"),
-      message: `棚「${shelf.code}」を削除します。この操作は取り消せません。`,
+      message: tr("棚「{code}」を削除します。この操作は取り消せません。", {
+        code: shelf.code,
+      }),
       confirmLabel: "削除",
       onConfirm: () => {
         startTransition(async () => {

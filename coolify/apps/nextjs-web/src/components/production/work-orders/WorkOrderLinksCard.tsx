@@ -64,7 +64,9 @@ function LinkRow({
       </Link>
       <StatusBadge entity="WorkOrder" status={link.status} />
       <Badge color="gray" variant="light">
-        {link.quantity != null ? `${link.quantity} 本` : tr("完成数全量")}
+        {link.quantity != null
+          ? tr("{quantity} 本", { quantity: link.quantity })
+          : tr("完成数全量")}
       </Badge>
       {onRemove && (
         <ActionIcon
@@ -118,7 +120,9 @@ export function WorkOrderLinksCard({
       if (result.ok) {
         notifications.show({
           title: tr("先行指示書をリンクしました"),
-          message: `#${sourceNumber} の完了後にこの指示書を開始できます`,
+          message: tr("#{sourceNumber} の完了後にこの指示書を開始できます", {
+            sourceNumber: sourceNumber,
+          }),
           color: "green",
         });
         setAddOpen(false);

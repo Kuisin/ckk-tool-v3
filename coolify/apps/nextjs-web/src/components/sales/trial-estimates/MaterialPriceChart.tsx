@@ -128,7 +128,10 @@ export function MaterialPriceChart({
               {/* wide hit area — the single interactive (keyboard-focusable) target */}
               {/* biome-ignore lint/a11y/useSemanticElements: an SVG <circle> cannot be a native <button> */}
               <circle
-                aria-label={`${p.date} ${formatMoney(p.unitPrice)} を参照価格に設定`}
+                aria-label={tr("{date} {v1} を参照価格に設定", {
+                  date: p.date,
+                  v1: formatMoney(p.unitPrice),
+                })}
                 cx={x(i)}
                 cy={y(p.unitPrice)}
                 fill="transparent"

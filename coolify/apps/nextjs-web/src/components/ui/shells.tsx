@@ -516,6 +516,7 @@ export interface AuditEntry {
  * 開く — 何がどう変わったかを画面遷移なしで確認できる。
  */
 export function AuditTimeline({ entries }: { entries: AuditEntry[] }) {
+  const tr = useTr();
   const [selected, setSelected] = useState<AuditEntry | null>(null);
   return (
     <>
@@ -546,7 +547,7 @@ export function AuditTimeline({ entries }: { entries: AuditEntry[] }) {
             lineVariant="dotted"
             title={
               <UnstyledButton
-                aria-label={`${log.action} の詳細を開く`}
+                aria-label={tr("{action} の詳細を開く", { action: log.action })}
                 onClick={() => setSelected(log)}
                 style={{ display: "block", width: "100%" }}
               >
@@ -644,6 +645,7 @@ export function LocalizedTextInput({
    */
   help?: { help: string; manual: string };
 }) {
+  const tr = useTr();
   const [opened, { open, close }] = useDisclosure(false);
   const translations: Record<string, string> = translationsProps.value ?? {};
   const [draft, setDraft] = useState<Record<string, string>>(translations);
@@ -681,7 +683,7 @@ export function LocalizedTextInput({
           close();
         }}
         opened={opened}
-        title={`${label} — 多言語`}
+        title={tr("{label} — 多言語", { label: label })}
       >
         <Stack gap="sm">
           <Text c="dimmed" size="xs">

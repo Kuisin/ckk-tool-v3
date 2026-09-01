@@ -143,7 +143,7 @@ export function OrderIntakeFolderPanel({
       autoClose: false,
       color: "blue",
       loading: true,
-      message: `${files.length} 件をフォルダへ投入しています…`,
+      message: tr("{v0} 件をフォルダへ投入しています…", { v0: files.length }),
       title: tr("注文書取込"),
       withCloseButton: false,
     });
@@ -156,7 +156,11 @@ export function OrderIntakeFolderPanel({
         autoClose: false,
         color: "blue",
         loading: true,
-        message: `${i + 1} / ${files.length} 件目: ${file.name}`,
+        message: tr("{v0} / {v1} 件目: {name}", {
+          v0: i + 1,
+          v1: files.length,
+          name: file.name,
+        }),
         title: tr("注文書取込"),
         withCloseButton: false,
       });
@@ -174,7 +178,7 @@ export function OrderIntakeFolderPanel({
         else
           failures.push(`${file.name}: ${json?.error ?? "投入に失敗しました"}`);
       } catch {
-        failures.push(`${file.name}: 通信エラー`);
+        failures.push(tr("{name}: 通信エラー", { name: file.name }));
       }
     }
 
@@ -185,8 +189,14 @@ export function OrderIntakeFolderPanel({
       loading: false,
       message:
         failures.length > 0
-          ? `${okCount} 件を投入 / 失敗: ${failures.join(" ・ ")}`
-          : `${okCount} 件を取込待ちに入れました。取込はこのあと順番に実行されます`,
+          ? tr("{okCount} 件を投入 / 失敗: {v1}", {
+              okCount: okCount,
+              v1: failures.join(" ・ "),
+            })
+          : tr(
+              "{okCount} 件を取込待ちに入れました。取込はこのあと順番に実行されます",
+              { okCount: okCount },
+            ),
       title: failures.length > 0 ? "投入（一部失敗）" : tr("投入しました"),
       withCloseButton: true,
     });
@@ -442,7 +452,11 @@ function DocumentCell({ row }: { row: FolderRow }) {
           </Text>
           {failure && (
             <Tooltip
-              label={[failure.summary, failure.cause, `対処: ${failure.hint}`]
+              label={[
+                failure.summary,
+                failure.cause,
+                tr("対処: {hint}", { hint: failure.hint }),
+              ]
                 .filter(Boolean)
                 .join("\n")}
               multiline

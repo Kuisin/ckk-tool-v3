@@ -273,7 +273,10 @@ export function UnifiedInventory({
           label: r.productCode
             ? `${r.productName}（${r.productCode}）`
             : r.productName,
-          detail: r.lotNumber != null ? `ロット ${r.lotNumber}` : null,
+          detail:
+            r.lotNumber != null
+              ? tr("ロット {lotNumber}", { lotNumber: r.lotNumber })
+              : null,
           available: r.available,
           unit: tr("本"),
           integerOnly: true,
@@ -735,7 +738,10 @@ function LocationView({
             key: `p:${p.id}`,
             kind,
             label: p.productName,
-            sub: p.lotNumber != null ? `ロット ${p.lotNumber}` : null,
+            sub:
+              p.lotNumber != null
+                ? tr("ロット {lotNumber}", { lotNumber: p.lotNumber })
+                : null,
             quantity: p.quantity,
             unit: tr("本"),
             source: {
@@ -744,7 +750,10 @@ function LocationView({
               label: p.productCode
                 ? `${p.productName}（${p.productCode}）`
                 : p.productName,
-              detail: p.lotNumber != null ? `ロット ${p.lotNumber}` : null,
+              detail:
+                p.lotNumber != null
+                  ? tr("ロット {lotNumber}", { lotNumber: p.lotNumber })
+                  : null,
               available: p.available,
               unit: tr("本"),
               integerOnly: true,
@@ -884,7 +893,7 @@ function LocationView({
             )}
           </Group>
           <FloorMapCanvas
-            imageAlt={`フロアマップ: ${activeMap.name}`}
+            imageAlt={tr("フロアマップ: {name}", { name: activeMap.name })}
             imageUrl={
               activeMap.hasImage
                 ? `/api/kiosk/floor-maps/${activeMap.id}/image`
@@ -900,7 +909,11 @@ function LocationView({
                 id: String(l.id),
                 x: l.mapX ?? 50,
                 y: l.mapY ?? 50,
-                label: `${l.name}（${l.code}）｜在庫 ${count} 件`,
+                label: tr("{name}（{code}）｜在庫 {count} 件", {
+                  name: l.name,
+                  code: l.code,
+                  count: count,
+                }),
                 selected: selectedLocId === l.id,
                 icon: (
                   <IconBuildingWarehouse
