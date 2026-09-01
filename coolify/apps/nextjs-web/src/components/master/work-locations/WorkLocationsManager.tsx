@@ -13,7 +13,10 @@
 import {
   ActionIcon,
   Badge,
+  Box,
+  Divider,
   Group,
+  Menu,
   NumberInput,
   Paper,
   Select,
@@ -29,6 +32,7 @@ import { notifications } from "@mantine/notifications";
 import {
   IconAdjustments,
   IconBuildingFactory2,
+  IconDotsVertical,
   IconEdit,
   IconMapPin,
   IconPlus,
@@ -65,6 +69,7 @@ import {
 import { PageHeader } from "@/components/ui/PageHeader";
 import { LocalizedTextInput } from "@/components/ui/shells";
 import { useTr } from "@/hooks/useTr";
+import { useIsMobile } from "@/hooks/useViewport";
 import { fieldHelp, fieldHelpTip } from "@/lib/field-help";
 import { openInNewContext } from "@/lib/pwa-display";
 import type { Translate } from "@/lib/ui-text";
@@ -461,6 +466,7 @@ function TypesModal({
 }: ModalBaseProps & { types: WorkLocationTypeRow[]; onDone: () => void }) {
   const tr = useTr();
   const [isPending, startTransition] = useTransition();
+  const isMobile = useIsMobile();
   const [rows, setRows] = useState<WorkLocationTypeRow[]>(types);
 
   useEffect(() => {
@@ -505,68 +511,86 @@ function TypesModal({
           )}
         </Text>
         {rows.map((r, idx) => (
-          <Group gap="xs" key={r.builtin ? r.key : `row-${idx}`} wrap="nowrap">
-            <TextInput
-              aria-label={tr("種別キー")}
-              disabled={r.builtin}
-              onChange={(e) => {
-                const key = e.currentTarget.value;
-                setRows((prev) =>
-                  prev.map((p, i) => (i === idx ? { ...p, key } : p)),
-                );
-              }}
-              placeholder={tr("キー（例: line）")}
-              value={r.key}
-              w={150}
-            />
-            <TextInput
-              aria-label={tr("種別表示名（日本語）")}
-              disabled={r.builtin}
-              onChange={(e) => {
-                const labelJa = e.currentTarget.value;
-                setRows((prev) =>
-                  prev.map((p, i) => (i === idx ? { ...p, labelJa } : p)),
-                );
-              }}
-              placeholder={tr("表示名（日本語）")}
-              style={{ flex: 1 }}
-              value={r.labelJa}
-            />
-            <TextInput
-              aria-label={tr("種別表示名（English）")}
-              disabled={r.builtin}
-              onChange={(e) => {
-                const labelEn = e.currentTarget.value;
-                setRows((prev) =>
-                  prev.map((p, i) => (i === idx ? { ...p, labelEn } : p)),
-                );
-              }}
-              placeholder="English"
-              style={{ flex: 1 }}
-              value={r.labelEn}
-            />
-            {r.builtin ? (
-              <Badge color="gray" variant="light">
-                {tr("組み込み")}
-              </Badge>
-            ) : (
-              <Tooltip label="削除" withinPortal>
-                <ActionIcon
-                  aria-label={tr("種別を削除")}
-                  color="red"
-                  onClick={() =>
-                    setRows((prev) => prev.filter((_, i) => i !== idx))
-                  }
-                  variant="subtle"
-                >
-                  <IconTrash size={14} />
-                </ActionIcon>
-              </Tooltip>
-            )}
-          </Group>
+          // 携帯では 3 つの入力を横に並べると 1 つ 60px 程度になり、
+          // 何を打っているのか読めない。1 行 = 1 カードで縦に積む
+          // （design.md §20.2 の「編集可能な表 → カード」）。
+          <Paper
+            key={r.builtin ? r.key : `row-${idx}`}
+            p={isMobile ? "xs" : 0}
+            radius="sm"
+            withBorder={isMobile}
+          >
+            <Group
+              align={isMobile ? "stretch" : "flex-end"}
+              gap="xs"
+              wrap={isMobile ? "wrap" : "nowrap"}
+            >
+              <TextInput
+                aria-label={tr("種別キー")}
+                disabled={r.builtin}
+                label={isMobile ? tr("キー") : undefined}
+                onChange={(e) => {
+                  const key = e.currentTarget.value;
+                  setRows((prev) =>
+                    prev.map((p, i) => (i === idx ? { ...p, key } : p)),
+                  );
+                }}
+                placeholder={tr("キー（例: line）")}
+                value={r.key}
+                w={isMobile ? "100%" : 150}
+              />
+              <TextInput
+                aria-label={tr("種別表示名（日本語）")}
+                disabled={r.builtin}
+                label={isMobile ? tr("表示名（日本語）") : undefined}
+                onChange={(e) => {
+                  const labelJa = e.currentTarget.value;
+                  setRows((prev) =>
+                    prev.map((p, i) => (i === idx ? { ...p, labelJa } : p)),
+                  );
+                }}
+                placeholder={tr("表示名（日本語）")}
+                style={isMobile ? { width: "100%" } : { flex: 1 }}
+                value={r.labelJa}
+              />
+              <TextInput
+                aria-label={tr("種別表示名（English）")}
+                disabled={r.builtin}
+                label={isMobile ? tr("表示名（English）") : undefined}
+                onChange={(e) => {
+                  const labelEn = e.currentTarget.value;
+                  setRows((prev) =>
+                    prev.map((p, i) => (i === idx ? { ...p, labelEn } : p)),
+                  );
+                }}
+                placeholder="English"
+                style={isMobile ? { width: "100%" } : { flex: 1 }}
+                value={r.labelEn}
+              />
+              {r.builtin ? (
+                <Badge color="gray" variant="light">
+                  {tr("組み込み")}
+                </Badge>
+              ) : (
+                <Tooltip label="削除" withinPortal>
+                  <ActionIcon
+                    aria-label={tr("種別を削除")}
+                    color="red"
+                    onClick={() =>
+                      setRows((prev) => prev.filter((_, i) => i !== idx))
+                    }
+                    variant="subtle"
+                  >
+                    <IconTrash size={14} />
+                  </ActionIcon>
+                </Tooltip>
+              )}
+            </Group>
+          </Paper>
         ))}
         <Group>
           <GhostButton
+            fullWidth={isMobile}
             leftSection={<IconPlus size={14} />}
             onClick={() =>
               setRows((prev) => [
@@ -596,6 +620,7 @@ export function WorkLocationsManager({
 }) {
   const tr = useTr();
   const router = useRouter();
+  const isMobile = useIsMobile();
   const [, startTransition] = useTransition();
 
   const [groupModal, setGroupModal] = useState<{
@@ -624,18 +649,21 @@ export function WorkLocationsManager({
     <Stack gap="md">
       <PageHeader
         actions={
-          <Group gap="xs">
+          // 携帯では題と並ぶ 1 行に入らないので文字を詰める（SY09 と同じ流儀）。
+          <Group gap="xs" wrap="nowrap">
             <SecondaryButton
               leftSection={<IconAdjustments size={14} />}
               onClick={() => setTypesOpen(true)}
+              px={isMobile ? "xs" : undefined}
             >
-              {tr("種別管理")}
+              {isMobile ? tr("種別") : tr("種別管理")}
             </SecondaryButton>
             <PrimaryButton
               leftSection={<IconPlus size={14} />}
               onClick={() => setGroupModal({ opened: true, group: null })}
+              px={isMobile ? "xs" : undefined}
             >
-              {tr("グループ追加")}
+              {isMobile ? tr("追加") : tr("グループ追加")}
             </PrimaryButton>
           </Group>
         }
@@ -653,174 +681,320 @@ export function WorkLocationsManager({
           )}
         />
       ) : (
-        groups.map((group) => (
-          <Paper key={group.id} p="md" radius="md" withBorder>
-            <Stack gap="sm">
-              <Group justify="space-between" wrap="wrap">
-                <Group gap="sm" style={{ minWidth: 0 }} wrap="nowrap">
-                  <DocNumber>{group.code}</DocNumber>
-                  <Text fw={600} size="sm" truncate>
-                    {group.nameJa}
-                  </Text>
-                  <Badge color="grape" size="sm" variant="light">
-                    {typeLabel(group.typeKey)}
-                  </Badge>
-                  {group.plantName && (
-                    <Group gap={4} wrap="nowrap">
-                      <IconBuildingFactory2 size={14} />
-                      <Text c="dimmed" size="xs">
-                        {group.plantName}
-                      </Text>
+        groups.map((group) => {
+          // 新しい場所の表示順（末尾 + 10）。操作は携帯のメニューと
+          // デスクトップのボタン列で共有するので、ここで 1 つだけ作る。
+          const nextSortOrder =
+            group.locations.length > 0
+              ? Math.max(...group.locations.map((l) => l.sortOrder)) + 10
+              : 10;
+          const addLocation = () =>
+            setLocationModal({
+              opened: true,
+              groupId: group.id,
+              location: null,
+              defaultSortOrder: nextSortOrder,
+            });
+          const editLocation = (loc: WorkLocationRow) =>
+            setLocationModal({
+              opened: true,
+              groupId: group.id,
+              location: loc,
+              defaultSortOrder: loc.sortOrder,
+            });
+          const noLocations = group.locations.length === 0;
+
+          return (
+            <Paper key={group.id} p="md" radius="md" withBorder>
+              <Stack gap="sm">
+                <Group align="flex-start" justify="space-between" wrap="nowrap">
+                  {/* 携帯では 5 つの情報が 1 行に入らないので折り返す。
+                      truncate は横並びのときだけ効かせる（折り返す側で
+                      切り詰めると名称が読めなくなる）。 */}
+                  <Group
+                    gap="xs"
+                    style={{ minWidth: 0 }}
+                    wrap={isMobile ? "wrap" : "nowrap"}
+                  >
+                    <DocNumber>{group.code}</DocNumber>
+                    <Text fw={600} size="sm" truncate={!isMobile}>
+                      {group.nameJa}
+                    </Text>
+                    <Badge color="grape" size="sm" variant="light">
+                      {typeLabel(group.typeKey)}
+                    </Badge>
+                    {group.plantName && (
+                      <Group gap={4} wrap="nowrap">
+                        <IconBuildingFactory2 size={14} />
+                        <Text c="dimmed" size="xs">
+                          {group.plantName}
+                        </Text>
+                      </Group>
+                    )}
+                    <ActiveBadge active={group.isActive} />
+                  </Group>
+                  {isMobile ? (
+                    // 操作 4 つを横に並べると幅を食い切るので「⋯」に畳む
+                    // （design.md §20.2 の「ボタン列 → メニュー」）。
+                    <Menu position="bottom-end" shadow="sm" withinPortal>
+                      <Menu.Target>
+                        <ActionIcon
+                          aria-label={tr("グループの操作")}
+                          color="gray"
+                          style={{ flexShrink: 0 }}
+                          variant="subtle"
+                        >
+                          <IconDotsVertical size={16} />
+                        </ActionIcon>
+                      </Menu.Target>
+                      <Menu.Dropdown>
+                        <Menu.Item
+                          leftSection={<IconPlus size={14} />}
+                          onClick={addLocation}
+                        >
+                          {tr("場所を追加")}
+                        </Menu.Item>
+                        <Menu.Item
+                          disabled={noLocations}
+                          leftSection={<IconQrcode size={14} />}
+                          onClick={() =>
+                            openQrPrintSheet(group.locations.map((l) => l.id))
+                          }
+                        >
+                          {tr("QR印刷")}
+                        </Menu.Item>
+                        <Menu.Item
+                          leftSection={<IconEdit size={14} />}
+                          onClick={() => setGroupModal({ opened: true, group })}
+                        >
+                          {tr("編集")}
+                        </Menu.Item>
+                        <Menu.Divider />
+                        <Menu.Item
+                          color="red"
+                          leftSection={<IconTrash size={14} />}
+                          onClick={() => setDeleteGroup(group)}
+                        >
+                          {tr("削除")}
+                        </Menu.Item>
+                      </Menu.Dropdown>
+                    </Menu>
+                  ) : (
+                    <Group gap="xs" wrap="nowrap">
+                      <GhostButton
+                        leftSection={<IconPlus size={14} />}
+                        onClick={addLocation}
+                        size="xs"
+                      >
+                        {tr("場所を追加")}
+                      </GhostButton>
+                      <GhostButton
+                        disabled={noLocations}
+                        leftSection={<IconQrcode size={14} />}
+                        onClick={() =>
+                          openQrPrintSheet(group.locations.map((l) => l.id))
+                        }
+                        size="xs"
+                      >
+                        {tr("QR印刷")}
+                      </GhostButton>
+                      <GhostButton
+                        leftSection={<IconEdit size={14} />}
+                        onClick={() => setGroupModal({ opened: true, group })}
+                        size="xs"
+                      >
+                        {tr("編集")}
+                      </GhostButton>
+                      <GhostButton
+                        color="red"
+                        leftSection={<IconTrash size={14} />}
+                        onClick={() => setDeleteGroup(group)}
+                        size="xs"
+                      >
+                        {tr("削除")}
+                      </GhostButton>
                     </Group>
                   )}
-                  <ActiveBadge active={group.isActive} />
                 </Group>
-                <Group gap="xs" wrap="nowrap">
-                  <GhostButton
-                    leftSection={<IconPlus size={14} />}
-                    onClick={() =>
-                      setLocationModal({
-                        opened: true,
-                        groupId: group.id,
-                        location: null,
-                        defaultSortOrder:
-                          group.locations.length > 0
-                            ? Math.max(
-                                ...group.locations.map((l) => l.sortOrder),
-                              ) + 10
-                            : 10,
-                      })
-                    }
-                    size="xs"
-                  >
-                    {tr("場所を追加")}
-                  </GhostButton>
-                  <GhostButton
-                    disabled={group.locations.length === 0}
-                    leftSection={<IconQrcode size={14} />}
-                    onClick={() =>
-                      openQrPrintSheet(group.locations.map((l) => l.id))
-                    }
-                    size="xs"
-                  >
-                    {tr("QR印刷")}
-                  </GhostButton>
-                  <GhostButton
-                    leftSection={<IconEdit size={14} />}
-                    onClick={() => setGroupModal({ opened: true, group })}
-                    size="xs"
-                  >
-                    {tr("編集")}
-                  </GhostButton>
-                  <GhostButton
-                    color="red"
-                    leftSection={<IconTrash size={14} />}
-                    onClick={() => setDeleteGroup(group)}
-                    size="xs"
-                  >
-                    削除
-                  </GhostButton>
-                </Group>
-              </Group>
 
-              {group.locations.length === 0 ? (
-                <Text c="dimmed" size="sm">
-                  {tr(
-                    tr(
+                {noLocations ? (
+                  <Text c="dimmed" size="sm">
+                    {tr(
                       "場所が未登録です（「場所を追加」から機械 1 台・1 区画を登録）",
-                    ),
-                  )}
-                </Text>
-              ) : (
-                <Table striped withTableBorder>
-                  <Table.Thead>
-                    <Table.Tr>
-                      <Table.Th w={140}>コード</Table.Th>
-                      <Table.Th>{tr("名称")}</Table.Th>
-                      <Table.Th w={120}>{tr("キャパシティ")}</Table.Th>
-                      <Table.Th w={110}>{tr("計画 / 実績")}</Table.Th>
-                      <Table.Th w={80}>{tr("状態")}</Table.Th>
-                      <Table.Th w={80} />
-                    </Table.Tr>
-                  </Table.Thead>
-                  <Table.Tbody>
-                    {group.locations.map((loc) => (
-                      <Table.Tr key={loc.id}>
-                        <Table.Td>
-                          <DocNumber>{loc.code}</DocNumber>
-                        </Table.Td>
-                        <Table.Td>
-                          <Text size="sm">{loc.nameJa}</Text>
-                          {loc.notes && (
-                            <Text c="dimmed" size="xs">
-                              {loc.notes}
+                    )}
+                  </Text>
+                ) : isMobile ? (
+                  // 6 列の表は 390px では 1 列 40px になって読めない。
+                  // 区切り線で分けた 1 行 = 1 件へ落とす（design.md §8.1）。
+                  <Stack gap={0}>
+                    {group.locations.map((loc, i) => (
+                      <Box key={loc.id}>
+                        {i > 0 && <Divider />}
+                        <Group
+                          align="flex-start"
+                          gap="sm"
+                          py="sm"
+                          wrap="nowrap"
+                        >
+                          <Stack className="min-w-0 flex-1" gap={3}>
+                            <Group gap="xs" wrap="nowrap">
+                              <DocNumber>{loc.code}</DocNumber>
+                              <ActiveBadge active={loc.isActive} />
+                            </Group>
+                            <Text fw={500} size="sm">
+                              {loc.nameJa}
                             </Text>
-                          )}
-                        </Table.Td>
-                        <Table.Td>
-                          <Text className="tabular-nums" size="sm">
-                            {loc.capacity != null
-                              ? `${loc.capacity} 作業`
-                              : tr("制限なし")}
-                          </Text>
-                        </Table.Td>
-                        <Table.Td>
-                          <Text c="dimmed" className="tabular-nums" size="sm">
-                            {loc.planCount} / {loc.actualCount}
-                          </Text>
-                        </Table.Td>
-                        <Table.Td>
-                          <ActiveBadge active={loc.isActive} />
-                        </Table.Td>
-                        <Table.Td>
-                          <Group gap={4} justify="flex-end" wrap="nowrap">
-                            <Tooltip label={tr("QRラベルを印刷")} withinPortal>
+                            {loc.notes && (
+                              <Text c="dimmed" size="xs">
+                                {loc.notes}
+                              </Text>
+                            )}
+                            <Group gap="md" wrap="wrap">
+                              <Text
+                                c="dimmed"
+                                className="tabular-nums"
+                                size="xs"
+                              >
+                                {tr("キャパシティ")}{" "}
+                                {loc.capacity != null
+                                  ? `${loc.capacity} 作業`
+                                  : tr("制限なし")}
+                              </Text>
+                              <Text
+                                c="dimmed"
+                                className="tabular-nums"
+                                size="xs"
+                              >
+                                {tr("計画 / 実績")} {loc.planCount} /{" "}
+                                {loc.actualCount}
+                              </Text>
+                            </Group>
+                          </Stack>
+                          <Menu position="bottom-end" shadow="sm" withinPortal>
+                            <Menu.Target>
                               <ActionIcon
-                                aria-label={tr("作業場所のQRラベルを印刷")}
+                                aria-label={tr("作業場所の操作")}
                                 color="gray"
+                                style={{ flexShrink: 0 }}
+                                variant="subtle"
+                              >
+                                <IconDotsVertical size={16} />
+                              </ActionIcon>
+                            </Menu.Target>
+                            <Menu.Dropdown>
+                              <Menu.Item
+                                leftSection={<IconQrcode size={14} />}
                                 onClick={() => openQrPrintSheet([loc.id])}
-                                variant="subtle"
                               >
-                                <IconQrcode size={14} />
-                              </ActionIcon>
-                            </Tooltip>
-                            <Tooltip label={tr("編集")} withinPortal>
-                              <ActionIcon
-                                aria-label={tr("作業場所を編集")}
-                                color="gray"
-                                onClick={() =>
-                                  setLocationModal({
-                                    opened: true,
-                                    groupId: group.id,
-                                    location: loc,
-                                    defaultSortOrder: loc.sortOrder,
-                                  })
-                                }
-                                variant="subtle"
+                                {tr("QRラベルを印刷")}
+                              </Menu.Item>
+                              <Menu.Item
+                                leftSection={<IconEdit size={14} />}
+                                onClick={() => editLocation(loc)}
                               >
-                                <IconEdit size={14} />
-                              </ActionIcon>
-                            </Tooltip>
-                            <Tooltip label="削除" withinPortal>
-                              <ActionIcon
-                                aria-label={tr("作業場所を削除")}
+                                {tr("編集")}
+                              </Menu.Item>
+                              <Menu.Divider />
+                              <Menu.Item
                                 color="red"
+                                leftSection={<IconTrash size={14} />}
                                 onClick={() => setDeleteLocation(loc)}
-                                variant="subtle"
                               >
-                                <IconTrash size={14} />
-                              </ActionIcon>
-                            </Tooltip>
-                          </Group>
-                        </Table.Td>
-                      </Table.Tr>
+                                {tr("削除")}
+                              </Menu.Item>
+                            </Menu.Dropdown>
+                          </Menu>
+                        </Group>
+                      </Box>
                     ))}
-                  </Table.Tbody>
-                </Table>
-              )}
-            </Stack>
-          </Paper>
-        ))
+                  </Stack>
+                ) : (
+                  <Table striped withTableBorder>
+                    <Table.Thead>
+                      <Table.Tr>
+                        <Table.Th w={140}>コード</Table.Th>
+                        <Table.Th>{tr("名称")}</Table.Th>
+                        <Table.Th w={120}>{tr("キャパシティ")}</Table.Th>
+                        <Table.Th w={110}>{tr("計画 / 実績")}</Table.Th>
+                        <Table.Th w={80}>{tr("状態")}</Table.Th>
+                        <Table.Th w={80} />
+                      </Table.Tr>
+                    </Table.Thead>
+                    <Table.Tbody>
+                      {group.locations.map((loc) => (
+                        <Table.Tr key={loc.id}>
+                          <Table.Td>
+                            <DocNumber>{loc.code}</DocNumber>
+                          </Table.Td>
+                          <Table.Td>
+                            <Text size="sm">{loc.nameJa}</Text>
+                            {loc.notes && (
+                              <Text c="dimmed" size="xs">
+                                {loc.notes}
+                              </Text>
+                            )}
+                          </Table.Td>
+                          <Table.Td>
+                            <Text className="tabular-nums" size="sm">
+                              {loc.capacity != null
+                                ? `${loc.capacity} 作業`
+                                : tr("制限なし")}
+                            </Text>
+                          </Table.Td>
+                          <Table.Td>
+                            <Text c="dimmed" className="tabular-nums" size="sm">
+                              {loc.planCount} / {loc.actualCount}
+                            </Text>
+                          </Table.Td>
+                          <Table.Td>
+                            <ActiveBadge active={loc.isActive} />
+                          </Table.Td>
+                          <Table.Td>
+                            <Group gap={4} justify="flex-end" wrap="nowrap">
+                              <Tooltip
+                                label={tr("QRラベルを印刷")}
+                                withinPortal
+                              >
+                                <ActionIcon
+                                  aria-label={tr("作業場所のQRラベルを印刷")}
+                                  color="gray"
+                                  onClick={() => openQrPrintSheet([loc.id])}
+                                  variant="subtle"
+                                >
+                                  <IconQrcode size={14} />
+                                </ActionIcon>
+                              </Tooltip>
+                              <Tooltip label={tr("編集")} withinPortal>
+                                <ActionIcon
+                                  aria-label={tr("作業場所を編集")}
+                                  color="gray"
+                                  onClick={() => editLocation(loc)}
+                                  variant="subtle"
+                                >
+                                  <IconEdit size={14} />
+                                </ActionIcon>
+                              </Tooltip>
+                              <Tooltip label={tr("削除")} withinPortal>
+                                <ActionIcon
+                                  aria-label={tr("作業場所を削除")}
+                                  color="red"
+                                  onClick={() => setDeleteLocation(loc)}
+                                  variant="subtle"
+                                >
+                                  <IconTrash size={14} />
+                                </ActionIcon>
+                              </Tooltip>
+                            </Group>
+                          </Table.Td>
+                        </Table.Tr>
+                      ))}
+                    </Table.Tbody>
+                  </Table>
+                )}
+              </Stack>
+            </Paper>
+          );
+        })
       )}
 
       <GroupModal
