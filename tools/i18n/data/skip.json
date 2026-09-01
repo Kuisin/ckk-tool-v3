@@ -41,6 +41,8 @@
     "[form-completion] 完了通知に失敗:",
     "[form-completion] 既読の記録に失敗:",
     "[notification-digest] 掃き出しに失敗:",
-    "[realtime] LISTEN 開始に失敗（再試行します）:"
+    "[realtime] LISTEN 開始に失敗（再試行します）:",
+    "[notification-email] 設定が不正なので既定で動かします:",
+    "[portal-mail] send failed: リレーが受け取らなかった"
   ]
 }
