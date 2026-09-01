@@ -30,7 +30,6 @@ import {
   SecondaryButton,
 } from "@/components/ui/buttons";
 import { ModalShell } from "@/components/ui/modals";
-import { statusLabel as statusMapLabel } from "@/components/ui/StatusBadge";
 import { useIsMobile } from "@/hooks/useViewport";
 import { downloadFile } from "@/lib/download";
 import {
@@ -38,6 +37,7 @@ import {
   exportFilterToParams,
 } from "@/lib/form-export-core";
 import type { FormFieldDef } from "@/lib/form-schema";
+import { statusLabel as statusMapLabel } from "@/lib/status-map";
 
 export function ResponseExportModal({
   opened,

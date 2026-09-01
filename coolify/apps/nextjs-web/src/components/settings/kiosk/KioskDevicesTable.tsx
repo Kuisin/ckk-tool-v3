@@ -54,7 +54,7 @@ import {
 } from "@/components/ui/DataTable";
 import { HelpLabel } from "@/components/ui/HelpLabel";
 import { ConfirmModal, ModalShell } from "@/components/ui/modals";
-import { StatusBadge, statusOptions } from "@/components/ui/StatusBadge";
+import { StatusBadge } from "@/components/ui/StatusBadge";
 import { ListShell, LocalizedTextInput } from "@/components/ui/shells";
 import { useUrlSelectState, useUrlStringState } from "@/hooks/useUrlState";
 import { useIsMobile } from "@/hooks/useViewport";
@@ -62,6 +62,7 @@ import { formatCode, normalizeCode } from "@/lib/crockford";
 import { fieldHelp, fieldHelpTip } from "@/lib/field-help";
 import type { KioskDeviceRow, KioskPlantOption } from "@/lib/kiosk-admin";
 import type { ActionResult } from "@/lib/server-action";
+import { statusOptions } from "@/lib/status-map";
 import { KioskDeviceLogsModal } from "./KioskDeviceLogsModal";
 import { LinkQrScanner } from "./LinkQrScanner";
 import {

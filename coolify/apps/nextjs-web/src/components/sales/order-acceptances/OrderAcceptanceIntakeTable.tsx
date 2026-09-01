@@ -43,11 +43,12 @@ import { useFormat } from "@/components/layout/PreferencesProvider";
 import { PrimaryButton, SecondaryButton } from "@/components/ui/buttons";
 import { type Column, DataTable } from "@/components/ui/DataTable";
 import { NewButton } from "@/components/ui/NewButton";
-import { StatusBadge, statusOptions } from "@/components/ui/StatusBadge";
+import { StatusBadge } from "@/components/ui/StatusBadge";
 import { ListShell } from "@/components/ui/shells";
 import { useUrlSelectState, useUrlStringState } from "@/hooks/useUrlState";
 import { useIsMobile } from "@/hooks/useViewport";
 import { parseExtractError } from "@/lib/intake-extract-error";
+import { statusOptions } from "@/lib/status-map";
 import { INTAKE_SOURCE_BADGE, type OrderAcceptanceListRow } from "./model";
 
 /** 抽出失敗の表示（分類済みメッセージ — 旧形式の 1 行もそのまま読める）。 */
