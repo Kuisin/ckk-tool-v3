@@ -36,8 +36,8 @@ export function MasterListNav({
   sections,
   toolbar,
   searchable = false,
-  searchPlaceholder = "絞り込み...",
-  emptyMessage = "項目がありません。",
+  searchPlaceholder: searchPlaceholderProp,
+  emptyMessage: emptyMessageProp,
 }: {
   sections: MasterNavSection[];
   /** リスト上部のアクション行（追加・並び替えボタン等）。 */
@@ -48,6 +48,9 @@ export function MasterListNav({
   emptyMessage?: string;
 }) {
   const tr = useTranslations();
+  const searchPlaceholder =
+    searchPlaceholderProp ?? tr("ui.masterListNav.filterPlaceholder");
+  const emptyMessage = emptyMessageProp ?? tr("ui.masterListNav.noItems");
   const pathname = usePathname();
   const [query, setQuery] = useState("");
   const q = query.trim().toLowerCase();
@@ -81,7 +84,7 @@ export function MasterListNav({
 
       {totalShown === 0 ? (
         <Text c="dimmed" size="sm">
-          {q ? "絞り込みに一致する項目がありません。" : emptyMessage}
+          {q ? tr("ui.masterListNav.noItemsMatchTheFilter") : emptyMessage}
         </Text>
       ) : (
         filtered.map(

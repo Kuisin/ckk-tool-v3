@@ -17,7 +17,7 @@
 import { Anchor, Group, NumberInput, Select, Stack, Text } from "@mantine/core";
 import { useTranslations } from "next-intl";
 import { searchProductOptions } from "@/app/(dashboard)/_shared/option-search";
-import { PRODUCT_F4 } from "@/components/ui/f4-presets";
+import { productF4 } from "@/components/ui/f4-presets";
 import { HelpLabel } from "@/components/ui/HelpLabel";
 import { SearchSelect } from "@/components/ui/SearchSelect";
 import { useIsMobile } from "@/hooks/useViewport";
@@ -91,14 +91,14 @@ export function ProductPriceResolverInput({
   return (
     <Group align="flex-end" gap="sm" wrap={isMobile ? "wrap" : "nowrap"}>
       <SearchSelect
-        f4={PRODUCT_F4}
+        f4={productF4(tr)}
         flex={isMobile ? "1 1 100%" : 2}
         initialOption={
           value.productId
             ? { value: value.productId, label: value.productName }
             : null
         }
-        label="製品"
+        label={tr("common.product")}
         onChange={(v, opt) =>
           onChange(
             reresolve({ productId: v ?? "", productName: opt?.label ?? "" }),

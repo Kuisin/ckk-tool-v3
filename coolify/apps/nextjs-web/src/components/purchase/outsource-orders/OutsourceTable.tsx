@@ -89,7 +89,7 @@ export function OutsourceTable({ rows }: { rows: OutsourceStepRow[] }) {
     },
     {
       key: "productName",
-      header: "製品",
+      header: tr("common.product"),
       sortable: true,
       render: (r) => r.productName,
     },

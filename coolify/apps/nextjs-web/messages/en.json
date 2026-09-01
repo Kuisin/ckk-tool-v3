@@ -627,7 +627,43 @@
     "method2": "Method",
     "totalQuantity": "Total quantity",
     "customerOrderLine": "Customer / order line",
-    "changeHistory": "Change history"
+    "changeHistory": "Change history",
+    "lineItemsWithCount": "Line items ({count})",
+    "supportingDocumentsWithCount": "Supporting documents ({count})",
+    "filesWithCount": "Files ({count})",
+    "code": "Code",
+    "codeRequired": "Enter a code",
+    "defectTypes": "Defect types",
+    "disableAction": "Disable",
+    "nameJaRequired": "Enter a name (Japanese)",
+    "plants": "Sites",
+    "s3": "、",
+    "enterNameInJapanese": "Enter the name in Japanese",
+    "invalidEmailFormat": "Invalid email address format",
+    "products": "Products",
+    "defectType": "Defect type",
+    "product": "Product",
+    "guest": "Guest",
+    "site": "Site",
+    "detail": "Details",
+    "update": "Update",
+    "itemsCount": "{count}",
+    "detailBreadcrumb": "Details",
+    "deliveryNotesWithCount": "Delivery notes ({count})",
+    "included": "Yes",
+    "submit": "Submit",
+    "resolved": "Resolved",
+    "mustBeGreaterThanZero": "Must be greater than 0",
+    "mustBeZeroOrMore": "Must be 0 or more",
+    "addAtLeastOneLineItem": "Add at least one line item",
+    "mustBeAtLeastOne": "Must be 1 or more",
+    "countItems": "{count} items",
+    "requestOrReport": "Request / report",
+    "attachmentsWithCount": "Attachments ({count})",
+    "quantityPcs": "{quantity} pcs",
+    "searchQuotes": "Search quotes",
+    "selectAProduct": "Select a product",
+    "other": "Other"
   },
   "shell": {
     "appsLabel": "Apps",
@@ -1633,7 +1669,13 @@
       "months": "months",
       "runTheBillingClosing2": "Run the billing closing",
       "searchByCustomer": "Search by customer",
-      "thereAreNoBillingClosingsCreate": "There are no billing closings (create one via \"Run the billing closing\")"
+      "thereAreNoBillingClosingsCreate": "There are no billing closings (create one via \"Run the billing closing\")",
+      "createdInvoice": "Created invoice {number}",
+      "shipmentsSummary": "{count} · {quantity} pcs",
+      "shipmentNote": "{quantity} pcs · {amount}",
+      "titleWithClosingDate": "{customer} ({date} closing)",
+      "shipmentsCoveredWithCount": "Covered shipments ({count})",
+      "confirmGenerateBody": "Generates a draft invoice from {customer}'s {date} closing. The {count} covered shipments become the line items."
     },
     "invoices": {
       "issueThePdf": "Issue the PDF",
@@ -1658,7 +1700,22 @@
       "confirmSending": "Confirm sending",
       "markedAsPaid": "Marked as paid",
       "searchByInvoiceNumberOrCustomer": "Search by invoice number or customer",
-      "thereAreNoInvoicesGenerateThem": "There are no invoices (generate them from the billing closing)"
+      "thereAreNoInvoicesGenerateThem": "There are no invoices (generate them from the billing closing)",
+      "exportedAtLabel": "Exported at {dateTime}"
+    },
+    "invoiceDetail": {
+      "confirmIssueMessage": "This issues invoice {invoiceNumber}. The issue date is recorded as today.",
+      "issuedWithNumber": "Issued invoice {invoiceNumber}",
+      "confirmMarkSentMessage": "This marks invoice {invoiceNumber} as sent.",
+      "markedSentWithNumber": "Marked invoice {invoiceNumber} as sent",
+      "confirmMarkPaidMessage": "This marks invoice {invoiceNumber} as paid.",
+      "markedPaidWithNumber": "Marked invoice {invoiceNumber} as paid"
+    },
+    "closingTable": {
+      "yearLabel": "{year}",
+      "monthLabel": "Month {month}",
+      "createdAndUpdatedCounts": "Created {created} / updated {updated}",
+      "skippedCount": "Skipped {skipped} already processed"
     }
   },
   "general": {
@@ -1779,7 +1836,11 @@
       "selectAnInspectionTemplate": "Select an inspection template",
       "assignSomeonePerStepOptionalA": "Assign someone per step (optional). A dated work plan is created for each step you fill in. To set times and quantities too, add them afterwards on each step's plan panel.",
       "workPlanAssignees": "Work plan (assignees)",
-      "plannedDate": "Planned date"
+      "plannedDate": "Planned date",
+      "flowChangeAlreadyApplied": "Already applied (post-hoc approval — sending it back will not automatically revert it).",
+      "flowChangeApprovalTitle": "Approve the workflow change",
+      "flowChangeDescription": "{summary} | Requested by: {requestedBy} | {stepLabel}. {note}",
+      "flowChangeNotAppliedYet": "The steps will not change until approved."
     },
     "addBranchModal": {
       "theBranchWasAdded": "The branch was added",
@@ -1798,7 +1859,16 @@
       "goodPiecesFromTheBranchSeries": "Good pieces from the branch series' last step go into this stock when the work order completes",
       "receivingLocation": "Receiving location",
       "chooseAMergeTargetOrTo": "Choose a merge target, or \"to stock\". A branch always ends in a merge or in stock.",
-      "toReorderStepsDeleteTheBranch": "To reorder steps, delete the branch and build it again."
+      "toReorderStepsDeleteTheBranch": "To reorder steps, delete the branch and build it again.",
+      "addBranchTitle": "Add branch — {source}",
+      "branchFlowExplanation": "After the source step completes, the specified quantity flows into the added step series. Within the series, the received quantity automatically follows the previous step's good quantity.",
+      "branchableQuantity": "Branchable: {max} (unallocated process branch quantity)",
+      "editBranchTitle": "Edit branch — {steps}",
+      "fromSourceNSteps": "{count} step(s) from {source}",
+      "productStock": "Product stock",
+      "semiFinishedStock": "Semi-finished stock",
+      "theBranchWasUpdated": "Updated the branch",
+      "updateBranch": "Update branch"
     },
     "approvalStatusPanel": {
       "awaitingStart": "Awaiting start",
@@ -1807,7 +1877,19 @@
       "nothingIsAllocatedToADelivery": "Nothing is allocated to a delivery order yet",
       "unallocatedAllocatedOnADeliveryOrder": "Unallocated (allocated on a delivery order once complete)",
       "followingWorkOrderQuantityHandover": "Following work order (quantity handover)",
-      "approvalStatus": "Approval status"
+      "approvalStatus": "Approval status",
+      "allMembersApproval": "{group} (all members approve)",
+      "allocatedVsPlanned": "Allocated {allocated} pcs / planned {planned} pcs",
+      "customerAllocatedOfOrdered": "{customer} · allocated {allocated} / ordered {ordered} pcs",
+      "deliveryStatusQuantity": "{status} · {quantity} pcs{stockNote}",
+      "fullCompletedQuantity": "Full completed quantity",
+      "handedOverQuantity": "Handed over {quantity}",
+      "nPcs": "{quantity} pcs",
+      "receivedQuantity": "Received {quantity}",
+      "startedOn": "Started {date}",
+      "stepNumberApproval": "Approval step {step}",
+      "stockStorageNote": " (stock storage)",
+      "workOrderSubject": "Work order #{number}"
     },
     "defectRecordForm": {
       "enterTheDefectTypeAndDetails": "Enter the defect type and details for each row",
@@ -1816,7 +1898,9 @@
       "defectRecordOptional": "Defect record (optional)",
       "defectDetails": "Defect details",
       "saveDefectRecords": "Save defect records",
-      "thereAreNoDefectRecords": "There are no defect records"
+      "thereAreNoDefectRecords": "There are no defect records",
+      "addedNItems": "Added {count} item(s)",
+      "defectType": "Defect type"
     },
     "inspectionRecordForm": {
       "inspectionSheetCheck": "Inspection sheet check",
@@ -1843,7 +1927,13 @@
       "thereAreNoInspectionRecords": "There are no inspection records",
       "theInspectionRecordWasApproved": "The inspection record was approved",
       "couldNotApproveTheInspectionRecord": "Could not approve the inspection record",
-      "thereIsNoInspectionRecordTo": "There is no inspection record to approve (record it at the inspection step first)"
+      "thereIsNoInspectionRecordTo": "There is no inspection record to approve (record it at the inspection step first)",
+      "autoJudgmentOverridden": "Auto judgment ({result}) manually overridden",
+      "autoJudgmentResult": "Auto judgment: {result}",
+      "enterTheRequiredItems": "Enter the required items ({items})",
+      "failCount": "Fail {count}",
+      "measuredValue": "Measured value",
+      "passedCountExceedsInspectedCountFor": "Passed count exceeds inspected count ({items})"
     },
     "processListEditor": {
       "theChosenStepListSComposition": "The chosen step list's composition. To change steps or work hours, press Edit the step. Changes are saved as a new version.",
@@ -1865,14 +1955,25 @@
       "lotRequired": "Lot required",
       "lotOptional": "Lot optional",
       "noLot": "No lot",
-      "supplierSubcontractor": "Supplier (subcontractor)"
+      "supplierSubcontractor": "Supplier (subcontractor)",
+      "stepFallbackWithId": "Step #{id}",
+      "requiresWithNames": "Requires: {names}",
+      "cannotBeUsedWithNames": "Cannot be used together with {names}",
+      "lotInputWithName": "{name} lot input",
+      "defaultWithLabel": "Default ({label})",
+      "workHoursWithName": "{name} work hours (h)",
+      "site": "Site"
     },
     "stepCard": {
       "stepMenu": "Step menu",
       "addABranch": "Add a branch",
       "assignedTo": "Assigned to",
       "received": "Received",
-      "good": "Good"
+      "good": "Good",
+      "viewDetails": "Details",
+      "pass": "Pass",
+      "plannedHoursWithValue": "Planned {hours}h",
+      "actualHoursWithValue": "Actual {hours}h"
     },
     "stepPlanActualPanel": {
       "thereAreNoRecords": "There are no records",
@@ -1893,7 +1994,8 @@
       "youCanSplitThePlanBy": "You can split the plan by assignee and date (or time). A work location (machine or area) is optional.",
       "workPlan": "Work plan",
       "recordsTheWorkDonePerAssignee": "Records the work done per assignee and date (addable only while in progress). Actuals from a shared device carry that device's default work location.",
-      "workActuals": "Work actuals"
+      "workActuals": "Work actuals",
+      "workLocation": "Work location"
     },
     "stepQuantityForm": {
       "quantityAndDefects": "Quantity and defects",
@@ -1905,7 +2007,10 @@
       "defectDetailRequired": "Defect detail (required)",
       "addDefect": "Add defect",
       "quantitiesMustBeWholeNumbersOf": "Quantities must be whole numbers of 0 or more",
-      "enterADefectTypeAndDetail": "Enter a defect type and detail for every defect row"
+      "enterADefectTypeAndDetail": "Enter a defect type and detail for every defect row",
+      "inspectedCountAndResult": "Inspected count and result",
+      "detail": "Detail",
+      "defectTotalWithSumExceedsInput": "The defect total ({sum}) exceeds the received quantity ({input})"
     },
     "workOrderFinalInspectionPanel": {
       "finalInspection": "Final inspection",
@@ -1918,7 +2023,15 @@
       "checkedByStampForDefectsAt": "Checked-by stamp for defects at shipping",
       "defectsFoundAtThePreShipment": "Defects found at the pre-shipment check, etc. (optional)",
       "theShippingDefectCheckStampWas": "The shipping defect check stamp was recorded",
-      "check": "Check"
+      "check": "Check",
+      "checkDrawingLabel": "Drawing, label, coating thickness, and dimensions are correct",
+      "checkFinishedQuantity": "Finished quantity is correct",
+      "checkProtectiveCap": "Protective cap is used (φ0.6 or less)",
+      "deliveryNoteIssuedBy": "Delivery note issued by",
+      "itemRecorded": "Recorded \"{item}\"",
+      "shelvedBy": "Shelved by",
+      "shipmentAuthorizedBy": "Shipment authorized by",
+      "stageRecorded": "Recorded {stage}"
     },
     "workOrderStepsPanel": {
       "deleteTheBranch": "Delete the branch",
@@ -1935,10 +2048,18 @@
       "viewOnly": "(view only)",
       "runsAfterApproval": "(runs after approval)",
       "stepsCanBeRunOnceThe": "Steps can be run once the work order is approved",
-      "showTheFlowDiagram": "Show the flow diagram"
+      "showTheFlowDiagram": "Show the flow diagram",
+      "deleteBranchSeriesConfirm": "Branch series ({steps}) will be deleted. This cannot be undone.",
+      "deletedNSteps": "Deleted {count} step(s)",
+      "hideTheFlowDiagram": "Hide the flow diagram",
+      "openTheStepExecutionView": "Open the step execution view"
     },
     "workflowGraphCanvas": {
-      "workflowDiagramBranchesAndMerges": "Workflow diagram (branches and merges)"
+      "workflowDiagramBranchesAndMerges": "Workflow diagram (branches and merges)",
+      "fitView": "Fit view",
+      "flowDiagramControls": "Flow diagram controls",
+      "zoomIn": "Zoom in",
+      "zoomOut": "Zoom out"
     },
     "workflowStepNode": {
       "ready": "Ready",
@@ -1999,7 +2120,11 @@
       "stepItOccurredAt": "Step it occurred at",
       "nothingIsReservedAgainstThisStock": "Nothing is reserved against this stock",
       "reservedAt": "Reserved at",
-      "confirmedReleasedAt": "Confirmed / released at"
+      "confirmedReleasedAt": "Confirmed / released at",
+      "floorMapAlt": "Floor map: {name}",
+      "lotN": "Lot {number}",
+      "pinLabelWithStockCount": "{name} ({code}) | Stock: {count}",
+      "step": "Step"
     },
     "pendingWorkOrders": {
       "orderedQuantity": "Ordered quantity",
@@ -2047,6 +2172,74 @@
       "returnsACompletedStepToNot": "Returns a completed step to not started and clears the recorded quantities. It cannot be rolled back if a following step has started.",
       "thereAreNoSteps": "There are no steps.",
       "filterByStepNameOrCode": "Filter by step name or code…"
+    },
+    "workflowBuilder": {
+      "plannedQuantityMustBeAtLeast1": "Planned quantity must be at least 1",
+      "selectAtLeastOneStep": "Select at least one step",
+      "orderLineAlreadyFullyPlannedWithNumber": "Order line {number} is already fully planned to its order quantity (0 remaining)",
+      "workOrderWasUpdatedWithDoc": "Work order {docNumber} was updated",
+      "workOrderWasCreatedWithDoc": "Work order {docNumber} was created",
+      "editWorkOrderWithDoc": "Edit work order {docNumber}",
+      "orderQuantityWithCount": "Order quantity {count}",
+      "allocatableRemainingWithCount": "Allocatable remaining {count}",
+      "atLeastAllocationTotalWithCount": "At least the allocation total of {count} (extra for defect margin allowed)",
+      "ifNotPinnedWithLabel": "If not pinned: {label}",
+      "dedicatedToCustomerWithName": "Dedicated to {name}",
+      "thisCustomer": "This customer",
+      "stepFallbackWithId": "Step #{id}"
+    },
+    "workOrderDetail": {
+      "pinned": "Pinned",
+      "workOrderWasCreatedWithDoc": "Work order {docNumber} was created",
+      "cancelWorkOrderWithLabel": "Cancel work order {label}. This cannot be undone.",
+      "workOrderWithLabel": "Work order {label}",
+      "approvalWithLabel": "Approval {label}",
+      "copyWorkOrderWithLabel": "Copy work order {label}",
+      "unpinDesignFile": "Unpin"
+    },
+    "workOrderStripSheets": {
+      "noWorkOrdersToPrint": "There are no work orders to print.",
+      "actualSizeCheck50mm": "50mm (actual-size check / A4 paper, 100% scale)",
+      "forStockNoOrderLine": "For stock (no order line)"
+    },
+    "designFileTable": {
+      "byCustomer": "By customer",
+      "hasARequest": "Has a request",
+      "manualOnly": "Manual only"
+    },
+    "designFileVersionForm": {
+      "registeringAsResultOfRequest": "Registering as the deliverable of design request {requestNumber}. The product \"{productLabel}\"{customerPart} is fixed by the request and cannot be changed.",
+      "andCustomerWithName": "/ customer \"{name}\"",
+      "referenceWithNumber": "Reference {number}",
+      "designFileWasAddedWithVersion": "Drawing v{version} was added"
+    },
+    "stepExecutionView": {
+      "stepWithName": "Step: {name}",
+      "theStepWasAborted": "The step was aborted",
+      "abort": "Abort"
+    },
+    "workOrderLinksCard": {
+      "quantityPiecesWithCount": "{count} pcs",
+      "canStartAfterSourceCompletesWithNumber": "This work order can start after #{number} is completed"
+    },
+    "stockTransferModal": {
+      "noShelves": "No shelves",
+      "quantityWithUnit": "Quantity ({unit})"
+    },
+    "inventoryBadge": {
+      "reservedLabel": "Reserved {reserved}",
+      "reservedTooltip": "Reserved: {reserved} {unit}"
+    },
+    "inventoryModel": {
+      "adjust": "Adjustment",
+      "in": "In",
+      "out": "Out",
+      "reserve": "Reserve"
+    },
+    "productDrawings": {
+      "deleteVersionConfirm": "{filename} (v{version}) will be deleted. This cannot be undone.",
+      "versionLatest": "v{version} (latest)",
+      "versionMemo": "v{version} memo"
     }
   },
   "purchase": {
@@ -2068,7 +2261,16 @@
       "receiptType": "Receipt type",
       "searchByMaterialCodeNameSupplier": "Search by material code, name, supplier or PO number",
       "thereAreNoMaterialReceipts": "There are no material receipts",
-      "noSupplier": "No supplier"
+      "noSupplier": "No supplier",
+      "selectAMaterial": "Select a material",
+      "mustBeGreaterThanZero": "Must be greater than 0",
+      "enterAReceivedDate": "Enter the received date",
+      "filesTooLargeToAttach": "Files over 20MB cannot be attached: {files}",
+      "uploadProgress": "{current} / {total}",
+      "uploadProgressWithFile": "{current} / {total}: {name}",
+      "failedFilesRetryFromDetail": "{files} — Attach again from the detail screen",
+      "filesCount": "{count}",
+      "removeFile": "Remove {name}"
     },
     "outsourceOrders": {
       "editOutsourceOrder": "Edit outsource order",
@@ -2105,7 +2307,13 @@
       "ifLeftBlankItIsSet": "If left blank it is set automatically when the order is placed",
       "theAmountIsComputedServerSide": "The amount is computed server-side as quantity × unit price. Once ordered, the lines appear as expected receipts in material ATP.",
       "searchByPoNumberOrSupplier": "Search by PO number or supplier",
-      "thereAreNoMaterialPurchaseOrders": "There are no material purchase orders"
+      "thereAreNoMaterialPurchaseOrders": "There are no material purchase orders",
+      "receiptsSummary": "{count} · total {total} {unit}",
+      "receiptNote": "{quantity} {unit} · {date}",
+      "receivedSoFar": "Received {count}",
+      "confirmCancelBody": "This cancels material purchase order {number}. This cannot be undone.",
+      "confirmOrderBody": "This marks material purchase order {number} as ordered. The lines will be reflected in expected material stock (ATP).",
+      "confirmCompleteBody": "Registers all {count} lines as fully received material receipts and adds them to material stock at the receiving site. For partial receipts, register directly from Material receipt (PU03)."
     },
     "purchaseRequests": {
       "selectASupplier": "Select a supplier",
@@ -2126,7 +2334,30 @@
       "itCarriesNoUnitPriceOr": "It carries no unit price or supplier. After approval it becomes a purchase order, where those are settled.",
       "mainMaterial": "Main material",
       "searchByRequestNumberRequesterOr": "Search by request number, requester or material",
-      "thereAreNoPurchaseRequests": "There are no purchase requests"
+      "thereAreNoPurchaseRequests": "There are no purchase requests",
+      "createdPurchaseOrder": "Created material purchase order {number}",
+      "confirmCancelBody": "This cancels purchase request {number}. This cannot be undone.",
+      "confirmConvertBody": "Creates a draft material purchase order from the {count} lines of purchase request {number}. Enter unit prices on the purchase order side."
+    },
+    "purchaseOrderForm": {
+      "selectMaterial": "Select a material",
+      "updatedWithNumber": "Updated material purchase order {poNumber}",
+      "createdWithNumber": "Created material purchase order {poNumber}",
+      "editWithNumber": "Edit material purchase order {poNumber}"
+    },
+    "purchaseRequestForm": {
+      "updatedWithNumber": "Updated purchase request {requestNumber}",
+      "createdWithNumber": "Created purchase request {requestNumber}",
+      "editWithNumber": "Edit purchase request {requestNumber}"
+    },
+    "materialReceiptTable": {
+      "poReceipt": "PO receipt"
+    },
+    "materialReceiptDetail": {
+      "titleWithCode": "Material receipt {materialCode}"
+    },
+    "purchaseRequestTable": {
+      "othersWithCount": "+{count} more"
     }
   },
   "settings": {
@@ -2296,7 +2527,14 @@
       "cannotStartTheCameraCheckThe": "Cannot start the camera. Check the camera permission and that the connection is HTTPS.",
       "switchCamera": "Switch camera",
       "selectACamera": "Select a camera",
-      "stopScanning": "Stop scanning"
+      "stopScanning": "Stop scanning",
+      "validPeriodLabel": "Valid period {range}",
+      "lastUsedLabel": "Last used {date}",
+      "useCountTimes": "{count} times",
+      "issuedCardsCount": "Issued {count} QR cards",
+      "pinConfigured": "Configured",
+      "pinIsConfigured": "PIN configured",
+      "scanQr": "Scan QR"
     },
     "links": {
       "links": "Links",
@@ -2314,7 +2552,11 @@
       "addABlock": "Add a block",
       "subdomainsAreBlockedToo": "Subdomains are blocked too",
       "reportedAsPhishing": "Reported as phishing",
-      "thereAreNoBlocks": "There are no blocks"
+      "thereAreNoBlocks": "There are no blocks",
+      "blockingLinksToHost": "Blocks links to {pattern}",
+      "unblockConfirm": "This unblocks {pattern}. Links to this host will open normally again.",
+      "indexTabLabel": "Index ({count})",
+      "blockedTabLabel": "Blocked ({count})"
     },
     "notificationEmail": {
       "notificationEmail": "Notification email"
@@ -2368,7 +2610,13 @@
       "callsTheExtractionServerPoExtract": "Calls the extraction server (po-extract) once each to check. You can test before saving.",
       "testConnection": "Test connection",
       "structured": "Structured",
-      "imageReading": "Image reading"
+      "imageReading": "Image reading",
+      "keyRotatedMessage": "The encryption key has been rotated. Saving the settings again re-encrypts them with the new key.",
+      "cannotDecryptTokenMessage": "The API token cannot be decrypted (the encryption key may have changed). Re-enter the token.",
+      "noEncryptionKeyMessage": "The encryption key ({keyEnv}) is not set, so the API token cannot be saved or used. Contact your system administrator.",
+      "connectionSucceeded": "Connected successfully",
+      "savedTokenMasked": "Saved: ●●●●●●{last4} (leave blank to keep it unchanged)",
+      "enterOnlyToChange": "Enter only if changing it"
     },
     "bootstrapAdminCard": {
       "disableTheInitialAdministrator": "Disable the initial administrator",
@@ -2396,7 +2644,9 @@
       "sort": "Sort",
       "reorderTheCriteria": "Reorder the criteria",
       "theyAreEvaluatedTopToBottom": "They are evaluated top to bottom (sum of additive criteria → estimated unit price).",
-      "saveTheOrder": "Save the order"
+      "saveTheOrder": "Save the order",
+      "additive": "Additive",
+      "intermediate": "Intermediate"
     },
     "criterionEditForm": {
       "newCriterion": "New criterion",
@@ -2421,7 +2671,16 @@
       "estimatedUnitPrice": "Estimated unit price",
       "aJsExpressionReturningANumber2": "A JS expression returning a number. Lookup tables are",
       "lookupIdKey": "lookup(\"ID\", key)",
-      "isWhereItIsReferenced": "is where it is referenced."
+      "isWhereItIsReferenced": "is where it is referenced.",
+      "componentAddToTotal": "Additive (added to the total)",
+      "intermediateReferencedAsRId": "Intermediate (referenced as r.<id>)",
+      "finalEstimatedUnitPrice": "Estimated unit price (final)",
+      "idAlreadyExists": "ID \"{id}\" already exists",
+      "deleteCriterionConfirm": "This deletes \"{name}\". This cannot be undone.",
+      "criterionWasDeleted": "Deleted \"{name}\"",
+      "thisCriterionsValueLabel": "This criterion's value:",
+      "intermediateOrNotApplicable": "(intermediate / not applicable)",
+      "quantityPcs": "{quantity} pcs"
     },
     "itemDefEditForm": {
       "theKeyMustBeAnIdentifier": "The key must be an identifier starting with a letter or underscore",
@@ -2440,12 +2699,16 @@
       "aRegularExpressionConstrainingTheInput": "A regular expression constraining the input (e.g. ^[A-Z][A-Z]-[0-9][0-9][0-9][0-9]$). Blank means no constraint.",
       "regularExpression": "Regular expression",
       "optionsValueWhatIsStoredLabel": "Options (value = what is stored, label = what is shown)",
-      "displayLabel": "Display label"
+      "displayLabel": "Display label",
+      "theItemWasUpdated": "Updated the item",
+      "editItem": "Edit item",
+      "editItemTitle": "Edit item — {name}"
     },
     "itemDefsListPanel": {
       "deleteTheItemDefinition": "Delete the item definition",
       "aLibraryOfReusableInputFields": "A library of reusable input fields. Assign them to product types to use them.",
-      "thereAreNoItemsCreateOne": "There are no items. Create one under \"Add an item\"."
+      "thereAreNoItemsCreateOne": "There are no items. Create one under \"Add an item\".",
+      "deleteNameConfirmUnassignsFromTypes": "Delete \"{name}\"? It will also be unassigned from any types."
     },
     "lookupTableEditor": {
       "theCsvIsEmpty": "The CSV is empty",
@@ -2465,12 +2728,29 @@
       "data": "Data",
       "templateCsv": "Template / CSV",
       "importCsv": "Import CSV",
-      "text": "Text"
+      "text": "Text",
+      "number": "Number",
+      "exactMatch": "Exact match",
+      "geTakeTheSmallest": "≥ or more — takes the smallest (diameter × length)",
+      "leTakeTheLargest": "≤ or less — takes the largest (LD/discount)",
+      "rowsLoadedConfirmOnSave": "Loaded {count} rows (confirmed on save)",
+      "tableWasUpdated": "Updated \"{name}\"",
+      "deleteTableConfirm": "This deletes \"{name}\". This cannot be undone.",
+      "tableWasDeleted": "Deleted \"{name}\"",
+      "newLookupTable": "New lookup table.",
+      "usedInTheFormulaAs": "In the formula, use",
+      "key1Placeholder": "key1",
+      "matchDescription": "to reference it. The match method (exact / ≥ / ≤) reproduces Excel's MATCH/VLOOKUP approximate match. When nothing matches, the \"default value\" is returned.",
+      "keyColumnName": "Key column name",
+      "keyColumnWithIndex": "Key column {index}",
+      "matchMethod": "Match method",
+      "rowsCount": "{count} rows"
     },
     "lookupTablesList": {
       "thereAreNoTablesCreateOne": "There are no tables. Create one under \"Add a table\".",
       "filterByTableNameOrId": "Filter by table name or ID…",
-      "addATable": "Add a table"
+      "addATable": "Add a table",
+      "lookupIdKeysRows": "lookup(\"{id}\", …) · {keys} keys · {rows} rows"
     },
     "notificationEmailForm": {
       "theNotificationEmailSettingsWereUpdated": "The notification email settings were updated",
@@ -2511,12 +2791,16 @@
       "defaultOverrideOptional": "Default (override, optional)",
       "removeTheAssignment": "Remove the assignment",
       "assignAField": "Assign a field",
-      "thereAreNoFieldsToAssign": "There are no fields to assign. Create them under Item definitions first."
+      "thereAreNoFieldsToAssign": "There are no fields to assign. Create them under Item definitions first.",
+      "editType": "Edit type",
+      "editTypeName": "Edit type — {name}",
+      "defaultValueIfEmptyDefault": "If left blank: \"{default}\""
     },
     "productTypesListPanel": {
       "deleteTheProductType": "Delete the product type",
       "theyBecomeTheChoicesWhenCreating": "They become the choices when creating a product. Assign fields to each type to build them.",
-      "thereAreNoTypesCreateOne": "There are no types. Create one under \"Add a type\"."
+      "thereAreNoTypesCreateOne": "There are no types. Create one under \"Add a type\".",
+      "deleteNameConfirm": "Delete \"{name}\"?"
     },
     "toolTypeEditForm": {
       "selectTheFinalEstimatedUnitPrice": "Select the final estimated unit price criterion",
@@ -2527,7 +2811,14 @@
       "thereAreNoCriteriaCreateThem": "There are no criteria. Create them on the criteria page.",
       "theCriterionThatComputesThisTool": "The criterion that computes this tool type's final estimated unit price. Exactly one per tool type.",
       "estimatedUnitPriceUsed": "Estimated unit price used",
-      "selectTheFinalCriterion": "Select the final criterion"
+      "selectTheFinalCriterion": "Select the final criterion",
+      "componentLabel": "Additive",
+      "intermediateLabel": "Intermediate",
+      "toolTypeCriteriaUpdated": "Updated the applied criteria for tool type \"{label}\"",
+      "deleteToolTypeConfirm": "This deletes the tool type \"{label}\". It is also removed from every criterion's applied tool types. This cannot be undone.",
+      "toolTypeWasDeleted": "Deleted tool type \"{label}\"",
+      "usedInEstimatesCount": "{count} price estimates",
+      "nameDisabled": "{name} (disabled)"
     },
     "toolTypesPanel": {
       "useUppercaseLettersDigitsAndStarting": "Use uppercase letters, digits and _ , starting with an uppercase letter",
@@ -2535,7 +2826,9 @@
       "addAToolType": "Add a tool type",
       "toolTypesYouAddBecomeSelectable": "Tool types you add become selectable on the price estimate form. Their inputs follow the round-bar family (reference-price based). Criteria currently applied to all tool types also apply to the new one (adjustable afterwards).",
       "uppercaseLettersDigitsAndEG": "Uppercase letters, digits and _ (e.g. BALL_END). It cannot be changed once created",
-      "ballEnd": "Ball end"
+      "ballEnd": "Ball end",
+      "addedToolTypeNameCheckWhichCriteria": "Added the tool type \"{name}\". Check which criteria apply to it.",
+      "criteriaCountEstimatesCount": "{applied} criteria · {used} price estimates"
     },
     "trialPricingScalarForms": {
       "thePriceEstimateSettingsWereUpdated": "The price estimate settings were updated",
@@ -2556,7 +2849,12 @@
       "label": "Label",
       "type": "Type",
       "onByDefault": "On by default",
-      "defaultOptionsCommaSeparated": "Default / options (comma separated)"
+      "defaultOptionsCommaSeparated": "Default / options (comma separated)",
+      "number": "Number",
+      "string": "Text",
+      "select": "Select",
+      "estimateInputShownInThe": "Estimate input (shown in the form)",
+      "globalConstantFixedCoefficient": "Global constant (fixed coefficient)"
     },
     "userDetail": {
       "approvalWasRequested": "Approval was requested",
@@ -2581,7 +2879,10 @@
       "action": "Action",
       "loginHistoryLast30Days": "Login history (last 30 days)",
       "thereAreNoLoginRecordsIn": "There are no login records in this period",
-      "registeredDevicesWeb": "Registered devices (web)"
+      "registeredDevicesWeb": "Registered devices (web)",
+      "passwordAndSso": "Password + SSO",
+      "plantLabelDisabled": "{label} (disabled)",
+      "requestApprovalButton": "Request approval"
     },
     "userSuspensionPanel": {
       "suspendTheUser": "Suspend the user",
@@ -2601,11 +2902,22 @@
       "scheduledToBeReleasedAt": "Scheduled to be released at",
       "whenToRestore": "When to restore",
       "theApproverDecidesBasedOnThis": "The approver decides based on this. It is also kept in the suspension record",
-      "suspend3": "Suspend"
+      "suspend3": "Suspend",
+      "approvalAppliesThisChange": "This change applies once approved",
+      "requestSuspensionApproval": "Request suspension approval",
+      "indefinitely": "Indefinitely",
+      "suspendConfirmSentence": "Suspend {name} ({username}) {duration}. {tail}",
+      "requestButtonLabel": "Submit request",
+      "releaseScheduledLabel": "Scheduled release: {date}",
+      "reasonLabel": "Reason: {reason}",
+      "requestRestoreApproval": "Request restoration approval",
+      "temporarySuspension": "Temporary suspension",
+      "reasonForSuspension": "Reason for suspension"
     },
     "usersTable": {
       "usernameDisplayNameEmailRole": "Username / display name / email / role…",
-      "noMatchingUsers": "No matching users"
+      "noMatchingUsers": "No matching users",
+      "employee": "Employee"
     },
     "displays": {
       "couldNotSaveTheImage": "Could not save the image",
@@ -2660,7 +2972,9 @@
       "scanTheQrShownOnThe": "Scan the QR shown on the TV, or type the 12-character link code. It is the same format as a shared device.",
       "scanTheDisplaySQrCode": "Scan the display's QR code",
       "linkCode": "Link code",
-      "cannotShowTheSampleTheShared": "Cannot show the sample (the shared-device URL is not set)"
+      "cannotShowTheSampleTheShared": "Cannot show the sample (the shared-device URL is not set)",
+      "sampleOfLabel": "Sample of {label}",
+      "linkThisDisplay": "Link display: {name}"
     },
     "orderIntake": {
       "queued": "Queued",
@@ -2726,7 +3040,9 @@
       "issueALink": "Issue a link",
       "issuedHandOverThisUrl": "Issued. Hand over this URL.",
       "issuedLinks": "Issued links",
-      "revoked": "Revoked"
+      "revoked": "Revoked",
+      "linkSummary": "{email} / {count} uses / until {date}",
+      "verified": "Verified"
     },
     "privileged": {
       "pendingApproval": "(pending approval)",
@@ -2796,7 +3112,134 @@
       "thereAreNoMatchingLoginRecords": "There are no matching login records",
       "thereAreOlderRecordsNarrowThe": "There are older records. Narrow the period or the filters.",
       "thereAreNoRegisteredDevices": "There are no registered devices",
-      "unknownDevice": "Unknown device"
+      "unknownDevice": "Unknown device",
+      "success": "Success"
+    },
+    "displayContentEditor": {
+      "templateSettings": "{name} settings",
+      "refresh": "Refresh",
+      "seconds": "seconds",
+      "fitContainLabel": "Show all",
+      "fitContainHelp": "Shows the whole image. Margins appear if the aspect ratio differs.",
+      "fitCoverLabel": "Fill the screen",
+      "fitCoverHelp": "No margins, but the parts that overflow are cropped.",
+      "fitFillLabel": "Stretch",
+      "fitFillHelp": "Fits the screen exactly, but the aspect ratio changes and the image distorts.",
+      "replaceTheImage": "Replace the image",
+      "imagePrefix": "Image: ",
+      "thisScreensSite": "This screen's site",
+      "siteNumber": "Site #{id}"
+    },
+    "kioskDevicesTable": {
+      "liveWs": "Live (WS)",
+      "autoRefresh30S": "Auto-refresh (30s)",
+      "determinedFromActivityInThe": "Determined from activity in the last 5 minutes",
+      "attestationKey": "Attestation key: {fingerprint}",
+      "enableThisDeviceLinked": "This will enable the device (linked to the tablet: {linkedAt}). Once enabled, the tablet automatically becomes usable as a shared device.",
+      "deviceLinkName": "Link device — {name}"
+    },
+    "ownership": {
+      "companyManagedDevice": "Company (managed device)",
+      "companyInHouseNetwork": "Company (in-house network)",
+      "unmanaged": "Unmanaged",
+      "undetermined": "Undetermined",
+      "confirmedByTheDeviceSKey": "Confirmed by the device's key signature (cryptographic evidence). A device token alone is only circumstantial evidence — see the reason below.",
+      "theSourceIpIsWithinThe": "The source IP is within the in-house network range. **This proves the device is on-site, not that it is company-issued** (a personal laptop or VPN gets the same result).",
+      "thereIsNoEvidenceItIs": "There is no evidence it is company-issued. It may be a personal device, but this cannot be confirmed.",
+      "noJudgmentMaterialIpUnknown": "There is no material to judge from (IP unknown, or the in-house CIDR is not configured).",
+      "judgmentReason": "Judgment reason: {source}"
+    },
+    "orderIntakeFolderPanel": {
+      "puttingFilesIntoTheFolder": "Putting {count} file(s) into the folder…",
+      "fileNOfTotal": "{n} / {total}: {name}",
+      "failedToPutIn": "Failed to put it in",
+      "communicationError": "Communication error",
+      "putInCountFailures": "Put in {count} / failed: {failures}",
+      "putCountFilesInTheQueue": "Put {count} file(s) into the awaiting-import queue. They will be imported in order after this.",
+      "putInPartialFailure": "Put in (partial failure)",
+      "listSeparator": ",  ",
+      "lineItemsCountLines": "{count} line item(s)",
+      "remedyHint": "What to do: {hint}",
+      "retrying": "Retrying",
+      "autoScanEverySSeconds": "Auto-scans every {seconds}s",
+      "updatedColumn": "Updated",
+      "showingNewestOfTotal": "Showing the newest {shown} (of {all} total)"
+    },
+    "displayDetailView": {
+      "pause": "Pause",
+      "screenNumber": "Screen {n}"
+    },
+    "kioskFloorMapView": {
+      "thisSiteHasNoFloorMaps": "This site has no floor maps.",
+      "deleteFloorNameCannotIfDevices": "This deletes the floor \"{name}\". It cannot be deleted if devices are placed on it.",
+      "floorMapName": "Floor map: {name}",
+      "storageLocationNameCodeShelfCount": "Storage location: {name} ({code}) | {count} shelves",
+      "addAFloor": "Add a floor"
+    },
+    "privilegedAccessBanner": {
+      "remainingHM": "{hours}h {minutes}m remaining",
+      "remainingM": "{minutes}m remaining",
+      "labelNOperationsAreAvailable": "{label}: {count} operation(s) available",
+      "labelNoOperationsAreApproved": "{label}: No operations are approved",
+      "pleaseWaitForApprovalOfThe": "Please wait for pending requests to be approved."
+    },
+    "kioskCardDetailView": {
+      "countDevices": "{count} device(s)",
+      "countTimes": "{count} time(s)",
+      "suspend": "Suspend"
+    },
+    "loginAttemptDrawer": {
+      "theAutomationFlagNavigatorwebdriverIs": "The automation flag (navigator.webdriver) is set",
+      "theDeviceSClockIsMinutes": "The device's clock is {minutes} minutes off from the server",
+      "scanKindContentNotStored": "{scanKind} (content is not stored)"
+    },
+    "kioskDeviceLogsModal": {
+      "durationMinutes": "{minutes}m",
+      "durationHoursMinutes": "{hours}h {minutes}m",
+      "durationHours": "{hours}h",
+      "ended": "Ended",
+      "usageHistoryName": "Usage history — {name}"
+    },
+    "privilegedRequestForm": {
+      "theUsablePeriodIsAtMost": "The usable period is at most {days} days from the request"
+    },
+    "kioskSettingsPanel": {
+      "permissionCode": "Permission code: {code}",
+      "showLabel": "Show {label}"
+    },
+    "privilegedRequestCard": {
+      "approved": "Approved",
+      "hoursMinutes": "{h} hr {m} min",
+      "minutesSeconds": "{m} min {s} sec",
+      "secondsOnly": "{s} sec",
+      "remainingTime": "{time} remaining",
+      "operationsNotGranted": "Operations not granted:",
+      "reasonLabel": "Reason: {reason}",
+      "usablePeriodLabel": "Usable period:",
+      "perUseMinutes": "/ {minutes} min per use",
+      "startedAndUsedCount": "(started {date}, used {count} times)",
+      "requestedByLabel": "Requested: {name} / {date}",
+      "decidedByLabel": " · Decided: {name} / {date}",
+      "decisionCommentLabel": "Decision comment: {comment}",
+      "applyFailedLabel": "Could not apply: {error}",
+      "appliedAtLabel": "Applied at {date}"
+    },
+    "loginHistoryView": {
+      "hours24": "24 hours",
+      "days7": "7 days",
+      "days30": "30 days",
+      "days90": "90 days",
+      "allTime": "All time",
+      "unresolvedWithRef": "Unresolved {ref}"
+    },
+    "loginAttemptList": {
+      "noRecords": "No records"
+    },
+    "kioskDeviceDetailView": {
+      "asOfLabel": "As of {date}",
+      "lastSyncedLabel": "Last synced {date}",
+      "offlineAcceptsLastSyncedPin": "An offline device only accepts the PIN as of its last successful sync. This device's last communication was",
+      "usesRowIncludingThatTime": " — uses the row that includes that time."
     }
   },
   "portal": {
@@ -2883,7 +3326,9 @@
       "suggestWithAi": "Suggest with AI",
       "enterANameAndItCan": "Enter a name and it can suggest candidates",
       "keywordSuggestionsProducedByAi": "Keyword suggestions produced by AI",
-      "pickOnlyTheOnesYouWant": "Pick only the ones you want (tapping adds them to the box above). Nothing is registered until you save."
+      "pickOnlyTheOnesYouWant": "Pick only the ones you want (tapping adds them to the box above). Nothing is registered until you save.",
+      "fieldDescription": "Alternate names used for search and AI-intake matching (abbreviations, readings, Roman letters, alternate dimension notations, etc). Separate with Enter, up to {max}.",
+      "addAllCount": "Add all ({count})"
     },
     "approvalFlows": {
       "theApplyModeWasSaved": "The apply mode was saved",
@@ -2915,7 +3360,13 @@
       "addACondition": "Add a condition",
       "approvalStepsForThisRule": "Approval steps for this rule",
       "nobodyCanApproveThisStepRight": "Nobody can approve this step right now. A request would stall.",
-      "noMembers": "No members"
+      "noMembers": "No members",
+      "approverScopeItem": "{name} ({scopes})",
+      "canApproveCount": "{total} can approve",
+      "canApproveScopeLimited": "{total} can approve ({count} scope-limited)",
+      "noDocumentPermission": "No permission to view or edit this document: {names}",
+      "noPermissionCount": "{count} of {total} have no permission",
+      "scopeIsLimited": "Permission scope is limited (documents outside the scope cannot be approved): {names}"
     },
     "approvalSettings": {
       "thisGroupIsNotUsedIn": "This group is not used in any approval flow (assign it to a step under Approval settings).",
@@ -2964,7 +3415,26 @@
       "removeTheMember2": "Remove the member",
       "bulkDeleteApprovalGroups": "Bulk delete approval groups",
       "searchByName": "Search by name",
-      "thereAreNoApprovalGroups": "There are no approval groups"
+      "thereAreNoApprovalGroups": "There are no approval groups",
+      "bulkDeleteConfirm": "This will delete the {count} selected approval group(s). This cannot be undone.",
+      "bulkDeleted": "Deleted {count} approval group(s)",
+      "bulkDisabled": "Disabled {count} approval group(s)",
+      "bulkEnabled": "Enabled {count} approval group(s)",
+      "delegateAdded": "Added delegation settings for delegate \"{name}\"",
+      "delegateDeleted": "Deleted delegation settings for delegate \"{name}\"",
+      "deleteDelegateConfirm": "This will delete the delegation (original approver \"{delegator}\" → delegate \"{delegate}\"). The delegate will no longer be able to approve for this group.",
+      "deleteGroupConfirm": "This will delete approval group \"{name}\" along with its member assignments. This cannot be undone.",
+      "deleteMemberConfirm": "This will remove member \"{name} ({username})\" from this group.",
+      "disableGroupConfirm": "This will disable approval group \"{name}\". It can no longer be used for new approval requests.",
+      "disableTheApprovalGroup": "Disable approval group",
+      "enableGroupConfirm": "This will enable approval group \"{name}\". It can be used for approval requests again.",
+      "groupDeleted": "Deleted approval group \"{name}\"",
+      "groupDisabled": "Disabled approval group \"{name}\"",
+      "groupEnabled": "Enabled approval group \"{name}\"",
+      "memberAdded": "Added member \"{name}\"",
+      "memberCountValue": "{count}",
+      "memberDeleted": "Removed member \"{name}\"",
+      "periodUpdated": "Updated the membership period for \"{name}\""
     },
     "bp": {
       "issueQuotesDeliveryNotesAndInvoices": "Issue quotes, delivery notes and invoices in this language. Unset means the default (Japanese)",
@@ -2997,7 +3467,13 @@
       "selectAContact": "Select a contact",
       "removeThisSalesRep": "Remove this sales rep",
       "addASalesRep": "Add a sales rep",
-      "theOneSelectedByRadioButton": "The one selected by radio button is the primary (default for new documents)"
+      "theOneSelectedByRadioButton": "The one selected by radio button is the primary (default for new documents)",
+      "addAllCount": "Add all ({count})",
+      "hiragana": "Hiragana",
+      "katakana": "Katakana",
+      "missingFormatsNotice": "No {formats} spelling is registered. If an order document is written that way, it cannot be matched.",
+      "needsReadingNote": "　The reading of kanji cannot be generated automatically — enter the furigana to get suggestions.",
+      "romaji": "Romaji"
     },
     "businessPartners": {
       "branches": "Branches",
@@ -3044,7 +3520,15 @@
       "bulkDeleteBusinessPartners": "Bulk delete business partners",
       "branches2": "Branches",
       "searchByBpCodeOrName": "Search by BP code or name",
-      "thereAreNoBusinessPartners": "There are no business partners"
+      "thereAreNoBusinessPartners": "There are no business partners",
+      "branchCountValue": "{count} branches",
+      "bulkDeleteConfirm": "This will delete the {count} selected business partner(s). This cannot be undone.",
+      "bulkDeleted": "Deleted {count} business partner(s)",
+      "bulkDisabled": "Disabled {count} business partner(s)",
+      "bulkEnabled": "Enabled {count} business partner(s)",
+      "daySuffix": "{value} days",
+      "endOfMonth": "End of month",
+      "primaryContactTag": "(Primary)"
     },
     "defectTypes": {
       "theDefectTypeWasCreated": "The defect type was created",
@@ -3057,7 +3541,12 @@
       "itCannotBeDeletedWhileDefect": "It cannot be deleted while defect records reference it. Consider disabling it.",
       "enableTheDefectType": "Enable the defect type",
       "bulkDeleteDefectTypes": "Bulk delete defect types",
-      "thereAreNoDefectTypes": "There are no defect types"
+      "thereAreNoDefectTypes": "There are no defect types",
+      "bulkDeleteConfirm": "This will delete the {count} selected defect type(s). This cannot be undone.",
+      "bulkDeleted": "Deleted {count} defect type(s)",
+      "bulkDisabled": "Disabled {count} defect type(s)",
+      "bulkEnabled": "Enabled {count} defect type(s)",
+      "sortOrderValue": "Sort order {value}"
     },
     "inspectionTemplates": {
       "theTargetCanBeAnApproval": "The target can be an approval group, or approvers just for this sheet (custom, several allowed). Unset = anyone can accept",
@@ -3173,7 +3662,10 @@
       "searchByCodeNameOrRelated": "Search by code, name or related step",
       "exportTheSelection": "Export the selection",
       "thereAreNoInspectionTemplates": "There are no inspection templates",
-      "noRelatedStep": "No related step"
+      "noRelatedStep": "No related step",
+      "referenceImageHelp": "Diagrams of measurement points, reference photos, etc. Once set, it also prints on the blank and completed sheet PDFs ({ext}, up to 5MB).",
+      "reselect": "Reselect",
+      "templateCountValue": "{count} inspection sheet(s)"
     },
     "materialNumbering": {
       "theComponentWasAdded": "The component was added",
@@ -3188,7 +3680,15 @@
       "materialTypeCode": "Material type code =",
       "manufacturerGrade2ShapeKind4": "[manufacturer][grade 2][shape][kind 4]",
       "materialTypeFinishDia103": "[material type]-[finish][dia.×10, 3 digits]-[length, 3 digits]",
-      "codesAreEmbeddedInCompositeCodes": ". Codes are embedded in composite codes and so cannot be deleted (only disabled). Diameters and lengths are also registered automatically when a material is created."
+      "codesAreEmbeddedInCompositeCodes": ". Codes are embedded in composite codes and so cannot be deleted (only disabled). Diameters and lengths are also registered automatically when a material is created.",
+      "addDiameter": "Add diameter",
+      "addKind": "Add kind",
+      "addLengthVariant": "Add overall length",
+      "addManufacturer": "Add manufacturer",
+      "addManufacturerGrade": "Add manufacturer grade",
+      "addShape": "Add shape",
+      "addSurfaceFinish": "Add surface finish",
+      "codePreview": "Code: {code}"
     },
     "materialTypes": {
       "notConvertedLegacy": "Not converted (legacy)",
@@ -3218,7 +3718,14 @@
       "bulkDeleteMaterialTypes": "Bulk delete material types",
       "notConverted": "Not converted",
       "conversionStatus": "Conversion status",
-      "thereAreNoMaterialTypes": "There are no material types"
+      "thereAreNoMaterialTypes": "There are no material types",
+      "deleteConfirm": "This will delete material type \"{name}\". This cannot be undone.",
+      "deleted": "Deleted material type \"{name}\"",
+      "disableConfirm": "This will disable material type \"{name}\". It can no longer be selected when registering new materials.",
+      "disableTheMaterialType": "Disable material type",
+      "disabled": "Disabled material type \"{name}\"",
+      "enableConfirm": "This will enable material type \"{name}\". It can be selected again when registering materials.",
+      "enabled": "Enabled material type \"{name}\""
     },
     "materials": {
       "nominalDiameter": "Nominal diameter",
@@ -3240,7 +3747,11 @@
       "bulkDeleteMaterials": "Bulk delete materials",
       "surfaceFinish": "Surface finish",
       "searchByMaterialCodeNameOr": "Search by material code, name or keyword",
-      "thereAreNoMaterials": "There are no materials"
+      "thereAreNoMaterials": "There are no materials",
+      "diameterCodePreview": "Code: {code} (diameter × 10)",
+      "editTitle": "Edit material — {code}",
+      "lengthCodePreview": "Code: {code}",
+      "materialUpdated": "Material updated"
     },
     "plants": {
       "siteDrawingsSharedWithDevicesSy09": "Site drawings shared with Devices (SY09)",
@@ -3278,7 +3789,18 @@
       "addARegion2": "Add a region",
       "sites": "Sites",
       "thereAreNoRegionsCreateOne": "There are no regions — create one under \"Add a region\"",
-      "theRegionCodeIsTheIdentifier": "The region code is the identifier REGION-scope permissions (scope_values) refer to, so it cannot be changed after creation. Only regions no site refers to can be deleted."
+      "theRegionCodeIsTheIdentifier": "The region code is the identifier REGION-scope permissions (scope_values) refer to, so it cannot be changed after creation. Only regions no site refers to can be deleted.",
+      "deleteConfirm": "This will delete site \"{name}\". This cannot be undone.",
+      "deleteRegionConfirm": "This will delete region \"{code} {name}\". This cannot be undone.",
+      "deleted": "Deleted site \"{name}\"",
+      "disableConfirm": "This will disable site \"{name}\". It can no longer be selected for new inventory, shipments, or process steps.",
+      "disableTheSite": "Disable site",
+      "disabled": "Disabled site \"{name}\"",
+      "editRegion": "Edit region",
+      "enableConfirm": "This will enable site \"{name}\". It can be selected again for inventory, shipments, and process steps.",
+      "enabled": "Enabled site \"{name}\"",
+      "regionDisabled": "Region disabled",
+      "regionUpdated": "Region updated"
     },
     "processSteps": {
       "stepItDependsOn": "Step it depends on",
@@ -3322,7 +3844,20 @@
       "deleteTheStep": "Delete the step",
       "itCannotBeDeletedWhileOther": "It cannot be deleted while other steps depend on it, or inspection templates or work orders reference it. Consider disabling it.",
       "enableTheStep": "Enable the step",
-      "bulkDeleteSteps": "Bulk delete steps"
+      "bulkDeleteSteps": "Bulk delete steps",
+      "categoryRequired": "Select a category",
+      "defaultWorkHoursPositive": "Enter a positive number for the default work hours",
+      "deleteConfirm": "This will delete step \"{name}\". This cannot be undone.",
+      "deleted": "Deleted step \"{name}\"",
+      "disableConfirm": "This will disable step \"{name}\". It can no longer be selected as a new workflow step or dependency.",
+      "disableTheStep": "Disable step",
+      "disabled": "Disabled step \"{name}\"",
+      "editTitle": "Edit step — {code}",
+      "enableConfirm": "This will enable step \"{name}\". It can be selected again as a workflow step or dependency.",
+      "enabled": "Enabled step \"{name}\"",
+      "executionLocationRequired": "Select an execution location",
+      "sortOrderInteger": "Enter an integer for the sort order",
+      "stepUpdated": "Step updated"
     },
     "products": {
       "specification": "Specification",
@@ -3367,7 +3902,16 @@
       "newProcessRoute": "New process route",
       "settingItMakesItPreferredFor": "Setting it makes it preferred for work orders of the same customer × product (blank = generic)",
       "routeName": "Route name",
-      "aNoteOnWhatChangedShown": "A note on what changed (shown in the version history)"
+      "aNoteOnWhatChangedShown": "A note on what changed (shown in the version history)",
+      "copyOfName": "{name} (Copy)",
+      "deleteProductConfirm": "This will delete product \"{name}\". This cannot be undone.",
+      "disableProductConfirm": "This will disable product \"{name}\". It can no longer be selected for new price estimates, price lists, or quotes.",
+      "disableTheProduct": "Disable product",
+      "enableProductConfirm": "This will enable product \"{name}\". It can be selected again for price estimates, price lists, and quotes.",
+      "productCreated": "Created product \"{code}\"",
+      "productDeleted": "Deleted product \"{name}\"",
+      "productDisabled": "Disabled product \"{name}\"",
+      "productEnabled": "Enabled product \"{name}\""
     },
     "storageLocations": {
       "editTheStorageLocation": "Edit the storage location",
@@ -3395,7 +3939,268 @@
       "addAShelf": "Add a shelf",
       "addAShelf2": "Add a shelf",
       "shelfCode": "Shelf code",
-      "nameOptional": "Name (optional)"
+      "nameOptional": "Name (optional)",
+      "floorMapAlt": "Floor map: {name}",
+      "pinLabel": "{name} ({code}) | {count} shelves",
+      "placeThisLocation": "Place {name}",
+      "shelfCountValue": "{count} shelves"
+    },
+    "productDetail": {
+      "routesTab": "Steps"
+    },
+    "workLocationsManager": {
+      "editGroup": "Edit group",
+      "editWorkLocation": "Edit work location",
+      "theGroupWasUpdated": "Updated group",
+      "code": "Code",
+      "theWorkLocationWasUpdated": "Updated work location",
+      "pageTitle": "Work locations",
+      "deleteGroupConfirm": "This deletes group \"{name}\". Its {count} location(s) will also be deleted. This cannot be undone.",
+      "groupDeleted": "Deleted group \"{name}\"",
+      "deleteWorkLocationConfirm": "This deletes work location \"{name}\". This cannot be undone.",
+      "workLocationDeleted": "Deleted work location \"{name}\"",
+      "workLocationInUse": "This location is referenced by {planCount} work plan(s) / {actualCount} actual(s) and cannot be deleted — consider disabling it instead.",
+      "jobsWithCount": "{count} jobs"
+    },
+    "bpModals": {
+      "deleteConfirm": "This deletes {entityLabel} \"{name}\". This cannot be undone.",
+      "deleted": "Deleted {entityLabel} \"{name}\"",
+      "deleteTitle": "Delete {entityLabel}",
+      "disableAction": "Disable",
+      "disableConfirm": "This disables {entityLabel} \"{name}\". It will no longer be selectable on new documents.",
+      "enableConfirm": "This enables {entityLabel} \"{name}\". It will be selectable on documents again.",
+      "disabledEntity": "Disabled {entityLabel} \"{name}\"",
+      "enabledEntity": "Enabled {entityLabel} \"{name}\"",
+      "disableTitle": "Disable {entityLabel}",
+      "enableTitle": "Enable {entityLabel}",
+      "contactAdded": "Added contact \"{name}\"",
+      "addContactTitle": "Add contact — {bpName}",
+      "namePlaceholder": "Taro Yamada",
+      "kanaPlaceholder": "Yamada Taro"
+    },
+    "productForm": {
+      "enterNameJa": "Enter the name (Japanese)",
+      "selectUnit": "Select a unit",
+      "diameterRange": "Enter a diameter between {min} and {max}mm",
+      "lengthRange": "Enter an overall length between {min} and {max}mm",
+      "theProductWasUpdated": "Updated product",
+      "productLabel": "Product",
+      "editProductTitle": "Edit product — {name}",
+      "diameterCodeLabel": "Code: {code} (diameter × 10)",
+      "lengthCodeLabel": "Code: {code}"
+    },
+    "defectTypeModals": {
+      "updated": "Updated defect type \"{name}\"",
+      "code": "Code",
+      "deleteConfirm": "This deletes defect type \"{name}\". This cannot be undone.",
+      "deleted": "Deleted defect type \"{name}\"",
+      "disableAction": "Disable",
+      "disableConfirm": "This disables defect type \"{name}\". It will no longer be selectable on new defect records.",
+      "enableConfirm": "This enables defect type \"{name}\". It will be selectable on defect records again.",
+      "disabled": "Disabled defect type \"{name}\"",
+      "enabled": "Enabled defect type \"{name}\"",
+      "disableTitle": "Disable defect type"
+    },
+    "inspectionTemplateTable": {
+      "bulkEnabled": "Enabled {count} inspection template(s)",
+      "bulkDisabled": "Disabled {count} inspection template(s)",
+      "bulkDeleteConfirm": "This deletes the {count} selected inspection template(s). This cannot be undone.",
+      "bulkDeleted": "Deleted {count} inspection template(s)",
+      "code": "Code",
+      "itemCountWithUnit": "{count} item(s)",
+      "groupsShort": "Groups",
+      "ioShort": "Import/export"
+    },
+    "productTable": {
+      "bulkEnabled": "Enabled {count} product(s)",
+      "bulkDisabled": "Disabled {count} product(s)",
+      "bulkDeleteConfirm": "This deletes the {count} selected product(s). This cannot be undone.",
+      "bulkDeleted": "Deleted {count} product(s)",
+      "pageTitle": "Products"
+    },
+    "materialTypeTable": {
+      "structured": "Converted",
+      "legacy": "Not converted",
+      "bulkEnabled": "Enabled {count} material type(s)",
+      "bulkDisabled": "Disabled {count} material type(s)",
+      "bulkDeleteConfirm": "This deletes the {count} selected material type(s). This cannot be undone.",
+      "bulkDeleted": "Deleted {count} material type(s)"
+    },
+    "inspectionTemplateForm": {
+      "enterCode": "Enter a code",
+      "codeFormat": "Enter a code using letters, digits, hyphens, or underscores",
+      "enterNameJa": "Enter the name (Japanese)",
+      "editTitle": "Edit inspection template — {code}",
+      "code": "Code"
+    },
+    "approvalFlowEditor": {
+      "nthApproval": "Approval {n}",
+      "approvalFlowFor": "Approval flow for {label}",
+      "approvalGroupAndApprovers": "Approval group / approvers",
+      "noApprovalPermission": "{label} (no approval permission)"
+    },
+    "componentTable": {
+      "code": "Code",
+      "confirmEnabling": "Confirm enabling",
+      "enableConfirm": "This enables \"{code} — {name}\".",
+      "disableConfirm": "This disables \"{code} — {name}\". It will no longer be selectable when creating new material types/materials (existing codes are unaffected).",
+      "enabled": "Enabled \"{code}\"",
+      "disabled": "Disabled \"{code}\""
+    },
+    "branchForm": {
+      "theBranchWasUpdated": "Updated branch",
+      "editBranch": "Edit branch",
+      "editTitle": "Edit branch — {code}",
+      "newTitle": "New branch — {parentName}",
+      "codeFormat": "Format: {parentBpCode}-NN (auto-numbered)"
+    },
+    "floorMapsPanel": {
+      "deleteFloorConfirm": "This deletes floor \"{name}\". It cannot be deleted while device or storage-location pins remain.",
+      "floorMapAlt": "Floor map: {name}",
+      "addFloor": "Add floor"
+    },
+    "inspectionTemplateDetail": {
+      "code": "Code"
+    },
+    "inspectionTemplateIoModal": {
+      "exportSelectedCount": "This exports the {count} selected item(s).",
+      "importedCount": "Imported {count} item(s)",
+      "skippedCount": "{count} item(s) could not be imported"
+    },
+    "bpBaseFields": {
+      "kanaPlaceholder": "Example: ABC Manufacturing"
+    },
+    "plantDetail": {
+      "plantsLabel": "Sites"
+    },
+    "approvalGroupForm": {
+      "enterNameJa": "Enter the name (Japanese)",
+      "editTitle": "Edit approval group — {name}"
+    },
+    "materialForm": {
+      "diameterRange": "Enter a diameter between 0.1 and 99.9 mm",
+      "diameterRequired": "Enter a diameter",
+      "kindRequired": "Select a kind",
+      "lengthRange": "Enter an overall length between 1 and 999 mm",
+      "lengthRequired": "Enter an overall length",
+      "materialTypeRequired": "Select a material type",
+      "surfaceFinishRequired": "Select a surface finish",
+      "unitRequired": "Select a unit"
+    },
+    "inspectionTemplateModals": {
+      "deleteConfirmMessage": "This deletes inspection template \"{name}\". Its inspection items will also be deleted. This cannot be undone.",
+      "deletedMessage": "Deleted inspection template \"{name}\"",
+      "disableConfirmMessage": "This disables inspection template \"{name}\". It will no longer be selectable on new work orders.",
+      "enableConfirmMessage": "This enables inspection template \"{name}\". It will be selectable on work orders again.",
+      "disabledMessage": "Disabled inspection template \"{name}\"",
+      "enabledMessage": "Enabled inspection template \"{name}\"",
+      "createVersionConfirmMessage": "Copies the inspection items of \"{name}\" to create a new version from v{version}. Existing work orders and inspection records stay on the current version.",
+      "versionCreatedMessage": "Created {code} v{version}",
+      "itemUpdatedMessage": "Updated inspection item \"{name}\"",
+      "itemAddedMessage": "Added inspection item \"{name}\"",
+      "editItemTitle": "Edit inspection item",
+      "optionLabelJaAria": "Option {n} (Japanese)",
+      "optionLabelEnAria": "Option {n} (English)",
+      "removeOptionAria": "Remove option {n}",
+      "itemDeleteConfirmMessage": "This deletes inspection item \"{name}\". This cannot be undone.",
+      "itemDeletedMessage": "Deleted inspection item \"{name}\""
+    },
+    "materialNumberingTabs": {
+      "addButtonLabel": "Add {label}"
+    },
+    "processStepTable": {
+      "bulkEnabledMessage": "Enabled {count} step(s)",
+      "bulkDisabledMessage": "Disabled {count} step(s)",
+      "bulkDeleteConfirmMessage": "This deletes the {count} selected step(s). A step that other steps depend on cannot be deleted. This cannot be undone.",
+      "bulkDeletedMessage": "Deleted {count} step(s)"
+    },
+    "approvalGroupDetail": {
+      "canApprove": "Can approve {label}",
+      "canApproveScoped": "Can approve {label}, but permission is limited to {scopes} (documents outside that scope cannot be approved)",
+      "cannotApprove": "Missing permission to view/edit {label} ({code}:READ / UPDATE) — pressing Approve will be rejected",
+      "memberDisabledMessage": "Disabled member \"{name}\"",
+      "memberEnabledMessage": "Enabled member \"{name}\"",
+      "activeMemberCount": "{active} active / {total} total"
+    },
+    "plantTable": {
+      "title": "Sites",
+      "bulkEnabledMessage": "Enabled {count} site(s)",
+      "bulkDisabledMessage": "Disabled {count} site(s)",
+      "bulkDeleteConfirmMessage": "This deletes the {count} selected site(s). This cannot be undone.",
+      "bulkDeletedMessage": "Deleted {count} site(s)"
+    },
+    "storageLocationsPanel": {
+      "deleteLocationConfirmMessage": "This deletes \"{name}\" (including {count} shelf/shelves). This cannot be undone.",
+      "deleteShelfConfirmMessage": "This deletes shelf \"{code}\". This cannot be undone.",
+      "editShelfTitle": "Edit shelf"
+    },
+    "productRoutesPanel": {
+      "routeDeletedMessage": "Deleted process route \"{name}\"",
+      "deleteRouteConfirmMessage": "This deletes process route \"{name}\" along with all its versions. This cannot be undone."
+    },
+    "plantForm": {
+      "enterSiteCode": "Enter a site code",
+      "siteUpdatedMessage": "Updated the site",
+      "editTitle": "Edit site — {code}"
+    },
+    "materialTypeForm": {
+      "selectAManufacturer2": "Select a manufacturer",
+      "selectAManufacturerGrade": "Select a manufacturer grade",
+      "selectAShape2": "Select a shape",
+      "createdMessage": "Created material type {code}",
+      "editTitle": "Edit material type — {code}"
+    },
+    "approvalFlowRulesSection": {
+      "savedMessage": "Conditional flow \"{name}\" for {target}",
+      "deleteConfirmMessage": "This deletes \"{name}\". Approval requests already in progress are unaffected."
+    },
+    "materialModals": {
+      "deleteConfirmMessage": "This deletes material \"{name}\". This cannot be undone.",
+      "deletedMessage": "Deleted material \"{name}\"",
+      "disableConfirmMessage": "This disables material \"{name}\". It will no longer be selectable on new purchase orders or work orders.",
+      "enableConfirmMessage": "This enables material \"{name}\". It will be selectable on purchase orders and work orders again.",
+      "disabledMessage": "Disabled material \"{name}\"",
+      "enabledMessage": "Enabled material \"{name}\"",
+      "disableTheMaterial": "Disable material"
+    },
+    "bpForm": {
+      "customerRoleDescription": "Becomes selectable as the recipient on quotes, order acceptances, and invoices",
+      "endUserRoleDescription": "Becomes selectable as the end user on delivery notes and order lines",
+      "vendorRoleDescription": "Becomes selectable as the subcontractor on material purchase orders, outsource orders, and process steps",
+      "updatedMessage": "Updated the business partner",
+      "editTitle": "Edit business partner — {code}"
+    },
+    "locationModal": {
+      "selectASite": "Select a site",
+      "addStorageLocationTitle": "Add storage location"
+    },
+    "materialTable": {
+      "bulkEnabledMessage": "Enabled {count} material(s)",
+      "bulkDisabledMessage": "Disabled {count} material(s)",
+      "bulkDeleteConfirmMessage": "This deletes the {count} selected material(s). This cannot be undone.",
+      "bulkDeletedMessage": "Deleted {count} material(s)"
+    },
+    "routeEditorForm": {
+      "newRouteBreadcrumb": "New process route",
+      "newVersionTitle": "New version of process route \"{name}\" (v{version})"
+    },
+    "branchDetail": {
+      "deleteConfirmMessage": "This deletes branch \"{name} ({code})\". This cannot be undone.",
+      "deletedMessage": "Deleted branch \"{name}\""
+    },
+    "processStepDetail": {
+      "typeLabel": "Type: {label}"
+    },
+    "contactsTable": {
+      "deleteConfirmMessage": "This deletes contact \"{name}\". This cannot be undone.",
+      "deletedMessage": "Deleted contact \"{name}\""
+    },
+    "productDesignFiles": {
+      "latestVersion": "Latest v{version}",
+      "latestVersionCaption": "v{version} (latest)"
+    },
+    "materialTypePriceGrid": {
+      "savedMessage": "Saved {count} default price(s)"
     }
   },
   "manual": {
@@ -3509,7 +4314,10 @@
       "loading": "Loading…",
       "thereAreNoFilesYouCan": "There are no files you can view",
       "thereAreNoFilesInThis": "There are no files in this folder",
-      "cannotReachTheStorage": "Cannot reach the storage"
+      "cannotReachTheStorage": "Cannot reach the storage",
+      "deleteFileConfirm": "This deletes \"{name}\". This cannot be undone.",
+      "systemFilesWithCount": "System files ({count})",
+      "refresh": "Refresh"
     },
     "folderGrantsModal": {
       "couldNotLoad": "Could not load",
@@ -3520,7 +4328,9 @@
       "everyFileBeneathTheFolderGiven": "Every file beneath the folder given is covered. Administrators with the system permission always reach every folder.",
       "granted": "Granted",
       "thereAreNoIndividualGrants": "There are no individual grants",
-      "read": "Read"
+      "read": "Read",
+      "removeAccessConfirmMessage": "This removes {userName}'s access to \"{pathPrefix}\".",
+      "readWrite": "Read/write"
     }
   },
   "approvals": {
@@ -3529,10 +4339,22 @@
       "anApprovalRequestIsRequired": "An approval request is required",
       "pleaseApprove": "Please approve",
       "yourApprovalHasBeenRecorded": "Your approval has been recorded",
-      "sendingItBackStopsTheApproval": "Sending it back stops the approval flow and makes the document editable again."
+      "sendingItBackStopsTheApproval": "Sending it back stops the approval flow and makes the document editable again.",
+      "remainingNamesWithOthers": "{names} and {rest} more",
+      "stepAndGroupLabel": "Step {stepNo}/{stepCount} \"{stepLabel}\" · {groupLabel}",
+      "stepAndGroupLabelSingle": "{stepLabel} · {groupLabel}",
+      "reRequestApproval": "Request approval again",
+      "rejectReasonCanReRequest": "Reason for sending back: {reason} (you can fix it and request again)",
+      "itWasSentBack": "Sent back",
+      "allMembersMustApproveRemaining": "{where} — approval from all members is required (remaining {count}: {names})",
+      "youCanApproveAsAnApprover": "You can approve this document as an approver for {where}",
+      "remainingApprovers": "{where} — remaining {count}: {names}",
+      "onlyGroupMembersCanAct": "Only members of {groupLabel} can approve or send it back",
+      "stepLabelWaiting": "Waiting for {stepLabel}"
     },
     "approvalStepper": {
-      "noApprovalFlowIsSet": "No approval flow is set"
+      "noApprovalFlowIsSet": "No approval flow is set",
+      "groupAllMustApprove": "{group} (all must approve)"
     },
     "approvalTrailList": {
       "approvalRecord": "Approval record"
@@ -3545,7 +4367,9 @@
       "couldNotChangeIt": "Could not change it",
       "changeThePassword": "Change the password",
       "thePasswordIsStillTheInitial": "The password is still the initial one. Change it to continue.",
-      "youCannotOpenOtherScreensUntil": "You cannot open other screens until you change it."
+      "youCannotOpenOtherScreensUntil": "You cannot open other screens until you change it.",
+      "newPasswordMustBeAtLeast": "The new password must be at least {minLength} characters",
+      "atLeastNCharacters": "At least {minLength} characters"
     },
     "loginForm": {
       "theUsernameOrPasswordIsIncorrect": "The username or password is incorrect",
@@ -3555,7 +4379,12 @@
       "sSOIsNotConfiguredPleaseContact": "SSO is not configured (please contact an administrator)",
       "logInWithADevelopmentAccount": "Log in with a development account",
       "forDevelopmentAndTestingOrdinaryUsers": "For development and testing. Ordinary users should use SSO.",
-      "password": "Password"
+      "password": "Password",
+      "accessDeniedAccountDisabledOrSso": "Access denied. The account is disabled, or required information (username/email) could not be obtained from SSO. Please contact an administrator.",
+      "ssoResponseProcessingFailed": "Failed to process the SSO response (token retrieval/verification error). Please try again later.",
+      "thereIsAnErrorInTheAuthentication": "There is an error in the authentication configuration. Please contact an administrator.",
+      "theLinkIsInvalidOrExpired": "The link is invalid or has expired. Please try again.",
+      "loginError": "Login error: {code}"
     }
   },
   "documents": {
@@ -3564,7 +4393,9 @@
       "approvalToPublish": "Approval to publish",
       "notRequired": "Not required",
       "bodyText": "Body text",
-      "itIsNotPublishedYetEdit": "It is not published yet. Edit and publish, and the body appears here. You can read the draft under Review."
+      "itIsNotPublishedYetEdit": "It is not published yet. Edit and publish, and the body appears here. You can read the draft under Review.",
+      "required": "Required",
+      "hasUnpublishedChangesRevision": "Has unpublished changes (r{revision})"
     },
     "documentEditor": {
       "editTheDocument": "Edit the document",
@@ -3578,7 +4409,8 @@
       "aLineOnWhatYouFixed": "A line on what you fixed (shown in the revision history)",
       "reasonForTheChange": "Reason for the change",
       "addAPreShipmentCheckItem": "Add a pre-shipment check item",
-      "saveTheBodyNewRevision": "Save the body (new revision)"
+      "saveTheBodyNewRevision": "Save the body (new revision)",
+      "savedAsRevision": "Saved as revision {revision}"
     },
     "documentsTable": {
       "createADocument": "Create a document",
@@ -3589,7 +4421,9 @@
       "italic": "Italic",
       "bulletedList": "Bulleted list",
       "preview": "Preview",
-      "split": "Split"
+      "split": "Split",
+      "bodyTooLong": "The body is too long ({lines} lines / limit {max} lines). Split it into separate documents",
+      "lineCountLabel": "{lines} lines"
     },
     "pagePublishCard": {
       "itIsPublishedOnceApproved": "It is published once approved.",
@@ -3599,7 +4433,11 @@
       "thePublishedVersionIsReplacedWith": "The published version is replaced with the latest revision.",
       "thereAreUnpublishedChanges": "There are unpublished changes",
       "confirmPublishing": "Confirm publishing",
-      "theLatestRevisionWillBePublished": "The latest revision will be published."
+      "theLatestRevisionWillBePublished": "The latest revision will be published.",
+      "requestToPublish": "Request to publish",
+      "requestedToPublish": "Requested to publish",
+      "requestToPublishTitle": "Request to publish",
+      "thereAreUnresolvedComments": "There are {count} unresolved comments. Do you want to proceed anyway?"
     },
     "reviewView": {
       "thisRowWasChangedOrDeleted": "This row was changed or deleted by an edit. Only what it said at the time remains",
@@ -3610,18 +4448,28 @@
       "reply": "Reply",
       "includeResolved": "Include resolved",
       "stop": "Stop",
-      "comment": "Comment"
+      "comment": "Comment",
+      "markAsUnresolved": "Mark as unresolved",
+      "oldLineNumber": "Old line {n}",
+      "lineNumber": "Line {n}",
+      "commentOnLine": "Comment on line {n}",
+      "commentPlaceholderForLine": "Comment on line {n}"
     },
     "revisionDiff": {
       "compareFrom": "Compare from",
       "compareTo": "Compare to",
-      "thereIsNoDifference": "There is no difference"
+      "thereIsNoDifference": "There is no difference",
+      "lineChangesSummary": "{from} → {to}: {count} line changes"
     },
     "revisionsView": {
       "thisCreatesANewRevisionWith": "This creates a new revision with these contents. History is not rewound — it moves forward to restore.",
       "restore": "Restore",
       "diff": "Diff",
-      "restore2": "Restore"
+      "restore2": "Restore",
+      "versionListWithCount": "Versions ({count})",
+      "actionPublish": "Publish",
+      "restoreRevisionTitle": "Restore revision {revision}",
+      "restoredAsRevision": "Restored as revision {revision}"
     }
   },
   "forms": {
@@ -3659,7 +4507,9 @@
       "viewTheSummary": "View the summary",
       "export": "Export",
       "notSubmitted": "Not submitted",
-      "sharedWith": "Shared with"
+      "sharedWith": "Shared with",
+      "fieldsWithCount": "Fields ({count})",
+      "responsesWithCount": "Responses ({count})"
     },
     "formEditor": {
       "couldNotSaveTheItem": "Could not save the item",
@@ -3688,7 +4538,9 @@
       "editingByTheRespondent": "Editing by the respondent",
       "editableUntil": "Editable until",
       "saveBelowStoresItTogetherWith": "Save below stores it together with the settings. If you touched the fields, they are published as a new version, and existing responses keep the fields as they were when answered.",
-      "thereAreUnsavedChangesToThe": "There are unsaved changes to the items."
+      "thereAreUnsavedChangesToThe": "There are unsaved changes to the items.",
+      "itemErrorButSettingsSaved": "{error} (settings were saved)",
+      "fieldDefinitionIsInvalid": "The field definition is invalid"
     },
     "formFieldEditor": {
       "companyName": "Company name",
@@ -3717,7 +4569,12 @@
       "fieldToMatchOnReferencedForm": "Field to match on (referenced form)",
       "columnsShownInTheReferencedList": "Columns shown in the referenced list (up to 8)",
       "chooseAColumn": "Choose a column",
-      "maximumRowsShown": "Maximum rows shown"
+      "maximumRowsShown": "Maximum rows shown",
+      "noInternalKey": "There is no internal key",
+      "invalidInternalKeyFormat": "The internal key format is invalid (alphanumeric and _, starting with a letter)",
+      "duplicateInternalKey": "The internal key is duplicated",
+      "unusableRegularExpression": "This regular expression cannot be used (syntax error, nested quantifiers, or over {max} characters)",
+      "keyErrorImportedDefinitionIsBroken": "{error} (the imported definition is broken)"
     },
     "formFieldInput": {
       "searchAndSelect": "Search and select",
@@ -3729,7 +4586,20 @@
       "thereAreNoItemsYetAdd": "There are no items yet. Add them under Edit",
       "thisVersionHasNoItems": "This version has no items",
       "order": "Order",
-      "thereAreNoItems": "There are no items"
+      "thereAreNoItems": "There are no items",
+      "noOptionsSet": "No options set",
+      "shownPlusMore": "{shown} and {count} more",
+      "searchFromLabel": "Search from {label}",
+      "noSearchSourceSet": "No search source set",
+      "columnsLabel": "Columns: {columns}",
+      "noColumnsSet": "No columns set",
+      "filteredResponsesOfForm": "Filters and shows responses of form {target}",
+      "noReferenceTargetSet": "No reference target set",
+      "inputFormatLabel": "Input format: {pattern}",
+      "minOrMore": "{min} or more",
+      "maxOrLess": "{max} or less",
+      "savedDefinitionCannotBeRead": "The saved definition (version {version}) is not in a format the current app can read. Rebuild and save it from \"Edit\".",
+      "typeAndDetail": "{type} · {detail}"
     },
     "formFlowSummary": {
       "thereAreNoApprovalStepsYet": "There are no approval steps yet. As it stands, submitting starts no request and responses stall at submitted. Add a step under Edit.",
@@ -3758,7 +4628,11 @@
       "thereIsNoFormWithThe": "There is no form with the same code in this environment",
       "aFormWithTheSameCode": "A form with the same code exists, but you cannot edit it",
       "updateTheExistingFormANew": "Update the existing form (a new version)",
-      "import": "Import"
+      "import": "Import",
+      "fieldCountLabel": "{count} fields",
+      "importedAsVersion": "Imported as version {version}",
+      "willCreateWithSameCode": "Creates it with the same code as the export source ({sourceCode}). The shared URL stays the same across environments",
+      "willOverlayAsNewVersion": "Overlays it as a new version of \"{existingTitle}\". Existing responses remain as they were when submitted"
     },
     "formResponseView": {
       "thereAreNoRecordsToReference": "There are no records to reference."
@@ -3791,7 +4665,13 @@
       "isWhereYouDoIt": "is where you do it.",
       "pasteItIntoMetabaseSForm": "Paste it into Metabase's \"form code\" to narrow to this form's responses.",
       "openMetabase": "Open Metabase",
-      "readHowItIsSummarized": "Read how it is summarized"
+      "readHowItIsSummarized": "Read how it is summarized",
+      "percentIsOfAnsweredCount": "Percentages are of the {answered} responses received (totals can exceed 100% since multiple choices are allowed)",
+      "othersCountTopOnly": "{count} more (showing top items only)",
+      "freeTextNotCharted": "Free-text answers are not charted. Up to {count} recent responses are listed.",
+      "moreSamplesSeeResponseListOrExport": "{count} more (see the response list or export to Excel to read them all)",
+      "summaryCsvFilename": "Summary_{formTitle}_{formCode}.csv",
+      "summaryTitle": "Summary — {formTitle}"
     },
     "formsTable": {
       "thereAreNoFormsToShow": "There are no forms to show"
@@ -3808,7 +4688,11 @@
       "thisDiscardsTheDraftWhatYou": "This discards the draft. What you wrote cannot be recovered.",
       "theDraftWasDeleted": "The draft was deleted",
       "couldNotBeDeleted": "Could not be deleted",
-      "fillInTheBlankFormBelow": "Fill in the blank form below and it is saved as a new entry."
+      "fillInTheBlankFormBelow": "Fill in the blank form below and it is saved as a new entry.",
+      "draftSaved": "Draft saved",
+      "receptionClosedWithLabel": "This form is no longer accepting responses ({label}).",
+      "receptionClosesAt": "Closes at",
+      "draftsInProgressWithCount": "Drafts in progress ({count})"
     },
     "respondFormClient": {
       "send": "Send"
@@ -3838,7 +4722,8 @@
       "resetAll": "Reset all",
       "everyFieldBecomesAColumnUncheck": "Every field becomes a column. Uncheck only the ones you want to drop.",
       "downloadAsExcel": "Download as Excel",
-      "printThemTogetherAsAPdf": "Print them together as a PDF"
+      "printThemTogetherAsAPdf": "Print them together as a PDF",
+      "fieldsSelectedCount": "{count} fields selected"
     },
     "shareConditionEditor": {
       "thereAreNoFieldsUsableAs": "There are no fields usable as a condition (create a dropdown, multi-select or business data lookup field)",
@@ -3864,7 +4749,12 @@
     "shareGrantsView": {
       "aFormWithNoSharesSet": "A form with no shares set is visible only to its author and administrators. Knowing the URL does not help.",
       "condition": "Condition",
-      "allResponses": "All responses"
+      "allResponses": "All responses",
+      "fieldIsOneOfValuesResponsesOnly": "Only responses where {label} is {values}"
+    },
+    "summaryCharts": {
+      "donutSliceLabel": "{label} {count} ({percent}%)",
+      "noResponses": "No responses"
     }
   },
   "layout": {
@@ -3889,7 +4779,8 @@
       "whatTheProblemIs": "What the problem is",
       "whatWentWrongTheStepsYou": "What went wrong, the steps you took, what you expected, etc.",
       "thePageUrlBrowserDetailsScreen": "The page URL, browser details, screen size and app version are attached automatically. The report is recorded in the activity log and administrators are notified.",
-      "report": "Report"
+      "report": "Report",
+      "attachConsoleLogsWithCount": "Attach console logs (most recent {count})"
     },
     "sharePageModal": {
       "selectAtLeastOneRecipient": "Select at least one recipient",
@@ -3906,6 +4797,12 @@
     "versionSkewBanner": {
       "theAppWasUpdatedThisPage": "The app was updated — this page is still running the old version. Reload before something fails.",
       "reload": "Reload"
+    },
+    "navigationGuard": {
+      "unsavedChangesTitle": "You have unsaved changes",
+      "unsavedChangesMessage": "If you leave this page, your input will not be saved. Do you want to continue?",
+      "leave": "Leave",
+      "stay": "Stay on this page"
     }
   },
   "notifications": {
@@ -3928,7 +4825,11 @@
       "isWhereItLives": "is where it lives.",
       "evenIfYouHoldThePermission": "Even if you hold the permission, the operations here",
       "itCannotBeRunAsIt": "It cannot be run as it is",
-      "andCanOnlyBeDoneFor": "and can only be done for the period another person has approved."
+      "andCanOnlyBeDoneFor": "and can only be done for the period another person has approved.",
+      "remainingHoursMinutes": "{hours}h {minutes}m remaining",
+      "remainingMinutes": "{minutes}m remaining",
+      "requestRequired": "Request required",
+      "scopeLabel": "Scope: {scopes}"
     },
     "notificationSettingsForm": {
       "theNotificationSettingsWereUpdated": "The notification settings were updated",
@@ -3965,7 +4866,10 @@
       "noDevicesAreRegisteredUseEnable": "No devices are registered. Use \"Enable on this device\" above.",
       "device": "Device",
       "thisDevice": "This device",
-      "removeThisDeviceSRegistration": "Remove this device's registration"
+      "removeThisDeviceSRegistration": "Remove this device's registration",
+      "unknownDevice": "Unknown device",
+      "browser": "Browser",
+      "stopsPushNotificationsToDevice": "This stops push notifications to \"{device}\"."
     },
     "profileView": {
       "theProfilePhotoWasUpdated": "The profile photo was updated",
@@ -3983,7 +4887,9 @@
       "n8CharactersOrMore": "8 characters or more",
       "changeThePassword": "Change the password",
       "devicesRegisteredForPush": "Devices registered for push",
-      "noDevicesAreRegisteredYouCan": "No devices are registered. You can enable one under notification settings."
+      "noDevicesAreRegisteredYouCan": "No devices are registered. You can enable one under notification settings.",
+      "employee": "Employee",
+      "unknownDevice": "Unknown device"
     }
   },
   "sales": {
@@ -4053,7 +4959,9 @@
       "thereAreNoDesignRequests": "— (there are no design requests)",
       "searchByRequestNumberProductDetails": "Search by request number, product, details or assignee",
       "thereAreNoDesignRequests2": "There are no design requests",
-      "noProductSpecified": "No product specified"
+      "noProductSpecified": "No product specified",
+      "hasVersionsSoRevision": "This product already has up to v{versionCount} → Revision",
+      "noDesignYetSoNew": "This product has no drawings yet → New"
     },
     "orderAcceptances": {
       "theOrderAcceptanceWasCancelled": "The order acceptance was cancelled",
@@ -4145,7 +5053,9 @@
       "matchAgainstTheProductMaster": "Match against the product master",
       "itemNameExtractedText": "Item name (extracted text)",
       "itemNameOnTheOrder": "Item name on the order",
-      "mayBeLeftBlank": "May be left blank"
+      "mayBeLeftBlank": "May be left blank",
+      "watchedFolder": "Watched folder intake",
+      "manualEntry": "Manual entry"
     },
     "orderLines": {
       "parentDocumentOfThisLine": "Parent document of this line",
@@ -4383,6 +5293,180 @@
       "representativeEstimatedUnitPrice": "Representative estimated unit price",
       "searchByPriceEstimateNumberName": "Search by price estimate number, name or customer",
       "thereAreNoPriceEstimates": "There are no price estimates"
+    },
+    "orderLineDetail": {
+      "designWithCount": "Design ({count})",
+      "workOrdersWithCount": "Work orders ({count})",
+      "shippingWithCount": "Shipping ({count})",
+      "allocatedProgress": "Allocated {allocated} / ordered {quantity} pcs",
+      "allocatedProgressWithReserved": "Allocated {allocated} / ordered {quantity} pcs · stock allocated {reserved} pcs",
+      "deliveryOrderNote": "{status} · {quantity} pcs",
+      "deliveryOrderNoteStockStorage": "{status} · {quantity} pcs (stock storage)",
+      "manufactureWorkOrderButton": "Manufacturing work order ({quantity} pcs)",
+      "partiallyShippedProgress": "Partially shipped {shipped}/{quantity}",
+      "reservedOfQuantity": "{reserved} / {quantity} pcs",
+      "shippedOfQuantity": "{shipped} / {quantity} pcs",
+      "shippedProgress": "Shipped {shipped} / ordered {quantity} pcs",
+      "shortageManufactureMessage": "Create a manufacturing work order for the {shortage}-pc shortfall.",
+      "stockAllocatedSplitMessage": "{reserved} pcs of stock have been allocated. Create work orders split between the stock portion and the {shortage}-pc manufacturing shortfall.",
+      "stockWorkOrderButton": "Stock-portion work order ({quantity} pcs)",
+      "unplannedOpenWorkOrderBuilder": "{quantity} pcs not yet planned — opens the work order builder with this order line preselected",
+      "unshippedOpenDeliveryOrderForm": "{quantity} pcs not yet shipped — opens the delivery order form with this order line loaded",
+      "workOrderNote": "{status} · allocated {quantity} pcs",
+      "workOrdersCount": "{count} work order(s)"
+    },
+    "acceptanceCancelCard": {
+      "description": "Reason: {reason} ｜ Requested by: {requestedBy} ｜ {step}. The order acceptance and its order lines remain unchanged until approved.",
+      "stepOrdinal": "Approval step {stepNo}",
+      "stepProgress": "{label} ({stepNo}/{stepCount})"
+    },
+    "createQuoteModal": {
+      "createQuoteFromPriceListMessage": "Creates a quote from the price list for {customer} × {product}. The unit price and discount are calculated automatically from the price list."
+    },
+    "deletePriceListModal": {
+      "confirmDeleteMessage": "Deletes the price list for \"{productName}\". This cannot be undone.",
+      "deletedMessage": "Deleted the price list for \"{productName}\""
+    },
+    "designRequestDetail": {
+      "approvedReadyToStartDesc": "Approved. {assignee} can start creating the drawing",
+      "baseDrawingLabel": "Base drawing: ",
+      "changeReasonLabel": "Reason for change: {reason}",
+      "confirmCancelMessage": "Cancels design request {number}. If it is pending approval, it is also withdrawn from the pending-approval list.",
+      "confirmCompleteMessage": "Marks design request {number} as completed. Drawing v{versions} will be linked as the deliverable.",
+      "confirmReopenMessage": "Sends design request {number} back to in progress. The completion date is cleared, but approval does not need to be redone.",
+      "designRequestWithNumber": "Design request {number}",
+      "drawingRegisteredNotifyDesc": "Drawing v{version} has been registered. Completing this notifies the requester",
+      "unregisteredAttachmentCaption": "Attachment (not registered) {filename}",
+      "versionCaption": "v{version} {filename}",
+      "versionCaptionLatest": "v{version} (latest) {filename}",
+      "versionOrdinal": "Version {version}"
+    },
+    "designRequestForm": {
+      "createdMessage": "Created design request {number}",
+      "editTitle": "Edit design request {requestId}",
+      "selectAnAssignee": "Select an assignee"
+    },
+    "designRequestTable": {
+      "desiredAtLabel": "Due {date}"
+    },
+    "discountRuleModal": {
+      "enterAName": "Enter a name",
+      "enterAtLeast1": "Enter at least 1",
+      "rateLabel": "Rate"
+    },
+    "intakeReviewPanel": {
+      "couldNotBeRead": "Could not be read",
+      "hideTheBreakdown": "Hide the breakdown",
+      "itemsNeedingConfirmation": "{count} item(s) need confirmation",
+      "notInTheMaster": "Not in the master",
+      "readAsValue": "— read as \"{value}\""
+    },
+    "issueQuoteModal": {
+      "confirmIssueMessage": "Issues quote \"{number}\". A PDF is generated and saved at the same time, viewable in the detail page's PDF tab.",
+      "issuedAndSaved": "Issued quote {number} and saved the PDF",
+      "issuedAndSavedWithMail": "Issued quote {number} and saved the PDF (email scheduled)"
+    },
+    "materialPriceChart": {
+      "referencePriceAmount": "Reference price {amount}",
+      "setAsReferencePrice": "Set {date} {price} as the reference price"
+    },
+    "orderAcceptanceCreateForm": {
+      "createdDraftMessage": "Order acceptance {number} (draft)"
+    },
+    "orderAcceptanceDetail": {
+      "approvalNeedsMoreInputs": "{count} more field(s) are needed before requesting approval",
+      "archivedAtNote": "Archived ({date})",
+      "autoRetryAllFailed": "All {attempt}/{maxAttempts} auto-retry attempts failed",
+      "autoRetryInProgress": "Auto-retrying (attempt {attempt}/{maxAttempts} failed) — will run again shortly",
+      "confirmArchiveMessage": "Archives order acceptance {number}. It can no longer be edited afterward.",
+      "confirmCancelRequestMessage": "Cancels order acceptance {number} and all of its order lines. If approval settings (MS0B) include an \"order acceptance cancellation\" step, nothing changes until it is approved. Cannot be cancelled if any line has already shipped.",
+      "confirmDeployMessage": "Creates {count} order line(s) at once as order lines ({number}-01–{lastBranch}). Every line must have its product identified and unit price entered.",
+      "excludingUnpricedCount": "Excludes {count} line(s) with no unit price entered",
+      "fixViaEditMessage": "Fix it with \"Edit\" — {summary}",
+      "lineDiffText": "Line {row}: {actual} ≠ price list {expected}",
+      "orderAcceptanceWithNumber": "Order acceptance {number}",
+      "orderLinesCreatedMessage": "Created order lines {numbers}",
+      "priceMismatchCount": "{count} price mismatch(es)",
+      "priceMismatchExpected": "Price mismatch (price list: {expected})",
+      "unenteredCount": "{count} not entered"
+    },
+    "orderAcceptanceIntakeTable": {
+      "addedQueuedForExtraction": "Added {count} item(s) to the list. AI extraction will run in order after this",
+      "addedQueuedForExtractionWithPending": "Added {count} item(s) to the list. AI extraction will run in order after this ({pending} pending)",
+      "addedWithProblems": "Added {count} item(s) to the list / {problems}",
+      "addingItemProgress": "Adding {index}/{total}: {filename}…",
+      "addingToListMessage": "Adding {count} item(s) to the list…",
+      "communicationError": "Communication error",
+      "extractionCouldNotStartDocs": "Documents that could not start extraction: {documents}",
+      "hintPrefix": "What to do: {hint}",
+      "intakeFailed": "Intake failed",
+      "lineCountLabel": "{count} line item(s)",
+      "orderDateLabel": "Order date {date}",
+      "priorityIntakeAcceptedPartialFailure": "Priority intake accepted (partial failure)",
+      "queueingForExtraction": "Queueing {count} item(s) for AI extraction…",
+      "retrying": "Retrying",
+      "watchedFolderIntakeLabel": "Watched folder intake: "
+    },
+    "orderAcceptanceItemsEditor": {
+      "lineCountAndTotalQuantity": "{count} line item(s) / total quantity",
+      "lineOrdinal": "Line {index}"
+    },
+    "priceListDetail": {
+      "confirmDeleteDiscountMessage": "Deletes \"{label}\". This cannot be undone.",
+      "discountRuleSavedMessage": "Saved discount rule \"{label}\""
+    },
+    "priceListTable": {
+      "bulkActiveChangedMessage": "{action} {count} price list(s)",
+      "bulkDeletedMessage": "Deleted {count} price list(s)",
+      "confirmBulkDeleteMessage": "Deletes the {count} selected price list(s) (including tiers and discount rules). This cannot be undone.",
+      "itemCountNoSpace": "{count} items",
+      "tierCountLabel": "{count} tiers"
+    },
+    "priceListTypeForm": {
+      "addAtLeastOneOrderTypePrice": "Add at least one order type price",
+      "addAtLeastOneTier": "Add at least one tier",
+      "atLeast1": "At least 1",
+      "confirmBackToAutoTierMessage": "This discards the manually set unit price and reverts to the automatically calculated value ({price}).",
+      "confirmBackToEstimatedMessage": "This discards the manually set base unit price and reverts to the price estimate's unit price ({price}).",
+      "confirmDeleteOrderTypeMessage": "This deletes the price for {orderType} (including quantity tiers and discount rules). It takes effect when you save.",
+      "confirmUseCustomBaseMessage": "This will stop using the price estimate's unit price ({price}) and set the base unit price manually. Continue?",
+      "confirmUseCustomTierMessage": "This will stop using this tier's automatically calculated unit price ({price} = base unit price × multiplier) and set the price manually.",
+      "duplicateEntryPrefix": "The price list for this customer × product",
+      "duplicateEntrySuffix": "already exists ({orderTypes}). To add an order type, edit the existing price list.",
+      "editTitle": "Edit price list",
+      "manualWithEstimateValue": "Manually set (price estimate value: {price})",
+      "multiplierMustBePositive": "A multiplier greater than 0",
+      "orderTypeSectionTitle": "Order type: {orderType}"
+    },
+    "quoteDetail": {
+      "acceptanceNoteWithLines": "{status} · {count} line item(s)",
+      "expiredOn": "Expired ({date})",
+      "issuePdfDesc": "Issue the PDF",
+      "itemCountNoSpace": "{count} items",
+      "orderTypesAndTierCount": "{orderTypes} · {tierCount} tiers",
+      "rejected": "Reject",
+      "validUntilLabel": "Valid until {date}"
+    },
+    "quoteForm": {
+      "addAtLeastOneLine": "Add at least one line item",
+      "atLeast1": "At least 1",
+      "editTitle": "Edit quote",
+      "noMatchingPriceList": "No matching price list (register one via a price estimate)",
+      "selectABranch": "Select a branch",
+      "subtotalAmount": "Subtotal {amount}",
+      "taxAmount": "Tax {amount}",
+      "totalInclTaxAmount": "Total (incl. tax) {amount}"
+    },
+    "trialEstimateDetail": {
+      "orderTypeTierCount": "{orderType} · {tierCount} tiers",
+      "readyForPriceListBase": "Toward becoming usable as a price list's base unit price"
+    },
+    "trialEstimateForm": {
+      "machiningRateSpareShapeNote": "The machining rate (¥{rate}/10 min) and spare-shape count ({count} pcs) use the price estimate engine's global fixed factors.",
+      "policyBasisMonths": "Policy: {basis} · last {months} months",
+      "reEstimatedName": "{name} (re-estimated)",
+      "referenceBasisMonths": "Reference: {basis} (last {months} months)",
+      "referencePriceOn": "Reference price {date}"
     }
   },
   "shipping": {
@@ -4407,7 +5491,12 @@
       "showPricesPrintUnitPriceAnd": "Show prices (print unit price and amount on the delivery note)",
       "choosingADeliveryOrderPrefillsThe": "Choosing a delivery order prefills the lines (prices from the order lines). With \"show prices\" off, prices and amounts are not saved.",
       "searchByDeliveryNoteNumberDelivery": "Search by delivery note number, delivery order number or ship-to",
-      "thereAreNoDeliveryNotes": "There are no delivery notes"
+      "thereAreNoDeliveryNotes": "There are no delivery notes",
+      "invoiceNote": "{status} · {amount}",
+      "confirmIssueBody": "This issues delivery note {number}. It cannot be edited after issuing.",
+      "issuedBody": "Issued delivery note {number}",
+      "confirmDeliveredBody": "This marks delivery note {number} as delivered. Today's date will be recorded as the delivered date.",
+      "deliveredBody": "Marked delivery note {number} as delivered"
     },
     "deliveryOrders": {
       "stockStorageSoNotTiedTo": "— (stock storage, so not tied to an order line)",
@@ -4443,7 +5532,16 @@
       "noOrderLineStockStorageEtc": "No order line (stock storage, etc.)",
       "addALineNoOrderLine": "Add a line (no order line)",
       "searchByDeliveryOrderNumberOrder": "Search by delivery order number, order line number, customer or product",
-      "thereAreNoDeliveryOrders": "There are no delivery orders"
+      "thereAreNoDeliveryOrders": "There are no delivery orders",
+      "storedToStock": "Stored (to stock)",
+      "deliveryNoteNote": "{status} · {recipient}",
+      "confirmConfirmBody": "This confirms delivery order {number}. It cannot be edited after confirming.",
+      "confirmedBody": "Confirmed delivery order {number}",
+      "confirmShipBodyDispatch": "This marks delivery order {number} as shipped. The order line's shipping status will also be recalculated.",
+      "confirmShipBodyStock": "This marks delivery order {number} as shipped (the order line's shipping status will not change, since this is stock storage).",
+      "shippedBody": "Marked delivery order {number} as shipped",
+      "confirmDeleteBody": "This deletes delivery order {number}. This cannot be undone.",
+      "deletedBody": "Deleted delivery order {number}"
     },
     "pendingShipments": {
       "completedLots": "Completed lots",
@@ -4456,6 +5554,35 @@
       "preparingToShip": "Preparing to ship",
       "thereAreNoOrderLinesAwaiting": "There are no order lines awaiting a delivery order",
       "thereAreNoDeliveryOrdersBeing": "There are no delivery orders being prepared"
+    },
+    "deliveryOrderForm": {
+      "selectProduct": "Select a product",
+      "selectAnOrderAcceptance": "Select an order acceptance",
+      "shortfallLine": "{orderLineNumber} (unshipped {remaining} / covered {covered})",
+      "alreadyShippedMessage": "{lines} have already shipped the full ordered quantity",
+      "shortfallMessage": "{lines} — the shortfall needs work orders completed or stock allocated",
+      "couldNotAddOrderLine": "{label} — only confirmed order lines can be added to a delivery order",
+      "createdWithNumber": "Created delivery order {number}",
+      "exceedsOrderedQuantityMessage": "{lines} — cannot ship more than the ordered quantity",
+      "exceedsOrderedQuantityLine": "{number} (remaining {remaining} / shipping {total})",
+      "notEnoughFinishedGoodsLine": "{number}: finished goods are not enough for the remaining order (allocatable {coverable} / remaining {remaining})",
+      "partialShipmentLine": "{number}: the shipped quantity does not meet the remaining order (shipping {total} / remaining {remaining})",
+      "lotOption": "#{lotNumber} (on hand {quantity})",
+      "lotOptionWithReserved": "#{lotNumber} (on hand {quantity} / reserved {reserved})",
+      "editWithNumber": "Edit delivery order {orderId}",
+      "orderedQuantityLabel": "Ordered {quantity}",
+      "shippedQuantityLabel": "Shipped {quantity}",
+      "completedQuantityLabel": "Completed {quantity} (from {count} completed work orders)",
+      "exceedsRemainingLabel": "Exceeds the remaining order of {remaining} (shipping {total})",
+      "partialShipmentLabel": "Partial shipment (shipping {total} / remaining {remaining})"
+    },
+    "deliveryNoteForm": {
+      "selectADeliveryOrder": "Select a delivery order",
+      "createdWithNumber": "Created delivery note {number}",
+      "editWithNumber": "Edit delivery note {noteId}"
+    },
+    "deliveryNoteTable": {
+      "destinationLabel": "Destination: {name}"
     }
   },
   "ui": {
@@ -4471,14 +5598,19 @@
       "uploadASupportingDocument": "Upload a supporting document",
       "labelOptional": "Label (optional)",
       "orderCopyEtc": "Order copy, etc.",
-      "confirmDeletingTheAttachment": "Confirm deleting the attachment"
+      "confirmDeletingTheAttachment": "Confirm deleting the attachment",
+      "defaultTitle": "Attachments",
+      "deleteAttachment": "Delete {filename}",
+      "deleteConfirmBody": "This deletes {filename}. This cannot be undone."
     },
     "auditChangeTable": {
       "before": "Before",
       "after": "After",
       "showTheRawData": "Show the raw data",
       "before2": "Before",
-      "after2": "After"
+      "after2": "After",
+      "noChanges": "There are no changes",
+      "hideTheRawData": "Hide the raw data"
     },
     "auditDetailModal": {
       "operationDetails": "Operation details",
@@ -4489,13 +5621,20 @@
       "columns": "Columns",
       "selectAll": "Select all",
       "selectRows": "Select rows",
-      "rowsToShow": "Rows to show"
+      "rowsToShow": "Rows to show",
+      "noData": "No data",
+      "selectedCount": "{count} selected",
+      "zeroItems": "0 items",
+      "itemRange": "{start}–{end} of {total}",
+      "itemsCount": "{count} items"
     },
     "designFileSlot": {
-      "cancel": "Cancel"
+      "cancel": "Cancel",
+      "descriptionOptional": "Description (optional)"
     },
     "designFileViewer": {
-      "noPreview": "No preview"
+      "noPreview": "No preview",
+      "enlarge": "Enlarge {filename}"
     },
     "documentLinkModal": {
       "insertADocumentLink": "Insert a document link",
@@ -4510,23 +5649,32 @@
       "clickARowToSelectIt": "Click a row to select it (up to 50 results — narrow it with filters)"
     },
     "helpLabel": {
-      "readMore": "Read more"
+      "readMore": "Read more",
+      "descriptionOf": "Description of {name}",
+      "readTheDescriptionOf": "Read the description of {name}"
     },
     "imageCropModal": {
       "couldNotLoadTheImage": "Could not load the image",
       "couldNotCropIt": "Could not crop it",
-      "dragToPositionItUseThe": "Drag to position it, use the slider for size"
+      "dragToPositionItUseThe": "Drag to position it, use the slider for size",
+      "cropThePhoto": "Crop the photo",
+      "setThisRange": "Set this range"
     },
     "masterDetailShell": {
       "adjustThePaneWidth": "Adjust the pane width"
     },
     "masterListNav": {
-      "filter": "Filter"
+      "filter": "Filter",
+      "filterPlaceholder": "Filter...",
+      "noItems": "There are no items.",
+      "noItemsMatchTheFilter": "No items match the filter."
     },
     "memoHistoryModal": {
       "thereIsNoChangeHistoryYet": "There is no change history yet",
       "bodyJustBeforeDeletion": "Body just before deletion",
-      "bodyAfterThisOperation": "Body after this operation"
+      "bodyAfterThisOperation": "Body after this operation",
+      "actionUpdated": "Update",
+      "actionRestored": "Restore"
     },
     "memoPanel": {
       "theMemoWasUpdated": "The memo was updated",
@@ -4543,7 +5691,11 @@
       "theCommentWasDeleted": "The comment was deleted",
       "post": "Post",
       "thereAreNoCommentsYet": "There are no comments yet",
-      "edited": "(edited)"
+      "edited": "(edited)",
+      "collapse": "Collapse",
+      "archivedMark": "· Archived",
+      "restore": "Restore",
+      "lastUpdated": "Last updated: {date} ({name})"
     },
     "model3dCanvas": {
       "loadingThe3dModel": "Loading the 3D model…",
@@ -4559,7 +5711,8 @@
     },
     "pdfAttachmentPanel": {
       "generatedProducedWhenDisplayed": "Generated: produced when displayed",
-      "thisDeviceCannotShowPdfsInside": "This device cannot show PDFs inside the app"
+      "thisDeviceCannotShowPdfsInside": "This device cannot show PDFs inside the app",
+      "generatedAt": "Generated: {date}{by}"
     },
     "placeholderPage": {
       "thisScreenIsNotReadyYet": "This screen is not ready yet"
@@ -4569,16 +5722,39 @@
       "cancelled": "Cancelled",
       "thisDocumentHasBeenCancelled": "This document has been cancelled.",
       "from": "From",
-      "to": "To"
+      "to": "To",
+      "title": "Progress"
     },
     "richTextEditorField": {
-      "documentLink": "Document link"
+      "documentLink": "Document link",
+      "bold": "Bold",
+      "italic": "Italic",
+      "underline": "Underline",
+      "strikethrough": "Strikethrough",
+      "inlineCode": "Inline code",
+      "codeBlock": "Code block",
+      "heading": "Heading",
+      "subheading": "Subheading",
+      "bulletList": "Bullet list",
+      "orderedList": "Numbered list",
+      "blockquote": "Quote",
+      "horizontalRule": "Horizontal rule",
+      "link": "Link",
+      "unlink": "Remove link",
+      "undo": "Undo",
+      "redo": "Redo",
+      "linkUrl": "Link URL",
+      "openInNewTab": "Open in a new tab",
+      "openInSameTab": "Open in the same tab"
     },
     "salesRepSelect": {
       "noSalesRepIsRegisteredFor": "No sales rep is registered for this customer.",
       "checkInTheBusinessPartnerMaster": "Check in the business partner master",
       "noSalesRepIsRegisteredFor2": "No sales rep is registered for this customer (ask the partner master's administrator)",
-      "selectACustomerFirst": "Select a customer first"
+      "selectACustomerFirst": "Select a customer first",
+      "notACandidate": "{name} (not a candidate)",
+      "registerInTheBusinessPartnerMaster": "Register in the business partner master",
+      "selectARep": "Select a rep"
     },
     "searchSelect": {
       "theSearchFailed": "The search failed",
@@ -4588,6 +5764,39 @@
       "advancedSearchFilters": "Advanced search (filters)",
       "advancedSearch": "Advanced search",
       "noResults": "No results"
+    },
+    "f4Presets": {
+      "productTitle": "Detailed product search",
+      "productDescription": "Filter by name or material type to select (legacy products have no code).",
+      "name": "Name",
+      "materialTypeCode": "Material type code",
+      "productCode": "Product code",
+      "materialType": "Material type",
+      "unit": "Unit",
+      "customerTitle": "Detailed customer search",
+      "customerDescription": "Filter by BP code or name (including kana and AI-matched names).",
+      "bpCode": "BP code",
+      "bpCodePlaceholder": "e.g. BP-",
+      "nameKana": "Name / kana",
+      "kana": "Kana",
+      "materialTypeTitle": "Detailed material type search",
+      "materialTypeDescription": "Only converted material types (with a code structure) are included.",
+      "manufacturer": "Manufacturer",
+      "shape": "Shape"
+    },
+    "localizedTextInput": {
+      "editDefaultLocaleAbove": "{locale} ({value}) is edited in the field above. Only set the other languages here."
+    },
+    "richTextView": {
+      "couldNotResolveTheLinkTarget": "Could not resolve the link target",
+      "blockedPrefix": "⚠ Blocked: ",
+      "externalSitePrefix": "External site: "
+    },
+    "historyPanel": {
+      "noChangeHistoryRecordedYet": "No change history has been recorded yet"
+    },
+    "copyableValue": {
+      "copyX": "Copy {name}"
     }
   }
 }

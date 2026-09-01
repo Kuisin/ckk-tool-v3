@@ -164,11 +164,15 @@ export function ProductTypeEditForm({
         breadcrumbs={[
           tr("common.system"),
           { label: tr("common.productTypes"), href: BASE },
-          isEdit ? "種別編集" : tr("settings.productTypeEditForm.addAType"),
+          isEdit
+            ? tr("settings.productTypeEditForm.editType")
+            : tr("settings.productTypeEditForm.addAType"),
         ]}
         title={
           isEdit
-            ? `種別編集 — ${type.name.ja || type.id}`
+            ? tr("settings.productTypeEditForm.editTypeName", {
+                name: type.name.ja || type.id,
+              })
             : tr("settings.productTypeEditForm.addAType")
         }
       />
@@ -284,7 +288,10 @@ export function ProductTypeEditForm({
                     <TextInput
                       description={
                         def?.default
-                          ? `未入力なら "${def.default}"`
+                          ? tr(
+                              "settings.productTypeEditForm.defaultValueIfEmptyDefault",
+                              { default: def.default },
+                            )
                           : tr("common.optional")
                       }
                       label={

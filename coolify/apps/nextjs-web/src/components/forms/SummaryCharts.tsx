@@ -18,6 +18,7 @@
  */
 
 import { Box, Group, Stack, Text } from "@mantine/core";
+import { useTranslations } from "next-intl";
 import { type CountItem, donutArcs } from "@/lib/form-summary";
 
 /**
@@ -65,13 +66,20 @@ export function DonutChart({
   /** 割合の分母。回答した件数。 */
   total: number;
 }) {
+  const tr = useTranslations();
   const circumference = 2 * Math.PI * DONUT_RADIUS;
   // 寸法の計算は lib/form-summary.ts が持つ（部品の中に閉じ込めると、
   // 確かめるのに画面を開かないといけなくなる）。
   const arcs = donutArcs(items, total, circumference);
 
   const label = items
-    .map((i) => `${i.label} ${i.count}件（${percent(i.count, total)}%）`)
+    .map((i) =>
+      tr("forms.summaryCharts.donutSliceLabel", {
+        label: i.label,
+        count: i.count,
+        percent: percent(i.count, total),
+      }),
+    )
     .join("、");
 
   return (
@@ -176,15 +184,16 @@ const COLUMN_PLOT_HEIGHT = 132;
  */
 export function ColumnChart({
   items,
-  emptyMessage = "回答がありません",
+  emptyMessage,
 }: {
   items: CountItem[];
   emptyMessage?: string;
 }) {
+  const tr = useTranslations();
   if (items.length === 0) {
     return (
       <Text c="dimmed" size="sm">
-        {emptyMessage}
+        {emptyMessage ?? tr("forms.summaryCharts.noResponses")}
       </Text>
     );
   }

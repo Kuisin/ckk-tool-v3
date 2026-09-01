@@ -111,7 +111,10 @@ export function DesignFileVersionForm({
       if (res.ok && json?.ok) {
         notifications.show({
           title: tr("common.registered"),
-          message: `設計図 v${json.version} を追加しました`,
+          message: tr(
+            "production.designFileVersionForm.designFileWasAddedWithVersion",
+            { version: json.version ?? 1 },
+          ),
           color: "green",
         });
         // 依頼から来たなら依頼へ戻す（次にやることは「完了」なので）。
@@ -137,12 +140,15 @@ export function DesignFileVersionForm({
     <Stack gap="md">
       {requestContext && (
         <Alert color="blue" icon={<IconInfoCircle size={16} />}>
-          設計依頼 {requestContext.requestNumber} の成果物として登録します。
-          製品「{requestContext.productLabel}」
-          {requestContext.customerName
-            ? `・受注元「${requestContext.customerName}」`
-            : tr("production.designFiles.generic")}
-          は依頼で決まっているので変更できません。
+          {tr("production.designFileVersionForm.registeringAsResultOfRequest", {
+            requestNumber: requestContext.requestNumber,
+            productLabel: requestContext.productLabel,
+            customerPart: requestContext.customerName
+              ? tr("production.designFileVersionForm.andCustomerWithName", {
+                  name: requestContext.customerName,
+                })
+              : tr("production.designFiles.generic"),
+          })}
         </Alert>
       )}
 
@@ -150,7 +156,7 @@ export function DesignFileVersionForm({
         {requestContext ? null : (
           <SearchSelect
             initialOption={initialProduct ?? undefined}
-            label="製品"
+            label={tr("common.product")}
             onChange={setProductId}
             onSearch={searchProductOptions}
             storageKey="product"
@@ -199,7 +205,10 @@ export function DesignFileVersionForm({
               file={r.file}
               fullWidth={isMobile}
               key={r.key}
-              label={`参考資料 ${i + 1}`}
+              label={tr(
+                "production.designFileVersionForm.referenceWithNumber",
+                { number: i + 1 },
+              )}
               note={r.note}
               notePlaceholder={tr(
                 "production.designFiles.descriptionOptionalEGPartDrawing",

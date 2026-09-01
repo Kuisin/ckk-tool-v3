@@ -216,7 +216,7 @@ export function InspectionTemplateDetail({
               onClick: () => setToggleOpen(true),
             },
             {
-              label: "削除",
+              label: tr("common.delete"),
               icon: <IconTrash size={14} />,
               color: "red",
               divider: true,
@@ -259,7 +259,7 @@ export function InspectionTemplateDetail({
 
       <SummaryGrid>
         <FieldValue
-          label="コード"
+          label={tr("master.inspectionTemplateDetail.code")}
           value={<DocNumber>{record.code}</DocNumber>}
         />
         <FieldValue
@@ -325,7 +325,9 @@ export function InspectionTemplateDetail({
         />
         <FieldValue
           label={tr("master.inspectionTemplates.inspectionItems")}
-          value={`${record.items.length}件`}
+          value={tr("master.inspectionTemplateTable.itemCountWithUnit", {
+            count: record.items.length,
+          })}
         />
         <FieldValue
           label={tr("common.status")}
@@ -524,7 +526,10 @@ export function InspectionTemplateDetail({
                                     <IconEdit size={14} />
                                   </ActionIcon>
                                 </Tooltip>
-                                <Tooltip label="削除" withinPortal>
+                                <Tooltip
+                                  label={tr("common.delete")}
+                                  withinPortal
+                                >
                                   <ActionIcon
                                     aria-label={tr(
                                       "master.inspectionTemplates.deleteTheInspectionItem",

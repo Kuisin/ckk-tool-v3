@@ -188,7 +188,10 @@ export function PrivilegedRequestForm({
       </FormSection>
 
       <FormSection
-        description={`利用できる期間は申請から最長 ${MAX_WINDOW_DAYS} 日です`}
+        description={tr(
+          "settings.privilegedRequestForm.theUsablePeriodIsAtMost",
+          { days: MAX_WINDOW_DAYS },
+        )}
         title={tr("common.period")}
       >
         <DateTimePicker

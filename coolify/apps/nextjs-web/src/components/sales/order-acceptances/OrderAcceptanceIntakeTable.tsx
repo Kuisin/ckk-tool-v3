@@ -50,7 +50,7 @@ import { useUrlSelectState, useUrlStringState } from "@/hooks/useUrlState";
 import { useIsMobile } from "@/hooks/useViewport";
 import { parseExtractError } from "@/lib/intake-extract-error";
 import { statusOptions } from "@/lib/status-map";
-import { INTAKE_SOURCE_BADGE, type OrderAcceptanceListRow } from "./model";
+import { intakeSourceBadge, type OrderAcceptanceListRow } from "./model";
 
 /** 抽出失敗の表示（分類済みメッセージ — 旧形式の 1 行もそのまま読める）。 */
 function ExtractErrorBadge({
@@ -67,7 +67,9 @@ function ExtractErrorBadge({
       label={[
         failure.summary,
         failure.cause,
-        `対処: ${failure.hint}`,
+        tr("sales.orderAcceptanceIntakeTable.hintPrefix", {
+          hint: failure.hint,
+        }),
         failure.detail,
       ]
         .filter(Boolean)
@@ -81,7 +83,9 @@ function ExtractErrorBadge({
         size={size}
         variant="light"
       >
-        {failure.retrying ? "再試行中" : tr("common.extractionFailed")}
+        {failure.retrying
+          ? tr("sales.orderAcceptanceIntakeTable.retrying")
+          : tr("common.extractionFailed")}
       </Badge>
     </Tooltip>
   );
@@ -175,7 +179,9 @@ export function OrderAcceptanceIntakeTable({
       autoClose: false,
       color: "blue",
       loading: true,
-      message: `${files.length} 件を一覧に追加しています…`,
+      message: tr("sales.orderAcceptanceIntakeTable.addingToListMessage", {
+        count: files.length,
+      }),
       title: tr("sales.orderAcceptances.priorityIntake"),
       withCloseButton: false,
     });
@@ -188,7 +194,11 @@ export function OrderAcceptanceIntakeTable({
         autoClose: false,
         color: "blue",
         loading: true,
-        message: `${i + 1} / ${files.length} 件目: ${file.name} を追加中…`,
+        message: tr("sales.orderAcceptanceIntakeTable.addingItemProgress", {
+          index: i + 1,
+          total: files.length,
+          filename: file.name,
+        }),
         title: tr("sales.orderAcceptances.priorityIntake"),
         withCloseButton: false,
       });
@@ -203,10 +213,14 @@ export function OrderAcceptanceIntakeTable({
         if (res.ok && json?.ok && json.number) {
           numbers.push(json.number);
         } else {
-          failures.push(`${file.name}: ${json?.error ?? "取込に失敗しました"}`);
+          failures.push(
+            `${file.name}: ${json?.error ?? tr("sales.orderAcceptanceIntakeTable.intakeFailed")}`,
+          );
         }
       } catch {
-        failures.push(`${file.name}: 通信エラー`);
+        failures.push(
+          `${file.name}: ${tr("sales.orderAcceptanceIntakeTable.communicationError")}`,
+        );
       }
     }
     // 全件が一覧に並んだ状態を先に見せてから抽出を始める。
@@ -221,7 +235,9 @@ export function OrderAcceptanceIntakeTable({
         autoClose: false,
         color: "blue",
         loading: true,
-        message: `${numbers.length} 件をAI抽出の待ち行列に入れています…`,
+        message: tr("sales.orderAcceptanceIntakeTable.queueingForExtraction", {
+          count: numbers.length,
+        }),
         title: tr("sales.orderAcceptances.priorityIntake"),
         withCloseButton: false,
       });
@@ -235,7 +251,10 @@ export function OrderAcceptanceIntakeTable({
         if (res.ok && json?.ok) {
           pending = json.pending ?? 0;
           if (json.skipped && json.skipped.length > 0) {
-            queueError = `抽出を開始できなかった書類: ${json.skipped.join(" ・ ")}`;
+            queueError = tr(
+              "sales.orderAcceptanceIntakeTable.extractionCouldNotStartDocs",
+              { documents: json.skipped.join(` ${tr("common.s1")} `) },
+            );
           }
         } else {
           queueError =
@@ -257,12 +276,23 @@ export function OrderAcceptanceIntakeTable({
       loading: false,
       message:
         problems.length > 0
-          ? `${numbers.length} 件を一覧に追加しました / ${problems.join(" ・ ")}`
-          : `${numbers.length} 件を一覧に追加しました。AI抽出はこのあと順番に実行されます` +
-            `${pending > 1 ? `（抽出待ち ${pending} 件）` : ""}`,
+          ? tr("sales.orderAcceptanceIntakeTable.addedWithProblems", {
+              count: numbers.length,
+              problems: problems.join(` ${tr("common.s1")} `),
+            })
+          : pending > 1
+            ? tr(
+                "sales.orderAcceptanceIntakeTable.addedQueuedForExtractionWithPending",
+                { count: numbers.length, pending },
+              )
+            : tr("sales.orderAcceptanceIntakeTable.addedQueuedForExtraction", {
+                count: numbers.length,
+              }),
       title:
         problems.length > 0
-          ? "優先取込 受付（一部失敗）"
+          ? tr(
+              "sales.orderAcceptanceIntakeTable.priorityIntakeAcceptedPartialFailure",
+            )
           : tr("sales.orderAcceptances.priorityIntakeAccepted"),
       withCloseButton: true,
     });
@@ -288,7 +318,7 @@ export function OrderAcceptanceIntakeTable({
       width: 110,
       sortValue: (r) => r.source,
       render: (r) => {
-        const def = INTAKE_SOURCE_BADGE[r.source];
+        const def = intakeSourceBadge(tr)[r.source];
         return (
           <Badge color={def.color} size="sm" variant="light">
             {def.label}
@@ -446,8 +476,8 @@ export function OrderAcceptanceIntakeTable({
             size="sm"
             variant="dot"
           >
-            監視フォルダ取込:{" "}
-            {intakeDirConfigured ? "有効" : tr("common.notSet2")}
+            {tr("sales.orderAcceptanceIntakeTable.watchedFolderIntakeLabel")}{" "}
+            {intakeDirConfigured ? tr("common.enabled") : tr("common.notSet2")}
           </Badge>
           <Text c="dimmed" size="xs">
             {tr("sales.orderAcceptances.priorityIntakeAddsEveryFileYou")}
@@ -462,7 +492,7 @@ export function OrderAcceptanceIntakeTable({
           getRowId={(r) => r.number}
           onRowClick={(r) => router.push(`${BASE_PATH}/${r.number}`)}
           renderCard={(r) => {
-            const def = INTAKE_SOURCE_BADGE[r.source];
+            const def = intakeSourceBadge(tr)[r.source];
             return (
               <Group align="flex-start" justify="space-between" wrap="nowrap">
                 <Stack className="min-w-0" gap={3}>
@@ -487,11 +517,15 @@ export function OrderAcceptanceIntakeTable({
                       {def.label}
                     </Badge>
                     <Text c="dimmed" size="xs">
-                      明細 {r.itemCount} 件
+                      {tr("sales.orderAcceptanceIntakeTable.lineCountLabel", {
+                        count: r.itemCount,
+                      })}
                     </Text>
                     {r.orderDate && (
                       <Text c="dimmed" size="xs">
-                        注文日 {fmt.date(r.orderDate)}
+                        {tr("sales.orderAcceptanceIntakeTable.orderDateLabel", {
+                          date: fmt.date(r.orderDate),
+                        })}
                       </Text>
                     )}
                     {r.extractError && (

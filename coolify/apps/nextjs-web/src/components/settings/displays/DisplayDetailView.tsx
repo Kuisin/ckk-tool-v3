@@ -184,7 +184,7 @@ export function DisplayDetailView({
     ...(display.status === "ACTIVE"
       ? [
           {
-            label: "一時停止",
+            label: tr("settings.displayDetailView.pause"),
             icon: <IconPlayerPause size={14} />,
             onClick: () =>
               run(
@@ -206,7 +206,7 @@ export function DisplayDetailView({
       : []),
     display.status === "REVOKED" || display.status === "PENDING"
       ? {
-          label: "削除",
+          label: tr("common.delete"),
           icon: <IconTrash size={14} />,
           color: "red",
           divider: true,
@@ -227,7 +227,7 @@ export function DisplayDetailView({
       children: (
         <Text size="sm">{tr("settings.displays.thisCannotBeUndone")}</Text>
       ),
-      labels: { confirm: "削除", cancel: tr("common.back2") },
+      labels: { confirm: tr("common.delete"), cancel: tr("common.back2") },
       confirmProps: { color: "red" },
       onConfirm: () =>
         run(
@@ -286,7 +286,9 @@ export function DisplayDetailView({
           <SegmentedControl
             data={machineScreens.map((screen, i) => ({
               value: screen.id,
-              label: `${screen.screenIndex ?? i + 1} 枚目`,
+              label: tr("settings.displayDetailView.screenNumber", {
+                n: screen.screenIndex ?? i + 1,
+              }),
             }))}
             onChange={(id) => {
               if (id !== display.id) {
@@ -313,7 +315,10 @@ export function DisplayDetailView({
             label={tr("common.lastChecked")}
             value={display.lastSeenAt ? fmt.dateTime(display.lastSeenAt) : "—"}
           />
-          <FieldValue label="拠点" value={display.plantName ?? "—"} />
+          <FieldValue
+            label={tr("common.site")}
+            value={display.plantName ?? "—"}
+          />
           <FieldValue
             label={tr("common.location")}
             value={display.location ?? "—"}
@@ -351,7 +356,11 @@ export function DisplayDetailView({
             value={
               display.machineId
                 ? `${display.machineId}${
-                    display.screenIndex ? ` / ${display.screenIndex} 枚目` : ""
+                    display.screenIndex
+                      ? ` / ${tr("settings.displayDetailView.screenNumber", {
+                          n: display.screenIndex,
+                        })}`
+                      : ""
                   }`
                 : "—"
             }
@@ -433,7 +442,7 @@ export function DisplayDetailView({
                   <Select
                     clearable
                     data={plantOptions}
-                    label="拠点"
+                    label={tr("common.site")}
                     onChange={setPlantId}
                     placeholder={tr("common.selectOne")}
                     searchable
@@ -460,7 +469,10 @@ export function DisplayDetailView({
                   label={tr("common.location")}
                   value={display.location ?? "—"}
                 />
-                <FieldValue label="拠点" value={display.plantName ?? "—"} />
+                <FieldValue
+                  label={tr("common.site")}
+                  value={display.plantName ?? "—"}
+                />
                 <FieldValue
                   label={tr("common.zoom")}
                   value={`${display.scalePercent}%`}

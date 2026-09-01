@@ -132,7 +132,7 @@ export function DesignRequestTable({ rows }: { rows: DesignRequest[] }) {
     },
     {
       key: "productName",
-      header: "製品",
+      header: tr("common.product"),
       sortable: true,
       sortValue: (r) => r.productName ?? "",
       render: (r) =>
@@ -297,7 +297,9 @@ export function DesignRequestTable({ rows }: { rows: DesignRequest[] }) {
                 )}
                 {r.desiredAt && (
                   <Text c={isOverdue(r) ? "red" : "dimmed"} size="xs">
-                    納期 {fmt.date(r.desiredAt)}
+                    {tr("sales.designRequestTable.desiredAtLabel", {
+                      date: fmt.date(r.desiredAt),
+                    })}
                   </Text>
                 )}
               </Group>

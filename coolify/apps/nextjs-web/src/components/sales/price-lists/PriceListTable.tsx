@@ -88,8 +88,11 @@ export function PriceListTable({
       );
       if (result.ok) {
         notifications.show({
-          title: isActive ? "有効化しました" : tr("common.disabled2"),
-          message: `${rows.length}件の価格表を${isActive ? "有効化" : "無効化"}しました`,
+          title: isActive ? tr("common.enabled2") : tr("common.disabled2"),
+          message: tr("sales.priceListTable.bulkActiveChangedMessage", {
+            count: rows.length,
+            action: isActive ? tr("common.enable") : tr("common.disable"),
+          }),
           color: "green",
         });
         router.refresh();
@@ -106,7 +109,9 @@ export function PriceListTable({
   const bulkDelete = (rows: PriceListEntry[]) => {
     openConfirm({
       title: tr("sales.priceLists.bulkDeletePriceLists"),
-      message: `選択中の${rows.length}件の価格表（段階・値引きルール含む）を削除します。この操作は取り消せません。`,
+      message: tr("sales.priceListTable.confirmBulkDeleteMessage", {
+        count: rows.length,
+      }),
       confirmLabel: tr("common.delete2"),
       onConfirm: () => {
         startTransition(async () => {
@@ -114,7 +119,9 @@ export function PriceListTable({
           if (result.ok) {
             notifications.show({
               title: tr("common.deleted"),
-              message: `${rows.length}件の価格表を削除しました`,
+              message: tr("sales.priceListTable.bulkDeletedMessage", {
+                count: rows.length,
+              }),
               color: "green",
             });
             router.refresh();
@@ -158,7 +165,7 @@ export function PriceListTable({
     },
     {
       key: "productName",
-      header: "製品",
+      header: tr("common.product"),
       sortable: true,
       render: (e) => e.productName,
     },
@@ -182,7 +189,10 @@ export function PriceListTable({
       header: tr("common.tier"),
       width: 80,
       sortValue: (e) => entrySummary(e).tierCount,
-      render: (e) => `${entrySummary(e).tierCount}段階`,
+      render: (e) =>
+        tr("sales.priceListTable.tierCountLabel", {
+          count: entrySummary(e).tierCount,
+        }),
     },
     {
       key: "price",
@@ -216,7 +226,7 @@ export function PriceListTable({
         );
         return active > 0 ? (
           <Badge color="pink" size="xs" variant="light">
-            {active}件
+            {tr("sales.priceListTable.itemCountNoSpace", { count: active })}
           </Badge>
         ) : (
           <Text c="dimmed" size="xs">
@@ -304,7 +314,7 @@ export function PriceListTable({
             data={productOptions}
             flex={isMobile ? 1 : undefined}
             onChange={setProduct}
-            placeholder="製品"
+            placeholder={tr("common.product")}
             searchable
             value={product}
             w={isMobile ? undefined : 180}
@@ -378,7 +388,9 @@ export function PriceListTable({
                     </Badge>
                   ))}
                   <Text c="dimmed" size="xs">
-                    {s.tierCount}段階
+                    {tr("sales.priceListTable.tierCountLabel", {
+                      count: s.tierCount,
+                    })}
                   </Text>
                 </Group>
               </Stack>
@@ -408,7 +420,7 @@ export function PriceListTable({
             onAction: () => setCopyTarget(e),
           },
           {
-            label: "削除",
+            label: tr("common.delete"),
             icon: <IconTrash size={14} />,
             color: "red",
             onAction: () => setDeleteTarget(e),

@@ -142,8 +142,10 @@ export function FloorMapsPanel({
     if (!activeMap) return;
     openConfirm({
       title: tr("common.confirmDeletingTheFloor"),
-      message: `フロア「${activeMap.name}」を削除します。端末・保管場所のピンが残っている場合は削除できません。`,
-      confirmLabel: "削除",
+      message: tr("master.floorMapsPanel.deleteFloorConfirm", {
+        name: activeMap.name,
+      }),
+      confirmLabel: tr("common.delete"),
       onConfirm: () => {
         setActiveMapId(null);
         run(() => deleteFloorMap(activeMap.id));
@@ -270,7 +272,9 @@ export function FloorMapsPanel({
 
           {activeMap && (
             <FloorMapCanvas
-              imageAlt={`フロアマップ: ${activeMap.name}`}
+              imageAlt={tr("master.floorMapsPanel.floorMapAlt", {
+                name: activeMap.name,
+              })}
               imageUrl={
                 activeMap.hasImage
                   ? `/api/kiosk/floor-maps/${activeMap.id}/image`
@@ -289,7 +293,7 @@ export function FloorMapsPanel({
         size="sm"
         title={
           floorModal?.mode === "create"
-            ? "フロアを追加"
+            ? tr("master.floorMapsPanel.addFloor")
             : tr("common.renameTheFloor")
         }
       >
@@ -308,7 +312,9 @@ export function FloorMapsPanel({
               loading={pending}
               onClick={submitFloorModal}
             >
-              {floorModal?.mode === "create" ? "追加" : tr("common.save2")}
+              {floorModal?.mode === "create"
+                ? tr("common.add")
+                : tr("common.save2")}
             </PrimaryButton>
           </Group>
         </Stack>

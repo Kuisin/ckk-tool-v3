@@ -7,20 +7,23 @@
  * to 「新規」 on mobile. Renders as a Next.js Link when `href` is given.
  */
 
+import { useTranslations } from "next-intl";
 import { useIsMobile } from "@/hooks/useViewport";
 import { CreateButton } from "./buttons";
 
 export function NewButton({
-  label = "新規作成",
+  label: labelProp,
   href,
 }: {
   label?: string;
   href?: string;
 }) {
+  const tr = useTranslations();
+  const label = labelProp ?? tr("common.new2");
   const isMobile = useIsMobile();
   return (
     <CreateButton href={href} style={{ flexShrink: 0 }}>
-      {isMobile ? "新規" : label}
+      {isMobile ? tr("common.new") : label}
     </CreateButton>
   );
 }

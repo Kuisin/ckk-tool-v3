@@ -157,14 +157,14 @@ export function SettingsReorderableList<T>({
                   <IconArrowDown size={16} />
                 </ActionIcon>
                 <ActionIcon
-                  aria-label="削除"
+                  aria-label={tr("common.delete")}
                   color="red"
                   disabled={isPending}
                   onClick={() =>
                     openConfirm({
                       title: del.title,
                       message: del.message,
-                      confirmLabel: "削除",
+                      confirmLabel: tr("common.delete"),
                       onConfirm: () => persist(items.filter((_, k) => k !== i)),
                     })
                   }

@@ -90,38 +90,41 @@ function refineDepRows(
   });
 }
 
-const processStepSchema = z
-  .object({
-    code: z.string(),
-    nameJa: z.string().min(1, "名称（日本語）を入力してください"),
-    nameTranslations: z.record(z.string(), z.string()).default({}),
-    category: z.string().min(1, "カテゴリを選択してください"),
-    executionLocation: z.string().min(1, "実施場所を選択してください"),
-    isSyncCapable: z.boolean(),
-    isInspection: z.boolean(),
-    isApprovalStep: z.boolean(),
-    approvalMinRank: z.string(),
-    quantityTracking: z.enum(["NONE", "FLOW", "INSPECTION"]),
-    lotInputMode: z.enum(["REQUIRED", "OPTIONAL", "NONE"]),
-    // NumberInput の未入力は "" — 送信時に null へ変換する
-    defaultWorkHours: z.union([
-      z.number().positive("既定作業時間は正の数で入力してください"),
-      z.literal(""),
-    ]),
-    sortOrder: z.number().int("表示順は整数で入力してください"),
-    isActive: z.boolean(),
-    notes: z.string(),
-    useDeps: z.array(depRowSchema),
-    execDeps: z.array(depRowSchema),
-    allowedTypeKeys: z.array(z.string()),
-    allowedLocationIds: z.array(z.string()),
-  })
-  .superRefine((v, ctx) => {
-    refineDepRows(v.useDeps, "useDeps", ctx);
-    refineDepRows(v.execDeps, "execDeps", ctx);
-  });
+const processStepSchema = (tr: (key: string) => string) =>
+  z
+    .object({
+      code: z.string(),
+      nameJa: z.string().min(1, tr("common.nameJaRequired")),
+      nameTranslations: z.record(z.string(), z.string()).default({}),
+      category: z.string().min(1, tr("master.processSteps.categoryRequired")),
+      executionLocation: z
+        .string()
+        .min(1, tr("master.processSteps.executionLocationRequired")),
+      isSyncCapable: z.boolean(),
+      isInspection: z.boolean(),
+      isApprovalStep: z.boolean(),
+      approvalMinRank: z.string(),
+      quantityTracking: z.enum(["NONE", "FLOW", "INSPECTION"]),
+      lotInputMode: z.enum(["REQUIRED", "OPTIONAL", "NONE"]),
+      // NumberInput の未入力は "" — 送信時に null へ変換する
+      defaultWorkHours: z.union([
+        z.number().positive(tr("master.processSteps.defaultWorkHoursPositive")),
+        z.literal(""),
+      ]),
+      sortOrder: z.number().int(tr("master.processSteps.sortOrderInteger")),
+      isActive: z.boolean(),
+      notes: z.string(),
+      useDeps: z.array(depRowSchema),
+      execDeps: z.array(depRowSchema),
+      allowedTypeKeys: z.array(z.string()),
+      allowedLocationIds: z.array(z.string()),
+    })
+    .superRefine((v, ctx) => {
+      refineDepRows(v.useDeps, "useDeps", ctx);
+      refineDepRows(v.execDeps, "execDeps", ctx);
+    });
 
-type FormValues = z.infer<typeof processStepSchema>;
+type FormValues = z.infer<ReturnType<typeof processStepSchema>>;
 
 export interface ProcessStepFormDep {
   dependsOnStepId: number;
@@ -198,7 +201,7 @@ export function ProcessStepForm({
   const isEdit = !!initial;
 
   const form = useForm<FormValues>({
-    validate: zodResolver(processStepSchema),
+    validate: zodResolver(processStepSchema(tr)),
     initialValues: {
       code: initial?.code ?? "",
       nameJa: initial?.nameJa ?? "",
@@ -300,7 +303,7 @@ export function ProcessStepForm({
         notifications.show({
           title: tr("common.saved2"),
           message: isEdit
-            ? "工程を更新しました"
+            ? tr("master.processSteps.stepUpdated")
             : tr("master.processSteps.theStepWasCreated"),
           color: "green",
         });
@@ -405,7 +408,7 @@ export function ProcessStepForm({
       breadcrumbs={[
         tr("common.masterData"),
         { label: tr("common.processSteps"), href: BASE_PATH },
-        isEdit ? "編集" : tr("common.new2"),
+        isEdit ? tr("common.edit") : tr("common.new2"),
       ]}
       isDirty={form.isDirty()}
       isPending={isPending}
@@ -416,7 +419,7 @@ export function ProcessStepForm({
       status={isEdit ? <ActiveBadge active={initial.isActive} /> : undefined}
       title={
         isEdit
-          ? `工程 編集 — ${initial.code}`
+          ? tr("master.processSteps.editTitle", { code: initial.code })
           : tr("master.processSteps.newStep")
       }
     >
@@ -559,7 +562,9 @@ export function ProcessStepForm({
           <Switch
             label={
               <HelpLabel
-                {...fieldHelp("processStep", "active", { label: "有効" })}
+                {...fieldHelp("processStep", "active", {
+                  label: tr("common.enabled"),
+                })}
               />
             }
             {...form.getInputProps("isActive", { type: "checkbox" })}

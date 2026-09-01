@@ -114,7 +114,9 @@ export function StepExecutionView({ data }: { data: StepExecutionData }) {
     if (result.ok) {
       notifications.show({
         title: successTitle,
-        message: `工程: ${step.name}`,
+        message: tr("production.stepExecutionView.stepWithName", {
+          name: step.name,
+        }),
         color: "green",
       });
       router.refresh();
@@ -187,7 +189,7 @@ export function StepExecutionView({ data }: { data: StepExecutionData }) {
       notifyResult(
         result,
         mode === "abort"
-          ? "工程を中断しました"
+          ? tr("production.stepExecutionView.theStepWasAborted")
           : tr("production.stepExecution.theStepWasRolledBack"),
         tr("common.theActionFailed"),
       );
@@ -660,7 +662,7 @@ export function StepExecutionView({ data }: { data: StepExecutionData }) {
         confirmColor={reasonMode === "abort" ? "red" : "orange"}
         confirmLabel={
           reasonMode === "abort"
-            ? "中断する"
+            ? tr("production.stepExecutionView.abort")
             : tr("production.stepExecution.rollBack2")
         }
         loading={isPending}

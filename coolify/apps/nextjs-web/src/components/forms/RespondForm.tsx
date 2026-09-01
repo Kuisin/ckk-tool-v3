@@ -42,7 +42,7 @@ export function RespondForm({
   closesAtLabel,
   allowDraft = true,
   drafts = [],
-  submitLabel = "送信",
+  submitLabel,
   embedded = false,
   onSubmit,
   onCancel,
@@ -81,6 +81,8 @@ export function RespondForm({
   const [isPending, startTransition] = useTransition();
   const [answers, setAnswers] = useState(initialAnswers);
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const effectiveSubmitLabel =
+    submitLabel ?? tr("forms.respondFormClient.send");
 
   const open = submittable;
 
@@ -102,7 +104,7 @@ export function RespondForm({
       if (result.ok) {
         notifications.show({
           message: asDraft
-            ? "下書きを保存しました"
+            ? tr("forms.respondForm.draftSaved")
             : tr("forms.respondForm.sent"),
           color: "green",
         });
@@ -150,13 +152,15 @@ export function RespondForm({
         >
           {availability === "SCHEDULED"
             ? tr("forms.respondForm.thisFormIsNotOpenYet")
-            : `このフォームの受付は終了しています（${AVAILABILITY_LABEL[availability]}）。`}
+            : tr("forms.respondForm.receptionClosedWithLabel", {
+                label: AVAILABILITY_LABEL[availability],
+              })}
         </Alert>
       )}
 
       {open && closesAtLabel && (
         <Text c="dimmed" size="xs">
-          受付終了: {closesAtLabel}
+          {tr("forms.respondForm.receptionClosesAt")}: {closesAtLabel}
         </Text>
       )}
 
@@ -187,7 +191,7 @@ export function RespondForm({
               onClick={() => submit(false)}
               type="button"
             >
-              {submitLabel}
+              {effectiveSubmitLabel}
             </PrimaryButton>
             {allowDraft && (
               <SecondaryButton
@@ -219,7 +223,7 @@ export function RespondForm({
               onClick={() => submit(false)}
               type="button"
             >
-              {submitLabel}
+              {effectiveSubmitLabel}
             </PrimaryButton>
           </Group>
         )}
@@ -273,7 +277,9 @@ function DraftResumeList({
     <Paper p="sm" radius="md" withBorder>
       <Stack gap="xs">
         <Text fw={600} size="sm">
-          書きかけの下書き（{drafts.length}）
+          {tr("forms.respondForm.draftsInProgressWithCount", {
+            count: drafts.length,
+          })}
         </Text>
         {drafts.map((d) => (
           <Group
@@ -289,7 +295,7 @@ function DraftResumeList({
               loading={busy === d.responseNumber}
               onClick={() => discard(d.responseNumber)}
             >
-              削除
+              {tr("common.delete")}
             </GhostButton>
           </Group>
         ))}

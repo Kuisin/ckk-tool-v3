@@ -42,17 +42,19 @@ export function CopyableValue({
       <CopyButton value={value}>
         {({ copied, copy }) => (
           <Tooltip
-            label={copied ? "コピーしました" : tr("common.copy2")}
+            label={copied ? tr("common.copied") : tr("common.copy2")}
             withinPortal
           >
             <GhostButton
-              aria-label={`${label ?? "値"}をコピー`}
+              aria-label={tr("ui.copyableValue.copyX", {
+                name: label ?? tr("common.value"),
+              })}
               leftSection={
                 copied ? <IconCheck size={14} /> : <IconCopy size={14} />
               }
               onClick={copy}
             >
-              {copied ? "コピーしました" : tr("common.copy2")}
+              {copied ? tr("common.copied") : tr("common.copy2")}
             </GhostButton>
           </Tooltip>
         )}

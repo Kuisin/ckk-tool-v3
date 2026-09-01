@@ -128,7 +128,10 @@ export function DocumentDetail({
                 </Badge>
                 {hasUnpublished && (
                   <Badge color="yellow" variant="light">
-                    未公開の変更あり（r{page.latestRevision}）
+                    {tr(
+                      "documents.documentDetail.hasUnpublishedChangesRevision",
+                      { revision: page.latestRevision },
+                    )}
                   </Badge>
                 )}
               </Group>
@@ -141,7 +144,7 @@ export function DocumentDetail({
           label={tr("documents.documentDetail.approvalToPublish")}
           value={
             page.approvalRequired
-              ? "必要"
+              ? tr("documents.documentDetail.required")
               : tr("documents.documentDetail.notRequired")
           }
         />

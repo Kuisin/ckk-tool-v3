@@ -290,8 +290,8 @@ export function FileManager() {
   function confirmDelete(f: StoredFile) {
     openConfirm({
       title: tr("admin.fileManager.deleteTheFile"),
-      message: `「${f.name}」を削除します。この操作は取り消せません。`,
-      confirmLabel: "削除",
+      message: tr("admin.fileManager.deleteFileConfirm", { name: f.name }),
+      confirmLabel: tr("common.delete"),
       onConfirm: () => onDelete(f),
     });
   }
@@ -668,7 +668,7 @@ export function FileManager() {
               onClick={() => confirmDelete(selectedFile)}
               size="xs"
             >
-              削除
+              {tr("common.delete")}
             </GhostButton>
           )}
         </Group>
@@ -696,7 +696,7 @@ export function FileManager() {
             loading={loading}
             onClick={reload}
           >
-            更新
+            {tr("admin.fileManager.refresh")}
           </GhostButton>
           {canWrite(`${path || "uploads"}/x`) && (
             <PrimaryButton
@@ -757,7 +757,9 @@ export function FileManager() {
               checked={showSystem}
               label={
                 hiddenSystemCount > 0
-                  ? `システムファイル (${hiddenSystemCount})`
+                  ? tr("admin.fileManager.systemFilesWithCount", {
+                      count: hiddenSystemCount,
+                    })
                   : tr("admin.fileManager.systemFiles")
               }
               onChange={(e) => {

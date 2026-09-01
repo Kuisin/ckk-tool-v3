@@ -80,7 +80,6 @@ import {
   canAttachEvidence,
   isCancellable,
   isEditable,
-  PURCHASE_HISTORY_ACTION_LABEL,
   type PurchaseOrderView,
 } from "./model";
 
@@ -137,13 +136,25 @@ export function PurchaseOrderDetail({
 
   const po = purchaseOrder;
 
+  /** history Json の action → 表示ラベル。 */
+  const historyActionLabel: Record<string, string> = {
+    CREATE: tr("common.create2"),
+    UPDATE: tr("common.update"),
+    REQUEST_APPROVAL: tr("common.approvalRequest"),
+    APPROVE: tr("common.approve"),
+    REJECT: tr("common.reject"),
+    ORDER: tr("purchase.purchaseOrders.order"),
+    COMPLETE: tr("purchase.purchaseOrders.received"),
+    CANCEL: tr("common.cancel"),
+  };
+
   const run = (action: () => Promise<ActionResult>, done: string) => {
     startTransition(async () => {
       const result = await action();
       if (result.ok) {
         notifications.show({
           title: done,
-          message: `素材発注書 ${po.poNumber}`,
+          message: `${tr("common.materialPurchaseOrder")} ${po.poNumber}`,
           color: "green",
         });
         setCancelOpen(false);
@@ -177,6 +188,7 @@ export function PurchaseOrderDetail({
     approvalStage(approval, {
       approvedAt: po.approvedAt,
       fmtDate: (v) => fmt.date(v),
+      tr,
     }),
     {
       key: "ordered",
@@ -223,14 +235,22 @@ export function PurchaseOrderDetail({
       title: tr("common.materialReceipt"),
       summary:
         receipts.length > 0
-          ? `${receipts.length} 件・合計 ${receivedQuantity} ${receipts[0]?.unit ?? ""}`
+          ? tr("purchase.purchaseOrders.receiptsSummary", {
+              count: receipts.length,
+              total: receivedQuantity,
+              unit: receipts[0]?.unit ?? "",
+            })
           : null,
       items: receipts.map((r) => ({
         key: r.id,
         label: r.materialCode,
         href: `/purchase/material-receipts/${r.id}`,
         done: true,
-        note: `${r.quantity} ${r.unit}・${fmt.date(r.receivedAt)}`,
+        note: tr("purchase.purchaseOrders.receiptNote", {
+          quantity: r.quantity,
+          unit: r.unit,
+          date: fmt.date(r.receivedAt),
+        }),
       })),
       emptyNote:
         po.status === "ORDERED"
@@ -254,7 +274,7 @@ export function PurchaseOrderDetail({
         onReject={(reason) => rejectPurchaseOrder(po.poNumber, reason)}
         onRequest={() => requestPurchaseApproval(po.poNumber)}
         rejectReason={null}
-        subject={`素材発注書 ${po.poNumber}`}
+        subject={`${tr("common.materialPurchaseOrder")} ${po.poNumber}`}
       />
     );
   } else if (po.status === "APPROVED") {
@@ -305,7 +325,7 @@ export function PurchaseOrderDetail({
             isCancellable(po)
               ? [
                   {
-                    label: "キャンセル",
+                    label: tr("common.cancel"),
                     icon: <IconX size={14} />,
                     color: "red",
                     onClick: () => setCancelOpen(true),
@@ -323,7 +343,7 @@ export function PurchaseOrderDetail({
       breadcrumbs={[
         tr("common.purchasing"),
         { label: tr("common.materialPurchaseOrder"), href: BASE_PATH },
-        "詳細",
+        tr("common.detailBreadcrumb"),
       ]}
       createdAt={fmt.dateTime(po.createdAt)}
       status={<StatusBadge entity="MaterialPurchaseOrder" status={po.status} />}
@@ -396,7 +416,7 @@ export function PurchaseOrderDetail({
               {records.map((h, i) => (
                 <Group gap="sm" key={`${h.at}-${h.action}-${i}`} wrap="nowrap">
                   <Badge color="gray" size="sm" variant="light">
-                    {PURCHASE_HISTORY_ACTION_LABEL[h.action] ?? h.action}
+                    {historyActionLabel[h.action] ?? h.action}
                   </Badge>
                   <Text size="xs">{h.user}</Text>
                   <Text c="dimmed" className="tabular-nums" size="xs">
@@ -416,8 +436,14 @@ export function PurchaseOrderDetail({
 
       <AppTabs onChange={setTab} value={tab}>
         <Tabs.List>
-          <Tabs.Tab value="items">明細（{po.items.length}）</Tabs.Tab>
-          <Tabs.Tab value="attachments">証憑（{attachments.length}）</Tabs.Tab>
+          <Tabs.Tab value="items">
+            {tr("common.lineItemsWithCount", { count: po.items.length })}
+          </Tabs.Tab>
+          <Tabs.Tab value="attachments">
+            {tr("common.supportingDocumentsWithCount", {
+              count: attachments.length,
+            })}
+          </Tabs.Tab>
           <Tabs.Tab value="overview">{tr("common.overview")}</Tabs.Tab>
           <Tabs.Tab value="history">{tr("common.history")}</Tabs.Tab>
         </Tabs.List>
@@ -459,7 +485,9 @@ export function PurchaseOrderDetail({
                           }
                           size="xs"
                         >
-                          入荷済 {it.receivedQuantity}
+                          {tr("purchase.purchaseOrders.receivedSoFar", {
+                            count: it.receivedQuantity,
+                          })}
                         </Text>
                       ) : null}
                     </Table.Td>
@@ -553,8 +581,9 @@ export function PurchaseOrderDetail({
         title={tr("common.confirmCancellation")}
       >
         <Text size="sm">
-          素材発注書 {po.poNumber}{" "}
-          をキャンセルします。この操作は取り消せません。
+          {tr("purchase.purchaseOrders.confirmCancelBody", {
+            number: po.poNumber,
+          })}
         </Text>
         <Textarea
           autosize
@@ -583,8 +612,9 @@ export function PurchaseOrderDetail({
         title={tr("purchase.purchaseOrders.confirmTheOrder")}
       >
         <Text size="sm">
-          素材発注書 {po.poNumber}{" "}
-          を発注済にします。明細は素材在庫の入荷予定（ATP）に反映されます。
+          {tr("purchase.purchaseOrders.confirmOrderBody", {
+            number: po.poNumber,
+          })}
         </Text>
       </ModalShell>
 
@@ -604,10 +634,9 @@ export function PurchaseOrderDetail({
         title={tr("purchase.purchaseOrders.confirmReceiptCompletion")}
       >
         <Text size="sm">
-          明細 {po.items.length}{" "}
-          件を全量入荷として素材入荷を登録し、入荷先拠点の素材在庫へ入庫します。
-          分納（部分入荷）が必要な場合は素材入荷 (PU03)
-          から直接登録してください。
+          {tr("purchase.purchaseOrders.confirmCompleteBody", {
+            count: po.items.length,
+          })}
         </Text>
       </ModalShell>
     </DetailShell>

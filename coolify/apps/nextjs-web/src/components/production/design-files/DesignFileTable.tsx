@@ -31,17 +31,6 @@ import {
 
 const BASE_PATH = "/production/design-files";
 
-/** 系列の別 — 汎用（受注元なし）か、特定の顧客向けか。 */
-const SERIES_OPTIONS = [
-  { value: "generic", label: "汎用" },
-  { value: "customer", label: "顧客別" },
-];
-
-const SOURCE_OPTIONS = [
-  { value: "request", label: "依頼あり" },
-  { value: "manual", label: "手動のみ" },
-];
-
 export function DesignFileTable({
   rows,
   truncated,
@@ -54,6 +43,23 @@ export function DesignFileTable({
   const fmt = useFormat();
   const router = useRouter();
   const isMobile = useIsMobile();
+
+  /** 系列の別 — 汎用（受注元なし）か、特定の顧客向けか。 */
+  const SERIES_OPTIONS = [
+    { value: "generic", label: tr("common.generic") },
+    { value: "customer", label: tr("production.designFileTable.byCustomer") },
+  ];
+
+  const SOURCE_OPTIONS = [
+    {
+      value: "request",
+      label: tr("production.designFileTable.hasARequest"),
+    },
+    {
+      value: "manual",
+      label: tr("production.designFileTable.manualOnly"),
+    },
+  ];
 
   const [search, setSearch] = useUrlStringState("q");
   const [series, setSeries] = useUrlSelectState("series");
@@ -83,7 +89,7 @@ export function DesignFileTable({
   const columns: Column<DesignFileSeriesRow>[] = [
     {
       key: "productName",
-      header: "製品",
+      header: tr("common.product"),
       sortable: true,
       // 名称とコードを 2 行に分ける。1 行に詰めると長い製品名でコードが
       // 切れてしまい、台帳として引けなくなる（コードは mono・design.md §14）。

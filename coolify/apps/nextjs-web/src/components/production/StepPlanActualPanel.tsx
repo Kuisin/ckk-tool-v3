@@ -78,7 +78,11 @@ function RecordTable({
           <Table.Th ta="right" w={90}>
             {tr("common.quantity")}
           </Table.Th>
-          {showLocation && <Table.Th w={180}>作業場所</Table.Th>}
+          {showLocation && (
+            <Table.Th w={180}>
+              {tr("production.stepPlanActualPanel.workLocation")}
+            </Table.Th>
+          )}
           <Table.Th>{tr("common.notes")}</Table.Th>
           {canEdit && <Table.Th w={50} />}
         </Table.Tr>

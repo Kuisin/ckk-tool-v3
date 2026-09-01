@@ -67,11 +67,6 @@ export interface InspectionTemplateRow {
   isActive: boolean;
 }
 
-const STATUS_OPTIONS = [
-  { value: "active", label: "有効" },
-  { value: "inactive", label: "無効" },
-];
-
 export function InspectionTemplateTable({
   rows,
   groupOptions,
@@ -81,6 +76,10 @@ export function InspectionTemplateTable({
   groupOptions: { value: string; label: string }[];
 }) {
   const tr = useTranslations();
+  const STATUS_OPTIONS = [
+    { value: "active", label: tr("common.enabled") },
+    { value: "inactive", label: tr("common.disabled") },
+  ];
   const router = useRouter();
   const isMobile = useIsMobile();
   // 書き出し / 取込。選択があればその分だけを書き出す。
@@ -132,8 +131,14 @@ export function InspectionTemplateTable({
       );
       if (result.ok) {
         notifications.show({
-          title: isActive ? "有効化しました" : tr("common.disabled2"),
-          message: `${targets.length}件の検査表テンプレートを${isActive ? "有効化" : "無効化"}しました`,
+          title: isActive ? tr("common.enabled2") : tr("common.disabled2"),
+          message: isActive
+            ? tr("master.inspectionTemplateTable.bulkEnabled", {
+                count: targets.length,
+              })
+            : tr("master.inspectionTemplateTable.bulkDisabled", {
+                count: targets.length,
+              }),
           color: "green",
         });
         router.refresh();
@@ -150,7 +155,9 @@ export function InspectionTemplateTable({
   const bulkDelete = (targets: InspectionTemplateRow[]) => {
     openConfirm({
       title: tr("master.inspectionTemplates.bulkDeleteInspectionTemplates"),
-      message: `選択中の${targets.length}件の検査表テンプレートを削除します。この操作は取り消せません。`,
+      message: tr("master.inspectionTemplateTable.bulkDeleteConfirm", {
+        count: targets.length,
+      }),
       confirmLabel: tr("common.delete2"),
       onConfirm: () => {
         startTransition(async () => {
@@ -160,7 +167,9 @@ export function InspectionTemplateTable({
           if (result.ok) {
             notifications.show({
               title: tr("common.deleted"),
-              message: `${targets.length}件の検査表テンプレートを削除しました`,
+              message: tr("master.inspectionTemplateTable.bulkDeleted", {
+                count: targets.length,
+              }),
               color: "green",
             });
             router.refresh();
@@ -179,7 +188,7 @@ export function InspectionTemplateTable({
   const columns: Column<InspectionTemplateRow>[] = [
     {
       key: "code",
-      header: "コード",
+      header: tr("master.inspectionTemplateTable.code"),
       sortable: true,
       width: 180,
       sortValue: (r) => r.code,
@@ -254,7 +263,10 @@ export function InspectionTemplateTable({
       width: 90,
       align: "right",
       sortValue: (r) => r.itemCount,
-      render: (r) => `${r.itemCount}件`,
+      render: (r) =>
+        tr("master.inspectionTemplateTable.itemCountWithUnit", {
+          count: r.itemCount,
+        }),
     },
     {
       key: "isActive",
@@ -276,7 +288,9 @@ export function InspectionTemplateTable({
             onClick={() => setGroupModalOpen(true)}
             style={{ flexShrink: 0 }}
           >
-            {isMobile ? "グループ" : tr("master.inspectionTemplates.groups")}
+            {isMobile
+              ? tr("master.inspectionTemplateTable.groupsShort")
+              : tr("master.inspectionTemplates.groups")}
           </SecondaryButton>
           {/* 書き出し / 取込 — 環境をまたぐ持ち出しと、Excel で作った検査表の入口 */}
           <SecondaryButton
@@ -285,7 +299,7 @@ export function InspectionTemplateTable({
             style={{ flexShrink: 0 }}
           >
             {isMobile
-              ? "入出力"
+              ? tr("master.inspectionTemplateTable.ioShort")
               : tr("master.inspectionTemplates.exportImport")}
           </SecondaryButton>
           <NewButton href={`${BASE_PATH}/new`} />
@@ -416,12 +430,12 @@ export function InspectionTemplateTable({
             onAction: (r) => router.push(`${BASE_PATH}/${r.id}/edit`),
           },
           {
-            label: row.isActive ? "無効化" : tr("common.enable"),
+            label: row.isActive ? tr("common.disable") : tr("common.enable"),
             icon: <IconCircleMinus size={14} />,
             onAction: (r) => setToggleRow(r),
           },
           {
-            label: "削除",
+            label: tr("common.delete"),
             icon: <IconTrash size={14} />,
             color: "red",
             onAction: (r) => setDeleteRow(r),

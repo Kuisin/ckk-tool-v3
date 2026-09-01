@@ -22,7 +22,8 @@ import { useTabParam } from "@/hooks/useUrlState";
 import { InventoryTransactionsTable } from "../InventoryTransactionsTable";
 import {
   type InventoryReservationRow,
-  RESERVATION_STATUS_BADGE,
+  RESERVATION_STATUS_COLOR,
+  reservationStatusLabel,
 } from "../model";
 import type { ProductInventoryDetailData } from "./model";
 
@@ -42,7 +43,7 @@ export function ProductInventoryDetail({
       breadcrumbs={[
         tr("common.production"),
         { label: tr("common.inventory"), href: BASE_PATH },
-        "詳細",
+        tr("common.detail"),
       ]}
       status={
         record.isSemiFinished ? (
@@ -60,7 +61,7 @@ export function ProductInventoryDetail({
     >
       <SummaryGrid>
         <FieldValue
-          label="製品"
+          label={tr("common.product")}
           value={
             <>
               <Text fw={500} size="sm">
@@ -72,7 +73,7 @@ export function ProductInventoryDetail({
             </>
           }
         />
-        <FieldValue label="拠点" value={record.plantName ?? "—"} />
+        <FieldValue label={tr("common.site")} value={record.plantName ?? "—"} />
         <FieldValue
           label={tr("common.lotNumber")}
           value={
@@ -193,18 +194,18 @@ function ReservationsTable({ rows }: { rows: InventoryReservationRow[] }) {
         </Table.Thead>
         <Table.Tbody>
           {rows.map((r) => {
-            const def = RESERVATION_STATUS_BADGE[r.status] ?? {
-              label: r.status,
-              color: "gray",
-            };
+            const color = RESERVATION_STATUS_COLOR[r.status] ?? "gray";
+            const label = RESERVATION_STATUS_COLOR[r.status]
+              ? reservationStatusLabel(tr, r.status)
+              : r.status;
             return (
               <Table.Tr key={r.id}>
                 <Table.Td className="tabular-nums" ta="right">
                   {r.quantity.toLocaleString("ja-JP")} 本
                 </Table.Td>
                 <Table.Td>
-                  <Badge color={def.color} variant="light">
-                    {def.label}
+                  <Badge color={color} variant="light">
+                    {label}
                   </Badge>
                 </Table.Td>
                 <Table.Td>

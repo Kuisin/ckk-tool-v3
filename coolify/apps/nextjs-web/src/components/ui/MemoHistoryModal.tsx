@@ -22,18 +22,6 @@ import { UserAvatar } from "@/components/ui/UserAvatar";
 import type { MemoRevisionView } from "@/lib/document-memos";
 import { listMemoRevisionsAction } from "./memo-actions";
 
-/** 操作 → 表示ラベルと色。 */
-const ACTION_LABEL: Record<
-  MemoRevisionView["action"],
-  { label: string; color: string }
-> = {
-  CREATE: { label: "作成", color: "green" },
-  UPDATE: { label: "更新", color: "blue" },
-  DELETE: { label: "削除", color: "red" },
-  ARCHIVE: { label: "アーカイブ", color: "gray" },
-  RESTORE: { label: "復元", color: "teal" },
-};
-
 export function MemoHistoryModal({
   opened,
   onClose,
@@ -49,6 +37,21 @@ export function MemoHistoryModal({
   const fmt = useFormat();
   const [revisions, setRevisions] = useState<MemoRevisionView[] | null>(null);
   const [pending, start] = useTransition();
+
+  /** 操作 → 表示ラベルと色。 */
+  const ACTION_LABEL: Record<
+    MemoRevisionView["action"],
+    { label: string; color: string }
+  > = {
+    CREATE: { label: tr("common.create2"), color: "green" },
+    UPDATE: { label: tr("ui.memoHistoryModal.actionUpdated"), color: "blue" },
+    DELETE: { label: tr("common.delete"), color: "red" },
+    ARCHIVE: { label: tr("common.archived2"), color: "gray" },
+    RESTORE: {
+      label: tr("ui.memoHistoryModal.actionRestored"),
+      color: "teal",
+    },
+  };
 
   useEffect(() => {
     if (!opened) return;

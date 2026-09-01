@@ -139,7 +139,10 @@ export function ProductDrawings({
                   <Box maw={320}>
                     <DesignFileThumb
                       target={{
-                        caption: `v${thumb.version}（最新）`,
+                        caption: tr(
+                          "production.productDrawings.versionLatest",
+                          { version: thumb.version },
+                        ),
                         filename: thumb.filename,
                         mimeType: thumb.mimeType,
                         src: `/api/design-files/${encodeURIComponent(thumb.id)}`,
@@ -180,7 +183,13 @@ export function ProductDrawings({
           )
         }
         opened={editing != null}
-        title={editing ? `v${editing.version} のメモ` : tr("common.memo")}
+        title={
+          editing
+            ? tr("production.productDrawings.versionMemo", {
+                version: editing.version,
+              })
+            : tr("common.memo")
+        }
       >
         <Textarea
           autosize
@@ -198,7 +207,13 @@ export function ProductDrawings({
         onClose={() => setMemoFor(null)}
         opened={memoFor != null}
         size="lg"
-        title={memoFor ? `v${memoFor.version} のメモ` : tr("common.memo")}
+        title={
+          memoFor
+            ? tr("production.productDrawings.versionMemo", {
+                version: memoFor.version,
+              })
+            : tr("common.memo")
+        }
       >
         {memoFor && (
           <MemoPanel
@@ -211,11 +226,14 @@ export function ProductDrawings({
       </ModalShell>
 
       <ConfirmModal
-        confirmLabel="削除"
+        confirmLabel={tr("common.delete")}
         loading={isPending}
         message={
           deleting
-            ? `${deleting.filename}（v${deleting.version}）を削除します。この操作は取り消せません。`
+            ? tr("production.productDrawings.deleteVersionConfirm", {
+                filename: deleting.filename,
+                version: deleting.version,
+              })
             : ""
         }
         onClose={() => setDeleting(null)}

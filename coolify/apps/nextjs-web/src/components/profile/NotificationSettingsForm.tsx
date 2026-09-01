@@ -83,8 +83,11 @@ function urlBase64ToUint8Array(base64: string): Uint8Array {
 }
 
 /** UA 文字列 → 「Chrome / Android」のような短いデバイスラベル。 */
-export function deviceLabel(userAgent: string | null): string {
-  if (!userAgent) return "不明なデバイス";
+export function deviceLabel(
+  userAgent: string | null,
+  tr: ReturnType<typeof useTranslations>,
+): string {
+  if (!userAgent) return tr("profile.notificationSettingsForm.unknownDevice");
   const ua = userAgent;
   const browser = /Edg(?:e|A|iOS)?\//.test(ua)
     ? "Edge"
@@ -100,7 +103,7 @@ export function deviceLabel(userAgent: string | null): string {
               ? "Chrome"
               : /Safari\//.test(ua)
                 ? "Safari"
-                : "ブラウザ";
+                : tr("profile.notificationSettingsForm.browser");
   const os = /iPhone|iPod/.test(ua)
     ? "iPhone"
     : /iPad/.test(ua)
@@ -306,8 +309,13 @@ export function NotificationSettingsForm({
   const removeDevice = (device: PushDevice) => {
     openConfirm({
       title: tr("profile.notificationSettingsForm.removeTheRegisteredDevice"),
-      message: `「${deviceLabel(device.userAgent)}」へのプッシュ通知を停止します。`,
-      confirmLabel: "削除",
+      message: tr(
+        "profile.notificationSettingsForm.stopsPushNotificationsToDevice",
+        {
+          device: deviceLabel(device.userAgent, tr),
+        },
+      ),
+      confirmLabel: tr("common.delete"),
       onConfirm: () => {
         startTransition(async () => {
           const res = await removePushSubscriptionAction(device.endpoint);
@@ -538,7 +546,7 @@ export function NotificationSettingsForm({
                     <Table.Tr key={d.endpoint}>
                       <Table.Td>
                         <Group gap="xs" wrap="nowrap">
-                          <Text size="sm">{deviceLabel(d.userAgent)}</Text>
+                          <Text size="sm">{deviceLabel(d.userAgent, tr)}</Text>
                           {d.endpoint === currentEndpoint && (
                             <Badge color="blue" size="xs" variant="light">
                               {tr(

@@ -189,10 +189,10 @@ export function RouteEditorForm({
     <FormShell
       breadcrumbs={[
         tr("common.masterData"),
-        { label: "製品", href: "/master/products" },
+        { label: tr("common.products"), href: "/master/products" },
         { label: productLabel, href: backPath },
         mode === "create"
-          ? "工程ルート新規作成"
+          ? tr("master.routeEditorForm.newRouteBreadcrumb")
           : tr("master.products.createANewVersion"),
       ]}
       isDirty={selected.length > 0 || !!nameJa}
@@ -202,7 +202,10 @@ export function RouteEditorForm({
       title={
         mode === "create"
           ? tr("master.products.newProcessRoute")
-          : `工程ルート「${routeName}」新バージョン作成（v${(latestVersion ?? 0) + 1}）`
+          : tr("master.routeEditorForm.newVersionTitle", {
+              name: routeName ?? "",
+              version: (latestVersion ?? 0) + 1,
+            })
       }
     >
       <FormSection required title={tr("common.basicInformation")}>

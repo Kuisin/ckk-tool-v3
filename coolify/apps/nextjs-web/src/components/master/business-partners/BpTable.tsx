@@ -45,13 +45,12 @@ import { useIsMobile } from "@/hooks/useViewport";
 import { bpMatchesQuery } from "@/lib/bp-search";
 import { bpRoleOptions } from "@/lib/enum-labels";
 
-const STATUS_OPTIONS = [
-  { value: "active", label: "有効" },
-  { value: "inactive", label: "無効" },
-];
-
 export function BpTable({ rows }: { rows: BpRow[] }) {
   const tr = useTranslations();
+  const STATUS_OPTIONS = [
+    { value: "active", label: tr("common.enabled") },
+    { value: "inactive", label: tr("common.disabled") },
+  ];
   const locale = useLocale();
   const fmt = useFormat();
   const router = useRouter();
@@ -93,8 +92,14 @@ export function BpTable({ rows }: { rows: BpRow[] }) {
       );
       if (result.ok) {
         notifications.show({
-          title: isActive ? "有効化しました" : tr("common.disabled2"),
-          message: `${targets.length}件の取引先を${isActive ? "有効化" : "無効化"}しました`,
+          title: isActive ? tr("common.enabled2") : tr("common.disabled2"),
+          message: isActive
+            ? tr("master.businessPartners.bulkEnabled", {
+                count: targets.length,
+              })
+            : tr("master.businessPartners.bulkDisabled", {
+                count: targets.length,
+              }),
           color: "green",
         });
         router.refresh();
@@ -111,7 +116,9 @@ export function BpTable({ rows }: { rows: BpRow[] }) {
   const bulkDelete = (targets: BpRow[]) => {
     openConfirm({
       title: tr("master.businessPartners.bulkDeleteBusinessPartners"),
-      message: `選択中の${targets.length}件の取引先を削除します。この操作は取り消せません。`,
+      message: tr("master.businessPartners.bulkDeleteConfirm", {
+        count: targets.length,
+      }),
       confirmLabel: tr("common.delete2"),
       onConfirm: () => {
         startTransition(async () => {
@@ -119,7 +126,9 @@ export function BpTable({ rows }: { rows: BpRow[] }) {
           if (result.ok) {
             notifications.show({
               title: tr("common.deleted"),
-              message: `${targets.length}件の取引先を削除しました`,
+              message: tr("master.businessPartners.bulkDeleted", {
+                count: targets.length,
+              }),
               color: "green",
             });
             router.refresh();
@@ -163,7 +172,12 @@ export function BpTable({ rows }: { rows: BpRow[] }) {
       hideable: true,
       width: 90,
       sortValue: (r) => r.branchCount,
-      render: (r) => (r.branchCount > 0 ? `${r.branchCount} 支店` : "—"),
+      render: (r) =>
+        r.branchCount > 0
+          ? tr("master.businessPartners.branchCountValue", {
+              count: r.branchCount,
+            })
+          : "—",
     },
     {
       key: "isActive",
@@ -260,7 +274,9 @@ export function BpTable({ rows }: { rows: BpRow[] }) {
                 <Group gap="md" mt={2}>
                   <Text c="dimmed" size="xs">
                     {r.branchCount > 0
-                      ? `${r.branchCount} 支店`
+                      ? tr("master.businessPartners.branchCountValue", {
+                          count: r.branchCount,
+                        })
                       : tr("common.noBranch")}
                   </Text>
                   <Text c="dimmed" size="xs">
@@ -279,12 +295,12 @@ export function BpTable({ rows }: { rows: BpRow[] }) {
             onAction: (r) => router.push(`${BP_BASE_PATH}/${r.id}/edit`),
           },
           {
-            label: row.isActive ? "無効化" : tr("common.enable"),
+            label: row.isActive ? tr("common.disable") : tr("common.enable"),
             icon: <IconCircleMinus size={14} />,
             onAction: (r) => setToggleRow(r),
           },
           {
-            label: "削除",
+            label: tr("common.delete"),
             icon: <IconTrash size={14} />,
             color: "red",
             onAction: (r) => setDeleteRow(r),

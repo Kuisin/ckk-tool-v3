@@ -47,13 +47,12 @@ import { PageHeader } from "@/components/ui/PageHeader";
 import { FormSection } from "@/components/ui/shells";
 import { useIsMobile } from "@/hooks/useViewport";
 
-const KIND_LABEL: Record<string, string> = {
-  SURVEY: "アンケート",
-  REQUEST: "申請・報告",
-};
-
 export function FormImport() {
   const tr = useTranslations();
+  const KIND_LABEL: Record<string, string> = {
+    SURVEY: tr("common.survey"),
+    REQUEST: tr("common.requestOrReport"),
+  };
   const router = useRouter();
   const fmt = useFormat();
   const isMobile = useIsMobile();
@@ -99,7 +98,9 @@ export function FormImport() {
         notifications.show({
           message:
             result.data.mode === "version"
-              ? `バージョン ${result.data.version} として取り込みました`
+              ? tr("forms.formImport.importedAsVersion", {
+                  version: result.data.version ?? 1,
+                })
               : tr("common.imported"),
           color: "green",
         });
@@ -178,7 +179,9 @@ export function FormImport() {
                 />
                 <FieldValue
                   label={tr("common.items")}
-                  value={`${preview.fieldCount} 個`}
+                  value={tr("forms.formImport.fieldCountLabel", {
+                    count: preview.fieldCount,
+                  })}
                 />
               </Group>
               <Group gap="xl" wrap="wrap">
@@ -223,7 +226,9 @@ export function FormImport() {
               <Radio
                 description={
                   preview.codeAvailable
-                    ? `書き出し元と同じコード（${preview.sourceCode}）で作ります。共有 URL が環境をまたいで同じになります`
+                    ? tr("forms.formImport.willCreateWithSameCode", {
+                        sourceCode: preview.sourceCode,
+                      })
                     : tr("forms.formImport.thatCodeIsTakenSoA")
                 }
                 label={tr("forms.formImport.importItAsANewForm")}
@@ -234,7 +239,9 @@ export function FormImport() {
                   preview.codeAvailable
                     ? tr("forms.formImport.thereIsNoFormWithThe")
                     : preview.existingEditable
-                      ? `「${preview.existingTitle}」に新しいバージョンとして重ねます。これまでの回答は回答時点の内容のまま残ります`
+                      ? tr("forms.formImport.willOverlayAsNewVersion", {
+                          existingTitle: preview.existingTitle ?? "",
+                        })
                       : tr("forms.formImport.aFormWithTheSameCode")
                 }
                 disabled={preview.codeAvailable || !preview.existingEditable}

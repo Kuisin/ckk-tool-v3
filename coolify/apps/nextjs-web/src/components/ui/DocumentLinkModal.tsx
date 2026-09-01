@@ -26,9 +26,9 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { ModalShell } from "@/components/ui/modals";
 import { searchDocuments } from "./document-link-actions";
 import {
-  DOCUMENT_LINK_TYPES,
   type DocumentHit,
   type DocumentLinkType,
+  documentLinkTypes,
 } from "./document-link-types";
 
 export function DocumentLinkModal({
@@ -65,7 +65,7 @@ export function DocumentLinkModal({
     >
       <Stack gap="sm">
         <Select
-          data={DOCUMENT_LINK_TYPES.map((t) => ({ ...t }))}
+          data={documentLinkTypes(tr)}
           label={tr("ui.documentLinkModal.documentType")}
           onChange={(v) => v && setType(v as DocumentLinkType)}
           value={type}
@@ -85,7 +85,7 @@ export function DocumentLinkModal({
               icon={<IconSearch size={20} />}
               message={
                 pending
-                  ? "検索中…"
+                  ? tr("ui.f4SearchModal.searching")
                   : tr("ui.documentLinkModal.noMatchingDocuments")
               }
             />

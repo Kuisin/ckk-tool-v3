@@ -52,13 +52,12 @@ export interface DefectTypeRow {
   isActive: boolean;
 }
 
-const STATUS_OPTIONS = [
-  { value: "active", label: "有効" },
-  { value: "inactive", label: "無効" },
-];
-
 export function DefectTypeTable({ rows }: { rows: DefectTypeRow[] }) {
   const tr = useTranslations();
+  const STATUS_OPTIONS = [
+    { value: "active", label: tr("common.enabled") },
+    { value: "inactive", label: tr("common.disabled") },
+  ];
   const router = useRouter();
   const isMobile = useIsMobile();
   const [, startTransition] = useTransition();
@@ -96,8 +95,12 @@ export function DefectTypeTable({ rows }: { rows: DefectTypeRow[] }) {
       );
       if (result.ok) {
         notifications.show({
-          title: isActive ? "有効化しました" : tr("common.disabled2"),
-          message: `${targets.length}件の不良種類を${isActive ? "有効化" : "無効化"}しました`,
+          title: isActive ? tr("common.enabled2") : tr("common.disabled2"),
+          message: isActive
+            ? tr("master.defectTypes.bulkEnabled", { count: targets.length })
+            : tr("master.defectTypes.bulkDisabled", {
+                count: targets.length,
+              }),
           color: "green",
         });
         router.refresh();
@@ -114,7 +117,9 @@ export function DefectTypeTable({ rows }: { rows: DefectTypeRow[] }) {
   const bulkDelete = (targets: DefectTypeRow[]) => {
     openConfirm({
       title: tr("master.defectTypes.bulkDeleteDefectTypes"),
-      message: `選択中の${targets.length}件の不良種類を削除します。この操作は取り消せません。`,
+      message: tr("master.defectTypes.bulkDeleteConfirm", {
+        count: targets.length,
+      }),
       confirmLabel: tr("common.delete2"),
       onConfirm: () => {
         startTransition(async () => {
@@ -122,7 +127,9 @@ export function DefectTypeTable({ rows }: { rows: DefectTypeRow[] }) {
           if (result.ok) {
             notifications.show({
               title: tr("common.deleted"),
-              message: `${targets.length}件の不良種類を削除しました`,
+              message: tr("master.defectTypes.bulkDeleted", {
+                count: targets.length,
+              }),
               color: "green",
             });
             router.refresh();
@@ -141,7 +148,7 @@ export function DefectTypeTable({ rows }: { rows: DefectTypeRow[] }) {
   const columns: Column<DefectTypeRow>[] = [
     {
       key: "code",
-      header: "コード",
+      header: tr("common.code"),
       sortable: true,
       width: 140,
       sortValue: (r) => r.code,
@@ -181,7 +188,7 @@ export function DefectTypeTable({ rows }: { rows: DefectTypeRow[] }) {
   return (
     <ListShell
       action={<NewButton href={`${BASE_PATH}/new`} />}
-      breadcrumbs={[tr("common.masterData"), "不良種類"]}
+      breadcrumbs={[tr("common.masterData"), tr("common.defectTypes")]}
       filters={
         <Select
           clearable
@@ -201,7 +208,7 @@ export function DefectTypeTable({ rows }: { rows: DefectTypeRow[] }) {
           value={search}
         />
       }
-      title="不良種類"
+      title={tr("common.defectTypes")}
     >
       <DataTable
         bulkActions={[
@@ -241,7 +248,9 @@ export function DefectTypeTable({ rows }: { rows: DefectTypeRow[] }) {
                   {r.name}
                 </Text>
                 <Text c="dimmed" size="xs">
-                  表示順 {r.sortOrder}
+                  {tr("master.defectTypes.sortOrderValue", {
+                    value: r.sortOrder,
+                  })}
                 </Text>
               </Stack>
               <ActiveBadge active={r.isActive} />
@@ -255,12 +264,12 @@ export function DefectTypeTable({ rows }: { rows: DefectTypeRow[] }) {
             onAction: (r) => setEditRow(r),
           },
           {
-            label: row.isActive ? "無効化" : tr("common.enable"),
+            label: row.isActive ? tr("common.disable") : tr("common.enable"),
             icon: <IconCircleMinus size={14} />,
             onAction: (r) => setToggleRow(r),
           },
           {
-            label: "削除",
+            label: tr("common.delete"),
             icon: <IconTrash size={14} />,
             color: "red",
             onAction: (r) => setDeleteRow(r),

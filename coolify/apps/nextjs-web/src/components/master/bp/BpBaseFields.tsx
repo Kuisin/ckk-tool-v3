@@ -153,7 +153,7 @@ export function BpBaseFields<T extends BpBaseFormValues>({
                 })}
               />
             }
-            placeholder="エービーシーセイサクショ"
+            placeholder={tr("master.bpBaseFields.kanaPlaceholder")}
             {...props("nameKana")}
           />
           <TextInput

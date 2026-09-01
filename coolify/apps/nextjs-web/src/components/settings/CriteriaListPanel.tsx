@@ -36,11 +36,24 @@ import type {
 
 const BASE = "/settings/trial-pricing-engine/criteria";
 
-const ROLE_META: Record<CriterionRole, { label: string; color: string }> = {
-  component: { label: "加算", color: "blue" },
-  intermediate: { label: "中間", color: "gray" },
-  final: { label: "見積単価", color: "green" },
-};
+function roleMeta(
+  tr: ReturnType<typeof useTranslations>,
+): Record<CriterionRole, { label: string; color: string }> {
+  return {
+    component: {
+      label: tr("settings.criteriaListPanel.additive"),
+      color: "blue",
+    },
+    intermediate: {
+      label: tr("settings.criteriaListPanel.intermediate"),
+      color: "gray",
+    },
+    final: {
+      label: tr("settings.criterionEditForm.estimatedUnitPrice"),
+      color: "green",
+    },
+  };
+}
 
 const byOrder = (a: Criterion, b: Criterion) => a.order - b.order;
 
@@ -89,6 +102,7 @@ export function CriteriaListPanel({
   toolTypes: ToolTypeDef[];
 }) {
   const tr = useTranslations();
+  const roleMetaMap = roleMeta(tr);
   const [criteria, setCriteria] = useState<Criterion[]>(initial);
   const [isPending, startTransition] = useTransition();
   const router = useRouter();
@@ -144,8 +158,8 @@ export function CriteriaListPanel({
     ),
     description: (
       <Group gap={4} wrap="wrap">
-        <Badge color={ROLE_META[c.role].color} size="xs" variant="light">
-          {ROLE_META[c.role].label}
+        <Badge color={roleMetaMap[c.role].color} size="xs" variant="light">
+          {roleMetaMap[c.role].label}
         </Badge>
         <ToolTypesBadge c={c} toolTypes={toolTypes} />
         {!c.enabled && (
@@ -212,8 +226,12 @@ export function CriteriaListPanel({
               <Text size="sm" style={{ flex: 1, minWidth: 0 }} truncate>
                 {c.name}
               </Text>
-              <Badge color={ROLE_META[c.role].color} size="xs" variant="light">
-                {ROLE_META[c.role].label}
+              <Badge
+                color={roleMetaMap[c.role].color}
+                size="xs"
+                variant="light"
+              >
+                {roleMetaMap[c.role].label}
               </Badge>
               <ActionIcon
                 aria-label={tr("common.moveUp")}

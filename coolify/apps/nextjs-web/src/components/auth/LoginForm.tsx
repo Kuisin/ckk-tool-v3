@@ -34,16 +34,6 @@ import { useEffect, useState } from "react";
 import { ssoSignIn } from "@/app/(auth)/login/actions";
 import { ensureDeviceSignals } from "@/lib/device-signals-client";
 
-/** Auth.js が /login?error=… で返すコードを日本語に。 */
-const AUTH_ERROR_MESSAGES: Record<string, string> = {
-  AccessDenied:
-    "アクセスが拒否されました。アカウントが無効、または SSO から必要な情報（ユーザー名/メール）が取得できませんでした。管理者にお問い合わせください。",
-  OAuthCallbackError:
-    "SSO の応答処理に失敗しました（トークン取得/検証エラー）。時間をおいて再度お試しください。",
-  Configuration: "認証設定にエラーがあります。管理者にお問い合わせください。",
-  Verification: "リンクが無効か期限切れです。もう一度お試しください。",
-};
-
 export function LoginForm({
   ssoEnabled,
   callbackUrl = "/",
@@ -56,6 +46,13 @@ export function LoginForm({
   const router = useRouter();
   const searchParams = useSearchParams();
   const urlError = searchParams.get("error");
+  /** Auth.js が /login?error=… で返すコードを表示用の文言に。 */
+  const authErrorMessages: Record<string, string> = {
+    AccessDenied: tr("auth.loginForm.accessDeniedAccountDisabledOrSso"),
+    OAuthCallbackError: tr("auth.loginForm.ssoResponseProcessingFailed"),
+    Configuration: tr("auth.loginForm.thereIsAnErrorInTheAuthentication"),
+    Verification: tr("auth.loginForm.theLinkIsInvalidOrExpired"),
+  };
   const [devOpen, setDevOpen] = useState(false);
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
@@ -64,7 +61,8 @@ export function LoginForm({
   const [ssoLoading, setSsoLoading] = useState(false);
   const [ssoError, setSsoError] = useState<string | null>(
     urlError
-      ? (AUTH_ERROR_MESSAGES[urlError] ?? `ログインエラー: ${urlError}`)
+      ? (authErrorMessages[urlError] ??
+          tr("auth.loginForm.loginError", { code: urlError }))
       : null,
   );
 

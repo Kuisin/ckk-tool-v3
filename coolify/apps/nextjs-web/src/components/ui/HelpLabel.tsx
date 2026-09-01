@@ -20,9 +20,12 @@ import { useTranslations } from "next-intl";
 import type { ReactNode } from "react";
 
 function HelpIcon({ label }: { label: ReactNode }) {
+  const tr = useTranslations();
   return (
     <ThemeIcon
-      aria-label={`${typeof label === "string" ? label : ""}の説明`}
+      aria-label={tr("ui.helpLabel.descriptionOf", {
+        name: typeof label === "string" ? label : "",
+      })}
       color="gray"
       radius="xl"
       size={14}
@@ -70,7 +73,9 @@ export function HelpLabel({
           <HoverCard.Target>
             {/* タッチ・キーボードでも開けるようリンクにする（同じ遷移先）。 */}
             <Anchor
-              aria-label={`${typeof label === "string" ? label : ""}の説明を読む`}
+              aria-label={tr("ui.helpLabel.readTheDescriptionOf", {
+                name: typeof label === "string" ? label : "",
+              })}
               href={`/manual/ja/${manual}`}
               onClick={(e) => e.stopPropagation()}
               rel="noopener noreferrer"

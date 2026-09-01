@@ -77,11 +77,15 @@ export function KioskSettingsPanel({
                 <Stack gap={0} style={{ minWidth: 0 }}>
                   <Text fw={500}>{app.label}</Text>
                   <Text c="dimmed" size="xs">
-                    権限コード: {app.permission}
+                    {tr("settings.kioskSettingsPanel.permissionCode", {
+                      code: app.permission,
+                    })}
                   </Text>
                 </Stack>
                 <Switch
-                  aria-label={`${app.label} を表示`}
+                  aria-label={tr("settings.kioskSettingsPanel.showLabel", {
+                    label: app.label,
+                  })}
                   checked={flags[app.key] ?? true}
                   onChange={(e) =>
                     setFlags((prev) => ({

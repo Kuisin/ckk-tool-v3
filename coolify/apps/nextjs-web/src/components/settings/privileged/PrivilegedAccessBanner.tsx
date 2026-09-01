@@ -46,8 +46,13 @@ export async function PrivilegedAccessBanner({
     if (ms == null || ms <= 0) return null;
     const m = Math.floor(ms / 60_000);
     return m >= 60
-      ? `残り ${Math.floor(m / 60)} 時間 ${m % 60} 分`
-      : `残り ${Math.max(1, m)} 分`;
+      ? tr("settings.privilegedAccessBanner.remainingHM", {
+          hours: Math.floor(m / 60),
+          minutes: m % 60,
+        })
+      : tr("settings.privilegedAccessBanner.remainingM", {
+          minutes: Math.max(1, m),
+        });
   };
 
   return (
@@ -63,8 +68,13 @@ export async function PrivilegedAccessBanner({
       mb="md"
       title={
         allowed.length > 0
-          ? `${label}: ${allowed.length} 件の操作が使えます`
-          : `${label}: 承認された操作はありません`
+          ? tr("settings.privilegedAccessBanner.labelNOperationsAreAvailable", {
+              label,
+              count: allowed.length,
+            })
+          : tr("settings.privilegedAccessBanner.labelNoOperationsAreApproved", {
+              label,
+            })
       }
       variant="light"
     >
@@ -91,7 +101,12 @@ export async function PrivilegedAccessBanner({
           {allowed.length > 0
             ? tr("settings.privileged.theClockStartsFromTheFirst")
             : tr("settings.privileged.theseOperationsNeedApproval")}
-          {pending.length > 0 && " 申請中のものは承認をお待ちください。"}{" "}
+          {pending.length > 0 && (
+            <>
+              {" "}
+              {tr("settings.privilegedAccessBanner.pleaseWaitForApprovalOfThe")}
+            </>
+          )}{" "}
           <Anchor href="/settings/privileged-access/new" size="xs">
             {tr("settings.privileged.requestPrivilegedAccess")}
           </Anchor>

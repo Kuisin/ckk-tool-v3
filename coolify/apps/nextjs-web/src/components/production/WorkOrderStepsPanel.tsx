@@ -237,8 +237,10 @@ export function WorkOrderStepsPanel({
     if (workOrderNumber == null) return;
     openConfirm({
       title: tr("production.workOrderStepsPanel.deleteTheBranch"),
-      message: `分岐系列（${group.steps.map((s) => s.name).join(" → ")}）を削除します。この操作は取り消せません。`,
-      confirmLabel: "削除",
+      message: tr("production.workOrderStepsPanel.deleteBranchSeriesConfirm", {
+        steps: group.steps.map((s) => s.name).join(" → "),
+      }),
+      confirmLabel: tr("common.delete"),
       onConfirm: () =>
         startTransition(async () => {
           const result = await removeBranch({
@@ -248,7 +250,9 @@ export function WorkOrderStepsPanel({
           if (result.ok) {
             notifications.show({
               title: tr("production.workOrderStepsPanel.theBranchWasDeleted"),
-              message: `${group.steps.length} 工程を削除`,
+              message: tr("production.workOrderStepsPanel.deletedNSteps", {
+                count: group.steps.length,
+              }),
               color: "green",
             });
             router.refresh();
@@ -397,7 +401,7 @@ export function WorkOrderStepsPanel({
               size="xs"
             >
               {isExecutable
-                ? "工程実行ビューを開く"
+                ? tr("production.workOrderStepsPanel.openTheStepExecutionView")
                 : tr("production.workOrderStepsPanel.openTheStepView")}
             </Anchor>
             {!isExecutable && (
@@ -433,7 +437,7 @@ export function WorkOrderStepsPanel({
                 onClick={() => setGraphOpen((o) => !o)}
               >
                 {graphOpen
-                  ? "フロー図を隠す"
+                  ? tr("production.workOrderStepsPanel.hideTheFlowDiagram")
                   : tr("production.workOrderStepsPanel.showTheFlowDiagram")}
               </SecondaryButton>
               <Collapse expanded={graphOpen}>

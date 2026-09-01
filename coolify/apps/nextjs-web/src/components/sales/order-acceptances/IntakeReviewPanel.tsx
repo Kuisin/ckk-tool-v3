@@ -34,13 +34,18 @@ import { useState } from "react";
 import { GhostButton } from "@/components/ui/buttons";
 import type { FieldReview } from "@/lib/intake-review";
 
-const STATUS_BADGE: Record<string, { label: string; color: string }> = {
-  unmatched: { label: "マスタに無い", color: "orange" },
-  missing: { label: "読み取れず", color: "gray" },
-};
-
 export function IntakeReviewPanel({ review }: { review: FieldReview[] }) {
   const tr = useTranslations();
+  const STATUS_BADGE: Record<string, { label: string; color: string }> = {
+    unmatched: {
+      label: tr("sales.intakeReviewPanel.notInTheMaster"),
+      color: "orange",
+    },
+    missing: {
+      label: tr("sales.intakeReviewPanel.couldNotBeRead"),
+      color: "gray",
+    },
+  };
   // 既定は畳む。開くと以後はそのページに居る間だけ開いたまま。
   const [open, setOpen] = useState(false);
 
@@ -70,7 +75,9 @@ export function IntakeReviewPanel({ review }: { review: FieldReview[] }) {
     <Alert
       color="orange"
       icon={<IconAlertTriangle size={16} />}
-      title={`確認が必要な項目 ${unresolved.length} 件`}
+      title={tr("sales.intakeReviewPanel.itemsNeedingConfirmation", {
+        count: unresolved.length,
+      })}
       variant="light"
     >
       <Stack gap="xs">
@@ -88,7 +95,7 @@ export function IntakeReviewPanel({ review }: { review: FieldReview[] }) {
             }
           >
             {open
-              ? "内訳を隠す"
+              ? tr("sales.intakeReviewPanel.hideTheBreakdown")
               : tr("sales.orderAcceptances.viewTheBreakdown")}
           </GhostButton>
         </Group>
@@ -115,7 +122,9 @@ export function IntakeReviewPanel({ review }: { review: FieldReview[] }) {
                         {r.read ? (
                           <Text c="dimmed" component="span" size="sm">
                             {" "}
-                            — 読み取り「{r.read}」
+                            {tr("sales.intakeReviewPanel.readAsValue", {
+                              value: r.read,
+                            })}
                           </Text>
                         ) : null}
                       </Text>

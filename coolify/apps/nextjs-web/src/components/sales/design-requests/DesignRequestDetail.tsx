@@ -208,7 +208,15 @@ export function DesignRequestDetail({
     const version = pickThumbFile(request.files);
     if (version) {
       return {
-        caption: `v${version.version}${version.isLatest ? "（最新）" : ""} ${version.filename}`,
+        caption: version.isLatest
+          ? tr("sales.designRequestDetail.versionCaptionLatest", {
+              version: version.version,
+              filename: version.filename,
+            })
+          : tr("sales.designRequestDetail.versionCaption", {
+              version: version.version,
+              filename: version.filename,
+            }),
         filename: version.filename,
         mimeType: version.mimeType,
         src: `/api/design-files/${encodeURIComponent(version.id)}`,
@@ -218,7 +226,10 @@ export function DesignRequestDetail({
     const a = attachments.find((x) => isViewable(x.filename, x.mimeType));
     return a
       ? {
-          caption: `添付（未登録）${a.filename}`,
+          caption: tr(
+            "sales.designRequestDetail.unregisteredAttachmentCaption",
+            { filename: a.filename },
+          ),
           filename: a.filename,
           mimeType: a.mimeType,
           src: `/api/attachments/${encodeURIComponent(a.id)}`,
@@ -291,7 +302,9 @@ export function DesignRequestDetail({
       if (result.ok) {
         notifications.show({
           title: successMessage,
-          message: `設計依頼書 ${request.requestNumber}`,
+          message: tr("sales.designRequestDetail.designRequestWithNumber", {
+            number: request.requestNumber,
+          }),
           color: "green",
         });
         closeAll();
@@ -324,6 +337,7 @@ export function DesignRequestDetail({
     approvalStage(approval, {
       approvedAt: request.approvedAt,
       fmtDate: (v) => fmt.date(v),
+      tr,
     }),
     {
       key: "started",
@@ -386,7 +400,11 @@ export function DesignRequestDetail({
       key: "design-files",
       title: tr("common.drawing2"),
       summary:
-        latestFiles.length > 0 ? `第 ${latestFiles[0]?.version} 版` : null,
+        latestFiles.length > 0
+          ? tr("sales.designRequestDetail.versionOrdinal", {
+              version: latestFiles[0]?.version,
+            })
+          : null,
       items: latestFiles.map((f) => ({
         key: f.id,
         label: f.filename,
@@ -433,7 +451,9 @@ export function DesignRequestDetail({
         onReject={(reason) => rejectDesign(request.requestNumber, reason)}
         onRequest={() => requestDesignApproval(request.requestNumber)}
         rejectReason={lastReject?.notes ?? null}
-        subject={`設計依頼書 ${request.requestNumber}`}
+        subject={tr("sales.designRequestDetail.designRequestWithNumber", {
+          number: request.requestNumber,
+        })}
       />
     );
   } else if (canStart(request)) {
@@ -453,7 +473,9 @@ export function DesignRequestDetail({
             {tr("sales.designRequests.start")}
           </PrimaryButton>
         }
-        description={`承認済みです。${request.assigneeName ?? "担当者"} が図面の作成を始められます`}
+        description={tr("sales.designRequestDetail.approvedReadyToStartDesc", {
+          assignee: request.assigneeName ?? tr("common.assignee"),
+        })}
         icon={<IconPlayerPlay size={20} />}
         title={tr("sales.designRequests.readyToStart")}
         tone="action"
@@ -474,7 +496,10 @@ export function DesignRequestDetail({
             {tr("common.completed")}
           </PrimaryButton>
         }
-        description={`設計図 v${latestFiles[0]?.version ?? producedVersions[0]} が登録済みです。完了すると依頼者へ通知します`}
+        description={tr(
+          "sales.designRequestDetail.drawingRegisteredNotifyDesc",
+          { version: latestFiles[0]?.version ?? producedVersions[0] },
+        )}
         icon={<IconCheck size={20} />}
         title={tr("sales.designRequests.youCanCompleteItOnceThe")}
         tone="action"
@@ -535,7 +560,7 @@ export function DesignRequestDetail({
             ...(isCancellable(request)
               ? [
                   {
-                    label: "キャンセル",
+                    label: tr("common.cancel"),
                     icon: <IconX size={14} />,
                     color: "red",
                     onClick: () => setCancelOpen(true),
@@ -554,7 +579,7 @@ export function DesignRequestDetail({
       breadcrumbs={[
         tr("common.sales"),
         { label: tr("common.designRequest2"), href: BASE_PATH },
-        "詳細",
+        tr("common.detailBreadcrumb"),
       ]}
       createdAt={fmt.dateTime(request.createdAt)}
       status={<StatusBadge entity="DesignRequest" status={request.status} />}
@@ -627,7 +652,10 @@ export function DesignRequestDetail({
             }
           />
         )}
-        <FieldValue label="製品" value={request.productName ?? "—"} />
+        <FieldValue
+          label={tr("common.product")}
+          value={request.productName ?? "—"}
+        />
         {/* 完成した版がどの系列に載るか。汎用なら全顧客の指示書から見える。 */}
         <FieldValue
           label={tr("common.orderingCustomer")}
@@ -744,7 +772,9 @@ export function DesignRequestDetail({
       <AppTabs onChange={setTab} value={tab}>
         <Tabs.List>
           <Tabs.Tab value="overview">{tr("common.overview")}</Tabs.Tab>
-          <Tabs.Tab value="files">ファイル（{request.files.length}）</Tabs.Tab>
+          <Tabs.Tab value="files">
+            {tr("common.filesWithCount", { count: request.files.length })}
+          </Tabs.Tab>
           <Tabs.Tab value="pdf">PDF</Tabs.Tab>
           <Tabs.Tab value="comments">{tr("common.comment")}</Tabs.Tab>
           <Tabs.Tab value="history">{tr("common.history")}</Tabs.Tab>
@@ -761,7 +791,7 @@ export function DesignRequestDetail({
               >
                 <Stack gap={4}>
                   <Text size="sm">
-                    元図面:{" "}
+                    {tr("sales.designRequestDetail.baseDrawingLabel")}{" "}
                     {request.baseDesignFileId ? (
                       <Anchor
                         href={`/api/design-files/${encodeURIComponent(request.baseDesignFileId)}`}
@@ -776,7 +806,9 @@ export function DesignRequestDetail({
                     )}
                   </Text>
                   <Text size="sm" style={{ whiteSpace: "pre-wrap" }}>
-                    変更理由: {request.changeReason || "—"}
+                    {tr("sales.designRequestDetail.changeReasonLabel", {
+                      reason: request.changeReason || "—",
+                    })}
                   </Text>
                 </Stack>
               </Alert>
@@ -879,7 +911,10 @@ export function DesignRequestDetail({
       <ConfirmModal
         confirmLabel={tr("sales.designRequests.complete")}
         loading={isPending}
-        message={`設計依頼書 ${request.requestNumber} を完了にします。設計図 v${producedVersions.join(", v")} が成果物として紐づきます。`}
+        message={tr("sales.designRequestDetail.confirmCompleteMessage", {
+          number: request.requestNumber,
+          versions: producedVersions.join(", v"),
+        })}
         onClose={() => setCompleteOpen(false)}
         onConfirm={() =>
           run(
@@ -893,7 +928,9 @@ export function DesignRequestDetail({
       <ConfirmModal
         confirmLabel={tr("common.sendBack")}
         loading={isPending}
-        message={`設計依頼書 ${request.requestNumber} を進行中へ差し戻します。完了日時はクリアされますが、承認は取りなおしになりません。`}
+        message={tr("sales.designRequestDetail.confirmReopenMessage", {
+          number: request.requestNumber,
+        })}
         onClose={() => setReopenOpen(false)}
         onConfirm={() =>
           run(() => reopenDesign(request.requestNumber), tr("common.sentBack"))
@@ -918,8 +955,9 @@ export function DesignRequestDetail({
       >
         <Stack gap="sm">
           <Text size="sm">
-            設計依頼書 {request.requestNumber} をキャンセルします。承認依頼中の
-            場合は承認依頼中の一覧からも取り下げられます。
+            {tr("sales.designRequestDetail.confirmCancelMessage", {
+              number: request.requestNumber,
+            })}
           </Text>
           <Textarea
             autosize

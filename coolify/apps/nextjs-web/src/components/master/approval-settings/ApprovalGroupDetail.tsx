@@ -216,6 +216,7 @@ function ApprovalPermissionCell({
 }: {
   approvals: MemberApproval[];
 }) {
+  const tr = useTranslations();
   const locale = useLocale();
   if (approvals.length === 0) {
     return (
@@ -230,11 +231,17 @@ function ApprovalPermissionCell({
         const color = a.allowed ? (a.unrestricted ? "green" : "yellow") : "red";
         const label = a.allowed
           ? a.unrestricted
-            ? `${a.label}を承認できます`
-            : `${a.label}を承認できますが、権限の範囲が${a.scopes
-                .map((s) => permissionScopeLabel(s, locale))
-                .join("・")}に限定されています（範囲外の書類は承認できません）`
-          : `${a.label}を閲覧・編集できる権限（${a.permissionCode}:READ / UPDATE）がありません — 承認ボタンを押しても弾かれます`;
+            ? tr("master.approvalGroupDetail.canApprove", { label: a.label })
+            : tr("master.approvalGroupDetail.canApproveScoped", {
+                label: a.label,
+                scopes: a.scopes
+                  .map((s) => permissionScopeLabel(s, locale))
+                  .join(tr("common.s1")),
+              })
+          : tr("master.approvalGroupDetail.cannotApprove", {
+              label: a.label,
+              code: a.permissionCode,
+            });
         return (
           <Tooltip key={a.targetType} label={label} withinPortal>
             <Badge color={color} size="sm" variant="light">
@@ -312,8 +319,16 @@ export function ApprovalGroupDetail({
       );
       if (result.ok) {
         notifications.show({
-          title: member.isActive ? "無効化しました" : tr("common.enabled2"),
-          message: `メンバー「${member.displayName}」を${member.isActive ? "無効化" : "有効化"}しました`,
+          title: member.isActive
+            ? tr("common.disabled2")
+            : tr("common.enabled2"),
+          message: member.isActive
+            ? tr("master.approvalGroupDetail.memberDisabledMessage", {
+                name: member.displayName,
+              })
+            : tr("master.approvalGroupDetail.memberEnabledMessage", {
+                name: member.displayName,
+              }),
           color: "green",
         });
         router.refresh();
@@ -333,12 +348,14 @@ export function ApprovalGroupDetail({
         <ResourceActions
           menuItems={[
             {
-              label: record.isActive ? "無効化" : tr("common.enable"),
+              label: record.isActive
+                ? tr("common.disable")
+                : tr("common.enable"),
               icon: <IconCircleMinus size={14} />,
               onClick: () => setToggleOpen(true),
             },
             {
-              label: "削除",
+              label: tr("common.delete"),
               icon: <IconTrash size={14} />,
               color: "red",
               divider: true,
@@ -360,7 +377,10 @@ export function ApprovalGroupDetail({
         <FieldValue label={tr("common.name2")} value={record.nameJa} />
         <FieldValue
           label={tr("common.members")}
-          value={`${activeCount}名（有効） / ${record.members.length}名`}
+          value={tr("master.approvalGroupDetail.activeMemberCount", {
+            active: activeCount,
+            total: record.members.length,
+          })}
         />
         <FieldValue
           label={tr("common.status")}
@@ -495,7 +515,9 @@ export function ApprovalGroupDetail({
                             </Tooltip>
                             <Tooltip
                               label={
-                                m.isActive ? "無効化" : tr("common.enable")
+                                m.isActive
+                                  ? tr("common.disable")
+                                  : tr("common.enable")
                               }
                               withinPortal
                             >
@@ -516,7 +538,7 @@ export function ApprovalGroupDetail({
                                 <IconCircleMinus size={14} />
                               </ActionIcon>
                             </Tooltip>
-                            <Tooltip label="削除" withinPortal>
+                            <Tooltip label={tr("common.delete")} withinPortal>
                               <ActionIcon
                                 aria-label={tr(
                                   "master.approvalSettings.removeTheMember",
@@ -633,7 +655,7 @@ export function ApprovalGroupDetail({
                         )}
                         <Table.Td>
                           <Group gap={4} justify="flex-end" wrap="nowrap">
-                            <Tooltip label="削除" withinPortal>
+                            <Tooltip label={tr("common.delete")} withinPortal>
                               <ActionIcon
                                 aria-label={tr(
                                   "master.approvalSettings.deleteTheDelegation",

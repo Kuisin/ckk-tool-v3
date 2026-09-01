@@ -128,7 +128,10 @@ export function MaterialPriceChart({
               {/* wide hit area — the single interactive (keyboard-focusable) target */}
               {/* biome-ignore lint/a11y/useSemanticElements: an SVG <circle> cannot be a native <button> */}
               <circle
-                aria-label={`${p.date} ${formatMoney(p.unitPrice)} を参照価格に設定`}
+                aria-label={tr("sales.materialPriceChart.setAsReferencePrice", {
+                  date: p.date,
+                  price: formatMoney(p.unitPrice),
+                })}
                 cx={x(i)}
                 cy={y(p.unitPrice)}
                 fill="transparent"
@@ -178,7 +181,9 @@ export function MaterialPriceChart({
       {selected && (
         <Group gap="sm">
           <Badge color="blue" variant="light">
-            参照価格 {formatMoney(selected.unitPrice)}
+            {tr("sales.materialPriceChart.referencePriceAmount", {
+              amount: formatMoney(selected.unitPrice),
+            })}
           </Badge>
           <Text c="dimmed" size="xs">
             {fmt.date(selected.date)} ・ {selected.supplier} ・{" "}

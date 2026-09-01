@@ -68,7 +68,9 @@ export function DeleteProductModal({
       loading={isPending}
       message={
         target
-          ? `製品「${label(target, tr)}」を削除します。この操作は取り消せません。`
+          ? tr("master.products.deleteProductConfirm", {
+              name: label(target, tr),
+            })
           : ""
       }
       onClose={onClose}
@@ -79,7 +81,9 @@ export function DeleteProductModal({
           if (result.ok) {
             notifications.show({
               title: tr("common.deleted"),
-              message: `製品「${label(target, tr)}」を削除しました`,
+              message: tr("master.products.productDeleted", {
+                name: label(target, tr),
+              }),
               color: "green",
             });
             onDone?.();
@@ -114,13 +118,19 @@ export function ToggleProductActiveModal({
   return (
     <ConfirmModal
       confirmColor={isActive ? "red" : "blue"}
-      confirmLabel={isActive ? "無効化する" : tr("common.enable2")}
+      confirmLabel={
+        isActive ? tr("common.disableAction") : tr("common.enable2")
+      }
       loading={isPending}
       message={
         target
           ? isActive
-            ? `製品「${label(target, tr)}」を無効化します。新規の価格試算・価格表・見積書で選択できなくなります。`
-            : `製品「${label(target, tr)}」を有効化します。再び価格試算・価格表・見積書で選択できるようになります。`
+            ? tr("master.products.disableProductConfirm", {
+                name: label(target, tr),
+              })
+            : tr("master.products.enableProductConfirm", {
+                name: label(target, tr),
+              })
           : ""
       }
       onClose={onClose}
@@ -130,8 +140,14 @@ export function ToggleProductActiveModal({
           const result = await setProductsActive([target.id], !isActive);
           if (result.ok) {
             notifications.show({
-              title: isActive ? "無効化しました" : tr("common.enabled2"),
-              message: `製品「${label(target, tr)}」を${isActive ? "無効化" : "有効化"}しました`,
+              title: isActive ? tr("common.disabled2") : tr("common.enabled2"),
+              message: isActive
+                ? tr("master.products.productDisabled", {
+                    name: label(target, tr),
+                  })
+                : tr("master.products.productEnabled", {
+                    name: label(target, tr),
+                  }),
               color: "green",
             });
             onDone?.();
@@ -145,7 +161,11 @@ export function ToggleProductActiveModal({
         });
       }}
       opened={opened}
-      title={isActive ? "製品の無効化" : tr("master.products.enableTheProduct")}
+      title={
+        isActive
+          ? tr("master.products.disableTheProduct")
+          : tr("master.products.enableTheProduct")
+      }
     />
   );
 }
@@ -172,13 +192,17 @@ export function DuplicateProductModal({
   // Seed the fields from the copy source each time a new source opens.
   if (opened && source && seededFrom !== source.id) {
     setSeededFrom(source.id);
-    setNameJa(source.name !== "—" ? `${source.name}（コピー）` : "");
+    setNameJa(
+      source.name !== "—"
+        ? tr("master.products.copyOfName", { name: source.name })
+        : "",
+    );
     setNameTranslations({});
     setUnit(source.unit);
   }
 
   const materialSpecText = source?.materialTypeId
-    ? `${source.materialTypeLabel || "材種"} ／ φ${source.diameterMm ?? "—"} × ${source.lengthMm ?? "—"}mm`
+    ? `${source.materialTypeLabel || tr("common.materialTypes")} ／ φ${source.diameterMm ?? "—"} × ${source.lengthMm ?? "—"}mm`
     : "—";
 
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
@@ -202,7 +226,9 @@ export function DuplicateProductModal({
       if (result.ok) {
         notifications.show({
           title: tr("master.products.duplicated"),
-          message: `製品「${result.data.code}」を作成しました`,
+          message: tr("master.products.productCreated", {
+            code: result.data.code,
+          }),
           color: "green",
         });
         setSeededFrom(null);

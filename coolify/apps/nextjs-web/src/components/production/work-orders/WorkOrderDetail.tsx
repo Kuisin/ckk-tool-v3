@@ -149,7 +149,7 @@ export function WorkOrderDetail({
       if (res.ok) {
         notifications.show({
           title: designFileId
-            ? "固定しました"
+            ? tr("production.workOrderDetail.pinned")
             : tr("production.workOrders.unpinned"),
           message: "",
           color: "green",
@@ -174,7 +174,9 @@ export function WorkOrderDetail({
       if (result.ok) {
         notifications.show({
           title: tr("common.copied"),
-          message: `指示書 ${result.data.docNumber} を作成しました`,
+          message: tr("production.workOrderDetail.workOrderWasCreatedWithDoc", {
+            docNumber: result.data.docNumber,
+          }),
           color: "green",
         });
         setCopyOpen(false);
@@ -192,7 +194,9 @@ export function WorkOrderDetail({
   const handleCancel = () => {
     openConfirm({
       title: tr("common.confirmCancellation"),
-      message: `指示書 ${woLabel} をキャンセルします。この操作は取り消せません。`,
+      message: tr("production.workOrderDetail.cancelWorkOrderWithLabel", {
+        label: woLabel,
+      }),
       confirmLabel: tr("common.cancelDocument"),
       onConfirm: () => {
         startTransition(async () => {
@@ -200,7 +204,9 @@ export function WorkOrderDetail({
           if (result.ok) {
             notifications.show({
               title: tr("common.cancelled"),
-              message: `指示書 ${woLabel}`,
+              message: tr("production.workOrderDetail.workOrderWithLabel", {
+                label: woLabel,
+              }),
               color: "green",
             });
             router.refresh();
@@ -280,7 +286,7 @@ export function WorkOrderDetail({
         }
       />
       <FieldValue label={tr("common.createdBy")} value={wo.createdByName} />
-      <FieldValue label="製品" value={wo.productName} />
+      <FieldValue label={tr("common.product")} value={wo.productName} />
       <FieldValue
         label={tr("common.type2")}
         value={workOrderTypeLabel(wo.type, locale) ?? wo.type}
@@ -370,7 +376,7 @@ export function WorkOrderDetail({
               ...(canCancel
                 ? [
                     {
-                      label: "キャンセル",
+                      label: tr("common.cancel"),
                       icon: <IconX size={14} />,
                       color: "red",
                       divider: true,
@@ -412,7 +418,15 @@ export function WorkOrderDetail({
           )}
         </>
       }
-      title={isApproval ? `承認 ${woLabel}` : `指示書 ${woLabel}`}
+      title={
+        isApproval
+          ? tr("production.workOrderDetail.approvalWithLabel", {
+              label: woLabel,
+            })
+          : tr("production.workOrderDetail.workOrderWithLabel", {
+              label: woLabel,
+            })
+      }
       updatedAt={fmt.dateTime(wo.updatedAt)}
     >
       {/* 「いまやること」カードは常に最上部。承認画面は承認状況もサマリより上 */}
@@ -534,7 +548,7 @@ export function WorkOrderDetail({
               <Group gap="xs" wrap="wrap">
                 <Badge color={designPinned ? "violet" : "gray"} variant="light">
                   {designPinned
-                    ? "この版に固定"
+                    ? tr("production.workOrders.pinToThisVersion")
                     : tr("production.workOrders.showTheLatest")}
                 </Badge>
                 {designFile.customerName ? (
@@ -553,7 +567,7 @@ export function WorkOrderDetail({
                     }
                   >
                     {designPinned
-                      ? "固定を解除"
+                      ? tr("production.workOrderDetail.unpinDesignFile")
                       : tr("production.workOrders.pinToThisVersion")}
                   </GhostButton>
                 )}
@@ -693,7 +707,9 @@ export function WorkOrderDetail({
         onConfirm={handleCopy}
         opened={copyOpen}
         size="md"
-        title={`指示書 ${woLabel} をコピー`}
+        title={tr("production.workOrderDetail.copyWorkOrderWithLabel", {
+          label: woLabel,
+        })}
       >
         <Stack gap="sm">
           {wo.copies.length > 0 && (

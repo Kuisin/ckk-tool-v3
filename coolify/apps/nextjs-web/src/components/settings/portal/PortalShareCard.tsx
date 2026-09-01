@@ -182,7 +182,7 @@ export function PortalShareCard({
                 <CopyButton value={url}>
                   {({ copied, copy }) => (
                     <Button onClick={copy} size="compact-xs" variant="default">
-                      {copied ? "コピーしました" : tr("common.copy2")}
+                      {copied ? tr("common.copied") : tr("common.copy2")}
                     </Button>
                   )}
                 </CopyButton>
@@ -205,12 +205,15 @@ export function PortalShareCard({
                     variant="light"
                   >
                     {l.policy === "VERIFY"
-                      ? "本人確認あり"
+                      ? tr("settings.portal.verified")
                       : tr("settings.portal.linkOnly")}
                   </Badge>
                   <Text c="dimmed" size="xs">
-                    {l.maskedEmail ?? "—"} / {l.useCount} 回 /{" "}
-                    {l.expiresAt.toISOString().slice(0, 10)} まで
+                    {tr("settings.portal.linkSummary", {
+                      email: l.maskedEmail ?? "—",
+                      count: l.useCount,
+                      date: l.expiresAt.toISOString().slice(0, 10),
+                    })}
                   </Text>
                 </Group>
                 {l.revokedAt ? (

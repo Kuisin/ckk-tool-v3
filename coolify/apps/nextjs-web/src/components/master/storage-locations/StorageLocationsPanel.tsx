@@ -110,8 +110,11 @@ export function StorageLocationsPanel({
   function onDeleteLocation(loc: StorageLocationRow) {
     openConfirm({
       title: tr("master.storageLocations.deleteTheStorageLocation"),
-      message: `「${loc.nameJa}」（棚 ${loc.shelves.length} 件を含む）を削除します。この操作は取り消せません。`,
-      confirmLabel: "削除",
+      message: tr("master.storageLocationsPanel.deleteLocationConfirmMessage", {
+        name: loc.nameJa,
+        count: loc.shelves.length,
+      }),
+      confirmLabel: tr("common.delete"),
       onConfirm: () => {
         startTransition(async () => {
           const res = await deleteStorageLocation(loc.id);
@@ -137,8 +140,10 @@ export function StorageLocationsPanel({
   function onDeleteShelf(shelf: StorageShelfRow) {
     openConfirm({
       title: tr("master.storageLocations.deleteTheShelf"),
-      message: `棚「${shelf.code}」を削除します。この操作は取り消せません。`,
-      confirmLabel: "削除",
+      message: tr("master.storageLocationsPanel.deleteShelfConfirmMessage", {
+        code: shelf.code,
+      }),
+      confirmLabel: tr("common.delete"),
       onConfirm: () => {
         startTransition(async () => {
           const res = await deleteStorageShelf(shelf.id);
@@ -246,7 +251,7 @@ export function StorageLocationsPanel({
                   onClick={() => onDeleteLocation(loc)}
                   size="xs"
                 >
-                  削除
+                  {tr("common.delete")}
                 </GhostButton>
               </Group>
             </Group>
@@ -367,7 +372,11 @@ function ShelfModal({
     <Modal
       onClose={onClose}
       opened
-      title={shelf ? "棚の編集" : tr("master.storageLocations.addAShelf2")}
+      title={
+        shelf
+          ? tr("master.storageLocationsPanel.editShelfTitle")
+          : tr("master.storageLocations.addAShelf2")
+      }
     >
       <form onSubmit={form.onSubmit(submit)}>
         <Stack gap="sm">
@@ -397,7 +406,9 @@ function ShelfModal({
             checked={form.values.isActive}
             label={
               <HelpLabel
-                {...fieldHelp("storageLocation", "active", { label: "有効" })}
+                {...fieldHelp("storageLocation", "active", {
+                  label: tr("common.enabled"),
+                })}
               />
             }
             onChange={(e) =>

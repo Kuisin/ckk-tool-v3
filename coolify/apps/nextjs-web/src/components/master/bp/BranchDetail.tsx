@@ -32,7 +32,10 @@ export function BranchDetail({ record }: { record: BranchDetailData }) {
   const handleDelete = () => {
     openConfirm({
       title: tr("master.bp.deleteTheBranch"),
-      message: `支店「${record.nameJa}（${record.bpCode}）」を削除します。この操作は取り消せません。`,
+      message: tr("master.branchDetail.deleteConfirmMessage", {
+        name: record.nameJa,
+        code: record.bpCode,
+      }),
       confirmLabel: tr("common.delete2"),
       onConfirm: () => {
         startTransition(async () => {
@@ -40,7 +43,9 @@ export function BranchDetail({ record }: { record: BranchDetailData }) {
           if (result.ok) {
             notifications.show({
               title: tr("common.deleted"),
-              message: `支店「${record.nameJa}」を削除しました`,
+              message: tr("master.branchDetail.deletedMessage", {
+                name: record.nameJa,
+              }),
               color: "green",
             });
             router.push(parentPath);
@@ -62,7 +67,7 @@ export function BranchDetail({ record }: { record: BranchDetailData }) {
         <ResourceActions
           menuItems={[
             {
-              label: "削除",
+              label: tr("common.delete"),
               icon: <IconTrash size={14} />,
               color: "red",
               onClick: handleDelete,

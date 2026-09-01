@@ -23,6 +23,7 @@ import { Anchor, Select } from "@mantine/core";
 import { IconExternalLink } from "@tabler/icons-react";
 import { useTranslations } from "next-intl";
 import { useEffect, useRef, useState } from "react";
+
 import { fetchSalesRepPicker } from "@/app/(dashboard)/_shared/option-search";
 import type { Option } from "@/lib/mock";
 
@@ -38,6 +39,7 @@ export function useSalesRepOptions(
   onChange: (value: string | null) => void,
   initial?: { id: string; name: string } | null,
 ) {
+  const tr = useTranslations();
   const [options, setOptions] = useState<Option[]>(() =>
     initial ? [{ value: initial.id, label: initial.name }] : [],
   );
@@ -115,7 +117,9 @@ export function useSalesRepOptions(
           ...options,
           {
             value,
-            label: `${initial?.id === value ? initial.name : value}（候補外）`,
+            label: tr("ui.salesRepSelect.notACandidate", {
+              name: initial?.id === value ? initial.name : value,
+            }),
           },
         ]
       : options;
@@ -128,7 +132,7 @@ export function SalesRepSelect({
   value,
   onChange,
   initial,
-  label = "営業担当",
+  label: labelProp,
   disabled,
 }: {
   customerBpId: string | null;
@@ -140,6 +144,7 @@ export function SalesRepSelect({
   disabled?: boolean;
 }) {
   const tr = useTranslations();
+  const label = labelProp ?? tr("common.salesRep");
   const { options, hasCandidates, canView, canManage } = useSalesRepOptions(
     customerBpId,
     value,
@@ -171,7 +176,7 @@ export function SalesRepSelect({
             target="_blank"
           >
             {canManage
-              ? "取引先マスタで登録"
+              ? tr("ui.salesRepSelect.registerInTheBusinessPartnerMaster")
               : tr("ui.salesRepSelect.checkInTheBusinessPartnerMaster")}
             <IconExternalLink
               size={11}
@@ -194,7 +199,7 @@ export function SalesRepSelect({
       onChange={onChange}
       placeholder={
         customerBpId
-          ? "担当者を選択"
+          ? tr("ui.salesRepSelect.selectARep")
           : tr("ui.salesRepSelect.selectACustomerFirst")
       }
       searchable

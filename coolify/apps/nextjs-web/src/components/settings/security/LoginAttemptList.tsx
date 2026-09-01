@@ -19,7 +19,7 @@ import { OwnershipBadge } from "./ownership";
 
 export function LoginAttemptList({
   rows,
-  emptyMessage = "記録がありません",
+  emptyMessage,
   showOwnership = true,
 }: {
   rows: LoginAttemptRow[];
@@ -31,7 +31,10 @@ export function LoginAttemptList({
 
   if (rows.length === 0) {
     return (
-      <EmptyState icon={<IconShieldLock size={28} />} message={emptyMessage} />
+      <EmptyState
+        icon={<IconShieldLock size={28} />}
+        message={emptyMessage ?? tr("settings.loginAttemptList.noRecords")}
+      />
     );
   }
 
@@ -52,7 +55,9 @@ export function LoginAttemptList({
                 size="xs"
                 variant="light"
               >
-                {r.outcome === "SUCCESS" ? "成功" : tr("common.failure")}
+                {r.outcome === "SUCCESS"
+                  ? tr("settings.security.success")
+                  : tr("common.failure")}
               </Badge>
               <Text size="xs">{loginMethodLabel(r.method)}</Text>
               {r.outcome === "FAILURE" && (
@@ -64,7 +69,9 @@ export function LoginAttemptList({
             <Text c="dimmed" size="xs" truncate>
               {r.userName ??
                 (r.identifierRef
-                  ? `未解決 ${r.identifierRef.slice(0, 8)}`
+                  ? tr("settings.loginHistoryView.unresolvedWithRef", {
+                      ref: r.identifierRef.slice(0, 8),
+                    })
                   : "—")}
               {r.ipAddress ? ` / ${r.ipAddress}` : ""}
             </Text>

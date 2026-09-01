@@ -283,7 +283,7 @@ export function PortalAccountsTable({
           </Alert>
           <Group justify="flex-end">
             <Button onClick={() => setCreating(false)} variant="default">
-              キャンセル
+              {tr("common.cancel")}
             </Button>
             <Button
               disabled={!bpId || !email || !displayName}

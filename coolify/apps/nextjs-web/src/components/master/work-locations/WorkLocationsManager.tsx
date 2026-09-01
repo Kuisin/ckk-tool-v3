@@ -208,7 +208,7 @@ function GroupModal({
         tr,
         result,
         isEdit
-          ? "グループを更新しました"
+          ? tr("master.workLocationsManager.theGroupWasUpdated")
           : tr("master.workLocations.theGroupWasCreated"),
         () => {
           onClose();
@@ -225,15 +225,21 @@ function GroupModal({
       onSubmit={handleSubmit}
       opened={opened}
       size="lg"
-      submitLabel={isEdit ? "保存" : tr("common.create2")}
-      title={isEdit ? "グループの編集" : tr("master.workLocations.addAGroup")}
+      submitLabel={isEdit ? tr("common.save") : tr("common.create2")}
+      title={
+        isEdit
+          ? tr("master.workLocationsManager.editGroup")
+          : tr("master.workLocations.addAGroup")
+      }
     >
       <Stack gap="sm">
         <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="sm">
           <TextInput
             label={
               <HelpLabel
-                {...fieldHelp("workLocation", "code", { label: "コード" })}
+                {...fieldHelp("workLocation", "code", {
+                  label: tr("master.workLocationsManager.code"),
+                })}
               />
             }
             onChange={(e) => setCode(e.currentTarget.value)}
@@ -300,7 +306,9 @@ function GroupModal({
           checked={isActive}
           label={
             <HelpLabel
-              {...fieldHelp("workLocation", "sortOrder", { label: "有効" })}
+              {...fieldHelp("workLocation", "sortOrder", {
+                label: tr("common.enabled"),
+              })}
             />
           }
           onChange={(e) => setIsActive(e.currentTarget.checked)}
@@ -368,7 +376,7 @@ function LocationModal({
         tr,
         result,
         isEdit
-          ? "作業場所を更新しました"
+          ? tr("master.workLocationsManager.theWorkLocationWasUpdated")
           : tr("master.workLocations.theWorkLocationWasAdded"),
         () => {
           onClose();
@@ -385,9 +393,11 @@ function LocationModal({
       onSubmit={handleSubmit}
       opened={opened}
       size="lg"
-      submitLabel={isEdit ? "保存" : tr("common.add")}
+      submitLabel={isEdit ? tr("common.save") : tr("common.add")}
       title={
-        isEdit ? "作業場所の編集" : tr("master.workLocations.addAWorkLocation")
+        isEdit
+          ? tr("master.workLocationsManager.editWorkLocation")
+          : tr("master.workLocations.addAWorkLocation")
       }
     >
       <Stack gap="sm">
@@ -395,7 +405,9 @@ function LocationModal({
           <TextInput
             label={
               <HelpLabel
-                {...fieldHelp("workLocation", "code", { label: "コード" })}
+                {...fieldHelp("workLocation", "code", {
+                  label: tr("master.workLocationsManager.code"),
+                })}
               />
             }
             onChange={(e) => setCode(e.currentTarget.value)}
@@ -429,7 +441,9 @@ function LocationModal({
             checked={isActive}
             label={
               <HelpLabel
-                {...fieldHelp("workLocation", "sortOrder", { label: "有効" })}
+                {...fieldHelp("workLocation", "sortOrder", {
+                  label: tr("common.enabled"),
+                })}
               />
             }
             mt="lg"
@@ -686,8 +700,11 @@ export function WorkLocationsManager({
             </PrimaryButton>
           </Group>
         }
-        breadcrumbs={[tr("common.masterData"), "作業場所"]}
-        title="作業場所"
+        breadcrumbs={[
+          tr("common.masterData"),
+          tr("master.workLocationsManager.pageTitle"),
+        ]}
+        title={tr("master.workLocationsManager.pageTitle")}
       />
 
       {groups.length === 0 ? (
@@ -872,7 +889,10 @@ export function WorkLocationsManager({
                               >
                                 {tr("master.workLocations.capacity")}{" "}
                                 {loc.capacity != null
-                                  ? `${loc.capacity} 作業`
+                                  ? tr(
+                                      "master.workLocationsManager.jobsWithCount",
+                                      { count: loc.capacity },
+                                    )
                                   : tr("master.workLocations.noLimit")}
                               </Text>
                               <Text
@@ -927,7 +947,9 @@ export function WorkLocationsManager({
                   <Table striped withTableBorder>
                     <Table.Thead>
                       <Table.Tr>
-                        <Table.Th w={140}>コード</Table.Th>
+                        <Table.Th w={140}>
+                          {tr("master.workLocationsManager.code")}
+                        </Table.Th>
                         <Table.Th>{tr("common.name2")}</Table.Th>
                         <Table.Th w={120}>
                           {tr("master.workLocations.capacity")}
@@ -956,7 +978,10 @@ export function WorkLocationsManager({
                           <Table.Td>
                             <Text className="tabular-nums" size="sm">
                               {loc.capacity != null
-                                ? `${loc.capacity} 作業`
+                                ? tr(
+                                    "master.workLocationsManager.jobsWithCount",
+                                    { count: loc.capacity },
+                                  )
                                 : tr("master.workLocations.noLimit")}
                             </Text>
                           </Table.Td>
@@ -1048,7 +1073,10 @@ export function WorkLocationsManager({
         confirmLabel={tr("common.delete2")}
         message={
           deleteGroup
-            ? `グループ「${deleteGroup.nameJa}」を削除します。配下の場所（${deleteGroup.locations.length}件）も削除されます。この操作は取り消せません。`
+            ? tr("master.workLocationsManager.deleteGroupConfirm", {
+                name: deleteGroup.nameJa,
+                count: deleteGroup.locations.length,
+              })
             : ""
         }
         onClose={() => setDeleteGroup(null)}
@@ -1060,7 +1088,9 @@ export function WorkLocationsManager({
             notifyResult(
               tr,
               result,
-              `グループ「${target.nameJa}」を削除しました`,
+              tr("master.workLocationsManager.groupDeleted", {
+                name: target.nameJa,
+              }),
               () => {
                 setDeleteGroup(null);
                 refresh();
@@ -1076,7 +1106,9 @@ export function WorkLocationsManager({
         confirmLabel={tr("common.delete2")}
         message={
           deleteLocation
-            ? `作業場所「${deleteLocation.nameJa}」を削除します。この操作は取り消せません。`
+            ? tr("master.workLocationsManager.deleteWorkLocationConfirm", {
+                name: deleteLocation.nameJa,
+              })
             : ""
         }
         onClose={() => setDeleteLocation(null)}
@@ -1088,7 +1120,9 @@ export function WorkLocationsManager({
             notifyResult(
               tr,
               result,
-              `作業場所「${target.nameJa}」を削除しました`,
+              tr("master.workLocationsManager.workLocationDeleted", {
+                name: target.nameJa,
+              }),
               () => {
                 setDeleteLocation(null);
                 refresh();
@@ -1101,7 +1135,10 @@ export function WorkLocationsManager({
         warning={
           deleteLocation &&
           deleteLocation.planCount + deleteLocation.actualCount > 0
-            ? `この場所は 作業計画 ${deleteLocation.planCount} 件 / 作業実績 ${deleteLocation.actualCount} 件 から参照されています（削除できません — 無効化をご検討ください）。`
+            ? tr("master.workLocationsManager.workLocationInUse", {
+                planCount: deleteLocation.planCount,
+                actualCount: deleteLocation.actualCount,
+              })
             : undefined
         }
       />

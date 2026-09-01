@@ -50,38 +50,44 @@ import { statusOptions } from "@/lib/status-map";
 import type { PriceListEntry } from "../price-lists/model";
 import { type Quote, resolveUnitPriceFromEntries, TAX_RATE } from "./model";
 
-const itemSchema = z
-  .object({
-    productId: z.string().min(1, "製品を選択してください"),
-    productName: z.string(),
-    orderType: z.string().min(1),
-    quantity: z.number().int().min(1, "1以上"),
-    // 単価・値引きは価格表から自動解決される（手入力なし）。
-    unitPrice: z.number().min(0),
-    priceTierId: z.string().nullable(),
-    discountAmount: z.number().min(0),
-    discountLabel: z.string().nullable(),
-    deliveryDate: z.string().nullable(),
-  })
-  // 見積書は価格表からのみ価格を解決する — 未解決の行は保存できない。
-  .refine((it) => it.priceTierId != null, {
-    message:
-      "該当する価格表がありません（価格試算から価格表を登録してください）",
-    path: ["productId"],
+/**
+ * バリデーションメッセージが訳を必要とするため、スキーマはコンポーネント内で
+ * `tr` を受け取って組み立てる（型だけはモジュールスコープで使えるよう
+ * `ReturnType` から導出する）。
+ */
+function buildSchema(tr: ReturnType<typeof useTranslations>) {
+  const itemSchema = z
+    .object({
+      productId: z.string().min(1, tr("common.selectAProduct")),
+      productName: z.string(),
+      orderType: z.string().min(1),
+      quantity: z.number().int().min(1, tr("sales.quoteForm.atLeast1")),
+      // 単価・値引きは価格表から自動解決される（手入力なし）。
+      unitPrice: z.number().min(0),
+      priceTierId: z.string().nullable(),
+      discountAmount: z.number().min(0),
+      discountLabel: z.string().nullable(),
+      deliveryDate: z.string().nullable(),
+    })
+    // 見積書は価格表からのみ価格を解決する — 未解決の行は保存できない。
+    .refine((it) => it.priceTierId != null, {
+      message: tr("sales.quoteForm.noMatchingPriceList"),
+      path: ["productId"],
+    });
+
+  return z.object({
+    customerId: z.string().min(1, tr("sales.orderAcceptances.selectACustomer")),
+    customerBranchId: z.string().nullable(),
+    /** 営業担当 — 顧客の担当一覧から選ぶ（未設定なら主担当が既定で入る）。 */
+    salesRepId: z.string().nullable(),
+    status: z.enum(["DRAFT", "ISSUED", "ACCEPTED", "REJECTED", "EXPIRED"]),
+    validUntil: z.string().nullable(),
+    notes: z.string(),
+    items: z.array(itemSchema).min(1, tr("sales.quoteForm.addAtLeastOneLine")),
   });
+}
 
-const schema = z.object({
-  customerId: z.string().min(1, "顧客を選択してください"),
-  customerBranchId: z.string().nullable(),
-  /** 営業担当 — 顧客の担当一覧から選ぶ（未設定なら主担当が既定で入る）。 */
-  salesRepId: z.string().nullable(),
-  status: z.enum(["DRAFT", "ISSUED", "ACCEPTED", "REJECTED", "EXPIRED"]),
-  validUntil: z.string().nullable(),
-  notes: z.string(),
-  items: z.array(itemSchema).min(1, "明細を1件以上追加してください"),
-});
-
-type QuoteFormValues = z.infer<typeof schema>;
+type QuoteFormValues = z.infer<ReturnType<typeof buildSchema>>;
 type ItemForm = QuoteFormValues["items"][number];
 
 const BASE_PATH = "/sales/quotes";
@@ -199,7 +205,7 @@ export function QuoteForm({
   const quoteId = mode === "edit" ? quote?.id : undefined;
 
   const form = useForm<QuoteFormValues>({
-    validate: zodResolver(schema),
+    validate: zodResolver(buildSchema(tr)),
     initialValues: buildInitial(quote, prefill, entries),
   });
 
@@ -287,7 +293,7 @@ export function QuoteForm({
       breadcrumbs={[
         tr("common.sales"),
         { label: tr("common.quote"), href: BASE_PATH },
-        mode === "edit" ? "編集" : tr("common.new2"),
+        mode === "edit" ? tr("common.edit") : tr("common.new2"),
       ]}
       isDirty={form.isDirty()}
       isPending={isPending}
@@ -300,7 +306,11 @@ export function QuoteForm({
           <StatusBadge entity="Quote" status={form.values.status} />
         ) : undefined
       }
-      title={mode === "edit" ? "見積書 編集" : tr("sales.quotes.newQuote")}
+      title={
+        mode === "edit"
+          ? tr("sales.quoteForm.editTitle")
+          : tr("sales.quotes.newQuote")
+      }
     >
       <FormSection title={tr("common.basicInformation")}>
         <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="sm">
@@ -319,7 +329,11 @@ export function QuoteForm({
             data={branches}
             disabled={branches.length === 0}
             label={<HelpLabel {...fieldHelp("quote", "customerBranch")} />}
-            placeholder={branches.length ? "支店を選択" : tr("common.noBranch")}
+            placeholder={
+              branches.length
+                ? tr("sales.quoteForm.selectABranch")
+                : tr("common.noBranch")
+            }
             {...form.getInputProps("customerBranchId")}
           />
           <SalesRepSelect
@@ -443,12 +457,18 @@ export function QuoteForm({
         <Divider my="md" />
         <Group gap="xl" justify="flex-end">
           <Text c="dimmed" size="sm">
-            小計 {formatMoney(subtotal)}
+            {tr("sales.quoteForm.subtotalAmount", {
+              amount: formatMoney(subtotal),
+            })}
           </Text>
           <Text c="dimmed" size="sm">
-            消費税 {formatMoney(tax)}
+            {tr("sales.quoteForm.taxAmount", { amount: formatMoney(tax) })}
           </Text>
-          <Text fw={700}>合計（税込） {formatMoney(grandTotal)}</Text>
+          <Text fw={700}>
+            {tr("sales.quoteForm.totalInclTaxAmount", {
+              amount: formatMoney(grandTotal),
+            })}
+          </Text>
         </Group>
       </FormSection>
 

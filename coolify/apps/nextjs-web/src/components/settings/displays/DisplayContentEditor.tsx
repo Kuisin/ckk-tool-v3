@@ -103,7 +103,7 @@ export function DisplayContentEditor({ display, plantOptions, onDone }: Props) {
   const [fit, setFit] = useState<ImageFit>(() => {
     const saved = (display.contentConfig as { fit?: unknown } | null)?.fit;
     return typeof saved === "string" &&
-      FIT_CHOICES.some((c) => c.value === saved)
+      fitChoices(tr).some((c) => c.value === saved)
       ? (saved as ImageFit)
       : "contain";
   });
@@ -238,7 +238,11 @@ export function DisplayContentEditor({ display, plantOptions, onDone }: Props) {
       )}
 
       {mode === "APP_PAGE" && template && template.options.length > 0 && (
-        <Section title={`${template.label}の設定`}>
+        <Section
+          title={tr("settings.displayContentEditor.templateSettings", {
+            name: template.label,
+          })}
+        >
           <TemplateOptionFields
             onChange={(key, value) =>
               setOptions((prev) => ({ ...prev, [key]: value }))
@@ -253,14 +257,14 @@ export function DisplayContentEditor({ display, plantOptions, onDone }: Props) {
       {/* 更新間隔は「アプリの画面」だけの設定 — 画像は変わらないので
           取り直す意味が無い（0 と同じ扱いで害は無いが、出すと迷わせる）。 */}
       {mode === "APP_PAGE" && (
-        <Section title="更新">
+        <Section title={tr("settings.displayContentEditor.refresh")}>
           <NumberInput
             description={tr("settings.displays.itRefetchesAtThisIntervalSet")}
             label={tr("settings.displays.refreshInterval")}
             max={86_400}
             min={0}
             onChange={(v) => setRefreshSec(Number(v) || 0)}
-            suffix=" 秒"
+            suffix={` ${tr("settings.displayContentEditor.seconds")}`}
             value={refreshSec}
           />
         </Section>
@@ -287,23 +291,27 @@ export function DisplayContentEditor({ display, plantOptions, onDone }: Props) {
  * 縦横比はまず一致しないので、選ぶ人が知りたいのは「余白が出るのか、端が
  * 切れるのか、歪むのか」だけ。
  */
-const FIT_CHOICES: Array<{ value: ImageFit; label: string; help: string }> = [
-  {
-    value: "contain",
-    label: "全体を表示",
-    help: "画像すべてが映ります。縦横比が違うと余白が出ます",
-  },
-  {
-    value: "cover",
-    label: "画面を埋める",
-    help: "余白は出ませんが、はみ出す部分が切れます",
-  },
-  {
-    value: "fill",
-    label: "引き伸ばす",
-    help: "画面ぴったりにしますが、縦横比が変わって歪みます",
-  },
-];
+function fitChoices(
+  tr: ReturnType<typeof useTranslations>,
+): Array<{ value: ImageFit; label: string; help: string }> {
+  return [
+    {
+      value: "contain",
+      label: tr("settings.displayContentEditor.fitContainLabel"),
+      help: tr("settings.displayContentEditor.fitContainHelp"),
+    },
+    {
+      value: "cover",
+      label: tr("settings.displayContentEditor.fitCoverLabel"),
+      help: tr("settings.displayContentEditor.fitCoverHelp"),
+    },
+    {
+      value: "fill",
+      label: tr("settings.displayContentEditor.fitFillLabel"),
+      help: tr("settings.displayContentEditor.fitFillHelp"),
+    },
+  ];
+}
 
 /** 保存済みの画像を admin 経由で引く URL（キオスクの口は端末 Cookie が要る）。 */
 export function displayImageUrl(storageKey: string): string {
@@ -332,7 +340,8 @@ function ImageContent({
 }) {
   const tr = useTranslations();
   const current = display.contentType === "IMAGE" ? display.image : null;
-  const fitHelp = FIT_CHOICES.find((c) => c.value === fit)?.help;
+  const choices = fitChoices(tr);
+  const fitHelp = choices.find((c) => c.value === fit)?.help;
 
   return (
     <Stack gap="sm">
@@ -372,7 +381,7 @@ function ImageContent({
 
       {current && (
         <Select
-          data={FIT_CHOICES.map((c) => ({ value: c.value, label: c.label }))}
+          data={choices.map((c) => ({ value: c.value, label: c.label }))}
           description={fitHelp}
           label={tr("settings.displays.howItFitsTheScreen")}
           onChange={(v) => v && onFitChange(v as ImageFit)}
@@ -388,7 +397,7 @@ function ImageContent({
           {(props) => (
             <SecondaryButton {...props} loading={pending}>
               {current
-                ? "画像を差し替える"
+                ? tr("settings.displayContentEditor.replaceTheImage")
                 : tr("settings.displays.chooseAnImage")}
             </SecondaryButton>
           )}
@@ -459,9 +468,10 @@ export function DisplayContentView({
           />
         </Box>
         <Text c="dimmed" size="xs">
-          画像: {display.image.filename}
+          {tr("settings.displayContentEditor.imagePrefix")}
+          {display.image.filename}
           {" / "}
-          {FIT_CHOICES.find(
+          {fitChoices(tr).find(
             (c) =>
               c.value ===
               ((display.contentConfig as { fit?: unknown } | null)?.fit ??
@@ -500,14 +510,14 @@ export function DisplayContentView({
         <FieldValue
           key={spec.key}
           label={spec.label}
-          value={describeOption(spec, options[spec.key], plantOptions)}
+          value={describeOption(tr, spec, options[spec.key], plantOptions)}
         />
       ))}
       <FieldValue
         label={tr("settings.displays.refreshInterval")}
         value={
           display.refreshIntervalSec > 0
-            ? `${display.refreshIntervalSec} 秒`
+            ? `${display.refreshIntervalSec} ${tr("settings.displayContentEditor.seconds")}`
             : tr("settings.displays.doNotRefreshAutomatically")
         }
       />
@@ -517,16 +527,18 @@ export function DisplayContentView({
 
 /** 設定 1 つを読める文字にする（生の JSON を見せない）。 */
 function describeOption(
+  tr: ReturnType<typeof useTranslations>,
   spec: DisplayOptionSpec,
   value: unknown,
   plantOptions: Array<{ value: string; label: string }>,
 ): string {
   switch (spec.kind) {
     case "plant":
-      if (typeof value !== "number") return "この画面の拠点";
+      if (typeof value !== "number")
+        return tr("settings.displayContentEditor.thisScreensSite");
       return (
         plantOptions.find((p) => p.value === String(value))?.label ??
-        `拠点 #${value}`
+        tr("settings.displayContentEditor.siteNumber", { id: value })
       );
     case "number": {
       const n = typeof value === "number" ? value : spec.default;
@@ -538,8 +550,8 @@ function describeOption(
     }
     case "boolean":
       return (typeof value === "boolean" ? value : spec.default)
-        ? "はい"
-        : "いいえ";
+        ? tr("common.yes")
+        : tr("common.no");
     case "text": {
       const v = typeof value === "string" ? value : spec.default;
       return v.trim() ? v : "—";

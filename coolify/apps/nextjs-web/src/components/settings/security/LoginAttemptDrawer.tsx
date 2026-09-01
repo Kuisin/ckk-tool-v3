@@ -40,11 +40,17 @@ interface Signals {
   clientNowMs?: number | null;
 }
 
-function riskFlags(signals: Signals | null, recordedAt: string): string[] {
+function riskFlags(
+  tr: ReturnType<typeof useTranslations>,
+  signals: Signals | null,
+  recordedAt: string,
+): string[] {
   if (!signals) return [];
   const flags: string[] = [];
   if (signals.webdriver === true) {
-    flags.push("自動操作フラグ（navigator.webdriver）が立っています");
+    flags.push(
+      tr("settings.loginAttemptDrawer.theAutomationFlagNavigatorwebdriverIs"),
+    );
   }
   if (typeof signals.clientNowMs === "number") {
     const skewMin = Math.abs(
@@ -52,7 +58,9 @@ function riskFlags(signals: Signals | null, recordedAt: string): string[] {
     );
     if (skewMin > CLOCK_SKEW_WARN_MIN) {
       flags.push(
-        `端末の時計がサーバーと ${Math.round(skewMin)} 分ずれています`,
+        tr("settings.loginAttemptDrawer.theDeviceSClockIsMinutes", {
+          minutes: Math.round(skewMin),
+        }),
       );
     }
   }
@@ -91,7 +99,7 @@ export function LoginAttemptDrawer({
   }, [id]);
 
   const signals = (row?.signals ?? null) as Signals | null;
-  const flags = row ? riskFlags(signals, row.createdAt) : [];
+  const flags = row ? riskFlags(tr, signals, row.createdAt) : [];
 
   return (
     <Drawer
@@ -210,7 +218,10 @@ export function LoginAttemptDrawer({
             {row.scanKind && (
               <FieldValue
                 label={tr("settings.security.scanType")}
-                value={`${row.scanKind}（内容は保存していません）`}
+                value={tr(
+                  "settings.loginAttemptDrawer.scanKindContentNotStored",
+                  { scanKind: row.scanKind },
+                )}
               />
             )}
             <FieldValue label="User-Agent" value={row.userAgent ?? "—"} />

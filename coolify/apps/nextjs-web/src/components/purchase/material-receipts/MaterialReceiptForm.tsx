@@ -53,17 +53,25 @@ interface Option {
   label: string;
 }
 
-const schema = z.object({
-  materialId: z.string().min(1, "素材を選択してください"),
-  supplierBpId: z.string().nullable(),
-  plantId: z.string().nullable(),
-  quantity: z.number().positive("0より大きい値"),
-  unit: z.string().min(1, "必須"),
-  receivedAt: z.string().min(1, "入荷日を入力してください"),
-  notes: z.string(),
-});
+function buildSchema(tr: ReturnType<typeof useTranslations>) {
+  return z.object({
+    materialId: z
+      .string()
+      .min(1, tr("purchase.materialReceipts.selectAMaterial")),
+    supplierBpId: z.string().nullable(),
+    plantId: z.string().nullable(),
+    quantity: z
+      .number()
+      .positive(tr("purchase.materialReceipts.mustBeGreaterThanZero")),
+    unit: z.string().min(1, tr("common.required")),
+    receivedAt: z
+      .string()
+      .min(1, tr("purchase.materialReceipts.enterAReceivedDate")),
+    notes: z.string(),
+  });
+}
 
-type FormValues = z.infer<typeof schema>;
+type FormValues = z.infer<ReturnType<typeof buildSchema>>;
 
 const today = () => new Date().toISOString().slice(0, 10);
 
@@ -78,6 +86,7 @@ export function MaterialReceiptForm({
 }) {
   const tr = useTranslations();
   const locale = useLocale();
+  const schema = buildSchema(tr);
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   // 証憑（任意・複数可）。登録成功後に順次アップロードする。
@@ -88,9 +97,9 @@ export function MaterialReceiptForm({
     if (tooLarge.length > 0) {
       notifications.show({
         title: tr("common.error2"),
-        message: `20MB を超えるファイルは添付できません: ${tooLarge
-          .map((f) => f.name)
-          .join(", ")}`,
+        message: tr("purchase.materialReceipts.filesTooLargeToAttach", {
+          files: tooLarge.map((f) => f.name).join(", "),
+        }),
         color: "red",
       });
     }
@@ -104,7 +113,10 @@ export function MaterialReceiptForm({
   const uploadAttachments = async (receiptId: string) => {
     const notificationId = notifications.show({
       title: tr("purchase.materialReceipts.uploadingTheSupportingDocument"),
-      message: `0 / ${files.length} 件`,
+      message: tr("purchase.materialReceipts.uploadProgress", {
+        current: 0,
+        total: files.length,
+      }),
       loading: true,
       autoClose: false,
       withCloseButton: false,
@@ -114,7 +126,11 @@ export function MaterialReceiptForm({
       notifications.update({
         id: notificationId,
         title: tr("purchase.materialReceipts.uploadingTheSupportingDocument"),
-        message: `${index + 1} / ${files.length} 件: ${file.name}`,
+        message: tr("purchase.materialReceipts.uploadProgressWithFile", {
+          current: index + 1,
+          total: files.length,
+          name: file.name,
+        }),
         loading: true,
         autoClose: false,
         withCloseButton: false,
@@ -142,7 +158,9 @@ export function MaterialReceiptForm({
         title: tr(
           "purchase.materialReceipts.someSupportingDocumentsCouldNotBe",
         ),
-        message: `${failed.join(", ")} — 詳細画面から再度添付してください`,
+        message: tr("purchase.materialReceipts.failedFilesRetryFromDetail", {
+          files: failed.join(", "),
+        }),
         color: "orange",
         loading: false,
         autoClose: 8000,
@@ -152,7 +170,9 @@ export function MaterialReceiptForm({
       notifications.update({
         id: notificationId,
         title: tr("purchase.materialReceipts.theSupportingDocumentWasAttached"),
-        message: `${files.length} 件`,
+        message: tr("purchase.materialReceipts.filesCount", {
+          count: files.length,
+        }),
         color: "green",
         loading: false,
         autoClose: 4000,
@@ -312,7 +332,9 @@ export function MaterialReceiptForm({
                   </Text>
                 </Group>
                 <ActionIcon
-                  aria-label={`${file.name} を取り消す`}
+                  aria-label={tr("purchase.materialReceipts.removeFile", {
+                    name: file.name,
+                  })}
                   color="gray"
                   onClick={() =>
                     setFiles((cur) => cur.filter((_, i) => i !== index))

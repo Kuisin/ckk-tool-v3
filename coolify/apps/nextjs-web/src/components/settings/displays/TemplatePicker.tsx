@@ -155,7 +155,7 @@ function Thumbnail({
             visibility: scale > 0 ? "visible" : "hidden",
             width: FRAME_W,
           }}
-          title={`${label}の見本`}
+          title={tr("settings.displays.sampleOfLabel", { label })}
         />
       ) : (
         <Text c="dimmed" p="sm" size="xs">

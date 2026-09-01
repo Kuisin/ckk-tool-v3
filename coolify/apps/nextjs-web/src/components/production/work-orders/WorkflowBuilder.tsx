@@ -110,20 +110,26 @@ interface Option {
   label: string;
 }
 
-const schema = z.object({
-  // 在庫向け（注文明細なし）のときの対象製品
-  productId: z.string().nullable(),
-  type: z.enum(["FROM_STOCK", "MANUFACTURE"]),
-  plannedQuantity: z.number().int().min(1, "予定数量は1以上"),
-  materialId: z.string().nullable(),
-  storageLocationId: z.string().nullable(),
-  /** 使用する図面の版。null = 固定しない（そのつど最新を引く）。 */
-  designFileId: z.string().nullable(),
-  notes: z.string(),
-  selectedStepIds: z.array(z.number()).min(1, "工程を1つ以上選択してください"),
-});
+const schema = (tr: (key: string) => string) =>
+  z.object({
+    // 在庫向け（注文明細なし）のときの対象製品
+    productId: z.string().nullable(),
+    type: z.enum(["FROM_STOCK", "MANUFACTURE"]),
+    plannedQuantity: z
+      .number()
+      .int()
+      .min(1, tr("production.workflowBuilder.plannedQuantityMustBeAtLeast1")),
+    materialId: z.string().nullable(),
+    storageLocationId: z.string().nullable(),
+    /** 使用する図面の版。null = 固定しない（そのつど最新を引く）。 */
+    designFileId: z.string().nullable(),
+    notes: z.string(),
+    selectedStepIds: z
+      .array(z.number())
+      .min(1, tr("production.workflowBuilder.selectAtLeastOneStep")),
+  });
 
-type FormValues = z.infer<typeof schema>;
+type FormValues = z.infer<ReturnType<typeof schema>>;
 
 /** 指示書の対象: 注文明細配下 / 在庫向け（注文明細なし・製品直接指定）。 */
 type BuilderTarget = "SALES_ORDER" | "STOCK";
@@ -300,7 +306,7 @@ export function WorkflowBuilder({
   const [isPending, startTransition] = useTransition();
 
   const form = useForm<FormValues>({
-    validate: zodResolver(schema),
+    validate: zodResolver(schema(tr)),
     initialValues: {
       ...initialValues(workOrder),
       ...(mode === "create" && initialOrderLine
@@ -740,7 +746,10 @@ export function WorkflowBuilder({
       if (remaining <= 0) {
         notifications.show({
           title: tr("production.workOrders.cannotBeAllocated"),
-          message: `注文明細 ${info.number} は受注数量まで手配済みです（残 0）`,
+          message: tr(
+            "production.workflowBuilder.orderLineAlreadyFullyPlannedWithNumber",
+            { number: info.number },
+          ),
           color: "yellow",
         });
         updateAllocRow(key, { orderLineId: null, info: null });
@@ -938,8 +947,12 @@ export function WorkflowBuilder({
           title: tr("common.saved2"),
           message:
             mode === "edit"
-              ? `指示書 ${result.data.docNumber} を更新しました`
-              : `指示書 ${result.data.docNumber} を作成しました`,
+              ? tr("production.workflowBuilder.workOrderWasUpdatedWithDoc", {
+                  docNumber: result.data.docNumber,
+                })
+              : tr("production.workflowBuilder.workOrderWasCreatedWithDoc", {
+                  docNumber: result.data.docNumber,
+                }),
           color: "green",
         });
         router.push(`${BASE_PATH}/${result.data.docNumber}`);
@@ -986,7 +999,9 @@ export function WorkflowBuilder({
       onSubmit={form.onSubmit(handleSubmit)}
       title={
         mode === "edit"
-          ? `指示書 ${workOrder?.docNumber ?? ""} 編集`
+          ? tr("production.workflowBuilder.editWorkOrderWithDoc", {
+              docNumber: workOrder?.docNumber ?? "",
+            })
           : tr("production.workOrders.newWorkOrder")
       }
     >
@@ -1085,9 +1100,12 @@ export function WorkflowBuilder({
                   </Group>
                   {row.info && (
                     <Text c="dimmed" mt={4} size="xs">
-                      {row.info.customerName} / {row.info.productName} /
-                      受注数量 {row.info.quantity}
-                      {remaining != null && ` / 割当可能残 ${remaining}`}
+                      {row.info.customerName} / {row.info.productName} /{" "}
+                      {tr("production.workflowBuilder.orderQuantityWithCount", {
+                        count: row.info.quantity,
+                      })}
+                      {remaining != null &&
+                        ` / ${tr("production.workflowBuilder.allocatableRemainingWithCount", { count: remaining })}`}
                     </Text>
                   )}
                 </Paper>
@@ -1177,7 +1195,10 @@ export function WorkflowBuilder({
               target === "SALES_ORDER" && allocTotal > 0
                 ? form.values.type === "FROM_STOCK"
                   ? tr("production.workOrders.theFromStockQuantityMatchesThe")
-                  : `割当合計 ${allocTotal} 以上（不良予備分は上乗せ可）`
+                  : tr(
+                      "production.workflowBuilder.atLeastAllocationTotalWithCount",
+                      { count: allocTotal },
+                    )
                 : undefined
             }
             label={<HelpLabel {...fieldHelp("workOrder", "plannedQuantity")} />}
@@ -1223,7 +1244,9 @@ export function WorkflowBuilder({
               data={designInfo.options}
               description={
                 designInfo.autoLabel
-                  ? `固定しない場合: ${designInfo.autoLabel}`
+                  ? tr("production.workflowBuilder.ifNotPinnedWithLabel", {
+                      label: designInfo.autoLabel,
+                    })
                   : tr("production.workOrders.thereIsNoDrawingForThis")
               }
               label={tr("production.workOrders.drawingUsed")}
@@ -1296,7 +1319,14 @@ export function WorkflowBuilder({
                     data={[
                       {
                         value: "customer",
-                        label: `${routesInfo.customerName ?? "この顧客"} 専用`,
+                        label: tr(
+                          "production.workflowBuilder.dedicatedToCustomerWithName",
+                          {
+                            name:
+                              routesInfo.customerName ??
+                              tr("production.workflowBuilder.thisCustomer"),
+                          },
+                        ),
                       },
                       {
                         value: "generic",
@@ -1379,7 +1409,10 @@ export function WorkflowBuilder({
                     wrap={isMobile ? "wrap" : "nowrap"}
                   >
                     <Text fw={600} size="sm" style={{ flexShrink: 0 }}>
-                      {cat?.nameJa ?? `工程#${s.processStepId}`}
+                      {cat?.nameJa ??
+                        tr("production.workflowBuilder.stepFallbackWithId", {
+                          id: s.processStepId,
+                        })}
                     </Text>
                     <MultiSelect
                       clearable

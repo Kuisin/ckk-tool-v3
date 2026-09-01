@@ -73,7 +73,7 @@ export function LinkAdminPanel({
       if (!result.ok) return notifyError(result.error);
       notifications.show({
         title: tr("common.added"),
-        message: `${pattern} へのリンクをブロックします`,
+        message: tr("settings.links.blockingLinksToHost", { pattern }),
         color: "green",
       });
       setPattern("");
@@ -93,8 +93,8 @@ export function LinkAdminPanel({
   const remove = (row: BlacklistRow) => {
     openConfirm({
       title: tr("settings.links.removeTheBlock"),
-      message: `${row.pattern} のブロックを解除します。以後このホストへのリンクは通常どおり開けます。`,
-      confirmLabel: "削除",
+      message: tr("settings.links.unblockConfirm", { pattern: row.pattern }),
+      confirmLabel: tr("common.delete"),
       onConfirm: () =>
         start(async () => {
           const result = await deleteBlacklistAction(row.id);
@@ -189,7 +189,7 @@ export function LinkAdminPanel({
     },
     {
       key: "isActive",
-      header: "有効",
+      header: tr("common.enabled"),
       width: 90,
       render: (r) => (
         <Switch
@@ -216,10 +216,10 @@ export function LinkAdminPanel({
     <AppTabs onChange={setTab} value={tab}>
       <Tabs.List>
         <Tabs.Tab leftSection={<IconLink size={14} />} value="index">
-          索引（{links.length}）
+          {tr("settings.links.indexTabLabel", { count: links.length })}
         </Tabs.Tab>
         <Tabs.Tab leftSection={<IconShieldOff size={14} />} value="blocked">
-          ブロック（{blacklist.length}）
+          {tr("settings.links.blockedTabLabel", { count: blacklist.length })}
         </Tabs.Tab>
       </Tabs.List>
 
@@ -289,7 +289,7 @@ export function LinkAdminPanel({
             pageSize={20}
             rowActions={() => [
               {
-                label: "削除",
+                label: tr("common.delete"),
                 icon: <IconTrash size={14} />,
                 color: "red",
                 onAction: remove,

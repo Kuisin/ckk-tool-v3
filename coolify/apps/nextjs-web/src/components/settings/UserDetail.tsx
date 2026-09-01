@@ -84,12 +84,14 @@ function UserPlantsCard({
       if (!byId.has(String(p.id))) {
         byId.set(String(p.id), {
           value: String(p.id),
-          label: `${plantLabel(p)}（無効）`,
+          label: tr("settings.userDetail.plantLabelDisabled", {
+            label: plantLabel(p),
+          }),
         });
       }
     }
     return [...byId.values()];
-  }, [plantOptions, user.plants]);
+  }, [plantOptions, user.plants, tr]);
 
   const dirty =
     value.length !== assignedIds.length ||
@@ -140,7 +142,9 @@ function UserPlantsCard({
             clearable
             data={options}
             onChange={setValue}
-            placeholder={value.length === 0 ? "拠点を選択" : undefined}
+            placeholder={
+              value.length === 0 ? tr("common.selectASite") : undefined
+            }
             searchable
             value={value}
           />
@@ -164,7 +168,9 @@ function UserPlantsCard({
               onClick={handleSave}
               type="button"
             >
-              {requiresApproval ? "承認を依頼" : undefined}
+              {requiresApproval
+                ? tr("settings.userDetail.requestApprovalButton")
+                : undefined}
             </SaveButton>
           </Group>
         </>
@@ -231,7 +237,7 @@ export function UserDetail({
           label={tr("settings.userDetail.loginMethod")}
           value={
             user.hasPassword
-              ? "パスワード + SSO"
+              ? tr("settings.userDetail.passwordAndSso")
               : tr("settings.userDetail.sSOOnly")
           }
         />

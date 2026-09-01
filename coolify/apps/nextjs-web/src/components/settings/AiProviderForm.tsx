@@ -53,24 +53,25 @@ interface Props {
 function tokenAlert(
   status: TokenStatus,
   keyEnv: string,
+  tr: ReturnType<typeof useTranslations>,
 ): { color: string; message: string } | null {
   switch (status) {
     case "rotate-pending":
       return {
         color: "orange",
-        message:
-          "暗号鍵が更新されています。設定を保存し直すと、新しい鍵で暗号化されます。",
+        message: tr("settings.aiProviderForm.keyRotatedMessage"),
       };
     case "undecryptable":
       return {
         color: "red",
-        message:
-          "API トークンを復号できません（暗号鍵が変わった可能性があります）。トークンを入力し直してください。",
+        message: tr("settings.aiProviderForm.cannotDecryptTokenMessage"),
       };
     case "no-key":
       return {
         color: "red",
-        message: `暗号鍵（${keyEnv}）が未設定のため、API トークンを保存・使用できません。システム管理者へ連絡してください。`,
+        message: tr("settings.aiProviderForm.noEncryptionKeyMessage", {
+          keyEnv,
+        }),
       };
     default:
       return null;
@@ -136,7 +137,7 @@ export function AiProviderForm({ initial }: Props) {
 
   const preset = AI_PROVIDER_PRESETS[settings.provider];
   const external = isExternalProvider(settings.provider);
-  const alert = tokenAlert(initial.tokenStatus, initial.encryptionKeyEnv);
+  const alert = tokenAlert(initial.tokenStatus, initial.encryptionKeyEnv, tr);
   const hasStoredToken =
     initial.tokenStatus === "set" || initial.tokenStatus === "rotate-pending";
 
@@ -195,7 +196,7 @@ export function AiProviderForm({ initial }: Props) {
       notifications.show({
         color: allOk ? "green" : "orange",
         title: allOk
-          ? "接続できました"
+          ? tr("settings.aiProviderForm.connectionSucceeded")
           : tr("settings.aiProviderForm.someOfItFailed"),
         message: allOk
           ? tr("settings.aiProviderForm.bothTheStructuredAndVisionReads")
@@ -311,7 +312,9 @@ export function AiProviderForm({ initial }: Props) {
           <PasswordInput
             description={
               hasStoredToken
-                ? `保存済み: ●●●●●●${initial.tokenLast4 ?? ""}（空欄のままにすると変更しません）`
+                ? tr("settings.aiProviderForm.savedTokenMasked", {
+                    last4: initial.tokenLast4 ?? "",
+                  })
                 : tr("common.notSet2")
             }
             disabled={clearToken}
@@ -319,7 +322,7 @@ export function AiProviderForm({ initial }: Props) {
             onChange={(e) => setToken(e.currentTarget.value)}
             placeholder={
               hasStoredToken
-                ? "変更する場合のみ入力"
+                ? tr("settings.aiProviderForm.enterOnlyToChange")
                 : tr("settings.aiProviderForm.pasteTheToken")
             }
             value={token}

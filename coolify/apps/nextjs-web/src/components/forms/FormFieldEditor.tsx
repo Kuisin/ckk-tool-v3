@@ -51,11 +51,18 @@ const NEEDS_PATTERN: FormFieldType[] = ["text", "textarea"];
  * 割り当てる）ので、ここが引っかかるのは取り込んだ定義が壊れているときだけ。
  * 内部識別子としては生き続けるので、検証自体は残す。
  */
-export function fieldKeyError(key: string, others: string[]): string | null {
-  if (!key) return "内部キーがありません";
-  if (!FIELD_KEY_PATTERN.test(key))
-    return "内部キーの形式が不正です（英字で始まる英数字・_）";
-  if (others.includes(key)) return "内部キーが重複しています";
+export function fieldKeyError(
+  key: string,
+  others: string[],
+  tr: ReturnType<typeof useTranslations>,
+): string | null {
+  if (!key) return tr("forms.formFieldEditor.noInternalKey");
+  if (!FIELD_KEY_PATTERN.test(key)) {
+    return tr("forms.formFieldEditor.invalidInternalKeyFormat");
+  }
+  if (others.includes(key)) {
+    return tr("forms.formFieldEditor.duplicateInternalKey");
+  }
   return null;
 }
 
@@ -89,10 +96,13 @@ export function FormFieldEditor({
   const keyError = fieldKeyError(
     field.key,
     siblings.map((f) => f.key),
+    tr,
   );
   const patternError =
     field.pattern && !isSafePattern(field.pattern)
-      ? `使えない正規表現です（構文エラー、量指定の入れ子、または ${MAX_PATTERN_LENGTH} 文字超）`
+      ? tr("forms.formFieldEditor.unusableRegularExpression", {
+          max: MAX_PATTERN_LENGTH,
+        })
       : undefined;
 
   return (
@@ -113,7 +123,9 @@ export function FormFieldEditor({
       />
       {keyError && (
         <Text c="red" size="xs">
-          {keyError}（取り込んだ定義が壊れています）
+          {tr("forms.formFieldEditor.keyErrorImportedDefinitionIsBroken", {
+            error: keyError,
+          })}
         </Text>
       )}
 

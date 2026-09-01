@@ -75,7 +75,7 @@ export function MarkdownEditor({
           {tr("documents.markdownEditor.italic")}
         </GhostButton>
         <GhostButton onClick={() => apply((e) => wrapSelection(e, "`"))}>
-          コード
+          {tr("common.code")}
         </GhostButton>
         <GhostButton onClick={() => apply((e) => prefixLine(e, "## "))}>
           {tr("common.heading")}
@@ -93,7 +93,10 @@ export function MarkdownEditor({
         autosize
         error={
           tooLong
-            ? `本文が長すぎます（${lines} 行 / 上限 ${MAX_DOC_LINES} 行）。文書を分けてください`
+            ? tr("documents.markdownEditor.bodyTooLong", {
+                lines,
+                max: MAX_DOC_LINES,
+              })
             : undefined
         }
         minRows={minRows}
@@ -106,7 +109,7 @@ export function MarkdownEditor({
         value={value}
       />
       <Text c="dimmed" size="xs">
-        {lines} 行
+        {tr("documents.markdownEditor.lineCountLabel", { lines })}
       </Text>
     </Stack>
   );

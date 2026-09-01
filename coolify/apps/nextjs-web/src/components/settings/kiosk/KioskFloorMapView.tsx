@@ -499,7 +499,7 @@ export function KioskFloorMapView({
             <Select
               allowDeselect={false}
               data={plantOptions}
-              label="拠点"
+              label={tr("common.site")}
               onChange={(v) => {
                 setPlant(v);
                 setActiveMapId(null);
@@ -521,7 +521,7 @@ export function KioskFloorMapView({
 
           {plantMaps.length === 0 ? (
             <Alert color="gray" variant="light">
-              この拠点にはフロアマップがありません。
+              {tr("settings.kioskFloorMapView.thisSiteHasNoFloorMaps")}
               {editMode
                 ? tr("settings.kiosk.createOneUnderAddAFloor")
                 : tr("settings.kiosk.youCanAddFloorsInEdit")}
@@ -582,8 +582,11 @@ export function KioskFloorMapView({
                     onClick={() =>
                       setConfirm({
                         title: tr("common.confirmDeletingTheFloor"),
-                        message: `フロア「${activeMap.name}」を削除します。端末が配置されている場合は削除できません。`,
-                        confirmLabel: "削除",
+                        message: tr(
+                          "settings.kioskFloorMapView.deleteFloorNameCannotIfDevices",
+                          { name: activeMap.name },
+                        ),
+                        confirmLabel: tr("common.delete"),
                         run: () => deleteFloorMap(activeMap.id),
                       })
                     }
@@ -632,7 +635,9 @@ export function KioskFloorMapView({
                 {activeMap.fileId ? (
                   // biome-ignore lint/performance/noImgElement: SeaweedFS プロキシ配信の等倍図面（next/image 最適化対象外）
                   <img
-                    alt={`フロアマップ: ${activeMap.name}`}
+                    alt={tr("settings.kioskFloorMapView.floorMapName", {
+                      name: activeMap.name,
+                    })}
                     draggable={false}
                     src={`/api/kiosk/floor-maps/${activeMap.id}/image`}
                     style={{ width: "100%", display: "block" }}
@@ -658,7 +663,10 @@ export function KioskFloorMapView({
                       <Tooltip
                         events={{ hover: true, focus: true, touch: true }}
                         key={`storage-${p.id}`}
-                        label={`保管場所: ${p.name}（${p.code}）｜棚 ${p.shelfCount} 件`}
+                        label={tr(
+                          "settings.kioskFloorMapView.storageLocationNameCodeShelfCount",
+                          { name: p.name, code: p.code, count: p.shelfCount },
+                        )}
                         withinPortal
                       >
                         <Box
@@ -806,7 +814,7 @@ export function KioskFloorMapView({
       {/* フロア追加・名称変更モーダル */}
       <ModalShell
         confirmLabel={
-          floorModal?.mode === "create" ? "追加" : tr("common.save2")
+          floorModal?.mode === "create" ? tr("common.add") : tr("common.save2")
         }
         loading={isPending}
         onClose={() => setFloorModal(null)}
@@ -815,7 +823,7 @@ export function KioskFloorMapView({
         size="sm"
         title={
           floorModal?.mode === "create"
-            ? "フロアを追加"
+            ? tr("settings.kioskFloorMapView.addAFloor")
             : tr("common.renameTheFloor")
         }
       >

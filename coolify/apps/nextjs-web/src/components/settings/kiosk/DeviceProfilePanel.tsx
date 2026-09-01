@@ -30,9 +30,12 @@ import { FieldValue } from "@/components/ui/FieldValue";
 import { deviceRiskFlags } from "@/lib/device-profile-core";
 import type { KioskDeviceRow } from "@/lib/kiosk-admin";
 
-function yesNo(value: boolean | null): string {
+function yesNo(
+  tr: ReturnType<typeof useTranslations>,
+  value: boolean | null,
+): string {
   if (value === null) return "—";
-  return value ? "有効" : "無効";
+  return value ? tr("common.enabled") : tr("common.disabled");
 }
 
 export function DeviceProfilePanel({ device }: { device: KioskDeviceRow }) {
@@ -157,7 +160,7 @@ export function DeviceProfilePanel({ device }: { device: KioskDeviceRow }) {
             />
             <FieldValue
               label={tr("settings.kiosk.uSBDebuggingDeveloperOptions")}
-              value={`${yesNo(profile.adbEnabled)} / ${yesNo(profile.developmentSettings)}`}
+              value={`${yesNo(tr, profile.adbEnabled)} / ${yesNo(tr, profile.developmentSettings)}`}
             />
             <FieldValue
               label={tr("settings.kiosk.installedFrom")}

@@ -123,8 +123,9 @@ export function InspectionTemplateImagePanel({
         {tr("master.inspectionTemplates.referenceImage")}
       </Text>
       <Text c="dimmed" size="xs">
-        測定位置の図解・現物写真など。設定すると空欄シート・記入済みシートの PDF
-        にも印刷されます（{TEMPLATE_IMAGE_EXT_LABEL} / 5MB まで）。
+        {tr("master.inspectionTemplates.referenceImageHelp", {
+          ext: TEMPLATE_IMAGE_EXT_LABEL,
+        })}
       </Text>
       {filename ? (
         <Image
@@ -162,7 +163,9 @@ export function InspectionTemplateImagePanel({
               loading={busy}
               mr="xs"
             >
-              {filename ? "選び直す" : tr("common.upload")}
+              {filename
+                ? tr("master.inspectionTemplates.reselect")
+                : tr("common.upload")}
             </SecondaryButton>
           )}
         </FileButton>
@@ -172,7 +175,7 @@ export function InspectionTemplateImagePanel({
             loading={busy}
             onClick={remove}
           >
-            削除
+            {tr("common.delete")}
           </GhostButton>
         )}
       </div>

@@ -109,7 +109,7 @@ export function ResponseApprovalCard({
             run(() => onReject(responseNumber, reason), tr("common.sentBack"))
           }
           opened={rejectOpen}
-          title="差し戻し"
+          title={tr("common.reject")}
         >
           <Text mb="sm" size="sm">
             {tr("forms.responseApprovalCard.enterAReasonForSendingIt")}

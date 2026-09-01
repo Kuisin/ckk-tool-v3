@@ -99,7 +99,9 @@ export function DefectRecordForm({
       if (result.ok) {
         notifications.show({
           title: tr("production.defectRecordForm.defectRecordsSaved"),
-          message: `${rows.length} 件を追加しました`,
+          message: tr("production.defectRecordForm.addedNItems", {
+            count: rows.length,
+          }),
           color: "green",
         });
         setRows([]);
@@ -149,10 +151,10 @@ export function DefectRecordForm({
             {rows.map((row) => (
               <Group align="flex-start" gap="sm" key={row.key} wrap="nowrap">
                 <Select
-                  aria-label="不良種類"
+                  aria-label={tr("production.defectRecordForm.defectType")}
                   data={defectTypeOptions}
                   onChange={(v) => updateRow(row.key, { defectTypeId: v })}
-                  placeholder="不良種類"
+                  placeholder={tr("production.defectRecordForm.defectType")}
                   searchable
                   value={row.defectTypeId}
                   w={220}

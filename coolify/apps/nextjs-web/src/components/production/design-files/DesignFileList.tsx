@@ -155,7 +155,7 @@ export function DesignFileList({
             leftSection={<IconTrash size={14} />}
             onClick={() => onDelete?.(f)}
           >
-            削除
+            {tr("common.delete")}
           </GhostButton>
         )}
       </Group>

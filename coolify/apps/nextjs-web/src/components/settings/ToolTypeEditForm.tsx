@@ -42,11 +42,6 @@ import {
 
 const BASE = "/settings/trial-pricing-engine/tool-types";
 
-const ROLE_LABEL: Record<string, { label: string; color: string }> = {
-  component: { label: "加算", color: "blue" },
-  intermediate: { label: "中間", color: "gray" },
-};
-
 export function ToolTypeEditForm({
   toolType,
   criteria,
@@ -59,6 +54,16 @@ export function ToolTypeEditForm({
   const tr = useTranslations();
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
+  const ROLE_LABEL: Record<string, { label: string; color: string }> = {
+    component: {
+      label: tr("settings.toolTypeEditForm.componentLabel"),
+      color: "blue",
+    },
+    intermediate: {
+      label: tr("settings.toolTypeEditForm.intermediateLabel"),
+      color: "gray",
+    },
+  };
 
   const nonFinal = criteria
     .filter((c) => c.role !== "final")
@@ -112,7 +117,9 @@ export function ToolTypeEditForm({
       if (res.ok) {
         notifications.show({
           title: tr("common.saved2"),
-          message: `工具種「${toolType.label}」の適用基準を更新しました`,
+          message: tr("settings.toolTypeEditForm.toolTypeCriteriaUpdated", {
+            label: toolType.label,
+          }),
           color: "green",
         });
         router.push(BASE);
@@ -130,15 +137,19 @@ export function ToolTypeEditForm({
   const remove = () =>
     openConfirm({
       title: tr("settings.toolTypeEditForm.deleteTheToolType"),
-      message: `工具種「${toolType.label}」を削除します。各計算基準の適用工具種からも取り除かれます。この操作は取り消せません。`,
-      confirmLabel: "削除",
+      message: tr("settings.toolTypeEditForm.deleteToolTypeConfirm", {
+        label: toolType.label,
+      }),
+      confirmLabel: tr("common.delete"),
       onConfirm: () =>
         startTransition(async () => {
           const res = await removeToolType(toolType.value);
           if (res.ok) {
             notifications.show({
               title: tr("common.deleted"),
-              message: `工具種「${toolType.label}」を削除しました`,
+              message: tr("settings.toolTypeEditForm.toolTypeWasDeleted", {
+                label: toolType.label,
+              }),
               color: "green",
             });
             router.push(BASE);
@@ -175,7 +186,9 @@ export function ToolTypeEditForm({
           </Badge>
         )}
         <Text c="dimmed" size="xs">
-          価格試算 {usageCount} 件
+          {tr("settings.toolTypeEditForm.usedInEstimatesCount", {
+            count: usageCount,
+          })}
         </Text>
       </Group>
 
@@ -231,7 +244,11 @@ export function ToolTypeEditForm({
         <Select
           data={finals.map((c) => ({
             value: c.id,
-            label: c.enabled ? c.name : `${c.name}（無効）`,
+            label: c.enabled
+              ? c.name
+              : tr("settings.toolTypeEditForm.nameDisabled", {
+                  name: c.name,
+                }),
           }))}
           onChange={setFinalId}
           placeholder={tr("settings.toolTypeEditForm.selectTheFinalCriterion")}

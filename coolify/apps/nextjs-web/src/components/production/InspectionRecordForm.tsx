@@ -76,11 +76,6 @@ import type {
   InspectionTemplateView,
 } from "./step-execution/model";
 
-const BOOL_SEGMENT = [
-  { value: "true", label: "はい" },
-  { value: "false", label: "いいえ" },
-];
-
 /** 既存の検査記録 1 件の読み取り専用表示。 */
 function RecordSummary({
   record,
@@ -191,12 +186,16 @@ function SampleInput({
 }) {
   const tr = useTranslations();
   const label = `${item.name} — ${sampleName}`;
+  const boolSegment = [
+    { value: "true", label: tr("common.yes") },
+    { value: "false", label: tr("common.no") },
+  ];
   switch (item.inputType) {
     case "BOOLEAN":
       return (
         <SegmentedControl
           aria-label={label}
-          data={BOOL_SEGMENT}
+          data={boolSegment}
           onChange={(v) => onChange(v)}
           value={typeof value === "string" ? value : ""}
         />
@@ -236,7 +235,7 @@ function SampleInput({
           aria-label={label}
           inputMode="decimal"
           onChange={(e) => onChange(e.currentTarget.value)}
-          placeholder="実測値"
+          placeholder={tr("production.inspectionRecordForm.measuredValue")}
           rightSection={
             item.unit ? (
               <Text c="dimmed" size="xs">
@@ -309,8 +308,16 @@ function ItemVerdict({
             : entry.manualPass != null &&
                 entry.manualPass !== auto &&
                 item.allowManualOverride
-              ? `自動判定（${auto ? "合格" : "不合格"}）を手動で上書き中`
-              : `自動判定: ${auto ? "合格" : "不合格"}`}
+              ? tr("production.inspectionRecordForm.autoJudgmentOverridden", {
+                  result: auto
+                    ? tr("production.inspectionRecordForm.pass")
+                    : tr("production.inspectionRecordForm.fail"),
+                })
+              : tr("production.inspectionRecordForm.autoJudgmentResult", {
+                  result: auto
+                    ? tr("production.inspectionRecordForm.pass")
+                    : tr("production.inspectionRecordForm.fail"),
+                })}
       </Text>
     </Group>
   );
@@ -435,9 +442,9 @@ export function InspectionRecordForm({
     if (missing.length > 0) {
       notifications.show({
         title: tr("common.missingInput"),
-        message: `必須項目を入力してください（${missing
-          .map((m) => m.name)
-          .join("・")}）`,
+        message: tr("production.inspectionRecordForm.enterTheRequiredItems", {
+          items: missing.map((m) => m.name).join(tr("common.s1")),
+        }),
         color: "red",
       });
       return;
@@ -454,9 +461,10 @@ export function InspectionRecordForm({
       if (invalid.length > 0) {
         notifications.show({
           title: tr("common.inputError"),
-          message: `合格数が検査数を超えています（${invalid
-            .map((m) => m.name)
-            .join("・")}）`,
+          message: tr(
+            "production.inspectionRecordForm.passedCountExceedsInspectedCountFor",
+            { items: invalid.map((m) => m.name).join(tr("common.s1")) },
+          ),
           color: "red",
         });
         return;
@@ -650,7 +658,14 @@ export function InspectionRecordForm({
                                     ? tr(
                                         "production.inspectionRecordForm.passedCountExceedsInspectedCount",
                                       )
-                                    : `不合格 ${entry.inspectedCount - entry.passedCount}`}
+                                    : tr(
+                                        "production.inspectionRecordForm.failCount",
+                                        {
+                                          count:
+                                            entry.inspectedCount -
+                                            entry.passedCount,
+                                        },
+                                      )}
                                 </Text>
                               )}
                           </Group>

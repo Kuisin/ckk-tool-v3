@@ -63,18 +63,16 @@ export interface MaterialTypeRow {
   updatedAt: string;
 }
 
-const STATUS_OPTIONS = [
-  { value: "active", label: "有効" },
-  { value: "inactive", label: "無効" },
-];
-
-const STRUCTURED_OPTIONS = [
-  { value: "structured", label: "変換済" },
-  { value: "legacy", label: "未変換" },
-];
-
 export function MaterialTypeTable({ rows }: { rows: MaterialTypeRow[] }) {
   const tr = useTranslations();
+  const STRUCTURED_OPTIONS = [
+    { value: "structured", label: tr("master.materialTypeTable.structured") },
+    { value: "legacy", label: tr("master.materialTypeTable.legacy") },
+  ];
+  const STATUS_OPTIONS = [
+    { value: "active", label: tr("common.enabled") },
+    { value: "inactive", label: tr("common.disabled") },
+  ];
   const fmt = useFormat();
   const router = useRouter();
   const isMobile = useIsMobile();
@@ -118,8 +116,14 @@ export function MaterialTypeTable({ rows }: { rows: MaterialTypeRow[] }) {
       );
       if (result.ok) {
         notifications.show({
-          title: isActive ? "有効化しました" : tr("common.disabled2"),
-          message: `${targets.length}件の材種を${isActive ? "有効化" : "無効化"}しました`,
+          title: isActive ? tr("common.enabled2") : tr("common.disabled2"),
+          message: isActive
+            ? tr("master.materialTypeTable.bulkEnabled", {
+                count: targets.length,
+              })
+            : tr("master.materialTypeTable.bulkDisabled", {
+                count: targets.length,
+              }),
           color: "green",
         });
         router.refresh();
@@ -136,7 +140,9 @@ export function MaterialTypeTable({ rows }: { rows: MaterialTypeRow[] }) {
   const bulkDelete = (targets: MaterialTypeRow[]) => {
     openConfirm({
       title: tr("master.materialTypes.bulkDeleteMaterialTypes"),
-      message: `選択中の${targets.length}件の材種を削除します。この操作は取り消せません。`,
+      message: tr("master.materialTypeTable.bulkDeleteConfirm", {
+        count: targets.length,
+      }),
       confirmLabel: tr("common.delete2"),
       onConfirm: () => {
         startTransition(async () => {
@@ -144,7 +150,9 @@ export function MaterialTypeTable({ rows }: { rows: MaterialTypeRow[] }) {
           if (result.ok) {
             notifications.show({
               title: tr("common.deleted"),
-              message: `${targets.length}件の材種を削除しました`,
+              message: tr("master.materialTypeTable.bulkDeleted", {
+                count: targets.length,
+              }),
               color: "green",
             });
             router.refresh();
@@ -308,12 +316,12 @@ export function MaterialTypeTable({ rows }: { rows: MaterialTypeRow[] }) {
             onAction: (r) => router.push(`${BASE_PATH}/${r.id}/edit`),
           },
           {
-            label: row.isActive ? "無効化" : tr("common.enable"),
+            label: row.isActive ? tr("common.disable") : tr("common.enable"),
             icon: <IconCircleMinus size={14} />,
             onAction: (r) => setToggleRow(r),
           },
           {
-            label: "削除",
+            label: tr("common.delete"),
             icon: <IconTrash size={14} />,
             color: "red",
             onAction: (r) => setDeleteRow(r),

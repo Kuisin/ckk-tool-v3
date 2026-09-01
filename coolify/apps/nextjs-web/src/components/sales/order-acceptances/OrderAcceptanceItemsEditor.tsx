@@ -27,7 +27,7 @@ import { useLocale, useTranslations } from "next-intl";
 import { searchProductOptions } from "@/app/(dashboard)/_shared/option-search";
 import type { OrderAcceptanceDraftInput } from "@/app/(dashboard)/sales/order-acceptances/actions";
 import { GhostButton } from "@/components/ui/buttons";
-import { PRODUCT_F4 } from "@/components/ui/f4-presets";
+import { productF4 } from "@/components/ui/f4-presets";
 import { SearchSelect } from "@/components/ui/SearchSelect";
 import { orderTypeOptions } from "@/lib/enum-labels";
 import { formatMoney } from "@/lib/format";
@@ -148,7 +148,9 @@ export function OrderAcceptanceItemsEditor({
             {ri > 0 && <Divider my="md" />}
             <Group gap="xs" mb={4}>
               <Text c="dimmed" className="tabular-nums" size="xs">
-                明細 {ri + 1}
+                {tr("sales.orderAcceptanceItemsEditor.lineOrdinal", {
+                  index: ri + 1,
+                })}
               </Text>
               {!row.productId && (
                 <Badge color="orange" size="xs" variant="light">
@@ -157,7 +159,9 @@ export function OrderAcceptanceItemsEditor({
               )}
               {check?.diff && (
                 <Badge color="orange" size="xs" variant="light">
-                  価格差異（価格表 {formatMoney(check.expected)}）
+                  {tr("sales.orderAcceptanceDetail.priceMismatchExpected", {
+                    expected: formatMoney(check.expected),
+                  })}
                 </Badge>
               )}
               {check?.unpriced && (
@@ -175,7 +179,7 @@ export function OrderAcceptanceItemsEditor({
                   preventGrowOverflow={false}
                 >
                   <SearchSelect
-                    f4={PRODUCT_F4}
+                    f4={productF4(tr)}
                     initialOption={
                       row.productId
                         ? {
@@ -184,7 +188,7 @@ export function OrderAcceptanceItemsEditor({
                           }
                         : null
                     }
-                    label="製品"
+                    label={tr("common.product")}
                     onChange={(v, opt) =>
                       patch(ri, {
                         productId: v,
@@ -320,14 +324,18 @@ export function OrderAcceptanceItemsEditor({
       <Divider mt="md" />
       <Group gap="md" justify="flex-end" mt="sm">
         <Text c="dimmed" size="xs">
-          明細 {totals.lineCount} 件 / 合計数量{" "}
+          {tr("sales.orderAcceptanceItemsEditor.lineCountAndTotalQuantity", {
+            count: totals.lineCount,
+          })}{" "}
           <span className="tabular-nums">
             {totals.quantity.toLocaleString("ja-JP")}
           </span>
         </Text>
         {totals.unpricedCount > 0 && (
           <Badge color="orange" size="xs" variant="light">
-            単価未入力 {totals.unpricedCount} 件を除く
+            {tr("sales.orderAcceptanceDetail.excludingUnpricedCount", {
+              count: totals.unpricedCount,
+            })}
           </Badge>
         )}
         <Group gap="xs">

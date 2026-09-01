@@ -42,6 +42,7 @@ import {
   type ApprovalPhase,
   approvalStepDescription,
 } from "@/lib/approval-flow";
+import type { Tr } from "@/lib/i18n";
 
 export interface ProcedureStage {
   key: string;
@@ -101,11 +102,13 @@ export function approvalStage(
     label?: string;
     /** 呼び出し側の日付フォーマッタ（useFormat の fmt.date）。 */
     fmtDate: (v: string | null) => string;
+    /** 呼び出し側の `useTranslations()`（既定の段名「承認」を訳すため）。 */
+    tr: Tr;
   },
 ): ProcedureStage {
   return {
     key: "approval",
-    label: opts.label ?? "承認",
+    label: opts.label ?? opts.tr("common.approve"),
     description: opts.approvedAt
       ? opts.fmtDate(opts.approvedAt)
       : approvalStepDescription(approval),
@@ -183,7 +186,7 @@ function LinkGroups({
 }
 
 export function ProcedurePanel({
-  title = "手続き状況",
+  title: titleProp,
   stages,
   active,
   cancelled = false,
@@ -207,6 +210,7 @@ export function ProcedurePanel({
   children?: React.ReactNode;
 }) {
   const tr = useTranslations();
+  const title = titleProp ?? tr("ui.procedurePanel.title");
   const isMobile = useIsMobile();
   return (
     <Paper p="md" radius="md" withBorder>

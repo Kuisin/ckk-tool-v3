@@ -92,7 +92,7 @@ export interface MenuItemDef {
 // ── ResourceActions (detail header actions) ─────────────────────────────────
 export function ResourceActions({
   onEdit,
-  editLabel = "編集",
+  editLabel: editLabelProp,
   pdf,
   menuItems = [],
 }: {
@@ -102,6 +102,7 @@ export function ResourceActions({
   menuItems?: MenuItemDef[];
 }) {
   const tr = useTranslations();
+  const editLabel = editLabelProp ?? tr("common.edit");
   const isMobile = useIsMobile();
 
   const menu = (extra: MenuItemDef[]) =>
@@ -353,7 +354,7 @@ export function FormShell({
   isDirty = false,
   onSubmit,
   onCancel,
-  submitLabel = "保存",
+  submitLabel: submitLabelProp,
   children,
 }: {
   breadcrumbs: Crumb[];
@@ -367,6 +368,8 @@ export function FormShell({
   submitLabel?: string;
   children: ReactNode;
 }) {
+  const tr = useTranslations();
+  const submitLabel = submitLabelProp ?? tr("common.save");
   // 送信中は保存処理の遷移を妨げないよう、未保存ガードを解除する。
   useUnsavedChanges(isDirty && !isPending);
   return (
@@ -407,7 +410,7 @@ export function FormActions({
   children,
   onCancel,
   onSave,
-  submitLabel = "保存",
+  submitLabel: submitLabelProp,
   cancelLabel,
   loading,
   disabled,
@@ -423,6 +426,8 @@ export function FormActions({
   loading?: boolean;
   disabled?: boolean;
 }) {
+  const tr = useTranslations();
+  const submitLabel = submitLabelProp ?? tr("common.save");
   const isMobile = useIsMobile();
 
   if (children) return <Box className="form-actions">{children}</Box>;
@@ -520,6 +525,7 @@ export interface AuditEntry {
  * 開く — 何がどう変わったかを画面遷移なしで確認できる。
  */
 export function AuditTimeline({ entries }: { entries: AuditEntry[] }) {
+  const tr = useTranslations();
   const [selected, setSelected] = useState<AuditEntry | null>(null);
   return (
     <>
@@ -550,7 +556,7 @@ export function AuditTimeline({ entries }: { entries: AuditEntry[] }) {
             lineVariant="dotted"
             title={
               <UnstyledButton
-                aria-label={`${log.action} の詳細を開く`}
+                aria-label={tr("common.openDetailOf", { name: log.action })}
                 onClick={() => setSelected(log)}
                 style={{ display: "block", width: "100%" }}
               >
@@ -648,6 +654,7 @@ export function LocalizedTextInput({
    */
   help?: { help: string; manual: string };
 }) {
+  const tr = useTranslations();
   const [opened, { open, close }] = useDisclosure(false);
   const translations: Record<string, string> = translationsProps.value ?? {};
   const [draft, setDraft] = useState<Record<string, string>>(translations);
@@ -675,7 +682,9 @@ export function LocalizedTextInput({
             open();
           }}
         >
-          多言語{filledCount > 0 ? `（${filledCount}）` : ""}
+          {filledCount > 0
+            ? tr("common.translationsWithCount", { count: filledCount })
+            : tr("common.translations")}
         </SecondaryButton>
       </Group>
       <ModalShell
@@ -685,12 +694,14 @@ export function LocalizedTextInput({
           close();
         }}
         opened={opened}
-        title={`${label} — 多言語`}
+        title={tr("common.translationsTitle", { label })}
       >
         <Stack gap="sm">
           <Text c="dimmed" size="xs">
-            {LOCALE_LABELS.ja}（{jaProps.value || "—"}
-            ）は上の欄で編集します。ここでは他の言語だけを設定します。
+            {tr("ui.localizedTextInput.editDefaultLocaleAbove", {
+              locale: LOCALE_LABELS.ja,
+              value: jaProps.value || "—",
+            })}
           </Text>
           {otherLocales.map((locale) => (
             <TextInput

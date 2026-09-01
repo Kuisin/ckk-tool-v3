@@ -85,7 +85,8 @@ export function FormFlowSummary({
                 {i + 1}
               </Badge>
               <Text fw={600} size="sm">
-                {step.nameJa || `第 ${i + 1} 承認`}
+                {step.nameJa ||
+                  tr("master.approvalFlowEditor.nthApproval", { n: i + 1 })}
               </Text>
               <IconArrowRight size={14} />
               <Text size="sm">{target}</Text>

@@ -42,7 +42,7 @@ import {
 } from "@/app/(dashboard)/shipping/delivery-notes/actions";
 import { GhostButton } from "@/components/ui/buttons";
 import { FieldValue } from "@/components/ui/FieldValue";
-import { PRODUCT_F4 } from "@/components/ui/f4-presets";
+import { productF4 } from "@/components/ui/f4-presets";
 import { HelpLabel } from "@/components/ui/HelpLabel";
 import { SalesRepSelect } from "@/components/ui/SalesRepSelect";
 import { SearchSelect } from "@/components/ui/SearchSelect";
@@ -62,38 +62,43 @@ const BASE_PATH = "/shipping/delivery-notes";
 
 const DELIVERY_METHODS = ["NORMAL", "DIRECT_TO_USER"] as const;
 
-const itemSchema = z.object({
-  rowId: z.string(),
-  productId: z.string().min(1, "製品を選択してください"),
-  productName: z.string(),
-  quantity: z.number().int().min(1, "1以上"),
-  unitPrice: z.number().min(0, "0以上"),
-  notes: z.string(),
-});
-
-const schema = z
-  .object({
-    deliveryOrderNumber: z.string().min(1, "出荷書を選択してください"),
-    salesRepId: z.string().nullable(),
-    deliveryMethod: z.enum(DELIVERY_METHODS),
-    endUserBpId: z.string().nullable(),
-    includePrice: z.boolean(),
+function buildSchema(tr: ReturnType<typeof useTranslations>) {
+  const itemSchema = z.object({
+    rowId: z.string(),
+    productId: z
+      .string()
+      .min(1, tr("shipping.deliveryOrderForm.selectProduct")),
+    productName: z.string(),
+    quantity: z.number().int().min(1, tr("common.mustBeAtLeastOne")),
+    unitPrice: z.number().min(0, tr("common.mustBeZeroOrMore")),
     notes: z.string(),
-    items: z.array(itemSchema).min(1, "明細を1件以上追加してください"),
-  })
-  .superRefine((v, ctx) => {
-    const tr = useTranslations();
-    // ユーザー直送は届け先（最終需要家）が必須。
-    if (v.deliveryMethod === "DIRECT_TO_USER" && !v.endUserBpId) {
-      ctx.addIssue({
-        code: "custom",
-        path: ["endUserBpId"],
-        message: tr("shipping.deliveryNotes.selectAnEndUser"),
-      });
-    }
   });
 
-type FormValues = z.infer<typeof schema>;
+  return z
+    .object({
+      deliveryOrderNumber: z
+        .string()
+        .min(1, tr("shipping.deliveryNoteForm.selectADeliveryOrder")),
+      salesRepId: z.string().nullable(),
+      deliveryMethod: z.enum(DELIVERY_METHODS),
+      endUserBpId: z.string().nullable(),
+      includePrice: z.boolean(),
+      notes: z.string(),
+      items: z.array(itemSchema).min(1, tr("common.addAtLeastOneLineItem")),
+    })
+    .superRefine((v, ctx) => {
+      // ユーザー直送は届け先（最終需要家）が必須。
+      if (v.deliveryMethod === "DIRECT_TO_USER" && !v.endUserBpId) {
+        ctx.addIssue({
+          code: "custom",
+          path: ["endUserBpId"],
+          message: tr("shipping.deliveryNotes.selectAnEndUser"),
+        });
+      }
+    });
+}
+
+type FormValues = z.infer<ReturnType<typeof buildSchema>>;
 type ItemForm = FormValues["items"][number];
 
 let rowSeq = 0;
@@ -171,6 +176,7 @@ export function DeliveryNoteForm({
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const noteId = mode === "edit" ? note?.id : undefined;
+  const schema = buildSchema(tr);
 
   const preselected =
     mode === "create" && initialDeliveryOrder
@@ -313,7 +319,9 @@ export function DeliveryNoteForm({
           message:
             mode === "edit"
               ? tr("shipping.deliveryNotes.theDeliveryNoteWasUpdated")
-              : `納品書 ${result.data.number} を作成しました`,
+              : tr("shipping.deliveryNoteForm.createdWithNumber", {
+                  number: result.data.number,
+                }),
           color: "green",
         });
         router.push(`${BASE_PATH}/${result.data.number}`);
@@ -332,7 +340,7 @@ export function DeliveryNoteForm({
       breadcrumbs={[
         tr("common.shipping"),
         { label: tr("common.deliveryNote"), href: BASE_PATH },
-        mode === "edit" ? "編集" : tr("common.new2"),
+        mode === "edit" ? tr("common.edit") : tr("common.new2"),
       ]}
       isDirty={form.isDirty()}
       isPending={isPending}
@@ -347,7 +355,9 @@ export function DeliveryNoteForm({
       }
       title={
         mode === "edit"
-          ? `納品書 編集 ${noteId ?? ""}`
+          ? tr("shipping.deliveryNoteForm.editWithNumber", {
+              noteId: noteId ?? "",
+            })
           : tr("shipping.deliveryNotes.newDeliveryNote")
       }
     >
@@ -471,7 +481,7 @@ export function DeliveryNoteForm({
                 >
                   <SearchSelect
                     error={form.errors[`items.${ri}.productId`]}
-                    f4={PRODUCT_F4}
+                    f4={productF4(tr)}
                     initialOption={
                       item.productId
                         ? { value: item.productId, label: item.productName }
@@ -585,9 +595,13 @@ export function DeliveryNoteForm({
 
         <Divider my="md" />
         <Group gap="xl" justify="flex-end">
-          <Text fw={700}>数量合計 {totalQuantity}</Text>
+          <Text fw={700}>
+            {tr("common.totalQuantity")} {totalQuantity}
+          </Text>
           {form.values.includePrice && (
-            <Text fw={700}>合計金額 {formatMoney(totalAmount)}</Text>
+            <Text fw={700}>
+              {tr("common.totalAmount")} {formatMoney(totalAmount)}
+            </Text>
           )}
         </Group>
       </FormSection>

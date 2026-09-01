@@ -47,6 +47,7 @@ import { useIsMobile } from "@/hooks/useViewport";
 import { unitOptions } from "@/lib/enum-labels";
 import { fieldHelp, fieldHelpTip } from "@/lib/field-help";
 import { zodResolver } from "@/lib/form";
+import type { Tr } from "@/lib/i18n";
 import { diameterCodeFromMm, lengthCodeFromMm } from "@/lib/material-code";
 import {
   defaultValuesFor,
@@ -64,47 +65,55 @@ const DIAMETER_MAX = 99.9;
 const LENGTH_MIN = 1;
 const LENGTH_MAX = 999;
 
-const productSchema = z
-  .object({
-    nameJa: z.string().min(1, "名称（日本語）を入力してください"),
-    nameTranslations: z.record(z.string(), z.string()).default({}),
-    materialTypeId: z.string().nullable(),
-    materialTypeLabel: z.string(),
-    diameterMm: z.number().nullable(),
-    lengthMm: z.number().nullable(),
-    unit: z.string().min(1, "単位を選択してください"),
-    matchNames: z.array(z.string()),
-    isActive: z.boolean(),
-    notes: z.string(),
-    spec: z.array(z.object({ key: z.string(), value: z.string() })),
-  })
-  .superRefine((v, ctx) => {
-    if (!v.materialTypeId) return;
-    if (
-      v.diameterMm == null ||
-      v.diameterMm < DIAMETER_MIN ||
-      v.diameterMm > DIAMETER_MAX
-    ) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        path: ["diameterMm"],
-        message: `直径は ${DIAMETER_MIN}〜${DIAMETER_MAX}mm で入力してください`,
-      });
-    }
-    if (
-      v.lengthMm == null ||
-      v.lengthMm < LENGTH_MIN ||
-      v.lengthMm > LENGTH_MAX
-    ) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        path: ["lengthMm"],
-        message: `全長は ${LENGTH_MIN}〜${LENGTH_MAX}mm で入力してください`,
-      });
-    }
-  });
+function buildProductSchema(tr: Tr) {
+  return z
+    .object({
+      nameJa: z.string().min(1, tr("master.productForm.enterNameJa")),
+      nameTranslations: z.record(z.string(), z.string()).default({}),
+      materialTypeId: z.string().nullable(),
+      materialTypeLabel: z.string(),
+      diameterMm: z.number().nullable(),
+      lengthMm: z.number().nullable(),
+      unit: z.string().min(1, tr("master.productForm.selectUnit")),
+      matchNames: z.array(z.string()),
+      isActive: z.boolean(),
+      notes: z.string(),
+      spec: z.array(z.object({ key: z.string(), value: z.string() })),
+    })
+    .superRefine((v, ctx) => {
+      if (!v.materialTypeId) return;
+      if (
+        v.diameterMm == null ||
+        v.diameterMm < DIAMETER_MIN ||
+        v.diameterMm > DIAMETER_MAX
+      ) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["diameterMm"],
+          message: tr("master.productForm.diameterRange", {
+            min: DIAMETER_MIN,
+            max: DIAMETER_MAX,
+          }),
+        });
+      }
+      if (
+        v.lengthMm == null ||
+        v.lengthMm < LENGTH_MIN ||
+        v.lengthMm > LENGTH_MAX
+      ) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["lengthMm"],
+          message: tr("master.productForm.lengthRange", {
+            min: LENGTH_MIN,
+            max: LENGTH_MAX,
+          }),
+        });
+      }
+    });
+}
 
-type FormValues = z.infer<typeof productSchema>;
+type FormValues = z.infer<ReturnType<typeof buildProductSchema>>;
 
 export interface ProductFormInitial {
   id: number;
@@ -206,7 +215,7 @@ export function ProductForm({
     .map((d) => ({ value: d.key, label: d.label.ja || d.key }));
 
   const form = useForm<FormValues>({
-    validate: zodResolver(productSchema),
+    validate: zodResolver(buildProductSchema(tr)),
     initialValues: {
       nameJa: initial?.nameJa ?? "",
       nameTranslations: initial?.nameTranslations ?? {},
@@ -364,7 +373,7 @@ export function ProductForm({
         notifications.show({
           title: tr("common.saved2"),
           message: isEdit
-            ? "製品を更新しました"
+            ? tr("master.productForm.theProductWasUpdated")
             : tr("master.products.theProductWasCreated"),
           color: "green",
         });
@@ -383,8 +392,8 @@ export function ProductForm({
     <FormShell
       breadcrumbs={[
         tr("common.masterData"),
-        { label: "製品", href: BASE_PATH },
-        isEdit ? "編集" : tr("common.new2"),
+        { label: tr("master.productForm.productLabel"), href: BASE_PATH },
+        isEdit ? tr("common.edit") : tr("common.new2"),
       ]}
       isDirty={form.isDirty()}
       isPending={isPending}
@@ -395,7 +404,9 @@ export function ProductForm({
       status={isEdit ? <ActiveBadge active={initial.isActive} /> : undefined}
       title={
         isEdit
-          ? `製品 編集 — ${initial.code ?? initial.nameJa}`
+          ? tr("master.productForm.editProductTitle", {
+              name: initial.code ?? initial.nameJa,
+            })
           : tr("master.products.newProduct")
       }
     >
@@ -468,13 +479,14 @@ export function ProductForm({
         <SimpleGrid cols={isMobile ? 1 : 2} mt="sm" spacing="sm">
           <NumberInput
             decimalScale={1}
-            description={`コード: ${
-              form.values.diameterMm != null &&
-              form.values.diameterMm >= DIAMETER_MIN &&
-              form.values.diameterMm <= DIAMETER_MAX
-                ? diameterCodeFromMm(form.values.diameterMm)
-                : "—"
-            }（径×10）`}
+            description={tr("master.productForm.diameterCodeLabel", {
+              code:
+                form.values.diameterMm != null &&
+                form.values.diameterMm >= DIAMETER_MIN &&
+                form.values.diameterMm <= DIAMETER_MAX
+                  ? diameterCodeFromMm(form.values.diameterMm)
+                  : "—",
+            })}
             error={form.errors.diameterMm}
             label={
               <HelpLabel
@@ -495,13 +507,14 @@ export function ProductForm({
             value={form.values.diameterMm ?? ""}
           />
           <NumberInput
-            description={`コード: ${
-              form.values.lengthMm != null &&
-              form.values.lengthMm >= LENGTH_MIN &&
-              form.values.lengthMm <= LENGTH_MAX
-                ? lengthCodeFromMm(form.values.lengthMm)
-                : "—"
-            }`}
+            description={tr("master.productForm.lengthCodeLabel", {
+              code:
+                form.values.lengthMm != null &&
+                form.values.lengthMm >= LENGTH_MIN &&
+                form.values.lengthMm <= LENGTH_MAX
+                  ? lengthCodeFromMm(form.values.lengthMm)
+                  : "—",
+            })}
             error={form.errors.lengthMm}
             label={
               <HelpLabel

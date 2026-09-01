@@ -421,7 +421,7 @@ export function PrivilegedAccessView({
             />
             <Group justify="flex-end">
               <GhostButton onClick={() => setApproving(null)}>
-                キャンセル
+                {tr("common.cancel")}
               </GhostButton>
               <ApproveButton
                 disabled={granted.length === 0}

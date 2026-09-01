@@ -35,11 +35,6 @@ export interface ApprovalTrailView {
   records: ApprovalTrailRecordView[];
 }
 
-const TRAIL_ACTION_LABEL: Record<string, string> = {
-  APPROVED: "承認",
-  REJECTED: "差し戻し",
-};
-
 /** trail 内の総記録数（表示要否の判定用）。 */
 export function countTrailRecords(trail: ApprovalTrailView[]): number {
   return trail.reduce((n, t) => n + t.records.length, 0);
@@ -48,6 +43,10 @@ export function countTrailRecords(trail: ApprovalTrailView[]): number {
 export function ApprovalTrailList({ trail }: { trail: ApprovalTrailView[] }) {
   const tr = useTranslations();
   const fmt = useFormat();
+  const trailActionLabel: Record<string, string> = {
+    APPROVED: tr("common.approve"),
+    REJECTED: tr("common.reject"),
+  };
   const records = trail
     .flatMap((req) =>
       req.records.map((rec, i) => ({
@@ -77,7 +76,7 @@ export function ApprovalTrailList({ trail }: { trail: ApprovalTrailView[] }) {
             size="sm"
             variant="light"
           >
-            {TRAIL_ACTION_LABEL[r.action] ?? r.action}
+            {trailActionLabel[r.action] ?? r.action}
           </Badge>
           <Text size="xs">
             {r.approver}

@@ -76,7 +76,9 @@ export function ClosingDetail({
       if (result.ok) {
         notifications.show({
           title: tr("billing.closings.theInvoicesWereGenerated"),
-          message: `請求書 ${result.data.invoiceNumber} を作成しました`,
+          message: tr("billing.closings.createdInvoice", {
+            number: result.data.invoiceNumber,
+          }),
           color: "green",
         });
         router.push(`${INVOICES_PATH}/${result.data.invoiceNumber}`);
@@ -101,7 +103,7 @@ export function ClosingDetail({
     {
       key: "pending",
       label: tr("billing.closings.unprocessed"),
-      description: `対象出荷 ${closing.shipments.length} 件`,
+      description: `${tr("billing.closings.shipmentsCovered")} ${tr("common.itemsCount", { count: closing.shipments.length })}`,
       loading: closing.status === "PENDING",
     },
     {
@@ -128,13 +130,19 @@ export function ClosingDetail({
       title: tr("billing.closings.shipmentsCovered"),
       summary:
         closing.shipments.length > 0
-          ? `${closing.shipments.length} 件・${totalQuantity} 本`
+          ? tr("billing.closings.shipmentsSummary", {
+              count: closing.shipments.length,
+              quantity: totalQuantity,
+            })
           : null,
       items: closing.shipments.map((sp) => ({
         key: sp.deliveryOrderNumber,
         label: sp.deliveryOrderNumber,
         href: `/shipping/delivery-orders/${sp.deliveryOrderNumber}`,
-        note: `${sp.quantity} 本・${formatMoney(sp.amount)}`,
+        note: tr("billing.closings.shipmentNote", {
+          quantity: sp.quantity,
+          amount: formatMoney(sp.amount),
+        }),
       })),
       emptyNote: tr("billing.closings.thereAreNoShipmentsToBill"),
     },
@@ -176,11 +184,14 @@ export function ClosingDetail({
       breadcrumbs={[
         tr("common.billing"),
         { label: tr("common.billingClosing"), href: BASE_PATH },
-        "詳細",
+        tr("common.detailBreadcrumb"),
       ]}
       createdAt={fmt.dateTime(closing.createdAt)}
       status={<StatusBadge entity="BillingClosing" status={closing.status} />}
-      title={`${closing.customerName}（${fmt.date(closing.closingDate)} 締め）`}
+      title={tr("billing.closings.titleWithClosingDate", {
+        customer: closing.customerName,
+        date: fmt.date(closing.closingDate),
+      })}
     >
       <SummaryGrid>
         <FieldValue
@@ -233,7 +244,11 @@ export function ClosingDetail({
 
       <Paper p="md" radius="md" withBorder>
         <Group justify="space-between" mb="sm">
-          <Title order={5}>対象出荷（{closing.shipments.length}）</Title>
+          <Title order={5}>
+            {tr("billing.closings.shipmentsCoveredWithCount", {
+              count: closing.shipments.length,
+            })}
+          </Title>
         </Group>
         {closing.shipments.length === 0 ? (
           <Group gap="xs" py="md">
@@ -325,7 +340,11 @@ export function ClosingDetail({
         confirmColor="blue"
         confirmLabel={tr("billing.closings.generateAnInvoice")}
         loading={isPending}
-        message={`${closing.customerName} の ${fmt.date(closing.closingDate)} 締め分から請求書（下書き）を生成します。対象出荷 ${closing.shipments.length} 件が明細になります。`}
+        message={tr("billing.closings.confirmGenerateBody", {
+          customer: closing.customerName,
+          date: fmt.date(closing.closingDate),
+          count: closing.shipments.length,
+        })}
         onClose={() => setProcessOpen(false)}
         onConfirm={process}
         opened={processOpen}

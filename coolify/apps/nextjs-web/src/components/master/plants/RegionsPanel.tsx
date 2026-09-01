@@ -97,7 +97,9 @@ function RegionModal({
         tr,
         router,
         result,
-        isEdit ? "地域を更新しました" : tr("master.plants.theRegionWasAdded"),
+        isEdit
+          ? tr("master.plants.regionUpdated")
+          : tr("master.plants.theRegionWasAdded"),
         onClose,
       );
     });
@@ -110,8 +112,10 @@ function RegionModal({
       onSubmit={handleSubmit}
       opened={opened}
       size="md"
-      submitLabel={isEdit ? "保存" : tr("common.create2")}
-      title={isEdit ? "地域の編集" : tr("master.plants.addARegion")}
+      submitLabel={isEdit ? tr("common.save") : tr("common.create2")}
+      title={
+        isEdit ? tr("master.plants.editRegion") : tr("master.plants.addARegion")
+      }
     >
       <Stack gap="sm">
         <TextInput
@@ -121,7 +125,7 @@ function RegionModal({
               : undefined
           }
           disabled={isEdit}
-          label="コード"
+          label={tr("common.code")}
           onChange={(e) => setCode(e.currentTarget.value)}
           placeholder={tr("master.plants.eGJp")}
           value={code}
@@ -159,7 +163,7 @@ export function RegionsPanel({ rows }: { rows: RegionRow[] }) {
         router,
         result,
         row.isActive
-          ? "地域を無効化しました"
+          ? tr("master.plants.regionDisabled")
           : tr("master.plants.theRegionWasEnabled"),
       );
     });
@@ -168,7 +172,10 @@ export function RegionsPanel({ rows }: { rows: RegionRow[] }) {
   const handleDelete = (row: RegionRow) => {
     openConfirm({
       title: tr("master.plants.deleteTheRegion"),
-      message: `地域「${row.code} ${row.nameJa}」を削除します。この操作は取り消せません。`,
+      message: tr("master.plants.deleteRegionConfirm", {
+        code: row.code,
+        name: row.nameJa,
+      }),
       confirmLabel: tr("common.delete2"),
       onConfirm: () => {
         startTransition(async () => {
@@ -193,7 +200,7 @@ export function RegionsPanel({ rows }: { rows: RegionRow[] }) {
       }
       breadcrumbs={[
         tr("common.masterData"),
-        { label: "拠点", href: "/master/plants" },
+        { label: tr("common.plants"), href: "/master/plants" },
         tr("common.region"),
       ]}
       title={tr("common.region")}
@@ -202,7 +209,7 @@ export function RegionsPanel({ rows }: { rows: RegionRow[] }) {
         <Table>
           <Table.Thead>
             <Table.Tr>
-              <Table.Th w={140}>コード</Table.Th>
+              <Table.Th w={140}>{tr("common.code")}</Table.Th>
               <Table.Th>{tr("common.name2")}</Table.Th>
               <Table.Th w={90}>{tr("master.plants.sites")}</Table.Th>
               <Table.Th w={90}>{tr("common.status")}</Table.Th>
@@ -244,7 +251,9 @@ export function RegionsPanel({ rows }: { rows: RegionRow[] }) {
                       loading={isPending}
                       onClick={() => handleToggle(row)}
                     >
-                      {row.isActive ? "無効化" : tr("common.enable")}
+                      {row.isActive
+                        ? tr("common.disable")
+                        : tr("common.enable")}
                     </GhostButton>
                     <GhostButton
                       color="red"
@@ -252,7 +261,7 @@ export function RegionsPanel({ rows }: { rows: RegionRow[] }) {
                       leftSection={<IconTrash size={14} />}
                       onClick={() => handleDelete(row)}
                     >
-                      削除
+                      {tr("common.delete")}
                     </GhostButton>
                   </Group>
                 </Table.Td>

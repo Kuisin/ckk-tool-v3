@@ -10,6 +10,7 @@
 
 import { ActionIcon, Table } from "@mantine/core";
 import { IconPlus, IconTrash } from "@tabler/icons-react";
+import { useTranslations } from "next-intl";
 import type { ReactNode } from "react";
 import { GhostButton } from "@/components/ui/buttons";
 
@@ -25,9 +26,9 @@ export function EditableCellTable<T>({
   renderCell,
   onAddRow,
   onRemoveRow,
-  addLabel = "行を追加",
+  addLabel: addLabelProp,
   minTableWidth = 360,
-  removeLabel = "行を削除",
+  removeLabel: removeLabelProp,
 }: {
   /** データ列（削除列は自動で末尾に付く）。 */
   columns: EditableColumn[];
@@ -40,6 +41,9 @@ export function EditableCellTable<T>({
   minTableWidth?: number;
   removeLabel?: string;
 }) {
+  const tr = useTranslations();
+  const addLabel = addLabelProp ?? tr("common.addRow");
+  const removeLabel = removeLabelProp ?? tr("common.removeRow");
   return (
     <>
       <Table.ScrollContainer minWidth={minTableWidth}>

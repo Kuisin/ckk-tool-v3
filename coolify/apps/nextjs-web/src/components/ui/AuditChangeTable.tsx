@@ -54,9 +54,10 @@ export function AuditChangeTable({
   before,
   after,
   tableName,
-  emptyMessage = "変更点はありません",
+  emptyMessage: emptyMessageProp,
 }: Props) {
   const tr = useTranslations();
+  const emptyMessage = emptyMessageProp ?? tr("ui.auditChangeTable.noChanges");
   const [rawOpen, setRawOpen] = useState(false);
   const isMobile = useIsMobile();
   const diffs = auditFieldDiffs(before, after, tableName);
@@ -177,7 +178,7 @@ export function AuditChangeTable({
               size="xs"
             >
               {rawOpen
-                ? "生データを隠す"
+                ? tr("ui.auditChangeTable.hideTheRawData")
                 : tr("ui.auditChangeTable.showTheRawData")}
             </GhostButton>
           </Group>

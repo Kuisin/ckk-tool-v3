@@ -137,7 +137,9 @@ export function PriceListDetail({
       if (result.ok) {
         notifications.show({
           title: tr("common.saved2"),
-          message: `値引きルール「${rule.label}」を保存しました`,
+          message: tr("sales.priceListDetail.discountRuleSavedMessage", {
+            label: rule.label,
+          }),
           color: "green",
         });
         router.refresh();
@@ -154,8 +156,10 @@ export function PriceListDetail({
   const removeDiscount = (rule: PriceDiscount) => {
     openConfirm({
       title: tr("sales.priceLists.deleteTheDiscountRule"),
-      message: `「${rule.label}」を削除します。この操作は取り消せません。`,
-      confirmLabel: "削除",
+      message: tr("sales.priceListDetail.confirmDeleteDiscountMessage", {
+        label: rule.label,
+      }),
+      confirmLabel: tr("common.delete"),
       onConfirm: () => {
         startTransition(async () => {
           const result = await deleteDiscountRule(entry.entryId, rule.id);
@@ -206,7 +210,7 @@ export function PriceListDetail({
               onClick: () => setCopyOpen(true),
             },
             {
-              label: "削除",
+              label: tr("common.delete"),
               icon: <IconTrash size={14} />,
               color: "red",
               divider: true,
@@ -219,7 +223,7 @@ export function PriceListDetail({
       breadcrumbs={[
         tr("common.sales"),
         { label: tr("common.priceList"), href: BASE_PATH },
-        "詳細",
+        tr("common.detailBreadcrumb"),
       ]}
       createdAt={fmt.dateTime(entry.createdAt)}
       status={<ActiveBadge active={entry.isActive} />}
@@ -228,7 +232,7 @@ export function PriceListDetail({
     >
       <SummaryGrid>
         <FieldValue label={tr("common.customer")} value={entry.customerName} />
-        <FieldValue label="製品" value={entry.productName} />
+        <FieldValue label={tr("common.product")} value={entry.productName} />
         <FieldValue
           label={tr("common.orderType")}
           value={
@@ -243,7 +247,9 @@ export function PriceListDetail({
         />
         <FieldValue
           label={tr("sales.priceLists.tiers")}
-          value={`${summary.tierCount}段階`}
+          value={tr("sales.priceListTable.tierCountLabel", {
+            count: summary.tierCount,
+          })}
         />
         <FieldValue
           label={tr("sales.priceLists.unitPriceRange")}
@@ -519,7 +525,9 @@ export function PriceListDetail({
                           <Table.Td>
                             <DocNumber c="blue">{q.quoteNumber}</DocNumber>
                           </Table.Td>
-                          <Table.Td ta="right">{q.quantity} 本</Table.Td>
+                          <Table.Td ta="right">
+                            {tr("common.quantityPcs", { quantity: q.quantity })}
+                          </Table.Td>
                           <Table.Td ta="right">
                             <MoneyText value={q.amount} />
                           </Table.Td>

@@ -59,12 +59,6 @@ export interface ProfileData {
   devices: { id: string; userAgent: string | null; createdAt: string }[];
 }
 
-const USER_GROUP_LABEL: Record<string, string> = {
-  SYSTEM: "システム",
-  EMPLOYEE: "従業員",
-  GUEST: "ゲスト",
-};
-
 function formatTs(iso: string | null): string {
   if (!iso) return "—";
   const d = new Date(iso);
@@ -76,8 +70,11 @@ function formatTs(iso: string | null): string {
 }
 
 /** UA 文字列から表示用の短いデバイス名を作る（厳密判定は不要）。 */
-function deviceLabel(ua: string | null): string {
-  if (!ua) return "不明なデバイス";
+function deviceLabel(
+  ua: string | null,
+  tr: ReturnType<typeof useTranslations>,
+): string {
+  if (!ua) return tr("profile.profileView.unknownDevice");
   const os = ua.includes("iPhone")
     ? "iPhone"
     : ua.includes("iPad")
@@ -88,7 +85,7 @@ function deviceLabel(ua: string | null): string {
           ? "Mac"
           : ua.includes("Windows")
             ? "Windows"
-            : "その他";
+            : tr("common.other");
   const browser = ua.includes("Edg/")
     ? "Edge"
     : ua.includes("Chrome/")
@@ -103,6 +100,11 @@ function deviceLabel(ua: string | null): string {
 
 export function ProfileView({ user }: { user: ProfileData }) {
   const tr = useTranslations();
+  const userGroupLabel: Record<string, string> = {
+    SYSTEM: tr("common.system"),
+    EMPLOYEE: tr("profile.profileView.employee"),
+    GUEST: tr("common.guest"),
+  };
   const photoInputRef = useRef<HTMLInputElement>(null);
   const [avatarUrl, setAvatarUrl] = useState(user.avatarUrl);
   const [avatarThumbUrl, setAvatarThumbUrl] = useState(user.avatarThumbUrl);
@@ -322,7 +324,7 @@ export function ProfileView({ user }: { user: ProfileData }) {
               <FieldValue label={tr("common.username")} value={user.username} />
               <FieldValue
                 label={tr("common.type2")}
-                value={USER_GROUP_LABEL[user.group] ?? user.group}
+                value={userGroupLabel[user.group] ?? user.group}
               />
               <FieldValue
                 label={tr("common.lastLogin")}
@@ -439,7 +441,7 @@ export function ProfileView({ user }: { user: ProfileData }) {
                 <Group className="min-w-0" gap="sm" wrap="nowrap">
                   <IconDeviceMobile size={18} />
                   <Stack gap={0}>
-                    <Text size="sm">{deviceLabel(d.userAgent)}</Text>
+                    <Text size="sm">{deviceLabel(d.userAgent, tr)}</Text>
                     <Text c="dimmed" size="xs">
                       登録: {formatTs(d.createdAt)}
                     </Text>

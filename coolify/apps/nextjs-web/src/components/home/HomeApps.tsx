@@ -66,20 +66,6 @@ export interface HomeUser {
   avatarThumbUrl: string | null;
 }
 
-/** 未ログイン時のフォールバック（デモ ID は出さない）。 */
-const GUEST_USER: HomeUser = {
-  displayName: "ゲスト",
-  initials: "—",
-  username: "",
-  department: null,
-  title: null,
-  email: null,
-  office: null,
-  company: null,
-  avatarUrl: null,
-  avatarThumbUrl: null,
-};
-
 interface HomeAppsProps {
   /** Passed from the Server Component parent — avoids client-side session fetch. */
   user?: HomeUser;
@@ -90,13 +76,29 @@ interface HomeAppsProps {
 }
 
 export function HomeApps({
-  user = GUEST_USER,
+  user,
   settings = DEFAULT_HOME_SETTINGS,
   isLoading = false,
 }: HomeAppsProps) {
   const locale = useLocale();
   const t = useTranslations("home");
-  const displayName = user.username ? user.displayName : t("guest");
+  /** 未ログイン時のフォールバック（デモ ID は出さない）。 */
+  const guestUser: HomeUser = {
+    displayName: t("guest"),
+    initials: "—",
+    username: "",
+    department: null,
+    title: null,
+    email: null,
+    office: null,
+    company: null,
+    avatarUrl: null,
+    avatarThumbUrl: null,
+  };
+  const effectiveUser = user ?? guestUser;
+  const displayName = effectiveUser.username
+    ? effectiveUser.displayName
+    : t("guest");
   const hiddenApps = useHiddenApps();
   const unreleasedApps = useUnreleasedApps();
   const searchParams = useSearchParams();
@@ -171,41 +173,43 @@ export function HomeApps({
         <Group align="flex-start" justify="space-between" wrap="nowrap">
           <Group>
             <UserAvatar
-              initials={user.initials}
+              initials={effectiveUser.initials}
               name={displayName}
               size={72}
-              src={user.avatarUrl}
-              thumbSrc={user.avatarThumbUrl}
+              src={effectiveUser.avatarUrl}
+              thumbSrc={effectiveUser.avatarThumbUrl}
             />
             <Stack gap={4}>
               <Title order={3}>{displayName}</Title>
-              {user.username && (
+              {effectiveUser.username && (
                 <Text c="dimmed" size="sm">
-                  {user.username}
+                  {effectiveUser.username}
                 </Text>
               )}
-              {(user.department || user.title) && (
+              {(effectiveUser.department || effectiveUser.title) && (
                 <Group gap="xs">
-                  {user.department && (
+                  {effectiveUser.department && (
                     <Badge color="blue" size="sm" variant="light">
-                      {user.department}
+                      {effectiveUser.department}
                     </Badge>
                   )}
-                  {user.title && (
+                  {effectiveUser.title && (
                     <Badge color="gray" size="sm" variant="light">
-                      {user.title}
+                      {effectiveUser.title}
                     </Badge>
                   )}
                 </Group>
               )}
-              {user.email && (
+              {effectiveUser.email && (
                 <Text c="dimmed" size="xs">
-                  {user.email}
+                  {effectiveUser.email}
                 </Text>
               )}
-              {(user.company || user.office) && (
+              {(effectiveUser.company || effectiveUser.office) && (
                 <Text c="dimmed" size="xs">
-                  {[user.company, user.office].filter(Boolean).join(" / ")}
+                  {[effectiveUser.company, effectiveUser.office]
+                    .filter(Boolean)
+                    .join(" / ")}
                 </Text>
               )}
             </Stack>

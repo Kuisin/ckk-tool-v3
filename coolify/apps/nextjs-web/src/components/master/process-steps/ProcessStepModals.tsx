@@ -44,7 +44,7 @@ export function DeleteProcessStepModal({
       loading={isPending}
       message={
         target
-          ? `工程「${label(target)}」を削除します。この操作は取り消せません。`
+          ? tr("master.processSteps.deleteConfirm", { name: label(target) })
           : ""
       }
       onClose={onClose}
@@ -55,7 +55,9 @@ export function DeleteProcessStepModal({
           if (result.ok) {
             notifications.show({
               title: tr("common.deleted"),
-              message: `工程「${label(target)}」を削除しました`,
+              message: tr("master.processSteps.deleted", {
+                name: label(target),
+              }),
               color: "green",
             });
             onDone?.();
@@ -90,13 +92,17 @@ export function ToggleProcessStepActiveModal({
   return (
     <ConfirmModal
       confirmColor={isActive ? "red" : "blue"}
-      confirmLabel={isActive ? "無効化する" : tr("common.enable2")}
+      confirmLabel={
+        isActive ? tr("common.disableAction") : tr("common.enable2")
+      }
       loading={isPending}
       message={
         target
           ? isActive
-            ? `工程「${label(target)}」を無効化します。新規のワークフロー・依存先として選択できなくなります。`
-            : `工程「${label(target)}」を有効化します。再びワークフロー・依存先として選択できるようになります。`
+            ? tr("master.processSteps.disableConfirm", {
+                name: label(target),
+              })
+            : tr("master.processSteps.enableConfirm", { name: label(target) })
           : ""
       }
       onClose={onClose}
@@ -106,8 +112,10 @@ export function ToggleProcessStepActiveModal({
           const result = await setProcessStepsActive([target.id], !isActive);
           if (result.ok) {
             notifications.show({
-              title: isActive ? "無効化しました" : tr("common.enabled2"),
-              message: `工程「${label(target)}」を${isActive ? "無効化" : "有効化"}しました`,
+              title: isActive ? tr("common.disabled2") : tr("common.enabled2"),
+              message: isActive
+                ? tr("master.processSteps.disabled", { name: label(target) })
+                : tr("master.processSteps.enabled", { name: label(target) }),
               color: "green",
             });
             onDone?.();
@@ -122,7 +130,9 @@ export function ToggleProcessStepActiveModal({
       }}
       opened={opened}
       title={
-        isActive ? "工程の無効化" : tr("master.processSteps.enableTheStep")
+        isActive
+          ? tr("master.processSteps.disableTheStep")
+          : tr("master.processSteps.enableTheStep")
       }
     />
   );

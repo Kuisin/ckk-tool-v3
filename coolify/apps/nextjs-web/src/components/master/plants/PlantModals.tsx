@@ -43,9 +43,7 @@ export function DeletePlantModal({
       confirmLabel={tr("common.delete2")}
       loading={isPending}
       message={
-        target
-          ? `拠点「${label(target)}」を削除します。この操作は取り消せません。`
-          : ""
+        target ? tr("master.plants.deleteConfirm", { name: label(target) }) : ""
       }
       onClose={onClose}
       onConfirm={() => {
@@ -55,7 +53,7 @@ export function DeletePlantModal({
           if (result.ok) {
             notifications.show({
               title: tr("common.deleted"),
-              message: `拠点「${label(target)}」を削除しました`,
+              message: tr("master.plants.deleted", { name: label(target) }),
               color: "green",
             });
             onDone?.();
@@ -90,13 +88,15 @@ export function TogglePlantActiveModal({
   return (
     <ConfirmModal
       confirmColor={isActive ? "red" : "blue"}
-      confirmLabel={isActive ? "無効化する" : tr("common.enable2")}
+      confirmLabel={
+        isActive ? tr("common.disableAction") : tr("common.enable2")
+      }
       loading={isPending}
       message={
         target
           ? isActive
-            ? `拠点「${label(target)}」を無効化します。新規の在庫・出荷・工程で選択できなくなります。`
-            : `拠点「${label(target)}」を有効化します。再び在庫・出荷・工程で選択できるようになります。`
+            ? tr("master.plants.disableConfirm", { name: label(target) })
+            : tr("master.plants.enableConfirm", { name: label(target) })
           : ""
       }
       onClose={onClose}
@@ -106,8 +106,10 @@ export function TogglePlantActiveModal({
           const result = await setPlantsActive([target.id], !isActive);
           if (result.ok) {
             notifications.show({
-              title: isActive ? "無効化しました" : tr("common.enabled2"),
-              message: `拠点「${label(target)}」を${isActive ? "無効化" : "有効化"}しました`,
+              title: isActive ? tr("common.disabled2") : tr("common.enabled2"),
+              message: isActive
+                ? tr("master.plants.disabled", { name: label(target) })
+                : tr("master.plants.enabled", { name: label(target) }),
               color: "green",
             });
             onDone?.();
@@ -121,7 +123,11 @@ export function TogglePlantActiveModal({
         });
       }}
       opened={opened}
-      title={isActive ? "拠点の無効化" : tr("master.plants.enableTheSite")}
+      title={
+        isActive
+          ? tr("master.plants.disableTheSite")
+          : tr("master.plants.enableTheSite")
+      }
     />
   );
 }

@@ -55,12 +55,20 @@ export function ComponentTable({
   const toggle = (row: ComponentRow) => {
     const next = !row.isActive;
     openConfirm({
-      title: next ? "有効化の確認" : tr("common.confirmDisabling"),
+      title: next
+        ? tr("master.componentTable.confirmEnabling")
+        : tr("common.confirmDisabling"),
       message: next
-        ? `「${row.code} — ${row.name}」を有効化します。`
-        : `「${row.code} — ${row.name}」を無効化します。新規の材種・素材作成で選択できなくなります（既存コードには影響しません）。`,
+        ? tr("master.componentTable.enableConfirm", {
+            code: row.code,
+            name: row.name,
+          })
+        : tr("master.componentTable.disableConfirm", {
+            code: row.code,
+            name: row.name,
+          }),
       confirmLabel: next
-        ? "有効化する"
+        ? tr("common.enable2")
         : tr("master.materialNumbering.disable"),
       onConfirm: () => {
         startTransition(async () => {
@@ -72,8 +80,10 @@ export function ComponentTable({
           });
           if (res.ok) {
             notifications.show({
-              title: next ? "有効化しました" : tr("common.disabled2"),
-              message: `「${row.code}」を${next ? "有効化" : "無効化"}しました`,
+              title: next ? tr("common.enabled2") : tr("common.disabled2"),
+              message: next
+                ? tr("master.componentTable.enabled", { code: row.code })
+                : tr("master.componentTable.disabled", { code: row.code }),
               color: "green",
             });
             router.refresh();
@@ -104,7 +114,7 @@ export function ComponentTable({
       : []),
     {
       key: "code",
-      header: "コード",
+      header: tr("master.componentTable.code"),
       sortable: true,
       width: 100,
       render: (r) => <DocNumber>{r.code}</DocNumber>,

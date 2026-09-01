@@ -77,7 +77,7 @@ export function OrderLineTable({ rows }: { rows: OrderLine[] }) {
     },
     {
       key: "productName",
-      header: "製品",
+      header: tr("common.product"),
       sortable: true,
       render: (o) => (
         <>
@@ -204,7 +204,7 @@ export function OrderLineTable({ rows }: { rows: OrderLine[] }) {
               </Text>
               <Group gap="md" mt={2}>
                 <Text c="dimmed" size="xs">
-                  {o.quantity} 本
+                  {tr("common.quantityPcs", { quantity: o.quantity })}
                 </Text>
                 <Text fw={500} size="xs">
                   <MoneyText value={o.amount} />

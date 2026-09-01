@@ -75,7 +75,11 @@ export function StepCard({
   // 指示書が操作不可のときは、どの状態でも「詳細」（閲覧）に倒す。
   let executeButton: React.ReactNode = null;
   if (executeHref && viewOnly) {
-    executeButton = <SecondaryButton href={executeHref}>詳細</SecondaryButton>;
+    executeButton = (
+      <SecondaryButton href={executeHref}>
+        {tr("production.stepCard.viewDetails")}
+      </SecondaryButton>
+    );
   } else if (executeHref && step.status !== "CANCELLED") {
     if (step.status === "PENDING") {
       executeButton = step.canStart ? (
@@ -91,7 +95,9 @@ export function StepCard({
       );
     } else {
       executeButton = (
-        <SecondaryButton href={executeHref}>詳細</SecondaryButton>
+        <SecondaryButton href={executeHref}>
+          {tr("production.stepCard.viewDetails")}
+        </SecondaryButton>
       );
     }
   }
@@ -123,7 +129,7 @@ export function StepCard({
             size="xs"
             variant="outline"
           >
-            {isOutsource ? "外注" : tr("common.inHouse")}
+            {isOutsource ? tr("common.outsourced") : tr("common.inHouse")}
           </Badge>
           {step.isInspection && (
             <Badge color="blue" size="xs" variant="light">
@@ -132,7 +138,7 @@ export function StepCard({
           )}
           {step.isApprovalStep && (
             <Badge color="teal" size="xs" variant="light">
-              承認
+              {tr("common.approve")}
             </Badge>
           )}
         </Group>
@@ -190,11 +196,16 @@ export function StepCard({
           {hasWorkHours && (
             <Text c="dimmed" className="tabular-nums" size="xs">
               {step.plannedWorkHours != null &&
-                `予定 ${step.plannedWorkHours}h`}
+                tr("production.stepCard.plannedHoursWithValue", {
+                  hours: step.plannedWorkHours,
+                })}
               {step.plannedWorkHours != null &&
                 step.actualWorkHours != null &&
                 " / "}
-              {step.actualWorkHours != null && `実績 ${step.actualWorkHours}h`}
+              {step.actualWorkHours != null &&
+                tr("production.stepCard.actualHoursWithValue", {
+                  hours: step.actualWorkHours,
+                })}
             </Text>
           )}
           {step.lotText != null && (
@@ -244,14 +255,14 @@ export function StepCard({
           <Group gap="sm" mt="xs" pl={28} wrap="wrap">
             <Text size="xs">
               {step.quantityTracking === "INSPECTION"
-                ? "検査"
+                ? tr("common.inspection")
                 : tr("production.stepCard.received")}{" "}
               {step.inputQuantity}
             </Text>
             {step.outputSuccessQuantity != null && (
               <Text c="green" size="xs">
                 {step.quantityTracking === "INSPECTION"
-                  ? "合格"
+                  ? tr("production.stepCard.pass")
                   : tr("production.stepCard.good")}{" "}
                 {step.outputSuccessQuantity}
               </Text>

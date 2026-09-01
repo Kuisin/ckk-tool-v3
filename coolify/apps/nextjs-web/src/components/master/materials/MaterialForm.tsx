@@ -57,26 +57,28 @@ import type { Option } from "@/lib/mock";
 const BASE_PATH = "/master/materials";
 
 // 編集ではコード構成（識別）はロック表示のみ — 検証は新規時だけ課す。
-const materialSchema = (isEdit: boolean) =>
+const materialSchema = (isEdit: boolean, tr: (key: string) => string) =>
   z.object({
     materialTypeId: isEdit
       ? z.string()
-      : z.string().min(1, "材種を選択してください"),
+      : z.string().min(1, tr("master.materialForm.materialTypeRequired")),
     surfaceFinishCode: isEdit
       ? z.string()
-      : z.string().min(1, "黒皮・研磨を選択してください"),
+      : z.string().min(1, tr("master.materialForm.surfaceFinishRequired")),
     diameterMm: z
-      .number({ message: "直径を入力してください" })
-      .min(0.1, "直径は 0.1〜99.9mm で入力してください")
-      .max(99.9, "直径は 0.1〜99.9mm で入力してください"),
+      .number({ message: tr("master.materialForm.diameterRequired") })
+      .min(0.1, tr("master.materialForm.diameterRange"))
+      .max(99.9, tr("master.materialForm.diameterRange")),
     lengthMm: z
-      .number({ message: "全長を入力してください" })
-      .min(1, "全長は 1〜999mm で入力してください")
-      .max(999, "全長は 1〜999mm で入力してください"),
-    kindCode: isEdit ? z.string() : z.string().min(1, "種類を選択してください"),
-    nameJa: z.string().min(1, "名称（日本語）を入力してください"),
+      .number({ message: tr("master.materialForm.lengthRequired") })
+      .min(1, tr("master.materialForm.lengthRange"))
+      .max(999, tr("master.materialForm.lengthRange")),
+    kindCode: isEdit
+      ? z.string()
+      : z.string().min(1, tr("master.materialForm.kindRequired")),
+    nameJa: z.string().min(1, tr("common.nameJaRequired")),
     nameTranslations: z.record(z.string(), z.string()).default({}),
-    unit: z.string().min(1, "単位を選択してください"),
+    unit: z.string().min(1, tr("master.materialForm.unitRequired")),
     manufacturerModel: z.string(),
     nominalDiameterMm: z.union([z.number(), z.literal("")]),
     matchNames: z.array(z.string()),
@@ -135,7 +137,7 @@ export function MaterialForm({
   const lastAutoName = useRef("");
 
   const form = useForm<FormValues>({
-    validate: zodResolver(materialSchema(isEdit)),
+    validate: zodResolver(materialSchema(isEdit, tr)),
     initialValues: {
       materialTypeId: "",
       surfaceFinishCode: "",
@@ -301,7 +303,7 @@ export function MaterialForm({
         notifications.show({
           title: tr("common.saved2"),
           message: isEdit
-            ? "素材を更新しました"
+            ? tr("master.materials.materialUpdated")
             : tr("master.materials.theMaterialWasCreated"),
           color: "green",
         });
@@ -321,7 +323,7 @@ export function MaterialForm({
       breadcrumbs={[
         tr("common.masterData"),
         { label: tr("common.materials"), href: BASE_PATH },
-        isEdit ? "編集" : tr("common.new2"),
+        isEdit ? tr("common.edit") : tr("common.new2"),
       ]}
       isDirty={form.isDirty()}
       isPending={isPending}
@@ -332,7 +334,7 @@ export function MaterialForm({
       status={isEdit ? <ActiveBadge active={initial.isActive} /> : undefined}
       title={
         isEdit
-          ? `素材 編集 — ${initial.code}`
+          ? tr("master.materials.editTitle", { code: initial.code })
           : tr("master.materials.newMaterial")
       }
     >
@@ -394,7 +396,7 @@ export function MaterialForm({
             <SimpleGrid cols={isMobile ? 1 : 2} mb="sm" spacing="sm">
               <SearchSelect
                 description={tr("common.onlyConvertedMaterialTypesWithA")}
-                f4={materialTypeF4(manufacturerOptions, shapeOptions)}
+                f4={materialTypeF4(tr, manufacturerOptions, shapeOptions)}
                 label={<HelpLabel {...fieldHelp("material", "materialType")} />}
                 onChange={onTypeChange}
                 onSearch={searchStructuredMaterialTypeOptions}
@@ -414,12 +416,13 @@ export function MaterialForm({
               />
               <NumberInput
                 decimalScale={1}
-                description={`コード: ${
-                  Number(form.values.diameterMm) >= 0.1 &&
-                  Number(form.values.diameterMm) <= 99.9
-                    ? diameterCodeFromMm(Number(form.values.diameterMm))
-                    : "—"
-                }（径×10）`}
+                description={tr("master.materials.diameterCodePreview", {
+                  code:
+                    Number(form.values.diameterMm) >= 0.1 &&
+                    Number(form.values.diameterMm) <= 99.9
+                      ? diameterCodeFromMm(Number(form.values.diameterMm))
+                      : "—",
+                })}
                 label={
                   <HelpLabel
                     {...fieldHelp("material", "dimensions", {
@@ -434,12 +437,13 @@ export function MaterialForm({
                 {...form.getInputProps("diameterMm")}
               />
               <NumberInput
-                description={`コード: ${
-                  Number(form.values.lengthMm) >= 1 &&
-                  Number(form.values.lengthMm) <= 999
-                    ? lengthCodeFromMm(Number(form.values.lengthMm))
-                    : "—"
-                }`}
+                description={tr("master.materials.lengthCodePreview", {
+                  code:
+                    Number(form.values.lengthMm) >= 1 &&
+                    Number(form.values.lengthMm) <= 999
+                      ? lengthCodeFromMm(Number(form.values.lengthMm))
+                      : "—",
+                })}
                 label={
                   <HelpLabel
                     {...fieldHelp("material", "dimensions", {

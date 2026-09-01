@@ -47,11 +47,6 @@ export interface ApprovalGroupRow {
   isActive: boolean;
 }
 
-const STATUS_OPTIONS = [
-  { value: "active", label: "有効" },
-  { value: "inactive", label: "無効" },
-];
-
 export function ApprovalGroupTable({
   rows,
   /** タブの中で使うとき true — 画面ヘッダは親が 1 つだけ出す。 */
@@ -61,6 +56,10 @@ export function ApprovalGroupTable({
   embedded?: boolean;
 }) {
   const tr = useTranslations();
+  const STATUS_OPTIONS = [
+    { value: "active", label: tr("common.enabled") },
+    { value: "inactive", label: tr("common.disabled") },
+  ];
   const router = useRouter();
   const isMobile = useIsMobile();
   const [, startTransition] = useTransition();
@@ -96,8 +95,14 @@ export function ApprovalGroupTable({
       );
       if (result.ok) {
         notifications.show({
-          title: isActive ? "有効化しました" : tr("common.disabled2"),
-          message: `${targets.length}件の承認グループを${isActive ? "有効化" : "無効化"}しました`,
+          title: isActive ? tr("common.enabled2") : tr("common.disabled2"),
+          message: isActive
+            ? tr("master.approvalSettings.bulkEnabled", {
+                count: targets.length,
+              })
+            : tr("master.approvalSettings.bulkDisabled", {
+                count: targets.length,
+              }),
           color: "green",
         });
         router.refresh();
@@ -114,7 +119,9 @@ export function ApprovalGroupTable({
   const bulkDelete = (targets: ApprovalGroupRow[]) => {
     openConfirm({
       title: tr("master.approvalSettings.bulkDeleteApprovalGroups"),
-      message: `選択中の${targets.length}件の承認グループを削除します。この操作は取り消せません。`,
+      message: tr("master.approvalSettings.bulkDeleteConfirm", {
+        count: targets.length,
+      }),
       confirmLabel: tr("common.delete2"),
       onConfirm: () => {
         startTransition(async () => {
@@ -122,7 +129,9 @@ export function ApprovalGroupTable({
           if (result.ok) {
             notifications.show({
               title: tr("common.deleted"),
-              message: `${targets.length}件の承認グループを削除しました`,
+              message: tr("master.approvalSettings.bulkDeleted", {
+                count: targets.length,
+              }),
               color: "green",
             });
             router.refresh();
@@ -154,7 +163,10 @@ export function ApprovalGroupTable({
       width: 110,
       align: "right",
       sortValue: (r) => r.memberCount,
-      render: (r) => `${r.memberCount}名`,
+      render: (r) =>
+        tr("master.approvalSettings.memberCountValue", {
+          count: r.memberCount,
+        }),
     },
     {
       key: "isActive",
@@ -228,7 +240,9 @@ export function ApprovalGroupTable({
                   {r.name}
                 </Text>
                 <Text c="dimmed" size="xs">
-                  {r.memberCount}名
+                  {tr("master.approvalSettings.memberCountValue", {
+                    count: r.memberCount,
+                  })}
                 </Text>
               </Stack>
               <ActiveBadge active={r.isActive} />
@@ -242,12 +256,12 @@ export function ApprovalGroupTable({
             onAction: (r) => router.push(`${BASE_PATH}/${r.id}/edit`),
           },
           {
-            label: row.isActive ? "無効化" : tr("common.enable"),
+            label: row.isActive ? tr("common.disable") : tr("common.enable"),
             icon: <IconCircleMinus size={14} />,
             onAction: (r) => setToggleRow(r),
           },
           {
-            label: "削除",
+            label: tr("common.delete"),
             icon: <IconTrash size={14} />,
             color: "red",
             onAction: (r) => setDeleteRow(r),

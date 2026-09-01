@@ -124,7 +124,7 @@ export function StepQuantityForm({
       <Stack gap="md">
         <Title order={4}>
           {mode === "INSPECTION"
-            ? "検査数・合否"
+            ? tr("production.stepQuantityForm.inspectedCountAndResult")
             : tr("production.stepQuantityForm.quantityAndDefects")}
         </Title>
 
@@ -213,10 +213,10 @@ export function StepQuantityForm({
                   value={row.type}
                 />
                 <Select
-                  aria-label="不良種類"
+                  aria-label={tr("common.defectType")}
                   data={typeData}
                   disabled={disabled}
-                  label="不良種類"
+                  label={tr("common.defectType")}
                   onChange={(v) =>
                     setRow(index, { defectTypeId: v ? Number(v) : null })
                   }
@@ -246,7 +246,7 @@ export function StepQuantityForm({
                   value={row.count}
                 />
                 <ActionIcon
-                  aria-label="削除"
+                  aria-label={tr("common.delete")}
                   color="red"
                   disabled={disabled}
                   mb={4}
@@ -260,9 +260,9 @@ export function StepQuantityForm({
                 </ActionIcon>
               </Group>
               <TextInput
-                aria-label="詳細"
+                aria-label={tr("production.stepQuantityForm.detail")}
                 disabled={disabled}
-                label="詳細"
+                label={tr("production.stepQuantityForm.detail")}
                 maxLength={200}
                 onChange={(e) =>
                   setRow(index, { reason: e.currentTarget.value })
@@ -301,7 +301,10 @@ export function StepQuantityForm({
               ? tr("production.stepQuantityForm.quantitiesMustBeWholeNumbersOf")
               : issue.kind === "INCOMPLETE"
                 ? tr("production.stepQuantityForm.enterADefectTypeAndDetail")
-                : `不良の合計（${issue.sum}）が受入数（${issue.input}）を超えています`}
+                : tr(
+                    "production.stepQuantityForm.defectTotalWithSumExceedsInput",
+                    { sum: issue.sum, input: issue.input },
+                  )}
           </Alert>
         )}
 

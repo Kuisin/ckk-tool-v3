@@ -68,7 +68,11 @@ export function RevisionDiff({
         <Text c="dimmed" size="sm">
           {changed === 0
             ? tr("documents.revisionDiff.thereIsNoDifference")
-            : `${fromLabel} → ${toLabel}: ${changed} 行の変更`}
+            : tr("documents.revisionDiff.lineChangesSummary", {
+                from: fromLabel,
+                to: toLabel,
+                count: changed,
+              })}
         </Text>
       </Group>
 

@@ -238,7 +238,10 @@ export function ApprovalFlowRulesSection({
       if (result.ok) {
         notifications.show({
           title: tr("common.saved2"),
-          message: `${targetLabel}の条件付きフロー「${payload.nameJa}」`,
+          message: tr("master.approvalFlowRulesSection.savedMessage", {
+            target: targetLabel,
+            name: payload.nameJa,
+          }),
           color: "green",
         });
         setEditing(null);
@@ -395,15 +398,18 @@ export function ApprovalFlowRulesSection({
                     <IconPencil size={16} />
                   </ActionIcon>
                   <ActionIcon
-                    aria-label="削除"
+                    aria-label={tr("common.delete")}
                     color="red"
                     onClick={() =>
                       openConfirm({
                         title: tr(
                           "master.approvalFlows.deleteTheConditionalFlow",
                         ),
-                        message: `「${rule.nameJa}」を削除します。進行中の承認依頼には影響しません。`,
-                        confirmLabel: "削除",
+                        message: tr(
+                          "master.approvalFlowRulesSection.deleteConfirmMessage",
+                          { name: rule.nameJa },
+                        ),
+                        confirmLabel: tr("common.delete"),
                         onConfirm: () =>
                           run(() =>
                             deleteApprovalFlowRule(targetType, rule.id),
@@ -644,7 +650,7 @@ export function ApprovalFlowRulesSection({
                       <IconArrowDown size={16} />
                     </ActionIcon>
                     <ActionIcon
-                      aria-label="削除"
+                      aria-label={tr("common.delete")}
                       color="red"
                       onClick={() =>
                         setSteps((prev) => prev.filter((x) => x.key !== s.key))

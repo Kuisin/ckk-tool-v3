@@ -61,9 +61,13 @@ export function IssueQuoteModal({
       meta = { sizeBytes: blob.size, generatedAt: new Date().toISOString() };
       notifications.show({
         title: tr("common.issued"),
-        message: `見積書 ${quoteNumber} を発行し、PDF を保存しました${
-          sendMail ? "（メール送付予約済み）" : ""
-        }`,
+        message: sendMail
+          ? tr("sales.issueQuoteModal.issuedAndSavedWithMail", {
+              number: quoteNumber,
+            })
+          : tr("sales.issueQuoteModal.issuedAndSaved", {
+              number: quoteNumber,
+            }),
         color: "green",
       });
     } catch {
@@ -92,9 +96,9 @@ export function IssueQuoteModal({
     >
       <Stack gap="sm">
         <Text size="sm">
-          見積書「{quoteNumber}
-          」を発行します。発行と同時に PDF が生成・保存され、詳細画面の PDF
-          タブで閲覧できます。
+          {tr("sales.issueQuoteModal.confirmIssueMessage", {
+            number: quoteNumber,
+          })}
         </Text>
         <DatePickerInput
           clearable

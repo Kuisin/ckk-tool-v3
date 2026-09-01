@@ -114,7 +114,7 @@ export function PendingWorkOrderBoard({
     },
     {
       key: "productName",
-      header: "製品",
+      header: tr("common.product"),
       sortable: true,
       truncate: true,
       render: (r) => r.productName,
@@ -244,7 +244,7 @@ export function PendingWorkOrderBoard({
     },
     {
       key: "productName",
-      header: "製品",
+      header: tr("common.product"),
       sortable: true,
       truncate: true,
       render: (r) => r.productName,

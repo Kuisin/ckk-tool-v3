@@ -27,16 +27,6 @@ import { diameterCodeFromMm, lengthCodeFromMm } from "@/lib/material-code";
 import type { Option } from "@/lib/mock";
 import type { ActionResult } from "@/lib/server-action";
 
-const TITLES: Record<ComponentTableKind, string> = {
-  manufacturer: "メーカーの追加",
-  grade: "メーカー材種の追加",
-  shape: "形状の追加",
-  kind: "種類の追加",
-  finish: "黒皮・研磨区分の追加",
-  diameter: "直径の追加",
-  length: "全長の追加",
-};
-
 export function AddComponentModal({
   opened,
   onClose,
@@ -50,6 +40,16 @@ export function AddComponentModal({
   const tr = useTranslations();
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
+
+  const TITLES: Record<ComponentTableKind, string> = {
+    manufacturer: tr("master.materialNumbering.addManufacturer"),
+    grade: tr("master.materialNumbering.addManufacturerGrade"),
+    shape: tr("master.materialNumbering.addShape"),
+    kind: tr("master.materialNumbering.addKind"),
+    finish: tr("master.materialNumbering.addSurfaceFinish"),
+    diameter: tr("master.materialNumbering.addDiameter"),
+    length: tr("master.materialNumbering.addLengthVariant"),
+  };
 
   const [parentCode, setParentCode] = useState<string | null>(null);
   const [code, setCode] = useState("");
@@ -171,9 +171,13 @@ export function AddComponentModal({
           <>
             <NumberInput
               decimalScale={kind === "diameter" ? 1 : 0}
-              description={`コード: ${derivedCode}`}
+              description={tr("master.materialNumbering.codePreview", {
+                code: derivedCode,
+              })}
               label={
-                kind === "diameter" ? "直径 (mm)" : tr("common.overallLengthMm")
+                kind === "diameter"
+                  ? tr("common.diameterMm")
+                  : tr("common.overallLengthMm")
               }
               max={kind === "diameter" ? 99.9 : 999}
               min={kind === "diameter" ? 0.1 : 1}
@@ -199,7 +203,7 @@ export function AddComponentModal({
                   ? tr("master.materialNumbering.twoCharactersEG01B5")
                   : tr("master.materialNumbering.oneUppercaseLetterEGA")
               }
-              label="コード"
+              label={tr("common.code")}
               maxLength={kind === "grade" || kind === "kind" ? 2 : 1}
               onChange={(e) => setCode(e.currentTarget.value.toUpperCase())}
               value={code}

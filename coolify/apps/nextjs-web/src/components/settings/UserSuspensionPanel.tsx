@@ -93,8 +93,12 @@ export function UserSuspensionPanel({
       if (res.ok) {
         const requested = res.data?.requested === true;
         notifications.show({
-          title: requested ? "承認を依頼しました" : ok,
-          message: requested ? "承認されるとこの変更が適用されます" : "",
+          title: requested
+            ? tr("settings.userDetail.approvalWasRequested")
+            : ok,
+          message: requested
+            ? tr("settings.userSuspensionPanel.approvalAppliesThisChange")
+            : "",
           color: requested ? "blue" : "green",
         });
         setReason("");
@@ -111,23 +115,30 @@ export function UserSuspensionPanel({
   const confirmSuspend = () =>
     modals.openConfirmModal({
       title: requiresApproval
-        ? "停止の承認を依頼"
+        ? tr("settings.userSuspensionPanel.requestSuspensionApproval")
         : tr("settings.userSuspensionPanel.suspendTheUser"),
       children: (
         <Text size="sm">
-          {user.displayName}（{user.username}）を
-          {kind === "permanent"
-            ? "無期限で"
-            : tr("settings.userSuspensionPanel.temporarily")}
-          停止
-          {requiresApproval
-            ? tr("settings.userSuspensionPanel.submitsTheRequestThisPersonCan")
-            : tr("settings.userSuspensionPanel.theyCannotLogInWhileSuspended")}
+          {tr("settings.userSuspensionPanel.suspendConfirmSentence", {
+            name: user.displayName,
+            username: user.username,
+            duration:
+              kind === "permanent"
+                ? tr("settings.userSuspensionPanel.indefinitely")
+                : tr("settings.userSuspensionPanel.temporarily"),
+            tail: requiresApproval
+              ? tr(
+                  "settings.userSuspensionPanel.submitsTheRequestThisPersonCan",
+                )
+              : tr(
+                  "settings.userSuspensionPanel.theyCannotLogInWhileSuspended",
+                ),
+          })}
         </Text>
       ),
       labels: {
         confirm: requiresApproval
-          ? "依頼する"
+          ? tr("settings.userSuspensionPanel.requestButtonLabel")
           : tr("settings.userSuspensionPanel.suspend"),
         cancel: tr("common.back2"),
       },
@@ -161,11 +172,17 @@ export function UserSuspensionPanel({
             <Stack gap={4}>
               {user.disabledUntil && (
                 <Text size="sm">
-                  解除予定: {fmt.dateTime(user.disabledUntil)}
+                  {tr("settings.userSuspensionPanel.releaseScheduledLabel", {
+                    date: fmt.dateTime(user.disabledUntil),
+                  })}
                 </Text>
               )}
               {user.disabledReason && (
-                <Text size="sm">理由: {user.disabledReason}</Text>
+                <Text size="sm">
+                  {tr("settings.userSuspensionPanel.reasonLabel", {
+                    reason: user.disabledReason,
+                  })}
+                </Text>
               )}
               {state.isAwaitingRestore && (
                 <Text c="dimmed" size="xs">
@@ -207,7 +224,7 @@ export function UserSuspensionPanel({
                   }
                 >
                   {requiresApproval
-                    ? "復帰の承認を依頼"
+                    ? tr("settings.userSuspensionPanel.requestRestoreApproval")
                     : tr("settings.userSuspensionPanel.restoreNow")}
                 </PrimaryButton>
               </Group>
@@ -225,7 +242,12 @@ export function UserSuspensionPanel({
             <>
               <SegmentedControl
                 data={[
-                  { label: "一時停止", value: "temporary" },
+                  {
+                    label: tr(
+                      "settings.userSuspensionPanel.temporarySuspension",
+                    ),
+                    value: "temporary",
+                  },
                   {
                     label: tr(
                       "settings.userSuspensionPanel.suspendedIndefinitely",
@@ -261,7 +283,9 @@ export function UserSuspensionPanel({
                 }
                 disabled={!suspendCheck.ok}
                 label={
-                  requiresApproval ? "停止の理由" : tr("common.reasonOptional")
+                  requiresApproval
+                    ? tr("settings.userSuspensionPanel.reasonForSuspension")
+                    : tr("common.reasonOptional")
                 }
                 maxRows={4}
                 minRows={2}
@@ -280,7 +304,9 @@ export function UserSuspensionPanel({
                   onClick={confirmSuspend}
                 >
                   {requiresApproval
-                    ? "停止の承認を依頼"
+                    ? tr(
+                        "settings.userSuspensionPanel.requestSuspensionApproval",
+                      )
                     : tr("settings.userSuspensionPanel.suspend3")}
                 </DangerButton>
               </Group>

@@ -40,7 +40,11 @@ export function ForcedPasswordChangeForm() {
     e.preventDefault();
     setError(null);
     if (newPassword.length < MIN_LENGTH) {
-      setError(`新しいパスワードは ${MIN_LENGTH} 文字以上にしてください`);
+      setError(
+        tr("auth.forcedPasswordChangeForm.newPasswordMustBeAtLeast", {
+          minLength: MIN_LENGTH,
+        }),
+      );
       return;
     }
     if (newPassword !== confirmPassword) {
@@ -112,7 +116,12 @@ export function ForcedPasswordChangeForm() {
             />
             <PasswordInput
               autoComplete="new-password"
-              description={`${MIN_LENGTH} 文字以上`}
+              description={tr(
+                "auth.forcedPasswordChangeForm.atLeastNCharacters",
+                {
+                  minLength: MIN_LENGTH,
+                },
+              )}
               label={tr("common.newPassword")}
               onChange={(e) => setNewPassword(e.currentTarget.value)}
               required
