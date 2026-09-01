@@ -5,6 +5,7 @@
   "scripts": {
     "lint": "pnpm -r lint",
     "test": "pnpm -r test",
-    "build": "pnpm -r build"
+    "build": "pnpm -r build",
+    "messages:editor": "node tools/messages-editor/server.mjs"
   }
 }
