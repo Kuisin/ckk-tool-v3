@@ -26,6 +26,7 @@ import {
   PORTABLE_KIND,
   PORTABLE_VERSION,
   type PortableFile,
+  type PortableItem,
   type PortableTemplate,
 } from "@/lib/inspection-template-io";
 import { type ActionResult, actionError, actionOk } from "@/lib/server-action";
@@ -58,13 +59,13 @@ export async function exportTemplates(
       name: t.name as PortableTemplate["name"],
       // **id ではなくコード**で持つ（環境をまたぐと id は別物を指す）
       relatedProcessStepCode: t.relatedProcessStep?.code ?? null,
-      samplingMode: t.samplingMode,
+      samplingMode: t.samplingMode as PortableTemplate["samplingMode"],
       samplingValue: t.samplingValue ? Number(t.samplingValue) : null,
-      recordStyle: t.recordStyle,
+      recordStyle: t.recordStyle as PortableTemplate["recordStyle"],
       isActive: t.isActive,
       items: t.items.map((i) => ({
         itemName: i.itemName as PortableTemplate["items"][number]["itemName"],
-        inputType: i.inputType,
+        inputType: i.inputType as PortableItem["inputType"],
         unit: i.unit,
         toleranceMin: i.toleranceMin ? Number(i.toleranceMin) : null,
         toleranceMax: i.toleranceMax ? Number(i.toleranceMax) : null,
@@ -131,9 +132,9 @@ export async function importTemplates(
           version,
           name: t.name,
           relatedProcessStepId,
-          samplingMode: t.samplingMode,
+          samplingMode: t.samplingMode as PortableTemplate["samplingMode"],
           samplingValue: t.samplingMode === "ALL" ? null : t.samplingValue,
-          recordStyle: t.recordStyle,
+          recordStyle: t.recordStyle as PortableTemplate["recordStyle"],
           isActive: t.isActive,
           items: {
             create: t.items.map((item, index) => ({
