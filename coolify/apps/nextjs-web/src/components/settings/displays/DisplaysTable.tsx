@@ -3,30 +3,36 @@
 /**
  * DisplaysTable — ディスプレイ一覧（SY09「ディスプレイ」タブ）。
  *
- * **共有端末と同じ 3 段**で登録する: 作る（オープン）→ リンク → 有効化。
- * リンクコードは端末と同じ 12 桁で、入力欄の作りも合わせてある
- * （現場が「どっちのコードか」を意識しなくて済むように）。
+ * **共有端末タブと同じ作りにする。** 隣り合うタブなのに、片方は共通の
+ * DataTable、もう片方は手書きの行（固定幅の Group を並べたもの）だった。
+ * 見た目が違うだけでなく、狭い画面で列が潰れる・並べ替えができない・
+ * 列の出し入れができない・ページ送りが無いという差も全部そこから来ていた。
+ * DataTable に載せ替えたので、モバイルの 1 行 1 カード表示（design.md §8.1）も
+ * 列設定の保存も、共有端末とまったく同じ挙動になる。
+ *
+ * 状態の言葉も StatusBadge の `DisplayDevice` に寄せた（同じ DB の値が
+ * タブによって違う言葉で出ていた）。
+ *
+ * **登録は共有端末と同じ 3 段**: 作る（オープン）→ リンク → 有効化。
+ * リンクコードは 12 桁で **QR も同じ形式**なので、スキャナも共用する
+ * （LinkQrScanner）。以前ここだけ手入力しか無く、脚立の上のテレビに出た
+ * 12 桁を読み上げてもらうことになっていた。
  *
  * オンライン判定はサーバー計算の初期値から始め、WS / ポーリングが繋がったら
  * そちらで上書きする（useDisplayPresence）。
- *
- * **リンクは QR で読める**（共有端末と同じ LinkQrScanner を使う）。以前は
- * ここだけ手入力しか無く、脚立の上のテレビに出た 12 桁を読み上げてもらう
- * ことになっていた。どちらの機器も裸の 12 桁を出すので、スキャナは 1 つで足りる。
  */
 
 import {
-  Badge,
+  Alert,
   Group,
-  Modal,
   Select,
+  SimpleGrid,
   Stack,
   Text,
   TextInput,
 } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
-import { IconPlus, IconSearch } from "@tabler/icons-react";
-import Link from "next/link";
+import { IconDeviceTv, IconSearch } from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
 import { useMemo, useState, useTransition } from "react";
 import {
@@ -35,24 +41,32 @@ import {
   linkDisplayToProfile,
 } from "@/app/(dashboard)/settings/kiosk-devices/displays/actions";
 import { useFormat } from "@/components/layout/PreferencesProvider";
-import { PrimaryButton, SecondaryButton } from "@/components/ui/buttons";
+import { CreateButton } from "@/components/ui/buttons";
+import {
+  type Column,
+  DataTable,
+  type RowAction,
+} from "@/components/ui/DataTable";
+import { ModalShell } from "@/components/ui/modals";
+import { StatusBadge, statusOptions } from "@/components/ui/StatusBadge";
 import { ListShell } from "@/components/ui/shells";
+import { useIsMobile } from "@/hooks/useViewport";
 import { formatCode, normalizeCode } from "@/lib/crockford";
 import { DISPLAY_TEMPLATES } from "@/lib/display-templates";
 import type { DisplayRow } from "@/lib/displays-admin";
+import { OnlineDot } from "../kiosk/KioskDevicesTable";
 import { LinkQrScanner } from "../kiosk/LinkQrScanner";
 import {
   type DisplayPresenceEntry,
   useDisplayPresence,
 } from "./useDisplayPresence";
 
-const STATUS_LABEL: Record<string, { label: string; color: string }> = {
-  PENDING: { label: "リンク待ち", color: "gray" },
-  LINKED: { label: "有効化待ち", color: "yellow" },
-  ACTIVE: { label: "有効", color: "green" },
-  DISABLED: { label: "一時停止", color: "gray" },
-  REVOKED: { label: "失効", color: "red" },
-};
+/**
+ * 新しい画面が最初に映すもの。**空にしない** — 設置の日に表示内容まで
+ * 決まっていないことは普通にあり、そこで真っ黒な画面ができると
+ * 「壊れている」と報告されてしまう。細かい設定は詳細画面で詰める。
+ */
+const DEFAULT_TEMPLATE = "production";
 
 /** live なデータがあればそちらが勝つ。有効以外は常にオフライン扱い。 */
 export function resolveOnline(
@@ -72,25 +86,28 @@ type Props = {
 
 export function DisplaysTable({ rows, plantOptions }: Props) {
   const { presence, live } = useDisplayPresence();
+  const isMobile = useIsMobile();
   const fmt = useFormat();
   const router = useRouter();
   const [pending, startTransition] = useTransition();
 
-  const [query, setQuery] = useState("");
+  const [search, setSearch] = useState<string | null>(null);
+  const [plant, setPlant] = useState<string | null>(null);
   const [status, setStatus] = useState<string | null>(null);
   const [createOpen, setCreateOpen] = useState(false);
   const [linkTarget, setLinkTarget] = useState<DisplayRow | null>(null);
 
   const filtered = useMemo(() => {
-    const q = query.trim().toLowerCase();
+    const q = search?.trim().toLowerCase() ?? "";
     return rows.filter((r) => {
       if (status && r.status !== status) return false;
+      if (plant && String(r.plantId ?? "") !== plant) return false;
       if (!q) return true;
       return [r.name, r.location, r.contentLabel, r.plantName]
         .filter(Boolean)
         .some((v) => String(v).toLowerCase().includes(q));
     });
-  }, [rows, query, status]);
+  }, [rows, search, plant, status]);
 
   const run = (
     fn: () => Promise<{ ok: boolean; error?: string }>,
@@ -112,140 +129,216 @@ export function DisplaysTable({ rows, plantOptions }: Props) {
       router.refresh();
     });
 
+  const columns: Column<DisplayRow>[] = [
+    {
+      key: "name",
+      header: "ディスプレイ名",
+      sortable: true,
+      render: (r) =>
+        r.name ? (
+          <Text fw={500} size="sm" truncate>
+            {r.name}
+          </Text>
+        ) : (
+          <Text c="dimmed" size="sm">
+            （未設定）
+          </Text>
+        ),
+      sortValue: (r) => r.name ?? "",
+    },
+    {
+      key: "location",
+      header: "場所",
+      hideable: true,
+      render: (r) => (
+        <Text c={r.location ? undefined : "dimmed"} size="sm" truncate>
+          {r.location ?? "—"}
+        </Text>
+      ),
+    },
+    {
+      key: "plant",
+      header: "拠点",
+      sortable: true,
+      render: (r) => (
+        <Text c={r.plantName ? undefined : "dimmed"} size="sm" truncate>
+          {r.plantName ?? "—"}
+        </Text>
+      ),
+      sortValue: (r) => r.plantName ?? "",
+    },
+    {
+      key: "content",
+      header: "表示内容",
+      sortable: true,
+      render: (r) => (
+        <Text size="sm" truncate>
+          {r.contentLabel}
+        </Text>
+      ),
+      sortValue: (r) => r.contentLabel,
+    },
+    {
+      key: "status",
+      header: "状態",
+      width: 110,
+      sortable: true,
+      render: (r) => <StatusBadge entity="DisplayDevice" status={r.status} />,
+      sortValue: (r) => r.status,
+    },
+    {
+      key: "online",
+      header: "オンライン",
+      width: 120,
+      sortable: true,
+      render: (r) =>
+        r.status === "ACTIVE" ? (
+          <OnlineDot online={resolveOnline(r, presence, live)} />
+        ) : (
+          <Text c="dimmed" size="sm">
+            —
+          </Text>
+        ),
+      sortValue: (r) => (resolveOnline(r, presence, live) ? 0 : 1),
+    },
+    {
+      key: "scalePercent",
+      header: "表示倍率",
+      width: 100,
+      align: "right",
+      hideable: true,
+      sortable: true,
+      render: (r) => (
+        <Text size="sm" style={{ fontVariantNumeric: "tabular-nums" }}>
+          {r.scalePercent}%
+        </Text>
+      ),
+      sortValue: (r) => r.scalePercent,
+    },
+    {
+      key: "lastSeenAt",
+      header: "最終確認",
+      width: 160,
+      hideable: true,
+      sortable: true,
+      render: (r) => (
+        <Text c="dimmed" size="sm">
+          {r.lastSeenAt ? fmt.dateTime(r.lastSeenAt) : "—"}
+        </Text>
+      ),
+      sortValue: (r) => r.lastSeenAt?.toISOString() ?? "",
+    },
+  ];
+
+  /**
+   * 行の操作は**次にすべき 1 手だけ**（共有端末と同じ考え方）。
+   * 有効になった後の操作は詳細画面に置く — 一覧から失効させない。
+   */
+  const rowActions = (r: DisplayRow): RowAction<DisplayRow>[] => {
+    if (r.status === "PENDING") {
+      return [
+        { label: "ディスプレイをリンク", onAction: () => setLinkTarget(r) },
+      ];
+    }
+    if (r.status === "LINKED") {
+      return [
+        {
+          label: "有効化",
+          onAction: () => run(() => activateDisplay(r.id), "有効化しました"),
+        },
+      ];
+    }
+    return [];
+  };
+
   return (
     <>
       <ListShell
         action={
-          <PrimaryButton
-            leftSection={<IconPlus size={16} />}
+          <CreateButton
+            loading={pending}
             onClick={() => setCreateOpen(true)}
+            style={{ flexShrink: 0 }}
           >
-            ディスプレイを追加
-          </PrimaryButton>
+            {isMobile ? "作成" : "ディスプレイを追加"}
+          </CreateButton>
         }
-        breadcrumbs={[{ label: "システム" }, { label: "端末管理" }]}
-        embedded
+        breadcrumbs={["システム", "端末管理"]}
         filters={
-          <Select
-            clearable
-            data={Object.entries(STATUS_LABEL).map(([value, v]) => ({
-              value,
-              label: v.label,
-            }))}
-            onChange={setStatus}
-            placeholder="状態"
-            value={status}
-            w={150}
-          />
+          <>
+            <Select
+              clearable
+              data={plantOptions}
+              onChange={setPlant}
+              placeholder="拠点"
+              searchable
+              style={isMobile ? { flex: 1 } : undefined}
+              value={plant}
+              w={isMobile ? undefined : 180}
+            />
+            <Select
+              clearable
+              data={statusOptions("DisplayDevice")}
+              onChange={setStatus}
+              placeholder="状態"
+              style={isMobile ? { flex: 1 } : undefined}
+              value={status}
+              w={isMobile ? undefined : 140}
+            />
+          </>
         }
         onReset={() => {
-          setQuery("");
+          setSearch(null);
+          setPlant(null);
           setStatus(null);
         }}
         search={
           <TextInput
             leftSection={<IconSearch size={14} />}
-            onChange={(e) => setQuery(e.currentTarget.value)}
-            placeholder="名前・設置場所・表示内容で検索"
-            value={query}
+            onChange={(e) => setSearch(e.currentTarget.value || null)}
+            placeholder="名前 / 場所 / 表示内容..."
+            value={search ?? ""}
           />
         }
-        title="ディスプレイ"
+        title="端末管理"
       >
-        {filtered.length === 0 ? (
-          <Text c="dimmed" py="xl" size="sm" ta="center">
-            {rows.length === 0
-              ? "まだディスプレイがありません。「ディスプレイを追加」で作ってから、画面に出るリンクコードで結びます。"
-              : "条件に一致するディスプレイがありません"}
-          </Text>
-        ) : (
-          <Stack gap={0}>
-            {filtered.map((row, i) => {
-              const online = resolveOnline(row, presence, live);
-              const s = STATUS_LABEL[row.status] ?? STATUS_LABEL.PENDING;
-              return (
-                <Group
-                  align="center"
-                  gap="md"
-                  key={row.id}
-                  py="sm"
-                  style={{
-                    borderTop:
-                      i === 0
-                        ? undefined
-                        : "1px solid var(--mantine-color-default-border)",
-                  }}
-                  wrap="nowrap"
-                >
-                  <Badge
-                    color={online ? "green" : "gray"}
-                    size="sm"
-                    variant={online ? "filled" : "light"}
-                    w={80}
-                  >
-                    {online ? "オンライン" : "オフライン"}
-                  </Badge>
-
-                  <Link
-                    href={`/settings/kiosk-devices/displays/${row.id}`}
-                    style={{
-                      color: "inherit",
-                      flex: 1,
-                      minWidth: 0,
-                      textDecoration: "none",
-                    }}
-                  >
-                    <Stack gap={2}>
-                      <Text fw={600} size="sm" truncate>
-                        {row.name ?? "（名称未設定）"}
-                      </Text>
-                      <Text c="dimmed" size="xs" truncate>
-                        {[row.plantName, row.location]
-                          .filter(Boolean)
-                          .join(" / ") || "設置場所未設定"}
-                      </Text>
-                    </Stack>
-                  </Link>
-
-                  <Text size="sm" w={180}>
-                    {row.contentLabel}
-                  </Text>
-
-                  <Badge color={s.color} size="sm" variant="light" w={90}>
-                    {s.label}
-                  </Badge>
-
-                  {/* 次にすべき 1 手だけを出す（端末管理と同じ考え方） */}
-                  <Group gap="xs" justify="flex-end" w={130} wrap="nowrap">
-                    {row.status === "PENDING" && (
-                      <SecondaryButton
-                        disabled={pending}
-                        onClick={() => setLinkTarget(row)}
-                      >
-                        リンク
-                      </SecondaryButton>
-                    )}
-                    {row.status === "LINKED" && (
-                      <PrimaryButton
-                        disabled={pending}
-                        onClick={() =>
-                          run(() => activateDisplay(row.id), "有効化しました")
-                        }
-                      >
-                        有効化
-                      </PrimaryButton>
-                    )}
-                    {row.status === "ACTIVE" && (
-                      <Text c="dimmed" size="xs" ta="right">
-                        {row.lastSeenAt ? fmt.dateTime(row.lastSeenAt) : "—"}
-                      </Text>
-                    )}
-                  </Group>
-                </Group>
-              );
-            })}
-          </Stack>
-        )}
+        <DataTable
+          columns={columns}
+          data={filtered}
+          emptyIcon={<IconDeviceTv size={28} />}
+          emptyMessage={
+            rows.length === 0
+              ? "ディスプレイがありません。「ディスプレイを追加」で作ってから、テレビに出るリンクコードで結びます"
+              : "条件に一致するディスプレイがありません"
+          }
+          getRowId={(r) => r.id}
+          onRowClick={(r) =>
+            router.push(`/settings/kiosk-devices/displays/${r.id}`)
+          }
+          renderCard={(r) => (
+            <Stack gap={3} style={{ minWidth: 0 }}>
+              <Text fw={600} size="sm" truncate>
+                {r.name ?? "（未設定）"}
+              </Text>
+              <Text c="dimmed" size="xs" truncate>
+                {[r.plantName, r.location].filter(Boolean).join(" / ") || "—"}
+              </Text>
+              <Group gap="xs" wrap="wrap">
+                <StatusBadge entity="DisplayDevice" status={r.status} />
+                {r.status === "ACTIVE" && (
+                  <OnlineDot online={resolveOnline(r, presence, live)} />
+                )}
+                <Text c="dimmed" size="xs" truncate>
+                  {r.contentLabel}
+                </Text>
+              </Group>
+              <Text c="dimmed" size="xs">
+                最終確認 {r.lastSeenAt ? fmt.dateTime(r.lastSeenAt) : "—"}
+              </Text>
+            </Stack>
+          )}
+          rowActions={rowActions}
+        />
       </ListShell>
 
       <CreateDisplayModal
@@ -275,14 +368,7 @@ export function DisplaysTable({ rows, plantOptions }: Props) {
   );
 }
 
-// ── 追加（プロファイルを先に作る） ──────────────────────────────────────────
-
-/**
- * 新しい画面が最初に映すもの。**空にしない** — 設置の日に表示内容まで
- * 決まっていないことは普通にあり、そこで真っ黒な画面ができると
- * 「壊れている」と報告されてしまう。細かい設定は詳細画面で詰める。
- */
-const DEFAULT_TEMPLATE = "production";
+// ── 追加（ハードウェアより先に作る） ────────────────────────────────────────
 
 function CreateDisplayModal({
   opened,
@@ -309,77 +395,72 @@ function CreateDisplayModal({
   const [templateKey, setTemplateKey] = useState<string>(DEFAULT_TEMPLATE);
 
   return (
-    <Modal
+    <ModalShell
+      confirmDisabled={!nameJa.trim()}
+      confirmLabel="作成"
+      loading={pending}
       onClose={onClose}
+      onConfirm={() =>
+        onSubmit({
+          nameJa,
+          location: location || undefined,
+          plantId: plantId ? Number(plantId) : null,
+          contentType: "APP_PAGE",
+          // 設定は既定のまま作る（詳細画面で詰める）
+          contentConfig: { page: templateKey, options: {} },
+        })
+      }
       opened={opened}
+      size="md"
       title="ディスプレイを追加"
-      withinPortal
     >
-      <Stack gap="md">
-        <Text c="dimmed" size="sm">
-          先にここで作ってから、画面に出るリンクコードで結びます（共有端末と
-          同じ手順です）。
-        </Text>
-        <TextInput
-          description="現場の人が呼ぶ名前（例: A ライン 入口）"
-          label="名前"
-          onChange={(e) => setNameJa(e.currentTarget.value)}
-          placeholder="A ライン 入口"
-          value={nameJa}
-          withAsterisk
-        />
-        <TextInput
-          label="設置場所"
-          onChange={(e) => setLocation(e.currentTarget.value)}
-          placeholder="1F 加工エリア"
-          value={location}
-        />
-        <Select
-          clearable
-          data={plantOptions}
-          label="拠点"
-          onChange={setPlantId}
-          placeholder="選択してください"
-          searchable
-          value={plantId}
-        />
-        <Select
-          data={DISPLAY_TEMPLATES.map((t) => ({
-            value: t.key,
-            label: t.label,
-          }))}
-          description="あとから詳細画面で変更・調整できます"
-          label="映す画面"
-          onChange={(v) => setTemplateKey(v ?? DEFAULT_TEMPLATE)}
-          value={templateKey}
-        />
-        <Group justify="flex-end">
-          <SecondaryButton disabled={pending} onClick={onClose}>
-            キャンセル
-          </SecondaryButton>
-          <PrimaryButton
-            disabled={!nameJa.trim()}
-            loading={pending}
-            onClick={() =>
-              onSubmit({
-                nameJa,
-                location: location || undefined,
-                plantId: plantId ? Number(plantId) : null,
-                contentType: "APP_PAGE",
-                // 設定は既定のまま作る（詳細画面で詰める）
-                contentConfig: { page: templateKey, options: {} },
-              })
-            }
-          >
-            作成
-          </PrimaryButton>
-        </Group>
+      <Stack gap="sm">
+        <Alert color="blue" variant="light">
+          オープン（リンク待ち）で作成されます。テレビの画面に出るリンクコードを
+          「ディスプレイをリンク」で読み取ってリンクした後、この画面から
+          有効化できます（共有端末と同じ手順です）。
+        </Alert>
+        <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="sm">
+          <TextInput
+            description="現場の人が呼ぶ名前"
+            label="名前"
+            onChange={(e) => setNameJa(e.currentTarget.value)}
+            placeholder="例: A ライン 入口"
+            value={nameJa}
+            withAsterisk
+          />
+          <TextInput
+            label="設置場所"
+            onChange={(e) => setLocation(e.currentTarget.value)}
+            placeholder="例: 1F 加工エリア"
+            value={location}
+          />
+          <Select
+            clearable
+            data={plantOptions}
+            label="拠点"
+            onChange={setPlantId}
+            placeholder="選択してください"
+            searchable
+            value={plantId}
+          />
+          <Select
+            data={DISPLAY_TEMPLATES.map((t) => ({
+              value: t.key,
+              label: t.label,
+            }))}
+            description="あとから詳細画面で変更・調整できます"
+            label="映す画面"
+            onChange={(v) => setTemplateKey(v ?? DEFAULT_TEMPLATE)}
+            value={templateKey}
+          />
+        </SimpleGrid>
       </Stack>
-    </Modal>
+    </ModalShell>
   );
 }
 
-// ── リンク（画面のコードを入力） ────────────────────────────────────────────
+// ── リンク（テレビに出ているコードを読む） ──────────────────────────────────
 
 function LinkDisplayModal({
   display,
@@ -395,15 +476,19 @@ function LinkDisplayModal({
   const [code, setCode] = useState("");
 
   return (
-    <Modal
+    <ModalShell
+      confirmDisabled={code.length !== 12}
+      confirmLabel="リンク"
+      loading={pending}
       onClose={onClose}
+      onConfirm={() => onSubmit(code)}
       opened={display !== null}
-      title={`リンク: ${display?.name ?? ""}`}
-      withinPortal
+      size="md"
+      title={`ディスプレイをリンク: ${display?.name ?? ""}`}
     >
-      <Stack gap="md">
+      <Stack gap="sm">
         <Text c="dimmed" size="sm">
-          ディスプレイの画面に出ている QR を読み取るか、12 文字のリンクコードを
+          テレビの画面に出ている QR を読み取るか、12 文字のリンクコードを
           入力してください。共有端末と同じ形式です。
         </Text>
         {/* 読み取れたらそのままリンクまで進める（脚立の上で読み上げさせない） */}
@@ -423,19 +508,7 @@ function LinkDisplayModal({
           styles={{ input: { fontFamily: "monospace", fontSize: 18 } }}
           value={formatCode(code)}
         />
-        <Group justify="flex-end">
-          <SecondaryButton disabled={pending} onClick={onClose}>
-            キャンセル
-          </SecondaryButton>
-          <PrimaryButton
-            disabled={code.length !== 12}
-            loading={pending}
-            onClick={() => onSubmit(code)}
-          >
-            リンク
-          </PrimaryButton>
-        </Group>
       </Stack>
-    </Modal>
+    </ModalShell>
   );
 }

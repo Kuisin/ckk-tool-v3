@@ -423,6 +423,32 @@ export const STATUS_MAPS = {
       color: "red",
     },
   },
+  /**
+   * 管理ディスプレイ（app.display_devices — SY09 の「ディスプレイ」タブ）。
+   *
+   * **共有端末と同じ状態・同じ言葉にする。** 隣り合うタブに並ぶのに、同じ DB の
+   * 値が片方で「一時停止」・もう片方で「無効」だと、別の状態なのか同じ状態なのかを
+   * 読む人が判断できない（i18n-glossary §3.12「端末は Active / Disabled」）。
+   */
+  DisplayDevice: {
+    PENDING: {
+      label: { ja: "リンク待ち", en: "Awaiting link", zh: "待关联" },
+      color: "gray",
+    },
+    LINKED: {
+      label: { ja: "有効化待ち", en: "Awaiting activation", zh: "待启用" },
+      color: "yellow",
+    },
+    ACTIVE: { label: { ja: "有効", en: "Active", zh: "启用" }, color: "green" },
+    DISABLED: {
+      label: { ja: "無効", en: "Disabled", zh: "停用" },
+      color: "gray",
+    },
+    REVOKED: {
+      label: { ja: "取り消し", en: "Revoked", zh: "已撤销" },
+      color: "red",
+    },
+  },
 } satisfies Record<string, StatusMap>;
 
 export type StatusEntity = keyof typeof STATUS_MAPS;

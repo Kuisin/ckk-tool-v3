@@ -27,6 +27,12 @@ import {
 } from "@mantine/core";
 import { modals } from "@mantine/modals";
 import { notifications } from "@mantine/notifications";
+import {
+  IconForbid,
+  IconPlayerPause,
+  IconTrash,
+  IconUnlink,
+} from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import {
@@ -39,14 +45,16 @@ import {
 } from "@/app/(dashboard)/settings/kiosk-devices/displays/actions";
 import { useFormat } from "@/components/layout/PreferencesProvider";
 import { AppTabs } from "@/components/ui/AppTabs";
-import { DangerButton, SecondaryButton } from "@/components/ui/buttons";
 import { EditablePanel } from "@/components/ui/EditablePanel";
 import { FieldValue } from "@/components/ui/FieldValue";
 import { PageHeader } from "@/components/ui/PageHeader";
+import { StatusBadge } from "@/components/ui/StatusBadge";
 import {
   type AuditEntry,
   AuditTimeline,
   FormActions,
+  type MenuItemDef,
+  ResourceActions,
   SummaryGrid,
 } from "@/components/ui/shells";
 import type { DisplayDetail } from "@/lib/displays-admin";
@@ -55,14 +63,6 @@ import {
   DisplayContentView,
 } from "./DisplayContentEditor";
 import { useDisplayPresence } from "./useDisplayPresence";
-
-const STATUS_LABEL: Record<string, { label: string; color: string }> = {
-  PENDING: { label: "リンク待ち", color: "gray" },
-  LINKED: { label: "有効化待ち", color: "yellow" },
-  ACTIVE: { label: "有効", color: "green" },
-  DISABLED: { label: "一時停止", color: "gray" },
-  REVOKED: { label: "失効", color: "red" },
-};
 
 type Props = {
   display: DisplayDetail;
@@ -90,7 +90,6 @@ export function DisplayDetailView({ display, plantOptions, audit }: Props) {
     (live
       ? (presence.get(display.id)?.isOnline ?? false)
       : display.initialOnline);
-  const status = STATUS_LABEL[display.status] ?? STATUS_LABEL.ACTIVE;
 
   const run = (
     fn: () => Promise<{ ok: boolean; error?: string }>,
@@ -139,6 +138,66 @@ export function DisplayDetailView({ display, plantOptions, audit }: Props) {
       onConfirm: () => run(() => revokeDisplay(display.id), "失効させました"),
     });
 
+  /**
+   * 主ボタンに出す「次にすべき 1 手」。状態ごとに 1 つだけ
+   * （共有端末の一覧と同じ考え方 — 選べる操作を並べるほど、何をすべきかが
+   *   かえって読めなくなる）。無ければボタンごと出さない。
+   */
+  const primaryAction =
+    display.status === "LINKED"
+      ? {
+          label: "有効化",
+          run: () => run(() => activateDisplay(display.id), "有効化しました"),
+        }
+      : display.status === "DISABLED"
+        ? {
+            label: "再開",
+            run: () =>
+              run(() => setDisplayEnabled(display.id, true), "再開しました"),
+          }
+        : null;
+
+  const menuItems: MenuItemDef[] = [
+    ...(display.status === "ACTIVE"
+      ? [
+          {
+            label: "一時停止",
+            icon: <IconPlayerPause size={14} />,
+            onClick: () =>
+              run(
+                () => setDisplayEnabled(display.id, false),
+                "一時停止しました",
+              ),
+          },
+        ]
+      : []),
+    ...(display.status !== "PENDING" && display.status !== "REVOKED"
+      ? [
+          {
+            label: "リンク解除",
+            icon: <IconUnlink size={14} />,
+            onClick: () =>
+              run(() => unlinkDisplay(display.id), "リンクを解除しました"),
+          },
+        ]
+      : []),
+    display.status === "REVOKED" || display.status === "PENDING"
+      ? {
+          label: "削除",
+          icon: <IconTrash size={14} />,
+          color: "red",
+          divider: true,
+          onClick: () => confirmDelete(),
+        }
+      : {
+          label: "失効",
+          icon: <IconForbid size={14} />,
+          color: "red",
+          divider: true,
+          onClick: () => confirmRevoke(),
+        },
+  ];
+
   const confirmDelete = () =>
     modals.openConfirmModal({
       title: "ディスプレイの削除",
@@ -157,60 +216,15 @@ export function DisplayDetailView({ display, plantOptions, audit }: Props) {
     <Stack gap="md">
       <PageHeader
         actions={
-          <Group gap="xs">
-            {display.status === "LINKED" && (
-              <SecondaryButton
-                loading={pending}
-                onClick={() =>
-                  run(() => activateDisplay(display.id), "有効化しました")
-                }
-              >
-                有効化
-              </SecondaryButton>
-            )}
-            {display.status === "ACTIVE" && (
-              <SecondaryButton
-                loading={pending}
-                onClick={() =>
-                  run(
-                    () => setDisplayEnabled(display.id, false),
-                    "一時停止しました",
-                  )
-                }
-              >
-                一時停止
-              </SecondaryButton>
-            )}
-            {display.status !== "PENDING" && display.status !== "REVOKED" && (
-              <SecondaryButton
-                loading={pending}
-                onClick={() =>
-                  run(() => unlinkDisplay(display.id), "リンクを解除しました")
-                }
-              >
-                リンク解除
-              </SecondaryButton>
-            )}
-            {display.status === "DISABLED" && (
-              <SecondaryButton
-                loading={pending}
-                onClick={() =>
-                  run(() => setDisplayEnabled(display.id, true), "再開しました")
-                }
-              >
-                再開
-              </SecondaryButton>
-            )}
-            {display.status === "REVOKED" || display.status === "PENDING" ? (
-              <DangerButton loading={pending} onClick={confirmDelete}>
-                削除
-              </DangerButton>
-            ) : (
-              <DangerButton loading={pending} onClick={confirmRevoke}>
-                失効
-              </DangerButton>
-            )}
-          </Group>
+          /* 操作は ResourceActions に預ける — 狭い画面では 5 つのボタンが
+             折り返して題名を押し出していた。モバイルでは ⋯ に畳まれる
+             （design.md §20.2）。「次にすべき 1 手」だけを主ボタンに出し、
+             残りはメニューへ。 */
+          <ResourceActions
+            editLabel={primaryAction?.label ?? ""}
+            menuItems={menuItems}
+            onEdit={primaryAction?.run}
+          />
         }
         breadcrumbs={[
           { label: "システム" },
@@ -220,6 +234,8 @@ export function DisplayDetailView({ display, plantOptions, audit }: Props) {
         title={display.name ?? "（名称未設定）"}
       />
 
+      {/* 状態の言葉は共有端末と共通（StatusBadge の DisplayDevice）。
+          オンラインは状態とは別の軸なので、同じ行に並べて出す。 */}
       <Group gap="sm">
         <Badge
           color={online ? "green" : "gray"}
@@ -228,9 +244,7 @@ export function DisplayDetailView({ display, plantOptions, audit }: Props) {
         >
           {online ? "オンライン" : "オフライン"}
         </Badge>
-        <Badge color={status.color} size="lg" variant="light">
-          {status.label}
-        </Badge>
+        <StatusBadge entity="DisplayDevice" size="lg" status={display.status} />
       </Group>
 
       {display.status === "PENDING" && (
