@@ -25,6 +25,8 @@ const TWINS = [
   "workflow-core.ts",
   "workflow-core.test.ts",
   "inventory.ts",
+  "inventory-note-core.ts",
+  "inventory-note-core.test.ts",
   "inspection-core.ts",
   "inspection-core.test.ts",
   "qr-payload.ts",

@@ -13,6 +13,7 @@
 import type { Prisma as PrismaNS } from "../../generated/client/client";
 import { getCurrentActorId, recordAudit } from "./audit";
 import { prisma } from "./db";
+import { encodeInventoryNote } from "./inventory-note-core";
 import {
   computeBranchSemiFinishedQuantity,
   computeFinishedQuantity,
@@ -93,8 +94,14 @@ export async function applyTransaction(
           data,
         });
   if (updated.count !== 1) {
+    // 呼び出し側（onDeliveryOrderShippedTx の catch）が message を
+    // decodeInventoryNote() で判別して表示用に翻訳する — 生の日本語を
+    // messageに残すと string.startsWith() の判定が壊れる。
     throw new Error(
-      `在庫が不足しています（${input.transactionType} ${input.quantity}）`,
+      encodeInventoryNote("insufficientStock", {
+        transactionType: input.transactionType,
+        quantity: input.quantity,
+      }),
     );
   }
 }
@@ -238,7 +245,9 @@ export async function onWorkOrderCompleted(workOrderId: string): Promise<void> {
         quantity: finishedQty,
         referenceType: "work_order",
         referenceId: wo.id,
-        notes: `指示書 #${wo.workOrderNumber} 完了入庫`,
+        notes: encodeInventoryNote("workOrderCompletedFinished", {
+          workOrderNumber: wo.workOrderNumber,
+        }),
       });
     }
     if (semiTotal > 0) {
@@ -259,7 +268,9 @@ export async function onWorkOrderCompleted(workOrderId: string): Promise<void> {
         quantity: semiTotal,
         referenceType: "work_order",
         referenceId: wo.id,
-        notes: `指示書 #${wo.workOrderNumber} 半製品入庫`,
+        notes: encodeInventoryNote("workOrderCompletedSemiFinished", {
+          workOrderNumber: wo.workOrderNumber,
+        }),
       });
     }
     // 素材予約の消費（監査 P2-1）: この WO の MATERIAL 予約を RELEASE +
@@ -280,7 +291,12 @@ export async function onWorkOrderCompleted(workOrderId: string): Promise<void> {
         quantity: Number(r.quantity),
         referenceType: "work_order",
         referenceId: wo.id,
-        notes: `指示書 #${wo.workOrderNumber} 完了による素材予約解除`,
+        notes: encodeInventoryNote(
+          "workOrderCompletedMaterialReservationReleased",
+          {
+            workOrderNumber: wo.workOrderNumber,
+          },
+        ),
       });
       // PG は tx 内エラー後の継続が不可のため、残量を事前確認してから OUT。
       // 台帳が実態より少なければ残量分だけ消費（不足分は警告のみ — 完了を
@@ -298,11 +314,14 @@ export async function onWorkOrderCompleted(workOrderId: string): Promise<void> {
           quantity: consume,
           referenceType: "work_order",
           referenceId: wo.id,
-          notes: `指示書 #${wo.workOrderNumber} 素材消費`,
+          notes: encodeInventoryNote("workOrderMaterialConsumed", {
+            workOrderNumber: wo.workOrderNumber,
+          }),
         });
       }
       if (consume < Number(r.quantity)) {
         console.warn(
+          // i18n-ignore — サーバーログのみ（画面には出ない）
           `[inventory] 素材消費を一部スキップ（台帳残不足 ${consume}/${Number(r.quantity)}）: WO #${wo.workOrderNumber}`,
         );
       }
@@ -342,7 +361,9 @@ export async function onWorkOrderCompleted(workOrderId: string): Promise<void> {
             quantity: take,
             referenceType: "work_order",
             referenceId: wo.id,
-            notes: `指示書 #${wo.workOrderNumber} 在庫分消費（引当解除）`,
+            notes: encodeInventoryNote("fromStockConsumedReleased", {
+              workOrderNumber: wo.workOrderNumber,
+            }),
           });
           await applyTransaction(tx, {
             inventoryType: "PRODUCT",
@@ -351,7 +372,9 @@ export async function onWorkOrderCompleted(workOrderId: string): Promise<void> {
             quantity: take,
             referenceType: "work_order",
             referenceId: wo.id,
-            notes: `指示書 #${wo.workOrderNumber} 在庫分消費（ロット #${wo.workOrderNumber} へ付け替え）`,
+            notes: encodeInventoryNote("fromStockConsumedReassigned", {
+              workOrderNumber: wo.workOrderNumber,
+            }),
           });
         }
         if (take >= Number(r.quantity)) {
@@ -369,6 +392,7 @@ export async function onWorkOrderCompleted(workOrderId: string): Promise<void> {
       }
       if (needed > 0) {
         console.warn(
+          // i18n-ignore — サーバーログのみ（画面には出ない）
           `[inventory] 在庫分消費を一部スキップ（引当/台帳不足 残 ${needed}）: WO #${wo.workOrderNumber}`,
         );
       }
@@ -435,7 +459,10 @@ export async function onDeliveryOrderShippedTx(
       });
       if (invRows.length === 0) {
         throw new Error(
-          `ロット ${item.lotNumber ?? "-"} の在庫台帳がありません（製品 ${item.productId}）。指示書完了または棚卸調整で入庫してから出荷してください`,
+          encodeInventoryNote("lotInventoryMissing", {
+            lotNumber: item.lotNumber ?? "-",
+            productId: item.productId,
+          }),
         );
       }
       let remaining = item.quantity;
@@ -450,13 +477,16 @@ export async function onDeliveryOrderShippedTx(
           quantity: take,
           referenceType: "delivery_order",
           referenceId: ref,
-          notes: `出荷 ${ref}`,
+          notes: encodeInventoryNote("shipped", { ref }),
         });
         remaining -= take;
       }
       if (remaining > 0) {
         throw new Error(
-          `在庫が不足しています（OUT ${item.quantity}）: ロット ${item.lotNumber ?? "-"}`,
+          encodeInventoryNote("outOfStockOnShip", {
+            quantity: item.quantity,
+            lotNumber: item.lotNumber ?? "-",
+          }),
         );
       }
     } else {
@@ -474,7 +504,7 @@ export async function onDeliveryOrderShippedTx(
         quantity: item.quantity,
         referenceType: "delivery_order",
         referenceId: ref,
-        notes: `在庫保管 ${ref}`,
+        notes: encodeInventoryNote("stockStorage", { ref }),
       });
     }
   }
@@ -514,7 +544,7 @@ export async function onDeliveryOrderShippedTx(
           quantity: release,
           referenceType: "delivery_order",
           referenceId: ref,
-          notes: `出荷による予約解除 ${ref}`,
+          notes: encodeInventoryNote("shippedReservationReleased", { ref }),
         });
         if (release >= Number(r.quantity)) {
           await tx.inventoryReservation.update({
@@ -582,7 +612,7 @@ export async function onMaterialReceipt(receiptId: string): Promise<void> {
       quantity: Number(r.quantity),
       referenceType: "material_receipt",
       referenceId: r.id,
-      notes: "素材入荷",
+      notes: encodeInventoryNote("materialReceived"),
     });
   });
 }
@@ -611,7 +641,7 @@ export async function reserveProductStock(
   });
   // 確定前（枝番なし・製品未特定）の明細は引当対象にならない。
   if (so.branch == null || so.productId == null) {
-    throw new Error("確定済みの注文明細のみ在庫照合できます");
+    throw new Error(encodeInventoryNote("onlyConfirmedLinesCanBeStockChecked"));
   }
   const productId = so.productId;
 
@@ -646,7 +676,7 @@ export async function reserveProductStock(
         quantity: take,
         referenceType: "order_line",
         referenceId: orderLineId,
-        notes: "§4 在庫照合による引当予約",
+        notes: encodeInventoryNote("reservedByStockCheck"),
       });
       await tx.inventoryReservation.create({
         data: {
@@ -667,7 +697,10 @@ export async function reserveProductStock(
       tableName: "order_lines",
       recordId: `ORD-${so.acceptanceYearMonth}-${String(so.acceptanceSeq).padStart(5, "0")}-${String(so.branch).padStart(2, "0")}`,
       after: {
-        note: `在庫照合: 引当 ${reservedNow} / 不足 ${remaining}`,
+        note: encodeInventoryNote("stockCheckReservedAndShortage", {
+          reservedNow,
+          shortage: remaining,
+        }),
         available,
       },
     });

@@ -2313,7 +2313,9 @@
       "enterTheRequiredItems": "Enter the required items ({items})",
       "failCount": "Fail {count}",
       "measuredValue": "Measured value",
-      "passedCountExceedsInspectedCountFor": "Passed count exceeds inspected count ({items})"
+      "passedCountExceedsInspectedCountFor": "Passed count exceeds inspected count ({items})",
+      "acceptPrefix": "Pass: {label}",
+      "goalPrefix": "Target: {label}"
     },
     "processListEditor": {
       "theChosenStepListSComposition": "The chosen step list's composition. To change steps or work hours, press Edit the step. Changes are saved as a new version.",
@@ -7652,6 +7654,11 @@
     "notANumber": "Not a number",
     "expressionIsEmpty": "The expression is empty"
   },
+  "displayContent": {
+    "selectAPageToShow": "Select a page to show",
+    "pageSettingsAreIncorrect": "The page settings are incorrect",
+    "enterUrlStartingWithHttp": "Enter a URL starting with http:// or https://"
+  },
   "loginAttempt": {
     "methods": {
       "PASSWORD": "Password",
@@ -7722,5 +7729,109 @@
       "PORTAL_MAIL_BLOCKED_DEV": "Portal: not on the dev allowlist",
       "UNKNOWN": "Unknown"
     }
+  },
+  "displayTemplates": {
+    "common": {
+      "plantLabel": "Filter by site",
+      "plantHelp": "If not chosen, all sites are shown",
+      "rowsLabel": "Rows per screen",
+      "rowsSuffix": "rows",
+      "rowsHelpDefault": "Anything that doesn't fit is paged automatically",
+      "daysSuffix": "days"
+    },
+    "production": {
+      "label": "Production status",
+      "description": "Lists in-progress work orders with their current step and assignee. A standard board for the line.",
+      "options": {
+        "includePending": {
+          "label": "Also show work orders not yet started",
+          "help": "Turning this off shows only work in progress"
+        }
+      }
+    },
+    "pending": {
+      "label": "Unprocessed / awaiting arrangement",
+      "description": "Lists order lines with no work order yet, sorted by nearest delivery date. Helps catch anything missed.",
+      "options": {
+        "days": {
+          "label": "Show up to how many days ahead"
+        },
+        "overdueOnly": {
+          "label": "Show only overdue items"
+        }
+      }
+    },
+    "shipping": {
+      "label": "Shipping schedule",
+      "description": "Lists upcoming delivery orders. For the wall at the shipping dock.",
+      "options": {
+        "days": {
+          "label": "Show up to how many days ahead"
+        }
+      }
+    },
+    "quality": {
+      "label": "Quality / defects",
+      "description": "Shows recent defect records with counts by type. Intended for the morning meeting.",
+      "options": {
+        "days": {
+          "label": "Aggregate over how many days back"
+        }
+      }
+    },
+    "announcement": {
+      "label": "Announcement",
+      "description": "Displays a fixed message in large text. For safety reminders and notices. Uses no data.",
+      "options": {
+        "message": {
+          "label": "Message",
+          "placeholder": "e.g. A safety inspection will be held today at 15:00"
+        },
+        "level": {
+          "label": "Appearance",
+          "choices": {
+            "info": "Normal (blue)",
+            "warn": "Caution (yellow)",
+            "alert": "Warning (red)"
+          }
+        },
+        "showClock": {
+          "label": "Show clock"
+        }
+      }
+    }
+  },
+  "inspectionLabels": {
+    "samplingAll": "All units",
+    "samplingAllWithCount": "All units ({count} pcs)",
+    "samplingPercent": "Sampling {pct}%",
+    "samplingPercentWithCount": "Sampling {pct}% ({count} pcs)",
+    "samplingCount": "Sampling {count} pcs",
+    "sampleInitial": "First article",
+    "sampleMid": "Interim article",
+    "sampleFinal": "Final article",
+    "sampleGeneric": "Product {n}",
+    "rangeBetween": "{min} to {max}",
+    "rangeAtLeast": "{min} or more",
+    "rangeAtMost": "{max} or less",
+    "listSeparator": ", "
+  },
+  "inventoryNote": {
+    "insufficientStock": "Insufficient stock ({transactionType} {quantity})",
+    "lotInventoryMissing": "No inventory record for lot {lotNumber} (product {productId}). Complete the work order or make a stock adjustment to receive it before shipping.",
+    "outOfStockOnShip": "Insufficient stock (OUT {quantity}): lot {lotNumber}",
+    "onlyConfirmedLinesCanBeStockChecked": "Only confirmed order lines can be stock-checked",
+    "workOrderCompletedFinished": "Work order #{workOrderNumber} completed — received",
+    "workOrderCompletedSemiFinished": "Work order #{workOrderNumber} — semi-finished goods received",
+    "workOrderCompletedMaterialReservationReleased": "Work order #{workOrderNumber} completed — material reservation released",
+    "workOrderMaterialConsumed": "Work order #{workOrderNumber} — material consumed",
+    "fromStockConsumedReleased": "Work order #{workOrderNumber} — from-stock consumption (allocation released)",
+    "fromStockConsumedReassigned": "Work order #{workOrderNumber} — from-stock consumption (reassigned to lot #{workOrderNumber})",
+    "shipped": "Shipped {ref}",
+    "stockStorage": "Stock storage {ref}",
+    "shippedReservationReleased": "Reservation released by shipment {ref}",
+    "materialReceived": "Material received",
+    "reservedByStockCheck": "Reserved by stock check (§4)",
+    "stockCheckReservedAndShortage": "Stock check: reserved {reservedNow} / short {shortage}"
   }
 }

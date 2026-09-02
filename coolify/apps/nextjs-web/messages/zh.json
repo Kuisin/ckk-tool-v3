@@ -2313,7 +2313,9 @@
       "enterTheRequiredItems": "请填写必填项目（{items}）",
       "failCount": "不合格 {count}",
       "measuredValue": "实测值",
-      "passedCountExceedsInspectedCountFor": "合格数超过检查数（{items}）"
+      "passedCountExceedsInspectedCountFor": "合格数超过检查数（{items}）",
+      "acceptPrefix": "合格：{label}",
+      "goalPrefix": "目标：{label}"
     },
     "processListEditor": {
       "theChosenStepListSComposition": "所选工序列表的构成。如需更改工序・作业时间请按「编辑工序」（变更将在保存时作为新版本保存）。",
@@ -7652,6 +7654,11 @@
     "notANumber": "不是数值",
     "expressionIsEmpty": "表达式为空"
   },
+  "displayContent": {
+    "selectAPageToShow": "请选择要显示的画面",
+    "pageSettingsAreIncorrect": "画面设置不正确",
+    "enterUrlStartingWithHttp": "请输入以 http:// 或 https:// 开头的网址"
+  },
   "loginAttempt": {
     "methods": {
       "PASSWORD": "密码",
@@ -7722,5 +7729,109 @@
       "PORTAL_MAIL_BLOCKED_DEV": "门户：不在开发环境许可列表中",
       "UNKNOWN": "未知"
     }
+  },
+  "displayTemplates": {
+    "common": {
+      "plantLabel": "按据点筛选",
+      "plantHelp": "不选择则显示所有据点",
+      "rowsLabel": "每屏显示件数",
+      "rowsSuffix": "件",
+      "rowsHelpDefault": "超出画面的部分会自动翻页",
+      "daysSuffix": "天"
+    },
+    "production": {
+      "label": "生产状况",
+      "description": "列出进行中的工单，附带当前工序和负责人。产线旁的常用画面。",
+      "options": {
+        "includePending": {
+          "label": "也显示尚未开始的工单",
+          "help": "关闭后仅显示正在进行的项目"
+        }
+      }
+    },
+    "pending": {
+      "label": "未处理・待安排",
+      "description": "按交期由近到远列出尚未生成工单的订单明细，用于发现遗漏的安排。",
+      "options": {
+        "days": {
+          "label": "显示到几天后的交期"
+        },
+        "overdueOnly": {
+          "label": "仅显示已逾期的项目"
+        }
+      }
+    },
+    "shipping": {
+      "label": "出货预定",
+      "description": "列出即将出货的出货单。适合出货场的墙面显示。",
+      "options": {
+        "days": {
+          "label": "显示到几天后"
+        }
+      }
+    },
+    "quality": {
+      "label": "品质・不良",
+      "description": "显示近期不良记录及各类别的件数，用于晨会。",
+      "options": {
+        "days": {
+          "label": "统计到几天前"
+        }
+      }
+    },
+    "announcement": {
+      "label": "通知",
+      "description": "以大字显示预设文字，用于安全提醒或事项通知。不使用任何数据。",
+      "options": {
+        "message": {
+          "label": "正文",
+          "placeholder": "例：今天 15:00 起进行安全检查"
+        },
+        "level": {
+          "label": "外观",
+          "choices": {
+            "info": "普通（蓝）",
+            "warn": "注意（黄）",
+            "alert": "警告（红）"
+          }
+        },
+        "showClock": {
+          "label": "显示时钟"
+        }
+      }
+    }
+  },
+  "inspectionLabels": {
+    "samplingAll": "全数",
+    "samplingAllWithCount": "全数（{count} 件）",
+    "samplingPercent": "抽检 {pct}%",
+    "samplingPercentWithCount": "抽检 {pct}%（{count} 件）",
+    "samplingCount": "抽检 {count} 件",
+    "sampleInitial": "首件",
+    "sampleMid": "中间件",
+    "sampleFinal": "末件",
+    "sampleGeneric": "产品 {n}",
+    "rangeBetween": "{min} 至 {max}",
+    "rangeAtLeast": "{min} 以上",
+    "rangeAtMost": "{max} 以下",
+    "listSeparator": "、"
+  },
+  "inventoryNote": {
+    "insufficientStock": "库存不足（{transactionType} {quantity}）",
+    "lotInventoryMissing": "批次 {lotNumber} 没有库存台账（产品 {productId}）。请先通过完成工单或库存调整入库后再出货",
+    "outOfStockOnShip": "库存不足（出库 {quantity}）：批次 {lotNumber}",
+    "onlyConfirmedLinesCanBeStockChecked": "只有已确定的订单明细可以进行库存核对",
+    "workOrderCompletedFinished": "工单 #{workOrderNumber} 完成入库",
+    "workOrderCompletedSemiFinished": "工单 #{workOrderNumber} 半成品入库",
+    "workOrderCompletedMaterialReservationReleased": "工单 #{workOrderNumber} 完成，解除材料预留",
+    "workOrderMaterialConsumed": "工单 #{workOrderNumber} 材料消耗",
+    "fromStockConsumedReleased": "工单 #{workOrderNumber} 库存分消耗（解除分配）",
+    "fromStockConsumedReassigned": "工单 #{workOrderNumber} 库存分消耗（转记到批次 #{workOrderNumber}）",
+    "shipped": "出货 {ref}",
+    "stockStorage": "库存保管 {ref}",
+    "shippedReservationReleased": "因出货解除预留 {ref}",
+    "materialReceived": "材料到货",
+    "reservedByStockCheck": "库存核对分配预留（§4）",
+    "stockCheckReservedAndShortage": "库存核对：已分配 {reservedNow} / 缺口 {shortage}"
   }
 }

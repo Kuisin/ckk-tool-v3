@@ -16,6 +16,7 @@ import { avatarUrl } from "@/lib/avatar";
 import { prisma } from "@/lib/db";
 import type { Formatters } from "@/lib/format";
 import type { Tr } from "@/lib/i18n";
+import { inventoryNoteLabel } from "@/lib/inventory-note-labels";
 import { getServerFormatters } from "@/lib/user-preferences";
 
 export type AuditAction =
@@ -152,8 +153,12 @@ function describeChange(
   tr: Tr,
 ): string {
   // システムイベント（SEED/MIGRATE 等）は after.note に人間向け説明を持つ。
+  // lib/inventory.ts などが書く note は構造化ノート（鍵+パラメータ）のことが
+  // あり、その場合はいま開いている人の言語で解決する（書いた瞬間の言語に
+  // 固定しない）。
   const note = (after as { note?: unknown } | null)?.note;
-  if (typeof note === "string" && note) return note;
+  if (typeof note === "string" && note)
+    return inventoryNoteLabel(tr, note) ?? note;
   if (action === "CREATE") return tr("common.create");
   if (action === "DELETE") return tr("common.delete");
   // 詳細表と同じ差分（入れ子は平らにして葉ごとに見る）。以前はここで

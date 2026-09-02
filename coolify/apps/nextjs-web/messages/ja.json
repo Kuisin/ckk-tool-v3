@@ -2313,7 +2313,9 @@
       "enterTheRequiredItems": "必須項目を入力してください（{items}）",
       "failCount": "不合格 {count}",
       "measuredValue": "実測値",
-      "passedCountExceedsInspectedCountFor": "合格数が検査数を超えています（{items}）"
+      "passedCountExceedsInspectedCountFor": "合格数が検査数を超えています（{items}）",
+      "acceptPrefix": "合格: {label}",
+      "goalPrefix": "目標: {label}"
     },
     "processListEditor": {
       "theChosenStepListSComposition": "選択した工程リストの構成です。工程・作業時間を変えるときは「工程を編集」を押してください（変更は保存時に新バージョンとして保存されます）。",
@@ -7652,6 +7654,11 @@
     "notANumber": "数値ではありません",
     "expressionIsEmpty": "式が空です"
   },
+  "displayContent": {
+    "selectAPageToShow": "表示する画面を選んでください",
+    "pageSettingsAreIncorrect": "画面の設定が正しくありません",
+    "enterUrlStartingWithHttp": "http:// または https:// で始まる URL を入力してください"
+  },
   "loginAttempt": {
     "methods": {
       "PASSWORD": "パスワード",
@@ -7722,5 +7729,109 @@
       "PORTAL_MAIL_BLOCKED_DEV": "ポータル: dev の許可リスト外",
       "UNKNOWN": "不明"
     }
+  },
+  "displayTemplates": {
+    "common": {
+      "plantLabel": "拠点で絞る",
+      "plantHelp": "選ばないと、すべての拠点を出します",
+      "rowsLabel": "1 画面に出す件数",
+      "rowsSuffix": "件",
+      "rowsHelpDefault": "画面に収まらない分は自動でページ送りします",
+      "daysSuffix": "日"
+    },
+    "production": {
+      "label": "生産状況",
+      "description": "進行中の指示書を、いま流れている工程と担当者つきで並べます。ライン脇の定番。",
+      "options": {
+        "includePending": {
+          "label": "着手前の指示書も出す",
+          "help": "切ると、いま作業中のものだけになります"
+        }
+      }
+    },
+    "pending": {
+      "label": "未処理・手配待ち",
+      "description": "まだ指示書が出ていない注文明細を、納期の近い順に並べます。手配漏れに気づくための画面。",
+      "options": {
+        "days": {
+          "label": "何日先の納期まで出すか"
+        },
+        "overdueOnly": {
+          "label": "納期を過ぎたものだけ出す"
+        }
+      }
+    },
+    "shipping": {
+      "label": "出荷予定",
+      "description": "これから出す出荷書を並べます。出荷場の壁向け。",
+      "options": {
+        "days": {
+          "label": "何日先まで出すか"
+        }
+      }
+    },
+    "quality": {
+      "label": "品質・不良",
+      "description": "直近の不良記録を、種類ごとの件数とともに出します。朝礼で使う想定。",
+      "options": {
+        "days": {
+          "label": "何日前までを集計するか"
+        }
+      }
+    },
+    "announcement": {
+      "label": "お知らせ",
+      "description": "決めた文章を大きく映します。安全喚起や連絡事項に。データは使いません。",
+      "options": {
+        "message": {
+          "label": "本文",
+          "placeholder": "例: 本日 15:00 より 安全点検を行います"
+        },
+        "level": {
+          "label": "見た目",
+          "choices": {
+            "info": "通常（青）",
+            "warn": "注意（黄）",
+            "alert": "警告（赤）"
+          }
+        },
+        "showClock": {
+          "label": "時計を出す"
+        }
+      }
+    }
+  },
+  "inspectionLabels": {
+    "samplingAll": "全数",
+    "samplingAllWithCount": "全数（{count}本）",
+    "samplingPercent": "抜取 {pct}%",
+    "samplingPercentWithCount": "抜取 {pct}%（{count}本）",
+    "samplingCount": "抜取 {count}本",
+    "sampleInitial": "初品",
+    "sampleMid": "中間品",
+    "sampleFinal": "最終品",
+    "sampleGeneric": "製品 {n}",
+    "rangeBetween": "{min} 〜 {max}",
+    "rangeAtLeast": "{min} 以上",
+    "rangeAtMost": "{max} 以下",
+    "listSeparator": "・"
+  },
+  "inventoryNote": {
+    "insufficientStock": "在庫が不足しています（{transactionType} {quantity}）",
+    "lotInventoryMissing": "ロット {lotNumber} の在庫台帳がありません（製品 {productId}）。指示書完了または棚卸調整で入庫してから出荷してください",
+    "outOfStockOnShip": "在庫が不足しています（OUT {quantity}）: ロット {lotNumber}",
+    "onlyConfirmedLinesCanBeStockChecked": "確定済みの注文明細のみ在庫照合できます",
+    "workOrderCompletedFinished": "指示書 #{workOrderNumber} 完了入庫",
+    "workOrderCompletedSemiFinished": "指示書 #{workOrderNumber} 半製品入庫",
+    "workOrderCompletedMaterialReservationReleased": "指示書 #{workOrderNumber} 完了による素材予約解除",
+    "workOrderMaterialConsumed": "指示書 #{workOrderNumber} 素材消費",
+    "fromStockConsumedReleased": "指示書 #{workOrderNumber} 在庫分消費（引当解除）",
+    "fromStockConsumedReassigned": "指示書 #{workOrderNumber} 在庫分消費（ロット #{workOrderNumber} へ付け替え）",
+    "shipped": "出荷 {ref}",
+    "stockStorage": "在庫保管 {ref}",
+    "shippedReservationReleased": "出荷による予約解除 {ref}",
+    "materialReceived": "素材入荷",
+    "reservedByStockCheck": "§4 在庫照合による引当予約",
+    "stockCheckReservedAndShortage": "在庫照合: 引当 {reservedNow} / 不足 {shortage}"
   }
 }

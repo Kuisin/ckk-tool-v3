@@ -27,6 +27,7 @@ import {
   parseDocKey,
 } from "@/lib/doc-number";
 import { type LocalizedText, localized } from "@/lib/format";
+import { decodeInventoryNote } from "@/lib/inventory-note-core";
 import { allocateDocumentKey } from "@/lib/numbering";
 import { lineShipStatus } from "@/lib/order-line-core";
 import {
@@ -980,14 +981,16 @@ export async function shipDeliveryOrder(number: string): Promise<ActionResult> {
       return actionError(e.message.slice("GUARD:".length));
     }
     // 在庫ガード（lib/inventory）の業務エラーはそのまま表示する。
-    // lib/inventory.ts が投げる原文（未訳）と突き合わせる判定式で、表示用の
-    // 文言ではない。lib/inventory.ts 側を訳すまではここも日本語のまま。
-    if (
-      e instanceof Error &&
-      // i18n-ignore
-      (e.message.startsWith("在庫が不足") || e.message.includes("在庫台帳"))
-    ) {
-      return actionError(e.message);
+    // lib/inventory.ts は message に構造化ノート（鍵+パラメータ、
+    // lib/inventory-note-core.ts）を積むので、ここで自分の言語に翻訳する
+    // （日本語の部分文字列一致には依存しない）。
+    if (e instanceof Error) {
+      const decoded = decodeInventoryNote(e.message);
+      if (decoded) {
+        return actionError(
+          tr(`inventoryNote.${decoded.key}`, decoded.params ?? {}),
+        );
+      }
     }
     return actionError(
       prismaErrorMessage(e, tr("shipping.deliveryOrderActions.shipFailed"), tr),
