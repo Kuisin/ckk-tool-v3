@@ -1,3 +1,4 @@
+import { getTranslations } from "next-intl/server";
 import { TrialEstimateTable } from "@/components/sales/trial-estimates/TrialEstimateTable";
 import { requireAppRead } from "@/lib/authz-page";
 import { getTrialPricingSettings } from "@/lib/system-settings";
@@ -13,16 +14,17 @@ export const dynamic = "force-dynamic";
 export default async function TrialEstimatesPage() {
   const denied = await requireAppRead("trial-estimates");
   if (denied) return denied;
-  const [rows, settings] = await Promise.all([
+  const [rows, settings, tr] = await Promise.all([
     fetchTrialEstimates(),
     getTrialPricingSettings(),
+    getTranslations(),
   ]);
 
   return (
     <TrialEstimateTable
       pricingOptions={toTrialPricingOptions(settings)}
       rows={rows}
-      toolTypeOptions={toToolTypeOptions(settings)}
+      toolTypeOptions={toToolTypeOptions(settings, tr)}
     />
   );
 }

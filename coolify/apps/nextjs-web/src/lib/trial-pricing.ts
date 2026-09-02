@@ -20,20 +20,20 @@ import {
   CENTERLESS,
   CORRECTION_FACTOR,
   CYLINDER_MACHINING,
-  CYLINDER_TYPE_OPTIONS,
   coatingFactorFor,
   coatingRawCost,
-  INSPECTION_OPTIONS,
-  LAP_OPTIONS,
+  cylinderTypeOptions,
+  inspectionOptions,
   LD_CHARGE_PER_10MIN,
+  lapOptions,
   ldMinutes,
   lookupMatrix,
   lotDiscountRate,
   MATERIAL_BASIS_LENGTH_MM,
   NECK_MACHINING,
-  NECK_TYPE_OPTIONS,
+  neckTypeOptions,
   STEP_MACHINING,
-  STEP_TYPE_OPTIONS,
+  stepTypeOptions,
 } from "./trial-pricing-data";
 import { runCriteriaEngine } from "./trial-pricing-engine";
 
@@ -56,6 +56,18 @@ export function toolTypeOptionsFallback(
     { value: "CYLINDER", label: tr("sales.trialPricingSettings.cylinder") },
     { value: "OH", label: tr("sales.trialPricingSettings.ohType") },
   ];
+}
+
+/**
+ * 組み込み工具種 1 件の翻訳済みラベル。BUILTIN_TOOL_TYPES（trial-pricing-criteria.ts）
+ * が持つ ja 固定ラベルを、画面表示ではこちらへ差し替える（カスタム工具種の
+ * 名前は管理者が入力した値なので差し替えない — toToolTypeOptions が判定する）。
+ */
+export function builtinToolTypeLabel(
+  tr: TrLike,
+  value: ToolType,
+): string | undefined {
+  return toolTypeOptionsFallback(tr).find((o) => o.value === value)?.label;
 }
 
 export interface TrialInput {
@@ -188,7 +200,7 @@ export function calcTrialPricingLegacy(
     // 素材価格(手入力) + 円筒加工費(×種類掛け率)
     const cyl = lookupMatrix(CYLINDER_MACHINING, dia, len) ?? 0;
     const cylRate = optRate(
-      CYLINDER_TYPE_OPTIONS,
+      cylinderTypeOptions("ja"),
       input.cylinderType ?? "NORMAL",
     );
     material = (input.cylinderMaterialPrice ?? 0) + cyl * cylRate;
@@ -214,7 +226,7 @@ export function calcTrialPricingLegacy(
   if (input.stepLength >= 0.01 && input.stepType !== "NONE") {
     const base = lookupMatrix(STEP_MACHINING, dia, input.stepLength);
     if (base == null) warnings.push("段加工費が範囲外です");
-    step = (base ?? 0) * optRate(STEP_TYPE_OPTIONS, input.stepType);
+    step = (base ?? 0) * optRate(stepTypeOptions("ja"), input.stepType);
   }
 
   // ── 首下加工費 ────────────────────────────────────────────────────────────
@@ -222,7 +234,7 @@ export function calcTrialPricingLegacy(
   if (input.neckLength >= 0.01 && input.neckType !== "NONE") {
     const base = lookupMatrix(NECK_MACHINING, dia, input.neckLength);
     if (base == null) warnings.push("首下加工費が範囲外です");
-    neck = (base ?? 0) * optRate(NECK_TYPE_OPTIONS, input.neckType);
+    neck = (base ?? 0) * optRate(neckTypeOptions("ja"), input.neckType);
   }
 
   // ── 加工単価 ──────────────────────────────────────────────────────────────
@@ -239,7 +251,7 @@ export function calcTrialPricingLegacy(
   }
 
   // ── ラップ処理 (掛け率 定額。有(OSG)=205) ─────────────────────────────────
-  const lap = optAmount(LAP_OPTIONS, input.lapType);
+  const lap = optAmount(lapOptions("ja"), input.lapType);
 
   // ── LD ────────────────────────────────────────────────────────────────────
   let ld = 0;
@@ -253,7 +265,7 @@ export function calcTrialPricingLegacy(
   }
 
   // ── 検査成績書 ────────────────────────────────────────────────────────────
-  const inspection = optAmount(INSPECTION_OPTIONS, input.inspection);
+  const inspection = optAmount(inspectionOptions("ja"), input.inspection);
 
   const breakdown: CostBreakdown = {
     material,

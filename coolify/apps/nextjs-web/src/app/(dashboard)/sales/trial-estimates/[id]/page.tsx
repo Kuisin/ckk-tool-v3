@@ -1,4 +1,5 @@
 import { notFound } from "next/navigation";
+import { getTranslations } from "next-intl/server";
 import { TrialEstimateDetail } from "@/components/sales/trial-estimates/TrialEstimateDetail";
 import type { LinkedPriceEntry } from "@/components/sales/trial-estimates/types";
 import { fetchAuditEntries } from "@/lib/audit";
@@ -44,19 +45,22 @@ export default async function TrialEstimateDetailPage({
   const key = parseDocKey(id, "EST");
   if (!key) notFound();
 
-  const [record, linked, auditEntries, settings, memos] = await Promise.all([
-    fetchTrialEstimate(key.yearMonth, key.seq),
-    prisma.priceListVariant.findMany({
-      where: { estimateYearMonth: key.yearMonth, estimateSeq: key.seq },
-      include: {
-        entry: { include: { customerBp: true, product: true } },
-        _count: { select: { tiers: true } },
-      },
-    }),
-    fetchAuditEntries("estimates", formatEstimateNumber(key)),
-    getTrialPricingSettings(),
-    listMemos("estimates", formatEstimateNumber(key)),
-  ]);
+  const [record, linked, auditEntries, settings, memos, tr] = await Promise.all(
+    [
+      fetchTrialEstimate(key.yearMonth, key.seq),
+      prisma.priceListVariant.findMany({
+        where: { estimateYearMonth: key.yearMonth, estimateSeq: key.seq },
+        include: {
+          entry: { include: { customerBp: true, product: true } },
+          _count: { select: { tiers: true } },
+        },
+      }),
+      fetchAuditEntries("estimates", formatEstimateNumber(key)),
+      getTrialPricingSettings(),
+      listMemos("estimates", formatEstimateNumber(key)),
+      getTranslations(),
+    ],
+  );
   if (!record) notFound();
 
   const typeId = Number(record.materialTypeId);
@@ -98,7 +102,7 @@ export default async function TrialEstimateDetailPage({
       priceHistory={priceHistory}
       pricingOptions={toTrialPricingOptions(settings)}
       record={record}
-      toolTypeOptions={toToolTypeOptions(settings)}
+      toolTypeOptions={toToolTypeOptions(settings, tr)}
     />
   );
 }

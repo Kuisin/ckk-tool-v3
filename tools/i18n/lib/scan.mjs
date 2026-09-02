@@ -69,6 +69,21 @@ const EXCLUDED = [
   /\/mock\.ts$/,
   /\/fixtures\.ts$/,
   /\/display-sample\.ts$/,
+  // AUTO-GENERATED default DATA for admin-editable lookup tables (SY02 —
+  // LookupTableEditor.tsx lets the admin freely rename `keyColumns`, exactly
+  // like renaming a spreadsheet column). These are seed values transcribed
+  // from a business Excel file, not fixed code vocabulary — same category as
+  // mock.ts's sample names (_specs/i18n-glossary.md §1: DB-like data is out
+  // of scope, even when it happens to render as editable text on screen).
+  /\/trial-pricing-lookups\.ts$/,
+  // Seed defaults for admin-editable 価格試算 criteria/custom-input fields
+  // (name/label/expression — all rewritable via SY02's criterion edit form).
+  // Same category as trial-pricing-lookups.ts above. Split into its own file
+  // specifically because `expression` is a multi-line template literal
+  // containing embedded warn(...) messages — a same-line/previous-line
+  // `i18n-ignore` comment would land *inside* the expression string and
+  // change its behavior, so per-line ignores aren't an option here.
+  /\/trial-pricing-criteria-seed\.ts$/,
 ];
 
 /**

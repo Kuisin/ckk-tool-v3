@@ -4206,7 +4206,9 @@
       "enterACriterionName": "基準名を入力してください",
       "enterALabel": "ラベルを入力してください",
       "idMustBeAlphanumericHyphens": "ID は英数字・ハイフン・アンダースコアのみ（英数字始まり）です",
-      "specifyAtLeastOneKey": "キー列を1つ以上指定してください"
+      "specifyAtLeastOneKey": "キー列を1つ以上指定してください",
+      "toolTypeValueFormat": "値は英大文字・数字・_（英大文字始まり）です",
+      "enterADisplayName": "表示名を入力してください"
     },
     "aiProviderCore": {
       "baseUrlMustStartWithHttp": "ベース URL は http:// または https:// で始めてください",

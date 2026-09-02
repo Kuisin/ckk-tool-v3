@@ -4206,7 +4206,9 @@
       "enterACriterionName": "请输入基准名称",
       "enterALabel": "请输入标签",
       "idMustBeAlphanumericHyphens": "ID 只能包含英数字、连字符和下划线（须以英数字开头）",
-      "specifyAtLeastOneKey": "请至少指定一个键列"
+      "specifyAtLeastOneKey": "请至少指定一个键列",
+      "toolTypeValueFormat": "值须为大写字母、数字或 _（以大写字母开头）",
+      "enterADisplayName": "请输入显示名称"
     },
     "aiProviderCore": {
       "baseUrlMustStartWithHttp": "基础 URL 必须以 http:// 或 https:// 开头",

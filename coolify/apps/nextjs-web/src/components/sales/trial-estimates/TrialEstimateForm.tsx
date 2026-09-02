@@ -33,7 +33,7 @@ import {
   IconChartLine,
 } from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { useState, useTransition } from "react";
 import { searchProductOptions } from "@/app/(dashboard)/_shared/option-search";
 import {
@@ -63,12 +63,12 @@ import {
 } from "@/lib/trial-pricing";
 import {
   COATING_OPTIONS,
-  CYLINDER_TYPE_OPTIONS,
-  INSPECTION_OPTIONS,
-  LAP_OPTIONS,
-  LD_LOCATION_OPTIONS,
-  NECK_TYPE_OPTIONS,
-  STEP_TYPE_OPTIONS,
+  cylinderTypeOptions,
+  inspectionOptions,
+  lapOptions,
+  ldLocationOptions,
+  neckTypeOptions,
+  stepTypeOptions,
 } from "@/lib/trial-pricing-data";
 import {
   materialPriceBasisOptions,
@@ -107,6 +107,7 @@ export function TrialEstimateForm({
   source?: TrialEstimateRecord | null;
 }) {
   const tr = useTranslations();
+  const locale = useLocale();
   const fmt = useFormat();
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
@@ -386,7 +387,7 @@ export function TrialEstimateForm({
             <FormSection title={tr("sales.trialEstimates.basic")}>
               <Stack gap="sm">
                 <SegmentedControl
-                  data={toToolTypeOptions(settings)}
+                  data={toToolTypeOptions(settings, tr)}
                   onChange={(v) => setToolType(v as ToolType)}
                   value={toolType}
                 />
@@ -636,7 +637,7 @@ export function TrialEstimateForm({
               )}
               {isCylinder && (
                 <Select
-                  data={toData(CYLINDER_TYPE_OPTIONS)}
+                  data={toData(cylinderTypeOptions(locale))}
                   label={
                     <HelpLabel
                       {...fieldHelp("trialEstimate", "cylinderType")}
@@ -665,7 +666,7 @@ export function TrialEstimateForm({
                   value={stepLength}
                 />
                 <Select
-                  data={toData(STEP_TYPE_OPTIONS)}
+                  data={toData(stepTypeOptions(locale))}
                   label={
                     <HelpLabel
                       {...fieldHelp("trialEstimate", "stepMachining", {
@@ -689,7 +690,7 @@ export function TrialEstimateForm({
                   value={neckLength}
                 />
                 <Select
-                  data={toData(NECK_TYPE_OPTIONS)}
+                  data={toData(neckTypeOptions(locale))}
                   label={
                     <HelpLabel
                       {...fieldHelp("trialEstimate", "neckMachining", {
@@ -742,7 +743,7 @@ export function TrialEstimateForm({
                   value={coating}
                 />
                 <Select
-                  data={toData(LAP_OPTIONS)}
+                  data={toData(lapOptions(locale))}
                   label={
                     <HelpLabel {...fieldHelp("trialEstimate", "lapping")} />
                   }
@@ -750,7 +751,7 @@ export function TrialEstimateForm({
                   value={lapType}
                 />
                 <Select
-                  data={toData(INSPECTION_OPTIONS)}
+                  data={toData(inspectionOptions(locale))}
                   label={
                     <HelpLabel
                       {...fieldHelp("trialEstimate", "inspectionReport")}
@@ -780,7 +781,7 @@ export function TrialEstimateForm({
               {ldEnabled && (
                 <SimpleGrid cols={{ base: 1, sm: 3 }} spacing="sm">
                   <Select
-                    data={toData(LD_LOCATION_OPTIONS)}
+                    data={toData(ldLocationOptions(locale))}
                     label={
                       <HelpLabel
                         {...fieldHelp("trialEstimate", "ld", {

@@ -58,8 +58,6 @@ function mergeGlobalCustomInputs(
   return missing.length ? [...missing, ...persisted] : persisted;
 }
 
-const toolTypesArraySchema = z.array(toolTypeDefSchema);
-
 /**
  * 価格試算設定 — 未設定キーは既定値で補完。
  *
@@ -71,6 +69,7 @@ const toolTypesArraySchema = z.array(toolTypeDefSchema);
 export async function getTrialPricingSettings(): Promise<TrialPricingSettings> {
   const tr = await getTranslations();
   const criteriaArraySchema = z.array(criterionSchema(tr));
+  const toolTypesArraySchema = z.array(toolTypeDefSchema(tr));
   // 読み出しは ID 形式を強制しない（旧 ID の永続データも受け入れて正規化する。
   // 形式の強制（英数字・ハイフン・アンダースコア）は保存時の lookupTableSchema）。
   const lookupTablesReadSchema = z.array(

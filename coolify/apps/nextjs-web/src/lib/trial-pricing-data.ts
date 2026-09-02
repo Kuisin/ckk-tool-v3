@@ -12,19 +12,17 @@
  * (`MATCH(value, keysDesc, -1)`): pick the smallest key that is ≥ the value.
  */
 
+import type { Locale } from "./i18n";
 import { label } from "./messages";
 import type { Criterion, LookupTable } from "./trial-pricing-criteria";
 import { DEFAULT_LOOKUP_TABLES } from "./trial-pricing-lookups";
 
 /**
  * これらの選択肢は `value`（enum 相当。lib/trial-pricing.ts の計算ロジックが
- * 突き合わせに使う）と `label`（画面の Select に出す文言）を持つ。`label` は
- * ここではモジュール読み込み時に一度だけ ja で解決する — 呼び出し側
- * （TrialEstimateForm.tsx）は locale を持たない静的配列として `.value`/
- * `.label` を読むため、locale 別に出し分けるには配列そのものを関数へ
- * 作り替える必要があり、それは今回のスコープを超える。文言の置き場は
- * `messages/ja.json` の `enum.*` に移した（コード直書きをやめた）ので、
- * 将来 locale 対応する際もここは変えずに済む。
+ * 突き合わせに使う）と `label`（画面の Select に出す文言）を持つ。文言は
+ * `messages/ja.json` の `enum.*` に置き、`locale` を受け取る関数として公開する
+ * ので呼び出し側（TrialEstimateForm.tsx）が現在の言語で解決できる
+ * （計算ロジック側は label を読まないので `"ja"` 固定で呼んで構わない）。
  */
 
 // ── Excel descending approximate match (MATCH(...,-1)) ───────────────────────
@@ -619,150 +617,168 @@ export const CYLINDER_MACHINING: Matrix = {
 // ── 掛け率 (Excel: 掛け率) ────────────────────────────────────────────────────
 
 /** ラップ処理 (掛け率!A2:B5). Excel は全て定額（有(OSG)=205）。 */
-export const LAP_OPTIONS = [
-  {
-    value: "NONE",
-    label: label("enum.LAP_OPTION_LABEL.NONE", "ja", "無"),
-    amount: 0,
-  },
-  {
-    value: "INHOUSE",
-    label: label("enum.LAP_OPTION_LABEL.INHOUSE", "ja", "有(社内)"),
-    amount: 200,
-  },
-  {
-    value: "OSG",
-    label: label("enum.LAP_OPTION_LABEL.OSG", "ja", "有(OSG)"),
-    amount: 205,
-  },
-  {
-    value: "OTHER",
-    label: label("enum.LAP_OPTION_LABEL.OTHER", "ja", "有(他メーカー)"),
-    amount: 100,
-  },
-] as const;
+export function lapOptions(locale: Locale) {
+  return [
+    {
+      value: "NONE",
+      label: label("enum.LAP_OPTION_LABEL.NONE", locale, "無"), // i18n-ignore
+      amount: 0,
+    },
+    {
+      value: "INHOUSE",
+      label: label("enum.LAP_OPTION_LABEL.INHOUSE", locale, "有(社内)"), // i18n-ignore
+      amount: 200,
+    },
+    {
+      value: "OSG",
+      label: label("enum.LAP_OPTION_LABEL.OSG", locale, "有(OSG)"), // i18n-ignore
+      amount: 205,
+    },
+    {
+      value: "OTHER",
+      label: label("enum.LAP_OPTION_LABEL.OTHER", locale, "有(他メーカー)"), // i18n-ignore
+      amount: 100,
+    },
+  ] as const;
+}
 
 /** 検査成績書 (掛け率!E2:F8). */
-export const INSPECTION_OPTIONS = [
-  {
-    value: "NONE",
-    label: label("enum.INSPECTION_OPTION_LABEL.NONE", "ja", "無"),
-    amount: 0,
-  },
-  {
-    value: "ONE",
-    label: label("enum.INSPECTION_OPTION_LABEL.ONE", "ja", "1ヶ所"),
-    amount: 50,
-  },
-  {
-    value: "ONE_R",
-    label: label("enum.INSPECTION_OPTION_LABEL.ONE_R", "ja", "1ヶ所(R精度)"),
-    amount: 500,
-  },
-  {
-    value: "TWO",
-    label: label("enum.INSPECTION_OPTION_LABEL.TWO", "ja", "2ヶ所"),
-    amount: 100,
-  },
-  {
-    value: "TWO_R",
-    label: label(
-      "enum.INSPECTION_OPTION_LABEL.TWO_R",
-      "ja",
-      "2ヶ所(外径等+R精度)",
-    ),
-    amount: 550,
-  },
-  {
-    value: "THREE",
-    label: label("enum.INSPECTION_OPTION_LABEL.THREE", "ja", "3ヶ所"),
-    amount: 150,
-  },
-  {
-    value: "THREE_R",
-    label: label(
-      "enum.INSPECTION_OPTION_LABEL.THREE_R",
-      "ja",
-      "3ヶ所(外径等+R精度)",
-    ),
-    amount: 600,
-  },
-] as const;
+export function inspectionOptions(locale: Locale) {
+  return [
+    {
+      value: "NONE",
+      label: label("enum.INSPECTION_OPTION_LABEL.NONE", locale, "無"), // i18n-ignore
+      amount: 0,
+    },
+    {
+      value: "ONE",
+      label: label("enum.INSPECTION_OPTION_LABEL.ONE", locale, "1ヶ所"), // i18n-ignore
+      amount: 50,
+    },
+    {
+      value: "ONE_R",
+      label: label(
+        "enum.INSPECTION_OPTION_LABEL.ONE_R",
+        locale,
+        "1ヶ所(R精度)", // i18n-ignore
+      ),
+      amount: 500,
+    },
+    {
+      value: "TWO",
+      label: label("enum.INSPECTION_OPTION_LABEL.TWO", locale, "2ヶ所"), // i18n-ignore
+      amount: 100,
+    },
+    {
+      value: "TWO_R",
+      label: label(
+        "enum.INSPECTION_OPTION_LABEL.TWO_R",
+        locale,
+        "2ヶ所(外径等+R精度)", // i18n-ignore
+      ),
+      amount: 550,
+    },
+    {
+      value: "THREE",
+      label: label("enum.INSPECTION_OPTION_LABEL.THREE", locale, "3ヶ所"), // i18n-ignore
+      amount: 150,
+    },
+    {
+      value: "THREE_R",
+      label: label(
+        "enum.INSPECTION_OPTION_LABEL.THREE_R",
+        locale,
+        "3ヶ所(外径等+R精度)", // i18n-ignore
+      ),
+      amount: 600,
+    },
+  ] as const;
+}
 
 /** 段加工種類 markup (掛け率!H2:I7). */
-export const STEP_TYPE_OPTIONS = [
-  {
-    value: "NONE",
-    label: label("enum.STEP_TYPE_OPTION_LABEL.NONE", "ja", "無"),
-    rate: 0,
-  },
-  {
-    value: "ROUGH",
-    label: label("enum.STEP_TYPE_OPTION_LABEL.ROUGH", "ja", "粗"),
-    rate: 1,
-  },
-  {
-    value: "ROUGH_15",
-    label: label(
-      "enum.STEP_TYPE_OPTION_LABEL.ROUGH_15",
-      "ja",
-      "粗 取り代φ1.5以上",
-    ),
-    rate: 1.2,
-  },
-  {
-    value: "FINISH",
-    label: label("enum.STEP_TYPE_OPTION_LABEL.FINISH", "ja", "仕上げ"),
-    rate: 1.2,
-  },
-  {
-    value: "FINISH_15",
-    label: label(
-      "enum.STEP_TYPE_OPTION_LABEL.FINISH_15",
-      "ja",
-      "仕上げ取り代φ1.5以上",
-    ),
-    rate: 1.44,
-  },
-  {
-    value: "FORM",
-    label: label("enum.STEP_TYPE_OPTION_LABEL.FORM", "ja", "総型形状"),
-    rate: 1.44,
-  },
-] as const;
+export function stepTypeOptions(locale: Locale) {
+  return [
+    {
+      value: "NONE",
+      label: label("enum.STEP_TYPE_OPTION_LABEL.NONE", locale, "無"), // i18n-ignore
+      rate: 0,
+    },
+    {
+      value: "ROUGH",
+      label: label("enum.STEP_TYPE_OPTION_LABEL.ROUGH", locale, "粗"), // i18n-ignore
+      rate: 1,
+    },
+    {
+      value: "ROUGH_15",
+      label: label(
+        "enum.STEP_TYPE_OPTION_LABEL.ROUGH_15",
+        locale,
+        "粗 取り代φ1.5以上", // i18n-ignore
+      ),
+      rate: 1.2,
+    },
+    {
+      value: "FINISH",
+      label: label("enum.STEP_TYPE_OPTION_LABEL.FINISH", locale, "仕上げ"), // i18n-ignore
+      rate: 1.2,
+    },
+    {
+      value: "FINISH_15",
+      label: label(
+        "enum.STEP_TYPE_OPTION_LABEL.FINISH_15",
+        locale,
+        "仕上げ取り代φ1.5以上", // i18n-ignore
+      ),
+      rate: 1.44,
+    },
+    {
+      value: "FORM",
+      label: label("enum.STEP_TYPE_OPTION_LABEL.FORM", locale, "総型形状"), // i18n-ignore
+      rate: 1.44,
+    },
+  ] as const;
+}
 
 /** 首下加工種類 markup (掛け率!K2:L4). */
-export const NECK_TYPE_OPTIONS = [
-  {
-    value: "NONE",
-    label: label("enum.NECK_TYPE_OPTION_LABEL.NONE", "ja", "無"),
-    rate: 0,
-  },
-  {
-    value: "STRAIGHT",
-    label: label("enum.NECK_TYPE_OPTION_LABEL.STRAIGHT", "ja", "ストレート"),
-    rate: 1,
-  },
-  {
-    value: "TAPER",
-    label: label("enum.NECK_TYPE_OPTION_LABEL.TAPER", "ja", "テーパー"),
-    rate: 1.2,
-  },
-] as const;
+export function neckTypeOptions(locale: Locale) {
+  return [
+    {
+      value: "NONE",
+      label: label("enum.NECK_TYPE_OPTION_LABEL.NONE", locale, "無"), // i18n-ignore
+      rate: 0,
+    },
+    {
+      value: "STRAIGHT",
+      label: label(
+        "enum.NECK_TYPE_OPTION_LABEL.STRAIGHT",
+        locale,
+        "ストレート", // i18n-ignore
+      ),
+      rate: 1,
+    },
+    {
+      value: "TAPER",
+      label: label("enum.NECK_TYPE_OPTION_LABEL.TAPER", locale, "テーパー"), // i18n-ignore
+      rate: 1.2,
+    },
+  ] as const;
+}
 
 /** 円筒種類 markup (掛け率!N2:O3). */
-export const CYLINDER_TYPE_OPTIONS = [
-  {
-    value: "NORMAL",
-    label: label("enum.CYLINDER_TYPE_OPTION_LABEL.NORMAL", "ja", "通常"),
-    rate: 1,
-  },
-  {
-    value: "HIGH",
-    label: label("enum.CYLINDER_TYPE_OPTION_LABEL.HIGH", "ja", "高精度"),
-    rate: 1.2,
-  },
-] as const;
+export function cylinderTypeOptions(locale: Locale) {
+  return [
+    {
+      value: "NORMAL",
+      label: label("enum.CYLINDER_TYPE_OPTION_LABEL.NORMAL", locale, "通常"), // i18n-ignore
+      rate: 1,
+    },
+    {
+      value: "HIGH",
+      label: label("enum.CYLINDER_TYPE_OPTION_LABEL.HIGH", locale, "高精度"), // i18n-ignore
+      rate: 1.2,
+    },
+  ] as const;
+}
 
 // ── ロット割引率 (Excel: 丸棒見積!Z29:AC36, VLOOKUP approx on lower bound) ─────
 const DISCOUNT_TIERS = [
@@ -805,24 +821,30 @@ export function coatingFactorFor(toolType: string): number {
 // ── LD加工時間 (Excel: LD sheet, 簡略版) ──────────────────────────────────────
 // MIGRATION NOTE: full LD tables (先端+ギャッシュ / 先端+外周 の外径×刃長マトリク
 // ス) are large; demo uses representative minutes. Replace with the full LD sheet.
-export const LD_LOCATION_OPTIONS = [
-  {
-    value: "TIP",
-    label: label("enum.LD_LOCATION_OPTION_LABEL.TIP", "ja", "先端のみ"),
-  },
-  {
-    value: "TIP_GASH",
-    label: label(
-      "enum.LD_LOCATION_OPTION_LABEL.TIP_GASH",
-      "ja",
-      "先端+ギャッシュ",
-    ),
-  },
-  {
-    value: "TIP_OUTER",
-    label: label("enum.LD_LOCATION_OPTION_LABEL.TIP_OUTER", "ja", "先端+外周"),
-  },
-] as const;
+export function ldLocationOptions(locale: Locale) {
+  return [
+    {
+      value: "TIP",
+      label: label("enum.LD_LOCATION_OPTION_LABEL.TIP", locale, "先端のみ"), // i18n-ignore
+    },
+    {
+      value: "TIP_GASH",
+      label: label(
+        "enum.LD_LOCATION_OPTION_LABEL.TIP_GASH",
+        locale,
+        "先端+ギャッシュ", // i18n-ignore
+      ),
+    },
+    {
+      value: "TIP_OUTER",
+      label: label(
+        "enum.LD_LOCATION_OPTION_LABEL.TIP_OUTER",
+        locale,
+        "先端+外周", // i18n-ignore
+      ),
+    },
+  ] as const;
+}
 
 export function ldMinutes(
   location: string,
@@ -841,8 +863,13 @@ export function ldMinutes(
 // MIGRATION NOTE: only the 本社 vendor matrices (CX200/CX400/CX500) are seeded as
 // a working demo. Other vendors (JFE/JCC/OSG/balzers/オンワード) fall back to a
 // simplified per-size estimate. Replace COATING_VENDOR_TABLES with the full set.
+//
+// これらはコーティング製品の**商品名・ベンダー名**（"無" だけは「コーティング
+// なし」を表す値）で、価格試算の入力にそのままスナップショットされる
+// （TrialInput.coating の doc comment 参照）。マスタデータ・固有名詞と同じ扱い
+// で翻訳の対象外（_specs/i18n-glossary.md §1）。
 export const COATING_OPTIONS: string[] = [
-  "無",
+  "無", // i18n-ignore
   "CX200",
   "CX500",
   "CX400",
@@ -870,10 +897,10 @@ export const COATING_OPTIONS: string[] = [
   "BAL ALDURA",
   "BAL ALNOVA",
   "BAL PERTURA",
-  "オンワード OS-T",
-  "オンワード OS-C",
-  "オンワード OS-8",
-  "オンワード OS-Ⅶ",
+  "オンワード OS-T", // i18n-ignore
+  "オンワード OS-C", // i18n-ignore
+  "オンワード OS-8", // i18n-ignore
+  "オンワード OS-Ⅶ", // i18n-ignore
 ];
 
 // ── コート表 ID（コート名 → ルックアップ表 ID）────────────────────────────────
@@ -1285,7 +1312,7 @@ export function coatingRawCost(
   diameter: number,
   length: number,
 ): number {
-  if (!coating || coating === "無") return 0;
+  if (!coating || coating === "無") return 0; // i18n-ignore — COATING_OPTIONS の値との比較
   // 全 31 コート表（Excel 本社/JFE/JCC/OSG/balzers/オンワード）を lookup 表として
   // seed 済み。コート名 → 表 ID は COATING_TABLE_IDS で解決し、径×全長(ge/ge)で
   // 参照する。

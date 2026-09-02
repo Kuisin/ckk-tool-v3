@@ -9,7 +9,10 @@
 
 import type { getTranslations } from "next-intl/server";
 import type { MaterialPriceBasis } from "./material-pricing-core";
-import type { TrialPricingOptions } from "./trial-pricing";
+import {
+  builtinToolTypeLabel,
+  type TrialPricingOptions,
+} from "./trial-pricing";
 import {
   BUILTIN_TOOL_TYPES,
   type Criterion,
@@ -75,14 +78,23 @@ export function toTrialPricingOptions(
   };
 }
 
-/** 工具種の選択肢（SegmentedControl/Select 用）— 管理者定義リスト由来。 */
+type Tr = Awaited<ReturnType<typeof getTranslations>>;
+
+/**
+ * 工具種の選択肢（SegmentedControl/Select 用）— 管理者定義リスト由来。
+ * 組み込み種（builtin）は `tr` があれば画面の言語で出す — ラベルは管理者が
+ * 入力した文字列ではなく BUILTIN_TOOL_TYPES の ja 固定値なので、カスタム種
+ * （管理者が名付けた値。翻訳の対象外）とは扱いを分ける。
+ */
 export function toToolTypeOptions(
   settings: TrialPricingSettings,
+  tr?: Tr,
 ): { value: string; label: string }[] {
-  return settings.toolTypes.map((t) => ({ value: t.value, label: t.label }));
+  return settings.toolTypes.map((t) => ({
+    value: t.value,
+    label: (t.builtin && tr && builtinToolTypeLabel(tr, t.value)) || t.label,
+  }));
 }
-
-type Tr = Awaited<ReturnType<typeof getTranslations>>;
 
 /** 材料参照価格の算出方法の選択肢（Select 用）。呼び出し側の `tr` を渡す。 */
 export function materialPriceBasisOptions(
