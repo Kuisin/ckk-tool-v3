@@ -121,7 +121,7 @@
       <img class="brand-logo" src="logo.svg" alt="シー・ケィ・ケー株式会社" />
       <div class="doc-title">検査表</div>
       <!-- 指示書 QR（CKK:WO:<番号>）— 白紙シートでは空 -->
-      <div class="doc-qr">{{doc_qr}}</div>
+      <div class="doc-qr">{{{doc_qr}}}</div>
     </div>
     <div class="issuer">
       <strong>{{template.name}}</strong><br>
@@ -147,16 +147,16 @@
   </div>
 
   <!-- 参考画像（テンプレートに設定されている場合のみ） -->
-  {{template_image_html}}
+  {{{template_image_html}}}
 
   <!-- VALUES（実測値）: 旧帳票のグリッド。COUNTS（合格数のみ）テンプレートでは空 -->
-  {{grid_html}}
+  {{{grid_html}}}
 
   <!-- COUNTS（合格数のみ）: 項目ごとの行。VALUES テンプレートでは空 -->
-  {{counts_table_html}}
+  {{{counts_table_html}}}
 
   <!-- 形状（section=SHAPE の項目がある場合のみ） -->
-  {{shape_html}}
+  {{{shape_html}}}
 
   <div class="overall">
     <div class="box">総合判定: {{overall.judgement}}</div>
@@ -165,7 +165,7 @@
   <div class="footer-note">{{footer_note}}</div>
 
   <!-- 最終検査・出荷前確認（指示書に紐づく印刷のときだけ。マスタ印刷では空） -->
-  {{final_inspection_html}}
+  {{{final_inspection_html}}}
 
 </body>
 </html>
