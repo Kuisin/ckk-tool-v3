@@ -17,7 +17,9 @@ import { Box, Loader, Stack, Text, Tooltip } from "@mantine/core";
 import { IconWifiOff } from "@tabler/icons-react";
 import { useEffect, useRef, useState } from "react";
 import { INDICATOR_COLOR, resolveIndicator } from "@/lib/connection-status";
+import { fillMessage } from "@/lib/i18n";
 import { getBridge } from "@/lib/wrapper-bridge";
+import { useI18n } from "./I18nProvider";
 
 const PROBE_INTERVAL_MS = 10_000; // 通常時
 const PROBE_RETRY_MS = 4_000; // 失敗中は短間隔で再試行
@@ -26,6 +28,7 @@ const OFFLINE_AFTER_FAILURES = 2; // 連続失敗数 → オフライン扱い
 const UNSTABLE_WINDOW_MS = 45_000; // 直近この時間に失敗/WS 断があれば「不安定」
 
 export function ConnectionIndicator({ registered }: { registered: boolean }) {
+  const { m } = useI18n();
   const [online, setOnline] = useState(true);
   const [consecFails, setConsecFails] = useState(0);
   const [hasBridge, setHasBridge] = useState(false);
@@ -112,13 +115,22 @@ export function ConnectionIndicator({ registered }: { registered: boolean }) {
   }, []);
 
   const serverReachable = consecFails < OFFLINE_AFTER_FAILURES;
-  const state = resolveIndicator({
-    online,
-    serverReachable,
-    registered,
-    hasBridge,
-    unstable,
-  });
+  const state = resolveIndicator(
+    {
+      online,
+      serverReachable,
+      registered,
+      hasBridge,
+      unstable,
+    },
+    {
+      none: m.shell.connectionNone,
+      deviceUnregistered: m.shell.connectionDeviceUnregistered,
+      app: m.shell.connectionApp,
+      browser: m.shell.connectionBrowser,
+      unstableSuffix: m.shell.connectionUnstableSuffix,
+    },
+  );
   const offline = !online || !serverReachable;
 
   return (
@@ -129,7 +141,9 @@ export function ConnectionIndicator({ registered }: { registered: boolean }) {
         withinPortal
       >
         <Box
-          aria-label={`接続状態: ${state.label}`}
+          aria-label={fillMessage(m.shell.connectionStatus, {
+            label: state.label,
+          })}
           className={state.blinking ? "kiosk-dot-blink" : undefined}
           component="output"
           h={10}
@@ -158,12 +172,12 @@ export function ConnectionIndicator({ registered }: { registered: boolean }) {
           <Stack align="center" gap="md" px="xl">
             <IconWifiOff color="var(--mantine-color-gray-5)" size={64} />
             <Text fw={700} size="xl">
-              サーバーに接続できません
+              {m.shell.offlineTitle}
             </Text>
             <Text c="dimmed" size="md" ta="center">
-              ネットワーク（Wi-Fi / LAN）を確認してください。
+              {m.shell.offlineMessage}
               <br />
-              接続が回復すると自動的に再開します。
+              {m.shell.offlineRecovery}
             </Text>
             <Loader size="sm" />
           </Stack>

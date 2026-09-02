@@ -31,14 +31,19 @@ export function getBridge(): KioskBridge | null {
   return bridge && typeof bridge.sign === "function" ? bridge : null;
 }
 
-/** 専用アプリ（ラッパー）のバージョン。ブラウザ利用時は null。 */
-export function getWrapperVersion(): string | null {
+/**
+ * 専用アプリ（ラッパー）のバージョン。ブラウザ利用時は null。
+ * `unknownLabel` は取得に失敗したときの表示文字列（既定は ja）— 呼び出し側
+ * の画面が自分の辞書（例: m.common.unknown）を渡す。
+ */
+// i18n-ignore — 既定値の "不明" は ja（実際の画面は unknownLabel を渡す）
+export function getWrapperVersion(unknownLabel = "不明"): string | null {
   const bridge = getBridge();
   if (!bridge) return null;
   try {
-    return bridge.appVersion?.() ?? "不明";
+    return bridge.appVersion?.() ?? unknownLabel;
   } catch {
-    return "不明";
+    return unknownLabel;
   }
 }
 

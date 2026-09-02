@@ -8,6 +8,7 @@
 import { Box, Button, Center, SimpleGrid, Stack, Text } from "@mantine/core";
 import { IconBackspace, IconCheck } from "@tabler/icons-react";
 import { useState } from "react";
+import { useI18n } from "./I18nProvider";
 
 type Props = {
   title: string;
@@ -26,6 +27,7 @@ export function PinKeypad({
   maxLength: MAX_LEN = 6,
   onSubmit,
 }: Props) {
+  const { m } = useI18n();
   const [pin, setPin] = useState("");
 
   const push = (d: string) => {
@@ -85,7 +87,7 @@ export function PinKeypad({
           </Button>
         ))}
         <Button
-          aria-label="1文字削除"
+          aria-label={m.common.deleteOneChar}
           color="gray"
           disabled={submitting}
           onClick={pop}
@@ -103,7 +105,7 @@ export function PinKeypad({
           0
         </Button>
         <Button
-          aria-label="確定"
+          aria-label={m.common.confirm}
           color="blue"
           disabled={pin.length < MIN_LEN}
           loading={submitting}

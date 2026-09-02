@@ -43,6 +43,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { type ReactNode, useRef } from "react";
 import { DEFAULT_TEXT_SCALE, type TextScale } from "@/lib/text-scale";
 import { ConnectionIndicator } from "./ConnectionIndicator";
+import { useI18n } from "./I18nProvider";
 import { BatteryStatus, HeaderClock } from "./StatusTray";
 import { UserMenu } from "./UserMenu";
 
@@ -100,6 +101,7 @@ export function KioskShell({
   textScale = DEFAULT_TEXT_SCALE,
   children,
 }: Props) {
+  const { m } = useI18n();
   const version = process.env.NEXT_PUBLIC_APP_VERSION ?? "0.0.0";
   const router = useRouter();
   const pathname = usePathname();
@@ -160,7 +162,7 @@ export function KioskShell({
                     size={26}
                   />
                   <Text c="dimmed" fw={600} size="md">
-                    未ログイン
+                    {m.shell.notLoggedIn}
                   </Text>
                 </Group>
               )
@@ -174,7 +176,7 @@ export function KioskShell({
             {registered ? (
               <>
                 <Text fw={600} maw={240} size="md" truncate>
-                  {deviceName ?? "（名称未設定）"}
+                  {deviceName ?? m.shell.unnamedDevice}
                 </Text>
                 {/* 既定の作業場所。端末名と並べるのは、ヘッダーが 56px 固定で
                     文字の大きさ設定（最大 1.25 倍）まで動くため — 縦に積むと
@@ -194,7 +196,7 @@ export function KioskShell({
               </>
             ) : (
               <Badge color="gray" variant="outline">
-                未登録端末
+                {m.shell.unregisteredDevice}
               </Badge>
             )}
           </Group>
@@ -236,6 +238,7 @@ export function KioskShell({
           }}
         >
           <Group gap="lg" wrap="nowrap">
+            {/* i18n-ignore — 固有名詞（社名）。訳の対象外（_specs/i18n-glossary.md §1） */}
             <Text c="dimmed" size="xs">
               シー・ケィ・ケー株式会社
             </Text>
@@ -248,14 +251,14 @@ export function KioskShell({
           {/* 左: アプリ識別。**5 タップで隠し端末設定**（視覚的な手掛かりは
               出さない）。ログイン前にも要る操作なので常時表示する。 */}
           <UnstyledButton
-            aria-label="CKK 専用端末"
+            aria-label={m.shell.kioskDeviceTitle}
             onClick={handleTitleTap}
             style={{ cursor: "default" }}
           >
             <Group gap={6} wrap="nowrap">
               <IconDeviceTablet color="var(--mantine-color-blue-4)" size={18} />
               <Text fw={600} size="xs">
-                CKK 専用端末
+                {m.shell.kioskDeviceTitle}
               </Text>
             </Group>
           </UnstyledButton>

@@ -37,7 +37,6 @@ import { LOCALE_LABELS, LOCALES } from "@/lib/i18n";
 import { playLogoutSound } from "@/lib/sound";
 import {
   TEXT_SCALE_FACTORS,
-  TEXT_SCALE_LABELS,
   TEXT_SCALES,
   type TextScale,
 } from "@/lib/text-scale";
@@ -149,7 +148,7 @@ export function UserMenu({
               aria-label={m.userMenu.textSize}
               data={TEXT_SCALES.map((s) => ({
                 value: s,
-                label: TEXT_SCALE_LABELS[s],
+                label: m.textScale[s],
               }))}
               fullWidth
               onChange={changeScale}

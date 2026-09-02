@@ -107,8 +107,8 @@ export function DeviceSettingsView({ hasDevice }: { hasDevice: boolean }) {
   // 専用アプリ（ラッパー）のバージョン — マウント後にブリッジから取得
   const [wrapperVersion, setWrapperVersion] = useState<string | null>(null);
   useEffect(() => {
-    setWrapperVersion(getWrapperVersion());
-  }, []);
+    setWrapperVersion(getWrapperVersion(m.common.unknown));
+  }, [m.common.unknown]);
   const [confirmMode, setConfirmMode] = useState<"local" | "unlink" | null>(
     null,
   );

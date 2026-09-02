@@ -31,15 +31,6 @@ export const TEXT_SCALE_FACTORS: Record<TextScale, number> = {
   xl: 1.25,
 };
 
-/** 画面に出す段の名前（i18n-glossary §3.17）。 */
-export const TEXT_SCALE_LABELS: Record<TextScale, string> = {
-  xs: "最小",
-  sm: "小",
-  md: "標準",
-  lg: "大",
-  xl: "最大",
-};
-
 export const DEFAULT_TEXT_SCALE: TextScale = "md";
 
 /** 不明な値は既定へ倒す（DB に古い値・手書きの値が入っていても壊さない）。 */

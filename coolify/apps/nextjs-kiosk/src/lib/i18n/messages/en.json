@@ -364,5 +364,49 @@
     "execDepOrIncomplete": "None of the execution dependencies (any-of) are complete",
     "branchSourceIncomplete": "The branch source step is not complete",
     "precedingWorkOrderIncomplete": "Preceding work order #{workOrderNumber} is not complete"
+  },
+  "common": {
+    "separator": ", ",
+    "deleteOneChar": "Delete one character",
+    "confirm": "Confirm",
+    "quantity": "Quantity",
+    "unknown": "Unknown"
+  },
+  "shell": {
+    "notLoggedIn": "Not logged in",
+    "unnamedDevice": "(Unnamed)",
+    "unregisteredDevice": "Unregistered device",
+    "kioskDeviceTitle": "CKK dedicated device",
+    "connectionNone": "Not connected",
+    "connectionDeviceUnregistered": "Device not registered",
+    "connectionApp": "Connected via the dedicated app",
+    "connectionBrowser": "Connected via browser (dedicated app not in use)",
+    "connectionUnstableSuffix": " · unstable connection",
+    "connectionStatus": "Connection status: {label}",
+    "offlineTitle": "Cannot connect to the server",
+    "offlineMessage": "Please check the network (Wi-Fi / LAN).",
+    "offlineRecovery": "It will resume automatically once the connection recovers."
+  },
+  "linkCode": {
+    "label": "Link code",
+    "waitingForLink": "● Waiting to be linked…",
+    "expiresAt": "Expires in: {countdown}",
+    "waitingForActivation": "● Waiting to be activated…",
+    "expired": "The link code has expired.",
+    "issueNewCode": "Issue a new code",
+    "retry": "Retry"
+  },
+  "qrScanner": {
+    "cannotStart": "Cannot start the camera. Check camera permissions and the HTTPS connection.",
+    "cameraSettings": "Camera settings",
+    "selectCamera": "Select a camera",
+    "cameraN": "Camera {n}"
+  },
+  "textScale": {
+    "xs": "Smallest",
+    "sm": "Small",
+    "md": "Default",
+    "lg": "Large",
+    "xl": "Largest"
   }
 }

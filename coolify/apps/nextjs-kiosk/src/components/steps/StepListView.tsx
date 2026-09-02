@@ -178,8 +178,10 @@ function StepCard({ step }: { step: MyStepView }) {
           <Stack gap={4} style={{ minWidth: 0 }}>
             <Text c="dimmed" size="sm">
               {fillMessage(m.steps.card.workOrder, { n: step.workOrderNumber })}
-              {step.plantName ? ` ・ ${step.plantName}` : ""}
-              {step.workLocationName ? ` ・ ${step.workLocationName}` : ""}
+              {step.plantName ? ` ${m.common.separator} ${step.plantName}` : ""}
+              {step.workLocationName
+                ? ` ${m.common.separator} ${step.workLocationName}`
+                : ""}
             </Text>
             <Text fw={600} size="lg" truncate>
               {step.stepName}

@@ -364,5 +364,49 @@
     "execDepOrIncomplete": "実行依存（いずれか）が未完了です",
     "branchSourceIncomplete": "分岐元の工程が未完了です",
     "precedingWorkOrderIncomplete": "先行指示書 #{workOrderNumber} が未完了です"
+  },
+  "common": {
+    "separator": "・",
+    "deleteOneChar": "1文字削除",
+    "confirm": "確定",
+    "quantity": "数量",
+    "unknown": "不明"
+  },
+  "shell": {
+    "notLoggedIn": "未ログイン",
+    "unnamedDevice": "（名称未設定）",
+    "unregisteredDevice": "未登録端末",
+    "kioskDeviceTitle": "CKK 専用端末",
+    "connectionNone": "接続なし",
+    "connectionDeviceUnregistered": "端末未登録",
+    "connectionApp": "専用アプリで接続中",
+    "connectionBrowser": "ブラウザで接続中（専用アプリ未使用）",
+    "connectionUnstableSuffix": "・接続不安定",
+    "connectionStatus": "接続状態: {label}",
+    "offlineTitle": "サーバーに接続できません",
+    "offlineMessage": "ネットワーク（Wi-Fi / LAN）を確認してください。",
+    "offlineRecovery": "接続が回復すると自動的に再開します。"
+  },
+  "linkCode": {
+    "label": "リンクコード",
+    "waitingForLink": "● リンクを待っています…",
+    "expiresAt": "有効期限: {countdown}",
+    "waitingForActivation": "● 有効化を待っています…",
+    "expired": "リンクコードの有効期限が切れました。",
+    "issueNewCode": "新しいコードを発行",
+    "retry": "再試行"
+  },
+  "qrScanner": {
+    "cannotStart": "カメラを起動できません。カメラ権限と HTTPS 接続を確認してください。",
+    "cameraSettings": "カメラ設定",
+    "selectCamera": "カメラを選択",
+    "cameraN": "カメラ {n}"
+  },
+  "textScale": {
+    "xs": "最小",
+    "sm": "小",
+    "md": "標準",
+    "lg": "大",
+    "xl": "最大"
   }
 }

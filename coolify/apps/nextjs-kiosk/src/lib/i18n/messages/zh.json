@@ -364,5 +364,49 @@
     "execDepOrIncomplete": "执行依赖（任一）均未完成",
     "branchSourceIncomplete": "分支来源工序尚未完成",
     "precedingWorkOrderIncomplete": "前置工单 #{workOrderNumber} 尚未完成"
+  },
+  "common": {
+    "separator": "、",
+    "deleteOneChar": "删除一个字符",
+    "confirm": "确定",
+    "quantity": "数量",
+    "unknown": "未知"
+  },
+  "shell": {
+    "notLoggedIn": "未登录",
+    "unnamedDevice": "（未命名）",
+    "unregisteredDevice": "未注册终端",
+    "kioskDeviceTitle": "CKK 专用终端",
+    "connectionNone": "无连接",
+    "connectionDeviceUnregistered": "终端未注册",
+    "connectionApp": "通过专用应用连接中",
+    "connectionBrowser": "通过浏览器连接中（未使用专用应用）",
+    "connectionUnstableSuffix": "・连接不稳定",
+    "connectionStatus": "连接状态：{label}",
+    "offlineTitle": "无法连接到服务器",
+    "offlineMessage": "请检查网络（Wi-Fi / LAN）。",
+    "offlineRecovery": "连接恢复后将自动继续。"
+  },
+  "linkCode": {
+    "label": "链接码",
+    "waitingForLink": "● 等待关联…",
+    "expiresAt": "有效期限：{countdown}",
+    "waitingForActivation": "● 等待启用…",
+    "expired": "链接码已过期。",
+    "issueNewCode": "签发新代码",
+    "retry": "重试"
+  },
+  "qrScanner": {
+    "cannotStart": "无法启动摄像头。请检查摄像头权限和 HTTPS 连接。",
+    "cameraSettings": "摄像头设置",
+    "selectCamera": "选择摄像头",
+    "cameraN": "摄像头 {n}"
+  },
+  "textScale": {
+    "xs": "最小",
+    "sm": "小",
+    "md": "标准",
+    "lg": "大",
+    "xl": "最大"
   }
 }

@@ -33,7 +33,9 @@ import {
 import { IconRefresh } from "@tabler/icons-react";
 import type { ReactNode } from "react";
 import { formatCode } from "@/lib/crockford";
+import { fillMessage } from "@/lib/i18n";
 import { qrSvg } from "@/lib/qr";
+import { useI18n } from "./I18nProvider";
 
 export type LinkCodePhase =
   | { phase: "loading" }
@@ -102,6 +104,7 @@ export function LinkCodeScreen({
   brand,
   now,
 }: Props) {
+  const { m } = useI18n();
   const s = SIZES[variant];
   const wide = state.phase === "showing";
 
@@ -159,7 +162,7 @@ export function LinkCodeScreen({
                 {badge}
                 <Stack align="center" gap={4}>
                   <Text c="dimmed" size="xs">
-                    リンクコード
+                    {m.linkCode.label}
                   </Text>
                   <Text
                     ff="monospace"
@@ -170,10 +173,12 @@ export function LinkCodeScreen({
                   </Text>
                 </Stack>
                 <Text c="dimmed" size={s.lead}>
-                  有効期限: {countdown(state.expiresAt - now)}
+                  {fillMessage(m.linkCode.expiresAt, {
+                    countdown: countdown(state.expiresAt - now),
+                  })}
                 </Text>
                 <Text c="blue" size={s.lead}>
-                  ● リンクを待っています…
+                  {m.linkCode.waitingForLink}
                 </Text>
               </Stack>
             </Flex>
@@ -186,7 +191,7 @@ export function LinkCodeScreen({
               </Alert>
               <Loader size="sm" />
               <Text c="dimmed" size={s.lead}>
-                ● 有効化を待っています…
+                {m.linkCode.waitingForActivation}
               </Text>
             </>
           )}
@@ -194,10 +199,10 @@ export function LinkCodeScreen({
           {state.phase === "expired" && (
             <>
               <Alert color="orange" w="100%">
-                リンクコードの有効期限が切れました。
+                {m.linkCode.expired}
               </Alert>
               <Button leftSection={<IconRefresh size={20} />} onClick={onRetry}>
-                新しいコードを発行
+                {m.linkCode.issueNewCode}
               </Button>
             </>
           )}
@@ -208,7 +213,7 @@ export function LinkCodeScreen({
                 {state.message}
               </Alert>
               <Button leftSection={<IconRefresh size={20} />} onClick={onRetry}>
-                再試行
+                {m.linkCode.retry}
               </Button>
             </>
           )}

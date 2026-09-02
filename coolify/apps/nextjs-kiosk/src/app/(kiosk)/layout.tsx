@@ -31,11 +31,13 @@ export default async function KioskLayout({
   let deviceName: string | null = null;
   let deviceId: string | null = null;
   let registered = false;
+  let deviceLocale: Locale = "ja";
   try {
     const device = await getDevice({ skipAttest: true });
     if (device.ok) {
       deviceName = device.device.name;
       deviceId = device.device.id;
+      deviceLocale = device.device.locale;
       registered = true;
     }
   } catch {
@@ -54,7 +56,10 @@ export default async function KioskLayout({
   // Provider の外側にあり、常に既定（ja）になっていた（言語の切替も
   // 効いていないように見える）。ページ側の包みはそのままでも害は無い
   // （内側が勝つだけで、同じ値になる）。
-  let locale: Locale = "ja";
+  // 未ログイン（ログイン前の画面）は端末の言語設定を使う — セッションが
+  // 無いので利用者の言語を引けない（SY09 で設定する kiosk_devices.locale。
+  // ログインすればすぐ利用者本人の設定に切り替わる）。
+  let locale: Locale = deviceLocale;
   try {
     const session = await getSession();
     userName = session?.displayName ?? null;
