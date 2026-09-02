@@ -7832,7 +7832,12 @@
     "shippedReservationReleased": "因出货解除预留 {ref}",
     "materialReceived": "材料到货",
     "reservedByStockCheck": "库存核对分配预留（§4）",
-    "stockCheckReservedAndShortage": "库存核对：已分配 {reservedNow} / 缺口 {shortage}"
+    "stockCheckReservedAndShortage": "库存核对：已分配 {reservedNow} / 缺口 {shortage}",
+    "stepStarted": "开始工序（工序 {sortOrder}・接收 {input}）",
+    "stepPaused": "暂停工序（工序 {sortOrder}）",
+    "stepResumed": "恢复工序（工序 {sortOrder}）",
+    "workLocationChanged": "变更作业场所（工序 {sortOrder} / 作业场所 {workLocationId}）",
+    "stepCompleted": "完成工序（良品 {success}/{input}）"
   },
   "workflowCore": {
     "quantityLabels": {

@@ -7832,7 +7832,12 @@
     "shippedReservationReleased": "Reservation released by shipment {ref}",
     "materialReceived": "Material received",
     "reservedByStockCheck": "Reserved by stock check (§4)",
-    "stockCheckReservedAndShortage": "Stock check: reserved {reservedNow} / short {shortage}"
+    "stockCheckReservedAndShortage": "Stock check: reserved {reservedNow} / short {shortage}",
+    "stepStarted": "Started the step (step {sortOrder} · received {input})",
+    "stepPaused": "Paused the step (step {sortOrder})",
+    "stepResumed": "Resumed the step (step {sortOrder})",
+    "workLocationChanged": "Changed the work location (step {sortOrder} / location {workLocationId})",
+    "stepCompleted": "Completed the step (good {success}/{input})"
   },
   "workflowCore": {
     "quantityLabels": {

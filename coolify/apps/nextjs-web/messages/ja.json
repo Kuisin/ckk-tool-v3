@@ -7832,7 +7832,12 @@
     "shippedReservationReleased": "出荷による予約解除 {ref}",
     "materialReceived": "素材入荷",
     "reservedByStockCheck": "§4 在庫照合による引当予約",
-    "stockCheckReservedAndShortage": "在庫照合: 引当 {reservedNow} / 不足 {shortage}"
+    "stockCheckReservedAndShortage": "在庫照合: 引当 {reservedNow} / 不足 {shortage}",
+    "stepStarted": "工程を開始（step {sortOrder}・受入 {input}）",
+    "stepPaused": "工程を一時停止（step {sortOrder}）",
+    "stepResumed": "工程を再開（step {sortOrder}）",
+    "workLocationChanged": "作業場所を変更（step {sortOrder} / 作業場所 {workLocationId}）",
+    "stepCompleted": "工程を完了（良品 {success}/{input}）"
   },
   "workflowCore": {
     "quantityLabels": {
