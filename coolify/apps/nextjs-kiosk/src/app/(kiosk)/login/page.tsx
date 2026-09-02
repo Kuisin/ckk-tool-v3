@@ -218,9 +218,9 @@ export default function LoginPage() {
           case "PIN_WEAK":
             notifications.show({
               color: "red",
-              title: "その PIN は使えません",
+              title: "その PIN は使えません", // i18n-ignore — ログイン前画面は ja 固定（lib/i18n の方針）
               message:
-                "6 桁で、同じ数字の連続や 123456 のような並び・繰り返しは避けてください。",
+                "6 桁で、同じ数字の連続や 123456 のような並び・繰り返しは避けてください。", // i18n-ignore — ログイン前画面は ja 固定（lib/i18n の方針）
             });
             setState({ phase: "pin_setup", ticket, firstPin: undefined });
             return;
@@ -286,7 +286,7 @@ export default function LoginPage() {
               minLength={6}
               onSubmit={(pin) => setState({ ...state, firstPin: pin })}
               submitting={busy}
-              subtitle="初回ログインです。6 桁の PIN を設定してください（同じ数字の連続や 123456 のような並びは使えません）。"
+              subtitle="初回ログインです。6 桁の PIN を設定してください（同じ数字の連続や 123456 のような並びは使えません）。" // i18n-ignore — ログイン前画面は ja 固定（lib/i18n の方針）
               title="PIN を設定"
             />
           )}

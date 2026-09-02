@@ -132,7 +132,7 @@ export function SetupView() {
       }
       setState({ phase: "error", message: "コードを発行できませんでした" });
     } catch {
-      setState({ phase: "error", message: "サーバーに接続できません" });
+      setState({ phase: "error", message: "サーバーに接続できません" }); // i18n-ignore — ログイン前画面は ja 固定（lib/i18n の方針）
     }
   }, []);
 
@@ -206,7 +206,7 @@ export function SetupView() {
         localStorage.removeItem(DEVICE_ID_KEY);
         void begin();
       } catch {
-        setState({ phase: "error", message: "サーバーに接続できません" });
+        setState({ phase: "error", message: "サーバーに接続できません" }); // i18n-ignore — ログイン前画面は ja 固定（lib/i18n の方針）
       }
     },
     [begin],
@@ -300,13 +300,14 @@ export function SetupView() {
             submitting={locked}
             subtitle={
               locked
-                ? "試行回数の上限に達しました。しばらく待ってから入力してください。"
-                : "この端末の登録を復帰します。管理者が「設定 → 端末管理」で確認できる 6 桁の端末設定コードを入力してください。"
+                ? "試行回数の上限に達しました。しばらく待ってから入力してください。" // i18n-ignore — ログイン前画面は ja 固定（lib/i18n の方針）
+                : "この端末の登録を復帰します。管理者が「設定 → 端末管理」で確認できる 6 桁の端末設定コードを入力してください。" // i18n-ignore — ログイン前画面は ja 固定（lib/i18n の方針）
             }
-            title="端末設定コード"
+            title="端末設定コード" // i18n-ignore — ログイン前画面は ja 固定（lib/i18n の方針）
           />
           <Text c="dimmed" size="sm" ta="center">
             コードが分からない場合は、リンクコードを発行して管理者に再リンクしてもらいます。
+            // i18n-ignore — ログイン前画面は ja 固定（lib/i18n の方針）
           </Text>
           <Button
             onClick={() => {
@@ -315,7 +316,8 @@ export function SetupView() {
             }}
             variant="default"
           >
-            リンクコードを発行する
+            リンクコードを発行する // i18n-ignore — ログイン前画面は ja
+            固定（lib/i18n の方針）
           </Button>
         </Stack>
       </Center>

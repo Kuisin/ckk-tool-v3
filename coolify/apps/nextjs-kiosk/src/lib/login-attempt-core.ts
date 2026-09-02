@@ -185,7 +185,7 @@ const REASON_LABELS: Record<LoginFailureReason, string> = {
   PIN_FORMAT: "PIN の形式不正",
   PIN_MISMATCH: "PIN 不一致",
   PIN_ALREADY_SET: "PIN 設定済み",
-  PIN_WEAK: "PIN が弱い",
+  PIN_WEAK: "PIN が弱い", // i18n-ignore — ログイン履歴の理由ラベル（既存行と同じ扱い）
   ATTEST_NOT_CONFIGURED: "アテステーション未設定",
   ATTEST_BAD_SIGNATURE: "署名検証に失敗",
   ATTEST_KEY_MISMATCH: "端末鍵が不一致",
@@ -194,12 +194,12 @@ const REASON_LABELS: Record<LoginFailureReason, string> = {
   SETTINGS_NO_DEVICE: "端末設定: 端末不明",
   SETTINGS_LOCKED: "端末設定: ロック中",
   SETTINGS_CODE_INVALID: "端末設定コード不一致",
-  REACTIVATE_PROOF_REQUIRED: "端末再発行: 証明なし",
-  REACTIVATE_BAD_SIGNATURE: "端末再発行: 署名不正",
-  REACTIVATE_CODE_INVALID: "端末再発行: 設定コード不一致",
-  REACTIVATE_LOCKED: "端末再発行: ロック中",
-  REACTIVATE_TOKEN_LIVE: "端末再発行: トークン有効中",
-  UNLOCK_PIN_NOT_ATTESTED: "退出 PIN: 未アテステーション端末",
+  REACTIVATE_PROOF_REQUIRED: "端末再発行: 証明なし", // i18n-ignore — ログイン履歴の理由ラベル（既存行と同じ扱い）
+  REACTIVATE_BAD_SIGNATURE: "端末再発行: 署名不正", // i18n-ignore — ログイン履歴の理由ラベル（既存行と同じ扱い）
+  REACTIVATE_CODE_INVALID: "端末再発行: 設定コード不一致", // i18n-ignore — ログイン履歴の理由ラベル（既存行と同じ扱い）
+  REACTIVATE_LOCKED: "端末再発行: ロック中", // i18n-ignore — ログイン履歴の理由ラベル（既存行と同じ扱い）
+  REACTIVATE_TOKEN_LIVE: "端末再発行: トークン有効中", // i18n-ignore — ログイン履歴の理由ラベル（既存行と同じ扱い）
+  UNLOCK_PIN_NOT_ATTESTED: "退出 PIN: 未アテステーション端末", // i18n-ignore — ログイン履歴の理由ラベル（既存行と同じ扱い）
   PORTAL_UNKNOWN_EMAIL: "ポータル: 未登録のアドレス",
   PORTAL_ACCOUNT_INACTIVE: "ポータル: アカウントが無効",
   PORTAL_CODE_EXPIRED: "ポータル: 確認コード期限切れ",
