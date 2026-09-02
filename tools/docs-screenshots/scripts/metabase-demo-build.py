@@ -66,10 +66,19 @@ def main():
     setup = api(mb_url, "POST", "/api/setup", {
         "token": props["setup-token"],
         "user": {"first_name": "Manual", "last_name": "Shots",
-                  "email": args.admin_email, "password": args.admin_password},
+                  "email": args.admin_email, "password": args.admin_password,
+                  "locale": "ja"},
         "prefs": {"site_name": "CKK Manual Shots", "allow_tracking": False},
     })
     session = setup["id"]
+    # Production's bi.ckk-tool.co.jp has site-locale=ja (real users see a fully
+    # Japanese UI, not just Japanese content) — match that here so the demo
+    # screenshots are representative, not just Japanese-labeled data inside an
+    # English chrome. Also set the admin account's own locale explicitly:
+    # `user.locale` at /api/setup is best-effort in some Metabase versions.
+    api(mb_url, "PUT", "/api/setting/site-locale", {"value": "ja"}, session=session)
+    me = api(mb_url, "GET", "/api/user/current", session=session)
+    api(mb_url, "PUT", f"/api/user/{me['id']}", {"locale": "ja"}, session=session)
 
     print("[2/6] data sources")
     biz_db = api(mb_url, "POST", "/api/database", {

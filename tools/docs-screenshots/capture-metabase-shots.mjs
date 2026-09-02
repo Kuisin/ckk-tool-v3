@@ -26,9 +26,12 @@ async function main() {
   const page = await context.newPage();
 
   await page.goto("http://localhost:3033/auth/login", { waitUntil: "networkidle" });
-  await page.getByPlaceholder("you@email.com").fill("manual-shots@example.invalid");
-  await page.getByPlaceholder("Shhh...").fill("ManualShots2026!");
-  await page.getByRole("button", { name: "Sign in" }).click();
+  // Language-agnostic selectors — the login page renders in Japanese now that
+  // site-locale=ja is set (matching production), so English placeholder text
+  // ("you@email.com" / "Sign in") no longer matches.
+  await page.locator('input[type="email"], input[name="username"]').fill("manual-shots@example.invalid");
+  await page.locator('input[type="password"]').fill("ManualShots2026!");
+  await page.locator('button[type="submit"]').click();
   await page.waitForURL("http://localhost:3033/", { timeout: 30000 });
   console.log("logged in");
 

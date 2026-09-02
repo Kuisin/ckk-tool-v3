@@ -51,12 +51,17 @@
 #      PNGs and this script.
 #
 # ⚠️ Check every captured PNG before committing, not just that the script
-# exited 0. Real dev data is whatever it currently is — e.g. as of 2026-09,
-# `app.invoices` has 0 rows on dev, so 請求 (billing) renders "No results"
-# everywhere. That's an accurate live-data snapshot but a useless manual
-# screenshot; when that happens, fall back to a populated capture for that
-# one dashboard instead (skip step 2 for that run, or hand-edit the PNG in
-# afterward) rather than shipping an empty dashboard in the manual.
+# exited 0. Real dev data is whatever it currently is — `scripts/metabase-
+# billing-fallback-seed.sql` covers the one known case (0 invoices on dev
+# as of 2026-09, which would otherwise render 請求 as "No results"
+# everywhere), but if some OTHER dashboard goes empty/sparse in the future,
+# that's a new case to add a fallback for, not something to ship silently.
+#
+# Also sets site-locale=ja + the throwaway admin's own locale to ja — the
+# real bi.ckk-tool.co.jp has site-locale=ja already (chrome, not just
+# content, is Japanese for real users); a fresh Metabase instance defaults
+# to English, so without this the demo screenshots would show a Japanese
+# dashboard inside an English shell, which isn't what real users see.
 #
 # Re-run whenever the live dashboards change materially (new cards, renamed
 # filters) so the manual's screenshots stay representative. Exact card/filter
@@ -84,6 +89,10 @@ echo "== 2. overwrite app schema with real ckk-db-dev data (read-only pull) =="
 #   ssh 192.168.50.15 'for c in $(docker ps --format "{{.Names}}"); do echo "$(docker inspect -f "{{.NetworkSettings.Networks.coolify.IPAddress}}" "$c") $c"; done'
 DEV_CONTAINER="${CKK_DB_DEV_CONTAINER:?set CKK_DB_DEV_CONTAINER to the current ckk-db-dev container name (see comment above)}"
 python3 scripts/pull-ckk-dev-data.py --dev-container "$DEV_CONTAINER"
+# ckk-db-dev has had 0 invoices before — if that's still true, seed a few
+# synthetic ones (referencing REAL customer names already loaded) so 請求
+# isn't an empty dashboard in the manual. No-op if invoices already exist.
+docker exec -i ckk-shots-db psql -U postgres -d ckk -v ON_ERROR_STOP=1 < scripts/metabase-billing-fallback-seed.sql
 
 echo "== 3. analytics views + grants =="
 docker exec -i ckk-shots-db psql -U postgres -d ckk -v ON_ERROR_STOP=1 < "$REPO_ROOT/shared-db/sql/analytics-views.sql"

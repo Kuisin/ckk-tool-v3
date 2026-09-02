@@ -6,7 +6,7 @@ screenshots: [analytics-sales-01, analytics-production-01, analytics-billing-01,
 
 How to use **Metabase**, the analytics tool that turns the data in the business management system into charts and tables you can browse at a glance. It is a separate tool from the main app (the rest of this manual) — it reads the same data and presents it.
 
-> 💡 The screenshots on this page were taken with sample data for illustration. The real screens show your company's actual data. Metabase's own interface (search box, menus, and other chrome outside the content) is in English.
+> 💡 The screenshots on this page were taken with sample data for illustration. The real screens show your company's actual data. Metabase's own interface (search box, menus, and other chrome outside the content) is in Japanese too.
 
 ## What you can do here
 
