@@ -788,7 +788,8 @@
     "minutesAgo": "{n} min ago",
     "hoursAgo": "{n} hr ago",
     "yesterday": "Yesterday",
-    "daysAgo": "{n} days ago"
+    "daysAgo": "{n} days ago",
+    "step": "Step"
   },
   "shell": {
     "appsLabel": "Apps",
@@ -4351,7 +4352,9 @@
   },
   "portal": {
     "d": {
-      "identityCheck": "Identity check"
+      "identityCheck": "Identity check",
+      "deadLink": "This link is no longer available. Please contact your sales representative.",
+      "cannotOpenTheLink": "Cannot open the link"
     },
     "documents": {
       "document": "Document",
@@ -4647,7 +4650,8 @@
       "primaryContactTag": "(Primary)",
       "enterFullName": "Enter a full name",
       "roleInfoRequired": "Enter information for {role}",
-      "selectASalesRep": "Select a sales rep"
+      "selectASalesRep": "Select a sales rep",
+      "billToOwnCompany": "— (own company)"
     },
     "defectTypes": {
       "theDefectTypeWasCreated": "The defect type was created",
@@ -6553,7 +6557,8 @@
       "itemNameOnTheOrder": "Item name on the order",
       "mayBeLeftBlank": "May be left blank",
       "watchedFolder": "Watched folder intake",
-      "manualEntry": "Manual entry"
+      "manualEntry": "Manual entry",
+      "itemCountSuffix": " ({count} lines)"
     },
     "orderLines": {
       "parentDocumentOfThisLine": "Parent document of this line",

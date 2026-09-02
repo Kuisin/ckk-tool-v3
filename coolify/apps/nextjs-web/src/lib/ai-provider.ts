@@ -124,6 +124,7 @@ export async function saveAiProviderSettings(
         error: t(
           "encryptionKeyNotSetCannotSaveToken",
           locale,
+          // i18n-ignore — 鍵は既存、これは死んだ fallback
           `暗号鍵（${ENCRYPTION_KEY_ENV}）が未設定のため API トークンを保存できません。システム管理者へ連絡してください。`,
           { envVar: ENCRYPTION_KEY_ENV },
         ),
@@ -167,12 +168,14 @@ export async function aiConfigHeaders(
         ? t(
             "cannotDecryptTokenKeyNotSet",
             locale,
+            // i18n-ignore — 鍵は既存、これは死んだ fallback
             `AI プロバイダの API トークンを復号できません（${ENCRYPTION_KEY_ENV} が未設定です）。システム管理者へ連絡してください。`,
             { envVar: ENCRYPTION_KEY_ENV },
           )
         : t(
             "cannotDecryptTokenKeyChanged",
             locale,
+            // i18n-ignore — 鍵は既存、これは死んだ fallback
             "AI プロバイダの API トークンを復号できません（暗号鍵が変わった可能性があります）。システム設定 → AI プロバイダ でトークンを入力し直してください。",
           ),
     );

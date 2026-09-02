@@ -788,7 +788,8 @@
     "minutesAgo": "{n}分前",
     "hoursAgo": "{n}時間前",
     "yesterday": "昨日",
-    "daysAgo": "{n}日前"
+    "daysAgo": "{n}日前",
+    "step": "工程"
   },
   "shell": {
     "appsLabel": "アプリ",
@@ -4351,7 +4352,9 @@
   },
   "portal": {
     "d": {
-      "identityCheck": "本人確認"
+      "identityCheck": "本人確認",
+      "deadLink": "このリンクは利用できません。お手数ですが、担当営業へご連絡ください。",
+      "cannotOpenTheLink": "リンクを開けません"
     },
     "documents": {
       "document": "書類",
@@ -4647,7 +4650,8 @@
       "primaryContactTag": "（主担当）",
       "enterFullName": "氏名を入力してください",
       "roleInfoRequired": "{role}の情報を入力してください",
-      "selectASalesRep": "担当者を選択してください"
+      "selectASalesRep": "担当者を選択してください",
+      "billToOwnCompany": "—（自社）"
     },
     "defectTypes": {
       "theDefectTypeWasCreated": "不良種類を作成しました",
@@ -6553,7 +6557,8 @@
       "itemNameOnTheOrder": "注文書の品名",
       "mayBeLeftBlank": "未入力可",
       "watchedFolder": "監視フォルダ取込",
-      "manualEntry": "手入力"
+      "manualEntry": "手入力",
+      "itemCountSuffix": "（明細 {count} 件）"
     },
     "orderLines": {
       "parentDocumentOfThisLine": "この明細の親書類",

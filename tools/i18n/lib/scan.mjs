@@ -103,6 +103,8 @@ const EXCLUDED = [
   // と同じ理由（開いた template literal の中に i18n-ignore を挟むと CSS 本文へ
   // 混入する）で、ファイルごと除外している。
   /\/kiosk-cards\/print\/print-styles\.ts$/,
+  // 作業場所 QR ラベル印刷シートの CSS。理由は上の kiosk-cards 版と同じ。
+  /\/work-locations\/print\/print-styles\.ts$/,
 ];
 
 /**

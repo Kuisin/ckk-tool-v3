@@ -10,6 +10,7 @@
  * 版があるので、図面の取得が依頼の取得に相乗りしているのは筋が悪かった。
  */
 
+import { getTranslations } from "next-intl/server";
 import type {
   DesignFileRole,
   DesignFileSeriesRow,
@@ -19,6 +20,7 @@ import { prisma } from "@/lib/db";
 import { groupBySeries, resolveSeriesCustomer } from "@/lib/design-files-core";
 import { formatProductNumber } from "@/lib/doc-number";
 import { type LocalizedText, localized } from "@/lib/format";
+import type { Tr } from "@/lib/i18n";
 
 /**
  * 一覧の取得上限。系列ではなく **版** の行数に効く点に注意 — 系列は版を
@@ -27,26 +29,34 @@ import { type LocalizedText, localized } from "@/lib/format";
 const LIST_FETCH_CAP = 2000;
 
 /** 製品の名称とコードを分けて返す（表示側で行を分けられるように）。 */
-function productPartsOf(p: {
-  id: number;
-  name: unknown;
-  yearMonth: string | null;
-  seq: number | null;
-}): { name: string; code: string | null } {
+function productPartsOf(
+  p: {
+    id: number;
+    name: unknown;
+    yearMonth: string | null;
+    seq: number | null;
+  },
+  tr: Tr,
+): { name: string; code: string | null } {
   return {
-    name: localized(p.name as LocalizedText | null) || `製品 #${p.id}`,
+    name:
+      localized(p.name as LocalizedText | null) ||
+      tr("shipping.deliveryNoteActions.productFallbackLabel", { id: p.id }),
     code: formatProductNumber(p.yearMonth, p.seq),
   };
 }
 
 /** 見出し用の 1 行ラベル（名称 + コード）。 */
-function productLabelOf(p: {
-  id: number;
-  name: unknown;
-  yearMonth: string | null;
-  seq: number | null;
-}): string {
-  const { name, code } = productPartsOf(p);
+function productLabelOf(
+  p: {
+    id: number;
+    name: unknown;
+    yearMonth: string | null;
+    seq: number | null;
+  },
+  tr: Tr,
+): string {
+  const { name, code } = productPartsOf(p, tr);
   return code ? `${name} ${code}` : name;
 }
 
@@ -198,6 +208,7 @@ export async function fetchDesignFileSeries(): Promise<{
   rows: DesignFileSeriesRow[];
   truncated: boolean;
 }> {
+  const tr = await getTranslations();
   const files = await prisma.designFile.findMany({
     include: {
       file: { select: { filename: true, mimeType: true } },
@@ -226,8 +237,13 @@ export async function fetchDesignFileSeries(): Promise<{
   for (const [productId, list] of byProduct) {
     const product = list.find((f) => f.product)?.product;
     const parts = product
-      ? productPartsOf(product)
-      : { name: `製品 #${productId}`, code: null };
+      ? productPartsOf(product, tr)
+      : {
+          name: tr("shipping.deliveryNoteActions.productFallbackLabel", {
+            id: productId,
+          }),
+          code: null,
+        };
     for (const g of groupBySeries(
       list.map((f) => ({
         id: f.id,
@@ -275,11 +291,12 @@ export async function fetchDesignFileSeries(): Promise<{
 export async function fetchDesignFileProduct(
   productId: number,
 ): Promise<{ id: number; label: string } | null> {
+  const tr = await getTranslations();
   const p = await prisma.product.findUnique({
     where: { id: productId },
     select: { id: true, name: true, yearMonth: true, seq: true },
   });
-  return p ? { id: p.id, label: productLabelOf(p) } : null;
+  return p ? { id: p.id, label: productLabelOf(p, tr) } : null;
 }
 
 /**
@@ -320,6 +337,7 @@ export async function fetchDesignRequestContext(
   customerBpId: string | null;
   customerName: string | null;
 } | null> {
+  const tr = await getTranslations();
   const r = await prisma.designRequest.findUnique({
     where: { requestNumber },
     select: {
@@ -337,7 +355,7 @@ export async function fetchDesignRequestContext(
     id: r.id,
     requestNumber: r.requestNumber,
     productId: r.productId,
-    productLabel: productLabelOf(r.product),
+    productLabel: productLabelOf(r.product, tr),
     customerBpId: r.customerBpId,
     customerName: localized(r.customerBp?.name as LocalizedText | null) || null,
   };

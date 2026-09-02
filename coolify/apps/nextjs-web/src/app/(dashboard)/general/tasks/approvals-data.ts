@@ -10,6 +10,7 @@
  * 実体の依頼行を作るため。
  */
 
+import { getTranslations } from "next-intl/server";
 import { appList } from "@/lib/app-list";
 import { stepFromSnapshot } from "@/lib/approval-flow";
 import { APPROVAL_TARGET, isApprovalTargetType } from "@/lib/approval-targets";
@@ -83,6 +84,7 @@ async function readableTargetTypes(
 export async function fetchPendingApprovalRequests(): Promise<
   ApprovalRequestRow[]
 > {
+  const tr = await getTranslations();
   const requests = await prisma.approvalRequest.findMany({
     where: { status: "PENDING" },
     include: {
@@ -123,14 +125,16 @@ export async function fetchPendingApprovalRequests(): Promise<
           : r.targetId,
       stepNo: r.stepNo,
       stepCount: r.stepCount,
-      stepLabel: step ? localized(step.name) : `${r.stepNo} 段目`,
+      stepLabel: step
+        ? localized(step.name)
+        : tr("approvals.engine.stepOrdinal", { n: r.stepNo }),
       mode,
       approvedCount:
         mode === "ALL"
           ? r.approvers.filter((a) => a.actedAt != null).length
           : 0,
       requiredCount: mode === "ALL" ? r.approvers.length : 0,
-      requestedBy: r.requestedByUser?.displayName ?? "システム",
+      requestedBy: r.requestedByUser?.displayName ?? tr("common.system"),
       requestedAt: r.requestedAt.toISOString(),
       notes: r.notes,
       canReadTarget:

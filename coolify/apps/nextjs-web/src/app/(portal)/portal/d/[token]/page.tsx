@@ -17,6 +17,7 @@ import { redirect } from "next/navigation";
 import { getTranslations } from "next-intl/server";
 import { PortalLinkVerifyForm } from "@/components/portal/PortalLinkVerifyForm";
 import { resolveDeviceContext } from "@/lib/device-signals";
+import type { Tr } from "@/lib/i18n";
 import type { LoginFailureReason } from "@/lib/login-attempt-core";
 import { recordLoginAttempt } from "@/lib/login-attempts";
 import { createPortalSession } from "@/lib/portal-auth";
@@ -29,10 +30,6 @@ import {
 } from "@/lib/portal-rate-limit";
 
 export const dynamic = "force-dynamic";
-
-/** 利用者に見せる唯一の文言（存在しない・失効・期限切れ・回数切れ 共通）。 */
-const DEAD_LINK =
-  "このリンクは利用できません。お手数ですが、担当営業へご連絡ください。";
 
 const DENY_REASON: Record<string, LoginFailureReason> = {
   NOT_FOUND: "PORTAL_LINK_NOT_FOUND",
@@ -55,7 +52,7 @@ export default async function PortalLinkPage({
 
   // トークン単位でレート制限（総当たりを止める）。
   if ((await checkPortalLimit("LINK_RESOLVE", token)).locked) {
-    return <DeadLink />;
+    return <DeadLink tr={tr} />;
   }
 
   const resolved = await resolvePortalLink(token);
@@ -68,7 +65,7 @@ export default async function PortalLinkPage({
       reason: DENY_REASON[resolved.reason ?? "NOT_FOUND"] ?? "UNKNOWN",
       device,
     });
-    return <DeadLink />;
+    return <DeadLink tr={tr} />;
   }
 
   const link = resolved.link;
@@ -82,7 +79,7 @@ export default async function PortalLinkPage({
         reason: "PORTAL_LINK_EXHAUSTED",
         device,
       });
-      return <DeadLink />;
+      return <DeadLink tr={tr} />;
     }
     await createPortalSession({
       linkId: link.id,
@@ -119,12 +116,12 @@ export default async function PortalLinkPage({
   );
 }
 
-function DeadLink() {
+function DeadLink({ tr }: { tr: Tr }) {
   return (
     <Stack gap="md" maw={420} mt="xl" mx="auto">
-      <Title order={3}>リンクを開けません</Title>
+      <Title order={3}>{tr("portal.d.cannotOpenTheLink")}</Title>
       <Alert color="gray" variant="light">
-        <Text size="sm">{DEAD_LINK}</Text>
+        <Text size="sm">{tr("portal.d.deadLink")}</Text>
       </Alert>
     </Stack>
   );
