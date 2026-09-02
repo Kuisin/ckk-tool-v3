@@ -13,6 +13,7 @@
 import { findUserIdsWithPermission } from "@ckk/authz-core";
 import { getTranslations } from "next-intl/server";
 import { auth } from "@/auth";
+import { takeActionToken } from "@/lib/action-rate-limit";
 import type { BugReportDiagnostics, CapturedLog } from "@/lib/bug-report";
 import { prisma } from "@/lib/db";
 import { notify } from "@/lib/notifications";
@@ -44,6 +45,10 @@ export async function submitBugReportAction(
   const su = session?.user as { id?: string; name?: string | null } | undefined;
   if (!su?.id) return actionError(tr("common.loginRequired"));
 
+  // 管理者全員へ通知が飛ぶので連打を止める（監査 L4）。
+  if (!takeActionToken(`bug-report:${su.id}`, 10, 10 * 60_000)) {
+    return actionError(tr("common.tooManyRequests"));
+  }
   const description = input.description?.trim() ?? "";
   if (!description)
     return actionError(tr("layout.bugReportModal.describeTheProblem"));

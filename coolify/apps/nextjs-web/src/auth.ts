@@ -175,7 +175,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           recordLoginFailure(username);
           return null;
         }
-        if (!verifyPassword(password, user.passwordHash)) {
+        if (!(await verifyPassword(password, user.passwordHash))) {
           recordFailure("PASSWORD", "BAD_PASSWORD", username, user.id);
           recordLoginFailure(username);
           return null;

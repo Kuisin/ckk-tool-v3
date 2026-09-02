@@ -10,6 +10,7 @@
 
 import { getTranslations } from "next-intl/server";
 import { auth } from "@/auth";
+import { takeActionToken } from "@/lib/action-rate-limit";
 import { SYSTEM_USER_ID } from "@/lib/audit";
 import { prisma } from "@/lib/db";
 import { notify, sanitizeLinkPath } from "@/lib/notifications";
@@ -46,6 +47,13 @@ export async function sharePageAction(
     input.groupIds.length === 0
   ) {
     return actionError(tr("layout.shareActions.selectAtLeastOneRecipient"));
+  }
+  // 連打を止める（メール・プッシュまで飛ぶので、全員宛はとくに絞る — 監査 L4）。
+  if (
+    !takeActionToken(`share:${su.id}`, 20, 10 * 60_000) ||
+    (input.everyone && !takeActionToken(`share-all:${su.id}`, 3, 60 * 60_000))
+  ) {
+    return actionError(tr("common.tooManyRequests"));
   }
 
   // 宛先解決（全員 = 有効ユーザー全員。グループ = 有効メンバー）
