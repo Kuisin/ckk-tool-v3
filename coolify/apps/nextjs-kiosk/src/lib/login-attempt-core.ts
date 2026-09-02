@@ -8,8 +8,10 @@
  * ファイルが値の集合の唯一の定義**で、DB 側は VarChar で受ける
  * （kiosk_device_logs.source と同じ割り切り）。
  *
- * 表示ラベルもここに置く。SY0D（ログイン履歴）とキオスク側の記録が
- * 同じ語彙を見ていることを型で保証するため。
+ * 表示ラベルは lib/login-attempt-labels.ts（web 専用・next-intl 経由）に
+ * 分けてある——ここは web/kiosk の双子ファイルで next-intl を読み込めない。
+ * SY0D（ログイン履歴）とキオスク側の記録が同じ語彙（この列挙）を見ている
+ * ことは型で保証する。
  */
 
 import { parseQrPayload, QR_KINDS } from "./qr-payload";
@@ -142,86 +144,6 @@ export function scanKindOf(payload: unknown): ScanKind {
   // ここでは「カードの体裁をしているか」までに留める。
   if (/^[0-9A-Za-z-]{12,24}$/.test(trimmed)) return "CARD";
   return "MALFORMED";
-}
-
-const METHOD_LABELS: Record<LoginMethod, string> = {
-  PASSWORD: "パスワード",
-  SSO: "シングルサインオン",
-  QR_SCAN: "QRカード（スキャンのみ）",
-  QR_PIN: "QRカード + PIN",
-  PIN_SETUP: "PIN 初回設定",
-  ATTEST: "端末アテステーション",
-  DEVICE_SETTINGS: "端末設定コード",
-  DEVICE_LINK: "端末リンク",
-  PORTAL_OTP: "取引先ポータル（確認コード）",
-  PORTAL_BACKUP: "取引先ポータル（バックアップコード）",
-  PORTAL_LINK: "取引先ポータル（書類リンク）",
-};
-
-const REASON_LABELS: Record<LoginFailureReason, string> = {
-  EMPTY_INPUT: "入力が空",
-  RATE_LIMITED: "レート制限",
-  UNKNOWN_USER: "ユーザーが存在しない",
-  USER_INACTIVE: "ユーザーが無効",
-  NO_PASSWORD_SET: "パスワード未設定",
-  BAD_PASSWORD: "パスワード不一致",
-  SSO_NO_USERNAME: "SSO: ユーザー名クレームなし",
-  SSO_USER_INACTIVE: "SSO: ユーザーが無効",
-  SSO_UPSERT_FAILED: "SSO: ユーザー登録に失敗",
-  SSO_CALLBACK_ERROR: "SSO: コールバック失敗",
-  DEVICE_NO_COOKIE: "端末Cookieなし",
-  DEVICE_NOT_FOUND: "未登録の端末",
-  DEVICE_EXPIRED: "端末トークン期限切れ",
-  DEVICE_DISABLED: "端末が無効",
-  DEVICE_REVOKED: "端末が取り消し済み",
-  DEVICE_PENDING: "端末が未有効化",
-  ATTEST_REQUIRED: "アテステーション未通過",
-  BAD_REQUEST: "リクエスト不正",
-  CARD_INVALID: "カードが無効",
-  CARD_SUSPENDED: "カードが一時停止",
-  CARD_EXPIRED: "カードが有効期間外",
-  LOCKED: "ロック中",
-  TICKET_EXPIRED: "チケット期限切れ",
-  PIN_FORMAT: "PIN の形式不正",
-  PIN_MISMATCH: "PIN 不一致",
-  PIN_ALREADY_SET: "PIN 設定済み",
-  PIN_WEAK: "PIN が弱い", // i18n-ignore — ログイン履歴の理由ラベル（既存行と同じ扱い）
-  ATTEST_NOT_CONFIGURED: "アテステーション未設定",
-  ATTEST_BAD_SIGNATURE: "署名検証に失敗",
-  ATTEST_KEY_MISMATCH: "端末鍵が不一致",
-  ATTEST_KEY_IN_USE: "端末鍵が他端末で使用中",
-  ATTEST_BAD_PROFILE: "端末プロファイル不正",
-  SETTINGS_NO_DEVICE: "端末設定: 端末不明",
-  SETTINGS_LOCKED: "端末設定: ロック中",
-  SETTINGS_CODE_INVALID: "端末設定コード不一致",
-  REACTIVATE_PROOF_REQUIRED: "端末再発行: 証明なし", // i18n-ignore — ログイン履歴の理由ラベル（既存行と同じ扱い）
-  REACTIVATE_BAD_SIGNATURE: "端末再発行: 署名不正", // i18n-ignore — ログイン履歴の理由ラベル（既存行と同じ扱い）
-  REACTIVATE_CODE_INVALID: "端末再発行: 設定コード不一致", // i18n-ignore — ログイン履歴の理由ラベル（既存行と同じ扱い）
-  REACTIVATE_LOCKED: "端末再発行: ロック中", // i18n-ignore — ログイン履歴の理由ラベル（既存行と同じ扱い）
-  REACTIVATE_TOKEN_LIVE: "端末再発行: トークン有効中", // i18n-ignore — ログイン履歴の理由ラベル（既存行と同じ扱い）
-  UNLOCK_PIN_NOT_ATTESTED: "退出 PIN: 未アテステーション端末", // i18n-ignore — ログイン履歴の理由ラベル（既存行と同じ扱い）
-  PORTAL_UNKNOWN_EMAIL: "ポータル: 未登録のアドレス",
-  PORTAL_ACCOUNT_INACTIVE: "ポータル: アカウントが無効",
-  PORTAL_CODE_EXPIRED: "ポータル: 確認コード期限切れ",
-  PORTAL_CODE_MISMATCH: "ポータル: 確認コード不一致",
-  PORTAL_CODE_ATTEMPTS: "ポータル: 確認コード試行上限",
-  PORTAL_BACKUP_INVALID: "ポータル: バックアップコード不一致",
-  PORTAL_LINK_NOT_FOUND: "ポータル: リンクが存在しない",
-  PORTAL_LINK_EXPIRED: "ポータル: リンク期限切れ",
-  PORTAL_LINK_REVOKED: "ポータル: リンクが失効済み",
-  PORTAL_LINK_EXHAUSTED: "ポータル: リンクの使用回数超過",
-  PORTAL_MAIL_FAILED: "ポータル: メール送信に失敗",
-  PORTAL_MAIL_BLOCKED_DEV: "ポータル: dev の許可リスト外",
-  UNKNOWN: "不明",
-};
-
-export function loginMethodLabel(method: string): string {
-  return METHOD_LABELS[method as LoginMethod] ?? method;
-}
-
-export function loginReasonLabel(reason: string | null): string {
-  if (!reason) return "—";
-  return REASON_LABELS[reason as LoginFailureReason] ?? reason;
 }
 
 /**

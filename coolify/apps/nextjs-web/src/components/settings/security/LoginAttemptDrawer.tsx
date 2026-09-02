@@ -22,12 +22,12 @@ import {
   Text,
 } from "@mantine/core";
 import { IconAlertTriangle } from "@tabler/icons-react";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { useEffect, useState } from "react";
 import { fetchLoginAttemptDetail } from "@/app/(dashboard)/settings/login-history/actions";
 import { useFormat } from "@/components/layout/PreferencesProvider";
 import { FieldValue } from "@/components/ui/FieldValue";
-import { loginMethodLabel, loginReasonLabel } from "@/lib/login-attempt-core";
+import { loginMethodLabel, loginReasonLabel } from "@/lib/login-attempt-labels";
 import type { LoginAttemptDetail } from "@/lib/login-attempts";
 import { OwnershipBadge } from "./ownership";
 
@@ -75,6 +75,7 @@ export function LoginAttemptDrawer({
   onClose: () => void;
 }) {
   const tr = useTranslations();
+  const locale = useLocale();
   const fmt = useFormat();
   const [row, setRow] = useState<LoginAttemptDetail | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -162,12 +163,14 @@ export function LoginAttemptDrawer({
             />
             <FieldValue
               label={tr("common.method")}
-              value={loginMethodLabel(row.method)}
+              value={loginMethodLabel(row.method, locale)}
             />
             <FieldValue
               label={tr("common.reason")}
               value={
-                row.outcome === "FAILURE" ? loginReasonLabel(row.reason) : "—"
+                row.outcome === "FAILURE"
+                  ? loginReasonLabel(row.reason, locale)
+                  : "—"
               }
             />
             <FieldValue

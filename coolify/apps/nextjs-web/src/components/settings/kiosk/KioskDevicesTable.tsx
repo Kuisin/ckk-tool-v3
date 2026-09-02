@@ -61,6 +61,7 @@ import { useUrlSelectState, useUrlStringState } from "@/hooks/useUrlState";
 import { useIsMobile } from "@/hooks/useViewport";
 import { formatCode, normalizeCode } from "@/lib/crockford";
 import { fieldHelp, fieldHelpTip } from "@/lib/field-help";
+import { LOCALE_LABELS, LOCALES } from "@/lib/i18n";
 import type { KioskDeviceRow, KioskPlantOption } from "@/lib/kiosk-admin";
 import type { ActionResult } from "@/lib/server-action";
 import { statusOptions } from "@/lib/status-map";
@@ -96,7 +97,7 @@ export function OnlineDot({
         }}
       />
       <Text c={online ? "green" : "dimmed"} size="sm">
-        {label ?? (online ? "オンライン" : tr("settings.kiosk.offline"))}
+        {label ?? (online ? tr("common.online") : tr("settings.kiosk.offline"))}
       </Text>
     </Group>
   );
@@ -145,6 +146,8 @@ interface DeviceFormState {
   location: string;
   /** 既定の作業場所（編集のみ — 作成時は拠点未定のため設定不可）。 */
   defaultWorkLocationId: string | null;
+  /** ログイン前画面（/login 等）の表示言語。null = 既定（ja）。 */
+  locale: string | null;
 }
 
 const EMPTY_FORM: DeviceFormState = {
@@ -153,6 +156,7 @@ const EMPTY_FORM: DeviceFormState = {
   plantId: null,
   location: "",
   defaultWorkLocationId: null,
+  locale: null,
 };
 
 export function KioskDevicesTable({
@@ -324,6 +328,7 @@ export function KioskDevicesTable({
         r.defaultWorkLocationId != null
           ? String(r.defaultWorkLocationId)
           : null,
+      locale: r.locale,
     });
   };
 
@@ -349,6 +354,7 @@ export function KioskDevicesTable({
         defaultWorkLocationId: editForm.defaultWorkLocationId
           ? Number(editForm.defaultWorkLocationId)
           : null,
+        locale: editForm.locale as "ja" | "en" | "zh" | null,
       });
       if (result.ok) {
         setEditTarget(null);
@@ -888,6 +894,15 @@ export function KioskDevicesTable({
             placeholder={tr("settings.kiosk.machineAreaOptional")}
             searchable
             value={editForm.defaultWorkLocationId}
+          />
+          <Select
+            clearable
+            data={LOCALES.map((l) => ({ value: l, label: LOCALE_LABELS[l] }))}
+            description={tr("settings.kiosk.loginScreenLanguageDescription")}
+            label={tr("settings.kiosk.loginScreenLanguage")}
+            onChange={(v) => setEditForm((s) => ({ ...s, locale: v }))}
+            placeholder={tr("settings.kiosk.loginScreenLanguageDefault")}
+            value={editForm.locale}
           />
           <Text c="dimmed" size="xs">
             {tr("settings.kiosk.changingTheSiteRemovesItsPin")}

@@ -28,6 +28,7 @@ import { checkPermission } from "@/lib/authz";
 import { normalizeCode } from "@/lib/crockford";
 import { prisma } from "@/lib/db";
 import { checkFloorMapPermission as checkFloorMapPermissionCore } from "@/lib/floor-map-image";
+import { LOCALES } from "@/lib/i18n";
 import {
   type KioskDeviceSessionRow,
   type KioskPresenceRow,
@@ -475,6 +476,8 @@ function updateInputSchema(tr: Tr) {
     location: z.string().optional(),
     // 既定の作業場所（任意）。工程の開始/再開時に実績へ自動記録される。
     defaultWorkLocationId: z.number().int().positive().nullable(),
+    // ログイン前画面（/login 等）の表示言語。null = 既定（ja）。
+    locale: z.enum(LOCALES).nullable(),
   });
 }
 
@@ -527,6 +530,7 @@ export async function updateDevice(
         plantId: v.plantId,
         location: v.location?.trim() || null,
         defaultWorkLocationId: v.defaultWorkLocationId,
+        locale: v.locale,
         // 拠点をまたぐ移動はフロアマップのピンを外す（マップは拠点単位）。
         ...(plantChanged ? { floorMapId: null, mapX: null, mapY: null } : {}),
       },
@@ -540,12 +544,14 @@ export async function updateDevice(
         location: device.location,
         plantId: device.plantId,
         defaultWorkLocationId: device.defaultWorkLocationId,
+        locale: device.locale,
       },
       after: {
         name,
         location: v.location?.trim() || null,
         plantId: v.plantId,
         defaultWorkLocationId: v.defaultWorkLocationId,
+        locale: v.locale,
       },
     });
     revalidate();
