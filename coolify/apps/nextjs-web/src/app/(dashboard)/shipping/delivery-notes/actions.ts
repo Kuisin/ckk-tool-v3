@@ -17,7 +17,7 @@ import { revalidatePath } from "next/cache";
 import { getTranslations } from "next-intl/server";
 import { z } from "zod";
 import { recordAudit } from "@/lib/audit";
-import { checkPermission } from "@/lib/authz";
+import { checkPermission, requireAnyRead } from "@/lib/authz";
 import { prisma } from "@/lib/db";
 import {
   type DocKey,
@@ -144,6 +144,9 @@ function toItemData(it: ItemInputValue, i: number, includePrice: boolean) {
 export async function searchEndUserOptions(
   query: string,
 ): Promise<{ value: string; label: string }[]> {
+  if (!(await requireAnyRead(["delivery_note", "order_acceptance"])).ok) {
+    return [];
+  }
   const q = query.trim();
   const rows = await prisma.businessPartner.findMany({
     where: {

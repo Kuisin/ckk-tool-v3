@@ -1361,6 +1361,7 @@ export async function rejectWorkOrder(
 export async function getOrderLineInfo(
   orderLineId: string,
 ): Promise<OrderLineRef | null> {
+  if (!(await checkPermission("work_order", "READ")).ok) return null;
   if (!orderLineId) return null;
   return fetchOrderLineRef(orderLineId);
 }
@@ -1372,6 +1373,7 @@ export async function getOrderLineInfo(
 export async function getMaterialAtp(
   materialId: number,
 ): Promise<MaterialAtp | null> {
+  if (!(await checkPermission("work_order", "READ")).ok) return null;
   if (!Number.isInteger(materialId) || materialId <= 0) return null;
   try {
     return await materialAtp(materialId);
@@ -1394,6 +1396,7 @@ export async function getProductRoutesForOrderLine(
   customerName: string | null;
   routes: RouteView[];
 } | null> {
+  if (!(await checkPermission("work_order", "READ")).ok) return null;
   if (!orderLineId) return null;
   const so = await prisma.orderLine.findUnique({
     where: { id: orderLineId },
@@ -1428,6 +1431,7 @@ export async function getProductRoutesForProduct(productId: number): Promise<{
   customerName: string | null;
   routes: RouteView[];
 } | null> {
+  if (!(await checkPermission("work_order", "READ")).ok) return null;
   if (!Number.isInteger(productId) || productId <= 0) return null;
   const product = await prisma.product.findUnique({
     where: { id: productId },
@@ -1447,6 +1451,7 @@ export async function getProductRoutesForProduct(productId: number): Promise<{
 export async function getRouteVersionSteps(
   versionId: string,
 ): Promise<RouteStepSnapshot[]> {
+  if (!(await checkPermission("work_order", "READ")).ok) return [];
   if (!versionId) return [];
   return fetchRouteVersionSteps(versionId);
 }
@@ -1459,6 +1464,7 @@ export async function getLineAllocStatus(
   orderLineId: string,
   excludeWorkOrderNumber?: number,
 ): Promise<LineAllocStatus | null> {
+  if (!(await checkPermission("work_order", "READ")).ok) return null;
   if (!orderLineId) return null;
   const [lines, reservedAgg] = await Promise.all([
     loadLineAllocInfos([orderLineId], excludeWorkOrderNumber),

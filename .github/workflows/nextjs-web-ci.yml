@@ -106,6 +106,9 @@ jobs:
       - name: Page gate guard (requireAppRead)
         run: bash scripts/check-page-gates.sh
 
+      - name: Server Action gate guard (checkPermission / requireAnyRead)
+        run: node scripts/check-server-action-gates.mjs
+
       # 英語・中国語対応は段階的に進める（数千箇所が未着手のまま残る）。
       # 全部訳し終わっていなくても落とさない — 見るのは **後戻り** だけで、
       # baseline より増えたときに失敗する。使い方は tools/i18n/README.md。

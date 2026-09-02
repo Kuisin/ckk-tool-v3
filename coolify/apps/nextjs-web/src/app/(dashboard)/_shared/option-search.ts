@@ -8,7 +8,7 @@
  * 値は内部 id（連番）の文字列、ラベルは表示コード + 名称。
  */
 
-import { checkPermission } from "@/lib/authz";
+import { checkPermission, requireAnyRead } from "@/lib/authz";
 import { bpMatchesQuery } from "@/lib/bp-search";
 import { prisma } from "@/lib/db";
 import { formatProductNumber, formatQuoteNumber } from "@/lib/doc-number";
@@ -17,6 +17,59 @@ import { listCustomerSalesReps } from "@/lib/sales-rep";
 
 const LIMIT = 20;
 const F4_LIMIT = 50;
+
+/**
+ * 各ピッカーを使ってよい人 = そのマスタを読める人 か、それを参照して書類を
+ * 起こす画面のどれかを読める人（lib/authz.ts requireAnyRead 参照）。
+ * 「ログインしているだけ」では通さない。
+ */
+const BUSINESS_DOC_CODES = [
+  "quote",
+  "price_list",
+  "order_acceptance",
+  "design_request",
+  "design_file",
+  "work_order",
+  "purchase_order",
+  "material_receipt",
+  "outsource_order",
+  "inventory",
+  "delivery_order",
+  "delivery_note",
+  "invoice",
+  "billing_closing",
+  // CM02 フォームの「業務データ検索」項目（components/forms/lookup-dispatch.ts）
+  "form",
+] as const;
+/** 製品・素材・材種・工程・拠点・場所 — 参照マスタ一般。 */
+const MASTER_PICKER_CODES = ["master", ...BUSINESS_DOC_CODES] as const;
+/** 取引先（顧客・出荷先・需要家）。 */
+const PARTNER_PICKER_CODES = ["master", ...BUSINESS_DOC_CODES] as const;
+/** 利用者（担当者・承認者・共有先の選択）。業務ロールを何か 1 つ持つ人。 */
+const USER_PICKER_CODES = [
+  "master",
+  "internal_page",
+  "kiosk",
+  ...BUSINESS_DOC_CODES,
+] as const;
+/** 見積書を参照する書類（注文請書・設計依頼）。 */
+const QUOTE_PICKER_CODES = ["quote", "order_acceptance", "design_request"];
+/** 注文明細を参照する書類。 */
+const ORDER_LINE_PICKER_CODES = [
+  "order_acceptance",
+  "design_request",
+  "work_order",
+  "delivery_order",
+];
+/** 素材（購買・入荷・指示書・在庫）。 */
+const MATERIAL_PICKER_CODES = [
+  "master",
+  "purchase_order",
+  "material_receipt",
+  "work_order",
+  "inventory",
+  "form",
+];
 
 export interface SearchOption {
   value: string;
@@ -98,6 +151,7 @@ function productLabel(p: {
 export async function searchProductOptions(
   query: string,
 ): Promise<SearchOption[]> {
+  if (!(await requireAnyRead(MASTER_PICKER_CODES)).ok) return [];
   const q = query.trim();
   const keywordIds = await productIdsByKeyword(q, LIMIT);
   const rows = await prisma.product.findMany({
@@ -132,6 +186,7 @@ export async function searchQuoteOptions(
   query: string,
   customerBpId?: string | null,
 ): Promise<SearchOption[]> {
+  if (!(await requireAnyRead(QUOTE_PICKER_CODES)).ok) return [];
   const q = query.trim().toUpperCase();
   const rows = await prisma.quote.findMany({
     where: {
@@ -198,6 +253,7 @@ export async function fetchSalesRepPicker(
 export async function searchCustomerOptions(
   query: string,
 ): Promise<SearchOption[]> {
+  if (!(await requireAnyRead(PARTNER_PICKER_CODES)).ok) return [];
   const q = query.trim();
   // 照合キー（AI 用に貯めた表記ゆれ + フリガナ由来）でも探せるようにする。
   // 配列の部分一致は Prisma の where で書けないので、候補を絞ってから
@@ -239,6 +295,7 @@ export async function searchCustomerOptions(
 export async function searchShipToOptions(
   query: string,
 ): Promise<SearchOption[]> {
+  if (!(await requireAnyRead(PARTNER_PICKER_CODES)).ok) return [];
   const q = query.trim();
   const rows = await prisma.businessPartner.findMany({
     where: { isActive: true },
@@ -272,6 +329,7 @@ export async function searchShipToOptions(
 export async function searchEndUserOptions(
   query: string,
 ): Promise<SearchOption[]> {
+  if (!(await requireAnyRead(PARTNER_PICKER_CODES)).ok) return [];
   const q = query.trim();
   const rows = await prisma.businessPartner.findMany({
     where: {
@@ -305,6 +363,7 @@ export async function searchEndUserOptions(
 export async function searchStructuredMaterialTypeOptions(
   query: string,
 ): Promise<SearchOption[]> {
+  if (!(await requireAnyRead(MASTER_PICKER_CODES)).ok) return [];
   const q = query.trim();
   const rows = await prisma.materialType.findMany({
     where: {
@@ -332,6 +391,7 @@ export async function searchStructuredMaterialTypeOptions(
 export async function searchMaterialTypeOptions(
   query: string,
 ): Promise<SearchOption[]> {
+  if (!(await requireAnyRead(MASTER_PICKER_CODES)).ok) return [];
   const q = query.trim();
   const rows = await prisma.materialType.findMany({
     where: {
@@ -360,6 +420,7 @@ export async function searchMaterialTypeOptions(
 export async function f4SearchProducts(
   filters: Record<string, string>,
 ): Promise<F4SearchRow[]> {
+  if (!(await requireAnyRead(MASTER_PICKER_CODES)).ok) return [];
   const name = s(filters.name);
   const materialType = s(filters.materialType);
   // 名称欄はキーワード（match_names）込みで判定する（略称・英字でも当たる）。
@@ -406,6 +467,7 @@ export async function f4SearchProducts(
 export async function f4SearchCustomers(
   filters: Record<string, string>,
 ): Promise<F4SearchRow[]> {
+  if (!(await requireAnyRead(PARTNER_PICKER_CODES)).ok) return [];
   const code = s(filters.code);
   const name = s(filters.name);
   const rows = await prisma.businessPartner.findMany({
@@ -450,6 +512,7 @@ export async function f4SearchCustomers(
 export async function f4SearchStructuredMaterialTypes(
   filters: Record<string, string>,
 ): Promise<F4SearchRow[]> {
+  if (!(await requireAnyRead(MASTER_PICKER_CODES)).ok) return [];
   const manufacturerCode = s(filters.manufacturerCode);
   const shapeCode = s(filters.shapeCode);
   const code = s(filters.code);
@@ -489,6 +552,7 @@ export async function f4SearchStructuredMaterialTypes(
 export async function searchProcessStepOptions(
   query: string,
 ): Promise<SearchOption[]> {
+  if (!(await requireAnyRead(MASTER_PICKER_CODES)).ok) return [];
   const q = query.trim();
   const rows = await prisma.processStepCatalog.findMany({
     where: {
@@ -522,6 +586,7 @@ export async function searchProcessStepOptions(
 export async function searchPlantOptions(
   query: string,
 ): Promise<SearchOption[]> {
+  if (!(await requireAnyRead(MASTER_PICKER_CODES)).ok) return [];
   const q = query.trim();
   const rows = await prisma.plant.findMany({
     where: {
@@ -548,6 +613,7 @@ export async function searchPlantOptions(
 export async function searchStorageLocationOptions(
   query: string,
 ): Promise<SearchOption[]> {
+  if (!(await requireAnyRead(MASTER_PICKER_CODES)).ok) return [];
   const q = query.trim();
   const rows = await prisma.storageLocation.findMany({
     where: {
@@ -574,6 +640,7 @@ export async function searchStorageLocationOptions(
 export async function searchWorkLocationOptions(
   query: string,
 ): Promise<SearchOption[]> {
+  if (!(await requireAnyRead(MASTER_PICKER_CODES)).ok) return [];
   const q = query.trim();
   const rows = await prisma.workLocation.findMany({
     where: {
@@ -600,6 +667,7 @@ export async function searchWorkLocationOptions(
 export async function searchUserOptions(
   query: string,
 ): Promise<SearchOption[]> {
+  if (!(await requireAnyRead(USER_PICKER_CODES)).ok) return [];
   const q = query.trim();
   const rows = await prisma.user.findMany({
     where: {
@@ -630,6 +698,8 @@ export async function searchUserOptions(
 export async function searchShippableAcceptanceOptions(
   query: string,
 ): Promise<SearchOption[]> {
+  if (!(await requireAnyRead(["delivery_order", "order_acceptance"])).ok)
+    return [];
   const q = query.trim();
   const rows = await prisma.orderAcceptance.findMany({
     where: {
@@ -673,6 +743,7 @@ export async function searchShippableAcceptanceOptions(
 export async function searchOrderLineOptions(
   query: string,
 ): Promise<SearchOption[]> {
+  if (!(await requireAnyRead(ORDER_LINE_PICKER_CODES)).ok) return [];
   const q = query.trim();
   const rows = await prisma.orderLine.findMany({
     where: {
@@ -724,6 +795,7 @@ export async function searchOrderLineOptions(
 export async function searchAllocatableOrderLineOptions(
   query: string,
 ): Promise<SearchOption[]> {
+  if (!(await requireAnyRead(["work_order"])).ok) return [];
   const options = await searchOrderLineOptions(query);
   if (options.length === 0) return options;
   const ids = options.map((o) => o.value);
@@ -745,6 +817,7 @@ export async function searchAllocatableOrderLineOptions(
 export async function searchMaterialOptions(
   query: string,
 ): Promise<SearchOption[]> {
+  if (!(await requireAnyRead(MATERIAL_PICKER_CODES)).ok) return [];
   const q = query.trim();
   const keywordIds = await materialIdsByKeyword(q, LIMIT);
   const rows = await prisma.material.findMany({
