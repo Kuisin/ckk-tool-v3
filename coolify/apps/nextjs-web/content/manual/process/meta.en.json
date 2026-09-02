@@ -2,6 +2,7 @@
   "title": "Process",
   "pages": [
     "default-flow",
+    "document-relations",
     "sales",
     "purchasing",
     "production",
