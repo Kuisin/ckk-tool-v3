@@ -36,8 +36,8 @@ const yen = (n: number) => n.toLocaleString("ja-JP");
 
 // 発行元（CKK 本社）— quote ルートの issuer ブロックと同一。
 const ISSUER = {
-  name: "シー・ケィ・ケー株式会社",
-  address: "〒475-0823 愛知県半田市港町2丁目27番2",
+  name: "シー・ケィ・ケー株式会社", // i18n-ignore
+  address: "〒475-0823 愛知県半田市港町2丁目27番2", // i18n-ignore
   tel: "TEL: 0569-21-6187　FAX: 0569-23-6427",
   invoice_reg: "T1234567890123",
 };
@@ -68,7 +68,7 @@ export async function GET(request: Request): Promise<Response> {
     return new Response(`Delivery note not found: ${id}`, { status: 404 });
   }
   // 閲覧は発行後のみ（下書きの納品書は PDF を出さない）。
-  if (!isIssued(note.status)) return notIssuedResponse("納品書");
+  if (!isIssued(note.status)) return notIssuedResponse("納品書"); // i18n-ignore
 
   const storageKey = pdfStorageKey.deliveryNote(note.deliveryNumber);
 

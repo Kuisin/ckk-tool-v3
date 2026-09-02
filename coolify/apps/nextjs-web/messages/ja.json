@@ -1124,6 +1124,31 @@
       "SCHEDULED": "期間前",
       "EXPIRED": "期間終了",
       "DISABLED": "無効"
+    },
+    "WORK_ORDER_HISTORY_ACTION_LABEL": {
+      "CREATE": "作成",
+      "COPY": "コピー作成",
+      "UPDATE": "更新",
+      "REQUEST_APPROVAL": "承認依頼",
+      "APPROVE_STEP": "承認",
+      "APPROVE_FINAL": "最終承認",
+      "APPROVE_1ST": "第一承認",
+      "APPROVE_2ND": "第二承認",
+      "REJECT": "差し戻し",
+      "CANCEL": "キャンセル"
+    },
+    "DESIGN_HISTORY_ACTION_LABEL": {
+      "CREATE": "作成",
+      "UPDATE": "更新",
+      "REQUEST_APPROVAL": "承認依頼",
+      "APPROVE": "承認",
+      "REJECT": "差し戻し",
+      "ASSIGN": "担当者変更",
+      "KIND_OVERRIDE": "依頼区分の変更",
+      "START": "着手",
+      "COMPLETE": "完了",
+      "REOPEN": "差し戻し（作業）",
+      "CANCEL": "キャンセル"
     }
   },
   "status": {

@@ -11,6 +11,9 @@
  * "sales" は実在しない permission_code で、この経路のリッチプレビューは
  * 常に権限なし扱いになっていた（価格試算/価格表/見積書の 3 種すべてが対象）。
  * コードは `lib/app-list.ts` の `requiredPermission` と同じ値を使うこと。
+ *
+ * ラベルは ja 固定 — 呼び出し元（外部ツールへ埋め込むリッチプレビュー）には
+ * 「これを見ている人」の言語設定を引ける request-scope が無い。
  */
 
 import { type DocKey, parseDocKey } from "@/lib/doc-number";
@@ -71,49 +74,49 @@ const DOC_ROUTES: Record<
   "sales/trial-estimates": {
     kind: "trial-estimate",
     prefix: "EST",
-    label: "価格試算",
+    label: "価格試算", // i18n-ignore
     permissionCode: "price_list",
   },
   "sales/price-lists": {
     kind: "price-list",
     prefix: "PRC",
-    label: "価格表",
+    label: "価格表", // i18n-ignore
     permissionCode: "price_list",
   },
   "sales/quotes": {
     kind: "quote",
     prefix: "QOT",
-    label: "見積書",
+    label: "見積書", // i18n-ignore
     permissionCode: "quote",
   },
   "sales/order-acceptances": {
     kind: "order-acceptance",
     prefix: "ORD",
-    label: "注文請書",
+    label: "注文請書", // i18n-ignore
     permissionCode: "order_acceptance",
   },
   "production/work-orders": {
     kind: "work-order",
     prefix: "WOR",
-    label: "指示書",
+    label: "指示書", // i18n-ignore
     permissionCode: "work_order",
   },
   "shipping/delivery-orders": {
     kind: "delivery-order",
     prefix: "DOR",
-    label: "出荷書",
+    label: "出荷書", // i18n-ignore
     permissionCode: "delivery_order",
   },
   "shipping/delivery-notes": {
     kind: "delivery-note",
     prefix: "DRN",
-    label: "納品書",
+    label: "納品書", // i18n-ignore
     permissionCode: "delivery_note",
   },
   "billing/invoices": {
     kind: "invoice",
     prefix: "INV",
-    label: "請求書",
+    label: "請求書", // i18n-ignore
     permissionCode: "invoice",
   },
 };
@@ -130,19 +133,19 @@ const NUMBER_ROUTES: Record<
   "purchase/purchase-orders": {
     kind: "purchase-order",
     prefix: "PO",
-    label: "素材発注書",
+    label: "素材発注書", // i18n-ignore
     permissionCode: "purchase_order",
   },
   "purchase/purchase-requests": {
     kind: "purchase-request",
     prefix: "PRQ",
-    label: "購買依頼",
+    label: "購買依頼", // i18n-ignore
     permissionCode: "purchase_order",
   },
   "sales/design-requests": {
     kind: "design-request",
     prefix: "DSG",
-    label: "設計依頼書",
+    label: "設計依頼書", // i18n-ignore
     permissionCode: "design_request",
   },
 };
@@ -153,17 +156,17 @@ const MASTER_ROUTES: Record<
 > = {
   "master/material-types": {
     kind: "material-type",
-    label: "材種",
+    label: "材種", // i18n-ignore
     permissionCode: "master",
   },
   "master/materials": {
     kind: "material",
-    label: "素材",
+    label: "素材", // i18n-ignore
     permissionCode: "master",
   },
   "master/products": {
     kind: "product",
-    label: "製品",
+    label: "製品", // i18n-ignore
     permissionCode: "master",
   },
 };

@@ -9,20 +9,9 @@
 
 import type { CatalogStep, CompositionIssue } from "@/lib/workflow-core";
 
-/** history Json の action → 日本語ラベル（承認記録・履歴表示用）。 */
-export const WORK_ORDER_HISTORY_ACTION_LABEL: Record<string, string> = {
-  CREATE: "作成",
-  COPY: "コピー作成",
-  UPDATE: "更新",
-  REQUEST_APPROVAL: "承認依頼",
-  APPROVE_STEP: "承認",
-  APPROVE_FINAL: "最終承認",
-  // 2 段固定だった頃の履歴行。過去データを読むために残す。
-  APPROVE_1ST: "第一承認",
-  APPROVE_2ND: "第二承認",
-  REJECT: "差し戻し",
-  CANCEL: "キャンセル",
-};
+// history Json の action → 表示ラベルは lib/enum-labels.ts
+// workOrderHistoryActionLabel(value, locale) が持つ（enum.WORK_ORDER_HISTORY_
+// ACTION_LABEL.* — 承認記録・履歴表示用）。
 
 // ── 一覧行 ───────────────────────────────────────────────────────────────────
 

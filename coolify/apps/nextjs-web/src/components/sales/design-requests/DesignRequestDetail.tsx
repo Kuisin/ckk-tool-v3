@@ -103,6 +103,7 @@ import { isViewable } from "@/lib/design-file-kind";
 import { pickThumbFile } from "@/lib/design-files-core";
 import type { MemoView } from "@/lib/document-memos";
 import {
+  designHistoryActionLabel,
   designKindLabel,
   designPriorityLabel,
   designTriggerLabel,
@@ -115,7 +116,6 @@ import {
   canReopen,
   canRequestApproval,
   canStart,
-  DESIGN_HISTORY_ACTION_LABEL,
   DESIGN_KIND_COLOR,
   DESIGN_TRIGGER_COLOR,
   type DesignRequest,
@@ -751,7 +751,7 @@ export function DesignRequestDetail({
               {records.map((h, i) => (
                 <Group gap="sm" key={`${h.at}-${h.action}-${i}`} wrap="nowrap">
                   <Badge color="gray" size="sm" variant="light">
-                    {DESIGN_HISTORY_ACTION_LABEL[h.action] ?? h.action}
+                    {designHistoryActionLabel(h.action, locale)}
                   </Badge>
                   <Text size="xs">{h.user}</Text>
                   <Text c="dimmed" className="tabular-nums" size="xs">

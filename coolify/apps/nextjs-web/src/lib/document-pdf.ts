@@ -50,7 +50,7 @@ export function notIssuedResponse(docType: string): Response {
     label(
       "api.documentPdf.notIssuedYet",
       "ja",
-      "発行前の{docType}は PDF を閲覧できません",
+      "発行前の{docType}は PDF を閲覧できません", // i18n-ignore
       { docType },
     ),
     { status: 403 },

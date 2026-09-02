@@ -110,14 +110,14 @@ function itemBase(item: ItemRow) {
 // ── 測定機器コード凡例（旧帳票脚注「検査設備 LE=レーザー…」） ─────────────────
 
 const EQUIPMENT_LEGEND: Record<string, string> = {
-  LE: L("production.inspectionSheetPdf.equipmentLaser", "レーザー"),
-  PR: L("production.inspectionSheetPdf.equipmentProjector", "投影機"),
-  P: L("production.inspectionSheetPdf.equipmentPick", "ピック"),
-  S: L("production.inspectionSheetPdf.equipmentScale", "スケール"),
-  K: L("production.inspectionSheetPdf.equipmentMicroscope", "顕微鏡"),
+  LE: L("production.inspectionSheetPdf.equipmentLaser", "レーザー"), // i18n-ignore
+  PR: L("production.inspectionSheetPdf.equipmentProjector", "投影機"), // i18n-ignore
+  P: L("production.inspectionSheetPdf.equipmentPick", "ピック"), // i18n-ignore
+  S: L("production.inspectionSheetPdf.equipmentScale", "スケール"), // i18n-ignore
+  K: L("production.inspectionSheetPdf.equipmentMicroscope", "顕微鏡"), // i18n-ignore
   H: "HeliCheck",
-  M: L("production.inspectionSheetPdf.equipmentVisual", "目視"),
-  N: L("production.inspectionSheetPdf.equipmentCaliper", "ノギス"),
+  M: L("production.inspectionSheetPdf.equipmentVisual", "目視"), // i18n-ignore
+  N: L("production.inspectionSheetPdf.equipmentCaliper", "ノギス"), // i18n-ignore
   Z: "ZOLLER",
 };
 
@@ -258,7 +258,8 @@ export function blankValueColumns(
   }));
   const overflowNote =
     required != null && required > BLANK_CELL_CAP
-      ? L("production.inspectionSheetPdf.overflowNote", `…全${required}本`, {
+      ? // i18n-ignore
+        L("production.inspectionSheetPdf.overflowNote", `…全${required}本`, {
           count: required,
         })
       : "";
@@ -338,35 +339,35 @@ export function dimensionalGridHtml(
       .join("")}</tr>`;
 
   const nominalRow = row(
-    L("master.inspectionTemplates.baseValue", "基本値"),
+    L("master.inspectionTemplates.baseValue", "基本値"), // i18n-ignore
     rows.map(({ item }) =>
       item.inputType === "NUMBER" ? fmtNum(item.nominalValue) : "—",
     ),
   );
   const goalRow = row(
-    L("master.inspectionTemplates.targetValue", "目標値"),
+    L("master.inspectionTemplates.targetValue", "目標値"), // i18n-ignore
     rows.map(({ spec }) => esc(goalLabel(spec) ?? "—")),
   );
   const topRow = row(
-    L("production.inspectionSheetPdf.toleranceTop", "公差 Top"),
+    L("production.inspectionSheetPdf.toleranceTop", "公差 Top"), // i18n-ignore
     rows.map(({ item }) =>
       item.inputType === "NUMBER" ? fmtNum(item.toleranceTopDelta) : "—",
     ),
   );
   const bottomRow = row(
-    L("production.inspectionSheetPdf.toleranceBottom", "公差 Bottom"),
+    L("production.inspectionSheetPdf.toleranceBottom", "公差 Bottom"), // i18n-ignore
     rows.map(({ item }) =>
       item.inputType === "NUMBER" ? fmtNum(item.toleranceBottomDelta) : "—",
     ),
   );
   const upperRow = row(
-    L("production.inspectionSheetPdf.upperLimit", "上限"),
+    L("production.inspectionSheetPdf.upperLimit", "上限"), // i18n-ignore
     rows.map(({ spec }) =>
       spec.toleranceMax != null ? fmtNum(spec.toleranceMax) : "—",
     ),
   );
   const lowerRow = row(
-    L("production.inspectionSheetPdf.lowerLimit", "下限"),
+    L("production.inspectionSheetPdf.lowerLimit", "下限"), // i18n-ignore
     rows.map(({ spec }) =>
       spec.toleranceMin != null ? fmtNum(spec.toleranceMin) : "—",
     ),
@@ -506,7 +507,7 @@ export function templateImageHtml(
   if (!dataUri) return "";
   const referenceImage = L(
     "master.inspectionTemplates.referenceImage",
-    "参考画像",
+    "参考画像", // i18n-ignore
   );
   return `
     <div class="ref-image">
@@ -533,8 +534,8 @@ export function sheetTemplateHead(t: TemplateHead, lotQuantity: number | null) {
     sampling: esc(samplingLabelJa(sampling, required)),
     record_style:
       t.recordStyle === "COUNTS"
-        ? L("common.passCountOnly", "合格数のみ")
-        : L("production.inspectionRecordForm.measuredValue", "実測値"),
+        ? L("common.passCountOnly", "合格数のみ") // i18n-ignore
+        : L("production.inspectionRecordForm.measuredValue", "実測値"), // i18n-ignore
   };
 }
 

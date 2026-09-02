@@ -1124,6 +1124,31 @@
       "SCHEDULED": "Not yet started",
       "EXPIRED": "Ended",
       "DISABLED": "Disabled"
+    },
+    "WORK_ORDER_HISTORY_ACTION_LABEL": {
+      "CREATE": "Created",
+      "COPY": "Copied",
+      "UPDATE": "Updated",
+      "REQUEST_APPROVAL": "Requested approval",
+      "APPROVE_STEP": "Approved",
+      "APPROVE_FINAL": "Final approval",
+      "APPROVE_1ST": "First approval",
+      "APPROVE_2ND": "Second approval",
+      "REJECT": "Sent back",
+      "CANCEL": "Cancelled"
+    },
+    "DESIGN_HISTORY_ACTION_LABEL": {
+      "CREATE": "Created",
+      "UPDATE": "Updated",
+      "REQUEST_APPROVAL": "Requested approval",
+      "APPROVE": "Approved",
+      "REJECT": "Sent back",
+      "ASSIGN": "Changed assignee",
+      "KIND_OVERRIDE": "Changed request kind",
+      "START": "Started",
+      "COMPLETE": "Completed",
+      "REOPEN": "Sent back (work)",
+      "CANCEL": "Cancelled"
     }
   },
   "status": {

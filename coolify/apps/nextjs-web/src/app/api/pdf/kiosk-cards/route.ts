@@ -36,6 +36,8 @@ export const dynamic = "force-dynamic";
 
 // 寸法（原寸印刷の要）は lib/kiosk-card-sheet.ts が唯一の定義。
 
+const COMPANY_NAME = "シー・ケィ・ケー株式会社"; // i18n-ignore — 固有名詞（社名）
+
 /** カード 1 枚分のセル（十字トンボ + QR + 社名 + 氏名/記名線 + No.）。 */
 function cardCell(card: KioskCardPrintRow): string {
   const code = formatCode(card.id);
@@ -50,7 +52,7 @@ function cardCell(card: KioskCardPrintRow): string {
     <div class="card">
       <div class="qr">${qrSvg(code, { margin: 2 })}</div>
       <div class="head">
-        <span class="company">シー・ケィ・ケー株式会社</span>
+        <span class="company">${COMPANY_NAME}</span>
         ${user}
         <span class="shortcode">No. ${code.slice(-9)}</span>
       </div>
@@ -142,7 +144,7 @@ export async function GET(request: Request): Promise<Response> {
 
   const stamp = timestampJst();
   const asciiName = `qr-cards_${stamp}.pdf`;
-  const utf8Name = encodeURIComponent(`QRカード印刷_${stamp}.pdf`);
+  const utf8Name = encodeURIComponent(`QRカード印刷_${stamp}.pdf`); // i18n-ignore
   const disposition = params.get("download") === "1" ? "attachment" : "inline";
   return new Response(pdf, {
     headers: {

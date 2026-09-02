@@ -1124,6 +1124,31 @@
       "SCHEDULED": "期间前",
       "EXPIRED": "已结束",
       "DISABLED": "已停用"
+    },
+    "WORK_ORDER_HISTORY_ACTION_LABEL": {
+      "CREATE": "已创建",
+      "COPY": "已复制",
+      "UPDATE": "已更新",
+      "REQUEST_APPROVAL": "已申请审批",
+      "APPROVE_STEP": "已批准",
+      "APPROVE_FINAL": "最终批准",
+      "APPROVE_1ST": "一级审批",
+      "APPROVE_2ND": "二级审批",
+      "REJECT": "已退回",
+      "CANCEL": "已取消"
+    },
+    "DESIGN_HISTORY_ACTION_LABEL": {
+      "CREATE": "已创建",
+      "UPDATE": "已更新",
+      "REQUEST_APPROVAL": "已申请审批",
+      "APPROVE": "已批准",
+      "REJECT": "已退回",
+      "ASSIGN": "已变更负责人",
+      "KIND_OVERRIDE": "已变更申请类别",
+      "START": "已着手",
+      "COMPLETE": "已完成",
+      "REOPEN": "已退回（作业）",
+      "CANCEL": "已取消"
     }
   },
   "status": {

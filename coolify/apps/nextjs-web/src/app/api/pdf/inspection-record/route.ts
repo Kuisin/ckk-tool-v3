@@ -46,13 +46,13 @@ export const dynamic = "force-dynamic";
  * で ja 固定にする — `lib/messages.ts` の locale 明示 API を使う。
  */
 const STATUS_LABEL: Record<string, string> = {
-  PENDING: label("enum.INSPECTION_STATUS_LABEL.PENDING", "ja", "未実施"),
-  PASS: label("enum.INSPECTION_STATUS_LABEL.PASS", "ja", "合格"),
-  FAIL: label("enum.INSPECTION_STATUS_LABEL.FAIL", "ja", "不合格"),
+  PENDING: label("enum.INSPECTION_STATUS_LABEL.PENDING", "ja", "未実施"), // i18n-ignore
+  PASS: label("enum.INSPECTION_STATUS_LABEL.PASS", "ja", "合格"), // i18n-ignore
+  FAIL: label("enum.INSPECTION_STATUS_LABEL.FAIL", "ja", "不合格"), // i18n-ignore
   APPROVED: label(
     "pdf.inspectionRecord.approvedStatus",
     "ja",
-    "合格（承認済）",
+    "合格（承認済）", // i18n-ignore
   ),
 };
 
@@ -151,7 +151,7 @@ export async function GET(request: Request): Promise<Response> {
       lot_quantity: label(
         "pdf.inspectionRecord.lotQuantity",
         "ja",
-        "{quantity} 本",
+        "{quantity} 本", // i18n-ignore
         {
           quantity: lotQuantity,
         },
@@ -185,7 +185,7 @@ export async function GET(request: Request): Promise<Response> {
         label(
           "pdf.inspectionRecord.footerNote",
           "ja",
-          "* は必須項目。実測値はサンプルごとの記録値。",
+          "* は必須項目。実測値はサンプルごとの記録値。", // i18n-ignore
         ),
       ) + equipmentLegendNote(items),
     final_inspection_html: finalInspectionSectionHtml(finalInspection),
