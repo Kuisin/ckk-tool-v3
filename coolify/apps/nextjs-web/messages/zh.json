@@ -7682,5 +7682,23 @@
     "rangeAtLeast": "{min} 以上",
     "rangeAtMost": "{max} 以下",
     "listSeparator": "、"
+  },
+  "inventoryNote": {
+    "insufficientStock": "库存不足（{transactionType} {quantity}）",
+    "lotInventoryMissing": "批次 {lotNumber} 没有库存台账（产品 {productId}）。请先通过完成工单或库存调整入库后再出货",
+    "outOfStockOnShip": "库存不足（出库 {quantity}）：批次 {lotNumber}",
+    "onlyConfirmedLinesCanBeStockChecked": "只有已确定的订单明细可以进行库存核对",
+    "workOrderCompletedFinished": "工单 #{workOrderNumber} 完成入库",
+    "workOrderCompletedSemiFinished": "工单 #{workOrderNumber} 半成品入库",
+    "workOrderCompletedMaterialReservationReleased": "工单 #{workOrderNumber} 完成，解除材料预留",
+    "workOrderMaterialConsumed": "工单 #{workOrderNumber} 材料消耗",
+    "fromStockConsumedReleased": "工单 #{workOrderNumber} 库存分消耗（解除分配）",
+    "fromStockConsumedReassigned": "工单 #{workOrderNumber} 库存分消耗（转记到批次 #{workOrderNumber}）",
+    "shipped": "出货 {ref}",
+    "stockStorage": "库存保管 {ref}",
+    "shippedReservationReleased": "因出货解除预留 {ref}",
+    "materialReceived": "材料到货",
+    "reservedByStockCheck": "库存核对分配预留（§4）",
+    "stockCheckReservedAndShortage": "库存核对：已分配 {reservedNow} / 缺口 {shortage}"
   }
 }

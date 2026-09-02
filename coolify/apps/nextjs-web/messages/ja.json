@@ -7682,5 +7682,23 @@
     "rangeAtLeast": "{min} 以上",
     "rangeAtMost": "{max} 以下",
     "listSeparator": "・"
+  },
+  "inventoryNote": {
+    "insufficientStock": "在庫が不足しています（{transactionType} {quantity}）",
+    "lotInventoryMissing": "ロット {lotNumber} の在庫台帳がありません（製品 {productId}）。指示書完了または棚卸調整で入庫してから出荷してください",
+    "outOfStockOnShip": "在庫が不足しています（OUT {quantity}）: ロット {lotNumber}",
+    "onlyConfirmedLinesCanBeStockChecked": "確定済みの注文明細のみ在庫照合できます",
+    "workOrderCompletedFinished": "指示書 #{workOrderNumber} 完了入庫",
+    "workOrderCompletedSemiFinished": "指示書 #{workOrderNumber} 半製品入庫",
+    "workOrderCompletedMaterialReservationReleased": "指示書 #{workOrderNumber} 完了による素材予約解除",
+    "workOrderMaterialConsumed": "指示書 #{workOrderNumber} 素材消費",
+    "fromStockConsumedReleased": "指示書 #{workOrderNumber} 在庫分消費（引当解除）",
+    "fromStockConsumedReassigned": "指示書 #{workOrderNumber} 在庫分消費（ロット #{workOrderNumber} へ付け替え）",
+    "shipped": "出荷 {ref}",
+    "stockStorage": "在庫保管 {ref}",
+    "shippedReservationReleased": "出荷による予約解除 {ref}",
+    "materialReceived": "素材入荷",
+    "reservedByStockCheck": "§4 在庫照合による引当予約",
+    "stockCheckReservedAndShortage": "在庫照合: 引当 {reservedNow} / 不足 {shortage}"
   }
 }

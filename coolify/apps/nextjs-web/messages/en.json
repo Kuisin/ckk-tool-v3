@@ -7682,5 +7682,23 @@
     "rangeAtLeast": "{min} or more",
     "rangeAtMost": "{max} or less",
     "listSeparator": ", "
+  },
+  "inventoryNote": {
+    "insufficientStock": "Insufficient stock ({transactionType} {quantity})",
+    "lotInventoryMissing": "No inventory record for lot {lotNumber} (product {productId}). Complete the work order or make a stock adjustment to receive it before shipping.",
+    "outOfStockOnShip": "Insufficient stock (OUT {quantity}): lot {lotNumber}",
+    "onlyConfirmedLinesCanBeStockChecked": "Only confirmed order lines can be stock-checked",
+    "workOrderCompletedFinished": "Work order #{workOrderNumber} completed — received",
+    "workOrderCompletedSemiFinished": "Work order #{workOrderNumber} — semi-finished goods received",
+    "workOrderCompletedMaterialReservationReleased": "Work order #{workOrderNumber} completed — material reservation released",
+    "workOrderMaterialConsumed": "Work order #{workOrderNumber} — material consumed",
+    "fromStockConsumedReleased": "Work order #{workOrderNumber} — from-stock consumption (allocation released)",
+    "fromStockConsumedReassigned": "Work order #{workOrderNumber} — from-stock consumption (reassigned to lot #{workOrderNumber})",
+    "shipped": "Shipped {ref}",
+    "stockStorage": "Stock storage {ref}",
+    "shippedReservationReleased": "Reservation released by shipment {ref}",
+    "materialReceived": "Material received",
+    "reservedByStockCheck": "Reserved by stock check (§4)",
+    "stockCheckReservedAndShortage": "Stock check: reserved {reservedNow} / short {shortage}"
   }
 }

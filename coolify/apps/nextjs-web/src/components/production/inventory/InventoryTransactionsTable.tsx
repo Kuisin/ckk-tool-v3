@@ -12,6 +12,7 @@ import { IconArrowsExchange } from "@tabler/icons-react";
 import { useTranslations } from "next-intl";
 import { useFormat } from "@/components/layout/PreferencesProvider";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { inventoryNoteLabel } from "@/lib/inventory-note-labels";
 import {
   type InventoryTransactionRow,
   TRANSACTION_TYPE_COLOR,
@@ -85,7 +86,7 @@ export function InventoryTransactionsTable({
                 </Table.Td>
                 <Table.Td>
                   <Text c="dimmed" size="xs">
-                    {t.notes || "—"}
+                    {inventoryNoteLabel(tr, t.notes) ?? "—"}
                   </Text>
                 </Table.Td>
               </Table.Tr>
