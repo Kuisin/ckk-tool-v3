@@ -1117,6 +1117,13 @@
       "PLANT": "据点",
       "ROLE": "角色",
       "USER": "个人"
+    },
+    "MEMBER_PERIOD_STATE_LABEL": {
+      "PERMANENT": "常任",
+      "ACTIVE": "有效中",
+      "SCHEDULED": "期间前",
+      "EXPIRED": "已结束",
+      "DISABLED": "已停用"
     }
   },
   "status": {
@@ -2820,7 +2827,11 @@
       "linkedPrecedingWorkOrder": "已链接前置工单 #{number}",
       "linkNotFound": "未找到该链接",
       "cannotUnlinkACompleted": "无法解除已完成工单的链接",
-      "unlinkedPrecedingWorkOrder": "已解除前置工单 #{number} 的链接"
+      "unlinkedPrecedingWorkOrder": "已解除前置工单 #{number} 的链接",
+      "cannotLinkToTheSameWorkOrder": "不能关联到同一张工单",
+      "linkToThisWorkOrderAlreadyExists": "与该工单的关联已存在",
+      "linkWouldCreateACycle": "该关联会使先后关系形成循环",
+      "quantityMustBeAPositiveInteger": "交接数量请输入 1 以上的整数"
     },
     "designFilesUpload": {
       "sendAsMultipartFormData": "请以 multipart/form-data 格式发送",
@@ -4203,6 +4214,10 @@
       "sendAsMultipartFormData": "请以 multipart/form-data 格式发送",
       "selectAnImageFile": "请选择图片文件",
       "imageSizeMustBe5mb": "图片大小请控制在 5MB 以内"
+    },
+    "kioskSettings": {
+      "stepExecution": "工序执行",
+      "workOrderScan": "工单扫描"
     }
   },
   "portal": {

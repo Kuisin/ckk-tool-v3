@@ -1117,6 +1117,13 @@
       "PLANT": "Site",
       "ROLE": "Role",
       "USER": "User"
+    },
+    "MEMBER_PERIOD_STATE_LABEL": {
+      "PERMANENT": "Permanent",
+      "ACTIVE": "Active",
+      "SCHEDULED": "Not yet started",
+      "EXPIRED": "Ended",
+      "DISABLED": "Disabled"
     }
   },
   "status": {
@@ -2820,7 +2827,11 @@
       "linkedPrecedingWorkOrder": "Linked preceding work order #{number}",
       "linkNotFound": "The link was not found",
       "cannotUnlinkACompleted": "Cannot unlink a completed work order",
-      "unlinkedPrecedingWorkOrder": "Unlinked preceding work order #{number}"
+      "unlinkedPrecedingWorkOrder": "Unlinked preceding work order #{number}",
+      "cannotLinkToTheSameWorkOrder": "Cannot link a work order to itself",
+      "linkToThisWorkOrderAlreadyExists": "A link to this work order already exists",
+      "linkWouldCreateACycle": "This link would create a cycle in the predecessor chain",
+      "quantityMustBeAPositiveInteger": "Handover quantity must be a positive integer"
     },
     "designFilesUpload": {
       "sendAsMultipartFormData": "Send as multipart/form-data",
@@ -4203,6 +4214,10 @@
       "sendAsMultipartFormData": "Send as multipart/form-data",
       "selectAnImageFile": "Select an image file",
       "imageSizeMustBe5mb": "The image size must be 5MB or less"
+    },
+    "kioskSettings": {
+      "stepExecution": "Step execution",
+      "workOrderScan": "Work order scan"
     }
   },
   "portal": {
