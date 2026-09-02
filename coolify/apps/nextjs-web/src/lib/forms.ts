@@ -11,6 +11,7 @@ import "server-only";
  *     見えない。URL（/f/<code>）を知っていても同じ。
  */
 
+import { getTranslations } from "next-intl/server";
 import { cache } from "react";
 import { getDisabledAppKeys } from "./app-flags";
 import { appList } from "./app-list";
@@ -24,6 +25,7 @@ import {
   parseFormFields,
   titleTextOf,
 } from "./form-schema";
+import type { Tr } from "./i18n";
 import {
   type ShareAccess,
   shareAccessFor,
@@ -89,14 +91,14 @@ function toIso(d: Date | null): string | null {
 }
 
 /** 定義バージョンの schema を項目配列に戻す。壊れていたら空配列（画面は出す）。 */
-function fieldsOf(schema: unknown): FormFieldDef[] {
-  const parsed = parseFormFields(schema);
+function fieldsOf(schema: unknown, tr: Tr): FormFieldDef[] {
+  const parsed = parseFormFields(schema, tr);
   return parsed.ok ? parsed.fields : [];
 }
 
 /** 読み取れなかった理由。読めたときは null。 */
-function schemaErrorOf(schema: unknown): string | null {
-  const parsed = parseFormFields(schema);
+function schemaErrorOf(schema: unknown, tr: Tr): string | null {
+  const parsed = parseFormFields(schema, tr);
   return parsed.ok ? null : parsed.error;
 }
 
@@ -152,6 +154,7 @@ export async function listForms(): Promise<FormRow[]> {
 /** フォーム 1 件（公開中バージョンの項目つき）。存在しなければ null。 */
 export const fetchForm = cache(
   async (code: string): Promise<FormDetailView | null> => {
+    const tr = await getTranslations();
     const row = await prisma.form.findUnique({
       where: { code },
       include: {
@@ -182,8 +185,8 @@ export const fetchForm = cache(
       closesAt: row.closesAt,
       responseEditMode: row.responseEditMode,
       responseEditableUntil: row.responseEditableUntil,
-      fields: fieldsOf(row.versions[0]?.schema ?? []),
-      schemaError: schemaErrorOf(row.versions[0]?.schema ?? []),
+      fields: fieldsOf(row.versions[0]?.schema ?? [], tr),
+      schemaError: schemaErrorOf(row.versions[0]?.schema ?? [], tr),
       createdBy: row.createdBy,
       createdAt: row.createdAt,
       updatedAt: row.updatedAt,
@@ -196,11 +199,14 @@ export async function fetchFormVersionFields(
   formId: string,
   version: number,
 ): Promise<FormFieldDef[]> {
-  const row = await prisma.formVersion.findUnique({
-    where: { formId_version: { formId, version } },
-    select: { schema: true },
-  });
-  return fieldsOf(row?.schema ?? []);
+  const [row, tr] = await Promise.all([
+    prisma.formVersion.findUnique({
+      where: { formId_version: { formId, version } },
+      select: { schema: true },
+    }),
+    getTranslations(),
+  ]);
+  return fieldsOf(row?.schema ?? [], tr);
 }
 
 /** このフォームに対する自分の権限。 */

@@ -37,7 +37,8 @@ import {
   formFieldTypes,
   isNestableFieldType,
   isSafePattern,
-  LOOKUP_SOURCES,
+  type LookupSource,
+  lookupSources,
   MAX_PATTERN_LENGTH,
   nextFieldKey,
   type RelatedConfig,
@@ -206,14 +207,16 @@ export function FormFieldEditor({
 
       {field.type === "lookup" && (
         <Select
-          data={LOOKUP_SOURCES.map((s) => ({ value: s.value, label: s.label }))}
+          data={lookupSources(tr).map((s) => ({
+            value: s.value,
+            label: s.label,
+          }))}
           description={tr("forms.formFieldEditor.theChosenValueIsShownAs")}
           label={tr("forms.formFieldEditor.dataToSearch")}
           onChange={(v) =>
             set({
               lookup: {
-                source:
-                  (v as (typeof LOOKUP_SOURCES)[number]["value"]) ?? "product",
+                source: (v as LookupSource) ?? "product",
               },
             })
           }

@@ -8,10 +8,8 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import {
   type FormFieldDef,
   formFieldTypes,
-  LOOKUP_SOURCES,
+  lookupSources,
 } from "@/lib/form-schema";
-
-const SOURCE_LABEL = new Map(LOOKUP_SOURCES.map((s) => [s.value, s.label]));
 
 /**
  * 項目の内訳を 1 行 1 項目で説明する。**キーは出さない** — 自動採番にした時点で
@@ -41,7 +39,10 @@ function detailOf(
     }
     case "lookup": {
       const source = field.lookup?.source;
-      const label = source ? SOURCE_LABEL.get(source) : undefined;
+      const sourceLabel = new Map(
+        lookupSources(tr).map((s) => [s.value, s.label]),
+      );
+      const label = source ? sourceLabel.get(source) : undefined;
       return label
         ? tr("forms.formFieldsPanel.searchFromLabel", { label })
         : tr("forms.formFieldsPanel.noSearchSourceSet");

@@ -44,7 +44,7 @@ import {
   SummaryGrid,
 } from "@/components/ui/shells";
 import { useIsMobile } from "@/hooks/useViewport";
-import { AVAILABILITY_LABEL } from "@/lib/form-schema";
+import { availabilityLabel } from "@/lib/form-schema";
 import type { FormDetailView, ResponseRow } from "@/lib/forms";
 import { keepInAppOnClick } from "@/lib/pwa-display";
 import type { ShareGrantView } from "@/lib/share-grants";
@@ -267,7 +267,7 @@ export function FormDetail({
               color={form.availability === "OPEN" ? "green" : "gray"}
               variant="light"
             >
-              {AVAILABILITY_LABEL[form.availability]}
+              {availabilityLabel(tr)[form.availability]}
             </Badge>
           }
         />

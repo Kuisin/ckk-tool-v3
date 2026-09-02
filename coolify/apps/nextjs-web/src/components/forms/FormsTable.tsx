@@ -10,7 +10,7 @@ import { DataTable } from "@/components/ui/DataTable";
 import { NewButton } from "@/components/ui/NewButton";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { ListShell } from "@/components/ui/shells";
-import { AVAILABILITY_LABEL, type FormAvailability } from "@/lib/form-schema";
+import { availabilityLabel, type FormAvailability } from "@/lib/form-schema";
 import type { FormRow } from "@/lib/forms";
 
 const AVAILABILITY_COLOR: Record<FormAvailability, string> = {
@@ -88,7 +88,7 @@ export function FormsTable({
             width: 110,
             render: (r) => (
               <Badge color={AVAILABILITY_COLOR[r.availability]} variant="light">
-                {AVAILABILITY_LABEL[r.availability]}
+                {availabilityLabel(tr)[r.availability]}
               </Badge>
             ),
           },
@@ -132,7 +132,7 @@ export function FormsTable({
                 {r.title}
               </Text>
               <Badge color={AVAILABILITY_COLOR[r.availability]} variant="light">
-                {AVAILABILITY_LABEL[r.availability]}
+                {availabilityLabel(tr)[r.availability]}
               </Badge>
             </Group>
             <Text c="dimmed" size="xs">

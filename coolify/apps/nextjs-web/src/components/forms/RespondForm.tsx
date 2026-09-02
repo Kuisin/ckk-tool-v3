@@ -24,7 +24,7 @@ import {
 import { openConfirm } from "@/components/ui/modals";
 import { useIsMobile } from "@/hooks/useViewport";
 import {
-  AVAILABILITY_LABEL,
+  availabilityLabel,
   type FormAnswerValue,
   type FormAvailability,
   type FormFieldDef,
@@ -88,7 +88,7 @@ export function RespondForm({
 
   const submit = (asDraft: boolean) => {
     if (!asDraft) {
-      const found = validateAnswers(fields, answers);
+      const found = validateAnswers(fields, answers, tr);
       setErrors(found);
       if (Object.keys(found).length > 0) {
         notifications.show({
@@ -153,7 +153,7 @@ export function RespondForm({
           {availability === "SCHEDULED"
             ? tr("forms.respondForm.thisFormIsNotOpenYet")
             : tr("forms.respondForm.receptionClosedWithLabel", {
-                label: AVAILABILITY_LABEL[availability],
+                label: availabilityLabel(tr)[availability],
               })}
         </Alert>
       )}

@@ -72,16 +72,16 @@ export interface ParsedExtractError extends ExtractFailure {
  * 拾い直し（DB 検索）の両方がこの 1 語を見る。**保存形式の内部区切り**
  * （画面に生では出ない）なので翻訳しない。
  */
-export const RETRY_PENDING_MARKER = "もう一度試します";
+export const RETRY_PENDING_MARKER = "もう一度試します"; // i18n-ignore
 
-const CAUSE = "原因: ";
-const HINT = "対処: ";
-const DETAIL = "詳細: ";
-const RETRY = "自動再試行: ";
+const CAUSE = "原因: "; // i18n-ignore
+const HINT = "対処: "; // i18n-ignore
+const DETAIL = "詳細: "; // i18n-ignore
+const RETRY = "自動再試行: "; // i18n-ignore
 
 const MANUAL_HINT_JA =
-  "何度も失敗する場合は「手入力に切り替え」で内容を直接入力してください";
-const SY0E_JA = "システム設定 → AI プロバイダ（SY0E）";
+  "何度も失敗する場合は「手入力に切り替え」で内容を直接入力してください"; // i18n-ignore
+const SY0E_JA = "システム設定 → AI プロバイダ（SY0E）"; // i18n-ignore
 
 function manualHint(locale?: Locale): string {
   return t("manualHint", locale, MANUAL_HINT_JA);
@@ -148,17 +148,17 @@ export function aiFailureFromDetail(
   const sy0e = aiSettingsPath(locale);
   const table: Record<string, Omit<ExtractFailure, "detail">> = {
     auth: {
-      summary: t("aiAuthSummary", locale, "AI プロバイダの認証に失敗しました"),
-      cause: t("aiAuthCause", locale, "API トークンが無効か失効しています"),
+      summary: t("aiAuthSummary", locale, "AI プロバイダの認証に失敗しました"), // i18n-ignore
+      cause: t("aiAuthCause", locale, "API トークンが無効か失効しています"), // i18n-ignore
       hint: `${sy0e}${t("aiAuthHintSuffix", locale, " でトークンを入力し直してください")}`,
       retryable: false,
     },
     model_not_found: {
-      summary: t("aiModelNotFoundSummary", locale, "AI モデルが見つかりません"),
+      summary: t("aiModelNotFoundSummary", locale, "AI モデルが見つかりません"), // i18n-ignore
       cause: t(
         "aiModelNotFoundCause",
         locale,
-        "指定したモデル名がプロバイダに存在しません",
+        "指定したモデル名がプロバイダに存在しません", // i18n-ignore
       ),
       hint: `${sy0e}${t(
         "aiModelNotFoundHintSuffix",
@@ -171,17 +171,17 @@ export function aiFailureFromDetail(
       summary: t(
         "aiRateLimitSummary",
         locale,
-        "AI プロバイダの利用上限に達しました",
+        "AI プロバイダの利用上限に達しました", // i18n-ignore
       ),
       cause: t(
         "aiRateLimitCause",
         locale,
-        "レート制限、または残高・プランの上限です",
+        "レート制限、または残高・プランの上限です", // i18n-ignore
       ),
       hint: t(
         "aiRateLimitHint",
         locale,
-        "自動で再試行します。続く場合はプロバイダ側の上限と残高を確認してください",
+        "自動で再試行します。続く場合はプロバイダ側の上限と残高を確認してください", // i18n-ignore
       ),
       retryable: true,
     },
@@ -189,36 +189,36 @@ export function aiFailureFromDetail(
       summary: t(
         "aiUnreachableSummary",
         locale,
-        "AI プロバイダへ接続できませんでした",
+        "AI プロバイダへ接続できませんでした", // i18n-ignore
       ),
       cause: t(
         "aiUnreachableCause",
         locale,
-        "po-extract から接続先へ到達できません（DNS・外向き通信の遮断）",
+        "po-extract から接続先へ到達できません（DNS・外向き通信の遮断）", // i18n-ignore
       ),
-      hint: t("contactSystemAdmin", locale, "システム管理者へ連絡してください"),
+      hint: t("contactSystemAdmin", locale, "システム管理者へ連絡してください"), // i18n-ignore
       retryable: true,
     },
     bad_schema: {
       summary: t(
         "aiBadSchemaSummary",
         locale,
-        "AI プロバイダがこの様式を受け付けませんでした",
+        "AI プロバイダがこの様式を受け付けませんでした", // i18n-ignore
       ),
       cause: t(
         "aiBadSchemaCause",
         locale,
-        "指定のモデルが所定の JSON 形式に対応していません",
+        "指定のモデルが所定の JSON 形式に対応していません", // i18n-ignore
       ),
       hint: `${sy0e}${t("tryAnotherModelSuffix", locale, " で別のモデルを試してください")}`,
       retryable: false,
     },
     not_configured: {
-      summary: t("aiNotConfiguredSummary", locale, "AI プロバイダが未設定です"),
+      summary: t("aiNotConfiguredSummary", locale, "AI プロバイダが未設定です"), // i18n-ignore
       cause: t(
         "aiNotConfiguredCause",
         locale,
-        "API トークンが未設定か、暗号鍵が変わって復号できません",
+        "API トークンが未設定か、暗号鍵が変わって復号できません", // i18n-ignore
       ),
       hint: `${sy0e}${t(
         "aiNotConfiguredHintSuffix",
@@ -231,12 +231,12 @@ export function aiFailureFromDetail(
       summary: t(
         "aiNoVisionSummary",
         locale,
-        "AI モデルが画像を読み取れません",
+        "AI モデルが画像を読み取れません", // i18n-ignore
       ),
       cause: t(
         "aiNoVisionCause",
         locale,
-        "指定のモデルは文字だけで、画像入力に対応していません",
+        "指定のモデルは文字だけで、画像入力に対応していません", // i18n-ignore
       ),
       hint: `${sy0e}${t(
         "aiNoVisionHintSuffix",
@@ -249,12 +249,12 @@ export function aiFailureFromDetail(
       summary: t(
         "aiBadSamplingSummary",
         locale,
-        "AI モデルが指定の生成パラメータを受け付けませんでした",
+        "AI モデルが指定の生成パラメータを受け付けませんでした", // i18n-ignore
       ),
       cause: t(
         "aiBadSamplingCause",
         locale,
-        "temperature を既定値しか受けないモデルです（自動で外して再試行しますが、それでも通りませんでした）",
+        "temperature を既定値しか受けないモデルです（自動で外して再試行しますが、それでも通りませんでした）", // i18n-ignore
       ),
       hint: `${sy0e}${t("tryAnotherModelSuffix", locale, " で別のモデルを試してください")}`,
       retryable: false,
@@ -263,9 +263,9 @@ export function aiFailureFromDetail(
       summary: t(
         "aiUpstreamSummary",
         locale,
-        "AI プロバイダでエラーが起きました",
+        "AI プロバイダでエラーが起きました", // i18n-ignore
       ),
-      cause: t("aiUpstreamCause", locale, "プロバイダ側の一時的な障害です"),
+      cause: t("aiUpstreamCause", locale, "プロバイダ側の一時的な障害です"), // i18n-ignore
       hint: `${t("retriesAutomatically", locale, "自動で再試行します。")}${manualHint(locale)}`,
       retryable: true,
     },
@@ -293,17 +293,17 @@ export function classifyHttpFailure(
       summary: t(
         "badFileSummary",
         locale,
-        "取込ファイルを読み取れませんでした",
+        "取込ファイルを読み取れませんでした", // i18n-ignore
       ),
       cause: t(
         "badFileCause",
         locale,
-        "抽出サーバーがファイルを開けませんでした（中身が空、または壊れた PDF・画像）",
+        "抽出サーバーがファイルを開けませんでした（中身が空、または壊れた PDF・画像）", // i18n-ignore
       ),
       hint: t(
         "badFileHint",
         locale,
-        "元のファイルが開けるか確認し、必要なら取り直して再取込してください",
+        "元のファイルが開けるか確認し、必要なら取り直して再取込してください", // i18n-ignore
       ),
       detail,
       retryable: false,
@@ -314,17 +314,17 @@ export function classifyHttpFailure(
       summary: t(
         "unknownFormatSummary",
         locale,
-        "抽出サーバーが注文請書の様式を知りません",
+        "抽出サーバーが注文請書の様式を知りません", // i18n-ignore
       ),
       cause: t(
         "unknownFormatCause",
         locale,
-        "po-extract に order-request の様式がありません（サーバーが古い、または PO_EXTRACT_URL の向き先が違う）",
+        "po-extract に order-request の様式がありません（サーバーが古い、または PO_EXTRACT_URL の向き先が違う）", // i18n-ignore
       ),
       hint: t(
         "unknownFormatHint",
         locale,
-        "システム管理者へ連絡してください（po-extract の再デプロイが必要です）",
+        "システム管理者へ連絡してください（po-extract の再デプロイが必要です）", // i18n-ignore
       ),
       detail,
       retryable: false,
@@ -332,16 +332,16 @@ export function classifyHttpFailure(
   }
   if (status === 413) {
     return {
-      summary: t("tooLargeSummary", locale, "取込ファイルが大きすぎます"),
+      summary: t("tooLargeSummary", locale, "取込ファイルが大きすぎます"), // i18n-ignore
       cause: t(
         "tooLargeCause",
         locale,
-        "抽出サーバーが受け付ける上限を超えています",
+        "抽出サーバーが受け付ける上限を超えています", // i18n-ignore
       ),
       hint: t(
         "tooLargeHint",
         locale,
-        "ページ数を減らすか、解像度を下げて取り直してください",
+        "ページ数を減らすか、解像度を下げて取り直してください", // i18n-ignore
       ),
       detail,
       retryable: false,
@@ -352,12 +352,12 @@ export function classifyHttpFailure(
       summary: t(
         "aiCouldNotSummarizeSummary",
         locale,
-        "AI が読み取り結果をまとめられませんでした",
+        "AI が読み取り結果をまとめられませんでした", // i18n-ignore
       ),
       cause: t(
         "aiCouldNotSummarizeCause",
         locale,
-        "原稿が読み取りづらく（傾き・かすれ・手書き・複雑な表）、AI が所定の形式を返せませんでした",
+        "原稿が読み取りづらく（傾き・かすれ・手書き・複雑な表）、AI が所定の形式を返せませんでした", // i18n-ignore
       ),
       hint: `${t(
         "checkOrientationAndRetry",
@@ -373,12 +373,12 @@ export function classifyHttpFailure(
       summary: t(
         "serverNotRespondingSummary",
         locale,
-        "抽出サーバーが応答しませんでした",
+        "抽出サーバーが応答しませんでした", // i18n-ignore
       ),
       cause: t(
         "serverNotRespondingCause",
         locale,
-        "po-extract が起動途中・再起動中か、AI（ollama）が混み合って応答を返せませんでした",
+        "po-extract が起動途中・再起動中か、AI（ollama）が混み合って応答を返せませんでした", // i18n-ignore
       ),
       hint: `${t("retriesAutomatically", locale, "自動で再試行します。")}${t(
         "contactSystemAdminIfPersists",
@@ -391,8 +391,8 @@ export function classifyHttpFailure(
   }
   if (status === 429) {
     return {
-      summary: t("busySummary", locale, "抽出サーバーが混み合っています"),
-      cause: t("busyCause", locale, "同時に処理できる件数を超えました"),
+      summary: t("busySummary", locale, "抽出サーバーが混み合っています"), // i18n-ignore
+      cause: t("busyCause", locale, "同時に処理できる件数を超えました"), // i18n-ignore
       hint: `${t("retriesAutomatically", locale, "自動で再試行します。")}${t(
         "busyHintSuffix",
         locale,
@@ -407,14 +407,14 @@ export function classifyHttpFailure(
       summary: t(
         "serverErrorSummary",
         locale,
-        "抽出サーバーでエラーが起きました",
+        "抽出サーバーでエラーが起きました", // i18n-ignore
       ),
       cause:
         serverDetail ??
         t(
           "serverErrorCause",
           locale,
-          "po-extract の内部エラー（AI 呼び出しの失敗など）",
+          "po-extract の内部エラー（AI 呼び出しの失敗など）", // i18n-ignore
         ),
       hint: `${t("retriesAutomatically", locale, "自動で再試行します。")}${manualHint(locale)}`,
       detail,
@@ -425,7 +425,7 @@ export function classifyHttpFailure(
     summary: t(
       "rejectedSummary",
       locale,
-      `抽出サーバーが要求を受け付けませんでした（HTTP ${status}）`,
+      `抽出サーバーが要求を受け付けませんでした（HTTP ${status}）`, // i18n-ignore
       { status },
     ),
     cause: serverDetail ?? undefined,
@@ -450,42 +450,42 @@ export function classifyNetworkFailure(
     ECONNREFUSED: t(
       "networkRefusedCause",
       locale,
-      "抽出サーバーが起動していません（接続を拒否されました）",
+      "抽出サーバーが起動していません（接続を拒否されました）", // i18n-ignore
     ),
     ENOTFOUND: t(
       "networkNotFoundCause",
       locale,
-      "抽出サーバーの名前を解決できません（PO_EXTRACT_URL の設定違い）",
+      "抽出サーバーの名前を解決できません（PO_EXTRACT_URL の設定違い）", // i18n-ignore
     ),
     EAI_AGAIN: t(
       "networkDnsCause",
       locale,
-      "名前解決に失敗しました（DNS の一時障害）",
+      "名前解決に失敗しました（DNS の一時障害）", // i18n-ignore
     ),
     ECONNRESET: t(
       "networkResetCause",
       locale,
-      "接続が途中で切れました（サーバー再起動中の可能性）",
+      "接続が途中で切れました（サーバー再起動中の可能性）", // i18n-ignore
     ),
     UND_ERR_SOCKET: t(
       "networkResetCause",
       locale,
-      "接続が途中で切れました（サーバー再起動中の可能性）",
+      "接続が途中で切れました（サーバー再起動中の可能性）", // i18n-ignore
     ),
   };
   return {
-    summary: t("networkSummary", locale, "抽出サーバーに接続できませんでした"),
+    summary: t("networkSummary", locale, "抽出サーバーに接続できませんでした"), // i18n-ignore
     cause:
       (code && known[code]) ??
       t(
         "networkDefaultCause",
         locale,
-        "ネットワーク経路上の問題で到達できません",
+        "ネットワーク経路上の問題で到達できません", // i18n-ignore
       ),
     hint: t(
       "networkHint",
       locale,
-      "自動で再試行します。続く場合はシステム管理者へ連絡してください（po-extract の稼働確認）",
+      "自動で再試行します。続く場合はシステム管理者へ連絡してください（po-extract の稼働確認）", // i18n-ignore
     ),
     detail: `${endpoint} — ${code ?? errorName(error)}: ${errorMessage(error)}`,
     retryable: true,
@@ -502,13 +502,13 @@ export function classifyTimeoutFailure(
     summary: t(
       "timeoutSummary",
       locale,
-      `抽出が時間内に終わりませんでした（${minutes}分）`,
+      `抽出が時間内に終わりませんでした（${minutes}分）`, // i18n-ignore
       { minutes },
     ),
     cause: t(
       "timeoutCause",
       locale,
-      "ページ数が多いか、抽出サーバー（po-extract / ollama）が混み合って処理が終わりませんでした",
+      "ページ数が多いか、抽出サーバー（po-extract / ollama）が混み合って処理が終わりませんでした", // i18n-ignore
     ),
     hint: `${t(
       "timeoutHintPrefix",
@@ -532,12 +532,12 @@ export function classifyLocalFailure(
       summary: t(
         "storageSummary",
         locale,
-        "取込元ファイルを読み出せませんでした",
+        "取込元ファイルを読み出せませんでした", // i18n-ignore
       ),
       cause: t(
         "storageCause",
         locale,
-        "ファイル保管（SeaweedFS）から原本を取得できません",
+        "ファイル保管（SeaweedFS）から原本を取得できません", // i18n-ignore
       ),
       hint: `${t("retriesAutomatically", locale, "自動で再試行します。")}${t(
         "contactSystemAdminIfPersists",
@@ -553,9 +553,9 @@ export function classifyLocalFailure(
       summary: t(
         "responseSummary",
         locale,
-        "抽出サーバーの応答を解釈できませんでした",
+        "抽出サーバーの応答を解釈できませんでした", // i18n-ignore
       ),
-      cause: t("responseCause", locale, "JSON として読めない応答が返りました"),
+      cause: t("responseCause", locale, "JSON として読めない応答が返りました"), // i18n-ignore
       hint: `${t("retriesAutomatically", locale, "自動で再試行します。")}${manualHint(locale)}`,
       detail,
       retryable: true,
@@ -563,15 +563,15 @@ export function classifyLocalFailure(
   }
   if (stage === "normalize") {
     return {
-      summary: t("normalizeSummary", locale, "抽出結果を取り込めませんでした"),
-      cause: t("normalizeCause", locale, "抽出結果の形が想定と違います"),
+      summary: t("normalizeSummary", locale, "抽出結果を取り込めませんでした"), // i18n-ignore
+      cause: t("normalizeCause", locale, "抽出結果の形が想定と違います"), // i18n-ignore
       hint: manualHint(locale),
       detail,
       retryable: false,
     };
   }
   return {
-    summary: t("unknownSummary", locale, "自動抽出に失敗しました"),
+    summary: t("unknownSummary", locale, "自動抽出に失敗しました"), // i18n-ignore
     cause: errorMessage(error),
     hint: `${t(
       "unknownHintPrefix",
@@ -644,8 +644,8 @@ export function formatExtractError(
     lines.push(
       RETRY +
         (attempts.willRetry
-          ? `${attempts.attempt}/${attempts.maxAttempts} 回目が失敗 — ${RETRY_PENDING_MARKER}`
-          : `${attempts.attempt}/${attempts.maxAttempts} 回試して失敗しました`),
+          ? `${attempts.attempt}/${attempts.maxAttempts} 回目が失敗 — ${RETRY_PENDING_MARKER}` // i18n-ignore
+          : `${attempts.attempt}/${attempts.maxAttempts} 回試して失敗しました`), // i18n-ignore
     );
   }
   return lines.join("\n");
@@ -664,7 +664,7 @@ export function parseExtractError(
     .map((l) => l.trim())
     .filter(Boolean);
   const parsed: ParsedExtractError = {
-    summary: lines[0] ?? t("unknownSummary", locale, "自動抽出に失敗しました"),
+    summary: lines[0] ?? t("unknownSummary", locale, "自動抽出に失敗しました"), // i18n-ignore
     hint: "",
     retryable: false,
     retrying: false,
