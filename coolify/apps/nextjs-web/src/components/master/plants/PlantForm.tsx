@@ -183,7 +183,7 @@ export function PlantForm({
                 : tr("master.plants.aUniqueCodeIdentifyingTheSite")
             }
             disabled={isEdit}
-            label={<HelpLabel {...fieldHelp("plant", "code")} />}
+            label={<HelpLabel {...fieldHelp(tr, "plant", "code")} />}
             placeholder={tr("master.plants.eGF01")}
             withAsterisk={!isEdit}
             {...form.getInputProps("code")}
@@ -191,7 +191,9 @@ export function PlantForm({
           <TextInput
             label={
               <HelpLabel
-                {...fieldHelp("plant", "name", { label: tr("common.kana2") })}
+                {...fieldHelp(tr, "plant", "name", {
+                  label: tr("common.kana2"),
+                })}
               />
             }
             placeholder={tr("master.plants.eGHonshaKojo")}
@@ -200,19 +202,19 @@ export function PlantForm({
         </SimpleGrid>
         <Stack gap="sm" mt="sm">
           <LocalizedTextInput
-            help={fieldHelpTip("plant", "name")}
+            help={fieldHelpTip(tr, "plant", "name")}
             jaProps={form.getInputProps("nameJa")}
             label={tr("common.name2")}
             required
             translationsProps={form.getInputProps("nameTranslations")}
           />
           <Switch
-            label={<HelpLabel {...fieldHelp("plant", "active")} />}
+            label={<HelpLabel {...fieldHelp(tr, "plant", "active")} />}
             {...form.getInputProps("isActive", { type: "checkbox" })}
           />
         </Stack>
         <Textarea
-          label={<HelpLabel {...fieldHelp("plant", "notes")} />}
+          label={<HelpLabel {...fieldHelp(tr, "plant", "notes")} />}
           mt="sm"
           placeholder={tr("common.notesAndRemarks")}
           rows={3}
@@ -227,7 +229,7 @@ export function PlantForm({
             data={countryOptions(locale)}
             label={
               <HelpLabel
-                {...fieldHelp("plant", "region", {
+                {...fieldHelp(tr, "plant", "region", {
                   label: tr("common.country"),
                 })}
               />
@@ -243,7 +245,7 @@ export function PlantForm({
             )}
             label={
               <HelpLabel
-                {...fieldHelp("plant", "region", {
+                {...fieldHelp(tr, "plant", "region", {
                   label: tr("common.region"),
                 })}
               />
@@ -255,7 +257,7 @@ export function PlantForm({
           <TextInput
             label={
               <HelpLabel
-                {...fieldHelp("plant", "address", {
+                {...fieldHelp(tr, "plant", "address", {
                   label: tr("common.postalCode"),
                 })}
               />
@@ -266,7 +268,7 @@ export function PlantForm({
         </SimpleGrid>
         <Stack gap="sm" mt="sm">
           <LocalizedTextInput
-            help={fieldHelpTip("plant", "address")}
+            help={fieldHelpTip(tr, "plant", "address")}
             jaProps={form.getInputProps("addressJa")}
             label={tr("common.address")}
             translationsProps={form.getInputProps("addressTranslations")}
@@ -276,7 +278,7 @@ export function PlantForm({
           <TextInput
             label={
               <HelpLabel
-                {...fieldHelp("plant", "contact", {
+                {...fieldHelp(tr, "plant", "contact", {
                   label: tr("common.phoneNumber"),
                 })}
               />
@@ -287,7 +289,7 @@ export function PlantForm({
           <TextInput
             label={
               <HelpLabel
-                {...fieldHelp("plant", "contact", {
+                {...fieldHelp(tr, "plant", "contact", {
                   label: tr("common.emailAddress"),
                 })}
               />
@@ -300,7 +302,7 @@ export function PlantForm({
           <TextInput
             label={
               <HelpLabel
-                {...fieldHelp("plant", "contact", {
+                {...fieldHelp(tr, "plant", "contact", {
                   label: tr("common.assignee"),
                 })}
               />

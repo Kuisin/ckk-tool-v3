@@ -257,7 +257,7 @@ export function InspectionTemplateForm({
             disabled={isEdit}
             label={
               <HelpLabel
-                {...fieldHelp("inspectionTemplate", "code", {
+                {...fieldHelp(tr, "inspectionTemplate", "code", {
                   label: tr("master.inspectionTemplateForm.code"),
                 })}
               />
@@ -279,7 +279,9 @@ export function InspectionTemplateForm({
                 : undefined
             }
             label={
-              <HelpLabel {...fieldHelp("inspectionTemplate", "processStep")} />
+              <HelpLabel
+                {...fieldHelp(tr, "inspectionTemplate", "processStep")}
+              />
             }
             onChange={(value) =>
               form.setFieldValue("relatedProcessStepId", value)
@@ -322,7 +324,7 @@ export function InspectionTemplateForm({
         </SimpleGrid>
         <SimpleGrid cols={1} mt="sm" spacing="sm">
           <LocalizedTextInput
-            help={fieldHelpTip("inspectionTemplate", "code")}
+            help={fieldHelpTip(tr, "inspectionTemplate", "code")}
             jaProps={form.getInputProps("nameJa")}
             label={tr("common.name2")}
             required
@@ -441,7 +443,9 @@ export function InspectionTemplateForm({
             onSearchApprovers={searchUserOptions}
           />
           <Switch
-            label={<HelpLabel {...fieldHelp("inspectionTemplate", "active")} />}
+            label={
+              <HelpLabel {...fieldHelp(tr, "inspectionTemplate", "active")} />
+            }
             {...form.getInputProps("isActive", { type: "checkbox" })}
           />
         </SimpleGrid>

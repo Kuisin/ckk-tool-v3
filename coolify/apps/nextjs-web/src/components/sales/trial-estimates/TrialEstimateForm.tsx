@@ -396,7 +396,9 @@ export function TrialEstimateForm({
                     clearable
                     data={customerOptions}
                     label={
-                      <HelpLabel {...fieldHelp("trialEstimate", "customer")} />
+                      <HelpLabel
+                        {...fieldHelp(tr, "trialEstimate", "customer")}
+                      />
                     }
                     onChange={setCustomerId}
                     placeholder={tr("common.customer")}
@@ -430,7 +432,7 @@ export function TrialEstimateForm({
                         )}
                         label={
                           <HelpLabel
-                            {...fieldHelp("trialEstimate", "product")}
+                            {...fieldHelp(tr, "trialEstimate", "product")}
                           />
                         }
                       />
@@ -451,7 +453,7 @@ export function TrialEstimateForm({
                         )}
                         label={
                           <HelpLabel
-                            {...fieldHelp("trialEstimate", "maxDiameter")}
+                            {...fieldHelp(tr, "trialEstimate", "maxDiameter")}
                           />
                         }
                       />
@@ -468,7 +470,7 @@ export function TrialEstimateForm({
                         )}
                         label={
                           <HelpLabel
-                            {...fieldHelp("trialEstimate", "length")}
+                            {...fieldHelp(tr, "trialEstimate", "length")}
                           />
                         }
                       />
@@ -493,7 +495,7 @@ export function TrialEstimateForm({
                   disabled={isPricingLoading}
                   label={
                     <HelpLabel
-                      {...fieldHelp("trialEstimate", "materialType")}
+                      {...fieldHelp(tr, "trialEstimate", "materialType")}
                     />
                   }
                   onChange={(v) => {
@@ -509,7 +511,9 @@ export function TrialEstimateForm({
                   data={diameterOptions}
                   disabled={isPricingLoading}
                   label={
-                    <HelpLabel {...fieldHelp("trialEstimate", "diameter")} />
+                    <HelpLabel
+                      {...fieldHelp(tr, "trialEstimate", "diameter")}
+                    />
                   }
                   onChange={(v) => {
                     const code = v ?? "";
@@ -525,7 +529,7 @@ export function TrialEstimateForm({
                   disabled={isPricingLoading}
                   label={
                     <HelpLabel
-                      {...fieldHelp("trialEstimate", "surfaceFinish")}
+                      {...fieldHelp(tr, "trialEstimate", "surfaceFinish")}
                     />
                   }
                   onChange={(v) => {
@@ -640,7 +644,7 @@ export function TrialEstimateForm({
                   data={toData(cylinderTypeOptions(locale))}
                   label={
                     <HelpLabel
-                      {...fieldHelp("trialEstimate", "cylinderType")}
+                      {...fieldHelp(tr, "trialEstimate", "cylinderType")}
                     />
                   }
                   mt="sm"
@@ -656,7 +660,7 @@ export function TrialEstimateForm({
                 <NumberInput
                   label={
                     <HelpLabel
-                      {...fieldHelp("trialEstimate", "stepMachining", {
+                      {...fieldHelp(tr, "trialEstimate", "stepMachining", {
                         label: tr("sales.trialEstimates.stepMachiningLengthMm"),
                       })}
                     />
@@ -669,7 +673,7 @@ export function TrialEstimateForm({
                   data={toData(stepTypeOptions(locale))}
                   label={
                     <HelpLabel
-                      {...fieldHelp("trialEstimate", "stepMachining", {
+                      {...fieldHelp(tr, "trialEstimate", "stepMachining", {
                         label: tr("sales.trialEstimates.stepMachiningKind"),
                       })}
                     />
@@ -680,7 +684,7 @@ export function TrialEstimateForm({
                 <NumberInput
                   label={
                     <HelpLabel
-                      {...fieldHelp("trialEstimate", "neckMachining", {
+                      {...fieldHelp(tr, "trialEstimate", "neckMachining", {
                         label: tr("sales.trialEstimates.neckMachiningLengthMm"),
                       })}
                     />
@@ -693,7 +697,7 @@ export function TrialEstimateForm({
                   data={toData(neckTypeOptions(locale))}
                   label={
                     <HelpLabel
-                      {...fieldHelp("trialEstimate", "neckMachining", {
+                      {...fieldHelp(tr, "trialEstimate", "neckMachining", {
                         label: tr("sales.trialEstimates.neckMachiningKind"),
                       })}
                     />
@@ -709,7 +713,7 @@ export function TrialEstimateForm({
                       )}
                       label={
                         <HelpLabel
-                          {...fieldHelp("trialEstimate", "machiningTime")}
+                          {...fieldHelp(tr, "trialEstimate", "machiningTime")}
                         />
                       }
                     />
@@ -734,7 +738,7 @@ export function TrialEstimateForm({
                 <Select
                   data={COATING_OPTIONS.map((c) => ({ value: c, label: c }))}
                   label={
-                    <HelpLabel {...fieldHelp("trialEstimate", "coating")} />
+                    <HelpLabel {...fieldHelp(tr, "trialEstimate", "coating")} />
                   }
                   onChange={(v) =>
                     setCoating(v ?? tr("sales.trialEstimates.none"))
@@ -745,7 +749,7 @@ export function TrialEstimateForm({
                 <Select
                   data={toData(lapOptions(locale))}
                   label={
-                    <HelpLabel {...fieldHelp("trialEstimate", "lapping")} />
+                    <HelpLabel {...fieldHelp(tr, "trialEstimate", "lapping")} />
                   }
                   onChange={(v) => setLapType(v ?? "NONE")}
                   value={lapType}
@@ -754,7 +758,7 @@ export function TrialEstimateForm({
                   data={toData(inspectionOptions(locale))}
                   label={
                     <HelpLabel
-                      {...fieldHelp("trialEstimate", "inspectionReport")}
+                      {...fieldHelp(tr, "trialEstimate", "inspectionReport")}
                     />
                   }
                   onChange={(v) => setInspection(v ?? "NONE")}
@@ -769,7 +773,7 @@ export function TrialEstimateForm({
                   checked={ldEnabled}
                   label={
                     <HelpLabel
-                      {...fieldHelp("trialEstimate", "ld", {
+                      {...fieldHelp(tr, "trialEstimate", "ld", {
                         label: tr("sales.trialEstimates.withLdMachining"),
                       })}
                     />
@@ -784,7 +788,7 @@ export function TrialEstimateForm({
                     data={toData(ldLocationOptions(locale))}
                     label={
                       <HelpLabel
-                        {...fieldHelp("trialEstimate", "ld", {
+                        {...fieldHelp(tr, "trialEstimate", "ld", {
                           label: tr("sales.trialEstimates.lDArea"),
                         })}
                       />
@@ -795,7 +799,7 @@ export function TrialEstimateForm({
                   <NumberInput
                     label={
                       <HelpLabel
-                        {...fieldHelp("trialEstimate", "ld", {
+                        {...fieldHelp(tr, "trialEstimate", "ld", {
                           label: tr("sales.trialEstimates.lDOuterDiameterMm"),
                         })}
                       />
@@ -807,7 +811,7 @@ export function TrialEstimateForm({
                   <NumberInput
                     label={
                       <HelpLabel
-                        {...fieldHelp("trialEstimate", "ld", {
+                        {...fieldHelp(tr, "trialEstimate", "ld", {
                           label: tr("sales.trialEstimates.lDFluteLengthMm"),
                         })}
                       />

@@ -106,7 +106,7 @@ export function DefectTypeForm() {
             )}
             label={
               <HelpLabel
-                {...fieldHelp("defectType", "code", {
+                {...fieldHelp(tr, "defectType", "code", {
                   label: tr("common.code"),
                 })}
               />
@@ -118,21 +118,21 @@ export function DefectTypeForm() {
           <NumberInput
             allowDecimal={false}
             description={tr("master.defectTypes.orderInListsAndDefectEntry")}
-            label={<HelpLabel {...fieldHelp("defectType", "sortOrder")} />}
+            label={<HelpLabel {...fieldHelp(tr, "defectType", "sortOrder")} />}
             min={0}
             {...form.getInputProps("sortOrder")}
           />
         </SimpleGrid>
         <Stack gap="sm" mt="sm">
           <LocalizedTextInput
-            help={fieldHelpTip("defectType", "code")}
+            help={fieldHelpTip(tr, "defectType", "code")}
             jaProps={form.getInputProps("nameJa")}
             label={tr("common.name2")}
             required
             translationsProps={form.getInputProps("nameTranslations")}
           />
           <Switch
-            label={<HelpLabel {...fieldHelp("defectType", "active")} />}
+            label={<HelpLabel {...fieldHelp(tr, "defectType", "active")} />}
             {...form.getInputProps("isActive", { type: "checkbox" })}
           />
         </Stack>

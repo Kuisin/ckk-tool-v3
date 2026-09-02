@@ -1052,7 +1052,9 @@ export function WorkflowBuilder({
                             : null
                         }
                         label={
-                          <HelpLabel {...fieldHelp("workOrder", "orderLine")} />
+                          <HelpLabel
+                            {...fieldHelp(tr, "workOrder", "orderLine")}
+                          />
                         }
                         onChange={(v) => onRowLineChange(row.key, v)}
                         onSearch={searchAllocatableOrderLineOptions}
@@ -1068,7 +1070,7 @@ export function WorkflowBuilder({
                       allowDecimal={false}
                       label={
                         <HelpLabel
-                          {...fieldHelp("workOrder", "allocQuantity")}
+                          {...fieldHelp(tr, "workOrder", "allocQuantity")}
                         />
                       }
                       max={
@@ -1145,7 +1147,7 @@ export function WorkflowBuilder({
                       }
                     : null
                 }
-                label={<HelpLabel {...fieldHelp("workOrder", "product")} />}
+                label={<HelpLabel {...fieldHelp(tr, "workOrder", "product")} />}
                 onChange={(v) => form.setFieldValue("productId", v)}
                 onSearch={searchProductOptions}
                 placeholder={tr("common.searchByProductCodeOrName")}
@@ -1201,7 +1203,9 @@ export function WorkflowBuilder({
                     )
                 : undefined
             }
-            label={<HelpLabel {...fieldHelp("workOrder", "plannedQuantity")} />}
+            label={
+              <HelpLabel {...fieldHelp(tr, "workOrder", "plannedQuantity")} />
+            }
             min={Math.max(1, target === "SALES_ORDER" ? allocTotal : 1)}
             withAsterisk
             {...form.getInputProps("plannedQuantity")}
@@ -1216,7 +1220,7 @@ export function WorkflowBuilder({
                     }
                   : null
               }
-              label={<HelpLabel {...fieldHelp("workOrder", "material")} />}
+              label={<HelpLabel {...fieldHelp(tr, "workOrder", "material")} />}
               onChange={(v) => form.setFieldValue("materialId", v)}
               onSearch={searchMaterialOptions}
               placeholder={tr(
@@ -1229,7 +1233,9 @@ export function WorkflowBuilder({
           <Select
             clearable
             data={storageLocationOptions}
-            label={<HelpLabel {...fieldHelp("workOrder", "storageLocation")} />}
+            label={
+              <HelpLabel {...fieldHelp(tr, "workOrder", "storageLocation")} />
+            }
             placeholder={tr(
               "production.workOrders.selectWhereTheFinishedGoodsGo",
             )}
@@ -1303,7 +1309,9 @@ export function WorkflowBuilder({
                     "production.workOrders.savesThisStepCompositionAsThe",
                   )}
                   label={
-                    <HelpLabel {...fieldHelp("workOrder", "newRouteName")} />
+                    <HelpLabel
+                      {...fieldHelp(tr, "workOrder", "newRouteName")}
+                    />
                   }
                   onChange={(e) => setNewRouteName(e.currentTarget.value)}
                   placeholder={tr("common.eGStandardRoute")}
@@ -1515,7 +1523,7 @@ export function WorkflowBuilder({
 
       <Textarea
         autosize
-        label={<HelpLabel {...fieldHelp("workOrder", "notes")} />}
+        label={<HelpLabel {...fieldHelp(tr, "workOrder", "notes")} />}
         minRows={2}
         {...form.getInputProps("notes")}
       />

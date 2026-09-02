@@ -148,7 +148,9 @@ export function FolderGrantsModal({
             <Group align="flex-end" gap="xs" wrap="wrap">
               <TextInput
                 label={
-                  <HelpLabel {...fieldHelp("fileManagement", "grantFolder")} />
+                  <HelpLabel
+                    {...fieldHelp(tr, "fileManagement", "grantFolder")}
+                  />
                 }
                 leftSection={<IconFolder size={14} />}
                 list="folder-grant-suggestions"
@@ -165,7 +167,9 @@ export function FolderGrantsModal({
               <Select
                 data={users}
                 label={
-                  <HelpLabel {...fieldHelp("fileManagement", "grantUser")} />
+                  <HelpLabel
+                    {...fieldHelp(tr, "fileManagement", "grantUser")}
+                  />
                 }
                 onChange={setUserId}
                 placeholder={tr("common.select")}
@@ -176,7 +180,9 @@ export function FolderGrantsModal({
               <Switch
                 checked={canWrite}
                 label={
-                  <HelpLabel {...fieldHelp("fileManagement", "grantWrite")} />
+                  <HelpLabel
+                    {...fieldHelp(tr, "fileManagement", "grantWrite")}
+                  />
                 }
                 onChange={(e) => setCanWrite(e.currentTarget.checked)}
                 pb={6}

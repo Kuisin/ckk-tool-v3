@@ -333,7 +333,7 @@ export function BpForm({
               clearable
               data={billingOptions}
               label={
-                <HelpLabel {...fieldHelp("businessPartner", "billingBp")} />
+                <HelpLabel {...fieldHelp(tr, "businessPartner", "billingBp")} />
               }
               placeholder={tr("master.businessPartners.billThisPartnerItself")}
               searchable
@@ -343,7 +343,7 @@ export function BpForm({
               description={tr("master.businessPartners.n31EndOfMonth")}
               label={
                 <HelpLabel
-                  {...fieldHelp("businessPartner", "paymentTerms", {
+                  {...fieldHelp(tr, "businessPartner", "paymentTerms", {
                     label: tr("common.closingDay"),
                   })}
                 />
@@ -355,7 +355,7 @@ export function BpForm({
             <NumberInput
               label={
                 <HelpLabel
-                  {...fieldHelp("businessPartner", "paymentTerms", {
+                  {...fieldHelp(tr, "businessPartner", "paymentTerms", {
                     label: tr("master.businessPartners.paymentTermsDays"),
                   })}
                 />
@@ -366,7 +366,7 @@ export function BpForm({
             <NumberInput
               label={
                 <HelpLabel
-                  {...fieldHelp("businessPartner", "paymentTerms", {
+                  {...fieldHelp(tr, "businessPartner", "paymentTerms", {
                     label: tr("common.paymentDay"),
                   })}
                 />
@@ -377,7 +377,9 @@ export function BpForm({
             />
             <NumberInput
               label={
-                <HelpLabel {...fieldHelp("businessPartner", "creditLimit")} />
+                <HelpLabel
+                  {...fieldHelp(tr, "businessPartner", "creditLimit")}
+                />
               }
               min={0}
               prefix="¥"
@@ -386,13 +388,17 @@ export function BpForm({
             />
             <Select
               data={taxTypeOptions(locale)}
-              label={<HelpLabel {...fieldHelp("businessPartner", "taxType")} />}
+              label={
+                <HelpLabel {...fieldHelp(tr, "businessPartner", "taxType")} />
+              }
               {...form.getInputProps("customer.taxType")}
             />
             <Select
               data={invoiceMethodOptions(locale)}
               label={
-                <HelpLabel {...fieldHelp("businessPartner", "invoiceMethod")} />
+                <HelpLabel
+                  {...fieldHelp(tr, "businessPartner", "invoiceMethod")}
+                />
               }
               {...form.getInputProps("customer.invoiceMethod")}
             />
@@ -400,7 +406,7 @@ export function BpForm({
           <Checkbox
             label={
               <HelpLabel
-                {...fieldHelp("businessPartner", "consignment", {
+                {...fieldHelp(tr, "businessPartner", "consignment", {
                   label: tr(
                     "master.businessPartners.consigneeForConsignmentSales",
                   ),
@@ -441,7 +447,7 @@ export function BpForm({
           <SimpleGrid cols={isMobile ? 1 : 2} spacing="sm">
             <TextInput
               label={
-                <HelpLabel {...fieldHelp("businessPartner", "industry")} />
+                <HelpLabel {...fieldHelp(tr, "businessPartner", "industry")} />
               }
               placeholder={tr("master.businessPartners.automotiveParts")}
               {...form.getInputProps("endUser.industry")}
@@ -464,7 +470,9 @@ export function BpForm({
               <Select
                 data={vendorTypeOptions(locale)}
                 label={
-                  <HelpLabel {...fieldHelp("businessPartner", "vendorType")} />
+                  <HelpLabel
+                    {...fieldHelp(tr, "businessPartner", "vendorType")}
+                  />
                 }
                 withAsterisk
                 {...form.getInputProps("vendor.vendorType")}
@@ -480,7 +488,7 @@ export function BpForm({
                 description={tr("master.businessPartners.n31EndOfMonth")}
                 label={
                   <HelpLabel
-                    {...fieldHelp("businessPartner", "paymentTerms", {
+                    {...fieldHelp(tr, "businessPartner", "paymentTerms", {
                       label: tr("common.closingDay"),
                     })}
                   />
@@ -492,7 +500,7 @@ export function BpForm({
               <NumberInput
                 label={
                   <HelpLabel
-                    {...fieldHelp("businessPartner", "paymentTerms", {
+                    {...fieldHelp(tr, "businessPartner", "paymentTerms", {
                       label: tr("master.businessPartners.paymentTermsDays"),
                     })}
                   />
@@ -503,7 +511,7 @@ export function BpForm({
               <NumberInput
                 label={
                   <HelpLabel
-                    {...fieldHelp("businessPartner", "paymentTerms", {
+                    {...fieldHelp(tr, "businessPartner", "paymentTerms", {
                       label: tr("common.paymentDay"),
                     })}
                   />
@@ -514,7 +522,9 @@ export function BpForm({
               />
               <NumberInput
                 label={
-                  <HelpLabel {...fieldHelp("businessPartner", "leadTime")} />
+                  <HelpLabel
+                    {...fieldHelp(tr, "businessPartner", "leadTime")}
+                  />
                 }
                 min={0}
                 {...form.getInputProps("vendor.leadTimeDays")}
@@ -530,7 +540,7 @@ export function BpForm({
               <TextInput
                 label={
                   <HelpLabel
-                    {...fieldHelp("businessPartner", "bank", {
+                    {...fieldHelp(tr, "businessPartner", "bank", {
                       label: tr("common.bankName"),
                     })}
                   />
@@ -541,7 +551,7 @@ export function BpForm({
               <TextInput
                 label={
                   <HelpLabel
-                    {...fieldHelp("businessPartner", "bank", {
+                    {...fieldHelp(tr, "businessPartner", "bank", {
                       label: tr("common.branchName"),
                     })}
                   />
@@ -554,7 +564,7 @@ export function BpForm({
                 data={bankAccountTypeOptions(locale)}
                 label={
                   <HelpLabel
-                    {...fieldHelp("businessPartner", "bank", {
+                    {...fieldHelp(tr, "businessPartner", "bank", {
                       label: tr("common.accountType"),
                     })}
                   />
@@ -564,7 +574,7 @@ export function BpForm({
               <TextInput
                 label={
                   <HelpLabel
-                    {...fieldHelp("businessPartner", "bank", {
+                    {...fieldHelp(tr, "businessPartner", "bank", {
                       label: tr("common.accountNumber"),
                     })}
                   />

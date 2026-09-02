@@ -1,6 +1,8 @@
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
+import { createTranslator } from "next-intl";
 import { describe, expect, it } from "vitest";
+import ja from "../../messages/ja.json";
 import { fieldHelp, listFieldHelp, toAnchorId } from "./field-help";
 
 /**
@@ -13,6 +15,8 @@ import { fieldHelp, listFieldHelp, toAnchorId } from "./field-help";
 const MANUAL = join(process.cwd(), "content/manual");
 const LOCALES = ["", ".en", ".zh"] as const;
 
+const tr = createTranslator({ locale: "ja", messages: ja });
+
 describe("field-help", () => {
   it("アンカー ID はキャメルケースをケバブ化する", () => {
     expect(toAnchorId("deliveryDate")).toBe("field-delivery-date");
@@ -21,14 +25,14 @@ describe("field-help", () => {
   });
 
   it("HelpLabel に渡す props を組み立てる", () => {
-    expect(fieldHelp("quote", "deliveryDate")).toEqual({
+    expect(fieldHelp(tr, "quote", "deliveryDate")).toEqual({
       label: "納期",
       help: expect.stringContaining("納入"),
       manual: "operations/sales/quote/user#field-delivery-date",
     });
-    expect(fieldHelp("quote", "customer", { required: true }).required).toBe(
-      true,
-    );
+    expect(
+      fieldHelp(tr, "quote", "customer", { required: true }).required,
+    ).toBe(true);
   });
 
   it("登録した全項目の見出しがマニュアルに実在する（3 言語とも）", () => {
@@ -58,7 +62,7 @@ describe("field-help", () => {
 
   it("要約は空でない（? を出すのに中身が無い状態を防ぐ）", () => {
     for (const { app, field } of listFieldHelp()) {
-      const { help } = fieldHelp(app as "quote", field as "deliveryDate");
+      const { help } = fieldHelp(tr, app as "quote", field as "deliveryDate");
       expect(help.trim().length, `${app}.${field}`).toBeGreaterThan(5);
     }
   });

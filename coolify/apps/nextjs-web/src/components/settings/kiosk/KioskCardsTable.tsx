@@ -539,7 +539,7 @@ export function KioskCardsTable({
             {tr("settings.kiosk.issuesUnassignedCardsInABatch")}
           </Text>
           <NumberInput
-            label={<HelpLabel {...fieldHelp("kioskCard", "count")} />}
+            label={<HelpLabel {...fieldHelp(tr, "kioskCard", "count")} />}
             max={100}
             min={1}
             onChange={setIssueCount}
@@ -565,7 +565,7 @@ export function KioskCardsTable({
           </Text>
           <Select
             data={userOptions}
-            label={<HelpLabel {...fieldHelp("kioskCard", "user")} />}
+            label={<HelpLabel {...fieldHelp(tr, "kioskCard", "user")} />}
             onChange={setAssignUserId}
             placeholder={tr("common.selectAUser")}
             searchable

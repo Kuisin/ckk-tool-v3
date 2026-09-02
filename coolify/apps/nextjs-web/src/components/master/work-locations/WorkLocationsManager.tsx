@@ -237,7 +237,7 @@ function GroupModal({
           <TextInput
             label={
               <HelpLabel
-                {...fieldHelp("workLocation", "code", {
+                {...fieldHelp(tr, "workLocation", "code", {
                   label: tr("master.workLocationsManager.code"),
                 })}
               />
@@ -250,7 +250,7 @@ function GroupModal({
           <Select
             allowDeselect={false}
             data={types.map((t) => ({ value: t.key, label: t.labelJa }))}
-            label={<HelpLabel {...fieldHelp("workLocation", "type")} />}
+            label={<HelpLabel {...fieldHelp(tr, "workLocation", "type")} />}
             onChange={(v) => v && setTypeKey(v)}
             value={typeKey}
             withAsterisk
@@ -258,7 +258,7 @@ function GroupModal({
           <Select
             clearable
             data={plantOptions}
-            label={<HelpLabel {...fieldHelp("workLocation", "plant")} />}
+            label={<HelpLabel {...fieldHelp(tr, "workLocation", "plant")} />}
             onChange={setPlantId}
             searchable
             value={plantId}
@@ -266,7 +266,7 @@ function GroupModal({
           <NumberInput
             label={
               <HelpLabel
-                {...fieldHelp("workLocation", "sortOrder", {
+                {...fieldHelp(tr, "workLocation", "sortOrder", {
                   label: tr("common.sortOrder"),
                 })}
               />
@@ -278,7 +278,7 @@ function GroupModal({
           />
         </SimpleGrid>
         <LocalizedTextInput
-          help={fieldHelpTip("workLocation", "code")}
+          help={fieldHelpTip(tr, "workLocation", "code")}
           jaProps={{
             value: nameJa,
             onChange: (e) => setNameJa(e.currentTarget.value),
@@ -294,7 +294,7 @@ function GroupModal({
         <TextInput
           label={
             <HelpLabel
-              {...fieldHelp("workLocation", "sortOrder", {
+              {...fieldHelp(tr, "workLocation", "sortOrder", {
                 label: tr("common.notes"),
               })}
             />
@@ -306,7 +306,7 @@ function GroupModal({
           checked={isActive}
           label={
             <HelpLabel
-              {...fieldHelp("workLocation", "sortOrder", {
+              {...fieldHelp(tr, "workLocation", "sortOrder", {
                 label: tr("common.enabled"),
               })}
             />
@@ -405,7 +405,7 @@ function LocationModal({
           <TextInput
             label={
               <HelpLabel
-                {...fieldHelp("workLocation", "code", {
+                {...fieldHelp(tr, "workLocation", "code", {
                   label: tr("master.workLocationsManager.code"),
                 })}
               />
@@ -417,7 +417,7 @@ function LocationModal({
           />
           <NumberInput
             description={tr("master.workLocations.howManyJobsCanBeAssigned")}
-            label={<HelpLabel {...fieldHelp("workLocation", "capacity")} />}
+            label={<HelpLabel {...fieldHelp(tr, "workLocation", "capacity")} />}
             min={1}
             onChange={(v) =>
               setCapacity(v === "" || v == null ? null : Number(v))
@@ -427,7 +427,7 @@ function LocationModal({
           <NumberInput
             label={
               <HelpLabel
-                {...fieldHelp("workLocation", "sortOrder", {
+                {...fieldHelp(tr, "workLocation", "sortOrder", {
                   label: tr("common.sortOrder"),
                 })}
               />
@@ -441,7 +441,7 @@ function LocationModal({
             checked={isActive}
             label={
               <HelpLabel
-                {...fieldHelp("workLocation", "sortOrder", {
+                {...fieldHelp(tr, "workLocation", "sortOrder", {
                   label: tr("common.enabled"),
                 })}
               />
@@ -451,7 +451,7 @@ function LocationModal({
           />
         </SimpleGrid>
         <LocalizedTextInput
-          help={fieldHelpTip("workLocation", "code")}
+          help={fieldHelpTip(tr, "workLocation", "code")}
           jaProps={{
             value: nameJa,
             onChange: (e) => setNameJa(e.currentTarget.value),
@@ -467,7 +467,7 @@ function LocationModal({
         <TextInput
           label={
             <HelpLabel
-              {...fieldHelp("workLocation", "sortOrder", {
+              {...fieldHelp(tr, "workLocation", "sortOrder", {
                 label: tr("common.notes"),
               })}
             />

@@ -445,7 +445,7 @@ export function PriceListTypeForm({
               error={form.errors.customerId}
               f4={customerF4(tr)}
               initialOption={customerOption}
-              label={<HelpLabel {...fieldHelp("priceList", "customer")} />}
+              label={<HelpLabel {...fieldHelp(tr, "priceList", "customer")} />}
               onChange={(v) => form.setFieldValue("customerId", v ?? "")}
               onSearch={searchCustomerOptions}
               placeholder={tr("common.searchCustomers")}
@@ -464,7 +464,7 @@ export function PriceListTypeForm({
               error={form.errors.productId}
               f4={productF4(tr)}
               initialOption={productOption}
-              label={<HelpLabel {...fieldHelp("priceList", "product")} />}
+              label={<HelpLabel {...fieldHelp(tr, "priceList", "product")} />}
               onChange={(v) => form.setFieldValue("productId", v ?? "")}
               onSearch={searchProductOptions}
               placeholder={tr("common.searchProducts")}
@@ -541,7 +541,9 @@ export function PriceListTypeForm({
               ) : (
                 <Select
                   data={ORDER_TYPE_OPTIONS}
-                  label={<HelpLabel {...fieldHelp("priceList", "orderType")} />}
+                  label={
+                    <HelpLabel {...fieldHelp(tr, "priceList", "orderType")} />
+                  }
                   withAsterisk
                   {...form.getInputProps(`variants.${vi}.orderType`)}
                 />
@@ -561,7 +563,7 @@ export function PriceListTypeForm({
                   disabled={sourceOptions.length === 0}
                   label={
                     <HelpLabel
-                      {...fieldHelp("priceList", "basePrice", {
+                      {...fieldHelp(tr, "priceList", "basePrice", {
                         label: tr("sales.priceLists.priceSourcePriceEstimate"),
                       })}
                     />
@@ -663,7 +665,7 @@ export function PriceListTypeForm({
                   <HelpLabel
                     help={tr("sales.priceLists.theBaseForThePriceList")}
                     label={
-                      <HelpLabel {...fieldHelp("priceList", "basePrice")} />
+                      <HelpLabel {...fieldHelp(tr, "priceList", "basePrice")} />
                     }
                   />
                 }
@@ -677,7 +679,9 @@ export function PriceListTypeForm({
 
             <SimpleGrid cols={{ base: 1, sm: 3 }} mt="sm" spacing="sm">
               <DatePickerInput
-                label={<HelpLabel {...fieldHelp("priceList", "validFrom")} />}
+                label={
+                  <HelpLabel {...fieldHelp(tr, "priceList", "validFrom")} />
+                }
                 leftSection={<IconCalendar size={14} />}
                 placeholder={tr("common.pickADate")}
                 valueFormat="YYYY/MM/DD"
@@ -691,7 +695,9 @@ export function PriceListTypeForm({
                     ? tr("sales.priceLists.testAndSampleEntriesNeedAn")
                     : undefined
                 }
-                label={<HelpLabel {...fieldHelp("priceList", "validUntil")} />}
+                label={
+                  <HelpLabel {...fieldHelp(tr, "priceList", "validUntil")} />
+                }
                 leftSection={<IconCalendar size={14} />}
                 placeholder={
                   requiresEndDate(variant.orderType)
@@ -713,7 +719,9 @@ export function PriceListTypeForm({
                     <HelpLabel
                       help={tr("sales.priceLists.theMultiplierPerTierEG")}
                       label={
-                        <HelpLabel {...fieldHelp("priceList", "multiplier")} />
+                        <HelpLabel
+                          {...fieldHelp(tr, "priceList", "multiplier")}
+                        />
                       }
                     />
                   </Table.Th>
@@ -733,7 +741,9 @@ export function PriceListTypeForm({
                         "sales.priceLists.tickingItDropsTheAutomaticCalculation",
                       )}
                       label={
-                        <HelpLabel {...fieldHelp("priceList", "customPrice")} />
+                        <HelpLabel
+                          {...fieldHelp(tr, "priceList", "customPrice")}
+                        />
                       }
                     />
                   </Table.Th>

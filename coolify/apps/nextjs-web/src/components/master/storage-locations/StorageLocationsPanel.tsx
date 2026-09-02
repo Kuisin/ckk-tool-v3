@@ -383,7 +383,7 @@ function ShelfModal({
           <TextInput
             label={
               <HelpLabel
-                {...fieldHelp("storageLocation", "code", {
+                {...fieldHelp(tr, "storageLocation", "code", {
                   label: tr("master.storageLocations.shelfCode"),
                 })}
               />
@@ -393,20 +393,22 @@ function ShelfModal({
             {...form.getInputProps("code")}
           />
           <LocalizedTextInput
-            help={fieldHelpTip("storageLocation", "code")}
+            help={fieldHelpTip(tr, "storageLocation", "code")}
             jaProps={form.getInputProps("nameJa")}
             label={tr("master.storageLocations.nameOptional")}
             translationsProps={form.getInputProps("nameTranslations")}
           />
           <NumberInput
-            label={<HelpLabel {...fieldHelp("storageLocation", "sortOrder")} />}
+            label={
+              <HelpLabel {...fieldHelp(tr, "storageLocation", "sortOrder")} />
+            }
             {...form.getInputProps("sortOrder")}
           />
           <Switch
             checked={form.values.isActive}
             label={
               <HelpLabel
-                {...fieldHelp("storageLocation", "active", {
+                {...fieldHelp(tr, "storageLocation", "active", {
                   label: tr("common.enabled"),
                 })}
               />

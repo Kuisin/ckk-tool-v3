@@ -350,24 +350,28 @@ export function MaterialForm({
           <SimpleGrid cols={isMobile ? 1 : 3} spacing="sm">
             <TextInput
               disabled
-              label={<HelpLabel {...fieldHelp("material", "materialType")} />}
+              label={
+                <HelpLabel {...fieldHelp(tr, "material", "materialType")} />
+              }
               value={initial.materialTypeLabel}
             />
             <TextInput
               disabled
-              label={<HelpLabel {...fieldHelp("material", "surfaceFinish")} />}
+              label={
+                <HelpLabel {...fieldHelp(tr, "material", "surfaceFinish")} />
+              }
               value={initial.surfaceFinishLabel}
             />
             <TextInput
               disabled
-              label={<HelpLabel {...fieldHelp("material", "kind")} />}
+              label={<HelpLabel {...fieldHelp(tr, "material", "kind")} />}
               value={initial.kindLabel}
             />
             <TextInput
               disabled
               label={
                 <HelpLabel
-                  {...fieldHelp("material", "dimensions", {
+                  {...fieldHelp(tr, "material", "dimensions", {
                     label: tr("common.diameterMm"),
                   })}
                 />
@@ -378,7 +382,7 @@ export function MaterialForm({
               disabled
               label={
                 <HelpLabel
-                  {...fieldHelp("material", "dimensions", {
+                  {...fieldHelp(tr, "material", "dimensions", {
                     label: tr("common.overallLengthMm"),
                   })}
                 />
@@ -387,7 +391,7 @@ export function MaterialForm({
             />
             <TextInput
               disabled
-              label={<HelpLabel {...fieldHelp("material", "code")} />}
+              label={<HelpLabel {...fieldHelp(tr, "material", "code")} />}
               value={initial.code}
             />
           </SimpleGrid>
@@ -397,7 +401,9 @@ export function MaterialForm({
               <SearchSelect
                 description={tr("common.onlyConvertedMaterialTypesWithA")}
                 f4={materialTypeF4(tr, manufacturerOptions, shapeOptions)}
-                label={<HelpLabel {...fieldHelp("material", "materialType")} />}
+                label={
+                  <HelpLabel {...fieldHelp(tr, "material", "materialType")} />
+                }
                 onChange={onTypeChange}
                 onSearch={searchStructuredMaterialTypeOptions}
                 placeholder={tr("common.searchByMaterialTypeCodeOr")}
@@ -408,7 +414,7 @@ export function MaterialForm({
               <Select
                 data={finishOptions}
                 label={
-                  <HelpLabel {...fieldHelp("material", "surfaceFinish")} />
+                  <HelpLabel {...fieldHelp(tr, "material", "surfaceFinish")} />
                 }
                 placeholder={tr("master.materials.selectAType")}
                 withAsterisk
@@ -425,7 +431,7 @@ export function MaterialForm({
                 })}
                 label={
                   <HelpLabel
-                    {...fieldHelp("material", "dimensions", {
+                    {...fieldHelp(tr, "material", "dimensions", {
                       label: tr("common.diameterMm"),
                     })}
                   />
@@ -446,7 +452,7 @@ export function MaterialForm({
                 })}
                 label={
                   <HelpLabel
-                    {...fieldHelp("material", "dimensions", {
+                    {...fieldHelp(tr, "material", "dimensions", {
                       label: tr("common.overallLengthMm"),
                     })}
                   />
@@ -462,7 +468,7 @@ export function MaterialForm({
                   "master.materials.onlyKindsBelongingToTheParent",
                 )}
                 disabled={kindOptions.length === 0}
-                label={<HelpLabel {...fieldHelp("material", "kind")} />}
+                label={<HelpLabel {...fieldHelp(tr, "material", "kind")} />}
                 placeholder={
                   form.values.materialTypeId
                     ? tr("master.materials.selectAKind")
@@ -488,7 +494,7 @@ export function MaterialForm({
 
       <FormSection title={tr("common.basicInformation")}>
         <LocalizedTextInput
-          help={fieldHelpTip("material", "name")}
+          help={fieldHelpTip(tr, "material", "name")}
           jaProps={form.getInputProps("nameJa")}
           label={tr("common.name2")}
           placeholder="K40UF φ3×330"
@@ -498,14 +504,14 @@ export function MaterialForm({
         <SimpleGrid cols={isMobile ? 1 : 3} mt="sm" spacing="sm">
           <Select
             data={unitOptions(locale)}
-            label={<HelpLabel {...fieldHelp("material", "unit")} />}
+            label={<HelpLabel {...fieldHelp(tr, "material", "unit")} />}
             withAsterisk
             {...form.getInputProps("unit")}
           />
           <TextInput
             label={
               <HelpLabel
-                {...fieldHelp("material", "model", {
+                {...fieldHelp(tr, "material", "model", {
                   label: tr("common.manufacturerModel"),
                 })}
               />
@@ -517,7 +523,7 @@ export function MaterialForm({
             decimalScale={1}
             label={
               <HelpLabel
-                {...fieldHelp("material", "model", {
+                {...fieldHelp(tr, "material", "model", {
                   label: tr("master.materials.nominalDiameterMm"),
                 })}
               />
@@ -527,12 +533,12 @@ export function MaterialForm({
           />
         </SimpleGrid>
         <Switch
-          label={<HelpLabel {...fieldHelp("material", "active")} />}
+          label={<HelpLabel {...fieldHelp(tr, "material", "active")} />}
           mt="md"
           {...form.getInputProps("isActive", { type: "checkbox" })}
         />
         <Textarea
-          label={<HelpLabel {...fieldHelp("material", "notes")} />}
+          label={<HelpLabel {...fieldHelp(tr, "material", "notes")} />}
           mt="sm"
           placeholder={tr("common.notesAndRemarks")}
           rows={3}
@@ -541,7 +547,7 @@ export function MaterialForm({
         {/* 検索・AI 突合用の別名。候補は AI に作らせ、採用は人が決める。 */}
         <MasterKeywordsField
           kind="material"
-          label={<HelpLabel {...fieldHelp("material", "keywords")} />}
+          label={<HelpLabel {...fieldHelp(tr, "material", "keywords")} />}
           onChange={(v) => form.setFieldValue("matchNames", v)}
           subject={keywordSubject}
           value={form.values.matchNames}

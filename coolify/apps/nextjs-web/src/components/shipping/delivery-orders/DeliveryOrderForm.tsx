@@ -599,7 +599,9 @@ export function DeliveryOrderForm({
                   ? { value: item.productId, label: item.productName }
                   : null
               }
-              label={<HelpLabel {...fieldHelp("deliveryOrder", "product")} />}
+              label={
+                <HelpLabel {...fieldHelp(tr, "deliveryOrder", "product")} />
+              }
               onChange={(v, opt) =>
                 form.setFieldValue(`items.${ri}`, {
                   ...item,
@@ -658,7 +660,9 @@ export function DeliveryOrderForm({
             )}
             <NumberInput
               error={form.errors[`items.${ri}.quantity`]}
-              label={<HelpLabel {...fieldHelp("deliveryOrder", "quantity")} />}
+              label={
+                <HelpLabel {...fieldHelp(tr, "deliveryOrder", "quantity")} />
+              }
               maw={110}
               min={1}
               onChange={(v) =>
@@ -671,7 +675,7 @@ export function DeliveryOrderForm({
               withAsterisk
             />
             <TextInput
-              label={<HelpLabel {...fieldHelp("deliveryOrder", "notes")} />}
+              label={<HelpLabel {...fieldHelp(tr, "deliveryOrder", "notes")} />}
               placeholder={tr("common.lineNotesOptional")}
               {...form.getInputProps(`items.${ri}.notes`)}
             />
@@ -722,7 +726,9 @@ export function DeliveryOrderForm({
               注文明細がグループとして**追加**される（m:n）。 */}
           <SearchSelect
             error={form.errors.customerBpId}
-            label={<HelpLabel {...fieldHelp("deliveryOrder", "orderLine")} />}
+            label={
+              <HelpLabel {...fieldHelp(tr, "deliveryOrder", "orderLine")} />
+            }
             onChange={onAcceptancePick}
             onSearch={searchShippableAcceptanceOptions}
             placeholder={tr(
@@ -733,7 +739,7 @@ export function DeliveryOrderForm({
             withAsterisk={mode === "create"}
           />
           <Input.Wrapper
-            label={<HelpLabel {...fieldHelp("deliveryOrder", "type")} />}
+            label={<HelpLabel {...fieldHelp(tr, "deliveryOrder", "type")} />}
             withAsterisk
           >
             <SegmentedControl
@@ -751,14 +757,14 @@ export function DeliveryOrderForm({
           <Select
             clearable
             data={plantOptions}
-            label={<HelpLabel {...fieldHelp("deliveryOrder", "plant")} />}
+            label={<HelpLabel {...fieldHelp(tr, "deliveryOrder", "plant")} />}
             placeholder={tr("common.selectASite")}
             searchable={plantOptions.length > 5}
             {...form.getInputProps("fromPlantId")}
           />
           <Textarea
             autosize
-            label={<HelpLabel {...fieldHelp("deliveryOrder", "notes")} />}
+            label={<HelpLabel {...fieldHelp(tr, "deliveryOrder", "notes")} />}
             minRows={1}
             placeholder={tr("common.notesOptional")}
             {...form.getInputProps("notes")}

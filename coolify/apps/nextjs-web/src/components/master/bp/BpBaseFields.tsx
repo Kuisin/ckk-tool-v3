@@ -111,7 +111,7 @@ export function BpBaseFields<T extends BpBaseFormValues>({
             disabled
             label={
               <HelpLabel
-                {...fieldHelp("businessPartner", "bpCode", {
+                {...fieldHelp(tr, "businessPartner", "bpCode", {
                   label: tr("common.bPCode"),
                 })}
               />
@@ -122,7 +122,9 @@ export function BpBaseFields<T extends BpBaseFormValues>({
           <Select
             clearable
             data={countryOptions(locale)}
-            label={<HelpLabel {...fieldHelp("businessPartner", "country")} />}
+            label={
+              <HelpLabel {...fieldHelp(tr, "businessPartner", "country")} />
+            }
             placeholder={tr("common.selectACountry")}
             {...props("countryCode")}
           />
@@ -137,7 +139,7 @@ export function BpBaseFields<T extends BpBaseFormValues>({
         </SimpleGrid>
         <Stack gap="sm" mt="sm">
           <LocalizedTextInput
-            help={fieldHelpTip("businessPartner", "name")}
+            help={fieldHelpTip(tr, "businessPartner", "name")}
             jaProps={props("nameJa")}
             label={tr("common.name2")}
             required
@@ -148,7 +150,7 @@ export function BpBaseFields<T extends BpBaseFormValues>({
           <TextInput
             label={
               <HelpLabel
-                {...fieldHelp("businessPartner", "nameKana", {
+                {...fieldHelp(tr, "businessPartner", "nameKana", {
                   label: tr("common.kana"),
                 })}
               />
@@ -159,7 +161,7 @@ export function BpBaseFields<T extends BpBaseFormValues>({
           <TextInput
             label={
               <HelpLabel
-                {...fieldHelp("businessPartner", "nameKana", {
+                {...fieldHelp(tr, "businessPartner", "nameKana", {
                   label: tr("common.shortName"),
                 })}
               />
@@ -168,12 +170,16 @@ export function BpBaseFields<T extends BpBaseFormValues>({
             {...props("shortName")}
           />
           <TextInput
-            label={<HelpLabel {...fieldHelp("businessPartner", "taxNumber")} />}
+            label={
+              <HelpLabel {...fieldHelp(tr, "businessPartner", "taxNumber")} />
+            }
             placeholder="1234567890123"
             {...props("taxNumber")}
           />
           <Switch
-            label={<HelpLabel {...fieldHelp("businessPartner", "active")} />}
+            label={
+              <HelpLabel {...fieldHelp(tr, "businessPartner", "active")} />
+            }
             mt={isMobile ? 0 : "xl"}
             {...form.getInputProps("isActive", { type: "checkbox" })}
           />
@@ -182,7 +188,7 @@ export function BpBaseFields<T extends BpBaseFormValues>({
           description={tr("master.bp.theListAiExtractionUsesTo")}
           label={
             <HelpLabel
-              {...fieldHelp("businessPartner", "matchNames", {
+              {...fieldHelp(tr, "businessPartner", "matchNames", {
                 label: tr("common.aIMatchNames"),
               })}
             />
@@ -212,7 +218,7 @@ export function BpBaseFields<T extends BpBaseFormValues>({
           <TextInput
             label={
               <HelpLabel
-                {...fieldHelp("businessPartner", "address", {
+                {...fieldHelp(tr, "businessPartner", "address", {
                   label: tr("common.postalCode"),
                 })}
               />
@@ -223,7 +229,7 @@ export function BpBaseFields<T extends BpBaseFormValues>({
         </SimpleGrid>
         <Stack gap="sm" mt="sm">
           <LocalizedTextInput
-            help={fieldHelpTip("businessPartner", "address")}
+            help={fieldHelpTip(tr, "businessPartner", "address")}
             jaProps={props("addressJa")}
             label={tr("common.address")}
             translationsProps={props("addressTranslations")}
@@ -233,7 +239,7 @@ export function BpBaseFields<T extends BpBaseFormValues>({
           <TextInput
             label={
               <HelpLabel
-                {...fieldHelp("businessPartner", "contact", {
+                {...fieldHelp(tr, "businessPartner", "contact", {
                   label: tr("common.phoneNumber"),
                 })}
               />
@@ -244,7 +250,9 @@ export function BpBaseFields<T extends BpBaseFormValues>({
           <TextInput
             label={
               <HelpLabel
-                {...fieldHelp("businessPartner", "contact", { label: "FAX" })}
+                {...fieldHelp(tr, "businessPartner", "contact", {
+                  label: "FAX",
+                })}
               />
             }
             placeholder="03-1234-5679"
@@ -253,7 +261,7 @@ export function BpBaseFields<T extends BpBaseFormValues>({
           <TextInput
             label={
               <HelpLabel
-                {...fieldHelp("businessPartner", "contact", {
+                {...fieldHelp(tr, "businessPartner", "contact", {
                   label: tr("common.emailAddress"),
                 })}
               />
@@ -264,7 +272,7 @@ export function BpBaseFields<T extends BpBaseFormValues>({
           <TextInput
             label={
               <HelpLabel
-                {...fieldHelp("businessPartner", "contact", {
+                {...fieldHelp(tr, "businessPartner", "contact", {
                   label: tr("common.website"),
                 })}
               />
@@ -274,7 +282,7 @@ export function BpBaseFields<T extends BpBaseFormValues>({
           />
         </SimpleGrid>
         <Textarea
-          label={<HelpLabel {...fieldHelp("businessPartner", "notes")} />}
+          label={<HelpLabel {...fieldHelp(tr, "businessPartner", "notes")} />}
           mt="sm"
           placeholder={tr("common.notesAndRemarks")}
           rows={3}

@@ -264,7 +264,9 @@ function MemberPeriodFields({
               （YYYY/MM/DD HH:mm）が入力欄に収まらない。 */}
           <SimpleGrid cols={isMobile ? 1 : 2} spacing="sm">
             <DateTimePicker
-              label={<HelpLabel {...fieldHelp("approvalGroup", "validFrom")} />}
+              label={
+                <HelpLabel {...fieldHelp(tr, "approvalGroup", "validFrom")} />
+              }
               onChange={(v) =>
                 onPeriodChange({
                   ...period,
@@ -277,7 +279,7 @@ function MemberPeriodFields({
             />
             <DateTimePicker
               label={
-                <HelpLabel {...fieldHelp("approvalGroup", "validUntil")} />
+                <HelpLabel {...fieldHelp(tr, "approvalGroup", "validUntil")} />
               }
               onChange={(v) =>
                 onPeriodChange({

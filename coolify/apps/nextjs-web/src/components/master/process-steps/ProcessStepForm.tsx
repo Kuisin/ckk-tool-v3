@@ -431,7 +431,7 @@ export function ProcessStepForm({
               disabled
               label={
                 <HelpLabel
-                  {...fieldHelp("processStep", "code", {
+                  {...fieldHelp(tr, "processStep", "code", {
                     label: tr("common.stepCode"),
                   })}
                 />
@@ -445,7 +445,7 @@ export function ProcessStepForm({
               )}
               label={
                 <HelpLabel
-                  {...fieldHelp("processStep", "code", {
+                  {...fieldHelp(tr, "processStep", "code", {
                     label: tr("common.stepCode"),
                   })}
                 />
@@ -457,13 +457,13 @@ export function ProcessStepForm({
           )}
           <NumberInput
             description={tr("master.processSteps.defaultOrderInListsAndThe")}
-            label={<HelpLabel {...fieldHelp("processStep", "sortOrder")} />}
+            label={<HelpLabel {...fieldHelp(tr, "processStep", "sortOrder")} />}
             {...form.getInputProps("sortOrder")}
           />
         </SimpleGrid>
         <Stack gap="sm" mt="sm">
           <LocalizedTextInput
-            help={fieldHelpTip("processStep", "code")}
+            help={fieldHelpTip(tr, "processStep", "code")}
             jaProps={form.getInputProps("nameJa")}
             label={tr("common.name2")}
             required
@@ -473,13 +473,13 @@ export function ProcessStepForm({
         <SimpleGrid cols={isMobile ? 1 : 2} mt="sm" spacing="sm">
           <Select
             data={processCategoryOptions(locale)}
-            label={<HelpLabel {...fieldHelp("processStep", "category")} />}
+            label={<HelpLabel {...fieldHelp(tr, "processStep", "category")} />}
             withAsterisk
             {...form.getInputProps("category")}
           />
           <Select
             data={processExecutionOptions(locale)}
-            label={<HelpLabel {...fieldHelp("processStep", "execution")} />}
+            label={<HelpLabel {...fieldHelp(tr, "processStep", "execution")} />}
             withAsterisk
             {...form.getInputProps("executionLocation")}
           />
@@ -490,7 +490,9 @@ export function ProcessStepForm({
               "master.processSteps.quantityEntryWhenRunningTheStep",
             )}
             label={
-              <HelpLabel {...fieldHelp("processStep", "quantityTracking")} />
+              <HelpLabel
+                {...fieldHelp(tr, "processStep", "quantityTracking")}
+              />
             }
             {...form.getInputProps("quantityTracking")}
           />
@@ -504,7 +506,9 @@ export function ProcessStepForm({
           <NumberInput
             decimalScale={2}
             description={tr("master.processSteps.theInitialValueForStepsOn")}
-            label={<HelpLabel {...fieldHelp("processStep", "defaultTime")} />}
+            label={
+              <HelpLabel {...fieldHelp(tr, "processStep", "defaultTime")} />
+            }
             min={0.01}
             suffix=" h"
             {...form.getInputProps("defaultWorkHours")}
@@ -513,13 +517,13 @@ export function ProcessStepForm({
         <Stack gap="xs" mt="sm">
           <Switch
             description={tr("master.processSteps.aStepThatCanRunAnd")}
-            label={<HelpLabel {...fieldHelp("processStep", "sync")} />}
+            label={<HelpLabel {...fieldHelp(tr, "processStep", "sync")} />}
             {...form.getInputProps("isSyncCapable", { type: "checkbox" })}
           />
           <Switch
             label={
               <HelpLabel
-                {...fieldHelp("processStep", "inspection", {
+                {...fieldHelp(tr, "processStep", "inspection", {
                   label: tr("common.inspectionStep"),
                 })}
               />
@@ -542,7 +546,7 @@ export function ProcessStepForm({
           <Switch
             label={
               <HelpLabel
-                {...fieldHelp("processStep", "inspection", {
+                {...fieldHelp(tr, "processStep", "inspection", {
                   label: tr("master.processSteps.inspectionApprovalStep"),
                 })}
               />
@@ -553,7 +557,7 @@ export function ProcessStepForm({
             <TextInput
               description={tr("master.processSteps.theLowestRankThatCanRun")}
               label={
-                <HelpLabel {...fieldHelp("processStep", "approvalRank")} />
+                <HelpLabel {...fieldHelp(tr, "processStep", "approvalRank")} />
               }
               placeholder={tr("master.processSteps.eGSectionChiefAndAbove")}
               {...form.getInputProps("approvalMinRank")}
@@ -562,7 +566,7 @@ export function ProcessStepForm({
           <Switch
             label={
               <HelpLabel
-                {...fieldHelp("processStep", "active", {
+                {...fieldHelp(tr, "processStep", "active", {
                   label: tr("common.enabled"),
                 })}
               />
@@ -573,7 +577,7 @@ export function ProcessStepForm({
         <Textarea
           label={
             <HelpLabel
-              {...fieldHelp("processStep", "active", {
+              {...fieldHelp(tr, "processStep", "active", {
                 label: tr("common.notes"),
               })}
             />
@@ -612,7 +616,7 @@ export function ProcessStepForm({
             description={tr("master.processSteps.allowEveryLocationOfThatType")}
             label={
               <HelpLabel
-                {...fieldHelp("processStep", "allowedLocations", {
+                {...fieldHelp(tr, "processStep", "allowedLocations", {
                   label: tr("master.processSteps.allowByType"),
                 })}
               />

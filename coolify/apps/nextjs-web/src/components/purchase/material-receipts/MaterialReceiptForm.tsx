@@ -251,7 +251,9 @@ export function MaterialReceiptForm({
         <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="sm">
           <SearchSelect
             error={form.errors.materialId}
-            label={<HelpLabel {...fieldHelp("materialReceipt", "material")} />}
+            label={
+              <HelpLabel {...fieldHelp(tr, "materialReceipt", "material")} />
+            }
             onChange={(v) => form.setFieldValue("materialId", v ?? "")}
             onSearch={searchMaterialOptions}
             placeholder={tr("common.searchMaterials")}
@@ -262,7 +264,9 @@ export function MaterialReceiptForm({
           <Select
             clearable
             data={supplierOptions}
-            label={<HelpLabel {...fieldHelp("materialReceipt", "supplier")} />}
+            label={
+              <HelpLabel {...fieldHelp(tr, "materialReceipt", "supplier")} />
+            }
             placeholder={tr(
               "purchase.materialReceipts.selectASupplierOptional",
             )}
@@ -272,13 +276,15 @@ export function MaterialReceiptForm({
           <Select
             clearable
             data={plantOptions}
-            label={<HelpLabel {...fieldHelp("materialReceipt", "plant")} />}
+            label={<HelpLabel {...fieldHelp(tr, "materialReceipt", "plant")} />}
             placeholder={tr("common.selectASiteOptional")}
             {...form.getInputProps("plantId")}
           />
           <DatePickerInput
             label={
-              <HelpLabel {...fieldHelp("materialReceipt", "receivedDate")} />
+              <HelpLabel
+                {...fieldHelp(tr, "materialReceipt", "receivedDate")}
+              />
             }
             leftSection={<IconCalendar size={14} />}
             valueFormat="YYYY/MM/DD"
@@ -287,7 +293,9 @@ export function MaterialReceiptForm({
           />
           <NumberInput
             decimalScale={3}
-            label={<HelpLabel {...fieldHelp("materialReceipt", "quantity")} />}
+            label={
+              <HelpLabel {...fieldHelp(tr, "materialReceipt", "quantity")} />
+            }
             min={0}
             withAsterisk
             {...form.getInputProps("quantity")}

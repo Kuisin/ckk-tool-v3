@@ -1582,7 +1582,9 @@ function DraftEditor({
                   ? { value: a.shipToBpId, label: a.shipToName }
                   : null
               }
-              label={<HelpLabel {...fieldHelp("orderAcceptance", "shipTo")} />}
+              label={
+                <HelpLabel {...fieldHelp(tr, "orderAcceptance", "shipTo")} />
+              }
               onChange={setShipToBpId}
               onSearch={searchShipToOptions}
               placeholder={tr("common.searchShipToOptional")}
@@ -1595,7 +1597,7 @@ function DraftEditor({
               data={acceptanceDeliveryMethodOptions(locale)}
               label={
                 <HelpLabel
-                  {...fieldHelp("orderAcceptance", "deliveryMethod")}
+                  {...fieldHelp(tr, "orderAcceptance", "deliveryMethod")}
                 />
               }
               onChange={(v) => {
@@ -1616,7 +1618,9 @@ function DraftEditor({
                   ? { value: a.endUserBpId, label: a.endUserName }
                   : null
               }
-              label={<HelpLabel {...fieldHelp("orderAcceptance", "endUser")} />}
+              label={
+                <HelpLabel {...fieldHelp(tr, "orderAcceptance", "endUser")} />
+              }
               onChange={(v) => {
                 setEndUserBpId(v);
                 if (v) setEndUserError(null);
@@ -1635,7 +1639,9 @@ function DraftEditor({
               clearable
               data={plantOptions}
               label={
-                <HelpLabel {...fieldHelp("orderAcceptance", "assignedPlant")} />
+                <HelpLabel
+                  {...fieldHelp(tr, "orderAcceptance", "assignedPlant")}
+                />
               }
               onChange={setAssignedPlantId}
               placeholder={tr("common.selectASiteOptional")}
@@ -1647,7 +1653,7 @@ function DraftEditor({
               data={workLocationOptions}
               label={
                 <HelpLabel
-                  {...fieldHelp("orderAcceptance", "shippingWorkLocation")}
+                  {...fieldHelp(tr, "orderAcceptance", "shippingWorkLocation")}
                 />
               }
               onChange={setShippingWorkLocationId}
