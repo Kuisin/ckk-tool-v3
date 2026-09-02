@@ -1117,6 +1117,13 @@
       "PLANT": "拠点",
       "ROLE": "ロール",
       "USER": "個人"
+    },
+    "MEMBER_PERIOD_STATE_LABEL": {
+      "PERMANENT": "常任",
+      "ACTIVE": "有効中",
+      "SCHEDULED": "期間前",
+      "EXPIRED": "期間終了",
+      "DISABLED": "無効"
     }
   },
   "status": {
@@ -2820,7 +2827,11 @@
       "linkedPrecedingWorkOrder": "先行指示書 #{number} をリンク",
       "linkNotFound": "リンクが見つかりません",
       "cannotUnlinkACompleted": "完了済みの指示書のリンクは解除できません",
-      "unlinkedPrecedingWorkOrder": "先行指示書 #{number} のリンクを解除"
+      "unlinkedPrecedingWorkOrder": "先行指示書 #{number} のリンクを解除",
+      "cannotLinkToTheSameWorkOrder": "同じ指示書へはリンクできません",
+      "linkToThisWorkOrderAlreadyExists": "この指示書へのリンクは既にあります",
+      "linkWouldCreateACycle": "リンクが循環します（先行関係が閉路になる）",
+      "quantityMustBeAPositiveInteger": "受け渡し数量は 1 以上の整数で入力してください"
     },
     "designFilesUpload": {
       "sendAsMultipartFormData": "multipart/form-data で送信してください",
@@ -4203,6 +4214,10 @@
       "sendAsMultipartFormData": "multipart/form-data で送信してください",
       "selectAnImageFile": "画像ファイルを選択してください",
       "imageSizeMustBe5mb": "画像サイズは 5MB 以下にしてください"
+    },
+    "kioskSettings": {
+      "stepExecution": "工程実行",
+      "workOrderScan": "指示書スキャン"
     }
   },
   "portal": {
