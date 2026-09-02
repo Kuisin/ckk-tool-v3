@@ -134,6 +134,9 @@ jobs:
       - name: i18n translation keys exist
         run: node ../../../tools/i18n-unify/verify-keys.mjs
 
+      - name: i18n dynamic key prefixes exist (tr(`ns.${x}`))
+        run: node scripts/check-dynamic-i18n-keys.mjs
+
       # "use server" は async 関数しか export できない。定数を export すると
       # クライアントにはアクション参照が渡り、実行時に画面ごと落ちる
       # （tsc も biome も next build も検出しない）。

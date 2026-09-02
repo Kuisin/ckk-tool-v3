@@ -18,6 +18,13 @@ import { Text } from "@mantine/core";
 import type { ReactNode } from "react";
 import { splitDocNumber } from "@/lib/doc-number";
 
+/**
+ * 書類番号（QOT-… / ORD-…）の等幅表示。接頭辞を薄くする。
+ *
+ * `component="span"` は必須 — Alert の <Text>（= <p>）や表のセルの中に置かれる
+ * ので、既定の <p> で描くと <p> の入れ子になり React 19 が hydration error
+ * （#418）を出す（2026-09 の e2e で MS07 採番構成・素材の新規で発生）。
+ */
 export function DocNumber({
   children,
   c,
@@ -28,7 +35,7 @@ export function DocNumber({
   // 文字列以外（要素・null）はそのまま出す。切り分けようがない。
   if (typeof children !== "string") {
     return (
-      <Text c={c} className="tabular-nums" ff="mono" size="sm">
+      <Text c={c} className="tabular-nums" component="span" ff="mono" size="sm">
         {children}
       </Text>
     );
@@ -36,7 +43,7 @@ export function DocNumber({
 
   const { prefix, rest } = splitDocNumber(children);
   return (
-    <Text c={c} className="tabular-nums" ff="mono" size="sm">
+    <Text c={c} className="tabular-nums" component="span" ff="mono" size="sm">
       {prefix && <span style={{ opacity: 0.55 }}>{prefix}</span>}
       {rest}
     </Text>

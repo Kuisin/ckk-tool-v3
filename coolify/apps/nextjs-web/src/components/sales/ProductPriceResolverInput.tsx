@@ -133,7 +133,7 @@ export function ProductPriceResolverInput({
         flex={isMobile ? 1 : 1.1}
         gap={2}
       >
-        <Text c="dimmed" size="xs">
+        <Text c="dimmed" component="div" size="xs">
           <HelpLabel
             help={tr(
               "sales.productPriceResolverInput.resolvedAutomaticallyFromThePriceList",
@@ -167,7 +167,7 @@ export function ProductPriceResolverInput({
         flex={isMobile ? 1 : 1.1}
         gap={2}
       >
-        <Text c="dimmed" size="xs">
+        <Text c="dimmed" component="div" size="xs">
           <HelpLabel
             help={tr(
               "sales.productPriceResolverInput.appliedAutomaticallyFromThePriceList",

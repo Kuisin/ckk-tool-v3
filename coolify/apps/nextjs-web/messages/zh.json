@@ -1086,6 +1086,44 @@
       "TIP": "仅前端",
       "TIP_GASH": "前端 + 沟槽",
       "TIP_OUTER": "前端 + 外周"
+    },
+    "PRODUCT_FIELD_TYPE_LABEL": {
+      "string": "文本",
+      "number": "数值",
+      "boolean": "是否（是/否）",
+      "select": "选择",
+      "date": "日期"
+    },
+    "DESIGN_FILE_SOURCE_LABEL": {
+      "REQUEST": "委托",
+      "MANUAL": "手动"
+    },
+    "PORTAL_PROGRESS_LABEL": {
+      "RECEIVED": "已接单",
+      "IN_PRODUCTION": "生产中",
+      "READY": "备货中",
+      "SHIPPED": "已出货",
+      "DELIVERED": "已交货",
+      "CANCELLED": "已取消"
+    },
+    "SHARE_LEVEL_LABEL": {
+      "RESPOND": "仅回答",
+      "READ": "查看",
+      "EDIT": "编辑",
+      "MANAGE": "管理"
+    },
+    "SHARE_SUBJECT_LABEL": {
+      "EVERYONE": "全公司",
+      "PLANT": "据点",
+      "ROLE": "角色",
+      "USER": "个人"
+    },
+    "MEMBER_PERIOD_STATE_LABEL": {
+      "PERMANENT": "常任",
+      "ACTIVE": "有效中",
+      "SCHEDULED": "期间前",
+      "EXPIRED": "已结束",
+      "DISABLED": "已停用"
     }
   },
   "status": {
@@ -1721,6 +1759,16 @@
           "description": "创建任何持有链接者均可打开的单据链接。需验证的链接不在此列。"
         }
       }
+    },
+    "GRANT_STATE_LABEL": {
+      "PENDING": "审批中",
+      "SCHEDULED": "未开始",
+      "ARMED": "可用",
+      "ACTIVE": "使用中",
+      "EXPIRED": "已过期",
+      "REJECTED": "已退回",
+      "REVOKED": "已撤销",
+      "CANCELLED": "已撤回"
     }
   },
   "pdf": {
@@ -2781,7 +2829,11 @@
       "linkedPrecedingWorkOrder": "已链接前置工单 #{number}",
       "linkNotFound": "未找到该链接",
       "cannotUnlinkACompleted": "无法解除已完成工单的链接",
-      "unlinkedPrecedingWorkOrder": "已解除前置工单 #{number} 的链接"
+      "unlinkedPrecedingWorkOrder": "已解除前置工单 #{number} 的链接",
+      "cannotLinkToTheSameWorkOrder": "不能关联到同一张工单",
+      "linkToThisWorkOrderAlreadyExists": "与该工单的关联已存在",
+      "linkWouldCreateACycle": "该关联会使先后关系形成循环",
+      "quantityMustBeAPositiveInteger": "交接数量请输入 1 以上的整数"
     },
     "designFilesUpload": {
       "sendAsMultipartFormData": "请以 multipart/form-data 格式发送",
@@ -2979,6 +3031,24 @@
           "noVision": "指定的模型无法读取图像。请在系统设置 → AI 服务商 中指定支持图像的模型。",
           "upstream": "AI 服务商发生错误。请稍后重试。"
         }
+      }
+    },
+    "aiProviderPresets": {
+      "ollama": {
+        "label": "本地 (Ollama)",
+        "note": "在公司内 GPU 上运行的默认配置。单据不会外传。"
+      },
+      "openai": {
+        "label": "OpenAI 兼容",
+        "note": "OpenAI 以及 vLLM、LM Studio、OpenRouter 等兼容 /chat/completions 的服务。"
+      },
+      "anthropic": {
+        "label": "Anthropic (Claude)",
+        "note": "模型 ID 不要加日期（claude-opus-5 / claude-sonnet-5 / claude-haiku-4-5 等）。"
+      },
+      "gemini": {
+        "label": "Google Gemini",
+        "note": "使用 Google AI Studio 的 API 密钥。"
       }
     },
     "kiosk": {
@@ -4146,6 +4216,10 @@
       "sendAsMultipartFormData": "请以 multipart/form-data 格式发送",
       "selectAnImageFile": "请选择图片文件",
       "imageSizeMustBe5mb": "图片大小请控制在 5MB 以内"
+    },
+    "kioskSettings": {
+      "stepExecution": "工序执行",
+      "workOrderScan": "工单扫描"
     }
   },
   "portal": {
@@ -7488,6 +7562,65 @@
         "quality": "质量・不良",
         "announcement": "通知公告"
       }
+    },
+    "action": {
+      "CREATE": "新建",
+      "UPDATE": "更新",
+      "DELETE": "删除",
+      "VIEW": "查看",
+      "EXPORT": "导出",
+      "SEED": "初始数据",
+      "MIGRATE": "迁移"
+    },
+    "table": {
+      "quotes": "报价单",
+      "estimates": "价格试算",
+      "price_list_entries": "价格表",
+      "products": "产品",
+      "materials": "材料",
+      "material_types": "材料类别",
+      "business_partners": "业务伙伴",
+      "feature_flags": "应用管理",
+      "plants": "据点",
+      "factories": "据点（旧）",
+      "process_step_catalog": "工序主数据",
+      "inspection_templates": "检查表模板",
+      "defect_types": "不良类别",
+      "approval_groups": "审批组",
+      "approval_flows": "审批流程",
+      "order_lines": "订单明细",
+      "work_orders": "工单",
+      "delivery_orders": "出货单",
+      "delivery_notes": "送货单",
+      "purchase_requests": "采购申请",
+      "forms": "表单",
+      "form_responses": "表单回答",
+      "internal_pages": "内部文档",
+      "purchase_request_items": "采购申请明细",
+      "material_purchase_orders": "材料采购单",
+      "material_receipts": "材料到货",
+      "invoices": "请款单",
+      "billing_closings": "结算处理",
+      "design_requests": "设计委托单",
+      "approval_requests": "审批申请",
+      "order_acceptances": "订单确认书",
+      "kiosk_cards": "二维码卡",
+      "kiosk_devices": "共用终端",
+      "display_devices": "显示屏",
+      "kiosk_floor_maps": "平面图",
+      "product_inventory": "产品库存",
+      "material_inventory": "材料库存",
+      "storage_locations": "存放位置",
+      "storage_shelves": "货架",
+      "work_location_groups": "作业场所组",
+      "work_locations": "作业场所",
+      "file_folder_grants": "文件夹权限",
+      "intake_folder": "订单导入文件夹",
+      "portal_accounts": "门户账号",
+      "portal_grants": "门户共享范围",
+      "portal_document_links": "门户单据链接",
+      "portal_backup_codes": "门户备用码",
+      "system": "系统"
     }
   },
   "inspectionTemplateIo": {
