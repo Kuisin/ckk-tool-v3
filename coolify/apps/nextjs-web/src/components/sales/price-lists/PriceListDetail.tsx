@@ -184,7 +184,7 @@ export function PriceListDetail({
       </Badge>
       <ActiveBadge active={variant.isActive} />
       <Text c="dimmed" className="tabular-nums" size="xs">
-        {validPeriod(fmt, variant.validFrom, variant.validUntil)}
+        {validPeriod(fmt, variant.validFrom, variant.validUntil, tr)}
       </Text>
     </Group>
   );
@@ -323,7 +323,11 @@ export function PriceListDetail({
                       {variant.tiers.map((tier) => (
                         <Table.Tr key={tier.id}>
                           <Table.Td>
-                            {quantityRange(tier.minQuantity, tier.maxQuantity)}
+                            {quantityRange(
+                              tier.minQuantity,
+                              tier.maxQuantity,
+                              tr,
+                            )}
                           </Table.Td>
                           <Table.Td ta="right">
                             <Text className="tabular-nums" ff="mono" size="sm">
@@ -405,11 +409,11 @@ export function PriceListDetail({
                                 ff="mono"
                                 size="sm"
                               >
-                                {discountValueLabel(d)}
+                                {discountValueLabel(d, tr)}
                               </Text>
                             </Table.Td>
                             <Table.Td>
-                              {quantityRange(d.minQuantity, d.maxQuantity)}
+                              {quantityRange(d.minQuantity, d.maxQuantity, tr)}
                             </Table.Td>
                             <Table.Td>
                               <Text
@@ -417,7 +421,12 @@ export function PriceListDetail({
                                 className="tabular-nums"
                                 size="xs"
                               >
-                                {validPeriod(fmt, d.validFrom, d.validUntil)}
+                                {validPeriod(
+                                  fmt,
+                                  d.validFrom,
+                                  d.validUntil,
+                                  tr,
+                                )}
                               </Text>
                             </Table.Td>
                             <Table.Td>

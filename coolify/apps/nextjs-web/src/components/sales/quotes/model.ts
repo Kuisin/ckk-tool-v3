@@ -23,6 +23,7 @@ import {
   unitDiscountOf,
 } from "@/components/sales/price-lists/model";
 import { formatMoney } from "@/lib/format";
+import type { Tr } from "@/lib/i18n";
 import { ORDER_TYPE_LABEL } from "@/lib/mock";
 
 /**
@@ -51,6 +52,7 @@ export function resolveUnitPriceFromEntries(
   productId: string,
   orderType: string,
   quantity: number,
+  tr: Tr,
   date: Date = new Date(),
 ): ResolvedPrice | null {
   const entry = entries.find(
@@ -70,22 +72,25 @@ export function resolveUnitPriceFromEntries(
   return {
     unitPrice,
     tierId: tier.id,
-    tierLabel: tierLabel(tier),
+    tierLabel: tierLabel(tier, tr),
     discountAmount: discount
       ? unitDiscountOf(discount, unitPrice) * quantity
       : 0,
     discountId: discount?.id ?? null,
     discountLabel: discount
-      ? `${discount.label}（${discountValueLabel(discount)}）`
+      ? `${discount.label}（${discountValueLabel(discount, tr)}）`
       : null,
   };
 }
 
 /** "1〜9本" / "100本〜" for a tier (mirrors price-list quantityRange). */
-export function tierLabel(t: PriceTier): string {
+export function tierLabel(t: PriceTier, tr: Tr): string {
   return t.maxQuantity == null
-    ? `${t.minQuantity}本〜`
-    : `${t.minQuantity}〜${t.maxQuantity}本`;
+    ? tr("sales.priceLists.quantityRangeOpen", { min: t.minQuantity })
+    : tr("sales.priceLists.quantityRangeBounded", {
+        min: t.minQuantity,
+        max: t.maxQuantity,
+      });
 }
 
 /** One quote line — 単価・値引きとも価格表から自動解決（手入力なし）。 */
@@ -172,6 +177,7 @@ export interface PriceTierRef {
 export function findPriceTierRefIn(
   entries: PriceListEntry[],
   priceTierId: string | null,
+  tr: Tr,
 ): PriceTierRef | null {
   if (!priceTierId) return null;
   for (const entry of entries) {
@@ -181,7 +187,7 @@ export function findPriceTierRefIn(
         return {
           entryId: entry.entryId,
           estimateNumber: variant.estimateNumber,
-          label: `${tierLabel(tier)} ${formatMoney(tierUnitPrice(variant, tier))}`,
+          label: `${tierLabel(tier, tr)} ${formatMoney(tierUnitPrice(variant, tier))}`,
         };
       }
     }
@@ -193,10 +199,11 @@ export function findPriceTierRefIn(
 export function priceEntriesForQuoteIn(
   entries: PriceListEntry[],
   q: Quote,
+  tr: Tr,
 ): PriceListEntry[] {
   const entryIds = new Set(
     q.items
-      .map((it) => findPriceTierRefIn(entries, it.priceTierId)?.entryId)
+      .map((it) => findPriceTierRefIn(entries, it.priceTierId, tr)?.entryId)
       .filter((id): id is string => !!id),
   );
   return entries.filter((e) => entryIds.has(e.entryId));

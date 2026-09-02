@@ -1154,6 +1154,11 @@
       "COMPLETE": "完了",
       "REOPEN": "差し戻し（作業）",
       "CANCEL": "キャンセル"
+    },
+    "DESIGN_FILE_ROLE_LABEL": {
+      "PREVIEW": "プレビュー",
+      "BLUEPRINT": "図面データ",
+      "REFERENCE": "参考資料"
     }
   },
   "status": {
@@ -1955,7 +1960,10 @@
       "markedAsPaid": "入金済みにしました",
       "searchByInvoiceNumberOrCustomer": "請求番号・顧客で検索",
       "thereAreNoInvoicesGenerateThem": "請求書がありません（締日処理から生成します）",
-      "exportedAtLabel": "エクスポート済・{dateTime}"
+      "exportedAtLabel": "エクスポート済・{dateTime}",
+      "taxLabelReduced": "消費税（8%）",
+      "taxLabelExempt": "消費税（非課税）",
+      "taxLabelStandard": "消費税（10%）"
     },
     "invoiceDetail": {
       "confirmIssueMessage": "請求書 {invoiceNumber} を発行します。発行日は本日で記録されます。",
@@ -6674,7 +6682,10 @@
       "unitPriceUsed": "採用単価",
       "noMaximum": "上限なし",
       "removeTheTier": "段階を削除",
-      "addATier": "段階を追加"
+      "addATier": "段階を追加",
+      "quantityRangeOpen": "{min}本〜",
+      "quantityRangeBounded": "{min}〜{max}本",
+      "perPieceAmount": "{amount}/本"
     },
     "quotes": {
       "issuedPdfGenerationFailed": "発行しました（PDF 生成に失敗）",

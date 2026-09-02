@@ -107,6 +107,7 @@ async function resolveItems(
       it.productId,
       it.orderType,
       it.quantity,
+      tr,
     );
     if (!r) {
       throw new LineItemResolveError(

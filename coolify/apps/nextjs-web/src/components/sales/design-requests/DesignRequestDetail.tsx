@@ -66,7 +66,6 @@ import {
   countTrailRecords,
 } from "@/components/production/ApprovalStatusPanel";
 import { DesignFileList } from "@/components/production/design-files/DesignFileList";
-import { DESIGN_FILE_ROLE_LABEL } from "@/components/production/design-files/model";
 import { ActionCard } from "@/components/ui/ActionCard";
 import { AppTabs } from "@/components/ui/AppTabs";
 import {
@@ -409,7 +408,7 @@ export function DesignRequestDetail({
         key: f.id,
         label: f.filename,
         done: true,
-        note: DESIGN_FILE_ROLE_LABEL[f.role] ?? f.role,
+        note: tr(`enum.DESIGN_FILE_ROLE_LABEL.${f.role}`),
       })),
       emptyNote:
         request.status === "IN_PROGRESS"

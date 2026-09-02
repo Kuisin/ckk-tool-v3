@@ -270,15 +270,15 @@ export function describeIssue(
     case "MISSING_OR_GROUP":
       return tr("production.workflowIssues.missingOrGroup", {
         step,
-        related: related.join("・"),
+        related: related.join(tr("common.s1")),
       });
     case "MISSING_START":
       return tr("production.workflowIssues.missingStart", {
-        related: related.join("・"),
+        related: related.join(tr("common.s1")),
       });
     case "MULTIPLE_START":
       return tr("production.workflowIssues.multipleStart", {
-        related: related.join("・"),
+        related: related.join(tr("common.s1")),
       });
   }
 }

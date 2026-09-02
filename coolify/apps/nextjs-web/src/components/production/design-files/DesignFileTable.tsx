@@ -23,11 +23,7 @@ import { NewButton } from "@/components/ui/NewButton";
 import { ListShell } from "@/components/ui/shells";
 import { useUrlSelectState, useUrlStringState } from "@/hooks/useUrlState";
 import { useIsMobile } from "@/hooks/useViewport";
-import {
-  DESIGN_FILE_ROLE_COLOR,
-  DESIGN_FILE_ROLE_LABEL,
-  type DesignFileSeriesRow,
-} from "./model";
+import { DESIGN_FILE_ROLE_COLOR, type DesignFileSeriesRow } from "./model";
 
 const BASE_PATH = "/production/design-files";
 
@@ -150,7 +146,7 @@ export function DesignFileTable({
               key={role}
               variant="light"
             >
-              {DESIGN_FILE_ROLE_LABEL[role] ?? role}
+              {tr(`enum.DESIGN_FILE_ROLE_LABEL.${role}`)}
             </Badge>
           ))}
         </Group>

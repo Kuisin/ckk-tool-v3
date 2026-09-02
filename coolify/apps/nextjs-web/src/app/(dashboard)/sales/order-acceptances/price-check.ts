@@ -12,6 +12,7 @@
  * サーバー専用（prisma import）— actions.ts と詳細ページから呼ぶ。
  */
 
+import { getTranslations } from "next-intl/server";
 import { resolveUnitPriceFromEntries } from "@/components/sales/quotes/model";
 import { prisma } from "@/lib/db";
 import type { DocKey } from "@/lib/doc-number";
@@ -51,6 +52,7 @@ const EMPTY_CHECK: AcceptancePriceCheck = { lines: [], diffCount: 0 };
 export async function checkAcceptancePrices(
   key: DocKey,
 ): Promise<AcceptancePriceCheck> {
+  const tr = await getTranslations();
   const acceptance = await prisma.orderAcceptance.findUnique({
     where: { yearMonth_seq: key },
     select: {
@@ -93,6 +95,7 @@ export async function checkAcceptancePrices(
       String(it.productId),
       it.orderType,
       it.quantity,
+      tr,
     );
     const expected = resolved?.unitPrice ?? null;
     return {

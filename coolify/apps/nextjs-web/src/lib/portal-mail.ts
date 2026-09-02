@@ -45,12 +45,14 @@ export async function sendPortalOtpMail(input: {
   if (!isDevFeatureEnabled("portal")) return "BLOCKED_DEV";
   if (!allowed(input.to)) {
     // dev の安全弁。**アラートの対象ではない**（設定どおりの挙動）。
+    // i18n-ignore — サーバーログのみ（Loki）、UI に出ない
     console.warn(
       "[portal-mail] blocked (allowlist): PORTAL_MAIL_ALLOWLIST に無い宛先",
     );
     return "BLOCKED_DEV";
   }
   if (!isMailerConfigured()) {
+    // i18n-ignore — サーバーログのみ（Loki）、UI に出ない
     console.error(
       "[portal-mail] send failed: MAIL_API_URL / MAIL_API_TOKEN が未設定",
     );
@@ -87,7 +89,7 @@ export async function sendPortalOtpMail(input: {
     // **ここが運用の唯一の手がかり。** 画面は成功と同じものを返すので
     // （アカウントの存在を漏らさないため）、利用者は「コードが来ない」としか
     // 言えない。Grafana の portal_otp_mail_failed がこの行を見ている。
-    console.error("[portal-mail] send failed: リレーが受け取らなかった");
+    console.error("[portal-mail] send failed: リレーが受け取らなかった"); // i18n-ignore — サーバーログのみ（Loki）、UI に出ない
   }
   return ok ? "SENT" : "FAILED";
 }

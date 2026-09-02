@@ -1154,6 +1154,11 @@
       "COMPLETE": "Completed",
       "REOPEN": "Sent back (work)",
       "CANCEL": "Cancelled"
+    },
+    "DESIGN_FILE_ROLE_LABEL": {
+      "PREVIEW": "Preview",
+      "BLUEPRINT": "Drawing file",
+      "REFERENCE": "Reference"
     }
   },
   "status": {
@@ -1955,7 +1960,10 @@
       "markedAsPaid": "Marked as paid",
       "searchByInvoiceNumberOrCustomer": "Search by invoice number or customer",
       "thereAreNoInvoicesGenerateThem": "There are no invoices (generate them from the billing closing)",
-      "exportedAtLabel": "Exported at {dateTime}"
+      "exportedAtLabel": "Exported at {dateTime}",
+      "taxLabelReduced": "Consumption tax (8%)",
+      "taxLabelExempt": "Consumption tax (exempt)",
+      "taxLabelStandard": "Consumption tax (10%)"
     },
     "invoiceDetail": {
       "confirmIssueMessage": "This issues invoice {invoiceNumber}. The issue date is recorded as today.",
@@ -6674,7 +6682,10 @@
       "unitPriceUsed": "Unit price used",
       "noMaximum": "No maximum",
       "removeTheTier": "Remove the tier",
-      "addATier": "Add a tier"
+      "addATier": "Add a tier",
+      "quantityRangeOpen": "{min}+ pcs",
+      "quantityRangeBounded": "{min}–{max} pcs",
+      "perPieceAmount": "{amount}/pc"
     },
     "quotes": {
       "issuedPdfGenerationFailed": "Issued (PDF generation failed)",

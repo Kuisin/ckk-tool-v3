@@ -1154,6 +1154,11 @@
       "COMPLETE": "已完成",
       "REOPEN": "已退回（作业）",
       "CANCEL": "已取消"
+    },
+    "DESIGN_FILE_ROLE_LABEL": {
+      "PREVIEW": "预览",
+      "BLUEPRINT": "图纸文件",
+      "REFERENCE": "参考资料"
     }
   },
   "status": {
@@ -1955,7 +1960,10 @@
       "markedAsPaid": "已标记为已付款",
       "searchByInvoiceNumberOrCustomer": "按请款单号或客户搜索",
       "thereAreNoInvoicesGenerateThem": "没有请款单（从结算处理生成）",
-      "exportedAtLabel": "已导出・{dateTime}"
+      "exportedAtLabel": "已导出・{dateTime}",
+      "taxLabelReduced": "消费税（8%）",
+      "taxLabelExempt": "消费税（免税）",
+      "taxLabelStandard": "消费税（10%）"
     },
     "invoiceDetail": {
       "confirmIssueMessage": "将发行请款单 {invoiceNumber}，发行日期记为今天。",
@@ -6674,7 +6682,10 @@
       "unitPriceUsed": "采用单价",
       "noMaximum": "无上限",
       "removeTheTier": "删除档",
-      "addATier": "添加档"
+      "addATier": "添加档",
+      "quantityRangeOpen": "{min} 支起",
+      "quantityRangeBounded": "{min}~{max} 支",
+      "perPieceAmount": "{amount}/支"
     },
     "quotes": {
       "issuedPdfGenerationFailed": "已发行（PDF 生成失败）",

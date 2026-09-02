@@ -117,6 +117,7 @@ function buildInitial(
   quote: Quote | null | undefined,
   prefill: QuotePrefill | undefined,
   entries: PriceListEntry[],
+  tr: ReturnType<typeof useTranslations>,
 ): QuoteFormValues {
   if (quote) return toFormValues(quote);
   const base: QuoteFormValues = {
@@ -138,6 +139,7 @@ function buildInitial(
       prefill.productId,
       orderType,
       quantity,
+      tr,
     );
     base.items = [
       {
@@ -206,7 +208,7 @@ export function QuoteForm({
 
   const form = useForm<QuoteFormValues>({
     validate: zodResolver(buildSchema(tr)),
-    initialValues: buildInitial(quote, prefill, entries),
+    initialValues: buildInitial(quote, prefill, entries, tr),
   });
 
   const branches = branchesByCustomer[form.values.customerId] ?? [];
@@ -225,6 +227,7 @@ export function QuoteForm({
               it.productId,
               it.orderType,
               it.quantity,
+              tr,
             )
           : null;
         return {

@@ -4,11 +4,7 @@
 
 import { Badge } from "@mantine/core";
 import { useTranslations } from "next-intl";
-import {
-  DESIGN_FILE_ROLE_COLOR,
-  DESIGN_FILE_ROLE_LABEL,
-  type DesignFileRole,
-} from "./model";
+import { DESIGN_FILE_ROLE_COLOR, type DesignFileRole } from "./model";
 
 export function RoleBadge({
   role,
@@ -28,7 +24,7 @@ export function RoleBadge({
   if (!role) return null;
   return (
     <Badge color={DESIGN_FILE_ROLE_COLOR[role] ?? "gray"} variant="light">
-      {DESIGN_FILE_ROLE_LABEL[role] ?? role}
+      {tr(`enum.DESIGN_FILE_ROLE_LABEL.${role}`)}
     </Badge>
   );
 }

@@ -176,6 +176,7 @@ export async function notifyFormCompletion(
     const recipients = active.slice(0, MAX_RECIPIENTS).map((u) => u.id);
     if (recipients.length === 0) return;
     if (active.length > MAX_RECIPIENTS) {
+      // i18n-ignore — サーバーログのみ（Loki）、UI に出ない
       console.warn(
         `[form-completion] 通知先が多すぎるため ${active.length - MAX_RECIPIENTS} 人を送らず: ${responseNumber}`,
       );
@@ -222,7 +223,7 @@ export async function notifyFormCompletion(
       },
     });
   } catch (e) {
-    console.error("[form-completion] 完了通知に失敗:", e);
+    console.error("[form-completion] 完了通知に失敗:", e); // i18n-ignore — サーバーログのみ（Loki）、UI に出ない
   }
 }
 
@@ -241,6 +242,6 @@ export async function markFormCompletionRead(
       data: { readAt: new Date() },
     });
   } catch (e) {
-    console.error("[form-completion] 既読の記録に失敗:", e);
+    console.error("[form-completion] 既読の記録に失敗:", e); // i18n-ignore — サーバーログのみ（Loki）、UI に出ない
   }
 }
