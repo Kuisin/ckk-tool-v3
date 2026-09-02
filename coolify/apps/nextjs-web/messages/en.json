@@ -2609,7 +2609,8 @@
       "floorMapAlt": "Floor map: {name}",
       "lotN": "Lot {number}",
       "pinLabelWithStockCount": "{name} ({code}) | Stock: {count}",
-      "step": "Step"
+      "step": "Step",
+      "sourceStepLabel": "Work order #{number} / {stepName}"
     },
     "pendingWorkOrders": {
       "orderedQuantity": "Ordered quantity",
@@ -2953,6 +2954,9 @@
       "missingOrGroup": "{step} requires one of {related} (may be satisfied by a material condition)",
       "missingStart": "The workflow must start with one of the \"issue/hand-off\" steps ({related})",
       "multipleStart": "Only one \"issue/hand-off\" step can be selected (currently selected: {related})"
+    },
+    "productRoutes": {
+      "theSelectedProcessRouteIsNot": "The selected process route does not belong to this product"
     }
   },
   "purchase": {
@@ -5706,13 +5710,18 @@
       "itWasSentBack": "It was sent back",
       "theEditingWindowHasClosedContact": "The editing window has closed. Contact the author if you need to change it.",
       "myResponseTitle": "My response",
-      "submittedAt": "Submitted {datetime}"
+      "submittedAt": "Submitted {datetime}",
+      "formPageTitle": "Form"
     },
     "responses": {
       "theUrlIsWrongOrYou": "The URL is wrong, or you do not have permission to view this form's responses.",
       "youCannotViewTheResponses": "You cannot view the responses",
       "onlyThoseMatchingTheSharingConditions": "(only those matching the sharing conditions)",
-      "respond": "Respond"
+      "respond": "Respond",
+      "pageTitle": "Responses"
+    },
+    "editResponsePage": {
+      "title": "Edit response"
     }
   },
   "l": {
@@ -5934,7 +5943,8 @@
       "oldLineNumber": "Old line {n}",
       "lineNumber": "Line {n}",
       "commentOnLine": "Comment on line {n}",
-      "commentPlaceholderForLine": "Comment on line {n}"
+      "commentPlaceholderForLine": "Comment on line {n}",
+      "pageTitleWithName": "Review — {title}"
     },
     "revisionDiff": {
       "compareFrom": "Compare from",
@@ -6576,7 +6586,8 @@
       "mayBeLeftBlank": "May be left blank",
       "watchedFolder": "Watched folder intake",
       "manualEntry": "Manual entry",
-      "itemCountSuffix": " ({count} lines)"
+      "itemCountSuffix": " ({count} lines)",
+      "priceDiffLine": "Line {row} {actual} ≠ price list {expected}"
     },
     "orderLines": {
       "parentDocumentOfThisLine": "Parent document of this line",

@@ -12,14 +12,18 @@ import {
   formsAppAvailable,
   listResponses,
 } from "@/lib/forms";
+import { APP_NAME } from "@/lib/page-title";
 import { NO_SHARE_ACCESS } from "@/lib/share-grants";
 
 export const dynamic = "force-dynamic";
 
-export const metadata = {
-  title: "回答一覧 | CKK 業務管理システム",
-  robots: { index: false, follow: false },
-};
+export async function generateMetadata() {
+  const tr = await getTranslations();
+  return {
+    title: `${tr("f.responses.pageTitle")} | ${APP_NAME}`,
+    robots: { index: false, follow: false },
+  };
+}
 
 /**
  * 回答の一覧（`/f/<code>/responses`）。

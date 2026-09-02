@@ -18,8 +18,8 @@ interface AppFooterProps {
   companyName?: string;
 }
 
-// i18n-ignore — 固有名詞（社名）。訳の対象外（_specs/i18n-glossary.md §1）
 export function AppFooter({
+  // i18n-ignore — 固有名詞（社名）。訳の対象外（_specs/i18n-glossary.md §1）
   companyName = "シー・ケィ・ケー株式会社",
 }: AppFooterProps) {
   const isDev = process.env.NODE_ENV === "development";

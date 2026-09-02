@@ -79,8 +79,8 @@ export async function GET(request: Request): Promise<Response> {
   }
   // 承認前・キャンセル済みの依頼は刷らせない（承認された中身だけが紙になる）。
   if (!isIssuedDesign(req.status)) {
+    // i18n-ignore — API のプレーンテキスト応答、UI に出ない
     return new Response("承認前の設計依頼書は PDF を閲覧できません", {
-      // i18n-ignore
       status: 403,
     });
   }

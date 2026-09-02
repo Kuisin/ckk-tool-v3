@@ -28,10 +28,17 @@ import {
   orderLineNumberOf,
 } from "@/lib/doc-number";
 import { type LocalizedText, localized } from "@/lib/format";
+import type { Locale } from "@/lib/i18n";
+import { label } from "@/lib/messages";
 
 // 一覧クエリの取得上限（監査 P2-8 — 全件フェッチのデータ増加対策）。
 // DataTable はクライアントページングのため、最新分のみで実用上十分。
 const LIST_FETCH_CAP = 1000;
+
+/** history の user 未解決フォールバック名。PDF ルートは locale を渡さず ja のまま。 */
+function systemActorName(locale: Locale = "ja"): string {
+  return label("common.system", locale, "システム");
+}
 
 export {
   fetchEmployeeOptions,
@@ -144,6 +151,7 @@ function mapCommon(r: ListRow) {
 /** history Json の user uuid → displayName を 1 クエリで解決する。 */
 async function resolveHistory(
   raw: unknown,
+  locale?: Locale,
 ): Promise<DesignRequestHistoryView[]> {
   const entries: HistoryEntry[] = Array.isArray(raw)
     ? (raw as unknown as HistoryEntry[])
@@ -158,7 +166,8 @@ async function resolveHistory(
       })
     : [];
   const nameOf = (id: string | null | undefined) =>
-    (id && users.find((u) => u.id === id)?.displayName) || "システム";
+    (id && users.find((u) => u.id === id)?.displayName) ||
+    systemActorName(locale);
   return entries.map((h) => ({
     action: h.action,
     user: nameOf(h.user),
@@ -207,6 +216,7 @@ export async function fetchDesignRequests(): Promise<DesignRequest[]> {
 /** 1件取得 — 未存在・スコープ外は null。 */
 export async function fetchDesignRequest(
   requestNumber: string,
+  locale?: Locale,
 ): Promise<DesignRequest | null> {
   const authz = await checkPermission("design_request", "READ");
   if (!authz.ok) return null;
@@ -215,7 +225,7 @@ export async function fetchDesignRequest(
   if (!designRequestInScope(authz.access, row, authz.userId)) return null;
   return {
     ...mapCommon(row),
-    history: await resolveHistory(row.history),
+    history: await resolveHistory(row.history, locale),
     files: row.files.map((f) => ({
       id: f.id,
       version: f.version,

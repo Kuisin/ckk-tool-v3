@@ -460,6 +460,7 @@ export async function createWorkOrder(
         built.creates,
         actor,
         productId,
+        tr,
         tr("production.workOrderActions.routeChangeNoteOnCreate", {
           number: workOrderNumber,
         }),
@@ -611,6 +612,7 @@ export async function updateWorkOrder(
         built.creates,
         actor,
         productId,
+        tr,
         tr("production.workOrderActions.routeChangeNoteOnUpdate", {
           number: workOrderNumber,
         }),
@@ -1231,7 +1233,7 @@ export async function approveWorkOrder(
           const invId = await ensureMaterialInventory(tx, {
             materialId: prior.materialId as number,
             plantId: null,
-            unit: material?.unit ?? "本",
+            unit: material?.unit ?? "本", // i18n-ignore — DB データの既定値（単位）。対象外（_specs/i18n-glossary.md §1）
           });
           await applyTransaction(tx, {
             inventoryType: "MATERIAL",

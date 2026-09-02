@@ -112,11 +112,17 @@ export async function checkAcceptancePrices(
 }
 
 /** 差異行の表示文字列（例: `行2 ¥1,200 ≠ 価格表 ¥1,000`）。 */
-export function priceDiffSummary(check: AcceptancePriceCheck): string[] {
+export function priceDiffSummary(
+  check: AcceptancePriceCheck,
+  tr: Awaited<ReturnType<typeof getTranslations>>,
+): string[] {
   return check.lines
     .filter((l) => l.diff)
-    .map(
-      (l) =>
-        `行${l.row} ${formatMoney(l.actual)} ≠ 価格表 ${formatMoney(l.expected)}`,
+    .map((l) =>
+      tr("sales.orderAcceptances.priceDiffLine", {
+        row: l.row,
+        actual: formatMoney(l.actual),
+        expected: formatMoney(l.expected),
+      }),
     );
 }

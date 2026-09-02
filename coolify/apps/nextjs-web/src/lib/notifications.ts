@@ -78,7 +78,7 @@ export async function notify(input: NotifyInput): Promise<void> {
     userIds,
     { ...input, linkPath },
     notificationIdByUser,
-  ).catch((e) => console.error("[notify] 外部チャネル配信エラー:", e));
+  ).catch((e) => console.error("[notify] 外部チャネル配信エラー:", e)); // i18n-ignore — サーバーログのみ（Loki）、UI に出ない
 }
 
 async function dispatchExternal(

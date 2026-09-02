@@ -105,7 +105,7 @@ export async function sendPushToUser(
             .delete({ where: { id: sub.id } })
             .catch(() => {});
         } else {
-          console.error(`[push] 配信失敗 user=${userId}:`, e);
+          console.error(`[push] 配信失敗 user=${userId}:`, e); // i18n-ignore — サーバーログのみ（Loki）、UI に出ない
         }
       }
     }),

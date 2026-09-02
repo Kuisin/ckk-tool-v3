@@ -2609,7 +2609,8 @@
       "floorMapAlt": "平面图：{name}",
       "lotN": "批次 {number}",
       "pinLabelWithStockCount": "{name}（{code}）｜库存 {count} 件",
-      "step": "工序"
+      "step": "工序",
+      "sourceStepLabel": "工单 #{number} / {stepName}"
     },
     "pendingWorkOrders": {
       "orderedQuantity": "接单数",
@@ -2953,6 +2954,9 @@
       "missingOrGroup": "{step} 需要 {related} 之一（可能由材料条件满足）",
       "missingStart": "工序流程必须从「出料/交接」（{related}）之一开始",
       "multipleStart": "「出料/交接」只能选择 1 个（当前已选：{related}）"
+    },
+    "productRoutes": {
+      "theSelectedProcessRouteIsNot": "所选的工序路线不属于该产品"
     }
   },
   "purchase": {
@@ -5706,13 +5710,18 @@
       "itWasSentBack": "已被退回",
       "theEditingWindowHasClosedContact": "可编辑期间已结束。如需修改请联系创建者。",
       "myResponseTitle": "我的回答",
-      "submittedAt": "已提交 {datetime}"
+      "submittedAt": "已提交 {datetime}",
+      "formPageTitle": "表单"
     },
     "responses": {
       "theUrlIsWrongOrYou": "URL 不正确，或没有查看此表单回答的权限。",
       "youCannotViewTheResponses": "无法查看回答",
       "onlyThoseMatchingTheSharingConditions": "（仅符合共享条件的）",
-      "respond": "回答"
+      "respond": "回答",
+      "pageTitle": "回答列表"
+    },
+    "editResponsePage": {
+      "title": "编辑回答"
     }
   },
   "l": {
@@ -5934,7 +5943,8 @@
       "oldLineNumber": "旧第 {n} 行",
       "lineNumber": "第 {n} 行",
       "commentOnLine": "在第 {n} 行添加评论",
-      "commentPlaceholderForLine": "对第 {n} 行的评论"
+      "commentPlaceholderForLine": "对第 {n} 行的评论",
+      "pageTitleWithName": "审阅 — {title}"
     },
     "revisionDiff": {
       "compareFrom": "比较来源",
@@ -6576,7 +6586,8 @@
       "mayBeLeftBlank": "可不填",
       "watchedFolder": "监视文件夹导入",
       "manualEntry": "手动录入",
-      "itemCountSuffix": "（{count} 项明细）"
+      "itemCountSuffix": "（{count} 项明细）",
+      "priceDiffLine": "第 {row} 行 {actual} ≠ 价格表 {expected}"
     },
     "orderLines": {
       "parentDocumentOfThisLine": "此明细的父单据",

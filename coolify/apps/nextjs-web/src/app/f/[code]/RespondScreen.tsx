@@ -19,8 +19,6 @@ import { fetchForm, fetchFormVersionFields, formAccess } from "@/lib/forms";
 import { NO_SHARE_ACCESS } from "@/lib/share-grants";
 import { getServerFormatters } from "@/lib/user-preferences";
 
-const HOME = { label: "ホームへ戻る", href: "/" };
-
 /**
  * 共有 URL の回答画面（`/f/<code>`）。
  *
@@ -46,6 +44,7 @@ export async function RespondScreen({
   requestedResponseNumber?: string | null;
 }) {
   const tr = await getTranslations();
+  const HOME = { label: tr("common.backToHome"), href: "/" };
   const userId = await sessionUserId();
   // proxy.ts が未ログインを /login へ送るので、ここに来るのは基本ログイン済み。
   if (!userId) redirect("/login");

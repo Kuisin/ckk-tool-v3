@@ -157,7 +157,9 @@ export const MANUAL_PAGES: readonly ManualPageSource[] = [
 export function pageCode(page: ManualPageSource): string | null {
   if (page.app) {
     const app = appList.find((a) => a.key === page.app);
-    if (!app) throw new Error(`manual-permissions: 未知のアプリ ${page.app}`);
+    if (!app)
+      // i18n-ignore — マニュアル設定の不整合を示す開発者向けアサーション、UI に出ない
+      throw new Error(`manual-permissions: 未知のアプリ ${page.app}`);
     return app.requiredPermission;
   }
   return page.code ?? null;

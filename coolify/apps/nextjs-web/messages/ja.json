@@ -2609,7 +2609,8 @@
       "floorMapAlt": "フロアマップ: {name}",
       "lotN": "ロット {number}",
       "pinLabelWithStockCount": "{name}（{code}）｜在庫 {count} 件",
-      "step": "工程"
+      "step": "工程",
+      "sourceStepLabel": "指示書 #{number} / {stepName}"
     },
     "pendingWorkOrders": {
       "orderedQuantity": "受注数",
@@ -2953,6 +2954,9 @@
       "missingOrGroup": "{step}には{related}のいずれかが必要です（素材条件で充足される場合があります）",
       "missingStart": "工程は「出し・受渡し」（{related}）のいずれかから始める必要があります",
       "multipleStart": "「出し・受渡し」は 1 つだけ選択できます（選択中: {related}）"
+    },
+    "productRoutes": {
+      "theSelectedProcessRouteIsNot": "選択された工程ルートがこの製品のものではありません"
     }
   },
   "purchase": {
@@ -5706,13 +5710,18 @@
       "itWasSentBack": "差し戻されました",
       "theEditingWindowHasClosedContact": "編集できる期間が終わっています。直したい場合は作成者に連絡してください。",
       "myResponseTitle": "自分の回答",
-      "submittedAt": "提出 {datetime}"
+      "submittedAt": "提出 {datetime}",
+      "formPageTitle": "フォーム"
     },
     "responses": {
       "theUrlIsWrongOrYou": "URL が間違っているか、このフォームの回答を見る権限がありません。",
       "youCannotViewTheResponses": "回答を見られません",
       "onlyThoseMatchingTheSharingConditions": "（共有の条件に当てはまるものだけ）",
-      "respond": "回答する"
+      "respond": "回答する",
+      "pageTitle": "回答一覧"
+    },
+    "editResponsePage": {
+      "title": "回答の編集"
     }
   },
   "l": {
@@ -5934,7 +5943,8 @@
       "oldLineNumber": "旧 {n} 行目",
       "lineNumber": "{n} 行目",
       "commentOnLine": "{n} 行目にコメント",
-      "commentPlaceholderForLine": "{n} 行目へのコメント"
+      "commentPlaceholderForLine": "{n} 行目へのコメント",
+      "pageTitleWithName": "レビュー — {title}"
     },
     "revisionDiff": {
       "compareFrom": "比較元",
@@ -6576,7 +6586,8 @@
       "mayBeLeftBlank": "未入力可",
       "watchedFolder": "監視フォルダ取込",
       "manualEntry": "手入力",
-      "itemCountSuffix": "（明細 {count} 件）"
+      "itemCountSuffix": "（明細 {count} 件）",
+      "priceDiffLine": "行{row} {actual} ≠ 価格表 {expected}"
     },
     "orderLines": {
       "parentDocumentOfThisLine": "この明細の親書類",

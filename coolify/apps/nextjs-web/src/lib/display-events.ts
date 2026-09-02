@@ -38,7 +38,7 @@ async function publish(
     const payload = JSON.stringify({ displayId, kind });
     await prisma.$executeRaw`SELECT pg_notify(${DISPLAY_CHANNEL}, ${payload})`;
   } catch (e) {
-    console.error("[display] 合図の配信に失敗:", e);
+    console.error("[display] 合図の配信に失敗:", e); // i18n-ignore — サーバーログのみ（Loki）、UI に出ない
   }
 }
 

@@ -58,6 +58,7 @@ export async function saveAliasLearnings(
         label(
           "api.matchAliases.failedToSaveLearning",
           "ja",
+          // i18n-ignore — サーバーログのみ（Loki）、UI に出ない
           "[match-aliases] 学習の保存に失敗 {targetType}/{targetId}",
           { targetType: l.targetType, targetId: l.targetId },
         ),

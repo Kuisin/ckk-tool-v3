@@ -90,7 +90,7 @@ const emptyItem = (): ItemForm => ({
   materialLabel: "",
   plantId: null,
   quantity: 1,
-  unit: "本",
+  unit: "本", // i18n-ignore — DB データの既定値（単位）。対象外（_specs/i18n-glossary.md §1）
   unitPrice: 0,
   expectedAt: null,
   notes: "",

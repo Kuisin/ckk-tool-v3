@@ -49,7 +49,9 @@ export default async function ReviewPage({
           { label: page.title, href: `/general/documents/${page.pageNumber}` },
           { label: tr("common.review") },
         ]}
-        title={`レビュー — ${page.title}`}
+        title={tr("documents.reviewView.pageTitleWithName", {
+          title: page.title,
+        })}
       />
       <ReviewView
         blame={blame}

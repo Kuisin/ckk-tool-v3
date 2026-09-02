@@ -40,6 +40,7 @@ export default async function SalesDesignRequestsDetailPage({
   if (denied) return denied;
   const { id } = await params;
   const requestNumber = decodeURIComponent(id);
+  const locale = await getServerLocale();
 
   const [
     request,
@@ -50,7 +51,7 @@ export default async function SalesDesignRequestsDetailPage({
     assigneeOptions,
     memos,
   ] = await Promise.all([
-    fetchDesignRequest(requestNumber),
+    fetchDesignRequest(requestNumber, locale),
     fetchAuditEntries("design_requests", requestNumber),
     listAttachments("design_requests", requestNumber),
     fetchApprovalState("design_requests", requestNumber),

@@ -36,6 +36,9 @@ import { parseIntakeFileNumber } from "./intake-core";
 import { label } from "./messages";
 
 const NS = "settings.orderIntake";
+/** 鍵は既存、これは死んだ fallback。 */
+const INTAKE_DIR_NOT_CONFIGURED_FALLBACK =
+  "取込フォルダ（INTAKE_DIR）が未設定です"; // i18n-ignore
 function t(
   key: string,
   locale: Locale | undefined,
@@ -198,8 +201,8 @@ export async function saveToIntakeFolder(
       t(
         "intakeDirIntakeDirIsNotConfigured",
         locale,
-        "取込フォルダ（INTAKE_DIR）が未設定です",
-      ), // i18n-ignore — 鍵は既存、これは死んだ fallback
+        INTAKE_DIR_NOT_CONFIGURED_FALLBACK,
+      ),
     );
   }
   if (!isIntakeFile(input.filename)) {
@@ -240,8 +243,8 @@ export async function retryFailedIntake(
       t(
         "intakeDirIntakeDirIsNotConfigured",
         locale,
-        "取込フォルダ（INTAKE_DIR）が未設定です",
-      ), // i18n-ignore — 鍵は既存、これは死んだ fallback
+        INTAKE_DIR_NOT_CONFIGURED_FALLBACK,
+      ),
     );
   }
   const base = path.basename(fileName);

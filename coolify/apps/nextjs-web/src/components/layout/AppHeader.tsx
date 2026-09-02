@@ -276,6 +276,7 @@ export function AppHeader({
                       size="lg"
                       visibleFrom="md"
                     >
+                      {/* i18n-ignore — 固有名詞（社名）。訳の対象外（_specs/i18n-glossary.md §1） */}
                       シー・ケィ・ケー株式会社
                     </Text>
                   )}

@@ -1,4 +1,5 @@
 import { notFound } from "next/navigation";
+import { getTranslations } from "next-intl/server";
 import { PurchaseOrderDetail } from "@/components/purchase/purchase-orders/PurchaseOrderDetail";
 import { appLabelForKey } from "@/lib/app-list";
 import { fetchApprovalState, fetchApprovalTrail } from "@/lib/approvals";
@@ -38,10 +39,11 @@ export default async function PurchasePurchaseOrdersDetailPage({
   if (denied) return denied;
   const { id } = await params;
   const poNumber = decodeURIComponent(id);
+  const tr = await getTranslations();
 
   const [purchaseOrder, auditEntries, approval, attachments, approvalTrail] =
     await Promise.all([
-      fetchPurchaseOrder(poNumber),
+      fetchPurchaseOrder(poNumber, tr),
       fetchAuditEntries("material_purchase_orders", poNumber),
       fetchApprovalState("material_purchase_orders", poNumber),
       listAttachments("material_purchase_orders", poNumber),

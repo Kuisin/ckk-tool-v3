@@ -1,4 +1,5 @@
 import { notFound, redirect } from "next/navigation";
+import { getTranslations } from "next-intl/server";
 import { isEditable } from "@/components/purchase/purchase-orders/model";
 import { PurchaseOrderForm } from "@/components/purchase/purchase-orders/PurchaseOrderForm";
 import { requireAppRead } from "@/lib/authz-page";
@@ -25,9 +26,10 @@ export default async function PurchasePurchaseOrdersEditPage({
   if (denied) return denied;
   const { id } = await params;
   const poNumber = decodeURIComponent(id);
+  const tr = await getTranslations();
 
   const [purchaseOrder, supplierOptions, plantOptions] = await Promise.all([
-    fetchPurchaseOrder(poNumber),
+    fetchPurchaseOrder(poNumber, tr),
     fetchSupplierOptions(),
     fetchPlantOptions(),
   ]);

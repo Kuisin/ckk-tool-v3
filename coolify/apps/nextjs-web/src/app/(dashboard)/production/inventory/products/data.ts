@@ -19,6 +19,7 @@ import { checkPermission } from "@/lib/authz";
 import { type Prisma, prisma } from "@/lib/db";
 import { formatProductNumber, orderLineNumberOf } from "@/lib/doc-number";
 import { type LocalizedText, localized } from "@/lib/format";
+import type { Tr } from "@/lib/i18n";
 import {
   computeWipByStep,
   STEP_LINK_STATE_SELECT,
@@ -191,6 +192,7 @@ async function fetchReservations(
 /** 製品在庫 詳細（id = product_inventory.id uuid）。未存在は null。 */
 export async function fetchProductInventoryDetail(
   id: string,
+  tr: Tr,
 ): Promise<ProductInventoryDetailData | null> {
   const authz = await checkPermission("inventory", "READ");
   if (!authz.ok) return null;
@@ -220,9 +222,10 @@ export async function fetchProductInventoryDetail(
       },
     });
     if (step) {
-      sourceStepLabel = `指示書 #${step.workOrder.workOrderNumber} / ${localized(
-        step.processStep.name as LocalizedText | null,
-      )}`;
+      sourceStepLabel = tr("production.inventory.sourceStepLabel", {
+        number: step.workOrder.workOrderNumber,
+        stepName: localized(step.processStep.name as LocalizedText | null),
+      });
     }
   }
 

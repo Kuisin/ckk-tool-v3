@@ -24,6 +24,7 @@ import type { DeviceOwnership } from "@/lib/device-ownership-core";
 import type { DeviceContext } from "@/lib/device-signals";
 import { EMPTY_DEVICE_CONTEXT } from "@/lib/device-signals";
 import { deviceName } from "@/lib/format";
+import type { Tr } from "@/lib/i18n";
 import type { LoginFailureReason, LoginMethod } from "@/lib/login-attempt-core";
 import type { Prisma } from "../../generated/client/client";
 
@@ -390,7 +391,9 @@ export interface LoginAttemptSummary {
  * 失敗の多い相手は生値ではなく相関キーで数えるので、未知のユーザー名でも
  * 値を残さずに「同じ相手が繰り返している」ことが分かる。
  */
-export async function getLoginAttemptSummary(): Promise<LoginAttemptSummary> {
+export async function getLoginAttemptSummary(
+  tr: Tr,
+): Promise<LoginAttemptSummary> {
   const since = new Date(Date.now() - 24 * 60 * 60_000);
   const [failures24h, successes24h, byIp, byUser] = await Promise.all([
     prisma.loginAttempt.count({
@@ -408,15 +411,15 @@ export async function getLoginAttemptSummary(): Promise<LoginAttemptSummary> {
        GROUP BY ip_address
        ORDER BY n DESC
        LIMIT 5`,
-    prisma.$queryRaw<{ label: string | null; n: bigint }[]>`
-      SELECT COALESCE(u.display_name, '(未解決) ' || left(a.identifier_ref, 8)) AS label,
+    prisma.$queryRaw<{ name: string | null; ref: string | null; n: bigint }[]>`
+      SELECT u.display_name AS name, left(a.identifier_ref, 8) AS ref,
              COUNT(*) AS n
         FROM app.login_attempts a
         LEFT JOIN app.users u ON u.id = a.user_id
        WHERE a.created_at >= ${since}
          AND a.outcome = 'FAILURE'
          AND (a.user_id IS NOT NULL OR a.identifier_ref IS NOT NULL)
-       GROUP BY 1
+       GROUP BY 1, 2
        ORDER BY n DESC
        LIMIT 5`,
   ]);
@@ -427,7 +430,14 @@ export async function getLoginAttemptSummary(): Promise<LoginAttemptSummary> {
       .filter((r): r is { ip: string; n: bigint } => r.ip !== null)
       .map((r) => ({ ip: r.ip, n: Number(r.n) })),
     topFailureUsers: byUser
-      .filter((r): r is { label: string; n: bigint } => r.label !== null)
-      .map((r) => ({ label: r.label, n: Number(r.n) })),
+      .filter((r) => r.name !== null || r.ref !== null)
+      .map((r) => ({
+        label:
+          r.name ??
+          tr("settings.loginHistoryView.unresolvedWithRef", {
+            ref: r.ref ?? "",
+          }),
+        n: Number(r.n),
+      })),
   };
 }
