@@ -590,7 +590,7 @@ export async function updateProductItemDefs(
   const tr = await getTranslations();
   const authz = await checkPermission("system", "UPDATE");
   if (!authz.ok) return actionError(authz.error);
-  const parsed = productItemDefsArraySchema.safeParse(defs);
+  const parsed = productItemDefsArraySchema(tr).safeParse(defs);
   if (!parsed.success) {
     return actionError(
       parsed.error.issues[0]?.message ??
@@ -630,7 +630,7 @@ export async function updateProductTypes(
   const tr = await getTranslations();
   const authz = await checkPermission("system", "UPDATE");
   if (!authz.ok) return actionError(authz.error);
-  const parsed = productTypesArraySchema.safeParse(types);
+  const parsed = productTypesArraySchema(tr).safeParse(types);
   if (!parsed.success) {
     return actionError(
       parsed.error.issues[0]?.message ??

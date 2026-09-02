@@ -92,6 +92,11 @@ const EXCLUDED = [
   // CSV ヘッダーと同種の固定フォーマットであって、UI 語彙ではない。
   /\/inspection-template-io\.ts$/,
   /\/master\/inspection-templates\/excel-template\/route\.ts$/,
+  // 弥生会計 Next 仕訳インポート CSV の**列見出し・勘定科目名**（日付/借方勘定科目/
+  // 売掛金/売上高/仮受消費税…）。弥生側のインポーターが期待する固定の日本語
+  // 語彙で、CSV ヘッダーと同種の外部フォーマット契約——UI 語彙ではないので
+  // 言語ごとに変えると弥生に取り込めなくなる。
+  /\/csv-export\.ts$/,
 ];
 
 /**

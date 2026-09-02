@@ -3559,7 +3559,9 @@
       "thereAreNoFieldsToAssign": "没有可分配的项目。请先在「项目定义」中创建项目。",
       "editType": "编辑类别",
       "editTypeName": "编辑类别 — {name}",
-      "defaultValueIfEmptyDefault": "留空时为 \"{default}\""
+      "defaultValueIfEmptyDefault": "留空时为 \"{default}\"",
+      "enterAnItemName": "请输入项目名称",
+      "enterATypeName": "请输入类别名称"
     },
     "productTypesListPanel": {
       "deleteTheProductType": "删除产品类别",
@@ -4086,7 +4088,16 @@
       "renameFloorMapFailed": "平面图更新失败",
       "deleteFloorMapFailed": "平面图删除失败",
       "floorMapHasDevicesCannotDelete": "已放置终端的平面图无法删除。请先移除图钉。",
-      "floorMapHasStorageLocationsCannotDelete": "已放置存放位置的平面图无法删除。请先移除图钉。"
+      "floorMapHasStorageLocationsCannotDelete": "已放置存放位置的平面图无法删除。请先移除图钉。",
+      "auditLinkedTablet": "已与平板关联",
+      "auditUnlinked": "已解除关联",
+      "auditSettingsCodeRegenerated": "已重新生成终端设置代码",
+      "auditSettingsCodeRevealed": "已查看终端设置代码",
+      "auditUnlockPinRevealed": "已查看维护 PIN",
+      "auditUnlockPinHistoryRevealed": "已查看维护 PIN 历史",
+      "auditDevicePinRevealed": "已查看终端持有的 PIN",
+      "auditPlacedOnFloorMap": "已放置到平面图「{name}」（{x}%, {y}%）",
+      "auditUnplacedFromFloorMap": "已从平面图解除图钉"
     },
     "orderIntakeActions": {
       "scanStartFailed": "扫描启动失败",

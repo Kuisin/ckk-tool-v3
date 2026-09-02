@@ -44,12 +44,17 @@ export function isKanaOnly(s: string): boolean {
   return /^[ぁ-ゖァ-ヺー・\s]+$/.test(t);
 }
 
-/** 法人格の表記（先頭・末尾どちらに付いても拾えるように列挙）。 */
+/**
+ * 法人格の表記（先頭・末尾どちらに付いても拾えるように列挙）。
+ * これは UI 文言ではなく**日本語の取引先名に実際に印字される法人格そのもの**
+ * （突合ロジックの入力）— 訳すと一致しなくなるので i18n-ignore
+ * （_specs/i18n-glossary.md §1: DB データ・識別子と同じ扱い）。
+ */
 const LEGAL_FORMS: { full: string; short: string[] }[] = [
-  { full: "株式会社", short: ["(株)", "㈱"] },
-  { full: "有限会社", short: ["(有)", "㈲"] },
-  { full: "合同会社", short: ["(同)"] },
-  { full: "合資会社", short: ["(資)"] },
+  { full: "株式会社", short: ["(株)", "㈱"] }, // i18n-ignore
+  { full: "有限会社", short: ["(有)", "㈲"] }, // i18n-ignore
+  { full: "合同会社", short: ["(同)"] }, // i18n-ignore
+  { full: "合資会社", short: ["(資)"] }, // i18n-ignore
 ];
 
 /** 社名から法人格を取り除いた「核」。 */
@@ -221,6 +226,7 @@ export function kanaToRomaji(input: string): string {
       continue;
     }
     const ch = kata[i];
+    // i18n-ignore — かな文字そのものとの比較（UI 文言ではない）
     if (ch === "ッ") {
       // 次の音の頭子音を重ねる（キッコー → kikkou）。母音なら何もしない。
       const next = kata.slice(i + 1, i + 3);
@@ -230,6 +236,7 @@ export function kanaToRomaji(input: string): string {
       i += 1;
       continue;
     }
+    // i18n-ignore — かな文字そのものとの比較（UI 文言ではない）
     if (ch === "ー") {
       i += 1; // 長音は落とす
       continue;

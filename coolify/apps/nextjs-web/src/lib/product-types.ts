@@ -141,25 +141,30 @@ export const productFieldOptionSchema = z.object({
   label: z.string().min(1),
 });
 
-export const productItemDefSchema = z.object({
-  key: z
-    .string()
-    .regex(IDENTIFIER, "キーは英字/アンダースコア始まりの識別子にしてください"),
-  label: z.object({
-    ja: z.string().min(1, "項目名を入力してください"),
-    en: z.string(),
-  }),
-  type: z.enum(["string", "number", "boolean", "select", "date"]),
-  required: z.boolean(),
-  default: z.string().optional(),
-  options: z.array(productFieldOptionSchema).optional(),
-  min: z.number().optional(),
-  max: z.number().optional(),
-  pattern: z.string().optional(),
-  placeholder: z.string().optional(),
-  order: z.number(),
-  enabled: z.boolean(),
-});
+export function productItemDefSchema(tr: Tr) {
+  return z.object({
+    key: z
+      .string()
+      .regex(
+        IDENTIFIER,
+        tr("settings.itemDefEditForm.theKeyMustBeAnIdentifier"),
+      ),
+    label: z.object({
+      ja: z.string().min(1, tr("settings.productTypeEditForm.enterAnItemName")),
+      en: z.string(),
+    }),
+    type: z.enum(["string", "number", "boolean", "select", "date"]),
+    required: z.boolean(),
+    default: z.string().optional(),
+    options: z.array(productFieldOptionSchema).optional(),
+    min: z.number().optional(),
+    max: z.number().optional(),
+    pattern: z.string().optional(),
+    placeholder: z.string().optional(),
+    order: z.number(),
+    enabled: z.boolean(),
+  });
+}
 
 export const productTypeAssignmentSchema = z.object({
   itemKey: z.string().min(1),
@@ -167,20 +172,26 @@ export const productTypeAssignmentSchema = z.object({
   order: z.number(),
 });
 
-export const productTypeSchema = z.object({
-  id: z.string().min(1),
-  name: z.object({
-    ja: z.string().min(1, "種別名を入力してください"),
-    en: z.string(),
-  }),
-  description: z.string().optional(),
-  enabled: z.boolean(),
-  order: z.number(),
-  assignments: z.array(productTypeAssignmentSchema),
-});
+export function productTypeSchema(tr: Tr) {
+  return z.object({
+    id: z.string().min(1),
+    name: z.object({
+      ja: z.string().min(1, tr("settings.productTypeEditForm.enterATypeName")),
+      en: z.string(),
+    }),
+    description: z.string().optional(),
+    enabled: z.boolean(),
+    order: z.number(),
+    assignments: z.array(productTypeAssignmentSchema),
+  });
+}
 
-export const productItemDefsArraySchema = z.array(productItemDefSchema);
-export const productTypesArraySchema = z.array(productTypeSchema);
+export function productItemDefsArraySchema(tr: Tr) {
+  return z.array(productItemDefSchema(tr));
+}
+export function productTypesArraySchema(tr: Tr) {
+  return z.array(productTypeSchema(tr));
+}
 
 /** 検証対象の最小形（項目定義 or 解決済み項目）。 */
 type ValidatableItem = Pick<
@@ -268,6 +279,9 @@ export function defaultValuesFor(
 }
 
 // ── 既定値（編集可能。未設定時に使用） ───────────────────────────────────────
+// これらは admin が SY03/SY04 の画面で自由に改名・削除できる**初期値**で、
+// trial-pricing-lookups.ts / trial-pricing-criteria-seed.ts と同じ「編集可能な
+// 既定データ」— コードの語彙ではないので i18n-ignore（_specs/i18n-glossary.md §1）。
 export const DEFAULT_PRODUCT_ITEM_DEFS: ProductItemDef[] = [
   {
     key: "surfaceTreatment",
@@ -276,9 +290,9 @@ export const DEFAULT_PRODUCT_ITEM_DEFS: ProductItemDef[] = [
     required: false,
     default: "none",
     options: [
-      { value: "none", label: "なし" },
-      { value: "coating", label: "コーティング" },
-      { value: "polishing", label: "研磨" },
+      { value: "none", label: "なし" }, // i18n-ignore
+      { value: "coating", label: "コーティング" }, // i18n-ignore
+      { value: "polishing", label: "研磨" }, // i18n-ignore
     ],
     order: 0,
     enabled: true,
@@ -290,7 +304,7 @@ export const DEFAULT_PRODUCT_ITEM_DEFS: ProductItemDef[] = [
     required: false,
     min: 0,
     max: 100,
-    placeholder: "例: 60",
+    placeholder: "例: 60", // i18n-ignore
     order: 1,
     enabled: true,
   },
@@ -299,7 +313,7 @@ export const DEFAULT_PRODUCT_ITEM_DEFS: ProductItemDef[] = [
     label: { ja: "公差", en: "Tolerance" },
     type: "string",
     required: false,
-    placeholder: "例: ±0.01",
+    placeholder: "例: ±0.01", // i18n-ignore
     order: 2,
     enabled: true,
   },
@@ -332,7 +346,7 @@ export const DEFAULT_PRODUCT_ITEM_DEFS: ProductItemDef[] = [
     type: "number",
     required: false,
     min: 0,
-    placeholder: "例: 3",
+    placeholder: "例: 3", // i18n-ignore
     order: 5,
     enabled: true,
   },
@@ -351,7 +365,7 @@ export const DEFAULT_PRODUCT_TYPES: ProductType[] = [
   {
     id: "standard",
     name: { ja: "標準品", en: "Standard" },
-    description: "一般的な製品の標準項目。",
+    description: "一般的な製品の標準項目。", // i18n-ignore
     enabled: true,
     order: 0,
     assignments: [
@@ -364,7 +378,7 @@ export const DEFAULT_PRODUCT_TYPES: ProductType[] = [
   {
     id: "coated",
     name: { ja: "コーティング品", en: "Coated" },
-    description: "コーティングを施す製品の項目。",
+    description: "コーティングを施す製品の項目。", // i18n-ignore
     enabled: true,
     order: 1,
     assignments: [

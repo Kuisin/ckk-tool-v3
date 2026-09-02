@@ -3559,7 +3559,9 @@
       "thereAreNoFieldsToAssign": "割り当て可能な項目がありません。先に「項目定義」で項目を作成してください。",
       "editType": "種別編集",
       "editTypeName": "種別編集 — {name}",
-      "defaultValueIfEmptyDefault": "未入力なら \"{default}\""
+      "defaultValueIfEmptyDefault": "未入力なら \"{default}\"",
+      "enterAnItemName": "項目名を入力してください",
+      "enterATypeName": "種別名を入力してください"
     },
     "productTypesListPanel": {
       "deleteTheProductType": "製品種別の削除",
@@ -4086,7 +4088,16 @@
       "renameFloorMapFailed": "フロアマップの更新に失敗しました",
       "deleteFloorMapFailed": "フロアマップの削除に失敗しました",
       "floorMapHasDevicesCannotDelete": "端末が配置されているフロアマップは削除できません。先にピンを解除してください",
-      "floorMapHasStorageLocationsCannotDelete": "保管場所が配置されているフロアマップは削除できません。先にピンを解除してください"
+      "floorMapHasStorageLocationsCannotDelete": "保管場所が配置されているフロアマップは削除できません。先にピンを解除してください",
+      "auditLinkedTablet": "タブレットとリンク",
+      "auditUnlinked": "リンク解除",
+      "auditSettingsCodeRegenerated": "端末設定コードを再生成",
+      "auditSettingsCodeRevealed": "端末設定コードを表示",
+      "auditUnlockPinRevealed": "メンテナンス PIN を表示",
+      "auditUnlockPinHistoryRevealed": "メンテナンス PIN の履歴を表示",
+      "auditDevicePinRevealed": "端末が保持しているメンテナンス PIN を表示",
+      "auditPlacedOnFloorMap": "フロアマップ「{name}」に配置（{x}%, {y}%）",
+      "auditUnplacedFromFloorMap": "フロアマップのピンを解除"
     },
     "orderIntakeActions": {
       "scanStartFailed": "スキャンの開始に失敗しました",

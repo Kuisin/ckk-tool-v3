@@ -3559,7 +3559,9 @@
       "thereAreNoFieldsToAssign": "There are no fields to assign. Create them under Item definitions first.",
       "editType": "Edit type",
       "editTypeName": "Edit type — {name}",
-      "defaultValueIfEmptyDefault": "If left blank: \"{default}\""
+      "defaultValueIfEmptyDefault": "If left blank: \"{default}\"",
+      "enterAnItemName": "Enter an item name",
+      "enterATypeName": "Enter a type name"
     },
     "productTypesListPanel": {
       "deleteTheProductType": "Delete the product type",
@@ -4086,7 +4088,16 @@
       "renameFloorMapFailed": "Could not update the floor map",
       "deleteFloorMapFailed": "Could not delete the floor map",
       "floorMapHasDevicesCannotDelete": "Cannot delete a floor map with devices placed on it. Remove the pins first.",
-      "floorMapHasStorageLocationsCannotDelete": "Cannot delete a floor map with storage locations placed on it. Remove the pins first."
+      "floorMapHasStorageLocationsCannotDelete": "Cannot delete a floor map with storage locations placed on it. Remove the pins first.",
+      "auditLinkedTablet": "Linked with tablet",
+      "auditUnlinked": "Unlinked",
+      "auditSettingsCodeRegenerated": "Regenerated device settings code",
+      "auditSettingsCodeRevealed": "Viewed device settings code",
+      "auditUnlockPinRevealed": "Viewed maintenance PIN",
+      "auditUnlockPinHistoryRevealed": "Viewed maintenance PIN history",
+      "auditDevicePinRevealed": "Viewed PIN held by device",
+      "auditPlacedOnFloorMap": "Placed on floor map \"{name}\" ({x}%, {y}%)",
+      "auditUnplacedFromFloorMap": "Removed pin from floor map"
     },
     "orderIntakeActions": {
       "scanStartFailed": "Could not start the scan",
