@@ -84,6 +84,14 @@ const EXCLUDED = [
   // `i18n-ignore` comment would land *inside* the expression string and
   // change its behavior, so per-line ignores aren't an option here.
   /\/trial-pricing-criteria-seed\.ts$/,
+  // 検査表テンプレート (MS09) の Excel 取込/書き出し**形式**。列見出し・型/
+  // サンプリング方式などの enum ラベル・真偽の記入例は、取込側の
+  // fromLabel()/parseBool() が同じ ja 文字列を読み戻す往復契約そのもの
+  // （ファイル自身の doc comment: "Excel には画面と同じ日本語を書いてもらう"）。
+  // 言語ごとに変えると、別言語の利用者が作った Excel を読めなくなる —
+  // CSV ヘッダーと同種の固定フォーマットであって、UI 語彙ではない。
+  /\/inspection-template-io\.ts$/,
+  /\/master\/inspection-templates\/excel-template\/route\.ts$/,
 ];
 
 /**

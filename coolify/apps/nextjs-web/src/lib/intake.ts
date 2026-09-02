@@ -207,12 +207,12 @@ async function callPoExtract(file: {
       throw new ExtractFailureError({
         summary: L(
           "settings.orderIntake.pipeline.aiConfigUnreadable",
-          "AI プロバイダの設定を読めませんでした",
+          "AI プロバイダの設定を読めませんでした", // i18n-ignore
         ),
         cause: e.message,
         hint: L(
           "settings.orderIntake.pipeline.aiConfigHint",
-          "システム設定 → AI プロバイダ（SY0E）でトークンを設定し直してください",
+          "システム設定 → AI プロバイダ（SY0E）でトークンを設定し直してください", // i18n-ignore
         ),
         detail: "ai provider config unavailable",
         retryable: false,
@@ -277,7 +277,7 @@ async function ingestFile(input: {
     throw new Error(
       L(
         "settings.orderIntake.pipeline.storageSaveFailed",
-        "ストレージ（SeaweedFS）への保存に失敗しました",
+        "ストレージ（SeaweedFS）への保存に失敗しました", // i18n-ignore
       ),
     );
   }
@@ -312,7 +312,7 @@ async function ingestFile(input: {
       fileId: fileRow.id,
       label: L(
         "settings.orderIntake.pipeline.sourceAttachmentLabel",
-        "取込元（原本）",
+        "取込元（原本）", // i18n-ignore
       ),
       uploadedBy: actor,
       isLocked: true,
@@ -325,12 +325,12 @@ async function ingestFile(input: {
     after: {
       note: L(
         "settings.orderIntake.pipeline.ingestedNote",
-        "取込（{source}）: {filename}",
+        "取込（{source}）: {filename}", // i18n-ignore
         {
           source:
             input.source === "FOLDER"
-              ? L("settings.orderIntake.pipeline.sourceFolder", "監視フォルダ")
-              : L("settings.orderIntake.pipeline.sourceUpload", "優先取込"),
+              ? L("settings.orderIntake.pipeline.sourceFolder", "監視フォルダ") // i18n-ignore
+              : L("settings.orderIntake.pipeline.sourceUpload", "優先取込"), // i18n-ignore
           filename: input.filename,
         },
       ),
@@ -686,15 +686,15 @@ export async function runExtraction(
       failure: {
         summary: L(
           "settings.orderIntake.pipeline.noSourceFile",
-          "取込元ファイルがありません",
+          "取込元ファイルがありません", // i18n-ignore
         ),
         cause: L(
           "settings.orderIntake.pipeline.noSourceFileCause",
-          "この注文請書には原本（PDF・画像）が紐付いていません",
+          "この注文請書には原本（PDF・画像）が紐付いていません", // i18n-ignore
         ),
         hint: L(
           "settings.orderIntake.pipeline.noSourceFileHint",
-          "「手入力に切り替え」で内容を入力するか、ファイルを取り直して取込してください",
+          "「手入力に切り替え」で内容を入力するか、ファイルを取り直して取込してください", // i18n-ignore
         ),
         retryable: false,
       },
@@ -787,8 +787,8 @@ export async function runExtraction(
       });
     });
     const matchState = customerBpId
-      ? L("settings.orderIntake.pipeline.matched", "一致")
-      : L("settings.orderIntake.pipeline.unmatched", "未特定");
+      ? L("settings.orderIntake.pipeline.matched", "一致") // i18n-ignore
+      : L("settings.orderIntake.pipeline.unmatched", "未特定"); // i18n-ignore
     await recordAudit({
       action: "UPDATE",
       tableName: "order_acceptances",
@@ -796,7 +796,7 @@ export async function runExtraction(
       after: {
         note: L(
           "settings.orderIntake.pipeline.extractionCompletedNote",
-          "自動抽出完了（明細 {count} 件・顧客{matchState}）",
+          "自動抽出完了（明細 {count} 件・顧客{matchState}）", // i18n-ignore
           { count: items.length, matchState },
         ),
       },
@@ -807,12 +807,12 @@ export async function runExtraction(
       type: "INTAKE",
       title: L(
         "settings.orderIntake.pipeline.intakeNotificationTitle",
-        "注文請書 {number} を自動取込しました",
+        "注文請書 {number} を自動取込しました", // i18n-ignore
         { number },
       ),
       message: L(
         "settings.orderIntake.pipeline.intakeNotificationMessage",
-        "明細 {count} 件・顧客{matchState} — 内容を確認してください",
+        "明細 {count} 件・顧客{matchState} — 内容を確認してください", // i18n-ignore
         { count: items.length, matchState },
       ),
       // 取り込んだその 1 件を開く（一覧から探し直させない）
@@ -821,7 +821,7 @@ export async function runExtraction(
       console.error(
         L(
           "settings.orderIntake.pipeline.notifyFailedLog",
-          "[intake] 取込通知に失敗:",
+          "[intake] 取込通知に失敗:", // i18n-ignore
         ),
         err,
       ),
@@ -894,7 +894,7 @@ async function recordExtractFailure(
       note:
         L(
           "settings.orderIntake.pipeline.extractionFailedNote",
-          "自動抽出失敗（{attempt}/{maxAttempts} 回目）: {summary}",
+          "自動抽出失敗（{attempt}/{maxAttempts} 回目）: {summary}", // i18n-ignore
           { attempt, maxAttempts, summary: failure.summary },
         ) + (failure.detail ? ` — ${failure.detail}` : ""),
     },
@@ -904,7 +904,7 @@ async function recordExtractFailure(
       type: "INTAKE",
       title: L(
         "settings.orderIntake.pipeline.intakeFailedNotificationTitle",
-        "注文請書 {number} の自動抽出に失敗しました",
+        "注文請書 {number} の自動抽出に失敗しました", // i18n-ignore
         { number },
       ),
       message: [failure.summary, failure.hint].join(" / ").slice(0, 200),
@@ -914,7 +914,7 @@ async function recordExtractFailure(
       console.error(
         L(
           "settings.orderIntake.pipeline.notifyFailedLog",
-          "[intake] 取込通知に失敗:",
+          "[intake] 取込通知に失敗:", // i18n-ignore
         ),
         err,
       ),
@@ -984,7 +984,7 @@ const extractionQueue = createTaskQueue<ExtractionJob>(
       console.warn(
         L(
           "settings.orderIntake.pipeline.retryingLog",
-          "[intake] 抽出を再試行 {id}（{attempt}/{maxAttempts} 回目失敗・{seconds}秒後）: {errorFirstLine}",
+          "[intake] 抽出を再試行 {id}（{attempt}/{maxAttempts} 回目失敗・{seconds}秒後）: {errorFirstLine}", // i18n-ignore
           {
             id,
             attempt: job.attempt,
@@ -1010,7 +1010,7 @@ const extractionQueue = createTaskQueue<ExtractionJob>(
       console.error(
         L(
           "settings.orderIntake.pipeline.jobCrashedLog",
-          "[intake] 抽出ジョブが異常終了 {id}",
+          "[intake] 抽出ジョブが異常終了 {id}", // i18n-ignore
           { id: jobId(job.key) },
         ),
         error,
@@ -1048,7 +1048,7 @@ export function enqueueExtraction(key: ExtractionKey): number {
     console.error(
       L(
         "settings.orderIntake.pipeline.extractFailedLog",
-        "[intake] 抽出に失敗 {id}",
+        "[intake] 抽出に失敗 {id}", // i18n-ignore
         { id: jobId(key) },
       ),
       e,
@@ -1155,7 +1155,7 @@ export async function requeueStuckExtractions(): Promise<number> {
     console.warn(
       L(
         "settings.orderIntake.pipeline.requeuedLog",
-        "[intake] 未抽出の {count} 件を再投入しました",
+        "[intake] 未抽出の {count} 件を再投入しました", // i18n-ignore
         { count: rows.length },
       ),
     );
@@ -1242,7 +1242,7 @@ export async function scanIntakeFolder(): Promise<void> {
       console.warn(
         L(
           "settings.orderIntake.pipeline.orphanRecoveredLog",
-          "[intake] 孤児 .processing を回収: {name}",
+          "[intake] 孤児 .processing を回収: {name}", // i18n-ignore
           { name },
         ),
       );
@@ -1273,7 +1273,7 @@ export async function scanIntakeFolder(): Promise<void> {
           console.log(
             L(
               "settings.orderIntake.pipeline.alreadyImportedSkipLog",
-              "[intake] {name} → {number} (取込済み・スキップ)",
+              "[intake] {name} → {number} (取込済み・スキップ)", // i18n-ignore
               { name, number: target.number },
             ),
           );
@@ -1305,7 +1305,7 @@ export async function scanIntakeFolder(): Promise<void> {
             console.warn(
               L(
                 "settings.orderIntake.pipeline.numberBurnFailedLog",
-                "[intake] 番号の焼き込みに失敗: {name}",
+                "[intake] 番号の焼き込みに失敗: {name}", // i18n-ignore
                 { name },
               ),
               err,
