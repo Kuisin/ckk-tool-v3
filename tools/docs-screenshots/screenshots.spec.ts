@@ -20,7 +20,9 @@ const OUT_DIR = resolve(
     ),
 );
 
-for (const shot of shots) {
+// external（Metabase 等、nextjs-web の外）は scripts/metabase-demo-shots.sh が
+// 別スタックに対して個別に撮る — 通常のこのフローには含めない。
+for (const shot of shots.filter((s) => !s.external)) {
   test(shot.id, async ({ page, browser }) => {
     if (shot.loggedOut) {
       // 各テストは独立コンテキスト（storageState 適用済み）— cookie を消せば

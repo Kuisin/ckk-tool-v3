@@ -89,6 +89,35 @@ docker rm -f ckk-shots-db              # 後始末
 > （docs:shots がビルド前に自動実行）。プレースホルダは撮影で上書きされるので、
 > **灰色一色の PNG が残っていたら、その id の撮影が失敗している** サインです。
 
+## Metabase ダッシュボードの撮影（`analytics.md` 用）
+
+`content/manual/analytics.md`（分析ダッシュボード / CKK 業務・労務分析）の
+スクリーンショットだけは別枠。Metabase は nextjs-web の外の別アプリなので
+manifest.ts / Playwright の通常フロー（本文 §撮影の追加手順）には乗らず、
+`scripts/metabase-demo-shots.sh` が単独で完結する:
+
+```bash
+cd tools/docs-screenshots
+pnpm exec playwright install chromium   # 初回のみ
+scripts/metabase-demo-shots.sh
+```
+
+**本物の bi.ckk-tool.co.jp には一切触れない。** 使い捨ての Postgres（`pnpm
+docs:seed` と同じ仕組み）+ 使い捨ての `metabase/metabase:v0.63.14` コンテナを
+ローカルに立て、analytics ビュー・grants・JA ラベルを適用し、
+`coolify/common/metabase/build-business-dashboards.py` で CKK 業務の 4 枚を、
+`scripts/metabase-demo-build.py` 内で労務分析の 1 枚（4 カード）を組み立てて
+撮影し、コンテナを破棄する。労務（`kot` スキーマ）は Prisma 管理外で本番
+（ckk-db-main）にしか実データが無いため、`scripts/metabase-kot-demo-seed.sql`
+が実物の DDL（`pg_dump --schema-only`）だけを流用し、社員・勤怠は完全に架空の
+値を入れる — 実在する社員は 1 人も出てこない。
+
+ダッシュボード（カード構成・フィルタ）が本番で変わったら、このスクリプトも
+追随が要る。特に労務分析はビルドスクリプトを持たないぶん `scripts/
+metabase-demo-build.py` の `cards_spec` を直接書き換える。本番の実際の構成は
+`coolify/common/metabase/README.md`「業務ダッシュボード」と、
+`ssh 192.168.50.15` で metabase-db を直接読む方法（同 README）で確認できる。
+
 ## 決定性の設計
 
 - **DB**: 毎回 tmpfs の使い捨て Postgres に `prisma migrate deploy` + シード SQL
