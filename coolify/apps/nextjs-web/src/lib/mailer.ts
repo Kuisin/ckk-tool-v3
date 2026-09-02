@@ -75,13 +75,13 @@ export async function sendMail(input: MailInput): Promise<boolean> {
     });
     if (!res.ok) {
       console.error(
-        `[mailer] 送信失敗 to=${input.to}: ${res.status} ${await res.text()}`,
+        `[mailer] 送信失敗 to=${input.to}: ${res.status} ${await res.text()}`, // i18n-ignore — サーバーログのみ（Loki）、UI に出ない
       );
       return false;
     }
     return true;
   } catch (e) {
-    console.error(`[mailer] 送信失敗 to=${input.to}:`, e);
+    console.error(`[mailer] 送信失敗 to=${input.to}:`, e); // i18n-ignore — サーバーログのみ（Loki）、UI に出ない
     return false;
   }
 }

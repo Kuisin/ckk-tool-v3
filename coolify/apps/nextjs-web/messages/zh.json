@@ -2022,7 +2022,9 @@
       "youHaveNotAnsweredAnyForms": "尚未回答任何表单",
       "editable": "可编辑",
       "thereIsNoCompletionNotice": "没有完成通知",
-      "unread": "未读"
+      "unread": "未读",
+      "deadlineUntil": "截至 {datetime}",
+      "editableUntil": "可编辑至 {datetime}"
     },
     "inboxCommentsList": {
       "thereAreNoUnresolvedCommentsOn": "您的文档没有未解决的评论"
@@ -2114,7 +2116,10 @@
       "transferChecksumMismatch": "校验和不匹配，内容可能存在缺失",
       "transferRelatedFieldWarning": "“{label}”引用了其他表单（{target}）。如果导入目的地没有相同代码的表单，将不会显示任何内容",
       "transferRelatedFieldNoTarget": "“{label}”未设置引用的表单",
-      "transferAttachmentNotCarried": "存在附件项目。文件本身不会被转移（仅转移项目定义）"
+      "transferAttachmentNotCarried": "存在附件项目。文件本身不会被转移（仅转移项目定义）",
+      "auditExportedToExcel": "已将回答导出为 Excel（{count} 条{truncated}）",
+      "auditExportTruncatedSuffix": "，因达到上限而截断",
+      "exportFilenamePartialSuffix": "_部分"
     },
     "tasksActions": {
       "loginRequired": "请登录",
@@ -2221,6 +2226,16 @@
       "completedTitle": "{title} No.{recordNo} 已完成",
       "applicantMessage": "申请人：{name}",
       "notifiedNote": "已通知完成（{count} 人）"
+    },
+    "formResponsePdf": {
+      "unanswered": "（未回答）",
+      "managedInAttachmentsTab": "（在附件标签中管理）",
+      "filesCount": "{count} 个文件",
+      "formResponseLabel": "表单回答",
+      "notYetProcessed": "未处理",
+      "approvalRecordSectionTitle": "审批记录",
+      "stepNoColumn": "级",
+      "approverColumn": "审批人"
     }
   },
   "production": {
@@ -5389,7 +5404,9 @@
       "toleranceTopBottomOrder": "公差 Top 请设置为大于等于 Bottom",
       "updateFailed": "更新检查表模板失败",
       "updateItemFailed": "更新检查项目失败",
-      "versionLocked": "此版本正在被工单或检查记录使用，无法更改。请创建新版本"
+      "versionLocked": "此版本正在被工单或检查记录使用，无法更改。请创建新版本",
+      "auditCreatedByImport": "通过导入创建：{code} v{version}（{count} 项）",
+      "importFailed": "导入失败"
     },
     "materialNumberingActions": {
       "codeAlnumTwoDigits": "编号为 2 位英数字",
@@ -5709,7 +5726,8 @@
       "thisLinkLeavesTheInternalSystem": "此链接将跳出内部系统。请确认跳转目标。",
       "destination": "目标位置",
       "doNotEnterInternalPasswordsOr": "请勿在跳转目标网站输入内部密码或业务数据。",
-      "continueAndLeave": "继续并离开"
+      "continueAndLeave": "继续并离开",
+      "goToAnExternalSite": "前往外部网站"
     }
   },
   "admin": {

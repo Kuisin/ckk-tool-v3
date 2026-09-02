@@ -2022,7 +2022,9 @@
       "youHaveNotAnsweredAnyForms": "You have not answered any forms yet",
       "editable": "Editable",
       "thereIsNoCompletionNotice": "There is no completion notice",
-      "unread": "Unread"
+      "unread": "Unread",
+      "deadlineUntil": "Until {datetime}",
+      "editableUntil": "Editable until {datetime}"
     },
     "inboxCommentsList": {
       "thereAreNoUnresolvedCommentsOn": "There are no unresolved comments on your documents"
@@ -2114,7 +2116,10 @@
       "transferChecksumMismatch": "The checksum does not match. Some content may be missing",
       "transferRelatedFieldWarning": "\"{label}\" references another form ({target}). If the destination has no form with the same code, nothing will be shown",
       "transferRelatedFieldNoTarget": "\"{label}\" has no reference form configured",
-      "transferAttachmentNotCarried": "There is an attachment field. The files themselves are not carried over (only the field definition is)"
+      "transferAttachmentNotCarried": "There is an attachment field. The files themselves are not carried over (only the field definition is)",
+      "auditExportedToExcel": "Exported responses to Excel ({count} rows{truncated})",
+      "auditExportTruncatedSuffix": ", truncated at the limit",
+      "exportFilenamePartialSuffix": "_partial"
     },
     "tasksActions": {
       "loginRequired": "Please log in",
@@ -2221,6 +2226,16 @@
       "completedTitle": "{title} No.{recordNo} is complete",
       "applicantMessage": "Requester: {name}",
       "notifiedNote": "Notified completion ({count} people)"
+    },
+    "formResponsePdf": {
+      "unanswered": "(not answered)",
+      "managedInAttachmentsTab": "(managed under the Attachments tab)",
+      "filesCount": "{count} files",
+      "formResponseLabel": "Form response",
+      "notYetProcessed": "Not yet processed",
+      "approvalRecordSectionTitle": "Approval record",
+      "stepNoColumn": "Step",
+      "approverColumn": "Approver"
     }
   },
   "production": {
@@ -5389,7 +5404,9 @@
       "toleranceTopBottomOrder": "Set the tolerance Top to be at least the Bottom",
       "updateFailed": "Could not update the inspection template",
       "updateItemFailed": "Could not update the inspection item",
-      "versionLocked": "This version cannot be changed because it is used by a work order or inspection record. Create a new version instead"
+      "versionLocked": "This version cannot be changed because it is used by a work order or inspection record. Create a new version instead",
+      "auditCreatedByImport": "Created by import: {code} v{version} ({count} items)",
+      "importFailed": "Import failed"
     },
     "materialNumberingActions": {
       "codeAlnumTwoDigits": "The code is 2 alphanumeric characters",
@@ -5709,7 +5726,8 @@
       "thisLinkLeavesTheInternalSystem": "This link leaves the internal system. Check where it goes.",
       "destination": "Destination",
       "doNotEnterInternalPasswordsOr": "Do not enter internal passwords or business data on the site you are going to.",
-      "continueAndLeave": "Continue and leave"
+      "continueAndLeave": "Continue and leave",
+      "goToAnExternalSite": "Go to an external site"
     }
   },
   "admin": {

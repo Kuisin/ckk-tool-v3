@@ -105,6 +105,8 @@ const EXCLUDED = [
   /\/kiosk-cards\/print\/print-styles\.ts$/,
   // 作業場所 QR ラベル印刷シートの CSS。理由は上の kiosk-cards 版と同じ。
   /\/work-locations\/print\/print-styles\.ts$/,
+  // 指示書ストリップ印刷面の CSS。理由は上の kiosk-cards 版と同じ。
+  /\/work-order-strip-print-styles\.ts$/,
 ];
 
 /**

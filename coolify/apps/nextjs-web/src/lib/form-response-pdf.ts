@@ -53,7 +53,10 @@ export function esc(value: string): string {
     .replaceAll("'", "&#39;");
 }
 
-const EMPTY_CELL = `<span class="empty">${msg("general.formResponsePdf.unanswered", "ja", "（未回答）")}</span>`;
+const EMPTY_CELL = `<span class="empty">${msg("general.formResponsePdf.unanswered", "ja", "（未回答）")}</span>`; // i18n-ignore — 鍵は既存、死んだ fallback
+
+/** 固有名詞（社名）— 訳の対象外（_specs/i18n-glossary.md §1）。 */
+const COMPANY_NAME = "シー・ケィ・ケー株式会社"; // i18n-ignore
 
 export interface FormResponsePageInput {
   formTitle: string;
@@ -85,10 +88,10 @@ function inlineValueHtml(
       ? msg(
           "general.formResponsePdf.filesCount",
           "ja",
-          `${count} 件のファイル`,
+          `${count} 件のファイル`, // i18n-ignore — 鍵は既存、死んだ fallback
           { count },
         )
-      : `<span class="empty">${msg("general.formResponsePdf.managedInAttachmentsTab", "ja", "（添付タブで管理）")}</span>`;
+      : `<span class="empty">${msg("general.formResponsePdf.managedInAttachmentsTab", "ja", "（添付タブで管理）")}</span>`; // i18n-ignore — 鍵は既存、死んだ fallback
   }
   if (isBlankAnswer(field.type, value)) return EMPTY_CELL;
 
@@ -207,7 +210,7 @@ export function responsePageHtml(input: FormResponsePageInput): string {
   return `<div class="answer-page">
   <div class="header">
     <div class="brand">
-      <img class="brand-logo" src="logo.svg" alt="シー・ケィ・ケー株式会社" />
+      <img class="brand-logo" src="logo.svg" alt="${COMPANY_NAME}" />
       <div class="doc-title">${esc(formTitle)}</div>
     </div>
     <div class="issuer">

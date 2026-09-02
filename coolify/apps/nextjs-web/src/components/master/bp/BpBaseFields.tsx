@@ -25,6 +25,7 @@ import { FormSection, LocalizedTextInput } from "@/components/ui/shells";
 import { useIsMobile } from "@/hooks/useViewport";
 import { countryOptions } from "@/lib/enum-labels";
 import { fieldHelp, fieldHelpTip } from "@/lib/field-help";
+import type { Tr } from "@/lib/i18n";
 import { LOCALE_LABELS, LOCALES } from "@/lib/i18n";
 import { MatchNameSuggestions } from "./MatchNameSuggestions";
 
@@ -34,30 +35,29 @@ const DOCUMENT_LOCALE_OPTIONS = LOCALES.map((l) => ({
   label: LOCALE_LABELS[l],
 }));
 
-export const bpBaseFormSchema = z.object({
-  nameJa: z.string().min(1, "名称（日本語）を入力してください"),
-  nameTranslations: z.record(z.string(), z.string()).default({}),
-  nameKana: z.string(),
-  shortName: z.string(),
-  countryCode: z.string().nullable(),
-  postalCode: z.string(),
-  addressJa: z.string(),
-  addressTranslations: z.record(z.string(), z.string()).default({}),
-  phone: z.string(),
-  fax: z.string(),
-  email: z
-    .string()
-    .email("メールアドレスの形式が正しくありません")
-    .or(z.literal("")),
-  website: z.string(),
-  taxNumber: z.string(),
-  documentLocale: z.string().nullable(),
-  matchNames: z.array(z.string()),
-  isActive: z.boolean(),
-  notes: z.string(),
-});
+export function bpBaseFormSchema(tr: Tr) {
+  return z.object({
+    nameJa: z.string().min(1, tr("common.nameJaRequired")),
+    nameTranslations: z.record(z.string(), z.string()).default({}),
+    nameKana: z.string(),
+    shortName: z.string(),
+    countryCode: z.string().nullable(),
+    postalCode: z.string(),
+    addressJa: z.string(),
+    addressTranslations: z.record(z.string(), z.string()).default({}),
+    phone: z.string(),
+    fax: z.string(),
+    email: z.string().email(tr("common.invalidEmailFormat")).or(z.literal("")),
+    website: z.string(),
+    taxNumber: z.string(),
+    documentLocale: z.string().nullable(),
+    matchNames: z.array(z.string()),
+    isActive: z.boolean(),
+    notes: z.string(),
+  });
+}
 
-export type BpBaseFormValues = z.infer<typeof bpBaseFormSchema>;
+export type BpBaseFormValues = z.infer<ReturnType<typeof bpBaseFormSchema>>;
 
 export function bpBaseInitialValues(d?: BpBaseDetail): BpBaseFormValues {
   return {

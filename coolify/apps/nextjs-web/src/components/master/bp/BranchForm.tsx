@@ -31,11 +31,13 @@ import { FormSection, FormShell } from "@/components/ui/shells";
 import { useIsMobile } from "@/hooks/useViewport";
 import { zodResolver } from "@/lib/form";
 
-const branchFormSchema = bpBaseFormSchema.extend({
-  contactName: z.string(),
-});
+function branchFormSchema(tr: ReturnType<typeof useTranslations>) {
+  return bpBaseFormSchema(tr).extend({
+    contactName: z.string(),
+  });
+}
 
-type FormValues = z.infer<typeof branchFormSchema>;
+type FormValues = z.infer<ReturnType<typeof branchFormSchema>>;
 
 export function BranchForm({
   parentId,
@@ -55,7 +57,7 @@ export function BranchForm({
   const isEdit = !!initial;
 
   const form = useForm<FormValues>({
-    validate: zodResolver(branchFormSchema),
+    validate: zodResolver(branchFormSchema(tr)),
     initialValues: {
       ...bpBaseInitialValues(initial),
       contactName: "",

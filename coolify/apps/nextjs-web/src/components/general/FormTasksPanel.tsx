@@ -119,7 +119,9 @@ export function PendingFormsList({ rows }: { rows: PendingFormRow[] }) {
                   size="sm"
                   variant="light"
                 >
-                  {row.kind === "REQUEST" ? "申請・報告" : tr("common.survey")}
+                  {row.kind === "REQUEST"
+                    ? tr("common.requestOrReport")
+                    : tr("common.survey")}
                 </Badge>
               </>
             )
@@ -133,12 +135,16 @@ export function PendingFormsList({ rows }: { rows: PendingFormRow[] }) {
                   size="sm"
                   variant="light"
                 >
-                  {row.kind === "REQUEST" ? "申請・報告" : tr("common.survey")}
+                  {row.kind === "REQUEST"
+                    ? tr("common.requestOrReport")
+                    : tr("common.survey")}
                 </Badge>
               )}
               <Text c="dimmed" size="xs">
                 {row.closesAt
-                  ? `${fmt.dateTime(row.closesAt)} まで`
+                  ? tr("general.formTasksPanel.deadlineUntil", {
+                      datetime: fmt.dateTime(row.closesAt),
+                    })
                   : tr("general.formTasksPanel.noDeadline")}
               </Text>
             </>
@@ -214,7 +220,9 @@ export function MyResponsesList({ rows }: { rows: MyResponseRow[] }) {
               {row.canEdit && (
                 <Badge color="blue" size="sm" variant="light">
                   {row.editDeadline
-                    ? `${fmt.dateTime(row.editDeadline)} まで編集可`
+                    ? tr("general.formTasksPanel.editableUntil", {
+                        datetime: fmt.dateTime(row.editDeadline),
+                      })
                     : tr("general.formTasksPanel.editable")}
                 </Badge>
               )}

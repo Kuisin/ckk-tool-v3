@@ -2022,7 +2022,9 @@
       "youHaveNotAnsweredAnyForms": "まだフォームに回答していません",
       "editable": "編集可",
       "thereIsNoCompletionNotice": "完了の通知はありません",
-      "unread": "未読"
+      "unread": "未読",
+      "deadlineUntil": "{datetime} まで",
+      "editableUntil": "{datetime} まで編集可"
     },
     "inboxCommentsList": {
       "thereAreNoUnresolvedCommentsOn": "自分の文書に未解決のコメントはありません"
@@ -2114,7 +2116,10 @@
       "transferChecksumMismatch": "チェックサムが一致しません。内容が途中で欠けている可能性があります",
       "transferRelatedFieldWarning": "「{label}」は別のフォーム（{target}）を参照しています。取り込み先に同じコードのフォームが無ければ、何も表示されません",
       "transferRelatedFieldNoTarget": "「{label}」の参照先フォームが設定されていません",
-      "transferAttachmentNotCarried": "添付ファイルの項目があります。ファイルそのものは運ばれません（項目の定義だけです）"
+      "transferAttachmentNotCarried": "添付ファイルの項目があります。ファイルそのものは運ばれません（項目の定義だけです）",
+      "auditExportedToExcel": "回答を Excel で書き出し（{count} 件{truncated}）",
+      "auditExportTruncatedSuffix": "・上限で打ち切り",
+      "exportFilenamePartialSuffix": "_一部"
     },
     "tasksActions": {
       "loginRequired": "ログインしてください",
@@ -2221,6 +2226,16 @@
       "completedTitle": "{title} No.{recordNo} が完了しました",
       "applicantMessage": "申請者: {name}",
       "notifiedNote": "完了を通知（{count} 名）"
+    },
+    "formResponsePdf": {
+      "unanswered": "（未回答）",
+      "managedInAttachmentsTab": "（添付タブで管理）",
+      "filesCount": "{count} 件のファイル",
+      "formResponseLabel": "フォーム回答",
+      "notYetProcessed": "未処理",
+      "approvalRecordSectionTitle": "承認の記録",
+      "stepNoColumn": "段",
+      "approverColumn": "承認者"
     }
   },
   "production": {
@@ -5389,7 +5404,9 @@
       "toleranceTopBottomOrder": "公差 Top は Bottom 以上にしてください",
       "updateFailed": "検査表テンプレートの更新に失敗しました",
       "updateItemFailed": "検査項目の更新に失敗しました",
-      "versionLocked": "このバージョンは指示書または検査記録で使用中のため変更できません。新バージョンを作成してください"
+      "versionLocked": "このバージョンは指示書または検査記録で使用中のため変更できません。新バージョンを作成してください",
+      "auditCreatedByImport": "取込で作成: {code} v{version}（項目 {count} 件）",
+      "importFailed": "取込に失敗しました"
     },
     "materialNumberingActions": {
       "codeAlnumTwoDigits": "コードは英数字2桁です",
@@ -5709,7 +5726,8 @@
       "thisLinkLeavesTheInternalSystem": "このリンクは社内システムの外へ移動します。移動先を確認してください。",
       "destination": "移動先",
       "doNotEnterInternalPasswordsOr": "社内のパスワードや業務データを、移動先のサイトへ入力しないでください。",
-      "continueAndLeave": "続行して移動"
+      "continueAndLeave": "続行して移動",
+      "goToAnExternalSite": "外部サイトへ移動"
     }
   },
   "admin": {

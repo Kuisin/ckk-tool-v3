@@ -186,7 +186,11 @@ export async function importTemplates(
         tableName: "inspection_templates",
         recordId: String(created.id),
         after: {
-          note: `取込で作成: ${t.code} v${version}（項目 ${t.items.length} 件）`,
+          note: tr("master.inspectionTemplateActions.auditCreatedByImport", {
+            code: t.code,
+            version,
+            count: t.items.length,
+          }),
           code: t.code,
           version,
         },
@@ -199,7 +203,10 @@ export async function importTemplates(
     } catch (e) {
       outcome.skipped.push({
         code: t.code,
-        reason: e instanceof Error ? e.message : "取込に失敗しました",
+        reason:
+          e instanceof Error
+            ? e.message
+            : tr("master.inspectionTemplateActions.importFailed"),
       });
     }
   }

@@ -55,64 +55,65 @@ import type { Option } from "@/lib/mock";
 /** 空欄を許す数値入力（Mantine の NumberInput は "" を返す）。 */
 const optionalNumber = z.union([z.number(), z.literal("")]);
 
-const bpFormSchema = bpBaseFormSchema
-  .extend({
-    roles: z.array(z.string()),
-    customer: z.object({
-      customerCode: z.string(),
-      billingBpId: z.string().nullable(),
-      closingDay: optionalNumber,
-      paymentTermsDays: optionalNumber,
-      paymentDay: optionalNumber,
-      creditLimit: optionalNumber,
-      taxType: z.string(),
-      invoiceMethod: z.string(),
-      isConsignment: z.boolean(),
-      salesReps: z.array(
-        z.object({ userId: z.string(), isPrimary: z.boolean() }),
-      ),
-    }),
-    endUser: z.object({ industry: z.string() }),
-    vendor: z.object({
-      vendorCode: z.string(),
-      vendorType: z.string(),
-      closingDay: optionalNumber,
-      paymentTermsDays: optionalNumber,
-      paymentDay: optionalNumber,
-      leadTimeDays: optionalNumber,
-      bankName: z.string(),
-      bankBranch: z.string(),
-      bankAccountType: z.string().nullable(),
-      bankAccountNumber: z.string(),
-    }),
-  })
-  .superRefine((v, ctx) => {
-    const tr = useTranslations();
-    if (v.roles.includes("VENDOR") && !v.vendor.vendorType) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        path: ["vendor", "vendorType"],
-        message: tr("master.businessPartners.selectASubcontractorType"),
-      });
-    }
-    if (!v.roles.includes("CUSTOMER")) return;
-    const ids = v.customer.salesReps.map((r) => r.userId);
-    if (ids.some((id) => !id)) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        path: ["customer", "salesReps"],
-        message: tr("master.businessPartners.chooseTheSalesRepBlankRows"),
-      });
-    } else if (new Set(ids).size !== ids.length) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        path: ["customer", "salesReps"],
-        message: tr("master.businessPartners.theSameContactAppearsTwice"),
-      });
-    }
-  });
+function bpFormSchema(tr: ReturnType<typeof useTranslations>) {
+  return bpBaseFormSchema(tr)
+    .extend({
+      roles: z.array(z.string()),
+      customer: z.object({
+        customerCode: z.string(),
+        billingBpId: z.string().nullable(),
+        closingDay: optionalNumber,
+        paymentTermsDays: optionalNumber,
+        paymentDay: optionalNumber,
+        creditLimit: optionalNumber,
+        taxType: z.string(),
+        invoiceMethod: z.string(),
+        isConsignment: z.boolean(),
+        salesReps: z.array(
+          z.object({ userId: z.string(), isPrimary: z.boolean() }),
+        ),
+      }),
+      endUser: z.object({ industry: z.string() }),
+      vendor: z.object({
+        vendorCode: z.string(),
+        vendorType: z.string(),
+        closingDay: optionalNumber,
+        paymentTermsDays: optionalNumber,
+        paymentDay: optionalNumber,
+        leadTimeDays: optionalNumber,
+        bankName: z.string(),
+        bankBranch: z.string(),
+        bankAccountType: z.string().nullable(),
+        bankAccountNumber: z.string(),
+      }),
+    })
+    .superRefine((v, ctx) => {
+      if (v.roles.includes("VENDOR") && !v.vendor.vendorType) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["vendor", "vendorType"],
+          message: tr("master.businessPartners.selectASubcontractorType"),
+        });
+      }
+      if (!v.roles.includes("CUSTOMER")) return;
+      const ids = v.customer.salesReps.map((r) => r.userId);
+      if (ids.some((id) => !id)) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["customer", "salesReps"],
+          message: tr("master.businessPartners.chooseTheSalesRepBlankRows"),
+        });
+      } else if (new Set(ids).size !== ids.length) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["customer", "salesReps"],
+          message: tr("master.businessPartners.theSameContactAppearsTwice"),
+        });
+      }
+    });
+}
 
-type FormValues = z.infer<typeof bpFormSchema>;
+type FormValues = z.infer<ReturnType<typeof bpFormSchema>>;
 
 const ROLE_ORDER = ["CUSTOMER", "END_USER", "VENDOR"] as const;
 
@@ -141,7 +142,7 @@ export function BpForm({
   };
 
   const form = useForm<FormValues>({
-    validate: zodResolver(bpFormSchema),
+    validate: zodResolver(bpFormSchema(tr)),
     initialValues: {
       ...bpBaseInitialValues(initial),
       roles: initial?.roles ?? [],

@@ -88,7 +88,12 @@ export async function GET(
     tableName: "forms",
     recordId: form.code,
     after: {
-      note: `回答を Excel で書き出し（${responses.length} 件${hasMore ? "・上限で打ち切り" : ""}）`,
+      note: tr("general.formsActions.auditExportedToExcel", {
+        count: responses.length,
+        truncated: hasMore
+          ? tr("general.formsActions.auditExportTruncatedSuffix")
+          : "",
+      }),
     },
   }).catch(() => {});
 
@@ -96,7 +101,9 @@ export async function GET(
   // 汚れ、応答ヘッダは通常のダウンロードでは読めない。名前なら保存時に必ず目に入る。
   const filename = exportDownloadName(
     form.title,
-    hasMore ? `${form.code}_一部` : form.code,
+    hasMore
+      ? `${form.code}${tr("general.formsActions.exportFilenamePartialSuffix")}`
+      : form.code,
     "xlsx",
   );
   return new NextResponse(new Uint8Array(xlsx), {

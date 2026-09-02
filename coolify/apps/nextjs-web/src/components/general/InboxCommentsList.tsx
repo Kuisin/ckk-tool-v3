@@ -53,8 +53,10 @@ export function InboxCommentsList({ rows }: { rows: InboxCommentRow[] }) {
                 </Text>
                 <Badge color="gray" size="xs" variant="light">
                   {row.line == null
-                    ? `旧 ${row.anchorLine} 行目`
-                    : `${row.line} 行目`}
+                    ? tr("documents.reviewView.oldLineNumber", {
+                        n: row.anchorLine,
+                      })
+                    : tr("documents.reviewView.lineNumber", { n: row.line })}
                 </Badge>
               </Group>
               <Text c="dimmed" size="xs" style={{ flexShrink: 0 }}>
