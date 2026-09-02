@@ -14,10 +14,12 @@ import {
   kioskFailureReason,
   LOGIN_FAILURE_REASONS,
   LOGIN_METHODS,
-  loginMethodLabel,
-  loginReasonLabel,
   scanKindOf,
 } from "./login-attempt-core";
+
+// 表示ラベルの網羅性テストは login-attempt-labels.test.ts（web 専用・
+// next-intl 経由）にある——ここは web/kiosk の双子ファイルなので
+// next-intl を読み込めない。
 
 describe("語彙が DB の列長に収まる", () => {
   it("method は VarChar(24) 以内", () => {
@@ -29,15 +31,6 @@ describe("語彙が DB の列長に収まる", () => {
   it("reason は VarChar(40) 以内", () => {
     for (const reason of LOGIN_FAILURE_REASONS) {
       expect(reason.length).toBeLessThanOrEqual(40);
-    }
-  });
-
-  it("すべての method / reason に日本語ラベルがある", () => {
-    for (const method of LOGIN_METHODS) {
-      expect(loginMethodLabel(method)).not.toBe(method);
-    }
-    for (const reason of LOGIN_FAILURE_REASONS) {
-      expect(loginReasonLabel(reason)).not.toBe(reason);
     }
   });
 });

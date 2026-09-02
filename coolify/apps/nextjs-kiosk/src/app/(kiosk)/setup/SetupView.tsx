@@ -21,11 +21,13 @@
 
 import { Button, Center, Stack, Text } from "@mantine/core";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useI18n } from "@/components/I18nProvider";
 import {
   type LinkCodePhase,
   LinkCodeScreen,
 } from "@/components/LinkCodeScreen";
 import { PinKeypad } from "@/components/PinKeypad";
+import { fillMessage } from "@/lib/i18n";
 import { getBridge } from "@/lib/wrapper-bridge";
 
 const DEVICE_ID_KEY = "kiosk_device_id";
@@ -98,6 +100,7 @@ async function isGone(res: Response): Promise<boolean> {
 }
 
 export function SetupView() {
+  const { m } = useI18n();
   const [state, setState] = useState<SetupState>({ phase: "loading" });
   const [now, setNow] = useState(() => Date.now());
   const startedRef = useRef(false);
@@ -130,11 +133,11 @@ export function SetupView() {
         });
         return;
       }
-      setState({ phase: "error", message: "コードを発行できませんでした" });
+      setState({ phase: "error", message: m.setup.couldNotIssueCode });
     } catch {
-      setState({ phase: "error", message: "サーバーに接続できません" }); // i18n-ignore — ログイン前画面は ja 固定（lib/i18n の方針）
+      setState({ phase: "error", message: m.setup.couldNotConnect });
     }
-  }, []);
+  }, [m]);
 
   // 初期化: 登録済みなら /login へ、Cookie 消失なら reactivate → だめなら begin
   useEffect(() => {
@@ -206,10 +209,10 @@ export function SetupView() {
         localStorage.removeItem(DEVICE_ID_KEY);
         void begin();
       } catch {
-        setState({ phase: "error", message: "サーバーに接続できません" }); // i18n-ignore — ログイン前画面は ja 固定（lib/i18n の方針）
+        setState({ phase: "error", message: m.setup.couldNotConnect });
       }
     },
-    [begin],
+    [begin, m],
   );
 
   // 表示中: リンク成立ポーリング + 期限カウントダウン
@@ -299,15 +302,12 @@ export function SetupView() {
             onSubmit={(code) => void submitSettingsCode(state.deviceId, code)}
             submitting={locked}
             subtitle={
-              locked
-                ? "試行回数の上限に達しました。しばらく待ってから入力してください。" // i18n-ignore — ログイン前画面は ja 固定（lib/i18n の方針）
-                : "この端末の登録を復帰します。管理者が「設定 → 端末管理」で確認できる 6 桁の端末設定コードを入力してください。" // i18n-ignore — ログイン前画面は ja 固定（lib/i18n の方針）
+              locked ? m.setup.lockedMessage : m.setup.reactivateSubtitle
             }
-            title="端末設定コード" // i18n-ignore — ログイン前画面は ja 固定（lib/i18n の方針）
+            title={m.setup.deviceSettingsCodeTitle}
           />
           <Text c="dimmed" size="sm" ta="center">
-            {/* i18n-ignore — ログイン前画面は ja 固定（lib/i18n の方針） */}
-            コードが分からない場合は、リンクコードを発行して管理者に再リンクしてもらいます。
+            {m.setup.dontKnowCodeText}
           </Text>
           <Button
             onClick={() => {
@@ -316,8 +316,7 @@ export function SetupView() {
             }}
             variant="default"
           >
-            {/* i18n-ignore — ログイン前画面は ja 固定（lib/i18n の方針） */}
-            リンクコードを発行する
+            {m.setup.issueLinkCode}
           </Button>
         </Stack>
       </Center>
@@ -331,9 +330,13 @@ export function SetupView() {
           phase: "linked",
           message: (
             <>
-              {`リンクしました${state.deviceName ? `: ${state.deviceName}` : ""}。管理者がこのプロファイルを`}
-              <b>有効化</b>
-              {"すると利用を開始できます。"}
+              {state.deviceName
+                ? fillMessage(m.setup.linkedWithName, {
+                    name: state.deviceName,
+                  })
+                : m.setup.linkedWithoutName}
+              <b>{m.setup.activated}</b>
+              {m.setup.linkedAfter}
             </>
           ),
         }
@@ -341,11 +344,11 @@ export function SetupView() {
 
   return (
     <LinkCodeScreen
-      instruction="管理者に「設定 → 端末管理」でこのコードをスキャンまたは入力してもらい、端末プロファイルへリンクしてください。"
+      instruction={m.setup.instruction}
       now={now}
       onRetry={begin}
       state={view}
-      title="端末リンク"
+      title={m.setup.deviceLinkTitle}
       variant="handheld"
     />
   );

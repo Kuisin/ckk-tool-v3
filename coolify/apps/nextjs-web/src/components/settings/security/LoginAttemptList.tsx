@@ -10,10 +10,10 @@
 
 import { Badge, Group, Stack, Text } from "@mantine/core";
 import { IconShieldLock } from "@tabler/icons-react";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { useFormat } from "@/components/layout/PreferencesProvider";
 import { EmptyState } from "@/components/ui/EmptyState";
-import { loginMethodLabel, loginReasonLabel } from "@/lib/login-attempt-core";
+import { loginMethodLabel, loginReasonLabel } from "@/lib/login-attempt-labels";
 import type { LoginAttemptRow } from "@/lib/login-attempts";
 import { OwnershipBadge } from "./ownership";
 
@@ -27,6 +27,7 @@ export function LoginAttemptList({
   showOwnership?: boolean;
 }) {
   const tr = useTranslations();
+  const locale = useLocale();
   const fmt = useFormat();
 
   if (rows.length === 0) {
@@ -59,10 +60,10 @@ export function LoginAttemptList({
                   ? tr("settings.security.success")
                   : tr("common.failure")}
               </Badge>
-              <Text size="xs">{loginMethodLabel(r.method)}</Text>
+              <Text size="xs">{loginMethodLabel(r.method, locale)}</Text>
               {r.outcome === "FAILURE" && (
                 <Text c="dimmed" size="xs">
-                  {loginReasonLabel(r.reason)}
+                  {loginReasonLabel(r.reason, locale)}
                 </Text>
               )}
             </Group>

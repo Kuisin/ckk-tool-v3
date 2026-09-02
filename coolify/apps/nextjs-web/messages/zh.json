@@ -3149,7 +3149,10 @@
       "issuedCardsCount": "已发行 {count} 张二维码卡",
       "pinConfigured": "已设置",
       "pinIsConfigured": "已设置 PIN",
-      "scanQr": "扫描二维码"
+      "scanQr": "扫描二维码",
+      "loginScreenLanguage": "登录界面语言",
+      "loginScreenLanguageDescription": "该终端登录前的界面（二维码登录、终端关联等）所使用的显示语言。",
+      "loginScreenLanguageDefault": "默认（日语）"
     },
     "links": {
       "links": "链接管理",
@@ -7432,7 +7435,8 @@
       "fileId": "文件",
       "fileName": "文件名",
       "storageKey": "存储键",
-      "mimeType": "类型"
+      "mimeType": "类型",
+      "locale": "语言"
     },
     "tableFieldLabels": {
       "kiosk_devices": {
@@ -7519,5 +7523,76 @@
     "selectAPageToShow": "请选择要显示的画面",
     "pageSettingsAreIncorrect": "画面设置不正确",
     "enterUrlStartingWithHttp": "请输入以 http:// 或 https:// 开头的网址"
+  },
+  "loginAttempt": {
+    "methods": {
+      "PASSWORD": "密码",
+      "SSO": "单点登录",
+      "QR_SCAN": "二维码卡（仅扫描）",
+      "QR_PIN": "二维码卡 + PIN",
+      "PIN_SETUP": "首次设置 PIN",
+      "ATTEST": "终端认证",
+      "DEVICE_SETTINGS": "终端设置代码",
+      "DEVICE_LINK": "终端关联",
+      "PORTAL_OTP": "客户门户（验证码）",
+      "PORTAL_BACKUP": "客户门户（备用码）",
+      "PORTAL_LINK": "客户门户（单据链接）"
+    },
+    "reasons": {
+      "EMPTY_INPUT": "输入为空",
+      "RATE_LIMITED": "频率限制",
+      "UNKNOWN_USER": "用户不存在",
+      "USER_INACTIVE": "用户已停用",
+      "NO_PASSWORD_SET": "未设置密码",
+      "BAD_PASSWORD": "密码不匹配",
+      "SSO_NO_USERNAME": "SSO：无用户名声明",
+      "SSO_USER_INACTIVE": "SSO：用户已停用",
+      "SSO_UPSERT_FAILED": "SSO：用户注册失败",
+      "SSO_CALLBACK_ERROR": "SSO：回调失败",
+      "DEVICE_NO_COOKIE": "无终端 Cookie",
+      "DEVICE_NOT_FOUND": "未注册的终端",
+      "DEVICE_EXPIRED": "终端令牌已过期",
+      "DEVICE_DISABLED": "终端已停用",
+      "DEVICE_REVOKED": "终端已撤销",
+      "DEVICE_PENDING": "终端尚未启用",
+      "ATTEST_REQUIRED": "未通过认证",
+      "BAD_REQUEST": "请求无效",
+      "CARD_INVALID": "卡无效",
+      "CARD_SUSPENDED": "卡已暂停",
+      "CARD_EXPIRED": "卡不在有效期内",
+      "LOCKED": "锁定中",
+      "TICKET_EXPIRED": "票据已过期",
+      "PIN_FORMAT": "PIN 格式无效",
+      "PIN_MISMATCH": "PIN 不匹配",
+      "PIN_ALREADY_SET": "PIN 已设置",
+      "PIN_WEAK": "PIN 强度不足",
+      "ATTEST_NOT_CONFIGURED": "未配置认证",
+      "ATTEST_BAD_SIGNATURE": "签名验证失败",
+      "ATTEST_KEY_MISMATCH": "终端密钥不匹配",
+      "ATTEST_KEY_IN_USE": "终端密钥正被其他终端使用",
+      "ATTEST_BAD_PROFILE": "终端配置文件无效",
+      "SETTINGS_NO_DEVICE": "终端设置：终端未知",
+      "SETTINGS_LOCKED": "终端设置：锁定中",
+      "SETTINGS_CODE_INVALID": "终端设置代码不匹配",
+      "REACTIVATE_PROOF_REQUIRED": "终端重新发放：无证明",
+      "REACTIVATE_BAD_SIGNATURE": "终端重新发放：签名无效",
+      "REACTIVATE_CODE_INVALID": "终端重新发放：设置代码不匹配",
+      "REACTIVATE_LOCKED": "终端重新发放：锁定中",
+      "REACTIVATE_TOKEN_LIVE": "终端重新发放：令牌仍然有效",
+      "UNLOCK_PIN_NOT_ATTESTED": "退出 PIN：终端未认证",
+      "PORTAL_UNKNOWN_EMAIL": "门户：未注册的地址",
+      "PORTAL_ACCOUNT_INACTIVE": "门户：账号已停用",
+      "PORTAL_CODE_EXPIRED": "门户：验证码已过期",
+      "PORTAL_CODE_MISMATCH": "门户：验证码不匹配",
+      "PORTAL_CODE_ATTEMPTS": "门户：验证码尝试次数已达上限",
+      "PORTAL_BACKUP_INVALID": "门户：备用码不匹配",
+      "PORTAL_LINK_NOT_FOUND": "门户：链接不存在",
+      "PORTAL_LINK_EXPIRED": "门户：链接已过期",
+      "PORTAL_LINK_REVOKED": "门户：链接已失效",
+      "PORTAL_LINK_EXHAUSTED": "门户：链接使用次数已超限",
+      "PORTAL_MAIL_FAILED": "门户：邮件发送失败",
+      "PORTAL_MAIL_BLOCKED_DEV": "门户：不在开发环境许可列表中",
+      "UNKNOWN": "未知"
+    }
   }
 }

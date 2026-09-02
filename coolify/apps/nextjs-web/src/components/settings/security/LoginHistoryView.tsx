@@ -21,14 +21,14 @@ import {
   Tooltip,
 } from "@mantine/core";
 import { IconSearch, IconShieldLock } from "@tabler/icons-react";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { useState } from "react";
 import { useFormat } from "@/components/layout/PreferencesProvider";
 import { type Column, DataTable } from "@/components/ui/DataTable";
 import { ListShell } from "@/components/ui/shells";
 import { useUrlSelectState, useUrlStringState } from "@/hooks/useUrlState";
 import { useIsMobile } from "@/hooks/useViewport";
-import { loginMethodLabel, loginReasonLabel } from "@/lib/login-attempt-core";
+import { loginMethodLabel, loginReasonLabel } from "@/lib/login-attempt-labels";
 import type {
   LoginAttemptRow,
   LoginAttemptSummary,
@@ -67,6 +67,7 @@ export function LoginHistoryView({
   hasMore: boolean;
 }) {
   const tr = useTranslations();
+  const locale = useLocale();
   const isMobile = useIsMobile();
   const fmt = useFormat();
   const t = useTranslations("loginHistory");
@@ -152,7 +153,9 @@ export function LoginHistoryView({
       key: "method",
       header: tr("common.method"),
       width: 130,
-      render: (r) => <Text size="xs">{loginMethodLabel(r.method)}</Text>,
+      render: (r) => (
+        <Text size="xs">{loginMethodLabel(r.method, locale)}</Text>
+      ),
     },
     {
       key: "user",
@@ -193,7 +196,7 @@ export function LoginHistoryView({
       width: 150,
       render: (r) => (
         <Text c={r.outcome === "FAILURE" ? undefined : "dimmed"} size="xs">
-          {loginReasonLabel(r.reason)}
+          {loginReasonLabel(r.reason, locale)}
         </Text>
       ),
     },
@@ -364,7 +367,7 @@ export function LoginHistoryView({
                         ? tr("settings.security.success")
                         : tr("common.failure")}
                     </Badge>
-                    <Text size="xs">{loginMethodLabel(r.method)}</Text>
+                    <Text size="xs">{loginMethodLabel(r.method, locale)}</Text>
                   </Group>
                   <Text fw={600} size="sm" truncate>
                     {r.userName ??
@@ -376,7 +379,7 @@ export function LoginHistoryView({
                         : "—")}
                   </Text>
                   <Text c="dimmed" size="xs">
-                    {loginReasonLabel(r.reason)}
+                    {loginReasonLabel(r.reason, locale)}
                   </Text>
                 </div>
                 <div className="shrink-0 text-right">

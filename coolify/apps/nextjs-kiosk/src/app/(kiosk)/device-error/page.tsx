@@ -1,63 +1,24 @@
-"use client";
-
 /**
- * /device-error — 端末が無効化/取り消しされた場合の行き止まり画面。
- * ?reason=DISABLED|REVOKED で文言を出し分け。
+ * /device-error — サーバー側の門。端末の言語（SY09 で設定）を解決して包む。
+ *
+ * DISABLED/REVOKED でも開ける画面なので getDeviceForSettings()（status を
+ * 絞らない）で引く。Cookie 自体が無ければ既定の ja。
  */
 
-import {
-  Alert,
-  Button,
-  Center,
-  Paper,
-  Stack,
-  Text,
-  Title,
-} from "@mantine/core";
-import { IconDeviceTabletX } from "@tabler/icons-react";
-import { useRouter, useSearchParams } from "next/navigation";
-import { Suspense } from "react";
+import { cookies } from "next/headers";
+import { DeviceErrorView } from "@/components/DeviceErrorView";
+import { I18nProvider } from "@/components/I18nProvider";
+import { DEVICE_COOKIE, getDeviceForSettings } from "@/lib/kiosk-auth";
 
-function DeviceErrorContent() {
-  const router = useRouter();
-  const reason = useSearchParams().get("reason");
+export const dynamic = "force-dynamic";
 
-  const message =
-    reason === "DISABLED"
-      ? "この端末は一時的に無効化されています。管理者に連絡してください。"
-      : reason === "REVOKED"
-        ? "この端末の登録は取り消されました。再登録が必要です。"
-        : "この端末は利用できません。管理者に連絡してください。";
-
+export default async function DeviceErrorPage() {
+  const store = await cookies();
+  const hasDevice = store.get(DEVICE_COOKIE)?.value != null;
+  const info = hasDevice ? await getDeviceForSettings() : null;
   return (
-    <Center p="md" style={{ flex: 1 }}>
-      <Paper maw={480} p="xl" radius="md" w="100%" withBorder>
-        <Stack align="center" gap="md">
-          <IconDeviceTabletX color="var(--mantine-color-red-6)" size={64} />
-          <Title order={2}>端末エラー</Title>
-          <Alert color="red" w="100%">
-            <Text>{message}</Text>
-          </Alert>
-          {reason === "REVOKED" && (
-            <Button
-              onClick={() => {
-                localStorage.removeItem("kiosk_device_id");
-                router.replace("/setup");
-              }}
-            >
-              端末リンクへ
-            </Button>
-          )}
-        </Stack>
-      </Paper>
-    </Center>
-  );
-}
-
-export default function DeviceErrorPage() {
-  return (
-    <Suspense>
-      <DeviceErrorContent />
-    </Suspense>
+    <I18nProvider locale={info?.locale ?? "ja"}>
+      <DeviceErrorView />
+    </I18nProvider>
   );
 }
