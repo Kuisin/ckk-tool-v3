@@ -109,6 +109,13 @@ jobs:
       - name: Server Action gate guard (checkPermission / requireAnyRead)
         run: node scripts/check-server-action-gates.mjs
 
+      # 監査 C1: 認証の門（next の proxy / next-auth の authorized）に公開済みの
+      # advisory が出たまま 2 版滞留していた。本番依存の high 以上で止める。
+      # dev 専用の CLI（prisma の mysql2 / deepmerge-ts）は --prod で外れる。
+      - name: Dependency audit (prod, high+)
+        working-directory: .
+        run: pnpm audit --prod --audit-level=high
+
       # 英語・中国語対応は段階的に進める（数千箇所が未着手のまま残る）。
       # 全部訳し終わっていなくても落とさない — 見るのは **後戻り** だけで、
       # baseline より増えたときに失敗する。使い方は tools/i18n/README.md。
