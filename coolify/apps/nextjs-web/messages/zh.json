@@ -2914,6 +2914,14 @@
       "invalidDesignRequest": "指定的设计委托无效",
       "selectTheDrawingFile": "请选择图纸文件",
       "isTooLargeMax20mb": "{name} 过大（每个文件最多 20MB）"
+    },
+    "workflowIssues": {
+      "stepFallback": "工序 #{id}",
+      "missingAnd": "{step} 需要 {related}",
+      "exclusion": "{step} 与 {related} 不能同时选择",
+      "missingOrGroup": "{step} 需要 {related} 之一（可能由材料条件满足）",
+      "missingStart": "工序流程必须从「出料/交接」（{related}）之一开始",
+      "multipleStart": "「出料/交接」只能选择 1 个（当前已选：{related}）"
     }
   },
   "purchase": {
@@ -5680,7 +5688,13 @@
       "activityId": "操作历史 #{id}",
       "relatedPages": "相关页面",
       "shownInTheList": "（在列表中显示）",
-      "whatChangedSummary": "变更内容（摘要）"
+      "whatChangedSummary": "变更内容（摘要）",
+      "suffixProduct": "（产品）",
+      "suffixMaterial": "（材料）",
+      "suffixStorageLocation": "（存放位置）",
+      "suffixFloorMap": "（地图）",
+      "suffixDisplay": "（显示屏）",
+      "formResponsesLabel": "表单回答"
     },
     "appFlagsTable": {
       "labelWasSetToV2In": "已在 {env} 中将 {label} 设为{v2}",

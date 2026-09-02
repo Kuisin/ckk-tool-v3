@@ -7,6 +7,7 @@
  * （Prisma import なし — client-safe）。
  */
 
+import type { Tr } from "@/lib/i18n";
 import type { CatalogStep, CompositionIssue } from "@/lib/workflow-core";
 
 // history Json の action → 表示ラベルは lib/enum-labels.ts
@@ -242,27 +243,42 @@ export interface WorkOrderView {
 // ── 構成検証メッセージ ───────────────────────────────────────────────────────
 
 /**
- * CompositionIssue → 日本語メッセージ（「円筒加工には円筒加工検査が必要です」）。
+ * CompositionIssue → 表示メッセージ（「円筒加工には円筒加工検査が必要です」）。
  * ビルダー（ライブ表示）とサーバー（保存時ブロック）で共用する。
  */
 export function describeIssue(
   issue: CompositionIssue,
   steps: readonly CatalogStep[],
+  tr: Tr,
 ): string {
   const nameOf = (id: number) =>
-    steps.find((s) => s.id === id)?.nameJa ?? `工程#${id}`;
+    steps.find((s) => s.id === id)?.nameJa ??
+    tr("production.workflowIssues.stepFallback", { id });
   const step = nameOf(issue.stepId);
   const related = issue.relatedStepIds.map(nameOf);
   switch (issue.kind) {
     case "MISSING_AND":
-      return `${step}には${related[0]}が必要です`;
+      return tr("production.workflowIssues.missingAnd", {
+        step,
+        related: related[0] ?? "",
+      });
     case "EXCLUSION":
-      return `${step}と${related[0]}は同時に選択できません`;
+      return tr("production.workflowIssues.exclusion", {
+        step,
+        related: related[0] ?? "",
+      });
     case "MISSING_OR_GROUP":
-      return `${step}には${related.join("・")}のいずれかが必要です（素材条件で充足される場合があります）`;
+      return tr("production.workflowIssues.missingOrGroup", {
+        step,
+        related: related.join("・"),
+      });
     case "MISSING_START":
-      return `工程は「出し・受渡し」（${related.join("・")}）のいずれかから始める必要があります`;
+      return tr("production.workflowIssues.missingStart", {
+        related: related.join("・"),
+      });
     case "MULTIPLE_START":
-      return `「出し・受渡し」は 1 つだけ選択できます（選択中: ${related.join("・")}）`;
+      return tr("production.workflowIssues.multipleStart", {
+        related: related.join("・"),
+      });
   }
 }

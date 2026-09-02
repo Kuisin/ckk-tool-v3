@@ -159,7 +159,9 @@ export async function validateAndOrderSteps(
   if (blocking.length > 0) {
     return {
       ok: false,
-      error: blocking.map((i) => describeIssue(i, catalog.steps)).join(" / "),
+      error: blocking
+        .map((i) => describeIssue(i, catalog.steps, tr))
+        .join(" / "),
     };
   }
   const byId = new Map(steps.map((s) => [s.processStepId, s]));

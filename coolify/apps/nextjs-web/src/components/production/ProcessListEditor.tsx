@@ -448,7 +448,7 @@ export function ProcessListEditor({
                 p="xs"
                 variant="light"
               >
-                {describeIssue(issue, catalogSteps)}
+                {describeIssue(issue, catalogSteps, tr)}
               </Alert>
             ))}
             {warnings.map((issue, i) => (
@@ -459,7 +459,7 @@ export function ProcessListEditor({
                 p="xs"
                 variant="light"
               >
-                {describeIssue(issue, catalogSteps)}
+                {describeIssue(issue, catalogSteps, tr)}
               </Alert>
             ))}
             {missingCompanions.length > 0 && (

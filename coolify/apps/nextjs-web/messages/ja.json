@@ -2914,6 +2914,14 @@
       "invalidDesignRequest": "設計依頼の指定が不正です",
       "selectTheDrawingFile": "図面データを選択してください",
       "isTooLargeMax20mb": "{name} が大きすぎます（1 件 20MB まで）"
+    },
+    "workflowIssues": {
+      "stepFallback": "工程#{id}",
+      "missingAnd": "{step}には{related}が必要です",
+      "exclusion": "{step}と{related}は同時に選択できません",
+      "missingOrGroup": "{step}には{related}のいずれかが必要です（素材条件で充足される場合があります）",
+      "missingStart": "工程は「出し・受渡し」（{related}）のいずれかから始める必要があります",
+      "multipleStart": "「出し・受渡し」は 1 つだけ選択できます（選択中: {related}）"
     }
   },
   "purchase": {
@@ -5680,7 +5688,13 @@
       "activityId": "操作履歴 #{id}",
       "relatedPages": "関連ページ",
       "shownInTheList": "（一覧で表示）",
-      "whatChangedSummary": "変更内容（要約）"
+      "whatChangedSummary": "変更内容（要約）",
+      "suffixProduct": "（製品）",
+      "suffixMaterial": "（素材）",
+      "suffixStorageLocation": "（保管場所）",
+      "suffixFloorMap": "（マップ）",
+      "suffixDisplay": "（ディスプレイ）",
+      "formResponsesLabel": "フォーム回答"
     },
     "appFlagsTable": {
       "labelWasSetToV2In": "{label} を {env} で{v2}にしました",

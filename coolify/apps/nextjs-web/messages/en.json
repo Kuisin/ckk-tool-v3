@@ -2914,6 +2914,14 @@
       "invalidDesignRequest": "The design request specified is invalid",
       "selectTheDrawingFile": "Select the drawing file",
       "isTooLargeMax20mb": "{name} is too large (up to 20MB per file)"
+    },
+    "workflowIssues": {
+      "stepFallback": "Step #{id}",
+      "missingAnd": "{step} requires {related}",
+      "exclusion": "{step} and {related} cannot be selected together",
+      "missingOrGroup": "{step} requires one of {related} (may be satisfied by a material condition)",
+      "missingStart": "The workflow must start with one of the \"issue/hand-off\" steps ({related})",
+      "multipleStart": "Only one \"issue/hand-off\" step can be selected (currently selected: {related})"
     }
   },
   "purchase": {
@@ -5680,7 +5688,13 @@
       "activityId": "Activity #{id}",
       "relatedPages": "Related pages",
       "shownInTheList": "(shown in the list)",
-      "whatChangedSummary": "What changed (summary)"
+      "whatChangedSummary": "What changed (summary)",
+      "suffixProduct": " (product)",
+      "suffixMaterial": " (material)",
+      "suffixStorageLocation": " (storage location)",
+      "suffixFloorMap": " (map)",
+      "suffixDisplay": " (display)",
+      "formResponsesLabel": "Form responses"
     },
     "appFlagsTable": {
       "labelWasSetToV2In": "{label} was set to {v2} in {env}",
