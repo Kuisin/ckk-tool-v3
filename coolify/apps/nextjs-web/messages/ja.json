@@ -4202,7 +4202,10 @@
       "connectionTestUnreadableResult": "接続テストの結果を読み取れませんでした",
       "connectionTestTimedOut": "接続テストが時間内に終わりませんでした（90 秒）",
       "connectionTestFailedLog": "[ai-provider] 接続テストに失敗",
-      "extractionServerUnreachable": "抽出サーバー（po-extract）に接続できませんでした。更新が必要な可能性があります。"
+      "extractionServerUnreachable": "抽出サーバー（po-extract）に接続できませんでした。更新が必要な可能性があります。",
+      "encryptionKeyNotSetCannotSaveToken": "暗号鍵（{envVar}）が未設定のため API トークンを保存できません。システム管理者へ連絡してください。",
+      "cannotDecryptTokenKeyNotSet": "AI プロバイダの API トークンを復号できません（{envVar} が未設定です）。システム管理者へ連絡してください。",
+      "cannotDecryptTokenKeyChanged": "AI プロバイダの API トークンを復号できません（暗号鍵が変わった可能性があります）。システム設定 → AI プロバイダ でトークンを入力し直してください。"
     },
     "filesActions": {
       "specifyFolder": "フォルダを指定してください",
@@ -5680,7 +5683,9 @@
       "responseNotFound": "回答が見つかりません",
       "notSubmittedYet": "まだ提出していません",
       "itWasSentBack": "差し戻されました",
-      "theEditingWindowHasClosedContact": "編集できる期間が終わっています。直したい場合は作成者に連絡してください。"
+      "theEditingWindowHasClosedContact": "編集できる期間が終わっています。直したい場合は作成者に連絡してください。",
+      "myResponseTitle": "自分の回答",
+      "submittedAt": "提出 {datetime}"
     },
     "responses": {
       "theUrlIsWrongOrYou": "URL が間違っているか、このフォームの回答を見る権限がありません。",

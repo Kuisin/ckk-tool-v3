@@ -9,7 +9,7 @@
  */
 
 import { revalidatePath } from "next/cache";
-import { getTranslations } from "next-intl/server";
+import { getLocale, getTranslations } from "next-intl/server";
 import { z } from "zod";
 import {
   AiProviderConfigError,
@@ -67,7 +67,7 @@ async function missingRequirement(
 export async function updateAiProviderSettings(
   payload: AiProviderPayload,
 ): Promise<ActionResult> {
-  const tr = await getTranslations();
+  const [tr, locale] = await Promise.all([getTranslations(), getLocale()]);
   const authz = await checkPermission("system", "UPDATE");
   if (!authz.ok) return actionError(authz.error);
 
@@ -91,6 +91,7 @@ export async function updateAiProviderSettings(
         : token
           ? { action: "set", value: token }
           : { action: "keep" },
+      locale,
     );
     if (!saved.ok) return actionError(saved.error);
 

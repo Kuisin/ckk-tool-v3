@@ -45,16 +45,14 @@ export async function sendPortalOtpMail(input: {
   if (!isDevFeatureEnabled("portal")) return "BLOCKED_DEV";
   if (!allowed(input.to)) {
     // dev の安全弁。**アラートの対象ではない**（設定どおりの挙動）。
-    // i18n-ignore — サーバーログのみ（Loki）、UI に出ない
     console.warn(
-      "[portal-mail] blocked (allowlist): PORTAL_MAIL_ALLOWLIST に無い宛先",
+      "[portal-mail] blocked (allowlist): PORTAL_MAIL_ALLOWLIST に無い宛先", // i18n-ignore — サーバーログのみ（Loki）、UI に出ない
     );
     return "BLOCKED_DEV";
   }
   if (!isMailerConfigured()) {
-    // i18n-ignore — サーバーログのみ（Loki）、UI に出ない
     console.error(
-      "[portal-mail] send failed: MAIL_API_URL / MAIL_API_TOKEN が未設定",
+      "[portal-mail] send failed: MAIL_API_URL / MAIL_API_TOKEN が未設定", // i18n-ignore — サーバーログのみ（Loki）、UI に出ない
     );
     return "FAILED";
   }

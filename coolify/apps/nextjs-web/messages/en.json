@@ -4202,7 +4202,10 @@
       "connectionTestUnreadableResult": "Could not read the connection test result",
       "connectionTestTimedOut": "The connection test did not finish in time (90 seconds)",
       "connectionTestFailedLog": "[ai-provider] Connection test failed",
-      "extractionServerUnreachable": "Could not connect to the extraction server (po-extract). It may need to be updated."
+      "extractionServerUnreachable": "Could not connect to the extraction server (po-extract). It may need to be updated.",
+      "encryptionKeyNotSetCannotSaveToken": "Cannot save the API token because the encryption key ({envVar}) is not set. Contact your system administrator.",
+      "cannotDecryptTokenKeyNotSet": "Cannot decrypt the AI provider API token ({envVar} is not set). Contact your system administrator.",
+      "cannotDecryptTokenKeyChanged": "Cannot decrypt the AI provider API token (the encryption key may have changed). Re-enter the token under System settings → AI provider."
     },
     "filesActions": {
       "specifyFolder": "Specify a folder",
@@ -5680,7 +5683,9 @@
       "responseNotFound": "Response not found",
       "notSubmittedYet": "Not submitted yet",
       "itWasSentBack": "It was sent back",
-      "theEditingWindowHasClosedContact": "The editing window has closed. Contact the author if you need to change it."
+      "theEditingWindowHasClosedContact": "The editing window has closed. Contact the author if you need to change it.",
+      "myResponseTitle": "My response",
+      "submittedAt": "Submitted {datetime}"
     },
     "responses": {
       "theUrlIsWrongOrYou": "The URL is wrong, or you do not have permission to view this form's responses.",

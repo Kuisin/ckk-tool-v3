@@ -176,9 +176,8 @@ export async function notifyFormCompletion(
     const recipients = active.slice(0, MAX_RECIPIENTS).map((u) => u.id);
     if (recipients.length === 0) return;
     if (active.length > MAX_RECIPIENTS) {
-      // i18n-ignore — サーバーログのみ（Loki）、UI に出ない
       console.warn(
-        `[form-completion] 通知先が多すぎるため ${active.length - MAX_RECIPIENTS} 人を送らず: ${responseNumber}`,
+        `[form-completion] 通知先が多すぎるため ${active.length - MAX_RECIPIENTS} 人を送らず: ${responseNumber}`, // i18n-ignore — サーバーログのみ（Loki）、UI に出ない
       );
     }
 

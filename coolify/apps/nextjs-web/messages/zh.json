@@ -4202,7 +4202,10 @@
       "connectionTestUnreadableResult": "无法读取连接测试结果",
       "connectionTestTimedOut": "连接测试未在规定时间内完成（90 秒）",
       "connectionTestFailedLog": "[ai-provider] 连接测试失败",
-      "extractionServerUnreachable": "无法连接到抽取服务器（po-extract）。可能需要更新。"
+      "extractionServerUnreachable": "无法连接到抽取服务器（po-extract）。可能需要更新。",
+      "encryptionKeyNotSetCannotSaveToken": "由于未设置加密密钥（{envVar}），无法保存 API 令牌。请联系系统管理员。",
+      "cannotDecryptTokenKeyNotSet": "无法解密 AI 服务商的 API 令牌（未设置 {envVar}）。请联系系统管理员。",
+      "cannotDecryptTokenKeyChanged": "无法解密 AI 服务商的 API 令牌（加密密钥可能已更改）。请在系统设置 → AI 服务商中重新输入令牌。"
     },
     "filesActions": {
       "specifyFolder": "请指定文件夹",
@@ -5680,7 +5683,9 @@
       "responseNotFound": "未找到回答",
       "notSubmittedYet": "尚未提交",
       "itWasSentBack": "已被退回",
-      "theEditingWindowHasClosedContact": "可编辑期间已结束。如需修改请联系创建者。"
+      "theEditingWindowHasClosedContact": "可编辑期间已结束。如需修改请联系创建者。",
+      "myResponseTitle": "我的回答",
+      "submittedAt": "已提交 {datetime}"
     },
     "responses": {
       "theUrlIsWrongOrYou": "URL 不正确，或没有查看此表单回答的权限。",
