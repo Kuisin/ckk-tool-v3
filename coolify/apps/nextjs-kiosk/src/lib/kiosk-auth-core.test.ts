@@ -9,6 +9,7 @@ import {
   isSessionAlive,
   isValidPin,
   needsPinVerify,
+  newPinVerdict,
   nextPinFailureState,
   PIN_LOCK_MS,
   PIN_MAX_ATTEMPTS,
@@ -164,5 +165,28 @@ describe("extractCardId — QR ペイロードからカード ID", () => {
 
   it("空・空白は空文字", () => {
     expect(extractCardId("   ")).toBe("");
+  });
+});
+
+describe("newPinVerdict — 初回設定の PIN 規則", () => {
+  it("6 桁で並びの無いものは OK", () => {
+    expect(newPinVerdict("284917")).toBe("OK");
+    expect(newPinVerdict("907135")).toBe("OK");
+  });
+
+  it("桁数が 6 でなければ LENGTH（既存の 4〜5 桁は照合側でだけ通る）", () => {
+    expect(newPinVerdict("1234")).toBe("LENGTH");
+    expect(newPinVerdict("12345")).toBe("LENGTH");
+    expect(newPinVerdict("1234567")).toBe("LENGTH");
+    expect(newPinVerdict("12a456")).toBe("LENGTH");
+  });
+
+  it("同じ数字の連続・昇順/降順の並び・繰り返しは WEAK", () => {
+    expect(newPinVerdict("000000")).toBe("WEAK");
+    expect(newPinVerdict("123456")).toBe("WEAK");
+    expect(newPinVerdict("654321")).toBe("WEAK");
+    expect(newPinVerdict("890123")).toBe("WEAK"); // 9→0 をまたぐ昇順
+    expect(newPinVerdict("121212")).toBe("WEAK");
+    expect(newPinVerdict("123123")).toBe("WEAK");
   });
 });

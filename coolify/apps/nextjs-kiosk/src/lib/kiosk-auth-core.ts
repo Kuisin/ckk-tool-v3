@@ -119,9 +119,43 @@ export function isRegistrationAlive(
   return expiresAt !== null && now.getTime() < expiresAt.getTime();
 }
 
-/** PIN 形式: 4〜6 桁の数字。 */
+/** PIN 形式: 4〜6 桁の数字（照合時。既存の 4〜5 桁 PIN を締め出さない）。 */
 export function isValidPin(pin: string): boolean {
   return /^[0-9]{4,6}$/.test(pin);
+}
+
+/** これから設定する PIN の桁数。既存 PIN は isValidPin のまま通る。 */
+export const NEW_PIN_LENGTH = 6;
+
+export type NewPinVerdict = "OK" | "LENGTH" | "WEAK";
+
+/**
+ * 初回設定（PIN_SETUP）で受け付ける PIN か。
+ *
+ * 4 桁を許すと 5 回失敗 → 15 分ロックでも 1 日 480 回試せ、1 万通りは
+ * 数週間で尽きる。カードを持った同僚が「0000」「1234」を当てるのを止めるのが
+ * 目的なので、6 桁に上げたうえで、同じ数字の連続・昇順/降順の並び・
+ * 2〜3 桁の繰り返し（121212 / 123123）を弾く。既存の PIN は触らない —
+ * 次に PIN をリセットしたときからこの規則になる。
+ */
+export function newPinVerdict(pin: string): NewPinVerdict {
+  if (!new RegExp(`^[0-9]{${NEW_PIN_LENGTH}}$`).test(pin)) return "LENGTH";
+  const digits = pin.split("").map(Number);
+  if (digits.every((d) => d === digits[0])) return "WEAK";
+  const ascending = digits.every(
+    (d, i) => i === 0 || d === (digits[i - 1] + 1) % 10,
+  );
+  const descending = digits.every(
+    (d, i) => i === 0 || d === (digits[i - 1] + 9) % 10,
+  );
+  if (ascending || descending) return "WEAK";
+  for (const period of [2, 3]) {
+    if (pin.length % period === 0) {
+      const unit = pin.slice(0, period);
+      if (unit.repeat(pin.length / period) === pin) return "WEAK";
+    }
+  }
+  return "OK";
 }
 
 /**
