@@ -57,5 +57,9 @@ export async function updateKioskAppFlags(
 
 /** カタログ + 現在のフラグ（クライアントの初期表示用）。 */
 export async function loadKioskAppFlags() {
+  // 読み取りだけでも kiosk:READ。ランチャーの構成は公開情報ではない。
+  if (!(await checkPermission("kiosk", "READ")).ok) {
+    return { catalog: KIOSK_APP_CATALOG, flags: {} as Record<string, boolean> };
+  }
   return { catalog: KIOSK_APP_CATALOG, flags: await getKioskAppFlags() };
 }

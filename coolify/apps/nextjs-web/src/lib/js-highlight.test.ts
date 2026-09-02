@@ -9,14 +9,15 @@ describe("highlightExpression", () => {
     );
     expect(html).toContain("maxDiameter");
     expect(html).toContain("&gt;"); // > escaped
-    expect(html).toContain("'a'");
+    // escapeHtml は ' も &#39; にする（属性文脈での閉じ出し対策）
+    expect(html).toContain("&#39;a&#39;");
     expect(html).toMatch(/color:#[0-9a-f]{6}/i);
   });
 
   it("does not treat text inside strings as code", () => {
     const html = highlightExpression("'return 10'", new Set());
     // string content stays intact and is NOT coloured as a keyword (#7048e8)
-    expect(html).toContain("'return 10'");
+    expect(html).toContain("&#39;return 10&#39;");
     expect(html).not.toContain("#7048e8");
   });
 });

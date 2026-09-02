@@ -184,7 +184,8 @@ const CONTENT_TYPES: Record<string, string> = {
   jpeg: "image/jpeg",
   gif: "image/gif",
   webp: "image/webp",
-  svg: "image/svg+xml",
+  // svg は入れない — image/svg+xml を inline で返すと中の <script> が
+  // アプリのオリジンで動く（監査 M1）。octet-stream に落ちてダウンロードになる。
   txt: "text/plain; charset=utf-8",
   csv: "text/csv; charset=utf-8",
   json: "application/json",

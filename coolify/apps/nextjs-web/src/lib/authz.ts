@@ -139,6 +139,33 @@ export async function checkApprovalDocAccess(
   };
 }
 
+/**
+ * 「いずれかのコードの READ を持っていれば可」の門 — 検索ピッカーなど、
+ * 複数の業務画面から共有される読み取り専用の Server Action 用。
+ *
+ * ピッカーは書類を作る人が参照マスタを引くためのもので、master:READ を
+ * 持たない営業担当も顧客を選べなければならない。だから「この一覧を使う
+ * 画面のどれかを読める人」を通す。ロールを 1 つも持たない（SSO で自動作成
+ * されただけの）アカウントはここで止まる — 2026-09 の監査で、この門が
+ * 無かったために取引先・製品・利用者・注文明細の一覧がログインだけで
+ * 引けていた（scripts/check-server-action-gates.mjs が再発を止める）。
+ *
+ * 行レベルのスコープ（拠点 / OWN）は掛けない — 書類を起こすときの参照は
+ * 全件でよく、掛けると他拠点の顧客宛ての書類が作れなくなる。
+ */
+export async function requireAnyRead(
+  codes: readonly string[],
+): Promise<{ ok: true; userId: string } | { ok: false; error: string }> {
+  const userId = await sessionUserId();
+  const tr = await getTranslations();
+  if (!userId) return { ok: false, error: tr("common.loginRequired") };
+  const readable = readableCodes(await permissionSetFor(userId));
+  if (readable.has("*") || codes.some((c) => readable.has(c))) {
+    return { ok: true, userId };
+  }
+  return { ok: false, error: tr("common.permissionAnyReadDenied") };
+}
+
 /** Route Handler 用: 失敗時に 401/403 Response を返す。成功時 null。 */
 export async function requirePermissionResponse(
   code: string,

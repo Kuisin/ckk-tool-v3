@@ -34,7 +34,8 @@ const MAP_IMAGE_TYPES: Record<string, string[]> = {
   jpg: ["image/jpeg"],
   jpeg: ["image/jpeg"],
   webp: ["image/webp"],
-  svg: ["image/svg+xml"],
+  // svg は受け付けない — 中に <script> を書けるので、閲覧者のオリジンで動く
+  // 保存 XSS になる（監査 M1）。図面はラスタで十分。
 };
 
 /** フロアマップは kiosk 権限（無ければ master 権限）で編集できる。 */
@@ -66,7 +67,7 @@ export async function saveFloorMapImage(
   if (!allowed || !allowed.includes(file.type.toLowerCase())) {
     return actionError(
       tr("common.unsupportedImageFormat", {
-        formats: "PNG / JPG / WEBP / SVG",
+        formats: "PNG / JPG / WEBP",
       }),
     );
   }

@@ -391,7 +391,7 @@ function ImageContent({
 
       <Group gap="xs">
         <FileButton
-          accept="image/png,image/jpeg,image/webp,image/gif,image/svg+xml"
+          accept="image/png,image/jpeg,image/webp,image/gif"
           onChange={onPick}
         >
           {(props) => (

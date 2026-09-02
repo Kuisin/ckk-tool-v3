@@ -18,6 +18,14 @@ import { normalizeScreenIndex } from "@/lib/display-core";
 
 export const dynamic = "force-dynamic";
 
+/** inline で開いてよい MIME（web 側 lib/attachments の INLINE_SAFE_TYPES の画像部分）。 */
+const INLINE_IMAGE_TYPES = new Set([
+  "image/png",
+  "image/jpeg",
+  "image/webp",
+  "image/gif",
+]);
+
 const FILER_URL = (
   process.env.SEAWEED_FILER_URL ?? "http://localhost:8888"
 ).replace(/\/$/, "");
@@ -65,9 +73,18 @@ export async function GET(
     if (!upstream.ok || !upstream.body) {
       return NextResponse.json({ error: "not_found" }, { status: 404 });
     }
+    const contentType = file.mimeType || "application/octet-stream";
     return new Response(upstream.body, {
       headers: {
-        "content-type": file.mimeType || "application/octet-stream",
+        "content-type": contentType,
+        // ラスタ画像だけを inline で出す。旧データに SVG が残っていても、壁の
+        // 画面のオリジンで <script> を動かさない（監査 M1）。
+        "content-disposition": INLINE_IMAGE_TYPES.has(contentType)
+          ? "inline"
+          : "attachment",
+        "x-content-type-options": "nosniff",
+        "content-security-policy":
+          "sandbox; default-src 'none'; img-src 'self' data:",
         // 差し替えが即座に効いてほしいので溜めない（画像 1 枚ぶんなので安い）
         "cache-control": "no-store",
       },
