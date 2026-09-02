@@ -135,11 +135,15 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   // AUTH_DEBUG=true で OAuth フロー（cookie/state/token/profile）を詳細ログ出力。
   debug: process.env.AUTH_DEBUG === "true",
   providers: [
+    // name/label は NextAuth 標準のサインインページ向けの表示名——この
+    // アプリは自前の /login を使い、この設定は一度も描画されない（module
+    // レベルの静的設定でリクエストスコープが無く tr() も呼べない）。
+    // i18n-ignore
     Credentials({
-      name: "ユーザー名 / パスワード",
+      name: "ユーザー名 / パスワード", // i18n-ignore
       credentials: {
-        username: { label: "ユーザー名" },
-        password: { label: "パスワード", type: "password" },
+        username: { label: "ユーザー名" }, // i18n-ignore
+        password: { label: "パスワード", type: "password" }, // i18n-ignore
       },
       async authorize(credentials) {
         const username =
@@ -153,7 +157,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           return null;
         }
         if (loginRateLimited(username)) {
-          console.warn(`[auth] レート制限: ${username}`);
+          console.warn(`[auth] レート制限: ${username}`); // i18n-ignore — サーバーログのみ（Loki）、UI に出ない
           recordFailure("PASSWORD", "RATE_LIMITED", username);
           return null;
         }

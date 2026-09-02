@@ -97,6 +97,12 @@ const EXCLUDED = [
   // 語彙で、CSV ヘッダーと同種の外部フォーマット契約——UI 語彙ではないので
   // 言語ごとに変えると弥生に取り込めなくなる。
   /\/csv-export\.ts$/,
+  // QRカード印刷シートの CSS（page.tsx から分離）。中身はほぼ全て CSS コメント
+  // （日本語の実装メモ）で、1 本の template literal の中にある。CSS コメントは
+  // ブラウザにも印刷にも出力されない開発者向け文書——trial-pricing-criteria-seed.ts
+  // と同じ理由（開いた template literal の中に i18n-ignore を挟むと CSS 本文へ
+  // 混入する）で、ファイルごと除外している。
+  /\/kiosk-cards\/print\/print-styles\.ts$/,
 ];
 
 /**

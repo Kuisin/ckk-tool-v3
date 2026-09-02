@@ -2297,7 +2297,9 @@
       "flowChangeAlreadyApplied": "已应用（事后审批 — 即使被退回也不会自动撤销）。",
       "flowChangeApprovalTitle": "工序流程变更的审批",
       "flowChangeDescription": "{summary}｜申请人：{requestedBy}｜{stepLabel}。{note}",
-      "flowChangeNotAppliedYet": "在获批之前，工序不会改变。"
+      "flowChangeNotAppliedYet": "在获批之前，工序不会改变。",
+      "andNMoreOrderLines": "{first} 等 {count} 件",
+      "andNMoreCustomers": "{first} 等 {count} 家"
     },
     "addBranchModal": {
       "theBranchWasAdded": "已添加分支",
@@ -5461,7 +5463,10 @@
       "enterLabelJa": "请输入显示名称（日语）",
       "duplicateTypeKey": "类别键有重复",
       "typeInUseCannotDelete": "使用中的类别无法删除：{keys}",
-      "saveTypesFailed": "类别保存失败"
+      "saveTypesFailed": "类别保存失败",
+      "auditWorkLocationAdded": "已添加作业场所「{name}」",
+      "auditWorkLocationUpdated": "已更新作业场所「{name}」",
+      "auditWorkLocationDeleted": "已删除作业场所"
     },
     "storageLocationActions": {
       "codeFormat": "编号请使用字母、数字、连字符和下划线",
@@ -7187,7 +7192,10 @@
       "confirmShipBodyStock": "将出货单 {number} 标记为已出货（因为是库存保管，订单明细的出货状态不会改变）。",
       "shippedBody": "已将出货单 {number} 标记为已出货",
       "confirmDeleteBody": "将删除出货单 {number}。此操作无法撤销。",
-      "deletedBody": "已删除出货单 {number}"
+      "deletedBody": "已删除出货单 {number}",
+      "onlySameCustomerCanBeCombined": "一张出货单只能合并同一客户的订单明细",
+      "onlySameShipToCanBeCombined": "一张出货单只能合并同一送货对象的订单明细",
+      "onlySameDeliveryMethodCanBeCombined": "一张出货单只能合并同一配送方式（常规配送 / 直送最终用户）的订单明细"
     },
     "pendingShipments": {
       "completedLots": "完成批次",

@@ -2297,7 +2297,9 @@
       "flowChangeAlreadyApplied": "Already applied (post-hoc approval — sending it back will not automatically revert it).",
       "flowChangeApprovalTitle": "Approve the workflow change",
       "flowChangeDescription": "{summary} | Requested by: {requestedBy} | {stepLabel}. {note}",
-      "flowChangeNotAppliedYet": "The steps will not change until approved."
+      "flowChangeNotAppliedYet": "The steps will not change until approved.",
+      "andNMoreOrderLines": "{first} and {count} more",
+      "andNMoreCustomers": "{first} and {count} more"
     },
     "addBranchModal": {
       "theBranchWasAdded": "The branch was added",
@@ -5461,7 +5463,10 @@
       "enterLabelJa": "Enter the display name (Japanese)",
       "duplicateTypeKey": "Duplicate type keys",
       "typeInUseCannotDelete": "Cannot delete a type in use: {keys}",
-      "saveTypesFailed": "Could not save the types"
+      "saveTypesFailed": "Could not save the types",
+      "auditWorkLocationAdded": "Added work location \"{name}\"",
+      "auditWorkLocationUpdated": "Updated work location \"{name}\"",
+      "auditWorkLocationDeleted": "Deleted work location"
     },
     "storageLocationActions": {
       "codeFormat": "Use letters, numbers, hyphens, and underscores for the code",
@@ -7187,7 +7192,10 @@
       "confirmShipBodyStock": "This marks delivery order {number} as shipped (the order line's shipping status will not change, since this is stock storage).",
       "shippedBody": "Marked delivery order {number} as shipped",
       "confirmDeleteBody": "This deletes delivery order {number}. This cannot be undone.",
-      "deletedBody": "Deleted delivery order {number}"
+      "deletedBody": "Deleted delivery order {number}",
+      "onlySameCustomerCanBeCombined": "A delivery order can only combine order lines for the same customer",
+      "onlySameShipToCanBeCombined": "A delivery order can only combine order lines for the same ship-to",
+      "onlySameDeliveryMethodCanBeCombined": "A delivery order can only combine order lines with the same delivery method (standard / direct to end user)"
     },
     "pendingShipments": {
       "completedLots": "Completed lots",

@@ -7,6 +7,7 @@ import { fetchKioskCardsForPrint } from "@/lib/kiosk-admin";
 import { A4, CARD_SHEET, CARDS_PER_PAGE } from "@/lib/kiosk-card-sheet";
 import { qrSvg } from "@/lib/qr";
 import { encodeQrPayload, QR_KINDS } from "@/lib/qr-payload";
+import { kioskCardPrintStyles } from "./print-styles";
 import { PrintToolbar } from "./print-toolbar";
 
 export const dynamic = "force-dynamic";
@@ -16,7 +17,7 @@ export function generateMetadata() {
   const d = new Date();
   const pad = (n: number) => String(n).padStart(2, "0");
   return {
-    title: `QRカード印刷_${d.getFullYear()}${pad(d.getMonth() + 1)}${pad(d.getDate())}-${pad(d.getHours())}${pad(d.getMinutes())}`,
+    title: `QRカード印刷_${d.getFullYear()}${pad(d.getMonth() + 1)}${pad(d.getDate())}-${pad(d.getHours())}${pad(d.getMinutes())}`, // i18n-ignore — api/pdf/kiosk-cards/route.ts と同じファイル名規約
   };
 }
 
@@ -115,6 +116,7 @@ export default async function KioskCardsPrintPage({
                     />
                     <div className="kiosk-print-card-head">
                       <span className="kiosk-print-company">
+                        {/* i18n-ignore — 固有名詞（社名） */}
                         シー・ケィ・ケー株式会社
                       </span>
                       {card.userDisplayName ? (
@@ -139,133 +141,17 @@ export default async function KioskCardsPrintPage({
         ))
       )}
 
-      <style>{`
-        /*
-         * ★ ページサイズは必ず「長さ」で書く（絶対ページボックス = 縮小禁止）。
-         *   size: A4 のようなキーワードは "scalable" で縮小されうる。
-         *   margin: 0 はブラウザの URL ヘッダー/フッターも抑止する。
-         */
-        @page { size: ${A4.width}mm ${A4.height}mm; margin: 0; }
-
-        .kiosk-print-root { background: #ffffff; color: #000000; }
-        .kiosk-print-toolbar { padding: 16px; }
-        .kiosk-print-empty { padding: 0 16px; color: #666666; font-size: 14px; }
-
-        /* 1 シート = A4 1 ページ。余白は 10 面マルチカードの定位置。 */
-        .kiosk-print-sheet {
-          position: relative;
-          box-sizing: border-box;
-          width: ${A4.width}mm;
-          height: ${A4.height}mm;
-          padding: ${marginY}mm ${marginX}mm;
-          margin: 0 auto;
-          overflow: hidden;
-          background: #ffffff;
-        }
-        .kiosk-print-sheet + .kiosk-print-sheet { break-before: page; }
-
-        .kiosk-print-grid {
-          display: grid;
-          grid-template-columns: repeat(${cols}, ${cardWidth}mm);
-          grid-auto-rows: ${cardHeight}mm;
-        }
-        .kiosk-print-cell {
-          position: relative;
-          width: ${cardWidth}mm;
-          height: ${cardHeight}mm;
-          break-inside: avoid;
-        }
-        .kiosk-print-card {
-          box-sizing: border-box;
-          width: 100%;
-          height: 100%;
-          padding: 5mm 5mm 3.5mm;
-          display: flex;
-          gap: 4mm;
-          align-items: center;
-          position: relative;
-          overflow: hidden;
-        }
-
-        /*
-         * 十字トンボ: トリム線の交点（カードの角）を中心に、水平・垂直の線を
-         * カード面へ重ねて描く（各方向 3mm = 全長 6mm、太さ 0.2mm）。
-         * 隣接セルの十字は同一位置に重なるだけなので二重描画で問題ない。
-         */
-        .kiosk-crop { position: absolute; width: 0; height: 0; }
-        .kiosk-crop::before,
-        .kiosk-crop::after { content: ""; position: absolute; background: #888888; }
-        .kiosk-crop::before { width: 6mm; height: 0.2mm; left: -3mm; top: -0.1mm; }
-        .kiosk-crop::after { width: 0.2mm; height: 6mm; left: -0.1mm; top: -3mm; }
-        .kiosk-crop-tl { top: 0; left: 0; }
-        .kiosk-crop-tr { top: 0; left: ${cardWidth}mm; }
-        .kiosk-crop-bl { top: ${cardHeight}mm; left: 0; }
-        .kiosk-crop-br { top: ${cardHeight}mm; left: ${cardWidth}mm; }
-
-        /* 原寸確認スケール — 上余白（断裁で捨てる帯）に薄く印字する。 */
-        .kiosk-print-scale {
-          position: absolute;
-          top: 5.5mm;
-          left: ${marginX}mm;
-          display: flex;
-          align-items: center;
-          gap: 2mm;
-          color: #999999;
-          font-size: 5pt;
-          line-height: 1;
-        }
-        .kiosk-print-scale-bar {
-          display: block;
-          width: 50mm;
-          height: 1.5mm;
-          border-left: 0.2mm solid #999999;
-          border-right: 0.2mm solid #999999;
-          border-bottom: 0.2mm solid #999999;
-        }
-
-        .kiosk-print-card-head {
-          flex: 1;
-          display: flex;
-          flex-direction: column;
-          justify-content: center;
-          gap: 2.5mm;
-          min-width: 0;
-        }
-        .kiosk-print-company { font-size: 8pt; color: #444444; }
-        .kiosk-print-user { font-size: 13pt; font-weight: 700; overflow-wrap: anywhere; }
-        /* 未割当カード: 割当後に氏名を手書きする記名線 */
-        .kiosk-print-user-line { display: block; height: 9mm; border-bottom: 0.35mm solid #333333; }
-        /* カード識別 No.（SY08 一覧の表示末尾と一致 — 整理・照合用） */
-        .kiosk-print-shortcode {
-          font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-          font-size: 10pt;
-          font-weight: 700;
-          letter-spacing: 0.02em;
-        }
-        .kiosk-print-qr { flex-shrink: 0; }
-        .kiosk-print-qr svg { width: 36mm; height: 36mm; display: block; }
-        .kiosk-print-id {
-          position: absolute;
-          right: 5mm;
-          bottom: 2.5mm;
-          font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-          font-size: 6.5pt;
-          color: #777777;
-        }
-
-        /* 画面では用紙の外形が分かるように影だけ足す（印刷では消す）。 */
-        @media screen {
-          .kiosk-print-root { background: #f1f3f5; padding-bottom: 24px; }
-          .kiosk-print-sheet {
-            box-shadow: 0 0 6px rgba(0, 0, 0, 0.25);
-            margin-bottom: 16px;
-          }
-        }
-        @media print {
-          .kiosk-print-toolbar { display: none; }
-          .kiosk-print-sheet { box-shadow: none; margin: 0 auto; }
-        }
-      `}</style>
+      <style>
+        {kioskCardPrintStyles({
+          pageWidthMm: A4.width,
+          pageHeightMm: A4.height,
+          marginXMm: marginX,
+          marginYMm: marginY,
+          cols,
+          cardWidthMm: cardWidth,
+          cardHeightMm: cardHeight,
+        })}
+      </style>
     </div>
   );
 }

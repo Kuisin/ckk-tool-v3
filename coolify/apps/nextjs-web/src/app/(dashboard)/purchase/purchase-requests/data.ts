@@ -8,6 +8,7 @@
  */
 
 import { ownOrPlantWhere, rowInScope } from "@ckk/authz-core";
+import { getTranslations } from "next-intl/server";
 import type {
   PurchaseRequestRow,
   PurchaseRequestStatus,
@@ -47,6 +48,7 @@ function purchaseRequestScope(
 
 /** 一覧 (PU01) — 新しい依頼番号から順に。 */
 export async function fetchPurchaseRequests(): Promise<PurchaseRequestRow[]> {
+  const tr = await getTranslations();
   const authz = await checkPermission("purchase_order", "READ");
   if (!authz.ok) return [];
   const rows = await prisma.purchaseRequest.findMany({
@@ -68,7 +70,7 @@ export async function fetchPurchaseRequests(): Promise<PurchaseRequestRow[]> {
       .sort();
     return {
       requestNumber: r.requestNumber,
-      requesterName: r.createdByUser?.displayName ?? "システム",
+      requesterName: r.createdByUser?.displayName ?? tr("common.system"),
       primaryMaterial: r.items[0]?.material.code ?? null,
       itemCount: r.items.length,
       status: r.status,
@@ -82,6 +84,7 @@ export async function fetchPurchaseRequests(): Promise<PurchaseRequestRow[]> {
 export async function fetchPurchaseRequest(
   requestNumber: string,
 ): Promise<PurchaseRequestView | null> {
+  const tr = await getTranslations();
   const authz = await checkPermission("purchase_order", "READ");
   if (!authz.ok) return null;
   const r = await prisma.purchaseRequest.findUnique({
@@ -119,14 +122,14 @@ export async function fetchPurchaseRequest(
       })
     : [];
   const nameOf = (id: string | null | undefined) =>
-    (id && users.find((u) => u.id === id)?.displayName) || "システム";
+    (id && users.find((u) => u.id === id)?.displayName) || tr("common.system");
 
   return {
     id: r.id,
     requestNumber: r.requestNumber,
     status: r.status as PurchaseRequestStatus,
     purpose: r.purpose,
-    requesterName: r.createdByUser?.displayName ?? "システム",
+    requesterName: r.createdByUser?.displayName ?? tr("common.system"),
     requestedAt: iso(r.requestedAt),
     approvedAt: iso(r.approvedAt),
     orderedAt: iso(r.orderedAt),

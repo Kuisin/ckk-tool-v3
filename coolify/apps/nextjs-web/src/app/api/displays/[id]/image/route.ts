@@ -11,6 +11,7 @@
 
 import { revalidatePath } from "next/cache";
 import { NextResponse } from "next/server";
+import { getTranslations } from "next-intl/server";
 import { z } from "zod";
 import { MAX_DISPLAY_IMAGE_BYTES, saveDisplayImage } from "@/lib/display-image";
 
@@ -22,10 +23,11 @@ export async function POST(
   request: Request,
   { params }: { params: Promise<{ id: string }> },
 ): Promise<NextResponse> {
+  const tr = await getTranslations();
   const { id } = await params;
   if (!uuidSchema.safeParse(id).success) {
     return NextResponse.json(
-      { ok: false, error: "対象の指定が不正です" },
+      { ok: false, error: tr("settings.kioskDevicesActions.invalidTarget") },
       { status: 400 },
     );
   }
@@ -35,7 +37,7 @@ export async function POST(
     form = await request.formData();
   } catch {
     return NextResponse.json(
-      { ok: false, error: "multipart/form-data で送信してください" },
+      { ok: false, error: tr("common.sendAsMultipartFormData") },
       { status: 400 },
     );
   }
@@ -43,14 +45,14 @@ export async function POST(
   const file = form.get("file");
   if (!(file instanceof File)) {
     return NextResponse.json(
-      { ok: false, error: "画像ファイルを選択してください" },
+      { ok: false, error: tr("common.selectAnImageFile") },
       { status: 400 },
     );
   }
   // 巨大ファイルは保存処理に入る前に弾く。
   if (file.size > MAX_DISPLAY_IMAGE_BYTES) {
     return NextResponse.json(
-      { ok: false, error: "画像サイズは 10MB 以下にしてください" },
+      { ok: false, error: tr("common.imageSizeMax10Mb") },
       { status: 413 },
     );
   }

@@ -269,6 +269,7 @@ export function DeliveryOrderForm({
       .filter((i): i is DeliverySourceInfo => Boolean(i));
     const combineError = combinabilityError(
       [...existingRefs, first],
+      tr,
       form.values.customerBpId || undefined,
     );
     if (combineError) {

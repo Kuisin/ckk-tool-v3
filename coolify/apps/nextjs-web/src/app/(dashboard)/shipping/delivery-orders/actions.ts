@@ -423,6 +423,7 @@ async function validateDispatchLots(
 async function validateCombinable(
   items: { orderLineId: string | null }[],
   customerBpId: string,
+  tr: Awaited<ReturnType<typeof getTranslations>>,
 ): Promise<string | null> {
   const ids = [
     ...new Set(
@@ -442,6 +443,7 @@ async function validateCombinable(
   });
   return combinabilityError(
     lines.map((l) => l.acceptance),
+    tr,
     customerBpId,
   );
 }
@@ -578,7 +580,11 @@ export async function createDeliveryOrder(
       if (lotError) return actionError(lotError);
       const remainingError = await validateLineRemaining(v.items, tr);
       if (remainingError) return actionError(remainingError);
-      const combineError = await validateCombinable(v.items, v.customerBpId);
+      const combineError = await validateCombinable(
+        v.items,
+        v.customerBpId,
+        tr,
+      );
       if (combineError) return actionError(combineError);
     }
     const workOrderId = await resolveHeaderWorkOrderId(v.items);
@@ -685,6 +691,7 @@ export async function updateDeliveryOrder(
         const combineError = await validateCombinable(
           v.items,
           prior.customerBpId,
+          tr,
         );
         if (combineError) return actionError(combineError);
       }

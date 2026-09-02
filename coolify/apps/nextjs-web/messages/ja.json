@@ -2297,7 +2297,9 @@
       "flowChangeAlreadyApplied": "適用済みです（事後承認 — 差し戻されても自動では戻りません）。",
       "flowChangeApprovalTitle": "工程フロー変更の承認",
       "flowChangeDescription": "{summary}｜依頼: {requestedBy}｜{stepLabel}。{note}",
-      "flowChangeNotAppliedYet": "承認されるまで工程は変わりません。"
+      "flowChangeNotAppliedYet": "承認されるまで工程は変わりません。",
+      "andNMoreOrderLines": "{first} ほか{count}件",
+      "andNMoreCustomers": "{first} ほか{count}社"
     },
     "addBranchModal": {
       "theBranchWasAdded": "分岐を追加しました",
@@ -5461,7 +5463,10 @@
       "enterLabelJa": "表示名（日本語）を入力してください",
       "duplicateTypeKey": "種別キーが重複しています",
       "typeInUseCannotDelete": "使用中の種別は削除できません: {keys}",
-      "saveTypesFailed": "種別の保存に失敗しました"
+      "saveTypesFailed": "種別の保存に失敗しました",
+      "auditWorkLocationAdded": "作業場所「{name}」を追加",
+      "auditWorkLocationUpdated": "作業場所「{name}」を更新",
+      "auditWorkLocationDeleted": "作業場所を削除"
     },
     "storageLocationActions": {
       "codeFormat": "コードは英数字・ハイフン・アンダースコアで入力",
@@ -7187,7 +7192,10 @@
       "confirmShipBodyStock": "出荷書 {number} を出荷済みにします（在庫保管のため注文明細の出荷状態は変わりません）。",
       "shippedBody": "出荷書 {number} を出荷済みにしました",
       "confirmDeleteBody": "出荷書 {number} を削除します。この操作は取り消せません。",
-      "deletedBody": "出荷書 {number} を削除しました"
+      "deletedBody": "出荷書 {number} を削除しました",
+      "onlySameCustomerCanBeCombined": "1 つの出荷書には同じ顧客の注文明細だけを載せられます",
+      "onlySameShipToCanBeCombined": "1 つの出荷書には同じ出荷先の注文明細だけを載せられます",
+      "onlySameDeliveryMethodCanBeCombined": "1 つの出荷書には同じ配送方法（通常配送 / ユーザー直送）の注文明細だけを載せられます"
     },
     "pendingShipments": {
       "completedLots": "完了ロット",

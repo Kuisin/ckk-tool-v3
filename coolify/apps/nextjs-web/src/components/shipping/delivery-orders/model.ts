@@ -11,6 +11,8 @@
  * Decimal 列はサーバー境界で Number() 済み。ここは pure / client-safe のみ。
  */
 
+import type { Tr } from "@/lib/i18n";
+
 export type DeliveryOrderStatus = "DRAFT" | "CONFIRMED" | "SHIPPED";
 
 /** DELIVERY_ORDER_TYPE — DISPATCH=発送（請求対象）/ STOCK_STORAGE=在庫保管（請求外）。 */
@@ -106,6 +108,7 @@ export interface CombinableLineRef {
  */
 export function combinabilityError(
   refs: CombinableLineRef[],
+  tr: Tr,
   headerCustomerBpId?: string,
 ): string | null {
   if (refs.length === 0) return null;
@@ -114,16 +117,16 @@ export function combinabilityError(
     headerCustomerBpId &&
     refs.some((r) => r.customerBpId !== headerCustomerBpId)
   ) {
-    return "1 つの出荷書には同じ顧客の注文明細だけを載せられます";
+    return tr("shipping.deliveryOrders.onlySameCustomerCanBeCombined");
   }
   if (refs.some((r) => r.customerBpId !== first.customerBpId)) {
-    return "1 つの出荷書には同じ顧客の注文明細だけを載せられます";
+    return tr("shipping.deliveryOrders.onlySameCustomerCanBeCombined");
   }
   if (refs.some((r) => (r.shipToBpId ?? null) !== (first.shipToBpId ?? null))) {
-    return "1 つの出荷書には同じ出荷先の注文明細だけを載せられます";
+    return tr("shipping.deliveryOrders.onlySameShipToCanBeCombined");
   }
   if (refs.some((r) => r.deliveryMethod !== first.deliveryMethod)) {
-    return "1 つの出荷書には同じ配送方法（通常配送 / ユーザー直送）の注文明細だけを載せられます";
+    return tr("shipping.deliveryOrders.onlySameDeliveryMethodCanBeCombined");
   }
   return null;
 }
