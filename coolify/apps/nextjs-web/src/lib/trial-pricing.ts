@@ -183,6 +183,11 @@ export function calcTrialPricing(
 /**
  * 従来の固定計算ロジック（Excel 由来）。criteria エンジン導入後は `DEFAULT_CRITERIA`
  * がこれを再現し、この関数はパリティテストの参照実装として保持する。
+ *
+ * ライブの計算経路は `calcTrialPricing`（criteria エンジン）だけで、この
+ * 関数はどの画面からも呼ばれない — 呼び出し元は自分自身とパリティテストのみ
+ * （既に `optRate(cylinderTypeOptions("ja"), …)` 等で ja 固定にしてある）。
+ * warnings の文言・"無" 比較も同じ理由で i18n-ignore。
  */
 export function calcTrialPricingLegacy(
   input: TrialInput,
@@ -204,7 +209,7 @@ export function calcTrialPricingLegacy(
       input.cylinderType ?? "NORMAL",
     );
     material = (input.cylinderMaterialPrice ?? 0) + cyl * cylRate;
-    if (cyl === 0) warnings.push("円筒加工費が範囲外です（最大径/全長を確認）");
+    if (cyl === 0) warnings.push("円筒加工費が範囲外です（最大径/全長を確認）"); // i18n-ignore
   } else {
     // 丸棒/OH: 材料原価 = 参照単価(¥/1000mm) × (全長 ÷ 1000mm) (+ センタレス if 黒皮)
     const perPieceMaterial = roundUp(
@@ -218,14 +223,14 @@ export function calcTrialPricingLegacy(
     }
     material = perPieceMaterial + centerless;
     if (input.materialBarPrice <= 0)
-      warnings.push("素材の仕入実績がありません（1000mm単価を入力）");
+      warnings.push("素材の仕入実績がありません（1000mm単価を入力）"); // i18n-ignore
   }
 
   // ── 段加工費 ──────────────────────────────────────────────────────────────
   let step = 0;
   if (input.stepLength >= 0.01 && input.stepType !== "NONE") {
     const base = lookupMatrix(STEP_MACHINING, dia, input.stepLength);
-    if (base == null) warnings.push("段加工費が範囲外です");
+    if (base == null) warnings.push("段加工費が範囲外です"); // i18n-ignore
     step = (base ?? 0) * optRate(stepTypeOptions("ja"), input.stepType);
   }
 
@@ -233,7 +238,7 @@ export function calcTrialPricingLegacy(
   let neck = 0;
   if (input.neckLength >= 0.01 && input.neckType !== "NONE") {
     const base = lookupMatrix(NECK_MACHINING, dia, input.neckLength);
-    if (base == null) warnings.push("首下加工費が範囲外です");
+    if (base == null) warnings.push("首下加工費が範囲外です"); // i18n-ignore
     neck = (base ?? 0) * optRate(neckTypeOptions("ja"), input.neckType);
   }
 
@@ -242,6 +247,7 @@ export function calcTrialPricingLegacy(
 
   // ── コート代 (丸棒 ×1.5 / 円筒・OH ×1.3, ROUNDUP -1) ───────────────────────
   let coating = 0;
+  // i18n-ignore
   if (input.coating && input.coating !== "無") {
     coating = roundUp(
       coatingRawCost(input.coating, dia, len) *

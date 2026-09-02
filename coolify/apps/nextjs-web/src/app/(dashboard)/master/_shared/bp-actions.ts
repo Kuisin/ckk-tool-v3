@@ -204,7 +204,7 @@ export async function addContact(
   const tr = await getTranslations();
   const authz = await checkPermission("master", "UPDATE");
   if (!authz.ok) return actionError(authz.error);
-  const parsed = contactInput.safeParse(input);
+  const parsed = contactInput(tr).safeParse(input);
   if (!parsed.success) {
     return actionError(
       parsed.error.issues[0]?.message ?? tr("common.invalidInput"),

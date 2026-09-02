@@ -783,7 +783,12 @@
     "workflowChangeRequest": "Workflow change",
     "orderAcceptanceCancelRequest": "Order acceptance cancellation request",
     "formRequest": "Form request",
-    "untitled": "Untitled"
+    "untitled": "Untitled",
+    "justNow": "Just now",
+    "minutesAgo": "{n} min ago",
+    "hoursAgo": "{n} hr ago",
+    "yesterday": "Yesterday",
+    "daysAgo": "{n} days ago"
   },
   "shell": {
     "appsLabel": "Apps",
@@ -3344,7 +3349,12 @@
       "selectACriterionOnTheLeft": "Select a criterion on the left to edit its formula",
       "selectATableFromTheList": "Select a table from the list on the left",
       "selectingASectionOpensItsEdit": "Selecting a section opens its edit page.",
-      "selectAToolTypeOnThe": "Select a tool type on the left to edit which criteria apply"
+      "selectAToolTypeOnThe": "Select a tool type on the left to edit which criteria apply",
+      "criteriaSummary": "{count} criteria — the estimated unit price is their sum",
+      "toolTypesSummary": "{count} tool types — criteria and unit price per type",
+      "materialPolicySummary": "{basis} / lookback {months} mo.",
+      "customInputsSummary": "{count} fields — estimate inputs and global constants",
+      "lookupsSummary": "{count} tables — diameter × length matrices referenced from expressions"
     },
     "kioskCards": {
       "thereAreNoCardsToPrint": "There are no cards to print.",
@@ -4621,7 +4631,10 @@
       "bulkEnabled": "Enabled {count} business partner(s)",
       "daySuffix": "{value} days",
       "endOfMonth": "End of month",
-      "primaryContactTag": "(Primary)"
+      "primaryContactTag": "(Primary)",
+      "enterFullName": "Enter a full name",
+      "roleInfoRequired": "Enter information for {role}",
+      "selectASalesRep": "Select a sales rep"
     },
     "defectTypes": {
       "theDefectTypeWasCreated": "The defect type was created",

@@ -74,21 +74,28 @@ const s = (v: unknown): string | null =>
 const n = (v: unknown): number | null =>
   typeof v === "number" && Number.isFinite(v) ? v : null;
 
-/** 種別文字列 → ORDER_TYPE（本番/テスト/サンプル・英語表記に耐性）。 */
+/**
+ * 種別文字列 → ORDER_TYPE（本番/テスト/サンプル・英語表記に耐性）。
+ * 判定語は**顧客の注文書に実際に印字されている日本語**（+ 英語表記）との
+ * 突合であって UI 文言ではない — 訳すと本物の注文書を読み違える
+ * （company-aliases.ts の法人格表記と同じ扱い。i18n-ignore）。
+ */
 export function normalizeOrderType(
   raw: unknown,
 ): "PRODUCTION" | "TEST" | "SAMPLE" | "OTHER" {
   const t = (typeof raw === "string" ? raw : "").toLowerCase();
   if (
     !t ||
-    t.includes("本番") ||
+    t.includes("本番") || // i18n-ignore
     t.includes("production") ||
-    t.includes("量産")
+    t.includes("量産") // i18n-ignore
   )
     return "PRODUCTION";
-  if (t.includes("テスト") || t.includes("test") || t.includes("試作"))
+  // i18n-ignore
+  if (t.includes("テスト") || t.includes("test") || t.includes("試作")) {
     return "TEST";
-  if (t.includes("サンプル") || t.includes("sample")) return "SAMPLE";
+  }
+  if (t.includes("サンプル") || t.includes("sample")) return "SAMPLE"; // i18n-ignore
   return "OTHER";
 }
 

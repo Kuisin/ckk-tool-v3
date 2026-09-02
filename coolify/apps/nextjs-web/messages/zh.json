@@ -783,7 +783,12 @@
     "workflowChangeRequest": "工序流程变更",
     "orderAcceptanceCancelRequest": "订单确认书作废申请",
     "formRequest": "表单申请",
-    "untitled": "无标题"
+    "untitled": "无标题",
+    "justNow": "刚刚",
+    "minutesAgo": "{n} 分钟前",
+    "hoursAgo": "{n} 小时前",
+    "yesterday": "昨天",
+    "daysAgo": "{n} 天前"
   },
   "shell": {
     "appsLabel": "应用",
@@ -3344,7 +3349,12 @@
       "selectACriterionOnTheLeft": "从左侧列表选择基准即可编辑公式",
       "selectATableFromTheList": "请从左侧列表选择表",
       "selectingASectionOpensItsEdit": "选择各区块即可打开编辑页面。",
-      "selectAToolTypeOnThe": "从左侧列表选择刀具类别即可编辑适用基准"
+      "selectAToolTypeOnThe": "从左侧列表选择刀具类别即可编辑适用基准",
+      "criteriaSummary": "{count} 项基准 — 试算单价为各基准之和",
+      "toolTypesSummary": "{count} 种刀具类别 — 各类别的适用基准与试算单价",
+      "materialPolicySummary": "{basis} / 参考 {months} 个月",
+      "customInputsSummary": "{count} 个项目 — 试算输入与全局固定系数",
+      "lookupsSummary": "{count} 张表 — 直径×全长矩阵等可在表达式中引用"
     },
     "kioskCards": {
       "thereAreNoCardsToPrint": "没有可打印的卡。",
@@ -4621,7 +4631,10 @@
       "bulkEnabled": "已启用 {count} 个业务伙伴",
       "daySuffix": "{value} 天",
       "endOfMonth": "月末",
-      "primaryContactTag": "（主要负责人）"
+      "primaryContactTag": "（主要负责人）",
+      "enterFullName": "请输入姓名",
+      "roleInfoRequired": "请输入{role}信息",
+      "selectASalesRep": "请选择销售负责人"
     },
     "defectTypes": {
       "theDefectTypeWasCreated": "已创建不良类别",

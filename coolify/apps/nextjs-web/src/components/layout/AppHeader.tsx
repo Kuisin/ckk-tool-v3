@@ -427,7 +427,7 @@ export function AppHeader({
                           className="whitespace-nowrap"
                           size="xs"
                         >
-                          {relativeTime(notif.createdAt)}
+                          {relativeTime(notif.createdAt, tr)}
                         </Text>
                       </Group>
                     </UnstyledButton>

@@ -27,31 +27,42 @@ export default async function TrialPricingEnginePage() {
     {
       key: "criteria",
       title: tr("common.calculationBasis"),
-      summary: `${s.criteria.length} 基準 — 見積単価は加算基準の合計`,
+      summary: tr("settings.trialPricingEngine.criteriaSummary", {
+        count: s.criteria.length,
+      }),
       href: `${BASE}/criteria`,
     },
     {
       key: "tool-types",
       title: tr("common.toolTypes"),
-      summary: `${s.toolTypes.length} 種 — 種ごとの適用基準と見積単価`,
+      summary: tr("settings.trialPricingEngine.toolTypesSummary", {
+        count: s.toolTypes.length,
+      }),
       href: `${BASE}/tool-types`,
     },
     {
       key: "material-policy",
       title: tr("common.materialReferencePricePolicy"),
-      summary: `${basisLabel} / 参照 ${s.materialPriceLookbackMonths}ヶ月`,
+      summary: tr("settings.trialPricingEngine.materialPolicySummary", {
+        basis: basisLabel,
+        months: s.materialPriceLookbackMonths,
+      }),
       href: `${BASE}/material-policy`,
     },
     {
       key: "custom-inputs",
       title: tr("common.customInputs"),
-      summary: `${s.customInputs.length} 項目 — 見積入力とグローバル固定係数`,
+      summary: tr("settings.trialPricingEngine.customInputsSummary", {
+        count: s.customInputs.length,
+      }),
       href: `${BASE}/custom-inputs`,
     },
     {
       key: "lookups",
       title: tr("common.lookupTable"),
-      summary: `${s.lookupTables.length} 表 — 径×全長マトリクス等を式内で参照`,
+      summary: tr("settings.trialPricingEngine.lookupsSummary", {
+        count: s.lookupTables.length,
+      }),
       href: `${BASE}/lookups`,
     },
   ];

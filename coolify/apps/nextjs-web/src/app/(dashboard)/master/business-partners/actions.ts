@@ -20,6 +20,7 @@ import { z } from "zod";
 import { recordAudit } from "@/lib/audit";
 import { checkPermission } from "@/lib/authz";
 import { prisma } from "@/lib/db";
+import type { Tr } from "@/lib/i18n";
 import { nextSerialCode } from "@/lib/numbering";
 import { syncCustomerSalesReps } from "@/lib/sales-rep";
 import {
@@ -46,11 +47,13 @@ import {
 // 実行時に `ReferenceError: BpInput is not defined` で保存が失敗する）。
 // 型は定義元 ../_shared/bp-schema から直接 import する。
 
-const branchInput = bpBaseInput.extend({
-  contactName: z.string().optional(),
-});
+function branchInput(tr: Tr) {
+  return bpBaseInput(tr).extend({
+    contactName: z.string().optional(),
+  });
+}
 
-export type BranchInput = z.infer<typeof branchInput>;
+export type BranchInput = z.infer<ReturnType<typeof branchInput>>;
 
 function revalidate(id?: string, branchId?: string) {
   revalidatePath(BP_BASE_PATH);
@@ -120,7 +123,7 @@ export async function createBusinessPartner(
   const tr = await getTranslations();
   const authz = await checkPermission("master", "CREATE");
   if (!authz.ok) return actionError(authz.error);
-  const parsed = bpInput.safeParse(input);
+  const parsed = bpInput(tr).safeParse(input);
   if (!parsed.success) {
     return actionError(
       parsed.error.issues[0]?.message ?? tr("common.invalidInput"),
@@ -163,7 +166,7 @@ export async function updateBusinessPartner(
   const tr = await getTranslations();
   const authz = await checkPermission("master", "UPDATE");
   if (!authz.ok) return actionError(authz.error);
-  const parsed = bpInput.safeParse(input);
+  const parsed = bpInput(tr).safeParse(input);
   if (!parsed.success) {
     return actionError(
       parsed.error.issues[0]?.message ?? tr("common.invalidInput"),
@@ -231,7 +234,7 @@ export async function createBranch(
   const tr = await getTranslations();
   const authz = await checkPermission("master", "CREATE");
   if (!authz.ok) return actionError(authz.error);
-  const parsed = branchInput.safeParse(input);
+  const parsed = branchInput(tr).safeParse(input);
   if (!parsed.success) {
     return actionError(
       parsed.error.issues[0]?.message ?? tr("common.invalidInput"),
@@ -286,7 +289,7 @@ export async function updateBranch(
   const tr = await getTranslations();
   const authz = await checkPermission("master", "UPDATE");
   if (!authz.ok) return actionError(authz.error);
-  const parsed = branchInput.safeParse(input);
+  const parsed = branchInput(tr).safeParse(input);
   if (!parsed.success) {
     return actionError(
       parsed.error.issues[0]?.message ?? tr("common.invalidInput"),

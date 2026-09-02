@@ -783,7 +783,12 @@
     "workflowChangeRequest": "工程フロー変更",
     "orderAcceptanceCancelRequest": "注文請書キャンセル依頼",
     "formRequest": "フォーム申請",
-    "untitled": "無題"
+    "untitled": "無題",
+    "justNow": "たった今",
+    "minutesAgo": "{n}分前",
+    "hoursAgo": "{n}時間前",
+    "yesterday": "昨日",
+    "daysAgo": "{n}日前"
   },
   "shell": {
     "appsLabel": "アプリ",
@@ -3344,7 +3349,12 @@
       "selectACriterionOnTheLeft": "左の一覧から基準を選ぶと式を編集できます",
       "selectATableFromTheList": "左の一覧から表を選択してください",
       "selectingASectionOpensItsEdit": "各セクションを選ぶと編集ページが開きます。",
-      "selectAToolTypeOnThe": "左の一覧から工具種を選ぶと適用基準を編集できます"
+      "selectAToolTypeOnThe": "左の一覧から工具種を選ぶと適用基準を編集できます",
+      "criteriaSummary": "{count} 基準 — 見積単価は加算基準の合計",
+      "toolTypesSummary": "{count} 種 — 種ごとの適用基準と見積単価",
+      "materialPolicySummary": "{basis} / 参照 {months}ヶ月",
+      "customInputsSummary": "{count} 項目 — 見積入力とグローバル固定係数",
+      "lookupsSummary": "{count} 表 — 径×全長マトリクス等を式内で参照"
     },
     "kioskCards": {
       "thereAreNoCardsToPrint": "印刷対象のカードがありません。",
@@ -4621,7 +4631,10 @@
       "bulkEnabled": "{count}件の取引先を有効化しました",
       "daySuffix": "{value}日",
       "endOfMonth": "月末",
-      "primaryContactTag": "（主担当）"
+      "primaryContactTag": "（主担当）",
+      "enterFullName": "氏名を入力してください",
+      "roleInfoRequired": "{role}の情報を入力してください",
+      "selectASalesRep": "担当者を選択してください"
     },
     "defectTypes": {
       "theDefectTypeWasCreated": "不良種類を作成しました",
