@@ -1,3 +1,4 @@
+import { I18nProvider } from "@/components/I18nProvider";
 import { loadShippingBoard, plantNameOf } from "@/lib/display-board";
 import { optionNumber } from "@/lib/display-templates";
 import { boardContext, NOT_REGISTERED } from "../_shared/options";
@@ -26,10 +27,12 @@ export default async function ShippingBoardPage({
   ]);
 
   return (
-    <ShippingBoard
-      plantName={plantName}
-      rows={rows}
-      rowsPerPage={optionNumber(ctx.options, "rows", 8)}
-    />
+    <I18nProvider locale={ctx.locale}>
+      <ShippingBoard
+        plantName={plantName}
+        rows={rows}
+        rowsPerPage={optionNumber(ctx.options, "rows", 8)}
+      />
+    </I18nProvider>
   );
 }

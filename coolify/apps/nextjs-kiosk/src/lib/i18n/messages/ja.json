@@ -385,7 +385,9 @@
     "connectionStatus": "接続状態: {label}",
     "offlineTitle": "サーバーに接続できません",
     "offlineMessage": "ネットワーク（Wi-Fi / LAN）を確認してください。",
-    "offlineRecovery": "接続が回復すると自動的に再開します。"
+    "offlineRecovery": "接続が回復すると自動的に再開します。",
+    "appTitle": "CKK 専用端末",
+    "appDescription": "共有キオスク端末 — QR コードでログイン"
   },
   "linkCode": {
     "label": "リンクコード",
@@ -408,5 +410,83 @@
     "md": "標準",
     "lg": "大",
     "xl": "最大"
+  },
+  "display": {
+    "shell": {
+      "unnamedScreen": "（名称未設定）",
+      "screenOf": "{index} / {total} 枚目",
+      "connectionFailedTitle": "接続できません",
+      "connectionFailedDetail": "サーバーに接続できません。回復すると自動で表示に戻ります。",
+      "noContentTitle": "表示内容が設定されていません",
+      "noContentDetail": "管理画面「ディスプレイ管理」で、この画面に表示内容を割り当ててください。",
+      "invalidContentTitle": "表示内容の設定を確認してください",
+      "invalidContentDetail": "割り当てられた表示内容の設定が正しくありません。",
+      "metabaseNotConfiguredTitle": "集計画面が設定されていません",
+      "metabaseNotConfiguredDetail": "Metabase の接続設定（URL と署名鍵）が未設定です。",
+      "unsupportedContentTitle": "表示できません",
+      "unsupportedContentDetail": "表示内容の種別に対応していません。",
+      "iframeTitleFallback": "ディスプレイ",
+      "appTitle": "CKK ディスプレイ",
+      "appDescription": "現場向け管理ディスプレイ"
+    },
+    "blocked": {
+      "disabled": "この画面は一時停止されています。",
+      "revoked": "この画面の登録は取り消されました。",
+      "unavailable": "この画面は使用できません。",
+      "detail": "再び使うには、管理画面（端末管理 → ディスプレイ）から操作してください。この画面では登録し直せません。"
+    },
+    "setup": {
+      "reasonNotFound": "この画面の登録は無効になりました。もう一度登録してください。",
+      "reasonExpired": "登録の有効期限が切れました。もう一度登録してください。",
+      "reasonDisabled": "この画面は一時停止されています。管理者にお問い合わせください。",
+      "reasonRevoked": "この画面の登録は取り消されました。もう一度登録してください。",
+      "codeIssueFailed": "コードを発行できませんでした",
+      "connectionFailed": "サーバーに接続できません",
+      "screenOfMachine": "この機械の {total} 枚中 {index} 枚目",
+      "linkedMessage": "リンクしました{deviceNameSuffix}。管理者が有効化すると表示を開始します。",
+      "deviceNameSuffix": ": {name}",
+      "instruction": "管理者に「設定 → 端末管理 → ディスプレイ」でこのコードをスキャンまたは入力してもらい、登録してください。",
+      "title": "ディスプレイの登録"
+    },
+    "board": {
+      "unitPcs": "本",
+      "production": {
+        "title": "生産状況",
+        "empty": "進行中の指示書はありません",
+        "unassigned": "担当者未割当",
+        "othersCount": "ほか {count} 名",
+        "pending": "未着手",
+        "paused": "一時停止",
+        "working": "作業中",
+        "stepsProgress": "{completed} / {total} 工程"
+      },
+      "shipping": {
+        "title": "出荷予定",
+        "empty": "出荷予定はありません",
+        "draftLabel": "準備中",
+        "confirmedLabel": "確定",
+        "noOrigin": "出荷元未設定",
+        "countUnit": "{count} 件 / {total} 本",
+        "lineUnit": "{count} 明細 / 本"
+      },
+      "quality": {
+        "title": "品質・不良",
+        "empty": "不良の記録はありません",
+        "recentDaysTotal": "直近 {days} 日 / 合計 {count} 件",
+        "unitCountDays": "件 / 直近 {days} 日"
+      },
+      "pending": {
+        "title": "手配待ち",
+        "empty": "手配待ちはありません",
+        "overdueCount": "納期超過 {count} 件",
+        "noDueDate": "納期未定",
+        "overdueLabel": "納期超過",
+        "dueLabel": "納期",
+        "unarranged": "未手配 / {quantity} 本"
+      },
+      "announcement": {
+        "empty": "お知らせの本文が設定されていません"
+      }
+    }
   }
 }

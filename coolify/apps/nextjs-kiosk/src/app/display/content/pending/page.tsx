@@ -1,3 +1,4 @@
+import { I18nProvider } from "@/components/I18nProvider";
 import { loadPendingBoard, plantNameOf } from "@/lib/display-board";
 import { optionBoolean, optionNumber } from "@/lib/display-templates";
 import { boardContext, NOT_REGISTERED } from "../_shared/options";
@@ -30,10 +31,12 @@ export default async function PendingBoardPage({
   ]);
 
   return (
-    <PendingBoard
-      plantName={plantName}
-      rows={rows}
-      rowsPerPage={optionNumber(ctx.options, "rows", 8)}
-    />
+    <I18nProvider locale={ctx.locale}>
+      <PendingBoard
+        plantName={plantName}
+        rows={rows}
+        rowsPerPage={optionNumber(ctx.options, "rows", 8)}
+      />
+    </I18nProvider>
   );
 }

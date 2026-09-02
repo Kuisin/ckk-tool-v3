@@ -1,6 +1,7 @@
 "use client";
 
 import { Center, Stack, Text } from "@mantine/core";
+import { useI18n } from "@/components/I18nProvider";
 import { Clock } from "../_shared/Clock";
 
 /**
@@ -35,6 +36,7 @@ export function AnnouncementBoard({
   level: string;
   showClock: boolean;
 }) {
+  const { m } = useI18n();
   const style = LEVEL[level] ?? LEVEL.info;
   const text = message.trim();
 
@@ -61,7 +63,7 @@ export function AnnouncementBoard({
           </Text>
         ) : (
           <Text c="dimmed" style={{ fontSize: "2rem" }} ta="center">
-            お知らせの本文が設定されていません
+            {m.display.board.announcement.empty}
           </Text>
         )}
         {showClock && <Clock />}

@@ -22,7 +22,7 @@ import { recordAudit } from "./audit";
 import { prisma } from "./db";
 import type { LocalizedText } from "./format";
 import { localized } from "./format";
-import type { Locale } from "./i18n";
+import { getMessages, type Locale } from "./i18n";
 import {
   type BoolLabels,
   formatCounts,
@@ -35,6 +35,7 @@ import {
   resolveItemPass,
   samplingSpecFromRow,
 } from "./inspection-core";
+import { encodeInventoryNote } from "./inventory-note-core";
 import type { StepActionResult, StepErrorCode } from "./step-execution";
 import { inspectionOutcome } from "./steps-core";
 
@@ -180,7 +181,7 @@ export async function getStepRecordingData(
 
   // 実測値の表示（合格数のみ → 合格 n/m、新形式 measured_values は型別
   // フォーマット、旧形式は生値）
-  const passLabel = locale === "en" ? "Pass" : "合格";
+  const passLabel = getMessages(locale).steps.inspection.pass;
   const valueLabel = (it: {
     measuredValue: string | null;
     measuredValues: unknown;
@@ -254,15 +255,15 @@ async function findRecordableStep(stepId: string, actorId: string) {
       workOrder: { select: { workOrderNumber: true } },
     },
   });
-  if (!step) return { error: fail("NOT_FOUND", "工程が見つかりません") };
+  if (!step) return { error: fail("NOT_FOUND", "工程が見つかりません") }; // i18n-ignore
   if (step.status !== "IN_PROGRESS") {
     return {
-      error: fail("NOT_IN_PROGRESS", "進行中の工程でのみ記録できます"),
+      error: fail("NOT_IN_PROGRESS", "進行中の工程でのみ記録できます"), // i18n-ignore
     };
   }
   if (step.sessionLockedBy && step.sessionLockedBy !== actorId) {
     return {
-      error: fail("LOCK_HELD_BY_OTHER", "別のユーザーがセッション中です"),
+      error: fail("LOCK_HELD_BY_OTHER", "別のユーザーがセッション中です"), // i18n-ignore
     };
   }
   return { step };
@@ -292,7 +293,7 @@ export async function recordInspection(
   items: InspectionItemInput[],
 ): Promise<StepActionResult> {
   if (items.length === 0) {
-    return fail("ITEMS_REQUIRED", "検査項目がありません");
+    return fail("ITEMS_REQUIRED", "検査項目がありません"); // i18n-ignore
   }
   const found = await findRecordableStep(stepId, actorId);
   if (found.error) return found.error;
@@ -309,7 +310,7 @@ export async function recordInspection(
     include: { inspectionTemplate: { include: { items: true } } },
   });
   if (!link) {
-    return fail("TEMPLATE_INVALID", "この工程の検査表ではありません");
+    return fail("TEMPLATE_INVALID", "この工程の検査表ではありません"); // i18n-ignore
   }
   // 記録方式・検査対象はシート（テンプレート）単位
   const style = link.inspectionTemplate.recordStyle;
@@ -319,7 +320,7 @@ export async function recordInspection(
   for (const i of items) {
     const spec = specs.get(i.templateItemId);
     if (!spec) {
-      return fail("TEMPLATE_INVALID", "検査項目がテンプレートと一致しません");
+      return fail("TEMPLATE_INVALID", "検査項目がテンプレートと一致しません"); // i18n-ignore
     }
     const optionValues = new Set(spec.options.map((o) => o.value));
     for (const s of i.values) {
@@ -329,13 +330,13 @@ export async function recordInspection(
           spec.inputType === "SELECT_MULTI") &&
         !values.every((x) => x === "" || optionValues.has(x))
       ) {
-        return fail("TEMPLATE_INVALID", "選択肢にない値が含まれています");
+        return fail("TEMPLATE_INVALID", "選択肢にない値が含まれています"); // i18n-ignore
       }
       if (
         spec.inputType === "BOOLEAN" &&
         !values.every((x) => x === "" || x === "true" || x === "false")
       ) {
-        return fail("TEMPLATE_INVALID", "真偽項目の値が不正です");
+        return fail("TEMPLATE_INVALID", "真偽項目の値が不正です"); // i18n-ignore
       }
     }
     if (
@@ -344,7 +345,7 @@ export async function recordInspection(
       i.passedCount != null &&
       i.passedCount > i.inspectedCount
     ) {
-      return fail("ITEMS_REQUIRED", "合格数が検査数を超えています");
+      return fail("ITEMS_REQUIRED", "合格数が検査数を超えています"); // i18n-ignore
     }
   }
 
@@ -389,7 +390,10 @@ export async function recordInspection(
     tableName: "work_orders",
     recordId: String(step.workOrder.workOrderNumber),
     after: {
-      note: `検査記録を保存（${status === "PASS" ? "合格" : "不合格"} / ${items.length} 項目）`,
+      note: encodeInventoryNote(
+        status === "PASS" ? "inspectionRecordedPass" : "inspectionRecordedFail",
+        { count: items.length },
+      ),
     },
   });
   return { ok: true };
@@ -407,7 +411,7 @@ export async function recordDefects(
   defects: DefectInput[],
 ): Promise<StepActionResult> {
   if (defects.length === 0) {
-    return fail("ITEMS_REQUIRED", "不良記録がありません");
+    return fail("ITEMS_REQUIRED", "不良記録がありません"); // i18n-ignore
   }
   const found = await findRecordableStep(stepId, actorId);
   if (found.error) return found.error;
@@ -419,7 +423,7 @@ export async function recordDefects(
     select: { id: true },
   });
   if (types.length !== typeIds.length) {
-    return fail("DEFECT_TYPE_INVALID", "不良種類が不正です");
+    return fail("DEFECT_TYPE_INVALID", "不良種類が不正です"); // i18n-ignore
   }
 
   await prisma.defectRecord.createMany({
@@ -434,7 +438,9 @@ export async function recordDefects(
     action: "UPDATE",
     tableName: "work_orders",
     recordId: String(step.workOrder.workOrderNumber),
-    after: { note: `不良記録を追加（${defects.length} 件）` },
+    after: {
+      note: encodeInventoryNote("defectsRecorded", { count: defects.length }),
+    },
   });
   return { ok: true };
 }

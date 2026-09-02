@@ -3668,7 +3668,10 @@
       "cannotShowTheSampleTheShared": "Cannot show the sample (the shared-device URL is not set)",
       "sampleOfLabel": "Sample of {label}",
       "linkThisDisplay": "Link display: {name}",
-      "screenNumber": "Screen {n}"
+      "screenNumber": "Screen {n}",
+      "displayLanguage": "Display language for this screen",
+      "displayLanguageDescription": "The display language for the board (production status, pending shipments, etc.) and the link-code screen. There is no login to pick a viewer's language, so it is set on the device itself.",
+      "displayLanguageDefault": "Default (Japanese)"
     },
     "orderIntake": {
       "queued": "Queued",
@@ -7837,7 +7840,12 @@
     "stepPaused": "Paused the step (step {sortOrder})",
     "stepResumed": "Resumed the step (step {sortOrder})",
     "workLocationChanged": "Changed the work location (step {sortOrder} / location {workLocationId})",
-    "stepCompleted": "Completed the step (good {success}/{input})"
+    "stepCompleted": "Completed the step (good {success}/{input})",
+    "defectsRecorded": "Added defect record ({count})",
+    "inspectionRecordedPass": "Saved inspection record (Pass / {count} items)",
+    "inspectionRecordedFail": "Saved inspection record (Fail / {count} items)",
+    "deviceUnlinkedFromDevice": "Unlinked from the device itself (device settings code)",
+    "deviceWorkLocationChangedFromDevice": "Changed the default work location from the device itself (device settings code)"
   },
   "workflowCore": {
     "quantityLabels": {

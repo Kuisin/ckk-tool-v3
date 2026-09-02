@@ -1,7 +1,9 @@
 "use client";
 
 import { Badge, Group, Paper, Text } from "@mantine/core";
+import { useI18n } from "@/components/I18nProvider";
 import type { QualitySummary } from "@/lib/display-board";
+import { fillMessage } from "@/lib/i18n";
 import { BoardFrame, BoardRowShell } from "../_shared/BoardFrame";
 
 /**
@@ -19,6 +21,8 @@ export function QualityBoard({
   plantName: string | null;
   rowsPerPage: number;
 }) {
+  const { m } = useI18n();
+  const b = m.display.board.quality;
   const max = summary.rows[0]?.count ?? 1;
 
   return (
@@ -29,10 +33,13 @@ export function QualityBoard({
           size="xl"
           variant="light"
         >
-          直近 {summary.days} 日 / 合計 {summary.totalDefects} 件
+          {fillMessage(b.recentDaysTotal, {
+            days: summary.days,
+            count: summary.totalDefects,
+          })}
         </Badge>
       }
-      emptyMessage="不良の記録はありません"
+      emptyMessage={b.empty}
       header={
         summary.totalDefects > 0 ? (
           <Paper
@@ -46,7 +53,7 @@ export function QualityBoard({
                 {summary.totalDefects}
               </Text>
               <Text c="dimmed" style={{ fontSize: "1.3rem" }}>
-                件 / 直近 {summary.days} 日
+                {fillMessage(b.unitCountDays, { days: summary.days })}
               </Text>
             </Group>
           </Paper>
@@ -80,7 +87,7 @@ export function QualityBoard({
       )}
       rowsPerPage={rowsPerPage}
       subtitle={plantName}
-      title="品質・不良"
+      title={b.title}
     />
   );
 }

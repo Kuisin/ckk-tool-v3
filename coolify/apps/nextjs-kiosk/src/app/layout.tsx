@@ -23,9 +23,12 @@ const notoSansJp = Noto_Sans_JP({
   weight: ["400", "500", "600", "700"],
 });
 
+// ここは locale を引ける request-scope が無い（cookies/DB を読む前の
+// 最終フォールバック）。(kiosk) と /display の各レイアウトが自分の
+// generateMetadata で必ず上書きするので、実際に表示に出ることはない。
 export const metadata: Metadata = {
-  title: "CKK 専用端末",
-  description: "共有キオスク端末 — QR コードでログイン",
+  title: "CKK 専用端末", // i18n-ignore
+  description: "共有キオスク端末 — QR コードでログイン", // i18n-ignore
 };
 
 // タブレット全画面運用: 入力フォーカス時の自動ズーム抑止（nextjs-web と同じ）。

@@ -19,6 +19,7 @@ import {
   optionPlantId,
   templateOptionsSchema,
 } from "@/lib/display-templates";
+import { type Locale, normalizeLocale } from "@/lib/i18n";
 
 export type BoardContext = {
   options: DisplayTemplateOptions;
@@ -31,6 +32,8 @@ export type BoardContext = {
    * つもりの画面に一部しか出ず、しかも理由が画面から読み取れない。
    */
   plantId: number | null;
+  /** 盤面自身の表示言語（SY09 の編集モーダルで設定。未設定 = ja）。 */
+  locale: Locale;
 };
 
 type SearchParams = Record<string, string | string[] | undefined>;
@@ -76,8 +79,15 @@ export async function boardContext(
     options,
     // 未選択は全拠点。ディスプレイの拠点へは落とさない（上の注記）。
     plantId: optionPlantId(options),
+    locale: normalizeLocale(auth.display.locale),
   };
 }
 
-/** 未登録のときにフレーム内へ出す文言（黒画面を出さない）。 */
-export const NOT_REGISTERED = "この画面は登録されていません。";
+/**
+ * 未登録のときにフレーム内へ出す文言（黒画面を出さない）。
+ *
+ * この時点では認証が通っていない（`boardContext` が null を返した後）ので
+ * ディスプレイの表示言語が引けない——ごく稀な競合（表示中に登録解除された
+ * 場合）でしか出ない経路のため ja 固定のままにしてある。
+ */
+export const NOT_REGISTERED = "この画面は登録されていません。"; // i18n-ignore — 認証前で locale が引けない稀な競合経路

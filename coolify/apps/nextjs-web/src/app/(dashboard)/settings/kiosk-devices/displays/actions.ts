@@ -35,6 +35,7 @@ import {
   notifyDisplayConfigChanged,
   notifyDisplayRevoked,
 } from "@/lib/display-events";
+import { LOCALES } from "@/lib/i18n";
 import { mintMonitorToken } from "@/lib/kiosk-ws-token";
 import { useElevation } from "@/lib/privileged-access";
 import {
@@ -371,6 +372,8 @@ function updateSchema(tr: Awaited<ReturnType<typeof getTranslations>>) {
     id: z.string().uuid(),
     /** 表示倍率（%）。範囲は DB の CHECK と同じ 50〜200。 */
     scalePercent: z.number().int().min(50).max(200).optional(),
+    // 盤面自身の表示言語。null = 既定（ja）。kiosk_devices.locale と同じ規約。
+    locale: z.enum(LOCALES).nullable().optional(),
   });
 }
 
@@ -384,6 +387,7 @@ export async function updateDisplay(raw: {
   contentConfig?: unknown;
   refreshIntervalSec?: number;
   scalePercent?: number;
+  locale?: string | null;
 }): Promise<ActionResult> {
   const tr = await getTranslations();
   const authz = await checkPermission("kiosk", "UPDATE");
@@ -404,6 +408,7 @@ export async function updateDisplay(raw: {
     contentConfig,
     refreshIntervalSec,
     scalePercent,
+    locale,
   } = parsed.data;
 
   // 名前だけ直す画面からも呼ばれるので、渡された項目だけを触る。
@@ -425,6 +430,7 @@ export async function updateDisplay(raw: {
         contentConfig: true,
         refreshIntervalSec: true,
         scalePercent: true,
+        locale: true,
       },
     });
     if (!before)
@@ -439,6 +445,7 @@ export async function updateDisplay(raw: {
         ...content,
         ...(refreshIntervalSec === undefined ? {} : { refreshIntervalSec }),
         ...(scalePercent === undefined ? {} : { scalePercent }),
+        ...(locale === undefined ? {} : { locale }),
       },
     });
     await recordAudit({
@@ -453,6 +460,7 @@ export async function updateDisplay(raw: {
         ...content,
         refreshIntervalSec: refreshIntervalSec ?? before.refreshIntervalSec,
         scalePercent: scalePercent ?? before.scalePercent,
+        locale: locale === undefined ? before.locale : locale,
       },
     });
     // 映るものが変わったなら、その場で画面へ反映する（待たせない）

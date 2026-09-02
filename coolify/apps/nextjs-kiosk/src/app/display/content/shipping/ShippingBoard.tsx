@@ -1,13 +1,18 @@
 "use client";
 
 import { Badge, Stack, Text } from "@mantine/core";
+import { useI18n } from "@/components/I18nProvider";
 import type { ShippingRow } from "@/lib/display-board";
+import { fillMessage, type KioskMessages } from "@/lib/i18n";
 import { BoardFrame, BoardRowShell } from "../_shared/BoardFrame";
 
-const STATUS: Record<string, { label: string; color: string }> = {
-  DRAFT: { label: "準備中", color: "gray" },
-  CONFIRMED: { label: "確定", color: "blue" },
-};
+function statusOf(
+  status: string,
+  b: KioskMessages["display"]["board"]["shipping"],
+): { label: string; color: string } {
+  if (status === "CONFIRMED") return { label: b.confirmedLabel, color: "blue" };
+  return { label: b.draftLabel, color: "gray" };
+}
 
 /** 出荷予定の見た目。出荷場から見て「あと何件・何本」が分かればよい。 */
 export function ShippingBoard({
@@ -19,6 +24,8 @@ export function ShippingBoard({
   plantName: string | null;
   rowsPerPage: number;
 }) {
+  const { m } = useI18n();
+  const b = m.display.board.shipping;
   const total = rows.reduce((sum, r) => sum + r.totalQuantity, 0);
 
   return (
@@ -26,14 +33,14 @@ export function ShippingBoard({
       badge={
         rows.length > 0 ? (
           <Badge color="blue" size="xl" variant="light">
-            {rows.length} 件 / {total} 本
+            {fillMessage(b.countUnit, { count: rows.length, total })}
           </Badge>
         ) : undefined
       }
-      emptyMessage="出荷予定はありません"
+      emptyMessage={b.empty}
       items={rows}
       renderRow={(row) => {
-        const s = STATUS[row.status] ?? STATUS.DRAFT;
+        const s = statusOf(row.status, b);
         return (
           <BoardRowShell
             accent={
@@ -56,7 +63,7 @@ export function ShippingBoard({
                 {row.customerName}
               </Text>
               <Text c="dimmed" size="md" truncate>
-                {row.fromPlantName ?? "出荷元未設定"}
+                {row.fromPlantName ?? b.noOrigin}
               </Text>
             </Stack>
 
@@ -69,7 +76,7 @@ export function ShippingBoard({
                 {row.totalQuantity}
               </Text>
               <Text c="dimmed" size="sm">
-                {row.itemCount} 明細 / 本
+                {fillMessage(b.lineUnit, { count: row.itemCount })}
               </Text>
             </Stack>
           </BoardRowShell>
@@ -77,7 +84,7 @@ export function ShippingBoard({
       }}
       rowsPerPage={rowsPerPage}
       subtitle={plantName}
-      title="出荷予定"
+      title={b.title}
     />
   );
 }

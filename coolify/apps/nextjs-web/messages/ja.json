@@ -3668,7 +3668,10 @@
       "cannotShowTheSampleTheShared": "見本を表示できません（キオスクの URL が未設定）",
       "sampleOfLabel": "{label}の見本",
       "linkThisDisplay": "ディスプレイをリンク: {name}",
-      "screenNumber": "{n} 枚目"
+      "screenNumber": "{n} 枚目",
+      "displayLanguage": "この画面の表示言語",
+      "displayLanguageDescription": "盤面（生産状況・出荷予定など）とリンクコード画面の表示言語です。見る人でログインするわけではないため、端末自体に設定します。",
+      "displayLanguageDefault": "既定（日本語）"
     },
     "orderIntake": {
       "queued": "投入しました",
@@ -7837,7 +7840,12 @@
     "stepPaused": "工程を一時停止（step {sortOrder}）",
     "stepResumed": "工程を再開（step {sortOrder}）",
     "workLocationChanged": "作業場所を変更（step {sortOrder} / 作業場所 {workLocationId}）",
-    "stepCompleted": "工程を完了（良品 {success}/{input}）"
+    "stepCompleted": "工程を完了（良品 {success}/{input}）",
+    "defectsRecorded": "不良記録を追加（{count} 件）",
+    "inspectionRecordedPass": "検査記録を保存（合格 / {count} 項目）",
+    "inspectionRecordedFail": "検査記録を保存（不合格 / {count} 項目）",
+    "deviceUnlinkedFromDevice": "端末側からリンク解除（設定コード認証）",
+    "deviceWorkLocationChangedFromDevice": "端末側から作業場所設定を変更（設定コード認証）"
   },
   "workflowCore": {
     "quantityLabels": {

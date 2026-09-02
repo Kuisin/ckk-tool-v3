@@ -1,7 +1,9 @@
 "use client";
 
 import { Badge, Stack, Text } from "@mantine/core";
+import { useI18n } from "@/components/I18nProvider";
 import type { PendingRow } from "@/lib/display-board";
+import { fillMessage } from "@/lib/i18n";
 import { BoardFrame, BoardRowShell } from "../_shared/BoardFrame";
 
 /**
@@ -19,6 +21,8 @@ export function PendingBoard({
   plantName: string | null;
   rowsPerPage: number;
 }) {
+  const { m } = useI18n();
+  const b = m.display.board.pending;
   const overdue = rows.filter((r) => r.overdue).length;
 
   return (
@@ -26,11 +30,11 @@ export function PendingBoard({
       badge={
         overdue > 0 ? (
           <Badge color="red" size="xl" variant="filled">
-            納期超過 {overdue} 件
+            {fillMessage(b.overdueCount, { count: overdue })}
           </Badge>
         ) : undefined
       }
-      emptyMessage="手配待ちはありません"
+      emptyMessage={b.empty}
       items={rows}
       renderRow={(row) => (
         <BoardRowShell
@@ -58,10 +62,10 @@ export function PendingBoard({
             >
               {row.deliveryDate
                 ? `${row.deliveryDate.getMonth() + 1}/${row.deliveryDate.getDate()}`
-                : "納期未定"}
+                : b.noDueDate}
             </Text>
             <Text c="dimmed" size="sm">
-              {row.overdue ? "納期超過" : "納期"}
+              {row.overdue ? b.overdueLabel : b.dueLabel}
             </Text>
           </Stack>
 
@@ -70,14 +74,14 @@ export function PendingBoard({
               {row.quantity - row.arrangedQuantity}
             </Text>
             <Text c="dimmed" size="sm">
-              未手配 / {row.quantity} 本
+              {fillMessage(b.unarranged, { quantity: row.quantity })}
             </Text>
           </Stack>
         </BoardRowShell>
       )}
       rowsPerPage={rowsPerPage}
       subtitle={plantName}
-      title="手配待ち"
+      title={b.title}
     />
   );
 }

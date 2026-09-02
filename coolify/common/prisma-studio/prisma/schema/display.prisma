@@ -53,11 +53,17 @@ enum DisplayContentType {
 
 model DisplayDevice {
   id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  // 端末名は多言語 JSON { ja, en }。ディスプレイ自身の画面は ja 固定だが、
-  // 管理画面は利用者の言語で読むので kiosk_devices と同じ規約にそろえる。
+  // 端末名は多言語 JSON { ja, en }。管理画面は利用者の言語で読むので
+  // kiosk_devices と同じ規約にそろえる。
   name     Json?
   location String?
   plantId  Int?    @map("plant_id")
+
+  // ディスプレイ自身の画面（生産状況・出荷予定などの盤面と、登録前の
+  // リンクコード画面）の表示言語。ログインの概念が無い（見る人が誰か
+  // わからない）ため kiosk_devices.locale と同じ形で端末自体に持たせる。
+  // 未設定 = 既定言語（ja）。SY09 の編集モーダルから変更する。
+  locale String?
 
   // 何を映すか。**画面ごとに直接持つ。**
   //

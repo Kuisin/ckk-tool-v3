@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { DevicePresence } from "@/components/DevicePresence";
 import { I18nProvider } from "@/components/I18nProvider";
 import { KioskShell } from "@/components/KioskShell";
@@ -5,7 +6,7 @@ import { LastPageTracker } from "@/components/LastPageTracker";
 import { LocationReporter } from "@/components/LocationReporter";
 import { prisma } from "@/lib/db";
 import { getDeviceDefaultWorkLocationLabel } from "@/lib/device-work-location";
-import type { Locale } from "@/lib/i18n";
+import { getMessages, type Locale } from "@/lib/i18n";
 import { getDevice, getSession } from "@/lib/kiosk-auth";
 import {
   DEFAULT_TEXT_SCALE,
@@ -13,6 +14,26 @@ import {
   type TextScale,
   textScaleRootCss,
 } from "@/lib/text-scale";
+
+/**
+ * 端末の表示言語（未ログイン: kiosk_devices.locale / ログイン後: 利用者の
+ * locale）でページタイトルを出す。ルートレイアウトの静的 metadata は
+ * この言語が分からない時点の既定値（ja）で、ここが解決できた分だけ
+ * 上書きする（Next.js の metadata はレイアウトの入れ子でマージされる）。
+ */
+export async function generateMetadata(): Promise<Metadata> {
+  let locale: Locale = "ja";
+  try {
+    const device = await getDevice({ skipAttest: true });
+    if (device.ok) locale = device.device.locale;
+    const session = await getSession();
+    if (session) locale = session.locale;
+  } catch {
+    // ビルド時・DB 不通時は既定のまま
+  }
+  const m = getMessages(locale);
+  return { title: m.shell.appTitle, description: m.shell.appDescription };
+}
 
 /**
  * (kiosk) レイアウト — 共有タブレットの画面まわり（ヘッダー・フッター・

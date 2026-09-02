@@ -385,7 +385,9 @@
     "connectionStatus": "Connection status: {label}",
     "offlineTitle": "Cannot connect to the server",
     "offlineMessage": "Please check the network (Wi-Fi / LAN).",
-    "offlineRecovery": "It will resume automatically once the connection recovers."
+    "offlineRecovery": "It will resume automatically once the connection recovers.",
+    "appTitle": "CKK dedicated device",
+    "appDescription": "Shared kiosk device — log in with a QR code"
   },
   "linkCode": {
     "label": "Link code",
@@ -408,5 +410,83 @@
     "md": "Default",
     "lg": "Large",
     "xl": "Largest"
+  },
+  "display": {
+    "shell": {
+      "unnamedScreen": "(Unnamed screen)",
+      "screenOf": "{index} of {total}",
+      "connectionFailedTitle": "Cannot connect",
+      "connectionFailedDetail": "Cannot reach the server. Display will resume automatically once the connection is restored.",
+      "noContentTitle": "No content has been set for this screen",
+      "noContentDetail": "Assign content to this screen from the admin \"Devices\" screen.",
+      "invalidContentTitle": "Check the content settings",
+      "invalidContentDetail": "The assigned content settings are invalid.",
+      "metabaseNotConfiguredTitle": "The dashboard is not configured",
+      "metabaseNotConfiguredDetail": "Metabase connection settings (URL and signing key) are not configured.",
+      "unsupportedContentTitle": "Cannot display this content",
+      "unsupportedContentDetail": "This content type is not supported.",
+      "iframeTitleFallback": "Display",
+      "appTitle": "CKK Display",
+      "appDescription": "Floor management display"
+    },
+    "blocked": {
+      "disabled": "This screen is paused.",
+      "revoked": "This screen's registration has been revoked.",
+      "unavailable": "This screen is unavailable.",
+      "detail": "To use it again, go to the admin screen (Devices → Displays). You cannot re-register from this screen."
+    },
+    "setup": {
+      "reasonNotFound": "This screen's registration is no longer valid. Please register again.",
+      "reasonExpired": "The registration has expired. Please register again.",
+      "reasonDisabled": "This screen is paused. Please contact an administrator.",
+      "reasonRevoked": "This screen's registration has been revoked. Please register again.",
+      "codeIssueFailed": "Could not issue a code",
+      "connectionFailed": "Cannot connect to the server",
+      "screenOfMachine": "Screen {index} of {total} on this machine",
+      "linkedMessage": "Linked{deviceNameSuffix}. The display will start once an administrator enables it.",
+      "deviceNameSuffix": ": {name}",
+      "instruction": "Ask an administrator to scan or enter this code under \"Settings → Devices → Displays\" to register it.",
+      "title": "Display registration"
+    },
+    "board": {
+      "unitPcs": "pcs",
+      "production": {
+        "title": "Production status",
+        "empty": "No work orders in progress",
+        "unassigned": "Unassigned",
+        "othersCount": "and {count} more",
+        "pending": "Not started",
+        "paused": "Paused",
+        "working": "Working",
+        "stepsProgress": "{completed} / {total} steps"
+      },
+      "shipping": {
+        "title": "Upcoming shipments",
+        "empty": "No upcoming shipments",
+        "draftLabel": "Preparing",
+        "confirmedLabel": "Confirmed",
+        "noOrigin": "Origin site not set",
+        "countUnit": "{count} orders / {total} pcs",
+        "lineUnit": "{count} lines / pcs"
+      },
+      "quality": {
+        "title": "Quality & defects",
+        "empty": "No defect records",
+        "recentDaysTotal": "Last {days} days / {count} total",
+        "unitCountDays": "items / last {days} days"
+      },
+      "pending": {
+        "title": "Not yet arranged",
+        "empty": "Nothing pending arrangement",
+        "overdueCount": "{count} overdue",
+        "noDueDate": "No delivery date",
+        "overdueLabel": "Overdue",
+        "dueLabel": "Delivery date",
+        "unarranged": "Unarranged / {quantity} pcs"
+      },
+      "announcement": {
+        "empty": "No announcement text has been set"
+      }
+    }
   }
 }

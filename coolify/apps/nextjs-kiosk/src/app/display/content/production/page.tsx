@@ -1,3 +1,4 @@
+import { I18nProvider } from "@/components/I18nProvider";
 import { loadProductionBoard, plantNameOf } from "@/lib/display-board";
 import { sortBoardEntries, toBoardEntry } from "@/lib/display-board-core";
 import { optionBoolean, optionNumber } from "@/lib/display-templates";
@@ -30,10 +31,12 @@ export default async function ProductionBoardPage({
   ]);
 
   return (
-    <ProductionBoard
-      entries={sortBoardEntries(rows.map(toBoardEntry))}
-      plantName={plantName}
-      rowsPerPage={optionNumber(ctx.options, "rows", 8)}
-    />
+    <I18nProvider locale={ctx.locale}>
+      <ProductionBoard
+        entries={sortBoardEntries(rows.map(toBoardEntry))}
+        plantName={plantName}
+        rowsPerPage={optionNumber(ctx.options, "rows", 8)}
+      />
+    </I18nProvider>
   );
 }

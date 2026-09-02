@@ -3668,7 +3668,10 @@
       "cannotShowTheSampleTheShared": "无法显示样例（未设置共用终端的 URL）",
       "sampleOfLabel": "{label}示例",
       "linkThisDisplay": "关联显示屏：{name}",
-      "screenNumber": "第 {n} 屏"
+      "screenNumber": "第 {n} 屏",
+      "displayLanguage": "此屏幕的显示语言",
+      "displayLanguageDescription": "看板（生产状况、待出货等）和关联代码界面所使用的显示语言。由于没有登录来确定观看者的语言，因此在终端本身上设置。",
+      "displayLanguageDefault": "默认（日语）"
     },
     "orderIntake": {
       "queued": "已投入",
@@ -7837,7 +7840,12 @@
     "stepPaused": "暂停工序（工序 {sortOrder}）",
     "stepResumed": "恢复工序（工序 {sortOrder}）",
     "workLocationChanged": "变更作业场所（工序 {sortOrder} / 作业场所 {workLocationId}）",
-    "stepCompleted": "完成工序（良品 {success}/{input}）"
+    "stepCompleted": "完成工序（良品 {success}/{input}）",
+    "defectsRecorded": "已添加不良记录（{count} 件）",
+    "inspectionRecordedPass": "已保存检查记录（合格 / {count} 项）",
+    "inspectionRecordedFail": "已保存检查记录（不合格 / {count} 项）",
+    "deviceUnlinkedFromDevice": "已从终端本身解除关联（设备设置码）",
+    "deviceWorkLocationChangedFromDevice": "已从终端本身变更作业场所设置（设备设置码）"
   },
   "workflowCore": {
     "quantityLabels": {

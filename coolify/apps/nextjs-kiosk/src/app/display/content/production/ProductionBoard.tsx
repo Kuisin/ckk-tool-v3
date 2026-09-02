@@ -8,7 +8,9 @@
  */
 
 import { Badge, Group, Stack, Text } from "@mantine/core";
+import { useI18n } from "@/components/I18nProvider";
 import type { BoardEntry } from "@/lib/display-board-core";
+import { fillMessage } from "@/lib/i18n";
 import { BoardFrame, BoardRowShell } from "../_shared/BoardFrame";
 
 type Props = {
@@ -18,21 +20,24 @@ type Props = {
 };
 
 export function ProductionBoard({ entries, plantName, rowsPerPage }: Props) {
+  const { m } = useI18n();
   return (
     <BoardFrame
-      emptyMessage="進行中の指示書はありません"
+      emptyMessage={m.display.board.production.empty}
       items={entries}
       renderRow={(entry) => (
         <BoardRowView entry={entry} key={entry.workOrderId} />
       )}
       rowsPerPage={rowsPerPage}
       subtitle={plantName}
-      title="生産状況"
+      title={m.display.board.production.title}
     />
   );
 }
 
 function BoardRowView({ entry }: { entry: BoardEntry }) {
+  const { m } = useI18n();
+  const b = m.display.board.production;
   const running = entry.currentStepStatus === "IN_PROGRESS";
   const accent = running
     ? entry.paused
@@ -57,11 +62,11 @@ function BoardRowView({ entry }: { entry: BoardEntry }) {
         </Text>
         <Text c="dimmed" size="md" truncate>
           {entry.assignees.length > 0
-            ? entry.assignees.slice(0, 3).join("・") +
+            ? entry.assignees.slice(0, 3).join(m.common.separator) +
               (entry.assignees.length > 3
-                ? ` ほか ${entry.assignees.length - 3} 名`
+                ? ` ${fillMessage(b.othersCount, { count: entry.assignees.length - 3 })}`
                 : "")
-            : "担当者未割当"}
+            : b.unassigned}
         </Text>
       </Stack>
 
@@ -72,22 +77,25 @@ function BoardRowView({ entry }: { entry: BoardEntry }) {
           </Text>
           {running && entry.paused && (
             <Badge color="yellow" size="lg" variant="light">
-              一時停止
+              {b.paused}
             </Badge>
           )}
           {running && !entry.paused && (
             <Badge color="blue" size="lg" variant="filled">
-              作業中
+              {b.working}
             </Badge>
           )}
           {entry.currentStepStatus === "PENDING" && (
             <Badge color="gray" size="lg" variant="light">
-              未着手
+              {b.pending}
             </Badge>
           )}
         </Group>
         <Text c="dimmed" style={{ fontSize: "1.1rem" }}>
-          {entry.completedSteps} / {entry.totalSteps} 工程
+          {fillMessage(b.stepsProgress, {
+            completed: entry.completedSteps,
+            total: entry.totalSteps,
+          })}
         </Text>
       </Stack>
 
@@ -96,7 +104,7 @@ function BoardRowView({ entry }: { entry: BoardEntry }) {
           {entry.quantity ?? entry.plannedQuantity}
         </Text>
         <Text c="dimmed" size="sm">
-          / {entry.plannedQuantity} 本
+          / {entry.plannedQuantity} {m.display.board.unitPcs}
         </Text>
       </Stack>
     </BoardRowShell>

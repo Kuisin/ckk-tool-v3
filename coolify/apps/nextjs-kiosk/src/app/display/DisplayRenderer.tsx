@@ -13,7 +13,9 @@
  * ためで、こうしておくと生産ボード側は「ただのサーバーコンポーネント」で
  * 済む（更新のたびに自分を作り直す必要がない）。
  *
- * 文字は ja 固定 — ディスプレイに利用者は居ない。
+ * 文言は I18nProvider（呼び出し元の page.tsx が盤面自身の locale で包む）から
+ * 読む — ディスプレイに「いま見ている人」は居ないが、端末自体には
+ * 設定できる表示言語がある（kiosk_devices.locale と同じ規約）。
  */
 
 import {
@@ -33,11 +35,13 @@ import {
   useState,
 } from "react";
 import { Clock } from "@/app/display/content/_shared/Clock";
+import { useI18n } from "@/components/I18nProvider";
 import type { ImageFit } from "@/lib/display-content";
 import {
   DISPLAY_HEARTBEAT_MIN_INTERVAL_MS,
   type MachineHint,
 } from "@/lib/display-core";
+import { fillMessage } from "@/lib/i18n";
 
 const WS_PATH = "/api/display/ws";
 const RECONNECT_MIN_MS = 5_000;
@@ -130,6 +134,7 @@ export function DisplayRenderer({
   hint,
   screenTotal,
 }: Props) {
+  const { m } = useI18n();
   const [config, setConfig] = useState<Config | null>(null);
   const [failed, setFailed] = useState(false);
   /** フレームを作り直すための世代番号（再読込の合図）。 */
@@ -282,9 +287,9 @@ export function DisplayRenderer({
   if (failed) {
     return shell(
       <Message
-        detail="サーバーに接続できません。回復すると自動で表示に戻ります。"
-        note={`${name ?? "この画面"}${place ? `（${place}）` : ""}`}
-        title="接続できません"
+        detail={m.display.shell.connectionFailedDetail}
+        note={`${name ?? m.display.shell.unnamedScreen}${place ? `（${place}）` : ""}`}
+        title={m.display.shell.connectionFailedTitle}
       />,
     );
   }
@@ -300,9 +305,9 @@ export function DisplayRenderer({
   if (!config.profile) {
     return shell(
       <Message
-        detail="管理画面「ディスプレイ管理」で、この画面に表示内容を割り当ててください。"
+        detail={m.display.shell.noContentDetail}
         note={`${name ?? displayId}${place ? `（${place}）` : ""}`}
-        title="表示内容が設定されていません"
+        title={m.display.shell.noContentTitle}
       />,
     );
   }
@@ -312,9 +317,9 @@ export function DisplayRenderer({
   if (content.type === "INVALID") {
     return shell(
       <Message
-        detail="割り当てられた表示内容の設定が正しくありません。"
+        detail={m.display.shell.invalidContentDetail}
         note={config.profile.name ?? ""}
-        title="表示内容の設定を確認してください"
+        title={m.display.shell.invalidContentTitle}
       />,
     );
   }
@@ -322,9 +327,9 @@ export function DisplayRenderer({
   if (content.type === "METABASE" && !content.url) {
     return shell(
       <Message
-        detail="Metabase の接続設定（URL と署名鍵）が未設定です。"
+        detail={m.display.shell.metabaseNotConfiguredDetail}
         note={config.profile.name ?? ""}
-        title="集計画面が設定されていません"
+        title={m.display.shell.metabaseNotConfiguredTitle}
       />,
     );
   }
@@ -357,15 +362,18 @@ export function DisplayRenderer({
   if (!src) {
     return shell(
       <Message
-        detail="表示内容の種別に対応していません。"
+        detail={m.display.shell.unsupportedContentDetail}
         note={config.profile.name ?? ""}
-        title="表示できません"
+        title={m.display.shell.unsupportedContentTitle}
       />,
     );
   }
 
   return shell(
-    <SwappingFrame src={src} title={config.profile.name ?? "ディスプレイ"} />,
+    <SwappingFrame
+      src={src}
+      title={config.profile.name ?? m.display.shell.iframeTitleFallback}
+    />,
   );
 }
 
@@ -454,6 +462,7 @@ function DisplayShell({
   zoomStyle: { zoom: string } | undefined;
   children: ReactNode;
 }) {
+  const { m } = useI18n();
   return (
     <div
       style={{
@@ -487,7 +496,7 @@ function DisplayShell({
             style={{ display: "block", flexShrink: 0, height: "1.6rem" }}
           />
           <Text fw={700} style={{ fontSize: "1.15rem" }} truncate>
-            {name ?? "（名称未設定）"}
+            {name ?? m.display.shell.unnamedScreen}
           </Text>
           {place && (
             <Text c="dimmed" style={{ fontSize: "1rem" }} truncate>
@@ -500,7 +509,10 @@ function DisplayShell({
               1 枚運用では意味が無いので出さない。 */}
           {screenTotal > 1 && screenIndex !== null && (
             <Badge color="gray" size="lg" variant="light">
-              {screenIndex} / {screenTotal} 枚目
+              {fillMessage(m.display.shell.screenOf, {
+                index: screenIndex,
+                total: screenTotal,
+              })}
             </Badge>
           )}
         </Group>

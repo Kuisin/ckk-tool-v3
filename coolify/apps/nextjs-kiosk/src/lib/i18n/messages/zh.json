@@ -385,7 +385,9 @@
     "connectionStatus": "连接状态：{label}",
     "offlineTitle": "无法连接到服务器",
     "offlineMessage": "请检查网络（Wi-Fi / LAN）。",
-    "offlineRecovery": "连接恢复后将自动继续。"
+    "offlineRecovery": "连接恢复后将自动继续。",
+    "appTitle": "CKK 专用终端",
+    "appDescription": "共用终端 — 使用二维码登录"
   },
   "linkCode": {
     "label": "链接码",
@@ -408,5 +410,83 @@
     "md": "标准",
     "lg": "大",
     "xl": "最大"
+  },
+  "display": {
+    "shell": {
+      "unnamedScreen": "（未命名）",
+      "screenOf": "第 {index} / {total} 屏",
+      "connectionFailedTitle": "无法连接",
+      "connectionFailedDetail": "无法连接服务器。恢复后将自动继续显示。",
+      "noContentTitle": "尚未为此屏幕设置显示内容",
+      "noContentDetail": "请在管理界面「终端管理」中为此屏幕分配显示内容。",
+      "invalidContentTitle": "请检查显示内容设置",
+      "invalidContentDetail": "分配的显示内容设置不正确。",
+      "metabaseNotConfiguredTitle": "尚未配置报表画面",
+      "metabaseNotConfiguredDetail": "尚未配置 Metabase 连接设置（URL 与签名密钥）。",
+      "unsupportedContentTitle": "无法显示",
+      "unsupportedContentDetail": "不支持此显示内容类型。",
+      "iframeTitleFallback": "显示屏",
+      "appTitle": "CKK 显示屏",
+      "appDescription": "现场管理显示屏"
+    },
+    "blocked": {
+      "disabled": "此屏幕已暂停。",
+      "revoked": "此屏幕的注册已被撤销。",
+      "unavailable": "此屏幕不可用。",
+      "detail": "如需再次使用，请在管理界面（终端管理 → 显示屏）中操作。此屏幕无法重新注册。"
+    },
+    "setup": {
+      "reasonNotFound": "此屏幕的注册已失效，请重新注册。",
+      "reasonExpired": "注册已过期，请重新注册。",
+      "reasonDisabled": "此屏幕已暂停，请联系管理员。",
+      "reasonRevoked": "此屏幕的注册已被撤销，请重新注册。",
+      "codeIssueFailed": "无法生成验证码",
+      "connectionFailed": "无法连接服务器",
+      "screenOfMachine": "本机 {total} 屏中的第 {index} 屏",
+      "linkedMessage": "已关联{deviceNameSuffix}。管理员启用后将开始显示。",
+      "deviceNameSuffix": "：{name}",
+      "instruction": "请管理员在「设置 → 终端管理 → 显示屏」中扫描或输入此验证码进行注册。",
+      "title": "显示屏注册"
+    },
+    "board": {
+      "unitPcs": "支",
+      "production": {
+        "title": "生产状况",
+        "empty": "暂无进行中的工单",
+        "unassigned": "未分配负责人",
+        "othersCount": "等 {count} 人",
+        "pending": "未开始",
+        "paused": "已暂停",
+        "working": "作业中",
+        "stepsProgress": "{completed} / {total} 道工序"
+      },
+      "shipping": {
+        "title": "待出货安排",
+        "empty": "暂无待出货安排",
+        "draftLabel": "准备中",
+        "confirmedLabel": "确定",
+        "noOrigin": "未设置出货据点",
+        "countUnit": "{count} 单 / {total} 支",
+        "lineUnit": "{count} 明细 / 支"
+      },
+      "quality": {
+        "title": "质量与不良",
+        "empty": "暂无不良记录",
+        "recentDaysTotal": "近 {days} 天 / 合计 {count} 件",
+        "unitCountDays": "件 / 近 {days} 天"
+      },
+      "pending": {
+        "title": "待安排",
+        "empty": "暂无待安排项目",
+        "overdueCount": "逾期 {count} 件",
+        "noDueDate": "交期未定",
+        "overdueLabel": "逾期",
+        "dueLabel": "交期",
+        "unarranged": "未安排 / {quantity} 支"
+      },
+      "announcement": {
+        "empty": "尚未设置通知内容"
+      }
+    }
   }
 }
