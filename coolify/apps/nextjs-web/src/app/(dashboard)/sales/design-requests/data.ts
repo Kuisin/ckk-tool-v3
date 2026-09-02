@@ -384,6 +384,20 @@ export async function fetchOrderLineCustomerBpId(
   return r?.acceptance.customerBpId ?? null;
 }
 
+/**
+ * 注文明細の納期（`?orderLine=` 起票時の希望納期の既定）。
+ * 受注時トリガーなら、その明細の納期をそのまま希望納期の初期値にする。
+ */
+export async function fetchOrderLineDeliveryDate(
+  orderLineId: string,
+): Promise<string | null> {
+  const r = await prisma.orderLine.findUnique({
+    where: { id: orderLineId },
+    select: { deliveryDate: true },
+  });
+  return r?.deliveryDate ? r.deliveryDate.toISOString().slice(0, 10) : null;
+}
+
 /** 製品 1 件の参照解決（`?product=<id>` プリフィル用）。 */
 export async function fetchProductRef(
   productId: string,

@@ -149,6 +149,7 @@ export function DesignRequestForm({
   initialProduct = null,
   customerOptions = [],
   initialCustomerBpId = null,
+  initialDesiredAt = null,
 }: {
   mode: "create" | "edit";
   /** 編集時: 対象設計依頼書（サーバー取得の view-model）。 */
@@ -167,6 +168,8 @@ export function DesignRequestForm({
   customerOptions?: QuoteOption[];
   /** 起票元から引き継いだ受注元（見積・注文明細の顧客）。 */
   initialCustomerBpId?: string | null;
+  /** `?orderLine=` 起票時の希望納期の既定（その明細の納期）。 */
+  initialDesiredAt?: string | null;
 }) {
   const tr = useTranslations();
   const locale = useLocale();
@@ -208,7 +211,7 @@ export function DesignRequestForm({
             kind: null,
             baseDesignFileId: null,
             changeReason: "",
-            desiredAt: null,
+            desiredAt: initialDesiredAt,
             priority: "NORMAL",
             description: "",
           },
