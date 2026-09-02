@@ -11,6 +11,12 @@
  *   `pnpm twin:sync` で複製する。管理画面が保存する形とディスプレイが読む形が
  *   食い違うと、「保存はできるのに何も映らない」という最も原因の分かりにくい
  *   壊れ方をするので、1 バイトのずれも twin-files.test.ts で落とす。
+ *
+ * ★ バリデーションメッセージは呼び出し側から渡す関数 `t` で解決する
+ *   （twin file は next-intl（web）もキオスクの辞書（kiosk）も読み込めない）。
+ *   実際に文言を読むのは web の保存フォーム（settings/kiosk-devices/
+ *   displays/actions.ts）だけ——kiosk の parseDisplayContent は成否しか
+ *   見ないので、そちら側は素通しの t で十分。
  */
 
 import { z } from "zod";
@@ -19,40 +25,54 @@ import {
   templateOptionsSchema,
 } from "./display-templates";
 
+/** 呼び出し側の言語で文言を解決する関数。既定値は t が無いときの ja 直書き。 */
+export type DisplayContentT = (key: string, fallback: string) => string;
+
+const identityT: DisplayContentT = (_key, fallback) => fallback;
+
 /**
  * アプリ内の画面（テンプレート）。**どんな画面があり、どんな設定を持つかは
  * display-templates.ts の登録簿が唯一の正**で、ここはその宣言から検証を
  * 組み立てるだけ。画面を増やすとき、この形を触る必要は無い。
  */
-export const appPageConfigSchema = z
-  .object({ page: z.string(), options: z.unknown().optional() })
-  .transform((value, ctx) => {
-    const template = findDisplayTemplate(value.page);
-    if (!template) {
-      ctx.addIssue({
-        code: "custom",
-        message: "表示する画面を選んでください",
-        path: ["page"],
-      });
-      return z.NEVER;
-    }
-    const parsed = templateOptionsSchema(template).safeParse(
-      value.options ?? {},
-    );
-    if (!parsed.success) {
-      ctx.addIssue({
-        code: "custom",
-        message:
-          parsed.error.issues[0]?.message ?? "画面の設定が正しくありません",
-        path: ["options"],
-      });
-      return z.NEVER;
-    }
-    return {
-      page: template.key,
-      options: parsed.data as Record<string, unknown>,
-    };
-  });
+export function appPageConfigSchema(t: DisplayContentT = identityT) {
+  return z
+    .object({ page: z.string(), options: z.unknown().optional() })
+    .transform((value, ctx) => {
+      const template = findDisplayTemplate(value.page);
+      if (!template) {
+        ctx.addIssue({
+          code: "custom",
+          message: t(
+            "displayContent.selectAPageToShow",
+            "表示する画面を選んでください",
+          ),
+          path: ["page"],
+        });
+        return z.NEVER;
+      }
+      const parsed = templateOptionsSchema(template).safeParse(
+        value.options ?? {},
+      );
+      if (!parsed.success) {
+        ctx.addIssue({
+          code: "custom",
+          message:
+            parsed.error.issues[0]?.message ??
+            t(
+              "displayContent.pageSettingsAreIncorrect",
+              "画面の設定が正しくありません",
+            ),
+          path: ["options"],
+        });
+        return z.NEVER;
+      }
+      return {
+        page: template.key,
+        options: parsed.data as Record<string, unknown>,
+      };
+    });
+}
 
 export const metabaseConfigSchema = z.object({
   dashboardId: z.number().int().positive(),
@@ -63,23 +83,30 @@ export const metabaseConfigSchema = z.object({
   params: z.record(z.string(), z.union([z.string(), z.number()])).default({}),
 });
 
-export const urlConfigSchema = z.object({
-  /** http(s) のみ。javascript: 等を弾くために protocol を明示検査する。 */
-  url: z
-    .string()
-    .url()
-    .refine(
-      (v) => {
-        try {
-          const p = new URL(v).protocol;
-          return p === "http:" || p === "https:";
-        } catch {
-          return false;
-        }
-      },
-      { message: "http:// または https:// で始まる URL を入力してください" },
-    ),
-});
+export function urlConfigSchema(t: DisplayContentT = identityT) {
+  return z.object({
+    /** http(s) のみ。javascript: 等を弾くために protocol を明示検査する。 */
+    url: z
+      .string()
+      .url()
+      .refine(
+        (v) => {
+          try {
+            const p = new URL(v).protocol;
+            return p === "http:" || p === "https:";
+          } catch {
+            return false;
+          }
+        },
+        {
+          message: t(
+            "displayContent.enterUrlStartingWithHttp",
+            "http:// または https:// で始まる URL を入力してください",
+          ),
+        },
+      ),
+  });
+}
 
 /**
  * 画像の収め方。テレビと画像の縦横比はまず一致しないので、**どう妥協するかを
@@ -101,18 +128,23 @@ export const imageConfigSchema = z.object({
 });
 
 /** 種別 → スキーマ。保存時も配信時もこの 1 表を通す。 */
-export const DISPLAY_CONTENT_SCHEMAS = {
-  APP_PAGE: appPageConfigSchema,
-  METABASE: metabaseConfigSchema,
-  URL: urlConfigSchema,
-  IMAGE: imageConfigSchema,
-} as const;
+export function displayContentSchemas(t: DisplayContentT = identityT) {
+  return {
+    APP_PAGE: appPageConfigSchema(t),
+    METABASE: metabaseConfigSchema,
+    URL: urlConfigSchema(t),
+    IMAGE: imageConfigSchema,
+  } as const;
+}
 
-export type DisplayContentType = keyof typeof DISPLAY_CONTENT_SCHEMAS;
+/** 後方互換のための ja 固定版（呼び出し側を更新し切るまでの橋渡し）。 */
+export const DISPLAY_CONTENT_SCHEMAS = displayContentSchemas();
 
-export type AppPageConfig = z.infer<typeof appPageConfigSchema>;
+export type DisplayContentType = keyof ReturnType<typeof displayContentSchemas>;
+
+export type AppPageConfig = z.infer<ReturnType<typeof appPageConfigSchema>>;
 export type MetabaseConfig = z.infer<typeof metabaseConfigSchema>;
-export type UrlConfig = z.infer<typeof urlConfigSchema>;
+export type UrlConfig = z.infer<ReturnType<typeof urlConfigSchema>>;
 export type ImageConfig = z.infer<typeof imageConfigSchema>;
 
 export type DisplayContent =

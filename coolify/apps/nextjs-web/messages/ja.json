@@ -7514,5 +7514,10 @@
   "trialPricingEngine": {
     "notANumber": "数値ではありません",
     "expressionIsEmpty": "式が空です"
+  },
+  "displayContent": {
+    "selectAPageToShow": "表示する画面を選んでください",
+    "pageSettingsAreIncorrect": "画面の設定が正しくありません",
+    "enterUrlStartingWithHttp": "http:// または https:// で始まる URL を入力してください"
   }
 }

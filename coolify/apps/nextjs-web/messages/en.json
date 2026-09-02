@@ -7514,5 +7514,10 @@
   "trialPricingEngine": {
     "notANumber": "Not a number",
     "expressionIsEmpty": "The expression is empty"
+  },
+  "displayContent": {
+    "selectAPageToShow": "Select a page to show",
+    "pageSettingsAreIncorrect": "The page settings are incorrect",
+    "enterUrlStartingWithHttp": "Enter a URL starting with http:// or https://"
   }
 }

@@ -7514,5 +7514,10 @@
   "trialPricingEngine": {
     "notANumber": "不是数值",
     "expressionIsEmpty": "表达式为空"
+  },
+  "displayContent": {
+    "selectAPageToShow": "请选择要显示的画面",
+    "pageSettingsAreIncorrect": "画面设置不正确",
+    "enterUrlStartingWithHttp": "请输入以 http:// 或 https:// 开头的网址"
   }
 }

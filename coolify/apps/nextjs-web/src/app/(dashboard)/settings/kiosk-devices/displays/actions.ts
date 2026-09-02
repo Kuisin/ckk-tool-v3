@@ -30,7 +30,7 @@ import { recordAudit } from "@/lib/audit";
 import { checkPermission } from "@/lib/authz";
 import { normalizeCode } from "@/lib/crockford";
 import { prisma } from "@/lib/db";
-import { DISPLAY_CONTENT_SCHEMAS } from "@/lib/display-content";
+import { displayContentSchemas } from "@/lib/display-content";
 import {
   notifyDisplayConfigChanged,
   notifyDisplayRevoked,
@@ -64,7 +64,9 @@ function validateConfig(
   config: unknown,
   tr: Awaited<ReturnType<typeof getTranslations>>,
 ): { ok: true; value: unknown } | { ok: false; error: string } {
-  const schema = DISPLAY_CONTENT_SCHEMAS[contentType];
+  const schema = displayContentSchemas((key, fallback) => tr(key) || fallback)[
+    contentType
+  ];
   const parsed = schema.safeParse(config ?? {});
   if (!parsed.success) {
     return {
