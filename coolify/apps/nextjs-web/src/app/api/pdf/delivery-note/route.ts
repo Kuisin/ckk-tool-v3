@@ -17,9 +17,9 @@ import { fetchDeliveryNote } from "@/app/(dashboard)/shipping/delivery-notes/dat
 import { requirePermissionResponse } from "@/lib/authz";
 import { parseDocKey } from "@/lib/doc-number";
 import { isIssued, notIssuedResponse, pdfStorageKey } from "@/lib/document-pdf";
-import { documentFormatters } from "@/lib/format";
+import { documentFormatters, escapeHtml } from "@/lib/format";
 import { normalizeLocale } from "@/lib/i18n";
-import { renderPdf } from "@/lib/pdf";
+import { multilineHtml, renderPdf } from "@/lib/pdf";
 import {
   deliveryMethodLabelLocalized,
   deliveryNotePdfLabels,
@@ -100,7 +100,7 @@ export async function GET(request: Request): Promise<Response> {
     issuer: ISSUER,
     recipient: {
       name: note.recipientName,
-      meta: metaLines.join("<br>"),
+      meta: metaLines.map(escapeHtml).join("<br>"),
     },
     // 書類 QR（CKK:DRN:<番号>）。URL は入れない。
     doc_qr: documentQrSvg(QR_KINDS.DELIVERY_NOTE, note.deliveryNumber),
@@ -128,7 +128,7 @@ export async function GET(request: Request): Promise<Response> {
            <tr class="grand-total"><td>${labels.total}</td><td>¥ ${yen(note.totalAmount ?? 0)}</td></tr>
          </table></div>`
       : "",
-    notes: (note.notes ?? "").replace(/\n/g, "<br>"),
+    notes: multilineHtml(note.notes),
   };
 
   let pdf: ArrayBuffer;

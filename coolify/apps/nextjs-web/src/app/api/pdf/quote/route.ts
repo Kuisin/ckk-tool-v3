@@ -15,7 +15,7 @@ import { parseDocKey } from "@/lib/doc-number";
 import { isIssued, notIssuedResponse, pdfStorageKey } from "@/lib/document-pdf";
 import { documentFormatters } from "@/lib/format";
 import { normalizeLocale } from "@/lib/i18n";
-import { renderPdf } from "@/lib/pdf";
+import { multilineHtml, renderPdf } from "@/lib/pdf";
 import {
   orderTypeLabelLocalized,
   pdfAttnLine,
@@ -119,7 +119,7 @@ export async function GET(request: Request): Promise<Response> {
       tax: yen(totals.tax),
       grand_total: yen(totals.grandTotal),
     },
-    notes: (quote.notes ?? "").replace(/\n/g, "<br>"),
+    notes: multilineHtml(quote.notes),
   };
 
   let pdf: ArrayBuffer;

@@ -320,6 +320,8 @@ function itemData(v: InspectionTemplateItemInput) {
 
 /** 指示書に割当済み or 検査記録があるバージョンは定義変更不可。 */
 export async function isTemplateLocked(templateId: number): Promise<boolean> {
+  // 参照だけでも master:READ は要る（ロック状態はテンプレート ID の存在を語る）
+  if (!(await checkPermission("master", "READ")).ok) return true;
   const [linkCount, recordCount] = await Promise.all([
     prisma.workOrderStepInspectionTemplate.count({
       where: { inspectionTemplateId: templateId },
@@ -915,6 +917,7 @@ export interface InspectionTemplateGroupRow {
 export async function fetchInspectionTemplateGroups(): Promise<
   InspectionTemplateGroupRow[]
 > {
+  if (!(await checkPermission("master", "READ")).ok) return [];
   const rows = await prisma.inspectionTemplateGroup.findMany({
     orderBy: [{ sortOrder: "asc" }, { id: "asc" }],
     include: { _count: { select: { templates: true } } },

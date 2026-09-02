@@ -15,9 +15,9 @@ import { fetchInvoice } from "@/app/(dashboard)/billing/invoices/data";
 import { requirePermissionResponse } from "@/lib/authz";
 import { parseDocKey } from "@/lib/doc-number";
 import { isIssued, notIssuedResponse, pdfStorageKey } from "@/lib/document-pdf";
-import { documentFormatters } from "@/lib/format";
+import { documentFormatters, escapeHtml } from "@/lib/format";
 import { normalizeLocale } from "@/lib/i18n";
-import { renderPdf } from "@/lib/pdf";
+import { multilineHtml, renderPdf } from "@/lib/pdf";
 import {
   invoicePdfLabels,
   pdfAttnLine,
@@ -96,7 +96,7 @@ export async function GET(request: Request): Promise<Response> {
     issuer: ISSUER,
     recipient: {
       name: invoice.customerName,
-      meta: metaLines.join("<br>"),
+      meta: metaLines.map(escapeHtml).join("<br>"),
     },
     // 書類 QR（CKK:INV:<番号>）。URL は入れない。
     doc_qr: documentQrSvg(QR_KINDS.INVOICE, invoice.invoiceNumber),
@@ -128,7 +128,7 @@ export async function GET(request: Request): Promise<Response> {
       tax: yen(invoice.taxAmount),
       grand_total: yen(invoice.totalAmount),
     },
-    notes: (invoice.notes ?? "").replace(/\n/g, "<br>"),
+    notes: multilineHtml(invoice.notes),
   };
 
   let pdf: ArrayBuffer;

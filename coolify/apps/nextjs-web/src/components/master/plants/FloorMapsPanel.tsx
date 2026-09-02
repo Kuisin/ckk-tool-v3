@@ -207,7 +207,7 @@ export function FloorMapsPanel({
                 {tr("common.deleteTheFloor")}
               </GhostButton>
               <input
-                accept="image/png,image/jpeg,image/webp,image/svg+xml"
+                accept="image/png,image/jpeg,image/webp"
                 hidden
                 onChange={(e) => {
                   onImageSelected(e.currentTarget.files?.[0] ?? null);

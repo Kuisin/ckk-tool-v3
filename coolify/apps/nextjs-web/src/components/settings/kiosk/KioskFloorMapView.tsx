@@ -594,7 +594,7 @@ export function KioskFloorMapView({
                     {tr("common.deleteTheFloor")}
                   </GhostButton>
                   <input
-                    accept="image/png,image/jpeg,image/webp,image/svg+xml"
+                    accept="image/png,image/jpeg,image/webp"
                     hidden
                     onChange={(e) => {
                       handleImageSelected(e.currentTarget.files?.[0] ?? null);
