@@ -11,11 +11,14 @@ import { TICKET_TTL_MS } from "./kiosk-auth-core";
 
 // DEVICE_SETTINGS は端末設定（/device-settings）の解錠 → リセット実行間の
 // 継続証明。card は関与しないので cardId は "" を渡す。
+// REACTIVATE は Cookie 消失時の端末トークン再発行で、端末鍵に署名させる nonce。
+// card は関与しないので cardId は ""。
 export type TicketPurpose =
   | "PIN_SETUP"
   | "PIN_VERIFY"
   | "ATTEST"
-  | "DEVICE_SETTINGS";
+  | "DEVICE_SETTINGS"
+  | "REACTIVATE";
 
 type Ticket = {
   cardId: string;

@@ -39,6 +39,12 @@ export default async function DashboardLayout({
   // アプリ自体が非表示になるため、リボン情報は配布しない）。
   const isDevEnv = currentAppEnv() === "dev";
   const userId = await sessionUserId();
+  // proxy.ts が唯一の門にならないようにする（監査 C1）。ミドルウェアの迂回
+  // （Next の既知の advisory）や matcher の書き損じで proxy を抜けてきても、
+  // ダッシュボード配下はセッションが無ければ描かない。requiredPermission が
+  // null のアプリ（承認・予定 / フォーム / ファイル管理 …）は requireAppRead が
+  // 「ログインのみ」で通すので、ここで止めないと未認証で描画される。
+  if (!userId) redirect("/login");
   const [disabledKeys, unreleasedKeys, profile, visibleKeys, prefs, tableRows] =
     await Promise.all([
       getDisabledAppKeys(),

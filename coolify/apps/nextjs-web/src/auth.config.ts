@@ -11,9 +11,15 @@ export const authConfig = {
   session: { strategy: "jwt" },
   providers: [], // providers は auth.ts で合成
   callbacks: {
-    // Proxy（authorized）: 未ログインはログインページへ
+    // Proxy（authorized）: 未ログインはログインページへ。
+    // **user の存在ではなく、セッションに入れた id が文字列であること**を見る
+    // （監査 C1）。Auth.js beta.31 以前は設定エラー時に auth オブジェクトが
+    // 「error 入り」で埋まり、存在チェックだけの門が開きっぱなしになった。
+    // id は callbacks.session で token.uid から入れるので、正常なセッション
+    // にしか無い。
     authorized({ auth }) {
-      return !!auth?.user;
+      const id = (auth?.user as { id?: unknown } | undefined)?.id;
+      return typeof id === "string" && id.length > 0;
     },
     jwt({ token, user }) {
       if (user) {
