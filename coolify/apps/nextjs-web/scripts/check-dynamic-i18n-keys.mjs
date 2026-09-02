@@ -52,9 +52,14 @@ for (const file of walk(SRC)) {
 }
 
 if (missing.size > 0) {
-  console.error(`check-dynamic-i18n-keys: messages/ja.json に無い動的な鍵の接頭辞（${missing.size} 件 / 検査 ${seen} 箇所）:`);
-  for (const [k, files] of missing) console.error(`  MISSING ${k}  <- ${[...files].join(", ")}`);
-  console.error("\nmessages/{ja,en,zh}.json にその名前空間（値ごとの鍵）を足してください。");
+  console.error(
+    `check-dynamic-i18n-keys: messages/ja.json に無い動的な鍵の接頭辞（${missing.size} 件 / 検査 ${seen} 箇所）:`,
+  );
+  for (const [k, files] of missing)
+    console.error(`  MISSING ${k}  <- ${[...files].join(", ")}`);
+  console.error(
+    "\nmessages/{ja,en,zh}.json にその名前空間（値ごとの鍵）を足してください。",
+  );
   process.exit(1);
 }
 console.log(`check-dynamic-i18n-keys: OK（${seen} 箇所を検査）`);
