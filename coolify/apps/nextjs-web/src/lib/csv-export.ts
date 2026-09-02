@@ -38,9 +38,17 @@ export interface YayoiInvoiceInput {
   taxAmount?: number;
 }
 
-/** CSV フィールドのエスケープ — カンマ・引用符・改行を含む場合はダブルクォート。 */
-function csvField(value: string | number): string {
-  const s = String(value);
+/**
+ * CSV フィールドのエスケープ — カンマ・引用符・改行を含む場合はダブルクォート。
+ *
+ * 先頭が = + - @ / タブ / CR のセルは Excel が数式として実行する（CSV
+ * インジェクション — 監査 L2）。取引先名は取引先マスタから来る文字列なので、
+ * 先頭にアポストロフィを置いて文字列に固定する。数値は対象外
+ * （負の金額 `-100` を `'-100` にすると仕訳が壊れる）。
+ */
+export function csvField(value: string | number): string {
+  if (typeof value === "number") return String(value);
+  const s = /^[=+\-@\t\r]/.test(value) ? `'${value}` : value;
   if (/[",\r\n]/.test(s)) {
     return `"${s.replace(/"/g, '""')}"`;
   }

@@ -667,6 +667,7 @@
     "loginRequired": "需要登录",
     "permissionActionDenied": "没有{permission}的{action}权限（{code}:{actionCode}）",
     "permissionReadOrUpdateDenied": "没有查看或编辑{permission}的权限（{code}:READ / UPDATE）",
+    "tooManyRequests": "操作过于频繁，请稍后再试",
     "duplicateCodeExists": "已存在相同编号的记录",
     "relatedDataExistsCannotExecute": "因存在关联数据而无法执行",
     "targetRecordNotFound": "未找到目标记录",

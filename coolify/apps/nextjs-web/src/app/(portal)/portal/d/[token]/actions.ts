@@ -60,6 +60,12 @@ export async function requestLinkOtp(
   }
   const to = resolved.link.boundEmail;
   if (!to) return { ok: true, challengeRef: null, message: issueMessage };
+  // 宛先単位の発行上限はログイン経路と共有する（監査 M5）— ここを数えないと、
+  // リンクを持つ相手が IP を変えながら束縛アドレスへメールを撃ち続けられた。
+  if ((await checkPortalLimit("OTP_ISSUE_EMAIL", to)).locked) {
+    return { ok: true, challengeRef: null, message: issueMessage };
+  }
+  await recordPortalLimitFailure("OTP_ISSUE_EMAIL", to);
 
   const issued = await issuePortalChallenge({
     // **リンクの宛先**であって、訪問者の入力ではない。

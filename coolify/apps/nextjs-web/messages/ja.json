@@ -667,6 +667,7 @@
     "loginRequired": "ログインが必要です",
     "permissionActionDenied": "{permission}の{action}権限がありません（{code}:{actionCode}）",
     "permissionReadOrUpdateDenied": "{permission}の閲覧または編集の権限がありません（{code}:READ / UPDATE）",
+    "tooManyRequests": "操作が多すぎます。しばらく待ってからやり直してください",
     "duplicateCodeExists": "同じコードのレコードが既に存在します",
     "relatedDataExistsCannotExecute": "関連するデータが存在するため実行できません",
     "targetRecordNotFound": "対象のレコードが見つかりません",

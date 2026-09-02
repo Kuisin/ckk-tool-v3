@@ -91,18 +91,75 @@ export type TokenStatus =
   | "undecryptable" // 鍵が変わった / 壊れている
   | "no-key"; // SETTINGS_ENCRYPTION_KEY が未設定
 
-export const aiProviderSettingsSchema = z.object({
-  provider: z.enum(AI_PROVIDERS),
-  baseUrl: z
-    .string()
-    .trim()
-    .refine((v) => v === "" || /^https?:\/\/.+/.test(v), {
-      message: "ベース URL は http:// または https:// で始めてください",
-    }),
-  visionModel: z.string().trim().max(200),
-  structModel: z.string().trim().max(200),
-  maxOutputTokens: z.number().int().min(256).max(200_000),
-});
+/**
+ * 各プロバイダで許すホスト（監査 L8）。base URL は po-extract がそのまま
+ * fetch するので、ここで縛らないと管理者が任意の内部アドレスへ書類を
+ * 送れる。クラウド 3 社は正規のホストだけ。ollama / OpenAI 互換は自社の
+ * GPU ホスト（コンテナ名・LAN）を指すので固定できないが、クラウドの
+ * メタデータ IP・ループバックは弾く。
+ */
+const PROVIDER_HOSTS: Partial<Record<AiProvider, readonly string[]>> = {
+  openai: ["api.openai.com"],
+  anthropic: ["api.anthropic.com"],
+  gemini: ["generativelanguage.googleapis.com"],
+};
+const BLOCKED_HOSTS = new Set([
+  "localhost",
+  "127.0.0.1",
+  "0.0.0.0",
+  "::1",
+  "169.254.169.254", // AWS / GCP / Azure のインスタンスメタデータ
+  "metadata.google.internal",
+]);
+
+export type BaseUrlVerdict = "OK" | "SCHEME" | "HOST" | "BLOCKED";
+
+export function baseUrlVerdict(
+  provider: AiProvider,
+  baseUrl: string,
+): BaseUrlVerdict {
+  if (baseUrl === "") return "OK";
+  let url: URL;
+  try {
+    url = new URL(baseUrl);
+  } catch {
+    return "SCHEME";
+  }
+  if (url.protocol !== "http:" && url.protocol !== "https:") return "SCHEME";
+  const host = url.hostname.toLowerCase().replace(/^\[|\]$/g, "");
+  if (BLOCKED_HOSTS.has(host)) return "BLOCKED";
+  const allowed = PROVIDER_HOSTS[provider];
+  if (allowed && !allowed.includes(host)) return "HOST";
+  return "OK";
+}
+
+export const aiProviderSettingsSchema = z
+  .object({
+    provider: z.enum(AI_PROVIDERS),
+    baseUrl: z
+      .string()
+      .trim()
+      .refine((v) => v === "" || /^https?:\/\/.+/.test(v), {
+        message: "ベース URL は http:// または https:// で始めてください",
+      }),
+    visionModel: z.string().trim().max(200),
+    structModel: z.string().trim().max(200),
+    maxOutputTokens: z.number().int().min(256).max(200_000),
+  })
+  .superRefine((s, ctx) => {
+    const verdict = baseUrlVerdict(s.provider, s.baseUrl);
+    if (verdict === "OK") return;
+    ctx.addIssue({
+      code: "custom",
+      path: ["baseUrl"],
+      message:
+        verdict === "HOST"
+          ? `このプロバイダのベース URL は ${(PROVIDER_HOSTS[s.provider] ?? []).join(" / ")} だけです` // i18n-ignore — zod の検証文（既存の baseUrl 文言と同じ扱い）
+          : verdict === "BLOCKED"
+            ? "そのホストは指定できません" // i18n-ignore — zod の検証文（既存の baseUrl 文言と同じ扱い）
+            : "ベース URL は http:// または https:// で始めてください", // i18n-ignore — zod の検証文（既存の baseUrl 文言と同じ扱い）
+    });
+  });
 
 /** ワイヤ形式（po-extract の X-AI-Config）。`v` で世代を切る。 */
 export interface AiWireConfig {

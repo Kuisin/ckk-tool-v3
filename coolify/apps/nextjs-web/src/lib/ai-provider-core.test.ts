@@ -82,6 +82,28 @@ describe("ai-provider-core", () => {
       expect(ok({ baseUrl: "ftp://x" })).toBe(false);
     });
 
+    it("クラウド 3 社は正規のホストだけ・メタデータ IP は常に拒否（L8）", () => {
+      expect(
+        ok({ provider: "anthropic", baseUrl: "https://api.anthropic.com" }),
+      ).toBe(true);
+      expect(
+        ok({ provider: "anthropic", baseUrl: "https://evil.example/v1" }),
+      ).toBe(false);
+      expect(
+        ok({ provider: "gemini", baseUrl: "http://169.254.169.254/" }),
+      ).toBe(false);
+      // ollama / OpenAI 互換は自社ホストを指せるが、メタデータ・ループバックは駄目
+      expect(ok({ provider: "ollama", baseUrl: "http://gpu-box:11434" })).toBe(
+        true,
+      );
+      expect(
+        ok({ provider: "ollama", baseUrl: "http://169.254.169.254/latest" }),
+      ).toBe(false);
+      expect(
+        ok({ provider: "openai", baseUrl: "http://localhost:8000/v1" }),
+      ).toBe(false);
+    });
+
     it("プロバイダは既知の 4 つだけ", () => {
       expect(ok({ provider: "openai" })).toBe(true);
       expect(

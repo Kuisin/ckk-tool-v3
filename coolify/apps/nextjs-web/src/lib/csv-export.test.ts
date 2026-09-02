@@ -1,7 +1,7 @@
 // buildYayoiCsv — 弥生会計 Next 仕訳インポート CSV（pure builder）のテスト。
 
 import { describe, expect, it } from "vitest";
-import { buildYayoiCsv, YAYOI_CSV_BOM } from "./csv-export";
+import { buildYayoiCsv, csvField, YAYOI_CSV_BOM } from "./csv-export";
 
 describe("buildYayoiCsv", () => {
   const base = {
@@ -68,5 +68,25 @@ describe("buildYayoiCsv", () => {
     });
     const row = csv.slice(YAYOI_CSV_BOM.length).trimEnd().split("\r\n")[1];
     expect(row).toContain('"INV-202607-00001 Acme, Inc. ""JP"""');
+  });
+});
+
+describe("csvField — 数式インジェクション対策", () => {
+  it("= + - @ タブ CR で始まる文字列はアポストロフィで文字列に固定する", () => {
+    expect(csvField("=cmd|' /C calc'!A0")).toBe("'=cmd|' /C calc'!A0");
+    expect(csvField("+1")).toBe("'+1");
+    expect(csvField("-abc")).toBe("'-abc");
+    expect(csvField("@SUM(A1)")).toBe("'@SUM(A1)");
+    expect(csvField("\tx")).toBe("'\tx");
+  });
+
+  it("数値は触らない（負の金額を壊さない）", () => {
+    expect(csvField(-100)).toBe("-100");
+    expect(csvField(0)).toBe("0");
+  });
+
+  it("普通の文字列は従来どおり", () => {
+    expect(csvField("株式会社A")).toBe("株式会社A");
+    expect(csvField('a"b,c')).toBe('"a""b,c"');
   });
 });
