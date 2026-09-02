@@ -1,9 +1,12 @@
 import { notFound } from "next/navigation";
 import { OrderLineDetail } from "@/components/sales/order-lines/OrderLineDetail";
+import { appLabelForKey } from "@/lib/app-list";
 import { fetchAuditEntries } from "@/lib/audit";
 import { requireAppRead } from "@/lib/authz-page";
 import { formatOrderLineNumber, parseOrderLineKey } from "@/lib/doc-number";
 import { listMemos } from "@/lib/document-memos";
+import { formatDocPageTitle } from "@/lib/page-title";
+import { getServerLocale } from "@/lib/user-preferences";
 import { fetchDesignRequestsForOrderLine } from "../../design-requests/data";
 import { fetchOrderLine } from "../data";
 
@@ -16,7 +19,13 @@ export async function generateMetadata({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  return { title: `注文明細 ${decodeURIComponent(id)} | CKK 業務管理システム` };
+  const locale = await getServerLocale();
+  return {
+    title: formatDocPageTitle(
+      appLabelForKey("order-lines", "注文明細", locale), // i18n-ignore — ja はそのまま使う（訳の実体は appLabelForKey 内の en/zh マップ）
+      decodeURIComponent(id),
+    ),
+  };
 }
 
 /** 注文明細 詳細 (SA25). URL id = 導出文書番号 ORD-YYYYMM-NNNNN-NN. */

@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import { getTranslations } from "next-intl/server";
 import { TrialEstimateDetail } from "@/components/sales/trial-estimates/TrialEstimateDetail";
 import type { LinkedPriceEntry } from "@/components/sales/trial-estimates/types";
+import { appLabelForKey } from "@/lib/app-list";
 import { fetchAuditEntries } from "@/lib/audit";
 import { requireAppRead } from "@/lib/authz-page";
 import { prisma } from "@/lib/db";
@@ -14,11 +15,13 @@ import {
 import { listMemos } from "@/lib/document-memos";
 import { type LocalizedText, localized } from "@/lib/format";
 import { fetchPriceHistoryByType } from "@/lib/material-pricing";
+import { formatDocPageTitle } from "@/lib/page-title";
 import { getTrialPricingSettings } from "@/lib/system-settings";
 import {
   toToolTypeOptions,
   toTrialPricingOptions,
 } from "@/lib/trial-pricing-settings";
+import { getServerLocale } from "@/lib/user-preferences";
 import { fetchTrialEstimate } from "../data";
 
 export const dynamic = "force-dynamic";
@@ -30,7 +33,13 @@ export async function generateMetadata({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  return { title: `価格試算 ${decodeURIComponent(id)} | CKK 業務管理システム` };
+  const locale = await getServerLocale();
+  return {
+    title: formatDocPageTitle(
+      appLabelForKey("trial-estimates", "価格試算", locale), // i18n-ignore — ja はそのまま使う（訳の実体は appLabelForKey 内の en/zh マップ）
+      decodeURIComponent(id),
+    ),
+  };
 }
 
 /** 価格試算 詳細 (SA52). URL id = 導出文書番号 EST-YYYYMM-NNNNN. */

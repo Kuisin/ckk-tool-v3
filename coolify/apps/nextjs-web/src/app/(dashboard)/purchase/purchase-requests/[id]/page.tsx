@@ -1,8 +1,11 @@
 import { notFound } from "next/navigation";
 import { PurchaseRequestDetail } from "@/components/purchase/purchase-requests/PurchaseRequestDetail";
+import { appLabelForKey } from "@/lib/app-list";
 import { fetchApprovalState, fetchApprovalTrail } from "@/lib/approvals";
 import { fetchAuditEntries } from "@/lib/audit";
 import { requireAppRead } from "@/lib/authz-page";
+import { formatDocPageTitle } from "@/lib/page-title";
+import { getServerLocale } from "@/lib/user-preferences";
 import { fetchPurchaseRequest, fetchSupplierOptions } from "../data";
 
 export const dynamic = "force-dynamic";
@@ -14,8 +17,12 @@ export async function generateMetadata({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
+  const locale = await getServerLocale();
   return {
-    title: `購買依頼 ${decodeURIComponent(id)} | CKK 業務管理システム`,
+    title: formatDocPageTitle(
+      appLabelForKey("purchase-requests", "購買依頼", locale), // i18n-ignore — ja はそのまま使う（訳の実体は appLabelForKey 内の en/zh マップ）
+      decodeURIComponent(id),
+    ),
   };
 }
 

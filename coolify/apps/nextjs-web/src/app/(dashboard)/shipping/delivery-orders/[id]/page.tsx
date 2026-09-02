@@ -1,9 +1,12 @@
 import { notFound, redirect } from "next/navigation";
 import { DeliveryOrderDetail } from "@/components/shipping/delivery-orders/DeliveryOrderDetail";
+import { appLabelForKey } from "@/lib/app-list";
 import { fetchAuditEntries } from "@/lib/audit";
 import { requireAppRead } from "@/lib/authz-page";
 import { formatDocNumber, parseDocKey } from "@/lib/doc-number";
 import { listMemos } from "@/lib/document-memos";
+import { formatDocPageTitle } from "@/lib/page-title";
+import { getServerLocale } from "@/lib/user-preferences";
 import { fetchDeliveryOrder } from "../data";
 
 export const dynamic = "force-dynamic";
@@ -15,7 +18,13 @@ export async function generateMetadata({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  return { title: `出荷書 ${decodeURIComponent(id)} | CKK 業務管理システム` };
+  const locale = await getServerLocale();
+  return {
+    title: formatDocPageTitle(
+      appLabelForKey("delivery-orders", "出荷書", locale), // i18n-ignore — ja はそのまま使う（訳の実体は appLabelForKey 内の en/zh マップ）
+      decodeURIComponent(id),
+    ),
+  };
 }
 
 /** 出荷書 詳細 (SH21). URL id = 導出文書番号 DOR-YYYYMM-NNNNN. */
