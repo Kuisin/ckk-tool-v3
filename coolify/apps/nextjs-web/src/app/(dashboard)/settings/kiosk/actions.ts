@@ -14,7 +14,7 @@ import { recordAudit } from "@/lib/audit";
 import { checkPermission } from "@/lib/authz";
 import {
   getKioskAppFlags,
-  KIOSK_APP_CATALOG,
+  kioskAppCatalog,
   setKioskAppFlags,
 } from "@/lib/kiosk-settings";
 import {
@@ -57,5 +57,6 @@ export async function updateKioskAppFlags(
 
 /** カタログ + 現在のフラグ（クライアントの初期表示用）。 */
 export async function loadKioskAppFlags() {
-  return { catalog: KIOSK_APP_CATALOG, flags: await getKioskAppFlags() };
+  const tr = await getTranslations();
+  return { catalog: kioskAppCatalog(tr), flags: await getKioskAppFlags() };
 }

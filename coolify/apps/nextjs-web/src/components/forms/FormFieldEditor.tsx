@@ -32,9 +32,9 @@ import { useIsMobile } from "@/hooks/useViewport";
 import {
   canBeTitleField,
   FIELD_KEY_PATTERN,
-  FORM_FIELD_TYPES,
   type FormFieldDef,
   type FormFieldType,
+  formFieldTypes,
   isNestableFieldType,
   isSafePattern,
   LOOKUP_SOURCES,
@@ -91,8 +91,8 @@ export function FormFieldEditor({
   const set = (patch: Partial<FormFieldDef>) =>
     onChange({ ...field, ...patch });
   const types = nestedOnly
-    ? FORM_FIELD_TYPES.filter((t) => isNestableFieldType(t.value))
-    : FORM_FIELD_TYPES;
+    ? formFieldTypes(tr).filter((t) => isNestableFieldType(t.value))
+    : formFieldTypes(tr);
   const keyError = fieldKeyError(
     field.key,
     siblings.map((f) => f.key),

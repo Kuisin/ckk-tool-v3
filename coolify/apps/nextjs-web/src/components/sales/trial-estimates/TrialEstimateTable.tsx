@@ -26,8 +26,8 @@ import { useIsMobile } from "@/hooks/useViewport";
 import { statusOptions } from "@/lib/status-map";
 import {
   calcTrialPricing,
-  TOOL_TYPE_OPTIONS,
   type TrialPricingOptions,
+  toolTypeOptionsFallback,
 } from "@/lib/trial-pricing";
 import type { TrialEstimateRecord } from "./types";
 
@@ -41,7 +41,7 @@ const headlinePrice = (r: TrialEstimateRecord, opts: TrialPricingOptions) =>
 export function TrialEstimateTable({
   rows,
   pricingOptions = {},
-  toolTypeOptions = TOOL_TYPE_OPTIONS,
+  toolTypeOptions,
 }: {
   rows: TrialEstimateRecord[];
   /** 価格試算エンジンのオプション（係数・カスタム計算）— 画面間で単価を一致させる。 */
@@ -51,8 +51,10 @@ export function TrialEstimateTable({
 }) {
   const tr = useTranslations();
   const fmt = useFormat();
+  const resolvedToolTypeOptions =
+    toolTypeOptions ?? toolTypeOptionsFallback(tr);
   const toolLabel = (v: string) =>
-    toolTypeOptions.find((o) => o.value === v)?.label ?? v;
+    resolvedToolTypeOptions.find((o) => o.value === v)?.label ?? v;
   const router = useRouter();
   const isMobile = useIsMobile();
   // 検索・フィルタは URL search params に保持（design.md §8.1 / ページ共有）
@@ -175,7 +177,7 @@ export function TrialEstimateTable({
           />
           <Select
             clearable
-            data={toolTypeOptions}
+            data={resolvedToolTypeOptions}
             flex={isMobile ? 1 : undefined}
             onChange={setToolType}
             placeholder={tr("common.toolType")}

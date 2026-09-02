@@ -13,6 +13,7 @@
 
 import { revalidatePath } from "next/cache";
 import { NextResponse } from "next/server";
+import { getTranslations } from "next-intl/server";
 import { isInlineSafe } from "@/lib/attachments";
 import { getCurrentActorId } from "@/lib/audit";
 import { requirePermissionResponse } from "@/lib/authz";
@@ -77,22 +78,25 @@ export async function POST(
   request: Request,
   { params }: Params,
 ): Promise<NextResponse> {
+  const tr = await getTranslations();
   const { id: idParam } = await params;
   const id = Number(idParam);
-  if (!Number.isInteger(id)) return badRequest("不正なテンプレート ID です");
+  if (!Number.isInteger(id)) {
+    return badRequest(tr("master.inspectionTemplateImage.invalidTemplateId"));
+  }
 
   let form: FormData;
   try {
     form = await request.formData();
   } catch {
-    return badRequest("multipart/form-data で送信してください");
+    return badRequest(tr("common.sendAsMultipartFormData"));
   }
   const file = form.get("file");
   if (!(file instanceof File)) {
-    return badRequest("画像ファイルを選択してください");
+    return badRequest(tr("common.selectAnImageFile"));
   }
   if (file.size > MAX_TEMPLATE_IMAGE_BYTES) {
-    return badRequest("画像サイズは 5MB 以下にしてください");
+    return badRequest(tr("common.imageSizeMax5Mb"));
   }
 
   const uploadedBy = await getCurrentActorId();
@@ -107,9 +111,12 @@ export async function DELETE(
   _request: Request,
   { params }: Params,
 ): Promise<NextResponse> {
+  const tr = await getTranslations();
   const { id: idParam } = await params;
   const id = Number(idParam);
-  if (!Number.isInteger(id)) return badRequest("不正なテンプレート ID です");
+  if (!Number.isInteger(id)) {
+    return badRequest(tr("master.inspectionTemplateImage.invalidTemplateId"));
+  }
 
   const result = await removeInspectionTemplateImage(id);
   if (!result.ok) return badRequest(result.error);

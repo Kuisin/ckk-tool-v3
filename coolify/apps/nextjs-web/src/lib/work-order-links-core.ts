@@ -9,6 +9,8 @@
  *   - quantity は 1 以上 or null（null = 完了時の完成数全量）
  */
 
+import type { Tr } from "./i18n";
+
 export interface WoLinkEdge {
   sourceWorkOrderId: string;
   targetWorkOrderId: string;
@@ -70,9 +72,12 @@ export function validateNewWoLink(
   return null;
 }
 
-export const WO_LINK_ISSUE_MESSAGE: Record<WoLinkIssue["kind"], string> = {
-  SELF: "同じ指示書へはリンクできません",
-  DUPLICATE: "この指示書へのリンクは既にあります",
-  CYCLE: "リンクが循環します（先行関係が閉路になる）",
-  QUANTITY: "受け渡し数量は 1 以上の整数で入力してください",
-};
+export function woLinkIssueMessage(kind: WoLinkIssue["kind"], tr: Tr): string {
+  const KEY: Record<WoLinkIssue["kind"], string> = {
+    SELF: "production.workOrderLinks.cannotLinkToTheSameWorkOrder",
+    DUPLICATE: "production.workOrderLinks.linkToThisWorkOrderAlreadyExists",
+    CYCLE: "production.workOrderLinks.linkWouldCreateACycle",
+    QUANTITY: "production.workOrderLinks.quantityMustBeAPositiveInteger",
+  };
+  return tr(KEY[kind]);
+}

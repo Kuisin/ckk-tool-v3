@@ -7,7 +7,7 @@ import {
 import { PageHeader } from "@/components/ui/PageHeader";
 import { requireAppRead } from "@/lib/authz-page";
 import { getTrialPricingSettings } from "@/lib/system-settings";
-import { MATERIAL_PRICE_BASIS_OPTIONS } from "@/lib/trial-pricing-settings";
+import { materialPriceBasisOptions } from "@/lib/trial-pricing-settings";
 
 export const dynamic = "force-dynamic";
 
@@ -20,7 +20,7 @@ export default async function TrialPricingEnginePage() {
   if (denied) return denied;
   const s = await getTrialPricingSettings();
   const basisLabel =
-    MATERIAL_PRICE_BASIS_OPTIONS.find((o) => o.value === s.materialPriceBasis)
+    materialPriceBasisOptions(tr).find((o) => o.value === s.materialPriceBasis)
       ?.label ?? s.materialPriceBasis;
 
   const sections: TrialPricingHubSection[] = [

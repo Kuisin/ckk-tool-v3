@@ -36,16 +36,13 @@ import { FormActions, FormSection } from "@/components/ui/shells";
 import { useIsMobile } from "@/hooks/useViewport";
 import { fieldHelp } from "@/lib/field-help";
 import {
-  PRODUCT_FIELD_TYPES,
   type ProductItemDef,
   type ProductType,
   type ProductTypeAssignment,
+  productFieldTypeLabel,
 } from "@/lib/product-types";
 
 const BASE = "/settings/product-types";
-
-const typeLabel = (v: string) =>
-  PRODUCT_FIELD_TYPES.find((o) => o.value === v)?.label ?? v;
 
 function newId(): string {
   return crypto.randomUUID();
@@ -84,7 +81,7 @@ export function ProductTypeEditForm({
     .filter((d) => d.enabled)
     .map((d) => ({
       value: d.key,
-      label: `${d.label.ja || d.key}（${typeLabel(d.type)}）`,
+      label: `${d.label.ja || d.key}（${productFieldTypeLabel(d.type, tr)}）`,
     }));
 
   const patch = (p: Partial<ProductType>) => setType((t) => ({ ...t, ...p }));

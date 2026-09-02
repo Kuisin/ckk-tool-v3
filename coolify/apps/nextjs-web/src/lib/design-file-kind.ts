@@ -9,6 +9,8 @@
  * 判定を使えるよう、I/O を持たないここに置く。
  */
 
+import type { Tr } from "./i18n";
+
 /** 画面での見せ方。 */
 export type DesignFileKind =
   | "pdf"
@@ -80,17 +82,20 @@ export function isViewable(filename: string, mimeType?: string | null) {
 }
 
 /** ダウンロードのみになる理由（利用者に出す文言）。 */
-export function notViewableReason(filename: string): string {
+export function notViewableReason(filename: string, tr: Tr): string {
   const ext = fileExtension(filename);
   // 読めそうに見えて読めないものは、なぜダメかを言う。
-  if (["step", "stp", "iges", "igs", "brep", "3dm", "ifc"].includes(ext)) {
-    return `${ext.toUpperCase()} はこの画面では表示できません（ダウンロードしてご覧ください）`;
-  }
-  if (ext === "dxf" || ext === "dwg") {
-    return `${ext.toUpperCase()} はこの画面では表示できません（ダウンロードしてご覧ください）`;
+  if (
+    ["step", "stp", "iges", "igs", "brep", "3dm", "ifc", "dxf", "dwg"].includes(
+      ext,
+    )
+  ) {
+    return tr("ui.designFileViewer.formatCannotBeDisplayedHere", {
+      format: ext.toUpperCase(),
+    });
   }
   if (ext === "heic") {
-    return "HEIC はブラウザによっては表示できないため、ダウンロードしてご覧ください";
+    return tr("ui.designFileViewer.heicMayNotDisplayInSomeBrowsers");
   }
-  return "この形式は表示できません（ダウンロードしてご覧ください）";
+  return tr("ui.designFileViewer.thisFormatCannotBeDisplayed");
 }

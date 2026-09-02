@@ -13,6 +13,7 @@
 
 import { optionLabel } from "./form-answer-display";
 import type { FormAnswerValue, FormFieldDef } from "./form-schema";
+import type { Tr } from "./i18n";
 import { type RichTextDoc, toPlainText } from "./rich-text-core";
 
 export interface CountItem {
@@ -191,6 +192,12 @@ function summarizeField(
   field: FormFieldDef,
   answers: readonly Record<string, FormAnswerValue>[],
   options: SummaryOptions,
+  /**
+   * next-intl の translator。テスト等 tr を渡さない呼び出しのために任意 —
+   * その場合は日本語の決め打ち文言へ倒す（呼び出し側は全て server component /
+   * server action で、本番の呼び出しは必ず渡す）。
+   */
+  tr: Tr | undefined,
 ): FieldSummaryBody {
   const values = answers
     .map((a) => a[field.key])
@@ -276,7 +283,12 @@ function summarizeField(
     case "time": {
       const hours = values
         .filter((v): v is string => typeof v === "string")
-        .map((v) => `${v.slice(0, 2)}時台`);
+        .map((v) => {
+          const hour = v.slice(0, 2);
+          return tr
+            ? tr("forms.formSummaryCore.hourBucket", { hour })
+            : `${hour}時台`;
+        });
       const buckets = tally(hours).sort((a, b) =>
         a.label.localeCompare(b.label),
       );
@@ -290,7 +302,9 @@ function summarizeField(
       return {
         kind: "amount",
         answered,
-        note: `${answered} 件の回答に、合計 ${files} 個のファイル`,
+        note: tr
+          ? tr("forms.formSummaryCore.attachmentNote", { answered, files })
+          : `${answered} 件の回答に、合計 ${files} 個のファイル`,
       };
     }
 
@@ -302,7 +316,9 @@ function summarizeField(
       return {
         kind: "amount",
         answered,
-        note: `合計 ${rows} 行（1 回答あたり平均 ${avg} 行）`,
+        note: tr
+          ? tr("forms.formSummaryCore.tableNote", { rows, avg })
+          : `合計 ${rows} 行（1 回答あたり平均 ${avg} 行）`,
       };
     }
 
@@ -345,13 +361,14 @@ export function summarizeResponses(
   fields: readonly FormFieldDef[],
   answers: readonly Record<string, FormAnswerValue>[],
   options: SummaryOptions = DEFAULT_SUMMARY_OPTIONS,
+  tr?: Tr,
 ): FieldSummary[] {
   return fields.map((field) => ({
     key: field.key,
     label: field.label.ja || field.key,
     type: field.type,
     total: answers.length,
-    body: summarizeField(field, answers, options),
+    body: summarizeField(field, answers, options, tr),
   }));
 }
 

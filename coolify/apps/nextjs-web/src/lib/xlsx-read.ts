@@ -21,6 +21,7 @@
  */
 
 import { inflateRawSync } from "node:zlib";
+import type { Tr } from "./i18n";
 
 // ── ZIP ─────────────────────────────────────────────────────────────────────
 
@@ -28,7 +29,7 @@ const EOCD_SIGNATURE = 0x06054b50;
 const CENTRAL_SIGNATURE = 0x02014b50;
 
 /** ZIP の中身を「名前 → 中身」で取り出す。 */
-function unzip(buf: Buffer): Map<string, Buffer> {
+function unzip(buf: Buffer, tr: Tr): Map<string, Buffer> {
   // End of Central Directory は末尾にある（コメントがあると少し手前）
   let eocd = -1;
   for (let i = buf.length - 22; i >= 0 && i > buf.length - 22 - 0xffff; i--) {
@@ -37,7 +38,7 @@ function unzip(buf: Buffer): Map<string, Buffer> {
       break;
     }
   }
-  if (eocd < 0) throw new Error("ZIP の終端が見つかりません");
+  if (eocd < 0) throw new Error(tr("api.xlsxRead.zipEndNotFound"));
 
   const entryCount = buf.readUInt16LE(eocd + 10);
   let p = buf.readUInt32LE(eocd + 16);
@@ -45,7 +46,7 @@ function unzip(buf: Buffer): Map<string, Buffer> {
 
   for (let n = 0; n < entryCount; n++) {
     if (buf.readUInt32LE(p) !== CENTRAL_SIGNATURE) {
-      throw new Error("ZIP の目録が壊れています");
+      throw new Error(tr("api.xlsxRead.zipDirectoryCorrupt"));
     }
     const method = buf.readUInt16LE(p + 10);
     const compressedSize = buf.readUInt32LE(p + 20);
@@ -63,7 +64,11 @@ function unzip(buf: Buffer): Map<string, Buffer> {
 
     if (method === 0) files.set(name, Buffer.from(raw));
     else if (method === 8) files.set(name, inflateRawSync(raw));
-    else throw new Error(`未対応の圧縮方式です (${method}): ${name}`);
+    else {
+      throw new Error(
+        tr("api.xlsxRead.unsupportedCompression", { method, name }),
+      );
+    }
 
     p += 46 + nameLen + extraLen + commentLen;
   }
@@ -124,12 +129,12 @@ export function columnIndex(ref: string): number {
 }
 
 /** 最初のワークシートの XML。 */
-function firstSheetXml(files: Map<string, Buffer>): string {
+function firstSheetXml(files: Map<string, Buffer>, tr: Tr): string {
   // 並びは名前順で決め打ちしない（sheet10 が sheet2 より先に来る）
   const names = [...files.keys()].filter((n) =>
     /^xl\/worksheets\/sheet\d+\.xml$/.test(n),
   );
-  if (names.length === 0) throw new Error("ワークシートが見つかりません");
+  if (names.length === 0) throw new Error(tr("api.xlsxRead.noWorksheet"));
   names.sort((a, b) => {
     const num = (s: string) => Number(/(\d+)\.xml$/.exec(s)?.[1] ?? 0);
     return num(a) - num(b);
@@ -142,10 +147,10 @@ function firstSheetXml(files: Map<string, Buffer>): string {
  *
  * 行・列の穴は空文字で埋める（`r` 属性を見るので、飛んだセルも位置が合う）。
  */
-export function readXlsx(buf: Buffer): string[][] {
-  const files = unzip(buf);
+export function readXlsx(buf: Buffer, tr: Tr): string[][] {
+  const files = unzip(buf, tr);
   const shared = sharedStrings(files);
-  const xml = firstSheetXml(files);
+  const xml = firstSheetXml(files, tr);
 
   const rows: string[][] = [];
   const rowRe = /<row\b([^>]*)>([\s\S]*?)<\/row>/g;

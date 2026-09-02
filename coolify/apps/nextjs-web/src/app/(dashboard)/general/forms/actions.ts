@@ -1093,7 +1093,7 @@ export async function previewFormImport(
   if (text.length > MAX_IMPORT_BYTES)
     return actionError(tr("general.formsActions.fileTooLarge"));
 
-  const parsed = parseFormExport(text);
+  const parsed = parseFormExport(text, tr);
   if (!parsed.ok) return actionError(parsed.error);
 
   const existing = parsed.data.meta.sourceCode
@@ -1200,7 +1200,7 @@ export async function importForm(
   if (text.length > MAX_IMPORT_BYTES)
     return actionError(tr("general.formsActions.fileTooLarge"));
 
-  const parsed = parseFormExport(text);
+  const parsed = parseFormExport(text, tr);
   if (!parsed.ok) return actionError(parsed.error);
   const { form: body, meta } = parsed.data;
 

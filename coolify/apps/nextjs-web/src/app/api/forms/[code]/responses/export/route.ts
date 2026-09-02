@@ -10,6 +10,7 @@
  */
 
 import { NextResponse } from "next/server";
+import { getTranslations } from "next-intl/server";
 import { recordAudit } from "@/lib/audit";
 import { requirePermissionResponse, sessionUserId } from "@/lib/authz";
 import {
@@ -17,10 +18,7 @@ import {
   exportDownloadName,
   loadFormExport,
 } from "@/lib/form-export";
-import {
-  FIXED_EXPORT_COLUMNS,
-  parseExportFilter,
-} from "@/lib/form-export-core";
+import { fixedExportColumns, parseExportFilter } from "@/lib/form-export-core";
 import { statusLabel } from "@/lib/status-map";
 import { getCurrentPreferences } from "@/lib/user-preferences";
 import {
@@ -37,6 +35,7 @@ export async function GET(
   request: Request,
   { params }: { params: Promise<{ code: string }> },
 ): Promise<Response> {
+  const tr = await getTranslations();
   // 書き出しは EXPORT。閲覧できる人がみな持ち出せるわけではない。
   const denied = await requirePermissionResponse("form", "EXPORT");
   if (denied) return denied;
@@ -57,12 +56,12 @@ export async function GET(
 
   // 匿名フォームでは回答者の列ごと落とす（空欄を残すと「誰か居るのに空」に見える）。
   const showRespondent = form.respondentVisibility === "SHOWN";
-  const fixed = FIXED_EXPORT_COLUMNS.filter(
-    (c) => showRespondent || c !== "回答者",
+  const fixed = fixedExportColumns(tr).filter(
+    (c) => showRespondent || c.id !== "respondent",
   );
 
   const columns = [
-    ...fixed.map((header) => ({ header })),
+    ...fixed.map((c) => ({ header: c.header })),
     ...fields.map((f) => ({ header: f.label.ja || f.label.en || f.key })),
   ];
 

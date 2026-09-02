@@ -42,7 +42,7 @@ export function DeviceProfilePanel({ device }: { device: KioskDeviceRow }) {
   const tr = useTranslations();
   const fmt = useFormat();
   const profile = device.deviceProfile;
-  const flags = deviceRiskFlags(profile);
+  const flags = deviceRiskFlags(profile, tr);
 
   return (
     <Paper p="md" radius="md" withBorder>

@@ -58,9 +58,9 @@ function money(v: { toString(): string } | null | undefined): string | null {
 
 export {
   isPortalDocumentType,
-  PORTAL_DOCUMENT_LABEL,
   PORTAL_DOCUMENT_TYPES,
   type PortalDocumentType,
+  portalDocumentLabel,
 } from "./portal-documents-core";
 
 export interface PortalDocumentListItem extends PortalDocumentDto {

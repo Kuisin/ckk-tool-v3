@@ -287,12 +287,15 @@ async function resolveWorkOrderTarget(
       v.allocations.map((a) => a.orderLineId),
       excludeWorkOrderNumber,
     );
-    const error = validateAllocations({
-      type: v.type,
-      plannedQuantity: v.plannedQuantity,
-      allocations: v.allocations,
-      lines,
-    });
+    const error = validateAllocations(
+      {
+        type: v.type,
+        plannedQuantity: v.plannedQuantity,
+        allocations: v.allocations,
+        lines,
+      },
+      tr,
+    );
     if (error) return error;
     // validateAllocations が「全行同一製品・productId 非 null」を保証済み
     const productId = lines.find(
@@ -820,15 +823,18 @@ export async function copyWorkOrder(
           quantity: Math.min(source.plannedQuantity, remaining),
         },
       ];
-      const error = validateAllocations({
-        type: source.type,
-        plannedQuantity:
-          source.type === "FROM_STOCK"
-            ? allocations[0].quantity
-            : source.plannedQuantity,
-        allocations,
-        lines,
-      });
+      const error = validateAllocations(
+        {
+          type: source.type,
+          plannedQuantity:
+            source.type === "FROM_STOCK"
+              ? allocations[0].quantity
+              : source.plannedQuantity,
+          allocations,
+          lines,
+        },
+        tr,
+      );
       if (error) return actionError(error);
       if (line.productId == null) {
         return actionError(

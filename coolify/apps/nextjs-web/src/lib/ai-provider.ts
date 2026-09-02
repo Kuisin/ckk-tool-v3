@@ -15,7 +15,7 @@ import "server-only";
 
 import {
   type AiProviderSettings,
-  aiProviderSettingsSchema,
+  aiProviderEnumSchema,
   DEFAULT_AI_PROVIDER_SETTINGS,
   encodeWireConfig,
   isExternalProvider,
@@ -157,7 +157,7 @@ export async function aiConfigHeaders(): Promise<Record<string, string>> {
 /** 設定部分だけを Map から組み立てる（トークンには触れない）。 */
 function settingsFrom(byKey: Map<string, unknown>): AiProviderSettings {
   const out: AiProviderSettings = { ...DEFAULT_AI_PROVIDER_SETTINGS };
-  const parsedProvider = aiProviderSettingsSchema.shape.provider.safeParse(
+  const parsedProvider = aiProviderEnumSchema.safeParse(
     byKey.get(KEY_MAP.provider),
   );
   if (parsedProvider.success) out.provider = parsedProvider.data;

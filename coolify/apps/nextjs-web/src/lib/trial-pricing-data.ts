@@ -12,8 +12,20 @@
  * (`MATCH(value, keysDesc, -1)`): pick the smallest key that is ≥ the value.
  */
 
+import { label } from "./messages";
 import type { Criterion, LookupTable } from "./trial-pricing-criteria";
 import { DEFAULT_LOOKUP_TABLES } from "./trial-pricing-lookups";
+
+/**
+ * これらの選択肢は `value`（enum 相当。lib/trial-pricing.ts の計算ロジックが
+ * 突き合わせに使う）と `label`（画面の Select に出す文言）を持つ。`label` は
+ * ここではモジュール読み込み時に一度だけ ja で解決する — 呼び出し側
+ * （TrialEstimateForm.tsx）は locale を持たない静的配列として `.value`/
+ * `.label` を読むため、locale 別に出し分けるには配列そのものを関数へ
+ * 作り替える必要があり、それは今回のスコープを超える。文言の置き場は
+ * `messages/ja.json` の `enum.*` に移した（コード直書きをやめた）ので、
+ * 将来 locale 対応する際もここは変えずに済む。
+ */
 
 // ── Excel descending approximate match (MATCH(...,-1)) ───────────────────────
 /** Smallest key ≥ value; falls back to the smallest key when value exceeds none. */
@@ -608,44 +620,148 @@ export const CYLINDER_MACHINING: Matrix = {
 
 /** ラップ処理 (掛け率!A2:B5). Excel は全て定額（有(OSG)=205）。 */
 export const LAP_OPTIONS = [
-  { value: "NONE", label: "無", amount: 0 },
-  { value: "INHOUSE", label: "有(社内)", amount: 200 },
-  { value: "OSG", label: "有(OSG)", amount: 205 },
-  { value: "OTHER", label: "有(他メーカー)", amount: 100 },
+  {
+    value: "NONE",
+    label: label("enum.LAP_OPTION_LABEL.NONE", "ja", "無"),
+    amount: 0,
+  },
+  {
+    value: "INHOUSE",
+    label: label("enum.LAP_OPTION_LABEL.INHOUSE", "ja", "有(社内)"),
+    amount: 200,
+  },
+  {
+    value: "OSG",
+    label: label("enum.LAP_OPTION_LABEL.OSG", "ja", "有(OSG)"),
+    amount: 205,
+  },
+  {
+    value: "OTHER",
+    label: label("enum.LAP_OPTION_LABEL.OTHER", "ja", "有(他メーカー)"),
+    amount: 100,
+  },
 ] as const;
 
 /** 検査成績書 (掛け率!E2:F8). */
 export const INSPECTION_OPTIONS = [
-  { value: "NONE", label: "無", amount: 0 },
-  { value: "ONE", label: "1ヶ所", amount: 50 },
-  { value: "ONE_R", label: "1ヶ所(R精度)", amount: 500 },
-  { value: "TWO", label: "2ヶ所", amount: 100 },
-  { value: "TWO_R", label: "2ヶ所(外径等+R精度)", amount: 550 },
-  { value: "THREE", label: "3ヶ所", amount: 150 },
-  { value: "THREE_R", label: "3ヶ所(外径等+R精度)", amount: 600 },
+  {
+    value: "NONE",
+    label: label("enum.INSPECTION_OPTION_LABEL.NONE", "ja", "無"),
+    amount: 0,
+  },
+  {
+    value: "ONE",
+    label: label("enum.INSPECTION_OPTION_LABEL.ONE", "ja", "1ヶ所"),
+    amount: 50,
+  },
+  {
+    value: "ONE_R",
+    label: label("enum.INSPECTION_OPTION_LABEL.ONE_R", "ja", "1ヶ所(R精度)"),
+    amount: 500,
+  },
+  {
+    value: "TWO",
+    label: label("enum.INSPECTION_OPTION_LABEL.TWO", "ja", "2ヶ所"),
+    amount: 100,
+  },
+  {
+    value: "TWO_R",
+    label: label(
+      "enum.INSPECTION_OPTION_LABEL.TWO_R",
+      "ja",
+      "2ヶ所(外径等+R精度)",
+    ),
+    amount: 550,
+  },
+  {
+    value: "THREE",
+    label: label("enum.INSPECTION_OPTION_LABEL.THREE", "ja", "3ヶ所"),
+    amount: 150,
+  },
+  {
+    value: "THREE_R",
+    label: label(
+      "enum.INSPECTION_OPTION_LABEL.THREE_R",
+      "ja",
+      "3ヶ所(外径等+R精度)",
+    ),
+    amount: 600,
+  },
 ] as const;
 
 /** 段加工種類 markup (掛け率!H2:I7). */
 export const STEP_TYPE_OPTIONS = [
-  { value: "NONE", label: "無", rate: 0 },
-  { value: "ROUGH", label: "粗", rate: 1 },
-  { value: "ROUGH_15", label: "粗 取り代φ1.5以上", rate: 1.2 },
-  { value: "FINISH", label: "仕上げ", rate: 1.2 },
-  { value: "FINISH_15", label: "仕上げ取り代φ1.5以上", rate: 1.44 },
-  { value: "FORM", label: "総型形状", rate: 1.44 },
+  {
+    value: "NONE",
+    label: label("enum.STEP_TYPE_OPTION_LABEL.NONE", "ja", "無"),
+    rate: 0,
+  },
+  {
+    value: "ROUGH",
+    label: label("enum.STEP_TYPE_OPTION_LABEL.ROUGH", "ja", "粗"),
+    rate: 1,
+  },
+  {
+    value: "ROUGH_15",
+    label: label(
+      "enum.STEP_TYPE_OPTION_LABEL.ROUGH_15",
+      "ja",
+      "粗 取り代φ1.5以上",
+    ),
+    rate: 1.2,
+  },
+  {
+    value: "FINISH",
+    label: label("enum.STEP_TYPE_OPTION_LABEL.FINISH", "ja", "仕上げ"),
+    rate: 1.2,
+  },
+  {
+    value: "FINISH_15",
+    label: label(
+      "enum.STEP_TYPE_OPTION_LABEL.FINISH_15",
+      "ja",
+      "仕上げ取り代φ1.5以上",
+    ),
+    rate: 1.44,
+  },
+  {
+    value: "FORM",
+    label: label("enum.STEP_TYPE_OPTION_LABEL.FORM", "ja", "総型形状"),
+    rate: 1.44,
+  },
 ] as const;
 
 /** 首下加工種類 markup (掛け率!K2:L4). */
 export const NECK_TYPE_OPTIONS = [
-  { value: "NONE", label: "無", rate: 0 },
-  { value: "STRAIGHT", label: "ストレート", rate: 1 },
-  { value: "TAPER", label: "テーパー", rate: 1.2 },
+  {
+    value: "NONE",
+    label: label("enum.NECK_TYPE_OPTION_LABEL.NONE", "ja", "無"),
+    rate: 0,
+  },
+  {
+    value: "STRAIGHT",
+    label: label("enum.NECK_TYPE_OPTION_LABEL.STRAIGHT", "ja", "ストレート"),
+    rate: 1,
+  },
+  {
+    value: "TAPER",
+    label: label("enum.NECK_TYPE_OPTION_LABEL.TAPER", "ja", "テーパー"),
+    rate: 1.2,
+  },
 ] as const;
 
 /** 円筒種類 markup (掛け率!N2:O3). */
 export const CYLINDER_TYPE_OPTIONS = [
-  { value: "NORMAL", label: "通常", rate: 1 },
-  { value: "HIGH", label: "高精度", rate: 1.2 },
+  {
+    value: "NORMAL",
+    label: label("enum.CYLINDER_TYPE_OPTION_LABEL.NORMAL", "ja", "通常"),
+    rate: 1,
+  },
+  {
+    value: "HIGH",
+    label: label("enum.CYLINDER_TYPE_OPTION_LABEL.HIGH", "ja", "高精度"),
+    rate: 1.2,
+  },
 ] as const;
 
 // ── ロット割引率 (Excel: 丸棒見積!Z29:AC36, VLOOKUP approx on lower bound) ─────
@@ -690,9 +806,22 @@ export function coatingFactorFor(toolType: string): number {
 // MIGRATION NOTE: full LD tables (先端+ギャッシュ / 先端+外周 の外径×刃長マトリク
 // ス) are large; demo uses representative minutes. Replace with the full LD sheet.
 export const LD_LOCATION_OPTIONS = [
-  { value: "TIP", label: "先端のみ" },
-  { value: "TIP_GASH", label: "先端+ギャッシュ" },
-  { value: "TIP_OUTER", label: "先端+外周" },
+  {
+    value: "TIP",
+    label: label("enum.LD_LOCATION_OPTION_LABEL.TIP", "ja", "先端のみ"),
+  },
+  {
+    value: "TIP_GASH",
+    label: label(
+      "enum.LD_LOCATION_OPTION_LABEL.TIP_GASH",
+      "ja",
+      "先端+ギャッシュ",
+    ),
+  },
+  {
+    value: "TIP_OUTER",
+    label: label("enum.LD_LOCATION_OPTION_LABEL.TIP_OUTER", "ja", "先端+外周"),
+  },
 ] as const;
 
 export function ldMinutes(

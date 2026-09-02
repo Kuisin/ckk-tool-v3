@@ -11,6 +11,8 @@
  * ここは検証済みの JSON を画面に出せる形へ畳むだけ。
  */
 
+import type { Tr } from "./i18n";
+
 /** SY09 に出す項目だけ。端末同定用の値（androidId / serial）は載せない。 */
 export interface DeviceProfileSummary {
   manufacturer: string | null;
@@ -67,16 +69,24 @@ export function toProfileSummary(value: unknown): DeviceProfileSummary | null {
  */
 export function deviceRiskFlags(
   profile: DeviceProfileSummary | null,
+  tr: Tr,
 ): string[] {
   if (!profile) return [];
   const flags: string[] = [];
-  if (profile.isEmulator) flags.push("エミュレータの疑い");
-  if (profile.buildTags === "test-keys")
-    flags.push("非公式 ROM の疑い（test-keys）");
-  if (profile.adbEnabled === true) flags.push("USB デバッグ（ADB）が有効");
-  if (profile.developmentSettings === true)
-    flags.push("開発者オプションが有効");
-  if (!profile.isDeviceOwner && !profile.isProfileOwner)
-    flags.push("管理端末として登録されていない");
+  if (profile.isEmulator) {
+    flags.push(tr("settings.deviceProfileCore.suspectedEmulator"));
+  }
+  if (profile.buildTags === "test-keys") {
+    flags.push(tr("settings.deviceProfileCore.suspectedUnofficialRom"));
+  }
+  if (profile.adbEnabled === true) {
+    flags.push(tr("settings.deviceProfileCore.usbDebuggingEnabled"));
+  }
+  if (profile.developmentSettings === true) {
+    flags.push(tr("settings.deviceProfileCore.developerOptionsEnabled"));
+  }
+  if (!profile.isDeviceOwner && !profile.isProfileOwner) {
+    flags.push(tr("settings.deviceProfileCore.notRegisteredAsManagedDevice"));
+  }
   return flags;
 }

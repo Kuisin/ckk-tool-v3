@@ -4,8 +4,8 @@ import { Badge, Table, Text } from "@mantine/core";
 import { useTranslations } from "next-intl";
 import type { PortalOrderLineRow } from "@/lib/portal-progress";
 import {
-  PORTAL_PROGRESS_LABEL,
   type PortalProgress,
+  portalProgressLabel,
 } from "@/lib/portal-progress-core";
 
 const COLOR: Record<PortalProgress, string> = {
@@ -52,7 +52,7 @@ export function PortalOrderTable({ rows }: { rows: PortalOrderLineRow[] }) {
             </Table.Td>
             <Table.Td>
               <Badge color={COLOR[r.progress]} size="sm" variant="light">
-                {PORTAL_PROGRESS_LABEL[r.progress]}
+                {portalProgressLabel(r.progress, tr)}
               </Badge>
             </Table.Td>
           </Table.Tr>

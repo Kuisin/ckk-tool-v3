@@ -22,6 +22,7 @@ import "server-only";
 
 import type { PdfFileMeta } from "@/components/ui/PdfAttachmentPanel";
 import { statObject } from "@/lib/storage";
+import { label } from "./messages";
 
 /** 生成 PDF の保管キー（種別 → 文書番号 → key）。 */
 export const pdfStorageKey = {
@@ -38,11 +39,22 @@ export function isIssued(status: string): boolean {
   return status !== "DRAFT";
 }
 
-/** 未発行文書への PDF アクセスを断る 403 レスポンス。 */
-export function notIssuedResponse(label: string): Response {
-  return new Response(`発行前の${label}は PDF を閲覧できません`, {
-    status: 403,
-  });
+/**
+ * 未発行文書への PDF アクセスを断る 403 レスポンス。
+ * `docType` は呼び出し元がそのまま渡す書類名（"見積書" 等 — 呼び出し元の
+ * route ハンドラは本ウェーブの対象外のため、文言はここで ja 固定にする。
+ * 誰が開いても同じ文章になる、他の PDF ルートの決まり事に合わせている）。
+ */
+export function notIssuedResponse(docType: string): Response {
+  return new Response(
+    label(
+      "api.documentPdf.notIssuedYet",
+      "ja",
+      "発行前の{docType}は PDF を閲覧できません",
+      { docType },
+    ),
+    { status: 403 },
+  );
 }
 
 /**

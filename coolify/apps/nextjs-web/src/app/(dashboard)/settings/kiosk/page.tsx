@@ -5,8 +5,8 @@ import { PageHeader } from "@/components/ui/PageHeader";
 import { requireAppRead } from "@/lib/authz-page";
 import {
   getKioskAppFlags,
-  KIOSK_APP_CATALOG,
   KIOSK_POLICY_DEFAULTS,
+  kioskAppCatalog,
 } from "@/lib/kiosk-settings";
 
 export const dynamic = "force-dynamic";
@@ -60,7 +60,7 @@ export default async function KioskSettingsPage() {
         title={tr("settings.kiosk.sharedDeviceSettings")}
       />
       <KioskSettingsPanel
-        catalog={KIOSK_APP_CATALOG}
+        catalog={kioskAppCatalog(tr)}
         initialFlags={flags}
         policy={policy}
       />

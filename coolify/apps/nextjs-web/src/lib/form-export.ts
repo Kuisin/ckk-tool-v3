@@ -31,6 +31,8 @@ import {
   fetchFormVersionFields,
   formAccess,
 } from "./forms";
+import type { Locale } from "./i18n";
+import { label } from "./messages";
 import { responseInScope } from "./share-grants-core";
 
 /**
@@ -190,6 +192,7 @@ export function exportDownloadName(
   title: string,
   code: string,
   extension: string,
+  locale: Locale = "ja",
 ): string {
   const safe = title
     .trim()
@@ -198,5 +201,7 @@ export function exportDownloadName(
     .replace(/_+/g, "_")
     .replace(/^_|_$/g, "")
     .slice(0, 40);
-  return `回答_${safe || "無題"}_${code}.${extension}`;
+  const prefix = label("common.response", locale, "回答");
+  const untitled = label("common.untitled", locale, "無題");
+  return `${prefix}_${safe || untitled}_${code}.${extension}`;
 }

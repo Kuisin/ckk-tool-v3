@@ -11,6 +11,7 @@
  */
 
 import { NextResponse } from "next/server";
+import { getTranslations } from "next-intl/server";
 import {
   portableFileSchema,
   rowsToPortable,
@@ -24,12 +25,13 @@ export const dynamic = "force-dynamic";
 const MAX_BYTES = 10 * 1024 * 1024;
 
 export async function POST(request: Request): Promise<NextResponse> {
+  const tr = await getTranslations();
   let form: FormData;
   try {
     form = await request.formData();
   } catch {
     return NextResponse.json(
-      { ok: false, error: "multipart/form-data で送信してください" },
+      { ok: false, error: tr("common.sendAsMultipartFormData") },
       { status: 400 },
     );
   }
@@ -37,13 +39,16 @@ export async function POST(request: Request): Promise<NextResponse> {
   const file = form.get("file");
   if (!(file instanceof File)) {
     return NextResponse.json(
-      { ok: false, error: "ファイルを選択してください" },
+      { ok: false, error: tr("master.inspectionTemplateIoModal.selectAFile") },
       { status: 400 },
     );
   }
   if (file.size > MAX_BYTES) {
     return NextResponse.json(
-      { ok: false, error: "ファイルは 10MB 以下にしてください" },
+      {
+        ok: false,
+        error: tr("master.inspectionTemplateIoModal.fileSizeMax10Mb"),
+      },
       { status: 413 },
     );
   }
@@ -54,15 +59,18 @@ export async function POST(request: Request): Promise<NextResponse> {
   if (isExcel) {
     let rows: string[][];
     try {
-      rows = readXlsx(buf);
+      rows = readXlsx(buf, tr);
     } catch (e) {
       // 読めないものを推測で詰めない。何が起きたかをそのまま伝える。
       return NextResponse.json(
         {
           ok: false,
-          error: `Excel として読めませんでした: ${
-            e instanceof Error ? e.message : "不明な形式です"
-          }`,
+          error: tr("master.inspectionTemplateIoModal.couldNotReadExcel", {
+            reason:
+              e instanceof Error
+                ? e.message
+                : tr("master.inspectionTemplateIoModal.unknownFormat"),
+          }),
         },
         { status: 400 },
       );
@@ -72,13 +80,13 @@ export async function POST(request: Request): Promise<NextResponse> {
       return NextResponse.json(
         {
           ok: false,
-          error: "取り込める検査表がありませんでした",
+          error: tr("master.inspectionTemplateIoModal.noImportableTemplates"),
           data: { created: [], skipped: [], rowErrors: errors },
         },
         { status: 400 },
       );
     }
-    return NextResponse.json(await importTemplates(templates, errors));
+    return NextResponse.json(await importTemplates(templates, errors, tr));
   }
 
   // JSON
@@ -87,7 +95,10 @@ export async function POST(request: Request): Promise<NextResponse> {
     parsedJson = JSON.parse(buf.toString("utf8"));
   } catch {
     return NextResponse.json(
-      { ok: false, error: "JSON として読めませんでした" },
+      {
+        ok: false,
+        error: tr("master.inspectionTemplateIoModal.couldNotReadAsJson"),
+      },
       { status: 400 },
     );
   }
@@ -96,12 +107,16 @@ export async function POST(request: Request): Promise<NextResponse> {
     return NextResponse.json(
       {
         ok: false,
-        error: `この形式は取り込めません（${
-          parsed.error.issues[0]?.message ?? "形式が違います"
-        }）。書き出したファイルをそのまま入れてください`,
+        error: tr("master.inspectionTemplateIoModal.unsupportedFormat", {
+          reason:
+            parsed.error.issues[0]?.message ??
+            tr("master.inspectionTemplateIoModal.formatMismatch"),
+        }),
       },
       { status: 400 },
     );
   }
-  return NextResponse.json(await importTemplates(parsed.data.templates));
+  return NextResponse.json(
+    await importTemplates(parsed.data.templates, [], tr),
+  );
 }

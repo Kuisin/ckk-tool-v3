@@ -70,7 +70,8 @@ export async function updateDesignFileNotes(
     };
     if (!canEditDesignFile(state)) {
       return actionError(
-        describeLock(state) ?? tr("production.designFileActions.cannotEdit"),
+        describeLock(state, tr) ??
+          tr("production.designFileActions.cannotEdit"),
       );
     }
     await prisma.designFile.update({
@@ -118,7 +119,8 @@ export async function deleteDesignFile(id: string): Promise<ActionResult> {
     };
     if (!canDeleteDesignFile(state)) {
       return actionError(
-        describeLock(state) ?? tr("production.designFileActions.cannotDelete"),
+        describeLock(state, tr) ??
+          tr("production.designFileActions.cannotDelete"),
       );
     }
     // 改訂依頼が「元図面」に指している版は消せない（参照が切れる）。

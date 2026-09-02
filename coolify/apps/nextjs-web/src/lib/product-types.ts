@@ -13,6 +13,7 @@
  */
 
 import { z } from "zod";
+import type { Tr } from "./i18n";
 
 export type ProductFieldType =
   | "string"
@@ -21,16 +22,30 @@ export type ProductFieldType =
   | "select"
   | "date";
 
-export const PRODUCT_FIELD_TYPES: {
-  value: ProductFieldType;
-  label: string;
-}[] = [
-  { value: "string", label: "文字列" },
-  { value: "number", label: "数値" },
-  { value: "boolean", label: "真偽（はい/いいえ）" },
-  { value: "select", label: "選択" },
-  { value: "date", label: "日付" },
+const PRODUCT_FIELD_TYPE_VALUES: ProductFieldType[] = [
+  "string",
+  "number",
+  "boolean",
+  "select",
+  "date",
 ];
+
+/** Select の選択肢（`data` プロパティ用）。 */
+export function productFieldTypeOptions(
+  tr: Tr,
+): { value: ProductFieldType; label: string }[] {
+  return PRODUCT_FIELD_TYPE_VALUES.map((value) => ({
+    value,
+    label: tr(`enum.PRODUCT_FIELD_TYPE_LABEL.${value}`),
+  }));
+}
+
+/** 1 つの値 → ラベル（バッジ表示用）。未知の値はそのまま返す。 */
+export function productFieldTypeLabel(value: string, tr: Tr): string {
+  return (PRODUCT_FIELD_TYPE_VALUES as string[]).includes(value)
+    ? tr(`enum.PRODUCT_FIELD_TYPE_LABEL.${value}`)
+    : value;
+}
 
 export interface ProductFieldOption {
   value: string;
@@ -180,40 +195,60 @@ type ValidatableItem = Pick<
 export function validateItemValue(
   item: ValidatableItem,
   raw: string | null | undefined,
+  tr: Tr,
 ): string | null {
   const v = (raw ?? "").trim();
   const labelJa = item.label.ja || item.key;
   if (v === "") {
-    return item.required ? `${labelJa} は必須です` : null;
+    return item.required
+      ? tr("master.products.itemValidation.required", { name: labelJa })
+      : null;
   }
   switch (item.type) {
     case "number": {
       const n = Number(v);
-      if (!Number.isFinite(n)) return `${labelJa} は数値で入力してください`;
+      if (!Number.isFinite(n))
+        return tr("master.products.itemValidation.notANumber", {
+          name: labelJa,
+        });
       if (item.min != null && n < item.min)
-        return `${labelJa} は ${item.min} 以上で入力してください`;
+        return tr("master.products.itemValidation.belowMin", {
+          name: labelJa,
+          min: item.min,
+        });
       if (item.max != null && n > item.max)
-        return `${labelJa} は ${item.max} 以下で入力してください`;
+        return tr("master.products.itemValidation.aboveMax", {
+          name: labelJa,
+          max: item.max,
+        });
       return null;
     }
     case "boolean":
       return v === "true" || v === "false"
         ? null
-        : `${labelJa} は真偽値で入力してください`;
+        : tr("master.products.itemValidation.notABoolean", { name: labelJa });
     case "select": {
       const ok = (item.options ?? []).some((o) => o.value === v);
-      return ok ? null : `${labelJa} は選択肢から選んでください`;
+      return ok
+        ? null
+        : tr("master.products.itemValidation.notInOptions", {
+            name: labelJa,
+          });
     }
     case "date": {
       const t = Date.parse(v);
-      return Number.isNaN(t) ? `${labelJa} は日付で入力してください` : null;
+      return Number.isNaN(t)
+        ? tr("master.products.itemValidation.notADate", { name: labelJa })
+        : null;
     }
     default: {
       // string: 非空ならOK。パターン（正規表現）があれば形式を検証。
       if (item.pattern) {
         try {
           if (!new RegExp(item.pattern).test(v))
-            return `${labelJa} は形式が正しくありません`;
+            return tr("master.products.itemValidation.invalidFormat", {
+              name: labelJa,
+            });
         } catch {
           // 不正な正規表現は検証をスキップ（保存側で弾く想定）
         }

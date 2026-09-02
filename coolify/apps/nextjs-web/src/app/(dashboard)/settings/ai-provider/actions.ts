@@ -30,14 +30,16 @@ import { type ActionResult, actionError, actionOk } from "@/lib/server-action";
 
 const BASE_PATH = "/settings/ai-provider";
 
-const payloadSchema = z.object({
-  settings: aiProviderSettingsSchema,
-  /** 未入力なら既存のトークンを維持する（設定を直すたびに入れ直させない）。 */
-  token: z.string().default(""),
-  clearToken: z.boolean().default(false),
-});
+function payloadSchema(tr: Awaited<ReturnType<typeof getTranslations>>) {
+  return z.object({
+    settings: aiProviderSettingsSchema(tr),
+    /** 未入力なら既存のトークンを維持する（設定を直すたびに入れ直させない）。 */
+    token: z.string().default(""),
+    clearToken: z.boolean().default(false),
+  });
+}
 
-export type AiProviderPayload = z.input<typeof payloadSchema>;
+export type AiProviderPayload = z.input<ReturnType<typeof payloadSchema>>;
 
 /** プロバイダごとに「これが無いと動かない」入力を確かめる。 */
 async function missingRequirement(
@@ -69,7 +71,7 @@ export async function updateAiProviderSettings(
   const authz = await checkPermission("system", "UPDATE");
   if (!authz.ok) return actionError(authz.error);
 
-  const parsed = payloadSchema.safeParse(payload);
+  const parsed = payloadSchema(tr).safeParse(payload);
   if (!parsed.success) {
     return actionError(
       parsed.error.issues[0]?.message ?? tr("common.invalidInput"),
@@ -97,14 +99,16 @@ export async function updateAiProviderSettings(
       action: "UPDATE",
       tableName: "system_settings",
       recordId: "ai_provider",
-      before: redactAiSettings(before, {
-        status: before.tokenStatus,
-        last4: before.tokenLast4,
-      }),
-      after: redactAiSettings(after, {
-        status: after.tokenStatus,
-        last4: after.tokenLast4,
-      }),
+      before: redactAiSettings(
+        before,
+        { status: before.tokenStatus, last4: before.tokenLast4 },
+        tr,
+      ),
+      after: redactAiSettings(
+        after,
+        { status: after.tokenStatus, last4: after.tokenLast4 },
+        tr,
+      ),
     });
 
     revalidatePath(BASE_PATH);
@@ -143,7 +147,7 @@ export async function testAiProviderConnection(
   const authz = await checkPermission("system", "UPDATE");
   if (!authz.ok) return actionError(authz.error);
 
-  const parsed = payloadSchema.safeParse(payload);
+  const parsed = payloadSchema(tr).safeParse(payload);
   if (!parsed.success) {
     return actionError(
       parsed.error.issues[0]?.message ?? tr("common.invalidInput"),

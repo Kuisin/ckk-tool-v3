@@ -10,6 +10,8 @@
  *   2. pg_notify のペイロード上限（8000 バイト）に決して近づかない。
  */
 
+import { label } from "./messages";
+
 /** LISTEN/NOTIFY チャネル名（アプリ全体で 1 本）。 */
 export const REALTIME_CHANNEL = "ckk_realtime";
 
@@ -37,7 +39,12 @@ export function encodeRealtimeEvent(event: RealtimeEvent): string {
   const bytes = Buffer.byteLength(payload, "utf8");
   if (bytes > REALTIME_MAX_PAYLOAD_BYTES) {
     throw new Error(
-      `realtime ペイロードが大きすぎます (${bytes} > ${REALTIME_MAX_PAYLOAD_BYTES} バイト)`,
+      label(
+        "api.realtimeEvents.payloadTooLarge",
+        "ja",
+        "realtime ペイロードが大きすぎます ({bytes} > {max} バイト)",
+        { bytes, max: REALTIME_MAX_PAYLOAD_BYTES },
+      ),
     );
   }
   return payload;

@@ -73,12 +73,16 @@ describe("groupByMachine", () => {
   });
 });
 
+// next-intl の t() の代わり（"{n} 枚目" 相当だけを再現する）
+const tr = (_key: string, values?: Record<string, unknown>) =>
+  `${values?.n} 枚目`;
+
 describe("screenLabel", () => {
   it("番号があればそれを出す", () => {
-    expect(screenLabel(s("a", "pi-1", 2), 0)).toBe("2 枚目");
+    expect(screenLabel(s("a", "pi-1", 2), 0, tr)).toBe("2 枚目");
   });
 
   it("番号が無ければ順番で埋める", () => {
-    expect(screenLabel(s("a", "pi-1", null), 1)).toBe("2 枚目");
+    expect(screenLabel(s("a", "pi-1", null), 1, tr)).toBe("2 枚目");
   });
 });

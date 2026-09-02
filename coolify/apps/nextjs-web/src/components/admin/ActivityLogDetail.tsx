@@ -12,19 +12,21 @@
 import { Anchor, Badge, Group, Paper, Stack, Text } from "@mantine/core";
 import { IconExternalLink, IconUser } from "@tabler/icons-react";
 import Link from "next/link";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { AuditChangeTable } from "@/components/ui/AuditChangeTable";
 import { SecondaryButton } from "@/components/ui/buttons";
 import { FieldValue } from "@/components/ui/FieldValue";
 import { DetailShell, SummaryGrid } from "@/components/ui/shells";
 import type { ActivityDetailEntry } from "@/lib/audit";
 import { auditRecordLink } from "@/lib/audit-links";
+import type { Locale } from "@/lib/i18n";
 
 const BASE_PATH = "/settings/activity";
 
 export function ActivityLogDetail({ entry }: { entry: ActivityDetailEntry }) {
   const tr = useTranslations();
-  const link = auditRecordLink(entry.tableName, entry.recordId);
+  const locale = useLocale() as Locale;
+  const link = auditRecordLink(entry.tableName, entry.recordId, locale);
 
   return (
     <DetailShell

@@ -129,7 +129,7 @@ export function DesignFileViewerModal({
         {kind === "download" && (
           <Center py="xl">
             <Text c="dimmed" size="sm" ta="center">
-              {notViewableReason(target.filename)}
+              {notViewableReason(target.filename, tr)}
             </Text>
           </Center>
         )}

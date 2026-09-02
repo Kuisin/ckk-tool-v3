@@ -8,6 +8,7 @@
  */
 
 import { NextResponse } from "next/server";
+import { getTranslations } from "next-intl/server";
 import { checkPermission } from "@/lib/authz";
 import {
   EXCEL_COLUMNS,
@@ -59,9 +60,13 @@ export async function GET(): Promise<NextResponse | Response> {
       { status: 403 },
     );
   }
+  const tr = await getTranslations();
 
   const buf = buildXlsx({
-    name: "検査表",
+    // シートのタブ名は取込側（lib/inspection-template-io.ts）が見ておらず
+    // 最初のシートを読むだけなので、ここだけは訳してよい（列見出し・記入例の
+    // 値は取込のブール判定（「はい」/「いいえ」）と結び付いているため対象外）。
+    name: tr("master.inspectionTemplateExcel.sheetName"),
     columns: EXCEL_COLUMNS.map((c) => ({ header: c.header, width: c.width })),
     rows: [EXCEL_COLUMNS.map((c) => cellText(EXAMPLE[c.key] ?? ""))],
   });

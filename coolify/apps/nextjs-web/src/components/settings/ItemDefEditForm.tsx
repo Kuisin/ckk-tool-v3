@@ -30,9 +30,9 @@ import { useIsMobile } from "@/hooks/useViewport";
 import { fieldHelp } from "@/lib/field-help";
 import {
   IDENTIFIER,
-  PRODUCT_FIELD_TYPES,
   type ProductFieldOption,
   type ProductItemDef,
+  productFieldTypeOptions,
 } from "@/lib/product-types";
 
 const BASE = "/settings/product-items";
@@ -182,7 +182,7 @@ export function ItemDefEditForm({
             withAsterisk
           />
           <Select
-            data={PRODUCT_FIELD_TYPES}
+            data={productFieldTypeOptions(tr)}
             label={<HelpLabel {...fieldHelp("productType", "type")} />}
             onChange={(v) =>
               patch({ type: (v as ProductItemDef["type"]) ?? "string" })

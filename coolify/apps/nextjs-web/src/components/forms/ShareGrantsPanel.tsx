@@ -35,10 +35,10 @@ import { useIsMobile } from "@/hooks/useViewport";
 import type { ShareGrantView } from "@/lib/share-grants";
 import {
   canNotifyOnComplete,
-  SHARE_LEVEL_LABEL,
-  SHARE_SUBJECT_LABEL,
   type ShareLevel,
   type ShareSubjectType,
+  shareLevelLabel,
+  shareSubjectLabel,
 } from "@/lib/share-grants-core";
 import {
   type ConditionFieldOption,
@@ -235,7 +235,7 @@ export function ShareGrantsPanel({
     <Select
       data={SUBJECT_TYPES.map((t) => ({
         value: t,
-        label: SHARE_SUBJECT_LABEL[t],
+        label: shareSubjectLabel(t, tr),
       }))}
       disabled={!canManage}
       label={isMobile ? "対象" : undefined}
@@ -263,7 +263,7 @@ export function ShareGrantsPanel({
 
   const levelSelect = (row: Draft, i: number) => (
     <Select
-      data={levels.map((l) => ({ value: l, label: SHARE_LEVEL_LABEL[l] }))}
+      data={levels.map((l) => ({ value: l, label: shareLevelLabel(l, tr) }))}
       disabled={!canManage}
       label={isMobile ? "権限" : undefined}
       onChange={(v) => {

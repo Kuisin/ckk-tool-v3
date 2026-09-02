@@ -2,11 +2,16 @@ import { describe, expect, it } from "vitest";
 import {
   resolveActiveTab,
   sanitizeHiddenTabs,
-  TASK_TABS,
+  TASK_TAB_IDS,
   visibleTaskTabs,
 } from "./tasks-tabs";
 
-const ALL = TASK_TABS.map((t) => t.id);
+/** テスト用の最小 tr — key をそのまま返す。 */
+const tr = ((key: string) => key) as unknown as Parameters<
+  typeof visibleTaskTabs
+>[2];
+
+const ALL = TASK_TAB_IDS;
 
 describe("sanitizeHiddenTabs", () => {
   it("{ hidden: [...] } でも配列そのままでも読む", () => {
@@ -31,7 +36,7 @@ describe("sanitizeHiddenTabs", () => {
 
 describe("visibleTaskTabs", () => {
   it("出せるタブから隠す設定を引き、定義順で返す", () => {
-    const visible = visibleTaskTabs(ALL, ["approvals", "comments"]);
+    const visible = visibleTaskTabs(ALL, ["approvals", "comments"], tr);
     expect(visible.map((t) => t.id)).toEqual([
       "plans",
       "forms",
@@ -41,18 +46,18 @@ describe("visibleTaskTabs", () => {
   });
 
   it("出せないタブは隠す設定に関わらず出ない", () => {
-    const visible = visibleTaskTabs(["plans", "comments"], []);
+    const visible = visibleTaskTabs(["plans", "comments"], [], tr);
     expect(visible.map((t) => t.id)).toEqual(["plans", "comments"]);
   });
 
   it("全部隠されたら設定を無視して全部出す（行き止まりを作らない）", () => {
-    const visible = visibleTaskTabs(["plans", "forms"], ALL);
+    const visible = visibleTaskTabs(["plans", "forms"], ALL, tr);
     expect(visible.map((t) => t.id)).toEqual(["plans", "forms"]);
   });
 });
 
 describe("resolveActiveTab", () => {
-  const visible = visibleTaskTabs(ALL, ["plans"]);
+  const visible = visibleTaskTabs(ALL, ["plans"], tr);
 
   it("出ているタブならそのまま", () => {
     expect(resolveActiveTab("forms", visible)).toBe("forms");

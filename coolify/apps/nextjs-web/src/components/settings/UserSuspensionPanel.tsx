@@ -70,13 +70,17 @@ export function UserSuspensionPanel({
     disabledUntil: user.disabledUntil ? new Date(user.disabledUntil) : null,
   };
   const now = new Date();
-  const state = suspensionState(target, now);
-  const suspendCheck = canSuspend(target, {
-    actorId,
-    targetIsAdmin,
-    otherActiveAdminCount,
-  });
-  const restoreCheck = canRestore(target);
+  const state = suspensionState(target, now, tr);
+  const suspendCheck = canSuspend(
+    target,
+    {
+      actorId,
+      targetIsAdmin,
+      otherActiveAdminCount,
+    },
+    tr,
+  );
+  const restoreCheck = canRestore(target, tr);
 
   // 依頼だったのに「停止しました」と出すと、止まっていないものが止まったと
   // 伝わる。サーバーが返した requested をそのまま文言に反映する。

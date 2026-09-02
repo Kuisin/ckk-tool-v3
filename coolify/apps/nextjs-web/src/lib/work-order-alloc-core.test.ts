@@ -22,6 +22,10 @@ const line = (over: Partial<LineAllocInfo> = {}): LineAllocInfo => ({
   ...over,
 });
 
+// next-intl の t() の代わり（呼ばれた鍵名（+ 埋め込んだ値）をそのまま返す）
+const tr = (key: string, values?: Record<string, unknown>) =>
+  values ? `${key} ${JSON.stringify(values)}` : key;
+
 describe("remainingAllocatable", () => {
   it("受注数量 − 手配済", () => {
     expect(
@@ -38,182 +42,233 @@ describe("remainingAllocatable", () => {
 describe("validateAllocations", () => {
   it("割当なし（在庫向けの独立指示書）は OK", () => {
     expect(
-      validateAllocations({
-        type: "MANUFACTURE",
-        plannedQuantity: 10,
-        allocations: [],
-        lines: [],
-      }),
+      validateAllocations(
+        {
+          type: "MANUFACTURE",
+          plannedQuantity: 10,
+          allocations: [],
+          lines: [],
+        },
+        tr,
+      ),
     ).toBeNull();
   });
 
   it("単一明細の全量割当は OK", () => {
     expect(
-      validateAllocations({
-        type: "MANUFACTURE",
-        plannedQuantity: 100,
-        allocations: [{ orderLineId: "L1", quantity: 100 }],
-        lines: [line()],
-      }),
+      validateAllocations(
+        {
+          type: "MANUFACTURE",
+          plannedQuantity: 100,
+          allocations: [{ orderLineId: "L1", quantity: 100 }],
+          lines: [line()],
+        },
+        tr,
+      ),
     ).toBeNull();
   });
 
   it("分割: 部分割当も OK（残りは後続の指示書へ）", () => {
     expect(
-      validateAllocations({
-        type: "MANUFACTURE",
-        plannedQuantity: 40,
-        allocations: [{ orderLineId: "L1", quantity: 40 }],
-        lines: [line()],
-      }),
+      validateAllocations(
+        {
+          type: "MANUFACTURE",
+          plannedQuantity: 40,
+          allocations: [{ orderLineId: "L1", quantity: 40 }],
+          lines: [line()],
+        },
+        tr,
+      ),
     ).toBeNull();
   });
 
   it("統合: 同一製品の複数明細を 1 指示書で束ねられる", () => {
     expect(
-      validateAllocations({
-        type: "MANUFACTURE",
-        plannedQuantity: 130,
-        allocations: [
-          { orderLineId: "L1", quantity: 100 },
-          { orderLineId: "L2", quantity: 30 },
-        ],
-        lines: [
-          line(),
-          line({ orderLineId: "L2", number: "ORD-…-02", lineQuantity: 30 }),
-        ],
-      }),
+      validateAllocations(
+        {
+          type: "MANUFACTURE",
+          plannedQuantity: 130,
+          allocations: [
+            { orderLineId: "L1", quantity: 100 },
+            { orderLineId: "L2", quantity: 30 },
+          ],
+          lines: [
+            line(),
+            line({ orderLineId: "L2", number: "ORD-…-02", lineQuantity: 30 }),
+          ],
+        },
+        tr,
+      ),
     ).toBeNull();
   });
 
   it("製品が混在する統合は拒否", () => {
     expect(
-      validateAllocations({
-        type: "MANUFACTURE",
-        plannedQuantity: 130,
-        allocations: [
-          { orderLineId: "L1", quantity: 100 },
-          { orderLineId: "L2", quantity: 30 },
-        ],
-        lines: [
-          line(),
-          line({ orderLineId: "L2", productId: 9002, lineQuantity: 30 }),
-        ],
-      }),
-    ).toMatch(/同一製品/);
+      validateAllocations(
+        {
+          type: "MANUFACTURE",
+          plannedQuantity: 130,
+          allocations: [
+            { orderLineId: "L1", quantity: 100 },
+            { orderLineId: "L2", quantity: 30 },
+          ],
+          lines: [
+            line(),
+            line({ orderLineId: "L2", productId: 9002, lineQuantity: 30 }),
+          ],
+        },
+        tr,
+      ),
+    ).toBe("production.workOrderActions.allocationsMustShareProduct");
   });
 
   it("受注残を超える割当は拒否", () => {
     expect(
-      validateAllocations({
-        type: "MANUFACTURE",
-        plannedQuantity: 80,
-        allocations: [{ orderLineId: "L1", quantity: 80 }],
-        lines: [line({ otherAllocated: 30 })],
-      }),
-    ).toMatch(/受注残を超えています/);
+      validateAllocations(
+        {
+          type: "MANUFACTURE",
+          plannedQuantity: 80,
+          allocations: [{ orderLineId: "L1", quantity: 80 }],
+          lines: [line({ otherAllocated: 30 })],
+        },
+        tr,
+      ),
+    ).toMatch(/^production\.workOrderActions\.allocationExceedsRemaining /);
   });
 
   it("予定数量 < 割当合計は拒否（不良予備分は上乗せのみ）", () => {
     expect(
-      validateAllocations({
-        type: "MANUFACTURE",
-        plannedQuantity: 90,
-        allocations: [{ orderLineId: "L1", quantity: 100 }],
-        lines: [line()],
-      }),
-    ).toMatch(/割当合計/);
+      validateAllocations(
+        {
+          type: "MANUFACTURE",
+          plannedQuantity: 90,
+          allocations: [{ orderLineId: "L1", quantity: 100 }],
+          lines: [line()],
+        },
+        tr,
+      ),
+    ).toMatch(
+      /^production\.workOrderActions\.plannedQuantityBelowAllocationTotal /,
+    );
   });
 
   it("予定数量 > 割当合計（不良予備分）は OK", () => {
     expect(
-      validateAllocations({
-        type: "MANUFACTURE",
-        plannedQuantity: 110,
-        allocations: [{ orderLineId: "L1", quantity: 100 }],
-        lines: [line()],
-      }),
+      validateAllocations(
+        {
+          type: "MANUFACTURE",
+          plannedQuantity: 110,
+          allocations: [{ orderLineId: "L1", quantity: 100 }],
+          lines: [line()],
+        },
+        tr,
+      ),
     ).toBeNull();
   });
 
   it("FROM_STOCK は複数明細を割り当てられない", () => {
     expect(
-      validateAllocations({
-        type: "FROM_STOCK",
-        plannedQuantity: 50,
-        allocations: [
-          { orderLineId: "L1", quantity: 30 },
-          { orderLineId: "L2", quantity: 20 },
-        ],
-        lines: [line(), line({ orderLineId: "L2" })],
-      }),
-    ).toMatch(/在庫分/);
+      validateAllocations(
+        {
+          type: "FROM_STOCK",
+          plannedQuantity: 50,
+          allocations: [
+            { orderLineId: "L1", quantity: 30 },
+            { orderLineId: "L2", quantity: 20 },
+          ],
+          lines: [line(), line({ orderLineId: "L2" })],
+        },
+        tr,
+      ),
+    ).toBe("production.workOrderActions.stockWorkOrderOneLineOnly");
   });
 
   it("FROM_STOCK は予定数量 = 割当数量", () => {
     expect(
-      validateAllocations({
-        type: "FROM_STOCK",
-        plannedQuantity: 40,
-        allocations: [{ orderLineId: "L1", quantity: 30 }],
-        lines: [line()],
-      }),
-    ).toMatch(/一致/);
+      validateAllocations(
+        {
+          type: "FROM_STOCK",
+          plannedQuantity: 40,
+          allocations: [{ orderLineId: "L1", quantity: 30 }],
+          lines: [line()],
+        },
+        tr,
+      ),
+    ).toBe(
+      "production.workOrderActions.stockPlannedQuantityMustMatchAllocation",
+    );
     expect(
-      validateAllocations({
-        type: "FROM_STOCK",
-        plannedQuantity: 30,
-        allocations: [{ orderLineId: "L1", quantity: 30 }],
-        lines: [line()],
-      }),
+      validateAllocations(
+        {
+          type: "FROM_STOCK",
+          plannedQuantity: 30,
+          allocations: [{ orderLineId: "L1", quantity: 30 }],
+          lines: [line()],
+        },
+        tr,
+      ),
     ).toBeNull();
   });
 
   it("同じ明細の重複割当は拒否", () => {
     expect(
-      validateAllocations({
-        type: "MANUFACTURE",
-        plannedQuantity: 60,
-        allocations: [
-          { orderLineId: "L1", quantity: 30 },
-          { orderLineId: "L1", quantity: 30 },
-        ],
-        lines: [line()],
-      }),
-    ).toMatch(/複数回/);
+      validateAllocations(
+        {
+          type: "MANUFACTURE",
+          plannedQuantity: 60,
+          allocations: [
+            { orderLineId: "L1", quantity: 30 },
+            { orderLineId: "L1", quantity: 30 },
+          ],
+          lines: [line()],
+        },
+        tr,
+      ),
+    ).toBe("production.workOrderActions.duplicateOrderLineAllocation");
   });
 
   it("キャンセル・出荷済の明細は拒否", () => {
     expect(
-      validateAllocations({
-        type: "MANUFACTURE",
-        plannedQuantity: 10,
-        allocations: [{ orderLineId: "L1", quantity: 10 }],
-        lines: [line({ status: "CANCELLED" })],
-      }),
-    ).toMatch(/割り当てられません/);
+      validateAllocations(
+        {
+          type: "MANUFACTURE",
+          plannedQuantity: 10,
+          allocations: [{ orderLineId: "L1", quantity: 10 }],
+          lines: [line({ status: "CANCELLED" })],
+        },
+        tr,
+      ),
+    ).toMatch(/^production\.workOrderActions\.orderLineNotAllocatable /);
   });
 
   it("製品未特定の明細は拒否", () => {
     expect(
-      validateAllocations({
-        type: "MANUFACTURE",
-        plannedQuantity: 10,
-        allocations: [{ orderLineId: "L1", quantity: 10 }],
-        lines: [line({ productId: null })],
-      }),
-    ).toMatch(/製品未特定/);
+      validateAllocations(
+        {
+          type: "MANUFACTURE",
+          plannedQuantity: 10,
+          allocations: [{ orderLineId: "L1", quantity: 10 }],
+          lines: [line({ productId: null })],
+        },
+        tr,
+      ),
+    ).toMatch(
+      /^production\.workOrderActions\.orderLineProductUnresolvedForLine /,
+    );
   });
 
   it("存在しない明細は拒否", () => {
     expect(
-      validateAllocations({
-        type: "MANUFACTURE",
-        plannedQuantity: 10,
-        allocations: [{ orderLineId: "MISSING", quantity: 10 }],
-        lines: [],
-      }),
-    ).toMatch(/見つかりません/);
+      validateAllocations(
+        {
+          type: "MANUFACTURE",
+          plannedQuantity: 10,
+          allocations: [{ orderLineId: "MISSING", quantity: 10 }],
+          lines: [],
+        },
+        tr,
+      ),
+    ).toBe("production.workOrderActions.orderLineNotFound");
   });
 });
 

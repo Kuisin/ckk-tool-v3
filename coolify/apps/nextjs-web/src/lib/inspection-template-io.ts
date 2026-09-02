@@ -25,6 +25,8 @@
  */
 
 import { z } from "zod";
+import type { Locale } from "./i18n";
+import { label } from "./messages";
 
 /** ファイルの種別印。別のものを取り込ませないための札。 */
 export const PORTABLE_KIND = "ckk.inspection-templates";
@@ -221,13 +223,21 @@ function splitList(raw: string): string[] {
  * 見出しは**位置ではなく名前で照合**する（列を足したり並べ替えたりされても
  * 壊れないように）。1 行 = 1 検査項目で、検査表コードでまとめる。
  */
-export function rowsToPortable(rows: string[][]): {
+export function rowsToPortable(
+  rows: string[][],
+  locale: Locale = "ja",
+): {
   templates: PortableTemplate[];
   errors: ImportRowError[];
 } {
   const errors: ImportRowError[] = [];
   if (rows.length === 0) {
-    return { templates: [], errors: [{ row: 1, message: "空のファイルです" }] };
+    return {
+      templates: [],
+      errors: [
+        { row: 1, message: label("inspectionTemplateIo.emptyFile", locale) },
+      ],
+    };
   }
 
   // 見出し → 列番号
@@ -249,7 +259,9 @@ export function rowsToPortable(rows: string[][]): {
       errors: [
         {
           row: 1,
-          message: `見出しに ${names.join(" / ")} がありません。雛形を書き出して、その並びで作ってください`,
+          message: label("inspectionTemplateIo.missingHeaders", locale, "", {
+            names: names.join(" / "),
+          }),
         },
       ],
     };
@@ -270,11 +282,17 @@ export function rowsToPortable(rows: string[][]): {
     const code = cell(row, "code");
     const itemName = cell(row, "itemName");
     if (!code) {
-      errors.push({ row: rowNo, message: "検査表コードが空です" });
+      errors.push({
+        row: rowNo,
+        message: label("inspectionTemplateIo.emptyTemplateCode", locale),
+      });
       continue;
     }
     if (!itemName) {
-      errors.push({ row: rowNo, message: "項目名が空です" });
+      errors.push({
+        row: rowNo,
+        message: label("inspectionTemplateIo.emptyItemName", locale),
+      });
       continue;
     }
 
@@ -284,7 +302,9 @@ export function rowsToPortable(rows: string[][]): {
       if (!name) {
         errors.push({
           row: rowNo,
-          message: `検査表名が空です（${code} の最初の行には名前が要ります）`,
+          message: label("inspectionTemplateIo.emptyTemplateName", locale, "", {
+            code,
+          }),
         });
         continue;
       }
@@ -296,7 +316,7 @@ export function rowsToPortable(rows: string[][]): {
       if (samplingValue === undefined) {
         errors.push({
           row: rowNo,
-          message: "検査対象の値が数値ではありません",
+          message: label("inspectionTemplateIo.samplingValueNotNumber", locale),
         });
         continue;
       }
@@ -324,7 +344,10 @@ export function rowsToPortable(rows: string[][]): {
     const min = parseNumber(cell(row, "toleranceMin"));
     const max = parseNumber(cell(row, "toleranceMax"));
     if (min === undefined || max === undefined) {
-      errors.push({ row: rowNo, message: "下限・上限が数値ではありません" });
+      errors.push({
+        row: rowNo,
+        message: label("inspectionTemplateIo.toleranceNotNumber", locale),
+      });
       continue;
     }
     const isRequired = parseBool(cell(row, "isRequired"), true);
@@ -335,7 +358,10 @@ export function rowsToPortable(rows: string[][]): {
     if (isRequired === null || allowManualOverride === null) {
       errors.push({
         row: rowNo,
-        message: "必須・手動上書きは「はい」か「いいえ」で書いてください",
+        message: label(
+          "inspectionTemplateIo.requiredOverrideMustBeYesNo",
+          locale,
+        ),
       });
       continue;
     }
@@ -347,7 +373,7 @@ export function rowsToPortable(rows: string[][]): {
     if (acceptBool === null && inputType === "BOOLEAN" && acceptBoolRaw) {
       errors.push({
         row: rowNo,
-        message: "合格とする回答は「はい」か「いいえ」で書いてください",
+        message: label("inspectionTemplateIo.acceptBoolMustBeYesNo", locale),
       });
       continue;
     }
@@ -363,7 +389,10 @@ export function rowsToPortable(rows: string[][]): {
     ) {
       errors.push({
         row: rowNo,
-        message: "基本値・公差 Top/Bottom が数値ではありません",
+        message: label(
+          "inspectionTemplateIo.nominalToleranceNotNumber",
+          locale,
+        ),
       });
       continue;
     }
@@ -402,7 +431,9 @@ export function rowsToPortable(rows: string[][]): {
     if (t.items.length === 0) {
       errors.push({
         row: 1,
-        message: `${t.code}: 検査項目が 1 つもありません`,
+        message: label("inspectionTemplateIo.noItems", locale, "", {
+          code: t.code,
+        }),
       });
       continue;
     }

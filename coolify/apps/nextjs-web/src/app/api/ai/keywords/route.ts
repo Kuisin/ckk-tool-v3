@@ -14,8 +14,9 @@
  */
 
 import { NextResponse } from "next/server";
+import { getTranslations } from "next-intl/server";
 import { z } from "zod";
-import { checkPermission } from "@/lib/authz";
+import { checkPermission, sessionUserId } from "@/lib/authz";
 import {
   KEYWORD_MAX_COUNT,
   KEYWORD_MAX_LENGTH,
@@ -27,26 +28,30 @@ export const dynamic = "force-dynamic";
 // po-extract 側の待ち上限（既定 3 分）に合わせる。
 export const maxDuration = 200;
 
-const bodySchema = z.object({
-  kind: z.enum(["product", "material"]),
-  name: z.string().trim().min(1, "名称を入力してから実行してください"),
-  code: z.string().trim().max(64).nullish(),
-  /** 画面に出ている項目（材種・寸法・単位・備考など）。ラベルごと渡す。 */
-  attributes: z
-    .array(
-      z.object({
-        label: z.string().trim().min(1).max(64),
-        value: z.string().trim().min(1).max(400),
-      }),
-    )
-    .max(40)
-    .default([]),
-  /** すでに登録されているキーワード（重複を出させないため）。 */
-  existing: z
-    .array(z.string().trim().max(KEYWORD_MAX_LENGTH))
-    .max(KEYWORD_MAX_COUNT)
-    .default([]),
-});
+type Tr = Awaited<ReturnType<typeof getTranslations>>;
+
+function bodySchema(tr: Tr) {
+  return z.object({
+    kind: z.enum(["product", "material"]),
+    name: z.string().trim().min(1, tr("aiKeywords.enterANameBeforeRunning")),
+    code: z.string().trim().max(64).nullish(),
+    /** 画面に出ている項目（材種・寸法・単位・備考など）。ラベルごと渡す。 */
+    attributes: z
+      .array(
+        z.object({
+          label: z.string().trim().min(1).max(64),
+          value: z.string().trim().min(1).max(400),
+        }),
+      )
+      .max(40)
+      .default([]),
+    /** すでに登録されているキーワード（重複を出させないため）。 */
+    existing: z
+      .array(z.string().trim().max(KEYWORD_MAX_LENGTH))
+      .max(KEYWORD_MAX_COUNT)
+      .default([]),
+  });
+}
 
 /** po-extract `/generate/keywords` の応答（スキーマ拘束済み）。 */
 interface KeywordsResult {
@@ -58,25 +63,29 @@ function bad(error: string, status = 400): NextResponse {
 }
 
 export async function POST(request: Request): Promise<Response> {
+  const tr = await getTranslations();
   // マスタを作る人・直す人のための道具。どちらかの権限があれば使える。
-  const [create, update] = await Promise.all([
+  const [create, update, userId] = await Promise.all([
     checkPermission("master", "CREATE"),
     checkPermission("master", "UPDATE"),
+    sessionUserId(),
   ]);
   if (!(create.ok || update.ok)) {
     const error = create.ok ? update.error : create.error;
-    return bad(error, error.startsWith("ログイン") ? 401 : 403);
+    // ログイン済みか否かで 401/403 を分ける — エラー文言は locale で変わるため、
+    // 文言の中身（"ログイン" 等）で判定しない。
+    return bad(error, userId ? 403 : 401);
   }
 
   let json: unknown;
   try {
     json = await request.json();
   } catch {
-    return bad("JSON で送信してください");
+    return bad(tr("aiKeywords.sendAsJson"));
   }
-  const parsed = bodySchema.safeParse(json);
+  const parsed = bodySchema(tr).safeParse(json);
   if (!parsed.success) {
-    return bad(parsed.error.issues[0]?.message ?? "入力が不正です");
+    return bad(parsed.error.issues[0]?.message ?? tr("common.invalidInput"));
   }
   const input = parsed.data;
 
@@ -98,6 +107,6 @@ export async function POST(request: Request): Promise<Response> {
   } catch (e) {
     if (e instanceof PoExtractError) return bad(e.message, 502);
     console.error("[ai/keywords]", e);
-    return bad("候補の生成に失敗しました", 502);
+    return bad(tr("aiKeywords.candidateGenerationFailed"), 502);
   }
 }

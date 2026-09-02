@@ -556,19 +556,22 @@ export async function submitForApproval(
     // 確定と同じ完成条件を入口で確かめる（lib/order-acceptance-readiness）。
     // 画面のボタンも同じ判定で押せなくなっているので、ここに来るのは
     // 古い画面からの依頼だけ。
-    const readiness = acceptanceReadiness({
-      customerBpId: prior.customerBpId,
-      deliveryMethod: prior.deliveryMethod,
-      endUserBpId: prior.endUserBpId,
-      items: prior.items.map((it) => ({
-        productId: it.productId,
-        unitPrice: it.unitPrice == null ? null : Number(it.unitPrice),
-      })),
-    });
+    const readiness = acceptanceReadiness(
+      {
+        customerBpId: prior.customerBpId,
+        deliveryMethod: prior.deliveryMethod,
+        endUserBpId: prior.endUserBpId,
+        items: prior.items.map((it) => ({
+          productId: it.productId,
+          unitPrice: it.unitPrice == null ? null : Number(it.unitPrice),
+        })),
+      },
+      tr,
+    );
     if (!readiness.ok) {
       return actionError(
         tr("sales.orderAcceptanceActions.readinessIssues", {
-          summary: readinessSummary(readiness.issues),
+          summary: readinessSummary(readiness.issues, tr),
         }),
       );
     }
@@ -778,19 +781,22 @@ export async function confirmOrderLines(
     // 承認依頼と同じ完成条件（lib/order-acceptance-readiness）。通常は
     // 依頼の時点で満たされているが、承認中に明細が壊れる筋道が無いとは
     // 言い切れないので確定の直前にも確かめる。
-    const readiness = acceptanceReadiness({
-      customerBpId: prior.customerBpId,
-      deliveryMethod: prior.deliveryMethod,
-      endUserBpId: prior.endUserBpId,
-      items: prior.items.map((it) => ({
-        productId: it.productId,
-        unitPrice: it.unitPrice == null ? null : Number(it.unitPrice),
-      })),
-    });
+    const readiness = acceptanceReadiness(
+      {
+        customerBpId: prior.customerBpId,
+        deliveryMethod: prior.deliveryMethod,
+        endUserBpId: prior.endUserBpId,
+        items: prior.items.map((it) => ({
+          productId: it.productId,
+          unitPrice: it.unitPrice == null ? null : Number(it.unitPrice),
+        })),
+      },
+      tr,
+    );
     if (!readiness.ok) {
       return actionError(
         tr("sales.orderAcceptanceActions.confirmIssues", {
-          summary: readinessSummary(readiness.issues),
+          summary: readinessSummary(readiness.issues, tr),
         }),
       );
     }

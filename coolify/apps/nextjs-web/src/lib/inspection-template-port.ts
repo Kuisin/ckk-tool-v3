@@ -21,6 +21,7 @@ import "server-only";
 import { recordAudit } from "@/lib/audit";
 import { checkPermission } from "@/lib/authz";
 import { prisma } from "@/lib/db";
+import type { Tr } from "@/lib/i18n";
 import {
   type ImportRowError,
   PORTABLE_KIND,
@@ -34,6 +35,7 @@ import { type ActionResult, actionError, actionOk } from "@/lib/server-action";
 /** 書き出し（指定が空なら有効なもの全部）。 */
 export async function exportTemplates(
   ids: number[],
+  tr: Tr,
 ): Promise<ActionResult<PortableFile>> {
   const authz = await checkPermission("master", "READ");
   if (!authz.ok) return actionError(authz.error);
@@ -47,7 +49,9 @@ export async function exportTemplates(
     },
   });
   if (rows.length === 0) {
-    return actionError("書き出す検査表がありません");
+    return actionError(
+      tr("master.inspectionTemplateIoModal.noTemplatesToExport"),
+    );
   }
 
   return actionOk({
@@ -105,6 +109,7 @@ export interface ImportOutcome {
 export async function importTemplates(
   templates: PortableTemplate[],
   rowErrors: ImportRowError[] = [],
+  tr: Tr,
 ): Promise<ActionResult<ImportOutcome>> {
   const authz = await checkPermission("master", "CREATE");
   if (!authz.ok) return actionError(authz.error);
@@ -123,7 +128,9 @@ export async function importTemplates(
         if (!step) {
           outcome.skipped.push({
             code: t.code,
-            reason: `関連工程「${t.relatedProcessStepCode}」が見つかりません`,
+            reason: tr("master.inspectionTemplateIoModal.relatedStepNotFound", {
+              code: t.relatedProcessStepCode,
+            }),
           });
           continue;
         }

@@ -23,6 +23,7 @@
  */
 
 import { z } from "zod";
+import type { Tr } from "./i18n";
 
 // ─── 項目型 ──────────────────────────────────────────────────────────────────
 
@@ -40,20 +41,41 @@ export type FormFieldType =
   | "table"
   | "related";
 
-export const FORM_FIELD_TYPES: { value: FormFieldType; label: string }[] = [
-  { value: "text", label: "1行テキスト" },
-  { value: "textarea", label: "複数行テキスト" },
-  { value: "richtext", label: "リッチテキスト" },
-  { value: "number", label: "数値" },
-  { value: "date", label: "日付" },
-  { value: "time", label: "時刻" },
-  { value: "select", label: "ドロップダウン（1つ選択）" },
-  { value: "multiselect", label: "複数選択" },
-  { value: "lookup", label: "業務データ検索" },
-  { value: "attachment", label: "添付ファイル" },
-  { value: "table", label: "サブテーブル（行を追加できる表）" },
-  { value: "related", label: "関連レコード一覧" },
+/** 項目型のキーだけの一覧（zod の enum・型チェック用。表示名は持たない）。 */
+export const FORM_FIELD_TYPE_VALUES: readonly FormFieldType[] = [
+  "text",
+  "textarea",
+  "richtext",
+  "number",
+  "date",
+  "time",
+  "select",
+  "multiselect",
+  "lookup",
+  "attachment",
+  "table",
+  "related",
 ];
+
+/** 項目型の選択肢（ビルダーの型セレクタ用）。呼び出し側の `tr` を渡す。 */
+export function formFieldTypes(
+  tr: Tr,
+): { value: FormFieldType; label: string }[] {
+  return [
+    { value: "text", label: tr("general.formSchema.oneLineText") },
+    { value: "textarea", label: tr("general.formSchema.multiLineText") },
+    { value: "richtext", label: tr("general.formSchema.richText") },
+    { value: "number", label: tr("common.numericValue") },
+    { value: "date", label: tr("common.date") },
+    { value: "time", label: tr("common.time") },
+    { value: "select", label: tr("general.formSchema.dropdownSingleSelect") },
+    { value: "multiselect", label: tr("common.multiSelect") },
+    { value: "lookup", label: tr("common.businessDataLookup") },
+    { value: "attachment", label: tr("common.attachment") },
+    { value: "table", label: tr("general.formSchema.subTableRepeatableRows") },
+    { value: "related", label: tr("general.formSchema.relatedRecords") },
+  ];
+}
 
 /** サブテーブルの列に置けない型（入れ子は 1 段までにする）。 */
 const NOT_NESTABLE: ReadonlySet<FormFieldType> = new Set([
@@ -259,16 +281,12 @@ const baseFieldShape = {
 
 const columnFieldSchema = z.object({
   ...baseFieldShape,
-  type: z.enum(
-    FORM_FIELD_TYPES.filter((t) => isNestableFieldType(t.value)).map(
-      (t) => t.value,
-    ),
-  ),
+  type: z.enum(FORM_FIELD_TYPE_VALUES.filter(isNestableFieldType)),
 });
 
 export const formFieldSchema = z.object({
   ...baseFieldShape,
-  type: z.enum(FORM_FIELD_TYPES.map((t) => t.value)),
+  type: z.enum(FORM_FIELD_TYPE_VALUES),
   columns: z.array(columnFieldSchema).optional(),
 });
 

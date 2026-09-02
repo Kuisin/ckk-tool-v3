@@ -30,7 +30,7 @@ import { saveTaskTabsSetting } from "@/app/(dashboard)/general/tasks/actions";
 import { SecondaryButton } from "@/components/ui/buttons";
 import { ModalShell } from "@/components/ui/modals";
 import { useIsMobile } from "@/hooks/useViewport";
-import { TASK_TABS, type TaskTabDef } from "@/lib/tasks-tabs";
+import { type TaskTabDef, taskTabs } from "@/lib/tasks-tabs";
 
 export function TaskTabsSettingsButton({
   available,
@@ -48,7 +48,7 @@ export function TaskTabsSettingsButton({
   const [isPending, startTransition] = useTransition();
   const [checked, setChecked] = useState<string[]>([]);
 
-  const choices: TaskTabDef[] = TASK_TABS.filter((t) =>
+  const choices: TaskTabDef[] = taskTabs(tr).filter((t) =>
     available.includes(t.id),
   );
 

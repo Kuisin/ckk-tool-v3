@@ -80,6 +80,7 @@ async function applySuspend(
       disabledUntil: target.disabledUntil,
     },
     { actorId, ...coverage },
+    tr,
   );
   if (!decision.ok) {
     return { ok: false, error: decision.message ?? tr("common.cannotSuspend") };
@@ -89,6 +90,7 @@ async function applySuspend(
     v.kind,
     v.until ? new Date(v.until) : null,
     new Date(),
+    tr,
   );
   if (!until.ok) return { ok: false, error: until.message };
 
@@ -128,12 +130,15 @@ async function applyRestore(
   });
   if (!target) return { ok: false, error: tr("common.targetUserNotFound") };
 
-  const decision = canRestore({
-    id: target.id,
-    username: target.username,
-    isActive: target.isActive,
-    disabledUntil: target.disabledUntil,
-  });
+  const decision = canRestore(
+    {
+      id: target.id,
+      username: target.username,
+      isActive: target.isActive,
+      disabledUntil: target.disabledUntil,
+    },
+    tr,
+  );
   if (!decision.ok) {
     return { ok: false, error: decision.message ?? tr("common.cannotRestore") };
   }

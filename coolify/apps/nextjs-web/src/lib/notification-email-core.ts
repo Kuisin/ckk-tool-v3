@@ -20,6 +20,8 @@
  */
 
 import { z } from "zod";
+import type { Locale } from "./i18n";
+import { label } from "./messages";
 import {
   NOTIFICATION_TYPES,
   type NotificationType,
@@ -122,7 +124,10 @@ export function splitDigestItems(
   return { shown, omittedCount: items.length - shown.length };
 }
 
-/** ダイジェストの件名。件数を先に出す（受信箱の一覧で判断できるように）。 */
-export function digestSubject(total: number): string {
-  return `【CKK】未読の通知 ${total} 件`;
+/**
+ * ダイジェストの件名。件数を先に出す（受信箱の一覧で判断できるように）。
+ * `locale` を渡さない呼び出しは ja（従来の挙動と同じ）。
+ */
+export function digestSubject(total: number, locale: Locale = "ja"): string {
+  return label("notificationEmail.digestSubject", locale, "", { total });
 }

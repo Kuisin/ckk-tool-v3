@@ -15,6 +15,8 @@
 
 import { readFile } from "node:fs/promises";
 import path from "node:path";
+import type { Locale } from "./i18n";
+import { label } from "./messages";
 
 const STAMP_FILE = path.join(
   process.cwd(),
@@ -38,9 +40,17 @@ async function stampDataUri(): Promise<string> {
 /**
  * 承認済み（発行済み）のときだけ `<img>` タグを返す。それ以外は空文字 —
  * テンプレート側の `.stamp:empty { display: none }` で枠ごと消える。
+ *
+ * `locale` は省略可能（既定 "ja"）— この印は今のところ請求書（受取先の言語で
+ * 出す 3 帳票の 1 つ）だけが使うので、呼び出し元（api/pdf/invoice）が
+ * `normalizeLocale(invoice.recipientDocumentLocale)` を渡す。
  */
-export async function companyStampImg(approved: boolean): Promise<string> {
+export async function companyStampImg(
+  approved: boolean,
+  locale: Locale = "ja",
+): Promise<string> {
   if (!approved) return "";
   const src = await stampDataUri();
-  return `<img class="stamp-img" src="${src}" alt="社印" />`;
+  const alt = label("pdf.stamp.companySeal", locale, "社印");
+  return `<img class="stamp-img" src="${src}" alt="${alt}" />`;
 }

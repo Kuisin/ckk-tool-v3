@@ -331,16 +331,19 @@ export function OrderAcceptanceDetail({
 
   // 承認依頼の可否 — 確定と同じ完成条件（サーバーの submitForApproval と
   // 同じ関数）。足りない項目があるうちはボタンを押せなくし、理由をカードに出す。
-  const readiness = acceptanceReadiness({
-    customerBpId: a.customerBpId,
-    deliveryMethod: a.deliveryMethod,
-    endUserBpId: a.endUserBpId,
-    items: a.items,
-  });
+  const readiness = acceptanceReadiness(
+    {
+      customerBpId: a.customerBpId,
+      deliveryMethod: a.deliveryMethod,
+      endUserBpId: a.endUserBpId,
+      items: a.items,
+    },
+    tr,
+  );
 
   // 明細の合計（ヘッダ要約と明細表の合計行で同じ数字を出す — lib で 1 本化）。
   const totals = acceptanceTotals(a.items);
-  const products = productSummary(a.items);
+  const products = productSummary(a.items, tr);
 
   // §2 価格照合（P0-8）— 差異行と明細 id → 照合結果の索引。
   const diffLines = priceCheck.lines.filter((l) => l.diff);
@@ -473,7 +476,7 @@ export function OrderAcceptanceDetail({
           readiness.ok
             ? tr("sales.orderAcceptances.compareItWithTheDocumentAnd")
             : tr("sales.orderAcceptanceDetail.fixViaEditMessage", {
-                summary: readinessSummary(readiness.issues),
+                summary: readinessSummary(readiness.issues, tr),
               })
         }
         icon={<IconSend size={20} />}

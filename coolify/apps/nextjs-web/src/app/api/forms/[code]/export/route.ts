@@ -73,9 +73,10 @@ export async function GET(
         fields: form.fields,
       },
     }),
+    tr,
   );
 
-  const filename = exportFileName(form.title, currentAppEnv(), form.code);
+  const filename = exportFileName(form.title, currentAppEnv(), form.code, tr);
   return new NextResponse(text, {
     headers: {
       "Content-Type": "text/plain; charset=utf-8",

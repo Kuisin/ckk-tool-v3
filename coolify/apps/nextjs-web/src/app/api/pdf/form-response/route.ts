@@ -22,6 +22,7 @@ import { parseExportFilter } from "@/lib/form-export-core";
 import { responsePageHtml, responsePagesHtml } from "@/lib/form-response-pdf";
 import { documentFormatters } from "@/lib/format";
 import { fetchResponse, formAccess } from "@/lib/forms";
+import { label } from "@/lib/messages";
 import { renderPdf } from "@/lib/pdf";
 import { responseInScope } from "@/lib/share-grants-core";
 
@@ -114,7 +115,14 @@ export async function GET(request: Request): Promise<Response> {
 
   const { form, fields, responses } = data;
   if (responses.length === 0)
-    return new Response("印刷できる回答がありません", { status: 409 });
+    return new Response(
+      label(
+        "pdf.formResponse.noResponsesToPrint",
+        "ja",
+        "印刷できる回答がありません",
+      ),
+      { status: 409 },
+    );
 
   const capped = responses.slice(0, MAX_BULK_PAGES);
   const showRespondent = form.respondentVisibility === "SHOWN";
@@ -138,11 +146,22 @@ export async function GET(request: Request): Promise<Response> {
     tableName: "forms",
     recordId: form.code,
     after: {
-      note: `回答を PDF でまとめて印刷（${capped.length} 件${
-        responses.length > capped.length
-          ? `・上限 ${MAX_BULK_PAGES} 件で打ち切り`
-          : ""
-      }）`,
+      note:
+        label(
+          "pdf.formResponse.bulkPrintedNote",
+          "ja",
+          "回答を PDF でまとめて印刷（{count} 件",
+          { count: capped.length },
+        ) +
+        (responses.length > capped.length
+          ? label(
+              "pdf.formResponse.cappedSuffix",
+              "ja",
+              "・上限 {max} 件で打ち切り",
+              { max: MAX_BULK_PAGES },
+            )
+          : "") +
+        "）",
     },
   }).catch(() => {});
 
@@ -150,7 +169,9 @@ export async function GET(request: Request): Promise<Response> {
     pages,
     exportDownloadName(
       form.title,
-      capped.length < responses.length ? `${form.code}_一部` : form.code,
+      capped.length < responses.length
+        ? `${form.code}${label("pdf.formResponse.partialSuffix", "ja", "_一部")}`
+        : form.code,
       "pdf",
     ),
     download,

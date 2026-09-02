@@ -11,6 +11,8 @@
  * 1 行でも権限を与えていれば与える（否定行は持たない）。
  */
 
+import type { Tr } from "./i18n";
+
 export type ShareSubjectType = "EVERYONE" | "PLANT" | "ROLE" | "USER";
 export type ShareLevel = "RESPOND" | "READ" | "EDIT" | "MANAGE";
 
@@ -165,19 +167,16 @@ export function resolveShareAccess(
 }
 
 /** 共有先の表示用ラベル（バッジなどに使う）。 */
-export const SHARE_LEVEL_LABEL: Record<ShareLevel, string> = {
-  RESPOND: "回答のみ",
-  READ: "閲覧",
-  EDIT: "編集",
-  MANAGE: "管理",
-};
+export function shareLevelLabel(level: ShareLevel, tr: Tr): string {
+  return tr(`enum.SHARE_LEVEL_LABEL.${level}`);
+}
 
-export const SHARE_SUBJECT_LABEL: Record<ShareSubjectType, string> = {
-  EVERYONE: "全社",
-  PLANT: "拠点",
-  ROLE: "ロール",
-  USER: "個人",
-};
+export function shareSubjectLabel(
+  subjectType: ShareSubjectType,
+  tr: Tr,
+): string {
+  return tr(`enum.SHARE_SUBJECT_LABEL.${subjectType}`);
+}
 
 /**
  * 条件に使える項目の型。

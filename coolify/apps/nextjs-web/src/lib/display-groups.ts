@@ -82,10 +82,19 @@ function compareScreens<T extends MachineScreen>(a: T, b: T): number {
   return ai !== bi ? ai - bi : a.id.localeCompare(b.id);
 }
 
+/** next-intl の `t()` と互換の最小の形（サーバー/クライアントどちらの実体も渡せる）。 */
+type TrLike = (
+  key: string,
+  values?: Record<string, string | number | Date>,
+) => string;
+
 /** 選択肢に出す「何枚目」の札。番号が無いものは順番で埋める。 */
 export function screenLabel(
   screen: MachineScreen,
   indexInGroup: number,
+  tr: TrLike,
 ): string {
-  return `${screen.screenIndex ?? indexInGroup + 1} 枚目`;
+  return tr("settings.displays.screenNumber", {
+    n: screen.screenIndex ?? indexInGroup + 1,
+  });
 }

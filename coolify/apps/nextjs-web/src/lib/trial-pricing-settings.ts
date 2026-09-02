@@ -7,6 +7,7 @@
  * lib/system-settings.ts. This module keeps only the shared types/defaults.
  */
 
+import type { getTranslations } from "next-intl/server";
 import type { MaterialPriceBasis } from "./material-pricing-core";
 import type { TrialPricingOptions } from "./trial-pricing";
 import {
@@ -81,11 +82,24 @@ export function toToolTypeOptions(
   return settings.toolTypes.map((t) => ({ value: t.value, label: t.label }));
 }
 
-export const MATERIAL_PRICE_BASIS_OPTIONS: {
-  value: MaterialPriceBasis;
-  label: string;
-}[] = [
-  { value: "MAX", label: "最高単価（期間内）" },
-  { value: "LATEST", label: "最新単価" },
-  { value: "AVERAGE", label: "平均単価（期間内）" },
-];
+type Tr = Awaited<ReturnType<typeof getTranslations>>;
+
+/** 材料参照価格の算出方法の選択肢（Select 用）。呼び出し側の `tr` を渡す。 */
+export function materialPriceBasisOptions(
+  tr: Tr,
+): { value: MaterialPriceBasis; label: string }[] {
+  return [
+    {
+      value: "MAX",
+      label: tr("sales.trialPricingSettings.highestPriceWithinThe"),
+    },
+    {
+      value: "LATEST",
+      label: tr("sales.trialPricingSettings.latestUnitPrice"),
+    },
+    {
+      value: "AVERAGE",
+      label: tr("sales.trialPricingSettings.averageUnitPriceWithin"),
+    },
+  ];
+}

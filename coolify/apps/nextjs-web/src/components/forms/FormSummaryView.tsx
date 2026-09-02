@@ -41,7 +41,7 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { useIsMobile } from "@/hooks/useViewport";
 import { downloadCsv, toCsv } from "@/lib/csv";
-import { FORM_FIELD_TYPES } from "@/lib/form-schema";
+import { formFieldTypes } from "@/lib/form-schema";
 import type { CountItem, FieldSummary } from "@/lib/form-summary";
 import { StatRow, SummaryBars } from "./SummaryBars";
 import { ColumnChart, DonutChart, MAX_DONUT_SLICES } from "./SummaryCharts";
@@ -49,8 +49,11 @@ import { ColumnChart, DonutChart, MAX_DONUT_SLICES } from "./SummaryCharts";
 /** 選択肢のグラフの出し方。`auto` は区分の数で決める。 */
 export type ChartMode = "auto" | "pie" | "bar";
 
-function typeLabel(type: FieldSummary["type"]): string {
-  return FORM_FIELD_TYPES.find((t) => t.value === type)?.label ?? type;
+function typeLabel(
+  type: FieldSummary["type"],
+  tr: ReturnType<typeof useTranslations>,
+): string {
+  return formFieldTypes(tr).find((t) => t.value === type)?.label ?? type;
 }
 
 /** 1 つだけ選ぶ質問か（＝部分の和が全体になる質問か）。 */
@@ -479,7 +482,7 @@ export function FormSummaryView({
                     {summary.label}
                   </Text>
                   <Badge color="gray" size="xs" variant="light">
-                    {typeLabel(summary.type)}
+                    {typeLabel(summary.type, tr)}
                   </Badge>
                   <AnsweredCount summary={summary} />
                 </Group>

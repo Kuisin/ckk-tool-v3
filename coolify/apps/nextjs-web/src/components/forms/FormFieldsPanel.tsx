@@ -6,12 +6,11 @@ import { useTranslations } from "next-intl";
 import { DataTable } from "@/components/ui/DataTable";
 import { EmptyState } from "@/components/ui/EmptyState";
 import {
-  FORM_FIELD_TYPES,
   type FormFieldDef,
+  formFieldTypes,
   LOOKUP_SOURCES,
 } from "@/lib/form-schema";
 
-const TYPE_LABEL = new Map(FORM_FIELD_TYPES.map((t) => [t.value, t.label]));
 const SOURCE_LABEL = new Map(LOOKUP_SOURCES.map((s) => [s.value, s.label]));
 
 /**
@@ -94,6 +93,7 @@ export function FormFieldsPanel({
   currentVersion: number;
 }) {
   const tr = useTranslations();
+  const TYPE_LABEL = new Map(formFieldTypes(tr).map((t) => [t.value, t.label]));
   // 定義が壊れているのと、項目をまだ作っていないのは別の話。取り違えると
   // 「編集で直す」のか「作る」のか分からなくなるので、先に切り分ける。
   if (schemaError) {

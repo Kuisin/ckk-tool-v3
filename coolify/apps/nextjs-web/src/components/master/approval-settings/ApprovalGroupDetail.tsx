@@ -60,8 +60,8 @@ import { useIsMobile } from "@/hooks/useViewport";
 import {
   isMemberEffective,
   MEMBER_PERIOD_STATE_COLOR,
-  MEMBER_PERIOD_STATE_LABEL,
   memberPeriodState,
+  memberPeriodStateLabel,
 } from "@/lib/approval-membership";
 import { permissionScopeLabel } from "@/lib/enum-labels";
 import {
@@ -262,10 +262,11 @@ function MemberStateBadge({
   member: ApprovalGroupMemberRow;
   now: Date;
 }) {
+  const locale = useLocale();
   const state = memberPeriodState(member, now);
   return (
     <Badge color={MEMBER_PERIOD_STATE_COLOR[state]} size="sm" variant="light">
-      {MEMBER_PERIOD_STATE_LABEL[state]}
+      {memberPeriodStateLabel(state, locale)}
     </Badge>
   );
 }

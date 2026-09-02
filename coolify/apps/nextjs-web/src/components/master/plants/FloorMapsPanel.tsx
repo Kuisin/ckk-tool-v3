@@ -135,7 +135,7 @@ export function FloorMapsPanel({
   const onImageSelected = (file: File | null) => {
     if (!file || !activeMap) return;
     // 図面は最大 10MB。Server Action ではなく API 経由（lib/floor-map-client.ts）。
-    run(() => uploadFloorMapImage(activeMap.id, file));
+    run(() => uploadFloorMapImage(activeMap.id, file, tr));
   };
 
   const onDeleteFloor = () => {

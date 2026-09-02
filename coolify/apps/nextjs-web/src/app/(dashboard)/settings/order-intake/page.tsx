@@ -1,8 +1,9 @@
 import { Stack } from "@mantine/core";
-import { getTranslations } from "next-intl/server";
+import { getLocale, getTranslations } from "next-intl/server";
 import { OrderIntakeFolderPanel } from "@/components/settings/order-intake/OrderIntakeFolderPanel";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { requireAppRead } from "@/lib/authz-page";
+import type { Locale } from "@/lib/i18n";
 import { readIntakeFolder } from "@/lib/intake-folder";
 import { fetchIntakeDocs } from "./data";
 
@@ -20,10 +21,11 @@ export const dynamic = "force-dynamic";
  */
 export default async function OrderIntakeSettingsPage() {
   const tr = await getTranslations();
+  const locale = (await getLocale()) as Locale;
   const denied = await requireAppRead("order-intake");
   if (denied) return denied;
 
-  const status = await readIntakeFolder();
+  const status = await readIntakeFolder(locale);
   const docs = await fetchIntakeDocs(status);
 
   return (

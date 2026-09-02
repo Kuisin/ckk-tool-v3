@@ -49,20 +49,29 @@ export const ALLOCATABLE_LINE_STATUSES = [
   "PARTIAL_SHIPPED",
 ] as const;
 
+/** next-intl の `t()` と互換の最小の形（サーバー/クライアントどちらの実体も渡せる）。 */
+type TrLike = (
+  key: string,
+  values?: Record<string, string | number | Date>,
+) => string;
+
 /**
  * 割当リストの検証。最初のエラーメッセージを返す（null = OK）。
  * lines は allocations の orderLineId に対応する現況（不足 = 明細なしエラー）。
  */
-export function validateAllocations(args: {
-  type: "FROM_STOCK" | "MANUFACTURE";
-  plannedQuantity: number;
-  allocations: readonly AllocationInput[];
-  lines: readonly LineAllocInfo[];
-}): string | null {
+export function validateAllocations(
+  args: {
+    type: "FROM_STOCK" | "MANUFACTURE";
+    plannedQuantity: number;
+    allocations: readonly AllocationInput[];
+    lines: readonly LineAllocInfo[];
+  },
+  tr: TrLike,
+): string | null {
   const { type, plannedQuantity, allocations, lines } = args;
   if (allocations.length === 0) return null; // 在庫向けの独立指示書
   if (type === "FROM_STOCK" && allocations.length > 1) {
-    return "在庫分の指示書は 1 つの注文明細のみ割り当てられます";
+    return tr("production.workOrderActions.stockWorkOrderOneLineOnly");
   }
   const seen = new Set<string>();
   const byId = new Map(lines.map((l) => [l.orderLineId, l]));
@@ -70,41 +79,59 @@ export function validateAllocations(args: {
   let total = 0;
   for (const a of allocations) {
     if (seen.has(a.orderLineId)) {
-      return "同じ注文明細を複数回割り当てることはできません";
+      return tr("production.workOrderActions.duplicateOrderLineAllocation");
     }
     seen.add(a.orderLineId);
     if (!Number.isInteger(a.quantity) || a.quantity < 1) {
-      return "割当数量は1以上の整数で入力してください";
+      return tr(
+        "production.workOrderActions.allocationQuantityMustBePositiveInteger",
+      );
     }
     const line = byId.get(a.orderLineId);
-    if (!line) return "対象の注文明細が見つかりません";
+    if (!line) return tr("production.workOrderActions.orderLineNotFound");
     if (
       !(ALLOCATABLE_LINE_STATUSES as readonly string[]).includes(line.status)
     ) {
-      return `注文明細 ${line.number} には指示書を割り当てられません（キャンセル・出荷済）`;
+      return tr("production.workOrderActions.orderLineNotAllocatable", {
+        number: line.number,
+      });
     }
     if (line.productId == null) {
-      return `注文明細 ${line.number} は製品未特定のため指示書を作成できません`;
+      return tr(
+        "production.workOrderActions.orderLineProductUnresolvedForLine",
+        {
+          number: line.number,
+        },
+      );
     }
     if (productId == null) {
       productId = line.productId;
     } else if (line.productId !== productId) {
-      return "1 つの指示書に割り当てる注文明細は同一製品である必要があります";
+      return tr("production.workOrderActions.allocationsMustShareProduct");
     }
     const remaining = remainingAllocatable(line);
     if (a.quantity > remaining) {
-      return (
-        `注文明細 ${line.number} への割当が受注残を超えています` +
-        `（受注数量 ${line.lineQuantity} − 手配済 ${line.otherAllocated} = 残 ${remaining}）`
-      );
+      return tr("production.workOrderActions.allocationExceedsRemaining", {
+        number: line.number,
+        lineQuantity: line.lineQuantity,
+        otherAllocated: line.otherAllocated,
+        remaining,
+      });
     }
     total += a.quantity;
   }
   if (type === "FROM_STOCK" && plannedQuantity !== total) {
-    return "在庫分の指示書は予定数量と割当数量を一致させてください";
+    return tr(
+      "production.workOrderActions.stockPlannedQuantityMustMatchAllocation",
+    );
   }
   if (plannedQuantity < total) {
-    return `予定数量が割当合計 ${total} を下回っています（不良予備分の上乗せは自由ですが、割当合計以上にしてください）`;
+    return tr(
+      "production.workOrderActions.plannedQuantityBelowAllocationTotal",
+      {
+        total,
+      },
+    );
   }
   return null;
 }

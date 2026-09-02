@@ -8,9 +8,15 @@
  * このファイルは I/O を持たない。「1 件承認したらこの段は閉じるか」「次は
  * 何段目か」を決めるのはここだけで、サーバー（lib/approvals.ts）も画面
  * （components/approvals/*）も同じ関数を通す。
+ *
+ * 文言が絡む 2 関数（`validateFlowSteps` / `approvalStepDescription`）は
+ * next-intl の `tr`（`lib/i18n.ts` の `Tr`）を呼び出し側から受け取る —
+ * どの呼び出し元も Server Action / クライアントコンポーネントで、既に
+ * `tr` を持っている。
  */
 
 import type { LocalizedText } from "./format";
+import type { Tr } from "./i18n";
 
 /** 段の成立条件。ANY = 誰か 1 名 / ALL = 対象メンバー全員。 */
 export type ApprovalMode = "ANY" | "ALL";
@@ -124,10 +130,11 @@ export function validateFlowSteps(
   steps: FlowStepDraft[],
   /** 段の宛先に個人を選べるか（フォームのみ true）。文言が変わる。 */
   allowIndividual = false,
+  tr: Tr,
 ): string[] {
   const issues: string[] = [];
   if (steps.length === 0) {
-    issues.push("承認ステップを 1 段以上設定してください");
+    issues.push(tr("master.approvalSettingsActions.setAtLeastOneApprovalStep"));
     return issues;
   }
   const noName: number[] = [];
@@ -144,13 +151,21 @@ export function validateFlowSteps(
       noGroup.push(i + 1);
   });
   if (noName.length > 0) {
-    issues.push(`${noName.join(", ")} 段目: 名称を入力してください`);
+    issues.push(
+      tr("master.approvalSettingsActions.stepMissingName", {
+        steps: noName.join(", "),
+      }),
+    );
   }
   if (noGroup.length > 0) {
     issues.push(
       allowIndividual
-        ? `${noGroup.join(", ")} 段目: 承認グループを選ぶか、承認者を 1 人以上選んでください`
-        : `${noGroup.join(", ")} 段目: 承認グループを選択してください`,
+        ? tr("master.approvalSettingsActions.stepMissingGroupIndividual", {
+            steps: noGroup.join(", "),
+          })
+        : tr("master.approvalSettingsActions.stepMissingGroup", {
+            steps: noGroup.join(", "),
+          }),
     );
   }
   return issues;
@@ -186,15 +201,18 @@ export function stepsFromSnapshot(snapshot: unknown): FlowStepSnapshot[] {
  * 重複**していた。文言を直すときに 1 つ直し漏らすと画面ごとに説明が食い違うので、
  * 純ロジックとしてここに 1 本だけ置く。
  */
-export function approvalStepDescription(approval: {
-  phase: ApprovalPhase;
-  stepNo: number;
-  stepCount: number;
-  stepLabel: string;
-  groupLabel: string;
-}): string {
+export function approvalStepDescription(
+  approval: {
+    phase: ApprovalPhase;
+    stepNo: number;
+    stepCount: number;
+    stepLabel: string;
+    groupLabel: string;
+  },
+  tr: Tr,
+): string {
   if (approval.phase === "PENDING" && approval.stepCount > 1) {
     return `${approval.stepNo}/${approval.stepCount} ${approval.stepLabel}`;
   }
-  return approval.groupLabel || "承認グループ";
+  return approval.groupLabel || tr("common.approvalGroup");
 }
