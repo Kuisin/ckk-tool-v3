@@ -35,9 +35,9 @@ import {
   Text,
   UnstyledButton,
 } from "@mantine/core";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { useEffect, useRef, useState } from "react";
-import { DISPLAY_TEMPLATES } from "@/lib/display-templates";
+import { localizedDisplayTemplates } from "@/lib/display-template-labels";
 import { kioskOrigin } from "@/lib/kiosk-origin";
 
 /** 見本を組む論理サイズ。テレビの見た目に寄せるため 16:9 の広い幅で描く。 */
@@ -51,10 +51,12 @@ type Props = {
 
 export function TemplatePicker({ value, onChange }: Props) {
   const origin = kioskOrigin();
+  const locale = useLocale();
+  const templates = localizedDisplayTemplates(locale);
 
   return (
     <SimpleGrid cols={{ base: 1, sm: 2, lg: 3 }} spacing="sm">
-      {DISPLAY_TEMPLATES.map((t) => {
+      {templates.map((t) => {
         const selected = t.key === value;
         return (
           <UnstyledButton key={t.key} onClick={() => onChange(t.key)}>

@@ -38,7 +38,7 @@ import {
 } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
 import { useRouter } from "next/navigation";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { useState, useTransition } from "react";
 import { updateDisplay } from "@/app/(dashboard)/settings/kiosk-devices/displays/actions";
 import { SecondaryButton } from "@/components/ui/buttons";
@@ -46,6 +46,7 @@ import { FieldValue } from "@/components/ui/FieldValue";
 import { FormActions, SummaryGrid } from "@/components/ui/shells";
 import type { ImageFit } from "@/lib/display-content";
 import { uploadDisplayImage } from "@/lib/display-image-client";
+import { findLocalizedDisplayTemplate } from "@/lib/display-template-labels";
 import {
   type DisplayOptionSpec,
   type DisplayTemplateOptions,
@@ -85,6 +86,7 @@ function initialOptions(
 
 export function DisplayContentEditor({ display, plantOptions, onDone }: Props) {
   const tr = useTranslations();
+  const locale = useLocale();
   const router = useRouter();
   const [pending, startTransition] = useTransition();
 
@@ -112,7 +114,7 @@ export function DisplayContentEditor({ display, plantOptions, onDone }: Props) {
     display.contentType === "IMAGE" ? "IMAGE" : "APP_PAGE",
   );
 
-  const template = findDisplayTemplate(templateKey);
+  const template = findLocalizedDisplayTemplate(templateKey, locale);
 
   /**
    * テンプレートを替えたら設定も作り直す。前の設定を持ち回すと、たまたま
@@ -442,6 +444,7 @@ export function DisplayContentView({
   plantOptions: Array<{ value: string; label: string }>;
 }) {
   const tr = useTranslations();
+  const locale = useLocale();
   // 画像表示のときはテンプレートではないので、先に分けて出す。
   if (display.contentType === "IMAGE") {
     return display.image ? (
@@ -490,8 +493,9 @@ export function DisplayContentView({
     page?: unknown;
     options?: Record<string, unknown>;
   } | null;
-  const template = findDisplayTemplate(
+  const template = findLocalizedDisplayTemplate(
     typeof config?.page === "string" ? config.page : null,
+    locale,
   );
   const options = config?.options ?? {};
 

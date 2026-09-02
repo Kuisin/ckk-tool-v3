@@ -14,6 +14,13 @@
  *   `pnpm twin:sync` で複製する。管理画面が保存する形とディスプレイが読む形が
  *   食い違うと「保存はできるのに何も映らない」という最も原因の分かりにくい
  *   壊れ方をするので、1 バイトのずれも twin-files.test.ts で落とす。
+ *
+ * ★ `label` / `description` / `help` / `placeholder` / `suffix` /
+ *   `choices[].label` は**表示文字列ではなく `messages/<locale>.json` の
+ *   鍵**を持つ（twin file は next-intl もキオスクの辞書も読み込めない）。
+ *   実際に文言を読むのは web の管理画面（`lib/display-template-labels.ts`
+ *   が `label()` で解決する）だけ——kiosk はこれらのフィールドを一切読まず、
+ *   `key` / `kind` / 数値の範囲や既定値だけを使う。
  */
 
 import { z } from "zod";
@@ -73,25 +80,25 @@ export interface DisplayTemplate {
 const PLANT_OPTION: DisplayOptionSpec = {
   key: "plantId",
   kind: "plant",
-  label: "拠点で絞る",
+  label: "displayTemplates.common.plantLabel",
   // **未選択 = 全拠点。** 以前はこの画面が置かれている拠点へ落としていたが、
   // 空にした人が見たいのは全社の状況で、置き場所ではない。空欄が「全部」
   // ではなく「ここだけ」になっていると、絞っていないつもりの画面に一部しか
   // 出ず、しかもその理由が画面から読み取れない。
-  help: "選ばないと、すべての拠点を出します",
+  help: "displayTemplates.common.plantHelp",
 };
 
 const rowsOption = (
   defaultRows: number,
-  help = "画面に収まらない分は自動でページ送りします",
+  help = "displayTemplates.common.rowsHelpDefault",
 ): DisplayOptionSpec => ({
   key: "rows",
   kind: "number",
-  label: "1 画面に出す件数",
+  label: "displayTemplates.common.rowsLabel",
   min: 3,
   max: 20,
   default: defaultRows,
-  suffix: "件",
+  suffix: "displayTemplates.common.rowsSuffix",
   help,
 });
 
@@ -102,7 +109,7 @@ const daysOption = (defaultDays: number, label: string): DisplayOptionSpec => ({
   min: 1,
   max: 60,
   default: defaultDays,
-  suffix: "日",
+  suffix: "displayTemplates.common.daysSuffix",
 });
 
 // ─── テンプレート ───────────────────────────────────────────────────────────
@@ -110,85 +117,95 @@ const daysOption = (defaultDays: number, label: string): DisplayOptionSpec => ({
 export const DISPLAY_TEMPLATES: readonly DisplayTemplate[] = [
   {
     key: "production",
-    label: "生産状況",
-    description:
-      "進行中の指示書を、いま流れている工程と担当者つきで並べます。ライン脇の定番。",
+    label: "displayTemplates.production.label",
+    description: "displayTemplates.production.description",
     options: [
       PLANT_OPTION,
       rowsOption(8),
       {
         key: "includePending",
         kind: "boolean",
-        label: "着手前の指示書も出す",
+        label: "displayTemplates.production.options.includePending.label",
         default: true,
-        help: "切ると、いま作業中のものだけになります",
+        help: "displayTemplates.production.options.includePending.help",
       },
     ],
   },
   {
     key: "pending",
-    label: "未処理・手配待ち",
-    description:
-      "まだ指示書が出ていない注文明細を、納期の近い順に並べます。手配漏れに気づくための画面。",
+    label: "displayTemplates.pending.label",
+    description: "displayTemplates.pending.description",
     options: [
       PLANT_OPTION,
       rowsOption(8),
-      daysOption(14, "何日先の納期まで出すか"),
+      daysOption(14, "displayTemplates.pending.options.days.label"),
       {
         key: "overdueOnly",
         kind: "boolean",
-        label: "納期を過ぎたものだけ出す",
+        label: "displayTemplates.pending.options.overdueOnly.label",
         default: false,
       },
     ],
   },
   {
     key: "shipping",
-    label: "出荷予定",
-    description: "これから出す出荷書を並べます。出荷場の壁向け。",
-    options: [PLANT_OPTION, rowsOption(8), daysOption(7, "何日先まで出すか")],
-  },
-  {
-    key: "quality",
-    label: "品質・不良",
-    description:
-      "直近の不良記録を、種類ごとの件数とともに出します。朝礼で使う想定。",
+    label: "displayTemplates.shipping.label",
+    description: "displayTemplates.shipping.description",
     options: [
       PLANT_OPTION,
       rowsOption(8),
-      daysOption(7, "何日前までを集計するか"),
+      daysOption(7, "displayTemplates.shipping.options.days.label"),
+    ],
+  },
+  {
+    key: "quality",
+    label: "displayTemplates.quality.label",
+    description: "displayTemplates.quality.description",
+    options: [
+      PLANT_OPTION,
+      rowsOption(8),
+      daysOption(7, "displayTemplates.quality.options.days.label"),
     ],
   },
   {
     key: "announcement",
-    label: "お知らせ",
-    description:
-      "決めた文章を大きく映します。安全喚起や連絡事項に。データは使いません。",
+    label: "displayTemplates.announcement.label",
+    description: "displayTemplates.announcement.description",
     options: [
       {
         key: "message",
         kind: "text",
-        label: "本文",
+        label: "displayTemplates.announcement.options.message.label",
         default: "",
         multiline: true,
         maxLength: 400,
-        placeholder: "例: 本日 15:00 より 安全点検を行います",
+        placeholder:
+          "displayTemplates.announcement.options.message.placeholder",
       },
       {
         key: "level",
         kind: "select",
-        label: "見た目",
+        label: "displayTemplates.announcement.options.level.label",
         choices: [
-          { value: "info", label: "通常（青）" },
-          { value: "warn", label: "注意（黄）" },
-          { value: "alert", label: "警告（赤）" },
+          {
+            value: "info",
+            label: "displayTemplates.announcement.options.level.choices.info",
+          },
+          {
+            value: "warn",
+            label: "displayTemplates.announcement.options.level.choices.warn",
+          },
+          {
+            value: "alert",
+            label: "displayTemplates.announcement.options.level.choices.alert",
+          },
         ],
         default: "info",
       },
       {
         key: "showClock",
         kind: "boolean",
-        label: "時計を出す",
+        label: "displayTemplates.announcement.options.showClock.label",
         default: true,
       },
     ],

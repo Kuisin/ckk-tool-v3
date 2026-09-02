@@ -7594,5 +7594,76 @@
       "PORTAL_MAIL_BLOCKED_DEV": "ポータル: dev の許可リスト外",
       "UNKNOWN": "不明"
     }
+  },
+  "displayTemplates": {
+    "common": {
+      "plantLabel": "拠点で絞る",
+      "plantHelp": "選ばないと、すべての拠点を出します",
+      "rowsLabel": "1 画面に出す件数",
+      "rowsSuffix": "件",
+      "rowsHelpDefault": "画面に収まらない分は自動でページ送りします",
+      "daysSuffix": "日"
+    },
+    "production": {
+      "label": "生産状況",
+      "description": "進行中の指示書を、いま流れている工程と担当者つきで並べます。ライン脇の定番。",
+      "options": {
+        "includePending": {
+          "label": "着手前の指示書も出す",
+          "help": "切ると、いま作業中のものだけになります"
+        }
+      }
+    },
+    "pending": {
+      "label": "未処理・手配待ち",
+      "description": "まだ指示書が出ていない注文明細を、納期の近い順に並べます。手配漏れに気づくための画面。",
+      "options": {
+        "days": {
+          "label": "何日先の納期まで出すか"
+        },
+        "overdueOnly": {
+          "label": "納期を過ぎたものだけ出す"
+        }
+      }
+    },
+    "shipping": {
+      "label": "出荷予定",
+      "description": "これから出す出荷書を並べます。出荷場の壁向け。",
+      "options": {
+        "days": {
+          "label": "何日先まで出すか"
+        }
+      }
+    },
+    "quality": {
+      "label": "品質・不良",
+      "description": "直近の不良記録を、種類ごとの件数とともに出します。朝礼で使う想定。",
+      "options": {
+        "days": {
+          "label": "何日前までを集計するか"
+        }
+      }
+    },
+    "announcement": {
+      "label": "お知らせ",
+      "description": "決めた文章を大きく映します。安全喚起や連絡事項に。データは使いません。",
+      "options": {
+        "message": {
+          "label": "本文",
+          "placeholder": "例: 本日 15:00 より 安全点検を行います"
+        },
+        "level": {
+          "label": "見た目",
+          "choices": {
+            "info": "通常（青）",
+            "warn": "注意（黄）",
+            "alert": "警告（赤）"
+          }
+        },
+        "showClock": {
+          "label": "時計を出す"
+        }
+      }
+    }
   }
 }

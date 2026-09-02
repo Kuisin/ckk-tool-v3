@@ -31,7 +31,7 @@ describe("DISPLAY_TEMPLATES — 登録簿の整合", () => {
     }
   });
 
-  it("名前と説明が入っている（管理画面で選ぶときの手掛かり）", () => {
+  it("名前と説明の鍵が入っている（実際の文言は display-template-labels.ts が解決する）", () => {
     for (const t of DISPLAY_TEMPLATES) {
       expect(t.label.length).toBeGreaterThan(0);
       expect(t.description.length).toBeGreaterThan(0);
@@ -62,7 +62,9 @@ describe("DISPLAY_TEMPLATES — 登録簿の整合", () => {
 
 describe("findDisplayTemplate", () => {
   it("既知のキーを引ける", () => {
-    expect(findDisplayTemplate("production")?.label).toBe("生産状況");
+    expect(findDisplayTemplate("production")?.label).toBe(
+      "displayTemplates.production.label",
+    );
   });
 
   it("未知・null・undefined は undefined", () => {

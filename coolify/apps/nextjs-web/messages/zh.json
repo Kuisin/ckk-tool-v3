@@ -7594,5 +7594,76 @@
       "PORTAL_MAIL_BLOCKED_DEV": "门户：不在开发环境许可列表中",
       "UNKNOWN": "未知"
     }
+  },
+  "displayTemplates": {
+    "common": {
+      "plantLabel": "按据点筛选",
+      "plantHelp": "不选择则显示所有据点",
+      "rowsLabel": "每屏显示件数",
+      "rowsSuffix": "件",
+      "rowsHelpDefault": "超出画面的部分会自动翻页",
+      "daysSuffix": "天"
+    },
+    "production": {
+      "label": "生产状况",
+      "description": "列出进行中的工单，附带当前工序和负责人。产线旁的常用画面。",
+      "options": {
+        "includePending": {
+          "label": "也显示尚未开始的工单",
+          "help": "关闭后仅显示正在进行的项目"
+        }
+      }
+    },
+    "pending": {
+      "label": "未处理・待安排",
+      "description": "按交期由近到远列出尚未生成工单的订单明细，用于发现遗漏的安排。",
+      "options": {
+        "days": {
+          "label": "显示到几天后的交期"
+        },
+        "overdueOnly": {
+          "label": "仅显示已逾期的项目"
+        }
+      }
+    },
+    "shipping": {
+      "label": "出货预定",
+      "description": "列出即将出货的出货单。适合出货场的墙面显示。",
+      "options": {
+        "days": {
+          "label": "显示到几天后"
+        }
+      }
+    },
+    "quality": {
+      "label": "品质・不良",
+      "description": "显示近期不良记录及各类别的件数，用于晨会。",
+      "options": {
+        "days": {
+          "label": "统计到几天前"
+        }
+      }
+    },
+    "announcement": {
+      "label": "通知",
+      "description": "以大字显示预设文字，用于安全提醒或事项通知。不使用任何数据。",
+      "options": {
+        "message": {
+          "label": "正文",
+          "placeholder": "例：今天 15:00 起进行安全检查"
+        },
+        "level": {
+          "label": "外观",
+          "choices": {
+            "info": "普通（蓝）",
+            "warn": "注意（黄）",
+            "alert": "警告（红）"
+          }
+        },
+        "showClock": {
+          "label": "显示时钟"
+        }
+      }
+    }
   }
 }

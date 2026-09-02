@@ -7594,5 +7594,76 @@
       "PORTAL_MAIL_BLOCKED_DEV": "Portal: not on the dev allowlist",
       "UNKNOWN": "Unknown"
     }
+  },
+  "displayTemplates": {
+    "common": {
+      "plantLabel": "Filter by site",
+      "plantHelp": "If not chosen, all sites are shown",
+      "rowsLabel": "Rows per screen",
+      "rowsSuffix": "rows",
+      "rowsHelpDefault": "Anything that doesn't fit is paged automatically",
+      "daysSuffix": "days"
+    },
+    "production": {
+      "label": "Production status",
+      "description": "Lists in-progress work orders with their current step and assignee. A standard board for the line.",
+      "options": {
+        "includePending": {
+          "label": "Also show work orders not yet started",
+          "help": "Turning this off shows only work in progress"
+        }
+      }
+    },
+    "pending": {
+      "label": "Unprocessed / awaiting arrangement",
+      "description": "Lists order lines with no work order yet, sorted by nearest delivery date. Helps catch anything missed.",
+      "options": {
+        "days": {
+          "label": "Show up to how many days ahead"
+        },
+        "overdueOnly": {
+          "label": "Show only overdue items"
+        }
+      }
+    },
+    "shipping": {
+      "label": "Shipping schedule",
+      "description": "Lists upcoming delivery orders. For the wall at the shipping dock.",
+      "options": {
+        "days": {
+          "label": "Show up to how many days ahead"
+        }
+      }
+    },
+    "quality": {
+      "label": "Quality / defects",
+      "description": "Shows recent defect records with counts by type. Intended for the morning meeting.",
+      "options": {
+        "days": {
+          "label": "Aggregate over how many days back"
+        }
+      }
+    },
+    "announcement": {
+      "label": "Announcement",
+      "description": "Displays a fixed message in large text. For safety reminders and notices. Uses no data.",
+      "options": {
+        "message": {
+          "label": "Message",
+          "placeholder": "e.g. A safety inspection will be held today at 15:00"
+        },
+        "level": {
+          "label": "Appearance",
+          "choices": {
+            "info": "Normal (blue)",
+            "warn": "Caution (yellow)",
+            "alert": "Warning (red)"
+          }
+        },
+        "showClock": {
+          "label": "Show clock"
+        }
+      }
+    }
   }
 }

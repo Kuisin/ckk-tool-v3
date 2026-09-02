@@ -40,7 +40,7 @@ import {
 import { notifications } from "@mantine/notifications";
 import { IconDeviceTv, IconSearch } from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { useMemo, useState, useTransition } from "react";
 import {
   activateDisplay,
@@ -64,7 +64,7 @@ import {
   type MachineGroup,
   screenLabel,
 } from "@/lib/display-groups";
-import { DISPLAY_TEMPLATES } from "@/lib/display-templates";
+import { localizedDisplayTemplates } from "@/lib/display-template-labels";
 import type { DisplayRow } from "@/lib/displays-admin";
 import { statusOptions } from "@/lib/status-map";
 import { OnlineDot } from "../kiosk/KioskDevicesTable";
@@ -492,6 +492,7 @@ function CreateDisplayModal({
   plantOptions: Array<{ value: string; label: string }>;
 }) {
   const tr = useTranslations();
+  const locale = useLocale();
   const [nameJa, setNameJa] = useState("");
   const [location, setLocation] = useState("");
   const [plantId, setPlantId] = useState<string | null>(null);
@@ -546,7 +547,7 @@ function CreateDisplayModal({
             value={plantId}
           />
           <Select
-            data={DISPLAY_TEMPLATES.map((t) => ({
+            data={localizedDisplayTemplates(locale).map((t) => ({
               value: t.key,
               label: t.label,
             }))}
