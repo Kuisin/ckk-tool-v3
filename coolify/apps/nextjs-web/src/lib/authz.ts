@@ -30,6 +30,7 @@ import {
   type ScopeContext,
   visibleAppKeys,
 } from "@ckk/authz-core";
+import { getLocale, getTranslations } from "next-intl/server";
 import { cache } from "react";
 import { auth } from "@/auth";
 import { prisma } from "./db";
@@ -87,7 +88,8 @@ export async function checkPermission(
   action: PermissionAction,
 ): Promise<AuthzResult> {
   const userId = await sessionUserId();
-  if (!userId) return { ok: false, error: "ログインが必要です" };
+  const [tr, locale] = await Promise.all([getTranslations(), getLocale()]);
+  if (!userId) return { ok: false, error: tr("common.loginRequired") };
 
   const [set, ctx] = await Promise.all([
     permissionSetFor(userId),
@@ -101,7 +103,12 @@ export async function checkPermission(
   // 括弧のコードは残す — 管理者への問い合わせではコードで指定されることがある。
   return {
     ok: false,
-    error: `${permissionLabel(code)}の${actionLabel(action)}権限がありません（${code}:${action}）`,
+    error: tr("common.permissionActionDenied", {
+      permission: permissionLabel(code, locale),
+      action: actionLabel(action, locale),
+      code,
+      actionCode: action,
+    }),
   };
 }
 
@@ -122,10 +129,41 @@ export async function checkApprovalDocAccess(
   if (read.ok) return read;
   const update = await checkPermission(code, "UPDATE");
   if (update.ok) return update;
+  const [tr, locale] = await Promise.all([getTranslations(), getLocale()]);
   return {
     ok: false,
-    error: `${permissionLabel(code)}の閲覧または編集の権限がありません（${code}:READ / UPDATE）`,
+    error: tr("common.permissionReadOrUpdateDenied", {
+      permission: permissionLabel(code, locale),
+      code,
+    }),
   };
+}
+
+/**
+ * 「いずれかのコードの READ を持っていれば可」の門 — 検索ピッカーなど、
+ * 複数の業務画面から共有される読み取り専用の Server Action 用。
+ *
+ * ピッカーは書類を作る人が参照マスタを引くためのもので、master:READ を
+ * 持たない営業担当も顧客を選べなければならない。だから「この一覧を使う
+ * 画面のどれかを読める人」を通す。ロールを 1 つも持たない（SSO で自動作成
+ * されただけの）アカウントはここで止まる — 2026-09 の監査で、この門が
+ * 無かったために取引先・製品・利用者・注文明細の一覧がログインだけで
+ * 引けていた（scripts/check-server-action-gates.mjs が再発を止める）。
+ *
+ * 行レベルのスコープ（拠点 / OWN）は掛けない — 書類を起こすときの参照は
+ * 全件でよく、掛けると他拠点の顧客宛ての書類が作れなくなる。
+ */
+export async function requireAnyRead(
+  codes: readonly string[],
+): Promise<{ ok: true; userId: string } | { ok: false; error: string }> {
+  const userId = await sessionUserId();
+  const tr = await getTranslations();
+  if (!userId) return { ok: false, error: tr("common.loginRequired") };
+  const readable = readableCodes(await permissionSetFor(userId));
+  if (readable.has("*") || codes.some((c) => readable.has(c))) {
+    return { ok: true, userId };
+  }
+  return { ok: false, error: tr("common.permissionAnyReadDenied") };
 }
 
 /** Route Handler 用: 失敗時に 401/403 Response を返す。成功時 null。 */
@@ -135,7 +173,9 @@ export async function requirePermissionResponse(
 ): Promise<Response | null> {
   const res = await checkPermission(code, action);
   if (res.ok) return null;
-  const status = res.error.startsWith("ログイン") ? 401 : 403;
+  // 文言は locale で変わるので前綴りでは判定しない — 未ログインかどうかを
+  // 元の判定条件で直接確かめる（sessionUserId は cache() 済みで安い）。
+  const status = (await sessionUserId()) ? 403 : 401;
   return Response.json({ error: res.error }, { status });
 }
 

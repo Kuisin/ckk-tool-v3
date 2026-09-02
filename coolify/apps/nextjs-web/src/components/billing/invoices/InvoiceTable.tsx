@@ -11,14 +11,16 @@
 import { Group, Select, Stack, Text, TextInput } from "@mantine/core";
 import { IconFileInvoice, IconSearch } from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { useFormat } from "@/components/layout/PreferencesProvider";
 import { type Column, DataTable } from "@/components/ui/DataTable";
 import { MoneyText } from "@/components/ui/MoneyText";
-import { StatusBadge, statusOptions } from "@/components/ui/StatusBadge";
+import { StatusBadge } from "@/components/ui/StatusBadge";
 import { ListShell } from "@/components/ui/shells";
 import { useUrlSelectState, useUrlStringState } from "@/hooks/useUrlState";
 import { useIsMobile } from "@/hooks/useViewport";
 import type { Formatters } from "@/lib/format";
+import { statusOptions } from "@/lib/status-map";
 import type { Invoice } from "./model";
 
 const BASE_PATH = "/billing/invoices";
@@ -29,6 +31,7 @@ function periodLabel(fmt: Formatters, inv: Invoice): string {
 }
 
 export function InvoiceTable({ rows }: { rows: Invoice[] }) {
+  const tr = useTranslations();
   const fmt = useFormat();
   const router = useRouter();
   const isMobile = useIsMobile();
@@ -55,7 +58,7 @@ export function InvoiceTable({ rows }: { rows: Invoice[] }) {
   const columns: Column<Invoice>[] = [
     {
       key: "invoiceNumber",
-      header: "請求番号",
+      header: tr("common.invoiceNumber"),
       sortable: true,
       render: (inv) => (
         <Text ff="mono" size="sm">
@@ -65,7 +68,7 @@ export function InvoiceTable({ rows }: { rows: Invoice[] }) {
     },
     {
       key: "customerName",
-      header: "顧客",
+      header: tr("common.customer"),
       sortable: true,
       render: (inv) => (
         <>
@@ -80,7 +83,7 @@ export function InvoiceTable({ rows }: { rows: Invoice[] }) {
     },
     {
       key: "billingPeriod",
-      header: "請求期間",
+      header: tr("common.billingPeriod"),
       sortValue: (inv) => inv.billingPeriodTo,
       render: (inv) => (
         <Text className="tabular-nums" size="sm">
@@ -90,7 +93,7 @@ export function InvoiceTable({ rows }: { rows: Invoice[] }) {
     },
     {
       key: "totalAmount",
-      header: "合計金額",
+      header: tr("common.totalAmount"),
       width: 130,
       align: "right",
       sortable: true,
@@ -99,14 +102,14 @@ export function InvoiceTable({ rows }: { rows: Invoice[] }) {
     },
     {
       key: "status",
-      header: "状態",
+      header: tr("common.status"),
       width: 100,
       sortValue: (inv) => inv.status,
       render: (inv) => <StatusBadge entity="Invoice" status={inv.status} />,
     },
     {
       key: "issuedAt",
-      header: "発行日",
+      header: tr("common.issueDate"),
       width: 120,
       sortValue: (inv) => inv.issuedAt ?? "",
       render: (inv) => (
@@ -119,14 +122,14 @@ export function InvoiceTable({ rows }: { rows: Invoice[] }) {
 
   return (
     <ListShell
-      breadcrumbs={["請求", "請求書"]}
+      breadcrumbs={[tr("common.billing"), tr("common.invoice")]}
       filters={
         <Select
           clearable
           data={statusOptions("Invoice")}
           flex={isMobile ? 1 : undefined}
           onChange={setStatus}
-          placeholder="状態"
+          placeholder={tr("common.status")}
           value={status}
           w={isMobile ? undefined : 140}
         />
@@ -136,18 +139,18 @@ export function InvoiceTable({ rows }: { rows: Invoice[] }) {
         <TextInput
           leftSection={<IconSearch size={14} />}
           onChange={(e) => setSearch(e.currentTarget.value)}
-          placeholder="請求番号・顧客で検索"
+          placeholder={tr("billing.invoices.searchByInvoiceNumberOrCustomer")}
           value={search}
         />
       }
-      title="請求書"
+      title={tr("common.invoice")}
     >
       <DataTable
         columns={columns}
         data={filtered}
         defaultSort={{ key: "invoiceNumber", dir: "desc" }}
         emptyIcon={<IconFileInvoice size={24} />}
-        emptyMessage="請求書がありません（締日処理から生成します）"
+        emptyMessage={tr("billing.invoices.thereAreNoInvoicesGenerateThem")}
         getRowId={(inv) => inv.id}
         onRowClick={(inv) => router.push(`${BASE_PATH}/${inv.id}`)}
         renderCard={(inv) => (

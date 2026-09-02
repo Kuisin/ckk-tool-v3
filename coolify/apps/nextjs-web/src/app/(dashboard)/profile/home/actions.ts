@@ -6,6 +6,7 @@
  */
 
 import { revalidatePath } from "next/cache";
+import { getTranslations } from "next-intl/server";
 import { z } from "zod";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/db";
@@ -18,36 +19,46 @@ import {
 } from "@/lib/home-settings-core";
 import { type ActionResult, actionError, actionOk } from "@/lib/server-action";
 
-const homeSettingsSchema = z.object({
-  mode: z.enum(["default", "custom"]),
-  starred: z.array(z.string().max(100)).max(200),
-  groups: z
-    .array(
-      z.object({
-        name: z
-          .string()
-          .trim()
-          .min(1, "グループ名を入力してください")
-          .max(
-            MAX_GROUP_NAME_LENGTH,
-            `グループ名は${MAX_GROUP_NAME_LENGTH}文字以内で入力してください`,
-          ),
-        apps: z.array(z.string().max(100)).max(200),
-      }),
-    )
-    .max(MAX_HOME_GROUPS, `グループは${MAX_HOME_GROUPS}件までです`),
-});
+function homeSettingsSchema(tr: Awaited<ReturnType<typeof getTranslations>>) {
+  return z.object({
+    mode: z.enum(["default", "custom"]),
+    starred: z.array(z.string().max(100)).max(200),
+    groups: z
+      .array(
+        z.object({
+          name: z
+            .string()
+            .trim()
+            .min(1, tr("profile.homeActions.groupNameRequired"))
+            .max(
+              MAX_GROUP_NAME_LENGTH,
+              tr("profile.homeActions.groupNameTooLong", {
+                max: MAX_GROUP_NAME_LENGTH,
+              }),
+            ),
+          apps: z.array(z.string().max(100)).max(200),
+        }),
+      )
+      .max(
+        MAX_HOME_GROUPS,
+        tr("profile.homeActions.tooManyGroups", { max: MAX_HOME_GROUPS }),
+      ),
+  });
+}
 
 export async function saveHomeSettingsAction(
   input: HomeSettings,
 ): Promise<ActionResult> {
+  const tr = await getTranslations();
   const session = await auth();
   const userId = (session?.user as { id?: string } | undefined)?.id;
-  if (!userId) return actionError("ログインが必要です");
+  if (!userId) return actionError(tr("common.loginRequired"));
 
-  const parsed = homeSettingsSchema.safeParse(input);
+  const parsed = homeSettingsSchema(tr).safeParse(input);
   if (!parsed.success) {
-    return actionError(parsed.error.issues[0]?.message ?? "入力が不正です");
+    return actionError(
+      parsed.error.issues[0]?.message ?? tr("common.invalidInput"),
+    );
   }
   // 実在アプリ key への絞り込み・重複除去（未知 key は黙って落とす）
   const settings = sanitizeHomeSettings(parsed.data, validAppKeys());

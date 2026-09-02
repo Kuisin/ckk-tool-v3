@@ -13,6 +13,7 @@ import { Alert, Group, NumberInput, Select, Stack, Text } from "@mantine/core";
 import { DatePickerInput } from "@mantine/dates";
 import { IconAlertTriangle, IconCalendar } from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { useEffect, useState } from "react";
 import { FieldValue } from "@/components/ui/FieldValue";
 import { HelpLabel } from "@/components/ui/HelpLabel";
@@ -33,6 +34,7 @@ export function CreateQuoteModal({
   onClose,
   source,
 }: ModalBaseProps & { source: PriceListEntry | null }) {
+  const tr = useTranslations();
   const router = useRouter();
   const [variantId, setVariantId] = useState<string | null>(null);
   const [quantity, setQuantity] = useState<number>(1);
@@ -95,12 +97,14 @@ export function CreateQuoteModal({
       }}
       opened={opened}
       size="md"
-      submitLabel="見積書を作成（下書き）"
-      title="見積書を作成"
+      submitLabel={tr("sales.priceLists.createAQuoteDraft")}
+      title={tr("common.createAQuote")}
     >
       <Text size="sm">
-        {source.customerName} × {source.productName}{" "}
-        の価格表から見積書を作成します。単価・値引きは価格表から自動計算されます。
+        {tr("sales.createQuoteModal.createQuoteFromPriceListMessage", {
+          customer: source.customerName,
+          product: source.productName,
+        })}
       </Text>
 
       <Select
@@ -108,7 +112,7 @@ export function CreateQuoteModal({
           value: v.id,
           label: ORDER_TYPE_LABEL[v.orderType] ?? v.orderType,
         }))}
-        label="注文種別"
+        label={tr("common.orderType")}
         onChange={(v) => {
           setVariantId(v);
           const next = source.variants.find((x) => x.id === v);
@@ -121,13 +125,13 @@ export function CreateQuoteModal({
       <NumberInput
         label={
           <HelpLabel
-            help="見積する本数。数量帯（倍率）と値引きルールの適用判定に使われます。"
-            label="数量"
+            help={tr("sales.priceLists.howManyAreQuotedUsedTo")}
+            label={tr("common.quantity")}
           />
         }
         min={1}
         onChange={(v) => setQuantity(typeof v === "number" ? v : 1)}
-        suffix=" 本"
+        suffix={` ${tr("common.pcs")}`}
         value={quantity}
         withAsterisk
       />
@@ -135,14 +139,14 @@ export function CreateQuoteModal({
       {variant && tier ? (
         <Stack gap="xs">
           <FieldValue
-            label="単価（価格表）"
+            label={tr("common.unitPricePriceList")}
             value={`${formatMoney(unitPrice)}（${quantityRange(
               tier.minQuantity,
               tier.maxQuantity,
             )} ×${tier.multiplier.toFixed(2)}）`}
           />
           <FieldValue
-            label="値引き（自動適用）"
+            label={tr("sales.priceLists.discountAppliedAutomatically")}
             value={
               discount
                 ? `-${formatMoney(discountAmount)}（${discount.label} ${discountValueLabel(discount)}）`
@@ -156,23 +160,23 @@ export function CreateQuoteModal({
           icon={<IconAlertTriangle size={16} />}
           variant="light"
         >
-          この数量に該当する価格段階がありません。数量を見直すか、価格表の数量スケールを追加してください。
+          {tr("sales.priceLists.noPriceTierCoversThisQuantity")}
         </Alert>
       )}
 
       <DatePickerInput
         clearable
-        label="納期"
+        label={tr("common.deliveryDate")}
         leftSection={<IconCalendar size={14} />}
         onChange={setDeliveryDate}
-        placeholder="日付を選択"
+        placeholder={tr("common.pickADate")}
         value={deliveryDate}
         valueFormat="YYYY/MM/DD"
       />
 
       <Group justify="flex-end">
         <Text c="dimmed" size="sm">
-          金額
+          {tr("common.amount")}
         </Text>
         <Text className="tabular-nums" ff="mono" fw={700}>
           {formatMoney(amount)}

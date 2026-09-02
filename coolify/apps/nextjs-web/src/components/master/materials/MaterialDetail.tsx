@@ -10,6 +10,7 @@
 import { Stack, Tabs, Text } from "@mantine/core";
 import { IconCircleMinus, IconTrash } from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { useState } from "react";
 import { useFormat } from "@/components/layout/PreferencesProvider";
 import { KeywordBadges } from "@/components/master/MasterKeywordsField";
@@ -62,6 +63,7 @@ export function MaterialDetail({
   record: MaterialDetailData;
   auditEntries: AuditEntry[];
 }) {
+  const tr = useTranslations();
   const fmt = useFormat();
   const router = useRouter();
   // アクティブタブを ?tab= に保持（URL 共有でタブまで再現）
@@ -83,12 +85,14 @@ export function MaterialDetail({
         <ResourceActions
           menuItems={[
             {
-              label: record.isActive ? "無効化" : "有効化",
+              label: record.isActive
+                ? tr("common.disable")
+                : tr("common.enable"),
               icon: <IconCircleMinus size={14} />,
               onClick: () => setToggleOpen(true),
             },
             {
-              label: "削除",
+              label: tr("common.delete"),
               icon: <IconTrash size={14} />,
               color: "red",
               divider: true,
@@ -98,7 +102,11 @@ export function MaterialDetail({
           onEdit={() => router.push(`${BASE_PATH}/${record.id}/edit`)}
         />
       }
-      breadcrumbs={["マスタ", { label: "素材", href: BASE_PATH }, record.code]}
+      breadcrumbs={[
+        tr("common.masterData"),
+        { label: tr("common.materials"), href: BASE_PATH },
+        record.code,
+      ]}
       createdAt={fmt.dateTime(record.createdAt)}
       status={<ActiveBadge active={record.isActive} />}
       title={record.nameJa}
@@ -106,11 +114,11 @@ export function MaterialDetail({
     >
       <SummaryGrid>
         <FieldValue
-          label="素材コード"
+          label={tr("common.materialCode")}
           value={<DocNumber>{record.code}</DocNumber>}
         />
         <FieldValue
-          label="材種"
+          label={tr("common.materialTypes")}
           value={
             <DocNumber c="blue">
               {record.materialTypeCode}
@@ -118,15 +126,24 @@ export function MaterialDetail({
             </DocNumber>
           }
         />
-        <FieldValue label="黒皮・研磨" value={record.surfaceFinish} />
-        <FieldValue label="直径" value={`φ${record.diameterMm} mm`} />
-        <FieldValue label="全長" value={`${record.lengthMm} mm`} />
         <FieldValue
-          label="種類"
+          label={tr("common.surfaceFinish")}
+          value={record.surfaceFinish}
+        />
+        <FieldValue
+          label={tr("common.diameter")}
+          value={`φ${record.diameterMm} mm`}
+        />
+        <FieldValue
+          label={tr("common.overallLength")}
+          value={`${record.lengthMm} mm`}
+        />
+        <FieldValue
+          label={tr("common.kind")}
           value={<DocNumber>{record.kindCode}</DocNumber>}
         />
         <FieldValue
-          label="呼び径"
+          label={tr("master.materials.nominalDiameter")}
           value={
             record.nominalDiameterMm != null
               ? `φ${record.nominalDiameterMm} mm`
@@ -134,39 +151,47 @@ export function MaterialDetail({
           }
         />
         <FieldValue
-          label="メーカ型式"
+          label={tr("common.manufacturerModel")}
           value={record.manufacturerModel || "—"}
         />
-        <FieldValue label="単位" value={record.unit} />
+        <FieldValue label={tr("common.unit")} value={record.unit} />
       </SummaryGrid>
 
       <AppTabs onChange={setTab} value={tab}>
         <Tabs.List>
-          <Tabs.Tab value="overview">概要</Tabs.Tab>
-          <Tabs.Tab value="related">関連</Tabs.Tab>
-          <Tabs.Tab value="history">履歴</Tabs.Tab>
+          <Tabs.Tab value="overview">{tr("common.overview")}</Tabs.Tab>
+          <Tabs.Tab value="related">{tr("common.related")}</Tabs.Tab>
+          <Tabs.Tab value="history">{tr("common.history")}</Tabs.Tab>
         </Tabs.List>
 
         <Tabs.Panel pt="md" value="overview">
           <Stack gap="sm">
-            <FieldValue label="名称（日本語）" value={record.nameJa} />
-            <FieldValue label="名称（英語）" value={record.nameEn || "—"} />
             <FieldValue
-              label="キーワード"
+              label={tr("common.nameJapanese")}
+              value={record.nameJa}
+            />
+            <FieldValue
+              label={tr("common.nameEnglish")}
+              value={record.nameEn || "—"}
+            />
+            <FieldValue
+              label={tr("common.keywords")}
               value={<KeywordBadges values={record.matchNames} />}
             />
-            <FieldValue label="備考" value={record.notes || "—"} />
+            <FieldValue
+              label={tr("common.notes")}
+              value={record.notes || "—"}
+            />
           </Stack>
         </Tabs.Panel>
 
         <Tabs.Panel pt="md" value="related">
           <Stack gap="xs">
             <Text fw={600} size="sm">
-              使用製品
+              {tr("master.materials.productsUsingIt")}
             </Text>
             <Text c="dimmed" size="sm">
-              製品は「材種 + 直径 + 全長」で素材を指定するため、特定の素材には
-              直接紐付きません。この素材は在庫管理で使用します。
+              {tr("master.materials.productsSpecifyMaterialAsTypeDiameter")}
             </Text>
           </Stack>
         </Tabs.Panel>

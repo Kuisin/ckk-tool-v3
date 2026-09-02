@@ -20,6 +20,7 @@ export async function GET() {
       registered: true,
       deviceId: device.device.id,
       deviceName: device.device.name,
+      locale: device.device.locale,
       attestation: { required: attestationRequired(), attested },
     });
   }

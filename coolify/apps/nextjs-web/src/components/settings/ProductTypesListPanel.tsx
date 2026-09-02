@@ -9,6 +9,7 @@
 
 import { Badge, Group, Text } from "@mantine/core";
 import { IconCategory } from "@tabler/icons-react";
+import { useTranslations } from "next-intl";
 import { updateProductTypes } from "@/app/(dashboard)/settings/actions";
 import { SettingsReorderableList } from "@/components/settings/SettingsReorderableList";
 import type { ProductType } from "@/lib/product-types";
@@ -16,16 +17,23 @@ import type { ProductType } from "@/lib/product-types";
 const BASE = "/settings/product-types";
 
 export function ProductTypesListPanel({ initial }: { initial: ProductType[] }) {
+  const tr = useTranslations();
   return (
     <SettingsReorderableList
-      addLabel="種別を追加"
+      addLabel={tr("common.addAType")}
       deleteConfirm={(t) => ({
-        title: "製品種別の削除",
-        message: `「${t.name.ja || t.id}」を削除しますか？`,
+        title: tr("settings.productTypesListPanel.deleteTheProductType"),
+        message: tr("settings.productTypesListPanel.deleteNameConfirm", {
+          name: t.name.ja || t.id,
+        }),
       })}
-      description="新規製品作成時の選択肢になります。各種別に項目を割り当てて構成します。"
+      description={tr(
+        "settings.productTypesListPanel.theyBecomeTheChoicesWhenCreating",
+      )}
       emptyIcon={<IconCategory size={24} />}
-      emptyMessage="種別がありません。「種別を追加」から作成してください。"
+      emptyMessage={tr(
+        "settings.productTypesListPanel.thereAreNoTypesCreateOne",
+      )}
       initial={[...initial].sort((a, b) => a.order - b.order)}
       newHref={`${BASE}/new`}
       persistAction={(next) =>

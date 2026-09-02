@@ -22,9 +22,10 @@
  * を消さないため。
  */
 
-import { Button, Menu, Tabs, type TabsProps } from "@mantine/core";
+import { Menu, Tabs, type TabsProps, UnstyledButton } from "@mantine/core";
 import { useIsomorphicEffect } from "@mantine/hooks";
 import { IconChevronDown } from "@tabler/icons-react";
+import { useTranslations } from "next-intl";
 import {
   Children,
   isValidElement,
@@ -96,6 +97,7 @@ export function AppTabs({
   onChange,
   ...rest
 }: TabsProps) {
+  const tr = useTranslations();
   // 制御 / 非制御のどちらでも受ける（呼び出し側は Mantine と同じ書き方）。
   // 畳んだときの見出しに「いま開いているタブ」が要るので、非制御でも中で持つ。
   const [internal, setInternal] = useState<string | null>(defaultValue ?? null);
@@ -162,18 +164,24 @@ export function AppTabs({
               width="target"
               withinPortal
             >
+              {/*
+               * 見た目は**タブ列と同じ**にする（枠も背景も持たず、下線 1 本だけ
+               * — .app-tabs-trigger）。以前は variant="default" の Button だったので
+               * 入力欄の Select と見分けが付かず、「タブを選ぶ」ではなく
+               * 「値を選ぶ」に見えていた。開けることは右端の ▾ で示す。
+               */}
               <Menu.Target>
-                <Button
-                  fullWidth
-                  justify="space-between"
-                  // 横並びのタブ列には下線があるが、畳むと無くなる。本文と
-                  // くっついて見えないよう、代わりに下の余白を持たせる。
-                  mb="xs"
-                  rightSection={<IconChevronDown size={16} />}
-                  variant="default"
-                >
-                  {activeItem?.label ?? "タブ"}
-                </Button>
+                <UnstyledButton className="app-tabs-trigger">
+                  {activeItem?.leftSection}
+                  <span className="app-tabs-trigger-label">
+                    {activeItem?.label ?? tr("ui.appTabs.tab")}
+                  </span>
+                  {activeItem?.rightSection}
+                  <IconChevronDown
+                    className="app-tabs-trigger-chevron"
+                    size={16}
+                  />
+                </UnstyledButton>
               </Menu.Target>
               <Menu.Dropdown>
                 {items.map((item) => (

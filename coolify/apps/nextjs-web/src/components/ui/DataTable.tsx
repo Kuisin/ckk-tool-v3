@@ -43,6 +43,7 @@ import {
   IconInbox,
 } from "@tabler/icons-react";
 import { usePathname } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { type ReactNode, useMemo, useRef, useState } from "react";
 import { useTableSettings } from "@/components/layout/TableSettingsProvider";
 import { useUrlTableState } from "@/hooks/useUrlState";
@@ -132,9 +133,11 @@ export function DataTable<T>({
   settingsKey,
   stickyHeader = true,
   emptyIcon,
-  emptyMessage = "データがありません",
+  emptyMessage: emptyMessageProp,
   emptyAction,
 }: DataTableProps<T>) {
+  const tr = useTranslations();
+  const emptyMessage = emptyMessageProp ?? tr("ui.dataTable.noData");
   const isMobile = useIsMobile();
   // URL 同期モード（urlState=true）はページ・サイズ・ソートを search params に
   // 保持し、ローカル state を使わない。フック自体は無条件に呼ぶ（React の規則）。
@@ -309,7 +312,7 @@ export function DataTable<T>({
         {selectable && selected.size > 0 && (
           <Group gap="xs" wrap="nowrap">
             <Text fw={600} size="sm">
-              {selected.size}件選択中
+              {tr("ui.dataTable.selectedCount", { count: selected.size })}
             </Text>
             {bulkActions.map((a) => (
               <ActionIcon.Group key={a.label}>
@@ -331,7 +334,7 @@ export function DataTable<T>({
               onClick={() => setSelected(new Set())}
               size="xs"
             >
-              選択解除
+              {tr("ui.dataTable.clearSelection")}
             </Text>
           </Group>
         )}
@@ -345,14 +348,18 @@ export function DataTable<T>({
             withinPortal
           >
             <Menu.Target>
-              <Tooltip label="列の表示" withinPortal>
-                <ActionIcon aria-label="列の表示" color="gray" variant="subtle">
+              <Tooltip label={tr("ui.dataTable.columns")} withinPortal>
+                <ActionIcon
+                  aria-label={tr("ui.dataTable.columns")}
+                  color="gray"
+                  variant="subtle"
+                >
                   <IconColumns3 size={16} />
                 </ActionIcon>
               </Tooltip>
             </Menu.Target>
             <Menu.Dropdown>
-              <Menu.Label>表示する列</Menu.Label>
+              <Menu.Label>{tr("common.columnsToShow")}</Menu.Label>
               <Stack gap="xs" px="sm" py={4}>
                 {hideableColumns.map((c) => (
                   <Checkbox
@@ -380,7 +387,7 @@ export function DataTable<T>({
             <Group gap="sm" justify="space-between" py="xs" wrap="nowrap">
               <Group gap="sm" wrap="nowrap">
                 <Checkbox
-                  aria-label="すべて選択"
+                  aria-label={tr("ui.dataTable.selectAll")}
                   checked={allOnPageSelected}
                   indeterminate={someOnPageSelected && !allOnPageSelected}
                   onChange={toggleAll}
@@ -388,8 +395,8 @@ export function DataTable<T>({
                 />
                 <Text c="dimmed" fw={600} size="xs">
                   {selected.size > 0
-                    ? `${selected.size}件選択中`
-                    : "すべて選択"}
+                    ? tr("ui.dataTable.selectedCount", { count: selected.size })
+                    : tr("ui.dataTable.selectAll")}
                 </Text>
               </Group>
               {selected.size > 0 && (
@@ -412,7 +419,7 @@ export function DataTable<T>({
                     onClick={() => setSelected(new Set())}
                     size="xs"
                   >
-                    選択解除
+                    {tr("ui.dataTable.clearSelection")}
                   </Text>
                 </Group>
               )}
@@ -441,7 +448,7 @@ export function DataTable<T>({
                       }}
                     >
                       <Checkbox
-                        aria-label="行を選択"
+                        aria-label={tr("ui.dataTable.selectRows")}
                         checked={selected.has(id)}
                         onChange={() => toggleOne(id)}
                         size="xs"
@@ -469,7 +476,7 @@ export function DataTable<T>({
                       <Menu position="bottom-end" shadow="md" withinPortal>
                         <Menu.Target>
                           <ActionIcon
-                            aria-label="操作"
+                            aria-label={tr("common.actions")}
                             color="gray"
                             variant="subtle"
                           >
@@ -537,7 +544,7 @@ export function DataTable<T>({
               {selectable && (
                 <Table.Th style={{ width: 40, ...headerPad }}>
                   <Checkbox
-                    aria-label="すべて選択"
+                    aria-label={tr("ui.dataTable.selectAll")}
                     checked={allOnPageSelected}
                     indeterminate={someOnPageSelected && !allOnPageSelected}
                     onChange={toggleAll}
@@ -624,7 +631,7 @@ export function DataTable<T>({
                       style={{ width: 40, ...cellPad }}
                     >
                       <Checkbox
-                        aria-label="行を選択"
+                        aria-label={tr("ui.dataTable.selectRows")}
                         checked={selected.has(id)}
                         onChange={() => toggleOne(id)}
                         size="xs"
@@ -666,7 +673,7 @@ export function DataTable<T>({
                         <Menu position="bottom-end" shadow="md" withinPortal>
                           <Menu.Target>
                             <ActionIcon
-                              aria-label="操作"
+                              aria-label={tr("common.actions")}
                               color="gray"
                               variant="subtle"
                             >
@@ -734,17 +741,27 @@ function PaginationBar({
   onPageSize: (s: number) => void;
   isMobile?: boolean;
 }) {
+  const tr = useTranslations();
   return (
     <Group justify="space-between" mt={4} wrap="nowrap">
       <Text c="dimmed" className="whitespace-nowrap" size="xs">
-        {total === 0 ? "0件" : `${start + 1}–${start + count} / ${total}件`}
+        {total === 0
+          ? tr("ui.dataTable.zeroItems")
+          : tr("ui.dataTable.itemRange", {
+              start: start + 1,
+              end: start + count,
+              total,
+            })}
       </Text>
       <Group gap="xs" wrap="nowrap">
         {!isMobile && (
           <Select
             allowDeselect={false}
-            aria-label="表示件数"
-            data={PAGE_SIZES.map((s) => ({ value: s, label: `${s}件` }))}
+            aria-label={tr("ui.dataTable.rowsToShow")}
+            data={PAGE_SIZES.map((s) => ({
+              value: s,
+              label: tr("ui.dataTable.itemsCount", { count: s }),
+            }))}
             onChange={(v) => v && onPageSize(Number(v))}
             size="xs"
             value={String(pageSize)}

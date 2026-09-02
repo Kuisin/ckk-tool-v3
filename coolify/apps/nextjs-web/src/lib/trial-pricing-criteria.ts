@@ -12,9 +12,12 @@
  * DEFAULT_CRITERIA reproduce the historical hardcoded formula 1:1.
  */
 
+import type { getTranslations } from "next-intl/server";
 import { z } from "zod";
 import type { LocalizedText } from "./format";
 import type { ToolType } from "./trial-pricing";
+
+type Tr = Awaited<ReturnType<typeof getTranslations>>;
 
 /** 組み込み工具種の値（旧 enum 互換）— 旧データの既定適用対象にも使う。 */
 export const TRIAL_TOOL_TYPES: ToolType[] = ["ROUND_BAR", "CYLINDER", "OH"];
@@ -134,30 +137,45 @@ export interface CustomInputDef {
 // ── zod (save-time validation) ───────────────────────────────────────────────
 const IDENTIFIER = /^[A-Za-z_$][A-Za-z0-9_$]*$/;
 
-export const criterionSchema = z.object({
-  id: z.string().min(1),
-  name: z.string().min(1, "基準名を入力してください"),
-  role: z.enum(["component", "intermediate", "final"]),
-  expression: z.string().max(4000),
-  order: z.number(),
-  enabled: z.boolean(),
-  // 工具種は管理者定義（値は文字列）。undefined = 全工具種 / 空 = 適用なし。
-  toolTypes: z.array(z.string()).optional(),
-});
+/**
+ * 保存時の検証（Server Action から呼ぶ）。**`tr` の明示引数** — このスキーマは
+ * client-safe な module（`server-only` 無し）でブラウザからも import されるため、
+ * `next-intl` のフック（`useTranslations`/`getTranslations`）を module scope で
+ * 呼べない。呼び出し側の `tr` を渡すこと。
+ */
+export function criterionSchema(tr: Tr) {
+  return z.object({
+    id: z.string().min(1),
+    name: z
+      .string()
+      .min(1, tr("settings.trialPricingCriteria.enterACriterionName")),
+    role: z.enum(["component", "intermediate", "final"]),
+    expression: z.string().max(4000),
+    order: z.number(),
+    enabled: z.boolean(),
+    // 工具種は管理者定義（値は文字列）。undefined = 全工具種 / 空 = 適用なし。
+    toolTypes: z.array(z.string()).optional(),
+  });
+}
 
-export const customInputDefSchema = z.object({
-  key: z
-    .string()
-    .regex(IDENTIFIER, "キーは英字/アンダースコア始まりの識別子にしてください"),
-  label: z.string().min(1, "ラベルを入力してください"),
-  type: z.enum(["number", "boolean", "text", "select"]),
-  default: z.union([z.number(), z.boolean(), z.string()]),
-  options: z
-    .array(z.object({ value: z.string(), label: z.string() }))
-    .optional(),
-  order: z.number(),
-  scope: z.enum(["estimate", "global"]).optional(),
-});
+export function customInputDefSchema(tr: Tr) {
+  return z.object({
+    key: z
+      .string()
+      .regex(
+        IDENTIFIER,
+        tr("settings.itemDefEditForm.theKeyMustBeAnIdentifier"),
+      ),
+    label: z.string().min(1, tr("settings.trialPricingCriteria.enterALabel")),
+    type: z.enum(["number", "boolean", "text", "select"]),
+    default: z.union([z.number(), z.boolean(), z.string()]),
+    options: z
+      .array(z.object({ value: z.string(), label: z.string() }))
+      .optional(),
+    order: z.number(),
+    scope: z.enum(["estimate", "global"]).optional(),
+  });
+}
 
 /**
  * Names the engine binds into every expression's scope (input fields, per-lot
@@ -265,26 +283,30 @@ export const lookupRowSchema = z.object({
 /** ルックアップ表 ID の形式 — 英数字・ハイフン・アンダースコアのみ。 */
 export const LOOKUP_TABLE_ID = /^[A-Za-z0-9][A-Za-z0-9_-]*$/;
 
-export const lookupTableSchema = z.object({
-  id: z
-    .string()
-    .min(1, "ID を入力してください")
-    .regex(
-      LOOKUP_TABLE_ID,
-      "ID は英数字・ハイフン・アンダースコアのみ（英数字始まり）です",
-    ),
-  name: z.object({ ja: z.string(), en: z.string() }),
-  description: z.string().optional(),
-  keyColumns: z
-    .array(z.string().min(1))
-    .min(1, "キー列を1つ以上指定してください"),
-  keyMatch: z.array(z.enum(["exact", "ge", "le"])).optional(),
-  valueType: z.enum(["number", "string"]),
-  default: z.string().optional(),
-  rows: z.array(lookupRowSchema),
-});
+export function lookupTableSchema(tr: Tr) {
+  return z.object({
+    id: z
+      .string()
+      .min(1, tr("settings.criterionEditForm.enterAnId"))
+      .regex(
+        LOOKUP_TABLE_ID,
+        tr("settings.trialPricingCriteria.idMustBeAlphanumericHyphens"),
+      ),
+    name: z.object({ ja: z.string(), en: z.string() }),
+    description: z.string().optional(),
+    keyColumns: z
+      .array(z.string().min(1))
+      .min(1, tr("settings.trialPricingCriteria.specifyAtLeastOneKey")),
+    keyMatch: z.array(z.enum(["exact", "ge", "le"])).optional(),
+    valueType: z.enum(["number", "string"]),
+    default: z.string().optional(),
+    rows: z.array(lookupRowSchema),
+  });
+}
 
-export const lookupTablesArraySchema = z.array(lookupTableSchema);
+export function lookupTablesArraySchema(tr: Tr) {
+  return z.array(lookupTableSchema(tr));
+}
 
 /** 参照表の既定セット（Excel「最新見積書価格試算」由来）。lib/trial-pricing-lookups.ts。 */
 export { DEFAULT_LOOKUP_TABLES } from "./trial-pricing-lookups";

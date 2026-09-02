@@ -22,11 +22,12 @@ import {
   Text,
 } from "@mantine/core";
 import { IconAlertTriangle } from "@tabler/icons-react";
+import { useLocale, useTranslations } from "next-intl";
 import { useEffect, useState } from "react";
 import { fetchLoginAttemptDetail } from "@/app/(dashboard)/settings/login-history/actions";
 import { useFormat } from "@/components/layout/PreferencesProvider";
 import { FieldValue } from "@/components/ui/FieldValue";
-import { loginMethodLabel, loginReasonLabel } from "@/lib/login-attempt-core";
+import { loginMethodLabel, loginReasonLabel } from "@/lib/login-attempt-labels";
 import type { LoginAttemptDetail } from "@/lib/login-attempts";
 import { OwnershipBadge } from "./ownership";
 
@@ -39,11 +40,17 @@ interface Signals {
   clientNowMs?: number | null;
 }
 
-function riskFlags(signals: Signals | null, recordedAt: string): string[] {
+function riskFlags(
+  tr: ReturnType<typeof useTranslations>,
+  signals: Signals | null,
+  recordedAt: string,
+): string[] {
   if (!signals) return [];
   const flags: string[] = [];
   if (signals.webdriver === true) {
-    flags.push("自動操作フラグ（navigator.webdriver）が立っています");
+    flags.push(
+      tr("settings.loginAttemptDrawer.theAutomationFlagNavigatorwebdriverIs"),
+    );
   }
   if (typeof signals.clientNowMs === "number") {
     const skewMin = Math.abs(
@@ -51,7 +58,9 @@ function riskFlags(signals: Signals | null, recordedAt: string): string[] {
     );
     if (skewMin > CLOCK_SKEW_WARN_MIN) {
       flags.push(
-        `端末の時計がサーバーと ${Math.round(skewMin)} 分ずれています`,
+        tr("settings.loginAttemptDrawer.theDeviceSClockIsMinutes", {
+          minutes: Math.round(skewMin),
+        }),
       );
     }
   }
@@ -65,6 +74,8 @@ export function LoginAttemptDrawer({
   id: string | null;
   onClose: () => void;
 }) {
+  const tr = useTranslations();
+  const locale = useLocale();
   const fmt = useFormat();
   const [row, setRow] = useState<LoginAttemptDetail | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -89,7 +100,7 @@ export function LoginAttemptDrawer({
   }, [id]);
 
   const signals = (row?.signals ?? null) as Signals | null;
-  const flags = row ? riskFlags(signals, row.createdAt) : [];
+  const flags = row ? riskFlags(tr, signals, row.createdAt) : [];
 
   return (
     <Drawer
@@ -98,7 +109,7 @@ export function LoginAttemptDrawer({
       padding="md"
       position="right"
       size="lg"
-      title="ログイン記録"
+      title={tr("settings.security.loginRecords")}
     >
       {!row && !error && (
         <Group justify="center" py="xl">
@@ -106,7 +117,7 @@ export function LoginAttemptDrawer({
         </Group>
       )}
       {error && (
-        <Alert color="red" title="読み込めませんでした">
+        <Alert color="red" title={tr("settings.security.couldNotBeLoaded")}>
           {error}
         </Alert>
       )}
@@ -116,7 +127,7 @@ export function LoginAttemptDrawer({
             <Alert
               color="orange"
               icon={<IconAlertTriangle size={16} />}
-              title="注意すべき兆候"
+              title={tr("settings.security.signsToWatchFor")}
             >
               <Stack gap={2}>
                 {flags.map((f) => (
@@ -133,7 +144,7 @@ export function LoginAttemptDrawer({
               color={row.outcome === "SUCCESS" ? "green" : "red"}
               variant="light"
             >
-              {row.outcome === "SUCCESS" ? "成功" : "失敗"}
+              {row.outcome === "SUCCESS" ? "成功" : tr("common.failure")}
             </Badge>
             <Badge color="gray" variant="light">
               {row.app === "KIOSK" ? "共有端末" : "Web"}
@@ -146,57 +157,74 @@ export function LoginAttemptDrawer({
           </Group>
 
           <Stack gap="xs">
-            <FieldValue label="日時" value={fmt.dateTime(row.createdAt)} />
-            <FieldValue label="方式" value={loginMethodLabel(row.method)} />
             <FieldValue
-              label="理由"
+              label={tr("common.dateAndTime")}
+              value={fmt.dateTime(row.createdAt)}
+            />
+            <FieldValue
+              label={tr("common.method")}
+              value={loginMethodLabel(row.method, locale)}
+            />
+            <FieldValue
+              label={tr("common.reason")}
               value={
-                row.outcome === "FAILURE" ? loginReasonLabel(row.reason) : "—"
+                row.outcome === "FAILURE"
+                  ? loginReasonLabel(row.reason, locale)
+                  : "—"
               }
             />
             <FieldValue
-              label="ユーザー"
+              label={tr("common.user")}
               value={
                 row.userName
                   ? `${row.userName}${row.userUsername ? `（${row.userUsername}）` : ""}`
-                  : "解決できず（入力値は保存していません）"
+                  : tr("settings.security.couldNotBeResolvedTheInput")
               }
             />
             {row.identifierRef && !row.userId && (
               <FieldValue
-                label="入力の相関キー"
+                label={tr("settings.security.inputCorrelationKey")}
                 value={<Code>{row.identifierRef.slice(0, 16)}…</Code>}
               />
             )}
-            <FieldValue label="送信元 IP" value={row.ipAddress ?? "—"} />
+            <FieldValue
+              label={tr("settings.security.sourceIp")}
+              value={row.ipAddress ?? "—"}
+            />
             {row.ipChain && (
               <FieldValue
-                label="プロキシチェーン"
+                label={tr("settings.security.proxyChain")}
                 value={<Code>{row.ipChain}</Code>}
               />
             )}
             <FieldValue
-              label="判定理由"
+              label={tr("settings.security.reasonForTheDecision")}
               value={<Code>{row.ownershipSource ?? "—"}</Code>}
             />
             <FieldValue
-              label="端末シグネチャ"
+              label={tr("settings.security.deviceSignature")}
               value={
                 row.fingerprint ? (
                   <Code>{row.fingerprint}</Code>
                 ) : (
                   // IdP 起点の SSO はログイン画面を通らないので付かない。異常ではない
-                  "—（この経路では収集されません）"
+                  tr("settings.security.notCollectedOnThisRoute")
                 )
               }
             />
             {row.kioskDeviceName && (
-              <FieldValue label="共有端末" value={row.kioskDeviceName} />
+              <FieldValue
+                label={tr("common.sharedDevice")}
+                value={row.kioskDeviceName}
+              />
             )}
             {row.scanKind && (
               <FieldValue
-                label="読み取り種別"
-                value={`${row.scanKind}（内容は保存していません）`}
+                label={tr("settings.security.scanType")}
+                value={tr(
+                  "settings.loginAttemptDrawer.scanKindContentNotStored",
+                  { scanKind: row.scanKind },
+                )}
               />
             )}
             <FieldValue label="User-Agent" value={row.userAgent ?? "—"} />

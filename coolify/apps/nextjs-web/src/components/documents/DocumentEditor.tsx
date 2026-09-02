@@ -3,6 +3,7 @@
 import { Checkbox, Stack, Textarea, TextInput } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { useState, useTransition } from "react";
 import {
   createPage,
@@ -30,6 +31,7 @@ export function DocumentEditor({
     body: string;
   };
 }) {
+  const tr = useTranslations();
   const router = useRouter();
   const isMobile = useIsMobile();
   const [isPending, startTransition] = useTransition();
@@ -49,11 +51,11 @@ export function DocumentEditor({
       if (mode === "new") {
         const r = await createPage(settings);
         if (r.ok) {
-          notifications.show({ message: "作成しました", color: "green" });
+          notifications.show({ message: tr("common.created"), color: "green" });
           router.push(`/general/documents/${r.data.pageNumber}/edit`);
         } else {
           notifications.show({
-            title: "エラー",
+            title: tr("common.error2"),
             message: r.error,
             color: "red",
           });
@@ -62,10 +64,14 @@ export function DocumentEditor({
       }
       const r = await updatePageSettings(pageNumber as string, settings);
       if (r.ok) {
-        notifications.show({ message: "保存しました", color: "green" });
+        notifications.show({ message: tr("common.saved2"), color: "green" });
         router.push(`/general/documents/${pageNumber}`);
       } else {
-        notifications.show({ title: "エラー", message: r.error, color: "red" });
+        notifications.show({
+          title: tr("common.error2"),
+          message: r.error,
+          color: "red",
+        });
       }
     });
 
@@ -74,13 +80,19 @@ export function DocumentEditor({
       const r = await savePageBody(pageNumber as string, { title, body, note });
       if (r.ok) {
         notifications.show({
-          message: `リビジョン ${r.data.revision} として保存しました`,
+          message: tr("documents.documentEditor.savedAsRevision", {
+            revision: r.data.revision,
+          }),
           color: "green",
         });
         setNote("");
         router.refresh();
       } else {
-        notifications.show({ title: "エラー", message: r.error, color: "red" });
+        notifications.show({
+          title: tr("common.error2"),
+          message: r.error,
+          color: "red",
+        });
       }
     });
 
@@ -88,51 +100,59 @@ export function DocumentEditor({
     <Stack gap="md">
       <PageHeader
         breadcrumbs={[
-          { label: "一般" },
-          { label: "社内文書", href: "/general/documents" },
-          { label: mode === "new" ? "新規" : "編集" },
+          { label: tr("common.general") },
+          { label: tr("common.internalDocuments"), href: "/general/documents" },
+          { label: mode === "new" ? tr("common.new") : tr("common.edit2") },
         ]}
-        title={mode === "new" ? "文書を作る" : "文書を編集"}
+        title={
+          mode === "new"
+            ? tr("general.documents.createADocument")
+            : tr("documents.documentEditor.editTheDocument")
+        }
       />
 
-      <FormSection title="文書の情報">
+      <FormSection title={tr("documents.documentEditor.documentInformation")}>
         <TextInput
-          label="タイトル"
+          label={tr("common.title")}
           onChange={(e) => setTitle(e.currentTarget.value)}
-          placeholder="出荷手順"
+          placeholder={tr("documents.documentEditor.shippingSteps")}
           value={title}
           withAsterisk
         />
         <TextInput
-          description="スラッシュ区切りで階層にできます（例: 手順書/出荷）"
-          label="フォルダ"
+          description={tr(
+            "documents.documentEditor.useSlashesToMakeAHierarchy",
+          )}
+          label={tr("common.folder")}
           onChange={(e) => setFolder(e.currentTarget.value)}
-          placeholder="手順書/出荷"
+          placeholder={tr("documents.documentEditor.procedureShipping")}
           value={folder}
         />
         <Textarea
           autosize
-          label="概要"
+          label={tr("common.overview")}
           minRows={2}
           onChange={(e) => setSummary(e.currentTarget.value)}
           value={summary}
         />
         <Checkbox
           checked={approvalRequired}
-          description="承認の段数と承認者は 承認設定（MS0B）で決めます"
-          label="公開に承認を必要とする"
+          description={tr("documents.documentEditor.theNumberOfStepsAndThe")}
+          label={tr("documents.documentEditor.requireApprovalToPublish")}
           onChange={(e) => setApprovalRequired(e.currentTarget.checked)}
         />
       </FormSection>
 
       {mode === "edit" && (
-        <FormSection title="本文（Markdown）">
+        <FormSection title={tr("documents.documentEditor.bodyMarkdown")}>
           <MarkdownEditor onChange={setBody} value={body} />
           <TextInput
-            description="何を直したかを一言（リビジョンの履歴に出ます）"
-            label="変更理由"
+            description={tr("documents.documentEditor.aLineOnWhatYouFixed")}
+            label={tr("documents.documentEditor.reasonForTheChange")}
             onChange={(e) => setNote(e.currentTarget.value)}
-            placeholder="出荷前チェックの項目を追加"
+            placeholder={tr(
+              "documents.documentEditor.addAPreShipmentCheckItem",
+            )}
             value={note}
           />
           <PrimaryButton
@@ -141,7 +161,7 @@ export function DocumentEditor({
             onClick={saveBody}
             type="button"
           >
-            本文を保存（新しいリビジョン）
+            {tr("documents.documentEditor.saveTheBodyNewRevision")}
           </PrimaryButton>
         </FormSection>
       )}

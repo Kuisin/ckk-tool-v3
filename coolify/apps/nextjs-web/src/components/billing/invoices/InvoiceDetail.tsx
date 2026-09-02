@@ -32,6 +32,7 @@ import {
   IconSend,
 } from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { useState, useTransition } from "react";
 import {
   issueInvoice,
@@ -91,6 +92,7 @@ export function InvoiceDetail({
   /** 社内メモ（document_memos 由来、メモタブ）。 */
   memos: MemoView[];
 }) {
+  const tr = useTranslations();
   const fmt = useFormat();
   const router = useRouter();
   // アクティブタブを ?tab= に保持（URL 共有でタブまで再現）
@@ -114,28 +116,32 @@ export function InvoiceDetail({
   const stages: ProcedureStage[] = [
     {
       key: "draft",
-      label: "下書き",
+      label: tr("common.draft"),
       description: fmt.date(invoice.createdAt),
       loading: invoice.status === "DRAFT",
     },
     {
       key: "issued",
-      label: "発行",
-      description: invoice.issuedAt ? fmt.date(invoice.issuedAt) : "PDF を発行",
+      label: tr("common.issue"),
+      description: invoice.issuedAt
+        ? fmt.date(invoice.issuedAt)
+        : tr("billing.invoices.issueThePdf"),
       loading: invoice.status === "ISSUED",
     },
     {
       key: "sent",
-      label: "送付",
-      description: invoice.sentAt ? fmt.date(invoice.sentAt) : "顧客へ送付",
+      label: tr("billing.invoices.send"),
+      description: invoice.sentAt
+        ? fmt.date(invoice.sentAt)
+        : tr("billing.invoices.sendToTheCustomer"),
       loading: invoice.status === "SENT",
     },
     {
       key: "paid",
-      label: "入金",
+      label: tr("billing.invoices.payment"),
       description: invoice.dueDate
-        ? `支払期限 ${fmt.date(invoice.dueDate)}`
-        : "入金の確認",
+        ? `${tr("billing.invoices.paymentDue")} ${fmt.date(invoice.dueDate)}`
+        : tr("billing.invoices.confirmPayment"),
     },
   ];
   const active =
@@ -157,25 +163,31 @@ export function InvoiceDetail({
   const sourceGroups: HandoffGroup[] = [
     {
       key: "delivery-orders",
-      title: "出荷書",
-      summary: orderNumbers.length > 0 ? `${orderNumbers.length} 件` : null,
+      title: tr("common.deliveryOrder"),
+      summary:
+        orderNumbers.length > 0
+          ? tr("common.countItems", { count: orderNumbers.length })
+          : null,
       items: orderNumbers.map((n) => ({
         key: n,
         label: n,
         href: `/shipping/delivery-orders/${n}`,
       })),
-      emptyNote: "—（手入力の明細のみ）",
+      emptyNote: tr("billing.invoices.handEnteredLinesOnly"),
     },
     {
       key: "delivery-notes",
-      title: "納品書",
-      summary: noteNumbers.length > 0 ? `${noteNumbers.length} 件` : null,
+      title: tr("common.deliveryNote"),
+      summary:
+        noteNumbers.length > 0
+          ? tr("common.countItems", { count: noteNumbers.length })
+          : null,
       items: noteNumbers.map((n) => ({
         key: n,
         label: n,
         href: `/shipping/delivery-notes/${n}`,
       })),
-      emptyNote: "—（納品書未発行の出荷）",
+      emptyNote: tr("billing.invoices.shipmentWithNoDeliveryNoteIssued"),
     },
   ];
 
@@ -184,18 +196,20 @@ export function InvoiceDetail({
   const handoffGroups: HandoffGroup[] = [
     {
       key: "yayoi",
-      title: "弥生会計エクスポート",
+      title: tr("billing.invoices.yayoiAccountingExport"),
       items: invoice.yayoiExportedAt
         ? [
             {
               key: "yayoi",
               label: invoice.invoiceNumber,
               done: true,
-              note: `エクスポート済・${fmt.dateTime(invoice.yayoiExportedAt)}`,
+              note: tr("billing.invoices.exportedAtLabel", {
+                dateTime: fmt.dateTime(invoice.yayoiExportedAt),
+              }),
             },
           ]
         : [],
-      emptyNote: "未エクスポート（発行後に弥生CSVを出力します）",
+      emptyNote: tr("billing.invoices.notExportedTheYayoiCsvIs"),
     },
   ];
 
@@ -210,14 +224,14 @@ export function InvoiceDetail({
       });
       setPdfNonce((n) => n + 1);
       notifications.show({
-        title: "再生成しました",
-        message: "PDF を再生成・保存しました",
+        title: tr("common.regenerated"),
+        message: tr("common.pDFRegeneratedAndSaved"),
         color: "green",
       });
     } catch {
       notifications.show({
-        title: "エラー",
-        message: "PDF の再生成に失敗しました",
+        title: tr("common.error2"),
+        message: tr("common.couldNotRegenerateThePdf"),
         color: "red",
       });
     }
@@ -239,7 +253,7 @@ export function InvoiceDetail({
         router.refresh();
       } else {
         notifications.show({
-          title: "エラー",
+          title: tr("common.error2"),
           message: result.error,
           color: "red",
         });
@@ -255,7 +269,7 @@ export function InvoiceDetail({
             ...(canIssue(invoice)
               ? [
                   {
-                    label: "発行",
+                    label: tr("common.issue"),
                     icon: <IconCheck size={14} />,
                     onClick: () => setIssueOpen(true),
                   },
@@ -264,7 +278,7 @@ export function InvoiceDetail({
             ...(canMarkSent(invoice)
               ? [
                   {
-                    label: "送付済みにする",
+                    label: tr("billing.invoices.markAsSent"),
                     icon: <IconSend size={14} />,
                     onClick: () => setSentOpen(true),
                   },
@@ -273,7 +287,7 @@ export function InvoiceDetail({
             ...(canMarkPaid(invoice)
               ? [
                   {
-                    label: "入金済みにする",
+                    label: tr("billing.invoices.markAsPaid"),
                     icon: <IconCash size={14} />,
                     onClick: () => setPaidOpen(true),
                   },
@@ -283,7 +297,7 @@ export function InvoiceDetail({
             ...(canViewPdf
               ? [
                   {
-                    label: "PDFをダウンロード",
+                    label: tr("common.downloadThePdf"),
                     icon: <IconDownload size={14} />,
                     onClick: () =>
                       void downloadFile(pdfUrl("&download=1"), pdfFilename),
@@ -291,7 +305,7 @@ export function InvoiceDetail({
                 ]
               : []),
             {
-              label: "弥生会計CSV",
+              label: tr("billing.invoices.yayoiAccountingCsv"),
               icon: <IconFileSpreadsheet size={14} />,
               divider: true,
               // 実アンカーで別タブへ（PWA でもアプリ内ブラウザで開く）。
@@ -301,7 +315,11 @@ export function InvoiceDetail({
           pdf={canViewPdf ? { href: pdfUrl() } : undefined}
         />
       }
-      breadcrumbs={["請求", { label: "請求書", href: BASE_PATH }, "詳細"]}
+      breadcrumbs={[
+        tr("common.billing"),
+        { label: tr("common.invoice"), href: BASE_PATH },
+        tr("common.detail"),
+      ]}
       createdAt={fmt.dateTime(invoice.createdAt)}
       status={<StatusBadge entity="Invoice" status={invoice.status} />}
       title={invoice.invoiceNumber}
@@ -309,25 +327,31 @@ export function InvoiceDetail({
     >
       <SummaryGrid>
         <FieldValue
-          label="請求番号"
+          label={tr("common.invoiceNumber")}
           value={<DocNumber>{invoice.invoiceNumber}</DocNumber>}
         />
         <FieldValue
-          label="顧客"
+          label={tr("common.customer")}
           value={
             invoice.customerBranchName
               ? `${invoice.customerName} / ${invoice.customerBranchName}`
               : invoice.customerName
           }
         />
-        <FieldValue label="営業担当" value={invoice.salesRepName} />
-        <FieldValue label="作成者" value={invoice.createdByName} />
         <FieldValue
-          label="請求期間"
+          label={tr("common.salesRep")}
+          value={invoice.salesRepName}
+        />
+        <FieldValue
+          label={tr("common.createdBy")}
+          value={invoice.createdByName}
+        />
+        <FieldValue
+          label={tr("common.billingPeriod")}
           value={`${fmt.date(invoice.billingPeriodFrom)} 〜 ${fmt.date(invoice.billingPeriodTo)}`}
         />
         <FieldValue
-          label="小計"
+          label={tr("common.subtotal")}
           value={<MoneyText ta="left" value={invoice.subtotal} />}
         />
         <FieldValue
@@ -335,17 +359,23 @@ export function InvoiceDetail({
           value={<MoneyText ta="left" value={invoice.taxAmount} />}
         />
         <FieldValue
-          label="合計金額（税込）"
+          label={tr("common.totalAmountInclTax")}
           value={<MoneyText ta="left" value={invoice.totalAmount} />}
         />
-        <FieldValue label="支払期限" value={fmt.date(invoice.dueDate)} />
-        <FieldValue label="発行日" value={fmt.date(invoice.issuedAt)} />
         <FieldValue
-          label="弥生エクスポート"
+          label={tr("billing.invoices.paymentDue")}
+          value={fmt.date(invoice.dueDate)}
+        />
+        <FieldValue
+          label={tr("common.issueDate")}
+          value={fmt.date(invoice.issuedAt)}
+        />
+        <FieldValue
+          label={tr("billing.invoices.yayoiExport")}
           value={
             invoice.yayoiExportedAt
               ? fmt.dateTime(invoice.yayoiExportedAt)
-              : "未エクスポート"
+              : tr("billing.invoices.notExported")
           }
         />
       </SummaryGrid>
@@ -359,17 +389,17 @@ export function InvoiceDetail({
 
       <Paper p="md" radius="md" withBorder>
         <Title mb="sm" order={5}>
-          明細（{invoice.items.length}）
+          {tr("common.lineItemsWithCount", { count: invoice.items.length })}
         </Title>
         <Table.ScrollContainer minWidth={640}>
           <Table highlightOnHover>
             <Table.Thead>
               <Table.Tr>
-                <Table.Th>摘要</Table.Th>
-                <Table.Th ta="right">数量</Table.Th>
-                <Table.Th ta="right">単価</Table.Th>
-                <Table.Th ta="right">金額</Table.Th>
-                <Table.Th>由来</Table.Th>
+                <Table.Th>{tr("billing.invoices.summary")}</Table.Th>
+                <Table.Th ta="right">{tr("common.quantity")}</Table.Th>
+                <Table.Th ta="right">{tr("common.unitPrice")}</Table.Th>
+                <Table.Th ta="right">{tr("common.amount")}</Table.Th>
+                <Table.Th>{tr("billing.invoices.origin")}</Table.Th>
               </Table.Tr>
             </Table.Thead>
             <Table.Tbody>
@@ -427,7 +457,7 @@ export function InvoiceDetail({
             </Table.Tbody>
             <Table.Tfoot>
               <Table.Tr>
-                <Table.Td fw={700}>小計</Table.Td>
+                <Table.Td fw={700}>{tr("common.subtotal")}</Table.Td>
                 <Table.Td className="tabular-nums" fw={700} ta="right">
                   {invoice.totalQuantity}
                 </Table.Td>
@@ -447,7 +477,7 @@ export function InvoiceDetail({
                 <Table.Td />
               </Table.Tr>
               <Table.Tr>
-                <Table.Td fw={700}>合計金額（税込）</Table.Td>
+                <Table.Td fw={700}>{tr("common.totalAmountInclTax")}</Table.Td>
                 <Table.Td />
                 <Table.Td />
                 <Table.Td fw={700} ta="right">
@@ -462,23 +492,23 @@ export function InvoiceDetail({
 
       <AppTabs onChange={setTab} value={tab}>
         <Tabs.List>
-          <Tabs.Tab value="overview">概要</Tabs.Tab>
+          <Tabs.Tab value="overview">{tr("common.overview")}</Tabs.Tab>
           <Tabs.Tab value="pdf">PDF</Tabs.Tab>
-          <Tabs.Tab value="memo">メモ</Tabs.Tab>
-          <Tabs.Tab value="history">履歴</Tabs.Tab>
+          <Tabs.Tab value="memo">{tr("common.memo")}</Tabs.Tab>
+          <Tabs.Tab value="history">{tr("common.history")}</Tabs.Tab>
         </Tabs.List>
 
         <Tabs.Panel pt="md" value="overview">
           <Stack gap="md">
             <div>
               <Text c="dimmed" mb={4} size="xs">
-                送付日時
+                {tr("billing.invoices.sentAt")}
               </Text>
               <Text size="sm">{fmt.dateTime(invoice.sentAt)}</Text>
             </div>
             <div>
               <Text c="dimmed" mb={4} size="xs">
-                備考
+                {tr("common.notes")}
               </Text>
               <Text size="sm" style={{ whiteSpace: "pre-wrap" }}>
                 {invoice.notes || "—"}
@@ -497,11 +527,11 @@ export function InvoiceDetail({
                   leftSection={<IconCheck size={14} />}
                   onClick={() => setIssueOpen(true)}
                 >
-                  発行
+                  {tr("common.issue")}
                 </PrimaryButton>
               ) : undefined
             }
-            emptyMessage="発行後に PDF を閲覧できます。"
+            emptyMessage={tr("common.thePdfBecomesAvailableOnceIt")}
             file={pdfFile}
             filename={pdfFilename}
             onRegenerate={regenerate}
@@ -526,51 +556,63 @@ export function InvoiceDetail({
 
       <ConfirmModal
         confirmColor="blue"
-        confirmLabel="発行"
+        confirmLabel={tr("common.issue")}
         loading={isPending}
-        message={`請求書 ${invoice.invoiceNumber} を発行します。発行日は本日で記録されます。`}
+        message={tr("billing.invoiceDetail.confirmIssueMessage", {
+          invoiceNumber: invoice.invoiceNumber,
+        })}
         onClose={() => setIssueOpen(false)}
         onConfirm={() =>
           run(
             () => issueInvoice(invoice.invoiceNumber),
-            "発行しました",
-            `請求書 ${invoice.invoiceNumber} を発行しました`,
+            tr("common.issued"),
+            tr("billing.invoiceDetail.issuedWithNumber", {
+              invoiceNumber: invoice.invoiceNumber,
+            }),
           )
         }
         opened={issueOpen}
-        title="発行の確認"
+        title={tr("common.confirmIssue")}
       />
       <ConfirmModal
         confirmColor="blue"
-        confirmLabel="送付済みにする"
+        confirmLabel={tr("billing.invoices.markAsSent")}
         loading={isPending}
-        message={`請求書 ${invoice.invoiceNumber} を送付済みにします。`}
+        message={tr("billing.invoiceDetail.confirmMarkSentMessage", {
+          invoiceNumber: invoice.invoiceNumber,
+        })}
         onClose={() => setSentOpen(false)}
         onConfirm={() =>
           run(
             () => markSent(invoice.invoiceNumber),
-            "送付済みにしました",
-            `請求書 ${invoice.invoiceNumber} を送付済みにしました`,
+            tr("billing.invoices.markedAsSent"),
+            tr("billing.invoiceDetail.markedSentWithNumber", {
+              invoiceNumber: invoice.invoiceNumber,
+            }),
           )
         }
         opened={sentOpen}
-        title="送付の確認"
+        title={tr("billing.invoices.confirmSending")}
       />
       <ConfirmModal
         confirmColor="blue"
-        confirmLabel="入金済みにする"
+        confirmLabel={tr("billing.invoices.markAsPaid")}
         loading={isPending}
-        message={`請求書 ${invoice.invoiceNumber} を入金済みにします。`}
+        message={tr("billing.invoiceDetail.confirmMarkPaidMessage", {
+          invoiceNumber: invoice.invoiceNumber,
+        })}
         onClose={() => setPaidOpen(false)}
         onConfirm={() =>
           run(
             () => markPaid(invoice.invoiceNumber),
-            "入金済みにしました",
-            `請求書 ${invoice.invoiceNumber} を入金済みにしました`,
+            tr("billing.invoices.markedAsPaid"),
+            tr("billing.invoiceDetail.markedPaidWithNumber", {
+              invoiceNumber: invoice.invoiceNumber,
+            }),
           )
         }
         opened={paidOpen}
-        title="入金の確認"
+        title={tr("billing.invoices.confirmPayment")}
       />
     </DetailShell>
   );

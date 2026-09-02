@@ -8,6 +8,7 @@ import {
   IconSearchOff,
 } from "@tabler/icons-react";
 import { redirect } from "next/navigation";
+import { getTranslations } from "next-intl/server";
 import { FormStateScreen } from "@/components/forms/FormStateScreen";
 import { RespondFormClient } from "@/components/forms/RespondFormClient";
 import { hasAnyApproval } from "@/lib/approvals";
@@ -44,6 +45,7 @@ export async function RespondScreen({
   code: string;
   requestedResponseNumber?: string | null;
 }) {
+  const tr = await getTranslations();
   const userId = await sessionUserId();
   // proxy.ts が未ログインを /login へ送るので、ここに来るのは基本ログイン済み。
   if (!userId) redirect("/login");
@@ -110,7 +112,7 @@ export async function RespondScreen({
   const editHref = (n: string) => `${responseHref(n)}/edit`;
   // 閲覧の共有をもらっている人には、回答一覧への導線も出す。
   const listAction = access.canRead
-    ? [{ label: "回答一覧を見る", href: `/f/${code}/responses` }]
+    ? [{ label: tr("common.viewResponses"), href: `/f/${code}/responses` }]
     : [];
   // 共有されている相手にだけタイトルを出す（未共有では実在を明かさない）。
   const formTitle = access.canRespond ? (form?.title ?? null) : null;
@@ -123,9 +125,9 @@ export async function RespondScreen({
         <FormStateScreen
           actions={[{ ...HOME, variant: "filled" }]}
           color="gray"
-          description="URL が間違っているか、このフォームがあなたに共有されていません。共有した人に URL と公開範囲を確認してください。"
+          description={tr("f.respondScreen.theUrlIsWrongOrThis")}
           icon={<IconSearchOff size={24} />}
-          title="このフォームは開けません"
+          title={tr("f.respondScreen.thisFormCannotBeOpened")}
         />
       );
 
@@ -134,10 +136,10 @@ export async function RespondScreen({
         <FormStateScreen
           actions={[HOME]}
           color="yellow"
-          description="作成者がまだ項目を公開していません。公開されると回答できるようになります。"
+          description={tr("f.respondScreen.theAuthorHasNotPublishedThe")}
           formTitle={formTitle}
           icon={<IconProgress size={24} />}
-          title="準備中です"
+          title={tr("f.respondScreen.comingSoon")}
         />
       );
 
@@ -146,7 +148,7 @@ export async function RespondScreen({
         <FormStateScreen
           actions={[HOME]}
           color="yellow"
-          description="受付が始まると回答できるようになります。"
+          description={tr("f.respondScreen.youCanRespondOnceItOpens")}
           detail={
             state.opensAt ? (
               <Text fw={600} size="sm">
@@ -156,7 +158,7 @@ export async function RespondScreen({
           }
           formTitle={formTitle}
           icon={<IconCalendarClock size={24} />}
-          title="受付開始前です"
+          title={tr("f.respondScreen.itHasNotOpenedYet")}
         />
       );
 
@@ -167,7 +169,7 @@ export async function RespondScreen({
             ...(state.myResponseNumber
               ? [
                   {
-                    label: "自分の回答を見る",
+                    label: tr("f.respondScreen.viewMyResponse"),
                     href: responseHref(state.myResponseNumber),
                     variant: "filled" as const,
                   },
@@ -178,12 +180,12 @@ export async function RespondScreen({
           color="gray"
           description={
             state.myResponseNumber
-              ? "受付は終了しました。提出済みの回答は引き続き読めます。"
-              : "受付は終了しました。回答が必要な場合は作成者に連絡してください。"
+              ? tr("f.respondScreen.itIsClosedYouCanStill")
+              : tr("f.respondScreen.itIsClosedIfYouStill")
           }
           formTitle={formTitle}
           icon={<IconLock size={24} />}
-          title="受付は終了しました"
+          title={tr("f.respondScreen.itIsClosed")}
         />
       );
 
@@ -194,7 +196,7 @@ export async function RespondScreen({
             ...(state.myResponseNumber
               ? [
                   {
-                    label: "自分の回答を見る",
+                    label: tr("f.respondScreen.viewMyResponse"),
                     href: responseHref(state.myResponseNumber),
                     variant: "filled" as const,
                   },
@@ -203,10 +205,10 @@ export async function RespondScreen({
             HOME,
           ]}
           color="gray"
-          description="このフォームは使い終わったものとして片付けられています。"
+          description={tr("f.respondScreen.thisFormHasBeenPutAway")}
           formTitle={formTitle}
           icon={<IconLock size={24} />}
-          title="終了したフォームです"
+          title={tr("f.respondScreen.thisFormIsClosed")}
         />
       );
 
@@ -215,14 +217,14 @@ export async function RespondScreen({
         <FormStateScreen
           actions={[
             {
-              label: "自分の回答を見る",
+              label: tr("f.respondScreen.viewMyResponse"),
               href: responseHref(state.responseNumber),
               variant: "filled",
             },
             ...(state.canEdit
               ? [
                   {
-                    label: "回答を編集する",
+                    label: tr("common.editTheResponse"),
                     href: editHref(state.responseNumber),
                   },
                 ]
@@ -233,8 +235,8 @@ export async function RespondScreen({
           color="green"
           description={
             state.canEdit
-              ? "このフォームは 1 人 1 回までです。期限内なら内容を直せます。"
-              : "このフォームは 1 人 1 回までです。"
+              ? tr("f.respondScreen.thisFormAllowsOneResponsePer")
+              : tr("f.respondScreen.thisFormAllowsOneResponsePer2")
           }
           detail={
             <Text c="dimmed" ff="mono" size="xs">
@@ -243,7 +245,7 @@ export async function RespondScreen({
           }
           formTitle={formTitle}
           icon={<IconCircleCheck size={24} />}
-          title="回答済みです"
+          title={tr("f.respondScreen.youHaveAlreadyResponded")}
         />
       );
 
@@ -255,7 +257,7 @@ export async function RespondScreen({
             ...(state.exists
               ? [
                   {
-                    label: "回答を見る",
+                    label: tr("f.respondScreen.viewTheResponse"),
                     href: responseHref(state.responseNumber),
                     variant: "filled" as const,
                   },
@@ -266,14 +268,14 @@ export async function RespondScreen({
           color="gray"
           description={
             !state.exists
-              ? "編集の対象が見つかりません。URL が間違っているか、自分の回答ではありません。"
+              ? tr("f.respondScreen.theItemToEditWasNot")
               : state.reason === "in-approval"
-                ? "承認が進んでいるため直せません。内容を変えたい場合は、承認者に差し戻してもらってください（差し戻されたら直せます）。"
-                : "編集できる期間が終わっています。内容を直したい場合は作成者に連絡してください。"
+                ? tr("f.respondScreen.itCannotBeEditedWhileApproval")
+                : tr("f.respondScreen.theEditingWindowHasClosedContact")
           }
           formTitle={formTitle}
           icon={<IconPencilOff size={24} />}
-          title="この回答は編集できません"
+          title={tr("f.respondScreen.thisResponseCannotBeEdited")}
         />
       );
 
@@ -305,10 +307,10 @@ export async function RespondScreen({
           <FormStateScreen
             actions={[HOME]}
             color="yellow"
-            description="作成者がまだ項目を公開していません。"
+            description={tr("f.respondScreen.theAuthorHasNotPublishedThe2")}
             formTitle={formTitle}
             icon={<IconProgress size={24} />}
-            title="準備中です"
+            title={tr("f.respondScreen.comingSoon")}
           />
         );
       }

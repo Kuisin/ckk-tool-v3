@@ -17,6 +17,7 @@ import {
   IconTrash,
 } from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
+import { useLocale, useTranslations } from "next-intl";
 import { useState } from "react";
 import { useFormat } from "@/components/layout/PreferencesProvider";
 import { KeywordBadges } from "@/components/master/MasterKeywordsField";
@@ -36,6 +37,7 @@ import {
 } from "@/components/ui/shells";
 import { useTabParam } from "@/hooks/useUrlState";
 import { useIsMobile } from "@/hooks/useViewport";
+import { orderTypeLabel } from "@/lib/enum-labels";
 import type { RouteView } from "@/lib/product-routes-core";
 import { isReservedSpecKey } from "@/lib/product-types";
 import { ProductDesignFiles } from "./ProductDesignFiles";
@@ -79,13 +81,6 @@ export interface ProductDetailData {
   }[];
 }
 
-const ORDER_TYPE_LABEL: Record<string, string> = {
-  PRODUCTION: "本番",
-  TEST: "テスト",
-  SAMPLE: "サンプル",
-  OTHER: "その他",
-};
-
 export function ProductDetail({
   record,
   auditEntries,
@@ -105,6 +100,8 @@ export function ProductDetail({
   /** この製品に紐づく設計依頼 — 関連タブ。 */
   designRequests?: DesignRequestLink[];
 }) {
+  const tr = useTranslations();
+  const locale = useLocale();
   const fmt = useFormat();
   const router = useRouter();
   const isMobile = useIsMobile();
@@ -141,23 +138,25 @@ export function ProductDetail({
             // 設計図を差し替える唯一の入口。マスタ側で直接置き換えさせない
             // （版と is_latest の整合は設計依頼の完了が 1 tx で守っている）。
             {
-              label: "設計依頼を起票",
+              label: tr("common.raiseADesignRequest"),
               icon: <IconRuler2 size={14} />,
               onClick: () =>
                 router.push(`/sales/design-requests/new?product=${record.id}`),
             },
             {
-              label: "複製",
+              label: tr("common.duplicate"),
               icon: <IconCopy size={14} />,
               onClick: () => setDuplicateOpen(true),
             },
             {
-              label: record.isActive ? "無効化" : "有効化",
+              label: record.isActive
+                ? tr("common.disable")
+                : tr("common.enable"),
               icon: <IconCircleMinus size={14} />,
               onClick: () => setToggleOpen(true),
             },
             {
-              label: "削除",
+              label: tr("common.delete"),
               icon: <IconTrash size={14} />,
               color: "red",
               divider: true,
@@ -168,8 +167,8 @@ export function ProductDetail({
         />
       }
       breadcrumbs={[
-        "マスタ",
-        { label: "製品", href: BASE_PATH },
+        tr("common.masterData"),
+        { label: tr("master.productTable.pageTitle"), href: BASE_PATH },
         record.code ?? record.nameJa,
       ]}
       createdAt={fmt.dateTime(record.createdAt)}
@@ -179,13 +178,18 @@ export function ProductDetail({
     >
       <SummaryGrid>
         <FieldValue
-          label="製品コード"
-          value={<DocNumber>{record.code ?? "未採番"}</DocNumber>}
+          label={tr("common.productCode")}
+          value={
+            <DocNumber>{record.code ?? tr("common.notNumbered")}</DocNumber>
+          }
         />
-        <FieldValue label="名称（日本語）" value={record.nameJa} />
-        <FieldValue label="名称（英語）" value={record.nameEn || "—"} />
+        <FieldValue label={tr("common.nameJapanese")} value={record.nameJa} />
         <FieldValue
-          label="材種"
+          label={tr("common.nameEnglish")}
+          value={record.nameEn || "—"}
+        />
+        <FieldValue
+          label={tr("common.materialTypes")}
           value={
             record.materialTypeId ? (
               <DocNumber c="blue">{materialTypeLabel}</DocNumber>
@@ -195,32 +199,37 @@ export function ProductDetail({
           }
         />
         <FieldValue
-          label="直径"
+          label={tr("common.diameter")}
           value={record.diameterMm != null ? `φ${record.diameterMm} mm` : "—"}
         />
         <FieldValue
-          label="全長"
+          label={tr("common.overallLength")}
           value={record.lengthMm != null ? `${record.lengthMm} mm` : "—"}
         />
-        <FieldValue label="単位" value={record.unit} />
+        <FieldValue label={tr("common.unit")} value={record.unit} />
       </SummaryGrid>
 
       <AppTabs onChange={setTab} value={tab}>
         <Tabs.List>
-          <Tabs.Tab value="overview">概要</Tabs.Tab>
-          <Tabs.Tab value="routes">工程</Tabs.Tab>
-          <Tabs.Tab value="related">関連</Tabs.Tab>
-          <Tabs.Tab value="history">履歴</Tabs.Tab>
+          <Tabs.Tab value="overview">{tr("common.overview")}</Tabs.Tab>
+          <Tabs.Tab value="routes">
+            {tr("master.productDetail.routesTab")}
+          </Tabs.Tab>
+          <Tabs.Tab value="related">{tr("common.related")}</Tabs.Tab>
+          <Tabs.Tab value="history">{tr("common.history")}</Tabs.Tab>
         </Tabs.List>
 
         <Tabs.Panel pt="md" value="overview">
           <Stack gap="md">
             {record.productTypeName && (
-              <FieldValue label="製品種別" value={record.productTypeName} />
+              <FieldValue
+                label={tr("common.productTypes")}
+                value={record.productTypeName}
+              />
             )}
             <Stack gap="xs">
               <Text fw={600} size="sm">
-                仕様
+                {tr("master.products.specification")}
               </Text>
               {(() => {
                 const specRows = record.spec.filter(
@@ -228,7 +237,7 @@ export function ProductDetail({
                 );
                 return specRows.length === 0 ? (
                   <Text c="dimmed" size="sm">
-                    仕様は登録されていません
+                    {tr("master.products.noSpecificationIsRegistered")}
                   </Text>
                 ) : (
                   <Table striped withTableBorder>
@@ -245,10 +254,13 @@ export function ProductDetail({
               })()}
             </Stack>
             <FieldValue
-              label="キーワード"
+              label={tr("common.keywords")}
               value={<KeywordBadges values={record.matchNames} />}
             />
-            <FieldValue label="備考" value={record.notes || "—"} />
+            <FieldValue
+              label={tr("common.notes")}
+              value={record.notes || "—"}
+            />
           </Stack>
         </Tabs.Panel>
 
@@ -266,7 +278,7 @@ export function ProductDetail({
 
             <Stack gap="xs">
               <Text fw={600} size="sm">
-                設計依頼
+                {tr("common.designRequest")}
               </Text>
               <DesignRequestLinks
                 createHref={`/sales/design-requests/new?product=${record.id}`}
@@ -276,20 +288,22 @@ export function ProductDetail({
 
             <Stack gap="xs">
               <Text fw={600} size="sm">
-                価格表エントリ
+                {tr("master.products.priceListEntry")}
               </Text>
               {record.priceListEntries.length === 0 ? (
                 <Text c="dimmed" size="sm">
-                  この製品の価格表エントリはありません
+                  {tr("master.products.thereAreNoPriceListEntries")}
                 </Text>
               ) : (
                 <Table highlightOnHover striped withTableBorder>
                   <Table.Thead>
                     <Table.Tr>
-                      <Table.Th>顧客</Table.Th>
-                      <Table.Th>注文種別</Table.Th>
-                      {!isMobile && <Table.Th>有効期間</Table.Th>}
-                      <Table.Th>状態</Table.Th>
+                      <Table.Th>{tr("common.customer")}</Table.Th>
+                      <Table.Th>{tr("common.orderType")}</Table.Th>
+                      {!isMobile && (
+                        <Table.Th>{tr("common.validPeriod")}</Table.Th>
+                      )}
+                      <Table.Th>{tr("common.status")}</Table.Th>
                     </Table.Tr>
                   </Table.Thead>
                   <Table.Tbody>
@@ -304,13 +318,15 @@ export function ProductDetail({
                         <Table.Td>{e.customerName}</Table.Td>
                         <Table.Td>
                           <Badge color="gray" variant="light">
-                            {ORDER_TYPE_LABEL[e.orderType] ?? e.orderType}
+                            {orderTypeLabel(e.orderType, locale)}
                           </Badge>
                         </Table.Td>
                         {!isMobile && (
                           <Table.Td>
                             {fmt.date(e.validFrom)} 〜{" "}
-                            {e.validUntil ? fmt.date(e.validUntil) : "無期限"}
+                            {e.validUntil
+                              ? fmt.date(e.validUntil)
+                              : tr("common.noEndDate")}
                           </Table.Td>
                         )}
                         <Table.Td>

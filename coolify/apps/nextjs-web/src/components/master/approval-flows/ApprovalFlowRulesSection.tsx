@@ -36,7 +36,7 @@ import {
   IconTrash,
 } from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
-import { useLocale } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { useState, useTransition } from "react";
 import {
   type ApprovalFlowRuleInput,
@@ -50,10 +50,10 @@ import { ModalShell, openConfirm } from "@/components/ui/modals";
 import { FormSection, LocalizedTextInput } from "@/components/ui/shells";
 import { useIsMobile } from "@/hooks/useViewport";
 import {
-  APPROVAL_CONDITION_FIELDS,
-  CONDITION_OP_LABEL,
+  approvalConditionFields,
   type ConditionOp,
   conditionFieldDef,
+  conditionOpLabels,
   describeConditions,
   type FlowCondition,
   opsForType,
@@ -62,6 +62,7 @@ import {
 import { type ApprovalMode, validateFlowSteps } from "@/lib/approval-flow";
 import type { ApprovalTargetType } from "@/lib/approval-targets";
 import { approvalModeOptions } from "@/lib/enum-labels";
+import type { Locale } from "@/lib/i18n";
 import type { GroupOption } from "./ApprovalFlowEditor";
 
 /** 一覧に出すルール（サーバーで直列化した形）。 */
@@ -120,9 +121,13 @@ const emptyStep = (index: number): StepDraft => ({
 function toConditions(
   drafts: ConditionDraft[],
   targetType: ApprovalTargetType,
+  locale: Locale,
+  tr: (key: string, values?: Record<string, string | number | Date>) => string,
 ) {
   return drafts.map((d): FlowCondition => {
-    const def = d.field ? conditionFieldDef(targetType, d.field) : undefined;
+    const def = d.field
+      ? conditionFieldDef(targetType, d.field, locale, tr)
+      : undefined;
     const value =
       def?.type === "number"
         ? typeof d.numberValue === "number"
@@ -146,7 +151,9 @@ export function ApprovalFlowRulesSection({
   groupOptions: GroupOption[];
   dynamicOptions: ConditionDynamicOptions;
 }) {
-  const locale = useLocale();
+  const tr = useTranslations();
+  const locale = useLocale() as Locale;
+  const opLabels = conditionOpLabels(tr);
   const router = useRouter();
   const isMobile = useIsMobile();
   const [isPending, startTransition] = useTransition();
@@ -160,7 +167,7 @@ export function ApprovalFlowRulesSection({
   const [conditions, setConditions] = useState<ConditionDraft[]>([]);
   const [steps, setSteps] = useState<StepDraft[]>([]);
 
-  const fieldDefs = APPROVAL_CONDITION_FIELDS[targetType];
+  const fieldDefs = approvalConditionFields(locale, tr)[targetType];
   const fieldOptions = fieldDefs.map((f) => ({ value: f.key, label: f.label }));
 
   const openNew = () => {
@@ -176,7 +183,7 @@ export function ApprovalFlowRulesSection({
     setNameTranslations(rule.nameTranslations);
     setConditions(
       rule.conditions.map((c) => {
-        const def = conditionFieldDef(targetType, c.field);
+        const def = conditionFieldDef(targetType, c.field, locale, tr);
         return {
           key: nextKey(),
           field: c.field,
@@ -198,17 +205,23 @@ export function ApprovalFlowRulesSection({
     setEditing({ id: rule.id });
   };
 
-  const condPayload = editing ? toConditions(conditions, targetType) : [];
+  const condPayload = editing
+    ? toConditions(conditions, targetType, locale, tr)
+    : [];
   const issues = editing
     ? [
-        ...(nameJa.trim() ? [] : ["ルール名（日本語）を入力してください"]),
-        ...validateConditions(targetType, condPayload),
+        ...(nameJa.trim()
+          ? []
+          : [tr("master.approvalFlows.enterTheRuleNameInJapanese")]),
+        ...validateConditions(targetType, condPayload, locale, tr),
         ...validateFlowSteps(
           steps.map((s) => ({
             nameJa: s.nameJa,
             groupId: s.groupId ? Number(s.groupId) : null,
             mode: s.mode,
           })),
+          false,
+          tr,
         ),
       ]
     : [];
@@ -234,15 +247,18 @@ export function ApprovalFlowRulesSection({
       );
       if (result.ok) {
         notifications.show({
-          title: "保存しました",
-          message: `${targetLabel}の条件付きフロー「${payload.nameJa}」`,
+          title: tr("common.saved2"),
+          message: tr("master.approvalFlowRulesSection.savedMessage", {
+            target: targetLabel,
+            name: payload.nameJa,
+          }),
           color: "green",
         });
         setEditing(null);
         router.refresh();
       } else {
         notifications.show({
-          title: "エラー",
+          title: tr("common.error2"),
           message: result.error,
           color: "red",
         });
@@ -256,7 +272,7 @@ export function ApprovalFlowRulesSection({
       if (result.ok) router.refresh();
       else
         notifications.show({
-          title: "エラー",
+          title: tr("common.error2"),
           message: result.error,
           color: "red",
         });
@@ -264,8 +280,13 @@ export function ApprovalFlowRulesSection({
 
   /** 条件 1 行の値入力（フィールド型で出し分け）。 */
   const conditionValueInput = (c: ConditionDraft) => {
-    const def = c.field ? conditionFieldDef(targetType, c.field) : undefined;
-    if (!def) return <TextInput disabled flex={1} placeholder="項目を選択" />;
+    const def = c.field
+      ? conditionFieldDef(targetType, c.field, locale, tr)
+      : undefined;
+    if (!def)
+      return (
+        <TextInput disabled flex={1} placeholder={tr("common.selectAnItem")} />
+      );
     if (def.type === "number") {
       return (
         <NumberInput
@@ -276,7 +297,7 @@ export function ApprovalFlowRulesSection({
               prev.map((x) => (x.key === c.key ? { ...x, numberValue: v } : x)),
             )
           }
-          placeholder="値"
+          placeholder={tr("common.value")}
           suffix={def.unit ? ` ${def.unit}` : undefined}
           thousandSeparator=","
           value={c.numberValue}
@@ -295,7 +316,7 @@ export function ApprovalFlowRulesSection({
             prev.map((x) => (x.key === c.key ? { ...x, selectValue: v } : x)),
           )
         }
-        placeholder="選択"
+        placeholder={tr("common.select")}
         searchable
         value={c.selectValue}
       />
@@ -305,8 +326,8 @@ export function ApprovalFlowRulesSection({
   return (
     <>
       <FormSection
-        description="書類の内容（金額・種別など）で承認フローを分岐します。上から順に評価し、最初に一致したルールの段構成を既定フローの代わりに使います。どれにも一致しない書類は上の既定フローで進みます。変更は次の承認依頼から有効です。"
-        title="条件付きフロー"
+        description={tr("master.approvalFlows.branchesTheApprovalFlowOnThe")}
+        title={tr("master.approvalFlows.conditionalFlow")}
       >
         <Stack gap="sm">
           {rules.length === 0 && (
@@ -328,7 +349,7 @@ export function ApprovalFlowRulesSection({
                     </Text>
                     {!rule.isActive && (
                       <Badge color="gray" size="xs" variant="light">
-                        無効
+                        {tr("common.disabled3")}
                       </Badge>
                     )}
                   </Group>
@@ -336,13 +357,15 @@ export function ApprovalFlowRulesSection({
                     {describeConditions(
                       targetType,
                       rule.conditions,
+                      locale,
+                      tr,
                       dynamicOptions,
                     )}
                   </Text>
                   <Text c="dimmed" size="xs">
                     段:{" "}
                     {rule.steps.map((s) => s.nameJa).join(" → ") ||
-                      "（未設定）"}
+                      tr("common.notSet")}
                   </Text>
                 </Stack>
                 <Group gap={4} wrap="nowrap">
@@ -360,7 +383,7 @@ export function ApprovalFlowRulesSection({
                     size="xs"
                   />
                   <ActionIcon
-                    aria-label="上へ"
+                    aria-label={tr("common.moveUp")}
                     disabled={i === 0 || isPending}
                     onClick={() =>
                       run(() => moveApprovalFlowRule(targetType, rule.id, "up"))
@@ -370,7 +393,7 @@ export function ApprovalFlowRulesSection({
                     <IconArrowUp size={16} />
                   </ActionIcon>
                   <ActionIcon
-                    aria-label="下へ"
+                    aria-label={tr("common.moveDown")}
                     disabled={i === rules.length - 1 || isPending}
                     onClick={() =>
                       run(() =>
@@ -382,20 +405,25 @@ export function ApprovalFlowRulesSection({
                     <IconArrowDown size={16} />
                   </ActionIcon>
                   <ActionIcon
-                    aria-label="編集"
+                    aria-label={tr("common.edit2")}
                     onClick={() => openEdit(rule)}
                     variant="subtle"
                   >
                     <IconPencil size={16} />
                   </ActionIcon>
                   <ActionIcon
-                    aria-label="削除"
+                    aria-label={tr("common.delete")}
                     color="red"
                     onClick={() =>
                       openConfirm({
-                        title: "条件付きフローの削除",
-                        message: `「${rule.nameJa}」を削除します。進行中の承認依頼には影響しません。`,
-                        confirmLabel: "削除",
+                        title: tr(
+                          "master.approvalFlows.deleteTheConditionalFlow",
+                        ),
+                        message: tr(
+                          "master.approvalFlowRulesSection.deleteConfirmMessage",
+                          { name: rule.nameJa },
+                        ),
+                        confirmLabel: tr("common.delete"),
                         onConfirm: () =>
                           run(() =>
                             deleteApprovalFlowRule(targetType, rule.id),
@@ -411,31 +439,33 @@ export function ApprovalFlowRulesSection({
             </Paper>
           ))}
           <GhostButton fullWidth={isMobile} onClick={openNew}>
-            条件付きフローを追加
+            {tr("master.approvalFlows.addAConditionalFlow")}
           </GhostButton>
         </Stack>
       </FormSection>
 
       <ModalShell
         confirmDisabled={issues.length > 0}
-        confirmLabel="保存"
+        confirmLabel={tr("common.save2")}
         loading={isPending}
         onClose={() => setEditing(null)}
         onConfirm={save}
         opened={editing != null}
         size="lg"
         title={
-          editing?.id == null ? "条件付きフローを追加" : "条件付きフローを編集"
+          editing?.id == null
+            ? tr("master.approvalFlows.addAConditionalFlow")
+            : tr("master.approvalFlows.editTheConditionalFlow")
         }
       >
         <Stack gap="md">
           <LocalizedTextInput
             jaProps={{
               value: nameJa,
-              onChange: (v: string) => setNameJa(v),
+              onChange: (e) => setNameJa(e.currentTarget.value),
             }}
-            label="ルール名"
-            placeholder="例: 50万円以上"
+            label={tr("master.approvalFlows.ruleName")}
+            placeholder={tr("master.approvalFlows.eG500000AndAbove")}
             required
             translationsProps={{
               value: nameTranslations,
@@ -445,7 +475,7 @@ export function ApprovalFlowRulesSection({
 
           <Stack gap="xs">
             <Text fw={600} size="sm">
-              条件（すべて満たしたとき一致）
+              {tr("master.approvalFlows.conditionsMatchesWhenAllAreMet")}
             </Text>
             {conditions.length === 0 && (
               <Text c="dimmed" size="xs">
@@ -454,7 +484,7 @@ export function ApprovalFlowRulesSection({
             )}
             {conditions.map((c) => {
               const def = c.field
-                ? conditionFieldDef(targetType, c.field)
+                ? conditionFieldDef(targetType, c.field, locale, tr)
                 : undefined;
               const ops = def
                 ? opsForType(def.type)
@@ -478,7 +508,7 @@ export function ApprovalFlowRulesSection({
                         ),
                       )
                     }
-                    placeholder="項目"
+                    placeholder={tr("common.item")}
                     value={c.field}
                     w={isMobile ? 130 : 180}
                   />
@@ -486,7 +516,7 @@ export function ApprovalFlowRulesSection({
                   <Select
                     data={ops.map((op) => ({
                       value: op,
-                      label: CONDITION_OP_LABEL[op],
+                      label: opLabels[op],
                     }))}
                     onChange={(v) =>
                       setConditions((prev) =>
@@ -501,7 +531,7 @@ export function ApprovalFlowRulesSection({
                     w={isMobile ? 110 : 140}
                   />
                   <ActionIcon
-                    aria-label="条件を削除"
+                    aria-label={tr("master.approvalFlows.removeTheCondition")}
                     color="red"
                     mt={4}
                     onClick={() =>
@@ -530,13 +560,13 @@ export function ApprovalFlowRulesSection({
                 ])
               }
             >
-              条件を追加
+              {tr("master.approvalFlows.addACondition")}
             </GhostButton>
           </Stack>
 
           <Stack gap="xs">
             <Text fw={600} size="sm">
-              このルールの承認ステップ
+              {tr("master.approvalFlows.approvalStepsForThisRule")}
             </Text>
             {steps.map((s, i) => (
               <Paper key={s.key} p="xs" radius="sm" withBorder>
@@ -552,15 +582,17 @@ export function ApprovalFlowRulesSection({
                     <LocalizedTextInput
                       jaProps={{
                         value: s.nameJa,
-                        onChange: (value: string) =>
+                        onChange: (e) => {
+                          const value = e.currentTarget.value;
                           setSteps((prev) =>
                             prev.map((x) =>
                               x.key === s.key ? { ...x, nameJa: value } : x,
                             ),
-                          ),
+                          );
+                        },
                       }}
-                      label="名称"
-                      placeholder="第一承認"
+                      label={tr("common.name2")}
+                      placeholder={tr("common.firstApproval")}
                       translationsProps={{
                         value: s.nameTranslations,
                         onChange: (value: Record<string, string>) =>
@@ -576,7 +608,7 @@ export function ApprovalFlowRulesSection({
                   </Box>
                   <Select
                     data={groupOptions}
-                    label="承認グループ"
+                    label={tr("common.approvalGroup")}
                     onChange={(v) =>
                       setSteps((prev) =>
                         prev.map((x) =>
@@ -584,7 +616,7 @@ export function ApprovalFlowRulesSection({
                         ),
                       )
                     }
-                    placeholder="選択"
+                    placeholder={tr("common.select")}
                     searchable
                     value={s.groupId}
                     w={isMobile ? "100%" : 180}
@@ -604,7 +636,7 @@ export function ApprovalFlowRulesSection({
                   />
                   <Group gap={2} mb={2} wrap="nowrap">
                     <ActionIcon
-                      aria-label="上へ"
+                      aria-label={tr("common.moveUp")}
                       disabled={i === 0}
                       onClick={() =>
                         setSteps((prev) => {
@@ -618,7 +650,7 @@ export function ApprovalFlowRulesSection({
                       <IconArrowUp size={16} />
                     </ActionIcon>
                     <ActionIcon
-                      aria-label="下へ"
+                      aria-label={tr("common.moveDown")}
                       disabled={i === steps.length - 1}
                       onClick={() =>
                         setSteps((prev) => {
@@ -632,7 +664,7 @@ export function ApprovalFlowRulesSection({
                       <IconArrowDown size={16} />
                     </ActionIcon>
                     <ActionIcon
-                      aria-label="削除"
+                      aria-label={tr("common.delete")}
                       color="red"
                       onClick={() =>
                         setSteps((prev) => prev.filter((x) => x.key !== s.key))
@@ -650,7 +682,7 @@ export function ApprovalFlowRulesSection({
                 setSteps((prev) => [...prev, emptyStep(prev.length + 1)])
               }
             >
-              段を追加
+              {tr("common.addAStep")}
             </GhostButton>
           </Stack>
 

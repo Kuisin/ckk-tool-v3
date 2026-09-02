@@ -13,6 +13,7 @@
 import { randomUUID } from "node:crypto";
 import { rowInScope } from "@ckk/authz-core";
 import { revalidatePath } from "next/cache";
+import { getTranslations } from "next-intl/server";
 import { z } from "zod";
 import { recordAudit } from "@/lib/audit";
 import { checkPermission } from "@/lib/authz";
@@ -26,17 +27,26 @@ import {
   prismaErrorMessage,
 } from "@/lib/server-action";
 
-const transferInput = z.object({
-  inventoryType: z.enum(["PRODUCT", "MATERIAL"]),
-  inventoryId: z.string().uuid(),
-  quantity: z.number().positive("数量を入力してください"),
-  targetPlantId: z.number().int().positive("移動先の拠点を選択してください"),
-  targetStorageLocationId: z.number().int().positive().nullable(),
-  targetShelfId: z.number().int().positive().nullable(),
-  notes: z.string().optional(),
-});
+function transferInputSchema(tr: Awaited<ReturnType<typeof getTranslations>>) {
+  return z.object({
+    inventoryType: z.enum(["PRODUCT", "MATERIAL"]),
+    inventoryId: z.string().uuid(),
+    quantity: z
+      .number()
+      .positive(tr("production.inventoryActions.quantityRequired")),
+    targetPlantId: z
+      .number()
+      .int()
+      .positive(tr("production.inventoryActions.selectTargetPlant")),
+    targetStorageLocationId: z.number().int().positive().nullable(),
+    targetShelfId: z.number().int().positive().nullable(),
+    notes: z.string().optional(),
+  });
+}
 
-export type StockTransferInput = z.infer<typeof transferInput>;
+export type StockTransferInput = z.infer<
+  ReturnType<typeof transferInputSchema>
+>;
 
 /** 保管先の表示ラベル（拠点 / 保管場所 / 棚）。 */
 function targetLabel(
@@ -53,11 +63,14 @@ function targetLabel(
 export async function transferStock(
   input: StockTransferInput,
 ): Promise<ActionResult<{ targetInventoryId: string }>> {
+  const tr = await getTranslations();
   const authz = await checkPermission("inventory", "UPDATE");
   if (!authz.ok) return actionError(authz.error);
-  const parsed = transferInput.safeParse(input);
+  const parsed = transferInputSchema(tr).safeParse(input);
   if (!parsed.success) {
-    return actionError(parsed.error.issues[0]?.message ?? "入力が不正です");
+    return actionError(
+      parsed.error.issues[0]?.message ?? tr("common.invalidInput"),
+    );
   }
   const v = parsed.data;
 
@@ -83,7 +96,7 @@ export async function transferStock(
       authz.userId,
     );
     if (!srcOk || !destOk) {
-      return actionError("この操作の権限がありません（対象範囲外）");
+      return actionError(tr("common.outOfScope"));
     }
   }
 
@@ -108,11 +121,13 @@ export async function transferStock(
         : null,
     ]);
     if (!plant || !plant.isActive) {
-      return actionError("移動先の拠点が見つかりません");
+      return actionError(tr("production.inventoryActions.targetPlantNotFound"));
     }
     if (v.targetStorageLocationId) {
       if (!location || location.plantId !== v.targetPlantId) {
-        return actionError("移動先の保管場所が移動先拠点と一致しません");
+        return actionError(
+          tr("production.inventoryActions.targetLocationMismatch"),
+        );
       }
     }
     if (v.targetShelfId) {
@@ -121,7 +136,9 @@ export async function transferStock(
         !shelf ||
         shelf.locationId !== v.targetStorageLocationId
       ) {
-        return actionError("移動先の棚が保管場所と一致しません");
+        return actionError(
+          tr("production.inventoryActions.targetShelfMismatch"),
+        );
       }
     }
     const destLabel = targetLabel(plant, location, shelf);
@@ -138,11 +155,14 @@ export async function transferStock(
             shelf: { select: { code: true } },
           },
         });
-        if (!src) throw new Error("移動元の在庫が見つかりません");
+        if (!src)
+          throw new Error(
+            tr("production.inventoryActions.sourceInventoryNotFound"),
+          );
         const free = src.quantity - src.reservedQuantity;
         if (v.quantity > free) {
           throw new Error(
-            `移動可能数を超えています（利用可能 ${free} — 予約分は移動できません）`,
+            tr("production.inventoryActions.exceedsAvailable", { free }),
           );
         }
         const bucket = {
@@ -158,7 +178,7 @@ export async function transferStock(
           select: { id: true },
         });
         if (target?.id === src.id) {
-          throw new Error("移動元と移動先が同じ場所です");
+          throw new Error(tr("production.inventoryActions.sameLocation"));
         }
         if (!target) {
           target = await tx.productInventory.create({
@@ -171,7 +191,17 @@ export async function transferStock(
           src.storageLocation,
           src.shelf,
         );
-        const note = `在庫移動: ${srcLabel} → ${destLabel}${v.notes?.trim() ? `（${v.notes.trim()}）` : ""}`;
+        const remark = v.notes?.trim();
+        const note = remark
+          ? tr("production.inventoryActions.transferNoteWithRemark", {
+              from: srcLabel,
+              to: destLabel,
+              remark,
+            })
+          : tr("production.inventoryActions.transferNoteBase", {
+              from: srcLabel,
+              to: destLabel,
+            });
         await applyTransaction(tx, {
           inventoryType: "PRODUCT",
           inventoryId: src.id,
@@ -195,7 +225,10 @@ export async function transferStock(
           tableName: "product_inventory",
           recordId: src.id,
           after: {
-            note: `在庫移動 ${v.quantity} → ${destLabel}`,
+            note: tr("production.inventoryActions.transferredAudit", {
+              quantity: v.quantity,
+              to: destLabel,
+            }),
             product: localized(src.product.name as LocalizedText | null),
             lotNumber: src.lotNumber,
           },
@@ -212,11 +245,14 @@ export async function transferStock(
           shelf: { select: { code: true } },
         },
       });
-      if (!src) throw new Error("移動元の在庫が見つかりません");
+      if (!src)
+        throw new Error(
+          tr("production.inventoryActions.sourceInventoryNotFound"),
+        );
       const free = Number(src.quantity) - Number(src.reservedQuantity);
       if (v.quantity > free) {
         throw new Error(
-          `移動可能数を超えています（利用可能 ${free} — 予約分は移動できません）`,
+          tr("production.inventoryActions.exceedsAvailable", { free }),
         );
       }
       const bucket = {
@@ -230,7 +266,7 @@ export async function transferStock(
         select: { id: true },
       });
       if (target?.id === src.id) {
-        throw new Error("移動元と移動先が同じ場所です");
+        throw new Error(tr("production.inventoryActions.sameLocation"));
       }
       if (!target) {
         target = await tx.materialInventory.create({
@@ -243,7 +279,17 @@ export async function transferStock(
         src.storageLocation,
         src.shelf,
       );
-      const note = `在庫移動: ${srcLabel} → ${destLabel}${v.notes?.trim() ? `（${v.notes.trim()}）` : ""}`;
+      const remark = v.notes?.trim();
+      const note = remark
+        ? tr("production.inventoryActions.transferNoteWithRemark", {
+            from: srcLabel,
+            to: destLabel,
+            remark,
+          })
+        : tr("production.inventoryActions.transferNoteBase", {
+            from: srcLabel,
+            to: destLabel,
+          });
       await applyTransaction(tx, {
         inventoryType: "MATERIAL",
         inventoryId: src.id,
@@ -267,7 +313,10 @@ export async function transferStock(
         tableName: "material_inventory",
         recordId: src.id,
         after: {
-          note: `在庫移動 ${v.quantity} → ${destLabel}`,
+          note: tr("production.inventoryActions.transferredAudit", {
+            quantity: v.quantity,
+            to: destLabel,
+          }),
           material: src.material.code,
         },
       });
@@ -281,6 +330,12 @@ export async function transferStock(
     if (e instanceof Error && !("code" in e) && e.message) {
       return actionError(e.message);
     }
-    return actionError(prismaErrorMessage(e, "在庫移動に失敗しました"));
+    return actionError(
+      prismaErrorMessage(
+        e,
+        tr("production.inventory.couldNotTransferTheStock"),
+        tr,
+      ),
+    );
   }
 }

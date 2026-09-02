@@ -2,6 +2,7 @@
 
 import { Alert, Tabs, Text } from "@mantine/core";
 import { IconFileTypePdf, IconLink } from "@tabler/icons-react";
+import { useTranslations } from "next-intl";
 import {
   approveResponse,
   rejectResponse,
@@ -85,6 +86,7 @@ export function ResponseDetail({
   createdAt: string;
   updatedAt: string;
 }) {
+  const tr = useTranslations();
   const fmt = useFormat();
 
   return (
@@ -94,14 +96,14 @@ export function ResponseDetail({
           menuItems={[
             {
               // 1 件だけの控え。承認の記録まで載るので、紙で回す申請にも使える。
-              label: "PDF で印刷",
+              label: tr("forms.responseDetail.printAsAPdf"),
               icon: <IconFileTypePdf size={14} />,
               href: `/api/pdf/form-response?id=${encodeURIComponent(responseNumber)}`,
             },
             {
               // 回答者に配っている画面。作成者が「相手にはこう見える」を
               // 確かめられるように残す（編集は回答タブの中でする）。
-              label: "回答者向けの画面で開く",
+              label: tr("forms.responseDetail.openTheRespondentSView"),
               icon: <IconLink size={14} />,
               href: `/f/${formCode}/${encodeURIComponent(responseNumber)}`,
             },
@@ -109,8 +111,8 @@ export function ResponseDetail({
         />
       }
       breadcrumbs={[
-        { label: "一般" },
-        { label: "フォーム", href: "/general/forms" },
+        { label: tr("common.general") },
+        { label: tr("common.forms"), href: "/general/forms" },
         { label: formTitle, href: `/general/forms/${formCode}` },
         { label: `No. ${recordNo}` },
       ]}
@@ -138,7 +140,7 @@ export function ResponseDetail({
       <SummaryGrid>
         <FieldValue label="No." value={recordNo} />
         <FieldValue
-          label="回答番号"
+          label={tr("common.responseNumber")}
           value={
             <Text ff="mono" size="sm">
               {responseNumber}
@@ -147,22 +149,22 @@ export function ResponseDetail({
         />
         {/* 回答者は「表示する」フォームだけ。HIDDEN のときはサーバが null にしている。 */}
         {respondent !== null && (
-          <FieldValue label="回答者" value={respondent} />
+          <FieldValue label={tr("common.respondent")} value={respondent} />
         )}
         <FieldValue
-          label="提出日時"
+          label={tr("common.submittedAt")}
           value={submittedAt ? fmt.dateTime(submittedAt) : "—"}
         />
       </SummaryGrid>
 
       {status === "REJECTED" && rejectReason && (
-        <Alert color="red" title="差し戻されています">
+        <Alert color="red" title={tr("forms.responseDetail.itHasBeenSentBack")}>
           <Text size="sm" style={{ whiteSpace: "pre-wrap" }}>
             {rejectReason}
           </Text>
           {isOwner && (
             <Text mt={4} size="xs">
-              「回答」タブで内容を直して保存すると、もう一度承認を依頼します。
+              {tr("forms.responseDetail.fixItOnTheResponseTab")}
             </Text>
           )}
         </Alert>
@@ -170,11 +172,17 @@ export function ResponseDetail({
 
       <AppTabs defaultValue="answers">
         <Tabs.List>
-          <Tabs.Tab value="answers">回答</Tabs.Tab>
-          {approvalEnabled && <Tabs.Tab value="approval">承認</Tabs.Tab>}
-          <Tabs.Tab value="attachments">添付</Tabs.Tab>
-          <Tabs.Tab value="memo">コメント</Tabs.Tab>
-          {!hideHistory && <Tabs.Tab value="history">履歴</Tabs.Tab>}
+          <Tabs.Tab value="answers">{tr("common.response")}</Tabs.Tab>
+          {approvalEnabled && (
+            <Tabs.Tab value="approval">{tr("common.approve")}</Tabs.Tab>
+          )}
+          <Tabs.Tab value="attachments">
+            {tr("forms.responseDetail.attach")}
+          </Tabs.Tab>
+          <Tabs.Tab value="memo">{tr("common.comment")}</Tabs.Tab>
+          {!hideHistory && (
+            <Tabs.Tab value="history">{tr("common.history")}</Tabs.Tab>
+          )}
         </Tabs.List>
 
         <Tabs.Panel pt="md" value="answers">
@@ -197,7 +205,9 @@ export function ResponseDetail({
                   if (r.ok && !asDraft) close();
                   return r.ok ? { ok: true } : { ok: false, error: r.error };
                 }}
-                submitLabel={status === "DRAFT" ? "提出する" : "更新"}
+                submitLabel={
+                  status === "DRAFT" ? tr("common.submit") : tr("common.update")
+                }
                 // 編集は受付終了後も許される設定があるので送信可否は別扱い。
                 // 最終判定はサーバ（canEditResponse / formAvailability）。
                 submittable={

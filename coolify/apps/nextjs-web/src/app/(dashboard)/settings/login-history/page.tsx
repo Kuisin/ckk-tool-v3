@@ -33,7 +33,9 @@ export default async function LoginHistoryPage({
   const filter = {
     days: Number.isFinite(days) && days > 0 && days <= 400 ? days : 7,
     outcome: one("outcome") as "SUCCESS" | "FAILURE" | null,
-    app: one("app") as "WEB" | "KIOSK" | null,
+    // 「アプリ」の絞り込みは面（Web / 共有端末 / 取引先ポータル）。
+    // ポータルは app 列では区別できない（nextjs-web が配信しているので WEB）。
+    surface: one("app") as "WEB" | "KIOSK" | "PORTAL" | null,
     ip: one("ip"),
     fingerprint: one("fp"),
     ownership: one("own") as never,

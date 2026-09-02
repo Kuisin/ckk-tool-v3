@@ -13,6 +13,7 @@ import { Group, NavLink, Stack, Text, TextInput } from "@mantine/core";
 import { IconSearch } from "@tabler/icons-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { type ReactNode, useState } from "react";
 
 export type MasterNavItem = {
@@ -35,8 +36,8 @@ export function MasterListNav({
   sections,
   toolbar,
   searchable = false,
-  searchPlaceholder = "絞り込み...",
-  emptyMessage = "項目がありません。",
+  searchPlaceholder: searchPlaceholderProp,
+  emptyMessage: emptyMessageProp,
 }: {
   sections: MasterNavSection[];
   /** リスト上部のアクション行（追加・並び替えボタン等）。 */
@@ -46,6 +47,10 @@ export function MasterListNav({
   /** 全セクションが空（絞り込み含む）のときの文言。 */
   emptyMessage?: string;
 }) {
+  const tr = useTranslations();
+  const searchPlaceholder =
+    searchPlaceholderProp ?? tr("ui.masterListNav.filterPlaceholder");
+  const emptyMessage = emptyMessageProp ?? tr("ui.masterListNav.noItems");
   const pathname = usePathname();
   const [query, setQuery] = useState("");
   const q = query.trim().toLowerCase();
@@ -68,7 +73,7 @@ export function MasterListNav({
       {toolbar && <Group gap="xs">{toolbar}</Group>}
       {searchable && (
         <TextInput
-          aria-label="絞り込み"
+          aria-label={tr("ui.masterListNav.filter")}
           leftSection={<IconSearch size={14} />}
           onChange={(e) => setQuery(e.currentTarget.value)}
           placeholder={searchPlaceholder}
@@ -79,7 +84,7 @@ export function MasterListNav({
 
       {totalShown === 0 ? (
         <Text c="dimmed" size="sm">
-          {q ? "絞り込みに一致する項目がありません。" : emptyMessage}
+          {q ? tr("ui.masterListNav.noItemsMatchTheFilter") : emptyMessage}
         </Text>
       ) : (
         filtered.map(

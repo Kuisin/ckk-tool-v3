@@ -16,6 +16,8 @@ import {
   DEFAULT_PREFERENCES,
   dateFormatExample,
   displayRootCss,
+  FONT_FAMILIES,
+  FONT_FAMILY_STACKS,
   isValidTimeZone,
   normalizePreferences,
   TEXT_SCALE_FACTORS,
@@ -32,6 +34,7 @@ describe("normalizePreferences", () => {
         timeZone: "Europe/London",
         textScale: "lg",
         boldText: true,
+        fontFamily: "system",
       }),
     ).toEqual({
       locale: "en",
@@ -40,6 +43,7 @@ describe("normalizePreferences", () => {
       timeZone: "Europe/London",
       textScale: "lg",
       boldText: true,
+      fontFamily: "system",
     });
   });
 
@@ -52,6 +56,7 @@ describe("normalizePreferences", () => {
         timeZone: "Mars/Olympus",
         textScale: "huge",
         boldText: null,
+        fontFamily: "meiryo",
       }),
     ).toEqual(DEFAULT_PREFERENCES);
     expect(normalizePreferences({})).toEqual(DEFAULT_PREFERENCES);
@@ -63,6 +68,7 @@ describe("normalizePreferences", () => {
         timeZone: null,
         textScale: null,
         boldText: null,
+        fontFamily: null,
       }),
     ).toEqual(DEFAULT_PREFERENCES);
   });
@@ -82,10 +88,11 @@ describe("normalizePreferences", () => {
       timeZone: "Asia/Shanghai",
       textScale: DEFAULT_PREFERENCES.textScale,
       boldText: false,
+      fontFamily: DEFAULT_PREFERENCES.fontFamily,
     });
   });
 
-  it("既定は従来の挙動（日本語 / JST / yyyy/MM/dd / 24h / 標準の大きさ）", () => {
+  it("既定は従来の挙動（日本語 / JST / yyyy/MM/dd / 24h / 標準の大きさ / Noto Sans JP）", () => {
     expect(DEFAULT_PREFERENCES).toEqual({
       locale: "ja",
       dateFormat: "YYYY/MM/DD",
@@ -93,7 +100,21 @@ describe("normalizePreferences", () => {
       timeZone: "Asia/Tokyo",
       textScale: "md",
       boldText: false,
+      fontFamily: "noto",
     });
+  });
+});
+
+describe("書体", () => {
+  it("選択肢は 2 つ（既定 Noto Sans JP / system）で、それぞれスタックを持つ", () => {
+    expect(FONT_FAMILIES).toEqual(["noto", "system"]);
+    for (const f of FONT_FAMILIES) {
+      expect(FONT_FAMILY_STACKS[f].length).toBeGreaterThan(0);
+    }
+  });
+
+  it("system は Noto Sans JP を強制しない", () => {
+    expect(FONT_FAMILY_STACKS.system).not.toContain("Noto Sans JP");
   });
 });
 
@@ -112,9 +133,9 @@ describe("文字の大きさ", () => {
 });
 
 describe("displayRootCss", () => {
-  it("既定では従来と同じ値（倍率 1・太さ 400/600）を出す", () => {
+  it("既定では従来と同じ値（倍率 1・Noto Sans JP・太さ 400/600）を出す", () => {
     expect(displayRootCss(DEFAULT_PREFERENCES)).toBe(
-      ":root{--app-text-scale:1;--app-font-weight-regular:400;--app-font-weight-medium:600}",
+      `:root{--app-text-scale:1;--app-font-family:${FONT_FAMILY_STACKS.noto};--app-font-weight-regular:400;--app-font-weight-medium:600}`,
     );
   });
 
@@ -130,20 +151,34 @@ describe("displayRootCss", () => {
     ).toContain(`--app-text-scale:${TEXT_SCALE_FACTORS.xl}`);
   });
 
+  it("書体は選んだスタックをそのまま渡す", () => {
+    expect(
+      displayRootCss({ ...DEFAULT_PREFERENCES, fontFamily: "system" }),
+    ).toContain(`--app-font-family:${FONT_FAMILY_STACKS.system}`);
+  });
+
   /**
    * `<style>` の中身は生テキストなので、React にエスケープされる文字が
-   * 混ざると CSS ごと壊れる（&gt; がそのまま残る）。値が列挙由来の数値
-   * だけであることを、段の全組み合わせで確かめておく。
+   * 混ざると CSS ごと壊れる（&gt; がそのまま残る）。値が列挙由来の数値・
+   * font-family リストだけであることを、段の全組み合わせで確かめておく。
+   * font-family の値は CSS の単一引用符（'）を正当に含む（複数語のフォント名の
+   * クォート）ので、`'` は対象外 — 危ないのは HTML/属性エスケープが必要な
+   * `<`・`>`・`&`・二重引用符だけ。
    */
-  it("エスケープ対象の文字（< > & 引用符）を含まない", () => {
+  it("エスケープ対象の文字（< > & 二重引用符）を含まない", () => {
     for (const textScale of TEXT_SCALES) {
       for (const boldText of [false, true]) {
-        const css = displayRootCss({
-          ...DEFAULT_PREFERENCES,
-          boldText,
-          textScale,
-        });
-        expect(css, `${textScale}/${boldText}`).not.toMatch(/[<>&"']/);
+        for (const fontFamily of FONT_FAMILIES) {
+          const css = displayRootCss({
+            ...DEFAULT_PREFERENCES,
+            boldText,
+            fontFamily,
+            textScale,
+          });
+          expect(css, `${textScale}/${boldText}/${fontFamily}`).not.toMatch(
+            /[<>&"]/,
+          );
+        }
       }
     }
   });
@@ -192,6 +227,24 @@ describe("messages/*.json", () => {
     expect(keysOf(zh), "zh").toEqual(expected);
   });
 
+  /**
+   * **意図して空にしている鍵**だけの許可リスト。
+   *
+   * 空文字は本来「まだ訳していない」の印なので既定では落とす。ただし
+   * 「その言語では**何も出さないのが正しい**」語が実在する — 「御中」は
+   * 日本の商習慣の敬称で、英語・中国語には対応する語が無く、宛名の後ろに
+   * 何も付けないのが正しい（`lib/pdf-labels.ts` に元からそう書いてある）。
+   *
+   * 3 帳票それぞれの名前空間に出てくるのは、どれも共通ラベルを継いでいるため。
+   *
+   * 足すときは**なぜ空が正しいのか**を必ず書くこと。書けないなら、それは
+   * 訳し忘れ。
+   */
+  const INTENTIONALLY_EMPTY = (key: string) =>
+    key.endsWith("pdf.QUOTE.onchu") ||
+    key.endsWith("pdf.DELIVERY_NOTE.onchu") ||
+    key.endsWith("pdf.INVOICE.onchu");
+
   it("空文字の翻訳が無い（未翻訳の取りこぼし検出）", () => {
     const empties = (o: object, prefix = ""): string[] =>
       Object.entries(o).flatMap(([k, v]) =>
@@ -206,7 +259,8 @@ describe("messages/*.json", () => {
       ["en", en],
       ["zh", zh],
     ] as const) {
-      expect(empties(messages), locale).toEqual([]);
+      const found = empties(messages).filter((k) => !INTENTIONALLY_EMPTY(k));
+      expect(found, locale).toEqual([]);
     }
   });
 

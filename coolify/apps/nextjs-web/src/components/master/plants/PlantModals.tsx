@@ -8,6 +8,7 @@
  */
 
 import { notifications } from "@mantine/notifications";
+import { useTranslations } from "next-intl";
 import { useTransition } from "react";
 import {
   deletePlants,
@@ -35,15 +36,14 @@ export function DeletePlantModal({
   target: PlantModalTarget | null;
   onDone?: () => void;
 }) {
+  const tr = useTranslations();
   const [isPending, startTransition] = useTransition();
   return (
     <ConfirmModal
-      confirmLabel="削除する"
+      confirmLabel={tr("common.delete2")}
       loading={isPending}
       message={
-        target
-          ? `拠点「${label(target)}」を削除します。この操作は取り消せません。`
-          : ""
+        target ? tr("master.plants.deleteConfirm", { name: label(target) }) : ""
       }
       onClose={onClose}
       onConfirm={() => {
@@ -52,14 +52,14 @@ export function DeletePlantModal({
           const result = await deletePlants([target.id]);
           if (result.ok) {
             notifications.show({
-              title: "削除しました",
-              message: `拠点「${label(target)}」を削除しました`,
+              title: tr("common.deleted"),
+              message: tr("master.plants.deleted", { name: label(target) }),
               color: "green",
             });
             onDone?.();
           } else {
             notifications.show({
-              title: "エラー",
+              title: tr("common.error2"),
               message: result.error,
               color: "red",
             });
@@ -67,8 +67,8 @@ export function DeletePlantModal({
         });
       }}
       opened={opened}
-      title="拠点の削除"
-      warning="この拠点を参照する在庫・工程データが存在する場合は削除できません。無効化をご検討ください。"
+      title={tr("master.plants.deleteTheSite")}
+      warning={tr("master.plants.itCannotBeDeletedWhileStock")}
     />
   );
 }
@@ -82,18 +82,21 @@ export function TogglePlantActiveModal({
   target: PlantModalTarget | null;
   onDone?: () => void;
 }) {
+  const tr = useTranslations();
   const [isPending, startTransition] = useTransition();
   const isActive = target?.isActive ?? true;
   return (
     <ConfirmModal
       confirmColor={isActive ? "red" : "blue"}
-      confirmLabel={isActive ? "無効化する" : "有効化する"}
+      confirmLabel={
+        isActive ? tr("common.disableAction") : tr("common.enable2")
+      }
       loading={isPending}
       message={
         target
           ? isActive
-            ? `拠点「${label(target)}」を無効化します。新規の在庫・出荷・工程で選択できなくなります。`
-            : `拠点「${label(target)}」を有効化します。再び在庫・出荷・工程で選択できるようになります。`
+            ? tr("master.plants.disableConfirm", { name: label(target) })
+            : tr("master.plants.enableConfirm", { name: label(target) })
           : ""
       }
       onClose={onClose}
@@ -103,14 +106,16 @@ export function TogglePlantActiveModal({
           const result = await setPlantsActive([target.id], !isActive);
           if (result.ok) {
             notifications.show({
-              title: isActive ? "無効化しました" : "有効化しました",
-              message: `拠点「${label(target)}」を${isActive ? "無効化" : "有効化"}しました`,
+              title: isActive ? tr("common.disabled2") : tr("common.enabled2"),
+              message: isActive
+                ? tr("master.plants.disabled", { name: label(target) })
+                : tr("master.plants.enabled", { name: label(target) }),
               color: "green",
             });
             onDone?.();
           } else {
             notifications.show({
-              title: "エラー",
+              title: tr("common.error2"),
               message: result.error,
               color: "red",
             });
@@ -118,7 +123,11 @@ export function TogglePlantActiveModal({
         });
       }}
       opened={opened}
-      title={isActive ? "拠点の無効化" : "拠点の有効化"}
+      title={
+        isActive
+          ? tr("master.plants.disableTheSite")
+          : tr("master.plants.enableTheSite")
+      }
     />
   );
 }

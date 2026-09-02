@@ -1,4 +1,5 @@
 import { IconLock } from "@tabler/icons-react";
+import { getTranslations } from "next-intl/server";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { checkPermission } from "@/lib/authz";
 import { formatCode } from "@/lib/crockford";
@@ -48,6 +49,7 @@ export default async function KioskCardsPrintPage({
 }: {
   searchParams: Promise<{ ids?: string }>;
 }) {
+  const tr = await getTranslations();
   const authz = await checkPermission("kiosk", "READ");
   if (!authz.ok) {
     return <EmptyState icon={<IconLock size={28} />} message={authz.error} />;
@@ -78,7 +80,9 @@ export default async function KioskCardsPrintPage({
       />
 
       {cards.length === 0 ? (
-        <p className="kiosk-print-empty">印刷対象のカードがありません。</p>
+        <p className="kiosk-print-empty">
+          {tr("settings.kioskCards.thereAreNoCardsToPrint")}
+        </p>
       ) : (
         sheets.map((sheet) => (
           <div className="kiosk-print-sheet" key={sheet[0]?.id}>
@@ -87,7 +91,7 @@ export default async function KioskCardsPrintPage({
             <div className="kiosk-print-scale">
               <span className="kiosk-print-scale-bar" />
               <span className="kiosk-print-scale-label">
-                50mm（原寸確認 / 用紙 A4・倍率 100%）
+                {tr("common.n50mmActualSizeCheckA4Paper")}
               </span>
             </div>
             <div className="kiosk-print-grid">

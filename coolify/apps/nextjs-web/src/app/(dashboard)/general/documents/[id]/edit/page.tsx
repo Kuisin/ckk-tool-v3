@@ -1,4 +1,5 @@
 import { notFound } from "next/navigation";
+import { getTranslations } from "next-intl/server";
 import { DocumentEditor } from "@/components/documents/DocumentEditor";
 import { AccessDenied } from "@/components/ui/AccessDenied";
 import { requireAppRead } from "@/lib/authz-page";
@@ -11,6 +12,7 @@ export default async function EditDocumentPage({
 }: {
   params: Promise<{ id: string }>;
 }) {
+  const tr = await getTranslations();
   const denied = await requireAppRead("internal-pages");
   if (denied) return denied;
 
@@ -23,10 +25,10 @@ export default async function EditDocumentPage({
     return (
       <AccessDenied
         breadcrumbs={[
-          "一般",
-          { label: "社内文書", href: "/general/documents" },
+          tr("common.general"),
+          { label: tr("common.internalDocuments"), href: "/general/documents" },
         ]}
-        message="この文書を編集する権限がありません。"
+        message={tr("general.documents.youDoNotHavePermissionTo")}
         title={page.title}
       />
     );

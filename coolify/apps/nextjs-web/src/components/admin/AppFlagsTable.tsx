@@ -13,6 +13,7 @@ import { Badge, Select, Switch, Text, TextInput } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
 import { IconApps, IconSearch } from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
+import { useLocale, useTranslations } from "next-intl";
 import { useState, useTransition } from "react";
 import { setAppEnabled } from "@/app/(dashboard)/settings/apps/actions";
 import { type Column, DataTable } from "@/components/ui/DataTable";
@@ -20,9 +21,14 @@ import { ListShell } from "@/components/ui/shells";
 import { useUrlSelectState, useUrlStringState } from "@/hooks/useUrlState";
 import { useIsMobile } from "@/hooks/useViewport";
 import type { AppEnv, AppFlagRow } from "@/lib/app-flags";
-import { CATEGORY_COLORS } from "@/lib/app-list";
+import { appLabelForKey, CATEGORY_COLORS, categoryLabel } from "@/lib/app-list";
+import type { Locale } from "@/lib/i18n";
 
 export function AppFlagsTable({ rows }: { rows: AppFlagRow[] }) {
+  const tr = useTranslations();
+  const locale = useLocale() as Locale;
+  // 行は key と ja のラベルしか持たないので、key から訳を引く。
+  const nameOf = (r: AppFlagRow) => appLabelForKey(r.key, r.label, locale);
   const router = useRouter();
   const isMobile = useIsMobile();
   const [, startTransition] = useTransition();
@@ -34,7 +40,7 @@ export function AppFlagsTable({ rows }: { rows: AppFlagRow[] }) {
   const [pending, setPending] = useState<Record<string, boolean>>({});
 
   const categoryOptions = [...new Set(rows.map((r) => r.category))].map(
-    (c) => ({ value: c, label: c }),
+    (c) => ({ value: c, label: categoryLabel(c, locale) }),
   );
 
   const reset = () => {
@@ -45,7 +51,10 @@ export function AppFlagsTable({ rows }: { rows: AppFlagRow[] }) {
   const filtered = rows.filter((r) => {
     const q = search.trim();
     const matchesSearch =
-      !q || r.label.includes(q) || r.operationCode.includes(q.toUpperCase());
+      !q ||
+      r.label.includes(q) ||
+      nameOf(r).toLowerCase().includes(q.toLowerCase()) ||
+      r.operationCode.includes(q.toUpperCase());
     const matchesCategory = !category || r.category === category;
     return matchesSearch && matchesCategory;
   });
@@ -56,8 +65,14 @@ export function AppFlagsTable({ rows }: { rows: AppFlagRow[] }) {
       const result = await setAppEnabled({ appKey: row.key, env, enabled });
       if (result.ok) {
         notifications.show({
-          title: enabled ? "有効化しました" : "無効化しました",
-          message: `${row.label} を ${env} で${enabled ? "表示" : "非表示"}にしました`,
+          title: enabled ? tr("common.enabled2") : tr("common.disabled2"),
+          message: tr("admin.appFlagsTable.labelWasSetToV2In", {
+            label: nameOf(row),
+            env: env,
+            v2: enabled
+              ? tr("common.display")
+              : tr("admin.appFlagsTable.hidden"),
+          }),
           color: "green",
         });
         router.refresh();
@@ -67,7 +82,7 @@ export function AppFlagsTable({ rows }: { rows: AppFlagRow[] }) {
           return rest;
         });
         notifications.show({
-          title: "エラー",
+          title: tr("common.error2"),
           message: result.error,
           color: "red",
         });
@@ -80,11 +95,15 @@ export function AppFlagsTable({ rows }: { rows: AppFlagRow[] }) {
 
   const envSwitch = (env: AppEnv) => ({
     key: env,
-    header: env === "dev" ? "dev（検証）" : "main（本番）",
+    header:
+      env === "dev" ? "dev（検証）" : tr("admin.appFlagsTable.mainProduction"),
     width: 130,
     render: (r: AppFlagRow) => (
       <Switch
-        aria-label={`${r.label} を ${env} で有効化`}
+        aria-label={tr("admin.appFlagsTable.enableLabelInEnv", {
+          label: r.label,
+          env: env,
+        })}
         checked={enabledValue(r, env)}
         color={env === "main" ? "blue" : "teal"}
         onChange={(e) => toggle(r, env, e.currentTarget.checked)}
@@ -97,7 +116,7 @@ export function AppFlagsTable({ rows }: { rows: AppFlagRow[] }) {
   const columns: Column<AppFlagRow>[] = [
     {
       key: "category",
-      header: "カテゴリ",
+      header: tr("common.category"),
       width: 110,
       sortable: true,
       sortValue: (r) => r.category,
@@ -107,24 +126,24 @@ export function AppFlagsTable({ rows }: { rows: AppFlagRow[] }) {
           size="sm"
           variant="light"
         >
-          {r.category}
+          {categoryLabel(r.category, locale)}
         </Badge>
       ),
     },
     {
       key: "label",
-      header: "アプリ",
+      header: tr("common.apps"),
       sortable: true,
-      sortValue: (r) => r.label,
+      sortValue: (r) => nameOf(r),
       render: (r) => (
         <Text fw={500} size="sm">
-          {r.label}
+          {nameOf(r)}
         </Text>
       ),
     },
     {
       key: "operationCode",
-      header: "操作コード",
+      header: tr("admin.appFlagsTable.operationCode"),
       width: 110,
       sortable: true,
       sortValue: (r) => r.operationCode,
@@ -140,13 +159,13 @@ export function AppFlagsTable({ rows }: { rows: AppFlagRow[] }) {
 
   return (
     <ListShell
-      breadcrumbs={["システム", "アプリ管理"]}
+      breadcrumbs={[tr("common.system"), tr("admin.appFlagsTable.apps")]}
       filters={
         <Select
           clearable
           data={categoryOptions}
           onChange={setCategory}
-          placeholder="カテゴリ"
+          placeholder={tr("common.category")}
           value={category}
           w={isMobile ? 120 : 140}
         />
@@ -156,17 +175,17 @@ export function AppFlagsTable({ rows }: { rows: AppFlagRow[] }) {
         <TextInput
           leftSection={<IconSearch size={14} />}
           onChange={(e) => setSearch(e.currentTarget.value)}
-          placeholder="アプリ名・操作コードで検索"
+          placeholder={tr("admin.appFlagsTable.searchByAppNameOrOperation")}
           value={search}
         />
       }
-      title="アプリ管理"
+      title={tr("admin.appFlagsTable.apps")}
     >
       <DataTable
         columns={columns}
         data={filtered}
         emptyIcon={<IconApps size={24} />}
-        emptyMessage="アプリがありません"
+        emptyMessage={tr("admin.appFlagsTable.thereAreNoApps")}
         getRowId={(r) => r.key}
         urlState
       />

@@ -18,7 +18,7 @@ import {
   IconTrash,
 } from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
-import { useLocale } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { useState, useTransition } from "react";
 import {
   deletePlants,
@@ -61,12 +61,12 @@ function plantCountryLabel(code: string | null, locale: Locale): string {
   return countryLabel(code, locale);
 }
 
-const STATUS_OPTIONS = [
-  { value: "active", label: "有効" },
-  { value: "inactive", label: "無効" },
-];
-
 export function PlantTable({ rows }: { rows: PlantRow[] }) {
+  const tr = useTranslations();
+  const STATUS_OPTIONS = [
+    { value: "active", label: tr("common.enabled") },
+    { value: "inactive", label: tr("common.disabled") },
+  ];
   const fmt = useFormat();
   const router = useRouter();
   const isMobile = useIsMobile();
@@ -101,14 +101,20 @@ export function PlantTable({ rows }: { rows: PlantRow[] }) {
       );
       if (result.ok) {
         notifications.show({
-          title: isActive ? "有効化しました" : "無効化しました",
-          message: `${targets.length}件の拠点を${isActive ? "有効化" : "無効化"}しました`,
+          title: isActive ? tr("common.enabled2") : tr("common.disabled2"),
+          message: isActive
+            ? tr("master.plantTable.bulkEnabledMessage", {
+                count: targets.length,
+              })
+            : tr("master.plantTable.bulkDisabledMessage", {
+                count: targets.length,
+              }),
           color: "green",
         });
         router.refresh();
       } else {
         notifications.show({
-          title: "エラー",
+          title: tr("common.error2"),
           message: result.error,
           color: "red",
         });
@@ -118,22 +124,26 @@ export function PlantTable({ rows }: { rows: PlantRow[] }) {
 
   const bulkDelete = (targets: PlantRow[]) => {
     openConfirm({
-      title: "拠点の一括削除",
-      message: `選択中の${targets.length}件の拠点を削除します。この操作は取り消せません。`,
-      confirmLabel: "削除する",
+      title: tr("master.plants.bulkDeleteSites"),
+      message: tr("master.plantTable.bulkDeleteConfirmMessage", {
+        count: targets.length,
+      }),
+      confirmLabel: tr("common.delete2"),
       onConfirm: () => {
         startTransition(async () => {
           const result = await deletePlants(targets.map((r) => r.id));
           if (result.ok) {
             notifications.show({
-              title: "削除しました",
-              message: `${targets.length}件の拠点を削除しました`,
+              title: tr("common.deleted"),
+              message: tr("master.plantTable.bulkDeletedMessage", {
+                count: targets.length,
+              }),
               color: "green",
             });
             router.refresh();
           } else {
             notifications.show({
-              title: "エラー",
+              title: tr("common.error2"),
               message: result.error,
               color: "red",
             });
@@ -146,7 +156,7 @@ export function PlantTable({ rows }: { rows: PlantRow[] }) {
   const columns: Column<PlantRow>[] = [
     {
       key: "code",
-      header: "コード",
+      header: tr("common.code"),
       sortable: true,
       width: 140,
       sortValue: (r) => r.code,
@@ -154,14 +164,14 @@ export function PlantTable({ rows }: { rows: PlantRow[] }) {
     },
     {
       key: "name",
-      header: "名称",
+      header: tr("common.name2"),
       sortable: true,
       sortValue: (r) => r.name,
       render: (r) => r.name,
     },
     {
       key: "country",
-      header: "国",
+      header: tr("common.country"),
       sortable: true,
       hideable: true,
       width: 110,
@@ -170,7 +180,7 @@ export function PlantTable({ rows }: { rows: PlantRow[] }) {
     },
     {
       key: "region",
-      header: "地域",
+      header: tr("common.region"),
       sortable: true,
       hideable: true,
       width: 130,
@@ -179,7 +189,7 @@ export function PlantTable({ rows }: { rows: PlantRow[] }) {
     },
     {
       key: "isActive",
-      header: "状態",
+      header: tr("common.status"),
       sortable: true,
       width: 90,
       sortValue: (r) => (r.isActive ? 1 : 0),
@@ -187,7 +197,7 @@ export function PlantTable({ rows }: { rows: PlantRow[] }) {
     },
     {
       key: "updatedAt",
-      header: "更新日",
+      header: tr("common.updated"),
       sortable: true,
       hideable: true,
       width: 120,
@@ -201,18 +211,18 @@ export function PlantTable({ rows }: { rows: PlantRow[] }) {
       action={
         <Group gap="xs" wrap="nowrap">
           <SecondaryButton href={`${BASE_PATH}/regions`}>
-            地域管理
+            {tr("master.plants.regions")}
           </SecondaryButton>
           <NewButton href={`${BASE_PATH}/new`} />
         </Group>
       }
-      breadcrumbs={["マスタ", "拠点"]}
+      breadcrumbs={[tr("common.masterData"), tr("master.plantTable.title")]}
       filters={
         <Select
           clearable
           data={STATUS_OPTIONS}
           onChange={setStatusFilter}
-          placeholder="状態"
+          placeholder={tr("common.status")}
           value={statusFilter}
           w={isMobile ? 110 : 120}
         />
@@ -222,28 +232,28 @@ export function PlantTable({ rows }: { rows: PlantRow[] }) {
         <TextInput
           leftSection={<IconSearch size={14} />}
           onChange={(e) => setSearch(e.currentTarget.value)}
-          placeholder="コード・名称で検索"
+          placeholder={tr("common.searchByCodeOrName")}
           value={search}
         />
       }
-      title="拠点"
+      title={tr("master.plantTable.title")}
     >
       <DataTable
         bulkActions={[
           {
-            label: "一括有効化",
+            label: tr("common.bulkEnable"),
             icon: <IconCheck size={16} />,
             color: "green",
             onAction: (rs) => bulkSetActive(rs, true),
           },
           {
-            label: "一括無効化",
+            label: tr("common.bulkDisable"),
             icon: <IconCircleMinus size={16} />,
             color: "orange",
             onAction: (rs) => bulkSetActive(rs, false),
           },
           {
-            label: "一括削除",
+            label: tr("common.bulkDelete"),
             icon: <IconTrash size={16} />,
             color: "red",
             onAction: bulkDelete,
@@ -254,7 +264,7 @@ export function PlantTable({ rows }: { rows: PlantRow[] }) {
         defaultSort={{ key: "code", dir: "asc" }}
         emptyAction={<NewButton href={`${BASE_PATH}/new`} />}
         emptyIcon={<IconBuildingWarehouse size={24} />}
-        emptyMessage="拠点がありません"
+        emptyMessage={tr("master.plants.thereAreNoSites")}
         getRowId={(r) => String(r.id)}
         onRowClick={(r) => router.push(`${BASE_PATH}/${r.id}`)}
         renderCard={(r) => (
@@ -280,17 +290,17 @@ export function PlantTable({ rows }: { rows: PlantRow[] }) {
         )}
         rowActions={(row) => [
           {
-            label: "編集",
+            label: tr("common.edit2"),
             icon: <IconEdit size={14} />,
             onAction: (r) => router.push(`${BASE_PATH}/${r.id}/edit`),
           },
           {
-            label: row.isActive ? "無効化" : "有効化",
+            label: row.isActive ? tr("common.disable") : tr("common.enable"),
             icon: <IconCircleMinus size={14} />,
             onAction: (r) => setToggleRow(r),
           },
           {
-            label: "削除",
+            label: tr("common.delete"),
             icon: <IconTrash size={14} />,
             color: "red",
             onAction: (r) => setDeleteRow(r),

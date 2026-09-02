@@ -8,6 +8,7 @@
  */
 
 import { revalidatePath } from "next/cache";
+import { getTranslations } from "next-intl/server";
 import { z } from "zod";
 import { recordAudit } from "@/lib/audit";
 import { checkPermission } from "@/lib/authz";
@@ -55,14 +56,18 @@ import type { TrialPricingSettings } from "@/lib/trial-pricing-settings";
 // 計算基準（criteria）は SY02 メインのリスト + 個別編集ページから
 // `updateCriteria` で保存する。スカラー設定は下の settingsInput（criteria を
 // 含まない）で保存し、criteria は現状 DB 値を維持する（相互のクロバー防止）。
-const settingsInput = z.object({
-  materialPriceBasis: z.enum(["MAX", "LATEST", "AVERAGE"]),
-  materialPriceLookbackMonths: z.number().int().min(1).max(36),
-  defaultMaterialPrice: z.number().min(0),
-  customInputs: z.array(customInputDefSchema),
-});
+function settingsInputSchema(tr: Awaited<ReturnType<typeof getTranslations>>) {
+  return z.object({
+    materialPriceBasis: z.enum(["MAX", "LATEST", "AVERAGE"]),
+    materialPriceLookbackMonths: z.number().int().min(1).max(36),
+    defaultMaterialPrice: z.number().min(0),
+    customInputs: z.array(customInputDefSchema(tr)),
+  });
+}
 
-const criteriaInput = z.array(criterionSchema);
+function criteriaInputSchema(tr: Awaited<ReturnType<typeof getTranslations>>) {
+  return z.array(criterionSchema(tr));
+}
 
 /**
  * 計算基準の検証 — 壊れた式や不正な構成が全ユーザーの価格試算を止めないよう、
@@ -72,18 +77,25 @@ const criteriaInput = z.array(criterionSchema);
 function validateCriteria(
   criteria: Criterion[],
   toolTypes: ToolTypeDef[],
+  tr: Awaited<ReturnType<typeof getTranslations>>,
 ): string | null {
   const enabled = criteria.filter((c) => c.enabled);
   for (const c of enabled) {
     const err = checkExpressionSyntax(c.expression);
-    if (err) return `計算基準「${c.name}」の構文エラー: ${err}`;
+    if (err)
+      return tr("settings.trialPricingActions.criterionSyntaxError", {
+        name: c.name,
+        error: err,
+      });
   }
   for (const tt of toolTypes) {
     const finals = enabled.filter(
       (c) => c.role === "final" && criterionAppliesTo(c, tt.value),
     );
     if (finals.length !== 1) {
-      return `工具種「${tt.label}」に有効な『見積単価（final）』基準をちょうど1つにしてください`;
+      return tr("settings.trialPricingActions.exactlyOneFinalRequired", {
+        label: tt.label,
+      });
     }
   }
   return null;
@@ -93,20 +105,31 @@ function validateCriteria(
 export async function updateTrialPricingSettings(
   payload: TrialPricingSettings,
 ): Promise<ActionResult> {
+  const tr = await getTranslations();
   const authz = await checkPermission("system", "UPDATE");
   if (!authz.ok) return actionError(authz.error);
-  const parsed = settingsInput.safeParse(payload);
+  const parsed = settingsInputSchema(tr).safeParse(payload);
   if (!parsed.success) {
-    return actionError(parsed.error.issues[0]?.message ?? "入力が不正です");
+    return actionError(
+      parsed.error.issues[0]?.message ?? tr("common.invalidInput"),
+    );
   }
   // カスタム入力キー — 予約語衝突・重複を弾く。
   const seenKeys = new Set<string>();
   for (const d of parsed.data.customInputs) {
     if (RESERVED_KEYS.has(d.key)) {
-      return actionError(`カスタム入力キー「${d.key}」は予約語です`);
+      return actionError(
+        tr("settings.trialPricingActions.customInputKeyReserved", {
+          key: d.key,
+        }),
+      );
     }
     if (seenKeys.has(d.key)) {
-      return actionError(`カスタム入力キー「${d.key}」が重複しています`);
+      return actionError(
+        tr("settings.trialPricingActions.customInputKeyDuplicate", {
+          key: d.key,
+        }),
+      );
     }
     seenKeys.add(d.key);
   }
@@ -125,7 +148,13 @@ export async function updateTrialPricingSettings(
     revalidatePath("/sales/trial-estimates");
     return actionOk();
   } catch (e) {
-    return actionError(prismaErrorMessage(e, "設定の保存に失敗しました"));
+    return actionError(
+      prismaErrorMessage(
+        e,
+        tr("settings.trialPricingActions.settingsSaveFailed"),
+        tr,
+      ),
+    );
   }
 }
 
@@ -133,15 +162,19 @@ export async function updateTrialPricingSettings(
 export async function updateCriteria(
   criteria: Criterion[],
 ): Promise<ActionResult> {
+  const tr = await getTranslations();
   const authz = await checkPermission("system", "UPDATE");
   if (!authz.ok) return actionError(authz.error);
-  const parsed = criteriaInput.safeParse(criteria);
+  const parsed = criteriaInputSchema(tr).safeParse(criteria);
   if (!parsed.success) {
-    return actionError(parsed.error.issues[0]?.message ?? "計算基準が不正です");
+    return actionError(
+      parsed.error.issues[0]?.message ??
+        tr("settings.trialPricingActions.invalidCriteria"),
+    );
   }
   try {
     const before = await getTrialPricingSettings();
-    const invalid = validateCriteria(parsed.data, before.toolTypes);
+    const invalid = validateCriteria(parsed.data, before.toolTypes, tr);
     if (invalid) return actionError(invalid);
     await saveTrialPricingSettings({ ...before, criteria: parsed.data });
     await recordAudit({
@@ -155,25 +188,41 @@ export async function updateCriteria(
     revalidatePath("/sales/trial-estimates");
     return actionOk();
   } catch (e) {
-    return actionError(prismaErrorMessage(e, "計算基準の保存に失敗しました"));
+    return actionError(
+      prismaErrorMessage(
+        e,
+        tr("settings.trialPricingActions.criteriaSaveFailed"),
+        tr,
+      ),
+    );
   }
 }
 
 // ── 工具種（SY02 工具種管理） ────────────────────────────────────────────────
 
-const addToolTypeInput = z.object({
-  value: z
-    .string()
-    .regex(TOOL_TYPE_VALUE, "値は英大文字・数字・_（英大文字始まり）です"),
-  label: z.string().min(1, "表示名を入力してください"),
-});
+function addToolTypeInputSchema(
+  tr: Awaited<ReturnType<typeof getTranslations>>,
+) {
+  return z.object({
+    value: z
+      .string()
+      .regex(
+        TOOL_TYPE_VALUE,
+        tr("settings.toolTypesPanel.useUppercaseLettersDigitsAndStarting"),
+      ),
+    label: z
+      .string()
+      .min(1, tr("settings.trialPricingActions.enterDisplayName")),
+  });
+}
 
 /** 工具種・計算基準を保存 + 監査 + 再検証パスの共通処理。 */
 async function persistToolTypes(
   next: { toolTypes: ToolTypeDef[]; criteria: Criterion[] },
   before: TrialPricingSettings,
+  tr: Awaited<ReturnType<typeof getTranslations>>,
 ): Promise<ActionResult> {
-  const invalid = validateCriteria(next.criteria, next.toolTypes);
+  const invalid = validateCriteria(next.criteria, next.toolTypes, tr);
   if (invalid) return actionError(invalid);
   try {
     await saveTrialPricingSettings({ ...before, ...next });
@@ -189,7 +238,13 @@ async function persistToolTypes(
     revalidatePath("/sales/trial-estimates");
     return actionOk();
   } catch (e) {
-    return actionError(prismaErrorMessage(e, "工具種の保存に失敗しました"));
+    return actionError(
+      prismaErrorMessage(
+        e,
+        tr("settings.trialPricingActions.toolTypeSaveFailed"),
+        tr,
+      ),
+    );
   }
 }
 
@@ -202,16 +257,21 @@ export async function addToolType(payload: {
   value: string;
   label: string;
 }): Promise<ActionResult> {
+  const tr = await getTranslations();
   const authz = await checkPermission("system", "UPDATE");
   if (!authz.ok) return actionError(authz.error);
-  const parsed = addToolTypeInput.safeParse(payload);
+  const parsed = addToolTypeInputSchema(tr).safeParse(payload);
   if (!parsed.success) {
-    return actionError(parsed.error.issues[0]?.message ?? "入力が不正です");
+    return actionError(
+      parsed.error.issues[0]?.message ?? tr("common.invalidInput"),
+    );
   }
   const { value, label } = parsed.data;
   const before = await getTrialPricingSettings();
   if (before.toolTypes.some((t) => t.value === value)) {
-    return actionError(`工具種「${value}」は既に存在します`);
+    return actionError(
+      tr("settings.trialPricingActions.toolTypeAlreadyExists", { value }),
+    );
   }
   const existingValues = before.toolTypes.map((t) => t.value);
   const maxOrder = Math.max(0, ...before.toolTypes.map((t) => t.order));
@@ -235,7 +295,7 @@ export async function addToolType(payload: {
       .sort((a, b) => a.order - b.order)[0];
     if (!firstFinal) {
       return actionError(
-        "有効な『見積単価（final）』基準がありません。先に計算基準を設定してください",
+        tr("settings.trialPricingActions.noFinalCriterionAvailable"),
       );
     }
     criteria = criteria.map((c) =>
@@ -244,7 +304,7 @@ export async function addToolType(payload: {
         : c,
     );
   }
-  return persistToolTypes({ toolTypes, criteria }, before);
+  return persistToolTypes({ toolTypes, criteria }, before, tr);
 }
 
 /**
@@ -252,23 +312,38 @@ export async function addToolType(payload: {
  * （未使用のみ削除可）。削除時は各基準の適用工具種からも取り除く。
  */
 export async function removeToolType(value: ToolType): Promise<ActionResult> {
+  const tr = await getTranslations();
   const authz = await checkPermission("system", "UPDATE");
   if (!authz.ok) return actionError(authz.error);
   const before = await getTrialPricingSettings();
   const def = before.toolTypes.find((t) => t.value === value);
-  if (!def) return actionError("対象の工具種が見つかりません");
+  if (!def)
+    return actionError(tr("settings.trialPricingActions.toolTypeNotFound"));
   if (def.builtin) {
-    return actionError(`組み込み工具種「${def.label}」は削除できません`);
+    return actionError(
+      tr("settings.trialPricingActions.builtinToolTypeCannotBeDeleted", {
+        label: def.label,
+      }),
+    );
   }
   try {
     const used = await prisma.estimate.count({ where: { toolType: value } });
     if (used > 0) {
       return actionError(
-        `工具種「${def.label}」は ${used} 件の価格試算で使用中のため削除できません`,
+        tr("settings.trialPricingActions.toolTypeInUse", {
+          label: def.label,
+          count: used,
+        }),
       );
     }
   } catch (e) {
-    return actionError(prismaErrorMessage(e, "使用状況の確認に失敗しました"));
+    return actionError(
+      prismaErrorMessage(
+        e,
+        tr("settings.trialPricingActions.usageCheckFailed"),
+        tr,
+      ),
+    );
   }
   const toolTypes = before.toolTypes.filter((t) => t.value !== value);
   const criteria = before.criteria.map((c) =>
@@ -276,7 +351,7 @@ export async function removeToolType(value: ToolType): Promise<ActionResult> {
       ? { ...c, toolTypes: c.toolTypes.filter((v) => v !== value) }
       : c,
   );
-  return persistToolTypes({ toolTypes, criteria }, before);
+  return persistToolTypes({ toolTypes, criteria }, before, tr);
 }
 
 /**
@@ -291,12 +366,13 @@ export async function updateToolTypeAssignments(payload: {
   criterionIds: string[];
   finalId: string;
 }): Promise<ActionResult> {
+  const tr = await getTranslations();
   const authz = await checkPermission("system", "UPDATE");
   if (!authz.ok) return actionError(authz.error);
   const { value, criterionIds, finalId } = payload;
   const before = await getTrialPricingSettings();
   if (!before.toolTypes.some((t) => t.value === value)) {
-    return actionError("対象の工具種が見つかりません");
+    return actionError(tr("settings.trialPricingActions.toolTypeNotFound"));
   }
   const allValues = before.toolTypes.map((t) => t.value);
   const wanted = new Set(criterionIds);
@@ -311,34 +387,48 @@ export async function updateToolTypeAssignments(payload: {
       : materialized.filter((v) => v !== value);
     return { ...c, toolTypes: next };
   });
-  return persistToolTypes({ toolTypes: before.toolTypes, criteria }, before);
+  return persistToolTypes(
+    { toolTypes: before.toolTypes, criteria },
+    before,
+    tr,
+  );
 }
 
 /** ルックアップ表を保存（表名の一意性を検証）。 */
 /** ID の一意性・キー列名の一意性・行のキー数一致/一意/数値型を検証。 */
-function validateLookupTables(tables: LookupTable[]): string | null {
+function validateLookupTables(
+  tables: LookupTable[],
+  tr: Awaited<ReturnType<typeof getTranslations>>,
+): string | null {
   const ids = new Set<string>();
   for (const t of tables) {
     const label = t.name?.ja || t.id;
-    if (ids.has(t.id)) return `ID が重複しています: ${t.id}`;
+    if (ids.has(t.id))
+      return tr("settings.trialPricingActions.duplicateId", { id: t.id });
     ids.add(t.id);
     const colSet = new Set(t.keyColumns);
     if (colSet.size !== t.keyColumns.length)
-      return `「${label}」のキー列名が重複しています`;
+      return tr("settings.trialPricingActions.duplicateKeyColumns", { label });
     const combos = new Set<string>();
     for (const r of t.rows) {
       if (r.keys.length !== t.keyColumns.length)
-        return `「${label}」の行のキー数が列数と一致しません`;
+        return tr("settings.trialPricingActions.keyCountMismatch", { label });
       const combo = lookupCompositeKey(r.keys);
       if (combos.has(combo))
-        return `「${label}」でキーの組み合わせが重複しています: ${r.keys.join(" / ")}`;
+        return tr("settings.trialPricingActions.duplicateKeyCombination", {
+          label,
+          keys: r.keys.join(" / "),
+        });
       combos.add(combo);
       if (
         t.valueType === "number" &&
         r.value.trim() !== "" &&
         !Number.isFinite(Number(r.value))
       )
-        return `「${label}」の値が数値ではありません: ${r.value}`;
+        return tr("settings.trialPricingActions.valueNotNumeric", {
+          label,
+          value: r.value,
+        });
     }
   }
   return null;
@@ -348,6 +438,7 @@ function validateLookupTables(tables: LookupTable[]): string | null {
 async function persistLookupTables(
   next: LookupTable[],
   before: TrialPricingSettings,
+  tr: Awaited<ReturnType<typeof getTranslations>>,
 ): Promise<ActionResult> {
   try {
     await saveTrialPricingSettings({ ...before, lookupTables: next });
@@ -364,7 +455,11 @@ async function persistLookupTables(
     return actionOk();
   } catch (e) {
     return actionError(
-      prismaErrorMessage(e, "ルックアップ表の保存に失敗しました"),
+      prismaErrorMessage(
+        e,
+        tr("settings.trialPricingActions.lookupTableSaveFailed"),
+        tr,
+      ),
     );
   }
 }
@@ -372,30 +467,34 @@ async function persistLookupTables(
 export async function updateLookupTables(
   tables: LookupTable[],
 ): Promise<ActionResult> {
+  const tr = await getTranslations();
   const authz = await checkPermission("system", "UPDATE");
   if (!authz.ok) return actionError(authz.error);
-  const parsed = lookupTablesArraySchema.safeParse(tables);
+  const parsed = lookupTablesArraySchema(tr).safeParse(tables);
   if (!parsed.success) {
     return actionError(
-      parsed.error.issues[0]?.message ?? "ルックアップ表が不正です",
+      parsed.error.issues[0]?.message ??
+        tr("settings.trialPricingActions.invalidLookupTable"),
     );
   }
-  const err = validateLookupTables(parsed.data);
+  const err = validateLookupTables(parsed.data, tr);
   if (err) return actionError(err);
   const before = await getTrialPricingSettings();
-  return persistLookupTables(parsed.data, before);
+  return persistLookupTables(parsed.data, before, tr);
 }
 
 /** 単一のルックアップ表を追加/更新（id で upsert）。詳細ページの保存から呼ぶ。 */
 export async function upsertLookupTable(
   table: LookupTable,
 ): Promise<ActionResult> {
+  const tr = await getTranslations();
   const authz = await checkPermission("system", "UPDATE");
   if (!authz.ok) return actionError(authz.error);
-  const parsed = lookupTableSchema.safeParse(table);
+  const parsed = lookupTableSchema(tr).safeParse(table);
   if (!parsed.success) {
     return actionError(
-      parsed.error.issues[0]?.message ?? "ルックアップ表が不正です",
+      parsed.error.issues[0]?.message ??
+        tr("settings.trialPricingActions.invalidLookupTable"),
     );
   }
   const before = await getTrialPricingSettings();
@@ -404,39 +503,52 @@ export async function upsertLookupTable(
     idx >= 0
       ? before.lookupTables.map((t, i) => (i === idx ? parsed.data : t))
       : [...before.lookupTables, parsed.data];
-  const err = validateLookupTables(next);
+  const err = validateLookupTables(next, tr);
   if (err) return actionError(err);
-  return persistLookupTables(next, before);
+  return persistLookupTables(next, before, tr);
 }
 
 /** 単一のルックアップ表を削除（id 指定）。詳細ページから呼ぶ。 */
 export async function deleteLookupTable(id: string): Promise<ActionResult> {
+  const tr = await getTranslations();
   const authz = await checkPermission("system", "UPDATE");
   if (!authz.ok) return actionError(authz.error);
   const before = await getTrialPricingSettings();
   const next = before.lookupTables.filter((t) => t.id !== id);
   if (next.length === before.lookupTables.length)
-    return actionError("対象の表が見つかりません");
-  return persistLookupTables(next, before);
+    return actionError(tr("settings.trialPricingActions.lookupTableNotFound"));
+  return persistLookupTables(next, before, tr);
 }
 
 // ── 製品種別（SY04） ──────────────────────────────────────────────────────────
 
 /** 種別 id / 種別内の項目キーの重複を検出。 */
-function validateItemDefs(defs: ProductItemDef[]): string | null {
+function validateItemDefs(
+  defs: ProductItemDef[],
+  tr: Awaited<ReturnType<typeof getTranslations>>,
+): string | null {
   const keys = new Set<string>();
   for (const d of defs) {
     if (!IDENTIFIER.test(d.key))
-      return `キーが識別子ではありません: ${d.key || "(空)"}`;
-    if (keys.has(d.key)) return `項目キーが重複しています: ${d.key}`;
+      return tr("settings.productItemActions.keyNotIdentifier", {
+        key: d.key || tr("settings.productItemActions.emptyKeyPlaceholder"),
+      });
+    if (keys.has(d.key))
+      return tr("settings.productItemActions.duplicateItemKey", {
+        key: d.key,
+      });
     keys.add(d.key);
     if (d.type === "select" && (d.options ?? []).length === 0)
-      return `「${d.label.ja}」は選択肢を1つ以上追加してください`;
+      return tr("settings.productItemActions.selectRequiresOptions", {
+        label: d.label.ja,
+      });
     if (d.type === "string" && d.pattern) {
       try {
         new RegExp(d.pattern);
       } catch {
-        return `「${d.label.ja}」の正規表現が不正です`;
+        return tr("settings.productItemActions.invalidRegex", {
+          label: d.label.ja,
+        });
       }
     }
   }
@@ -446,18 +558,26 @@ function validateItemDefs(defs: ProductItemDef[]): string | null {
 function validateTypes(
   types: ProductType[],
   defKeys: Set<string>,
+  tr: Awaited<ReturnType<typeof getTranslations>>,
 ): string | null {
   const ids = new Set<string>();
   for (const t of types) {
-    if (ids.has(t.id)) return `種別 id が重複しています: ${t.id}`;
+    if (ids.has(t.id))
+      return tr("settings.productItemActions.duplicateTypeId", { id: t.id });
     ids.add(t.id);
     const seen = new Set<string>();
     for (const a of t.assignments) {
       if (seen.has(a.itemKey))
-        return `「${t.name.ja}」に同じ項目が重複して割り当てられています: ${a.itemKey}`;
+        return tr("settings.productItemActions.duplicateAssignedItem", {
+          name: t.name.ja,
+          key: a.itemKey,
+        });
       seen.add(a.itemKey);
       if (!defKeys.has(a.itemKey))
-        return `「${t.name.ja}」の割り当て項目が存在しません: ${a.itemKey}`;
+        return tr("settings.productItemActions.assignedItemNotFound", {
+          name: t.name.ja,
+          key: a.itemKey,
+        });
     }
   }
   return null;
@@ -467,13 +587,17 @@ function validateTypes(
 export async function updateProductItemDefs(
   defs: ProductItemDef[],
 ): Promise<ActionResult> {
+  const tr = await getTranslations();
   const authz = await checkPermission("system", "UPDATE");
   if (!authz.ok) return actionError(authz.error);
   const parsed = productItemDefsArraySchema.safeParse(defs);
   if (!parsed.success) {
-    return actionError(parsed.error.issues[0]?.message ?? "項目定義が不正です");
+    return actionError(
+      parsed.error.issues[0]?.message ??
+        tr("settings.productItemActions.invalidItemDefs"),
+    );
   }
-  const invalid = validateItemDefs(parsed.data);
+  const invalid = validateItemDefs(parsed.data, tr);
   if (invalid) return actionError(invalid);
   try {
     const before = await getProductItemDefs();
@@ -489,7 +613,13 @@ export async function updateProductItemDefs(
     revalidatePath("/master/products");
     return actionOk();
   } catch (e) {
-    return actionError(prismaErrorMessage(e, "項目定義の保存に失敗しました"));
+    return actionError(
+      prismaErrorMessage(
+        e,
+        tr("settings.productItemActions.itemDefsSaveFailed"),
+        tr,
+      ),
+    );
   }
 }
 
@@ -497,14 +627,18 @@ export async function updateProductItemDefs(
 export async function updateProductTypes(
   types: ProductType[],
 ): Promise<ActionResult> {
+  const tr = await getTranslations();
   const authz = await checkPermission("system", "UPDATE");
   if (!authz.ok) return actionError(authz.error);
   const parsed = productTypesArraySchema.safeParse(types);
   if (!parsed.success) {
-    return actionError(parsed.error.issues[0]?.message ?? "製品種別が不正です");
+    return actionError(
+      parsed.error.issues[0]?.message ??
+        tr("settings.productItemActions.invalidProductTypes"),
+    );
   }
   const defKeys = new Set((await getProductItemDefs()).map((d) => d.key));
-  const invalid = validateTypes(parsed.data, defKeys);
+  const invalid = validateTypes(parsed.data, defKeys, tr);
   if (invalid) return actionError(invalid);
   try {
     const before = await getProductTypes();
@@ -521,6 +655,12 @@ export async function updateProductTypes(
     revalidatePath("/master/products");
     return actionOk();
   } catch (e) {
-    return actionError(prismaErrorMessage(e, "製品種別の保存に失敗しました"));
+    return actionError(
+      prismaErrorMessage(
+        e,
+        tr("settings.productItemActions.productTypesSaveFailed"),
+        tr,
+      ),
+    );
   }
 }

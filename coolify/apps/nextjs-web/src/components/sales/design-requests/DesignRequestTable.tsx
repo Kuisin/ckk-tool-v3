@@ -13,11 +13,11 @@
 import { Badge, Group, Select, Stack, Text, TextInput } from "@mantine/core";
 import { IconRuler2, IconSearch } from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
-import { useLocale } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { useFormat } from "@/components/layout/PreferencesProvider";
 import { type Column, DataTable } from "@/components/ui/DataTable";
 import { NewButton } from "@/components/ui/NewButton";
-import { StatusBadge, statusOptions } from "@/components/ui/StatusBadge";
+import { StatusBadge } from "@/components/ui/StatusBadge";
 import { ListShell } from "@/components/ui/shells";
 import { useUrlSelectState, useUrlStringState } from "@/hooks/useUrlState";
 import { useIsMobile } from "@/hooks/useViewport";
@@ -27,6 +27,7 @@ import {
   designTriggerLabel,
   designTriggerOptions,
 } from "@/lib/enum-labels";
+import { statusOptions } from "@/lib/status-map";
 import {
   DESIGN_KIND_COLOR,
   DESIGN_TRIGGER_COLOR,
@@ -55,6 +56,7 @@ function TriggerBadge({ trigger }: { trigger: DesignRequest["trigger"] }) {
 }
 
 export function DesignRequestTable({ rows }: { rows: DesignRequest[] }) {
+  const tr = useTranslations();
   const locale = useLocale();
   const fmt = useFormat();
   const router = useRouter();
@@ -109,7 +111,7 @@ export function DesignRequestTable({ rows }: { rows: DesignRequest[] }) {
   const columns: Column<DesignRequest>[] = [
     {
       key: "requestNumber",
-      header: "依頼番号",
+      header: tr("common.requestNumber"),
       sortable: true,
       render: (r) => (
         <Text ff="mono" size="sm">
@@ -119,7 +121,7 @@ export function DesignRequestTable({ rows }: { rows: DesignRequest[] }) {
     },
     {
       key: "kind",
-      header: "区分",
+      header: tr("common.type"),
       width: 90,
       sortValue: (r) => r.kind,
       render: (r) => (
@@ -130,7 +132,7 @@ export function DesignRequestTable({ rows }: { rows: DesignRequest[] }) {
     },
     {
       key: "productName",
-      header: "製品",
+      header: tr("common.product"),
       sortable: true,
       sortValue: (r) => r.productName ?? "",
       render: (r) =>
@@ -144,7 +146,7 @@ export function DesignRequestTable({ rows }: { rows: DesignRequest[] }) {
     },
     {
       key: "assigneeName",
-      header: "担当者",
+      header: tr("common.assignee"),
       width: 130,
       sortable: true,
       sortValue: (r) => r.assigneeName ?? "",
@@ -159,7 +161,7 @@ export function DesignRequestTable({ rows }: { rows: DesignRequest[] }) {
     },
     {
       key: "desiredAt",
-      header: "希望納期",
+      header: tr("common.requestedDate2"),
       width: 110,
       sortable: true,
       sortValue: (r) => r.desiredAt ?? "",
@@ -181,14 +183,14 @@ export function DesignRequestTable({ rows }: { rows: DesignRequest[] }) {
     },
     {
       key: "status",
-      header: "状態",
+      header: tr("common.status"),
       width: 110,
       sortValue: (r) => r.status,
       render: (r) => <StatusBadge entity="DesignRequest" status={r.status} />,
     },
     {
       key: "updatedAt",
-      header: "更新日",
+      header: tr("common.updated"),
       width: 120,
       sortValue: (r) => r.updatedAt,
       render: (r) => (
@@ -202,7 +204,7 @@ export function DesignRequestTable({ rows }: { rows: DesignRequest[] }) {
   return (
     <ListShell
       action={<NewButton href={`${BASE_PATH}/new`} />}
-      breadcrumbs={["販売", "設計依頼書"]}
+      breadcrumbs={[tr("common.sales"), tr("common.designRequest2")]}
       filters={
         <>
           <Select
@@ -210,7 +212,7 @@ export function DesignRequestTable({ rows }: { rows: DesignRequest[] }) {
             data={designKindOptions(locale)}
             flex={isMobile ? 1 : undefined}
             onChange={setKind}
-            placeholder="区分"
+            placeholder={tr("common.type")}
             value={kind}
             w={isMobile ? undefined : 120}
           />
@@ -219,7 +221,7 @@ export function DesignRequestTable({ rows }: { rows: DesignRequest[] }) {
             data={designTriggerOptions(locale)}
             flex={isMobile ? 1 : undefined}
             onChange={setTrigger}
-            placeholder="トリガー"
+            placeholder={tr("common.trigger")}
             value={trigger}
             w={isMobile ? undefined : 130}
           />
@@ -228,7 +230,7 @@ export function DesignRequestTable({ rows }: { rows: DesignRequest[] }) {
             data={assigneeOptions}
             flex={isMobile ? 1 : undefined}
             onChange={setAssignee}
-            placeholder="担当者"
+            placeholder={tr("common.assignee")}
             searchable
             value={assignee}
             w={isMobile ? undefined : 140}
@@ -238,7 +240,7 @@ export function DesignRequestTable({ rows }: { rows: DesignRequest[] }) {
             data={statusOptions("DesignRequest")}
             flex={isMobile ? 1 : undefined}
             onChange={setStatus}
-            placeholder="状態"
+            placeholder={tr("common.status")}
             value={status}
             w={isMobile ? undefined : 140}
           />
@@ -249,11 +251,13 @@ export function DesignRequestTable({ rows }: { rows: DesignRequest[] }) {
         <TextInput
           leftSection={<IconSearch size={14} />}
           onChange={(e) => setSearch(e.currentTarget.value)}
-          placeholder="依頼番号・製品・依頼内容・担当者で検索"
+          placeholder={tr(
+            "sales.designRequests.searchByRequestNumberProductDetails",
+          )}
           value={search}
         />
       }
-      title="設計依頼書"
+      title={tr("common.designRequest2")}
     >
       <DataTable
         columns={columns}
@@ -261,7 +265,7 @@ export function DesignRequestTable({ rows }: { rows: DesignRequest[] }) {
         defaultSort={{ key: "requestNumber", dir: "desc" }}
         emptyAction={<NewButton href={`${BASE_PATH}/new`} />}
         emptyIcon={<IconRuler2 size={24} />}
-        emptyMessage="設計依頼書がありません"
+        emptyMessage={tr("sales.designRequests.thereAreNoDesignRequests2")}
         getRowId={(r) => r.id}
         onRowClick={(r) => router.push(`${BASE_PATH}/${r.id}`)}
         renderCard={(r) => (
@@ -271,7 +275,7 @@ export function DesignRequestTable({ rows }: { rows: DesignRequest[] }) {
                 {r.requestNumber}
               </Text>
               <Text fw={600} size="sm" truncate>
-                {r.productName ?? "製品未指定"}
+                {r.productName ?? tr("sales.designRequests.noProductSpecified")}
               </Text>
               {r.description && (
                 <Text c="dimmed" size="xs" truncate>
@@ -293,7 +297,9 @@ export function DesignRequestTable({ rows }: { rows: DesignRequest[] }) {
                 )}
                 {r.desiredAt && (
                   <Text c={isOverdue(r) ? "red" : "dimmed"} size="xs">
-                    納期 {fmt.date(r.desiredAt)}
+                    {tr("sales.designRequestTable.desiredAtLabel", {
+                      date: fmt.date(r.desiredAt),
+                    })}
                   </Text>
                 )}
               </Group>

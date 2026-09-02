@@ -27,6 +27,7 @@ import {
   IconTrash,
 } from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { useState, useTransition } from "react";
 import {
   deleteMaterialTypes,
@@ -62,17 +63,16 @@ export interface MaterialTypeRow {
   updatedAt: string;
 }
 
-const STATUS_OPTIONS = [
-  { value: "active", label: "有効" },
-  { value: "inactive", label: "無効" },
-];
-
-const STRUCTURED_OPTIONS = [
-  { value: "structured", label: "変換済" },
-  { value: "legacy", label: "未変換" },
-];
-
 export function MaterialTypeTable({ rows }: { rows: MaterialTypeRow[] }) {
+  const tr = useTranslations();
+  const STRUCTURED_OPTIONS = [
+    { value: "structured", label: tr("master.materialTypeTable.structured") },
+    { value: "legacy", label: tr("master.materialTypeTable.legacy") },
+  ];
+  const STATUS_OPTIONS = [
+    { value: "active", label: tr("common.enabled") },
+    { value: "inactive", label: tr("common.disabled") },
+  ];
   const fmt = useFormat();
   const router = useRouter();
   const isMobile = useIsMobile();
@@ -116,14 +116,20 @@ export function MaterialTypeTable({ rows }: { rows: MaterialTypeRow[] }) {
       );
       if (result.ok) {
         notifications.show({
-          title: isActive ? "有効化しました" : "無効化しました",
-          message: `${targets.length}件の材種を${isActive ? "有効化" : "無効化"}しました`,
+          title: isActive ? tr("common.enabled2") : tr("common.disabled2"),
+          message: isActive
+            ? tr("master.materialTypeTable.bulkEnabled", {
+                count: targets.length,
+              })
+            : tr("master.materialTypeTable.bulkDisabled", {
+                count: targets.length,
+              }),
           color: "green",
         });
         router.refresh();
       } else {
         notifications.show({
-          title: "エラー",
+          title: tr("common.error2"),
           message: result.error,
           color: "red",
         });
@@ -133,22 +139,26 @@ export function MaterialTypeTable({ rows }: { rows: MaterialTypeRow[] }) {
 
   const bulkDelete = (targets: MaterialTypeRow[]) => {
     openConfirm({
-      title: "材種の一括削除",
-      message: `選択中の${targets.length}件の材種を削除します。この操作は取り消せません。`,
-      confirmLabel: "削除する",
+      title: tr("master.materialTypes.bulkDeleteMaterialTypes"),
+      message: tr("master.materialTypeTable.bulkDeleteConfirm", {
+        count: targets.length,
+      }),
+      confirmLabel: tr("common.delete2"),
       onConfirm: () => {
         startTransition(async () => {
           const result = await deleteMaterialTypes(targets.map((r) => r.id));
           if (result.ok) {
             notifications.show({
-              title: "削除しました",
-              message: `${targets.length}件の材種を削除しました`,
+              title: tr("common.deleted"),
+              message: tr("master.materialTypeTable.bulkDeleted", {
+                count: targets.length,
+              }),
               color: "green",
             });
             router.refresh();
           } else {
             notifications.show({
-              title: "エラー",
+              title: tr("common.error2"),
               message: result.error,
               color: "red",
             });
@@ -161,7 +171,7 @@ export function MaterialTypeTable({ rows }: { rows: MaterialTypeRow[] }) {
   const columns: Column<MaterialTypeRow>[] = [
     {
       key: "code",
-      header: "材種コード",
+      header: tr("common.materialTypeCode"),
       sortable: true,
       width: 160,
       sortValue: (r) => r.code ?? "",
@@ -170,20 +180,20 @@ export function MaterialTypeTable({ rows }: { rows: MaterialTypeRow[] }) {
           <DocNumber>{r.code}</DocNumber>
         ) : (
           <Badge color="gray" size="xs" variant="light">
-            未変換
+            {tr("master.materialTypes.notConverted")}
           </Badge>
         ),
     },
     {
       key: "name",
-      header: "名称",
+      header: tr("common.name2"),
       sortable: true,
       sortValue: (r) => r.name,
       render: (r) => r.name,
     },
     {
       key: "manufacturerName",
-      header: "メーカー",
+      header: tr("common.manufacturer"),
       sortable: true,
       hideable: true,
       width: 120,
@@ -191,7 +201,7 @@ export function MaterialTypeTable({ rows }: { rows: MaterialTypeRow[] }) {
     },
     {
       key: "shapeName",
-      header: "形状",
+      header: tr("common.shape"),
       sortable: true,
       hideable: true,
       width: 90,
@@ -199,7 +209,7 @@ export function MaterialTypeTable({ rows }: { rows: MaterialTypeRow[] }) {
     },
     {
       key: "isActive",
-      header: "状態",
+      header: tr("common.status"),
       sortable: true,
       width: 90,
       sortValue: (r) => (r.isActive ? 1 : 0),
@@ -207,7 +217,7 @@ export function MaterialTypeTable({ rows }: { rows: MaterialTypeRow[] }) {
     },
     {
       key: "updatedAt",
-      header: "更新日",
+      header: tr("common.updated"),
       sortable: true,
       hideable: true,
       width: 120,
@@ -218,14 +228,14 @@ export function MaterialTypeTable({ rows }: { rows: MaterialTypeRow[] }) {
   return (
     <ListShell
       action={<NewButton href={`${BASE_PATH}/new`} />}
-      breadcrumbs={["マスタ", "材種"]}
+      breadcrumbs={[tr("common.masterData"), tr("common.materialTypes")]}
       filters={
         <>
           <Select
             clearable
             data={STRUCTURED_OPTIONS}
             onChange={setStructuredFilter}
-            placeholder="変換状態"
+            placeholder={tr("master.materialTypes.conversionStatus")}
             style={isMobile ? { flex: 1 } : undefined}
             value={structuredFilter}
             w={isMobile ? undefined : 140}
@@ -234,7 +244,7 @@ export function MaterialTypeTable({ rows }: { rows: MaterialTypeRow[] }) {
             clearable
             data={STATUS_OPTIONS}
             onChange={setStatusFilter}
-            placeholder="状態"
+            placeholder={tr("common.status")}
             style={isMobile ? { flex: 1 } : undefined}
             value={statusFilter}
             w={isMobile ? undefined : 160}
@@ -246,28 +256,28 @@ export function MaterialTypeTable({ rows }: { rows: MaterialTypeRow[] }) {
         <TextInput
           leftSection={<IconSearch size={14} />}
           onChange={(e) => setSearch(e.currentTarget.value)}
-          placeholder="材種コード・名称で検索"
+          placeholder={tr("common.searchByMaterialTypeCodeOr")}
           value={search}
         />
       }
-      title="材種"
+      title={tr("common.materialTypes")}
     >
       <DataTable
         bulkActions={[
           {
-            label: "一括有効化",
+            label: tr("common.bulkEnable"),
             icon: <IconCheck size={16} />,
             color: "green",
             onAction: (rs) => bulkSetActive(rs, true),
           },
           {
-            label: "一括無効化",
+            label: tr("common.bulkDisable"),
             icon: <IconCircleMinus size={16} />,
             color: "orange",
             onAction: (rs) => bulkSetActive(rs, false),
           },
           {
-            label: "一括削除",
+            label: tr("common.bulkDelete"),
             icon: <IconTrash size={16} />,
             color: "red",
             onAction: bulkDelete,
@@ -278,14 +288,16 @@ export function MaterialTypeTable({ rows }: { rows: MaterialTypeRow[] }) {
         defaultSort={{ key: "code", dir: "asc" }}
         emptyAction={<NewButton href={`${BASE_PATH}/new`} />}
         emptyIcon={<IconAtom size={24} />}
-        emptyMessage="材種がありません"
+        emptyMessage={tr("master.materialTypes.thereAreNoMaterialTypes")}
         getRowId={(r) => String(r.id)}
         onRowClick={(r) => router.push(`${BASE_PATH}/${r.id}`)}
         renderCard={(r) => (
           <Paper p="sm" radius="sm" withBorder>
             <Group align="flex-start" justify="space-between" wrap="nowrap">
               <Stack gap={3} style={{ minWidth: 0 }}>
-                <DocNumber c="dimmed">{r.code ?? "未変換"}</DocNumber>
+                <DocNumber c="dimmed">
+                  {r.code ?? tr("master.materialTypes.notConverted")}
+                </DocNumber>
                 <Text fw={600} size="sm" truncate>
                   {r.name}
                 </Text>
@@ -299,17 +311,17 @@ export function MaterialTypeTable({ rows }: { rows: MaterialTypeRow[] }) {
         )}
         rowActions={(row) => [
           {
-            label: "編集",
+            label: tr("common.edit2"),
             icon: <IconEdit size={14} />,
             onAction: (r) => router.push(`${BASE_PATH}/${r.id}/edit`),
           },
           {
-            label: row.isActive ? "無効化" : "有効化",
+            label: row.isActive ? tr("common.disable") : tr("common.enable"),
             icon: <IconCircleMinus size={14} />,
             onAction: (r) => setToggleRow(r),
           },
           {
-            label: "削除",
+            label: tr("common.delete"),
             icon: <IconTrash size={14} />,
             color: "red",
             onAction: (r) => setDeleteRow(r),

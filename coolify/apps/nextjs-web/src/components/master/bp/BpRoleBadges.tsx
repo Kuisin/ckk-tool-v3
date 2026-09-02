@@ -8,7 +8,7 @@
  */
 
 import { Badge, Group, Text } from "@mantine/core";
-import { useLocale } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { BP_ROLE_COLOR, bpRoleLabel, vendorTypeLabel } from "@/lib/enum-labels";
 export function BpRoleBadges({
   roles,
@@ -17,11 +17,12 @@ export function BpRoleBadges({
   roles: string[];
   vendorType?: string | null;
 }) {
+  const tr = useTranslations();
   const locale = useLocale();
   if (roles.length === 0) {
     return (
       <Text c="dimmed" size="xs">
-        ロール未設定
+        {tr("master.bp.noRoleSet")}
       </Text>
     );
   }

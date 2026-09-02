@@ -13,6 +13,7 @@ import { notifications } from "@mantine/notifications";
 import { IconArrowDown, IconArrowUp, IconTrash } from "@tabler/icons-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { type ReactNode, useState, useTransition } from "react";
 import { CreateButton } from "@/components/ui/buttons";
 import { EmptyState } from "@/components/ui/EmptyState";
@@ -59,6 +60,7 @@ export function SettingsReorderableList<T>({
   /** 削除確認モーダルの文言。 */
   deleteConfirm: (item: T) => { title: string; message: string };
 }) {
+  const tr = useTranslations();
   const [items, setItems] = useState<T[]>(initial);
   const [isPending, startTransition] = useTransition();
   const router = useRouter();
@@ -71,7 +73,7 @@ export function SettingsReorderableList<T>({
       if (!res.ok) {
         setItems(prev);
         notifications.show({
-          title: "エラー",
+          title: tr("common.error2"),
           message: res.error,
           color: "red",
         });
@@ -139,7 +141,7 @@ export function SettingsReorderableList<T>({
               </Link>
               <Group gap={4} wrap="nowrap">
                 <ActionIcon
-                  aria-label="上へ"
+                  aria-label={tr("common.moveUp")}
                   disabled={i === 0 || isPending}
                   onClick={() => moveRow(i, -1)}
                   variant="subtle"
@@ -147,7 +149,7 @@ export function SettingsReorderableList<T>({
                   <IconArrowUp size={16} />
                 </ActionIcon>
                 <ActionIcon
-                  aria-label="下へ"
+                  aria-label={tr("common.moveDown")}
                   disabled={i === items.length - 1 || isPending}
                   onClick={() => moveRow(i, 1)}
                   variant="subtle"
@@ -155,14 +157,14 @@ export function SettingsReorderableList<T>({
                   <IconArrowDown size={16} />
                 </ActionIcon>
                 <ActionIcon
-                  aria-label="削除"
+                  aria-label={tr("common.delete")}
                   color="red"
                   disabled={isPending}
                   onClick={() =>
                     openConfirm({
                       title: del.title,
                       message: del.message,
-                      confirmLabel: "削除",
+                      confirmLabel: tr("common.delete"),
                       onConfirm: () => persist(items.filter((_, k) => k !== i)),
                     })
                   }

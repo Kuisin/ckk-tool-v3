@@ -2,6 +2,7 @@
   "title": "业务流程",
   "pages": [
     "default-flow",
+    "document-relations",
     "sales",
     "purchasing",
     "production",

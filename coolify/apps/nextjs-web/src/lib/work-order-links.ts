@@ -5,12 +5,10 @@
  * トランザクション内の閉路検証・永続化を担う。
  */
 
+import { getTranslations } from "next-intl/server";
 import { getCurrentActorId, recordAudit } from "./audit";
 import { prisma } from "./db";
-import {
-  validateNewWoLink,
-  WO_LINK_ISSUE_MESSAGE,
-} from "./work-order-links-core";
+import { validateNewWoLink, woLinkIssueMessage } from "./work-order-links-core";
 
 /** リンクを追加できる target の状態（未着手のみ — 開始後は受入が確定済み）。 */
 const LINKABLE_TARGET_STATUSES = ["DRAFT", "PENDING_APPROVAL", "APPROVED"];
@@ -28,6 +26,7 @@ export async function addWorkOrderLink(input: {
   quantity: number | null;
   notes?: string | null;
 }): Promise<WoLinkResult> {
+  const tr = await getTranslations();
   const [source, target] = await Promise.all([
     prisma.workOrder.findUnique({
       where: { workOrderNumber: input.sourceWorkOrderNumber },
@@ -41,20 +40,26 @@ export async function addWorkOrderLink(input: {
   if (!source)
     return {
       ok: false,
-      error: `先行指示書 #${input.sourceWorkOrderNumber} が見つかりません`,
+      error: tr("production.workOrderLinks.precedingWorkOrderNotFound", {
+        number: input.sourceWorkOrderNumber,
+      }),
     };
   if (!target)
     return {
       ok: false,
-      error: `指示書 #${input.targetWorkOrderNumber} が見つかりません`,
+      error: tr("production.workOrderLinks.workOrderNotFound", {
+        number: input.targetWorkOrderNumber,
+      }),
     };
   if (source.status === "CANCELLED" || target.status === "CANCELLED")
-    return { ok: false, error: "キャンセル済みの指示書にはリンクできません" };
+    return {
+      ok: false,
+      error: tr("production.workOrderLinks.cannotLinkToACancelled"),
+    };
   if (!LINKABLE_TARGET_STATUSES.includes(target.status))
     return {
       ok: false,
-      error:
-        "着手済みの指示書には先行リンクを追加できません（受入は開始時に確定済み）",
+      error: tr("production.workOrderLinks.cannotAddAPrecedingLink"),
     };
 
   const actor = await getCurrentActorId();
@@ -69,7 +74,7 @@ export async function addWorkOrderLink(input: {
         { sourceWorkOrderId: source.id, targetWorkOrderId: target.id },
         input.quantity,
       );
-      if (issue) throw new Error(WO_LINK_ISSUE_MESSAGE[issue.kind]);
+      if (issue) throw new Error(woLinkIssueMessage(issue.kind, tr));
       await tx.workOrderLink.create({
         data: {
           sourceWorkOrderId: source.id,
@@ -83,7 +88,10 @@ export async function addWorkOrderLink(input: {
   } catch (e) {
     return {
       ok: false,
-      error: e instanceof Error ? e.message : "リンクの追加に失敗しました",
+      error:
+        e instanceof Error
+          ? e.message
+          : tr("production.workOrderLinks.failedToAddTheLink"),
     };
   }
   await recordAudit({
@@ -91,7 +99,9 @@ export async function addWorkOrderLink(input: {
     tableName: "work_orders",
     recordId: String(target.workOrderNumber),
     after: {
-      note: `先行指示書 #${source.workOrderNumber} をリンク`,
+      note: tr("production.workOrderLinks.linkedPrecedingWorkOrder", {
+        number: source.workOrderNumber,
+      }),
       quantity: input.quantity,
     },
   });
@@ -102,6 +112,7 @@ export async function addWorkOrderLink(input: {
 export async function removeWorkOrderLink(
   linkId: string,
 ): Promise<WoLinkResult> {
+  const tr = await getTranslations();
   const link = await prisma.workOrderLink.findUnique({
     where: { id: linkId },
     select: {
@@ -110,18 +121,27 @@ export async function removeWorkOrderLink(
       targetWorkOrder: { select: { workOrderNumber: true, status: true } },
     },
   });
-  if (!link) return { ok: false, error: "リンクが見つかりません" };
+  if (!link)
+    return {
+      ok: false,
+      error: tr("production.workOrderLinks.linkNotFound"),
+    };
   // 着手後の解除も許可する — source がキャンセルされた場合など、ゲートを
   // 外せないと後続が永久に止まるため。完了済みだけは記録として触らない。
   if (link.targetWorkOrder.status === "COMPLETED")
-    return { ok: false, error: "完了済みの指示書のリンクは解除できません" };
+    return {
+      ok: false,
+      error: tr("production.workOrderLinks.cannotUnlinkACompleted"),
+    };
   await prisma.workOrderLink.delete({ where: { id: linkId } });
   await recordAudit({
     action: "UPDATE",
     tableName: "work_orders",
     recordId: String(link.targetWorkOrder.workOrderNumber),
     after: {
-      note: `先行指示書 #${link.sourceWorkOrder.workOrderNumber} のリンクを解除`,
+      note: tr("production.workOrderLinks.unlinkedPrecedingWorkOrder", {
+        number: link.sourceWorkOrder.workOrderNumber,
+      }),
     },
   });
   return { ok: true };

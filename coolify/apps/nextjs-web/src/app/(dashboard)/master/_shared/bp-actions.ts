@@ -9,6 +9,7 @@
  */
 
 import { revalidatePath } from "next/cache";
+import { getTranslations } from "next-intl/server";
 import { recordAudit } from "@/lib/audit";
 import { checkPermission } from "@/lib/authz";
 import { prisma } from "@/lib/db";
@@ -31,9 +32,10 @@ export async function setBpsActive(
   ids: string[],
   isActive: boolean,
 ): Promise<ActionResult> {
+  const tr = await getTranslations();
   const authz = await checkPermission("master", "UPDATE");
   if (!authz.ok) return actionError(authz.error);
-  if (ids.length === 0) return actionError("対象が選択されていません");
+  if (ids.length === 0) return actionError(tr("common.noTargetSelected"));
   try {
     const priors = await prisma.businessPartner.findMany({
       where: { id: { in: ids } },
@@ -56,14 +58,17 @@ export async function setBpsActive(
     revalidateBp(ids);
     return actionOk();
   } catch (e) {
-    return actionError(prismaErrorMessage(e, "状態の更新に失敗しました"));
+    return actionError(
+      prismaErrorMessage(e, tr("common.statusUpdateFailed"), tr),
+    );
   }
 }
 
 export async function deleteBps(ids: string[]): Promise<ActionResult> {
+  const tr = await getTranslations();
   const authz = await checkPermission("master", "DELETE");
   if (!authz.ok) return actionError(authz.error);
-  if (ids.length === 0) return actionError("対象が選択されていません");
+  if (ids.length === 0) return actionError(tr("common.noTargetSelected"));
   try {
     // Guard: どのロールで使われていても参照があれば消させない
     // （顧客・支店としての販売書類 / 需要家 / 仕入先・外注先としての購買・工程）。
@@ -156,14 +161,10 @@ export async function deleteBps(ids: string[]): Promise<ActionResult> {
       workOrderSteps +
       routeSteps;
     if (referenced > 0) {
-      return actionError(
-        "この取引先を参照するデータ（販売・購買・製造の書類）が存在するため削除できません。無効化を検討してください。",
-      );
+      return actionError(tr("master.bpActions.referencedCannotDelete"));
     }
     if (branches > 0) {
-      return actionError(
-        "支店が存在するため削除できません。先に支店を削除してください。",
-      );
+      return actionError(tr("master.bpActions.branchesExistCannotDelete"));
     }
     const targets = await prisma.businessPartner.findMany({
       where: { id: { in: ids } },
@@ -190,7 +191,9 @@ export async function deleteBps(ids: string[]): Promise<ActionResult> {
     revalidateBp(ids);
     return actionOk();
   } catch (e) {
-    return actionError(prismaErrorMessage(e, "取引先の削除に失敗しました"));
+    return actionError(
+      prismaErrorMessage(e, tr("master.bpActions.deleteFailed"), tr),
+    );
   }
 }
 
@@ -198,11 +201,14 @@ export async function addContact(
   bpId: string,
   input: ContactInput,
 ): Promise<ActionResult<{ id: string }>> {
+  const tr = await getTranslations();
   const authz = await checkPermission("master", "UPDATE");
   if (!authz.ok) return actionError(authz.error);
   const parsed = contactInput.safeParse(input);
   if (!parsed.success) {
-    return actionError(parsed.error.issues[0]?.message ?? "入力が不正です");
+    return actionError(
+      parsed.error.issues[0]?.message ?? tr("common.invalidInput"),
+    );
   }
   const v = parsed.data;
   try {
@@ -229,7 +235,9 @@ export async function addContact(
     revalidateBp([bpId]);
     return actionOk({ id: created.id });
   } catch (e) {
-    return actionError(prismaErrorMessage(e, "担当者の追加に失敗しました"));
+    return actionError(
+      prismaErrorMessage(e, tr("master.bpActions.addContactFailed"), tr),
+    );
   }
 }
 
@@ -237,6 +245,7 @@ export async function deleteContact(
   bpId: string,
   contactId: string,
 ): Promise<ActionResult> {
+  const tr = await getTranslations();
   const authz = await checkPermission("master", "UPDATE");
   if (!authz.ok) return actionError(authz.error);
   try {
@@ -244,6 +253,8 @@ export async function deleteContact(
     revalidateBp([bpId]);
     return actionOk();
   } catch (e) {
-    return actionError(prismaErrorMessage(e, "担当者の削除に失敗しました"));
+    return actionError(
+      prismaErrorMessage(e, tr("master.bpActions.deleteContactFailed"), tr),
+    );
   }
 }

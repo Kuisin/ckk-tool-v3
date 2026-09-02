@@ -23,6 +23,7 @@ import {
 import { DateTimePicker } from "@mantine/dates";
 import { notifications } from "@mantine/notifications";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { useMemo, useState, useTransition } from "react";
 import { requestPrivilegedAccess } from "@/app/(dashboard)/settings/privileged-access/actions";
 import { FormSection, FormShell } from "@/components/ui/shells";
@@ -46,6 +47,7 @@ export function PrivilegedRequestForm({
   /** その人が申請できる権限コードだけ。 */
   codes: ElevationCode[];
 }) {
+  const tr = useTranslations();
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [code, setCode] = useState<ElevationCode | null>(codes[0] ?? null);
@@ -71,7 +73,7 @@ export function PrivilegedRequestForm({
     if (!code) return;
     if (operations.length === 0) {
       notifications.show({
-        title: "操作を 1 つ以上選んでください",
+        title: tr("settings.privileged.selectAtLeastOneOperation"),
         message: "",
         color: "red",
       });
@@ -85,6 +87,7 @@ export function PrivilegedRequestForm({
         durationMinutes: duration,
       },
       new Date(),
+      tr,
     );
     if (invalid) {
       notifications.show({ title: invalid, message: "", color: "red" });
@@ -101,14 +104,14 @@ export function PrivilegedRequestForm({
       });
       if (res.ok) {
         notifications.show({
-          title: "申請しました",
-          message: "承認されると使えるようになります",
+          title: tr("settings.privileged.requested"),
+          message: tr("settings.privileged.theyBecomeUsableOnceApproved"),
           color: "green",
         });
         router.push(BASE_PATH);
       } else {
         notifications.show({
-          title: "エラー",
+          title: tr("common.error2"),
           message: res.error,
           color: "red",
         });
@@ -119,8 +122,7 @@ export function PrivilegedRequestForm({
   if (codes.length === 0) {
     return (
       <Text c="dimmed" p="md" size="sm">
-        申請できる特権操作がありません。必要な場合は管理者にロールの付与を依頼して
-        ください。
+        {tr("settings.privileged.thereAreNoPrivilegedOperationsYou")}
       </Text>
     );
   }
@@ -128,23 +130,23 @@ export function PrivilegedRequestForm({
   return (
     <FormShell
       breadcrumbs={[
-        "システム",
-        { label: "特権アクセス", href: BASE_PATH },
-        "申請",
+        tr("common.system"),
+        { label: tr("common.privilegedAccess"), href: BASE_PATH },
+        tr("settings.privileged.request"),
       ]}
       isPending={isPending}
       onCancel={() => router.push(BASE_PATH)}
       onSubmit={submit}
-      submitLabel="申請する"
-      title="特権アクセスの申請"
+      submitLabel={tr("common.request2")}
+      title={tr("settings.privileged.requestPrivilegedAccess2")}
     >
-      <FormSection title="対象">
+      <FormSection title={tr("common.target")}>
         <Select
           data={codes.map((c) => ({
             value: c,
             label: ELEVATION_CODE_LABEL[c].ja,
           }))}
-          label="権限"
+          label={tr("common.permission")}
           onChange={(v) => {
             setCode(v as ElevationCode);
             setOperations([]);
@@ -155,8 +157,10 @@ export function PrivilegedRequestForm({
       </FormSection>
 
       <FormSection
-        description="承認者はここで選んだ操作を 1 つずつ見て判断します。使わない操作は外してください"
-        title="操作"
+        description={tr(
+          "settings.privileged.theApproverReviewsEachOperationYou",
+        )}
+        title={tr("common.actions")}
       >
         <Checkbox.Group onChange={setOperations} value={operations}>
           <Stack gap="sm">
@@ -172,11 +176,11 @@ export function PrivilegedRequestForm({
         </Checkbox.Group>
       </FormSection>
 
-      <FormSection title="理由">
+      <FormSection title={tr("common.reason")}>
         <Textarea
           autosize
-          description="なぜこの操作が必要かを書いてください。承認者はこれを読んで判断します"
-          label="申請理由"
+          description={tr("settings.privileged.writeWhyTheOperationIsNeeded")}
+          label={tr("settings.privileged.reasonForTheRequest")}
           minRows={3}
           onChange={(e) => setReason(e.currentTarget.value)}
           value={reason}
@@ -185,18 +189,21 @@ export function PrivilegedRequestForm({
       </FormSection>
 
       <FormSection
-        description={`利用できる期間は申請から最長 ${MAX_WINDOW_DAYS} 日です`}
-        title="期間"
+        description={tr(
+          "settings.privilegedRequestForm.theUsablePeriodIsAtMost",
+          { days: MAX_WINDOW_DAYS },
+        )}
+        title={tr("common.period")}
       >
         <DateTimePicker
-          label="開始日時"
+          label={tr("settings.privileged.startsAt")}
           minDate={now}
           onChange={setStartsAt}
           value={startsAt}
           withAsterisk
         />
         <DateTimePicker
-          label="終了日時"
+          label={tr("settings.privileged.endsAt")}
           maxDate={maxEnd}
           minDate={now}
           onChange={setEndsAt}
@@ -204,8 +211,8 @@ export function PrivilegedRequestForm({
           withAsterisk
         />
         <NumberInput
-          description="最初に操作した時点から測ります。使わなければ減りません"
-          label="1 回あたりの有効時間（分）"
+          description={tr("settings.privileged.measuredFromTheFirstUseIt")}
+          label={tr("settings.privileged.validTimePerUseMin")}
           max={MAX_DURATION_MINUTES}
           min={1}
           onChange={(v) => setDuration(typeof v === "number" ? v : 60)}

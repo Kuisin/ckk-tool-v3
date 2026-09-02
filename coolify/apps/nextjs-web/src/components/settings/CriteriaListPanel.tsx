@@ -16,6 +16,7 @@ import {
   IconArrowUp,
 } from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { useState, useTransition } from "react";
 import { updateCriteria } from "@/app/(dashboard)/settings/actions";
 import {
@@ -35,11 +36,24 @@ import type {
 
 const BASE = "/settings/trial-pricing-engine/criteria";
 
-const ROLE_META: Record<CriterionRole, { label: string; color: string }> = {
-  component: { label: "加算", color: "blue" },
-  intermediate: { label: "中間", color: "gray" },
-  final: { label: "見積単価", color: "green" },
-};
+function roleMeta(
+  tr: ReturnType<typeof useTranslations>,
+): Record<CriterionRole, { label: string; color: string }> {
+  return {
+    component: {
+      label: tr("settings.criteriaListPanel.additive"),
+      color: "blue",
+    },
+    intermediate: {
+      label: tr("settings.criteriaListPanel.intermediate"),
+      color: "gray",
+    },
+    final: {
+      label: tr("settings.criterionEditForm.estimatedUnitPrice"),
+      color: "green",
+    },
+  };
+}
 
 const byOrder = (a: Criterion, b: Criterion) => a.order - b.order;
 
@@ -54,6 +68,7 @@ function ToolTypesBadge({
   c: Criterion;
   toolTypes: ToolTypeDef[];
 }) {
+  const tr = useTranslations();
   const toolLabel = (v: string) =>
     toolTypes.find((t) => t.value === v)?.label ?? v;
   if (
@@ -62,18 +77,18 @@ function ToolTypesBadge({
   )
     return (
       <Badge color="teal" size="xs" variant="outline">
-        全工具種
+        {tr("settings.criteriaListPanel.allToolTypes")}
       </Badge>
     );
   if (c.toolTypes.length === 0)
     return (
       <Badge color="red" size="xs" variant="light">
-        適用なし
+        {tr("settings.criteriaListPanel.notApplied")}
       </Badge>
     );
   return (
     <Badge color="teal" size="xs" variant="outline">
-      {c.toolTypes.map(toolLabel).join("・")}
+      {c.toolTypes.map(toolLabel).join(tr("common.s1"))}
     </Badge>
   );
 }
@@ -86,6 +101,8 @@ export function CriteriaListPanel({
   /** 工具種（管理者定義）— 適用バッジの表示に使う。 */
   toolTypes: ToolTypeDef[];
 }) {
+  const tr = useTranslations();
+  const roleMetaMap = roleMeta(tr);
   const [criteria, setCriteria] = useState<Criterion[]>(initial);
   const [isPending, startTransition] = useTransition();
   const router = useRouter();
@@ -105,7 +122,7 @@ export function CriteriaListPanel({
       if (!res.ok) {
         setCriteria(prev);
         notifications.show({
-          title: "エラー",
+          title: tr("common.error2"),
           message: res.error,
           color: "red",
         });
@@ -141,13 +158,13 @@ export function CriteriaListPanel({
     ),
     description: (
       <Group gap={4} wrap="wrap">
-        <Badge color={ROLE_META[c.role].color} size="xs" variant="light">
-          {ROLE_META[c.role].label}
+        <Badge color={roleMetaMap[c.role].color} size="xs" variant="light">
+          {roleMetaMap[c.role].label}
         </Badge>
         <ToolTypesBadge c={c} toolTypes={toolTypes} />
         {!c.enabled && (
           <Badge color="gray" size="xs" variant="light">
-            無効
+            {tr("common.disabled3")}
           </Badge>
         )}
       </Group>
@@ -157,31 +174,39 @@ export function CriteriaListPanel({
   return (
     <>
       <MasterListNav
-        emptyMessage="計算基準がありません。「基準を追加」から作成してください。"
+        emptyMessage={tr(
+          "settings.criteriaListPanel.thereAreNoCriteriaCreateOne",
+        )}
         searchable
-        searchPlaceholder="基準名・ID で絞り込み..."
+        searchPlaceholder={tr(
+          "settings.criteriaListPanel.filterByCriterionNameOrId",
+        )}
         sections={[
           {
-            label: "計算基準（加算・中間）",
+            label: tr(
+              "settings.criteriaListPanel.criteriaAdditiveIntermediate",
+            ),
             items: nonFinal.map(toItem),
           },
           {
-            label: "見積単価（工具種ごとに設定）",
+            label: tr(
+              "settings.criteriaListPanel.estimatedUnitPriceSetPerTool",
+            ),
             items: finals.map(toItem),
-            emptyMessage: "見積単価の基準がありません。",
+            emptyMessage: tr("settings.criteriaListPanel.thereIsNoBasisForThe"),
           },
         ]}
         toolbar={
           <Group gap="xs">
             <CreateButton onClick={() => router.push(`${BASE}/new`)}>
-              基準を追加
+              {tr("settings.criteriaListPanel.addACriterion")}
             </CreateButton>
             <SecondaryButton
               disabled={nonFinal.length < 2}
               leftSection={<IconArrowsSort size={14} />}
               onClick={openReorder}
             >
-              並び替え
+              {tr("settings.criteriaListPanel.sort")}
             </SecondaryButton>
           </Group>
         }
@@ -190,22 +215,26 @@ export function CriteriaListPanel({
       <Modal
         onClose={() => setReorderOpen(false)}
         opened={reorderOpen}
-        title="計算基準の並び替え"
+        title={tr("settings.criteriaListPanel.reorderTheCriteria")}
       >
         <Stack gap="xs">
           <Text c="dimmed" size="xs">
-            上から順に評価されます（加算基準の合計 → 見積単価）。
+            {tr("settings.criteriaListPanel.theyAreEvaluatedTopToBottom")}
           </Text>
           {reorderList.map((c, i) => (
             <Group gap="xs" key={c.id} wrap="nowrap">
               <Text size="sm" style={{ flex: 1, minWidth: 0 }} truncate>
                 {c.name}
               </Text>
-              <Badge color={ROLE_META[c.role].color} size="xs" variant="light">
-                {ROLE_META[c.role].label}
+              <Badge
+                color={roleMetaMap[c.role].color}
+                size="xs"
+                variant="light"
+              >
+                {roleMetaMap[c.role].label}
               </Badge>
               <ActionIcon
-                aria-label="上へ"
+                aria-label={tr("common.moveUp")}
                 disabled={i === 0}
                 onClick={() => moveReorder(i, -1)}
                 variant="subtle"
@@ -213,7 +242,7 @@ export function CriteriaListPanel({
                 <IconArrowUp size={16} />
               </ActionIcon>
               <ActionIcon
-                aria-label="下へ"
+                aria-label={tr("common.moveDown")}
                 disabled={i === reorderList.length - 1}
                 onClick={() => moveReorder(i, 1)}
                 variant="subtle"
@@ -224,7 +253,7 @@ export function CriteriaListPanel({
           ))}
           <Group justify="flex-end" mt="sm">
             <SaveButton loading={isPending} onClick={saveReorder}>
-              並び順を保存
+              {tr("settings.criteriaListPanel.saveTheOrder")}
             </SaveButton>
           </Group>
         </Stack>

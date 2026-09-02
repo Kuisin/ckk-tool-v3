@@ -23,6 +23,7 @@ import {
   IconShieldCheck,
 } from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { type ReactNode, useState, useTransition } from "react";
 import { ActionCard } from "@/components/ui/ActionCard";
 import {
@@ -56,10 +57,18 @@ export interface ApprovalActionState {
 
 const MAX_NAMES = 3;
 
-function remainingText(remaining: { name: string }[]): string {
+function remainingText(
+  remaining: { name: string }[],
+  tr: ReturnType<typeof useTranslations>,
+): string {
   const names = remaining.slice(0, MAX_NAMES).map((r) => r.name);
   const rest = remaining.length - names.length;
-  return rest > 0 ? `${names.join("、")} ほか ${rest} 名` : names.join("、");
+  return rest > 0
+    ? tr("approvals.approvalActionCard.remainingNamesWithOthers", {
+        names: names.join("、"),
+        rest,
+      })
+    : names.join("、");
 }
 
 export function ApprovalActionCard({
@@ -85,6 +94,7 @@ export function ApprovalActionCard({
   onApprove: () => Promise<ActionResult<unknown>>;
   onReject: (reason: string) => Promise<ActionResult<unknown>>;
 }) {
+  const tr = useTranslations();
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [rejectOpen, setRejectOpen] = useState(false);
@@ -100,7 +110,7 @@ export function ApprovalActionCard({
         router.refresh();
       } else {
         notifications.show({
-          title: "エラー",
+          title: tr("common.error2"),
           message: result.error,
           color: "red",
         });
@@ -113,8 +123,16 @@ export function ApprovalActionCard({
   // 「第2/3段「部門承認」・製造部長」— 何段あって今どこかを 1 行で出す
   const where =
     stepCount > 1
-      ? `第 ${stepNo}/${stepCount} 段「${stepLabel}」・${groupLabel}`
-      : `${stepLabel}・${groupLabel}`;
+      ? tr("approvals.approvalActionCard.stepAndGroupLabel", {
+          stepNo,
+          stepCount,
+          stepLabel,
+          groupLabel,
+        })
+      : tr("approvals.approvalActionCard.stepAndGroupLabelSingle", {
+          stepLabel,
+          groupLabel,
+        });
 
   let card: ReactNode = null;
 
@@ -127,22 +145,30 @@ export function ApprovalActionCard({
             disabled={blocked}
             leftSection={<IconSend size={14} />}
             loading={isPending}
-            onClick={() => run(onRequest, "承認依頼しました")}
+            onClick={() => run(onRequest, tr("common.approvalRequested"))}
           >
-            {isRejected ? "再承認依頼" : "承認依頼"}
+            {isRejected
+              ? tr("approvals.approvalActionCard.reRequestApproval")
+              : tr("common.approvalRequest")}
           </PrimaryButton>
         }
         description={
           blocked
             ? requestBlockedReason
             : isRejected
-              ? `差し戻し理由: ${rejectReason ?? "—"}（修正して再依頼できます）`
-              : "承認フローの最初の段へ依頼します"
+              ? tr("approvals.approvalActionCard.rejectReasonCanReRequest", {
+                  reason: rejectReason ?? "—",
+                })
+              : tr("approvals.approvalActionCard.itIsSentToTheFirst")
         }
         icon={
           isRejected ? <IconArrowBackUp size={20} /> : <IconSend size={20} />
         }
-        title={isRejected ? "差し戻されました" : "承認依頼が必要です"}
+        title={
+          isRejected
+            ? tr("approvals.approvalActionCard.itWasSentBack")
+            : tr("approvals.approvalActionCard.anApprovalRequestIsRequired")
+        }
         tone={isRejected ? "alert" : "action"}
       />
     );
@@ -154,38 +180,58 @@ export function ApprovalActionCard({
             <>
               <ApproveButton
                 loading={isPending}
-                onClick={() => run(onApprove, "承認しました")}
+                onClick={() => run(onApprove, tr("common.approved"))}
               >
-                承認
+                {tr("common.approve")}
               </ApproveButton>
               <RejectButton onClick={() => setRejectOpen(true)} />
             </>
           }
           description={
             mode === "ALL"
-              ? `${where} — 全員の承認が必要です（残り ${approval.remaining.length} 名: ${remainingText(approval.remaining)}）`
-              : `${where} の承認者としてこの書類を承認できます`
+              ? tr(
+                  "approvals.approvalActionCard.allMembersMustApproveRemaining",
+                  {
+                    where,
+                    count: approval.remaining.length,
+                    names: remainingText(approval.remaining, tr),
+                  },
+                )
+              : tr("approvals.approvalActionCard.youCanApproveAsAnApprover", {
+                  where,
+                })
           }
           icon={<IconShieldCheck size={20} />}
-          title="承認してください"
+          title={tr("approvals.approvalActionCard.pleaseApprove")}
           tone="approve"
         />
       );
     } else if (approval.alreadyActed) {
       card = (
         <ActionCard
-          description={`${where} — 残り ${approval.remaining.length} 名: ${remainingText(approval.remaining)}`}
+          description={tr("approvals.approvalActionCard.remainingApprovers", {
+            where,
+            count: approval.remaining.length,
+            names: remainingText(approval.remaining, tr),
+          })}
           icon={<IconClock size={20} />}
-          title="あなたの承認は記録済みです"
+          title={tr("approvals.approvalActionCard.yourApprovalHasBeenRecorded")}
           tone="wait"
         />
       );
     } else {
       card = (
         <ActionCard
-          description={`${groupLabel} のメンバーのみ承認・差し戻しできます`}
+          description={tr(
+            "approvals.approvalActionCard.onlyGroupMembersCanAct",
+            {
+              groupLabel,
+            },
+          )}
           icon={<IconClock size={20} />}
-          title={`${stepLabel}待ち`}
+          title={tr("approvals.approvalActionCard.stepLabelWaiting", {
+            stepLabel,
+          })}
           tone="wait"
         />
       );
@@ -199,33 +245,33 @@ export function ApprovalActionCard({
       {card}
       <ModalShell
         confirmColor="red"
-        confirmLabel="差し戻す"
+        confirmLabel={tr("common.sendBack")}
         loading={isPending}
         onClose={() => setRejectOpen(false)}
         onConfirm={() => {
           if (!reason.trim()) {
             notifications.show({
-              title: "エラー",
-              message: "差し戻し理由を入力してください",
+              title: tr("common.error2"),
+              message: tr("common.enterAReasonForSendingIt"),
               color: "red",
             });
             return;
           }
-          run(() => onReject(reason), "差し戻しました");
+          run(() => onReject(reason), tr("common.sentBack"));
         }}
         opened={rejectOpen}
         size="sm"
-        title="差し戻しの確認"
+        title={tr("common.confirmSendingBack")}
       >
         <Text c="dimmed" mb="xs" size="xs">
-          差し戻すと承認フローは止まり、書類は編集できる状態に戻ります。
+          {tr("approvals.approvalActionCard.sendingItBackStopsTheApproval")}
         </Text>
         <Textarea
           autosize
           label={<HelpLabel {...fieldHelp("approval", "rejectReason")} />}
           minRows={3}
           onChange={(e) => setReason(e.currentTarget.value)}
-          placeholder="理由を入力"
+          placeholder={tr("common.enterAReason")}
           value={reason}
           withAsterisk
         />

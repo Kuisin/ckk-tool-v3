@@ -21,6 +21,7 @@ import {
   parseStoredSamples,
   requiredSampleCount,
   resolveItemPass,
+  sampleLabel,
   samplingLabelJa,
 } from "./inspection-core";
 
@@ -133,6 +134,17 @@ describe("evaluateSample", () => {
     expect(evaluateSample(multi, ["ok", "bad"])).toBe(false);
     expect(evaluateSample(multi, [])).toBeNull(); // 未入力
   });
+
+  it("TEXT: 基準を持たない — 常に手動判定", () => {
+    const text = spec({
+      inputType: "TEXT",
+      unit: null,
+      toleranceMin: null,
+      toleranceMax: null,
+    });
+    expect(evaluateSample(text, "形状OK")).toBeNull();
+    expect(evaluateSample(text, "")).toBeNull();
+  });
 });
 
 describe("evaluateItem", () => {
@@ -237,6 +249,7 @@ describe("resolveItemPass / hasAcceptCriteria", () => {
     ).toBe(false);
     expect(hasAcceptCriteria(selectSpec())).toBe(true);
     expect(hasAcceptCriteria(selectSpec({ acceptOptions: [] }))).toBe(false);
+    expect(hasAcceptCriteria(spec({ inputType: "TEXT" }))).toBe(false);
   });
 });
 
@@ -265,6 +278,25 @@ describe("labels & formatting", () => {
     expect(acceptLabel(selectSpec())).toBe("良好・軽微");
     expect(acceptLabel(selectSpec(), "en")).toBe("OK・Minor");
     expect(acceptLabel(selectSpec({ acceptOptions: [] }))).toBeNull();
+  });
+
+  it("acceptLabel: BoolLabels で範囲の言い回し・区切りを差し替えられる（画面側の言語対応）", () => {
+    const en = {
+      yes: "Yes",
+      no: "No",
+      rangeBetween: (min: string, max: string) => `${min} to ${max}`,
+      rangeAtLeast: (min: string) => `${min} or more`,
+      rangeAtMost: (max: string) => `${max} or less`,
+      listSeparator: ", ",
+    };
+    expect(acceptLabel(spec(), "en", en)).toBe("7.9 to 8.1 mm");
+    expect(acceptLabel(spec({ toleranceMax: null }), "en", en)).toBe(
+      "7.9 or more mm",
+    );
+    expect(acceptLabel(spec({ toleranceMin: null }), "en", en)).toBe(
+      "8.1 or less mm",
+    );
+    expect(acceptLabel(selectSpec(), "en", en)).toBe("OK, Minor");
   });
 
   it("goalLabel: 型別の目標表示", () => {
@@ -301,6 +333,21 @@ describe("labels & formatting", () => {
     expect(samplingLabelJa(sampling("ALL"), 50)).toBe("全数（50本）");
     expect(samplingLabelJa(sampling("PERCENT", 10), 5)).toBe("抜取 10%（5本）");
     expect(samplingLabelJa(sampling("COUNT", 5))).toBe("抜取 5本");
+  });
+
+  it("formatSampleValue: TEXT はそのまま表示", () => {
+    const text = spec({ inputType: "TEXT", unit: null });
+    expect(formatSampleValue(text, "形状OK")).toBe("形状OK");
+    expect(formatSampleValue(text, "")).toBe("—");
+  });
+
+  it("sampleLabel: GENERIC は製品N、INITIAL_MID_FINAL は先頭3件だけ差し替え", () => {
+    expect(sampleLabel(0, "GENERIC")).toBe("製品 1");
+    expect(sampleLabel(3, "GENERIC")).toBe("製品 4");
+    expect(sampleLabel(0, "INITIAL_MID_FINAL")).toBe("初品");
+    expect(sampleLabel(1, "INITIAL_MID_FINAL")).toBe("中間品");
+    expect(sampleLabel(2, "INITIAL_MID_FINAL")).toBe("最終品");
+    expect(sampleLabel(3, "INITIAL_MID_FINAL")).toBe("製品 4");
   });
 });
 

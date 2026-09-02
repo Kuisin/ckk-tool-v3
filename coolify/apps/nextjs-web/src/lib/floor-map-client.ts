@@ -11,9 +11,13 @@
 
 import type { ActionResult } from "./server-action";
 
+/** next-intl の `t()` と互換の最小の形（クライアント側の `useTranslations()` を渡す）。 */
+type TrLike = (key: string) => string;
+
 export async function uploadFloorMapImage(
   mapId: string,
   file: File,
+  tr: TrLike,
 ): Promise<ActionResult> {
   let res: Response;
   try {
@@ -24,9 +28,9 @@ export async function uploadFloorMapImage(
       body,
     });
   } catch {
-    return { ok: false, error: "通信に失敗しました" };
+    return { ok: false, error: tr("common.communicationFailed") };
   }
   const json = (await res.json().catch(() => null)) as ActionResult | null;
   if (json && typeof json === "object" && "ok" in json) return json;
-  return { ok: false, error: "図面画像の更新に失敗しました" };
+  return { ok: false, error: tr("common.mapImageUpdateFailed") };
 }

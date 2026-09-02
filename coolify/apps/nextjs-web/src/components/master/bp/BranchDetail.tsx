@@ -8,6 +8,7 @@ import { Stack } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
 import { IconTrash } from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { useTransition } from "react";
 import type { BranchDetail as BranchDetailData } from "@/app/(dashboard)/master/_shared/bp-data";
 import { BP_BASE_PATH } from "@/app/(dashboard)/master/_shared/bp-paths";
@@ -22,6 +23,7 @@ import { openConfirm } from "@/components/ui/modals";
 import { DetailShell, ResourceActions } from "@/components/ui/shells";
 
 export function BranchDetail({ record }: { record: BranchDetailData }) {
+  const tr = useTranslations();
   const fmt = useFormat();
   const router = useRouter();
   const [, startTransition] = useTransition();
@@ -29,22 +31,27 @@ export function BranchDetail({ record }: { record: BranchDetailData }) {
 
   const handleDelete = () => {
     openConfirm({
-      title: "支店の削除",
-      message: `支店「${record.nameJa}（${record.bpCode}）」を削除します。この操作は取り消せません。`,
-      confirmLabel: "削除する",
+      title: tr("master.bp.deleteTheBranch"),
+      message: tr("master.branchDetail.deleteConfirmMessage", {
+        name: record.nameJa,
+        code: record.bpCode,
+      }),
+      confirmLabel: tr("common.delete2"),
       onConfirm: () => {
         startTransition(async () => {
           const result = await deleteBranch(record.parentId, record.id);
           if (result.ok) {
             notifications.show({
-              title: "削除しました",
-              message: `支店「${record.nameJa}」を削除しました`,
+              title: tr("common.deleted"),
+              message: tr("master.branchDetail.deletedMessage", {
+                name: record.nameJa,
+              }),
               color: "green",
             });
             router.push(parentPath);
           } else {
             notifications.show({
-              title: "エラー",
+              title: tr("common.error2"),
               message: result.error,
               color: "red",
             });
@@ -60,7 +67,7 @@ export function BranchDetail({ record }: { record: BranchDetailData }) {
         <ResourceActions
           menuItems={[
             {
-              label: "削除",
+              label: tr("common.delete"),
               icon: <IconTrash size={14} />,
               color: "red",
               onClick: handleDelete,
@@ -70,8 +77,8 @@ export function BranchDetail({ record }: { record: BranchDetailData }) {
         />
       }
       breadcrumbs={[
-        "マスタ",
-        { label: "取引先", href: BP_BASE_PATH },
+        tr("common.masterData"),
+        { label: tr("common.businessPartners"), href: BP_BASE_PATH },
         { label: record.parentName, href: parentPath },
         record.bpCode,
       ]}
@@ -83,7 +90,7 @@ export function BranchDetail({ record }: { record: BranchDetailData }) {
       <BpBaseSummary
         extra={
           <FieldValue
-            label="親法人"
+            label={tr("master.bp.parentCompany")}
             value={
               <DocNumber c="blue">
                 {record.parentBpCode}（{record.parentName}）
@@ -102,7 +109,7 @@ export function BranchDetail({ record }: { record: BranchDetailData }) {
         />
       </Stack>
 
-      <FieldValue label="備考" value={record.notes || "—"} />
+      <FieldValue label={tr("common.notes")} value={record.notes || "—"} />
     </DetailShell>
   );
 }

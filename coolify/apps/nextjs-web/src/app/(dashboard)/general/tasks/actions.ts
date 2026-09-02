@@ -12,6 +12,7 @@
  */
 
 import { revalidatePath } from "next/cache";
+import { getTranslations } from "next-intl/server";
 import { sessionUserId } from "@/lib/authz";
 import { type ActionResult, actionError, actionOk } from "@/lib/server-action";
 import { sanitizeHiddenTabs, TASK_TABS_SETTING_KEY } from "@/lib/tasks-tabs";
@@ -20,8 +21,9 @@ import { writeViewSetting } from "@/lib/view-settings";
 export async function saveTaskTabsSetting(
   hidden: string[],
 ): Promise<ActionResult> {
+  const tr = await getTranslations();
   const userId = await sessionUserId();
-  if (!userId) return actionError("ログインしてください");
+  if (!userId) return actionError(tr("general.tasksActions.loginRequired"));
 
   // 知らない id は落とす（画面が正しく送っていても、受け取り側で確かめ直す）。
   const clean = sanitizeHiddenTabs({ hidden });
@@ -30,6 +32,6 @@ export async function saveTaskTabsSetting(
     revalidatePath("/general/tasks");
     return actionOk();
   } catch {
-    return actionError("表示設定の保存に失敗しました");
+    return actionError(tr("general.tasksActions.saveFailed"));
   }
 }

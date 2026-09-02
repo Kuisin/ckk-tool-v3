@@ -16,7 +16,7 @@
 import { Select, Stack, TextInput } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
 import { useRouter } from "next/navigation";
-import { useLocale } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { useState, useTransition } from "react";
 import {
   createProduct,
@@ -30,6 +30,7 @@ import {
 } from "@/components/ui/modals";
 import { LocalizedTextInput } from "@/components/ui/shells";
 import { unitOptions } from "@/lib/enum-labels";
+import type { Tr } from "@/lib/i18n";
 
 export interface ProductModalTarget {
   id: number;
@@ -44,8 +45,9 @@ export interface ProductModalTarget {
   unit: string;
 }
 
-function label(t: ProductModalTarget) {
-  const code = t.code ?? "未採番";
+// フックを使えない素の関数なので、解決済みの `tr` を引数で受ける。
+function label(t: ProductModalTarget, tr: Tr) {
+  const code = t.code ?? tr("common.notNumbered");
   return t.name !== "—" ? `${t.name}（${code}）` : code;
 }
 
@@ -58,14 +60,17 @@ export function DeleteProductModal({
   target: ProductModalTarget | null;
   onDone?: () => void;
 }) {
+  const tr = useTranslations();
   const [isPending, startTransition] = useTransition();
   return (
     <ConfirmModal
-      confirmLabel="削除する"
+      confirmLabel={tr("common.delete2")}
       loading={isPending}
       message={
         target
-          ? `製品「${label(target)}」を削除します。この操作は取り消せません。`
+          ? tr("master.products.deleteProductConfirm", {
+              name: label(target, tr),
+            })
           : ""
       }
       onClose={onClose}
@@ -75,14 +80,16 @@ export function DeleteProductModal({
           const result = await deleteProducts([target.id]);
           if (result.ok) {
             notifications.show({
-              title: "削除しました",
-              message: `製品「${label(target)}」を削除しました`,
+              title: tr("common.deleted"),
+              message: tr("master.products.productDeleted", {
+                name: label(target, tr),
+              }),
               color: "green",
             });
             onDone?.();
           } else {
             notifications.show({
-              title: "エラー",
+              title: tr("common.error2"),
               message: result.error,
               color: "red",
             });
@@ -90,8 +97,8 @@ export function DeleteProductModal({
         });
       }}
       opened={opened}
-      title="製品の削除"
-      warning="この製品を参照する価格試算・価格表・見積書が存在する場合は削除できません。無効化をご検討ください。"
+      title={tr("master.products.deleteTheProduct")}
+      warning={tr("master.products.itCannotBeDeletedWhilePrice")}
     />
   );
 }
@@ -105,18 +112,25 @@ export function ToggleProductActiveModal({
   target: ProductModalTarget | null;
   onDone?: () => void;
 }) {
+  const tr = useTranslations();
   const [isPending, startTransition] = useTransition();
   const isActive = target?.isActive ?? true;
   return (
     <ConfirmModal
       confirmColor={isActive ? "red" : "blue"}
-      confirmLabel={isActive ? "無効化する" : "有効化する"}
+      confirmLabel={
+        isActive ? tr("common.disableAction") : tr("common.enable2")
+      }
       loading={isPending}
       message={
         target
           ? isActive
-            ? `製品「${label(target)}」を無効化します。新規の価格試算・価格表・見積書で選択できなくなります。`
-            : `製品「${label(target)}」を有効化します。再び価格試算・価格表・見積書で選択できるようになります。`
+            ? tr("master.products.disableProductConfirm", {
+                name: label(target, tr),
+              })
+            : tr("master.products.enableProductConfirm", {
+                name: label(target, tr),
+              })
           : ""
       }
       onClose={onClose}
@@ -126,14 +140,20 @@ export function ToggleProductActiveModal({
           const result = await setProductsActive([target.id], !isActive);
           if (result.ok) {
             notifications.show({
-              title: isActive ? "無効化しました" : "有効化しました",
-              message: `製品「${label(target)}」を${isActive ? "無効化" : "有効化"}しました`,
+              title: isActive ? tr("common.disabled2") : tr("common.enabled2"),
+              message: isActive
+                ? tr("master.products.productDisabled", {
+                    name: label(target, tr),
+                  })
+                : tr("master.products.productEnabled", {
+                    name: label(target, tr),
+                  }),
               color: "green",
             });
             onDone?.();
           } else {
             notifications.show({
-              title: "エラー",
+              title: tr("common.error2"),
               message: result.error,
               color: "red",
             });
@@ -141,7 +161,11 @@ export function ToggleProductActiveModal({
         });
       }}
       opened={opened}
-      title={isActive ? "製品の無効化" : "製品の有効化"}
+      title={
+        isActive
+          ? tr("master.products.disableTheProduct")
+          : tr("master.products.enableTheProduct")
+      }
     />
   );
 }
@@ -153,6 +177,7 @@ export function DuplicateProductModal({
 }: ModalBaseProps & {
   source: ProductModalTarget | null;
 }) {
+  const tr = useTranslations();
   const locale = useLocale();
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
@@ -167,13 +192,17 @@ export function DuplicateProductModal({
   // Seed the fields from the copy source each time a new source opens.
   if (opened && source && seededFrom !== source.id) {
     setSeededFrom(source.id);
-    setNameJa(source.name !== "—" ? `${source.name}（コピー）` : "");
+    setNameJa(
+      source.name !== "—"
+        ? tr("master.products.copyOfName", { name: source.name })
+        : "",
+    );
     setNameTranslations({});
     setUnit(source.unit);
   }
 
   const materialSpecText = source?.materialTypeId
-    ? `${source.materialTypeLabel || "材種"} ／ φ${source.diameterMm ?? "—"} × ${source.lengthMm ?? "—"}mm`
+    ? `${source.materialTypeLabel || tr("common.materialTypes")} ／ φ${source.diameterMm ?? "—"} × ${source.lengthMm ?? "—"}mm`
     : "—";
 
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
@@ -196,8 +225,10 @@ export function DuplicateProductModal({
       });
       if (result.ok) {
         notifications.show({
-          title: "複製しました",
-          message: `製品「${result.data.code}」を作成しました`,
+          title: tr("master.products.duplicated"),
+          message: tr("master.products.productCreated", {
+            code: result.data.code,
+          }),
           color: "green",
         });
         setSeededFrom(null);
@@ -205,7 +236,7 @@ export function DuplicateProductModal({
         router.push(`/master/products/${result.data.id}`);
       } else {
         notifications.show({
-          title: "エラー",
+          title: tr("common.error2"),
           message: result.error,
           color: "red",
         });
@@ -223,14 +254,14 @@ export function DuplicateProductModal({
       onSubmit={handleSubmit}
       opened={opened}
       size="md"
-      submitLabel="複製して新規作成"
-      title="製品の複製"
+      submitLabel={tr("master.products.duplicateToCreateANewOne")}
+      title={tr("master.products.duplicateTheProduct")}
     >
       <Stack gap="sm">
         {/* 内部 ID ではなく製品名と採番済みコードを見せる */}
         <TextInput
           disabled
-          label="複製元"
+          label={tr("master.products.duplicatedFrom")}
           readOnly
           value={
             source
@@ -242,13 +273,14 @@ export function DuplicateProductModal({
         />
         <LocalizedTextInput
           jaProps={{
-            description:
-              "製品コードは保存時に自動採番されます（PRD-YYYYMM-NNNN）",
+            description: tr(
+              "master.products.theProductCodeIsAssignedAutomatically",
+            ),
             value: nameJa,
             onChange: (e: React.ChangeEvent<HTMLInputElement>) =>
               setNameJa(e.currentTarget.value),
           }}
-          label="名称"
+          label={tr("common.name2")}
           required
           translationsProps={{
             value: nameTranslations,
@@ -256,15 +288,15 @@ export function DuplicateProductModal({
           }}
         />
         <TextInput
-          description="複製元の材種・直径・全長を引き継ぎます（作成後に編集できます）"
+          description={tr("master.products.carriesOverTheSourceSMaterial")}
           disabled
-          label="素材仕様"
+          label={tr("common.materialSpecification")}
           readOnly
           value={materialSpecText}
         />
         <Select
           data={unitOptions(locale)}
-          label="単位"
+          label={tr("common.unit")}
           onChange={setUnit}
           value={unit}
           withAsterisk

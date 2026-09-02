@@ -3,5 +3,10 @@
     "description": "取引先ポータル（社外向け・メール OTP ログイン）",
     "environments": ["dev"],
     "appKeys": ["portal-admin"]
+  },
+  "display": {
+    "description": "管理ディスプレイ（SY09 端末管理のディスプレイ関連タブ）",
+    "environments": ["dev"],
+    "appKeys": []
   }
 }

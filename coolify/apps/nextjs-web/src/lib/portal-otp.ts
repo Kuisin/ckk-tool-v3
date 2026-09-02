@@ -97,6 +97,8 @@ export async function issuePortalChallenge(input: {
   // デコイでも本物と同じ仕事をする（scrypt のコストまで込みで揃える）。
   const code = generateCode(PORTAL_OTP_LENGTH);
   const challengeRef = mintChallengeRef();
+  // デコイでも本物と同じ scrypt を回す（応答時間で存在を漏らさない）
+  const codeHash = await hashPassword(code);
 
   await prisma.portalLoginChallenge
     .create({
@@ -105,7 +107,7 @@ export async function issuePortalChallenge(input: {
         portalAccountId: live ? account.id : null,
         linkId: input.linkId ?? null,
         emailRef: emailRefOf(email),
-        codeHash: hashPassword(code),
+        codeHash,
         expiresAt: new Date(now.getTime() + PORTAL_OTP_TTL_MS),
         lastIpAddress: input.ipAddress ?? null,
         userAgent: input.userAgent?.slice(0, 512) ?? null,
@@ -171,7 +173,7 @@ export async function verifyPortalChallenge(input: {
     return { ok: false, failure: "ATTEMPTS" };
   }
 
-  const matched = verifyPassword(normalizeCode(input.code), row.codeHash);
+  const matched = await verifyPassword(normalizeCode(input.code), row.codeHash);
 
   if (!matched) {
     const attempts = row.attempts + 1;
@@ -221,14 +223,15 @@ export async function issuePortalBackupCodes(input: {
     generateCode(PORTAL_BACKUP_CODE_LENGTH),
   );
 
+  const hashes = await Promise.all(codes.map((code) => hashPassword(code)));
   await prisma.$transaction(async (tx) => {
     await tx.portalBackupCode.deleteMany({
       where: { portalAccountId: input.accountId },
     });
     await tx.portalBackupCode.createMany({
-      data: codes.map((code, i) => ({
+      data: hashes.map((codeHash, i) => ({
         portalAccountId: input.accountId,
-        codeHash: hashPassword(code),
+        codeHash,
         ordinal: i + 1,
         issuedBy: input.issuedBy,
       })),
@@ -263,7 +266,7 @@ export async function consumePortalBackupCode(input: {
   });
 
   for (const row of rows) {
-    if (!verifyPassword(normalized, row.codeHash)) continue;
+    if (!(await verifyPassword(normalized, row.codeHash))) continue;
     const used = await prisma.portalBackupCode.updateMany({
       where: { id: row.id, usedAt: null },
       data: { usedAt: new Date(), usedIp: input.ipAddress ?? null },

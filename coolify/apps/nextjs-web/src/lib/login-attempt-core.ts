@@ -8,8 +8,10 @@
  * ファイルが値の集合の唯一の定義**で、DB 側は VarChar で受ける
  * （kiosk_device_logs.source と同じ割り切り）。
  *
- * 表示ラベルもここに置く。SY0D（ログイン履歴）とキオスク側の記録が
- * 同じ語彙を見ていることを型で保証するため。
+ * 表示ラベルは lib/login-attempt-labels.ts（web 専用・next-intl 経由）に
+ * 分けてある——ここは web/kiosk の双子ファイルで next-intl を読み込めない。
+ * SY0D（ログイン履歴）とキオスク側の記録が同じ語彙（この列挙）を見ている
+ * ことは型で保証する。
  */
 
 import { parseQrPayload, QR_KINDS } from "./qr-payload";
@@ -67,6 +69,8 @@ export const LOGIN_FAILURE_REASONS = [
   "PIN_FORMAT",
   "PIN_MISMATCH",
   "PIN_ALREADY_SET",
+  // 初回設定の PIN が弱い（桁数不足・同じ数字の連続・123456 のような並び）
+  "PIN_WEAK",
   // ── キオスク: アテステーション / 端末設定 ───────────────────────────────
   "ATTEST_NOT_CONFIGURED",
   "ATTEST_BAD_SIGNATURE",
@@ -76,6 +80,16 @@ export const LOGIN_FAILURE_REASONS = [
   "SETTINGS_NO_DEVICE",
   "SETTINGS_LOCKED",
   "SETTINGS_CODE_INVALID",
+  // ── キオスク: 端末トークンの再発行（Cookie 消失時の復帰）────────────────
+  // deviceId だけでは再発行しない — 端末鍵の署名か端末設定コードが要る。
+  "REACTIVATE_PROOF_REQUIRED",
+  "REACTIVATE_BAD_SIGNATURE",
+  "REACTIVATE_CODE_INVALID",
+  "REACTIVATE_LOCKED",
+  // 生きているトークンを持つディスプレイは再発行しない（再リンクへ）
+  "REACTIVATE_TOKEN_LIVE",
+  // 退出 PIN の配布はアテステーション済みの端末（専用アプリ）にだけ渡す
+  "UNLOCK_PIN_NOT_ATTESTED",
   // ── 取引先ポータル（社外向け）─────────────────────────────────────────
   // **画面はこれらを区別しない**（存在するアドレスとしないアドレスが
   // 見分けられてしまう）。区別するのはこの記録の中だけ。
@@ -132,79 +146,6 @@ export function scanKindOf(payload: unknown): ScanKind {
   return "MALFORMED";
 }
 
-const METHOD_LABELS: Record<LoginMethod, string> = {
-  PASSWORD: "パスワード",
-  SSO: "シングルサインオン",
-  QR_SCAN: "QRカード（スキャンのみ）",
-  QR_PIN: "QRカード + PIN",
-  PIN_SETUP: "PIN 初回設定",
-  ATTEST: "端末アテステーション",
-  DEVICE_SETTINGS: "端末設定コード",
-  DEVICE_LINK: "端末リンク",
-  PORTAL_OTP: "取引先ポータル（確認コード）",
-  PORTAL_BACKUP: "取引先ポータル（バックアップコード）",
-  PORTAL_LINK: "取引先ポータル（書類リンク）",
-};
-
-const REASON_LABELS: Record<LoginFailureReason, string> = {
-  EMPTY_INPUT: "入力が空",
-  RATE_LIMITED: "レート制限",
-  UNKNOWN_USER: "ユーザーが存在しない",
-  USER_INACTIVE: "ユーザーが無効",
-  NO_PASSWORD_SET: "パスワード未設定",
-  BAD_PASSWORD: "パスワード不一致",
-  SSO_NO_USERNAME: "SSO: ユーザー名クレームなし",
-  SSO_USER_INACTIVE: "SSO: ユーザーが無効",
-  SSO_UPSERT_FAILED: "SSO: ユーザー登録に失敗",
-  SSO_CALLBACK_ERROR: "SSO: コールバック失敗",
-  DEVICE_NO_COOKIE: "端末Cookieなし",
-  DEVICE_NOT_FOUND: "未登録の端末",
-  DEVICE_EXPIRED: "端末トークン期限切れ",
-  DEVICE_DISABLED: "端末が無効",
-  DEVICE_REVOKED: "端末が取り消し済み",
-  DEVICE_PENDING: "端末が未有効化",
-  ATTEST_REQUIRED: "アテステーション未通過",
-  BAD_REQUEST: "リクエスト不正",
-  CARD_INVALID: "カードが無効",
-  CARD_SUSPENDED: "カードが一時停止",
-  CARD_EXPIRED: "カードが有効期間外",
-  LOCKED: "ロック中",
-  TICKET_EXPIRED: "チケット期限切れ",
-  PIN_FORMAT: "PIN の形式不正",
-  PIN_MISMATCH: "PIN 不一致",
-  PIN_ALREADY_SET: "PIN 設定済み",
-  ATTEST_NOT_CONFIGURED: "アテステーション未設定",
-  ATTEST_BAD_SIGNATURE: "署名検証に失敗",
-  ATTEST_KEY_MISMATCH: "端末鍵が不一致",
-  ATTEST_KEY_IN_USE: "端末鍵が他端末で使用中",
-  ATTEST_BAD_PROFILE: "端末プロファイル不正",
-  SETTINGS_NO_DEVICE: "端末設定: 端末不明",
-  SETTINGS_LOCKED: "端末設定: ロック中",
-  SETTINGS_CODE_INVALID: "端末設定コード不一致",
-  PORTAL_UNKNOWN_EMAIL: "ポータル: 未登録のアドレス",
-  PORTAL_ACCOUNT_INACTIVE: "ポータル: アカウントが無効",
-  PORTAL_CODE_EXPIRED: "ポータル: 確認コード期限切れ",
-  PORTAL_CODE_MISMATCH: "ポータル: 確認コード不一致",
-  PORTAL_CODE_ATTEMPTS: "ポータル: 確認コード試行上限",
-  PORTAL_BACKUP_INVALID: "ポータル: バックアップコード不一致",
-  PORTAL_LINK_NOT_FOUND: "ポータル: リンクが存在しない",
-  PORTAL_LINK_EXPIRED: "ポータル: リンク期限切れ",
-  PORTAL_LINK_REVOKED: "ポータル: リンクが失効済み",
-  PORTAL_LINK_EXHAUSTED: "ポータル: リンクの使用回数超過",
-  PORTAL_MAIL_FAILED: "ポータル: メール送信に失敗",
-  PORTAL_MAIL_BLOCKED_DEV: "ポータル: dev の許可リスト外",
-  UNKNOWN: "不明",
-};
-
-export function loginMethodLabel(method: string): string {
-  return METHOD_LABELS[method as LoginMethod] ?? method;
-}
-
-export function loginReasonLabel(reason: string | null): string {
-  if (!reason) return "—";
-  return REASON_LABELS[reason as LoginFailureReason] ?? reason;
-}
-
 /**
  * キオスクのレスポンス state（画面が分岐に使う値）→ 失敗理由。
  * **state を足したらここも足す**。対応が無いものは "UNKNOWN" に落ちるので
@@ -220,6 +161,7 @@ const KIOSK_STATE_REASONS: Record<string, LoginFailureReason> = {
   PIN_FORMAT: "PIN_FORMAT",
   PIN_MISMATCH: "PIN_MISMATCH",
   PIN_ALREADY_SET: "PIN_ALREADY_SET",
+  PIN_WEAK: "PIN_WEAK",
   NOT_CONFIGURED: "ATTEST_NOT_CONFIGURED",
   BAD_SIGNATURE: "ATTEST_BAD_SIGNATURE",
   KEY_MISMATCH: "ATTEST_KEY_MISMATCH",
@@ -227,6 +169,12 @@ const KIOSK_STATE_REASONS: Record<string, LoginFailureReason> = {
   BAD_PROFILE: "ATTEST_BAD_PROFILE",
   NO_DEVICE: "SETTINGS_NO_DEVICE",
   INVALID: "SETTINGS_CODE_INVALID",
+  PROOF_REQUIRED: "REACTIVATE_PROOF_REQUIRED",
+  REACTIVATE_BAD_SIGNATURE: "REACTIVATE_BAD_SIGNATURE",
+  REACTIVATE_CODE_INVALID: "REACTIVATE_CODE_INVALID",
+  REACTIVATE_LOCKED: "REACTIVATE_LOCKED",
+  TOKEN_LIVE: "REACTIVATE_TOKEN_LIVE",
+  NOT_ATTESTED: "UNLOCK_PIN_NOT_ATTESTED",
 };
 
 /**

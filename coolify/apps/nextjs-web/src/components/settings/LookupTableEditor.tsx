@@ -27,6 +27,7 @@ import {
   IconUpload,
 } from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { type ChangeEvent, useRef, useState, useTransition } from "react";
 import {
   deleteLookupTable,
@@ -59,17 +60,6 @@ import type {
 const BASE = "/settings/trial-pricing-engine";
 const LIST = `${BASE}/lookups`;
 
-const VALUE_TYPE_OPTIONS: { value: LookupValueType; label: string }[] = [
-  { value: "number", label: "数値" },
-  { value: "string", label: "文字列" },
-];
-
-const MATCH_OPTIONS: { value: LookupKeyMatch; label: string }[] = [
-  { value: "exact", label: "完全一致" },
-  { value: "ge", label: "≥ 以上で最小（径×長）" },
-  { value: "le", label: "≤ 以下で最大（LD/割引）" },
-];
-
 const safeName = (n: string) =>
   (n.trim() ? n.trim() : "table").replace(/[^A-Za-z0-9_-]+/g, "_");
 
@@ -85,8 +75,24 @@ export function LookupTableEditor({
   initial: LookupTable;
   isNew: boolean;
 }) {
+  const tr = useTranslations();
   const isMobile = useIsMobile();
   const router = useRouter();
+  const VALUE_TYPE_OPTIONS: { value: LookupValueType; label: string }[] = [
+    { value: "number", label: tr("settings.lookupTableEditor.number") },
+    { value: "string", label: tr("settings.lookupTableEditor.text") },
+  ];
+  const MATCH_OPTIONS: { value: LookupKeyMatch; label: string }[] = [
+    { value: "exact", label: tr("settings.lookupTableEditor.exactMatch") },
+    {
+      value: "ge",
+      label: tr("settings.lookupTableEditor.geTakeTheSmallest"),
+    },
+    {
+      value: "le",
+      label: tr("settings.lookupTableEditor.leTakeTheLargest"),
+    },
+  ];
   const [table, setTable] = useState<LookupTable>({
     ...initial,
     keyColumns: initial.keyColumns.length ? initial.keyColumns : ["key"],
@@ -147,7 +153,7 @@ export function LookupTableEditor({
 
   // ── CSV ─────────────────────────────────────────────────────────────────────
   const downloadTemplate = () => {
-    const header = [...table.keyColumns, "値"];
+    const header = [...table.keyColumns, tr("common.value")];
     const body = table.rows.length
       ? table.rows.map((r) => [...r.keys, r.value])
       : [table.keyColumns.map(() => "")].map((k) => [...k, ""]);
@@ -157,8 +163,8 @@ export function LookupTableEditor({
     const rows = parseCsv(await file.text());
     if (rows.length < 1) {
       notifications.show({
-        title: "エラー",
-        message: "CSV が空です",
+        title: tr("common.error2"),
+        message: tr("settings.lookupTableEditor.theCsvIsEmpty"),
         color: "red",
       });
       return;
@@ -166,8 +172,8 @@ export function LookupTableEditor({
     const header = rows[0];
     if (header.length < 2) {
       notifications.show({
-        title: "エラー",
-        message: "列が不足しています（キー列 + 値）",
+        title: tr("common.error2"),
+        message: tr("settings.lookupTableEditor.thereAreNotEnoughColumnsKey"),
         color: "red",
       });
       return;
@@ -184,8 +190,10 @@ export function LookupTableEditor({
       rows: dataRows,
     }));
     notifications.show({
-      title: "取り込みました",
-      message: `${dataRows.length} 行を読み込みました（保存で確定）`,
+      title: tr("common.imported"),
+      message: tr("settings.lookupTableEditor.rowsLoadedConfirmOnSave", {
+        count: dataRows.length,
+      }),
       color: "green",
     });
     if (fileRef.current) fileRef.current.value = "";
@@ -197,14 +205,16 @@ export function LookupTableEditor({
       const res = await upsertLookupTable(table);
       if (res.ok) {
         notifications.show({
-          title: "保存しました",
-          message: `「${localized(table.name)}」を更新しました`,
+          title: tr("common.saved2"),
+          message: tr("settings.lookupTableEditor.tableWasUpdated", {
+            name: localized(table.name),
+          }),
           color: "green",
         });
         router.push(LIST);
       } else {
         notifications.show({
-          title: "エラー",
+          title: tr("common.error2"),
           message: res.error,
           color: "red",
         });
@@ -213,22 +223,26 @@ export function LookupTableEditor({
   };
   const remove = () =>
     openConfirm({
-      title: "表の削除",
-      message: `「${localized(table.name)}」を削除します。この操作は取り消せません。`,
-      confirmLabel: "削除",
+      title: tr("settings.lookupTableEditor.deleteTheTable"),
+      message: tr("settings.lookupTableEditor.deleteTableConfirm", {
+        name: localized(table.name),
+      }),
+      confirmLabel: tr("common.delete"),
       onConfirm: () =>
         startTransition(async () => {
           const res = await deleteLookupTable(table.id);
           if (res.ok) {
             notifications.show({
-              title: "削除しました",
-              message: `「${localized(table.name)}」を削除しました`,
+              title: tr("common.deleted"),
+              message: tr("settings.lookupTableEditor.tableWasDeleted", {
+                name: localized(table.name),
+              }),
               color: "green",
             });
             router.push(LIST);
           } else {
             notifications.show({
-              title: "エラー",
+              title: tr("common.error2"),
               message: res.error,
               color: "red",
             });
@@ -239,10 +253,13 @@ export function LookupTableEditor({
   return (
     <Stack gap="md">
       <Text c="dimmed" size="sm">
-        {isNew ? "新規ルックアップ表。" : ""}式内では{" "}
-        <Code>lookup("{table.id || "id"}", キー1, ...)</Code>{" "}
-        で参照します。照合方法（完全一致 / ≥ / ≤）で Excel の MATCH/VLOOKUP
-        近似照合を再現します。一致なしは「既定値」を返します。
+        {isNew ? tr("settings.lookupTableEditor.newLookupTable") : ""}
+        {tr("settings.lookupTableEditor.usedInTheFormulaAs")}{" "}
+        <Code>
+          lookup("{table.id || "id"}",{" "}
+          {tr("settings.lookupTableEditor.key1Placeholder")}, ...)
+        </Code>{" "}
+        {tr("settings.lookupTableEditor.matchDescription")}
       </Text>
 
       <input
@@ -256,17 +273,19 @@ export function LookupTableEditor({
         type="file"
       />
 
-      <FormSection title="表の設定">
+      <FormSection title={tr("settings.lookupTableEditor.tableSettings")}>
         <Stack gap="sm">
           <Group align="flex-end" gap="sm" wrap="wrap">
             <TextInput
               description={
                 isNew
-                  ? '式内 lookup("ID") の参照キー（"" で囲んで渡す）。英数字・ハイフン・アンダースコアのみ。作成後は変更できません'
-                  : "参照キー（作成後は変更不可）"
+                  ? tr("settings.lookupTableEditor.theLookupKeyUsedAsLookup")
+                  : tr(
+                      "settings.lookupTableEditor.referenceKeyCannotBeChangedOnce",
+                    )
               }
               disabled={!isNew}
-              label="ID（参照キー）"
+              label={tr("settings.lookupTableEditor.iDReferenceKey")}
               onChange={(e) =>
                 // 許可外の文字（空白・記号・全角）は入力時点で除去する。
                 patch({
@@ -280,7 +299,7 @@ export function LookupTableEditor({
             />
             <Select
               data={VALUE_TYPE_OPTIONS}
-              label="戻り値の型"
+              label={tr("settings.lookupTableEditor.returnType")}
               onChange={(v) =>
                 patch({ valueType: (v as LookupValueType) ?? "number" })
               }
@@ -288,10 +307,16 @@ export function LookupTableEditor({
               w={120}
             />
             <TextInput
-              description="一致なしの戻り値"
-              label="既定値"
+              description={tr(
+                "settings.lookupTableEditor.valueReturnedWhenNothingMatches",
+              )}
+              label={tr("common.default")}
               onChange={(e) => patch({ default: e.currentTarget.value })}
-              placeholder={table.valueType === "number" ? "0" : "(空)"}
+              placeholder={
+                table.valueType === "number"
+                  ? "0"
+                  : tr("settings.lookupTableEditor.empty")
+              }
               value={table.default ?? ""}
               w={140}
             />
@@ -302,8 +327,8 @@ export function LookupTableEditor({
               onChange: (e: ChangeEvent<HTMLInputElement>) =>
                 setName("ja", e.currentTarget.value),
             }}
-            label="表示名"
-            placeholder="センタレス"
+            label={tr("common.displayName")}
+            placeholder={tr("settings.lookupTableEditor.centerless")}
             required
             translationsProps={{
               value: Object.fromEntries(
@@ -314,31 +339,44 @@ export function LookupTableEditor({
           />
           <Textarea
             autosize
-            label="説明"
+            label={tr("common.description")}
             maxRows={3}
             minRows={1}
             onChange={(e) => patch({ description: e.currentTarget.value })}
-            placeholder="任意"
+            placeholder={tr("common.optional")}
             value={table.description ?? ""}
           />
         </Stack>
       </FormSection>
 
-      <FormSection title="キー列">
+      <FormSection title={tr("settings.lookupTableEditor.keyColumn")}>
         <Stack gap="xs">
           {table.keyColumns.map((c, ci) => (
             // biome-ignore lint/suspicious/noArrayIndexKey: column has no stable id
             <Group align="flex-end" gap="sm" key={ci} wrap="nowrap">
               <TextInput
-                label={ci === 0 ? "キー列名" : undefined}
+                label={
+                  ci === 0
+                    ? tr("settings.lookupTableEditor.keyColumnName")
+                    : undefined
+                }
                 onChange={(e) => renameColumn(ci, e.currentTarget.value)}
-                placeholder={`キー列${ci + 1}`}
+                placeholder={tr(
+                  "settings.lookupTableEditor.keyColumnWithIndex",
+                  {
+                    index: ci + 1,
+                  },
+                )}
                 style={{ flex: 1 }}
                 value={c}
               />
               <Select
                 data={MATCH_OPTIONS}
-                label={ci === 0 ? "照合方法" : undefined}
+                label={
+                  ci === 0
+                    ? tr("settings.lookupTableEditor.matchMethod")
+                    : undefined
+                }
                 onChange={(v) =>
                   setColumnMatch(ci, (v as LookupKeyMatch) ?? "exact")
                 }
@@ -346,7 +384,7 @@ export function LookupTableEditor({
                 w={230}
               />
               <ActionIcon
-                aria-label="キー列を削除"
+                aria-label={tr("settings.lookupTableEditor.removeTheKeyColumn")}
                 color="red"
                 disabled={table.keyColumns.length <= 1}
                 mb={4}
@@ -362,37 +400,43 @@ export function LookupTableEditor({
             onClick={addColumn}
             size="compact-sm"
           >
-            キー列を追加
+            {tr("settings.lookupTableEditor.addAKeyColumn")}
           </GhostButton>
         </Stack>
       </FormSection>
 
-      <FormSection title="データ">
+      <FormSection title={tr("settings.lookupTableEditor.data")}>
         <Group gap="xs" mb="sm">
           <SecondaryButton
             leftSection={<IconDownload size={14} />}
             onClick={downloadTemplate}
           >
-            テンプレート/CSV
+            {tr("settings.lookupTableEditor.templateCsv")}
           </SecondaryButton>
           <SecondaryButton
             leftSection={<IconUpload size={14} />}
             onClick={() => fileRef.current?.click()}
           >
-            CSV 取込
+            {tr("settings.lookupTableEditor.importCsv")}
           </SecondaryButton>
           <Badge color="gray" variant="light">
-            {table.rows.length} 行
+            {tr("settings.lookupTableEditor.rowsCount", {
+              count: table.rows.length,
+            })}
           </Badge>
         </Group>
         <EditableCellTable
-          addLabel="行を追加"
+          addLabel={tr("common.addRow")}
           columns={[
             ...table.keyColumns.map((c, ci) => ({
-              header: c || `キー列${ci + 1}`,
+              header:
+                c ||
+                tr("settings.lookupTableEditor.keyColumnWithIndex", {
+                  index: ci + 1,
+                }),
               minWidth: 110,
             })),
-            { header: "値", minWidth: 110 },
+            { header: tr("common.value"), minWidth: 110 },
           ]}
           minTableWidth={360}
           onAddRow={addRow}
@@ -426,7 +470,11 @@ export function LookupTableEditor({
                     ),
                   )
                 }
-                placeholder={table.valueType === "number" ? "数値" : "文字列"}
+                placeholder={
+                  table.valueType === "number"
+                    ? tr("settings.lookupTableEditor.number")
+                    : tr("settings.lookupTableEditor.text")
+                }
                 size="xs"
                 value={r.value}
               />

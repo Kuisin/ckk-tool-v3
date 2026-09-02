@@ -36,7 +36,6 @@ import {
   STEP_TYPE_OPTIONS,
 } from "./trial-pricing-data";
 import { runCriteriaEngine } from "./trial-pricing-engine";
-import { applyCustomScript } from "./trial-pricing-script";
 
 /**
  * 工具種 — 管理者定義（SY02 工具種管理、trial_pricing.tool_types）。組み込み
@@ -45,12 +44,19 @@ import { applyCustomScript } from "./trial-pricing-script";
  */
 export type ToolType = string;
 
+/** next-intl の `t()` と互換の最小の形（サーバー/クライアントどちらの実体も渡せる）。 */
+type TrLike = (key: string) => string;
+
 /** 組み込み工具種の表示ラベル（設定未読時のフォールバック）。 */
-export const TOOL_TYPE_OPTIONS: { value: ToolType; label: string }[] = [
-  { value: "ROUND_BAR", label: "丸棒" },
-  { value: "CYLINDER", label: "円筒" },
-  { value: "OH", label: "OH付" },
-];
+export function toolTypeOptionsFallback(
+  tr: TrLike,
+): { value: ToolType; label: string }[] {
+  return [
+    { value: "ROUND_BAR", label: tr("sales.trialPricingSettings.roundBar") },
+    { value: "CYLINDER", label: tr("sales.trialPricingSettings.cylinder") },
+    { value: "OH", label: tr("sales.trialPricingSettings.ohType") },
+  ];
+}
 
 export interface TrialInput {
   toolType: ToolType;
@@ -157,17 +163,9 @@ export function calcTrialPricing(
   input: TrialInput,
   opts: TrialPricingOptions = {},
 ): TrialResult {
-  const base = runCriteriaEngine(input, opts);
-  if (opts.runCustomScript && opts.customScript?.trim()) {
-    const correction = opts.correctionFactor ?? CORRECTION_FACTOR;
-    const ldCharge = opts.ldChargePer10min ?? LD_CHARGE_PER_10MIN;
-    return applyCustomScript(opts.customScript, {
-      input,
-      result: base,
-      settings: { correctionFactor: correction, ldChargePer10min: ldCharge },
-    }).result;
-  }
-  return base;
+  // カスタム計算 JS（旧 trial-pricing-script.ts）は廃止した — `new Function` で
+  // 動く後処理はサーバー側の RCE だった（監査 C2）。設定に残っていても適用しない。
+  return runCriteriaEngine(input, opts);
 }
 
 /**
@@ -307,17 +305,5 @@ export function calcTrialPricingLegacy(
       };
     });
 
-  const base: TrialResult = { breakdown, shapeOutPrice, lots, warnings };
-
-  // ── カスタム計算（管理者設定の JS フック）─────────────────────────────────
-  // system 権限者が設定した後処理スクリプトを、確定した result に適用する。
-  // 失敗しても base を返す（applyCustomScript は throw しない）。
-  if (opts.runCustomScript && opts.customScript?.trim()) {
-    return applyCustomScript(opts.customScript, {
-      input,
-      result: base,
-      settings: { correctionFactor: correction, ldChargePer10min: ldCharge },
-    }).result;
-  }
-  return base;
+  return { breakdown, shapeOutPrice, lots, warnings };
 }

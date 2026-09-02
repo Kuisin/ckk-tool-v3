@@ -16,6 +16,7 @@
 
 import "server-only";
 
+import { getTranslations } from "next-intl/server";
 import { formatCode } from "./crockford";
 import { isDevFeatureEnabled } from "./dev-features";
 import { escapeHtml } from "./format";
@@ -40,38 +41,53 @@ export async function sendPortalOtpMail(input: {
   /** リンク経由なら、その書類の呼び名（本文に出す）。 */
   context?: string | null;
 }): Promise<PortalMailResult> {
+  const tr = await getTranslations();
   if (!isDevFeatureEnabled("portal")) return "BLOCKED_DEV";
   if (!allowed(input.to)) {
+    // dev の安全弁。**アラートの対象ではない**（設定どおりの挙動）。
     console.warn(
-      `[portal-mail] 許可リスト外のため送信しない（PORTAL_MAIL_ALLOWLIST）`,
+      "[portal-mail] blocked (allowlist): PORTAL_MAIL_ALLOWLIST に無い宛先",
     );
     return "BLOCKED_DEV";
   }
-  if (!isMailerConfigured()) return "FAILED";
+  if (!isMailerConfigured()) {
+    console.error(
+      "[portal-mail] send failed: MAIL_API_URL / MAIL_API_TOKEN が未設定",
+    );
+    return "FAILED";
+  }
 
   const pretty = formatCode(input.code);
-  const what = input.context ? `「${input.context}」の閲覧` : "ログイン";
-  const subject = "【CKK】確認コード";
+  const what = input.context
+    ? tr("settings.portalMail.viewingContext", { context: input.context })
+    : tr("settings.portalMail.login");
+  const subject = tr("settings.portalMail.ckkVerificationCode");
 
   const text = [
-    `${what}の確認コードは次のとおりです。`,
+    tr("settings.portalMail.theVerificationCodeForWhat", { what }),
     "",
     `    ${pretty}`,
     "",
-    "有効期限は 10 分です。画面に入力してください。",
+    tr("settings.portalMail.validFor10MinutesEnterIt"),
     "",
-    "心当たりが無い場合は、このメールを破棄してください。",
-    "コードを他人に教えないでください。",
+    tr("settings.portalMail.ifThisIsUnexpectedDiscard"),
+    tr("settings.portalMail.doNotShareTheCodeWith"),
   ].join("\n");
 
   const html = `<div style="font-family:'Noto Sans JP',system-ui,sans-serif;max-width:560px">
-  <p>${escapeHtml(what)}の確認コードは次のとおりです。</p>
+  <p>${escapeHtml(tr("settings.portalMail.theVerificationCodeForWhat", { what }))}</p>
   <p style="font-size:28px;font-weight:700;letter-spacing:.15em;margin:24px 0;color:#228be6">${escapeHtml(pretty)}</p>
-  <p>有効期限は 10 分です。画面に入力してください。</p>
+  <p>${escapeHtml(tr("settings.portalMail.validFor10MinutesEnterIt"))}</p>
   <hr style="border:none;border-top:1px solid #dee2e6;margin:24px 0">
-  <p style="font-size:12px;color:#868e96">心当たりが無い場合は、このメールを破棄してください。コードを他人に教えないでください。</p>
+  <p style="font-size:12px;color:#868e96">${escapeHtml(tr("settings.portalMail.ifThisIsUnexpectedDiscard"))} ${escapeHtml(tr("settings.portalMail.doNotShareTheCodeWith"))}</p>
 </div>`;
 
   const ok = await sendMail({ to: input.to, subject, text, html });
+  if (!ok) {
+    // **ここが運用の唯一の手がかり。** 画面は成功と同じものを返すので
+    // （アカウントの存在を漏らさないため）、利用者は「コードが来ない」としか
+    // 言えない。Grafana の portal_otp_mail_failed がこの行を見ている。
+    console.error("[portal-mail] send failed: リレーが受け取らなかった");
+  }
   return ok ? "SENT" : "FAILED";
 }

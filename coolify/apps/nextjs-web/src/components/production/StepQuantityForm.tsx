@@ -34,6 +34,7 @@ import {
   IconTrash,
 } from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { useState, useTransition } from "react";
 import { completeStep } from "@/app/(dashboard)/production/work-orders/[id]/steps/[stepId]/actions";
 import type { SelectOption } from "@/components/production/step-execution/model";
@@ -69,6 +70,7 @@ export function StepQuantityForm({
   disabled?: boolean;
   mode?: QuantityTrackingMode;
 }) {
+  const tr = useTranslations();
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [defects, setDefects] = useState<DefectReasonEntry[]>([]);
@@ -101,15 +103,16 @@ export function StepQuantityForm({
       );
       if (result.ok) {
         notifications.show({
-          title: "工程を完了しました",
+          title: tr("common.stepCompleted"),
           message: `${labels.success} ${success} / ${labels.input} ${input}`,
           color: "green",
         });
         router.refresh();
       } else {
         notifications.show({
-          title: "エラー",
-          message: result.errors?.join(" / ") ?? "工程の完了に失敗しました",
+          title: tr("common.error2"),
+          message:
+            result.errors?.join(" / ") ?? tr("common.couldNotCompleteTheStep"),
           color: "red",
         });
       }
@@ -120,7 +123,9 @@ export function StepQuantityForm({
     <Paper p="lg" radius="md" withBorder>
       <Stack gap="md">
         <Title order={4}>
-          {mode === "INSPECTION" ? "検査数・合否" : "数量・不良"}
+          {mode === "INSPECTION"
+            ? tr("production.stepQuantityForm.inspectedCountAndResult")
+            : tr("production.stepQuantityForm.quantityAndDefects")}
         </Title>
 
         {/* 受入（固定）+ 良品（自動計算）+ 総不良 */}
@@ -133,7 +138,7 @@ export function StepQuantityForm({
               {input}
             </Text>
             <Badge color="gray" mt={4} size="xs" variant="light">
-              固定
+              {tr("production.stepQuantityForm.fixed")}
             </Badge>
           </Paper>
           <Paper p="sm" radius="sm" withBorder>
@@ -144,12 +149,12 @@ export function StepQuantityForm({
               {success}
             </Text>
             <Badge color="green" mt={4} size="xs" variant="light">
-              自動計算
+              {tr("common.auto")}
             </Badge>
           </Paper>
           <Paper p="sm" radius="sm" withBorder>
             <Text c="dimmed" size="xs">
-              総不良数
+              {tr("production.stepQuantityForm.totalDefects")}
             </Text>
             <Text c={total > 0 ? "orange" : undefined} fw={700} size="xl">
               {total}
@@ -159,7 +164,7 @@ export function StepQuantityForm({
 
         <Group justify="space-between">
           <Text c="dimmed" fw={600} size="sm">
-            不良内訳
+            {tr("production.stepQuantityForm.defectBreakdown")}
           </Text>
           {total > 0 && (
             <Group gap="xs">
@@ -193,14 +198,14 @@ export function StepQuantityForm({
             <Stack gap="xs">
               <Group align="flex-end" gap="sm" wrap="nowrap">
                 <Select
-                  aria-label="種別"
+                  aria-label={tr("common.type2")}
                   data={[
                     { value: "SEMI", label: labels.semi },
                     { value: "SCRAP", label: labels.scrap },
                     { value: "REWORK", label: labels.rework },
                   ]}
                   disabled={disabled}
-                  label="種別"
+                  label={tr("common.type2")}
                   onChange={(v) =>
                     v && setRow(index, { type: v as DefectDisposition })
                   }
@@ -208,14 +213,16 @@ export function StepQuantityForm({
                   value={row.type}
                 />
                 <Select
-                  aria-label="不良種類"
+                  aria-label={tr("common.defectType")}
                   data={typeData}
                   disabled={disabled}
-                  label="不良種類"
+                  label={tr("common.defectType")}
                   onChange={(v) =>
                     setRow(index, { defectTypeId: v ? Number(v) : null })
                   }
-                  placeholder="不良種類を選択"
+                  placeholder={tr(
+                    "production.stepQuantityForm.selectADefectType",
+                  )}
                   searchable
                   style={{ flex: 1 }}
                   value={
@@ -226,9 +233,9 @@ export function StepQuantityForm({
                 <NumberInput
                   allowDecimal={false}
                   allowNegative={false}
-                  aria-label="本数"
+                  aria-label={tr("production.stepQuantityForm.count")}
                   disabled={disabled}
-                  label="本数"
+                  label={tr("production.stepQuantityForm.count")}
                   min={1}
                   onChange={(v) =>
                     setRow(index, {
@@ -239,7 +246,7 @@ export function StepQuantityForm({
                   value={row.count}
                 />
                 <ActionIcon
-                  aria-label="削除"
+                  aria-label={tr("common.delete")}
                   color="red"
                   disabled={disabled}
                   mb={4}
@@ -253,14 +260,16 @@ export function StepQuantityForm({
                 </ActionIcon>
               </Group>
               <TextInput
-                aria-label="詳細"
+                aria-label={tr("production.stepQuantityForm.detail")}
                 disabled={disabled}
-                label="詳細"
+                label={tr("production.stepQuantityForm.detail")}
                 maxLength={200}
                 onChange={(e) =>
                   setRow(index, { reason: e.currentTarget.value })
                 }
-                placeholder="不良の詳細（必須）"
+                placeholder={tr(
+                  "production.stepQuantityForm.defectDetailRequired",
+                )}
                 value={row.reason}
                 withAsterisk
               />
@@ -279,7 +288,7 @@ export function StepQuantityForm({
           }
           variant="light"
         >
-          不良を追加
+          {tr("production.stepQuantityForm.addDefect")}
         </Button>
 
         {issue && (
@@ -289,10 +298,13 @@ export function StepQuantityForm({
             variant="light"
           >
             {issue.kind === "NEGATIVE"
-              ? "数量は 0 以上の整数で入力してください"
+              ? tr("production.stepQuantityForm.quantitiesMustBeWholeNumbersOf")
               : issue.kind === "INCOMPLETE"
-                ? "不良の各行に種類と詳細を入力してください"
-                : `不良の合計（${issue.sum}）が受入数（${issue.input}）を超えています`}
+                ? tr("production.stepQuantityForm.enterADefectTypeAndDetail")
+                : tr(
+                    "production.stepQuantityForm.defectTotalWithSumExceedsInput",
+                    { sum: issue.sum, input: issue.input },
+                  )}
           </Alert>
         )}
 
@@ -305,7 +317,7 @@ export function StepQuantityForm({
             onClick={handleComplete}
             size="lg"
           >
-            工程完了
+            {tr("common.complete")}
           </Button>
         </Group>
       </Stack>

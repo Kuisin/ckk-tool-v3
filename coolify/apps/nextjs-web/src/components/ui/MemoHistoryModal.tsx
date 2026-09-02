@@ -12,6 +12,7 @@
 
 import { Badge, Group, Loader, Stack, Text, Timeline } from "@mantine/core";
 import { IconHistory } from "@tabler/icons-react";
+import { useTranslations } from "next-intl";
 import { useEffect, useState, useTransition } from "react";
 import { useFormat } from "@/components/layout/PreferencesProvider";
 import { EmptyState } from "@/components/ui/EmptyState";
@@ -20,18 +21,6 @@ import { RichTextView } from "@/components/ui/RichTextView";
 import { UserAvatar } from "@/components/ui/UserAvatar";
 import type { MemoRevisionView } from "@/lib/document-memos";
 import { listMemoRevisionsAction } from "./memo-actions";
-
-/** 操作 → 表示ラベルと色。 */
-const ACTION_LABEL: Record<
-  MemoRevisionView["action"],
-  { label: string; color: string }
-> = {
-  CREATE: { label: "作成", color: "green" },
-  UPDATE: { label: "更新", color: "blue" },
-  DELETE: { label: "削除", color: "red" },
-  ARCHIVE: { label: "アーカイブ", color: "gray" },
-  RESTORE: { label: "復元", color: "teal" },
-};
 
 export function MemoHistoryModal({
   opened,
@@ -44,9 +33,25 @@ export function MemoHistoryModal({
   ownerType: string;
   memoId: string;
 }) {
+  const tr = useTranslations();
   const fmt = useFormat();
   const [revisions, setRevisions] = useState<MemoRevisionView[] | null>(null);
   const [pending, start] = useTransition();
+
+  /** 操作 → 表示ラベルと色。 */
+  const ACTION_LABEL: Record<
+    MemoRevisionView["action"],
+    { label: string; color: string }
+  > = {
+    CREATE: { label: tr("common.create2"), color: "green" },
+    UPDATE: { label: tr("ui.memoHistoryModal.actionUpdated"), color: "blue" },
+    DELETE: { label: tr("common.delete"), color: "red" },
+    ARCHIVE: { label: tr("common.archived2"), color: "gray" },
+    RESTORE: {
+      label: tr("ui.memoHistoryModal.actionRestored"),
+      color: "teal",
+    },
+  };
 
   useEffect(() => {
     if (!opened) return;
@@ -56,7 +61,12 @@ export function MemoHistoryModal({
   }, [opened, ownerType, memoId]);
 
   return (
-    <ModalShell hideFooter onClose={onClose} opened={opened} title="変更履歴">
+    <ModalShell
+      hideFooter
+      onClose={onClose}
+      opened={opened}
+      title={tr("common.changeHistory")}
+    >
       {pending || revisions === null ? (
         <Group justify="center" py="lg">
           <Loader size="sm" />
@@ -64,7 +74,7 @@ export function MemoHistoryModal({
       ) : revisions.length === 0 ? (
         <EmptyState
           icon={<IconHistory size={24} />}
-          message="変更履歴はまだありません"
+          message={tr("ui.memoHistoryModal.thereIsNoChangeHistoryYet")}
         />
       ) : (
         <Timeline active={-1} bulletSize={24} lineWidth={1}>
@@ -101,8 +111,8 @@ export function MemoHistoryModal({
                 <Stack gap={4} mt={4}>
                   <Text c="dimmed" size="xs">
                     {rev.action === "DELETE"
-                      ? "削除直前の本文"
-                      : "この操作後の本文"}
+                      ? tr("ui.memoHistoryModal.bodyJustBeforeDeletion")
+                      : tr("ui.memoHistoryModal.bodyAfterThisOperation")}
                   </Text>
                   <RichTextView doc={rev.content} />
                 </Stack>

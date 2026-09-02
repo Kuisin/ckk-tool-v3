@@ -1,10 +1,16 @@
+import { createTranslator } from "next-intl";
 import { describe, expect, it } from "vitest";
+import ja from "../../messages/ja.json";
 import {
   designFileKind,
   fileExtension,
   isViewable,
   notViewableReason,
 } from "./design-file-kind";
+import type { Tr } from "./i18n";
+
+// biome-ignore lint/suspicious/noExplicitAny: next-intl's messages type is too wide for a plain JSON import here; real key checks run in verify-keys.mjs (see global.d.ts)
+const tr = createTranslator({ locale: "ja", messages: ja as any }) as Tr;
 
 describe("fileExtension", () => {
   it("最後のドット以降を小文字で返す", () => {
@@ -70,13 +76,13 @@ describe("isViewable / notViewableReason", () => {
   });
 
   it("読めそうに見えて読めない形式は理由を名指しする", () => {
-    expect(notViewableReason("a.step")).toContain("STEP");
-    expect(notViewableReason("a.dxf")).toContain("DXF");
-    expect(notViewableReason("a.heic")).toContain("HEIC");
+    expect(notViewableReason("a.step", tr)).toContain("STEP");
+    expect(notViewableReason("a.dxf", tr)).toContain("DXF");
+    expect(notViewableReason("a.heic", tr)).toContain("HEIC");
   });
 
   it("それ以外は一般的な文言", () => {
-    expect(notViewableReason("a.zip")).toBe(
+    expect(notViewableReason("a.zip", tr)).toBe(
       "この形式は表示できません（ダウンロードしてご覧ください）",
     );
   });

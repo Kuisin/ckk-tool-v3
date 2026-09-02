@@ -20,6 +20,23 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  # マージ済みマイグレーションの改変を止める。
+  # マイグレーションは merge した瞬間に自動で当たる（db-migrate-dev/-main）ので、
+  # base に載っているものは既に本物の DB に適用済み = 取り消せない。
+  # あとから書き換えると次のデプロイが P3006 で落ち、しかも落ちるのは
+  # 直した本人ではなく「次に merge した誰か」になる。
+  migrations:
+    name: shared-db — 適用済みマイグレーションの保護
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # base との差分を見るので履歴が要る
+          fetch-depth: 0
+      - name: Check applied migrations are untouched
+        run: bash shared-db/scripts/check-applied-migrations.sh "origin/${{ github.event.pull_request.base.ref }}"
+
   authz-core:
     name: authz-core — lint & test
     runs-on: ubuntu-latest
@@ -88,6 +105,37 @@ jobs:
 
       - name: Page gate guard (requireAppRead)
         run: bash scripts/check-page-gates.sh
+
+      - name: Server Action gate guard (checkPermission / requireAnyRead)
+        run: node scripts/check-server-action-gates.mjs
+
+      # 監査 C1: 認証の門（next の proxy / next-auth の authorized）に公開済みの
+      # advisory が出たまま 2 版滞留していた。本番依存の high 以上で止める。
+      # dev 専用の CLI（prisma の mysql2 / deepmerge-ts）は --prod で外れる。
+      - name: Dependency audit (prod, high+)
+        working-directory: .
+        run: pnpm audit --prod --audit-level=high
+
+      # 英語・中国語対応は段階的に進める（数千箇所が未着手のまま残る）。
+      # 全部訳し終わっていなくても落とさない — 見るのは **後戻り** だけで、
+      # baseline より増えたときに失敗する。使い方は tools/i18n/README.md。
+      - name: i18n regression guard (no new Japanese literals)
+        run: node ../../../tools/i18n/i18n-scan.mjs
+
+      # 用語集そのものの検査。同じ ja に違う訳が当たっていないか
+      # （_specs/i18n-glossary.md が i18n 用語の正 — §2.11 の手順）。
+      - name: i18n glossary consistency
+        run: node ../../../tools/i18n/i18n-glossary-check.mjs
+
+      # tr() の鍵は本物の next-intl 鍵（messages/ja.json のパス）。
+      # 鍵が 5,700 件を超えると next-intl の型付け（AppConfig["Messages"]）が
+      # TypeScript の複雑さの上限に触れるため型検査を諦めており（src/global.d.ts）、
+      # 実在しない鍵で呼んでいないかはここでしか見られない。
+      - name: i18n translation keys exist
+        run: node ../../../tools/i18n-unify/verify-keys.mjs
+
+      - name: i18n dynamic key prefixes exist (tr(`ns.${x}`))
+        run: node scripts/check-dynamic-i18n-keys.mjs
 
       # "use server" は async 関数しか export できない。定数を export すると
       # クライアントにはアクション参照が渡り、実行時に画面ごと落ちる

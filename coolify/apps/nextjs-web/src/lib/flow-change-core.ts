@@ -5,6 +5,8 @@
  * といった I/O を伴わない判断だけ。DB を触る本体は lib/work-order-flow-changes.ts。
  */
 
+import type { Tr } from "./i18n";
+
 /** 保留できる操作。payload はそれぞれの Server Action の入力そのもの。 */
 export const FLOW_CHANGE_KINDS = {
   ADD_BRANCH: "ADD_BRANCH",
@@ -15,19 +17,31 @@ export const FLOW_CHANGE_KINDS = {
 export type FlowChangeKind =
   (typeof FLOW_CHANGE_KINDS)[keyof typeof FLOW_CHANGE_KINDS];
 
-export const FLOW_CHANGE_KIND_LABEL: Record<string, string> = {
-  ADD_BRANCH: "分岐の追加",
-  UPDATE_BRANCH: "分岐の変更",
-  REMOVE_BRANCH: "分岐の削除",
-};
+const FLOW_CHANGE_KIND_KEYS: readonly string[] = [
+  "ADD_BRANCH",
+  "UPDATE_BRANCH",
+  "REMOVE_BRANCH",
+];
 
-export const FLOW_CHANGE_STATUS_LABEL: Record<string, string> = {
-  PENDING: "承認依頼中",
-  APPLIED: "適用済み",
-  REJECTED: "差し戻し",
-  CANCELLED: "取消",
-  FAILED: "適用失敗",
-};
+function flowChangeKindLabel(kind: string, tr: Tr): string {
+  return FLOW_CHANGE_KIND_KEYS.includes(kind)
+    ? tr(`production.workOrderFlowChanges.kindLabel.${kind}`)
+    : kind;
+}
+
+const FLOW_CHANGE_STATUS_KEYS: readonly string[] = [
+  "PENDING",
+  "APPLIED",
+  "REJECTED",
+  "CANCELLED",
+  "FAILED",
+];
+
+function flowChangeStatusLabel(status: string, tr: Tr): string {
+  return FLOW_CHANGE_STATUS_KEYS.includes(status)
+    ? tr(`production.workOrderFlowChanges.statusLabel.${status}`)
+    : status;
+}
 
 /**
  * 承認フローの適用モード（approval_flows.apply_mode）。
@@ -44,10 +58,15 @@ export function isPostApply(applyMode: string | null | undefined): boolean {
 export function displayFlowChangeStatus(
   status: string,
   appliedAt: string | Date | null,
+  tr: Tr,
 ): string {
-  if (status === "PENDING" && appliedAt != null) return "適用済み・承認依頼中";
-  if (status === "REJECTED" && appliedAt != null) return "差し戻し（適用済み）";
-  return FLOW_CHANGE_STATUS_LABEL[status] ?? status;
+  if (status === "PENDING" && appliedAt != null) {
+    return tr("production.workOrderFlowChanges.statusLabel.appliedPending");
+  }
+  if (status === "REJECTED" && appliedAt != null) {
+    return tr("production.workOrderFlowChanges.statusLabel.rejectedApplied");
+  }
+  return flowChangeStatusLabel(status, tr);
 }
 
 /**
@@ -88,15 +107,27 @@ export function isFlowChangeGated(workOrderStatus: string): boolean {
 }
 
 /** 保留中の変更を人に見せる 1 行（カード見出し用）。 */
-export function describeFlowChange(kind: string, payload: unknown): string {
-  const label = FLOW_CHANGE_KIND_LABEL[kind] ?? kind;
+export function describeFlowChange(
+  kind: string,
+  payload: unknown,
+  tr: Tr,
+): string {
+  const label = flowChangeKindLabel(kind, tr);
   const p = (payload ?? {}) as Record<string, unknown>;
   const qty = typeof p.routedQuantity === "number" ? p.routedQuantity : null;
   const steps = Array.isArray(p.catalogStepIds)
     ? p.catalogStepIds.length
     : null;
   const parts: string[] = [];
-  if (steps != null) parts.push(`${steps} 工程`);
-  if (qty != null) parts.push(`数量 ${qty}`);
+  if (steps != null) {
+    parts.push(
+      tr("production.workOrderFlowChanges.stepsCount", { count: steps }),
+    );
+  }
+  if (qty != null) {
+    parts.push(
+      tr("production.workOrderFlowChanges.quantityCount", { count: qty }),
+    );
+  }
   return parts.length > 0 ? `${label}（${parts.join(" / ")}）` : label;
 }

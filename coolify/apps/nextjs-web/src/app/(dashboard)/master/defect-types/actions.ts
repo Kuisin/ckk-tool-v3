@@ -8,6 +8,7 @@
  */
 
 import { revalidatePath } from "next/cache";
+import { getTranslations } from "next-intl/server";
 import { z } from "zod";
 import { recordAudit } from "@/lib/audit";
 import { checkPermission } from "@/lib/authz";
@@ -22,15 +23,22 @@ import {
 
 const BASE_PATH = "/master/defect-types";
 
-const defectTypeInput = z.object({
-  code: z.string().min(1, "コードを入力してください"),
-  nameJa: z.string().min(1, "名称（日本語）を入力してください"),
-  nameTranslations: z.record(z.string(), z.string()).optional(),
-  sortOrder: z.number().int("表示順は整数で入力してください").min(0),
-  isActive: z.boolean(),
-});
+function defectTypeInputSchema(
+  tr: Awaited<ReturnType<typeof getTranslations>>,
+) {
+  return z.object({
+    code: z.string().min(1, tr("common.codeRequired")),
+    nameJa: z.string().min(1, tr("common.nameJaRequired")),
+    nameTranslations: z.record(z.string(), z.string()).optional(),
+    sortOrder: z
+      .number()
+      .int(tr("master.processSteps.sortOrderInteger"))
+      .min(0),
+    isActive: z.boolean(),
+  });
+}
 
-export type DefectTypeInput = z.infer<typeof defectTypeInput>;
+export type DefectTypeInput = z.infer<ReturnType<typeof defectTypeInputSchema>>;
 
 function revalidate() {
   revalidatePath(BASE_PATH);
@@ -39,11 +47,14 @@ function revalidate() {
 export async function createDefectType(
   input: DefectTypeInput,
 ): Promise<ActionResult<{ id: number }>> {
+  const tr = await getTranslations();
   const authz = await checkPermission("master", "CREATE");
   if (!authz.ok) return actionError(authz.error);
-  const parsed = defectTypeInput.safeParse(input);
+  const parsed = defectTypeInputSchema(tr).safeParse(input);
   if (!parsed.success) {
-    return actionError(parsed.error.issues[0]?.message ?? "入力が不正です");
+    return actionError(
+      parsed.error.issues[0]?.message ?? tr("common.invalidInput"),
+    );
   }
   const v = parsed.data;
   try {
@@ -70,7 +81,9 @@ export async function createDefectType(
     revalidate();
     return actionOk({ id: created.id });
   } catch (e) {
-    return actionError(prismaErrorMessage(e, "不良種類の作成に失敗しました"));
+    return actionError(
+      prismaErrorMessage(e, tr("master.defectTypeActions.createFailed"), tr),
+    );
   }
 }
 
@@ -78,11 +91,14 @@ export async function updateDefectType(
   id: number,
   input: DefectTypeInput,
 ): Promise<ActionResult<{ id: number }>> {
+  const tr = await getTranslations();
   const authz = await checkPermission("master", "UPDATE");
   if (!authz.ok) return actionError(authz.error);
-  const parsed = defectTypeInput.safeParse(input);
+  const parsed = defectTypeInputSchema(tr).safeParse(input);
   if (!parsed.success) {
-    return actionError(parsed.error.issues[0]?.message ?? "入力が不正です");
+    return actionError(
+      parsed.error.issues[0]?.message ?? tr("common.invalidInput"),
+    );
   }
   const v = parsed.data;
   try {
@@ -109,7 +125,9 @@ export async function updateDefectType(
     revalidate();
     return actionOk({ id });
   } catch (e) {
-    return actionError(prismaErrorMessage(e, "不良種類の更新に失敗しました"));
+    return actionError(
+      prismaErrorMessage(e, tr("master.defectTypeActions.updateFailed"), tr),
+    );
   }
 }
 
@@ -117,9 +135,10 @@ export async function setDefectTypesActive(
   ids: number[],
   isActive: boolean,
 ): Promise<ActionResult> {
+  const tr = await getTranslations();
   const authz = await checkPermission("master", "UPDATE");
   if (!authz.ok) return actionError(authz.error);
-  if (ids.length === 0) return actionError("対象が選択されていません");
+  if (ids.length === 0) return actionError(tr("common.noTargetSelected"));
   try {
     await prisma.defectType.updateMany({
       where: { id: { in: ids } },
@@ -136,14 +155,17 @@ export async function setDefectTypesActive(
     revalidate();
     return actionOk();
   } catch (e) {
-    return actionError(prismaErrorMessage(e, "状態の更新に失敗しました"));
+    return actionError(
+      prismaErrorMessage(e, tr("common.statusUpdateFailed"), tr),
+    );
   }
 }
 
 export async function deleteDefectTypes(ids: number[]): Promise<ActionResult> {
+  const tr = await getTranslations();
   const authz = await checkPermission("master", "DELETE");
   if (!authz.ok) return actionError(authz.error);
-  if (ids.length === 0) return actionError("対象が選択されていません");
+  if (ids.length === 0) return actionError(tr("common.noTargetSelected"));
   try {
     // Guard: 工程完了の不良内訳（work_order_steps.defect_reasons JSON）が
     // 参照している種類は消させない（FK ではないので DB は守ってくれない）。
@@ -155,9 +177,7 @@ export async function deleteDefectTypes(ids: number[]): Promise<ActionResult> {
           WHERE defect_reasons @> ${JSON.stringify([{ defectTypeId: id }])}::jsonb
         ) AS "exists"`;
       if (used[0]?.exists) {
-        return actionError(
-          "不良記録で使用中の不良種類は削除できません（無効化してください）",
-        );
+        return actionError(tr("master.defectTypeActions.inUseCannotDelete"));
       }
     }
     await prisma.defectType.deleteMany({ where: { id: { in: ids } } });
@@ -171,6 +191,8 @@ export async function deleteDefectTypes(ids: number[]): Promise<ActionResult> {
     revalidate();
     return actionOk();
   } catch (e) {
-    return actionError(prismaErrorMessage(e, "不良種類の削除に失敗しました"));
+    return actionError(
+      prismaErrorMessage(e, tr("master.defectTypeActions.deleteFailed"), tr),
+    );
   }
 }

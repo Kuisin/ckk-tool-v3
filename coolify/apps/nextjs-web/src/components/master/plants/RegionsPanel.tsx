@@ -12,6 +12,7 @@ import { Group, Stack, Table, Text, TextInput } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
 import { IconCircleMinus, IconEdit, IconTrash } from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { useEffect, useState, useTransition } from "react";
 import {
   createRegion,
@@ -28,6 +29,7 @@ import {
   openConfirm,
 } from "@/components/ui/modals";
 import { ListShell, LocalizedTextInput } from "@/components/ui/shells";
+import type { Tr } from "@/lib/i18n";
 
 export interface RegionRow {
   id: number;
@@ -40,20 +42,23 @@ export interface RegionRow {
   isActive: boolean;
 }
 
+// フックを使えない素の関数なので、解決済みの `tr` を引数で受ける
+// （lib/format.ts の Formatters と同じ約束）。
 function notifyResult(
+  tr: Tr,
   router: ReturnType<typeof useRouter>,
   result: { ok: boolean; error?: string },
   message: string,
   onOk?: () => void,
 ) {
   if (result.ok) {
-    notifications.show({ title: "保存しました", message, color: "green" });
+    notifications.show({ title: tr("common.saved2"), message, color: "green" });
     router.refresh();
     onOk?.();
   } else {
     notifications.show({
-      title: "エラー",
-      message: result.error ?? "失敗しました",
+      title: tr("common.error2"),
+      message: result.error ?? tr("common.failed"),
       color: "red",
     });
   }
@@ -64,6 +69,7 @@ function RegionModal({
   onClose,
   region,
 }: ModalBaseProps & { region: RegionRow | null }) {
+  const tr = useTranslations();
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const isEdit = !!region;
@@ -88,9 +94,12 @@ function RegionModal({
         ? await updateRegion(region.id, { ...input, isActive: region.isActive })
         : await createRegion(input);
       notifyResult(
+        tr,
         router,
         result,
-        isEdit ? "地域を更新しました" : "地域を追加しました",
+        isEdit
+          ? tr("master.plants.regionUpdated")
+          : tr("master.plants.theRegionWasAdded"),
         onClose,
       );
     });
@@ -103,27 +112,32 @@ function RegionModal({
       onSubmit={handleSubmit}
       opened={opened}
       size="md"
-      submitLabel={isEdit ? "保存" : "作成"}
-      title={isEdit ? "地域の編集" : "地域の追加"}
+      submitLabel={isEdit ? tr("common.save") : tr("common.create2")}
+      title={
+        isEdit ? tr("master.plants.editRegion") : tr("master.plants.addARegion")
+      }
     >
       <Stack gap="sm">
         <TextInput
           description={
             isEdit
-              ? "REGION スコープ権限（scope_values）が参照する識別子のため変更できません"
+              ? tr("master.plants.itCannotBeChangedBecauseRegion")
               : undefined
           }
           disabled={isEdit}
-          label="コード"
+          label={tr("common.code")}
           onChange={(e) => setCode(e.currentTarget.value)}
-          placeholder="例: jp"
+          placeholder={tr("master.plants.eGJp")}
           value={code}
           withAsterisk
         />
         <LocalizedTextInput
-          jaProps={{ value: nameJa, onChange: setNameJa }}
-          label="名称"
-          placeholder="例: 日本"
+          jaProps={{
+            value: nameJa,
+            onChange: (e) => setNameJa(e.currentTarget.value),
+          }}
+          label={tr("common.name2")}
+          placeholder={tr("master.plants.eGJapan")}
           required
           translationsProps={{
             value: nameTranslations,
@@ -136,6 +150,7 @@ function RegionModal({
 }
 
 export function RegionsPanel({ rows }: { rows: RegionRow[] }) {
+  const tr = useTranslations();
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [modal, setModal] = useState<{ region: RegionRow | null } | null>(null);
@@ -144,22 +159,33 @@ export function RegionsPanel({ rows }: { rows: RegionRow[] }) {
     startTransition(async () => {
       const result = await setRegionActive(row.id, !row.isActive);
       notifyResult(
+        tr,
         router,
         result,
-        row.isActive ? "地域を無効化しました" : "地域を有効化しました",
+        row.isActive
+          ? tr("master.plants.regionDisabled")
+          : tr("master.plants.theRegionWasEnabled"),
       );
     });
   };
 
   const handleDelete = (row: RegionRow) => {
     openConfirm({
-      title: "地域の削除",
-      message: `地域「${row.code} ${row.nameJa}」を削除します。この操作は取り消せません。`,
-      confirmLabel: "削除する",
+      title: tr("master.plants.deleteTheRegion"),
+      message: tr("master.plants.deleteRegionConfirm", {
+        code: row.code,
+        name: row.nameJa,
+      }),
+      confirmLabel: tr("common.delete2"),
       onConfirm: () => {
         startTransition(async () => {
           const result = await deleteRegion(row.id);
-          notifyResult(router, result, "地域を削除しました");
+          notifyResult(
+            tr,
+            router,
+            result,
+            tr("master.plants.theRegionWasDeleted"),
+          );
         });
       },
     });
@@ -169,25 +195,25 @@ export function RegionsPanel({ rows }: { rows: RegionRow[] }) {
     <ListShell
       action={
         <CreateButton onClick={() => setModal({ region: null })}>
-          地域を追加
+          {tr("master.plants.addARegion2")}
         </CreateButton>
       }
       breadcrumbs={[
-        "マスタ",
-        { label: "拠点", href: "/master/plants" },
-        "地域",
+        tr("common.masterData"),
+        { label: tr("common.plants"), href: "/master/plants" },
+        tr("common.region"),
       ]}
-      title="地域"
+      title={tr("common.region")}
     >
       <Table.ScrollContainer minWidth={560}>
         <Table>
           <Table.Thead>
             <Table.Tr>
-              <Table.Th w={140}>コード</Table.Th>
-              <Table.Th>名称</Table.Th>
-              <Table.Th w={90}>拠点数</Table.Th>
-              <Table.Th w={90}>状態</Table.Th>
-              <Table.Th w={220}>操作</Table.Th>
+              <Table.Th w={140}>{tr("common.code")}</Table.Th>
+              <Table.Th>{tr("common.name2")}</Table.Th>
+              <Table.Th w={90}>{tr("master.plants.sites")}</Table.Th>
+              <Table.Th w={90}>{tr("common.status")}</Table.Th>
+              <Table.Th w={220}>{tr("common.actions")}</Table.Th>
             </Table.Tr>
           </Table.Thead>
           <Table.Tbody>
@@ -195,7 +221,7 @@ export function RegionsPanel({ rows }: { rows: RegionRow[] }) {
               <Table.Tr>
                 <Table.Td colSpan={5}>
                   <Text c="dimmed" py="sm" size="sm" ta="center">
-                    地域がありません — 「地域を追加」から作成してください
+                    {tr("master.plants.thereAreNoRegionsCreateOne")}
                   </Text>
                 </Table.Td>
               </Table.Tr>
@@ -218,14 +244,16 @@ export function RegionsPanel({ rows }: { rows: RegionRow[] }) {
                       leftSection={<IconEdit size={14} />}
                       onClick={() => setModal({ region: row })}
                     >
-                      編集
+                      {tr("common.edit2")}
                     </GhostButton>
                     <GhostButton
                       leftSection={<IconCircleMinus size={14} />}
                       loading={isPending}
                       onClick={() => handleToggle(row)}
                     >
-                      {row.isActive ? "無効化" : "有効化"}
+                      {row.isActive
+                        ? tr("common.disable")
+                        : tr("common.enable")}
                     </GhostButton>
                     <GhostButton
                       color="red"
@@ -233,7 +261,7 @@ export function RegionsPanel({ rows }: { rows: RegionRow[] }) {
                       leftSection={<IconTrash size={14} />}
                       onClick={() => handleDelete(row)}
                     >
-                      削除
+                      {tr("common.delete")}
                     </GhostButton>
                   </Group>
                 </Table.Td>
@@ -243,8 +271,7 @@ export function RegionsPanel({ rows }: { rows: RegionRow[] }) {
         </Table>
       </Table.ScrollContainer>
       <Text c="dimmed" mt="sm" size="xs">
-        地域コードは REGION スコープ権限（scope_values）が参照する識別子のため
-        作成後は変更できません。削除は拠点から参照されていない地域のみ可能です。
+        {tr("master.plants.theRegionCodeIsTheIdentifier")}
       </Text>
       {modal && (
         <RegionModal

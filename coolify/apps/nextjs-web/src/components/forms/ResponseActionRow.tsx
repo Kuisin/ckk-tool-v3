@@ -13,6 +13,7 @@
  */
 
 import { Group, Stack } from "@mantine/core";
+import { useTranslations } from "next-intl";
 import { PrimaryButton, SecondaryButton } from "@/components/ui/buttons";
 import { useIsMobile } from "@/hooks/useViewport";
 
@@ -31,18 +32,19 @@ export function ResponseActionRow({
   canAnswerAgain: boolean;
   canSeeAll: boolean;
 }) {
+  const tr = useTranslations();
   const isMobile = useIsMobile();
   const edit = `/f/${code}/${encodeURIComponent(responseNumber)}/edit`;
 
   const buttons = [
     editable && (
       <PrimaryButton fullWidth={isMobile} href={edit} key="edit">
-        {isDraft ? "下書きの続きを書く" : "回答を編集する"}
+        {isDraft ? "下書きの続きを書く" : tr("common.editTheResponse")}
       </PrimaryButton>
     ),
     canAnswerAgain && (
       <SecondaryButton fullWidth={isMobile} href={`/f/${code}`} key="again">
-        もう 1 件回答する
+        {tr("forms.responseActionRow.respondOnceMore")}
       </SecondaryButton>
     ),
     canSeeAll && (
@@ -51,7 +53,7 @@ export function ResponseActionRow({
         href={`/f/${code}/responses`}
         key="all"
       >
-        回答一覧を見る
+        {tr("common.viewResponses")}
       </SecondaryButton>
     ),
   ].filter(Boolean);

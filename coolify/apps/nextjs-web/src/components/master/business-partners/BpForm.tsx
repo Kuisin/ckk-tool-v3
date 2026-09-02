@@ -21,7 +21,7 @@ import {
 import { useForm } from "@mantine/form";
 import { notifications } from "@mantine/notifications";
 import { useRouter } from "next/navigation";
-import { useLocale } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { useTransition } from "react";
 import { z } from "zod";
 import type { BpDetail } from "@/app/(dashboard)/master/_shared/bp-data";
@@ -87,11 +87,12 @@ const bpFormSchema = bpBaseFormSchema
     }),
   })
   .superRefine((v, ctx) => {
+    const tr = useTranslations();
     if (v.roles.includes("VENDOR") && !v.vendor.vendorType) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         path: ["vendor", "vendorType"],
-        message: "外注種別を選択してください",
+        message: tr("master.businessPartners.selectASubcontractorType"),
       });
     }
     if (!v.roles.includes("CUSTOMER")) return;
@@ -100,13 +101,13 @@ const bpFormSchema = bpBaseFormSchema
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         path: ["customer", "salesReps"],
-        message: "営業担当の担当者を選択してください（空の行は削除）",
+        message: tr("master.businessPartners.chooseTheSalesRepBlankRows"),
       });
     } else if (new Set(ids).size !== ids.length) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         path: ["customer", "salesReps"],
-        message: "同じ担当者が重複しています",
+        message: tr("master.businessPartners.theSameContactAppearsTwice"),
       });
     }
   });
@@ -114,12 +115,6 @@ const bpFormSchema = bpBaseFormSchema
 type FormValues = z.infer<typeof bpFormSchema>;
 
 const ROLE_ORDER = ["CUSTOMER", "END_USER", "VENDOR"] as const;
-
-const ROLE_DESCRIPTION: Record<string, string> = {
-  CUSTOMER: "見積書・注文請書・請求書の宛先として選べるようになる",
-  END_USER: "納品書・注文明細の最終需要家として選べるようになる",
-  VENDOR: "素材発注書・外注依頼・工程の外注先として選べるようになる",
-};
 
 const nullIfBlank = (v: number | "") => (v === "" ? null : v);
 
@@ -133,11 +128,17 @@ export function BpForm({
   /** 営業担当に選べるユーザー（有効な社員アカウント）。 */
   salesRepOptions: Option[];
 }) {
+  const tr = useTranslations();
   const locale = useLocale();
   const router = useRouter();
   const isMobile = useIsMobile();
   const [isPending, startTransition] = useTransition();
   const isEdit = !!initial;
+  const ROLE_DESCRIPTION: Record<string, string> = {
+    CUSTOMER: tr("master.bpForm.customerRoleDescription"),
+    END_USER: tr("master.bpForm.endUserRoleDescription"),
+    VENDOR: tr("master.bpForm.vendorRoleDescription"),
+  };
 
   const form = useForm<FormValues>({
     validate: zodResolver(bpFormSchema),
@@ -243,14 +244,16 @@ export function BpForm({
         : await createBusinessPartner(input);
       if (result.ok) {
         notifications.show({
-          title: "保存しました",
-          message: isEdit ? "取引先を更新しました" : "取引先を作成しました",
+          title: tr("common.saved2"),
+          message: isEdit
+            ? tr("master.bpForm.updatedMessage")
+            : tr("master.businessPartners.theBusinessPartnerWasCreated"),
           color: "green",
         });
         router.push(`${BP_BASE_PATH}/${result.data.id}`);
       } else {
         notifications.show({
-          title: "エラー",
+          title: tr("common.error2"),
           message: result.error,
           color: "red",
         });
@@ -261,9 +264,9 @@ export function BpForm({
   return (
     <FormShell
       breadcrumbs={[
-        "マスタ",
-        { label: "取引先", href: BP_BASE_PATH },
-        isEdit ? "編集" : "新規作成",
+        tr("common.masterData"),
+        { label: tr("common.businessPartners"), href: BP_BASE_PATH },
+        isEdit ? tr("common.edit2") : tr("common.new2"),
       ]}
       isDirty={form.isDirty()}
       isPending={isPending}
@@ -272,17 +275,25 @@ export function BpForm({
       }
       onSubmit={form.onSubmit(handleSubmit)}
       status={isEdit ? <ActiveBadge active={initial.isActive} /> : undefined}
-      title={isEdit ? `取引先 編集 — ${initial.bpCode}` : "取引先 新規作成"}
+      title={
+        isEdit
+          ? tr("master.bpForm.editTitle", { code: initial.bpCode })
+          : tr("master.businessPartners.newBusinessPartner")
+      }
     >
       <BpBaseFields
         bpCode={initial?.bpCode}
-        codeDescription="形式: BP-NNNNN（自動採番）"
+        codeDescription={tr(
+          "master.businessPartners.formatBpNnnnnNumberedAutomatically",
+        )}
         form={form}
       />
 
       <FormSection
-        description="この取引先をどの立場で使うかを選ぶ（bp_role_assignments）。複数選択でき、後から付け外しできる。"
-        title="ロール"
+        description={tr(
+          "master.businessPartners.chooseInWhatCapacityThisPartner",
+        )}
+        title={tr("common.role")}
       >
         <Checkbox.Group {...form.getInputProps("roles")}>
           <Stack gap="xs">
@@ -298,21 +309,24 @@ export function BpForm({
         </Checkbox.Group>
         {roles.length === 0 && (
           <Text c="dimmed" mt="sm" size="xs">
-            ロール未設定でも登録できます。書類で選べるようにするには、あとで
-            ロールを付けてください。
+            {tr("master.businessPartners.youCanRegisterItWithNo")}
           </Text>
         )}
       </FormSection>
 
       {has("CUSTOMER") && (
         <FormSection
-          description="締日・支払条件・請求方法（bp_customer_attrs）。"
-          title="顧客情報"
+          description={tr(
+            "master.businessPartners.closingDayPaymentTermsAndInvoice",
+          )}
+          title={tr("master.businessPartners.customerInformation")}
         >
           <SimpleGrid cols={isMobile ? 1 : 2} spacing="sm">
             <TextInput
-              label="旧システムコード"
-              placeholder="旧顧客コード（任意）"
+              label={tr("common.legacySystemCode")}
+              placeholder={tr(
+                "master.businessPartners.legacyCustomerCodeOptional",
+              )}
               {...form.getInputProps("customer.customerCode")}
             />
             <Select
@@ -321,16 +335,16 @@ export function BpForm({
               label={
                 <HelpLabel {...fieldHelp("businessPartner", "billingBp")} />
               }
-              placeholder="この取引先自身に請求"
+              placeholder={tr("master.businessPartners.billThisPartnerItself")}
               searchable
               {...form.getInputProps("customer.billingBpId")}
             />
             <NumberInput
-              description="31 = 月末"
+              description={tr("master.businessPartners.n31EndOfMonth")}
               label={
                 <HelpLabel
                   {...fieldHelp("businessPartner", "paymentTerms", {
-                    label: "締日",
+                    label: tr("common.closingDay"),
                   })}
                 />
               }
@@ -342,7 +356,7 @@ export function BpForm({
               label={
                 <HelpLabel
                   {...fieldHelp("businessPartner", "paymentTerms", {
-                    label: "支払サイト（日数）",
+                    label: tr("master.businessPartners.paymentTermsDays"),
                   })}
                 />
               }
@@ -353,7 +367,7 @@ export function BpForm({
               label={
                 <HelpLabel
                   {...fieldHelp("businessPartner", "paymentTerms", {
-                    label: "支払日",
+                    label: tr("common.paymentDay"),
                   })}
                 />
               }
@@ -387,7 +401,9 @@ export function BpForm({
             label={
               <HelpLabel
                 {...fieldHelp("businessPartner", "consignment", {
-                  label: "委託先（委託販売の対象）",
+                  label: tr(
+                    "master.businessPartners.consigneeForConsignmentSales",
+                  ),
                 })}
               />
             }
@@ -401,8 +417,10 @@ export function BpForm({
 
       {has("CUSTOMER") && (
         <FormSection
-          description="この顧客を担当する営業（bp_sales_reps）。複数登録でき、見積書・注文請書などの営業担当はこの一覧から選ぶ。主担当が新規書類の既定値になる。"
-          title="営業担当"
+          description={tr(
+            "master.businessPartners.theSalesRepsForThisCustomer",
+          )}
+          title={tr("common.salesRep")}
         >
           <SalesRepsEditor
             error={form.errors["customer.salesReps"] as string | undefined}
@@ -415,15 +433,17 @@ export function BpForm({
 
       {has("END_USER") && (
         <FormSection
-          description="需要家固有属性（bp_end_user_attrs）。"
-          title="最終需要家情報"
+          description={tr(
+            "master.businessPartners.endUserSpecificAttributesBpEnd",
+          )}
+          title={tr("master.businessPartners.endUserInformation")}
         >
           <SimpleGrid cols={isMobile ? 1 : 2} spacing="sm">
             <TextInput
               label={
                 <HelpLabel {...fieldHelp("businessPartner", "industry")} />
               }
-              placeholder="自動車部品"
+              placeholder={tr("master.businessPartners.automotiveParts")}
               {...form.getInputProps("endUser.industry")}
             />
           </SimpleGrid>
@@ -433,8 +453,12 @@ export function BpForm({
       {has("VENDOR") && (
         <>
           <FormSection
-            description="種別・支払条件・標準リードタイム（bp_vendor_attrs）。"
-            title="仕入先・外注先情報"
+            description={tr(
+              "master.businessPartners.typePaymentTermsAndStandardLead",
+            )}
+            title={tr(
+              "master.businessPartners.supplierAndSubcontractorInformation",
+            )}
           >
             <SimpleGrid cols={isMobile ? 1 : 2} spacing="sm">
               <Select
@@ -446,16 +470,18 @@ export function BpForm({
                 {...form.getInputProps("vendor.vendorType")}
               />
               <TextInput
-                label="旧システムコード"
-                placeholder="旧仕入先コード（任意）"
+                label={tr("common.legacySystemCode")}
+                placeholder={tr(
+                  "master.businessPartners.legacySupplierCodeOptional",
+                )}
                 {...form.getInputProps("vendor.vendorCode")}
               />
               <NumberInput
-                description="31 = 月末"
+                description={tr("master.businessPartners.n31EndOfMonth")}
                 label={
                   <HelpLabel
                     {...fieldHelp("businessPartner", "paymentTerms", {
-                      label: "締日",
+                      label: tr("common.closingDay"),
                     })}
                   />
                 }
@@ -467,7 +493,7 @@ export function BpForm({
                 label={
                   <HelpLabel
                     {...fieldHelp("businessPartner", "paymentTerms", {
-                      label: "支払サイト（日数）",
+                      label: tr("master.businessPartners.paymentTermsDays"),
                     })}
                   />
                 }
@@ -478,7 +504,7 @@ export function BpForm({
                 label={
                   <HelpLabel
                     {...fieldHelp("businessPartner", "paymentTerms", {
-                      label: "支払日",
+                      label: tr("common.paymentDay"),
                     })}
                   />
                 }
@@ -496,28 +522,31 @@ export function BpForm({
             </SimpleGrid>
           </FormSection>
 
-          <FormSection description="支払振込先の口座情報。" title="振込先">
+          <FormSection
+            description={tr("master.businessPartners.bankAccountForPayments")}
+            title={tr("common.bankAccount")}
+          >
             <SimpleGrid cols={isMobile ? 1 : 2} spacing="sm">
               <TextInput
                 label={
                   <HelpLabel
                     {...fieldHelp("businessPartner", "bank", {
-                      label: "銀行名",
+                      label: tr("common.bankName"),
                     })}
                   />
                 }
-                placeholder="〇〇銀行"
+                placeholder={tr("master.businessPartners.exampleBank")}
                 {...form.getInputProps("vendor.bankName")}
               />
               <TextInput
                 label={
                   <HelpLabel
                     {...fieldHelp("businessPartner", "bank", {
-                      label: "支店名",
+                      label: tr("common.branchName"),
                     })}
                   />
                 }
-                placeholder="〇〇支店"
+                placeholder={tr("master.businessPartners.exampleBranch")}
                 {...form.getInputProps("vendor.bankBranch")}
               />
               <Select
@@ -526,7 +555,7 @@ export function BpForm({
                 label={
                   <HelpLabel
                     {...fieldHelp("businessPartner", "bank", {
-                      label: "口座種別",
+                      label: tr("common.accountType"),
                     })}
                   />
                 }
@@ -536,7 +565,7 @@ export function BpForm({
                 label={
                   <HelpLabel
                     {...fieldHelp("businessPartner", "bank", {
-                      label: "口座番号",
+                      label: tr("common.accountNumber"),
                     })}
                   />
                 }

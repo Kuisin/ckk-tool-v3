@@ -37,6 +37,7 @@ import {
 } from "@tabler/icons-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { useState, useTransition } from "react";
 import {
   abortStep,
@@ -65,6 +66,7 @@ import type { StepExecutionData } from "./model";
 const BASE_PATH = "/production/work-orders";
 
 export function StepExecutionView({ data }: { data: StepExecutionData }) {
+  const tr = useTranslations();
   const fmt = useFormat();
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
@@ -112,13 +114,15 @@ export function StepExecutionView({ data }: { data: StepExecutionData }) {
     if (result.ok) {
       notifications.show({
         title: successTitle,
-        message: `工程: ${step.name}`,
+        message: tr("production.stepExecutionView.stepWithName", {
+          name: step.name,
+        }),
         color: "green",
       });
       router.refresh();
     } else {
       notifications.show({
-        title: "エラー",
+        title: tr("common.error2"),
         message: result.errors?.join(" / ") ?? fallback,
         color: "red",
       });
@@ -132,7 +136,11 @@ export function StepExecutionView({ data }: { data: StepExecutionData }) {
         step.id,
         lotText.trim() || null,
       );
-      notifyResult(result, "工程を開始しました", "工程の開始に失敗しました");
+      notifyResult(
+        result,
+        tr("production.stepExecution.theStepWasStarted"),
+        tr("production.stepExecution.couldNotStartTheStep"),
+      );
     });
   };
 
@@ -141,8 +149,8 @@ export function StepExecutionView({ data }: { data: StepExecutionData }) {
       const result = await updateStepLot(workOrderNumber, step.id, lotText);
       notifyResult(
         result,
-        "ロット/伝票コードを保存しました",
-        "ロット/伝票コードの保存に失敗しました",
+        tr("production.stepExecution.theLotSlipCodeWasSaved"),
+        tr("production.stepExecution.couldNotSaveTheLotSlip"),
       );
     });
   };
@@ -151,15 +159,19 @@ export function StepExecutionView({ data }: { data: StepExecutionData }) {
   const handleCompleteWithoutQuantities = () => {
     startTransition(async () => {
       const result = await completeStep(workOrderNumber, step.id, null);
-      notifyResult(result, "工程を完了しました", "工程の完了に失敗しました");
+      notifyResult(
+        result,
+        tr("common.stepCompleted"),
+        tr("common.couldNotCompleteTheStep"),
+      );
     });
   };
 
   const handleReasonConfirm = () => {
     if (!reason.trim()) {
       notifications.show({
-        title: "入力不足",
-        message: "理由を入力してください",
+        title: tr("common.missingInput"),
+        message: tr("common.enterAReason2"),
         color: "red",
       });
       return;
@@ -176,8 +188,10 @@ export function StepExecutionView({ data }: { data: StepExecutionData }) {
       }
       notifyResult(
         result,
-        mode === "abort" ? "工程を中断しました" : "工程を巻き戻しました",
-        "操作に失敗しました",
+        mode === "abort"
+          ? tr("production.stepExecutionView.theStepWasAborted")
+          : tr("production.stepExecution.theStepWasRolledBack"),
+        tr("common.theActionFailed"),
       );
     });
   };
@@ -194,8 +208,8 @@ export function StepExecutionView({ data }: { data: StepExecutionData }) {
       });
       notifyResult(
         result,
-        "外注日程を保存しました",
-        "外注日程の保存に失敗しました",
+        tr("production.stepExecution.theOutsourcingScheduleWasSaved"),
+        tr("production.stepExecution.couldNotSaveTheOutsourcingSchedule"),
       );
     });
   };
@@ -214,16 +228,16 @@ export function StepExecutionView({ data }: { data: StepExecutionData }) {
                 size="sm"
                 variant="outline"
               >
-                {isOutsource ? "外注" : "社内"}
+                {isOutsource ? "外注" : tr("common.inHouse")}
               </Badge>
               {step.isInspection && (
                 <Badge color="blue" size="sm" variant="light">
-                  検査
+                  {tr("common.inspection")}
                 </Badge>
               )}
               {step.isApprovalStep && (
                 <Badge color="teal" size="sm" variant="light">
-                  検査承認
+                  {tr("common.inspectionApproval")}
                 </Badge>
               )}
             </Group>
@@ -265,10 +279,11 @@ export function StepExecutionView({ data }: { data: StepExecutionData }) {
         <Alert
           color="red"
           icon={<IconLock size={16} />}
-          title="別のユーザーがセッション中です"
+          title={tr("production.stepExecution.anotherUserHasThisSessionOpen")}
           variant="filled"
         >
-          {step.sessionLockedByName ?? "別のユーザー"}
+          {step.sessionLockedByName ??
+            tr("production.stepExecution.anotherUser")}
           がこの工程を操作しています。完了または中断されるまで操作できません。
         </Alert>
       )}
@@ -280,7 +295,7 @@ export function StepExecutionView({ data }: { data: StepExecutionData }) {
           <Paper p="md" radius="md" withBorder>
             <Group align="flex-end" gap="sm">
               <TextInput
-                label="ロット/伝票コード"
+                label={tr("production.stepExecution.lotSlipCode")}
                 maxLength={100}
                 onChange={(e) => setLotText(e.currentTarget.value)}
                 style={{ flex: 1 }}
@@ -293,34 +308,43 @@ export function StepExecutionView({ data }: { data: StepExecutionData }) {
                 onClick={handleSaveLot}
                 variant="default"
               >
-                保存
+                {tr("common.save2")}
               </Button>
             </Group>
           </Paper>
         ) : (
           <Paper p="md" radius="md" withBorder>
-            <FieldValue label="ロット/伝票コード" value={step.lotText ?? "—"} />
+            <FieldValue
+              label={tr("production.stepExecution.lotSlipCode")}
+              value={step.lotText ?? "—"}
+            />
           </Paper>
         ))}
 
       {/* ── PENDING: 開始可否・工程開始 ── */}
       {step.status === "PENDING" &&
         (!woExecutable ? (
-          <Alert color="yellow" title="開始できません" variant="light">
-            指示書が承認済み / 進行中ではないため、工程を開始できません。
+          <Alert
+            color="yellow"
+            title={tr("production.stepExecution.cannotStart")}
+            variant="light"
+          >
+            {tr("production.stepExecution.theStepCannotStartBecauseThe")}
           </Alert>
         ) : data.canStart.ok && !lockedByOther ? (
           <Stack gap="sm" mt="md">
             {step.lotInputMode !== "NONE" && (
               <TextInput
-                description="素材ロット・伝票コードなど（開始時に記録されます）"
-                label="ロット/伝票コード"
+                description={tr(
+                  "production.stepExecution.materialLotSlipCodeAndSo",
+                )}
+                label={tr("production.stepExecution.lotSlipCode")}
                 maxLength={100}
                 onChange={(e) => setLotText(e.currentTarget.value)}
                 placeholder={
                   step.lotInputMode === "REQUIRED"
-                    ? "ロット/伝票コード（必須）"
-                    : "ロット/伝票コード（任意）"
+                    ? tr("production.stepExecution.lotSlipCodeRequired")
+                    : tr("production.stepExecution.lotSlipCodeOptional")
                 }
                 value={lotText}
                 withAsterisk={step.lotInputMode === "REQUIRED"}
@@ -336,12 +360,16 @@ export function StepExecutionView({ data }: { data: StepExecutionData }) {
                 loading={isPending}
                 onClick={handleStart}
               >
-                工程開始
+                {tr("production.stepExecution.start")}
               </Button>
             </Group>
           </Stack>
         ) : (
-          <Alert color="yellow" title="開始できません" variant="light">
+          <Alert
+            color="yellow"
+            title={tr("production.stepExecution.cannotStart")}
+            variant="light"
+          >
             <List size="sm">
               {data.canStart.reasons.map((r) => (
                 <List.Item key={r}>{r}</List.Item>
@@ -366,7 +394,7 @@ export function StepExecutionView({ data }: { data: StepExecutionData }) {
                 loading={isPending}
                 onClick={handleCompleteWithoutQuantities}
               >
-                工程完了
+                {tr("common.complete")}
               </Button>
             </Stack>
           </Paper>
@@ -386,8 +414,13 @@ export function StepExecutionView({ data }: { data: StepExecutionData }) {
         (step.quantityTracking === "NONE" ? (
           <Paper p="md" radius="md" withBorder>
             <Stack gap="md">
-              <Title order={5}>数量（記録なし・パススルー）</Title>
-              <FieldValue label="通過数" value={step.inputQuantity} />
+              <Title order={5}>
+                {tr("production.stepExecution.quantityNotRecordedPassThrough")}
+              </Title>
+              <FieldValue
+                label={tr("production.stepExecution.passedQuantity")}
+                value={step.inputQuantity}
+              />
             </Stack>
           </Paper>
         ) : (
@@ -395,8 +428,10 @@ export function StepExecutionView({ data }: { data: StepExecutionData }) {
             <Stack gap="md">
               <Title order={4}>
                 {step.quantityTracking === "INSPECTION"
-                  ? "検査数・合否（記録済み）"
-                  : "数量・不良（記録済み）"}
+                  ? tr(
+                      "production.stepExecution.inspectedCountAndResultRecorded",
+                    )
+                  : tr("production.stepExecution.quantityAndDefectsRecorded")}
               </Title>
               <SimpleGrid cols={{ base: 2, sm: 5 }} spacing="md">
                 <FieldValue
@@ -423,7 +458,9 @@ export function StepExecutionView({ data }: { data: StepExecutionData }) {
               {step.defectReasons.length > 0 && (
                 <Stack gap="xs">
                   <Text c="dimmed" fw={600} size="sm">
-                    不良内訳（種別・理由・数）
+                    {tr(
+                      "production.stepExecution.defectBreakdownTypeReasonCount",
+                    )}
                   </Text>
                   {step.defectReasons.map((r, i) => (
                     <Group
@@ -473,8 +510,13 @@ export function StepExecutionView({ data }: { data: StepExecutionData }) {
 
       {/* ── CANCELLED ── */}
       {step.status === "CANCELLED" && (
-        <Alert color="red" title="キャンセル済みの工程です" variant="light">
-          {step.cancelReason ?? "この工程はキャンセルされています。"}
+        <Alert
+          color="red"
+          title={tr("production.stepExecution.thisStepHasBeenCancelled")}
+          variant="light"
+        >
+          {step.cancelReason ??
+            tr("production.stepExecution.thisStepHasBeenCancelled2")}
         </Alert>
       )}
 
@@ -529,42 +571,44 @@ export function StepExecutionView({ data }: { data: StepExecutionData }) {
       {isOutsource && (
         <Paper p="md" radius="md" withBorder>
           <Stack gap="md">
-            <Title order={5}>外注日程</Title>
+            <Title order={5}>
+              {tr("production.stepExecution.outsourcingSchedule")}
+            </Title>
             <SimpleGrid cols={{ base: 1, sm: 3 }} spacing="md">
               <DatePickerInput
                 clearable
                 disabled={!canOperate}
-                label="依頼日"
+                label={tr("common.requestedDate")}
                 leftSection={<IconCalendar size={16} />}
                 onChange={setRequestedAt}
-                placeholder="日付を選択"
+                placeholder={tr("common.pickADate")}
                 value={requestedAt}
                 valueFormat="YYYY/MM/DD"
               />
               <DatePickerInput
                 clearable
                 disabled={!canOperate}
-                label="入荷予定日"
+                label={tr("common.expectedDate")}
                 leftSection={<IconCalendar size={16} />}
                 onChange={setExpectedAt}
-                placeholder="日付を選択"
+                placeholder={tr("common.pickADate")}
                 value={expectedAt}
                 valueFormat="YYYY/MM/DD"
               />
               <DatePickerInput
                 clearable
                 disabled={!canOperate}
-                label="入荷日"
+                label={tr("common.receivedDate")}
                 leftSection={<IconCalendar size={16} />}
                 onChange={setReceivedAt}
-                placeholder="日付を選択"
+                placeholder={tr("common.pickADate")}
                 value={receivedAt}
                 valueFormat="YYYY/MM/DD"
               />
               <NumberInput
                 allowNegative={false}
                 disabled={!canOperate}
-                label="外注費"
+                label={tr("production.stepExecution.outsourcingCost")}
                 min={0}
                 onChange={(v) =>
                   setOutsourceCost(typeof v === "number" ? v : "")
@@ -580,7 +624,7 @@ export function StepExecutionView({ data }: { data: StepExecutionData }) {
                   loading={isPending}
                   onClick={handleSaveOutsourceDates}
                 >
-                  外注日程を保存
+                  {tr("production.stepExecution.saveTheOutsourcingSchedule")}
                 </PrimaryButton>
               </Group>
             )}
@@ -596,7 +640,7 @@ export function StepExecutionView({ data }: { data: StepExecutionData }) {
             onClick={() => setReasonMode("abort")}
             variant="outline"
           >
-            中断（巻き戻し）
+            {tr("production.stepExecution.interruptRollBack")}
           </Button>
         </Group>
       )}
@@ -608,7 +652,7 @@ export function StepExecutionView({ data }: { data: StepExecutionData }) {
             onClick={() => setReasonMode("rollback")}
             variant="outline"
           >
-            巻き戻し
+            {tr("production.stepExecution.rollBack")}
           </Button>
         </Group>
       )}
@@ -616,7 +660,11 @@ export function StepExecutionView({ data }: { data: StepExecutionData }) {
       {/* ── 理由入力モーダル ── */}
       <ModalShell
         confirmColor={reasonMode === "abort" ? "red" : "orange"}
-        confirmLabel={reasonMode === "abort" ? "中断する" : "巻き戻す"}
+        confirmLabel={
+          reasonMode === "abort"
+            ? tr("production.stepExecutionView.abort")
+            : tr("production.stepExecution.rollBack2")
+        }
         loading={isPending}
         onClose={() => setReasonMode(null)}
         onConfirm={handleReasonConfirm}
@@ -624,19 +672,19 @@ export function StepExecutionView({ data }: { data: StepExecutionData }) {
         size="md"
         title={
           reasonMode === "abort"
-            ? "工程の中断（巻き戻し）"
-            : "完了工程の巻き戻し"
+            ? tr("production.stepExecution.interruptTheStepRollBack")
+            : tr("production.stepExecution.rollBackACompletedStep")
         }
       >
         <Stack gap="sm">
           <Text size="sm">
             {reasonMode === "abort"
-              ? "進行中の工程を未着手へ戻します。入力中の数量は保存されません。"
-              : "完了済みの工程を未着手へ戻し、記録済みの数量をクリアします。後続工程が着手済みの場合は巻き戻せません。"}
+              ? tr("production.stepExecution.returnsAnInProgressStepTo")
+              : tr("production.stepExecution.returnsACompletedStepToNot")}
           </Text>
           <Textarea
             autosize
-            label="理由"
+            label={tr("common.reason")}
             minRows={3}
             onChange={(e) => setReason(e.currentTarget.value)}
             value={reason}

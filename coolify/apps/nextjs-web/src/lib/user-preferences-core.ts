@@ -39,6 +39,23 @@ export const TEXT_SCALES = ["xs", "sm", "md", "lg", "xl"] as const;
 export type TextScale = (typeof TEXT_SCALES)[number];
 
 /**
+ * アプリの書体。"noto" = 同梱の Noto Sans JP（既定・全端末で同じ見た目）、
+ * "system" = OS 既定の書体へ委ねる（Windows は游ゴシック UI 系、Mac は
+ * ヒラギノ系 — 端末ごとに見た目が変わる）。
+ *
+ * **PDF には効かない** — 帳票は常に埋め込み Noto Sans JP で固定（lib/pdf.ts）。
+ * ここは画面表示だけの設定。
+ */
+export const FONT_FAMILIES = ["noto", "system"] as const;
+export type FontFamilyPref = (typeof FONT_FAMILIES)[number];
+
+/** 選択肢ごとの実際の font-family スタック（globals.css の --app-font-family へ渡す）。 */
+export const FONT_FAMILY_STACKS: Record<FontFamilyPref, string> = {
+  noto: "'Noto Sans JP', 'Noto Sans CJK JP', system-ui, -apple-system, sans-serif",
+  system: "system-ui, -apple-system, sans-serif",
+};
+
+/**
  * 段ごとの倍率（html の font-size に掛ける）。rem 基準を動かすので、文字だけ
  * でなく余白・行の高さ・部品の高さも一緒に伸び縮みする（iOS の文字サイズと
  * 同じ挙動。文字だけ大きくすると、高さが固定の部品から文字がはみ出す）。
@@ -80,6 +97,8 @@ export interface DisplayPreferences {
   textScale: TextScale;
   /** 本文の文字を太くする。 */
   boldText: boolean;
+  /** アプリの書体（既定 "noto"）。PDF には効かない。 */
+  fontFamily: FontFamilyPref;
 }
 
 /**
@@ -93,6 +112,7 @@ export const DEFAULT_PREFERENCES: DisplayPreferences = {
   timeZone: "Asia/Tokyo",
   textScale: "md",
   boldText: false,
+  fontFamily: "noto",
 };
 
 /**
@@ -149,6 +169,12 @@ function normalizeTextScale(value: string | null | undefined): TextScale {
     : DEFAULT_PREFERENCES.textScale;
 }
 
+function normalizeFontFamily(value: string | null | undefined): FontFamilyPref {
+  return (FONT_FAMILIES as readonly string[]).includes(value ?? "")
+    ? (value as FontFamilyPref)
+    : DEFAULT_PREFERENCES.fontFamily;
+}
+
 /** DB 行など未検証の値から表示設定を作る（各項目ごとに既定へ倒す）。 */
 export function normalizePreferences(raw: {
   locale?: string | null;
@@ -157,6 +183,7 @@ export function normalizePreferences(raw: {
   timeZone?: string | null;
   textScale?: string | null;
   boldText?: boolean | null;
+  fontFamily?: string | null;
 }): DisplayPreferences {
   return {
     locale: normalizeLocale(raw.locale),
@@ -167,15 +194,18 @@ export function normalizePreferences(raw: {
       : DEFAULT_PREFERENCES.timeZone,
     textScale: normalizeTextScale(raw.textScale),
     boldText: raw.boldText === true,
+    fontFamily: normalizeFontFamily(raw.fontFamily),
   };
 }
 
 /**
- * 文字の大きさ・太さを表す CSS 変数一式。
+ * 文字の大きさ・太さ・書体を表す CSS 変数一式。
  *
- * 実際の適用先（html の font-size / body の font-weight / Mantine の太さ変数）は
- * globals.css §2 が持ち、ここは値だけを配る。設定画面が「保存前の見た目」を
- * 出すときも同じ変数を html へ直接載せるので、**適用の仕方が 1 通り**に保たれる。
+ * 実際の適用先（html の font-size / body の font-weight / Mantine の太さ・
+ * 書体変数）は globals.css §2 が持ち、ここは値だけを配る。設定画面が
+ * 「保存前の見た目」を出すときも同じ変数を html へ直接載せるので、
+ * **適用の仕方が 1 通り**に保たれる。書体は PDF には配らない（lib/pdf.ts は
+ * これを読まず、常に埋め込み Noto Sans JP を使う）。
  */
 export function displayCssVariables(
   prefs: DisplayPreferences,
@@ -183,6 +213,7 @@ export function displayCssVariables(
   const weights = prefs.boldText ? BOLD_TEXT_WEIGHTS : NORMAL_TEXT_WEIGHTS;
   return {
     "--app-text-scale": String(TEXT_SCALE_FACTORS[prefs.textScale]),
+    "--app-font-family": FONT_FAMILY_STACKS[prefs.fontFamily],
     "--app-font-weight-regular": String(weights.regular),
     "--app-font-weight-medium": String(weights.medium),
   };
@@ -194,8 +225,10 @@ export function displayCssVariables(
  * クライアントで当てると、最初の描画だけ既定の大きさで出てから切り替わる
  * （文字がひと呼吸おいて跳ねる）。SSR で流し込めばその瞬間が無い。
  *
- * 値は列挙から作った数値だけなので、`<`・`>`・`&`・引用符は入り得ない
- * （`<style>` の中身は生テキストで、React がエスケープすると壊れる）。
+ * 値は列挙（textScale/fontFamily）から作った固定の数値・CSS 単一引用符の
+ * font-family リストだけで、利用者の自由入力は一切通らないので
+ * `<`・`>`・`&`・二重引用符は入り得ない（`<style>` の中身は生テキストで、
+ * React がエスケープすると壊れる）。
  */
 export function displayRootCss(prefs: DisplayPreferences): string {
   const body = Object.entries(displayCssVariables(prefs))

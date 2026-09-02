@@ -11,6 +11,7 @@
  * 書き込み（アップロード・削除）は ADMIN か can_write 付きフォルダ権限のみ。
  */
 
+import { getTranslations } from "next-intl/server";
 import {
   canWriteKey,
   filterReadableKeys,
@@ -62,8 +63,9 @@ export async function POST(request: Request): Promise<Response> {
     return Response.json({ error: "invalid prefix" }, { status: 400 });
   }
   if (!canWriteKey(access, `${prefix}/x`)) {
+    const tr = await getTranslations();
     return Response.json(
-      { error: "このフォルダへのアップロード権限がありません" },
+      { error: tr("settings.filesActions.uploadPermissionDenied") },
       { status: 403 },
     );
   }
@@ -91,8 +93,9 @@ export async function DELETE(request: Request): Promise<Response> {
     return Response.json({ error: "key is required" }, { status: 400 });
   }
   if (!canWriteKey(access, key)) {
+    const tr = await getTranslations();
     return Response.json(
-      { error: "このファイルの削除権限がありません" },
+      { error: tr("settings.filesActions.deletePermissionDenied") },
       { status: 403 },
     );
   }

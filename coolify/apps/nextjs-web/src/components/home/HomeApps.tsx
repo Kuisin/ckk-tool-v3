@@ -66,20 +66,6 @@ export interface HomeUser {
   avatarThumbUrl: string | null;
 }
 
-/** 未ログイン時のフォールバック（デモ ID は出さない）。 */
-const GUEST_USER: HomeUser = {
-  displayName: "ゲスト",
-  initials: "—",
-  username: "",
-  department: null,
-  title: null,
-  email: null,
-  office: null,
-  company: null,
-  avatarUrl: null,
-  avatarThumbUrl: null,
-};
-
 interface HomeAppsProps {
   /** Passed from the Server Component parent — avoids client-side session fetch. */
   user?: HomeUser;
@@ -90,13 +76,29 @@ interface HomeAppsProps {
 }
 
 export function HomeApps({
-  user = GUEST_USER,
+  user,
   settings = DEFAULT_HOME_SETTINGS,
   isLoading = false,
 }: HomeAppsProps) {
   const locale = useLocale();
   const t = useTranslations("home");
-  const displayName = user.username ? user.displayName : t("guest");
+  /** 未ログイン時のフォールバック（デモ ID は出さない）。 */
+  const guestUser: HomeUser = {
+    displayName: t("guest"),
+    initials: "—",
+    username: "",
+    department: null,
+    title: null,
+    email: null,
+    office: null,
+    company: null,
+    avatarUrl: null,
+    avatarThumbUrl: null,
+  };
+  const effectiveUser = user ?? guestUser;
+  const displayName = effectiveUser.username
+    ? effectiveUser.displayName
+    : t("guest");
   const hiddenApps = useHiddenApps();
   const unreleasedApps = useUnreleasedApps();
   const searchParams = useSearchParams();
@@ -167,45 +169,45 @@ export function HomeApps({
   return (
     <Stack gap="xl" maw={1200} mx="auto" w="100%">
       {/* ── User profile card ──────────────────────────────────────────── */}
-      <Card padding="lg" radius="md" shadow="xs" withBorder>
-        <Group align="flex-start" justify="space-between" wrap="nowrap">
-          <Group>
+      <Card padding="sm" radius="md" shadow="xs" withBorder>
+        <Group align="center" justify="space-between" wrap="nowrap">
+          <Group align="center" gap="sm" wrap="nowrap">
             <UserAvatar
-              initials={user.initials}
+              initials={effectiveUser.initials}
               name={displayName}
-              size={72}
-              src={user.avatarUrl}
-              thumbSrc={user.avatarThumbUrl}
+              size={44}
+              src={effectiveUser.avatarUrl}
+              thumbSrc={effectiveUser.avatarThumbUrl}
             />
-            <Stack gap={4}>
-              <Title order={3}>{displayName}</Title>
-              {user.username && (
-                <Text c="dimmed" size="sm">
-                  {user.username}
+            <Stack gap={0} style={{ minWidth: 0 }}>
+              <Group align="center" gap="xs" wrap="wrap">
+                <Text fw={600} size="sm" truncate>
+                  {displayName}
                 </Text>
-              )}
-              {(user.department || user.title) && (
-                <Group gap="xs">
-                  {user.department && (
-                    <Badge color="blue" size="sm" variant="light">
-                      {user.department}
-                    </Badge>
-                  )}
-                  {user.title && (
-                    <Badge color="gray" size="sm" variant="light">
-                      {user.title}
-                    </Badge>
-                  )}
-                </Group>
-              )}
-              {user.email && (
-                <Text c="dimmed" size="xs">
-                  {user.email}
-                </Text>
-              )}
-              {(user.company || user.office) && (
-                <Text c="dimmed" size="xs">
-                  {[user.company, user.office].filter(Boolean).join(" / ")}
+                {effectiveUser.department && (
+                  <Badge color="blue" size="xs" variant="light">
+                    {effectiveUser.department}
+                  </Badge>
+                )}
+                {effectiveUser.title && (
+                  <Badge color="gray" size="xs" variant="light">
+                    {effectiveUser.title}
+                  </Badge>
+                )}
+              </Group>
+              {(effectiveUser.username ||
+                effectiveUser.email ||
+                effectiveUser.company ||
+                effectiveUser.office) && (
+                <Text c="dimmed" size="xs" truncate>
+                  {[
+                    effectiveUser.username,
+                    effectiveUser.email,
+                    effectiveUser.company,
+                    effectiveUser.office,
+                  ]
+                    .filter(Boolean)
+                    .join(" · ")}
                 </Text>
               )}
             </Stack>
@@ -214,7 +216,7 @@ export function HomeApps({
           {/* biome-ignore lint/performance/noImgElement: static SVG logo — next/image adds no value */}
           <img
             alt="シー・ケィ・ケー株式会社"
-            className="h-14 w-14 shrink-0 opacity-75"
+            className="h-8 w-8 shrink-0 opacity-75"
             src={
               isDark
                 ? "/design-assets/dark_logo-with-label.svg"

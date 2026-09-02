@@ -6,6 +6,7 @@
  */
 
 import { revalidatePath } from "next/cache";
+import { getTranslations } from "next-intl/server";
 import { z } from "zod";
 import { getCurrentActorId, recordAudit } from "@/lib/audit";
 import { checkPermission } from "@/lib/authz";
@@ -67,31 +68,38 @@ export async function fetchFolderGrants(): Promise<
   });
 }
 
-const grantSchema = z.object({
-  pathPrefix: z
-    .string()
-    .trim()
-    .min(1, "フォルダを指定してください")
-    .regex(/^[^\0]+$/)
-    .refine((v) => !v.includes(".."), "不正なパスです")
-    .transform((v) => v.replace(/^\/+|\/+$/g, "")),
-  userId: z.string().uuid("ユーザーを選択してください"),
-  canWrite: z.boolean(),
-});
+function grantSchema(tr: Awaited<ReturnType<typeof getTranslations>>) {
+  return z.object({
+    pathPrefix: z
+      .string()
+      .trim()
+      .min(1, tr("settings.filesActions.specifyFolder"))
+      .regex(/^[^\0]+$/)
+      .refine((v) => !v.includes(".."), tr("settings.filesActions.invalidPath"))
+      .transform((v) => v.replace(/^\/+|\/+$/g, "")),
+    userId: z.string().uuid(tr("master.approvalSettings.selectAUser")),
+    canWrite: z.boolean(),
+  });
+}
 
 export async function upsertFolderGrant(input: {
   pathPrefix: string;
   userId: string;
   canWrite: boolean;
 }): Promise<ActionResult<{ id: number }>> {
+  const tr = await getTranslations();
   const authz = await checkPermission("system", "ADMIN");
   if (!authz.ok) return actionError(authz.error);
-  const parsed = grantSchema.safeParse(input);
+  const parsed = grantSchema(tr).safeParse(input);
   if (!parsed.success) {
-    return actionError(parsed.error.issues[0]?.message ?? "入力が不正です");
+    return actionError(
+      parsed.error.issues[0]?.message ?? tr("common.invalidInput"),
+    );
   }
   const v = parsed.data;
-  if (!v.pathPrefix) return actionError("フォルダを指定してください");
+  if (!v.pathPrefix) {
+    return actionError(tr("settings.filesActions.specifyFolder"));
+  }
   try {
     const actorId = await getCurrentActorId();
     const row = await prisma.fileFolderGrant.upsert({
@@ -119,13 +127,16 @@ export async function upsertFolderGrant(input: {
     revalidatePath(BASE_PATH);
     return actionOk({ id: row.id });
   } catch (e) {
-    return actionError(prismaErrorMessage(e, "権限の保存に失敗しました"));
+    return actionError(
+      prismaErrorMessage(e, tr("settings.filesActions.grantSaveFailed"), tr),
+    );
   }
 }
 
 export async function deleteFolderGrant(
   id: number,
 ): Promise<ActionResult<null>> {
+  const tr = await getTranslations();
   const authz = await checkPermission("system", "ADMIN");
   if (!authz.ok) return actionError(authz.error);
   try {
@@ -143,6 +154,8 @@ export async function deleteFolderGrant(
     revalidatePath(BASE_PATH);
     return actionOk(null);
   } catch (e) {
-    return actionError(prismaErrorMessage(e, "権限の削除に失敗しました"));
+    return actionError(
+      prismaErrorMessage(e, tr("settings.filesActions.grantDeleteFailed"), tr),
+    );
   }
 }

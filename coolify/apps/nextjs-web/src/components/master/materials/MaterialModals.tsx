@@ -8,6 +8,7 @@
  */
 
 import { notifications } from "@mantine/notifications";
+import { useTranslations } from "next-intl";
 import { useTransition } from "react";
 import {
   deleteMaterials,
@@ -35,14 +36,17 @@ export function DeleteMaterialModal({
   target: MaterialModalTarget | null;
   onDone?: () => void;
 }) {
+  const tr = useTranslations();
   const [isPending, startTransition] = useTransition();
   return (
     <ConfirmModal
-      confirmLabel="削除する"
+      confirmLabel={tr("common.delete2")}
       loading={isPending}
       message={
         target
-          ? `素材「${label(target)}」を削除します。この操作は取り消せません。`
+          ? tr("master.materialModals.deleteConfirmMessage", {
+              name: label(target),
+            })
           : ""
       }
       onClose={onClose}
@@ -52,14 +56,16 @@ export function DeleteMaterialModal({
           const result = await deleteMaterials([target.id]);
           if (result.ok) {
             notifications.show({
-              title: "削除しました",
-              message: `素材「${label(target)}」を削除しました`,
+              title: tr("common.deleted"),
+              message: tr("master.materialModals.deletedMessage", {
+                name: label(target),
+              }),
               color: "green",
             });
             onDone?.();
           } else {
             notifications.show({
-              title: "エラー",
+              title: tr("common.error2"),
               message: result.error,
               color: "red",
             });
@@ -67,8 +73,8 @@ export function DeleteMaterialModal({
         });
       }}
       opened={opened}
-      title="素材の削除"
-      warning="この素材を参照する製品・発注・在庫が存在する場合は削除できません。無効化をご検討ください。"
+      title={tr("master.materials.deleteTheMaterial")}
+      warning={tr("master.materials.itCannotBeDeletedWhileProducts")}
     />
   );
 }
@@ -82,18 +88,25 @@ export function ToggleMaterialActiveModal({
   target: MaterialModalTarget | null;
   onDone?: () => void;
 }) {
+  const tr = useTranslations();
   const [isPending, startTransition] = useTransition();
   const isActive = target?.isActive ?? true;
   return (
     <ConfirmModal
       confirmColor={isActive ? "red" : "blue"}
-      confirmLabel={isActive ? "無効化する" : "有効化する"}
+      confirmLabel={
+        isActive ? tr("master.materialNumbering.disable") : tr("common.enable2")
+      }
       loading={isPending}
       message={
         target
           ? isActive
-            ? `素材「${label(target)}」を無効化します。新規の発注・指示書で選択できなくなります。`
-            : `素材「${label(target)}」を有効化します。再び発注・指示書で選択できるようになります。`
+            ? tr("master.materialModals.disableConfirmMessage", {
+                name: label(target),
+              })
+            : tr("master.materialModals.enableConfirmMessage", {
+                name: label(target),
+              })
           : ""
       }
       onClose={onClose}
@@ -103,14 +116,20 @@ export function ToggleMaterialActiveModal({
           const result = await setMaterialsActive([target.id], !isActive);
           if (result.ok) {
             notifications.show({
-              title: isActive ? "無効化しました" : "有効化しました",
-              message: `素材「${label(target)}」を${isActive ? "無効化" : "有効化"}しました`,
+              title: isActive ? tr("common.disabled2") : tr("common.enabled2"),
+              message: isActive
+                ? tr("master.materialModals.disabledMessage", {
+                    name: label(target),
+                  })
+                : tr("master.materialModals.enabledMessage", {
+                    name: label(target),
+                  }),
               color: "green",
             });
             onDone?.();
           } else {
             notifications.show({
-              title: "エラー",
+              title: tr("common.error2"),
               message: result.error,
               color: "red",
             });
@@ -118,7 +137,11 @@ export function ToggleMaterialActiveModal({
         });
       }}
       opened={opened}
-      title={isActive ? "素材の無効化" : "素材の有効化"}
+      title={
+        isActive
+          ? tr("master.materialModals.disableTheMaterial")
+          : tr("master.materials.enableTheMaterial")
+      }
     />
   );
 }

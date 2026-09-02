@@ -1,7 +1,14 @@
 /**
  * intake-core.ts — 注文請書抽出結果（po-extract /extract/order-request）の
  * 正規化純ロジック。Prisma I/O は lib/intake.ts。
+ *
+ * `normalizeExtraction` は監視フォルダのポーラー（instrumentation.ts）からも
+ * 呼ばれ、リクエスト外では next-intl の `getTranslations()` が使えない
+ * （lib/intake.ts の `L()` と同じ理由）。そのため `lib/messages.ts` の
+ * locale 明示 API を "ja" 固定で使う。
  */
+
+import { label } from "./messages";
 
 export interface ExtractedItem {
   productText: string | null;
@@ -113,7 +120,8 @@ export function normalizeExtraction(raw: unknown): NormalizedExtraction {
       const noteParts = [s(i.notes), s(i.customization)].filter(
         (x): x is string => x != null,
       );
-      if (qty == null) noteParts.push("数量が読み取れませんでした（要確認）");
+      if (qty == null)
+        noteParts.push(label("intakeCore.quantityNotReadableNote", "ja"));
       return {
         productText,
         productCode,

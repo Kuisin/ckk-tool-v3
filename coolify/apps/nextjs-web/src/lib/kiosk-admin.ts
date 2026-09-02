@@ -241,6 +241,8 @@ export interface KioskDeviceRow {
   /** 日本語以外の翻訳（LocalizedTextInput の多言語ポップアップ初期値）。 */
   nameTranslations: Record<string, string>;
   location: string | null;
+  /** ログイン前画面（/login 等）の表示言語。未設定は null（既定 ja）。 */
+  locale: string | null;
   status: "PENDING" | "LINKED" | "ACTIVE" | "DISABLED" | "REVOKED";
   plantId: number | null;
   plantLabel: string | null;
@@ -331,6 +333,7 @@ function toDeviceRow(r: DeviceWithIncludes, now: number): KioskDeviceRow {
     nameEn: namePart(r.name, "en"),
     nameTranslations: localizedTranslations(r.name as LocalizedText | null),
     location: r.location,
+    locale: r.locale,
     status: r.status,
     plantId: r.plantId,
     plantLabel: r.plant

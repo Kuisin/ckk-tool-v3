@@ -8,8 +8,10 @@
  * となり、**どちらの順序で来ても 500 を出さない**。待っているあいだは旧
  * コンテナが serving を続けるので無停止。
  *
- * 認証は掛けない（proxy.ts の matcher から除外済み）。返すのは適用状況だけで
- * 業務データは含めない。
+ * 認証は掛けない（proxy.ts の matcher から除外済み）。**返すのは status と
+ * 足りないマイグレーションの件数だけ**（監査 L6）— 以前はマイグレーション名と
+ * DB エラー文まで返していて、未認証でスキーマの歴史と DB の状態が読めた。
+ * 名前が要る調査はコンテナのログ（下の console.warn）で見る。
  */
 
 import { NextResponse } from "next/server";
@@ -22,10 +24,16 @@ export const runtime = "nodejs";
 
 export async function GET(): Promise<NextResponse> {
   const readiness = await checkSchemaReadiness();
+  if (!readiness.ready) {
+    console.warn(
+      `[health] not ready: missing=${readiness.missing.join(",") || "-"} error=${readiness.error ?? "-"}`,
+    );
+  }
   return NextResponse.json(
     {
       status: readiness.ready ? "ok" : "migrating",
-      ...readiness,
+      ready: readiness.ready,
+      missingCount: readiness.missing.length,
     },
     {
       status: readiness.ready ? 200 : 503,

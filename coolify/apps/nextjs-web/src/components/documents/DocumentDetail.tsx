@@ -10,6 +10,7 @@
 import { Alert, Badge, Group, Tabs } from "@mantine/core";
 import { IconEye, IconGitCompare, IconMessage } from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import {
   type RoleOption,
   ShareGrantsPanel,
@@ -59,6 +60,7 @@ export function DocumentDetail({
     grants: { subjectType: string; subjectId: string | null; level: string }[],
   ) => Promise<{ ok: boolean; error?: string }>;
 }) {
+  const tr = useTranslations();
   const fmt = useFormat();
   const router = useRouter();
   const hasUnpublished =
@@ -71,13 +73,13 @@ export function DocumentDetail({
         <ResourceActions
           menuItems={[
             {
-              label: "レビュー",
+              label: tr("common.review"),
               icon: <IconMessage size={14} />,
               onClick: () =>
                 router.push(`/general/documents/${page.pageNumber}/review`),
             },
             {
-              label: "履歴・差分",
+              label: tr("common.historyAndDiff"),
               icon: <IconGitCompare size={14} />,
               onClick: () =>
                 router.push(`/general/documents/${page.pageNumber}/revisions`),
@@ -91,8 +93,8 @@ export function DocumentDetail({
         />
       }
       breadcrumbs={[
-        { label: "一般" },
-        { label: "社内文書", href: "/general/documents" },
+        { label: tr("common.general") },
+        { label: tr("common.internalDocuments"), href: "/general/documents" },
         { label: page.title },
       ]}
       createdAt={fmt.dateTime(page.createdAt)}
@@ -111,10 +113,13 @@ export function DocumentDetail({
       />
 
       <SummaryGrid>
-        <FieldValue label="文書番号" value={page.pageNumber} />
-        <FieldValue label="フォルダ" value={page.folder ?? "—"} />
         <FieldValue
-          label="公開版"
+          label={tr("common.documentNumber2")}
+          value={page.pageNumber}
+        />
+        <FieldValue label={tr("common.folder")} value={page.folder ?? "—"} />
+        <FieldValue
+          label={tr("common.publishedVersion")}
           value={
             page.publishedRevision ? (
               <Group gap="xs">
@@ -123,38 +128,48 @@ export function DocumentDetail({
                 </Badge>
                 {hasUnpublished && (
                   <Badge color="yellow" variant="light">
-                    未公開の変更あり（r{page.latestRevision}）
+                    {tr(
+                      "documents.documentDetail.hasUnpublishedChangesRevision",
+                      { revision: page.latestRevision },
+                    )}
                   </Badge>
                 )}
               </Group>
             ) : (
-              "未公開"
+              tr("documents.documentDetail.unpublished")
             )
           }
         />
         <FieldValue
-          label="公開に承認"
-          value={page.approvalRequired ? "必要" : "不要"}
+          label={tr("documents.documentDetail.approvalToPublish")}
+          value={
+            page.approvalRequired
+              ? tr("documents.documentDetail.required")
+              : tr("documents.documentDetail.notRequired")
+          }
         />
         {page.summary && (
-          <FieldValue fullWidth label="概要" value={page.summary} />
+          <FieldValue
+            fullWidth
+            label={tr("common.overview")}
+            value={page.summary}
+          />
         )}
       </SummaryGrid>
 
       <AppTabs defaultValue="body">
         <Tabs.List>
           <Tabs.Tab leftSection={<IconEye size={14} />} value="body">
-            本文
+            {tr("documents.documentDetail.bodyText")}
           </Tabs.Tab>
-          <Tabs.Tab value="share">共有</Tabs.Tab>
-          <Tabs.Tab value="history">履歴</Tabs.Tab>
+          <Tabs.Tab value="share">{tr("common.sharing")}</Tabs.Tab>
+          <Tabs.Tab value="history">{tr("common.history")}</Tabs.Tab>
         </Tabs.List>
 
         <Tabs.Panel pt="md" value="body">
           {page.publishedBody == null ? (
             <Alert color="yellow">
-              まだ公開されていません。編集して公開すると、ここに本文が出ます。
-              下書きの内容は「レビュー」から読めます。
+              {tr("documents.documentDetail.itIsNotPublishedYetEdit")}
             </Alert>
           ) : (
             <MarkdownView body={page.publishedBody} links={links} />

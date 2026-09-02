@@ -12,6 +12,7 @@
  */
 
 import { revalidatePath } from "next/cache";
+import { getTranslations } from "next-intl/server";
 import { z } from "zod";
 import { getCurrentActorId, recordAudit } from "@/lib/audit";
 import { checkPermission } from "@/lib/authz";
@@ -32,6 +33,8 @@ import { validateAndOrderSteps } from "@/lib/workflow";
 
 const BASE_PATH = "/master/products";
 
+type Tr = Awaited<ReturnType<typeof getTranslations>>;
+
 const stepInput = z.object({
   processStepId: z.number().int().positive(),
   executionLocation: z.enum(["INTERNAL", "OUTSOURCE"]),
@@ -43,32 +46,50 @@ const stepInput = z.object({
   lotInputMode: z.enum(["REQUIRED", "OPTIONAL", "NONE"]).nullable().optional(),
 });
 
-const routeCreateInput = z.object({
-  nameJa: z.string().min(1, "ルート名（日本語）を入力してください"),
-  nameEn: z.string().optional(),
-  // 対象の受注元（取引先）。null = 汎用ルート。
-  customerBpId: z.string().uuid().nullable().optional(),
-  notes: z.string().optional(),
-  steps: z.array(stepInput).min(1, "工程を1つ以上選択してください"),
-});
+function routeCreateInputSchema(tr: Tr) {
+  return z.object({
+    nameJa: z
+      .string()
+      .min(1, tr("master.products.enterTheRouteNameInJapanese")),
+    nameEn: z.string().optional(),
+    // 対象の受注元（取引先）。null = 汎用ルート。
+    customerBpId: z.string().uuid().nullable().optional(),
+    notes: z.string().optional(),
+    steps: z
+      .array(stepInput)
+      .min(1, tr("master.products.selectAtLeastOneStep")),
+  });
+}
 
-const routeVersionCreateInput = z.object({
-  notes: z.string().optional(),
-  steps: z.array(stepInput).min(1, "工程を1つ以上選択してください"),
-});
+function routeVersionCreateInputSchema(tr: Tr) {
+  return z.object({
+    notes: z.string().optional(),
+    steps: z
+      .array(stepInput)
+      .min(1, tr("master.products.selectAtLeastOneStep")),
+  });
+}
 
-const routeUpdateInput = z.object({
-  nameJa: z.string().min(1, "ルート名（日本語）を入力してください"),
-  nameEn: z.string().optional(),
-  isActive: z.boolean(),
-  notes: z.string().optional(),
-});
+function routeUpdateInputSchema(tr: Tr) {
+  return z.object({
+    nameJa: z
+      .string()
+      .min(1, tr("master.products.enterTheRouteNameInJapanese")),
+    nameEn: z.string().optional(),
+    isActive: z.boolean(),
+    notes: z.string().optional(),
+  });
+}
 
-export type ProductRouteCreateInput = z.infer<typeof routeCreateInput>;
-export type ProductRouteVersionCreateInput = z.infer<
-  typeof routeVersionCreateInput
+export type ProductRouteCreateInput = z.infer<
+  ReturnType<typeof routeCreateInputSchema>
 >;
-export type ProductRouteUpdateInput = z.infer<typeof routeUpdateInput>;
+export type ProductRouteVersionCreateInput = z.infer<
+  ReturnType<typeof routeVersionCreateInputSchema>
+>;
+export type ProductRouteUpdateInput = z.infer<
+  ReturnType<typeof routeUpdateInputSchema>
+>;
 
 function revalidate(productId: number) {
   revalidatePath(`${BASE_PATH}/${productId}`);
@@ -79,11 +100,14 @@ export async function createProductRoute(
   productId: number,
   input: ProductRouteCreateInput,
 ): Promise<ActionResult<{ routeId: number }>> {
+  const tr = await getTranslations();
   const authz = await checkPermission("master", "CREATE");
   if (!authz.ok) return actionError(authz.error);
-  const parsed = routeCreateInput.safeParse(input);
+  const parsed = routeCreateInputSchema(tr).safeParse(input);
   if (!parsed.success) {
-    return actionError(parsed.error.issues[0]?.message ?? "入力が不正です");
+    return actionError(
+      parsed.error.issues[0]?.message ?? tr("common.invalidInput"),
+    );
   }
   const v = parsed.data;
   try {
@@ -91,7 +115,10 @@ export async function createProductRoute(
       where: { id: productId },
       select: { id: true },
     });
-    if (!product) return actionError("対象の製品が見つかりません");
+    if (!product)
+      return actionError(
+        tr("master.productRouteActions.targetProductNotFound"),
+      );
     const built = await validateAndOrderSteps(v.steps);
     if (!built.ok) return actionError(built.error);
     const actor = await getCurrentActorId();
@@ -122,7 +149,9 @@ export async function createProductRoute(
     revalidate(productId);
     return actionOk({ routeId: created.routeId });
   } catch (e) {
-    return actionError(prismaErrorMessage(e, "工程ルートの作成に失敗しました"));
+    return actionError(
+      prismaErrorMessage(e, tr("master.productRouteActions.createFailed"), tr),
+    );
   }
 }
 
@@ -131,11 +160,14 @@ export async function createProductRouteVersion(
   routeId: number,
   input: ProductRouteVersionCreateInput,
 ): Promise<ActionResult<{ version: number }>> {
+  const tr = await getTranslations();
   const authz = await checkPermission("master", "UPDATE");
   if (!authz.ok) return actionError(authz.error);
-  const parsed = routeVersionCreateInput.safeParse(input);
+  const parsed = routeVersionCreateInputSchema(tr).safeParse(input);
   if (!parsed.success) {
-    return actionError(parsed.error.issues[0]?.message ?? "入力が不正です");
+    return actionError(
+      parsed.error.issues[0]?.message ?? tr("common.invalidInput"),
+    );
   }
   const v = parsed.data;
   try {
@@ -149,7 +181,8 @@ export async function createProductRouteVersion(
         },
       },
     });
-    if (!route) return actionError("対象の工程ルートが見つかりません");
+    if (!route)
+      return actionError(tr("master.productRouteActions.targetRouteNotFound"));
     const built = await validateAndOrderSteps(v.steps);
     if (!built.ok) return actionError(built.error);
 
@@ -169,7 +202,9 @@ export async function createProductRouteVersion(
       )
     ) {
       return actionError(
-        `最新バージョン v${latest.version} と同じ構成です（変更がありません）`,
+        tr("master.productRouteActions.sameAsLatestVersion", {
+          version: latest.version,
+        }),
       );
     }
     const actor = await getCurrentActorId();
@@ -196,7 +231,11 @@ export async function createProductRouteVersion(
     return actionOk({ version: created.version });
   } catch (e) {
     return actionError(
-      prismaErrorMessage(e, "新バージョンの作成に失敗しました"),
+      prismaErrorMessage(
+        e,
+        tr("master.productRouteActions.newVersionCreateFailed"),
+        tr,
+      ),
     );
   }
 }
@@ -206,11 +245,14 @@ export async function updateProductRoute(
   routeId: number,
   input: ProductRouteUpdateInput,
 ): Promise<ActionResult> {
+  const tr = await getTranslations();
   const authz = await checkPermission("master", "UPDATE");
   if (!authz.ok) return actionError(authz.error);
-  const parsed = routeUpdateInput.safeParse(input);
+  const parsed = routeUpdateInputSchema(tr).safeParse(input);
   if (!parsed.success) {
-    return actionError(parsed.error.issues[0]?.message ?? "入力が不正です");
+    return actionError(
+      parsed.error.issues[0]?.message ?? tr("common.invalidInput"),
+    );
   }
   const v = parsed.data;
   try {
@@ -218,7 +260,8 @@ export async function updateProductRoute(
       where: { id: routeId },
       select: { productId: true, name: true, isActive: true, notes: true },
     });
-    if (!prior) return actionError("対象の工程ルートが見つかりません");
+    if (!prior)
+      return actionError(tr("master.productRouteActions.targetRouteNotFound"));
     await prisma.productProcessRoute.update({
       where: { id: routeId },
       data: {
@@ -245,7 +288,9 @@ export async function updateProductRoute(
     revalidate(prior.productId);
     return actionOk();
   } catch (e) {
-    return actionError(prismaErrorMessage(e, "工程ルートの更新に失敗しました"));
+    return actionError(
+      prismaErrorMessage(e, tr("master.productRouteActions.updateFailed"), tr),
+    );
   }
 }
 
@@ -253,6 +298,7 @@ export async function updateProductRoute(
 export async function deleteProductRoute(
   routeId: number,
 ): Promise<ActionResult> {
+  const tr = await getTranslations();
   const authz = await checkPermission("master", "DELETE");
   if (!authz.ok) return actionError(authz.error);
   try {
@@ -260,13 +306,16 @@ export async function deleteProductRoute(
       where: { id: routeId },
       select: { productId: true },
     });
-    if (!prior) return actionError("対象の工程ルートが見つかりません");
+    if (!prior)
+      return actionError(tr("master.productRouteActions.targetRouteNotFound"));
     const usedBy = await prisma.workOrder.count({
       where: { routeVersion: { routeId } },
     });
     if (usedBy > 0) {
       return actionError(
-        `このルートのバージョンを参照する指示書が ${usedBy} 件あるため削除できません。無効化を検討してください。`,
+        tr("master.productRouteActions.referencedByWorkOrdersCannotDelete", {
+          count: usedBy,
+        }),
       );
     }
     // バージョン・工程スナップショットは FK Cascade で削除される。
@@ -279,6 +328,8 @@ export async function deleteProductRoute(
     revalidate(prior.productId);
     return actionOk();
   } catch (e) {
-    return actionError(prismaErrorMessage(e, "工程ルートの削除に失敗しました"));
+    return actionError(
+      prismaErrorMessage(e, tr("master.productRouteActions.deleteFailed"), tr),
+    );
   }
 }

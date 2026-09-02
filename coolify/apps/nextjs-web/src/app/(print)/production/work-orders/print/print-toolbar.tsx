@@ -12,9 +12,11 @@
 
 import { Group, Text } from "@mantine/core";
 import { IconPrinter } from "@tabler/icons-react";
+import { useTranslations } from "next-intl";
 import { PrimaryButton } from "@/components/ui/buttons";
 
 export function PrintToolbar({ count }: { count: number }) {
+  const tr = useTranslations();
   return (
     <Group className="wo-strip-toolbar" justify="space-between" mb="md">
       <Text fw={600} size="sm">
@@ -25,7 +27,7 @@ export function PrintToolbar({ count }: { count: number }) {
         leftSection={<IconPrinter size={16} />}
         onClick={() => window.print()}
       >
-        印刷
+        {tr("common.print2")}
       </PrimaryButton>
     </Group>
   );

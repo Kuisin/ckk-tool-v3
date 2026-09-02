@@ -40,9 +40,11 @@ import {
   IconPlus,
 } from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
+import { useLocale, useTranslations } from "next-intl";
 import { useState, useTransition } from "react";
 import {
   approveInspectionRecord,
+  confirmInspectionRecord,
   saveInspectionRecord,
 } from "@/app/(dashboard)/production/work-orders/[id]/steps/[stepId]/actions";
 import { useFormat } from "@/components/layout/PreferencesProvider";
@@ -56,6 +58,7 @@ import { PdfButton } from "@/components/ui/PdfButton";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import {
   acceptLabel,
+  type BoolLabels,
   evaluateEntry,
   evaluateSample,
   goalLabel,
@@ -65,21 +68,26 @@ import {
   isSampleEmpty,
   requiredSampleCount,
   resolveItemPass,
-  samplingLabelJa,
 } from "@/lib/inspection-core";
+import { sampleLabel, samplingLabel } from "@/lib/inspection-labels";
 import type {
   InspectionRecordView,
   InspectionTemplateItemView,
   InspectionTemplateView,
 } from "./step-execution/model";
 
-const BOOL_SEGMENT = [
-  { value: "true", label: "はい" },
-  { value: "false", label: "いいえ" },
-];
-
 /** 既存の検査記録 1 件の読み取り専用表示。 */
-function RecordSummary({ record }: { record: InspectionRecordView }) {
+function RecordSummary({
+  record,
+  onConfirm,
+  confirming,
+}: {
+  record: InspectionRecordView;
+  /** 「検査表確認」ボタンを出す（未確認のときだけ）。省略時はボタンを出さない。 */
+  onConfirm?: () => void;
+  confirming?: boolean;
+}) {
+  const tr = useTranslations();
   const fmt = useFormat();
   return (
     <Paper p="sm" radius="sm" withBorder>
@@ -101,9 +109,28 @@ function RecordSummary({ record }: { record: InspectionRecordView }) {
             {record.approvedByName ? `（${record.approvedByName}）` : ""}
           </Text>
         )}
-        <Tooltip label="記入済み検査表を PDF で表示" withinPortal>
+        {record.confirmedAt ? (
+          <Text c="dimmed" size="xs">
+            検査表確認: {fmt.dateTime(record.confirmedAt)}
+            {record.confirmedByName ? `（${record.confirmedByName}）` : ""}
+          </Text>
+        ) : (
+          onConfirm && (
+            <GhostButton loading={confirming} onClick={onConfirm} size="xs">
+              {tr("production.inspectionRecordForm.inspectionSheetCheck")}
+            </GhostButton>
+          )
+        )}
+        <Tooltip
+          label={tr(
+            "production.inspectionRecordForm.showTheFilledInInspectionSheet",
+          )}
+          withinPortal
+        >
           <ActionIcon
-            aria-label="検査記録 PDF"
+            aria-label={tr(
+              "production.inspectionRecordForm.inspectionRecordPdf",
+            )}
             color="gray"
             component="a"
             href={`/api/pdf/inspection-record?id=${record.id}`}
@@ -149,20 +176,26 @@ function SampleInput({
   item,
   value,
   onChange,
-  productNo,
+  sampleName,
 }: {
   item: InspectionTemplateItemView;
   value: InspectionSampleValue;
   onChange: (v: InspectionSampleValue) => void;
-  productNo: number;
+  /** サンプルの見出し（inspection-core sampleLabel() の結果 — 製品N / 初品等）。 */
+  sampleName: string;
 }) {
-  const label = `${item.name} — 製品 ${productNo}`;
+  const tr = useTranslations();
+  const label = `${item.name} — ${sampleName}`;
+  const boolSegment = [
+    { value: "true", label: tr("common.yes") },
+    { value: "false", label: tr("common.no") },
+  ];
   switch (item.inputType) {
     case "BOOLEAN":
       return (
         <SegmentedControl
           aria-label={label}
-          data={BOOL_SEGMENT}
+          data={boolSegment}
           onChange={(v) => onChange(v)}
           value={typeof value === "string" ? value : ""}
         />
@@ -177,7 +210,7 @@ function SampleInput({
             label: o.label.ja ?? o.value,
           }))}
           onChange={(v) => onChange(v ?? "")}
-          placeholder="選択"
+          placeholder={tr("common.select")}
           value={typeof value === "string" && value ? value : null}
           w={220}
         />
@@ -191,7 +224,7 @@ function SampleInput({
             label: o.label.ja ?? o.value,
           }))}
           onChange={(v) => onChange(v)}
-          placeholder="選択"
+          placeholder={tr("common.select")}
           value={Array.isArray(value) ? value : []}
           w={260}
         />
@@ -202,7 +235,7 @@ function SampleInput({
           aria-label={label}
           inputMode="decimal"
           onChange={(e) => onChange(e.currentTarget.value)}
-          placeholder="実測値"
+          placeholder={tr("production.inspectionRecordForm.measuredValue")}
           rightSection={
             item.unit ? (
               <Text c="dimmed" size="xs">
@@ -229,6 +262,7 @@ function ItemVerdict({
   style: "VALUES" | "COUNTS";
   onManualPass: (pass: boolean) => void;
 }) {
+  const tr = useTranslations();
   const auto = evaluateEntry(item, entry, style);
   const started = isEntryStarted(entry, style);
   const pass = resolveItemPass(item, entry, entry.manualPass, style);
@@ -240,8 +274,14 @@ function ItemVerdict({
         <SegmentedControl
           color={showVerdict ? (pass ? "green" : "red") : undefined}
           data={[
-            { value: "PASS", label: "合格" },
-            { value: "FAIL", label: "不合格" },
+            {
+              value: "PASS",
+              label: tr("production.inspectionRecordForm.pass"),
+            },
+            {
+              value: "FAIL",
+              label: tr("production.inspectionRecordForm.fail"),
+            },
           ]}
           onChange={(v) => onManualPass(v === "PASS")}
           size="xs"
@@ -250,22 +290,34 @@ function ItemVerdict({
       ) : (
         showVerdict && (
           <Badge color={pass ? "green" : "red"} variant="light">
-            {pass ? "合格" : "不合格"}
+            {pass ? "合格" : tr("production.inspectionRecordForm.fail")}
           </Badge>
         )
       )}
       <Text c="dimmed" size="xs">
         {!started
           ? style === "COUNTS"
-            ? "検査数・合格数の入力待ち"
-            : "実測値の入力待ち"
+            ? tr(
+                "production.inspectionRecordForm.waitingForInspectedPassedCounts",
+              )
+            : tr("production.inspectionRecordForm.waitingForMeasuredValues")
           : auto == null
-            ? "自動判定できません — 手動で選択"
+            ? tr(
+                "production.inspectionRecordForm.cannotJudgeAutomaticallyChooseManually",
+              )
             : entry.manualPass != null &&
                 entry.manualPass !== auto &&
                 item.allowManualOverride
-              ? `自動判定（${auto ? "合格" : "不合格"}）を手動で上書き中`
-              : `自動判定: ${auto ? "合格" : "不合格"}`}
+              ? tr("production.inspectionRecordForm.autoJudgmentOverridden", {
+                  result: auto
+                    ? tr("production.inspectionRecordForm.pass")
+                    : tr("production.inspectionRecordForm.fail"),
+                })
+              : tr("production.inspectionRecordForm.autoJudgmentResult", {
+                  result: auto
+                    ? tr("production.inspectionRecordForm.pass")
+                    : tr("production.inspectionRecordForm.fail"),
+                })}
       </Text>
     </Group>
   );
@@ -289,6 +341,17 @@ export function InspectionRecordForm({
   /** 検査対象の製品数計算に使うロット数量（受入数 → 予定数量）。 */
   lotQuantity: number | null;
 }) {
+  const tr = useTranslations();
+  const locale = useLocale();
+  const bool: BoolLabels = {
+    yes: tr("common.yes"),
+    no: tr("common.no"),
+    rangeBetween: (min, max) =>
+      tr("inspectionLabels.rangeBetween", { min, max }),
+    rangeAtLeast: (min) => tr("inspectionLabels.rangeAtLeast", { min }),
+    rangeAtMost: (max) => tr("inspectionLabels.rangeAtMost", { max }),
+    listSeparator: tr("inspectionLabels.listSeparator"),
+  };
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   // key = `${templateId}:${itemId}`
@@ -350,6 +413,36 @@ export function InspectionRecordForm({
     return required ?? 1 + (extraPages[template.id] ?? 0);
   };
 
+  const handleConfirm = (record: InspectionRecordView) => {
+    startTransition(async () => {
+      const result = await confirmInspectionRecord(
+        workOrderNumber,
+        stepId,
+        record.id,
+      );
+      if (result.ok) {
+        notifications.show({
+          title: tr(
+            "production.inspectionRecordForm.theInspectionSheetCheckWasRecorded",
+          ),
+          message: record.templateName,
+          color: "green",
+        });
+        router.refresh();
+      } else {
+        notifications.show({
+          title: tr("common.error2"),
+          message:
+            result.errors?.join(" / ") ??
+            tr(
+              "production.inspectionRecordForm.couldNotRecordTheInspectionSheet",
+            ),
+          color: "red",
+        });
+      }
+    });
+  };
+
   const handleSave = (template: InspectionTemplateView) => {
     const style = template.recordStyle;
     const missing = template.items.filter((it) => {
@@ -358,10 +451,10 @@ export function InspectionRecordForm({
     });
     if (missing.length > 0) {
       notifications.show({
-        title: "入力不足",
-        message: `必須項目を入力してください（${missing
-          .map((m) => m.name)
-          .join("・")}）`,
+        title: tr("common.missingInput"),
+        message: tr("production.inspectionRecordForm.enterTheRequiredItems", {
+          items: missing.map((m) => m.name).join(tr("common.s1")),
+        }),
         color: "red",
       });
       return;
@@ -377,10 +470,11 @@ export function InspectionRecordForm({
       });
       if (invalid.length > 0) {
         notifications.show({
-          title: "入力エラー",
-          message: `合格数が検査数を超えています（${invalid
-            .map((m) => m.name)
-            .join("・")}）`,
+          title: tr("common.inputError"),
+          message: tr(
+            "production.inspectionRecordForm.passedCountExceedsInspectedCountFor",
+            { items: invalid.map((m) => m.name).join(tr("common.s1")) },
+          ),
           color: "red",
         });
         return;
@@ -412,7 +506,7 @@ export function InspectionRecordForm({
       });
       if (result.ok) {
         notifications.show({
-          title: "検査記録を保存しました",
+          title: tr("production.inspectionRecordForm.inspectionRecordSaved"),
           message: template.name,
           color: "green",
         });
@@ -426,8 +520,12 @@ export function InspectionRecordForm({
         router.refresh();
       } else {
         notifications.show({
-          title: "エラー",
-          message: result.errors?.join(" / ") ?? "検査記録の保存に失敗しました",
+          title: tr("common.error2"),
+          message:
+            result.errors?.join(" / ") ??
+            tr(
+              "production.inspectionRecordForm.couldNotSaveTheInspectionRecord",
+            ),
           color: "red",
         });
       }
@@ -437,12 +535,19 @@ export function InspectionRecordForm({
   return (
     <Paper p="md" radius="md" withBorder>
       <Stack gap="md">
-        <Title order={4}>検査記録</Title>
+        <Title order={4}>
+          {tr("production.inspectionRecordForm.inspectionRecord")}
+        </Title>
 
         {records.length > 0 && (
           <Stack gap="xs">
             {records.map((r) => (
-              <RecordSummary key={r.id} record={r} />
+              <RecordSummary
+                confirming={isPending}
+                key={r.id}
+                onConfirm={canRecord ? () => handleConfirm(r) : undefined}
+                record={r}
+              />
             ))}
           </Stack>
         )}
@@ -470,17 +575,19 @@ export function InspectionRecordForm({
                       v{template.version}
                     </Badge>
                     <Badge color="gray" size="sm" variant="light">
-                      {samplingLabelJa(template, required)}
+                      {samplingLabel(tr, template, required)}
                     </Badge>
                     {style === "COUNTS" && (
                       <Badge color="cyan" size="sm" variant="light">
-                        合格数のみ
+                        {tr("common.passCountOnly")}
                       </Badge>
                     )}
                   </Group>
                   <PdfButton
                     href={`/api/pdf/inspection-sheet?templateId=${template.id}&workOrder=${workOrderNumber}`}
-                    label="空欄シートを印刷"
+                    label={tr(
+                      "production.inspectionRecordForm.printABlankSheet",
+                    )}
                   />
                 </Group>
 
@@ -488,8 +595,8 @@ export function InspectionRecordForm({
                   // ── 合格数のみ: 項目ごとに検査数・合格数 ──
                   template.items.map((item) => {
                     const entry = entryOf(template, item);
-                    const accept = acceptLabel(item);
-                    const goal = goalLabel(item);
+                    const accept = acceptLabel(item, locale, bool);
+                    const goal = goalLabel(item, locale, bool);
                     return (
                       <Paper key={item.id} p="sm" radius="sm" withBorder>
                         <Stack gap="xs">
@@ -504,19 +611,31 @@ export function InspectionRecordForm({
                             </Text>
                             {accept && (
                               <Text c="dimmed" size="xs">
-                                合格: {accept}
+                                {tr(
+                                  "production.inspectionRecordForm.acceptPrefix",
+                                  {
+                                    label: accept,
+                                  },
+                                )}
                               </Text>
                             )}
                             {goal && (
                               <Text c="dimmed" size="xs">
-                                目標: {goal}
+                                {tr(
+                                  "production.inspectionRecordForm.goalPrefix",
+                                  {
+                                    label: goal,
+                                  },
+                                )}
                               </Text>
                             )}
                           </Group>
                           <Group align="flex-end" gap="xs" wrap="wrap">
                             <NumberInput
                               allowNegative={false}
-                              label="検査数"
+                              label={tr(
+                                "production.inspectionRecordForm.inspected",
+                              )}
                               min={0}
                               onChange={(v) =>
                                 setEntry(template, item, {
@@ -532,7 +651,9 @@ export function InspectionRecordForm({
                             />
                             <NumberInput
                               allowNegative={false}
-                              label="合格数"
+                              label={tr(
+                                "production.inspectionRecordForm.passed",
+                              )}
                               min={0}
                               onChange={(v) =>
                                 setEntry(template, item, {
@@ -554,8 +675,17 @@ export function InspectionRecordForm({
                                   size="sm"
                                 >
                                   {entry.passedCount > entry.inspectedCount
-                                    ? "合格数が検査数を超えています"
-                                    : `不合格 ${entry.inspectedCount - entry.passedCount}`}
+                                    ? tr(
+                                        "production.inspectionRecordForm.passedCountExceedsInspectedCount",
+                                      )
+                                    : tr(
+                                        "production.inspectionRecordForm.failCount",
+                                        {
+                                          count:
+                                            entry.inspectedCount -
+                                            entry.passedCount,
+                                        },
+                                      )}
                                 </Text>
                               )}
                           </Group>
@@ -582,11 +712,12 @@ export function InspectionRecordForm({
                             leftSection={<IconChevronLeft size={14} />}
                             onClick={() => setPage(page - 1)}
                           >
-                            前の製品
+                            {tr("production.inspectionRecordForm.previous")}
                           </SecondaryButton>
                           <Group gap="xs" wrap="nowrap">
                             <Text className="tabular-nums" fw={600} size="sm">
-                              製品 {page + 1} / {pages}
+                              {sampleLabel(tr, page, template.sampleNaming)} /{" "}
+                              {pages}
                             </Text>
                             {required == null && (
                               <GhostButton
@@ -600,7 +731,9 @@ export function InspectionRecordForm({
                                 }}
                                 size="compact-sm"
                               >
-                                製品を追加
+                                {tr(
+                                  "production.inspectionRecordForm.addProduct",
+                                )}
                               </GhostButton>
                             )}
                           </Group>
@@ -609,14 +742,14 @@ export function InspectionRecordForm({
                             onClick={() => setPage(page + 1)}
                             rightSection={<IconChevronRight size={14} />}
                           >
-                            次の製品
+                            {tr("production.inspectionRecordForm.next")}
                           </SecondaryButton>
                         </Group>
                         <Stack gap="xs">
                           {template.items.map((item) => {
                             const value = sampleAt(template, item, page);
                             const verdict = evaluateSample(item, value);
-                            const accept = acceptLabel(item);
+                            const accept = acceptLabel(item, locale, bool);
                             return (
                               <Group
                                 align="center"
@@ -636,7 +769,10 @@ export function InspectionRecordForm({
                                   </Text>
                                   {accept && (
                                     <Text c="dimmed" size="xs">
-                                      合格: {accept}
+                                      {tr(
+                                        "production.inspectionRecordForm.acceptPrefix",
+                                        { label: accept },
+                                      )}
                                     </Text>
                                   )}
                                 </Stack>
@@ -646,7 +782,11 @@ export function InspectionRecordForm({
                                     onChange={(v) =>
                                       setSampleAt(template, item, page, v)
                                     }
-                                    productNo={page + 1}
+                                    sampleName={sampleLabel(
+                                      tr,
+                                      page,
+                                      template.sampleNaming,
+                                    )}
                                     value={value}
                                   />
                                   <Text
@@ -703,7 +843,7 @@ export function InspectionRecordForm({
                     loading={isPending}
                     onClick={() => handleSave(template)}
                   >
-                    検査記録を保存
+                    {tr("production.inspectionRecordForm.saveInspectionRecord")}
                   </PrimaryButton>
                 </Group>
               </Stack>
@@ -712,7 +852,7 @@ export function InspectionRecordForm({
 
         {!canRecord && records.length === 0 && (
           <Text c="dimmed" size="sm">
-            検査記録はありません
+            {tr("production.inspectionRecordForm.thereAreNoInspectionRecords")}
           </Text>
         )}
       </Stack>
@@ -734,6 +874,7 @@ export function InspectionApprovalPanel({
   records: InspectionRecordView[];
   canApprove: boolean;
 }) {
+  const tr = useTranslations();
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
 
@@ -746,15 +887,51 @@ export function InspectionApprovalPanel({
       );
       if (result.ok) {
         notifications.show({
-          title: "検査記録を承認しました",
+          title: tr(
+            "production.inspectionRecordForm.theInspectionRecordWasApproved",
+          ),
           message: record.templateName,
           color: "green",
         });
         router.refresh();
       } else {
         notifications.show({
-          title: "エラー",
-          message: result.errors?.join(" / ") ?? "検査記録の承認に失敗しました",
+          title: tr("common.error2"),
+          message:
+            result.errors?.join(" / ") ??
+            tr(
+              "production.inspectionRecordForm.couldNotApproveTheInspectionRecord",
+            ),
+          color: "red",
+        });
+      }
+    });
+  };
+
+  const handleConfirm = (record: InspectionRecordView) => {
+    startTransition(async () => {
+      const result = await confirmInspectionRecord(
+        workOrderNumber,
+        stepId,
+        record.id,
+      );
+      if (result.ok) {
+        notifications.show({
+          title: tr(
+            "production.inspectionRecordForm.theInspectionSheetCheckWasRecorded",
+          ),
+          message: record.templateName,
+          color: "green",
+        });
+        router.refresh();
+      } else {
+        notifications.show({
+          title: tr("common.error2"),
+          message:
+            result.errors?.join(" / ") ??
+            tr(
+              "production.inspectionRecordForm.couldNotRecordTheInspectionSheet",
+            ),
           color: "red",
         });
       }
@@ -764,17 +941,21 @@ export function InspectionApprovalPanel({
   return (
     <Paper p="md" radius="md" withBorder>
       <Stack gap="md">
-        <Title order={4}>検査承認</Title>
+        <Title order={4}>{tr("common.inspectionApproval")}</Title>
         {records.length === 0 ? (
           <Text c="dimmed" size="sm">
-            承認対象の検査記録がありません（先に検査工程で記録してください）
+            {tr("production.inspectionRecordForm.thereIsNoInspectionRecordTo")}
           </Text>
         ) : (
           <Stack gap="xs">
             {records.map((r) => (
               <Group align="stretch" gap="sm" key={r.id} wrap="nowrap">
                 <Stack gap={0} style={{ flex: 1, minWidth: 0 }}>
-                  <RecordSummary record={r} />
+                  <RecordSummary
+                    confirming={isPending}
+                    onConfirm={canApprove ? () => handleConfirm(r) : undefined}
+                    record={r}
+                  />
                 </Stack>
                 {canApprove && r.status === "PASS" && (
                   <ApproveButton

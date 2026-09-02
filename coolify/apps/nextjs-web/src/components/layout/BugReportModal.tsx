@@ -20,6 +20,7 @@ import {
 } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
 import { IconBug, IconInfoCircle } from "@tabler/icons-react";
+import { useTranslations } from "next-intl";
 import { useState, useTransition } from "react";
 import { CancelButton, PrimaryButton } from "@/components/ui/buttons";
 import { capturedLogs, collectDiagnostics } from "@/lib/bug-report";
@@ -32,6 +33,7 @@ export function BugReportModal({
   opened: boolean;
   onClose: () => void;
 }) {
+  const tr = useTranslations();
   const [description, setDescription] = useState("");
   const [includeLogs, setIncludeLogs] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -53,7 +55,7 @@ export function BugReportModal({
   const submit = () => {
     setError(null);
     if (!description.trim()) {
-      setError("問題の内容を入力してください");
+      setError(tr("layout.bugReportModal.describeTheProblem"));
       return;
     }
     startTransition(async () => {
@@ -64,8 +66,8 @@ export function BugReportModal({
       });
       if (res.ok) {
         notifications.show({
-          title: "報告しました",
-          message: "バグ報告を送信しました。ご協力ありがとうございます",
+          title: tr("layout.bugReportModal.reported"),
+          message: tr("layout.bugReportModal.theBugReportWasSentThank"),
           color: "green",
         });
         reset();
@@ -77,11 +79,16 @@ export function BugReportModal({
   };
 
   return (
-    <Modal onClose={onClose} opened={opened} title="バグを報告" withinPortal>
+    <Modal
+      onClose={onClose}
+      opened={opened}
+      title={tr("common.reportABug")}
+      withinPortal
+    >
       <Stack gap="sm">
         <div>
           <Text c="dimmed" mb={4} size="xs">
-            対象ページ（自動添付）
+            {tr("layout.bugReportModal.targetPageAttachedAutomatically")}
           </Text>
           <Code block>{currentUrl}</Code>
         </div>
@@ -94,23 +101,24 @@ export function BugReportModal({
 
         <Textarea
           autosize
-          label="問題の内容"
+          label={tr("layout.bugReportModal.whatTheProblemIs")}
           minRows={3}
           onChange={(e) => setDescription(e.currentTarget.value)}
-          placeholder="発生した問題・操作手順・期待した動作など"
+          placeholder={tr("layout.bugReportModal.whatWentWrongTheStepsYou")}
           value={description}
           withAsterisk
         />
 
         <Switch
           checked={includeLogs}
-          label={`コンソールログを添付する（直近 ${logCount} 件）`}
+          label={tr("layout.bugReportModal.attachConsoleLogsWithCount", {
+            count: logCount,
+          })}
           onChange={(e) => setIncludeLogs(e.currentTarget.checked)}
           size="sm"
         />
         <Text c="dimmed" size="xs">
-          ページ URL・ブラウザ情報・画面サイズ・アプリバージョンが自動で
-          添付されます。報告は操作履歴に記録され、管理者へ通知されます。
+          {tr("layout.bugReportModal.thePageUrlBrowserDetailsScreen")}
         </Text>
 
         <Stack gap="xs">
@@ -120,7 +128,7 @@ export function BugReportModal({
             loading={isPending}
             onClick={submit}
           >
-            報告する
+            {tr("layout.bugReportModal.report")}
           </PrimaryButton>
           <CancelButton fullWidth onClick={onClose} />
         </Stack>

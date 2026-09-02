@@ -15,6 +15,7 @@
  */
 
 import { revalidatePath } from "next/cache";
+import { getTranslations } from "next-intl/server";
 import { z } from "zod";
 import { recordAudit } from "@/lib/audit";
 import { checkPermission } from "@/lib/authz";
@@ -116,11 +117,14 @@ async function syncRoleAttrs(tx: Tx, bpId: string, v: BpInput) {
 export async function createBusinessPartner(
   input: BpInput,
 ): Promise<ActionResult<{ id: string }>> {
+  const tr = await getTranslations();
   const authz = await checkPermission("master", "CREATE");
   if (!authz.ok) return actionError(authz.error);
   const parsed = bpInput.safeParse(input);
   if (!parsed.success) {
-    return actionError(parsed.error.issues[0]?.message ?? "入力が不正です");
+    return actionError(
+      parsed.error.issues[0]?.message ?? tr("common.invalidInput"),
+    );
   }
   const v = parsed.data;
   try {
@@ -142,7 +146,13 @@ export async function createBusinessPartner(
     revalidate(created.id);
     return actionOk({ id: created.id });
   } catch (e) {
-    return actionError(prismaErrorMessage(e, "取引先の作成に失敗しました"));
+    return actionError(
+      prismaErrorMessage(
+        e,
+        tr("master.businessPartnerActions.createFailed"),
+        tr,
+      ),
+    );
   }
 }
 
@@ -150,11 +160,14 @@ export async function updateBusinessPartner(
   id: string,
   input: BpInput,
 ): Promise<ActionResult<{ id: string }>> {
+  const tr = await getTranslations();
   const authz = await checkPermission("master", "UPDATE");
   if (!authz.ok) return actionError(authz.error);
   const parsed = bpInput.safeParse(input);
   if (!parsed.success) {
-    return actionError(parsed.error.issues[0]?.message ?? "入力が不正です");
+    return actionError(
+      parsed.error.issues[0]?.message ?? tr("common.invalidInput"),
+    );
   }
   const v = parsed.data;
   try {
@@ -166,7 +179,8 @@ export async function updateBusinessPartner(
         roleAssignments: { where: { isActive: true }, select: { role: true } },
       },
     });
-    if (!prior) return actionError("対象の取引先が見つかりません");
+    if (!prior)
+      return actionError(tr("master.businessPartnerActions.bpNotFound"));
     await prisma.$transaction(async (tx) => {
       await tx.businessPartner.update({ where: { id }, data: bpBaseData(v) });
       await syncRoles(tx, id, v.roles);
@@ -186,7 +200,13 @@ export async function updateBusinessPartner(
     revalidate(id);
     return actionOk({ id });
   } catch (e) {
-    return actionError(prismaErrorMessage(e, "取引先の更新に失敗しました"));
+    return actionError(
+      prismaErrorMessage(
+        e,
+        tr("master.businessPartnerActions.updateFailed"),
+        tr,
+      ),
+    );
   }
 }
 
@@ -208,11 +228,14 @@ export async function createBranch(
   parentId: string,
   input: BranchInput,
 ): Promise<ActionResult<{ id: string }>> {
+  const tr = await getTranslations();
   const authz = await checkPermission("master", "CREATE");
   if (!authz.ok) return actionError(authz.error);
   const parsed = branchInput.safeParse(input);
   if (!parsed.success) {
-    return actionError(parsed.error.issues[0]?.message ?? "入力が不正です");
+    return actionError(
+      parsed.error.issues[0]?.message ?? tr("common.invalidInput"),
+    );
   }
   const v = parsed.data;
   try {
@@ -220,7 +243,7 @@ export async function createBranch(
       where: { id: parentId },
     });
     if (!parent || parent.parentId) {
-      return actionError("親の取引先が見つかりません");
+      return actionError(tr("master.businessPartnerActions.parentBpNotFound"));
     }
     const bpCode = parent.bpCode
       ? await nextBranchCode(parentId, parent.bpCode)
@@ -245,7 +268,13 @@ export async function createBranch(
     revalidate(parentId, created.id);
     return actionOk({ id: created.id });
   } catch (e) {
-    return actionError(prismaErrorMessage(e, "支店の作成に失敗しました"));
+    return actionError(
+      prismaErrorMessage(
+        e,
+        tr("master.businessPartnerActions.branchCreateFailed"),
+        tr,
+      ),
+    );
   }
 }
 
@@ -254,11 +283,14 @@ export async function updateBranch(
   branchId: string,
   input: BranchInput,
 ): Promise<ActionResult<{ id: string }>> {
+  const tr = await getTranslations();
   const authz = await checkPermission("master", "UPDATE");
   if (!authz.ok) return actionError(authz.error);
   const parsed = branchInput.safeParse(input);
   if (!parsed.success) {
-    return actionError(parsed.error.issues[0]?.message ?? "入力が不正です");
+    return actionError(
+      parsed.error.issues[0]?.message ?? tr("common.invalidInput"),
+    );
   }
   const v = parsed.data;
   try {
@@ -266,7 +298,7 @@ export async function updateBranch(
       where: { id: branchId },
     });
     if (!branch || branch.parentId !== parentId) {
-      return actionError("対象の支店が見つかりません");
+      return actionError(tr("master.businessPartnerActions.branchNotFound"));
     }
     await prisma.businessPartner.update({
       where: { id: branchId },
@@ -285,7 +317,13 @@ export async function updateBranch(
     revalidate(parentId, branchId);
     return actionOk({ id: branchId });
   } catch (e) {
-    return actionError(prismaErrorMessage(e, "支店の更新に失敗しました"));
+    return actionError(
+      prismaErrorMessage(
+        e,
+        tr("master.businessPartnerActions.branchUpdateFailed"),
+        tr,
+      ),
+    );
   }
 }
 
@@ -293,6 +331,7 @@ export async function deleteBranch(
   parentId: string,
   branchId: string,
 ): Promise<ActionResult> {
+  const tr = await getTranslations();
   const authz = await checkPermission("master", "DELETE");
   if (!authz.ok) return actionError(authz.error);
   try {
@@ -300,7 +339,7 @@ export async function deleteBranch(
       where: { id: branchId },
     });
     if (!branch || branch.parentId !== parentId) {
-      return actionError("対象の支店が見つかりません");
+      return actionError(tr("master.businessPartnerActions.branchNotFound"));
     }
     const quotes = await prisma.quote.count({
       where: {
@@ -309,7 +348,7 @@ export async function deleteBranch(
     });
     if (quotes > 0) {
       return actionError(
-        "この支店を参照する見積書が存在するため削除できません。無効化を検討してください。",
+        tr("master.businessPartnerActions.branchInUseByQuotes"),
       );
     }
     await prisma.$transaction([
@@ -326,6 +365,12 @@ export async function deleteBranch(
     revalidate(parentId);
     return actionOk();
   } catch (e) {
-    return actionError(prismaErrorMessage(e, "支店の削除に失敗しました"));
+    return actionError(
+      prismaErrorMessage(
+        e,
+        tr("master.businessPartnerActions.branchDeleteFailed"),
+        tr,
+      ),
+    );
   }
 }

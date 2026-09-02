@@ -9,38 +9,24 @@
  * 詳細ページへリンクする。
  */
 
-import { Anchor, Badge, Code, Group, Paper, Stack, Text } from "@mantine/core";
+import { Anchor, Badge, Group, Paper, Stack, Text } from "@mantine/core";
 import { IconExternalLink, IconUser } from "@tabler/icons-react";
 import Link from "next/link";
+import { useLocale, useTranslations } from "next-intl";
+import { AuditChangeTable } from "@/components/ui/AuditChangeTable";
 import { SecondaryButton } from "@/components/ui/buttons";
 import { FieldValue } from "@/components/ui/FieldValue";
 import { DetailShell, SummaryGrid } from "@/components/ui/shells";
 import type { ActivityDetailEntry } from "@/lib/audit";
 import { auditRecordLink } from "@/lib/audit-links";
+import type { Locale } from "@/lib/i18n";
 
 const BASE_PATH = "/settings/activity";
 
-function JsonBlock({ title, value }: { title: string; value: unknown }) {
-  return (
-    <Paper p="md" radius="md" withBorder>
-      <Text c="dimmed" fw={600} mb="xs" size="xs">
-        {title}
-      </Text>
-      {value == null ? (
-        <Text c="dimmed" size="sm">
-          なし
-        </Text>
-      ) : (
-        <Code block style={{ whiteSpace: "pre-wrap", wordBreak: "break-all" }}>
-          {JSON.stringify(value, null, 2)}
-        </Code>
-      )}
-    </Paper>
-  );
-}
-
 export function ActivityLogDetail({ entry }: { entry: ActivityDetailEntry }) {
-  const link = auditRecordLink(entry.tableName, entry.recordId);
+  const tr = useTranslations();
+  const locale = useLocale() as Locale;
+  const link = auditRecordLink(entry.tableName, entry.recordId, locale);
 
   return (
     <DetailShell
@@ -51,28 +37,32 @@ export function ActivityLogDetail({ entry }: { entry: ActivityDetailEntry }) {
             leftSection={<IconExternalLink size={14} />}
           >
             {link.kind === "detail"
-              ? `${link.appLabel}を開く`
-              : `${link.appLabel}で表示`}
+              ? tr("admin.activityLogDetail.openApplabel", {
+                  appLabel: link.appLabel,
+                })
+              : tr("admin.activityLogDetail.viewInApplabel", {
+                  appLabel: link.appLabel,
+                })}
           </SecondaryButton>
         ) : undefined
       }
       breadcrumbs={[
-        "システム",
-        { label: "操作履歴", href: BASE_PATH },
+        tr("common.system"),
+        { label: tr("common.activityLog"), href: BASE_PATH },
         `#${entry.id}`,
       ]}
       status={<Badge variant="light">{entry.action}</Badge>}
-      title={`操作履歴 #${entry.id}`}
+      title={tr("admin.activityLogDetail.activityId", { id: entry.id })}
     >
       <SummaryGrid>
-        <FieldValue label="日時" value={entry.at} />
+        <FieldValue label={tr("common.dateAndTime")} value={entry.at} />
         <FieldValue
-          label="操作"
+          label={tr("common.actions")}
           value={`${entry.action}（${entry.actionRaw}）`}
         />
-        <FieldValue label="対象" value={entry.tableLabel} />
+        <FieldValue label={tr("common.target")} value={entry.tableLabel} />
         <FieldValue
-          label="レコード"
+          label={tr("common.record")}
           value={
             entry.recordId ? (
               <Text ff="mono" size="sm">
@@ -84,7 +74,7 @@ export function ActivityLogDetail({ entry }: { entry: ActivityDetailEntry }) {
           }
         />
         <FieldValue
-          label="ユーザー"
+          label={tr("common.user")}
           value={
             entry.userId ? (
               <Anchor
@@ -103,12 +93,13 @@ export function ActivityLogDetail({ entry }: { entry: ActivityDetailEntry }) {
           }
         />
         <FieldValue
-          label="関連ページ"
+          label={tr("admin.activityLogDetail.relatedPages")}
           value={
             link ? (
               <Anchor component={Link} href={link.href} size="sm">
                 {link.appLabel}
-                {link.kind === "list" && "（一覧で表示）"}
+                {link.kind === "list" &&
+                  tr("admin.activityLogDetail.shownInTheList")}
               </Anchor>
             ) : (
               "—"
@@ -119,14 +110,26 @@ export function ActivityLogDetail({ entry }: { entry: ActivityDetailEntry }) {
 
       <Paper p="md" radius="md" withBorder>
         <Text c="dimmed" fw={600} mb="xs" size="xs">
-          変更内容（要約）
+          {tr("admin.activityLogDetail.whatChangedSummary")}
         </Text>
         <Text size="sm">{entry.detail}</Text>
       </Paper>
 
       <Stack gap="md">
-        <JsonBlock title="変更前（before）" value={entry.beforeData} />
-        <JsonBlock title="変更後（after）" value={entry.afterData} />
+        {/* 何が変わったかを**列名と値で**出す。生の JSON だけだと、
+            読む人が JSON を解読する作業になっていた。元データは
+            この中の「生データを表示」で見られる。 */}
+        <Paper p="md" radius="md" withBorder>
+          <Text c="dimmed" fw={600} mb="xs" size="xs">
+            {tr("common.whatChanges")}
+          </Text>
+          <AuditChangeTable
+            action={entry.action}
+            after={entry.afterData}
+            before={entry.beforeData}
+            tableName={entry.tableName}
+          />
+        </Paper>
       </Stack>
     </DetailShell>
   );

@@ -16,6 +16,7 @@
  */
 
 import { revalidatePath } from "next/cache";
+import { getTranslations } from "next-intl/server";
 import {
   addDays,
   monthStart,
@@ -26,6 +27,7 @@ import { checkPermission } from "@/lib/authz";
 import { prisma } from "@/lib/db";
 import { formatDocNumber } from "@/lib/doc-number";
 import { type LocalizedText, localized } from "@/lib/format";
+import { label } from "@/lib/messages";
 import { allocateDocumentKey } from "@/lib/numbering";
 import { resolveSalesRepId } from "@/lib/sales-rep";
 import {
@@ -67,8 +69,9 @@ export interface RunClosingResult {
 export async function runClosing(
   yearMonth: string,
 ): Promise<ActionResult<RunClosingResult>> {
+  const tr = await getTranslations();
   const ym = parseYearMonth(yearMonth);
-  if (!ym) return actionError("対象月の形式が不正です（YYYYMM）");
+  if (!ym) return actionError(tr("billing.closingActions.invalidYearMonth"));
   const authz = await checkPermission("billing_closing", "UPDATE");
   if (!authz.ok) return actionError(authz.error);
   try {
@@ -76,12 +79,16 @@ export async function runClosing(
     const { runClosingBatch } = await import("@/lib/closing");
     const result = await runClosingBatch(ym.year, ym.month);
     if (result.created + result.updated + result.skipped === 0) {
-      return actionError("対象月に未請求の出荷がありません");
+      return actionError(
+        tr("billing.closingActions.noUnbilledShipmentsForMonth"),
+      );
     }
     revalidatePath(BASE_PATH);
     return actionOk(result);
   } catch (e) {
-    return actionError(prismaErrorMessage(e, "締日処理の実行に失敗しました"));
+    return actionError(
+      prismaErrorMessage(e, tr("billing.closingActions.runFailed"), tr),
+    );
   }
 }
 
@@ -92,6 +99,7 @@ export async function runClosing(
 export async function processClosing(
   id: string,
 ): Promise<ActionResult<{ invoiceNumber: string }>> {
+  const tr = await getTranslations();
   const authz = await checkPermission("billing_closing", "UPDATE");
   if (!authz.ok) return actionError(authz.error);
   try {
@@ -101,9 +109,10 @@ export async function processClosing(
         customerBp: { include: { customerAttrs: true } },
       },
     });
-    if (!closing) return actionError("対象の締日処理が見つかりません");
+    if (!closing)
+      return actionError(tr("billing.closingActions.closingNotFound"));
     if (closing.status !== "PENDING") {
-      return actionError("未処理の締日のみ請求書を生成できます");
+      return actionError(tr("billing.closingActions.pendingOnly"));
     }
 
     const shipments = await fetchBillableShipmentsForClosing(
@@ -111,7 +120,7 @@ export async function processClosing(
       closing.closingDate,
     );
     if (shipments.length === 0) {
-      return actionError("請求対象の出荷がありません");
+      return actionError(tr("billing.closings.thereAreNoShipmentsToBill"));
     }
 
     // 明細: 出荷書明細 1 行 = 請求明細 1 行（摘要 = 製品名 + ロット、由来キー付き）。
@@ -125,11 +134,17 @@ export async function processClosing(
         const name = it.product.name as LocalizedText | null;
         const ja =
           it.lotNumber != null
-            ? `${localized(name, "ja")}（ロット ${it.lotNumber}）`
+            ? label("billing.closingActions.itemNameWithLot", "ja", "", {
+                name: localized(name, "ja"),
+                lot: it.lotNumber,
+              })
             : localized(name, "ja");
         const en =
           it.lotNumber != null
-            ? `${localized(name, "en")} (Lot ${it.lotNumber})`
+            ? label("billing.closingActions.itemNameWithLot", "en", "", {
+                name: localized(name, "en"),
+                lot: it.lotNumber,
+              })
             : localized(name, "en");
         return {
           deliveryOrderYearMonth: s.yearMonth,
@@ -218,7 +233,7 @@ export async function processClosing(
         },
       });
       if (updated.count === 0) {
-        throw new Error("GUARD:未処理の締日のみ請求書を生成できます");
+        throw new Error(`GUARD:${tr("billing.closingActions.pendingOnly")}`);
       }
     });
 
@@ -256,6 +271,12 @@ export async function processClosing(
     if (e instanceof Error && e.message.startsWith("GUARD:")) {
       return actionError(e.message.slice("GUARD:".length));
     }
-    return actionError(prismaErrorMessage(e, "請求書の生成に失敗しました"));
+    return actionError(
+      prismaErrorMessage(
+        e,
+        tr("billing.closingActions.generateInvoiceFailed"),
+        tr,
+      ),
+    );
   }
 }

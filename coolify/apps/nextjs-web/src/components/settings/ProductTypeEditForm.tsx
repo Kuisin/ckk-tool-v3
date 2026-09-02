@@ -26,6 +26,7 @@ import {
   IconTrash,
 } from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { useState, useTransition } from "react";
 import { updateProductTypes } from "@/app/(dashboard)/settings/actions";
 import { CancelButton, GhostButton, SaveButton } from "@/components/ui/buttons";
@@ -35,16 +36,13 @@ import { FormActions, FormSection } from "@/components/ui/shells";
 import { useIsMobile } from "@/hooks/useViewport";
 import { fieldHelp } from "@/lib/field-help";
 import {
-  PRODUCT_FIELD_TYPES,
   type ProductItemDef,
   type ProductType,
   type ProductTypeAssignment,
+  productFieldTypeLabel,
 } from "@/lib/product-types";
 
 const BASE = "/settings/product-types";
-
-const typeLabel = (v: string) =>
-  PRODUCT_FIELD_TYPES.find((o) => o.value === v)?.label ?? v;
 
 function newId(): string {
   return crypto.randomUUID();
@@ -59,6 +57,7 @@ export function ProductTypeEditForm({
   typeId?: string;
   defs: ProductItemDef[];
 }) {
+  const tr = useTranslations();
   const router = useRouter();
   const isMobile = useIsMobile();
   const [isPending, startTransition] = useTransition();
@@ -82,7 +81,7 @@ export function ProductTypeEditForm({
     .filter((d) => d.enabled)
     .map((d) => ({
       value: d.key,
-      label: `${d.label.ja || d.key}（${typeLabel(d.type)}）`,
+      label: `${d.label.ja || d.key}（${productFieldTypeLabel(d.type, tr)}）`,
     }));
 
   const patch = (p: Partial<ProductType>) => setType((t) => ({ ...t, ...p }));
@@ -114,12 +113,19 @@ export function ProductTypeEditForm({
 
   const handleSave = () => {
     if (!type.name.ja.trim())
-      return setError("種別名（日本語）を入力してください");
+      return setError(
+        tr("settings.productTypeEditForm.enterTheTypeNameInJapanese"),
+      );
     const seen = new Set<string>();
     for (const a of type.assignments) {
-      if (!a.itemKey) return setError("割り当てる項目を選択してください");
+      if (!a.itemKey)
+        return setError(
+          tr("settings.productTypeEditForm.selectTheFieldToAssign"),
+        );
       if (seen.has(a.itemKey))
-        return setError("同じ項目が重複して割り当てられています");
+        return setError(
+          tr("settings.productTypeEditForm.theSameFieldIsAssignedTwice"),
+        );
       seen.add(a.itemKey);
     }
     setError(null);
@@ -132,14 +138,16 @@ export function ProductTypeEditForm({
       const res = await updateProductTypes(next);
       if (res.ok) {
         notifications.show({
-          title: "保存しました",
-          message: isEdit ? "製品種別を更新しました" : "製品種別を作成しました",
+          title: tr("common.saved2"),
+          message: isEdit
+            ? tr("settings.productTypeEditForm.theProductTypeWasUpdated")
+            : tr("settings.productTypeEditForm.theProductTypeWasCreated"),
           color: "green",
         });
         router.push(BASE);
       } else {
         notifications.show({
-          title: "エラー",
+          title: tr("common.error2"),
           message: res.error,
           color: "red",
         });
@@ -151,27 +159,35 @@ export function ProductTypeEditForm({
     <Stack gap="md">
       <PageHeader
         breadcrumbs={[
-          "システム",
-          { label: "製品種別", href: BASE },
-          isEdit ? "種別編集" : "種別追加",
+          tr("common.system"),
+          { label: tr("common.productTypes"), href: BASE },
+          isEdit
+            ? tr("settings.productTypeEditForm.editType")
+            : tr("settings.productTypeEditForm.addAType"),
         ]}
-        title={isEdit ? `種別編集 — ${type.name.ja || type.id}` : "種別追加"}
+        title={
+          isEdit
+            ? tr("settings.productTypeEditForm.editTypeName", {
+                name: type.name.ja || type.id,
+              })
+            : tr("settings.productTypeEditForm.addAType")
+        }
       />
 
-      <FormSection title="種別情報">
+      <FormSection title={tr("settings.productTypeEditForm.typeInformation")}>
         <SimpleGrid cols={isMobile ? 1 : 2} spacing="sm">
           <TextInput
             label={
               <HelpLabel
                 {...fieldHelp("productType", "typeName", {
-                  label: "種別名（日本語）",
+                  label: tr("settings.productTypeEditForm.typeNameJapanese"),
                 })}
               />
             }
             onChange={(e) =>
               patch({ name: { ...type.name, ja: e.currentTarget.value } })
             }
-            placeholder="例: 標準品"
+            placeholder={tr("settings.productTypeEditForm.eGStandardItem")}
             value={type.name.ja}
             withAsterisk
           />
@@ -179,7 +195,7 @@ export function ProductTypeEditForm({
             label={
               <HelpLabel
                 {...fieldHelp("productType", "typeName", {
-                  label: "種別名（英語）",
+                  label: tr("settings.productTypeEditForm.typeNameEnglish"),
                 })}
               />
             }
@@ -194,7 +210,7 @@ export function ProductTypeEditForm({
           label={<HelpLabel {...fieldHelp("productType", "typeDescription")} />}
           mt="sm"
           onChange={(e) => patch({ description: e.currentTarget.value })}
-          placeholder="この種別の用途など（任意）"
+          placeholder={tr("settings.productTypeEditForm.whatThisTypeIsForEtc")}
           rows={2}
           value={type.description ?? ""}
         />
@@ -203,7 +219,9 @@ export function ProductTypeEditForm({
           label={
             <HelpLabel
               {...fieldHelp("productType", "typeActive", {
-                label: "有効（製品作成の選択肢に出す）",
+                label: tr(
+                  "settings.productTypeEditForm.enabledOfferedWhenCreatingAProduct",
+                ),
               })}
             />
           }
@@ -213,13 +231,15 @@ export function ProductTypeEditForm({
       </FormSection>
 
       <FormSection
-        description="項目定義ライブラリから割り当てます。既定値は空欄なら項目定義の既定値を使います。"
-        title="割り当て項目"
+        description={tr(
+          "settings.productTypeEditForm.assignedFromTheFieldDefinitionLibrary",
+        )}
+        title={tr("settings.productTypeEditForm.assignedFields")}
       >
         <Stack gap="sm">
           {type.assignments.length === 0 && (
             <Text c="dimmed" size="sm">
-              まだ項目が割り当てられていません。
+              {tr("settings.productTypeEditForm.noFieldsAreAssignedYet")}
             </Text>
           )}
           {type.assignments.map((a, i) => {
@@ -234,7 +254,7 @@ export function ProductTypeEditForm({
                       <HelpLabel {...fieldHelp("productType", "typeItems")} />
                     }
                     onChange={(v) => patchAssign(i, { itemKey: v ?? "" })}
-                    placeholder="項目を選択"
+                    placeholder={tr("common.selectAnItem")}
                     searchable
                     style={{ flex: 1 }}
                     value={a.itemKey || null}
@@ -246,7 +266,9 @@ export function ProductTypeEditForm({
                         value: o.value,
                         label: o.label,
                       }))}
-                      description="既定値（上書き・任意）"
+                      description={tr(
+                        "settings.productTypeEditForm.defaultOverrideOptional",
+                      )}
                       label={
                         <HelpLabel
                           {...fieldHelp("productType", "typeDefault")}
@@ -255,14 +277,19 @@ export function ProductTypeEditForm({
                       onChange={(v) =>
                         patchAssign(i, { defaultValue: v || undefined })
                       }
-                      placeholder={def.default ?? "（任意）"}
+                      placeholder={def.default ?? tr("common.optional2")}
                       style={{ flex: 1 }}
                       value={a.defaultValue ?? null}
                     />
                   ) : (
                     <TextInput
                       description={
-                        def?.default ? `未入力なら "${def.default}"` : "任意"
+                        def?.default
+                          ? tr(
+                              "settings.productTypeEditForm.defaultValueIfEmptyDefault",
+                              { default: def.default },
+                            )
+                          : tr("common.optional")
                       }
                       label={
                         <HelpLabel
@@ -274,14 +301,14 @@ export function ProductTypeEditForm({
                           defaultValue: e.currentTarget.value || undefined,
                         })
                       }
-                      placeholder={def?.default ?? "（任意）"}
+                      placeholder={def?.default ?? tr("common.optional2")}
                       style={{ flex: 1 }}
                       value={a.defaultValue ?? ""}
                     />
                   )}
                   <ActionIcon.Group>
                     <ActionIcon
-                      aria-label="上へ"
+                      aria-label={tr("common.moveUp")}
                       disabled={i === 0}
                       onClick={() => moveAssign(i, -1)}
                       variant="default"
@@ -289,7 +316,7 @@ export function ProductTypeEditForm({
                       <IconArrowUp size={16} />
                     </ActionIcon>
                     <ActionIcon
-                      aria-label="下へ"
+                      aria-label={tr("common.moveDown")}
                       disabled={i === type.assignments.length - 1}
                       onClick={() => moveAssign(i, 1)}
                       variant="default"
@@ -297,7 +324,9 @@ export function ProductTypeEditForm({
                       <IconArrowDown size={16} />
                     </ActionIcon>
                     <ActionIcon
-                      aria-label="割り当てを削除"
+                      aria-label={tr(
+                        "settings.productTypeEditForm.removeTheAssignment",
+                      )}
                       color="red"
                       onClick={() => removeAssign(i)}
                       variant="default"
@@ -314,11 +343,11 @@ export function ProductTypeEditForm({
             leftSection={<IconPlus size={14} />}
             onClick={addAssign}
           >
-            項目を割り当て
+            {tr("settings.productTypeEditForm.assignAField")}
           </GhostButton>
           {defOptions.length === 0 && (
             <Text c="dimmed" size="xs">
-              割り当て可能な項目がありません。先に「項目定義」で項目を作成してください。
+              {tr("settings.productTypeEditForm.thereAreNoFieldsToAssign")}
             </Text>
           )}
         </Stack>
@@ -341,7 +370,7 @@ export function ProductTypeEditForm({
             loading={isPending}
             onClick={handleSave}
           >
-            保存
+            {tr("common.save2")}
           </SaveButton>
         </Group>
       </FormActions>

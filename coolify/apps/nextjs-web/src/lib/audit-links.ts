@@ -6,7 +6,19 @@
  * で、各詳細ページの URL id と同じ規約（例: /sales/quotes/QOT-…）。
  * 確実に詳細 URL を組めるテーブルは kind "detail"、それ以外は一覧 + 検索
  * （?q=recordId）の kind "list" で返す。未知のテーブルは null。
+ *
+ * `appLabel` は呼び出し側（`ActivityLogDetail`）が `{appLabel}を開く` のような
+ * 文へ ICU 変数として埋め込むので、ここで locale ごとに解決しておく。
+ * 多くはランチャー（`lib/app-list.ts`）と同じアプリなので `appLabelForKey`
+ * （ja フォールバックは `appList` から引く — 文言を二重に持たない）でその訳を
+ * 再利用し、（製品）のような接尾辞・ランチャーに無い名称（フォーム回答）だけ
+ * `messages/*.json` の `admin.activityLogDetail.*` を `lib/messages.ts` の
+ * `label()` 経由で足す。
  */
+
+import { appLabelForKey, appList } from "./app-list";
+import type { Locale } from "./i18n";
+import { label } from "./messages";
 
 export interface AuditLink {
   /** 遷移先アプリの表示ラベル。 */
@@ -17,7 +29,12 @@ export interface AuditLink {
 }
 
 interface TableRoute {
-  appLabel: string;
+  /** `lib/app-list.ts` の `AppEntry.key`（ランチャーと同じアプリのとき）。 */
+  appListKey?: string;
+  /** 接尾辞（`admin.activityLogDetail.<key>` を引く。無ければ翻訳しない）。 */
+  suffixKey?: string;
+  /** ランチャーに無い名称の翻訳キー（`admin.activityLogDetail.<key>`）。 */
+  labelKey?: string;
   listPath: string;
   /** true = `${listPath}/${recordId}` が詳細 URL（業務キー = URL id）。 */
   directDetail?: boolean;
@@ -25,195 +42,261 @@ interface TableRoute {
 
 const TABLE_ROUTES: Record<string, TableRoute> = {
   // 販売
-  quotes: { appLabel: "見積書", listPath: "/sales/quotes", directDetail: true },
+  quotes: {
+    appListKey: "quotes",
+    listPath: "/sales/quotes",
+    directDetail: true,
+  },
   estimates: {
-    appLabel: "価格試算",
+    appListKey: "trial-estimates",
     listPath: "/sales/trial-estimates",
     directDetail: true,
   },
   price_list_entries: {
-    appLabel: "価格表",
+    appListKey: "price-lists",
     listPath: "/sales/price-lists",
     directDetail: true,
   },
   order_acceptances: {
-    appLabel: "注文請書",
+    appListKey: "order-acceptances",
     listPath: "/sales/order-acceptances",
     directDetail: true,
   },
   design_requests: {
-    appLabel: "設計依頼書",
+    appListKey: "design-requests",
     listPath: "/sales/design-requests",
     directDetail: true,
   },
   // 生産
   order_lines: {
-    appLabel: "注文明細",
+    appListKey: "order-lines",
     listPath: "/sales/order-lines",
     directDetail: true,
   },
   work_orders: {
-    appLabel: "指示書",
+    appListKey: "work-orders",
     listPath: "/production/work-orders",
     directDetail: true,
   },
   approval_requests: {
-    appLabel: "承認・予定",
+    appListKey: "my-tasks",
     listPath: "/general/tasks",
   },
   product_inventory: {
-    appLabel: "在庫管理（製品）",
+    appListKey: "inventory",
+    suffixKey: "suffixProduct",
     listPath: "/production/inventory/products",
     directDetail: true,
   },
   material_inventory: {
-    appLabel: "在庫管理（素材）",
+    appListKey: "inventory",
+    suffixKey: "suffixMaterial",
     listPath: "/production/inventory/materials",
     directDetail: true,
   },
   // 一般
   forms: {
-    appLabel: "フォーム",
+    appListKey: "forms",
     listPath: "/general/forms",
     directDetail: true,
   },
   internal_pages: {
-    appLabel: "社内文書",
+    appListKey: "internal-pages",
     listPath: "/general/documents",
     directDetail: true,
   },
   form_responses: {
     // 回答の業務キー（FRM-…）だけでは所属フォームが分からないので、
     // 番号から実ページへ 302 する中継ページへ送る。
-    appLabel: "フォーム回答",
+    labelKey: "formResponsesLabel",
     listPath: "/general/forms/responses",
     directDetail: true,
   },
   // 購買
   purchase_requests: {
-    appLabel: "購買依頼",
+    appListKey: "purchase-requests",
     listPath: "/purchase/purchase-requests",
     directDetail: true,
   },
   material_purchase_orders: {
-    appLabel: "素材発注書",
+    appListKey: "purchase-orders",
     listPath: "/purchase/purchase-orders",
     directDetail: true,
   },
   material_receipts: {
-    appLabel: "素材入荷",
+    appListKey: "material-receipts",
     listPath: "/purchase/material-receipts",
     directDetail: true,
   },
   // 出荷・請求
   delivery_orders: {
-    appLabel: "出荷書",
+    appListKey: "delivery-orders",
     listPath: "/shipping/delivery-orders",
     directDetail: true,
   },
   delivery_notes: {
-    appLabel: "納品書",
+    appListKey: "delivery-notes",
     listPath: "/shipping/delivery-notes",
     directDetail: true,
   },
   invoices: {
-    appLabel: "請求書",
+    appListKey: "invoices",
     listPath: "/billing/invoices",
     directDetail: true,
   },
-  billing_closings: { appLabel: "締日処理", listPath: "/billing/closings" },
+  billing_closings: {
+    appListKey: "billing-closings",
+    listPath: "/billing/closings",
+  },
   // マスタ
   products: {
-    appLabel: "製品",
+    appListKey: "master-products",
     listPath: "/master/products",
     directDetail: true,
   },
   materials: {
-    appLabel: "素材",
+    appListKey: "master-materials",
     listPath: "/master/materials",
     directDetail: true,
   },
   material_types: {
-    appLabel: "材種",
+    appListKey: "master-material-types",
     listPath: "/master/material-types",
     directDetail: true,
   },
   business_partners: {
-    appLabel: "取引先",
+    appListKey: "master-business-partners",
     listPath: "/master/business-partners",
   },
   plants: {
-    appLabel: "拠点",
+    appListKey: "master-plants",
     listPath: "/master/plants",
     directDetail: true,
   },
   storage_locations: {
-    appLabel: "拠点（保管場所）",
+    appListKey: "master-plants",
+    suffixKey: "suffixStorageLocation",
     listPath: "/master/plants",
   },
   storage_shelves: {
-    appLabel: "拠点（保管場所）",
+    appListKey: "master-plants",
+    suffixKey: "suffixStorageLocation",
     listPath: "/master/plants",
   },
   process_step_catalog: {
-    appLabel: "工程マスタ",
+    appListKey: "master-process-steps",
     listPath: "/master/process-steps",
     directDetail: true,
   },
   inspection_templates: {
-    appLabel: "検査表テンプレート",
+    appListKey: "master-inspection-templates",
     listPath: "/master/inspection-templates",
     directDetail: true,
   },
-  defect_types: { appLabel: "不良種類", listPath: "/master/defect-types" },
+  defect_types: {
+    appListKey: "master-defect-types",
+    listPath: "/master/defect-types",
+  },
   approval_groups: {
-    appLabel: "承認設定",
+    appListKey: "master-approval-groups",
     listPath: "/master/approval-settings",
     directDetail: true,
   },
   approval_flows: {
-    appLabel: "承認設定",
+    appListKey: "master-approval-groups",
     listPath: "/master/approval-settings",
   },
   work_location_groups: {
-    appLabel: "作業場所",
+    appListKey: "master-work-locations",
     listPath: "/master/work-locations",
   },
   work_locations: {
-    appLabel: "作業場所",
+    appListKey: "master-work-locations",
     listPath: "/master/work-locations",
   },
   // システム
-  feature_flags: { appLabel: "アプリ管理", listPath: "/settings/apps" },
+  feature_flags: {
+    appListKey: "app-management",
+    listPath: "/settings/apps",
+  },
   file_folder_grants: {
-    appLabel: "ファイル管理",
+    appListKey: "file-management",
     listPath: "/settings/files",
   },
-  kiosk_cards: { appLabel: "QRカード管理", listPath: "/settings/kiosk-cards" },
-  kiosk_devices: { appLabel: "端末管理", listPath: "/settings/kiosk-devices" },
+  kiosk_cards: {
+    appListKey: "kiosk-cards",
+    listPath: "/settings/kiosk-cards",
+  },
+  kiosk_devices: {
+    appListKey: "kiosk-devices",
+    listPath: "/settings/kiosk-devices",
+  },
   kiosk_floor_maps: {
-    appLabel: "端末管理（マップ）",
+    appListKey: "kiosk-devices",
+    suffixKey: "suffixFloorMap",
     listPath: "/settings/kiosk-devices/map",
   },
+  display_devices: {
+    appListKey: "kiosk-devices",
+    suffixKey: "suffixDisplay",
+    listPath: "/settings/kiosk-devices",
+  },
 };
+
+const NS = "admin.activityLogDetail";
+
+/** ja のフォールバック接尾辞・単独ラベル（鍵がまだカタログに無くても壊れない）。 */
+const FALLBACK_JA: Record<string, string> = {
+  suffixProduct: "（製品）",
+  suffixMaterial: "（素材）",
+  suffixStorageLocation: "（保管場所）",
+  suffixFloorMap: "（マップ）",
+  suffixDisplay: "（ディスプレイ）",
+  formResponsesLabel: "フォーム回答",
+};
+
+function resolveAppLabel(route: TableRoute, locale: Locale): string {
+  if (route.labelKey) {
+    return label(
+      `${NS}.${route.labelKey}`,
+      locale,
+      FALLBACK_JA[route.labelKey] ?? "",
+    );
+  }
+  if (!route.appListKey) return "";
+  // ランチャー（lib/app-list.ts）の label をそのまま ja フォールバックにする
+  // — ここでは同じ文言を重複して持たない。
+  const baseJa =
+    appList.find((a) => a.key === route.appListKey)?.label ?? route.appListKey;
+  const base = appLabelForKey(route.appListKey, baseJa, locale);
+  if (!route.suffixKey) return base;
+  const suffix = label(
+    `${NS}.${route.suffixKey}`,
+    locale,
+    FALLBACK_JA[route.suffixKey] ?? "",
+  );
+  return `${base}${suffix}`;
+}
 
 /** 対象テーブル + recordId から関連ページへのリンクを解決する。 */
 export function auditRecordLink(
   tableName: string,
   recordId: string | null,
+  locale: Locale = "ja",
 ): AuditLink | null {
   const route = TABLE_ROUTES[tableName];
   if (!route) return null;
+  const appLabel = resolveAppLabel(route, locale);
   if (route.directDetail && recordId) {
     return {
-      appLabel: route.appLabel,
+      appLabel,
       href: `${route.listPath}/${encodeURIComponent(recordId)}`,
       kind: "detail",
     };
   }
   const q = recordId ? `?q=${encodeURIComponent(recordId)}` : "";
   return {
-    appLabel: route.appLabel,
+    appLabel,
     href: `${route.listPath}${q}`,
     kind: "list",
   };

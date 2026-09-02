@@ -18,7 +18,10 @@ import "server-only";
  * GPU の ollama だけを共有している — 詳細はルート CLAUDE.md。
  */
 
+import { getTranslations } from "next-intl/server";
 import { AiProviderConfigError, aiConfigHeaders } from "./ai-provider";
+
+type Tr = Awaited<ReturnType<typeof getTranslations>>;
 
 export const PO_EXTRACT_URL = (
   process.env.PO_EXTRACT_URL ?? "http://po-extract:8000"
@@ -50,6 +53,7 @@ export async function generateJson<T>(
   input: unknown,
   opts?: { prompt?: string; timeoutMs?: number },
 ): Promise<T> {
+  const tr = await getTranslations();
   const endpoint = `${PO_EXTRACT_URL}/generate/${task}`;
   let aiHeaders: Record<string, string>;
   try {
@@ -69,30 +73,31 @@ export async function generateJson<T>(
     });
   } catch (e) {
     if (e instanceof Error && e.name === "TimeoutError") {
-      throw new PoExtractError(
-        "AI の応答が時間内に返りませんでした（混雑している可能性があります）。しばらく待ってからもう一度お試しください。",
-      );
+      throw new PoExtractError(tr("settings.aiProvider.poExtract.timeout"));
     }
-    console.error(`[po-extract] ${endpoint} へ接続できません`, e);
-    throw new PoExtractError(
-      "AI サービスに接続できませんでした。時間をおいてもう一度お試しください。",
+    console.error(
+      tr("settings.aiProvider.poExtract.connectFailedLog", { endpoint }),
+      e,
     );
+    throw new PoExtractError(tr("settings.aiProvider.poExtract.unreachable"));
   }
   if (!res.ok) {
     const body = await res.text().catch(() => null);
     console.error(`[po-extract] ${endpoint} HTTP ${res.status}`, body);
-    const ai = aiErrorMessage(body);
+    const ai = aiErrorMessage(body, tr);
     throw new PoExtractError(
       ai ??
         (res.status === 404
-          ? "AI サービスがこの機能に対応していません（更新が必要です）。"
-          : "AI サービスの処理に失敗しました。時間をおいてもう一度お試しください。"),
+          ? tr("settings.aiProvider.poExtract.notSupported")
+          : tr("settings.aiProvider.poExtract.processingFailed")),
     );
   }
   try {
     return (await res.json()) as T;
   } catch {
-    throw new PoExtractError("AI の応答を読み取れませんでした。");
+    throw new PoExtractError(
+      tr("settings.aiProvider.poExtract.unreadableResponse"),
+    );
   }
 }
 
@@ -103,7 +108,7 @@ export async function generateJson<T>(
  * 分類の集合は `intake-extract-error.ts` と同じ（あちらは取込の失敗票、
  * こちらは画面へ即返すメッセージ）。
  */
-export function aiErrorMessage(body: string | null): string | null {
+export function aiErrorMessage(body: string | null, tr: Tr): string | null {
   if (!body) return null;
   let detail = body;
   try {
@@ -115,21 +120,14 @@ export function aiErrorMessage(body: string | null): string | null {
   const kind = /^ai_([a-z_]+):/.exec(detail.trim())?.[1];
   if (!kind) return null;
   const messages: Record<string, string> = {
-    auth: "AI プロバイダに API トークンを拒否されました。システム設定 → AI プロバイダ で確認してください。",
-    model_not_found:
-      "AI プロバイダに指定のモデルがありません。システム設定 → AI プロバイダ でモデル名を確認してください。",
-    rate_limit:
-      "AI プロバイダの利用上限に達しました。時間をおいてもう一度お試しください。",
-    unreachable:
-      "AI プロバイダへ接続できませんでした。システム管理者へ連絡してください。",
-    bad_schema:
-      "AI プロバイダがこの形式に対応していません。別のモデルをお試しください。",
-    not_configured:
-      "AI プロバイダが未設定です。システム設定 → AI プロバイダ を確認してください。",
-    no_vision:
-      "指定のモデルは画像を読み取れません。システム設定 → AI プロバイダ で画像対応モデルを指定してください。",
-    upstream:
-      "AI プロバイダでエラーが起きました。時間をおいてもう一度お試しください。",
+    auth: tr("settings.aiProvider.poExtract.errors.auth"),
+    model_not_found: tr("settings.aiProvider.poExtract.errors.modelNotFound"),
+    rate_limit: tr("settings.aiProvider.poExtract.errors.rateLimit"),
+    unreachable: tr("settings.aiProvider.poExtract.errors.unreachable"),
+    bad_schema: tr("settings.aiProvider.poExtract.errors.badSchema"),
+    not_configured: tr("settings.aiProvider.poExtract.errors.notConfigured"),
+    no_vision: tr("settings.aiProvider.poExtract.errors.noVision"),
+    upstream: tr("settings.aiProvider.poExtract.errors.upstream"),
   };
   return messages[kind] ?? null;
 }

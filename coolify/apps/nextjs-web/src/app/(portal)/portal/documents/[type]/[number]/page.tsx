@@ -10,12 +10,13 @@ import { Anchor, Card, Group, Stack, Text, Title } from "@mantine/core";
 import { IconFileTypePdf } from "@tabler/icons-react";
 import { headers } from "next/headers";
 import { notFound } from "next/navigation";
+import { getTranslations } from "next-intl/server";
 import { parseDocKey } from "@/lib/doc-number";
 import { recordPortalAccess } from "@/lib/portal-access-log";
 import {
   getPortalDocument,
   isPortalDocumentType,
-  PORTAL_DOCUMENT_LABEL,
+  portalDocumentLabel,
   portalTargetOf,
 } from "@/lib/portal-documents";
 import { requirePortalView } from "@/lib/portal-page";
@@ -27,6 +28,7 @@ export default async function PortalDocumentPage({
 }: {
   params: Promise<{ type: string; number: string }>;
 }) {
+  const tr = await getTranslations();
   const { type, number } = await params;
   if (!isPortalDocumentType(type)) notFound();
   const key = parseDocKey(decodeURIComponent(number));
@@ -58,12 +60,12 @@ export default async function PortalDocumentPage({
 
   return (
     <Stack gap="md">
-      <Title order={3}>{PORTAL_DOCUMENT_LABEL[type]}</Title>
+      <Title order={3}>{portalDocumentLabel(type, tr)}</Title>
       <Card padding="lg" radius="md" withBorder>
         <Stack gap="sm">
           <Group gap="xs">
             <Text c="dimmed" size="xs">
-              書類番号
+              {tr("common.documentNumber")}
             </Text>
             <Text ff="monospace" fw={600} size="sm">
               {doc.number}
@@ -72,7 +74,7 @@ export default async function PortalDocumentPage({
           {doc.issuedOn ? (
             <Group gap="xs">
               <Text c="dimmed" size="xs">
-                日付
+                {tr("common.date")}
               </Text>
               <Text size="sm">{doc.issuedOn.slice(0, 10)}</Text>
             </Group>
@@ -80,7 +82,7 @@ export default async function PortalDocumentPage({
           {doc.totalAmount ? (
             <Group gap="xs">
               <Text c="dimmed" size="xs">
-                合計金額
+                {tr("common.totalAmount")}
               </Text>
               <Text fw={600} size="sm">
                 ¥{Number(doc.totalAmount).toLocaleString("ja-JP")}
@@ -95,7 +97,7 @@ export default async function PortalDocumentPage({
             >
               <Group gap={4}>
                 <IconFileTypePdf size={14} />
-                PDF を開く
+                {tr("common.openThePdf")}
               </Group>
             </Anchor>
           ) : null}

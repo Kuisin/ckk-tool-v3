@@ -21,6 +21,7 @@ import {
 } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
 import { IconInfoCircle } from "@tabler/icons-react";
+import { useTranslations } from "next-intl";
 import { useState, useTransition } from "react";
 import { updateKioskAppFlags } from "@/app/(dashboard)/settings/kiosk/actions";
 import { FormActions } from "@/components/ui/shells";
@@ -37,6 +38,7 @@ export function KioskSettingsPanel({
   initialFlags: Record<string, boolean>;
   policy: PolicyRow[];
 }) {
+  const tr = useTranslations();
   const [flags, setFlags] = useState<Record<string, boolean>>(initialFlags);
   const [isPending, startTransition] = useTransition();
 
@@ -47,13 +49,13 @@ export function KioskSettingsPanel({
       const result = await updateKioskAppFlags(flags);
       if (result.ok) {
         notifications.show({
-          title: "保存しました",
-          message: "共有端末のアプリ表示設定を更新しました",
+          title: tr("common.saved2"),
+          message: tr("settings.kiosk.theSharedDeviceAppDisplaySettings"),
           color: "green",
         });
       } else {
         notifications.show({
-          title: "エラー",
+          title: tr("common.error2"),
           message: result.error,
           color: "red",
         });
@@ -65,10 +67,9 @@ export function KioskSettingsPanel({
     <Stack gap="lg">
       <Paper p="md" radius="md" shadow="xs">
         <Stack gap="sm">
-          <Title order={4}>ランチャーに表示するアプリ</Title>
+          <Title order={4}>{tr("settings.kiosk.appsShownInTheLauncher")}</Title>
           <Text c="dimmed" size="sm">
-            共有端末（キオスク）のランチャーに載せるアプリを選びます。無効にすると、
-            権限を持つ利用者にも表示されません。
+            {tr("settings.kiosk.chooseWhichAppsAppearInThe")}
           </Text>
           <Stack gap="xs" mt="xs">
             {catalog.map((app) => (
@@ -76,11 +77,15 @@ export function KioskSettingsPanel({
                 <Stack gap={0} style={{ minWidth: 0 }}>
                   <Text fw={500}>{app.label}</Text>
                   <Text c="dimmed" size="xs">
-                    権限コード: {app.permission}
+                    {tr("settings.kioskSettingsPanel.permissionCode", {
+                      code: app.permission,
+                    })}
                   </Text>
                 </Stack>
                 <Switch
-                  aria-label={`${app.label} を表示`}
+                  aria-label={tr("settings.kioskSettingsPanel.showLabel", {
+                    label: app.label,
+                  })}
                   checked={flags[app.key] ?? true}
                   onChange={(e) =>
                     setFlags((prev) => ({
@@ -98,13 +103,13 @@ export function KioskSettingsPanel({
       <Paper p="md" radius="md" shadow="xs">
         <Stack gap="sm">
           <Group gap="xs">
-            <Title order={4}>認証ポリシー</Title>
+            <Title order={4}>{tr("settings.kiosk.authenticationPolicy")}</Title>
             <Badge color="gray" variant="light">
-              参照のみ
+              {tr("settings.kiosk.readOnly")}
             </Badge>
           </Group>
           <Alert color="gray" icon={<IconInfoCircle size={18} />}>
-            現在の値は端末アプリ側で固定です。編集可能化は次回対応予定です。
+            {tr("settings.kiosk.theCurrentValueIsFixedIn")}
           </Alert>
           <Table.ScrollContainer minWidth={420}>
             <Table striped withTableBorder>

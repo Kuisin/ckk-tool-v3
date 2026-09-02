@@ -19,6 +19,7 @@ import {
 } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
 import { IconArrowsExchange } from "@tabler/icons-react";
+import { useTranslations } from "next-intl";
 import { useMemo, useState, useTransition } from "react";
 import { transferStock } from "@/app/(dashboard)/production/inventory/actions";
 import { CancelButton, PrimaryButton } from "@/components/ui/buttons";
@@ -71,6 +72,7 @@ export function StockTransferModal({
   onClose: () => void;
   onDone: () => void;
 }) {
+  const tr = useTranslations();
   const [plantId, setPlantId] = useState<string | null>(null);
   const [locationId, setLocationId] = useState<string | null>(null);
   const [shelfId, setShelfId] = useState<string | null>(null);
@@ -116,14 +118,14 @@ export function StockTransferModal({
       });
       if (!res.ok) {
         notifications.show({
-          title: "在庫移動に失敗しました",
+          title: tr("production.inventory.couldNotTransferTheStock"),
           message: res.error,
           color: "red",
         });
         return;
       }
       notifications.show({
-        title: "在庫を移動しました",
+        title: tr("production.inventory.theStockWasTransferred"),
         message: `${source.label} × ${qty}${source.unit}`,
         color: "green",
       });
@@ -139,7 +141,7 @@ export function StockTransferModal({
         <Group gap="xs">
           <IconArrowsExchange size={16} />
           <Text fw={600} size="sm">
-            在庫移動
+            {tr("production.inventory.stockTransfer")}
           </Text>
         </Group>
       }
@@ -171,7 +173,7 @@ export function StockTransferModal({
             setLocationId(null);
             setShelfId(null);
           }}
-          placeholder="選択"
+          placeholder={tr("common.select")}
           searchable
           value={plantId}
           withAsterisk
@@ -183,7 +185,7 @@ export function StockTransferModal({
           label={
             <HelpLabel
               {...fieldHelp("productInventory", "location", {
-                label: "保管場所",
+                label: tr("common.storageLocations"),
               })}
             />
           }
@@ -193,8 +195,8 @@ export function StockTransferModal({
           }}
           placeholder={
             plant && locationOptions.length === 0
-              ? "保管場所なし（未割当のまま移動）"
-              : "未割当"
+              ? tr("production.inventory.noStorageLocationMovedUnassigned")
+              : tr("common.unassigned")
           }
           value={locationId}
         />
@@ -204,18 +206,24 @@ export function StockTransferModal({
           disabled={!location || shelfOptions.length === 0}
           label={
             <HelpLabel
-              {...fieldHelp("productInventory", "location", { label: "棚" })}
+              {...fieldHelp("productInventory", "location", {
+                label: tr("production.inventory.shelf"),
+              })}
             />
           }
           onChange={setShelfId}
           placeholder={
-            location && shelfOptions.length === 0 ? "棚なし" : "棚未割当"
+            location && shelfOptions.length === 0
+              ? tr("production.stockTransferModal.noShelves")
+              : tr("common.noShelfAssigned")
           }
           value={shelfId}
         />
         <NumberInput
           allowDecimal={!source.integerOnly}
-          label={`数量（${source.unit}）`}
+          label={tr("production.stockTransferModal.quantityWithUnit", {
+            unit: source.unit,
+          })}
           max={source.available}
           min={source.integerOnly ? 1 : 0.001}
           onChange={setQuantity}
@@ -226,7 +234,7 @@ export function StockTransferModal({
           label={
             <HelpLabel
               {...fieldHelp("productInventory", "notes", {
-                label: "備考（任意）",
+                label: tr("common.notesOptional"),
               })}
             />
           }
@@ -242,7 +250,7 @@ export function StockTransferModal({
             loading={pending}
             onClick={submit}
           >
-            移動する
+            {tr("production.inventory.move")}
           </PrimaryButton>
         </Group>
       </Stack>

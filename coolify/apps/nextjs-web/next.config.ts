@@ -32,6 +32,51 @@ const MANUAL_APP_CATEGORY: Record<string, string> = {
   "product-type": "system",
 };
 
+/**
+ * セキュリティ応答ヘッダ（監査 M2）。nginx ではなくここに置くのは、
+ * cloudflared 経由の公開経路が nginx を通らないため（app.ckk-tool.co.jp は
+ * トンネルから web-main:3000 へ直結）。ここなら両経路に同じヘッダが乗る。
+ *
+ * CSP は **Report-Only** から始める。Mantine のインラインスタイルと Next の
+ * ハイドレーション用インラインスクリプトがあるので、いきなり強制すると画面が
+ * 白くなる。まず違反を集めて（ブラウザの Console に出る）、nonce 化してから
+ * 強制に切り替える。ファイル配信ルート（attachments / design-files /
+ * admin/files/raw）は自前の sandbox CSP を強制で付けている — そちらが本命。
+ *
+ * X-Frame-Options SAMEORIGIN: 内部の PDF プレビュー（同一オリジンの iframe）
+ * は通し、他サイトからの埋め込み（クリックジャッキング）を止める。
+ * HSTS は includeSubDomains を付けない — *.ckk-tool.co.jp には TLS 化して
+ * いない社内ホストがある。
+ */
+const SECURITY_HEADERS = [
+  { key: "X-Content-Type-Options", value: "nosniff" },
+  { key: "X-Frame-Options", value: "SAMEORIGIN" },
+  { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
+  { key: "Strict-Transport-Security", value: "max-age=31536000" },
+  {
+    key: "Permissions-Policy",
+    value: "microphone=(), geolocation=(), payment=()",
+  },
+  {
+    key: "Content-Security-Policy-Report-Only",
+    value: [
+      "default-src 'self'",
+      "script-src 'self' 'unsafe-inline'",
+      "style-src 'self' 'unsafe-inline'",
+      "img-src 'self' data: blob:",
+      "font-src 'self' data:",
+      "connect-src 'self'",
+      // 端末管理のディスプレイ見本（共有端末アプリの /display/preview）
+      "frame-src 'self' https://*.kai-lab.net https://*.ckk-tool.co.jp",
+      "frame-ancestors 'self'",
+      "object-src 'self'",
+      "base-uri 'self'",
+      "form-action 'self'",
+      "worker-src 'self' blob:",
+    ].join("; "),
+  },
+];
+
 const nextConfig: NextConfig = {
   /* config options here */
   reactCompiler: true,
@@ -78,8 +123,24 @@ const nextConfig: NextConfig = {
   ...(process.env.NEXT_SKIP_TYPE_CHECK === "1"
     ? { typescript: { ignoreBuildErrors: true } }
     : {}),
+  async headers() {
+    return [{ source: "/:path*", headers: SECURITY_HEADERS }];
+  },
   async redirects() {
     return [
+      // ディスプレイ管理は独立アプリ（SY0I）をやめ、端末管理（SY09）の
+      // タブに統合した。機器の登録手順が共有端末とまったく同じなので、
+      // 別の場所に置くと「どっちの画面で直すのか」を現場が毎回考えることになる。
+      {
+        source: "/settings/displays",
+        destination: "/settings/kiosk-devices",
+        permanent: true,
+      },
+      {
+        source: "/settings/displays/:path*",
+        destination: "/settings/kiosk-devices",
+        permanent: true,
+      },
       // 旧 承認管理 (PD03) → 一般カテゴリの 承認・予定 (CM01)。
       // 詳細 URL は指示書詳細へ（承認カードは指示書詳細に出る）。
       {

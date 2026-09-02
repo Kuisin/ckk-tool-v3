@@ -38,17 +38,21 @@ import {
   Text,
 } from "@mantine/core";
 import { IconGripVertical, IconPlus, IconTrash } from "@tabler/icons-react";
+import { useTranslations } from "next-intl";
 import { GhostButton } from "@/components/ui/buttons";
 import {
-  FORM_FIELD_TYPES,
   type FormFieldDef,
+  formFieldTypes,
   nextFieldKey,
   normalizeOrder,
 } from "@/lib/form-schema";
 import { FormFieldEditor } from "./FormFieldEditor";
 
-function typeLabel(t: FormFieldDef["type"]): string {
-  return FORM_FIELD_TYPES.find((x) => x.value === t)?.label ?? t;
+function typeLabel(
+  t: FormFieldDef["type"],
+  tr: ReturnType<typeof useTranslations>,
+): string {
+  return formFieldTypes(tr).find((x) => x.value === t)?.label ?? t;
 }
 
 function SortableField({
@@ -66,6 +70,7 @@ function SortableField({
   onRemove: () => void;
   onSetTitle: () => void;
 }) {
+  const tr = useTranslations();
   const {
     attributes,
     listeners,
@@ -90,7 +95,7 @@ function SortableField({
         <Accordion.Item value={`field-${index}`}>
           <Group gap={0} wrap="nowrap">
             <ActionIcon
-              aria-label="ドラッグして並べ替え（スマホは長押し）"
+              aria-label={tr("forms.formBuilder.dragToReorderPressAndHold")}
               color="gray"
               size="lg"
               style={{
@@ -110,25 +115,25 @@ function SortableField({
             <Accordion.Control>
               <Group gap="xs" wrap="nowrap">
                 <Text fw={500} size="sm">
-                  {field.label.ja || "（名称未設定）"}
+                  {field.label.ja || tr("common.unnamed")}
                 </Text>
                 <Badge color="gray" size="xs" variant="light">
-                  {typeLabel(field.type)}
+                  {typeLabel(field.type, tr)}
                 </Badge>
                 {field.required && (
                   <Badge color="red" size="xs" variant="light">
-                    必須
+                    {tr("common.required2")}
                   </Badge>
                 )}
                 {field.isTitle && (
                   <Badge color="blue" size="xs" variant="light">
-                    見出し
+                    {tr("common.heading")}
                   </Badge>
                 )}
               </Group>
             </Accordion.Control>
             <ActionIcon
-              aria-label="この項目を削除"
+              aria-label={tr("forms.formBuilder.removeThisItem")}
               color="red"
               mr="xs"
               onClick={onRemove}
@@ -158,6 +163,7 @@ export function FormBuilder({
   fields: FormFieldDef[];
   onChange: (next: FormFieldDef[]) => void;
 }) {
+  const tr = useTranslations();
   // タッチとマウスでセンサーを分けるのが要点。PointerSensor 1 本だと、スマホで
   // 縦にスワイプしただけでドラッグが始まり、ページがスクロールできなくなる。
   // タッチは「長押ししてから動かす」(delay) に限定し、指のわずかなブレは
@@ -203,7 +209,7 @@ export function FormBuilder({
     <Stack gap="sm">
       {fields.length === 0 && (
         <Text c="dimmed" size="sm">
-          項目がありません。「項目を追加」から作ってください。
+          {tr("forms.formBuilder.thereAreNoItemsCreateOne")}
         </Text>
       )}
       <DndContext
@@ -241,7 +247,7 @@ export function FormBuilder({
       </DndContext>
       <Group>
         <GhostButton leftSection={<IconPlus size={14} />} onClick={addField}>
-          項目を追加
+          {tr("common.addAnItem")}
         </GhostButton>
       </Group>
     </Stack>

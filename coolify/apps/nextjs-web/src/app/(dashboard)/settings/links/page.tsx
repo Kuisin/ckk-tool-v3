@@ -1,4 +1,5 @@
 import { Stack } from "@mantine/core";
+import { getTranslations } from "next-intl/server";
 import { LinkAdminPanel } from "@/components/settings/links/LinkAdminPanel";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { requireAppRead } from "@/lib/authz-page";
@@ -14,6 +15,7 @@ export const dynamic = "force-dynamic";
  * （/l/<code>）でクリック時に判定されるので、既存リンクにも遡って効く。
  */
 export default async function LinkSettingsPage() {
+  const tr = await getTranslations();
   const denied = await requireAppRead("links");
   if (denied) return denied;
 
@@ -24,7 +26,10 @@ export default async function LinkSettingsPage() {
 
   return (
     <Stack gap="md">
-      <PageHeader breadcrumbs={["システム", "リンク管理"]} title="リンク管理" />
+      <PageHeader
+        breadcrumbs={[tr("common.system"), tr("settings.links.links")]}
+        title={tr("settings.links.links")}
+      />
       <LinkAdminPanel blacklist={blacklist} links={links} />
     </Stack>
   );

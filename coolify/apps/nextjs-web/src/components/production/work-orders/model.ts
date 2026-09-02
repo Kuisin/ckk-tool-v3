@@ -165,6 +165,33 @@ export interface WorkOrderShipmentView {
   quantity: number;
 }
 
+/**
+ * 最終検査・出荷前確認（旧帳票「■最終検査」欄 — 指示書 1 件に 1 行）。
+ * null = まだ一度も操作されていない（初回の操作で行が作られる）。
+ */
+export interface WorkOrderFinalInspectionView {
+  drawingLabelOk: boolean | null;
+  drawingLabelCheckedByName: string | null;
+  drawingLabelCheckedAt: string | null;
+  protectiveCapOk: boolean | null;
+  protectiveCapCheckedByName: string | null;
+  protectiveCapCheckedAt: string | null;
+  finishedQuantityOk: boolean | null;
+  finishedQuantityCheckedByName: string | null;
+  finishedQuantityCheckedAt: string | null;
+  spareStockUsed: boolean;
+  spareStockReceived: boolean;
+  shelvedByName: string | null;
+  shelvedAt: string | null;
+  deliveryNoteIssuedByName: string | null;
+  deliveryNoteIssuedAt: string | null;
+  shipmentAuthorizedByName: string | null;
+  shipmentAuthorizedAt: string | null;
+  shipDefectReviewedByName: string | null;
+  shipDefectReviewedAt: string | null;
+  shipDefectNotes: string | null;
+}
+
 export interface WorkOrderView {
   id: string; // uuid（内部）— アクションは workOrderNumber を使う
   workOrderNumber: number;
@@ -218,6 +245,7 @@ export interface WorkOrderView {
   stepLinks: StepLinkView[];
   rejectReason: string | null;
   history: WorkOrderHistoryView[];
+  finalInspection: WorkOrderFinalInspectionView | null;
   createdAt: string;
   updatedAt: string;
 }

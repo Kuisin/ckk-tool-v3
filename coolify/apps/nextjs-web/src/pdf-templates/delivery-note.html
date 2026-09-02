@@ -24,7 +24,7 @@
     <div class="recipient-block">
       <div class="recipient-name">{{recipient.name}}　<span class="onchu">{{labels.onchu}}</span></div>
       <div class="recipient-meta">
-        {{recipient.meta}}
+        {{{recipient.meta}}}
       </div>
     </div>
     <div class="doc-info">
@@ -35,7 +35,7 @@
         <tr><td>{{labels.method}}</td><td>{{doc.method}}</td></tr>
       </table>
       <!-- 書類 QR（CKK:<種別>:<番号>）— URL は入れない -->
-      <div class="doc-qr">{{doc_qr}}</div>
+      <div class="doc-qr">{{{doc_qr}}}</div>
     </div>
   </div>
 
@@ -49,7 +49,7 @@
         <th style="width: 45%">{{labels.product}}</th>
         <th class="right">{{labels.quantity}}</th>
         <!-- price_head: 価格記載あり（include_price）のときのみ 単価/金額 列 -->
-        {{price_head}}
+        {{{price_head}}}
         <th>{{labels.notes}}</th>
       </tr>
     </thead>
@@ -58,7 +58,7 @@
       <tr>
         <td>{{name}}<br><span class="sub">{{code}}</span></td>
         <td class="right">{{quantity}}</td>
-        {{price_cells}}
+        {{{price_cells}}}
         <td>{{notes}}</td>
       </tr>
       {{/each}}
@@ -66,11 +66,11 @@
   </table>
 
   <!-- totals: 価格記載ありのときのみ合計ブロックを描画する -->
-  {{totals_block}}
+  {{{totals_block}}}
 
   <div>
     <div class="notes-label">{{labels.notes}}</div>
-    <div class="notes">{{notes}}</div>
+    <div class="notes">{{{notes}}}</div>
   </div>
 
   <div class="footer">

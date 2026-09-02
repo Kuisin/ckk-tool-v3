@@ -7,17 +7,55 @@ import "server-only";
  */
 
 import type { InspectionTemplateItemRow } from "@/components/master/inspection-templates/InspectionTemplateModals";
+import { prisma } from "@/lib/db";
 import type { LocalizedText } from "@/lib/format";
+import { localized } from "@/lib/format";
 import {
   type InspectionItemRecord as CoreItemRecord,
   parseSelectOptions,
   parseStringArray,
 } from "@/lib/inspection-core";
 
+/** 検査承認グループの選択肢（承認設定 MS0B の approval_groups。有効のみ）。 */
+export async function fetchApprovalGroupOptions(): Promise<
+  { value: string; label: string }[]
+> {
+  const groups = await prisma.approvalGroup.findMany({
+    where: { isActive: true },
+    orderBy: { id: "asc" },
+    select: { id: true, name: true },
+  });
+  return groups.map((g) => ({
+    value: String(g.id),
+    label: localized(g.name as LocalizedText | null),
+  }));
+}
+
+/** 検査表グループの選択肢（ナビゲーション用。有効のみ・並び順）。 */
+export async function fetchInspectionTemplateGroupOptions(): Promise<
+  { value: string; label: string }[]
+> {
+  const groups = await prisma.inspectionTemplateGroup.findMany({
+    where: { isActive: true },
+    orderBy: [{ sortOrder: "asc" }, { id: "asc" }],
+    select: { id: true, name: true },
+  });
+  return groups.map((g) => ({
+    value: String(g.id),
+    label: localized(g.name as LocalizedText | null),
+  }));
+}
+
 /** inspection_template_items 行のうち変換に使うフィールド（Prisma include 由来）。 */
 export interface InspectionItemRecord extends CoreItemRecord {
   itemName: unknown;
   sortOrder: number;
+  section: "MEASUREMENT" | "SHAPE";
+  department: "MANUFACTURING" | "QUALITY_ASSURANCE" | null;
+  measurementEquipment: string | null;
+  nominalValue: unknown; // Prisma Decimal
+  toleranceTopDelta: unknown;
+  toleranceBottomDelta: unknown;
 }
 
 const num = (v: unknown): number | null => (v == null ? null : Number(v));
@@ -58,5 +96,11 @@ export function toItemRow(
     allowManualOverride: item.allowManualOverride,
     isRequired: item.isRequired,
     sortOrder: item.sortOrder,
+    section: item.section,
+    department: item.department,
+    measurementEquipment: item.measurementEquipment ?? "",
+    nominalValue: num(item.nominalValue),
+    toleranceTopDelta: num(item.toleranceTopDelta),
+    toleranceBottomDelta: num(item.toleranceBottomDelta),
   };
 }

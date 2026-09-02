@@ -1,5 +1,6 @@
 import { Stack } from "@mantine/core";
 import { notFound } from "next/navigation";
+import { getTranslations } from "next-intl/server";
 import { ReviewView } from "@/components/documents/ReviewView";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { sessionUserId } from "@/lib/authz";
@@ -22,6 +23,7 @@ export default async function ReviewPage({
 }: {
   params: Promise<{ id: string }>;
 }) {
+  const tr = await getTranslations();
   const denied = await requireAppRead("internal-pages");
   if (denied) return denied;
 
@@ -42,10 +44,10 @@ export default async function ReviewPage({
     <Stack gap="md">
       <PageHeader
         breadcrumbs={[
-          { label: "一般" },
-          { label: "社内文書", href: "/general/documents" },
+          { label: tr("common.general") },
+          { label: tr("common.internalDocuments"), href: "/general/documents" },
           { label: page.title, href: `/general/documents/${page.pageNumber}` },
-          { label: "レビュー" },
+          { label: tr("common.review") },
         ]}
         title={`レビュー — ${page.title}`}
       />

@@ -36,7 +36,7 @@ import {
 } from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import type { KioskMessages } from "@/lib/i18n";
+import { fillMessage, type KioskMessages } from "@/lib/i18n";
 import {
   acceptLabel,
   type BoolLabels,
@@ -78,14 +78,18 @@ function samplingLabel(
 ): string {
   switch (template.samplingMode) {
     case "PERCENT":
-      return m.steps.inspection.samplingPercent(
-        template.samplingValue ?? 0,
-        required,
-      );
+      return required != null
+        ? fillMessage(m.steps.inspection.samplingPercentWithCount, {
+            pct: template.samplingValue ?? 0,
+            count: required,
+          })
+        : fillMessage(m.steps.inspection.samplingPercent, {
+            pct: template.samplingValue ?? 0,
+          });
     case "COUNT":
-      return m.steps.inspection.samplingCount(
-        required ?? template.samplingValue ?? 0,
-      );
+      return fillMessage(m.steps.inspection.samplingCount, {
+        count: required ?? template.samplingValue ?? 0,
+      });
     default:
       return m.steps.inspection.samplingAll;
   }
@@ -114,7 +118,10 @@ function RecordSummary({ record }: { record: InspectionRecordView }) {
           {statusTable[record.status] ?? record.status}
         </Badge>
         <Text c="dimmed" size="xs">
-          {m.steps.inspection.recordedMeta(at, record.recordedByName ?? "")}
+          {fillMessage(m.steps.inspection.recordedMeta, {
+            at,
+            by: record.recordedByName ?? "",
+          })}
         </Text>
       </Group>
       {record.items.length > 0 && (
@@ -273,8 +280,12 @@ function ItemVerdict({
             : entry.manualPass != null &&
                 entry.manualPass !== auto &&
                 item.allowManualOverride
-              ? m.steps.inspection.autoOverridden(auto)
-              : m.steps.inspection.autoVerdict(auto)}
+              ? auto
+                ? m.steps.inspection.autoOverriddenPass
+                : m.steps.inspection.autoOverriddenFail
+              : auto
+                ? m.steps.inspection.autoVerdictPass
+                : m.steps.inspection.autoVerdictFail}
       </Text>
     </Group>
   );
@@ -500,12 +511,16 @@ export function StepInspectionForm({
                             )}
                             {accept && (
                               <Text c="dimmed" size="sm">
-                                {m.steps.inspection.accept(accept)}
+                                {fillMessage(m.steps.inspection.accept, {
+                                  label: accept,
+                                })}
                               </Text>
                             )}
                             {goal && (
                               <Text c="dimmed" size="sm">
-                                {m.steps.inspection.goal(goal)}
+                                {fillMessage(m.steps.inspection.goal, {
+                                  label: goal,
+                                })}
                               </Text>
                             )}
                           </Group>
@@ -553,9 +568,13 @@ export function StepInspectionForm({
                                 >
                                   {entry.passedCount > entry.inspectedCount
                                     ? m.steps.inspection.countsOver
-                                    : m.steps.inspection.failCount(
-                                        entry.inspectedCount -
-                                          entry.passedCount,
+                                    : fillMessage(
+                                        m.steps.inspection.failCount,
+                                        {
+                                          n:
+                                            entry.inspectedCount -
+                                            entry.passedCount,
+                                        },
                                       )}
                                 </Text>
                               )}
@@ -587,7 +606,10 @@ export function StepInspectionForm({
                           </Button>
                           <Group gap="xs" wrap="nowrap">
                             <Text className="tabular-nums" fw={600}>
-                              {m.steps.inspection.productPage(page + 1, pages)}
+                              {fillMessage(m.steps.inspection.productPage, {
+                                i: page + 1,
+                                n: pages,
+                              })}
                             </Text>
                             {required == null && (
                               <Button
@@ -635,7 +657,9 @@ export function StepInspectionForm({
                                   )}
                                   {accept && (
                                     <Text c="dimmed" size="sm">
-                                      {m.steps.inspection.accept(accept)}
+                                      {fillMessage(m.steps.inspection.accept, {
+                                        label: accept,
+                                      })}
                                     </Text>
                                   )}
                                 </Group>

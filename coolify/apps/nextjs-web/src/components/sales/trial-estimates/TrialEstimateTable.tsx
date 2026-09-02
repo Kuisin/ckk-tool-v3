@@ -12,20 +12,22 @@ import {
   IconSettings,
 } from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { useFormat } from "@/components/layout/PreferencesProvider";
 import { SecondaryButton } from "@/components/ui/buttons";
 import { type Column, DataTable } from "@/components/ui/DataTable";
 import { DocNumber } from "@/components/ui/DocNumber";
 import { MoneyText } from "@/components/ui/MoneyText";
 import { NewButton } from "@/components/ui/NewButton";
-import { StatusBadge, statusOptions } from "@/components/ui/StatusBadge";
+import { StatusBadge } from "@/components/ui/StatusBadge";
 import { ListShell } from "@/components/ui/shells";
 import { useUrlSelectState, useUrlStringState } from "@/hooks/useUrlState";
 import { useIsMobile } from "@/hooks/useViewport";
+import { statusOptions } from "@/lib/status-map";
 import {
   calcTrialPricing,
-  TOOL_TYPE_OPTIONS,
   type TrialPricingOptions,
+  toolTypeOptionsFallback,
 } from "@/lib/trial-pricing";
 import type { TrialEstimateRecord } from "./types";
 
@@ -39,7 +41,7 @@ const headlinePrice = (r: TrialEstimateRecord, opts: TrialPricingOptions) =>
 export function TrialEstimateTable({
   rows,
   pricingOptions = {},
-  toolTypeOptions = TOOL_TYPE_OPTIONS,
+  toolTypeOptions,
 }: {
   rows: TrialEstimateRecord[];
   /** 価格試算エンジンのオプション（係数・カスタム計算）— 画面間で単価を一致させる。 */
@@ -47,9 +49,12 @@ export function TrialEstimateTable({
   /** 工具種の選択肢（管理者定義。未指定は組み込み 3 種）. */
   toolTypeOptions?: { value: string; label: string }[];
 }) {
+  const tr = useTranslations();
   const fmt = useFormat();
+  const resolvedToolTypeOptions =
+    toolTypeOptions ?? toolTypeOptionsFallback(tr);
   const toolLabel = (v: string) =>
-    toolTypeOptions.find((o) => o.value === v)?.label ?? v;
+    resolvedToolTypeOptions.find((o) => o.value === v)?.label ?? v;
   const router = useRouter();
   const isMobile = useIsMobile();
   // 検索・フィルタは URL search params に保持（design.md §8.1 / ページ共有）
@@ -70,7 +75,7 @@ export function TrialEstimateTable({
   const columns: Column<TrialEstimateRecord>[] = [
     {
       key: "estimateNumber",
-      header: "価格試算番号",
+      header: tr("common.priceEstimateNumber"),
       width: 170,
       sortable: true,
       sortValue: (r) => r.estimateNumber,
@@ -78,14 +83,14 @@ export function TrialEstimateTable({
     },
     {
       key: "name",
-      header: "名称",
+      header: tr("common.name2"),
       sortable: true,
       render: (r) => (
         <Group gap="xs" wrap="nowrap">
           <Text size="sm">{r.name}</Text>
           {r.isCustomPrice && (
             <Badge color="orange" size="xs" variant="light">
-              カスタム
+              {tr("common.custom")}
             </Badge>
           )}
         </Group>
@@ -93,13 +98,13 @@ export function TrialEstimateTable({
     },
     {
       key: "customer",
-      header: "顧客",
+      header: tr("common.customer"),
       hideable: true,
       render: (r) => r.customerName ?? "—",
     },
     {
       key: "toolType",
-      header: "工具種",
+      header: tr("common.toolType"),
       width: 100,
       render: (r) => (
         <Badge color="gray" variant="light">
@@ -109,13 +114,13 @@ export function TrialEstimateTable({
     },
     {
       key: "material",
-      header: "材種",
+      header: tr("common.materialTypes"),
       hideable: true,
       render: (r) => <Text size="xs">{r.materialLabel}</Text>,
     },
     {
       key: "price",
-      header: "代表見積単価",
+      header: tr("sales.trialEstimates.representativeEstimatedUnitPrice"),
       align: "right",
       width: 140,
       sortValue: (r) => headlinePrice(r, pricingOptions),
@@ -127,14 +132,14 @@ export function TrialEstimateTable({
     },
     {
       key: "status",
-      header: "状態",
+      header: tr("common.status"),
       width: 130,
       sortValue: (r) => r.status,
       render: (r) => <StatusBadge entity="Estimate" status={r.status} />,
     },
     {
       key: "updatedAt",
-      header: "更新日",
+      header: tr("common.updated"),
       width: 150,
       sortValue: (r) => r.updatedAt,
       render: (r) => (
@@ -153,12 +158,12 @@ export function TrialEstimateTable({
             href="/settings/apps/trial-estimate"
             leftSection={<IconSettings size={16} />}
           >
-            設定
+            {tr("common.settings")}
           </SecondaryButton>
           <NewButton href={`${BASE_PATH}/new`} />
         </Group>
       }
-      breadcrumbs={["販売", "価格試算"]}
+      breadcrumbs={[tr("common.sales"), tr("common.priceEstimate")]}
       filters={
         <>
           <Select
@@ -166,16 +171,16 @@ export function TrialEstimateTable({
             data={statusOptions("Estimate")}
             flex={isMobile ? 1 : undefined}
             onChange={setStatus}
-            placeholder="状態"
+            placeholder={tr("common.status")}
             value={status}
             w={isMobile ? undefined : 150}
           />
           <Select
             clearable
-            data={toolTypeOptions}
+            data={resolvedToolTypeOptions}
             flex={isMobile ? 1 : undefined}
             onChange={setToolType}
-            placeholder="工具種"
+            placeholder={tr("common.toolType")}
             value={toolType}
             w={isMobile ? undefined : 140}
           />
@@ -190,11 +195,13 @@ export function TrialEstimateTable({
         <TextInput
           leftSection={<IconSearch size={14} />}
           onChange={(e) => setSearch(e.currentTarget.value)}
-          placeholder="価格試算番号・名称・顧客で検索"
+          placeholder={tr(
+            "sales.trialEstimates.searchByPriceEstimateNumberName",
+          )}
           value={search}
         />
       }
-      title="価格試算"
+      title={tr("common.priceEstimate")}
     >
       <DataTable
         columns={columns}
@@ -202,7 +209,7 @@ export function TrialEstimateTable({
         defaultSort={{ key: "updatedAt", dir: "desc" }}
         emptyAction={<NewButton href={`${BASE_PATH}/new`} />}
         emptyIcon={<IconCalculator size={24} />}
-        emptyMessage="価格試算がありません"
+        emptyMessage={tr("sales.trialEstimates.thereAreNoPriceEstimates")}
         getRowId={(r) => r.id}
         onRowClick={(r) => router.push(`${BASE_PATH}/${r.id}`)}
         renderCard={(r) => (
@@ -223,7 +230,7 @@ export function TrialEstimateTable({
                 </Badge>
                 {r.isCustomPrice && (
                   <Badge color="orange" size="xs" variant="light">
-                    カスタム
+                    {tr("common.custom")}
                   </Badge>
                 )}
               </Group>
@@ -241,7 +248,7 @@ export function TrialEstimateTable({
         )}
         rowActions={() => [
           {
-            label: "複製して再価格試算",
+            label: tr("common.duplicateAndReEstimate"),
             icon: <IconCopy size={14} />,
             onAction: (row) => router.push(`${BASE_PATH}/new?from=${row.id}`),
           },

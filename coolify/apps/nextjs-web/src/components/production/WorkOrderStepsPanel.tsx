@@ -36,6 +36,7 @@ import {
 } from "@tabler/icons-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import {
   type ReactNode,
   useMemo,
@@ -89,6 +90,7 @@ export function WorkOrderStepsPanel({
   /** 分岐追加モーダル用の工程カタログ options。 */
   catalogOptions?: { value: string; label: string }[];
 }) {
+  const tr = useTranslations();
   const router = useRouter();
   const [, startTransition] = useTransition();
   const [branchSource, setBranchSource] = useState<WorkOrderStepView | null>(
@@ -234,9 +236,11 @@ export function WorkOrderStepsPanel({
   const handleDeleteBranch = (group: BranchGroup) => {
     if (workOrderNumber == null) return;
     openConfirm({
-      title: "分岐の削除",
-      message: `分岐系列（${group.steps.map((s) => s.name).join(" → ")}）を削除します。この操作は取り消せません。`,
-      confirmLabel: "削除",
+      title: tr("production.workOrderStepsPanel.deleteTheBranch"),
+      message: tr("production.workOrderStepsPanel.deleteBranchSeriesConfirm", {
+        steps: group.steps.map((s) => s.name).join(" → "),
+      }),
+      confirmLabel: tr("common.delete"),
       onConfirm: () =>
         startTransition(async () => {
           const result = await removeBranch({
@@ -245,15 +249,19 @@ export function WorkOrderStepsPanel({
           });
           if (result.ok) {
             notifications.show({
-              title: "分岐を削除しました",
-              message: `${group.steps.length} 工程を削除`,
+              title: tr("production.workOrderStepsPanel.theBranchWasDeleted"),
+              message: tr("production.workOrderStepsPanel.deletedNSteps", {
+                count: group.steps.length,
+              }),
               color: "green",
             });
             router.refresh();
           } else {
             notifications.show({
-              title: "エラー",
-              message: result.errors?.join(" / ") ?? "分岐の削除に失敗しました",
+              title: tr("common.error2"),
+              message:
+                result.errors?.join(" / ") ??
+                tr("production.workOrderStepsPanel.couldNotDeleteTheBranch"),
               color: "red",
             });
           }
@@ -301,7 +309,7 @@ export function WorkOrderStepsPanel({
           <Group gap={6} wrap="wrap">
             <IconArrowsSplit color="var(--mantine-color-orange-6)" size={14} />
             <Text fw={600} size="xs">
-              分岐系列
+              {tr("production.workOrderStepsPanel.branchSeries")}
             </Text>
             <Badge color="orange" size="xs" variant="light">
               数量 {group.routedQuantity}
@@ -313,20 +321,20 @@ export function WorkOrderStepsPanel({
             ) : group.stockDisposition ? (
               <Badge color="teal" size="xs" variant="light">
                 {group.stockDisposition === "SEMI_FINISHED"
-                  ? "半製品在庫へ"
-                  : "製品在庫へ"}
+                  ? tr("production.workOrderStepsPanel.toSemiFinishedStock")
+                  : tr("production.workOrderStepsPanel.toProductStock")}
               </Badge>
             ) : (
               // 合流も在庫も無い = 良品の行き先が決まっていない（旧データ）。
               <Badge color="orange" size="xs" variant="light">
-                行き先未設定
+                {tr("production.workOrderStepsPanel.noDestinationSet")}
               </Badge>
             )}
           </Group>
           <Group gap={4} wrap="nowrap">
             {isExecutable && (group.deletable || group.terminationEditable) && (
               <ActionIcon
-                aria-label="分岐を編集"
+                aria-label={tr("production.workOrderStepsPanel.editTheBranch")}
                 color="gray"
                 onClick={() => openBranchEdit(group)}
                 size="sm"
@@ -337,7 +345,9 @@ export function WorkOrderStepsPanel({
             )}
             {group.deletable && isExecutable && (
               <ActionIcon
-                aria-label="分岐を削除"
+                aria-label={tr(
+                  "production.workOrderStepsPanel.deleteTheBranch2",
+                )}
                 color="red"
                 onClick={() => handleDeleteBranch(group)}
                 size="sm"
@@ -382,7 +392,7 @@ export function WorkOrderStepsPanel({
   return (
     <Paper p="md" radius="md" withBorder>
       <Group justify="space-between" mb="sm" wrap="nowrap">
-        <Title order={5}>工程ワークフロー</Title>
+        <Title order={5}>{tr("production.workOrderStepsPanel.workflow")}</Title>
         {canOpenSteps && steps.length > 0 ? (
           <Group gap="sm" wrap="nowrap">
             <Anchor
@@ -390,21 +400,23 @@ export function WorkOrderStepsPanel({
               href={`${BASE_PATH}/${workOrderNumber}/steps`}
               size="xs"
             >
-              {isExecutable ? "工程実行ビューを開く" : "工程ビューを開く"}
+              {isExecutable
+                ? tr("production.workOrderStepsPanel.openTheStepExecutionView")
+                : tr("production.workOrderStepsPanel.openTheStepView")}
             </Anchor>
             {!isExecutable && (
               <Text c="dimmed" size="xs">
                 {workOrderStatus === "COMPLETED" ||
                 workOrderStatus === "CANCELLED"
-                  ? "（閲覧のみ）"
-                  : "（実行は承認後）"}
+                  ? tr("production.workOrderStepsPanel.viewOnly")
+                  : tr("production.workOrderStepsPanel.runsAfterApproval")}
               </Text>
             )}
           </Group>
         ) : (
           steps.length > 0 && (
             <Text c="dimmed" size="xs">
-              工程実行は指示書の承認後に可能になります
+              {tr("production.workOrderStepsPanel.stepsCanBeRunOnceThe")}
             </Text>
           )
         )}
@@ -412,7 +424,7 @@ export function WorkOrderStepsPanel({
 
       {steps.length === 0 ? (
         <Text c="dimmed" size="sm">
-          工程がありません
+          {tr("common.thereAreNoSteps")}
         </Text>
       ) : (
         <Grid gap="md">
@@ -424,7 +436,9 @@ export function WorkOrderStepsPanel({
                 leftSection={<IconSitemap size={14} />}
                 onClick={() => setGraphOpen((o) => !o)}
               >
-                {graphOpen ? "フロー図を隠す" : "フロー図を表示"}
+                {graphOpen
+                  ? tr("production.workOrderStepsPanel.hideTheFlowDiagram")
+                  : tr("production.workOrderStepsPanel.showTheFlowDiagram")}
               </SecondaryButton>
               <Collapse expanded={graphOpen}>
                 <Box mt="sm">{graph(360)}</Box>

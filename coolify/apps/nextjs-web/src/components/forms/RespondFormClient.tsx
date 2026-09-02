@@ -1,6 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import {
   submitResponse,
   updateResponse,
@@ -38,6 +39,7 @@ export function RespondFormClient({
   /** 書きかけの下書き（新規回答のときだけ渡ってくる）。 */
   drafts?: { responseNumber: string; href: string }[];
 }) {
+  const tr = useTranslations();
   const router = useRouter();
   const fmt = useFormat();
 
@@ -85,7 +87,13 @@ export function RespondFormClient({
       }}
       // 編集は受付終了後も許される設定があるので、送信可否は別に渡す。
       // 最終判定はサーバ（canEditResponse / formAvailability）がやり直す。
-      submitLabel={editingDraft ? "提出する" : existing ? "更新" : "送信"}
+      submitLabel={
+        editingDraft
+          ? tr("common.submit")
+          : existing
+            ? tr("common.update")
+            : tr("forms.respondFormClient.send")
+      }
       submittable={
         existing
           ? editingDraft

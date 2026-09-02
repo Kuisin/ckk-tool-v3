@@ -14,7 +14,7 @@
     "test:watch": "vitest",
     "db:sync-schema": "rm -rf prisma/schema && cp -R ../../../shared-db/prisma/schema prisma/schema",
     "db:generate": "prisma generate",
-    "twin:sync": "for f in workflow-core.ts workflow-core.test.ts inventory.ts inspection-core.ts inspection-core.test.ts qr-payload.ts qr-payload.test.ts cidr-core.ts cidr-core.test.ts device-signals-core.ts device-signals-core.test.ts device-ownership-core.ts device-ownership-core.test.ts login-attempt-core.ts login-attempt-core.test.ts; do cp ../nextjs-web/src/lib/$f src/lib/$f; done"
+    "twin:sync": "for f in workflow-core.ts workflow-core.test.ts inventory.ts inventory-note-core.ts inventory-note-core.test.ts inspection-core.ts inspection-core.test.ts qr-payload.ts qr-payload.test.ts cidr-core.ts cidr-core.test.ts device-signals-core.ts device-signals-core.test.ts device-ownership-core.ts device-ownership-core.test.ts login-attempt-core.ts login-attempt-core.test.ts display-content.ts display-templates.ts; do cp ../nextjs-web/src/lib/$f src/lib/$f; done"
   },
   "dependencies": {
     "@ckk/authz-core": "workspace:*",
@@ -24,7 +24,7 @@
     "@prisma/adapter-pg": "7.8.0",
     "@prisma/client": "7.8.0",
     "@tabler/icons-react": "^3.44.0",
-    "next": "16.2.9",
+    "next": "16.2.12",
     "pg": "^8.23.0",
     "qr-scanner": "^1.4.2",
     "react": "19.2.4",

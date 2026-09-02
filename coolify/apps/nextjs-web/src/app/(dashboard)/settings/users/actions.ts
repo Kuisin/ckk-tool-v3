@@ -19,6 +19,7 @@
 
 import { isSuperuser } from "@ckk/authz-core";
 import { revalidatePath } from "next/cache";
+import { getTranslations } from "next-intl/server";
 import { z } from "zod";
 import { recordAudit } from "@/lib/audit";
 import { checkPermission, getPermissionSet, sessionUserId } from "@/lib/authz";
@@ -57,6 +58,7 @@ async function isAdminBypass(): Promise<boolean> {
  * 3 つのアクションが同じ分岐を書かないようにまとめてある。
  */
 async function applyOrRequest(
+  tr: Awaited<ReturnType<typeof getTranslations>>,
   kind: UserChangeKind,
   targetUserId: string,
   payload: unknown,
@@ -66,7 +68,7 @@ async function applyOrRequest(
   const authz = await checkPermission(USER_ADMIN_CODE, "UPDATE");
   if (!authz.ok) return actionError(authz.error);
   const actorId = await sessionUserId();
-  if (!actorId) return actionError("操作者を特定できません");
+  if (!actorId) return actionError(tr("settings.usersActions.actorNotFound"));
 
   if (await isAdminBypass()) {
     const applied = await applyUserChange(kind, actorId, targetUserId, payload);
@@ -78,7 +80,7 @@ async function applyOrRequest(
 
   // 依頼には理由が要る（DB の CHECK でも空文字を拒否している）。
   if (!reason?.trim()) {
-    return actionError("承認を依頼するには理由が必要です");
+    return actionError(tr("settings.usersActions.reasonRequiredForRequest"));
   }
   const res = await createUserChangeRequest({
     kind,
@@ -90,31 +92,39 @@ async function applyOrRequest(
   return actionOk({ requested: true });
 }
 
-const input = z.object({
-  userId: z.string().uuid("ユーザー ID が不正です"),
-  plantIds: z.array(z.number().int().positive()),
-});
+function userIdInputSchema(tr: Awaited<ReturnType<typeof getTranslations>>) {
+  return z.object({
+    userId: z.string().uuid(tr("settings.usersActions.invalidUserId")),
+    plantIds: z.array(z.number().int().positive()),
+  });
+}
 
 export async function updateUserPlants(
   userId: string,
   plantIds: number[],
   reason?: string,
 ): Promise<ActionResult<UserChangeOutcome>> {
-  const parsed = input.safeParse({ userId, plantIds });
+  const tr = await getTranslations();
+  const parsed = userIdInputSchema(tr).safeParse({ userId, plantIds });
   if (!parsed.success) {
-    return actionError(parsed.error.issues[0]?.message ?? "入力が不正です");
+    return actionError(
+      parsed.error.issues[0]?.message ?? tr("common.invalidInput"),
+    );
   }
   const v = parsed.data;
   try {
     return await applyOrRequest(
+      tr,
       "UPDATE_PLANTS",
       v.userId,
       { plantIds: v.plantIds },
       reason,
-      "所属拠点の更新に失敗しました",
+      tr("settings.usersActions.updatePlantsFailed"),
     );
   } catch (e) {
-    return actionError(prismaErrorMessage(e, "所属拠点の更新に失敗しました"));
+    return actionError(
+      prismaErrorMessage(e, tr("settings.usersActions.updatePlantsFailed"), tr),
+    );
   }
 }
 
@@ -130,21 +140,28 @@ export async function updateUserPlants(
  * Server Action を直接叩かれても同じ結論になるようにしておく。
  */
 export async function disableBootstrapAdmin(): Promise<ActionResult> {
+  const tr = await getTranslations();
   const authz = await checkPermission("system", "ADMIN");
   if (!authz.ok) return actionError(authz.error);
 
   try {
     const snap = await getBootstrapAdminSnapshot();
-    if (!snap) return actionError("初期管理者アカウントが見つかりません");
+    if (!snap)
+      return actionError(tr("settings.usersActions.bootstrapAdminNotFound"));
 
-    const state = bootstrapAdminState({
-      username: BOOTSTRAP_ADMIN_USERNAME,
-      isActive: snap.isActive,
-      passwordChangeRequired: snap.passwordChangeRequired,
-      otherActiveAdminCount: snap.otherActiveAdminCount,
-    });
+    const state = bootstrapAdminState(
+      {
+        username: BOOTSTRAP_ADMIN_USERNAME,
+        isActive: snap.isActive,
+        passwordChangeRequired: snap.passwordChangeRequired,
+        otherActiveAdminCount: snap.otherActiveAdminCount,
+      },
+      tr,
+    );
     if (!state.canDisable) {
-      return actionError(state.message ?? "この操作はいま実行できません");
+      return actionError(
+        state.message ?? tr("settings.usersActions.cannotPerformNow"),
+      );
     }
 
     await prisma.user.update({
@@ -162,17 +179,25 @@ export async function disableBootstrapAdmin(): Promise<ActionResult> {
     revalidatePath(`${BASE_PATH}/${snap.id}`);
     return actionOk(undefined);
   } catch (e) {
-    return actionError(prismaErrorMessage(e, "無効化に失敗しました"));
+    return actionError(
+      prismaErrorMessage(e, tr("settings.usersActions.disableFailed"), tr),
+    );
   }
 }
 
-const suspendInput = z.object({
-  userId: z.string().uuid("ユーザー ID が不正です"),
-  kind: z.enum(["temporary", "permanent"]),
-  /** 一時停止の解除予定（ISO）。恒久なら null。 */
-  until: z.string().datetime({ offset: true }).nullable(),
-  reason: z.string().trim().max(500, "理由は 500 文字までです").optional(),
-});
+function suspendInputSchema(tr: Awaited<ReturnType<typeof getTranslations>>) {
+  return z.object({
+    userId: z.string().uuid(tr("settings.usersActions.invalidUserId")),
+    kind: z.enum(["temporary", "permanent"]),
+    /** 一時停止の解除予定（ISO）。恒久なら null。 */
+    until: z.string().datetime({ offset: true }).nullable(),
+    reason: z
+      .string()
+      .trim()
+      .max(500, tr("settings.usersActions.reasonTooLong"))
+      .optional(),
+  });
+}
 
 /**
  * ユーザーを利用停止にする（一時 / 恒久）。
@@ -190,15 +215,19 @@ export async function suspendUser(input: {
   until: string | null;
   reason?: string;
 }): Promise<ActionResult<UserChangeOutcome>> {
-  const parsed = suspendInput.safeParse(input);
+  const tr = await getTranslations();
+  const parsed = suspendInputSchema(tr).safeParse(input);
   if (!parsed.success) {
-    return actionError(parsed.error.issues[0]?.message ?? "入力が不正です");
+    return actionError(
+      parsed.error.issues[0]?.message ?? tr("common.invalidInput"),
+    );
   }
   const v = parsed.data;
   try {
     // 停止理由と依頼理由は同じ文を使う — 「なぜ止めるのか」は承認者が読みたい
     // ものであり、停止記録に残したいものでもあるため、二重に書かせない。
     return await applyOrRequest(
+      tr,
       "SUSPEND",
       v.userId,
       {
@@ -207,10 +236,12 @@ export async function suspendUser(input: {
         disabledReason: v.reason,
       },
       v.reason,
-      "停止に失敗しました",
+      tr("settings.usersActions.suspendFailed"),
     );
   } catch (e) {
-    return actionError(prismaErrorMessage(e, "停止に失敗しました"));
+    return actionError(
+      prismaErrorMessage(e, tr("settings.usersActions.suspendFailed"), tr),
+    );
   }
 }
 
@@ -219,17 +250,22 @@ export async function restoreUser(
   userId: string,
   reason?: string,
 ): Promise<ActionResult<UserChangeOutcome>> {
+  const tr = await getTranslations();
   const parsed = z.string().uuid().safeParse(userId);
-  if (!parsed.success) return actionError("ユーザー ID が不正です");
+  if (!parsed.success)
+    return actionError(tr("settings.usersActions.invalidUserId"));
   try {
     return await applyOrRequest(
+      tr,
       "RESTORE",
       parsed.data,
       {},
       reason,
-      "復帰に失敗しました",
+      tr("settings.usersActions.restoreFailed"),
     );
   } catch (e) {
-    return actionError(prismaErrorMessage(e, "復帰に失敗しました"));
+    return actionError(
+      prismaErrorMessage(e, tr("settings.usersActions.restoreFailed"), tr),
+    );
   }
 }

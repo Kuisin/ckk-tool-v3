@@ -29,7 +29,7 @@ import { useForm } from "@mantine/form";
 import { notifications } from "@mantine/notifications";
 import { IconCalendar, IconPaperclip, IconX } from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
-import { useLocale } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { useState, useTransition } from "react";
 import { z } from "zod";
 import { searchMaterialOptions } from "@/app/(dashboard)/_shared/option-search";
@@ -53,17 +53,25 @@ interface Option {
   label: string;
 }
 
-const schema = z.object({
-  materialId: z.string().min(1, "素材を選択してください"),
-  supplierBpId: z.string().nullable(),
-  plantId: z.string().nullable(),
-  quantity: z.number().positive("0より大きい値"),
-  unit: z.string().min(1, "必須"),
-  receivedAt: z.string().min(1, "入荷日を入力してください"),
-  notes: z.string(),
-});
+function buildSchema(tr: ReturnType<typeof useTranslations>) {
+  return z.object({
+    materialId: z
+      .string()
+      .min(1, tr("purchase.materialReceipts.selectAMaterial")),
+    supplierBpId: z.string().nullable(),
+    plantId: z.string().nullable(),
+    quantity: z
+      .number()
+      .positive(tr("purchase.materialReceipts.mustBeGreaterThanZero")),
+    unit: z.string().min(1, tr("common.required")),
+    receivedAt: z
+      .string()
+      .min(1, tr("purchase.materialReceipts.enterAReceivedDate")),
+    notes: z.string(),
+  });
+}
 
-type FormValues = z.infer<typeof schema>;
+type FormValues = z.infer<ReturnType<typeof buildSchema>>;
 
 const today = () => new Date().toISOString().slice(0, 10);
 
@@ -76,7 +84,9 @@ export function MaterialReceiptForm({
   /** 入荷先拠点（有効のみ）。value = String(内部 id)。 */
   plantOptions: Option[];
 }) {
+  const tr = useTranslations();
   const locale = useLocale();
+  const schema = buildSchema(tr);
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   // 証憑（任意・複数可）。登録成功後に順次アップロードする。
@@ -86,10 +96,10 @@ export function MaterialReceiptForm({
     const tooLarge = selected.filter((f) => f.size > ATTACHMENT_MAX_BYTES);
     if (tooLarge.length > 0) {
       notifications.show({
-        title: "エラー",
-        message: `20MB を超えるファイルは添付できません: ${tooLarge
-          .map((f) => f.name)
-          .join(", ")}`,
+        title: tr("common.error2"),
+        message: tr("purchase.materialReceipts.filesTooLargeToAttach", {
+          files: tooLarge.map((f) => f.name).join(", "),
+        }),
         color: "red",
       });
     }
@@ -102,8 +112,11 @@ export function MaterialReceiptForm({
   /** 登録した入荷（uuid）へ証憑を順次アップロード（進捗通知付き・best-effort）。 */
   const uploadAttachments = async (receiptId: string) => {
     const notificationId = notifications.show({
-      title: "証憑をアップロード中",
-      message: `0 / ${files.length} 件`,
+      title: tr("purchase.materialReceipts.uploadingTheSupportingDocument"),
+      message: tr("purchase.materialReceipts.uploadProgress", {
+        current: 0,
+        total: files.length,
+      }),
       loading: true,
       autoClose: false,
       withCloseButton: false,
@@ -112,8 +125,12 @@ export function MaterialReceiptForm({
     for (const [index, file] of files.entries()) {
       notifications.update({
         id: notificationId,
-        title: "証憑をアップロード中",
-        message: `${index + 1} / ${files.length} 件: ${file.name}`,
+        title: tr("purchase.materialReceipts.uploadingTheSupportingDocument"),
+        message: tr("purchase.materialReceipts.uploadProgressWithFile", {
+          current: index + 1,
+          total: files.length,
+          name: file.name,
+        }),
         loading: true,
         autoClose: false,
         withCloseButton: false,
@@ -138,8 +155,12 @@ export function MaterialReceiptForm({
     if (failed.length > 0) {
       notifications.update({
         id: notificationId,
-        title: "一部の証憑を添付できませんでした",
-        message: `${failed.join(", ")} — 詳細画面から再度添付してください`,
+        title: tr(
+          "purchase.materialReceipts.someSupportingDocumentsCouldNotBe",
+        ),
+        message: tr("purchase.materialReceipts.failedFilesRetryFromDetail", {
+          files: failed.join(", "),
+        }),
         color: "orange",
         loading: false,
         autoClose: 8000,
@@ -148,8 +169,10 @@ export function MaterialReceiptForm({
     } else {
       notifications.update({
         id: notificationId,
-        title: "証憑を添付しました",
-        message: `${files.length} 件`,
+        title: tr("purchase.materialReceipts.theSupportingDocumentWasAttached"),
+        message: tr("purchase.materialReceipts.filesCount", {
+          count: files.length,
+        }),
         color: "green",
         loading: false,
         autoClose: 4000,
@@ -165,7 +188,7 @@ export function MaterialReceiptForm({
       supplierBpId: null,
       plantId: null,
       quantity: 1,
-      unit: "本",
+      unit: tr("common.pcs"),
       receivedAt: today(),
       notes: "",
     },
@@ -184,8 +207,10 @@ export function MaterialReceiptForm({
       });
       if (result.ok) {
         notifications.show({
-          title: "登録しました",
-          message: "素材入荷を登録し、素材在庫へ入庫しました",
+          title: tr("common.registered"),
+          message: tr(
+            "purchase.materialReceipts.theMaterialReceiptWasRegisteredAnd",
+          ),
           color: "green",
         });
         // 証憑が選択されていれば作成した入荷へ順次添付してから遷移する。
@@ -195,7 +220,7 @@ export function MaterialReceiptForm({
         router.push(`${BASE_PATH}/${result.data.id}`);
       } else {
         notifications.show({
-          title: "エラー",
+          title: tr("common.error2"),
           message: result.error,
           color: "red",
         });
@@ -205,17 +230,23 @@ export function MaterialReceiptForm({
 
   return (
     <FormShell
-      breadcrumbs={["購買", { label: "素材入荷", href: BASE_PATH }, "新規登録"]}
+      breadcrumbs={[
+        tr("common.purchasing"),
+        { label: tr("common.materialReceipt"), href: BASE_PATH },
+        tr("purchase.materialReceipts.register"),
+      ]}
       isDirty={form.isDirty()}
       isPending={isPending}
       onCancel={() => router.push(BASE_PATH)}
       onSubmit={form.onSubmit(handleSubmit)}
-      submitLabel="登録"
-      title="素材入荷 新規登録"
+      submitLabel={tr("common.register")}
+      title={tr("purchase.materialReceipts.newMaterialReceipt")}
     >
       <FormSection
-        description="直接調達（発注書を経由しない入荷）を登録します。登録と同時に入荷先拠点の素材在庫へ入庫されます。発注入荷は素材発注書の「入荷完了」から自動登録されます。"
-        title="入荷情報"
+        description={tr(
+          "purchase.materialReceipts.registersADirectPurchaseAReceipt",
+        )}
+        title={tr("purchase.materialReceipts.receiptInformation")}
       >
         <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="sm">
           <SearchSelect
@@ -223,7 +254,7 @@ export function MaterialReceiptForm({
             label={<HelpLabel {...fieldHelp("materialReceipt", "material")} />}
             onChange={(v) => form.setFieldValue("materialId", v ?? "")}
             onSearch={searchMaterialOptions}
-            placeholder="素材を検索"
+            placeholder={tr("common.searchMaterials")}
             storageKey="material"
             value={form.values.materialId || null}
             withAsterisk
@@ -232,7 +263,9 @@ export function MaterialReceiptForm({
             clearable
             data={supplierOptions}
             label={<HelpLabel {...fieldHelp("materialReceipt", "supplier")} />}
-            placeholder="仕入先を選択（任意）"
+            placeholder={tr(
+              "purchase.materialReceipts.selectASupplierOptional",
+            )}
             searchable
             {...form.getInputProps("supplierBpId")}
           />
@@ -240,7 +273,7 @@ export function MaterialReceiptForm({
             clearable
             data={plantOptions}
             label={<HelpLabel {...fieldHelp("materialReceipt", "plant")} />}
-            placeholder="拠点を選択（任意）"
+            placeholder={tr("common.selectASiteOptional")}
             {...form.getInputProps("plantId")}
           />
           <DatePickerInput
@@ -261,25 +294,27 @@ export function MaterialReceiptForm({
           />
           <Select
             data={unitOptions(locale)}
-            label="単位"
+            label={tr("common.unit")}
             withAsterisk
             {...form.getInputProps("unit")}
           />
         </SimpleGrid>
         <Textarea
           autosize
-          label="備考"
+          label={tr("common.notes")}
           minRows={2}
           mt="sm"
-          placeholder="備考（任意）"
+          placeholder={tr("common.notesOptional")}
           {...form.getInputProps("notes")}
         />
       </FormSection>
 
       {/* 証憑（任意） — 登録成功後に順次アップロードして詳細へ */}
       <FormSection
-        description="納品書控え・検収書等を添付できます（PDF / PNG / JPG / WEBP / HEIC / XLSX / CSV、各 20MB まで）。入荷登録の完了後にアップロードされます。"
-        title="証憑（任意）"
+        description={tr(
+          "purchase.materialReceipts.youCanAttachDeliveryNoteCopies",
+        )}
+        title={tr("purchase.materialReceipts.supportingDocumentOptional")}
       >
         <Stack gap="xs">
           {files.map((file, index) => (
@@ -297,7 +332,9 @@ export function MaterialReceiptForm({
                   </Text>
                 </Group>
                 <ActionIcon
-                  aria-label={`${file.name} を取り消す`}
+                  aria-label={tr("purchase.materialReceipts.removeFile", {
+                    name: file.name,
+                  })}
                   color="gray"
                   onClick={() =>
                     setFiles((cur) => cur.filter((_, i) => i !== index))
@@ -316,7 +353,7 @@ export function MaterialReceiptForm({
                   leftSection={<IconPaperclip size={14} />}
                   {...props}
                 >
-                  ファイルを選択
+                  {tr("common.selectAFile")}
                 </SecondaryButton>
               )}
             </FileButton>

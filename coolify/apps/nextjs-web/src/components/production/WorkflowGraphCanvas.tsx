@@ -27,6 +27,7 @@ import {
   useNodesInitialized,
   useReactFlow,
 } from "@xyflow/react";
+import { useTranslations } from "next-intl";
 import { useEffect } from "react";
 import {
   layoutWorkflowGraph,
@@ -52,14 +53,6 @@ const MIN_HEIGHT = 200;
 const FLOW_COLOR = "var(--mantine-color-gray-6)";
 const LINK_COLOR = "var(--mantine-color-orange-6)";
 
-// React Flow の組み込み aria-label は英語なので、UI に合わせて日本語にする。
-const ARIA_LABELS = {
-  "controls.ariaLabel": "フロー図の操作",
-  "controls.fitView.ariaLabel": "全体を表示",
-  "controls.zoomIn.ariaLabel": "拡大",
-  "controls.zoomOut.ariaLabel": "縮小",
-};
-
 // モジュールスコープで固定 — 毎レンダー新しいオブジェクトを渡すと
 // React Flow が警告 #002 を出し、ノードが作り直される。
 const nodeTypes = { workflowStep: WorkflowStepNode };
@@ -83,6 +76,16 @@ function Canvas({
   onSelectStep,
   maxHeight = 520,
 }: WorkflowGraphProps) {
+  const tr = useTranslations();
+  // React Flow の組み込み aria-label は英語なので、UI に合わせて訳す。
+  const ariaLabels = {
+    "controls.ariaLabel": tr(
+      "production.workflowGraphCanvas.flowDiagramControls",
+    ),
+    "controls.fitView.ariaLabel": tr("production.workflowGraphCanvas.fitView"),
+    "controls.zoomIn.ariaLabel": tr("production.workflowGraphCanvas.zoomIn"),
+    "controls.zoomOut.ariaLabel": tr("production.workflowGraphCanvas.zoomOut"),
+  };
   const colorScheme = useComputedColorScheme("light", {
     getInitialValueInEffect: false,
   });
@@ -179,8 +182,10 @@ function Canvas({
       <ReactFlow
         // ReactFlow のルート div は role="application" を持ち、残りの props を
         // そのまま流すので、図の名前はここに付ける。
-        aria-label="工程ワークフローのフロー図（分岐・合流）"
-        ariaLabelConfig={ARIA_LABELS}
+        aria-label={tr(
+          "production.workflowGraphCanvas.workflowDiagramBranchesAndMerges",
+        )}
+        ariaLabelConfig={ariaLabels}
         colorMode={colorScheme}
         edges={flowEdges}
         fitView

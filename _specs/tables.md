@@ -23,6 +23,7 @@
 >   書類・製品の `currency` 列（products / quotes / order_acceptances / invoices に
 >   追加。既定 'JPY'、FK なし — 既存 price_list_entries.currency と同じ規約）が指す。
 >   レートは手動更新の分析用換算（会計処理用ではない）。注文明細はヘッダから読む。
+> - `display.prisma`: 管理ディスプレイ（下記 Display 節。管理は SY09 の中）
 > - `kiosk.prisma`: `kiosk_cards` / `kiosk_device_locations` / `kiosk_device_logs` / `kiosk_devices` / `kiosk_floor_maps` / `kiosk_link_requests` / `kiosk_sessions` /
 >   `kiosk_unlock_pins` — メンテナンス退出 PIN の履歴。現行値は
 >   `system_settings['kiosk.unlock_pin']` の 1 行で pg_cron が毎日 4:00 に**上書き**
@@ -1872,6 +1873,104 @@ Table ad_sync_logs {
   finished_at     timestamp
 }
 
+```
+
+### Display（管理ディスプレイ / デジタルサイネージ）
+
+```
+// 現場の壁掛けテレビ。Raspberry Pi は固定 URL を開くだけのブラウザで、
+// **何を映すかはこの 3 表が決める**。Pi 側に設定を持たせないのが芯 —
+// 持たせた瞬間、台数ぶんの設定が現場に散り、1 台ごとに違う状態になる。
+//
+// キオスク端末（kiosk_devices）と似ているが、わざと 2 点違える:
+//
+//   **登録の流れはキオスク端末と同じ**（profile-first）: 管理者がプロファイルを
+//   作り（PENDING）→ 画面が出すリンクコードで結び（LINKED）→ 有効化する
+//   （ACTIVE）→ 画面が自分でトークンを受け取る。端末とディスプレイで手順を
+//   変えないのは、覚えることを増やさないため。管理は SY09 端末管理の
+//   「ディスプレイ」タブで、スキャナもコード形式（12桁）も共有する。
+//
+//   違うのは **遷移ログを持たない**点だけ（kiosk_device_logs 相当は作らない）。
+//   あれはフロア端末の使用実態を追うためのもので、誰も触らない掲示板には
+//   要らない。死活は last_seen_at 1 列から読むときに計算する。
+//
+// 期限切れのペアリングは API の入口（POST /api/display/pairing）が掃除する。
+// pg_cron を増やさないのは、掃除が遅れても害が無いため（増えるのは行だけ）。
+
+Table display_devices {
+  id                      uuid [pk]
+  name                    json      // { ja, en }（多言語。画面自体は ja 固定）
+  location                varchar
+  plant_id                int  [ref: > plants.id]
+  status                  DISPLAY_DEVICE_STATUS
+  // 何を映すか。**画面ごとに持つ**（共有の「表示内容」レコードは作らない）。
+  // 当初は別表 display_profiles に置いて画面から参照していたが、掲示板は
+  // 1 枚ずつ違うもの（この壁は生産状況、あの壁は出荷予定）を映すので共有される
+  // 内容がほとんど生まれず、1 枚増やすたびに「内容を作る → 画面を作る → 結ぶ」
+  // の 3 手順を踏むだけの構造になっていた。既定は生産状況で、作った直後から
+  // 何かが映る（真っ黒な画面を作らない）。
+  // content_config は種別ごとに形が違う JSON なので DB では検証できない —
+  // 保存時と配信時の 2 か所で lib/display-content.ts の zod を必ず通す
+  // （nextjs-web を原本とする twin file。食い違うと「保存はできるのに何も
+  //   映らない」という最も原因の分かりにくい壊れ方をする）。
+  content_type            DISPLAY_CONTENT_TYPE
+  content_config          json
+  refresh_interval_sec    int   // 0 = 自動再取得しない（変更通知だけで切り替わる）
+  // 表示倍率（%）。画面の大きさと見る距離に合わせる微調整で、50〜200 の 5 刻み
+  // （範囲は DB の CHECK でも閉じる）。
+  scale_percent           int
+  // どの機械の何枚目か（**自己申告の手掛かり**であって身分ではない）。
+  // Pi 5 は HDMI 2 口で 1 台 2 枚を回せる。画面ごとにブラウザのプロファイルを
+  // 分けるので **1 枚 = この表の 1 行**（映すものも倍率も画面ごと）。ただし
+  // 「2 枚まとめて消えた = 箱が落ちた / 1 枚だけ = ケーブルかテレビ側」を
+  // 見分けたいので出どころを控える。Pi が URL に載せてくる値なので詐称でき、
+  // 表示とまとめ表示にしか使わない（認証にも権限にも使わない）。
+  machine_id              varchar(64)
+  screen_index            int
+  // Cookie は生値、DB は SHA-256 のみ。**365日** — キオスクの 30 日と違えるのは、
+  // 壁の画面は誰も触らないから。短いと誰も見ていない間に自分でペアリング画面へ
+  // 戻ってしまい、現場には「テレビが壊れた」としか見えない。
+  device_token_hash       varchar [unique]
+  device_token_expires_at timestamp
+  last_seen_at            timestamp  // 死活の唯一の材料（WS 接続中は 30 秒ごとに更新）
+  last_ip_address         varchar
+  user_agent              varchar
+  app_version             varchar
+  linked_at               timestamp
+  activated_by            uuid [ref: > users.id]
+  activated_at            timestamp
+  created_at              timestamp
+  updated_at              timestamp
+}
+
+Enum DISPLAY_DEVICE_STATUS {
+  PENDING    // 画面レコード作成済・リンク待ち（= オープン。リンク解除で戻る）
+  LINKED     // 画面リンク済・有効化待ち（有効化はこの状態からのみ）
+  ACTIVE     // 有効
+  DISABLED   // 一時停止（トークンは生きたまま）
+  REVOKED    // 取り消し（トークン破棄・再リンクが必要）
+}
+
+Enum DISPLAY_CONTENT_TYPE {
+  APP_PAGE   // アプリ内の表示専用ページ（生産ボード等）
+  METABASE   // 署名済み埋め込み。**locked パラメータはサーバーが入れる**
+  URL        // 任意の URL を iframe で
+  IMAGE      // 画像 1 枚（files.id を指す）
+}
+
+// kiosk_link_requests と同型・同寿命（12桁・10分）。ディスプレイが自分で作って
+// 画面に出し、管理者が SY09 で読み取ってオープンなプロファイルへ結ぶ。
+// device_id が入った時点が「リンク成立」で、その有無が唯一の印。
+// コードは生の秘密なので grants.sql で metabase_ro から表ごと落とす。
+Table display_link_requests {
+  id              uuid [pk]
+  code            varchar [unique]  // Crockford 12桁（I/O/0/1 を含まない）
+  device_id       uuid [ref: > display_devices.id]  // リンク成立後に入る
+  user_agent      varchar
+  last_ip_address varchar
+  created_at      timestamp
+  expires_at      timestamp         // 10分
+}
 ```
 
 ### Security（認証イベント）

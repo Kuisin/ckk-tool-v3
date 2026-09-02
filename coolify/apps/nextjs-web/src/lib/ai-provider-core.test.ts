@@ -1,4 +1,6 @@
+import { createTranslator } from "next-intl";
 import { describe, expect, it } from "vitest";
+import ja from "../../messages/ja.json";
 import {
   AI_PROVIDER_PRESETS,
   AI_PROVIDERS,
@@ -9,8 +11,13 @@ import {
   redactAiSettings,
   toWireConfig,
 } from "./ai-provider-core";
+import type { Tr } from "./i18n";
+
+// biome-ignore lint/suspicious/noExplicitAny: next-intl's messages type is too wide for a plain JSON import here; real key checks run in verify-keys.mjs (see global.d.ts)
+const tr = createTranslator({ locale: "ja", messages: ja as any }) as Tr;
 
 const base = DEFAULT_AI_PROVIDER_SETTINGS;
+const schema = aiProviderSettingsSchema(tr);
 
 describe("ai-provider-core", () => {
   it("既定はローカル ollama", () => {
@@ -73,7 +80,7 @@ describe("ai-provider-core", () => {
 
   describe("検証", () => {
     const ok = (s: Partial<AiProviderSettings>) =>
-      aiProviderSettingsSchema.safeParse({ ...base, ...s }).success;
+      schema.safeParse({ ...base, ...s }).success;
 
     it("ベース URL は空か http(s)", () => {
       expect(ok({ baseUrl: "" })).toBe(true);
@@ -82,12 +89,33 @@ describe("ai-provider-core", () => {
       expect(ok({ baseUrl: "ftp://x" })).toBe(false);
     });
 
+    it("クラウド 3 社は正規のホストだけ・メタデータ IP は常に拒否（L8）", () => {
+      expect(
+        ok({ provider: "anthropic", baseUrl: "https://api.anthropic.com" }),
+      ).toBe(true);
+      expect(
+        ok({ provider: "anthropic", baseUrl: "https://evil.example/v1" }),
+      ).toBe(false);
+      expect(
+        ok({ provider: "gemini", baseUrl: "http://169.254.169.254/" }),
+      ).toBe(false);
+      // ollama / OpenAI 互換は自社ホストを指せるが、メタデータ・ループバックは駄目
+      expect(ok({ provider: "ollama", baseUrl: "http://gpu-box:11434" })).toBe(
+        true,
+      );
+      expect(
+        ok({ provider: "ollama", baseUrl: "http://169.254.169.254/latest" }),
+      ).toBe(false);
+      expect(
+        ok({ provider: "openai", baseUrl: "http://localhost:8000/v1" }),
+      ).toBe(false);
+    });
+
     it("プロバイダは既知の 4 つだけ", () => {
       expect(ok({ provider: "openai" })).toBe(true);
-      expect(
-        aiProviderSettingsSchema.safeParse({ ...base, provider: "bogus" })
-          .success,
-      ).toBe(false);
+      expect(schema.safeParse({ ...base, provider: "bogus" }).success).toBe(
+        false,
+      );
     });
 
     it("maxOutputTokens に範囲がある", () => {
@@ -102,6 +130,7 @@ describe("ai-provider-core", () => {
     const redacted = redactAiSettings(
       { ...base, provider: "openai", visionModel: "m" },
       { status: "set", last4: "ab3x" },
+      tr,
     );
     const json = JSON.stringify(redacted);
     expect(json).toContain("ab3x");
@@ -111,7 +140,11 @@ describe("ai-provider-core", () => {
   });
 
   it("未設定は未設定と書く", () => {
-    const redacted = redactAiSettings(base, { status: "absent", last4: null });
+    const redacted = redactAiSettings(
+      base,
+      { status: "absent", last4: null },
+      tr,
+    );
     expect(redacted.apiToken).toBe("未設定");
   });
 });

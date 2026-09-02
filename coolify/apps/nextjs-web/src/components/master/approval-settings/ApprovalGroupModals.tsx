@@ -16,6 +16,7 @@ import {
 import { DatePickerInput, DateTimePicker } from "@mantine/dates";
 import { notifications } from "@mantine/notifications";
 import { IconCalendar } from "@tabler/icons-react";
+import { useTranslations } from "next-intl";
 import { useState, useTransition } from "react";
 import { searchUserOptions } from "@/app/(dashboard)/_shared/option-search";
 import {
@@ -53,14 +54,17 @@ export function DeleteApprovalGroupModal({
   target: ApprovalGroupModalTarget | null;
   onDone?: () => void;
 }) {
+  const tr = useTranslations();
   const [isPending, startTransition] = useTransition();
   return (
     <ConfirmModal
-      confirmLabel="削除する"
+      confirmLabel={tr("common.delete2")}
       loading={isPending}
       message={
         target
-          ? `承認グループ「${target.name}」を削除します。メンバー割当も同時に削除されます。この操作は取り消せません。`
+          ? tr("master.approvalSettings.deleteGroupConfirm", {
+              name: target.name,
+            })
           : ""
       }
       onClose={onClose}
@@ -70,14 +74,16 @@ export function DeleteApprovalGroupModal({
           const result = await deleteApprovalGroups([target.id]);
           if (result.ok) {
             notifications.show({
-              title: "削除しました",
-              message: `承認グループ「${target.name}」を削除しました`,
+              title: tr("common.deleted"),
+              message: tr("master.approvalSettings.groupDeleted", {
+                name: target.name,
+              }),
               color: "green",
             });
             onDone?.();
           } else {
             notifications.show({
-              title: "エラー",
+              title: tr("common.error2"),
               message: result.error,
               color: "red",
             });
@@ -85,8 +91,8 @@ export function DeleteApprovalGroupModal({
         });
       }}
       opened={opened}
-      title="承認グループの削除"
-      warning="このグループを参照する承認依頼・代理設定が存在する場合は削除できません。無効化をご検討ください。"
+      title={tr("master.approvalSettings.deleteTheApprovalGroup")}
+      warning={tr("master.approvalSettings.itCannotBeDeletedWhileApproval")}
     />
   );
 }
@@ -100,18 +106,25 @@ export function ToggleApprovalGroupActiveModal({
   target: ApprovalGroupModalTarget | null;
   onDone?: () => void;
 }) {
+  const tr = useTranslations();
   const [isPending, startTransition] = useTransition();
   const isActive = target?.isActive ?? true;
   return (
     <ConfirmModal
       confirmColor={isActive ? "red" : "blue"}
-      confirmLabel={isActive ? "無効化する" : "有効化する"}
+      confirmLabel={
+        isActive ? tr("common.disableAction") : tr("common.enable2")
+      }
       loading={isPending}
       message={
         target
           ? isActive
-            ? `承認グループ「${target.name}」を無効化します。新規の承認依頼で使用できなくなります。`
-            : `承認グループ「${target.name}」を有効化します。再び承認依頼で使用できるようになります。`
+            ? tr("master.approvalSettings.disableGroupConfirm", {
+                name: target.name,
+              })
+            : tr("master.approvalSettings.enableGroupConfirm", {
+                name: target.name,
+              })
           : ""
       }
       onClose={onClose}
@@ -121,14 +134,20 @@ export function ToggleApprovalGroupActiveModal({
           const result = await setApprovalGroupsActive([target.id], !isActive);
           if (result.ok) {
             notifications.show({
-              title: isActive ? "無効化しました" : "有効化しました",
-              message: `承認グループ「${target.name}」を${isActive ? "無効化" : "有効化"}しました`,
+              title: isActive ? tr("common.disabled2") : tr("common.enabled2"),
+              message: isActive
+                ? tr("master.approvalSettings.groupDisabled", {
+                    name: target.name,
+                  })
+                : tr("master.approvalSettings.groupEnabled", {
+                    name: target.name,
+                  }),
               color: "green",
             });
             onDone?.();
           } else {
             notifications.show({
-              title: "エラー",
+              title: tr("common.error2"),
               message: result.error,
               color: "red",
             });
@@ -136,7 +155,11 @@ export function ToggleApprovalGroupActiveModal({
         });
       }}
       opened={opened}
-      title={isActive ? "承認グループの無効化" : "承認グループの有効化"}
+      title={
+        isActive
+          ? tr("master.approvalSettings.disableTheApprovalGroup")
+          : tr("master.approvalSettings.enableTheApprovalGroup")
+      }
     />
   );
 }
@@ -216,13 +239,17 @@ function MemberPeriodFields({
   period: PeriodDraft;
   onPeriodChange: (v: PeriodDraft) => void;
 }) {
+  const tr = useTranslations();
   const isMobile = useIsMobile();
   return (
     <Stack gap="sm" mt="sm">
       <SegmentedControl
         data={[
-          { value: "PERMANENT", label: "常任" },
-          { value: "TEMPORARY", label: "期間限定" },
+          { value: "PERMANENT", label: tr("common.permanent") },
+          {
+            value: "TEMPORARY",
+            label: tr("master.approvalSettings.timeLimited"),
+          },
         ]}
         fullWidth={isMobile}
         onChange={(v) => onKindChange(v as MemberKind)}
@@ -231,8 +258,7 @@ function MemberPeriodFields({
       {kind === "TEMPORARY" && (
         <>
           <Text c="dimmed" size="xs">
-            この期間だけこのグループの一員として承認できます。期間外は承認者に
-            出てきません。
+            {tr("master.approvalSettings.theyCanApproveAsAMember")}
           </Text>
           {/* モバイルは縦積み（SimpleGrid 1 列）— 横 2 分割だと日時
               （YYYY/MM/DD HH:mm）が入力欄に収まらない。 */}
@@ -266,12 +292,14 @@ function MemberPeriodFields({
           </SimpleGrid>
           <Textarea
             autosize
-            label="メモ"
+            label={tr("common.memo")}
             minRows={2}
             onChange={(e) =>
               onPeriodChange({ ...period, note: e.currentTarget.value })
             }
-            placeholder="期間限定にする理由（任意）"
+            placeholder={tr(
+              "master.approvalSettings.reasonForMakingItTimeLimited",
+            )}
             value={period.note}
           />
         </>
@@ -289,6 +317,7 @@ export function AddApprovalGroupMemberModal({
   groupId: number;
   onDone?: () => void;
 }) {
+  const tr = useTranslations();
   const [isPending, startTransition] = useTransition();
   const [userId, setUserId] = useState<string | null>(null);
   const [userLabel, setUserLabel] = useState("");
@@ -305,14 +334,14 @@ export function AddApprovalGroupMemberModal({
 
   return (
     <ModalShell
-      confirmLabel="追加"
+      confirmLabel={tr("common.add")}
       loading={isPending}
       onClose={closeAndReset}
       onConfirm={() => {
         if (!userId) {
           notifications.show({
-            title: "エラー",
-            message: "ユーザーを選択してください",
+            title: tr("common.error2"),
+            message: tr("master.approvalSettings.selectAUser"),
             color: "red",
           });
           return;
@@ -320,7 +349,7 @@ export function AddApprovalGroupMemberModal({
         const payload = periodPayload(kind, period);
         if (payload.error) {
           notifications.show({
-            title: "エラー",
+            title: tr("common.error2"),
             message: payload.error,
             color: "red",
           });
@@ -330,15 +359,17 @@ export function AddApprovalGroupMemberModal({
           const result = await addGroupMember(groupId, userId, payload.value);
           if (result.ok) {
             notifications.show({
-              title: "追加しました",
-              message: `メンバー「${userLabel}」を追加しました`,
+              title: tr("common.added"),
+              message: tr("master.approvalSettings.memberAdded", {
+                name: userLabel,
+              }),
               color: "green",
             });
             closeAndReset();
             onDone?.();
           } else {
             notifications.show({
-              title: "エラー",
+              title: tr("common.error2"),
               message: result.error,
               color: "red",
             });
@@ -347,16 +378,16 @@ export function AddApprovalGroupMemberModal({
       }}
       opened={opened}
       size="md"
-      title="メンバーの追加"
+      title={tr("master.approvalSettings.addAMember2")}
     >
       <SearchSelect
-        label="ユーザー"
+        label={tr("common.user")}
         onChange={(value, option) => {
           setUserId(value);
           setUserLabel(option?.label ?? "");
         }}
         onSearch={searchUserOptions}
-        placeholder="氏名・ユーザー名で検索"
+        placeholder={tr("master.approvalSettings.searchByNameOrUsername")}
         storageKey="approval-group-member"
         value={userId}
         withAsterisk
@@ -383,6 +414,7 @@ export function EditMemberPeriodModal({
   target: MemberPeriodTarget | null;
   onDone?: () => void;
 }) {
+  const tr = useTranslations();
   const [isPending, startTransition] = useTransition();
   const [kind, setKind] = useState<MemberKind>("PERMANENT");
   const [period, setPeriod] = useState<PeriodDraft>(emptyPeriod);
@@ -406,7 +438,7 @@ export function EditMemberPeriodModal({
 
   return (
     <ModalShell
-      confirmLabel="保存"
+      confirmLabel={tr("common.save2")}
       loading={isPending}
       onClose={close}
       onConfirm={() => {
@@ -414,7 +446,7 @@ export function EditMemberPeriodModal({
         const payload = periodPayload(kind, period);
         if (payload.error) {
           notifications.show({
-            title: "エラー",
+            title: tr("common.error2"),
             message: payload.error,
             color: "red",
           });
@@ -428,15 +460,17 @@ export function EditMemberPeriodModal({
           );
           if (result.ok) {
             notifications.show({
-              title: "保存しました",
-              message: `「${target.displayName}」の在籍期間を更新しました`,
+              title: tr("common.saved2"),
+              message: tr("master.approvalSettings.periodUpdated", {
+                name: target.displayName,
+              }),
               color: "green",
             });
             close();
             onDone?.();
           } else {
             notifications.show({
-              title: "エラー",
+              title: tr("common.error2"),
               message: result.error,
               color: "red",
             });
@@ -445,7 +479,7 @@ export function EditMemberPeriodModal({
       }}
       opened={opened}
       size="md"
-      title="在籍期間の変更"
+      title={tr("master.approvalSettings.changeTheEmploymentPeriod2")}
     >
       <Text c="dimmed" mb="xs" size="xs">
         {target?.displayName}
@@ -475,6 +509,7 @@ export function AddApprovalDelegateModal({
   memberOptions: { value: string; label: string }[];
   onDone?: () => void;
 }) {
+  const tr = useTranslations();
   const [isPending, startTransition] = useTransition();
   const [delegatorId, setDelegatorId] = useState<string | null>(null);
   const [delegateId, setDelegateId] = useState<string | null>(null);
@@ -496,22 +531,23 @@ export function AddApprovalDelegateModal({
   };
 
   const validate = (): string | null => {
-    if (!delegatorId) return "原承認者を選択してください";
-    if (!delegateId) return "代理人を選択してください";
+    if (!delegatorId)
+      return tr("master.approvalSettings.selectTheOriginalApprover");
+    if (!delegateId) return tr("master.approvalSettings.selectADelegate");
     if (delegatorId === delegateId) {
-      return "原承認者と代理人は別のユーザーを選択してください";
+      return tr("master.approvalSettings.theOriginalApproverAndTheDelegate");
     }
-    if (!validFrom) return "開始日を選択してください";
-    if (!validUntil) return "終了日を選択してください";
+    if (!validFrom) return tr("master.approvalSettings.selectAStartDate");
+    if (!validUntil) return tr("master.approvalSettings.selectAnEndDate");
     if (validFrom > validUntil) {
-      return "終了日は開始日以降の日付を選択してください";
+      return tr("master.approvalSettings.chooseAnEndDateOnOr");
     }
     return null;
   };
 
   return (
     <ModalShell
-      confirmLabel="追加"
+      confirmLabel={tr("common.add")}
       loading={isPending}
       onClose={closeAndReset}
       onConfirm={() => {
@@ -532,15 +568,17 @@ export function AddApprovalDelegateModal({
           });
           if (result.ok) {
             notifications.show({
-              title: "追加しました",
-              message: `代理人「${delegateLabel}」の代理設定を追加しました`,
+              title: tr("common.added"),
+              message: tr("master.approvalSettings.delegateAdded", {
+                name: delegateLabel,
+              }),
               color: "green",
             });
             closeAndReset();
             onDone?.();
           } else {
             notifications.show({
-              title: "エラー",
+              title: tr("common.error2"),
               message: result.error,
               color: "red",
             });
@@ -549,54 +587,56 @@ export function AddApprovalDelegateModal({
       }}
       opened={opened}
       size="md"
-      title="代理設定の追加"
+      title={tr("master.approvalSettings.addADelegation2")}
     >
       <Stack gap="sm">
         <Select
           data={memberOptions}
-          label="原承認者"
+          label={tr("common.originalApprover")}
           onChange={setDelegatorId}
-          placeholder="グループの有効メンバーから選択"
+          placeholder={tr("master.approvalSettings.chooseFromTheGroupSActive")}
           searchable
           value={delegatorId}
           withAsterisk
         />
         <SearchSelect
-          label="代理人"
+          label={tr("common.delegate")}
           onChange={(value, option) => {
             setDelegateId(value);
             setDelegateLabel(option?.label ?? "");
           }}
           onSearch={searchUserOptions}
-          placeholder="氏名・ユーザー名で検索"
+          placeholder={tr("master.approvalSettings.searchByNameOrUsername")}
           storageKey="approval-delegate"
           value={delegateId}
           withAsterisk
         />
         <DatePickerInput
-          label="期間（開始日）"
+          label={tr("master.approvalSettings.periodStartDate")}
           leftSection={<IconCalendar size={14} />}
           onChange={setValidFrom}
-          placeholder="日付を選択"
+          placeholder={tr("common.pickADate")}
           value={validFrom}
           valueFormat="YYYY/MM/DD"
           withAsterisk
         />
         <DatePickerInput
-          label="期間（終了日）"
+          label={tr("master.approvalSettings.periodEndDate")}
           leftSection={<IconCalendar size={14} />}
           onChange={setValidUntil}
-          placeholder="日付を選択"
+          placeholder={tr("common.pickADate")}
           value={validUntil}
           valueFormat="YYYY/MM/DD"
           withAsterisk
         />
         <Textarea
           autosize
-          label="理由"
+          label={tr("common.reason")}
           minRows={2}
           onChange={(e) => setReason(e.currentTarget.value)}
-          placeholder="出張・休暇など（任意）"
+          placeholder={tr(
+            "master.approvalSettings.businessTripLeaveEtcOptional",
+          )}
           value={reason}
         />
         {error && (
@@ -627,14 +667,18 @@ export function RemoveApprovalDelegateModal({
   delegate: ApprovalDelegateTarget | null;
   onDone?: () => void;
 }) {
+  const tr = useTranslations();
   const [isPending, startTransition] = useTransition();
   return (
     <ConfirmModal
-      confirmLabel="削除する"
+      confirmLabel={tr("common.delete2")}
       loading={isPending}
       message={
         delegate
-          ? `代理設定（原承認者「${delegate.delegatorName}」→ 代理人「${delegate.delegateName}」）を削除します。代理人はこのグループの承認を行えなくなります。`
+          ? tr("master.approvalSettings.deleteDelegateConfirm", {
+              delegator: delegate.delegatorName,
+              delegate: delegate.delegateName,
+            })
           : ""
       }
       onClose={onClose}
@@ -644,14 +688,16 @@ export function RemoveApprovalDelegateModal({
           const result = await removeDelegate(groupId, delegate.id);
           if (result.ok) {
             notifications.show({
-              title: "削除しました",
-              message: `代理人「${delegate.delegateName}」の代理設定を削除しました`,
+              title: tr("common.deleted"),
+              message: tr("master.approvalSettings.delegateDeleted", {
+                name: delegate.delegateName,
+              }),
               color: "green",
             });
             onDone?.();
           } else {
             notifications.show({
-              title: "エラー",
+              title: tr("common.error2"),
               message: result.error,
               color: "red",
             });
@@ -659,7 +705,7 @@ export function RemoveApprovalDelegateModal({
         });
       }}
       opened={opened}
-      title="代理設定の削除"
+      title={tr("master.approvalSettings.deleteTheDelegation2")}
     />
   );
 }
@@ -675,14 +721,18 @@ export function RemoveApprovalGroupMemberModal({
   member: ApprovalGroupMemberTarget | null;
   onDone?: () => void;
 }) {
+  const tr = useTranslations();
   const [isPending, startTransition] = useTransition();
   return (
     <ConfirmModal
-      confirmLabel="削除する"
+      confirmLabel={tr("common.delete2")}
       loading={isPending}
       message={
         member
-          ? `メンバー「${member.displayName}（${member.username}）」をこのグループから削除します。`
+          ? tr("master.approvalSettings.deleteMemberConfirm", {
+              name: member.displayName,
+              username: member.username,
+            })
           : ""
       }
       onClose={onClose}
@@ -692,14 +742,16 @@ export function RemoveApprovalGroupMemberModal({
           const result = await removeGroupMember(groupId, member.userId);
           if (result.ok) {
             notifications.show({
-              title: "削除しました",
-              message: `メンバー「${member.displayName}」を削除しました`,
+              title: tr("common.deleted"),
+              message: tr("master.approvalSettings.memberDeleted", {
+                name: member.displayName,
+              }),
               color: "green",
             });
             onDone?.();
           } else {
             notifications.show({
-              title: "エラー",
+              title: tr("common.error2"),
               message: result.error,
               color: "red",
             });
@@ -707,7 +759,7 @@ export function RemoveApprovalGroupMemberModal({
         });
       }}
       opened={opened}
-      title="メンバーの削除"
+      title={tr("master.approvalSettings.removeTheMember2")}
     />
   );
 }

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { STATUS_MAPS } from "@/components/ui/StatusBadge";
 import { designTriggerLabel } from "@/lib/enum-labels";
+import { STATUS_MAPS } from "@/lib/status-map";
 import {
   canAttachFiles,
   canComplete,

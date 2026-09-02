@@ -1,3 +1,5 @@
+"use client";
+
 /**
  * RichTextView — 保存済みリッチテキスト（ProseMirror JSON）の読み取り専用表示。
  *
@@ -11,7 +13,9 @@
 
 import { Stack, Text, Tooltip, Typography } from "@mantine/core";
 import { IconExternalLink } from "@tabler/icons-react";
+import { useTranslations } from "next-intl";
 import type { JSX } from "react";
+import type { Tr } from "@/lib/i18n";
 // type-only import — lib/link-index は server-only（型はバンドルされない）。
 import type { ShortLinkTarget } from "@/lib/link-index";
 import type { RichTextDoc } from "@/lib/rich-text-core";
@@ -56,17 +60,23 @@ const BLOCK_ELEMENTS: Record<string, keyof JSX.IntrinsicElements> = {
 function linkTooltip(
   href: string,
   targets: LinkTargets,
+  tr: Tr,
 ): { label: React.ReactNode; blocked: boolean } {
   if (isShortLink(href)) {
     const target = targets[href.slice(SHORT_LINK_PREFIX.length)];
     if (!target) {
-      return { label: "リンク先を解決できませんでした", blocked: false };
+      return {
+        label: tr("ui.richTextView.couldNotResolveTheLinkTarget"),
+        blocked: false,
+      };
     }
     return {
       label: (
         <Stack gap={2}>
           <Text fw={600} size="xs">
-            {target.blocked ? "⚠ ブロック中: " : "外部サイト: "}
+            {target.blocked
+              ? tr("ui.richTextView.blockedPrefix")
+              : tr("ui.richTextView.externalSitePrefix")}
             {target.hostname}
           </Text>
           <Text size="xs" style={{ overflowWrap: "anywhere" }}>
@@ -85,6 +95,7 @@ function renderText(
   node: RichTextNode,
   key: string,
   targets: LinkTargets,
+  tr: Tr,
 ): React.ReactNode {
   let el: React.ReactNode = node.text ?? "";
   for (const mark of node.marks ?? []) {
@@ -96,7 +107,7 @@ function renderText(
       // 文書リンク（その他のアプリ内パス）は同じタブで遷移する。
       const short = isShortLink(href);
       const internal = isInternalPath(href) && !short;
-      const { label, blocked } = linkTooltip(href, targets);
+      const { label, blocked } = linkTooltip(href, targets, tr);
       const anchor = internal ? (
         <a href={href}>{el}</a>
       ) : (
@@ -139,13 +150,14 @@ function renderNode(
   node: RichTextNode,
   key: string,
   targets: LinkTargets,
+  tr: Tr,
 ): React.ReactNode {
-  if (node.type === "text") return renderText(node, key, targets);
+  if (node.type === "text") return renderText(node, key, targets, tr);
   if (node.type === "hardBreak") return <br key={key} />;
   if (node.type === "horizontalRule") return <hr key={key} />;
 
   const children = (node.content ?? []).map((child, i) =>
-    renderNode(child, `${key}.${i}`, targets),
+    renderNode(child, `${key}.${i}`, targets, tr),
   );
 
   if (node.type === "heading") {
@@ -174,6 +186,7 @@ export function RichTextView({
    */
   linkTargets?: LinkTargets;
 }) {
+  const tr = useTranslations();
   if (isEmptyDoc(doc)) {
     return (
       <Text c="dimmed" size="sm">
@@ -184,7 +197,7 @@ export function RichTextView({
   return (
     <Typography className="memo-rich-text" p={0}>
       {(doc?.content ?? []).map((node, i) =>
-        renderNode(node, String(i), linkTargets),
+        renderNode(node, String(i), linkTargets, tr),
       )}
     </Typography>
   );

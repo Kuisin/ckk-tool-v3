@@ -11,6 +11,7 @@
 import { Badge, Group, Stack, Table, Tabs, Text } from "@mantine/core";
 import { IconCircleMinus, IconTrash } from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { useState } from "react";
 import { useFormat } from "@/components/layout/PreferencesProvider";
 import { ActiveBadge } from "@/components/ui/ActiveBadge";
@@ -80,6 +81,7 @@ export function MaterialTypeDetail({
   surfaceOptions: Option[];
   prices: MaterialTypePriceSeed[];
 }) {
+  const tr = useTranslations();
   const fmt = useFormat();
   const router = useRouter();
   const isMobile = useIsMobile();
@@ -101,12 +103,14 @@ export function MaterialTypeDetail({
         <ResourceActions
           menuItems={[
             {
-              label: record.isActive ? "無効化" : "有効化",
+              label: record.isActive
+                ? tr("common.disable")
+                : tr("common.enable"),
               icon: <IconCircleMinus size={14} />,
               onClick: () => setToggleOpen(true),
             },
             {
-              label: "削除",
+              label: tr("common.delete"),
               icon: <IconTrash size={14} />,
               color: "red",
               divider: true,
@@ -117,8 +121,8 @@ export function MaterialTypeDetail({
         />
       }
       breadcrumbs={[
-        "マスタ",
-        { label: "材種", href: BASE_PATH },
+        tr("common.masterData"),
+        { label: tr("common.materialTypes"), href: BASE_PATH },
         record.code ?? record.nameJa,
       ]}
       createdAt={fmt.dateTime(record.createdAt)}
@@ -128,34 +132,40 @@ export function MaterialTypeDetail({
     >
       <SummaryGrid>
         <FieldValue
-          label="材種コード"
+          label={tr("common.materialTypeCode")}
           value={
             record.code ? (
               <DocNumber>{record.code}</DocNumber>
             ) : (
               <Group gap={6} wrap="nowrap">
                 <Badge color="gray" size="xs" variant="light">
-                  未変換（レガシー）
+                  {tr("master.materialTypes.notConvertedLegacy")}
                 </Badge>
               </Group>
             )
           }
         />
-        <FieldValue label="名称（日本語）" value={record.nameJa} />
-        <FieldValue label="名称（英語）" value={record.nameEn || "—"} />
+        <FieldValue label={tr("common.nameJapanese")} value={record.nameJa} />
+        <FieldValue
+          label={tr("common.nameEnglish")}
+          value={record.nameEn || "—"}
+        />
         {record.composition && (
           <>
             <FieldValue
-              label="メーカー"
+              label={tr("common.manufacturer")}
               value={record.composition.manufacturerLabel}
             />
             <FieldValue
-              label="メーカー材種"
+              label={tr("master.materialTypes.manufacturerGrade")}
               value={record.composition.gradeLabel}
             />
-            <FieldValue label="形状" value={record.composition.shapeLabel} />
             <FieldValue
-              label="種類（自動採番）"
+              label={tr("common.shape")}
+              value={record.composition.shapeLabel}
+            />
+            <FieldValue
+              label={tr("common.kindNumberedAutomatically")}
               value={<DocNumber>{record.composition.kindCode}</DocNumber>}
             />
           </>
@@ -164,20 +174,22 @@ export function MaterialTypeDetail({
 
       <AppTabs onChange={setTab} value={tab}>
         <Tabs.List>
-          <Tabs.Tab value="overview">概要</Tabs.Tab>
-          <Tabs.Tab value="prices">既定単価</Tabs.Tab>
-          <Tabs.Tab value="related">関連</Tabs.Tab>
-          <Tabs.Tab value="history">履歴</Tabs.Tab>
+          <Tabs.Tab value="overview">{tr("common.overview")}</Tabs.Tab>
+          <Tabs.Tab value="prices">
+            {tr("master.materialTypes.defaultUnitPrice")}
+          </Tabs.Tab>
+          <Tabs.Tab value="related">{tr("common.related")}</Tabs.Tab>
+          <Tabs.Tab value="history">{tr("common.history")}</Tabs.Tab>
         </Tabs.List>
 
         <Tabs.Panel pt="md" value="overview">
           <Stack gap="md">
             <FieldValue
-              label="説明（日本語）"
+              label={tr("common.descriptionJapanese")}
               value={record.descriptionJa || "—"}
             />
             <FieldValue
-              label="説明（英語）"
+              label={tr("master.materialTypes.descriptionEnglish")}
               value={record.descriptionEn || "—"}
             />
           </Stack>
@@ -195,21 +207,25 @@ export function MaterialTypeDetail({
         <Tabs.Panel pt="md" value="related">
           <Stack gap="xs">
             <Text fw={600} size="sm">
-              この材種の素材
+              {tr("master.materialTypes.materialsOfThisType")}
             </Text>
             {record.materials.length === 0 ? (
               <Text c="dimmed" size="sm">
-                この材種に紐づく素材はありません
+                {tr("master.materialTypes.thereAreNoMaterialsOfThis")}
               </Text>
             ) : (
               <Table highlightOnHover striped withTableBorder>
                 <Table.Thead>
                   <Table.Tr>
-                    <Table.Th>素材コード</Table.Th>
-                    <Table.Th>名称</Table.Th>
-                    {!isMobile && <Table.Th>寸法</Table.Th>}
-                    {!isMobile && <Table.Th>単位</Table.Th>}
-                    <Table.Th>状態</Table.Th>
+                    <Table.Th>{tr("common.materialCode")}</Table.Th>
+                    <Table.Th>{tr("common.name2")}</Table.Th>
+                    {!isMobile && (
+                      <Table.Th>
+                        {tr("master.materialTypes.dimensions")}
+                      </Table.Th>
+                    )}
+                    {!isMobile && <Table.Th>{tr("common.unit")}</Table.Th>}
+                    <Table.Th>{tr("common.status")}</Table.Th>
                   </Table.Tr>
                 </Table.Thead>
                 <Table.Tbody>

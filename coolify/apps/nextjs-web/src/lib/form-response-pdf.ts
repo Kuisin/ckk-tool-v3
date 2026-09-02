@@ -17,9 +17,16 @@ import "server-only";
  * ここを通る文字列は必ず `esc()` を通すこと。1 か所抜けると帳票が壊れるか、
  * 最悪その場で HTML が効く。唯一の例外はリッチテキストで、
  * rich-text-core.toHtml が内部で全てのテキストと href をエスケープしている。
+ *
+ * **決まり文句は `lib/messages.ts` から明示 locale "ja" で引く**
+ * （`next-intl` の `useTranslations`/`getTranslations` は使わない）。この帳票は
+ * 「読む人の表示設定に従わない・日本語 / JST 固定で組む」約束（下記）なので、
+ * リクエストのセッション言語を拾ってしまう next-intl のフックは使えない —
+ * `lib/pdf-labels.ts`（見積書 / 納品書 / 請求書）と同じ理由・同じ道具。
  */
 
-import { statusLabel as statusMapLabel } from "@/components/ui/StatusBadge";
+import { label as msg } from "@/lib/messages";
+import { statusLabel as statusMapLabel } from "@/lib/status-map";
 import type { ApprovalTrailEntry } from "./approvals";
 import {
   answerShape,
@@ -46,7 +53,7 @@ export function esc(value: string): string {
     .replaceAll("'", "&#39;");
 }
 
-const EMPTY_CELL = '<span class="empty">（未回答）</span>';
+const EMPTY_CELL = `<span class="empty">${msg("general.formResponsePdf.unanswered", "ja", "（未回答）")}</span>`;
 
 export interface FormResponsePageInput {
   formTitle: string;
@@ -75,8 +82,13 @@ function inlineValueHtml(
     // 生の ID は絶対に刷らない（読む人には意味が無く、内部 ID の持ち出しになる）。
     const count = attachmentCount(value);
     return count > 0
-      ? `${esc(String(count))} 件のファイル`
-      : '<span class="empty">（添付タブで管理）</span>';
+      ? msg(
+          "general.formResponsePdf.filesCount",
+          "ja",
+          `${count} 件のファイル`,
+          { count },
+        )
+      : `<span class="empty">${msg("general.formResponsePdf.managedInAttachmentsTab", "ja", "（添付タブで管理）")}</span>`;
   }
   if (isBlankAnswer(field.type, value)) return EMPTY_CELL;
 
@@ -164,13 +176,16 @@ export function responsePageHtml(input: FormResponsePageInput): string {
     input;
 
   const meta = [
-    ["回答番号", response.responseNumber],
+    [msg("common.responseNumber", "ja"), response.responseNumber],
     ["No.", String(response.recordNo)],
-    ["状態", statusMapLabel("FormResponse", response.status)],
-    // 匿名フォームでは行ごと出さない（空欄だと「誰か居るのに空」に見える）。
-    ...(respondent ? [["回答者", respondent]] : []),
     [
-      "提出日時",
+      msg("common.status", "ja"),
+      statusMapLabel("FormResponse", response.status),
+    ],
+    // 匿名フォームでは行ごと出さない（空欄だと「誰か居るのに空」に見える）。
+    ...(respondent ? [[msg("common.respondent", "ja"), respondent]] : []),
+    [
+      msg("common.submittedAt", "ja"),
       response.submittedAt ? fmt.dateTime(response.submittedAt) : "—",
     ],
   ]
@@ -196,8 +211,13 @@ export function responsePageHtml(input: FormResponsePageInput): string {
       <div class="doc-title">${esc(formTitle)}</div>
     </div>
     <div class="issuer">
-      <strong>フォーム回答</strong><br>
-      フォームコード: ${esc(formCode)}
+      <strong>${msg("general.formResponsePdf.formResponseLabel", "ja", "フォーム回答")}</strong><br>
+      ${msg(
+        "general.formResponsePdf.formCodeLine",
+        "ja",
+        `フォームコード: ${esc(formCode)}`,
+        { code: esc(formCode) },
+      )}
     </div>
   </div>
 
@@ -221,20 +241,29 @@ function trailHtml(trail: ApprovalTrailEntry[], fmt: Formatters): string {
             (r) =>
               `<tr><td>${step.stepNo}. ${esc(step.stepLabel)}</td><td>${esc(
                 r.delegateFor
-                  ? `${r.approver}（${r.delegateFor} の代理）`
+                  ? msg(
+                      "general.formResponsePdf.delegateForSuffix",
+                      "ja",
+                      `${r.approver}（${r.delegateFor} の代理）`,
+                      { approver: r.approver, delegateFor: r.delegateFor },
+                    )
                   : r.approver,
-              )}</td><td>${esc(r.action === "APPROVED" ? "承認" : "差し戻し")}</td><td>${esc(
+              )}</td><td>${esc(
+                r.action === "APPROVED"
+                  ? msg("common.approve", "ja")
+                  : msg("common.reject", "ja"),
+              )}</td><td>${esc(
                 fmt.dateTime(r.actedAt),
               )}</td><td>${esc(r.comment ?? "")}</td></tr>`,
           )
         : [
-            `<tr><td>${step.stepNo}. ${esc(step.stepLabel)}</td><td colspan="4">未処理</td></tr>`,
+            `<tr><td>${step.stepNo}. ${esc(step.stepLabel)}</td><td colspan="4">${esc(msg("general.formResponsePdf.notYetProcessed", "ja", "未処理"))}</td></tr>`,
           ],
     )
     .join("");
 
-  return `<p class="section-label">承認の記録</p>
-  <table class="trail"><tr><th>段</th><th>承認者</th><th>結果</th><th>日時</th><th>コメント</th></tr>${rows}</table>`;
+  return `<p class="section-label">${msg("general.formResponsePdf.approvalRecordSectionTitle", "ja", "承認の記録")}</p>
+  <table class="trail"><tr><th>${msg("general.formResponsePdf.stepNoColumn", "ja", "段")}</th><th>${msg("general.formResponsePdf.approverColumn", "ja", "承認者")}</th><th>${msg("settings.security.result", "ja")}</th><th>${msg("common.dateAndTime", "ja")}</th><th>${msg("common.comment", "ja")}</th></tr>${rows}</table>`;
 }
 
 /** ページを繋ぐ（まとめ印刷は 1 回答 = 1 ページ）。 */

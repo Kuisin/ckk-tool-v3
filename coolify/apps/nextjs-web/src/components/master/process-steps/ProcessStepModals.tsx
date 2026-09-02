@@ -8,6 +8,7 @@
  */
 
 import { notifications } from "@mantine/notifications";
+import { useTranslations } from "next-intl";
 import { useTransition } from "react";
 import {
   deleteProcessSteps,
@@ -35,14 +36,15 @@ export function DeleteProcessStepModal({
   target: ProcessStepModalTarget | null;
   onDone?: () => void;
 }) {
+  const tr = useTranslations();
   const [isPending, startTransition] = useTransition();
   return (
     <ConfirmModal
-      confirmLabel="削除する"
+      confirmLabel={tr("common.delete2")}
       loading={isPending}
       message={
         target
-          ? `工程「${label(target)}」を削除します。この操作は取り消せません。`
+          ? tr("master.processSteps.deleteConfirm", { name: label(target) })
           : ""
       }
       onClose={onClose}
@@ -52,14 +54,16 @@ export function DeleteProcessStepModal({
           const result = await deleteProcessSteps([target.id]);
           if (result.ok) {
             notifications.show({
-              title: "削除しました",
-              message: `工程「${label(target)}」を削除しました`,
+              title: tr("common.deleted"),
+              message: tr("master.processSteps.deleted", {
+                name: label(target),
+              }),
               color: "green",
             });
             onDone?.();
           } else {
             notifications.show({
-              title: "エラー",
+              title: tr("common.error2"),
               message: result.error,
               color: "red",
             });
@@ -67,8 +71,8 @@ export function DeleteProcessStepModal({
         });
       }}
       opened={opened}
-      title="工程の削除"
-      warning="他の工程がこの工程に依存している場合や、検査表テンプレート・指示書が参照している場合は削除できません。無効化をご検討ください。"
+      title={tr("master.processSteps.deleteTheStep")}
+      warning={tr("master.processSteps.itCannotBeDeletedWhileOther")}
     />
   );
 }
@@ -82,18 +86,23 @@ export function ToggleProcessStepActiveModal({
   target: ProcessStepModalTarget | null;
   onDone?: () => void;
 }) {
+  const tr = useTranslations();
   const [isPending, startTransition] = useTransition();
   const isActive = target?.isActive ?? true;
   return (
     <ConfirmModal
       confirmColor={isActive ? "red" : "blue"}
-      confirmLabel={isActive ? "無効化する" : "有効化する"}
+      confirmLabel={
+        isActive ? tr("common.disableAction") : tr("common.enable2")
+      }
       loading={isPending}
       message={
         target
           ? isActive
-            ? `工程「${label(target)}」を無効化します。新規のワークフロー・依存先として選択できなくなります。`
-            : `工程「${label(target)}」を有効化します。再びワークフロー・依存先として選択できるようになります。`
+            ? tr("master.processSteps.disableConfirm", {
+                name: label(target),
+              })
+            : tr("master.processSteps.enableConfirm", { name: label(target) })
           : ""
       }
       onClose={onClose}
@@ -103,14 +112,16 @@ export function ToggleProcessStepActiveModal({
           const result = await setProcessStepsActive([target.id], !isActive);
           if (result.ok) {
             notifications.show({
-              title: isActive ? "無効化しました" : "有効化しました",
-              message: `工程「${label(target)}」を${isActive ? "無効化" : "有効化"}しました`,
+              title: isActive ? tr("common.disabled2") : tr("common.enabled2"),
+              message: isActive
+                ? tr("master.processSteps.disabled", { name: label(target) })
+                : tr("master.processSteps.enabled", { name: label(target) }),
               color: "green",
             });
             onDone?.();
           } else {
             notifications.show({
-              title: "エラー",
+              title: tr("common.error2"),
               message: result.error,
               color: "red",
             });
@@ -118,7 +129,11 @@ export function ToggleProcessStepActiveModal({
         });
       }}
       opened={opened}
-      title={isActive ? "工程の無効化" : "工程の有効化"}
+      title={
+        isActive
+          ? tr("master.processSteps.disableTheStep")
+          : tr("master.processSteps.enableTheStep")
+      }
     />
   );
 }

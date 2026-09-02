@@ -21,6 +21,7 @@
 import { Text } from "@mantine/core";
 import { modals } from "@mantine/modals";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import {
   createContext,
   type ReactNode,
@@ -46,28 +47,31 @@ const NavigationGuardContext = createContext<NavGuardValue>({
   guard: (proceed) => proceed(),
 });
 
-const LEAVE_CONFIRM = {
-  title: "保存されていない変更があります",
-  message:
-    "このページを離れると、入力した内容は保存されません。移動してもよろしいですか？",
-  confirm: "移動する",
-  cancel: "このページに留まる",
-} as const;
-
 export function NavigationGuardProvider({ children }: { children: ReactNode }) {
+  const tr = useTranslations();
   const router = useRouter();
   // リスナー内から常に最新値を読むため ref で保持（再購読を避ける）。
   const dirtyRef = useRef(false);
 
-  const confirmLeave = useCallback((proceed: () => void) => {
-    modals.openConfirmModal({
-      title: LEAVE_CONFIRM.title,
-      children: <Text size="sm">{LEAVE_CONFIRM.message}</Text>,
-      labels: { confirm: LEAVE_CONFIRM.confirm, cancel: LEAVE_CONFIRM.cancel },
-      confirmProps: { color: "red" },
-      onConfirm: proceed,
-    });
-  }, []);
+  const confirmLeave = useCallback(
+    (proceed: () => void) => {
+      modals.openConfirmModal({
+        title: tr("layout.navigationGuard.unsavedChangesTitle"),
+        children: (
+          <Text size="sm">
+            {tr("layout.navigationGuard.unsavedChangesMessage")}
+          </Text>
+        ),
+        labels: {
+          confirm: tr("layout.navigationGuard.leave"),
+          cancel: tr("layout.navigationGuard.stay"),
+        },
+        confirmProps: { color: "red" },
+        onConfirm: proceed,
+      });
+    },
+    [tr],
+  );
 
   const setDirty = useCallback((dirty: boolean) => {
     dirtyRef.current = dirty;

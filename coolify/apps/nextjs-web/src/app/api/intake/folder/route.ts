@@ -15,7 +15,9 @@
  */
 
 import { NextResponse } from "next/server";
+import { getLocale, getTranslations } from "next-intl/server";
 import { requirePermissionResponse } from "@/lib/authz";
+import type { Locale } from "@/lib/i18n";
 import {
   INTAKE_MAX_BYTES,
   isIntakeFile,
@@ -30,6 +32,8 @@ function badRequest(error: string): NextResponse {
 }
 
 export async function POST(request: Request): Promise<Response> {
+  const tr = await getTranslations();
+  const locale = (await getLocale()) as Locale;
   // 取込フォルダはサーバーの実ファイル — システム管理者のみ触れる。
   const denied = await requirePermissionResponse("system", "UPDATE");
   if (denied) return denied;
@@ -38,33 +42,36 @@ export async function POST(request: Request): Promise<Response> {
   try {
     form = await request.formData();
   } catch {
-    return badRequest("multipart/form-data で送信してください");
+    return badRequest(tr("common.sendAsMultipartFormData"));
   }
   const file = form.get("file");
   if (!(file instanceof File))
-    return badRequest("ファイルが指定されていません");
-  if (file.size <= 0) return badRequest("ファイルが空です");
+    return badRequest(tr("settings.orderIntake.noFileWasSpecified"));
+  if (file.size <= 0) return badRequest(tr("common.fileIsEmpty"));
   if (file.size > INTAKE_MAX_BYTES) {
-    return badRequest("ファイルサイズは 20MB 以下にしてください");
+    return badRequest(tr("common.fileSizeMax20Mb"));
   }
   if (!isIntakeFile(file.name)) {
     return badRequest(
-      "対応していないファイル形式です（PDF / PNG / JPG / WEBP）",
+      tr("settings.orderIntake.unsupportedFileFormatPdfPngJpg"),
     );
   }
 
   try {
-    const name = await saveToIntakeFolder({
-      filename: file.name,
-      bytes: Buffer.from(await file.arrayBuffer()),
-    });
+    const name = await saveToIntakeFolder(
+      {
+        filename: file.name,
+        bytes: Buffer.from(await file.arrayBuffer()),
+      },
+      locale,
+    );
     return NextResponse.json({ ok: true, name });
   } catch (e) {
     console.error("[intake/folder]", e);
     const message =
       e instanceof Error && e.message.includes("INTAKE_DIR")
         ? e.message
-        : "取込フォルダへの保存に失敗しました";
+        : tr("settings.orderIntake.failedToSaveToTheIntake");
     return NextResponse.json({ ok: false, error: message }, { status: 500 });
   }
 }

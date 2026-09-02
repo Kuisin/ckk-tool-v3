@@ -36,11 +36,13 @@ import {
 } from "@mantine/core";
 import { IconBan } from "@tabler/icons-react";
 import Link from "next/link";
+import { useTranslations } from "next-intl";
 import { useIsMobile } from "@/hooks/useViewport";
 import {
   type ApprovalPhase,
   approvalStepDescription,
 } from "@/lib/approval-flow";
+import type { Tr } from "@/lib/i18n";
 
 export interface ProcedureStage {
   key: string;
@@ -100,14 +102,16 @@ export function approvalStage(
     label?: string;
     /** 呼び出し側の日付フォーマッタ（useFormat の fmt.date）。 */
     fmtDate: (v: string | null) => string;
+    /** 呼び出し側の `useTranslations()`（既定の段名「承認」を訳すため）。 */
+    tr: Tr;
   },
 ): ProcedureStage {
   return {
     key: "approval",
-    label: opts.label ?? "承認",
+    label: opts.label ?? opts.tr("common.approve"),
     description: opts.approvedAt
       ? opts.fmtDate(opts.approvedAt)
-      : approvalStepDescription(approval),
+      : approvalStepDescription(approval, opts.tr),
     color: approval.phase === "REJECTED" ? "red" : undefined,
   };
 }
@@ -120,6 +124,7 @@ function LinkGroups({
   heading: string;
   groups: HandoffGroup[];
 }) {
+  const tr = useTranslations();
   return (
     <Stack gap="sm" mt="md">
       <Text c="dimmed" fw={600} size="sm">
@@ -151,7 +156,7 @@ function LinkGroups({
                       size="sm"
                       variant="light"
                     >
-                      {it.done ? "済" : "未"}
+                      {it.done ? "済" : tr("ui.procedurePanel.notYet")}
                     </Badge>
                   )}
                   {it.href ? (
@@ -181,7 +186,7 @@ function LinkGroups({
 }
 
 export function ProcedurePanel({
-  title = "手続き状況",
+  title: titleProp,
   stages,
   active,
   cancelled = false,
@@ -204,6 +209,8 @@ export function ProcedurePanel({
   /** 追加コンテンツ（承認記録・操作履歴など）。 */
   children?: React.ReactNode;
 }) {
+  const tr = useTranslations();
+  const title = titleProp ?? tr("ui.procedurePanel.title");
   const isMobile = useIsMobile();
   return (
     <Paper p="md" radius="md" withBorder>
@@ -216,15 +223,19 @@ export function ProcedurePanel({
           color="red"
           icon={<IconBan size={16} />}
           mb="md"
-          title="キャンセル済み"
+          title={tr("ui.procedurePanel.cancelled")}
           variant="light"
         >
-          {cancelledNote ?? "この書類はキャンセルされています。"}
+          {cancelledNote ??
+            tr("ui.procedurePanel.thisDocumentHasBeenCancelled")}
         </Alert>
       )}
 
       {sourceGroups && sourceGroups.length > 0 && (
-        <LinkGroups groups={sourceGroups} heading="前の書類から" />
+        <LinkGroups
+          groups={sourceGroups}
+          heading={tr("ui.procedurePanel.from")}
+        />
       )}
 
       <Stepper
@@ -245,7 +256,10 @@ export function ProcedurePanel({
       </Stepper>
 
       {handoffGroups && handoffGroups.length > 0 && (
-        <LinkGroups groups={handoffGroups} heading="次の書類へ" />
+        <LinkGroups
+          groups={handoffGroups}
+          heading={tr("ui.procedurePanel.to")}
+        />
       )}
 
       {children}

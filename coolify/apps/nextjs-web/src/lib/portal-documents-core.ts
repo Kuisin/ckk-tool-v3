@@ -25,12 +25,22 @@ export function isPortalDocumentType(v: string): v is PortalDocumentType {
   return (PORTAL_DOCUMENT_TYPES as readonly string[]).includes(v);
 }
 
-export const PORTAL_DOCUMENT_LABEL: Record<PortalDocumentType, string> = {
-  quotes: "見積書",
-  order_acceptances: "注文請書",
-  delivery_notes: "納品書",
-  invoices: "請求書",
+/** next-intl の `t()` と互換の最小の形（サーバー/クライアントどちらの実体も渡せる）。 */
+type TrLike = (key: string) => string;
+
+const PORTAL_DOCUMENT_LABEL_KEY: Record<PortalDocumentType, string> = {
+  quotes: "common.quote",
+  order_acceptances: "common.orderAcceptance",
+  delivery_notes: "common.deliveryNote",
+  invoices: "common.invoice",
 };
+
+export function portalDocumentLabel(
+  type: PortalDocumentType,
+  tr: TrLike,
+): string {
+  return tr(PORTAL_DOCUMENT_LABEL_KEY[type]);
+}
 
 /** 書類番号のプレフィクス（doc-number.ts の DocPrefix に対応）。 */
 export const PORTAL_DOCUMENT_PREFIX: Record<

@@ -9,6 +9,7 @@
 
 import { NumberInput, Stack, Switch, TextInput } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
+import { useTranslations } from "next-intl";
 import { useState, useTransition } from "react";
 import {
   deleteDefectTypes,
@@ -44,6 +45,7 @@ export function EditDefectTypeModal({
   target: DefectTypeModalTarget | null;
   onDone?: () => void;
 }) {
+  const tr = useTranslations();
   const [isPending, startTransition] = useTransition();
 
   const [nameJa, setNameJa] = useState("");
@@ -81,15 +83,17 @@ export function EditDefectTypeModal({
       });
       if (result.ok) {
         notifications.show({
-          title: "保存しました",
-          message: `不良種類「${label(target)}」を更新しました`,
+          title: tr("common.saved2"),
+          message: tr("master.defectTypeModals.updated", {
+            name: label(target),
+          }),
           color: "green",
         });
         resetAndClose();
         onDone?.();
       } else {
         notifications.show({
-          title: "エラー",
+          title: tr("common.error2"),
           message: result.error,
           color: "red",
         });
@@ -104,14 +108,14 @@ export function EditDefectTypeModal({
       onSubmit={handleSubmit}
       opened={opened}
       size="md"
-      submitLabel="保存"
-      title="不良種類の編集"
+      submitLabel={tr("common.save2")}
+      title={tr("master.defectTypes.editTheDefectType")}
     >
       <Stack gap="sm">
         <TextInput
-          description="作成後は変更できません"
+          description={tr("common.itCannotBeChangedOnceCreated")}
           disabled
-          label="コード"
+          label={tr("master.defectTypeModals.code")}
           readOnly
           value={target?.code ?? ""}
         />
@@ -121,7 +125,7 @@ export function EditDefectTypeModal({
             onChange: (e: React.ChangeEvent<HTMLInputElement>) =>
               setNameJa(e.currentTarget.value),
           }}
-          label="名称"
+          label={tr("common.name2")}
           required
           translationsProps={{
             value: nameTranslations,
@@ -130,14 +134,14 @@ export function EditDefectTypeModal({
         />
         <NumberInput
           allowDecimal={false}
-          label="表示順"
+          label={tr("common.sortOrder")}
           min={0}
           onChange={setSortOrder}
           value={sortOrder}
         />
         <Switch
           checked={isActive}
-          label="有効"
+          label={tr("common.enabled")}
           onChange={(e) => setIsActive(e.currentTarget.checked)}
         />
       </Stack>
@@ -154,14 +158,15 @@ export function DeleteDefectTypeModal({
   target: DefectTypeModalTarget | null;
   onDone?: () => void;
 }) {
+  const tr = useTranslations();
   const [isPending, startTransition] = useTransition();
   return (
     <ConfirmModal
-      confirmLabel="削除する"
+      confirmLabel={tr("common.delete2")}
       loading={isPending}
       message={
         target
-          ? `不良種類「${label(target)}」を削除します。この操作は取り消せません。`
+          ? tr("master.defectTypeModals.deleteConfirm", { name: label(target) })
           : ""
       }
       onClose={onClose}
@@ -171,14 +176,16 @@ export function DeleteDefectTypeModal({
           const result = await deleteDefectTypes([target.id]);
           if (result.ok) {
             notifications.show({
-              title: "削除しました",
-              message: `不良種類「${label(target)}」を削除しました`,
+              title: tr("common.deleted"),
+              message: tr("master.defectTypeModals.deleted", {
+                name: label(target),
+              }),
               color: "green",
             });
             onDone?.();
           } else {
             notifications.show({
-              title: "エラー",
+              title: tr("common.error2"),
               message: result.error,
               color: "red",
             });
@@ -186,8 +193,8 @@ export function DeleteDefectTypeModal({
         });
       }}
       opened={opened}
-      title="不良種類の削除"
-      warning="この不良種類を参照する不良記録が存在する場合は削除できません。無効化をご検討ください。"
+      title={tr("master.defectTypes.deleteTheDefectType")}
+      warning={tr("master.defectTypes.itCannotBeDeletedWhileDefect")}
     />
   );
 }
@@ -201,18 +208,27 @@ export function ToggleDefectTypeActiveModal({
   target: DefectTypeModalTarget | null;
   onDone?: () => void;
 }) {
+  const tr = useTranslations();
   const [isPending, startTransition] = useTransition();
   const isActive = target?.isActive ?? true;
   return (
     <ConfirmModal
       confirmColor={isActive ? "red" : "blue"}
-      confirmLabel={isActive ? "無効化する" : "有効化する"}
+      confirmLabel={
+        isActive
+          ? tr("master.defectTypeModals.disableAction")
+          : tr("common.enable2")
+      }
       loading={isPending}
       message={
         target
           ? isActive
-            ? `不良種類「${label(target)}」を無効化します。新規の不良記録で選択できなくなります。`
-            : `不良種類「${label(target)}」を有効化します。再び不良記録で選択できるようになります。`
+            ? tr("master.defectTypeModals.disableConfirm", {
+                name: label(target),
+              })
+            : tr("master.defectTypeModals.enableConfirm", {
+                name: label(target),
+              })
           : ""
       }
       onClose={onClose}
@@ -222,14 +238,20 @@ export function ToggleDefectTypeActiveModal({
           const result = await setDefectTypesActive([target.id], !isActive);
           if (result.ok) {
             notifications.show({
-              title: isActive ? "無効化しました" : "有効化しました",
-              message: `不良種類「${label(target)}」を${isActive ? "無効化" : "有効化"}しました`,
+              title: isActive ? tr("common.disabled2") : tr("common.enabled2"),
+              message: isActive
+                ? tr("master.defectTypeModals.disabled", {
+                    name: label(target),
+                  })
+                : tr("master.defectTypeModals.enabled", {
+                    name: label(target),
+                  }),
               color: "green",
             });
             onDone?.();
           } else {
             notifications.show({
-              title: "エラー",
+              title: tr("common.error2"),
               message: result.error,
               color: "red",
             });
@@ -237,7 +259,11 @@ export function ToggleDefectTypeActiveModal({
         });
       }}
       opened={opened}
-      title={isActive ? "不良種類の無効化" : "不良種類の有効化"}
+      title={
+        isActive
+          ? tr("master.defectTypeModals.disableTitle")
+          : tr("master.defectTypes.enableTheDefectType")
+      }
     />
   );
 }

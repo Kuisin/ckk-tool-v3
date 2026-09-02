@@ -26,6 +26,7 @@ import {
   TextInput,
 } from "@mantine/core";
 import { IconAlertTriangle, IconPlus, IconTrash } from "@tabler/icons-react";
+import { fillMessage } from "@/lib/i18n";
 import type { DefectTypeView } from "@/lib/step-records";
 import {
   checkDefectList,
@@ -222,7 +223,10 @@ export function StepQuantityForm({
             ? m.steps.quantity.negative
             : issue.kind === "INCOMPLETE"
               ? m.steps.quantity.incomplete
-              : m.steps.quantity.overInput(issue.sum, issue.input)}
+              : fillMessage(m.steps.quantity.overInput, {
+                  sum: issue.sum,
+                  input: issue.input,
+                })}
         </Alert>
       )}
     </Stack>

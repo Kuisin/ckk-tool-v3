@@ -21,6 +21,7 @@ import {
   IconX,
 } from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { useState, useTransition } from "react";
 import {
   type ProbeResult,
@@ -34,6 +35,8 @@ import {
   AI_PROVIDERS,
   type AiProvider,
   type AiProviderSettings,
+  aiProviderLabel,
+  aiProviderNote,
   DEFAULT_AI_PROVIDER_SETTINGS,
   isExternalProvider,
   type TokenStatus,
@@ -52,24 +55,25 @@ interface Props {
 function tokenAlert(
   status: TokenStatus,
   keyEnv: string,
+  tr: ReturnType<typeof useTranslations>,
 ): { color: string; message: string } | null {
   switch (status) {
     case "rotate-pending":
       return {
         color: "orange",
-        message:
-          "暗号鍵が更新されています。設定を保存し直すと、新しい鍵で暗号化されます。",
+        message: tr("settings.aiProviderForm.keyRotatedMessage"),
       };
     case "undecryptable":
       return {
         color: "red",
-        message:
-          "API トークンを復号できません（暗号鍵が変わった可能性があります）。トークンを入力し直してください。",
+        message: tr("settings.aiProviderForm.cannotDecryptTokenMessage"),
       };
     case "no-key":
       return {
         color: "red",
-        message: `暗号鍵（${keyEnv}）が未設定のため、API トークンを保存・使用できません。システム管理者へ連絡してください。`,
+        message: tr("settings.aiProviderForm.noEncryptionKeyMessage", {
+          keyEnv,
+        }),
       };
     default:
       return null;
@@ -83,6 +87,7 @@ function StageResult({
   label: string;
   stage: ProbeResult["struct"];
 }) {
+  const tr = useTranslations();
   return (
     <Group gap="xs" wrap="nowrap">
       {stage.ok ? (
@@ -94,10 +99,10 @@ function StageResult({
         {label}
       </Text>
       <Text c="dimmed" ff="mono" size="xs">
-        {stage.model || "(既定)"}
+        {stage.model || tr("settings.aiProviderForm.default")}
       </Text>
       <Badge color={stage.ok ? "green" : "red"} variant="light">
-        {stage.ok ? `${stage.ms} ms` : "失敗"}
+        {stage.ok ? `${stage.ms} ms` : tr("common.failure")}
       </Badge>
       {stage.error && (
         <Text c="red" size="xs" style={{ minWidth: 0 }} truncate>
@@ -116,6 +121,7 @@ function StageResult({
  * 経路がそもそも無い。
  */
 export function AiProviderForm({ initial }: Props) {
+  const tr = useTranslations();
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [testing, setTesting] = useState(false);
@@ -133,7 +139,7 @@ export function AiProviderForm({ initial }: Props) {
 
   const preset = AI_PROVIDER_PRESETS[settings.provider];
   const external = isExternalProvider(settings.provider);
-  const alert = tokenAlert(initial.tokenStatus, initial.encryptionKeyEnv);
+  const alert = tokenAlert(initial.tokenStatus, initial.encryptionKeyEnv, tr);
   const hasStoredToken =
     initial.tokenStatus === "set" || initial.tokenStatus === "rotate-pending";
 
@@ -164,8 +170,10 @@ export function AiProviderForm({ initial }: Props) {
       if (res.ok) {
         notifications.show({
           color: "green",
-          title: "保存しました",
-          message: "AI プロバイダの設定を更新しました",
+          title: tr("common.saved2"),
+          message: tr(
+            "settings.aiProviderForm.theAiProviderSettingsWereUpdated",
+          ),
         });
         setToken("");
         setClearToken(false);
@@ -173,7 +181,7 @@ export function AiProviderForm({ initial }: Props) {
       } else {
         notifications.show({
           color: "red",
-          title: "エラー",
+          title: tr("common.error2"),
           message: res.error,
         });
       }
@@ -189,15 +197,17 @@ export function AiProviderForm({ initial }: Props) {
       const allOk = res.data.struct.ok && res.data.vision.ok;
       notifications.show({
         color: allOk ? "green" : "orange",
-        title: allOk ? "接続できました" : "一部が失敗しました",
+        title: allOk
+          ? tr("settings.aiProviderForm.connectionSucceeded")
+          : tr("settings.aiProviderForm.someOfItFailed"),
         message: allOk
-          ? "構造化・画像読み取りの両方に応答がありました"
-          : "下の結果を確認してください",
+          ? tr("settings.aiProviderForm.bothTheStructuredAndVisionReads")
+          : tr("settings.aiProviderForm.checkTheResultBelow"),
       });
     } else {
       notifications.show({
         color: "red",
-        title: "接続テストに失敗",
+        title: tr("settings.aiProviderForm.theConnectionTestFailed"),
         message: res.error,
       });
     }
@@ -212,8 +222,10 @@ export function AiProviderForm({ initial }: Props) {
       )}
 
       <FormSection
-        description="注文請書の取込（紙 → JSON）と、AI 補助タスクの両方がこの設定を使います。文字の読み取り（OCR）は常に社内で実行され、外部へは送信しません。"
-        title="接続先"
+        description={tr(
+          "settings.aiProviderForm.bothOrderAcceptanceIntakePaperJson",
+        )}
+        title={tr("settings.aiProviderForm.endpoint")}
       >
         <Stack gap="sm">
           <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="sm">
@@ -221,18 +233,20 @@ export function AiProviderForm({ initial }: Props) {
               allowDeselect={false}
               data={AI_PROVIDERS.map((p) => ({
                 value: p,
-                label: AI_PROVIDER_PRESETS[p].label,
+                label: aiProviderLabel(p, tr),
               }))}
-              description={preset.note}
-              label="プロバイダ"
+              description={aiProviderNote(settings.provider, tr)}
+              label={tr("settings.aiProviderForm.provider")}
               onChange={(v) =>
                 v && setSettings((s) => ({ ...s, provider: v as AiProvider }))
               }
               value={settings.provider}
             />
             <TextInput
-              description="空欄でプロバイダの既定を使用"
-              label="ベース URL"
+              description={tr(
+                "settings.aiProviderForm.leaveBlankToUseTheProvider",
+              )}
+              label={tr("settings.aiProviderForm.baseUrl")}
               onChange={(e) => {
                 // 値は**同期的に**読む。updater の中で e.currentTarget を
                 // 読むと、React が updater を呼ぶ頃には dispatch が終わって
@@ -244,8 +258,10 @@ export function AiProviderForm({ initial }: Props) {
               value={settings.baseUrl}
             />
             <TextInput
-              description="注文書の画像を読むモデル"
-              label="画像読み取りモデル"
+              description={tr(
+                "settings.aiProviderForm.modelThatReadsTheOrderImage",
+              )}
+              label={tr("settings.aiProviderForm.visionModel")}
               onChange={(e) => {
                 const value = e.currentTarget.value;
                 setSettings((s) => ({ ...s, visionModel: value }));
@@ -254,8 +270,8 @@ export function AiProviderForm({ initial }: Props) {
               value={settings.visionModel}
             />
             <TextInput
-              description="空欄なら画像読み取りモデルと同じものを使う"
-              label="構造化モデル"
+              description={tr("settings.aiProviderForm.ifBlankTheSameModelAs")}
+              label={tr("settings.aiProviderForm.structuredModel")}
               onChange={(e) => {
                 const value = e.currentTarget.value;
                 setSettings((s) => ({ ...s, structModel: value }));
@@ -267,21 +283,20 @@ export function AiProviderForm({ initial }: Props) {
 
           <Group gap="sm">
             <GhostButton disabled={isDefault} onClick={revertToDefault}>
-              既定に戻す
+              {tr("settings.aiProviderForm.resetToDefault")}
             </GhostButton>
             <Text c="dimmed" size="xs">
               {isDefault
-                ? "現在は既定（社内 GPU の Ollama）です"
+                ? tr("settings.aiProviderForm.currentlyTheDefaultOllamaOnThe")
                 : hasStoredToken
-                  ? "社内 GPU の Ollama に戻します。保存すると API トークンも削除されます"
-                  : "社内 GPU の Ollama に戻します"}
+                  ? tr("settings.aiProviderForm.revertsToOllamaOnTheIn")
+                  : tr("settings.aiProviderForm.revertsToOllamaOnTheIn2")}
             </Text>
           </Group>
 
           {external && (
             <Alert color="orange" icon={<IconWorld size={16} />}>
-              外部の AI
-              サービスを使用します。注文書の画像と読み取り結果が社外へ送信されます。
+              {tr("settings.aiProviderForm.itUsesAnExternalAiService")}
             </Alert>
           )}
         </Stack>
@@ -290,23 +305,27 @@ export function AiProviderForm({ initial }: Props) {
       <FormSection
         description={
           external
-            ? "プロバイダで発行した API トークン。保存後は下 4 桁のみ表示されます。"
-            : "認証付きの Ollama を使う場合のみ入力してください。"
+            ? tr("settings.aiProviderForm.theApiTokenIssuedByThe")
+            : tr("settings.aiProviderForm.onlyFillThisInIfYour")
         }
-        title="認証"
+        title={tr("settings.aiProviderForm.authentication")}
       >
         <Stack gap="sm">
           <PasswordInput
             description={
               hasStoredToken
-                ? `保存済み: ●●●●●●${initial.tokenLast4 ?? ""}（空欄のままにすると変更しません）`
-                : "未設定"
+                ? tr("settings.aiProviderForm.savedTokenMasked", {
+                    last4: initial.tokenLast4 ?? "",
+                  })
+                : tr("common.notSet2")
             }
             disabled={clearToken}
-            label="API トークン"
+            label={tr("settings.aiProviderForm.aPIToken")}
             onChange={(e) => setToken(e.currentTarget.value)}
             placeholder={
-              hasStoredToken ? "変更する場合のみ入力" : "トークンを貼り付け"
+              hasStoredToken
+                ? tr("settings.aiProviderForm.enterOnlyToChange")
+                : tr("settings.aiProviderForm.pasteTheToken")
             }
             value={token}
           />
@@ -315,10 +334,10 @@ export function AiProviderForm({ initial }: Props) {
               {clearToken ? (
                 <>
                   <Text c="red" size="xs">
-                    保存すると、登録済みのトークンを削除します。
+                    {tr("settings.aiProviderForm.savingDeletesTheStoredToken")}
                   </Text>
                   <GhostButton onClick={() => setClearToken(false)}>
-                    取り消す
+                    {tr("common.revoke")}
                   </GhostButton>
                 </>
               ) : (
@@ -328,14 +347,16 @@ export function AiProviderForm({ initial }: Props) {
                     setToken("");
                   }}
                 >
-                  トークンを削除
+                  {tr("settings.aiProviderForm.deleteTheToken")}
                 </GhostButton>
               )}
             </Group>
           )}
           <NumberInput
-            description="1 回の応答に許す最大トークン数（Anthropic では必須）"
-            label="最大出力トークン"
+            description={tr(
+              "settings.aiProviderForm.theMaximumTokensAllowedPerResponse",
+            )}
+            label={tr("settings.aiProviderForm.maxOutputTokens")}
             max={200000}
             min={256}
             onChange={(v) =>
@@ -352,8 +373,10 @@ export function AiProviderForm({ initial }: Props) {
       </FormSection>
 
       <FormSection
-        description="抽出サーバー（po-extract）から実際に 1 回ずつ呼び出して確かめます。保存前の入力でも試せます。"
-        title="接続テスト"
+        description={tr(
+          "settings.aiProviderForm.callsTheExtractionServerPoExtract",
+        )}
+        title={tr("settings.aiProviderForm.testConnection")}
       >
         <Stack gap="sm">
           <Group>
@@ -362,13 +385,19 @@ export function AiProviderForm({ initial }: Props) {
               loading={testing}
               onClick={test}
             >
-              接続テスト
+              {tr("settings.aiProviderForm.testConnection")}
             </SecondaryButton>
           </Group>
           {probe && (
             <Stack gap="xs">
-              <StageResult label="構造化" stage={probe.struct} />
-              <StageResult label="画像読み取り" stage={probe.vision} />
+              <StageResult
+                label={tr("settings.aiProviderForm.structured")}
+                stage={probe.struct}
+              />
+              <StageResult
+                label={tr("settings.aiProviderForm.imageReading")}
+                stage={probe.vision}
+              />
             </Stack>
           )}
         </Stack>

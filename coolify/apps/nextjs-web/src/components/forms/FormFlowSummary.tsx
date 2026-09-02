@@ -14,7 +14,7 @@
 
 import { Alert, Badge, Group, Paper, Stack, Text } from "@mantine/core";
 import { IconAlertTriangle, IconArrowRight } from "@tabler/icons-react";
-import { useLocale } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import {
   ApproverPermissionBadge,
   type FlowApprover,
@@ -33,6 +33,7 @@ export function FormFlowSummary({
   groupOptions: { value: string; label: string }[];
   approversByGroup: Record<string, FlowApprover[]>;
 }) {
+  const tr = useTranslations();
   const locale = useLocale();
   if (steps.length === 0) {
     return (
@@ -41,14 +42,17 @@ export function FormFlowSummary({
         icon={<IconAlertTriangle size={16} />}
       >
         {approvalEnabled
-          ? "承認の段がまだありません。このままだと提出しても承認依頼が始まらず、回答は「提出済」で止まります。「編集」から段を追加してください。"
-          : "承認の段はまだありません。"}
+          ? tr("forms.formFlowSummary.thereAreNoApprovalStepsYet")
+          : tr("forms.formFlowSummary.thereAreNoApprovalStepsYet2")}
       </Alert>
     );
   }
 
   const groupLabel = (id: string | null) =>
-    id ? (groupOptions.find((o) => o.value === id)?.label ?? "（不明）") : null;
+    id
+      ? (groupOptions.find((o) => o.value === id)?.label ??
+        tr("common.unknown"))
+      : null;
 
   return (
     <Stack gap="xs">
@@ -66,7 +70,7 @@ export function FormFlowSummary({
         const target = step.groupId
           ? groupLabel(step.groupId)
           : (step.approvers ?? []).map((a) => a.label).join("、") ||
-            "承認者が未設定";
+            tr("forms.formFlowSummary.noApproverIsSet");
         return (
           <Paper
             // 段は並び順そのものが同一性（保存のたびに作り直される）。
@@ -81,7 +85,8 @@ export function FormFlowSummary({
                 {i + 1}
               </Badge>
               <Text fw={600} size="sm">
-                {step.nameJa || `第 ${i + 1} 承認`}
+                {step.nameJa ||
+                  tr("master.approvalFlowEditor.nthApproval", { n: i + 1 })}
               </Text>
               <IconArrowRight size={14} />
               <Text size="sm">{target}</Text>

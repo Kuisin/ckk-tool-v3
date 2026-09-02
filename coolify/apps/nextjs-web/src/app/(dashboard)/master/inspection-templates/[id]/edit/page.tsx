@@ -7,6 +7,10 @@ import {
   localized,
   localizedTranslations,
 } from "@/lib/format";
+import {
+  fetchApprovalGroupOptions,
+  fetchInspectionTemplateGroupOptions,
+} from "../../data";
 
 export const dynamic = "force-dynamic";
 
@@ -25,6 +29,11 @@ export default async function MasterInspectionTemplatesEditPage({
     where: { id },
     include: {
       relatedProcessStep: true,
+      product: { select: { name: true } },
+      approvers: {
+        include: { user: { select: { displayName: true } } },
+        orderBy: { sortOrder: "asc" },
+      },
       _count: {
         select: { workOrderStepTemplates: true, inspectionRecords: true },
       },
@@ -37,9 +46,14 @@ export default async function MasterInspectionTemplatesEditPage({
   }
 
   const name = r.name as LocalizedText | null;
+  const [groupOptions, templateGroupOptions] = await Promise.all([
+    fetchApprovalGroupOptions(),
+    fetchInspectionTemplateGroupOptions(),
+  ]);
 
   return (
     <InspectionTemplateForm
+      groupOptions={groupOptions}
       initial={{
         id: r.id,
         code: r.code,
@@ -52,11 +66,25 @@ export default async function MasterInspectionTemplatesEditPage({
         relatedProcessStepLabel: r.relatedProcessStep
           ? `${localized(r.relatedProcessStep.name as LocalizedText | null)}（${r.relatedProcessStep.code}）`
           : "",
+        productId: r.productId != null ? String(r.productId) : null,
+        productLabel: r.product
+          ? localized(r.product.name as LocalizedText | null)
+          : "",
+        groupId: r.groupId != null ? String(r.groupId) : null,
         samplingMode: r.samplingMode,
         samplingValue: r.samplingValue == null ? null : Number(r.samplingValue),
         recordStyle: r.recordStyle,
+        layoutStyle: r.layoutStyle,
+        sampleNaming: r.sampleNaming,
+        approvalGroupId:
+          r.approvalGroupId != null ? String(r.approvalGroupId) : null,
+        approvers: r.approvers.map((a) => ({
+          value: a.userId,
+          label: a.user.displayName,
+        })),
         isActive: r.isActive,
       }}
+      templateGroupOptions={templateGroupOptions}
     />
   );
 }

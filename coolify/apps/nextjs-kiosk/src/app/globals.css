@@ -6,6 +6,14 @@ body {
   height: 100%;
 }
 
+/* 文字の大きさ（利用者ごと。users.text_scale — nextjs-web と同じ列）。
+   rem 基準を動かすので、文字だけでなく余白や部品の高さも一緒に伸び縮みする。
+   倍率は layout がログイン中の設定から <style> で :root に流す
+   （lib/text-scale.ts）。未ログイン・未設定は 1 = 従来どおり。 */
+html {
+  font-size: calc(100% * var(--app-text-scale, 1));
+}
+
 body {
   -webkit-tap-highlight-color: transparent; /* タブレットのタップハイライト抑止 */
   overscroll-behavior-y: none; /* 全画面キオスクでの引っ張り更新を抑止 */

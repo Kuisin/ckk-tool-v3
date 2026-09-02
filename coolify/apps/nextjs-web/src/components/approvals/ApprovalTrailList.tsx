@@ -10,6 +10,7 @@
  */
 
 import { Badge, Group, Stack, Text } from "@mantine/core";
+import { useTranslations } from "next-intl";
 import { useFormat } from "@/components/layout/PreferencesProvider";
 
 /** 承認記録 1 件（lib/approvals fetchApprovalTrail の records と同形）。 */
@@ -34,18 +35,18 @@ export interface ApprovalTrailView {
   records: ApprovalTrailRecordView[];
 }
 
-const TRAIL_ACTION_LABEL: Record<string, string> = {
-  APPROVED: "承認",
-  REJECTED: "差し戻し",
-};
-
 /** trail 内の総記録数（表示要否の判定用）。 */
 export function countTrailRecords(trail: ApprovalTrailView[]): number {
   return trail.reduce((n, t) => n + t.records.length, 0);
 }
 
 export function ApprovalTrailList({ trail }: { trail: ApprovalTrailView[] }) {
+  const tr = useTranslations();
   const fmt = useFormat();
+  const trailActionLabel: Record<string, string> = {
+    APPROVED: tr("common.approve"),
+    REJECTED: tr("common.reject"),
+  };
   const records = trail
     .flatMap((req) =>
       req.records.map((rec, i) => ({
@@ -60,7 +61,7 @@ export function ApprovalTrailList({ trail }: { trail: ApprovalTrailView[] }) {
   return (
     <Stack gap="xs">
       <Text c="dimmed" fw={600} size="xs">
-        承認記録
+        {tr("approvals.approvalTrailList.approvalRecord")}
       </Text>
       {records.map((r) => (
         <Group gap="sm" key={r.key} wrap="nowrap">
@@ -75,7 +76,7 @@ export function ApprovalTrailList({ trail }: { trail: ApprovalTrailView[] }) {
             size="sm"
             variant="light"
           >
-            {TRAIL_ACTION_LABEL[r.action] ?? r.action}
+            {trailActionLabel[r.action] ?? r.action}
           </Badge>
           <Text size="xs">
             {r.approver}

@@ -26,6 +26,7 @@ import {
   IconCylinder,
   IconDeviceTablet,
   IconDeviceTabletCog,
+  IconDeviceTv,
   IconFileDescription,
   IconFileImport,
   IconFileInvoice,
@@ -119,6 +120,7 @@ export const ICON_MAP: Record<string, AppIcon> = {
   IconQrcode,
   IconDeviceTablet,
   IconDeviceTabletCog,
+  IconDeviceTv,
   IconFileImport,
   IconShieldLock,
   // 一般カテゴリ: フォーム (CM02) / 社内文書 (CM03)

@@ -30,6 +30,7 @@ import {
   IconTrash,
 } from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { useMemo, useState, useTransition } from "react";
 import {
   addLineComment,
@@ -82,6 +83,7 @@ function CommentThread({
   currentUserId: string | null;
   onDone: () => void;
 }) {
+  const tr = useTranslations();
   const fmt = useFormat();
   const isMobile = useIsMobile();
   const [isPending, startTransition] = useTransition();
@@ -95,8 +97,8 @@ function CommentThread({
         onDone();
       } else {
         notifications.show({
-          title: "エラー",
-          message: r.error ?? "処理に失敗しました",
+          title: tr("common.error2"),
+          message: r.error ?? tr("common.theOperationFailed"),
           color: "red",
         });
       }
@@ -123,19 +125,27 @@ function CommentThread({
               size="xs"
               variant="light"
             >
-              {thread.status === "RESOLVED" ? "解決済" : "未解決"}
+              {thread.status === "RESOLVED"
+                ? tr("common.resolved")
+                : tr("common.unresolved")}
             </Badge>
             {outdated && (
-              <Tooltip label="この行は編集で変更・削除されました。当時の内容だけが残っています">
+              <Tooltip
+                label={tr("documents.reviewView.thisRowWasChangedOrDeleted")}
+              >
                 <Badge color="gray" size="xs" variant="light">
-                  この行は変更されました
+                  {tr("documents.reviewView.thisRowWasChanged")}
                 </Badge>
               </Tooltip>
             )}
             <Text c="dimmed" size="xs">
               {outdated
-                ? `旧 ${thread.anchorLine} 行目`
-                : `${thread.line} 行目`}
+                ? tr("documents.reviewView.oldLineNumber", {
+                    n: thread.anchorLine ?? thread.line ?? 0,
+                  })
+                : tr("documents.reviewView.lineNumber", {
+                    n: thread.line ?? 0,
+                  })}
             </Text>
           </Group>
           <GhostButton
@@ -154,7 +164,9 @@ function CommentThread({
               )
             }
           >
-            {thread.status === "RESOLVED" ? "未解決に戻す" : "解決にする"}
+            {thread.status === "RESOLVED"
+              ? tr("documents.reviewView.markAsUnresolved")
+              : tr("documents.reviewView.markAsResolved")}
           </GhostButton>
         </Group>
 
@@ -164,7 +176,7 @@ function CommentThread({
           size="xs"
           style={{ whiteSpace: "pre-wrap", wordBreak: "break-all" }}
         >
-          {thread.anchorText || "（空行）"}
+          {thread.anchorText || tr("documents.reviewView.blankLine")}
         </Text>
 
         {thread.comments.map((c) => (
@@ -172,7 +184,7 @@ function CommentThread({
             <Stack gap={2} style={{ flex: 1, minWidth: 0 }}>
               <Group gap="xs">
                 <Text fw={600} size="xs">
-                  {c.author ?? "（不明）"}
+                  {c.author ?? tr("common.unknown")}
                 </Text>
                 <Text c="dimmed" size="xs">
                   {fmt.dateTime(c.createdAt)}
@@ -184,7 +196,7 @@ function CommentThread({
             </Stack>
             {c.authorId && c.authorId === currentUserId && (
               <ActionIcon
-                aria-label="コメントを削除"
+                aria-label={tr("documents.reviewView.deleteTheComment")}
                 color="red"
                 onClick={() =>
                   run(() =>
@@ -207,7 +219,7 @@ function CommentThread({
             autosize
             minRows={1}
             onChange={(e) => setReply(e.currentTarget.value)}
-            placeholder="返信"
+            placeholder={tr("documents.reviewView.reply")}
             style={{ flex: 1, minWidth: isMobile ? "100%" : undefined }}
             value={reply}
           />
@@ -228,7 +240,7 @@ function CommentThread({
               )
             }
           >
-            返信
+            {tr("documents.reviewView.reply")}
           </GhostButton>
         </Group>
       </Stack>
@@ -249,6 +261,7 @@ export function ReviewView({
   blame: BlameLine[];
   currentUserId: string | null;
 }) {
+  const tr = useTranslations();
   const router = useRouter();
   const fmt = useFormat();
   const isMobile = useIsMobile();
@@ -288,8 +301,8 @@ export function ReviewView({
         router.refresh();
       } else {
         notifications.show({
-          title: "エラー",
-          message: r.error ?? "保存に失敗しました",
+          title: tr("common.error2"),
+          message: r.error ?? tr("common.couldNotSave"),
           color: "red",
         });
       }
@@ -306,7 +319,7 @@ export function ReviewView({
         </Group>
         <Switch
           checked={showResolved}
-          label="解決済みも表示"
+          label={tr("documents.reviewView.includeResolved")}
           onChange={(e) => setShowResolved(e.currentTarget.checked)}
         />
       </Group>
@@ -315,7 +328,7 @@ export function ReviewView({
         <Stack gap={0}>
           {lines.length === 0 && (
             <Text c="dimmed" p="md" size="sm">
-              本文がありません。
+              {tr("common.thereIsNoBodyText")}
             </Text>
           )}
           {lines.map((text, i) => {
@@ -387,7 +400,9 @@ export function ReviewView({
                   </Text>
 
                   <ActionIcon
-                    aria-label={`${no} 行目にコメント`}
+                    aria-label={tr("documents.reviewView.commentOnLine", {
+                      n: no,
+                    })}
                     color="blue"
                     mr={4}
                     mt={2}
@@ -410,7 +425,10 @@ export function ReviewView({
                         autosize
                         minRows={2}
                         onChange={(e) => setDraft(e.currentTarget.value)}
-                        placeholder={`${no} 行目へのコメント`}
+                        placeholder={tr(
+                          "documents.reviewView.commentPlaceholderForLine",
+                          { n: no },
+                        )}
                         value={draft}
                       />
                       <Group grow={isMobile} justify="flex-end">
@@ -418,7 +436,7 @@ export function ReviewView({
                           fullWidth={isMobile}
                           onClick={() => setComposeLine(null)}
                         >
-                          やめる
+                          {tr("documents.reviewView.stop")}
                         </GhostButton>
                         <PrimaryButton
                           disabled={!draft.trim()}
@@ -426,7 +444,7 @@ export function ReviewView({
                           loading={isPending}
                           onClick={() => submit(no)}
                         >
-                          コメントする
+                          {tr("documents.reviewView.comment")}
                         </PrimaryButton>
                       </Group>
                     </Stack>

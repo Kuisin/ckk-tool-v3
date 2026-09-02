@@ -94,11 +94,19 @@ export interface DesignKindDetection {
   latestFileLabel: string | null;
 }
 
-/** 判定の根拠を 1 行の日本語にする（フォームと詳細で同じ文言を使う）。 */
-export function describeDetection(d: DesignKindDetection): string {
+/**
+ * 判定の根拠を 1 行にする（フォームと詳細で同じ文言を使う）。
+ * 訳は呼び出し側の `tr` に委ねる（このファイルは pure / client-safe のみ）。
+ */
+export function describeDetection(
+  d: DesignKindDetection,
+  tr: (key: string, values?: Record<string, string | number | Date>) => string,
+): string {
   return d.versionCount === 0
-    ? "この製品にはまだ設計書がありません → 新規"
-    : `この製品には v${d.versionCount} まであります → 改訂`;
+    ? tr("sales.designRequests.noDesignYetSoNew")
+    : tr("sales.designRequests.hasVersionsSoRevision", {
+        versionCount: d.versionCount,
+      });
 }
 
 /**

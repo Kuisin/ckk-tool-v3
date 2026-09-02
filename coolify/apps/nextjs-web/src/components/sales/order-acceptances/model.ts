@@ -31,15 +31,25 @@ export interface AcceptanceLink {
   updatedAt: string;
 }
 
-/** 取込元 → バッジ表示（ラベル + 色）。 */
-export const INTAKE_SOURCE_BADGE: Record<
-  IntakeSource,
-  { label: string; color: string }
-> = {
-  FOLDER: { label: "監視フォルダ", color: "teal" },
-  UPLOAD: { label: "優先取込", color: "blue" },
-  MANUAL: { label: "手入力", color: "gray" },
-};
+/**
+ * 取込元 → バッジ表示（ラベル + 色）。
+ * ラベルは訳が要るため、呼び出し側の `tr` を受け取って組み立てる。
+ */
+export function intakeSourceBadge(
+  tr: (key: string) => string,
+): Record<IntakeSource, { label: string; color: string }> {
+  return {
+    FOLDER: {
+      label: tr("sales.orderAcceptances.watchedFolder"),
+      color: "teal",
+    },
+    UPLOAD: {
+      label: tr("sales.orderAcceptances.priorityIntake"),
+      color: "blue",
+    },
+    MANUAL: { label: tr("sales.orderAcceptances.manualEntry"), color: "gray" },
+  };
+}
 
 import type { FieldReview } from "@/lib/intake-review";
 

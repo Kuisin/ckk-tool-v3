@@ -8,6 +8,7 @@
  */
 
 import { notFound, redirect } from "next/navigation";
+import { getTranslations } from "next-intl/server";
 import type { ReactNode } from "react";
 import { auth } from "@/auth";
 import { DocsShell } from "@/components/docs/DocsShell";
@@ -24,6 +25,7 @@ export default async function InternalDocsLayout({
   params: Promise<{ lang: string }>;
   children: ReactNode;
 }) {
+  const tr = await getTranslations();
   const session = await auth();
   if (!session?.user) redirect("/login");
   const authz = await checkPermission("admin_manual", "READ");
@@ -33,10 +35,13 @@ export default async function InternalDocsLayout({
   if (!isDocLang(lang)) notFound();
   return (
     <DocsShell
-      crossLink={{ text: "マニュアル", url: `/manual/${lang}` }}
+      crossLink={{
+        text: tr("adminManual.layout.manual"),
+        url: `/manual/${lang}`,
+      }}
       lang={lang}
       searchApi="/admin-manual/search"
-      title="CKK 管理マニュアル"
+      title={tr("adminManual.layout.cKKAdminManual")}
       tree={internalSource.getPageTree(lang)}
     >
       {children}

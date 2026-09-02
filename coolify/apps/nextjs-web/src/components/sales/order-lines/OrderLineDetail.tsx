@@ -34,7 +34,7 @@ import {
   IconTruck,
 } from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
-import { useLocale } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { useState, useTransition } from "react";
 import { runStockCheck } from "@/app/(dashboard)/sales/order-lines/actions";
 import { useFormat } from "@/components/layout/PreferencesProvider";
@@ -54,7 +54,7 @@ import {
   ProcedurePanel,
   type ProcedureStage,
 } from "@/components/ui/ProcedurePanel";
-import { StatusBadge, statusLabel } from "@/components/ui/StatusBadge";
+import { StatusBadge } from "@/components/ui/StatusBadge";
 import {
   type AuditEntry,
   DetailShell,
@@ -71,6 +71,7 @@ import {
 // type-only import — lib/inventory は server-only（型はバンドルされない）。
 import type { StockCheckResult } from "@/lib/inventory";
 import { isLineStockCheckable } from "@/lib/order-line-core";
+import { statusLabel } from "@/lib/status-map";
 import type { OrderLine } from "./model";
 
 const BASE_PATH = "/sales/order-lines";
@@ -83,27 +84,37 @@ function OrderLineProcedurePanel({
   order: OrderLine;
   fmtDate: (v: string | null) => string;
 }) {
+  const tr = useTranslations();
   const stages: ProcedureStage[] = [
-    { key: "created", label: "作成", description: fmtDate(order.createdAt) },
-    { key: "confirmed", label: "確定", description: null },
+    {
+      key: "created",
+      label: tr("common.create2"),
+      description: fmtDate(order.createdAt),
+    },
+    { key: "confirmed", label: tr("common.confirmed"), description: null },
     {
       key: "production",
-      label: "製造",
+      label: tr("common.manufacture"),
       description:
         order.workOrders.length > 0
-          ? `指示書 ${order.workOrders.length} 件`
+          ? tr("sales.orderLineDetail.workOrdersCount", {
+              count: order.workOrders.length,
+            })
           : null,
       loading:
         order.status === "IN_PRODUCTION" || order.status === "PARTIAL_SHIPPED",
     },
     {
       key: "shipped",
-      label: "出荷",
+      label: tr("common.shipping"),
       description:
         order.status === "PARTIAL_SHIPPED"
-          ? `一部出荷 ${order.shippedQuantity}/${order.quantity}`
+          ? tr("sales.orderLineDetail.partiallyShippedProgress", {
+              shipped: order.shippedQuantity,
+              quantity: order.quantity,
+            })
           : order.status === "SHIPPED"
-            ? `${order.shippedQuantity} 本`
+            ? tr("common.quantityPcs", { quantity: order.shippedQuantity })
             : null,
     },
   ];
@@ -128,13 +139,13 @@ function OrderLineProcedurePanel({
   const sourceGroups: HandoffGroup[] = [
     {
       key: "acceptance",
-      title: "注文請書",
+      title: tr("common.orderAcceptance"),
       items: [
         {
           key: order.acceptanceNumber,
           label: order.acceptanceNumber,
           href: `/sales/order-acceptances/${order.acceptanceNumber}`,
-          note: "この明細の親書類",
+          note: tr("sales.orderLines.parentDocumentOfThisLine"),
         },
       ],
       emptyNote: "—",
@@ -143,13 +154,13 @@ function OrderLineProcedurePanel({
       ? [
           {
             key: "quote",
-            title: "見積書",
+            title: tr("common.quote"),
             items: [
               {
                 key: order.quoteNumber,
                 label: order.quoteNumber,
                 href: `/sales/quotes/${order.quoteNumber}`,
-                note: "注文請書の見積元",
+                note: tr("sales.orderLines.quoteTheOrderAcceptanceCameFrom"),
               },
             ],
             emptyNote: "—",
@@ -165,33 +176,54 @@ function OrderLineProcedurePanel({
   const handoffGroups: HandoffGroup[] = [
     {
       key: "work-orders",
-      title: "指示書（製造手配）",
-      summary: `手配済 ${allocated} / 受注 ${order.quantity} 本${
+      title: tr("sales.orderLines.workOrderProductionPlanning"),
+      summary:
         order.reservedStockQuantity > 0
-          ? `・在庫引当 ${order.reservedStockQuantity} 本`
-          : ""
-      }`,
+          ? tr("sales.orderLineDetail.allocatedProgressWithReserved", {
+              allocated,
+              quantity: order.quantity,
+              reserved: order.reservedStockQuantity,
+            })
+          : tr("sales.orderLineDetail.allocatedProgress", {
+              allocated,
+              quantity: order.quantity,
+            }),
       items: order.workOrders.map((w) => ({
         key: w.docNumber,
         label: w.docNumber,
         href: `/production/work-orders/${w.workOrderNumber}`,
         done: w.status === "COMPLETED",
-        note: `${statusLabel("WorkOrder", w.status)}・割当 ${w.allocatedQuantity} 本`,
+        note: tr("sales.orderLineDetail.workOrderNote", {
+          status: statusLabel("WorkOrder", w.status),
+          quantity: w.allocatedQuantity,
+        }),
       })),
-      emptyNote: "未手配（指示書なし）",
+      emptyNote: tr("sales.orderLines.notPlannedNoWorkOrder"),
     },
     {
       key: "delivery-orders",
-      title: "出荷書",
-      summary: `出荷済 ${order.shippedQuantity} / 受注 ${order.quantity} 本`,
+      title: tr("common.deliveryOrder"),
+      summary: tr("sales.orderLineDetail.shippedProgress", {
+        shipped: order.shippedQuantity,
+        quantity: order.quantity,
+      }),
       items: order.deliveryOrders.map((s, i) => ({
         key: `${s.number}-${i}`,
         label: s.number,
         href: `/shipping/delivery-orders/${s.number}`,
         done: s.status === "SHIPPED",
-        note: `${statusLabel("DeliveryOrder", s.status)}・${s.quantity} 本${s.type === "STOCK_STORAGE" ? "（在庫保管）" : ""}`,
+        note:
+          s.type === "STOCK_STORAGE"
+            ? tr("sales.orderLineDetail.deliveryOrderNoteStockStorage", {
+                status: statusLabel("DeliveryOrder", s.status),
+                quantity: s.quantity,
+              })
+            : tr("sales.orderLineDetail.deliveryOrderNote", {
+                status: statusLabel("DeliveryOrder", s.status),
+                quantity: s.quantity,
+              }),
       })),
-      emptyNote: "未手配（出荷書なし）",
+      emptyNote: tr("sales.orderLines.notPlannedNoDeliveryOrder"),
     },
   ];
 
@@ -220,6 +252,7 @@ export function OrderLineDetail({
   /** この注文明細に紐づく設計依頼（§10 — 設計タブ）。 */
   designRequests?: DesignRequestLink[];
 }) {
+  const tr = useTranslations();
   const locale = useLocale();
   const fmt = useFormat();
   const router = useRouter();
@@ -238,15 +271,15 @@ export function OrderLineDetail({
     (order.status === "CONFIRMED" || order.status === "IN_PRODUCTION") &&
     remainingToAllocate > 0;
   const woDisabledReason = order.isLocked
-    ? "承認依頼中のためロックされています"
+    ? tr("sales.orderLines.lockedWhileApprovalIsPending")
     : order.status === "DRAFT"
-      ? "注文請書の確定後に作成できます"
+      ? tr("sales.orderLines.youCanCreateThisOnceThe")
       : order.status === "CANCELLED"
-        ? "キャンセル済みの明細には作成できません"
+        ? tr("sales.orderLines.youCannotCreateThisOnA")
         : remainingToAllocate === 0
-          ? "受注数量まで手配済みです"
+          ? tr("sales.orderLines.everythingOrderedHasBeenPlanned")
           : order.status === "SHIPPED" || order.status === "PARTIAL_SHIPPED"
-            ? "出荷段階の明細には作成できません"
+            ? tr("sales.orderLines.youCannotCreateThisOnA2")
             : undefined;
   const woCreateHref = `/production/work-orders/new?orderLine=${order.uuid}`;
   const designCreateHref = `/sales/design-requests/new?orderLine=${order.uuid}`;
@@ -261,13 +294,13 @@ export function OrderLineDetail({
       order.status === "PARTIAL_SHIPPED") &&
     unshipped > 0;
   const doDisabledReason = order.isLocked
-    ? "承認依頼中のためロックされています"
+    ? tr("sales.orderLines.lockedWhileApprovalIsPending")
     : order.status === "DRAFT"
-      ? "注文請書の確定後に作成できます"
+      ? tr("sales.orderLines.youCanCreateThisOnceThe")
       : order.status === "CANCELLED"
-        ? "キャンセル済みの明細には作成できません"
+        ? tr("sales.orderLines.youCannotCreateThisOnA")
         : unshipped === 0
-          ? "受注数量まで出荷済みです"
+          ? tr("sales.orderLines.everythingOrderedHasBeenShipped")
           : undefined;
   const doCreateHref = `/shipping/delivery-orders/new?orderLine=${order.uuid}`;
   const [stockResult, setStockResult] = useState<StockCheckResult | null>(null);
@@ -283,7 +316,7 @@ export function OrderLineDetail({
         router.refresh();
       } else {
         notifications.show({
-          title: "エラー",
+          title: tr("common.error2"),
           message: result.error,
           color: "red",
         });
@@ -302,7 +335,7 @@ export function OrderLineDetail({
               loading={isChecking}
               onClick={runStock}
             >
-              在庫照合
+              {tr("sales.orderLines.stockCheck")}
             </SecondaryButton>
           )}
           {/* 明細単位のキャンセルは廃止 — キャンセルは注文請書（SA24）から
@@ -311,14 +344,14 @@ export function OrderLineDetail({
           <ResourceActions
             menuItems={[
               {
-                label: "指示書を作成",
+                label: tr("sales.orderLines.createAWorkOrder"),
                 icon: <IconSettings2 size={14} />,
                 disabled: !woCreatable,
                 disabledReason: woDisabledReason,
                 onClick: () => router.push(woCreateHref),
               },
               {
-                label: "出荷書を作成",
+                label: tr("common.createADeliveryOrder"),
                 icon: <IconTruck size={14} />,
                 disabled: !doCreatable,
                 disabledReason: doDisabledReason,
@@ -327,19 +360,23 @@ export function OrderLineDetail({
               // §10 設計依頼は受注と並行する任意の側枝なので、NextStepCard
               // （＝唯一の次の一歩）ではなくここに置く。
               {
-                label: "設計依頼を起票",
+                label: tr("common.raiseADesignRequest"),
                 icon: <IconRuler2 size={14} />,
                 disabled: order.isLocked || order.status === "CANCELLED",
                 disabledReason: order.isLocked
-                  ? "承認依頼中のためロックされています"
-                  : "キャンセル済みの明細には起票できません",
+                  ? tr("sales.orderLines.lockedWhileApprovalIsPending")
+                  : tr("sales.orderLines.youCannotRaiseThisOnA"),
                 onClick: () => router.push(designCreateHref),
               },
             ]}
           />
         </Group>
       }
-      breadcrumbs={["販売", { label: "注文明細", href: BASE_PATH }, "詳細"]}
+      breadcrumbs={[
+        tr("common.sales"),
+        { label: tr("common.orderLine"), href: BASE_PATH },
+        tr("common.detailBreadcrumb"),
+      ]}
       createdAt={fmt.dateTime(order.createdAt)}
       status={<StatusBadge entity="OrderLine" status={order.status} />}
       title={order.orderNumber}
@@ -349,39 +386,45 @@ export function OrderLineDetail({
           未出荷が残るなら出荷書の作成へ誘導する（1 度に出すのは 1 枚）。 */}
       {woCreatable ? (
         <NextStepCard
-          buttonLabel="指示書を作成"
-          description={`未手配 ${remainingToAllocate} 本 — この注文明細をプリセレクトした状態で指示書ビルダーを開きます`}
+          buttonLabel={tr("sales.orderLines.createAWorkOrder")}
+          description={tr(
+            "sales.orderLineDetail.unplannedOpenWorkOrderBuilder",
+            { quantity: remainingToAllocate },
+          )}
           href={woCreateHref}
           icon={<IconSettings2 size={20} />}
-          title="次のステップ: 指示書の作成"
+          title={tr("sales.orderLines.nextStepCreateAWorkOrder")}
         />
       ) : doCreatable ? (
         <NextStepCard
-          buttonLabel="出荷書を作成"
-          description={`未出荷 ${unshipped} 本 — この注文明細を読み込んだ状態で出荷書フォームを開きます`}
+          buttonLabel={tr("common.createADeliveryOrder")}
+          description={tr(
+            "sales.orderLineDetail.unshippedOpenDeliveryOrderForm",
+            { quantity: unshipped },
+          )}
           href={doCreateHref}
           icon={<IconTruck size={20} />}
-          title="次のステップ: 出荷書の作成"
+          title={tr("common.nextStepCreateADeliveryOrder")}
         />
       ) : null}
       {order.isLocked && (
         <Alert
           color="orange"
           icon={<IconLock size={16} />}
-          title="承認依頼中ロック"
+          title={tr("sales.orderLines.lockedWhileApprovalIsPending2")}
           variant="light"
         >
-          この注文明細は承認依頼中のためロックされています。承認が完了するまで編集できません。
+          {tr("sales.orderLines.thisOrderLineIsLockedWhile")}
         </Alert>
       )}
 
       <SummaryGrid>
         <FieldValue
-          label="注文明細番号"
+          label={tr("common.orderLineNumber")}
           value={<DocNumber>{order.orderNumber}</DocNumber>}
         />
         <FieldValue
-          label="顧客"
+          label={tr("common.customer")}
           value={
             order.customerBranchName
               ? `${order.customerName} / ${order.customerBranchName}`
@@ -389,12 +432,12 @@ export function OrderLineDetail({
           }
         />
         <FieldValue
-          label="顧客注文書番号"
+          label={tr("common.customerOrderRef")}
           value={order.customerOrderRef ?? "—"}
         />
-        <FieldValue label="製品" value={order.productName} />
+        <FieldValue label={tr("common.product")} value={order.productName} />
         <FieldValue
-          label="注文種別"
+          label={tr("common.orderType")}
           value={
             <Badge color="gray" variant="light">
               {orderTypeLabel(order.orderType, locale) ?? order.orderType}
@@ -402,36 +445,39 @@ export function OrderLineDetail({
           }
         />
         <FieldValue
-          label="数量"
+          label={tr("common.quantity")}
           value={
             <Text className="tabular-nums" size="sm" span>
-              {order.quantity} 本
+              {tr("common.quantityPcs", { quantity: order.quantity })}
             </Text>
           }
         />
         <FieldValue
-          label="単価"
+          label={tr("common.unitPrice")}
           value={<MoneyText ta="left" value={order.unitPrice} />}
         />
         <FieldValue
-          label="金額"
+          label={tr("common.amount")}
           value={<MoneyText ta="left" value={order.amount} />}
         />
-        <FieldValue label="納期" value={fmt.date(order.deliveryDate)} />
         <FieldValue
-          label="ロット番号"
+          label={tr("common.deliveryDate")}
+          value={fmt.date(order.deliveryDate)}
+        />
+        <FieldValue
+          label={tr("common.lotNumber")}
           value={
             order.lotNumber != null ? (
               <DocNumber>{order.lotNumber}</DocNumber>
             ) : (
               <Text c="dimmed" size="sm" span>
-                未採番（指示書作成時に採番）
+                {tr("sales.orderLines.notNumberedNumberedWhenTheWork")}
               </Text>
             )
           }
         />
         <FieldValue
-          label="見積元"
+          label={tr("sales.orderLines.quoteSource")}
           value={
             order.quoteNumber ? (
               <Anchor
@@ -447,34 +493,46 @@ export function OrderLineDetail({
             )
           }
         />
-        <FieldValue label="最終需要家" value={order.endUserName ?? "—"} />
-        {/* 営業担当・作成者は注文請書ヘッダの値（行では編集しない）。 */}
-        <FieldValue label="営業担当" value={order.salesRepName} />
-        <FieldValue label="作成者" value={order.createdByName} />
         <FieldValue
-          label="引当済み在庫"
+          label={tr("common.endUser")}
+          value={order.endUserName ?? "—"}
+        />
+        {/* 営業担当・作成者は注文請書ヘッダの値（行では編集しない）。 */}
+        <FieldValue label={tr("common.salesRep")} value={order.salesRepName} />
+        <FieldValue
+          label={tr("common.createdBy")}
+          value={order.createdByName}
+        />
+        <FieldValue
+          label={tr("sales.orderLines.allocatedStock")}
           value={
             order.reservedStockQuantity > 0 ? (
               <Group gap="xs" wrap="nowrap">
                 <Text className="tabular-nums" size="sm" span>
-                  {order.reservedStockQuantity} / {order.quantity} 本
+                  {tr("sales.orderLineDetail.reservedOfQuantity", {
+                    reserved: order.reservedStockQuantity,
+                    quantity: order.quantity,
+                  })}
                 </Text>
                 <Badge color="orange" variant="light">
-                  予約中
+                  {tr("sales.orderLines.reserved")}
                 </Badge>
               </Group>
             ) : (
               <Text c="dimmed" size="sm" span>
-                未引当（在庫照合で引当）
+                {tr("sales.orderLines.notAllocatedAllocateViaTheStock")}
               </Text>
             )
           }
         />
         <FieldValue
-          label="出荷済み"
+          label={tr("sales.orderLines.shipped")}
           value={
             <Text className="tabular-nums" size="sm" span>
-              {order.shippedQuantity} / {order.quantity} 本
+              {tr("sales.orderLineDetail.shippedOfQuantity", {
+                shipped: order.shippedQuantity,
+                quantity: order.quantity,
+              })}
             </Text>
           }
         />
@@ -484,23 +542,31 @@ export function OrderLineDetail({
 
       <AppTabs onChange={setTab} value={tab}>
         <Tabs.List>
-          <Tabs.Tab value="overview">概要</Tabs.Tab>
+          <Tabs.Tab value="overview">{tr("common.overview")}</Tabs.Tab>
           <Tabs.Tab value="work-orders">
-            指示書（{order.workOrders.length}）
+            {tr("sales.orderLineDetail.workOrdersWithCount", {
+              count: order.workOrders.length,
+            })}
           </Tabs.Tab>
           <Tabs.Tab value="shipping">
-            出荷（{order.deliveryOrders.length}）
+            {tr("sales.orderLineDetail.shippingWithCount", {
+              count: order.deliveryOrders.length,
+            })}
           </Tabs.Tab>
-          <Tabs.Tab value="design">設計（{designRequests.length}）</Tabs.Tab>
-          <Tabs.Tab value="memo">メモ</Tabs.Tab>
-          <Tabs.Tab value="history">履歴</Tabs.Tab>
+          <Tabs.Tab value="design">
+            {tr("sales.orderLineDetail.designWithCount", {
+              count: designRequests.length,
+            })}
+          </Tabs.Tab>
+          <Tabs.Tab value="memo">{tr("common.memo")}</Tabs.Tab>
+          <Tabs.Tab value="history">{tr("common.history")}</Tabs.Tab>
         </Tabs.List>
 
         <Tabs.Panel pt="md" value="overview">
           <Stack gap="md">
             <div>
               <Text c="dimmed" mb={4} size="xs">
-                備考
+                {tr("common.notes")}
               </Text>
               <Text size="sm" style={{ whiteSpace: "pre-wrap" }}>
                 {order.notes || "—"}
@@ -517,23 +583,27 @@ export function OrderLineDetail({
                   href={`/production/work-orders/new?orderLine=${order.uuid}`}
                   leftSection={<IconClipboardList size={14} />}
                 >
-                  指示書を作成
+                  {tr("sales.orderLines.createAWorkOrder")}
                 </SecondaryButton>
               }
               icon={<IconClipboardList size={24} />}
-              message="この注文明細の指示書はまだありません"
+              message={tr("sales.orderLines.thereIsNoWorkOrderFor")}
             />
           ) : (
             <Table.ScrollContainer minWidth={640}>
               <Table highlightOnHover>
                 <Table.Thead>
                   <Table.Tr>
-                    <Table.Th>指示書番号</Table.Th>
-                    <Table.Th>種別</Table.Th>
-                    <Table.Th ta="right">割当数量</Table.Th>
-                    <Table.Th ta="right">予定数量</Table.Th>
-                    <Table.Th>承認状態</Table.Th>
-                    <Table.Th>状態</Table.Th>
+                    <Table.Th>{tr("common.workOrderNumber")}</Table.Th>
+                    <Table.Th>{tr("common.type2")}</Table.Th>
+                    <Table.Th ta="right">
+                      {tr("sales.orderLines.allocatedQuantity")}
+                    </Table.Th>
+                    <Table.Th ta="right">
+                      {tr("common.plannedQuantity")}
+                    </Table.Th>
+                    <Table.Th>{tr("common.approvalStatus")}</Table.Th>
+                    <Table.Th>{tr("common.status")}</Table.Th>
                   </Table.Tr>
                 </Table.Thead>
                 <Table.Tbody>
@@ -586,23 +656,23 @@ export function OrderLineDetail({
                     leftSection={<IconTruck size={14} />}
                     size="xs"
                   >
-                    出荷書を作成
+                    {tr("common.createADeliveryOrder")}
                   </SecondaryButton>
                 ) : undefined
               }
               icon={<IconTruck size={24} />}
-              message="この注文明細の出荷書はまだありません"
+              message={tr("sales.orderLines.thereIsNoDeliveryOrderFor")}
             />
           ) : (
             <Table.ScrollContainer minWidth={640}>
               <Table highlightOnHover>
                 <Table.Thead>
                   <Table.Tr>
-                    <Table.Th>出荷書番号</Table.Th>
-                    <Table.Th>種別</Table.Th>
-                    <Table.Th ta="right">数量</Table.Th>
-                    <Table.Th>状態</Table.Th>
-                    <Table.Th>出荷日</Table.Th>
+                    <Table.Th>{tr("common.deliveryOrderNumber")}</Table.Th>
+                    <Table.Th>{tr("common.type2")}</Table.Th>
+                    <Table.Th ta="right">{tr("common.quantity")}</Table.Th>
+                    <Table.Th>{tr("common.status")}</Table.Th>
+                    <Table.Th>{tr("common.shippedDate")}</Table.Th>
                   </Table.Tr>
                 </Table.Thead>
                 <Table.Tbody>
@@ -645,9 +715,9 @@ export function OrderLineDetail({
           <DesignRequestLinks
             createDisabledReason={
               order.isLocked
-                ? "承認依頼中のためロックされています"
+                ? tr("sales.orderLines.lockedWhileApprovalIsPending")
                 : order.status === "CANCELLED"
-                  ? "キャンセル済みの明細には起票できません"
+                  ? tr("sales.orderLines.youCannotRaiseThisOnA")
                   : undefined
             }
             createHref={designCreateHref}
@@ -673,7 +743,7 @@ export function OrderLineDetail({
       <Modal
         onClose={() => setStockResult(null)}
         opened={stockResult != null}
-        title="在庫照合結果"
+        title={tr("sales.orderLines.stockCheckResult")}
         withinPortal
       >
         {stockResult && (
@@ -684,12 +754,12 @@ export function OrderLineDetail({
                 icon={<IconAlertTriangle size={16} />}
                 variant="light"
               >
-                この製品の在庫レコードがありません（照合①）。
+                {tr("sales.orderLines.thereIsNoStockRecordFor")}
               </Alert>
             )}
             <Group gap="xl">
               <FieldValue
-                label="引当"
+                label={tr("sales.orderLines.allocated")}
                 value={
                   <Text
                     c={stockResult.reservedNow > 0 ? "green" : undefined}
@@ -698,12 +768,14 @@ export function OrderLineDetail({
                     size="sm"
                     span
                   >
-                    {stockResult.reservedNow} 本
+                    {tr("common.quantityPcs", {
+                      quantity: stockResult.reservedNow,
+                    })}
                   </Text>
                 }
               />
               <FieldValue
-                label="不足"
+                label={tr("sales.orderLines.short")}
                 value={
                   <Text
                     c={stockResult.shortage > 0 ? "red" : "dimmed"}
@@ -712,15 +784,19 @@ export function OrderLineDetail({
                     size="sm"
                     span
                   >
-                    {stockResult.shortage} 本
+                    {tr("common.quantityPcs", {
+                      quantity: stockResult.shortage,
+                    })}
                   </Text>
                 }
               />
               <FieldValue
-                label="照合時の利用可能数"
+                label={tr("sales.orderLines.availableQuantityAtCheckTime")}
                 value={
                   <Text className="tabular-nums" size="sm" span>
-                    {stockResult.available} 本
+                    {tr("common.quantityPcs", {
+                      quantity: stockResult.available,
+                    })}
                   </Text>
                 }
               />
@@ -731,16 +807,21 @@ export function OrderLineDetail({
                 icon={<IconAlertTriangle size={16} />}
                 title={
                   stockResult.reservedNow > 0
-                    ? "在庫分＋製造分の分割（§4）"
-                    : "在庫不足"
+                    ? tr("sales.orderLines.splitIntoFromStockAndManufacture")
+                    : tr("sales.orderLines.notEnoughStock")
                 }
                 variant="light"
               >
                 <Stack gap="xs">
                   <Text size="sm">
                     {stockResult.reservedNow > 0
-                      ? `在庫 ${stockResult.reservedNow} 本を引当済み。在庫分と不足 ${stockResult.shortage} 本の製造分に分割して指示書を作成してください。`
-                      : `不足分 ${stockResult.shortage} 本は製造分の指示書を作成してください。`}
+                      ? tr("sales.orderLineDetail.stockAllocatedSplitMessage", {
+                          reserved: stockResult.reservedNow,
+                          shortage: stockResult.shortage,
+                        })
+                      : tr("sales.orderLineDetail.shortageManufactureMessage", {
+                          shortage: stockResult.shortage,
+                        })}
                   </Text>
                   <Group>
                     {stockResult.reservedNow > 0 && (
@@ -748,14 +829,18 @@ export function OrderLineDetail({
                         href={`/production/work-orders/new?orderLine=${order.uuid}&type=FROM_STOCK&qty=${stockResult.reservedNow}`}
                         leftSection={<IconClipboardList size={14} />}
                       >
-                        在庫分の指示書（{stockResult.reservedNow} 本）
+                        {tr("sales.orderLineDetail.stockWorkOrderButton", {
+                          quantity: stockResult.reservedNow,
+                        })}
                       </SecondaryButton>
                     )}
                     <SecondaryButton
                       href={`/production/work-orders/new?orderLine=${order.uuid}&type=MANUFACTURE&qty=${stockResult.shortage}`}
                       leftSection={<IconClipboardList size={14} />}
                     >
-                      製造分の指示書（{stockResult.shortage} 本）
+                      {tr("sales.orderLineDetail.manufactureWorkOrderButton", {
+                        quantity: stockResult.shortage,
+                      })}
                     </SecondaryButton>
                   </Group>
                 </Stack>
@@ -768,7 +853,7 @@ export function OrderLineDetail({
               >
                 <Stack gap="xs">
                   <Text size="sm">
-                    受注数量をすべて在庫から引当できました。
+                    {tr("sales.orderLines.theWholeOrderedQuantityWasAllocated")}
                   </Text>
                   {stockResult.reservedNow > 0 && (
                     <Group>
@@ -776,7 +861,9 @@ export function OrderLineDetail({
                         href={`/production/work-orders/new?orderLine=${order.uuid}&type=FROM_STOCK&qty=${stockResult.reservedNow}`}
                         leftSection={<IconClipboardList size={14} />}
                       >
-                        在庫分の指示書（{stockResult.reservedNow} 本）
+                        {tr("sales.orderLineDetail.stockWorkOrderButton", {
+                          quantity: stockResult.reservedNow,
+                        })}
                       </SecondaryButton>
                     </Group>
                   )}

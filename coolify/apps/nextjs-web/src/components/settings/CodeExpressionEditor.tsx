@@ -9,6 +9,7 @@
 
 import { Box, Group, Text, UnstyledButton } from "@mantine/core";
 import { IconChevronRight, IconWand } from "@tabler/icons-react";
+import { useTranslations } from "next-intl";
 import { useMemo, useRef, useState } from "react";
 import { GhostButton } from "@/components/ui/buttons";
 import { formatExpression, highlightExpression } from "@/lib/js-highlight";
@@ -38,6 +39,7 @@ export function CodeExpressionEditor({
   variables?: VariableGroup[];
   minRows?: number;
 }) {
+  const tr = useTranslations();
   const ref = useRef<HTMLTextAreaElement>(null);
   // 変数パレットは既定で折りたたむ（式エディタをすっきり見せる）。
   const [showVars, setShowVars] = useState(false);
@@ -93,7 +95,9 @@ export function CodeExpressionEditor({
                 }}
               />
               <Text c="dimmed" size="xs">
-                利用可能な変数（クリックで挿入）
+                {tr(
+                  "settings.codeExpressionEditor.availableVariablesClickToInsert",
+                )}
               </Text>
             </Group>
           </UnstyledButton>
@@ -136,7 +140,7 @@ export function CodeExpressionEditor({
           onClick={() => onChange(formatExpression(value))}
           size="compact-xs"
         >
-          整形
+          {tr("settings.codeExpressionEditor.format")}
         </GhostButton>
       </Group>
 

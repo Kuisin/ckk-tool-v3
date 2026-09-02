@@ -28,6 +28,7 @@ import { notifications } from "@mantine/notifications";
 import { IconPackageImport, IconTruck, IconX } from "@tabler/icons-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { type ReactNode, useState, useTransition } from "react";
 import {
   approvePurchaseOrder,
@@ -79,7 +80,6 @@ import {
   canAttachEvidence,
   isCancellable,
   isEditable,
-  PURCHASE_HISTORY_ACTION_LABEL,
   type PurchaseOrderView,
 } from "./model";
 
@@ -123,6 +123,7 @@ export function PurchaseOrderDetail({
   /** この発注書から起きた素材入荷（手続き状況の「次の書類へ」）。 */
   receipts?: MaterialReceiptView[];
 }) {
+  const tr = useTranslations();
   const fmt = useFormat();
   const router = useRouter();
   // アクティブタブを ?tab= に保持（URL 共有でタブまで再現）
@@ -135,13 +136,25 @@ export function PurchaseOrderDetail({
 
   const po = purchaseOrder;
 
+  /** history Json の action → 表示ラベル。 */
+  const historyActionLabel: Record<string, string> = {
+    CREATE: tr("common.create2"),
+    UPDATE: tr("common.update"),
+    REQUEST_APPROVAL: tr("common.approvalRequest"),
+    APPROVE: tr("common.approve"),
+    REJECT: tr("common.reject"),
+    ORDER: tr("purchase.purchaseOrders.order"),
+    COMPLETE: tr("purchase.purchaseOrders.received"),
+    CANCEL: tr("common.cancel"),
+  };
+
   const run = (action: () => Promise<ActionResult>, done: string) => {
     startTransition(async () => {
       const result = await action();
       if (result.ok) {
         notifications.show({
           title: done,
-          message: `素材発注書 ${po.poNumber}`,
+          message: `${tr("common.materialPurchaseOrder")} ${po.poNumber}`,
           color: "green",
         });
         setCancelOpen(false);
@@ -151,7 +164,7 @@ export function PurchaseOrderDetail({
         router.refresh();
       } else {
         notifications.show({
-          title: "エラー",
+          title: tr("common.error2"),
           message: result.error,
           color: "red",
         });
@@ -166,24 +179,31 @@ export function PurchaseOrderDetail({
   const stages: ProcedureStage[] = [
     {
       key: "requested",
-      label: "依頼",
-      description: po.requestedAt ? fmt.date(po.requestedAt) : "下書き",
+      label: tr("common.request"),
+      description: po.requestedAt
+        ? fmt.date(po.requestedAt)
+        : tr("common.draft"),
       loading: po.status === "DRAFT",
     },
     approvalStage(approval, {
       approvedAt: po.approvedAt,
       fmtDate: (v) => fmt.date(v),
+      tr,
     }),
     {
       key: "ordered",
-      label: "発注",
-      description: po.orderedAt ? fmt.date(po.orderedAt) : "入荷予定へ",
+      label: tr("purchase.purchaseOrders.order"),
+      description: po.orderedAt
+        ? fmt.date(po.orderedAt)
+        : tr("purchase.purchaseOrders.toExpectedReceipts"),
       loading: po.status === "APPROVED",
     },
     {
       key: "completed",
-      label: "入荷完了",
-      description: po.completedAt ? fmt.date(po.completedAt) : "在庫入庫",
+      label: tr("purchase.purchaseOrders.received"),
+      description: po.completedAt
+        ? fmt.date(po.completedAt)
+        : tr("purchase.purchaseOrders.receiveIntoStock"),
       loading: po.status === "ORDERED",
     },
   ];
@@ -193,13 +213,13 @@ export function PurchaseOrderDetail({
     ? [
         {
           key: "purchase-request",
-          title: "購買依頼",
+          title: tr("common.purchaseRequest"),
           items: [
             {
               key: po.sourceRequestNumber,
               label: po.sourceRequestNumber,
               href: `/purchase/purchase-requests/${encodeURIComponent(po.sourceRequestNumber)}`,
-              note: "この発注書の変換元",
+              note: tr("purchase.purchaseOrders.whatThisPurchaseOrderCameFrom"),
             },
           ],
           emptyNote: "—",
@@ -212,22 +232,30 @@ export function PurchaseOrderDetail({
   const handoffGroups: HandoffGroup[] = [
     {
       key: "material-receipts",
-      title: "素材入荷",
+      title: tr("common.materialReceipt"),
       summary:
         receipts.length > 0
-          ? `${receipts.length} 件・合計 ${receivedQuantity} ${receipts[0]?.unit ?? ""}`
+          ? tr("purchase.purchaseOrders.receiptsSummary", {
+              count: receipts.length,
+              total: receivedQuantity,
+              unit: receipts[0]?.unit ?? "",
+            })
           : null,
       items: receipts.map((r) => ({
         key: r.id,
         label: r.materialCode,
         href: `/purchase/material-receipts/${r.id}`,
         done: true,
-        note: `${r.quantity} ${r.unit}・${fmt.date(r.receivedAt)}`,
+        note: tr("purchase.purchaseOrders.receiptNote", {
+          quantity: r.quantity,
+          unit: r.unit,
+          date: fmt.date(r.receivedAt),
+        }),
       })),
       emptyNote:
         po.status === "ORDERED"
-          ? "未入荷（入荷完了で在庫へ入庫します）"
-          : "未入荷（発注後に入荷します）",
+          ? tr("purchase.purchaseOrders.notReceivedGoesIntoStockWhen")
+          : tr("purchase.purchaseOrders.notReceivedArrivesAfterOrdering"),
     },
   ];
 
@@ -246,7 +274,7 @@ export function PurchaseOrderDetail({
         onReject={(reason) => rejectPurchaseOrder(po.poNumber, reason)}
         onRequest={() => requestPurchaseApproval(po.poNumber)}
         rejectReason={null}
-        subject={`素材発注書 ${po.poNumber}`}
+        subject={`${tr("common.materialPurchaseOrder")} ${po.poNumber}`}
       />
     );
   } else if (po.status === "APPROVED") {
@@ -258,12 +286,12 @@ export function PurchaseOrderDetail({
             loading={isPending}
             onClick={() => setOrderOpen(true)}
           >
-            発注
+            {tr("purchase.purchaseOrders.order")}
           </PrimaryButton>
         }
-        description="発注すると明細が素材 ATP の入荷予定に反映されます"
+        description={tr("purchase.purchaseOrders.onceOrderedTheLinesAppearAs")}
         icon={<IconTruck size={20} />}
-        title="発注できます"
+        title={tr("purchase.purchaseOrders.readyToOrder")}
         tone="action"
       />
     );
@@ -276,12 +304,14 @@ export function PurchaseOrderDetail({
             loading={isPending}
             onClick={() => setCompleteOpen(true)}
           >
-            入荷完了
+            {tr("purchase.purchaseOrders.received")}
           </ApproveButton>
         }
-        description="入荷完了で明細ごとに入荷を記録し、素材在庫へ入庫します"
+        description={tr(
+          "purchase.purchaseOrders.completingTheReceiptRecordsEachLine",
+        )}
         icon={<IconPackageImport size={20} />}
-        title="入荷を待っています"
+        title={tr("purchase.purchaseOrders.waitingForTheGoods")}
         tone="action"
       />
     );
@@ -295,7 +325,7 @@ export function PurchaseOrderDetail({
             isCancellable(po)
               ? [
                   {
-                    label: "キャンセル",
+                    label: tr("common.cancel"),
                     icon: <IconX size={14} />,
                     color: "red",
                     onClick: () => setCancelOpen(true),
@@ -310,7 +340,11 @@ export function PurchaseOrderDetail({
           }
         />
       }
-      breadcrumbs={["購買", { label: "素材発注書", href: BASE_PATH }, "詳細"]}
+      breadcrumbs={[
+        tr("common.purchasing"),
+        { label: tr("common.materialPurchaseOrder"), href: BASE_PATH },
+        tr("common.detailBreadcrumb"),
+      ]}
       createdAt={fmt.dateTime(po.createdAt)}
       status={<StatusBadge entity="MaterialPurchaseOrder" status={po.status} />}
       title={po.poNumber}
@@ -320,18 +354,21 @@ export function PurchaseOrderDetail({
 
       <SummaryGrid>
         <FieldValue
-          label="発注番号"
+          label={tr("common.pONumber")}
           value={<DocNumber>{po.poNumber}</DocNumber>}
         />
-        <FieldValue label="仕入先" value={po.supplierName} />
-        <FieldValue label="作成者" value={po.createdByName} />
-        <FieldValue label="発注日" value={fmt.date(po.purchaseDate)} />
+        <FieldValue label={tr("common.supplier")} value={po.supplierName} />
+        <FieldValue label={tr("common.createdBy")} value={po.createdByName} />
         <FieldValue
-          label="合計金額"
+          label={tr("common.orderDate")}
+          value={fmt.date(po.purchaseDate)}
+        />
+        <FieldValue
+          label={tr("common.totalAmount")}
           value={<MoneyText ta="left" value={po.totalAmount} />}
         />
         <FieldValue
-          label="明細数"
+          label={tr("common.lineCount")}
           value={
             <Text className="tabular-nums" size="sm" span>
               {po.items.length} 件
@@ -339,12 +376,12 @@ export function PurchaseOrderDetail({
           }
         />
         <FieldValue
-          label="入荷完了日"
+          label={tr("purchase.purchaseOrders.receiptCompletedOn")}
           value={po.completedAt ? fmt.dateTime(po.completedAt) : "—"}
         />
         {po.sourceRequestNumber && (
           <FieldValue
-            label="変換元（購買依頼）"
+            label={tr("purchase.purchaseOrders.convertedFromPurchaseRequest")}
             value={
               <Link
                 href={`/purchase/purchase-requests/${encodeURIComponent(po.sourceRequestNumber)}`}
@@ -379,7 +416,7 @@ export function PurchaseOrderDetail({
               {records.map((h, i) => (
                 <Group gap="sm" key={`${h.at}-${h.action}-${i}`} wrap="nowrap">
                   <Badge color="gray" size="sm" variant="light">
-                    {PURCHASE_HISTORY_ACTION_LABEL[h.action] ?? h.action}
+                    {historyActionLabel[h.action] ?? h.action}
                   </Badge>
                   <Text size="xs">{h.user}</Text>
                   <Text c="dimmed" className="tabular-nums" size="xs">
@@ -399,10 +436,16 @@ export function PurchaseOrderDetail({
 
       <AppTabs onChange={setTab} value={tab}>
         <Tabs.List>
-          <Tabs.Tab value="items">明細（{po.items.length}）</Tabs.Tab>
-          <Tabs.Tab value="attachments">証憑（{attachments.length}）</Tabs.Tab>
-          <Tabs.Tab value="overview">概要</Tabs.Tab>
-          <Tabs.Tab value="history">履歴</Tabs.Tab>
+          <Tabs.Tab value="items">
+            {tr("common.lineItemsWithCount", { count: po.items.length })}
+          </Tabs.Tab>
+          <Tabs.Tab value="attachments">
+            {tr("common.supportingDocumentsWithCount", {
+              count: attachments.length,
+            })}
+          </Tabs.Tab>
+          <Tabs.Tab value="overview">{tr("common.overview")}</Tabs.Tab>
+          <Tabs.Tab value="history">{tr("common.history")}</Tabs.Tab>
         </Tabs.List>
 
         <Tabs.Panel pt="md" value="items">
@@ -410,13 +453,13 @@ export function PurchaseOrderDetail({
             <Table highlightOnHover striped>
               <Table.Thead>
                 <Table.Tr>
-                  <Table.Th>素材</Table.Th>
-                  <Table.Th>入荷先拠点</Table.Th>
-                  <Table.Th ta="right">数量</Table.Th>
-                  <Table.Th ta="right">単価</Table.Th>
-                  <Table.Th ta="right">金額</Table.Th>
-                  <Table.Th>入荷予定日</Table.Th>
-                  <Table.Th>備考</Table.Th>
+                  <Table.Th>{tr("common.materials")}</Table.Th>
+                  <Table.Th>{tr("common.receivingSite")}</Table.Th>
+                  <Table.Th ta="right">{tr("common.quantity")}</Table.Th>
+                  <Table.Th ta="right">{tr("common.unitPrice")}</Table.Th>
+                  <Table.Th ta="right">{tr("common.amount")}</Table.Th>
+                  <Table.Th>{tr("common.expectedDate")}</Table.Th>
+                  <Table.Th>{tr("common.notes")}</Table.Th>
                 </Table.Tr>
               </Table.Thead>
               <Table.Tbody>
@@ -442,7 +485,9 @@ export function PurchaseOrderDetail({
                           }
                           size="xs"
                         >
-                          入荷済 {it.receivedQuantity}
+                          {tr("purchase.purchaseOrders.receivedSoFar", {
+                            count: it.receivedQuantity,
+                          })}
                         </Text>
                       ) : null}
                     </Table.Td>
@@ -467,7 +512,7 @@ export function PurchaseOrderDetail({
           </Table.ScrollContainer>
           <Group justify="flex-end" mt="sm">
             <Text fw={700}>
-              合計金額 <MoneyText value={po.totalAmount} />
+              {tr("common.totalAmount")} <MoneyText value={po.totalAmount} />
             </Text>
           </Group>
         </Tabs.Panel>
@@ -477,7 +522,9 @@ export function PurchaseOrderDetail({
           <Stack gap="sm">
             {!canAttachEvidence(po) && (
               <Text c="dimmed" size="xs">
-                証憑の添付は承認後（承認済・発注済・入荷完了）に可能になります
+                {tr(
+                  "purchase.purchaseOrders.supportingDocumentsCanBeAttachedAfter",
+                )}
               </Text>
             )}
             <AttachmentsPanel
@@ -486,7 +533,7 @@ export function PurchaseOrderDetail({
               canUpload={canAttachEvidence(po)}
               ownerId={po.poNumber}
               ownerType="material_purchase_orders"
-              title="証憑"
+              title={tr("common.supportingDocument")}
             />
           </Stack>
         </Tabs.Panel>
@@ -495,7 +542,7 @@ export function PurchaseOrderDetail({
           <Stack gap="md">
             <div>
               <Text c="dimmed" mb={4} size="xs">
-                備考
+                {tr("common.notes")}
               </Text>
               <Text size="sm" style={{ whiteSpace: "pre-wrap" }}>
                 {po.notes || "—"}
@@ -512,37 +559,38 @@ export function PurchaseOrderDetail({
       {/* キャンセル（発注前のみ・理由必須） */}
       <ModalShell
         confirmColor="red"
-        confirmLabel="キャンセルする"
+        confirmLabel={tr("common.cancelDocument")}
         loading={isPending}
         onClose={() => setCancelOpen(false)}
         onConfirm={() => {
           if (!cancelReason.trim()) {
             notifications.show({
-              title: "エラー",
-              message: "キャンセル理由を入力してください",
+              title: tr("common.error2"),
+              message: tr("common.enterAReasonForCancelling"),
               color: "red",
             });
             return;
           }
           run(
             () => cancelPurchaseOrder(po.poNumber, cancelReason),
-            "キャンセルしました",
+            tr("common.cancelled"),
           );
         }}
         opened={cancelOpen}
         size="sm"
-        title="キャンセルの確認"
+        title={tr("common.confirmCancellation")}
       >
         <Text size="sm">
-          素材発注書 {po.poNumber}{" "}
-          をキャンセルします。この操作は取り消せません。
+          {tr("purchase.purchaseOrders.confirmCancelBody", {
+            number: po.poNumber,
+          })}
         </Text>
         <Textarea
           autosize
-          label="キャンセル理由"
+          label={tr("common.reasonForCancelling")}
           minRows={3}
           onChange={(e) => setCancelReason(e.currentTarget.value)}
-          placeholder="理由を入力"
+          placeholder={tr("common.enterAReason")}
           value={cancelReason}
           withAsterisk
         />
@@ -550,39 +598,45 @@ export function PurchaseOrderDetail({
 
       {/* 発注の確認 */}
       <ModalShell
-        confirmLabel="発注する"
+        confirmLabel={tr("purchase.purchaseOrders.placeTheOrder")}
         loading={isPending}
         onClose={() => setOrderOpen(false)}
         onConfirm={() =>
-          run(() => orderPurchaseOrder(po.poNumber), "発注しました")
+          run(
+            () => orderPurchaseOrder(po.poNumber),
+            tr("purchase.purchaseOrders.ordered"),
+          )
         }
         opened={orderOpen}
         size="sm"
-        title="発注の確認"
+        title={tr("purchase.purchaseOrders.confirmTheOrder")}
       >
         <Text size="sm">
-          素材発注書 {po.poNumber}{" "}
-          を発注済にします。明細は素材在庫の入荷予定（ATP）に反映されます。
+          {tr("purchase.purchaseOrders.confirmOrderBody", {
+            number: po.poNumber,
+          })}
         </Text>
       </ModalShell>
 
       {/* 入荷完了の確認（全量入荷） */}
       <ModalShell
-        confirmLabel="入荷完了にする"
+        confirmLabel={tr("purchase.purchaseOrders.markTheReceiptComplete")}
         loading={isPending}
         onClose={() => setCompleteOpen(false)}
         onConfirm={() =>
-          run(() => completePurchaseOrder(po.poNumber), "入荷完了にしました")
+          run(
+            () => completePurchaseOrder(po.poNumber),
+            tr("purchase.purchaseOrders.markedTheReceiptComplete"),
+          )
         }
         opened={completeOpen}
         size="sm"
-        title="入荷完了の確認"
+        title={tr("purchase.purchaseOrders.confirmReceiptCompletion")}
       >
         <Text size="sm">
-          明細 {po.items.length}{" "}
-          件を全量入荷として素材入荷を登録し、入荷先拠点の素材在庫へ入庫します。
-          分納（部分入荷）が必要な場合は素材入荷 (PU03)
-          から直接登録してください。
+          {tr("purchase.purchaseOrders.confirmCompleteBody", {
+            count: po.items.length,
+          })}
         </Text>
       </ModalShell>
     </DetailShell>

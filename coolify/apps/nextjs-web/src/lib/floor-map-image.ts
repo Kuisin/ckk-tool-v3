@@ -12,6 +12,7 @@ import "server-only";
  * （lib/attachments.ts の保存フローと同じ規約）。旧画像は best-effort で削除。
  */
 
+import { getTranslations } from "next-intl/server";
 import { getCurrentActorId, recordAudit } from "@/lib/audit";
 import { checkPermission } from "@/lib/authz";
 import { prisma } from "@/lib/db";
@@ -33,7 +34,8 @@ const MAP_IMAGE_TYPES: Record<string, string[]> = {
   jpg: ["image/jpeg"],
   jpeg: ["image/jpeg"],
   webp: ["image/webp"],
-  svg: ["image/svg+xml"],
+  // svg は受け付けない — 中に <script> を書けるので、閲覧者のオリジンで動く
+  // 保存 XSS になる（監査 M1）。図面はラスタで十分。
 };
 
 /** フロアマップは kiosk 権限（無ければ master 権限）で編集できる。 */
@@ -52,17 +54,22 @@ export async function saveFloorMapImage(
 ): Promise<ActionResult> {
   const authz = await checkFloorMapPermission("UPDATE");
   if (!authz.ok) return actionError(authz.error);
+  const tr = await getTranslations();
 
-  if (file.size <= 0) return actionError("画像ファイルを選択してください");
+  if (file.size <= 0) return actionError(tr("common.selectAnImageFile"));
   if (file.size > MAX_MAP_IMAGE_BYTES) {
-    return actionError("画像サイズは 10MB 以下にしてください");
+    return actionError(tr("common.imageSizeMax10Mb"));
   }
   const ext = file.name.includes(".")
     ? (file.name.split(".").pop()?.toLowerCase() ?? "")
     : "";
   const allowed = MAP_IMAGE_TYPES[ext];
   if (!allowed || !allowed.includes(file.type.toLowerCase())) {
-    return actionError("対応していない画像形式です（PNG / JPG / WEBP / SVG）");
+    return actionError(
+      tr("common.unsupportedImageFormat", {
+        formats: "PNG / JPG / WEBP",
+      }),
+    );
   }
 
   try {
@@ -71,13 +78,13 @@ export async function saveFloorMapImage(
       include: { file: { select: { id: true, storageKey: true } } },
     });
     if (!map || !map.isActive) {
-      return actionError("対象のフロアマップが見つかりません");
+      return actionError(tr("settings.kioskDevicesActions.floorMapNotFound"));
     }
 
     const bytes = await file.arrayBuffer();
     const storageKey = `kiosk/floor-maps/${systematicFileName(file.name)}`;
     if (!(await putObject(storageKey, bytes, allowed[0]))) {
-      return actionError("ストレージへの保存に失敗しました");
+      return actionError(tr("common.storageSaveFailed"));
     }
 
     const actor = await getCurrentActorId();
@@ -116,10 +123,12 @@ export async function saveFloorMapImage(
       action: "UPDATE",
       tableName: "kiosk_floor_maps",
       recordId: mapId,
-      after: { note: `図面画像を更新: ${file.name}` },
+      after: { note: tr("common.mapImageUpdatedNote", { name: file.name }) },
     });
     return actionOk();
   } catch (e) {
-    return actionError(prismaErrorMessage(e, "図面画像の更新に失敗しました"));
+    return actionError(
+      prismaErrorMessage(e, tr("common.mapImageUpdateFailed"), tr),
+    );
   }
 }

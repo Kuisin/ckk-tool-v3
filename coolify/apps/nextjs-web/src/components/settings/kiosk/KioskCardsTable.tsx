@@ -21,6 +21,7 @@ import {
 import { notifications } from "@mantine/notifications";
 import { IconPrinter, IconQrcode, IconSearch } from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { useState, useTransition } from "react";
 import {
   assignCard,
@@ -40,7 +41,7 @@ import {
 } from "@/components/ui/DataTable";
 import { HelpLabel } from "@/components/ui/HelpLabel";
 import { ConfirmModal, ModalShell } from "@/components/ui/modals";
-import { StatusBadge, statusOptions } from "@/components/ui/StatusBadge";
+import { StatusBadge } from "@/components/ui/StatusBadge";
 import { ListShell } from "@/components/ui/shells";
 import { useUrlSelectState, useUrlStringState } from "@/hooks/useUrlState";
 import { useIsMobile } from "@/hooks/useViewport";
@@ -50,6 +51,7 @@ import type { Formatters } from "@/lib/format";
 import type { KioskCardRow, KioskUserOption } from "@/lib/kiosk-admin";
 import { openInNewContext } from "@/lib/pwa-display";
 import type { ActionResult } from "@/lib/server-action";
+import { statusOptions } from "@/lib/status-map";
 
 const PRINT_PATH = "/settings/kiosk-cards/print";
 
@@ -92,8 +94,9 @@ export function resolveCardValidity(
 export function formatValidityRange(
   fmt: Formatters,
   r: Pick<KioskCardRow, "validFrom" | "validUntil">,
+  tr: ReturnType<typeof useTranslations>,
 ): string {
-  if (!r.validFrom && !r.validUntil) return "無期限";
+  if (!r.validFrom && !r.validUntil) return tr("common.noEndDate");
   const from = r.validFrom ? fmt.date(r.validFrom) : "";
   const until = r.validUntil ? fmt.date(r.validUntil) : "";
   return `${from} 〜 ${until}`;
@@ -101,17 +104,18 @@ export function formatValidityRange(
 
 /** 期間外のときだけ出す警告バッジ（期間内・無期限は何も出さない）。 */
 export function ValidityBadge({ validity }: { validity: CardValidity }) {
+  const tr = useTranslations();
   if (validity === "EXPIRED") {
     return (
       <Badge color="red" variant="light">
-        期限切れ
+        {tr("common.expired")}
       </Badge>
     );
   }
   if (validity === "NOT_YET") {
     return (
       <Badge color="yellow" variant="light">
-        開始前
+        {tr("settings.kiosk.beforeStart")}
       </Badge>
     );
   }
@@ -125,6 +129,7 @@ export function KioskCardsTable({
   rows: KioskCardRow[];
   userOptions: KioskUserOption[];
 }) {
+  const tr = useTranslations();
   const fmt = useFormat();
   const [isPending, startTransition] = useTransition();
   const isMobile = useIsMobile();
@@ -168,13 +173,13 @@ export function KioskCardsTable({
       const result = await action();
       if (result.ok) {
         notifications.show({
-          title: "完了",
+          title: tr("common.completed"),
           message: successMessage,
           color: "green",
         });
       } else {
         notifications.show({
-          title: "エラー",
+          title: tr("common.error2"),
           message: result.error,
           color: "red",
         });
@@ -186,8 +191,8 @@ export function KioskCardsTable({
     const count = Number(issueCount);
     if (!Number.isInteger(count) || count < 1 || count > 100) {
       notifications.show({
-        title: "エラー",
-        message: "発行枚数は 1〜100 で指定してください",
+        title: tr("common.error2"),
+        message: tr("settings.kiosk.setTheNumberOfCardsBetween"),
         color: "red",
       });
       return;
@@ -197,13 +202,15 @@ export function KioskCardsTable({
       if (result.ok) {
         setIssueOpen(false);
         notifications.show({
-          title: "発行しました",
-          message: `QRカードを ${result.data.ids.length} 枚発行しました`,
+          title: tr("common.issued"),
+          message: tr("settings.kiosk.issuedCardsCount", {
+            count: result.data.ids.length,
+          }),
           color: "green",
         });
       } else {
         notifications.show({
-          title: "エラー",
+          title: tr("common.error2"),
           message: result.error,
           color: "red",
         });
@@ -214,8 +221,8 @@ export function KioskCardsTable({
   const handleAssign = () => {
     if (!assignTarget || !assignUserId) {
       notifications.show({
-        title: "エラー",
-        message: "割当先ユーザーを選択してください",
+        title: tr("common.error2"),
+        message: tr("common.selectTheUserToAssignIt"),
         color: "red",
       });
       return;
@@ -228,13 +235,13 @@ export function KioskCardsTable({
         setAssignTarget(null);
         setAssignUserId(null);
         notifications.show({
-          title: "割当しました",
-          message: "カードをユーザーに割り当てました",
+          title: tr("common.assigned"),
+          message: tr("common.theCardWasAssignedToThe"),
           color: "green",
         });
       } else {
         notifications.show({
-          title: "エラー",
+          title: tr("common.error2"),
           message: result.error,
           color: "red",
         });
@@ -245,7 +252,7 @@ export function KioskCardsTable({
   const columns: Column<KioskCardRow>[] = [
     {
       key: "id",
-      header: "カードID",
+      header: tr("settings.kiosk.cardId"),
       width: 200,
       sortable: true,
       render: (r) => (
@@ -257,7 +264,7 @@ export function KioskCardsTable({
     },
     {
       key: "user",
-      header: "割当ユーザー",
+      header: tr("common.assignedUser"),
       sortable: true,
       render: (r) =>
         r.userDisplayName ? (
@@ -280,7 +287,7 @@ export function KioskCardsTable({
     },
     {
       key: "status",
-      header: "状態",
+      header: tr("common.status"),
       width: 110,
       sortable: true,
       render: (r) => <StatusBadge entity="KioskCard" status={r.status} />,
@@ -293,11 +300,13 @@ export function KioskCardsTable({
       render: (r) => (
         <Group gap={4} wrap="nowrap">
           <Badge color={r.pinSet ? "blue" : "gray"} variant="light">
-            {r.pinSet ? "設定済" : "未設定"}
+            {r.pinSet
+              ? tr("settings.kiosk.pinConfigured")
+              : tr("common.notSet2")}
           </Badge>
           {r.pinLocked && (
             <Badge color="red" variant="light">
-              ロック中
+              {tr("common.locked")}
             </Badge>
           )}
         </Group>
@@ -305,7 +314,7 @@ export function KioskCardsTable({
     },
     {
       key: "validity",
-      header: "有効期間",
+      header: tr("common.validPeriod"),
       width: 200,
       sortable: true,
       render: (r) => (
@@ -314,7 +323,7 @@ export function KioskCardsTable({
             c={r.validFrom || r.validUntil ? undefined : "dimmed"}
             size="sm"
           >
-            {formatValidityRange(fmt, r)}
+            {formatValidityRange(fmt, r, tr)}
           </Text>
           <ValidityBadge validity={resolveCardValidity(now, r)} />
         </Group>
@@ -323,7 +332,7 @@ export function KioskCardsTable({
     },
     {
       key: "lastUsedAt",
-      header: "最終使用",
+      header: tr("common.lastUsed"),
       width: 150,
       sortable: true,
       render: (r) => (
@@ -335,7 +344,7 @@ export function KioskCardsTable({
     },
     {
       key: "useCount",
-      header: "使用回数",
+      header: tr("common.timesUsed"),
       width: 90,
       align: "right",
       sortable: true,
@@ -352,7 +361,7 @@ export function KioskCardsTable({
     const actions: RowAction<KioskCardRow>[] = [];
     if (r.status === "UNASSIGNED") {
       actions.push({
-        label: "ユーザーに割当",
+        label: tr("common.assignToAUser"),
         onAction: () => {
           setAssignTarget(r);
           setAssignUserId(null);
@@ -361,59 +370,59 @@ export function KioskCardsTable({
     }
     if (r.status !== "REVOKED") {
       actions.push({
-        label: "印刷",
+        label: tr("common.print2"),
         icon: <IconPrinter size={14} />,
         onAction: () => openPrintSheet([r.id]),
       });
     }
     if (r.status === "ASSIGNED") {
       actions.push({
-        label: "一時停止",
+        label: tr("status.STATUS_MAPS.KioskCard.SUSPENDED.label"),
         color: "orange",
         onAction: () =>
           setConfirm({
-            title: "一時停止の確認",
-            message: "このカードでのログインを一時停止します。",
-            confirmLabel: "一時停止",
+            title: tr("common.confirmSuspension"),
+            message: tr("common.loginsWithThisCardWillBe"),
+            confirmLabel: tr("status.STATUS_MAPS.KioskCard.SUSPENDED.label"),
             run: () => suspendCard(r.id),
           }),
       });
     }
     if (r.status === "SUSPENDED") {
       actions.push({
-        label: "再開",
-        onAction: () => run(() => resumeCard(r.id), "カードを再開しました"),
+        label: tr("common.resume"),
+        onAction: () =>
+          run(() => resumeCard(r.id), tr("common.theCardWasResumed")),
       });
     }
     if (r.pinLocked) {
       actions.push({
-        label: "PINロック解除",
-        onAction: () => run(() => unlockPin(r.id), "PIN ロックを解除しました"),
+        label: tr("common.unlockThePin"),
+        onAction: () =>
+          run(() => unlockPin(r.id), tr("common.thePinLockWasReleased")),
       });
     }
     if (r.pinSet) {
       actions.push({
-        label: "PINリセット",
+        label: tr("common.resetThePin"),
         onAction: () =>
           setConfirm({
-            title: "PINリセットの確認",
-            message:
-              "PIN を消去します。次回ログイン時に PIN の再設定が必要になります。",
-            confirmLabel: "リセット",
+            title: tr("common.confirmResettingThePin"),
+            message: tr("common.clearsThePinItWillHave"),
+            confirmLabel: tr("common.reset2"),
             run: () => resetPin(r.id),
           }),
       });
     }
     if (r.status !== "REVOKED") {
       actions.push({
-        label: "取り消し",
+        label: tr("common.revoked2"),
         color: "red",
         onAction: () =>
           setConfirm({
-            title: "取り消しの確認",
-            message:
-              "カードを取り消します。この操作は取り消せません。オープン中のセッションも失効します。",
-            confirmLabel: "取り消し",
+            title: tr("common.confirmRevocation"),
+            message: tr("common.theCardWillBeRevokedThis"),
+            confirmLabel: tr("common.revoked2"),
             run: () => revokeCard(r.id),
           }),
       });
@@ -429,16 +438,16 @@ export function KioskCardsTable({
           onClick={() => setIssueOpen(true)}
           style={{ flexShrink: 0 }}
         >
-          {isMobile ? "発行" : "カードを発行"}
+          {isMobile ? tr("common.issue") : tr("settings.kiosk.issueACard")}
         </CreateButton>
       }
-      breadcrumbs={["システム", "QRカード管理"]}
+      breadcrumbs={[tr("common.system"), tr("common.qRCards")]}
       filters={
         <Select
           clearable
           data={statusOptions("KioskCard")}
           onChange={setStatus}
-          placeholder="状態"
+          placeholder={tr("common.status")}
           style={isMobile ? { flex: 1 } : undefined}
           value={status}
           w={isMobile ? undefined : 140}
@@ -449,16 +458,16 @@ export function KioskCardsTable({
         <TextInput
           leftSection={<IconSearch size={14} />}
           onChange={(e) => setSearch(e.currentTarget.value || null)}
-          placeholder="カードID / ユーザー..."
+          placeholder={tr("settings.kiosk.cardIdUser")}
           value={search}
         />
       }
-      title="QRカード管理"
+      title={tr("common.qRCards")}
     >
       <DataTable
         bulkActions={[
           {
-            label: "選択したカードを印刷",
+            label: tr("settings.kiosk.printTheSelectedCards"),
             icon: <IconPrinter size={16} />,
             onAction: (selected) => openPrintSheet(selected.map((r) => r.id)),
           },
@@ -466,7 +475,7 @@ export function KioskCardsTable({
         columns={columns}
         data={filtered}
         emptyIcon={<IconQrcode size={28} />}
-        emptyMessage="QRカードがありません"
+        emptyMessage={tr("settings.kiosk.thereAreNoQrCards")}
         getRowId={(r) => r.id}
         onRowClick={(r) => router.push(`/settings/kiosk-cards/${r.id}`)}
         renderCard={(r) => (
@@ -475,31 +484,37 @@ export function KioskCardsTable({
               {maskCardId(r.id)}
             </Text>
             <Text fw={600} size="sm" truncate>
-              {r.userDisplayName ?? "未割当"}
+              {r.userDisplayName ?? tr("common.unassigned")}
             </Text>
             <Group gap={4} wrap="wrap">
               <StatusBadge entity="KioskCard" status={r.status} />
               <Badge color={r.pinSet ? "blue" : "gray"} variant="light">
-                {r.pinSet ? "PIN設定済" : "PIN未設定"}
+                {r.pinSet
+                  ? tr("settings.kiosk.pinIsConfigured")
+                  : tr("settings.kiosk.noPinSet")}
               </Badge>
               {r.pinLocked && (
                 <Badge color="red" variant="light">
-                  ロック中
+                  {tr("common.locked")}
                 </Badge>
               )}
               <ValidityBadge validity={resolveCardValidity(now, r)} />
             </Group>
             {(r.validFrom || r.validUntil) && (
               <Text c="dimmed" size="xs">
-                有効期間 {formatValidityRange(fmt, r)}
+                {tr("settings.kiosk.validPeriodLabel", {
+                  range: formatValidityRange(fmt, r, tr),
+                })}
               </Text>
             )}
             <Group gap="md" mt={2}>
               <Text c="dimmed" size="xs">
-                最終使用 {r.lastUsedAt ? fmt.dateTime(r.lastUsedAt) : "—"}
+                {tr("settings.kiosk.lastUsedLabel", {
+                  date: r.lastUsedAt ? fmt.dateTime(r.lastUsedAt) : "—",
+                })}
               </Text>
               <Text c="dimmed" size="xs">
-                {r.useCount} 回
+                {tr("settings.kiosk.useCountTimes", { count: r.useCount })}
               </Text>
             </Group>
           </Stack>
@@ -511,18 +526,17 @@ export function KioskCardsTable({
 
       {/* 発行モーダル */}
       <ModalShell
-        confirmLabel="発行"
+        confirmLabel={tr("common.issue")}
         loading={isPending}
         onClose={() => setIssueOpen(false)}
         onConfirm={handleIssue}
         opened={issueOpen}
         size="sm"
-        title="QRカードの発行"
+        title={tr("settings.kiosk.issueQrCards")}
       >
         <Stack gap="xs">
           <Text c="dimmed" size="sm">
-            未割当のカードをまとめて発行します。発行後にユーザーへ割り当て、
-            印刷 PDF から QR カードを印刷してください。
+            {tr("settings.kiosk.issuesUnassignedCardsInABatch")}
           </Text>
           <NumberInput
             label={<HelpLabel {...fieldHelp("kioskCard", "count")} />}
@@ -537,13 +551,13 @@ export function KioskCardsTable({
 
       {/* 割当モーダル */}
       <ModalShell
-        confirmLabel="割当"
+        confirmLabel={tr("common.allocation")}
         loading={isPending}
         onClose={() => setAssignTarget(null)}
         onConfirm={handleAssign}
         opened={assignTarget != null}
         size="sm"
-        title="カードの割当"
+        title={tr("common.cardAssignment")}
       >
         <Stack gap="xs">
           <Text ff="mono" size="sm">
@@ -553,25 +567,25 @@ export function KioskCardsTable({
             data={userOptions}
             label={<HelpLabel {...fieldHelp("kioskCard", "user")} />}
             onChange={setAssignUserId}
-            placeholder="ユーザーを選択"
+            placeholder={tr("common.selectAUser")}
             searchable
             value={assignUserId}
             withAsterisk
           />
           <Text c="dimmed" size="xs">
-            1 ユーザーに割当できるカードは 1 枚です。
+            {tr("settings.kiosk.aUserCanHoldOnlyOne")}
           </Text>
         </Stack>
       </ModalShell>
 
       {/* 破壊的操作の確認 */}
       <ConfirmModal
-        confirmLabel={confirm?.confirmLabel ?? "実行"}
+        confirmLabel={confirm?.confirmLabel ?? tr("common.run2")}
         loading={isPending}
         message={confirm?.message ?? ""}
         onClose={() => setConfirm(null)}
         onConfirm={() => {
-          if (confirm) run(confirm.run, "操作が完了しました");
+          if (confirm) run(confirm.run, tr("common.done"));
         }}
         opened={confirm != null}
         title={confirm?.title ?? ""}

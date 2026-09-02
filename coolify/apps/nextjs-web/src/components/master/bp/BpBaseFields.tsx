@@ -17,7 +17,7 @@ import {
   TextInput,
 } from "@mantine/core";
 import type { UseFormReturnType } from "@mantine/form";
-import { useLocale } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { z } from "zod";
 import type { BpBaseDetail } from "@/app/(dashboard)/master/_shared/bp-data";
 import { HelpLabel } from "@/components/ui/HelpLabel";
@@ -91,6 +91,7 @@ export function BpBaseFields<T extends BpBaseFormValues>({
   bpCode?: string;
   codeDescription: string;
 }) {
+  const tr = useTranslations();
   const isMobile = useIsMobile();
   const locale = useLocale();
   // Field paths are shared with the extended form value types.
@@ -103,7 +104,7 @@ export function BpBaseFields<T extends BpBaseFormValues>({
     );
   return (
     <>
-      <FormSection title="基本情報">
+      <FormSection title={tr("common.basicInformation")}>
         <SimpleGrid cols={isMobile ? 1 : 2} spacing="sm">
           <TextInput
             description={codeDescription}
@@ -111,26 +112,26 @@ export function BpBaseFields<T extends BpBaseFormValues>({
             label={
               <HelpLabel
                 {...fieldHelp("businessPartner", "bpCode", {
-                  label: "BPコード",
+                  label: tr("common.bPCode"),
                 })}
               />
             }
-            placeholder="保存時に自動採番"
+            placeholder={tr("common.numberedAutomaticallyOnSave")}
             value={bpCode ?? ""}
           />
           <Select
             clearable
             data={countryOptions(locale)}
             label={<HelpLabel {...fieldHelp("businessPartner", "country")} />}
-            placeholder="国を選択"
+            placeholder={tr("common.selectACountry")}
             {...props("countryCode")}
           />
           <Select
             clearable
             data={DOCUMENT_LOCALE_OPTIONS}
-            description="見積書・納品書・請求書をこの言語で発行する。未設定は既定言語（日本語）"
-            label="書類の言語"
-            placeholder="既定言語（日本語）"
+            description={tr("master.bp.issueQuotesDeliveryNotesAndInvoices")}
+            label={tr("master.bp.documentLanguage")}
+            placeholder={tr("master.bp.defaultLanguageJapanese")}
             {...props("documentLocale")}
           />
         </SimpleGrid>
@@ -138,7 +139,7 @@ export function BpBaseFields<T extends BpBaseFormValues>({
           <LocalizedTextInput
             help={fieldHelpTip("businessPartner", "name")}
             jaProps={props("nameJa")}
-            label="名称"
+            label={tr("common.name2")}
             required
             translationsProps={props("nameTranslations")}
           />
@@ -148,17 +149,19 @@ export function BpBaseFields<T extends BpBaseFormValues>({
             label={
               <HelpLabel
                 {...fieldHelp("businessPartner", "nameKana", {
-                  label: "フリガナ",
+                  label: tr("common.kana"),
                 })}
               />
             }
-            placeholder="エービーシーセイサクショ"
+            placeholder={tr("master.bpBaseFields.kanaPlaceholder")}
             {...props("nameKana")}
           />
           <TextInput
             label={
               <HelpLabel
-                {...fieldHelp("businessPartner", "nameKana", { label: "略称" })}
+                {...fieldHelp("businessPartner", "nameKana", {
+                  label: tr("common.shortName"),
+                })}
               />
             }
             placeholder="ABC"
@@ -176,16 +179,16 @@ export function BpBaseFields<T extends BpBaseFormValues>({
           />
         </SimpleGrid>
         <TagsInput
-          description="AI 抽出（注文書の読み取り）がこの取引先へ社名を解決するための照合リスト。表記ゆれ（㈱/株式会社・全角半角・旧社名など）を Enter 区切りで登録"
+          description={tr("master.bp.theListAiExtractionUsesTo")}
           label={
             <HelpLabel
               {...fieldHelp("businessPartner", "matchNames", {
-                label: "AI照合名",
+                label: tr("common.aIMatchNames"),
               })}
             />
           }
           mt="sm"
-          placeholder="社名の表記ゆれを入力して Enter"
+          placeholder={tr("master.bp.typeACompanyNameVariantAnd")}
           splitChars={[",", "、"]}
           {...form.getInputProps("matchNames")}
         />
@@ -204,13 +207,13 @@ export function BpBaseFields<T extends BpBaseFormValues>({
         />
       </FormSection>
 
-      <FormSection title="住所・連絡先">
+      <FormSection title={tr("master.bp.addressAndContact")}>
         <SimpleGrid cols={isMobile ? 1 : 2} spacing="sm">
           <TextInput
             label={
               <HelpLabel
                 {...fieldHelp("businessPartner", "address", {
-                  label: "郵便番号",
+                  label: tr("common.postalCode"),
                 })}
               />
             }
@@ -222,7 +225,7 @@ export function BpBaseFields<T extends BpBaseFormValues>({
           <LocalizedTextInput
             help={fieldHelpTip("businessPartner", "address")}
             jaProps={props("addressJa")}
-            label="住所"
+            label={tr("common.address")}
             translationsProps={props("addressTranslations")}
           />
         </Stack>
@@ -231,7 +234,7 @@ export function BpBaseFields<T extends BpBaseFormValues>({
             label={
               <HelpLabel
                 {...fieldHelp("businessPartner", "contact", {
-                  label: "電話番号",
+                  label: tr("common.phoneNumber"),
                 })}
               />
             }
@@ -251,7 +254,7 @@ export function BpBaseFields<T extends BpBaseFormValues>({
             label={
               <HelpLabel
                 {...fieldHelp("businessPartner", "contact", {
-                  label: "メールアドレス",
+                  label: tr("common.emailAddress"),
                 })}
               />
             }
@@ -262,7 +265,7 @@ export function BpBaseFields<T extends BpBaseFormValues>({
             label={
               <HelpLabel
                 {...fieldHelp("businessPartner", "contact", {
-                  label: "Webサイト",
+                  label: tr("common.website"),
                 })}
               />
             }
@@ -273,7 +276,7 @@ export function BpBaseFields<T extends BpBaseFormValues>({
         <Textarea
           label={<HelpLabel {...fieldHelp("businessPartner", "notes")} />}
           mt="sm"
-          placeholder="備考・特記事項"
+          placeholder={tr("common.notesAndRemarks")}
           rows={3}
           {...props("notes")}
         />

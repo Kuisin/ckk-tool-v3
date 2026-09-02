@@ -27,8 +27,10 @@ import "server-only";
  */
 
 import { isSuperuser } from "@ckk/authz-core";
+import { getLocale, getTranslations } from "next-intl/server";
 import { checkPermission, getPermissionSet, sessionUserId } from "./authz";
 import { prisma } from "./db";
+import { type LocalizedTextInput, localized } from "./format";
 import {
   type GrantState,
   type GrantWindow,
@@ -69,12 +71,14 @@ const DENIED = (operationKey: string, canRequest: boolean): ElevationView => ({
   pending: false,
 });
 
+type Tr = Awaited<ReturnType<typeof getTranslations>>;
+
 /** 未知の操作キーは常に拒否（登録簿に無いものを黙って通さない）。 */
-function requireOperation(operationKey: string): PrivilegedOperation {
+function requireOperation(operationKey: string, tr: Tr): PrivilegedOperation {
   const op = findOperation(operationKey);
   if (!op) {
     throw new Error(
-      `未知の特権操作です: ${operationKey}（lib/privileged-operations.ts に登録してください）`,
+      tr("privilegedAccessGate.unknownOperation", { key: operationKey }),
     );
   }
   return op;
@@ -124,7 +128,8 @@ async function findUsableGrant(
 export async function peekElevation(
   operationKey: string,
 ): Promise<ElevationView> {
-  const op = requireOperation(operationKey);
+  const tr = await getTranslations();
+  const op = requireOperation(operationKey, tr);
   const userId = await sessionUserId();
   if (!userId) return DENIED(op.key, false);
 
@@ -215,12 +220,13 @@ export function elevationAuditNote(
 export async function useElevation(
   operationKey: string,
 ): Promise<ElevationResult> {
-  const op = requireOperation(operationKey);
+  const [tr, locale] = await Promise.all([getTranslations(), getLocale()]);
+  const op = requireOperation(operationKey, tr);
   const userId = await sessionUserId();
   if (!userId) {
     return {
       ok: false,
-      error: "ログインが必要です",
+      error: tr("common.loginRequired"),
       needsElevation: false,
       operationKey: op.key,
     };
@@ -267,7 +273,9 @@ export async function useElevation(
   if (!grantId) {
     return {
       ok: false,
-      error: `この操作には承認が必要です（${op.label.ja}）。特権アクセス（SY0G）から申請してください`,
+      error: tr("privilegedAccessGate.operationRequiresApprovalSy0g", {
+        label: localized(op.label as unknown as LocalizedTextInput, locale),
+      }),
       needsElevation: true,
       operationKey: op.key,
     };

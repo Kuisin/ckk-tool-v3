@@ -1,4 +1,5 @@
 import { notFound } from "next/navigation";
+import { getTranslations } from "next-intl/server";
 import { EditFormClient } from "@/components/forms/EditFormClient";
 import { AccessDenied } from "@/components/ui/AccessDenied";
 import { requireAppRead } from "@/lib/authz-page";
@@ -11,6 +12,7 @@ export default async function EditFormPage({
 }: {
   params: Promise<{ code: string }>;
 }) {
+  const tr = await getTranslations();
   const denied = await requireAppRead("forms");
   if (denied) return denied;
 
@@ -22,8 +24,11 @@ export default async function EditFormPage({
   if (!access.canEdit) {
     return (
       <AccessDenied
-        breadcrumbs={["一般", { label: "フォーム", href: "/general/forms" }]}
-        message="このフォームを編集する権限がありません。"
+        breadcrumbs={[
+          tr("common.general"),
+          { label: tr("common.forms"), href: "/general/forms" },
+        ]}
+        message={tr("general.forms.youDoNotHavePermissionTo")}
         title={form.title}
       />
     );

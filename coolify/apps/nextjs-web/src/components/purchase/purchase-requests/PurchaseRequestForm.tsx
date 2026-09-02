@@ -26,7 +26,7 @@ import { useForm } from "@mantine/form";
 import { notifications } from "@mantine/notifications";
 import { IconCalendar, IconPlus, IconTrash } from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
-import { useLocale } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { useTransition } from "react";
 import { z } from "zod";
 import { searchMaterialOptions } from "@/app/(dashboard)/_shared/option-search";
@@ -51,24 +51,28 @@ interface Option {
   label: string;
 }
 
-const itemSchema = z.object({
-  rowId: z.string(),
-  materialId: z.string().min(1, "素材を選択してください"),
-  materialLabel: z.string(),
-  plantId: z.string().nullable(),
-  quantity: z.number().positive("0より大きい値"),
-  unit: z.string().min(1, "必須"),
-  desiredAt: z.string().nullable(),
-  notes: z.string(),
-});
+function buildSchema(tr: ReturnType<typeof useTranslations>) {
+  const itemSchema = z.object({
+    rowId: z.string(),
+    materialId: z
+      .string()
+      .min(1, tr("purchase.purchaseOrderForm.selectMaterial")),
+    materialLabel: z.string(),
+    plantId: z.string().nullable(),
+    quantity: z.number().positive(tr("common.mustBeGreaterThanZero")),
+    unit: z.string().min(1, tr("common.required")),
+    desiredAt: z.string().nullable(),
+    notes: z.string(),
+  });
 
-const schema = z.object({
-  purpose: z.string(),
-  notes: z.string(),
-  items: z.array(itemSchema).min(1, "明細を1件以上追加してください"),
-});
+  return z.object({
+    purpose: z.string(),
+    notes: z.string(),
+    items: z.array(itemSchema).min(1, tr("common.addAtLeastOneLineItem")),
+  });
+}
 
-type FormValues = z.infer<typeof schema>;
+type FormValues = z.infer<ReturnType<typeof buildSchema>>;
 type ItemForm = FormValues["items"][number];
 
 let rowSeq = 0;
@@ -113,11 +117,13 @@ export function PurchaseRequestForm({
   /** 入荷先拠点（有効のみ）。value = String(内部 id)。 */
   plantOptions: Option[];
 }) {
+  const tr = useTranslations();
   const locale = useLocale();
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const requestNumber =
     mode === "edit" ? purchaseRequest?.requestNumber : undefined;
+  const schema = buildSchema(tr);
 
   const form = useForm<FormValues>({
     validate: zodResolver(schema),
@@ -151,17 +157,21 @@ export function PurchaseRequestForm({
           : await createPurchaseRequest(payload);
       if (result.ok) {
         notifications.show({
-          title: "保存しました",
+          title: tr("common.saved2"),
           message:
             mode === "edit"
-              ? `購買依頼 ${result.data.requestNumber} を更新しました`
-              : `購買依頼 ${result.data.requestNumber} を作成しました`,
+              ? tr("purchase.purchaseRequestForm.updatedWithNumber", {
+                  requestNumber: result.data.requestNumber,
+                })
+              : tr("purchase.purchaseRequestForm.createdWithNumber", {
+                  requestNumber: result.data.requestNumber,
+                }),
           color: "green",
         });
         router.push(`${BASE_PATH}/${result.data.requestNumber}`);
       } else {
         notifications.show({
-          title: "エラー",
+          title: tr("common.error2"),
           message: result.error,
           color: "red",
         });
@@ -172,9 +182,9 @@ export function PurchaseRequestForm({
   return (
     <FormShell
       breadcrumbs={[
-        "購買",
-        { label: "購買依頼", href: BASE_PATH },
-        mode === "edit" ? "編集" : "新規作成",
+        tr("common.purchasing"),
+        { label: tr("common.purchaseRequest"), href: BASE_PATH },
+        mode === "edit" ? tr("common.edit") : tr("common.new2"),
       ]}
       isDirty={form.isDirty()}
       isPending={isPending}
@@ -192,31 +202,35 @@ export function PurchaseRequestForm({
       }
       title={
         mode === "edit"
-          ? `購買依頼 編集 ${requestNumber ?? ""}`
-          : "購買依頼 新規作成"
+          ? tr("purchase.purchaseRequestForm.editWithNumber", {
+              requestNumber: requestNumber ?? "",
+            })
+          : tr("purchase.purchaseRequests.newPurchaseRequest")
       }
     >
-      <FormSection title="基本情報">
+      <FormSection title={tr("common.basicInformation")}>
         <Textarea
           autosize
           label={<HelpLabel {...fieldHelp("purchaseRequest", "reason")} />}
           minRows={2}
-          placeholder="依頼理由・用途（任意）"
+          placeholder={tr(
+            "purchase.purchaseRequests.reasonAndIntendedUseOptional",
+          )}
           {...form.getInputProps("purpose")}
         />
         <Textarea
           autosize
-          label="備考"
+          label={tr("common.notes")}
           minRows={2}
           mt="sm"
-          placeholder="備考（任意）"
+          placeholder={tr("common.notesOptional")}
           {...form.getInputProps("notes")}
         />
       </FormSection>
 
       <FormSection
-        description="単価・仕入先は持ちません。承認後に発注書へ変換し、発注側で確定します。"
-        title="明細"
+        description={tr("purchase.purchaseRequests.itCarriesNoUnitPriceOr")}
+        title={tr("common.lineItems")}
       >
         <Group justify="flex-end" mb="xs">
           {typeof form.errors.items === "string" && (
@@ -256,7 +270,7 @@ export function PurchaseRequestForm({
                       );
                     }}
                     onSearch={searchMaterialOptions}
-                    placeholder="素材を検索"
+                    placeholder={tr("common.searchMaterials")}
                     storageKey="material"
                     value={item.materialId || null}
                     withAsterisk
@@ -268,13 +282,13 @@ export function PurchaseRequestForm({
                       <HelpLabel {...fieldHelp("purchaseRequest", "plant")} />
                     }
                     maw={180}
-                    placeholder="拠点を選択"
+                    placeholder={tr("common.selectASite")}
                     {...form.getInputProps(`items.${ri}.plantId`)}
                   />
                   <NumberInput
                     decimalScale={3}
                     error={form.errors[`items.${ri}.quantity`]}
-                    label="数量"
+                    label={tr("common.quantity")}
                     maw={110}
                     min={0}
                     {...form.getInputProps(`items.${ri}.quantity`)}
@@ -282,7 +296,7 @@ export function PurchaseRequestForm({
                   />
                   <Select
                     data={unitOptions(locale)}
-                    label="単位"
+                    label={tr("common.unit")}
                     maw={90}
                     withAsterisk
                     {...form.getInputProps(`items.${ri}.unit`)}
@@ -290,7 +304,7 @@ export function PurchaseRequestForm({
                 </Group>
               </Box>
               <ActionIcon
-                aria-label="明細を削除"
+                aria-label={tr("common.removeLine")}
                 color="red"
                 disabled={form.values.items.length <= 1}
                 mb={4}
@@ -308,14 +322,14 @@ export function PurchaseRequestForm({
                 }
                 leftSection={<IconCalendar size={14} />}
                 maw={200}
-                placeholder="日付を選択"
+                placeholder={tr("common.pickADate")}
                 valueFormat="YYYY/MM/DD"
                 {...form.getInputProps(`items.${ri}.desiredAt`)}
               />
               <TextInput
                 flex={1}
-                label="備考"
-                placeholder="行の備考（任意）"
+                label={tr("common.notes")}
+                placeholder={tr("common.lineNotesOptional")}
                 {...form.getInputProps(`items.${ri}.notes`)}
               />
             </Group>
@@ -328,7 +342,7 @@ export function PurchaseRequestForm({
           onClick={() => form.insertListItem("items", emptyItem())}
           size="xs"
         >
-          明細を追加
+          {tr("common.addLine")}
         </GhostButton>
       </FormSection>
     </FormShell>

@@ -10,6 +10,7 @@
  */
 
 import { revalidatePath } from "next/cache";
+import { getTranslations } from "next-intl/server";
 import { z } from "zod";
 import { getCurrentActorId, recordAudit } from "@/lib/audit";
 import { checkPermission } from "@/lib/authz";
@@ -24,27 +25,40 @@ import {
 
 const BASE_PATH = "/purchase/material-receipts";
 
-const receiptInput = z.object({
-  materialId: z.string().min(1, "素材を選択してください"),
-  supplierBpId: z.string().nullable(),
-  plantId: z.string().nullable(),
-  quantity: z.number().positive("数量は0より大きい値"),
-  unit: z.string().min(1, "単位を入力してください"),
-  receivedAt: z.string().min(1, "入荷日を入力してください"),
-  notes: z.string(),
-});
+function receiptInputSchema(tr: Awaited<ReturnType<typeof getTranslations>>) {
+  return z.object({
+    materialId: z
+      .string()
+      .min(1, tr("purchase.materialReceipts.selectAMaterial")),
+    supplierBpId: z.string().nullable(),
+    plantId: z.string().nullable(),
+    quantity: z
+      .number()
+      .positive(tr("purchase.materialReceipts.mustBeGreaterThanZero")),
+    unit: z.string().min(1, tr("purchase.materialReceipts.enterAUnit")),
+    receivedAt: z
+      .string()
+      .min(1, tr("purchase.materialReceipts.enterAReceivedDate")),
+    notes: z.string(),
+  });
+}
 
-export type MaterialReceiptInput = z.infer<typeof receiptInput>;
+export type MaterialReceiptInput = z.infer<
+  ReturnType<typeof receiptInputSchema>
+>;
 
 /** 直接調達の入荷登録 — 作成 + 在庫入庫 + 監査。 */
 export async function createMaterialReceipt(
   payload: MaterialReceiptInput,
 ): Promise<ActionResult<{ id: string }>> {
+  const tr = await getTranslations();
   const authz = await checkPermission("material_receipt", "CREATE");
   if (!authz.ok) return actionError(authz.error);
-  const parsed = receiptInput.safeParse(payload);
+  const parsed = receiptInputSchema(tr).safeParse(payload);
   if (!parsed.success) {
-    return actionError(parsed.error.issues[0]?.message ?? "入力が不正です");
+    return actionError(
+      parsed.error.issues[0]?.message ?? tr("common.invalidInput"),
+    );
   }
   const v = parsed.data;
   try {
@@ -88,6 +102,12 @@ export async function createMaterialReceipt(
     revalidatePath("/production/inventory");
     return actionOk({ id: receipt.id });
   } catch (e) {
-    return actionError(prismaErrorMessage(e, "素材入荷の登録に失敗しました"));
+    return actionError(
+      prismaErrorMessage(
+        e,
+        tr("purchase.materialReceipts.registrationFailed"),
+        tr,
+      ),
+    );
   }
 }

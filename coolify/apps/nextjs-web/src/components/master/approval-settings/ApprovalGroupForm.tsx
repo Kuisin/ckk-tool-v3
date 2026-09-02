@@ -11,6 +11,7 @@ import { SimpleGrid, Switch } from "@mantine/core";
 import { useForm } from "@mantine/form";
 import { notifications } from "@mantine/notifications";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { useTransition } from "react";
 import { z } from "zod";
 import {
@@ -27,16 +28,19 @@ import {
 import { useIsMobile } from "@/hooks/useViewport";
 import { fieldHelp, fieldHelpTip } from "@/lib/field-help";
 import { zodResolver } from "@/lib/form";
+import type { Tr } from "@/lib/i18n";
 
 const BASE_PATH = "/master/approval-settings";
 
-const groupSchema = z.object({
-  nameJa: z.string().min(1, "名称（日本語）を入力してください"),
-  nameTranslations: z.record(z.string(), z.string()).default({}),
-  isActive: z.boolean(),
-});
+function buildGroupSchema(tr: Tr) {
+  return z.object({
+    nameJa: z.string().min(1, tr("master.approvalGroupForm.enterNameJa")),
+    nameTranslations: z.record(z.string(), z.string()).default({}),
+    isActive: z.boolean(),
+  });
+}
 
-type FormValues = z.infer<typeof groupSchema>;
+type FormValues = z.infer<ReturnType<typeof buildGroupSchema>>;
 
 export interface ApprovalGroupFormInitial {
   id: number;
@@ -50,13 +54,14 @@ export function ApprovalGroupForm({
 }: {
   initial?: ApprovalGroupFormInitial;
 }) {
+  const tr = useTranslations();
   const router = useRouter();
   const _isMobile = useIsMobile();
   const [isPending, startTransition] = useTransition();
   const isEdit = !!initial;
 
   const form = useForm<FormValues>({
-    validate: zodResolver(groupSchema),
+    validate: zodResolver(buildGroupSchema(tr)),
     initialValues: {
       nameJa: initial?.nameJa ?? "",
       nameTranslations: initial?.nameTranslations ?? {},
@@ -76,16 +81,16 @@ export function ApprovalGroupForm({
         : await createApprovalGroup(input);
       if (result.ok) {
         notifications.show({
-          title: "保存しました",
+          title: tr("common.saved2"),
           message: isEdit
-            ? "承認グループを更新しました"
-            : "承認グループを作成しました",
+            ? tr("master.approvalSettings.theApprovalGroupWasUpdated")
+            : tr("master.approvalSettings.theApprovalGroupWasCreated"),
           color: "green",
         });
         router.push(`${BASE_PATH}/${result.data.id}`);
       } else {
         notifications.show({
-          title: "エラー",
+          title: tr("common.error2"),
           message: result.error,
           color: "red",
         });
@@ -96,9 +101,9 @@ export function ApprovalGroupForm({
   return (
     <FormShell
       breadcrumbs={[
-        "マスタ",
-        { label: "承認グループ", href: BASE_PATH },
-        isEdit ? "編集" : "新規作成",
+        tr("common.masterData"),
+        { label: tr("common.approvalGroup"), href: BASE_PATH },
+        isEdit ? tr("common.edit") : tr("common.new2"),
       ]}
       isDirty={form.isDirty()}
       isPending={isPending}
@@ -109,19 +114,19 @@ export function ApprovalGroupForm({
       status={isEdit ? <ActiveBadge active={initial.isActive} /> : undefined}
       title={
         isEdit
-          ? `承認グループ 編集 — ${initial.nameJa}`
-          : "承認グループ 新規作成"
+          ? tr("master.approvalGroupForm.editTitle", { name: initial.nameJa })
+          : tr("master.approvalSettings.newApprovalGroup")
       }
     >
       <FormSection
-        description="どの書類の何段目で使うかは「承認フロー」で決めます。"
-        title="基本情報"
+        description={tr("master.approvalSettings.whichDocumentAndWhichStepIt")}
+        title={tr("common.basicInformation")}
       >
         <SimpleGrid cols={1} spacing="sm">
           <LocalizedTextInput
             help={fieldHelpTip("approvalGroup", "name")}
             jaProps={form.getInputProps("nameJa")}
-            label="名称"
+            label={tr("common.name2")}
             required
             translationsProps={form.getInputProps("nameTranslations")}
           />

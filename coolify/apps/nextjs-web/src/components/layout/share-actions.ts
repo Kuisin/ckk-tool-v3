@@ -8,7 +8,9 @@
  * と同じ設計）。宛先はユーザー複数 / 承認グループ / 全員。
  */
 
+import { getTranslations } from "next-intl/server";
 import { auth } from "@/auth";
+import { takeActionToken } from "@/lib/action-rate-limit";
 import { SYSTEM_USER_ID } from "@/lib/audit";
 import { prisma } from "@/lib/db";
 import { notify, sanitizeLinkPath } from "@/lib/notifications";
@@ -28,22 +30,30 @@ export interface SharePageInput {
 export async function sharePageAction(
   input: SharePageInput,
 ): Promise<ActionResult<{ recipientCount: number }>> {
+  const tr = await getTranslations();
   const session = await auth();
   const su = session?.user as { id?: string; name?: string | null } | undefined;
-  if (!su?.id) return actionError("ログインが必要です");
+  if (!su?.id) return actionError(tr("common.loginRequired"));
 
   // アプリ内パスのみ許可（外部 URL・プロトコル相対・バックスラッシュ等は
   // sanitizeLinkPath で正規化検証 — 監査 P1-6）
   const safePath = sanitizeLinkPath(input.path);
   if (!safePath) {
-    return actionError("共有できるのはアプリ内のページだけです");
+    return actionError(tr("layout.shareActions.onlyInternalPages"));
   }
   if (
     !input.everyone &&
     input.userIds.length === 0 &&
     input.groupIds.length === 0
   ) {
-    return actionError("宛先を 1 件以上選択してください");
+    return actionError(tr("layout.shareActions.selectAtLeastOneRecipient"));
+  }
+  // 連打を止める（メール・プッシュまで飛ぶので、全員宛はとくに絞る — 監査 L4）。
+  if (
+    !takeActionToken(`share:${su.id}`, 20, 10 * 60_000) ||
+    (input.everyone && !takeActionToken(`share-all:${su.id}`, 3, 60 * 60_000))
+  ) {
+    return actionError(tr("common.tooManyRequests"));
   }
 
   // 宛先解決（全員 = 有効ユーザー全員。グループ = 有効メンバー）
@@ -68,14 +78,17 @@ export async function sharePageAction(
   recipientIds.delete(su.id); // 自分自身には送らない
 
   if (recipientIds.size === 0) {
-    return actionError("宛先にユーザーがいません");
+    return actionError(tr("layout.shareActions.noRecipients"));
   }
 
   const label = input.pageLabel?.trim() || input.path;
   await notify({
     userIds: [...recipientIds],
     type: "SHARE",
-    title: `${su.name ?? "ユーザー"} さんが「${label}」を共有しました`,
+    title: tr("layout.shareActions.sharedNotificationTitle", {
+      name: su.name ?? tr("common.user"),
+      label,
+    }),
     message: input.comment?.trim() || undefined,
     linkPath: safePath,
   });
@@ -89,9 +102,10 @@ export async function fetchShareOptionsAction(): Promise<
     groups: { value: string; label: string }[];
   }>
 > {
+  const tr = await getTranslations();
   const session = await auth();
   const me = (session?.user as { id?: string } | undefined)?.id;
-  if (!me) return actionError("ログインが必要です");
+  if (!me) return actionError(tr("common.loginRequired"));
   const [users, groups] = await Promise.all([
     prisma.user.findMany({
       where: { isActive: true, id: { not: SYSTEM_USER_ID } },
@@ -115,8 +129,11 @@ export async function fetchShareOptionsAction(): Promise<
       value: String(g.id),
       label:
         typeof g.name === "object" && g.name !== null && "ja" in g.name
-          ? String((g.name as { ja?: string }).ja || `グループ #${g.id}`)
-          : `グループ #${g.id}`,
+          ? String(
+              (g.name as { ja?: string }).ja ||
+                tr("layout.shareActions.groupFallbackLabel", { id: g.id }),
+            )
+          : tr("layout.shareActions.groupFallbackLabel", { id: g.id }),
     })),
   });
 }

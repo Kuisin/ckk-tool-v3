@@ -7,6 +7,7 @@
  */
 
 import { NextResponse } from "next/server";
+import { getTranslations } from "next-intl/server";
 import { MAX_ATTACHMENT_BYTES, saveAttachment } from "@/lib/attachments";
 import { requirePermissionResponse } from "@/lib/authz";
 import { prisma } from "@/lib/db";
@@ -77,11 +78,12 @@ async function ownerExists(
 }
 
 export async function POST(request: Request): Promise<NextResponse> {
+  const tr = await getTranslations();
   let form: FormData;
   try {
     form = await request.formData();
   } catch {
-    return badRequest("multipart/form-data で送信してください");
+    return badRequest(tr("attachmentsUpload.sendAsMultipartFormData"));
   }
 
   const ownerType = String(form.get("ownerType") ?? "").trim();
@@ -91,22 +93,22 @@ export async function POST(request: Request): Promise<NextResponse> {
 
   const permissionCode = OWNER_TYPE_PERMISSION[ownerType];
   if (!permissionCode) {
-    return badRequest("この種類のレコードには添付できません");
+    return badRequest(tr("attachmentsUpload.recordTypeCannotHaveAttachments"));
   }
   // 対象ドメインの UPDATE 権限が無ければ拒否（401/403）。
   const deny = await requirePermissionResponse(permissionCode, "UPDATE");
   if (deny) return deny as NextResponse;
-  if (!ownerId) return badRequest("添付対象が指定されていません");
+  if (!ownerId) return badRequest(tr("common.attachmentTargetNotSpecified"));
   // ownerId が実在レコードを指すことを検証（孤児添付・なりすまし防止）。
   if (!(await ownerExists(ownerType, ownerId))) {
-    return badRequest("添付対象のレコードが見つかりません");
+    return badRequest(tr("attachmentsUpload.attachmentTargetRecordNotFound"));
   }
   if (!(file instanceof File)) {
-    return badRequest("ファイルが指定されていません");
+    return badRequest(tr("attachmentsUpload.noFileSpecified"));
   }
   // 巨大ファイルはバッファリング前に弾く。
   if (file.size > MAX_ATTACHMENT_BYTES) {
-    return badRequest("ファイルサイズは 20MB 以下にしてください");
+    return badRequest(tr("common.fileSizeMax20Mb"));
   }
 
   const result = await saveAttachment({

@@ -74,3 +74,21 @@ export function deviceName(
   }
   return null;
 }
+
+/**
+ * 作業場所の表示名 —「グループ / 場所」。
+ *
+ * 場所名だけでは足りない。`3号機` のような名前はグループ（工場・ライン）が
+ * 付いて初めて一意に読めるし、現場の呼び方もその 2 段で揃っている。
+ * 工程実行画面のゲート・端末ヘッダー・端末設定が同じ文字列を出すよう、
+ * 組み立てはここ 1 箇所に置く（別々に組むと片方だけ書式が変わる）。
+ */
+export function workLocationLabel(
+  row: { name: unknown; group: { name: unknown } } | null | undefined,
+  locale: Locale = "ja",
+): string | null {
+  if (!row) return null;
+  const group = localized(row.group.name as LocalizedText | null, locale);
+  const name = localized(row.name as LocalizedText | null, locale);
+  return `${group} / ${name}`;
+}

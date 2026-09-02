@@ -1,4 +1,5 @@
 import { notFound } from "next/navigation";
+import { getTranslations } from "next-intl/server";
 import {
   type ChartMode,
   FormSummaryView,
@@ -69,10 +70,12 @@ export default async function FormSummaryPage({
       ),
   );
 
+  const tr = await getTranslations();
   const summaries = summarizeResponses(
     form.fields,
     rows.map((r) => (r.answers ?? {}) as Record<string, FormAnswerValue>),
     { order, dateGrain },
+    tr,
   );
 
   const trend = submissionTrend(

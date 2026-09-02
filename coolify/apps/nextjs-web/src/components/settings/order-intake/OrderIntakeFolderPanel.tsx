@@ -40,6 +40,7 @@ import {
 } from "@tabler/icons-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { useEffect, useState, useTransition } from "react";
 import {
   retryFailedIntakeFile,
@@ -116,6 +117,7 @@ export function OrderIntakeFolderPanel({
   /** ORD 番号 → 注文請書（サーバーで解決済み）。 */
   docs: Record<string, IntakeDocRef>;
 }) {
+  const tr = useTranslations();
   const router = useRouter();
   const [uploading, setUploading] = useState(false);
   const [isPending, startTransition] = useTransition();
@@ -141,8 +143,10 @@ export function OrderIntakeFolderPanel({
       autoClose: false,
       color: "blue",
       loading: true,
-      message: `${files.length} 件をフォルダへ投入しています…`,
-      title: "注文書取込",
+      message: tr("settings.orderIntakeFolderPanel.puttingFilesIntoTheFolder", {
+        count: files.length,
+      }),
+      title: tr("common.orderIntake"),
       withCloseButton: false,
     });
 
@@ -154,8 +158,12 @@ export function OrderIntakeFolderPanel({
         autoClose: false,
         color: "blue",
         loading: true,
-        message: `${i + 1} / ${files.length} 件目: ${file.name}`,
-        title: "注文書取込",
+        message: tr("settings.orderIntakeFolderPanel.fileNOfTotal", {
+          n: i + 1,
+          total: files.length,
+          name: file.name,
+        }),
+        title: tr("common.orderIntake"),
         withCloseButton: false,
       });
       try {
@@ -170,9 +178,15 @@ export function OrderIntakeFolderPanel({
           .catch(() => null)) as UploadResponse | null;
         if (res.ok && json?.ok) okCount += 1;
         else
-          failures.push(`${file.name}: ${json?.error ?? "投入に失敗しました"}`);
+          failures.push(
+            `${file.name}: ${
+              json?.error ?? tr("settings.orderIntakeFolderPanel.failedToPutIn")
+            }`,
+          );
       } catch {
-        failures.push(`${file.name}: 通信エラー`);
+        failures.push(
+          `${file.name}: ${tr("settings.orderIntakeFolderPanel.communicationError")}`,
+        );
       }
     }
 
@@ -183,9 +197,19 @@ export function OrderIntakeFolderPanel({
       loading: false,
       message:
         failures.length > 0
-          ? `${okCount} 件を投入 / 失敗: ${failures.join(" ・ ")}`
-          : `${okCount} 件を取込待ちに入れました。取込はこのあと順番に実行されます`,
-      title: failures.length > 0 ? "投入（一部失敗）" : "投入しました",
+          ? tr("settings.orderIntakeFolderPanel.putInCountFailures", {
+              count: okCount,
+              failures: failures.join(
+                tr("settings.orderIntakeFolderPanel.listSeparator"),
+              ),
+            })
+          : tr("settings.orderIntakeFolderPanel.putCountFilesInTheQueue", {
+              count: okCount,
+            }),
+      title:
+        failures.length > 0
+          ? tr("settings.orderIntakeFolderPanel.putInPartialFailure")
+          : tr("settings.orderIntake.queued"),
       withCloseButton: true,
     });
     setUploading(false);
@@ -198,12 +222,11 @@ export function OrderIntakeFolderPanel({
       notifications.show(
         result.ok
           ? {
-              title: "スキャンを開始しました",
-              message:
-                "取込は順番に実行されます。結果はこの画面と注文請書（SA04）で確認できます",
+              title: tr("settings.orderIntake.scanningStarted"),
+              message: tr("settings.orderIntake.importsRunInTurnYouCan"),
               color: "green",
             }
-          : { title: "エラー", message: result.error, color: "red" },
+          : { title: tr("common.error2"), message: result.error, color: "red" },
       );
       router.refresh();
     });
@@ -215,11 +238,13 @@ export function OrderIntakeFolderPanel({
       notifications.show(
         result.ok
           ? {
-              title: "取込待ちに戻しました",
-              message: "採番済みの注文請書はそのまま、抽出だけやり直します",
+              title: tr("settings.orderIntake.putBackInTheIntakeQueue"),
+              message: tr(
+                "settings.orderIntake.theNumberedOrderAcceptanceStaysOnly",
+              ),
               color: "green",
             }
-          : { title: "エラー", message: result.error, color: "red" },
+          : { title: tr("common.error2"), message: result.error, color: "red" },
       );
       router.refresh();
     });
@@ -233,25 +258,24 @@ export function OrderIntakeFolderPanel({
         icon={<IconAlertTriangle size={18} />}
         title={
           status.configured
-            ? "取込フォルダを読めません"
-            : "取込フォルダが未設定です"
+            ? tr("settings.orderIntake.cannotReadTheIntakeFolder")
+            : tr("settings.orderIntake.theIntakeFolderIsNotConfigured")
         }
       >
         <Stack gap="xs">
           <Text size="sm">
             {status.error ??
-              "この環境には監視フォルダ（環境変数 INTAKE_DIR）が設定されていません。設定すると、フォルダに置かれた注文書が自動で注文請書として取り込まれます。"}
+              tr("settings.orderIntake.thisEnvironmentHasNoWatchedFolder")}
           </Text>
           <Text c="dimmed" size="xs">
-            フォルダを使わない場合でも、注文請書（SA04）の「優先取込」から 1
-            件ずつ取り込めます。
+            {tr("settings.orderIntake.evenWithoutTheFolderYouCan")}
           </Text>
           <Group gap="xs">
             <SecondaryButton
               href={ACCEPTANCES_PATH}
               leftSection={<IconClipboardList size={14} />}
             >
-              注文請書へ
+              {tr("settings.orderIntake.toTheOrderAcceptance")}
             </SecondaryButton>
           </Group>
         </Stack>
@@ -272,23 +296,23 @@ export function OrderIntakeFolderPanel({
       <Paper p="md" radius="md" shadow="xs">
         <Stack gap="sm">
           <Group gap="xs" justify="space-between">
-            <Title order={4}>フォルダへ投入</Title>
+            <Title order={4}>
+              {tr("settings.orderIntake.putItInTheFolder")}
+            </Title>
             <Group gap="xs">
               <Badge color="blue" variant="light">
-                取込待ち {pendingRows.length}
+                {tr("settings.orderIntake.awaitingImport")} {pendingRows.length}
               </Badge>
               <Badge color="red" variant="light">
-                失敗 {status.failedTotal}
+                {tr("common.failure")} {status.failedTotal}
               </Badge>
               <Badge color="green" variant="light">
-                取込済 {status.processedTotal}
+                {tr("settings.orderIntake.imported")} {status.processedTotal}
               </Badge>
             </Group>
           </Group>
           <Text c="dimmed" size="sm">
-            受け取った注文書（PDF / PNG / JPG / WEBP、1 件 20MB
-            まで）をまとめて選ぶと、取込フォルダにそのまま置かれます。共有フォルダへ
-            直接コピーしたときと同じ経路で、順番に注文請書へ取り込まれます。
+            {tr("settings.orderIntake.selectingTheOrdersYouReceivedPdf")}
           </Text>
           <Group gap="xs">
             <FileButton accept={UPLOAD_ACCEPT} multiple onChange={handleImport}>
@@ -298,7 +322,7 @@ export function OrderIntakeFolderPanel({
                   loading={uploading}
                   {...props}
                 >
-                  ファイルを選ぶ
+                  {tr("common.chooseAFile")}
                 </PrimaryButton>
               )}
             </FileButton>
@@ -307,22 +331,24 @@ export function OrderIntakeFolderPanel({
               loading={isPending}
               onClick={scanNow}
             >
-              今すぐスキャン
+              {tr("settings.orderIntake.scanNow")}
             </SecondaryButton>
             <SecondaryButton
               href={ACCEPTANCES_PATH}
               leftSection={<IconClipboardList size={14} />}
             >
-              注文請書一覧へ
+              {tr("settings.orderIntake.toTheOrderAcceptances")}
             </SecondaryButton>
           </Group>
           <Group gap="xs">
             <Text c="dimmed" size="xs">
-              取込フォルダ:
+              {tr("settings.orderIntake.intakeFolder")}
             </Text>
             <Code>{status.dir}</Code>
             <Text c="dimmed" size="xs">
-              自動スキャン {Math.round(status.pollIntervalMs / 1000)} 秒ごと
+              {tr("settings.orderIntakeFolderPanel.autoScanEverySSeconds", {
+                seconds: Math.round(status.pollIntervalMs / 1000),
+              })}
             </Text>
           </Group>
         </Stack>
@@ -331,31 +357,35 @@ export function OrderIntakeFolderPanel({
       {/* ── 取込待ち ───────────────────────────────────────────────────── */}
       <FolderSection
         color="blue"
-        description="次のスキャンで取り込まれます。抽出中の 1 件は終わる（約 1〜3 分）までここに残ります。"
-        emptyMessage="取込待ちのファイルはありません"
+        description={tr("settings.orderIntake.itIsImportedAtTheNext")}
+        emptyMessage={tr("settings.orderIntake.thereAreNoFilesAwaitingImport")}
         rows={pendingRows}
-        title="取込待ち"
+        title={tr("settings.orderIntake.awaitingImport")}
       />
 
       {/* ── 失敗 ───────────────────────────────────────────────────────── */}
       <FolderSection
         color="red"
-        description="抽出に失敗したファイル。原因を直したら取込待ちへ戻せます — 採番済みの注文請書はそのままで、抽出だけやり直します（二重には登録されません）。"
-        emptyMessage="失敗したファイルはありません"
+        description={tr(
+          "settings.orderIntake.filesWhoseExtractionFailedOnceThe",
+        )}
+        emptyMessage={tr("settings.orderIntake.thereAreNoFailedFiles")}
         onRetry={retry}
         retryDisabled={isPending}
         rows={failedRows}
-        title="失敗"
+        title={tr("common.failure")}
         total={status.failedTotal}
       />
 
       {/* ── 取込済 ─────────────────────────────────────────────────────── */}
       <FolderSection
         color="green"
-        description="注文請書として取り込み済み。番号から書類を開いて内容を確認できます。"
-        emptyMessage="取込済のファイルはありません"
+        description={tr(
+          "settings.orderIntake.alreadyImportedAsAnOrderAcceptance",
+        )}
+        emptyMessage={tr("settings.orderIntake.thereAreNoImportedFiles")}
         rows={processedRows}
-        title="取込済"
+        title={tr("settings.orderIntake.imported")}
         total={status.processedTotal}
       />
     </Stack>
@@ -364,15 +394,16 @@ export function OrderIntakeFolderPanel({
 
 /** 「どの注文請書になったか」列。未採番・削除済みも同じ幅で見せる。 */
 function DocumentCell({ row }: { row: FolderRow }) {
+  const tr = useTranslations();
   if (!row.number) {
     return (
       <Group gap={6} wrap="nowrap">
         <Text c="dimmed" size="xs">
-          未採番
+          {tr("common.notNumbered")}
         </Text>
         {row.processing && (
           <Badge color="blue" size="xs" variant="light">
-            抽出中
+            {tr("settings.orderIntake.extracting")}
           </Badge>
         )}
       </Group>
@@ -396,26 +427,34 @@ function DocumentCell({ row }: { row: FolderRow }) {
           <StatusBadge entity="OrderAcceptanceIntake" status={row.doc.status} />
         ) : (
           <Badge color="gray" size="sm" variant="light">
-            書類なし
+            {tr("settings.orderIntake.noDocument")}
           </Badge>
         )}
         {row.processing && (
           <Badge color="blue" size="xs" variant="light">
-            抽出中
+            {tr("settings.orderIntake.extracting")}
           </Badge>
         )}
       </Group>
       {row.doc && (
         <Group gap={6} wrap="nowrap">
           <Text c={row.doc.customerName ? "dimmed" : "orange"} size="xs">
-            {row.doc.customerName ?? "顧客未特定"}
+            {row.doc.customerName ?? tr("common.customerNotIdentified")}
           </Text>
           <Text c="dimmed" size="xs">
-            明細 {row.doc.itemCount} 件
+            {tr("settings.orderIntakeFolderPanel.lineItemsCountLines", {
+              count: row.doc.itemCount,
+            })}
           </Text>
           {failure && (
             <Tooltip
-              label={[failure.summary, failure.cause, `対処: ${failure.hint}`]
+              label={[
+                failure.summary,
+                failure.cause,
+                tr("settings.orderIntakeFolderPanel.remedyHint", {
+                  hint: failure.hint,
+                }),
+              ]
                 .filter(Boolean)
                 .join("\n")}
               multiline
@@ -427,7 +466,9 @@ function DocumentCell({ row }: { row: FolderRow }) {
                 size="xs"
                 variant="light"
               >
-                {failure.retrying ? "再試行中" : "抽出失敗"}
+                {failure.retrying
+                  ? tr("settings.orderIntakeFolderPanel.retrying")
+                  : tr("common.extractionFailed")}
               </Badge>
             </Tooltip>
           )}
@@ -458,6 +499,7 @@ function FolderSection({
   onRetry?: (name: string) => void;
   retryDisabled?: boolean;
 }) {
+  const tr = useTranslations();
   const fmt = useFormat();
   const shown = rows.length;
   const all = total ?? shown;
@@ -484,12 +526,16 @@ function FolderSection({
               <Table striped withTableBorder>
                 <Table.Thead>
                   <Table.Tr>
-                    <Table.Th style={{ width: 260 }}>注文請書</Table.Th>
-                    <Table.Th>ファイル</Table.Th>
-                    <Table.Th style={{ width: 90, textAlign: "right" }}>
-                      サイズ
+                    <Table.Th style={{ width: 260 }}>
+                      {tr("common.orderAcceptance")}
                     </Table.Th>
-                    <Table.Th style={{ width: 150 }}>更新</Table.Th>
+                    <Table.Th>{tr("common.file")}</Table.Th>
+                    <Table.Th style={{ width: 90, textAlign: "right" }}>
+                      {tr("common.size")}
+                    </Table.Th>
+                    <Table.Th style={{ width: 150 }}>
+                      {tr("settings.orderIntakeFolderPanel.updatedColumn")}
+                    </Table.Th>
                     {onRetry && <Table.Th style={{ width: 120 }} />}
                   </Table.Tr>
                 </Table.Thead>
@@ -521,7 +567,7 @@ function FolderSection({
                             leftSection={<IconArrowBackUp size={14} />}
                             onClick={() => onRetry(row.name)}
                           >
-                            再取込
+                            {tr("settings.orderIntake.reImport")}
                           </GhostButton>
                         </Table.Td>
                       )}
@@ -532,7 +578,10 @@ function FolderSection({
             </Table.ScrollContainer>
             {all > shown && (
               <Text c="dimmed" size="xs">
-                新しい {shown} 件を表示（全 {all} 件）
+                {tr("settings.orderIntakeFolderPanel.showingNewestOfTotal", {
+                  shown,
+                  all,
+                })}
               </Text>
             )}
           </>

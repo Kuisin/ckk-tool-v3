@@ -6,8 +6,10 @@
  * Prisma Decimal はここで Number() へ変換してからクライアントへ渡す。
  */
 
+import { ownOrPlantWhere, rowInScope } from "@ckk/authz-core";
 import type { MaterialReceiptView } from "@/components/purchase/material-receipts/model";
-import { prisma } from "@/lib/db";
+import { checkPermission } from "@/lib/authz";
+import { type Prisma, prisma } from "@/lib/db";
 import { type LocalizedText, localized } from "@/lib/format";
 
 // 一覧クエリの取得上限（監査 P2-8 — 全件フェッチのデータ増加対策）。
@@ -61,10 +63,16 @@ function mapReceipt(r: ReceiptRow): MaterialReceiptView {
   };
 }
 
-/** 一覧 (PU03) — 入荷日の新しい順。 */
+/** 一覧 (PU03) — 入荷日の新しい順。スコープ（監査 M3）: 入荷先拠点 OR OWN。 */
 export async function fetchMaterialReceipts(): Promise<MaterialReceiptView[]> {
+  const authz = await checkPermission("material_receipt", "READ");
+  if (!authz.ok) return [];
   const rows = await prisma.materialReceipt.findMany({
     take: LIST_FETCH_CAP,
+    where: ownOrPlantWhere(authz.access, authz.userId, {
+      plantColumn: "plantId",
+      ownColumn: "createdBy",
+    }) as Prisma.MaterialReceiptWhereInput,
     include: RECEIPT_INCLUDE,
     orderBy: [{ receivedAt: "desc" }, { createdAt: "desc" }],
   });
@@ -79,8 +87,20 @@ export async function fetchMaterialReceipt(
   id: string,
 ): Promise<MaterialReceiptView | null> {
   if (!UUID_RE.test(id)) return null;
+  const authz = await checkPermission("material_receipt", "READ");
+  if (!authz.ok) return null;
   const row = await findRow(id);
-  return row ? mapReceipt(row) : null;
+  if (!row) return null;
+  if (
+    !rowInScope(
+      authz.access,
+      { plantIds: [row.plantId], createdBy: row.createdBy },
+      authz.userId,
+    )
+  ) {
+    return null;
+  }
+  return mapReceipt(row);
 }
 
 /**

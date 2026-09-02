@@ -11,6 +11,7 @@
 
 import { type Access, rowInScope } from "@ckk/authz-core";
 import { revalidatePath } from "next/cache";
+import { getTranslations } from "next-intl/server";
 import { z } from "zod";
 import { recordAudit } from "@/lib/audit";
 import { checkPermission } from "@/lib/authz";
@@ -43,7 +44,6 @@ import { calcTrialPricing, type TrialInput } from "@/lib/trial-pricing";
 import { toTrialPricingOptions } from "@/lib/trial-pricing-settings";
 
 const BASE_PATH = "/sales/trial-estimates";
-const SCOPE_DENIED = "この操作の権限がありません（対象範囲外）";
 
 /** 取得済みの価格試算行がスコープ内か（OWN 行チェック）。ALL は素通し。 */
 function estimateInScope(
@@ -81,6 +81,9 @@ export async function fetchMaterialPricing(raw: {
   diameterCode: string;
   surfaceFinishCode: string;
 }): Promise<ActionResult<MaterialPricing>> {
+  const authz = await checkPermission("price_list", "READ");
+  if (!authz.ok) return actionError(authz.error);
+  const tr = await getTranslations();
   try {
     const key = toMaterialTypeKey(raw);
     const [settings, history, typeDefault] = await Promise.all([
@@ -102,7 +105,13 @@ export async function fetchMaterialPricing(raw: {
       ),
     });
   } catch (e) {
-    return actionError(prismaErrorMessage(e, "仕入実績の取得に失敗しました"));
+    return actionError(
+      prismaErrorMessage(
+        e,
+        tr("sales.trialEstimateActions.purchaseHistoryFetchFailed"),
+        tr,
+      ),
+    );
   }
 }
 
@@ -116,26 +125,28 @@ const trialInputSchema = z.looseObject({
   machiningMinutes: z.number(),
 });
 
-const createInput = z.object({
-  name: z.string().min(1, "価格試算名を入力してください"),
-  customerBpId: z.string().nullable(),
-  /** 営業担当 — 未指定なら顧客の主担当が入る（lib/sales-rep）。 */
-  salesRepId: z.string().nullable().optional(),
-  /** 対象製品（任意）— 価格表作成時の基準単価ソース候補になる。 */
-  productId: z.string().nullable(),
-  materialTypeId: z.string().nullable(),
-  diameterCode: z.string().nullable(),
-  surfaceFinishCode: z.string().nullable(),
-  input: trialInputSchema,
-  referenceUnitPrice: z.number().nullable(),
-  referenceDate: z.string().nullable(),
-  referenceOverridden: z.boolean(),
-});
+function createInputSchema(tr: Awaited<ReturnType<typeof getTranslations>>) {
+  return z.object({
+    name: z.string().min(1, tr("sales.trialEstimates.enterAPriceEstimateName")),
+    customerBpId: z.string().nullable(),
+    /** 営業担当 — 未指定なら顧客の主担当が入る（lib/sales-rep）。 */
+    salesRepId: z.string().nullable().optional(),
+    /** 対象製品（任意）— 価格表作成時の基準単価ソース候補になる。 */
+    productId: z.string().nullable(),
+    materialTypeId: z.string().nullable(),
+    diameterCode: z.string().nullable(),
+    surfaceFinishCode: z.string().nullable(),
+    input: trialInputSchema,
+    referenceUnitPrice: z.number().nullable(),
+    referenceDate: z.string().nullable(),
+    referenceOverridden: z.boolean(),
+  });
+}
 
 // zod validates the snapshot's load-bearing fields at runtime; the payload
 // type keeps the full TrialInput shape for callers.
 export type TrialEstimateCreateInput = Omit<
-  z.infer<typeof createInput>,
+  z.infer<ReturnType<typeof createInputSchema>>,
   "input"
 > & { input: TrialInput };
 
@@ -173,9 +184,12 @@ function buildPriceSnapshot(
 export async function createTrialEstimate(
   payload: TrialEstimateCreateInput,
 ): Promise<ActionResult<{ number: string }>> {
-  const parsed = createInput.safeParse(payload);
+  const tr = await getTranslations();
+  const parsed = createInputSchema(tr).safeParse(payload);
   if (!parsed.success) {
-    return actionError(parsed.error.issues[0]?.message ?? "入力が不正です");
+    return actionError(
+      parsed.error.issues[0]?.message ?? tr("common.invalidInput"),
+    );
   }
   const authz = await checkPermission("price_list", "CREATE");
   if (!authz.ok) return actionError(authz.error);
@@ -183,7 +197,11 @@ export async function createTrialEstimate(
   try {
     const settings = await getTrialPricingSettings();
     if (!settings.toolTypes.some((t) => t.value === v.input.toolType)) {
-      return actionError(`工具種「${v.input.toolType}」は定義されていません`);
+      return actionError(
+        tr("sales.trialEstimateActions.toolTypeNotDefined", {
+          toolType: v.input.toolType,
+        }),
+      );
     }
     const { yearMonth, seq } = await allocateDocumentKey("ESTIMATE");
     const salesRepId = await resolveSalesRepId(
@@ -233,7 +251,9 @@ export async function createTrialEstimate(
     revalidate(number);
     return actionOk({ number });
   } catch (e) {
-    return actionError(prismaErrorMessage(e, "価格試算の保存に失敗しました"));
+    return actionError(
+      prismaErrorMessage(e, tr("sales.trialEstimateActions.saveFailed"), tr),
+    );
   }
 }
 
@@ -245,33 +265,37 @@ export async function linkTrialEstimateProduct(
   number: string,
   productId: string | null,
 ): Promise<ActionResult> {
+  const tr = await getTranslations();
   const key = keyOf(number);
-  if (!key) return actionError("価格試算番号が不正です");
+  if (!key)
+    return actionError(tr("sales.trialEstimateActions.invalidEstimateNumber"));
   const authz = await checkPermission("price_list", "UPDATE");
   if (!authz.ok) return actionError(authz.error);
   try {
     const estimate = await prisma.estimate.findUnique({
       where: { yearMonth_seq: { yearMonth: key.yearMonth, seq: key.seq } },
     });
-    if (!estimate) return actionError("価格試算が見つかりません");
+    if (!estimate)
+      return actionError(tr("sales.trialEstimateActions.notFound"));
     if (!estimateInScope(authz.access, authz.userId, estimate)) {
-      return actionError(SCOPE_DENIED);
+      return actionError(tr("common.outOfScope"));
     }
     if (estimate.status === "REGISTERED") {
       return actionError(
-        "価格表で使用済みの価格試算は製品リンクを変更できません（複製して再価格試算してください）",
+        tr("sales.trialEstimateActions.productLinkLockedByPriceList"),
       );
     }
     let idNum: number | null = null;
     if (productId !== null) {
       idNum = Number(productId);
       if (!Number.isInteger(idNum) || idNum <= 0) {
-        return actionError("製品の指定が不正です");
+        return actionError(tr("sales.trialEstimateActions.invalidProduct"));
       }
       const product = await prisma.product.findUnique({
         where: { id: idNum },
       });
-      if (!product) return actionError("製品が見つかりません");
+      if (!product)
+        return actionError(tr("sales.trialEstimateActions.productNotFound"));
     }
     if ((estimate.productId ?? null) === idNum) return actionOk();
     await prisma.estimate.update({
@@ -291,27 +315,38 @@ export async function linkTrialEstimateProduct(
     revalidate(number);
     return actionOk();
   } catch (e) {
-    return actionError(prismaErrorMessage(e, "製品リンクの更新に失敗しました"));
+    return actionError(
+      prismaErrorMessage(
+        e,
+        tr("sales.trialEstimateActions.productLinkUpdateFailed"),
+        tr,
+      ),
+    );
   }
 }
 
 export async function confirmTrialEstimate(
   number: string,
 ): Promise<ActionResult> {
+  const tr = await getTranslations();
   const key = keyOf(number);
-  if (!key) return actionError("価格試算番号が不正です");
+  if (!key)
+    return actionError(tr("sales.trialEstimateActions.invalidEstimateNumber"));
   const authz = await checkPermission("price_list", "UPDATE");
   if (!authz.ok) return actionError(authz.error);
   try {
     const estimate = await prisma.estimate.findUnique({
       where: { yearMonth_seq: { yearMonth: key.yearMonth, seq: key.seq } },
     });
-    if (!estimate) return actionError("価格試算が見つかりません");
+    if (!estimate)
+      return actionError(tr("sales.trialEstimateActions.notFound"));
     if (!estimateInScope(authz.access, authz.userId, estimate)) {
-      return actionError(SCOPE_DENIED);
+      return actionError(tr("common.outOfScope"));
     }
     if (estimate.status !== "DRAFT") {
-      return actionError("下書きの価格試算のみ確定できます");
+      return actionError(
+        tr("sales.trialEstimateActions.onlyDraftCanBeConfirmed"),
+      );
     }
     // 確定時点の価格を再スナップショット（この時点の設定で固定）。
     const settings = await getTrialPricingSettings();
@@ -333,6 +368,8 @@ export async function confirmTrialEstimate(
     revalidate(number);
     return actionOk();
   } catch (e) {
-    return actionError(prismaErrorMessage(e, "確定に失敗しました"));
+    return actionError(
+      prismaErrorMessage(e, tr("sales.trialEstimateActions.confirmFailed"), tr),
+    );
   }
 }

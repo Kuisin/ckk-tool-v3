@@ -9,6 +9,7 @@
  */
 
 import { revalidatePath } from "next/cache";
+import { getTranslations } from "next-intl/server";
 import { z } from "zod";
 import { recordAudit } from "@/lib/audit";
 import { checkPermission } from "@/lib/authz";
@@ -25,23 +26,44 @@ import {
 
 const BASE_PATH = "/master/material-types";
 
-const materialTypeInput = z.object({
-  nameJa: z.string().min(1, "名称（日本語）を入力してください"),
-  nameTranslations: z.record(z.string(), z.string()).optional(),
-  descriptionJa: z.string().optional(),
-  descriptionEn: z.string().optional(),
-  isActive: z.boolean(),
-});
+function materialTypeInputSchema(
+  tr: Awaited<ReturnType<typeof getTranslations>>,
+) {
+  return z.object({
+    nameJa: z.string().min(1, tr("common.nameJaRequired")),
+    nameTranslations: z.record(z.string(), z.string()).optional(),
+    descriptionJa: z.string().optional(),
+    descriptionEn: z.string().optional(),
+    isActive: z.boolean(),
+  });
+}
 
 // 新規は構成コードから組み立て、種類（4桁連番）は自動採番する。
-const materialTypeCreateInput = materialTypeInput.extend({
-  manufacturerCode: z.string().regex(/^[A-Z]$/, "メーカーを選択してください"),
-  gradeCode: z.string().regex(/^[0-9]{2}$/, "メーカー材種を選択してください"),
-  shapeCode: z.string().regex(/^[A-Z]$/, "形状を選択してください"),
-});
+function materialTypeCreateInputSchema(
+  tr: Awaited<ReturnType<typeof getTranslations>>,
+) {
+  return materialTypeInputSchema(tr).extend({
+    manufacturerCode: z
+      .string()
+      .regex(/^[A-Z]$/, tr("master.materialTypeForm.selectAManufacturer2")),
+    gradeCode: z
+      .string()
+      .regex(
+        /^[0-9]{2}$/,
+        tr("master.materialTypeForm.selectAManufacturerGrade"),
+      ),
+    shapeCode: z
+      .string()
+      .regex(/^[A-Z]$/, tr("master.materialTypeForm.selectAShape2")),
+  });
+}
 
-export type MaterialTypeInput = z.infer<typeof materialTypeInput>;
-export type MaterialTypeCreateInput = z.infer<typeof materialTypeCreateInput>;
+export type MaterialTypeInput = z.infer<
+  ReturnType<typeof materialTypeInputSchema>
+>;
+export type MaterialTypeCreateInput = z.infer<
+  ReturnType<typeof materialTypeCreateInputSchema>
+>;
 
 function revalidate(id?: number) {
   revalidatePath(BASE_PATH);
@@ -51,11 +73,14 @@ function revalidate(id?: number) {
 export async function createMaterialType(
   input: MaterialTypeCreateInput,
 ): Promise<ActionResult<{ id: number; code: string }>> {
+  const tr = await getTranslations();
   const authz = await checkPermission("master", "CREATE");
   if (!authz.ok) return actionError(authz.error);
-  const parsed = materialTypeCreateInput.safeParse(input);
+  const parsed = materialTypeCreateInputSchema(tr).safeParse(input);
   if (!parsed.success) {
-    return actionError(parsed.error.issues[0]?.message ?? "入力が不正です");
+    return actionError(
+      parsed.error.issues[0]?.message ?? tr("common.invalidInput"),
+    );
   }
   const v = parsed.data;
   try {
@@ -72,10 +97,12 @@ export async function createMaterialType(
       prisma.materialShape.findUnique({ where: { code: v.shapeCode } }),
     ]);
     if (!grade || !grade.isActive || !grade.manufacturer.isActive) {
-      return actionError("メーカー材種がこのメーカーに存在しません");
+      return actionError(
+        tr("master.materialTypeActions.gradeNotFoundForManufacturer"),
+      );
     }
     if (!shape || !shape.isActive) {
-      return actionError("形状が不正です");
+      return actionError(tr("master.materialTypeActions.invalidShape"));
     }
 
     // 種類 = メーカー×材種×形状内の 4桁連番。numbering_sequences は使わず
@@ -131,7 +158,11 @@ export async function createMaterialType(
     }
     if (!created) {
       return actionError(
-        prismaErrorMessage(lastError, "採番が競合しました。再度お試しください"),
+        prismaErrorMessage(
+          lastError,
+          tr("master.materialTypeActions.numberingConflict"),
+          tr,
+        ),
       );
     }
     await recordAudit({
@@ -151,7 +182,9 @@ export async function createMaterialType(
     revalidate(created.id);
     return actionOk({ id: created.id, code: created.code ?? "" });
   } catch (e) {
-    return actionError(prismaErrorMessage(e, "材種の作成に失敗しました"));
+    return actionError(
+      prismaErrorMessage(e, tr("master.materialTypeActions.createFailed"), tr),
+    );
   }
 }
 
@@ -159,11 +192,14 @@ export async function updateMaterialType(
   id: number,
   input: MaterialTypeInput,
 ): Promise<ActionResult<{ id: number }>> {
+  const tr = await getTranslations();
   const authz = await checkPermission("master", "UPDATE");
   if (!authz.ok) return actionError(authz.error);
-  const parsed = materialTypeInput.safeParse(input);
+  const parsed = materialTypeInputSchema(tr).safeParse(input);
   if (!parsed.success) {
-    return actionError(parsed.error.issues[0]?.message ?? "入力が不正です");
+    return actionError(
+      parsed.error.issues[0]?.message ?? tr("common.invalidInput"),
+    );
   }
   const v = parsed.data;
   try {
@@ -195,7 +231,9 @@ export async function updateMaterialType(
     revalidate(id);
     return actionOk({ id });
   } catch (e) {
-    return actionError(prismaErrorMessage(e, "材種の更新に失敗しました"));
+    return actionError(
+      prismaErrorMessage(e, tr("master.materialTypeActions.updateFailed"), tr),
+    );
   }
 }
 
@@ -203,9 +241,10 @@ export async function setMaterialTypesActive(
   ids: number[],
   isActive: boolean,
 ): Promise<ActionResult> {
+  const tr = await getTranslations();
   const authz = await checkPermission("master", "UPDATE");
   if (!authz.ok) return actionError(authz.error);
-  if (ids.length === 0) return actionError("対象が選択されていません");
+  if (ids.length === 0) return actionError(tr("common.targetNotSelected"));
   try {
     await prisma.materialType.updateMany({
       where: { id: { in: ids } },
@@ -223,25 +262,26 @@ export async function setMaterialTypesActive(
     for (const id of ids) revalidatePath(`${BASE_PATH}/${id}`);
     return actionOk();
   } catch (e) {
-    return actionError(prismaErrorMessage(e, "状態の更新に失敗しました"));
+    return actionError(
+      prismaErrorMessage(e, tr("common.statusUpdateFailed"), tr),
+    );
   }
 }
 
 export async function deleteMaterialTypes(
   ids: number[],
 ): Promise<ActionResult> {
+  const tr = await getTranslations();
   const authz = await checkPermission("master", "DELETE");
   if (!authz.ok) return actionError(authz.error);
-  if (ids.length === 0) return actionError("対象が選択されていません");
+  if (ids.length === 0) return actionError(tr("common.targetNotSelected"));
   try {
     // Guard: refuse when any material still references one of the types.
     const used = await prisma.material.count({
       where: { materialTypeId: { in: ids } },
     });
     if (used > 0) {
-      return actionError(
-        "この材種に紐づく素材が存在するため削除できません。無効化を検討してください。",
-      );
+      return actionError(tr("master.materialTypeActions.cannotDeleteInUse"));
     }
     await prisma.materialType.deleteMany({ where: { id: { in: ids } } });
     for (const id of ids) {
@@ -254,20 +294,38 @@ export async function deleteMaterialTypes(
     revalidate();
     return actionOk();
   } catch (e) {
-    return actionError(prismaErrorMessage(e, "材種の削除に失敗しました"));
+    return actionError(
+      prismaErrorMessage(e, tr("master.materialTypeActions.deleteFailed"), tr),
+    );
   }
 }
 
 // ─── 既定単価マトリクス (material_type_prices) ─────────────────────────────
 // 材種 × 直径 × 黒皮/研磨 → 単価 (¥/1000mm)。価格試算のフォールバック材料単価。
 
-const priceRowInput = z.object({
-  diameterCode: z.string().regex(/^[0-9]{3}$/, "直径コードが不正です"),
-  surfaceFinishCode: z.string().regex(/^[A-Z]$/, "黒皮/研磨コードが不正です"),
-  unitPrice: z.number().min(0, "単価は 0 以上で入力してください"),
-});
+function priceRowInputSchema(tr: Awaited<ReturnType<typeof getTranslations>>) {
+  return z.object({
+    diameterCode: z
+      .string()
+      .regex(
+        /^[0-9]{3}$/,
+        tr("master.materialTypeActions.invalidDiameterCode"),
+      ),
+    surfaceFinishCode: z
+      .string()
+      .regex(
+        /^[A-Z]$/,
+        tr("master.materialTypeActions.invalidSurfaceFinishCode"),
+      ),
+    unitPrice: z
+      .number()
+      .min(0, tr("master.materialTypeActions.unitPriceMustBeZeroOrMore")),
+  });
+}
 
-export type MaterialTypePriceRow = z.infer<typeof priceRowInput>;
+export type MaterialTypePriceRow = z.infer<
+  ReturnType<typeof priceRowInputSchema>
+>;
 
 /**
  * 材種の既定単価マトリクスを丸ごと置換する（削除 → 一括作成）。
@@ -277,18 +335,23 @@ export async function saveMaterialTypePrices(
   materialTypeId: number,
   rows: MaterialTypePriceRow[],
 ): Promise<ActionResult> {
+  const tr = await getTranslations();
   const authz = await checkPermission("master", "UPDATE");
   if (!authz.ok) return actionError(authz.error);
-  const parsed = z.array(priceRowInput).safeParse(rows);
+  const parsed = z.array(priceRowInputSchema(tr)).safeParse(rows);
   if (!parsed.success) {
-    return actionError(parsed.error.issues[0]?.message ?? "入力が不正です");
+    return actionError(
+      parsed.error.issues[0]?.message ?? tr("common.invalidInput"),
+    );
   }
   // (直径 × 黒皮/研磨) の重複を弾く。
   const seen = new Set<string>();
   for (const r of parsed.data) {
     const k = `${r.diameterCode}|${r.surfaceFinishCode}`;
     if (seen.has(k)) {
-      return actionError("同一の直径 × 黒皮/研磨 の行が重複しています");
+      return actionError(
+        tr("master.materialTypeActions.duplicateDiameterFinishRow"),
+      );
     }
     seen.add(k);
   }
@@ -313,6 +376,12 @@ export async function saveMaterialTypePrices(
     revalidate(materialTypeId);
     return actionOk();
   } catch (e) {
-    return actionError(prismaErrorMessage(e, "既定単価の保存に失敗しました"));
+    return actionError(
+      prismaErrorMessage(
+        e,
+        tr("master.materialTypeActions.savePricesFailed"),
+        tr,
+      ),
+    );
   }
 }

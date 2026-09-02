@@ -43,7 +43,8 @@ import {
   IconFileTypePdf,
   IconLanguage,
 } from "@tabler/icons-react";
-import { type ReactNode, useState } from "react";
+import { useTranslations } from "next-intl";
+import { type ChangeEventHandler, type ReactNode, useState } from "react";
 import { useUnsavedChanges } from "@/components/layout/NavigationGuard";
 import { useIsMobile } from "@/hooks/useViewport";
 import { LOCALE_LABELS, LOCALES } from "@/lib/i18n";
@@ -91,7 +92,7 @@ export interface MenuItemDef {
 // ── ResourceActions (detail header actions) ─────────────────────────────────
 export function ResourceActions({
   onEdit,
-  editLabel = "編集",
+  editLabel: editLabelProp,
   pdf,
   menuItems = [],
 }: {
@@ -100,6 +101,8 @@ export function ResourceActions({
   pdf?: { href?: string; onClick?: () => void; label?: string };
   menuItems?: MenuItemDef[];
 }) {
+  const tr = useTranslations();
+  const editLabel = editLabelProp ?? tr("common.edit");
   const isMobile = useIsMobile();
 
   const menu = (extra: MenuItemDef[]) =>
@@ -108,7 +111,7 @@ export function ResourceActions({
         <Menu.Target>
           {/* アイコンのみのボタンには aria-label が必須（design.md §18.2）。 */}
           <Button
-            aria-label="操作メニュー"
+            aria-label={tr("common.actions2")}
             px="xs"
             size={isMobile ? "sm" : undefined}
             variant="default"
@@ -232,6 +235,7 @@ export function ListShell({
   embedded?: boolean;
   children: ReactNode;
 }) {
+  const tr = useTranslations();
   const isMobile = useIsMobile();
   const hasFilters = !!(search || filters);
 
@@ -250,7 +254,9 @@ export function ListShell({
               <Group align="flex-end" gap="xs">
                 {filters}
                 {onReset && (
-                  <GhostButton onClick={onReset}>リセット</GhostButton>
+                  <GhostButton onClick={onReset}>
+                    {tr("common.reset2")}
+                  </GhostButton>
                 )}
               </Group>
             </Stack>
@@ -258,7 +264,11 @@ export function ListShell({
             <Group align="flex-end" mb="sm">
               {search && <Box className="flex-1">{search}</Box>}
               {filters}
-              {onReset && <GhostButton onClick={onReset}>リセット</GhostButton>}
+              {onReset && (
+                <GhostButton onClick={onReset}>
+                  {tr("common.reset2")}
+                </GhostButton>
+              )}
             </Group>
           ))}
         {children}
@@ -344,7 +354,7 @@ export function FormShell({
   isDirty = false,
   onSubmit,
   onCancel,
-  submitLabel = "保存",
+  submitLabel: submitLabelProp,
   children,
 }: {
   breadcrumbs: Crumb[];
@@ -358,6 +368,8 @@ export function FormShell({
   submitLabel?: string;
   children: ReactNode;
 }) {
+  const tr = useTranslations();
+  const submitLabel = submitLabelProp ?? tr("common.save");
   // 送信中は保存処理の遷移を妨げないよう、未保存ガードを解除する。
   useUnsavedChanges(isDirty && !isPending);
   return (
@@ -398,7 +410,7 @@ export function FormActions({
   children,
   onCancel,
   onSave,
-  submitLabel = "保存",
+  submitLabel: submitLabelProp,
   cancelLabel,
   loading,
   disabled,
@@ -414,6 +426,8 @@ export function FormActions({
   loading?: boolean;
   disabled?: boolean;
 }) {
+  const tr = useTranslations();
+  const submitLabel = submitLabelProp ?? tr("common.save");
   const isMobile = useIsMobile();
 
   if (children) return <Box className="form-actions">{children}</Box>;
@@ -511,6 +525,7 @@ export interface AuditEntry {
  * 開く — 何がどう変わったかを画面遷移なしで確認できる。
  */
 export function AuditTimeline({ entries }: { entries: AuditEntry[] }) {
+  const tr = useTranslations();
   const [selected, setSelected] = useState<AuditEntry | null>(null);
   return (
     <>
@@ -541,7 +556,7 @@ export function AuditTimeline({ entries }: { entries: AuditEntry[] }) {
             lineVariant="dotted"
             title={
               <UnstyledButton
-                aria-label={`${log.action} の詳細を開く`}
+                aria-label={tr("common.openDetailOf", { name: log.action })}
                 onClick={() => setSelected(log)}
                 style={{ display: "block", width: "100%" }}
               >
@@ -603,15 +618,34 @@ export function LocalizedTextInput({
   /**
    * 既定言語（日本語）の値。本文に常時表示する唯一の欄。`description` を
    * 追加で渡してよい（`TextInput` へそのまま伝わる）。
+   *
+   * **`onChange` は「値」ではなく「イベント」を受け取る** — 中身は素の
+   * Mantine `TextInput` にそのまま流し込むため。`form.getInputProps("nameJa")`
+   * をそのまま渡すか、`useState` 直書きなら
+   * `onChange: (e) => setNameJa(e.currentTarget.value)` と書くこと。
+   * `onChange: setNameJa` と書くと **state にイベントそのものが入り**、
+   * 入力欄が `[object Object]` になったうえ、保存時に Server Action の
+   * 直列化が落ちる（関数を含むオブジェクトは渡せない）。実際に MS0D
+   * 作業場所と地域で起きたので、`GetInputPropsReturnType`（`onChange: any`）
+   * をそのまま使わず**ここだけ型を締めて**コンパイルで止める。
+   * `getInputProps` の戻り値は `any` なので従来どおり渡せる。
    */
-  jaProps: GetInputPropsReturnType & { description?: ReactNode };
+  jaProps: Omit<GetInputPropsReturnType, "onChange"> & {
+    onChange?: ChangeEventHandler<HTMLInputElement>;
+    description?: ReactNode;
+  };
   /**
    * 日本語以外の翻訳をまとめて持つ 1 フィールド（`Record<言語コード, 値>`）。
    * `form.getInputProps("xxxTranslations")` をそのまま渡せる — 生の
    * `{value, onChange}` オブジェクトでもよい（編集モーダルなど useState 直書きの
    * 画面向け）。
+   *
+   * こちらは `jaProps` と逆で **値（`Record<言語コード, 値>`）を受け取る** —
+   * モーダルの確定時にまとめて渡すため。`onChange: setNameTranslations` が正しい。
    */
-  translationsProps: GetInputPropsReturnType;
+  translationsProps: Omit<GetInputPropsReturnType, "onChange"> & {
+    onChange: (value: Record<string, string>) => void;
+  };
   required?: boolean;
   placeholder?: string;
   /**
@@ -620,6 +654,7 @@ export function LocalizedTextInput({
    */
   help?: { help: string; manual: string };
 }) {
+  const tr = useTranslations();
   const [opened, { open, close }] = useDisclosure(false);
   const translations: Record<string, string> = translationsProps.value ?? {};
   const [draft, setDraft] = useState<Record<string, string>>(translations);
@@ -647,7 +682,9 @@ export function LocalizedTextInput({
             open();
           }}
         >
-          多言語{filledCount > 0 ? `（${filledCount}）` : ""}
+          {filledCount > 0
+            ? tr("common.translationsWithCount", { count: filledCount })
+            : tr("common.translations")}
         </SecondaryButton>
       </Group>
       <ModalShell
@@ -657,12 +694,14 @@ export function LocalizedTextInput({
           close();
         }}
         opened={opened}
-        title={`${label} — 多言語`}
+        title={tr("common.translationsTitle", { label })}
       >
         <Stack gap="sm">
           <Text c="dimmed" size="xs">
-            {LOCALE_LABELS.ja}（{jaProps.value || "—"}
-            ）は上の欄で編集します。ここでは他の言語だけを設定します。
+            {tr("ui.localizedTextInput.editDefaultLocaleAbove", {
+              locale: LOCALE_LABELS.ja,
+              value: jaProps.value || "—",
+            })}
           </Text>
           {otherLocales.map((locale) => (
             <TextInput

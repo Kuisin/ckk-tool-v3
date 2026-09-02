@@ -34,7 +34,7 @@ import {
 } from "@tabler/icons-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useLocale } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { useState, useTransition } from "react";
 import { searchAllocatableOrderLineOptions } from "@/app/(dashboard)/_shared/option-search";
 import {
@@ -51,6 +51,7 @@ import {
   WorkOrderProcedurePanel,
 } from "@/components/production/ApprovalStatusPanel";
 import type { ProductDesignFile } from "@/components/production/design-files/model";
+import { WorkOrderFinalInspectionPanel } from "@/components/production/WorkOrderFinalInspectionPanel";
 import { WorkOrderStepsPanel } from "@/components/production/WorkOrderStepsPanel";
 import { AppTabs } from "@/components/ui/AppTabs";
 import { GhostButton } from "@/components/ui/buttons";
@@ -119,6 +120,7 @@ export function WorkOrderDetail({
   /** "approval" = 承認管理 (PD03) からの承認画面。 */
   variant?: "default" | "approval";
 }) {
+  const tr = useTranslations();
   const locale = useLocale();
   const fmt = useFormat();
   const router = useRouter();
@@ -146,15 +148,17 @@ export function WorkOrderDetail({
       );
       if (res.ok) {
         notifications.show({
-          title: designFileId ? "固定しました" : "固定を解除しました",
+          title: designFileId
+            ? tr("production.workOrderDetail.pinned")
+            : tr("production.workOrders.unpinned"),
           message: "",
           color: "green",
         });
         router.refresh();
       } else {
         notifications.show({
-          title: "エラー",
-          message: res.error ?? "失敗しました",
+          title: tr("common.error2"),
+          message: res.error ?? tr("common.failed"),
           color: "red",
         });
       }
@@ -169,15 +173,17 @@ export function WorkOrderDetail({
       );
       if (result.ok) {
         notifications.show({
-          title: "コピーしました",
-          message: `指示書 ${result.data.docNumber} を作成しました`,
+          title: tr("common.copied"),
+          message: tr("production.workOrderDetail.workOrderWasCreatedWithDoc", {
+            docNumber: result.data.docNumber,
+          }),
           color: "green",
         });
         setCopyOpen(false);
         router.push(`${BASE_PATH}/${result.data.workOrderNumber}`);
       } else {
         notifications.show({
-          title: "エラー",
+          title: tr("common.error2"),
           message: result.error,
           color: "red",
         });
@@ -187,22 +193,26 @@ export function WorkOrderDetail({
 
   const handleCancel = () => {
     openConfirm({
-      title: "キャンセルの確認",
-      message: `指示書 ${woLabel} をキャンセルします。この操作は取り消せません。`,
-      confirmLabel: "キャンセルする",
+      title: tr("common.confirmCancellation"),
+      message: tr("production.workOrderDetail.cancelWorkOrderWithLabel", {
+        label: woLabel,
+      }),
+      confirmLabel: tr("common.cancelDocument"),
       onConfirm: () => {
         startTransition(async () => {
           const result = await cancelWorkOrder(wo.workOrderNumber);
           if (result.ok) {
             notifications.show({
-              title: "キャンセルしました",
-              message: `指示書 ${woLabel}`,
+              title: tr("common.cancelled"),
+              message: tr("production.workOrderDetail.workOrderWithLabel", {
+                label: woLabel,
+              }),
               color: "green",
             });
             router.refresh();
           } else {
             notifications.show({
-              title: "エラー",
+              title: tr("common.error2"),
               message: result.error,
               color: "red",
             });
@@ -235,7 +245,7 @@ export function WorkOrderDetail({
   const summary = (
     <SummaryGrid>
       <FieldValue
-        label="注文明細（割当）"
+        label={tr("common.orderLinesAllocated")}
         value={
           wo.orderLines.length > 0 ? (
             <Stack gap={2}>
@@ -256,13 +266,13 @@ export function WorkOrderDetail({
             </Stack>
           ) : (
             <Badge color="teal" size="sm" variant="light">
-              在庫向け（注文明細なし）
+              {tr("common.forStockNoOrderLine")}
             </Badge>
           )
         }
       />
       <FieldValue
-        label="顧客"
+        label={tr("common.customer")}
         value={
           wo.orderLines.length > 0
             ? [
@@ -275,26 +285,32 @@ export function WorkOrderDetail({
             : "—"
         }
       />
-      <FieldValue label="作成者" value={wo.createdByName} />
-      <FieldValue label="製品" value={wo.productName} />
+      <FieldValue label={tr("common.createdBy")} value={wo.createdByName} />
+      <FieldValue label={tr("common.product")} value={wo.productName} />
       <FieldValue
-        label="種別"
+        label={tr("common.type2")}
         value={workOrderTypeLabel(wo.type, locale) ?? wo.type}
       />
-      <FieldValue label="予定数量" value={`${wo.plannedQuantity}`} />
       <FieldValue
-        label="使用素材"
+        label={tr("common.plannedQuantity")}
+        value={`${wo.plannedQuantity}`}
+      />
+      <FieldValue
+        label={tr("production.workOrders.materialUsed")}
         value={
           wo.materialCode ? `${wo.materialCode}（${wo.materialName}）` : null
         }
       />
       <FieldValue
-        label="ロット番号"
+        label={tr("common.lotNumber")}
         value={<DocNumber>{wo.lotNumber ?? wo.workOrderNumber}</DocNumber>}
       />
-      <FieldValue label="保管場所" value={wo.storageLocationName} />
       <FieldValue
-        label="工程ルート"
+        label={tr("common.storageLocations")}
+        value={wo.storageLocationName}
+      />
+      <FieldValue
+        label={tr("production.workOrders.processRoute")}
         value={
           wo.routeName != null ? (
             <Anchor
@@ -308,7 +324,7 @@ export function WorkOrderDetail({
         }
       />
       <FieldValue
-        label="コピー元"
+        label={tr("production.workOrders.copiedFrom")}
         value={
           wo.sourceWorkOrderNumber != null ? (
             <Anchor
@@ -324,7 +340,7 @@ export function WorkOrderDetail({
         }
       />
       <FieldValue
-        label="検査表"
+        label={tr("common.inspectionSheet")}
         value={(() => {
           // 工程単位の割当を検査工程ごとに要約（工程名: 検査表 / …）
           const rows = wo.steps
@@ -346,21 +362,21 @@ export function WorkOrderDetail({
           <ResourceActions
             menuItems={[
               {
-                label: "コピー",
+                label: tr("common.copy2"),
                 icon: <IconCopy size={14} />,
                 onClick: () => setCopyOpen(true),
               },
               {
                 // 帯（最小要約 + QR）を別タブで開いてブラウザ印刷する。
                 // QR は CKK:WO:<番号> — 将来キオスクで読んで工程へ飛ぶ。
-                label: "ストリップ印刷",
+                label: tr("production.workOrders.printStrips"),
                 icon: <IconPrinter size={14} />,
                 href: `${BASE_PATH}/print?ids=${wo.workOrderNumber}`,
               },
               ...(canCancel
                 ? [
                     {
-                      label: "キャンセル",
+                      label: tr("common.cancel"),
                       icon: <IconX size={14} />,
                       color: "red",
                       divider: true,
@@ -379,8 +395,16 @@ export function WorkOrderDetail({
       }
       breadcrumbs={
         isApproval
-          ? ["生産", { label: "承認・予定", href: "/general/tasks" }, woLabel]
-          : ["生産", { label: "指示書", href: BASE_PATH }, woLabel]
+          ? [
+              tr("common.production"),
+              { label: tr("common.approvalsSchedule"), href: "/general/tasks" },
+              woLabel,
+            ]
+          : [
+              tr("common.production"),
+              { label: tr("common.workOrder"), href: BASE_PATH },
+              woLabel,
+            ]
       }
       createdAt={fmt.dateTime(wo.createdAt)}
       status={
@@ -394,7 +418,15 @@ export function WorkOrderDetail({
           )}
         </>
       }
-      title={isApproval ? `承認 ${woLabel}` : `指示書 ${woLabel}`}
+      title={
+        isApproval
+          ? tr("production.workOrderDetail.approvalWithLabel", {
+              label: woLabel,
+            })
+          : tr("production.workOrderDetail.workOrderWithLabel", {
+              label: woLabel,
+            })
+      }
       updatedAt={fmt.dateTime(wo.updatedAt)}
     >
       {/* 「いまやること」カードは常に最上部。承認画面は承認状況もサマリより上 */}
@@ -404,7 +436,7 @@ export function WorkOrderDetail({
         <Alert
           color="red"
           icon={<IconAlertTriangle size={16} />}
-          title="差し戻された工程フロー変更が適用されたままです"
+          title={tr("production.workOrders.aSentBackWorkflowChangeIs")}
           variant="light"
         >
           <Stack align="flex-start" gap="xs">
@@ -424,14 +456,14 @@ export function WorkOrderDetail({
                   );
                   if (result.ok) {
                     notifications.show({
-                      title: "確認済みにしました",
+                      title: tr("production.workOrders.markedAsChecked"),
                       message: "",
                       color: "green",
                     });
                     router.refresh();
                   } else {
                     notifications.show({
-                      title: "エラー",
+                      title: tr("common.error2"),
                       message: result.error,
                       color: "red",
                     });
@@ -441,7 +473,7 @@ export function WorkOrderDetail({
               size="xs"
               variant="light"
             >
-              確認済みにする
+              {tr("production.workOrders.markAsChecked")}
             </Button>
           </Stack>
         </Alert>
@@ -464,11 +496,11 @@ export function WorkOrderDetail({
 
       <AppTabs onChange={setTab} value={tab}>
         <Tabs.List>
-          <Tabs.Tab value="overview">概要</Tabs.Tab>
-          <Tabs.Tab value="drawing">図面</Tabs.Tab>
-          <Tabs.Tab value="related">関連</Tabs.Tab>
-          <Tabs.Tab value="memo">メモ</Tabs.Tab>
-          <Tabs.Tab value="history">履歴</Tabs.Tab>
+          <Tabs.Tab value="overview">{tr("common.overview")}</Tabs.Tab>
+          <Tabs.Tab value="drawing">{tr("common.drawing2")}</Tabs.Tab>
+          <Tabs.Tab value="related">{tr("common.related")}</Tabs.Tab>
+          <Tabs.Tab value="memo">{tr("common.memo")}</Tabs.Tab>
+          <Tabs.Tab value="history">{tr("common.history")}</Tabs.Tab>
         </Tabs.List>
 
         <Tabs.Panel pt="md" value="overview">
@@ -488,10 +520,14 @@ export function WorkOrderDetail({
               workOrderNumber={wo.workOrderNumber}
               workOrderStatus={wo.status}
             />
+            <WorkOrderFinalInspectionPanel
+              finalInspection={wo.finalInspection}
+              workOrderNumber={wo.workOrderNumber}
+            />
             {wo.notes && (
               <div>
                 <Text c="dimmed" mb={4} size="xs">
-                  備考
+                  {tr("common.notes")}
                 </Text>
                 <Text size="sm" style={{ whiteSpace: "pre-wrap" }}>
                   {wo.notes}
@@ -511,7 +547,9 @@ export function WorkOrderDetail({
                   図面が「改訂で変わりうるもの」かどうかは、ここでしか判らない。 */}
               <Group gap="xs" wrap="wrap">
                 <Badge color={designPinned ? "violet" : "gray"} variant="light">
-                  {designPinned ? "この版に固定" : "最新を表示"}
+                  {designPinned
+                    ? tr("production.workOrders.pinToThisVersion")
+                    : tr("production.workOrders.showTheLatest")}
                 </Badge>
                 {designFile.customerName ? (
                   <Badge color="blue" variant="light">
@@ -519,7 +557,7 @@ export function WorkOrderDetail({
                   </Badge>
                 ) : (
                   <Badge color="gray" variant="outline">
-                    汎用
+                    {tr("common.generic")}
                   </Badge>
                 )}
                 {onToggleDesignPin && (
@@ -528,7 +566,9 @@ export function WorkOrderDetail({
                       onToggleDesignPin(designPinned ? null : designFile.id)
                     }
                   >
-                    {designPinned ? "固定を解除" : "この版に固定"}
+                    {designPinned
+                      ? tr("production.workOrderDetail.unpinDesignFile")
+                      : tr("production.workOrders.pinToThisVersion")}
                   </GhostButton>
                 )}
               </Group>
@@ -565,7 +605,7 @@ export function WorkOrderDetail({
           ) : (
             <EmptyState
               icon={<IconRuler2 size={24} />}
-              message="この製品の図面はまだ登録されていません"
+              message={tr("production.workOrders.noDrawingIsRegisteredForThis")}
             />
           )}
         </Tabs.Panel>
@@ -574,7 +614,7 @@ export function WorkOrderDetail({
           <Stack gap="md">
             <div>
               <Text c="dimmed" mb={4} size="xs">
-                注文明細
+                {tr("common.orderLine")}
               </Text>
               {wo.orderLines.length > 0 ? (
                 <Stack gap={4}>
@@ -596,13 +636,13 @@ export function WorkOrderDetail({
                 </Stack>
               ) : (
                 <Text c="dimmed" size="sm">
-                  在庫向けの独立指示書（注文明細なし）
+                  {tr("production.workOrders.standaloneWorkOrderForStockNo")}
                 </Text>
               )}
             </div>
             <div>
               <Text c="dimmed" mb={4} size="xs">
-                コピー（この指示書から作成）
+                {tr("production.workOrders.copyCreateFromThisWorkOrder")}
               </Text>
               {wo.copies.length > 0 ? (
                 <Stack gap={4}>
@@ -628,7 +668,7 @@ export function WorkOrderDetail({
             {wo.sourceWorkOrderNumber != null && (
               <div>
                 <Text c="dimmed" mb={4} size="xs">
-                  コピー元
+                  {tr("production.workOrders.copiedFrom")}
                 </Text>
                 <Anchor
                   component={Link}
@@ -661,13 +701,15 @@ export function WorkOrderDetail({
       </AppTabs>
 
       <ModalShell
-        confirmLabel="コピー作成"
+        confirmLabel={tr("production.workOrders.createACopy")}
         loading={isPending}
         onClose={() => setCopyOpen(false)}
         onConfirm={handleCopy}
         opened={copyOpen}
         size="md"
-        title={`指示書 ${woLabel} をコピー`}
+        title={tr("production.workOrderDetail.copyWorkOrderWithLabel", {
+          label: woLabel,
+        })}
       >
         <Stack gap="sm">
           {wo.copies.length > 0 && (
@@ -690,17 +732,17 @@ export function WorkOrderDetail({
                   }
                 : null
             }
-            label="対象注文明細"
+            label={tr("production.workOrders.orderLinesCovered")}
             onChange={setCopyTargetSoId}
             onSearch={searchAllocatableOrderLineOptions}
-            placeholder="未選択 = 在庫向け（注文明細なし）としてコピー"
+            placeholder={tr(
+              "production.workOrders.nothingSelectedCopiedAsForStock",
+            )}
             storageKey="sales-order"
             value={copyTargetSoId}
           />
           <Text c="dimmed" size="xs">
-            工程・実施場所・検査表を引き継いだ下書きを作成します。
-            注文明細を選ばない場合は在庫向けの独立指示書としてコピーします
-            （在庫分の指示書は注文明細が必要です）。
+            {tr("production.workOrders.createsADraftCarryingOverThe")}
           </Text>
         </Stack>
       </ModalShell>

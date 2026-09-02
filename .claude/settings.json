@@ -1,4 +1,5 @@
 {
+  "model": "opusplan",
   "enabledPlugins": {
     "frontend-design@claude-plugins-official": true
   },
@@ -27,6 +28,20 @@
       "Bash(git push --force origin dev:*)",
       "Bash(git push -f origin main:*)",
       "Bash(git push -f origin dev:*)"
+    ]
+  },
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"$CLAUDE_PROJECT_DIR\"/tools/codebase-memory/refresh-index.sh",
+            "async": true,
+            "timeout": 300
+          }
+        ]
+      }
     ]
   }
 }

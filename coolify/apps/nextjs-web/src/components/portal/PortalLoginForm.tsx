@@ -24,6 +24,7 @@ import {
 } from "@mantine/core";
 import { IconInfoCircle } from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { useState, useTransition } from "react";
 import {
   requestPortalOtp,
@@ -34,6 +35,7 @@ import {
 type Mode = "email" | "code" | "backup";
 
 export function PortalLoginForm() {
+  const tr = useTranslations();
   const router = useRouter();
   const [pending, start] = useTransition();
   const [mode, setMode] = useState<Mode>("email");
@@ -87,7 +89,7 @@ export function PortalLoginForm() {
 
   return (
     <Stack gap="md" maw={420} mt="xl" mx="auto">
-      <Title order={3}>取引先ポータル</Title>
+      <Title order={3}>{tr("common.partnerPortal")}</Title>
 
       <Card padding="lg" radius="md" withBorder>
         <Stack gap="md">
@@ -111,14 +113,14 @@ export function PortalLoginForm() {
             <>
               <TextInput
                 autoComplete="email"
-                label="メールアドレス"
+                label={tr("common.emailAddress")}
                 onChange={(e) => setEmail(e.currentTarget.value)}
                 placeholder="you@example.co.jp"
                 type="email"
                 value={email}
               />
               <Button fullWidth loading={pending} onClick={submitEmail}>
-                確認コードを送る
+                {tr("common.sendAVerificationCode")}
               </Button>
               <Anchor
                 component="button"
@@ -130,7 +132,7 @@ export function PortalLoginForm() {
                 size="xs"
                 type="button"
               >
-                メールが受け取れない場合
+                {tr("portal.portalLoginForm.ifYouCannotReceiveTheEmail")}
               </Anchor>
             </>
           ) : null}
@@ -140,13 +142,13 @@ export function PortalLoginForm() {
               <TextInput
                 autoComplete="one-time-code"
                 autoFocus
-                label="確認コード"
+                label={tr("common.verificationCode")}
                 onChange={(e) => setCode(e.currentTarget.value)}
                 placeholder="ABCD-EFGH"
                 value={code}
               />
               <Button fullWidth loading={pending} onClick={submitCode}>
-                ログイン
+                {tr("common.logIn")}
               </Button>
               <Group justify="space-between">
                 <Anchor
@@ -159,7 +161,7 @@ export function PortalLoginForm() {
                   size="xs"
                   type="button"
                 >
-                  アドレスを入れ直す
+                  {tr("portal.portalLoginForm.enterTheAddressAgain")}
                 </Anchor>
                 <Anchor
                   component="button"
@@ -171,7 +173,7 @@ export function PortalLoginForm() {
                   size="xs"
                   type="button"
                 >
-                  メールが受け取れない場合
+                  {tr("portal.portalLoginForm.ifYouCannotReceiveTheEmail")}
                 </Anchor>
               </Group>
             </>
@@ -180,25 +182,24 @@ export function PortalLoginForm() {
           {mode === "backup" ? (
             <>
               <Text c="dimmed" size="xs">
-                担当営業からお渡ししたバックアップコードを入力してください。 1
-                枚につき 1 回だけ使えます。
+                {tr("portal.portalLoginForm.enterTheBackupCodeYourSales")}
               </Text>
               <TextInput
                 autoComplete="email"
-                label="メールアドレス"
+                label={tr("common.emailAddress")}
                 onChange={(e) => setEmail(e.currentTarget.value)}
                 placeholder="you@example.co.jp"
                 type="email"
                 value={email}
               />
               <TextInput
-                label="バックアップコード"
+                label={tr("common.backupCode")}
                 onChange={(e) => setCode(e.currentTarget.value)}
                 placeholder="ABCD-EFGH-IJ"
                 value={code}
               />
               <Button fullWidth loading={pending} onClick={submitBackup}>
-                ログイン
+                {tr("common.logIn")}
               </Button>
               <Anchor
                 component="button"
@@ -210,7 +211,7 @@ export function PortalLoginForm() {
                 size="xs"
                 type="button"
               >
-                確認コードでログインする
+                {tr("portal.portalLoginForm.logInWithAVerificationCode")}
               </Anchor>
             </>
           ) : null}
