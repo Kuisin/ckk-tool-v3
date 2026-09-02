@@ -3149,7 +3149,10 @@
       "issuedCardsCount": "Issued {count} QR cards",
       "pinConfigured": "Configured",
       "pinIsConfigured": "PIN configured",
-      "scanQr": "Scan QR"
+      "scanQr": "Scan QR",
+      "loginScreenLanguage": "Login screen language",
+      "loginScreenLanguageDescription": "The display language for screens shown before logging in on this device (QR code login, device link, etc.).",
+      "loginScreenLanguageDefault": "Default (Japanese)"
     },
     "links": {
       "links": "Links",
@@ -7432,7 +7435,8 @@
       "fileId": "File",
       "fileName": "File name",
       "storageKey": "Storage key",
-      "mimeType": "Type"
+      "mimeType": "Type",
+      "locale": "Language"
     },
     "tableFieldLabels": {
       "kiosk_devices": {
@@ -7514,5 +7518,76 @@
   "trialPricingEngine": {
     "notANumber": "Not a number",
     "expressionIsEmpty": "The expression is empty"
+  },
+  "loginAttempt": {
+    "methods": {
+      "PASSWORD": "Password",
+      "SSO": "Single sign-on",
+      "QR_SCAN": "QR card (scan only)",
+      "QR_PIN": "QR card + PIN",
+      "PIN_SETUP": "Initial PIN setup",
+      "ATTEST": "Device attestation",
+      "DEVICE_SETTINGS": "Device setup code",
+      "DEVICE_LINK": "Device link",
+      "PORTAL_OTP": "Partner portal (verification code)",
+      "PORTAL_BACKUP": "Partner portal (backup code)",
+      "PORTAL_LINK": "Partner portal (document link)"
+    },
+    "reasons": {
+      "EMPTY_INPUT": "Input is empty",
+      "RATE_LIMITED": "Rate limited",
+      "UNKNOWN_USER": "User does not exist",
+      "USER_INACTIVE": "User is inactive",
+      "NO_PASSWORD_SET": "No password set",
+      "BAD_PASSWORD": "Incorrect password",
+      "SSO_NO_USERNAME": "SSO: no username claim",
+      "SSO_USER_INACTIVE": "SSO: user is inactive",
+      "SSO_UPSERT_FAILED": "SSO: failed to register user",
+      "SSO_CALLBACK_ERROR": "SSO: callback failed",
+      "DEVICE_NO_COOKIE": "No device cookie",
+      "DEVICE_NOT_FOUND": "Unregistered device",
+      "DEVICE_EXPIRED": "Device token expired",
+      "DEVICE_DISABLED": "Device is disabled",
+      "DEVICE_REVOKED": "Device has been revoked",
+      "DEVICE_PENDING": "Device is not yet activated",
+      "ATTEST_REQUIRED": "Attestation not passed",
+      "BAD_REQUEST": "Invalid request",
+      "CARD_INVALID": "Card is invalid",
+      "CARD_SUSPENDED": "Card is suspended",
+      "CARD_EXPIRED": "Card is outside its valid period",
+      "LOCKED": "Locked",
+      "TICKET_EXPIRED": "Ticket expired",
+      "PIN_FORMAT": "Invalid PIN format",
+      "PIN_MISMATCH": "PIN mismatch",
+      "PIN_ALREADY_SET": "PIN already set",
+      "PIN_WEAK": "PIN is weak",
+      "ATTEST_NOT_CONFIGURED": "Attestation not configured",
+      "ATTEST_BAD_SIGNATURE": "Signature verification failed",
+      "ATTEST_KEY_MISMATCH": "Device key mismatch",
+      "ATTEST_KEY_IN_USE": "Device key is in use by another device",
+      "ATTEST_BAD_PROFILE": "Invalid device profile",
+      "SETTINGS_NO_DEVICE": "Device settings: unknown device",
+      "SETTINGS_LOCKED": "Device settings: locked",
+      "SETTINGS_CODE_INVALID": "Device setup code mismatch",
+      "REACTIVATE_PROOF_REQUIRED": "Device reissue: no proof",
+      "REACTIVATE_BAD_SIGNATURE": "Device reissue: invalid signature",
+      "REACTIVATE_CODE_INVALID": "Device reissue: setup code mismatch",
+      "REACTIVATE_LOCKED": "Device reissue: locked",
+      "REACTIVATE_TOKEN_LIVE": "Device reissue: token still valid",
+      "UNLOCK_PIN_NOT_ATTESTED": "Exit PIN: device not attested",
+      "PORTAL_UNKNOWN_EMAIL": "Portal: unregistered address",
+      "PORTAL_ACCOUNT_INACTIVE": "Portal: account is inactive",
+      "PORTAL_CODE_EXPIRED": "Portal: verification code expired",
+      "PORTAL_CODE_MISMATCH": "Portal: verification code mismatch",
+      "PORTAL_CODE_ATTEMPTS": "Portal: verification code attempt limit reached",
+      "PORTAL_BACKUP_INVALID": "Portal: backup code mismatch",
+      "PORTAL_LINK_NOT_FOUND": "Portal: link does not exist",
+      "PORTAL_LINK_EXPIRED": "Portal: link expired",
+      "PORTAL_LINK_REVOKED": "Portal: link has been revoked",
+      "PORTAL_LINK_EXHAUSTED": "Portal: link use count exceeded",
+      "PORTAL_MAIL_FAILED": "Portal: failed to send email",
+      "PORTAL_MAIL_BLOCKED_DEV": "Portal: not on the dev allowlist",
+      "UNKNOWN": "Unknown"
+    }
   }
 }

@@ -21,8 +21,10 @@ import { notifications } from "@mantine/notifications";
 import { IconArrowLeft, IconLock } from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useI18n } from "@/components/I18nProvider";
 import { PinKeypad } from "@/components/PinKeypad";
 import { QrScannerView } from "@/components/QrScannerView";
+import { fillMessage } from "@/lib/i18n";
 import { beginUserPageTracking } from "@/lib/last-page";
 import { playLoginSound } from "@/lib/sound";
 import {
@@ -41,6 +43,7 @@ type LoginState =
 
 export function LoginView() {
   const router = useRouter();
+  const { m } = useI18n();
   const [state, setState] = useState<LoginState>({ phase: "checking" });
   const [busy, setBusy] = useState(false);
   const busyRef = useRef(false);
@@ -148,37 +151,36 @@ export function LoginView() {
           case "CARD_SUSPENDED":
             notifications.show({
               color: "orange",
-              title: "カード一時停止中",
-              message:
-                "このカードは停止されています。管理者に連絡してください。",
+              title: m.login.cardSuspendedTitle,
+              message: m.login.cardSuspendedMessage,
             });
             return;
           case "CARD_EXPIRED":
             notifications.show({
               color: "orange",
-              title: "カード有効期間外",
-              message: "このカードは有効期間外です。管理者に連絡してください。",
+              title: m.login.cardExpiredTitle,
+              message: m.login.cardExpiredMessage,
             });
             return;
           default:
             notifications.show({
               color: "red",
-              title: "ログインできません",
-              message: "カードが無効です。管理者に確認してください。",
+              title: m.login.cannotLoginTitle,
+              message: m.login.cannotLoginMessage,
             });
         }
       } catch {
         notifications.show({
           color: "red",
-          title: "通信エラー",
-          message: "もう一度スキャンしてください。",
+          title: m.login.communicationErrorTitle,
+          message: m.login.scanAgainMessage,
         });
       } finally {
         busyRef.current = false;
         setBusy(false);
       }
     },
-    [router],
+    [router, m],
   );
 
   const submitPin = useCallback(
@@ -210,17 +212,16 @@ export function LoginView() {
           case "PIN_MISMATCH":
             notifications.show({
               color: "red",
-              title: "PIN が違います",
-              message: "もう一度入力してください。",
+              title: m.login.pinIncorrectTitle,
+              message: m.login.pinIncorrectMessage,
             });
             setState({ phase: "pin_verify", ticket: data.ticket ?? "" });
             return;
           case "PIN_WEAK":
             notifications.show({
               color: "red",
-              title: "その PIN は使えません",
-              message:
-                "6 桁で、同じ数字の連続や 123456 のような並び・繰り返しは避けてください。",
+              title: m.login.pinWeakTitle,
+              message: m.login.pinWeakMessage,
             });
             setState({ phase: "pin_setup", ticket, firstPin: undefined });
             return;
@@ -230,8 +231,8 @@ export function LoginView() {
           case "CARD_EXPIRED":
             notifications.show({
               color: "orange",
-              title: "カード有効期間外",
-              message: "このカードは有効期間外です。管理者に連絡してください。",
+              title: m.login.cardExpiredTitle,
+              message: m.login.cardExpiredMessage,
             });
             setState({ phase: "scanning" });
             return;
@@ -239,43 +240,43 @@ export function LoginView() {
           case "PIN_ALREADY_SET":
             notifications.show({
               color: "orange",
-              title: "もう一度スキャンしてください",
-              message: "操作がタイムアウトしました。",
+              title: m.login.retryScanTitle,
+              message: m.login.timedOutMessage,
             });
             setState({ phase: "scanning" });
             return;
           default:
             notifications.show({
               color: "red",
-              title: "エラー",
-              message: "最初からやり直してください。",
+              title: m.login.genericErrorTitle,
+              message: m.login.startOverMessage,
             });
             setState({ phase: "scanning" });
         }
       } catch {
         notifications.show({
           color: "red",
-          title: "通信エラー",
-          message: "もう一度お試しください。",
+          title: m.login.communicationErrorTitle,
+          message: m.login.retryMessage,
         });
       } finally {
         setBusy(false);
       }
     },
-    [router],
+    [router, m],
   );
 
   return (
     <Center p="md" style={{ flex: 1 }}>
       <Paper maw={640} p="xl" radius="md" w="100%" withBorder>
         <Stack align="center" gap="lg">
-          <Title order={2}>QRコードログイン</Title>
+          <Title order={2}>{m.login.title}</Title>
 
           {state.phase === "checking" && <Loader size="lg" />}
 
           {state.phase === "scanning" && (
             <>
-              <Text c="dimmed">社員QRカードをスキャンしてください</Text>
+              <Text c="dimmed">{m.login.scanPrompt}</Text>
               <QrScannerView onScan={handleScan} paused={busy} />
             </>
           )}
@@ -286,8 +287,8 @@ export function LoginView() {
               minLength={6}
               onSubmit={(pin) => setState({ ...state, firstPin: pin })}
               submitting={busy}
-              subtitle="初回ログインです。6 桁の PIN を設定してください（同じ数字の連続や 123456 のような並びは使えません）。"
-              title="PIN を設定"
+              subtitle={m.login.pinSetupSubtitle}
+              title={m.login.pinSetupTitle}
             />
           )}
 
@@ -299,8 +300,8 @@ export function LoginView() {
                 if (pin !== state.firstPin) {
                   notifications.show({
                     color: "red",
-                    title: "PIN が一致しません",
-                    message: "最初から入力し直してください。",
+                    title: m.login.pinMismatchTitle,
+                    message: m.login.pinMismatchMessage,
                   });
                   setState({ ...state, firstPin: undefined });
                   return;
@@ -308,8 +309,8 @@ export function LoginView() {
                 void submitPin("PIN_SETUP", state.ticket, pin);
               }}
               submitting={busy}
-              subtitle="確認のためもう一度入力してください。"
-              title="PIN を再入力"
+              subtitle={m.login.pinReenterSubtitle}
+              title={m.login.pinReenterTitle}
             />
           )}
 
@@ -319,8 +320,8 @@ export function LoginView() {
                 void submitPin("PIN_VERIFY", state.ticket, pin)
               }
               submitting={busy}
-              subtitle="3日以上利用がなかったため、本人確認が必要です。"
-              title="PIN を入力"
+              subtitle={m.login.pinVerifySubtitle}
+              title={m.login.pinVerifyTitle}
             />
           )}
 
@@ -328,16 +329,16 @@ export function LoginView() {
             <Stack align="center" gap="md">
               <Alert color="red" icon={<IconLock size={20} />}>
                 {state.outcome === "KEY_MISMATCH"
-                  ? "この端末の鍵が登録済みの鍵と一致しません。管理者に「端末管理 → 鍵リセット」を依頼してください。"
+                  ? m.login.attestKeyMismatch
                   : state.outcome === "NO_BRIDGE"
-                    ? "このシステムは認可された専用端末アプリからのみ利用できます。"
-                    : "端末認証に失敗しました。通信環境を確認して再試行してください。"}
+                    ? m.login.attestNoBridge
+                    : m.login.attestGenericFail}
               </Alert>
               <Button
                 onClick={() => window.location.reload()}
                 variant="default"
               >
-                再試行
+                {m.login.retry}
               </Button>
             </Stack>
           )}
@@ -345,16 +346,18 @@ export function LoginView() {
           {state.phase === "locked" && (
             <Stack align="center" gap="md">
               <Alert color="red" icon={<IconLock size={20} />}>
-                PIN の入力に複数回失敗したため、一時的にロックされています。
+                {m.login.lockedMessage}
                 {state.until &&
-                  ` 解除予定: ${new Date(state.until).toLocaleTimeString("ja-JP")}`}
+                  fillMessage(m.login.lockedUntil, {
+                    time: new Date(state.until).toLocaleTimeString("ja-JP"),
+                  })}
               </Alert>
               <Button
                 leftSection={<IconArrowLeft size={20} />}
                 onClick={() => setState({ phase: "scanning" })}
                 variant="default"
               >
-                スキャンに戻る
+                {m.login.backToScan}
               </Button>
             </Stack>
           )}
@@ -367,7 +370,7 @@ export function LoginView() {
               onClick={() => setState({ phase: "scanning" })}
               variant="subtle"
             >
-              スキャンに戻る
+              {m.login.backToScan}
             </Button>
           )}
         </Stack>

@@ -11,10 +11,10 @@
  * 済みの端末でも設定画面自体は開ける現行仕様と揃えている）。
  */
 
-import { I18nProvider } from "@/components/I18nProvider";
-import { DeviceSettingsView } from "@/components/DeviceSettingsView";
-import { DEVICE_COOKIE, getDeviceForSettings } from "@/lib/kiosk-auth";
 import { cookies } from "next/headers";
+import { DeviceSettingsView } from "@/components/DeviceSettingsView";
+import { I18nProvider } from "@/components/I18nProvider";
+import { DEVICE_COOKIE, getDeviceForSettings } from "@/lib/kiosk-auth";
 
 export const dynamic = "force-dynamic";
 

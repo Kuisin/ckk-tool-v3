@@ -5,10 +5,10 @@
  * 絞らない）で引く。Cookie 自体が無ければ既定の ja。
  */
 
-import { I18nProvider } from "@/components/I18nProvider";
-import { DeviceErrorView } from "@/components/DeviceErrorView";
-import { DEVICE_COOKIE, getDeviceForSettings } from "@/lib/kiosk-auth";
 import { cookies } from "next/headers";
+import { DeviceErrorView } from "@/components/DeviceErrorView";
+import { I18nProvider } from "@/components/I18nProvider";
+import { DEVICE_COOKIE, getDeviceForSettings } from "@/lib/kiosk-auth";
 
 export const dynamic = "force-dynamic";
 
