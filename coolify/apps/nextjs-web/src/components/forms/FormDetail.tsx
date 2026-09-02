@@ -24,7 +24,7 @@ import {
 } from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
-import { useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 import { useFormat } from "@/components/layout/PreferencesProvider";
 import type { FlowApprover } from "@/components/master/approval-flows/ApproverPermissionBadge";
 import { AppTabs } from "@/components/ui/AppTabs";
@@ -117,10 +117,12 @@ export function FormDetail({
   const router = useRouter();
   const fmt = useFormat();
   const isMobile = useIsMobile();
-  const shareUrl =
-    typeof window !== "undefined"
-      ? `${window.location.origin}/f/${form.code}`
-      : `/f/${form.code}`;
+  // 共有 URL は絶対 URL にしたいが、origin はブラウザでしか分からない。
+  // SSR とクライアント初回描画は同じ相対パスにして、マウント後に origin を足す
+  // （描画中に window を見ると hydration の文字列不一致になる — e2e で検出）。
+  const [origin, setOrigin] = useState("");
+  useEffect(() => setOrigin(window.location.origin), []);
+  const shareUrl = `${origin}/f/${form.code}`;
 
   const [pending, startTransition] = useTransition();
   const [exportOpen, setExportOpen] = useState(false);

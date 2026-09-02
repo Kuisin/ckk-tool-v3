@@ -1086,6 +1086,37 @@
       "TIP": "Tip only",
       "TIP_GASH": "Tip + gash",
       "TIP_OUTER": "Tip + periphery"
+    },
+    "PRODUCT_FIELD_TYPE_LABEL": {
+      "string": "Text",
+      "number": "Number",
+      "boolean": "Yes / No",
+      "select": "Select",
+      "date": "Date"
+    },
+    "DESIGN_FILE_SOURCE_LABEL": {
+      "REQUEST": "Request",
+      "MANUAL": "Manual"
+    },
+    "PORTAL_PROGRESS_LABEL": {
+      "RECEIVED": "Order received",
+      "IN_PRODUCTION": "In production",
+      "READY": "Preparing shipment",
+      "SHIPPED": "Shipped",
+      "DELIVERED": "Delivered",
+      "CANCELLED": "Cancelled"
+    },
+    "SHARE_LEVEL_LABEL": {
+      "RESPOND": "Respond only",
+      "READ": "View",
+      "EDIT": "Edit",
+      "MANAGE": "Manage"
+    },
+    "SHARE_SUBJECT_LABEL": {
+      "EVERYONE": "All",
+      "PLANT": "Site",
+      "ROLE": "Role",
+      "USER": "User"
     }
   },
   "status": {
@@ -1721,6 +1752,16 @@
           "description": "Creates a document URL anyone holding it can open. Verified links are not gated."
         }
       }
+    },
+    "GRANT_STATE_LABEL": {
+      "PENDING": "Pending approval",
+      "SCHEDULED": "Not started",
+      "ARMED": "Available",
+      "ACTIVE": "In use",
+      "EXPIRED": "Expired",
+      "REJECTED": "Sent back",
+      "REVOKED": "Revoked",
+      "CANCELLED": "Withdrawn"
     }
   },
   "pdf": {
@@ -2977,6 +3018,24 @@
           "noVision": "The specified model cannot read images. Specify an image-capable model in System settings → AI provider.",
           "upstream": "An error occurred at the AI provider. Please try again later."
         }
+      }
+    },
+    "aiProviderPresets": {
+      "ollama": {
+        "label": "Local (Ollama)",
+        "note": "The default setup on the in-house GPU. Documents never leave the company."
+      },
+      "openai": {
+        "label": "OpenAI-compatible",
+        "note": "OpenAI, or any /chat/completions-compatible service such as vLLM, LM Studio or OpenRouter."
+      },
+      "anthropic": {
+        "label": "Anthropic (Claude)",
+        "note": "Do not add a date to the model ID (claude-opus-5 / claude-sonnet-5 / claude-haiku-4-5, etc.)."
+      },
+      "gemini": {
+        "label": "Google Gemini",
+        "note": "Uses a Google AI Studio API key."
       }
     },
     "kiosk": {
@@ -7486,6 +7545,65 @@
         "quality": "Quality / defects",
         "announcement": "Announcements"
       }
+    },
+    "action": {
+      "CREATE": "Create",
+      "UPDATE": "Update",
+      "DELETE": "Delete",
+      "VIEW": "View",
+      "EXPORT": "Export",
+      "SEED": "Seed data",
+      "MIGRATE": "Migration"
+    },
+    "table": {
+      "quotes": "Quotes",
+      "estimates": "Price estimates",
+      "price_list_entries": "Price lists",
+      "products": "Products",
+      "materials": "Materials",
+      "material_types": "Material types",
+      "business_partners": "Business partners",
+      "feature_flags": "Apps",
+      "plants": "Sites",
+      "factories": "Sites (legacy)",
+      "process_step_catalog": "Process steps",
+      "inspection_templates": "Inspection templates",
+      "defect_types": "Defect types",
+      "approval_groups": "Approval groups",
+      "approval_flows": "Approval flows",
+      "order_lines": "Order lines",
+      "work_orders": "Work orders",
+      "delivery_orders": "Delivery orders",
+      "delivery_notes": "Delivery notes",
+      "purchase_requests": "Purchase requests",
+      "forms": "Forms",
+      "form_responses": "Form responses",
+      "internal_pages": "Internal documents",
+      "purchase_request_items": "Purchase request lines",
+      "material_purchase_orders": "Material purchase orders",
+      "material_receipts": "Material receipts",
+      "invoices": "Invoices",
+      "billing_closings": "Billing closings",
+      "design_requests": "Design requests",
+      "approval_requests": "Approval requests",
+      "order_acceptances": "Order acceptances",
+      "kiosk_cards": "QR cards",
+      "kiosk_devices": "Shared devices",
+      "display_devices": "Displays",
+      "kiosk_floor_maps": "Floor maps",
+      "product_inventory": "Product stock",
+      "material_inventory": "Material stock",
+      "storage_locations": "Storage locations",
+      "storage_shelves": "Shelves",
+      "work_location_groups": "Work location groups",
+      "work_locations": "Work locations",
+      "file_folder_grants": "File folder grants",
+      "intake_folder": "Order intake folder",
+      "portal_accounts": "Portal accounts",
+      "portal_grants": "Portal sharing scopes",
+      "portal_document_links": "Portal document links",
+      "portal_backup_codes": "Portal backup codes",
+      "system": "System"
     }
   },
   "inspectionTemplateIo": {

@@ -1086,6 +1086,37 @@
       "TIP": "先端のみ",
       "TIP_GASH": "先端+ギャッシュ",
       "TIP_OUTER": "先端+外周"
+    },
+    "PRODUCT_FIELD_TYPE_LABEL": {
+      "string": "文字列",
+      "number": "数値",
+      "boolean": "真偽（はい/いいえ）",
+      "select": "選択",
+      "date": "日付"
+    },
+    "DESIGN_FILE_SOURCE_LABEL": {
+      "REQUEST": "依頼",
+      "MANUAL": "手動"
+    },
+    "PORTAL_PROGRESS_LABEL": {
+      "RECEIVED": "受注",
+      "IN_PRODUCTION": "製造中",
+      "READY": "出荷準備",
+      "SHIPPED": "出荷済み",
+      "DELIVERED": "納品済み",
+      "CANCELLED": "キャンセル"
+    },
+    "SHARE_LEVEL_LABEL": {
+      "RESPOND": "回答のみ",
+      "READ": "閲覧",
+      "EDIT": "編集",
+      "MANAGE": "管理"
+    },
+    "SHARE_SUBJECT_LABEL": {
+      "EVERYONE": "全社",
+      "PLANT": "拠点",
+      "ROLE": "ロール",
+      "USER": "個人"
     }
   },
   "status": {
@@ -1721,6 +1752,16 @@
           "description": "URL を持っていれば誰でも開ける書類リンクを作る。転送されればその相手も開ける（本人確認ありのリンクは対象外）"
         }
       }
+    },
+    "GRANT_STATE_LABEL": {
+      "PENDING": "承認依頼中",
+      "SCHEDULED": "開始前",
+      "ARMED": "利用可能",
+      "ACTIVE": "利用中",
+      "EXPIRED": "期限切れ",
+      "REJECTED": "差し戻し",
+      "REVOKED": "取り消し",
+      "CANCELLED": "取り下げ"
     }
   },
   "pdf": {
@@ -2977,6 +3018,24 @@
           "noVision": "指定のモデルは画像を読み取れません。システム設定 → AI プロバイダ で画像対応モデルを指定してください。",
           "upstream": "AI プロバイダでエラーが起きました。時間をおいてもう一度お試しください。"
         }
+      }
+    },
+    "aiProviderPresets": {
+      "ollama": {
+        "label": "ローカル (Ollama)",
+        "note": "社内の GPU で動かす既定の構成。書類が社外へ出ない。"
+      },
+      "openai": {
+        "label": "OpenAI 互換",
+        "note": "OpenAI のほか、vLLM・LM Studio・OpenRouter など /chat/completions 互換のサービス。"
+      },
+      "anthropic": {
+        "label": "Anthropic (Claude)",
+        "note": "モデル ID に日付は付けない（claude-opus-5 / claude-sonnet-5 / claude-haiku-4-5 など）。"
+      },
+      "gemini": {
+        "label": "Google Gemini",
+        "note": "Google AI Studio の API キーを使う。"
       }
     },
     "kiosk": {
@@ -7486,6 +7545,65 @@
         "quality": "品質・不良",
         "announcement": "お知らせ"
       }
+    },
+    "action": {
+      "CREATE": "作成",
+      "UPDATE": "更新",
+      "DELETE": "削除",
+      "VIEW": "閲覧",
+      "EXPORT": "書き出し",
+      "SEED": "初期データ",
+      "MIGRATE": "マイグレーション"
+    },
+    "table": {
+      "quotes": "見積書",
+      "estimates": "価格試算",
+      "price_list_entries": "価格表",
+      "products": "製品",
+      "materials": "素材",
+      "material_types": "材種",
+      "business_partners": "取引先",
+      "feature_flags": "アプリ管理",
+      "plants": "拠点",
+      "factories": "拠点（旧）",
+      "process_step_catalog": "工程マスタ",
+      "inspection_templates": "検査表テンプレート",
+      "defect_types": "不良種類",
+      "approval_groups": "承認グループ",
+      "approval_flows": "承認フロー",
+      "order_lines": "注文明細",
+      "work_orders": "指示書",
+      "delivery_orders": "出荷書",
+      "delivery_notes": "納品書",
+      "purchase_requests": "購買依頼",
+      "forms": "フォーム",
+      "form_responses": "フォーム回答",
+      "internal_pages": "社内文書",
+      "purchase_request_items": "購買依頼明細",
+      "material_purchase_orders": "素材発注書",
+      "material_receipts": "素材入荷",
+      "invoices": "請求書",
+      "billing_closings": "締日処理",
+      "design_requests": "設計依頼書",
+      "approval_requests": "承認依頼",
+      "order_acceptances": "注文請書",
+      "kiosk_cards": "QRカード",
+      "kiosk_devices": "共有端末",
+      "display_devices": "ディスプレイ",
+      "kiosk_floor_maps": "フロアマップ",
+      "product_inventory": "製品在庫",
+      "material_inventory": "素材在庫",
+      "storage_locations": "保管場所",
+      "storage_shelves": "棚",
+      "work_location_groups": "作業場所グループ",
+      "work_locations": "作業場所",
+      "file_folder_grants": "ファイルフォルダ権限",
+      "intake_folder": "注文書取込フォルダ",
+      "portal_accounts": "ポータルアカウント",
+      "portal_grants": "ポータル共有範囲",
+      "portal_document_links": "ポータル書類リンク",
+      "portal_backup_codes": "ポータルバックアップコード",
+      "system": "システム"
     }
   },
   "inspectionTemplateIo": {

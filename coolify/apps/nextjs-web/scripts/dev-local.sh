@@ -10,12 +10,16 @@
 # pointing DATABASE_URL at that tunnel, then runs `pnpm dev` (Turbopack hot
 # reload). Your local writes hit the shared DEV database.
 #
-# Env overrides: DB_SSH_HOST (192.168.50.15), DB_CONTAINER (shared-db),
+# Env overrides: DB_SSH_HOST (192.168.50.15), DB_ALIAS (ckk-db-dev — the
+#                Coolify network alias; DB_CONTAINER names a container directly),
 #                DB_TUNNEL_PORT (25432), PORT (3000).
 set -euo pipefail
 
 SERVER="${DB_SSH_HOST:-192.168.50.15}"
-CONTAINER="${DB_CONTAINER:-shared-db}"
+# The dev DB is a Coolify app now (hash-named container); find it by its
+# `coolify` network alias unless DB_CONTAINER names a container explicitly.
+CONTAINER="${DB_CONTAINER:-}"
+DB_ALIAS="${DB_ALIAS:-ckk-db-dev}"
 LOCAL_PORT="${DB_TUNNEL_PORT:-25432}"
 APP_PORT="${PORT:-3000}"
 
@@ -46,7 +50,16 @@ fi
   exit 1
 }
 
-# 1. Resolve the shared-db container's Docker IP (reachable from the server host).
+# 1. Resolve the dev DB container's Docker IP (reachable from the server host).
+if [ -z "$CONTAINER" ]; then
+  log "resolving container with network alias '$DB_ALIAS' on $SERVER"
+  CONTAINER="$(ssh -o ConnectTimeout=10 "$SERVER" \
+    "docker ps -q | xargs -I{} docker inspect {} --format '{{.Name}} {{range .NetworkSettings.Networks}}{{.Aliases}}{{end}}' | grep -w '$DB_ALIAS' | head -1 | awk '{print \$1}' | sed 's#^/##'")"
+  [ -n "$CONTAINER" ] || {
+    echo "dev-local: no container with alias '$DB_ALIAS' on $SERVER (set DB_CONTAINER or DB_ALIAS)" >&2
+    exit 1
+  }
+fi
 log "resolving $CONTAINER IP on $SERVER"
 CIP="$(ssh -o ConnectTimeout=10 "$SERVER" \
   "docker inspect $CONTAINER --format '{{range .NetworkSettings.Networks}}{{.IPAddress}} {{end}}'" \
