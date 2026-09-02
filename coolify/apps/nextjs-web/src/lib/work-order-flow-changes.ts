@@ -18,6 +18,7 @@
 
 import "server-only";
 
+import { getTranslations } from "next-intl/server";
 import {
   getApprovalApplyMode,
   getApprovalFlow,
@@ -32,6 +33,7 @@ import {
   isPostApply,
   requiresApproval,
 } from "./flow-change-core";
+import type { Tr } from "./i18n";
 import {
   addBranchSeries,
   type BranchTermination,
@@ -78,12 +80,13 @@ export async function submitFlowChange(input: {
   payload: FlowChangePayload;
 }): Promise<FlowChangeResult> {
   const { workOrderId, workOrderNumber, workOrderStatus, payload } = input;
+  const tr = await getTranslations();
 
   // 下書き・承認前の指示書は普通の編集なので承認を挟まない。
   const gated = isFlowChangeGated(workOrderStatus);
   const flow = gated ? await getApprovalFlow(TARGET_TYPE) : [];
   if (!gated || !requiresApproval(flow.length)) {
-    return applyPayload(workOrderId, payload);
+    return applyPayload(workOrderId, payload, tr);
   }
 
   // 進行中の変更は 1 指示書に 1 件だけ（DB 側にも部分 unique index がある）。
@@ -94,7 +97,9 @@ export async function submitFlowChange(input: {
   if (existing) {
     return {
       ok: false,
-      errors: ["この指示書には承認依頼中の工程フロー変更があります"],
+      errors: [
+        tr("production.workOrderFlowChanges.pendingChangeAlreadyExists"),
+      ],
     };
   }
 
@@ -112,7 +117,7 @@ export async function submitFlowChange(input: {
   // 適用モード POST = 即時適用 + 事後承認（現場を止めない運用）。
   const postApply = isPostApply(await getApprovalApplyMode(TARGET_TYPE));
   if (postApply) {
-    const applied = await applyPayload(workOrderId, payload);
+    const applied = await applyPayload(workOrderId, payload, tr);
     if (!applied.ok) {
       // 適用できない変更は保留も残さない — 依頼者がその場で直して出し直す。
       await prisma.workOrderFlowChange.delete({ where: { id: row.id } });
@@ -132,11 +137,14 @@ export async function submitFlowChange(input: {
     if (postApply) {
       // 適用済みの事実は消せない — 行を APPLIED で確定し、承認が始められ
       // なかったことをメモに残す（幽霊 PENDING を作らない）。
+      const reason = started.error ?? tr("common.unknownReason");
       await prisma.workOrderFlowChange.update({
         where: { id: row.id },
         data: {
           status: "APPLIED",
-          error: `承認依頼を開始できませんでした: ${started.error ?? "不明"}`,
+          error: tr("production.workOrderFlowChanges.approvalStartFailedNote", {
+            error: reason,
+          }),
           resolvedBy: actor,
           resolvedAt: new Date(),
         },
@@ -146,24 +154,38 @@ export async function submitFlowChange(input: {
         tableName: "work_orders",
         recordId: String(workOrderNumber),
         after: {
-          note: `工程フロー変更を適用（承認依頼の開始に失敗 — ${started.error ?? "不明"}）`,
+          note: tr(
+            "production.workOrderFlowChanges.appliedApprovalStartFailedNote",
+            { error: reason },
+          ),
         },
       });
       return { ok: true, applied: true };
     }
     // PRE: 依頼が作れないなら保留行も残さない（承認できない幽霊を作らない）。
     await prisma.workOrderFlowChange.delete({ where: { id: row.id } });
-    return { ok: false, errors: [started.error ?? "承認依頼に失敗しました"] };
+    return {
+      ok: false,
+      errors: [
+        started.error ??
+          tr("production.workOrderFlowChanges.approvalRequestFailedFallback"),
+      ],
+    };
   }
 
+  const summary = describeFlowChange(payload.kind, payload, tr);
   await recordAudit({
     action: "UPDATE",
     tableName: "work_orders",
     recordId: String(workOrderNumber),
     after: {
       note: postApply
-        ? `工程フロー変更を適用し承認依頼（${describeFlowChange(payload.kind, payload)}）`
-        : `工程フロー変更を承認依頼（${describeFlowChange(payload.kind, payload)}）`,
+        ? tr("production.workOrderFlowChanges.appliedWithApprovalNote", {
+            summary,
+          })
+        : tr("production.workOrderFlowChanges.requestedApprovalNote", {
+            summary,
+          }),
     },
   });
   return postApply
@@ -178,13 +200,22 @@ export async function submitFlowChange(input: {
 export async function applyApprovedFlowChange(
   flowChangeId: string,
 ): Promise<FlowChangeResult> {
+  const tr = await getTranslations();
   const row = await prisma.workOrderFlowChange.findUnique({
     where: { id: flowChangeId },
     include: { workOrder: { select: { id: true, workOrderNumber: true } } },
   });
-  if (!row) return { ok: false, errors: ["工程フロー変更が見つかりません"] };
+  if (!row) {
+    return {
+      ok: false,
+      errors: [tr("production.workOrderFlowChanges.notFound")],
+    };
+  }
   if (row.status !== "PENDING") {
-    return { ok: false, errors: ["この変更は既に処理済みです"] };
+    return {
+      ok: false,
+      errors: [tr("production.workOrderFlowChanges.alreadyProcessed")],
+    };
   }
 
   const actor = await getCurrentActorId();
@@ -195,28 +226,37 @@ export async function applyApprovedFlowChange(
       : await applyPayload(
           row.workOrderId,
           row.payload as unknown as FlowChangePayload,
+          tr,
         );
 
   await prisma.workOrderFlowChange.update({
     where: { id: row.id },
     data: {
       status: result.ok ? "APPLIED" : "FAILED",
-      error: result.ok ? null : (result.errors?.join(" / ") ?? "適用に失敗"),
+      error: result.ok
+        ? null
+        : (result.errors?.join(" / ") ??
+          tr("production.workOrderFlowChanges.applyFailedShort")),
       resolvedBy: actor,
       resolvedAt: new Date(),
     },
   });
 
+  const summary = describeFlowChange(row.kind, row.payload, tr);
   await recordAudit({
     action: "UPDATE",
     tableName: "work_orders",
     recordId: String(row.workOrder.workOrderNumber),
     after: {
       note: !result.ok
-        ? `工程フロー変更の適用に失敗（${result.errors?.join(" / ")}）`
+        ? tr("production.workOrderFlowChanges.applyFailedNote", {
+            errors: result.errors?.join(" / ") ?? "",
+          })
         : row.appliedAt != null
-          ? `工程フロー変更を承認（適用済み — ${describeFlowChange(row.kind, row.payload)}）`
-          : `工程フロー変更を適用（${describeFlowChange(row.kind, row.payload)}）`,
+          ? tr("production.workOrderFlowChanges.approvedAlreadyAppliedNote", {
+              summary,
+            })
+          : tr("production.workOrderFlowChanges.appliedNote", { summary }),
     },
   });
   return result;
@@ -274,10 +314,11 @@ export async function fetchPendingFlowChange(workOrderId: string): Promise<{
     orderBy: { requestedAt: "desc" },
   });
   if (!row) return null;
+  const tr = await getTranslations();
   return {
     id: row.id,
     kind: row.kind,
-    summary: describeFlowChange(row.kind, row.payload),
+    summary: describeFlowChange(row.kind, row.payload, tr),
     requestedByName: row.requestedByUser?.displayName ?? null,
     requestedAt: row.requestedAt.toISOString(),
     appliedAt: row.appliedAt?.toISOString() ?? null,
@@ -304,9 +345,10 @@ export async function fetchRejectedAppliedFlowChange(
     orderBy: { resolvedAt: "desc" },
   });
   if (!row) return null;
+  const tr = await getTranslations();
   return {
     id: row.id,
-    summary: describeFlowChange(row.kind, row.payload),
+    summary: describeFlowChange(row.kind, row.payload, tr),
     resolvedAt: row.resolvedAt?.toISOString() ?? null,
   };
 }
@@ -315,6 +357,7 @@ export async function fetchRejectedAppliedFlowChange(
 async function applyPayload(
   workOrderId: string,
   payload: FlowChangePayload,
+  tr: Tr,
 ): Promise<FlowChangeResult> {
   switch (payload.kind) {
     case "ADD_BRANCH":
@@ -339,7 +382,12 @@ async function applyPayload(
       });
     default: {
       const kind = (payload as { kind?: string }).kind ?? "unknown";
-      return { ok: false, errors: [`未知の変更種別です（${kind}）`] };
+      return {
+        ok: false,
+        errors: [
+          tr("production.workOrderFlowChanges.unknownChangeKind", { kind }),
+        ],
+      };
     }
   }
 }

@@ -15,7 +15,7 @@
  */
 
 import { revalidatePath } from "next/cache";
-import { getTranslations } from "next-intl/server";
+import { getLocale, getTranslations } from "next-intl/server";
 import { z } from "zod";
 import { validateConditions } from "@/lib/approval-conditions";
 import { validateFlowSteps } from "@/lib/approval-flow";
@@ -582,6 +582,8 @@ export async function saveApprovalFlow(
       groupId: s.groupId,
       mode: s.mode,
     })),
+    false,
+    tr,
   );
   if (issues.length > 0) return actionError(issues[0]);
 
@@ -749,7 +751,7 @@ export async function saveApprovalFlowRule(
   ruleId: number | null,
   input: ApprovalFlowRuleInput,
 ): Promise<ActionResult<{ ruleId: number }>> {
-  const tr = await getTranslations();
+  const [tr, locale] = await Promise.all([getTranslations(), getLocale()]);
   const authz = await checkPermission("master", "UPDATE");
   if (!authz.ok) return actionError(authz.error);
   const parsed = flowRuleInputSchema(tr).safeParse({ targetType, ...input });
@@ -766,9 +768,11 @@ export async function saveApprovalFlowRule(
       groupId: s.groupId,
       mode: s.mode,
     })),
+    false,
+    tr,
   );
   if (stepIssues.length > 0) return actionError(stepIssues[0]);
-  const condIssues = validateConditions(v.targetType, v.conditions);
+  const condIssues = validateConditions(v.targetType, v.conditions, locale, tr);
   if (condIssues.length > 0) return actionError(condIssues[0]);
 
   try {

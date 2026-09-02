@@ -4,8 +4,8 @@ import { Anchor, Badge, Table, Tabs, Text } from "@mantine/core";
 import { useTranslations } from "next-intl";
 import type { PortalDocumentListItem } from "@/lib/portal-documents";
 import {
-  PORTAL_DOCUMENT_LABEL,
   type PortalDocumentType,
+  portalDocumentLabel,
 } from "@/lib/portal-documents-core";
 
 export function PortalDocumentTabs({
@@ -30,7 +30,7 @@ export function PortalDocumentTabs({
             }
             value={g.type}
           >
-            {PORTAL_DOCUMENT_LABEL[g.type]}
+            {portalDocumentLabel(g.type, tr)}
           </Tabs.Tab>
         ))}
       </Tabs.List>
@@ -39,7 +39,9 @@ export function PortalDocumentTabs({
         <Tabs.Panel key={g.type} pt="md" value={g.type}>
           {g.items.length === 0 ? (
             <Text c="dimmed" size="sm">
-              表示できる{PORTAL_DOCUMENT_LABEL[g.type]}はありません。
+              {tr("portal.documents.noneToShow", {
+                document: portalDocumentLabel(g.type, tr),
+              })}
             </Text>
           ) : (
             <Table highlightOnHover striped withTableBorder>

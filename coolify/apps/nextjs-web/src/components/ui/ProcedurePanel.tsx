@@ -111,7 +111,7 @@ export function approvalStage(
     label: opts.label ?? opts.tr("common.approve"),
     description: opts.approvedAt
       ? opts.fmtDate(opts.approvedAt)
-      : approvalStepDescription(approval),
+      : approvalStepDescription(approval, opts.tr),
     color: approval.phase === "REJECTED" ? "red" : undefined,
   };
 }

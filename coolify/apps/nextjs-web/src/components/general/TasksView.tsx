@@ -176,7 +176,7 @@ export function TasksView({
     ...(completions.length > 0 ? ["completions"] : []),
     "comments",
   ];
-  const visible = visibleTaskTabs(available, hiddenTabs);
+  const visible = visibleTaskTabs(available, hiddenTabs, tr);
   const [requestedTab, setTab] = useTabParam(visible[0]?.id ?? "plans");
   const tab = resolveActiveTab(requestedTab, visible);
 

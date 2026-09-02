@@ -149,12 +149,15 @@ export async function disableBootstrapAdmin(): Promise<ActionResult> {
     if (!snap)
       return actionError(tr("settings.usersActions.bootstrapAdminNotFound"));
 
-    const state = bootstrapAdminState({
-      username: BOOTSTRAP_ADMIN_USERNAME,
-      isActive: snap.isActive,
-      passwordChangeRequired: snap.passwordChangeRequired,
-      otherActiveAdminCount: snap.otherActiveAdminCount,
-    });
+    const state = bootstrapAdminState(
+      {
+        username: BOOTSTRAP_ADMIN_USERNAME,
+        isActive: snap.isActive,
+        passwordChangeRequired: snap.passwordChangeRequired,
+        otherActiveAdminCount: snap.otherActiveAdminCount,
+      },
+      tr,
+    );
     if (!state.canDisable) {
       return actionError(
         state.message ?? tr("settings.usersActions.cannotPerformNow"),

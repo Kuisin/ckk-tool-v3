@@ -32,17 +32,28 @@ import {
   templateImageHtml,
 } from "@/lib/inspection-sheet-pdf";
 import { templateImageDataUri } from "@/lib/inspection-template-image";
+import { label } from "@/lib/messages";
 import { renderPdf } from "@/lib/pdf";
 import { documentQrSvg } from "@/lib/pdf-qr";
 import { QR_KINDS } from "@/lib/qr-payload";
 
 export const dynamic = "force-dynamic";
 
+/**
+ * この検査記録シートは取引先向けではなく社内の品質記録（`_specs/i18n-glossary.md`
+ * §2.7 の「受取先の言語で出す」対象は見積書/納品書/請求書の 3 帳票だけ）。
+ * `documentFormatters` と同じ理由（開いた人によって内容が変わってはいけない）
+ * で ja 固定にする — `lib/messages.ts` の locale 明示 API を使う。
+ */
 const STATUS_LABEL: Record<string, string> = {
-  PENDING: "未実施",
-  PASS: "合格",
-  FAIL: "不合格",
-  APPROVED: "合格（承認済）",
+  PENDING: label("enum.INSPECTION_STATUS_LABEL.PENDING", "ja", "未実施"),
+  PASS: label("enum.INSPECTION_STATUS_LABEL.PASS", "ja", "合格"),
+  FAIL: label("enum.INSPECTION_STATUS_LABEL.FAIL", "ja", "不合格"),
+  APPROVED: label(
+    "pdf.inspectionRecord.approvedStatus",
+    "ja",
+    "合格（承認済）",
+  ),
 };
 
 export async function GET(request: Request): Promise<Response> {
@@ -137,7 +148,14 @@ export async function GET(request: Request): Promise<Response> {
     template: sheetTemplateHead(record.template, lotQuantity),
     meta: {
       work_order: `#${record.step.workOrder.workOrderNumber}`,
-      lot_quantity: `${lotQuantity} 本`,
+      lot_quantity: label(
+        "pdf.inspectionRecord.lotQuantity",
+        "ja",
+        "{quantity} 本",
+        {
+          quantity: lotQuantity,
+        },
+      ),
       inspected_at: record.recordedAt
         ? esc(documentFormatters.dateTime(record.recordedAt.toISOString()))
         : "—",
@@ -163,8 +181,13 @@ export async function GET(request: Request): Promise<Response> {
     shape_html: shapeSectionHtml(items, shapeValues),
     overall: { judgement: STATUS_LABEL[record.status] ?? record.status },
     footer_note:
-      esc("* は必須項目。実測値はサンプルごとの記録値。") +
-      equipmentLegendNote(items),
+      esc(
+        label(
+          "pdf.inspectionRecord.footerNote",
+          "ja",
+          "* は必須項目。実測値はサンプルごとの記録値。",
+        ),
+      ) + equipmentLegendNote(items),
     final_inspection_html: finalInspectionSectionHtml(finalInspection),
   });
 

@@ -7,7 +7,7 @@
  * 1 本**の段構成を既定フローの代わりに使う。どれにも一致しなければ既定フロー。
  *
  * このファイルが唯一の定義:
- *   - 書類種別ごとに条件へ使える属性（APPROVAL_CONDITION_FIELDS）
+ *   - 書類種別ごとに条件へ使える属性（approvalConditionFields）
  *   - 条件の形（FlowCondition）と検証（validateConditions）
  *   - 評価（evaluateConditions / matchFlowRule）
  *
@@ -25,16 +25,13 @@ import {
   designTriggerOptions,
   workOrderTypeOptions,
 } from "./enum-labels";
+import type { Locale } from "./i18n";
 
-// この条件ビルダー自体は管理者専用の設定画面（MS0B）向けで、まだ ja 固定。
-// enum-labels.ts の各 xxxOptions(locale) をここでは "ja" 決め打ちで呼ぶ
-// （静的な module-level 定数として保つため — 呼び出し元の ApprovalFlowRulesSection
-// が multilingual 化されたら、この定数を関数化して locale を通す）。
-const DELIVERY_METHOD_OPTIONS = deliveryMethodOptions("ja");
-const WO_TYPE_OPTIONS = workOrderTypeOptions("ja");
-const DESIGN_TRIGGER_OPTIONS = designTriggerOptions("ja");
-const DESIGN_KIND_OPTIONS = designKindOptions("ja");
-const DESIGN_PRIORITY_OPTIONS = designPriorityOptions("ja");
+/** next-intl の `t()` と互換の最小の形（サーバー/クライアントどちらの実体も渡せる）。 */
+type TrLike = (
+  key: string,
+  values?: Record<string, string | number | Date>,
+) => string;
 
 /** 条件の比較演算子。number は全部、select は eq / ne のみ。 */
 export type ConditionOp = "eq" | "ne" | "gte" | "lte";
@@ -64,116 +61,160 @@ export interface ConditionFieldDef {
  * 書類種別ごとに条件へ使える属性。key は fetchApprovalDocInfo が返す
  * Record のキーと一致していること（テストで突き合わせはできないので、
  * 追加時は両方をセットで直す）。
+ *
+ * ラベル・選択肢はどちらも表示言語に依存するため、呼び出し側の
+ * locale（enum-labels.ts の各 xxxOptions 用）と tr（この画面固有の
+ * 生ラベル用）を受け取って組み立てる。
  */
-export const APPROVAL_CONDITION_FIELDS: Record<
-  ApprovalTargetType,
-  ConditionFieldDef[]
-> = {
-  order_acceptances: [
-    { key: "total_amount", label: "合計金額", type: "number", unit: "円" },
-    {
-      key: "delivery_method",
-      label: "配送方法",
-      type: "select",
-      options: DELIVERY_METHOD_OPTIONS,
-    },
-    {
-      key: "assigned_plant_id",
-      label: "担当拠点",
-      type: "select",
-      optionsKey: "plants",
-    },
-  ],
-  work_orders: [
-    { key: "type", label: "種別", type: "select", options: WO_TYPE_OPTIONS },
-    { key: "planned_quantity", label: "予定数量", type: "number", unit: "本" },
-  ],
-  material_purchase_orders: [
-    { key: "total_amount", label: "合計金額", type: "number", unit: "円" },
-  ],
-  purchase_requests: [
-    { key: "item_count", label: "明細数", type: "number", unit: "件" },
-  ],
-  // 設計依頼書 (SA06)。
-  //   トリガー … 見積時の起票（受注前の引合）と受注時では通す相手が変わりうる
-  //   依頼区分 … 新規設計は部長承認・改訂は係長だけ、といった分岐に使う
-  //   優先度   … 急ぎは段を減らす、といった運用に使う
-  // ⚠️ key は approvals.ts fetchApprovalDocInfo が返す Record のキーと一致必須
-  // （突き合わせるテストが無いので、追加時は必ず両方を直す）。
-  design_requests: [
-    {
-      key: "trigger",
-      label: "トリガー",
-      type: "select",
-      options: DESIGN_TRIGGER_OPTIONS,
-    },
-    {
-      key: "kind",
-      label: "依頼区分",
-      type: "select",
-      options: DESIGN_KIND_OPTIONS,
-    },
-    {
-      key: "priority",
-      label: "優先度",
-      type: "select",
-      options: DESIGN_PRIORITY_OPTIONS,
-    },
-  ],
-  // 社内文書 (CM03) の公開承認。条件で分ける軸が今のところ無いので空
-  // （空 = 条件分岐なし。既定フローだけが使われる）。フォルダや文書の重要度で
-  // 分けたくなったらここに足す。
-  internal_pages: [],
-  // フォーム申請 (CM02)。どのフォームの申請かで承認者を変えたい、が一番効くので
-  // フォーム種別を出す。フォームは利用者が随時作るため、フォームそのものを
-  // 選択肢にすると条件が壊れやすい（削除・改名）ので v1 では出さない。
-  form_responses: [
-    {
-      key: "form_kind",
-      label: "フォームの種類",
-      type: "select",
-      options: [
-        { value: "SURVEY", label: "アンケート" },
-        { value: "REQUEST", label: "申請・報告" },
-      ],
-    },
-  ],
-  work_order_flow_changes: [
-    {
-      key: "wo_type",
-      label: "指示書の種別",
-      type: "select",
-      options: WO_TYPE_OPTIONS,
-    },
-    {
-      key: "wo_planned_quantity",
-      label: "指示書の予定数量",
-      type: "number",
-      unit: "本",
-    },
-  ],
-  order_acceptance_cancel_requests: [
-    {
-      key: "total_amount",
-      label: "注文請書の合計金額",
-      type: "number",
-      unit: "円",
-    },
-    {
-      key: "delivery_method",
-      label: "注文請書の配送方法",
-      type: "select",
-      options: DELIVERY_METHOD_OPTIONS,
-    },
-  ],
-};
+export function approvalConditionFields(
+  locale: Locale,
+  tr: TrLike,
+): Record<ApprovalTargetType, ConditionFieldDef[]> {
+  const deliveryMethodOpts = deliveryMethodOptions(locale);
+  const woTypeOpts = workOrderTypeOptions(locale);
+  const designTriggerOpts = designTriggerOptions(locale);
+  const designKindOpts = designKindOptions(locale);
+  const designPriorityOpts = designPriorityOptions(locale);
+
+  return {
+    order_acceptances: [
+      {
+        key: "total_amount",
+        label: tr("master.approvalConditions.totalAmount"),
+        type: "number",
+        unit: tr("master.approvalConditions.yen"),
+      },
+      {
+        key: "delivery_method",
+        label: tr("master.approvalConditions.deliveryMethod"),
+        type: "select",
+        options: deliveryMethodOpts,
+      },
+      {
+        key: "assigned_plant_id",
+        label: tr("master.approvalConditions.assignedPlant"),
+        type: "select",
+        optionsKey: "plants",
+      },
+    ],
+    work_orders: [
+      {
+        key: "type",
+        label: tr("master.approvalConditions.type"),
+        type: "select",
+        options: woTypeOpts,
+      },
+      {
+        key: "planned_quantity",
+        label: tr("master.approvalConditions.plannedQuantity"),
+        type: "number",
+        unit: tr("master.approvalConditions.pcs"),
+      },
+    ],
+    material_purchase_orders: [
+      {
+        key: "total_amount",
+        label: tr("master.approvalConditions.totalAmount"),
+        type: "number",
+        unit: tr("master.approvalConditions.yen"),
+      },
+    ],
+    purchase_requests: [
+      {
+        key: "item_count",
+        label: tr("master.approvalConditions.lineCount"),
+        type: "number",
+        unit: tr("master.approvalConditions.items"),
+      },
+    ],
+    // 設計依頼書 (SA06)。
+    //   トリガー … 見積時の起票（受注前の引合）と受注時では通す相手が変わりうる
+    //   依頼区分 … 新規設計は部長承認・改訂は係長だけ、といった分岐に使う
+    //   優先度   … 急ぎは段を減らす、といった運用に使う
+    // ⚠️ key は approvals.ts fetchApprovalDocInfo が返す Record のキーと一致必須
+    // （突き合わせるテストが無いので、追加時は必ず両方を直す）。
+    design_requests: [
+      {
+        key: "trigger",
+        label: tr("master.approvalConditions.trigger"),
+        type: "select",
+        options: designTriggerOpts,
+      },
+      {
+        key: "kind",
+        label: tr("master.approvalConditions.requestKind"),
+        type: "select",
+        options: designKindOpts,
+      },
+      {
+        key: "priority",
+        label: tr("master.approvalConditions.priority"),
+        type: "select",
+        options: designPriorityOpts,
+      },
+    ],
+    // 社内文書 (CM03) の公開承認。条件で分ける軸が今のところ無いので空
+    // （空 = 条件分岐なし。既定フローだけが使われる）。フォルダや文書の重要度で
+    // 分けたくなったらここに足す。
+    internal_pages: [],
+    // フォーム申請 (CM02)。どのフォームの申請かで承認者を変えたい、が一番効くので
+    // フォーム種別を出す。フォームは利用者が随時作るため、フォームそのものを
+    // 選択肢にすると条件が壊れやすい（削除・改名）ので v1 では出さない。
+    form_responses: [
+      {
+        key: "form_kind",
+        label: tr("master.approvalConditions.formKind"),
+        type: "select",
+        options: [
+          { value: "SURVEY", label: tr("master.approvalConditions.survey") },
+          {
+            value: "REQUEST",
+            label: tr("master.approvalConditions.requestOrReport"),
+          },
+        ],
+      },
+    ],
+    work_order_flow_changes: [
+      {
+        key: "wo_type",
+        label: tr("master.approvalConditions.workOrderType"),
+        type: "select",
+        options: woTypeOpts,
+      },
+      {
+        key: "wo_planned_quantity",
+        label: tr("master.approvalConditions.workOrderPlannedQuantity"),
+        type: "number",
+        unit: tr("master.approvalConditions.pcs"),
+      },
+    ],
+    order_acceptance_cancel_requests: [
+      {
+        key: "total_amount",
+        label: tr("master.approvalConditions.orderAcceptanceTotalAmount"),
+        type: "number",
+        unit: tr("master.approvalConditions.yen"),
+      },
+      {
+        key: "delivery_method",
+        label: tr("master.approvalConditions.orderAcceptanceDeliveryMethod"),
+        type: "select",
+        options: deliveryMethodOpts,
+      },
+    ],
+  };
+}
 
 /** フィールド定義（未知のキーは undefined）。 */
 export function conditionFieldDef(
   targetType: ApprovalTargetType,
   field: string,
+  locale: Locale,
+  tr: TrLike,
 ): ConditionFieldDef | undefined {
-  return APPROVAL_CONDITION_FIELDS[targetType].find((f) => f.key === field);
+  return approvalConditionFields(locale, tr)[targetType].find(
+    (f) => f.key === field,
+  );
 }
 
 /** フィールド型ごとに使える演算子。 */
@@ -181,12 +222,14 @@ export function opsForType(type: ConditionFieldType): ConditionOp[] {
   return type === "number" ? ["gte", "lte", "eq", "ne"] : ["eq", "ne"];
 }
 
-export const CONDITION_OP_LABEL: Record<ConditionOp, string> = {
-  gte: "以上",
-  lte: "以下",
-  eq: "に等しい",
-  ne: "に等しくない",
-};
+export function conditionOpLabels(tr: TrLike): Record<ConditionOp, string> {
+  return {
+    gte: tr("master.approvalConditions.gte"),
+    lte: tr("master.approvalConditions.lte"),
+    eq: tr("master.approvalConditions.eq"),
+    ne: tr("master.approvalConditions.ne"),
+  };
+}
 
 /** 書類から抽出した属性値の袋（fetchApprovalDocInfo の戻り）。 */
 export type ApprovalDocInfo = Record<string, string | number | null>;
@@ -266,24 +309,41 @@ export function conditionsFromJson(json: unknown): FlowCondition[] {
 export function validateConditions(
   targetType: ApprovalTargetType,
   conds: readonly FlowCondition[],
+  locale: Locale,
+  tr: TrLike,
 ): string[] {
   const issues: string[] = [];
   conds.forEach((c, i) => {
     const no = i + 1;
-    const def = conditionFieldDef(targetType, c.field);
+    const def = conditionFieldDef(targetType, c.field, locale, tr);
     if (!def) {
-      issues.push(`条件 ${no}: 項目が不正です`);
+      issues.push(tr("master.approvalConditions.invalidField", { no }));
       return;
     }
     if (!opsForType(def.type).includes(c.op)) {
-      issues.push(`条件 ${no}: ${def.label}に使えない比較です`);
+      issues.push(
+        tr("master.approvalConditions.invalidComparisonForField", {
+          no,
+          label: def.label,
+        }),
+      );
     }
     if (def.type === "number") {
       if (typeof c.value !== "number" || !Number.isFinite(c.value)) {
-        issues.push(`条件 ${no}: ${def.label}の値を数値で入力してください`);
+        issues.push(
+          tr("master.approvalConditions.enterNumberForField", {
+            no,
+            label: def.label,
+          }),
+        );
       }
     } else if (typeof c.value !== "string" || c.value === "") {
-      issues.push(`条件 ${no}: ${def.label}の値を選択してください`);
+      issues.push(
+        tr("master.approvalConditions.selectValueForField", {
+          no,
+          label: def.label,
+        }),
+      );
     }
   });
   return issues;
@@ -296,21 +356,28 @@ export function validateConditions(
 export function describeConditions(
   targetType: ApprovalTargetType,
   conds: readonly FlowCondition[],
+  locale: Locale,
+  tr: TrLike,
   dynamicOptions?: Partial<
     Record<"plants", { value: string; label: string }[]>
   >,
 ): string {
-  if (conds.length === 0) return "条件なし（すべての書類に一致）";
+  if (conds.length === 0) return tr("master.approvalConditions.noConditions");
+  const opLabels = conditionOpLabels(tr);
   return conds
     .map((c) => {
-      const def = conditionFieldDef(targetType, c.field);
+      const def = conditionFieldDef(targetType, c.field, locale, tr);
       if (!def) return `${c.field} ${c.op} ${c.value}`;
       if (def.type === "number") {
         const num = Number(c.value);
         const formatted = Number.isFinite(num)
           ? num.toLocaleString("ja-JP")
           : String(c.value);
-        return `${def.label}が ${formatted}${def.unit ?? ""} ${CONDITION_OP_LABEL[c.op]}`;
+        return tr("master.approvalConditions.numberConditionSummary", {
+          label: def.label,
+          value: `${formatted}${def.unit ?? ""}`,
+          op: opLabels[c.op],
+        });
       }
       const options =
         def.options ??
@@ -318,7 +385,11 @@ export function describeConditions(
       const optionLabel =
         options.find((o) => o.value === String(c.value))?.label ??
         String(c.value);
-      return `${def.label}が「${optionLabel}」${CONDITION_OP_LABEL[c.op]}`;
+      return tr("master.approvalConditions.selectConditionSummary", {
+        label: def.label,
+        value: optionLabel,
+        op: opLabels[c.op],
+      });
     })
-    .join(" かつ ");
+    .join(tr("master.approvalConditions.conditionJoiner"));
 }

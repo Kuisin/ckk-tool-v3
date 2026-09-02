@@ -169,47 +169,45 @@ export function HomeApps({
   return (
     <Stack gap="xl" maw={1200} mx="auto" w="100%">
       {/* ── User profile card ──────────────────────────────────────────── */}
-      <Card padding="lg" radius="md" shadow="xs" withBorder>
-        <Group align="flex-start" justify="space-between" wrap="nowrap">
-          <Group>
+      <Card padding="sm" radius="md" shadow="xs" withBorder>
+        <Group align="center" justify="space-between" wrap="nowrap">
+          <Group align="center" gap="sm" wrap="nowrap">
             <UserAvatar
               initials={effectiveUser.initials}
               name={displayName}
-              size={72}
+              size={44}
               src={effectiveUser.avatarUrl}
               thumbSrc={effectiveUser.avatarThumbUrl}
             />
-            <Stack gap={4}>
-              <Title order={3}>{displayName}</Title>
-              {effectiveUser.username && (
-                <Text c="dimmed" size="sm">
-                  {effectiveUser.username}
+            <Stack gap={0} style={{ minWidth: 0 }}>
+              <Group align="center" gap="xs" wrap="wrap">
+                <Text fw={600} size="sm" truncate>
+                  {displayName}
                 </Text>
-              )}
-              {(effectiveUser.department || effectiveUser.title) && (
-                <Group gap="xs">
-                  {effectiveUser.department && (
-                    <Badge color="blue" size="sm" variant="light">
-                      {effectiveUser.department}
-                    </Badge>
-                  )}
-                  {effectiveUser.title && (
-                    <Badge color="gray" size="sm" variant="light">
-                      {effectiveUser.title}
-                    </Badge>
-                  )}
-                </Group>
-              )}
-              {effectiveUser.email && (
-                <Text c="dimmed" size="xs">
-                  {effectiveUser.email}
-                </Text>
-              )}
-              {(effectiveUser.company || effectiveUser.office) && (
-                <Text c="dimmed" size="xs">
-                  {[effectiveUser.company, effectiveUser.office]
+                {effectiveUser.department && (
+                  <Badge color="blue" size="xs" variant="light">
+                    {effectiveUser.department}
+                  </Badge>
+                )}
+                {effectiveUser.title && (
+                  <Badge color="gray" size="xs" variant="light">
+                    {effectiveUser.title}
+                  </Badge>
+                )}
+              </Group>
+              {(effectiveUser.username ||
+                effectiveUser.email ||
+                effectiveUser.company ||
+                effectiveUser.office) && (
+                <Text c="dimmed" size="xs" truncate>
+                  {[
+                    effectiveUser.username,
+                    effectiveUser.email,
+                    effectiveUser.company,
+                    effectiveUser.office,
+                  ]
                     .filter(Boolean)
-                    .join(" / ")}
+                    .join(" · ")}
                 </Text>
               )}
             </Stack>
@@ -218,7 +216,7 @@ export function HomeApps({
           {/* biome-ignore lint/performance/noImgElement: static SVG logo — next/image adds no value */}
           <img
             alt="シー・ケィ・ケー株式会社"
-            className="h-14 w-14 shrink-0 opacity-75"
+            className="h-8 w-8 shrink-0 opacity-75"
             src={
               isDark
                 ? "/design-assets/dark_logo-with-label.svg"

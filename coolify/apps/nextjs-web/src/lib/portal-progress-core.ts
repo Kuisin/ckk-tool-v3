@@ -16,6 +16,8 @@
  * 機械で守れるのはこれだけ。
  */
 
+import type { Tr } from "./i18n";
+
 /** 社外に見せる進捗。**工程の粒度は出さない**（どこの誰が何をしたかは社内の話）。 */
 export const PORTAL_PROGRESS = [
   "RECEIVED", // 受注済み（まだ着手していない）
@@ -28,14 +30,9 @@ export const PORTAL_PROGRESS = [
 
 export type PortalProgress = (typeof PORTAL_PROGRESS)[number];
 
-export const PORTAL_PROGRESS_LABEL: Record<PortalProgress, string> = {
-  RECEIVED: "受注",
-  IN_PRODUCTION: "製造中",
-  READY: "出荷準備",
-  SHIPPED: "出荷済み",
-  DELIVERED: "納品済み",
-  CANCELLED: "キャンセル",
-};
+export function portalProgressLabel(progress: PortalProgress, tr: Tr): string {
+  return tr(`enum.PORTAL_PROGRESS_LABEL.${progress}`);
+}
 
 /** 注文明細の状態（app.ORDER_LINE_STATUS）。 */
 export type OrderLineStatusLike =

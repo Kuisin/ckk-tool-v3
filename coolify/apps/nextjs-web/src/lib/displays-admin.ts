@@ -12,9 +12,12 @@ import "server-only";
  * この計算はソケットの有無を知らなくてよい。
  */
 
+import { getTranslations } from "next-intl/server";
 import { prisma } from "./db";
 import { findDisplayTemplate } from "./display-templates";
 import { localized } from "./format";
+
+type Tr = Awaited<ReturnType<typeof getTranslations>>;
 
 /** WS 未接続でも直近この時間内に生存していればオンライン扱い。 */
 export const DISPLAY_ONLINE_WINDOW_MS = 5 * 60 * 1000;
@@ -91,17 +94,17 @@ function jsonName(value: unknown): {
  * 知りたいのは「どの画面か」だけ**なので、テンプレート名（か種別名）に
  * 落とす。設定の中身は詳細で見る。
  */
-function describeContent(type: string, config: unknown): string {
+function describeContent(type: string, config: unknown, tr: Tr): string {
   if (type === "APP_PAGE") {
     const page = (config as { page?: unknown } | null)?.page;
     return (
       findDisplayTemplate(typeof page === "string" ? page : null)?.label ??
-      "（画面が未選択）"
+      tr("displaysAdmin.noPageSelected")
     );
   }
-  if (type === "METABASE") return "Metabase ダッシュボード";
-  if (type === "URL") return "外部ページ";
-  if (type === "IMAGE") return "画像";
+  if (type === "METABASE") return tr("displaysAdmin.metabaseDashboard");
+  if (type === "URL") return tr("displaysAdmin.externalPage");
+  if (type === "IMAGE") return tr("common.image");
   return "—";
 }
 
@@ -111,6 +114,7 @@ function onlineAt(now: number, lastSeenAt: Date | null): boolean {
 }
 
 export async function listDisplays(): Promise<DisplayRow[]> {
+  const tr = await getTranslations();
   const rows = await prisma.displayDevice.findMany({
     orderBy: [{ status: "asc" }, { createdAt: "asc" }],
     select: {
@@ -144,7 +148,7 @@ export async function listDisplays(): Promise<DisplayRow[]> {
       plantName: jsonName(r.plant?.name).text,
       contentType: r.contentType as DisplayContentType,
       contentConfig: r.contentConfig,
-      contentLabel: describeContent(r.contentType, r.contentConfig),
+      contentLabel: describeContent(r.contentType, r.contentConfig, tr),
       refreshIntervalSec: r.refreshIntervalSec,
       status: r.status as DisplayStatus,
       scalePercent: r.scalePercent,
@@ -162,6 +166,7 @@ export async function listDisplays(): Promise<DisplayRow[]> {
 export async function getDisplayDetail(
   id: string,
 ): Promise<DisplayDetail | null> {
+  const tr = await getTranslations();
   const r = await prisma.displayDevice.findUnique({
     where: { id },
     select: {
@@ -222,7 +227,7 @@ export async function getDisplayDetail(
     plantName: jsonName(r.plant?.name).text,
     contentType: r.contentType as DisplayContentType,
     contentConfig: r.contentConfig,
-    contentLabel: describeContent(r.contentType, r.contentConfig),
+    contentLabel: describeContent(r.contentType, r.contentConfig, tr),
     refreshIntervalSec: r.refreshIntervalSec,
     status: r.status as DisplayStatus,
     scalePercent: r.scalePercent,

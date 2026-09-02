@@ -12,6 +12,8 @@
  * サーバー・クライアントの両方から使うので DB にも React にも触らない。
  */
 
+import type { Tr } from "./i18n";
+
 export type DesignFileRole = "PREVIEW" | "BLUEPRINT" | "REFERENCE";
 
 /** 版の出どころ。列は持たず、依頼 id の有無から導く。 */
@@ -40,10 +42,12 @@ export function designFileSource(f: {
   return f.designRequestId == null ? "MANUAL" : "REQUEST";
 }
 
-export const DESIGN_FILE_SOURCE_LABEL: Record<DesignFileSource, string> = {
-  REQUEST: "依頼",
-  MANUAL: "手動",
-};
+export function designFileSourceLabel(
+  source: DesignFileSource,
+  tr: Tr,
+): string {
+  return tr(`enum.DESIGN_FILE_SOURCE_LABEL.${source}`);
+}
 
 export const DESIGN_FILE_SOURCE_COLOR: Record<DesignFileSource, string> = {
   REQUEST: "blue",
@@ -177,13 +181,18 @@ export function canDeleteDesignFile(f: {
 }
 
 /** 編集できない理由（画面にそのまま出す）。編集できるときは null。 */
-export function describeLock(f: {
-  usedByWorkOrder: boolean;
-  designRequestId: string | null;
-}): string | null {
-  if (f.usedByWorkOrder) return "指示書で使用中のため変更できません";
+export function describeLock(
+  f: {
+    usedByWorkOrder: boolean;
+    designRequestId: string | null;
+  },
+  tr: Tr,
+): string | null {
+  if (f.usedByWorkOrder) {
+    return tr("production.designFileActions.lockedInUseByWorkOrder");
+  }
   if (designFileSource(f) === "REQUEST") {
-    return "設計依頼の成果物なので削除できません（メモは編集できます）";
+    return tr("production.designFileActions.lockedRequestDeliverable");
   }
   return null;
 }

@@ -34,9 +34,9 @@ import {
   canDeleteDesignFile,
   canEditDesignFile,
   DESIGN_FILE_SOURCE_COLOR,
-  DESIGN_FILE_SOURCE_LABEL,
   describeLock,
   designFileSource,
+  designFileSourceLabel,
 } from "@/lib/design-files-core";
 import type { DesignFileRole } from "./model";
 import { RoleBadge } from "./RoleBadge";
@@ -98,7 +98,7 @@ export function DesignFileList({
     return {
       canEdit: onEdit != null && canEditDesignFile(state),
       canDelete: onDelete != null && canDeleteDesignFile(state),
-      lock: describeLock(state),
+      lock: describeLock(state, tr),
     };
   };
 
@@ -109,7 +109,7 @@ export function DesignFileList({
     });
     return (
       <Badge color={DESIGN_FILE_SOURCE_COLOR[src]} size="xs" variant="outline">
-        {DESIGN_FILE_SOURCE_LABEL[src]}
+        {designFileSourceLabel(src, tr)}
       </Badge>
     );
   };

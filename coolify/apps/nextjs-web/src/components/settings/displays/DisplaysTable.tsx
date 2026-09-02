@@ -90,6 +90,7 @@ function ScreenPicker({
   value: string;
   onPick: (screenId: string) => void;
 }) {
+  const tr = useTranslations();
   return (
     // biome-ignore lint/a11y/noStaticElementInteractions: 行クリック（遷移）を止めるためだけの覆い
     // biome-ignore lint/a11y/useKeyWithClickEvents: 中身のボタンが操作を担う
@@ -97,7 +98,7 @@ function ScreenPicker({
       <SegmentedControl
         data={group.screens.map((screen, i) => ({
           value: screen.id,
-          label: screenLabel(screen, i),
+          label: screenLabel(screen, i, tr),
         }))}
         onChange={onPick}
         size="xs"

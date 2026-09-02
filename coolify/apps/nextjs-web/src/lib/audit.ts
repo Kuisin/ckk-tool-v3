@@ -9,11 +9,13 @@
  * マスタの文字列 id）。認証未実装のため user_id は現状 null（後述 TODO(auth)）。
  */
 
+import { getTranslations } from "next-intl/server";
 import type { AuditEntry } from "@/components/ui/shells";
 import { auditFieldDiffs, formatAuditValue } from "@/lib/audit-field-labels";
 import { avatarUrl } from "@/lib/avatar";
 import { prisma } from "@/lib/db";
 import type { Formatters } from "@/lib/format";
+import type { Tr } from "@/lib/i18n";
 import { getServerFormatters } from "@/lib/user-preferences";
 
 export type AuditAction =
@@ -45,74 +47,18 @@ export interface RecordAuditInput {
   after?: unknown;
 }
 
-const ACTION_LABEL: Record<string, string> = {
-  CREATE: "作成",
-  UPDATE: "更新",
-  DELETE: "削除",
-  SEED: "初期データ",
-  MIGRATE: "マイグレーション",
-};
+/** action → 画面表示用のラベル。VIEW/EXPORT も含め全ての AuditAction を持つ。 */
+function actionLabel(action: string, tr: Tr): string {
+  return tr.has(`audit.action.${action}`)
+    ? tr(`audit.action.${action}`)
+    : action;
+}
 
-/** table_name → 画面表示用の日本語ラベル（操作履歴一覧の「対象」列）。 */
-export const AUDIT_TABLE_LABELS: Record<string, string> = {
-  quotes: "見積書",
-  estimates: "価格試算",
-  price_list_entries: "価格表",
-  products: "製品",
-  materials: "素材",
-  material_types: "材種",
-  business_partners: "取引先",
-  feature_flags: "アプリ管理",
-  plants: "拠点",
-  // 旧テーブル名 — audit_logs.table_name は保存済み文字列なので rename 後も
-  // 履歴行は 'factories' のまま。表示だけ新名称に揃える。
-  factories: "拠点（旧）",
-  process_step_catalog: "工程マスタ",
-  inspection_templates: "検査表テンプレート",
-  defect_types: "不良種類",
-  approval_groups: "承認グループ",
-  approval_flows: "承認フロー",
-  order_lines: "注文明細",
-  work_orders: "指示書",
-  delivery_orders: "出荷書",
-  delivery_notes: "納品書",
-  purchase_requests: "購買依頼",
-  forms: "フォーム",
-  form_responses: "フォーム回答",
-  internal_pages: "社内文書",
-  purchase_request_items: "購買依頼明細",
-  material_purchase_orders: "素材発注書",
-  material_receipts: "素材入荷",
-  invoices: "請求書",
-  billing_closings: "締日処理",
-  design_requests: "設計依頼書",
-  approval_requests: "承認依頼",
-  order_acceptances: "注文請書",
-  kiosk_cards: "QRカード",
-  kiosk_devices: "キオスク端末",
-  display_devices: "ディスプレイ",
-  kiosk_floor_maps: "フロアマップ",
-  product_inventory: "製品在庫",
-  material_inventory: "素材在庫",
-  storage_locations: "保管場所",
-  storage_shelves: "棚",
-  work_location_groups: "作業場所グループ",
-  work_locations: "作業場所",
-  file_folder_grants: "ファイルフォルダ権限",
-  // テーブルではなく取込フォルダ（INTAKE_DIR）の操作 — SY0C の投入・再取込。
-  intake_folder: "注文書取込フォルダ",
-  // 取引先ポータル（SY0H）— **社内の変更だけ**がここに載る。
-  // 社外の人の閲覧は app.portal_access_logs（audit_logs には書かない —
-  // user_id が app.users への FK で、actor が system に落ちて嘘になるため）。
-  portal_accounts: "ポータルアカウント",
-  portal_grants: "ポータル共有範囲",
-  portal_document_links: "ポータル書類リンク",
-  portal_backup_codes: "ポータルバックアップコード",
-  system: "システム",
-};
-
-export function auditTableLabel(tableName: string): string {
-  return AUDIT_TABLE_LABELS[tableName] ?? tableName;
+/** table_name → 画面表示用のラベル（操作履歴一覧の「対象」列）。訳が無ければテーブル名そのまま。 */
+export function auditTableLabel(tableName: string, tr: Tr): string {
+  return tr.has(`audit.table.${tableName}`)
+    ? tr(`audit.table.${tableName}`)
+    : tableName;
 }
 
 /**
@@ -202,13 +148,14 @@ function describeChange(
   action: string,
   before: unknown,
   after: unknown,
-  tableName?: string,
+  tableName: string | undefined,
+  tr: Tr,
 ): string {
   // システムイベント（SEED/MIGRATE 等）は after.note に人間向け説明を持つ。
   const note = (after as { note?: unknown } | null)?.note;
   if (typeof note === "string" && note) return note;
-  if (action === "CREATE") return "新規作成";
-  if (action === "DELETE") return "削除";
+  if (action === "CREATE") return tr("common.create");
+  if (action === "DELETE") return tr("common.delete");
   // 詳細表と同じ差分（入れ子は平らにして葉ごとに見る）。以前はここで
   // オブジェクトを丸ごと飛ばしていたので、設定 JSON だけが変わった操作は
   // 一覧に「更新」としか出ず、何をしたのか分からなかった。
@@ -218,7 +165,7 @@ function describeChange(
       (d) =>
         `${d.label}: ${fmtValue(d.before, d.key)} → ${fmtValue(d.after, d.key)}`,
     );
-  return diffs.length > 0 ? diffs.join(" / ") : "更新";
+  return diffs.length > 0 ? diffs.join(" / ") : tr("common.update");
 }
 
 type AuditRow = {
@@ -243,17 +190,17 @@ type AuditRow = {
  * 履歴 1 行 → 表示用。日時はここで文字列にするので、閲覧者の表示設定
  * （タイムゾーン・日付形式・言語）を渡してもらう。
  */
-function mapAudit(fmt: Formatters, row: AuditRow): AuditEntry {
+function mapAudit(fmt: Formatters, tr: Tr, row: AuditRow): AuditEntry {
   return {
     id: row.id.toString(),
-    action: ACTION_LABEL[row.action] ?? row.action,
+    action: actionLabel(row.action, tr),
     // 詳細ポップアップ用の生データ（一覧では使わない）。
     tableName: row.tableName,
-    tableLabel: auditTableLabel(row.tableName),
+    tableLabel: auditTableLabel(row.tableName, tr),
     recordId: row.recordId,
     before: row.beforeData,
     after: row.afterData,
-    user: row.user?.displayName ?? "システム",
+    user: row.user?.displayName ?? tr("common.system"),
     // 操作者の顔写真（小）。未設定・システム操作ならイニシャル表示になる。
     avatarUrl: row.user ? actorAvatarUrl(row.user) : null,
     // 操作元の共有タブレット（Web からの操作は null → バッジを出さない）。
@@ -264,6 +211,7 @@ function mapAudit(fmt: Formatters, row: AuditRow): AuditEntry {
       row.beforeData,
       row.afterData,
       row.tableName,
+      tr,
     ),
   };
 }
@@ -290,7 +238,10 @@ export async function fetchAuditEntries(
   recordId: string,
 ): Promise<AuditEntry[]> {
   try {
-    const fmt = await getServerFormatters();
+    const [fmt, tr] = await Promise.all([
+      getServerFormatters(),
+      getTranslations(),
+    ]);
     const rows = await prisma.auditLog.findMany({
       where: { tableName, recordId },
       orderBy: { createdAt: "desc" },
@@ -307,7 +258,7 @@ export async function fetchAuditEntries(
       },
       take: 100,
     });
-    return rows.map((row) => mapAudit(fmt, row));
+    return rows.map((row) => mapAudit(fmt, tr, row));
   } catch (e) {
     console.error("fetchAuditEntries failed", e);
     return [];
@@ -341,7 +292,10 @@ export async function getActivityEntry(
     return null;
   }
   try {
-    const fmt = await getServerFormatters();
+    const [fmt, tr] = await Promise.all([
+      getServerFormatters(),
+      getTranslations(),
+    ]);
     const row = await prisma.auditLog.findUnique({
       where: { id: key },
       include: {
@@ -358,9 +312,9 @@ export async function getActivityEntry(
     });
     if (!row) return null;
     return {
-      ...mapAudit(fmt, row),
+      ...mapAudit(fmt, tr, row),
       tableName: row.tableName,
-      tableLabel: auditTableLabel(row.tableName),
+      tableLabel: auditTableLabel(row.tableName, tr),
       recordId: row.recordId,
       userId: row.user?.id ?? null,
       actionRaw: row.action,
@@ -379,7 +333,10 @@ export async function listAuditEntries(
 ): Promise<ActivityEntry[]> {
   const { take = 200, skip = 0 } = opts;
   try {
-    const fmt = await getServerFormatters();
+    const [fmt, tr] = await Promise.all([
+      getServerFormatters(),
+      getTranslations(),
+    ]);
     const rows = await prisma.auditLog.findMany({
       orderBy: { createdAt: "desc" },
       include: {
@@ -397,9 +354,9 @@ export async function listAuditEntries(
       skip,
     });
     return rows.map((row) => ({
-      ...mapAudit(fmt, row),
+      ...mapAudit(fmt, tr, row),
       tableName: row.tableName,
-      tableLabel: auditTableLabel(row.tableName),
+      tableLabel: auditTableLabel(row.tableName, tr),
       recordId: row.recordId,
     }));
   } catch (e) {

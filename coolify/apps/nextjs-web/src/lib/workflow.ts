@@ -5,9 +5,12 @@
  * ロードと形変換のみ。実行系（startStep/completeStep 等）は PR 3 で追加。
  */
 
+import { getTranslations } from "next-intl/server";
 import { prisma } from "./db";
 import { type LocalizedText, localized } from "./format";
 import type { CatalogStep, ExecDep, UseDep } from "./workflow-core";
+
+type Tr = Awaited<ReturnType<typeof getTranslations>>;
 
 export interface WorkflowCatalog {
   steps: CatalogStep[];
@@ -101,14 +104,21 @@ export async function validateAndOrderSteps(
 ): Promise<
   { ok: false; error: string } | { ok: true; creates: OrderedStepCreate[] }
 > {
+  const tr = await getTranslations();
   const catalog = await loadCatalog();
   const ids = steps.map((s) => s.processStepId);
   const known = new Set(catalog.steps.map((s) => s.id));
   if (ids.some((id) => !known.has(id))) {
-    return { ok: false, error: "存在しない工程が含まれています" };
+    return {
+      ok: false,
+      error: tr("workflowActions.unknownStepsInComposition"),
+    };
   }
   if (new Set(ids).size !== ids.length) {
-    return { ok: false, error: "同じ工程が重複しています" };
+    return {
+      ok: false,
+      error: tr("workflowActions.duplicateStepsInComposition"),
+    };
   }
   const catalogById = new Map(catalog.steps.map((s) => [s.id, s]));
   if (type === "FROM_STOCK") {
@@ -122,8 +132,7 @@ export async function validateAndOrderSteps(
     if (invalid.length > 0) {
       return {
         ok: false,
-        error:
-          "在庫分の指示書に選べる工程は 製品出し（在庫）・出荷前検査 だけです",
+        error: tr("workflowActions.fromStockAllowedSteps"),
       };
     }
     if (
@@ -131,7 +140,7 @@ export async function validateAndOrderSteps(
     ) {
       return {
         ok: false,
-        error: "在庫分の指示書には 製品出し（在庫） が必要です",
+        error: tr("workflowActions.fromStockRequiresStockIssue"),
       };
     }
   } else if (
@@ -139,7 +148,7 @@ export async function validateAndOrderSteps(
   ) {
     return {
       ok: false,
-      error: "製品出し（在庫）は在庫分（FROM_STOCK）の指示書専用です",
+      error: tr("workflowActions.stockIssueOnlyForFromStock"),
     };
   }
   const blocking = validateComposition(
@@ -321,6 +330,7 @@ export async function startStepExecution(
   stepId: string,
   lotText: string | null = null,
 ): Promise<StepActionResult> {
+  const tr = await getTranslations();
   const actor = await getCurrentActorId();
   const stepRow = await prisma.workOrderStep.findUniqueOrThrow({
     where: { id: stepId },
@@ -333,7 +343,10 @@ export async function startStepExecution(
     stepRow.workOrder.status !== "APPROVED" &&
     stepRow.workOrder.status !== "IN_PROGRESS"
   ) {
-    return { ok: false, errors: ["指示書が承認済み/進行中ではありません"] };
+    return {
+      ok: false,
+      errors: [tr("workflowActions.workOrderNotApprovedOrInProgress")],
+    };
   }
   const { ctx } = await fetchWorkflowCtx(stepRow.workOrderId);
   const check = canStartStep(stepId, ctx, actor);
@@ -347,7 +360,7 @@ export async function startStepExecution(
   );
   const lot = lotText?.trim() || null;
   if (lotMode === "REQUIRED" && lot == null) {
-    return { ok: false, errors: ["ロット/伝票コードを入力してください"] };
+    return { ok: false, errors: [tr("workflowActions.lotSlipCodeRequired")] };
   }
 
   const input = expectedInput(stepId, ctx);
@@ -370,7 +383,10 @@ export async function startStepExecution(
     },
   });
   if (claimed.count === 0) {
-    return { ok: false, errors: ["別のユーザーが先に開始しました"] };
+    return {
+      ok: false,
+      errors: [tr("workflowActions.anotherUserStartedFirst")],
+    };
   }
 
   // 最初の工程開始で指示書を進行中に
@@ -384,7 +400,11 @@ export async function startStepExecution(
     action: "UPDATE",
     tableName: "work_orders",
     recordId: String(stepRow.workOrder.workOrderNumber),
-    after: { note: `工程を開始（step ${stepRow.sortOrder}）` },
+    after: {
+      note: tr("workflowActions.auditStepStarted", {
+        sortOrder: stepRow.sortOrder,
+      }),
+    },
   });
   return { ok: true };
 }
@@ -406,6 +426,7 @@ export async function completeStepExecution(
   quantities: StepQuantities | null,
   defectReasons: StepDefectReason[] | null = null,
 ): Promise<StepActionResult> {
+  const tr = await getTranslations();
   const actor = await getCurrentActorId();
   const stepRow = await prisma.workOrderStep.findUniqueOrThrow({
     where: { id: stepId },
@@ -416,10 +437,13 @@ export async function completeStepExecution(
     },
   });
   if (stepRow.status !== "IN_PROGRESS") {
-    return { ok: false, errors: ["進行中の工程ではありません"] };
+    return { ok: false, errors: [tr("workflowActions.stepNotInProgress")] };
   }
   if (stepRow.sessionLockedBy && stepRow.sessionLockedBy !== actor) {
-    return { ok: false, errors: ["別のユーザーがセッション中です"] };
+    return {
+      ok: false,
+      errors: [tr("production.stepExecution.anotherUserHasThisSessionOpen")],
+    };
   }
 
   const mode = stepRow.processStep.quantityTracking;
@@ -439,7 +463,10 @@ export async function completeStepExecution(
     };
   } else {
     if (quantities == null && (defectReasons?.length ?? 0) === 0) {
-      return { ok: false, errors: ["数量を入力してください"] };
+      return {
+        ok: false,
+        errors: [tr("production.inventoryActions.quantityRequired")],
+      };
     }
     // 受入数は開始時に確定した値を権威とする（完了時のクライアント値は無視）。
     const authoritativeInput =
@@ -454,14 +481,14 @@ export async function completeStepExecution(
     if (list.length === 0 && quantitiesDefects > 0) {
       return {
         ok: false,
-        errors: ["不良の内訳（種類・詳細）を入力してください"],
+        errors: [tr("workflowActions.defectBreakdownRequired")],
       };
     }
     // 各行の 不良種類（FK）と詳細は必須。種類はマスタの実在 + 有効を再検証する。
     if (list.some((r) => r.defectTypeId == null || r.reason.trim() === "")) {
       return {
         ok: false,
-        errors: ["不良の各行に種類と詳細を入力してください"],
+        errors: [tr("production.stepQuantityForm.enterADefectTypeAndDetail")],
       };
     }
     if (list.length > 0) {
@@ -471,7 +498,7 @@ export async function completeStepExecution(
         select: { id: true },
       });
       if (known.length !== ids.length) {
-        return { ok: false, errors: ["不良種類が不正です"] };
+        return { ok: false, errors: [tr("workflowActions.invalidDefectType")] };
       }
     }
     const sumType = (t: StepDefectReason["type"]) =>
@@ -543,7 +570,7 @@ export async function completeStepExecution(
     },
   });
   if (claimed.count !== 1) {
-    return { ok: false, errors: ["この工程は既に完了しています"] };
+    return { ok: false, errors: [tr("workflowActions.stepAlreadyCompleted")] };
   }
 
   // 全工程完了 → 指示書完了 + 在庫計上（完成品ロット入庫・半製品入庫・予約確定）。
@@ -564,7 +591,10 @@ export async function completeStepExecution(
     tableName: "work_orders",
     recordId: String(stepRow.workOrder.workOrderNumber),
     after: {
-      note: `工程を完了（良品 ${persisted.outputSuccessQuantity}/${persisted.inputQuantity}）`,
+      note: tr("workflowActions.auditStepCompleted", {
+        success: persisted.outputSuccessQuantity,
+        input: persisted.inputQuantity,
+      }),
       ...persisted,
     },
   });
@@ -576,12 +606,13 @@ export async function abortStepExecution(
   stepId: string,
   reason: string,
 ): Promise<StepActionResult> {
+  const tr = await getTranslations();
   const stepRow = await prisma.workOrderStep.findUniqueOrThrow({
     where: { id: stepId },
     include: { workOrder: true },
   });
   if (stepRow.status !== "IN_PROGRESS")
-    return { ok: false, errors: ["進行中の工程ではありません"] };
+    return { ok: false, errors: [tr("workflowActions.stepNotInProgress")] };
   await prisma.workOrderStep.update({
     where: { id: stepId },
     data: {
@@ -597,7 +628,7 @@ export async function abortStepExecution(
     action: "UPDATE",
     tableName: "work_orders",
     recordId: String(stepRow.workOrder.workOrderNumber),
-    after: { note: `工程を中断（巻き戻し）: ${reason}` },
+    after: { note: tr("workflowActions.auditStepAborted", { reason }) },
   });
   return { ok: true };
 }
@@ -607,22 +638,24 @@ export async function rollbackStepExecution(
   stepId: string,
   reason: string,
 ): Promise<StepActionResult> {
+  const tr = await getTranslations();
   const stepRow = await prisma.workOrderStep.findUniqueOrThrow({
     where: { id: stepId },
     include: { workOrder: true },
   });
   if (stepRow.status !== "COMPLETED")
-    return { ok: false, errors: ["完了済みの工程ではありません"] };
+    return { ok: false, errors: [tr("workflowActions.stepNotCompleted")] };
   if (!reason.trim())
-    return { ok: false, errors: ["巻き戻し理由を入力してください"] };
+    return {
+      ok: false,
+      errors: [tr("workflowActions.rollbackReasonRequired")],
+    };
   // 指示書が完了済み = 在庫計上済み。巻き戻すと再完了で二重計上になるため
   // 禁止（棚卸調整で補正する — 監査 P0-7/#5）。
   if (stepRow.workOrder.status === "COMPLETED") {
     return {
       ok: false,
-      errors: [
-        "指示書が完了済み（在庫計上済み）のため巻き戻せません。数量の補正は在庫の棚卸調整で行ってください",
-      ],
+      errors: [tr("workflowActions.cannotRollbackAfterInventoryPosting")],
     };
   }
 
@@ -636,9 +669,7 @@ export async function rollbackStepExecution(
   ) {
     return {
       ok: false,
-      errors: [
-        "後続工程が着手済みのため巻き戻せません（先に後続を巻き戻してください）",
-      ],
+      errors: [tr("workflowActions.cannotRollbackDownstreamStarted")],
     };
   }
 
@@ -666,7 +697,7 @@ export async function rollbackStepExecution(
     action: "UPDATE",
     tableName: "work_orders",
     recordId: String(stepRow.workOrder.workOrderNumber),
-    after: { note: `工程を巻き戻し: ${reason}` },
+    after: { note: tr("workflowActions.auditStepRolledBack", { reason }) },
   });
   return { ok: true };
 }
@@ -716,11 +747,18 @@ export async function addBranchSeries(input: {
   routedQuantity: number;
   termination: BranchTermination;
 }): Promise<StepActionResult> {
+  const tr = await getTranslations();
   const { workOrderId, sourceStepId, catalogStepIds, routedQuantity } = input;
   if (catalogStepIds.length === 0)
-    return { ok: false, errors: ["追加する工程を選択してください"] };
+    return {
+      ok: false,
+      errors: [tr("production.stepExecutionActions.selectStepsToAdd")],
+    };
   if (routedQuantity <= 0)
-    return { ok: false, errors: ["分岐数量は 1 以上で入力してください"] };
+    return {
+      ok: false,
+      errors: [tr("production.stepExecutionActions.branchQuantityMin")],
+    };
 
   const wo = await prisma.workOrder.findUniqueOrThrow({
     where: { id: workOrderId },
@@ -731,29 +769,46 @@ export async function addBranchSeries(input: {
   });
   const ctx = ctxFromWorkOrder(wo);
   const source = wo.steps.find((s) => s.id === sourceStepId);
-  if (!source) return { ok: false, errors: ["分岐元の工程が見つかりません"] };
+  if (!source)
+    return {
+      ok: false,
+      errors: [tr("workflowActions.branchSourceStepNotFound")],
+    };
   if (source.status !== "COMPLETED")
-    return { ok: false, errors: ["分岐元の工程が完了していません"] };
+    return {
+      ok: false,
+      errors: [tr("workflowActions.branchSourceStepNotCompleted")],
+    };
   const available = branchableQuantity(sourceStepId, ctx);
   if (available == null || routedQuantity > available) {
     return {
       ok: false,
       errors: [
-        `分岐数量（${routedQuantity}）が分岐可能数（${available ?? 0}）を超えています`,
+        tr("workflowActions.branchQuantityExceedsAvailable", {
+          quantity: routedQuantity,
+          available: available ?? 0,
+        }),
       ],
     };
   }
   if (input.termination.kind === "MERGE") {
     const mergeTargetStepId = input.termination.mergeTargetStepId;
     const merge = wo.steps.find((s) => s.id === mergeTargetStepId);
-    if (!merge) return { ok: false, errors: ["合流先の工程が見つかりません"] };
+    if (!merge)
+      return {
+        ok: false,
+        errors: [tr("workflowActions.mergeTargetStepNotFound")],
+      };
     if (merge.status !== "PENDING")
-      return { ok: false, errors: ["合流先が未着手ではありません"] };
+      return {
+        ok: false,
+        errors: [tr("workflowActions.mergeTargetNotPending")],
+      };
     // 合流先は メインライン工程のみ（オフメインライン判定の前提を守る）
     if (isOffMainline(merge.id, ctx))
       return {
         ok: false,
-        errors: ["合流先に分岐系列の工程は指定できません"],
+        errors: [tr("workflowActions.mergeTargetCannotBeBranchStep")],
       };
   }
 
@@ -866,16 +921,22 @@ export async function addBranchSeries(input: {
     tableName: "work_orders",
     recordId: String(wo.workOrderNumber),
     after: {
-      note: `分岐を追加（${result.length} 工程, 数量 ${routedQuantity}, ${describeTermination(input.termination)}）`,
+      note: tr("workflowActions.auditBranchAdded", {
+        count: result.length,
+        quantity: routedQuantity,
+        termination: describeTermination(input.termination, tr),
+      }),
     },
   });
   return { ok: true };
 }
 
 /** 終端の説明（監査メモ用）。 */
-function describeTermination(t: BranchTermination): string {
-  if (t.kind === "MERGE") return "合流あり";
-  return t.disposition === "SEMI_FINISHED" ? "半製品在庫へ" : "製品在庫へ";
+function describeTermination(t: BranchTermination, tr: Tr): string {
+  if (t.kind === "MERGE") return tr("workflowActions.terminationMerge");
+  return t.disposition === "SEMI_FINISHED"
+    ? tr("workflowActions.terminationSemiFinishedStock")
+    : tr("workflowActions.terminationProductStock");
 }
 
 /**
@@ -894,6 +955,7 @@ export async function updateBranchSeries(input: {
   routedQuantity?: number;
   termination: BranchTermination;
 }): Promise<StepActionResult> {
+  const tr = await getTranslations();
   const wo = await prisma.workOrder.findUniqueOrThrow({
     where: { id: input.workOrderId },
     include: {
@@ -906,7 +968,11 @@ export async function updateBranchSeries(input: {
   const series = branchSeriesList(ctx).find(
     (b) => b.headId === input.headStepId,
   );
-  if (!series) return { ok: false, errors: ["分岐系列が見つかりません"] };
+  if (!series)
+    return {
+      ok: false,
+      errors: [tr("workflowActions.branchSeriesNotFound")],
+    };
 
   const stepById = new Map(wo.steps.map((s) => [s.id, s]));
   const seriesSteps = series.stepIds
@@ -914,7 +980,10 @@ export async function updateBranchSeries(input: {
     .filter((s): s is NonNullable<typeof s> => s != null);
   const terminal = stepById.get(series.terminalId);
   if (!terminal)
-    return { ok: false, errors: ["分岐の終端工程が見つかりません"] };
+    return {
+      ok: false,
+      errors: [tr("workflowActions.branchTerminalStepNotFound")],
+    };
 
   const errors: string[] = [];
 
@@ -927,15 +996,19 @@ export async function updateBranchSeries(input: {
   const nextQuantity = input.routedQuantity ?? currentQuantity;
   if (nextQuantity !== currentQuantity) {
     if (!seriesSteps.every((s) => s.status === "PENDING"))
-      errors.push("着手済みの分岐は数量を変更できません");
-    if (nextQuantity <= 0) errors.push("分岐数量は 1 以上で入力してください");
+      errors.push(tr("workflowActions.branchQuantityLockedAfterStart"));
+    if (nextQuantity <= 0)
+      errors.push(tr("production.stepExecutionActions.branchQuantityMin"));
     if (series.sourceId) {
       // 分岐可能数は「現在の分岐分」を戻した上で見る（自分自身は差し引かない）。
       const available = branchableQuantity(series.sourceId, ctx);
       const room = (available ?? 0) + currentQuantity;
       if (nextQuantity > room)
         errors.push(
-          `分岐数量（${nextQuantity}）が分岐可能数（${room}）を超えています`,
+          tr("workflowActions.branchQuantityExceedsAvailable", {
+            quantity: nextQuantity,
+            available: room,
+          }),
         );
     }
   }
@@ -947,15 +1020,15 @@ export async function updateBranchSeries(input: {
       : series.stockDisposition === input.termination.disposition &&
         series.mergeTargetId == null;
   if (!sameTermination && terminal.status !== "PENDING")
-    errors.push("終端工程が未着手のときだけ行き先を変更できます");
+    errors.push(tr("workflowActions.terminationChangeOnlyWhilePending"));
   if (input.termination.kind === "MERGE") {
     const merge = stepById.get(input.termination.mergeTargetStepId);
-    if (!merge) errors.push("合流先の工程が見つかりません");
+    if (!merge) errors.push(tr("workflowActions.mergeTargetStepNotFound"));
     else {
       if (merge.status !== "PENDING")
-        errors.push("合流先が未着手ではありません");
+        errors.push(tr("workflowActions.mergeTargetNotPending"));
       if (isOffMainline(merge.id, ctx))
-        errors.push("合流先に分岐系列の工程は指定できません");
+        errors.push(tr("workflowActions.mergeTargetCannotBeBranchStep"));
     }
   }
   if (errors.length > 0) return { ok: false, errors };
@@ -1011,7 +1084,10 @@ export async function updateBranchSeries(input: {
     tableName: "work_orders",
     recordId: String(wo.workOrderNumber),
     after: {
-      note: `分岐を更新（数量 ${nextQuantity}, ${describeTermination(input.termination)}）`,
+      note: tr("workflowActions.auditBranchUpdated", {
+        quantity: nextQuantity,
+        termination: describeTermination(input.termination, tr),
+      }),
     },
   });
   return { ok: true };
@@ -1026,6 +1102,7 @@ export async function removeBranchSeries(input: {
   workOrderId: string;
   headStepId: string;
 }): Promise<StepActionResult> {
+  const tr = await getTranslations();
   const wo = await prisma.workOrder.findUniqueOrThrow({
     where: { id: input.workOrderId },
     include: {
@@ -1035,9 +1112,13 @@ export async function removeBranchSeries(input: {
   });
   const ctx = ctxFromWorkOrder(wo);
   const head = wo.steps.find((s) => s.id === input.headStepId);
-  if (!head) return { ok: false, errors: ["分岐先頭の工程が見つかりません"] };
+  if (!head)
+    return {
+      ok: false,
+      errors: [tr("workflowActions.branchHeadStepNotFound")],
+    };
   if (!isOffMainline(head.id, ctx))
-    return { ok: false, errors: ["分岐系列の工程ではありません"] };
+    return { ok: false, errors: [tr("workflowActions.notABranchSeriesStep")] };
 
   const series: string[] = [];
   const seen = new Set<string>();
@@ -1056,7 +1137,7 @@ export async function removeBranchSeries(input: {
   if (rows.some((r) => r.status !== "PENDING")) {
     return {
       ok: false,
-      errors: ["着手済みの工程を含む分岐は削除できません"],
+      errors: [tr("workflowActions.cannotDeleteBranchWithStartedSteps")],
     };
   }
 
@@ -1071,12 +1152,18 @@ export async function removeBranchSeries(input: {
         },
       });
       if (res.count !== series.length)
-        throw new Error("着手済みの工程を含む分岐は削除できません");
+        throw new Error(
+          tr("workflowActions.cannotDeleteBranchWithStartedSteps"),
+        );
     });
   } catch (e) {
     return {
       ok: false,
-      errors: [e instanceof Error ? e.message : "分岐の削除に失敗しました"],
+      errors: [
+        e instanceof Error
+          ? e.message
+          : tr("production.workOrderStepsPanel.couldNotDeleteTheBranch"),
+      ],
     };
   }
 
@@ -1084,7 +1171,11 @@ export async function removeBranchSeries(input: {
     action: "UPDATE",
     tableName: "work_orders",
     recordId: String(wo.workOrderNumber),
-    after: { note: `分岐を削除（${series.length} 工程）` },
+    after: {
+      note: tr("workflowActions.auditBranchDeleted", {
+        count: series.length,
+      }),
+    },
   });
   return { ok: true };
 }

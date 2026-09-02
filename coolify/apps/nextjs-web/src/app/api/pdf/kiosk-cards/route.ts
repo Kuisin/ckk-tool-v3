@@ -15,6 +15,7 @@
  * （帳票 PDF と違い保存キーが定まらない + 氏名入りで使い捨て）。
  */
 
+import { getTranslations } from "next-intl/server";
 import { formatCode } from "@/lib/crockford";
 import { escapeHtml } from "@/lib/format";
 import {
@@ -87,6 +88,7 @@ function timestampJst(): string {
 }
 
 export async function GET(request: Request): Promise<Response> {
+  const tr = await getTranslations();
   // 台紙の PDF は QR（= 認証情報そのもの）をファイルとして手元に残す操作。
   // 一覧を見るのとは重さが違うので、承認された期間だけに絞る。
   const gate = await useElevation("kiosk_card.print");
@@ -105,14 +107,14 @@ export async function GET(request: Request): Promise<Response> {
     .slice(0, 100);
   if (ids.length === 0) {
     return Response.json(
-      { error: "印刷対象のカードが指定されていません" },
+      { error: tr("settings.kioskCardActions.noCardsSpecifiedForPrint") },
       { status: 400 },
     );
   }
   const cards = await fetchKioskCardsForPrint(ids);
   if (cards.length === 0) {
     return Response.json(
-      { error: "印刷対象のカードがありません" },
+      { error: tr("settings.kioskCardActions.noCardsToPrint") },
       { status: 404 },
     );
   }

@@ -14,7 +14,7 @@ import { useEffect, useState } from "react";
 import { useFormat } from "@/components/layout/PreferencesProvider";
 import {
   GRANT_STATE_COLOR,
-  GRANT_STATE_LABEL,
+  grantStateLabel,
 } from "@/lib/privileged-access-core";
 import type { PrivilegedRequestRow } from "@/lib/privileged-requests";
 
@@ -109,7 +109,7 @@ export function PrivilegedRequestCard({
             </Badge>
             {row.state && row.status === "APPROVED" && (
               <Badge color={GRANT_STATE_COLOR[row.state]} variant="light">
-                {GRANT_STATE_LABEL[row.state]}
+                {grantStateLabel(row.state, tr)}
               </Badge>
             )}
             {live && row.remainingMs != null && (

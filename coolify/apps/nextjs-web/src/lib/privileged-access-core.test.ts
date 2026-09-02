@@ -1,4 +1,6 @@
+import { createTranslator } from "next-intl";
 import { describe, expect, it } from "vitest";
+import ja from "../../messages/ja.json";
 import {
   effectiveEndsAt,
   type GrantWindow,
@@ -8,6 +10,28 @@ import {
   remainingMs,
   validateRequestWindow,
 } from "./privileged-access-core";
+
+/**
+ * `settings.privilegedAccessCore.*` はまだ messages/ja.json に無いことがある
+ * （並行して他のエージェントが追加中）ので、テスト用にローカルで足す。
+ * 実キーが同じ文言で追加されれば無害。
+ */
+const messages = {
+  ...ja,
+  settings: {
+    ...ja.settings,
+    privilegedAccessCore: {
+      enterAStartDateAndTime: "開始日時を指定してください",
+      enterAnEndDateAndTime: "終了日時を指定してください",
+      endMustBeAfterStart: "終了日時は開始日時より後にしてください",
+      startCannotBeInThePast: "開始日時を過去にすることはできません",
+      endMustBeWithinDays: "終了日時は申請から {days} 日以内にしてください",
+      durationMustBeWholeMinutes: "有効時間は分単位の整数で指定してください",
+      durationOutOfRange: "有効時間は {min}〜{max} 分の範囲で指定してください",
+    },
+  },
+};
+const tr = createTranslator({ locale: "ja", messages });
 
 const NOW = new Date("2026-08-30T12:00:00Z");
 const at = (iso: string) => new Date(iso);
@@ -157,12 +181,16 @@ describe("validateRequestWindow — DB の CHECK と同じ条件", () => {
   };
 
   it("妥当な申請は null", () => {
-    expect(validateRequestWindow(ok, NOW)).toBeNull();
+    expect(validateRequestWindow(ok, NOW, tr)).toBeNull();
   });
 
   it("終了が開始より前・同時は拒否", () => {
     expect(
-      validateRequestWindow({ ...ok, windowEndsAt: ok.windowStartsAt }, NOW),
+      validateRequestWindow(
+        { ...ok, windowEndsAt: ok.windowStartsAt },
+        NOW,
+        tr,
+      ),
     ).toMatch(/後にしてください/);
   });
 
@@ -171,12 +199,14 @@ describe("validateRequestWindow — DB の CHECK と同じ条件", () => {
       validateRequestWindow(
         { ...ok, windowStartsAt: "2026-08-30T11:59:30Z" },
         NOW,
+        tr,
       ),
     ).toBeNull();
     expect(
       validateRequestWindow(
         { ...ok, windowStartsAt: "2026-08-30T11:00:00Z" },
         NOW,
+        tr,
       ),
     ).toMatch(/過去/);
   });
@@ -189,10 +219,10 @@ describe("validateRequestWindow — DB の CHECK と同じ条件", () => {
       NOW.getTime() + MAX_WINDOW_DAYS * 86_400_000 + MIN,
     ).toISOString();
     expect(
-      validateRequestWindow({ ...ok, windowEndsAt: exactly }, NOW),
+      validateRequestWindow({ ...ok, windowEndsAt: exactly }, NOW, tr),
     ).toBeNull();
     expect(
-      validateRequestWindow({ ...ok, windowEndsAt: overBy1Min }, NOW),
+      validateRequestWindow({ ...ok, windowEndsAt: overBy1Min }, NOW, tr),
     ).toMatch(/14 日以内/);
   });
 
@@ -207,22 +237,23 @@ describe("validateRequestWindow — DB の CHECK と同じ条件", () => {
           durationMinutes: 30,
         },
         NOW,
+        tr,
       ),
     ).toMatch(/14 日以内/);
   });
 
   it("有効時間の範囲外・非整数は拒否", () => {
-    expect(validateRequestWindow({ ...ok, durationMinutes: 0 }, NOW)).toMatch(
-      /範囲/,
-    );
     expect(
-      validateRequestWindow({ ...ok, durationMinutes: 1441 }, NOW),
+      validateRequestWindow({ ...ok, durationMinutes: 0 }, NOW, tr),
     ).toMatch(/範囲/);
-    expect(validateRequestWindow({ ...ok, durationMinutes: 1.5 }, NOW)).toMatch(
-      /整数/,
-    );
     expect(
-      validateRequestWindow({ ...ok, durationMinutes: 1440 }, NOW),
+      validateRequestWindow({ ...ok, durationMinutes: 1441 }, NOW, tr),
+    ).toMatch(/範囲/);
+    expect(
+      validateRequestWindow({ ...ok, durationMinutes: 1.5 }, NOW, tr),
+    ).toMatch(/整数/);
+    expect(
+      validateRequestWindow({ ...ok, durationMinutes: 1440 }, NOW, tr),
     ).toBeNull();
   });
 });

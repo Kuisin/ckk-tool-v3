@@ -160,6 +160,7 @@ async function sweep(): Promise<DigestRunResult> {
       subject: digestSubject(items.length),
       omittedCount,
       allUrl: `${base}/notifications`,
+      locale,
       items: shown.map((i) => ({
         typeLabel: notificationTypeLabel(i.type, locale),
         title: i.title,

@@ -21,7 +21,12 @@
  * 「画面には有効と出るのに押すと弾かれる」が生まれる。
  *
  * 純ロジック（I/O なし）— サーバーの門番も画面のカウントダウンも同じ関数を使う。
+ * 文言（`grantStateLabel` / `validateRequestWindow` のエラー）は next-intl の
+ * `tr`（`lib/i18n.ts` の `Tr`）を呼び出し側から受け取る — どちらも呼び出し元
+ * （Server Action / クライアントコンポーネント）は既に `tr` を持っている。
  */
+
+import type { Tr } from "./i18n";
 
 /** 申請の状態。DB の app."PRIVILEGED_REQUEST_STATUS" と同じ集合。 */
 export type PrivilegedRequestStatus =
@@ -124,16 +129,9 @@ export function grantState(g: GrantWindow, now: Date): GrantState {
 }
 
 /** バッジの文言（_specs/design.md §9 の色の付け方に合わせる）。 */
-export const GRANT_STATE_LABEL: Record<GrantState, string> = {
-  PENDING: "承認依頼中",
-  SCHEDULED: "開始前",
-  ARMED: "利用可能",
-  ACTIVE: "利用中",
-  EXPIRED: "期限切れ",
-  REJECTED: "差し戻し",
-  REVOKED: "取り消し",
-  CANCELLED: "取り下げ",
-};
+export function grantStateLabel(state: GrantState, tr: Tr): string {
+  return tr(`privilegedOp.GRANT_STATE_LABEL.${state}` as never);
+}
 
 export const GRANT_STATE_COLOR: Record<GrantState, string> = {
   PENDING: "yellow",
@@ -162,30 +160,42 @@ export interface RequestWindowInput {
 export function validateRequestWindow(
   input: RequestWindowInput,
   now: Date,
+  tr: Tr,
 ): string | null {
   const start = toTime(input.windowStartsAt);
   const end = toTime(input.windowEndsAt);
-  if (start == null) return "開始日時を指定してください";
-  if (end == null) return "終了日時を指定してください";
-  if (end <= start) return "終了日時は開始日時より後にしてください";
+  if (start == null) {
+    return tr("settings.privilegedAccessCore.enterAStartDateAndTime");
+  }
+  if (end == null) {
+    return tr("settings.privilegedAccessCore.enterAnEndDateAndTime");
+  }
+  if (end <= start) {
+    return tr("settings.privilegedAccessCore.endMustBeAfterStart");
+  }
 
   // 遡っての付与を作らせない。1 分の緩みは時計ずれと送信の往復ぶん（DB 側と同じ）。
   if (start < now.getTime() - MINUTE_MS) {
-    return "開始日時を過去にすることはできません";
+    return tr("settings.privilegedAccessCore.startCannotBeInThePast");
   }
   // 上限は「申請時点から」14 日。開始を先送りしても総延長は伸びない。
   if (end > now.getTime() + MAX_WINDOW_DAYS * DAY_MS) {
-    return `終了日時は申請から ${MAX_WINDOW_DAYS} 日以内にしてください`;
+    return tr("settings.privilegedAccessCore.endMustBeWithinDays", {
+      days: MAX_WINDOW_DAYS,
+    });
   }
 
   if (!Number.isInteger(input.durationMinutes)) {
-    return "有効時間は分単位の整数で指定してください";
+    return tr("settings.privilegedAccessCore.durationMustBeWholeMinutes");
   }
   if (
     input.durationMinutes < MIN_DURATION_MINUTES ||
     input.durationMinutes > MAX_DURATION_MINUTES
   ) {
-    return `有効時間は ${MIN_DURATION_MINUTES}〜${MAX_DURATION_MINUTES} 分の範囲で指定してください`;
+    return tr("settings.privilegedAccessCore.durationOutOfRange", {
+      min: MIN_DURATION_MINUTES,
+      max: MAX_DURATION_MINUTES,
+    });
   }
   return null;
 }

@@ -1,3 +1,5 @@
+import type { getTranslations } from "next-intl/server";
+
 /**
  * user-suspension-core.ts — ユーザーの利用停止（一時 / 恒久）の判定。
  *
@@ -44,36 +46,47 @@ export interface SuspensionDecision {
   message: string | null;
 }
 
-const MESSAGES: Record<SuspensionBlock, string> = {
-  self: "自分自身は停止できません。別の管理者に依頼してください。",
-  "last-admin":
-    "最後の管理者は停止できません。先に他のユーザーへ管理者権限を割り当ててください。",
-  "already-disabled": "このユーザーは既に停止中です。",
-  "already-active": "このユーザーは停止されていません。",
-};
+type Tr = Awaited<ReturnType<typeof getTranslations>>;
 
-function block(reason: SuspensionBlock): SuspensionDecision {
-  return { ok: false, block: reason, message: MESSAGES[reason] };
+function messageFor(reason: SuspensionBlock, tr: Tr): string {
+  switch (reason) {
+    case "self":
+      return tr("settings.userSuspensionCore.youCannotSuspendYourself");
+    case "last-admin":
+      return tr("settings.userSuspensionCore.theLastAdminCannotBe");
+    case "already-disabled":
+      return tr("settings.userSuspensionCore.thisUserIsAlready");
+    case "already-active":
+      return tr("settings.userSuspensionCore.thisUserIsNot");
+  }
+}
+
+function block(reason: SuspensionBlock, tr: Tr): SuspensionDecision {
+  return { ok: false, block: reason, message: messageFor(reason, tr) };
 }
 
 /** 停止してよいか。 */
 export function canSuspend(
   target: SuspensionTarget,
   ctx: SuspensionContext,
+  tr: Tr,
 ): SuspensionDecision {
-  if (!target.isActive) return block("already-disabled");
+  if (!target.isActive) return block("already-disabled", tr);
   // 自分を止めると自分で戻せない（他に管理者が居ても、まず自分が締め出される）。
-  if (target.id === ctx.actorId) return block("self");
+  if (target.id === ctx.actorId) return block("self", tr);
   // 管理者ゼロの DB はロール付与画面が無く psql でしか戻せない。
   if (ctx.targetIsAdmin && ctx.otherActiveAdminCount < 1) {
-    return block("last-admin");
+    return block("last-admin", tr);
   }
   return { ok: true, message: null };
 }
 
 /** 復帰させてよいか。 */
-export function canRestore(target: SuspensionTarget): SuspensionDecision {
-  if (target.isActive) return block("already-active");
+export function canRestore(
+  target: SuspensionTarget,
+  tr: Tr,
+): SuspensionDecision {
+  if (target.isActive) return block("already-active", tr);
   return { ok: true, message: null };
 }
 
@@ -85,17 +98,27 @@ export function resolveDisabledUntil(
   kind: SuspensionKind,
   until: Date | null,
   now: Date,
+  tr: Tr,
 ): { ok: true; value: Date | null } | { ok: false; message: string } {
   if (kind === "permanent") return { ok: true, value: null };
   if (!until) {
-    return { ok: false, message: "一時停止には解除予定日時が必要です" };
+    return {
+      ok: false,
+      message: tr("settings.userSuspensionCore.aScheduledReleaseDate"),
+    };
   }
   if (Number.isNaN(until.getTime())) {
-    return { ok: false, message: "解除予定日時が不正です" };
+    return {
+      ok: false,
+      message: tr("settings.userSuspensionCore.theScheduledReleaseDate"),
+    };
   }
   if (until.getTime() <= now.getTime()) {
     // 過去日時を許すと「止めた次の分に戻る」= 事故にしか見えない挙動になる。
-    return { ok: false, message: "解除予定日時は未来を指定してください" };
+    return {
+      ok: false,
+      message: tr("settings.userSuspensionCore.pleaseSpecifyAFuture"),
+    };
   }
   return { ok: true, value: until };
 }
@@ -117,6 +140,7 @@ export interface SuspensionState {
 export function suspensionState(
   target: SuspensionTarget,
   now: Date,
+  tr: Tr,
 ): SuspensionState {
   if (target.isActive) {
     return { kind: null, label: null, isAwaitingRestore: false };
@@ -124,20 +148,20 @@ export function suspensionState(
   if (!target.disabledUntil) {
     return {
       kind: "permanent",
-      label: "停止中（無期限）",
+      label: tr("settings.userSuspensionCore.suspendedIndefinite"),
       isAwaitingRestore: false,
     };
   }
   if (target.disabledUntil.getTime() <= now.getTime()) {
     return {
       kind: "temporary",
-      label: "停止中（期限切れ — まもなく自動復帰します）",
+      label: tr("settings.userSuspensionCore.suspendedExpiredWillRestore"),
       isAwaitingRestore: true,
     };
   }
   return {
     kind: "temporary",
-    label: "停止中（一時）",
+    label: tr("settings.userSuspensionCore.suspendedTemporary"),
     isAwaitingRestore: false,
   };
 }

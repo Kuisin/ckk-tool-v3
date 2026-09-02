@@ -128,6 +128,7 @@ export async function requestPrivilegedAccess(
       durationMinutes: v.durationMinutes,
     },
     new Date(),
+    tr,
   );
   if (invalid) return actionError(invalid);
 

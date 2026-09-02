@@ -14,7 +14,10 @@
  * ここへ渡すだけにして、判断は全部こちらでテストする。
  */
 
+import type { getTranslations } from "next-intl/server";
 import type { FormAnswerValue, FormFieldDef } from "./form-schema";
+
+type Tr = Awaited<ReturnType<typeof getTranslations>>;
 
 // ── 絞り込み ────────────────────────────────────────────────────────────────
 
@@ -220,14 +223,29 @@ export function numericAnswer(
 
 // ── 列の組み立て ────────────────────────────────────────────────────────────
 
-/** 固定列（回答そのものではなく、どの回答かを示す列）。 */
-export const FIXED_EXPORT_COLUMNS = [
-  "No.",
-  "回答番号",
-  "状態",
-  "回答者",
-  "提出日時",
+/** 固定列の id（回答そのものではなく、どの回答かを示す列）。並びは表示順。 */
+export const FIXED_EXPORT_COLUMN_IDS = [
+  "no",
+  "responseNumber",
+  "status",
+  "respondent",
+  "submittedAt",
 ] as const;
+export type FixedExportColumnId = (typeof FIXED_EXPORT_COLUMN_IDS)[number];
+
+/** 固定列（id + 見出し）。並びは FIXED_EXPORT_COLUMN_IDS の順。 */
+export function fixedExportColumns(
+  tr: Tr,
+): { id: FixedExportColumnId; header: string }[] {
+  const headers: Record<FixedExportColumnId, string> = {
+    no: "No.",
+    responseNumber: tr("common.responseNumber"),
+    status: tr("common.status"),
+    respondent: tr("common.respondent"),
+    submittedAt: tr("common.submittedAt"),
+  };
+  return FIXED_EXPORT_COLUMN_IDS.map((id) => ({ id, header: headers[id] }));
+}
 
 /**
  * 書き出す項目を選ぶ。

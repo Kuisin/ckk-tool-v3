@@ -319,7 +319,7 @@ export function ProductForm({
     if (selectedType) {
       const errs: Record<string, string> = {};
       for (const it of selectedType.items) {
-        const msg = validateItemValue(it, typeValues[it.key]);
+        const msg = validateItemValue(it, typeValues[it.key], tr);
         if (msg) errs[it.key] = msg;
       }
       if (Object.keys(errs).length > 0) {
@@ -337,7 +337,7 @@ export function ProductForm({
     for (const key of extraKeys) {
       const def = defByKey.get(key);
       if (!def) continue;
-      const msg = validateItemValue(def, extraValues[key]);
+      const msg = validateItemValue(def, extraValues[key], tr);
       if (msg) exErrs[key] = msg;
     }
     if (Object.keys(exErrs).length > 0) {

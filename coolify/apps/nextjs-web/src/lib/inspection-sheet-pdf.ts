@@ -14,6 +14,9 @@ import "server-only";
  * ——列=検査項目・行=基本値/目標値/公差Top/Bottom/上限/下限+サンプル——を
  * 再現する（dimensionalGridHtml）。COUNTS（合格数のみ）は列の概念に馴染まない
  * ため、従来どおり項目ごとの行テーブル（countsTableHtml）のまま。
+ *
+ * **決まり文句は `lib/messages.ts` から明示 locale "ja" で引く**（`lib/pdf-labels.ts`
+ * と同じ理由・同じ道具 — この帳票も読む人の表示設定に従わず日本語固定で組む）。
  */
 
 import { inspectionItemTypeLabel } from "@/lib/enum-labels";
@@ -35,6 +38,16 @@ import {
   sampleLabel,
   samplingLabelJa,
 } from "@/lib/inspection-core";
+import { label as msg } from "@/lib/messages";
+
+/** 明示 locale "ja" で引く薄いラッパー。 */
+function L(
+  key: string,
+  fallback: string,
+  vars?: Record<string, unknown>,
+): string {
+  return msg(key, "ja", fallback, vars);
+}
 
 export function esc(value: string): string {
   return value
@@ -97,14 +110,14 @@ function itemBase(item: ItemRow) {
 // ── 測定機器コード凡例（旧帳票脚注「検査設備 LE=レーザー…」） ─────────────────
 
 const EQUIPMENT_LEGEND: Record<string, string> = {
-  LE: "レーザー",
-  PR: "投影機",
-  P: "ピック",
-  S: "スケール",
-  K: "顕微鏡",
+  LE: L("production.inspectionSheetPdf.equipmentLaser", "レーザー"),
+  PR: L("production.inspectionSheetPdf.equipmentProjector", "投影機"),
+  P: L("production.inspectionSheetPdf.equipmentPick", "ピック"),
+  S: L("production.inspectionSheetPdf.equipmentScale", "スケール"),
+  K: L("production.inspectionSheetPdf.equipmentMicroscope", "顕微鏡"),
   H: "HeliCheck",
-  M: "目視",
-  N: "ノギス",
+  M: L("production.inspectionSheetPdf.equipmentVisual", "目視"),
+  N: L("production.inspectionSheetPdf.equipmentCaliper", "ノギス"),
   Z: "ZOLLER",
 };
 
@@ -119,7 +132,7 @@ export function equipmentLegendNote(items: ItemRow[]): string {
   ];
   if (codes.length === 0) return "";
   const parts = codes.map((c) => `${c}=${EQUIPMENT_LEGEND[c] ?? c}`);
-  return ` ／ 検査設備 ${esc(parts.join(" "))}`;
+  return ` ／ ${L("production.inspectionSheetPdf.inspectionEquipment", "検査設備")} ${esc(parts.join(" "))}`;
 }
 
 // ── COUNTS（合格数のみ）— 項目ごとの行テーブル ───────────────────────────────
@@ -130,9 +143,8 @@ export function blankSheetItems(items: ItemRow[]) {
     const base = itemBase(item);
     return {
       ...base,
-      values_html:
-        '<span class="value-more">検査数</span><span class="value-cell"></span><span class="value-more">合格数</span><span class="value-cell"></span>',
-      judge_html: '<span class="judge-blank">合 ・ 否</span>',
+      values_html: `<span class="value-more">${L("production.inspectionRecordForm.inspected", "検査数")}</span><span class="value-cell"></span><span class="value-more">${L("production.inspectionRecordForm.passed", "合格数")}</span><span class="value-cell"></span>`,
+      judge_html: `<span class="judge-blank">${L("production.inspectionSheetPdf.passOrFail", "合 ・ 否")}</span>`,
     };
   });
 }
@@ -174,8 +186,8 @@ export function filledSheetItems(
       row.isPass == null
         ? '<span class="judge-blank">—</span>'
         : row.isPass
-          ? '<span class="pass-mark pass">合格</span>'
-          : '<span class="pass-mark fail">不合格</span>';
+          ? `<span class="pass-mark pass">${L("production.inspectionRecordForm.pass", "合格")}</span>`
+          : `<span class="pass-mark fail">${L("production.inspectionRecordForm.fail", "不合格")}</span>`;
     return {
       ...base,
       values_html,
@@ -207,11 +219,11 @@ export function countsTableHtml(
     <table class="items-table">
       <thead>
         <tr>
-          <th style="width: 24%">検査項目</th>
-          <th style="width: 14%">合格基準</th>
-          <th style="width: 12%">目標</th>
-          <th>実測値</th>
-          <th style="width: 9%" class="center">合否</th>
+          <th style="width: 24%">${L("master.inspectionTemplates.inspectionItem", "検査項目")}</th>
+          <th style="width: 14%">${L("master.inspectionTemplates.passCriteria", "合格基準")}</th>
+          <th style="width: 12%">${L("master.inspectionTemplates.target", "目標")}</th>
+          <th>${L("production.inspectionRecordForm.measuredValue", "実測値")}</th>
+          <th style="width: 9%" class="center">${L("production.inspectionSheetPdf.passFail", "合否")}</th>
         </tr>
       </thead>
       <tbody>${body}</tbody>
@@ -245,7 +257,11 @@ export function blankValueColumns(
     ),
   }));
   const overflowNote =
-    required != null && required > BLANK_CELL_CAP ? `…全${required}本` : "";
+    required != null && required > BLANK_CELL_CAP
+      ? L("production.inspectionSheetPdf.overflowNote", `…全${required}本`, {
+          count: required,
+        })
+      : "";
   return { columns, overflowNote };
 }
 
@@ -322,35 +338,35 @@ export function dimensionalGridHtml(
       .join("")}</tr>`;
 
   const nominalRow = row(
-    "基本値",
+    L("master.inspectionTemplates.baseValue", "基本値"),
     rows.map(({ item }) =>
       item.inputType === "NUMBER" ? fmtNum(item.nominalValue) : "—",
     ),
   );
   const goalRow = row(
-    "目標値",
+    L("master.inspectionTemplates.targetValue", "目標値"),
     rows.map(({ spec }) => esc(goalLabel(spec) ?? "—")),
   );
   const topRow = row(
-    "公差 Top",
+    L("production.inspectionSheetPdf.toleranceTop", "公差 Top"),
     rows.map(({ item }) =>
       item.inputType === "NUMBER" ? fmtNum(item.toleranceTopDelta) : "—",
     ),
   );
   const bottomRow = row(
-    "公差 Bottom",
+    L("production.inspectionSheetPdf.toleranceBottom", "公差 Bottom"),
     rows.map(({ item }) =>
       item.inputType === "NUMBER" ? fmtNum(item.toleranceBottomDelta) : "—",
     ),
   );
   const upperRow = row(
-    "上限",
+    L("production.inspectionSheetPdf.upperLimit", "上限"),
     rows.map(({ spec }) =>
       spec.toleranceMax != null ? fmtNum(spec.toleranceMax) : "—",
     ),
   );
   const lowerRow = row(
-    "下限",
+    L("production.inspectionSheetPdf.lowerLimit", "下限"),
     rows.map(({ spec }) =>
       spec.toleranceMin != null ? fmtNum(spec.toleranceMin) : "—",
     ),
@@ -407,7 +423,7 @@ export function shapeSectionHtml(
     }
   }
   return `
-    <div class="shape-title">形状</div>
+    <div class="shape-title">${L("common.shape", "形状")}</div>
     <table class="shape-table"><tbody>${rowsHtml.join("")}</tbody></table>`;
 }
 
@@ -451,27 +467,27 @@ export function finalInspectionSectionHtml(
 ): string {
   if (!fi) return "";
   return `
-    <div class="final-title">最終検査</div>
+    <div class="final-title">${L("production.workOrderFinalInspectionPanel.finalInspection", "最終検査")}</div>
     <table class="final-table">
       <tbody>
-        <tr><td>図面・ラベル・膜厚・寸法と間違いがないか</td><td>${checkCell(fi.drawingLabelOk, fi.drawingLabelChecked)}</td></tr>
-        <tr><td>保護キャップ使用しているか(φ0.6以下)</td><td>${checkCell(fi.protectiveCapOk, fi.protectiveCapChecked)}</td></tr>
-        <tr><td>完成本数は合っているか</td><td>${checkCell(fi.finishedQuantityOk, fi.finishedQuantityChecked)}</td></tr>
+        <tr><td>${L("production.finalInspectionActions.drawingLabelCheck", "図面・ラベル・膜厚・寸法と間違いがないか")}</td><td>${checkCell(fi.drawingLabelOk, fi.drawingLabelChecked)}</td></tr>
+        <tr><td>${L("production.finalInspectionActions.protectiveCapCheck", "保護キャップ使用しているか(φ0.6以下)")}</td><td>${checkCell(fi.protectiveCapOk, fi.protectiveCapChecked)}</td></tr>
+        <tr><td>${L("production.finalInspectionActions.finishedQuantityCheck", "完成本数は合っているか")}</td><td>${checkCell(fi.finishedQuantityOk, fi.finishedQuantityChecked)}</td></tr>
       </tbody>
     </table>
     <div class="final-row">
-      <span>予備在庫使用: ${fi.spareStockUsed ? "有" : "無"}</span>
-      <span>予備在庫入庫: ${fi.spareStockReceived ? "有" : "無"}</span>
+      <span>${L("production.finalInspectionActions.spareStockUsed", "予備在庫使用")}: ${fi.spareStockUsed ? L("production.finalInspectionActions.present", "有") : L("production.finalInspectionActions.absent", "無")}</span>
+      <span>${L("production.finalInspectionActions.spareStockReceived", "予備在庫入庫")}: ${fi.spareStockReceived ? L("production.finalInspectionActions.present", "有") : L("production.finalInspectionActions.absent", "無")}</span>
     </div>
     <table class="final-table">
       <tbody>
-        <tr><td>棚包担当者</td><td>${stageCell(fi.shelved)}</td></tr>
-        <tr><td>納品書発行者</td><td>${stageCell(fi.deliveryNoteIssued)}</td></tr>
-        <tr><td>出荷許可者</td><td>${stageCell(fi.shipmentAuthorized)}</td></tr>
+        <tr><td>${L("production.finalInspectionActions.shelvedBy", "棚包担当者")}</td><td>${stageCell(fi.shelved)}</td></tr>
+        <tr><td>${L("production.finalInspectionActions.deliveryNoteIssuedBy", "納品書発行者")}</td><td>${stageCell(fi.deliveryNoteIssued)}</td></tr>
+        <tr><td>${L("production.finalInspectionActions.shipmentAuthorizedBy", "出荷許可者")}</td><td>${stageCell(fi.shipmentAuthorized)}</td></tr>
       </tbody>
     </table>
     <div class="final-row">
-      <span>出荷時不良内容確認者印: ${stageCell(fi.shipDefectReviewed)}</span>
+      <span>${L("production.workOrderFinalInspectionPanel.checkedByStampForDefectsAt", "出荷時不良内容確認者印")}: ${stageCell(fi.shipDefectReviewed)}</span>
     </div>
     ${fi.shipDefectNotes ? `<div class="final-notes">${esc(fi.shipDefectNotes)}</div>` : ""}
   `;
@@ -488,10 +504,14 @@ export function templateImageHtml(
   filename: string | null,
 ): string {
   if (!dataUri) return "";
+  const referenceImage = L(
+    "master.inspectionTemplates.referenceImage",
+    "参考画像",
+  );
   return `
     <div class="ref-image">
-      <div class="ref-image-title">参考画像</div>
-      <img alt="${esc(filename ?? "参考画像")}" src="${dataUri}" />
+      <div class="ref-image-title">${referenceImage}</div>
+      <img alt="${esc(filename ?? referenceImage)}" src="${dataUri}" />
     </div>
   `;
 }
@@ -511,7 +531,10 @@ export function sheetTemplateHead(t: TemplateHead, lotQuantity: number | null) {
       ? esc(localized(t.relatedProcessStep.name as LocalizedText | null))
       : "—",
     sampling: esc(samplingLabelJa(sampling, required)),
-    record_style: t.recordStyle === "COUNTS" ? "合格数のみ" : "実測値",
+    record_style:
+      t.recordStyle === "COUNTS"
+        ? L("common.passCountOnly", "合格数のみ")
+        : L("production.inspectionRecordForm.measuredValue", "実測値"),
   };
 }
 

@@ -1,10 +1,16 @@
+import { createTranslator } from "next-intl";
 import { describe, expect, it } from "vitest";
+import ja from "../../messages/ja.json";
 import {
   describeFlowChange,
   FLOW_CHANGE_KINDS,
   isFlowChangeGated,
   requiresApproval,
 } from "./flow-change-core";
+import type { Tr } from "./i18n";
+
+// biome-ignore lint/suspicious/noExplicitAny: same rationale as product-types.test.ts
+const tr = createTranslator({ locale: "ja", messages: ja as any }) as Tr;
 
 describe("requiresApproval — 未設定なら素通し", () => {
   it("段が 1 つも無ければ承認を挟まない", () => {
@@ -37,20 +43,28 @@ describe("isFlowChangeGated — どの指示書で承認が要るか", () => {
 describe("describeFlowChange", () => {
   it("追加は工程数と数量を出す", () => {
     expect(
-      describeFlowChange(FLOW_CHANGE_KINDS.ADD_BRANCH, {
-        catalogStepIds: [1, 2],
-        routedQuantity: 4,
-      }),
+      describeFlowChange(
+        FLOW_CHANGE_KINDS.ADD_BRANCH,
+        {
+          catalogStepIds: [1, 2],
+          routedQuantity: 4,
+        },
+        tr,
+      ),
     ).toBe("分岐の追加（2 工程 / 数量 4）");
   });
 
   it("削除は見出しだけ", () => {
     expect(
-      describeFlowChange(FLOW_CHANGE_KINDS.REMOVE_BRANCH, { headStepId: "x" }),
+      describeFlowChange(
+        FLOW_CHANGE_KINDS.REMOVE_BRANCH,
+        { headStepId: "x" },
+        tr,
+      ),
     ).toBe("分岐の削除");
   });
 
   it("未知の種別はそのまま出す（空白にしない）", () => {
-    expect(describeFlowChange("FUTURE", null)).toBe("FUTURE");
+    expect(describeFlowChange("FUTURE", null, tr)).toBe("FUTURE");
   });
 });

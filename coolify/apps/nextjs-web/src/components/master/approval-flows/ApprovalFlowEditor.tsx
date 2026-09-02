@@ -212,6 +212,7 @@ export function ApprovalFlowEditor({
       approverUserIds: s.custom ? (s.approvers ?? []).map((a) => a.value) : [],
     })),
     allowIndividual,
+    tr,
   );
 
   const save = () => {

@@ -44,12 +44,19 @@ import { runCriteriaEngine } from "./trial-pricing-engine";
  */
 export type ToolType = string;
 
+/** next-intl の `t()` と互換の最小の形（サーバー/クライアントどちらの実体も渡せる）。 */
+type TrLike = (key: string) => string;
+
 /** 組み込み工具種の表示ラベル（設定未読時のフォールバック）。 */
-export const TOOL_TYPE_OPTIONS: { value: ToolType; label: string }[] = [
-  { value: "ROUND_BAR", label: "丸棒" },
-  { value: "CYLINDER", label: "円筒" },
-  { value: "OH", label: "OH付" },
-];
+export function toolTypeOptionsFallback(
+  tr: TrLike,
+): { value: ToolType; label: string }[] {
+  return [
+    { value: "ROUND_BAR", label: tr("sales.trialPricingSettings.roundBar") },
+    { value: "CYLINDER", label: tr("sales.trialPricingSettings.cylinder") },
+    { value: "OH", label: tr("sales.trialPricingSettings.ohType") },
+  ];
+}
 
 export interface TrialInput {
   toolType: ToolType;

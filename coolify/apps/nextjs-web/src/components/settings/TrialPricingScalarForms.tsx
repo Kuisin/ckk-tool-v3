@@ -35,7 +35,7 @@ import {
   RESERVED_KEYS,
 } from "@/lib/trial-pricing-criteria";
 import {
-  MATERIAL_PRICE_BASIS_OPTIONS,
+  materialPriceBasisOptions,
   type TrialPricingSettings,
 } from "@/lib/trial-pricing-settings";
 
@@ -136,7 +136,7 @@ export function MaterialPolicyForm({
       >
         <Stack gap="sm" maw={480}>
           <Select
-            data={MATERIAL_PRICE_BASIS_OPTIONS}
+            data={materialPriceBasisOptions(tr)}
             description={tr(
               "settings.trialPricingScalarForms.howTheReferencePriceIsDerived",
             )}

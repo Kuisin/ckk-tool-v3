@@ -41,15 +41,18 @@ import { IconGripVertical, IconPlus, IconTrash } from "@tabler/icons-react";
 import { useTranslations } from "next-intl";
 import { GhostButton } from "@/components/ui/buttons";
 import {
-  FORM_FIELD_TYPES,
   type FormFieldDef,
+  formFieldTypes,
   nextFieldKey,
   normalizeOrder,
 } from "@/lib/form-schema";
 import { FormFieldEditor } from "./FormFieldEditor";
 
-function typeLabel(t: FormFieldDef["type"]): string {
-  return FORM_FIELD_TYPES.find((x) => x.value === t)?.label ?? t;
+function typeLabel(
+  t: FormFieldDef["type"],
+  tr: ReturnType<typeof useTranslations>,
+): string {
+  return formFieldTypes(tr).find((x) => x.value === t)?.label ?? t;
 }
 
 function SortableField({
@@ -115,7 +118,7 @@ function SortableField({
                   {field.label.ja || tr("common.unnamed")}
                 </Text>
                 <Badge color="gray" size="xs" variant="light">
-                  {typeLabel(field.type)}
+                  {typeLabel(field.type, tr)}
                 </Badge>
                 {field.required && (
                   <Badge color="red" size="xs" variant="light">

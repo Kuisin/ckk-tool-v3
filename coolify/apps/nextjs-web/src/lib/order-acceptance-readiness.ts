@@ -1,3 +1,5 @@
+import type { getTranslations } from "next-intl/server";
+
 /**
  * order-acceptance-readiness.ts — 注文請書（§2）を先へ進められるかの判定。
  *
@@ -38,16 +40,18 @@ export interface Readiness {
   issues: ReadinessIssue[];
 }
 
+type Tr = Awaited<ReturnType<typeof getTranslations>>;
+
 /** 行番号の列挙（1 始まり）— 「明細 2, 5 行目」の形にする。 */
 const rowList = (rows: number[]): string => rows.join(", ");
 
-export function acceptanceReadiness(input: ReadinessInput): Readiness {
+export function acceptanceReadiness(input: ReadinessInput, tr: Tr): Readiness {
   const issues: ReadinessIssue[] = [];
 
   if (!input.customerBpId) {
     issues.push({
       kind: "customer",
-      message: "顧客が未特定です",
+      message: tr("sales.orderAcceptanceReadiness.customerNotIdentified"),
     });
   }
 
@@ -57,12 +61,15 @@ export function acceptanceReadiness(input: ReadinessInput): Readiness {
   if (input.deliveryMethod === "DIRECT_TO_USER" && !input.endUserBpId) {
     issues.push({
       kind: "endUser",
-      message: "ユーザー直送ですがエンドユーザーが未指定です",
+      message: tr("sales.orderAcceptanceReadiness.directToUserButEndUserNot"),
     });
   }
 
   if (input.items.length < 1) {
-    issues.push({ kind: "items", message: "明細が 1 件もありません" });
+    issues.push({
+      kind: "items",
+      message: tr("sales.orderAcceptanceReadiness.noLineItems"),
+    });
     return { ok: false, issues };
   }
 
@@ -75,13 +82,17 @@ export function acceptanceReadiness(input: ReadinessInput): Readiness {
   if (noProduct.length > 0) {
     issues.push({
       kind: "product",
-      message: `明細 ${rowList(noProduct)} 行目: 製品が未特定です`,
+      message: tr("sales.orderAcceptanceReadiness.lineProductNotIdentified", {
+        rows: rowList(noProduct),
+      }),
     });
   }
   if (noPrice.length > 0) {
     issues.push({
       kind: "price",
-      message: `明細 ${rowList(noPrice)} 行目: 単価が未入力です`,
+      message: tr("sales.orderAcceptanceReadiness.lineUnitPriceNotEntered", {
+        rows: rowList(noPrice),
+      }),
     });
   }
 
@@ -89,8 +100,17 @@ export function acceptanceReadiness(input: ReadinessInput): Readiness {
 }
 
 /** 理由を 1 行にまとめる（API のエラー文・カードの説明用）。 */
-export function readinessSummary(issues: ReadinessIssue[], max = 3): string {
+export function readinessSummary(
+  issues: ReadinessIssue[],
+  tr: Tr,
+  max = 3,
+): string {
   const shown = issues.slice(0, max).map((i) => i.message);
   const rest = issues.length - shown.length;
-  return shown.join(" / ") + (rest > 0 ? ` ほか ${rest} 件` : "");
+  return (
+    shown.join(" / ") +
+    (rest > 0
+      ? ` ${tr("sales.orderAcceptanceReadiness.andNMore", { count: rest })}`
+      : "")
+  );
 }

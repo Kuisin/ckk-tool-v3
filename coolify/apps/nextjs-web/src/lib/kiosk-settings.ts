@@ -17,6 +17,7 @@ import "server-only";
 
 import { z } from "zod";
 import { readConfigNamespace, writeConfigValues } from "./app-config";
+import type { Tr } from "./i18n";
 
 const NAMESPACE = "kiosk";
 const APPS_KEY = "kiosk.apps";
@@ -31,13 +32,32 @@ export interface KioskAppCatalogEntry {
 }
 
 /**
- * キオスクアプリのカタログ。nextjs-kiosk の KIOSK_APPS と手動で対応させる
- * （別アプリ・別 DB クライアントのため import はできない）。アプリ追加時は両方更新。
+ * キオスクアプリのカタログの技術情報だけ（key / permission）。
+ * `getKioskAppFlags`/`setKioskAppFlags` はキーの一覧が要るだけで表示名は
+ * 使わないので、`tr` を持たないここから引く。表示名込みの一覧は
+ * `kioskAppCatalog(tr)`。
  */
-export const KIOSK_APP_CATALOG: KioskAppCatalogEntry[] = [
-  { key: "step-execution", label: "工程実行", permission: "work_order" },
-  { key: "wo-scan", label: "指示書スキャン", permission: "work_order" },
+const KIOSK_APP_KEYS: readonly { key: string; permission: string }[] = [
+  { key: "step-execution", permission: "work_order" },
+  { key: "wo-scan", permission: "work_order" },
 ];
+
+/**
+ * キオスクアプリのカタログ（表示名込み）。nextjs-kiosk の KIOSK_APPS と手動で
+ * 対応させる（別アプリ・別 DB クライアントのため import はできない）。
+ * アプリ追加時は `KIOSK_APP_KEYS` とここ、両方更新。
+ */
+export function kioskAppCatalog(tr: Tr): KioskAppCatalogEntry[] {
+  const LABEL_KEY: Record<string, string> = {
+    "step-execution": "settings.kioskSettings.stepExecution",
+    "wo-scan": "settings.kioskSettings.workOrderScan",
+  };
+  return KIOSK_APP_KEYS.map((app) => ({
+    key: app.key,
+    label: tr(LABEL_KEY[app.key] ?? app.key),
+    permission: app.permission,
+  }));
+}
 
 const appFlagsSchema = z.record(z.string(), z.boolean());
 
@@ -48,7 +68,7 @@ export async function getKioskAppFlags(): Promise<Record<string, boolean>> {
   const stored = parsed.success ? parsed.data : {};
   // カタログの全アプリを網羅（未設定 = 有効）
   const result: Record<string, boolean> = {};
-  for (const app of KIOSK_APP_CATALOG) {
+  for (const app of KIOSK_APP_KEYS) {
     result[app.key] = stored[app.key] ?? true;
   }
   return result;
@@ -59,7 +79,7 @@ export async function setKioskAppFlags(
   flags: Record<string, boolean>,
 ): Promise<void> {
   const clean: Record<string, boolean> = {};
-  for (const app of KIOSK_APP_CATALOG) {
+  for (const app of KIOSK_APP_KEYS) {
     if (typeof flags[app.key] === "boolean") clean[app.key] = flags[app.key];
   }
   await writeConfigValues({ [APPS_KEY]: clean });

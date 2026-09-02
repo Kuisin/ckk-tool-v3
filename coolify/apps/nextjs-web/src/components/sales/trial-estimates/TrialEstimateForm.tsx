@@ -71,7 +71,7 @@ import {
   STEP_TYPE_OPTIONS,
 } from "@/lib/trial-pricing-data";
 import {
-  MATERIAL_PRICE_BASIS_OPTIONS,
+  materialPriceBasisOptions,
   type TrialPricingSettings,
   toToolTypeOptions,
   toTrialPricingOptions,
@@ -272,7 +272,7 @@ export function TrialEstimateForm({
   };
 
   const basisLabel =
-    MATERIAL_PRICE_BASIS_OPTIONS.find(
+    materialPriceBasisOptions(tr).find(
       (b) => b.value === settings.materialPriceBasis,
     )?.label ?? settings.materialPriceBasis;
 

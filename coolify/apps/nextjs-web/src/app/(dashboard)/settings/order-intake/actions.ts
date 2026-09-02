@@ -9,10 +9,11 @@
  */
 
 import { revalidatePath } from "next/cache";
-import { getTranslations } from "next-intl/server";
+import { getLocale, getTranslations } from "next-intl/server";
 import { z } from "zod";
 import { recordAudit } from "@/lib/audit";
 import { checkPermission } from "@/lib/authz";
+import type { Locale } from "@/lib/i18n";
 import { retryFailedIntake } from "@/lib/intake-folder";
 import { type ActionResult, actionError, actionOk } from "@/lib/server-action";
 
@@ -50,13 +51,14 @@ export async function retryFailedIntakeFile(
   fileName: string,
 ): Promise<ActionResult<{ name: string }>> {
   const tr = await getTranslations();
+  const locale = (await getLocale()) as Locale;
   const authz = await checkPermission("system", "UPDATE");
   if (!authz.ok) return actionError(authz.error);
   const parsed = fileNameInput.safeParse(fileName);
   if (!parsed.success)
     return actionError(tr("settings.orderIntakeActions.invalidFileName"));
   try {
-    const name = await retryFailedIntake(parsed.data);
+    const name = await retryFailedIntake(parsed.data, locale);
     await recordAudit({
       action: "UPDATE",
       tableName: "intake_folder",

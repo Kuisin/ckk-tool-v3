@@ -123,6 +123,7 @@ function specJson(rows: { key: string; value: string }[]) {
  */
 async function validateProductTypeSpec(
   rows: { key: string; value: string }[],
+  tr: Awaited<ReturnType<typeof getTranslations>>,
 ): Promise<string | null> {
   const byKey = new Map(rows.map((r) => [r.key, r.value]));
   const typeId = rows.find((r) => r.key === PRODUCT_TYPE_SPEC_KEY)?.value;
@@ -134,7 +135,7 @@ async function validateProductTypeSpec(
   const typeKeys = new Set(type?.items.map((i) => i.key) ?? []);
   // 種別項目を検証。
   for (const it of type?.items ?? []) {
-    const msg = validateItemValue(it, byKey.get(it.key));
+    const msg = validateItemValue(it, byKey.get(it.key), tr);
     if (msg) return msg;
   }
   // 追加項目（種別外だが定義済みの項目）も型で検証。
@@ -143,7 +144,7 @@ async function validateProductTypeSpec(
     if (key === PRODUCT_TYPE_SPEC_KEY || typeKeys.has(key)) continue;
     const def = defByKey.get(key);
     if (def) {
-      const msg = validateItemValue(def, value);
+      const msg = validateItemValue(def, value, tr);
       if (msg) return msg;
     }
   }
@@ -163,7 +164,7 @@ export async function createProduct(
     );
   }
   const v = parsed.data;
-  const typeError = await validateProductTypeSpec(v.spec);
+  const typeError = await validateProductTypeSpec(v.spec, tr);
   if (typeError) return actionError(typeError);
   try {
     const { yearMonth, seq } = await allocateDocumentKey("PRODUCT");
@@ -224,7 +225,7 @@ export async function updateProduct(
     );
   }
   const v = parsed.data;
-  const typeError = await validateProductTypeSpec(v.spec);
+  const typeError = await validateProductTypeSpec(v.spec, tr);
   if (typeError) return actionError(typeError);
   try {
     const prior = await prisma.product.findUnique({

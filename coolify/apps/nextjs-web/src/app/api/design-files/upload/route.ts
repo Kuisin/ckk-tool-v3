@@ -21,6 +21,7 @@
  */
 
 import { NextResponse } from "next/server";
+import { getTranslations } from "next-intl/server";
 import { MAX_ATTACHMENT_BYTES } from "@/lib/attachments";
 import { requirePermissionResponse } from "@/lib/authz";
 import { uploadDesignVersion } from "@/lib/design-files";
@@ -39,6 +40,7 @@ async function toBytes(f: File) {
 }
 
 export async function POST(request: Request): Promise<NextResponse> {
+  const tr = await getTranslations();
   // 図面そのものの権限。設計依頼 (design_request) とは別コード — 依頼を
   // 出す人と図面を描く人は同じではない。
   const deny = await requirePermissionResponse("design_file", "CREATE");
@@ -48,27 +50,33 @@ export async function POST(request: Request): Promise<NextResponse> {
   try {
     form = await request.formData();
   } catch {
-    return badRequest("multipart/form-data で送信してください");
+    return badRequest(
+      tr("production.designFilesUpload.sendAsMultipartFormData"),
+    );
   }
 
   const productId = Number(form.get("productId"));
   if (!Number.isInteger(productId) || productId <= 0) {
-    return badRequest("対象の製品が指定されていません");
+    return badRequest(
+      tr("production.designFilesUpload.targetProductNotSpecified"),
+    );
   }
 
   const bpRaw = String(form.get("customerBpId") ?? "").trim();
   if (bpRaw && !UUID_RE.test(bpRaw)) {
-    return badRequest("受注元の指定が不正です");
+    return badRequest(
+      tr("production.designFilesUpload.invalidOrderingCustomer"),
+    );
   }
 
   const requestRaw = String(form.get("designRequestId") ?? "").trim();
   if (requestRaw && !UUID_RE.test(requestRaw)) {
-    return badRequest("設計依頼の指定が不正です");
+    return badRequest(tr("production.designFilesUpload.invalidDesignRequest"));
   }
 
   const blueprint = form.get("blueprint");
   if (!(blueprint instanceof File) || blueprint.size === 0) {
-    return badRequest("図面データを選択してください");
+    return badRequest(tr("production.designFilesUpload.selectTheDrawingFile"));
   }
 
   const previewRaw = form.get("preview");
@@ -84,7 +92,11 @@ export async function POST(request: Request): Promise<NextResponse> {
   // 巨大ファイルはバッファリング前に弾く。
   for (const f of [blueprint, ...(preview ? [preview] : []), ...references]) {
     if (f.size > MAX_ATTACHMENT_BYTES) {
-      return badRequest(`${f.name} が大きすぎます（1 件 20MB まで）`);
+      return badRequest(
+        tr("production.designFilesUpload.isTooLargeMax20mb", {
+          name: f.name,
+        }),
+      );
     }
   }
 

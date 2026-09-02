@@ -770,7 +770,20 @@
     "restoreFromSuspension": "解除停用并恢复可用",
     "removeAllAssignedSites": "移除全部所属据点",
     "siteHash": "据点 #{id}",
-    "setAssignedSitesTo": "将所属据点设置为 {names}"
+    "setAssignedSitesTo": "将所属据点设置为 {names}",
+    "communicationFailed": "通信失败",
+    "sendAsMultipartFormData": "请以 multipart/form-data 格式发送",
+    "numericValue": "数值",
+    "time": "时间",
+    "multiSelect": "多选",
+    "businessDataLookup": "业务数据查找",
+    "attachment": "附件",
+    "everyoneSubjectLabel": "全公司（所有登录用户）",
+    "unknownReason": "未知",
+    "workflowChangeRequest": "工序流程变更",
+    "orderAcceptanceCancelRequest": "订单确认书作废申请",
+    "formRequest": "表单申请",
+    "untitled": "无标题"
   },
   "shell": {
     "appsLabel": "应用",
@@ -1031,6 +1044,48 @@
     "WORK_ORDER_TYPE_LABEL": {
       "FROM_STOCK": "库存分",
       "MANUFACTURE": "制造分"
+    },
+    "INSPECTION_STATUS_LABEL": {
+      "PENDING": "未实施",
+      "PASS": "合格",
+      "FAIL": "不合格"
+    },
+    "LAP_OPTION_LABEL": {
+      "NONE": "无",
+      "INHOUSE": "有（厂内）",
+      "OSG": "有（OSG）",
+      "OTHER": "有（其他厂商）"
+    },
+    "INSPECTION_OPTION_LABEL": {
+      "NONE": "无",
+      "ONE": "1 处",
+      "ONE_R": "1 处（R 精度）",
+      "TWO": "2 处",
+      "TWO_R": "2 处（外径等 + R 精度）",
+      "THREE": "3 处",
+      "THREE_R": "3 处（外径等 + R 精度）"
+    },
+    "STEP_TYPE_OPTION_LABEL": {
+      "NONE": "无",
+      "ROUGH": "粗加工",
+      "ROUGH_15": "粗加工，加工余量 φ1.5 以上",
+      "FINISH": "精加工",
+      "FINISH_15": "精加工，加工余量 φ1.5 以上",
+      "FORM": "成型形状"
+    },
+    "NECK_TYPE_OPTION_LABEL": {
+      "NONE": "无",
+      "STRAIGHT": "直身",
+      "TAPER": "锥度"
+    },
+    "CYLINDER_TYPE_OPTION_LABEL": {
+      "NORMAL": "通常",
+      "HIGH": "高精度"
+    },
+    "LD_LOCATION_OPTION_LABEL": {
+      "TIP": "仅前端",
+      "TIP_GASH": "前端 + 沟槽",
+      "TIP_OUTER": "前端 + 外周"
     }
   },
   "status": {
@@ -1751,6 +1806,20 @@
     "ATTN": {
       "withBranch": "{branchName} 收件人：经办人",
       "contactOnly": "收件人：经办人"
+    },
+    "formResponse": {
+      "noResponsesToPrint": "没有可打印的回答",
+      "bulkPrintedNote": "已批量打印回答为 PDF（{count} 件",
+      "cappedSuffix": "・以上限 {max} 件截止",
+      "partialSuffix": "_部分"
+    },
+    "inspectionRecord": {
+      "approvedStatus": "合格（已批准）",
+      "lotQuantity": "{quantity} 支",
+      "footerNote": "* 表示为必填项目。实测值为各样品的记录值。"
+    },
+    "stamp": {
+      "companySeal": "公司印章"
     }
   },
   "billing": {
@@ -1946,7 +2015,19 @@
       "stepTargetRequired": "每一级的对象须为审批组，或一名以上自定义审批人",
       "titleRequired": "请输入标题",
       "unknownCause": "原因不明",
-      "updateFailed": "更新失败"
+      "updateFailed": "更新失败",
+      "transferEmptyBody": "内容为空",
+      "transferInvalidJson": "无法读取文件格式（JSON 已损坏）。请确认是否粘贴了完整内容",
+      "transferWrongFormat": "文件格式不正确",
+      "transferNotAFormFile": "不是表单定义文件",
+      "transferNewerFormat": "此文件是较新的格式（v{version}）。请先更新应用后再导入",
+      "transferNoTitle": "没有标题",
+      "transferInvalidKind": "表单类型无效",
+      "transferInvalidFields": "项目定义无效：{reason}",
+      "transferChecksumMismatch": "校验和不匹配，内容可能存在缺失",
+      "transferRelatedFieldWarning": "“{label}”引用了其他表单（{target}）。如果导入目的地没有相同代码的表单，将不会显示任何内容",
+      "transferRelatedFieldNoTarget": "“{label}”未设置引用的表单",
+      "transferAttachmentNotCarried": "存在附件项目。文件本身不会被转移（仅转移项目定义）"
     },
     "tasksActions": {
       "loginRequired": "请登录",
@@ -1986,6 +2067,26 @@
       "shareSettingsUpdatedNote": "已更新共享设置（{count} 项）",
       "titleRequired": "请输入标题",
       "updateFailed": "更新失败"
+    },
+    "formSchema": {
+      "oneLineText": "单行文本",
+      "multiLineText": "多行文本",
+      "richText": "富文本",
+      "dropdownSingleSelect": "下拉（单选）",
+      "subTableRepeatableRows": "子表（可增行）",
+      "relatedRecords": "关联记录"
+    },
+    "tasksTabs": {
+      "workPlans": "工作计划",
+      "unansweredForms": "未回答的表单",
+      "answeredForms": "已回答的表单",
+      "completedRequests": "已完成的申请",
+      "documentComments": "文档评论"
+    },
+    "formCompletion": {
+      "completedTitle": "{title} No.{recordNo} 已完成",
+      "applicantMessage": "申请人：{name}",
+      "notifiedNote": "已通知完成（{count} 人）"
     }
   },
   "production": {
@@ -2604,7 +2705,16 @@
       "stockOrderRequiresProduct": "面向库存的工单请选择目标产品",
       "storageLocationNotFound": "未找到指定的存放位置",
       "updateFailed": "工单更新失败",
-      "workOrderNotFound": "未找到目标工单"
+      "workOrderNotFound": "未找到目标工单",
+      "stockWorkOrderOneLineOnly": "库存分工单只能关联一条订单明细",
+      "duplicateOrderLineAllocation": "同一订单明细不能重复分配",
+      "allocationQuantityMustBePositiveInteger": "请输入 1 以上的整数作为分配数量",
+      "orderLineNotAllocatable": "无法为订单明细 {number} 分配工单（已取消或已出货）",
+      "orderLineProductUnresolvedForLine": "订单明细 {number} 的产品未确定，无法创建工单",
+      "allocationsMustShareProduct": "分配给同一工单的订单明细必须是同一产品",
+      "allocationExceedsRemaining": "对订单明细 {number} 的分配超过了剩余可分配量（订单数量 {lineQuantity} − 已分配 {otherAllocated} = 剩余 {remaining}）",
+      "stockPlannedQuantityMustMatchAllocation": "库存分工单的计划数量必须与分配数量一致",
+      "plannedQuantityBelowAllocationTotal": "计划数量低于分配合计 {total}（可自由追加不良品余量，但需不低于分配合计）"
     },
     "designFileActions": {
       "cannotDelete": "无法删除",
@@ -2612,7 +2722,9 @@
       "deletedAudit": "删除图纸 v{version}",
       "memoUpdatedAudit": "更新图纸 v{version} 的备忘",
       "notFound": "未找到该图纸",
-      "referencedByRevisionRequest": "无法删除——修订委托将其指定为原图纸"
+      "referencedByRevisionRequest": "无法删除——修订委托将其指定为原图纸",
+      "lockedInUseByWorkOrder": "工单正在使用，无法更改",
+      "lockedRequestDeliverable": "无法删除——这是设计委托的成果物（备忘可以编辑）"
     },
     "inventoryActions": {
       "exceedsAvailable": "超过可移动数量（可用 {free} —— 预留部分无法移动）",
@@ -2626,6 +2738,56 @@
       "transferNoteBase": "库存调拨：{from} → {to}",
       "transferNoteWithRemark": "库存调拨：{from} → {to}（{remark}）",
       "transferredAudit": "调拨 {quantity} → {to}"
+    },
+    "workOrderFlowChanges": {
+      "pendingChangeAlreadyExists": "该工单已有工序流程变更正在审批中",
+      "approvalStartFailedNote": "无法发起审批申请：{error}",
+      "appliedApprovalStartFailedNote": "已应用工序流程变更（发起审批失败——{error}）",
+      "approvalRequestFailedFallback": "提交审批申请失败",
+      "appliedWithApprovalNote": "已应用工序流程变更并提交审批（{summary}）",
+      "requestedApprovalNote": "已提交工序流程变更审批（{summary}）",
+      "notFound": "未找到该工序流程变更",
+      "alreadyProcessed": "该变更已处理",
+      "applyFailedShort": "应用失败",
+      "applyFailedNote": "应用工序流程变更失败（{errors}）",
+      "approvedAlreadyAppliedNote": "已批准工序流程变更（已应用——{summary}）",
+      "appliedNote": "已应用工序流程变更（{summary}）",
+      "unknownChangeKind": "未知的变更类型（{kind}）",
+      "statusLabel": {
+        "appliedPending": "已应用 · 审批中",
+        "rejectedApplied": "已退回（已应用）",
+        "PENDING": "审批中",
+        "APPLIED": "已应用",
+        "REJECTED": "已退回",
+        "CANCELLED": "已取消",
+        "FAILED": "失败"
+      },
+      "stepsCount": "{count} 个工序",
+      "quantityCount": "数量 {count}",
+      "kindLabel": {
+        "ADD_BRANCH": "添加分支",
+        "UPDATE_BRANCH": "更新分支",
+        "REMOVE_BRANCH": "删除分支"
+      }
+    },
+    "workOrderLinks": {
+      "precedingWorkOrderNotFound": "未找到前置工单 #{number}",
+      "workOrderNotFound": "未找到工单 #{number}",
+      "cannotLinkToACancelled": "无法链接已取消的工单",
+      "cannotAddAPrecedingLink": "无法为已开始的工单添加前置链接（接收数量已在开始时确定）",
+      "failedToAddTheLink": "添加链接失败",
+      "linkedPrecedingWorkOrder": "已链接前置工单 #{number}",
+      "linkNotFound": "未找到该链接",
+      "cannotUnlinkACompleted": "无法解除已完成工单的链接",
+      "unlinkedPrecedingWorkOrder": "已解除前置工单 #{number} 的链接"
+    },
+    "designFilesUpload": {
+      "sendAsMultipartFormData": "请以 multipart/form-data 格式发送",
+      "targetProductNotSpecified": "未指定目标产品",
+      "invalidOrderingCustomer": "指定的订货客户无效",
+      "invalidDesignRequest": "指定的设计委托无效",
+      "selectTheDrawingFile": "请选择图纸文件",
+      "isTooLargeMax20mb": "{name} 过大（每个文件最多 20MB）"
     }
   },
   "purchase": {
@@ -2797,7 +2959,25 @@
   },
   "settings": {
     "aiProvider": {
-      "aIProvider": "AI 服务商"
+      "aIProvider": "AI 服务商",
+      "poExtract": {
+        "timeout": "AI 未在规定时间内响应（可能正在繁忙）。请稍候后重试。",
+        "connectFailedLog": "[po-extract] 无法连接到 {endpoint}",
+        "unreachable": "无法连接到 AI 服务。请稍后重试。",
+        "notSupported": "AI 服务不支持此功能（需要更新）。",
+        "processingFailed": "AI 服务处理失败。请稍后重试。",
+        "unreadableResponse": "无法读取 AI 的响应。",
+        "errors": {
+          "auth": "AI 服务商拒绝了 API 令牌。请在系统设置 → AI 服务商 中确认。",
+          "modelNotFound": "AI 服务商中不存在指定的模型。请在系统设置 → AI 服务商 中确认模型名称。",
+          "rateLimit": "已达到 AI 服务商的使用上限。请稍后重试。",
+          "unreachable": "无法连接到 AI 服务商。请联系系统管理员。",
+          "badSchema": "AI 服务商不支持此格式。请尝试其他模型。",
+          "notConfigured": "尚未设置 AI 服务商。请在系统设置 → AI 服务商 中确认。",
+          "noVision": "指定的模型无法读取图像。请在系统设置 → AI 服务商 中指定支持图像的模型。",
+          "upstream": "AI 服务商发生错误。请稍后重试。"
+        }
+      }
     },
     "kiosk": {
       "maximumSessionLength": "会话最长时间",
@@ -3061,7 +3241,10 @@
       "thisAccountStillUsesTheDefault": "此账户仍使用默认密码（admin），任何人都可登录。请立即更改，或按下方步骤停用。",
       "theInitialAdministratorIsDisabled": "初始管理员已停用",
       "youCanDisableTheInitialAdministrator": "可停用初始管理员",
-      "assignAdministratorRightsToAReal": "请先向真实用户分配管理员权限"
+      "assignAdministratorRightsToAReal": "请先向真实用户分配管理员权限",
+      "retiredMessage": "初始管理员已停用。请使用实际运营的管理员账户。",
+      "blockedNoOtherAdminMessage": "请先为实际用户分配管理员权限（system:ADMIN），再停用此账户。现在停用会导致没有任何管理员，且没有恢复权限的界面，只能通过 psql 恢复。",
+      "readyToRetireMessage": "还有 {count} 位其他管理员。初始管理员只是启动用的过渡账户，建议将其停用。"
     },
     "codeExpressionEditor": {
       "availableVariablesClickToInsert": "可用变量（点击插入）",
@@ -3409,7 +3592,8 @@
       "linkCode": "关联代码",
       "cannotShowTheSampleTheShared": "无法显示样例（未设置共用终端的 URL）",
       "sampleOfLabel": "{label}示例",
-      "linkThisDisplay": "关联显示屏：{name}"
+      "linkThisDisplay": "关联显示屏：{name}",
+      "screenNumber": "第 {n} 屏"
     },
     "orderIntake": {
       "queued": "已投入",
@@ -3437,7 +3621,16 @@
       "imported": "已导入",
       "extracting": "提取中",
       "noDocument": "无单据",
-      "reImport": "重新导入"
+      "reImport": "重新导入",
+      "fileNotSpecified": "未指定文件",
+      "unsupportedFileFormat": "不支持的文件格式（PDF / PNG / JPG / WEBP）",
+      "intakeProcessingFailed": "导入处理失败",
+      "sendAsJson": "请以 JSON 格式发送",
+      "specifyNumbers": "请指定 numbers",
+      "tooManyNumbersAtOnce": "一次最多只能指定 {max} 件",
+      "noFileWasSpecified": "未指定文件",
+      "unsupportedFileFormatPdfPngJpg": "不支持的文件格式（PDF / PNG / JPG / WEBP）",
+      "failedToSaveToTheIntake": "保存到导入文件夹失败"
     },
     "portal": {
       "theAccountWasCreatedDisabledBy": "已创建账户（默认为停用）",
@@ -3786,7 +3979,9 @@
       "auditPinReset": "已重置 PIN",
       "pinResetFailed": "PIN 重置失败",
       "auditPinUnlocked": "已解除 PIN 锁定",
-      "pinUnlockFailed": "PIN 锁定解除失败"
+      "pinUnlockFailed": "PIN 锁定解除失败",
+      "noCardsSpecifiedForPrint": "未指定要打印的卡片",
+      "noCardsToPrint": "没有可打印的卡片"
     },
     "portalActions": {
       "featureDisabled": "客户门户在此环境不可用",
@@ -3816,7 +4011,9 @@
       "specifyFolder": "请指定文件夹",
       "invalidPath": "路径无效",
       "grantSaveFailed": "权限保存失败",
-      "grantDeleteFailed": "权限删除失败"
+      "grantDeleteFailed": "权限删除失败",
+      "uploadPermissionDenied": "没有上传到此文件夹的权限",
+      "deletePermissionDenied": "没有删除此文件的权限"
     },
     "notificationEmailActions": {
       "saveFailedLog": "[notification-email] 保存失败"
@@ -3884,6 +4081,66 @@
       "toolTypeSaveFailed": "刀具类别保存失败",
       "usageCheckFailed": "使用情况检查失败",
       "valueNotNumeric": "“{label}”的值不是数值：{value}"
+    },
+    "deviceProfileCore": {
+      "suspectedEmulator": "疑似模拟器",
+      "suspectedUnofficialRom": "疑似非官方 ROM（test-keys）",
+      "usbDebuggingEnabled": "已启用 USB 调试（ADB）",
+      "developerOptionsEnabled": "已启用开发者选项",
+      "notRegisteredAsManagedDevice": "未注册为受管理终端"
+    },
+    "portalMail": {
+      "viewingContext": "查看\"{context}\"",
+      "login": "登录",
+      "ckkVerificationCode": "【CKK】验证码",
+      "theVerificationCodeForWhat": "{what}的验证码如下。",
+      "validFor10MinutesEnterIt": "有效期为 10 分钟，请在页面中输入。",
+      "ifThisIsUnexpectedDiscard": "如果您没有此请求，请忽略此邮件。",
+      "doNotShareTheCodeWith": "请勿将验证码告知他人。"
+    },
+    "userSuspensionCore": {
+      "youCannotSuspendYourself": "无法停用本人账号，请联系其他管理员处理。",
+      "theLastAdminCannotBe": "无法停用最后一位管理员，请先将管理员权限分配给其他用户。",
+      "thisUserIsAlready": "该用户已处于停用状态。",
+      "thisUserIsNot": "该用户未被停用。",
+      "aScheduledReleaseDate": "临时停用需要设置解除时间",
+      "theScheduledReleaseDate": "解除时间无效",
+      "pleaseSpecifyAFuture": "解除时间必须晚于当前时间",
+      "suspendedIndefinite": "已停用（无期限）",
+      "suspendedExpiredWillRestore": "已停用（已过期——即将自动恢复）",
+      "suspendedTemporary": "已停用（临时）"
+    },
+    "portalLinks": {
+      "theExpiryMustBeBetween": "有效期请指定在 1 天至 180 天之间",
+      "aVerifiedLinkRequiresAn": "需验证的链接必须指定发送对象的账号或地址",
+      "theUseCountMustBe": "使用次数请指定为 1 次以上"
+    },
+    "privilegedAccessCore": {
+      "enterAStartDateAndTime": "请指定开始日期和时间",
+      "enterAnEndDateAndTime": "请指定结束日期和时间",
+      "endMustBeAfterStart": "结束日期时间必须晚于开始日期时间",
+      "startCannotBeInThePast": "开始日期时间不能早于当前时间",
+      "endMustBeWithinDays": "结束日期时间必须在申请后 {days} 天以内",
+      "durationMustBeWholeMinutes": "有效时长请以整数分钟指定",
+      "durationOutOfRange": "有效时长请指定在 {min} 至 {max} 分钟之间"
+    },
+    "trialPricingCriteria": {
+      "enterACriterionName": "请输入基准名称",
+      "enterALabel": "请输入标签",
+      "idMustBeAlphanumericHyphens": "ID 只能包含英数字、连字符和下划线（须以英数字开头）",
+      "specifyAtLeastOneKey": "请至少指定一个键列"
+    },
+    "aiProviderCore": {
+      "baseUrlMustStartWithHttp": "基础 URL 必须以 http:// 或 https:// 开头",
+      "tokenAbsent": "未设置",
+      "tokenSet": "已设置 (****{last4}) / {status}",
+      "baseUrlHostNotAllowed": "此服务商的基础 URL 只能是：{hosts}",
+      "baseUrlHostBlocked": "无法指定该主机"
+    },
+    "avatarsRoute": {
+      "sendAsMultipartFormData": "请以 multipart/form-data 格式发送",
+      "selectAnImageFile": "请选择图片文件",
+      "imageSizeMustBe5mb": "图片大小请控制在 5MB 以内"
     }
   },
   "portal": {
@@ -3891,7 +4148,8 @@
       "identityCheck": "身份确认"
     },
     "documents": {
-      "document": "单据"
+      "document": "单据",
+      "noneToShow": "没有可显示的{document}。"
     },
     "forms": {
       "thereAreNoResponsesToShow": "没有可显示的回答。",
@@ -4563,7 +4821,17 @@
       "productCreated": "已创建产品“{code}”",
       "productDeleted": "已删除产品“{name}”",
       "productDisabled": "已停用产品“{name}”",
-      "productEnabled": "已启用产品“{name}”"
+      "productEnabled": "已启用产品“{name}”",
+      "itemValidation": {
+        "required": "{name}为必填项",
+        "notANumber": "{name}请输入数值",
+        "belowMin": "{name}请输入 {min} 以上的值",
+        "aboveMax": "{name}请输入 {max} 以下的值",
+        "notABoolean": "{name}请输入真或假",
+        "notInOptions": "请从选项中选择{name}",
+        "notADate": "{name}请输入日期",
+        "invalidFormat": "{name}格式不正确"
+      }
     },
     "storageLocations": {
       "editTheStorageLocation": "编辑存放位置",
@@ -4717,7 +4985,17 @@
     "inspectionTemplateIoModal": {
       "exportSelectedCount": "将导出已选中的 {count} 项。",
       "importedCount": "已导入 {count} 项",
-      "skippedCount": "{count} 项未能导入"
+      "skippedCount": "{count} 项未能导入",
+      "selectAFile": "请选择文件",
+      "fileSizeMax10Mb": "文件大小请控制在 10MB 以内",
+      "couldNotReadExcel": "无法读取 Excel 文件：{reason}",
+      "unknownFormat": "未知格式",
+      "noImportableTemplates": "没有可导入的检查表",
+      "couldNotReadAsJson": "无法作为 JSON 读取",
+      "unsupportedFormat": "无法导入此格式（{reason}）。请直接使用导出的文件。",
+      "formatMismatch": "格式不匹配",
+      "noTemplatesToExport": "没有可导出的检查表",
+      "relatedStepNotFound": "未找到关联工序「{code}」"
     },
     "bpBaseFields": {
       "kanaPlaceholder": "例：ABC 制作所"
@@ -5082,7 +5360,54 @@
       "selectAnApprovalGroup": "请选择审批组",
       "setAtLeastOneApprovalStep": "请至少设置 1 个审批步骤",
       "statusUpdateFailed": "状态更新失败",
-      "toggleFailed": "切换失败"
+      "toggleFailed": "切换失败",
+      "stepMissingName": "第 {steps} 级：请输入名称",
+      "stepMissingGroupIndividual": "第 {steps} 级：请选择审批组，或至少选择 1 位审批人",
+      "stepMissingGroup": "第 {steps} 级：请选择审批组"
+    },
+    "approvalConditions": {
+      "totalAmount": "合计金额",
+      "yen": "日元",
+      "deliveryMethod": "配送方式",
+      "assignedPlant": "负责据点",
+      "type": "类别",
+      "plannedQuantity": "计划数量",
+      "pcs": "支",
+      "lineCount": "明细数",
+      "items": "件",
+      "trigger": "触发条件",
+      "requestKind": "申请类别",
+      "priority": "优先级",
+      "formKind": "表单类型",
+      "survey": "问卷调查",
+      "requestOrReport": "申请・报告",
+      "workOrderType": "工单类别",
+      "workOrderPlannedQuantity": "工单计划数量",
+      "orderAcceptanceTotalAmount": "订单确认书合计金额",
+      "orderAcceptanceDeliveryMethod": "订单确认书配送方式",
+      "gte": "大于等于",
+      "lte": "小于等于",
+      "eq": "等于",
+      "ne": "不等于",
+      "noConditions": "无条件（匹配所有单据）",
+      "conditionJoiner": "且",
+      "invalidField": "条件 {no}：项目无效",
+      "invalidComparisonForField": "条件 {no}：{label} 不支持此比较",
+      "enterNumberForField": "条件 {no}：请为 {label} 输入数值",
+      "selectValueForField": "条件 {no}：请为 {label} 选择值",
+      "numberConditionSummary": "{label}{op}{value}",
+      "selectConditionSummary": "{label}{op}“{value}”"
+    },
+    "inspectionTemplateExcel": {
+      "sheetName": "检查表"
+    },
+    "inspectionTemplateImage": {
+      "invalidTemplateId": "模板 ID 无效"
+    },
+    "approvalMembership": {
+      "bothStartAndEndRequired": "期限成员必须同时输入开始和结束日期时间",
+      "invalidDateTimeFormat": "日期时间格式不正确",
+      "endMustBeAfterStart": "结束日期时间必须晚于开始日期时间"
     }
   },
   "manual": {
@@ -5100,6 +5425,21 @@
   "api": {
     "forms": {
       "thisFormSFieldsHaveNot": "该表单的项目尚未发布"
+    },
+    "xlsxRead": {
+      "zipEndNotFound": "未找到 ZIP 文件末尾标记",
+      "zipDirectoryCorrupt": "ZIP 目录已损坏",
+      "unsupportedCompression": "不支持的压缩方式 ({method})：{name}",
+      "noWorksheet": "未找到工作表"
+    },
+    "documentPdf": {
+      "notIssuedYet": "尚未发行的{docType}无法查看 PDF"
+    },
+    "matchAliases": {
+      "failedToSaveLearning": "[match-aliases] 保存学习失败 {targetType}/{targetId}"
+    },
+    "realtimeEvents": {
+      "payloadTooLarge": "实时负载过大（{bytes} > {max} 字节）"
     }
   },
   "f": {
@@ -5240,6 +5580,23 @@
     },
     "approvalTrailList": {
       "approvalRecord": "审批记录"
+    },
+    "engine": {
+      "flowNotConfigured": "{doc}的审批流程尚未设置（请在审批设置 MS0B 中设置）",
+      "formFlowNotConfigured": "该表单的审批流程尚未设置（请在表单的“审批”标签页中添加审批段）",
+      "noApproversForSteps": "存在未设置审批人的段（{steps}）。请在表单的“审批”标签页中指定",
+      "stepOrdinal": "第 {n} 级",
+      "approvalRequestTitle": "{doc} {targetId} 的{stepName}申请",
+      "requesterMessage": "申请人：{name}",
+      "staleApprovalRequest": "{targetId} 仍残留已删除单据的审批申请（编号被重复使用）。请联系管理员",
+      "noApprovalPermission": "没有审批权限",
+      "noPendingRequest": "没有正在审批中的申请",
+      "noApprovalPermissionDelegateNotApplicable": "没有审批权限（也不符合任何代理设置）",
+      "notApproverForStep": "您不是此段的审批对象",
+      "alreadyApprovedStep": "此段已审批通过",
+      "alreadyProcessed": "此申请已处理",
+      "resultApprovedTitle": "{doc} {targetId} 已获批准",
+      "resultRejectedTitle": "{doc} {targetId} 已被退回"
     }
   },
   "auth": {
@@ -5637,6 +5994,11 @@
     "summaryCharts": {
       "donutSliceLabel": "{label} {count} 件（{percent}%）",
       "noResponses": "暂无回答"
+    },
+    "formSummaryCore": {
+      "hourBucket": "{hour}点",
+      "attachmentNote": "{answered} 份回答共 {files} 个文件",
+      "tableNote": "共 {rows} 行（平均每份回答 {avg} 行）"
     }
   },
   "layout": {
@@ -6304,7 +6666,8 @@
       "orderLinesCreatedMessage": "已创建订单明细 {numbers}",
       "priceMismatchCount": "价格差异 {count} 项",
       "priceMismatchExpected": "价格差异（价格表 {expected}）",
-      "unenteredCount": "未填写 {count} 项"
+      "unenteredCount": "未填写 {count} 项",
+      "productSummaryAndMore": "{first} 等 {count} 种"
     },
     "orderAcceptanceIntakeTable": {
       "addedQueuedForExtraction": "已将 {count} 项添加到列表。AI 提取将随后依次执行",
@@ -6507,6 +6870,47 @@
       "purchaseHistoryFetchFailed": "采购实绩获取失败",
       "saveFailed": "价格试算保存失败",
       "toolTypeNotDefined": "未定义刀具类别“{toolType}”"
+    },
+    "intakeReview": {
+      "customer": "客户",
+      "customerOrderRef": "客户订单号",
+      "orderDate": "订货日",
+      "items": "明细",
+      "itemProductLabel": "第 {row} 行明细：产品",
+      "itemUnitPriceLabel": "第 {row} 行明细：单价",
+      "readOwnCompanyAsCustomerHint": "把本公司名称「{name}」读取为客户了（单据的收件方是本公司）。发行方/盖章方才是客户——请查看单据后重新选择。",
+      "customerCandidatesHint": "有 {count} 个与「{name}」相近的业务伙伴。编辑画面的客户栏会显示候选项，请选择正确的一个。",
+      "customerNoMatchHint": "没有与「{name}」匹配的业务伙伴。请重新选择，或在主数据中登记（将表述差异添加到 AI 匹配名称）。",
+      "customerNameNotReadHint": "未能从单据中读取到公司名称。请查看单据后选择。",
+      "orderRefNotReadHint": "未能从单据中读取到订单号",
+      "orderDateNotReadHint": "未能从单据中读取到日期",
+      "noItemsReadHint": "未能读取到任何明细。请查看单据后添加。",
+      "productNameNotReadHint": "未能读取到品名。请查看单据后选择产品。",
+      "productCandidatesHint": "有 {count} 个与「{name}」相近的产品。编辑画面此行会显示候选项，请选择正确的一个。",
+      "productNoMatchHint": "没有与「{name}」匹配的产品。请重新选择产品，或在产品主数据中登记。",
+      "unitPriceNotReadHint": "未能读取到单价。请对照价格表输入。"
+    },
+    "trialPricingSettings": {
+      "roundBar": "圆棒",
+      "cylinder": "圆筒",
+      "ohType": "OH型",
+      "highestPriceWithinThe": "最高单价（期间内）",
+      "latestUnitPrice": "最新单价",
+      "averageUnitPriceWithin": "平均单价（期间内）"
+    },
+    "orderAcceptanceReadiness": {
+      "customerNotIdentified": "客户未确定",
+      "directToUserButEndUserNot": "为直送最终用户，但未指定最终用户",
+      "noLineItems": "没有任何明细",
+      "lineProductNotIdentified": "第 {rows} 行明细：产品未确定",
+      "lineUnitPriceNotEntered": "第 {rows} 行明细：单价未输入"
+    },
+    "orderLineCore": {
+      "confirmedLineCannotBeChanged": "已确认的订单明细无法更改",
+      "pendingApprovalLineCannotBeChanged": "审批中的订单明细无法更改",
+      "onlyDraftAcceptanceEditable": "只有草稿状态的订单确认书可以编辑",
+      "productNotIdentified": "产品未确定",
+      "unitPriceNotEntered": "单价未输入"
     }
   },
   "shipping": {
@@ -6713,7 +7117,10 @@
     },
     "designFileViewer": {
       "noPreview": "无预览",
-      "enlarge": "放大 {filename}"
+      "enlarge": "放大 {filename}",
+      "formatCannotBeDisplayedHere": "{format} 无法在此处显示（请下载后查看）",
+      "heicMayNotDisplayInSomeBrowsers": "部分浏览器可能无法显示 HEIC，请下载后查看",
+      "thisFormatCannotBeDisplayed": "此格式无法显示（请下载后查看）"
     },
     "documentLinkModal": {
       "insertADocumentLink": "插入文档链接",
@@ -6877,5 +7284,235 @@
     "copyableValue": {
       "copyX": "复制 {name}"
     }
+  },
+  "attachmentsUpload": {
+    "sendAsMultipartFormData": "请以 multipart/form-data 格式发送",
+    "recordTypeCannotHaveAttachments": "此类型的记录不支持添加附件",
+    "attachmentTargetRecordNotFound": "未找到要添加附件的记录",
+    "noFileSpecified": "未指定文件"
+  },
+  "displaysAdmin": {
+    "noPageSelected": "（未选择页面）",
+    "metabaseDashboard": "Metabase 仪表板",
+    "externalPage": "外部页面"
+  },
+  "workflowActions": {
+    "unknownStepsInComposition": "包含不存在的工序",
+    "duplicateStepsInComposition": "存在重复的工序",
+    "fromStockAllowedSteps": "库存分工单可选的工序只有产品出库（库存）和出货前检查",
+    "fromStockRequiresStockIssue": "库存分工单必须包含产品出库（库存）工序",
+    "stockIssueOnlyForFromStock": "产品出库（库存）仅限库存分（FROM_STOCK）工单使用",
+    "workOrderNotApprovedOrInProgress": "工单尚未处于已批准或进行中状态",
+    "lotSlipCodeRequired": "请输入批次/单据编号",
+    "anotherUserStartedFirst": "其他用户已先开始",
+    "auditStepStarted": "已开始工序（第 {sortOrder} 步）",
+    "stepNotInProgress": "该工序不是进行中状态",
+    "defectBreakdownRequired": "请输入不良明细（类型和详情）",
+    "invalidDefectType": "不良类别无效",
+    "stepAlreadyCompleted": "该工序已完成",
+    "auditStepCompleted": "已完成工序（良品 {success}/{input}）",
+    "stepNotCompleted": "该工序尚未完成",
+    "rollbackReasonRequired": "请输入回退理由",
+    "cannotRollbackAfterInventoryPosting": "工单已完成（库存已入账），无法回退。数量的更正请使用库存的盘点调整",
+    "cannotRollbackDownstreamStarted": "因后续工序已开始，无法回退（请先回退后续工序）",
+    "auditStepAborted": "已中断工序（回退）：{reason}",
+    "auditStepRolledBack": "已回退工序：{reason}",
+    "branchSourceStepNotFound": "未找到分支源工序",
+    "branchSourceStepNotCompleted": "分支源工序尚未完成",
+    "branchQuantityExceedsAvailable": "分支数量（{quantity}）超过了可分支数量（{available}）",
+    "mergeTargetStepNotFound": "未找到汇合目标工序",
+    "mergeTargetNotPending": "汇合目标已经开始",
+    "mergeTargetCannotBeBranchStep": "不能将分支序列中的工序指定为汇合目标",
+    "auditBranchAdded": "已添加分支（{count} 道工序，数量 {quantity}，{termination}）",
+    "terminationMerge": "汇合",
+    "terminationSemiFinishedStock": "转入半成品库存",
+    "terminationProductStock": "转入产品库存",
+    "branchSeriesNotFound": "未找到分支序列",
+    "branchTerminalStepNotFound": "未找到分支的终端工序",
+    "branchQuantityLockedAfterStart": "已开始的分支无法修改数量",
+    "terminationChangeOnlyWhilePending": "只有终端工序尚未开始时才能更改去向",
+    "branchHeadStepNotFound": "未找到分支起始工序",
+    "notABranchSeriesStep": "该工序不属于分支序列",
+    "cannotDeleteBranchWithStartedSteps": "包含已开始工序的分支无法删除",
+    "auditBranchDeleted": "已删除分支（{count} 道工序）",
+    "auditBranchUpdated": "已更新分支（数量 {quantity}，{termination}）"
+  },
+  "aiKeywords": {
+    "enterANameBeforeRunning": "请先输入名称再执行",
+    "sendAsJson": "请以 JSON 格式发送",
+    "candidateGenerationFailed": "候选生成失败"
+  },
+  "orderAcceptanceActions": {
+    "targetNotFound": "未找到目标订单确认书",
+    "onlyCompletedCanRequestCancel": "只有已确认的订单确认书才能申请作废",
+    "cannotCancelShippedLines": "由于有 {count} 条订单明细已出货，无法作废",
+    "allLinesAlreadyCancelled": "全部订单明细均已作废",
+    "cancelRequestAlreadyPending": "该订单确认书已有正在审批中的作废申请",
+    "cancelRequestedNote": "已提交作废审批申请（理由：{reason}）",
+    "targetCancelRequestNotFound": "未找到作废申请",
+    "cancelRequestNotPending": "此申请已处理",
+    "chainCancelNote": "因作废订单确认书 {number} 而触发的连锁作废",
+    "cancelApplyFailed": "作废应用失败"
+  },
+  "privilegedAccessGate": {
+    "unknownOperation": "未知的特权操作：{key}（请在 lib/privileged-operations.ts 中注册）",
+    "operationRequiresApprovalSy0g": "此操作需要审批（{label}）。请从特权访问（SY0G）提交申请"
+  },
+  "audit": {
+    "emptyArray": "（无）",
+    "fieldLabels": {
+      "id": "ID",
+      "status": "状态",
+      "isActive": "启用",
+      "isEnabled": "启用",
+      "notes": "备注",
+      "note": "备忘",
+      "name": "名称",
+      "nameJa": "名称",
+      "nameEn": "名称（英文）",
+      "code": "代码",
+      "description": "说明",
+      "sortOrder": "显示顺序",
+      "createdAt": "创建时间",
+      "updatedAt": "更新时间",
+      "createdBy": "创建人",
+      "updatedBy": "更新人",
+      "customerBpId": "客户",
+      "supplierBpId": "供应商",
+      "shipToBpId": "送货对象",
+      "endUserBpId": "最终用户",
+      "plantId": "据点",
+      "assignedPlantId": "负责据点",
+      "fromPlantId": "出货据点",
+      "salesRepId": "销售负责人",
+      "assigneeId": "负责人",
+      "userId": "用户",
+      "quantity": "数量",
+      "plannedQuantity": "计划数量",
+      "unitPrice": "单价",
+      "baseUnitPrice": "基准单价",
+      "amount": "金额",
+      "totalAmount": "合计金额",
+      "subtotal": "小计",
+      "taxAmount": "税额",
+      "discountAmount": "折扣金额",
+      "currency": "币种",
+      "unit": "单位",
+      "validFrom": "生效日",
+      "validUntil": "失效日",
+      "deliveryDate": "交期",
+      "desiredAt": "希望交期",
+      "shippedAt": "出货日",
+      "deliveredAt": "交货日",
+      "receivedAt": "到货日",
+      "orderedAt": "下单日",
+      "approvedAt": "批准时间",
+      "requestedAt": "申请时间",
+      "completedAt": "完成时间",
+      "startedAt": "开始时间",
+      "cancelledAt": "取消时间",
+      "productId": "产品",
+      "materialId": "材料",
+      "materialTypeId": "材料类别",
+      "diameterMm": "直径",
+      "lengthMm": "全长",
+      "workOrderId": "工单",
+      "orderLineId": "订单明细",
+      "lotNumber": "批次号",
+      "processStepId": "工序",
+      "executionLocation": "实施场所",
+      "inputQuantity": "接收数",
+      "outputSuccessQuantity": "良品数",
+      "roleId": "角色",
+      "permissionCode": "权限代码",
+      "action": "操作",
+      "scope": "范围",
+      "approvalStatus": "审批状态",
+      "reason": "理由",
+      "fileId": "文件",
+      "fileName": "文件名",
+      "storageKey": "存储键",
+      "mimeType": "类型"
+    },
+    "tableFieldLabels": {
+      "kiosk_devices": {
+        "name": "终端名称",
+        "location": "安装位置",
+        "defaultWorkLocationId": "默认作业场所"
+      },
+      "display_devices": {
+        "name": "显示屏名称",
+        "location": "安装位置",
+        "contentType": "显示内容类别",
+        "refreshIntervalSec": "刷新间隔（秒）",
+        "scalePercent": "显示比例（%）",
+        "machineId": "连接的设备",
+        "screenIndex": "屏幕编号",
+        "image": "图片",
+        "fit": "图片显示方式",
+        "contentConfig": {
+          "page": "显示页面",
+          "fit": "图片显示方式",
+          "fileId": "图片文件",
+          "url": "URL",
+          "dashboardId": "仪表板"
+        }
+      },
+      "users": {
+        "name": "姓名",
+        "isActive": "在职"
+      }
+    },
+    "valueLabels": {
+      "contentType": {
+        "APP_PAGE": "应用页面",
+        "METABASE": "汇总仪表板",
+        "URL": "外部页面",
+        "IMAGE": "图片"
+      },
+      "fit": {
+        "contain": "显示全部（contain）",
+        "cover": "填满屏幕（cover）",
+        "fill": "拉伸（fill）"
+      },
+      "page": {
+        "production": "生产状况",
+        "pending": "未处理・待安排",
+        "shipping": "出货计划",
+        "quality": "质量・不良",
+        "announcement": "通知公告"
+      }
+    }
+  },
+  "inspectionTemplateIo": {
+    "emptyFile": "文件为空",
+    "missingHeaders": "找不到表头（{names}）。请下载并使用雛形（模板）",
+    "emptyTemplateCode": "检查表代码为空",
+    "emptyItemName": "项目名称为空",
+    "emptyTemplateName": "代码 {code} 的检查表名称为空",
+    "samplingValueNotNumber": "抽样数不是数值",
+    "toleranceNotNumber": "下限・上限不是数值",
+    "requiredOverrideMustBeYesNo": "必填・允许覆盖请输入“是”或“否”",
+    "acceptBoolMustBeYesNo": "合格判定请输入“是”或“否”",
+    "nominalToleranceNotNumber": "基本值・公差不是数值",
+    "noItems": "{code}：没有任何检查项目"
+  },
+  "intakeCore": {
+    "quantityNotReadableNote": "数量未读取・需确认"
+  },
+  "notificationEmail": {
+    "digestSubject": "【CKK】{total} 条未读通知"
+  },
+  "richTextCore": {
+    "invalidLinkHref": "链接目标格式无效",
+    "linkHrefDescribe": "链接目标",
+    "unknownReason": "未知原因",
+    "invalidFormat": "格式无效：{reason}",
+    "nestingTooDeep": "嵌套层级过深",
+    "tooLong": "正文过长（最多 {max} 个字符）"
+  },
+  "trialPricingEngine": {
+    "notANumber": "不是数值",
+    "expressionIsEmpty": "表达式为空"
   }
 }

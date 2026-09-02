@@ -16,7 +16,7 @@ import { recordPortalAccess } from "@/lib/portal-access-log";
 import {
   getPortalDocument,
   isPortalDocumentType,
-  PORTAL_DOCUMENT_LABEL,
+  portalDocumentLabel,
   portalTargetOf,
 } from "@/lib/portal-documents";
 import { requirePortalView } from "@/lib/portal-page";
@@ -60,7 +60,7 @@ export default async function PortalDocumentPage({
 
   return (
     <Stack gap="md">
-      <Title order={3}>{PORTAL_DOCUMENT_LABEL[type]}</Title>
+      <Title order={3}>{portalDocumentLabel(type, tr)}</Title>
       <Card padding="lg" radius="md" withBorder>
         <Stack gap="sm">
           <Group gap="xs">

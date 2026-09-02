@@ -770,7 +770,20 @@
     "restoreFromSuspension": "利用停止を解除して有効に戻す",
     "removeAllAssignedSites": "所属拠点をすべて外す",
     "siteHash": "拠点 #{id}",
-    "setAssignedSitesTo": "所属拠点を {names} にする"
+    "setAssignedSitesTo": "所属拠点を {names} にする",
+    "communicationFailed": "通信に失敗しました",
+    "sendAsMultipartFormData": "multipart/form-data で送信してください",
+    "numericValue": "数値",
+    "time": "時刻",
+    "multiSelect": "複数選択",
+    "businessDataLookup": "業務データ検索",
+    "attachment": "添付ファイル",
+    "everyoneSubjectLabel": "全社（ログインユーザー全員）",
+    "unknownReason": "不明",
+    "workflowChangeRequest": "工程フロー変更",
+    "orderAcceptanceCancelRequest": "注文請書キャンセル依頼",
+    "formRequest": "フォーム申請",
+    "untitled": "無題"
   },
   "shell": {
     "appsLabel": "アプリ",
@@ -1031,6 +1044,48 @@
     "WORK_ORDER_TYPE_LABEL": {
       "FROM_STOCK": "在庫分",
       "MANUFACTURE": "製造分"
+    },
+    "INSPECTION_STATUS_LABEL": {
+      "PENDING": "未実施",
+      "PASS": "合格",
+      "FAIL": "不合格"
+    },
+    "LAP_OPTION_LABEL": {
+      "NONE": "無",
+      "INHOUSE": "有(社内)",
+      "OSG": "有(OSG)",
+      "OTHER": "有(他メーカー)"
+    },
+    "INSPECTION_OPTION_LABEL": {
+      "NONE": "無",
+      "ONE": "1ヶ所",
+      "ONE_R": "1ヶ所(R精度)",
+      "TWO": "2ヶ所",
+      "TWO_R": "2ヶ所(外径等+R精度)",
+      "THREE": "3ヶ所",
+      "THREE_R": "3ヶ所(外径等+R精度)"
+    },
+    "STEP_TYPE_OPTION_LABEL": {
+      "NONE": "無",
+      "ROUGH": "粗",
+      "ROUGH_15": "粗 取り代φ1.5以上",
+      "FINISH": "仕上げ",
+      "FINISH_15": "仕上げ取り代φ1.5以上",
+      "FORM": "総型形状"
+    },
+    "NECK_TYPE_OPTION_LABEL": {
+      "NONE": "無",
+      "STRAIGHT": "ストレート",
+      "TAPER": "テーパー"
+    },
+    "CYLINDER_TYPE_OPTION_LABEL": {
+      "NORMAL": "通常",
+      "HIGH": "高精度"
+    },
+    "LD_LOCATION_OPTION_LABEL": {
+      "TIP": "先端のみ",
+      "TIP_GASH": "先端+ギャッシュ",
+      "TIP_OUTER": "先端+外周"
     }
   },
   "status": {
@@ -1751,6 +1806,20 @@
     "ATTN": {
       "withBranch": "{branchName}　ご担当者 様",
       "contactOnly": "ご担当者 様"
+    },
+    "formResponse": {
+      "noResponsesToPrint": "印刷できる回答がありません",
+      "bulkPrintedNote": "回答を PDF でまとめて印刷（{count} 件",
+      "cappedSuffix": "・上限 {max} 件で打ち切り",
+      "partialSuffix": "_一部"
+    },
+    "inspectionRecord": {
+      "approvedStatus": "合格（承認済）",
+      "lotQuantity": "{quantity} 本",
+      "footerNote": "* は必須項目。実測値はサンプルごとの記録値。"
+    },
+    "stamp": {
+      "companySeal": "社印"
     }
   },
   "billing": {
@@ -1946,7 +2015,19 @@
       "stepTargetRequired": "各段の宛先は、承認グループか、カスタムの承認者 1 人以上のどちらかにしてください",
       "titleRequired": "タイトルを入力してください",
       "unknownCause": "原因不明",
-      "updateFailed": "更新に失敗しました"
+      "updateFailed": "更新に失敗しました",
+      "transferEmptyBody": "中身が空です",
+      "transferInvalidJson": "ファイルの形式が読み取れません（JSON が壊れています）。全文が貼られているか確認してください",
+      "transferWrongFormat": "ファイルの形式が違います",
+      "transferNotAFormFile": "フォーム定義ファイルではありません",
+      "transferNewerFormat": "このファイルは新しい形式（v{version}）です。アプリを更新してから取り込んでください",
+      "transferNoTitle": "タイトルがありません",
+      "transferInvalidKind": "フォームの種類が不正です",
+      "transferInvalidFields": "項目定義が不正です: {reason}",
+      "transferChecksumMismatch": "チェックサムが一致しません。内容が途中で欠けている可能性があります",
+      "transferRelatedFieldWarning": "「{label}」は別のフォーム（{target}）を参照しています。取り込み先に同じコードのフォームが無ければ、何も表示されません",
+      "transferRelatedFieldNoTarget": "「{label}」の参照先フォームが設定されていません",
+      "transferAttachmentNotCarried": "添付ファイルの項目があります。ファイルそのものは運ばれません（項目の定義だけです）"
     },
     "tasksActions": {
       "loginRequired": "ログインしてください",
@@ -1986,6 +2067,26 @@
       "shareSettingsUpdatedNote": "共有設定を更新（{count} 件）",
       "titleRequired": "タイトルを入力してください",
       "updateFailed": "更新に失敗しました"
+    },
+    "formSchema": {
+      "oneLineText": "1行テキスト",
+      "multiLineText": "複数行テキスト",
+      "richText": "リッチテキスト",
+      "dropdownSingleSelect": "ドロップダウン（1つ選択）",
+      "subTableRepeatableRows": "サブテーブル（行を追加できる表）",
+      "relatedRecords": "関連レコード一覧"
+    },
+    "tasksTabs": {
+      "workPlans": "作業予定",
+      "unansweredForms": "未回答のフォーム",
+      "answeredForms": "回答済みのフォーム",
+      "completedRequests": "完了した申請",
+      "documentComments": "文書のコメント"
+    },
+    "formCompletion": {
+      "completedTitle": "{title} No.{recordNo} が完了しました",
+      "applicantMessage": "申請者: {name}",
+      "notifiedNote": "完了を通知（{count} 名）"
     }
   },
   "production": {
@@ -2604,7 +2705,16 @@
       "stockOrderRequiresProduct": "在庫向けの指示書は対象製品を選択してください",
       "storageLocationNotFound": "指定された保管場所が見つかりません",
       "updateFailed": "指示書の更新に失敗しました",
-      "workOrderNotFound": "対象の指示書が見つかりません"
+      "workOrderNotFound": "対象の指示書が見つかりません",
+      "stockWorkOrderOneLineOnly": "在庫分の指示書は 1 つの注文明細のみ割り当てられます",
+      "duplicateOrderLineAllocation": "同じ注文明細を複数回割り当てることはできません",
+      "allocationQuantityMustBePositiveInteger": "割当数量は1以上の整数で入力してください",
+      "orderLineNotAllocatable": "注文明細 {number} には指示書を割り当てられません（キャンセル・出荷済）",
+      "orderLineProductUnresolvedForLine": "注文明細 {number} は製品未特定のため指示書を作成できません",
+      "allocationsMustShareProduct": "1 つの指示書に割り当てる注文明細は同一製品である必要があります",
+      "allocationExceedsRemaining": "注文明細 {number} への割当が受注残を超えています（受注数量 {lineQuantity} − 手配済 {otherAllocated} = 残 {remaining}）",
+      "stockPlannedQuantityMustMatchAllocation": "在庫分の指示書は予定数量と割当数量を一致させてください",
+      "plannedQuantityBelowAllocationTotal": "予定数量が割当合計 {total} を下回っています（不良予備分の上乗せは自由ですが、割当合計以上にしてください）"
     },
     "designFileActions": {
       "cannotDelete": "削除できません",
@@ -2612,7 +2722,9 @@
       "deletedAudit": "設計図 v{version} を削除",
       "memoUpdatedAudit": "設計図 v{version} のメモを更新",
       "notFound": "対象の設計図が見つかりません",
-      "referencedByRevisionRequest": "改訂依頼が元図面に指定しているため削除できません"
+      "referencedByRevisionRequest": "改訂依頼が元図面に指定しているため削除できません",
+      "lockedInUseByWorkOrder": "指示書で使用中のため変更できません",
+      "lockedRequestDeliverable": "設計依頼の成果物なので削除できません（メモは編集できます）"
     },
     "inventoryActions": {
       "exceedsAvailable": "移動可能数を超えています（利用可能 {free} — 予約分は移動できません）",
@@ -2626,6 +2738,56 @@
       "transferNoteBase": "在庫移動: {from} → {to}",
       "transferNoteWithRemark": "在庫移動: {from} → {to}（{remark}）",
       "transferredAudit": "在庫移動 {quantity} → {to}"
+    },
+    "workOrderFlowChanges": {
+      "pendingChangeAlreadyExists": "この指示書には承認依頼中の工程フロー変更があります",
+      "approvalStartFailedNote": "承認依頼を開始できませんでした: {error}",
+      "appliedApprovalStartFailedNote": "工程フロー変更を適用（承認依頼の開始に失敗 — {error}）",
+      "approvalRequestFailedFallback": "承認依頼に失敗しました",
+      "appliedWithApprovalNote": "工程フロー変更を適用し承認依頼（{summary}）",
+      "requestedApprovalNote": "工程フロー変更を承認依頼（{summary}）",
+      "notFound": "工程フロー変更が見つかりません",
+      "alreadyProcessed": "この変更は既に処理済みです",
+      "applyFailedShort": "適用に失敗",
+      "applyFailedNote": "工程フロー変更の適用に失敗（{errors}）",
+      "approvedAlreadyAppliedNote": "工程フロー変更を承認（適用済み — {summary}）",
+      "appliedNote": "工程フロー変更を適用（{summary}）",
+      "unknownChangeKind": "未知の変更種別です（{kind}）",
+      "statusLabel": {
+        "appliedPending": "適用済み・承認依頼中",
+        "rejectedApplied": "差し戻し（適用済み）",
+        "PENDING": "承認依頼中",
+        "APPLIED": "適用済み",
+        "REJECTED": "差し戻し",
+        "CANCELLED": "キャンセル",
+        "FAILED": "失敗"
+      },
+      "stepsCount": "{count} 工程",
+      "quantityCount": "数量 {count}",
+      "kindLabel": {
+        "ADD_BRANCH": "分岐の追加",
+        "UPDATE_BRANCH": "分岐の更新",
+        "REMOVE_BRANCH": "分岐の削除"
+      }
+    },
+    "workOrderLinks": {
+      "precedingWorkOrderNotFound": "先行指示書 #{number} が見つかりません",
+      "workOrderNotFound": "指示書 #{number} が見つかりません",
+      "cannotLinkToACancelled": "キャンセル済みの指示書にはリンクできません",
+      "cannotAddAPrecedingLink": "着手済みの指示書には先行リンクを追加できません（受入は開始時に確定済み）",
+      "failedToAddTheLink": "リンクの追加に失敗しました",
+      "linkedPrecedingWorkOrder": "先行指示書 #{number} をリンク",
+      "linkNotFound": "リンクが見つかりません",
+      "cannotUnlinkACompleted": "完了済みの指示書のリンクは解除できません",
+      "unlinkedPrecedingWorkOrder": "先行指示書 #{number} のリンクを解除"
+    },
+    "designFilesUpload": {
+      "sendAsMultipartFormData": "multipart/form-data で送信してください",
+      "targetProductNotSpecified": "対象の製品が指定されていません",
+      "invalidOrderingCustomer": "受注元の指定が不正です",
+      "invalidDesignRequest": "設計依頼の指定が不正です",
+      "selectTheDrawingFile": "図面データを選択してください",
+      "isTooLargeMax20mb": "{name} が大きすぎます（1 件 20MB まで）"
     }
   },
   "purchase": {
@@ -2797,7 +2959,25 @@
   },
   "settings": {
     "aiProvider": {
-      "aIProvider": "AI プロバイダ"
+      "aIProvider": "AI プロバイダ",
+      "poExtract": {
+        "timeout": "AI の応答が時間内に返りませんでした（混雑している可能性があります）。しばらく待ってからもう一度お試しください。",
+        "connectFailedLog": "[po-extract] {endpoint} へ接続できません",
+        "unreachable": "AI サービスに接続できませんでした。時間をおいてもう一度お試しください。",
+        "notSupported": "AI サービスがこの機能に対応していません（更新が必要です）。",
+        "processingFailed": "AI サービスの処理に失敗しました。時間をおいてもう一度お試しください。",
+        "unreadableResponse": "AI の応答を読み取れませんでした。",
+        "errors": {
+          "auth": "AI プロバイダに API トークンを拒否されました。システム設定 → AI プロバイダ で確認してください。",
+          "modelNotFound": "AI プロバイダに指定のモデルがありません。システム設定 → AI プロバイダ でモデル名を確認してください。",
+          "rateLimit": "AI プロバイダの利用上限に達しました。時間をおいてもう一度お試しください。",
+          "unreachable": "AI プロバイダへ接続できませんでした。システム管理者へ連絡してください。",
+          "badSchema": "AI プロバイダがこの形式に対応していません。別のモデルをお試しください。",
+          "notConfigured": "AI プロバイダが未設定です。システム設定 → AI プロバイダ を確認してください。",
+          "noVision": "指定のモデルは画像を読み取れません。システム設定 → AI プロバイダ で画像対応モデルを指定してください。",
+          "upstream": "AI プロバイダでエラーが起きました。時間をおいてもう一度お試しください。"
+        }
+      }
     },
     "kiosk": {
       "maximumSessionLength": "セッション最大時間",
@@ -3061,7 +3241,10 @@
       "thisAccountStillUsesTheDefault": "このアカウントはまだ既定パスワード（admin）で、誰でもログインできます。\n      すぐに変更するか、下の手順で無効化してください。",
       "theInitialAdministratorIsDisabled": "初期管理者は無効化済み",
       "youCanDisableTheInitialAdministrator": "初期管理者を無効化できます",
-      "assignAdministratorRightsToAReal": "先に実ユーザーへ管理者権限を割り当ててください"
+      "assignAdministratorRightsToAReal": "先に実ユーザーへ管理者権限を割り当ててください",
+      "retiredMessage": "初期管理者は無効化済みです。実運用の管理者アカウントで運用してください。",
+      "blockedNoOtherAdminMessage": "実ユーザーに管理者権限（system:ADMIN）を割り当ててから無効化してください。いま無効化すると管理者が居なくなり、権限を戻す画面が無いため psql でしか復旧できません。",
+      "readyToRetireMessage": "他に管理者が {count} 名居ます。初期管理者は立ち上げ用の踏み台なので、無効化することを推奨します。"
     },
     "codeExpressionEditor": {
       "availableVariablesClickToInsert": "利用可能な変数（クリックで挿入）",
@@ -3409,7 +3592,8 @@
       "linkCode": "リンクコード",
       "cannotShowTheSampleTheShared": "見本を表示できません（キオスクの URL が未設定）",
       "sampleOfLabel": "{label}の見本",
-      "linkThisDisplay": "ディスプレイをリンク: {name}"
+      "linkThisDisplay": "ディスプレイをリンク: {name}",
+      "screenNumber": "{n} 枚目"
     },
     "orderIntake": {
       "queued": "投入しました",
@@ -3437,7 +3621,16 @@
       "imported": "取込済",
       "extracting": "抽出中",
       "noDocument": "書類なし",
-      "reImport": "再取込"
+      "reImport": "再取込",
+      "fileNotSpecified": "ファイルが指定されていません",
+      "unsupportedFileFormat": "対応していないファイル形式です（PDF / PNG / JPG / WEBP）",
+      "intakeProcessingFailed": "取込処理に失敗しました",
+      "sendAsJson": "JSON で送信してください",
+      "specifyNumbers": "numbers を指定してください",
+      "tooManyNumbersAtOnce": "一度に指定できるのは {max} 件までです",
+      "noFileWasSpecified": "ファイルが指定されていません",
+      "unsupportedFileFormatPdfPngJpg": "対応していないファイル形式です（PDF / PNG / JPG / WEBP）",
+      "failedToSaveToTheIntake": "取込フォルダへの保存に失敗しました"
     },
     "portal": {
       "theAccountWasCreatedDisabledBy": "アカウントを作成しました（既定は無効です）",
@@ -3786,7 +3979,9 @@
       "auditPinReset": "PIN をリセット",
       "pinResetFailed": "PIN のリセットに失敗しました",
       "auditPinUnlocked": "PIN ロックを解除",
-      "pinUnlockFailed": "PIN ロックの解除に失敗しました"
+      "pinUnlockFailed": "PIN ロックの解除に失敗しました",
+      "noCardsSpecifiedForPrint": "印刷対象のカードが指定されていません",
+      "noCardsToPrint": "印刷対象のカードがありません"
     },
     "portalActions": {
       "featureDisabled": "取引先ポータルはこの環境では利用できません",
@@ -3816,7 +4011,9 @@
       "specifyFolder": "フォルダを指定してください",
       "invalidPath": "不正なパスです",
       "grantSaveFailed": "権限の保存に失敗しました",
-      "grantDeleteFailed": "権限の削除に失敗しました"
+      "grantDeleteFailed": "権限の削除に失敗しました",
+      "uploadPermissionDenied": "このフォルダへのアップロード権限がありません",
+      "deletePermissionDenied": "このファイルの削除権限がありません"
     },
     "notificationEmailActions": {
       "saveFailedLog": "[notification-email] 保存に失敗"
@@ -3884,6 +4081,66 @@
       "toolTypeSaveFailed": "工具種の保存に失敗しました",
       "usageCheckFailed": "使用状況の確認に失敗しました",
       "valueNotNumeric": "「{label}」の値が数値ではありません: {value}"
+    },
+    "deviceProfileCore": {
+      "suspectedEmulator": "エミュレータの疑い",
+      "suspectedUnofficialRom": "非公式 ROM の疑い（test-keys）",
+      "usbDebuggingEnabled": "USB デバッグ（ADB）が有効",
+      "developerOptionsEnabled": "開発者オプションが有効",
+      "notRegisteredAsManagedDevice": "管理端末として登録されていない"
+    },
+    "portalMail": {
+      "viewingContext": "「{context}」の閲覧",
+      "login": "ログイン",
+      "ckkVerificationCode": "【CKK】確認コード",
+      "theVerificationCodeForWhat": "{what}の確認コードは次のとおりです。",
+      "validFor10MinutesEnterIt": "有効期限は 10 分です。画面に入力してください。",
+      "ifThisIsUnexpectedDiscard": "心当たりが無い場合は、このメールを破棄してください。",
+      "doNotShareTheCodeWith": "コードを他人に教えないでください。"
+    },
+    "userSuspensionCore": {
+      "youCannotSuspendYourself": "自分自身は停止できません。別の管理者に依頼してください。",
+      "theLastAdminCannotBe": "最後の管理者は停止できません。先に他のユーザーへ管理者権限を割り当ててください。",
+      "thisUserIsAlready": "このユーザーは既に停止中です。",
+      "thisUserIsNot": "このユーザーは停止されていません。",
+      "aScheduledReleaseDate": "一時停止には解除予定日時が必要です",
+      "theScheduledReleaseDate": "解除予定日時が不正です",
+      "pleaseSpecifyAFuture": "解除予定日時は未来を指定してください",
+      "suspendedIndefinite": "停止中（無期限）",
+      "suspendedExpiredWillRestore": "停止中（期限切れ — まもなく自動復帰します）",
+      "suspendedTemporary": "停止中（一時）"
+    },
+    "portalLinks": {
+      "theExpiryMustBeBetween": "有効期限は 1 日〜180 日の範囲で指定してください",
+      "aVerifiedLinkRequiresAn": "本人確認ありのリンクには、送信先のアカウントかアドレスが必要です",
+      "theUseCountMustBe": "使用回数は 1 以上で指定してください"
+    },
+    "privilegedAccessCore": {
+      "enterAStartDateAndTime": "開始日時を指定してください",
+      "enterAnEndDateAndTime": "終了日時を指定してください",
+      "endMustBeAfterStart": "終了日時は開始日時より後にしてください",
+      "startCannotBeInThePast": "開始日時を過去にすることはできません",
+      "endMustBeWithinDays": "終了日時は申請から {days} 日以内にしてください",
+      "durationMustBeWholeMinutes": "有効時間は分単位の整数で指定してください",
+      "durationOutOfRange": "有効時間は {min}〜{max} 分の範囲で指定してください"
+    },
+    "trialPricingCriteria": {
+      "enterACriterionName": "基準名を入力してください",
+      "enterALabel": "ラベルを入力してください",
+      "idMustBeAlphanumericHyphens": "ID は英数字・ハイフン・アンダースコアのみ（英数字始まり）です",
+      "specifyAtLeastOneKey": "キー列を1つ以上指定してください"
+    },
+    "aiProviderCore": {
+      "baseUrlMustStartWithHttp": "ベース URL は http:// または https:// で始めてください",
+      "tokenAbsent": "未設定",
+      "tokenSet": "設定済み (****{last4}) / {status}",
+      "baseUrlHostNotAllowed": "このプロバイダのベース URL は {hosts} だけです",
+      "baseUrlHostBlocked": "そのホストは指定できません"
+    },
+    "avatarsRoute": {
+      "sendAsMultipartFormData": "multipart/form-data で送信してください",
+      "selectAnImageFile": "画像ファイルを選択してください",
+      "imageSizeMustBe5mb": "画像サイズは 5MB 以下にしてください"
     }
   },
   "portal": {
@@ -3891,7 +4148,8 @@
       "identityCheck": "本人確認"
     },
     "documents": {
-      "document": "書類"
+      "document": "書類",
+      "noneToShow": "表示できる{document}はありません。"
     },
     "forms": {
       "thereAreNoResponsesToShow": "表示できる回答はありません。",
@@ -4563,7 +4821,17 @@
       "productCreated": "製品「{code}」を作成しました",
       "productDeleted": "製品「{name}」を削除しました",
       "productDisabled": "製品「{name}」を無効化しました",
-      "productEnabled": "製品「{name}」を有効化しました"
+      "productEnabled": "製品「{name}」を有効化しました",
+      "itemValidation": {
+        "required": "{name} は必須です",
+        "notANumber": "{name} は数値で入力してください",
+        "belowMin": "{name} は {min} 以上で入力してください",
+        "aboveMax": "{name} は {max} 以下で入力してください",
+        "notABoolean": "{name} は真偽値で入力してください",
+        "notInOptions": "{name} は選択肢から選んでください",
+        "notADate": "{name} は日付で入力してください",
+        "invalidFormat": "{name} は形式が正しくありません"
+      }
     },
     "storageLocations": {
       "editTheStorageLocation": "保管場所の編集",
@@ -4717,7 +4985,17 @@
     "inspectionTemplateIoModal": {
       "exportSelectedCount": "選択中の {count} 件を書き出します。",
       "importedCount": "{count} 件を取り込みました",
-      "skippedCount": "{count} 件は取り込めませんでした"
+      "skippedCount": "{count} 件は取り込めませんでした",
+      "selectAFile": "ファイルを選択してください",
+      "fileSizeMax10Mb": "ファイルは 10MB 以下にしてください",
+      "couldNotReadExcel": "Excel として読めませんでした: {reason}",
+      "unknownFormat": "不明な形式です",
+      "noImportableTemplates": "取り込める検査表がありませんでした",
+      "couldNotReadAsJson": "JSON として読めませんでした",
+      "unsupportedFormat": "この形式は取り込めません（{reason}）。書き出したファイルをそのまま入れてください",
+      "formatMismatch": "形式が違います",
+      "noTemplatesToExport": "書き出す検査表がありません",
+      "relatedStepNotFound": "関連工程「{code}」が見つかりません"
     },
     "bpBaseFields": {
       "kanaPlaceholder": "エービーシーセイサクショ"
@@ -5082,7 +5360,54 @@
       "selectAnApprovalGroup": "承認グループを選択してください",
       "setAtLeastOneApprovalStep": "承認ステップを 1 段以上設定してください",
       "statusUpdateFailed": "状態の更新に失敗しました",
-      "toggleFailed": "切り替えに失敗しました"
+      "toggleFailed": "切り替えに失敗しました",
+      "stepMissingName": "{steps} 段目: 名称を入力してください",
+      "stepMissingGroupIndividual": "{steps} 段目: 承認グループを選ぶか、承認者を 1 人以上選んでください",
+      "stepMissingGroup": "{steps} 段目: 承認グループを選択してください"
+    },
+    "approvalConditions": {
+      "totalAmount": "合計金額",
+      "yen": "円",
+      "deliveryMethod": "配送方法",
+      "assignedPlant": "担当拠点",
+      "type": "種別",
+      "plannedQuantity": "予定数量",
+      "pcs": "本",
+      "lineCount": "明細数",
+      "items": "件",
+      "trigger": "トリガー",
+      "requestKind": "依頼区分",
+      "priority": "優先度",
+      "formKind": "フォームの種類",
+      "survey": "アンケート",
+      "requestOrReport": "申請・報告",
+      "workOrderType": "指示書の種別",
+      "workOrderPlannedQuantity": "指示書の予定数量",
+      "orderAcceptanceTotalAmount": "注文請書の合計金額",
+      "orderAcceptanceDeliveryMethod": "注文請書の配送方法",
+      "gte": "以上",
+      "lte": "以下",
+      "eq": "に等しい",
+      "ne": "に等しくない",
+      "noConditions": "条件なし（すべての書類に一致）",
+      "conditionJoiner": " かつ ",
+      "invalidField": "条件 {no}: 項目が不正です",
+      "invalidComparisonForField": "条件 {no}: {label}に使えない比較です",
+      "enterNumberForField": "条件 {no}: {label}の値を数値で入力してください",
+      "selectValueForField": "条件 {no}: {label}の値を選択してください",
+      "numberConditionSummary": "{label}が {value} {op}",
+      "selectConditionSummary": "{label}が「{value}」{op}"
+    },
+    "inspectionTemplateExcel": {
+      "sheetName": "検査表"
+    },
+    "inspectionTemplateImage": {
+      "invalidTemplateId": "不正なテンプレート ID です"
+    },
+    "approvalMembership": {
+      "bothStartAndEndRequired": "期間限定メンバーは開始日時と終了日時の両方を入力してください",
+      "invalidDateTimeFormat": "日時の形式が正しくありません",
+      "endMustBeAfterStart": "終了日時は開始日時より後にしてください"
     }
   },
   "manual": {
@@ -5100,6 +5425,21 @@
   "api": {
     "forms": {
       "thisFormSFieldsHaveNot": "このフォームはまだ項目が公開されていません"
+    },
+    "xlsxRead": {
+      "zipEndNotFound": "ZIP の終端が見つかりません",
+      "zipDirectoryCorrupt": "ZIP の目録が壊れています",
+      "unsupportedCompression": "未対応の圧縮方式です ({method}): {name}",
+      "noWorksheet": "ワークシートが見つかりません"
+    },
+    "documentPdf": {
+      "notIssuedYet": "発行前の{docType}は PDF を閲覧できません"
+    },
+    "matchAliases": {
+      "failedToSaveLearning": "[match-aliases] 学習の保存に失敗 {targetType}/{targetId}"
+    },
+    "realtimeEvents": {
+      "payloadTooLarge": "realtime ペイロードが大きすぎます ({bytes} > {max} バイト)"
     }
   },
   "f": {
@@ -5240,6 +5580,23 @@
     },
     "approvalTrailList": {
       "approvalRecord": "承認記録"
+    },
+    "engine": {
+      "flowNotConfigured": "{doc}の承認フローが未設定です（承認設定 MS0B で設定してください）",
+      "formFlowNotConfigured": "このフォームの承認フローが未設定です（フォームの「承認」タブで段を追加してください）",
+      "noApproversForSteps": "承認者が設定されていない段があります（{steps}）。フォームの「承認」タブで指定してください",
+      "stepOrdinal": "{n} 段目",
+      "approvalRequestTitle": "{doc} {targetId} の{stepName}依頼",
+      "requesterMessage": "依頼者: {name}",
+      "staleApprovalRequest": "{targetId} には削除済み書類の承認依頼が残っています（番号の再利用）。管理者に連絡してください",
+      "noApprovalPermission": "承認権限がありません",
+      "noPendingRequest": "承認依頼中の依頼がありません",
+      "noApprovalPermissionDelegateNotApplicable": "承認権限がありません（代理設定も未該当）",
+      "notApproverForStep": "この段の承認対象者ではありません",
+      "alreadyApprovedStep": "この段はすでに承認済みです",
+      "alreadyProcessed": "この依頼は既に処理されています",
+      "resultApprovedTitle": "{doc} {targetId} が承認されました",
+      "resultRejectedTitle": "{doc} {targetId} が差し戻されました"
     }
   },
   "auth": {
@@ -5637,6 +5994,11 @@
     "summaryCharts": {
       "donutSliceLabel": "{label} {count}件（{percent}%）",
       "noResponses": "回答がありません"
+    },
+    "formSummaryCore": {
+      "hourBucket": "{hour}時台",
+      "attachmentNote": "{answered} 件の回答に、合計 {files} 個のファイル",
+      "tableNote": "合計 {rows} 行（1 回答あたり平均 {avg} 行）"
     }
   },
   "layout": {
@@ -6304,7 +6666,8 @@
       "orderLinesCreatedMessage": "注文明細 {numbers} を作成しました",
       "priceMismatchCount": "価格差異 {count} 件",
       "priceMismatchExpected": "価格差異（価格表 {expected}）",
-      "unenteredCount": "未入力 {count} 件"
+      "unenteredCount": "未入力 {count} 件",
+      "productSummaryAndMore": "{first} ほか {count} 種"
     },
     "orderAcceptanceIntakeTable": {
       "addedQueuedForExtraction": "{count} 件を一覧に追加しました。AI抽出はこのあと順番に実行されます",
@@ -6507,6 +6870,47 @@
       "purchaseHistoryFetchFailed": "仕入実績の取得に失敗しました",
       "saveFailed": "価格試算の保存に失敗しました",
       "toolTypeNotDefined": "工具種「{toolType}」は定義されていません"
+    },
+    "intakeReview": {
+      "customer": "顧客",
+      "customerOrderRef": "顧客注文書番号",
+      "orderDate": "注文日",
+      "items": "明細",
+      "itemProductLabel": "明細 {row} 行目: 製品",
+      "itemUnitPriceLabel": "明細 {row} 行目: 単価",
+      "readOwnCompanyAsCustomerHint": "自社名「{name}」を顧客として読み取っています（書類の宛先＝自社）。発行元・社判のある側が顧客です — 書類を見て選び直してください",
+      "customerCandidatesHint": "「{name}」に近い取引先が {count} 件あります。編集画面の顧客欄に候補が出るので、正しいものを選んでください",
+      "customerNoMatchHint": "「{name}」に一致する取引先がありません。取引先を選び直すか、マスタに登録（表記ゆれは AI 照合名に追加）してください",
+      "customerNameNotReadHint": "書類から会社名を読み取れませんでした。書類を見て選択してください",
+      "orderRefNotReadHint": "書類の注文番号を読み取れませんでした",
+      "orderDateNotReadHint": "書類の日付を読み取れませんでした",
+      "noItemsReadHint": "明細を 1 件も読み取れませんでした。書類を見て追加してください",
+      "productNameNotReadHint": "品名を読み取れませんでした。書類を見て製品を選んでください",
+      "productCandidatesHint": "「{name}」に近い製品が {count} 件あります。編集画面のこの行に候補が出るので、正しいものを選んでください",
+      "productNoMatchHint": "「{name}」に一致する製品がありません。製品を選び直すか、製品マスタに登録してください",
+      "unitPriceNotReadHint": "単価を読み取れませんでした。価格表と照らして入力してください"
+    },
+    "trialPricingSettings": {
+      "roundBar": "丸棒",
+      "cylinder": "円筒",
+      "ohType": "OH付",
+      "highestPriceWithinThe": "最高単価（期間内）",
+      "latestUnitPrice": "最新単価",
+      "averageUnitPriceWithin": "平均単価（期間内）"
+    },
+    "orderAcceptanceReadiness": {
+      "customerNotIdentified": "顧客が未特定です",
+      "directToUserButEndUserNot": "ユーザー直送ですがエンドユーザーが未指定です",
+      "noLineItems": "明細が 1 件もありません",
+      "lineProductNotIdentified": "明細 {rows} 行目: 製品が未特定です",
+      "lineUnitPriceNotEntered": "明細 {rows} 行目: 単価が未入力です"
+    },
+    "orderLineCore": {
+      "confirmedLineCannotBeChanged": "確定済みの注文明細は変更できません",
+      "pendingApprovalLineCannotBeChanged": "承認依頼中の注文明細は変更できません",
+      "onlyDraftAcceptanceEditable": "下書きの注文請書のみ編集できます",
+      "productNotIdentified": "製品未特定",
+      "unitPriceNotEntered": "単価未入力"
     }
   },
   "shipping": {
@@ -6713,7 +7117,10 @@
     },
     "designFileViewer": {
       "noPreview": "プレビューなし",
-      "enlarge": "{filename} を拡大"
+      "enlarge": "{filename} を拡大",
+      "formatCannotBeDisplayedHere": "{format} はこの画面では表示できません（ダウンロードしてご覧ください）",
+      "heicMayNotDisplayInSomeBrowsers": "HEIC はブラウザによっては表示できないため、ダウンロードしてご覧ください",
+      "thisFormatCannotBeDisplayed": "この形式は表示できません（ダウンロードしてご覧ください）"
     },
     "documentLinkModal": {
       "insertADocumentLink": "文書リンクを挿入",
@@ -6877,5 +7284,235 @@
     "copyableValue": {
       "copyX": "{name}をコピー"
     }
+  },
+  "attachmentsUpload": {
+    "sendAsMultipartFormData": "multipart/form-data で送信してください",
+    "recordTypeCannotHaveAttachments": "この種類のレコードには添付できません",
+    "attachmentTargetRecordNotFound": "添付対象のレコードが見つかりません",
+    "noFileSpecified": "ファイルが指定されていません"
+  },
+  "displaysAdmin": {
+    "noPageSelected": "（画面が未選択）",
+    "metabaseDashboard": "Metabase ダッシュボード",
+    "externalPage": "外部ページ"
+  },
+  "workflowActions": {
+    "unknownStepsInComposition": "存在しない工程が含まれています",
+    "duplicateStepsInComposition": "同じ工程が重複しています",
+    "fromStockAllowedSteps": "在庫分の指示書に選べる工程は 製品出し（在庫）・出荷前検査 だけです",
+    "fromStockRequiresStockIssue": "在庫分の指示書には 製品出し（在庫） が必要です",
+    "stockIssueOnlyForFromStock": "製品出し（在庫）は在庫分（FROM_STOCK）の指示書専用です",
+    "workOrderNotApprovedOrInProgress": "指示書が承認済み/進行中ではありません",
+    "lotSlipCodeRequired": "ロット/伝票コードを入力してください",
+    "anotherUserStartedFirst": "別のユーザーが先に開始しました",
+    "auditStepStarted": "工程を開始（step {sortOrder}）",
+    "stepNotInProgress": "進行中の工程ではありません",
+    "defectBreakdownRequired": "不良の内訳（種類・詳細）を入力してください",
+    "invalidDefectType": "不良種類が不正です",
+    "stepAlreadyCompleted": "この工程は既に完了しています",
+    "auditStepCompleted": "工程を完了（良品 {success}/{input}）",
+    "stepNotCompleted": "完了済みの工程ではありません",
+    "rollbackReasonRequired": "巻き戻し理由を入力してください",
+    "cannotRollbackAfterInventoryPosting": "指示書が完了済み（在庫計上済み）のため巻き戻せません。数量の補正は在庫の棚卸調整で行ってください",
+    "cannotRollbackDownstreamStarted": "後続工程が着手済みのため巻き戻せません（先に後続を巻き戻してください）",
+    "auditStepAborted": "工程を中断（巻き戻し）: {reason}",
+    "auditStepRolledBack": "工程を巻き戻し: {reason}",
+    "branchSourceStepNotFound": "分岐元の工程が見つかりません",
+    "branchSourceStepNotCompleted": "分岐元の工程が完了していません",
+    "branchQuantityExceedsAvailable": "分岐数量（{quantity}）が分岐可能数（{available}）を超えています",
+    "mergeTargetStepNotFound": "合流先の工程が見つかりません",
+    "mergeTargetNotPending": "合流先が未着手ではありません",
+    "mergeTargetCannotBeBranchStep": "合流先に分岐系列の工程は指定できません",
+    "auditBranchAdded": "分岐を追加（{count} 工程, 数量 {quantity}, {termination}）",
+    "terminationMerge": "合流あり",
+    "terminationSemiFinishedStock": "半製品在庫へ",
+    "terminationProductStock": "製品在庫へ",
+    "branchSeriesNotFound": "分岐系列が見つかりません",
+    "branchTerminalStepNotFound": "分岐の終端工程が見つかりません",
+    "branchQuantityLockedAfterStart": "着手済みの分岐は数量を変更できません",
+    "terminationChangeOnlyWhilePending": "終端工程が未着手のときだけ行き先を変更できます",
+    "branchHeadStepNotFound": "分岐先頭の工程が見つかりません",
+    "notABranchSeriesStep": "分岐系列の工程ではありません",
+    "cannotDeleteBranchWithStartedSteps": "着手済みの工程を含む分岐は削除できません",
+    "auditBranchDeleted": "分岐を削除（{count} 工程）",
+    "auditBranchUpdated": "分岐を更新（数量 {quantity}, {termination}）"
+  },
+  "aiKeywords": {
+    "enterANameBeforeRunning": "名称を入力してから実行してください",
+    "sendAsJson": "JSON で送信してください",
+    "candidateGenerationFailed": "候補の生成に失敗しました"
+  },
+  "orderAcceptanceActions": {
+    "targetNotFound": "対象の注文請書が見つかりません",
+    "onlyCompletedCanRequestCancel": "キャンセル依頼できるのは確定済みの注文請書だけです",
+    "cannotCancelShippedLines": "出荷済みの注文明細が {count} 件あるためキャンセルできません",
+    "allLinesAlreadyCancelled": "すべての注文明細が既にキャンセル済みです",
+    "cancelRequestAlreadyPending": "この注文請書には承認依頼中のキャンセル依頼があります",
+    "cancelRequestedNote": "キャンセルを承認依頼（理由: {reason}）",
+    "targetCancelRequestNotFound": "キャンセル依頼が見つかりません",
+    "cancelRequestNotPending": "この依頼は既に処理済みです",
+    "chainCancelNote": "注文請書 {number} キャンセルに伴う連鎖キャンセル",
+    "cancelApplyFailed": "キャンセルの適用に失敗しました"
+  },
+  "privilegedAccessGate": {
+    "unknownOperation": "未知の特権操作です: {key}（lib/privileged-operations.ts に登録してください）",
+    "operationRequiresApprovalSy0g": "この操作には承認が必要です（{label}）。特権アクセス（SY0G）から申請してください"
+  },
+  "audit": {
+    "emptyArray": "（なし）",
+    "fieldLabels": {
+      "id": "ID",
+      "status": "ステータス",
+      "isActive": "有効",
+      "isEnabled": "有効",
+      "notes": "備考",
+      "note": "メモ",
+      "name": "名称",
+      "nameJa": "名称",
+      "nameEn": "名称（英）",
+      "code": "コード",
+      "description": "説明",
+      "sortOrder": "表示順",
+      "createdAt": "作成日時",
+      "updatedAt": "更新日時",
+      "createdBy": "作成者",
+      "updatedBy": "更新者",
+      "customerBpId": "顧客",
+      "supplierBpId": "仕入先",
+      "shipToBpId": "出荷先",
+      "endUserBpId": "最終需要家",
+      "plantId": "拠点",
+      "assignedPlantId": "担当拠点",
+      "fromPlantId": "出荷元拠点",
+      "salesRepId": "営業担当",
+      "assigneeId": "担当者",
+      "userId": "ユーザー",
+      "quantity": "数量",
+      "plannedQuantity": "予定数量",
+      "unitPrice": "単価",
+      "baseUnitPrice": "基準単価",
+      "amount": "金額",
+      "totalAmount": "合計金額",
+      "subtotal": "小計",
+      "taxAmount": "消費税",
+      "discountAmount": "値引き額",
+      "currency": "通貨",
+      "unit": "単位",
+      "validFrom": "有効開始日",
+      "validUntil": "有効終了日",
+      "deliveryDate": "納期",
+      "desiredAt": "希望納期",
+      "shippedAt": "出荷日",
+      "deliveredAt": "納品日",
+      "receivedAt": "入荷日",
+      "orderedAt": "発注日",
+      "approvedAt": "承認日時",
+      "requestedAt": "依頼日時",
+      "completedAt": "完了日時",
+      "startedAt": "開始日時",
+      "cancelledAt": "キャンセル日時",
+      "productId": "製品",
+      "materialId": "素材",
+      "materialTypeId": "材種",
+      "diameterMm": "直径",
+      "lengthMm": "全長",
+      "workOrderId": "指示書",
+      "orderLineId": "注文明細",
+      "lotNumber": "ロット番号",
+      "processStepId": "工程",
+      "executionLocation": "実施場所",
+      "inputQuantity": "受入数",
+      "outputSuccessQuantity": "良品数",
+      "roleId": "ロール",
+      "permissionCode": "権限コード",
+      "action": "操作",
+      "scope": "範囲",
+      "approvalStatus": "承認状態",
+      "reason": "理由",
+      "fileId": "ファイル",
+      "fileName": "ファイル名",
+      "storageKey": "保存キー",
+      "mimeType": "種別"
+    },
+    "tableFieldLabels": {
+      "kiosk_devices": {
+        "name": "端末名",
+        "location": "設置場所",
+        "defaultWorkLocationId": "既定の作業場所"
+      },
+      "display_devices": {
+        "name": "ディスプレイ名",
+        "location": "設置場所",
+        "contentType": "表示内容の種別",
+        "refreshIntervalSec": "更新間隔（秒）",
+        "scalePercent": "表示倍率（%）",
+        "machineId": "つないでいる機械",
+        "screenIndex": "画面番号",
+        "image": "画像",
+        "fit": "画像の収め方",
+        "contentConfig": {
+          "page": "映す画面",
+          "fit": "画像の収め方",
+          "fileId": "画像ファイル",
+          "url": "URL",
+          "dashboardId": "ダッシュボード"
+        }
+      },
+      "users": {
+        "name": "氏名",
+        "isActive": "在籍"
+      }
+    },
+    "valueLabels": {
+      "contentType": {
+        "APP_PAGE": "アプリの画面",
+        "METABASE": "集計ダッシュボード",
+        "URL": "外部ページ",
+        "IMAGE": "画像"
+      },
+      "fit": {
+        "contain": "全体を表示",
+        "cover": "画面を埋める",
+        "fill": "引き伸ばす"
+      },
+      "page": {
+        "production": "生産状況",
+        "pending": "未処理・手配待ち",
+        "shipping": "出荷予定",
+        "quality": "品質・不良",
+        "announcement": "お知らせ"
+      }
+    }
+  },
+  "inspectionTemplateIo": {
+    "emptyFile": "ファイルが空です",
+    "missingHeaders": "見出し（{names}）が見つかりません。雛形をダウンロードしてお使いください",
+    "emptyTemplateCode": "検査表コードが空です",
+    "emptyItemName": "項目名が空です",
+    "emptyTemplateName": "コード {code} の検査表名が空です",
+    "samplingValueNotNumber": "抜取数が数値ではありません",
+    "toleranceNotNumber": "下限・上限が数値ではありません",
+    "requiredOverrideMustBeYesNo": "必須・上書き許可は「はい」か「いいえ」で入力してください",
+    "acceptBoolMustBeYesNo": "合否判定は「はい」か「いいえ」で入力してください",
+    "nominalToleranceNotNumber": "基本値・公差が数値ではありません",
+    "noItems": "{code}: 検査項目が 1 つもありません"
+  },
+  "intakeCore": {
+    "quantityNotReadableNote": "数量未読取・要確認"
+  },
+  "notificationEmail": {
+    "digestSubject": "【CKK】未読の通知 {total} 件"
+  },
+  "richTextCore": {
+    "invalidLinkHref": "リンク先の形式が不正です",
+    "linkHrefDescribe": "リンク先",
+    "unknownReason": "不明な理由",
+    "invalidFormat": "形式が不正です: {reason}",
+    "nestingTooDeep": "ネストが深すぎます",
+    "tooLong": "本文が長すぎます（{max} 文字まで）"
+  },
+  "trialPricingEngine": {
+    "notANumber": "数値ではありません",
+    "expressionIsEmpty": "式が空です"
   }
 }

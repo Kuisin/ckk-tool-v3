@@ -70,8 +70,8 @@ import type { MaterialPricePoint } from "@/lib/material-pricing-core";
 import { ORDER_TYPE_LABEL } from "@/lib/mock";
 import {
   calcTrialPricing,
-  TOOL_TYPE_OPTIONS,
   type TrialPricingOptions,
+  toolTypeOptionsFallback,
 } from "@/lib/trial-pricing";
 import { MaterialPriceChart } from "./MaterialPriceChart";
 import type { LinkedPriceEntry, TrialEstimateRecord } from "./types";
@@ -97,7 +97,7 @@ export function TrialEstimateDetail({
   memos,
   priceHistory,
   pricingOptions = {},
-  toolTypeOptions = TOOL_TYPE_OPTIONS,
+  toolTypeOptions,
 }: {
   record: TrialEstimateRecord;
   linkedEntries: LinkedPriceEntry[];
@@ -114,8 +114,10 @@ export function TrialEstimateDetail({
 }) {
   const tr = useTranslations();
   const fmt = useFormat();
+  const resolvedToolTypeOptions =
+    toolTypeOptions ?? toolTypeOptionsFallback(tr);
   const toolLabel = (v: string) =>
-    toolTypeOptions.find((o) => o.value === v)?.label ?? v;
+    resolvedToolTypeOptions.find((o) => o.value === v)?.label ?? v;
   const router = useRouter();
   // アクティブタブを ?tab= に保持（URL 共有でタブまで再現）
   const [tab, setTab] = useTabParam("result");

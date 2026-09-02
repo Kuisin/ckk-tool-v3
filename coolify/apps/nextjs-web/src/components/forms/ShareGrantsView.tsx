@@ -15,10 +15,7 @@ import { IconInfoCircle } from "@tabler/icons-react";
 import { useTranslations } from "next-intl";
 import { useIsMobile } from "@/hooks/useViewport";
 import type { ShareGrantView } from "@/lib/share-grants";
-import {
-  SHARE_LEVEL_LABEL,
-  SHARE_SUBJECT_LABEL,
-} from "@/lib/share-grants-core";
+import { shareLevelLabel, shareSubjectLabel } from "@/lib/share-grants-core";
 import type { ConditionFieldOption } from "./ShareConditionEditor";
 
 /** 条件（「この項目がこの値の回答だけ」）を 1 行の文にする。 */
@@ -90,14 +87,14 @@ export function ShareGrantsView({
               <Stack gap={4}>
                 <Group gap="xs">
                   <Badge color="gray" variant="light">
-                    {SHARE_SUBJECT_LABEL[grant.subjectType]}
+                    {shareSubjectLabel(grant.subjectType, tr)}
                   </Badge>
                   <Text fw={600} size="sm">
                     {subject}
                   </Text>
                 </Group>
                 <Group gap="xs">
-                  <Text size="sm">{SHARE_LEVEL_LABEL[grant.level]}</Text>
+                  <Text size="sm">{shareLevelLabel(grant.level, tr)}</Text>
                   {grant.notifyOnComplete && (
                     <Badge color="indigo" variant="light">
                       {tr("common.completionNotice")}
@@ -130,13 +127,13 @@ export function ShareGrantsView({
               <Table.Tr key={grant.id}>
                 <Table.Td>
                   <Badge color="gray" variant="light">
-                    {SHARE_SUBJECT_LABEL[grant.subjectType]}
+                    {shareSubjectLabel(grant.subjectType, tr)}
                   </Badge>
                 </Table.Td>
                 <Table.Td>{subject}</Table.Td>
                 <Table.Td>
                   <Group gap="xs">
-                    <Text size="sm">{SHARE_LEVEL_LABEL[grant.level]}</Text>
+                    <Text size="sm">{shareLevelLabel(grant.level, tr)}</Text>
                     {grant.notifyOnComplete && (
                       <Badge color="indigo" variant="light">
                         {tr("common.completionNotice")}

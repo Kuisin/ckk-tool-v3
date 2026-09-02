@@ -13,6 +13,12 @@
 import { type NormalizedExtraction, normalizeExtraction } from "./intake-core";
 import { isOwnCompany } from "./own-company";
 
+/** next-intl の `t()` と互換の最小の形（サーバー/クライアントどちらの実体も渡せる）。 */
+type TrLike = (
+  key: string,
+  values?: Record<string, string | number | Date>,
+) => string;
+
 /** 項目の突合状態。 */
 export type FieldMatchStatus =
   /** 読み取れて、マスタにも一致した。 */
@@ -68,6 +74,7 @@ const has = (v: string | null | undefined): v is string =>
 export function reviewIntake(
   extracted: unknown,
   saved: SavedForReview,
+  tr: TrLike,
 ): FieldReview[] {
   if (extracted == null) return [];
   const norm: NormalizedExtraction = normalizeExtraction(
@@ -79,7 +86,7 @@ export function reviewIntake(
   if (saved.customerBpId) {
     out.push({
       key: "customer",
-      label: "顧客",
+      label: tr("sales.intakeReview.customer"),
       status: "matched",
       read: norm.customerName,
     });
@@ -88,63 +95,70 @@ export function reviewIntake(
     // 自社名が来たということは、AI が読む側を取り違えている。
     out.push({
       key: "customer",
-      label: "顧客",
+      label: tr("sales.intakeReview.customer"),
       status: "unmatched",
       read: norm.customerName,
-      hint: `自社名「${norm.customerName}」を顧客として読み取っています（書類の宛先＝自社）。発行元・社判のある側が顧客です — 書類を見て選び直してください`,
+      hint: tr("sales.intakeReview.readOwnCompanyAsCustomerHint", {
+        name: norm.customerName ?? "",
+      }),
     });
   } else if (has(norm.customerName)) {
     const count = saved.customerCandidateCount ?? 0;
     out.push({
       key: "customer",
-      label: "顧客",
+      label: tr("sales.intakeReview.customer"),
       status: "unmatched",
       read: norm.customerName,
       hint:
         count > 0
-          ? `「${norm.customerName}」に近い取引先が ${count} 件あります。編集画面の顧客欄に候補が出るので、正しいものを選んでください`
-          : `「${norm.customerName}」に一致する取引先がありません。取引先を選び直すか、マスタに登録（表記ゆれは AI 照合名に追加）してください`,
+          ? tr("sales.intakeReview.customerCandidatesHint", {
+              name: norm.customerName,
+              count,
+            })
+          : tr("sales.intakeReview.customerNoMatchHint", {
+              name: norm.customerName,
+            }),
     });
   } else {
     out.push({
       key: "customer",
-      label: "顧客",
+      label: tr("sales.intakeReview.customer"),
       status: "missing",
       read: null,
-      hint: "書類から会社名を読み取れませんでした。書類を見て選択してください",
+      hint: tr("sales.intakeReview.customerNameNotReadHint"),
     });
   }
 
   // ── 顧客注文書番号（マスタ突合なし — 有無だけ） ───────────────────────────
   out.push({
     key: "customerOrderRef",
-    label: "顧客注文書番号",
+    label: tr("sales.intakeReview.customerOrderRef"),
     status: has(saved.customerOrderRef) ? "filled" : "missing",
     read: norm.customerOrderRef,
     ...(has(saved.customerOrderRef)
       ? {}
-      : { hint: "書類の注文番号を読み取れませんでした" }),
+      : { hint: tr("sales.intakeReview.orderRefNotReadHint") }),
   });
 
   // ── 注文日 ────────────────────────────────────────────────────────────────
   out.push({
     key: "orderDate",
-    label: "注文日",
+    label: tr("sales.intakeReview.orderDate"),
     status: has(saved.orderDate) ? "filled" : "missing",
     read: norm.orderDate,
     ...(has(saved.orderDate)
       ? {}
-      : { hint: "書類の日付を読み取れませんでした" }),
+      : { hint: tr("sales.intakeReview.orderDateNotReadHint") }),
   });
 
   // ── 明細（製品マスタ突合 + 数量・単価の欠落） ─────────────────────────────
   if (saved.items.length === 0) {
     out.push({
       key: "items",
-      label: "明細",
+      label: tr("sales.intakeReview.items"),
       status: "missing",
       read: null,
-      hint: "明細を 1 件も読み取れませんでした。書類を見て追加してください",
+      hint: tr("sales.intakeReview.noItemsReadHint"),
     });
   }
   saved.items.forEach((item, i) => {
@@ -153,25 +167,30 @@ export function reviewIntake(
       const count = item.productCandidateCount ?? 0;
       out.push({
         key: `item-${row}-product`,
-        label: `明細 ${row} 行目: 製品`,
+        label: tr("sales.intakeReview.itemProductLabel", { row }),
         status: has(item.productText) ? "unmatched" : "missing",
         read: item.productText,
         row,
         hint: !has(item.productText)
-          ? "品名を読み取れませんでした。書類を見て製品を選んでください"
+          ? tr("sales.intakeReview.productNameNotReadHint")
           : count > 0
-            ? `「${item.productText}」に近い製品が ${count} 件あります。編集画面のこの行に候補が出るので、正しいものを選んでください`
-            : `「${item.productText}」に一致する製品がありません。製品を選び直すか、製品マスタに登録してください`,
+            ? tr("sales.intakeReview.productCandidatesHint", {
+                name: item.productText,
+                count,
+              })
+            : tr("sales.intakeReview.productNoMatchHint", {
+                name: item.productText,
+              }),
       });
     }
     if (item.unitPrice == null) {
       out.push({
         key: `item-${row}-unitPrice`,
-        label: `明細 ${row} 行目: 単価`,
+        label: tr("sales.intakeReview.itemUnitPriceLabel", { row }),
         status: "missing",
         read: null,
         row,
-        hint: "単価を読み取れませんでした。価格表と照らして入力してください",
+        hint: tr("sales.intakeReview.unitPriceNotReadHint"),
       });
     }
   });

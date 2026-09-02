@@ -8,9 +8,15 @@
  */
 
 import { deflateRawSync } from "node:zlib";
+import { createTranslator } from "next-intl";
 import { describe, expect, it } from "vitest";
+import ja from "../../messages/ja.json";
+import type { Tr } from "./i18n";
 import { buildXlsx, cellNumber, cellText } from "./xlsx";
 import { columnIndex, readXlsx } from "./xlsx-read";
+
+// biome-ignore lint/suspicious/noExplicitAny: same rationale as product-types.test.ts
+const tr = createTranslator({ locale: "ja", messages: ja as any }) as Tr;
 
 describe("columnIndex", () => {
   it("列名を 0 始まりの番号にする", () => {
@@ -32,7 +38,7 @@ describe("往復（自前の書き出し → 読み取り）", () => {
         [cellText("全長"), cellText("mm"), cellNumber(199.5)],
       ],
     });
-    const rows = readXlsx(buf);
+    const rows = readXlsx(buf, tr);
     expect(rows[0]).toEqual(["項目名", "単位", "下限"]);
     expect(rows[1]).toEqual(["外径", "mm", "7.98"]);
     expect(rows[2]).toEqual(["全長", "mm", "199.5"]);
@@ -44,7 +50,7 @@ describe("往復（自前の書き出し → 読み取り）", () => {
       columns: [{ header: "名称" }],
       rows: [[cellText('A&B <小> "引用" 0<x')]],
     });
-    expect(readXlsx(buf)[1][0]).toBe('A&B <小> "引用" 0<x');
+    expect(readXlsx(buf, tr)[1][0]).toBe('A&B <小> "引用" 0<x');
   });
 
   it("空セルは空文字で戻る（列の位置がずれない）", () => {
@@ -53,7 +59,7 @@ describe("往復（自前の書き出し → 読み取り）", () => {
       columns: [{ header: "a" }, { header: "b" }, { header: "c" }],
       rows: [[cellText("1"), cellText(""), cellText("3")]],
     });
-    expect(readXlsx(buf)[1]).toEqual(["1", "", "3"]);
+    expect(readXlsx(buf, tr)[1]).toEqual(["1", "", "3"]);
   });
 });
 
@@ -109,7 +115,7 @@ describe("Excel が実際に使う書き方", () => {
         '<row r="1"><c r="A1" t="s"><v>0</v></c><c r="B1" t="s"><v>1</v></c></row>',
       ),
     });
-    expect(readXlsx(buf)[0]).toEqual(["外径", "mm"]);
+    expect(readXlsx(buf, tr)[0]).toEqual(["外径", "mm"]);
   });
 
   // 一部だけ太字にすると <si> が <r> に割れる。連結しないと文字が欠ける
@@ -121,7 +127,7 @@ describe("Excel が実際に使う書き方", () => {
         '<row r="1"><c r="A1" t="s"><v>0</v></c></row>',
       ),
     });
-    expect(readXlsx(buf)[0]).toEqual(["外径"]);
+    expect(readXlsx(buf, tr)[0]).toEqual(["外径"]);
   });
 
   it('インライン文字列（t="inlineStr"）も読む', () => {
@@ -130,7 +136,7 @@ describe("Excel が実際に使う書き方", () => {
         '<row r="1"><c r="A1" t="inlineStr"><is><t>直接</t></is></c></row>',
       ),
     });
-    expect(readXlsx(buf)[0]).toEqual(["直接"]);
+    expect(readXlsx(buf, tr)[0]).toEqual(["直接"]);
   });
 
   // 空セルは <c> ごと省かれることがある。r 属性で位置を合わせないと列がずれる
@@ -140,7 +146,7 @@ describe("Excel が実際に使う書き方", () => {
         '<row r="1"><c r="A1"><v>1</v></c><c r="C1"><v>3</v></c></row>',
       ),
     });
-    expect(readXlsx(buf)[0]).toEqual(["1", "", "3"]);
+    expect(readXlsx(buf, tr)[0]).toEqual(["1", "", "3"]);
   });
 
   it("飛ばされた行も空行で埋める", () => {
@@ -149,7 +155,7 @@ describe("Excel が実際に使う書き方", () => {
         '<row r="1"><c r="A1"><v>1</v></c></row><row r="3"><c r="A3"><v>3</v></c></row>',
       ),
     });
-    const rows = readXlsx(buf);
+    const rows = readXlsx(buf, tr);
     expect(rows).toHaveLength(3);
     expect(rows[1]).toEqual([]);
     expect(rows[2]).toEqual(["3"]);
@@ -157,13 +163,13 @@ describe("Excel が実際に使う書き方", () => {
 
   // 読めないものを黙って空で返すと、欠けた表を「取り込めた」と思わせる
   it("Excel でないファイルは読めないと言う", () => {
-    expect(() => readXlsx(Buffer.from("これは xlsx ではない"))).toThrow(
+    expect(() => readXlsx(Buffer.from("これは xlsx ではない"), tr)).toThrow(
       /ZIP の終端/,
     );
   });
 
   it("ワークシートが無ければ読めないと言う", () => {
-    expect(() => readXlsx(zipOf({ "docProps/app.xml": "<x/>" }))).toThrow(
+    expect(() => readXlsx(zipOf({ "docProps/app.xml": "<x/>" }), tr)).toThrow(
       /ワークシート/,
     );
   });

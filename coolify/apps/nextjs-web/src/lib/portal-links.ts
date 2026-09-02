@@ -25,6 +25,7 @@
 
 import "server-only";
 
+import { getTranslations } from "next-intl/server";
 import { prisma } from "./db";
 import { correlationRef } from "./login-attempts";
 import { mintToken, sha256hex } from "./portal-auth";
@@ -71,6 +72,7 @@ export async function mintPortalLink(
   input: MintPortalLinkInput,
   baseUrl: string,
 ): Promise<MintResult> {
+  const tr = await getTranslations();
   const now = new Date();
   const expiresAt =
     input.expiresAt ?? new Date(now.getTime() + PORTAL_LINK_DEFAULT_TTL_MS);
@@ -78,7 +80,7 @@ export async function mintPortalLink(
   if (!isPortalLinkExpiryAllowed(now, expiresAt)) {
     return {
       ok: false,
-      error: "有効期限は 1 日〜180 日の範囲で指定してください",
+      error: tr("settings.portalLinks.theExpiryMustBeBetween"),
     };
   }
   // VERIFY は宛先が無いと成立しない（訪問者の入力へは送らないため）。
@@ -89,11 +91,14 @@ export async function mintPortalLink(
   ) {
     return {
       ok: false,
-      error: "本人確認ありのリンクには、送信先のアカウントかアドレスが必要です",
+      error: tr("settings.portalLinks.aVerifiedLinkRequiresAn"),
     };
   }
   if (input.maxUses != null && input.maxUses < 1) {
-    return { ok: false, error: "使用回数は 1 以上で指定してください" };
+    return {
+      ok: false,
+      error: tr("settings.portalLinks.theUseCountMustBe"),
+    };
   }
 
   const { raw, hash } = mintToken();

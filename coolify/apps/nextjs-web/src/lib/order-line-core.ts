@@ -11,6 +11,9 @@
  * （確定済み = 枝番・製品・単価・金額・確定日時が揃っている）。
  */
 
+import type { Locale } from "./i18n";
+import { label } from "./messages";
+
 export type OrderLineStatus =
   | "DRAFT"
   | "CONFIRMED"
@@ -54,11 +57,29 @@ export function isLineEditable(line: LineLockState): boolean {
   return line.status === "DRAFT" && line.branch == null && !line.isLocked;
 }
 
-/** 編集不可の理由（UI 表示とエラー文言の唯一の出所）。可なら null。 */
-export function lineEditBlockReason(line: LineLockState): string | null {
-  if (line.branch != null) return "確定済みの注文明細は変更できません";
-  if (line.status !== "DRAFT") return "確定済みの注文明細は変更できません";
-  if (line.isLocked) return "承認依頼中の注文明細は変更できません";
+/**
+ * 編集不可の理由（UI 表示とエラー文言の唯一の出所）。可なら null。
+ * `locale` は末尾の省略可能引数（既定 "ja" = 既存呼び出し元と同じ挙動）。
+ */
+export function lineEditBlockReason(
+  line: LineLockState,
+  locale: Locale = "ja",
+): string | null {
+  const confirmed = () =>
+    label(
+      "sales.orderLineCore.confirmedLineCannotBeChanged",
+      locale,
+      "確定済みの注文明細は変更できません",
+    );
+  if (line.branch != null) return confirmed();
+  if (line.status !== "DRAFT") return confirmed();
+  if (line.isLocked) {
+    return label(
+      "sales.orderLineCore.pendingApprovalLineCannotBeChanged",
+      locale,
+      "承認依頼中の注文明細は変更できません",
+    );
+  }
   return null;
 }
 
@@ -69,12 +90,17 @@ export function lineEditBlockReason(line: LineLockState): string | null {
 export function linesReplaceBlockReason(
   acceptanceStatus: AcceptanceStatus,
   lines: LineLockState[],
+  locale: Locale = "ja",
 ): string | null {
   if (!isAcceptanceEditable(acceptanceStatus)) {
-    return "下書きの注文請書のみ編集できます";
+    return label(
+      "sales.orderLineCore.onlyDraftAcceptanceEditable",
+      locale,
+      "下書きの注文請書のみ編集できます",
+    );
   }
   for (const line of lines) {
-    const reason = lineEditBlockReason(line);
+    const reason = lineEditBlockReason(line, locale);
     if (reason) return reason;
   }
   return null;
@@ -116,11 +142,26 @@ export function nextBranches(currentMax: number, count: number): number[] {
 }
 
 /** 確定してよい明細か（製品と単価が揃っているか）。理由 or null。 */
-export function lineConfirmBlockReason(line: {
-  productId: number | null;
-  unitPrice: unknown;
-}): string | null {
-  if (line.productId == null) return "製品未特定";
-  if (line.unitPrice == null) return "単価未入力";
+export function lineConfirmBlockReason(
+  line: {
+    productId: number | null;
+    unitPrice: unknown;
+  },
+  locale: Locale = "ja",
+): string | null {
+  if (line.productId == null) {
+    return label(
+      "sales.orderLineCore.productNotIdentified",
+      locale,
+      "製品未特定",
+    );
+  }
+  if (line.unitPrice == null) {
+    return label(
+      "sales.orderLineCore.unitPriceNotEntered",
+      locale,
+      "単価未入力",
+    );
+  }
   return null;
 }

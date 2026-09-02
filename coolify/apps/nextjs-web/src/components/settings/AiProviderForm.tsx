@@ -35,6 +35,8 @@ import {
   AI_PROVIDERS,
   type AiProvider,
   type AiProviderSettings,
+  aiProviderLabel,
+  aiProviderNote,
   DEFAULT_AI_PROVIDER_SETTINGS,
   isExternalProvider,
   type TokenStatus,
@@ -231,9 +233,9 @@ export function AiProviderForm({ initial }: Props) {
               allowDeselect={false}
               data={AI_PROVIDERS.map((p) => ({
                 value: p,
-                label: AI_PROVIDER_PRESETS[p].label,
+                label: aiProviderLabel(p, tr),
               }))}
-              description={preset.note}
+              description={aiProviderNote(settings.provider, tr)}
               label={tr("settings.aiProviderForm.provider")}
               onChange={(v) =>
                 v && setSettings((s) => ({ ...s, provider: v as AiProvider }))

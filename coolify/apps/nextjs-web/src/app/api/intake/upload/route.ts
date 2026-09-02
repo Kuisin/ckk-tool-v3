@@ -19,6 +19,7 @@
 
 import { revalidatePath } from "next/cache";
 import { NextResponse } from "next/server";
+import { getTranslations } from "next-intl/server";
 import { requirePermissionResponse } from "@/lib/authz";
 import { ingestAndQueueExtraction, ingestIntakeFile } from "@/lib/intake";
 
@@ -45,28 +46,27 @@ function badRequest(error: string): NextResponse {
 export async function POST(request: Request): Promise<Response> {
   const denied = await requirePermissionResponse("order_acceptance", "CREATE");
   if (denied) return denied;
+  const tr = await getTranslations();
   let form: FormData;
   try {
     form = await request.formData();
   } catch {
-    return badRequest("multipart/form-data で送信してください");
+    return badRequest(tr("common.sendAsMultipartFormData"));
   }
   const file = form.get("file");
   if (!(file instanceof File)) {
-    return badRequest("ファイルが指定されていません");
+    return badRequest(tr("settings.orderIntake.fileNotSpecified"));
   }
-  if (file.size <= 0) return badRequest("ファイルが空です");
+  if (file.size <= 0) return badRequest(tr("common.fileIsEmpty"));
   if (file.size > MAX_BYTES) {
-    return badRequest("ファイルサイズは 20MB 以下にしてください");
+    return badRequest(tr("common.fileSizeMax20Mb"));
   }
   const ext = file.name.includes(".")
     ? (file.name.split(".").pop()?.toLowerCase() ?? "")
     : "";
   const contentType = MIME_BY_EXT[ext];
   if (!contentType) {
-    return badRequest(
-      "対応していないファイル形式です（PDF / PNG / JPG / WEBP）",
-    );
+    return badRequest(tr("settings.orderIntake.unsupportedFileFormat"));
   }
 
   // 抽出を積まず採番までで返すか（画面のまとめ取込の 1 段目）。
@@ -104,7 +104,7 @@ export async function POST(request: Request): Promise<Response> {
   } catch (e) {
     console.error("[intake/upload]", e);
     return NextResponse.json(
-      { ok: false, error: "取込処理に失敗しました" },
+      { ok: false, error: tr("settings.orderIntake.intakeProcessingFailed") },
       { status: 500 },
     );
   }

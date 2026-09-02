@@ -9,6 +9,7 @@
  */
 
 import { ownWhere, rowInScope } from "@ckk/authz-core";
+import { getTranslations } from "next-intl/server";
 import type {
   AcceptanceLink,
   OrderAcceptanceItemView,
@@ -85,6 +86,7 @@ export async function fetchOrderAcceptances(): Promise<
 export async function fetchOrderAcceptance(
   key: DocKey,
 ): Promise<OrderAcceptanceView | null> {
+  const tr = await getTranslations();
   const authz = await checkPermission("order_acceptance", "READ");
   if (!authz.ok) return null;
   const r = await prisma.orderAcceptance.findUnique({
@@ -186,19 +188,23 @@ export async function fetchOrderAcceptance(
   return {
     // 「何を読み取って、どれが引けなかったか」は保存済みの行と抽出 JSON から
     // その場で導く（別テーブルを持たない — 直せば指摘も自然に消える）。
-    review: reviewIntake(r.extracted, {
-      customerBpId: r.customerBpId,
-      customerOrderRef: r.customerOrderRef,
-      customerCandidateCount: customerSuggestions.length,
-      orderDate: r.orderDate?.toISOString().slice(0, 10) ?? null,
-      items: items.map((it) => ({
-        productId: it.productId,
-        productText: it.productText,
-        productCandidateCount: it.productSuggestions.length,
-        quantity: it.quantity,
-        unitPrice: it.unitPrice,
-      })),
-    }),
+    review: reviewIntake(
+      r.extracted,
+      {
+        customerBpId: r.customerBpId,
+        customerOrderRef: r.customerOrderRef,
+        customerCandidateCount: customerSuggestions.length,
+        orderDate: r.orderDate?.toISOString().slice(0, 10) ?? null,
+        items: items.map((it) => ({
+          productId: it.productId,
+          productText: it.productText,
+          productCandidateCount: it.productSuggestions.length,
+          quantity: it.quantity,
+          unitPrice: it.unitPrice,
+        })),
+      },
+      tr,
+    ),
     number: formatDocNumber("ORD", r),
     yearMonth: r.yearMonth,
     seq: r.seq,

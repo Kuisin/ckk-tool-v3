@@ -13,6 +13,9 @@
  * **同じ関数**を使うことで、「画面では有効なのに押せない」を構造的に防ぐ。
  */
 
+import type { Locale } from "./i18n";
+import { label } from "./messages";
+
 /** 判定に必要な最小限の形（Prisma の行でもフォームの値でも渡せる）。 */
 export interface MemberValidity {
   isActive: boolean;
@@ -63,13 +66,13 @@ export function memberPeriodState(
   return "ACTIVE";
 }
 
-export const MEMBER_PERIOD_STATE_LABEL: Record<MemberPeriodState, string> = {
-  PERMANENT: "常任",
-  ACTIVE: "有効中",
-  SCHEDULED: "期間前",
-  EXPIRED: "期間終了",
-  DISABLED: "無効",
-};
+/** メンバーの期間状態 → 表示ラベル。 */
+export function memberPeriodStateLabel(
+  state: MemberPeriodState,
+  locale: Locale = "ja",
+): string {
+  return label(`enum.MEMBER_PERIOD_STATE_LABEL.${state}`, locale, state);
+}
 
 export const MEMBER_PERIOD_STATE_COLOR: Record<MemberPeriodState, string> = {
   PERMANENT: "blue",
@@ -97,19 +100,42 @@ export function effectiveMemberWhere(now: Date) {
  * 期間入力の検証（画面と Server Action が共用）。
  * 常任 = 両方 null。期間限定 = 両方必須かつ 終了 > 開始。
  */
-export function validateMemberPeriod(input: {
-  validFrom: Date | string | null;
-  validUntil: Date | string | null;
-}): string | null {
+/**
+ * `locale` は既存呼び出し元（Server Action / フォーム）を壊さないよう
+ * 末尾の省略可能引数にしてある（既定 "ja" = これまでと同じ挙動）。
+ */
+export function validateMemberPeriod(
+  input: {
+    validFrom: Date | string | null;
+    validUntil: Date | string | null;
+  },
+  locale: Locale = "ja",
+): string | null {
   const from = toTime(input.validFrom);
   const until = toTime(input.validUntil);
   const hasFrom = input.validFrom != null && input.validFrom !== "";
   const hasUntil = input.validUntil != null && input.validUntil !== "";
   if (!hasFrom && !hasUntil) return null; // 常任
   if (!hasFrom || !hasUntil) {
-    return "期間限定メンバーは開始日時と終了日時の両方を入力してください";
+    return label(
+      "master.approvalMembership.bothStartAndEndRequired",
+      locale,
+      "期間限定メンバーは開始日時と終了日時の両方を入力してください",
+    );
   }
-  if (from == null || until == null) return "日時の形式が正しくありません";
-  if (until <= from) return "終了日時は開始日時より後にしてください";
+  if (from == null || until == null) {
+    return label(
+      "master.approvalMembership.invalidDateTimeFormat",
+      locale,
+      "日時の形式が正しくありません",
+    );
+  }
+  if (until <= from) {
+    return label(
+      "master.approvalMembership.endMustBeAfterStart",
+      locale,
+      "終了日時は開始日時より後にしてください",
+    );
+  }
   return null;
 }

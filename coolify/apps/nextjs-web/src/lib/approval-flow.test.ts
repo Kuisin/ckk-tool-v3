@@ -1,4 +1,6 @@
+import { createTranslator } from "next-intl";
 import { describe, expect, it } from "vitest";
+import ja from "../../messages/ja.json";
 import {
   approvalStepDescription,
   decideAfterApproval,
@@ -11,6 +13,26 @@ import {
   stepsFromSnapshot,
   validateFlowSteps,
 } from "./approval-flow";
+
+/**
+ * `master.approvalSettingsActions.stepMissing*` はまだ messages/ja.json に
+ * 無いことがある（並行して他のエージェントが追加中）ので、テスト用に
+ * ローカルで足す。同じ文言で追加されれば無害。
+ */
+const messages = {
+  ...ja,
+  master: {
+    ...ja.master,
+    approvalSettingsActions: {
+      ...ja.master.approvalSettingsActions,
+      stepMissingName: "{steps} 段目: 名称を入力してください",
+      stepMissingGroupIndividual:
+        "{steps} 段目: 承認グループを選ぶか、承認者を 1 人以上選んでください",
+      stepMissingGroup: "{steps} 段目: 承認グループを選択してください",
+    },
+  },
+};
+const tr = createTranslator({ locale: "ja", messages });
 
 const slot = (userId: string, acted: boolean): RequiredApproverState => ({
   userId,
@@ -113,16 +135,20 @@ describe("stepperActive", () => {
 
 describe("validateFlowSteps", () => {
   it("0 段は弾く", () => {
-    expect(validateFlowSteps([])).toEqual([
+    expect(validateFlowSteps([], false, tr)).toEqual([
       "承認ステップを 1 段以上設定してください",
     ]);
   });
 
   it("名称空とグループ未選択を行番号つきで返す", () => {
-    const issues = validateFlowSteps([
-      { nameJa: "第一承認", groupId: 1, mode: "ANY" },
-      { nameJa: "  ", groupId: null, mode: "ALL" },
-    ]);
+    const issues = validateFlowSteps(
+      [
+        { nameJa: "第一承認", groupId: 1, mode: "ANY" },
+        { nameJa: "  ", groupId: null, mode: "ALL" },
+      ],
+      false,
+      tr,
+    );
     expect(issues).toEqual([
       "2 段目: 名称を入力してください",
       "2 段目: 承認グループを選択してください",
@@ -131,7 +157,11 @@ describe("validateFlowSteps", () => {
 
   it("揃っていれば空", () => {
     expect(
-      validateFlowSteps([{ nameJa: "第一承認", groupId: 1, mode: "ANY" }]),
+      validateFlowSteps(
+        [{ nameJa: "第一承認", groupId: 1, mode: "ANY" }],
+        false,
+        tr,
+      ),
     ).toEqual([]);
   });
 });
@@ -179,39 +209,41 @@ describe("validateFlowSteps — カスタム段（承認者を直接指名）", 
 
   it("承認者が 1 人でも入っていればグループ未選択で通る", () => {
     expect(
-      validateFlowSteps([step({ approverUserIds: ["u1"] })], true),
+      validateFlowSteps([step({ approverUserIds: ["u1"] })], true, tr),
     ).toEqual([]);
   });
 
   it("承認者が複数でも通る", () => {
     expect(
-      validateFlowSteps([step({ approverUserIds: ["u1", "u2"] })], true),
+      validateFlowSteps([step({ approverUserIds: ["u1", "u2"] })], true, tr),
     ).toEqual([]);
   });
 
   it("カスタムで承認者ゼロは弾く（誰も押せない段を作らない）", () => {
-    expect(validateFlowSteps([step({ approverUserIds: [] })], true)).toEqual([
+    expect(
+      validateFlowSteps([step({ approverUserIds: [] })], true, tr),
+    ).toEqual([
       "1 段目: 承認グループを選ぶか、承認者を 1 人以上選んでください",
     ]);
   });
 
   it("どちらも空なら弾く（カスタムを許す場合の文言）", () => {
-    expect(validateFlowSteps([step()], true)).toEqual([
+    expect(validateFlowSteps([step()], true, tr)).toEqual([
       "1 段目: 承認グループを選ぶか、承認者を 1 人以上選んでください",
     ]);
   });
 
   it("カスタムを許さない場面（MS0B）の文言は変わらない", () => {
-    expect(validateFlowSteps([step()])).toEqual([
+    expect(validateFlowSteps([step()], false, tr)).toEqual([
       "1 段目: 承認グループを選択してください",
     ]);
   });
 
   it("カスタムを許さない場面では承認者が渡っても通さない", () => {
     // MS0B の共通フローはカスタムを持てない — 誤って渡っても宛先なし扱い。
-    expect(validateFlowSteps([step({ approverUserIds: ["u1"] })])).toEqual([
-      "1 段目: 承認グループを選択してください",
-    ]);
+    expect(
+      validateFlowSteps([step({ approverUserIds: ["u1"] })], false, tr),
+    ).toEqual(["1 段目: 承認グループを選択してください"]);
   });
 });
 
@@ -230,24 +262,24 @@ describe("approvalStepDescription", () => {
   });
 
   it("進行中で多段なら「何段目 / 全何段 + 段名」", () => {
-    expect(approvalStepDescription(approval())).toBe("2/3 部門承認");
+    expect(approvalStepDescription(approval(), tr)).toBe("2/3 部門承認");
   });
 
   it("進行中でも 1 段だけならグループ名（段数を出しても情報が無い）", () => {
-    expect(approvalStepDescription(approval({ stepCount: 1, stepNo: 1 }))).toBe(
-      "製造部",
-    );
+    expect(
+      approvalStepDescription(approval({ stepCount: 1, stepNo: 1 }), tr),
+    ).toBe("製造部");
   });
 
   it("依頼前・承認済み・差し戻しはグループ名", () => {
     for (const phase of ["NONE", "APPROVED", "REJECTED"] as const) {
-      expect(approvalStepDescription(approval({ phase }))).toBe("製造部");
+      expect(approvalStepDescription(approval({ phase }), tr)).toBe("製造部");
     }
   });
 
   it("グループ名が空なら既定の文言に落とす（空欄を出さない）", () => {
     expect(
-      approvalStepDescription(approval({ phase: "NONE", groupLabel: "" })),
+      approvalStepDescription(approval({ phase: "NONE", groupLabel: "" }), tr),
     ).toBe("承認グループ");
   });
 });

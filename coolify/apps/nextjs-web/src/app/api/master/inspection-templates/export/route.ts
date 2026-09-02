@@ -8,18 +8,20 @@
  */
 
 import { NextResponse } from "next/server";
+import { getTranslations } from "next-intl/server";
 import { exportTemplates } from "@/lib/inspection-template-port";
 
 export const dynamic = "force-dynamic";
 
 export async function GET(request: Request): Promise<NextResponse> {
+  const tr = await getTranslations();
   const raw = new URL(request.url).searchParams.get("ids");
   const ids = (raw ?? "")
     .split(",")
     .map((s) => Number(s.trim()))
     .filter((n) => Number.isInteger(n) && n > 0);
 
-  const result = await exportTemplates(ids);
+  const result = await exportTemplates(ids, tr);
   if (!result.ok) {
     return NextResponse.json(result, { status: 400 });
   }

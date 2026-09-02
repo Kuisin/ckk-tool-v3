@@ -56,14 +56,18 @@ import type { TrialPricingSettings } from "@/lib/trial-pricing-settings";
 // 計算基準（criteria）は SY02 メインのリスト + 個別編集ページから
 // `updateCriteria` で保存する。スカラー設定は下の settingsInput（criteria を
 // 含まない）で保存し、criteria は現状 DB 値を維持する（相互のクロバー防止）。
-const settingsInput = z.object({
-  materialPriceBasis: z.enum(["MAX", "LATEST", "AVERAGE"]),
-  materialPriceLookbackMonths: z.number().int().min(1).max(36),
-  defaultMaterialPrice: z.number().min(0),
-  customInputs: z.array(customInputDefSchema),
-});
+function settingsInputSchema(tr: Awaited<ReturnType<typeof getTranslations>>) {
+  return z.object({
+    materialPriceBasis: z.enum(["MAX", "LATEST", "AVERAGE"]),
+    materialPriceLookbackMonths: z.number().int().min(1).max(36),
+    defaultMaterialPrice: z.number().min(0),
+    customInputs: z.array(customInputDefSchema(tr)),
+  });
+}
 
-const criteriaInput = z.array(criterionSchema);
+function criteriaInputSchema(tr: Awaited<ReturnType<typeof getTranslations>>) {
+  return z.array(criterionSchema(tr));
+}
 
 /**
  * 計算基準の検証 — 壊れた式や不正な構成が全ユーザーの価格試算を止めないよう、
@@ -104,7 +108,7 @@ export async function updateTrialPricingSettings(
   const tr = await getTranslations();
   const authz = await checkPermission("system", "UPDATE");
   if (!authz.ok) return actionError(authz.error);
-  const parsed = settingsInput.safeParse(payload);
+  const parsed = settingsInputSchema(tr).safeParse(payload);
   if (!parsed.success) {
     return actionError(
       parsed.error.issues[0]?.message ?? tr("common.invalidInput"),
@@ -161,7 +165,7 @@ export async function updateCriteria(
   const tr = await getTranslations();
   const authz = await checkPermission("system", "UPDATE");
   if (!authz.ok) return actionError(authz.error);
-  const parsed = criteriaInput.safeParse(criteria);
+  const parsed = criteriaInputSchema(tr).safeParse(criteria);
   if (!parsed.success) {
     return actionError(
       parsed.error.issues[0]?.message ??
@@ -466,7 +470,7 @@ export async function updateLookupTables(
   const tr = await getTranslations();
   const authz = await checkPermission("system", "UPDATE");
   if (!authz.ok) return actionError(authz.error);
-  const parsed = lookupTablesArraySchema.safeParse(tables);
+  const parsed = lookupTablesArraySchema(tr).safeParse(tables);
   if (!parsed.success) {
     return actionError(
       parsed.error.issues[0]?.message ??
@@ -486,7 +490,7 @@ export async function upsertLookupTable(
   const tr = await getTranslations();
   const authz = await checkPermission("system", "UPDATE");
   if (!authz.ok) return actionError(authz.error);
-  const parsed = lookupTableSchema.safeParse(table);
+  const parsed = lookupTableSchema(tr).safeParse(table);
   if (!parsed.success) {
     return actionError(
       parsed.error.issues[0]?.message ??

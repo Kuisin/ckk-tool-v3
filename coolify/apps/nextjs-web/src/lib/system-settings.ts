@@ -8,6 +8,7 @@ import "server-only";
  * Reads fill unset keys with `DEFAULT_TRIAL_PRICING_SETTINGS`.
  */
 
+import { getTranslations } from "next-intl/server";
 import { z } from "zod";
 import { readConfigNamespace, writeConfigValues } from "./app-config";
 import {
@@ -57,18 +58,26 @@ function mergeGlobalCustomInputs(
   return missing.length ? [...missing, ...persisted] : persisted;
 }
 
-const criteriaArraySchema = z.array(criterionSchema);
 const toolTypesArraySchema = z.array(toolTypeDefSchema);
-// 読み出しは ID 形式を強制しない（旧 ID の永続データも受け入れて正規化する。
-// 形式の強制（英数字・ハイフン・アンダースコア）は保存時の lookupTableSchema）。
-const lookupTablesReadSchema = z.array(
-  lookupTableSchema.extend({ id: z.string().min(1) }),
-);
 
-const customInputsArraySchema = z.array(customInputDefSchema);
-
-/** 価格試算設定 — 未設定キーは既定値で補完。 */
+/**
+ * 価格試算設定 — 未設定キーは既定値で補完。
+ *
+ * ここでの safeParse は**永続データの読み出し検証**であって、失敗しても
+ * `.error.message` は読まない（既定値へ黙って倒す）。それでも
+ * criterionSchema 等は `tr` を要求する共通スキーマ（保存時の Server Action と
+ * 共有）なので、ここでも本物の `tr` を渡す。
+ */
 export async function getTrialPricingSettings(): Promise<TrialPricingSettings> {
+  const tr = await getTranslations();
+  const criteriaArraySchema = z.array(criterionSchema(tr));
+  // 読み出しは ID 形式を強制しない（旧 ID の永続データも受け入れて正規化する。
+  // 形式の強制（英数字・ハイフン・アンダースコア）は保存時の lookupTableSchema）。
+  const lookupTablesReadSchema = z.array(
+    lookupTableSchema(tr).extend({ id: z.string().min(1) }),
+  );
+  const customInputsArraySchema = z.array(customInputDefSchema(tr));
+
   const byKey = await readConfigNamespace(NAMESPACE);
   const out = { ...DEFAULT_TRIAL_PRICING_SETTINGS };
   for (const [field, key] of Object.entries(KEY_MAP) as [

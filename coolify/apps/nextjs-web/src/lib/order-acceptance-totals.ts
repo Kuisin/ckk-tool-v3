@@ -72,8 +72,15 @@ export function acceptanceTotals(
  * 分からなかった。全部並べるとヘッダが壊れるので、**先頭 + ほか N 種**にする
  * （完全な一覧はツールチップに出す — 呼び出し側で `names` を使う）。
  */
+/** next-intl の `t()` と互換の最小の形（サーバー/クライアントどちらの実体も渡せる）。 */
+type TrLike = (
+  key: string,
+  values?: Record<string, string | number | Date>,
+) => string;
+
 export function productSummary(
   items: readonly { productName: string | null; productText: string | null }[],
+  tr: TrLike,
 ): { label: string; names: string[] } {
   const names: string[] = [];
   for (const it of items) {
@@ -85,7 +92,13 @@ export function productSummary(
   if (names.length === 0) return { label: "—", names };
   const [first, ...rest] = names;
   return {
-    label: rest.length > 0 ? `${first} ほか ${rest.length} 種` : first,
+    label:
+      rest.length > 0
+        ? tr("sales.orderAcceptanceDetail.productSummaryAndMore", {
+            first,
+            count: rest.length,
+          })
+        : first,
     names,
   };
 }

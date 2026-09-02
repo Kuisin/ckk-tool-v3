@@ -9,6 +9,7 @@
  */
 
 import { z } from "zod";
+import type { Tr } from "./i18n";
 
 export const AI_PROVIDERS = [
   "ollama",
@@ -20,49 +21,54 @@ export type AiProvider = (typeof AI_PROVIDERS)[number];
 
 export interface AiProviderPreset {
   value: AiProvider;
-  label: string;
   /** 空欄のときに使われる既定（po-extract 側と同じ値）。 */
   baseUrlPlaceholder: string;
-  /** モデル名の書き方の例。プロバイダの一覧にある ID をそのまま入れる。 */
+  /** モデル名の書き方の例（プロバイダの一覧にある ID そのもの。訳さない）。 */
   modelPlaceholder: string;
   tokenRequired: boolean;
-  note: string;
 }
 
+/**
+ * 技術的な値だけ（URL・モデル ID 例・トークン要否）。画面に出す文言
+ * （label / note）は `aiProviderLabel` / `aiProviderNote` で
+ * `messages/<locale>.json` の `settings.aiProviderPresets.*` から引く。
+ */
 export const AI_PROVIDER_PRESETS: Record<AiProvider, AiProviderPreset> = {
   ollama: {
     value: "ollama",
-    label: "ローカル (Ollama)",
     baseUrlPlaceholder: "http://ollama:11434",
     modelPlaceholder: "qwen2.5vl",
     tokenRequired: false,
-    note: "社内の GPU で動かす既定の構成。書類が社外へ出ない。",
   },
   openai: {
     value: "openai",
-    label: "OpenAI 互換",
     baseUrlPlaceholder: "https://api.openai.com/v1",
-    modelPlaceholder: "例: gpt-5.6-terra",
+    modelPlaceholder: "gpt-5.6-terra",
     tokenRequired: true,
-    note: "OpenAI のほか、vLLM・LM Studio・OpenRouter など /chat/completions 互換のサービス。",
   },
   anthropic: {
     value: "anthropic",
-    label: "Anthropic (Claude)",
     baseUrlPlaceholder: "https://api.anthropic.com",
-    modelPlaceholder: "例: claude-sonnet-5",
+    modelPlaceholder: "claude-sonnet-5",
     tokenRequired: true,
-    note: "モデル ID に日付は付けない（claude-opus-5 / claude-sonnet-5 / claude-haiku-4-5 など）。",
   },
   gemini: {
     value: "gemini",
-    label: "Google Gemini",
     baseUrlPlaceholder: "https://generativelanguage.googleapis.com",
-    modelPlaceholder: "例: gemini-2.5-flash",
+    modelPlaceholder: "gemini-2.5-flash",
     tokenRequired: true,
-    note: "Google AI Studio の API キーを使う。",
   },
 };
+
+/** プロバイダの表示名（Select の選択肢・見出しに出す）。 */
+export function aiProviderLabel(provider: AiProvider, tr: Tr): string {
+  return tr(`settings.aiProviderPresets.${provider}.label`);
+}
+
+/** プロバイダの補足説明（フォームの description に出す）。 */
+export function aiProviderNote(provider: AiProvider, tr: Tr): string {
+  return tr(`settings.aiProviderPresets.${provider}.note`);
+}
 
 export interface AiProviderSettings {
   provider: AiProvider;
@@ -90,6 +96,9 @@ export type TokenStatus =
   | "rotate-pending" // 旧鍵で読めた → 保存し直せば新鍵で入れ替わる
   | "undecryptable" // 鍵が変わった / 壊れている
   | "no-key"; // SETTINGS_ENCRYPTION_KEY が未設定
+
+/** プロバイダだけの検証（`tr` 不要）。provider 単体の safeParse に使う。 */
+export const aiProviderEnumSchema = z.enum(AI_PROVIDERS);
 
 /**
  * 各プロバイダで許すホスト（監査 L8）。base URL は po-extract がそのまま
@@ -133,33 +142,37 @@ export function baseUrlVerdict(
   return "OK";
 }
 
-export const aiProviderSettingsSchema = z
-  .object({
-    provider: z.enum(AI_PROVIDERS),
-    baseUrl: z
-      .string()
-      .trim()
-      .refine((v) => v === "" || /^https?:\/\/.+/.test(v), {
-        message: "ベース URL は http:// または https:// で始めてください",
-      }),
-    visionModel: z.string().trim().max(200),
-    structModel: z.string().trim().max(200),
-    maxOutputTokens: z.number().int().min(256).max(200_000),
-  })
-  .superRefine((s, ctx) => {
-    const verdict = baseUrlVerdict(s.provider, s.baseUrl);
-    if (verdict === "OK") return;
-    ctx.addIssue({
-      code: "custom",
-      path: ["baseUrl"],
-      message:
-        verdict === "HOST"
-          ? `このプロバイダのベース URL は ${(PROVIDER_HOSTS[s.provider] ?? []).join(" / ")} だけです` // i18n-ignore — zod の検証文（既存の baseUrl 文言と同じ扱い）
-          : verdict === "BLOCKED"
-            ? "そのホストは指定できません" // i18n-ignore — zod の検証文（既存の baseUrl 文言と同じ扱い）
-            : "ベース URL は http:// または https:// で始めてください", // i18n-ignore — zod の検証文（既存の baseUrl 文言と同じ扱い）
+export function aiProviderSettingsSchema(tr: Tr) {
+  return z
+    .object({
+      provider: aiProviderEnumSchema,
+      baseUrl: z
+        .string()
+        .trim()
+        .refine((v) => v === "" || /^https?:\/\/.+/.test(v), {
+          message: tr("settings.aiProviderCore.baseUrlMustStartWithHttp"),
+        }),
+      visionModel: z.string().trim().max(200),
+      structModel: z.string().trim().max(200),
+      maxOutputTokens: z.number().int().min(256).max(200_000),
+    })
+    .superRefine((s, ctx) => {
+      const verdict = baseUrlVerdict(s.provider, s.baseUrl);
+      if (verdict === "OK") return;
+      ctx.addIssue({
+        code: "custom",
+        path: ["baseUrl"],
+        message:
+          verdict === "HOST"
+            ? tr("settings.aiProviderCore.baseUrlHostNotAllowed", {
+                hosts: (PROVIDER_HOSTS[s.provider] ?? []).join(" / "),
+              })
+            : verdict === "BLOCKED"
+              ? tr("settings.aiProviderCore.baseUrlHostBlocked")
+              : tr("settings.aiProviderCore.baseUrlMustStartWithHttp"),
+      });
     });
-  });
+}
 
 /** ワイヤ形式（po-extract の X-AI-Config）。`v` で世代を切る。 */
 export interface AiWireConfig {
@@ -217,12 +230,16 @@ export function isExternalProvider(provider: AiProvider): boolean {
 export function redactAiSettings(
   settings: AiProviderSettings,
   token: { status: TokenStatus; last4: string | null },
+  tr: Tr,
 ): Record<string, unknown> {
   return {
     ...settings,
     apiToken:
       token.status === "absent"
-        ? "未設定"
-        : `設定済み (****${token.last4 ?? "????"}) / ${token.status}`,
+        ? tr("settings.aiProviderCore.tokenAbsent")
+        : tr("settings.aiProviderCore.tokenSet", {
+            last4: token.last4 ?? "????",
+            status: token.status,
+          }),
   };
 }

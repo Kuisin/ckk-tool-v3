@@ -1,13 +1,19 @@
+import { createTranslator } from "next-intl";
 import { describe, expect, it } from "vitest";
+import ja from "../../messages/ja.json";
+import type { Tr } from "./i18n";
 import {
   PORTAL_DOCUMENT_DTO_KEYS,
   PORTAL_ORDER_LINE_DTO_KEYS,
   PORTAL_PROGRESS,
-  PORTAL_PROGRESS_LABEL,
   type PortalDocumentDto,
   type PortalOrderLineDto,
+  portalProgressLabel,
   portalProgressOf,
 } from "./portal-progress-core";
+
+// biome-ignore lint/suspicious/noExplicitAny: same rationale as product-types.test.ts
+const tr = createTranslator({ locale: "ja", messages: ja as any }) as Tr;
 
 describe("portalProgressOf", () => {
   it("確定済みは受注", () => {
@@ -52,10 +58,10 @@ describe("portalProgressOf", () => {
   });
 });
 
-describe("PORTAL_PROGRESS_LABEL", () => {
+describe("portalProgressLabel", () => {
   it("全段階にラベルがある", () => {
     for (const p of PORTAL_PROGRESS) {
-      expect(PORTAL_PROGRESS_LABEL[p], p).toBeTruthy();
+      expect(portalProgressLabel(p, tr), p).toBeTruthy();
     }
   });
 });

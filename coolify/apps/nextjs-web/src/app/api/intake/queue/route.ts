@@ -16,7 +16,8 @@
 import { rowInScope } from "@ckk/authz-core";
 import { revalidatePath } from "next/cache";
 import { NextResponse } from "next/server";
-import { checkPermission } from "@/lib/authz";
+import { getTranslations } from "next-intl/server";
+import { checkPermission, sessionUserId } from "@/lib/authz";
 import { prisma } from "@/lib/db";
 import { parseDocKey } from "@/lib/doc-number";
 import { enqueueExtraction } from "@/lib/intake";
@@ -31,10 +32,13 @@ function badRequest(error: string): NextResponse {
 }
 
 export async function POST(request: Request): Promise<Response> {
+  const tr = await getTranslations();
   // 取込の続き（採番済み行の抽出開始）なので upload と同じ権限で見る。
   const authz = await checkPermission("order_acceptance", "CREATE");
   if (!authz.ok) {
-    const status = authz.error.startsWith("ログイン") ? 401 : 403;
+    // 文言は locale で変わるので前綴りでは判定しない — 未ログインかどうかを
+    // 元の判定条件で直接確かめる（sessionUserId は cache() 済みで安い）。
+    const status = (await sessionUserId()) ? 403 : 401;
     return NextResponse.json({ ok: false, error: authz.error }, { status });
   }
 
@@ -42,14 +46,16 @@ export async function POST(request: Request): Promise<Response> {
   try {
     body = await request.json();
   } catch {
-    return badRequest("JSON で送信してください");
+    return badRequest(tr("settings.orderIntake.sendAsJson"));
   }
   const raw = (body as { numbers?: unknown } | null)?.numbers;
   if (!Array.isArray(raw) || raw.length === 0) {
-    return badRequest("numbers を指定してください");
+    return badRequest(tr("settings.orderIntake.specifyNumbers"));
   }
   if (raw.length > MAX_NUMBERS) {
-    return badRequest(`一度に指定できるのは ${MAX_NUMBERS} 件までです`);
+    return badRequest(
+      tr("settings.orderIntake.tooManyNumbersAtOnce", { max: MAX_NUMBERS }),
+    );
   }
 
   const skipped: string[] = [];
@@ -63,7 +69,8 @@ export async function POST(request: Request): Promise<Response> {
     }
     keys.set(number, key);
   }
-  if (keys.size === 0) return badRequest("注文請書番号が不正です");
+  if (keys.size === 0)
+    return badRequest(tr("sales.orderAcceptanceActions.invalidNumber"));
 
   const rows = await prisma.orderAcceptance.findMany({
     where: { OR: [...keys.values()] },

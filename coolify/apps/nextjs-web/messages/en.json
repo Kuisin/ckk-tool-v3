@@ -770,7 +770,20 @@
     "restoreFromSuspension": "Lift the suspension and restore access",
     "removeAllAssignedSites": "Remove all assigned sites",
     "siteHash": "Site #{id}",
-    "setAssignedSitesTo": "Set assigned sites to {names}"
+    "setAssignedSitesTo": "Set assigned sites to {names}",
+    "communicationFailed": "Could not connect",
+    "sendAsMultipartFormData": "Send as multipart/form-data",
+    "numericValue": "Number",
+    "time": "Time",
+    "multiSelect": "Multi select",
+    "businessDataLookup": "Business data lookup",
+    "attachment": "Attachment",
+    "everyoneSubjectLabel": "Everyone (all logged-in users)",
+    "unknownReason": "Unknown",
+    "workflowChangeRequest": "Workflow change",
+    "orderAcceptanceCancelRequest": "Order acceptance cancellation request",
+    "formRequest": "Form request",
+    "untitled": "Untitled"
   },
   "shell": {
     "appsLabel": "Apps",
@@ -1031,6 +1044,48 @@
     "WORK_ORDER_TYPE_LABEL": {
       "FROM_STOCK": "From stock",
       "MANUFACTURE": "Manufacture"
+    },
+    "INSPECTION_STATUS_LABEL": {
+      "PENDING": "Not performed",
+      "PASS": "Pass",
+      "FAIL": "Fail"
+    },
+    "LAP_OPTION_LABEL": {
+      "NONE": "None",
+      "INHOUSE": "Yes (in-house)",
+      "OSG": "Yes (OSG)",
+      "OTHER": "Yes (other maker)"
+    },
+    "INSPECTION_OPTION_LABEL": {
+      "NONE": "None",
+      "ONE": "1 point",
+      "ONE_R": "1 point (R precision)",
+      "TWO": "2 points",
+      "TWO_R": "2 points (OD etc. + R precision)",
+      "THREE": "3 points",
+      "THREE_R": "3 points (OD etc. + R precision)"
+    },
+    "STEP_TYPE_OPTION_LABEL": {
+      "NONE": "None",
+      "ROUGH": "Rough",
+      "ROUGH_15": "Rough, machining allowance φ1.5 or more",
+      "FINISH": "Finish",
+      "FINISH_15": "Finish, machining allowance φ1.5 or more",
+      "FORM": "Form shape"
+    },
+    "NECK_TYPE_OPTION_LABEL": {
+      "NONE": "None",
+      "STRAIGHT": "Straight",
+      "TAPER": "Taper"
+    },
+    "CYLINDER_TYPE_OPTION_LABEL": {
+      "NORMAL": "Normal",
+      "HIGH": "High precision"
+    },
+    "LD_LOCATION_OPTION_LABEL": {
+      "TIP": "Tip only",
+      "TIP_GASH": "Tip + gash",
+      "TIP_OUTER": "Tip + periphery"
     }
   },
   "status": {
@@ -1751,6 +1806,20 @@
     "ATTN": {
       "withBranch": "{branchName} — Attn: Contact",
       "contactOnly": "Attn: Contact"
+    },
+    "formResponse": {
+      "noResponsesToPrint": "There are no responses to print",
+      "bulkPrintedNote": "Bulk-printed responses as PDF ({count}",
+      "cappedSuffix": " · capped at {max}",
+      "partialSuffix": "_partial"
+    },
+    "inspectionRecord": {
+      "approvedStatus": "Pass (approved)",
+      "lotQuantity": "{quantity} pcs",
+      "footerNote": "* indicates a required item. Measured values are recorded per sample."
+    },
+    "stamp": {
+      "companySeal": "Company seal"
     }
   },
   "billing": {
@@ -1946,7 +2015,19 @@
       "stepTargetRequired": "Each step's target must be either an approval group or one or more custom approvers",
       "titleRequired": "Enter a title",
       "unknownCause": "Unknown cause",
-      "updateFailed": "Could not update"
+      "updateFailed": "Could not update",
+      "transferEmptyBody": "The content is empty",
+      "transferInvalidJson": "Could not read the file format (the JSON is broken). Check that the full text was pasted",
+      "transferWrongFormat": "The file format is incorrect",
+      "transferNotAFormFile": "This is not a form definition file",
+      "transferNewerFormat": "This file is a newer format (v{version}). Update the app before importing it",
+      "transferNoTitle": "There is no title",
+      "transferInvalidKind": "The form kind is invalid",
+      "transferInvalidFields": "The field definitions are invalid: {reason}",
+      "transferChecksumMismatch": "The checksum does not match. Some content may be missing",
+      "transferRelatedFieldWarning": "\"{label}\" references another form ({target}). If the destination has no form with the same code, nothing will be shown",
+      "transferRelatedFieldNoTarget": "\"{label}\" has no reference form configured",
+      "transferAttachmentNotCarried": "There is an attachment field. The files themselves are not carried over (only the field definition is)"
     },
     "tasksActions": {
       "loginRequired": "Please log in",
@@ -1986,6 +2067,26 @@
       "shareSettingsUpdatedNote": "Updated sharing settings ({count})",
       "titleRequired": "Enter a title",
       "updateFailed": "Could not update"
+    },
+    "formSchema": {
+      "oneLineText": "Short text",
+      "multiLineText": "Long text",
+      "richText": "Rich text",
+      "dropdownSingleSelect": "Dropdown (single)",
+      "subTableRepeatableRows": "Sub-table (repeatable rows)",
+      "relatedRecords": "Related records"
+    },
+    "tasksTabs": {
+      "workPlans": "Work plans",
+      "unansweredForms": "Unanswered forms",
+      "answeredForms": "Answered forms",
+      "completedRequests": "Completed requests",
+      "documentComments": "Document comments"
+    },
+    "formCompletion": {
+      "completedTitle": "{title} No.{recordNo} is complete",
+      "applicantMessage": "Requester: {name}",
+      "notifiedNote": "Notified completion ({count} people)"
     }
   },
   "production": {
@@ -2604,7 +2705,16 @@
       "stockOrderRequiresProduct": "Select a target product for a stock work order",
       "storageLocationNotFound": "The specified storage location was not found",
       "updateFailed": "Could not update the work order",
-      "workOrderNotFound": "The work order was not found"
+      "workOrderNotFound": "The work order was not found",
+      "stockWorkOrderOneLineOnly": "A from-stock work order can only be linked to one order line",
+      "duplicateOrderLineAllocation": "The same order line cannot be allocated more than once",
+      "allocationQuantityMustBePositiveInteger": "Enter an allocation quantity of 1 or more",
+      "orderLineNotAllocatable": "Cannot allocate a work order to order line {number} (cancelled or shipped)",
+      "orderLineProductUnresolvedForLine": "Cannot create a work order for order line {number} — product not resolved",
+      "allocationsMustShareProduct": "Order lines allocated to one work order must be the same product",
+      "allocationExceedsRemaining": "The allocation to order line {number} exceeds the remaining balance (order quantity {lineQuantity} − already allocated {otherAllocated} = remaining {remaining})",
+      "stockPlannedQuantityMustMatchAllocation": "For a from-stock work order, the planned quantity must match the allocated quantity",
+      "plannedQuantityBelowAllocationTotal": "The planned quantity is below the total allocation of {total} (you may add extra for defect margin, but it must be at least the total allocation)"
     },
     "designFileActions": {
       "cannotDelete": "Cannot delete",
@@ -2612,7 +2722,9 @@
       "deletedAudit": "Deleted drawing v{version}",
       "memoUpdatedAudit": "Updated the memo for drawing v{version}",
       "notFound": "The drawing was not found",
-      "referencedByRevisionRequest": "Cannot delete — a revision request references this as its original drawing"
+      "referencedByRevisionRequest": "Cannot delete — a revision request references this as its original drawing",
+      "lockedInUseByWorkOrder": "Cannot be changed — in use by a work order",
+      "lockedRequestDeliverable": "Cannot be deleted — it is a design request deliverable (the memo can still be edited)"
     },
     "inventoryActions": {
       "exceedsAvailable": "Exceeds the amount available to move (available {free} — reserved stock cannot be moved)",
@@ -2626,6 +2738,56 @@
       "transferNoteBase": "Stock transfer: {from} → {to}",
       "transferNoteWithRemark": "Stock transfer: {from} → {to} ({remark})",
       "transferredAudit": "Transferred {quantity} → {to}"
+    },
+    "workOrderFlowChanges": {
+      "pendingChangeAlreadyExists": "This work order already has a workflow change pending approval",
+      "approvalStartFailedNote": "Could not start the approval request: {error}",
+      "appliedApprovalStartFailedNote": "Applied the workflow change (failed to start approval request — {error})",
+      "approvalRequestFailedFallback": "Failed to submit the approval request",
+      "appliedWithApprovalNote": "Applied the workflow change and submitted for approval ({summary})",
+      "requestedApprovalNote": "Submitted the workflow change for approval ({summary})",
+      "notFound": "The workflow change was not found",
+      "alreadyProcessed": "This change has already been processed",
+      "applyFailedShort": "Failed to apply",
+      "applyFailedNote": "Failed to apply the workflow change ({errors})",
+      "approvedAlreadyAppliedNote": "Approved the workflow change (already applied — {summary})",
+      "appliedNote": "Applied the workflow change ({summary})",
+      "unknownChangeKind": "Unknown change kind ({kind})",
+      "statusLabel": {
+        "appliedPending": "Applied · Pending approval",
+        "rejectedApplied": "Sent back (applied)",
+        "PENDING": "Pending approval",
+        "APPLIED": "Applied",
+        "REJECTED": "Sent back",
+        "CANCELLED": "Cancelled",
+        "FAILED": "Failed"
+      },
+      "stepsCount": "{count} steps",
+      "quantityCount": "Quantity {count}",
+      "kindLabel": {
+        "ADD_BRANCH": "Add branch",
+        "UPDATE_BRANCH": "Update branch",
+        "REMOVE_BRANCH": "Remove branch"
+      }
+    },
+    "workOrderLinks": {
+      "precedingWorkOrderNotFound": "Preceding work order #{number} was not found",
+      "workOrderNotFound": "Work order #{number} was not found",
+      "cannotLinkToACancelled": "Cannot link to a cancelled work order",
+      "cannotAddAPrecedingLink": "Cannot add a preceding link to a work order that has already started (the received quantity was fixed at start)",
+      "failedToAddTheLink": "Failed to add the link",
+      "linkedPrecedingWorkOrder": "Linked preceding work order #{number}",
+      "linkNotFound": "The link was not found",
+      "cannotUnlinkACompleted": "Cannot unlink a completed work order",
+      "unlinkedPrecedingWorkOrder": "Unlinked preceding work order #{number}"
+    },
+    "designFilesUpload": {
+      "sendAsMultipartFormData": "Send as multipart/form-data",
+      "targetProductNotSpecified": "The target product is not specified",
+      "invalidOrderingCustomer": "The ordering customer specified is invalid",
+      "invalidDesignRequest": "The design request specified is invalid",
+      "selectTheDrawingFile": "Select the drawing file",
+      "isTooLargeMax20mb": "{name} is too large (up to 20MB per file)"
     }
   },
   "purchase": {
@@ -2797,7 +2959,25 @@
   },
   "settings": {
     "aiProvider": {
-      "aIProvider": "AI provider"
+      "aIProvider": "AI provider",
+      "poExtract": {
+        "timeout": "The AI did not respond in time (it may be busy). Please wait a moment and try again.",
+        "connectFailedLog": "[po-extract] Could not connect to {endpoint}",
+        "unreachable": "Could not connect to the AI service. Please try again later.",
+        "notSupported": "The AI service does not support this feature (an update is required).",
+        "processingFailed": "The AI service failed to process the request. Please try again later.",
+        "unreadableResponse": "Could not read the AI's response.",
+        "errors": {
+          "auth": "The AI provider rejected the API token. Check System settings → AI provider.",
+          "modelNotFound": "The specified model does not exist on the AI provider. Check the model name in System settings → AI provider.",
+          "rateLimit": "The AI provider's usage limit has been reached. Please try again later.",
+          "unreachable": "Could not connect to the AI provider. Please contact your system administrator.",
+          "badSchema": "The AI provider does not support this format. Please try a different model.",
+          "notConfigured": "The AI provider is not configured. Check System settings → AI provider.",
+          "noVision": "The specified model cannot read images. Specify an image-capable model in System settings → AI provider.",
+          "upstream": "An error occurred at the AI provider. Please try again later."
+        }
+      }
     },
     "kiosk": {
       "maximumSessionLength": "Maximum session length",
@@ -3061,7 +3241,10 @@
       "thisAccountStillUsesTheDefault": "This account still uses the default password (admin), so anyone can log in. Change it now, or disable it as described below.",
       "theInitialAdministratorIsDisabled": "The initial administrator is disabled",
       "youCanDisableTheInitialAdministrator": "You can disable the initial administrator",
-      "assignAdministratorRightsToAReal": "Assign administrator rights to a real user first"
+      "assignAdministratorRightsToAReal": "Assign administrator rights to a real user first",
+      "retiredMessage": "The initial administrator has been disabled. Use your own administrator account.",
+      "blockedNoOtherAdminMessage": "Assign administrator rights (system:ADMIN) to a real user before disabling this account. Disabling it now would leave no administrator, and there is no screen to restore permissions — recovery would require psql.",
+      "readyToRetireMessage": "There are {count} other administrators. The initial administrator is just a bootstrap account, so we recommend disabling it."
     },
     "codeExpressionEditor": {
       "availableVariablesClickToInsert": "Available variables (click to insert)",
@@ -3409,7 +3592,8 @@
       "linkCode": "Link code",
       "cannotShowTheSampleTheShared": "Cannot show the sample (the shared-device URL is not set)",
       "sampleOfLabel": "Sample of {label}",
-      "linkThisDisplay": "Link display: {name}"
+      "linkThisDisplay": "Link display: {name}",
+      "screenNumber": "Screen {n}"
     },
     "orderIntake": {
       "queued": "Queued",
@@ -3437,7 +3621,16 @@
       "imported": "Imported",
       "extracting": "Extracting",
       "noDocument": "No document",
-      "reImport": "Re-import"
+      "reImport": "Re-import",
+      "fileNotSpecified": "No file was specified",
+      "unsupportedFileFormat": "Unsupported file format (PDF / PNG / JPG / WEBP)",
+      "intakeProcessingFailed": "Intake processing failed",
+      "sendAsJson": "Send as JSON",
+      "specifyNumbers": "Specify numbers",
+      "tooManyNumbersAtOnce": "You can specify up to {max} at a time",
+      "noFileWasSpecified": "No file specified",
+      "unsupportedFileFormatPdfPngJpg": "Unsupported file format (PDF / PNG / JPG / WEBP)",
+      "failedToSaveToTheIntake": "Could not save to the intake folder"
     },
     "portal": {
       "theAccountWasCreatedDisabledBy": "The account was created (disabled by default)",
@@ -3786,7 +3979,9 @@
       "auditPinReset": "Reset the PIN",
       "pinResetFailed": "Could not reset the PIN",
       "auditPinUnlocked": "Unlocked the PIN",
-      "pinUnlockFailed": "Could not unlock the PIN"
+      "pinUnlockFailed": "Could not unlock the PIN",
+      "noCardsSpecifiedForPrint": "No cards specified for printing",
+      "noCardsToPrint": "There are no cards to print"
     },
     "portalActions": {
       "featureDisabled": "The partner portal is not available in this environment",
@@ -3816,7 +4011,9 @@
       "specifyFolder": "Specify a folder",
       "invalidPath": "Invalid path",
       "grantSaveFailed": "Could not save the permission",
-      "grantDeleteFailed": "Could not delete the permission"
+      "grantDeleteFailed": "Could not delete the permission",
+      "uploadPermissionDenied": "You do not have permission to upload to this folder",
+      "deletePermissionDenied": "You do not have permission to delete this file"
     },
     "notificationEmailActions": {
       "saveFailedLog": "[notification-email] Failed to save"
@@ -3884,6 +4081,66 @@
       "toolTypeSaveFailed": "Could not save the tool type",
       "usageCheckFailed": "Could not check usage",
       "valueNotNumeric": "The value for \"{label}\" is not numeric: {value}"
+    },
+    "deviceProfileCore": {
+      "suspectedEmulator": "Possible emulator",
+      "suspectedUnofficialRom": "Possible unofficial ROM (test-keys)",
+      "usbDebuggingEnabled": "USB debugging (ADB) enabled",
+      "developerOptionsEnabled": "Developer options enabled",
+      "notRegisteredAsManagedDevice": "Not registered as a managed device"
+    },
+    "portalMail": {
+      "viewingContext": "Viewing \"{context}\"",
+      "login": "Login",
+      "ckkVerificationCode": "[CKK] Verification code",
+      "theVerificationCodeForWhat": "The verification code for {what} is as follows.",
+      "validFor10MinutesEnterIt": "This code is valid for 10 minutes. Enter it on the screen.",
+      "ifThisIsUnexpectedDiscard": "If you did not request this, please discard this email.",
+      "doNotShareTheCodeWith": "Do not share this code with anyone."
+    },
+    "userSuspensionCore": {
+      "youCannotSuspendYourself": "You cannot suspend yourself. Ask another admin to do it.",
+      "theLastAdminCannotBe": "The last admin cannot be suspended. Assign admin rights to another user first.",
+      "thisUserIsAlready": "This user is already suspended.",
+      "thisUserIsNot": "This user is not suspended.",
+      "aScheduledReleaseDate": "A scheduled release date/time is required for a temporary suspension",
+      "theScheduledReleaseDate": "The scheduled release date/time is invalid",
+      "pleaseSpecifyAFuture": "The scheduled release date/time must be in the future",
+      "suspendedIndefinite": "Suspended (indefinite)",
+      "suspendedExpiredWillRestore": "Suspended (expired — will be restored automatically soon)",
+      "suspendedTemporary": "Suspended (temporary)"
+    },
+    "portalLinks": {
+      "theExpiryMustBeBetween": "Specify an expiry between 1 and 180 days",
+      "aVerifiedLinkRequiresAn": "A verified link requires a destination account or address",
+      "theUseCountMustBe": "Specify a use count of 1 or more"
+    },
+    "privilegedAccessCore": {
+      "enterAStartDateAndTime": "Enter a start date and time",
+      "enterAnEndDateAndTime": "Enter an end date and time",
+      "endMustBeAfterStart": "The end date and time must be after the start",
+      "startCannotBeInThePast": "The start date and time cannot be in the past",
+      "endMustBeWithinDays": "The end date and time must be within {days} days of the request",
+      "durationMustBeWholeMinutes": "Specify the duration as a whole number of minutes",
+      "durationOutOfRange": "Specify a duration between {min} and {max} minutes"
+    },
+    "trialPricingCriteria": {
+      "enterACriterionName": "Enter a criterion name",
+      "enterALabel": "Enter a label",
+      "idMustBeAlphanumericHyphens": "The ID may only contain letters, numbers, hyphens and underscores (starting with a letter or number)",
+      "specifyAtLeastOneKey": "Specify at least one key column"
+    },
+    "aiProviderCore": {
+      "baseUrlMustStartWithHttp": "The base URL must start with http:// or https://",
+      "tokenAbsent": "Not set",
+      "tokenSet": "Set (****{last4}) / {status}",
+      "baseUrlHostNotAllowed": "The base URL for this provider must be one of: {hosts}",
+      "baseUrlHostBlocked": "That host cannot be specified"
+    },
+    "avatarsRoute": {
+      "sendAsMultipartFormData": "Send as multipart/form-data",
+      "selectAnImageFile": "Select an image file",
+      "imageSizeMustBe5mb": "The image size must be 5MB or less"
     }
   },
   "portal": {
@@ -3891,7 +4148,8 @@
       "identityCheck": "Identity check"
     },
     "documents": {
-      "document": "Document"
+      "document": "Document",
+      "noneToShow": "There are no {document} to show."
     },
     "forms": {
       "thereAreNoResponsesToShow": "There are no responses to show.",
@@ -4563,7 +4821,17 @@
       "productCreated": "Created product \"{code}\"",
       "productDeleted": "Deleted product \"{name}\"",
       "productDisabled": "Disabled product \"{name}\"",
-      "productEnabled": "Enabled product \"{name}\""
+      "productEnabled": "Enabled product \"{name}\"",
+      "itemValidation": {
+        "required": "{name} is required",
+        "notANumber": "Enter {name} as a number",
+        "belowMin": "Enter {name} of {min} or more",
+        "aboveMax": "Enter {name} of {max} or less",
+        "notABoolean": "Enter {name} as true or false",
+        "notInOptions": "Select {name} from the options",
+        "notADate": "Enter {name} as a date",
+        "invalidFormat": "{name} has an invalid format"
+      }
     },
     "storageLocations": {
       "editTheStorageLocation": "Edit the storage location",
@@ -4717,7 +4985,17 @@
     "inspectionTemplateIoModal": {
       "exportSelectedCount": "This exports the {count} selected item(s).",
       "importedCount": "Imported {count} item(s)",
-      "skippedCount": "{count} item(s) could not be imported"
+      "skippedCount": "{count} item(s) could not be imported",
+      "selectAFile": "Select a file",
+      "fileSizeMax10Mb": "The file must be 10MB or smaller",
+      "couldNotReadExcel": "Could not read the Excel file: {reason}",
+      "unknownFormat": "Unknown format",
+      "noImportableTemplates": "No importable inspection sheets were found",
+      "couldNotReadAsJson": "Could not read as JSON",
+      "unsupportedFormat": "This format cannot be imported ({reason}). Use the exported file as-is.",
+      "formatMismatch": "Format mismatch",
+      "noTemplatesToExport": "No exportable inspection sheets were found",
+      "relatedStepNotFound": "The related step \"{code}\" was not found"
     },
     "bpBaseFields": {
       "kanaPlaceholder": "Example: ABC Manufacturing"
@@ -5082,7 +5360,54 @@
       "selectAnApprovalGroup": "Select an approval group",
       "setAtLeastOneApprovalStep": "Set at least one approval step",
       "statusUpdateFailed": "Could not update the status",
-      "toggleFailed": "Could not toggle"
+      "toggleFailed": "Could not toggle",
+      "stepMissingName": "Step {steps}: Enter a name",
+      "stepMissingGroupIndividual": "Step {steps}: Select an approval group, or choose at least one approver",
+      "stepMissingGroup": "Step {steps}: Select an approval group"
+    },
+    "approvalConditions": {
+      "totalAmount": "Total amount",
+      "yen": "JPY",
+      "deliveryMethod": "Delivery method",
+      "assignedPlant": "Assigned site",
+      "type": "Type",
+      "plannedQuantity": "Planned quantity",
+      "pcs": "pcs",
+      "lineCount": "Line count",
+      "items": "items",
+      "trigger": "Trigger",
+      "requestKind": "Request kind",
+      "priority": "Priority",
+      "formKind": "Form kind",
+      "survey": "Survey",
+      "requestOrReport": "Request / report",
+      "workOrderType": "Work order type",
+      "workOrderPlannedQuantity": "Work order planned quantity",
+      "orderAcceptanceTotalAmount": "Order acceptance total amount",
+      "orderAcceptanceDeliveryMethod": "Order acceptance delivery method",
+      "gte": "is at least",
+      "lte": "is at most",
+      "eq": "equals",
+      "ne": "does not equal",
+      "noConditions": "No conditions (matches every document)",
+      "conditionJoiner": " and ",
+      "invalidField": "Condition {no}: invalid field",
+      "invalidComparisonForField": "Condition {no}: {label} does not support this comparison",
+      "enterNumberForField": "Condition {no}: enter a numeric value for {label}",
+      "selectValueForField": "Condition {no}: select a value for {label}",
+      "numberConditionSummary": "{label} {op} {value}",
+      "selectConditionSummary": "{label} {op} \"{value}\""
+    },
+    "inspectionTemplateExcel": {
+      "sheetName": "Inspection sheet"
+    },
+    "inspectionTemplateImage": {
+      "invalidTemplateId": "Invalid template ID"
+    },
+    "approvalMembership": {
+      "bothStartAndEndRequired": "A time-limited member requires both a start and end date/time",
+      "invalidDateTimeFormat": "The date/time format is invalid",
+      "endMustBeAfterStart": "The end date/time must be after the start"
     }
   },
   "manual": {
@@ -5100,6 +5425,21 @@
   "api": {
     "forms": {
       "thisFormSFieldsHaveNot": "This form's fields have not been published yet"
+    },
+    "xlsxRead": {
+      "zipEndNotFound": "Could not find the end of the ZIP archive",
+      "zipDirectoryCorrupt": "The ZIP directory is corrupt",
+      "unsupportedCompression": "Unsupported compression method ({method}): {name}",
+      "noWorksheet": "No worksheet was found"
+    },
+    "documentPdf": {
+      "notIssuedYet": "Cannot view a PDF for a {docType} that has not been issued yet"
+    },
+    "matchAliases": {
+      "failedToSaveLearning": "[match-aliases] Failed to save learning {targetType}/{targetId}"
+    },
+    "realtimeEvents": {
+      "payloadTooLarge": "The realtime payload is too large ({bytes} > {max} bytes)"
     }
   },
   "f": {
@@ -5240,6 +5580,23 @@
     },
     "approvalTrailList": {
       "approvalRecord": "Approval record"
+    },
+    "engine": {
+      "flowNotConfigured": "The approval flow for {doc} is not configured (set it up in Approval settings MS0B)",
+      "formFlowNotConfigured": "This form's approval flow is not configured (add a step in the form's Approval tab)",
+      "noApproversForSteps": "Some steps have no approvers set ({steps}). Specify them in the form's Approval tab",
+      "stepOrdinal": "Step {n}",
+      "approvalRequestTitle": "{stepName} request for {doc} {targetId}",
+      "requesterMessage": "Requester: {name}",
+      "staleApprovalRequest": "{targetId} still has an approval request from a deleted document (number reuse). Contact an administrator",
+      "noApprovalPermission": "You do not have approval permission",
+      "noPendingRequest": "There is no pending approval request",
+      "noApprovalPermissionDelegateNotApplicable": "You do not have approval permission (no applicable delegation either)",
+      "notApproverForStep": "You are not an approver for this step",
+      "alreadyApprovedStep": "This step has already been approved",
+      "alreadyProcessed": "This request has already been processed",
+      "resultApprovedTitle": "{doc} {targetId} was approved",
+      "resultRejectedTitle": "{doc} {targetId} was sent back"
     }
   },
   "auth": {
@@ -5637,6 +5994,11 @@
     "summaryCharts": {
       "donutSliceLabel": "{label} {count} ({percent}%)",
       "noResponses": "No responses"
+    },
+    "formSummaryCore": {
+      "hourBucket": "{hour}:00",
+      "attachmentNote": "{files} files total across {answered} responses",
+      "tableNote": "{rows} rows total (avg {avg} per response)"
     }
   },
   "layout": {
@@ -6304,7 +6666,8 @@
       "orderLinesCreatedMessage": "Created order lines {numbers}",
       "priceMismatchCount": "{count} price mismatch(es)",
       "priceMismatchExpected": "Price mismatch (price list: {expected})",
-      "unenteredCount": "{count} not entered"
+      "unenteredCount": "{count} not entered",
+      "productSummaryAndMore": "{first} and {count} more"
     },
     "orderAcceptanceIntakeTable": {
       "addedQueuedForExtraction": "Added {count} item(s) to the list. AI extraction will run in order after this",
@@ -6507,6 +6870,47 @@
       "purchaseHistoryFetchFailed": "Could not fetch the purchase history",
       "saveFailed": "Could not save the price estimate",
       "toolTypeNotDefined": "Tool type \"{toolType}\" is not defined"
+    },
+    "intakeReview": {
+      "customer": "Customer",
+      "customerOrderRef": "Customer order ref.",
+      "orderDate": "Order date",
+      "items": "Line items",
+      "itemProductLabel": "Line {row}: Product",
+      "itemUnitPriceLabel": "Line {row}: Unit price",
+      "readOwnCompanyAsCustomerHint": "Our own company name \"{name}\" was read as the customer (the document is addressed to us). The issuer/seal side is the actual customer — check the document and re-select.",
+      "customerCandidatesHint": "There are {count} business partners similar to \"{name}\". Candidates appear in the customer field on the edit screen — choose the correct one.",
+      "customerNoMatchHint": "No business partner matches \"{name}\". Re-select one, or register it in the master (add spelling variants to the AI match names).",
+      "customerNameNotReadHint": "Could not read a company name from the document. Check the document and select one.",
+      "orderRefNotReadHint": "Could not read the order number from the document",
+      "orderDateNotReadHint": "Could not read the date from the document",
+      "noItemsReadHint": "No line items could be read. Check the document and add them.",
+      "productNameNotReadHint": "Could not read the product name. Check the document and select the product.",
+      "productCandidatesHint": "There are {count} products similar to \"{name}\". Candidates appear on this row on the edit screen — choose the correct one.",
+      "productNoMatchHint": "No product matches \"{name}\". Re-select a product, or register it in the product master.",
+      "unitPriceNotReadHint": "Could not read the unit price. Check it against the price list and enter it."
+    },
+    "trialPricingSettings": {
+      "roundBar": "Round bar",
+      "cylinder": "Cylinder",
+      "ohType": "OH type",
+      "highestPriceWithinThe": "Highest unit price (within period)",
+      "latestUnitPrice": "Latest unit price",
+      "averageUnitPriceWithin": "Average unit price (within period)"
+    },
+    "orderAcceptanceReadiness": {
+      "customerNotIdentified": "Customer not identified",
+      "directToUserButEndUserNot": "Direct to end user, but no end user specified",
+      "noLineItems": "There are no line items",
+      "lineProductNotIdentified": "Line {rows}: Product not identified",
+      "lineUnitPriceNotEntered": "Line {rows}: Unit price not entered"
+    },
+    "orderLineCore": {
+      "confirmedLineCannotBeChanged": "A confirmed order line cannot be changed",
+      "pendingApprovalLineCannotBeChanged": "An order line pending approval cannot be changed",
+      "onlyDraftAcceptanceEditable": "Only a draft order acceptance can be edited",
+      "productNotIdentified": "Product not identified",
+      "unitPriceNotEntered": "Unit price not entered"
     }
   },
   "shipping": {
@@ -6713,7 +7117,10 @@
     },
     "designFileViewer": {
       "noPreview": "No preview",
-      "enlarge": "Enlarge {filename}"
+      "enlarge": "Enlarge {filename}",
+      "formatCannotBeDisplayedHere": "{format} cannot be displayed here (please download it to view)",
+      "heicMayNotDisplayInSomeBrowsers": "HEIC may not display in some browsers — please download it to view",
+      "thisFormatCannotBeDisplayed": "This format cannot be displayed (please download it to view)"
     },
     "documentLinkModal": {
       "insertADocumentLink": "Insert a document link",
@@ -6877,5 +7284,235 @@
     "copyableValue": {
       "copyX": "Copy {name}"
     }
+  },
+  "attachmentsUpload": {
+    "sendAsMultipartFormData": "Send as multipart/form-data",
+    "recordTypeCannotHaveAttachments": "Attachments are not supported for this record type",
+    "attachmentTargetRecordNotFound": "The record to attach to was not found",
+    "noFileSpecified": "No file specified"
+  },
+  "displaysAdmin": {
+    "noPageSelected": "(No page selected)",
+    "metabaseDashboard": "Metabase dashboard",
+    "externalPage": "External page"
+  },
+  "workflowActions": {
+    "unknownStepsInComposition": "Contains steps that do not exist",
+    "duplicateStepsInComposition": "The same step appears more than once",
+    "fromStockAllowedSteps": "The only steps a from-stock work order can use are Product issue (stock) and Pre-shipment inspection",
+    "fromStockRequiresStockIssue": "A from-stock work order requires the Product issue (stock) step",
+    "stockIssueOnlyForFromStock": "Product issue (stock) is only for from-stock (FROM_STOCK) work orders",
+    "workOrderNotApprovedOrInProgress": "The work order is not approved or in progress",
+    "lotSlipCodeRequired": "Enter a lot/slip code",
+    "anotherUserStartedFirst": "Another user already started it",
+    "auditStepStarted": "Started the step (step {sortOrder})",
+    "stepNotInProgress": "The step is not in progress",
+    "defectBreakdownRequired": "Enter the defect breakdown (type and detail)",
+    "invalidDefectType": "Invalid defect type",
+    "stepAlreadyCompleted": "This step has already been completed",
+    "auditStepCompleted": "Completed the step (good {success}/{input})",
+    "stepNotCompleted": "The step has not been completed",
+    "rollbackReasonRequired": "Enter a reason for the rollback",
+    "cannotRollbackAfterInventoryPosting": "Cannot roll back because the work order is already completed (inventory has been posted). Correct quantities using an inventory stocktake adjustment",
+    "cannotRollbackDownstreamStarted": "Cannot roll back because a downstream step has already started (roll back the downstream step first)",
+    "auditStepAborted": "Interrupted the step (roll back): {reason}",
+    "auditStepRolledBack": "Rolled back the step: {reason}",
+    "branchSourceStepNotFound": "The branch source step was not found",
+    "branchSourceStepNotCompleted": "The branch source step has not been completed",
+    "branchQuantityExceedsAvailable": "The branch quantity ({quantity}) exceeds the available branchable quantity ({available})",
+    "mergeTargetStepNotFound": "The merge target step was not found",
+    "mergeTargetNotPending": "The merge target has already started",
+    "mergeTargetCannotBeBranchStep": "Cannot select a branch series step as the merge target",
+    "auditBranchAdded": "Added a branch ({count} steps, quantity {quantity}, {termination})",
+    "terminationMerge": "Merges",
+    "terminationSemiFinishedStock": "To semi-finished stock",
+    "terminationProductStock": "To product stock",
+    "branchSeriesNotFound": "The branch series was not found",
+    "branchTerminalStepNotFound": "The branch's terminal step was not found",
+    "branchQuantityLockedAfterStart": "Cannot change the quantity of a branch that has already started",
+    "terminationChangeOnlyWhilePending": "The destination can only be changed while the terminal step has not started",
+    "branchHeadStepNotFound": "The branch's first step was not found",
+    "notABranchSeriesStep": "This is not a branch series step",
+    "cannotDeleteBranchWithStartedSteps": "Cannot delete a branch that includes a step that has already started",
+    "auditBranchDeleted": "Deleted a branch ({count} steps)",
+    "auditBranchUpdated": "Updated the branch (quantity {quantity}, {termination})"
+  },
+  "aiKeywords": {
+    "enterANameBeforeRunning": "Enter a name before running this",
+    "sendAsJson": "Send this as JSON",
+    "candidateGenerationFailed": "Could not generate candidates"
+  },
+  "orderAcceptanceActions": {
+    "targetNotFound": "The target order acceptance was not found",
+    "onlyCompletedCanRequestCancel": "Only a confirmed order acceptance can request a cancellation",
+    "cannotCancelShippedLines": "Cannot cancel because {count} order line(s) have already shipped",
+    "allLinesAlreadyCancelled": "All order lines have already been cancelled",
+    "cancelRequestAlreadyPending": "This order acceptance already has a pending cancellation request",
+    "cancelRequestedNote": "Requested approval to cancel (reason: {reason})",
+    "targetCancelRequestNotFound": "The cancellation request was not found",
+    "cancelRequestNotPending": "This request has already been processed",
+    "chainCancelNote": "Chain cancellation triggered by cancelling order acceptance {number}",
+    "cancelApplyFailed": "Could not apply the cancellation"
+  },
+  "privilegedAccessGate": {
+    "unknownOperation": "Unknown privileged operation: {key} (register it in lib/privileged-operations.ts)",
+    "operationRequiresApprovalSy0g": "This operation requires approval ({label}). Request it from Privileged access (SY0G)"
+  },
+  "audit": {
+    "emptyArray": "(None)",
+    "fieldLabels": {
+      "id": "ID",
+      "status": "Status",
+      "isActive": "Enabled",
+      "isEnabled": "Enabled",
+      "notes": "Notes",
+      "note": "Memo",
+      "name": "Name",
+      "nameJa": "Name",
+      "nameEn": "Name (English)",
+      "code": "Code",
+      "description": "Description",
+      "sortOrder": "Sort order",
+      "createdAt": "Created at",
+      "updatedAt": "Updated at",
+      "createdBy": "Created by",
+      "updatedBy": "Updated by",
+      "customerBpId": "Customer",
+      "supplierBpId": "Supplier",
+      "shipToBpId": "Ship-to",
+      "endUserBpId": "End user",
+      "plantId": "Site",
+      "assignedPlantId": "Assigned site",
+      "fromPlantId": "From site",
+      "salesRepId": "Sales rep",
+      "assigneeId": "Assignee",
+      "userId": "User",
+      "quantity": "Quantity",
+      "plannedQuantity": "Planned quantity",
+      "unitPrice": "Unit price",
+      "baseUnitPrice": "Base unit price",
+      "amount": "Amount",
+      "totalAmount": "Total amount",
+      "subtotal": "Subtotal",
+      "taxAmount": "Tax",
+      "discountAmount": "Discount amount",
+      "currency": "Currency",
+      "unit": "Unit",
+      "validFrom": "Valid from",
+      "validUntil": "Valid until",
+      "deliveryDate": "Delivery date",
+      "desiredAt": "Requested date",
+      "shippedAt": "Shipped date",
+      "deliveredAt": "Delivered date",
+      "receivedAt": "Received date",
+      "orderedAt": "Order date",
+      "approvedAt": "Approved at",
+      "requestedAt": "Requested at",
+      "completedAt": "Completed at",
+      "startedAt": "Started at",
+      "cancelledAt": "Cancelled at",
+      "productId": "Product",
+      "materialId": "Material",
+      "materialTypeId": "Material type",
+      "diameterMm": "Diameter",
+      "lengthMm": "Overall length",
+      "workOrderId": "Work order",
+      "orderLineId": "Order line",
+      "lotNumber": "Lot number",
+      "processStepId": "Step",
+      "executionLocation": "Execution location",
+      "inputQuantity": "Received",
+      "outputSuccessQuantity": "Good",
+      "roleId": "Role",
+      "permissionCode": "Permission code",
+      "action": "Action",
+      "scope": "Scope",
+      "approvalStatus": "Approval status",
+      "reason": "Reason",
+      "fileId": "File",
+      "fileName": "File name",
+      "storageKey": "Storage key",
+      "mimeType": "Type"
+    },
+    "tableFieldLabels": {
+      "kiosk_devices": {
+        "name": "Device name",
+        "location": "Location",
+        "defaultWorkLocationId": "Default work location"
+      },
+      "display_devices": {
+        "name": "Display name",
+        "location": "Location",
+        "contentType": "Content type",
+        "refreshIntervalSec": "Refresh interval (sec)",
+        "scalePercent": "Display scale (%)",
+        "machineId": "Connected machine",
+        "screenIndex": "Screen number",
+        "image": "Image",
+        "fit": "Image fit",
+        "contentConfig": {
+          "page": "Page shown",
+          "fit": "Image fit",
+          "fileId": "Image file",
+          "url": "URL",
+          "dashboardId": "Dashboard"
+        }
+      },
+      "users": {
+        "name": "Name",
+        "isActive": "Active"
+      }
+    },
+    "valueLabels": {
+      "contentType": {
+        "APP_PAGE": "App page",
+        "METABASE": "Aggregation dashboard",
+        "URL": "External page",
+        "IMAGE": "Image"
+      },
+      "fit": {
+        "contain": "Show all (contain)",
+        "cover": "Fill the screen (cover)",
+        "fill": "Stretch (fill)"
+      },
+      "page": {
+        "production": "Production status",
+        "pending": "Unprocessed / awaiting arrangement",
+        "shipping": "Shipping schedule",
+        "quality": "Quality / defects",
+        "announcement": "Announcements"
+      }
+    }
+  },
+  "inspectionTemplateIo": {
+    "emptyFile": "The file is empty",
+    "missingHeaders": "Missing headers ({names}). Please download and use the template",
+    "emptyTemplateCode": "The inspection sheet code is empty",
+    "emptyItemName": "The item name is empty",
+    "emptyTemplateName": "The inspection sheet name for code {code} is empty",
+    "samplingValueNotNumber": "The sampling count is not a number",
+    "toleranceNotNumber": "The lower/upper limit is not a number",
+    "requiredOverrideMustBeYesNo": "Enter required/allow-override as \"Yes\" or \"No\"",
+    "acceptBoolMustBeYesNo": "Enter the pass/fail value as \"Yes\" or \"No\"",
+    "nominalToleranceNotNumber": "The nominal value/tolerance is not a number",
+    "noItems": "{code}: There are no inspection items"
+  },
+  "intakeCore": {
+    "quantityNotReadableNote": "Quantity not readable — needs review"
+  },
+  "notificationEmail": {
+    "digestSubject": "[CKK] {total} unread notifications"
+  },
+  "richTextCore": {
+    "invalidLinkHref": "The link destination format is invalid",
+    "linkHrefDescribe": "Link destination",
+    "unknownReason": "Unknown reason",
+    "invalidFormat": "Invalid format: {reason}",
+    "nestingTooDeep": "Nesting is too deep",
+    "tooLong": "The text is too long (up to {max} characters)"
+  },
+  "trialPricingEngine": {
+    "notANumber": "Not a number",
+    "expressionIsEmpty": "The expression is empty"
   }
 }

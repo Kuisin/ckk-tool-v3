@@ -12,15 +12,16 @@ import { IconListDetails } from "@tabler/icons-react";
 import { useTranslations } from "next-intl";
 import { updateProductItemDefs } from "@/app/(dashboard)/settings/actions";
 import { SettingsReorderableList } from "@/components/settings/SettingsReorderableList";
-import { PRODUCT_FIELD_TYPES, type ProductItemDef } from "@/lib/product-types";
+import {
+  type ProductItemDef,
+  productFieldTypeLabel,
+} from "@/lib/product-types";
 
 const BASE = "/settings/product-items";
 
-const typeLabel = (v: string) =>
-  PRODUCT_FIELD_TYPES.find((o) => o.value === v)?.label ?? v;
-
 export function ItemDefsListPanel({ initial }: { initial: ProductItemDef[] }) {
   const tr = useTranslations();
+  const typeLabel = (v: string) => productFieldTypeLabel(v, tr);
   return (
     <SettingsReorderableList
       addLabel={tr("common.addAnItem")}

@@ -1,4 +1,5 @@
 import { notFound } from "next/navigation";
+import { getTranslations } from "next-intl/server";
 import { BootstrapAdminCard } from "@/components/settings/BootstrapAdminCard";
 import { UserDetail } from "@/components/settings/UserDetail";
 import { UserSuspensionPanel } from "@/components/settings/UserSuspensionPanel";
@@ -23,6 +24,7 @@ export default async function UserDetailPage({
 }) {
   const denied = await requireAppRead("user-management");
   if (denied) return denied;
+  const tr = await getTranslations();
   const { id } = await params;
   const [
     user,
@@ -56,12 +58,15 @@ export default async function UserDetailPage({
 
   // 初期管理者の詳細を開いたときだけカードを出す。判定は純関数に委ねる
   // （サーバー側 disableBootstrapAdmin と同じ関数）。
-  const bootstrapState = bootstrapAdminState({
-    username: user.username,
-    isActive: user.isActive,
-    passwordChangeRequired: bootstrap?.passwordChangeRequired ?? false,
-    otherActiveAdminCount: bootstrap?.otherActiveAdminCount ?? 0,
-  });
+  const bootstrapState = bootstrapAdminState(
+    {
+      username: user.username,
+      isActive: user.isActive,
+      passwordChangeRequired: bootstrap?.passwordChangeRequired ?? false,
+      otherActiveAdminCount: bootstrap?.otherActiveAdminCount ?? 0,
+    },
+    tr,
+  );
 
   return (
     <>

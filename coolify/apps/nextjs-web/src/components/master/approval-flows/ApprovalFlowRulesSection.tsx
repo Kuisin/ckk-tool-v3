@@ -50,10 +50,10 @@ import { ModalShell, openConfirm } from "@/components/ui/modals";
 import { FormSection, LocalizedTextInput } from "@/components/ui/shells";
 import { useIsMobile } from "@/hooks/useViewport";
 import {
-  APPROVAL_CONDITION_FIELDS,
-  CONDITION_OP_LABEL,
+  approvalConditionFields,
   type ConditionOp,
   conditionFieldDef,
+  conditionOpLabels,
   describeConditions,
   type FlowCondition,
   opsForType,
@@ -62,6 +62,7 @@ import {
 import { type ApprovalMode, validateFlowSteps } from "@/lib/approval-flow";
 import type { ApprovalTargetType } from "@/lib/approval-targets";
 import { approvalModeOptions } from "@/lib/enum-labels";
+import type { Locale } from "@/lib/i18n";
 import type { GroupOption } from "./ApprovalFlowEditor";
 
 /** 一覧に出すルール（サーバーで直列化した形）。 */
@@ -120,9 +121,13 @@ const emptyStep = (index: number): StepDraft => ({
 function toConditions(
   drafts: ConditionDraft[],
   targetType: ApprovalTargetType,
+  locale: Locale,
+  tr: (key: string, values?: Record<string, string | number | Date>) => string,
 ) {
   return drafts.map((d): FlowCondition => {
-    const def = d.field ? conditionFieldDef(targetType, d.field) : undefined;
+    const def = d.field
+      ? conditionFieldDef(targetType, d.field, locale, tr)
+      : undefined;
     const value =
       def?.type === "number"
         ? typeof d.numberValue === "number"
@@ -147,7 +152,8 @@ export function ApprovalFlowRulesSection({
   dynamicOptions: ConditionDynamicOptions;
 }) {
   const tr = useTranslations();
-  const locale = useLocale();
+  const locale = useLocale() as Locale;
+  const opLabels = conditionOpLabels(tr);
   const router = useRouter();
   const isMobile = useIsMobile();
   const [isPending, startTransition] = useTransition();
@@ -161,7 +167,7 @@ export function ApprovalFlowRulesSection({
   const [conditions, setConditions] = useState<ConditionDraft[]>([]);
   const [steps, setSteps] = useState<StepDraft[]>([]);
 
-  const fieldDefs = APPROVAL_CONDITION_FIELDS[targetType];
+  const fieldDefs = approvalConditionFields(locale, tr)[targetType];
   const fieldOptions = fieldDefs.map((f) => ({ value: f.key, label: f.label }));
 
   const openNew = () => {
@@ -177,7 +183,7 @@ export function ApprovalFlowRulesSection({
     setNameTranslations(rule.nameTranslations);
     setConditions(
       rule.conditions.map((c) => {
-        const def = conditionFieldDef(targetType, c.field);
+        const def = conditionFieldDef(targetType, c.field, locale, tr);
         return {
           key: nextKey(),
           field: c.field,
@@ -199,19 +205,23 @@ export function ApprovalFlowRulesSection({
     setEditing({ id: rule.id });
   };
 
-  const condPayload = editing ? toConditions(conditions, targetType) : [];
+  const condPayload = editing
+    ? toConditions(conditions, targetType, locale, tr)
+    : [];
   const issues = editing
     ? [
         ...(nameJa.trim()
           ? []
           : [tr("master.approvalFlows.enterTheRuleNameInJapanese")]),
-        ...validateConditions(targetType, condPayload),
+        ...validateConditions(targetType, condPayload, locale, tr),
         ...validateFlowSteps(
           steps.map((s) => ({
             nameJa: s.nameJa,
             groupId: s.groupId ? Number(s.groupId) : null,
             mode: s.mode,
           })),
+          false,
+          tr,
         ),
       ]
     : [];
@@ -270,7 +280,9 @@ export function ApprovalFlowRulesSection({
 
   /** 条件 1 行の値入力（フィールド型で出し分け）。 */
   const conditionValueInput = (c: ConditionDraft) => {
-    const def = c.field ? conditionFieldDef(targetType, c.field) : undefined;
+    const def = c.field
+      ? conditionFieldDef(targetType, c.field, locale, tr)
+      : undefined;
     if (!def)
       return (
         <TextInput disabled flex={1} placeholder={tr("common.selectAnItem")} />
@@ -345,6 +357,8 @@ export function ApprovalFlowRulesSection({
                     {describeConditions(
                       targetType,
                       rule.conditions,
+                      locale,
+                      tr,
                       dynamicOptions,
                     )}
                   </Text>
@@ -470,7 +484,7 @@ export function ApprovalFlowRulesSection({
             )}
             {conditions.map((c) => {
               const def = c.field
-                ? conditionFieldDef(targetType, c.field)
+                ? conditionFieldDef(targetType, c.field, locale, tr)
                 : undefined;
               const ops = def
                 ? opsForType(def.type)
@@ -502,7 +516,7 @@ export function ApprovalFlowRulesSection({
                   <Select
                     data={ops.map((op) => ({
                       value: op,
-                      label: CONDITION_OP_LABEL[op],
+                      label: opLabels[op],
                     }))}
                     onChange={(v) =>
                       setConditions((prev) =>
