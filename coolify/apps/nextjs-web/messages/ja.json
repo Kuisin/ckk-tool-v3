@@ -4133,7 +4133,9 @@
     "aiProviderCore": {
       "baseUrlMustStartWithHttp": "ベース URL は http:// または https:// で始めてください",
       "tokenAbsent": "未設定",
-      "tokenSet": "設定済み (****{last4}) / {status}"
+      "tokenSet": "設定済み (****{last4}) / {status}",
+      "baseUrlHostNotAllowed": "このプロバイダのベース URL は {hosts} だけです",
+      "baseUrlHostBlocked": "そのホストは指定できません"
     },
     "avatarsRoute": {
       "sendAsMultipartFormData": "multipart/form-data で送信してください",

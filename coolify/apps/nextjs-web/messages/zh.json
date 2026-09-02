@@ -4133,7 +4133,9 @@
     "aiProviderCore": {
       "baseUrlMustStartWithHttp": "基础 URL 必须以 http:// 或 https:// 开头",
       "tokenAbsent": "未设置",
-      "tokenSet": "已设置 (****{last4}) / {status}"
+      "tokenSet": "已设置 (****{last4}) / {status}",
+      "baseUrlHostNotAllowed": "此服务商的基础 URL 只能是：{hosts}",
+      "baseUrlHostBlocked": "无法指定该主机"
     },
     "avatarsRoute": {
       "sendAsMultipartFormData": "请以 multipart/form-data 格式发送",
