@@ -70,7 +70,7 @@ export async function changePasswordAction(input: {
   if (!user.passwordHash) {
     return actionError(tr("profile.profileActions.ssoPasswordCannotBeChanged"));
   }
-  if (!verifyPassword(input.currentPassword, user.passwordHash)) {
+  if (!(await verifyPassword(input.currentPassword, user.passwordHash))) {
     return actionError(
       tr("profile.profileActions.currentPasswordDoesNotMatch"),
     );
@@ -82,7 +82,7 @@ export async function changePasswordAction(input: {
     where: { id: userId },
     // 変更が済んだので強制フラグを下ろす(初期管理者のブートストラップ用)。
     data: {
-      passwordHash: hashPassword(input.newPassword),
+      passwordHash: await hashPassword(input.newPassword),
       passwordChangeRequired: false,
     },
   });

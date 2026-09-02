@@ -7,13 +7,15 @@
  * Prisma Decimal はここで Number() へ変換してからクライアントへ渡す。
  */
 
+import { ownWhere, rowInScope } from "@ckk/authz-core";
 import type {
   Invoice,
   InvoiceItem,
   InvoiceLink,
   InvoiceStatus,
 } from "@/components/billing/invoices/model";
-import { prisma } from "@/lib/db";
+import { checkPermission } from "@/lib/authz";
+import { type Prisma, prisma } from "@/lib/db";
 import { type DocKey, formatDocNumber } from "@/lib/doc-number";
 import { type LocalizedText, localized } from "@/lib/format";
 
@@ -100,20 +102,38 @@ function mapInvoice(r: InvoiceRow): Invoice {
   };
 }
 
-/** 一覧 — 新しい採番から順に。 */
+/**
+ * 一覧 — 新しい採番から順に。
+ *
+ * スコープ（監査 M3）: 請求書に拠点は無いので OWN（自分が起票した分）だけを
+ * 見る。ALL は {} で従来どおり全件。見積書（sales/quotes/data.ts）と同じ形。
+ */
 export async function fetchInvoices(): Promise<Invoice[]> {
+  const authz = await checkPermission("invoice", "READ");
+  if (!authz.ok) return [];
   const rows = await prisma.invoice.findMany({
     take: LIST_FETCH_CAP,
+    where: ownWhere(
+      authz.access,
+      authz.userId,
+      "createdBy",
+    ) as Prisma.InvoiceWhereInput,
     include: INVOICE_INCLUDE,
     orderBy: [{ yearMonth: "desc" }, { seq: "desc" }],
   });
   return rows.map(mapInvoice);
 }
 
-/** 1件取得 — 未存在は null。 */
+/** 1件取得 — 未存在・スコープ外は null（呼び出し側の notFound / 404 に乗せる）。 */
 export async function fetchInvoice(key: DocKey): Promise<Invoice | null> {
+  const authz = await checkPermission("invoice", "READ");
+  if (!authz.ok) return null;
   const row = await findRow(key);
-  return row ? mapInvoice(row) : null;
+  if (!row) return null;
+  if (!rowInScope(authz.access, { createdBy: row.createdBy }, authz.userId)) {
+    return null;
+  }
+  return mapInvoice(row);
 }
 
 /**

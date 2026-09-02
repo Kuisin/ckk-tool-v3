@@ -7,13 +7,15 @@
  * 仕入先 / 拠点 options は work-orders の data.ts を再利用する。
  */
 
+import { ownOrPlantWhere, rowInScope } from "@ckk/authz-core";
 import type {
   PurchaseOrderRow,
   PurchaseOrderView,
   PurchaseStatus,
 } from "@/components/purchase/purchase-orders/model";
 import type { HistoryEntry } from "@/lib/approvals";
-import { prisma } from "@/lib/db";
+import { checkPermission } from "@/lib/authz";
+import { type Prisma, prisma } from "@/lib/db";
 import { type LocalizedText, localized } from "@/lib/format";
 
 // 一覧クエリの取得上限（監査 P2-8 — 全件フェッチのデータ増加対策）。
@@ -40,10 +42,29 @@ const iso = (d: Date | null | undefined) => d?.toISOString() ?? null;
 const dateOnly = (d: Date | null | undefined) =>
   d ? d.toISOString().slice(0, 10) : null;
 
+/**
+ * スコープ（監査 M3）: 発注書の拠点は明細の入荷先（items.plantId）。
+ * 拠点スコープの人は自拠点へ入荷する発注書、OWN は自分が起票した分。
+ */
+function purchaseOrderScope(
+  access: Parameters<typeof ownOrPlantWhere>[0],
+  userId: string,
+): Prisma.MaterialPurchaseOrderWhereInput {
+  return ownOrPlantWhere(access, userId, {
+    plantClause: (plantIds) => ({
+      items: { some: { plantId: { in: plantIds } } },
+    }),
+    ownColumn: "createdBy",
+  }) as Prisma.MaterialPurchaseOrderWhereInput;
+}
+
 /** 一覧 (PU02) — 新しい発注番号から順に。 */
 export async function fetchPurchaseOrders(): Promise<PurchaseOrderRow[]> {
+  const authz = await checkPermission("purchase_order", "READ");
+  if (!authz.ok) return [];
   const rows = await prisma.materialPurchaseOrder.findMany({
     take: LIST_FETCH_CAP,
+    where: purchaseOrderScope(authz.access, authz.userId),
     include: {
       supplierBp: true,
       _count: { select: { items: true } },
@@ -65,11 +86,23 @@ export async function fetchPurchaseOrders(): Promise<PurchaseOrderRow[]> {
 export async function fetchPurchaseOrder(
   poNumber: string,
 ): Promise<PurchaseOrderView | null> {
+  const authz = await checkPermission("purchase_order", "READ");
+  if (!authz.ok) return null;
   const r = await prisma.materialPurchaseOrder.findUnique({
     where: { poNumber },
     include: PO_INCLUDE,
   });
   if (!r) return null;
+  // スコープ外の行は不可視（null → notFound）。
+  if (
+    !rowInScope(
+      authz.access,
+      { plantIds: r.items.map((it) => it.plantId), createdBy: r.createdBy },
+      authz.userId,
+    )
+  ) {
+    return null;
+  }
 
   // history Json の user uuid → displayName 解決
   const historyRaw: HistoryEntry[] = Array.isArray(r.history)

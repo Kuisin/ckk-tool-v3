@@ -7,6 +7,7 @@
  * 担当者候補・注文明細の参照解決は work-orders の data.ts を再利用する。
  */
 
+import { NEVER } from "@ckk/authz-core";
 import type {
   DesignFileRole,
   DesignKindDetection,
@@ -19,6 +20,7 @@ import type {
   DesignRequestTrigger,
 } from "@/components/sales/design-requests/model";
 import type { HistoryEntry } from "@/lib/approvals";
+import { checkPermission } from "@/lib/authz";
 import { type Prisma, prisma } from "@/lib/db";
 import {
   formatProductNumber,
@@ -76,9 +78,10 @@ function findRow(requestNumber: string) {
   });
 }
 
-function findListRows() {
+function findListRows(where: Prisma.DesignRequestWhereInput = {}) {
   return prisma.designRequest.findMany({
     take: LIST_FETCH_CAP,
+    where,
     include: LIST_INCLUDE,
     orderBy: { requestNumber: "desc" },
   });
@@ -164,19 +167,52 @@ async function resolveHistory(
   }));
 }
 
+/**
+ * スコープ（監査 M3）: 設計依頼に拠点は無いので OWN だけ — 起票者か、
+ * 図面を作る担当者（assigneeId）。ALL は {} で従来どおり全件。
+ */
+function designRequestScope(
+  access: Awaited<ReturnType<typeof checkPermission>> extends infer R
+    ? R extends { ok: true; access: infer A }
+      ? A
+      : never
+    : never,
+  userId: string,
+): Prisma.DesignRequestWhereInput {
+  if (access.kind === "ALL") return {};
+  if (!access.own) return NEVER as Prisma.DesignRequestWhereInput;
+  return { OR: [{ createdBy: userId }, { assigneeId: userId }] };
+}
+
+function designRequestInScope(
+  access: Parameters<typeof designRequestScope>[0],
+  row: { createdBy: string | null; assigneeId: string | null },
+  userId: string,
+): boolean {
+  if (access.kind === "ALL") return true;
+  return access.own && (row.createdBy === userId || row.assigneeId === userId);
+}
+
 /** 一覧 — 新しい依頼番号から順に（DSG-YYYYMM-NNNNN は文字列順 = 採番順）。 */
 export async function fetchDesignRequests(): Promise<DesignRequest[]> {
-  const rows = await findListRows();
+  const authz = await checkPermission("design_request", "READ");
+  if (!authz.ok) return [];
+  const rows = await findListRows(
+    designRequestScope(authz.access, authz.userId),
+  );
   // 一覧は履歴・版を描かないので空で返す（型は詳細と共有する）。
   return rows.map((r) => ({ ...mapCommon(r), history: [], files: [] }));
 }
 
-/** 1件取得 — 未存在は null。 */
+/** 1件取得 — 未存在・スコープ外は null。 */
 export async function fetchDesignRequest(
   requestNumber: string,
 ): Promise<DesignRequest | null> {
+  const authz = await checkPermission("design_request", "READ");
+  if (!authz.ok) return null;
   const row: DetailRow | null = await findRow(requestNumber);
   if (!row) return null;
+  if (!designRequestInScope(authz.access, row, authz.userId)) return null;
   return {
     ...mapCommon(row),
     history: await resolveHistory(row.history),
