@@ -8,6 +8,7 @@
  * 行・オブジェクトが無ければ 404。
  */
 
+import { isInlineSafe } from "@/lib/attachments";
 import { checkPermission } from "@/lib/authz";
 import { prisma } from "@/lib/db";
 import { contentTypeForKey, getObject } from "@/lib/storage";
@@ -48,11 +49,18 @@ export async function GET(
   const bytes = await getObject(file.storageKey);
   if (!bytes) return new Response("Not found", { status: 404 });
 
+  const contentType = file.mimeType || contentTypeForKey(file.storageKey);
   return new Response(bytes, {
     status: 200,
     headers: {
-      "content-type": file.mimeType || contentTypeForKey(file.storageKey),
-      "content-disposition": "inline",
+      "content-type": contentType,
+      // 旧データに SVG が残っていても inline では開かない（監査 M1）。
+      "content-disposition": isInlineSafe(contentType)
+        ? "inline"
+        : "attachment",
+      "x-content-type-options": "nosniff",
+      "content-security-policy":
+        "sandbox; default-src 'none'; img-src 'self' data:; object-src 'self'",
       // 図面は差し替えで URL が変わらないためキャッシュしない。
       "cache-control": "no-store",
     },

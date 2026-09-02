@@ -46,7 +46,7 @@ const IMAGE_TYPES: Record<string, string[]> = {
   jpeg: ["image/jpeg"],
   webp: ["image/webp"],
   gif: ["image/gif"],
-  svg: ["image/svg+xml"],
+  // svg は受け付けない — 壁の画面のオリジンで <script> が動く（監査 M1）。
 };
 
 /** 画像を差し替え、その画面を IMAGE 表示にする。 */
@@ -69,7 +69,7 @@ export async function saveDisplayImage(
   if (!allowed || !allowed.includes(file.type.toLowerCase())) {
     return actionError(
       tr("common.unsupportedImageFormat", {
-        formats: "PNG / JPG / WEBP / GIF / SVG",
+        formats: "PNG / JPG / WEBP / GIF",
       }),
     );
   }

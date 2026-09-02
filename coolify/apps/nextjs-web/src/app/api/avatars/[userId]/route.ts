@@ -60,6 +60,7 @@ export async function GET(
     headers: {
       "content-type": file.mimeType || contentTypeForKey(file.storageKey),
       "content-disposition": "inline",
+      "x-content-type-options": "nosniff",
       "cache-control": versioned
         ? "private, max-age=86400, immutable"
         : "private, no-cache",

@@ -6,6 +6,7 @@
  * an attachment, otherwise the file is served inline (e.g. PDFs open in-browser).
  */
 
+import { isInlineSafe } from "@/lib/attachments";
 import { canReadKey, resolveFileAccess } from "@/lib/file-access";
 import { contentTypeForKey, getObject } from "@/lib/storage";
 
@@ -37,12 +38,21 @@ export async function GET(request: Request): Promise<Response> {
   }
 
   const name = key.split("/").pop() ?? "file";
-  const disp = download ? "attachment" : "inline";
+  const contentType = contentTypeForKey(key);
+  // inline で開いてよいのは PDF / 画像 / 3D だけ（lib/attachments の
+  // isInlineSafe が唯一の判定元）。それ以外は必ずダウンロードにする —
+  // SVG・HTML を inline で返すと保存 XSS になる（監査 M1）。
+  const disp = !download && isInlineSafe(contentType) ? "inline" : "attachment";
   return new Response(bytes, {
     status: 200,
     headers: {
-      "content-type": contentTypeForKey(key),
+      "content-type": contentType,
       "content-disposition": `${disp}; filename="${encodeURIComponent(name)}"`,
+      // 申告 MIME を勝手に読み替えさせない（sniffing 経由の HTML 実行を塞ぐ）。
+      "x-content-type-options": "nosniff",
+      // 万一 inline で開かれても、スクリプト・同一オリジンを与えない。
+      "content-security-policy":
+        "sandbox; default-src 'none'; img-src 'self' data:; object-src 'self'",
     },
   });
 }
