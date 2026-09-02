@@ -306,8 +306,8 @@ export function SetupView() {
             title="端末設定コード" // i18n-ignore — ログイン前画面は ja 固定（lib/i18n の方針）
           />
           <Text c="dimmed" size="sm" ta="center">
+            {/* i18n-ignore — ログイン前画面は ja 固定（lib/i18n の方針） */}
             コードが分からない場合は、リンクコードを発行して管理者に再リンクしてもらいます。
-            // i18n-ignore — ログイン前画面は ja 固定（lib/i18n の方針）
           </Text>
           <Button
             onClick={() => {
@@ -316,8 +316,8 @@ export function SetupView() {
             }}
             variant="default"
           >
-            リンクコードを発行する // i18n-ignore — ログイン前画面は ja
-            固定（lib/i18n の方針）
+            {/* i18n-ignore — ログイン前画面は ja 固定（lib/i18n の方針） */}
+            リンクコードを発行する
           </Button>
         </Stack>
       </Center>
