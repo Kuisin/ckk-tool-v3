@@ -197,6 +197,8 @@ export interface DeliverySourceInfo {
   shipToName: string | null;
   /** 注文請書ヘッダの配送方法 — 同じ配送方法の明細だけを束ねられる。 */
   deliveryMethod: "NORMAL" | "DIRECT_TO_USER";
+  /** 注文請書ヘッダの担当拠点 — 出荷書の出荷元拠点の既定値に使う。 */
+  assignedPlantId: string | null;
   /** 既に出荷済みの数量（残数の算出用）。 */
   shippedQuantity: number;
   /** 注文明細の製品（明細の既定製品）。 */
@@ -302,6 +304,10 @@ export async function fetchDeliverySourceInfo(
         ? localized(so.acceptance.shipToBp.name as LocalizedText | null)
         : null,
       deliveryMethod: so.acceptance.deliveryMethod,
+      assignedPlantId:
+        so.acceptance.assignedPlantId != null
+          ? String(so.acceptance.assignedPlantId)
+          : null,
       shippedQuantity: await shippedQuantityForLine(so.id),
       productId: String(productId),
       productName: localized(so.product?.name as LocalizedText | null),

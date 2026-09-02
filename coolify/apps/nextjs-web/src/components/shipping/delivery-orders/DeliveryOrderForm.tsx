@@ -282,6 +282,9 @@ export function DeliveryOrderForm({
     if (!form.values.customerBpId && first.customerBpId) {
       form.setFieldValue("customerBpId", first.customerBpId);
     }
+    if (!form.values.fromPlantId && first.assignedPlantId) {
+      form.setFieldValue("fromPlantId", first.assignedPlantId);
+    }
     setInfoByLine((prev) => ({
       ...prev,
       ...Object.fromEntries(infos.map((i) => [i.orderLineId, i])),

@@ -127,12 +127,14 @@ function candidateItems(cand: DeliveryOrderCandidate): ItemForm[] {
 }
 
 function fromCandidate(cand: DeliveryOrderCandidate): FormValues {
+  // 納品方法は注文請書の配送方法を既定にする（onDeliveryOrderChange と同じ規則）。
+  const deliveryMethod = cand.deliveryMethod ?? "NORMAL";
   return {
     deliveryOrderNumber: cand.number,
     salesRepId: cand.salesRepId,
-    deliveryMethod: "NORMAL",
+    deliveryMethod,
     endUserBpId: cand.endUserBpId,
-    includePrice: true,
+    includePrice: deliveryMethod === "NORMAL",
     notes: "",
     items: candidateItems(cand),
   };
