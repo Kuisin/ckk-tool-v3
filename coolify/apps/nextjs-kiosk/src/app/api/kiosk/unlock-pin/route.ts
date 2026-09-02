@@ -13,13 +13,35 @@
  */
 
 import { NextResponse } from "next/server";
+import { attestSecret } from "@/lib/attest-core";
 import { prisma } from "@/lib/db";
 import { getDevice } from "@/lib/kiosk-auth";
+import {
+  attemptContext,
+  deny,
+  denyDevice,
+  recordKioskFailure,
+} from "@/lib/kiosk-login-log";
 
-export async function GET() {
+export async function GET(req: Request) {
   const device = await getDevice();
   if (!device.ok) {
-    return NextResponse.json({ ok: false }, { status: 401 });
+    return denyDevice(attemptContext(req, null), device.reason, "DEVICE_LINK");
+  }
+  const ctx = attemptContext(req, device.device);
+  // **端末 Cookie だけでは渡さない。** この PIN は全端末共通で Android の設定
+  // 画面を開く鍵なので、Web 側（SY09）では承認つきの特権操作にしてある。
+  // 端末側は「専用アプリが端末鍵で署名した証拠（attest Cookie, 12h）」を
+  // 持つ相手にだけ渡す。ブラウザでタブレットの Cookie を使い回しても、
+  // 盗まれた端末 UUID から H2 の経路でトークンを取っても、ここは通らない。
+  // 専用アプリの PinSync は WebView の Cookie をそのまま送るので、ログイン
+  // 画面のアテステーションを通った端末は従来どおり受け取れる。
+  if (!attestSecret()) {
+    recordKioskFailure(ctx, "ATTEST_NOT_CONFIGURED", { method: "DEVICE_LINK" });
+    return NextResponse.json({ ok: false }, { status: 503 });
+  }
+  if (!device.device.attested) {
+    return deny(ctx, "NOT_ATTESTED", 403, { method: "DEVICE_LINK" });
   }
   const row = await prisma.systemSetting.findUnique({
     where: { key: "kiosk.unlock_pin" },

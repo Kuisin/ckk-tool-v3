@@ -67,6 +67,8 @@ export const LOGIN_FAILURE_REASONS = [
   "PIN_FORMAT",
   "PIN_MISMATCH",
   "PIN_ALREADY_SET",
+  // 初回設定の PIN が弱い（桁数不足・同じ数字の連続・123456 のような並び）
+  "PIN_WEAK",
   // ── キオスク: アテステーション / 端末設定 ───────────────────────────────
   "ATTEST_NOT_CONFIGURED",
   "ATTEST_BAD_SIGNATURE",
@@ -76,6 +78,16 @@ export const LOGIN_FAILURE_REASONS = [
   "SETTINGS_NO_DEVICE",
   "SETTINGS_LOCKED",
   "SETTINGS_CODE_INVALID",
+  // ── キオスク: 端末トークンの再発行（Cookie 消失時の復帰）────────────────
+  // deviceId だけでは再発行しない — 端末鍵の署名か端末設定コードが要る。
+  "REACTIVATE_PROOF_REQUIRED",
+  "REACTIVATE_BAD_SIGNATURE",
+  "REACTIVATE_CODE_INVALID",
+  "REACTIVATE_LOCKED",
+  // 生きているトークンを持つディスプレイは再発行しない（再リンクへ）
+  "REACTIVATE_TOKEN_LIVE",
+  // 退出 PIN の配布はアテステーション済みの端末（専用アプリ）にだけ渡す
+  "UNLOCK_PIN_NOT_ATTESTED",
   // ── 取引先ポータル（社外向け）─────────────────────────────────────────
   // **画面はこれらを区別しない**（存在するアドレスとしないアドレスが
   // 見分けられてしまう）。区別するのはこの記録の中だけ。
@@ -173,6 +185,7 @@ const REASON_LABELS: Record<LoginFailureReason, string> = {
   PIN_FORMAT: "PIN の形式不正",
   PIN_MISMATCH: "PIN 不一致",
   PIN_ALREADY_SET: "PIN 設定済み",
+  PIN_WEAK: "PIN が弱い", // i18n-ignore — ログイン履歴の理由ラベル（既存行と同じ扱い）
   ATTEST_NOT_CONFIGURED: "アテステーション未設定",
   ATTEST_BAD_SIGNATURE: "署名検証に失敗",
   ATTEST_KEY_MISMATCH: "端末鍵が不一致",
@@ -181,6 +194,12 @@ const REASON_LABELS: Record<LoginFailureReason, string> = {
   SETTINGS_NO_DEVICE: "端末設定: 端末不明",
   SETTINGS_LOCKED: "端末設定: ロック中",
   SETTINGS_CODE_INVALID: "端末設定コード不一致",
+  REACTIVATE_PROOF_REQUIRED: "端末再発行: 証明なし", // i18n-ignore — ログイン履歴の理由ラベル（既存行と同じ扱い）
+  REACTIVATE_BAD_SIGNATURE: "端末再発行: 署名不正", // i18n-ignore — ログイン履歴の理由ラベル（既存行と同じ扱い）
+  REACTIVATE_CODE_INVALID: "端末再発行: 設定コード不一致", // i18n-ignore — ログイン履歴の理由ラベル（既存行と同じ扱い）
+  REACTIVATE_LOCKED: "端末再発行: ロック中", // i18n-ignore — ログイン履歴の理由ラベル（既存行と同じ扱い）
+  REACTIVATE_TOKEN_LIVE: "端末再発行: トークン有効中", // i18n-ignore — ログイン履歴の理由ラベル（既存行と同じ扱い）
+  UNLOCK_PIN_NOT_ATTESTED: "退出 PIN: 未アテステーション端末", // i18n-ignore — ログイン履歴の理由ラベル（既存行と同じ扱い）
   PORTAL_UNKNOWN_EMAIL: "ポータル: 未登録のアドレス",
   PORTAL_ACCOUNT_INACTIVE: "ポータル: アカウントが無効",
   PORTAL_CODE_EXPIRED: "ポータル: 確認コード期限切れ",
@@ -220,6 +239,7 @@ const KIOSK_STATE_REASONS: Record<string, LoginFailureReason> = {
   PIN_FORMAT: "PIN_FORMAT",
   PIN_MISMATCH: "PIN_MISMATCH",
   PIN_ALREADY_SET: "PIN_ALREADY_SET",
+  PIN_WEAK: "PIN_WEAK",
   NOT_CONFIGURED: "ATTEST_NOT_CONFIGURED",
   BAD_SIGNATURE: "ATTEST_BAD_SIGNATURE",
   KEY_MISMATCH: "ATTEST_KEY_MISMATCH",
@@ -227,6 +247,12 @@ const KIOSK_STATE_REASONS: Record<string, LoginFailureReason> = {
   BAD_PROFILE: "ATTEST_BAD_PROFILE",
   NO_DEVICE: "SETTINGS_NO_DEVICE",
   INVALID: "SETTINGS_CODE_INVALID",
+  PROOF_REQUIRED: "REACTIVATE_PROOF_REQUIRED",
+  REACTIVATE_BAD_SIGNATURE: "REACTIVATE_BAD_SIGNATURE",
+  REACTIVATE_CODE_INVALID: "REACTIVATE_CODE_INVALID",
+  REACTIVATE_LOCKED: "REACTIVATE_LOCKED",
+  TOKEN_LIVE: "REACTIVATE_TOKEN_LIVE",
+  NOT_ATTESTED: "UNLOCK_PIN_NOT_ATTESTED",
 };
 
 /**

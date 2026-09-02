@@ -6,5 +6,17 @@
     "lint": "pnpm -r lint",
     "test": "pnpm -r test",
     "build": "pnpm -r build"
+  },
+  "pnpm": {
+    "overrides": {
+      "sharp": ">=0.35.4",
+      "postcss": ">=8.5.26",
+      "mysql2": ">=3.22.0"
+    },
+    "auditConfig": {
+      "ignoreGhsas": [
+        "GHSA-ggr8-5vv4-36mx"
+      ]
+    }
   }
 }

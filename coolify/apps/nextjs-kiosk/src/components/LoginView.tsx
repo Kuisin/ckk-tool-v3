@@ -25,7 +25,11 @@ import { PinKeypad } from "@/components/PinKeypad";
 import { QrScannerView } from "@/components/QrScannerView";
 import { beginUserPageTracking } from "@/lib/last-page";
 import { playLoginSound } from "@/lib/sound";
-import { type AttestOutcome, runAttestation } from "@/lib/wrapper-bridge";
+import {
+  type AttestOutcome,
+  getBridge,
+  runAttestation,
+} from "@/lib/wrapper-bridge";
 
 type LoginState =
   | { phase: "checking" }
@@ -64,6 +68,14 @@ export function LoginView() {
                 : { phase: "attest_blocked", outcome },
             );
             return;
+          }
+          // required でなくても、専用アプリなら端末鍵で名乗っておく（12h Cookie）。
+          // 退出 PIN の配布（/api/kiosk/unlock-pin）はアテステーション済みの
+          // 端末にしか渡さないので、ここで名乗らないと PinSync がビルド時の
+          // 既定 PIN のままになる。失敗しても画面は止めない（認可ではない）。
+          if (!att?.attested && getBridge()) {
+            await runAttestation();
+            if (cancelled) return;
           }
           setState({ phase: "scanning" });
         } else if (data.reason === "DISABLED" || data.reason === "REVOKED") {
@@ -203,6 +215,15 @@ export function LoginView() {
             });
             setState({ phase: "pin_verify", ticket: data.ticket ?? "" });
             return;
+          case "PIN_WEAK":
+            notifications.show({
+              color: "red",
+              title: "その PIN は使えません",
+              message:
+                "6 桁で、同じ数字の連続や 123456 のような並び・繰り返しは避けてください。",
+            });
+            setState({ phase: "pin_setup", ticket, firstPin: undefined });
+            return;
           case "LOCKED":
             setState({ phase: "locked", until: data.until ?? null });
             return;
@@ -261,15 +282,19 @@ export function LoginView() {
 
           {state.phase === "pin_setup" && state.firstPin === undefined && (
             <PinKeypad
+              maxLength={6}
+              minLength={6}
               onSubmit={(pin) => setState({ ...state, firstPin: pin })}
               submitting={busy}
-              subtitle="初回ログインです。4〜6桁の PIN を設定してください。"
+              subtitle="初回ログインです。6 桁の PIN を設定してください（同じ数字の連続や 123456 のような並びは使えません）。"
               title="PIN を設定"
             />
           )}
 
           {state.phase === "pin_setup" && state.firstPin !== undefined && (
             <PinKeypad
+              maxLength={6}
+              minLength={6}
               onSubmit={(pin) => {
                 if (pin !== state.firstPin) {
                   notifications.show({
