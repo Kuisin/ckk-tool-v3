@@ -3296,7 +3296,10 @@
       "scanQr": "QR をスキャン",
       "loginScreenLanguage": "ログイン画面の言語",
       "loginScreenLanguageDescription": "端末にログインする前の画面（QR コードログイン・端末リンク等）の表示言語です。",
-      "loginScreenLanguageDefault": "既定（日本語）"
+      "loginScreenLanguageDefault": "既定（日本語）",
+      "hoursValue": "{n} 時間",
+      "minutesValue": "{n} 分",
+      "daysValue": "{n} 日"
     },
     "links": {
       "links": "リンク管理",
@@ -3782,7 +3785,12 @@
       "tooManyNumbersAtOnce": "一度に指定できるのは {max} 件までです",
       "noFileWasSpecified": "ファイルが指定されていません",
       "unsupportedFileFormatPdfPngJpg": "対応していないファイル形式です（PDF / PNG / JPG / WEBP）",
-      "failedToSaveToTheIntake": "取込フォルダへの保存に失敗しました"
+      "failedToSaveToTheIntake": "取込フォルダへの保存に失敗しました",
+      "dirIsNotADirectory": "{dir} はディレクトリではありません",
+      "cannotReadDirIsItMounted": "{dir} を読めません（コンテナにマウントされていますか）",
+      "intakeDirIntakeDirIsNotConfigured": "取込フォルダ（INTAKE_DIR）が未設定です",
+      "invalidFileName": "ファイル名が不正です",
+      "theTargetFileWasNotFound": "対象のファイルが見つかりません"
     },
     "portal": {
       "theAccountWasCreatedDisabledBy": "アカウントを作成しました（既定は無効です）",

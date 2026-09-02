@@ -12,7 +12,9 @@
 import { mkdtemp, readdir } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
+import { createTranslator } from "next-intl";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
+import ja from "../../../../../messages/ja.json";
 
 // DB を触らせない（recordAudit は自前で catch するが、prisma を読ませない）
 const audited: unknown[] = [];
@@ -20,6 +22,19 @@ vi.mock("@/lib/audit", () => ({
   recordAudit: async (input: unknown) => {
     audited.push(input);
   },
+}));
+
+// getTranslations() は Next.js のリクエストスコープ（AsyncLocalStorage）が
+// 無いと呼べない。route handler を直に呼ぶこのテストだけの事情なので、
+// 実物の ja.json を使う createTranslator に差し替える（product-types.test.ts /
+// field-help.test.ts と同じ手法）。
+vi.mock("next-intl/server", () => ({
+  getTranslations: async () =>
+    createTranslator({
+      locale: "ja",
+      // biome-ignore lint/suspicious/noExplicitAny: next-intl's messages type is too wide for a plain JSON import here
+      messages: ja as any,
+    }),
 }));
 
 let dir = "";

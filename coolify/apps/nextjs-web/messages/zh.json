@@ -3296,7 +3296,10 @@
       "scanQr": "扫描二维码",
       "loginScreenLanguage": "登录界面语言",
       "loginScreenLanguageDescription": "该终端登录前的界面（二维码登录、终端关联等）所使用的显示语言。",
-      "loginScreenLanguageDefault": "默认（日语）"
+      "loginScreenLanguageDefault": "默认（日语）",
+      "hoursValue": "{n} 小时",
+      "minutesValue": "{n} 分钟",
+      "daysValue": "{n} 天"
     },
     "links": {
       "links": "链接管理",
@@ -3782,7 +3785,12 @@
       "tooManyNumbersAtOnce": "一次最多只能指定 {max} 件",
       "noFileWasSpecified": "未指定文件",
       "unsupportedFileFormatPdfPngJpg": "不支持的文件格式（PDF / PNG / JPG / WEBP）",
-      "failedToSaveToTheIntake": "保存到导入文件夹失败"
+      "failedToSaveToTheIntake": "保存到导入文件夹失败",
+      "dirIsNotADirectory": "{dir} 不是目录",
+      "cannotReadDirIsItMounted": "无法读取 {dir}（是否已挂载到容器？）",
+      "intakeDirIntakeDirIsNotConfigured": "未设置导入文件夹（INTAKE_DIR）",
+      "invalidFileName": "文件名无效",
+      "theTargetFileWasNotFound": "未找到目标文件"
     },
     "portal": {
       "theAccountWasCreatedDisabledBy": "已创建账户（默认为停用）",

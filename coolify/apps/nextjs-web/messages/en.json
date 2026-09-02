@@ -3296,7 +3296,10 @@
       "scanQr": "Scan QR",
       "loginScreenLanguage": "Login screen language",
       "loginScreenLanguageDescription": "The display language for screens shown before logging in on this device (QR code login, device link, etc.).",
-      "loginScreenLanguageDefault": "Default (Japanese)"
+      "loginScreenLanguageDefault": "Default (Japanese)",
+      "hoursValue": "{n} hours",
+      "minutesValue": "{n} min",
+      "daysValue": "{n} days"
     },
     "links": {
       "links": "Links",
@@ -3782,7 +3785,12 @@
       "tooManyNumbersAtOnce": "You can specify up to {max} at a time",
       "noFileWasSpecified": "No file specified",
       "unsupportedFileFormatPdfPngJpg": "Unsupported file format (PDF / PNG / JPG / WEBP)",
-      "failedToSaveToTheIntake": "Could not save to the intake folder"
+      "failedToSaveToTheIntake": "Could not save to the intake folder",
+      "dirIsNotADirectory": "{dir} is not a directory",
+      "cannotReadDirIsItMounted": "Cannot read {dir} (is it mounted in the container?)",
+      "intakeDirIntakeDirIsNotConfigured": "The intake folder (INTAKE_DIR) is not configured",
+      "invalidFileName": "Invalid file name",
+      "theTargetFileWasNotFound": "The target file was not found"
     },
     "portal": {
       "theAccountWasCreatedDisabledBy": "The account was created (disabled by default)",

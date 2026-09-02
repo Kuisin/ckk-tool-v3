@@ -36,8 +36,13 @@ import { parseIntakeFileNumber } from "./intake-core";
 import { label } from "./messages";
 
 const NS = "settings.orderIntake";
-function t(key: string, locale: Locale | undefined, fallback: string): string {
-  return label(`${NS}.${key}`, locale ?? "ja", fallback);
+function t(
+  key: string,
+  locale: Locale | undefined,
+  fallback: string,
+  vars?: Record<string, unknown>,
+): string {
+  return label(`${NS}.${key}`, locale ?? "ja", fallback, vars);
 }
 
 /** 取込対象の拡張子（lib/intake.ts の許可リストと同一）。 */
@@ -139,7 +144,8 @@ export async function readIntakeFolder(
         error: t(
           "dirIsNotADirectory",
           locale,
-          `${dir} はディレクトリではありません`,
+          `${dir} はディレクトリではありません`, // i18n-ignore — 鍵は既存、これは死んだ fallback
+          { dir },
         ),
       };
     }
@@ -149,7 +155,8 @@ export async function readIntakeFolder(
       error: t(
         "cannotReadDirIsItMounted",
         locale,
-        `${dir} を読めません（コンテナにマウントされていますか）`,
+        `${dir} を読めません（コンテナにマウントされていますか）`, // i18n-ignore — 鍵は既存、これは死んだ fallback
+        { dir },
       ),
     };
   }
@@ -192,11 +199,12 @@ export async function saveToIntakeFolder(
         "intakeDirIntakeDirIsNotConfigured",
         locale,
         "取込フォルダ（INTAKE_DIR）が未設定です",
-      ),
+      ), // i18n-ignore — 鍵は既存、これは死んだ fallback
     );
   }
   if (!isIntakeFile(input.filename)) {
     throw new Error(
+      // i18n-ignore — 鍵は既存、これは死んだ fallback
       t("unsupportedFileFormat", locale, "対応していないファイル形式です"),
     );
   }
@@ -233,18 +241,19 @@ export async function retryFailedIntake(
         "intakeDirIntakeDirIsNotConfigured",
         locale,
         "取込フォルダ（INTAKE_DIR）が未設定です",
-      ),
+      ), // i18n-ignore — 鍵は既存、これは死んだ fallback
     );
   }
   const base = path.basename(fileName);
   if (!base || base.startsWith(".") || !isIntakeFile(base)) {
+    // i18n-ignore — 鍵は既存、これは死んだ fallback
     throw new Error(t("invalidFileName", locale, "ファイル名が不正です"));
   }
   const from = path.join(dir, "failed", base);
   const info = await stat(from).catch(() => null);
   if (!info?.isFile()) {
     throw new Error(
-      t("theTargetFileWasNotFound", locale, "対象のファイルが見つかりません"),
+      t("theTargetFileWasNotFound", locale, "対象のファイルが見つかりません"), // i18n-ignore — 鍵は既存、これは死んだ fallback
     );
   }
   // 待ちに同名があると上書きしてしまうので、空いているときだけ名前を維持する。

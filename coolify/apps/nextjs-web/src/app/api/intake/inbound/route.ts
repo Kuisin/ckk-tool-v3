@@ -33,6 +33,7 @@
  */
 
 import { NextResponse } from "next/server";
+import { getTranslations } from "next-intl/server";
 import { recordAudit } from "@/lib/audit";
 import {
   INTAKE_MAX_BYTES,
@@ -65,6 +66,7 @@ function field(form: FormData, key: string, max = 500): string | undefined {
 }
 
 export async function POST(request: Request): Promise<Response> {
+  const tr = await getTranslations();
   const secret = process.env.INTAKE_INBOUND_TOKEN;
   if (!secret) {
     return fail("inbound intake is not configured (INTAKE_INBOUND_TOKEN)", 503);
@@ -79,28 +81,26 @@ export async function POST(request: Request): Promise<Response> {
     Number.isFinite(length) &&
     length > INTAKE_MAX_BYTES + MULTIPART_OVERHEAD_BYTES
   ) {
-    return fail("ファイルサイズは 20MB 以下にしてください", 413);
+    return fail(tr("common.fileSizeMax20Mb"), 413);
   }
 
   let form: FormData;
   try {
     form = await request.formData();
   } catch {
-    return fail("multipart/form-data で送信してください", 400);
+    return fail(tr("common.sendAsMultipartFormData"), 400);
   }
 
   // 以下のメッセージは /api/intake/folder と同一にしておく（2 つの口で 1 契約）。
   const file = form.get("file");
-  if (!(file instanceof File)) return fail("ファイルが指定されていません", 400);
-  if (file.size <= 0) return fail("ファイルが空です", 400);
+  if (!(file instanceof File))
+    return fail(tr("settings.orderIntake.noFileWasSpecified"), 400);
+  if (file.size <= 0) return fail(tr("common.fileIsEmpty"), 400);
   if (file.size > INTAKE_MAX_BYTES) {
-    return fail("ファイルサイズは 20MB 以下にしてください", 400);
+    return fail(tr("common.fileSizeMax20Mb"), 400);
   }
   if (!isIntakeFile(file.name)) {
-    return fail(
-      "対応していないファイル形式です（PDF / PNG / JPG / WEBP）",
-      400,
-    );
+    return fail(tr("settings.orderIntake.unsupportedFileFormatPdfPngJpg"), 400);
   }
 
   const rawChannel = field(form, "channel", 16)?.toUpperCase();
@@ -135,7 +135,7 @@ export async function POST(request: Request): Promise<Response> {
     const message =
       e instanceof Error && e.message.includes("INTAKE_DIR")
         ? e.message
-        : "取込フォルダへの保存に失敗しました";
+        : tr("settings.orderIntake.failedToSaveToTheIntake");
     return fail(message, 500);
   }
 }
