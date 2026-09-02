@@ -110,7 +110,7 @@ export function DiscountRuleModal({
       />
 
       <div>
-        <Text fw={500} mb={4} size="sm">
+        <Text component="div" fw={500} mb={4} size="sm">
           <HelpLabel
             help={tr("sales.priceLists.rateIsAShareOfThe")}
             label={tr("sales.priceLists.discountType")}
