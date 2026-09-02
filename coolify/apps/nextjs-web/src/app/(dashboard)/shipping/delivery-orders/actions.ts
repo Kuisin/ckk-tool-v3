@@ -217,6 +217,7 @@ export interface DeliverySourceInfo {
 export async function fetchDeliverySourceInfo(
   orderLineId: string,
 ): Promise<DeliverySourceInfo | null> {
+  if (!(await checkPermission("delivery_order", "READ")).ok) return null;
   if (!orderLineId) return null;
   try {
     const so = await prisma.orderLine.findUnique({
@@ -344,6 +345,7 @@ export async function fetchDeliverySourceInfo(
 export async function fetchDeliveryAcceptanceSourceInfo(
   acceptanceNumber: string,
 ): Promise<DeliverySourceInfo[]> {
+  if (!(await checkPermission("delivery_order", "READ")).ok) return [];
   const key = parseDocKey(acceptanceNumber, "ORD");
   if (!key) return [];
   try {

@@ -667,6 +667,7 @@
     "loginRequired": "Login is required",
     "permissionActionDenied": "You do not have {action} permission for {permission} ({code}:{actionCode})",
     "permissionReadOrUpdateDenied": "You do not have permission to view or edit {permission} ({code}:READ / UPDATE)",
+    "permissionAnyReadDenied": "You do not have permission for this operation",
     "duplicateCodeExists": "A record with the same code already exists",
     "relatedDataExistsCannotExecute": "Cannot proceed because related data exists",
     "targetRecordNotFound": "The target record was not found",

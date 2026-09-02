@@ -97,6 +97,8 @@ export interface StructuredTypeInfo {
 export async function fetchStructuredMaterialType(
   materialTypeId: number,
 ): Promise<ActionResult<StructuredTypeInfo>> {
+  const authz = await checkPermission("master", "READ");
+  if (!authz.ok) return actionError(authz.error);
   const tr = await getTranslations();
   try {
     const t = await prisma.materialType.findUnique({

@@ -81,6 +81,8 @@ export async function fetchMaterialPricing(raw: {
   diameterCode: string;
   surfaceFinishCode: string;
 }): Promise<ActionResult<MaterialPricing>> {
+  const authz = await checkPermission("price_list", "READ");
+  if (!authz.ok) return actionError(authz.error);
   const tr = await getTranslations();
   try {
     const key = toMaterialTypeKey(raw);
