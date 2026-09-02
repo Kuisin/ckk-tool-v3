@@ -564,9 +564,8 @@ export function canStartStep(
   const reasons: string[] = [];
 
   if (step.status !== "PENDING")
-    // i18n-ignore
     reasons.push(
-      t("stepNotStartable", "この工程は開始できる状態ではありません"),
+      t("stepNotStartable", "この工程は開始できる状態ではありません"), // i18n-ignore
     );
   if (step.sessionLockedBy && step.sessionLockedBy !== actorId)
     reasons.push(t("anotherUserSession", "別のユーザーがセッション中です")); // i18n-ignore
@@ -957,10 +956,9 @@ export function validateQuantities(
     if (v < 0)
       issues.push({
         kind: "NEGATIVE",
-        // i18n-ignore
         message: t(
           "quantityNegative",
-          `${jaLabel}は 0 以上で入力してください`,
+          `${jaLabel}は 0 以上で入力してください`, // i18n-ignore
           {
             label: t(key, jaLabel),
           },
@@ -1032,8 +1030,8 @@ export function validateDagShape(
       errors.push(t("selfLoopNotAllowed", "自己ループは作成できません")); // i18n-ignore
     if (!ids.has(l.sourceStepId) || !ids.has(l.targetStepId))
       errors.push(
-        t("linkEndpointOutsideWorkOrder", "リンクの端点が指示書外です"),
-      ); // i18n-ignore
+        t("linkEndpointOutsideWorkOrder", "リンクの端点が指示書外です"), // i18n-ignore
+      );
   }
   if (errors.length > 0) return errors;
 
