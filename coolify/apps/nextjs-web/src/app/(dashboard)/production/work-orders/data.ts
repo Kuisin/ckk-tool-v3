@@ -7,6 +7,7 @@
  */
 
 import { type Access, ownOrPlantWhere, rowInScope } from "@ckk/authz-core";
+import { getLocale, getTranslations } from "next-intl/server";
 import type { ApprovalTrailView } from "@/components/production/ApprovalStatusPanel";
 import type {
   InspectionRecordView,
@@ -33,6 +34,7 @@ import {
 } from "@/lib/doc-number";
 import { type LocalizedText, localized } from "@/lib/format";
 import {
+  type BoolLabels,
   formatCounts,
   formatSampleValue,
   type InspectionItemRecord,
@@ -52,6 +54,7 @@ import {
   effectiveLotInputMode,
   expectedInput,
 } from "@/lib/workflow-core";
+import { workflowCoreT } from "@/lib/workflow-core-labels";
 
 // 一覧クエリの取得上限（監査 P2-8 — 全件フェッチのデータ増加対策）。
 // DataTable はクライアントページングのため、最新分のみで実用上十分。
@@ -777,6 +780,16 @@ export async function fetchStepExecution(
 ): Promise<StepExecutionData | null> {
   const authz = await checkPermission("work_order", "READ");
   if (!authz.ok) return null;
+  const [tr, locale] = await Promise.all([getTranslations(), getLocale()]);
+  const bool: BoolLabels = {
+    yes: tr("common.yes"),
+    no: tr("common.no"),
+    rangeBetween: (min, max) =>
+      tr("inspectionLabels.rangeBetween", { min, max }),
+    rangeAtLeast: (min) => tr("inspectionLabels.rangeAtLeast", { min }),
+    rangeAtMost: (max) => tr("inspectionLabels.rangeAtMost", { max }),
+    listSeparator: tr("inspectionLabels.listSeparator"),
+  };
   const wo = await prisma.workOrder.findUnique({
     where: { workOrderNumber },
     select: {
@@ -886,7 +899,9 @@ export async function fetchStepExecution(
       })
     : [];
   const nameOf = (id: string | null | undefined) =>
-    id ? (users.find((u) => u.id === id)?.displayName ?? "システム") : null;
+    id
+      ? (users.find((u) => u.id === id)?.displayName ?? tr("common.system"))
+      : null;
 
   // 実測値の表示（合格数のみ → 合格 n/m、新形式 measured_values は型別
   // フォーマット、旧形式は生値）
@@ -898,12 +913,18 @@ export async function fetchStepExecution(
     templateItem: InspectionItemRecord;
   }): string | null => {
     if (it.inspectedCount != null || it.passedCount != null) {
-      return formatCounts(it.inspectedCount, it.passedCount);
+      return formatCounts(
+        it.inspectedCount,
+        it.passedCount,
+        tr("production.inspectionRecordForm.pass"),
+      );
     }
     const samples = parseStoredSamples(it.measuredValues);
     if (samples.length === 0) return it.measuredValue;
     const spec = itemSpecFromRow(it.templateItem);
-    return samples.map((s) => formatSampleValue(spec, s)).join(" / ");
+    return samples
+      .map((s) => formatSampleValue(spec, s, locale, bool))
+      .join(" / ");
   };
 
   type RecordRaw = (typeof step.inspectionRecords)[number];
@@ -1059,7 +1080,7 @@ export async function fetchStepExecution(
       outsourceCost:
         step.outsourceCost != null ? Number(step.outsourceCost) : null,
     },
-    canStart: canStartStep(step.id, ctx, actorId),
+    canStart: canStartStep(step.id, ctx, actorId, workflowCoreT(tr)),
     expectedInputQuantity: expectedInput(step.id, ctx),
     templates,
     stepRecords: step.inspectionRecords.map((r) => mapRecord(r, null)),

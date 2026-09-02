@@ -7700,5 +7700,45 @@
     "materialReceived": "Material received",
     "reservedByStockCheck": "Reserved by stock check (§4)",
     "stockCheckReservedAndShortage": "Stock check: reserved {reservedNow} / short {shortage}"
+  },
+  "workflowCore": {
+    "quantityLabels": {
+      "flow": {
+        "input": "Received",
+        "success": "Good",
+        "semi": "Semi-finished",
+        "scrap": "Scrapped",
+        "rework": "Process branch"
+      },
+      "inspection": {
+        "input": "Inspected",
+        "success": "Pass",
+        "semi": "Fail (semi-finished)",
+        "scrap": "Fail (scrapped)",
+        "rework": "Fail (process branch)"
+      },
+      "none": {
+        "input": "Received",
+        "success": "Good",
+        "semi": "Semi-finished",
+        "scrap": "Scrapped",
+        "rework": "Process branch"
+      }
+    },
+    "stepNotFound": "Step not found",
+    "stepNotStartable": "This step cannot be started in its current state",
+    "anotherUserSession": "Another user has an active session",
+    "execDepIncomplete": "Execution dependency incomplete (step {stepId})",
+    "execDepOrIncomplete": "None of the execution dependencies (any-of) are complete",
+    "branchSourceIncomplete": "The branch source step is not complete",
+    "precedingWorkOrderIncomplete": "Preceding work order #{workOrderNumber} is not complete",
+    "quantityNegative": "{label} must be 0 or greater",
+    "quantityConservationInspection": "The sum of pass + fail (semi-finished, scrapped, process branch) ({sum}) does not match the inspected count ({input})",
+    "quantityConservationFlow": "The sum of good + defective (semi-finished, scrapped, process branch) ({sum}) does not match the received count ({input})",
+    "routingExceedsLimit": "The total branch quantity ({static}) exceeds good + process branch ({limit})",
+    "selfLoopNotAllowed": "A self-loop cannot be created",
+    "linkEndpointOutsideWorkOrder": "A link endpoint is outside the work order",
+    "branchesAreCyclic": "The branches form a cycle",
+    "fullQuantity": "Full quantity"
   }
 }

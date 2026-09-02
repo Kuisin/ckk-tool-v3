@@ -355,5 +355,14 @@
     "cannotUndo": "This cannot be undone.",
     "cancel": "Cancel",
     "execute": "Execute"
+  },
+  "workflowCore": {
+    "stepNotFound": "Step not found",
+    "stepNotStartable": "This step cannot be started in its current state",
+    "anotherUserSession": "Another user has an active session",
+    "execDepIncomplete": "Execution dependency incomplete (step {stepId})",
+    "execDepOrIncomplete": "None of the execution dependencies (any-of) are complete",
+    "branchSourceIncomplete": "The branch source step is not complete",
+    "precedingWorkOrderIncomplete": "Preceding work order #{workOrderNumber} is not complete"
   }
 }

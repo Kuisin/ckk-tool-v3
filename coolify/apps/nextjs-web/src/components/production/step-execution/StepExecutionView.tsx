@@ -60,7 +60,7 @@ import { DocNumber } from "@/components/ui/DocNumber";
 import { FieldValue } from "@/components/ui/FieldValue";
 import { ModalShell } from "@/components/ui/modals";
 import { StatusBadge } from "@/components/ui/StatusBadge";
-import { QUANTITY_LABELS } from "@/lib/workflow-core";
+import { localizedQuantityLabels } from "@/lib/workflow-core-labels";
 import type { StepExecutionData } from "./model";
 
 const BASE_PATH = "/production/work-orders";
@@ -98,7 +98,7 @@ export function StepExecutionView({ data }: { data: StepExecutionData }) {
   );
 
   const isOutsource = step.executionLocation === "OUTSOURCE";
-  const qtyLabels = QUANTITY_LABELS[step.quantityTracking];
+  const qtyLabels = localizedQuantityLabels(tr, step.quantityTracking);
   const lockedByOther =
     step.sessionLockedBy != null && step.sessionLockedBy !== data.actorId;
   const woExecutable =

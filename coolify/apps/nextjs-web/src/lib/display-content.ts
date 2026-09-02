@@ -45,7 +45,7 @@ export function appPageConfigSchema(t: DisplayContentT = identityT) {
           code: "custom",
           message: t(
             "displayContent.selectAPageToShow",
-            "表示する画面を選んでください",
+            "表示する画面を選んでください", // i18n-ignore — t() の既定 ja fallback
           ),
           path: ["page"],
         });
@@ -61,7 +61,7 @@ export function appPageConfigSchema(t: DisplayContentT = identityT) {
             parsed.error.issues[0]?.message ??
             t(
               "displayContent.pageSettingsAreIncorrect",
-              "画面の設定が正しくありません",
+              "画面の設定が正しくありません", // i18n-ignore — t() の既定 ja fallback
             ),
           path: ["options"],
         });
@@ -101,7 +101,7 @@ export function urlConfigSchema(t: DisplayContentT = identityT) {
         {
           message: t(
             "displayContent.enterUrlStartingWithHttp",
-            "http:// または https:// で始まる URL を入力してください",
+            "http:// または https:// で始まる URL を入力してください", // i18n-ignore — t() の既定 ja fallback
           ),
         },
       ),

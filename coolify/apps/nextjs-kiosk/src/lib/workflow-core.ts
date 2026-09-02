@@ -11,7 +11,31 @@
  *   全員不在は「警告」に留める — 素材属性由来の条件（素材が研磨・定尺 等）は
  *   エッジ化されておらず、グループ全不在で充足されるケースがあるため。
  * - is_negation（排他）: 依存先が存在してはならない（存在 = エラー）。
+ *
+ * ★ 検証エラー・ラベルは呼び出し側から渡す関数 `t` で解決する（このファイルは
+ *   依存なしの isomorphic ロジックで、next-intl もキオスクの辞書も読み込めない）。
+ *   `t` を省略したときの既定値は ja 直書き（`fallback` 引数をそのまま返す —
+ *   `{var}` プレースホルダだけ単純置換する）。web は next-intl の `tr`、kiosk は
+ *   自分の辞書 + `fillMessage` を包んで渡す。
  */
+
+/** ワークフロー検証の文言解決関数。省略時は ja 直書き（identityT）。 */
+export type WorkflowCoreT = (
+  key: string,
+  fallback: string,
+  vars?: Record<string, string | number>,
+) => string;
+
+function fillTemplate(
+  template: string,
+  vars?: Record<string, string | number>,
+): string {
+  if (!vars) return template;
+  return template.replace(/\{(\w+)\}/g, (_, k) => String(vars[k] ?? ""));
+}
+
+const identityT: WorkflowCoreT = (_key, fallback, vars) =>
+  fillTemplate(fallback, vars);
 
 /** 工程の数量管理モード（app.QUANTITY_TRACKING）。 */
 export type QuantityTrackingMode = "NONE" | "FLOW" | "INSPECTION";
@@ -50,6 +74,11 @@ export function effectiveLotInputMode(
 /**
  * 数量フィールドの表示ラベル（モード別）。INSPECTION は同じ列を
  * 検査数/合格/不合格として扱う（保存則の数式は FLOW と同一）。
+ *
+ * ★ 値は表示文字列ではなく `t()` の鍵（+ ja 直書きの `fallback` として
+ *   そのまま使える形）。画面表示は web の lib/workflow-core-labels.ts が
+ *   `localizedQuantityLabels()` で解決する。kiosk は自分の辞書に同じ内容を
+ *   独立して持つため、このオブジェクトの値そのものは読まない。
  */
 export const QUANTITY_LABELS: Record<
   QuantityTrackingMode,
@@ -62,25 +91,59 @@ export const QUANTITY_LABELS: Record<
   }
 > = {
   FLOW: {
-    input: "受入数",
-    success: "良品数",
-    semi: "半製品",
-    scrap: "廃棄",
-    rework: "工程分岐",
+    input: "quantityLabels.flow.input",
+    success: "quantityLabels.flow.success",
+    semi: "quantityLabels.flow.semi",
+    scrap: "quantityLabels.flow.scrap",
+    rework: "quantityLabels.flow.rework",
   },
   INSPECTION: {
-    input: "検査数",
-    success: "合格数",
-    semi: "不合格（半製品）",
-    scrap: "不合格（廃棄）",
-    rework: "不合格（工程分岐）",
+    input: "quantityLabels.inspection.input",
+    success: "quantityLabels.inspection.success",
+    semi: "quantityLabels.inspection.semi",
+    scrap: "quantityLabels.inspection.scrap",
+    rework: "quantityLabels.inspection.rework",
   },
   NONE: {
-    input: "受入数",
-    success: "良品数",
-    semi: "半製品",
-    scrap: "廃棄",
-    rework: "工程分岐",
+    input: "quantityLabels.none.input",
+    success: "quantityLabels.none.success",
+    semi: "quantityLabels.none.semi",
+    scrap: "quantityLabels.none.scrap",
+    rework: "quantityLabels.none.rework",
+  },
+};
+
+/** QUANTITY_LABELS の鍵 → ja 直書き（`t()` の fallback 用・identityT 経由での既定表示）。 */
+const QUANTITY_LABELS_JA: Record<
+  QuantityTrackingMode,
+  {
+    input: string;
+    success: string;
+    semi: string;
+    scrap: string;
+    rework: string;
+  }
+> = {
+  FLOW: {
+    input: "受入数", // i18n-ignore
+    success: "良品数", // i18n-ignore
+    semi: "半製品", // i18n-ignore
+    scrap: "廃棄", // i18n-ignore
+    rework: "工程分岐", // i18n-ignore
+  },
+  INSPECTION: {
+    input: "検査数", // i18n-ignore
+    success: "合格数", // i18n-ignore
+    semi: "不合格（半製品）", // i18n-ignore
+    scrap: "不合格（廃棄）", // i18n-ignore
+    rework: "不合格（工程分岐）", // i18n-ignore
+  },
+  NONE: {
+    input: "受入数", // i18n-ignore
+    success: "良品数", // i18n-ignore
+    semi: "半製品", // i18n-ignore
+    scrap: "廃棄", // i18n-ignore
+    rework: "工程分岐", // i18n-ignore
   },
 };
 
@@ -489,15 +552,24 @@ export function canStartStep(
   stepId: string,
   ctx: WorkflowCtx,
   actorId?: string | null,
+  t: WorkflowCoreT = identityT,
 ): { ok: boolean; reasons: string[] } {
   const step = ctx.steps.find((s) => s.id === stepId);
-  if (!step) return { ok: false, reasons: ["工程が見つかりません"] };
+  if (!step) {
+    return {
+      ok: false,
+      reasons: [t("stepNotFound", "工程が見つかりません")], // i18n-ignore
+    };
+  }
   const reasons: string[] = [];
 
   if (step.status !== "PENDING")
-    reasons.push("この工程は開始できる状態ではありません");
+    // i18n-ignore
+    reasons.push(
+      t("stepNotStartable", "この工程は開始できる状態ではありません"),
+    );
   if (step.sessionLockedBy && step.sessionLockedBy !== actorId)
-    reasons.push("別のユーザーがセッション中です");
+    reasons.push(t("anotherUserSession", "別のユーザーがセッション中です")); // i18n-ignore
 
   // カタログ実行依存 — 指示書内に存在する工程のみで評価
   const byCatalog = new Map<number, StepState[]>();
@@ -513,17 +585,28 @@ export function canStartStep(
     const targets = byCatalog.get(d.dependsOnStepId);
     if (!targets || targets.length === 0) continue; // 不在 = 空真
     if (d.relation === "AND") {
-      if (!targets.every((t) => t.status === "COMPLETED"))
-        reasons.push(`実行依存が未完了です（工程 ${d.dependsOnStepId}）`);
+      if (!targets.every((target) => target.status === "COMPLETED"))
+        reasons.push(
+          t(
+            "execDepIncomplete",
+            `実行依存が未完了です（工程 ${d.dependsOnStepId}）`, // i18n-ignore
+            { stepId: d.dependsOnStepId },
+          ),
+        );
     } else {
       orGroup.push(d.dependsOnStepId);
     }
   }
   if (orGroup.length > 0) {
     const satisfied = orGroup.some((cid) =>
-      (byCatalog.get(cid) ?? []).some((t) => t.status === "COMPLETED"),
+      (byCatalog.get(cid) ?? []).some(
+        (target) => target.status === "COMPLETED",
+      ),
     );
-    if (!satisfied) reasons.push("実行依存（いずれか）が未完了です");
+    if (!satisfied)
+      reasons.push(
+        t("execDepOrIncomplete", "実行依存（いずれか）が未完了です"), // i18n-ignore
+      );
   }
 
   // 流入エッジ（分岐合流）はすべて完了
@@ -531,7 +614,7 @@ export function canStartStep(
     if (l.targetStepId !== stepId) continue;
     const src = ctx.steps.find((s) => s.id === l.sourceStepId);
     if (src && src.status !== "COMPLETED" && src.status !== "CANCELLED")
-      reasons.push("分岐元の工程が未完了です");
+      reasons.push(t("branchSourceIncomplete", "分岐元の工程が未完了です")); // i18n-ignore
   }
 
   // 先行指示書リンク（work_order_links）— 先頭メインライン工程のみゲート。
@@ -542,7 +625,13 @@ export function canStartStep(
   ) {
     for (const l of ctx.incomingWoLinks ?? []) {
       if (l.sourceStatus !== "COMPLETED" && l.sourceStatus !== "CANCELLED")
-        reasons.push(`先行指示書 #${l.sourceWorkOrderNumber} が未完了です`);
+        reasons.push(
+          t(
+            "precedingWorkOrderIncomplete",
+            `先行指示書 #${l.sourceWorkOrderNumber} が未完了です`, // i18n-ignore
+            { workOrderNumber: l.sourceWorkOrderNumber },
+          ),
+        );
     }
   }
 
@@ -847,35 +936,53 @@ export function validateQuantities(
     defectRework: number | null;
   },
   mode: QuantityTrackingMode = "FLOW",
+  t: WorkflowCoreT = identityT,
 ): QuantityIssue[] {
   if (mode === "NONE") return [];
   const labels = QUANTITY_LABELS[mode];
+  const labelsJa = QUANTITY_LABELS_JA[mode];
   const issues: QuantityIssue[] = [];
   const input = step.inputQuantity ?? 0;
   const success = step.outputSuccess ?? 0;
   const semi = step.defectSemiFinished ?? 0;
   const scrap = step.defectScrap ?? 0;
   const rework = step.defectRework ?? 0;
-  for (const [label, v] of [
-    [labels.input, input],
-    [labels.success, success],
-    [labels.semi, semi],
-    [labels.scrap, scrap],
-    [labels.rework, rework],
+  for (const [key, jaLabel, v] of [
+    [labels.input, labelsJa.input, input],
+    [labels.success, labelsJa.success, success],
+    [labels.semi, labelsJa.semi, semi],
+    [labels.scrap, labelsJa.scrap, scrap],
+    [labels.rework, labelsJa.rework, rework],
   ] as const) {
     if (v < 0)
       issues.push({
         kind: "NEGATIVE",
-        message: `${label}は 0 以上で入力してください`,
+        // i18n-ignore
+        message: t(
+          "quantityNegative",
+          `${jaLabel}は 0 以上で入力してください`,
+          {
+            label: t(key, jaLabel),
+          },
+        ),
       });
   }
   if (success + semi + scrap + rework !== input) {
+    const sum = success + semi + scrap + rework;
     issues.push({
       kind: "CONSERVATION",
       message:
         mode === "INSPECTION"
-          ? `合格 + 不合格（半製品・廃棄・工程分岐）の合計（${success + semi + scrap + rework}）が検査数（${input}）と一致しません`
-          : `良品 + 不良（半製品・廃棄・工程分岐）の合計（${success + semi + scrap + rework}）が受入数（${input}）と一致しません`,
+          ? t(
+              "quantityConservationInspection",
+              `合格 + 不合格（半製品・廃棄・工程分岐）の合計（${sum}）が検査数（${input}）と一致しません`, // i18n-ignore
+              { sum, input },
+            )
+          : t(
+              "quantityConservationFlow",
+              `良品 + 不良（半製品・廃棄・工程分岐）の合計（${sum}）が受入数（${input}）と一致しません`, // i18n-ignore
+              { sum, input },
+            ),
     });
   }
   return issues;
@@ -889,6 +996,7 @@ export function validateQuantities(
 export function validateRouting(
   step: { outputSuccess: number | null; defectRework: number | null },
   outgoing: readonly StepLinkState[],
+  t: WorkflowCoreT = identityT,
 ): QuantityIssue[] {
   if (outgoing.length === 0) return [];
   const staticTotal = outgoing.reduce(
@@ -900,7 +1008,11 @@ export function validateRouting(
     return [
       {
         kind: "ROUTING",
-        message: `分岐数量の合計（${staticTotal}）が 良品 + 工程分岐（${limit}）を超えています`,
+        message: t(
+          "routingExceedsLimit",
+          `分岐数量の合計（${staticTotal}）が 良品 + 工程分岐（${limit}）を超えています`, // i18n-ignore
+          { static: staticTotal, limit },
+        ),
       },
     ];
   }
@@ -911,14 +1023,17 @@ export function validateRouting(
 export function validateDagShape(
   steps: readonly { id: string }[],
   links: readonly StepLinkState[],
+  t: WorkflowCoreT = identityT,
 ): string[] {
   const ids = new Set(steps.map((s) => s.id));
   const errors: string[] = [];
   for (const l of links) {
     if (l.sourceStepId === l.targetStepId)
-      errors.push("自己ループは作成できません");
+      errors.push(t("selfLoopNotAllowed", "自己ループは作成できません")); // i18n-ignore
     if (!ids.has(l.sourceStepId) || !ids.has(l.targetStepId))
-      errors.push("リンクの端点が指示書外です");
+      errors.push(
+        t("linkEndpointOutsideWorkOrder", "リンクの端点が指示書外です"),
+      ); // i18n-ignore
   }
   if (errors.length > 0) return errors;
 
@@ -941,7 +1056,8 @@ export function validateDagShape(
       if (d === 0) queue.push(l.targetStepId);
     }
   }
-  if (visited < steps.length) errors.push("分岐が循環しています");
+  if (visited < steps.length)
+    errors.push(t("branchesAreCyclic", "分岐が循環しています")); // i18n-ignore
   return errors;
 }
 
@@ -968,6 +1084,7 @@ export interface GraphEdge {
 export function layoutWorkflowGraph(
   steps: readonly StepState[],
   links: readonly StepLinkState[],
+  t: WorkflowCoreT = identityT,
 ): { nodes: GraphNode[]; edges: GraphEdge[] } {
   const ctx: WorkflowCtx = {
     plannedQuantity: 0,
@@ -1000,7 +1117,7 @@ export function layoutWorkflowGraph(
           ? String(l.routedQuantity)
           : resolved != null
             ? String(resolved)
-            : "全量",
+            : t("fullQuantity", "全量"), // i18n-ignore
       kind: "link",
     });
   }

@@ -254,6 +254,7 @@ import {
   validateDagShape,
   validateQuantities,
   validateRouting,
+  type WorkflowCoreT,
   type WorkflowCtx,
 } from "./workflow-core";
 
@@ -397,6 +398,95 @@ describe("expectedInput", () => {
       execDeps: [],
     };
     expect(expectedInput("m", ctx)).toBe(10);
+  });
+});
+
+describe("検証メッセージの言語対応（t を渡すと画面側の翻訳に差し替わる）", () => {
+  const upperT: WorkflowCoreT = (key, _fallback, vars) =>
+    `[${key}]${vars ? JSON.stringify(vars) : ""}`;
+
+  it("canStartStep: 既定は ja 直書き・t を渡すと差し替わる", () => {
+    const ctx: WorkflowCtx = {
+      plannedQuantity: 10,
+      steps: [step("a", 100, 10, "IN_PROGRESS")],
+      links: [],
+      execDeps: [],
+    };
+    expect(canStartStep("a", ctx).reasons).toEqual([
+      "この工程は開始できる状態ではありません",
+    ]);
+    expect(canStartStep("a", ctx, null, upperT).reasons).toEqual([
+      "[stepNotStartable]",
+    ]);
+  });
+
+  it("canStartStep: 動的な値も t の vars で渡る", () => {
+    const ctx: WorkflowCtx = {
+      plannedQuantity: 10,
+      steps: [step("a", 100, 10, "COMPLETED"), step("b", 200, 20)],
+      links: [],
+      execDeps: [edep(200, 100)],
+    };
+    expect(
+      canStartStep(
+        "b",
+        {
+          ...ctx,
+          steps: [step("a", 100, 10, "IN_PROGRESS"), step("b", 200, 20)],
+        },
+        null,
+        upperT,
+      ).reasons,
+    ).toEqual(['[execDepIncomplete]{"stepId":100}']);
+  });
+
+  it("validateQuantities: ラベルも含めて t で解決する", () => {
+    const issues = validateQuantities(
+      {
+        inputQuantity: -1,
+        outputSuccess: 0,
+        defectSemiFinished: 0,
+        defectScrap: 0,
+        defectRework: 0,
+      },
+      "FLOW",
+      upperT,
+    );
+    expect(issues[0]?.message).toBe(
+      '[quantityNegative]{"label":"[quantityLabels.flow.input]"}',
+    );
+  });
+
+  it("validateRouting: t を渡すと差し替わる", () => {
+    const issues = validateRouting(
+      { outputSuccess: 1, defectRework: 0 },
+      [{ sourceStepId: "a", targetStepId: "b", routedQuantity: 5 }],
+      upperT,
+    );
+    expect(issues[0]?.message).toBe(
+      '[routingExceedsLimit]{"static":5,"limit":1}',
+    );
+  });
+
+  it("validateDagShape: t を渡すと差し替わる", () => {
+    expect(
+      validateDagShape(
+        [{ id: "a" }],
+        [{ sourceStepId: "a", targetStepId: "a", routedQuantity: 0 }],
+        upperT,
+      ),
+    ).toEqual(["[selfLoopNotAllowed]"]);
+  });
+
+  it("layoutWorkflowGraph: 未解決の動的エッジ「全量」ラベルも t で解決する", () => {
+    // source が未完了 = resolveLinkQuantity が null を返す → 「全量」表示
+    const steps = [step("a", 100, 10, "PENDING"), step("b", 200, 20)];
+    const links: StepLinkState[] = [
+      { sourceStepId: "a", targetStepId: "b", routedQuantity: 0 },
+    ];
+    const { edges } = layoutWorkflowGraph(steps, links, upperT);
+    const link = edges.find((e) => e.kind === "link");
+    expect(link?.label).toBe("[fullQuantity]");
   });
 });
 

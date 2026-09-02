@@ -43,6 +43,7 @@ import {
   type StepState,
   type WorkflowCtx,
 } from "./workflow-core";
+import { workflowCoreT } from "./workflow-core-labels";
 
 export interface MyStepView {
   stepId: string;
@@ -53,7 +54,7 @@ export interface MyStepView {
   plantName: string | null;
   quantityMode: QuantityTrackingMode;
   sessionState: StepSessionState;
-  /** BLOCKED の理由（日本語・サーバー由来。UI は補助表示に使う）。 */
+  /** BLOCKED の理由（サーバー由来・利用者の言語で解決済み。UI は補助表示に使う）。 */
   blockReasons: string[];
   bucket: StepBucket;
   sortOrder: number;
@@ -297,7 +298,9 @@ async function hydrateSteps(
       executionLocation: r.executionLocation,
       sessionState: state,
       blockReasons:
-        state === "BLOCKED" ? canStartStep(r.id, ctx, userId).reasons : [],
+        state === "BLOCKED"
+          ? canStartStep(r.id, ctx, userId, workflowCoreT(locale)).reasons
+          : [],
       bucket: bucketOf(plannedDate, todayJst),
       sortOrder: r.sortOrder,
       plannedDate,

@@ -7700,5 +7700,45 @@
     "materialReceived": "素材入荷",
     "reservedByStockCheck": "§4 在庫照合による引当予約",
     "stockCheckReservedAndShortage": "在庫照合: 引当 {reservedNow} / 不足 {shortage}"
+  },
+  "workflowCore": {
+    "quantityLabels": {
+      "flow": {
+        "input": "受入数",
+        "success": "良品数",
+        "semi": "半製品",
+        "scrap": "廃棄",
+        "rework": "工程分岐"
+      },
+      "inspection": {
+        "input": "検査数",
+        "success": "合格数",
+        "semi": "不合格（半製品）",
+        "scrap": "不合格（廃棄）",
+        "rework": "不合格（工程分岐）"
+      },
+      "none": {
+        "input": "受入数",
+        "success": "良品数",
+        "semi": "半製品",
+        "scrap": "廃棄",
+        "rework": "工程分岐"
+      }
+    },
+    "stepNotFound": "工程が見つかりません",
+    "stepNotStartable": "この工程は開始できる状態ではありません",
+    "anotherUserSession": "別のユーザーがセッション中です",
+    "execDepIncomplete": "実行依存が未完了です（工程 {stepId}）",
+    "execDepOrIncomplete": "実行依存（いずれか）が未完了です",
+    "branchSourceIncomplete": "分岐元の工程が未完了です",
+    "precedingWorkOrderIncomplete": "先行指示書 #{workOrderNumber} が未完了です",
+    "quantityNegative": "{label}は 0 以上で入力してください",
+    "quantityConservationInspection": "合格 + 不合格（半製品・廃棄・工程分岐）の合計（{sum}）が検査数（{input}）と一致しません",
+    "quantityConservationFlow": "良品 + 不良（半製品・廃棄・工程分岐）の合計（{sum}）が受入数（{input}）と一致しません",
+    "routingExceedsLimit": "分岐数量の合計（{static}）が 良品 + 工程分岐（{limit}）を超えています",
+    "selfLoopNotAllowed": "自己ループは作成できません",
+    "linkEndpointOutsideWorkOrder": "リンクの端点が指示書外です",
+    "branchesAreCyclic": "分岐が循環しています",
+    "fullQuantity": "全量"
   }
 }

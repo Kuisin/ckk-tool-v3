@@ -355,5 +355,14 @@
     "cannotUndo": "この操作は取り消せません。",
     "cancel": "キャンセル",
     "execute": "実行"
+  },
+  "workflowCore": {
+    "stepNotFound": "工程が見つかりません",
+    "stepNotStartable": "この工程は開始できる状態ではありません",
+    "anotherUserSession": "別のユーザーがセッション中です",
+    "execDepIncomplete": "実行依存が未完了です（工程 {stepId}）",
+    "execDepOrIncomplete": "実行依存（いずれか）が未完了です",
+    "branchSourceIncomplete": "分岐元の工程が未完了です",
+    "precedingWorkOrderIncomplete": "先行指示書 #{workOrderNumber} が未完了です"
   }
 }

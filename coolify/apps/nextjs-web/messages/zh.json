@@ -7700,5 +7700,45 @@
     "materialReceived": "材料到货",
     "reservedByStockCheck": "库存核对分配预留（§4）",
     "stockCheckReservedAndShortage": "库存核对：已分配 {reservedNow} / 缺口 {shortage}"
+  },
+  "workflowCore": {
+    "quantityLabels": {
+      "flow": {
+        "input": "接收数",
+        "success": "良品数",
+        "semi": "半成品",
+        "scrap": "报废",
+        "rework": "工序分支"
+      },
+      "inspection": {
+        "input": "检查数",
+        "success": "合格数",
+        "semi": "不合格（半成品）",
+        "scrap": "不合格（报废）",
+        "rework": "不合格（工序分支）"
+      },
+      "none": {
+        "input": "接收数",
+        "success": "良品数",
+        "semi": "半成品",
+        "scrap": "报废",
+        "rework": "工序分支"
+      }
+    },
+    "stepNotFound": "找不到工序",
+    "stepNotStartable": "该工序目前无法开始",
+    "anotherUserSession": "另一位用户正在操作中",
+    "execDepIncomplete": "执行依赖未完成（工序 {stepId}）",
+    "execDepOrIncomplete": "执行依赖（任一）均未完成",
+    "branchSourceIncomplete": "分支来源工序尚未完成",
+    "precedingWorkOrderIncomplete": "前置工单 #{workOrderNumber} 尚未完成",
+    "quantityNegative": "{label}请输入 0 以上的数值",
+    "quantityConservationInspection": "合格 + 不合格（半成品・报废・工序分支）之和（{sum}）与检查数（{input}）不一致",
+    "quantityConservationFlow": "良品 + 不良（半成品・报废・工序分支）之和（{sum}）与接收数（{input}）不一致",
+    "routingExceedsLimit": "分支数量总计（{static}）超过了 良品 + 工序分支（{limit}）",
+    "selfLoopNotAllowed": "无法创建自环",
+    "linkEndpointOutsideWorkOrder": "链接的端点不在该工单范围内",
+    "branchesAreCyclic": "分支形成了循环",
+    "fullQuantity": "全量"
   }
 }

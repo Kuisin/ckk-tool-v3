@@ -355,5 +355,14 @@
     "cannotUndo": "此操作无法撤销。",
     "cancel": "取消",
     "execute": "执行"
+  },
+  "workflowCore": {
+    "stepNotFound": "未找到该工序",
+    "stepNotStartable": "该工序目前无法开始",
+    "anotherUserSession": "另一位用户正在操作中",
+    "execDepIncomplete": "执行依赖未完成（工序 {stepId}）",
+    "execDepOrIncomplete": "执行依赖（任一）均未完成",
+    "branchSourceIncomplete": "分支来源工序尚未完成",
+    "precedingWorkOrderIncomplete": "前置工单 #{workOrderNumber} 尚未完成"
   }
 }
