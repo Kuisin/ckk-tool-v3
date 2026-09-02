@@ -2265,7 +2265,9 @@
       "enterTheRequiredItems": "请填写必填项目（{items}）",
       "failCount": "不合格 {count}",
       "measuredValue": "实测值",
-      "passedCountExceedsInspectedCountFor": "合格数超过检查数（{items}）"
+      "passedCountExceedsInspectedCountFor": "合格数超过检查数（{items}）",
+      "acceptPrefix": "合格：{label}",
+      "goalPrefix": "目标：{label}"
     },
     "processListEditor": {
       "theChosenStepListSComposition": "所选工序列表的构成。如需更改工序・作业时间请按「编辑工序」（变更将在保存时作为新版本保存）。",
@@ -7665,5 +7667,20 @@
         }
       }
     }
+  },
+  "inspectionLabels": {
+    "samplingAll": "全数",
+    "samplingAllWithCount": "全数（{count} 件）",
+    "samplingPercent": "抽检 {pct}%",
+    "samplingPercentWithCount": "抽检 {pct}%（{count} 件）",
+    "samplingCount": "抽检 {count} 件",
+    "sampleInitial": "首件",
+    "sampleMid": "中间件",
+    "sampleFinal": "末件",
+    "sampleGeneric": "产品 {n}",
+    "rangeBetween": "{min} 至 {max}",
+    "rangeAtLeast": "{min} 以上",
+    "rangeAtMost": "{max} 以下",
+    "listSeparator": "、"
   }
 }

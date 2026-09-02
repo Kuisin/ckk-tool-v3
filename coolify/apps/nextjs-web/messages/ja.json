@@ -2265,7 +2265,9 @@
       "enterTheRequiredItems": "必須項目を入力してください（{items}）",
       "failCount": "不合格 {count}",
       "measuredValue": "実測値",
-      "passedCountExceedsInspectedCountFor": "合格数が検査数を超えています（{items}）"
+      "passedCountExceedsInspectedCountFor": "合格数が検査数を超えています（{items}）",
+      "acceptPrefix": "合格: {label}",
+      "goalPrefix": "目標: {label}"
     },
     "processListEditor": {
       "theChosenStepListSComposition": "選択した工程リストの構成です。工程・作業時間を変えるときは「工程を編集」を押してください（変更は保存時に新バージョンとして保存されます）。",
@@ -7665,5 +7667,20 @@
         }
       }
     }
+  },
+  "inspectionLabels": {
+    "samplingAll": "全数",
+    "samplingAllWithCount": "全数（{count}本）",
+    "samplingPercent": "抜取 {pct}%",
+    "samplingPercentWithCount": "抜取 {pct}%（{count}本）",
+    "samplingCount": "抜取 {count}本",
+    "sampleInitial": "初品",
+    "sampleMid": "中間品",
+    "sampleFinal": "最終品",
+    "sampleGeneric": "製品 {n}",
+    "rangeBetween": "{min} 〜 {max}",
+    "rangeAtLeast": "{min} 以上",
+    "rangeAtMost": "{max} 以下",
+    "listSeparator": "・"
   }
 }

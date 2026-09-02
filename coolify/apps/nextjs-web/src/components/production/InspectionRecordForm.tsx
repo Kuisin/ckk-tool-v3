@@ -40,7 +40,7 @@ import {
   IconPlus,
 } from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { useState, useTransition } from "react";
 import {
   approveInspectionRecord,
@@ -58,6 +58,7 @@ import { PdfButton } from "@/components/ui/PdfButton";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import {
   acceptLabel,
+  type BoolLabels,
   evaluateEntry,
   evaluateSample,
   goalLabel,
@@ -67,9 +68,8 @@ import {
   isSampleEmpty,
   requiredSampleCount,
   resolveItemPass,
-  sampleLabel,
-  samplingLabelJa,
 } from "@/lib/inspection-core";
+import { sampleLabel, samplingLabel } from "@/lib/inspection-labels";
 import type {
   InspectionRecordView,
   InspectionTemplateItemView,
@@ -342,6 +342,16 @@ export function InspectionRecordForm({
   lotQuantity: number | null;
 }) {
   const tr = useTranslations();
+  const locale = useLocale();
+  const bool: BoolLabels = {
+    yes: tr("common.yes"),
+    no: tr("common.no"),
+    rangeBetween: (min, max) =>
+      tr("inspectionLabels.rangeBetween", { min, max }),
+    rangeAtLeast: (min) => tr("inspectionLabels.rangeAtLeast", { min }),
+    rangeAtMost: (max) => tr("inspectionLabels.rangeAtMost", { max }),
+    listSeparator: tr("inspectionLabels.listSeparator"),
+  };
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   // key = `${templateId}:${itemId}`
@@ -565,7 +575,7 @@ export function InspectionRecordForm({
                       v{template.version}
                     </Badge>
                     <Badge color="gray" size="sm" variant="light">
-                      {samplingLabelJa(template, required)}
+                      {samplingLabel(tr, template, required)}
                     </Badge>
                     {style === "COUNTS" && (
                       <Badge color="cyan" size="sm" variant="light">
@@ -585,8 +595,8 @@ export function InspectionRecordForm({
                   // ── 合格数のみ: 項目ごとに検査数・合格数 ──
                   template.items.map((item) => {
                     const entry = entryOf(template, item);
-                    const accept = acceptLabel(item);
-                    const goal = goalLabel(item);
+                    const accept = acceptLabel(item, locale, bool);
+                    const goal = goalLabel(item, locale, bool);
                     return (
                       <Paper key={item.id} p="sm" radius="sm" withBorder>
                         <Stack gap="xs">
@@ -601,12 +611,22 @@ export function InspectionRecordForm({
                             </Text>
                             {accept && (
                               <Text c="dimmed" size="xs">
-                                合格: {accept}
+                                {tr(
+                                  "production.inspectionRecordForm.acceptPrefix",
+                                  {
+                                    label: accept,
+                                  },
+                                )}
                               </Text>
                             )}
                             {goal && (
                               <Text c="dimmed" size="xs">
-                                目標: {goal}
+                                {tr(
+                                  "production.inspectionRecordForm.goalPrefix",
+                                  {
+                                    label: goal,
+                                  },
+                                )}
                               </Text>
                             )}
                           </Group>
@@ -696,7 +716,7 @@ export function InspectionRecordForm({
                           </SecondaryButton>
                           <Group gap="xs" wrap="nowrap">
                             <Text className="tabular-nums" fw={600} size="sm">
-                              {sampleLabel(page, template.sampleNaming)} /{" "}
+                              {sampleLabel(tr, page, template.sampleNaming)} /{" "}
                               {pages}
                             </Text>
                             {required == null && (
@@ -729,7 +749,7 @@ export function InspectionRecordForm({
                           {template.items.map((item) => {
                             const value = sampleAt(template, item, page);
                             const verdict = evaluateSample(item, value);
-                            const accept = acceptLabel(item);
+                            const accept = acceptLabel(item, locale, bool);
                             return (
                               <Group
                                 align="center"
@@ -749,7 +769,10 @@ export function InspectionRecordForm({
                                   </Text>
                                   {accept && (
                                     <Text c="dimmed" size="xs">
-                                      合格: {accept}
+                                      {tr(
+                                        "production.inspectionRecordForm.acceptPrefix",
+                                        { label: accept },
+                                      )}
                                     </Text>
                                   )}
                                 </Stack>
@@ -760,6 +783,7 @@ export function InspectionRecordForm({
                                       setSampleAt(template, item, page, v)
                                     }
                                     sampleName={sampleLabel(
+                                      tr,
                                       page,
                                       template.sampleNaming,
                                     )}

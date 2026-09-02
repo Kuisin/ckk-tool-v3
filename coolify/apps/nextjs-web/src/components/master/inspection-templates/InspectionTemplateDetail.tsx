@@ -58,10 +58,11 @@ import {
 } from "@/lib/enum-labels";
 import {
   acceptLabel,
+  type BoolLabels,
   goalLabel,
   type InspectionItemSpec,
-  samplingLabelJa,
 } from "@/lib/inspection-core";
+import { samplingLabel } from "@/lib/inspection-labels";
 import type { ApproverOption } from "./ApprovalTargetField";
 import { InspectionTemplateImagePanel } from "./InspectionTemplateImagePanel";
 import {
@@ -163,6 +164,15 @@ export function InspectionTemplateDetail({
 }) {
   const tr = useTranslations();
   const locale = useLocale();
+  const bool: BoolLabels = {
+    yes: tr("common.yes"),
+    no: tr("common.no"),
+    rangeBetween: (min, max) =>
+      tr("inspectionLabels.rangeBetween", { min, max }),
+    rangeAtLeast: (min) => tr("inspectionLabels.rangeAtLeast", { min }),
+    rangeAtMost: (max) => tr("inspectionLabels.rangeAtMost", { max }),
+    listSeparator: tr("inspectionLabels.listSeparator"),
+  };
   const fmt = useFormat();
   const router = useRouter();
   // アクティブタブを ?tab= に保持（URL 共有でタブまで再現）
@@ -287,7 +297,7 @@ export function InspectionTemplateDetail({
         )}
         <FieldValue
           label={tr("master.inspectionTemplates.inspectionTarget")}
-          value={samplingLabelJa({
+          value={samplingLabel(tr, {
             samplingMode: record.samplingMode,
             samplingValue: record.samplingValue,
           })}
@@ -481,12 +491,12 @@ export function InspectionTemplateDetail({
                           </Table.Td>
                           <Table.Td>
                             <Text className="tabular-nums" size="sm">
-                              {acceptLabel(spec) ?? "—"}
+                              {acceptLabel(spec, locale, bool) ?? "—"}
                             </Text>
                           </Table.Td>
                           <Table.Td>
                             <Text className="tabular-nums" size="sm">
-                              {goalLabel(spec) ?? "—"}
+                              {goalLabel(spec, locale, bool) ?? "—"}
                             </Text>
                           </Table.Td>
                           <Table.Td>

@@ -280,6 +280,25 @@ describe("labels & formatting", () => {
     expect(acceptLabel(selectSpec({ acceptOptions: [] }))).toBeNull();
   });
 
+  it("acceptLabel: BoolLabels で範囲の言い回し・区切りを差し替えられる（画面側の言語対応）", () => {
+    const en = {
+      yes: "Yes",
+      no: "No",
+      rangeBetween: (min: string, max: string) => `${min} to ${max}`,
+      rangeAtLeast: (min: string) => `${min} or more`,
+      rangeAtMost: (max: string) => `${max} or less`,
+      listSeparator: ", ",
+    };
+    expect(acceptLabel(spec(), "en", en)).toBe("7.9 to 8.1 mm");
+    expect(acceptLabel(spec({ toleranceMax: null }), "en", en)).toBe(
+      "7.9 or more mm",
+    );
+    expect(acceptLabel(spec({ toleranceMin: null }), "en", en)).toBe(
+      "8.1 or less mm",
+    );
+    expect(acceptLabel(selectSpec(), "en", en)).toBe("OK, Minor");
+  });
+
   it("goalLabel: 型別の目標表示", () => {
     expect(goalLabel(spec({ goalValue: 8 }))).toBe("8 mm");
     expect(goalLabel(spec({ inputType: "BOOLEAN", goalValue: false }))).toBe(

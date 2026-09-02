@@ -2265,7 +2265,9 @@
       "enterTheRequiredItems": "Enter the required items ({items})",
       "failCount": "Fail {count}",
       "measuredValue": "Measured value",
-      "passedCountExceedsInspectedCountFor": "Passed count exceeds inspected count ({items})"
+      "passedCountExceedsInspectedCountFor": "Passed count exceeds inspected count ({items})",
+      "acceptPrefix": "Pass: {label}",
+      "goalPrefix": "Target: {label}"
     },
     "processListEditor": {
       "theChosenStepListSComposition": "The chosen step list's composition. To change steps or work hours, press Edit the step. Changes are saved as a new version.",
@@ -7665,5 +7667,20 @@
         }
       }
     }
+  },
+  "inspectionLabels": {
+    "samplingAll": "All units",
+    "samplingAllWithCount": "All units ({count} pcs)",
+    "samplingPercent": "Sampling {pct}%",
+    "samplingPercentWithCount": "Sampling {pct}% ({count} pcs)",
+    "samplingCount": "Sampling {count} pcs",
+    "sampleInitial": "First article",
+    "sampleMid": "Interim article",
+    "sampleFinal": "Final article",
+    "sampleGeneric": "Product {n}",
+    "rangeBetween": "{min} to {max}",
+    "rangeAtLeast": "{min} or more",
+    "rangeAtMost": "{max} or less",
+    "listSeparator": ", "
   }
 }
