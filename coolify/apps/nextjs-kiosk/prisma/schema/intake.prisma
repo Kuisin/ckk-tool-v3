@@ -199,7 +199,6 @@ model OrderLine {
   invoiceItems   InvoiceItem[]
 
   @@unique([acceptanceYearMonth, acceptanceSeq, branch])
-  @@index([acceptanceYearMonth, acceptanceSeq])
   @@index([status])
   @@index([productId])
   @@index([lotNumber])

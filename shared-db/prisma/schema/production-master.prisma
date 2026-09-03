@@ -685,6 +685,8 @@ model ApprovalRequestApprover {
   actedByUser User?           @relation("ApprovalRequestApproverActedBy", fields: [actedBy], references: [id])
 
   @@id([approvalRequestId, userId])
+  // 承認者 → 依頼 の逆引き（isApproverOf / 承認・予定の「自分宛て」）。PK は依頼側が先頭なので user_id 単独では引けない。
+  @@index([userId])
   @@map("approval_request_approvers")
   @@schema("app")
 }

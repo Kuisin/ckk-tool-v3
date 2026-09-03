@@ -172,6 +172,33 @@ View user_permissions {
   scope           SCOPE
   scope_values    "text[]"
 }
+
+// ユーザー 1 行 = 実効権限のまとめ（表示・点検用。判定には使わない）。
+// user_permissions は grant 1 件 = 1 行なので、ロールを 2 つ持つ人は同じ
+// (code, action) が何行も並ぶ。「結局この人は何を持っているか」を横に読むための
+// ビューで、全ユーザーを LEFT JOIN で出す（ロール未割当も 1 行）。
+//   roles            有効なロール割当の rolename（users.is_active は見ない —
+//                    利用停止中でも割当は読めてよい。SY01 の割当タブと同じ）
+//   permission_codes 実効権限のコード（重複なし・昇順）
+//   grants           'code:ACTION@SCOPE[対象コード]' の配列（'*' は省く）
+//   permissions      { code: { ACTION: [ { scope, scope_values } … ] } }
+//                    同じ (code, action) の別スコープは全部残す（畳むのは
+//                    authz-core highestScopeRows の仕事）
+//   grant_count / is_superuser（system:ADMIN を持つか）
+// 実効権限は user_permissions 経由なので、利用停止中は roles 以外が空になる。
+// Metabase には analytics.v_user_permissions（配列を文字列に落としたもの）。
+View user_permission_summary {
+  user_id          uuid
+  username         varchar
+  display_name     varchar
+  is_active        boolean
+  roles            "text[]"
+  permission_codes "text[]"
+  grants           "text[]"
+  permissions      jsonb
+  grant_count      int
+  is_superuser     boolean
+}
 ```
 
 ### Master Data

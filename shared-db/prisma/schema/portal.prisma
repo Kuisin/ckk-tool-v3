@@ -126,7 +126,6 @@ model PortalGrant {
   revokedByUser User?            @relation("PortalGrantRevokedBy", fields: [revokedBy], references: [id], onDelete: SetNull)
 
   @@unique([portalAccountId, kind, resourceType, resourceId, bpId])
-  @@index([portalAccountId])
   @@map("portal_grants")
   @@schema("app")
 }
