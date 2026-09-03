@@ -21,6 +21,7 @@ import {
   TextInput,
 } from "@mantine/core";
 import { IconSearch } from "@tabler/icons-react";
+import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { PrimaryButton } from "@/components/ui/buttons";
 import { DocNumber } from "@/components/ui/DocNumber";
@@ -64,6 +65,7 @@ export function F4SearchModal({
   config: F4Config;
   onPick: (row: F4Row) => void;
 }) {
+  const tr = useTranslations();
   const [values, setValues] = useState<Record<string, string>>({});
   const [rows, setRows] = useState<F4Row[]>([]);
   const [loading, setLoading] = useState(false);
@@ -155,7 +157,7 @@ export function F4SearchModal({
               loading={loading}
               type="submit"
             >
-              検索
+              {tr("ui.f4SearchModal.search")}
             </PrimaryButton>
           </Group>
         </form>
@@ -191,9 +193,9 @@ export function F4SearchModal({
                   <Table.Td colSpan={config.columns.length}>
                     <Text c="dimmed" py="sm" size="sm" ta="center">
                       {loading
-                        ? "検索中…"
+                        ? tr("ui.f4SearchModal.searching")
                         : searched
-                          ? "該当する結果がありません"
+                          ? tr("ui.f4SearchModal.noMatchingResults")
                           : ""}
                     </Text>
                   </Table.Td>
@@ -203,7 +205,7 @@ export function F4SearchModal({
           </Table>
         </ScrollArea.Autosize>
         <Text c="dimmed" size="xs">
-          行をクリックして選択（結果は最大50件 — 条件で絞り込んでください）
+          {tr("ui.f4SearchModal.clickARowToSelectIt")}
         </Text>
       </Stack>
     </Modal>

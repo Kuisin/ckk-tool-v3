@@ -40,8 +40,8 @@ export async function register() {
   // コンテナが入れ替わると待機分が消える）。十分に古い行だけを対象にするので、
   // ローリングデプロイで旧コンテナが処理中の行を横取りしない。
   const { requeueStuckExtractions } = await import("./lib/intake");
-  requeueStuckExtractions().catch((e) =>
-    console.error("[intake] 未抽出の再投入に失敗", e),
+  requeueStuckExtractions().catch(
+    (e) => console.error("[intake] 未抽出の再投入に失敗", e), // i18n-ignore — サーバーログのみ（Loki）、UI に出ない
   );
 
   if (!process.env.INTAKE_DIR) return;

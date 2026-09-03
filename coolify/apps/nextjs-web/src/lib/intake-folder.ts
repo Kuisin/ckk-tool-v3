@@ -19,12 +19,34 @@ import "server-only";
  *
  * 安全のため、外から来た名前は必ず `path.basename` + `sanitizeFileName` に
  * 通してから使う（`../` でフォルダの外に出さない）。
+ *
+ * エラーメッセージは呼び出し側の `locale`（next-intl・`lib/messages.ts` の
+ * `label()` 経由）で組み立てる。**`locale` は省略可（既定 ja）** —
+ * `/api/intake/inbound`（外部システムからの投入。ログインもロケールの概念も
+ * 無い）は渡さず、SY0C の画面から呼ぶ `/api/intake/folder` と
+ * `settings/order-intake/actions.ts` だけが実際のログイン中ユーザーの
+ * locale を渡す。
  */
 
 import { mkdir, readdir, rename, stat, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { systematicFileName } from "./file-naming";
+import type { Locale } from "./i18n";
 import { parseIntakeFileNumber } from "./intake-core";
+import { label } from "./messages";
+
+const NS = "settings.orderIntake";
+/** 鍵は既存、これは死んだ fallback。 */
+const INTAKE_DIR_NOT_CONFIGURED_FALLBACK =
+  "取込フォルダ（INTAKE_DIR）が未設定です"; // i18n-ignore
+function t(
+  key: string,
+  locale: Locale | undefined,
+  fallback: string,
+  vars?: Record<string, unknown>,
+): string {
+  return label(`${NS}.${key}`, locale ?? "ja", fallback, vars);
+}
 
 /** 取込対象の拡張子（lib/intake.ts の許可リストと同一）。 */
 export const INTAKE_FOLDER_EXT = [".pdf", ".png", ".jpg", ".jpeg", ".webp"];
@@ -99,7 +121,9 @@ async function readDirEntries(
 }
 
 /** 取込フォルダの現況を読む。未設定・未マウントでも例外は投げない。 */
-export async function readIntakeFolder(): Promise<IntakeFolderStatus> {
+export async function readIntakeFolder(
+  locale?: Locale,
+): Promise<IntakeFolderStatus> {
   const dir = intakeDir();
   const base: IntakeFolderStatus = {
     configured: dir !== null,
@@ -118,12 +142,25 @@ export async function readIntakeFolder(): Promise<IntakeFolderStatus> {
   try {
     const info = await stat(dir);
     if (!info.isDirectory()) {
-      return { ...base, error: `${dir} はディレクトリではありません` };
+      return {
+        ...base,
+        error: t(
+          "dirIsNotADirectory",
+          locale,
+          `${dir} はディレクトリではありません`, // i18n-ignore — 鍵は既存、これは死んだ fallback
+          { dir },
+        ),
+      };
     }
   } catch {
     return {
       ...base,
-      error: `${dir} を読めません（コンテナにマウントされていますか）`,
+      error: t(
+        "cannotReadDirIsItMounted",
+        locale,
+        `${dir} を読めません（コンテナにマウントされていますか）`, // i18n-ignore — 鍵は既存、これは死んだ fallback
+        { dir },
+      ),
     };
   }
 
@@ -151,14 +188,28 @@ export async function readIntakeFolder(): Promise<IntakeFolderStatus> {
  * 同じ注文書を二度投げても上書きにならない（取込側で重複は人が判断する）。
  * 戻り値は実際に置かれたファイル名。
  */
-export async function saveToIntakeFolder(input: {
-  filename: string;
-  bytes: Buffer;
-}): Promise<string> {
+export async function saveToIntakeFolder(
+  input: {
+    filename: string;
+    bytes: Buffer;
+  },
+  locale?: Locale,
+): Promise<string> {
   const dir = intakeDir();
-  if (!dir) throw new Error("取込フォルダ（INTAKE_DIR）が未設定です");
+  if (!dir) {
+    throw new Error(
+      t(
+        "intakeDirIntakeDirIsNotConfigured",
+        locale,
+        INTAKE_DIR_NOT_CONFIGURED_FALLBACK,
+      ),
+    );
+  }
   if (!isIntakeFile(input.filename)) {
-    throw new Error("対応していないファイル形式です");
+    throw new Error(
+      // i18n-ignore — 鍵は既存、これは死んだ fallback
+      t("unsupportedFileFormat", locale, "対応していないファイル形式です"),
+    );
   }
   await mkdir(dir, { recursive: true });
   const name = systematicFileName(input.filename);
@@ -182,16 +233,32 @@ export async function saveToIntakeFolder(input: {
  * `sanitizeFileName` を通すと空白入りの実ファイル名と一致しなくなる。
  * 代わりに `path.basename` と拡張子だけで、フォルダ外を指せないことを保証する。
  */
-export async function retryFailedIntake(fileName: string): Promise<string> {
+export async function retryFailedIntake(
+  fileName: string,
+  locale?: Locale,
+): Promise<string> {
   const dir = intakeDir();
-  if (!dir) throw new Error("取込フォルダ（INTAKE_DIR）が未設定です");
+  if (!dir) {
+    throw new Error(
+      t(
+        "intakeDirIntakeDirIsNotConfigured",
+        locale,
+        INTAKE_DIR_NOT_CONFIGURED_FALLBACK,
+      ),
+    );
+  }
   const base = path.basename(fileName);
   if (!base || base.startsWith(".") || !isIntakeFile(base)) {
-    throw new Error("ファイル名が不正です");
+    // i18n-ignore — 鍵は既存、これは死んだ fallback
+    throw new Error(t("invalidFileName", locale, "ファイル名が不正です"));
   }
   const from = path.join(dir, "failed", base);
   const info = await stat(from).catch(() => null);
-  if (!info?.isFile()) throw new Error("対象のファイルが見つかりません");
+  if (!info?.isFile()) {
+    throw new Error(
+      t("theTargetFileWasNotFound", locale, "対象のファイルが見つかりません"), // i18n-ignore — 鍵は既存、これは死んだ fallback
+    );
+  }
   // 待ちに同名があると上書きしてしまうので、空いているときだけ名前を維持する。
   const keep = path.join(dir, base);
   const taken = await stat(keep).then(

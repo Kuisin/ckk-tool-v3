@@ -30,6 +30,7 @@ import { notifications } from "@mantine/notifications";
 import { IconShoppingCart, IconX } from "@tabler/icons-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { type ReactNode, useState, useTransition } from "react";
 import {
   approvePurchaseRequest,
@@ -74,7 +75,6 @@ import {
   canRequestApproval,
   isCancellable,
   isEditable,
-  PURCHASE_REQUEST_HISTORY_ACTION_LABEL,
   type PurchaseRequestView,
 } from "./model";
 
@@ -120,6 +120,7 @@ export function PurchaseRequestDetail({
   /** 正規化された承認記録（approval_records — 代理承認マーカー付き）。 */
   approvalTrail?: ApprovalTrailView[];
 }) {
+  const tr = useTranslations();
   const fmt = useFormat();
   const router = useRouter();
   // アクティブタブを ?tab= に保持（URL 共有でタブまで再現）
@@ -132,13 +133,24 @@ export function PurchaseRequestDetail({
 
   const rq = purchaseRequest;
 
+  /** history Json の action → 表示ラベル。 */
+  const historyActionLabel: Record<string, string> = {
+    CREATE: tr("common.create2"),
+    UPDATE: tr("common.update"),
+    REQUEST_APPROVAL: tr("common.approvalRequest"),
+    APPROVE: tr("common.approve"),
+    REJECT: tr("common.reject"),
+    CONVERT: tr("purchase.purchaseRequests.convertToAPurchaseOrder"),
+    CANCEL: tr("common.cancel"),
+  };
+
   const run = (action: () => Promise<ActionResult>, done: string) => {
     startTransition(async () => {
       const result = await action();
       if (result.ok) {
         notifications.show({
           title: done,
-          message: `購買依頼 ${rq.requestNumber}`,
+          message: `${tr("common.purchaseRequest")} ${rq.requestNumber}`,
           color: "green",
         });
         setCancelOpen(false);
@@ -147,7 +159,7 @@ export function PurchaseRequestDetail({
         router.refresh();
       } else {
         notifications.show({
-          title: "エラー",
+          title: tr("common.error2"),
           message: result.error,
           color: "red",
         });
@@ -158,8 +170,8 @@ export function PurchaseRequestDetail({
   const handleConvert = () => {
     if (!convertSupplier) {
       notifications.show({
-        title: "エラー",
-        message: "仕入先を選択してください",
+        title: tr("common.error2"),
+        message: tr("purchase.purchaseRequests.selectASupplier"),
         color: "red",
       });
       return;
@@ -172,15 +184,17 @@ export function PurchaseRequestDetail({
       );
       if (result.ok) {
         notifications.show({
-          title: "発注書へ変換しました",
-          message: `素材発注書 ${result.data.poNumber} を作成しました`,
+          title: tr("purchase.purchaseRequests.convertedToAPurchaseOrder"),
+          message: tr("purchase.purchaseRequests.createdPurchaseOrder", {
+            number: result.data.poNumber,
+          }),
           color: "green",
         });
         setConvertOpen(false);
         router.push(`${PO_PATH}/${result.data.poNumber}`);
       } else {
         notifications.show({
-          title: "エラー",
+          title: tr("common.error2"),
           message: result.error,
           color: "red",
         });
@@ -197,8 +211,10 @@ export function PurchaseRequestDetail({
   const stages: ProcedureStage[] = [
     {
       key: "requested",
-      label: "依頼",
-      description: rq.requestedAt ? fmt.date(rq.requestedAt) : "下書き",
+      label: tr("common.request"),
+      description: rq.requestedAt
+        ? fmt.date(rq.requestedAt)
+        : tr("common.draft"),
       // 差し戻し中は赤（_specs/design.md §9 REJECTED = red）。
       color: rq.status === "REJECTED" ? "red" : undefined,
       loading: rq.status === "DRAFT",
@@ -206,11 +222,14 @@ export function PurchaseRequestDetail({
     approvalStage(approval, {
       approvedAt: rq.approvedAt,
       fmtDate: (v) => fmt.date(v),
+      tr,
     }),
     {
       key: "ordered",
-      label: "発注書へ変換",
-      description: rq.orderedAt ? fmt.date(rq.orderedAt) : "仕入先を指定",
+      label: tr("purchase.purchaseRequests.convertToAPurchaseOrder"),
+      description: rq.orderedAt
+        ? fmt.date(rq.orderedAt)
+        : tr("purchase.purchaseRequests.specifyASupplier"),
       loading: rq.status === "APPROVED",
     },
   ];
@@ -219,7 +238,7 @@ export function PurchaseRequestDetail({
   const handoffGroups: HandoffGroup[] = [
     {
       key: "purchase-order",
-      title: "素材発注書",
+      title: tr("common.materialPurchaseOrder"),
       items: rq.purchaseOrderNumber
         ? [
             {
@@ -227,14 +246,14 @@ export function PurchaseRequestDetail({
               label: rq.purchaseOrderNumber,
               href: `${PO_PATH}/${rq.purchaseOrderNumber}`,
               done: true,
-              note: "この依頼から生成",
+              note: tr("purchase.purchaseRequests.generatedFromThisRequest"),
             },
           ]
         : [],
       emptyNote:
         rq.status === "APPROVED"
-          ? "未変換（仕入先を指定して発注書を作成します）"
-          : "未変換（承認後に発注書へ変換します）",
+          ? tr("purchase.purchaseRequests.notConvertedChooseASupplierTo")
+          : tr("purchase.purchaseRequests.notConvertedBecomesAPurchaseOrder"),
     },
   ];
 
@@ -253,7 +272,7 @@ export function PurchaseRequestDetail({
         onReject={(reason) => rejectPurchaseRequest(rq.requestNumber, reason)}
         onRequest={() => requestPurchaseRequestApproval(rq.requestNumber)}
         rejectReason={lastReject?.notes ?? null}
-        subject={`購買依頼 ${rq.requestNumber}`}
+        subject={`${tr("common.purchaseRequest")} ${rq.requestNumber}`}
       />
     );
   } else if (rq.status === "APPROVED") {
@@ -265,12 +284,14 @@ export function PurchaseRequestDetail({
             loading={isPending}
             onClick={() => setConvertOpen(true)}
           >
-            発注書へ変換
+            {tr("purchase.purchaseRequests.convertToAPurchaseOrder")}
           </PrimaryButton>
         }
-        description="仕入先を指定すると素材発注書（下書き）を生成します"
+        description={tr(
+          "purchase.purchaseRequests.choosingASupplierGeneratesADraft",
+        )}
         icon={<IconShoppingCart size={20} />}
-        title="発注書へ変換できます"
+        title={tr("purchase.purchaseRequests.readyToConvertToAPurchase")}
         tone="action"
       />
     );
@@ -284,7 +305,7 @@ export function PurchaseRequestDetail({
             isCancellable(rq)
               ? [
                   {
-                    label: "キャンセル",
+                    label: tr("common.cancel"),
                     icon: <IconX size={14} />,
                     color: "red",
                     onClick: () => setCancelOpen(true),
@@ -299,7 +320,11 @@ export function PurchaseRequestDetail({
           }
         />
       }
-      breadcrumbs={["購買", { label: "購買依頼", href: BASE_PATH }, "詳細"]}
+      breadcrumbs={[
+        tr("common.purchasing"),
+        { label: tr("common.purchaseRequest"), href: BASE_PATH },
+        tr("common.detailBreadcrumb"),
+      ]}
       createdAt={fmt.dateTime(rq.createdAt)}
       status={<StatusBadge entity="PurchaseRequest" status={rq.status} />}
       title={rq.requestNumber}
@@ -309,30 +334,33 @@ export function PurchaseRequestDetail({
 
       <SummaryGrid>
         <FieldValue
-          label="依頼番号"
+          label={tr("common.requestNumber")}
           value={<DocNumber>{rq.requestNumber}</DocNumber>}
         />
-        <FieldValue label="依頼者" value={rq.requesterName} />
+        <FieldValue label={tr("common.requester")} value={rq.requesterName} />
         <FieldValue
-          label="明細数"
+          label={tr("common.lineCount")}
           value={
             <Text className="tabular-nums" size="sm" span>
-              {rq.items.length} 件
+              {tr("common.itemsCount", { count: rq.items.length })}
             </Text>
           }
         />
-        <FieldValue label="依頼理由" value={rq.purpose ?? "—"} />
         <FieldValue
-          label="依頼日時"
+          label={tr("purchase.purchaseRequests.reasonForTheRequest")}
+          value={rq.purpose ?? "—"}
+        />
+        <FieldValue
+          label={tr("common.requestedAt")}
           value={rq.requestedAt ? fmt.dateTime(rq.requestedAt) : "—"}
         />
         <FieldValue
-          label="承認日時"
+          label={tr("common.approvedAt")}
           value={rq.approvedAt ? fmt.dateTime(rq.approvedAt) : "—"}
         />
         {rq.purchaseOrderNumber && (
           <FieldValue
-            label="変換先発注書"
+            label={tr("purchase.purchaseRequests.resultingPurchaseOrder")}
             value={
               <Anchor
                 component={Link}
@@ -368,8 +396,7 @@ export function PurchaseRequestDetail({
               {records.map((h, i) => (
                 <Group gap="sm" key={`${h.at}-${h.action}-${i}`} wrap="nowrap">
                   <Badge color="gray" size="sm" variant="light">
-                    {PURCHASE_REQUEST_HISTORY_ACTION_LABEL[h.action] ??
-                      h.action}
+                    {historyActionLabel[h.action] ?? h.action}
                   </Badge>
                   <Text size="xs">{h.user}</Text>
                   <Text c="dimmed" className="tabular-nums" size="xs">
@@ -389,9 +416,11 @@ export function PurchaseRequestDetail({
 
       <AppTabs onChange={setTab} value={tab}>
         <Tabs.List>
-          <Tabs.Tab value="items">明細（{rq.items.length}）</Tabs.Tab>
-          <Tabs.Tab value="overview">概要</Tabs.Tab>
-          <Tabs.Tab value="history">履歴</Tabs.Tab>
+          <Tabs.Tab value="items">
+            {tr("common.lineItemsWithCount", { count: rq.items.length })}
+          </Tabs.Tab>
+          <Tabs.Tab value="overview">{tr("common.overview")}</Tabs.Tab>
+          <Tabs.Tab value="history">{tr("common.history")}</Tabs.Tab>
         </Tabs.List>
 
         <Tabs.Panel pt="md" value="items">
@@ -399,11 +428,11 @@ export function PurchaseRequestDetail({
             <Table highlightOnHover striped>
               <Table.Thead>
                 <Table.Tr>
-                  <Table.Th>素材</Table.Th>
-                  <Table.Th>入荷先拠点</Table.Th>
-                  <Table.Th ta="right">数量</Table.Th>
-                  <Table.Th>希望納期</Table.Th>
-                  <Table.Th>備考</Table.Th>
+                  <Table.Th>{tr("common.materials")}</Table.Th>
+                  <Table.Th>{tr("common.receivingSite")}</Table.Th>
+                  <Table.Th ta="right">{tr("common.quantity")}</Table.Th>
+                  <Table.Th>{tr("common.requestedDate2")}</Table.Th>
+                  <Table.Th>{tr("common.notes")}</Table.Th>
                 </Table.Tr>
               </Table.Thead>
               <Table.Tbody>
@@ -440,7 +469,7 @@ export function PurchaseRequestDetail({
           <Stack gap="md">
             <div>
               <Text c="dimmed" mb={4} size="xs">
-                依頼理由
+                {tr("purchase.purchaseRequests.reasonForTheRequest")}
               </Text>
               <Text size="sm" style={{ whiteSpace: "pre-wrap" }}>
                 {rq.purpose || "—"}
@@ -448,7 +477,7 @@ export function PurchaseRequestDetail({
             </div>
             <div>
               <Text c="dimmed" mb={4} size="xs">
-                備考
+                {tr("common.notes")}
               </Text>
               <Text size="sm" style={{ whiteSpace: "pre-wrap" }}>
                 {rq.notes || "—"}
@@ -465,37 +494,38 @@ export function PurchaseRequestDetail({
       {/* キャンセル（変換前のみ・理由必須） */}
       <ModalShell
         confirmColor="red"
-        confirmLabel="キャンセルする"
+        confirmLabel={tr("common.cancelDocument")}
         loading={isPending}
         onClose={() => setCancelOpen(false)}
         onConfirm={() => {
           if (!cancelReason.trim()) {
             notifications.show({
-              title: "エラー",
-              message: "キャンセル理由を入力してください",
+              title: tr("common.error2"),
+              message: tr("common.enterAReasonForCancelling"),
               color: "red",
             });
             return;
           }
           run(
             () => cancelPurchaseRequest(rq.requestNumber, cancelReason),
-            "キャンセルしました",
+            tr("common.cancelled"),
           );
         }}
         opened={cancelOpen}
         size="sm"
-        title="キャンセルの確認"
+        title={tr("common.confirmCancellation")}
       >
         <Text size="sm">
-          購買依頼 {rq.requestNumber}{" "}
-          をキャンセルします。この操作は取り消せません。
+          {tr("purchase.purchaseRequests.confirmCancelBody", {
+            number: rq.requestNumber,
+          })}
         </Text>
         <Textarea
           autosize
-          label="キャンセル理由"
+          label={tr("common.reasonForCancelling")}
           minRows={3}
           onChange={(e) => setCancelReason(e.currentTarget.value)}
-          placeholder="理由を入力"
+          placeholder={tr("common.enterAReason")}
           value={cancelReason}
           withAsterisk
         />
@@ -503,24 +533,28 @@ export function PurchaseRequestDetail({
 
       {/* 発注書へ変換（仕入先必須 — 依頼は仕入先を持たない） */}
       <ModalShell
-        confirmLabel="変換する"
+        confirmLabel={tr("purchase.purchaseRequests.convert")}
         loading={isPending}
         onClose={() => setConvertOpen(false)}
         onConfirm={handleConvert}
         opened={convertOpen}
         size="sm"
-        title="発注書へ変換の確認"
+        title={tr(
+          "purchase.purchaseRequests.confirmConvertingToAPurchaseOrder",
+        )}
       >
         <Text mb="sm" size="sm">
-          購買依頼 {rq.requestNumber} の明細 {rq.items.length}{" "}
-          件から素材発注書（下書き）を作成します。単価は発注書側で入力してください。
+          {tr("purchase.purchaseRequests.confirmConvertBody", {
+            number: rq.requestNumber,
+            count: rq.items.length,
+          })}
         </Text>
         <Select
           clearable
           data={supplierOptions}
-          label="仕入先"
+          label={tr("common.supplier")}
           onChange={setConvertSupplier}
-          placeholder="仕入先を選択"
+          placeholder={tr("common.selectASupplier")}
           searchable
           value={convertSupplier}
           withAsterisk

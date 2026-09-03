@@ -19,6 +19,7 @@ import {
   Text,
 } from "@mantine/core";
 import { IconHistory } from "@tabler/icons-react";
+import { useTranslations } from "next-intl";
 import { useEffect, useState, useTransition } from "react";
 import { fetchDeviceSessions } from "@/app/(dashboard)/settings/kiosk-devices/actions";
 import { useFormat } from "@/components/layout/PreferencesProvider";
@@ -28,15 +29,29 @@ import { ModalShell } from "@/components/ui/modals";
 import type { Formatters } from "@/lib/format";
 import type { KioskDeviceSessionRow } from "@/lib/kiosk-admin";
 
-function formatDuration(startIso: string, endIso: string): string {
+function formatDuration(
+  tr: ReturnType<typeof useTranslations>,
+  startIso: string,
+  endIso: string,
+): string {
   const mins = Math.max(
     1,
     Math.round(
       (new Date(endIso).getTime() - new Date(startIso).getTime()) / 60_000,
     ),
   );
-  if (mins < 60) return `${mins}分`;
-  return `${Math.floor(mins / 60)}時間${mins % 60 > 0 ? `${mins % 60}分` : ""}`;
+  if (mins < 60)
+    return tr("settings.kioskDeviceLogsModal.durationMinutes", {
+      minutes: mins,
+    });
+  const hours = Math.floor(mins / 60);
+  const remainder = mins % 60;
+  return remainder > 0
+    ? tr("settings.kioskDeviceLogsModal.durationHoursMinutes", {
+        hours,
+        minutes: remainder,
+      })
+    : tr("settings.kioskDeviceLogsModal.durationHours", { hours });
 }
 
 /** 終了時刻: 同じ日（表示タイムゾーン基準）なら時刻のみ（行を短く保つ）。 */
@@ -51,6 +66,7 @@ function formatEnd(fmt: Formatters, startIso: string, endIso: string): string {
  * モーダルと端末詳細ページの両方から使う。
  */
 export function DeviceLogList({ deviceId }: { deviceId: string }) {
+  const tr = useTranslations();
   const fmt = useFormat();
   const [rows, setRows] = useState<KioskDeviceSessionRow[]>([]);
   const [nextCursor, setNextCursor] = useState<string | null>(null);
@@ -100,7 +116,7 @@ export function DeviceLogList({ deviceId }: { deviceId: string }) {
       {loaded && !error && rows.length === 0 && (
         <EmptyState
           icon={<IconHistory size={28} />}
-          message="利用履歴はまだありません"
+          message={tr("settings.kiosk.thereIsNoUsageHistoryYet")}
         />
       )}
       {rows.map((r, i) => (
@@ -119,7 +135,9 @@ export function DeviceLogList({ deviceId }: { deviceId: string }) {
                 miw={72}
                 variant={r.endedAt ? "light" : "filled"}
               >
-                {r.endedAt ? "終了" : "利用中"}
+                {r.endedAt
+                  ? tr("settings.kioskDeviceLogsModal.ended")
+                  : tr("settings.kiosk.inUse")}
               </Badge>
               <Text fw={500} size="sm" truncate>
                 {r.userName}
@@ -134,8 +152,8 @@ export function DeviceLogList({ deviceId }: { deviceId: string }) {
               </Text>
               <Text c="dimmed" size="xs">
                 {r.endedAt
-                  ? formatDuration(r.startedAt, r.endedAt)
-                  : "ログイン中"}
+                  ? formatDuration(tr, r.startedAt, r.endedAt)
+                  : tr("settings.kiosk.loggedIn")}
               </Text>
             </Stack>
           </Group>
@@ -144,7 +162,7 @@ export function DeviceLogList({ deviceId }: { deviceId: string }) {
       {nextCursor && (
         <Center pt="sm">
           <SecondaryButton loading={isPending} onClick={() => load(nextCursor)}>
-            さらに読み込む
+            {tr("settings.kiosk.loadMore")}
           </SecondaryButton>
         </Center>
       )}
@@ -162,13 +180,16 @@ export function KioskDeviceLogsModal({
   deviceName: string | null;
   onClose: () => void;
 }) {
+  const tr = useTranslations();
   return (
     <ModalShell
       hideFooter
       onClose={onClose}
       opened={deviceId != null}
       size="lg"
-      title={`利用履歴 — ${deviceName ?? ""}`}
+      title={tr("settings.kioskDeviceLogsModal.usageHistoryName", {
+        name: deviceName ?? "",
+      })}
     >
       {deviceId != null && <DeviceLogList deviceId={deviceId} />}
     </ModalShell>

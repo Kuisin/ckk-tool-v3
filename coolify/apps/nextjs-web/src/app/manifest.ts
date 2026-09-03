@@ -11,12 +11,15 @@ import type { MetadataRoute } from "next";
  * すべて同比率なので、どのプラットフォームでも同じ見え方になる）。iOS の
  * apple-touch-icon（180px）は app/layout.tsx が参照する。
  */
+// PWA マニフェストは OS のホーム画面追加時に 1 回だけ読まれる静的ファイルで、
+// リクエストスコープが無く言語を切り替えられない（lang も ja 固定）。
+// アプリ名・説明はブランド表記として i18n-ignore（_specs/i18n-glossary.md §1）。
 export default function manifest(): MetadataRoute.Manifest {
   return {
     id: "/",
-    name: "CKK 業務管理システム",
+    name: "CKK 業務管理システム", // i18n-ignore
     short_name: "CKK",
-    description: "製造業務管理システム — 販売・購買・生産・出荷・請求・マスタ",
+    description: "製造業務管理システム — 販売・購買・生産・出荷・請求・マスタ", // i18n-ignore
     start_url: "/",
     scope: "/",
     display: "standalone",

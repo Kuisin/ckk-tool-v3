@@ -9,6 +9,7 @@
  */
 
 import { Table, Tabs, Text } from "@mantine/core";
+import { useTranslations } from "next-intl";
 import { useFormat } from "@/components/layout/PreferencesProvider";
 import { InventoryBadge } from "@/components/production/InventoryBadge";
 import { AppTabs } from "@/components/ui/AppTabs";
@@ -29,18 +30,23 @@ export function MaterialInventoryDetail({
 }: {
   record: MaterialInventoryDetailData;
 }) {
+  const tr = useTranslations();
   const fmt = useFormat();
   // アクティブタブを ?tab= に保持（URL 共有でタブまで再現）
   const [tab, setTab] = useTabParam("atp");
   return (
     <DetailShell
-      breadcrumbs={["生産", { label: "在庫管理", href: BASE_PATH }, "詳細"]}
+      breadcrumbs={[
+        tr("common.production"),
+        { label: tr("common.inventory"), href: BASE_PATH },
+        tr("common.detail"),
+      ]}
       title={record.materialCode}
       updatedAt={fmt.dateTime(record.updatedAt)}
     >
       <SummaryGrid>
         <FieldValue
-          label="素材"
+          label={tr("common.materials")}
           value={
             <>
               <DocNumber>{record.materialCode}</DocNumber>
@@ -50,9 +56,9 @@ export function MaterialInventoryDetail({
             </>
           }
         />
-        <FieldValue label="拠点" value={record.plantName ?? "—"} />
+        <FieldValue label={tr("common.site")} value={record.plantName ?? "—"} />
         <FieldValue
-          label="在庫数"
+          label={tr("common.onHand")}
           value={
             <Text className="tabular-nums" size="sm" span>
               {record.quantity.toLocaleString("ja-JP")} {record.unit}
@@ -60,7 +66,7 @@ export function MaterialInventoryDetail({
           }
         />
         <FieldValue
-          label="予約数"
+          label={tr("common.reserved")}
           value={
             <Text className="tabular-nums" size="sm" span>
               {record.reservedQuantity.toLocaleString("ja-JP")} {record.unit}
@@ -68,7 +74,7 @@ export function MaterialInventoryDetail({
           }
         />
         <FieldValue
-          label="利用可能"
+          label={tr("common.available")}
           value={
             <InventoryBadge
               available={record.available}
@@ -78,7 +84,7 @@ export function MaterialInventoryDetail({
           }
         />
         <FieldValue
-          label="次回入荷"
+          label={tr("common.nextReceipt")}
           value={
             record.atp.nextReceiptDate
               ? fmt.date(record.atp.nextReceiptDate)
@@ -86,15 +92,19 @@ export function MaterialInventoryDetail({
           }
         />
         <FieldValue
-          label="保管場所"
-          value={record.storageLabel ?? record.location ?? "未割当"}
+          label={tr("common.storageLocations")}
+          value={
+            record.storageLabel ?? record.location ?? tr("common.unassigned")
+          }
         />
-        <FieldValue label="備考" value={record.notes || "—"} />
+        <FieldValue label={tr("common.notes")} value={record.notes || "—"} />
       </SummaryGrid>
 
       <AppTabs onChange={setTab} value={tab}>
         <Tabs.List>
-          <Tabs.Tab value="atp">ATP タイムライン</Tabs.Tab>
+          <Tabs.Tab value="atp">
+            {tr("production.inventory.aTPTimeline")}
+          </Tabs.Tab>
           <Tabs.Tab value="transactions">
             取引履歴（{record.transactions.length}）
           </Tabs.Tab>
@@ -117,29 +127,30 @@ export function MaterialInventoryDetail({
 
 /** ATP タイムライン — 時点 / 入荷量 / 累積利用可能 / 参照発注番号。 */
 function AtpTimelineTable({ record }: { record: MaterialInventoryDetailData }) {
+  const tr = useTranslations();
   const fmt = useFormat();
   return (
     <Table.ScrollContainer minWidth={560}>
       <Table>
         <Table.Thead>
           <Table.Tr>
-            <Table.Th w={130}>時点</Table.Th>
+            <Table.Th w={130}>{tr("production.inventory.asOf")}</Table.Th>
             <Table.Th ta="right" w={120}>
-              入荷量
+              {tr("production.inventory.receivedQuantity")}
             </Table.Th>
             <Table.Th ta="right" w={130}>
-              利用可能
+              {tr("common.available")}
             </Table.Th>
-            <Table.Th>参照</Table.Th>
+            <Table.Th>{tr("common.reference")}</Table.Th>
           </Table.Tr>
         </Table.Thead>
         <Table.Tbody>
           {record.atp.timeline.map((p) => {
             const label =
               p.date == null
-                ? "現時点"
+                ? tr("production.inventory.rightNow")
                 : p.date === UNDATED_MARKER
-                  ? "未定"
+                  ? tr("production.inventory.undecided")
                   : fmt.date(p.date);
             return (
               <Table.Tr key={p.date ?? "now"}>

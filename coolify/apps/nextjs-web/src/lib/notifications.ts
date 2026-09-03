@@ -11,6 +11,7 @@
 import { effectiveMemberWhere } from "./approval-membership";
 import { SYSTEM_USER_ID } from "./audit";
 import { prisma } from "./db";
+import { normalizeLocale } from "./i18n";
 import { sendNotificationMail } from "./mailer";
 import { markNotificationsEmailed } from "./notification-digest";
 import { sendsImmediateEmail } from "./notification-email-core";
@@ -77,7 +78,7 @@ export async function notify(input: NotifyInput): Promise<void> {
     userIds,
     { ...input, linkPath },
     notificationIdByUser,
-  ).catch((e) => console.error("[notify] 外部チャネル配信エラー:", e));
+  ).catch((e) => console.error("[notify] 外部チャネル配信エラー:", e)); // i18n-ignore — サーバーログのみ（Loki）、UI に出ない
 }
 
 async function dispatchExternal(
@@ -99,6 +100,7 @@ async function dispatchExternal(
     select: {
       id: true,
       email: true,
+      locale: true,
       notificationSetting: {
         select: { emailEnabled: true, pushEnabled: true },
       },
@@ -124,6 +126,7 @@ async function dispatchExternal(
             title: input.title,
             message: input.message,
             linkPath: links.mail,
+            locale: normalizeLocale(u.locale),
           }).then((sent) => {
             // 送れたぶんには印を付ける — 付けないと、その通知が未読のまま
             // 残ったときに次のダイジェストへもう一度載る。

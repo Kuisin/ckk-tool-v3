@@ -1,0 +1,63 @@
+"use client";
+
+import { Badge, Table, Text } from "@mantine/core";
+import { useTranslations } from "next-intl";
+import type { PortalOrderLineRow } from "@/lib/portal-progress";
+import {
+  type PortalProgress,
+  portalProgressLabel,
+} from "@/lib/portal-progress-core";
+
+const COLOR: Record<PortalProgress, string> = {
+  RECEIVED: "gray",
+  IN_PRODUCTION: "violet",
+  READY: "blue",
+  SHIPPED: "orange",
+  DELIVERED: "green",
+  CANCELLED: "red",
+};
+
+export function PortalOrderTable({ rows }: { rows: PortalOrderLineRow[] }) {
+  const tr = useTranslations();
+  return (
+    <Table highlightOnHover striped withTableBorder>
+      <Table.Thead>
+        <Table.Tr>
+          <Table.Th>{tr("portal.portalOrderTable.orderNumber")}</Table.Th>
+          <Table.Th>{tr("common.product")}</Table.Th>
+          <Table.Th ta="right">{tr("common.quantity")}</Table.Th>
+          <Table.Th>{tr("common.deliveryDate")}</Table.Th>
+          <Table.Th>{tr("portal.portalOrderTable.status")}</Table.Th>
+        </Table.Tr>
+      </Table.Thead>
+      <Table.Tbody>
+        {rows.map((r) => (
+          <Table.Tr key={`${r.acceptanceNumber}-${r.branch}`}>
+            <Table.Td>
+              <Text ff="monospace" size="sm">
+                {r.acceptanceNumber}
+                {r.branch != null
+                  ? `-${String(r.branch).padStart(2, "0")}`
+                  : ""}
+              </Text>
+            </Table.Td>
+            <Table.Td>
+              <Text size="sm">{r.productName}</Text>
+            </Table.Td>
+            <Table.Td ta="right">
+              <Text size="sm">{r.quantity.toLocaleString("ja-JP")}</Text>
+            </Table.Td>
+            <Table.Td>
+              <Text size="sm">{r.deliveryDate ?? "—"}</Text>
+            </Table.Td>
+            <Table.Td>
+              <Badge color={COLOR[r.progress]} size="sm" variant="light">
+                {portalProgressLabel(r.progress, tr)}
+              </Badge>
+            </Table.Td>
+          </Table.Tr>
+        ))}
+      </Table.Tbody>
+    </Table>
+  );
+}

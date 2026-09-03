@@ -18,6 +18,7 @@
  */
 
 import { type Formatters, formatMoney } from "@/lib/format";
+import type { Tr } from "@/lib/i18n";
 
 /**
  * One quantity tier: 数量範囲 → 倍率。
@@ -169,8 +170,10 @@ export function entrySummary(e: PriceListEntry): EntrySummary {
 }
 
 /** "1〜99本" / "100本〜" (no upper bound). */
-export function quantityRange(min: number, max: number | null): string {
-  return max == null ? `${min}本〜` : `${min}〜${max}本`;
+export function quantityRange(min: number, max: number | null, tr: Tr): string {
+  return max == null
+    ? tr("sales.priceLists.quantityRangeOpen", { min })
+    : tr("sales.priceLists.quantityRangeBounded", { min, max });
 }
 
 /** "¥4,500〜¥5,000" (single value when min === max). */
@@ -185,17 +188,18 @@ export function validPeriod(
   fmt: Formatters,
   from: string,
   until: string | null,
+  tr: Tr,
 ): string {
-  return `${fmt.date(from)} 〜 ${until ? fmt.date(until) : "無期限"}`;
+  return `${fmt.date(from)} 〜 ${until ? fmt.date(until) : tr("common.noEndDate")}`;
 }
 
 // ── 値引きルール解決 ──────────────────────────────────────────────────────────
 
 /** "5%" / "¥100/本" — 値引きルールの値表示. */
-export function discountValueLabel(d: PriceDiscount): string {
+export function discountValueLabel(d: PriceDiscount, tr: Tr): string {
   return d.discountType === "RATE"
     ? `${d.value}%`
-    : `${formatMoney(d.value)}/本`;
+    : tr("sales.priceLists.perPieceAmount", { amount: formatMoney(d.value) });
 }
 
 /** 1本あたりの値引き額（RATE は単価に対する率、10円未満は四捨五入）. */

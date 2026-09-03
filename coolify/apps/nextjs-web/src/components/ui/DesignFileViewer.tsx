@@ -35,6 +35,7 @@ import {
 } from "@mantine/core";
 import { IconFile, IconFileTypePdf, IconPhoto } from "@tabler/icons-react";
 import dynamic from "next/dynamic";
+import { useTranslations } from "next-intl";
 import { useRef, useState } from "react";
 import { SecondaryButton } from "@/components/ui/buttons";
 import { ModalShell } from "@/components/ui/modals";
@@ -67,6 +68,7 @@ export function DesignFileViewerModal({
   onClose: () => void;
   target: DesignFileViewerTarget | null;
 }) {
+  const tr = useTranslations();
   const isMobile = useIsMobile();
   if (!target) return null;
   const kind = designFileKind(target.filename, target.mimeType);
@@ -127,13 +129,13 @@ export function DesignFileViewerModal({
         {kind === "download" && (
           <Center py="xl">
             <Text c="dimmed" size="sm" ta="center">
-              {notViewableReason(target.filename)}
+              {notViewableReason(target.filename, tr)}
             </Text>
           </Center>
         )}
         <Group justify="flex-end">
           <SecondaryButton external fullWidth={isMobile} href={target.src}>
-            ダウンロード
+            {tr("common.download")}
           </SecondaryButton>
         </Group>
       </Stack>
@@ -154,6 +156,7 @@ export function DesignFileThumb({
   target: DesignFileViewerTarget;
   height?: number;
 }) {
+  const tr = useTranslations();
   const [open, setOpen] = useState(false);
   const isMobile = useIsMobile();
   const holder = useRef<HTMLButtonElement>(null);
@@ -172,7 +175,7 @@ export function DesignFileThumb({
       <UnstyledButton
         onClick={() => setOpen(true)}
         ref={holder}
-        title={`${target.filename} を拡大`}
+        title={tr("ui.designFileViewer.enlarge", { filename: target.filename })}
         w="100%"
       >
         <Paper radius="md" style={{ overflow: "hidden" }} withBorder>
@@ -218,7 +221,9 @@ export function DesignFileThumb({
                     <IconFile size={28} />
                   )}
                   <Text c="dimmed" size="xs">
-                    {kind === "pdf" ? "PDF" : "プレビューなし"}
+                    {kind === "pdf"
+                      ? "PDF"
+                      : tr("ui.designFileViewer.noPreview")}
                   </Text>
                 </Stack>
               </Center>
@@ -238,7 +243,7 @@ export function DesignFileThumb({
 /** 小さな起動口（表の行・カードなど、場所が無いとき）。 */
 export function DesignFileViewButton({
   target,
-  label = "表示",
+  label: labelProp,
   fullWidth,
 }: {
   target: DesignFileViewerTarget;
@@ -246,6 +251,8 @@ export function DesignFileViewButton({
   /** モバイルのカード内で使うときに全幅（44px の当たり判定）にする。 */
   fullWidth?: boolean;
 }) {
+  const tr = useTranslations();
+  const label = labelProp ?? tr("common.display");
   const [open, setOpen] = useState(false);
   return (
     <>

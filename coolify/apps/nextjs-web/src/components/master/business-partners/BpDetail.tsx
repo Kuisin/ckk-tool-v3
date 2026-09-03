@@ -28,7 +28,7 @@ import {
   IconTrash,
 } from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
-import { useLocale } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { useState } from "react";
 import type { BpDetail as BpDetailData } from "@/app/(dashboard)/master/_shared/bp-data";
 import { BP_BASE_PATH } from "@/app/(dashboard)/master/_shared/bp-paths";
@@ -62,11 +62,18 @@ import {
   vendorTypeLabel,
 } from "@/lib/enum-labels";
 import { formatMoney } from "@/lib/format";
+import type { Tr } from "@/lib/i18n";
 
-const day = (v: number | null) =>
-  v == null ? "—" : v === 31 ? "月末" : `${v}日`;
+// フックを使えない素の関数なので、解決済みの `tr` を引数で受ける。
+const day = (v: number | null, tr: Tr) =>
+  v == null
+    ? "—"
+    : v === 31
+      ? tr("master.businessPartners.endOfMonth")
+      : tr("master.businessPartners.daySuffix", { value: v });
 
-const days = (v: number | null) => (v == null ? "—" : `${v}日`);
+const days = (v: number | null, tr: Tr) =>
+  v == null ? "—" : tr("master.businessPartners.daySuffix", { value: v });
 
 /**
  * 概要タブの 1 セクション。「一般」（取引先そのものの情報）と、付与されている
@@ -108,6 +115,7 @@ export function BpDetail({
   record: BpDetailData;
   auditEntries: AuditEntry[];
 }) {
+  const tr = useTranslations();
   const locale = useLocale();
   const fmt = useFormat();
   const router = useRouter();
@@ -135,12 +143,14 @@ export function BpDetail({
         <ResourceActions
           menuItems={[
             {
-              label: record.isActive ? "無効化" : "有効化",
+              label: record.isActive
+                ? tr("common.disable")
+                : tr("common.enable"),
               icon: <IconCircleMinus size={14} />,
               onClick: () => setToggleOpen(true),
             },
             {
-              label: "削除",
+              label: tr("common.delete"),
               icon: <IconTrash size={14} />,
               color: "red",
               divider: true,
@@ -151,8 +161,8 @@ export function BpDetail({
         />
       }
       breadcrumbs={[
-        "マスタ",
-        { label: "取引先", href: BP_BASE_PATH },
+        tr("common.masterData"),
+        { label: tr("common.businessPartners"), href: BP_BASE_PATH },
         record.bpCode,
       ]}
       createdAt={fmt.dateTime(record.createdAt)}
@@ -163,7 +173,7 @@ export function BpDetail({
       <BpBaseSummary
         extra={
           <FieldValue
-            label="ロール"
+            label={tr("common.role")}
             value={
               <BpRoleBadges
                 roles={record.roles}
@@ -177,60 +187,71 @@ export function BpDetail({
 
       <AppTabs onChange={setTab} value={tab}>
         <Tabs.List>
-          <Tabs.Tab value="overview">概要</Tabs.Tab>
-          <Tabs.Tab value="contacts">担当者</Tabs.Tab>
-          <Tabs.Tab value="branches">支店一覧</Tabs.Tab>
-          <Tabs.Tab value="history">見積・受注履歴</Tabs.Tab>
-          <Tabs.Tab value="audit">履歴</Tabs.Tab>
+          <Tabs.Tab value="overview">{tr("common.overview")}</Tabs.Tab>
+          <Tabs.Tab value="contacts">{tr("common.assignee")}</Tabs.Tab>
+          <Tabs.Tab value="branches">
+            {tr("master.businessPartners.branches")}
+          </Tabs.Tab>
+          <Tabs.Tab value="history">
+            {tr("master.businessPartners.quoteAndOrderHistory")}
+          </Tabs.Tab>
+          <Tabs.Tab value="audit">{tr("common.history")}</Tabs.Tab>
         </Tabs.List>
 
         <Tabs.Panel pt="md" value="overview">
           <Stack gap="md">
             {/* 一般 — ロールに関係なく取引先そのものに紐づく情報。 */}
-            <OverviewSection title="一般">
-              <FieldValue label="備考" value={record.notes || "—"} />
+            <OverviewSection title={tr("common.general")}>
+              <FieldValue
+                label={tr("common.notes")}
+                value={record.notes || "—"}
+              />
             </OverviewSection>
 
             {/* ロール別 — 付与されているロールの分だけセクションが並ぶ。 */}
             {record.roles.length === 0 && (
-              <OverviewSection title="ロール">
+              <OverviewSection title={tr("common.role")}>
                 <Text c="dimmed" size="sm">
-                  ロールが設定されていません。「編集」から顧客・最終需要家・
-                  仕入先・外注先のいずれかを付与すると、各書類で選べるように
-                  なります。
+                  {tr("master.businessPartners.noRoleIsSetGrantCustomer")}
                 </Text>
               </OverviewSection>
             )}
 
             {customer && (
-              <OverviewSection bpRole="CUSTOMER" title="顧客">
+              <OverviewSection bpRole="CUSTOMER" title={tr("common.customer")}>
                 <Group gap="xl" wrap="wrap">
                   <FieldValue
-                    label="旧システムコード"
+                    label={tr("common.legacySystemCode")}
                     value={customer.customerCode || "—"}
                   />
-                  <FieldValue label="請求先" value={customer.billingName} />
-                  <FieldValue label="締日" value={day(customer.closingDay)} />
                   <FieldValue
-                    label="支払サイト"
-                    value={days(customer.paymentTermsDays)}
+                    label={tr("master.businessPartners.billTo")}
+                    value={customer.billingName}
                   />
                   <FieldValue
-                    label="支払日"
-                    value={days(customer.paymentDay)}
+                    label={tr("common.closingDay")}
+                    value={day(customer.closingDay, tr)}
                   />
                   <FieldValue
-                    label="与信限度額"
+                    label={tr("master.businessPartners.paymentTerms")}
+                    value={days(customer.paymentTermsDays, tr)}
+                  />
+                  <FieldValue
+                    label={tr("common.paymentDay")}
+                    value={days(customer.paymentDay, tr)}
+                  />
+                  <FieldValue
+                    label={tr("master.businessPartners.creditLimit")}
                     value={formatMoney(customer.creditLimit)}
                   />
                   <FieldValue
-                    label="課税区分"
+                    label={tr("master.businessPartners.taxType")}
                     value={
                       taxTypeLabel(customer.taxType, locale) ?? customer.taxType
                     }
                   />
                   <FieldValue
-                    label="請求書送付方法"
+                    label={tr("master.businessPartners.invoiceDeliveryMethod")}
                     value={
                       invoiceMethodLabel(customer.invoiceMethod, locale) ??
                       customer.invoiceMethod
@@ -239,13 +260,13 @@ export function BpDetail({
                 </Group>
                 <Checkbox
                   checked={customer.isConsignment}
-                  label="委託先"
+                  label={tr("master.businessPartners.consignee")}
                   mt="sm"
                   readOnly
                 />
                 <Box mt="sm">
                   <FieldValue
-                    label="営業担当"
+                    label={tr("common.salesRep")}
                     value={
                       customer.salesReps.length > 0 ? (
                         <Group gap="xs" wrap="wrap">
@@ -256,7 +277,11 @@ export function BpDetail({
                               variant="light"
                             >
                               {rep.name}
-                              {rep.isPrimary ? "（主担当）" : ""}
+                              {rep.isPrimary
+                                ? tr(
+                                    "master.businessPartners.primaryContactTag",
+                                  )
+                                : ""}
                             </Badge>
                           ))}
                         </Group>
@@ -270,18 +295,24 @@ export function BpDetail({
             )}
 
             {endUser && (
-              <OverviewSection bpRole="END_USER" title="最終需要家">
+              <OverviewSection bpRole="END_USER" title={tr("common.endUser")}>
                 <Group gap="xl" wrap="wrap">
-                  <FieldValue label="業種" value={endUser.industry || "—"} />
+                  <FieldValue
+                    label={tr("master.businessPartners.industry")}
+                    value={endUser.industry || "—"}
+                  />
                 </Group>
               </OverviewSection>
             )}
 
             {vendor && (
-              <OverviewSection bpRole="VENDOR" title="仕入先・外注先">
+              <OverviewSection
+                bpRole="VENDOR"
+                title={tr("master.businessPartners.supplierSubcontractor")}
+              >
                 <Group gap="xl" wrap="wrap">
                   <FieldValue
-                    label="外注種別"
+                    label={tr("master.businessPartners.subcontractorType")}
                     value={
                       <Badge color="teal" size="sm" variant="light">
                         {vendorTypeLabel(vendor.vendorType, locale) ??
@@ -290,30 +321,46 @@ export function BpDetail({
                     }
                   />
                   <FieldValue
-                    label="旧システムコード"
+                    label={tr("common.legacySystemCode")}
                     value={vendor.vendorCode || "—"}
                   />
-                  <FieldValue label="締日" value={day(vendor.closingDay)} />
                   <FieldValue
-                    label="支払サイト"
-                    value={days(vendor.paymentTermsDays)}
+                    label={tr("common.closingDay")}
+                    value={day(vendor.closingDay, tr)}
                   />
-                  <FieldValue label="支払日" value={days(vendor.paymentDay)} />
                   <FieldValue
-                    label="標準リードタイム"
-                    value={days(vendor.leadTimeDays)}
+                    label={tr("master.businessPartners.paymentTerms")}
+                    value={days(vendor.paymentTermsDays, tr)}
+                  />
+                  <FieldValue
+                    label={tr("common.paymentDay")}
+                    value={days(vendor.paymentDay, tr)}
+                  />
+                  <FieldValue
+                    label={tr("master.businessPartners.standardLeadTime")}
+                    value={days(vendor.leadTimeDays, tr)}
                   />
                 </Group>
-                <Divider label="振込先" labelPosition="left" my="sm" />
+                <Divider
+                  label={tr("common.bankAccount")}
+                  labelPosition="left"
+                  my="sm"
+                />
                 <Group gap="xl" wrap="wrap">
-                  <FieldValue label="銀行名" value={vendor.bankName || "—"} />
-                  <FieldValue label="支店名" value={vendor.bankBranch || "—"} />
                   <FieldValue
-                    label="口座種別"
+                    label={tr("common.bankName")}
+                    value={vendor.bankName || "—"}
+                  />
+                  <FieldValue
+                    label={tr("common.branchName")}
+                    value={vendor.bankBranch || "—"}
+                  />
+                  <FieldValue
+                    label={tr("common.accountType")}
                     value={vendor.bankAccountType || "—"}
                   />
                   <FieldValue
-                    label="口座番号"
+                    label={tr("common.accountNumber")}
                     value={vendor.bankAccountNumber || "—"}
                   />
                 </Group>
@@ -341,21 +388,21 @@ export function BpDetail({
                 router.push(`${BP_BASE_PATH}/${record.id}/branches/new`)
               }
             >
-              支店を追加
+              {tr("master.businessPartners.addABranch")}
             </GhostButton>
           </Group>
           {record.branches.length === 0 ? (
             <EmptyState
               icon={<IconBuildingStore size={24} />}
-              message="支店は登録されていません"
+              message={tr("master.businessPartners.noBranchesAreRegistered")}
             />
           ) : (
             <Table highlightOnHover striped withTableBorder>
               <Table.Thead>
                 <Table.Tr>
-                  <Table.Th>支店名</Table.Th>
-                  {!isMobile && <Table.Th>電話番号</Table.Th>}
-                  <Table.Th>主担当</Table.Th>
+                  <Table.Th>{tr("common.branchName")}</Table.Th>
+                  {!isMobile && <Table.Th>{tr("common.phoneNumber")}</Table.Th>}
+                  <Table.Th>{tr("common.primaryContact")}</Table.Th>
                 </Table.Tr>
               </Table.Thead>
               <Table.Tbody>
@@ -383,17 +430,19 @@ export function BpDetail({
           {record.history.length === 0 ? (
             <EmptyState
               icon={<IconFileText size={24} />}
-              message="見積・受注はまだありません"
+              message={tr("master.businessPartners.thereAreNoQuotesOrOrders")}
             />
           ) : (
             <Table highlightOnHover striped withTableBorder>
               <Table.Thead>
                 <Table.Tr>
-                  <Table.Th>番号</Table.Th>
-                  {!isMobile && <Table.Th>種別</Table.Th>}
-                  <Table.Th style={{ textAlign: "right" }}>金額</Table.Th>
-                  <Table.Th>状態</Table.Th>
-                  {!isMobile && <Table.Th>作成日</Table.Th>}
+                  <Table.Th>{tr("common.number")}</Table.Th>
+                  {!isMobile && <Table.Th>{tr("common.type2")}</Table.Th>}
+                  <Table.Th style={{ textAlign: "right" }}>
+                    {tr("common.amount")}
+                  </Table.Th>
+                  <Table.Th>{tr("common.status")}</Table.Th>
+                  {!isMobile && <Table.Th>{tr("common.createdOn")}</Table.Th>}
                 </Table.Tr>
               </Table.Thead>
               <Table.Tbody>
@@ -436,14 +485,14 @@ export function BpDetail({
       </AppTabs>
 
       <DeleteBpModal
-        entityLabel="取引先"
+        entityLabel={tr("common.businessPartners")}
         onClose={() => setDeleteOpen(false)}
         onDone={() => router.push(BP_BASE_PATH)}
         opened={deleteOpen}
         target={target}
       />
       <ToggleBpActiveModal
-        entityLabel="取引先"
+        entityLabel={tr("common.businessPartners")}
         onClose={() => setToggleOpen(false)}
         onDone={() => router.refresh()}
         opened={toggleOpen}

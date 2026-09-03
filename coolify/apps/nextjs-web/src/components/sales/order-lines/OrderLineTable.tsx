@@ -14,21 +14,23 @@ import {
   IconSearch,
 } from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
-import { useLocale } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { useFormat } from "@/components/layout/PreferencesProvider";
 import { SecondaryButton } from "@/components/ui/buttons";
 import { type Column, DataTable } from "@/components/ui/DataTable";
 import { MoneyText } from "@/components/ui/MoneyText";
-import { StatusBadge, statusOptions } from "@/components/ui/StatusBadge";
+import { StatusBadge } from "@/components/ui/StatusBadge";
 import { ListShell } from "@/components/ui/shells";
 import { useUrlSelectState, useUrlStringState } from "@/hooks/useUrlState";
 import { useIsMobile } from "@/hooks/useViewport";
 import { orderTypeLabel, orderTypeOptions } from "@/lib/enum-labels";
+import { statusOptions } from "@/lib/status-map";
 import type { OrderLine } from "./model";
 
 const BASE_PATH = "/sales/order-lines";
 
 export function OrderLineTable({ rows }: { rows: OrderLine[] }) {
+  const tr = useTranslations();
   const locale = useLocale();
   const fmt = useFormat();
   const router = useRouter();
@@ -59,7 +61,7 @@ export function OrderLineTable({ rows }: { rows: OrderLine[] }) {
   const columns: Column<OrderLine>[] = [
     {
       key: "orderNumber",
-      header: "注文明細番号",
+      header: tr("common.orderLineNumber"),
       sortable: true,
       render: (o) => (
         <Text ff="mono" size="sm">
@@ -69,13 +71,13 @@ export function OrderLineTable({ rows }: { rows: OrderLine[] }) {
     },
     {
       key: "customerName",
-      header: "顧客",
+      header: tr("common.customer"),
       sortable: true,
       render: (o) => o.customerName,
     },
     {
       key: "productName",
-      header: "製品",
+      header: tr("common.product"),
       sortable: true,
       render: (o) => (
         <>
@@ -88,7 +90,7 @@ export function OrderLineTable({ rows }: { rows: OrderLine[] }) {
     },
     {
       key: "quantity",
-      header: "数量",
+      header: tr("common.quantity"),
       align: "right",
       width: 90,
       sortValue: (o) => o.quantity,
@@ -100,7 +102,7 @@ export function OrderLineTable({ rows }: { rows: OrderLine[] }) {
     },
     {
       key: "amount",
-      header: "金額",
+      header: tr("common.amount"),
       align: "right",
       width: 130,
       sortValue: (o) => o.amount ?? 0,
@@ -108,7 +110,7 @@ export function OrderLineTable({ rows }: { rows: OrderLine[] }) {
     },
     {
       key: "deliveryDate",
-      header: "納期",
+      header: tr("common.deliveryDate"),
       width: 120,
       sortValue: (o) => o.deliveryDate ?? "",
       render: (o) => (
@@ -119,7 +121,7 @@ export function OrderLineTable({ rows }: { rows: OrderLine[] }) {
     },
     {
       key: "status",
-      header: "状態",
+      header: tr("common.status"),
       width: 100,
       sortValue: (o) => o.status,
       render: (o) => <StatusBadge entity="OrderLine" status={o.status} />,
@@ -135,10 +137,10 @@ export function OrderLineTable({ rows }: { rows: OrderLine[] }) {
           href="/sales/order-acceptances"
           leftSection={<IconClipboardCheck size={14} />}
         >
-          注文請書一覧
+          {tr("sales.orderLines.orderAcceptances")}
         </SecondaryButton>
       }
-      breadcrumbs={["販売", "注文明細"]}
+      breadcrumbs={[tr("common.sales"), tr("common.orderLine")]}
       filters={
         <>
           <Select
@@ -146,7 +148,7 @@ export function OrderLineTable({ rows }: { rows: OrderLine[] }) {
             data={statusOptions("OrderLine")}
             flex={isMobile ? 1 : undefined}
             onChange={setStatus}
-            placeholder="状態"
+            placeholder={tr("common.status")}
             value={status}
             w={isMobile ? undefined : 140}
           />
@@ -155,7 +157,7 @@ export function OrderLineTable({ rows }: { rows: OrderLine[] }) {
             data={orderTypeOptions(locale)}
             flex={isMobile ? 1 : undefined}
             onChange={setOrderType}
-            placeholder="注文種別"
+            placeholder={tr("common.orderType")}
             value={orderType}
             w={isMobile ? undefined : 140}
           />
@@ -166,11 +168,11 @@ export function OrderLineTable({ rows }: { rows: OrderLine[] }) {
         <TextInput
           leftSection={<IconSearch size={14} />}
           onChange={(e) => setSearch(e.currentTarget.value)}
-          placeholder="注文明細番号・顧客・製品で検索"
+          placeholder={tr("common.searchByOrderLineNumberCustomer")}
           value={search}
         />
       }
-      title="注文明細"
+      title={tr("common.orderLine")}
     >
       <DataTable
         columns={columns}
@@ -181,11 +183,11 @@ export function OrderLineTable({ rows }: { rows: OrderLine[] }) {
             href="/sales/order-acceptances"
             leftSection={<IconClipboardCheck size={14} />}
           >
-            注文請書一覧
+            {tr("sales.orderLines.orderAcceptances")}
           </SecondaryButton>
         }
         emptyIcon={<IconClipboardList size={24} />}
-        emptyMessage="注文明細がありません（注文請書を確定すると作られます）"
+        emptyMessage={tr("sales.orderLines.thereAreNoOrderLinesThey")}
         getRowId={(o) => o.id}
         onRowClick={(o) => router.push(`${BASE_PATH}/${o.id}`)}
         renderCard={(o) => (
@@ -202,7 +204,7 @@ export function OrderLineTable({ rows }: { rows: OrderLine[] }) {
               </Text>
               <Group gap="md" mt={2}>
                 <Text c="dimmed" size="xs">
-                  {o.quantity} 本
+                  {tr("common.quantityPcs", { quantity: o.quantity })}
                 </Text>
                 <Text fw={500} size="xs">
                   <MoneyText value={o.amount} />

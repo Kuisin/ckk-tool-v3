@@ -16,6 +16,7 @@
 
 import { Box, Flex, Stack } from "@mantine/core";
 import { usePathname } from "next/navigation";
+import { useTranslations } from "next-intl";
 import {
   type ReactNode,
   type PointerEvent as ReactPointerEvent,
@@ -47,6 +48,7 @@ export function MasterDetailShell({
   minMasterWidth?: number;
   maxMasterWidth?: number;
 }) {
+  const tr = useTranslations();
   const isMobile = useIsMobile();
   const pathname = usePathname();
   const onList = pathname === basePath || pathname === `${basePath}/`;
@@ -139,7 +141,7 @@ export function MasterDetailShell({
         </Box>
         {/* biome-ignore lint/a11y/useSemanticElements: interactive drag splitter needs role=separator with aria-valuenow, not a semantic <hr> */}
         <Box
-          aria-label="ペイン幅を調整"
+          aria-label={tr("ui.masterDetailShell.adjustThePaneWidth")}
           aria-orientation="vertical"
           aria-valuemax={maxMasterWidth}
           aria-valuemin={minMasterWidth}

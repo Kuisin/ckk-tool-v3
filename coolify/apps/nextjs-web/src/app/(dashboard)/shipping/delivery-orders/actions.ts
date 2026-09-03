@@ -14,6 +14,7 @@
 
 import { type Access, rowInScope } from "@ckk/authz-core";
 import { revalidatePath } from "next/cache";
+import { getTranslations } from "next-intl/server";
 import { z } from "zod";
 import { combinabilityError } from "@/components/shipping/delivery-orders/model";
 import { recordAudit } from "@/lib/audit";
@@ -26,6 +27,7 @@ import {
   parseDocKey,
 } from "@/lib/doc-number";
 import { type LocalizedText, localized } from "@/lib/format";
+import { decodeInventoryNote } from "@/lib/inventory-note-core";
 import { allocateDocumentKey } from "@/lib/numbering";
 import { lineShipStatus } from "@/lib/order-line-core";
 import {
@@ -43,7 +45,6 @@ import {
 } from "@/lib/workflow-core";
 
 const BASE_PATH = "/shipping/delivery-orders";
-const SCOPE_DENIED = "この操作の権限がありません（対象範囲外）";
 
 /**
  * 対象出荷書がスコープ内か（PLANT = 出荷元拠点）。ALL は素通し。
@@ -63,61 +64,90 @@ async function deliveryOrderInScope(
   return rowInScope(access, { plantIds: [row.fromPlantId] }, userId);
 }
 
-const itemInput = z.object({
-  /** 出荷元の注文明細。DISPATCH では必須（下の superRefine で強制）。 */
-  orderLineId: z.string().nullable(),
-  productId: z.string().min(1, "製品を選択してください"),
-  lotNumber: z.number().int().min(1).nullable(),
-  quantity: z.number().int().min(1, "数量は1以上"),
-  notes: z.string().nullable(),
-});
-
-const createInput = z
-  .object({
-    customerBpId: z.string().min(1, "顧客を選択してください"),
-    customerBranchBpId: z.string().nullable(),
-    type: z.enum(["DISPATCH", "STOCK_STORAGE"]),
-    fromPlantId: z.string().nullable(),
+function itemInputSchema(tr: Awaited<ReturnType<typeof getTranslations>>) {
+  return z.object({
+    /** 出荷元の注文明細。DISPATCH では必須（下の superRefine で強制）。 */
+    orderLineId: z.string().nullable(),
+    productId: z.string().min(1, tr("common.selectAProduct")),
+    lotNumber: z.number().int().min(1).nullable(),
+    quantity: z
+      .number()
+      .int()
+      .min(1, tr("shipping.deliveryOrderActions.quantityMustBeAtLeast1")),
     notes: z.string().nullable(),
-    items: z.array(itemInput).min(1, "明細を1件以上追加してください"),
-  })
-  .superRefine((v, ctx) => {
-    // 発送は必ず注文明細に紐付く（請求の起点になるため）。在庫保管は
-    // 予備製作分なので注文明細を持たない行を許す。
-    if (v.type !== "DISPATCH") return;
-    v.items.forEach((it, i) => {
-      if (!it.orderLineId) {
-        ctx.addIssue({
-          code: "custom",
-          path: ["items", i, "orderLineId"],
-          message: `明細 ${i + 1} 行目: 発送には注文明細の指定が必要です`,
-        });
-      }
-    });
   });
+}
 
-const updateInput = z
-  .object({
-    type: z.enum(["DISPATCH", "STOCK_STORAGE"]),
-    fromPlantId: z.string().nullable(),
-    notes: z.string().nullable(),
-    items: z.array(itemInput).min(1, "明細を1件以上追加してください"),
-  })
-  .superRefine((v, ctx) => {
-    if (v.type !== "DISPATCH") return;
-    v.items.forEach((it, i) => {
-      if (!it.orderLineId) {
-        ctx.addIssue({
-          code: "custom",
-          path: ["items", i, "orderLineId"],
-          message: `明細 ${i + 1} 行目: 発送には注文明細の指定が必要です`,
-        });
-      }
+function createInputSchema(tr: Awaited<ReturnType<typeof getTranslations>>) {
+  return z
+    .object({
+      customerBpId: z
+        .string()
+        .min(1, tr("sales.orderAcceptances.selectACustomer")),
+      customerBranchBpId: z.string().nullable(),
+      type: z.enum(["DISPATCH", "STOCK_STORAGE"]),
+      fromPlantId: z.string().nullable(),
+      notes: z.string().nullable(),
+      items: z
+        .array(itemInputSchema(tr))
+        .min(1, tr("common.addAtLeastOneLineItem")),
+    })
+    .superRefine((v, ctx) => {
+      // 発送は必ず注文明細に紐付く（請求の起点になるため）。在庫保管は
+      // 予備製作分なので注文明細を持たない行を許す。
+      if (v.type !== "DISPATCH") return;
+      v.items.forEach((it, i) => {
+        if (!it.orderLineId) {
+          ctx.addIssue({
+            code: "custom",
+            path: ["items", i, "orderLineId"],
+            message: tr(
+              "shipping.deliveryOrderActions.orderLineRequiredForDispatch",
+              {
+                line: i + 1,
+              },
+            ),
+          });
+        }
+      });
     });
-  });
+}
 
-export type DeliveryOrderCreateInput = z.infer<typeof createInput>;
-export type DeliveryOrderUpdateInput = z.infer<typeof updateInput>;
+function updateInputSchema(tr: Awaited<ReturnType<typeof getTranslations>>) {
+  return z
+    .object({
+      type: z.enum(["DISPATCH", "STOCK_STORAGE"]),
+      fromPlantId: z.string().nullable(),
+      notes: z.string().nullable(),
+      items: z
+        .array(itemInputSchema(tr))
+        .min(1, tr("common.addAtLeastOneLineItem")),
+    })
+    .superRefine((v, ctx) => {
+      if (v.type !== "DISPATCH") return;
+      v.items.forEach((it, i) => {
+        if (!it.orderLineId) {
+          ctx.addIssue({
+            code: "custom",
+            path: ["items", i, "orderLineId"],
+            message: tr(
+              "shipping.deliveryOrderActions.orderLineRequiredForDispatch",
+              {
+                line: i + 1,
+              },
+            ),
+          });
+        }
+      });
+    });
+}
+
+export type DeliveryOrderCreateInput = z.infer<
+  ReturnType<typeof createInputSchema>
+>;
+export type DeliveryOrderUpdateInput = z.infer<
+  ReturnType<typeof updateInputSchema>
+>;
 
 function revalidate(number?: string) {
   revalidatePath(BASE_PATH);
@@ -167,6 +197,8 @@ export interface DeliverySourceInfo {
   shipToName: string | null;
   /** 注文請書ヘッダの配送方法 — 同じ配送方法の明細だけを束ねられる。 */
   deliveryMethod: "NORMAL" | "DIRECT_TO_USER";
+  /** 注文請書ヘッダの担当拠点 — 出荷書の出荷元拠点の既定値に使う。 */
+  assignedPlantId: string | null;
   /** 既に出荷済みの数量（残数の算出用）。 */
   shippedQuantity: number;
   /** 注文明細の製品（明細の既定製品）。 */
@@ -188,6 +220,7 @@ export interface DeliverySourceInfo {
 export async function fetchDeliverySourceInfo(
   orderLineId: string,
 ): Promise<DeliverySourceInfo | null> {
+  if (!(await checkPermission("delivery_order", "READ")).ok) return null;
   if (!orderLineId) return null;
   try {
     const so = await prisma.orderLine.findUnique({
@@ -271,6 +304,10 @@ export async function fetchDeliverySourceInfo(
         ? localized(so.acceptance.shipToBp.name as LocalizedText | null)
         : null,
       deliveryMethod: so.acceptance.deliveryMethod,
+      assignedPlantId:
+        so.acceptance.assignedPlantId != null
+          ? String(so.acceptance.assignedPlantId)
+          : null,
       shippedQuantity: await shippedQuantityForLine(so.id),
       productId: String(productId),
       productName: localized(so.product?.name as LocalizedText | null),
@@ -315,6 +352,7 @@ export async function fetchDeliverySourceInfo(
 export async function fetchDeliveryAcceptanceSourceInfo(
   acceptanceNumber: string,
 ): Promise<DeliverySourceInfo[]> {
+  if (!(await checkPermission("delivery_order", "READ")).ok) return [];
   const key = parseDocKey(acceptanceNumber, "ORD");
   if (!key) return [];
   try {
@@ -345,6 +383,7 @@ export async function fetchDeliveryAcceptanceSourceInfo(
  */
 async function validateDispatchLots(
   items: { productId: string; lotNumber: number | null; quantity: number }[],
+  tr: Awaited<ReturnType<typeof getTranslations>>,
 ): Promise<string | null> {
   const byKey = new Map<
     string,
@@ -368,11 +407,15 @@ async function validateDispatchLots(
       _count: { _all: true },
     });
     if ((agg._count._all ?? 0) === 0) {
-      return `ロット #${lot} の在庫がありません（完了済み指示書のロット番号を指定してください）`;
+      return tr("shipping.deliveryOrderActions.lotHasNoStock", { lot });
     }
     const available = agg._sum.quantity ?? 0;
     if (qty > available) {
-      return `ロット #${lot} の在庫が不足しています（現物 ${available} / 指定 ${qty}）`;
+      return tr("shipping.deliveryOrderActions.lotStockInsufficient", {
+        lot,
+        available,
+        qty,
+      });
     }
   }
   return null;
@@ -386,6 +429,7 @@ async function validateDispatchLots(
 async function validateCombinable(
   items: { orderLineId: string | null }[],
   customerBpId: string,
+  tr: Awaited<ReturnType<typeof getTranslations>>,
 ): Promise<string | null> {
   const ids = [
     ...new Set(
@@ -405,6 +449,7 @@ async function validateCombinable(
   });
   return combinabilityError(
     lines.map((l) => l.acceptance),
+    tr,
     customerBpId,
   );
 }
@@ -430,6 +475,7 @@ async function shippedQuantityForLine(orderLineId: string): Promise<number> {
  */
 async function validateLineRemaining(
   items: { orderLineId: string | null; quantity: number }[],
+  tr: Awaited<ReturnType<typeof getTranslations>>,
   excludeKey?: DocKey,
 ): Promise<string | null> {
   const byLine = new Map<string, number>();
@@ -448,7 +494,7 @@ async function validateLineRemaining(
       },
     });
     if (!line || line.branch == null) {
-      return "確定済みの注文明細を指定してください";
+      return tr("shipping.deliveryOrderActions.specifyAConfirmedOrderLine");
     }
     // 自分自身の未出荷ぶんは累計に含まれない（SHIPPED のみ数える）が、
     // 編集時に同じ出荷書の行を二重に数えないよう除外キーを見る。
@@ -475,7 +521,11 @@ async function validateLineRemaining(
         seq: line.acceptanceSeq,
         branch: line.branch,
       });
-      return `${number} の残数を超えています（残 ${remaining} / 指定 ${requested}）`;
+      return tr("shipping.deliveryOrderActions.exceedsLineRemaining", {
+        number,
+        remaining,
+        requested,
+      });
     }
   }
   return null;
@@ -507,11 +557,14 @@ async function resolveHeaderWorkOrderId(
 export async function createDeliveryOrder(
   payload: DeliveryOrderCreateInput,
 ): Promise<ActionResult<{ number: string }>> {
+  const tr = await getTranslations();
   const authz = await checkPermission("delivery_order", "CREATE");
   if (!authz.ok) return actionError(authz.error);
-  const parsed = createInput.safeParse(payload);
+  const parsed = createInputSchema(tr).safeParse(payload);
   if (!parsed.success) {
-    return actionError(parsed.error.issues[0]?.message ?? "入力が不正です");
+    return actionError(
+      parsed.error.issues[0]?.message ?? tr("common.invalidInput"),
+    );
   }
   const v = parsed.data;
   // スコープ行チェック（PLANT）: 出荷元拠点がスコープ内であること
@@ -524,16 +577,20 @@ export async function createDeliveryOrder(
       authz.userId,
     )
   ) {
-    return actionError(SCOPE_DENIED);
+    return actionError(tr("common.outOfScope"));
   }
   try {
     // 発送（DISPATCH）はロット在庫を fail-fast 検証（最終ガードは出荷時）
     if (v.type === "DISPATCH") {
-      const lotError = await validateDispatchLots(v.items);
+      const lotError = await validateDispatchLots(v.items, tr);
       if (lotError) return actionError(lotError);
-      const remainingError = await validateLineRemaining(v.items);
+      const remainingError = await validateLineRemaining(v.items, tr);
       if (remainingError) return actionError(remainingError);
-      const combineError = await validateCombinable(v.items, v.customerBpId);
+      const combineError = await validateCombinable(
+        v.items,
+        v.customerBpId,
+        tr,
+      );
       if (combineError) return actionError(combineError);
     }
     const workOrderId = await resolveHeaderWorkOrderId(v.items);
@@ -578,7 +635,13 @@ export async function createDeliveryOrder(
     revalidate(number);
     return actionOk({ number });
   } catch (e) {
-    return actionError(prismaErrorMessage(e, "出荷書の作成に失敗しました"));
+    return actionError(
+      prismaErrorMessage(
+        e,
+        tr("shipping.deliveryOrderActions.createFailed"),
+        tr,
+      ),
+    );
   }
 }
 
@@ -587,17 +650,21 @@ export async function updateDeliveryOrder(
   number: string,
   payload: DeliveryOrderUpdateInput,
 ): Promise<ActionResult<{ number: string }>> {
+  const tr = await getTranslations();
   const authz = await checkPermission("delivery_order", "UPDATE");
   if (!authz.ok) return actionError(authz.error);
   const key = parseDocKey(number, "DOR");
-  if (!key) return actionError("出荷書番号が不正です");
-  const parsed = updateInput.safeParse(payload);
+  if (!key)
+    return actionError(tr("shipping.deliveryOrderActions.invalidNumber"));
+  const parsed = updateInputSchema(tr).safeParse(payload);
   if (!parsed.success) {
-    return actionError(parsed.error.issues[0]?.message ?? "入力が不正です");
+    return actionError(
+      parsed.error.issues[0]?.message ?? tr("common.invalidInput"),
+    );
   }
   const v = parsed.data;
   if (!(await deliveryOrderInScope(authz.access, authz.userId, key))) {
-    return actionError(SCOPE_DENIED);
+    return actionError(tr("common.outOfScope"));
   }
   try {
     const prior = await prisma.deliveryOrder.findUnique({
@@ -620,16 +687,17 @@ export async function updateDeliveryOrder(
     });
     // 発送（DISPATCH）はロット在庫を fail-fast 検証（最終ガードは出荷時）
     if (v.type === "DISPATCH") {
-      const lotError = await validateDispatchLots(v.items);
+      const lotError = await validateDispatchLots(v.items, tr);
       if (lotError) return actionError(lotError);
       // 受注残の過出荷ガード（作成時と同じ。自出荷書の行は除外して数える）
-      const remainingError = await validateLineRemaining(v.items, key);
+      const remainingError = await validateLineRemaining(v.items, tr, key);
       if (remainingError) return actionError(remainingError);
       // 束ね可否（同一顧客 × 同一出荷先 × 同一配送方法）— 作成時と同じ
       if (prior?.customerBpId) {
         const combineError = await validateCombinable(
           v.items,
           prior.customerBpId,
+          tr,
         );
         if (combineError) return actionError(combineError);
       }
@@ -647,7 +715,9 @@ export async function updateDeliveryOrder(
         },
       });
       if (updated.count === 0) {
-        throw new Error("GUARD:下書きの出荷書のみ編集できます");
+        throw new Error(
+          `GUARD:${tr("shipping.deliveryOrderActions.onlyDraftCanBeEdited")}`,
+        );
       }
       // 明細は全置換（DRAFT のみのため参照はまだ無い）。
       await tx.deliveryOrderItem.deleteMany({
@@ -687,7 +757,13 @@ export async function updateDeliveryOrder(
     if (e instanceof Error && e.message.startsWith("GUARD:")) {
       return actionError(e.message.slice("GUARD:".length));
     }
-    return actionError(prismaErrorMessage(e, "出荷書の更新に失敗しました"));
+    return actionError(
+      prismaErrorMessage(
+        e,
+        tr("shipping.deliveryOrderActions.updateFailed"),
+        tr,
+      ),
+    );
   }
 }
 
@@ -695,12 +771,14 @@ export async function updateDeliveryOrder(
 export async function confirmDeliveryOrder(
   number: string,
 ): Promise<ActionResult> {
+  const tr = await getTranslations();
   const authz = await checkPermission("delivery_order", "UPDATE");
   if (!authz.ok) return actionError(authz.error);
   const key = parseDocKey(number, "DOR");
-  if (!key) return actionError("出荷書番号が不正です");
+  if (!key)
+    return actionError(tr("shipping.deliveryOrderActions.invalidNumber"));
   if (!(await deliveryOrderInScope(authz.access, authz.userId, key))) {
-    return actionError(SCOPE_DENIED);
+    return actionError(tr("common.outOfScope"));
   }
   try {
     const updated = await prisma.deliveryOrder.updateMany({
@@ -708,7 +786,9 @@ export async function confirmDeliveryOrder(
       data: { status: "CONFIRMED" },
     });
     if (updated.count === 0) {
-      return actionError("下書きの出荷書のみ確定できます");
+      return actionError(
+        tr("shipping.deliveryOrderActions.onlyDraftCanBeConfirmed"),
+      );
     }
     await recordAudit({
       action: "UPDATE",
@@ -720,7 +800,13 @@ export async function confirmDeliveryOrder(
     revalidate(number);
     return actionOk();
   } catch (e) {
-    return actionError(prismaErrorMessage(e, "確定に失敗しました"));
+    return actionError(
+      prismaErrorMessage(
+        e,
+        tr("shipping.deliveryOrderActions.confirmFailed"),
+        tr,
+      ),
+    );
   }
 }
 
@@ -732,12 +818,14 @@ export async function confirmDeliveryOrder(
  * SHIPPED。STOCK_STORAGE（在庫保管）は注文明細ステータスを変更しない。
  */
 export async function shipDeliveryOrder(number: string): Promise<ActionResult> {
+  const tr = await getTranslations();
   const authz = await checkPermission("delivery_order", "UPDATE");
   if (!authz.ok) return actionError(authz.error);
   const key = parseDocKey(number, "DOR");
-  if (!key) return actionError("出荷書番号が不正です");
+  if (!key)
+    return actionError(tr("shipping.deliveryOrderActions.invalidNumber"));
   if (!(await deliveryOrderInScope(authz.access, authz.userId, key))) {
-    return actionError(SCOPE_DENIED);
+    return actionError(tr("common.outOfScope"));
   }
   try {
     const row = await prisma.deliveryOrder.findUnique({
@@ -747,7 +835,7 @@ export async function shipDeliveryOrder(number: string): Promise<ActionResult> {
         items: { select: { orderLineId: true } },
       },
     });
-    if (!row) return actionError("対象の出荷書が見つかりません");
+    if (!row) return actionError(tr("shipping.deliveryOrderActions.notFound"));
 
     // 注文明細ステータス変更の監査用（トランザクション後に記録）。
     // 1 出荷書が複数の注文明細を束ねるため、行ごとに 1 件ずつ積む。
@@ -763,7 +851,9 @@ export async function shipDeliveryOrder(number: string): Promise<ActionResult> {
         data: { status: "SHIPPED", shippedAt: new Date() },
       });
       if (updated.count === 0) {
-        throw new Error("GUARD:確定済みの出荷書のみ出荷できます");
+        throw new Error(
+          `GUARD:${tr("shipping.deliveryOrderActions.onlyConfirmedCanBeShipped")}`,
+        );
       }
       if (row.type !== "DISPATCH") return;
 
@@ -808,7 +898,14 @@ export async function shipDeliveryOrder(number: string): Promise<ActionResult> {
         });
         if (shipped > line.quantity) {
           throw new Error(
-            `GUARD:${lineNumber} の受注数量 ${line.quantity} を超える出荷になります（累計 ${shipped}）`,
+            `GUARD:${tr(
+              "shipping.deliveryOrderActions.exceedsOrderedQuantity",
+              {
+                number: lineNumber,
+                quantity: line.quantity,
+                shipped,
+              },
+            )}`,
           );
         }
         const next = lineShipStatus(line.quantity, shipped);
@@ -865,12 +962,18 @@ export async function shipDeliveryOrder(number: string): Promise<ActionResult> {
           await notify({
             userIds,
             type: "SYSTEM",
-            title: `出荷書 ${number} を出荷しました`,
+            title: tr(
+              "shipping.deliveryOrderActions.shippedNotificationTitle",
+              {
+                number,
+              },
+            ),
             linkPath: `/shipping/delivery-orders/${encodeURIComponent(number)}`,
           });
         }
       }
     } catch (err) {
+      // i18n-ignore — 開発者向けサーバーログ（画面には出ない）
       console.error("[shipping] 出荷通知に失敗:", err);
     }
     for (const audit of lineAudits) {
@@ -890,14 +993,21 @@ export async function shipDeliveryOrder(number: string): Promise<ActionResult> {
     if (e instanceof Error && e.message.startsWith("GUARD:")) {
       return actionError(e.message.slice("GUARD:".length));
     }
-    // 在庫ガード（lib/inventory）の業務エラーはそのまま表示する
-    if (
-      e instanceof Error &&
-      (e.message.startsWith("在庫が不足") || e.message.includes("在庫台帳"))
-    ) {
-      return actionError(e.message);
+    // 在庫ガード（lib/inventory）の業務エラーはそのまま表示する。
+    // lib/inventory.ts は message に構造化ノート（鍵+パラメータ、
+    // lib/inventory-note-core.ts）を積むので、ここで自分の言語に翻訳する
+    // （日本語の部分文字列一致には依存しない）。
+    if (e instanceof Error) {
+      const decoded = decodeInventoryNote(e.message);
+      if (decoded) {
+        return actionError(
+          tr(`inventoryNote.${decoded.key}`, decoded.params ?? {}),
+        );
+      }
     }
-    return actionError(prismaErrorMessage(e, "出荷処理に失敗しました"));
+    return actionError(
+      prismaErrorMessage(e, tr("shipping.deliveryOrderActions.shipFailed"), tr),
+    );
   }
 }
 
@@ -905,19 +1015,23 @@ export async function shipDeliveryOrder(number: string): Promise<ActionResult> {
 export async function deleteDeliveryOrder(
   number: string,
 ): Promise<ActionResult> {
+  const tr = await getTranslations();
   const authz = await checkPermission("delivery_order", "DELETE");
   if (!authz.ok) return actionError(authz.error);
   const key = parseDocKey(number, "DOR");
-  if (!key) return actionError("出荷書番号が不正です");
+  if (!key)
+    return actionError(tr("shipping.deliveryOrderActions.invalidNumber"));
   if (!(await deliveryOrderInScope(authz.access, authz.userId, key))) {
-    return actionError(SCOPE_DENIED);
+    return actionError(tr("common.outOfScope"));
   }
   try {
     const deleted = await prisma.deliveryOrder.deleteMany({
       where: { ...key, status: "DRAFT" },
     });
     if (deleted.count === 0) {
-      return actionError("下書きの出荷書のみキャンセルできます");
+      return actionError(
+        tr("shipping.deliveryOrderActions.onlyDraftCanBeCancelled"),
+      );
     }
     await recordAudit({
       action: "DELETE",
@@ -928,6 +1042,12 @@ export async function deleteDeliveryOrder(
     revalidate(number);
     return actionOk();
   } catch (e) {
-    return actionError(prismaErrorMessage(e, "キャンセルに失敗しました"));
+    return actionError(
+      prismaErrorMessage(
+        e,
+        tr("shipping.deliveryOrderActions.cancelFailed"),
+        tr,
+      ),
+    );
   }
 }

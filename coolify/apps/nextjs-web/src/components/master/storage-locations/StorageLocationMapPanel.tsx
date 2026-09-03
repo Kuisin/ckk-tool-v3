@@ -18,6 +18,7 @@ import {
   IconX,
 } from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { useState, useTransition } from "react";
 import {
   placeStorageLocation,
@@ -48,6 +49,7 @@ export function StorageLocationMapPanel({
   floorMaps: PlantFloorMapRef[];
   pins: StorageMapPin[];
 }) {
+  const tr = useTranslations();
   const router = useRouter();
   const [activeMapId, setActiveMapId] = useState<string | null>(null);
   const [overlayIds, setOverlayIds] = useState<string[]>([]);
@@ -72,8 +74,8 @@ export function StorageLocationMapPanel({
       const res = await action();
       if (!res.ok) {
         notifications.show({
-          title: "エラー",
-          message: res.error ?? "操作に失敗しました",
+          title: tr("common.error2"),
+          message: res.error ?? tr("common.theActionFailed"),
           color: "red",
         });
         return;
@@ -87,17 +89,16 @@ export function StorageLocationMapPanel({
       <Group gap="xs" mb="sm">
         <IconMap2 color="var(--mantine-color-gray-6)" size={18} />
         <Text fw={600} size="sm">
-          フロアマップ配置
+          {tr("master.storageLocations.placeOnTheFloorMap")}
         </Text>
         <Text c="dimmed" size="xs">
-          保管場所ピンをドラッグで配置。図面の管理は拠点マスタ (MS0C)
+          {tr("master.storageLocations.dragStorageLocationPinsIntoPlace")}
         </Text>
       </Group>
 
       {floorMaps.length === 0 ? (
         <Text c="dimmed" size="sm">
-          この拠点にはフロアマップがありません。拠点マスタ (MS0C)
-          の「フロアマップ」タブでフロアと図面を登録してください。
+          {tr("master.storageLocations.thisSiteHasNoFloorMap2")}
         </Text>
       ) : (
         <Stack gap="sm">
@@ -123,7 +124,7 @@ export function StorageLocationMapPanel({
           {overlayCandidates.length > 0 && (
             <Group gap="xs" wrap="wrap">
               <Text c="dimmed" size="xs">
-                重ね表示:
+                {tr("common.overlay")}
               </Text>
               {overlayCandidates.map((m) => (
                 <Chip
@@ -147,7 +148,9 @@ export function StorageLocationMapPanel({
           {activeMap && (
             <FloorMapCanvas
               editable
-              imageAlt={`フロアマップ: ${activeMap.name}`}
+              imageAlt={tr("master.storageLocations.floorMapAlt", {
+                name: activeMap.name,
+              })}
               imageUrl={
                 activeMap.hasImage
                   ? `/api/kiosk/floor-maps/${activeMap.id}/image`
@@ -168,7 +171,11 @@ export function StorageLocationMapPanel({
                 id: String(l.id),
                 x: l.mapX ?? 50,
                 y: l.mapY ?? 50,
-                label: `${l.nameJa}（${l.code}）｜棚 ${l.shelfCount} 件`,
+                label: tr("master.storageLocations.pinLabel", {
+                  name: l.nameJa,
+                  code: l.code,
+                  count: l.shelfCount,
+                }),
                 icon: (
                   <IconBuildingWarehouse
                     color="var(--mantine-color-violet-6)"
@@ -213,7 +220,9 @@ export function StorageLocationMapPanel({
                   }
                   size="compact-xs"
                 >
-                  {l.nameJa} を配置
+                  {tr("master.storageLocations.placeThisLocation", {
+                    name: l.nameJa,
+                  })}
                 </GhostButton>
               ))}
             </Group>

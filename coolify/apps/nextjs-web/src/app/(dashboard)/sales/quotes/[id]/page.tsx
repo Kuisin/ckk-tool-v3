@@ -1,10 +1,13 @@
 import { notFound } from "next/navigation";
 import { QuoteDetail } from "@/components/sales/quotes/QuoteDetail";
+import { appLabelForKey } from "@/lib/app-list";
 import { fetchAuditEntries } from "@/lib/audit";
 import { requireAppRead } from "@/lib/authz-page";
 import { formatQuoteNumber, parseDocKey } from "@/lib/doc-number";
 import { listMemos } from "@/lib/document-memos";
 import { isIssued, pdfStorageKey, storedPdfMeta } from "@/lib/document-pdf";
+import { formatDocPageTitle } from "@/lib/page-title";
+import { getServerLocale } from "@/lib/user-preferences";
 import { fetchDesignRequestsForQuote } from "../../design-requests/data";
 import { fetchOrderAcceptancesForQuote } from "../../order-acceptances/data";
 import { fetchEntriesForQuote, fetchQuote } from "../data";
@@ -18,7 +21,13 @@ export async function generateMetadata({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  return { title: `見積書 ${decodeURIComponent(id)} | CKK 業務管理システム` };
+  const locale = await getServerLocale();
+  return {
+    title: formatDocPageTitle(
+      appLabelForKey("quotes", "見積書", locale), // i18n-ignore — ja はそのまま使う（訳の実体は appLabelForKey 内の en/zh マップ）
+      decodeURIComponent(id),
+    ),
+  };
 }
 
 /** 見積書 詳細 (SA23). URL id = 導出文書番号 QOT-YYYYMM-NNNNN. */

@@ -11,6 +11,7 @@
  */
 
 import { revalidatePath } from "next/cache";
+import { getTranslations } from "next-intl/server";
 import { z } from "zod";
 import { recordAudit } from "@/lib/audit";
 import { checkPermission } from "@/lib/authz";
@@ -33,34 +34,51 @@ import {
 const BASE_PATH = "/master/materials";
 
 // 編集可能フィールド（識別＝コード構成は作成後不変）
-const materialUpdateInput = z.object({
-  nameJa: z.string().min(1, "名称（日本語）を入力してください"),
-  nameTranslations: z.record(z.string(), z.string()).optional(),
-  unit: z.string().min(1, "単位を選択してください"),
-  manufacturerModel: z.string().optional(),
-  nominalDiameterMm: z.number().min(0).nullable(),
-  /** 検索・AI 突合用のキーワード（match_names）。保存時に整形する。 */
-  matchNames: z.array(z.string()).default([]),
-  isActive: z.boolean(),
-  notes: z.string().optional(),
-});
+function materialUpdateInputSchema(
+  tr: Awaited<ReturnType<typeof getTranslations>>,
+) {
+  return z.object({
+    nameJa: z.string().min(1, tr("common.nameJaRequired")),
+    nameTranslations: z.record(z.string(), z.string()).optional(),
+    unit: z.string().min(1, tr("master.materialForm.unitRequired")),
+    manufacturerModel: z.string().optional(),
+    nominalDiameterMm: z.number().min(0).nullable(),
+    /** 検索・AI 突合用のキーワード（match_names）。保存時に整形する。 */
+    matchNames: z.array(z.string()).default([]),
+    isActive: z.boolean(),
+    notes: z.string().optional(),
+  });
+}
 
-const materialCreateInput = materialUpdateInput.extend({
-  materialTypeId: z.number().int().min(1, "材種を選択してください"),
-  surfaceFinishCode: z.string().length(1, "黒皮・研磨を選択してください"),
-  diameterMm: z
-    .number()
-    .min(0.1, "直径は 0.1〜99.9mm で入力してください")
-    .max(99.9, "直径は 0.1〜99.9mm で入力してください"),
-  lengthMm: z
-    .number()
-    .min(1, "全長は 1〜999mm で入力してください")
-    .max(999, "全長は 1〜999mm で入力してください"),
-  kindCode: z.string().length(2, "種類を選択してください"),
-});
+function materialCreateInputSchema(
+  tr: Awaited<ReturnType<typeof getTranslations>>,
+) {
+  return materialUpdateInputSchema(tr).extend({
+    materialTypeId: z
+      .number()
+      .int()
+      .min(1, tr("master.materialForm.materialTypeRequired")),
+    surfaceFinishCode: z
+      .string()
+      .length(1, tr("master.materialForm.surfaceFinishRequired")),
+    diameterMm: z
+      .number()
+      .min(0.1, tr("master.materialForm.diameterRange"))
+      .max(99.9, tr("master.materialForm.diameterRange")),
+    lengthMm: z
+      .number()
+      .min(1, tr("master.materialForm.lengthRange"))
+      .max(999, tr("master.materialForm.lengthRange")),
+    kindCode: z.string().length(2, tr("master.materialForm.kindRequired")),
+  });
+}
 
-export type MaterialUpdateInput = z.infer<typeof materialUpdateInput>;
-export type MaterialCreateInput = z.infer<typeof materialCreateInput>;
+export type MaterialUpdateInput = z.infer<
+  ReturnType<typeof materialUpdateInputSchema>
+>;
+export type MaterialCreateInput = z.infer<
+  ReturnType<typeof materialCreateInputSchema>
+>;
 
 function revalidate(id?: number) {
   revalidatePath(BASE_PATH);
@@ -79,14 +97,19 @@ export interface StructuredTypeInfo {
 export async function fetchStructuredMaterialType(
   materialTypeId: number,
 ): Promise<ActionResult<StructuredTypeInfo>> {
+  const authz = await checkPermission("master", "READ");
+  if (!authz.ok) return actionError(authz.error);
+  const tr = await getTranslations();
   try {
     const t = await prisma.materialType.findUnique({
       where: { id: materialTypeId },
     });
-    if (!t) return actionError("材種が見つかりません");
+    if (!t) {
+      return actionError(tr("master.materialActions.materialTypeNotFound"));
+    }
     if (!t.code || !t.shapeCode) {
       return actionError(
-        "未変換（レガシー）の材種では素材コードを構成できません",
+        tr("master.materialActions.legacyMaterialTypeCannotComposeCode"),
       );
     }
     const kinds = await prisma.materialKind.findMany({
@@ -103,18 +126,27 @@ export async function fetchStructuredMaterialType(
       })),
     });
   } catch (e) {
-    return actionError(prismaErrorMessage(e, "材種の取得に失敗しました"));
+    return actionError(
+      prismaErrorMessage(
+        e,
+        tr("master.materialActions.materialTypeFetchFailed"),
+        tr,
+      ),
+    );
   }
 }
 
 export async function createMaterial(
   input: MaterialCreateInput,
 ): Promise<ActionResult<{ id: number; code: string }>> {
+  const tr = await getTranslations();
   const authz = await checkPermission("master", "CREATE");
   if (!authz.ok) return actionError(authz.error);
-  const parsed = materialCreateInput.safeParse(input);
+  const parsed = materialCreateInputSchema(tr).safeParse(input);
   if (!parsed.success) {
-    return actionError(parsed.error.issues[0]?.message ?? "入力が不正です");
+    return actionError(
+      parsed.error.issues[0]?.message ?? tr("common.invalidInput"),
+    );
   }
   const v = parsed.data;
   try {
@@ -126,11 +158,11 @@ export async function createMaterial(
     ]);
     if (!type || !type.code || !type.shapeCode) {
       return actionError(
-        "未変換（レガシー）の材種では素材を作成できません。変換済の材種を選択してください。",
+        tr("master.materialActions.legacyMaterialTypeCannotCreateMaterial"),
       );
     }
     if (!finish || !finish.isActive) {
-      return actionError("黒皮・研磨の区分が不正です");
+      return actionError(tr("master.materialActions.invalidSurfaceFinish"));
     }
     const kind = await prisma.materialKind.findUnique({
       where: {
@@ -138,7 +170,9 @@ export async function createMaterial(
       },
     });
     if (!kind || !kind.isActive) {
-      return actionError("種類がこの材種の形状に存在しません");
+      return actionError(
+        tr("master.materialActions.kindNotInMaterialTypeShape"),
+      );
     }
 
     const diameterCode = diameterCodeFromMm(v.diameterMm);
@@ -219,11 +253,11 @@ export async function createMaterial(
         ? String((e as { code: unknown }).code)
         : undefined;
     if (code === "P2002") {
-      return actionError(
-        "同一構成（材種 × 黒皮研磨 × 直径 × 全長）の素材が既に存在します",
-      );
+      return actionError(tr("master.materialActions.duplicateComposition"));
     }
-    return actionError(prismaErrorMessage(e, "素材の作成に失敗しました"));
+    return actionError(
+      prismaErrorMessage(e, tr("master.materialActions.createFailed"), tr),
+    );
   }
 }
 
@@ -231,11 +265,14 @@ export async function updateMaterial(
   id: number,
   input: MaterialUpdateInput,
 ): Promise<ActionResult<{ id: number }>> {
+  const tr = await getTranslations();
   const authz = await checkPermission("master", "UPDATE");
   if (!authz.ok) return actionError(authz.error);
-  const parsed = materialUpdateInput.safeParse(input);
+  const parsed = materialUpdateInputSchema(tr).safeParse(input);
   if (!parsed.success) {
-    return actionError(parsed.error.issues[0]?.message ?? "入力が不正です");
+    return actionError(
+      parsed.error.issues[0]?.message ?? tr("common.invalidInput"),
+    );
   }
   const v = parsed.data;
   try {
@@ -291,7 +328,9 @@ export async function updateMaterial(
     revalidate(id);
     return actionOk({ id });
   } catch (e) {
-    return actionError(prismaErrorMessage(e, "素材の更新に失敗しました"));
+    return actionError(
+      prismaErrorMessage(e, tr("master.materialActions.updateFailed"), tr),
+    );
   }
 }
 
@@ -299,9 +338,12 @@ export async function setMaterialsActive(
   ids: number[],
   isActive: boolean,
 ): Promise<ActionResult> {
+  const tr = await getTranslations();
   const authz = await checkPermission("master", "UPDATE");
   if (!authz.ok) return actionError(authz.error);
-  if (ids.length === 0) return actionError("対象が選択されていません");
+  if (ids.length === 0) {
+    return actionError(tr("master.materialActions.noTargetsSelected"));
+  }
   try {
     await prisma.material.updateMany({
       where: { id: { in: ids } },
@@ -319,14 +361,23 @@ export async function setMaterialsActive(
     for (const id of ids) revalidatePath(`${BASE_PATH}/${id}`);
     return actionOk();
   } catch (e) {
-    return actionError(prismaErrorMessage(e, "状態の更新に失敗しました"));
+    return actionError(
+      prismaErrorMessage(
+        e,
+        tr("master.materialActions.statusUpdateFailed"),
+        tr,
+      ),
+    );
   }
 }
 
 export async function deleteMaterials(ids: number[]): Promise<ActionResult> {
+  const tr = await getTranslations();
   const authz = await checkPermission("master", "DELETE");
   if (!authz.ok) return actionError(authz.error);
-  if (ids.length === 0) return actionError("対象が選択されていません");
+  if (ids.length === 0) {
+    return actionError(tr("master.materialActions.noTargetsSelected"));
+  }
   try {
     // 参照ガード: 製品は材種参照へ移行済み（products.material_id は廃止）。
     // 指示書・発注明細・入荷・在庫などの実参照は P2003 → prismaErrorMessage。
@@ -341,6 +392,8 @@ export async function deleteMaterials(ids: number[]): Promise<ActionResult> {
     revalidate();
     return actionOk();
   } catch (e) {
-    return actionError(prismaErrorMessage(e, "素材の削除に失敗しました"));
+    return actionError(
+      prismaErrorMessage(e, tr("master.materialActions.deleteFailed"), tr),
+    );
   }
 }

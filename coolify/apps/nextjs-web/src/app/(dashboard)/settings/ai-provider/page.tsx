@@ -1,4 +1,5 @@
 import { Stack } from "@mantine/core";
+import { getTranslations } from "next-intl/server";
 import { AiProviderForm } from "@/components/settings/AiProviderForm";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { getAiProviderSettings } from "@/lib/ai-provider";
@@ -19,6 +20,7 @@ export const dynamic = "force-dynamic";
  * ので、クライアントコンポーネントへ渡しても秘密が HTML に載らない。
  */
 export default async function AiProviderSettingsPage() {
+  const tr = await getTranslations();
   const denied = await requireAppRead("ai-provider");
   if (denied) return denied;
 
@@ -27,8 +29,11 @@ export default async function AiProviderSettingsPage() {
   return (
     <Stack gap="md">
       <PageHeader
-        breadcrumbs={["システム", "AI プロバイダ"]}
-        title="AI プロバイダ"
+        breadcrumbs={[
+          tr("common.system"),
+          tr("settings.aiProvider.aIProvider"),
+        ]}
+        title={tr("settings.aiProvider.aIProvider")}
       />
       <AiProviderForm initial={initial} />
     </Stack>

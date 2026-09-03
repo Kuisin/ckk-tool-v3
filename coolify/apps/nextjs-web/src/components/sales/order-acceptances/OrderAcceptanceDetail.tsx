@@ -58,7 +58,7 @@ import {
 } from "@tabler/icons-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useLocale } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { type ReactNode, useEffect, useState, useTransition } from "react";
 import {
   searchCustomerOptions,
@@ -100,7 +100,7 @@ import {
 import { PrimaryButton, SecondaryButton } from "@/components/ui/buttons";
 import { DocNumber } from "@/components/ui/DocNumber";
 import { FieldValue } from "@/components/ui/FieldValue";
-import { CUSTOMER_F4 } from "@/components/ui/f4-presets";
+import { customerF4 } from "@/components/ui/f4-presets";
 import { HelpLabel } from "@/components/ui/HelpLabel";
 import { HistoryPanel } from "@/components/ui/HistoryPanel";
 import { MemoPanel } from "@/components/ui/MemoPanel";
@@ -149,7 +149,7 @@ import { IntakeDocumentPane } from "./IntakeDocumentPane";
 import { IntakeReviewPanel } from "./IntakeReviewPanel";
 import { MatchSuggestions } from "./MatchSuggestions";
 import {
-  INTAKE_SOURCE_BADGE,
+  intakeSourceBadge,
   type OrderAcceptanceView,
   sourceFileUrl,
 } from "./model";
@@ -217,6 +217,7 @@ export function OrderAcceptanceDetail({
   /** キャンセル依頼の承認状態（cancelRequest があるときだけ使う）。 */
   cancelApproval?: ApprovalActionState | null;
 }) {
+  const tr = useTranslations();
   const locale = useLocale();
   const fmt = useFormat();
   const router = useRouter();
@@ -241,7 +242,7 @@ export function OrderAcceptanceDetail({
   );
 
   const a = acceptance;
-  const sourceDef = INTAKE_SOURCE_BADGE[a.source];
+  const sourceDef = intakeSourceBadge(tr)[a.source];
 
   // 抽出失敗は分類済みの複数行メッセージ（lib/intake-extract-error）。
   // 旧形式（1 行）もそのまま読める。
@@ -263,21 +264,23 @@ export function OrderAcceptanceDetail({
   const stages: ProcedureStage[] = [
     {
       key: "import",
-      label: "取込",
+      label: tr("sales.orderAcceptances.intake"),
       description: sourceDef.label,
       loading: a.status === "IMPORT",
     },
     {
       key: "draft",
-      label: "下書き",
-      description: "内容確認・編集",
+      label: tr("common.draft"),
+      description: tr("sales.orderAcceptances.reviewAndEdit"),
       loading: a.status === "DRAFT",
     },
-    approvalStage(approval, { fmtDate: (v) => fmt.date(v) }),
+    approvalStage(approval, { fmtDate: (v) => fmt.date(v), tr }),
     {
       key: "completed",
-      label: "確定",
-      description: a.completedAt ? fmt.date(a.completedAt) : "注文明細へ",
+      label: tr("common.confirmed"),
+      description: a.completedAt
+        ? fmt.date(a.completedAt)
+        : tr("sales.orderAcceptances.toTheOrderLines"),
       loading: a.status === "APPROVED",
     },
   ];
@@ -287,13 +290,15 @@ export function OrderAcceptanceDetail({
     ? [
         {
           key: "quote",
-          title: "見積書",
+          title: tr("common.quote"),
           items: [
             {
               key: a.quoteNumber,
               label: a.quoteNumber,
               href: `/sales/quotes/${a.quoteNumber}`,
-              note: "この注文請書の見積元",
+              note: tr(
+                "sales.orderAcceptances.quoteThisOrderAcceptanceCameFrom",
+              ),
             },
           ],
           emptyNote: "—",
@@ -305,10 +310,10 @@ export function OrderAcceptanceDetail({
   const handoffGroups: HandoffGroup[] = [
     {
       key: "order-lines",
-      title: "注文明細",
+      title: tr("common.orderLine"),
       summary:
         a.orderLineNumbers.length > 0
-          ? `${a.orderLineNumbers.length} 件`
+          ? tr("common.itemsCount", { count: a.orderLineNumbers.length })
           : null,
       items: a.orderLineNumbers.map((n) => ({
         key: n,
@@ -319,23 +324,26 @@ export function OrderAcceptanceDetail({
       })),
       emptyNote:
         a.status === "APPROVED"
-          ? "未展開（確定すると注文明細を作成します）"
-          : "未展開（承認・確定後に注文明細へ展開します）",
+          ? tr("sales.orderAcceptances.notExpandedOrderLinesAreCreated")
+          : tr("sales.orderAcceptances.notExpandedExpandedIntoOrderLines"),
     },
   ];
 
   // 承認依頼の可否 — 確定と同じ完成条件（サーバーの submitForApproval と
   // 同じ関数）。足りない項目があるうちはボタンを押せなくし、理由をカードに出す。
-  const readiness = acceptanceReadiness({
-    customerBpId: a.customerBpId,
-    deliveryMethod: a.deliveryMethod,
-    endUserBpId: a.endUserBpId,
-    items: a.items,
-  });
+  const readiness = acceptanceReadiness(
+    {
+      customerBpId: a.customerBpId,
+      deliveryMethod: a.deliveryMethod,
+      endUserBpId: a.endUserBpId,
+      items: a.items,
+    },
+    tr,
+  );
 
   // 明細の合計（ヘッダ要約と明細表の合計行で同じ数字を出す — lib で 1 本化）。
   const totals = acceptanceTotals(a.items);
-  const products = productSummary(a.items);
+  const products = productSummary(a.items, tr);
 
   // §2 価格照合（P0-8）— 差異行と明細 id → 照合結果の索引。
   const diffLines = priceCheck.lines.filter((l) => l.diff);
@@ -349,7 +357,9 @@ export function OrderAcceptanceDetail({
       if (result.ok) {
         notifications.show({
           title: done,
-          message: `注文請書 ${a.number}`,
+          message: tr("sales.orderAcceptanceDetail.orderAcceptanceWithNumber", {
+            number: a.number,
+          }),
           color: "green",
         });
         setRejectOpen(false);
@@ -359,7 +369,7 @@ export function OrderAcceptanceDetail({
         router.refresh();
       } else {
         notifications.show({
-          title: "エラー",
+          title: tr("common.error2"),
           message: result.error,
           color: "red",
         });
@@ -373,15 +383,17 @@ export function OrderAcceptanceDetail({
       const result = await confirmOrderLines(a.number);
       if (result.ok) {
         notifications.show({
-          title: "確定しました",
-          message: `注文明細 ${result.data.numbers.join(", ")} を作成しました`,
+          title: tr("common.confirmed2"),
+          message: tr("sales.orderAcceptanceDetail.orderLinesCreatedMessage", {
+            numbers: result.data.numbers.join(", "),
+          }),
           color: "green",
         });
         setDeployOpen(false);
         router.refresh();
       } else {
         notifications.show({
-          title: "エラー",
+          title: tr("common.error2"),
           message: result.error,
           color: "red",
         });
@@ -395,28 +407,37 @@ export function OrderAcceptanceDetail({
    */
   const requestApproval = () => {
     if (diffLines.length === 0) {
-      run(() => submitForApproval(a.number), "承認依頼しました");
+      run(() => submitForApproval(a.number), tr("common.approvalRequested"));
       return;
     }
     modals.openConfirmModal({
-      title: "価格差異の確認",
+      title: tr("sales.orderAcceptances.checkThePriceMismatch"),
       children: (
         <Stack gap="xs">
           <Text size="sm">
-            以下の明細は単価が価格表と一致しません。差異を確認のうえ承認依頼しますか？
+            {tr("sales.orderAcceptances.theLinesBelowDoNotMatch")}
           </Text>
           {diffLines.map((l) => (
             <Text key={l.itemId} size="sm">
-              行{l.row}: {formatMoney(l.actual)} ≠ 価格表{" "}
-              {formatMoney(l.expected)}
+              {tr("sales.orderAcceptanceDetail.lineDiffText", {
+                row: l.row,
+                actual: formatMoney(l.actual),
+                expected: formatMoney(l.expected),
+              })}
             </Text>
           ))}
         </Stack>
       ),
-      labels: { confirm: "差異を確認して依頼", cancel: "戻る" },
+      labels: {
+        confirm: tr("sales.orderAcceptances.checkTheDifferenceAndSubmit"),
+        cancel: tr("common.back2"),
+      },
       confirmProps: { color: "orange" },
       onConfirm: () =>
-        run(() => submitForApproval(a.number, true), "承認依頼しました"),
+        run(
+          () => submitForApproval(a.number, true),
+          tr("common.approvalRequested"),
+        ),
     });
   };
 
@@ -434,9 +455,9 @@ export function OrderAcceptanceDetail({
       // 編集中は承認依頼を出さない — 押した瞬間に未保存の編集が消えるため。
       // 保存 / キャンセル（画面下に貼り付く FormActions）に集中させる。
       <ActionCard
-        description="変更したら保存してください。保存すると閲覧に戻ります"
+        description={tr("sales.orderAcceptances.saveOnceYouHaveChangedIt")}
         icon={<IconPencil size={20} />}
-        title="編集中"
+        title={tr("sales.orderAcceptances.editing")}
         tone="action"
       />
     ) : (
@@ -448,19 +469,23 @@ export function OrderAcceptanceDetail({
             loading={isPending}
             onClick={requestApproval}
           >
-            承認依頼
+            {tr("common.approvalRequest")}
           </PrimaryButton>
         }
         description={
           readiness.ok
-            ? "書類と見比べて、直すところがあれば「編集」で直してください"
-            : `「編集」で直してください — ${readinessSummary(readiness.issues)}`
+            ? tr("sales.orderAcceptances.compareItWithTheDocumentAnd")
+            : tr("sales.orderAcceptanceDetail.fixViaEditMessage", {
+                summary: readinessSummary(readiness.issues, tr),
+              })
         }
         icon={<IconSend size={20} />}
         title={
           readiness.ok
-            ? "内容を確認して承認依頼してください"
-            : `承認依頼にはあと ${readiness.issues.length} 件の入力が必要です`
+            ? tr("sales.orderAcceptances.reviewItAndSendItFor")
+            : tr("sales.orderAcceptanceDetail.approvalNeedsMoreInputs", {
+                count: readiness.issues.length,
+              })
         }
         tone="action"
       />
@@ -475,7 +500,9 @@ export function OrderAcceptanceDetail({
         onApprove={() => approveAcceptance(a.number)}
         onReject={(reason) => rejectAcceptance(a.number, reason)}
         rejectReason={null}
-        subject={`注文請書 ${a.number}`}
+        subject={tr("sales.orderAcceptanceDetail.orderAcceptanceWithNumber", {
+          number: a.number,
+        })}
       />
     );
   } else if (a.status === "APPROVED") {
@@ -487,12 +514,12 @@ export function OrderAcceptanceDetail({
             loading={isPending}
             onClick={() => setDeployOpen(true)}
           >
-            確定
+            {tr("common.confirmed")}
           </PrimaryButton>
         }
-        description="明細ごとに注文明細（ORD-…-NN）を一括作成します"
+        description={tr("sales.orderAcceptances.createsAnOrderLineOrdNn")}
         icon={<IconTransform size={20} />}
-        title="確定できます"
+        title={tr("sales.orderAcceptances.readyToConfirm")}
         tone="action"
       />
     );
@@ -501,11 +528,11 @@ export function OrderAcceptanceDetail({
     // アーカイブ・キャンセル依頼は例外操作なのでメニューに置く。
     actionCard = (
       <NextStepCard
-        buttonLabel="出荷書を作成"
-        description="この注文請書の出荷できる注文明細を読み込んだ状態で出荷書フォームを開きます"
+        buttonLabel={tr("common.createADeliveryOrder")}
+        description={tr("sales.orderAcceptances.opensTheDeliveryOrderFormWith")}
         href={`/shipping/delivery-orders/new?acceptance=${a.number}`}
         icon={<IconTruck size={20} />}
-        title="次のステップ: 出荷書の作成"
+        title={tr("common.nextStepCreateADeliveryOrder")}
       />
     );
   }
@@ -518,37 +545,43 @@ export function OrderAcceptanceDetail({
           // 操作は状態に依らず全て並べ、押せないものはグレーアウトで理由を出す。
           menuItems={[
             {
-              label: "出荷書を作成",
+              label: tr("common.createADeliveryOrder"),
               icon: <IconTruck size={14} />,
               disabled: a.status !== "COMPLETED",
               disabledReason:
-                a.status === "COMPLETED" ? undefined : "確定後に作成できます",
+                a.status === "COMPLETED"
+                  ? undefined
+                  : tr("sales.orderAcceptances.youCanCreateItOnceConfirmed"),
               onClick: () =>
                 router.push(
                   `/shipping/delivery-orders/new?acceptance=${a.number}`,
                 ),
             },
             {
-              label: "アーカイブ",
+              label: tr("common.archived2"),
               icon: <IconArchive size={14} />,
               disabled: a.status !== "COMPLETED",
               disabledReason:
-                a.status === "COMPLETED" ? undefined : "確定後に実行できます",
+                a.status === "COMPLETED"
+                  ? undefined
+                  : tr("sales.orderAcceptances.youCanRunItOnceConfirmed"),
               onClick: () => setArchiveOpen(true),
             },
             // 明細単位のキャンセルは無い — 注文請書ごと依頼して
             // 承認設定（MS0B）の「注文請書キャンセル」フローを通す。
             {
-              label: "キャンセル依頼",
+              label: tr("sales.orderAcceptances.cancellationRequest"),
               icon: <IconX size={14} />,
               color: "red",
               divider: true,
               disabled: a.status !== "COMPLETED" || cancelRequest != null,
               disabledReason:
                 cancelRequest != null
-                  ? "承認依頼中のキャンセル依頼があります"
+                  ? tr(
+                      "sales.orderAcceptances.thereIsACancellationRequestPending",
+                    )
                   : a.status !== "COMPLETED"
-                    ? "確定後に依頼できます"
+                    ? tr("sales.orderAcceptances.youCanRequestItOnceConfirmed")
                     : undefined,
               onClick: () => setCancelReqOpen(true),
             },
@@ -560,7 +593,11 @@ export function OrderAcceptanceDetail({
           }
         />
       }
-      breadcrumbs={["販売", { label: "注文請書", href: BASE_PATH }, "詳細"]}
+      breadcrumbs={[
+        tr("common.sales"),
+        { label: tr("common.orderAcceptance"), href: BASE_PATH },
+        tr("common.detailBreadcrumb"),
+      ]}
       createdAt={fmt.dateTime(a.createdAt)}
       status={<StatusBadge entity="OrderAcceptanceIntake" status={a.status} />}
       title={a.number}
@@ -605,8 +642,20 @@ export function OrderAcceptanceDetail({
                     {failure.attempt && failure.maxAttempts ? (
                       <Text c="dimmed" size="xs">
                         {failure.retrying
-                          ? `自動再試行中（${failure.attempt}/${failure.maxAttempts} 回目が失敗）— まもなくもう一度実行します`
-                          : `自動再試行 ${failure.attempt}/${failure.maxAttempts} 回とも失敗しました`}
+                          ? tr(
+                              "sales.orderAcceptanceDetail.autoRetryInProgress",
+                              {
+                                attempt: failure.attempt,
+                                maxAttempts: failure.maxAttempts,
+                              },
+                            )
+                          : tr(
+                              "sales.orderAcceptanceDetail.autoRetryAllFailed",
+                              {
+                                attempt: failure.attempt,
+                                maxAttempts: failure.maxAttempts,
+                              },
+                            )}
                       </Text>
                     ) : null}
                     {failure.detail && (
@@ -621,11 +670,13 @@ export function OrderAcceptanceDetail({
                         onClick={() =>
                           run(
                             () => retryExtraction(a.number),
-                            "再抽出を受け付けました（順番に実行されます）",
+                            tr(
+                              "sales.orderAcceptances.reExtractionWasQueuedItRuns",
+                            ),
                           )
                         }
                       >
-                        再抽出
+                        {tr("sales.orderAcceptances.reExtract")}
                       </SecondaryButton>
                       <SecondaryButton
                         leftSection={<IconPencil size={14} />}
@@ -633,11 +684,11 @@ export function OrderAcceptanceDetail({
                         onClick={() =>
                           run(
                             () => takeOverManually(a.number),
-                            "手入力に切り替えました",
+                            tr("sales.orderAcceptances.switchedToManualEntry"),
                           )
                         }
                       >
-                        手入力に切り替え
+                        {tr("sales.orderAcceptances.switchToManualEntry")}
                       </SecondaryButton>
                     </Group>
                   </Stack>
@@ -646,12 +697,14 @@ export function OrderAcceptanceDetail({
                 <Alert
                   color="blue"
                   icon={<IconInfoCircle size={16} />}
-                  title="抽出処理中"
+                  title={tr("sales.orderAcceptances.extracting")}
                   variant="light"
                 >
                   <Stack gap="xs">
                     <Text size="sm">
-                      自動抽出の順番待ち・実行中です（1件あたり約1〜3分）。完了すると下書きになります。この画面を閉じても処理は続きます。
+                      {tr(
+                        "sales.orderAcceptances.queuedOrRunningForAutomaticExtraction",
+                      )}
                     </Text>
                     <Group>
                       {/* 待ち行列はプロセス内 — 取込直後にブラウザやサーバーが
@@ -662,11 +715,13 @@ export function OrderAcceptanceDetail({
                         onClick={() =>
                           run(
                             () => retryExtraction(a.number),
-                            "抽出を受け付けました（順番に実行されます）",
+                            tr(
+                              "sales.orderAcceptances.extractionWasQueuedItRunsIn",
+                            ),
                           )
                         }
                       >
-                        抽出を実行
+                        {tr("sales.orderAcceptances.runExtraction")}
                       </SecondaryButton>
                       <SecondaryButton
                         leftSection={<IconPencil size={14} />}
@@ -674,11 +729,13 @@ export function OrderAcceptanceDetail({
                         onClick={() =>
                           run(
                             () => takeOverManually(a.number),
-                            "手入力に切り替えました",
+                            tr("sales.orderAcceptances.switchedToManualEntry"),
                           )
                         }
                       >
-                        待たずに手入力する
+                        {tr(
+                          "sales.orderAcceptances.enterItByHandWithoutWaiting",
+                        )}
                       </SecondaryButton>
                     </Group>
                   </Stack>
@@ -690,17 +747,22 @@ export function OrderAcceptanceDetail({
               <Alert
                 color="orange"
                 icon={<IconAlertTriangle size={16} />}
-                title={`価格差異 ${priceCheck.diffCount} 件`}
+                title={tr("sales.orderAcceptanceDetail.priceMismatchCount", {
+                  count: priceCheck.diffCount,
+                })}
                 variant="light"
               >
                 <Stack gap={4}>
                   <Text size="sm">
-                    明細の単価が価格表と一致しません。承認依頼には差異の確認が必要です。
+                    {tr("sales.orderAcceptances.aLineSUnitPriceDoes")}
                   </Text>
                   {diffLines.map((l) => (
                     <Text key={l.itemId} size="sm">
-                      行{l.row}: {formatMoney(l.actual)} ≠ 価格表{" "}
-                      {formatMoney(l.expected)}
+                      {tr("sales.orderAcceptanceDetail.lineDiffText", {
+                        row: l.row,
+                        actual: formatMoney(l.actual),
+                        expected: formatMoney(l.expected),
+                      })}
                     </Text>
                   ))}
                 </Stack>
@@ -723,11 +785,11 @@ export function OrderAcceptanceDetail({
                 )}
                 <SummaryGrid>
                   <FieldValue
-                    label="番号"
+                    label={tr("common.number")}
                     value={<DocNumber>{a.number}</DocNumber>}
                   />
                   <FieldValue
-                    label="取込元"
+                    label={tr("common.importedFrom")}
                     value={
                       <Badge color={sourceDef.color} size="sm" variant="light">
                         {sourceDef.label}
@@ -735,7 +797,7 @@ export function OrderAcceptanceDetail({
                     }
                   />
                   <FieldValue
-                    label="取込元ファイル"
+                    label={tr("sales.orderAcceptances.sourceFile")}
                     value={
                       fileUrl ? (
                         <Anchor
@@ -755,36 +817,48 @@ export function OrderAcceptanceDetail({
                     }
                   />
                   <FieldValue
-                    label="顧客"
+                    label={tr("common.customer")}
                     value={
                       a.customerName ?? (
                         <Badge color="orange" size="sm" variant="light">
-                          未特定
+                          {tr("common.notIdentified")}
                         </Badge>
                       )
                     }
                   />
-                  <FieldValue label="営業担当" value={a.salesRepName} />
-                  <FieldValue label="出荷先" value={a.shipToName} />
                   <FieldValue
-                    label="配送方法"
+                    label={tr("common.salesRep")}
+                    value={a.salesRepName}
+                  />
+                  <FieldValue
+                    label={tr("sales.orderAcceptances.shipTo")}
+                    value={a.shipToName}
+                  />
+                  <FieldValue
+                    label={tr("sales.orderAcceptances.deliveryMethod")}
                     value={acceptanceDeliveryMethodLabel(
                       a.deliveryMethod,
                       locale,
                     )}
                   />
-                  <FieldValue label="エンドユーザー" value={a.endUserName} />
-                  <FieldValue label="担当拠点" value={a.assignedPlantName} />
                   <FieldValue
-                    label="出荷作業場所"
+                    label={tr("sales.orderAcceptances.endUser")}
+                    value={a.endUserName}
+                  />
+                  <FieldValue
+                    label={tr("sales.orderAcceptances.assignedSite")}
+                    value={a.assignedPlantName}
+                  />
+                  <FieldValue
+                    label={tr("sales.orderAcceptances.shippingWorkLocation")}
                     value={a.shippingWorkLocationName}
                   />
                   <FieldValue
-                    label="顧客注文書番号"
+                    label={tr("common.customerOrderRef")}
                     value={a.customerOrderRef}
                   />
                   <FieldValue
-                    label="見積書"
+                    label={tr("common.quote")}
                     value={
                       a.quoteNumber ? (
                         <Anchor
@@ -799,13 +873,16 @@ export function OrderAcceptanceDetail({
                       )
                     }
                   />
-                  <FieldValue label="注文日" value={fmt.date(a.orderDate)} />
+                  <FieldValue
+                    label={tr("common.orderDate2")}
+                    value={fmt.date(a.orderDate)}
+                  />
                   {/*
                     何を・どれだけ・いくらで受けた書類なのかは、これまで明細表を
                     開かないと分からなかった。ヘッダの 3 項目で足りるようにする。
                   */}
                   <FieldValue
-                    label="製品"
+                    label={tr("common.product")}
                     value={
                       products.names.length > 1 ? (
                         <Tooltip
@@ -824,56 +901,76 @@ export function OrderAcceptanceDetail({
                     }
                   />
                   <FieldValue
-                    label="明細数 / 合計数量"
+                    label={tr("sales.orderAcceptances.linesTotalQuantity")}
                     value={
                       <Text className="tabular-nums" size="sm" span>
-                        {totals.lineCount} 件 /{" "}
+                        {tr("common.itemsCount", { count: totals.lineCount })} /{" "}
                         {totals.quantity.toLocaleString("ja-JP")}
                       </Text>
                     }
                   />
                   <FieldValue
-                    label="合計金額"
+                    label={tr("common.totalAmount")}
                     value={
                       <Group gap="xs" wrap="wrap">
                         <MoneyText value={totals.amount} />
                         {/* 単価未入力の行は足せていない — 総額と読まれないように。 */}
                         {totals.unpricedCount > 0 && (
                           <Badge color="orange" size="xs" variant="light">
-                            単価未入力 {totals.unpricedCount} 件を除く
+                            {tr(
+                              "sales.orderAcceptanceDetail.excludingUnpricedCount",
+                              {
+                                count: totals.unpricedCount,
+                              },
+                            )}
                           </Badge>
                         )}
                       </Group>
                     }
                   />
-                  <FieldValue label="作成者" value={a.createdByName} />
                   <FieldValue
-                    label="展開日時"
+                    label={tr("common.createdBy")}
+                    value={a.createdByName}
+                  />
+                  <FieldValue
+                    label={tr("sales.orderAcceptances.expandedAt")}
                     value={a.completedAt ? fmt.dateTime(a.completedAt) : "—"}
                   />
                   {/* 備考は 1 行まるごと使う — 3 列の枠だと読めない */}
-                  <FieldValue fullWidth label="備考" value={a.notes} />
+                  <FieldValue
+                    fullWidth
+                    label={tr("common.notes")}
+                    value={a.notes}
+                  />
                 </SummaryGrid>
 
                 {/* 明細（読み取り専用） */}
                 <Paper p="md" radius="md" withBorder>
                   <Title mb="sm" order={5}>
-                    明細（{a.items.length}）
+                    {tr("common.lineItemsWithCount", { count: a.items.length })}
                   </Title>
                   <Table.ScrollContainer minWidth={1000}>
                     <Table highlightOnHover striped>
                       <Table.Thead>
                         <Table.Tr>
-                          <Table.Th>注文明細</Table.Th>
-                          <Table.Th>指示書（割当）</Table.Th>
-                          <Table.Th>製品</Table.Th>
-                          <Table.Th>品名（抽出）</Table.Th>
-                          <Table.Th>種別</Table.Th>
-                          <Table.Th ta="right">数量</Table.Th>
-                          <Table.Th ta="right">単価</Table.Th>
-                          <Table.Th ta="right">金額</Table.Th>
-                          <Table.Th>納期</Table.Th>
-                          <Table.Th>備考</Table.Th>
+                          <Table.Th>{tr("common.orderLine")}</Table.Th>
+                          <Table.Th>
+                            {tr("sales.orderAcceptances.workOrdersAllocated")}
+                          </Table.Th>
+                          <Table.Th>{tr("common.product")}</Table.Th>
+                          <Table.Th>
+                            {tr("sales.orderAcceptances.itemNameExtracted")}
+                          </Table.Th>
+                          <Table.Th>{tr("common.type2")}</Table.Th>
+                          <Table.Th ta="right">
+                            {tr("common.quantity")}
+                          </Table.Th>
+                          <Table.Th ta="right">
+                            {tr("common.unitPrice")}
+                          </Table.Th>
+                          <Table.Th ta="right">{tr("common.amount")}</Table.Th>
+                          <Table.Th>{tr("common.deliveryDate")}</Table.Th>
+                          <Table.Th>{tr("common.notes")}</Table.Th>
                         </Table.Tr>
                       </Table.Thead>
                       <Table.Tbody>
@@ -939,7 +1036,7 @@ export function OrderAcceptanceDetail({
                                     size="sm"
                                     variant="light"
                                   >
-                                    製品未特定
+                                    {tr("common.productNotIdentified")}
                                   </Badge>
                                 )}
                               </Table.Td>
@@ -961,7 +1058,7 @@ export function OrderAcceptanceDetail({
                                     <MoneyText value={it.unitPrice} />
                                   ) : (
                                     <Text c="dimmed" size="sm">
-                                      未入力
+                                      {tr("sales.orderAcceptances.notEntered")}
                                     </Text>
                                   )}
                                   {lc?.diff && (
@@ -970,8 +1067,10 @@ export function OrderAcceptanceDetail({
                                       size="xs"
                                       variant="light"
                                     >
-                                      価格差異（価格表{" "}
-                                      {formatMoney(lc.expected)}）
+                                      {tr(
+                                        "sales.orderAcceptanceDetail.priceMismatchExpected",
+                                        { expected: formatMoney(lc.expected) },
+                                      )}
                                     </Badge>
                                   )}
                                   {lc?.unpriced && (
@@ -980,7 +1079,7 @@ export function OrderAcceptanceDetail({
                                       size="xs"
                                       variant="light"
                                     >
-                                      価格表なし
+                                      {tr("common.noPriceList")}
                                     </Badge>
                                   )}
                                 </Stack>
@@ -1014,7 +1113,7 @@ export function OrderAcceptanceDetail({
                         <Table.Tfoot>
                           <Table.Tr>
                             <Table.Th colSpan={5} ta="right">
-                              合計
+                              {tr("common.total")}
                             </Table.Th>
                             <Table.Th className="tabular-nums" ta="right">
                               {totals.quantity.toLocaleString("ja-JP")}
@@ -1022,7 +1121,12 @@ export function OrderAcceptanceDetail({
                             <Table.Th ta="right">
                               {totals.unpricedCount > 0 && (
                                 <Text c="dimmed" fw={400} size="xs">
-                                  未入力 {totals.unpricedCount} 件
+                                  {tr(
+                                    "sales.orderAcceptanceDetail.unenteredCount",
+                                    {
+                                      count: totals.unpricedCount,
+                                    },
+                                  )}
                                 </Text>
                               )}
                             </Table.Th>
@@ -1047,7 +1151,9 @@ export function OrderAcceptanceDetail({
             >
               {a.status === "ARCHIVED" && (
                 <Text c="dimmed" mt="md" size="xs">
-                  アーカイブ済み（{fmt.dateTime(a.archivedAt)}）
+                  {tr("sales.orderAcceptanceDetail.archivedAtNote", {
+                    date: fmt.dateTime(a.archivedAt),
+                  })}
                 </Text>
               )}
 
@@ -1062,10 +1168,12 @@ export function OrderAcceptanceDetail({
             <AppTabs onChange={setTab} value={tab}>
               <Tabs.List>
                 <Tabs.Tab value="attachments">
-                  添付（{attachments.length}）
+                  {tr("common.attachmentsWithCount", {
+                    count: attachments.length,
+                  })}
                 </Tabs.Tab>
-                <Tabs.Tab value="memo">メモ</Tabs.Tab>
-                <Tabs.Tab value="history">履歴</Tabs.Tab>
+                <Tabs.Tab value="memo">{tr("common.memo")}</Tabs.Tab>
+                <Tabs.Tab value="history">{tr("common.history")}</Tabs.Tab>
               </Tabs.List>
 
               <Tabs.Panel pt="md" value="attachments">
@@ -1099,30 +1207,33 @@ export function OrderAcceptanceDetail({
       {/* 差し戻し（理由必須 → DRAFT へ戻す） */}
       <ModalShell
         confirmColor="red"
-        confirmLabel="差し戻す"
+        confirmLabel={tr("common.sendBack")}
         loading={isPending}
         onClose={() => setRejectOpen(false)}
         onConfirm={() => {
           if (!rejectReason.trim()) {
             notifications.show({
-              title: "エラー",
-              message: "差し戻し理由を入力してください",
+              title: tr("common.error2"),
+              message: tr("common.enterAReasonForSendingIt"),
               color: "red",
             });
             return;
           }
-          run(() => rejectAcceptance(a.number, rejectReason), "差し戻しました");
+          run(
+            () => rejectAcceptance(a.number, rejectReason),
+            tr("common.sentBack"),
+          );
         }}
         opened={rejectOpen}
         size="sm"
-        title="差し戻しの確認"
+        title={tr("common.confirmSendingBack")}
       >
         <Textarea
           autosize
-          label="差し戻し理由"
+          label={tr("common.reasonForSendingBack")}
           minRows={3}
           onChange={(e) => setRejectReason(e.currentTarget.value)}
-          placeholder="理由を入力"
+          placeholder={tr("common.enterAReason")}
           value={rejectReason}
           withAsterisk
         />
@@ -1130,35 +1241,39 @@ export function OrderAcceptanceDetail({
 
       {/* 確定の確認 */}
       <ModalShell
-        confirmLabel="展開する"
+        confirmLabel={tr("common.expand")}
         loading={isPending}
         onClose={() => setDeployOpen(false)}
         onConfirm={deploy}
         opened={deployOpen}
         size="sm"
-        title="確定の確認"
+        title={tr("common.confirm")}
       >
         <Text size="sm">
-          明細 {a.items.length} 件を注文明細（{a.number}-01〜-
-          {String(a.items.length).padStart(2, "0")}）として一括作成します。
-          全明細が製品特定済み・単価入力済みであることが必要です。
+          {tr("sales.orderAcceptanceDetail.confirmDeployMessage", {
+            count: a.items.length,
+            number: a.number,
+            lastBranch: String(a.items.length).padStart(2, "0"),
+          })}
         </Text>
       </ModalShell>
 
       {/* アーカイブの確認 */}
       <ModalShell
-        confirmLabel="アーカイブする"
+        confirmLabel={tr("common.archive")}
         loading={isPending}
         onClose={() => setArchiveOpen(false)}
         onConfirm={() =>
-          run(() => archiveAcceptance(a.number), "アーカイブしました")
+          run(() => archiveAcceptance(a.number), tr("common.archived"))
         }
         opened={archiveOpen}
         size="sm"
-        title="アーカイブの確認"
+        title={tr("sales.orderAcceptances.confirmArchiving")}
       >
         <Text size="sm">
-          注文請書 {a.number} をアーカイブします。以後の編集はできません。
+          {tr("sales.orderAcceptanceDetail.confirmArchiveMessage", {
+            number: a.number,
+          })}
         </Text>
       </ModalShell>
 
@@ -1166,7 +1281,7 @@ export function OrderAcceptanceDetail({
       <ModalShell
         confirmColor="red"
         confirmDisabled={!cancelReason.trim()}
-        confirmLabel="キャンセルを依頼する"
+        confirmLabel={tr("sales.orderAcceptances.requestCancellation")}
         loading={isPending}
         onClose={() => setCancelReqOpen(false)}
         onConfirm={() =>
@@ -1180,17 +1295,19 @@ export function OrderAcceptanceDetail({
               setCancelReason("");
               notifications.show({
                 title: result.data?.pending
-                  ? "キャンセルを承認依頼しました"
-                  : "キャンセルしました",
+                  ? tr(
+                      "sales.orderAcceptances.approvalWasRequestedForTheCancellation",
+                    )
+                  : tr("common.cancelled"),
                 message: result.data?.pending
-                  ? "承認されるまで注文請書と注文明細は変わりません"
-                  : "全明細をキャンセルしました",
+                  ? tr("sales.orderAcceptances.theOrderAcceptanceAndItsLines")
+                  : tr("sales.orderAcceptances.everyLineWasCancelled"),
                 color: result.data?.pending ? "yellow" : "green",
               });
               router.refresh();
             } else {
               notifications.show({
-                title: "エラー",
+                title: tr("common.error2"),
                 message: result.error,
                 color: "red",
               });
@@ -1199,18 +1316,18 @@ export function OrderAcceptanceDetail({
         }
         opened={cancelReqOpen}
         size="sm"
-        title="キャンセル依頼"
+        title={tr("sales.orderAcceptances.cancellationRequest")}
       >
         <Text size="sm">
-          注文請書 {a.number} と配下の注文明細をすべてキャンセルします。
-          承認設定（MS0B）に「注文請書キャンセル」の段があれば、承認されるまで
-          何も変わりません。出荷済みの明細があるとキャンセルできません。
+          {tr("sales.orderAcceptanceDetail.confirmCancelRequestMessage", {
+            number: a.number,
+          })}
         </Text>
         <Textarea
-          label="キャンセル理由"
+          label={tr("common.reasonForCancelling")}
           minRows={3}
           onChange={(e) => setCancelReason(e.currentTarget.value)}
-          placeholder="理由を入力"
+          placeholder={tr("common.enterAReason")}
           value={cancelReason}
           withAsterisk
         />
@@ -1243,11 +1360,12 @@ function DraftEditor({
   /** 出荷作業場所の選択肢（グループ / 場所）。 */
   workLocationOptions: { value: string; label: string }[];
 }) {
+  const tr = useTranslations();
   const locale = useLocale();
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const a = acceptance;
-  const sourceDef = INTAKE_SOURCE_BADGE[a.source];
+  const sourceDef = intakeSourceBadge(tr)[a.source];
 
   const [customerId, setCustomerId] = useState<string | null>(a.customerBpId);
   // 顧客ピッカーに出すラベル。候補ボタンで選んだときも表示が追随するよう、
@@ -1305,7 +1423,7 @@ function DraftEditor({
 
   const save = () => {
     if (deliveryMethod === "DIRECT_TO_USER" && !endUserBpId) {
-      setEndUserError("ユーザー直送ではエンドユーザーを選択してください");
+      setEndUserError(tr("common.selectAnEndUserForDirect"));
       return;
     }
     startTransition(async () => {
@@ -1327,15 +1445,17 @@ function DraftEditor({
       });
       if (result.ok) {
         notifications.show({
-          title: "保存しました",
-          message: `注文請書 ${a.number}`,
+          title: tr("common.saved2"),
+          message: tr("sales.orderAcceptanceDetail.orderAcceptanceWithNumber", {
+            number: a.number,
+          }),
           color: "green",
         });
         onClose();
         router.refresh();
       } else {
         notifications.show({
-          title: "エラー",
+          title: tr("common.error2"),
           message: result.error,
           color: "red",
         });
@@ -1350,11 +1470,16 @@ function DraftEditor({
       return;
     }
     modals.openConfirmModal({
-      title: "編集の取り消し",
+      title: tr("sales.orderAcceptances.undoTheEdit"),
       children: (
-        <Text size="sm">保存していない変更は失われます。取り消しますか？</Text>
+        <Text size="sm">
+          {tr("sales.orderAcceptances.unsavedChangesWillBeLostCancel")}
+        </Text>
       ),
-      labels: { confirm: "変更を破棄", cancel: "編集に戻る" },
+      labels: {
+        confirm: tr("sales.orderAcceptances.discardChanges"),
+        cancel: tr("sales.orderAcceptances.backToEditing"),
+      },
       confirmProps: { color: "red" },
       onConfirm: onClose,
     });
@@ -1364,8 +1489,10 @@ function DraftEditor({
     <Stack gap="md">
       <IntakeReviewPanel review={a.review} />
       <FormSection
-        description="AI 抽出結果を確認し、顧客・明細を修正して保存します。"
-        title="基本情報"
+        description={tr(
+          "sales.orderAcceptances.checkTheAiExtractionCorrectThe",
+        )}
+        title={tr("common.basicInformation")}
       >
         <Stack gap="sm">
           <Group gap="md">
@@ -1376,11 +1503,15 @@ function DraftEditor({
           <Group align="flex-end" gap="sm" grow preventGrowOverflow={false}>
             <SearchSelect
               description={
-                customerId ? undefined : "顧客未特定 — 承認依頼には必須です"
+                customerId
+                  ? undefined
+                  : tr(
+                      "sales.orderAcceptances.customerNotIdentifiedRequiredToRequest",
+                    )
               }
-              f4={CUSTOMER_F4}
+              f4={customerF4(tr)}
               initialOption={customerOption}
-              label="顧客"
+              label={tr("common.customer")}
               onChange={(v, option) => {
                 setCustomerId(v);
                 setCustomerOption(
@@ -1388,7 +1519,7 @@ function DraftEditor({
                 );
               }}
               onSearch={searchCustomerOptions}
-              placeholder="顧客を検索"
+              placeholder={tr("common.searchCustomers")}
               storageKey="customer"
               value={customerId}
               withAsterisk
@@ -1404,9 +1535,9 @@ function DraftEditor({
               value={salesRepId}
             />
             <TextInput
-              label="顧客注文書番号"
+              label={tr("common.customerOrderRef")}
               onChange={(e) => setCustomerOrderRef(e.currentTarget.value)}
-              placeholder="注文書の番号"
+              placeholder={tr("common.orderDocumentNumber")}
               value={customerOrderRef}
             />
             {/*
@@ -1421,21 +1552,23 @@ function DraftEditor({
                   ? { value: a.quoteNumber, label: a.quoteNumber }
                   : null
               }
-              label="見積書（任意）"
+              label={tr("common.quoteOptional")}
               onChange={(v) => setQuoteNumber(v ?? "")}
               onSearch={(q) => searchQuoteOptions(q, customerId)}
               placeholder={
-                customerId ? "見積書を検索" : "先に顧客を選ぶと絞り込めます"
+                customerId
+                  ? tr("common.searchQuotes")
+                  : tr("common.chooseACustomerFirstToNarrow")
               }
               storageKey="quote"
               value={quoteNumber || null}
             />
             <DatePickerInput
               clearable
-              label="注文日"
+              label={tr("common.orderDate2")}
               leftSection={<IconCalendar size={14} />}
               onChange={setOrderDate}
-              placeholder="日付を選択"
+              placeholder={tr("common.pickADate")}
               value={orderDate}
               valueFormat="YYYY/MM/DD"
             />
@@ -1449,10 +1582,12 @@ function DraftEditor({
                   ? { value: a.shipToBpId, label: a.shipToName }
                   : null
               }
-              label={<HelpLabel {...fieldHelp("orderAcceptance", "shipTo")} />}
+              label={
+                <HelpLabel {...fieldHelp(tr, "orderAcceptance", "shipTo")} />
+              }
               onChange={setShipToBpId}
               onSearch={searchShipToOptions}
-              placeholder="出荷先を検索（任意）"
+              placeholder={tr("common.searchShipToOptional")}
               storageKey="ship-to"
               value={shipToBpId}
             />
@@ -1462,7 +1597,7 @@ function DraftEditor({
               data={acceptanceDeliveryMethodOptions(locale)}
               label={
                 <HelpLabel
-                  {...fieldHelp("orderAcceptance", "deliveryMethod")}
+                  {...fieldHelp(tr, "orderAcceptance", "deliveryMethod")}
                 />
               }
               onChange={(v) => {
@@ -1483,7 +1618,9 @@ function DraftEditor({
                   ? { value: a.endUserBpId, label: a.endUserName }
                   : null
               }
-              label={<HelpLabel {...fieldHelp("orderAcceptance", "endUser")} />}
+              label={
+                <HelpLabel {...fieldHelp(tr, "orderAcceptance", "endUser")} />
+              }
               onChange={(v) => {
                 setEndUserBpId(v);
                 if (v) setEndUserError(null);
@@ -1491,8 +1628,8 @@ function DraftEditor({
               onSearch={searchEndUserOptions}
               placeholder={
                 deliveryMethod === "DIRECT_TO_USER"
-                  ? "エンドユーザーを検索"
-                  : "エンドユーザーを検索（任意）"
+                  ? tr("common.searchEndUsers")
+                  : tr("common.searchEndUsersOptional")
               }
               storageKey="end-user"
               value={endUserBpId}
@@ -1502,10 +1639,12 @@ function DraftEditor({
               clearable
               data={plantOptions}
               label={
-                <HelpLabel {...fieldHelp("orderAcceptance", "assignedPlant")} />
+                <HelpLabel
+                  {...fieldHelp(tr, "orderAcceptance", "assignedPlant")}
+                />
               }
               onChange={setAssignedPlantId}
-              placeholder="拠点を選択（任意）"
+              placeholder={tr("common.selectASiteOptional")}
               searchable
               value={assignedPlantId}
             />
@@ -1514,11 +1653,11 @@ function DraftEditor({
               data={workLocationOptions}
               label={
                 <HelpLabel
-                  {...fieldHelp("orderAcceptance", "shippingWorkLocation")}
+                  {...fieldHelp(tr, "orderAcceptance", "shippingWorkLocation")}
                 />
               }
               onChange={setShippingWorkLocationId}
-              placeholder="作業場所を選択（任意）"
+              placeholder={tr("common.selectAWorkLocationOptional")}
               searchable
               value={shippingWorkLocationId}
             />
@@ -1538,17 +1677,17 @@ function DraftEditor({
             />
           )}
           <TextInput
-            label="備考"
+            label={tr("common.notes")}
             onChange={(e) => setNotes(e.currentTarget.value)}
-            placeholder="備考（任意）"
+            placeholder={tr("common.notesOptional")}
             value={notes}
           />
         </Stack>
       </FormSection>
 
       <FormSection
-        description="製品が未特定の行は製品マスタと突合してください（確定には全行の製品特定 + 単価が必要）。"
-        title="明細"
+        description={tr("sales.orderAcceptances.matchRowsWithNoProductAgainst")}
+        title={tr("common.lineItems")}
       >
         <OrderAcceptanceItemsEditor
           items={items}

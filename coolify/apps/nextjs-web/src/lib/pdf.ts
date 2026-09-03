@@ -7,13 +7,23 @@
  * uploaded alongside the template so its `<link rel="stylesheet">` resolves.
  *
  * Templating is intentionally dependency-free (no handlebars) to keep the
- * lockfile frozen: it supports `{{path.to.value}}` and `{{#each list}}…{{/each}}`
- * — enough for the document templates. Values are substituted as-is (the route
- * pre-formats numbers/dates and supplies trusted, internal data).
+ * lockfile frozen: it supports `{{path.to.value}}`, `{{{path.to.html}}}` and
+ * `{{#each list}}…{{/each}}` — enough for the document templates.
+ *
+ * ■ `{{x}}` は HTML エスケープ、`{{{x}}}` だけが生の HTML（監査 H4）
+ * 以前は全部そのまま差し込んでいた（「ルートが信頼できる内部データを渡す」
+ * という前提）が、顧客名・製品名・備考・顧客注文書番号（OCR 由来）は利用者や
+ * 取引先が書く文字列で、`<img>` 1 つで出荷する請求書の金額欄を書き換えられた。
+ * 生で入れてよいのは自分で組み立てた断片（QR の SVG・社印・列の HTML）だけで、
+ * それらはテンプレート側で三重括弧にして「ここは生」と宣言する。
+ * 備考の改行は route 側でエスケープ後に <br> にして三重括弧へ渡す。
+ * Gotenberg 側も `--chromium-allow-list=file:///tmp/.*` + JS 無効なので、
+ * 万一すり抜けても外部への取得は起きない（coolify/common/app-support）。
  */
 
 import { readdir, readFile } from "node:fs/promises";
 import path from "node:path";
+import { escapeHtml } from "./format";
 
 const TEMPLATES_DIR = path.join(process.cwd(), "src", "pdf-templates");
 
@@ -34,13 +44,31 @@ function resolvePath(ctx: unknown, dotted: string): unknown {
     );
 }
 
-/** Replace `{{path}}` placeholders in `tpl` using `ctx` (then `root` fallback). */
+function lookup(ctx: unknown, root: unknown, expr: string): string {
+  const v = resolvePath(ctx, expr);
+  const resolved = v === undefined ? resolvePath(root, expr) : v;
+  return resolved == null ? "" : String(resolved);
+}
+
+/**
+ * Replace placeholders in `tpl` using `ctx` (then `root` fallback).
+ * `{{{path}}}` は生の HTML、`{{path}}` はエスケープ済みの文字列になる。
+ * 三重括弧を先に処理する（二重括弧の正規表現が `{{{x}}}` の内側 `{{x}}` に
+ * 当たると生のはずの値までエスケープされる）。
+ */
 function substitute(tpl: string, ctx: unknown, root: unknown): string {
-  return tpl.replace(/\{\{\s*([\w.]+)\s*\}\}/g, (_m, expr: string) => {
-    const v = resolvePath(ctx, expr);
-    const resolved = v === undefined ? resolvePath(root, expr) : v;
-    return resolved == null ? "" : String(resolved);
-  });
+  return tpl
+    .replace(/\{\{\{\s*([\w.]+)\s*\}\}\}/g, (_m, expr: string) =>
+      lookup(ctx, root, expr),
+    )
+    .replace(/\{\{\s*([\w.]+)\s*\}\}/g, (_m, expr: string) =>
+      escapeHtml(lookup(ctx, root, expr)),
+    );
+}
+
+/** 備考など「改行だけを HTML にしたい」平文 → `{{{…}}}` に渡せる断片。 */
+export function multilineHtml(text: string | null | undefined): string {
+  return escapeHtml(text ?? "").replace(/\r?\n/g, "<br>");
 }
 
 /** Render a template string: expand `{{#each}}` blocks, then placeholders. */
@@ -114,6 +142,14 @@ export async function renderPdf(
     if (!asset.toLowerCase().endsWith(".svg")) continue;
     const svg = await readFile(path.join(TEMPLATES_DIR, asset), "utf8");
     form.append("files", new Blob([svg], { type: "image/svg+xml" }), asset);
+  }
+  // Upload the self-hosted Noto Sans JP font files so `@font-face { url(...) }`
+  // in base.css / kiosk-cards.html resolves — アプリ本体（next/font）と同じ
+  // 実体を使うため。allow-list は file:///tmp/.* のみなので同梱以外の手段は無い。
+  for (const asset of await readdir(TEMPLATES_DIR)) {
+    if (!asset.toLowerCase().endsWith(".woff2")) continue;
+    const font = await readFile(path.join(TEMPLATES_DIR, asset));
+    form.append("files", new Blob([font], { type: "font/woff2" }), asset);
   }
   // A4 (210mm × 297mm); Gotenberg otherwise defaults to US Letter.
   form.append("paperWidth", options.paperWidth ?? "210mm");

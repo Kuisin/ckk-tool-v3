@@ -1,6 +1,7 @@
 import { Group, Paper, Stack, Text, Title } from "@mantine/core";
 import { IconPencilOff, IconSearchOff } from "@tabler/icons-react";
 import { redirect } from "next/navigation";
+import { getTranslations } from "next-intl/server";
 import {
   FormResponseView,
   type RelatedTable,
@@ -17,18 +18,20 @@ import {
   formsAppAvailable,
   resolveRelatedRecords,
 } from "@/lib/forms";
+import { APP_NAME } from "@/lib/page-title";
 import { NO_SHARE_ACCESS } from "@/lib/share-grants";
 import { responseInScope } from "@/lib/share-grants-core";
 import { getServerFormatters } from "@/lib/user-preferences";
 
 export const dynamic = "force-dynamic";
 
-export const metadata = {
-  title: "自分の回答 | CKK 業務管理システム",
-  robots: { index: false, follow: false },
-};
-
-const HOME = { label: "ホームへ戻る", href: "/" };
+export async function generateMetadata() {
+  const tr = await getTranslations();
+  return {
+    title: `${tr("f.page.myResponseTitle")} | ${APP_NAME}`,
+    robots: { index: false, follow: false },
+  };
+}
 
 /**
  * 自分の回答を見る（`/f/<code>/<回答番号>`）。
@@ -47,6 +50,7 @@ export default async function MyResponsePage({
 }: {
   params: Promise<{ code: string; response: string }>;
 }) {
+  const tr = await getTranslations();
   const { code, response: responseNumber } = await params;
 
   const userId = await sessionUserId();
@@ -66,12 +70,14 @@ export default async function MyResponsePage({
   if (!row || !visible || row.form.code !== code) {
     return (
       <FormStateScreen
-        actions={[{ ...HOME, variant: "filled" }]}
+        actions={[
+          { label: tr("common.backToHome"), href: "/", variant: "filled" },
+        ]}
         color="gray"
-        description="URL が間違っているか、この回答を見る権限がありません。"
+        description={tr("f.page.theUrlIsWrongOrYou")}
         formTitle={null}
         icon={<IconSearchOff size={24} />}
-        title="回答が見つかりません"
+        title={tr("f.page.responseNotFound")}
       />
     );
   }
@@ -124,14 +130,16 @@ export default async function MyResponsePage({
           </Text>
           {!isOwner && row.respondent && (
             <Text c="dimmed" size="xs">
-              回答者 {row.respondent}
+              {tr("common.respondent")} {row.respondent}
             </Text>
           )}
           <Text c="dimmed" size="xs">
             {isDraft
-              ? "まだ提出していません"
+              ? tr("f.page.notSubmittedYet")
               : row.submittedAt
-                ? `提出 ${fmt.dateTime(row.submittedAt)}`
+                ? tr("f.page.submittedAt", {
+                    datetime: fmt.dateTime(row.submittedAt),
+                  })
                 : ""}
           </Text>
         </Group>
@@ -145,7 +153,7 @@ export default async function MyResponsePage({
           withBorder
         >
           <Text fw={600} size="sm">
-            差し戻されました
+            {tr("f.page.itWasSentBack")}
           </Text>
           <Text size="sm" style={{ whiteSpace: "pre-wrap" }}>
             {row.rejectReason}
@@ -174,7 +182,7 @@ export default async function MyResponsePage({
         <Group gap="xs">
           <IconPencilOff size={14} />
           <Text c="dimmed" size="xs">
-            編集できる期間が終わっています。直したい場合は作成者に連絡してください。
+            {tr("f.page.theEditingWindowHasClosedContact")}
           </Text>
         </Group>
       )}

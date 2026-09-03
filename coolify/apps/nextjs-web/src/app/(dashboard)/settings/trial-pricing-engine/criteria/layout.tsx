@@ -1,3 +1,4 @@
+import { getTranslations } from "next-intl/server";
 import type { ReactNode } from "react";
 import { CriteriaListPanel } from "@/components/settings/CriteriaListPanel";
 import { MasterDetailShell } from "@/components/ui/MasterDetailShell";
@@ -15,6 +16,7 @@ export default async function CriteriaLayout({
 }: {
   children: ReactNode;
 }) {
+  const tr = await getTranslations();
   const settings = await getTrialPricingSettings();
   return (
     <MasterDetailShell
@@ -22,11 +24,11 @@ export default async function CriteriaLayout({
       header={
         <PageHeader
           breadcrumbs={[
-            "システム",
-            { label: "価格試算計算", href: ENGINE },
-            "計算基準",
+            tr("common.system"),
+            { label: tr("common.priceEstimateEngine"), href: ENGINE },
+            tr("common.calculationBasis"),
           ]}
-          title="計算基準"
+          title={tr("common.calculationBasis")}
         />
       }
       initialMasterWidth={380}

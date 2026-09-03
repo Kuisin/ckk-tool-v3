@@ -65,6 +65,12 @@ docker rm -f ckk-shots-db              # 後始末
 - 承認・予定 (CM01) のタブ表示設定が保存され、隠したタブの URL でも空にならない
 - 申請・報告フォームの完了通知 — 共有設定で「完了通知」を付ける → 別の人が提出 →
   CM01「完了した申請」に未読で出る → 開くと既読になる
+- 多言語の名称欄（`LocalizedTextInput`）— 打った文字がそのまま欄に入り、日本語も
+  他言語も保存される（MS0D 作業場所・地域）。`jaProps.onChange` は**値ではなく
+  イベント**を受け取るので、`onChange: setNameJa` と書くと欄が `[object Object]`
+  になり保存が落ちる（実際に起きた）
+- MS0D 作業場所が携帯幅（390px）で読める — 6 列の表は 1 行 = 1 件へ、4 つのボタン列は
+  「⋯」へ畳み、広げれば表に戻る（判断は端末ではなく**幅**）
 
 **書き足すときの約束**: 落ちたときに何が起きたかが分かるよう、`check()` の第 3 引数に
 実測値（URL・幅・ラベル）を渡すこと。合否だけだと原因を追えない。
@@ -82,6 +88,35 @@ docker rm -f ckk-shots-db              # 後始末
 > `scripts/placeholders.ts` が未撮影 id に一時 PNG を置くため、ビルドは通ります
 > （docs:shots がビルド前に自動実行）。プレースホルダは撮影で上書きされるので、
 > **灰色一色の PNG が残っていたら、その id の撮影が失敗している** サインです。
+
+## Metabase ダッシュボードの撮影（`analytics.md` 用）
+
+`content/manual/analytics.md`（分析ダッシュボード / CKK 業務・労務分析）の
+スクリーンショットだけは別枠。Metabase は nextjs-web の外の別アプリなので
+manifest.ts / Playwright の通常フロー（本文 §撮影の追加手順）には乗らず、
+`scripts/metabase-demo-shots.sh` が単独で完結する:
+
+```bash
+cd tools/docs-screenshots
+pnpm exec playwright install chromium   # 初回のみ
+scripts/metabase-demo-shots.sh
+```
+
+**本物の bi.ckk-tool.co.jp には一切触れない。** 使い捨ての Postgres（`pnpm
+docs:seed` と同じ仕組み）+ 使い捨ての `metabase/metabase:v0.63.14` コンテナを
+ローカルに立て、analytics ビュー・grants・JA ラベルを適用し、
+`coolify/common/metabase/build-business-dashboards.py` で CKK 業務の 4 枚を、
+`scripts/metabase-demo-build.py` 内で労務分析の 1 枚（4 カード）を組み立てて
+撮影し、コンテナを破棄する。労務（`kot` スキーマ）は Prisma 管理外で本番
+（ckk-db-main）にしか実データが無いため、`scripts/metabase-kot-demo-seed.sql`
+が実物の DDL（`pg_dump --schema-only`）だけを流用し、社員・勤怠は完全に架空の
+値を入れる — 実在する社員は 1 人も出てこない。
+
+ダッシュボード（カード構成・フィルタ）が本番で変わったら、このスクリプトも
+追随が要る。特に労務分析はビルドスクリプトを持たないぶん `scripts/
+metabase-demo-build.py` の `cards_spec` を直接書き換える。本番の実際の構成は
+`coolify/common/metabase/README.md`「業務ダッシュボード」と、
+`ssh 192.168.50.15` で metabase-db を直接読む方法（同 README）で確認できる。
 
 ## 決定性の設計
 

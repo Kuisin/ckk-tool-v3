@@ -24,6 +24,7 @@
 
 import { Anchor, Badge, Group, Paper, Stack, Table, Text } from "@mantine/core";
 import Link from "next/link";
+import { useTranslations } from "next-intl";
 import { useFormat } from "@/components/layout/PreferencesProvider";
 import { RichTextView } from "@/components/ui/RichTextView";
 import { useIsMobile } from "@/hooks/useViewport";
@@ -276,10 +277,11 @@ function RelatedRecords({
   table: RelatedTable | undefined;
   isMobile: boolean;
 }) {
+  const tr = useTranslations();
   if (!table || table.rows.length === 0) {
     return (
       <Text c="dimmed" size="sm">
-        参照するレコードがありません。
+        {tr("forms.formResponseView.thereAreNoRecordsToReference")}
       </Text>
     );
   }
@@ -308,7 +310,7 @@ function RelatedRecords({
       <Table withTableBorder>
         <Table.Thead>
           <Table.Tr>
-            <Table.Th style={{ width: 180 }}>番号</Table.Th>
+            <Table.Th style={{ width: 180 }}>{tr("common.number")}</Table.Th>
             {table.headers.map((h) => (
               <Table.Th key={h}>{h}</Table.Th>
             ))}

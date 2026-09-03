@@ -9,6 +9,7 @@
  */
 
 import { Badge, Box, Group, Stack, Text } from "@mantine/core";
+import { useTranslations } from "next-intl";
 import { useFormat } from "@/components/layout/PreferencesProvider";
 import { formatMoney } from "@/lib/format";
 import type { MaterialPricePoint } from "@/lib/material-pricing-core";
@@ -30,11 +31,12 @@ export function MaterialPriceChart({
   windowDates?: string[];
   onSelect?: (p: MaterialPricePoint) => void;
 }) {
+  const tr = useTranslations();
   const fmt = useFormat();
   if (points.length === 0) {
     return (
       <Text c="dimmed" size="sm">
-        この素材の仕入実績がありません。
+        {tr("sales.trialEstimates.thereIsNoPurchaseHistoryFor")}
       </Text>
     );
   }
@@ -69,15 +71,15 @@ export function MaterialPriceChart({
     <Stack gap="xs">
       <Group justify="space-between">
         <Text fw={600} size="sm">
-          仕入単価の推移
+          {tr("sales.trialEstimates.purchasePriceHistory")}
         </Text>
         <Text c="dimmed" size="xs">
-          ポイントをクリックして参照価格を変更
+          {tr("sales.trialEstimates.clickAPointToChangeThe")}
         </Text>
       </Group>
 
       <Box
-        aria-label="素材仕入単価の推移"
+        aria-label={tr("sales.trialEstimates.materialPurchasePriceHistory")}
         component="svg"
         role="img"
         style={{ width: "100%", height: "auto", overflow: "visible" }}
@@ -126,7 +128,10 @@ export function MaterialPriceChart({
               {/* wide hit area — the single interactive (keyboard-focusable) target */}
               {/* biome-ignore lint/a11y/useSemanticElements: an SVG <circle> cannot be a native <button> */}
               <circle
-                aria-label={`${p.date} ${formatMoney(p.unitPrice)} を参照価格に設定`}
+                aria-label={tr("sales.materialPriceChart.setAsReferencePrice", {
+                  date: p.date,
+                  price: formatMoney(p.unitPrice),
+                })}
                 cx={x(i)}
                 cy={y(p.unitPrice)}
                 fill="transparent"
@@ -176,7 +181,9 @@ export function MaterialPriceChart({
       {selected && (
         <Group gap="sm">
           <Badge color="blue" variant="light">
-            参照価格 {formatMoney(selected.unitPrice)}
+            {tr("sales.materialPriceChart.referencePriceAmount", {
+              amount: formatMoney(selected.unitPrice),
+            })}
           </Badge>
           <Text c="dimmed" size="xs">
             {fmt.date(selected.date)} ・ {selected.supplier} ・{" "}

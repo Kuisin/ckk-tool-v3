@@ -8,6 +8,7 @@
  */
 
 import { revalidatePath } from "next/cache";
+import { getTranslations } from "next-intl/server";
 import { recordAudit } from "@/lib/audit";
 import { checkPermission } from "@/lib/authz";
 import {
@@ -25,12 +26,15 @@ const BASE_PATH = "/settings/notification-email";
 export async function updateNotificationEmailSettings(
   payload: NotificationEmailSettings,
 ): Promise<ActionResult> {
+  const tr = await getTranslations();
   const authz = await checkPermission("system", "UPDATE");
   if (!authz.ok) return actionError(authz.error);
 
   const parsed = notificationEmailSettingsSchema.safeParse(payload);
   if (!parsed.success) {
-    return actionError(parsed.error.issues[0]?.message ?? "入力が不正です");
+    return actionError(
+      parsed.error.issues[0]?.message ?? tr("common.invalidInput"),
+    );
   }
 
   try {
@@ -46,7 +50,7 @@ export async function updateNotificationEmailSettings(
     revalidatePath(BASE_PATH);
     return actionOk();
   } catch (e) {
-    console.error("[notification-email] 保存に失敗", e);
-    return actionError("設定の保存に失敗しました");
+    console.error(tr("settings.notificationEmailActions.saveFailedLog"), e);
+    return actionError(tr("settings.aiProviderActions.saveFailed"));
   }
 }

@@ -40,7 +40,9 @@ import {
 } from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
+import { useI18n } from "@/components/I18nProvider";
 import { PinKeypad } from "@/components/PinKeypad";
+import { fillMessage, type KioskMessages } from "@/lib/i18n";
 import { getWrapperVersion } from "@/lib/wrapper-bridge";
 
 type DeviceInfo = {
@@ -70,13 +72,20 @@ type Phase =
     }
   | { phase: "resetting" };
 
-const STATUS_LABEL: Record<DeviceInfo["status"], string> = {
-  PENDING: "リンク待ち",
-  LINKED: "有効化待ち",
-  ACTIVE: "有効",
-  DISABLED: "無効化中",
-  REVOKED: "取り消し済み",
-};
+function statusLabel(status: DeviceInfo["status"], m: KioskMessages): string {
+  switch (status) {
+    case "PENDING":
+      return m.deviceSettings.statusPending;
+    case "LINKED":
+      return m.deviceSettings.statusLinked;
+    case "ACTIVE":
+      return m.deviceSettings.statusActive;
+    case "DISABLED":
+      return m.deviceSettings.statusDisabled;
+    case "REVOKED":
+      return m.deviceSettings.statusRevoked;
+  }
+}
 
 function clearLocalAndGoSetup() {
   try {
@@ -89,6 +98,7 @@ function clearLocalAndGoSetup() {
 
 export function DeviceSettingsView({ hasDevice }: { hasDevice: boolean }) {
   const router = useRouter();
+  const { m } = useI18n();
   const [state, setState] = useState<Phase>({
     phase: "gate",
     error: null,
@@ -97,8 +107,8 @@ export function DeviceSettingsView({ hasDevice }: { hasDevice: boolean }) {
   // 専用アプリ（ラッパー）のバージョン — マウント後にブリッジから取得
   const [wrapperVersion, setWrapperVersion] = useState<string | null>(null);
   useEffect(() => {
-    setWrapperVersion(getWrapperVersion());
-  }, []);
+    setWrapperVersion(getWrapperVersion(m.common.unknown));
+  }, [m.common.unknown]);
   const [confirmMode, setConfirmMode] = useState<"local" | "unlink" | null>(
     null,
   );
@@ -106,7 +116,10 @@ export function DeviceSettingsView({ hasDevice }: { hasDevice: boolean }) {
   const [locationDraft, setLocationDraft] = useState<string | null>(null);
   const [enforceDraft, setEnforceDraft] = useState(false);
   const [locationSaving, setLocationSaving] = useState(false);
-  const [locationNotice, setLocationNotice] = useState<string | null>(null);
+  const [locationNotice, setLocationNotice] = useState<{
+    text: string;
+    kind: "success" | "error";
+  } | null>(null);
 
   // ── 端末 Cookie なし: ローカル消去のみ ────────────────────────────────────
   if (!hasDevice) {
@@ -115,20 +128,19 @@ export function DeviceSettingsView({ hasDevice }: { hasDevice: boolean }) {
         <Paper maw={480} p="xl" radius="md" w="100%" withBorder>
           <Stack align="center" gap="md">
             <IconSettings color="var(--mantine-color-gray-5)" size={48} />
-            <Title order={3}>端末設定</Title>
+            <Title order={3}>{m.deviceSettings.title}</Title>
             <Text c="dimmed" size="sm" ta="center">
-              この端末は未登録です（端末情報がありません）。
-              初期設定をやり直す場合はローカル情報を消去してください。
+              {m.deviceSettings.notRegisteredText}
             </Text>
             <Button onClick={clearLocalAndGoSetup} variant="default">
-              ローカル情報を消去して初期設定へ
+              {m.deviceSettings.clearAndSetup}
             </Button>
             <Button
               leftSection={<IconArrowLeft size={16} />}
               onClick={() => router.replace("/setup")}
               variant="subtle"
             >
-              戻る
+              {m.deviceSettings.back}
             </Button>
           </Stack>
         </Paper>
@@ -173,14 +185,14 @@ export function DeviceSettingsView({ hasDevice }: { hasDevice: boolean }) {
       } else {
         setState({
           phase: "gate",
-          error: "コードが違います",
+          error: m.deviceSettings.codeIncorrect,
           submitting: false,
         });
       }
     } catch {
       setState({
         phase: "gate",
-        error: "通信に失敗しました。もう一度お試しください",
+        error: m.deviceSettings.communicationFailedRetry,
         submitting: false,
       });
     }
@@ -207,13 +219,13 @@ export function DeviceSettingsView({ hasDevice }: { hasDevice: boolean }) {
       // チケット期限切れ等 — コード入力からやり直し
       setState({
         phase: "gate",
-        error: "操作の有効期限が切れました。コードを再入力してください",
+        error: m.deviceSettings.operationExpired,
         submitting: false,
       });
     } catch {
       setState({
         phase: "gate",
-        error: "通信に失敗しました。もう一度お試しください",
+        error: m.deviceSettings.communicationFailedRetry,
         submitting: false,
       });
     }
@@ -242,7 +254,10 @@ export function DeviceSettingsView({ hasDevice }: { hasDevice: boolean }) {
       } | null;
       setLocationSaving(false);
       if (data?.state === "OK" && data.ticket) {
-        setLocationNotice("作業場所の設定を保存しました");
+        setLocationNotice({
+          text: m.deviceSettings.locationSaved,
+          kind: "success",
+        });
         setState({
           ...state,
           ticket: data.ticket,
@@ -256,21 +271,25 @@ export function DeviceSettingsView({ hasDevice }: { hasDevice: boolean }) {
         return;
       }
       if (data?.state === "LOCATION_INVALID" && data.ticket) {
-        setLocationNotice(
-          "その作業場所は選択できません（無効化・拠点違いの可能性）",
-        );
+        setLocationNotice({
+          text: m.deviceSettings.locationInvalid,
+          kind: "error",
+        });
         setState({ ...state, ticket: data.ticket });
         return;
       }
       // チケット期限切れ等 — コード入力からやり直し
       setState({
         phase: "gate",
-        error: "操作の有効期限が切れました。コードを再入力してください",
+        error: m.deviceSettings.operationExpired,
         submitting: false,
       });
     } catch {
       setLocationSaving(false);
-      setLocationNotice("通信に失敗しました。もう一度お試しください");
+      setLocationNotice({
+        text: m.deviceSettings.communicationFailedRetry,
+        kind: "error",
+      });
     }
   };
 
@@ -284,8 +303,8 @@ export function DeviceSettingsView({ hasDevice }: { hasDevice: boolean }) {
               minLength={6}
               onSubmit={verify}
               submitting={state.submitting}
-              subtitle="この端末の設定コード（6桁）を入力してください。コードは管理者が端末管理（SY09）で確認できます。"
-              title="端末設定"
+              subtitle={m.deviceSettings.gateSubtitle}
+              title={m.deviceSettings.title}
             />
             {state.error && (
               <Text c="red" size="sm" ta="center">
@@ -298,7 +317,7 @@ export function DeviceSettingsView({ hasDevice }: { hasDevice: boolean }) {
                 onClick={() => router.back()}
                 variant="subtle"
               >
-                戻る
+                {m.deviceSettings.back}
               </Button>
             </Center>
           </Stack>
@@ -306,21 +325,23 @@ export function DeviceSettingsView({ hasDevice }: { hasDevice: boolean }) {
 
         {state.phase === "locked" && (
           <Stack align="center" gap="md">
-            <Title order={3}>ロック中</Title>
+            <Title order={3}>{m.deviceSettings.lockedTitle}</Title>
             <Alert color="red" w="100%">
-              コードの入力に連続で失敗したため、一時的にロックされています。
+              {m.deviceSettings.lockedAlertText}
               {state.until &&
-                ` 解除予定: ${new Date(state.until).toLocaleTimeString("ja-JP")}`}
+                fillMessage(m.deviceSettings.lockedUntil, {
+                  time: new Date(state.until).toLocaleTimeString("ja-JP"),
+                })}
             </Alert>
             <Button onClick={() => router.back()} variant="default">
-              戻る
+              {m.deviceSettings.back}
             </Button>
           </Stack>
         )}
 
         {state.phase === "resetting" && (
           <Center py="xl">
-            <Text c="dimmed">実行中...</Text>
+            <Text c="dimmed">{m.deviceSettings.executing}</Text>
           </Center>
         )}
 
@@ -328,29 +349,29 @@ export function DeviceSettingsView({ hasDevice }: { hasDevice: boolean }) {
           <Stack gap="md">
             <Group gap="sm">
               <IconLockOpen color="var(--mantine-color-teal-5)" size={24} />
-              <Title order={3}>端末設定</Title>
+              <Title order={3}>{m.deviceSettings.title}</Title>
             </Group>
 
             <Stack gap={6}>
               <Group justify="space-between">
                 <Text c="dimmed" size="sm">
-                  端末名
+                  {m.deviceSettings.deviceNameLabel}
                 </Text>
                 <Text fw={600} size="sm">
-                  {state.device.name ?? "（未設定）"}
+                  {state.device.name ?? m.deviceSettings.notSet}
                 </Text>
               </Group>
               <Group justify="space-between">
                 <Text c="dimmed" size="sm">
-                  状態
+                  {m.deviceSettings.statusLabel}
                 </Text>
                 <Badge variant="light">
-                  {STATUS_LABEL[state.device.status]}
+                  {statusLabel(state.device.status, m)}
                 </Badge>
               </Group>
               <Group justify="space-between">
                 <Text c="dimmed" size="sm">
-                  リンク日時
+                  {m.deviceSettings.linkedAtLabel}
                 </Text>
                 <Text size="sm">
                   {state.device.linkedAt
@@ -360,7 +381,7 @@ export function DeviceSettingsView({ hasDevice }: { hasDevice: boolean }) {
               </Group>
               <Group justify="space-between">
                 <Text c="dimmed" size="sm">
-                  端末トークン期限
+                  {m.deviceSettings.deviceTokenExpiryLabel}
                 </Text>
                 <Text size="sm">
                   {state.device.deviceTokenExpiresAt
@@ -372,17 +393,17 @@ export function DeviceSettingsView({ hasDevice }: { hasDevice: boolean }) {
               </Group>
               <Group justify="space-between">
                 <Text c="dimmed" size="sm">
-                  アテステーション鍵
+                  {m.deviceSettings.attestationKeyLabel}
                 </Text>
                 <Text ff="monospace" size="xs">
                   {state.device.fingerprint
                     ? `${state.device.fingerprint.slice(0, 16)}…`
-                    : "未束縛"}
+                    : m.deviceSettings.unbound}
                 </Text>
               </Group>
               <Group justify="space-between">
                 <Text c="dimmed" size="sm">
-                  Web バージョン
+                  {m.deviceSettings.webVersionLabel}
                 </Text>
                 <Text ff="monospace" size="sm">
                   v{process.env.NEXT_PUBLIC_APP_VERSION ?? "0.0.0"}
@@ -390,10 +411,12 @@ export function DeviceSettingsView({ hasDevice }: { hasDevice: boolean }) {
               </Group>
               <Group justify="space-between">
                 <Text c="dimmed" size="sm">
-                  専用アプリ
+                  {m.deviceSettings.dedicatedAppLabel}
                 </Text>
                 <Text ff="monospace" size="sm">
-                  {wrapperVersion ? `v${wrapperVersion}` : "未使用（ブラウザ）"}
+                  {wrapperVersion
+                    ? `v${wrapperVersion}`
+                    : m.deviceSettings.unusedBrowser}
                 </Text>
               </Group>
             </Stack>
@@ -404,19 +427,18 @@ export function DeviceSettingsView({ hasDevice }: { hasDevice: boolean }) {
               <Group gap="xs">
                 <IconMapPin size={18} />
                 <Text fw={600} size="sm">
-                  既定の作業場所
+                  {m.deviceSettings.defaultWorkLocationTitle}
                 </Text>
               </Group>
               <Text c="dimmed" size="xs">
-                この端末で工程を開始・再開したときに、作業実績へ自動で記録される
-                作業場所です（SY09 からも変更できます）。
+                {m.deviceSettings.defaultWorkLocationDesc}
               </Text>
               <Group align="flex-end" gap="xs" wrap="nowrap">
                 <Select
                   clearable
                   data={state.workLocationOptions}
                   onChange={setLocationDraft}
-                  placeholder="機械・エリア（未設定）"
+                  placeholder={m.deviceSettings.machineAreaPlaceholder}
                   searchable
                   style={{ flex: 1 }}
                   value={locationDraft}
@@ -427,21 +449,21 @@ export function DeviceSettingsView({ hasDevice }: { hasDevice: boolean }) {
                   onClick={saveLocation}
                   variant="light"
                 >
-                  保存
+                  {m.deviceSettings.save}
                 </Button>
               </Group>
               <Switch
                 checked={enforceDraft}
-                description="ON にすると、工程マスタで作業場所が制限された工程は、この端末の既定作業場所が許可に含まれる場合のみ開始・再開できます。既定作業場所の設定自体はこのトグルと無関係に可能です。"
-                label="作業場所の制限"
+                description={m.deviceSettings.enforceDescription}
+                label={m.deviceSettings.enforceLabel}
                 onChange={(e) => setEnforceDraft(e.currentTarget.checked)}
               />
               {locationNotice && (
                 <Text
-                  c={locationNotice.includes("保存しました") ? "teal" : "red"}
+                  c={locationNotice.kind === "success" ? "teal" : "red"}
                   size="xs"
                 >
-                  {locationNotice}
+                  {locationNotice.text}
                 </Text>
               )}
             </Stack>
@@ -457,12 +479,10 @@ export function DeviceSettingsView({ hasDevice }: { hasDevice: boolean }) {
                   size="lg"
                   variant="light"
                 >
-                  再リンク（リンク解除して初期設定へ）
+                  {m.deviceSettings.relinkButton}
                 </Button>
                 <Text c="dimmed" size="xs">
-                  プロファイルをオープン（リンク待ち）に戻し、この端末の
-                  トークン・鍵・セッションを破棄します。端末の交換・再リンクは
-                  こちらを使用してください。
+                  {m.deviceSettings.relinkDescription}
                 </Text>
                 <Button
                   color="red"
@@ -471,20 +491,17 @@ export function DeviceSettingsView({ hasDevice }: { hasDevice: boolean }) {
                   size="lg"
                   variant="outline"
                 >
-                  ローカルリセット（この端末の情報のみ消去）
+                  {m.deviceSettings.localResetButton}
                 </Button>
                 <Text c="dimmed" size="xs">
-                  この端末の Cookie
-                  等だけを消去します。プロファイルはリンク済みの
-                  まま残るため、再リンクには管理者による SY09
-                  の「リンク解除」が必要です。
+                  {m.deviceSettings.localResetDescription}
                 </Text>
                 <Button
                   leftSection={<IconArrowLeft size={16} />}
                   onClick={() => router.back()}
                   variant="subtle"
                 >
-                  戻る
+                  {m.deviceSettings.back}
                 </Button>
               </Stack>
             )}
@@ -495,27 +512,27 @@ export function DeviceSettingsView({ hasDevice }: { hasDevice: boolean }) {
                   color={confirmMode === "unlink" ? "orange" : "red"}
                   title={
                     confirmMode === "unlink"
-                      ? "再リンクの確認"
-                      : "ローカルリセットの確認"
+                      ? m.deviceSettings.relinkConfirmTitle
+                      : m.deviceSettings.localResetConfirmTitle
                   }
                 >
                   {confirmMode === "unlink"
-                    ? "この端末のリンクを解除して初期設定画面に戻します。再度使用するには管理者による再リンクと有効化が必要です。"
-                    : "この端末のローカル情報のみ消去します。プロファイルはリンク済みのまま残るため、この端末を再登録するには管理者による「リンク解除」が必要です。"}
-                  この操作は取り消せません。
+                    ? m.deviceSettings.relinkConfirmBody
+                    : m.deviceSettings.localResetConfirmBody}{" "}
+                  {m.deviceSettings.cannotUndo}
                 </Alert>
                 <Group grow>
                   <Button
                     onClick={() => setConfirmMode(null)}
                     variant="default"
                   >
-                    キャンセル
+                    {m.deviceSettings.cancel}
                   </Button>
                   <Button
                     color={confirmMode === "unlink" ? "orange" : "red"}
                     onClick={() => runReset(confirmMode)}
                   >
-                    実行
+                    {m.deviceSettings.execute}
                   </Button>
                 </Group>
               </Stack>

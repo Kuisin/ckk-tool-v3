@@ -10,6 +10,7 @@
 
 import { type Access, rowInScope } from "@ckk/authz-core";
 import { revalidatePath } from "next/cache";
+import { getTranslations } from "next-intl/server";
 import { z } from "zod";
 import { resolveUnitPriceFromEntries } from "@/components/sales/quotes/model";
 import { recordAudit } from "@/lib/audit";
@@ -27,7 +28,12 @@ import {
 import { fetchEntriesForCustomer } from "./data";
 
 const BASE_PATH = "/sales/quotes";
-const SCOPE_DENIED = "この操作の権限がありません（対象範囲外）";
+
+/**
+ * 明細解決（価格表なし）のエラーを識別するためのマーカー。メッセージは
+ * 翻訳されるため、判定は `instanceof` で行う（文字列の前方一致には頼らない）。
+ */
+class LineItemResolveError extends Error {}
 
 /**
  * 対象見積書がスコープ内か（OWN 行チェック）。ALL は素通し。
@@ -47,27 +53,35 @@ async function quoteInScope(
   return rowInScope(access, { createdBy: row.createdBy }, userId);
 }
 
-const itemInput = z.object({
-  productId: z.string().min(1, "製品を選択してください"),
-  orderType: z.enum(["PRODUCTION", "TEST", "SAMPLE", "OTHER"]),
-  quantity: z.number().int().min(1, "数量は1以上"),
-  deliveryDate: z.string().nullable(),
-  notes: z.string().nullable(),
-});
+function itemInputSchema(tr: Awaited<ReturnType<typeof getTranslations>>) {
+  return z.object({
+    productId: z.string().min(1, tr("common.selectAProduct")),
+    orderType: z.enum(["PRODUCTION", "TEST", "SAMPLE", "OTHER"]),
+    quantity: z.number().int().min(1, tr("sales.quoteActions.quantityMinOne")),
+    deliveryDate: z.string().nullable(),
+    notes: z.string().nullable(),
+  });
+}
 
-const quoteInput = z.object({
-  customerBpId: z.string().min(1, "顧客を選択してください"),
-  customerBranchBpId: z.string().nullable(),
-  // 営業担当 — 顧客の担当一覧（bp_sales_reps）から選ぶ。未指定で顧客が
-  // 変わったときは主担当が既定で入る（lib/sales-rep resolveSalesRepId）。
-  salesRepId: z.string().nullable().optional(),
-  status: z.enum(["DRAFT", "ISSUED", "ACCEPTED", "REJECTED", "EXPIRED"]),
-  validUntil: z.string().nullable(),
-  notes: z.string(),
-  items: z.array(itemInput).min(1, "明細を1件以上追加してください"),
-});
+function quoteInputSchema(tr: Awaited<ReturnType<typeof getTranslations>>) {
+  return z.object({
+    customerBpId: z
+      .string()
+      .min(1, tr("sales.orderAcceptances.selectACustomer")),
+    customerBranchBpId: z.string().nullable(),
+    // 営業担当 — 顧客の担当一覧（bp_sales_reps）から選ぶ。未指定で顧客が
+    // 変わったときは主担当が既定で入る（lib/sales-rep resolveSalesRepId）。
+    salesRepId: z.string().nullable().optional(),
+    status: z.enum(["DRAFT", "ISSUED", "ACCEPTED", "REJECTED", "EXPIRED"]),
+    validUntil: z.string().nullable(),
+    notes: z.string(),
+    items: z
+      .array(itemInputSchema(tr))
+      .min(1, tr("common.addAtLeastOneLineItem")),
+  });
+}
 
-export type QuoteInput = z.infer<typeof quoteInput>;
+export type QuoteInput = z.infer<ReturnType<typeof quoteInputSchema>>;
 
 function revalidate(number?: string) {
   revalidatePath(BASE_PATH);
@@ -81,7 +95,10 @@ function revalidate(number?: string) {
  * 明細の単価・値引きを価格表からサーバー側で再解決する。
  * 未解決の行（価格表なし）はエラー — 見積書は価格表からのみ作成できる。
  */
-async function resolveItems(v: QuoteInput) {
+async function resolveItems(
+  v: QuoteInput,
+  tr: Awaited<ReturnType<typeof getTranslations>>,
+) {
   const entries = await fetchEntriesForCustomer(v.customerBpId);
   const resolved = v.items.map((it, i) => {
     const r = resolveUnitPriceFromEntries(
@@ -90,10 +107,11 @@ async function resolveItems(v: QuoteInput) {
       it.productId,
       it.orderType,
       it.quantity,
+      tr,
     );
     if (!r) {
-      throw new Error(
-        `明細${i + 1}: 該当する価格表がありません（価格試算から価格表を登録してください）`,
+      throw new LineItemResolveError(
+        tr("sales.quoteActions.noPriceListEntry", { line: i + 1 }),
       );
     }
     return {
@@ -116,15 +134,18 @@ async function resolveItems(v: QuoteInput) {
 export async function createQuote(
   payload: QuoteInput,
 ): Promise<ActionResult<{ number: string }>> {
-  const parsed = quoteInput.safeParse(payload);
+  const tr = await getTranslations();
+  const parsed = quoteInputSchema(tr).safeParse(payload);
   if (!parsed.success) {
-    return actionError(parsed.error.issues[0]?.message ?? "入力が不正です");
+    return actionError(
+      parsed.error.issues[0]?.message ?? tr("common.invalidInput"),
+    );
   }
   const authz = await checkPermission("quote", "CREATE");
   if (!authz.ok) return actionError(authz.error);
   const v = parsed.data;
   try {
-    const items = await resolveItems(v);
+    const items = await resolveItems(v, tr);
     const { yearMonth, seq } = await allocateDocumentKey("QUOTE");
     // 新規は prior 顧客が無いので、未指定なら顧客の主担当が入る。
     const salesRepId = await resolveSalesRepId(
@@ -163,10 +184,12 @@ export async function createQuote(
     revalidate(number);
     return actionOk({ number });
   } catch (e) {
-    if (e instanceof Error && e.message.startsWith("明細")) {
+    if (e instanceof LineItemResolveError) {
       return actionError(e.message);
     }
-    return actionError(prismaErrorMessage(e, "見積書の作成に失敗しました"));
+    return actionError(
+      prismaErrorMessage(e, tr("sales.quoteActions.createFailed"), tr),
+    );
   }
 }
 
@@ -174,20 +197,23 @@ export async function updateQuote(
   number: string,
   payload: QuoteInput,
 ): Promise<ActionResult<{ number: string }>> {
+  const tr = await getTranslations();
   const key = parseDocKey(number, "QOT");
-  if (!key) return actionError("見積番号が不正です");
-  const parsed = quoteInput.safeParse(payload);
+  if (!key) return actionError(tr("sales.quoteActions.invalidQuoteNumber"));
+  const parsed = quoteInputSchema(tr).safeParse(payload);
   if (!parsed.success) {
-    return actionError(parsed.error.issues[0]?.message ?? "入力が不正です");
+    return actionError(
+      parsed.error.issues[0]?.message ?? tr("common.invalidInput"),
+    );
   }
   const authz = await checkPermission("quote", "UPDATE");
   if (!authz.ok) return actionError(authz.error);
   if (!(await quoteInScope(authz.access, authz.userId, key))) {
-    return actionError(SCOPE_DENIED);
+    return actionError(tr("sales.quoteActions.scopeDenied"));
   }
   const v = parsed.data;
   try {
-    const items = await resolveItems(v);
+    const items = await resolveItems(v, tr);
     const prior = await prisma.quote.findUnique({
       where: { yearMonth_seq: { yearMonth: key.yearMonth, seq: key.seq } },
       select: {
@@ -246,10 +272,12 @@ export async function updateQuote(
     revalidate(number);
     return actionOk({ number });
   } catch (e) {
-    if (e instanceof Error && e.message.startsWith("明細")) {
+    if (e instanceof LineItemResolveError) {
       return actionError(e.message);
     }
-    return actionError(prismaErrorMessage(e, "見積書の更新に失敗しました"));
+    return actionError(
+      prismaErrorMessage(e, tr("sales.quoteActions.updateFailed"), tr),
+    );
   }
 }
 
@@ -258,12 +286,13 @@ export async function issueQuote(
   number: string,
   validUntil: string | null,
 ): Promise<ActionResult> {
+  const tr = await getTranslations();
   const key = parseDocKey(number, "QOT");
-  if (!key) return actionError("見積番号が不正です");
+  if (!key) return actionError(tr("sales.quoteActions.invalidQuoteNumber"));
   const authz = await checkPermission("quote", "UPDATE");
   if (!authz.ok) return actionError(authz.error);
   if (!(await quoteInScope(authz.access, authz.userId, key))) {
-    return actionError(SCOPE_DENIED);
+    return actionError(tr("sales.quoteActions.scopeDenied"));
   }
   try {
     const updated = await prisma.quote.updateMany({
@@ -274,7 +303,7 @@ export async function issueQuote(
       },
     });
     if (updated.count === 0) {
-      return actionError("下書きの見積書のみ発行できます");
+      return actionError(tr("sales.quoteActions.onlyDraftCanBeIssued"));
     }
     await recordAudit({
       action: "UPDATE",
@@ -286,6 +315,8 @@ export async function issueQuote(
     revalidate(number);
     return actionOk();
   } catch (e) {
-    return actionError(prismaErrorMessage(e, "発行に失敗しました"));
+    return actionError(
+      prismaErrorMessage(e, tr("sales.quoteActions.issueFailed"), tr),
+    );
   }
 }

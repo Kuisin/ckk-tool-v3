@@ -7,6 +7,7 @@
  * bp_vendor_attrs に持つ。Underscore folder → not routable.
  */
 
+import { getTranslations } from "next-intl/server";
 import { bpSearchKeys } from "@/lib/bp-search";
 import { prisma } from "@/lib/db";
 import { formatQuoteNumber } from "@/lib/doc-number";
@@ -270,6 +271,7 @@ export interface BpDetail extends BpBaseDetail {
 }
 
 export async function fetchBpDetail(id: string): Promise<BpDetail | null> {
+  const tr = await getTranslations();
   const r = await prisma.businessPartner.findUnique({
     where: { id },
     include: {
@@ -307,7 +309,7 @@ export async function fetchBpDetail(id: string): Promise<BpDetail | null> {
           billingBpId: c.billingBpId ?? null,
           billingName: c.billingBp
             ? localized(c.billingBp.name as LocalizedText | null)
-            : "—（自社）",
+            : tr("master.businessPartners.billToOwnCompany"),
           closingDay: c.closingDay ?? null,
           paymentTermsDays: c.paymentTermsDays ?? null,
           paymentDay: c.paymentDay ?? null,
@@ -357,7 +359,7 @@ export async function fetchBpDetail(id: string): Promise<BpDetail | null> {
     })),
     history: r.quotesAsCustomer.map((q) => ({
       number: formatQuoteNumber({ yearMonth: q.yearMonth, seq: q.seq }),
-      label: "見積書",
+      label: tr("common.quote"),
       amount: q.items.reduce((sum, it) => sum + Number(it.amount), 0),
       status: { entity: "Quote" as const, value: q.status },
       date: q.createdAt.toISOString(),

@@ -10,6 +10,7 @@
  */
 
 import { revalidatePath } from "next/cache";
+import { getTranslations } from "next-intl/server";
 import { z } from "zod";
 import { recordAudit } from "@/lib/audit";
 import { checkPermission } from "@/lib/authz";
@@ -27,49 +28,57 @@ import {
   writeWorkLocationTypes,
 } from "@/lib/work-locations";
 
+type Tr = Awaited<ReturnType<typeof getTranslations>>;
+
 const BASE_PATH = "/master/work-locations";
 
 const codePattern = /^[A-Za-z0-9_-]+$/;
 
-const groupInput = z.object({
-  code: z
-    .string()
-    .min(1, "コードを入力してください")
-    .regex(codePattern, "コードは英数字・ハイフン・アンダースコアで入力"),
-  nameJa: z.string().min(1, "名称（日本語）を入力してください"),
-  nameTranslations: z.record(z.string(), z.string()).optional(),
-  typeKey: z.string().min(1, "種別を選択してください"),
-  plantId: z.number().int().positive().nullable(),
-  sortOrder: z.number().int(),
-  isActive: z.boolean(),
-  notes: z.string().optional(),
-});
+function groupInputSchema(tr: Tr) {
+  return z.object({
+    code: z
+      .string()
+      .min(1, tr("common.codeRequired"))
+      .regex(codePattern, tr("master.workLocationsActions.codePatternHint")),
+    nameJa: z.string().min(1, tr("common.enterNameInJapanese")),
+    nameTranslations: z.record(z.string(), z.string()).optional(),
+    typeKey: z.string().min(1, tr("master.workLocationsActions.selectType")),
+    plantId: z.number().int().positive().nullable(),
+    sortOrder: z.number().int(),
+    isActive: z.boolean(),
+    notes: z.string().optional(),
+  });
+}
 
-const locationInput = z.object({
-  code: z
-    .string()
-    .min(1, "コードを入力してください")
-    .regex(codePattern, "コードは英数字・ハイフン・アンダースコアで入力"),
-  nameJa: z.string().min(1, "名称（日本語）を入力してください"),
-  nameTranslations: z.record(z.string(), z.string()).optional(),
-  capacity: z.number().int().min(1).nullable(),
-  sortOrder: z.number().int(),
-  isActive: z.boolean(),
-  notes: z.string().optional(),
-});
+function locationInputSchema(tr: Tr) {
+  return z.object({
+    code: z
+      .string()
+      .min(1, tr("common.codeRequired"))
+      .regex(codePattern, tr("master.workLocationsActions.codePatternHint")),
+    nameJa: z.string().min(1, tr("common.enterNameInJapanese")),
+    nameTranslations: z.record(z.string(), z.string()).optional(),
+    capacity: z.number().int().min(1).nullable(),
+    sortOrder: z.number().int(),
+    isActive: z.boolean(),
+    notes: z.string().optional(),
+  });
+}
 
-export type WorkLocationGroupInput = z.infer<typeof groupInput>;
-export type WorkLocationInput = z.infer<typeof locationInput>;
+export type WorkLocationGroupInput = z.infer<
+  ReturnType<typeof groupInputSchema>
+>;
+export type WorkLocationInput = z.infer<ReturnType<typeof locationInputSchema>>;
 
 function revalidate() {
   revalidatePath(BASE_PATH);
 }
 
-async function ensureTypeKey(typeKey: string): Promise<string | null> {
+async function ensureTypeKey(tr: Tr, typeKey: string): Promise<string | null> {
   const types = await readWorkLocationTypes();
   return types.some((t) => t.key === typeKey)
     ? null
-    : "存在しない種別です（先に種別を追加してください）";
+    : tr("master.workLocationsActions.unknownType");
 }
 
 // ── グループ ─────────────────────────────────────────────────────────────────
@@ -77,14 +86,17 @@ async function ensureTypeKey(typeKey: string): Promise<string | null> {
 export async function createWorkLocationGroup(
   input: WorkLocationGroupInput,
 ): Promise<ActionResult<{ id: number }>> {
+  const tr = await getTranslations();
   const authz = await checkPermission("master", "CREATE");
   if (!authz.ok) return actionError(authz.error);
-  const parsed = groupInput.safeParse(input);
+  const parsed = groupInputSchema(tr).safeParse(input);
   if (!parsed.success) {
-    return actionError(parsed.error.issues[0]?.message ?? "入力が不正です");
+    return actionError(
+      parsed.error.issues[0]?.message ?? tr("common.invalidInput"),
+    );
   }
   const v = parsed.data;
-  const typeError = await ensureTypeKey(v.typeKey);
+  const typeError = await ensureTypeKey(tr, v.typeKey);
   if (typeError) return actionError(typeError);
   try {
     const created = await prisma.workLocationGroup.create({
@@ -108,7 +120,13 @@ export async function createWorkLocationGroup(
     revalidate();
     return actionOk({ id: created.id });
   } catch (e) {
-    return actionError(prismaErrorMessage(e, "グループの作成に失敗しました"));
+    return actionError(
+      prismaErrorMessage(
+        e,
+        tr("master.workLocationsActions.createGroupFailed"),
+        tr,
+      ),
+    );
   }
 }
 
@@ -116,14 +134,17 @@ export async function updateWorkLocationGroup(
   id: number,
   input: WorkLocationGroupInput,
 ): Promise<ActionResult<{ id: number }>> {
+  const tr = await getTranslations();
   const authz = await checkPermission("master", "UPDATE");
   if (!authz.ok) return actionError(authz.error);
-  const parsed = groupInput.safeParse(input);
+  const parsed = groupInputSchema(tr).safeParse(input);
   if (!parsed.success) {
-    return actionError(parsed.error.issues[0]?.message ?? "入力が不正です");
+    return actionError(
+      parsed.error.issues[0]?.message ?? tr("common.invalidInput"),
+    );
   }
   const v = parsed.data;
-  const typeError = await ensureTypeKey(v.typeKey);
+  const typeError = await ensureTypeKey(tr, v.typeKey);
   if (typeError) return actionError(typeError);
   try {
     await prisma.workLocationGroup.update({
@@ -147,13 +168,20 @@ export async function updateWorkLocationGroup(
     revalidate();
     return actionOk({ id });
   } catch (e) {
-    return actionError(prismaErrorMessage(e, "グループの更新に失敗しました"));
+    return actionError(
+      prismaErrorMessage(
+        e,
+        tr("master.workLocationsActions.updateGroupFailed"),
+        tr,
+      ),
+    );
   }
 }
 
 export async function deleteWorkLocationGroup(
   id: number,
 ): Promise<ActionResult> {
+  const tr = await getTranslations();
   const authz = await checkPermission("master", "DELETE");
   if (!authz.ok) return actionError(authz.error);
   try {
@@ -170,7 +198,8 @@ export async function deleteWorkLocationGroup(
     return actionError(
       prismaErrorMessage(
         e,
-        "グループの削除に失敗しました（作業計画で使用中の場所が含まれる場合は削除できません）",
+        tr("master.workLocationsActions.deleteGroupFailed"),
+        tr,
       ),
     );
   }
@@ -182,11 +211,14 @@ export async function addWorkLocation(
   groupId: number,
   input: WorkLocationInput,
 ): Promise<ActionResult<{ id: number }>> {
+  const tr = await getTranslations();
   const authz = await checkPermission("master", "UPDATE");
   if (!authz.ok) return actionError(authz.error);
-  const parsed = locationInput.safeParse(input);
+  const parsed = locationInputSchema(tr).safeParse(input);
   if (!parsed.success) {
-    return actionError(parsed.error.issues[0]?.message ?? "入力が不正です");
+    return actionError(
+      parsed.error.issues[0]?.message ?? tr("common.invalidInput"),
+    );
   }
   const v = parsed.data;
   try {
@@ -206,12 +238,22 @@ export async function addWorkLocation(
       action: "UPDATE",
       tableName: "work_location_groups",
       recordId: String(groupId),
-      after: { note: `作業場所「${v.nameJa}」を追加` },
+      after: {
+        note: tr("master.workLocationsActions.auditWorkLocationAdded", {
+          name: v.nameJa,
+        }),
+      },
     });
     revalidate();
     return actionOk({ id: created.id });
   } catch (e) {
-    return actionError(prismaErrorMessage(e, "作業場所の追加に失敗しました"));
+    return actionError(
+      prismaErrorMessage(
+        e,
+        tr("master.workLocationsActions.addLocationFailed"),
+        tr,
+      ),
+    );
   }
 }
 
@@ -219,11 +261,14 @@ export async function updateWorkLocation(
   id: number,
   input: WorkLocationInput,
 ): Promise<ActionResult<{ id: number }>> {
+  const tr = await getTranslations();
   const authz = await checkPermission("master", "UPDATE");
   if (!authz.ok) return actionError(authz.error);
-  const parsed = locationInput.safeParse(input);
+  const parsed = locationInputSchema(tr).safeParse(input);
   if (!parsed.success) {
-    return actionError(parsed.error.issues[0]?.message ?? "入力が不正です");
+    return actionError(
+      parsed.error.issues[0]?.message ?? tr("common.invalidInput"),
+    );
   }
   const v = parsed.data;
   try {
@@ -231,7 +276,8 @@ export async function updateWorkLocation(
       where: { id },
       select: { groupId: true },
     });
-    if (!prior) return actionError("対象の作業場所が見つかりません");
+    if (!prior)
+      return actionError(tr("master.workLocationsActions.locationNotFound"));
     await prisma.workLocation.update({
       where: { id },
       data: {
@@ -247,16 +293,27 @@ export async function updateWorkLocation(
       action: "UPDATE",
       tableName: "work_location_groups",
       recordId: String(prior.groupId),
-      after: { note: `作業場所「${v.nameJa}」を更新` },
+      after: {
+        note: tr("master.workLocationsActions.auditWorkLocationUpdated", {
+          name: v.nameJa,
+        }),
+      },
     });
     revalidate();
     return actionOk({ id });
   } catch (e) {
-    return actionError(prismaErrorMessage(e, "作業場所の更新に失敗しました"));
+    return actionError(
+      prismaErrorMessage(
+        e,
+        tr("master.workLocationsActions.updateLocationFailed"),
+        tr,
+      ),
+    );
   }
 }
 
 export async function deleteWorkLocation(id: number): Promise<ActionResult> {
+  const tr = await getTranslations();
   const authz = await checkPermission("master", "UPDATE");
   if (!authz.ok) return actionError(authz.error);
   try {
@@ -270,19 +327,34 @@ export async function deleteWorkLocation(id: number): Promise<ActionResult> {
         },
       },
     });
-    if (!prior) return actionError("対象の作業場所が見つかりません");
+    if (!prior)
+      return actionError(tr("master.workLocationsActions.locationNotFound"));
     // FK は SET NULL なので DB は削除を止めない — 使用中はここで拒否する
     // （計画・実績の記録を黙って失わせない。端末の既定作業場所も同様）。
     const used: string[] = [];
     if (prior._count.stepPlans > 0)
-      used.push(`作業計画 ${prior._count.stepPlans} 件`);
+      used.push(
+        tr("master.workLocationsActions.usedByStepPlans", {
+          count: prior._count.stepPlans,
+        }),
+      );
     if (prior._count.stepActuals > 0)
-      used.push(`作業実績 ${prior._count.stepActuals} 件`);
+      used.push(
+        tr("master.workLocationsActions.usedByStepActuals", {
+          count: prior._count.stepActuals,
+        }),
+      );
     if (prior._count.kioskDevices > 0)
-      used.push(`キオスク端末の既定 ${prior._count.kioskDevices} 台`);
+      used.push(
+        tr("master.workLocationsActions.usedByKioskDevices", {
+          count: prior._count.kioskDevices,
+        }),
+      );
     if (used.length > 0) {
       return actionError(
-        `使用中の作業場所は削除できません（${used.join(" / ")}）`,
+        tr("master.workLocationsActions.locationInUseCannotDelete", {
+          details: used.join(" / "),
+        }),
       );
     }
     await prisma.workLocation.delete({ where: { id } });
@@ -290,7 +362,9 @@ export async function deleteWorkLocation(id: number): Promise<ActionResult> {
       action: "UPDATE",
       tableName: "work_location_groups",
       recordId: String(prior.groupId),
-      after: { note: "作業場所を削除" },
+      after: {
+        note: tr("master.workLocationsActions.auditWorkLocationDeleted"),
+      },
     });
     revalidate();
     return actionOk();
@@ -298,7 +372,8 @@ export async function deleteWorkLocation(id: number): Promise<ActionResult> {
     return actionError(
       prismaErrorMessage(
         e,
-        "作業場所の削除に失敗しました（作業計画で使用中は削除できません）",
+        tr("master.workLocationsActions.deleteLocationFailed"),
+        tr,
       ),
     );
   }
@@ -306,30 +381,38 @@ export async function deleteWorkLocation(id: number): Promise<ActionResult> {
 
 // ── 種別（管理者定義 — system_settings work_location.types） ─────────────────
 
-const typeInput = z.object({
-  key: z
-    .string()
-    .min(1, "キーを入力してください")
-    .regex(/^[a-z][a-z0-9_-]*$/, "キーは小文字英数字・-・_ で入力"),
-  labelJa: z.string().min(1, "表示名（日本語）を入力してください"),
-  labelEn: z.string().optional(),
-});
+function typeInputSchema(tr: Tr) {
+  return z.object({
+    key: z
+      .string()
+      .min(1, tr("master.workLocationsActions.enterKey"))
+      .regex(
+        /^[a-z][a-z0-9_-]*$/,
+        tr("master.workLocationsActions.keyPatternHint"),
+      ),
+    labelJa: z.string().min(1, tr("master.workLocationsActions.enterLabelJa")),
+    labelEn: z.string().optional(),
+  });
+}
 
 export async function saveWorkLocationTypes(
-  input: z.infer<typeof typeInput>[],
+  input: z.infer<ReturnType<typeof typeInputSchema>>[],
 ): Promise<ActionResult> {
+  const tr = await getTranslations();
   const authz = await checkPermission("master", "UPDATE");
   if (!authz.ok) return actionError(authz.error);
-  const parsed = z.array(typeInput).safeParse(input);
+  const parsed = z.array(typeInputSchema(tr)).safeParse(input);
   if (!parsed.success) {
-    return actionError(parsed.error.issues[0]?.message ?? "入力が不正です");
+    return actionError(
+      parsed.error.issues[0]?.message ?? tr("common.invalidInput"),
+    );
   }
   const custom = parsed.data.filter(
     (t) => !BUILTIN_TYPES.some((b) => b.key === t.key),
   );
   const keys = custom.map((t) => t.key);
   if (new Set(keys).size !== keys.length) {
-    return actionError("種別キーが重複しています");
+    return actionError(tr("master.workLocationsActions.duplicateTypeKey"));
   }
   try {
     // 使用中の種別は削除不可（グループ or 工程マスタの許可作業場所が参照）
@@ -354,7 +437,9 @@ export async function saveWorkLocationTypes(
     ].filter(Boolean);
     if (usedKeys.length > 0) {
       return actionError(
-        `使用中の種別は削除できません: ${usedKeys.join(", ")}`,
+        tr("master.workLocationsActions.typeInUseCannotDelete", {
+          keys: usedKeys.join(", "),
+        }),
       );
     }
     await writeWorkLocationTypes(
@@ -372,6 +457,12 @@ export async function saveWorkLocationTypes(
     revalidate();
     return actionOk();
   } catch (e) {
-    return actionError(prismaErrorMessage(e, "種別の保存に失敗しました"));
+    return actionError(
+      prismaErrorMessage(
+        e,
+        tr("master.workLocationsActions.saveTypesFailed"),
+        tr,
+      ),
+    );
   }
 }

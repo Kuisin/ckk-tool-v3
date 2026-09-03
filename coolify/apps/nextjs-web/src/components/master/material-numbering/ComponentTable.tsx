@@ -11,6 +11,7 @@ import { Group, Paper, Stack, Text } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
 import { IconCircleMinus, IconHash } from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { useTransition } from "react";
 import {
   type ComponentTableKind,
@@ -46,6 +47,7 @@ export function ComponentTable({
   /** 追加列の見出し（直径=φmm, 全長=mm など）。 */
   extraHeader?: string;
 }) {
+  const tr = useTranslations();
   const fmt = useFormat();
   const router = useRouter();
   const [, startTransition] = useTransition();
@@ -53,11 +55,21 @@ export function ComponentTable({
   const toggle = (row: ComponentRow) => {
     const next = !row.isActive;
     openConfirm({
-      title: next ? "有効化の確認" : "無効化の確認",
+      title: next
+        ? tr("master.componentTable.confirmEnabling")
+        : tr("common.confirmDisabling"),
       message: next
-        ? `「${row.code} — ${row.name}」を有効化します。`
-        : `「${row.code} — ${row.name}」を無効化します。新規の材種・素材作成で選択できなくなります（既存コードには影響しません）。`,
-      confirmLabel: next ? "有効化する" : "無効化する",
+        ? tr("master.componentTable.enableConfirm", {
+            code: row.code,
+            name: row.name,
+          })
+        : tr("master.componentTable.disableConfirm", {
+            code: row.code,
+            name: row.name,
+          }),
+      confirmLabel: next
+        ? tr("common.enable2")
+        : tr("master.materialNumbering.disable"),
       onConfirm: () => {
         startTransition(async () => {
           const res = await setComponentActive({
@@ -68,14 +80,16 @@ export function ComponentTable({
           });
           if (res.ok) {
             notifications.show({
-              title: next ? "有効化しました" : "無効化しました",
-              message: `「${row.code}」を${next ? "有効化" : "無効化"}しました`,
+              title: next ? tr("common.enabled2") : tr("common.disabled2"),
+              message: next
+                ? tr("master.componentTable.enabled", { code: row.code })
+                : tr("master.componentTable.disabled", { code: row.code }),
               color: "green",
             });
             router.refresh();
           } else {
             notifications.show({
-              title: "エラー",
+              title: tr("common.error2"),
               message: res.error,
               color: "red",
             });
@@ -100,14 +114,14 @@ export function ComponentTable({
       : []),
     {
       key: "code",
-      header: "コード",
+      header: tr("master.componentTable.code"),
       sortable: true,
       width: 100,
       render: (r) => <DocNumber>{r.code}</DocNumber>,
     },
     {
       key: "name",
-      header: "名称",
+      header: tr("common.name2"),
       sortable: true,
       sortValue: (r) => r.name,
       render: (r) => r.name,
@@ -126,7 +140,7 @@ export function ComponentTable({
       : []),
     {
       key: "isActive",
-      header: "状態",
+      header: tr("common.status"),
       sortable: true,
       width: 90,
       sortValue: (r) => (r.isActive ? 1 : 0),
@@ -134,7 +148,7 @@ export function ComponentTable({
     },
     {
       key: "updatedAt",
-      header: "更新日",
+      header: tr("common.updated"),
       sortable: true,
       hideable: true,
       width: 110,
@@ -148,7 +162,7 @@ export function ComponentTable({
       data={rows}
       defaultSort={{ key: "code", dir: "asc" }}
       emptyIcon={<IconHash size={24} />}
-      emptyMessage="構成要素がありません"
+      emptyMessage={tr("master.materialNumbering.thereAreNoComponents")}
       getRowId={(r) => `${r.parentCode ?? ""}:${r.code}`}
       pageSize={20}
       renderCard={(r) => (
@@ -174,7 +188,7 @@ export function ComponentTable({
       )}
       rowActions={(row) => [
         {
-          label: row.isActive ? "無効化" : "有効化",
+          label: row.isActive ? "無効化" : tr("common.enable"),
           icon: <IconCircleMinus size={14} />,
           onAction: toggle,
         },

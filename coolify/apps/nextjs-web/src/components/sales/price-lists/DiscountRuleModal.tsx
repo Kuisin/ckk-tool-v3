@@ -21,6 +21,7 @@ import {
 } from "@mantine/core";
 import { DatePickerInput } from "@mantine/dates";
 import { IconCalendar, IconInfoCircle } from "@tabler/icons-react";
+import { useTranslations } from "next-intl";
 import { useEffect, useState } from "react";
 import { HelpLabel } from "@/components/ui/HelpLabel";
 import { FormModal, type ModalBaseProps } from "@/components/ui/modals";
@@ -47,6 +48,7 @@ export function DiscountRuleModal({
   initial: PriceDiscount | null;
   onSave: (rule: PriceDiscount) => void;
 }) {
+  const tr = useTranslations();
   const [draft, setDraft] = useState<Omit<PriceDiscount, "id">>(EMPTY);
   const [error, setError] = useState<string | null>(null);
 
@@ -67,18 +69,18 @@ export function DiscountRuleModal({
       onSubmit={(e) => {
         e.preventDefault();
         if (!draft.label.trim() || draft.value <= 0 || !draft.validFrom) {
-          setError("名称・値・有効開始日を入力してください");
+          setError(tr("sales.priceLists.enterANameAValueAnd"));
           return;
         }
         if (draft.discountType === "RATE" && draft.value >= 100) {
-          setError("率は100%未満を入力してください");
+          setError(tr("sales.priceLists.enterARateBelow100"));
           return;
         }
         if (
           draft.maxQuantity != null &&
           draft.maxQuantity < draft.minQuantity
         ) {
-          setError("数量上限は下限以上を入力してください");
+          setError(tr("sales.priceLists.theMaximumQuantityMustBeAt"));
           return;
         }
         // id は編集時のみ（新規は空 → saveDiscountRule が create する）。
@@ -87,31 +89,37 @@ export function DiscountRuleModal({
       }}
       opened={opened}
       size="md"
-      submitLabel={initial ? "更新" : "追加"}
-      title={initial ? "値引きルールを編集" : "値引きルールを追加"}
+      submitLabel={initial ? tr("common.update") : tr("common.add")}
+      title={
+        initial
+          ? tr("sales.priceLists.editTheDiscountRule")
+          : tr("common.addADiscountRule")
+      }
     >
       <TextInput
         error={
-          error && !draft.label.trim() ? "名称を入力してください" : undefined
+          error && !draft.label.trim()
+            ? tr("sales.discountRuleModal.enterAName")
+            : undefined
         }
-        label="名称"
+        label={tr("common.name2")}
         onChange={(e) => patch({ label: e.currentTarget.value })}
-        placeholder="例: 夏季キャンペーン"
+        placeholder={tr("sales.priceLists.eGSummerCampaign")}
         value={draft.label}
         withAsterisk
       />
 
       <div>
-        <Text fw={500} mb={4} size="sm">
+        <Text component="div" fw={500} mb={4} size="sm">
           <HelpLabel
-            help="率（%）は単価に対する割合、金額（¥/本）は1本あたりの値引き額です。"
-            label="値引き種別"
+            help={tr("sales.priceLists.rateIsAShareOfThe")}
+            label={tr("sales.priceLists.discountType")}
           />
         </Text>
         <SegmentedControl
           data={[
-            { value: "RATE", label: "率（%）" },
-            { value: "AMOUNT", label: "金額（¥/本）" },
+            { value: "RATE", label: tr("sales.priceLists.rate") },
+            { value: "AMOUNT", label: tr("sales.priceLists.amountPc") },
           ]}
           fullWidth
           onChange={(v) => patch({ discountType: v as "RATE" | "AMOUNT" })}
@@ -121,9 +129,15 @@ export function DiscountRuleModal({
 
       <NumberInput
         error={
-          error && draft.value <= 0 ? "1以上を入力してください" : undefined
+          error && draft.value <= 0
+            ? tr("sales.discountRuleModal.enterAtLeast1")
+            : undefined
         }
-        label={draft.discountType === "RATE" ? "率" : "値引き額（1本あたり）"}
+        label={
+          draft.discountType === "RATE"
+            ? tr("sales.discountRuleModal.rateLabel")
+            : tr("sales.priceLists.discountAmountPerPiece")
+        }
         min={0}
         onChange={(v) => patch({ value: typeof v === "number" ? v : 0 })}
         prefix={draft.discountType === "AMOUNT" ? "¥" : undefined}
@@ -137,26 +151,26 @@ export function DiscountRuleModal({
         <NumberInput
           label={
             <HelpLabel
-              help="このルールが適用される最小数量。上限は空欄で無制限。"
-              label="数量下限"
+              help={tr("sales.priceLists.theMinimumQuantityThisRuleApplies")}
+              label={tr("sales.priceLists.minimumQuantity")}
             />
           }
           min={1}
           onChange={(v) =>
             patch({ minQuantity: typeof v === "number" ? v : 1 })
           }
-          suffix=" 本"
+          suffix={` ${tr("common.pcs")}`}
           value={draft.minQuantity}
           withAsterisk
         />
         <NumberInput
-          label="数量上限"
+          label={tr("sales.priceLists.maximumQuantity")}
           min={1}
           onChange={(v) =>
             patch({ maxQuantity: typeof v === "number" ? v : null })
           }
-          placeholder="空欄で上限なし"
-          suffix=" 本"
+          placeholder={tr("sales.priceLists.leaveBlankForNoMaximum")}
+          suffix={` ${tr("common.pcs")}`}
           value={draft.maxQuantity ?? ""}
         />
       </Group>
@@ -164,27 +178,29 @@ export function DiscountRuleModal({
       <Group grow>
         <DatePickerInput
           error={
-            error && !draft.validFrom ? "開始日を選択してください" : undefined
+            error && !draft.validFrom
+              ? tr("master.approvalSettings.selectAStartDate")
+              : undefined
           }
           label={
             <HelpLabel
-              help="このルールが適用される期間。見積書作成日の時点で期間内のルールだけが適用されます。"
-              label="有効開始日"
+              help={tr("sales.priceLists.thePeriodThisRuleAppliesTo")}
+              label={tr("common.validFrom")}
             />
           }
           leftSection={<IconCalendar size={14} />}
           onChange={(v) => patch({ validFrom: v ?? "" })}
-          placeholder="日付を選択"
+          placeholder={tr("common.pickADate")}
           value={draft.validFrom || null}
           valueFormat="YYYY/MM/DD"
           withAsterisk
         />
         <DatePickerInput
           clearable
-          label="有効終了日"
+          label={tr("common.validUntil")}
           leftSection={<IconCalendar size={14} />}
           onChange={(v) => patch({ validUntil: v })}
-          placeholder="空欄で無期限"
+          placeholder={tr("common.leaveBlankForNoEndDate")}
           value={draft.validUntil}
           valueFormat="YYYY/MM/DD"
         />
@@ -192,12 +208,12 @@ export function DiscountRuleModal({
 
       <Switch
         checked={draft.isActive}
-        label="有効"
+        label={tr("common.enabled")}
         onChange={(e) => patch({ isActive: e.currentTarget.checked })}
       />
 
       <Alert color="blue" icon={<IconInfoCircle size={16} />} variant="light">
-        条件（数量・期間）を満たすルールが見積書作成時に自動適用されます。複数該当する場合は値引き額が最大のルールを採用します。
+        {tr("sales.priceLists.rulesMeetingTheConditionsQuantityAnd")}
       </Alert>
 
       <Stack gap={0}>

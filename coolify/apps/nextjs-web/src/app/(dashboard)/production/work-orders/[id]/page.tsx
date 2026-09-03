@@ -4,11 +4,14 @@ import {
   fetchLatestViewableDesignFile,
 } from "@/app/(dashboard)/production/design-files/data";
 import { WorkOrderDetail } from "@/components/production/work-orders/WorkOrderDetail";
+import { appLabelForKey } from "@/lib/app-list";
 import { fetchApprovalState } from "@/lib/approvals";
 import { fetchAuditEntries } from "@/lib/audit";
 import { requireAppRead } from "@/lib/authz-page";
 import { prisma } from "@/lib/db";
 import { listMemos } from "@/lib/document-memos";
+import { formatDocPageTitle } from "@/lib/page-title";
+import { getServerLocale } from "@/lib/user-preferences";
 import {
   fetchPendingFlowChange,
   fetchRejectedAppliedFlowChange,
@@ -29,7 +32,13 @@ export async function generateMetadata({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  return { title: `指示書 #${decodeURIComponent(id)} | CKK 業務管理システム` };
+  const locale = await getServerLocale();
+  return {
+    title: formatDocPageTitle(
+      appLabelForKey("work-orders", "指示書", locale), // i18n-ignore — ja はそのまま使う（訳の実体は appLabelForKey 内の en/zh マップ）
+      `#${decodeURIComponent(id)}`,
+    ),
+  };
 }
 
 /** 指示書 詳細 (PD22). URL id = 指示書番号（通し連番 int = ロット番号）。 */

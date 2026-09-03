@@ -10,10 +10,13 @@ import { manualSource } from "@/lib/manual-source";
 export const revalidate = false;
 
 export function GET(): Response {
+  // ja ページだけを載せる静的インデックス（ファイル自身の doc comment の
+  // とおり）。クローラー向けの発見用ファイルで閲覧者の locale という概念が
+  // 無く、常に ja 版を指す。
   const lines = [
-    "# CKK マニュアル",
+    "# CKK マニュアル", // i18n-ignore
     "",
-    "> CKK 業務管理システムの公開ユーザーマニュアル。各ページの生 Markdown は URL 末尾に .md を付けて取得できます。",
+    "> CKK 業務管理システムの公開ユーザーマニュアル。各ページの生 Markdown は URL 末尾に .md を付けて取得できます。", // i18n-ignore
     "",
   ];
   for (const page of manualSource.getPages("ja")) {

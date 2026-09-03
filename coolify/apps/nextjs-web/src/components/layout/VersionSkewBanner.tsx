@@ -15,6 +15,7 @@
 
 import { Alert, Button, Group, Text } from "@mantine/core";
 import { IconRefresh } from "@tabler/icons-react";
+import { useTranslations } from "next-intl";
 import { useEffect, useRef, useState } from "react";
 
 const CHECK_INTERVAL_MS = 5 * 60 * 1000; // 5 分
@@ -31,6 +32,7 @@ async function fetchBuildId(): Promise<string | null> {
 }
 
 export function VersionSkewBanner() {
+  const tr = useTranslations();
   const initial = useRef<string | null>(null);
   const [stale, setStale] = useState(false);
 
@@ -64,8 +66,7 @@ export function VersionSkewBanner() {
     <Alert color="orange" mb="md" variant="filled">
       <Group justify="space-between" wrap="wrap">
         <Text fw={600} size="sm">
-          アプリが新しいバージョンに更新されました —
-          このページは古いまま動いています。操作が失敗する前に再読み込みしてください。
+          {tr("layout.versionSkewBanner.theAppWasUpdatedThisPage")}
         </Text>
         <Button
           color="orange"
@@ -74,7 +75,7 @@ export function VersionSkewBanner() {
           size="xs"
           variant="white"
         >
-          再読み込み
+          {tr("layout.versionSkewBanner.reload")}
         </Button>
       </Group>
     </Alert>

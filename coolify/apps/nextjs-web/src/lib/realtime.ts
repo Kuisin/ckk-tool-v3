@@ -63,7 +63,7 @@ function fanOut(bus: Bus, event: RealtimeEvent): void {
     try {
       handler(event);
     } catch (e) {
-      console.error("[realtime] 購読ハンドラでエラー:", e);
+      console.error("[realtime] 購読ハンドラでエラー:", e); // i18n-ignore — サーバーログのみ（Loki）、UI に出ない
     }
   }
 }
@@ -77,8 +77,8 @@ function scheduleReconnect(bus: Bus): void {
   bus.retryMs = Math.min(bus.retryMs * 2, RETRY_MAX_MS);
   bus.retryTimer = setTimeout(() => {
     bus.retryTimer = null;
-    void ensureConnected(bus).catch((e) =>
-      console.error("[realtime] 再接続に失敗:", e),
+    void ensureConnected(bus).catch(
+      (e) => console.error("[realtime] 再接続に失敗:", e), // i18n-ignore — サーバーログのみ（Loki）、UI に出ない
     );
   }, delay);
   // 再接続待ちのタイマーでプロセス終了を妨げない。
@@ -92,7 +92,7 @@ async function connect(bus: Bus): Promise<void> {
   const client = new Client({ connectionString });
   // error を拾わないと未処理例外でプロセスが落ちる。
   client.on("error", (e) => {
-    console.error("[realtime] LISTEN 接続エラー:", e);
+    console.error("[realtime] LISTEN 接続エラー:", e); // i18n-ignore — サーバーログのみ（Loki）、UI に出ない
     if (bus.client === client) scheduleReconnect(bus);
   });
   client.on("end", () => {
@@ -146,7 +146,7 @@ export async function subscribeRealtime(handler: Handler): Promise<() => void> {
   try {
     await ensureConnected(bus);
   } catch (e) {
-    console.error("[realtime] LISTEN 開始に失敗（再試行します）:", e);
+    console.error("[realtime] LISTEN 開始に失敗（再試行します）:", e); // i18n-ignore — サーバーログのみ（Loki）、UI に出ない
   }
   return () => {
     bus.handlers.delete(handler);
@@ -162,7 +162,7 @@ export async function publishRealtime(event: RealtimeEvent): Promise<void> {
     const payload = encodeRealtimeEvent(event);
     await prisma.$executeRaw`SELECT pg_notify(${REALTIME_CHANNEL}, ${payload})`;
   } catch (e) {
-    console.error("[realtime] 配信に失敗:", e);
+    console.error("[realtime] 配信に失敗:", e); // i18n-ignore — サーバーログのみ（Loki）、UI に出ない
   }
 }
 

@@ -21,6 +21,7 @@ import { useForm } from "@mantine/form";
 import { notifications } from "@mantine/notifications";
 import { IconInfoCircle } from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { useMemo, useTransition } from "react";
 import { z } from "zod";
 import {
@@ -42,18 +43,23 @@ import type { Option } from "@/lib/mock";
 
 const BASE_PATH = "/master/material-types";
 
-const materialTypeSchema = (isEdit: boolean) =>
+const materialTypeSchema = (
+  tr: ReturnType<typeof useTranslations>,
+  isEdit: boolean,
+) =>
   z.object({
     manufacturerCode: isEdit
       ? z.string()
-      : z.string().min(1, "メーカーを選択してください"),
+      : z.string().min(1, tr("master.materialTypeForm.selectAManufacturer2")),
     gradeCode: isEdit
       ? z.string()
-      : z.string().min(1, "メーカー材種を選択してください"),
+      : z
+          .string()
+          .min(1, tr("master.materialTypeForm.selectAManufacturerGrade")),
     shapeCode: isEdit
       ? z.string()
-      : z.string().min(1, "形状を選択してください"),
-    nameJa: z.string().min(1, "名称（日本語）を入力してください"),
+      : z.string().min(1, tr("master.materialTypeForm.selectAShape2")),
+    nameJa: z.string().min(1, tr("common.enterNameInJapanese")),
     nameTranslations: z.record(z.string(), z.string()).default({}),
     descriptionJa: z.string(),
     descriptionEn: z.string(),
@@ -95,13 +101,14 @@ export function MaterialTypeForm({
   gradeOptions?: GradeOption[];
   shapeOptions?: Option[];
 }) {
+  const tr = useTranslations();
   const router = useRouter();
   const isMobile = useIsMobile();
   const [isPending, startTransition] = useTransition();
   const isEdit = !!initial;
 
   const form = useForm<FormValues>({
-    validate: zodResolver(materialTypeSchema(isEdit)),
+    validate: zodResolver(materialTypeSchema(tr, isEdit)),
     initialValues: {
       manufacturerCode: "",
       gradeCode: "",
@@ -133,16 +140,18 @@ export function MaterialTypeForm({
         : await createMaterialType(values);
       if (result.ok) {
         notifications.show({
-          title: "保存しました",
+          title: tr("common.saved2"),
           message: isEdit
-            ? "材種を更新しました"
-            : `材種 ${"code" in result.data ? result.data.code : ""} を作成しました`,
+            ? tr("master.materialTypes.theMaterialTypeWasUpdated")
+            : tr("master.materialTypeForm.createdMessage", {
+                code: "code" in result.data ? String(result.data.code) : "",
+              }),
           color: "green",
         });
         router.push(`${BASE_PATH}/${result.data.id}`);
       } else {
         notifications.show({
-          title: "エラー",
+          title: tr("common.error2"),
           message: result.error,
           color: "red",
         });
@@ -153,9 +162,9 @@ export function MaterialTypeForm({
   return (
     <FormShell
       breadcrumbs={[
-        "マスタ",
-        { label: "材種", href: BASE_PATH },
-        isEdit ? "編集" : "新規作成",
+        tr("common.masterData"),
+        { label: tr("common.materialTypes"), href: BASE_PATH },
+        isEdit ? tr("common.edit2") : tr("common.new2"),
       ]}
       isDirty={form.isDirty()}
       isPending={isPending}
@@ -166,37 +175,47 @@ export function MaterialTypeForm({
       status={isEdit ? <ActiveBadge active={initial.isActive} /> : undefined}
       title={
         isEdit
-          ? `材種 編集 — ${initial.code ?? initial.nameJa}`
-          : "材種 新規作成"
+          ? tr("master.materialTypeForm.editTitle", {
+              code: initial.code ?? initial.nameJa,
+            })
+          : tr("master.materialTypes.newMaterialType")
       }
     >
       {isEdit ? (
         <FormSection
-          description="コード構成は作成後変更できません。"
-          title="コード構成"
+          description={tr(
+            "master.materialTypes.theCodeStructureCannotBeChanged",
+          )}
+          title={tr("common.codeStructure")}
         >
           {initial.composition ? (
             <SimpleGrid cols={isMobile ? 1 : 2} spacing="sm">
               <TextInput
                 disabled
                 label={
-                  <HelpLabel {...fieldHelp("materialType", "manufacturer")} />
+                  <HelpLabel
+                    {...fieldHelp(tr, "materialType", "manufacturer")}
+                  />
                 }
                 value={initial.composition.manufacturerLabel}
               />
               <TextInput
                 disabled
-                label={<HelpLabel {...fieldHelp("materialType", "grade")} />}
+                label={
+                  <HelpLabel {...fieldHelp(tr, "materialType", "grade")} />
+                }
                 value={initial.composition.gradeLabel}
               />
               <TextInput
                 disabled
-                label={<HelpLabel {...fieldHelp("materialType", "shape")} />}
+                label={
+                  <HelpLabel {...fieldHelp(tr, "materialType", "shape")} />
+                }
                 value={initial.composition.shapeLabel}
               />
               <TextInput
                 disabled
-                label="種類（自動採番）"
+                label={tr("common.kindNumberedAutomatically")}
                 value={initial.composition.kindCode}
               />
             </SimpleGrid>
@@ -206,23 +225,22 @@ export function MaterialTypeForm({
               icon={<IconInfoCircle size={16} />}
               variant="light"
             >
-              未変換（レガシー取込）の材種です。コード構成への変換は今後の
-              機能で対応します — 名称・説明・有効のみ編集できます。
+              {tr("master.materialTypes.anUnconvertedLegacyImportMaterialType")}
             </Alert>
           )}
         </FormSection>
       ) : (
         <FormSection
-          description="材種コードはメーカー・メーカー材種・形状から構成され、種類（4桁）は保存時に自動採番されます。"
-          title="コード構成"
+          description={tr("master.materialTypes.theMaterialTypeCodeIsBuilt")}
+          title={tr("common.codeStructure")}
         >
           <SimpleGrid cols={isMobile ? 1 : 3} mb="sm" spacing="sm">
             <Select
               data={manufacturerOptions}
               label={
-                <HelpLabel {...fieldHelp("materialType", "manufacturer")} />
+                <HelpLabel {...fieldHelp(tr, "materialType", "manufacturer")} />
               }
-              placeholder="メーカーを選択"
+              placeholder={tr("common.selectAManufacturer")}
               withAsterisk
               {...form.getInputProps("manufacturerCode")}
               onChange={(v) => {
@@ -233,19 +251,19 @@ export function MaterialTypeForm({
             <Select
               data={filteredGrades}
               disabled={!form.values.manufacturerCode}
-              label={<HelpLabel {...fieldHelp("materialType", "grade")} />}
+              label={<HelpLabel {...fieldHelp(tr, "materialType", "grade")} />}
               placeholder={
                 form.values.manufacturerCode
-                  ? "材種を選択"
-                  : "先にメーカーを選択"
+                  ? tr("master.materialTypes.selectAMaterialType")
+                  : tr("master.materialTypes.selectAManufacturerFirst")
               }
               withAsterisk
               {...form.getInputProps("gradeCode")}
             />
             <Select
               data={shapeOptions}
-              label={<HelpLabel {...fieldHelp("materialType", "shape")} />}
-              placeholder="形状を選択"
+              label={<HelpLabel {...fieldHelp(tr, "materialType", "shape")} />}
+              placeholder={tr("common.selectAShape")}
               withAsterisk
               {...form.getInputProps("shapeCode")}
             />
@@ -255,38 +273,39 @@ export function MaterialTypeForm({
             icon={<IconInfoCircle size={16} />}
             variant="light"
           >
-            材種コード: <DocNumber>{preview}</DocNumber>
-            （#### = 自動採番）
+            {tr("master.materialTypes.materialTypeCode")}{" "}
+            <DocNumber>{preview}</DocNumber>
+            {tr("master.materialTypes.numberedAutomatically")}
           </Alert>
         </FormSection>
       )}
 
-      <FormSection title="基本情報">
+      <FormSection title={tr("common.basicInformation")}>
         <LocalizedTextInput
-          help={fieldHelpTip("materialType", "name")}
+          help={fieldHelpTip(tr, "materialType", "name")}
           jaProps={form.getInputProps("nameJa")}
-          label="名称"
+          label={tr("common.name2")}
           placeholder="K40UF"
           required
           translationsProps={form.getInputProps("nameTranslations")}
         />
         <Switch
-          label={<HelpLabel {...fieldHelp("materialType", "active")} />}
+          label={<HelpLabel {...fieldHelp(tr, "materialType", "active")} />}
           mt="md"
           {...form.getInputProps("isActive", { type: "checkbox" })}
         />
       </FormSection>
 
-      <FormSection title="説明">
+      <FormSection title={tr("common.description")}>
         <SimpleGrid cols={isMobile ? 1 : 2} spacing="sm">
           <Textarea
-            label="説明（日本語）"
-            placeholder="材種の説明"
+            label={tr("common.descriptionJapanese")}
+            placeholder={tr("master.materialTypes.materialTypeDescription")}
             rows={3}
             {...form.getInputProps("descriptionJa")}
           />
           <Textarea
-            label="説明（English）"
+            label={tr("master.materialTypes.descriptionEnglish2")}
             placeholder="Description"
             rows={3}
             {...form.getInputProps("descriptionEn")}

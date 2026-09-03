@@ -24,6 +24,7 @@ import {
   Text,
 } from "@mantine/core";
 import { IconMessage2, IconPencil, IconTrash } from "@tabler/icons-react";
+import { useTranslations } from "next-intl";
 import { useFormat } from "@/components/layout/PreferencesProvider";
 import { GhostButton } from "@/components/ui/buttons";
 import { DesignFileViewButton } from "@/components/ui/DesignFileViewer";
@@ -33,9 +34,9 @@ import {
   canDeleteDesignFile,
   canEditDesignFile,
   DESIGN_FILE_SOURCE_COLOR,
-  DESIGN_FILE_SOURCE_LABEL,
   describeLock,
   designFileSource,
+  designFileSourceLabel,
 } from "@/lib/design-files-core";
 import type { DesignFileRole } from "./model";
 import { RoleBadge } from "./RoleBadge";
@@ -83,6 +84,7 @@ export function DesignFileList({
   /** 「依頼 / 手動」のタグを出すか（製品マスタでは出す）。 */
   showSource?: boolean;
 }) {
+  const tr = useTranslations();
   const fmt = useFormat();
   const isMobile = useIsMobile();
   const showNotes = rows.some((r) => r.notes);
@@ -96,7 +98,7 @@ export function DesignFileList({
     return {
       canEdit: onEdit != null && canEditDesignFile(state),
       canDelete: onDelete != null && canDeleteDesignFile(state),
-      lock: describeLock(state),
+      lock: describeLock(state, tr),
     };
   };
 
@@ -107,7 +109,7 @@ export function DesignFileList({
     });
     return (
       <Badge color={DESIGN_FILE_SOURCE_COLOR[src]} size="xs" variant="outline">
-        {DESIGN_FILE_SOURCE_LABEL[src]}
+        {designFileSourceLabel(src, tr)}
       </Badge>
     );
   };
@@ -120,7 +122,7 @@ export function DesignFileList({
         leftSection={<IconMessage2 size={14} />}
         onClick={() => onMemo(f)}
       >
-        メモ
+        {tr("common.memo")}
       </GhostButton>
     );
     if (!canEdit && !canDelete) {
@@ -144,7 +146,7 @@ export function DesignFileList({
             leftSection={<IconPencil size={14} />}
             onClick={() => onEdit?.(f)}
           >
-            備考
+            {tr("common.notes")}
           </GhostButton>
         )}
         {canDelete && (
@@ -153,7 +155,7 @@ export function DesignFileList({
             leftSection={<IconTrash size={14} />}
             onClick={() => onDelete?.(f)}
           >
-            削除
+            {tr("common.delete")}
           </GhostButton>
         )}
       </Group>
@@ -220,13 +222,17 @@ export function DesignFileList({
       <Table highlightOnHover>
         <Table.Thead>
           <Table.Tr>
-            <Table.Th w={250}>バージョン</Table.Th>
-            <Table.Th>ファイル名</Table.Th>
-            {showNotes && <Table.Th>備考</Table.Th>}
-            {onOpenRequest && <Table.Th w={170}>元依頼</Table.Th>}
-            <Table.Th w={150}>登録日時</Table.Th>
+            <Table.Th w={250}>{tr("common.version")}</Table.Th>
+            <Table.Th>{tr("common.fileName")}</Table.Th>
+            {showNotes && <Table.Th>{tr("common.notes")}</Table.Th>}
+            {onOpenRequest && (
+              <Table.Th w={170}>
+                {tr("production.designFiles.originalRequest")}
+              </Table.Th>
+            )}
+            <Table.Th w={150}>{tr("common.registeredAt")}</Table.Th>
             {(onEdit || onDelete || onMemo) && (
-              <Table.Th w={230}>操作</Table.Th>
+              <Table.Th w={230}>{tr("common.actions")}</Table.Th>
             )}
           </Table.Tr>
         </Table.Thead>

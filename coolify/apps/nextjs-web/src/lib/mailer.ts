@@ -11,9 +11,29 @@
  *
  * 差出人は mail-api が固定する（アプリごとに違う From を許すと、リレーの
  * ALLOWED_SENDER_DOMAINS と食い違ったときに原因が追いにくい）。
+ *
+ * メール本文の定型文言は**受け取る人の言語設定**（`app.users.locale`）で
+ * 出す — 開く人によって変わる画面の設定ではなく、送る時点で 1 通に固定される
+ * メールなので、呼び出し側（`notifications.ts` / `notification-digest.ts`）
+ * が対象ユーザーの `locale` を解決して渡す。ここは React ツリーもリクエスト
+ * スコープも無いので `useTranslations`/`getTranslations` は使えず、
+ * `lib/messages.ts` の `label()`（enum ラベルと同じ、明示 locale 引数の
+ * next-intl 委譲 API）を使う。
  */
 
 import { escapeHtml } from "./format";
+import type { Locale } from "./i18n";
+import { label } from "./messages";
+
+const NS = "notifications.mailer";
+function t(
+  key: string,
+  locale: Locale,
+  fallback: string,
+  vars?: Record<string, unknown>,
+): string {
+  return label(`${NS}.${key}`, locale, fallback, vars);
+}
 
 /** 送信口が設定済みか（設定 UI の表示・ヘルスチェック用）。 */
 export function isMailerConfigured(): boolean {
@@ -55,13 +75,13 @@ export async function sendMail(input: MailInput): Promise<boolean> {
     });
     if (!res.ok) {
       console.error(
-        `[mailer] 送信失敗 to=${input.to}: ${res.status} ${await res.text()}`,
+        `[mailer] 送信失敗 to=${input.to}: ${res.status} ${await res.text()}`, // i18n-ignore — サーバーログのみ（Loki）、UI に出ない
       );
       return false;
     }
     return true;
   } catch (e) {
-    console.error(`[mailer] 送信失敗 to=${input.to}:`, e);
+    console.error(`[mailer] 送信失敗 to=${input.to}:`, e); // i18n-ignore — サーバーログのみ（Loki）、UI に出ない
     return false;
   }
 }
@@ -85,7 +105,10 @@ export async function sendNotificationMail(input: {
   title: string;
   message?: string | null;
   linkPath?: string | null;
+  /** 受け取る人の表示言語（`app.users.locale`）。既定は ja。 */
+  locale?: Locale;
 }): Promise<boolean> {
+  const locale = input.locale ?? "ja";
   const url = input.linkPath ? `${appBaseUrl()}${input.linkPath}` : null;
   const text = [input.message ?? "", url ? `\n${url}` : ""].join("").trim();
   const html = `
@@ -94,11 +117,11 @@ export async function sendNotificationMail(input: {
   ${input.message ? `<p style="font-size:14px;line-height:1.7">${escapeHtml(input.message)}</p>` : ""}
   ${
     url
-      ? `<p style="margin:24px 0"><a href="${url}" style="background:#228be6;color:#fff;padding:10px 20px;border-radius:4px;text-decoration:none;font-size:14px">アプリで開く</a></p>`
+      ? `<p style="margin:24px 0"><a href="${url}" style="background:#228be6;color:#fff;padding:10px 20px;border-radius:4px;text-decoration:none;font-size:14px">${escapeHtml(t("openInApp", locale, "アプリで開く"))}</a></p>`
       : ""
   }
   <p style="font-size:12px;color:#868e96;border-top:1px solid #dee2e6;padding-top:12px;margin-top:32px">
-    CKK 業務管理システムからの自動送信メールです。通知設定はアプリの「プロフィール → 通知設定」から変更できます。
+    ${escapeHtml(t("footer", locale, "CKK 業務管理システムからの自動送信メールです。通知設定はアプリの「プロフィール → 通知設定」から変更できます。"))}
   </p>
 </div>`;
   return sendMail({
@@ -136,22 +159,31 @@ export async function sendNotificationDigestMail(input: {
   subject: string;
   /** 通知一覧（すべて見る）の URL。 */
   allUrl: string;
+  /** 受け取る人の表示言語（`app.users.locale`）。既定は ja。 */
+  locale?: Locale;
 }): Promise<boolean> {
+  const locale = input.locale ?? "ja";
   const lines = input.items.map(
     (i) =>
       `- [${i.typeLabel}] ${i.title}${i.message ? ` / ${i.message}` : ""}\n  ${i.at}  ${i.url}`,
   );
   if (input.omittedCount > 0) {
-    lines.push(`- ほか ${input.omittedCount} 件`);
+    lines.push(
+      `- ${t("othersCount", locale, `ほか ${input.omittedCount} 件`, { count: input.omittedCount })}`,
+    );
   }
-  const text = [...lines, "", `すべて見る: ${input.allUrl}`].join("\n");
+  const text = [
+    ...lines,
+    "",
+    `${t("viewAll", locale, "すべて見る")}: ${input.allUrl}`,
+  ].join("\n");
 
   const rows = input.items
     .map(
       (i) => `
     <tr>
       <td style="padding:10px 0;border-bottom:1px solid #dee2e6;vertical-align:top">
-        <div style="font-size:11px;color:#868e96">${escapeHtml(i.typeLabel)} ・ ${escapeHtml(i.at)}</div>
+        <div style="font-size:11px;color:#868e96">${escapeHtml(i.typeLabel)} ${t("itemSeparator", locale, "・")} ${escapeHtml(i.at)}</div>
         <a href="${i.url}" style="font-size:14px;color:#228be6;text-decoration:none;font-weight:600">${escapeHtml(i.title)}</a>
         ${i.message ? `<div style="font-size:12px;color:#495057;margin-top:2px">${escapeHtml(i.message)}</div>` : ""}
       </td>
@@ -161,17 +193,21 @@ export async function sendNotificationDigestMail(input: {
 
   const html = `
 <div style="font-family:'Noto Sans JP',system-ui,sans-serif;max-width:560px;margin:0 auto;padding:24px">
-  <h2 style="font-size:16px;border-bottom:2px solid #228be6;padding-bottom:8px">未読の通知</h2>
-  <p style="font-size:12px;color:#868e96">アプリで開いていない通知だけをまとめています。読んだものは届きません。</p>
+  <h2 style="font-size:16px;border-bottom:2px solid #228be6;padding-bottom:8px">${escapeHtml(t("unreadNotifications", locale, "未読の通知"))}</h2>
+  <p style="font-size:12px;color:#868e96">${escapeHtml(t("digestIntro", locale, "アプリで開いていない通知だけをまとめています。読んだものは届きません。"))}</p>
   <table style="width:100%;border-collapse:collapse">${rows}</table>
   ${
     input.omittedCount > 0
-      ? `<p style="font-size:12px;color:#868e96;margin-top:12px">ほか ${input.omittedCount} 件</p>`
+      ? `<p style="font-size:12px;color:#868e96;margin-top:12px">${escapeHtml(
+          t("othersCount", locale, `ほか ${input.omittedCount} 件`, {
+            count: input.omittedCount,
+          }),
+        )}</p>`
       : ""
   }
-  <p style="margin:24px 0"><a href="${input.allUrl}" style="background:#228be6;color:#fff;padding:10px 20px;border-radius:4px;text-decoration:none;font-size:14px">すべて見る</a></p>
+  <p style="margin:24px 0"><a href="${input.allUrl}" style="background:#228be6;color:#fff;padding:10px 20px;border-radius:4px;text-decoration:none;font-size:14px">${escapeHtml(t("viewAll", locale, "すべて見る"))}</a></p>
   <p style="font-size:12px;color:#868e96;border-top:1px solid #dee2e6;padding-top:12px;margin-top:32px">
-    CKK 業務管理システムからの自動送信メールです。通知設定はアプリの「プロフィール → 通知設定」から変更できます。
+    ${escapeHtml(t("footer", locale, "CKK 業務管理システムからの自動送信メールです。通知設定はアプリの「プロフィール → 通知設定」から変更できます。"))}
   </p>
 </div>`;
 

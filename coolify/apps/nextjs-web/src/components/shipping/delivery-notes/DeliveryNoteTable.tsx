@@ -10,15 +10,16 @@
 import { Badge, Group, Select, Stack, Text, TextInput } from "@mantine/core";
 import { IconReceipt, IconSearch } from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
-import { useLocale } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { useFormat } from "@/components/layout/PreferencesProvider";
 import { type Column, DataTable } from "@/components/ui/DataTable";
 import { NewButton } from "@/components/ui/NewButton";
-import { StatusBadge, statusOptions } from "@/components/ui/StatusBadge";
+import { StatusBadge } from "@/components/ui/StatusBadge";
 import { ListShell } from "@/components/ui/shells";
 import { useUrlSelectState, useUrlStringState } from "@/hooks/useUrlState";
 import { useIsMobile } from "@/hooks/useViewport";
 import { deliveryMethodLabel, deliveryMethodOptions } from "@/lib/enum-labels";
+import { statusOptions } from "@/lib/status-map";
 import type { DeliveryNote } from "./model";
 
 const BASE_PATH = "/shipping/delivery-notes";
@@ -37,6 +38,7 @@ export function DeliveryMethodBadge({ method }: { method: string }) {
 }
 
 export function DeliveryNoteTable({ rows }: { rows: DeliveryNote[] }) {
+  const tr = useTranslations();
   const locale = useLocale();
   const fmt = useFormat();
   const router = useRouter();
@@ -68,7 +70,7 @@ export function DeliveryNoteTable({ rows }: { rows: DeliveryNote[] }) {
   const columns: Column<DeliveryNote>[] = [
     {
       key: "deliveryNumber",
-      header: "納品番号",
+      header: tr("common.deliveryNoteNumber"),
       sortable: true,
       render: (n) => (
         <Text ff="mono" size="sm">
@@ -78,7 +80,7 @@ export function DeliveryNoteTable({ rows }: { rows: DeliveryNote[] }) {
     },
     {
       key: "deliveryOrderNumber",
-      header: "出荷書番号",
+      header: tr("common.deliveryOrderNumber"),
       sortable: true,
       render: (n) => (
         <Text ff="mono" size="sm">
@@ -88,7 +90,7 @@ export function DeliveryNoteTable({ rows }: { rows: DeliveryNote[] }) {
     },
     {
       key: "recipientName",
-      header: "納品先",
+      header: tr("common.shipTo"),
       sortable: true,
       render: (n) => (
         <>
@@ -107,21 +109,21 @@ export function DeliveryNoteTable({ rows }: { rows: DeliveryNote[] }) {
     },
     {
       key: "deliveryMethod",
-      header: "方法",
+      header: tr("common.method2"),
       width: 130,
       sortValue: (n) => n.deliveryMethod,
       render: (n) => <DeliveryMethodBadge method={n.deliveryMethod} />,
     },
     {
       key: "status",
-      header: "状態",
+      header: tr("common.status"),
       width: 100,
       sortValue: (n) => n.status,
       render: (n) => <StatusBadge entity="DeliveryNote" status={n.status} />,
     },
     {
       key: "deliveredAt",
-      header: "納品日",
+      header: tr("common.deliveredDate"),
       width: 120,
       sortValue: (n) => n.deliveredAt ?? "",
       render: (n) => (
@@ -135,7 +137,7 @@ export function DeliveryNoteTable({ rows }: { rows: DeliveryNote[] }) {
   return (
     <ListShell
       action={<NewButton href={`${BASE_PATH}/new`} />}
-      breadcrumbs={["出荷", "納品書"]}
+      breadcrumbs={[tr("common.shipping"), tr("common.deliveryNote")]}
       filters={
         <>
           <Select
@@ -143,7 +145,7 @@ export function DeliveryNoteTable({ rows }: { rows: DeliveryNote[] }) {
             data={deliveryMethodOptions(locale)}
             flex={isMobile ? 1 : undefined}
             onChange={setMethod}
-            placeholder="方法"
+            placeholder={tr("common.method2")}
             value={method}
             w={isMobile ? undefined : 150}
           />
@@ -152,7 +154,7 @@ export function DeliveryNoteTable({ rows }: { rows: DeliveryNote[] }) {
             data={statusOptions("DeliveryNote")}
             flex={isMobile ? 1 : undefined}
             onChange={setStatus}
-            placeholder="状態"
+            placeholder={tr("common.status")}
             value={status}
             w={isMobile ? undefined : 140}
           />
@@ -163,11 +165,13 @@ export function DeliveryNoteTable({ rows }: { rows: DeliveryNote[] }) {
         <TextInput
           leftSection={<IconSearch size={14} />}
           onChange={(e) => setSearch(e.currentTarget.value)}
-          placeholder="納品番号・出荷書番号・納品先で検索"
+          placeholder={tr(
+            "shipping.deliveryNotes.searchByDeliveryNoteNumberDelivery",
+          )}
           value={search}
         />
       }
-      title="納品書"
+      title={tr("common.deliveryNote")}
     >
       <DataTable
         columns={columns}
@@ -175,7 +179,7 @@ export function DeliveryNoteTable({ rows }: { rows: DeliveryNote[] }) {
         defaultSort={{ key: "deliveryNumber", dir: "desc" }}
         emptyAction={<NewButton href={`${BASE_PATH}/new`} />}
         emptyIcon={<IconReceipt size={24} />}
-        emptyMessage="納品書がありません"
+        emptyMessage={tr("shipping.deliveryNotes.thereAreNoDeliveryNotes")}
         getRowId={(n) => n.id}
         onRowClick={(n) => router.push(`${BASE_PATH}/${n.id}`)}
         renderCard={(n) => (
@@ -189,7 +193,9 @@ export function DeliveryNoteTable({ rows }: { rows: DeliveryNote[] }) {
               </Text>
               <Text c="dimmed" size="xs" truncate>
                 {n.deliveryOrderNumber}
-                {n.endUserName ? ` · 届け先: ${n.endUserName}` : ""}
+                {n.endUserName
+                  ? ` · ${tr("shipping.deliveryNoteTable.destinationLabel", { name: n.endUserName })}`
+                  : ""}
               </Text>
               <Group gap="md" mt={2}>
                 <DeliveryMethodBadge method={n.deliveryMethod} />

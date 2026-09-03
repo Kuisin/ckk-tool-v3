@@ -10,6 +10,7 @@
 import { Badge, Group, Select, Stack, Text, TextInput } from "@mantine/core";
 import { IconDeviceTablet, IconHistory, IconSearch } from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { useMemo } from "react";
 import { type Column, DataTable } from "@/components/ui/DataTable";
 import { ListShell } from "@/components/ui/shells";
@@ -18,6 +19,7 @@ import { useIsMobile } from "@/hooks/useViewport";
 import type { ActivityEntry } from "@/lib/audit";
 
 export function ActivityLog({ entries }: { entries: ActivityEntry[] }) {
+  const tr = useTranslations();
   const router = useRouter();
   const isMobile = useIsMobile();
   // 検索・フィルタは URL search params に保持（design.md §8.1 / ページ共有）
@@ -63,7 +65,7 @@ export function ActivityLog({ entries }: { entries: ActivityEntry[] }) {
   const columns: Column<ActivityEntry>[] = [
     {
       key: "at",
-      header: "日時",
+      header: tr("common.dateAndTime"),
       width: 150,
       sortable: true,
       render: (e) => (
@@ -74,21 +76,21 @@ export function ActivityLog({ entries }: { entries: ActivityEntry[] }) {
     },
     {
       key: "action",
-      header: "操作",
+      header: tr("common.actions"),
       width: 80,
       sortable: true,
       render: (e) => <Text size="sm">{e.action}</Text>,
     },
     {
       key: "tableLabel",
-      header: "対象",
+      header: tr("common.target"),
       width: 100,
       sortable: true,
       render: (e) => <Text size="sm">{e.tableLabel}</Text>,
     },
     {
       key: "recordId",
-      header: "レコード",
+      header: tr("common.record"),
       width: 200,
       render: (e) => (
         <Text ff="mono" size="xs" truncate>
@@ -98,7 +100,7 @@ export function ActivityLog({ entries }: { entries: ActivityEntry[] }) {
     },
     {
       key: "user",
-      header: "ユーザー",
+      header: tr("common.user"),
       width: 150,
       sortable: true,
       render: (e) => (
@@ -120,7 +122,7 @@ export function ActivityLog({ entries }: { entries: ActivityEntry[] }) {
     },
     {
       key: "detail",
-      header: "変更内容",
+      header: tr("common.whatChanges"),
       render: (e) => (
         <Text c="dimmed" size="xs">
           {e.detail}
@@ -131,7 +133,7 @@ export function ActivityLog({ entries }: { entries: ActivityEntry[] }) {
 
   return (
     <ListShell
-      breadcrumbs={["システム", "操作履歴"]}
+      breadcrumbs={[tr("common.system"), tr("common.activityLog")]}
       filters={
         <>
           <Select
@@ -139,7 +141,7 @@ export function ActivityLog({ entries }: { entries: ActivityEntry[] }) {
             data={actionOptions}
             flex={isMobile ? 1 : undefined}
             onChange={setAction}
-            placeholder="操作"
+            placeholder={tr("common.actions")}
             value={action}
             w={isMobile ? undefined : 120}
           />
@@ -148,7 +150,7 @@ export function ActivityLog({ entries }: { entries: ActivityEntry[] }) {
             data={tableOptions}
             flex={isMobile ? 1 : undefined}
             onChange={setTable}
-            placeholder="対象"
+            placeholder={tr("common.target")}
             value={table}
             w={isMobile ? undefined : 140}
           />
@@ -159,18 +161,18 @@ export function ActivityLog({ entries }: { entries: ActivityEntry[] }) {
         <TextInput
           leftSection={<IconSearch size={14} />}
           onChange={(e) => setSearch(e.currentTarget.value)}
-          placeholder="レコード・ユーザー・内容で検索"
+          placeholder={tr("admin.activityLog.searchByRecordUserOrContents")}
           value={search}
         />
       }
-      title="操作履歴"
+      title={tr("common.activityLog")}
     >
       <DataTable
         columns={columns}
         data={filtered}
         defaultSort={{ key: "at", dir: "desc" }}
         emptyIcon={<IconHistory size={24} />}
-        emptyMessage="操作履歴がありません"
+        emptyMessage={tr("admin.activityLog.thereIsNoActivity")}
         getRowId={(e) => String(e.id)}
         onRowClick={(e) => router.push(`/settings/activity/${e.id}`)}
         renderCard={(e) => (

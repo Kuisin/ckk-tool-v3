@@ -24,6 +24,7 @@ import type { DeviceOwnership } from "@/lib/device-ownership-core";
 import type { DeviceContext } from "@/lib/device-signals";
 import { EMPTY_DEVICE_CONTEXT } from "@/lib/device-signals";
 import { deviceName } from "@/lib/format";
+import type { Tr } from "@/lib/i18n";
 import type { LoginFailureReason, LoginMethod } from "@/lib/login-attempt-core";
 import type { Prisma } from "../../generated/client/client";
 
@@ -180,12 +181,27 @@ export interface LoginAttemptRow {
   kioskDeviceId: string | null;
   kioskDeviceName: string | null;
   userDeviceLabel: string | null;
+  /**
+   * 取引先ポータル（社外向け）の行か。
+   * app は WEB のまま（同じアプリが配信しているので嘘をつかない）なので、
+   * 画面が「どの面のログインか」を出すにはこれを見る。
+   */
+  isPortal: boolean;
+  /** ポータルの主体（社外の担当者名）。アドレスは出さない。 */
+  portalAccountName: string | null;
 }
 
 export interface LoginAttemptFilter {
   /** 何日ぶんを見るか（既定 7 日）。 */
   days?: number;
   outcome?: "SUCCESS" | "FAILURE" | null;
+  /**
+   * どの面のログインか。**app 列そのものではない** — 取引先ポータルは
+   * nextjs-web が配信しているので app は WEB で、method の PORTAL_ 接頭辞で
+   * 見分ける。画面の「アプリ」絞り込みはこの 3 択。
+   */
+  surface?: "WEB" | "KIOSK" | "PORTAL" | null;
+  /** @deprecated surface を使う（app 列の直接指定）。 */
   app?: "WEB" | "KIOSK" | null;
   userId?: string | null;
   /** IP そのもの、または CIDR（例 192.168.50.0/24）。 */
@@ -202,6 +218,8 @@ const attemptInclude = {
   user: { select: { id: true, displayName: true, username: true } },
   kioskDevice: { select: { id: true, name: true } },
   userDevice: { select: { label: true } },
+  // 表示名だけ。**メールアドレスは引かない**（社外の個人データ。SY0D には出さない）。
+  portalAccount: { select: { displayName: true } },
 } as const;
 
 type AttemptRow = Prisma.LoginAttemptGetPayload<{
@@ -229,6 +247,8 @@ function toRow(r: AttemptRow): LoginAttemptRow {
     kioskDeviceId: r.kioskDeviceId,
     kioskDeviceName: r.kioskDevice ? deviceName(r.kioskDevice.name) : null,
     userDeviceLabel: r.userDevice?.label ?? null,
+    isPortal: r.method.startsWith("PORTAL_"),
+    portalAccountName: r.portalAccount?.displayName ?? null,
   };
 }
 
@@ -262,6 +282,16 @@ export async function listLoginAttempts(
       createdAt: { gte: since },
       ...(filter.outcome ? { outcome: filter.outcome } : {}),
       ...(filter.app ? { app: filter.app } : {}),
+      ...(filter.surface === "PORTAL"
+        ? { method: { startsWith: "PORTAL_" } }
+        : filter.surface === "KIOSK"
+          ? { app: "KIOSK" as const }
+          : filter.surface === "WEB"
+            ? {
+                app: "WEB" as const,
+                NOT: { method: { startsWith: "PORTAL_" } },
+              }
+            : {}),
       ...(filter.userId ? { userId: filter.userId } : {}),
       ...(filter.fingerprint ? { signalsFingerprint: filter.fingerprint } : {}),
       ...(filter.ownership ? { ownership: filter.ownership } : {}),
@@ -361,7 +391,9 @@ export interface LoginAttemptSummary {
  * 失敗の多い相手は生値ではなく相関キーで数えるので、未知のユーザー名でも
  * 値を残さずに「同じ相手が繰り返している」ことが分かる。
  */
-export async function getLoginAttemptSummary(): Promise<LoginAttemptSummary> {
+export async function getLoginAttemptSummary(
+  tr: Tr,
+): Promise<LoginAttemptSummary> {
   const since = new Date(Date.now() - 24 * 60 * 60_000);
   const [failures24h, successes24h, byIp, byUser] = await Promise.all([
     prisma.loginAttempt.count({
@@ -379,15 +411,15 @@ export async function getLoginAttemptSummary(): Promise<LoginAttemptSummary> {
        GROUP BY ip_address
        ORDER BY n DESC
        LIMIT 5`,
-    prisma.$queryRaw<{ label: string | null; n: bigint }[]>`
-      SELECT COALESCE(u.display_name, '(未解決) ' || left(a.identifier_ref, 8)) AS label,
+    prisma.$queryRaw<{ name: string | null; ref: string | null; n: bigint }[]>`
+      SELECT u.display_name AS name, left(a.identifier_ref, 8) AS ref,
              COUNT(*) AS n
         FROM app.login_attempts a
         LEFT JOIN app.users u ON u.id = a.user_id
        WHERE a.created_at >= ${since}
          AND a.outcome = 'FAILURE'
          AND (a.user_id IS NOT NULL OR a.identifier_ref IS NOT NULL)
-       GROUP BY 1
+       GROUP BY 1, 2
        ORDER BY n DESC
        LIMIT 5`,
   ]);
@@ -398,7 +430,14 @@ export async function getLoginAttemptSummary(): Promise<LoginAttemptSummary> {
       .filter((r): r is { ip: string; n: bigint } => r.ip !== null)
       .map((r) => ({ ip: r.ip, n: Number(r.n) })),
     topFailureUsers: byUser
-      .filter((r): r is { label: string; n: bigint } => r.label !== null)
-      .map((r) => ({ label: r.label, n: Number(r.n) })),
+      .filter((r) => r.name !== null || r.ref !== null)
+      .map((r) => ({
+        label:
+          r.name ??
+          tr("settings.loginHistoryView.unresolvedWithRef", {
+            ref: r.ref ?? "",
+          }),
+        n: Number(r.n),
+      })),
   };
 }

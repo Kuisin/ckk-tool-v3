@@ -10,26 +10,32 @@
 
 import { Badge, Group, Stack, Text } from "@mantine/core";
 import { IconShieldLock } from "@tabler/icons-react";
+import { useLocale, useTranslations } from "next-intl";
 import { useFormat } from "@/components/layout/PreferencesProvider";
 import { EmptyState } from "@/components/ui/EmptyState";
-import { loginMethodLabel, loginReasonLabel } from "@/lib/login-attempt-core";
+import { loginMethodLabel, loginReasonLabel } from "@/lib/login-attempt-labels";
 import type { LoginAttemptRow } from "@/lib/login-attempts";
 import { OwnershipBadge } from "./ownership";
 
 export function LoginAttemptList({
   rows,
-  emptyMessage = "記録がありません",
+  emptyMessage,
   showOwnership = true,
 }: {
   rows: LoginAttemptRow[];
   emptyMessage?: string;
   showOwnership?: boolean;
 }) {
+  const tr = useTranslations();
+  const locale = useLocale();
   const fmt = useFormat();
 
   if (rows.length === 0) {
     return (
-      <EmptyState icon={<IconShieldLock size={28} />} message={emptyMessage} />
+      <EmptyState
+        icon={<IconShieldLock size={28} />}
+        message={emptyMessage ?? tr("settings.loginAttemptList.noRecords")}
+      />
     );
   }
 
@@ -50,19 +56,23 @@ export function LoginAttemptList({
                 size="xs"
                 variant="light"
               >
-                {r.outcome === "SUCCESS" ? "成功" : "失敗"}
+                {r.outcome === "SUCCESS"
+                  ? tr("settings.security.success")
+                  : tr("common.failure")}
               </Badge>
-              <Text size="xs">{loginMethodLabel(r.method)}</Text>
+              <Text size="xs">{loginMethodLabel(r.method, locale)}</Text>
               {r.outcome === "FAILURE" && (
                 <Text c="dimmed" size="xs">
-                  {loginReasonLabel(r.reason)}
+                  {loginReasonLabel(r.reason, locale)}
                 </Text>
               )}
             </Group>
             <Text c="dimmed" size="xs" truncate>
               {r.userName ??
                 (r.identifierRef
-                  ? `未解決 ${r.identifierRef.slice(0, 8)}`
+                  ? tr("settings.loginHistoryView.unresolvedWithRef", {
+                      ref: r.identifierRef.slice(0, 8),
+                    })
                   : "—")}
               {r.ipAddress ? ` / ${r.ipAddress}` : ""}
             </Text>

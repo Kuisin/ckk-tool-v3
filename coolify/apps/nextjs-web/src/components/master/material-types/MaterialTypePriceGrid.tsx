@@ -11,6 +11,7 @@
 import { NumberInput, Select, Stack, Text } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { useState, useTransition } from "react";
 import {
   type MaterialTypePriceRow,
@@ -46,6 +47,7 @@ export function MaterialTypePriceGrid({
   surfaceOptions: Option[];
   initialPrices: MaterialTypePriceSeed[];
 }) {
+  const tr = useTranslations();
   const router = useRouter();
   const [isSaving, startSaving] = useTransition();
 
@@ -101,14 +103,16 @@ export function MaterialTypePriceGrid({
       const res = await saveMaterialTypePrices(materialTypeId, out);
       if (res.ok) {
         notifications.show({
-          title: "保存しました",
-          message: `既定単価 ${out.length} 件を保存しました`,
+          title: tr("common.saved2"),
+          message: tr("master.materialTypePriceGrid.savedMessage", {
+            count: out.length,
+          }),
           color: "green",
         });
         router.refresh();
       } else {
         notifications.show({
-          title: "エラー",
+          title: tr("common.error2"),
           message: res.error,
           color: "red",
         });
@@ -117,31 +121,29 @@ export function MaterialTypePriceGrid({
   };
 
   const columns = [
-    { header: "直径", minWidth: 140 },
+    { header: tr("common.diameter"), minWidth: 140 },
     ...surfaceOptions.map((s) => ({ header: s.label, minWidth: 130 })),
   ];
 
   return (
     <Stack gap="sm">
       <Text c="dimmed" size="xs">
-        材種 × 直径 × 黒皮/研磨
-        ごとの既定材料単価（¥/1000mm）。仕入実績が無いとき
-        価格試算のフォールバック単価に使います。空欄は「価格なし」。
+        {tr("master.materialTypes.theDefaultMaterialPricePerMaterial")}
       </Text>
       <EditableCellTable<GridRow>
-        addLabel="直径を追加"
+        addLabel={tr("master.materialTypes.addADiameter")}
         columns={columns}
         minTableWidth={420}
         onAddRow={addRow}
         onRemoveRow={removeRow}
-        removeLabel="行を削除"
+        removeLabel={tr("common.removeRow")}
         renderCell={(row, rowIndex, colIndex) => {
           if (colIndex === 0) {
             return (
               <Select
                 data={diameterOptions}
                 onChange={(v) => setDiameter(rowIndex, v ?? "")}
-                placeholder="直径"
+                placeholder={tr("common.diameter")}
                 searchable
                 size="xs"
                 value={row.diameterCode || null}
@@ -169,7 +171,7 @@ export function MaterialTypePriceGrid({
       <FormActions
         loading={isSaving}
         onSave={save}
-        submitLabel="既定単価を保存"
+        submitLabel={tr("master.materialTypes.saveTheDefaultUnitPrice")}
       />
     </Stack>
   );

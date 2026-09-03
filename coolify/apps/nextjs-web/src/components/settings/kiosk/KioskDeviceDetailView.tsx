@@ -18,6 +18,7 @@ import {
   SimpleGrid,
   Stack,
   Table,
+  Tabs,
   Text,
   Title,
   Tooltip,
@@ -30,6 +31,7 @@ import {
   IconRefresh,
   IconUsers,
 } from "@tabler/icons-react";
+import { useTranslations } from "next-intl";
 import { useEffect, useRef, useState, useTransition } from "react";
 import {
   type DeviceUnlockPinInfo,
@@ -42,6 +44,7 @@ import {
 import { useFormat } from "@/components/layout/PreferencesProvider";
 import { LoginAttemptList } from "@/components/settings/security/LoginAttemptList";
 import { OwnershipBadge } from "@/components/settings/security/ownership";
+import { AppTabs } from "@/components/ui/AppTabs";
 import { SecondaryButton } from "@/components/ui/buttons";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { FieldValue } from "@/components/ui/FieldValue";
@@ -71,6 +74,7 @@ export function KioskDeviceDetailView({
   /** この端末で弾かれた認証（直近 90 日・最大 30 件）。 */
   authFailures: LoginAttemptRow[];
 }) {
+  const tr = useTranslations();
   const fmt = useFormat();
   const { presence, live, transport } = useKioskPresence();
   const [isPending, startTransition] = useTransition();
@@ -117,7 +121,7 @@ export function KioskDeviceDetailView({
           scheduleHide();
         } else {
           notifications.show({
-            title: "エラー",
+            title: tr("common.error2"),
             message: result.error,
             color: "red",
           });
@@ -149,7 +153,7 @@ export function KioskDeviceDetailView({
           historyTimerRef.current = setTimeout(() => setHistory(null), 60_000);
         } else {
           notifications.show({
-            title: "エラー",
+            title: tr("common.error2"),
             message: result.error,
             color: "red",
           });
@@ -180,7 +184,7 @@ export function KioskDeviceDetailView({
           heldTimerRef.current = setTimeout(() => setHeld(null), 60_000);
         } else {
           notifications.show({
-            title: "エラー",
+            title: tr("common.error2"),
             message: result.error,
             color: "red",
           });
@@ -200,13 +204,13 @@ export function KioskDeviceDetailView({
           setRevealed((r) => ({ ...r, settings: result.data.code }));
           scheduleHide();
           notifications.show({
-            title: "再生成しました",
-            message: "新しい設定コードを表示しています",
+            title: tr("common.regenerated"),
+            message: tr("settings.kiosk.showingTheNewSettingsCode"),
             color: "green",
           });
         } else {
           notifications.show({
-            title: "エラー",
+            title: tr("common.error2"),
             message: result.error,
             color: "red",
           });
@@ -229,22 +233,26 @@ export function KioskDeviceDetailView({
       <PageHeader
         actions={
           <SecondaryButton href="/settings/kiosk-devices">
-            一覧へ戻る
+            {tr("common.backToTheList")}
           </SecondaryButton>
         }
-        breadcrumbs={["システム", "端末管理", device.name ?? "端末詳細"]}
+        breadcrumbs={[
+          tr("common.system"),
+          tr("common.devices"),
+          device.name ?? tr("settings.kiosk.deviceDetails"),
+        ]}
         status={<StatusBadge entity="KioskDevice" status={device.status} />}
-        title={device.name ?? "（名称未設定）"}
+        title={device.name ?? tr("common.unnamed")}
       />
 
       {/* サマリ */}
       <Paper p="md" radius="md" withBorder>
         <SimpleGrid cols={{ base: 1, sm: 3 }} spacing="md">
           <FieldValue
-            label="オンライン"
+            label={tr("common.online")}
             value={
               device.status === "ACTIVE" ? (
-                <Tooltip label={transportLabel(transport)} withinPortal>
+                <Tooltip label={transportLabel(tr, transport)} withinPortal>
                   <span>
                     <OnlineDot online={online} />
                   </span>
@@ -254,19 +262,25 @@ export function KioskDeviceDetailView({
               )
             }
           />
-          <FieldValue label="利用者" value={currentUser ?? "—"} />
+          <FieldValue label={tr("common.user2")} value={currentUser ?? "—"} />
           <FieldValue
-            label="最終アクティビティ"
+            label={tr("common.lastActivity")}
             value={liveActivity ? fmt.dateTime(liveActivity) : "—"}
           />
-          <FieldValue label="拠点" value={device.plantLabel ?? "—"} />
-          <FieldValue label="場所" value={device.location ?? "—"} />
           <FieldValue
-            label="リンク日時"
+            label={tr("common.site")}
+            value={device.plantLabel ?? "—"}
+          />
+          <FieldValue
+            label={tr("common.location2")}
+            value={device.location ?? "—"}
+          />
+          <FieldValue
+            label={tr("settings.kiosk.linkedAt")}
             value={device.linkedAt ? fmt.dateTime(device.linkedAt) : "—"}
           />
           <FieldValue
-            label="有効化"
+            label={tr("common.enable")}
             value={
               device.activatedAt
                 ? `${fmt.dateTime(device.activatedAt)}${
@@ -278,7 +292,7 @@ export function KioskDeviceDetailView({
             }
           />
           <FieldValue
-            label="端末区分"
+            label={tr("common.deviceType")}
             value={
               <OwnershipBadge
                 size="sm"
@@ -288,11 +302,11 @@ export function KioskDeviceDetailView({
             }
           />
           <FieldValue
-            label="作成日時"
+            label={tr("common.created2")}
             value={device.createdAt ? fmt.dateTime(device.createdAt) : "—"}
           />
           <FieldValue
-            label="GPS 位置（最新）"
+            label={tr("settings.kiosk.gPSPositionLatest")}
             value={
               device.latestLocation ? (
                 <Stack gap={2}>
@@ -314,286 +328,321 @@ export function KioskDeviceDetailView({
                       ` (±${Math.round(device.latestLocation.accuracyM)}m)`}
                   </Anchor>
                   <Text c="dimmed" size="xs">
-                    {fmt.dateTime(device.latestLocation.recordedAt)} 時点
+                    {tr("settings.kioskDeviceDetailView.asOfLabel", {
+                      date: fmt.dateTime(device.latestLocation.recordedAt),
+                    })}
                   </Text>
                 </Stack>
               ) : (
-                "未取得"
+                tr("settings.kiosk.notFetched")
               )
             }
           />
         </SimpleGrid>
       </Paper>
 
-      {/* PIN・設定コード（表示前に確認 → 監査ログ記録。60 秒で自動非表示） */}
-      <Paper p="md" radius="md" withBorder>
-        <Title mb="sm" order={5}>
-          PIN・設定コード
-        </Title>
-        <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="md">
-          <Stack gap={4}>
-            <Text c="dimmed" size="xs">
-              メンテナンス PIN（全端末共通・毎日 4:00 自動更新）
-            </Text>
-            <Group gap="xs" wrap="nowrap">
-              <Text ff="monospace" fw={700} size="lg">
-                {revealed.unlock ?? "••••••"}
-              </Text>
-              {!revealed.unlock && (
-                <SecondaryButton
-                  disabled={otherBusy("unlock")}
-                  leftSection={<IconEye size={14} />}
-                  loading={loadingOf("unlock")}
-                  onClick={() => setConfirmKind("unlock")}
-                  size="xs"
-                >
-                  表示
-                </SecondaryButton>
-              )}
-              <SecondaryButton
-                disabled={otherBusy("history")}
-                leftSection={<IconHistory size={14} />}
-                loading={loadingOf("history")}
-                onClick={() => setConfirmHistory(true)}
-                size="xs"
-              >
-                履歴
-              </SecondaryButton>
-            </Group>
-            <Text c="dimmed" size="xs">
-              端末画面の右上 5 タップ → この PIN でキオスクロックを一時解除
-              （Wi-Fi 変更等）
-            </Text>
-            <Text c="dimmed" size="xs">
-              オフラインの端末は PIN を同期できないため、
-              <b>最後に受け取れた時点の PIN</b>
-              しか受け付けない。開けたいときは右の「この端末が保持している
-              PIN」を使う
-            </Text>
-          </Stack>
+      {/* タブ（design.md §8.2 — 詳細画面はサマリ + Tabs）。ディスプレイの
+          詳細と同じ構成にしてある。**パネルの中に Paper を置かない** —
+          パネル自体が中身の領域なので、置くとカードが入れ子になる。
+          見出しもタブ名と重複するので出さない。 */}
+      <AppTabs defaultValue="secrets">
+        <Tabs.List>
+          <Tabs.Tab value="secrets">
+            {tr("settings.kiosk.pINAndSettingsCode")}
+          </Tabs.Tab>
+          <Tabs.Tab value="device">{tr("common.deviceInformation")}</Tabs.Tab>
+          <Tabs.Tab value="usage">{tr("settings.kiosk.usage")}</Tabs.Tab>
+          <Tabs.Tab value="errors">
+            {tr("settings.kiosk.authenticationError")}
+          </Tabs.Tab>
+        </Tabs.List>
 
-          {/* 端末が実際に受け取れた PIN（推測ではなく受け渡しの記録から引く） */}
-          <Stack gap={4}>
-            <Text c="dimmed" size="xs">
-              この端末が保持している PIN
-            </Text>
-            <Group gap="xs" wrap="nowrap">
-              <Text ff="monospace" fw={700} size="lg">
-                {held ? (held.pin ?? "—") : "••••••"}
-              </Text>
-              {!held && device.unlockPinSyncedAt && (
-                <SecondaryButton
-                  disabled={otherBusy("held")}
-                  leftSection={<IconEye size={14} />}
-                  loading={loadingOf("held")}
-                  onClick={() => setConfirmHeld(true)}
-                  size="xs"
-                >
-                  表示
-                </SecondaryButton>
-              )}
-              {held?.isCurrent && (
-                <Badge color="green" size="xs" variant="light">
-                  最新
-                </Badge>
-              )}
-            </Group>
-            {device.unlockPinSyncedAt ? (
+        <Tabs.Panel pt="md" value="secrets">
+          {/* PIN・設定コード（表示前に確認 → 監査ログ記録。60 秒で自動非表示） */}
+          <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="md">
+            <Stack gap={4}>
               <Text c="dimmed" size="xs">
-                最終同期 {fmt.dateTime(device.unlockPinSyncedAt)}
-                {held && !held.pin ? "（当時の PIN は履歴に残っていない）" : ""}
+                {tr("settings.kiosk.maintenancePinSameOnEveryDevice")}
               </Text>
-            ) : (
-              <Text c="orange" size="xs">
-                <b>未同期</b> — この端末はまだ一度も PIN
-                を受け取っていない。端末はビルド時の既定 PIN（APK
-                のビルド設定にのみ存在。サーバーには無い）のまま
-              </Text>
-            )}
-            <Text c="dimmed" size="xs">
-              受け取れたときだけ記録する。通信できていても未リンク・トークン切れ
-              （401）や PinSync 以前の APK では届いていない
-            </Text>
-          </Stack>
-
-          <Stack gap={4}>
-            <Text c="dimmed" size="xs">
-              端末設定コード（この端末・左下 5 タップ用）
-            </Text>
-            <Group gap="xs" wrap="nowrap">
-              <Text ff="monospace" fw={700} size="lg">
-                {revealed.settings ?? "••••••"}
-              </Text>
-              {!revealed.settings && (
+              <Group gap="xs" wrap="nowrap">
+                <Text ff="monospace" fw={700} size="lg">
+                  {revealed.unlock ?? "••••••"}
+                </Text>
+                {!revealed.unlock && (
+                  <SecondaryButton
+                    disabled={otherBusy("unlock")}
+                    leftSection={<IconEye size={14} />}
+                    loading={loadingOf("unlock")}
+                    onClick={() => setConfirmKind("unlock")}
+                    size="xs"
+                  >
+                    {tr("common.display")}
+                  </SecondaryButton>
+                )}
                 <SecondaryButton
-                  disabled={otherBusy("settings")}
-                  leftSection={<IconEye size={14} />}
-                  loading={loadingOf("settings")}
-                  onClick={() => setConfirmKind("settings")}
+                  disabled={otherBusy("history")}
+                  leftSection={<IconHistory size={14} />}
+                  loading={loadingOf("history")}
+                  onClick={() => setConfirmHistory(true)}
                   size="xs"
                 >
-                  表示
+                  {tr("common.history")}
                 </SecondaryButton>
+              </Group>
+              <Text c="dimmed" size="xs">
+                {tr("settings.kiosk.fiveTapsTopRightOnThe")}
+              </Text>
+              <Text c="dimmed" size="xs">
+                {tr("settings.kiosk.anOfflineDeviceCannotSyncThe")}
+                <b>{tr("settings.kiosk.thePinAsOfTheLast")}</b>
+                {tr("settings.kiosk.isTheOnlyOneItAccepts")}
+              </Text>
+            </Stack>
+
+            {/* 端末が実際に受け取れた PIN（推測ではなく受け渡しの記録から引く） */}
+            <Stack gap={4}>
+              <Text c="dimmed" size="xs">
+                {tr("settings.kiosk.thePinThisDeviceIsHolding")}
+              </Text>
+              <Group gap="xs" wrap="nowrap">
+                <Text ff="monospace" fw={700} size="lg">
+                  {held ? (held.pin ?? "—") : "••••••"}
+                </Text>
+                {!held && device.unlockPinSyncedAt && (
+                  <SecondaryButton
+                    disabled={otherBusy("held")}
+                    leftSection={<IconEye size={14} />}
+                    loading={loadingOf("held")}
+                    onClick={() => setConfirmHeld(true)}
+                    size="xs"
+                  >
+                    {tr("common.display")}
+                  </SecondaryButton>
+                )}
+                {held?.isCurrent && (
+                  <Badge color="green" size="xs" variant="light">
+                    {tr("common.latest")}
+                  </Badge>
+                )}
+              </Group>
+              {device.unlockPinSyncedAt ? (
+                <Text c="dimmed" size="xs">
+                  {tr("settings.kioskDeviceDetailView.lastSyncedLabel", {
+                    date: fmt.dateTime(device.unlockPinSyncedAt),
+                  })}
+                  {held && !held.pin
+                    ? tr("settings.kiosk.thePinAtThatTimeIs")
+                    : ""}
+                </Text>
+              ) : (
+                <Text c="orange" size="xs">
+                  <b>{tr("settings.kiosk.notSynced")}</b>{" "}
+                  {tr("settings.kiosk.thisDeviceHasNeverReceivedA")}
+                </Text>
               )}
-              <SecondaryButton
-                disabled={otherBusy("regen")}
-                leftSection={<IconRefresh size={14} />}
-                loading={loadingOf("regen")}
-                onClick={() => setConfirmRegen(true)}
-                size="xs"
-              >
-                再生成
-              </SecondaryButton>
-            </Group>
-            <Text c="dimmed" size="xs">
-              端末リセット・再リンク用の解錠コード。フロア担当者に伝えて使用
-            </Text>
-          </Stack>
-        </SimpleGrid>
-      </Paper>
+              <Text c="dimmed" size="xs">
+                {tr("settings.kiosk.recordedOnlyWhenItWasActually")}
+              </Text>
+            </Stack>
 
-      {/* 端末情報（所有区分・判定根拠・署名済みプロファイル） */}
-      <DeviceProfilePanel device={device} />
+            <Stack gap={4}>
+              <Text c="dimmed" size="xs">
+                {tr("settings.kiosk.deviceSettingsCodeForThisDevice")}
+              </Text>
+              <Group gap="xs" wrap="nowrap">
+                <Text ff="monospace" fw={700} size="lg">
+                  {revealed.settings ?? "••••••"}
+                </Text>
+                {!revealed.settings && (
+                  <SecondaryButton
+                    disabled={otherBusy("settings")}
+                    leftSection={<IconEye size={14} />}
+                    loading={loadingOf("settings")}
+                    onClick={() => setConfirmKind("settings")}
+                    size="xs"
+                  >
+                    {tr("common.display")}
+                  </SecondaryButton>
+                )}
+                <SecondaryButton
+                  disabled={otherBusy("regen")}
+                  leftSection={<IconRefresh size={14} />}
+                  loading={loadingOf("regen")}
+                  onClick={() => setConfirmRegen(true)}
+                  size="xs"
+                >
+                  {tr("common.regenerate")}
+                </SecondaryButton>
+              </Group>
+              <Text c="dimmed" size="xs">
+                {tr("settings.kiosk.theUnlockCodeForResettingOr")}
+              </Text>
+            </Stack>
+          </SimpleGrid>
+        </Tabs.Panel>
 
-      <Flex align="stretch" direction={{ base: "column", md: "row" }} gap="md">
-        {/* 最近の利用者（LOGIN ログの集計） */}
-        <Flex direction="column" style={{ flex: 5, minWidth: 0 }}>
-          <Paper h="100%" p="md" radius="md" withBorder>
-            <Title mb="sm" order={5}>
-              最近の利用者
-            </Title>
-            {recentUsers.length === 0 ? (
-              <EmptyState
-                icon={<IconUsers size={28} />}
-                message="この端末での利用はまだありません"
-              />
-            ) : (
-              <Stack gap="xs">
-                {recentUsers.map((u) => (
-                  <Group justify="space-between" key={u.userId} wrap="nowrap">
-                    <Group gap="sm" style={{ minWidth: 0 }} wrap="nowrap">
-                      <UserAvatar
-                        initials={u.displayName.slice(0, 1)}
-                        name={u.displayName}
-                        size="sm"
-                      />
-                      <div style={{ minWidth: 0 }}>
-                        <Text fw={500} size="sm" truncate>
-                          {u.displayName}
-                        </Text>
-                        <Text c="dimmed" size="xs" truncate>
-                          {u.username}
-                        </Text>
-                      </div>
-                    </Group>
-                    <div style={{ flexShrink: 0, textAlign: "right" }}>
-                      <Text c="dimmed" size="xs">
-                        {fmt.dateTime(u.lastLoginAt)}
-                      </Text>
-                      <Text c="dimmed" size="xs">
-                        {u.loginCount} 回
-                      </Text>
-                    </div>
-                  </Group>
-                ))}
-              </Stack>
+        <Tabs.Panel keepMounted={false} pt="md" value="device">
+          <DeviceProfilePanel device={device} />
+        </Tabs.Panel>
+
+        {/* 利用履歴はページングで自分で引くので、開くまで動かさない。
+            この中の 2 枚（最近の利用者 / 利用履歴）は**並べて見せる別の表**
+            なので Paper を残す — 入れ子ではなく横並びの 1 段。 */}
+        <Tabs.Panel keepMounted={false} pt="md" value="usage">
+          <Flex
+            align="stretch"
+            direction={{ base: "column", md: "row" }}
+            gap="md"
+          >
+            {/* 最近の利用者（LOGIN ログの集計） */}
+            <Flex direction="column" style={{ flex: 5, minWidth: 0 }}>
+              <Paper h="100%" p="md" radius="md" withBorder>
+                <Title mb="sm" order={5}>
+                  {tr("settings.kiosk.recentUsers")}
+                </Title>
+                {recentUsers.length === 0 ? (
+                  <EmptyState
+                    icon={<IconUsers size={28} />}
+                    message={tr("settings.kiosk.itHasNotBeenUsedOn")}
+                  />
+                ) : (
+                  <Stack gap="xs">
+                    {recentUsers.map((u) => (
+                      <Group
+                        justify="space-between"
+                        key={u.userId}
+                        wrap="nowrap"
+                      >
+                        <Group gap="sm" style={{ minWidth: 0 }} wrap="nowrap">
+                          <UserAvatar
+                            initials={u.displayName.slice(0, 1)}
+                            name={u.displayName}
+                            size="sm"
+                          />
+                          <div style={{ minWidth: 0 }}>
+                            <Text fw={500} size="sm" truncate>
+                              {u.displayName}
+                            </Text>
+                            <Text c="dimmed" size="xs" truncate>
+                              {u.username}
+                            </Text>
+                          </div>
+                        </Group>
+                        <div style={{ flexShrink: 0, textAlign: "right" }}>
+                          <Text c="dimmed" size="xs">
+                            {fmt.dateTime(u.lastLoginAt)}
+                          </Text>
+                          <Text c="dimmed" size="xs">
+                            {tr("settings.kiosk.useCountTimes", {
+                              count: u.loginCount,
+                            })}
+                          </Text>
+                        </div>
+                      </Group>
+                    ))}
+                  </Stack>
+                )}
+              </Paper>
+            </Flex>
+
+            {/* 利用履歴（ページング） */}
+            <Flex direction="column" style={{ flex: 7, minWidth: 0 }}>
+              <Paper h="100%" p="md" radius="md" withBorder>
+                <Title mb="sm" order={5}>
+                  {tr("common.usageHistory")}
+                </Title>
+                <DeviceLogList deviceId={device.id} />
+              </Paper>
+            </Flex>
+          </Flex>
+        </Tabs.Panel>
+
+        <Tabs.Panel keepMounted={false} pt="md" value="errors">
+          {/* 認証エラー — 利用履歴（成功したログインとプレゼンス）では見えない分 */}
+          <LoginAttemptList
+            emptyMessage={tr(
+              "settings.kiosk.noAuthenticationWasRejectedOnThis",
             )}
-          </Paper>
-        </Flex>
+            rows={authFailures}
+            showOwnership={false}
+          />
+        </Tabs.Panel>
+      </AppTabs>
 
-        {/* 利用履歴（ページング） */}
-        <Flex direction="column" style={{ flex: 7, minWidth: 0 }}>
-          <Paper h="100%" p="md" radius="md" withBorder>
-            <Title mb="sm" order={5}>
-              利用履歴
-            </Title>
-            <DeviceLogList deviceId={device.id} />
-          </Paper>
-        </Flex>
-      </Flex>
-
-      {/* 認証エラー — 利用履歴（成功したログインとプレゼンス）では見えない分 */}
-      <Paper p="md" radius="md" withBorder>
-        <Title mb="sm" order={5}>
-          認証エラー（直近 90 日）
-        </Title>
-        <LoginAttemptList
-          emptyMessage="この端末で弾かれた認証はありません"
-          rows={authFailures}
-          showOwnership={false}
-        />
-      </Paper>
       {/* PIN 表示・再生成の確認 */}
       <ConfirmModal
         confirmColor="blue"
-        confirmLabel="表示"
+        confirmLabel={tr("common.display")}
         loading={isPending}
-        message="PIN を表示します。表示した操作は監査ログに記録されます。"
+        message={tr("settings.kiosk.showsThePinDoingSoIs")}
         onClose={() => setConfirmKind(null)}
         onConfirm={() => {
           if (confirmKind) reveal(confirmKind);
           setConfirmKind(null);
         }}
         opened={confirmKind != null}
-        title="PIN の表示"
+        title={tr("settings.kiosk.showThePin")}
       />
       <ConfirmModal
-        confirmLabel="再生成"
+        confirmLabel={tr("common.regenerate")}
         loading={isPending}
-        message="端末設定コードを再生成します。以前のコードは使えなくなります。"
+        message={tr("settings.kiosk.regeneratesTheDeviceSettingsCodeThe")}
         onClose={() => setConfirmRegen(false)}
         onConfirm={() => {
           regenerate();
           setConfirmRegen(false);
         }}
         opened={confirmRegen}
-        title="設定コードの再生成"
+        title={tr("settings.kiosk.regenerateTheSettingsCode")}
       />
       {/* 端末が保持している PIN の表示確認 */}
       <ConfirmModal
         confirmColor="blue"
-        confirmLabel="表示"
+        confirmLabel={tr("common.display")}
         loading={isPending}
-        message="この端末に最後に渡したメンテナンス PIN を表示します。表示した操作は監査ログに記録されます。"
+        message={tr("settings.kiosk.showsTheMaintenancePinLastHanded")}
         onClose={() => setConfirmHeld(false)}
         onConfirm={() => {
           revealHeld();
           setConfirmHeld(false);
         }}
         opened={confirmHeld}
-        title="端末が保持している PIN の表示"
+        title={tr("settings.kiosk.revealThePinADeviceHolds")}
       />
       {/* PIN 履歴の表示確認 */}
       <ConfirmModal
         confirmColor="blue"
-        confirmLabel="表示"
+        confirmLabel={tr("common.display")}
         loading={isPending}
-        message="過去のメンテナンス PIN を表示します。表示した操作は監査ログに記録されます。"
+        message={tr("settings.kiosk.showsPastMaintenancePinsDoingSo")}
         onClose={() => setConfirmHistory(false)}
         onConfirm={() => {
           openHistory();
           setConfirmHistory(false);
         }}
         opened={confirmHistory}
-        title="PIN 履歴の表示"
+        title={tr("settings.kiosk.revealPinHistory")}
       />
       <ModalShell
         hideFooter
         onClose={() => setHistory(null)}
         opened={history != null}
         size="lg"
-        title="メンテナンス PIN の履歴"
+        title={tr("settings.kiosk.maintenancePinHistory")}
       >
         <Text c="dimmed" size="xs">
-          オフラインの端末が受け付けるのは「最後に通信できた時点の PIN」。
-          この端末の最終通信は
-          {liveActivity ? ` ${fmt.dateTime(liveActivity)}` : "（記録なし）"}
-          {liveActivity ? " — その時刻を含む行を使う" : ""}。
+          {tr("settings.kioskDeviceDetailView.offlineAcceptsLastSyncedPin")}
+          {liveActivity
+            ? ` ${fmt.dateTime(liveActivity)}`
+            : tr("settings.kiosk.noRecord")}
+          {liveActivity
+            ? tr("settings.kioskDeviceDetailView.usesRowIncludingThatTime")
+            : "。"}
         </Text>
         {history?.length === 0 ? (
           <EmptyState
             icon={<IconHistory size={20} />}
-            message="履歴がまだありません（次の自動更新から記録されます）"
+            message={tr("settings.kiosk.thereIsNoHistoryYetRecording")}
           />
         ) : (
           <ScrollArea.Autosize mah={420}>
@@ -601,8 +650,8 @@ export function KioskDeviceDetailView({
               <Table.Thead>
                 <Table.Tr>
                   <Table.Th>PIN</Table.Th>
-                  <Table.Th>有効になった時刻</Table.Th>
-                  <Table.Th>置き換わった時刻</Table.Th>
+                  <Table.Th>{tr("settings.kiosk.tookEffectAt")}</Table.Th>
+                  <Table.Th>{tr("settings.kiosk.replacedAt")}</Table.Th>
                 </Table.Tr>
               </Table.Thead>
               <Table.Tbody>
@@ -623,12 +672,12 @@ export function KioskDeviceDetailView({
                           </Text>
                           {row.supersededAt == null && (
                             <Badge color="blue" size="xs" variant="light">
-                              現在
+                              {tr("settings.kiosk.now")}
                             </Badge>
                           )}
                           {activeThen && (
                             <Badge color="green" size="xs" variant="light">
-                              最終通信時
+                              {tr("settings.kiosk.lastCommunication")}
                             </Badge>
                           )}
                         </Group>

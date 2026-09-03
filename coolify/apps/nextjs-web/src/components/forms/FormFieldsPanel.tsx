@@ -2,60 +2,81 @@
 
 import { Alert, Badge, Group, Stack, Text } from "@mantine/core";
 import { IconAlertTriangle, IconForms } from "@tabler/icons-react";
+import { useTranslations } from "next-intl";
 import { DataTable } from "@/components/ui/DataTable";
 import { EmptyState } from "@/components/ui/EmptyState";
 import {
-  FORM_FIELD_TYPES,
   type FormFieldDef,
-  LOOKUP_SOURCES,
+  formFieldTypes,
+  lookupSources,
 } from "@/lib/form-schema";
-
-const TYPE_LABEL = new Map(FORM_FIELD_TYPES.map((t) => [t.value, t.label]));
-const SOURCE_LABEL = new Map(LOOKUP_SOURCES.map((s) => [s.value, s.label]));
 
 /**
  * 項目の内訳を 1 行 1 項目で説明する。**キーは出さない** — 自動採番にした時点で
  * 利用者に意味のない情報になったので、ラベルと設定だけを見せる。
  */
-function detailOf(field: FormFieldDef): string {
+function detailOf(
+  field: FormFieldDef,
+  tr: ReturnType<typeof useTranslations>,
+): string {
   switch (field.type) {
     case "select":
     case "multiselect": {
       const options = field.options ?? [];
-      if (options.length === 0) return "選択肢が未設定";
+      if (options.length === 0) {
+        return tr("forms.formFieldsPanel.noOptionsSet");
+      }
       const shown = options
         .slice(0, 4)
         .map((o) => o.label.ja || o.value)
         .join(" / ");
       return options.length > 4
-        ? `${shown} ほか ${options.length - 4} 件`
+        ? tr("forms.formFieldsPanel.shownPlusMore", {
+            shown,
+            count: options.length - 4,
+          })
         : shown;
     }
     case "lookup": {
       const source = field.lookup?.source;
-      const label = source ? SOURCE_LABEL.get(source) : undefined;
-      return label ? `${label}から検索` : "検索先が未設定";
+      const sourceLabel = new Map(
+        lookupSources(tr).map((s) => [s.value, s.label]),
+      );
+      const label = source ? sourceLabel.get(source) : undefined;
+      return label
+        ? tr("forms.formFieldsPanel.searchFromLabel", { label })
+        : tr("forms.formFieldsPanel.noSearchSourceSet");
     }
     case "table": {
       const columns = field.columns ?? [];
       return columns.length > 0
-        ? `列: ${columns.map((c) => c.label.ja || c.key).join(" / ")}`
-        : "列が未設定";
+        ? tr("forms.formFieldsPanel.columnsLabel", {
+            columns: columns.map((c) => c.label.ja || c.key).join(" / "),
+          })
+        : tr("forms.formFieldsPanel.noColumnsSet");
     }
     case "related": {
       const target = field.related?.targetFormCode;
       return target
-        ? `フォーム ${target} の回答を絞り込んで表示`
-        : "参照先が未設定";
+        ? tr("forms.formFieldsPanel.filteredResponsesOfForm", { target })
+        : tr("forms.formFieldsPanel.noReferenceTargetSet");
     }
     case "text":
     case "textarea":
-      return field.pattern ? `入力形式: ${field.pattern}` : "";
+      return field.pattern
+        ? tr("forms.formFieldsPanel.inputFormatLabel", {
+            pattern: field.pattern,
+          })
+        : "";
     case "number": {
       const { min, max } = field;
       if (min != null && max != null) return `${min} 〜 ${max}`;
-      if (min != null) return `${min} 以上`;
-      if (max != null) return `${max} 以下`;
+      if (min != null) {
+        return tr("forms.formFieldsPanel.minOrMore", { min });
+      }
+      if (max != null) {
+        return tr("forms.formFieldsPanel.maxOrLess", { max });
+      }
       return "";
     }
     default:
@@ -72,6 +93,8 @@ export function FormFieldsPanel({
   schemaError: string | null;
   currentVersion: number;
 }) {
+  const tr = useTranslations();
+  const TYPE_LABEL = new Map(formFieldTypes(tr).map((t) => [t.value, t.label]));
   // 定義が壊れているのと、項目をまだ作っていないのは別の話。取り違えると
   // 「編集で直す」のか「作る」のか分からなくなるので、先に切り分ける。
   if (schemaError) {
@@ -79,13 +102,14 @@ export function FormFieldsPanel({
       <Alert
         color="red"
         icon={<IconAlertTriangle size={16} />}
-        title="項目の定義を読み取れません"
+        title={tr("forms.formFieldsPanel.cannotReadTheItemDefinition")}
       >
         <Stack gap="xs">
           <Text size="sm">{schemaError}</Text>
           <Text c="dimmed" size="xs">
-            保存されている定義（バージョン {currentVersion}）が、いまのアプリが
-            読める形になっていません。「編集」から組み直して保存してください。
+            {tr("forms.formFieldsPanel.savedDefinitionCannotBeRead", {
+              version: currentVersion,
+            })}
           </Text>
         </Stack>
       </Alert>
@@ -98,8 +122,8 @@ export function FormFieldsPanel({
         icon={<IconForms size={22} />}
         message={
           currentVersion === 0
-            ? "項目がまだありません。「編集」から追加してください"
-            : "この版には項目がありません"
+            ? tr("forms.formFieldsPanel.thereAreNoItemsYetAdd")
+            : tr("forms.formFieldsPanel.thisVersionHasNoItems")
         }
       />
     );
@@ -113,27 +137,27 @@ export function FormFieldsPanel({
       columns={[
         {
           key: "order",
-          header: "順",
+          header: tr("forms.formFieldsPanel.order"),
           width: 60,
           align: "right",
           render: (f) => position.get(f.key) ?? "—",
         },
         {
           key: "label",
-          header: "項目名",
+          header: tr("common.itemName"),
           render: (f) => (
             <Group gap="xs" wrap="nowrap">
               <Text fw={500} size="sm">
-                {f.label.ja || "（名称未設定）"}
+                {f.label.ja || tr("common.unnamed")}
               </Text>
               {f.required && (
                 <Badge color="red" size="xs" variant="light">
-                  必須
+                  {tr("common.required2")}
                 </Badge>
               )}
               {f.isTitle && (
                 <Badge color="blue" size="xs" variant="light">
-                  見出し
+                  {tr("common.heading")}
                 </Badge>
               )}
             </Group>
@@ -141,7 +165,7 @@ export function FormFieldsPanel({
         },
         {
           key: "type",
-          header: "種類",
+          header: tr("common.kind"),
           width: 220,
           render: (f) => (
             <Text size="sm">{TYPE_LABEL.get(f.type) ?? f.type}</Text>
@@ -149,9 +173,9 @@ export function FormFieldsPanel({
         },
         {
           key: "detail",
-          header: "設定",
+          header: tr("common.settings"),
           render: (f) => {
-            const detail = detailOf(f);
+            const detail = detailOf(f, tr);
             return detail ? (
               <Text c="dimmed" size="xs">
                 {detail}
@@ -165,7 +189,7 @@ export function FormFieldsPanel({
         },
       ]}
       data={fields}
-      emptyMessage="項目がありません"
+      emptyMessage={tr("forms.formFieldsPanel.thereAreNoItems")}
       getRowId={(f) => f.key}
       // 項目定義は「順番のある 1 枚のリスト」なので区切らない。既定の 10 件
       // ページングだと 11 個目以降が 2 ページ目に隠れ、項目が無いように見える。
@@ -173,7 +197,7 @@ export function FormFieldsPanel({
       // スマホは総称カード（「項目名: …／種類: …」の繰り返し）だと見出しが
       // 大半を占めるので、ラベルを主役にした 1 行 = 1 項目のカードにする。
       renderCard={(f) => {
-        const detail = detailOf(f);
+        const detail = detailOf(f, tr);
         return (
           <Stack gap={4}>
             <Group gap="xs" wrap="nowrap">
@@ -181,22 +205,26 @@ export function FormFieldsPanel({
                 {position.get(f.key)}
               </Text>
               <Text fw={600} size="sm">
-                {f.label.ja || "（名称未設定）"}
+                {f.label.ja || tr("common.unnamed")}
               </Text>
               {f.required && (
                 <Badge color="red" size="xs" variant="light">
-                  必須
+                  {tr("common.required2")}
                 </Badge>
               )}
               {f.isTitle && (
                 <Badge color="blue" size="xs" variant="light">
-                  見出し
+                  {tr("common.heading")}
                 </Badge>
               )}
             </Group>
             <Text c="dimmed" size="xs">
-              {TYPE_LABEL.get(f.type) ?? f.type}
-              {detail ? ` ・ ${detail}` : ""}
+              {detail
+                ? tr("forms.formFieldsPanel.typeAndDetail", {
+                    type: TYPE_LABEL.get(f.type) ?? f.type,
+                    detail,
+                  })
+                : (TYPE_LABEL.get(f.type) ?? f.type)}
             </Text>
           </Stack>
         );

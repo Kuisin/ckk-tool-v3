@@ -12,6 +12,7 @@ import { notifications } from "@mantine/notifications";
 import { IconClock, IconLock } from "@tabler/icons-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { useState, useTransition } from "react";
 import { discardDraft } from "@/app/(dashboard)/general/forms/actions";
 import {
@@ -23,7 +24,7 @@ import {
 import { openConfirm } from "@/components/ui/modals";
 import { useIsMobile } from "@/hooks/useViewport";
 import {
-  AVAILABILITY_LABEL,
+  availabilityLabel,
   type FormAnswerValue,
   type FormAvailability,
   type FormFieldDef,
@@ -41,7 +42,7 @@ export function RespondForm({
   closesAtLabel,
   allowDraft = true,
   drafts = [],
-  submitLabel = "送信",
+  submitLabel,
   embedded = false,
   onSubmit,
   onCancel,
@@ -74,21 +75,24 @@ export function RespondForm({
   ) => Promise<{ ok: boolean; error?: string }>;
   onCancel?: () => void;
 }) {
+  const tr = useTranslations();
   const router = useRouter();
   const isMobile = useIsMobile();
   const [isPending, startTransition] = useTransition();
   const [answers, setAnswers] = useState(initialAnswers);
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const effectiveSubmitLabel =
+    submitLabel ?? tr("forms.respondFormClient.send");
 
   const open = submittable;
 
   const submit = (asDraft: boolean) => {
     if (!asDraft) {
-      const found = validateAnswers(fields, answers);
+      const found = validateAnswers(fields, answers, tr);
       setErrors(found);
       if (Object.keys(found).length > 0) {
         notifications.show({
-          title: "入力を確認してください",
+          title: tr("forms.respondForm.checkWhatYouEntered"),
           message: Object.values(found)[0],
           color: "red",
         });
@@ -99,14 +103,16 @@ export function RespondForm({
       const result = await onSubmit(answers, asDraft);
       if (result.ok) {
         notifications.show({
-          message: asDraft ? "下書きを保存しました" : "送信しました",
+          message: asDraft
+            ? tr("forms.respondForm.draftSaved")
+            : tr("forms.respondForm.sent"),
           color: "green",
         });
         router.refresh();
       } else {
         notifications.show({
-          title: "エラー",
-          message: result.error ?? "保存に失敗しました",
+          title: tr("common.error2"),
+          message: result.error ?? tr("common.couldNotSave"),
           color: "red",
         });
       }
@@ -145,14 +151,16 @@ export function RespondForm({
           }
         >
           {availability === "SCHEDULED"
-            ? "このフォームはまだ受付前です。"
-            : `このフォームの受付は終了しています（${AVAILABILITY_LABEL[availability]}）。`}
+            ? tr("forms.respondForm.thisFormIsNotOpenYet")
+            : tr("forms.respondForm.receptionClosedWithLabel", {
+                label: availabilityLabel(tr)[availability],
+              })}
         </Alert>
       )}
 
       {open && closesAtLabel && (
         <Text c="dimmed" size="xs">
-          受付終了: {closesAtLabel}
+          {tr("forms.respondForm.receptionClosesAt")}: {closesAtLabel}
         </Text>
       )}
 
@@ -183,7 +191,7 @@ export function RespondForm({
               onClick={() => submit(false)}
               type="button"
             >
-              {submitLabel}
+              {effectiveSubmitLabel}
             </PrimaryButton>
             {allowDraft && (
               <SecondaryButton
@@ -192,7 +200,7 @@ export function RespondForm({
                 loading={isPending}
                 onClick={() => submit(true)}
               >
-                下書き保存
+                {tr("forms.respondForm.saveAsDraft")}
               </SecondaryButton>
             )}
             {onCancel && <CancelButton fullWidth onClick={onCancel} />}
@@ -206,7 +214,7 @@ export function RespondForm({
                 loading={isPending}
                 onClick={() => submit(true)}
               >
-                下書き保存
+                {tr("forms.respondForm.saveAsDraft")}
               </SecondaryButton>
             )}
             <PrimaryButton
@@ -215,7 +223,7 @@ export function RespondForm({
               onClick={() => submit(false)}
               type="button"
             >
-              {submitLabel}
+              {effectiveSubmitLabel}
             </PrimaryButton>
           </Group>
         )}
@@ -236,28 +244,29 @@ function DraftResumeList({
 }: {
   drafts: { responseNumber: string; href: string }[];
 }) {
+  const tr = useTranslations();
   const router = useRouter();
   const [busy, setBusy] = useState<string | null>(null);
 
   const discard = (responseNumber: string) =>
     openConfirm({
-      title: "下書きを削除",
-      message: "この下書きを捨てます。書いた内容は戻せません。",
-      confirmLabel: "削除する",
+      title: tr("forms.respondForm.deleteTheDraft"),
+      message: tr("forms.respondForm.thisDiscardsTheDraftWhatYou"),
+      confirmLabel: tr("common.delete2"),
       onConfirm: async () => {
         setBusy(responseNumber);
         const result = await discardDraft(responseNumber);
         setBusy(null);
         if (result.ok) {
           notifications.show({
-            message: "下書きを削除しました",
+            message: tr("forms.respondForm.theDraftWasDeleted"),
             color: "green",
           });
           router.refresh();
         } else {
           notifications.show({
-            title: "エラー",
-            message: result.error ?? "削除できませんでした",
+            title: tr("common.error2"),
+            message: result.error ?? tr("forms.respondForm.couldNotBeDeleted"),
             color: "red",
           });
         }
@@ -268,7 +277,9 @@ function DraftResumeList({
     <Paper p="sm" radius="md" withBorder>
       <Stack gap="xs">
         <Text fw={600} size="sm">
-          書きかけの下書き（{drafts.length}）
+          {tr("forms.respondForm.draftsInProgressWithCount", {
+            count: drafts.length,
+          })}
         </Text>
         {drafts.map((d) => (
           <Group
@@ -284,12 +295,12 @@ function DraftResumeList({
               loading={busy === d.responseNumber}
               onClick={() => discard(d.responseNumber)}
             >
-              削除
+              {tr("common.delete")}
             </GhostButton>
           </Group>
         ))}
         <Text c="dimmed" size="xs">
-          下の空のフォームに書けば、新しい 1 件として保存されます。
+          {tr("forms.respondForm.fillInTheBlankFormBelow")}
         </Text>
       </Stack>
     </Paper>

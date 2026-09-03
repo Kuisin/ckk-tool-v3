@@ -21,6 +21,7 @@ import {
   jstDateString,
   type LocalizedText,
   localized,
+  workLocationLabel,
 } from "./format";
 import type { Locale } from "./i18n";
 import { allowedWorkLocationIdsForStep } from "./step-execution";
@@ -42,6 +43,7 @@ import {
   type StepState,
   type WorkflowCtx,
 } from "./workflow-core";
+import { workflowCoreT } from "./workflow-core-labels";
 
 export interface MyStepView {
   stepId: string;
@@ -52,7 +54,7 @@ export interface MyStepView {
   plantName: string | null;
   quantityMode: QuantityTrackingMode;
   sessionState: StepSessionState;
-  /** BLOCKED の理由（日本語・サーバー由来。UI は補助表示に使う）。 */
+  /** BLOCKED の理由（サーバー由来・利用者の言語で解決済み。UI は補助表示に使う）。 */
   blockReasons: string[];
   bucket: StepBucket;
   sortOrder: number;
@@ -296,7 +298,9 @@ async function hydrateSteps(
       executionLocation: r.executionLocation,
       sessionState: state,
       blockReasons:
-        state === "BLOCKED" ? canStartStep(r.id, ctx, userId).reasons : [],
+        state === "BLOCKED"
+          ? canStartStep(r.id, ctx, userId, workflowCoreT(locale)).reasons
+          : [],
       bucket: bucketOf(plannedDate, todayJst),
       sortOrder: r.sortOrder,
       plannedDate,
@@ -666,11 +670,10 @@ export async function getStepLocationGate(
       },
     }),
   ]);
-  const label = (l: { name: unknown; group: { name: unknown } }): string =>
-    `${localized(asText(l.group.name), locale)} / ${localized(asText(l.name), locale)}`;
-  const deviceDefaultLabel = deviceRow?.defaultWorkLocation
-    ? label(deviceRow.defaultWorkLocation)
-    : null;
+  const deviceDefaultLabel = workLocationLabel(
+    deviceRow?.defaultWorkLocation,
+    locale,
+  );
   const enforced = deviceRow?.enforceWorkLocation ?? false;
 
   const allowedIds = stepRow
@@ -714,7 +717,7 @@ export async function getStepLocationGate(
       allowedIds.has(deviceRow.defaultWorkLocationId),
     deviceDefaultLabel,
     allowed: locations.map((l) => ({
-      label: label(l),
+      label: workLocationLabel(l, locale) ?? "—",
       deviceNames: devicesByLocation.get(l.id) ?? [],
     })),
   };

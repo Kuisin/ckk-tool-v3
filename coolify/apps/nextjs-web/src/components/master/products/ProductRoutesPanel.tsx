@@ -24,7 +24,7 @@ import {
 import { notifications } from "@mantine/notifications";
 import { IconGitBranch, IconPlus } from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
-import { useLocale } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { useState, useTransition } from "react";
 import {
   deleteProductRoute,
@@ -50,13 +50,14 @@ export function ProductRoutesPanel({
   productId: number;
   routes: RouteView[];
 }) {
+  const tr = useTranslations();
   const router = useRouter();
 
   return (
     <Stack gap="md">
       <Group justify="space-between">
         <Text fw={600} size="sm">
-          工程リスト（ルート）
+          {tr("master.products.stepListRoute")}
         </Text>
         <PrimaryButton
           leftSection={<IconPlus size={14} />}
@@ -64,13 +65,13 @@ export function ProductRoutesPanel({
             router.push(`/master/products/${productId}/routes/new`)
           }
         >
-          ルート新規作成
+          {tr("master.products.newRoute")}
         </PrimaryButton>
       </Group>
       {routes.length === 0 ? (
         <EmptyState
           icon={<IconGitBranch size={24} />}
-          message="この製品の工程リストは未登録です。ルートを作成すると指示書作成時に工程構成をプリフィルできます。"
+          message={tr("master.products.noStepListIsRegisteredFor")}
         />
       ) : (
         routes.map((route) => (
@@ -88,6 +89,7 @@ function RouteCard({
   productId: number;
   route: RouteView;
 }) {
+  const tr = useTranslations();
   const locale = useLocale();
   const fmt = useFormat();
   const router = useRouter();
@@ -112,7 +114,7 @@ function RouteCard({
               color={route.customerBpId != null ? "blue" : "gray"}
               variant="light"
             >
-              {route.customerName ?? "汎用"}
+              {route.customerName ?? tr("common.generic")}
             </Badge>
             <ActiveBadge active={route.isActive} />
             <Text c="dimmed" size="xs">
@@ -129,17 +131,17 @@ function RouteCard({
               }
               size="xs"
             >
-              新バージョン
+              {tr("master.products.newVersion")}
             </SecondaryButton>
             <GhostButton onClick={() => setEditOpen(true)} size="xs">
-              編集
+              {tr("common.edit2")}
             </GhostButton>
             <GhostButton
               color="red"
               onClick={() => setDeleteOpen(true)}
               size="xs"
             >
-              削除
+              {tr("common.delete")}
             </GhostButton>
           </Group>
         </Group>
@@ -166,10 +168,14 @@ function RouteCard({
             <Table.Thead>
               <Table.Tr>
                 <Table.Th w={40}>#</Table.Th>
-                <Table.Th>工程</Table.Th>
-                {!isMobile && <Table.Th w={140}>カテゴリ</Table.Th>}
-                <Table.Th w={90}>作業時間</Table.Th>
-                <Table.Th w={isMobile ? 90 : 220}>実施場所</Table.Th>
+                <Table.Th>{tr("master.productDetail.routesTab")}</Table.Th>
+                {!isMobile && (
+                  <Table.Th w={140}>{tr("common.category")}</Table.Th>
+                )}
+                <Table.Th w={90}>{tr("common.workHours")}</Table.Th>
+                <Table.Th w={isMobile ? 90 : 220}>
+                  {tr("common.executionLocation")}
+                </Table.Th>
               </Table.Tr>
             </Table.Thead>
             <Table.Tbody>
@@ -202,7 +208,9 @@ function RouteCard({
                         size="xs"
                         variant="outline"
                       >
-                        {s.executionLocation === "OUTSOURCE" ? "外注" : "社内"}
+                        {s.executionLocation === "OUTSOURCE"
+                          ? tr("common.outsourced")
+                          : tr("common.inHouse")}
                       </Badge>
                       {!isMobile && (
                         <Text c="dimmed" size="xs" truncate>
@@ -242,6 +250,7 @@ function EditRouteModal({
   opened: boolean;
   onClose: () => void;
 }) {
+  const tr = useTranslations();
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [nameJa, setNameJa] = useState(route.name);
@@ -260,15 +269,15 @@ function EditRouteModal({
       });
       if (result.ok) {
         notifications.show({
-          title: "保存しました",
-          message: "工程ルートを更新しました",
+          title: tr("common.saved2"),
+          message: tr("master.products.theProcessRouteWasUpdated"),
           color: "green",
         });
         onClose();
         router.refresh();
       } else {
         notifications.show({
-          title: "エラー",
+          title: tr("common.error2"),
           message: result.error,
           color: "red",
         });
@@ -277,30 +286,36 @@ function EditRouteModal({
   };
 
   return (
-    <Modal onClose={onClose} opened={opened} title="工程ルートの編集">
+    <Modal
+      onClose={onClose}
+      opened={opened}
+      title={tr("master.products.editTheProcessRoute")}
+    >
       <Stack gap="sm">
         <SimpleGrid cols={2} spacing="sm">
           <TextInput
-            label="ルート名（日本語）"
+            label={tr("common.routeNameJapanese")}
             onChange={(e) => setNameJa(e.currentTarget.value)}
             value={nameJa}
             withAsterisk
           />
           <TextInput
-            label="ルート名（英語）"
+            label={tr("common.routeNameEnglish")}
             onChange={(e) => setNameEn(e.currentTarget.value)}
             value={nameEn}
           />
         </SimpleGrid>
         <Switch
           checked={isActive}
-          label="有効"
+          label={tr("common.enabled")}
           onChange={(e) => setIsActive(e.currentTarget.checked)}
         />
         <Group justify="flex-end">
-          <SecondaryButton onClick={onClose}>キャンセル</SecondaryButton>
+          <SecondaryButton onClick={onClose}>
+            {tr("common.cancel")}
+          </SecondaryButton>
           <PrimaryButton loading={isPending} onClick={submit}>
-            保存
+            {tr("common.save2")}
           </PrimaryButton>
         </Group>
       </Stack>
@@ -317,6 +332,7 @@ function DeleteRouteModal({
   opened: boolean;
   onClose: () => void;
 }) {
+  const tr = useTranslations();
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
 
@@ -325,15 +341,17 @@ function DeleteRouteModal({
       const result = await deleteProductRoute(route.id);
       if (result.ok) {
         notifications.show({
-          title: "削除しました",
-          message: `工程ルート「${route.name}」を削除しました`,
+          title: tr("common.deleted"),
+          message: tr("master.productRoutesPanel.routeDeletedMessage", {
+            name: route.name,
+          }),
           color: "green",
         });
         onClose();
         router.refresh();
       } else {
         notifications.show({
-          title: "エラー",
+          title: tr("common.error2"),
           message: result.error,
           color: "red",
         });
@@ -342,16 +360,23 @@ function DeleteRouteModal({
   };
 
   return (
-    <Modal onClose={onClose} opened={opened} title="削除の確認">
+    <Modal
+      onClose={onClose}
+      opened={opened}
+      title={tr("common.confirmDeletion")}
+    >
       <Stack gap="sm">
         <Text size="sm">
-          工程ルート「{route.name}」を全バージョンごと削除します。
-          この操作は取り消せません。
+          {tr("master.productRoutesPanel.deleteRouteConfirmMessage", {
+            name: route.name,
+          })}
         </Text>
         <Group justify="flex-end">
-          <SecondaryButton onClick={onClose}>戻る</SecondaryButton>
+          <SecondaryButton onClick={onClose}>
+            {tr("common.back2")}
+          </SecondaryButton>
           <DangerButton loading={isPending} onClick={submit}>
-            削除
+            {tr("common.delete")}
           </DangerButton>
         </Group>
       </Stack>

@@ -26,6 +26,7 @@ import {
 } from "@tabler/icons-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { useState, useTransition } from "react";
 import {
   addWorkOrderLinkAction,
@@ -50,6 +51,7 @@ function LinkRow({
   onRemove?: () => void;
   removing?: boolean;
 }) {
+  const tr = useTranslations();
   return (
     <Group gap="sm" wrap="nowrap">
       {direction === "incoming" ? (
@@ -62,11 +64,15 @@ function LinkRow({
       </Link>
       <StatusBadge entity="WorkOrder" status={link.status} />
       <Badge color="gray" variant="light">
-        {link.quantity != null ? `${link.quantity} 本` : "完成数全量"}
+        {link.quantity != null
+          ? tr("production.workOrderLinksCard.quantityPiecesWithCount", {
+              count: link.quantity,
+            })
+          : tr("production.workOrders.theWholeFinishedQuantity")}
       </Badge>
       {onRemove && (
         <ActionIcon
-          aria-label="リンク解除"
+          aria-label={tr("common.unlink")}
           color="red"
           loading={removing}
           onClick={onRemove}
@@ -91,6 +97,7 @@ export function WorkOrderLinksCard({
   incoming: WoLinkView[];
   outgoing: WoLinkView[];
 }) {
+  const tr = useTranslations();
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [addOpen, setAddOpen] = useState(false);
@@ -114,8 +121,11 @@ export function WorkOrderLinksCard({
       });
       if (result.ok) {
         notifications.show({
-          title: "先行指示書をリンクしました",
-          message: `#${sourceNumber} の完了後にこの指示書を開始できます`,
+          title: tr("production.workOrders.thePrecedingWorkOrderWasLinked"),
+          message: tr(
+            "production.workOrderLinksCard.canStartAfterSourceCompletesWithNumber",
+            { number: sourceNumber },
+          ),
           color: "green",
         });
         setAddOpen(false);
@@ -124,7 +134,7 @@ export function WorkOrderLinksCard({
         router.refresh();
       } else {
         notifications.show({
-          title: "エラー",
+          title: tr("common.error2"),
           message: result.error,
           color: "red",
         });
@@ -137,14 +147,14 @@ export function WorkOrderLinksCard({
       const result = await removeWorkOrderLinkAction(linkId, workOrderNumber);
       if (result.ok) {
         notifications.show({
-          title: "リンクを解除しました",
+          title: tr("common.unlinked"),
           message: "",
           color: "green",
         });
         router.refresh();
       } else {
         notifications.show({
-          title: "エラー",
+          title: tr("common.error2"),
           message: result.error,
           color: "red",
         });
@@ -159,12 +169,12 @@ export function WorkOrderLinksCard({
           <Group gap="xs">
             <IconLink size={16} />
             <Text fw={600} size="sm">
-              関連指示書（数量受け渡し）
+              {tr("production.workOrders.relatedWorkOrdersQuantityHandover")}
             </Text>
           </Group>
           {canAdd && (
             <SecondaryButton onClick={() => setAddOpen(true)} size="xs">
-              先行指示書を追加
+              {tr("production.workOrders.addAPrecedingWorkOrder")}
             </SecondaryButton>
           )}
         </Group>
@@ -172,7 +182,7 @@ export function WorkOrderLinksCard({
         {incoming.length > 0 && (
           <Stack gap={6}>
             <Text c="dimmed" size="xs">
-              先行（完了までこの指示書の先頭工程は開始不可・完成数が受入に渡る）
+              {tr("production.workOrders.precedingThisWorkOrderSFirst")}
             </Text>
             {incoming.map((l) => (
               <LinkRow
@@ -189,7 +199,7 @@ export function WorkOrderLinksCard({
         {outgoing.length > 0 && (
           <Stack gap={6}>
             <Text c="dimmed" size="xs">
-              後続（この指示書の完成数を受け取る）
+              {tr("production.workOrders.followingReceivesThisWorkOrderS")}
             </Text>
             {outgoing.map((l) => (
               <LinkRow direction="outgoing" key={l.id} link={l} />
@@ -199,27 +209,28 @@ export function WorkOrderLinksCard({
 
         {incoming.length === 0 && outgoing.length === 0 && (
           <Text c="dimmed" size="sm">
-            リンクなし — 先行指示書（例: 母材の製造）を追加すると、その完了を
-            待ってから開始し、完成数を受入として引き継ぎます
+            {tr("production.workOrders.noLinkAddingAPrecedingWork")}
           </Text>
         )}
       </Stack>
 
       <ModalShell
         confirmDisabled={sourceNumber === ""}
-        confirmLabel="リンク追加"
+        confirmLabel={tr("production.workOrders.addALink")}
         loading={isPending}
         onClose={() => setAddOpen(false)}
         onConfirm={handleAdd}
         opened={addOpen}
-        title="先行指示書を追加"
+        title={tr("production.workOrders.addAPrecedingWorkOrder")}
       >
         <Stack gap="sm">
           <NumberInput
             allowDecimal={false}
             allowNegative={false}
-            description="この指示書より先に完了すべき指示書（ロット番号）"
-            label="先行指示書番号"
+            description={tr(
+              "production.workOrders.workOrdersThatMustFinishBefore",
+            )}
+            label={tr("production.workOrders.precedingWorkOrderNumber")}
             min={1}
             onChange={(v) => setSourceNumber(typeof v === "number" ? v : "")}
             value={sourceNumber}
@@ -228,8 +239,10 @@ export function WorkOrderLinksCard({
           <NumberInput
             allowDecimal={false}
             allowNegative={false}
-            description="未入力 = 先行指示書の完了時の完成数を全量受け取る"
-            label="受け渡し数量（任意）"
+            description={tr(
+              "production.workOrders.blankReceiveTheWholeFinishedQuantity",
+            )}
+            label={tr("production.workOrders.handoverQuantityOptional")}
             min={1}
             onChange={(v) => setQuantity(typeof v === "number" ? v : "")}
             value={quantity}

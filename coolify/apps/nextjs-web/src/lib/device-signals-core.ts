@@ -295,5 +295,8 @@ export function deviceLabelFrom(signals: NormalizedSignals): string {
   if (browser && os) return `${browser} / ${os}`.slice(0, 80);
   if (browser) return browser.slice(0, 80);
   if (os) return os.slice(0, 80);
-  return "不明な端末";
+  // ログイン時（Auth.js callback）に呼ばれ next-intl の request-scope が無い。
+  // ブラウザ/OS シグネチャが一切パースできない稀なケースの label 保存値のみに
+  // 使われる（判定には使わない表示専用の値）。
+  return "不明な端末"; // i18n-ignore
 }

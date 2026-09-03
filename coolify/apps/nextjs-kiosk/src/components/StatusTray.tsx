@@ -25,6 +25,7 @@ import {
   IconBoltFilled,
 } from "@tabler/icons-react";
 import { useEffect, useState } from "react";
+import { useI18n } from "./I18nProvider";
 
 type BatteryState = { level: number; charging: boolean };
 
@@ -43,17 +44,26 @@ function batteryIcon(level: number) {
   return IconBattery;
 }
 
-const WEEKDAYS = ["日", "月", "火", "水", "木", "金", "土"] as const;
+/** ロケール → Intl.DateTimeFormat に渡す BCP 47 タグ。 */
+function intlLocale(locale: string): string {
+  if (locale === "en") return "en-US";
+  if (locale === "zh") return "zh-CN";
+  return "ja-JP";
+}
 
 /** 日付 + 時刻（ヘッダー右側）。 */
 export function HeaderClock() {
+  const { locale } = useI18n();
   const [time, setTime] = useState<string | null>(null);
 
   useEffect(() => {
+    const weekdayFmt = new Intl.DateTimeFormat(intlLocale(locale), {
+      weekday: "short",
+    });
     const tick = () => {
       const d = new Date();
       setTime(
-        `${d.getMonth() + 1}/${d.getDate()}(${WEEKDAYS[d.getDay()]}) ${String(
+        `${d.getMonth() + 1}/${d.getDate()}(${weekdayFmt.format(d)}) ${String(
           d.getHours(),
         ).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`,
       );
@@ -61,7 +71,7 @@ export function HeaderClock() {
     tick();
     const timer = setInterval(tick, 10_000);
     return () => clearInterval(timer);
-  }, []);
+  }, [locale]);
 
   if (!time) return null;
   return (

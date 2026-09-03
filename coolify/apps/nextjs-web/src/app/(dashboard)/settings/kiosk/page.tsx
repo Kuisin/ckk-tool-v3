@@ -1,43 +1,68 @@
 import { Stack } from "@mantine/core";
+import { getTranslations } from "next-intl/server";
 import { KioskSettingsPanel } from "@/components/settings/kiosk/KioskSettingsPanel";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { requireAppRead } from "@/lib/authz-page";
 import {
   getKioskAppFlags,
-  KIOSK_APP_CATALOG,
   KIOSK_POLICY_DEFAULTS,
+  kioskAppCatalog,
 } from "@/lib/kiosk-settings";
 
 export const dynamic = "force-dynamic";
 
 /** 共有端末設定（SY0A）— ランチャーのアプリ表示 + ポリシー参照。kiosk 権限。 */
 export default async function KioskSettingsPage() {
+  const tr = await getTranslations();
   const denied = await requireAppRead("kiosk-settings");
   if (denied) return denied;
 
   const flags = await getKioskAppFlags();
   const p = KIOSK_POLICY_DEFAULTS;
   const policy = [
-    { label: "セッション最大時間", value: `${p.sessionTtlHours} 時間` },
-    { label: "アイドル自動ログアウト", value: `${p.idleTimeoutMinutes} 分` },
     {
-      label: "PIN 再入力（端末未使用）",
-      value: `${p.pinReverifyDeviceIdleHours} 時間`,
+      label: tr("settings.kiosk.maximumSessionLength"),
+      value: tr("settings.kiosk.hoursValue", { n: p.sessionTtlHours }),
     },
-    { label: "PIN 再入力（経過）", value: `${p.pinReverifyMaxDays} 日` },
-    { label: "PIN 連続失敗の上限", value: `${p.pinMaxAttempts} 回` },
-    { label: "PIN ロック時間", value: `${p.pinLockMinutes} 分` },
-    { label: "端末トークン有効期間", value: `${p.deviceTokenTtlDays} 日` },
+    {
+      label: tr("settings.kiosk.idleAutoLogout"),
+      value: tr("settings.kiosk.minutesValue", { n: p.idleTimeoutMinutes }),
+    },
+    {
+      label: tr("settings.kiosk.reEnterThePinDeviceUnused"),
+      value: tr("settings.kiosk.hoursValue", {
+        n: p.pinReverifyDeviceIdleHours,
+      }),
+    },
+    {
+      label: tr("settings.kiosk.reEnterThePinElapsed"),
+      value: tr("settings.kiosk.daysValue", { n: p.pinReverifyMaxDays }),
+    },
+    {
+      label: tr("settings.kiosk.consecutivePinFailureLimit"),
+      value: tr("settings.kiosk.useCountTimes", { count: p.pinMaxAttempts }),
+    },
+    {
+      label: tr("settings.kiosk.pINLockoutTime"),
+      value: tr("settings.kiosk.minutesValue", { n: p.pinLockMinutes }),
+    },
+    {
+      label: tr("settings.kiosk.deviceTokenLifetime"),
+      value: tr("settings.kiosk.daysValue", { n: p.deviceTokenTtlDays }),
+    },
   ];
 
   return (
     <Stack gap="md">
       <PageHeader
-        breadcrumbs={["システム", "共有端末設定"]}
-        title="共有端末設定"
+        breadcrumbs={[
+          tr("common.system"),
+          tr("settings.kiosk.sharedDeviceSettings"),
+        ]}
+        title={tr("settings.kiosk.sharedDeviceSettings")}
       />
       <KioskSettingsPanel
-        catalog={KIOSK_APP_CATALOG}
+        catalog={kioskAppCatalog(tr)}
         initialFlags={flags}
         policy={policy}
       />

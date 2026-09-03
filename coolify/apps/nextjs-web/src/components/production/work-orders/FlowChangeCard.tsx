@@ -15,6 +15,7 @@ import { Text } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
 import { IconGitBranch } from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { useState, useTransition } from "react";
 import {
   approveFlowChange,
@@ -43,6 +44,7 @@ export function FlowChangeCard({
   /** 変更そのものの承認状態（work_order_flow_changes の依頼）。 */
   approval: ApprovalActionState;
 }) {
+  const tr = useTranslations();
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [rejectOpen, setRejectOpen] = useState(false);
@@ -54,7 +56,7 @@ export function FlowChangeCard({
   const stepLabel =
     approval.stepCount > 0
       ? `${approval.stepLabel || `第${approval.stepNo}承認`}（${approval.stepNo}/${approval.stepCount}）`
-      : "承認依頼中";
+      : tr("common.pendingApproval");
 
   const handleApprove = () => {
     startTransition(async () => {
@@ -63,19 +65,19 @@ export function FlowChangeCard({
         notifications.show({
           title: result.data?.applied
             ? change.appliedAt != null
-              ? "工程フロー変更を承認しました（適用済み）"
-              : "工程フロー変更を適用しました"
-            : "承認しました",
+              ? tr("production.workOrders.theWorkflowChangeWasApprovedAnd")
+              : tr("production.workOrders.theWorkflowChangeWasApplied")
+            : tr("common.approved"),
           message: result.data?.applied
             ? change.summary
-            : "次の承認者へ回りました",
+            : tr("common.passedToTheNextApprover"),
           color: "green",
         });
         router.refresh();
       } else {
         notifications.show({
-          title: "エラー",
-          message: result.error ?? "承認に失敗しました",
+          title: tr("common.error2"),
+          message: result.error ?? tr("common.couldNotApprove"),
           color: "red",
         });
       }
@@ -89,18 +91,18 @@ export function FlowChangeCard({
         setRejectOpen(false);
         setReason("");
         notifications.show({
-          title: "差し戻しました",
+          title: tr("common.sentBack"),
           message:
             change.appliedAt != null
-              ? "変更は適用済みです — 工程は自動では戻りません（詳細に警告が出ます）"
-              : "工程は変更されていません",
+              ? tr("production.workOrders.theChangeIsAlreadyAppliedThe")
+              : tr("production.workOrders.theStepsHaveNotChanged"),
           color: "orange",
         });
         router.refresh();
       } else {
         notifications.show({
-          title: "エラー",
-          message: result.error ?? "差し戻しに失敗しました",
+          title: tr("common.error2"),
+          message: result.error ?? tr("common.couldNotSendItBack"),
           color: "red",
         });
       }
@@ -121,31 +123,39 @@ export function FlowChangeCard({
             </>
           ) : null
         }
-        description={`${change.summary}｜依頼: ${change.requestedByName ?? "—"}｜${stepLabel}。${
-          change.appliedAt != null
-            ? "適用済みです（事後承認 — 差し戻されても自動では戻りません）。"
-            : "承認されるまで工程は変わりません。"
-        }`}
+        description={tr("production.workOrders.flowChangeDescription", {
+          summary: change.summary,
+          requestedBy: change.requestedByName ?? "—",
+          stepLabel,
+          note:
+            change.appliedAt != null
+              ? tr("production.workOrders.flowChangeAlreadyApplied")
+              : tr("production.workOrders.flowChangeNotAppliedYet"),
+        })}
         icon={<IconGitBranch size={20} />}
-        title={canAct ? "工程フロー変更の承認" : "工程フロー変更の承認依頼中"}
+        title={
+          canAct
+            ? tr("production.workOrders.flowChangeApprovalTitle")
+            : tr("production.workOrders.workflowChangePendingApproval")
+        }
         tone={canAct ? "approve" : "wait"}
       />
       <ModalShell
         confirmColor="red"
         confirmDisabled={!reason.trim()}
-        confirmLabel="差し戻す"
+        confirmLabel={tr("common.sendBack")}
         loading={isPending}
         onClose={() => setRejectOpen(false)}
         onConfirm={handleReject}
         opened={rejectOpen}
-        title="工程フロー変更の差し戻し"
+        title={tr("production.workOrders.sendTheWorkflowChangeBack")}
       >
         <Text size="sm">
-          差し戻すと、この変更は適用されずに閉じます（工程はいまのままです）。
+          {tr("production.workOrders.sendingItBackClosesTheChange")}
         </Text>
         <textarea
           onChange={(e) => setReason(e.currentTarget.value)}
-          placeholder="差し戻し理由"
+          placeholder={tr("common.reasonForSendingBack")}
           rows={3}
           style={{ width: "100%" }}
           value={reason}

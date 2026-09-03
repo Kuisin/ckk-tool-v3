@@ -10,6 +10,7 @@
 import { Badge, Group, Select, Text, TextInput } from "@mantine/core";
 import { IconSearch, IconUserCog } from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { useFormat } from "@/components/layout/PreferencesProvider";
 import { type Column, DataTable } from "@/components/ui/DataTable";
 import { ListShell } from "@/components/ui/shells";
@@ -17,11 +18,15 @@ import { useUrlSelectState, useUrlStringState } from "@/hooks/useUrlState";
 import { localized } from "@/lib/format";
 import type { AdminUserRow } from "@/lib/users-admin";
 
-export const USER_GROUP_LABELS: Record<AdminUserRow["group"], string> = {
-  SYSTEM: "システム",
-  EMPLOYEE: "社員",
-  GUEST: "ゲスト",
-};
+export function userGroupLabels(
+  tr: ReturnType<typeof useTranslations>,
+): Record<AdminUserRow["group"], string> {
+  return {
+    SYSTEM: tr("common.system"),
+    EMPLOYEE: tr("settings.usersTable.employee"),
+    GUEST: tr("common.guest"),
+  };
+}
 
 const GROUP_COLORS: Record<AdminUserRow["group"], string> = {
   SYSTEM: "dark",
@@ -30,22 +35,25 @@ const GROUP_COLORS: Record<AdminUserRow["group"], string> = {
 };
 
 export function UserGroupBadge({ group }: { group: AdminUserRow["group"] }) {
+  const tr = useTranslations();
   return (
     <Badge color={GROUP_COLORS[group]} variant="light">
-      {USER_GROUP_LABELS[group]}
+      {userGroupLabels(tr)[group]}
     </Badge>
   );
 }
 
 export function UserActiveBadge({ isActive }: { isActive: boolean }) {
+  const tr = useTranslations();
   return (
     <Badge color={isActive ? "green" : "gray"} variant="light">
-      {isActive ? "有効" : "無効"}
+      {isActive ? tr("common.enabled") : tr("common.disabled3")}
     </Badge>
   );
 }
 
 export function UsersTable({ rows }: { rows: AdminUserRow[] }) {
+  const tr = useTranslations();
   const fmt = useFormat();
   const router = useRouter();
 
@@ -76,7 +84,7 @@ export function UsersTable({ rows }: { rows: AdminUserRow[] }) {
   const columns: Column<AdminUserRow>[] = [
     {
       key: "username",
-      header: "ユーザー名",
+      header: tr("common.username"),
       sortable: true,
       width: 180,
       render: (r) => (
@@ -88,7 +96,7 @@ export function UsersTable({ rows }: { rows: AdminUserRow[] }) {
     },
     {
       key: "displayName",
-      header: "表示名",
+      header: tr("common.displayName"),
       sortable: true,
       render: (r) => (
         <Text fw={500} size="sm">
@@ -99,7 +107,7 @@ export function UsersTable({ rows }: { rows: AdminUserRow[] }) {
     },
     {
       key: "email",
-      header: "メール",
+      header: tr("common.email"),
       hideable: true,
       render: (r) => (
         <Text c={r.email ? undefined : "dimmed"} size="sm">
@@ -109,13 +117,13 @@ export function UsersTable({ rows }: { rows: AdminUserRow[] }) {
     },
     {
       key: "group",
-      header: "区分",
+      header: tr("common.type"),
       width: 100,
       render: (r) => <UserGroupBadge group={r.group} />,
     },
     {
       key: "roles",
-      header: "ロール",
+      header: tr("common.role"),
       truncate: false,
       render: (r) =>
         r.roles.length === 0 ? (
@@ -136,7 +144,7 @@ export function UsersTable({ rows }: { rows: AdminUserRow[] }) {
     },
     {
       key: "isActive",
-      header: "状態",
+      header: tr("common.status"),
       width: 90,
       sortable: true,
       render: (r) => <UserActiveBadge isActive={r.isActive} />,
@@ -144,7 +152,7 @@ export function UsersTable({ rows }: { rows: AdminUserRow[] }) {
     },
     {
       key: "lastLoginAt",
-      header: "最終ログイン",
+      header: tr("common.lastLogin"),
       width: 150,
       sortable: true,
       render: (r) => (
@@ -158,28 +166,28 @@ export function UsersTable({ rows }: { rows: AdminUserRow[] }) {
 
   return (
     <ListShell
-      breadcrumbs={["システム", "ユーザー管理"]}
+      breadcrumbs={[tr("common.system"), tr("common.users")]}
       filters={
         <>
           <Select
             clearable
-            data={Object.entries(USER_GROUP_LABELS).map(([value, label]) => ({
+            data={Object.entries(userGroupLabels(tr)).map(([value, label]) => ({
               value,
               label,
             }))}
             onChange={setGroup}
-            placeholder="区分"
+            placeholder={tr("common.type")}
             value={group}
             w={140}
           />
           <Select
             clearable
             data={[
-              { value: "active", label: "有効" },
-              { value: "inactive", label: "無効" },
+              { value: "active", label: tr("common.enabled") },
+              { value: "inactive", label: tr("common.disabled3") },
             ]}
             onChange={setActive}
-            placeholder="状態"
+            placeholder={tr("common.status")}
             value={active}
             w={120}
           />
@@ -190,17 +198,17 @@ export function UsersTable({ rows }: { rows: AdminUserRow[] }) {
         <TextInput
           leftSection={<IconSearch size={14} />}
           onChange={(e) => setSearch(e.currentTarget.value || null)}
-          placeholder="ユーザー名 / 表示名 / メール / ロール..."
+          placeholder={tr("settings.usersTable.usernameDisplayNameEmailRole")}
           value={search}
         />
       }
-      title="ユーザー管理"
+      title={tr("common.users")}
     >
       <DataTable
         columns={columns}
         data={filtered}
         emptyIcon={<IconUserCog size={28} />}
-        emptyMessage="該当するユーザーがありません"
+        emptyMessage={tr("settings.usersTable.noMatchingUsers")}
         getRowId={(r) => r.id}
         onRowClick={(r) => router.push(`/settings/users/${r.id}`)}
         urlState

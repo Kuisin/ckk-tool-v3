@@ -16,6 +16,7 @@ import {
   Text,
   Textarea,
 } from "@mantine/core";
+import { useTranslations } from "next-intl";
 import { useState } from "react";
 import { GhostButton } from "@/components/ui/buttons";
 import { useIsMobile } from "@/hooks/useViewport";
@@ -49,6 +50,7 @@ export function MarkdownEditor({
   onChange: (next: string) => void;
   minRows?: number;
 }) {
+  const tr = useTranslations();
   const isMobile = useIsMobile();
   // スマホに分割表示は無い。横 375px を 2 つに割ると、どちらも読めない。
   const [mode, setMode] = useState<Mode>("split");
@@ -67,31 +69,34 @@ export function MarkdownEditor({
     <Stack gap="xs">
       <Group gap="xs" wrap="wrap">
         <GhostButton onClick={() => apply((e) => wrapSelection(e, "**"))}>
-          太字
+          {tr("documents.markdownEditor.bold")}
         </GhostButton>
         <GhostButton onClick={() => apply((e) => wrapSelection(e, "_"))}>
-          斜体
+          {tr("documents.markdownEditor.italic")}
         </GhostButton>
         <GhostButton onClick={() => apply((e) => wrapSelection(e, "`"))}>
-          コード
+          {tr("common.code")}
         </GhostButton>
         <GhostButton onClick={() => apply((e) => prefixLine(e, "## "))}>
-          見出し
+          {tr("common.heading")}
         </GhostButton>
         <GhostButton onClick={() => apply((e) => prefixLine(e, "- "))}>
-          箇条書き
+          {tr("documents.markdownEditor.bulletedList")}
         </GhostButton>
         <GhostButton
           onClick={() => apply((e) => wrapSelection(e, "[", "](/)"))}
         >
-          リンク
+          {tr("common.link")}
         </GhostButton>
       </Group>
       <Textarea
         autosize
         error={
           tooLong
-            ? `本文が長すぎます（${lines} 行 / 上限 ${MAX_DOC_LINES} 行）。文書を分けてください`
+            ? tr("documents.markdownEditor.bodyTooLong", {
+                lines,
+                max: MAX_DOC_LINES,
+              })
             : undefined
         }
         minRows={minRows}
@@ -104,7 +109,7 @@ export function MarkdownEditor({
         value={value}
       />
       <Text c="dimmed" size="xs">
-        {lines} 行
+        {tr("documents.markdownEditor.lineCountLabel", { lines })}
       </Text>
     </Stack>
   );
@@ -121,13 +126,19 @@ export function MarkdownEditor({
         data={
           isMobile
             ? [
-                { value: "edit", label: "編集" },
-                { value: "preview", label: "プレビュー" },
+                { value: "edit", label: tr("common.edit2") },
+                {
+                  value: "preview",
+                  label: tr("documents.markdownEditor.preview"),
+                },
               ]
             : [
-                { value: "edit", label: "編集" },
-                { value: "split", label: "分割" },
-                { value: "preview", label: "プレビュー" },
+                { value: "edit", label: tr("common.edit2") },
+                { value: "split", label: tr("documents.markdownEditor.split") },
+                {
+                  value: "preview",
+                  label: tr("documents.markdownEditor.preview"),
+                },
               ]
         }
         fullWidth={isMobile}

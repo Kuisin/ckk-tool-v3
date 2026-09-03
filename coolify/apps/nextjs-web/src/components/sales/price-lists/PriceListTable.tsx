@@ -21,6 +21,7 @@ import {
   IconTrash,
 } from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { useState, useTransition } from "react";
 import {
   deletePriceEntries,
@@ -59,6 +60,7 @@ export function PriceListTable({
   customerOptions: Option[];
   productOptions: Option[];
 }) {
+  const tr = useTranslations();
   const fmt = useFormat();
   const router = useRouter();
   const isMobile = useIsMobile();
@@ -86,14 +88,17 @@ export function PriceListTable({
       );
       if (result.ok) {
         notifications.show({
-          title: isActive ? "有効化しました" : "無効化しました",
-          message: `${rows.length}件の価格表を${isActive ? "有効化" : "無効化"}しました`,
+          title: isActive ? tr("common.enabled2") : tr("common.disabled2"),
+          message: tr("sales.priceListTable.bulkActiveChangedMessage", {
+            count: rows.length,
+            action: isActive ? tr("common.enable") : tr("common.disable"),
+          }),
           color: "green",
         });
         router.refresh();
       } else {
         notifications.show({
-          title: "エラー",
+          title: tr("common.error2"),
           message: result.error,
           color: "red",
         });
@@ -103,22 +108,26 @@ export function PriceListTable({
 
   const bulkDelete = (rows: PriceListEntry[]) => {
     openConfirm({
-      title: "価格表の一括削除",
-      message: `選択中の${rows.length}件の価格表（段階・値引きルール含む）を削除します。この操作は取り消せません。`,
-      confirmLabel: "削除する",
+      title: tr("sales.priceLists.bulkDeletePriceLists"),
+      message: tr("sales.priceListTable.confirmBulkDeleteMessage", {
+        count: rows.length,
+      }),
+      confirmLabel: tr("common.delete2"),
       onConfirm: () => {
         startTransition(async () => {
           const result = await deletePriceEntries(rows.map((r) => r.entryId));
           if (result.ok) {
             notifications.show({
-              title: "削除しました",
-              message: `${rows.length}件の価格表を削除しました`,
+              title: tr("common.deleted"),
+              message: tr("sales.priceListTable.bulkDeletedMessage", {
+                count: rows.length,
+              }),
               color: "green",
             });
             router.refresh();
           } else {
             notifications.show({
-              title: "エラー",
+              title: tr("common.error2"),
               message: result.error,
               color: "red",
             });
@@ -150,19 +159,19 @@ export function PriceListTable({
   const columns: Column<PriceListEntry>[] = [
     {
       key: "customerName",
-      header: "顧客",
+      header: tr("common.customer"),
       sortable: true,
       render: (e) => e.customerName,
     },
     {
       key: "productName",
-      header: "製品",
+      header: tr("common.product"),
       sortable: true,
       render: (e) => e.productName,
     },
     {
       key: "orderType",
-      header: "注文種別",
+      header: tr("common.orderType"),
       width: 160,
       sortValue: (e) => e.variants.length,
       render: (e) => (
@@ -177,14 +186,17 @@ export function PriceListTable({
     },
     {
       key: "tiers",
-      header: "段階",
+      header: tr("common.tier"),
       width: 80,
       sortValue: (e) => entrySummary(e).tierCount,
-      render: (e) => `${entrySummary(e).tierCount}段階`,
+      render: (e) =>
+        tr("sales.priceListTable.tierCountLabel", {
+          count: entrySummary(e).tierCount,
+        }),
     },
     {
       key: "price",
-      header: "単価",
+      header: tr("common.unitPrice"),
       align: "right",
       width: 160,
       sortValue: (e) => entrySummary(e).minPrice,
@@ -199,7 +211,7 @@ export function PriceListTable({
     },
     {
       key: "discounts",
-      header: "値引き",
+      header: tr("common.discount"),
       hideable: true,
       width: 90,
       sortValue: (e) =>
@@ -214,7 +226,7 @@ export function PriceListTable({
         );
         return active > 0 ? (
           <Badge color="pink" size="xs" variant="light">
-            {active}件
+            {tr("sales.priceListTable.itemCountNoSpace", { count: active })}
           </Badge>
         ) : (
           <Text c="dimmed" size="xs">
@@ -225,7 +237,7 @@ export function PriceListTable({
     },
     {
       key: "estimateNumber",
-      header: "価格試算元",
+      header: tr("common.priceEstimateSource"),
       hideable: true,
       width: 160,
       sortValue: (e) =>
@@ -235,7 +247,7 @@ export function PriceListTable({
         if (linked.length === 0) {
           return (
             <Text c="dimmed" size="xs">
-              手動
+              {tr("common.manual")}
             </Text>
           );
         }
@@ -253,7 +265,7 @@ export function PriceListTable({
     },
     {
       key: "validPeriod",
-      header: "有効期間",
+      header: tr("common.validPeriod"),
       hideable: true,
       width: 200,
       sortValue: (e) => e.variants[0]?.validFrom ?? "",
@@ -264,17 +276,18 @@ export function PriceListTable({
               fmt,
               e.variants[0].validFrom,
               e.variants[0].validUntil,
+              tr,
             )}
           </Text>
         ) : (
           <Text c="dimmed" size="xs">
-            種別ごとに設定
+            {tr("sales.priceLists.setPerType")}
           </Text>
         ),
     },
     {
       key: "isActive",
-      header: "状態",
+      header: tr("common.status"),
       width: 90,
       sortValue: (e) => (e.isActive ? 1 : 0),
       render: (e) => <ActiveBadge active={e.isActive} />,
@@ -284,7 +297,7 @@ export function PriceListTable({
   return (
     <ListShell
       action={<CreateButton href={`${BASE_PATH}/new`} />}
-      breadcrumbs={["販売", "価格表"]}
+      breadcrumbs={[tr("common.sales"), tr("common.priceList")]}
       filters={
         <>
           <Select
@@ -292,7 +305,7 @@ export function PriceListTable({
             data={customerOptions}
             flex={isMobile ? 1 : undefined}
             onChange={setCustomer}
-            placeholder="顧客"
+            placeholder={tr("common.customer")}
             searchable
             value={customer}
             w={isMobile ? undefined : 180}
@@ -302,7 +315,7 @@ export function PriceListTable({
             data={productOptions}
             flex={isMobile ? 1 : undefined}
             onChange={setProduct}
-            placeholder="製品"
+            placeholder={tr("common.product")}
             searchable
             value={product}
             w={isMobile ? undefined : 180}
@@ -312,7 +325,7 @@ export function PriceListTable({
             data={ORDER_TYPE_OPTIONS}
             flex={isMobile ? 1 : undefined}
             onChange={setOrderType}
-            placeholder="注文種別"
+            placeholder={tr("common.orderType")}
             value={orderType}
             w={isMobile ? undefined : 140}
           />
@@ -323,28 +336,28 @@ export function PriceListTable({
         <TextInput
           leftSection={<IconSearch size={14} />}
           onChange={(e) => setSearch(e.currentTarget.value)}
-          placeholder="顧客・製品で検索"
+          placeholder={tr("sales.priceLists.searchByCustomerOrProduct")}
           value={search}
         />
       }
-      title="価格表"
+      title={tr("common.priceList")}
     >
       <DataTable
         bulkActions={[
           {
-            label: "有効化",
+            label: tr("common.enable"),
             icon: <IconToggleRight size={16} />,
             color: "green",
             onAction: (rows) => bulkSetActive(rows, true),
           },
           {
-            label: "無効化",
+            label: tr("common.disable"),
             icon: <IconToggleRight size={16} />,
             color: "gray",
             onAction: (rows) => bulkSetActive(rows, false),
           },
           {
-            label: "一括削除",
+            label: tr("common.bulkDelete"),
             icon: <IconTrash size={16} />,
             color: "red",
             onAction: bulkDelete,
@@ -355,7 +368,7 @@ export function PriceListTable({
         defaultSort={{ key: "customerName", dir: "asc" }}
         emptyAction={<CreateButton href={`${BASE_PATH}/new`} />}
         emptyIcon={<IconCurrencyYen size={24} />}
-        emptyMessage="価格表がありません — 顧客×製品を選んで作成します"
+        emptyMessage={tr("sales.priceLists.thereIsNoPriceListPick")}
         getRowId={(e) => e.entryId}
         onRowClick={(e) => router.push(`${BASE_PATH}/${e.entryId}`)}
         renderCard={(e) => {
@@ -376,7 +389,9 @@ export function PriceListTable({
                     </Badge>
                   ))}
                   <Text c="dimmed" size="xs">
-                    {s.tierCount}段階
+                    {tr("sales.priceListTable.tierCountLabel", {
+                      count: s.tierCount,
+                    })}
                   </Text>
                 </Group>
               </Stack>
@@ -391,22 +406,22 @@ export function PriceListTable({
         }}
         rowActions={(e) => [
           {
-            label: "見積書を作成",
+            label: tr("common.createAQuote"),
             icon: <IconFileText size={14} />,
             onAction: () => setQuoteTarget(e),
           },
           {
-            label: "有効期間を変えて複製",
+            label: tr("sales.priceLists.duplicateWithADifferentValidPeriod"),
             icon: <IconCopy size={14} />,
             onAction: () => setDuplicateTarget(e),
           },
           {
-            label: "別の顧客・製品へコピー",
+            label: tr("common.copyToAnotherCustomerOrProduct"),
             icon: <IconCopyPlus size={14} />,
             onAction: () => setCopyTarget(e),
           },
           {
-            label: "削除",
+            label: tr("common.delete"),
             icon: <IconTrash size={14} />,
             color: "red",
             onAction: () => setDeleteTarget(e),

@@ -14,18 +14,30 @@
  * - NUMBER        → 数値文字列（例 "8.02"）
  * - SELECT_SINGLE → 選択肢の value
  * - SELECT_MULTI  → 選択肢 value の配列
+ *
+ * ★ 表示ラベル（`formatSampleValue` / `acceptLabel` / `goalLabel` /
+ *   `formatCounts`）は呼び出し側から渡す `BoolLabels`（はい/いいえ・合格範囲の
+ *   言い回し・列挙の区切り）で文言を解決する。**引数を省略したときの既定値は
+ *   ja**（PDF 生成・テストのオラクル用） — 実際の画面（web/kiosk）は自分の
+ *   i18n から作った `BoolLabels` を渡す。`samplingLabelJa` / `sampleLabel` は
+ *   引数を持たない ja 固定のまま（PDF 専用。画面用の言語対応版は web の
+ *   lib/inspection-labels.ts、kiosk は StepInspectionForm.tsx が自前で持つ）。
  */
 
 export type InspectionItemType =
   | "BOOLEAN"
   | "NUMBER"
   | "SELECT_SINGLE"
-  | "SELECT_MULTI";
+  | "SELECT_MULTI"
+  | "TEXT"; // フリーフォーム文字列（形状確認欄など）。合否は常に手動
 
 export type InspectionSamplingMode = "ALL" | "PERCENT" | "COUNT";
 
 /** 記録方式: VALUES = 製品ごとの実測値 / COUNTS = 合格数のみ（検査数・合格数）。 */
 export type InspectionRecordStyle = "VALUES" | "COUNTS";
+
+/** VALUES のサンプル呼称。INITIAL_MID_FINAL は先頭3件を初品/中間品/最終品と呼ぶ。 */
+export type InspectionSampleNaming = "GENERIC" | "INITIAL_MID_FINAL";
 
 /** 選択肢（inspection_template_items.options の要素）。 */
 export interface InspectionSelectOption {
@@ -155,6 +167,8 @@ export function hasAcceptCriteria(item: InspectionItemSpec): boolean {
     case "SELECT_SINGLE":
     case "SELECT_MULTI":
       return item.acceptOptions != null && item.acceptOptions.length > 0;
+    case "TEXT":
+      return false; // フリーフォームは基準を持たない — 常に手動判定
   }
 }
 
@@ -218,7 +232,7 @@ export function resolveItemPass(
 export function formatCounts(
   inspected: number | null,
   passed: number | null,
-  passLabel = "合格",
+  passLabel = "合格", // i18n-ignore — 既定値は ja（PDF・テスト用）。画面は呼び出し側で渡す
 ): string {
   return `${passLabel} ${passed ?? "—"}/${inspected ?? "—"}`;
 }
@@ -264,6 +278,8 @@ export function evaluateSample(
       const accept = item.acceptOptions;
       return values.every((v) => accept.includes(v));
     }
+    case "TEXT":
+      return null; // 基準を持たない — 常に手動判定
   }
 }
 
@@ -338,13 +354,38 @@ export function missingRequiredEntries(
 
 // ── 表示ラベル ───────────────────────────────────────────────────────────────
 
-/** はい/いいえ の表示ラベル（キオスクは i18n から渡す）。 */
+/**
+ * はい/いいえ・NUMBER の合格範囲の言い回し・列挙の区切りの表示ラベル
+ * （web/kiosk はそれぞれの i18n から組み立てて渡す）。
+ *
+ * `rangeBetween` / `rangeAtLeast` / `rangeAtMost` は**関数**で渡す
+ * （文字列テンプレートにすると、呼び出し側が next-intl の ICU で解決した
+ * 文言をそのまま埋め込めない — `{min}`/`{max}` は本物の値が要る場所にしか
+ * 書けない。関数なら呼び出し側で `tr(key, { min, max })` を実行してから
+ * 返せる）。
+ */
 export interface BoolLabels {
   yes: string;
   no: string;
+  /** 既定 "{min} 〜 {max}"。 */
+  rangeBetween?: (min: string, max: string) => string;
+  /** 既定 "{min} 以上"。 */
+  rangeAtLeast?: (min: string) => string;
+  /** 既定 "{max} 以下"。 */
+  rangeAtMost?: (max: string) => string;
+  /** SELECT_MULTI の選択肢を並べるときの区切り。既定 "・"。 */
+  listSeparator?: string;
 }
 
-export const BOOL_LABELS_JA: BoolLabels = { yes: "はい", no: "いいえ" };
+// 既定値は ja（PDF・テスト用）。画面は呼び出し側で BoolLabels を渡す
+export const BOOL_LABELS_JA: BoolLabels = {
+  yes: "はい", // i18n-ignore
+  no: "いいえ", // i18n-ignore
+  rangeBetween: (min, max) => `${min} 〜 ${max}`, // i18n-ignore
+  rangeAtLeast: (min) => `${min} 以上`, // i18n-ignore
+  rangeAtMost: (max) => `${max} 以下`, // i18n-ignore
+  listSeparator: "・", // i18n-ignore
+};
 
 function optionLabel(
   item: InspectionItemSpec,
@@ -373,8 +414,14 @@ export function formatSampleValue(
       return optionLabel(item, value as string, locale);
     case "SELECT_MULTI": {
       const values = Array.isArray(value) ? value : [value];
-      return values.map((v) => optionLabel(item, v, locale)).join("・");
+      return values
+        .map((v) => optionLabel(item, v, locale))
+        .join(bool.listSeparator ?? BOOL_LABELS_JA.listSeparator ?? "");
     }
+    case "TEXT":
+      return Array.isArray(value)
+        ? value.join(bool.listSeparator ?? BOOL_LABELS_JA.listSeparator ?? "")
+        : value;
   }
 }
 
@@ -390,11 +437,20 @@ export function acceptLabel(
       return item.acceptBool ? bool.yes : bool.no;
     case "NUMBER": {
       const unit = item.unit ? ` ${item.unit}` : "";
+      const min = item.toleranceMin != null ? String(item.toleranceMin) : "";
+      const max = item.toleranceMax != null ? String(item.toleranceMax) : "";
+      const rangeBetween = bool.rangeBetween ?? BOOL_LABELS_JA.rangeBetween;
+      const rangeAtLeast = bool.rangeAtLeast ?? BOOL_LABELS_JA.rangeAtLeast;
+      const rangeAtMost = bool.rangeAtMost ?? BOOL_LABELS_JA.rangeAtMost;
       if (item.toleranceMin != null && item.toleranceMax != null) {
-        return `${item.toleranceMin} 〜 ${item.toleranceMax}${unit}`;
+        return `${rangeBetween?.(min, max) ?? ""}${unit}`;
       }
-      if (item.toleranceMin != null) return `${item.toleranceMin} 以上${unit}`;
-      if (item.toleranceMax != null) return `${item.toleranceMax} 以下${unit}`;
+      if (item.toleranceMin != null) {
+        return `${rangeAtLeast?.(min) ?? ""}${unit}`;
+      }
+      if (item.toleranceMax != null) {
+        return `${rangeAtMost?.(max) ?? ""}${unit}`;
+      }
       return null;
     }
     case "SELECT_SINGLE":
@@ -404,8 +460,10 @@ export function acceptLabel(
       }
       return item.acceptOptions
         .map((v) => optionLabel(item, v, locale))
-        .join("・");
+        .join(bool.listSeparator ?? BOOL_LABELS_JA.listSeparator ?? "");
     }
+    case "TEXT":
+      return null; // 基準を持たない
   }
 }
 
@@ -431,14 +489,20 @@ export function goalLabel(
     case "SELECT_MULTI": {
       const values = parseStringArray(goal);
       if (values == null || values.length === 0) return null;
-      return values.map((v) => optionLabel(item, v, locale)).join("・");
+      return values
+        .map((v) => optionLabel(item, v, locale))
+        .join(bool.listSeparator ?? BOOL_LABELS_JA.listSeparator ?? "");
     }
+    case "TEXT":
+      return typeof goal === "string" ? goal : null;
   }
 }
 
 /**
- * 検査対象の表示（日本語。キオスクは mode/value から i18n で組み立てる）。
- * required を渡すと「（n本）」を併記。
+ * 検査対象の表示。**ja 固定 — 検査記録 PDF 専用**（内部文書は ja 固定という
+ * 既定の約束。見積書等の取引先向け書類とは扱いが違う）。required を渡すと
+ * 「（n本）」を併記。画面表示は web の lib/inspection-labels.ts の
+ * `samplingLabel(tr, …)`、kiosk は StepInspectionForm.tsx の自前関数を使う。
  */
 export function samplingLabelJa(
   sampling: InspectionSamplingSpec,
@@ -446,14 +510,36 @@ export function samplingLabelJa(
 ): string {
   switch (sampling.samplingMode) {
     case "ALL":
-      return required != null ? `全数（${required}本）` : "全数";
+      if (required != null) return `全数（${required}本）`; // i18n-ignore
+      return "全数"; // i18n-ignore
     case "PERCENT": {
       const pct = sampling.samplingValue ?? 0;
-      return required != null
-        ? `抜取 ${pct}%（${required}本）`
-        : `抜取 ${pct}%`;
+      if (required != null) return `抜取 ${pct}%（${required}本）`; // i18n-ignore
+      return `抜取 ${pct}%`; // i18n-ignore
     }
     case "COUNT":
-      return `抜取 ${required ?? sampling.samplingValue ?? 0}本`;
+      return `抜取 ${required ?? sampling.samplingValue ?? 0}本`; // i18n-ignore
   }
+}
+
+/** VALUES 記録方式のサンプル呼称（先頭3件だけ初品/中間品/最終品になり得る）。 */
+// i18n-ignore — PDF 専用 ja 固定（画面は inspection-labels.ts の sampleLabel(tr, …)）
+const INITIAL_MID_FINAL_LABELS = ["初品", "中間品", "最終品"] as const;
+
+/**
+ * サンプルページの見出し（index は 0 始まり）。**ja 固定 — 検査記録 PDF 専用**
+ * （samplingLabelJa と同じ理由）。
+ */
+export function sampleLabel(
+  index: number,
+  naming: InspectionSampleNaming,
+): string {
+  if (
+    naming === "INITIAL_MID_FINAL" &&
+    index < INITIAL_MID_FINAL_LABELS.length
+  ) {
+    return INITIAL_MID_FINAL_LABELS[index];
+  }
+  // i18n-ignore — PDF 専用 ja 固定（画面は inspection-labels.ts）
+  return `製品 ${index + 1}`;
 }

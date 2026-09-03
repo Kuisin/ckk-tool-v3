@@ -12,18 +12,17 @@
 
 import { Alert, Badge, Group, Paper, Stack, Table, Text } from "@mantine/core";
 import { IconInfoCircle } from "@tabler/icons-react";
+import { useTranslations } from "next-intl";
 import { useIsMobile } from "@/hooks/useViewport";
 import type { ShareGrantView } from "@/lib/share-grants";
-import {
-  SHARE_LEVEL_LABEL,
-  SHARE_SUBJECT_LABEL,
-} from "@/lib/share-grants-core";
+import { shareLevelLabel, shareSubjectLabel } from "@/lib/share-grants-core";
 import type { ConditionFieldOption } from "./ShareConditionEditor";
 
 /** 条件（「この項目がこの値の回答だけ」）を 1 行の文にする。 */
 function conditionText(
   grant: ShareGrantView,
   fields: ConditionFieldOption[],
+  tr: ReturnType<typeof useTranslations>,
 ): string | null {
   if (!grant.conditionFieldKey) return null;
   const field = fields.find((f) => f.key === grant.conditionFieldKey);
@@ -35,7 +34,10 @@ function conditionText(
       ? grant.conditionLabels
       : (grant.conditionValues ?? []);
   if (values.length === 0) return null;
-  return `${label} が ${values.join(" / ")} の回答だけ`;
+  return tr("forms.shareGrantsView.fieldIsOneOfValuesResponsesOnly", {
+    label,
+    values: values.join(" / "),
+  });
 }
 
 export function ShareGrantsView({
@@ -45,12 +47,12 @@ export function ShareGrantsView({
   grants: ShareGrantView[];
   conditionFields?: ConditionFieldOption[];
 }) {
+  const tr = useTranslations();
   const isMobile = useIsMobile();
 
   const notice = (
     <Alert color="gray" icon={<IconInfoCircle size={16} />} variant="light">
-      共有先を 1 つも設定していないフォームは、作成者と管理者にしか見えません。
-      URL を知っていても開けません。
+      {tr("forms.shareGrantsView.aFormWithNoSharesSet")}
     </Alert>
   );
 
@@ -59,7 +61,7 @@ export function ShareGrantsView({
       <Stack gap="sm">
         {notice}
         <Text c="dimmed" size="sm">
-          共有先がありません（非公開）
+          {tr("common.notSharedWithAnyonePrivate")}
         </Text>
       </Stack>
     );
@@ -69,9 +71,9 @@ export function ShareGrantsView({
     grant: g,
     subject:
       g.subjectType === "EVERYONE"
-        ? "ログインユーザー全員"
+        ? tr("common.everyoneWhoCanLogIn")
         : (g.subjectLabel ?? g.subjectId ?? "—"),
-    condition: conditionText(g, conditionFields),
+    condition: conditionText(g, conditionFields, tr),
   }));
 
   return (
@@ -85,17 +87,17 @@ export function ShareGrantsView({
               <Stack gap={4}>
                 <Group gap="xs">
                   <Badge color="gray" variant="light">
-                    {SHARE_SUBJECT_LABEL[grant.subjectType]}
+                    {shareSubjectLabel(grant.subjectType, tr)}
                   </Badge>
                   <Text fw={600} size="sm">
                     {subject}
                   </Text>
                 </Group>
                 <Group gap="xs">
-                  <Text size="sm">{SHARE_LEVEL_LABEL[grant.level]}</Text>
+                  <Text size="sm">{shareLevelLabel(grant.level, tr)}</Text>
                   {grant.notifyOnComplete && (
                     <Badge color="indigo" variant="light">
-                      完了通知
+                      {tr("common.completionNotice")}
                     </Badge>
                   )}
                 </Group>
@@ -112,10 +114,12 @@ export function ShareGrantsView({
         <Table withTableBorder>
           <Table.Thead>
             <Table.Tr>
-              <Table.Th style={{ width: 100 }}>対象</Table.Th>
-              <Table.Th>相手</Table.Th>
-              <Table.Th style={{ width: 200 }}>権限</Table.Th>
-              <Table.Th>条件</Table.Th>
+              <Table.Th style={{ width: 100 }}>{tr("common.target")}</Table.Th>
+              <Table.Th>{tr("common.counterparty")}</Table.Th>
+              <Table.Th style={{ width: 200 }}>
+                {tr("common.permission")}
+              </Table.Th>
+              <Table.Th>{tr("forms.shareGrantsView.condition")}</Table.Th>
             </Table.Tr>
           </Table.Thead>
           <Table.Tbody>
@@ -123,16 +127,16 @@ export function ShareGrantsView({
               <Table.Tr key={grant.id}>
                 <Table.Td>
                   <Badge color="gray" variant="light">
-                    {SHARE_SUBJECT_LABEL[grant.subjectType]}
+                    {shareSubjectLabel(grant.subjectType, tr)}
                   </Badge>
                 </Table.Td>
                 <Table.Td>{subject}</Table.Td>
                 <Table.Td>
                   <Group gap="xs">
-                    <Text size="sm">{SHARE_LEVEL_LABEL[grant.level]}</Text>
+                    <Text size="sm">{shareLevelLabel(grant.level, tr)}</Text>
                     {grant.notifyOnComplete && (
                       <Badge color="indigo" variant="light">
-                        完了通知
+                        {tr("common.completionNotice")}
                       </Badge>
                     )}
                   </Group>
@@ -140,7 +144,7 @@ export function ShareGrantsView({
                 <Table.Td>
                   {condition ?? (
                     <Text c="dimmed" size="sm">
-                      すべての回答
+                      {tr("forms.shareGrantsView.allResponses")}
                     </Text>
                   )}
                 </Table.Td>

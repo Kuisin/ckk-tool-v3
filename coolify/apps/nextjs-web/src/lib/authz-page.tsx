@@ -18,10 +18,12 @@
  * して CI ガード（scripts/check-page-gates.sh）で貼り忘れを検出する。
  */
 
+import { getLocale } from "next-intl/server";
 import type { ReactNode } from "react";
 import { AccessDenied } from "@/components/ui/AccessDenied";
-import { appList } from "@/lib/app-list";
+import { appList, categoryLabel } from "@/lib/app-list";
 import { checkPermission } from "@/lib/authz";
+import { type LocalizedTextInput, localized } from "@/lib/format";
 import { useElevation } from "@/lib/privileged-access";
 import { findOperation } from "@/lib/privileged-operations";
 
@@ -68,11 +70,13 @@ export async function requireElevation(
     throw new Error(`requireElevation: unknown operation ${operationKey}`);
   const gate = await useElevation(operationKey);
   if (gate.ok) return null;
+  const locale = await getLocale();
+  const label = localized(op.label as unknown as LocalizedTextInput, locale);
   return (
     <AccessDenied
-      breadcrumbs={["システム", op.label.ja]}
+      breadcrumbs={[categoryLabel("システム", locale), label]} // i18n-ignore — AppCategory の内部識別子（表示は categoryLabel が担う）
       message={gate.error}
-      title={op.label.ja}
+      title={label}
     />
   );
 }

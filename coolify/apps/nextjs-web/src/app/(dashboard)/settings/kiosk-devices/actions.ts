@@ -21,12 +21,14 @@
  */
 
 import { revalidatePath } from "next/cache";
+import { getTranslations } from "next-intl/server";
 import { z } from "zod";
 import { recordAudit } from "@/lib/audit";
 import { checkPermission } from "@/lib/authz";
 import { normalizeCode } from "@/lib/crockford";
 import { prisma } from "@/lib/db";
 import { checkFloorMapPermission as checkFloorMapPermissionCore } from "@/lib/floor-map-image";
+import { LOCALES } from "@/lib/i18n";
 import {
   type KioskDeviceSessionRow,
   type KioskPresenceRow,
@@ -44,9 +46,13 @@ import {
 } from "@/lib/server-action";
 import { deleteObject } from "@/lib/storage";
 
+type Tr = Awaited<ReturnType<typeof getTranslations>>;
+
 const BASE_PATH = "/settings/kiosk-devices";
 
-const uuidSchema = z.string().uuid("対象の指定が不正です");
+function uuidSchema(tr: Tr) {
+  return z.string().uuid(tr("settings.kioskDevicesActions.invalidTarget"));
+}
 
 function revalidate() {
   revalidatePath(BASE_PATH);
@@ -79,12 +85,15 @@ export async function mintKioskWsToken(): Promise<
 export async function fetchKioskPresence(): Promise<
   ActionResult<{ devices: KioskPresenceRow[] }>
 > {
+  const tr = await getTranslations();
   const authz = await checkPermission("kiosk", "READ");
   if (!authz.ok) return actionError(authz.error);
   try {
     return actionOk({ devices: await listKioskPresence() });
   } catch (e) {
-    return actionError(prismaErrorMessage(e, "取得に失敗しました"));
+    return actionError(
+      prismaErrorMessage(e, tr("settings.kioskDevicesActions.fetchFailed"), tr),
+    );
   }
 }
 
@@ -95,28 +104,41 @@ export async function fetchDeviceSessions(
 ): Promise<
   ActionResult<{ rows: KioskDeviceSessionRow[]; nextCursor: string | null }>
 > {
+  const tr = await getTranslations();
   const authz = await checkPermission("kiosk", "READ");
   if (!authz.ok) return actionError(authz.error);
-  const parsed = uuidSchema.safeParse(deviceId);
-  if (!parsed.success) return actionError("入力が不正です");
+  const parsed = uuidSchema(tr).safeParse(deviceId);
+  if (!parsed.success) return actionError(tr("common.invalidInput"));
   try {
     return actionOk(await listDeviceSessions(parsed.data, cursor));
   } catch (e) {
-    return actionError(prismaErrorMessage(e, "利用履歴の取得に失敗しました"));
+    return actionError(
+      prismaErrorMessage(
+        e,
+        tr("settings.kioskDevicesActions.fetchSessionsFailed"),
+        tr,
+      ),
+    );
   }
 }
 
 // ── プロファイル作成・リンク ────────────────────────────────────────────────
 
-const createProfileInput = z.object({
-  // 端末名は多言語（{ ja, en }）。英語未入力なら日本語で埋める。
-  nameJa: z.string().min(1, "端末名を入力してください"),
-  nameTranslations: z.record(z.string(), z.string()).optional(),
-  plantId: z.number().int().positive("拠点を選択してください"),
-  location: z.string().optional(),
-});
+function createProfileInputSchema(tr: Tr) {
+  return z.object({
+    // 端末名は多言語（{ ja, en }）。英語未入力なら日本語で埋める。
+    nameJa: z
+      .string()
+      .min(1, tr("settings.kioskDevicesActions.enterDeviceName")),
+    nameTranslations: z.record(z.string(), z.string()).optional(),
+    plantId: z.number().int().positive(tr("master.locationModal.selectASite")),
+    location: z.string().optional(),
+  });
+}
 
-export type CreateDeviceProfileInput = z.infer<typeof createProfileInput>;
+export type CreateDeviceProfileInput = z.infer<
+  ReturnType<typeof createProfileInputSchema>
+>;
 
 /**
  * 端末プロファイルを作成する（PENDING = オープン）。
@@ -125,11 +147,14 @@ export type CreateDeviceProfileInput = z.infer<typeof createProfileInput>;
 export async function createDeviceProfile(
   raw: CreateDeviceProfileInput,
 ): Promise<ActionResult<{ id: string }>> {
+  const tr = await getTranslations();
   const gate = await useElevation("kiosk_device.create_profile");
   if (!gate.ok) return actionError(gate.error);
-  const parsed = createProfileInput.safeParse(raw);
+  const parsed = createProfileInputSchema(tr).safeParse(raw);
   if (!parsed.success) {
-    return actionError(parsed.error.issues[0]?.message ?? "入力が不正です");
+    return actionError(
+      parsed.error.issues[0]?.message ?? tr("common.invalidInput"),
+    );
   }
   const v = parsed.data;
 
@@ -139,7 +164,7 @@ export async function createDeviceProfile(
       select: { isActive: true },
     });
     if (!plant || !plant.isActive) {
-      return actionError("対象の拠点が見つかりません");
+      return actionError(tr("settings.kioskDevicesActions.plantNotFound"));
     }
     const name = localizedInput(v.nameJa, undefined, v.nameTranslations);
     const created = await prisma.kioskDevice.create({
@@ -166,7 +191,11 @@ export async function createDeviceProfile(
     return actionOk({ id: created.id });
   } catch (e) {
     return actionError(
-      prismaErrorMessage(e, "端末プロファイルの作成に失敗しました"),
+      prismaErrorMessage(
+        e,
+        tr("settings.kioskDevicesActions.createProfileFailed"),
+        tr,
+      ),
     );
   }
 }
@@ -179,13 +208,14 @@ export async function linkDeviceToProfile(
   profileId: string,
   code: string,
 ): Promise<ActionResult> {
+  const tr = await getTranslations();
   const gate = await useElevation("kiosk_device.link");
   if (!gate.ok) return actionError(gate.error);
-  const parsedId = uuidSchema.safeParse(profileId);
-  if (!parsedId.success) return actionError("入力が不正です");
+  const parsedId = uuidSchema(tr).safeParse(profileId);
+  if (!parsedId.success) return actionError(tr("common.invalidInput"));
   const normalized = normalizeCode(code);
   if (normalized.length !== 12) {
-    return actionError("コードは 12 文字で入力してください");
+    return actionError(tr("settings.kiosk.enterA12CharacterCode"));
   }
 
   try {
@@ -193,10 +223,11 @@ export async function linkDeviceToProfile(
       where: { id: parsedId.data },
       select: { status: true },
     });
-    if (!device) return actionError("対象の端末プロファイルが見つかりません");
+    if (!device)
+      return actionError(tr("settings.kioskDevicesActions.profileNotFound"));
     if (device.status !== "PENDING") {
       return actionError(
-        "オープンな（未リンクの）プロファイルにのみリンクできます",
+        tr("settings.kioskDevicesActions.onlyOpenProfileCanLink"),
       );
     }
     const now = new Date();
@@ -206,7 +237,7 @@ export async function linkDeviceToProfile(
     });
     if (!request) {
       return actionError(
-        "コードが無効か期限切れです。タブレット側で再表示してください",
+        tr("settings.kioskDevicesActions.codeInvalidOrExpired"),
       );
     }
     await prisma.$transaction([
@@ -229,12 +260,17 @@ export async function linkDeviceToProfile(
       tableName: "kiosk_devices",
       recordId: parsedId.data,
       before: { status: "PENDING" },
-      after: { status: "LINKED", note: "タブレットとリンク" },
+      after: {
+        status: "LINKED",
+        note: tr("settings.kioskDevicesActions.auditLinkedTablet"),
+      },
     });
     revalidate();
     return actionOk();
   } catch (e) {
-    return actionError(prismaErrorMessage(e, "端末のリンクに失敗しました"));
+    return actionError(
+      prismaErrorMessage(e, tr("settings.kioskDevicesActions.linkFailed"), tr),
+    );
   }
 }
 
@@ -244,23 +280,27 @@ export async function linkDeviceToProfile(
  * アテステーション鍵は破棄する（端末の交換・故障時に再リンクするため）。
  */
 export async function unlinkDevice(id: string): Promise<ActionResult> {
+  const tr = await getTranslations();
   const gate = await useElevation("kiosk_device.unlink");
   if (!gate.ok) return actionError(gate.error);
-  const parsed = uuidSchema.safeParse(id);
-  if (!parsed.success) return actionError("入力が不正です");
+  const parsed = uuidSchema(tr).safeParse(id);
+  if (!parsed.success) return actionError(tr("common.invalidInput"));
 
   try {
     const device = await prisma.kioskDevice.findUnique({
       where: { id: parsed.data },
       select: { status: true },
     });
-    if (!device) return actionError("対象の端末が見つかりません");
+    if (!device)
+      return actionError(tr("settings.kioskDevicesActions.deviceNotFound"));
     if (
       device.status !== "LINKED" &&
       device.status !== "ACTIVE" &&
       device.status !== "DISABLED"
     ) {
-      return actionError("この端末はリンク解除できる状態ではありません");
+      return actionError(
+        tr("settings.kioskDevicesActions.cannotUnlinkInThisState"),
+      );
     }
     const now = new Date();
     const openSessions = await prisma.kioskSession.findMany({
@@ -303,31 +343,42 @@ export async function unlinkDevice(id: string): Promise<ActionResult> {
       tableName: "kiosk_devices",
       recordId: parsed.data,
       before: { status: device.status },
-      after: { status: "PENDING", note: "リンク解除" },
+      after: {
+        status: "PENDING",
+        note: tr("settings.kioskDevicesActions.auditUnlinked"),
+      },
     });
     revalidate();
     return actionOk();
   } catch (e) {
-    return actionError(prismaErrorMessage(e, "リンク解除に失敗しました"));
+    return actionError(
+      prismaErrorMessage(
+        e,
+        tr("settings.kioskDevicesActions.unlinkFailed"),
+        tr,
+      ),
+    );
   }
 }
 
 /** 端末プロファイルを削除する（リンク前 = PENDING のみ。ハード削除）。 */
 export async function deleteDeviceProfile(id: string): Promise<ActionResult> {
+  const tr = await getTranslations();
   const authz = await checkPermission("kiosk", "DELETE");
   if (!authz.ok) return actionError(authz.error);
-  const parsed = uuidSchema.safeParse(id);
-  if (!parsed.success) return actionError("入力が不正です");
+  const parsed = uuidSchema(tr).safeParse(id);
+  if (!parsed.success) return actionError(tr("common.invalidInput"));
 
   try {
     const device = await prisma.kioskDevice.findUnique({
       where: { id: parsed.data },
       select: { status: true, name: true, plantId: true },
     });
-    if (!device) return actionError("対象の端末プロファイルが見つかりません");
+    if (!device)
+      return actionError(tr("settings.kioskDevicesActions.profileNotFound"));
     if (device.status !== "PENDING") {
       return actionError(
-        "リンク済み・有効化済みの端末は削除できません（取り消しを使用してください）",
+        tr("settings.kioskDevicesActions.linkedOrActivatedCannotDelete"),
       );
     }
     await prisma.kioskDevice.delete({ where: { id: parsed.data } });
@@ -345,7 +396,11 @@ export async function deleteDeviceProfile(id: string): Promise<ActionResult> {
     return actionOk();
   } catch (e) {
     return actionError(
-      prismaErrorMessage(e, "端末プロファイルの削除に失敗しました"),
+      prismaErrorMessage(
+        e,
+        tr("settings.kioskDevicesActions.deleteProfileFailed"),
+        tr,
+      ),
     );
   }
 }
@@ -359,27 +414,31 @@ export async function deleteDeviceProfile(id: string): Promise<ActionResult> {
 export async function activateDevice(
   id: string,
 ): Promise<ActionResult<{ id: string }>> {
+  const tr = await getTranslations();
   const gate = await useElevation("kiosk_device.activate");
   if (!gate.ok) return actionError(gate.error);
-  const parsed = uuidSchema.safeParse(id);
-  if (!parsed.success) return actionError("入力が不正です");
+  const parsed = uuidSchema(tr).safeParse(id);
+  if (!parsed.success) return actionError(tr("common.invalidInput"));
 
   try {
     const device = await prisma.kioskDevice.findUnique({
       where: { id: parsed.data },
       select: { status: true },
     });
-    if (!device) return actionError("対象の端末プロファイルが見つかりません");
+    if (!device)
+      return actionError(tr("settings.kioskDevicesActions.profileNotFound"));
     if (device.status === "PENDING") {
       return actionError(
-        "リンクされていない端末プロファイルは有効化できません",
+        tr("settings.kioskDevicesActions.notLinkedCannotActivate"),
       );
     }
     if (device.status === "ACTIVE") {
-      return actionError("この端末は既に有効です");
+      return actionError(tr("settings.kioskDevicesActions.alreadyActive"));
     }
     if (device.status !== "LINKED") {
-      return actionError("この端末は有効化できる状態ではありません");
+      return actionError(
+        tr("settings.kioskDevicesActions.cannotActivateInThisState"),
+      );
     }
     await prisma.kioskDevice.update({
       where: { id: parsed.data },
@@ -399,40 +458,56 @@ export async function activateDevice(
     revalidate();
     return actionOk({ id: parsed.data });
   } catch (e) {
-    return actionError(prismaErrorMessage(e, "端末の有効化に失敗しました"));
+    return actionError(
+      prismaErrorMessage(
+        e,
+        tr("settings.kioskDevicesActions.activateFailed"),
+        tr,
+      ),
+    );
   }
 }
 
 // ── 編集・状態遷移 ───────────────────────────────────────────────────────────
 
-const updateInput = z.object({
-  id: uuidSchema,
-  // 端末名は多言語（{ ja, en }）。英語未入力なら日本語で埋める。
-  nameJa: z.string().min(1, "端末名を入力してください"),
-  nameTranslations: z.record(z.string(), z.string()).optional(),
-  plantId: z.number().int().positive("拠点を選択してください"),
-  location: z.string().optional(),
-  // 既定の作業場所（任意）。工程の開始/再開時に実績へ自動記録される。
-  defaultWorkLocationId: z.number().int().positive().nullable(),
-});
+function updateInputSchema(tr: Tr) {
+  return z.object({
+    id: uuidSchema(tr),
+    // 端末名は多言語（{ ja, en }）。英語未入力なら日本語で埋める。
+    nameJa: z
+      .string()
+      .min(1, tr("settings.kioskDevicesActions.enterDeviceName")),
+    nameTranslations: z.record(z.string(), z.string()).optional(),
+    plantId: z.number().int().positive(tr("master.locationModal.selectASite")),
+    location: z.string().optional(),
+    // 既定の作業場所（任意）。工程の開始/再開時に実績へ自動記録される。
+    defaultWorkLocationId: z.number().int().positive().nullable(),
+    // ログイン前画面（/login 等）の表示言語。null = 既定（ja）。
+    locale: z.enum(LOCALES).nullable(),
+  });
+}
 
-export type UpdateDeviceInput = z.infer<typeof updateInput>;
+export type UpdateDeviceInput = z.infer<ReturnType<typeof updateInputSchema>>;
 
 /** 端末情報（名称・場所・拠点・既定作業場所）を更新する。拠点変更時はピン配置を解除。 */
 export async function updateDevice(
   raw: UpdateDeviceInput,
 ): Promise<ActionResult> {
+  const tr = await getTranslations();
   const authz = await checkPermission("kiosk", "UPDATE");
   if (!authz.ok) return actionError(authz.error);
-  const parsed = updateInput.safeParse(raw);
+  const parsed = updateInputSchema(tr).safeParse(raw);
   if (!parsed.success) {
-    return actionError(parsed.error.issues[0]?.message ?? "入力が不正です");
+    return actionError(
+      parsed.error.issues[0]?.message ?? tr("common.invalidInput"),
+    );
   }
   const v = parsed.data;
 
   try {
     const device = await prisma.kioskDevice.findUnique({ where: { id: v.id } });
-    if (!device) return actionError("対象の端末が見つかりません");
+    if (!device)
+      return actionError(tr("settings.kioskDevicesActions.deviceNotFound"));
     const plantChanged = device.plantId !== v.plantId;
     if (v.defaultWorkLocationId != null) {
       // 既定作業場所は端末の拠点の作業場所（or 拠点未指定グループ）に限る。
@@ -448,7 +523,9 @@ export async function updateDevice(
         select: { id: true },
       });
       if (!location) {
-        return actionError("既定の作業場所が端末の拠点と一致しません");
+        return actionError(
+          tr("settings.kioskDevicesActions.defaultWorkLocationMismatch"),
+        );
       }
     }
     const name = localizedInput(v.nameJa, undefined, v.nameTranslations);
@@ -459,6 +536,7 @@ export async function updateDevice(
         plantId: v.plantId,
         location: v.location?.trim() || null,
         defaultWorkLocationId: v.defaultWorkLocationId,
+        locale: v.locale,
         // 拠点をまたぐ移動はフロアマップのピンを外す（マップは拠点単位）。
         ...(plantChanged ? { floorMapId: null, mapX: null, mapY: null } : {}),
       },
@@ -472,22 +550,31 @@ export async function updateDevice(
         location: device.location,
         plantId: device.plantId,
         defaultWorkLocationId: device.defaultWorkLocationId,
+        locale: device.locale,
       },
       after: {
         name,
         location: v.location?.trim() || null,
         plantId: v.plantId,
         defaultWorkLocationId: v.defaultWorkLocationId,
+        locale: v.locale,
       },
     });
     revalidate();
     return actionOk();
   } catch (e) {
-    return actionError(prismaErrorMessage(e, "端末の更新に失敗しました"));
+    return actionError(
+      prismaErrorMessage(
+        e,
+        tr("settings.kioskDevicesActions.updateFailed"),
+        tr,
+      ),
+    );
   }
 }
 
 async function transitionDevice(
+  tr: Tr,
   id: string,
   from: "ACTIVE" | "DISABLED",
   to: "ACTIVE" | "DISABLED",
@@ -495,16 +582,21 @@ async function transitionDevice(
 ): Promise<ActionResult> {
   const gate = await useElevation("kiosk_device.set_enabled");
   if (!gate.ok) return actionError(gate.error);
-  const parsed = uuidSchema.safeParse(id);
-  if (!parsed.success) return actionError("入力が不正です");
+  const parsed = uuidSchema(tr).safeParse(id);
+  if (!parsed.success) return actionError(tr("common.invalidInput"));
 
   try {
     const device = await prisma.kioskDevice.findUnique({
       where: { id: parsed.data },
     });
-    if (!device) return actionError("対象の端末が見つかりません");
+    if (!device)
+      return actionError(tr("settings.kioskDevicesActions.deviceNotFound"));
     if (device.status !== from) {
-      return actionError(`この端末は${note}できる状態ではありません`);
+      return actionError(
+        tr("settings.kioskDevicesActions.cannotTransitionInThisState", {
+          action: note,
+        }),
+      );
     }
     await prisma.kioskDevice.update({
       where: { id: parsed.data },
@@ -520,34 +612,50 @@ async function transitionDevice(
     revalidate();
     return actionOk();
   } catch (e) {
-    return actionError(prismaErrorMessage(e, `端末の${note}に失敗しました`));
+    return actionError(
+      prismaErrorMessage(
+        e,
+        tr("settings.kioskDevicesActions.transitionFailed", { action: note }),
+        tr,
+      ),
+    );
   }
 }
 
 /** 端末を一時無効化する（再有効化可）。 */
 export async function disableDevice(id: string): Promise<ActionResult> {
-  return transitionDevice(id, "ACTIVE", "DISABLED", "無効化");
+  const tr = await getTranslations();
+  return transitionDevice(tr, id, "ACTIVE", "DISABLED", tr("common.disable"));
 }
 
 /** 無効化した端末を再有効化する。 */
 export async function enableDevice(id: string): Promise<ActionResult> {
-  return transitionDevice(id, "DISABLED", "ACTIVE", "再有効化");
+  const tr = await getTranslations();
+  return transitionDevice(
+    tr,
+    id,
+    "DISABLED",
+    "ACTIVE",
+    tr("settings.kiosk.reEnable"),
+  );
 }
 
 /** 端末を取り消す（トークン破棄・再登録が必要）。オープン中のセッションも失効。 */
 export async function revokeDevice(id: string): Promise<ActionResult> {
+  const tr = await getTranslations();
   const gate = await useElevation("kiosk_device.revoke");
   if (!gate.ok) return actionError(gate.error);
-  const parsed = uuidSchema.safeParse(id);
-  if (!parsed.success) return actionError("入力が不正です");
+  const parsed = uuidSchema(tr).safeParse(id);
+  if (!parsed.success) return actionError(tr("common.invalidInput"));
 
   try {
     const device = await prisma.kioskDevice.findUnique({
       where: { id: parsed.data },
     });
-    if (!device) return actionError("対象の端末が見つかりません");
+    if (!device)
+      return actionError(tr("settings.kioskDevicesActions.deviceNotFound"));
     if (device.status === "REVOKED") {
-      return actionError("この端末は既に取り消し済みです");
+      return actionError(tr("settings.kioskDevicesActions.alreadyRevoked"));
     }
     const now = new Date();
     const openSessions = await prisma.kioskSession.findMany({
@@ -592,7 +700,13 @@ export async function revokeDevice(id: string): Promise<ActionResult> {
     revalidate();
     return actionOk();
   } catch (e) {
-    return actionError(prismaErrorMessage(e, "端末の取り消しに失敗しました"));
+    return actionError(
+      prismaErrorMessage(
+        e,
+        tr("settings.kioskDevicesActions.revokeFailed"),
+        tr,
+      ),
+    );
   }
 }
 
@@ -603,17 +717,19 @@ export async function revokeDevice(id: string): Promise<ActionResult> {
 export async function regenerateSettingsCode(
   id: string,
 ): Promise<ActionResult<{ code: string }>> {
+  const tr = await getTranslations();
   const gate = await useElevation("kiosk_secret.regenerate_settings_code");
   if (!gate.ok) return actionError(gate.error);
-  const parsed = uuidSchema.safeParse(id);
-  if (!parsed.success) return actionError("入力が不正です");
+  const parsed = uuidSchema(tr).safeParse(id);
+  if (!parsed.success) return actionError(tr("common.invalidInput"));
 
   try {
     const device = await prisma.kioskDevice.findUnique({
       where: { id: parsed.data },
       select: { id: true },
     });
-    if (!device) return actionError("対象の端末が見つかりません");
+    if (!device)
+      return actionError(tr("settings.kioskDevicesActions.deviceNotFound"));
     const code = String(Math.floor(Math.random() * 1_000_000)).padStart(6, "0");
     await prisma.kioskDevice.update({
       where: { id: parsed.data },
@@ -623,13 +739,19 @@ export async function regenerateSettingsCode(
       action: "UPDATE",
       tableName: "kiosk_devices",
       recordId: parsed.data,
-      after: { note: "端末設定コードを再生成" },
+      after: {
+        note: tr("settings.kioskDevicesActions.auditSettingsCodeRegenerated"),
+      },
     });
     revalidate();
     return actionOk({ code });
   } catch (e) {
     return actionError(
-      prismaErrorMessage(e, "設定コードの再生成に失敗しました"),
+      prismaErrorMessage(
+        e,
+        tr("settings.kioskDevicesActions.regenerateSettingsCodeFailed"),
+        tr,
+      ),
     );
   }
 }
@@ -644,6 +766,7 @@ export async function revealKioskPin(input: {
   kind: "unlock" | "settings";
   deviceId?: string;
 }): Promise<ActionResult<{ value: string }>> {
+  const tr = await getTranslations();
   // 開示するものが違えば別の操作。設定コード（端末 1 台の解錠）と退出 PIN
   // （全端末共通）では影響範囲が桁で違うので、まとめて 1 つの承認にしない。
   const gate = await useElevation(
@@ -654,19 +777,23 @@ export async function revealKioskPin(input: {
   if (!gate.ok) return actionError(gate.error);
   try {
     if (input.kind === "settings") {
-      const parsed = uuidSchema.safeParse(input.deviceId);
-      if (!parsed.success) return actionError("端末が指定されていません");
+      const parsed = uuidSchema(tr).safeParse(input.deviceId);
+      if (!parsed.success)
+        return actionError(
+          tr("settings.kioskDevicesActions.deviceNotSpecified"),
+        );
       const device = await prisma.kioskDevice.findUnique({
         where: { id: parsed.data },
         select: { settingsCode: true },
       });
-      if (!device) return actionError("対象の端末が見つかりません");
+      if (!device)
+        return actionError(tr("settings.kioskDevicesActions.deviceNotFound"));
       await recordAudit({
         action: "VIEW",
         tableName: "kiosk_devices",
         recordId: parsed.data,
         after: {
-          note: "端末設定コードを表示",
+          note: tr("settings.kioskDevicesActions.auditSettingsCodeRevealed"),
           ...elevationAuditNote(gate, "kiosk_secret.reveal_settings_code"),
         },
       });
@@ -676,19 +803,28 @@ export async function revealKioskPin(input: {
       where: { key: "kiosk.unlock_pin" },
     });
     const value = typeof row?.value === "string" ? row.value : null;
-    if (!value) return actionError("メンテナンス PIN が未設定です");
+    if (!value)
+      return actionError(
+        tr("settings.kioskDevicesActions.maintenancePinNotSet"),
+      );
     await recordAudit({
       action: "VIEW",
       tableName: "system_settings",
       recordId: "kiosk.unlock_pin",
       after: {
-        note: "メンテナンス PIN を表示",
+        note: tr("settings.kioskDevicesActions.auditUnlockPinRevealed"),
         ...elevationAuditNote(gate, "kiosk_secret.reveal_unlock_pin"),
       },
     });
     return actionOk({ value });
   } catch (e) {
-    return actionError(prismaErrorMessage(e, "PIN の取得に失敗しました"));
+    return actionError(
+      prismaErrorMessage(
+        e,
+        tr("settings.kioskDevicesActions.pinFetchFailed"),
+        tr,
+      ),
+    );
   }
 }
 
@@ -719,6 +855,7 @@ export type UnlockPinHistoryRow = {
 export async function listUnlockPinHistory(): Promise<
   ActionResult<{ rows: UnlockPinHistoryRow[] }>
 > {
+  const tr = await getTranslations();
   const gate = await useElevation("kiosk_secret.reveal_pin_history");
   if (!gate.ok) return actionError(gate.error);
   try {
@@ -732,7 +869,7 @@ export async function listUnlockPinHistory(): Promise<
       tableName: "kiosk_unlock_pins",
       recordId: "kiosk.unlock_pin",
       after: {
-        note: "メンテナンス PIN の履歴を表示",
+        note: tr("settings.kioskDevicesActions.auditUnlockPinHistoryRevealed"),
         count: rows.length,
         ...elevationAuditNote(gate, "kiosk_secret.reveal_pin_history"),
       },
@@ -747,7 +884,13 @@ export async function listUnlockPinHistory(): Promise<
       })),
     });
   } catch (e) {
-    return actionError(prismaErrorMessage(e, "PIN 履歴の取得に失敗しました"));
+    return actionError(
+      prismaErrorMessage(
+        e,
+        tr("settings.kioskDevicesActions.pinHistoryFetchFailed"),
+        tr,
+      ),
+    );
   }
 }
 
@@ -780,23 +923,26 @@ export type DeviceUnlockPinInfo = {
 export async function revealDeviceUnlockPin(
   deviceId: string,
 ): Promise<ActionResult<DeviceUnlockPinInfo>> {
+  const tr = await getTranslations();
   const gate = await useElevation("kiosk_secret.reveal_device_pin");
   if (!gate.ok) return actionError(gate.error);
-  const parsed = uuidSchema.safeParse(deviceId);
-  if (!parsed.success) return actionError("端末が指定されていません");
+  const parsed = uuidSchema(tr).safeParse(deviceId);
+  if (!parsed.success)
+    return actionError(tr("settings.kioskDevicesActions.deviceNotSpecified"));
   try {
     const device = await prisma.kioskDevice.findUnique({
       where: { id: parsed.data },
       select: { unlockPinSyncedAt: true, unlockPinRotatedAt: true },
     });
-    if (!device) return actionError("対象の端末が見つかりません");
+    if (!device)
+      return actionError(tr("settings.kioskDevicesActions.deviceNotFound"));
 
     await recordAudit({
       action: "VIEW",
       tableName: "kiosk_devices",
       recordId: parsed.data,
       after: {
-        note: "端末が保持しているメンテナンス PIN を表示",
+        note: tr("settings.kioskDevicesActions.auditDevicePinRevealed"),
         ...elevationAuditNote(gate, "kiosk_secret.reveal_device_pin"),
       },
     });
@@ -825,23 +971,31 @@ export async function revealDeviceUnlockPin(
       isCurrent: held?.pin != null && held.pin === currentPin,
     });
   } catch (e) {
-    return actionError(prismaErrorMessage(e, "PIN の取得に失敗しました"));
+    return actionError(
+      prismaErrorMessage(
+        e,
+        tr("settings.kioskDevicesActions.pinFetchFailed"),
+        tr,
+      ),
+    );
   }
 }
 
 /** アテステーション鍵をリセット（次回ラッパー接続時に再束縛 = TOFU）。 */
 export async function resetDeviceKey(id: string): Promise<ActionResult> {
+  const tr = await getTranslations();
   const gate = await useElevation("kiosk_secret.reset_device_key");
   if (!gate.ok) return actionError(gate.error);
-  const parsed = uuidSchema.safeParse(id);
-  if (!parsed.success) return actionError("入力が不正です");
+  const parsed = uuidSchema(tr).safeParse(id);
+  if (!parsed.success) return actionError(tr("common.invalidInput"));
 
   try {
     const device = await prisma.kioskDevice.findUnique({
       where: { id: parsed.data },
       select: { fingerprint: true },
     });
-    if (!device) return actionError("対象の端末が見つかりません");
+    if (!device)
+      return actionError(tr("settings.kioskDevicesActions.deviceNotFound"));
     await prisma.kioskDevice.update({
       where: { id: parsed.data },
       data: { devicePublicKey: null, fingerprint: null },
@@ -856,18 +1010,26 @@ export async function resetDeviceKey(id: string): Promise<ActionResult> {
     revalidate();
     return actionOk();
   } catch (e) {
-    return actionError(prismaErrorMessage(e, "鍵のリセットに失敗しました"));
+    return actionError(
+      prismaErrorMessage(
+        e,
+        tr("settings.kioskDevicesActions.resetKeyFailed"),
+        tr,
+      ),
+    );
   }
 }
 
 // ── フロアマップ: ピン配置 ───────────────────────────────────────────────────
 
-const placeInput = z.object({
-  id: uuidSchema,
-  floorMapId: uuidSchema,
-  mapX: z.number().min(0).max(100),
-  mapY: z.number().min(0).max(100),
-});
+function placeInputSchema(tr: Tr) {
+  return z.object({
+    id: uuidSchema(tr),
+    floorMapId: uuidSchema(tr),
+    mapX: z.number().min(0).max(100),
+    mapY: z.number().min(0).max(100),
+  });
+}
 
 /** 端末をフロアマップ上に配置する（%座標）。 */
 export async function placeDevice(raw: {
@@ -876,10 +1038,11 @@ export async function placeDevice(raw: {
   mapX: number;
   mapY: number;
 }): Promise<ActionResult> {
+  const tr = await getTranslations();
   const authz = await checkPermission("kiosk", "UPDATE");
   if (!authz.ok) return actionError(authz.error);
-  const parsed = placeInput.safeParse(raw);
-  if (!parsed.success) return actionError("入力が不正です");
+  const parsed = placeInputSchema(tr).safeParse(raw);
+  if (!parsed.success) return actionError(tr("common.invalidInput"));
   const v = parsed.data;
 
   try {
@@ -887,12 +1050,15 @@ export async function placeDevice(raw: {
       prisma.kioskDevice.findUnique({ where: { id: v.id } }),
       prisma.kioskFloorMap.findUnique({ where: { id: v.floorMapId } }),
     ]);
-    if (!device) return actionError("対象の端末が見つかりません");
+    if (!device)
+      return actionError(tr("settings.kioskDevicesActions.deviceNotFound"));
     if (!map || !map.isActive) {
-      return actionError("対象のフロアマップが見つかりません");
+      return actionError(tr("settings.kioskDevicesActions.floorMapNotFound"));
     }
     if (device.plantId !== map.plantId) {
-      return actionError("端末の所属拠点とフロアマップの拠点が一致しません");
+      return actionError(
+        tr("settings.kioskDevicesActions.floorMapPlantMismatch"),
+      );
     }
     const round = (n: number) => Math.round(n * 100) / 100;
     await prisma.kioskDevice.update({
@@ -908,29 +1074,37 @@ export async function placeDevice(raw: {
       tableName: "kiosk_devices",
       recordId: v.id,
       after: {
-        note: `フロアマップ「${map.name}」に配置（${round(v.mapX)}%, ${round(v.mapY)}%）`,
+        note: tr("settings.kioskDevicesActions.auditPlacedOnFloorMap", {
+          name: map.name,
+          x: round(v.mapX),
+          y: round(v.mapY),
+        }),
       },
     });
     revalidate();
     return actionOk();
   } catch (e) {
-    return actionError(prismaErrorMessage(e, "ピンの配置に失敗しました"));
+    return actionError(
+      prismaErrorMessage(e, tr("settings.kioskDevicesActions.placeFailed"), tr),
+    );
   }
 }
 
 /** フロアマップ上のピンを外す。 */
 export async function unplaceDevice(id: string): Promise<ActionResult> {
+  const tr = await getTranslations();
   const authz = await checkPermission("kiosk", "UPDATE");
   if (!authz.ok) return actionError(authz.error);
-  const parsed = uuidSchema.safeParse(id);
-  if (!parsed.success) return actionError("入力が不正です");
+  const parsed = uuidSchema(tr).safeParse(id);
+  if (!parsed.success) return actionError(tr("common.invalidInput"));
 
   try {
     const device = await prisma.kioskDevice.findUnique({
       where: { id: parsed.data },
       select: { id: true },
     });
-    if (!device) return actionError("対象の端末が見つかりません");
+    if (!device)
+      return actionError(tr("settings.kioskDevicesActions.deviceNotFound"));
     await prisma.kioskDevice.update({
       where: { id: parsed.data },
       data: { floorMapId: null, mapX: null, mapY: null },
@@ -939,12 +1113,20 @@ export async function unplaceDevice(id: string): Promise<ActionResult> {
       action: "UPDATE",
       tableName: "kiosk_devices",
       recordId: parsed.data,
-      after: { note: "フロアマップのピンを解除" },
+      after: {
+        note: tr("settings.kioskDevicesActions.auditUnplacedFromFloorMap"),
+      },
     });
     revalidate();
     return actionOk();
   } catch (e) {
-    return actionError(prismaErrorMessage(e, "ピンの解除に失敗しました"));
+    return actionError(
+      prismaErrorMessage(
+        e,
+        tr("settings.kioskDevicesActions.unplaceFailed"),
+        tr,
+      ),
+    );
   }
 }
 
@@ -957,21 +1139,26 @@ export async function unplaceDevice(id: string): Promise<ActionResult> {
 // 判定は lib/floor-map-image.ts と共用（API 経路と同じルールを使う）。
 const checkFloorMapPermission = checkFloorMapPermissionCore;
 
-const floorMapCreateInput = z.object({
-  plantId: z.number().int().positive("拠点を選択してください"),
-  name: z.string().min(1, "フロア名を入力してください"),
-});
+function floorMapCreateInputSchema(tr: Tr) {
+  return z.object({
+    plantId: z.number().int().positive(tr("master.locationModal.selectASite")),
+    name: z.string().min(1, tr("settings.kiosk.enterAFloorName")),
+  });
+}
 
 /** フロアマップ（階/エリア）を追加する。 */
 export async function createFloorMap(raw: {
   plantId: number;
   name: string;
 }): Promise<ActionResult<{ id: string }>> {
+  const tr = await getTranslations();
   const authz = await checkFloorMapPermission("CREATE");
   if (!authz.ok) return actionError(authz.error);
-  const parsed = floorMapCreateInput.safeParse(raw);
+  const parsed = floorMapCreateInputSchema(tr).safeParse(raw);
   if (!parsed.success) {
-    return actionError(parsed.error.issues[0]?.message ?? "入力が不正です");
+    return actionError(
+      parsed.error.issues[0]?.message ?? tr("common.invalidInput"),
+    );
   }
   const v = parsed.data;
 
@@ -981,7 +1168,7 @@ export async function createFloorMap(raw: {
       select: { isActive: true },
     });
     if (!plant || !plant.isActive) {
-      return actionError("対象の拠点が見つかりません");
+      return actionError(tr("settings.kioskDevicesActions.plantNotFound"));
     }
     const last = await prisma.kioskFloorMap.findFirst({
       where: { plantId: v.plantId, isActive: true },
@@ -1006,33 +1193,42 @@ export async function createFloorMap(raw: {
     return actionOk({ id: created.id });
   } catch (e) {
     return actionError(
-      prismaErrorMessage(e, "フロアマップの作成に失敗しました"),
+      prismaErrorMessage(
+        e,
+        tr("settings.kioskDevicesActions.createFloorMapFailed"),
+        tr,
+      ),
     );
   }
 }
 
-const floorMapRenameInput = z.object({
-  id: uuidSchema,
-  name: z.string().min(1, "フロア名を入力してください"),
-});
+function floorMapRenameInputSchema(tr: Tr) {
+  return z.object({
+    id: uuidSchema(tr),
+    name: z.string().min(1, tr("settings.kiosk.enterAFloorName")),
+  });
+}
 
 /** フロアマップの名称を変更する。 */
 export async function renameFloorMap(raw: {
   id: string;
   name: string;
 }): Promise<ActionResult> {
+  const tr = await getTranslations();
   const authz = await checkFloorMapPermission("UPDATE");
   if (!authz.ok) return actionError(authz.error);
-  const parsed = floorMapRenameInput.safeParse(raw);
+  const parsed = floorMapRenameInputSchema(tr).safeParse(raw);
   if (!parsed.success) {
-    return actionError(parsed.error.issues[0]?.message ?? "入力が不正です");
+    return actionError(
+      parsed.error.issues[0]?.message ?? tr("common.invalidInput"),
+    );
   }
   const v = parsed.data;
 
   try {
     const map = await prisma.kioskFloorMap.findUnique({ where: { id: v.id } });
     if (!map || !map.isActive) {
-      return actionError("対象のフロアマップが見つかりません");
+      return actionError(tr("settings.kioskDevicesActions.floorMapNotFound"));
     }
     await prisma.kioskFloorMap.update({
       where: { id: v.id },
@@ -1049,17 +1245,22 @@ export async function renameFloorMap(raw: {
     return actionOk();
   } catch (e) {
     return actionError(
-      prismaErrorMessage(e, "フロアマップの更新に失敗しました"),
+      prismaErrorMessage(
+        e,
+        tr("settings.kioskDevicesActions.renameFloorMapFailed"),
+        tr,
+      ),
     );
   }
 }
 
 /** フロアマップを削除する（端末が配置されていない場合のみ）。 */
 export async function deleteFloorMap(id: string): Promise<ActionResult> {
+  const tr = await getTranslations();
   const authz = await checkFloorMapPermission("DELETE");
   if (!authz.ok) return actionError(authz.error);
-  const parsed = uuidSchema.safeParse(id);
-  if (!parsed.success) return actionError("入力が不正です");
+  const parsed = uuidSchema(tr).safeParse(id);
+  if (!parsed.success) return actionError(tr("common.invalidInput"));
 
   try {
     const map = await prisma.kioskFloorMap.findUnique({
@@ -1069,15 +1270,18 @@ export async function deleteFloorMap(id: string): Promise<ActionResult> {
         file: { select: { id: true, storageKey: true } },
       },
     });
-    if (!map) return actionError("対象のフロアマップが見つかりません");
+    if (!map)
+      return actionError(tr("settings.kioskDevicesActions.floorMapNotFound"));
     if (map._count.devices > 0) {
       return actionError(
-        "端末が配置されているフロアマップは削除できません。先にピンを解除してください",
+        tr("settings.kioskDevicesActions.floorMapHasDevicesCannotDelete"),
       );
     }
     if (map._count.storageLocations > 0) {
       return actionError(
-        "保管場所が配置されているフロアマップは削除できません。先にピンを解除してください",
+        tr(
+          "settings.kioskDevicesActions.floorMapHasStorageLocationsCannotDelete",
+        ),
       );
     }
     await prisma.kioskFloorMap.delete({ where: { id: parsed.data } });
@@ -1099,7 +1303,11 @@ export async function deleteFloorMap(id: string): Promise<ActionResult> {
     return actionOk();
   } catch (e) {
     return actionError(
-      prismaErrorMessage(e, "フロアマップの削除に失敗しました"),
+      prismaErrorMessage(
+        e,
+        tr("settings.kioskDevicesActions.deleteFloorMapFailed"),
+        tr,
+      ),
     );
   }
 }

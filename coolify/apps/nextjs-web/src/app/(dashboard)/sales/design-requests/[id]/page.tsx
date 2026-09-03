@@ -1,12 +1,15 @@
 import { notFound } from "next/navigation";
 import { DesignRequestDetail } from "@/components/sales/design-requests/DesignRequestDetail";
 import { isIssuedDesign } from "@/components/sales/design-requests/model";
+import { appLabelForKey } from "@/lib/app-list";
 import { fetchApprovalState, fetchApprovalTrail } from "@/lib/approvals";
 import { listAttachments } from "@/lib/attachments";
 import { fetchAuditEntries } from "@/lib/audit";
 import { requireAppRead } from "@/lib/authz-page";
 import { listMemos } from "@/lib/document-memos";
 import { pdfStorageKey, storedPdfMeta } from "@/lib/document-pdf";
+import { formatDocPageTitle } from "@/lib/page-title";
+import { getServerLocale } from "@/lib/user-preferences";
 import { fetchDesignRequest, fetchEmployeeOptions } from "../data";
 
 export const dynamic = "force-dynamic";
@@ -18,8 +21,12 @@ export async function generateMetadata({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
+  const locale = await getServerLocale();
   return {
-    title: `設計依頼書 ${decodeURIComponent(id)} | CKK 業務管理システム`,
+    title: formatDocPageTitle(
+      appLabelForKey("design-requests", "設計依頼書", locale), // i18n-ignore — ja はそのまま使う（訳の実体は appLabelForKey 内の en/zh マップ）
+      decodeURIComponent(id),
+    ),
   };
 }
 
@@ -33,6 +40,7 @@ export default async function SalesDesignRequestsDetailPage({
   if (denied) return denied;
   const { id } = await params;
   const requestNumber = decodeURIComponent(id);
+  const locale = await getServerLocale();
 
   const [
     request,
@@ -43,7 +51,7 @@ export default async function SalesDesignRequestsDetailPage({
     assigneeOptions,
     memos,
   ] = await Promise.all([
-    fetchDesignRequest(requestNumber),
+    fetchDesignRequest(requestNumber, locale),
     fetchAuditEntries("design_requests", requestNumber),
     listAttachments("design_requests", requestNumber),
     fetchApprovalState("design_requests", requestNumber),

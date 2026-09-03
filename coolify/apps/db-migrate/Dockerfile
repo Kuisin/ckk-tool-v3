@@ -32,7 +32,19 @@ COPY coolify/apps/db-migrate/entrypoint.sh /usr/local/bin/db-migrate-entrypoint
 RUN chmod +x /usr/local/bin/db-migrate-entrypoint
 
 # Healthy only after migrations actually succeeded (see entrypoint).
-HEALTHCHECK --interval=30s --timeout=5s --start-period=180s --retries=3 \
+#
+# ★ **start-period は短く、retries は多く。** Coolify は start-period を
+#   「最初の判定までに待つ時間」として**丸ごと待つ**（成功しても切り上げない）。
+#   180s にしていた頃は、2 秒で終わった移行のあと 3 分間ただ待っていて、
+#   デプロイ 6 分のうち半分がこの数字だった。
+#
+#   遅い移行を殺さないための余裕は retries 側で取る。ここは
+#   10s + 10s × 60 = 最大 610s まで待てるので、以前の 270s より**むしろ寛容**で、
+#   かつ終わった 10 秒後には healthy になる。
+#
+#   移行そのものが失敗したときは entrypoint が set -e で落ちてコンテナが
+#   終了するので、retries を使い切るのを待たずにデプロイが失敗する。
+HEALTHCHECK --interval=10s --timeout=5s --start-period=10s --retries=60 \
   CMD test -f /tmp/migrate-ok || exit 1
 
 CMD ["db-migrate-entrypoint"]

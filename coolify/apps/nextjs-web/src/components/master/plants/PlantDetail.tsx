@@ -11,7 +11,7 @@
 import { Stack, Tabs } from "@mantine/core";
 import { IconCircleMinus, IconTrash } from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
-import { useLocale } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { useState } from "react";
 import { useFormat } from "@/components/layout/PreferencesProvider";
 import { ActiveBadge } from "@/components/ui/ActiveBadge";
@@ -56,6 +56,7 @@ export function PlantDetail({
   record: PlantDetailData;
   floorMaps: PlantFloorMapRef[];
 }) {
+  const tr = useTranslations();
   const locale = useLocale();
   const fmt = useFormat();
   const router = useRouter();
@@ -78,12 +79,14 @@ export function PlantDetail({
         <ResourceActions
           menuItems={[
             {
-              label: record.isActive ? "無効化" : "有効化",
+              label: record.isActive
+                ? tr("common.disable")
+                : tr("common.enable"),
               icon: <IconCircleMinus size={14} />,
               onClick: () => setToggleOpen(true),
             },
             {
-              label: "削除",
+              label: tr("common.delete"),
               icon: <IconTrash size={14} />,
               color: "red",
               divider: true,
@@ -93,7 +96,11 @@ export function PlantDetail({
           onEdit={() => router.push(`${BASE_PATH}/${record.id}/edit`)}
         />
       }
-      breadcrumbs={["マスタ", { label: "拠点", href: BASE_PATH }, record.code]}
+      breadcrumbs={[
+        tr("common.masterData"),
+        { label: tr("master.plantDetail.plantsLabel"), href: BASE_PATH },
+        record.code,
+      ]}
       createdAt={fmt.dateTime(record.createdAt)}
       status={<ActiveBadge active={record.isActive} />}
       title={record.nameJa}
@@ -101,37 +108,61 @@ export function PlantDetail({
     >
       <SummaryGrid>
         <FieldValue
-          label="拠点コード"
+          label={tr("master.plants.siteCode")}
           value={<DocNumber>{record.code}</DocNumber>}
         />
-        <FieldValue label="名称（日本語）" value={record.nameJa} />
-        <FieldValue label="名称（英語）" value={record.nameEn || "—"} />
-        <FieldValue label="よみがな" value={record.nameKana || "—"} />
+        <FieldValue label={tr("common.nameJapanese")} value={record.nameJa} />
         <FieldValue
-          label="国"
+          label={tr("common.nameEnglish")}
+          value={record.nameEn || "—"}
+        />
+        <FieldValue label={tr("common.kana2")} value={record.nameKana || "—"} />
+        <FieldValue
+          label={tr("common.country")}
           value={
             record.countryCode
               ? (countryLabel(record.countryCode, locale) ?? record.countryCode)
               : "—"
           }
         />
-        <FieldValue label="郵便番号" value={record.postalCode || "—"} />
-        <FieldValue label="住所（日本語）" value={record.addressJa || "—"} />
-        <FieldValue label="住所（英語）" value={record.addressEn || "—"} />
-        <FieldValue label="電話番号" value={record.phone || "—"} />
-        <FieldValue label="メールアドレス" value={record.email || "—"} />
-        <FieldValue label="担当者" value={record.contactPerson || "—"} />
+        <FieldValue
+          label={tr("common.postalCode")}
+          value={record.postalCode || "—"}
+        />
+        <FieldValue
+          label={tr("master.plants.addressJapanese")}
+          value={record.addressJa || "—"}
+        />
+        <FieldValue
+          label={tr("master.plants.addressEnglish")}
+          value={record.addressEn || "—"}
+        />
+        <FieldValue
+          label={tr("common.phoneNumber")}
+          value={record.phone || "—"}
+        />
+        <FieldValue
+          label={tr("common.emailAddress")}
+          value={record.email || "—"}
+        />
+        <FieldValue
+          label={tr("common.assignee")}
+          value={record.contactPerson || "—"}
+        />
       </SummaryGrid>
 
       <AppTabs onChange={setTab} value={tab}>
         <Tabs.List>
-          <Tabs.Tab value="overview">概要</Tabs.Tab>
-          <Tabs.Tab value="floor-maps">フロアマップ</Tabs.Tab>
+          <Tabs.Tab value="overview">{tr("common.overview")}</Tabs.Tab>
+          <Tabs.Tab value="floor-maps">{tr("common.floorMap")}</Tabs.Tab>
         </Tabs.List>
 
         <Tabs.Panel pt="md" value="overview">
           <Stack gap="md">
-            <FieldValue label="備考" value={record.notes || "—"} />
+            <FieldValue
+              label={tr("common.notes")}
+              value={record.notes || "—"}
+            />
           </Stack>
         </Tabs.Panel>
 

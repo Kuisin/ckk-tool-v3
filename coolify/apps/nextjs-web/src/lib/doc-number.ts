@@ -21,6 +21,9 @@ const DOC_FORMATS = {
   INV: { digits: 5 },
   ORD: { digits: 5 }, // 注文請書（注文明細の枝番なし基底番号）
   WOR: { digits: 5 }, // 指示書（書類番号 — ロット番号は別の通し連番 int）
+  PO: { digits: 5 }, // 素材発注書（po_number に文字列そのまま保存）
+  PRQ: { digits: 5 }, // 購買依頼（request_number に文字列そのまま保存）
+  DSG: { digits: 5 }, // 設計依頼書（request_number に文字列そのまま保存）
 } as const;
 
 export type DocPrefix = keyof typeof DOC_FORMATS;
@@ -116,4 +119,34 @@ export function parseOrderLineKey(id: string): OrderLineKey | null {
   if (!Number.isInteger(seq) || seq < 1) return null;
   if (!Number.isInteger(branch) || branch < 1) return null;
   return { yearMonth: m[1], seq, branch };
+}
+
+// ── 表示: 接頭辞と番号を分ける ───────────────────────────────────────────────
+
+/**
+ * 接頭辞は「大文字 2〜4 文字 + ハイフン」だけを認める（QOT- / ORD- / DRN- …）。
+ */
+const DISPLAY_PREFIX = /^([A-Z]{2,4}-)(.+)$/;
+
+export interface SplitDocNumber {
+  /** `ORD-` の部分。無ければ空文字。 */
+  prefix: string;
+  /** 残り（実際に見分けたいところ）。 */
+  rest: string;
+}
+
+/**
+ * 書類番号を「接頭辞」と「番号」に分ける（表示を分けるためだけのもの）。
+ *
+ * 一覧に `ORD-202609-00042` が縦に並ぶと、**どの行も左端の 4 文字が同じ**なので、
+ * 目が最初に当たる場所に情報が無い。実際に見分けたいのは後ろの番号のほう。
+ * 接頭辞を薄くして番号を主役にするために、ここで切る。
+ *
+ * 分けられないものはそのまま返す（`rest` に全部）。ロット番号のような
+ * **接頭辞を持たない番号**もこの経路に来るので、無理に切らないこと —
+ * 切ると数字の頭が薄くなって読み違える。
+ */
+export function splitDocNumber(value: string): SplitDocNumber {
+  const m = DISPLAY_PREFIX.exec(value);
+  return m ? { prefix: m[1], rest: m[2] } : { prefix: "", rest: value };
 }

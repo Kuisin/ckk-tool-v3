@@ -9,18 +9,35 @@
  * 値はこの普通のモジュールに置き、actions 側は型と関数だけを持つ。
  */
 
-/** 選択できる文書種別。 */
-export const DOCUMENT_LINK_TYPES = [
-  { value: "quote", label: "見積書" },
-  { value: "order_line", label: "注文明細" },
-  { value: "work_order", label: "指示書" },
-  { value: "delivery_order", label: "出荷書" },
-  { value: "invoice", label: "請求書" },
-  { value: "price_list", label: "価格表" },
-  { value: "estimate", label: "価格試算" },
+import type { useTranslations } from "next-intl";
+
+/** 選択できる文書種別コード（表示ラベルは呼び出し側の `tr` で作る）。 */
+export const DOCUMENT_LINK_TYPE_VALUES = [
+  "quote",
+  "order_line",
+  "work_order",
+  "delivery_order",
+  "invoice",
+  "price_list",
+  "estimate",
 ] as const;
 
-export type DocumentLinkType = (typeof DOCUMENT_LINK_TYPES)[number]["value"];
+export type DocumentLinkType = (typeof DOCUMENT_LINK_TYPE_VALUES)[number];
+
+/** 選択できる文書種別（ラベル付き）。 */
+export function documentLinkTypes(
+  tr: ReturnType<typeof useTranslations>,
+): { value: DocumentLinkType; label: string }[] {
+  return [
+    { value: "quote", label: tr("common.quote") },
+    { value: "order_line", label: tr("common.orderLine") },
+    { value: "work_order", label: tr("common.workOrder") },
+    { value: "delivery_order", label: tr("common.deliveryOrder") },
+    { value: "invoice", label: tr("common.invoice") },
+    { value: "price_list", label: tr("common.priceList") },
+    { value: "estimate", label: tr("common.priceEstimate") },
+  ];
+}
 
 export interface DocumentHit {
   /** 挿入するアプリ内パス。 */

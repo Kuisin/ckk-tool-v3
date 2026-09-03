@@ -9,6 +9,7 @@
  */
 
 import { revalidatePath } from "next/cache";
+import { getTranslations } from "next-intl/server";
 import { z } from "zod";
 import { recordAudit } from "@/lib/audit";
 import { checkPermission } from "@/lib/authz";
@@ -24,42 +25,54 @@ import {
 
 const codePattern = /^[A-Za-z0-9_-]+$/;
 
-const locationInput = z.object({
-  code: z
-    .string()
-    .min(1, "コードを入力してください")
-    .regex(codePattern, "コードは英数字・ハイフン・アンダースコアで入力"),
-  nameJa: z.string().min(1, "名称（日本語）を入力してください"),
-  nameTranslations: z.record(z.string(), z.string()).optional(),
-  sortOrder: z.number().int(),
-  isActive: z.boolean(),
-  notes: z.string().optional(),
-});
+function locationInputSchema(tr: Awaited<ReturnType<typeof getTranslations>>) {
+  return z.object({
+    code: z
+      .string()
+      .min(1, tr("common.codeRequired"))
+      .regex(codePattern, tr("master.storageLocationActions.codeFormat")),
+    nameJa: z.string().min(1, tr("common.nameJaRequired")),
+    nameTranslations: z.record(z.string(), z.string()).optional(),
+    sortOrder: z.number().int(),
+    isActive: z.boolean(),
+    notes: z.string().optional(),
+  });
+}
 
-const shelfInput = z.object({
-  code: z
-    .string()
-    .min(1, "棚コードを入力してください")
-    .regex(codePattern, "コードは英数字・ハイフン・アンダースコアで入力"),
-  nameJa: z.string().optional(),
-  nameTranslations: z.record(z.string(), z.string()).optional(),
-  sortOrder: z.number().int(),
-  isActive: z.boolean(),
-});
+function shelfInputSchema(tr: Awaited<ReturnType<typeof getTranslations>>) {
+  return z.object({
+    code: z
+      .string()
+      .min(1, tr("master.storageLocationActions.shelfCodeRequired"))
+      .regex(codePattern, tr("master.storageLocationActions.codeFormat")),
+    nameJa: z.string().optional(),
+    nameTranslations: z.record(z.string(), z.string()).optional(),
+    sortOrder: z.number().int(),
+    isActive: z.boolean(),
+  });
+}
 
 /** 新規作成は拠点必須 + フロア（マップ）任意 — 一覧ビューからも作成できる。 */
-const locationCreateInput = locationInput.extend({
-  plantId: z.number().int().positive("拠点を選択してください"),
-  floorMapId: z
-    .string()
-    .uuid("フロアマップの指定が不正です")
-    .nullable()
-    .optional(),
-});
+function locationCreateInputSchema(
+  tr: Awaited<ReturnType<typeof getTranslations>>,
+) {
+  return locationInputSchema(tr).extend({
+    plantId: z.number().int().positive(tr("master.locationModal.selectASite")),
+    floorMapId: z
+      .string()
+      .uuid(tr("master.storageLocationActions.invalidFloorMapSpecified"))
+      .nullable()
+      .optional(),
+  });
+}
 
-export type StorageLocationInput = z.infer<typeof locationInput>;
-export type StorageLocationCreateInput = z.infer<typeof locationCreateInput>;
-export type StorageShelfInput = z.infer<typeof shelfInput>;
+export type StorageLocationInput = z.infer<
+  ReturnType<typeof locationInputSchema>
+>;
+export type StorageLocationCreateInput = z.infer<
+  ReturnType<typeof locationCreateInputSchema>
+>;
+export type StorageShelfInput = z.infer<ReturnType<typeof shelfInputSchema>>;
 
 function revalidate() {
   revalidatePath("/master/storage-locations");
@@ -71,11 +84,14 @@ function revalidate() {
 export async function createStorageLocation(
   input: StorageLocationCreateInput,
 ): Promise<ActionResult<{ id: number }>> {
+  const tr = await getTranslations();
   const authz = await checkPermission("master", "CREATE");
   if (!authz.ok) return actionError(authz.error);
-  const parsed = locationCreateInput.safeParse(input);
+  const parsed = locationCreateInputSchema(tr).safeParse(input);
   if (!parsed.success) {
-    return actionError(parsed.error.issues[0]?.message ?? "入力が不正です");
+    return actionError(
+      parsed.error.issues[0]?.message ?? tr("common.invalidInput"),
+    );
   }
   const v = parsed.data;
   try {
@@ -83,8 +99,12 @@ export async function createStorageLocation(
       where: { id: v.plantId },
       select: { id: true, isActive: true },
     });
-    if (!plant) return actionError("対象の拠点が見つかりません");
-    if (!plant.isActive) return actionError("無効な拠点には追加できません");
+    if (!plant) {
+      return actionError(tr("master.storageLocationActions.plantNotFound"));
+    }
+    if (!plant.isActive) {
+      return actionError(tr("master.storageLocationActions.plantInactive"));
+    }
     // フロア指定時は、そのフロアマップが選択拠点のものであることを検証
     if (v.floorMapId) {
       const map = await prisma.kioskFloorMap.findUnique({
@@ -92,7 +112,9 @@ export async function createStorageLocation(
         select: { plantId: true, isActive: true },
       });
       if (!map || !map.isActive || map.plantId !== v.plantId) {
-        return actionError("フロアマップが選択した拠点と一致しません");
+        return actionError(
+          tr("master.storageLocationActions.floorMapPlantMismatch"),
+        );
       }
     }
     const created = await prisma.storageLocation.create({
@@ -125,7 +147,13 @@ export async function createStorageLocation(
     revalidate();
     return actionOk({ id: created.id });
   } catch (e) {
-    return actionError(prismaErrorMessage(e, "保管場所の作成に失敗しました"));
+    return actionError(
+      prismaErrorMessage(
+        e,
+        tr("master.storageLocationActions.createFailed"),
+        tr,
+      ),
+    );
   }
 }
 
@@ -133,16 +161,21 @@ export async function updateStorageLocation(
   id: number,
   input: StorageLocationInput,
 ): Promise<ActionResult<{ id: number }>> {
+  const tr = await getTranslations();
   const authz = await checkPermission("master", "UPDATE");
   if (!authz.ok) return actionError(authz.error);
-  const parsed = locationInput.safeParse(input);
+  const parsed = locationInputSchema(tr).safeParse(input);
   if (!parsed.success) {
-    return actionError(parsed.error.issues[0]?.message ?? "入力が不正です");
+    return actionError(
+      parsed.error.issues[0]?.message ?? tr("common.invalidInput"),
+    );
   }
   const v = parsed.data;
   try {
     const before = await prisma.storageLocation.findUnique({ where: { id } });
-    if (!before) return actionError("対象の保管場所が見つかりません");
+    if (!before) {
+      return actionError(tr("master.storageLocationActions.locationNotFound"));
+    }
     await prisma.storageLocation.update({
       where: { id },
       data: {
@@ -163,12 +196,19 @@ export async function updateStorageLocation(
     revalidate();
     return actionOk({ id });
   } catch (e) {
-    return actionError(prismaErrorMessage(e, "保管場所の更新に失敗しました"));
+    return actionError(
+      prismaErrorMessage(
+        e,
+        tr("master.storageLocationActions.updateFailed"),
+        tr,
+      ),
+    );
   }
 }
 
 /** 保管場所の削除 — 在庫・棚から参照されていない場合のみ（棚は同時削除）。 */
 export async function deleteStorageLocation(id: number): Promise<ActionResult> {
+  const tr = await getTranslations();
   const authz = await checkPermission("master", "DELETE");
   if (!authz.ok) return actionError(authz.error);
   try {
@@ -176,14 +216,16 @@ export async function deleteStorageLocation(id: number): Promise<ActionResult> {
       where: { id },
       include: { shelves: { select: { id: true } } },
     });
-    if (!before) return actionError("対象の保管場所が見つかりません");
+    if (!before) {
+      return actionError(tr("master.storageLocationActions.locationNotFound"));
+    }
     const [prodRefs, matRefs] = await Promise.all([
       prisma.productInventory.count({ where: { storageLocationId: id } }),
       prisma.materialInventory.count({ where: { storageLocationId: id } }),
     ]);
     if (prodRefs + matRefs > 0) {
       return actionError(
-        "この保管場所を参照する在庫があるため削除できません（在庫移動で空にするか、無効化してください）",
+        tr("master.storageLocationActions.locationHasInventoryRefs"),
       );
     }
     await prisma.$transaction([
@@ -199,18 +241,28 @@ export async function deleteStorageLocation(id: number): Promise<ActionResult> {
     revalidate();
     return actionOk();
   } catch (e) {
-    return actionError(prismaErrorMessage(e, "保管場所の削除に失敗しました"));
+    return actionError(
+      prismaErrorMessage(
+        e,
+        tr("master.storageLocationActions.deleteFailed"),
+        tr,
+      ),
+    );
   }
 }
 
 // ── フロアマップ配置 ─────────────────────────────────────────────────────────
 
-const placeInput = z.object({
-  id: z.number().int().positive(),
-  floorMapId: z.string().uuid("フロアマップの指定が不正です"),
-  mapX: z.number().min(0).max(100),
-  mapY: z.number().min(0).max(100),
-});
+function placeInputSchema(tr: Awaited<ReturnType<typeof getTranslations>>) {
+  return z.object({
+    id: z.number().int().positive(),
+    floorMapId: z
+      .string()
+      .uuid(tr("master.storageLocationActions.invalidFloorMapSpecified")),
+    mapX: z.number().min(0).max(100),
+    mapY: z.number().min(0).max(100),
+  });
+}
 
 /** 保管場所をフロアマップ（端末管理と共用の拠点図面）に %座標で配置する。 */
 export async function placeStorageLocation(input: {
@@ -219,11 +271,14 @@ export async function placeStorageLocation(input: {
   mapX: number;
   mapY: number;
 }): Promise<ActionResult> {
+  const tr = await getTranslations();
   const authz = await checkPermission("master", "UPDATE");
   if (!authz.ok) return actionError(authz.error);
-  const parsed = placeInput.safeParse(input);
+  const parsed = placeInputSchema(tr).safeParse(input);
   if (!parsed.success) {
-    return actionError(parsed.error.issues[0]?.message ?? "入力が不正です");
+    return actionError(
+      parsed.error.issues[0]?.message ?? tr("common.invalidInput"),
+    );
   }
   const v = parsed.data;
   try {
@@ -237,9 +292,13 @@ export async function placeStorageLocation(input: {
         select: { plantId: true, isActive: true },
       }),
     ]);
-    if (!location) return actionError("対象の保管場所が見つかりません");
+    if (!location) {
+      return actionError(tr("master.storageLocationActions.locationNotFound"));
+    }
     if (!map || !map.isActive || map.plantId !== location.plantId) {
-      return actionError("フロアマップが保管場所の拠点と一致しません");
+      return actionError(
+        tr("master.storageLocationActions.floorMapLocationMismatch"),
+      );
     }
     await prisma.storageLocation.update({
       where: { id: v.id },
@@ -248,7 +307,13 @@ export async function placeStorageLocation(input: {
     revalidate();
     return actionOk();
   } catch (e) {
-    return actionError(prismaErrorMessage(e, "配置に失敗しました"));
+    return actionError(
+      prismaErrorMessage(
+        e,
+        tr("master.storageLocationActions.placeFailed"),
+        tr,
+      ),
+    );
   }
 }
 
@@ -256,6 +321,7 @@ export async function placeStorageLocation(input: {
 export async function unplaceStorageLocation(
   id: number,
 ): Promise<ActionResult> {
+  const tr = await getTranslations();
   const authz = await checkPermission("master", "UPDATE");
   if (!authz.ok) return actionError(authz.error);
   try {
@@ -263,7 +329,9 @@ export async function unplaceStorageLocation(
       where: { id },
       select: { plantId: true },
     });
-    if (!location) return actionError("対象の保管場所が見つかりません");
+    if (!location) {
+      return actionError(tr("master.storageLocationActions.locationNotFound"));
+    }
     await prisma.storageLocation.update({
       where: { id },
       data: { floorMapId: null, mapX: null, mapY: null },
@@ -271,7 +339,13 @@ export async function unplaceStorageLocation(
     revalidate();
     return actionOk();
   } catch (e) {
-    return actionError(prismaErrorMessage(e, "ピン解除に失敗しました"));
+    return actionError(
+      prismaErrorMessage(
+        e,
+        tr("master.storageLocationActions.unpinFailed"),
+        tr,
+      ),
+    );
   }
 }
 
@@ -281,11 +355,14 @@ export async function createStorageShelf(
   locationId: number,
   input: StorageShelfInput,
 ): Promise<ActionResult<{ id: number }>> {
+  const tr = await getTranslations();
   const authz = await checkPermission("master", "CREATE");
   if (!authz.ok) return actionError(authz.error);
-  const parsed = shelfInput.safeParse(input);
+  const parsed = shelfInputSchema(tr).safeParse(input);
   if (!parsed.success) {
-    return actionError(parsed.error.issues[0]?.message ?? "入力が不正です");
+    return actionError(
+      parsed.error.issues[0]?.message ?? tr("common.invalidInput"),
+    );
   }
   const v = parsed.data;
   try {
@@ -293,7 +370,9 @@ export async function createStorageShelf(
       where: { id: locationId },
       select: { plantId: true },
     });
-    if (!location) return actionError("対象の保管場所が見つかりません");
+    if (!location) {
+      return actionError(tr("master.storageLocationActions.locationNotFound"));
+    }
     const created = await prisma.storageShelf.create({
       data: {
         locationId,
@@ -315,7 +394,13 @@ export async function createStorageShelf(
     revalidate();
     return actionOk({ id: created.id });
   } catch (e) {
-    return actionError(prismaErrorMessage(e, "棚の作成に失敗しました"));
+    return actionError(
+      prismaErrorMessage(
+        e,
+        tr("master.storageLocationActions.shelfCreateFailed"),
+        tr,
+      ),
+    );
   }
 }
 
@@ -323,11 +408,14 @@ export async function updateStorageShelf(
   id: number,
   input: StorageShelfInput,
 ): Promise<ActionResult<{ id: number }>> {
+  const tr = await getTranslations();
   const authz = await checkPermission("master", "UPDATE");
   if (!authz.ok) return actionError(authz.error);
-  const parsed = shelfInput.safeParse(input);
+  const parsed = shelfInputSchema(tr).safeParse(input);
   if (!parsed.success) {
-    return actionError(parsed.error.issues[0]?.message ?? "入力が不正です");
+    return actionError(
+      parsed.error.issues[0]?.message ?? tr("common.invalidInput"),
+    );
   }
   const v = parsed.data;
   try {
@@ -335,7 +423,9 @@ export async function updateStorageShelf(
       where: { id },
       include: { location: { select: { plantId: true } } },
     });
-    if (!before) return actionError("対象の棚が見つかりません");
+    if (!before) {
+      return actionError(tr("master.storageLocationActions.shelfNotFound"));
+    }
     await prisma.storageShelf.update({
       where: { id },
       data: {
@@ -357,12 +447,19 @@ export async function updateStorageShelf(
     revalidate();
     return actionOk({ id });
   } catch (e) {
-    return actionError(prismaErrorMessage(e, "棚の更新に失敗しました"));
+    return actionError(
+      prismaErrorMessage(
+        e,
+        tr("master.storageLocationActions.shelfUpdateFailed"),
+        tr,
+      ),
+    );
   }
 }
 
 /** 棚の削除 — 在庫から参照されていない場合のみ。 */
 export async function deleteStorageShelf(id: number): Promise<ActionResult> {
+  const tr = await getTranslations();
   const authz = await checkPermission("master", "DELETE");
   if (!authz.ok) return actionError(authz.error);
   try {
@@ -370,14 +467,16 @@ export async function deleteStorageShelf(id: number): Promise<ActionResult> {
       where: { id },
       include: { location: { select: { plantId: true } } },
     });
-    if (!before) return actionError("対象の棚が見つかりません");
+    if (!before) {
+      return actionError(tr("master.storageLocationActions.shelfNotFound"));
+    }
     const [prodRefs, matRefs] = await Promise.all([
       prisma.productInventory.count({ where: { shelfId: id } }),
       prisma.materialInventory.count({ where: { shelfId: id } }),
     ]);
     if (prodRefs + matRefs > 0) {
       return actionError(
-        "この棚を参照する在庫があるため削除できません（在庫移動で空にするか、無効化してください）",
+        tr("master.storageLocationActions.shelfHasInventoryRefs"),
       );
     }
     await prisma.storageShelf.delete({ where: { id } });
@@ -390,6 +489,12 @@ export async function deleteStorageShelf(id: number): Promise<ActionResult> {
     revalidate();
     return actionOk();
   } catch (e) {
-    return actionError(prismaErrorMessage(e, "棚の削除に失敗しました"));
+    return actionError(
+      prismaErrorMessage(
+        e,
+        tr("master.storageLocationActions.shelfDeleteFailed"),
+        tr,
+      ),
+    );
   }
 }

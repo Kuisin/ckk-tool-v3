@@ -19,14 +19,9 @@
 
 import { Alert, Badge, Group, Stack, Text } from "@mantine/core";
 import { IconBulb, IconPlus } from "@tabler/icons-react";
+import { useTranslations } from "next-intl";
 import { GhostButton, SecondaryButton } from "@/components/ui/buttons";
 import { generateAliases, missingKeywordFormats } from "@/lib/company-aliases";
-
-const FORMAT_LABEL: Record<string, string> = {
-  hiragana: "ひらがな",
-  katakana: "カタカナ",
-  romaji: "ローマ字",
-};
 
 export function MatchNameSuggestions({
   nameJa,
@@ -45,6 +40,12 @@ export function MatchNameSuggestions({
   /** 候補を採用したときに呼ばれる（複数まとめて渡すこともある）。 */
   onAdd: (values: string[]) => void;
 }) {
+  const tr = useTranslations();
+  const FORMAT_LABEL: Record<string, string> = {
+    hiragana: tr("master.bp.hiragana"),
+    katakana: tr("master.bp.katakana"),
+    romaji: tr("master.bp.romaji"),
+  };
   const src = {
     nameJa,
     nameEn,
@@ -66,16 +67,16 @@ export function MatchNameSuggestions({
     <Alert
       color="blue"
       icon={<IconBulb size={16} />}
-      title="AI 照合名の推奨"
+      title={tr("master.bp.suggestedAiMatchNames")}
       variant="light"
     >
       <Stack gap="sm">
         {missingLabels.length > 0 && (
           <Text size="sm">
-            {missingLabels.join("・")}
-            の表記が未登録です。注文書がその形で書かれていると突合できません。
-            {missing.needsReading &&
-              "　漢字の読みは自動で作れないため、フリガナを入れると候補を出せます。"}
+            {tr("master.bp.missingFormatsNotice", {
+              formats: missingLabels.join(tr("common.s1")),
+            })}
+            {missing.needsReading && tr("master.bp.needsReadingNote")}
           </Text>
         )}
 
@@ -95,7 +96,7 @@ export function MatchNameSuggestions({
             </Group>
             <Group>
               <GhostButton onClick={() => onAdd(suggestions)} size="xs">
-                すべて追加（{suggestions.length} 件）
+                {tr("master.bp.addAllCount", { count: suggestions.length })}
               </GhostButton>
             </Group>
           </Stack>
@@ -103,7 +104,7 @@ export function MatchNameSuggestions({
 
         {suggestions.length === 0 && missing.needsReading && (
           <Badge color="orange" size="sm" variant="light">
-            フリガナ未入力
+            {tr("master.bp.noKanaEntered")}
           </Badge>
         )}
       </Stack>

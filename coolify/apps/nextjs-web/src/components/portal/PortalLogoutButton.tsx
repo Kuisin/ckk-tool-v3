@@ -3,10 +3,12 @@
 import { Button } from "@mantine/core";
 import { IconLogout } from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { useTransition } from "react";
 import { portalLogout } from "@/app/(portal)/portal/logout-action";
 
 export function PortalLogoutButton() {
+  const tr = useTranslations();
   const router = useRouter();
   const [pending, start] = useTransition();
   return (
@@ -22,7 +24,7 @@ export function PortalLogoutButton() {
       variant="default"
       w="fit-content"
     >
-      ログアウト
+      {tr("common.logOut")}
     </Button>
   );
 }

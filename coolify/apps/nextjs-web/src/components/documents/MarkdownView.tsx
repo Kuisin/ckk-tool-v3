@@ -18,6 +18,7 @@
 
 import { Anchor, Table, Text, Typography } from "@mantine/core";
 import Link from "next/link";
+import { useTranslations } from "next-intl";
 import ReactMarkdown, { type Components } from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { isExternalHref, isInternalPath } from "@/lib/rich-text-core";
@@ -75,10 +76,11 @@ export function MarkdownView({
   body: string;
   links?: LinkTargets;
 }) {
+  const tr = useTranslations();
   if (!body.trim()) {
     return (
       <Text c="dimmed" size="sm">
-        本文がありません。
+        {tr("common.thereIsNoBodyText")}
       </Text>
     );
   }

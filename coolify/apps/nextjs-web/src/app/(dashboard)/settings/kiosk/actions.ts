@@ -8,12 +8,13 @@
  */
 
 import { revalidatePath } from "next/cache";
+import { getTranslations } from "next-intl/server";
 import { z } from "zod";
 import { recordAudit } from "@/lib/audit";
 import { checkPermission } from "@/lib/authz";
 import {
   getKioskAppFlags,
-  KIOSK_APP_CATALOG,
+  kioskAppCatalog,
   setKioskAppFlags,
 } from "@/lib/kiosk-settings";
 import {
@@ -31,10 +32,11 @@ const flagsInput = z.record(z.string(), z.boolean());
 export async function updateKioskAppFlags(
   flags: Record<string, boolean>,
 ): Promise<ActionResult> {
+  const tr = await getTranslations();
   const authz = await checkPermission("kiosk", "UPDATE");
   if (!authz.ok) return actionError(authz.error);
   const parsed = flagsInput.safeParse(flags);
-  if (!parsed.success) return actionError("入力が不正です");
+  if (!parsed.success) return actionError(tr("common.invalidInput"));
   try {
     const before = await getKioskAppFlags();
     await setKioskAppFlags(parsed.data);
@@ -49,11 +51,19 @@ export async function updateKioskAppFlags(
     revalidatePath(BASE_PATH);
     return actionOk();
   } catch (e) {
-    return actionError(prismaErrorMessage(e, "保存に失敗しました"));
+    return actionError(prismaErrorMessage(e, tr("common.couldNotSave"), tr));
   }
 }
 
 /** カタログ + 現在のフラグ（クライアントの初期表示用）。 */
 export async function loadKioskAppFlags() {
-  return { catalog: KIOSK_APP_CATALOG, flags: await getKioskAppFlags() };
+  const tr = await getTranslations();
+  // 読み取りだけでも kiosk:READ。ランチャーの構成は公開情報ではない。
+  if (!(await checkPermission("kiosk", "READ")).ok) {
+    return {
+      catalog: kioskAppCatalog(tr),
+      flags: {} as Record<string, boolean>,
+    };
+  }
+  return { catalog: kioskAppCatalog(tr), flags: await getKioskAppFlags() };
 }

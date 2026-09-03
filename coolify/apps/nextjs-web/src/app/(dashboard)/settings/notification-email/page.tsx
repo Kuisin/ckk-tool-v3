@@ -1,4 +1,5 @@
 import { Stack } from "@mantine/core";
+import { getTranslations } from "next-intl/server";
 import { NotificationEmailForm } from "@/components/settings/NotificationEmailForm";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { requireAppRead } from "@/lib/authz-page";
@@ -15,6 +16,7 @@ export const dynamic = "force-dynamic";
  * **見逃した（猶予を過ぎても未読の）通知だけをまとめて 1 通**にする。
  */
 export default async function NotificationEmailSettingsPage() {
+  const tr = await getTranslations();
   const denied = await requireAppRead("notification-email");
   if (denied) return denied;
 
@@ -22,7 +24,13 @@ export default async function NotificationEmailSettingsPage() {
 
   return (
     <Stack gap="md">
-      <PageHeader breadcrumbs={["システム", "通知メール"]} title="通知メール" />
+      <PageHeader
+        breadcrumbs={[
+          tr("common.system"),
+          tr("settings.notificationEmail.notificationEmail"),
+        ]}
+        title={tr("settings.notificationEmail.notificationEmail")}
+      />
       <NotificationEmailForm initial={initial} />
     </Stack>
   );

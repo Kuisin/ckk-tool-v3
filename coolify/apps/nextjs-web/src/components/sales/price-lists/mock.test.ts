@@ -7,8 +7,11 @@
  * All date-sensitive assertions pass explicit dates — never "today".
  */
 
+import { createTranslator } from "next-intl";
 import { describe, expect, it } from "vitest";
 import { documentFormatters } from "@/lib/format";
+import type { Tr } from "@/lib/i18n";
+import ja from "../../../../messages/ja.json";
 import {
   entrySummary,
   findApplicableDiscount,
@@ -27,6 +30,9 @@ import {
   validPeriod,
   variantSummary,
 } from "./mock";
+
+// biome-ignore lint/suspicious/noExplicitAny: next-intl's messages type is too wide for a plain JSON import here
+const tr = createTranslator({ locale: "ja", messages: ja as any }) as Tr;
 
 /** Minimal variant plant for isolated rule tests. */
 function makeVariant(over: Partial<PriceVariant> = {}): PriceVariant {
@@ -222,12 +228,12 @@ describe("entry summary & labels", () => {
         priceOverride: null,
       }),
     ).toBe("×1.05");
-    expect(quantityRange(1, 9)).toBe("1〜9本");
-    expect(quantityRange(100, null)).toBe("100本〜");
+    expect(quantityRange(1, 9, tr)).toBe("1〜9本");
+    expect(quantityRange(100, null, tr)).toBe("100本〜");
     // single value when min === max, range with 〜 otherwise
     expect(priceRangeLabel(5000, 5000)).not.toContain("〜");
     expect(priceRangeLabel(5000, 8000)).toContain("〜");
-    expect(validPeriod(documentFormatters, "2026-01-01", null)).toContain(
+    expect(validPeriod(documentFormatters, "2026-01-01", null, tr)).toContain(
       "無期限",
     );
   });

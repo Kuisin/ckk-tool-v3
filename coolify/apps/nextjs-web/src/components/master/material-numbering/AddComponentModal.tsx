@@ -10,6 +10,7 @@
 import { NumberInput, Select, Stack, TextInput } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { useState, useTransition } from "react";
 import {
   type ComponentTableKind,
@@ -26,16 +27,6 @@ import { diameterCodeFromMm, lengthCodeFromMm } from "@/lib/material-code";
 import type { Option } from "@/lib/mock";
 import type { ActionResult } from "@/lib/server-action";
 
-const TITLES: Record<ComponentTableKind, string> = {
-  manufacturer: "メーカーの追加",
-  grade: "メーカー材種の追加",
-  shape: "形状の追加",
-  kind: "種類の追加",
-  finish: "黒皮・研磨区分の追加",
-  diameter: "直径の追加",
-  length: "全長の追加",
-};
-
 export function AddComponentModal({
   opened,
   onClose,
@@ -46,8 +37,19 @@ export function AddComponentModal({
   /** grade: メーカー options / kind: 形状 options。 */
   parentOptions?: Option[];
 }) {
+  const tr = useTranslations();
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
+
+  const TITLES: Record<ComponentTableKind, string> = {
+    manufacturer: tr("master.materialNumbering.addManufacturer"),
+    grade: tr("master.materialNumbering.addManufacturerGrade"),
+    shape: tr("master.materialNumbering.addShape"),
+    kind: tr("master.materialNumbering.addKind"),
+    finish: tr("master.materialNumbering.addSurfaceFinish"),
+    diameter: tr("master.materialNumbering.addDiameter"),
+    length: tr("master.materialNumbering.addLengthVariant"),
+  };
 
   const [parentCode, setParentCode] = useState<string | null>(null);
   const [code, setCode] = useState("");
@@ -116,15 +118,15 @@ export function AddComponentModal({
       }
       if (res.ok) {
         notifications.show({
-          title: "追加しました",
-          message: "構成要素を追加しました",
+          title: tr("common.added"),
+          message: tr("master.materialNumbering.theComponentWasAdded"),
           color: "green",
         });
         resetAndClose();
         router.refresh();
       } else {
         notifications.show({
-          title: "エラー",
+          title: tr("common.error2"),
           message: res.error,
           color: "red",
         });
@@ -141,16 +143,16 @@ export function AddComponentModal({
       onSubmit={handleSubmit}
       opened={opened}
       size="md"
-      submitLabel="追加"
+      submitLabel={tr("common.add")}
       title={TITLES[kind]}
     >
       <Stack gap="sm">
         {kind === "grade" && (
           <Select
             data={parentOptions}
-            label="メーカー"
+            label={tr("common.manufacturer")}
             onChange={setParentCode}
-            placeholder="メーカーを選択"
+            placeholder={tr("common.selectAManufacturer")}
             value={parentCode}
             withAsterisk
           />
@@ -158,9 +160,9 @@ export function AddComponentModal({
         {kind === "kind" && (
           <Select
             data={parentOptions}
-            label="形状"
+            label={tr("common.shape")}
             onChange={setParentCode}
-            placeholder="形状を選択"
+            placeholder={tr("common.selectAShape")}
             value={parentCode}
             withAsterisk
           />
@@ -169,8 +171,14 @@ export function AddComponentModal({
           <>
             <NumberInput
               decimalScale={kind === "diameter" ? 1 : 0}
-              description={`コード: ${derivedCode}`}
-              label={kind === "diameter" ? "直径 (mm)" : "全長 (mm)"}
+              description={tr("master.materialNumbering.codePreview", {
+                code: derivedCode,
+              })}
+              label={
+                kind === "diameter"
+                  ? tr("common.diameterMm")
+                  : tr("common.overallLengthMm")
+              }
               max={kind === "diameter" ? 99.9 : 999}
               min={kind === "diameter" ? 0.1 : 1}
               onChange={setMm}
@@ -180,9 +188,9 @@ export function AddComponentModal({
             />
             {kind === "length" && (
               <TextInput
-                label="カスタム識別（任意）"
+                label={tr("master.materialNumbering.customIdentifierOptional")}
                 onChange={(e) => setCustomLabel(e.currentTarget.value)}
-                placeholder="例: 特注 330L"
+                placeholder={tr("master.materialNumbering.eGCustom330l")}
                 value={customLabel}
               />
             )}
@@ -192,23 +200,23 @@ export function AddComponentModal({
             <TextInput
               description={
                 kind === "grade" || kind === "kind"
-                  ? "2桁（例: 01, B5）"
-                  : "英大文字1文字（例: A）"
+                  ? tr("master.materialNumbering.twoCharactersEG01B5")
+                  : tr("master.materialNumbering.oneUppercaseLetterEGA")
               }
-              label="コード"
+              label={tr("common.code")}
               maxLength={kind === "grade" || kind === "kind" ? 2 : 1}
               onChange={(e) => setCode(e.currentTarget.value.toUpperCase())}
               value={code}
               withAsterisk
             />
             <TextInput
-              label="名称（日本語）"
+              label={tr("common.nameJapanese")}
               onChange={(e) => setNameJa(e.currentTarget.value)}
               value={nameJa}
               withAsterisk
             />
             <TextInput
-              label="名称（English）"
+              label={tr("master.materialNumbering.nameEnglish")}
               onChange={(e) => setNameEn(e.currentTarget.value)}
               value={nameEn}
             />

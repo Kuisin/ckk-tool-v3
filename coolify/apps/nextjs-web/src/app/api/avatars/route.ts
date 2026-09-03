@@ -14,6 +14,7 @@
 
 import { revalidatePath } from "next/cache";
 import { NextResponse } from "next/server";
+import { getTranslations } from "next-intl/server";
 import { auth } from "@/auth";
 import {
   avatarUrl,
@@ -35,10 +36,11 @@ async function currentUserId(): Promise<string | null> {
 }
 
 export async function POST(request: Request): Promise<NextResponse> {
+  const tr = await getTranslations();
   const userId = await currentUserId();
   if (!userId) {
     return NextResponse.json(
-      { ok: false, error: "ログインが必要です" },
+      { ok: false, error: tr("common.loginRequired") },
       { status: 401 },
     );
   }
@@ -47,18 +49,18 @@ export async function POST(request: Request): Promise<NextResponse> {
   try {
     form = await request.formData();
   } catch {
-    return badRequest("multipart/form-data で送信してください");
+    return badRequest(tr("settings.avatarsRoute.sendAsMultipartFormData"));
   }
 
   // 大（詳細・ホーム用）と小（一覧・ヘッダー・履歴用）の 2 枚を受け取る。
   const file = form.get("file");
   const thumb = form.get("thumb");
   if (!(file instanceof File) || !(thumb instanceof File)) {
-    return badRequest("画像ファイルを選択してください");
+    return badRequest(tr("settings.avatarsRoute.selectAnImageFile"));
   }
   // 巨大ファイルはバッファリング前に弾く。
   if (file.size > MAX_AVATAR_BYTES || thumb.size > MAX_AVATAR_BYTES) {
-    return badRequest("画像サイズは 5MB 以下にしてください");
+    return badRequest(tr("settings.avatarsRoute.imageSizeMustBe5mb"));
   }
 
   const result = await saveAvatar(userId, file, thumb);
@@ -73,10 +75,11 @@ export async function POST(request: Request): Promise<NextResponse> {
 }
 
 export async function DELETE(): Promise<NextResponse> {
+  const tr = await getTranslations();
   const userId = await currentUserId();
   if (!userId) {
     return NextResponse.json(
-      { ok: false, error: "ログインが必要です" },
+      { ok: false, error: tr("common.loginRequired") },
       { status: 401 },
     );
   }

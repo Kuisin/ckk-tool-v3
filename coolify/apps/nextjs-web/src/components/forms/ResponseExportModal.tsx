@@ -23,6 +23,7 @@ import {
 import { DatePickerInput } from "@mantine/dates";
 import { notifications } from "@mantine/notifications";
 import { IconFileTypePdf, IconTableExport } from "@tabler/icons-react";
+import { useTranslations } from "next-intl";
 import { useState } from "react";
 import {
   GhostButton,
@@ -30,7 +31,6 @@ import {
   SecondaryButton,
 } from "@/components/ui/buttons";
 import { ModalShell } from "@/components/ui/modals";
-import { statusLabel as statusMapLabel } from "@/components/ui/StatusBadge";
 import { useIsMobile } from "@/hooks/useViewport";
 import { downloadFile } from "@/lib/download";
 import {
@@ -38,6 +38,7 @@ import {
   exportFilterToParams,
 } from "@/lib/form-export-core";
 import type { FormFieldDef } from "@/lib/form-schema";
+import { statusLabel as statusMapLabel } from "@/lib/status-map";
 
 export function ResponseExportModal({
   opened,
@@ -55,6 +56,7 @@ export function ResponseExportModal({
   fields: FormFieldDef[];
   responseCount: number;
 }) {
+  const tr = useTranslations();
   const isMobile = useIsMobile();
   const [statuses, setStatuses] = useState<string[]>([]);
   const [from, setFrom] = useState<Date | null>(null);
@@ -79,8 +81,8 @@ export function ResponseExportModal({
       onClose();
     } catch {
       notifications.show({
-        title: "エラー",
-        message: "書き出しに失敗しました",
+        title: tr("common.error2"),
+        message: tr("forms.responseExportModal.couldNotExport"),
         color: "red",
       });
     } finally {
@@ -96,7 +98,7 @@ export function ResponseExportModal({
       onClose={onClose}
       opened={opened}
       size="lg"
-      title="回答を書き出す"
+      title={tr("forms.responseExportModal.exportTheResponses")}
     >
       <Stack gap="md">
         {/* 件数を「一覧に出ている数」と結び付けない — 一覧は 500 件までしか
@@ -108,7 +110,7 @@ export function ResponseExportModal({
 
         <Stack gap="xs">
           <Text fw={600} size="sm">
-            状態
+            {tr("common.status")}
           </Text>
           <Checkbox.Group onChange={setStatuses} value={statuses}>
             <Group gap="md">
@@ -122,7 +124,7 @@ export function ResponseExportModal({
             </Group>
           </Checkbox.Group>
           <Text c="dimmed" size="xs">
-            選ばなければすべての状態。下書きは書き出せません。
+            {tr("forms.responseExportModal.ifNoneIsChosenEveryStatus")}
           </Text>
         </Stack>
 
@@ -130,31 +132,30 @@ export function ResponseExportModal({
 
         <Stack gap="xs">
           <Text fw={600} size="sm">
-            提出日
+            {tr("common.submittedOn")}
           </Text>
           <Group gap="sm" grow={!isMobile}>
             <DatePickerInput
               clearable
-              label="開始"
+              label={tr("common.start")}
               maxDate={to ?? undefined}
               onChange={setFrom as never}
-              placeholder="指定なし"
+              placeholder={tr("forms.responseExportModal.notSpecified")}
               value={from}
               valueFormat="YYYY/MM/DD"
             />
             <DatePickerInput
               clearable
-              label="終了"
+              label={tr("forms.responseExportModal.end")}
               minDate={from ?? undefined}
               onChange={setTo as never}
-              placeholder="指定なし"
+              placeholder={tr("forms.responseExportModal.notSpecified")}
               value={to}
               valueFormat="YYYY/MM/DD"
             />
           </Group>
           <Text c="dimmed" size="xs">
-            指定した日に提出されたものを含みます。日付で絞ると、まだ提出していない
-            回答は外れます。
+            {tr("forms.responseExportModal.includesWhatWasSubmittedOnThe")}
           </Text>
         </Stack>
 
@@ -163,18 +164,20 @@ export function ResponseExportModal({
         <Stack gap="xs">
           <Group justify="space-between">
             <Text fw={600} size="sm">
-              書き出す項目
+              {tr("forms.responseExportModal.fieldsToExport")}
             </Text>
             {!allFieldsChecked && (
               <GhostButton onClick={() => setFieldKeys([])}>
-                すべてに戻す
+                {tr("forms.responseExportModal.resetAll")}
               </GhostButton>
             )}
           </Group>
           <Text c="dimmed" size="xs">
             {allFieldsChecked
-              ? "すべての項目を列にします。減らしたいものだけ外してください。"
-              : `${fieldKeys.length} 項目を選択中`}
+              ? tr("forms.responseExportModal.everyFieldBecomesAColumnUncheck")
+              : tr("forms.responseExportModal.fieldsSelectedCount", {
+                  count: fieldKeys.length,
+                })}
           </Text>
           <ScrollArea.Autosize mah={180}>
             <Checkbox.Group
@@ -206,7 +209,7 @@ export function ResponseExportModal({
               loading={busy}
               onClick={() => run("xlsx")}
             >
-              Excel でダウンロード
+              {tr("forms.responseExportModal.downloadAsExcel")}
             </PrimaryButton>
             <SecondaryButton
               fullWidth
@@ -214,7 +217,7 @@ export function ResponseExportModal({
               loading={busy}
               onClick={() => run("pdf")}
             >
-              PDF でまとめて印刷
+              {tr("forms.responseExportModal.printThemTogetherAsAPdf")}
             </SecondaryButton>
           </Stack>
         ) : (
@@ -224,14 +227,14 @@ export function ResponseExportModal({
               loading={busy}
               onClick={() => run("pdf")}
             >
-              PDF でまとめて印刷
+              {tr("forms.responseExportModal.printThemTogetherAsAPdf")}
             </SecondaryButton>
             <PrimaryButton
               leftSection={<IconTableExport size={14} />}
               loading={busy}
               onClick={() => run("xlsx")}
             >
-              Excel でダウンロード
+              {tr("forms.responseExportModal.downloadAsExcel")}
             </PrimaryButton>
           </Group>
         )}

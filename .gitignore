@@ -11,3 +11,13 @@ node_modules/
 # Python (po-extract をローカルで読み込んだときの副産物)
 __pycache__/
 *.py[cod]
+
+# codebase-memory MCP（--persistence の共有アーティファクト。既定では作らない）
+.codebase-memory/
+
+# スタックの .env は**サーバーにしか置かない**（secrets が入る）。
+# deploy-stack.sh も rsync から常に除外している。ここで git 側にも蓋をする
+# — 手元で動かすために作った .env を、うっかりコミットしないため。
+# 雛形は各スタックの .env.example（こちらはコミットする）。
+.env
+!.env.example

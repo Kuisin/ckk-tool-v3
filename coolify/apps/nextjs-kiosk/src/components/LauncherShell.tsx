@@ -25,7 +25,7 @@ import {
 import { IconApps, IconLayoutGrid, IconLogout } from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { LOCALE_LABELS, LOCALES } from "@/lib/i18n";
+import { fillMessage, LOCALE_LABELS, LOCALES } from "@/lib/i18n";
 import { playLogoutSound } from "@/lib/sound";
 import { ActivityMonitor } from "./ActivityMonitor";
 import { useI18n } from "./I18nProvider";
@@ -50,6 +50,9 @@ export function LauncherShell({ displayName, apps }: Props) {
       await fetch("/api/kiosk/session", { method: "DELETE" });
     } finally {
       router.replace("/login");
+      // ヘッダーの利用者名はサーバー側の layout が持つ。router.replace は
+      // 同じ layout を使い回すので再描画されず、名前が残ったままになる。
+      router.refresh();
     }
   };
 
@@ -85,7 +88,7 @@ export function LauncherShell({ displayName, apps }: Props) {
                 {displayName.slice(0, 1)}
               </Avatar>
               <Text fw={600} size="lg" truncate>
-                {m.launcher.greeting(displayName)}
+                {fillMessage(m.launcher.greeting, { name: displayName })}
               </Text>
             </Group>
             <Group gap="sm" wrap="nowrap">

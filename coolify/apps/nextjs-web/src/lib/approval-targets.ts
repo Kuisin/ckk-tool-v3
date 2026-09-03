@@ -9,7 +9,16 @@
  * あった。増える種別ごとに 2 箇所直すのは事故のもとなのでここに 1 本化する。
  *
  * 純データ（I/O なし）— サーバーからもクライアントからも import してよい。
+ * そのため `next-intl/server` の `getTranslations()`（リクエストスコープ必須）
+ * は使えない — 文言は `lib/messages.ts` の `label()`（フック不要・明示 locale）
+ * から引く。`APPROVAL_TARGET[type].label` は既存の呼び出し元（多くは未移行の
+ * ページ・通知文言）が locale を持たずに直接読むため、当面は ja 固定で解決
+ * した文字列を持つ（値そのものは messages/*.json 由来）。locale を持つ
+ * 呼び出し元は `approvalTargetLabel(targetType, locale)` を使うこと。
  */
+
+import type { Locale } from "./i18n";
+import { label } from "./messages";
 
 /** 承認フローを持つ書類種別。DB 側は approval_flows の CHECK 制約が同じ集合を守る。 */
 export const APPROVAL_TARGET_TYPES = [
@@ -82,28 +91,28 @@ export interface ApprovalTargetMeta {
 
 export const APPROVAL_TARGET: Record<ApprovalTargetType, ApprovalTargetMeta> = {
   order_acceptances: {
-    label: "注文請書",
+    label: label("common.orderAcceptance", "ja"),
     color: "blue",
     href: (id) => `/sales/order-acceptances/${id}`,
     appKey: "order-acceptances",
     approvePermission: "order_acceptance",
   },
   work_orders: {
-    label: "指示書",
+    label: label("common.workOrder", "ja"),
     color: "violet",
     href: (id) => `/production/work-orders/${id}`,
     appKey: "work-orders",
     approvePermission: "work_order",
   },
   material_purchase_orders: {
-    label: "素材発注書",
+    label: label("common.materialPurchaseOrder", "ja"),
     color: "teal",
     href: (id) => `/purchase/purchase-orders/${id}`,
     appKey: "purchase-orders",
     approvePermission: "purchase_order",
   },
   work_order_flow_changes: {
-    label: "工程フロー変更",
+    label: label("common.workflowChangeRequest", "ja"),
     color: "grape",
     // 対象は変更そのもの（uuid）だが、人が見たいのは指示書 — 保留中の変更は
     // 指示書詳細にカードで出る。この URL は指示書番号へ読み替えて 302 する
@@ -113,7 +122,7 @@ export const APPROVAL_TARGET: Record<ApprovalTargetType, ApprovalTargetMeta> = {
     approvePermission: "work_order",
   },
   order_acceptance_cancel_requests: {
-    label: "注文請書キャンセル",
+    label: label("common.orderAcceptanceCancelRequest", "ja"),
     color: "red",
     // 対象は依頼そのもの（uuid）だが、人が見たいのは注文請書 — 保留中の依頼は
     // 注文請書詳細にカードで出る。番号へ読み替えて 302 する中継ページ。
@@ -122,7 +131,7 @@ export const APPROVAL_TARGET: Record<ApprovalTargetType, ApprovalTargetMeta> = {
     approvePermission: "order_acceptance",
   },
   form_responses: {
-    label: "フォーム申請",
+    label: label("common.formRequest", "ja"),
     color: "indigo",
     // 回答は「どのフォームの何番目か」で辿るのが自然だが、承認一覧からは
     // 業務キー（FRM-…）1 本しか渡ってこない。番号から所属フォームを引いて
@@ -132,14 +141,14 @@ export const APPROVAL_TARGET: Record<ApprovalTargetType, ApprovalTargetMeta> = {
     approvePermission: "form",
   },
   internal_pages: {
-    label: "社内文書",
+    label: label("common.internalDocuments", "ja"),
     color: "lime",
     href: (id) => `/general/documents/${id}`,
     appKey: "internal-pages",
     approvePermission: "internal_page",
   },
   purchase_requests: {
-    label: "購買依頼",
+    label: label("common.purchaseRequest", "ja"),
     color: "cyan",
     href: (id) => `/purchase/purchase-requests/${id}`,
     appKey: "purchase-requests",
@@ -147,7 +156,7 @@ export const APPROVAL_TARGET: Record<ApprovalTargetType, ApprovalTargetMeta> = {
     approvePermission: "purchase_order",
   },
   design_requests: {
-    label: "設計依頼書",
+    label: label("common.designRequest2", "ja"),
     color: "orange",
     href: (id) => `/sales/design-requests/${id}`,
     appKey: "design-requests",
@@ -159,11 +168,33 @@ export function isApprovalTargetType(v: string): v is ApprovalTargetType {
   return (APPROVAL_TARGET_TYPES as readonly string[]).includes(v);
 }
 
-/** 書類名（未知の種別はキーをそのまま出す — 画面が空白になるより読める）。 */
-export function approvalTargetLabel(targetType: string): string {
-  return isApprovalTargetType(targetType)
-    ? APPROVAL_TARGET[targetType].label
-    : targetType;
+/** `approvalTargetLabel` が引く messages/*.json のキー。 */
+const TARGET_LABEL_KEY: Record<ApprovalTargetType, string> = {
+  order_acceptances: "common.orderAcceptance",
+  work_orders: "common.workOrder",
+  material_purchase_orders: "common.materialPurchaseOrder",
+  work_order_flow_changes: "common.workflowChangeRequest",
+  order_acceptance_cancel_requests: "common.orderAcceptanceCancelRequest",
+  form_responses: "common.formRequest",
+  internal_pages: "common.internalDocuments",
+  purchase_requests: "common.purchaseRequest",
+  design_requests: "common.designRequest2",
+};
+
+/**
+ * 書類名（未知の種別はキーをそのまま出す — 画面が空白になるより読める）。
+ * `locale` を渡さない呼び出しは ja（= `APPROVAL_TARGET[type].label` と同じ値）。
+ */
+export function approvalTargetLabel(
+  targetType: string,
+  locale: Locale = "ja",
+): string {
+  if (!isApprovalTargetType(targetType)) return targetType;
+  return label(
+    TARGET_LABEL_KEY[targetType],
+    locale,
+    APPROVAL_TARGET[targetType].label,
+  );
 }
 
 /** 詳細ページの URL（未知の種別は null）。 */

@@ -14,6 +14,7 @@
 
 import { type Access, rowInScope } from "@ckk/authz-core";
 import { revalidatePath } from "next/cache";
+import { getTranslations } from "next-intl/server";
 import { checkPermission } from "@/lib/authz";
 import { prisma } from "@/lib/db";
 import { formatOrderLineNumber } from "@/lib/doc-number";
@@ -27,7 +28,6 @@ import {
 } from "@/lib/server-action";
 
 const BASE_PATH = "/sales/order-lines";
-const SCOPE_DENIED = "この操作の権限がありません（対象範囲外）";
 
 /**
  * 対象注文明細がスコープ内か（PLANT = 配下指示書の工程実施拠点 ∪ OWN =
@@ -79,15 +79,17 @@ function revalidate(number?: string) {
 export async function runStockCheck(
   orderLineId: string,
 ): Promise<ActionResult<StockCheckResult>> {
+  const tr = await getTranslations();
   // 在庫予約（RESERVE）を発生させるが、注文明細フローの操作なので
   // "inventory" ではなく受注側の権限で判定する（判断メモ）。
   const authz = await checkPermission("order_acceptance", "UPDATE");
   if (!authz.ok) return actionError(authz.error);
-  if (!orderLineId) return actionError("注文明細が不正です");
+  if (!orderLineId)
+    return actionError(tr("sales.orderLinesActions.invalidOrderLine"));
   if (
     !(await orderLineInScope(authz.access, authz.userId, { id: orderLineId }))
   ) {
-    return actionError(SCOPE_DENIED);
+    return actionError(tr("common.scopeDenied"));
   }
   try {
     const line = await prisma.orderLine.findUnique({
@@ -99,12 +101,13 @@ export async function runStockCheck(
         branch: true,
       },
     });
-    if (!line) return actionError("対象の注文明細が見つかりません");
+    if (!line)
+      return actionError(tr("sales.orderLinesActions.orderLineNotFound"));
     if (line.branch == null) {
-      return actionError("確定前の注文明細は在庫照合できません");
+      return actionError(tr("sales.orderLinesActions.notConfirmedYet"));
     }
     if (!isLineStockCheckable(line)) {
-      return actionError("確定済み・製造前の注文明細のみ在庫照合できます");
+      return actionError(tr("sales.orderLinesActions.notStockCheckableStatus"));
     }
     const result = await reserveProductStock(orderLineId);
     revalidate(
@@ -118,6 +121,8 @@ export async function runStockCheck(
     revalidatePath("/production/inventory");
     return actionOk(result);
   } catch (e) {
-    return actionError(prismaErrorMessage(e, "在庫照合に失敗しました"));
+    return actionError(
+      prismaErrorMessage(e, tr("sales.orderLinesActions.stockCheckFailed"), tr),
+    );
   }
 }

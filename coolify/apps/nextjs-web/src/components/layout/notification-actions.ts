@@ -5,6 +5,7 @@
  * すべてログインユーザー本人のデータのみ操作する。
  */
 
+import { getTranslations } from "next-intl/server";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/db";
 import {
@@ -20,15 +21,17 @@ async function currentUserId(): Promise<string | null> {
 }
 
 export async function markReadAction(id: string): Promise<ActionResult> {
+  const tr = await getTranslations();
   const userId = await currentUserId();
-  if (!userId) return actionError("ログインが必要です");
+  if (!userId) return actionError(tr("common.loginRequired"));
   await markNotificationRead(userId, id);
   return actionOk();
 }
 
 export async function markAllReadAction(): Promise<ActionResult> {
+  const tr = await getTranslations();
   const userId = await currentUserId();
-  if (!userId) return actionError("ログインが必要です");
+  if (!userId) return actionError(tr("common.loginRequired"));
   await markAllNotificationsRead(userId);
   return actionOk();
 }
@@ -46,10 +49,11 @@ export interface PushSubscriptionInput {
 export async function savePushSubscriptionAction(
   input: PushSubscriptionInput,
 ): Promise<ActionResult> {
+  const tr = await getTranslations();
   const userId = await currentUserId();
-  if (!userId) return actionError("ログインが必要です");
+  if (!userId) return actionError(tr("common.loginRequired"));
   if (!input.endpoint || !input.p256dh || !input.auth) {
-    return actionError("購読情報が不正です");
+    return actionError(tr("layout.notificationActions.invalidSubscription"));
   }
   await upsertPushSubscription(userId, input);
   return actionOk();
@@ -58,8 +62,9 @@ export async function savePushSubscriptionAction(
 export async function removePushSubscriptionAction(
   endpoint: string,
 ): Promise<ActionResult> {
+  const tr = await getTranslations();
   const userId = await currentUserId();
-  if (!userId) return actionError("ログインが必要です");
+  if (!userId) return actionError(tr("common.loginRequired"));
   await prisma.pushSubscription.deleteMany({ where: { endpoint, userId } });
   return actionOk();
 }
@@ -70,8 +75,9 @@ export async function saveNotificationSettingAction(input: {
   emailEnabled: boolean;
   pushEnabled: boolean;
 }): Promise<ActionResult> {
+  const tr = await getTranslations();
   const userId = await currentUserId();
-  if (!userId) return actionError("ログインが必要です");
+  if (!userId) return actionError(tr("common.loginRequired"));
   await prisma.userNotificationSetting.upsert({
     where: { userId },
     create: {

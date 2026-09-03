@@ -16,6 +16,7 @@
  * 置いてあり、画面と共用する。
  */
 
+import { getTranslations } from "next-intl/server";
 import type { Prisma } from "../../generated/client/client";
 import {
   type ApprovalDocInfo,
@@ -159,9 +160,11 @@ export async function assertFlowConfigured(
   // （呼ぶ側が assertFormFlowConfigured を使う）。
   if (targetType === "form_responses") return null;
   const count = await prisma.approvalFlowStep.count({ where: { targetType } });
-  return count > 0
-    ? null
-    : `${APPROVAL_TARGET[targetType].label}の承認フローが未設定です（承認設定 MS0B で設定してください）`;
+  if (count > 0) return null;
+  const tr = await getTranslations();
+  return tr("approvals.engine.flowNotConfigured", {
+    doc: APPROVAL_TARGET[targetType].label,
+  });
 }
 
 /**
@@ -219,8 +222,8 @@ export async function assertFormFlowConfigured(
     },
     orderBy: { stepNo: "asc" },
   });
-  if (steps.length === 0)
-    return "このフォームの承認フローが未設定です（フォームの「承認」タブで段を追加してください）";
+  const tr = await getTranslations();
+  if (steps.length === 0) return tr("approvals.engine.formFlowNotConfigured");
 
   // 承認者が 1 人もいない段があると、依頼を出しても誰も押せないまま止まる。
   // 保存時にも弾いているが、承認グループが空になった場合はここでしか気付けない。
@@ -228,9 +231,11 @@ export async function assertFormFlowConfigured(
     (s) => s.groupId == null && s._count.approvers === 0,
   );
   if (empty.length > 0)
-    return `承認者が設定されていない段があります（${empty
-      .map((s) => `${s.stepNo} 段目`)
-      .join("、")}）。フォームの「承認」タブで指定してください`;
+    return tr("approvals.engine.noApproversForSteps", {
+      steps: empty
+        .map((s) => tr("approvals.engine.stepOrdinal", { n: s.stepNo }))
+        .join("、"),
+    });
   return null;
 }
 
@@ -283,7 +288,7 @@ export async function getApprovalFlowRules(
 
 /**
  * 条件評価に使う書類の属性を抽出する。キーは
- * lib/approval-conditions.ts の APPROVAL_CONDITION_FIELDS と一致させること。
+ * lib/approval-conditions.ts の approvalConditionFields と一致させること。
  * 書類が見つからない・読めないときは null（→ ルールは使わず既定フロー）。
  */
 export async function fetchApprovalDocInfo(
@@ -351,7 +356,7 @@ export async function fetchApprovalDocInfo(
         select: { trigger: true, kind: true, priority: true },
       });
       if (!row) return null;
-      // キーは approval-conditions.ts の APPROVAL_CONDITION_FIELDS と一致必須。
+      // キーは approval-conditions.ts の approvalConditionFields と一致必須。
       return { trigger: row.trigger, kind: row.kind, priority: row.priority };
     }
     case "form_responses": {
@@ -367,7 +372,7 @@ export async function fetchApprovalDocInfo(
         where: { pageNumber: targetId },
         select: { pageNumber: true },
       });
-      // 条件に使う属性は今のところ無い（APPROVAL_CONDITION_FIELDS も空）。
+      // 条件に使う属性は今のところ無い（approvalConditionFields も空）。
       // 書類が実在することだけを確かめて、空の属性を返す。
       return row ? {} : null;
     }
@@ -800,6 +805,7 @@ async function notifyStepStart(
 ): Promise<void> {
   if (!step) return;
   try {
+    const tr = await getTranslations();
     // ALL 段はまだ押していない対象者だけに送る
     const userIds =
       step.mode === "ALL"
@@ -821,8 +827,14 @@ async function notifyStepStart(
     const requesterName = request?.requestedByUser?.displayName;
     const payload = {
       type: "APPROVAL_REQUEST" as const,
-      title: `${APPROVAL_TARGET[targetType].label} ${targetId} の${localized(step.name)}依頼`,
-      message: requesterName ? `依頼者: ${requesterName}` : undefined,
+      title: tr("approvals.engine.approvalRequestTitle", {
+        doc: APPROVAL_TARGET[targetType].label,
+        targetId,
+        stepName: localized(step.name),
+      }),
+      message: requesterName
+        ? tr("approvals.engine.requesterMessage", { name: requesterName })
+        : undefined,
       // 承認管理の一覧ではなく当の書類を開く（承認操作は書類詳細の
       // ActionCard にある — design.md §10.9）。承認結果通知と同じ行き先。
       linkPath: APPROVAL_TARGET[targetType].href(targetId),
@@ -836,7 +848,7 @@ async function notifyStepStart(
       await notifyApprovalGroup(step.groupId, { ...payload, userIds });
     }
   } catch (e) {
-    console.error("[approvals] 承認依頼通知に失敗:", e);
+    console.error("[approvals] 承認依頼通知に失敗:", e); // i18n-ignore — サーバーログのみ（Loki）、UI に出ない
   }
 }
 
@@ -849,6 +861,7 @@ export async function startApprovalFlow(input: {
   targetId: string;
   notes?: string;
 }): Promise<{ ok: boolean; error?: string }> {
+  const tr = await getTranslations();
   // 条件付きフロー（approval_flow_rules）を書類の属性で解決する。
   // 一致すればその段構成、なければ既定フロー。以降は従来と同じ
   // （スナップショットに落ちるので、進行中の扱いに違いは無い）。
@@ -858,8 +871,10 @@ export async function startApprovalFlow(input: {
       ok: false,
       error:
         input.targetType === "form_responses"
-          ? "このフォームの承認フローが未設定です（フォームの「承認」タブで段を追加してください）"
-          : `${APPROVAL_TARGET[input.targetType].label}の承認フローが未設定です（承認設定 MS0B で設定してください）`,
+          ? tr("approvals.engine.formFlowNotConfigured")
+          : tr("approvals.engine.flowNotConfigured", {
+              doc: APPROVAL_TARGET[input.targetType].label,
+            }),
     };
   }
   const actor = await getCurrentActorId();
@@ -881,7 +896,9 @@ export async function startApprovalFlow(input: {
     if (!createdAt || existing.requestedAt >= createdAt) return { ok: true };
     return {
       ok: false,
-      error: `${input.targetId} には削除済み書類の承認依頼が残っています（番号の再利用）。管理者に連絡してください`,
+      error: tr("approvals.engine.staleApprovalRequest", {
+        targetId: input.targetId,
+      }),
     };
   }
 
@@ -947,8 +964,9 @@ export async function actOnCurrentStep(input: {
   action: "APPROVED" | "REJECTED";
   comment?: string;
 }): Promise<ActOnStepResult> {
+  const tr = await getTranslations();
   const actor = await getCurrentActorId();
-  if (!actor) return ACT_FAILED("承認権限がありません");
+  if (!actor) return ACT_FAILED(tr("approvals.engine.noApprovalPermission"));
 
   const request = await prisma.approvalRequest.findFirst({
     where: {
@@ -958,11 +976,13 @@ export async function actOnCurrentStep(input: {
     },
     include: { approvers: { select: { userId: true, actedAt: true } } },
   });
-  if (!request) return ACT_FAILED("承認依頼中の依頼がありません");
+  if (!request) return ACT_FAILED(tr("approvals.engine.noPendingRequest"));
 
   const auth = await resolveApprover(request.groupId, actor, request.id);
   if (!auth.ok) {
-    return ACT_FAILED("承認権限がありません（代理設定も未該当）");
+    return ACT_FAILED(
+      tr("approvals.engine.noApprovalPermissionDelegateNotApplicable"),
+    );
   }
   const mode = request.mode as ApprovalMode;
   const slotOwner = auth.delegateForId ?? actor;
@@ -973,10 +993,10 @@ export async function actOnCurrentStep(input: {
   if (mode === "ALL" && input.action === "APPROVED") {
     const mySlot = request.approvers.find((a) => a.userId === slotOwner);
     if (!mySlot) {
-      return ACT_FAILED("この段の承認対象者ではありません");
+      return ACT_FAILED(tr("approvals.engine.notApproverForStep"));
     }
     if (mySlot.actedAt != null) {
-      return ACT_FAILED("この段はすでに承認済みです");
+      return ACT_FAILED(tr("approvals.engine.alreadyApprovedStep"));
     }
   }
 
@@ -1080,7 +1100,7 @@ export async function actOnCurrentStep(input: {
     };
   });
 
-  if (!outcome) return ACT_FAILED("この依頼は既に処理されています");
+  if (!outcome) return ACT_FAILED(tr("approvals.engine.alreadyProcessed"));
 
   // ── 通知（tx 外・ベストエフォート） ──
   const nextStepNo = "nextStepNo" in outcome ? outcome.nextStepNo : null;
@@ -1102,14 +1122,21 @@ export async function actOnCurrentStep(input: {
       await notify({
         userIds: [request.requestedBy],
         type: "APPROVAL_RESULT",
-        title: `${APPROVAL_TARGET[input.targetType].label} ${input.targetId} が${
-          input.action === "APPROVED" ? "承認されました" : "差し戻されました"
-        }`,
+        title:
+          input.action === "APPROVED"
+            ? tr("approvals.engine.resultApprovedTitle", {
+                doc: APPROVAL_TARGET[input.targetType].label,
+                targetId: input.targetId,
+              })
+            : tr("approvals.engine.resultRejectedTitle", {
+                doc: APPROVAL_TARGET[input.targetType].label,
+                targetId: input.targetId,
+              }),
         message: input.comment ?? undefined,
         linkPath: APPROVAL_TARGET[input.targetType].href(input.targetId),
       });
     } catch (e) {
-      console.error("[approvals] 承認結果通知に失敗:", e);
+      console.error("[approvals] 承認結果通知に失敗:", e); // i18n-ignore — サーバーログのみ（Loki）、UI に出ない
     }
   }
 
@@ -1159,6 +1186,7 @@ export async function fetchApprovalTrail(
   targetType: ApprovalTargetType,
   targetId: string,
 ): Promise<ApprovalTrailEntry[]> {
+  const tr = await getTranslations();
   const rows = await prisma.approvalRequest.findMany({
     where: await targetScope(targetType, targetId),
     include: {
@@ -1178,7 +1206,9 @@ export async function fetchApprovalTrail(
     const mode = r.mode as ApprovalMode;
     return {
       stepNo: r.stepNo,
-      stepLabel: step ? localized(step.name) : `${r.stepNo} 段目`,
+      stepLabel: step
+        ? localized(step.name)
+        : tr("approvals.engine.stepOrdinal", { n: r.stepNo }),
       status: r.status,
       mode,
       requestedAt: r.requestedAt.toISOString(),

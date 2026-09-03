@@ -26,6 +26,7 @@ import { useForm } from "@mantine/form";
 import { notifications } from "@mantine/notifications";
 import { IconCalendar, IconPlus, IconTrash } from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { useTransition } from "react";
 import { z } from "zod";
 import {
@@ -39,47 +40,54 @@ import {
 import { GhostButton } from "@/components/ui/buttons";
 import { HelpLabel } from "@/components/ui/HelpLabel";
 import { SalesRepSelect } from "@/components/ui/SalesRepSelect";
-import { StatusBadge, statusOptions } from "@/components/ui/StatusBadge";
+import { StatusBadge } from "@/components/ui/StatusBadge";
 import { FormSection, FormShell } from "@/components/ui/shells";
 import { fieldHelp } from "@/lib/field-help";
 import { zodResolver } from "@/lib/form";
 import { formatMoney } from "@/lib/format";
 import type { Option } from "@/lib/mock";
+import { statusOptions } from "@/lib/status-map";
 import type { PriceListEntry } from "../price-lists/model";
 import { type Quote, resolveUnitPriceFromEntries, TAX_RATE } from "./model";
 
-const itemSchema = z
-  .object({
-    productId: z.string().min(1, "製品を選択してください"),
-    productName: z.string(),
-    orderType: z.string().min(1),
-    quantity: z.number().int().min(1, "1以上"),
-    // 単価・値引きは価格表から自動解決される（手入力なし）。
-    unitPrice: z.number().min(0),
-    priceTierId: z.string().nullable(),
-    discountAmount: z.number().min(0),
-    discountLabel: z.string().nullable(),
-    deliveryDate: z.string().nullable(),
-  })
-  // 見積書は価格表からのみ価格を解決する — 未解決の行は保存できない。
-  .refine((it) => it.priceTierId != null, {
-    message:
-      "該当する価格表がありません（価格試算から価格表を登録してください）",
-    path: ["productId"],
+/**
+ * バリデーションメッセージが訳を必要とするため、スキーマはコンポーネント内で
+ * `tr` を受け取って組み立てる（型だけはモジュールスコープで使えるよう
+ * `ReturnType` から導出する）。
+ */
+function buildSchema(tr: ReturnType<typeof useTranslations>) {
+  const itemSchema = z
+    .object({
+      productId: z.string().min(1, tr("common.selectAProduct")),
+      productName: z.string(),
+      orderType: z.string().min(1),
+      quantity: z.number().int().min(1, tr("sales.quoteForm.atLeast1")),
+      // 単価・値引きは価格表から自動解決される（手入力なし）。
+      unitPrice: z.number().min(0),
+      priceTierId: z.string().nullable(),
+      discountAmount: z.number().min(0),
+      discountLabel: z.string().nullable(),
+      deliveryDate: z.string().nullable(),
+    })
+    // 見積書は価格表からのみ価格を解決する — 未解決の行は保存できない。
+    .refine((it) => it.priceTierId != null, {
+      message: tr("sales.quoteForm.noMatchingPriceList"),
+      path: ["productId"],
+    });
+
+  return z.object({
+    customerId: z.string().min(1, tr("sales.orderAcceptances.selectACustomer")),
+    customerBranchId: z.string().nullable(),
+    /** 営業担当 — 顧客の担当一覧から選ぶ（未設定なら主担当が既定で入る）。 */
+    salesRepId: z.string().nullable(),
+    status: z.enum(["DRAFT", "ISSUED", "ACCEPTED", "REJECTED", "EXPIRED"]),
+    validUntil: z.string().nullable(),
+    notes: z.string(),
+    items: z.array(itemSchema).min(1, tr("sales.quoteForm.addAtLeastOneLine")),
   });
+}
 
-const schema = z.object({
-  customerId: z.string().min(1, "顧客を選択してください"),
-  customerBranchId: z.string().nullable(),
-  /** 営業担当 — 顧客の担当一覧から選ぶ（未設定なら主担当が既定で入る）。 */
-  salesRepId: z.string().nullable(),
-  status: z.enum(["DRAFT", "ISSUED", "ACCEPTED", "REJECTED", "EXPIRED"]),
-  validUntil: z.string().nullable(),
-  notes: z.string(),
-  items: z.array(itemSchema).min(1, "明細を1件以上追加してください"),
-});
-
-type QuoteFormValues = z.infer<typeof schema>;
+type QuoteFormValues = z.infer<ReturnType<typeof buildSchema>>;
 type ItemForm = QuoteFormValues["items"][number];
 
 const BASE_PATH = "/sales/quotes";
@@ -109,6 +117,7 @@ function buildInitial(
   quote: Quote | null | undefined,
   prefill: QuotePrefill | undefined,
   entries: PriceListEntry[],
+  tr: ReturnType<typeof useTranslations>,
 ): QuoteFormValues {
   if (quote) return toFormValues(quote);
   const base: QuoteFormValues = {
@@ -130,6 +139,7 @@ function buildInitial(
       prefill.productId,
       orderType,
       quantity,
+      tr,
     );
     base.items = [
       {
@@ -191,13 +201,14 @@ export function QuoteForm({
   /** 全顧客の価格表エントリ — 行のライブ解決に使用。 */
   entries: PriceListEntry[];
 }) {
+  const tr = useTranslations();
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const quoteId = mode === "edit" ? quote?.id : undefined;
 
   const form = useForm<QuoteFormValues>({
-    validate: zodResolver(schema),
-    initialValues: buildInitial(quote, prefill, entries),
+    validate: zodResolver(buildSchema(tr)),
+    initialValues: buildInitial(quote, prefill, entries, tr),
   });
 
   const branches = branchesByCustomer[form.values.customerId] ?? [];
@@ -216,6 +227,7 @@ export function QuoteForm({
               it.productId,
               it.orderType,
               it.quantity,
+              tr,
             )
           : null;
         return {
@@ -260,16 +272,18 @@ export function QuoteForm({
           : await createQuote(payload);
       if (result.ok) {
         notifications.show({
-          title: "保存しました",
+          title: tr("common.saved2"),
           message:
-            mode === "edit" ? "見積書を更新しました" : "見積書を作成しました",
+            mode === "edit"
+              ? tr("sales.quotes.theQuoteWasUpdated")
+              : tr("sales.quotes.theQuoteWasCreated"),
           color: "green",
         });
         // 作成・更新後は詳細（ビュー）ページへ。
         router.push(`${BASE_PATH}/${result.data.number}`);
       } else {
         notifications.show({
-          title: "エラー",
+          title: tr("common.error2"),
           message: result.error,
           color: "red",
         });
@@ -280,9 +294,9 @@ export function QuoteForm({
   return (
     <FormShell
       breadcrumbs={[
-        "販売",
-        { label: "見積書", href: BASE_PATH },
-        mode === "edit" ? "編集" : "新規作成",
+        tr("common.sales"),
+        { label: tr("common.quote"), href: BASE_PATH },
+        mode === "edit" ? tr("common.edit") : tr("common.new2"),
       ]}
       isDirty={form.isDirty()}
       isPending={isPending}
@@ -295,16 +309,20 @@ export function QuoteForm({
           <StatusBadge entity="Quote" status={form.values.status} />
         ) : undefined
       }
-      title={mode === "edit" ? "見積書 編集" : "見積書 新規作成"}
+      title={
+        mode === "edit"
+          ? tr("sales.quoteForm.editTitle")
+          : tr("sales.quotes.newQuote")
+      }
     >
-      <FormSection title="基本情報">
+      <FormSection title={tr("common.basicInformation")}>
         <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="sm">
           <Select
             data={customerOptions}
             error={form.errors.customerId}
-            label={<HelpLabel {...fieldHelp("quote", "customer")} />}
+            label={<HelpLabel {...fieldHelp(tr, "quote", "customer")} />}
             onChange={(v) => onCustomerChange(v ?? "")}
-            placeholder="顧客を選択"
+            placeholder={tr("common.selectACustomer")}
             searchable
             value={form.values.customerId || null}
             withAsterisk
@@ -313,8 +331,12 @@ export function QuoteForm({
             clearable
             data={branches}
             disabled={branches.length === 0}
-            label={<HelpLabel {...fieldHelp("quote", "customerBranch")} />}
-            placeholder={branches.length ? "支店を選択" : "支店なし"}
+            label={<HelpLabel {...fieldHelp(tr, "quote", "customerBranch")} />}
+            placeholder={
+              branches.length
+                ? tr("sales.quoteForm.selectABranch")
+                : tr("common.noBranch")
+            }
             {...form.getInputProps("customerBranchId")}
           />
           <SalesRepSelect
@@ -329,23 +351,23 @@ export function QuoteForm({
           />
           <DatePickerInput
             clearable
-            label={<HelpLabel {...fieldHelp("quote", "validUntil")} />}
+            label={<HelpLabel {...fieldHelp(tr, "quote", "validUntil")} />}
             leftSection={<IconCalendar size={14} />}
-            placeholder="日付を選択"
+            placeholder={tr("common.pickADate")}
             valueFormat="YYYY/MM/DD"
             {...form.getInputProps("validUntil")}
           />
           <Select
             data={statusOptions("Quote")}
-            label="状態"
+            label={tr("common.status")}
             {...form.getInputProps("status")}
           />
         </SimpleGrid>
       </FormSection>
 
       <FormSection
-        description="単価（基準単価 × 数量倍率）と値引き（値引きルール）は顧客の価格表から自動計算されます。手入力はありません — 価格を変える場合は価格表側で設定してください。"
-        title="明細"
+        description={tr("sales.quotes.unitPriceBaseQuantityMultiplierAnd")}
+        title={tr("common.lineItems")}
       >
         <Stack gap="md">
           {form.values.items.map((item, ri) => (
@@ -396,7 +418,7 @@ export function QuoteForm({
                   />
                 </Box>
                 <ActionIcon
-                  aria-label="明細を削除"
+                  aria-label={tr("common.removeLine")}
                   color="red"
                   disabled={form.values.items.length <= 1}
                   mb={4}
@@ -408,11 +430,13 @@ export function QuoteForm({
               </Group>
               <DatePickerInput
                 clearable
-                label={<HelpLabel {...fieldHelp("quote", "deliveryDate")} />}
+                label={
+                  <HelpLabel {...fieldHelp(tr, "quote", "deliveryDate")} />
+                }
                 leftSection={<IconCalendar size={14} />}
                 maw={220}
                 mt="xs"
-                placeholder="日付を選択"
+                placeholder={tr("common.pickADate")}
                 valueFormat="YYYY/MM/DD"
                 {...form.getInputProps(`items.${ri}.deliveryDate`)}
               />
@@ -432,24 +456,30 @@ export function QuoteForm({
           onClick={() => form.insertListItem("items", emptyItem())}
           size="xs"
         >
-          明細を追加
+          {tr("common.addLine")}
         </GhostButton>
 
         <Divider my="md" />
         <Group gap="xl" justify="flex-end">
           <Text c="dimmed" size="sm">
-            小計 {formatMoney(subtotal)}
+            {tr("sales.quoteForm.subtotalAmount", {
+              amount: formatMoney(subtotal),
+            })}
           </Text>
           <Text c="dimmed" size="sm">
-            消費税 {formatMoney(tax)}
+            {tr("sales.quoteForm.taxAmount", { amount: formatMoney(tax) })}
           </Text>
-          <Text fw={700}>合計（税込） {formatMoney(grandTotal)}</Text>
+          <Text fw={700}>
+            {tr("sales.quoteForm.totalInclTaxAmount", {
+              amount: formatMoney(grandTotal),
+            })}
+          </Text>
         </Group>
       </FormSection>
 
       <Textarea
         autosize
-        label={<HelpLabel {...fieldHelp("quote", "notes")} />}
+        label={<HelpLabel {...fieldHelp(tr, "quote", "notes")} />}
         minRows={2}
         {...form.getInputProps("notes")}
       />

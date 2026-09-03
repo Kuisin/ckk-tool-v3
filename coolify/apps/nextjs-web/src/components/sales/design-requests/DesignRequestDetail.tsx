@@ -43,7 +43,7 @@ import {
   IconX,
 } from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
-import { useLocale } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { type ReactNode, useState, useTransition } from "react";
 import {
   approveDesign,
@@ -66,7 +66,6 @@ import {
   countTrailRecords,
 } from "@/components/production/ApprovalStatusPanel";
 import { DesignFileList } from "@/components/production/design-files/DesignFileList";
-import { DESIGN_FILE_ROLE_LABEL } from "@/components/production/design-files/model";
 import { ActionCard } from "@/components/ui/ActionCard";
 import { AppTabs } from "@/components/ui/AppTabs";
 import {
@@ -103,6 +102,7 @@ import { isViewable } from "@/lib/design-file-kind";
 import { pickThumbFile } from "@/lib/design-files-core";
 import type { MemoView } from "@/lib/document-memos";
 import {
+  designHistoryActionLabel,
   designKindLabel,
   designPriorityLabel,
   designTriggerLabel,
@@ -115,7 +115,6 @@ import {
   canReopen,
   canRequestApproval,
   canStart,
-  DESIGN_HISTORY_ACTION_LABEL,
   DESIGN_KIND_COLOR,
   DESIGN_TRIGGER_COLOR,
   type DesignRequest,
@@ -177,6 +176,7 @@ export function DesignRequestDetail({
   /** コメント（document_memos, ownerType "design_requests"）。 */
   memos?: MemoView[];
 }) {
+  const tr = useTranslations();
   const locale = useLocale();
   const fmt = useFormat();
   const router = useRouter();
@@ -207,7 +207,15 @@ export function DesignRequestDetail({
     const version = pickThumbFile(request.files);
     if (version) {
       return {
-        caption: `v${version.version}${version.isLatest ? "（最新）" : ""} ${version.filename}`,
+        caption: version.isLatest
+          ? tr("sales.designRequestDetail.versionCaptionLatest", {
+              version: version.version,
+              filename: version.filename,
+            })
+          : tr("sales.designRequestDetail.versionCaption", {
+              version: version.version,
+              filename: version.filename,
+            }),
         filename: version.filename,
         mimeType: version.mimeType,
         src: `/api/design-files/${encodeURIComponent(version.id)}`,
@@ -217,7 +225,10 @@ export function DesignRequestDetail({
     const a = attachments.find((x) => isViewable(x.filename, x.mimeType));
     return a
       ? {
-          caption: `添付（未登録）${a.filename}`,
+          caption: tr(
+            "sales.designRequestDetail.unregisteredAttachmentCaption",
+            { filename: a.filename },
+          ),
           filename: a.filename,
           mimeType: a.mimeType,
           src: `/api/attachments/${encodeURIComponent(a.id)}`,
@@ -252,14 +263,17 @@ export function DesignRequestDetail({
       });
       setPdfNonce((n) => n + 1);
       notifications.show({
-        title: "再生成しました",
-        message: "PDF を再生成・保存しました",
+        title: tr("common.regenerated"),
+        message: tr("common.pDFRegeneratedAndSaved"),
         color: "green",
       });
     } catch (e) {
       notifications.show({
-        title: "エラー",
-        message: e instanceof Error ? e.message : "PDF の再生成に失敗しました",
+        title: tr("common.error2"),
+        message:
+          e instanceof Error
+            ? e.message
+            : tr("common.couldNotRegenerateThePdf"),
         color: "red",
       });
     }
@@ -287,14 +301,16 @@ export function DesignRequestDetail({
       if (result.ok) {
         notifications.show({
           title: successMessage,
-          message: `設計依頼書 ${request.requestNumber}`,
+          message: tr("sales.designRequestDetail.designRequestWithNumber", {
+            number: request.requestNumber,
+          }),
           color: "green",
         });
         closeAll();
         router.refresh();
       } else {
         notifications.show({
-          title: "エラー",
+          title: tr("common.error2"),
           message: result.error,
           color: "red",
         });
@@ -309,10 +325,10 @@ export function DesignRequestDetail({
   const stages: ProcedureStage[] = [
     {
       key: "requested",
-      label: "依頼",
+      label: tr("common.request"),
       description: request.requestedAt
         ? fmt.date(request.requestedAt)
-        : "下書き",
+        : tr("common.draft"),
       // 差し戻し中は赤（_specs/design.md §9 REJECTED = red）。
       color: request.status === "REJECTED" ? "red" : undefined,
       loading: request.status === "DRAFT",
@@ -320,21 +336,22 @@ export function DesignRequestDetail({
     approvalStage(approval, {
       approvedAt: request.approvedAt,
       fmtDate: (v) => fmt.date(v),
+      tr,
     }),
     {
       key: "started",
-      label: "着手",
+      label: tr("sales.designRequests.start"),
       description: request.startedAt
         ? fmt.date(request.startedAt)
-        : (request.assigneeName ?? "担当者"),
+        : (request.assigneeName ?? tr("common.assignee")),
       loading: request.status === "PENDING",
     },
     {
       key: "completed",
-      label: "完了",
+      label: tr("common.completed"),
       description: request.completedAt
         ? fmt.date(request.completedAt)
-        : "設計図の登録",
+        : tr("sales.designRequests.registerADrawing"),
       loading: request.status === "IN_PROGRESS",
     },
   ];
@@ -347,7 +364,7 @@ export function DesignRequestDetail({
             key: request.quoteNumber,
             label: request.quoteNumber,
             href: `/sales/quotes/${request.quoteNumber}`,
-            note: "見積時の依頼",
+            note: tr("sales.designRequests.requestedAtQuoteTime"),
           },
         ]
       : []),
@@ -357,7 +374,7 @@ export function DesignRequestDetail({
             key: request.orderLineNumber,
             label: request.orderLineNumber,
             href: `/sales/order-lines/${request.orderLineNumber}`,
-            note: "受注時の依頼",
+            note: tr("sales.designRequests.requestedAtOrderTime"),
           },
         ]
       : []),
@@ -367,7 +384,7 @@ export function DesignRequestDetail({
       ? [
           {
             key: "trigger",
-            title: "依頼元",
+            title: tr("sales.designRequests.requestedBy"),
             items: sourceItems,
             emptyNote: "—",
           },
@@ -380,31 +397,35 @@ export function DesignRequestDetail({
   const handoffGroups: HandoffGroup[] = [
     {
       key: "design-files",
-      title: "図面",
+      title: tr("common.drawing2"),
       summary:
-        latestFiles.length > 0 ? `第 ${latestFiles[0]?.version} 版` : null,
+        latestFiles.length > 0
+          ? tr("sales.designRequestDetail.versionOrdinal", {
+              version: latestFiles[0]?.version,
+            })
+          : null,
       items: latestFiles.map((f) => ({
         key: f.id,
         label: f.filename,
         done: true,
-        note: DESIGN_FILE_ROLE_LABEL[f.role] ?? f.role,
+        note: tr(`enum.DESIGN_FILE_ROLE_LABEL.${f.role}`),
       })),
       emptyNote:
         request.status === "IN_PROGRESS"
-          ? "未登録（設計図で版を登録すると完了できます）"
-          : "未登録（着手して設計図に版を登録すると付きます）",
+          ? tr("sales.designRequests.notRegisteredCompleteItByRegistering")
+          : tr("sales.designRequests.notRegisteredAddedOnceYouStart"),
     },
     ...(request.productName
       ? [
           {
             key: "product",
-            title: "製品マスタ",
+            title: tr("sales.designRequests.productMaster"),
             items: [
               {
                 key: "product",
                 label: request.productName,
                 href: `/production/design-files/${request.productId}`,
-                note: "最新図面の反映先",
+                note: tr("sales.designRequests.whereTheLatestDrawingApplies"),
               },
             ],
             emptyNote: "—",
@@ -429,7 +450,9 @@ export function DesignRequestDetail({
         onReject={(reason) => rejectDesign(request.requestNumber, reason)}
         onRequest={() => requestDesignApproval(request.requestNumber)}
         rejectReason={lastReject?.notes ?? null}
-        subject={`設計依頼書 ${request.requestNumber}`}
+        subject={tr("sales.designRequestDetail.designRequestWithNumber", {
+          number: request.requestNumber,
+        })}
       />
     );
   } else if (canStart(request)) {
@@ -440,15 +463,20 @@ export function DesignRequestDetail({
             leftSection={<IconPlayerPlay size={14} />}
             loading={isPending}
             onClick={() =>
-              run(() => startDesign(request.requestNumber), "着手しました")
+              run(
+                () => startDesign(request.requestNumber),
+                tr("sales.designRequests.started"),
+              )
             }
           >
-            着手
+            {tr("sales.designRequests.start")}
           </PrimaryButton>
         }
-        description={`承認済みです。${request.assigneeName ?? "担当者"} が図面の作成を始められます`}
+        description={tr("sales.designRequestDetail.approvedReadyToStartDesc", {
+          assignee: request.assigneeName ?? tr("common.assignee"),
+        })}
         icon={<IconPlayerPlay size={20} />}
-        title="着手できます"
+        title={tr("sales.designRequests.readyToStart")}
         tone="action"
       />
     );
@@ -464,12 +492,15 @@ export function DesignRequestDetail({
             loading={isPending}
             onClick={() => setCompleteOpen(true)}
           >
-            完了
+            {tr("common.completed")}
           </PrimaryButton>
         }
-        description={`設計図 v${latestFiles[0]?.version ?? producedVersions[0]} が登録済みです。完了すると依頼者へ通知します`}
+        description={tr(
+          "sales.designRequestDetail.drawingRegisteredNotifyDesc",
+          { version: latestFiles[0]?.version ?? producedVersions[0] },
+        )}
         icon={<IconCheck size={20} />}
-        title="図面ができたら完了できます"
+        title={tr("sales.designRequests.youCanCompleteItOnceThe")}
         tone="action"
       />
     ) : (
@@ -479,12 +510,12 @@ export function DesignRequestDetail({
             href={registerDrawingHref}
             leftSection={<IconFile size={14} />}
           >
-            設計図に登録
+            {tr("sales.designRequests.registerAsADrawing")}
           </SecondaryButton>
         }
-        description="この依頼の図面がまだ設計図に登録されていません。版を登録すると完了できます"
+        description={tr("sales.designRequests.thisRequestSDrawingIsNot")}
         icon={<IconFile size={20} />}
-        title="図面を登録してください"
+        title={tr("sales.designRequests.registerADrawing2")}
         tone="wait"
       />
     );
@@ -500,7 +531,7 @@ export function DesignRequestDetail({
             ...(canComplete(request) && hasProducedVersion
               ? [
                   {
-                    label: "完了",
+                    label: tr("common.completed"),
                     icon: <IconCheck size={14} />,
                     onClick: () => setCompleteOpen(true),
                   },
@@ -509,7 +540,7 @@ export function DesignRequestDetail({
             ...(reassignable
               ? [
                   {
-                    label: "担当者を変更",
+                    label: tr("sales.designRequests.changeTheAssignee"),
                     icon: <IconUserCog size={14} />,
                     onClick: openAssignee,
                   },
@@ -518,7 +549,7 @@ export function DesignRequestDetail({
             ...(canReopen(request)
               ? [
                   {
-                    label: "差し戻し（作業）",
+                    label: tr("sales.designRequests.sendBackWork"),
                     icon: <IconArrowBackUp size={14} />,
                     color: "red",
                     onClick: () => setReopenOpen(true),
@@ -528,7 +559,7 @@ export function DesignRequestDetail({
             ...(isCancellable(request)
               ? [
                   {
-                    label: "キャンセル",
+                    label: tr("common.cancel"),
                     icon: <IconX size={14} />,
                     color: "red",
                     onClick: () => setCancelOpen(true),
@@ -544,7 +575,11 @@ export function DesignRequestDetail({
           pdf={canViewPdf ? { href: pdfUrl() } : undefined}
         />
       }
-      breadcrumbs={["販売", { label: "設計依頼書", href: BASE_PATH }, "詳細"]}
+      breadcrumbs={[
+        tr("common.sales"),
+        { label: tr("common.designRequest2"), href: BASE_PATH },
+        tr("common.detailBreadcrumb"),
+      ]}
       createdAt={fmt.dateTime(request.createdAt)}
       status={<StatusBadge entity="DesignRequest" status={request.status} />}
       title={request.requestNumber}
@@ -554,11 +589,11 @@ export function DesignRequestDetail({
 
       <SummaryGrid>
         <FieldValue
-          label="依頼番号"
+          label={tr("common.requestNumber")}
           value={<DocNumber>{request.requestNumber}</DocNumber>}
         />
         <FieldValue
-          label="トリガー"
+          label={tr("common.trigger")}
           value={
             <Badge
               color={DESIGN_TRIGGER_COLOR[request.trigger] ?? "gray"}
@@ -572,16 +607,16 @@ export function DesignRequestDetail({
           // 単独 — 紐づく書類が無いことを「—」ではなく明示する
           // （空欄だと「入れ忘れ」に見えて、後から探しに行かれる）。
           <FieldValue
-            label="参照元"
+            label={tr("common.source")}
             value={
               <Text c="dimmed" size="sm">
-                なし（単独起票）
+                {tr("sales.designRequests.noneStandalone")}
               </Text>
             }
           />
         ) : request.trigger === "QUOTE" ? (
           <FieldValue
-            label="見積書"
+            label={tr("common.quote")}
             value={
               request.quoteNumber ? (
                 <Anchor
@@ -599,7 +634,7 @@ export function DesignRequestDetail({
           />
         ) : (
           <FieldValue
-            label="注文明細"
+            label={tr("common.orderLine")}
             value={
               request.orderLineNumber ? (
                 <Anchor
@@ -616,10 +651,13 @@ export function DesignRequestDetail({
             }
           />
         )}
-        <FieldValue label="製品" value={request.productName ?? "—"} />
+        <FieldValue
+          label={tr("common.product")}
+          value={request.productName ?? "—"}
+        />
         {/* 完成した版がどの系列に載るか。汎用なら全顧客の指示書から見える。 */}
         <FieldValue
-          label="受注元"
+          label={tr("common.orderingCustomer")}
           value={
             request.customerName ? (
               <Badge color="blue" variant="light">
@@ -627,13 +665,13 @@ export function DesignRequestDetail({
               </Badge>
             ) : (
               <Badge color="gray" variant="outline">
-                汎用
+                {tr("common.generic")}
               </Badge>
             )
           }
         />
         <FieldValue
-          label="依頼区分"
+          label={tr("common.requestKind")}
           value={
             <Group gap="xs" wrap="nowrap">
               <Badge
@@ -644,23 +682,26 @@ export function DesignRequestDetail({
               </Badge>
               {request.kindOverridden && (
                 <Text c="dimmed" size="xs">
-                  手動指定
+                  {tr("sales.designRequests.setManually")}
                 </Text>
               )}
             </Group>
           }
         />
-        <FieldValue label="担当者" value={request.assigneeName ?? "—"} />
         <FieldValue
-          label="希望納期"
+          label={tr("common.assignee")}
+          value={request.assigneeName ?? "—"}
+        />
+        <FieldValue
+          label={tr("common.requestedDate2")}
           value={request.desiredAt ? fmt.date(request.desiredAt) : "—"}
         />
         <FieldValue
-          label="優先度"
+          label={tr("sales.designRequests.priority")}
           value={
             request.priority === "HIGH" ? (
               <Badge color="red" variant="light">
-                急ぎ
+                {tr("sales.designRequests.high")}
               </Badge>
             ) : (
               (designPriorityLabel(request.priority, locale) ??
@@ -668,17 +709,20 @@ export function DesignRequestDetail({
             )
           }
         />
-        <FieldValue label="作成者" value={request.createdByName ?? "—"} />
         <FieldValue
-          label="依頼日時"
+          label={tr("common.createdBy")}
+          value={request.createdByName ?? "—"}
+        />
+        <FieldValue
+          label={tr("common.requestedAt")}
           value={request.requestedAt ? fmt.dateTime(request.requestedAt) : "—"}
         />
         <FieldValue
-          label="承認日時"
+          label={tr("common.approvedAt")}
           value={request.approvedAt ? fmt.dateTime(request.approvedAt) : "—"}
         />
         <FieldValue
-          label="完了日"
+          label={tr("sales.designRequests.completedOn")}
           value={request.completedAt ? fmt.dateTime(request.completedAt) : "—"}
         />
       </SummaryGrid>
@@ -706,7 +750,7 @@ export function DesignRequestDetail({
               {records.map((h, i) => (
                 <Group gap="sm" key={`${h.at}-${h.action}-${i}`} wrap="nowrap">
                   <Badge color="gray" size="sm" variant="light">
-                    {DESIGN_HISTORY_ACTION_LABEL[h.action] ?? h.action}
+                    {designHistoryActionLabel(h.action, locale)}
                   </Badge>
                   <Text size="xs">{h.user}</Text>
                   <Text c="dimmed" className="tabular-nums" size="xs">
@@ -726,42 +770,51 @@ export function DesignRequestDetail({
 
       <AppTabs onChange={setTab} value={tab}>
         <Tabs.List>
-          <Tabs.Tab value="overview">概要</Tabs.Tab>
-          <Tabs.Tab value="files">ファイル（{request.files.length}）</Tabs.Tab>
+          <Tabs.Tab value="overview">{tr("common.overview")}</Tabs.Tab>
+          <Tabs.Tab value="files">
+            {tr("common.filesWithCount", { count: request.files.length })}
+          </Tabs.Tab>
           <Tabs.Tab value="pdf">PDF</Tabs.Tab>
-          <Tabs.Tab value="comments">コメント</Tabs.Tab>
-          <Tabs.Tab value="history">履歴</Tabs.Tab>
+          <Tabs.Tab value="comments">{tr("common.comment")}</Tabs.Tab>
+          <Tabs.Tab value="history">{tr("common.history")}</Tabs.Tab>
         </Tabs.List>
 
         <Tabs.Panel pt="md" value="overview">
           <Stack gap="md">
             {/* 改訂は「何を基に描くか」が先。設計者が最初に見る情報。 */}
             {request.kind === "REVISION" && (
-              <Alert color="orange" title="改訂" variant="light">
+              <Alert
+                color="orange"
+                title={tr("sales.designRequests.revision")}
+                variant="light"
+              >
                 <Stack gap={4}>
                   <Text size="sm">
-                    元図面:{" "}
+                    {tr("sales.designRequestDetail.baseDrawingLabel")}{" "}
                     {request.baseDesignFileId ? (
                       <Anchor
                         href={`/api/design-files/${encodeURIComponent(request.baseDesignFileId)}`}
                         size="sm"
                         target="_blank"
                       >
-                        {request.baseDesignFileLabel ?? "版を開く"}
+                        {request.baseDesignFileLabel ??
+                          tr("sales.designRequests.openTheVersion")}
                       </Anchor>
                     ) : (
                       "—"
                     )}
                   </Text>
                   <Text size="sm" style={{ whiteSpace: "pre-wrap" }}>
-                    変更理由: {request.changeReason || "—"}
+                    {tr("sales.designRequestDetail.changeReasonLabel", {
+                      reason: request.changeReason || "—",
+                    })}
                   </Text>
                 </Stack>
               </Alert>
             )}
             <div>
               <Text c="dimmed" mb={4} size="xs">
-                依頼内容
+                {tr("common.requestDetails")}
               </Text>
               <Text size="sm" style={{ whiteSpace: "pre-wrap" }}>
                 {request.description || "—"}
@@ -796,26 +849,30 @@ export function DesignRequestDetail({
               canUpload={canAttachFiles(request)}
               ownerId={request.requestNumber}
               ownerType="design_requests"
-              title="作業ファイル（メモ・下書きなど。成果物の版は設計図で登録します）"
+              title={tr(
+                "sales.designRequests.workingFilesNotesDraftsDeliverableVersions",
+              )}
             />
             <Stack gap="xs">
               <Group gap="sm" justify="space-between" wrap="wrap">
                 <Text fw={600} size="sm">
-                  成果物の版
+                  {tr("sales.designRequests.deliverableVersion")}
                 </Text>
                 {request.productId != null && (
                   <SecondaryButton
                     href={`/production/design-files/${request.productId}`}
                     leftSection={<IconFile size={14} />}
                   >
-                    設計図で管理
+                    {tr("common.managedByDrawing")}
                   </SecondaryButton>
                 )}
               </Group>
               {request.files.length === 0 ? (
                 <EmptyState
                   icon={<IconFile size={24} />}
-                  message="この依頼から登録された版はまだありません"
+                  message={tr(
+                    "sales.designRequests.noVersionHasBeenRegisteredFrom",
+                  )}
                 />
               ) : (
                 <DesignFileList rows={request.files} showSource />
@@ -827,7 +884,7 @@ export function DesignRequestDetail({
         <Tabs.Panel pt="md" value="pdf">
           <PdfAttachmentPanel
             downloadHref={pdfUrl("&download=1")}
-            emptyMessage="承認されると設計依頼書の PDF を閲覧できます。"
+            emptyMessage={tr("sales.designRequests.onceApprovedYouCanViewThe")}
             file={pdfFile}
             filename={pdfFilename}
             onRegenerate={regeneratePdf}
@@ -851,53 +908,62 @@ export function DesignRequestDetail({
       </AppTabs>
 
       <ConfirmModal
-        confirmLabel="完了する"
+        confirmLabel={tr("sales.designRequests.complete")}
         loading={isPending}
-        message={`設計依頼書 ${request.requestNumber} を完了にします。設計図 v${producedVersions.join(", v")} が成果物として紐づきます。`}
+        message={tr("sales.designRequestDetail.confirmCompleteMessage", {
+          number: request.requestNumber,
+          versions: producedVersions.join(", v"),
+        })}
         onClose={() => setCompleteOpen(false)}
         onConfirm={() =>
-          run(() => completeDesign(request.requestNumber), "完了しました")
+          run(
+            () => completeDesign(request.requestNumber),
+            tr("sales.designRequests.completed"),
+          )
         }
         opened={completeOpen}
-        title="完了の確認"
+        title={tr("sales.designRequests.confirmCompletion")}
       />
       <ConfirmModal
-        confirmLabel="差し戻す"
+        confirmLabel={tr("common.sendBack")}
         loading={isPending}
-        message={`設計依頼書 ${request.requestNumber} を進行中へ差し戻します。完了日時はクリアされますが、承認は取りなおしになりません。`}
+        message={tr("sales.designRequestDetail.confirmReopenMessage", {
+          number: request.requestNumber,
+        })}
         onClose={() => setReopenOpen(false)}
         onConfirm={() =>
-          run(() => reopenDesign(request.requestNumber), "差し戻しました")
+          run(() => reopenDesign(request.requestNumber), tr("common.sentBack"))
         }
         opened={reopenOpen}
-        title="差し戻しの確認"
+        title={tr("common.confirmSendingBack")}
       />
 
       <ModalShell
         confirmColor="red"
-        confirmLabel="キャンセルする"
+        confirmLabel={tr("common.cancelDocument")}
         loading={isPending}
         onClose={() => setCancelOpen(false)}
         onConfirm={() =>
           run(
             () => cancelDesign(request.requestNumber, cancelReason),
-            "キャンセルしました",
+            tr("common.cancelled"),
           )
         }
         opened={cancelOpen}
-        title="設計依頼のキャンセル"
+        title={tr("sales.designRequests.cancelTheDesignRequest")}
       >
         <Stack gap="sm">
           <Text size="sm">
-            設計依頼書 {request.requestNumber} をキャンセルします。承認依頼中の
-            場合は承認依頼中の一覧からも取り下げられます。
+            {tr("sales.designRequestDetail.confirmCancelMessage", {
+              number: request.requestNumber,
+            })}
           </Text>
           <Textarea
             autosize
-            label="キャンセル理由"
+            label={tr("common.reasonForCancelling")}
             minRows={3}
             onChange={(e) => setCancelReason(e.currentTarget.value)}
-            placeholder="なぜキャンセルするか"
+            placeholder={tr("sales.designRequests.whyItIsBeingCancelled")}
             value={cancelReason}
             withAsterisk
           />
@@ -905,24 +971,26 @@ export function DesignRequestDetail({
       </ModalShell>
 
       <ModalShell
-        confirmLabel="変更する"
+        confirmLabel={tr("common.change")}
         loading={isPending}
         onClose={() => setAssigneeOpen(false)}
         onConfirm={() =>
           run(
             () => setDesignAssignee(request.requestNumber, assigneeDraft),
-            "担当者を変更しました",
+            tr("sales.designRequests.theAssigneeWasChanged"),
           )
         }
         opened={assigneeOpen}
-        title="担当者の変更"
+        title={tr("sales.designRequests.changeTheAssignee2")}
       >
         <Select
           data={assigneeOptions}
-          description="変更すると、新しい担当者に通知が届きます"
-          label="担当者"
+          description={tr(
+            "sales.designRequests.changingItNotifiesTheNewAssignee",
+          )}
+          label={tr("common.assignee")}
           onChange={(v) => setAssigneeDraft(v ?? "")}
-          placeholder="図面をつくる担当者"
+          placeholder={tr("common.whoDrawsTheDrawing")}
           searchable
           value={assigneeDraft || null}
           withAsterisk

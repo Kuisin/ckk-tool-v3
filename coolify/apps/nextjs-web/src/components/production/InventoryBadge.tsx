@@ -1,3 +1,5 @@
+"use client";
+
 /**
  * InventoryBadge.tsx — 利用可能数 + 予約バッジ (_specs/design.md §12.7).
  *
@@ -6,6 +8,7 @@
  */
 
 import { Badge, Group, Text, Tooltip } from "@mantine/core";
+import { useTranslations } from "next-intl";
 
 export function InventoryBadge({
   available,
@@ -16,15 +19,23 @@ export function InventoryBadge({
   reserved: number;
   unit: string;
 }) {
+  const tr = useTranslations();
   return (
     <Group gap="xs" wrap="nowrap">
       <Text className="tabular-nums" size="sm">
         {available.toLocaleString("ja-JP")} {unit}
       </Text>
       {reserved > 0 && (
-        <Tooltip label={`予約中: ${reserved.toLocaleString("ja-JP")} ${unit}`}>
+        <Tooltip
+          label={tr("production.inventoryBadge.reservedTooltip", {
+            reserved: reserved.toLocaleString("ja-JP"),
+            unit,
+          })}
+        >
           <Badge color="orange" variant="light">
-            予約 {reserved.toLocaleString("ja-JP")}
+            {tr("production.inventoryBadge.reservedLabel", {
+              reserved: reserved.toLocaleString("ja-JP"),
+            })}
           </Badge>
         </Tooltip>
       )}

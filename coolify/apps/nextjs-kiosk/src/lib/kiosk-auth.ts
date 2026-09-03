@@ -56,6 +56,8 @@ export type DeviceAuth = {
   name: string | null;
   plantId: number | null;
   status: "PENDING" | "ACTIVE" | "DISABLED" | "REVOKED";
+  /** ログイン前画面の表示言語（SY09 で設定。未設定は "ja"）。 */
+  locale: Locale;
   /**
    * このリクエストが有効なアテステーション Cookie を持っていたか。
    * KIOSK_ATTESTATION=required でなくても判定するのは、所有区分
@@ -111,6 +113,7 @@ export async function getDevice(
       plantId: true,
       status: true,
       deviceTokenExpiresAt: true,
+      locale: true,
     },
   });
   if (!device) return { ok: false, reason: "NOT_FOUND" };
@@ -119,6 +122,7 @@ export async function getDevice(
   if (!isDeviceTokenAlive(new Date(), device.deviceTokenExpiresAt)) {
     return { ok: false, reason: "EXPIRED" };
   }
+  const locale = normalizeLocale(device.locale);
   // 鍵署名の有無は required かどうかに関わらず見る（所有区分の判定材料）。
   const secret = attestSecret();
   const attestCookie = store.get(ATTEST_COOKIE)?.value;
@@ -134,10 +138,11 @@ export async function getDevice(
     ok: true,
     device: {
       id: device.id,
-      // 端末名は多言語 JSON。ログイン前画面は ja 固定（lib/i18n の方針）。
-      name: deviceName(device.name),
+      // 端末名は多言語 JSON。表示は SY09 で設定した端末言語（locale）に従う。
+      name: deviceName(device.name, locale),
       plantId: device.plantId,
       status: device.status,
+      locale,
       attested,
     },
   };
@@ -158,6 +163,8 @@ export type DeviceSettingsInfo = {
   defaultWorkLocationId: number | null;
   /** 作業場所の制限トグル（ON = 許可外の工程を開始できない）。 */
   enforceWorkLocation: boolean;
+  /** ログイン前画面の表示言語（SY09 で設定。未設定は "ja"）。 */
+  locale: Locale;
 };
 
 /**
@@ -182,10 +189,13 @@ export async function getDeviceForSettings(): Promise<DeviceSettingsInfo | null>
       plantId: true,
       defaultWorkLocationId: true,
       enforceWorkLocation: true,
+      locale: true,
     },
   });
-  // 端末名は多言語 JSON。端末設定はログイン前画面なので ja 固定。
-  return row ? { ...row, name: deviceName(row.name) } : null;
+  if (!row) return null;
+  const locale = normalizeLocale(row.locale);
+  // 端末名は多言語 JSON。端末設定画面もログイン前なので端末の言語で表示する。
+  return { ...row, name: deviceName(row.name, locale), locale };
 }
 
 // ─── 人セッション ────────────────────────────────────────────────────────────

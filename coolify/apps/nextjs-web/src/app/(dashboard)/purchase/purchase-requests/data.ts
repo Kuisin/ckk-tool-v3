@@ -7,13 +7,16 @@
  * 仕入先（変換モーダル）/ 拠点 options は work-orders の data.ts を再利用する。
  */
 
+import { ownOrPlantWhere, rowInScope } from "@ckk/authz-core";
+import { getTranslations } from "next-intl/server";
 import type {
   PurchaseRequestRow,
   PurchaseRequestStatus,
   PurchaseRequestView,
 } from "@/components/purchase/purchase-requests/model";
 import type { HistoryEntry } from "@/lib/approvals";
-import { prisma } from "@/lib/db";
+import { checkPermission } from "@/lib/authz";
+import { type Prisma, prisma } from "@/lib/db";
 import { type LocalizedText, localized } from "@/lib/format";
 
 // 一覧クエリの取得上限（監査 P2-8 — 全件フェッチのデータ増加対策）。
@@ -30,10 +33,27 @@ const iso = (d: Date | null | undefined) => d?.toISOString() ?? null;
 const dateOnly = (d: Date | null | undefined) =>
   d ? d.toISOString().slice(0, 10) : null;
 
+/** スコープ（監査 M3）: 依頼の拠点は明細の入荷先。OWN は起票者。 */
+function purchaseRequestScope(
+  access: Parameters<typeof ownOrPlantWhere>[0],
+  userId: string,
+): Prisma.PurchaseRequestWhereInput {
+  return ownOrPlantWhere(access, userId, {
+    plantClause: (plantIds) => ({
+      items: { some: { plantId: { in: plantIds } } },
+    }),
+    ownColumn: "createdBy",
+  }) as Prisma.PurchaseRequestWhereInput;
+}
+
 /** 一覧 (PU01) — 新しい依頼番号から順に。 */
 export async function fetchPurchaseRequests(): Promise<PurchaseRequestRow[]> {
+  const tr = await getTranslations();
+  const authz = await checkPermission("purchase_order", "READ");
+  if (!authz.ok) return [];
   const rows = await prisma.purchaseRequest.findMany({
     take: LIST_FETCH_CAP,
+    where: purchaseRequestScope(authz.access, authz.userId),
     include: {
       createdByUser: { select: { displayName: true } },
       items: {
@@ -50,7 +70,7 @@ export async function fetchPurchaseRequests(): Promise<PurchaseRequestRow[]> {
       .sort();
     return {
       requestNumber: r.requestNumber,
-      requesterName: r.createdByUser?.displayName ?? "システム",
+      requesterName: r.createdByUser?.displayName ?? tr("common.system"),
       primaryMaterial: r.items[0]?.material.code ?? null,
       itemCount: r.items.length,
       status: r.status,
@@ -64,6 +84,9 @@ export async function fetchPurchaseRequests(): Promise<PurchaseRequestRow[]> {
 export async function fetchPurchaseRequest(
   requestNumber: string,
 ): Promise<PurchaseRequestView | null> {
+  const tr = await getTranslations();
+  const authz = await checkPermission("purchase_order", "READ");
+  if (!authz.ok) return null;
   const r = await prisma.purchaseRequest.findUnique({
     where: { requestNumber },
     include: {
@@ -76,6 +99,15 @@ export async function fetchPurchaseRequest(
     },
   });
   if (!r) return null;
+  if (
+    !rowInScope(
+      authz.access,
+      { plantIds: r.items.map((it) => it.plantId), createdBy: r.createdBy },
+      authz.userId,
+    )
+  ) {
+    return null;
+  }
 
   // history Json の user uuid → displayName 解決
   const historyRaw: HistoryEntry[] = Array.isArray(r.history)
@@ -90,14 +122,14 @@ export async function fetchPurchaseRequest(
       })
     : [];
   const nameOf = (id: string | null | undefined) =>
-    (id && users.find((u) => u.id === id)?.displayName) || "システム";
+    (id && users.find((u) => u.id === id)?.displayName) || tr("common.system");
 
   return {
     id: r.id,
     requestNumber: r.requestNumber,
     status: r.status as PurchaseRequestStatus,
     purpose: r.purpose,
-    requesterName: r.createdByUser?.displayName ?? "システム",
+    requesterName: r.createdByUser?.displayName ?? tr("common.system"),
     requestedAt: iso(r.requestedAt),
     approvedAt: iso(r.approvedAt),
     orderedAt: iso(r.orderedAt),

@@ -21,7 +21,7 @@
 
 import { Badge, Group, Paper, Text, ThemeIcon } from "@mantine/core";
 import { Handle, type Node, type NodeProps, Position } from "@xyflow/react";
-import { useLocale } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import {
   PROCESS_CATEGORY_COLOR,
   processCategoryLabel,
@@ -46,6 +46,7 @@ export type StepFlowNode = Node<StepNodeData, "workflowStep">;
 const HANDLE_STYLE = { opacity: 0, pointerEvents: "none" } as const;
 
 export function WorkflowStepNode({ data }: NodeProps<StepFlowNode>) {
+  const tr = useTranslations();
   const locale = useLocale();
   const { step, highlighted } = data;
   const icon = STEP_STATUS_ICON[step.status] ?? STEP_STATUS_ICON.PENDING;
@@ -106,12 +107,12 @@ export function WorkflowStepNode({ data }: NodeProps<StepFlowNode>) {
           </Badge>
           {startable && (
             <Badge color="green" size="xs" variant="filled">
-              開始可
+              {tr("production.workflowStepNode.ready")}
             </Badge>
           )}
           {isOutsource && (
             <Badge color="orange" size="xs" variant="outline">
-              外注
+              {tr("common.outsourced")}
             </Badge>
           )}
           {hasQuantities ? (
@@ -142,13 +143,13 @@ export function WorkflowStepNode({ data }: NodeProps<StepFlowNode>) {
             </>
           ) : step.status === "CANCELLED" ? (
             <Badge color="red" size="xs" variant="light">
-              キャンセル
+              {tr("common.cancel")}
             </Badge>
           ) : (
             // 開始可のときは「開始可」バッジが出ているので重ねて言わない。
             !startable && (
               <Text c="dimmed" size="xs">
-                未着手
+                {tr("production.workflowStepNode.notStarted")}
               </Text>
             )
           )}

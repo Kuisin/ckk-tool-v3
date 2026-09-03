@@ -20,11 +20,9 @@
  */
 export type DesignFileRole = "PREVIEW" | "BLUEPRINT" | "REFERENCE";
 
-export const DESIGN_FILE_ROLE_LABEL: Record<DesignFileRole, string> = {
-  PREVIEW: "プレビュー",
-  BLUEPRINT: "図面データ",
-  REFERENCE: "参考資料",
-};
+// 表示ラベルは messages/*.json の enum.DESIGN_FILE_ROLE_LABEL.* —
+// 呼び出し側で tr(`enum.DESIGN_FILE_ROLE_LABEL.${role}`) を直接引く
+// （product-types.ts の productFieldTypeLabel と同じ規約）。
 
 export const DESIGN_FILE_ROLE_COLOR: Record<DesignFileRole, string> = {
   PREVIEW: "grape",

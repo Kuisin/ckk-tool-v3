@@ -9,6 +9,7 @@
  */
 
 import { notifications } from "@mantine/notifications";
+import { useTranslations } from "next-intl";
 import { useTransition } from "react";
 import {
   deleteMaterialTypes,
@@ -35,14 +36,15 @@ export function DeleteMaterialTypeModal({
   target: MaterialTypeModalTarget | null;
   onDone?: () => void;
 }) {
+  const tr = useTranslations();
   const [isPending, startTransition] = useTransition();
   return (
     <ConfirmModal
-      confirmLabel="削除する"
+      confirmLabel={tr("common.delete2")}
       loading={isPending}
       message={
         target
-          ? `材種「${label(target)}」を削除します。この操作は取り消せません。`
+          ? tr("master.materialTypes.deleteConfirm", { name: label(target) })
           : ""
       }
       onClose={onClose}
@@ -52,14 +54,16 @@ export function DeleteMaterialTypeModal({
           const result = await deleteMaterialTypes([target.id]);
           if (result.ok) {
             notifications.show({
-              title: "削除しました",
-              message: `材種「${label(target)}」を削除しました`,
+              title: tr("common.deleted"),
+              message: tr("master.materialTypes.deleted", {
+                name: label(target),
+              }),
               color: "green",
             });
             onDone?.();
           } else {
             notifications.show({
-              title: "エラー",
+              title: tr("common.error2"),
               message: result.error,
               color: "red",
             });
@@ -67,8 +71,8 @@ export function DeleteMaterialTypeModal({
         });
       }}
       opened={opened}
-      title="材種の削除"
-      warning="この材種に紐づく素材が存在する場合は削除できません。無効化をご検討ください。"
+      title={tr("master.materialTypes.deleteTheMaterialType")}
+      warning={tr("master.materialTypes.itCannotBeDeletedWhileMaterials")}
     />
   );
 }
@@ -82,18 +86,25 @@ export function ToggleMaterialTypeActiveModal({
   target: MaterialTypeModalTarget | null;
   onDone?: () => void;
 }) {
+  const tr = useTranslations();
   const [isPending, startTransition] = useTransition();
   const isActive = target?.isActive ?? true;
   return (
     <ConfirmModal
       confirmColor={isActive ? "red" : "blue"}
-      confirmLabel={isActive ? "無効化する" : "有効化する"}
+      confirmLabel={
+        isActive ? tr("common.disableAction") : tr("common.enable2")
+      }
       loading={isPending}
       message={
         target
           ? isActive
-            ? `材種「${label(target)}」を無効化します。新規の素材登録で選択できなくなります。`
-            : `材種「${label(target)}」を有効化します。再び素材登録で選択できるようになります。`
+            ? tr("master.materialTypes.disableConfirm", {
+                name: label(target),
+              })
+            : tr("master.materialTypes.enableConfirm", {
+                name: label(target),
+              })
           : ""
       }
       onClose={onClose}
@@ -103,14 +114,16 @@ export function ToggleMaterialTypeActiveModal({
           const result = await setMaterialTypesActive([target.id], !isActive);
           if (result.ok) {
             notifications.show({
-              title: isActive ? "無効化しました" : "有効化しました",
-              message: `材種「${label(target)}」を${isActive ? "無効化" : "有効化"}しました`,
+              title: isActive ? tr("common.disabled2") : tr("common.enabled2"),
+              message: isActive
+                ? tr("master.materialTypes.disabled", { name: label(target) })
+                : tr("master.materialTypes.enabled", { name: label(target) }),
               color: "green",
             });
             onDone?.();
           } else {
             notifications.show({
-              title: "エラー",
+              title: tr("common.error2"),
               message: result.error,
               color: "red",
             });
@@ -118,7 +131,11 @@ export function ToggleMaterialTypeActiveModal({
         });
       }}
       opened={opened}
-      title={isActive ? "材種の無効化" : "材種の有効化"}
+      title={
+        isActive
+          ? tr("master.materialTypes.disableTheMaterialType")
+          : tr("master.materialTypes.enableTheMaterialType")
+      }
     />
   );
 }

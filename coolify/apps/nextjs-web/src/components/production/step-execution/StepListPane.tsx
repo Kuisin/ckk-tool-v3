@@ -10,6 +10,7 @@
 
 import { Badge, Group, Stack, Text, ThemeIcon } from "@mantine/core";
 import { IconCheck, IconClock, IconLoader, IconX } from "@tabler/icons-react";
+import { useTranslations } from "next-intl";
 import type { StepNavItem } from "@/app/(dashboard)/production/work-orders/data";
 import { MasterListNav } from "@/components/ui/MasterListNav";
 
@@ -28,11 +29,12 @@ export function StepListPane({
   basePath: string;
   steps: StepNavItem[];
 }) {
+  const tr = useTranslations();
   return (
     <MasterListNav
-      emptyMessage="工程がありません。"
+      emptyMessage={tr("production.stepExecution.thereAreNoSteps")}
       searchable={steps.length > 8}
-      searchPlaceholder="工程名・コードで絞り込み..."
+      searchPlaceholder={tr("production.stepExecution.filterByStepNameOrCode")}
       sections={[
         {
           items: steps.map((s) => {
@@ -56,17 +58,17 @@ export function StepListPane({
                   </Text>
                   {isOutsource && (
                     <Badge color="orange" size="xs" variant="outline">
-                      外注
+                      {tr("common.outsourced")}
                     </Badge>
                   )}
                   {s.isInspection && (
                     <Badge color="blue" size="xs" variant="light">
-                      検査
+                      {tr("common.inspection")}
                     </Badge>
                   )}
                   {s.isApprovalStep && (
                     <Badge color="teal" size="xs" variant="light">
-                      承認
+                      {tr("common.approve")}
                     </Badge>
                   )}
                 </Group>

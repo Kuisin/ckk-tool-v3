@@ -55,6 +55,7 @@ model Plant {
   materialInventory MaterialInventory[]
   kioskDevices      KioskDevice[]   @relation("KioskDevicePlant")
   kioskFloorMaps    KioskFloorMap[] @relation("KioskFloorMapPlant")
+  displayDevices    DisplayDevice[] @relation("DisplayDevicePlant")
   routeVersionSteps ProductProcessRouteVersionStep[] @relation("RouteStepPlant")
   workLocationGroups WorkLocationGroup[] @relation("WorkLocationGroupPlant")
   storageLocations   StorageLocation[]   @relation("StorageLocationPlant")
@@ -270,6 +271,41 @@ enum InspectionItemType {
   NUMBER // 数値（既存互換 — default）
   SELECT_SINGLE // 単一選択
   SELECT_MULTI // 複数選択
+  TEXT // フリーフォーム文字列（形状確認欄など。合否は常に手動）
+
+  @@schema("app")
+}
+
+// シート全体の印刷レイアウト。DIMENSIONAL = 寸法測定表（基本値/目標値/公差Top-Bottom/
+// 上限下限のグリッド）、CHECKLIST = 部門別チェックリスト（頻度/判定方法/検査基準/不良本数）。
+enum InspectionLayoutStyle {
+  DIMENSIONAL
+  CHECKLIST
+
+  @@schema("app")
+}
+
+// VALUES 記録方式のサンプル呼称。INITIAL_MID_FINAL は先頭3ページを
+// 初品/中間品/最終品とラベルする（4本目以降は製品4…と同じ）。
+enum InspectionSampleNaming {
+  GENERIC
+  INITIAL_MID_FINAL
+
+  @@schema("app")
+}
+
+// 項目の掲載区分。SHAPE は主表と別枠の形状フリーフォーム欄に描画する。
+enum InspectionItemSection {
+  MEASUREMENT
+  SHAPE
+
+  @@schema("app")
+}
+
+// CHECKLIST レイアウトのみで使う部門区分（製造課管轄/品証課管轄の見出し分け）。
+enum InspectionDepartment {
+  MANUFACTURING
+  QUALITY_ASSURANCE
 
   @@schema("app")
 }
@@ -300,22 +336,93 @@ model InspectionTemplate {
   version               Int      @default(1) // code 内 1 始まりの連番
   name                  Json
   relatedProcessStepId  Int?     @map("related_process_step_id")
+  // 対象製品。null = どの製品にも使える（汎用）。工程単位の既定選択
+  // （lib/workflow.ts の分岐追加・WorkflowBuilder の初期選択）は
+  // 関連工程が一致する検査表のうち、対象製品が null か指示書の製品と
+  // 一致するものだけに絞る — 製品専用の検査表が別製品の指示書に紛れ込まない
+  // ようにするため。絞り込みは既定選択だけで、割当自体（MultiSelect）は
+  // 引き続きどのテンプレートも選べる（現場判断で汎用外の検査表を使うことも
+  // ある）。
+  productId             Int?     @map("product_id")
+  // ナビゲーション用のグループ（例: 製品検査記録／外観検査 等）。
+  // 判定・PDF には影響しない — 一覧の絞り込み・見出し分けのためだけの表示軸。
+  groupId               Int?     @map("group_id")
+  // 参考画像（測定位置の図解・写真等）。設定すると PDF（空欄シート・記入済み
+  // シートの両方）にも印刷される（lib/inspection-sheet-pdf.ts templateImageHtml）。
+  imageFileId           String?  @db.Uuid @map("image_file_id")
   // 検査対象（シート単位）: 全数 / 割合(%) / 本数 — 各項目はこの数の製品に対して記録する
   samplingMode          InspectionSamplingMode @default(ALL) @map("sampling_mode")
   samplingValue         Decimal? @map("sampling_value") @db.Decimal(10, 2)
   // 記録方式（シート単位）: VALUES = 製品ごとにページ送りで実測値 / COUNTS = 項目ごとに検査数・合格数のみ
   recordStyle           InspectionRecordStyle @default(VALUES) @map("record_style")
+  // 印刷レイアウト（寸法測定表 / 部門別チェックリスト）— どの PDF テンプレートを使うかを決める
+  layoutStyle           InspectionLayoutStyle  @default(DIMENSIONAL) @map("layout_style")
+  // VALUES のサンプル呼称（製品1,2,3… / 初品・中間品・最終品）
+  sampleNaming          InspectionSampleNaming @default(GENERIC) @map("sample_naming")
+  // 検査承認（InspectionRecord の検収）に要る宛先 — グループかカスタム
+  // （この検査表だけの承認者・複数可）のどちらか一方（両方同時には設定
+  // しない。CM02 フォームの承認フロー（FormApprovalStep/
+  // FormApprovalStepApprover）と同じ形）。グループは既存の承認設定アプリ
+  // MS0B が持つ approval_groups をそのまま使う。カスタムは
+  // inspection_template_approvers（下記 InspectionTemplateApprover）。
+  // どちらも未設定 = 誰でも検収できる（従来どおり）。
+  // 段階を持つ N 段承認フロー（approval_flows）とは別物 — こちらは単段の
+  // シンプルなゲート。
+  approvalGroupId       Int?     @map("approval_group_id")
   isActive              Boolean  @default(true) @map("is_active")
   createdAt             DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt             DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
 
   relatedProcessStep ProcessStepCatalog?      @relation(fields: [relatedProcessStepId], references: [id])
+  product            Product?                 @relation(fields: [productId], references: [id])
+  group              InspectionTemplateGroup? @relation(fields: [groupId], references: [id])
+  imageFile          File?                    @relation("InspectionTemplateImage", fields: [imageFileId], references: [id], onDelete: SetNull)
+  approvalGroup      ApprovalGroup?           @relation(fields: [approvalGroupId], references: [id])
+  approvers          InspectionTemplateApprover[]
   items              InspectionTemplateItem[]
   workOrderStepTemplates WorkOrderStepInspectionTemplate[]
   inspectionRecords  InspectionRecord[]            @relation("InspectionRecordTemplate")
 
   @@unique([code, version])
+  @@index([productId])
+  @@index([groupId])
   @@map("inspection_templates")
+  @@schema("app")
+}
+
+// 検査表テンプレートのナビゲーション用グループ（例:「製品検査記録」
+// 「外観・コーティング検査」等）。判定・PDF には無関係 — MS09 一覧の
+// 絞り込み・見出し分けだけに使う表示軸。承認グループ（ApprovalGroup）とは
+// 別物。
+model InspectionTemplateGroup {
+  id        Int      @id @default(autoincrement())
+  name      Json
+  sortOrder Int      @default(0) @map("sort_order")
+  isActive  Boolean  @default(true) @map("is_active")
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  templates InspectionTemplate[]
+
+  @@map("inspection_template_groups")
+  @@schema("app")
+}
+
+// カスタム承認者（この検査表だけの指名。承認グループを作らずに 1..N 人を
+// 指す）。CM02 フォームの FormApprovalStepApprover と同じ形・同じ理由 —
+// 「この検査表は係長と品証の2人が見る」程度の単発の宛先のために毎回
+// 承認グループを作らせない。
+model InspectionTemplateApprover {
+  templateId Int    @map("template_id")
+  userId     String @map("user_id") @db.Uuid
+  sortOrder  Int    @default(0) @map("sort_order")
+
+  template InspectionTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
+  user     User               @relation("InspectionTemplateApprover", fields: [userId], references: [id], onDelete: Restrict)
+
+  @@id([templateId, userId])
+  @@index([userId])
+  @@map("inspection_template_approvers")
   @@schema("app")
 }
 
@@ -334,6 +441,15 @@ model InspectionTemplateItem {
   allowManualOverride Boolean @default(true) @map("allow_manual_override") // 合否の手動上書きを許可（基準未設定の項目は常に手動）
   isRequired   Boolean  @default(true) @map("is_required")
   sortOrder    Int      @default(0) @map("sort_order")
+
+  // ─── 旧 FileMaker 帳票との整合（すべて表示・入力補助専用。合否判定は
+  //     引き続き toleranceMin/toleranceMax だけで決まる — 下記は変更しない） ───
+  section              InspectionItemSection @default(MEASUREMENT) @map("section")
+  department           InspectionDepartment? @map("department") // CHECKLIST レイアウトのみ
+  measurementEquipment String?  @map("measurement_equipment") // 測定機器コード（LE/PR/K 等）
+  nominalValue         Decimal? @map("nominal_value") @db.Decimal(12, 4) // 基本値（NUMBER のみ）
+  toleranceTopDelta    Decimal? @map("tolerance_top_delta") @db.Decimal(12, 4) // 公差 Top（目標値からの上振れ許容）
+  toleranceBottomDelta Decimal? @map("tolerance_bottom_delta") @db.Decimal(12, 4) // 公差 Bottom（目標値からの下振れ許容）
 
   template InspectionTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
 
@@ -374,6 +490,7 @@ model ApprovalGroup {
   flowRuleSteps ApprovalFlowRuleStep[]
   formSteps     FormApprovalStep[]
   requests      ApprovalRequest[]
+  inspectionTemplates InspectionTemplate[]
 
   @@map("approval_groups")
   @@schema("app")

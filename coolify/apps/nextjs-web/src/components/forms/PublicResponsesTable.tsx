@@ -2,6 +2,7 @@
 
 import { Text } from "@mantine/core";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { useFormat } from "@/components/layout/PreferencesProvider";
 import { DataTable } from "@/components/ui/DataTable";
 import { StatusBadge } from "@/components/ui/StatusBadge";
@@ -20,6 +21,7 @@ export function PublicResponsesTable({
   responses: ResponseRow[];
   respondentShown: boolean;
 }) {
+  const tr = useTranslations();
   const router = useRouter();
   const fmt = useFormat();
 
@@ -40,7 +42,7 @@ export function PublicResponsesTable({
           ? [
               {
                 key: "respondent",
-                header: "回答者",
+                header: tr("common.respondent"),
                 width: 160,
                 render: (r: ResponseRow) => r.respondent ?? "—",
               },
@@ -48,7 +50,7 @@ export function PublicResponsesTable({
           : []),
         {
           key: "status",
-          header: "状態",
+          header: tr("common.status"),
           width: 110,
           render: (r) => (
             <StatusBadge entity="FormResponse" status={r.status} />
@@ -56,7 +58,7 @@ export function PublicResponsesTable({
         },
         {
           key: "summary",
-          header: "内容",
+          header: tr("common.details"),
           render: (r) => (
             <Text lineClamp={1} size="sm">
               {r.summary || "—"}
@@ -65,13 +67,13 @@ export function PublicResponsesTable({
         },
         {
           key: "submittedAt",
-          header: "提出日時",
+          header: tr("common.submittedAt"),
           width: 150,
           render: (r) => (r.submittedAt ? fmt.dateTime(r.submittedAt) : "—"),
         },
       ]}
       data={responses}
-      emptyMessage="見られる回答がありません"
+      emptyMessage={tr("forms.publicResponsesTable.thereAreNoResponsesYouCan")}
       getRowId={(r) => r.responseNumber}
       onRowClick={(r) =>
         router.push(`/f/${code}/${encodeURIComponent(r.responseNumber)}`)

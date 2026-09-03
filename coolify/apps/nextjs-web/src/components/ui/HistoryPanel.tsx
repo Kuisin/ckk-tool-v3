@@ -1,3 +1,5 @@
+"use client";
+
 /**
  * HistoryPanel — 詳細画面「履歴」タブの共通表示。
  *
@@ -7,16 +9,20 @@
  */
 
 import { IconHistory } from "@tabler/icons-react";
+import { useTranslations } from "next-intl";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { type AuditEntry, AuditTimeline } from "@/components/ui/shells";
 
 export function HistoryPanel({
   entries,
-  emptyMessage = "変更履歴はまだ記録されていません",
+  emptyMessage: emptyMessageProp,
 }: {
   entries: AuditEntry[];
   emptyMessage?: string;
 }) {
+  const tr = useTranslations();
+  const emptyMessage =
+    emptyMessageProp ?? tr("ui.historyPanel.noChangeHistoryRecordedYet");
   if (entries.length === 0) {
     return (
       <EmptyState icon={<IconHistory size={24} />} message={emptyMessage} />

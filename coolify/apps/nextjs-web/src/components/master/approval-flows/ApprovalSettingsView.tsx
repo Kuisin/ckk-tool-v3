@@ -10,6 +10,7 @@
  */
 
 import { Stack, Tabs } from "@mantine/core";
+import { useTranslations } from "next-intl";
 import {
   type ApprovalGroupRow,
   ApprovalGroupTable,
@@ -29,15 +30,19 @@ export function ApprovalSettingsView({
   flows: FlowOverviewRow[];
   groups: ApprovalGroupRow[];
 }) {
+  const tr = useTranslations();
   const [tab, setTab] = useTabParam("flows");
 
   return (
     <Stack gap="md">
-      <PageHeader breadcrumbs={["マスタ", "承認設定"]} title="承認設定" />
+      <PageHeader
+        breadcrumbs={[tr("common.masterData"), tr("common.approvalSettings")]}
+        title={tr("common.approvalSettings")}
+      />
       <AppTabs onChange={setTab} value={tab}>
         <Tabs.List>
-          <Tabs.Tab value="flows">承認フロー</Tabs.Tab>
-          <Tabs.Tab value="groups">承認グループ</Tabs.Tab>
+          <Tabs.Tab value="flows">{tr("common.approvalFlow")}</Tabs.Tab>
+          <Tabs.Tab value="groups">{tr("common.approvalGroup")}</Tabs.Tab>
         </Tabs.List>
         <Tabs.Panel pt="md" value="flows">
           <ApprovalFlowOverview rows={flows} />

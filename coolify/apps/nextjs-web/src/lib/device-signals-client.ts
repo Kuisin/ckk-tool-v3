@@ -108,10 +108,12 @@ function canvasData(): string | undefined {
   ctx.font = "14px 'Arial'";
   ctx.fillStyle = "#f60";
   ctx.fillRect(0, 0, 100, 20);
+  // canvas フィンガープリント用の描画文字列（画面には出ない。フォント/GPU の
+  // レンダリング差を取るためだけの固定テキスト）
   ctx.fillStyle = "#069";
-  ctx.fillText("CKK 端末識別 \u{1F512}", 2, 2);
+  ctx.fillText("CKK 端末識別 \u{1F512}", 2, 2); // i18n-ignore
   ctx.fillStyle = "rgba(102, 204, 0, 0.7)";
-  ctx.fillText("CKK 端末識別 \u{1F512}", 4, 8);
+  ctx.fillText("CKK 端末識別 \u{1F512}", 4, 8); // i18n-ignore
   return canvas.toDataURL();
 }
 

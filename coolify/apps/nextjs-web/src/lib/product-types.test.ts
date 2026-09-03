@@ -1,4 +1,7 @@
+import { createTranslator } from "next-intl";
 import { describe, expect, it } from "vitest";
+import ja from "../../messages/ja.json";
+import type { Tr } from "./i18n";
 import {
   DEFAULT_PRODUCT_ITEM_DEFS,
   DEFAULT_PRODUCT_TYPES,
@@ -8,6 +11,9 @@ import {
   resolveProductType,
   validateItemValue,
 } from "./product-types";
+
+// biome-ignore lint/suspicious/noExplicitAny: next-intl's messages type is too wide for a plain JSON import here; real key checks run in verify-keys.mjs (see global.d.ts)
+const tr = createTranslator({ locale: "ja", messages: ja as any }) as Tr;
 
 const item = (over: Partial<ProductItemDef>): ProductItemDef => ({
   key: "k",
@@ -21,17 +27,17 @@ const item = (over: Partial<ProductItemDef>): ProductItemDef => ({
 
 describe("validateItemValue", () => {
   it("enforces required only when empty", () => {
-    expect(validateItemValue(item({ required: true }), "")).toMatch(/必須/);
-    expect(validateItemValue(item({ required: true }), "x")).toBeNull();
-    expect(validateItemValue(item({ required: false }), "")).toBeNull();
+    expect(validateItemValue(item({ required: true }), "", tr)).toMatch(/必須/);
+    expect(validateItemValue(item({ required: true }), "x", tr)).toBeNull();
+    expect(validateItemValue(item({ required: false }), "", tr)).toBeNull();
   });
 
   it("validates numbers with min/max", () => {
     const n = item({ type: "number", min: 0, max: 100 });
-    expect(validateItemValue(n, "abc")).toMatch(/数値/);
-    expect(validateItemValue(n, "-1")).toMatch(/以上/);
-    expect(validateItemValue(n, "101")).toMatch(/以下/);
-    expect(validateItemValue(n, "60")).toBeNull();
+    expect(validateItemValue(n, "abc", tr)).toMatch(/数値/);
+    expect(validateItemValue(n, "-1", tr)).toMatch(/以上/);
+    expect(validateItemValue(n, "101", tr)).toMatch(/以下/);
+    expect(validateItemValue(n, "60", tr)).toBeNull();
   });
 
   it("validates select against options", () => {
@@ -42,29 +48,31 @@ describe("validateItemValue", () => {
         { value: "b", label: "B" },
       ],
     });
-    expect(validateItemValue(s, "c")).toMatch(/選択/);
-    expect(validateItemValue(s, "a")).toBeNull();
+    expect(validateItemValue(s, "c", tr)).toMatch(/選択/);
+    expect(validateItemValue(s, "a", tr)).toBeNull();
   });
 
   it("validates strings against a regex pattern", () => {
     const p = item({ type: "string", pattern: "^[A-Z]{2}-\\d{4}$" });
-    expect(validateItemValue(p, "AB-1234")).toBeNull();
-    expect(validateItemValue(p, "ab-1234")).toMatch(/形式/);
+    expect(validateItemValue(p, "AB-1234", tr)).toBeNull();
+    expect(validateItemValue(p, "ab-1234", tr)).toMatch(/形式/);
     // empty is allowed when not required (pattern not applied)
-    expect(validateItemValue(p, "")).toBeNull();
+    expect(validateItemValue(p, "", tr)).toBeNull();
     // invalid regex is ignored (never throws)
     expect(
-      validateItemValue(item({ type: "string", pattern: "(" }), "x"),
+      validateItemValue(item({ type: "string", pattern: "(" }), "x", tr),
     ).toBeNull();
   });
 
   it("validates dates and booleans", () => {
-    expect(validateItemValue(item({ type: "date" }), "not-a-date")).toMatch(
+    expect(validateItemValue(item({ type: "date" }), "not-a-date", tr)).toMatch(
       /日付/,
     );
-    expect(validateItemValue(item({ type: "date" }), "2026-07-19")).toBeNull();
-    expect(validateItemValue(item({ type: "boolean" }), "true")).toBeNull();
-    expect(validateItemValue(item({ type: "boolean" }), "maybe")).toMatch(
+    expect(
+      validateItemValue(item({ type: "date" }), "2026-07-19", tr),
+    ).toBeNull();
+    expect(validateItemValue(item({ type: "boolean" }), "true", tr)).toBeNull();
+    expect(validateItemValue(item({ type: "boolean" }), "maybe", tr)).toMatch(
       /真偽/,
     );
   });
@@ -112,10 +120,11 @@ describe("resolveProductType", () => {
 describe("defaults", () => {
   it("default defs and types pass their schemas", () => {
     expect(
-      productItemDefsArraySchema.safeParse(DEFAULT_PRODUCT_ITEM_DEFS).success,
+      productItemDefsArraySchema(tr).safeParse(DEFAULT_PRODUCT_ITEM_DEFS)
+        .success,
     ).toBe(true);
     expect(
-      productTypesArraySchema.safeParse(DEFAULT_PRODUCT_TYPES).success,
+      productTypesArraySchema(tr).safeParse(DEFAULT_PRODUCT_TYPES).success,
     ).toBe(true);
   });
 

@@ -3,6 +3,7 @@ import { fetchBillingOptions } from "@/app/(dashboard)/master/_shared/bp-data";
 import { DesignRequestForm } from "@/components/sales/design-requests/DesignRequestForm";
 import { isEditable } from "@/components/sales/design-requests/model";
 import { requireAppRead } from "@/lib/authz-page";
+import { getServerLocale } from "@/lib/user-preferences";
 import { fetchDesignRequest, fetchEmployeeOptions } from "../../data";
 
 export const dynamic = "force-dynamic";
@@ -23,8 +24,9 @@ export default async function SalesDesignRequestsEditPage({
   const denied = await requireAppRead("design-requests");
   if (denied) return denied;
   const { id } = await params;
+  const locale = await getServerLocale();
   const [request, assigneeOptions, customerOptions] = await Promise.all([
-    fetchDesignRequest(decodeURIComponent(id)),
+    fetchDesignRequest(decodeURIComponent(id), locale),
     fetchEmployeeOptions(),
     fetchBillingOptions(),
   ]);

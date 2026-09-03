@@ -17,13 +17,13 @@
 
 import { fetchDesignRequest } from "@/app/(dashboard)/sales/design-requests/data";
 import {
-  DESIGN_HISTORY_ACTION_LABEL,
   hasSourceDocument,
   isIssuedDesign,
 } from "@/components/sales/design-requests/model";
 import { requirePermissionResponse } from "@/lib/authz";
 import { pdfStorageKey } from "@/lib/document-pdf";
 import {
+  designHistoryActionLabel,
   designKindLabel,
   designPriorityLabel,
   designTriggerLabel,
@@ -39,19 +39,19 @@ export const dynamic = "force-dynamic";
 
 // 発行元（CKK 本社）— 見積書テンプレートの issuer ブロックに対応。
 const ISSUER = {
-  name: "シー・ケィ・ケー株式会社",
-  address: "〒475-0823 愛知県半田市港町2丁目27番2",
+  name: "シー・ケィ・ケー株式会社", // i18n-ignore
+  address: "〒475-0823 愛知県半田市港町2丁目27番2", // i18n-ignore
   tel: "TEL: 0569-21-6187　FAX: 0569-23-6427",
 };
 
 const STATUS_LABEL: Record<string, string> = {
-  DRAFT: "下書き",
-  REQUESTED: "承認依頼中",
-  PENDING: "未着手",
-  IN_PROGRESS: "進行中",
-  COMPLETED: "完了",
-  REJECTED: "差し戻し",
-  CANCELLED: "キャンセル",
+  DRAFT: "下書き", // i18n-ignore
+  REQUESTED: "承認依頼中", // i18n-ignore
+  PENDING: "未着手", // i18n-ignore
+  IN_PROGRESS: "進行中", // i18n-ignore
+  COMPLETED: "完了", // i18n-ignore
+  REJECTED: "差し戻し", // i18n-ignore
+  CANCELLED: "キャンセル", // i18n-ignore
 };
 
 function pdfHeaders(requestNumber: string, download: boolean): HeadersInit {
@@ -79,6 +79,7 @@ export async function GET(request: Request): Promise<Response> {
   }
   // 承認前・キャンセル済みの依頼は刷らせない（承認された中身だけが紙になる）。
   if (!isIssuedDesign(req.status)) {
+    // i18n-ignore — API のプレーンテキスト応答、UI に出ない
     return new Response("承認前の設計依頼書は PDF を閲覧できません", {
       status: 403,
     });
@@ -99,15 +100,15 @@ export async function GET(request: Request): Promise<Response> {
 
   // 単独起票は紐づく書類が無い。紙でも「—」ではなく理由が読めるようにする。
   const reference = !hasSourceDocument(req.trigger)
-    ? "なし（単独起票）"
+    ? "なし（単独起票）" // i18n-ignore
     : req.trigger === "QUOTE"
       ? (req.quoteNumber ?? "—")
       : (req.orderLineNumber ?? "—");
 
   const data = {
     issuer: ISSUER,
-    assignee: { name: req.assigneeName ?? "（担当者未設定）" },
-    product: { name: req.productName ?? "（製品未指定）" },
+    assignee: { name: req.assigneeName ?? "（担当者未設定）" }, // i18n-ignore
+    product: { name: req.productName ?? "（製品未指定）" }, // i18n-ignore
     // 書類 QR（CKK:DSG:<番号>）。URL は入れない。
     doc_qr: documentQrSvg(QR_KINDS.DESIGN_REQUEST, req.requestNumber),
     doc: {
@@ -120,7 +121,7 @@ export async function GET(request: Request): Promise<Response> {
       change_reason: req.changeReason ?? "—",
       trigger: designTriggerLabel(req.trigger, "ja"),
       reference,
-      requested_by: req.createdByName ?? "システム",
+      requested_by: req.createdByName ?? "システム", // i18n-ignore
       requested_date: documentFormatters.date(req.requestedAt),
       approved_date: documentFormatters.date(req.approvedAt),
       completed_date: documentFormatters.date(req.completedAt),
@@ -137,8 +138,8 @@ export async function GET(request: Request): Promise<Response> {
       created_at: documentFormatters.dateTime(f.createdAt),
     })),
     history: req.history.map((h) => ({
-      action: DESIGN_HISTORY_ACTION_LABEL[h.action] ?? h.action,
-      user: h.user ?? "システム",
+      action: designHistoryActionLabel(h.action, "ja"),
+      user: h.user ?? "システム", // i18n-ignore
       at: documentFormatters.dateTime(h.at),
       notes: h.notes ?? "",
     })),

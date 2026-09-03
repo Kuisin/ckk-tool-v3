@@ -13,6 +13,7 @@
  */
 
 import { revalidatePath } from "next/cache";
+import { getTranslations } from "next-intl/server";
 import { z } from "zod";
 import { loadApproveCapabilities } from "@/lib/approval-permissions";
 import {
@@ -97,49 +98,72 @@ function entry(
 
 // ── 入力スキーマ ─────────────────────────────────────────────────────────────
 
-const dateTimeOrNull = z
-  .string()
-  .nullable()
-  .transform((v) => (v ? new Date(v) : null))
-  .refine((d) => d === null || !Number.isNaN(d.getTime()), "日時が不正です");
+function dateTimeOrNullSchema(tr: Awaited<ReturnType<typeof getTranslations>>) {
+  return z
+    .string()
+    .nullable()
+    .transform((v) => (v ? new Date(v) : null))
+    .refine(
+      (d) => d === null || !Number.isNaN(d.getTime()),
+      tr("general.formsActions.invalidDateTime"),
+    );
+}
 
-const formSettingsInput = z.object({
-  title: z.string().trim().min(1, "タイトルを入力してください").max(200),
-  description: z.string().max(2000),
-  kind: z.enum(["SURVEY", "REQUEST"]),
-  respondentVisibility: z.enum(["SHOWN", "HIDDEN"]),
-  approvalEnabled: z.boolean(),
-  editableUntilFirstApproval: z.boolean().default(false),
-  allowMultiple: z.boolean(),
-  opensAt: dateTimeOrNull,
-  closesAt: dateTimeOrNull,
-  responseEditMode: z.enum(["NONE", "UNTIL_CLOSE", "UNTIL_DATE"]),
-  responseEditableUntil: dateTimeOrNull,
-});
+function formSettingsInputSchema(
+  tr: Awaited<ReturnType<typeof getTranslations>>,
+) {
+  const dateTime = dateTimeOrNullSchema(tr);
+  return z.object({
+    title: z
+      .string()
+      .trim()
+      .min(1, tr("general.formsActions.titleRequired"))
+      .max(200),
+    description: z.string().max(2000),
+    kind: z.enum(["SURVEY", "REQUEST"]),
+    respondentVisibility: z.enum(["SHOWN", "HIDDEN"]),
+    approvalEnabled: z.boolean(),
+    editableUntilFirstApproval: z.boolean().default(false),
+    allowMultiple: z.boolean(),
+    opensAt: dateTime,
+    closesAt: dateTime,
+    responseEditMode: z.enum(["NONE", "UNTIL_CLOSE", "UNTIL_DATE"]),
+    responseEditableUntil: dateTime,
+  });
+}
 
-export type FormSettingsInput = z.input<typeof formSettingsInput>;
+export type FormSettingsInput = z.input<
+  ReturnType<typeof formSettingsInputSchema>
+>;
 
-const shareGrantInput = z.object({
-  subjectType: z.enum(["EVERYONE", "PLANT", "ROLE", "USER"]),
-  subjectId: z.string().nullable(),
-  level: z.enum(["RESPOND", "READ", "EDIT", "MANAGE"]),
-  // 「この条件に当てはまる回答だけ見せる」。READ 以外では replaceShareGrants が捨てる。
-  conditionFieldKey: z.string().nullable().optional(),
-  conditionValues: z.array(z.string().max(200)).max(50).optional(),
-  conditionLabels: z.array(z.string().max(200)).max(50).optional(),
-  // 完了通知（申請・報告のみ）。RESPOND に付いていても replaceShareGrants が捨てる。
-  notifyOnComplete: z.boolean().optional(),
-});
+function shareGrantInputSchema() {
+  return z.object({
+    subjectType: z.enum(["EVERYONE", "PLANT", "ROLE", "USER"]),
+    subjectId: z.string().nullable(),
+    level: z.enum(["RESPOND", "READ", "EDIT", "MANAGE"]),
+    // 「この条件に当てはまる回答だけ見せる」。READ 以外では replaceShareGrants が捨てる。
+    conditionFieldKey: z.string().nullable().optional(),
+    conditionValues: z.array(z.string().max(200)).max(50).optional(),
+    conditionLabels: z.array(z.string().max(200)).max(50).optional(),
+    // 完了通知（申請・報告のみ）。RESPOND に付いていても replaceShareGrants が捨てる。
+    notifyOnComplete: z.boolean().optional(),
+  });
+}
 
-export type ShareGrantInputDto = z.infer<typeof shareGrantInput>;
+export type ShareGrantInputDto = z.infer<
+  ReturnType<typeof shareGrantInputSchema>
+>;
 
 /** 期間の前後関係など、単体では見られない整合を確かめる。 */
-function checkWindows(v: z.infer<typeof formSettingsInput>): string | null {
+function checkWindows(
+  v: z.infer<ReturnType<typeof formSettingsInputSchema>>,
+  tr: Awaited<ReturnType<typeof getTranslations>>,
+): string | null {
   if (v.opensAt && v.closesAt && v.closesAt <= v.opensAt) {
-    return "受付終了は受付開始より後にしてください";
+    return tr("general.formsActions.closesAfterOpens");
   }
   if (v.responseEditMode === "UNTIL_DATE" && !v.responseEditableUntil) {
-    return "編集期限の日時を指定してください";
+    return tr("general.formsActions.editDeadlineRequired");
   }
   if (
     v.responseEditMode === "UNTIL_DATE" &&
@@ -147,15 +171,17 @@ function checkWindows(v: z.infer<typeof formSettingsInput>): string | null {
     v.responseEditableUntil &&
     v.responseEditableUntil <= v.opensAt
   ) {
-    return "編集期限は受付開始より後にしてください";
+    return tr("general.formsActions.editDeadlineAfterOpens");
   }
   if (v.kind === "SURVEY" && v.approvalEnabled) {
-    return "承認フローは申請・報告フォームでのみ使えます";
+    return tr("general.formsActions.approvalOnlyForRequestForms");
   }
   return null;
 }
 
-async function uniqueFormCode(): Promise<string> {
+async function uniqueFormCode(
+  tr: Awaited<ReturnType<typeof getTranslations>>,
+): Promise<string> {
   for (let i = 0; i < 6; i++) {
     const code = generateCode(8);
     const hit = await prisma.form.findUnique({
@@ -164,7 +190,7 @@ async function uniqueFormCode(): Promise<string> {
     });
     if (!hit) return code;
   }
-  throw new Error("フォームコードを採番できませんでした");
+  throw new Error(tr("general.formsActions.codeAllocationFailed"));
 }
 
 // ── 定義（作る側） ───────────────────────────────────────────────────────────
@@ -172,18 +198,21 @@ async function uniqueFormCode(): Promise<string> {
 export async function createForm(
   input: FormSettingsInput,
 ): Promise<ActionResult<{ code: string }>> {
+  const tr = await getTranslations();
   const authz = await checkPermission("form", "CREATE");
   if (!authz.ok) return actionError(authz.error);
 
-  const parsed = formSettingsInput.safeParse(input);
+  const parsed = formSettingsInputSchema(tr).safeParse(input);
   if (!parsed.success)
-    return actionError(parsed.error.issues[0]?.message ?? "入力が不正です");
-  const invalid = checkWindows(parsed.data);
+    return actionError(
+      parsed.error.issues[0]?.message ?? tr("common.invalidInput"),
+    );
+  const invalid = checkWindows(parsed.data, tr);
   if (invalid) return actionError(invalid);
 
   try {
     const actor = await getCurrentActorId();
-    const code = await uniqueFormCode();
+    const code = await uniqueFormCode(tr);
     await prisma.form.create({
       data: {
         code,
@@ -212,9 +241,9 @@ export async function createForm(
     revalidate(code);
     return actionOk({ code });
   } catch (e) {
-    return prismaErrorMessage
-      ? actionError(prismaErrorMessage(e, "作成に失敗しました"))
-      : actionError("作成に失敗しました");
+    return actionError(
+      prismaErrorMessage(e, tr("general.formsActions.createFailed"), tr),
+    );
   }
 }
 
@@ -225,16 +254,21 @@ async function requireFormEdit(
   | { ok: true; form: { id: string; code: string; createdBy: string | null } }
   | { ok: false; error: string }
 > {
+  const tr = await getTranslations();
   const authz = await checkPermission("form", "UPDATE");
   if (!authz.ok) return { ok: false, error: authz.error };
   const form = await prisma.form.findUnique({
     where: { code },
     select: { id: true, code: true, createdBy: true },
   });
-  if (!form) return { ok: false, error: "フォームが見つかりません" };
+  if (!form)
+    return { ok: false, error: tr("general.formsActions.formNotFound") };
   const access = await shareAccessFor(FORM_OWNER_TYPE, code, form.createdBy);
   if (!access.canEdit)
-    return { ok: false, error: "このフォームを編集する権限がありません" };
+    return {
+      ok: false,
+      error: tr("general.formsActions.noEditPermission"),
+    };
   return { ok: true, form };
 }
 
@@ -242,13 +276,16 @@ export async function updateFormSettings(
   code: string,
   input: FormSettingsInput,
 ): Promise<ActionResult> {
+  const tr = await getTranslations();
   const gate = await requireFormEdit(code);
   if (!gate.ok) return actionError(gate.error);
 
-  const parsed = formSettingsInput.safeParse(input);
+  const parsed = formSettingsInputSchema(tr).safeParse(input);
   if (!parsed.success)
-    return actionError(parsed.error.issues[0]?.message ?? "入力が不正です");
-  const invalid = checkWindows(parsed.data);
+    return actionError(
+      parsed.error.issues[0]?.message ?? tr("common.invalidInput"),
+    );
+  const invalid = checkWindows(parsed.data, tr);
   if (invalid) return actionError(invalid);
 
   try {
@@ -288,7 +325,7 @@ export async function updateFormSettings(
     revalidate(code);
     return actionOk();
   } catch (e) {
-    return actionError(prismaErrorMessage(e, "保存に失敗しました"));
+    return actionError(prismaErrorMessage(e, tr("common.couldNotSave"), tr));
   }
 }
 
@@ -302,13 +339,14 @@ export async function publishFormFields(
   code: string,
   fields: unknown,
 ): Promise<ActionResult<{ version: number }>> {
+  const tr = await getTranslations();
   const gate = await requireFormEdit(code);
   if (!gate.ok) return actionError(gate.error);
 
-  const parsed = parseFormFields(fields);
+  const parsed = parseFormFields(fields, tr);
   if (!parsed.ok) return actionError(parsed.error);
   if (parsed.fields.length === 0)
-    return actionError("項目を 1 つ以上追加してください");
+    return actionError(tr("general.formsActions.addAtLeastOneField"));
 
   const ordered = normalizeOrder(parsed.fields);
   try {
@@ -337,12 +375,16 @@ export async function publishFormFields(
       action: "UPDATE",
       tableName: "forms",
       recordId: code,
-      after: { note: `項目定義をバージョン ${version} として公開` },
+      after: {
+        note: tr("general.formsActions.fieldsPublishedNote", { version }),
+      },
     });
     revalidate(code);
     return actionOk({ version });
   } catch (e) {
-    return actionError(prismaErrorMessage(e, "公開に失敗しました"));
+    return actionError(
+      prismaErrorMessage(e, tr("general.formsActions.publishFailed"), tr),
+    );
   }
 }
 
@@ -359,6 +401,7 @@ export async function setFormStatus(
   code: string,
   status: "DRAFT" | "PUBLISHED" | "ARCHIVED",
 ): Promise<ActionResult> {
+  const tr = await getTranslations();
   const gate = await requireFormEdit(code);
   if (!gate.ok) return actionError(gate.error);
   try {
@@ -368,9 +411,7 @@ export async function setFormStatus(
     });
     if (current.status === status) return actionOk();
     if (status === "PUBLISHED" && current.currentVersion === 0)
-      return actionError(
-        "項目がまだ公開されていません。「編集」から項目を追加して保存してください",
-      );
+      return actionError(tr("general.formsActions.fieldsNotYetPublished"));
 
     await prisma.form.update({
       where: { code },
@@ -380,40 +421,50 @@ export async function setFormStatus(
       action: "UPDATE",
       tableName: "forms",
       recordId: code,
-      after: { note: FORM_STATUS_NOTE[status] },
+      after: { note: formStatusNote(tr)[status] },
     });
     revalidate(code);
     return actionOk();
   } catch (e) {
-    return actionError(prismaErrorMessage(e, "更新に失敗しました"));
+    return actionError(
+      prismaErrorMessage(e, tr("general.formsActions.updateFailed"), tr),
+    );
   }
 }
 
-const FORM_STATUS_NOTE: Record<"DRAFT" | "PUBLISHED" | "ARCHIVED", string> = {
-  DRAFT: "下書きに戻した（受付を停止）",
-  PUBLISHED: "公開した（受付を開始）",
-  ARCHIVED: "アーカイブした",
-};
+function formStatusNote(
+  tr: Awaited<ReturnType<typeof getTranslations>>,
+): Record<"DRAFT" | "PUBLISHED" | "ARCHIVED", string> {
+  return {
+    DRAFT: tr("general.formsActions.statusNoteDraft"),
+    PUBLISHED: tr("general.formsActions.statusNotePublished"),
+    ARCHIVED: tr("general.formsActions.statusNoteArchived"),
+  };
+}
 
 /** 共有設定はまとめて置き換える（消し忘れによる権限の残留を防ぐ）。 */
 export async function saveShareGrants(
   code: string,
   grants: ShareGrantInputDto[],
 ): Promise<ActionResult> {
+  const tr = await getTranslations();
   const authz = await checkPermission("form", "UPDATE");
   if (!authz.ok) return actionError(authz.error);
   const form = await prisma.form.findUnique({
     where: { code },
     select: { createdBy: true },
   });
-  if (!form) return actionError("フォームが見つかりません");
+  if (!form) return actionError(tr("general.formsActions.formNotFound"));
   const access = await shareAccessFor(FORM_OWNER_TYPE, code, form.createdBy);
   if (!access.canManage)
-    return actionError("このフォームの共有を変更する権限がありません");
+    return actionError(tr("general.formsActions.noShareManagePermission"));
 
-  const parsed = z.array(shareGrantInput).max(200).safeParse(grants);
+  const parsed = z.array(shareGrantInputSchema()).max(200).safeParse(grants);
   if (!parsed.success)
-    return actionError(parsed.error.issues[0]?.message ?? "共有設定が不正です");
+    return actionError(
+      parsed.error.issues[0]?.message ??
+        tr("general.formsActions.invalidShareSettings"),
+    );
 
   // 条件の項目は実在して、条件に使ってよい型でなければならない。画面が正しく
   // 送っていても、ここで確かめ直す（送られてきた値をそのまま信じない）。
@@ -428,9 +479,7 @@ export async function saveShareGrants(
     if (!g.conditionFieldKey || (g.conditionValues ?? []).length === 0)
       continue;
     if (!allowed.has(g.conditionFieldKey))
-      return actionError(
-        "条件に使えない項目が指定されています（ドロップダウン・複数選択・業務データ検索のみ）",
-      );
+      return actionError(tr("general.formsActions.invalidConditionField"));
   }
 
   try {
@@ -444,12 +493,22 @@ export async function saveShareGrants(
       action: "UPDATE",
       tableName: "forms",
       recordId: code,
-      after: { note: `共有設定を更新（${parsed.data.length} 件）` },
+      after: {
+        note: tr("general.formsActions.shareSettingsUpdatedNote", {
+          count: parsed.data.length,
+        }),
+      },
     });
     revalidate(code);
     return actionOk();
   } catch (e) {
-    return actionError(prismaErrorMessage(e, "共有設定の保存に失敗しました"));
+    return actionError(
+      prismaErrorMessage(
+        e,
+        tr("general.formsActions.shareSettingsSaveFailed"),
+        tr,
+      ),
+    );
   }
 }
 
@@ -477,22 +536,31 @@ interface RespondContext {
 async function loadRespondContext(
   code: string,
 ): Promise<{ ok: true; ctx: RespondContext } | { ok: false; error: string }> {
+  const tr = await getTranslations();
   const userId = await sessionUserId();
-  if (!userId) return { ok: false, error: "ログインしてください" };
+  if (!userId)
+    return { ok: false, error: tr("general.formsActions.loginRequired") };
 
   const form = await prisma.form.findUnique({
     where: { code },
     include: { versions: { orderBy: { version: "desc" }, take: 1 } },
   });
-  if (!form) return { ok: false, error: "フォームが見つかりません" };
+  if (!form)
+    return { ok: false, error: tr("general.formsActions.formNotFound") };
 
   const access = await shareAccessFor(FORM_OWNER_TYPE, code, form.createdBy);
   if (!access.canRespond)
-    return { ok: false, error: "このフォームに回答する権限がありません" };
+    return {
+      ok: false,
+      error: tr("general.formsActions.noRespondPermission"),
+    };
 
-  const parsed = parseFormFields(form.versions[0]?.schema ?? []);
+  const parsed = parseFormFields(form.versions[0]?.schema ?? [], tr);
   if (!parsed.ok || parsed.fields.length === 0)
-    return { ok: false, error: "このフォームはまだ公開されていません" };
+    return {
+      ok: false,
+      error: tr("general.formsActions.formNotYetPublished"),
+    };
 
   return {
     ok: true,
@@ -527,6 +595,7 @@ async function autoRequestApproval(
   asDraft: boolean,
 ): Promise<void> {
   if (!shouldAutoRequestApproval(form, prevStatus, asDraft)) return;
+  const tr = await getTranslations();
   try {
     await startRequestedFlow(
       form,
@@ -534,6 +603,7 @@ async function autoRequestApproval(
       actorId,
       history,
       prevStatus,
+      tr,
     );
   } catch (e) {
     // 依頼だけが落ちた。提出は成立しているので、記録だけ残して黙って抜ける。
@@ -542,7 +612,13 @@ async function autoRequestApproval(
       tableName: "form_responses",
       recordId: responseNumber,
       after: {
-        note: `承認依頼の開始でエラー: ${prismaErrorMessage(e, "原因不明")}`,
+        note: tr("general.formsActions.approvalStartErrorNote", {
+          reason: prismaErrorMessage(
+            e,
+            tr("general.formsActions.unknownCause"),
+            tr,
+          ),
+        }),
       },
     }).catch(() => {});
   }
@@ -555,6 +631,7 @@ async function startRequestedFlow(
   actorId: string,
   history: unknown,
   prevStatus: string | null,
+  tr: Awaited<ReturnType<typeof getTranslations>>,
 ): Promise<void> {
   const missing = await assertFormFlowConfigured(form.id);
   if (missing) {
@@ -562,7 +639,11 @@ async function startRequestedFlow(
       action: "UPDATE",
       tableName: "form_responses",
       recordId: responseNumber,
-      after: { note: `承認フロー未設定のため承認依頼を開始せず: ${missing}` },
+      after: {
+        note: tr("general.formsActions.flowNotConfiguredNote", {
+          reason: missing,
+        }),
+      },
     });
     return;
   }
@@ -577,7 +658,9 @@ async function startRequestedFlow(
       tableName: "form_responses",
       recordId: responseNumber,
       after: {
-        note: `承認依頼を開始できず: ${started.error ?? "原因不明"}`,
+        note: tr("general.formsActions.approvalStartFailedNote", {
+          reason: started.error ?? tr("general.formsActions.unknownCause"),
+        }),
       },
     });
     return;
@@ -601,7 +684,10 @@ async function startRequestedFlow(
     tableName: "form_responses",
     recordId: responseNumber,
     before: { status: prevStatus ?? "SUBMITTED" },
-    after: { status: "REQUESTED", note: "提出により承認を依頼" },
+    after: {
+      status: "REQUESTED",
+      note: tr("general.formsActions.approvalRequestedBySubmitNote"),
+    },
   });
 }
 
@@ -614,6 +700,7 @@ export async function submitResponse(
   answers: Record<string, FormAnswerValue>,
   asDraft = false,
 ): Promise<ActionResult<{ responseNumber: string }>> {
+  const tr = await getTranslations();
   const loaded = await loadRespondContext(code);
   if (!loaded.ok) return actionError(loaded.error);
   const { userId, form, fields } = loaded.ctx;
@@ -622,13 +709,13 @@ export async function submitResponse(
   if (availability !== "OPEN") {
     return actionError(
       availability === "SCHEDULED"
-        ? "このフォームはまだ受付前です"
-        : "このフォームの受付は終了しています",
+        ? tr("general.formsActions.formNotYetOpen")
+        : tr("general.formsActions.formClosed"),
     );
   }
 
   if (!asDraft) {
-    const errors = validateAnswers(fields, answers);
+    const errors = validateAnswers(fields, answers, tr);
     const first = Object.values(errors)[0];
     if (first) return actionError(first);
   }
@@ -638,7 +725,8 @@ export async function submitResponse(
       where: { formId: form.id, submittedBy: userId, status: { not: "DRAFT" } },
       select: { responseNumber: true },
     });
-    if (existing) return actionError("このフォームには既に回答済みです");
+    if (existing)
+      return actionError(tr("general.formsActions.alreadyResponded"));
   }
 
   try {
@@ -675,7 +763,11 @@ export async function submitResponse(
       action: "CREATE",
       tableName: "form_responses",
       recordId: created.responseNumber,
-      after: { note: asDraft ? "下書き保存" : "回答を提出" },
+      after: {
+        note: asDraft
+          ? tr("general.formsActions.draftSavedNote")
+          : tr("general.formsActions.responseSubmittedNote"),
+      },
     });
     // 申請・報告フォームは提出がそのまま申請 — ここで承認依頼まで通す。
     await autoRequestApproval(
@@ -694,7 +786,9 @@ export async function submitResponse(
     revalidate(code, created.responseNumber);
     return actionOk({ responseNumber: created.responseNumber });
   } catch (e) {
-    return actionError(prismaErrorMessage(e, "回答の保存に失敗しました"));
+    return actionError(
+      prismaErrorMessage(e, tr("general.formsActions.responseSaveFailed"), tr),
+    );
   }
 }
 
@@ -711,14 +805,15 @@ export async function updateResponse(
   answers: Record<string, FormAnswerValue>,
   asDraft = false,
 ): Promise<ActionResult> {
+  const tr = await getTranslations();
   const userId = await sessionUserId();
-  if (!userId) return actionError("ログインしてください");
+  if (!userId) return actionError(tr("general.formsActions.loginRequired"));
 
   const row = await prisma.formResponse.findUnique({
     where: { responseNumber },
     include: { form: true },
   });
-  if (!row) return actionError("回答が見つかりません");
+  if (!row) return actionError(tr("f.page.responseNotFound"));
 
   // 承認が下りているかはサーバでしか分からない。**画面の判定を信用しない** —
   // 編集 URL を直接叩かれても、ここで同じ規則を通す。
@@ -726,7 +821,7 @@ export async function updateResponse(
     row.status === "REQUESTED" &&
     (await hasAnyApproval("form_responses", responseNumber, row.createdAt));
   if (!canEditResponse(row.form, row, userId, new Date(), firstApprovalDone)) {
-    return actionError("この回答は編集できません（期限切れ、または本人以外）");
+    return actionError(tr("general.formsActions.responseNotEditable"));
   }
 
   const fieldsParsed = parseFormFields(
@@ -736,17 +831,19 @@ export async function updateResponse(
         select: { schema: true },
       })
     )?.schema ?? [],
+    tr,
   );
-  if (!fieldsParsed.ok) return actionError("フォームの定義を読み込めません");
+  if (!fieldsParsed.ok)
+    return actionError(tr("general.formsActions.couldNotLoadFormDef"));
 
   const wasDraft = row.status === "DRAFT";
   // 下書きに戻す道は用意しない（提出済みを引っ込めるのは承認の取り消しであって
   // 編集ではない）。下書きでない回答に asDraft を渡すのは呼び違い。
   if (asDraft && !wasDraft)
-    return actionError("提出済みの回答は下書きに戻せません");
+    return actionError(tr("general.formsActions.cannotRevertToDraft"));
 
   if (!asDraft) {
-    const errors = validateAnswers(fieldsParsed.fields, answers);
+    const errors = validateAnswers(fieldsParsed.fields, answers, tr);
     const first = Object.values(errors)[0];
     if (first) return actionError(first);
   }
@@ -757,8 +854,8 @@ export async function updateResponse(
     if (availability !== "OPEN")
       return actionError(
         availability === "SCHEDULED"
-          ? "このフォームはまだ受付前です"
-          : "このフォームの受付は終了しています",
+          ? tr("general.formsActions.formNotYetOpen")
+          : tr("general.formsActions.formClosed"),
       );
     if (!row.form.allowMultiple) {
       const existing = await prisma.formResponse.findFirst({
@@ -769,7 +866,8 @@ export async function updateResponse(
         },
         select: { responseNumber: true },
       });
-      if (existing) return actionError("このフォームには既に回答済みです");
+      if (existing)
+        return actionError(tr("general.formsActions.alreadyResponded"));
     }
   }
 
@@ -793,10 +891,10 @@ export async function updateResponse(
       recordId: responseNumber,
       after: {
         note: asDraft
-          ? "下書きを保存"
+          ? tr("general.formsActions.draftSavedNote2")
           : wasDraft
-            ? "下書きを提出"
-            : "回答を編集",
+            ? tr("general.formsActions.draftSubmittedNote")
+            : tr("general.formsActions.responseEditedNote"),
       },
     });
     // 下書きの提出と、差し戻しを直しての保存は「いま出した」— 承認依頼まで通す。
@@ -816,7 +914,13 @@ export async function updateResponse(
     revalidate(row.form.code, responseNumber);
     return actionOk();
   } catch (e) {
-    return actionError(prismaErrorMessage(e, "回答の更新に失敗しました"));
+    return actionError(
+      prismaErrorMessage(
+        e,
+        tr("general.formsActions.responseUpdateFailed"),
+        tr,
+      ),
+    );
   }
 }
 
@@ -829,8 +933,9 @@ export async function updateResponse(
 export async function discardDraft(
   responseNumber: string,
 ): Promise<ActionResult<{ code: string }>> {
+  const tr = await getTranslations();
   const userId = await sessionUserId();
-  if (!userId) return actionError("ログインしてください");
+  if (!userId) return actionError(tr("general.formsActions.loginRequired"));
 
   const row = await prisma.formResponse.findUnique({
     where: { responseNumber },
@@ -840,9 +945,9 @@ export async function discardDraft(
       form: { select: { code: true } },
     },
   });
-  if (!row) return actionError("下書きが見つかりません");
+  if (!row) return actionError(tr("general.formsActions.draftNotFound"));
   if (row.submittedBy !== userId || row.status !== "DRAFT")
-    return actionError("この下書きは削除できません");
+    return actionError(tr("general.formsActions.draftNotDeletable"));
 
   try {
     await prisma.formResponse.delete({ where: { responseNumber } });
@@ -850,12 +955,14 @@ export async function discardDraft(
       action: "DELETE",
       tableName: "form_responses",
       recordId: responseNumber,
-      before: { note: "下書きを削除" },
+      before: { note: tr("general.formsActions.draftDeletedNote") },
     });
     revalidate(row.form.code);
     return actionOk({ code: row.form.code });
   } catch (e) {
-    return actionError(prismaErrorMessage(e, "下書きの削除に失敗しました"));
+    return actionError(
+      prismaErrorMessage(e, tr("general.formsActions.draftDeleteFailed"), tr),
+    );
   }
 }
 
@@ -864,6 +971,7 @@ async function actOnResponse(
   action: "APPROVED" | "REJECTED",
   comment?: string,
 ): Promise<ActionResult> {
+  const tr = await getTranslations();
   // 承認できるかは「その書類を読める/直せる」+ 承認グループ所属の 2 段。
   const authz = await checkApprovalDocAccess("form");
   if (!authz.ok) return actionError(authz.error);
@@ -872,9 +980,9 @@ async function actOnResponse(
     where: { responseNumber },
     include: { form: true },
   });
-  if (!row) return actionError("回答が見つかりません");
+  if (!row) return actionError(tr("f.page.responseNotFound"));
   if (row.status !== "REQUESTED")
-    return actionError("この回答は承認依頼中ではありません");
+    return actionError(tr("general.formsActions.responseNotPendingApproval"));
 
   const result = await actOnCurrentStep({
     targetType: "form_responses",
@@ -882,7 +990,8 @@ async function actOnResponse(
     action,
     comment,
   });
-  if (!result.ok) return actionError(result.error ?? "処理に失敗しました");
+  if (!result.ok)
+    return actionError(result.error ?? tr("common.theOperationFailed"));
 
   try {
     const actor = await getCurrentActorId();
@@ -912,9 +1021,11 @@ async function actOnResponse(
         note:
           action === "APPROVED"
             ? done
-              ? "承認（全段完了）"
-              : "承認（次の段へ）"
-            : `差し戻し: ${comment ?? ""}`,
+              ? tr("general.formsActions.approvedAllStepsDoneNote")
+              : tr("general.formsActions.approvedNextStepNote")
+            : tr("general.formsActions.sentBackNote", {
+                comment: comment ?? "",
+              }),
       },
     });
     // 全段の承認が下りた = 申請の完了。共有設定で「完了時に通知」を付けた
@@ -924,7 +1035,9 @@ async function actOnResponse(
     revalidate(row.form.code, responseNumber);
     return actionOk();
   } catch (e) {
-    return actionError(prismaErrorMessage(e, "処理に失敗しました"));
+    return actionError(
+      prismaErrorMessage(e, tr("common.theOperationFailed"), tr),
+    );
   }
 }
 
@@ -939,8 +1052,10 @@ export async function rejectResponse(
   responseNumber: string,
   reason: string,
 ): Promise<ActionResult> {
+  const tr = await getTranslations();
   const trimmed = reason.trim();
-  if (!trimmed) return actionError("差し戻しの理由を入力してください");
+  if (!trimmed)
+    return actionError(tr("general.formsActions.enterRejectReason"));
   return actOnResponse(responseNumber, "REJECTED", trimmed);
 }
 
@@ -973,12 +1088,13 @@ export interface ImportPreview {
 export async function previewFormImport(
   text: string,
 ): Promise<ActionResult<ImportPreview>> {
+  const tr = await getTranslations();
   const authz = await checkPermission("form", "CREATE");
   if (!authz.ok) return actionError(authz.error);
   if (text.length > MAX_IMPORT_BYTES)
-    return actionError("ファイルが大きすぎます");
+    return actionError(tr("general.formsActions.fileTooLarge"));
 
-  const parsed = parseFormExport(text);
+  const parsed = parseFormExport(text, tr);
   if (!parsed.ok) return actionError(parsed.error);
 
   const existing = parsed.data.meta.sourceCode
@@ -1018,6 +1134,7 @@ async function insertImportedForm(
   body: FormExportBody,
   preferredCode: string,
   actor: string | null,
+  tr: Awaited<ReturnType<typeof getTranslations>>,
 ): Promise<string> {
   // 書き出し元と同じコードが空いていれば使う（共有 URL が環境をまたいでも
   // 同じになるので、手順書や QR を作り直さずに済む）。埋まっていれば新規採番。
@@ -1025,7 +1142,7 @@ async function insertImportedForm(
   const taken = code
     ? await prisma.form.findUnique({ where: { code }, select: { code: true } })
     : { code: "" };
-  if (!code || taken) code = await uniqueFormCode();
+  if (!code || taken) code = await uniqueFormCode(tr);
 
   // 別コードになった場合、自己参照の「関連レコード一覧」は書き出し元の
   // コードを指したままになる（黙って 0 件になる）ので張り替える。
@@ -1078,12 +1195,13 @@ export async function importForm(
 ): Promise<
   ActionResult<{ code: string; mode: "new" | "version"; version?: number }>
 > {
+  const tr = await getTranslations();
   const authz = await checkPermission("form", "CREATE");
   if (!authz.ok) return actionError(authz.error);
   if (text.length > MAX_IMPORT_BYTES)
-    return actionError("ファイルが大きすぎます");
+    return actionError(tr("general.formsActions.fileTooLarge"));
 
-  const parsed = parseFormExport(text);
+  const parsed = parseFormExport(text, tr);
   if (!parsed.ok) return actionError(parsed.error);
   const { form: body, meta } = parsed.data;
 
@@ -1092,7 +1210,7 @@ export async function importForm(
 
     if (mode === "version") {
       if (!meta.sourceCode)
-        return actionError("書き出し元のコードが無いので上書きできません");
+        return actionError(tr("general.formsActions.noSourceCodeToOverwrite"));
       const gate = await requireFormEdit(meta.sourceCode);
       if (!gate.ok) return actionError(gate.error);
 
@@ -1133,26 +1251,34 @@ export async function importForm(
         tableName: "forms",
         recordId: meta.sourceCode,
         after: {
-          note: `${meta.sourceEnv} から取り込み（バージョン ${version} として公開）`,
+          note: tr("general.formsActions.importedAsVersionNote", {
+            sourceEnv: meta.sourceEnv,
+            version,
+          }),
         },
       });
       revalidate(meta.sourceCode);
       return actionOk({ code: meta.sourceCode, mode: "version", version });
     }
 
-    const code = await insertImportedForm(body, meta.sourceCode, actor);
+    const code = await insertImportedForm(body, meta.sourceCode, actor, tr);
     await recordAudit({
       action: "CREATE",
       tableName: "forms",
       recordId: code,
       after: {
-        note: `${meta.sourceEnv} / ${meta.sourceCode} から取り込み`,
+        note: tr("general.formsActions.importedAsNewNote", {
+          sourceEnv: meta.sourceEnv,
+          sourceCode: meta.sourceCode,
+        }),
       },
     });
     revalidate(code);
     return actionOk({ code, mode: "new" });
   } catch (e) {
-    return actionError(prismaErrorMessage(e, "取り込みに失敗しました"));
+    return actionError(
+      prismaErrorMessage(e, tr("general.formsActions.importFailed"), tr),
+    );
   }
 }
 
@@ -1162,32 +1288,41 @@ export async function importForm(
 // 点検簿が同じ承認を共有する理由が無いため。エンジン側は依頼時に flow_snapshot
 // へ写すので、進行中の依頼は後からフローを変えても影響を受けない。
 
-const formFlowStepInput = z
-  .object({
-    nameJa: z.string().trim().min(1, "段の名前を入力してください").max(60),
-    nameTranslations: z.record(z.string(), z.string()).optional(),
-    // 宛先はグループか「カスタム（1..N 人の指名）」のどちらか一方。
-    groupId: z.number().int().positive().nullable().optional(),
-    approverUserIds: z.array(z.string().uuid()).max(50).optional(),
-    mode: z.enum(["ANY", "ALL"]),
-  })
-  .refine((v) => !!v.groupId !== (v.approverUserIds ?? []).length > 0, {
-    message:
-      "各段の宛先は、承認グループか、カスタムの承認者 1 人以上のどちらかにしてください",
-  });
+function formFlowStepInputSchema(
+  tr: Awaited<ReturnType<typeof getTranslations>>,
+) {
+  return z
+    .object({
+      nameJa: z
+        .string()
+        .trim()
+        .min(1, tr("general.formsActions.stepNameRequired"))
+        .max(60),
+      nameTranslations: z.record(z.string(), z.string()).optional(),
+      // 宛先はグループか「カスタム（1..N 人の指名）」のどちらか一方。
+      groupId: z.number().int().positive().nullable().optional(),
+      approverUserIds: z.array(z.string().uuid()).max(50).optional(),
+      mode: z.enum(["ANY", "ALL"]),
+    })
+    .refine((v) => !!v.groupId !== (v.approverUserIds ?? []).length > 0, {
+      message: tr("general.formsActions.stepTargetRequired"),
+    });
+}
 
 /** フォームの承認フローをまるごと置き換える（段番号は 1..N で振り直す）。 */
 export async function saveFormApprovalFlow(
   code: string,
   steps: unknown,
 ): Promise<ActionResult> {
+  const tr = await getTranslations();
   const gate = await requireFormEdit(code);
   if (!gate.ok) return actionError(gate.error);
 
-  const parsed = z.array(formFlowStepInput).max(20).safeParse(steps);
+  const parsed = z.array(formFlowStepInputSchema(tr)).max(20).safeParse(steps);
   if (!parsed.success)
     return actionError(
-      parsed.error.issues[0]?.message ?? "承認フローが不正です",
+      parsed.error.issues[0]?.message ??
+        tr("general.formsActions.invalidApprovalFlow"),
     );
 
   // 宛先の実在確認（消えたグループ・停止したユーザーを指したまま保存させない）。
@@ -1199,7 +1334,7 @@ export async function saveFormApprovalFlow(
       where: { id: { in: groupIds }, isActive: true },
     });
     if (found !== groupIds.length)
-      return actionError("使えない承認グループが含まれています");
+      return actionError(tr("general.formsActions.invalidApprovalGroups"));
   }
   const userIds = [
     ...new Set(parsed.data.flatMap((s) => s.approverUserIds ?? [])),
@@ -1209,7 +1344,7 @@ export async function saveFormApprovalFlow(
       where: { id: { in: userIds }, isActive: true },
     });
     if (found !== userIds.length)
-      return actionError("使えないユーザーが承認者に含まれています");
+      return actionError(tr("general.formsActions.invalidApprovers"));
   }
 
   try {
@@ -1248,13 +1383,23 @@ export async function saveFormApprovalFlow(
       action: "UPDATE",
       tableName: "forms",
       recordId: code,
-      after: { note: `承認フローを更新（${parsed.data.length} 段）` },
+      after: {
+        note: tr("general.formsActions.approvalFlowUpdatedNote", {
+          count: parsed.data.length,
+        }),
+      },
     });
     revalidate(code);
     void actor;
     return actionOk();
   } catch (e) {
-    return actionError(prismaErrorMessage(e, "承認フローの保存に失敗しました"));
+    return actionError(
+      prismaErrorMessage(
+        e,
+        tr("general.formsActions.approvalFlowSaveFailed"),
+        tr,
+      ),
+    );
   }
 }
 
@@ -1345,6 +1490,7 @@ export async function fetchFormFieldOptions(
 ): Promise<FormOption[]> {
   const authz = await checkPermission("form", "READ");
   if (!authz.ok) return [];
+  const tr = await getTranslations();
   try {
     const form = await prisma.form.findUnique({
       where: { code },
@@ -1362,7 +1508,7 @@ export async function fetchFormFieldOptions(
     );
     if (!access.canRead) return [];
 
-    const parsed = parseFormFields(form.versions[0]?.schema ?? []);
+    const parsed = parseFormFields(form.versions[0]?.schema ?? [], tr);
     if (!parsed.ok) return [];
     return (
       parsed.fields

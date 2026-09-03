@@ -1,13 +1,18 @@
 import { redirect } from "next/navigation";
+import { getTranslations } from "next-intl/server";
+import { APP_NAME } from "@/lib/page-title";
 import { RespondScreen } from "./RespondScreen";
 
 export const dynamic = "force-dynamic";
 
-export const metadata = {
-  title: "フォーム | CKK 業務管理システム",
-  // 共有 URL を検索エンジンに拾わせない。
-  robots: { index: false, follow: false },
-};
+export async function generateMetadata() {
+  const tr = await getTranslations();
+  return {
+    title: `${tr("f.page.formPageTitle")} | ${APP_NAME}`,
+    // 共有 URL を検索エンジンに拾わせない。
+    robots: { index: false, follow: false },
+  };
+}
 
 /**
  * 共有 URL（`/f/<code>`）= **新規回答**。

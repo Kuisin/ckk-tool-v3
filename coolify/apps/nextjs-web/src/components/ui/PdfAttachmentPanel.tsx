@@ -14,6 +14,13 @@
  * プレビューは A4 アスペクトの iframe（VIEWER_HASH — ビューア既定の
  * 「ページ全体」表示だと余白が大きく見えるため幅にフィットさせる）。
  *
+ * **モバイルは iframe を描かない**（`_specs/design.md` §20.2）— iOS Safari は
+ * 空白、Android Chrome はダウンロード誘導になるだけで、PWA（スタンドアロン
+ * 表示）ではアドレスバーも戻るボタンも無いのでそのまま行き止まりになる。
+ * 代わりにアイコン + 「PDF を開く」ボタンを出し、`target="_blank"` で
+ * 新しいブラウジングコンテキスト（既定ブラウザ / タブ）へ確実に逃がす —
+ * `PdfButton` 等が使っているのと同じ `external` 経路（`lib/pwa-display.ts`）。
+ *
  * ダウンロードは `downloadHref` を渡すと `lib/download.ts` 経由になり、
  * モバイルでは OS の共有シート（保存先を選択）が開く。
  */
@@ -32,6 +39,7 @@ import {
   IconFileTypePdf,
   IconRefresh,
 } from "@tabler/icons-react";
+import { useTranslations } from "next-intl";
 import type { ReactNode } from "react";
 import { useFormat } from "@/components/layout/PreferencesProvider";
 import { GhostButton, SecondaryButton } from "@/components/ui/buttons";
@@ -95,6 +103,7 @@ export function PdfAttachmentPanel({
   onDownload?: () => void;
   onRegenerate?: () => void;
 }) {
+  const tr = useTranslations();
   const fmt = useFormat();
   const isMobile = useIsMobile();
 
@@ -139,10 +148,11 @@ export function PdfAttachmentPanel({
               </Group>
               <Text c="dimmed" size="xs">
                 {file?.generatedAt
-                  ? `生成: ${fmt.dateTime(file.generatedAt)}${
-                      file.generatedBy ? `（${file.generatedBy}）` : ""
-                    }`
-                  : "生成: 表示時に生成されます"}
+                  ? tr("ui.pdfAttachmentPanel.generatedAt", {
+                      date: fmt.dateTime(file.generatedAt),
+                      by: file.generatedBy ? `（${file.generatedBy}）` : "",
+                    })
+                  : tr("ui.pdfAttachmentPanel.generatedProducedWhenDisplayed")}
               </Text>
             </Stack>
           </Group>
@@ -155,45 +165,67 @@ export function PdfAttachmentPanel({
                   : onDownload
               }
             >
-              ダウンロード
+              {tr("common.download")}
             </SecondaryButton>
             {onRegenerate && (
               <GhostButton
                 leftSection={<IconRefresh size={14} />}
                 onClick={onRegenerate}
               >
-                再生成
+                {tr("common.regenerate")}
               </GhostButton>
             )}
           </Group>
         </Group>
       </Paper>
 
-      {/* Inline A4 preview — ページを幅いっぱいに表示（余白は枠の分だけ） */}
-      <Paper p={0} radius="sm" style={{ overflow: "hidden" }} withBorder>
-        <Box
-          style={{
-            background: "var(--mantine-color-gray-2)",
-            padding: isMobile ? 4 : 8,
-          }}
-        >
-          <iframe
-            src={withViewerHash(previewSrc)}
+      {isMobile ? (
+        // モバイルは iframe で PDF を描けない（iOS: 空白 / Android: DL誘導）
+        // ので埋め込みをやめ、既定ブラウザ（新しいコンテキスト）へ誘導する。
+        <Paper p="xl" radius="sm" withBorder>
+          <Stack align="center" gap="sm" py="md">
+            <ThemeIcon color="red" radius="md" size={56} variant="light">
+              <IconFileTypePdf size={32} />
+            </ThemeIcon>
+            <Text c="dimmed" size="sm" ta="center">
+              {tr("ui.pdfAttachmentPanel.thisDeviceCannotShowPdfsInside")}
+            </Text>
+            <SecondaryButton
+              external
+              href={previewSrc}
+              leftSection={<IconFileTypePdf size={14} />}
+            >
+              {tr("common.openThePdf")}
+            </SecondaryButton>
+          </Stack>
+        </Paper>
+      ) : (
+        // Inline A4 preview（デスクトップ）— ページを幅いっぱいに表示。
+        <Paper p={0} radius="sm" style={{ overflow: "hidden" }} withBorder>
+          <Box
             style={{
-              display: "block",
-              width: "100%",
-              maxWidth: A4_W,
-              // A4 縦（210:297）— ページ 1 枚がちょうど収まる高さになる。
-              aspectRatio: "210 / 297",
-              margin: "0 auto",
-              border: "none",
-              background: "white",
-              boxShadow: "0 2px 16px rgba(0,0,0,0.15)",
+              background: "var(--mantine-color-gray-2)",
+              padding: 8,
             }}
-            title={filename}
-          />
-        </Box>
-      </Paper>
+          >
+            <iframe
+              src={withViewerHash(previewSrc)}
+              style={{
+                display: "block",
+                width: "100%",
+                maxWidth: A4_W,
+                // A4 縦（210:297）— ページ 1 枚がちょうど収まる高さになる。
+                aspectRatio: "210 / 297",
+                margin: "0 auto",
+                border: "none",
+                background: "white",
+                boxShadow: "0 2px 16px rgba(0,0,0,0.15)",
+              }}
+              title={filename}
+            />
+          </Box>
+        </Paper>
+      )}
     </Stack>
   );
 }

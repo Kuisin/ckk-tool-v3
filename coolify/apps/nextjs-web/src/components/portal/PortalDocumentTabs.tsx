@@ -1,10 +1,11 @@
 "use client";
 
 import { Anchor, Badge, Table, Tabs, Text } from "@mantine/core";
+import { useTranslations } from "next-intl";
 import type { PortalDocumentListItem } from "@/lib/portal-documents";
 import {
-  PORTAL_DOCUMENT_LABEL,
   type PortalDocumentType,
+  portalDocumentLabel,
 } from "@/lib/portal-documents-core";
 
 export function PortalDocumentTabs({
@@ -12,6 +13,7 @@ export function PortalDocumentTabs({
 }: {
   groups: { type: PortalDocumentType; items: PortalDocumentListItem[] }[];
 }) {
+  const tr = useTranslations();
   const first = groups.find((g) => g.items.length > 0)?.type ?? groups[0]?.type;
   return (
     <Tabs defaultValue={first}>
@@ -28,7 +30,7 @@ export function PortalDocumentTabs({
             }
             value={g.type}
           >
-            {PORTAL_DOCUMENT_LABEL[g.type]}
+            {portalDocumentLabel(g.type, tr)}
           </Tabs.Tab>
         ))}
       </Tabs.List>
@@ -37,15 +39,17 @@ export function PortalDocumentTabs({
         <Tabs.Panel key={g.type} pt="md" value={g.type}>
           {g.items.length === 0 ? (
             <Text c="dimmed" size="sm">
-              表示できる{PORTAL_DOCUMENT_LABEL[g.type]}はありません。
+              {tr("portal.documents.noneToShow", {
+                document: portalDocumentLabel(g.type, tr),
+              })}
             </Text>
           ) : (
             <Table highlightOnHover striped withTableBorder>
               <Table.Thead>
                 <Table.Tr>
-                  <Table.Th>書類番号</Table.Th>
-                  <Table.Th>日付</Table.Th>
-                  <Table.Th ta="right">金額</Table.Th>
+                  <Table.Th>{tr("common.documentNumber")}</Table.Th>
+                  <Table.Th>{tr("common.date")}</Table.Th>
+                  <Table.Th ta="right">{tr("common.amount")}</Table.Th>
                 </Table.Tr>
               </Table.Thead>
               <Table.Tbody>

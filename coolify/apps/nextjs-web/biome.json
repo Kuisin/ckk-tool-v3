@@ -13,7 +13,8 @@
       "!.next",
       "!dist",
       "!build",
-      "!src/pdf-templates"
+      "!src/pdf-templates",
+      "!src/lib/ui-dictionary"
     ]
   },
   "formatter": {

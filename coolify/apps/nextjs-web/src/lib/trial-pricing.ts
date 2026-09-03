@@ -20,23 +20,22 @@ import {
   CENTERLESS,
   CORRECTION_FACTOR,
   CYLINDER_MACHINING,
-  CYLINDER_TYPE_OPTIONS,
   coatingFactorFor,
   coatingRawCost,
-  INSPECTION_OPTIONS,
-  LAP_OPTIONS,
+  cylinderTypeOptions,
+  inspectionOptions,
   LD_CHARGE_PER_10MIN,
+  lapOptions,
   ldMinutes,
   lookupMatrix,
   lotDiscountRate,
   MATERIAL_BASIS_LENGTH_MM,
   NECK_MACHINING,
-  NECK_TYPE_OPTIONS,
+  neckTypeOptions,
   STEP_MACHINING,
-  STEP_TYPE_OPTIONS,
+  stepTypeOptions,
 } from "./trial-pricing-data";
 import { runCriteriaEngine } from "./trial-pricing-engine";
-import { applyCustomScript } from "./trial-pricing-script";
 
 /**
  * 工具種 — 管理者定義（SY02 工具種管理、trial_pricing.tool_types）。組み込み
@@ -45,12 +44,31 @@ import { applyCustomScript } from "./trial-pricing-script";
  */
 export type ToolType = string;
 
+/** next-intl の `t()` と互換の最小の形（サーバー/クライアントどちらの実体も渡せる）。 */
+type TrLike = (key: string) => string;
+
 /** 組み込み工具種の表示ラベル（設定未読時のフォールバック）。 */
-export const TOOL_TYPE_OPTIONS: { value: ToolType; label: string }[] = [
-  { value: "ROUND_BAR", label: "丸棒" },
-  { value: "CYLINDER", label: "円筒" },
-  { value: "OH", label: "OH付" },
-];
+export function toolTypeOptionsFallback(
+  tr: TrLike,
+): { value: ToolType; label: string }[] {
+  return [
+    { value: "ROUND_BAR", label: tr("sales.trialPricingSettings.roundBar") },
+    { value: "CYLINDER", label: tr("sales.trialPricingSettings.cylinder") },
+    { value: "OH", label: tr("sales.trialPricingSettings.ohType") },
+  ];
+}
+
+/**
+ * 組み込み工具種 1 件の翻訳済みラベル。BUILTIN_TOOL_TYPES（trial-pricing-criteria.ts）
+ * が持つ ja 固定ラベルを、画面表示ではこちらへ差し替える（カスタム工具種の
+ * 名前は管理者が入力した値なので差し替えない — toToolTypeOptions が判定する）。
+ */
+export function builtinToolTypeLabel(
+  tr: TrLike,
+  value: ToolType,
+): string | undefined {
+  return toolTypeOptionsFallback(tr).find((o) => o.value === value)?.label;
+}
 
 export interface TrialInput {
   toolType: ToolType;
@@ -157,22 +175,19 @@ export function calcTrialPricing(
   input: TrialInput,
   opts: TrialPricingOptions = {},
 ): TrialResult {
-  const base = runCriteriaEngine(input, opts);
-  if (opts.runCustomScript && opts.customScript?.trim()) {
-    const correction = opts.correctionFactor ?? CORRECTION_FACTOR;
-    const ldCharge = opts.ldChargePer10min ?? LD_CHARGE_PER_10MIN;
-    return applyCustomScript(opts.customScript, {
-      input,
-      result: base,
-      settings: { correctionFactor: correction, ldChargePer10min: ldCharge },
-    }).result;
-  }
-  return base;
+  // カスタム計算 JS（旧 trial-pricing-script.ts）は廃止した — `new Function` で
+  // 動く後処理はサーバー側の RCE だった（監査 C2）。設定に残っていても適用しない。
+  return runCriteriaEngine(input, opts);
 }
 
 /**
  * 従来の固定計算ロジック（Excel 由来）。criteria エンジン導入後は `DEFAULT_CRITERIA`
  * がこれを再現し、この関数はパリティテストの参照実装として保持する。
+ *
+ * ライブの計算経路は `calcTrialPricing`（criteria エンジン）だけで、この
+ * 関数はどの画面からも呼ばれない — 呼び出し元は自分自身とパリティテストのみ
+ * （既に `optRate(cylinderTypeOptions("ja"), …)` 等で ja 固定にしてある）。
+ * warnings の文言・"無" 比較も同じ理由で i18n-ignore。
  */
 export function calcTrialPricingLegacy(
   input: TrialInput,
@@ -190,11 +205,11 @@ export function calcTrialPricingLegacy(
     // 素材価格(手入力) + 円筒加工費(×種類掛け率)
     const cyl = lookupMatrix(CYLINDER_MACHINING, dia, len) ?? 0;
     const cylRate = optRate(
-      CYLINDER_TYPE_OPTIONS,
+      cylinderTypeOptions("ja"),
       input.cylinderType ?? "NORMAL",
     );
     material = (input.cylinderMaterialPrice ?? 0) + cyl * cylRate;
-    if (cyl === 0) warnings.push("円筒加工費が範囲外です（最大径/全長を確認）");
+    if (cyl === 0) warnings.push("円筒加工費が範囲外です（最大径/全長を確認）"); // i18n-ignore
   } else {
     // 丸棒/OH: 材料原価 = 参照単価(¥/1000mm) × (全長 ÷ 1000mm) (+ センタレス if 黒皮)
     const perPieceMaterial = roundUp(
@@ -208,23 +223,23 @@ export function calcTrialPricingLegacy(
     }
     material = perPieceMaterial + centerless;
     if (input.materialBarPrice <= 0)
-      warnings.push("素材の仕入実績がありません（1000mm単価を入力）");
+      warnings.push("素材の仕入実績がありません（1000mm単価を入力）"); // i18n-ignore
   }
 
   // ── 段加工費 ──────────────────────────────────────────────────────────────
   let step = 0;
   if (input.stepLength >= 0.01 && input.stepType !== "NONE") {
     const base = lookupMatrix(STEP_MACHINING, dia, input.stepLength);
-    if (base == null) warnings.push("段加工費が範囲外です");
-    step = (base ?? 0) * optRate(STEP_TYPE_OPTIONS, input.stepType);
+    if (base == null) warnings.push("段加工費が範囲外です"); // i18n-ignore
+    step = (base ?? 0) * optRate(stepTypeOptions("ja"), input.stepType);
   }
 
   // ── 首下加工費 ────────────────────────────────────────────────────────────
   let neck = 0;
   if (input.neckLength >= 0.01 && input.neckType !== "NONE") {
     const base = lookupMatrix(NECK_MACHINING, dia, input.neckLength);
-    if (base == null) warnings.push("首下加工費が範囲外です");
-    neck = (base ?? 0) * optRate(NECK_TYPE_OPTIONS, input.neckType);
+    if (base == null) warnings.push("首下加工費が範囲外です"); // i18n-ignore
+    neck = (base ?? 0) * optRate(neckTypeOptions("ja"), input.neckType);
   }
 
   // ── 加工単価 ──────────────────────────────────────────────────────────────
@@ -232,6 +247,7 @@ export function calcTrialPricingLegacy(
 
   // ── コート代 (丸棒 ×1.5 / 円筒・OH ×1.3, ROUNDUP -1) ───────────────────────
   let coating = 0;
+  // i18n-ignore
   if (input.coating && input.coating !== "無") {
     coating = roundUp(
       coatingRawCost(input.coating, dia, len) *
@@ -241,7 +257,7 @@ export function calcTrialPricingLegacy(
   }
 
   // ── ラップ処理 (掛け率 定額。有(OSG)=205) ─────────────────────────────────
-  const lap = optAmount(LAP_OPTIONS, input.lapType);
+  const lap = optAmount(lapOptions("ja"), input.lapType);
 
   // ── LD ────────────────────────────────────────────────────────────────────
   let ld = 0;
@@ -255,7 +271,7 @@ export function calcTrialPricingLegacy(
   }
 
   // ── 検査成績書 ────────────────────────────────────────────────────────────
-  const inspection = optAmount(INSPECTION_OPTIONS, input.inspection);
+  const inspection = optAmount(inspectionOptions("ja"), input.inspection);
 
   const breakdown: CostBreakdown = {
     material,
@@ -307,17 +323,5 @@ export function calcTrialPricingLegacy(
       };
     });
 
-  const base: TrialResult = { breakdown, shapeOutPrice, lots, warnings };
-
-  // ── カスタム計算（管理者設定の JS フック）─────────────────────────────────
-  // system 権限者が設定した後処理スクリプトを、確定した result に適用する。
-  // 失敗しても base を返す（applyCustomScript は throw しない）。
-  if (opts.runCustomScript && opts.customScript?.trim()) {
-    return applyCustomScript(opts.customScript, {
-      input,
-      result: base,
-      settings: { correctionFactor: correction, ldChargePer10min: ldCharge },
-    }).result;
-  }
-  return base;
+  return { breakdown, shapeOutPrice, lots, warnings };
 }

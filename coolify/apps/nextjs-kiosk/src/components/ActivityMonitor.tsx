@@ -12,6 +12,7 @@ import { Badge } from "@mantine/core";
 import { IconClockExclamation } from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { fillMessage } from "@/lib/i18n";
 import {
   ACTIVITY_PING_MIN_INTERVAL_MS,
   IDLE_TIMEOUT_MS,
@@ -44,6 +45,8 @@ export function ActivityMonitor() {
       await fetch("/api/kiosk/session", { method: "DELETE" });
     } finally {
       router.replace("/login");
+      // 同上 — layout が持つ利用者名を捨てさせる
+      router.refresh();
     }
   }, [router]);
 
@@ -122,7 +125,9 @@ export function ActivityMonitor() {
       style={{ position: "fixed", right: 16, bottom: 16, zIndex: 1000 }}
       variant="filled"
     >
-      {m.activity.autoLogout(`${min}:${String(sec).padStart(2, "0")}`)}
+      {fillMessage(m.activity.autoLogout, {
+        time: `${min}:${String(sec).padStart(2, "0")}`,
+      })}
     </Badge>
   );
 }

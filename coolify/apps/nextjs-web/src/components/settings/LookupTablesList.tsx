@@ -9,6 +9,7 @@
  */
 
 import { Text } from "@mantine/core";
+import { useTranslations } from "next-intl";
 import { CreateButton } from "@/components/ui/buttons";
 import { MasterListNav } from "@/components/ui/MasterListNav";
 import { localized } from "@/lib/format";
@@ -17,11 +18,12 @@ import type { LookupTable } from "@/lib/trial-pricing-criteria";
 const BASE = "/settings/trial-pricing-engine/lookups";
 
 export function LookupTablesList({ tables }: { tables: LookupTable[] }) {
+  const tr = useTranslations();
   return (
     <MasterListNav
-      emptyMessage="表がありません。「表を追加」から作成してください。"
+      emptyMessage={tr("settings.lookupTablesList.thereAreNoTablesCreateOne")}
       searchable
-      searchPlaceholder="表名・ID で絞り込み..."
+      searchPlaceholder={tr("settings.lookupTablesList.filterByTableNameOrId")}
       sections={[
         {
           items: tables.map((t) => ({
@@ -32,11 +34,19 @@ export function LookupTablesList({ tables }: { tables: LookupTable[] }) {
                 {localized(t.name)}
               </Text>
             ),
-            description: `lookup("${t.id}", …) · ${t.keyColumns.length}キー · ${t.rows.length}行`,
+            description: tr("settings.lookupTablesList.lookupIdKeysRows", {
+              id: t.id,
+              keys: t.keyColumns.length,
+              rows: t.rows.length,
+            }),
           })),
         },
       ]}
-      toolbar={<CreateButton href={`${BASE}/new`}>表を追加</CreateButton>}
+      toolbar={
+        <CreateButton href={`${BASE}/new`}>
+          {tr("settings.lookupTablesList.addATable")}
+        </CreateButton>
+      }
     />
   );
 }

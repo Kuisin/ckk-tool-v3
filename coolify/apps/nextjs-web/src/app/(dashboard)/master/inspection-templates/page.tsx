@@ -5,6 +5,7 @@ import {
 import { requireAppRead } from "@/lib/authz-page";
 import { prisma } from "@/lib/db";
 import { type LocalizedText, localized } from "@/lib/format";
+import { fetchInspectionTemplateGroupOptions } from "./data";
 
 export const dynamic = "force-dynamic";
 
@@ -12,13 +13,18 @@ export const dynamic = "force-dynamic";
 export default async function MasterInspectionTemplatesPage() {
   const denied = await requireAppRead("master-inspection-templates");
   if (denied) return denied;
-  const records = await prisma.inspectionTemplate.findMany({
-    include: {
-      relatedProcessStep: true,
-      _count: { select: { items: true } },
-    },
-    orderBy: [{ code: "asc" }, { version: "desc" }],
-  });
+  const [records, groupOptions] = await Promise.all([
+    prisma.inspectionTemplate.findMany({
+      include: {
+        relatedProcessStep: true,
+        product: { select: { name: true } },
+        group: { select: { name: true } },
+        _count: { select: { items: true } },
+      },
+      orderBy: [{ code: "asc" }, { version: "desc" }],
+    }),
+    fetchInspectionTemplateGroupOptions(),
+  ]);
 
   // 旧バージョンは詳細の「バージョン」タブから辿る
   const versionCounts = new Map<string, number>();
@@ -38,9 +44,14 @@ export default async function MasterInspectionTemplatesPage() {
     relatedProcessStep: r.relatedProcessStep
       ? localized(r.relatedProcessStep.name as LocalizedText | null)
       : "",
+    productName: r.product
+      ? localized(r.product.name as LocalizedText | null)
+      : "",
+    groupId: r.groupId,
+    groupName: r.group ? localized(r.group.name as LocalizedText | null) : "",
     itemCount: r._count.items,
     isActive: r.isActive,
   }));
 
-  return <InspectionTemplateTable rows={rows} />;
+  return <InspectionTemplateTable groupOptions={groupOptions} rows={rows} />;
 }

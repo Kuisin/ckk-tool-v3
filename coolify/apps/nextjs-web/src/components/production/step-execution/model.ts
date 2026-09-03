@@ -33,6 +33,8 @@ export interface InspectionTemplateView {
   samplingValue: number | null;
   /** 記録方式（シート単位）: VALUES = 製品ごとにページ送り / COUNTS = 合格数のみ。 */
   recordStyle: "VALUES" | "COUNTS";
+  /** VALUES のサンプル呼称（製品1,2,3… / 初品・中間品・最終品）。 */
+  sampleNaming: "GENERIC" | "INITIAL_MID_FINAL";
   items: InspectionTemplateItemView[];
 }
 
@@ -55,6 +57,9 @@ export interface InspectionRecordView {
   recordedByName: string | null;
   approvedAt: string | null;
   approvedByName: string | null;
+  /** 検査表確認（旧帳票の「検査表確認」欄。recordedBy/approvedBy とは別ロール）。 */
+  confirmedAt: string | null;
+  confirmedByName: string | null;
   items: InspectionRecordItemView[];
 }
 

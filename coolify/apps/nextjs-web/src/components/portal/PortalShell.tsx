@@ -9,15 +9,17 @@
  */
 
 import { AppShell, Container, Group, Text } from "@mantine/core";
+import { useTranslations } from "next-intl";
 import type { ReactNode } from "react";
 
 export function PortalShell({ children }: { children: ReactNode }) {
+  const tr = useTranslations();
   return (
     <AppShell footer={{ height: 40 }} header={{ height: 56 }} padding="md">
       <AppShell.Header>
         <Group h="100%" justify="space-between" px="md" wrap="nowrap">
           <Text fw={600} size="sm">
-            CKK 取引先ポータル
+            {tr("portal.portalShell.cKKPartnerPortal")}
           </Text>
         </Group>
       </AppShell.Header>
@@ -31,7 +33,7 @@ export function PortalShell({ children }: { children: ReactNode }) {
       <AppShell.Footer>
         <Group gap="lg" h="100%" justify="center" px="md">
           <Text c="dimmed" size="xs">
-            中越工具製作所
+            {tr("portal.portalShell.chuetsuToolWorks")}
           </Text>
         </Group>
       </AppShell.Footer>

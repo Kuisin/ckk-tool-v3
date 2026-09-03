@@ -13,10 +13,14 @@
       <div class="doc-title">{{labels.title}}</div>
     </div>
     <div class="issuer">
-      <strong>{{issuer.name}}</strong><br>
-      {{issuer.address}}<br>
-      {{issuer.tel}}<br>
-      {{labels.regNumber}} {{issuer.invoice_reg}}
+      <div class="issuer-text">
+        <strong>{{issuer.name}}</strong><br>
+        {{issuer.address}}<br>
+        {{issuer.tel}}<br>
+        {{labels.regNumber}} {{issuer.invoice_reg}}
+      </div>
+      <!-- 社印。発行済みのときだけ lib/pdf-stamp.ts が img タグを埋め込む -->
+      <div class="stamp">{{{stamp}}}</div>
     </div>
   </div>
 
@@ -24,7 +28,7 @@
     <div class="recipient-block">
       <div class="recipient-name">{{recipient.name}}　<span class="onchu">{{labels.onchu}}</span></div>
       <div class="recipient-meta">
-        {{recipient.meta}}
+        {{{recipient.meta}}}
       </div>
     </div>
     <div class="doc-info">
@@ -35,7 +39,7 @@
         <tr><td>{{labels.dueDate}}</td><td>{{doc.due_date}}</td></tr>
       </table>
       <!-- 書類 QR（CKK:<種別>:<番号>）— URL は入れない -->
-      <div class="doc-qr">{{doc_qr}}</div>
+      <div class="doc-qr">{{{doc_qr}}}</div>
     </div>
   </div>
 
@@ -76,7 +80,7 @@
 
   <div>
     <div class="notes-label">{{labels.notes}}</div>
-    <div class="notes">{{notes}}</div>
+    <div class="notes">{{{notes}}}</div>
   </div>
 
   <div class="footer">

@@ -1,0 +1,137 @@
+{
+  "kind": "ckk.inspection-templates",
+  "version": 1,
+  "templates": [
+    {
+      "code": "INS-DRILL-DIM",
+      "name": { "ja": "超硬ドリル 寸法検査", "en": "Carbide drill dimensions" },
+      "relatedProcessStepCode": "FAB_INSPECTION",
+      "samplingMode": "PERCENT",
+      "samplingValue": 10,
+      "recordStyle": "VALUES",
+      "isActive": true,
+      "items": [
+        {
+          "itemName": { "ja": "外径", "en": "Outer diameter" },
+          "inputType": "NUMBER",
+          "unit": "mm",
+          "toleranceMin": 8.28,
+          "toleranceMax": 8.32,
+          "goalValue": 8.3,
+          "isRequired": true,
+          "allowManualOverride": false
+        },
+        {
+          "itemName": { "ja": "全長", "en": "Overall length" },
+          "inputType": "NUMBER",
+          "unit": "mm",
+          "toleranceMin": 329.5,
+          "toleranceMax": 330.5,
+          "goalValue": 330,
+          "isRequired": true,
+          "allowManualOverride": false
+        },
+        {
+          "itemName": { "ja": "首下長さ", "en": "Neck length" },
+          "inputType": "NUMBER",
+          "unit": "mm",
+          "toleranceMin": 44.8,
+          "toleranceMax": 45.2,
+          "isRequired": true
+        },
+        {
+          "itemName": { "ja": "振れ", "en": "Runout" },
+          "inputType": "NUMBER",
+          "unit": "mm",
+          "toleranceMin": 0,
+          "toleranceMax": 0.01,
+          "isRequired": true
+        }
+      ]
+    },
+    {
+      "code": "INS-VISUAL",
+      "name": { "ja": "外観検査", "en": "Visual inspection" },
+      "relatedProcessStepCode": "PRE_SHIP_INSPECTION",
+      "samplingMode": "ALL",
+      "samplingValue": null,
+      "recordStyle": "COUNTS",
+      "isActive": true,
+      "items": [
+        {
+          "itemName": { "ja": "刃先の欠け", "en": "Edge chipping" },
+          "inputType": "BOOLEAN",
+          "acceptBool": false,
+          "isRequired": true,
+          "allowManualOverride": false
+        },
+        {
+          "itemName": { "ja": "キズ・打痕", "en": "Scratches and dents" },
+          "inputType": "BOOLEAN",
+          "acceptBool": false,
+          "isRequired": true
+        },
+        {
+          "itemName": { "ja": "刻印", "en": "Marking" },
+          "inputType": "SELECT_SINGLE",
+          "options": [
+            { "value": "OK", "label": { "ja": "読める" } },
+            { "value": "FAINT", "label": { "ja": "薄い" } },
+            { "value": "NG", "label": { "ja": "読めない" } }
+          ],
+          "acceptOptions": ["OK"],
+          "isRequired": true
+        },
+        {
+          "itemName": { "ja": "梱包", "en": "Packaging" },
+          "inputType": "SELECT_MULTI",
+          "options": [
+            { "value": "CASE", "label": { "ja": "ケース" } },
+            { "value": "LABEL", "label": { "ja": "ラベル" } },
+            { "value": "CERT", "label": { "ja": "検査成績書" } }
+          ],
+          "acceptOptions": ["CASE", "LABEL"],
+          "isRequired": false
+        }
+      ]
+    },
+    {
+      "code": "INS-COATING",
+      "name": { "ja": "コーティング検査", "en": "Coating inspection" },
+      "relatedProcessStepCode": "CUSTOMER_INSPECTION_1",
+      "samplingMode": "COUNT",
+      "samplingValue": 3,
+      "recordStyle": "VALUES",
+      "isActive": true,
+      "items": [
+        {
+          "itemName": { "ja": "膜厚", "en": "Coating thickness" },
+          "inputType": "NUMBER",
+          "unit": "μm",
+          "toleranceMin": 2,
+          "toleranceMax": 4,
+          "goalValue": 3,
+          "isRequired": true,
+          "allowManualOverride": false
+        },
+        {
+          "itemName": { "ja": "色ムラ", "en": "Colour unevenness" },
+          "inputType": "BOOLEAN",
+          "acceptBool": false,
+          "isRequired": true
+        },
+        {
+          "itemName": { "ja": "密着性（テープ試験）", "en": "Adhesion (tape test)" },
+          "inputType": "SELECT_SINGLE",
+          "options": [
+            { "value": "PASS", "label": { "ja": "剥離なし" } },
+            { "value": "PARTIAL", "label": { "ja": "一部剥離" } },
+            { "value": "FAIL", "label": { "ja": "剥離あり" } }
+          ],
+          "acceptOptions": ["PASS"],
+          "isRequired": true
+        }
+      ]
+    }
+  ]
+}

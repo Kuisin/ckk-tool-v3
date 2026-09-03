@@ -23,6 +23,7 @@ import { modals } from "@mantine/modals";
 import { notifications } from "@mantine/notifications";
 import { IconAlertTriangle } from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { useState, useTransition } from "react";
 import {
   restoreUser,
@@ -54,6 +55,7 @@ export function UserSuspensionPanel({
   /** true = 直接は止められず、変更依頼を出して承認を待つ（管理者以外）。 */
   requiresApproval: boolean;
 }) {
+  const tr = useTranslations();
   const router = useRouter();
   const fmt = useFormat();
   const [isPending, startTransition] = useTransition();
@@ -68,13 +70,17 @@ export function UserSuspensionPanel({
     disabledUntil: user.disabledUntil ? new Date(user.disabledUntil) : null,
   };
   const now = new Date();
-  const state = suspensionState(target, now);
-  const suspendCheck = canSuspend(target, {
-    actorId,
-    targetIsAdmin,
-    otherActiveAdminCount,
-  });
-  const restoreCheck = canRestore(target);
+  const state = suspensionState(target, now, tr);
+  const suspendCheck = canSuspend(
+    target,
+    {
+      actorId,
+      targetIsAdmin,
+      otherActiveAdminCount,
+    },
+    tr,
+  );
+  const restoreCheck = canRestore(target, tr);
 
   // 依頼だったのに「停止しました」と出すと、止まっていないものが止まったと
   // 伝わる。サーバーが返した requested をそのまま文言に反映する。
@@ -91,16 +97,20 @@ export function UserSuspensionPanel({
       if (res.ok) {
         const requested = res.data?.requested === true;
         notifications.show({
-          title: requested ? "承認を依頼しました" : ok,
-          message: requested ? "承認されるとこの変更が適用されます" : "",
+          title: requested
+            ? tr("settings.userDetail.approvalWasRequested")
+            : ok,
+          message: requested
+            ? tr("settings.userSuspensionPanel.approvalAppliesThisChange")
+            : "",
           color: requested ? "blue" : "green",
         });
         setReason("");
         router.refresh();
       } else {
         notifications.show({
-          title: "エラー",
-          message: res.error ?? "失敗しました",
+          title: tr("common.error2"),
+          message: res.error ?? tr("common.failed"),
           color: "red",
         });
       }
@@ -108,19 +118,33 @@ export function UserSuspensionPanel({
 
   const confirmSuspend = () =>
     modals.openConfirmModal({
-      title: requiresApproval ? "停止の承認を依頼" : "ユーザーを停止",
+      title: requiresApproval
+        ? tr("settings.userSuspensionPanel.requestSuspensionApproval")
+        : tr("settings.userSuspensionPanel.suspendTheUser"),
       children: (
         <Text size="sm">
-          {user.displayName}（{user.username}）を
-          {kind === "permanent" ? "無期限で" : "一時的に"}停止
-          {requiresApproval
-            ? "する依頼を出します。承認されるまでこの人はログインできます。"
-            : "します。停止中はログインできません。"}
+          {tr("settings.userSuspensionPanel.suspendConfirmSentence", {
+            name: user.displayName,
+            username: user.username,
+            duration:
+              kind === "permanent"
+                ? tr("settings.userSuspensionPanel.indefinitely")
+                : tr("settings.userSuspensionPanel.temporarily"),
+            tail: requiresApproval
+              ? tr(
+                  "settings.userSuspensionPanel.submitsTheRequestThisPersonCan",
+                )
+              : tr(
+                  "settings.userSuspensionPanel.theyCannotLogInWhileSuspended",
+                ),
+          })}
         </Text>
       ),
       labels: {
-        confirm: requiresApproval ? "依頼する" : "停止",
-        cancel: "戻る",
+        confirm: requiresApproval
+          ? tr("settings.userSuspensionPanel.requestButtonLabel")
+          : tr("settings.userSuspensionPanel.suspend"),
+        cancel: tr("common.back2"),
       },
       confirmProps: { color: "red" },
       onConfirm: () =>
@@ -132,14 +156,14 @@ export function UserSuspensionPanel({
               until: kind === "temporary" ? until : null,
               reason: reason.trim() || undefined,
             }),
-          "停止しました",
+          tr("settings.userSuspensionPanel.suspended"),
         ),
     });
 
   return (
     <Paper mt="md" p="md" radius="md" withBorder>
       <Title mb="xs" order={5}>
-        利用停止
+        {tr("settings.userSuspensionPanel.suspend2")}
       </Title>
 
       {!user.isActive ? (
@@ -147,21 +171,28 @@ export function UserSuspensionPanel({
           <Alert
             color={state.isAwaitingRestore ? "blue" : "orange"}
             icon={<IconAlertTriangle size={16} />}
-            title={state.label ?? "停止中"}
+            title={state.label ?? tr("settings.userSuspensionPanel.suspended2")}
           >
             <Stack gap={4}>
               {user.disabledUntil && (
                 <Text size="sm">
-                  解除予定: {fmt.dateTime(user.disabledUntil)}
+                  {tr("settings.userSuspensionPanel.releaseScheduledLabel", {
+                    date: fmt.dateTime(user.disabledUntil),
+                  })}
                 </Text>
               )}
               {user.disabledReason && (
-                <Text size="sm">理由: {user.disabledReason}</Text>
+                <Text size="sm">
+                  {tr("settings.userSuspensionPanel.reasonLabel", {
+                    reason: user.disabledReason,
+                  })}
+                </Text>
               )}
               {state.isAwaitingRestore && (
                 <Text c="dimmed" size="xs">
-                  期限は過ぎています。自動復帰は毎分の処理で行われるため、
-                  反映まで最大 1 分かかります。
+                  {tr(
+                    "settings.userSuspensionPanel.theDeadlineHasPassedAutomaticRestoration",
+                  )}
                 </Text>
               )}
             </Stack>
@@ -171,12 +202,14 @@ export function UserSuspensionPanel({
               {requiresApproval && (
                 <Textarea
                   autosize
-                  description="承認者がこの内容を見て判断します"
+                  description={tr("common.theApproverDecidesBasedOnWhat")}
                   disabled={!restoreCheck.ok}
-                  label="復帰の理由"
+                  label={tr("settings.userSuspensionPanel.reasonForRestoring")}
                   minRows={2}
                   onChange={(e) => setReason(e.currentTarget.value)}
-                  placeholder="例: 休職から復帰したため"
+                  placeholder={tr(
+                    "settings.userSuspensionPanel.eGReturningFromLeave",
+                  )}
                   value={reason}
                   withAsterisk
                 />
@@ -190,11 +223,13 @@ export function UserSuspensionPanel({
                   onClick={() =>
                     run(
                       () => restoreUser(user.id, reason.trim() || undefined),
-                      "復帰しました",
+                      tr("settings.userSuspensionPanel.restored"),
                     )
                   }
                 >
-                  {requiresApproval ? "復帰の承認を依頼" : "いま復帰させる"}
+                  {requiresApproval
+                    ? tr("settings.userSuspensionPanel.requestRestoreApproval")
+                    : tr("settings.userSuspensionPanel.restoreNow")}
                 </PrimaryButton>
               </Group>
             </>
@@ -211,8 +246,18 @@ export function UserSuspensionPanel({
             <>
               <SegmentedControl
                 data={[
-                  { label: "一時停止", value: "temporary" },
-                  { label: "無期限停止", value: "permanent" },
+                  {
+                    label: tr(
+                      "settings.userSuspensionPanel.temporarySuspension",
+                    ),
+                    value: "temporary",
+                  },
+                  {
+                    label: tr(
+                      "settings.userSuspensionPanel.suspendedIndefinitely",
+                    ),
+                    value: "permanent",
+                  },
                 ]}
                 disabled={!suspendCheck.ok}
                 onChange={(v) => setKind(v as SuspensionKind)}
@@ -221,10 +266,12 @@ export function UserSuspensionPanel({
               {kind === "temporary" && (
                 <DateTimePicker
                   disabled={!suspendCheck.ok}
-                  label="解除予定日時"
+                  label={tr(
+                    "settings.userSuspensionPanel.scheduledToBeReleasedAt",
+                  )}
                   minDate={now}
                   onChange={setUntil}
-                  placeholder="いつ戻すか"
+                  placeholder={tr("settings.userSuspensionPanel.whenToRestore")}
                   value={until}
                   withAsterisk
                 />
@@ -233,11 +280,17 @@ export function UserSuspensionPanel({
                 autosize
                 description={
                   requiresApproval
-                    ? "承認者がこの内容を見て判断します。停止の記録にも残ります"
+                    ? tr(
+                        "settings.userSuspensionPanel.theApproverDecidesBasedOnThis",
+                      )
                     : undefined
                 }
                 disabled={!suspendCheck.ok}
-                label={requiresApproval ? "停止の理由" : "理由（任意）"}
+                label={
+                  requiresApproval
+                    ? tr("settings.userSuspensionPanel.reasonForSuspension")
+                    : tr("common.reasonOptional")
+                }
                 maxRows={4}
                 minRows={2}
                 onChange={(e) => setReason(e.currentTarget.value)}
@@ -254,7 +307,11 @@ export function UserSuspensionPanel({
                   loading={isPending}
                   onClick={confirmSuspend}
                 >
-                  {requiresApproval ? "停止の承認を依頼" : "停止する"}
+                  {requiresApproval
+                    ? tr(
+                        "settings.userSuspensionPanel.requestSuspensionApproval",
+                      )
+                    : tr("settings.userSuspensionPanel.suspend3")}
                 </DangerButton>
               </Group>
             </>

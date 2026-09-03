@@ -10,27 +10,43 @@
  * 同じ判定を使う。並び順は常にこの定義の順で、入れ替えは持たない。
  */
 
+import type { getTranslations } from "next-intl/server";
+
+type Tr = Awaited<ReturnType<typeof getTranslations>>;
+
 export interface TaskTabDef {
   id: string;
   label: string;
 }
 
-export const TASK_TABS: readonly TaskTabDef[] = [
-  { id: "plans", label: "作業予定" },
-  { id: "approvals", label: "承認依頼中" },
-  { id: "forms", label: "未回答のフォーム" },
-  { id: "my-forms", label: "回答済みのフォーム" },
-  { id: "completions", label: "完了した申請" },
-  { id: "comments", label: "文書のコメント" },
+/** タブの id と並び順（定義順）。ラベルは `taskTabs()` が `tr` から作る。 */
+export const TASK_TAB_IDS: readonly string[] = [
+  "plans",
+  "approvals",
+  "forms",
+  "my-forms",
+  "completions",
+  "comments",
 ];
 
 /** 個人設定の保存キー（app.user_view_settings.key）。 */
 export const TASK_TABS_SETTING_KEY = "general.tasks.tabs";
 
-export const TASK_TAB_IDS: readonly string[] = TASK_TABS.map((t) => t.id);
+/** タブ定義（id + 翻訳済みラベル）。並びは TASK_TAB_IDS の順。 */
+export function taskTabs(tr: Tr): TaskTabDef[] {
+  const labels: Record<string, string> = {
+    plans: tr("general.tasksTabs.workPlans"),
+    approvals: tr("common.pendingApproval"),
+    forms: tr("general.tasksTabs.unansweredForms"),
+    "my-forms": tr("general.tasksTabs.answeredForms"),
+    completions: tr("general.tasksTabs.completedRequests"),
+    comments: tr("general.tasksTabs.documentComments"),
+  };
+  return TASK_TAB_IDS.map((id) => ({ id, label: labels[id] }));
+}
 
-export function taskTabLabel(id: string): string {
-  return TASK_TABS.find((t) => t.id === id)?.label ?? id;
+export function taskTabLabel(id: string, tr: Tr): string {
+  return taskTabs(tr).find((t) => t.id === id)?.label ?? id;
 }
 
 /**
@@ -57,7 +73,7 @@ export function sanitizeHiddenTabs(raw: unknown): string[] {
 }
 
 /**
- * 実際に描くタブ。並びは TASK_TABS の順。
+ * 実際に描くタブ。並びは TASK_TAB_IDS の順。
  *
  * **全部隠されたら設定を無視して全部出す**（fail-open）。タブが 1 枚も無い
  * 画面は何も操作できず、設定を戻す手立ても画面の中にあるため、行き止まりを
@@ -66,12 +82,14 @@ export function sanitizeHiddenTabs(raw: unknown): string[] {
 export function visibleTaskTabs(
   available: readonly string[],
   hidden: readonly string[],
+  tr: Tr,
 ): TaskTabDef[] {
-  const shown = TASK_TABS.filter(
+  const all = taskTabs(tr);
+  const shown = all.filter(
     (t) => available.includes(t.id) && !hidden.includes(t.id),
   );
   if (shown.length > 0) return shown;
-  return TASK_TABS.filter((t) => available.includes(t.id));
+  return all.filter((t) => available.includes(t.id));
 }
 
 /**
@@ -83,5 +101,5 @@ export function resolveActiveTab(
   visible: readonly TaskTabDef[],
 ): string {
   if (requested && visible.some((t) => t.id === requested)) return requested;
-  return visible[0]?.id ?? TASK_TABS[0].id;
+  return visible[0]?.id ?? TASK_TAB_IDS[0];
 }

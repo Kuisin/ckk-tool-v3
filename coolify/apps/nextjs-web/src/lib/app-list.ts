@@ -616,6 +616,26 @@ export const appList: AppEntry[] = [
     category: "システム",
     requiredPermission: null,
   },
+  {
+    // 取引先ポータル — 社外の人（取引先・需要家）に自社宛の書類を見せるための
+    // アカウントと書類リンクの管理。**SY01 ユーザー管理の拡張にはしない**:
+    // あちらの主体は社員（app.users）で、ポータルの主体は別の表
+    // （app.portal_accounts）。混ぜると一覧が主体混在の表になる。
+    //
+    // requiredPermission は portal_admin。**業務ロールには配っていない**
+    // （rbac-seed.sql / roles-seed.sql の除外リスト）— 社外の個人データを読み、
+    // 書類を外に出せる権限なので、既定で全社員に渡ってはいけない。
+    //
+    // 開発中は src/config/dev-features.json が dev 限定に閉じており、
+    // app-flags.ts の getDisabledAppKeys() がそれを合流させるので main では出ない。
+    key: "portal-admin",
+    label: "取引先ポータル",
+    operationCode: "SY0H",
+    href: "/settings/portal",
+    icon: "IconUsersGroup",
+    category: "システム",
+    requiredPermission: "portal_admin",
+  },
 ];
 
 /** Home 絞り込み（工程）で使う URL パラメータのキー。 */
@@ -707,6 +727,9 @@ export const APP_LABEL_I18N: Record<string, { en: string; zh: string }> = {
   "login-history": { en: "Login history", zh: "登录历史" },
   "ai-provider": { en: "AI provider", zh: "AI 服务商" },
   "notification-email": { en: "Notification email", zh: "通知邮件" },
+  "design-files": { en: "Drawing", zh: "图纸" },
+  "privileged-access": { en: "Privileged access", zh: "特权访问" },
+  "portal-admin": { en: "Partner portal", zh: "客户门户" },
 };
 
 export const CATEGORY_LABEL_I18N: Record<
@@ -728,6 +751,22 @@ export const CATEGORY_LABEL_I18N: Record<
 export function appLabel(entry: AppEntry, locale: Locale): string {
   if (locale === "ja") return entry.label;
   return APP_LABEL_I18N[entry.key]?.[locale] ?? entry.label;
+}
+
+/**
+ * アプリの表示名を **key だけ**から解決する。
+ *
+ * `appLabel` は `AppEntry` を要るが、アプリ一覧を写した行（`lib/app-flags.ts` の
+ * SY05 の行など）は key と ja のラベルしか持っていない。そこで ja のまま出して
+ * いたので、英語・中国語でもアプリ管理の一覧だけ日本語で並んでいた。
+ */
+export function appLabelForKey(
+  key: string,
+  fallbackJa: string,
+  locale: Locale,
+): string {
+  if (locale === "ja") return fallbackJa;
+  return APP_LABEL_I18N[key]?.[locale] ?? fallbackJa;
 }
 
 /** カテゴリの表示名を言語ごとに解決する。 */

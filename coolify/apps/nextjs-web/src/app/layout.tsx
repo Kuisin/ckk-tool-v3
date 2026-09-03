@@ -9,6 +9,7 @@ import "@mantine/tiptap/styles.layer.css";
 import { mantineHtmlProps } from "@mantine/core";
 import type { Metadata, Viewport } from "next";
 import { Noto_Sans_JP } from "next/font/google";
+import { appBaseUrl } from "@/lib/mailer";
 import { MANTINE_COLOR_SCHEME_SCRIPT } from "@/lib/mantine-color-scheme-script";
 import { Providers } from "./providers";
 
@@ -30,8 +31,15 @@ const appleTouchIcon =
     : "/icons/apple-touch-icon.png";
 
 export const metadata: Metadata = {
-  title: "CKK 業務管理システム",
-  description: "製造業務管理システム — 販売・購買・生産・出荷・請求・マスタ",
+  // 各ページの相対 URL（openGraph.images / openGraph.url 等）をここから
+  // 絶対 URL に解決する。og:image は絶対 URL 必須（相対だと大半のスクレイパが
+  // 無視する）— 個々のページでホスト名を組み立てずに済ませるための設定。
+  metadataBase: new URL(appBaseUrl()),
+  // ルートレイアウトの既定タイトル・説明はブランド表記——各ページが自分の
+  // generateMetadata で上書きする（未上書き時のフォールバックと PWA/OG 用）。
+  // manifest.ts と同じ理由で i18n-ignore（_specs/i18n-glossary.md §1）。
+  title: "CKK 業務管理システム", // i18n-ignore
+  description: "製造業務管理システム — 販売・購買・生産・出荷・請求・マスタ", // i18n-ignore
   // PWA: manifest は app/manifest.ts が /manifest.webmanifest として配信。
   // iOS はホーム画面追加（スタンドアロン）で Web Push が有効になる（16.4+）。
   // metadata.icons を定義すると app/icon.svg のファイル規約による自動 <link> が

@@ -29,16 +29,23 @@ import {
   IconChevronUp,
   IconCircleCheck,
 } from "@tabler/icons-react";
+import { useTranslations } from "next-intl";
 import { useState } from "react";
 import { GhostButton } from "@/components/ui/buttons";
 import type { FieldReview } from "@/lib/intake-review";
 
-const STATUS_BADGE: Record<string, { label: string; color: string }> = {
-  unmatched: { label: "マスタに無い", color: "orange" },
-  missing: { label: "読み取れず", color: "gray" },
-};
-
 export function IntakeReviewPanel({ review }: { review: FieldReview[] }) {
+  const tr = useTranslations();
+  const STATUS_BADGE: Record<string, { label: string; color: string }> = {
+    unmatched: {
+      label: tr("sales.intakeReviewPanel.notInTheMaster"),
+      color: "orange",
+    },
+    missing: {
+      label: tr("sales.intakeReviewPanel.couldNotBeRead"),
+      color: "gray",
+    },
+  };
   // 既定は畳む。開くと以後はそのページに居る間だけ開いたまま。
   const [open, setOpen] = useState(false);
 
@@ -54,11 +61,11 @@ export function IntakeReviewPanel({ review }: { review: FieldReview[] }) {
       <Alert
         color="green"
         icon={<IconCircleCheck size={16} />}
-        title="全項目を特定できました"
+        title={tr("sales.orderAcceptances.everyFieldWasIdentified")}
         variant="light"
       >
         <Text size="sm">
-          読み取った内容がマスタと一致しています。書類と見比べて確認してください。
+          {tr("sales.orderAcceptances.whatWasReadMatchesTheMaster")}
         </Text>
       </Alert>
     );
@@ -68,13 +75,15 @@ export function IntakeReviewPanel({ review }: { review: FieldReview[] }) {
     <Alert
       color="orange"
       icon={<IconAlertTriangle size={16} />}
-      title={`確認が必要な項目 ${unresolved.length} 件`}
+      title={tr("sales.intakeReviewPanel.itemsNeedingConfirmation", {
+        count: unresolved.length,
+      })}
       variant="light"
     >
       <Stack gap="xs">
         <Group gap="xs" justify="space-between" wrap="nowrap">
           <Text className="min-w-0" size="sm">
-            自動で確定できなかった項目があります。書類を見ながら直してください。
+            {tr("sales.orderAcceptances.someFieldsCouldNotBeSettled")}
           </Text>
           <GhostButton
             aria-expanded={open}
@@ -85,7 +94,9 @@ export function IntakeReviewPanel({ review }: { review: FieldReview[] }) {
               open ? <IconChevronUp size={14} /> : <IconChevronDown size={14} />
             }
           >
-            {open ? "内訳を隠す" : "内訳を見る"}
+            {open
+              ? tr("sales.intakeReviewPanel.hideTheBreakdown")
+              : tr("sales.orderAcceptances.viewTheBreakdown")}
           </GhostButton>
         </Group>
         <Collapse expanded={open}>
@@ -111,7 +122,9 @@ export function IntakeReviewPanel({ review }: { review: FieldReview[] }) {
                         {r.read ? (
                           <Text c="dimmed" component="span" size="sm">
                             {" "}
-                            — 読み取り「{r.read}」
+                            {tr("sales.intakeReviewPanel.readAsValue", {
+                              value: r.read,
+                            })}
                           </Text>
                         ) : null}
                       </Text>

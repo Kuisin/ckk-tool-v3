@@ -17,6 +17,7 @@ import {
   aliasKeyFor,
   type MatchAliasTarget,
 } from "./match-alias-core";
+import { label } from "./messages";
 
 /**
  * 学習を保存する（best-effort）。
@@ -54,7 +55,13 @@ export async function saveAliasLearnings(
       });
     } catch (e) {
       console.error(
-        `[match-aliases] 学習の保存に失敗 ${l.targetType}/${l.targetId}`,
+        label(
+          "api.matchAliases.failedToSaveLearning",
+          "ja",
+          // i18n-ignore — サーバーログのみ（Loki）、UI に出ない
+          "[match-aliases] 学習の保存に失敗 {targetType}/{targetId}",
+          { targetType: l.targetType, targetId: l.targetId },
+        ),
         e,
       );
     }

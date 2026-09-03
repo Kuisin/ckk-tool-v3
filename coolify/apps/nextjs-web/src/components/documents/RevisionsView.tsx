@@ -3,6 +3,7 @@
 import { Badge, Group, Paper, Stack, Tabs, Text } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { useState, useTransition } from "react";
 import { restoreRevision } from "@/app/(dashboard)/general/documents/actions";
 import { useFormat } from "@/components/layout/PreferencesProvider";
@@ -13,14 +14,6 @@ import { PageHeader } from "@/components/ui/PageHeader";
 import { useIsMobile } from "@/hooks/useViewport";
 import type { RevisionRow } from "@/lib/internal-pages";
 import { RevisionDiff } from "./RevisionDiff";
-
-const ACTION_LABEL: Record<string, string> = {
-  CREATE: "作成",
-  UPDATE: "編集",
-  PUBLISH: "公開",
-  RESTORE: "復元",
-  ARCHIVE: "アーカイブ",
-};
 
 export function RevisionsView({
   pageNumber,
@@ -36,10 +29,19 @@ export function RevisionsView({
   bodies: Record<string, string>;
   canEdit: boolean;
 }) {
+  const tr = useTranslations();
   const router = useRouter();
   const fmt = useFormat();
   const isMobile = useIsMobile();
   const [isPending, startTransition] = useTransition();
+
+  const ACTION_LABEL: Record<string, string> = {
+    CREATE: tr("common.create2"),
+    UPDATE: tr("common.edit"),
+    PUBLISH: tr("documents.revisionsView.actionPublish"),
+    RESTORE: tr("documents.revisionsView.restore2"),
+    ARCHIVE: tr("common.archived2"),
+  };
 
   const options = revisions.map((r) => ({
     value: String(r.revision),
@@ -52,22 +54,23 @@ export function RevisionsView({
 
   const restore = (revision: number) =>
     openConfirm({
-      title: `リビジョン ${revision} を復元`,
-      message:
-        "この内容で新しいリビジョンを作ります。履歴は巻き戻さず、前に進めて元に戻します。",
-      confirmLabel: "復元する",
+      title: tr("documents.revisionsView.restoreRevisionTitle", { revision }),
+      message: tr("documents.revisionsView.thisCreatesANewRevisionWith"),
+      confirmLabel: tr("documents.revisionsView.restore"),
       onConfirm: () =>
         startTransition(async () => {
           const r = await restoreRevision(pageNumber, revision);
           if (r.ok) {
             notifications.show({
-              message: `リビジョン ${r.data.revision} として復元しました`,
+              message: tr("documents.revisionsView.restoredAsRevision", {
+                revision: r.data.revision,
+              }),
               color: "green",
             });
             router.refresh();
           } else {
             notifications.show({
-              title: "エラー",
+              title: tr("common.error2"),
               message: r.error,
               color: "red",
             });
@@ -79,18 +82,22 @@ export function RevisionsView({
     <Stack gap="md">
       <PageHeader
         breadcrumbs={[
-          { label: "一般" },
-          { label: "社内文書", href: "/general/documents" },
+          { label: tr("common.general") },
+          { label: tr("common.internalDocuments"), href: "/general/documents" },
           { label: pageTitle, href: `/general/documents/${pageNumber}` },
-          { label: "履歴・差分" },
+          { label: tr("common.historyAndDiff") },
         ]}
-        title="履歴・差分"
+        title={tr("common.historyAndDiff")}
       />
 
       <AppTabs defaultValue="diff">
         <Tabs.List>
-          <Tabs.Tab value="diff">差分</Tabs.Tab>
-          <Tabs.Tab value="list">版一覧（{revisions.length}）</Tabs.Tab>
+          <Tabs.Tab value="diff">{tr("documents.revisionsView.diff")}</Tabs.Tab>
+          <Tabs.Tab value="list">
+            {tr("documents.revisionsView.versionListWithCount", {
+              count: revisions.length,
+            })}
+          </Tabs.Tab>
         </Tabs.List>
 
         <Tabs.Panel pt="md" value="diff">
@@ -129,7 +136,8 @@ export function RevisionsView({
                         {r.note || r.title}
                       </Text>
                       <Text c="dimmed" size="xs">
-                        {r.editedBy ?? "システム"} · {fmt.dateTime(r.editedAt)}
+                        {r.editedBy ?? tr("common.system")} ·{" "}
+                        {fmt.dateTime(r.editedAt)}
                       </Text>
                     </Stack>
                   </Group>
@@ -145,7 +153,7 @@ export function RevisionsView({
                         loading={isPending}
                         onClick={() => restore(r.revision)}
                       >
-                        復元
+                        {tr("documents.revisionsView.restore2")}
                       </GhostButton>
                     )}
                   </Group>

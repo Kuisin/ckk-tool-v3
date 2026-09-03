@@ -12,9 +12,18 @@
  * DEFAULT_CRITERIA reproduce the historical hardcoded formula 1:1.
  */
 
+import type { getTranslations } from "next-intl/server";
 import { z } from "zod";
 import type { LocalizedText } from "./format";
 import type { ToolType } from "./trial-pricing";
+import {
+  BASE_CRITERIA,
+  DEFAULT_CUSTOM_INPUTS,
+} from "./trial-pricing-criteria-seed";
+
+export { DEFAULT_CUSTOM_INPUTS };
+
+type Tr = Awaited<ReturnType<typeof getTranslations>>;
 
 /** 組み込み工具種の値（旧 enum 互換）— 旧データの既定適用対象にも使う。 */
 export const TRIAL_TOOL_TYPES: ToolType[] = ["ROUND_BAR", "CYLINDER", "OH"];
@@ -37,22 +46,29 @@ export interface ToolTypeDef {
 
 export const TOOL_TYPE_VALUE = /^[A-Z][A-Z0-9_]{0,31}$/;
 
-export const toolTypeDefSchema = z.object({
-  value: z
-    .string()
-    .regex(TOOL_TYPE_VALUE, "値は英大文字・数字・_（英大文字始まり）です"),
-  label: z.string().min(1, "表示名を入力してください"),
-  order: z.number(),
-  builtin: z.boolean().optional(),
-});
+export function toolTypeDefSchema(tr: Tr) {
+  return z.object({
+    value: z
+      .string()
+      .regex(
+        TOOL_TYPE_VALUE,
+        tr("settings.trialPricingCriteria.toolTypeValueFormat"),
+      ),
+    label: z
+      .string()
+      .min(1, tr("settings.trialPricingCriteria.enterADisplayName")),
+    order: z.number(),
+    builtin: z.boolean().optional(),
+  });
+}
 
-export const toolTypeDefsArraySchema = z.array(toolTypeDefSchema);
-
-/** 組み込み工具種（常に存在・削除不可）。 */
+// BUILTIN_TOOL_TYPES のラベルは画面表示では常に builtinToolTypeLabel(tr) へ
+// 差し替わる（toToolTypeOptions）。ここは永続データの既定値・保存前フォーム
+// 初期値としてのみ使う ja 固定値。
 export const BUILTIN_TOOL_TYPES: ToolTypeDef[] = [
-  { value: "ROUND_BAR", label: "丸棒", order: 10, builtin: true },
-  { value: "CYLINDER", label: "円筒", order: 20, builtin: true },
-  { value: "OH", label: "OH付", order: 30, builtin: true },
+  { value: "ROUND_BAR", label: "丸棒", order: 10, builtin: true }, // i18n-ignore
+  { value: "CYLINDER", label: "円筒", order: 20, builtin: true }, // i18n-ignore
+  { value: "OH", label: "OH付", order: 30, builtin: true }, // i18n-ignore
 ];
 
 /**
@@ -134,30 +150,45 @@ export interface CustomInputDef {
 // ── zod (save-time validation) ───────────────────────────────────────────────
 const IDENTIFIER = /^[A-Za-z_$][A-Za-z0-9_$]*$/;
 
-export const criterionSchema = z.object({
-  id: z.string().min(1),
-  name: z.string().min(1, "基準名を入力してください"),
-  role: z.enum(["component", "intermediate", "final"]),
-  expression: z.string().max(4000),
-  order: z.number(),
-  enabled: z.boolean(),
-  // 工具種は管理者定義（値は文字列）。undefined = 全工具種 / 空 = 適用なし。
-  toolTypes: z.array(z.string()).optional(),
-});
+/**
+ * 保存時の検証（Server Action から呼ぶ）。**`tr` の明示引数** — このスキーマは
+ * client-safe な module（`server-only` 無し）でブラウザからも import されるため、
+ * `next-intl` のフック（`useTranslations`/`getTranslations`）を module scope で
+ * 呼べない。呼び出し側の `tr` を渡すこと。
+ */
+export function criterionSchema(tr: Tr) {
+  return z.object({
+    id: z.string().min(1),
+    name: z
+      .string()
+      .min(1, tr("settings.trialPricingCriteria.enterACriterionName")),
+    role: z.enum(["component", "intermediate", "final"]),
+    expression: z.string().max(4000),
+    order: z.number(),
+    enabled: z.boolean(),
+    // 工具種は管理者定義（値は文字列）。undefined = 全工具種 / 空 = 適用なし。
+    toolTypes: z.array(z.string()).optional(),
+  });
+}
 
-export const customInputDefSchema = z.object({
-  key: z
-    .string()
-    .regex(IDENTIFIER, "キーは英字/アンダースコア始まりの識別子にしてください"),
-  label: z.string().min(1, "ラベルを入力してください"),
-  type: z.enum(["number", "boolean", "text", "select"]),
-  default: z.union([z.number(), z.boolean(), z.string()]),
-  options: z
-    .array(z.object({ value: z.string(), label: z.string() }))
-    .optional(),
-  order: z.number(),
-  scope: z.enum(["estimate", "global"]).optional(),
-});
+export function customInputDefSchema(tr: Tr) {
+  return z.object({
+    key: z
+      .string()
+      .regex(
+        IDENTIFIER,
+        tr("settings.itemDefEditForm.theKeyMustBeAnIdentifier"),
+      ),
+    label: z.string().min(1, tr("settings.trialPricingCriteria.enterALabel")),
+    type: z.enum(["number", "boolean", "text", "select"]),
+    default: z.union([z.number(), z.boolean(), z.string()]),
+    options: z
+      .array(z.object({ value: z.string(), label: z.string() }))
+      .optional(),
+    order: z.number(),
+    scope: z.enum(["estimate", "global"]).optional(),
+  });
+}
 
 /**
  * Names the engine binds into every expression's scope (input fields, per-lot
@@ -265,26 +296,30 @@ export const lookupRowSchema = z.object({
 /** ルックアップ表 ID の形式 — 英数字・ハイフン・アンダースコアのみ。 */
 export const LOOKUP_TABLE_ID = /^[A-Za-z0-9][A-Za-z0-9_-]*$/;
 
-export const lookupTableSchema = z.object({
-  id: z
-    .string()
-    .min(1, "ID を入力してください")
-    .regex(
-      LOOKUP_TABLE_ID,
-      "ID は英数字・ハイフン・アンダースコアのみ（英数字始まり）です",
-    ),
-  name: z.object({ ja: z.string(), en: z.string() }),
-  description: z.string().optional(),
-  keyColumns: z
-    .array(z.string().min(1))
-    .min(1, "キー列を1つ以上指定してください"),
-  keyMatch: z.array(z.enum(["exact", "ge", "le"])).optional(),
-  valueType: z.enum(["number", "string"]),
-  default: z.string().optional(),
-  rows: z.array(lookupRowSchema),
-});
+export function lookupTableSchema(tr: Tr) {
+  return z.object({
+    id: z
+      .string()
+      .min(1, tr("settings.criterionEditForm.enterAnId"))
+      .regex(
+        LOOKUP_TABLE_ID,
+        tr("settings.trialPricingCriteria.idMustBeAlphanumericHyphens"),
+      ),
+    name: z.object({ ja: z.string(), en: z.string() }),
+    description: z.string().optional(),
+    keyColumns: z
+      .array(z.string().min(1))
+      .min(1, tr("settings.trialPricingCriteria.specifyAtLeastOneKey")),
+    keyMatch: z.array(z.enum(["exact", "ge", "le"])).optional(),
+    valueType: z.enum(["number", "string"]),
+    default: z.string().optional(),
+    rows: z.array(lookupRowSchema),
+  });
+}
 
-export const lookupTablesArraySchema = z.array(lookupTableSchema);
+export function lookupTablesArraySchema(tr: Tr) {
+  return z.array(lookupTableSchema(tr));
+}
 
 /** 参照表の既定セット（Excel「最新見積書価格試算」由来）。lib/trial-pricing-lookups.ts。 */
 export { DEFAULT_LOOKUP_TABLES } from "./trial-pricing-lookups";
@@ -295,127 +330,6 @@ export function lookupCompositeKey(keys: readonly string[]): string {
 }
 
 /**
- * Seed criteria reproducing the legacy hardcoded chain term-for-term.
- * roundUp digit→unit mapping: roundUp(x,0) → round(x,1); roundUp(x,-1) → round(x,10).
- * Component ids equal CostBreakdown keys so the existing result views keep working.
- */
-const BASE_CRITERIA: Criterion[] = [
-  {
-    id: "material",
-    name: "材料原価",
-    role: "component",
-    order: 10,
-    enabled: true,
-    expression: `toolType === 'CYLINDER'
-  ? ((lookupMatrix(CYLINDER_MACHINING, maxDiameter, totalLength) ?? 0) === 0
-      ? warn('円筒加工費が範囲外です（最大径/全長を確認）') : null,
-     (cylinderMaterialPrice ?? 0)
-       + (lookupMatrix(CYLINDER_MACHINING, maxDiameter, totalLength) ?? 0)
-         * cylinderTypeRate(cylinderType ?? 'NORMAL'))
-  : (materialBarPrice <= 0
-       ? warn('素材の仕入実績がありません（1000mm単価を入力）') : null,
-     round(materialBarPrice * (totalLength / materialBasisLength), 1)
-       + (isBlackSkin
-           ? (toolType === 'OH'
-               ? round((lookupMatrix(CENTERLESS, maxDiameter, totalLength) ?? 0) * 1.3, 1)
-               : (lookupMatrix(CENTERLESS, maxDiameter, totalLength) ?? 0))
-           : 0))`,
-  },
-  {
-    id: "step",
-    name: "段加工費",
-    role: "component",
-    order: 20,
-    enabled: true,
-    expression: `stepLength >= 0.01 && stepType !== 'NONE'
-  ? (lookupMatrix(STEP_MACHINING, maxDiameter, stepLength) == null
-       ? warn('段加工費が範囲外です') : null,
-     (lookupMatrix(STEP_MACHINING, maxDiameter, stepLength) ?? 0) * stepTypeRate(stepType))
-  : 0`,
-  },
-  {
-    id: "neck",
-    name: "首下加工費",
-    role: "component",
-    order: 30,
-    enabled: true,
-    expression: `neckLength >= 0.01 && neckType !== 'NONE'
-  ? (lookupMatrix(NECK_MACHINING, maxDiameter, neckLength) == null
-       ? warn('首下加工費が範囲外です') : null,
-     (lookupMatrix(NECK_MACHINING, maxDiameter, neckLength) ?? 0) * neckTypeRate(neckType))
-  : 0`,
-  },
-  {
-    id: "machining",
-    name: "加工単価",
-    role: "component",
-    order: 40,
-    enabled: true,
-    expression: `(machiningRatePer10min / 10) * machiningMinutes`,
-  },
-  {
-    id: "coating",
-    name: "コート代",
-    role: "component",
-    order: 50,
-    enabled: true,
-    expression: `coating && coating !== '無'
-  ? round(coatingRawCost(coating, maxDiameter, totalLength) * coatingFactor, 10)
-  : 0`,
-  },
-  {
-    id: "lap",
-    name: "ラップ処理",
-    role: "component",
-    order: 60,
-    enabled: true,
-    expression: `lapAmount(lapType)`,
-  },
-  {
-    id: "ld",
-    name: "LD加工",
-    role: "component",
-    order: 70,
-    enabled: true,
-    expression: `ldEnabled
-  ? (ldChargePer10min / 10) * ldMinutes(ldLocation, ldOuterDiameter, ldBladeLength)
-  : 0`,
-  },
-  {
-    id: "inspection",
-    name: "検査成績書",
-    role: "component",
-    order: 80,
-    enabled: true,
-    expression: `inspectionAmount(inspection)`,
-  },
-  {
-    id: "shapeOut",
-    name: "形状出し単価",
-    role: "intermediate",
-    order: 90,
-    enabled: true,
-    expression: `(r.material + r.step + r.machining) * spareShapeCount`,
-  },
-  {
-    id: "shapeOutPerPiece",
-    name: "形状出し（1本按分）",
-    role: "component",
-    order: 100,
-    enabled: true,
-    expression: `r.shapeOut / quantity`,
-  },
-  {
-    id: "final",
-    name: "見積単価",
-    role: "final",
-    order: 999,
-    enabled: true,
-    expression: `round(subtotal * discountRate * correctionFactor, 10)`,
-  },
-];
-
-/**
  * 既定は全工具種に適用（toolTypes を明示付与）。工具種は「未選択＝適用なし・
  * 全選択で全て」の仕様のため、既定は全て選択済みとして提供する。
  */
@@ -423,46 +337,6 @@ export const DEFAULT_CRITERIA: Criterion[] = BASE_CRITERIA.map((c) => ({
   ...c,
   toolTypes: [...TRIAL_TOOL_TYPES],
 }));
-
-/**
- * 既定のカスタム入力。旧「既定値・係数（グローバル）」の 4 値を scope:"global" の
- * 固定係数として移行（見積フォームには出さず、式内で同名変数として参照）。キー名は
- * 従来の予約語と同一だが、予約語からは外したので式の互換性を保ちつつ衝突しない。
- */
-export const DEFAULT_CUSTOM_INPUTS: CustomInputDef[] = [
-  {
-    key: "machiningRatePer10min",
-    label: "加工単価（¥/10分）",
-    type: "number",
-    default: 2000,
-    order: 1,
-    scope: "global",
-  },
-  {
-    key: "spareShapeCount",
-    label: "予備形状本数",
-    type: "number",
-    default: 3,
-    order: 2,
-    scope: "global",
-  },
-  {
-    key: "correctionFactor",
-    label: "補正値（2022補正値）",
-    type: "number",
-    default: 1.25,
-    order: 3,
-    scope: "global",
-  },
-  {
-    key: "ldChargePer10min",
-    label: "LDチャージ（¥/10分）",
-    type: "number",
-    default: 7500,
-    order: 4,
-    scope: "global",
-  },
-];
 
 /** scope:"global" の既定カスタム入力（常に存在させる固定係数）。 */
 export const GLOBAL_CUSTOM_INPUTS: CustomInputDef[] =

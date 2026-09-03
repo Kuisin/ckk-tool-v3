@@ -12,6 +12,7 @@
  */
 
 import { revalidatePath } from "next/cache";
+import { getTranslations } from "next-intl/server";
 import { z } from "zod";
 import { recordAudit } from "@/lib/audit";
 import { checkPermission } from "@/lib/authz";
@@ -54,20 +55,24 @@ async function loadRow(id: string) {
 export async function updateDesignFileNotes(
   input: z.input<typeof notesInput>,
 ): Promise<ActionResult> {
+  const tr = await getTranslations();
   const authz = await checkPermission("design_file", "UPDATE");
   if (!authz.ok) return actionError(authz.error);
   const parsed = notesInput.safeParse(input);
-  if (!parsed.success) return actionError("入力が不正です");
+  if (!parsed.success) return actionError(tr("common.invalidInput"));
 
   try {
     const row = await loadRow(parsed.data.id);
-    if (!row) return actionError("対象の設計図が見つかりません");
+    if (!row) return actionError(tr("production.designFileActions.notFound"));
     const state = {
       usedByWorkOrder: row._count.workOrders > 0,
       designRequestId: row.designRequestId,
     };
     if (!canEditDesignFile(state)) {
-      return actionError(describeLock(state) ?? "変更できません");
+      return actionError(
+        describeLock(state, tr) ??
+          tr("production.designFileActions.cannotEdit"),
+      );
     }
     await prisma.designFile.update({
       where: { id: row.id },
@@ -77,12 +82,16 @@ export async function updateDesignFileNotes(
       action: "UPDATE",
       tableName: "design_files",
       recordId: row.id,
-      after: { note: `設計図 v${row.version} のメモを更新` },
+      after: {
+        note: tr("production.designFileActions.memoUpdatedAudit", {
+          version: row.version,
+        }),
+      },
     });
     if (row.productId != null) revalidatePath(`${BASE_PATH}/${row.productId}`);
     return actionOk();
   } catch (e) {
-    return actionError(prismaErrorMessage(e, "更新に失敗しました"));
+    return actionError(prismaErrorMessage(e, tr("common.couldNotUpdate"), tr));
   }
 }
 
@@ -97,25 +106,31 @@ export async function updateDesignFileNotes(
  * 「新しい版を作る」ときだけの操作にしておく方が、状態の動く場所が減る。
  */
 export async function deleteDesignFile(id: string): Promise<ActionResult> {
+  const tr = await getTranslations();
   const authz = await checkPermission("design_file", "DELETE");
   if (!authz.ok) return actionError(authz.error);
 
   try {
     const row = await loadRow(id);
-    if (!row) return actionError("対象の設計図が見つかりません");
+    if (!row) return actionError(tr("production.designFileActions.notFound"));
     const state = {
       usedByWorkOrder: row._count.workOrders > 0,
       designRequestId: row.designRequestId,
     };
     if (!canDeleteDesignFile(state)) {
-      return actionError(describeLock(state) ?? "削除できません");
+      return actionError(
+        describeLock(state, tr) ??
+          tr("production.designFileActions.cannotDelete"),
+      );
     }
     // 改訂依頼が「元図面」に指している版は消せない（参照が切れる）。
     const referenced = await prisma.designRequest.count({
       where: { baseDesignFileId: row.id },
     });
     if (referenced > 0) {
-      return actionError("改訂依頼が元図面に指定しているため削除できません");
+      return actionError(
+        tr("production.designFileActions.referencedByRevisionRequest"),
+      );
     }
 
     const storageKey = row.file.storageKey;
@@ -130,11 +145,15 @@ export async function deleteDesignFile(id: string): Promise<ActionResult> {
       action: "DELETE",
       tableName: "design_files",
       recordId: row.id,
-      before: { note: `設計図 v${row.version} を削除` },
+      before: {
+        note: tr("production.designFileActions.deletedAudit", {
+          version: row.version,
+        }),
+      },
     });
     if (row.productId != null) revalidatePath(`${BASE_PATH}/${row.productId}`);
     return actionOk();
   } catch (e) {
-    return actionError(prismaErrorMessage(e, "削除に失敗しました"));
+    return actionError(prismaErrorMessage(e, tr("common.couldNotDelete"), tr));
   }
 }

@@ -53,6 +53,14 @@ export interface Shot {
    * clip 縁で切れる）。
    */
   highlight?: HighlightTarget[];
+  /**
+   * 撮影対象が nextjs-web ではない（Metabase 等の別アプリ）ことを示す。
+   * 通常の docs:shots / docs:verify はこの id をスキップする — `path` は
+   * 記録用（本物の URL）で、実際の撮影は scripts/metabase-demo-shots.sh が
+   * 完全に別のローカル使い捨てスタックに対して行う。lint（manifest ↔ 本文 ↔
+   * PNG の整合性）だけはこのエントリも対象にする。
+   */
+  external?: boolean;
 }
 
 /**
@@ -2481,5 +2489,39 @@ export const shots: Shot[] = [
       await page.getByRole("menuitem", { name: "弥生会計CSV" }).first().waitFor();
     },
     highlight: [{ role: "menuitem", name: "弥生会計CSV" }],
+  },
+
+  // ─── Metabase（分析ダッシュボード）── scripts/metabase-demo-shots.sh が
+  // 完全に別のローカル使い捨て Metabase + DB に対して撮影する（external: true
+  // で通常の docs:shots / docs:verify から除外）。path は本番の実 URL（記録用）。
+  {
+    id: "analytics-sales-01",
+    docPage: "analytics",
+    path: "https://bi.ckk-tool.co.jp/dashboard/4-受注-売上",
+    external: true,
+  },
+  {
+    id: "analytics-production-01",
+    docPage: "analytics",
+    path: "https://bi.ckk-tool.co.jp/dashboard/5-生産進捗",
+    external: true,
+  },
+  {
+    id: "analytics-billing-01",
+    docPage: "analytics",
+    path: "https://bi.ckk-tool.co.jp/dashboard/6-請求",
+    external: true,
+  },
+  {
+    id: "analytics-inventory-01",
+    docPage: "analytics",
+    path: "https://bi.ckk-tool.co.jp/dashboard/7-在庫",
+    external: true,
+  },
+  {
+    id: "analytics-labor-01",
+    docPage: "analytics",
+    path: "https://bi.ckk-tool.co.jp/dashboard/3-労務分析",
+    external: true,
   },
 ];

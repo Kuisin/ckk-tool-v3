@@ -38,6 +38,7 @@ import { CATEGORY_SECTION_ICONS, resolveAppIcon } from "@/lib/icons";
 import {
   formatOperationCodeDisplay,
   navigateByOperationCode,
+  operationCodeLabel,
   resolveOperationCode,
   sanitizeOperationCodeInput,
   searchOperationCodes,
@@ -49,6 +50,7 @@ interface AppLauncherProps {
 }
 
 export function AppLauncher({ onNavigate }: AppLauncherProps) {
+  const tr = useTranslations();
   const locale = useLocale();
   const t = useTranslations("shell");
   const router = useRouter();
@@ -218,7 +220,7 @@ export function AppLauncher({ onNavigate }: AppLauncherProps) {
                     <Group className="flex-wrap md:flex-nowrap" gap="sm">
                       <ThemeIcon
                         color={
-                          entry.category === "共通"
+                          entry.category === tr("layout.appLauncher.common")
                             ? "gray"
                             : CATEGORY_COLORS[entry.category as AppCategory]
                         }
@@ -232,7 +234,9 @@ export function AppLauncher({ onNavigate }: AppLauncherProps) {
                         {formatOperationCodeDisplay(entry)}
                       </Text>
                       <Text size="sm">
-                        {app ? appLabel(app, locale) : entry.label}
+                        {app
+                          ? appLabel(app, locale)
+                          : operationCodeLabel(entry, locale)}
                       </Text>
                       <Text c="dimmed" size="xs" visibleFrom="md">
                         {categoryLabel(entry.category as AppCategory, locale)}

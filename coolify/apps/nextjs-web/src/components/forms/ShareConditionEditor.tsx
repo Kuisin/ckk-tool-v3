@@ -1,6 +1,7 @@
 "use client";
 
 import { Group, MultiSelect, Pill, Select, Stack, Text } from "@mantine/core";
+import { useTranslations } from "next-intl";
 import { SearchSelect } from "@/components/ui/SearchSelect";
 import type { LookupSource } from "@/lib/form-schema";
 import { recentsKeyFor, searcherFor } from "./lookup-dispatch";
@@ -47,6 +48,7 @@ export function ShareConditionEditor({
   onChange: (next: ConditionValue) => void;
   disabled?: boolean;
 }) {
+  const tr = useTranslations();
   const field = fields.find((f) => f.key === value.fieldKey) ?? null;
 
   const pickField = (key: string | null) =>
@@ -57,8 +59,7 @@ export function ShareConditionEditor({
   if (fields.length === 0) {
     return (
       <Text c="dimmed" size="xs">
-        条件に使える項目がありません（ドロップダウン・複数選択・業務データ検索の
-        項目を作ると使えます）
+        {tr("forms.shareConditionEditor.thereAreNoFieldsUsableAs")}
       </Text>
     );
   }
@@ -68,11 +69,11 @@ export function ShareConditionEditor({
       <Select
         clearable
         data={fields.map((f) => ({ value: f.key, label: f.label }))}
-        description="空なら全件見えます"
+        description={tr("forms.shareConditionEditor.ifEmptyEveryoneCanSeeAll")}
         disabled={disabled}
-        label="この項目が"
+        label={tr("forms.shareConditionEditor.thisItem")}
         onChange={pickField}
-        placeholder="条件にする項目"
+        placeholder={tr("forms.shareConditionEditor.fieldUsedAsTheCondition")}
         value={value.fieldKey}
       />
 
@@ -80,7 +81,9 @@ export function ShareConditionEditor({
         <Stack gap={4}>
           <SearchSelect
             disabled={disabled}
-            label="次のいずれかのとき"
+            label={tr(
+              "forms.shareConditionEditor.whenAnyOfTheFollowingApplies",
+            )}
             onChange={(v, option) => {
               if (!v || value.values.includes(v)) return;
               onChange({
@@ -90,7 +93,7 @@ export function ShareConditionEditor({
               });
             }}
             onSearch={searcherFor(field.lookupSource)}
-            placeholder="検索して追加"
+            placeholder={tr("common.searchAndAdd")}
             storageKey={recentsKeyFor(field.lookupSource)}
             value={null}
           />
@@ -118,7 +121,7 @@ export function ShareConditionEditor({
         <MultiSelect
           data={field.options ?? []}
           disabled={disabled}
-          label="次のいずれかのとき"
+          label={tr("forms.shareConditionEditor.whenAnyOfTheFollowingApplies")}
           onChange={(vals) =>
             onChange({
               fieldKey: value.fieldKey,
@@ -128,7 +131,7 @@ export function ShareConditionEditor({
               ),
             })
           }
-          placeholder="値を選ぶ"
+          placeholder={tr("forms.shareConditionEditor.chooseAValue")}
           searchable
           value={value.values}
         />
@@ -136,8 +139,7 @@ export function ShareConditionEditor({
 
       {field && value.values.length === 0 && (
         <Text c="dimmed" size="xs">
-          値を 1
-          つ以上選ぶまで、条件は保存されません（全件見える状態のままです）
+          {tr("forms.shareConditionEditor.theConditionIsNotSavedUntil")}
         </Text>
       )}
     </Stack>

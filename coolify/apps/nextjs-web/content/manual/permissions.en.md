@@ -93,7 +93,7 @@ Permissions fall into four kinds. To see which you hold, open [My permissions](/
 | Billing closing | `billing_closing` | Run billing closings and export for accounting. |
 | Approvals | `approve` | See the pending-approval list. Whether you may actually approve is decided by 承認設定 (MS0B), not by this permission. |
 | Forms | `form` | Create and edit forms and read every response. Who may respond is set per form. |
-| Internal pages | `internal_page` | Use the internal-documents app. Visibility of each document is set per document. |
+| Internal documents | `internal_page` | Use the internal-documents app. Visibility of each document is set per document. |
 
 ### Master data & settings
 
@@ -118,3 +118,4 @@ Permissions fall into four kinds. To see which you hold, open [My permissions](/
 | Shared device card issuance | `kiosk_card` | See the card list. Issuing, assigning, revoking, resetting PINs and printing sheets need approval. |
 | Personal data access | `personal_data` | Open login and activity history. Details (IP, device signature) and cross-document search need approval. Per-document history tabs are not restricted by this. |
 | User administration | `user_admin` | Open user management. Suspending, restoring and changing plants go through a per-change approval. |
+| Partner portal administration | `portal_admin` | Manage the accounts external partners use to view their own documents, and the per-document links. Activating an account, issuing backup codes and minting link-only URLs each need approval. |

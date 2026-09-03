@@ -55,6 +55,7 @@ import {
   IconUpload,
   IconUsersGroup,
 } from "@tabler/icons-react";
+import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { FolderGrantsModal } from "@/components/admin/FolderGrantsModal";
 import { useFormat } from "@/components/layout/PreferencesProvider";
@@ -135,6 +136,7 @@ const rawHref = (key: string, download = false) =>
   `/api/admin/files/raw?key=${encodeURIComponent(key)}${download ? "&download=1" : ""}`;
 
 export function FileManager() {
+  const tr = useTranslations();
   const fmt = useFormat();
   const inputRef = useRef<HTMLInputElement>(null);
   const [files, setFiles] = useState<StoredFile[]>([]);
@@ -244,15 +246,15 @@ export function FileManager() {
       const json = await res.json();
       if (!res.ok) throw new Error(json?.error ?? `HTTP ${res.status}`);
       notifications.show({
-        title: "アップロードしました",
+        title: tr("admin.fileManager.uploaded"),
         message: file.name,
         color: "green",
       });
       await reload();
     } catch (err) {
       notifications.show({
-        title: "アップロード失敗",
-        message: err instanceof Error ? err.message : "不明なエラー",
+        title: tr("admin.fileManager.uploadFailed"),
+        message: err instanceof Error ? err.message : tr("common.unknownError"),
         color: "red",
       });
     } finally {
@@ -270,7 +272,7 @@ export function FileManager() {
       const json = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(json?.error ?? `HTTP ${res.status}`);
       notifications.show({
-        title: "削除しました",
+        title: tr("common.deleted"),
         message: file.name,
         color: "green",
       });
@@ -278,8 +280,8 @@ export function FileManager() {
       if (selectedKey === file.key) setSelectedKey(null);
     } catch (err) {
       notifications.show({
-        title: "削除失敗",
-        message: err instanceof Error ? err.message : "不明なエラー",
+        title: tr("common.deleteFailed"),
+        message: err instanceof Error ? err.message : tr("common.unknownError"),
         color: "red",
       });
     }
@@ -287,9 +289,9 @@ export function FileManager() {
 
   function confirmDelete(f: StoredFile) {
     openConfirm({
-      title: "ファイルの削除",
-      message: `「${f.name}」を削除します。この操作は取り消せません。`,
-      confirmLabel: "削除",
+      title: tr("admin.fileManager.deleteTheFile"),
+      message: tr("admin.fileManager.deleteFileConfirm", { name: f.name }),
+      confirmLabel: tr("common.delete"),
       onConfirm: () => onDelete(f),
     });
   }
@@ -327,9 +329,11 @@ export function FileManager() {
     <Table highlightOnHover striped>
       <Table.Thead>
         <Table.Tr>
-          <Table.Th>名前</Table.Th>
-          <Table.Th style={{ width: 100, textAlign: "right" }}>サイズ</Table.Th>
-          <Table.Th style={{ width: 150 }}>更新日時</Table.Th>
+          <Table.Th>{tr("common.name")}</Table.Th>
+          <Table.Th style={{ width: 100, textAlign: "right" }}>
+            {tr("common.size")}
+          </Table.Th>
+          <Table.Th style={{ width: 150 }}>{tr("common.updatedAt")}</Table.Th>
         </Table.Tr>
       </Table.Thead>
       <Table.Tbody>
@@ -383,7 +387,7 @@ export function FileManager() {
                 </Stack>
                 {isSystemFileKey(f.key) && (
                   <Badge color="gray" size="xs" variant="light">
-                    システム
+                    {tr("common.system")}
                   </Badge>
                 )}
               </Group>
@@ -540,7 +544,7 @@ export function FileManager() {
                   ))}
                   {c.folders.length === 0 && c.files.length === 0 && (
                     <Text c="dimmed" p="xs" size="xs">
-                      空のフォルダ
+                      {tr("admin.fileManager.emptyFolder")}
                     </Text>
                   )}
                 </Stack>
@@ -597,7 +601,7 @@ export function FileManager() {
         <Stack gap={4}>
           <Group gap="xs" justify="space-between">
             <Text c="dimmed" size="xs">
-              パス
+              {tr("admin.fileManager.path")}
             </Text>
             <Text
               ff="mono"
@@ -609,7 +613,7 @@ export function FileManager() {
           </Group>
           <Group gap="xs" justify="space-between">
             <Text c="dimmed" size="xs">
-              サイズ
+              {tr("common.size")}
             </Text>
             <Text className="tabular-nums" size="xs">
               {formatBytes(selectedFile.size)}
@@ -617,19 +621,21 @@ export function FileManager() {
           </Group>
           <Group gap="xs" justify="space-between">
             <Text c="dimmed" size="xs">
-              更新日時
+              {tr("common.updatedAt")}
             </Text>
             <Text size="xs">{fmt.dateTime(selectedFile.mtime)}</Text>
           </Group>
           <Group gap="xs" justify="space-between">
             <Text c="dimmed" size="xs">
-              種類
+              {tr("common.kind")}
             </Text>
-            <Text size="xs">{selectedFile.mime || "不明"}</Text>
+            <Text size="xs">
+              {selectedFile.mime || tr("admin.fileManager.unknown")}
+            </Text>
           </Group>
           {isSystemFileKey(selectedFile.key) && (
             <Badge color="gray" variant="light">
-              システムファイル
+              {tr("admin.fileManager.systemFiles")}
             </Badge>
           )}
         </Stack>
@@ -641,7 +647,7 @@ export function FileManager() {
             leftSection={<IconEye size={14} />}
             size="xs"
           >
-            開く
+            {tr("admin.fileManager.open")}
           </GhostButton>
           <GhostButton
             leftSection={<IconDownload size={14} />}
@@ -653,7 +659,7 @@ export function FileManager() {
             }
             size="xs"
           >
-            ダウンロード
+            {tr("common.download")}
           </GhostButton>
           {canWrite(selectedFile.key) && (
             <GhostButton
@@ -662,7 +668,7 @@ export function FileManager() {
               onClick={() => confirmDelete(selectedFile)}
               size="xs"
             >
-              削除
+              {tr("common.delete")}
             </GhostButton>
           )}
         </Group>
@@ -682,7 +688,7 @@ export function FileManager() {
               leftSection={<IconUsersGroup size={16} />}
               onClick={() => setGrantsOpen(true)}
             >
-              フォルダ権限
+              {tr("common.folderPermissions")}
             </GhostButton>
           )}
           <GhostButton
@@ -690,7 +696,7 @@ export function FileManager() {
             loading={loading}
             onClick={reload}
           >
-            更新
+            {tr("admin.fileManager.refresh")}
           </GhostButton>
           {canWrite(`${path || "uploads"}/x`) && (
             <PrimaryButton
@@ -698,7 +704,7 @@ export function FileManager() {
               loading={uploading}
               onClick={() => inputRef.current?.click()}
             >
-              アップロード
+              {tr("common.upload")}
             </PrimaryButton>
           )}
           <input
@@ -709,7 +715,7 @@ export function FileManager() {
           />
         </Group>
       }
-      breadcrumbs={["システム", "ファイル管理"]}
+      breadcrumbs={[tr("common.system"), tr("admin.fileManager.files")]}
       filters={
         <Group gap="sm" wrap="nowrap">
           <SegmentedControl
@@ -717,7 +723,7 @@ export function FileManager() {
               {
                 value: "list",
                 label: (
-                  <Tooltip label="リスト" withinPortal>
+                  <Tooltip label={tr("admin.fileManager.list")} withinPortal>
                     <IconList size={16} style={{ display: "block" }} />
                   </Tooltip>
                 ),
@@ -725,7 +731,7 @@ export function FileManager() {
               {
                 value: "grid",
                 label: (
-                  <Tooltip label="アイコン" withinPortal>
+                  <Tooltip label={tr("admin.fileManager.icon")} withinPortal>
                     <IconLayoutGrid size={16} style={{ display: "block" }} />
                   </Tooltip>
                 ),
@@ -733,7 +739,7 @@ export function FileManager() {
               {
                 value: "columns",
                 label: (
-                  <Tooltip label="カラム" withinPortal>
+                  <Tooltip label={tr("admin.fileManager.column")} withinPortal>
                     <IconColumns size={16} style={{ display: "block" }} />
                   </Tooltip>
                 ),
@@ -744,15 +750,17 @@ export function FileManager() {
             value={view}
           />
           <Tooltip
-            label="「.DS_Store」「*.tmp」など、OS・ツールが自動生成した残骸ファイルを表示します"
+            label={tr("admin.fileManager.showsLeftoversTheOsOrTools")}
             withinPortal
           >
             <Switch
               checked={showSystem}
               label={
                 hiddenSystemCount > 0
-                  ? `システムファイル (${hiddenSystemCount})`
-                  : "システムファイル"
+                  ? tr("admin.fileManager.systemFilesWithCount", {
+                      count: hiddenSystemCount,
+                    })
+                  : tr("admin.fileManager.systemFiles")
               }
               onChange={(e) => {
                 setShowSystem(e.currentTarget.checked);
@@ -772,11 +780,11 @@ export function FileManager() {
         <TextInput
           leftSection={<IconSearch size={14} />}
           onChange={(e) => setQuery(e.currentTarget.value)}
-          placeholder="ファイル名・パスで検索（全フォルダ横断）"
+          placeholder={tr("admin.fileManager.searchByFileNameOrPath")}
           value={query}
         />
       }
-      title="ファイル管理"
+      title={tr("admin.fileManager.files")}
     >
       {!storageOk && (
         <Alert
@@ -785,8 +793,7 @@ export function FileManager() {
           mb="sm"
           variant="light"
         >
-          ストレージ（SeaweedFS）に接続できません。SEAWEED_FILER_URL
-          とコンテナの稼働状況をご確認ください。
+          {tr("admin.fileManager.cannotReachStorageSeaweedfsCheckSeaweed")}
         </Alert>
       )}
 
@@ -798,7 +805,7 @@ export function FileManager() {
             onClick={() => openFolder("")}
             size="xs"
           >
-            すべて
+            {tr("common.all")}
           </GhostButton>
           {segments.map((seg, i) => (
             <Group
@@ -822,7 +829,7 @@ export function FileManager() {
         <Group justify="center" py="xl">
           <Loader size="sm" />
           <Text c="dimmed" size="sm">
-            読み込み中…
+            {tr("admin.fileManager.loading")}
           </Text>
         </Group>
       ) : (
@@ -834,9 +841,9 @@ export function FileManager() {
                 <Text c="dimmed" size="sm">
                   {storageOk
                     ? files.length === 0
-                      ? "閲覧できるファイルはありません"
-                      : "このフォルダにファイルはありません"
-                    : "ストレージに接続できません"}
+                      ? tr("admin.fileManager.thereAreNoFilesYouCan")
+                      : tr("admin.fileManager.thereAreNoFilesInThis")
+                    : tr("admin.fileManager.cannotReachTheStorage")}
                 </Text>
               </Stack>
             ) : view === "grid" ? (

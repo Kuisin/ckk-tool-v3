@@ -19,6 +19,15 @@
 export const LOCALES = ["ja", "en", "zh"] as const;
 export type Locale = (typeof LOCALES)[number];
 
+/**
+ * `useTranslations()` / `getTranslations()`（名前空間なし = 木全体を
+ * 「.」区切りの鍵で引ける）の返り値の型。素の関数が `tr` を引数で
+ * 受け取るとき（`lib/format.ts` の `Formatters` と同じ約束）はこれを使う。
+ * next-intl の型を直接 import すると呼び出し側が increasingly 複雑な
+ * ジェネリクスを書くことになるので、ここで 1 つに固定して隠す。
+ */
+export type Tr = ReturnType<typeof import("next-intl").useTranslations>;
+
 /** 切替 UI 用の言語自称ラベル（翻訳しない）。 */
 export const LOCALE_LABELS: Record<Locale, string> = {
   ja: "日本語",

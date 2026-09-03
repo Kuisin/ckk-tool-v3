@@ -15,6 +15,7 @@
 import { Alert, Badge, Group, Stack, TagsInput, Text } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
 import { IconPlus, IconSparkles } from "@tabler/icons-react";
+import { useTranslations } from "next-intl";
 import { type ReactNode, useState } from "react";
 import { GhostButton, SecondaryButton } from "@/components/ui/buttons";
 import { KEYWORD_MAX_COUNT, normalizeKeywords } from "@/lib/master-keywords";
@@ -62,6 +63,7 @@ export function MasterKeywordsField({
   onChange: (values: string[]) => void;
   subject: KeywordSubject;
 }) {
+  const tr = useTranslations();
   const [loading, setLoading] = useState(false);
   const [suggestions, setSuggestions] = useState<string[]>([]);
 
@@ -91,8 +93,10 @@ export function MasterKeywordsField({
         .catch(() => null)) as KeywordsResponse | null;
       if (!res.ok || !json?.ok) {
         notifications.show({
-          title: "候補を作れませんでした",
-          message: json?.error ?? "AI サービスの呼び出しに失敗しました",
+          title: tr("master.masterKeywordsField.couldNotProduceAnySuggestions"),
+          message:
+            json?.error ??
+            tr("master.masterKeywordsField.theCallToTheAiService"),
           color: "red",
         });
         return;
@@ -101,15 +105,17 @@ export function MasterKeywordsField({
       setSuggestions(fresh);
       if (fresh.length === 0) {
         notifications.show({
-          title: "新しい候補はありません",
-          message: "登録済みのキーワードで足りているようです",
+          title: tr("master.masterKeywordsField.thereAreNoNewSuggestions"),
+          message: tr(
+            "master.masterKeywordsField.theRegisteredKeywordsAppearToBe",
+          ),
           color: "blue",
         });
       }
     } catch {
       notifications.show({
-        title: "候補を作れませんでした",
-        message: "通信エラーが発生しました",
+        title: tr("master.masterKeywordsField.couldNotProduceAnySuggestions"),
+        message: tr("master.masterKeywordsField.aCommunicationErrorOccurred"),
         color: "red",
       });
     } finally {
@@ -120,11 +126,13 @@ export function MasterKeywordsField({
   return (
     <Stack gap="xs" mt="sm">
       <TagsInput
-        description={`検索とAI取込の突合に使う別名です（略称・読み・英字・寸法の別表記など）。Enter 区切りで最大 ${KEYWORD_MAX_COUNT} 件`}
+        description={tr("master.masterKeywordsField.fieldDescription", {
+          max: KEYWORD_MAX_COUNT,
+        })}
         label={label}
         maxTags={KEYWORD_MAX_COUNT}
         onChange={onChange}
-        placeholder="キーワードを入力して Enter"
+        placeholder={tr("master.masterKeywordsField.typeAKeywordAndPressEnter")}
         splitChars={[",", "、"]}
         value={value}
       />
@@ -135,11 +143,11 @@ export function MasterKeywordsField({
           loading={loading}
           onClick={generate}
         >
-          AI で候補を出す
+          {tr("master.masterKeywordsField.suggestWithAi")}
         </SecondaryButton>
         {subject.name.trim().length === 0 && (
           <Text c="dimmed" size="xs">
-            名称を入れると候補を作れます
+            {tr("master.masterKeywordsField.enterANameAndItCan")}
           </Text>
         )}
       </Group>
@@ -148,12 +156,14 @@ export function MasterKeywordsField({
         <Alert
           color="blue"
           icon={<IconSparkles size={16} />}
-          title="AI が作ったキーワード候補"
+          title={tr(
+            "master.masterKeywordsField.keywordSuggestionsProducedByAi",
+          )}
           variant="light"
         >
           <Stack gap={6}>
             <Text size="sm">
-              採用するものだけを選んでください（押すと上の欄に入ります）。保存するまでは登録されません。
+              {tr("master.masterKeywordsField.pickOnlyTheOnesYouWant")}
             </Text>
             <Group gap="xs" wrap="wrap">
               {suggestions.map((s) => (
@@ -169,10 +179,12 @@ export function MasterKeywordsField({
             </Group>
             <Group>
               <GhostButton onClick={() => add(suggestions)} size="xs">
-                すべて追加（{suggestions.length} 件）
+                {tr("master.masterKeywordsField.addAllCount", {
+                  count: suggestions.length,
+                })}
               </GhostButton>
               <GhostButton onClick={() => setSuggestions([])} size="xs">
-                閉じる
+                {tr("common.close2")}
               </GhostButton>
             </Group>
           </Stack>

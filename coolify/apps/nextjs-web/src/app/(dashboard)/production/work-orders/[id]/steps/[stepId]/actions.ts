@@ -10,7 +10,9 @@
  */
 
 import { revalidatePath } from "next/cache";
+import { getTranslations } from "next-intl/server";
 import { z } from "zod";
+import { resolveApprover } from "@/lib/approvals";
 import { getCurrentActorId, recordAudit } from "@/lib/audit";
 import { checkPermission, type PermissionAction } from "@/lib/authz";
 import { prisma } from "@/lib/db";
@@ -68,6 +70,7 @@ export async function startStep(
   stepId: string,
   lotText?: string | null,
 ): Promise<StepActionResult> {
+  const tr = await getTranslations();
   const denied = await deniedStepPermission("UPDATE");
   if (denied) return denied;
   const parsedLot = z
@@ -78,16 +81,24 @@ export async function startStep(
     .optional()
     .safeParse(lotText);
   if (!parsedLot.success) {
-    return { ok: false, errors: ["ロット/伝票コードの入力が不正です"] };
+    return {
+      ok: false,
+      errors: [tr("production.stepExecutionActions.invalidLotSlipCode")],
+    };
   }
   try {
     const step = await findStep(workOrderNumber, stepId);
-    if (!step) return { ok: false, errors: ["工程が見つかりません"] };
+    if (!step) {
+      return {
+        ok: false,
+        errors: [tr("production.stepExecutionActions.stepNotFound")],
+      };
+    }
     const result = await startStepExecution(stepId, parsedLot.data ?? null);
     if (result.ok) revalidate(workOrderNumber, stepId);
     return result;
   } catch (e) {
-    return failed(e, "工程の開始に失敗しました");
+    return failed(e, tr("production.stepExecution.couldNotStartTheStep"));
   }
 }
 
@@ -97,15 +108,24 @@ export async function updateStepLot(
   stepId: string,
   lotText: string,
 ): Promise<StepActionResult> {
+  const tr = await getTranslations();
   const denied = await deniedStepPermission("UPDATE");
   if (denied) return denied;
   const parsedLot = z.string().trim().max(100).safeParse(lotText);
   if (!parsedLot.success) {
-    return { ok: false, errors: ["ロット/伝票コードの入力が不正です"] };
+    return {
+      ok: false,
+      errors: [tr("production.stepExecutionActions.invalidLotSlipCode")],
+    };
   }
   try {
     const step = await findStep(workOrderNumber, stepId);
-    if (!step) return { ok: false, errors: ["工程が見つかりません"] };
+    if (!step) {
+      return {
+        ok: false,
+        errors: [tr("production.stepExecutionActions.stepNotFound")],
+      };
+    }
     const actor = await getCurrentActorId();
     const updated = await prisma.workOrderStep.updateMany({
       where: {
@@ -118,19 +138,27 @@ export async function updateStepLot(
     if (updated.count !== 1) {
       return {
         ok: false,
-        errors: ["進行中の工程でないか、別のユーザーが作業中です"],
+        errors: [
+          tr("production.stepExecutionActions.notInProgressOrLockedByOther"),
+        ],
       };
     }
     await recordAudit({
       action: "UPDATE",
       tableName: "work_orders",
       recordId: String(workOrderNumber),
-      after: { note: "ロット/伝票コードを更新", lotText: parsedLot.data },
+      after: {
+        note: tr("production.stepExecutionActions.auditLotSlipUpdated"),
+        lotText: parsedLot.data,
+      },
     });
     revalidate(workOrderNumber, stepId);
     return { ok: true };
   } catch (e) {
-    return failed(e, "ロット/伝票コードの更新に失敗しました");
+    return failed(
+      e,
+      tr("production.stepExecutionActions.couldNotUpdateLotSlip"),
+    );
   }
 }
 
@@ -166,17 +194,31 @@ export async function completeStep(
   quantities: z.infer<typeof quantitiesInput> | null,
   defectReasons?: z.infer<typeof defectReasonsInput>,
 ): Promise<StepActionResult> {
+  const tr = await getTranslations();
   const denied = await deniedStepPermission("UPDATE");
   if (denied) return denied;
   const parsed = quantitiesInput.nullable().safeParse(quantities);
-  if (!parsed.success) return { ok: false, errors: ["数量の入力が不正です"] };
+  if (!parsed.success) {
+    return {
+      ok: false,
+      errors: [tr("production.stepExecutionActions.invalidQuantityInput")],
+    };
+  }
   const parsedReasons = defectReasonsInput.optional().safeParse(defectReasons);
   if (!parsedReasons.success) {
-    return { ok: false, errors: ["不良の入力が不正です"] };
+    return {
+      ok: false,
+      errors: [tr("production.stepExecutionActions.invalidDefectInput")],
+    };
   }
   try {
     const step = await findStep(workOrderNumber, stepId);
-    if (!step) return { ok: false, errors: ["工程が見つかりません"] };
+    if (!step) {
+      return {
+        ok: false,
+        errors: [tr("production.stepExecutionActions.stepNotFound")],
+      };
+    }
     const result = await completeStepExecution(
       stepId,
       parsed.data,
@@ -185,7 +227,7 @@ export async function completeStep(
     if (result.ok) revalidate(workOrderNumber, stepId);
     return result;
   } catch (e) {
-    return failed(e, "工程の完了に失敗しました");
+    return failed(e, tr("common.couldNotCompleteTheStep"));
   }
 }
 
@@ -195,19 +237,28 @@ export async function abortStep(
   stepId: string,
   reason: string,
 ): Promise<StepActionResult> {
+  const tr = await getTranslations();
   const denied = await deniedStepPermission("UPDATE");
   if (denied) return denied;
   if (!reason.trim()) {
-    return { ok: false, errors: ["中断理由を入力してください"] };
+    return {
+      ok: false,
+      errors: [tr("production.stepExecutionActions.enterAbortReason")],
+    };
   }
   try {
     const step = await findStep(workOrderNumber, stepId);
-    if (!step) return { ok: false, errors: ["工程が見つかりません"] };
+    if (!step) {
+      return {
+        ok: false,
+        errors: [tr("production.stepExecutionActions.stepNotFound")],
+      };
+    }
     const result = await abortStepExecution(stepId, reason.trim());
     if (result.ok) revalidate(workOrderNumber, stepId);
     return result;
   } catch (e) {
-    return failed(e, "工程の中断に失敗しました");
+    return failed(e, tr("production.stepExecutionActions.couldNotAbortStep"));
   }
 }
 
@@ -217,16 +268,25 @@ export async function rollbackStep(
   stepId: string,
   reason: string,
 ): Promise<StepActionResult> {
+  const tr = await getTranslations();
   const denied = await deniedStepPermission("UPDATE");
   if (denied) return denied;
   try {
     const step = await findStep(workOrderNumber, stepId);
-    if (!step) return { ok: false, errors: ["工程が見つかりません"] };
+    if (!step) {
+      return {
+        ok: false,
+        errors: [tr("production.stepExecutionActions.stepNotFound")],
+      };
+    }
     const result = await rollbackStepExecution(stepId, reason);
     if (result.ok) revalidate(workOrderNumber, stepId);
     return result;
   } catch (e) {
-    return failed(e, "工程の巻き戻しに失敗しました");
+    return failed(
+      e,
+      tr("production.stepExecutionActions.couldNotRollbackStep"),
+    );
   }
 }
 
@@ -244,33 +304,36 @@ const branchTermination = z.discriminatedUnion("kind", [
   }),
 ]);
 
-const addBranchInput = z.object({
-  workOrderNumber: z.number().int().positive(),
-  sourceStepId: z.string().min(1),
-  catalogStepIds: z
-    .array(z.number().int().positive())
-    .min(1, "追加する工程を選択してください"),
-  routedQuantity: z
-    .number()
-    .int()
-    .min(1, "分岐数量は 1 以上で入力してください"),
-  termination: branchTermination,
-});
+function addBranchInputSchema(tr: Awaited<ReturnType<typeof getTranslations>>) {
+  return z.object({
+    workOrderNumber: z.number().int().positive(),
+    sourceStepId: z.string().min(1),
+    catalogStepIds: z
+      .array(z.number().int().positive())
+      .min(1, tr("production.stepExecutionActions.selectStepsToAdd")),
+    routedQuantity: z
+      .number()
+      .int()
+      .min(1, tr("production.stepExecutionActions.branchQuantityMin")),
+    termination: branchTermination,
+  });
+}
 
-export type AddBranchInput = z.infer<typeof addBranchInput>;
+export type AddBranchInput = z.infer<ReturnType<typeof addBranchInputSchema>>;
 
 /** 分岐系列の追加（工程分岐・半製品再投入）。 */
 export async function addBranch(
   payload: AddBranchInput,
 ): Promise<StepActionResult> {
+  const tr = await getTranslations();
   // 既存指示書のワークフロー変更 — CREATE ではなく UPDATE（判断メモ）。
   const denied = await deniedStepPermission("UPDATE");
   if (denied) return denied;
-  const parsed = addBranchInput.safeParse(payload);
+  const parsed = addBranchInputSchema(tr).safeParse(payload);
   if (!parsed.success) {
     return {
       ok: false,
-      errors: [parsed.error.issues[0]?.message ?? "入力が不正です"],
+      errors: [parsed.error.issues[0]?.message ?? tr("common.invalidInput")],
     };
   }
   const v = parsed.data;
@@ -279,7 +342,12 @@ export async function addBranch(
       where: { workOrderNumber: v.workOrderNumber },
       select: { id: true, status: true },
     });
-    if (!wo) return { ok: false, errors: ["指示書が見つかりません"] };
+    if (!wo) {
+      return {
+        ok: false,
+        errors: [tr("production.stepExecutionActions.workOrderNotFound")],
+      };
+    }
     // 承認設定に「工程フロー変更」の段があれば保留 → 最終承認で適用。
     // 1 段も無ければここで即適用（未設定 = 素通し）。
     const result = await submitFlowChange({
@@ -297,34 +365,41 @@ export async function addBranch(
     if (result.ok) revalidate(v.workOrderNumber);
     return result;
   } catch (e) {
-    return failed(e, "分岐の追加に失敗しました");
+    return failed(e, tr("production.addBranchModal.couldNotAddTheBranch"));
   }
 }
 
-const updateBranchInput = z.object({
-  workOrderNumber: z.number().int().positive(),
-  headStepId: z.string().min(1),
-  routedQuantity: z
-    .number()
-    .int()
-    .min(1, "分岐数量は 1 以上で入力してください")
-    .optional(),
-  termination: branchTermination,
-});
+function updateBranchInputSchema(
+  tr: Awaited<ReturnType<typeof getTranslations>>,
+) {
+  return z.object({
+    workOrderNumber: z.number().int().positive(),
+    headStepId: z.string().min(1),
+    routedQuantity: z
+      .number()
+      .int()
+      .min(1, tr("production.stepExecutionActions.branchQuantityMin"))
+      .optional(),
+    termination: branchTermination,
+  });
+}
 
-export type UpdateBranchInput = z.infer<typeof updateBranchInput>;
+export type UpdateBranchInput = z.infer<
+  ReturnType<typeof updateBranchInputSchema>
+>;
 
 /** 分岐系列の更新（分岐数量 / 終端の付け替え）。 */
 export async function updateBranch(
   payload: UpdateBranchInput,
 ): Promise<StepActionResult> {
+  const tr = await getTranslations();
   const denied = await deniedStepPermission("UPDATE");
   if (denied) return denied;
-  const parsed = updateBranchInput.safeParse(payload);
+  const parsed = updateBranchInputSchema(tr).safeParse(payload);
   if (!parsed.success) {
     return {
       ok: false,
-      errors: [parsed.error.issues[0]?.message ?? "入力が不正です"],
+      errors: [parsed.error.issues[0]?.message ?? tr("common.invalidInput")],
     };
   }
   const v = parsed.data;
@@ -333,7 +408,12 @@ export async function updateBranch(
       where: { workOrderNumber: v.workOrderNumber },
       select: { id: true, status: true },
     });
-    if (!wo) return { ok: false, errors: ["指示書が見つかりません"] };
+    if (!wo) {
+      return {
+        ok: false,
+        errors: [tr("production.stepExecutionActions.workOrderNotFound")],
+      };
+    }
     const result = await submitFlowChange({
       workOrderId: wo.id,
       workOrderNumber: v.workOrderNumber,
@@ -348,7 +428,7 @@ export async function updateBranch(
     if (result.ok) revalidate(v.workOrderNumber);
     return result;
   } catch (e) {
-    return failed(e, "分岐の更新に失敗しました");
+    return failed(e, tr("production.addBranchModal.couldNotUpdateTheBranch"));
   }
 }
 
@@ -363,11 +443,12 @@ export type RemoveBranchInput = z.infer<typeof removeBranchInput>;
 export async function removeBranch(
   payload: RemoveBranchInput,
 ): Promise<StepActionResult> {
+  const tr = await getTranslations();
   const denied = await deniedStepPermission("UPDATE");
   if (denied) return denied;
   const parsed = removeBranchInput.safeParse(payload);
   if (!parsed.success) {
-    return { ok: false, errors: ["入力が不正です"] };
+    return { ok: false, errors: [tr("common.invalidInput")] };
   }
   const v = parsed.data;
   try {
@@ -375,7 +456,12 @@ export async function removeBranch(
       where: { workOrderNumber: v.workOrderNumber },
       select: { id: true, status: true },
     });
-    if (!wo) return { ok: false, errors: ["指示書が見つかりません"] };
+    if (!wo) {
+      return {
+        ok: false,
+        errors: [tr("production.stepExecutionActions.workOrderNotFound")],
+      };
+    }
     const result = await submitFlowChange({
       workOrderId: wo.id,
       workOrderNumber: v.workOrderNumber,
@@ -385,7 +471,10 @@ export async function removeBranch(
     if (result.ok) revalidate(v.workOrderNumber);
     return result;
   } catch (e) {
-    return failed(e, "分岐の削除に失敗しました");
+    return failed(
+      e,
+      tr("production.workOrderStepsPanel.couldNotDeleteTheBranch"),
+    );
   }
 }
 
@@ -394,25 +483,29 @@ export async function removeBranch(
 // サンプル値: SELECT_MULTI は value[]、それ以外は文字列（inspection-core と同形）
 const sampleValue = z.union([z.string(), z.array(z.string())]);
 
-const inspectionInput = z.object({
-  workOrderNumber: z.number().int().positive(),
-  stepId: z.string().min(1),
-  templateId: z.number().int().positive(),
-  items: z
-    .array(
-      z.object({
-        templateItemId: z.number().int().positive(),
-        values: z.array(sampleValue),
-        // 記録方式 COUNTS: 検査数・合格数（VALUES は null）
-        inspectedCount: z.number().int().min(0).nullable(),
-        passedCount: z.number().int().min(0).nullable(),
-        isPass: z.boolean(),
-      }),
-    )
-    .min(1, "検査項目がありません"),
-});
+function inspectionInputSchema(
+  tr: Awaited<ReturnType<typeof getTranslations>>,
+) {
+  return z.object({
+    workOrderNumber: z.number().int().positive(),
+    stepId: z.string().min(1),
+    templateId: z.number().int().positive(),
+    items: z
+      .array(
+        z.object({
+          templateItemId: z.number().int().positive(),
+          values: z.array(sampleValue),
+          // 記録方式 COUNTS: 検査数・合格数（VALUES は null）
+          inspectedCount: z.number().int().min(0).nullable(),
+          passedCount: z.number().int().min(0).nullable(),
+          isPass: z.boolean(),
+        }),
+      )
+      .min(1, tr("master.inspectionTemplates.thereAreNoInspectionItems")),
+  });
+}
 
-export type InspectionInput = z.infer<typeof inspectionInput>;
+export type InspectionInput = z.infer<ReturnType<typeof inspectionInputSchema>>;
 
 /**
  * 検査記録の保存 — 全項目合格なら PASS、1 つでも不合格なら FAIL。
@@ -424,21 +517,32 @@ export type InspectionInput = z.infer<typeof inspectionInput>;
 export async function saveInspectionRecord(
   payload: InspectionInput,
 ): Promise<StepActionResult> {
+  const tr = await getTranslations();
   const denied = await deniedStepPermission("UPDATE");
   if (denied) return denied;
-  const parsed = inspectionInput.safeParse(payload);
+  const parsed = inspectionInputSchema(tr).safeParse(payload);
   if (!parsed.success) {
     return {
       ok: false,
-      errors: [parsed.error.issues[0]?.message ?? "入力が不正です"],
+      errors: [parsed.error.issues[0]?.message ?? tr("common.invalidInput")],
     };
   }
   const v = parsed.data;
   try {
     const step = await findStep(v.workOrderNumber, v.stepId);
-    if (!step) return { ok: false, errors: ["工程が見つかりません"] };
+    if (!step) {
+      return {
+        ok: false,
+        errors: [tr("production.stepExecutionActions.stepNotFound")],
+      };
+    }
     if (step.status !== "IN_PROGRESS") {
-      return { ok: false, errors: ["進行中の工程でのみ記録できます"] };
+      return {
+        ok: false,
+        errors: [
+          tr("production.stepExecutionActions.onlyRecordableWhileInProgress"),
+        ],
+      };
     }
     // テンプレートがこの工程に割り当てられているか + 項目 id・サンプル値が妥当か
     const link = await prisma.workOrderStepInspectionTemplate.findUnique({
@@ -451,7 +555,12 @@ export async function saveInspectionRecord(
       include: { inspectionTemplate: { include: { items: true } } },
     });
     if (!link) {
-      return { ok: false, errors: ["この工程の検査表ではありません"] };
+      return {
+        ok: false,
+        errors: [
+          tr("production.stepExecutionActions.notThisStepsInspectionSheet"),
+        ],
+      };
     }
     // 記録方式・検査対象はシート（テンプレート）単位
     const style = link.inspectionTemplate.recordStyle;
@@ -463,7 +572,9 @@ export async function saveInspectionRecord(
       if (!spec) {
         return {
           ok: false,
-          errors: ["検査項目がテンプレートと一致しません"],
+          errors: [
+            tr("production.stepExecutionActions.itemDoesNotMatchTemplate"),
+          ],
         };
       }
       const optionValues = new Set(spec.options.map((o) => o.value));
@@ -474,13 +585,19 @@ export async function saveInspectionRecord(
             spec.inputType === "SELECT_MULTI") &&
           !values.every((x) => x === "" || optionValues.has(x))
         ) {
-          return { ok: false, errors: ["選択肢にない値が含まれています"] };
+          return {
+            ok: false,
+            errors: [tr("production.stepExecutionActions.valueNotInOptions")],
+          };
         }
         if (
           spec.inputType === "BOOLEAN" &&
           !values.every((x) => x === "" || x === "true" || x === "false")
         ) {
-          return { ok: false, errors: ["真偽項目の値が不正です"] };
+          return {
+            ok: false,
+            errors: [tr("production.stepExecutionActions.invalidBooleanValue")],
+          };
         }
       }
       if (
@@ -489,7 +606,14 @@ export async function saveInspectionRecord(
         i.passedCount != null &&
         i.passedCount > i.inspectedCount
       ) {
-        return { ok: false, errors: ["合格数が検査数を超えています"] };
+        return {
+          ok: false,
+          errors: [
+            tr(
+              "production.inspectionRecordForm.passedCountExceedsInspectedCount",
+            ),
+          ],
+        };
       }
     }
     const actor = await getCurrentActorId();
@@ -532,13 +656,22 @@ export async function saveInspectionRecord(
       tableName: "work_orders",
       recordId: String(v.workOrderNumber),
       after: {
-        note: `検査記録を保存（${status === "PASS" ? "合格" : "不合格"} / ${v.items.length} 項目）`,
+        note: tr("production.stepExecutionActions.auditInspectionSaved", {
+          result:
+            status === "PASS"
+              ? tr("production.inspectionRecordForm.pass")
+              : tr("production.inspectionRecordForm.fail"),
+          count: v.items.length,
+        }),
       },
     });
     revalidate(v.workOrderNumber, v.stepId);
     return { ok: true };
   } catch (e) {
-    return failed(e, "検査記録の保存に失敗しました");
+    return failed(
+      e,
+      tr("production.inspectionRecordForm.couldNotSaveTheInspectionRecord"),
+    );
   }
 }
 
@@ -548,20 +681,73 @@ export async function approveInspectionRecord(
   stepId: string,
   recordId: string,
 ): Promise<StepActionResult> {
-  // 検査承認 — 工程実行と同じ work_order:UPDATE でゲートする。
-  // （承認アクション（APPROVE）は廃止 — N 段承認の可否は承認設定 MS0B の
-  //   グループ所属だけが決め、こちらの検査承認は工程実行の一部として扱う。）
+  const tr = await getTranslations();
+  // 検査承認 — 工程実行と同じ work_order:UPDATE を RBAC の門番として使う
+  // （承認アクション（APPROVE）は使わない — こちらの検査承認は工程実行の
+  //   一部として扱う）。実ゲートは検査表テンプレートの承認グループ
+  //   （承認設定 MS0B の approval_groups）— 設定されていれば、そのグループの
+  //   実効メンバー（本人 or 期間内の代理）だけが承認できる。未設定の
+  //   テンプレートは従来どおり誰でも承認できる。
   const denied = await deniedStepPermission("UPDATE");
   if (denied) return denied;
   try {
     const record = await prisma.inspectionRecord.findFirst({
       where: { id: recordId, step: { workOrder: { workOrderNumber } } },
+      include: {
+        template: {
+          select: {
+            approvalGroupId: true,
+            approvers: { select: { userId: true } },
+          },
+        },
+      },
     });
-    if (!record) return { ok: false, errors: ["検査記録が見つかりません"] };
+    if (!record) {
+      return {
+        ok: false,
+        errors: [
+          tr("production.stepExecutionActions.inspectionRecordNotFound"),
+        ],
+      };
+    }
     if (record.status !== "PASS") {
-      return { ok: false, errors: ["合格の検査記録のみ承認できます"] };
+      return {
+        ok: false,
+        errors: [
+          tr("production.stepExecutionActions.onlyPassRecordsCanBeApproved"),
+        ],
+      };
     }
     const actor = await getCurrentActorId();
+    if (record.template.approvalGroupId != null) {
+      const { ok } = await resolveApprover(
+        record.template.approvalGroupId,
+        actor,
+        null,
+      );
+      if (!ok) {
+        return {
+          ok: false,
+          errors: [
+            tr(
+              "production.stepExecutionActions.onlyApprovalGroupMembersCanApprove",
+            ),
+          ],
+        };
+      }
+    } else if (record.template.approvers.length > 0) {
+      const isApprover = record.template.approvers.some(
+        (a) => a.userId === actor,
+      );
+      if (!isApprover) {
+        return {
+          ok: false,
+          errors: [
+            tr("production.stepExecutionActions.onlyApproversCanApprove"),
+          ],
+        };
+      }
+    }
     await prisma.inspectionRecord.update({
       where: { id: recordId },
       data: { status: "APPROVED", approvedBy: actor, approvedAt: new Date() },
@@ -570,49 +756,118 @@ export async function approveInspectionRecord(
       action: "UPDATE",
       tableName: "work_orders",
       recordId: String(workOrderNumber),
-      after: { note: "検査記録を承認" },
+      after: {
+        note: tr("production.stepExecutionActions.auditInspectionApproved"),
+      },
     });
     revalidate(workOrderNumber, stepId);
     return { ok: true };
   } catch (e) {
-    return failed(e, "検査記録の承認に失敗しました");
+    return failed(
+      e,
+      tr("production.inspectionRecordForm.couldNotApproveTheInspectionRecord"),
+    );
+  }
+}
+
+/**
+ * 検査表確認（旧帳票「検査表確認」欄）— recordedBy（検査者）/ approvedBy
+ * （検収印）とは別ロールのスタンプ。合否状態に関わらず押せる（第三者が
+ * 記入内容を確認したという記録であって、承認そのものではない）。
+ */
+export async function confirmInspectionRecord(
+  workOrderNumber: number,
+  stepId: string,
+  recordId: string,
+): Promise<StepActionResult> {
+  const tr = await getTranslations();
+  const denied = await deniedStepPermission("UPDATE");
+  if (denied) return denied;
+  try {
+    const record = await prisma.inspectionRecord.findFirst({
+      where: { id: recordId, step: { workOrder: { workOrderNumber } } },
+    });
+    if (!record) {
+      return {
+        ok: false,
+        errors: [
+          tr("production.stepExecutionActions.inspectionRecordNotFound"),
+        ],
+      };
+    }
+    const actor = await getCurrentActorId();
+    await prisma.inspectionRecord.update({
+      where: { id: recordId },
+      data: { confirmedBy: actor, confirmedAt: new Date() },
+    });
+    await recordAudit({
+      action: "UPDATE",
+      tableName: "work_orders",
+      recordId: String(workOrderNumber),
+      after: {
+        note: tr("production.stepExecutionActions.auditInspectionConfirmed"),
+      },
+    });
+    revalidate(workOrderNumber, stepId);
+    return { ok: true };
+  } catch (e) {
+    return failed(
+      e,
+      tr("production.inspectionRecordForm.couldNotRecordTheInspectionSheet"),
+    );
   }
 }
 
 // ── 不良記録 (§7 / design.md §12.6) ─────────────────────────────────────────
 
-const defectsInput = z.object({
-  workOrderNumber: z.number().int().positive(),
-  stepId: z.string().min(1),
-  records: z
-    .array(
-      z.object({
-        defectTypeId: z.number().int().positive("不良種類を選択してください"),
-        description: z.string().min(1, "不良内容を入力してください"),
-      }),
-    )
-    .min(1, "不良記録がありません"),
-});
+function defectsInputSchema(tr: Awaited<ReturnType<typeof getTranslations>>) {
+  return z.object({
+    workOrderNumber: z.number().int().positive(),
+    stepId: z.string().min(1),
+    records: z
+      .array(
+        z.object({
+          defectTypeId: z
+            .number()
+            .int()
+            .positive(tr("production.stepExecutionActions.selectDefectType")),
+          description: z
+            .string()
+            .min(
+              1,
+              tr("production.stepExecutionActions.enterDefectDescription"),
+            ),
+        }),
+      )
+      .min(1, tr("production.stepExecutionActions.noDefectRecords")),
+  });
+}
 
-export type DefectsInput = z.infer<typeof defectsInput>;
+export type DefectsInput = z.infer<ReturnType<typeof defectsInputSchema>>;
 
 /** 不良記録の保存（複数行まとめて追加）。 */
 export async function saveDefectRecords(
   payload: DefectsInput,
 ): Promise<StepActionResult> {
+  const tr = await getTranslations();
   const denied = await deniedStepPermission("UPDATE");
   if (denied) return denied;
-  const parsed = defectsInput.safeParse(payload);
+  const parsed = defectsInputSchema(tr).safeParse(payload);
   if (!parsed.success) {
     return {
       ok: false,
-      errors: [parsed.error.issues[0]?.message ?? "入力が不正です"],
+      errors: [parsed.error.issues[0]?.message ?? tr("common.invalidInput")],
     };
   }
   const v = parsed.data;
   try {
     const step = await findStep(v.workOrderNumber, v.stepId);
-    if (!step) return { ok: false, errors: ["工程が見つかりません"] };
+    if (!step) {
+      return {
+        ok: false,
+        errors: [tr("production.stepExecutionActions.stepNotFound")],
+      };
+    }
     const actor = await getCurrentActorId();
     await prisma.defectRecord.createMany({
       data: v.records.map((r) => ({
@@ -626,12 +881,19 @@ export async function saveDefectRecords(
       action: "UPDATE",
       tableName: "work_orders",
       recordId: String(v.workOrderNumber),
-      after: { note: `不良記録を追加（${v.records.length} 件）` },
+      after: {
+        note: tr("production.stepExecutionActions.auditDefectsAdded", {
+          count: v.records.length,
+        }),
+      },
     });
     revalidate(v.workOrderNumber, v.stepId);
     return { ok: true };
   } catch (e) {
-    return failed(e, "不良記録の保存に失敗しました");
+    return failed(
+      e,
+      tr("production.defectRecordForm.couldNotSaveTheDefectRecord"),
+    );
   }
 }
 
@@ -653,16 +915,27 @@ export type OutsourceDatesInput = z.infer<typeof outsourceDatesInput>;
 export async function saveOutsourceDates(
   payload: OutsourceDatesInput,
 ): Promise<StepActionResult> {
+  const tr = await getTranslations();
   const denied = await deniedStepPermission("UPDATE");
   if (denied) return denied;
   const parsed = outsourceDatesInput.safeParse(payload);
-  if (!parsed.success) return { ok: false, errors: ["入力が不正です"] };
+  if (!parsed.success) {
+    return { ok: false, errors: [tr("common.invalidInput")] };
+  }
   const v = parsed.data;
   try {
     const step = await findStep(v.workOrderNumber, v.stepId);
-    if (!step) return { ok: false, errors: ["工程が見つかりません"] };
+    if (!step) {
+      return {
+        ok: false,
+        errors: [tr("production.stepExecutionActions.stepNotFound")],
+      };
+    }
     if (step.executionLocation !== "OUTSOURCE") {
-      return { ok: false, errors: ["外注工程ではありません"] };
+      return {
+        ok: false,
+        errors: [tr("production.stepExecutionActions.notAnOutsourceStep")],
+      };
     }
     const toDate = (s: string | null) => (s ? new Date(s) : null);
     const wasReceived = step.outsourceReceivedAt != null;
@@ -689,26 +962,48 @@ export async function saveOutsourceDates(
           await notify({
             userIds: [wo.createdBy],
             type: "SYSTEM",
-            title: `指示書 #${v.workOrderNumber} の外注工程が入荷しました`,
+            title: tr(
+              "production.stepExecutionActions.notifyOutsourceReceived",
+              {
+                workOrderNumber: v.workOrderNumber,
+              },
+            ),
             linkPath: `/production/work-orders/${wo.id}`,
           });
         }
       } catch (e) {
-        console.error("[outsource] 入荷通知に失敗:", e);
+        console.error(
+          tr("production.stepExecutionActions.outsourceNotifyFailedLog"),
+          e,
+        );
       }
     }
+    const costText =
+      v.outsourceCost != null
+        ? tr("production.stepExecutionActions.auditOutsourceCostSuffix", {
+            amount: v.outsourceCost.toLocaleString(),
+          })
+        : "";
     await recordAudit({
       action: "UPDATE",
       tableName: "work_orders",
       recordId: String(v.workOrderNumber),
       after: {
-        note: `外注日程を更新（依頼 ${v.requestedAt ?? "—"} / 入荷予定 ${v.expectedAt ?? "—"} / 入荷 ${v.receivedAt ?? "—"}${v.outsourceCost != null ? ` / 外注費 ¥${v.outsourceCost.toLocaleString()}` : ""}）`,
+        note: tr("production.stepExecutionActions.auditOutsourceUpdated", {
+          requested: v.requestedAt ?? "—",
+          expected: v.expectedAt ?? "—",
+          received: v.receivedAt ?? "—",
+          cost: costText,
+        }),
       },
     });
     revalidate(v.workOrderNumber, v.stepId);
     return { ok: true };
   } catch (e) {
-    return failed(e, "外注日程の保存に失敗しました");
+    return failed(
+      e,
+      tr("production.stepExecution.couldNotSaveTheOutsourcingSchedule"),
+    );
   }
 }
 
@@ -717,30 +1012,48 @@ export async function saveOutsourceDates(
 const timePattern = /^([01]\d|2[0-3]):[0-5]\d$/;
 const datePattern = /^\d{4}-\d{2}-\d{2}$/;
 
-const planActualBase = {
-  workOrderNumber: z.number().int().positive(),
-  stepId: z.string().min(1),
-  userId: z.string().min(1, "担当者を選択してください"),
-  date: z.string().regex(datePattern, "日付を選択してください"),
-  startTime: z
-    .string()
-    .regex(timePattern, "時刻は HH:mm 形式で入力してください")
-    .nullable(),
-  endTime: z
-    .string()
-    .regex(timePattern, "時刻は HH:mm 形式で入力してください")
-    .nullable(),
-  quantity: z.number().int().min(1).nullable(),
-  // 作業場所（機械/エリア — 任意。計画・実績とも）
-  workLocationId: z.number().int().positive().nullable(),
-  notes: z.string(),
-};
+function planActualBaseShape(tr: Awaited<ReturnType<typeof getTranslations>>) {
+  return {
+    workOrderNumber: z.number().int().positive(),
+    stepId: z.string().min(1),
+    userId: z
+      .string()
+      .min(1, tr("production.stepPlanActualPanel.selectAnAssignee")),
+    date: z
+      .string()
+      .regex(datePattern, tr("production.stepPlanActualPanel.selectADate")),
+    startTime: z
+      .string()
+      .regex(
+        timePattern,
+        tr("production.stepExecutionActions.invalidTimeFormat"),
+      )
+      .nullable(),
+    endTime: z
+      .string()
+      .regex(
+        timePattern,
+        tr("production.stepExecutionActions.invalidTimeFormat"),
+      )
+      .nullable(),
+    quantity: z.number().int().min(1).nullable(),
+    // 作業場所（機械/エリア — 任意。計画・実績とも）
+    workLocationId: z.number().int().positive().nullable(),
+    notes: z.string(),
+  };
+}
 
-const stepPlanInput = z.object(planActualBase);
-const stepActualInput = z.object(planActualBase);
+function stepPlanInputSchema(tr: Awaited<ReturnType<typeof getTranslations>>) {
+  return z.object(planActualBaseShape(tr));
+}
+function stepActualInputSchema(
+  tr: Awaited<ReturnType<typeof getTranslations>>,
+) {
+  return z.object(planActualBaseShape(tr));
+}
 
-export type StepPlanInput = z.infer<typeof stepPlanInput>;
-export type StepActualInput = z.infer<typeof stepActualInput>;
+export type StepPlanInput = z.infer<ReturnType<typeof stepPlanInputSchema>>;
+export type StepActualInput = z.infer<ReturnType<typeof stepActualInputSchema>>;
 
 /** "YYYY-MM-DD" + "HH:mm"（JST）→ timestamptz。time が null なら null。 */
 function toJstTimestamp(date: string, time: string | null): Date | null {
@@ -748,12 +1061,15 @@ function toJstTimestamp(date: string, time: string | null): Date | null {
   return new Date(`${date}T${time}:00+09:00`);
 }
 
-function validateTimeRange(v: {
-  startTime: string | null;
-  endTime: string | null;
-}): string | null {
+function validateTimeRange(
+  v: {
+    startTime: string | null;
+    endTime: string | null;
+  },
+  tr: Awaited<ReturnType<typeof getTranslations>>,
+): string | null {
   if (v.startTime && v.endTime && v.startTime >= v.endTime) {
-    return "終了時刻は開始時刻より後にしてください";
+    return tr("production.stepExecutionActions.endTimeMustBeAfterStart");
   }
   return null;
 }
@@ -766,16 +1082,19 @@ function validateTimeRange(v: {
 async function invalidWorkLocation(
   workLocationId: number | null,
   processStepId: number,
+  tr: Awaited<ReturnType<typeof getTranslations>>,
 ): Promise<string | null> {
   if (workLocationId == null) return null;
   const location = await prisma.workLocation.findFirst({
     where: { id: workLocationId, isActive: true },
     select: { id: true },
   });
-  if (!location) return "作業場所が見つかりません";
+  if (!location) {
+    return tr("production.stepExecutionActions.workLocationNotFound");
+  }
   const allowed = await fetchAllowedWorkLocationIds(processStepId);
   if (allowed != null && !allowed.has(workLocationId)) {
-    return "この工程では使用できない作業場所です（工程マスタの許可リスト外）";
+    return tr("production.stepExecutionActions.workLocationNotAllowed");
   }
   return null;
 }
@@ -784,30 +1103,39 @@ async function invalidWorkLocation(
 export async function addStepPlan(
   payload: StepPlanInput,
 ): Promise<StepActionResult> {
+  const tr = await getTranslations();
   const denied = await deniedStepPermission("UPDATE");
   if (denied) return denied;
-  const parsed = stepPlanInput.safeParse(payload);
+  const parsed = stepPlanInputSchema(tr).safeParse(payload);
   if (!parsed.success) {
     return {
       ok: false,
-      errors: [parsed.error.issues[0]?.message ?? "入力が不正です"],
+      errors: [parsed.error.issues[0]?.message ?? tr("common.invalidInput")],
     };
   }
   const v = parsed.data;
-  const rangeError = validateTimeRange(v);
+  const rangeError = validateTimeRange(v, tr);
   if (rangeError) return { ok: false, errors: [rangeError] };
   try {
     const step = await findStep(v.workOrderNumber, v.stepId);
-    if (!step) return { ok: false, errors: ["工程が見つかりません"] };
+    if (!step) {
+      return {
+        ok: false,
+        errors: [tr("production.stepExecutionActions.stepNotFound")],
+      };
+    }
     if (step.status === "COMPLETED" || step.status === "CANCELLED") {
       return {
         ok: false,
-        errors: ["完了・キャンセル済みの工程には計画を追加できません"],
+        errors: [
+          tr("production.stepExecutionActions.cannotAddPlanToCompletedStep"),
+        ],
       };
     }
     const locationError = await invalidWorkLocation(
       v.workLocationId,
       step.processStepId,
+      tr,
     );
     if (locationError) return { ok: false, errors: [locationError] };
     const actor = await getCurrentActorId();
@@ -824,18 +1152,34 @@ export async function addStepPlan(
         createdBy: actor,
       },
     });
+    const timeText = v.startTime
+      ? tr("production.stepExecutionActions.auditTimeSuffix", {
+          start: v.startTime,
+          end: v.endTime ?? "",
+        })
+      : "";
+    const quantityText =
+      v.quantity != null
+        ? tr("production.stepExecutionActions.auditQuantitySuffix", {
+            quantity: v.quantity,
+          })
+        : "";
     await recordAudit({
       action: "UPDATE",
       tableName: "work_orders",
       recordId: String(v.workOrderNumber),
       after: {
-        note: `工程の作業計画を追加（${v.date}${v.startTime ? ` ${v.startTime}〜${v.endTime ?? ""}` : ""}${v.quantity != null ? ` / ${v.quantity}` : ""}）`,
+        note: tr("production.stepExecutionActions.auditPlanAdded", {
+          date: v.date,
+          time: timeText,
+          quantity: quantityText,
+        }),
       },
     });
     revalidate(v.workOrderNumber, v.stepId);
     return { ok: true };
   } catch (e) {
-    return failed(e, "作業計画の追加に失敗しました");
+    return failed(e, tr("production.stepExecutionActions.couldNotAddPlan"));
   }
 }
 
@@ -845,27 +1189,36 @@ export async function deleteStepPlan(
   stepId: string,
   planId: string,
 ): Promise<StepActionResult> {
+  const tr = await getTranslations();
   const denied = await deniedStepPermission("UPDATE");
   if (denied) return denied;
   try {
     const step = await findStep(workOrderNumber, stepId);
-    if (!step) return { ok: false, errors: ["工程が見つかりません"] };
+    if (!step) {
+      return {
+        ok: false,
+        errors: [tr("production.stepExecutionActions.stepNotFound")],
+      };
+    }
     const deleted = await prisma.workOrderStepPlan.deleteMany({
       where: { id: planId, stepId },
     });
     if (deleted.count === 0) {
-      return { ok: false, errors: ["対象の計画が見つかりません"] };
+      return {
+        ok: false,
+        errors: [tr("production.stepExecutionActions.planNotFound")],
+      };
     }
     await recordAudit({
       action: "UPDATE",
       tableName: "work_orders",
       recordId: String(workOrderNumber),
-      after: { note: "工程の作業計画を削除" },
+      after: { note: tr("production.stepExecutionActions.auditPlanDeleted") },
     });
     revalidate(workOrderNumber, stepId);
     return { ok: true };
   } catch (e) {
-    return failed(e, "作業計画の削除に失敗しました");
+    return failed(e, tr("production.stepExecutionActions.couldNotDeletePlan"));
   }
 }
 
@@ -873,27 +1226,39 @@ export async function deleteStepPlan(
 export async function addStepActual(
   payload: StepActualInput,
 ): Promise<StepActionResult> {
+  const tr = await getTranslations();
   const denied = await deniedStepPermission("UPDATE");
   if (denied) return denied;
-  const parsed = stepActualInput.safeParse(payload);
+  const parsed = stepActualInputSchema(tr).safeParse(payload);
   if (!parsed.success) {
     return {
       ok: false,
-      errors: [parsed.error.issues[0]?.message ?? "入力が不正です"],
+      errors: [parsed.error.issues[0]?.message ?? tr("common.invalidInput")],
     };
   }
   const v = parsed.data;
-  const rangeError = validateTimeRange(v);
+  const rangeError = validateTimeRange(v, tr);
   if (rangeError) return { ok: false, errors: [rangeError] };
   try {
     const step = await findStep(v.workOrderNumber, v.stepId);
-    if (!step) return { ok: false, errors: ["工程が見つかりません"] };
+    if (!step) {
+      return {
+        ok: false,
+        errors: [tr("production.stepExecutionActions.stepNotFound")],
+      };
+    }
     if (step.status !== "IN_PROGRESS") {
-      return { ok: false, errors: ["進行中の工程のみ実績を記録できます"] };
+      return {
+        ok: false,
+        errors: [
+          tr("production.stepExecutionActions.onlyInProgressCanRecordActual"),
+        ],
+      };
     }
     const locationError = await invalidWorkLocation(
       v.workLocationId,
       step.processStepId,
+      tr,
     );
     if (locationError) return { ok: false, errors: [locationError] };
     const actor = await getCurrentActorId();
@@ -910,18 +1275,34 @@ export async function addStepActual(
         createdBy: actor,
       },
     });
+    const timeText = v.startTime
+      ? tr("production.stepExecutionActions.auditTimeSuffix", {
+          start: v.startTime,
+          end: v.endTime ?? "",
+        })
+      : "";
+    const quantityText =
+      v.quantity != null
+        ? tr("production.stepExecutionActions.auditQuantitySuffix", {
+            quantity: v.quantity,
+          })
+        : "";
     await recordAudit({
       action: "UPDATE",
       tableName: "work_orders",
       recordId: String(v.workOrderNumber),
       after: {
-        note: `工程の作業実績を追加（${v.date}${v.startTime ? ` ${v.startTime}〜${v.endTime ?? ""}` : ""}${v.quantity != null ? ` / ${v.quantity}` : ""}）`,
+        note: tr("production.stepExecutionActions.auditActualAdded", {
+          date: v.date,
+          time: timeText,
+          quantity: quantityText,
+        }),
       },
     });
     revalidate(v.workOrderNumber, v.stepId);
     return { ok: true };
   } catch (e) {
-    return failed(e, "作業実績の追加に失敗しました");
+    return failed(e, tr("production.stepExecutionActions.couldNotAddActual"));
   }
 }
 
@@ -931,32 +1312,50 @@ export async function deleteStepActual(
   stepId: string,
   actualId: string,
 ): Promise<StepActionResult> {
+  const tr = await getTranslations();
   const denied = await deniedStepPermission("UPDATE");
   if (denied) return denied;
   try {
     const step = await findStep(workOrderNumber, stepId);
-    if (!step) return { ok: false, errors: ["工程が見つかりません"] };
+    if (!step) {
+      return {
+        ok: false,
+        errors: [tr("production.stepExecutionActions.stepNotFound")],
+      };
+    }
     if (step.status === "COMPLETED" || step.status === "CANCELLED") {
       return {
         ok: false,
-        errors: ["完了・キャンセル済みの工程の実績は削除できません"],
+        errors: [
+          tr(
+            "production.stepExecutionActions.cannotDeleteActualOfCompletedStep",
+          ),
+        ],
       };
     }
     const deleted = await prisma.workOrderStepActual.deleteMany({
       where: { id: actualId, stepId },
     });
     if (deleted.count === 0) {
-      return { ok: false, errors: ["対象の実績が見つかりません"] };
+      return {
+        ok: false,
+        errors: [tr("production.stepExecutionActions.actualNotFound")],
+      };
     }
     await recordAudit({
       action: "UPDATE",
       tableName: "work_orders",
       recordId: String(workOrderNumber),
-      after: { note: "工程の作業実績を削除" },
+      after: {
+        note: tr("production.stepExecutionActions.auditActualDeleted"),
+      },
     });
     revalidate(workOrderNumber, stepId);
     return { ok: true };
   } catch (e) {
-    return failed(e, "作業実績の削除に失敗しました");
+    return failed(
+      e,
+      tr("production.stepExecutionActions.couldNotDeleteActual"),
+    );
   }
 }

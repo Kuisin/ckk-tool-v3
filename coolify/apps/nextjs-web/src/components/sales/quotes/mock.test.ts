@@ -5,8 +5,11 @@
  * design, so tests avoid asserting on them).
  */
 
+import { createTranslator } from "next-intl";
 import { describe, expect, it } from "vitest";
 import { formatMoney } from "@/lib/format";
+import type { Tr } from "@/lib/i18n";
+import ja from "../../../../messages/ja.json";
 import {
   findPriceTierRef,
   priceEntriesForQuote,
@@ -17,6 +20,9 @@ import {
   tierLabel,
 } from "./mock";
 
+// biome-ignore lint/suspicious/noExplicitAny: next-intl's messages type is too wide for a plain JSON import here
+const tr = createTranslator({ locale: "ja", messages: ja as any }) as Tr;
+
 const CUSTOMER = "bp-001";
 const PRODUCT = "1001";
 const MAY = new Date("2026-05-01"); // no discount rule active
@@ -24,7 +30,7 @@ const JULY = new Date("2026-07-01"); // 夏季キャンペーン (5%, 100本〜)
 
 describe("resolveUnitPrice — 顧客×製品×注文種別×数量×日付 → 単価・値引き", () => {
   it("selects the tier by quantity band (manual override tier)", () => {
-    const r = resolveUnitPrice(CUSTOMER, PRODUCT, "PRODUCTION", 5, MAY);
+    const r = resolveUnitPrice(CUSTOMER, PRODUCT, "PRODUCTION", 5, tr, MAY);
     expect(r).toMatchObject({
       unitPrice: 8000, // ti-1 has priceOverride 8000
       tierId: "ti-1",
@@ -38,16 +44,17 @@ describe("resolveUnitPrice — 顧客×製品×注文種別×数量×日付 → 
   it("computes 基準単価 × 倍率 for auto tiers", () => {
     // ti-2: 6000 × 1.15 = 6900
     expect(
-      resolveUnitPrice(CUSTOMER, PRODUCT, "PRODUCTION", 15, MAY)?.unitPrice,
+      resolveUnitPrice(CUSTOMER, PRODUCT, "PRODUCTION", 15, tr, MAY)?.unitPrice,
     ).toBe(6900);
     // ti-2b: ×1.00 → 6000
     expect(
-      resolveUnitPrice(CUSTOMER, PRODUCT, "PRODUCTION", 100, MAY)?.unitPrice,
+      resolveUnitPrice(CUSTOMER, PRODUCT, "PRODUCTION", 100, tr, MAY)
+        ?.unitPrice,
     ).toBe(6000);
   });
 
   it("auto-applies the 値引きルール when quantity + date match", () => {
-    const r = resolveUnitPrice(CUSTOMER, PRODUCT, "PRODUCTION", 100, JULY);
+    const r = resolveUnitPrice(CUSTOMER, PRODUCT, "PRODUCTION", 100, tr, JULY);
     expect(r?.unitPrice).toBe(6000);
     // 夏季キャンペーン 5% → 300/本 × 100本
     expect(r?.discountAmount).toBe(30_000);
@@ -57,26 +64,26 @@ describe("resolveUnitPrice — 顧客×製品×注文種別×数量×日付 → 
 
   it("no discount outside the rule period", () => {
     expect(
-      resolveUnitPrice(CUSTOMER, PRODUCT, "PRODUCTION", 100, MAY)
+      resolveUnitPrice(CUSTOMER, PRODUCT, "PRODUCTION", 100, tr, MAY)
         ?.discountAmount,
     ).toBe(0);
   });
 
   it("returns null when no 価格表 entry exists", () => {
-    expect(resolveUnitPrice("bp-unknown", PRODUCT, "PRODUCTION", 1, MAY)).toBe(
-      null,
-    );
-    expect(resolveUnitPrice(CUSTOMER, PRODUCT, "TEST", 1, MAY)).toBe(null);
+    expect(
+      resolveUnitPrice("bp-unknown", PRODUCT, "PRODUCTION", 1, tr, MAY),
+    ).toBe(null);
+    expect(resolveUnitPrice(CUSTOMER, PRODUCT, "TEST", 1, tr, MAY)).toBe(null);
   });
 
   it("returns null when quantity is outside every tier", () => {
     // bp-003 TEST entry has a single 1〜10本 tier
-    expect(resolveUnitPrice("bp-003", "3012", "TEST", 11, MAY)).toBe(null);
+    expect(resolveUnitPrice("bp-003", "3012", "TEST", 11, tr, MAY)).toBe(null);
   });
 
   it("SAMPLE entries resolve to 金額0", () => {
     expect(
-      resolveUnitPrice(CUSTOMER, PRODUCT, "SAMPLE", 3, MAY)?.unitPrice,
+      resolveUnitPrice(CUSTOMER, PRODUCT, "SAMPLE", 3, tr, MAY)?.unitPrice,
     ).toBe(0);
   });
 });
@@ -133,32 +140,38 @@ describe("quoteTotals — 小計 / 消費税10% / 合計", () => {
 describe("価格表 back-references", () => {
   it("tierLabel formats quantity bands", () => {
     expect(
-      tierLabel({
-        id: "t",
-        minQuantity: 1,
-        maxQuantity: 9,
-        multiplier: 1,
-        priceOverride: null,
-      }),
+      tierLabel(
+        {
+          id: "t",
+          minQuantity: 1,
+          maxQuantity: 9,
+          multiplier: 1,
+          priceOverride: null,
+        },
+        tr,
+      ),
     ).toBe("1〜9本");
     expect(
-      tierLabel({
-        id: "t",
-        minQuantity: 100,
-        maxQuantity: null,
-        multiplier: 1,
-        priceOverride: null,
-      }),
+      tierLabel(
+        {
+          id: "t",
+          minQuantity: 100,
+          maxQuantity: null,
+          multiplier: 1,
+          priceOverride: null,
+        },
+        tr,
+      ),
     ).toBe("100本〜");
   });
 
   it("findPriceTierRef resolves a stored tier id to its entry + label", () => {
-    const ref = findPriceTierRef("ti-2");
+    const ref = findPriceTierRef("ti-2", tr);
     expect(ref?.entryId).toBe("PRC-202601-00001");
     expect(ref?.estimateNumber).toBe("EST-202605-00031");
     expect(ref?.label).toBe(`10〜29本 ${formatMoney(6900)}`);
-    expect(findPriceTierRef("nope")).toBe(null);
-    expect(findPriceTierRef(null)).toBe(null);
+    expect(findPriceTierRef("nope", tr)).toBe(null);
+    expect(findPriceTierRef(null, tr)).toBe(null);
   });
 
   it("priceEntriesForQuote collects the distinct entries behind a quote", () => {
@@ -170,7 +183,7 @@ describe("価格表 back-references", () => {
         { priceTierId: null },
       ],
     } as Quote;
-    const entries = priceEntriesForQuote(q);
+    const entries = priceEntriesForQuote(q, tr);
     expect(entries.map((e) => e.customerId).sort()).toEqual([
       "bp-001",
       "bp-002",

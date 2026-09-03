@@ -23,11 +23,11 @@ import {
 } from "@mantine/core";
 import { DatePickerInput } from "@mantine/dates";
 import { IconCalendar, IconPlus, IconTrash } from "@tabler/icons-react";
-import { useLocale } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { searchProductOptions } from "@/app/(dashboard)/_shared/option-search";
 import type { OrderAcceptanceDraftInput } from "@/app/(dashboard)/sales/order-acceptances/actions";
 import { GhostButton } from "@/components/ui/buttons";
-import { PRODUCT_F4 } from "@/components/ui/f4-presets";
+import { productF4 } from "@/components/ui/f4-presets";
 import { SearchSelect } from "@/components/ui/SearchSelect";
 import { orderTypeOptions } from "@/lib/enum-labels";
 import { formatMoney } from "@/lib/format";
@@ -130,6 +130,7 @@ export function OrderAcceptanceItemsEditor({
   /** 保存済み行の価格照合結果（itemId → 結果）。保存内容に対する照合。 */
   lineChecks?: Record<string, ItemPriceCheck>;
 }) {
+  const tr = useTranslations();
   const locale = useLocale();
   const patch = (ri: number, p: Partial<ItemRowForm>) => {
     onChange(items.map((r, i) => (i === ri ? { ...r, ...p } : r)));
@@ -147,21 +148,25 @@ export function OrderAcceptanceItemsEditor({
             {ri > 0 && <Divider my="md" />}
             <Group gap="xs" mb={4}>
               <Text c="dimmed" className="tabular-nums" size="xs">
-                明細 {ri + 1}
+                {tr("sales.orderAcceptanceItemsEditor.lineOrdinal", {
+                  index: ri + 1,
+                })}
               </Text>
               {!row.productId && (
                 <Badge color="orange" size="xs" variant="light">
-                  製品未特定
+                  {tr("common.productNotIdentified")}
                 </Badge>
               )}
               {check?.diff && (
                 <Badge color="orange" size="xs" variant="light">
-                  価格差異（価格表 {formatMoney(check.expected)}）
+                  {tr("sales.orderAcceptanceDetail.priceMismatchExpected", {
+                    expected: formatMoney(check.expected),
+                  })}
                 </Badge>
               )}
               {check?.unpriced && (
                 <Badge color="gray" size="xs" variant="light">
-                  価格表なし
+                  {tr("common.noPriceList")}
                 </Badge>
               )}
             </Group>
@@ -174,7 +179,7 @@ export function OrderAcceptanceItemsEditor({
                   preventGrowOverflow={false}
                 >
                   <SearchSelect
-                    f4={PRODUCT_F4}
+                    f4={productF4(tr)}
                     initialOption={
                       row.productId
                         ? {
@@ -183,7 +188,7 @@ export function OrderAcceptanceItemsEditor({
                           }
                         : null
                     }
-                    label="製品"
+                    label={tr("common.product")}
                     onChange={(v, opt) =>
                       patch(ri, {
                         productId: v,
@@ -191,21 +196,25 @@ export function OrderAcceptanceItemsEditor({
                       })
                     }
                     onSearch={searchProductOptions}
-                    placeholder="製品マスタと突合"
+                    placeholder={tr(
+                      "sales.orderAcceptances.matchAgainstTheProductMaster",
+                    )}
                     storageKey="product"
                     value={row.productId}
                   />
                   <TextInput
-                    label="品名（抽出テキスト）"
+                    label={tr("sales.orderAcceptances.itemNameExtractedText")}
                     onChange={(e) =>
                       patch(ri, { productText: e.currentTarget.value })
                     }
-                    placeholder="注文書の品名"
+                    placeholder={tr(
+                      "sales.orderAcceptances.itemNameOnTheOrder",
+                    )}
                     value={row.productText}
                   />
                   <Select
                     data={orderTypeOptions(locale)}
-                    label="種別"
+                    label={tr("common.type2")}
                     maw={130}
                     onChange={(v) =>
                       patch(ri, { orderType: (v ?? "PRODUCTION") as OrderType })
@@ -214,7 +223,7 @@ export function OrderAcceptanceItemsEditor({
                     withAsterisk
                   />
                   <NumberInput
-                    label="数量"
+                    label={tr("common.quantity")}
                     maw={100}
                     min={1}
                     onChange={(v) =>
@@ -225,13 +234,13 @@ export function OrderAcceptanceItemsEditor({
                   />
                   <NumberInput
                     decimalScale={2}
-                    label="単価"
+                    label={tr("common.unitPrice")}
                     maw={150}
                     min={0}
                     onChange={(v) =>
                       patch(ri, { unitPrice: typeof v === "number" ? v : null })
                     }
-                    placeholder="未入力可"
+                    placeholder={tr("sales.orderAcceptances.mayBeLeftBlank")}
                     prefix="¥"
                     thousandSeparator=","
                     value={row.unitPrice ?? ""}
@@ -253,7 +262,7 @@ export function OrderAcceptanceItemsEditor({
                 )}
               </Box>
               <ActionIcon
-                aria-label="明細を削除"
+                aria-label={tr("common.removeLine")}
                 color="red"
                 disabled={items.length <= 1}
                 mb={4}
@@ -266,19 +275,19 @@ export function OrderAcceptanceItemsEditor({
             <Group align="flex-end" gap="sm" mt="xs">
               <DatePickerInput
                 clearable
-                label="納期"
+                label={tr("common.deliveryDate")}
                 leftSection={<IconCalendar size={14} />}
                 maw={200}
                 onChange={(v) => patch(ri, { deliveryDate: v })}
-                placeholder="日付を選択"
+                placeholder={tr("common.pickADate")}
                 value={row.deliveryDate}
                 valueFormat="YYYY/MM/DD"
               />
               <TextInput
                 flex={1}
-                label="備考"
+                label={tr("common.notes")}
                 onChange={(e) => patch(ri, { notes: e.currentTarget.value })}
-                placeholder="行の備考（任意）"
+                placeholder={tr("common.lineNotesOptional")}
                 value={row.notes}
               />
               <Text
@@ -304,7 +313,7 @@ export function OrderAcceptanceItemsEditor({
         onClick={() => onChange([...items, newItemRow()])}
         size="xs"
       >
-        明細を追加
+        {tr("common.addLine")}
       </GhostButton>
 
       {/*
@@ -315,19 +324,23 @@ export function OrderAcceptanceItemsEditor({
       <Divider mt="md" />
       <Group gap="md" justify="flex-end" mt="sm">
         <Text c="dimmed" size="xs">
-          明細 {totals.lineCount} 件 / 合計数量{" "}
+          {tr("sales.orderAcceptanceItemsEditor.lineCountAndTotalQuantity", {
+            count: totals.lineCount,
+          })}{" "}
           <span className="tabular-nums">
             {totals.quantity.toLocaleString("ja-JP")}
           </span>
         </Text>
         {totals.unpricedCount > 0 && (
           <Badge color="orange" size="xs" variant="light">
-            単価未入力 {totals.unpricedCount} 件を除く
+            {tr("sales.orderAcceptanceDetail.excludingUnpricedCount", {
+              count: totals.unpricedCount,
+            })}
           </Badge>
         )}
         <Group gap="xs">
           <Text fw={600} size="sm">
-            合計金額
+            {tr("common.totalAmount")}
           </Text>
           <Text className="tabular-nums" ff="mono" fw={700} size="sm">
             {formatMoney(totals.amount)}

@@ -16,6 +16,7 @@
 import { Badge, Group, Paper, Stack, Tabs, Text } from "@mantine/core";
 import { IconCalendarTime } from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import type { ReactNode } from "react";
 import type { ApprovalRequestRow } from "@/app/(dashboard)/general/tasks/approvals-data";
 import type { InboxCommentRow } from "@/app/(dashboard)/general/tasks/comments-data";
@@ -163,6 +164,7 @@ export function TasksView({
   /** 本人が隠しているタブ（app.user_view_settings）。 */
   hiddenTabs: string[];
 }) {
+  const tr = useTranslations();
   const unreadCompletions = completions.filter((c) => !c.readAt).length;
 
   // 出せるタブ = 権限と件数で決まるもの。隠す設定はこの上に効く。
@@ -174,7 +176,7 @@ export function TasksView({
     ...(completions.length > 0 ? ["completions"] : []),
     "comments",
   ];
-  const visible = visibleTaskTabs(available, hiddenTabs);
+  const visible = visibleTaskTabs(available, hiddenTabs, tr);
   const [requestedTab, setTab] = useTabParam(visible[0]?.id ?? "plans");
   const tab = resolveActiveTab(requestedTab, visible);
 
@@ -194,7 +196,7 @@ export function TasksView({
         <Paper p="md" radius="md" withBorder>
           <EmptyState
             icon={<IconCalendarTime size={24} />}
-            message="割り当てられた作業予定はありません"
+            message={tr("general.tasksView.thereIsNoWorkAssignedTo")}
           />
         </Paper>
       ) : (
@@ -219,8 +221,8 @@ export function TasksView({
         actions={
           <TaskTabsSettingsButton available={available} hidden={hiddenTabs} />
         }
-        breadcrumbs={["一般", "承認・予定"]}
-        title="承認・予定"
+        breadcrumbs={[tr("common.general"), tr("common.approvalsSchedule")]}
+        title={tr("common.approvalsSchedule")}
       />
 
       <AppTabs onChange={setTab} value={tab}>

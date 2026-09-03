@@ -9,10 +9,14 @@
  * マスタの文字列 id）。認証未実装のため user_id は現状 null（後述 TODO(auth)）。
  */
 
+import { getTranslations } from "next-intl/server";
 import type { AuditEntry } from "@/components/ui/shells";
+import { auditFieldDiffs, formatAuditValue } from "@/lib/audit-field-labels";
 import { avatarUrl } from "@/lib/avatar";
 import { prisma } from "@/lib/db";
 import type { Formatters } from "@/lib/format";
+import type { Tr } from "@/lib/i18n";
+import { inventoryNoteLabel } from "@/lib/inventory-note-labels";
 import { getServerFormatters } from "@/lib/user-preferences";
 
 export type AuditAction =
@@ -44,82 +48,19 @@ export interface RecordAuditInput {
   after?: unknown;
 }
 
-const ACTION_LABEL: Record<string, string> = {
-  CREATE: "作成",
-  UPDATE: "更新",
-  DELETE: "削除",
-  SEED: "初期データ",
-  MIGRATE: "マイグレーション",
-};
-
-/** table_name → 画面表示用の日本語ラベル（操作履歴一覧の「対象」列）。 */
-export const AUDIT_TABLE_LABELS: Record<string, string> = {
-  quotes: "見積書",
-  estimates: "価格試算",
-  price_list_entries: "価格表",
-  products: "製品",
-  materials: "素材",
-  material_types: "材種",
-  business_partners: "取引先",
-  feature_flags: "アプリ管理",
-  plants: "拠点",
-  // 旧テーブル名 — audit_logs.table_name は保存済み文字列なので rename 後も
-  // 履歴行は 'factories' のまま。表示だけ新名称に揃える。
-  factories: "拠点（旧）",
-  process_step_catalog: "工程マスタ",
-  inspection_templates: "検査表テンプレート",
-  defect_types: "不良種類",
-  approval_groups: "承認グループ",
-  approval_flows: "承認フロー",
-  order_lines: "注文明細",
-  work_orders: "指示書",
-  delivery_orders: "出荷書",
-  delivery_notes: "納品書",
-  purchase_requests: "購買依頼",
-  forms: "フォーム",
-  form_responses: "フォーム回答",
-  internal_pages: "社内文書",
-  purchase_request_items: "購買依頼明細",
-  material_purchase_orders: "素材発注書",
-  material_receipts: "素材入荷",
-  invoices: "請求書",
-  billing_closings: "締日処理",
-  design_requests: "設計依頼書",
-  approval_requests: "承認依頼",
-  order_acceptances: "注文請書",
-  kiosk_cards: "QRカード",
-  kiosk_devices: "キオスク端末",
-  kiosk_floor_maps: "フロアマップ",
-  product_inventory: "製品在庫",
-  material_inventory: "素材在庫",
-  storage_locations: "保管場所",
-  storage_shelves: "棚",
-  work_location_groups: "作業場所グループ",
-  work_locations: "作業場所",
-  file_folder_grants: "ファイルフォルダ権限",
-  // テーブルではなく取込フォルダ（INTAKE_DIR）の操作 — SY0C の投入・再取込。
-  intake_folder: "注文書取込フォルダ",
-  system: "システム",
-};
-
-export function auditTableLabel(tableName: string): string {
-  return AUDIT_TABLE_LABELS[tableName] ?? tableName;
+/** action → 画面表示用のラベル。VIEW/EXPORT も含め全ての AuditAction を持つ。 */
+function actionLabel(action: string, tr: Tr): string {
+  return tr.has(`audit.action.${action}`)
+    ? tr(`audit.action.${action}`)
+    : action;
 }
 
-/** 主要フィールドの日本語ラベル（UPDATE 差分表示用）。未登録キーはそのまま表示。 */
-const FIELD_LABELS: Record<string, string> = {
-  status: "ステータス",
-  isActive: "有効",
-  notes: "備考",
-  unitPrice: "単価",
-  baseUnitPrice: "基準単価",
-  validFrom: "有効開始日",
-  validUntil: "有効終了日",
-  quantity: "数量",
-  name: "名称",
-  nameJa: "名称",
-  unit: "単位",
-};
+/** table_name → 画面表示用のラベル（操作履歴一覧の「対象」列）。訳が無ければテーブル名そのまま。 */
+export function auditTableLabel(tableName: string, tr: Tr): string {
+  return tr.has(`audit.table.${tableName}`)
+    ? tr(`audit.table.${tableName}`)
+    : tableName;
+}
 
 /**
  * 現在の操作ユーザー ID。認証が未実装（セッションなし）のため現状はシステム
@@ -198,11 +139,9 @@ export async function recordSystemEvent(input: {
 
 // ── read side ────────────────────────────────────────────────────────────────
 
-function fmtValue(v: unknown): string {
-  if (v === null || v === undefined || v === "") return "—";
-  if (typeof v === "boolean") return v ? "有効" : "無効";
-  if (typeof v === "object") return JSON.stringify(v);
-  return String(v);
+/** 一覧の要約に出す値。詳細表と同じ整形を使う（言葉を割らない）。 */
+function fmtValue(v: unknown, key?: string): string {
+  return formatAuditValue(v, key);
 }
 
 /** UPDATE の before/after からスカラー変更点を「ラベル: 旧 → 新」で要約。 */
@@ -210,32 +149,28 @@ function describeChange(
   action: string,
   before: unknown,
   after: unknown,
+  tableName: string | undefined,
+  tr: Tr,
 ): string {
   // システムイベント（SEED/MIGRATE 等）は after.note に人間向け説明を持つ。
+  // lib/inventory.ts などが書く note は構造化ノート（鍵+パラメータ）のことが
+  // あり、その場合はいま開いている人の言語で解決する（書いた瞬間の言語に
+  // 固定しない）。
   const note = (after as { note?: unknown } | null)?.note;
-  if (typeof note === "string" && note) return note;
-  if (action === "CREATE") return "新規作成";
-  if (action === "DELETE") return "削除";
-  const b = (before ?? {}) as Record<string, unknown>;
-  const a = (after ?? {}) as Record<string, unknown>;
-  const keys = new Set([...Object.keys(b), ...Object.keys(a)]);
-  const diffs: string[] = [];
-  for (const k of keys) {
-    const bv = b[k];
-    const av = a[k];
-    // ネスト（配列・オブジェクト）は差分表示から除外（明細等）。
-    if (
-      (bv !== null && typeof bv === "object") ||
-      (av !== null && typeof av === "object")
-    ) {
-      continue;
-    }
-    if (fmtValue(bv) === fmtValue(av)) continue;
-    const label = FIELD_LABELS[k] ?? k;
-    diffs.push(`${label}: ${fmtValue(bv)} → ${fmtValue(av)}`);
-    if (diffs.length >= 6) break;
-  }
-  return diffs.length > 0 ? diffs.join(" / ") : "更新";
+  if (typeof note === "string" && note)
+    return inventoryNoteLabel(tr, note) ?? note;
+  if (action === "CREATE") return tr("common.create");
+  if (action === "DELETE") return tr("common.delete");
+  // 詳細表と同じ差分（入れ子は平らにして葉ごとに見る）。以前はここで
+  // オブジェクトを丸ごと飛ばしていたので、設定 JSON だけが変わった操作は
+  // 一覧に「更新」としか出ず、何をしたのか分からなかった。
+  const diffs = auditFieldDiffs(before, after, tableName)
+    .slice(0, 6)
+    .map(
+      (d) =>
+        `${d.label}: ${fmtValue(d.before, d.key)} → ${fmtValue(d.after, d.key)}`,
+    );
+  return diffs.length > 0 ? diffs.join(" / ") : tr("common.update");
 }
 
 type AuditRow = {
@@ -260,23 +195,29 @@ type AuditRow = {
  * 履歴 1 行 → 表示用。日時はここで文字列にするので、閲覧者の表示設定
  * （タイムゾーン・日付形式・言語）を渡してもらう。
  */
-function mapAudit(fmt: Formatters, row: AuditRow): AuditEntry {
+function mapAudit(fmt: Formatters, tr: Tr, row: AuditRow): AuditEntry {
   return {
     id: row.id.toString(),
-    action: ACTION_LABEL[row.action] ?? row.action,
+    action: actionLabel(row.action, tr),
     // 詳細ポップアップ用の生データ（一覧では使わない）。
     tableName: row.tableName,
-    tableLabel: auditTableLabel(row.tableName),
+    tableLabel: auditTableLabel(row.tableName, tr),
     recordId: row.recordId,
     before: row.beforeData,
     after: row.afterData,
-    user: row.user?.displayName ?? "システム",
+    user: row.user?.displayName ?? tr("common.system"),
     // 操作者の顔写真（小）。未設定・システム操作ならイニシャル表示になる。
     avatarUrl: row.user ? actorAvatarUrl(row.user) : null,
     // 操作元の共有タブレット（Web からの操作は null → バッジを出さない）。
     device: row.kioskDevice ? fmt.deviceName(row.kioskDevice.name) : null,
     at: fmt.dateTime(row.createdAt),
-    detail: describeChange(row.action, row.beforeData, row.afterData),
+    detail: describeChange(
+      row.action,
+      row.beforeData,
+      row.afterData,
+      row.tableName,
+      tr,
+    ),
   };
 }
 
@@ -302,7 +243,10 @@ export async function fetchAuditEntries(
   recordId: string,
 ): Promise<AuditEntry[]> {
   try {
-    const fmt = await getServerFormatters();
+    const [fmt, tr] = await Promise.all([
+      getServerFormatters(),
+      getTranslations(),
+    ]);
     const rows = await prisma.auditLog.findMany({
       where: { tableName, recordId },
       orderBy: { createdAt: "desc" },
@@ -319,7 +263,7 @@ export async function fetchAuditEntries(
       },
       take: 100,
     });
-    return rows.map((row) => mapAudit(fmt, row));
+    return rows.map((row) => mapAudit(fmt, tr, row));
   } catch (e) {
     console.error("fetchAuditEntries failed", e);
     return [];
@@ -353,7 +297,10 @@ export async function getActivityEntry(
     return null;
   }
   try {
-    const fmt = await getServerFormatters();
+    const [fmt, tr] = await Promise.all([
+      getServerFormatters(),
+      getTranslations(),
+    ]);
     const row = await prisma.auditLog.findUnique({
       where: { id: key },
       include: {
@@ -370,9 +317,9 @@ export async function getActivityEntry(
     });
     if (!row) return null;
     return {
-      ...mapAudit(fmt, row),
+      ...mapAudit(fmt, tr, row),
       tableName: row.tableName,
-      tableLabel: auditTableLabel(row.tableName),
+      tableLabel: auditTableLabel(row.tableName, tr),
       recordId: row.recordId,
       userId: row.user?.id ?? null,
       actionRaw: row.action,
@@ -391,7 +338,10 @@ export async function listAuditEntries(
 ): Promise<ActivityEntry[]> {
   const { take = 200, skip = 0 } = opts;
   try {
-    const fmt = await getServerFormatters();
+    const [fmt, tr] = await Promise.all([
+      getServerFormatters(),
+      getTranslations(),
+    ]);
     const rows = await prisma.auditLog.findMany({
       orderBy: { createdAt: "desc" },
       include: {
@@ -409,9 +359,9 @@ export async function listAuditEntries(
       skip,
     });
     return rows.map((row) => ({
-      ...mapAudit(fmt, row),
+      ...mapAudit(fmt, tr, row),
       tableName: row.tableName,
-      tableLabel: auditTableLabel(row.tableName),
+      tableLabel: auditTableLabel(row.tableName, tr),
       recordId: row.recordId,
     }));
   } catch (e) {

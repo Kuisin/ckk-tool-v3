@@ -22,6 +22,7 @@ import {
 import { notifications } from "@mantine/notifications";
 import { IconPlus, IconTrash } from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { useState, useTransition } from "react";
 import { saveDefectRecords } from "@/app/(dashboard)/production/work-orders/[id]/steps/[stepId]/actions";
 import { useFormat } from "@/components/layout/PreferencesProvider";
@@ -51,6 +52,7 @@ export function DefectRecordForm({
   records: StepDefectRecordView[];
   canRecord: boolean;
 }) {
+  const tr = useTranslations();
   const fmt = useFormat();
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
@@ -79,8 +81,8 @@ export function DefectRecordForm({
     const invalid = rows.some((r) => !r.defectTypeId || !r.description.trim());
     if (invalid) {
       notifications.show({
-        title: "入力不足",
-        message: "各行の不良種類と内容を入力してください",
+        title: tr("common.missingInput"),
+        message: tr("production.defectRecordForm.enterTheDefectTypeAndDetails"),
         color: "red",
       });
       return;
@@ -96,16 +98,20 @@ export function DefectRecordForm({
       });
       if (result.ok) {
         notifications.show({
-          title: "不良記録を保存しました",
-          message: `${rows.length} 件を追加しました`,
+          title: tr("production.defectRecordForm.defectRecordsSaved"),
+          message: tr("production.defectRecordForm.addedNItems", {
+            count: rows.length,
+          }),
           color: "green",
         });
         setRows([]);
         router.refresh();
       } else {
         notifications.show({
-          title: "エラー",
-          message: result.errors?.join(" / ") ?? "不良記録の保存に失敗しました",
+          title: tr("common.error2"),
+          message:
+            result.errors?.join(" / ") ??
+            tr("production.defectRecordForm.couldNotSaveTheDefectRecord"),
           color: "red",
         });
       }
@@ -115,7 +121,9 @@ export function DefectRecordForm({
   return (
     <Paper p="md" radius="md" withBorder>
       <Stack gap="md">
-        <Title order={4}>不良記録（任意）</Title>
+        <Title order={4}>
+          {tr("production.defectRecordForm.defectRecordOptional")}
+        </Title>
 
         {records.length > 0 && (
           <Stack gap="xs">
@@ -143,27 +151,27 @@ export function DefectRecordForm({
             {rows.map((row) => (
               <Group align="flex-start" gap="sm" key={row.key} wrap="nowrap">
                 <Select
-                  aria-label="不良種類"
+                  aria-label={tr("production.defectRecordForm.defectType")}
                   data={defectTypeOptions}
                   onChange={(v) => updateRow(row.key, { defectTypeId: v })}
-                  placeholder="不良種類"
+                  placeholder={tr("production.defectRecordForm.defectType")}
                   searchable
                   value={row.defectTypeId}
                   w={220}
                 />
                 <Textarea
-                  aria-label="不良内容"
+                  aria-label={tr("production.defectRecordForm.defectDetails")}
                   autosize
                   minRows={2}
                   onChange={(e) =>
                     updateRow(row.key, { description: e.currentTarget.value })
                   }
-                  placeholder="不良内容"
+                  placeholder={tr("production.defectRecordForm.defectDetails")}
                   style={{ flex: 1 }}
                   value={row.description}
                 />
                 <ActionIcon
-                  aria-label="行を削除"
+                  aria-label={tr("common.removeRow")}
                   color="red"
                   mt={8}
                   onClick={() => removeRow(row.key)}
@@ -178,11 +186,11 @@ export function DefectRecordForm({
                 leftSection={<IconPlus size={16} />}
                 onClick={addRow}
               >
-                追加
+                {tr("common.add")}
               </GhostButton>
               {rows.length > 0 && (
                 <PrimaryButton loading={isPending} onClick={handleSave}>
-                  不良記録を保存
+                  {tr("production.defectRecordForm.saveDefectRecords")}
                 </PrimaryButton>
               )}
             </Group>
@@ -191,7 +199,7 @@ export function DefectRecordForm({
 
         {!canRecord && records.length === 0 && (
           <Text c="dimmed" size="sm">
-            不良記録はありません
+            {tr("production.defectRecordForm.thereAreNoDefectRecords")}
           </Text>
         )}
       </Stack>

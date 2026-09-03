@@ -15,6 +15,7 @@
 
 import "server-only";
 
+import { getTranslations } from "next-intl/server";
 import { getApprovalFlow, startApprovalFlow } from "./approvals";
 import { getCurrentActorId, recordAudit } from "./audit";
 import { prisma } from "./db";
@@ -42,6 +43,7 @@ interface AcceptanceKey {
 async function validateCancellable(
   key: AcceptanceKey,
 ): Promise<{ ok: true } | { ok: false; error: string }> {
+  const tr = await getTranslations();
   const acceptance = await prisma.orderAcceptance.findUnique({
     where: { yearMonth_seq: key },
     select: {
@@ -50,18 +52,20 @@ async function validateCancellable(
     },
   });
   if (!acceptance)
-    return { ok: false, error: "対象の注文請書が見つかりません" };
+    return { ok: false, error: tr("orderAcceptanceActions.targetNotFound") };
   if (acceptance.status !== "COMPLETED") {
     return {
       ok: false,
-      error: "キャンセル依頼できるのは確定済みの注文請書だけです",
+      error: tr("orderAcceptanceActions.onlyCompletedCanRequestCancel"),
     };
   }
   const shipped = acceptance.items.filter((i) => i.status === "SHIPPED").length;
   if (shipped > 0) {
     return {
       ok: false,
-      error: `出荷済みの注文明細が ${shipped} 件あるためキャンセルできません`,
+      error: tr("orderAcceptanceActions.cannotCancelShippedLines", {
+        count: shipped,
+      }),
     };
   }
   const active = acceptance.items.filter(
@@ -70,7 +74,7 @@ async function validateCancellable(
   if (active === 0) {
     return {
       ok: false,
-      error: "すべての注文明細が既にキャンセル済みです",
+      error: tr("orderAcceptanceActions.allLinesAlreadyCancelled"),
     };
   }
   return { ok: true };
@@ -84,10 +88,14 @@ export async function submitAcceptanceCancelRequest(input: {
   key: AcceptanceKey;
   reason: string;
 }): Promise<AcceptanceCancelResult> {
+  const tr = await getTranslations();
   const { key } = input;
   const reason = input.reason.trim();
   if (!reason)
-    return { ok: false, errors: ["キャンセル理由を入力してください"] };
+    return {
+      ok: false,
+      errors: [tr("common.enterAReasonForCancelling")],
+    };
 
   const valid = await validateCancellable(key);
   if (!valid.ok) return { ok: false, errors: [valid.error] };
@@ -111,7 +119,7 @@ export async function submitAcceptanceCancelRequest(input: {
   if (existing) {
     return {
       ok: false,
-      errors: ["この注文請書には承認依頼中のキャンセル依頼があります"],
+      errors: [tr("orderAcceptanceActions.cancelRequestAlreadyPending")],
     };
   }
 
@@ -133,14 +141,19 @@ export async function submitAcceptanceCancelRequest(input: {
   if (!started.ok) {
     // 依頼が作れないなら保留行も残さない（承認できない幽霊を作らない）。
     await prisma.orderAcceptanceCancelRequest.delete({ where: { id: row.id } });
-    return { ok: false, errors: [started.error ?? "承認依頼に失敗しました"] };
+    return {
+      ok: false,
+      errors: [started.error ?? tr("common.approvalRequestFailed")],
+    };
   }
 
   await recordAudit({
     action: "UPDATE",
     tableName: "order_acceptances",
     recordId: number,
-    after: { note: `キャンセルを承認依頼（理由: ${reason}）` },
+    after: {
+      note: tr("orderAcceptanceActions.cancelRequestedNote", { reason }),
+    },
   });
   return { ok: true, pending: true };
 }
@@ -152,12 +165,20 @@ export async function submitAcceptanceCancelRequest(input: {
 export async function applyApprovedAcceptanceCancel(
   requestId: string,
 ): Promise<AcceptanceCancelResult> {
+  const tr = await getTranslations();
   const row = await prisma.orderAcceptanceCancelRequest.findUnique({
     where: { id: requestId },
   });
-  if (!row) return { ok: false, errors: ["キャンセル依頼が見つかりません"] };
+  if (!row)
+    return {
+      ok: false,
+      errors: [tr("orderAcceptanceActions.targetCancelRequestNotFound")],
+    };
   if (row.status !== "PENDING") {
-    return { ok: false, errors: ["この依頼は既に処理済みです"] };
+    return {
+      ok: false,
+      errors: [tr("orderAcceptanceActions.cancelRequestNotPending")],
+    };
   }
   const key = { yearMonth: row.acceptanceYearMonth, seq: row.acceptanceSeq };
   const actor = await getCurrentActorId();
@@ -166,7 +187,9 @@ export async function applyApprovedAcceptanceCancel(
     where: { id: row.id },
     data: {
       status: result.ok ? "APPLIED" : "FAILED",
-      error: result.ok ? null : (result.errors?.join(" / ") ?? "適用に失敗"),
+      error: result.ok
+        ? null
+        : (result.errors?.join(" / ") ?? tr("common.applyFailed")),
       resolvedBy: actor,
       resolvedAt: new Date(),
     },
@@ -223,6 +246,7 @@ async function applyCancel(
   key: AcceptanceKey,
   reason: string,
 ): Promise<AcceptanceCancelResult> {
+  const tr = await getTranslations();
   const valid = await validateCancellable(key);
   if (!valid.ok) return { ok: false, errors: [valid.error] };
 
@@ -238,7 +262,10 @@ async function applyCancel(
     },
   });
   if (!acceptance)
-    return { ok: false, errors: ["対象の注文請書が見つかりません"] };
+    return {
+      ok: false,
+      errors: [tr("orderAcceptanceActions.targetNotFound")],
+    };
 
   let summary: {
     cancelledLines: number;
@@ -255,12 +282,14 @@ async function applyCancel(
         const r = await cancelOrderLineTx(
           tx,
           line.id,
-          `注文請書 ${number} キャンセルに伴う連鎖キャンセル`,
+          tr("orderAcceptanceActions.chainCancelNote", { number }),
         );
         if (!r.cancelled) {
           // 依頼〜適用の間に出荷された等 — tx ごと巻き戻す。
           throw new Error(
-            `GUARD:注文明細（枝番 ${line.branch ?? "—"}）がキャンセルできない状態です`,
+            `GUARD:${tr("orderAcceptanceActions.lineNotCancellableState", {
+              branch: line.branch ?? "—",
+            })}`,
           );
         }
         cancelledLines += 1;
@@ -277,10 +306,13 @@ async function applyCancel(
     const message =
       e instanceof Error && e.message.startsWith("GUARD:")
         ? e.message.slice("GUARD:".length)
-        : "キャンセルの適用に失敗しました";
+        : tr("orderAcceptanceActions.cancelApplyFailed");
     return { ok: false, errors: [message] };
   }
 
+  const woSuffix = summary.cancelledWos.length
+    ? `（#${summary.cancelledWos.join(", #")}）`
+    : "";
   await recordAudit({
     action: "UPDATE",
     tableName: "order_acceptances",
@@ -288,7 +320,12 @@ async function applyCancel(
     before: { status: "COMPLETED" },
     after: {
       status: "CANCELLED",
-      note: `キャンセル適用（理由: ${reason}）— 明細 ${summary.cancelledLines} 件 / 予約解放 ${summary.released} 件 / 連鎖キャンセル指示書 ${summary.cancelledWos.length} 件${summary.cancelledWos.length ? `（#${summary.cancelledWos.join(", #")}）` : ""}`,
+      note: `${tr("orderAcceptanceActions.cancelAppliedNote", {
+        reason,
+        lines: summary.cancelledLines,
+        released: summary.released,
+        woCount: summary.cancelledWos.length,
+      })}${woSuffix}`,
     },
   });
   return { ok: true, pending: false };

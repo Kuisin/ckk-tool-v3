@@ -11,6 +11,7 @@ import { SimpleGrid, TextInput } from "@mantine/core";
 import { useForm } from "@mantine/form";
 import { notifications } from "@mantine/notifications";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { useTransition } from "react";
 import { z } from "zod";
 import type { BpBaseDetail } from "@/app/(dashboard)/master/_shared/bp-data";
@@ -30,11 +31,13 @@ import { FormSection, FormShell } from "@/components/ui/shells";
 import { useIsMobile } from "@/hooks/useViewport";
 import { zodResolver } from "@/lib/form";
 
-const branchFormSchema = bpBaseFormSchema.extend({
-  contactName: z.string(),
-});
+function branchFormSchema(tr: ReturnType<typeof useTranslations>) {
+  return bpBaseFormSchema(tr).extend({
+    contactName: z.string(),
+  });
+}
 
-type FormValues = z.infer<typeof branchFormSchema>;
+type FormValues = z.infer<ReturnType<typeof branchFormSchema>>;
 
 export function BranchForm({
   parentId,
@@ -47,13 +50,14 @@ export function BranchForm({
   parentBpCode: string;
   initial?: BpBaseDetail;
 }) {
+  const tr = useTranslations();
   const router = useRouter();
   const isMobile = useIsMobile();
   const [isPending, startTransition] = useTransition();
   const isEdit = !!initial;
 
   const form = useForm<FormValues>({
-    validate: zodResolver(branchFormSchema),
+    validate: zodResolver(branchFormSchema(tr)),
     initialValues: {
       ...bpBaseInitialValues(initial),
       contactName: "",
@@ -71,14 +75,16 @@ export function BranchForm({
         : await createBranch(parentId, input);
       if (result.ok) {
         notifications.show({
-          title: "保存しました",
-          message: isEdit ? "支店を更新しました" : "支店を作成しました",
+          title: tr("common.saved2"),
+          message: isEdit
+            ? tr("master.branchForm.theBranchWasUpdated")
+            : tr("master.bp.theBranchWasCreated"),
           color: "green",
         });
         router.push(`${BP_BASE_PATH}/${parentId}/branches/${result.data.id}`);
       } else {
         notifications.show({
-          title: "エラー",
+          title: tr("common.error2"),
           message: result.error,
           color: "red",
         });
@@ -89,10 +95,10 @@ export function BranchForm({
   return (
     <FormShell
       breadcrumbs={[
-        "マスタ",
-        { label: "取引先", href: BP_BASE_PATH },
+        tr("common.masterData"),
+        { label: tr("common.businessPartners"), href: BP_BASE_PATH },
         { label: parentName, href: `${BP_BASE_PATH}/${parentId}` },
-        isEdit ? "支店 編集" : "支店 新規作成",
+        isEdit ? tr("master.branchForm.editBranch") : tr("master.bp.newBranch"),
       ]}
       isDirty={form.isDirty()}
       isPending={isPending}
@@ -107,25 +113,25 @@ export function BranchForm({
       status={isEdit ? <ActiveBadge active={initial.isActive} /> : undefined}
       title={
         isEdit
-          ? `支店 編集 — ${initial.bpCode}`
-          : `支店 新規作成 — ${parentName}`
+          ? tr("master.branchForm.editTitle", { code: initial.bpCode })
+          : tr("master.branchForm.newTitle", { parentName })
       }
     >
       <BpBaseFields
         bpCode={initial?.bpCode}
-        codeDescription={`形式: ${parentBpCode}-NN（自動採番）`}
+        codeDescription={tr("master.branchForm.codeFormat", { parentBpCode })}
         form={form}
       />
 
       {!isEdit && (
         <FormSection
-          description="支店の主担当者を同時に登録できます（任意）。"
-          title="担当者"
+          description={tr("master.bp.youCanRegisterTheBranchS")}
+          title={tr("common.assignee")}
         >
           <SimpleGrid cols={isMobile ? 1 : 2} spacing="sm">
             <TextInput
-              label="担当者名"
-              placeholder="山田 太郎"
+              label={tr("common.contactName")}
+              placeholder={tr("master.bpModals.namePlaceholder")}
               {...form.getInputProps("contactName")}
             />
           </SimpleGrid>

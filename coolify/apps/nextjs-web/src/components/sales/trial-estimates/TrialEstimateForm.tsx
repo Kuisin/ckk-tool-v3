@@ -33,6 +33,7 @@ import {
   IconChartLine,
 } from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
+import { useLocale, useTranslations } from "next-intl";
 import { useState, useTransition } from "react";
 import { searchProductOptions } from "@/app/(dashboard)/_shared/option-search";
 import {
@@ -43,7 +44,7 @@ import {
 import { useFormat } from "@/components/layout/PreferencesProvider";
 import { AppTabs } from "@/components/ui/AppTabs";
 import { EditButton } from "@/components/ui/buttons";
-import { PRODUCT_F4 } from "@/components/ui/f4-presets";
+import { productF4 } from "@/components/ui/f4-presets";
 import { HelpLabel } from "@/components/ui/HelpLabel";
 import { MoneyText } from "@/components/ui/MoneyText";
 import { openConfirm } from "@/components/ui/modals";
@@ -62,15 +63,15 @@ import {
 } from "@/lib/trial-pricing";
 import {
   COATING_OPTIONS,
-  CYLINDER_TYPE_OPTIONS,
-  INSPECTION_OPTIONS,
-  LAP_OPTIONS,
-  LD_LOCATION_OPTIONS,
-  NECK_TYPE_OPTIONS,
-  STEP_TYPE_OPTIONS,
+  cylinderTypeOptions,
+  inspectionOptions,
+  lapOptions,
+  ldLocationOptions,
+  neckTypeOptions,
+  stepTypeOptions,
 } from "@/lib/trial-pricing-data";
 import {
-  MATERIAL_PRICE_BASIS_OPTIONS,
+  materialPriceBasisOptions,
   type TrialPricingSettings,
   toToolTypeOptions,
   toTrialPricingOptions,
@@ -105,6 +106,8 @@ export function TrialEstimateForm({
   initialPricing: MaterialPricing;
   source?: TrialEstimateRecord | null;
 }) {
+  const tr = useTranslations();
+  const locale = useLocale();
   const fmt = useFormat();
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
@@ -117,7 +120,9 @@ export function TrialEstimateForm({
     src?.toolType ?? "ROUND_BAR",
   );
   const [name, setName] = useState(
-    source ? `${source.name}（再価格試算）` : "",
+    source
+      ? tr("sales.trialEstimateForm.reEstimatedName", { name: source.name })
+      : "",
   );
   const [customerId, setCustomerId] = useState<string | null>(
     source?.customerId ?? null,
@@ -233,7 +238,7 @@ export function TrialEstimateForm({
       const res = await fetchMaterialPricing(key);
       if (!res.ok) {
         notifications.show({
-          title: "エラー",
+          title: tr("common.error2"),
           message: res.error,
           color: "red",
         });
@@ -257,10 +262,9 @@ export function TrialEstimateForm({
   // Prompt before unlocking the price for a custom value.
   const promptCustomPrice = () => {
     openConfirm({
-      title: "材料単価のカスタム設定",
-      message:
-        "この素材の単価を手動で設定しますか？カスタム単価を使った価格試算は「カスタム」として記録されます。",
-      confirmLabel: "カスタム設定する",
+      title: tr("sales.trialEstimates.customMaterialUnitPrice"),
+      message: tr("sales.trialEstimates.setThisMaterialSUnitPrice"),
+      confirmLabel: tr("common.customize"),
       onConfirm: () => {
         setCustomMode(true);
         setOverridden(true);
@@ -269,7 +273,7 @@ export function TrialEstimateForm({
   };
 
   const basisLabel =
-    MATERIAL_PRICE_BASIS_OPTIONS.find(
+    materialPriceBasisOptions(tr).find(
       (b) => b.value === settings.materialPriceBasis,
     )?.label ?? settings.materialPriceBasis;
 
@@ -305,8 +309,8 @@ export function TrialEstimateForm({
   const save = () => {
     if (!name.trim()) {
       notifications.show({
-        title: "エラー",
-        message: "価格試算名を入力してください",
+        title: tr("common.error2"),
+        message: tr("sales.trialEstimates.enterAPriceEstimateName"),
         color: "red",
       });
       return;
@@ -328,17 +332,17 @@ export function TrialEstimateForm({
       });
       if (res.ok) {
         notifications.show({
-          title: "保存しました",
+          title: tr("common.saved2"),
           message: overridden
-            ? "価格試算を保存しました（カスタム単価）"
-            : "価格試算を保存しました",
+            ? tr("sales.trialEstimates.thePriceEstimateWasSavedCustom")
+            : tr("sales.trialEstimates.thePriceEstimateWasSaved"),
           color: "green",
         });
         // 作成後は詳細（ビュー）ページへ。
         router.push(`${BASE_PATH}/${res.data.number}`);
       } else {
         notifications.show({
-          title: "エラー",
+          title: tr("common.error2"),
           message: res.error,
           color: "red",
         });
@@ -352,34 +356,38 @@ export function TrialEstimateForm({
     <Stack gap="md">
       {/* 保存 / キャンセルはヘッダーではなく画面下端の FormActions に置く。 */}
       <PageHeader
-        breadcrumbs={["販売", { label: "価格試算", href: BASE_PATH }, "新規"]}
+        breadcrumbs={[
+          tr("common.sales"),
+          { label: tr("common.priceEstimate"), href: BASE_PATH },
+          tr("common.new"),
+        ]}
         status={
           overridden ? (
             <Badge color="orange" variant="light">
-              カスタム
+              {tr("common.custom")}
             </Badge>
           ) : undefined
         }
-        title="価格試算"
+        title={tr("common.priceEstimate")}
       />
 
       <AppTabs defaultValue="calc">
         <Tabs.List>
           <Tabs.Tab leftSection={<IconCalculator size={14} />} value="calc">
-            価格試算
+            {tr("common.priceEstimate")}
           </Tabs.Tab>
           <Tabs.Tab leftSection={<IconChartLine size={14} />} value="history">
-            素材価格推移
+            {tr("common.materialPriceHistory")}
           </Tabs.Tab>
         </Tabs.List>
 
         {/* ── 価格試算 tab ───────────────────────────────────────────────────── */}
         <Tabs.Panel pt="md" value="calc">
           <Stack gap="md">
-            <FormSection title="基本">
+            <FormSection title={tr("sales.trialEstimates.basic")}>
               <Stack gap="sm">
                 <SegmentedControl
-                  data={toToolTypeOptions(settings)}
+                  data={toToolTypeOptions(settings, tr)}
                   onChange={(v) => setToolType(v as ToolType)}
                   value={toolType}
                 />
@@ -388,10 +396,12 @@ export function TrialEstimateForm({
                     clearable
                     data={customerOptions}
                     label={
-                      <HelpLabel {...fieldHelp("trialEstimate", "customer")} />
+                      <HelpLabel
+                        {...fieldHelp(tr, "trialEstimate", "customer")}
+                      />
                     }
                     onChange={setCustomerId}
-                    placeholder="顧客"
+                    placeholder={tr("common.customer")}
                     searchable
                     value={customerId}
                   />
@@ -406,7 +416,7 @@ export function TrialEstimateForm({
                     value={salesRepId}
                   />
                   <SearchSelect
-                    f4={PRODUCT_F4}
+                    f4={productF4(tr)}
                     initialOption={
                       source?.productId && source.productName
                         ? {
@@ -417,27 +427,33 @@ export function TrialEstimateForm({
                     }
                     label={
                       <HelpLabel
-                        help="対象製品（任意）。指定して確定すると、価格表（顧客×製品）の作成時にこの価格試算を基準単価ソースとして選択できます。"
+                        help={tr(
+                          "sales.trialEstimates.targetProductOptionalSetItAnd",
+                        )}
                         label={
                           <HelpLabel
-                            {...fieldHelp("trialEstimate", "product")}
+                            {...fieldHelp(tr, "trialEstimate", "product")}
                           />
                         }
                       />
                     }
                     onChange={setProductId}
                     onSearch={searchProductOptions}
-                    placeholder="製品を検索（任意）"
+                    placeholder={tr(
+                      "sales.trialEstimates.searchProductsOptional",
+                    )}
                     storageKey="product"
                     value={productId}
                   />
                   <NumberInput
                     label={
                       <HelpLabel
-                        help="工具の最大外径。加工費マトリクスの参照キーになります。"
+                        help={tr(
+                          "sales.trialEstimates.theToolSMaximumOuterDiameter",
+                        )}
                         label={
                           <HelpLabel
-                            {...fieldHelp("trialEstimate", "maxDiameter")}
+                            {...fieldHelp(tr, "trialEstimate", "maxDiameter")}
                           />
                         }
                       />
@@ -449,10 +465,12 @@ export function TrialEstimateForm({
                   <NumberInput
                     label={
                       <HelpLabel
-                        help="工具全長。材料原価 = 参照単価 × (全長 ÷ 1000mm)。"
+                        help={tr(
+                          "sales.trialEstimates.theToolSOverallLengthMaterial",
+                        )}
                         label={
                           <HelpLabel
-                            {...fieldHelp("trialEstimate", "length")}
+                            {...fieldHelp(tr, "trialEstimate", "length")}
                           />
                         }
                       />
@@ -466,8 +484,10 @@ export function TrialEstimateForm({
             </FormSection>
 
             <FormSection
-              description="材料は「材種 × 直径 × 黒皮/研磨」で指定します。参照価格は仕入実績、無ければ材種の既定単価（¥/1000mm）から算出します。"
-              title="素材"
+              description={tr(
+                "sales.trialEstimates.materialIsGivenAsTypeDiameter",
+              )}
+              title={tr("common.materials")}
             >
               <SimpleGrid cols={{ base: 1, sm: 3 }} mb="sm" spacing="sm">
                 <Select
@@ -475,7 +495,7 @@ export function TrialEstimateForm({
                   disabled={isPricingLoading}
                   label={
                     <HelpLabel
-                      {...fieldHelp("trialEstimate", "materialType")}
+                      {...fieldHelp(tr, "trialEstimate", "materialType")}
                     />
                   }
                   onChange={(v) => {
@@ -491,7 +511,9 @@ export function TrialEstimateForm({
                   data={diameterOptions}
                   disabled={isPricingLoading}
                   label={
-                    <HelpLabel {...fieldHelp("trialEstimate", "diameter")} />
+                    <HelpLabel
+                      {...fieldHelp(tr, "trialEstimate", "diameter")}
+                    />
                   }
                   onChange={(v) => {
                     const code = v ?? "";
@@ -507,7 +529,7 @@ export function TrialEstimateForm({
                   disabled={isPricingLoading}
                   label={
                     <HelpLabel
-                      {...fieldHelp("trialEstimate", "surfaceFinish")}
+                      {...fieldHelp(tr, "trialEstimate", "surfaceFinish")}
                     />
                   }
                   onChange={(v) => {
@@ -521,7 +543,9 @@ export function TrialEstimateForm({
               <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="sm">
                 {isCylinder ? (
                   <NumberInput
-                    label="素材価格（手入力 ¥/本）"
+                    label={tr(
+                      "sales.trialEstimates.materialPriceEnteredByHandPc",
+                    )}
                     min={0}
                     onChange={setCylinderMaterialPrice}
                     prefix="¥"
@@ -532,18 +556,28 @@ export function TrialEstimateForm({
                   <NumberInput
                     description={
                       customMode
-                        ? "カスタム単価（手動）"
+                        ? tr("sales.trialEstimates.customUnitPriceManual")
                         : overridden
-                          ? "カスタム単価"
+                          ? tr("sales.trialEstimates.customUnitPrice")
                           : policyRef.usedDefault
-                            ? "仕入実績なし → 設定の既定材料単価を使用"
-                            : `参照: ${basisLabel}（直近${settings.materialPriceLookbackMonths}ヶ月）`
+                            ? tr(
+                                "sales.trialEstimates.noPurchaseHistoryTheConfiguredDefault",
+                              )
+                            : tr(
+                                "sales.trialEstimateForm.referenceBasisMonths",
+                                {
+                                  basis: basisLabel,
+                                  months: settings.materialPriceLookbackMonths,
+                                },
+                              )
                     }
                     label={
                       <Group gap={6} wrap="nowrap">
                         <HelpLabel
-                          help="素材の仕入実績単価（¥/1000mm）。既定はポリシー（直近Nヶ月の最高値など）で自動選択され、「単価を編集」で手動上書きできます。"
-                          label="参照単価（¥/1000mm）"
+                          help={tr(
+                            "sales.trialEstimates.theMaterialSHistoricalPurchasePrice",
+                          )}
+                          label={tr("common.referenceUnitPrice1000mm")}
                         />
                         <Badge
                           color={
@@ -556,10 +590,14 @@ export function TrialEstimateForm({
                           variant="light"
                         >
                           {overridden
-                            ? "カスタム"
+                            ? tr("common.custom")
                             : policyRef.usedDefault
-                              ? "既定価格"
-                              : `参照価格 ${referenceDate ? fmt.date(referenceDate) : "—"}`}
+                              ? tr("sales.trialEstimates.defaultPrice")
+                              : tr("sales.trialEstimateForm.referencePriceOn", {
+                                  date: referenceDate
+                                    ? fmt.date(referenceDate)
+                                    : "—",
+                                })}
                         </Badge>
                       </Group>
                     }
@@ -579,7 +617,9 @@ export function TrialEstimateForm({
                 <Group gap="sm" justify="space-between" mt="xs" wrap="nowrap">
                   <Switch
                     checked={isBlackSkin}
-                    label="黒皮材（センタレス加算）"
+                    label={tr(
+                      "sales.trialEstimates.blackSkinStockCenterlessSurcharge",
+                    )}
                     onChange={(e) => setIsBlackSkin(e.currentTarget.checked)}
                     size="sm"
                   />
@@ -590,21 +630,21 @@ export function TrialEstimateForm({
                       onClick={resetToPolicy}
                       size="xs"
                     >
-                      ポリシー値に戻す
+                      {tr("sales.trialEstimates.backToThePolicyValue")}
                     </Text>
                   ) : (
                     <EditButton onClick={promptCustomPrice} size="compact-xs">
-                      単価を編集
+                      {tr("sales.trialEstimates.editTheUnitPrice")}
                     </EditButton>
                   )}
                 </Group>
               )}
               {isCylinder && (
                 <Select
-                  data={toData(CYLINDER_TYPE_OPTIONS)}
+                  data={toData(cylinderTypeOptions(locale))}
                   label={
                     <HelpLabel
-                      {...fieldHelp("trialEstimate", "cylinderType")}
+                      {...fieldHelp(tr, "trialEstimate", "cylinderType")}
                     />
                   }
                   mt="sm"
@@ -615,13 +655,13 @@ export function TrialEstimateForm({
               )}
             </FormSection>
 
-            <FormSection title="加工">
+            <FormSection title={tr("sales.trialEstimates.machining")}>
               <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="sm">
                 <NumberInput
                   label={
                     <HelpLabel
-                      {...fieldHelp("trialEstimate", "stepMachining", {
-                        label: "段加工長 (mm)",
+                      {...fieldHelp(tr, "trialEstimate", "stepMachining", {
+                        label: tr("sales.trialEstimates.stepMachiningLengthMm"),
                       })}
                     />
                   }
@@ -630,11 +670,11 @@ export function TrialEstimateForm({
                   value={stepLength}
                 />
                 <Select
-                  data={toData(STEP_TYPE_OPTIONS)}
+                  data={toData(stepTypeOptions(locale))}
                   label={
                     <HelpLabel
-                      {...fieldHelp("trialEstimate", "stepMachining", {
-                        label: "段加工種類",
+                      {...fieldHelp(tr, "trialEstimate", "stepMachining", {
+                        label: tr("sales.trialEstimates.stepMachiningKind"),
                       })}
                     />
                   }
@@ -644,8 +684,8 @@ export function TrialEstimateForm({
                 <NumberInput
                   label={
                     <HelpLabel
-                      {...fieldHelp("trialEstimate", "neckMachining", {
-                        label: "首下加工長 (mm)",
+                      {...fieldHelp(tr, "trialEstimate", "neckMachining", {
+                        label: tr("sales.trialEstimates.neckMachiningLengthMm"),
                       })}
                     />
                   }
@@ -654,11 +694,11 @@ export function TrialEstimateForm({
                   value={neckLength}
                 />
                 <Select
-                  data={toData(NECK_TYPE_OPTIONS)}
+                  data={toData(neckTypeOptions(locale))}
                   label={
                     <HelpLabel
-                      {...fieldHelp("trialEstimate", "neckMachining", {
-                        label: "首下加工種類",
+                      {...fieldHelp(tr, "trialEstimate", "neckMachining", {
+                        label: tr("sales.trialEstimates.neckMachiningKind"),
                       })}
                     />
                   }
@@ -668,10 +708,12 @@ export function TrialEstimateForm({
                 <NumberInput
                   label={
                     <HelpLabel
-                      help="1本あたりの機械加工時間。加工単価 = 加工時間 × 加工レート（/10分）。"
+                      help={tr(
+                        "sales.trialEstimates.machiningTimePerPieceMachiningCost",
+                      )}
                       label={
                         <HelpLabel
-                          {...fieldHelp("trialEstimate", "machiningTime")}
+                          {...fieldHelp(tr, "trialEstimate", "machiningTime")}
                         />
                       }
                     />
@@ -682,40 +724,41 @@ export function TrialEstimateForm({
                 />
               </SimpleGrid>
               <Text c="dimmed" mt="xs" size="xs">
-                加工単価（¥
-                {Number(
-                  customValues.machiningRatePer10min ?? 2000,
-                ).toLocaleString()}
-                /10分）・予備形状本数（
-                {Number(customValues.spareShapeCount ?? 3)}
-                本）は価格試算計算のグローバル固定係数を使用します。
+                {tr("sales.trialEstimateForm.machiningRateSpareShapeNote", {
+                  rate: Number(
+                    customValues.machiningRatePer10min ?? 2000,
+                  ).toLocaleString(),
+                  count: Number(customValues.spareShapeCount ?? 3),
+                })}
               </Text>
             </FormSection>
 
-            <FormSection title="コート・処理">
+            <FormSection title={tr("sales.trialEstimates.coatingAndTreatment")}>
               <SimpleGrid cols={{ base: 1, sm: 3 }} spacing="sm">
                 <Select
                   data={COATING_OPTIONS.map((c) => ({ value: c, label: c }))}
                   label={
-                    <HelpLabel {...fieldHelp("trialEstimate", "coating")} />
+                    <HelpLabel {...fieldHelp(tr, "trialEstimate", "coating")} />
                   }
-                  onChange={(v) => setCoating(v ?? "無")}
+                  onChange={(v) =>
+                    setCoating(v ?? tr("sales.trialEstimates.none"))
+                  }
                   searchable
                   value={coating}
                 />
                 <Select
-                  data={toData(LAP_OPTIONS)}
+                  data={toData(lapOptions(locale))}
                   label={
-                    <HelpLabel {...fieldHelp("trialEstimate", "lapping")} />
+                    <HelpLabel {...fieldHelp(tr, "trialEstimate", "lapping")} />
                   }
                   onChange={(v) => setLapType(v ?? "NONE")}
                   value={lapType}
                 />
                 <Select
-                  data={toData(INSPECTION_OPTIONS)}
+                  data={toData(inspectionOptions(locale))}
                   label={
                     <HelpLabel
-                      {...fieldHelp("trialEstimate", "inspectionReport")}
+                      {...fieldHelp(tr, "trialEstimate", "inspectionReport")}
                     />
                   }
                   onChange={(v) => setInspection(v ?? "NONE")}
@@ -730,8 +773,8 @@ export function TrialEstimateForm({
                   checked={ldEnabled}
                   label={
                     <HelpLabel
-                      {...fieldHelp("trialEstimate", "ld", {
-                        label: "LD加工あり",
+                      {...fieldHelp(tr, "trialEstimate", "ld", {
+                        label: tr("sales.trialEstimates.withLdMachining"),
                       })}
                     />
                   }
@@ -742,11 +785,11 @@ export function TrialEstimateForm({
               {ldEnabled && (
                 <SimpleGrid cols={{ base: 1, sm: 3 }} spacing="sm">
                   <Select
-                    data={toData(LD_LOCATION_OPTIONS)}
+                    data={toData(ldLocationOptions(locale))}
                     label={
                       <HelpLabel
-                        {...fieldHelp("trialEstimate", "ld", {
-                          label: "LD部位",
+                        {...fieldHelp(tr, "trialEstimate", "ld", {
+                          label: tr("sales.trialEstimates.lDArea"),
                         })}
                       />
                     }
@@ -756,8 +799,8 @@ export function TrialEstimateForm({
                   <NumberInput
                     label={
                       <HelpLabel
-                        {...fieldHelp("trialEstimate", "ld", {
-                          label: "LD外径 (mm)",
+                        {...fieldHelp(tr, "trialEstimate", "ld", {
+                          label: tr("sales.trialEstimates.lDOuterDiameterMm"),
                         })}
                       />
                     }
@@ -768,8 +811,8 @@ export function TrialEstimateForm({
                   <NumberInput
                     label={
                       <HelpLabel
-                        {...fieldHelp("trialEstimate", "ld", {
-                          label: "LD刃長 (mm)",
+                        {...fieldHelp(tr, "trialEstimate", "ld", {
+                          label: tr("sales.trialEstimates.lDFluteLengthMm"),
                         })}
                       />
                     }
@@ -783,8 +826,10 @@ export function TrialEstimateForm({
 
             {settings.customInputs.some((d) => d.scope !== "global") && (
               <FormSection
-                description="価格試算計算（SY02）で定義された追加入力。計算基準の式で変数として使われます。"
-                title="カスタム項目"
+                description={tr(
+                  "sales.trialEstimates.extraInputsDefinedUnderThePrice",
+                )}
+                title={tr("sales.trialEstimates.customFields")}
               >
                 <SimpleGrid cols={{ base: 1, sm: 2 }} maw={640} spacing="sm">
                   {settings.customInputs
@@ -840,14 +885,18 @@ export function TrialEstimateForm({
             )}
 
             <FormSection
-              description="形状出し（予備形状分）の按分にのみ使用します。数量ごとの価格スケール（×倍率）は価格表側で設定します。"
-              title="基準数量"
+              description={tr(
+                "sales.trialEstimates.usedOnlyToProrateFormShaping",
+              )}
+              title={tr("common.baseQuantity")}
             >
               <NumberInput
                 label={
                   <HelpLabel
-                    help="形状出し（予備形状分）を按分する数量。数量ごとの価格スケールは掛けず、価格表の倍率（×1.01 など）で設定します。"
-                    label="基準数量（本）"
+                    help={tr(
+                      "sales.trialEstimates.theQuantityUsedToProrateForm",
+                    )}
+                    label={tr("sales.trialEstimates.baseQuantityPcs")}
                   />
                 }
                 min={1}
@@ -864,11 +913,14 @@ export function TrialEstimateForm({
               warnings={result.warnings}
             />
 
-            <FormSection required title="価格試算名">
+            <FormSection
+              required
+              title={tr("sales.trialEstimates.priceEstimateName")}
+            >
               <TextInput
                 maw={480}
                 onChange={(e) => setName(e.currentTarget.value)}
-                placeholder="例: 精密軸 φ3×38 BAL ｱﾙｸﾛｰﾅ"
+                placeholder={tr("sales.trialEstimates.eGPrecisionShaft338")}
                 value={name}
                 withAsterisk
               />
@@ -882,8 +934,10 @@ export function TrialEstimateForm({
             <Stack gap="sm">
               <Group gap="sm">
                 <Badge color="blue" variant="light">
-                  ポリシー: {basisLabel}・直近
-                  {settings.materialPriceLookbackMonths}ヶ月
+                  {tr("sales.trialEstimateForm.policyBasisMonths", {
+                    basis: basisLabel,
+                    months: settings.materialPriceLookbackMonths,
+                  })}
                 </Badge>
                 <Text c="dimmed" size="xs">
                   {[
@@ -911,7 +965,9 @@ export function TrialEstimateForm({
               />
               {isCylinder && (
                 <Alert color="gray" variant="light">
-                  円筒見積は素材価格を手入力します（仕入実績は参考表示）。
+                  {tr(
+                    "sales.trialEstimates.forCylinderEstimatesTheMaterialPrice",
+                  )}
                 </Alert>
               )}
             </Stack>
@@ -920,7 +976,7 @@ export function TrialEstimateForm({
       </AppTabs>
 
       <FormActions
-        cancelLabel="一覧へ"
+        cancelLabel={tr("sales.trialEstimates.backToList")}
         loading={isPending}
         onCancel={() => router.push(BASE_PATH)}
         onSave={save}
@@ -944,21 +1000,37 @@ function ResultsPanel({
   correctionFactor: number;
   warnings: string[];
 }) {
+  const tr = useTranslations();
   const rows: { label: string; value: number }[] = [
-    { label: "材料原価", value: breakdown.material },
-    { label: "段加工費", value: breakdown.step },
-    { label: "首下加工費", value: breakdown.neck },
-    { label: "加工単価", value: breakdown.machining },
-    { label: "コート代", value: breakdown.coating },
-    { label: "ラップ処理", value: breakdown.lap },
+    {
+      label: tr("sales.trialEstimates.materialCost"),
+      value: breakdown.material,
+    },
+    {
+      label: tr("sales.trialEstimates.stepMachiningCost"),
+      value: breakdown.step,
+    },
+    {
+      label: tr("sales.trialEstimates.neckMachiningCost"),
+      value: breakdown.neck,
+    },
+    {
+      label: tr("sales.trialEstimates.machiningRate"),
+      value: breakdown.machining,
+    },
+    { label: tr("sales.trialEstimates.coatingCost"), value: breakdown.coating },
+    { label: tr("sales.trialEstimates.lapping"), value: breakdown.lap },
     { label: "LD", value: breakdown.ld },
-    { label: "検査成績書", value: breakdown.inspection },
+    {
+      label: tr("sales.trialEstimates.inspectionCertificate"),
+      value: breakdown.inspection,
+    },
   ];
 
   return (
     <Paper p="md" radius="md" withBorder>
       <Stack gap="md">
-        <Text fw={600}>価格試算結果</Text>
+        <Text fw={600}>{tr("common.priceEstimateResult")}</Text>
 
         {warnings.length > 0 && (
           <Alert
@@ -979,7 +1051,7 @@ function ResultsPanel({
         <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="md">
           <div>
             <Text c="dimmed" mb={4} size="xs">
-              原価内訳（1本あたり）
+              {tr("common.costBreakdownPerPiece")}
             </Text>
             <Table>
               <Table.Tbody>
@@ -997,19 +1069,21 @@ function ResultsPanel({
 
           <div>
             <Text c="dimmed" mb={4} size="xs">
-              基準単価（数量スケールは価格表の倍率で設定）
+              {tr("common.baseUnitPriceQuantityScalingIs")}
             </Text>
             {lot ? (
               <Table>
                 <Table.Tbody>
                   <Table.Tr>
-                    <Table.Td>最低単価</Table.Td>
+                    <Table.Td>{tr("common.minimumUnitPrice")}</Table.Td>
                     <Table.Td ta="right">
                       <MoneyText value={Math.round(lot.minimumPrice)} />
                     </Table.Td>
                   </Table.Tr>
                   <Table.Tr>
-                    <Table.Td>補正値</Table.Td>
+                    <Table.Td>
+                      {tr("sales.trialEstimates.correctionFactor")}
+                    </Table.Td>
                     <Table.Td ta="right">
                       <Text className="tabular-nums" ff="mono" size="sm">
                         ×{correctionFactor}
@@ -1019,7 +1093,7 @@ function ResultsPanel({
                   <Table.Tr>
                     <Table.Td>
                       <Text fw={600} size="sm">
-                        見積単価（基準）
+                        {tr("common.estimatedUnitPriceBase")}
                       </Text>
                     </Table.Td>
                     <Table.Td ta="right">
@@ -1032,7 +1106,7 @@ function ResultsPanel({
               </Table>
             ) : (
               <Text c="dimmed" size="xs">
-                基準数量を入力してください
+                {tr("sales.trialEstimates.enterABaseQuantity")}
               </Text>
             )}
           </div>

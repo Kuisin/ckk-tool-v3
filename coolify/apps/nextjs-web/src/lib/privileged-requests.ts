@@ -8,6 +8,7 @@ import "server-only";
  * — Date のままクライアントへ渡すと表示側で string と混ざる（kiosk-admin.ts と同じ規約）。
  */
 
+import { getLocale, getTranslations } from "next-intl/server";
 import { checkPermission, sessionUserId } from "@/lib/authz";
 import { prisma } from "@/lib/db";
 import {
@@ -24,8 +25,8 @@ import {
 } from "@/lib/privileged-operations";
 import {
   describeUserChange,
-  USER_CHANGE_LABEL,
   type UserChangeKind,
+  userChangeLabel,
 } from "@/lib/user-change-core";
 import { USER_ADMIN_CODE } from "@/lib/user-change-requests";
 
@@ -89,6 +90,8 @@ function elevationRow(
     operations: { operation: string; granted: boolean }[];
   },
   now: Date,
+  opLocale: "ja" | "en",
+  tr: Awaited<ReturnType<typeof getTranslations>>,
 ): PrivilegedRequestRow {
   const status = r.status as PrivilegedRequestStatus;
   const g = {
@@ -100,7 +103,7 @@ function elevationRow(
   };
   const ops = r.operations.map((o) => ({
     key: o.operation,
-    label: operationLabel(o.operation),
+    label: operationLabel(o.operation, opLocale),
     granted: o.granted,
   }));
   // 承認済みなら「実際に使える操作」だけを数える — 承認者が外したものを
@@ -110,10 +113,10 @@ function elevationRow(
     id: r.id,
     kind: "elevation",
     code: r.code,
-    title: ELEVATION_CODE_LABEL[r.code as ElevationCode]?.ja ?? r.code,
+    title: ELEVATION_CODE_LABEL[r.code as ElevationCode]?.[opLocale] ?? r.code,
     detail:
       effective.length === 0
-        ? "許可された操作はありません"
+        ? tr("common.noOperationsGranted")
         : effective.map((o) => o.label).join(" / "),
     operations: ops,
     reason: r.reason,
@@ -137,29 +140,32 @@ function elevationRow(
   };
 }
 
-function userChangeRow(r: {
-  id: string;
-  kind: string;
-  payload: unknown;
-  reason: string;
-  status: string;
-  requestedBy: string;
-  requestedAt: Date;
-  decidedAt: Date | null;
-  decisionComment: string | null;
-  appliedAt: Date | null;
-  applyError: string | null;
-  targetUser: { displayName: string; username: string };
-  requestedByUser: { displayName: string } | null;
-  decidedByUser: { displayName: string } | null;
-}): PrivilegedRequestRow {
+function userChangeRow(
+  r: {
+    id: string;
+    kind: string;
+    payload: unknown;
+    reason: string;
+    status: string;
+    requestedBy: string;
+    requestedAt: Date;
+    decidedAt: Date | null;
+    decisionComment: string | null;
+    appliedAt: Date | null;
+    applyError: string | null;
+    targetUser: { displayName: string; username: string };
+    requestedByUser: { displayName: string } | null;
+    decidedByUser: { displayName: string } | null;
+  },
+  tr: Awaited<ReturnType<typeof getTranslations>>,
+): PrivilegedRequestRow {
   const kind = r.kind as UserChangeKind;
   return {
     id: r.id,
     kind: "user-change",
     code: USER_ADMIN_CODE,
-    title: `${USER_CHANGE_LABEL[kind]}: ${r.targetUser.displayName}`,
-    detail: describeUserChange(kind, r.payload),
+    title: `${userChangeLabel(kind, tr)}: ${r.targetUser.displayName}`,
+    detail: describeUserChange(kind, r.payload, tr),
     operations: [],
     reason: r.reason,
     status: r.status as PrivilegedRequestStatus,
@@ -201,7 +207,7 @@ export async function listMyRequests(): Promise<PrivilegedRequestRow[]> {
   const userId = await sessionUserId();
   if (!userId) return [];
   const now = new Date();
-  const [elevations, changes] = await Promise.all([
+  const [elevations, changes, locale, tr] = await Promise.all([
     prisma.privilegedAccessRequest.findMany({
       where: { requestedBy: userId },
       include: ELEVATION_INCLUDE,
@@ -214,10 +220,13 @@ export async function listMyRequests(): Promise<PrivilegedRequestRow[]> {
       orderBy: { requestedAt: "desc" },
       take: 100,
     }),
+    getLocale(),
+    getTranslations(),
   ]);
+  const opLocale = locale === "en" ? "en" : "ja";
   return sortRows([
-    ...elevations.map((r) => elevationRow(r, now)),
-    ...changes.map(userChangeRow),
+    ...elevations.map((r) => elevationRow(r, now, opLocale, tr)),
+    ...changes.map((r) => userChangeRow(r, tr)),
   ]);
 }
 
@@ -233,7 +242,7 @@ export async function listRequestsToApprove(): Promise<PrivilegedRequestRow[]> {
   if (codes.length === 0) return [];
   const now = new Date();
 
-  const [elevations, changes] = await Promise.all([
+  const [elevations, changes, locale, tr] = await Promise.all([
     codes.some((c) => (ELEVATION_CODES as readonly string[]).includes(c))
       ? prisma.privilegedAccessRequest.findMany({
           where: {
@@ -252,10 +261,13 @@ export async function listRequestsToApprove(): Promise<PrivilegedRequestRow[]> {
           orderBy: { requestedAt: "asc" },
         })
       : [],
+    getLocale(),
+    getTranslations(),
   ]);
+  const opLocale = locale === "en" ? "en" : "ja";
   return [
-    ...elevations.map((r) => elevationRow(r, now)),
-    ...changes.map(userChangeRow),
+    ...elevations.map((r) => elevationRow(r, now, opLocale, tr)),
+    ...changes.map((r) => userChangeRow(r, tr)),
   ].sort((a, b) => a.requestedAt.localeCompare(b.requestedAt));
 }
 
@@ -264,7 +276,7 @@ export async function listDecidedRequests(): Promise<PrivilegedRequestRow[]> {
   const codes = await approvableCodesFor([...ELEVATION_CODES, USER_ADMIN_CODE]);
   if (codes.length === 0) return [];
   const now = new Date();
-  const [elevations, changes] = await Promise.all([
+  const [elevations, changes, locale, tr] = await Promise.all([
     prisma.privilegedAccessRequest.findMany({
       where: { status: { notIn: ["PENDING"] }, code: { in: codes } },
       include: ELEVATION_INCLUDE,
@@ -279,10 +291,13 @@ export async function listDecidedRequests(): Promise<PrivilegedRequestRow[]> {
           take: 200,
         })
       : [],
+    getLocale(),
+    getTranslations(),
   ]);
+  const opLocale = locale === "en" ? "en" : "ja";
   return [
-    ...elevations.map((r) => elevationRow(r, now)),
-    ...changes.map(userChangeRow),
+    ...elevations.map((r) => elevationRow(r, now, opLocale, tr)),
+    ...changes.map((r) => userChangeRow(r, tr)),
   ].sort((a, b) => b.requestedAt.localeCompare(a.requestedAt));
 }
 

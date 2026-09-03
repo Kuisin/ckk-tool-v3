@@ -24,12 +24,13 @@ import {
 import { notifications } from "@mantine/notifications";
 import { IconLayoutColumns } from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { useState, useTransition } from "react";
 import { saveTaskTabsSetting } from "@/app/(dashboard)/general/tasks/actions";
 import { SecondaryButton } from "@/components/ui/buttons";
 import { ModalShell } from "@/components/ui/modals";
 import { useIsMobile } from "@/hooks/useViewport";
-import { TASK_TABS, type TaskTabDef } from "@/lib/tasks-tabs";
+import { type TaskTabDef, taskTabs } from "@/lib/tasks-tabs";
 
 export function TaskTabsSettingsButton({
   available,
@@ -40,13 +41,14 @@ export function TaskTabsSettingsButton({
   /** 保存済みの「隠す」設定（出せないタブの分も含む）。 */
   hidden: readonly string[];
 }) {
+  const tr = useTranslations();
   const router = useRouter();
   const isMobile = useIsMobile();
   const [opened, setOpened] = useState(false);
   const [isPending, startTransition] = useTransition();
   const [checked, setChecked] = useState<string[]>([]);
 
-  const choices: TaskTabDef[] = TASK_TABS.filter((t) =>
+  const choices: TaskTabDef[] = taskTabs(tr).filter((t) =>
     available.includes(t.id),
   );
 
@@ -66,15 +68,15 @@ export function TaskTabsSettingsButton({
       const result = await saveTaskTabsSetting(next);
       if (!result.ok) {
         notifications.show({
-          title: "エラー",
-          message: result.error ?? "保存に失敗しました",
+          title: tr("common.error2"),
+          message: result.error ?? tr("common.couldNotSave"),
           color: "red",
         });
         return;
       }
       setOpened(false);
       notifications.show({
-        message: "表示するタブを保存しました",
+        message: tr("general.taskTabsSettings.theTabsToShowWereSaved"),
         color: "green",
       });
       router.refresh();
@@ -86,7 +88,7 @@ export function TaskTabsSettingsButton({
       {isMobile ? (
         // 指で押す前提なので 40px（Mantine の "lg" = 34px では小さい）。
         <ActionIcon
-          aria-label="表示するタブ"
+          aria-label={tr("general.taskTabsSettings.tabsToShow")}
           onClick={open}
           size={40}
           variant="default"
@@ -94,29 +96,34 @@ export function TaskTabsSettingsButton({
           <IconLayoutColumns size={18} />
         </ActionIcon>
       ) : (
-        <Tooltip label="使わないタブを隠せます" withinPortal>
+        <Tooltip
+          label={tr("general.taskTabsSettings.youCanHideTabsYouDo")}
+          withinPortal
+        >
           <SecondaryButton
             leftSection={<IconLayoutColumns size={16} />}
             onClick={open}
           >
-            表示するタブ
+            {tr("general.taskTabsSettings.tabsToShow")}
           </SecondaryButton>
         </Tooltip>
       )}
 
       <ModalShell
         confirmDisabled={checked.length === 0}
-        confirmLabel="保存"
+        confirmLabel={tr("common.save2")}
         loading={isPending}
         onClose={() => setOpened(false)}
         onConfirm={save}
         opened={opened}
         size="sm"
-        title="表示するタブ"
+        title={tr("general.taskTabsSettings.tabsToShow")}
       >
         <Stack gap="xs">
           <Text c="dimmed" size="sm">
-            チェックを外したタブは、自分の画面にだけ出なくなります。
+            {tr(
+              "general.taskTabsSettings.uncheckedTabsDisappearFromYourScreen",
+            )}
           </Text>
           <Checkbox.Group onChange={setChecked} value={checked}>
             <Stack gap="xs" mt={4}>
@@ -127,7 +134,7 @@ export function TaskTabsSettingsButton({
           </Checkbox.Group>
           {checked.length === 0 && (
             <Text c="red" size="xs">
-              少なくとも 1 枚は残してください。
+              {tr("general.taskTabsSettings.leaveAtLeastOne")}
             </Text>
           )}
         </Stack>

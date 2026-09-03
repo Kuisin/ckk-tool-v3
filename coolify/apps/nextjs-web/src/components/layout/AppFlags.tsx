@@ -16,6 +16,7 @@
 
 import { IconLock } from "@tabler/icons-react";
 import { usePathname } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { createContext, type ReactNode, useContext, useMemo } from "react";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { appList } from "@/lib/app-list";
@@ -100,6 +101,7 @@ export function appKeyForPath(pathname: string): string | null {
  * 権限外はクライアント表示の速路 — サーバー側の実防壁は requireAppRead。）
  */
 export function AppAvailabilityGuard({ children }: { children: ReactNode }) {
+  const tr = useTranslations();
   const disabled = useDisabledApps();
   const denied = useDeniedApps();
   const pathname = usePathname();
@@ -108,7 +110,7 @@ export function AppAvailabilityGuard({ children }: { children: ReactNode }) {
     return (
       <EmptyState
         icon={<IconLock size={24} />}
-        message="この機能は現在利用できません"
+        message={tr("layout.appFlags.thisFeatureIsNotAvailableRight")}
       />
     );
   }
@@ -116,7 +118,7 @@ export function AppAvailabilityGuard({ children }: { children: ReactNode }) {
     return (
       <EmptyState
         icon={<IconLock size={24} />}
-        message="このページを表示する権限がありません"
+        message={tr("layout.appFlags.youDoNotHavePermissionTo")}
       />
     );
   }

@@ -21,7 +21,9 @@
 
 import { Anchor, Select } from "@mantine/core";
 import { IconExternalLink } from "@tabler/icons-react";
+import { useTranslations } from "next-intl";
 import { useEffect, useRef, useState } from "react";
+
 import { fetchSalesRepPicker } from "@/app/(dashboard)/_shared/option-search";
 import type { Option } from "@/lib/mock";
 
@@ -37,6 +39,7 @@ export function useSalesRepOptions(
   onChange: (value: string | null) => void,
   initial?: { id: string; name: string } | null,
 ) {
+  const tr = useTranslations();
   const [options, setOptions] = useState<Option[]>(() =>
     initial ? [{ value: initial.id, label: initial.name }] : [],
   );
@@ -114,7 +117,9 @@ export function useSalesRepOptions(
           ...options,
           {
             value,
-            label: `${initial?.id === value ? initial.name : value}（候補外）`,
+            label: tr("ui.salesRepSelect.notACandidate", {
+              name: initial?.id === value ? initial.name : value,
+            }),
           },
         ]
       : options;
@@ -127,7 +132,7 @@ export function SalesRepSelect({
   value,
   onChange,
   initial,
-  label = "営業担当",
+  label: labelProp,
   disabled,
 }: {
   customerBpId: string | null;
@@ -138,6 +143,8 @@ export function SalesRepSelect({
   label?: string;
   disabled?: boolean;
 }) {
+  const tr = useTranslations();
+  const label = labelProp ?? tr("common.salesRep");
   const { options, hasCandidates, canView, canManage } = useSalesRepOptions(
     customerBpId,
     value,
@@ -158,7 +165,7 @@ export function SalesRepSelect({
     customerBpId && !hasCandidates ? (
       canView || canManage ? (
         <>
-          この顧客に営業担当が未登録です。
+          {tr("ui.salesRepSelect.noSalesRepIsRegisteredFor")}
           <Anchor
             href={
               canManage
@@ -168,7 +175,9 @@ export function SalesRepSelect({
             rel="noopener noreferrer"
             target="_blank"
           >
-            {canManage ? "取引先マスタで登録" : "取引先マスタで確認"}
+            {canManage
+              ? tr("ui.salesRepSelect.registerInTheBusinessPartnerMaster")
+              : tr("ui.salesRepSelect.checkInTheBusinessPartnerMaster")}
             <IconExternalLink
               size={11}
               style={{ marginLeft: 2, verticalAlign: "-1px" }}
@@ -176,7 +185,7 @@ export function SalesRepSelect({
           </Anchor>
         </>
       ) : (
-        "この顧客に営業担当が未登録です（取引先マスタの管理者に登録を依頼）"
+        tr("ui.salesRepSelect.noSalesRepIsRegisteredFor2")
       )
     ) : undefined;
 
@@ -188,7 +197,11 @@ export function SalesRepSelect({
       disabled={disabled}
       label={label}
       onChange={onChange}
-      placeholder={customerBpId ? "担当者を選択" : "先に顧客を選択"}
+      placeholder={
+        customerBpId
+          ? tr("ui.salesRepSelect.selectARep")
+          : tr("ui.salesRepSelect.selectACustomerFirst")
+      }
       searchable
       value={value}
     />

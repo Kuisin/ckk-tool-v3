@@ -50,9 +50,10 @@ promotion 後 — dev へのマージで ingress や監視が再起動しない�
 | `coolify` | **不可能**。自分自身をデプロイすると、その途中で自分を落として失敗する |
 | `nginx-proxy` | Coolify は 80/443 を自分の Traefik で握ろうとする。アプリに `ports_exposes: 80,443` を付けた瞬間に `coolify-proxy` が起動してポートを奪い、**LAN の TLS が落ちた**（実際に踏んだ）。逆方向の前提を持つ 2 つのリバースプロキシを同居させる意味は無い |
 | `db-backup` | バックアップは**復旧手段**なので、復旧したい相手に依存させない。Coolify が壊れたときにこそ要る |
+| `weblate` | **まだ移していないだけ**（上の 3 つと違い、移せない理由は無い）。リポジトリからビルドするアプリではなく出来合いの 3 コンテナ構成で、既存の登録スクリプト（`add-*-app.sh` はいずれも Dockerfile ビルド前提）がそのまま使えなかった。Coolify の compose アプリとして登録し直すのは後からでき、`common/weblate/docker-compose.yml` がそのまま素材になる |
 
-この 3 つだけが `common/deploy-stack.sh <name>` の対象。サーバーの `~/stacks/`
-にもこの 3 つしか残っていない（他は `~/stacks-retired/` へ退避済み — `.env` ごと
+この 4 つが `common/deploy-stack.sh <name>` の対象。サーバーの `~/stacks/`
+にもこの 4 つしか残っていない（他は `~/stacks-retired/` へ退避済み — `.env` ごと
 保持してあり、消してはいない）。
 
 **Coolify 化で判ったこと（次のスタックでも同じ）**
@@ -77,6 +78,7 @@ promotion 後 — dev へのマージで ingress や監視が再起動しない�
   | `/data/seaweed-dev` `/data/seaweed-main` | ファイル本体（環境別）|
   | `/data/ollama` `/data/open-webui` | モデル 38GB / チャット履歴 |
   | `/data/db-backups` | バックアップ |
+  | `/data/weblate` | Weblate の DB / 作業コピー（**`data` と `cache` は uid 1000 所有**）|
   | `/data/legacy-db` | 旧 macOS 版 DB（`external: true` を信じて**空のクラスタで動いていた**）|
 
   最後の行は実際に起きた事故。`legacy-db` は `external: true / name:
@@ -214,6 +216,7 @@ ollama は 1 プロセスで 1 枚しか使わないので**カードごとに 1
 | `monitoring` | grafana, prometheus, loki, alloy, node-exporter, cadvisor, gpu-exporter | メトリクス・ログ・アラート |
 | `db-backup` | db-backup, aux-backup, logical-dump, offsite-backup, restore-agent, seaweed-backup | バックアップ一式（`db-backup/README.md`） |
 | `portainer` | portainer | コンテナ GUI |
+| `weblate` | weblate, weblate-db, weblate-cache | 翻訳の管理画面（`messages/*.json` を訳す。`weblate/README.md`）|
 | `coolify` | coolify, db, redis, realtime, sentinel | アプリのビルド・デプロイ基盤 |
 
 ### 7. Identity / Integration — 外部システムとの接続

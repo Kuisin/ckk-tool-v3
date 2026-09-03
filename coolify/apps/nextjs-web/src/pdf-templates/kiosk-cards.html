@@ -27,8 +27,22 @@
     @page { size: {{pageWidth}}mm {{pageHeight}}mm; margin: 0; }
     * { margin: 0; padding: 0; box-sizing: border-box; }
     html, body { background: #ffffff; color: #000000; }
+    /* base.css と同じ埋め込みフォント（このテンプレートは base.css を読み込まない独立レイアウトなので個別に持つ） */
+    @font-face {
+      font-family: "Noto Sans JP";
+      font-style: normal;
+      font-weight: 400;
+      src: url("NotoSansJP-Regular.woff2") format("woff2");
+    }
+    @font-face {
+      font-family: "Noto Sans JP";
+      font-style: normal;
+      font-weight: 700;
+      src: url("NotoSansJP-Bold.woff2") format("woff2");
+    }
     body {
-      font-family: "Noto Sans JP", "Hiragino Sans", "Yu Gothic", sans-serif;
+      font-family: "Noto Sans JP", "Noto Sans CJK JP", system-ui, -apple-system,
+        sans-serif;
       -webkit-print-color-adjust: exact;
       print-color-adjust: exact;
     }
@@ -110,6 +124,6 @@
   </style>
 </head>
 <body>
-{{pages}}
+{{{pages}}}
 </body>
 </html>

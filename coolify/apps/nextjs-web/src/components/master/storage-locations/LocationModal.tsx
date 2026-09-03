@@ -22,6 +22,7 @@ import {
 } from "@mantine/core";
 import { useForm } from "@mantine/form";
 import { notifications } from "@mantine/notifications";
+import { useTranslations } from "next-intl";
 import { useTransition } from "react";
 import {
   createStorageLocation,
@@ -65,6 +66,7 @@ export function LocationModal({
   onClose: () => void;
   onDone: () => void;
 }) {
+  const tr = useTranslations();
   const [pending, startTransition] = useTransition();
   const isCreate = location == null;
   const form = useForm<LocationFormValues>({
@@ -79,7 +81,8 @@ export function LocationModal({
       notes: location?.notes ?? "",
     },
     validate: {
-      plantId: (v) => (isCreate && !v ? "拠点を選択してください" : null),
+      plantId: (v) =>
+        isCreate && !v ? tr("master.locationModal.selectASite") : null,
     },
   });
 
@@ -102,14 +105,14 @@ export function LocationModal({
           });
       if (!res.ok) {
         notifications.show({
-          title: "保存失敗",
+          title: tr("common.saveFailed2"),
           message: res.error,
           color: "red",
         });
         return;
       }
       notifications.show({
-        title: "保存しました",
+        title: tr("common.saved2"),
         message: values.nameJa,
         color: "green",
       });
@@ -121,7 +124,11 @@ export function LocationModal({
     <Modal
       onClose={onClose}
       opened
-      title={isCreate ? "保管場所の追加" : "保管場所の編集"}
+      title={
+        isCreate
+          ? tr("master.locationModal.addStorageLocationTitle")
+          : tr("master.storageLocations.editTheStorageLocation")
+      }
     >
       <form onSubmit={form.onSubmit(submit)}>
         <Stack gap="sm">
@@ -131,12 +138,12 @@ export function LocationModal({
                 data={plantOptions}
                 label={
                   <HelpLabel
-                    {...fieldHelp("storageLocation", "plant", {
-                      label: "拠点",
+                    {...fieldHelp(tr, "storageLocation", "plant", {
+                      label: tr("master.plantTable.title"),
                     })}
                   />
                 }
-                placeholder="拠点を選択"
+                placeholder={tr("common.selectASite")}
                 searchable
                 withAsterisk
                 {...form.getInputProps("plantId")}
@@ -150,23 +157,25 @@ export function LocationModal({
                 data={floorOptions}
                 description={
                   selectedPlantId != null && floorOptions.length === 0
-                    ? "この拠点にはフロアマップがありません（ピンなしで作成）"
-                    : "任意 — 選択するとマップ中央に仮配置（あとでドラッグ調整）"
+                    ? tr("master.storageLocations.thisSiteHasNoFloorMap")
+                    : tr(
+                        "master.storageLocations.optionalChoosingOnePlacesItAt",
+                      )
                 }
                 disabled={selectedPlantId == null || floorOptions.length === 0}
                 label={
                   <HelpLabel
-                    {...fieldHelp("storageLocation", "plant", {
-                      label: "フロア",
+                    {...fieldHelp(tr, "storageLocation", "plant", {
+                      label: tr("master.storageLocations.floor"),
                     })}
                   />
                 }
                 placeholder={
                   selectedPlantId == null
-                    ? "先に拠点を選択"
+                    ? tr("master.storageLocations.selectASiteFirst")
                     : floorOptions.length === 0
-                      ? "フロアマップなし"
-                      : "フロアを選択（任意）"
+                      ? tr("master.storageLocations.noFloorMap")
+                      : tr("master.storageLocations.selectAFloorOptional")
                 }
                 {...form.getInputProps("floorMapId")}
               />
@@ -175,7 +184,9 @@ export function LocationModal({
           <TextInput
             label={
               <HelpLabel
-                {...fieldHelp("storageLocation", "code", { label: "コード" })}
+                {...fieldHelp(tr, "storageLocation", "code", {
+                  label: tr("common.code"),
+                })}
               />
             }
             placeholder="WH1"
@@ -183,22 +194,26 @@ export function LocationModal({
             {...form.getInputProps("code")}
           />
           <LocalizedTextInput
-            help={fieldHelpTip("storageLocation", "code")}
+            help={fieldHelpTip(tr, "storageLocation", "code")}
             jaProps={form.getInputProps("nameJa")}
-            label="名称"
-            placeholder="第一倉庫"
+            label={tr("common.name2")}
+            placeholder={tr("master.storageLocations.warehouse1")}
             required
             translationsProps={form.getInputProps("nameTranslations")}
           />
           <NumberInput
-            label={<HelpLabel {...fieldHelp("storageLocation", "sortOrder")} />}
+            label={
+              <HelpLabel {...fieldHelp(tr, "storageLocation", "sortOrder")} />
+            }
             {...form.getInputProps("sortOrder")}
           />
           <Switch
             checked={form.values.isActive}
             label={
               <HelpLabel
-                {...fieldHelp("storageLocation", "active", { label: "有効" })}
+                {...fieldHelp(tr, "storageLocation", "active", {
+                  label: tr("common.enabled"),
+                })}
               />
             }
             onChange={(e) =>
@@ -208,7 +223,9 @@ export function LocationModal({
           <Textarea
             label={
               <HelpLabel
-                {...fieldHelp("storageLocation", "active", { label: "備考" })}
+                {...fieldHelp(tr, "storageLocation", "active", {
+                  label: tr("common.notes"),
+                })}
               />
             }
             {...form.getInputProps("notes")}

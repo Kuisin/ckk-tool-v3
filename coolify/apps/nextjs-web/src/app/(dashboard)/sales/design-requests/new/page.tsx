@@ -4,6 +4,7 @@ import { requireAppRead } from "@/lib/authz-page";
 import {
   fetchEmployeeOptions,
   fetchOrderLineCustomerBpId,
+  fetchOrderLineDeliveryDate,
   fetchOrderLineRef,
   fetchProductRef,
   fetchQuoteRef,
@@ -47,6 +48,7 @@ export default async function SalesDesignRequestsNewPage({
     productRef,
     customerOptions,
     orderLineCustomer,
+    orderLineDeliveryDate,
   ] = await Promise.all([
     // 見積書リンク用 — 直近の見積書をサーバーで読み込んで Select に渡す。
     fetchRecentQuoteOptions(),
@@ -57,6 +59,8 @@ export default async function SalesDesignRequestsNewPage({
     // 版が載る系列（受注元）の候補。
     fetchBillingOptions(),
     sp.orderLine ? fetchOrderLineCustomerBpId(sp.orderLine) : null,
+    // 受注時トリガーは、その明細の納期を希望納期の既定にする。
+    sp.orderLine ? fetchOrderLineDeliveryDate(sp.orderLine) : null,
   ]);
 
   // 見積・受注から起票したときは、その書類の顧客を受注元の既定にする。
@@ -67,6 +71,7 @@ export default async function SalesDesignRequestsNewPage({
       assigneeOptions={assigneeOptions}
       customerOptions={customerOptions}
       initialCustomerBpId={initialCustomerBpId}
+      initialDesiredAt={orderLineDeliveryDate}
       initialOrderLine={
         orderLineRef
           ? { value: orderLineRef.id, label: orderLineRef.label }

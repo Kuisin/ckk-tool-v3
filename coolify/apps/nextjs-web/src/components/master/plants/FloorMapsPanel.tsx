@@ -28,6 +28,7 @@ import {
   IconTrash,
 } from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { useRef, useState, useTransition } from "react";
 import {
   createFloorMap,
@@ -58,6 +59,7 @@ export function FloorMapsPanel({
   plantId: number;
   floorMaps: PlantFloorMapRef[];
 }) {
+  const tr = useTranslations();
   const router = useRouter();
   const [activeMapId, setActiveMapId] = useState<string | null>(null);
   const [overlayIds, setOverlayIds] = useState<string[]>([]);
@@ -83,8 +85,8 @@ export function FloorMapsPanel({
       const res = await action();
       if (!res.ok) {
         notifications.show({
-          title: "エラー",
-          message: res.error ?? "操作に失敗しました",
+          title: tr("common.error2"),
+          message: res.error ?? tr("common.theActionFailed"),
           color: "red",
         });
         return;
@@ -100,7 +102,7 @@ export function FloorMapsPanel({
         const res = await createFloorMap({ plantId, name: floorName });
         if (!res.ok) {
           notifications.show({
-            title: "エラー",
+            title: tr("common.error2"),
             message: res.error,
             color: "red",
           });
@@ -117,7 +119,7 @@ export function FloorMapsPanel({
         const res = await renameFloorMap({ id, name: floorName });
         if (!res.ok) {
           notifications.show({
-            title: "エラー",
+            title: tr("common.error2"),
             message: res.error,
             color: "red",
           });
@@ -133,15 +135,17 @@ export function FloorMapsPanel({
   const onImageSelected = (file: File | null) => {
     if (!file || !activeMap) return;
     // 図面は最大 10MB。Server Action ではなく API 経由（lib/floor-map-client.ts）。
-    run(() => uploadFloorMapImage(activeMap.id, file));
+    run(() => uploadFloorMapImage(activeMap.id, file, tr));
   };
 
   const onDeleteFloor = () => {
     if (!activeMap) return;
     openConfirm({
-      title: "フロア削除の確認",
-      message: `フロア「${activeMap.name}」を削除します。端末・保管場所のピンが残っている場合は削除できません。`,
-      confirmLabel: "削除",
+      title: tr("common.confirmDeletingTheFloor"),
+      message: tr("master.floorMapsPanel.deleteFloorConfirm", {
+        name: activeMap.name,
+      }),
+      confirmLabel: tr("common.delete"),
       onConfirm: () => {
         setActiveMapId(null);
         run(() => deleteFloorMap(activeMap.id));
@@ -155,10 +159,10 @@ export function FloorMapsPanel({
         <Group gap="xs">
           <IconMap2 color="var(--mantine-color-gray-6)" size={18} />
           <Text fw={600} size="sm">
-            フロアマップ
+            {tr("common.floorMap")}
           </Text>
           <Text c="dimmed" size="xs">
-            端末管理 (SY09) と共用の拠点図面
+            {tr("master.plants.siteDrawingsSharedWithDevicesSy09")}
           </Text>
         </Group>
         <Group gap="xs" wrap="wrap">
@@ -170,7 +174,7 @@ export function FloorMapsPanel({
             }}
             size="xs"
           >
-            フロアを追加
+            {tr("common.addAFloor")}
           </GhostButton>
           {activeMap && (
             <>
@@ -182,7 +186,7 @@ export function FloorMapsPanel({
                 }}
                 size="xs"
               >
-                名称変更
+                {tr("common.rename")}
               </GhostButton>
               <GhostButton
                 leftSection={<IconPhotoUp size={14} />}
@@ -190,7 +194,9 @@ export function FloorMapsPanel({
                 onClick={() => fileInputRef.current?.click()}
                 size="xs"
               >
-                {activeMap.hasImage ? "図面を差し替え" : "図面をアップロード"}
+                {activeMap.hasImage
+                  ? tr("common.replaceTheDrawing")
+                  : tr("common.uploadADrawing")}
               </GhostButton>
               <GhostButton
                 color="red"
@@ -198,10 +204,10 @@ export function FloorMapsPanel({
                 onClick={onDeleteFloor}
                 size="xs"
               >
-                フロアを削除
+                {tr("common.deleteTheFloor")}
               </GhostButton>
               <input
-                accept="image/png,image/jpeg,image/webp,image/svg+xml"
+                accept="image/png,image/jpeg,image/webp"
                 hidden
                 onChange={(e) => {
                   onImageSelected(e.currentTarget.files?.[0] ?? null);
@@ -217,8 +223,7 @@ export function FloorMapsPanel({
 
       {floorMaps.length === 0 ? (
         <Text c="dimmed" size="sm">
-          フロアマップがありません。「フロアを追加」から作成し、図面画像を
-          アップロードしてください。
+          {tr("master.plants.thereAreNoFloorMapsCreate")}
         </Text>
       ) : (
         <Stack gap="sm">
@@ -244,7 +249,7 @@ export function FloorMapsPanel({
           {overlayCandidates.length > 0 && (
             <Group gap="xs" wrap="wrap">
               <Text c="dimmed" size="xs">
-                重ね表示:
+                {tr("common.overlay")}
               </Text>
               {overlayCandidates.map((m) => (
                 <Chip
@@ -267,7 +272,9 @@ export function FloorMapsPanel({
 
           {activeMap && (
             <FloorMapCanvas
-              imageAlt={`フロアマップ: ${activeMap.name}`}
+              imageAlt={tr("master.floorMapsPanel.floorMapAlt", {
+                name: activeMap.name,
+              })}
               imageUrl={
                 activeMap.hasImage
                   ? `/api/kiosk/floor-maps/${activeMap.id}/image`
@@ -285,14 +292,16 @@ export function FloorMapsPanel({
         opened={floorModal != null}
         size="sm"
         title={
-          floorModal?.mode === "create" ? "フロアを追加" : "フロア名の変更"
+          floorModal?.mode === "create"
+            ? tr("master.floorMapsPanel.addFloor")
+            : tr("common.renameTheFloor")
         }
       >
         <Stack gap="sm">
           <TextInput
-            label="フロア名"
+            label={tr("common.floorName")}
             onChange={(e) => setFloorName(e.currentTarget.value)}
-            placeholder="例: 1F 加工場"
+            placeholder={tr("master.plants.eG1fMachiningArea")}
             value={floorName}
             withAsterisk
           />
@@ -303,7 +312,9 @@ export function FloorMapsPanel({
               loading={pending}
               onClick={submitFloorModal}
             >
-              {floorModal?.mode === "create" ? "追加" : "保存"}
+              {floorModal?.mode === "create"
+                ? tr("common.add")
+                : tr("common.save2")}
             </PrimaryButton>
           </Group>
         </Stack>

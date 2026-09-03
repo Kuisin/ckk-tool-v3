@@ -1,4 +1,6 @@
+import { createTranslator } from "next-intl";
 import { describe, expect, it } from "vitest";
+import ja from "../../messages/ja.json";
 import {
   canDeleteDesignFile,
   canEditDesignFile,
@@ -13,6 +15,10 @@ import {
   resolveSeriesCustomer,
   sameSeries,
 } from "./design-files-core";
+import type { Tr } from "./i18n";
+
+// biome-ignore lint/suspicious/noExplicitAny: same rationale as product-types.test.ts
+const tr = createTranslator({ locale: "ja", messages: ja as any }) as Tr;
 
 const A = "aaaaaaaa-0000-0000-0000-000000000001";
 const B = "bbbbbbbb-0000-0000-0000-000000000002";
@@ -172,27 +178,27 @@ describe("編集・削除の可否", () => {
     const used = { usedByWorkOrder: true, designRequestId: null };
     expect(canEditDesignFile(used)).toBe(false);
     expect(canDeleteDesignFile(used)).toBe(false);
-    expect(describeLock(used)).toBe("指示書で使用中のため変更できません");
+    expect(describeLock(used, tr)).toBe("指示書で使用中のため変更できません");
   });
 
   it("使われていない手動の版は編集も削除もできる", () => {
     const free = { usedByWorkOrder: false, designRequestId: null };
     expect(canEditDesignFile(free)).toBe(true);
     expect(canDeleteDesignFile(free)).toBe(true);
-    expect(describeLock(free)).toBeNull();
+    expect(describeLock(free, tr)).toBeNull();
   });
 
   it("依頼の成果物は編集できるが削除はできない", () => {
     const fromReq = { usedByWorkOrder: false, designRequestId: "r" };
     expect(canEditDesignFile(fromReq)).toBe(true);
     expect(canDeleteDesignFile(fromReq)).toBe(false);
-    expect(describeLock(fromReq)).toContain("削除できません");
+    expect(describeLock(fromReq, tr)).toContain("削除できません");
   });
 
   it("使用中は依頼由来かどうかに関わらず止まる（理由は使用中が優先）", () => {
-    expect(describeLock({ usedByWorkOrder: true, designRequestId: "r" })).toBe(
-      "指示書で使用中のため変更できません",
-    );
+    expect(
+      describeLock({ usedByWorkOrder: true, designRequestId: "r" }, tr),
+    ).toBe("指示書で使用中のため変更できません");
   });
 });
 

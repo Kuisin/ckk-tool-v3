@@ -15,10 +15,14 @@
  * 何のファイルか分からず、メールやチャットで転送されたときに迷うので見出しを
  * 付けてある。取り込み側は # 行を読み飛ばすので、JSON だけを貼っても通る。
  *
- * 純関数（I/O なし）。
+ * 純関数（I/O なし）。**呼び出し側が next-intl の `tr` を渡す**
+ * （`getTranslations()` が要るリクエストスコープの外では呼ばれないため、
+ * 呼び出し元の Route Handler / Server Action で解決済みの `tr` をそのまま
+ * 受け取る — `lib/format.ts` の `Formatters` と同じ約束）。
  */
 
 import { type FormFieldDef, parseFormFields } from "./form-schema";
+import type { Tr } from "./i18n";
 
 /** 形式の版。破壊的に変えるときに上げる（取り込み側が弾けるように）。 */
 export const FORM_EXPORT_FORMAT = 1;
@@ -103,19 +107,23 @@ export function buildFormExport(input: {
 
 const HEADER_PREFIX = "#";
 
-export function serializeFormExport(data: FormExport): string {
+export function serializeFormExport(data: FormExport, tr: Tr): string {
   const head = [
-    "# CKK 業務管理システム — フォーム定義",
-    `# タイトル : ${data.form.title}`,
-    `# 種類     : ${data.form.kind === "REQUEST" ? "申請・報告" : "アンケート"}`,
-    `# 項目数   : ${data.form.fields.length}`,
-    `# 書き出し元: ${data.meta.sourceEnv} / ${data.meta.sourceCode} (v${data.meta.sourceVersion})`,
-    `# 書き出し日時: ${data.meta.exportedAt}`,
+    `# ${tr("general.formsActions.transferHeaderTitle")}`,
+    `# ${tr("general.formsActions.transferHeaderFieldTitle")} : ${data.form.title}`,
+    `# ${tr("general.formsActions.transferHeaderFieldKind")}     : ${
+      data.form.kind === "REQUEST"
+        ? tr("common.requestOrReport")
+        : tr("common.survey")
+    }`,
+    `# ${tr("general.formsActions.transferHeaderFieldCount")}   : ${data.form.fields.length}`,
+    `# ${tr("general.formsActions.transferHeaderSource")}: ${data.meta.sourceEnv} / ${data.meta.sourceCode} (v${data.meta.sourceVersion})`,
+    `# ${tr("general.formsActions.transferHeaderExportedAt")}: ${data.meta.exportedAt}`,
     "#",
-    "# このファイルは「フォームの作り」だけを含みます。回答と共有設定は含みません",
-    "# （共有先は環境ごとに違うため、取り込んだフォームは非公開で始まります）。",
-    "# 取り込みは フォーム > 取り込み から、このファイルを選ぶか中身を貼り付けます。",
-    "# 以下の JSON は編集しないでください（壊れると取り込めません）。",
+    `# ${tr("general.formsActions.transferHeaderNote1")}`,
+    `# ${tr("general.formsActions.transferHeaderNote2")}`,
+    `# ${tr("general.formsActions.transferHeaderNote3")}`,
+    `# ${tr("general.formsActions.transferHeaderNote4")}`,
     "",
   ].join("\n");
   return `${head}${JSON.stringify(data, null, 2)}\n`;
@@ -138,9 +146,11 @@ function stripHeader(text: string): string {
   return lines.slice(i).join("\n").trim();
 }
 
-export function parseFormExport(text: string): ParseResult {
+export function parseFormExport(text: string, tr: Tr): ParseResult {
   const body = stripHeader(text ?? "");
-  if (!body) return { ok: false, error: "中身が空です" };
+  if (!body) {
+    return { ok: false, error: tr("general.formsActions.transferEmptyBody") };
+  }
 
   let raw: unknown;
   try {
@@ -148,41 +158,59 @@ export function parseFormExport(text: string): ParseResult {
   } catch {
     return {
       ok: false,
-      error:
-        "ファイルの形式が読み取れません（JSON が壊れています）。全文が貼られているか確認してください",
+      error: tr("general.formsActions.transferInvalidJson"),
     };
   }
 
   if (typeof raw !== "object" || raw === null) {
-    return { ok: false, error: "ファイルの形式が違います" };
+    return {
+      ok: false,
+      error: tr("general.formsActions.transferWrongFormat"),
+    };
   }
   const obj = raw as { meta?: unknown; form?: unknown };
   if (typeof obj.meta !== "object" || obj.meta === null) {
-    return { ok: false, error: "フォーム定義ファイルではありません" };
+    return {
+      ok: false,
+      error: tr("general.formsActions.transferNotAFormFile"),
+    };
   }
   const meta = obj.meta as Partial<FormExportMeta>;
 
   if (typeof meta.formatVersion !== "number") {
-    return { ok: false, error: "フォーム定義ファイルではありません" };
+    return {
+      ok: false,
+      error: tr("general.formsActions.transferNotAFormFile"),
+    };
   }
   if (meta.formatVersion > FORM_EXPORT_FORMAT) {
     return {
       ok: false,
-      error: `このファイルは新しい形式（v${meta.formatVersion}）です。アプリを更新してから取り込んでください`,
+      error: tr("general.formsActions.transferNewerFormat", {
+        version: meta.formatVersion,
+      }),
     };
   }
 
   const form = obj.form as Partial<FormExportBody> | undefined;
   if (!form || typeof form.title !== "string" || !form.title.trim()) {
-    return { ok: false, error: "タイトルがありません" };
+    return { ok: false, error: tr("general.formsActions.transferNoTitle") };
   }
   if (form.kind !== "SURVEY" && form.kind !== "REQUEST") {
-    return { ok: false, error: "フォームの種類が不正です" };
+    return {
+      ok: false,
+      error: tr("general.formsActions.transferInvalidKind"),
+    };
   }
 
-  const parsedFields = parseFormFields(form.fields ?? []);
+  const parsedFields = parseFormFields(form.fields ?? [], tr);
   if (!parsedFields.ok) {
-    return { ok: false, error: `項目定義が不正です: ${parsedFields.error}` };
+    return {
+      ok: false,
+      error: tr("general.formsActions.transferInvalidFields", {
+        reason: parsedFields.error,
+      }),
+    };
   }
 
   const normalized: FormExportBody = {
@@ -208,11 +236,9 @@ export function parseFormExport(text: string): ParseResult {
   ) {
     // 弾かずに警告に留める: 旧版で書き出した後に仕様が増えた場合など、
     // 内容が正しくても一致しないことがある。人が見て判断できればよい。
-    warnings.push(
-      "チェックサムが一致しません。内容が途中で欠けている可能性があります",
-    );
+    warnings.push(tr("general.formsActions.transferChecksumMismatch"));
   }
-  warnings.push(...portabilityWarnings(normalized.fields));
+  warnings.push(...portabilityWarnings(normalized.fields, tr));
 
   return {
     ok: true,
@@ -263,21 +289,26 @@ export function remapSelfReferences(
  * 環境をまたぐと外れるかもしれない参照を洗い出す。取り込みは止めない —
  * 直せるのは取り込んだ側の人なので、何を直すべきかだけ伝える。
  */
-export function portabilityWarnings(fields: readonly FormFieldDef[]): string[] {
+export function portabilityWarnings(
+  fields: readonly FormFieldDef[],
+  tr: Tr,
+): string[] {
   const warnings: string[] = [];
   const related = fields.filter((f) => f.type === "related");
   for (const field of related) {
     const target = field.related?.targetFormCode;
+    const label = field.label.ja || field.key;
     warnings.push(
       target
-        ? `「${field.label.ja || field.key}」は別のフォーム（${target}）を参照しています。取り込み先に同じコードのフォームが無ければ、何も表示されません`
-        : `「${field.label.ja || field.key}」の参照先フォームが設定されていません`,
+        ? tr("general.formsActions.transferRelatedFieldWarning", {
+            label,
+            target,
+          })
+        : tr("general.formsActions.transferRelatedFieldNoTarget", { label }),
     );
   }
   if (fields.some((f) => f.type === "attachment")) {
-    warnings.push(
-      "添付ファイルの項目があります。ファイルそのものは運ばれません（項目の定義だけです）",
-    );
+    warnings.push(tr("general.formsActions.transferAttachmentNotCarried"));
   }
   return warnings;
 }
@@ -287,6 +318,7 @@ export function exportFileName(
   title: string,
   sourceEnv: string,
   sourceCode: string,
+  tr: Tr,
 ): string {
   const safe = title
     .trim()
@@ -296,5 +328,7 @@ export function exportFileName(
     .replace(/_+/g, "_")
     .replace(/^_|_$/g, "")
     .slice(0, 40);
-  return `フォーム_${safe || "無題"}_${sourceEnv}_${sourceCode}.txt`;
+  const prefix = tr("general.formsActions.transferFileNamePrefix");
+  const untitled = tr("general.formsActions.transferUntitled");
+  return `${prefix}_${safe || untitled}_${sourceEnv}_${sourceCode}.txt`;
 }

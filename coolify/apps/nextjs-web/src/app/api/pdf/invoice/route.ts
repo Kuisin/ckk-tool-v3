@@ -15,15 +15,16 @@ import { fetchInvoice } from "@/app/(dashboard)/billing/invoices/data";
 import { requirePermissionResponse } from "@/lib/authz";
 import { parseDocKey } from "@/lib/doc-number";
 import { isIssued, notIssuedResponse, pdfStorageKey } from "@/lib/document-pdf";
-import { documentFormatters } from "@/lib/format";
+import { documentFormatters, escapeHtml } from "@/lib/format";
 import { normalizeLocale } from "@/lib/i18n";
-import { renderPdf } from "@/lib/pdf";
+import { multilineHtml, renderPdf } from "@/lib/pdf";
 import {
   invoicePdfLabels,
   pdfAttnLine,
   taxLabelLocalized,
 } from "@/lib/pdf-labels";
 import { documentQrSvg } from "@/lib/pdf-qr";
+import { companyStampImg } from "@/lib/pdf-stamp";
 import { QR_KINDS } from "@/lib/qr-payload";
 import { getObject, putObject } from "@/lib/storage";
 
@@ -34,8 +35,8 @@ const yen = (n: number) => n.toLocaleString("ja-JP");
 
 // 発行元（CKK 本社）— delivery-note ルートの issuer ブロックと同一。
 const ISSUER = {
-  name: "シー・ケィ・ケー株式会社",
-  address: "〒475-0823 愛知県半田市港町2丁目27番2",
+  name: "シー・ケィ・ケー株式会社", // i18n-ignore
+  address: "〒475-0823 愛知県半田市港町2丁目27番2", // i18n-ignore
   tel: "TEL: 0569-21-6187　FAX: 0569-23-6427",
   invoice_reg: "T1234567890123",
 };
@@ -66,7 +67,7 @@ export async function GET(request: Request): Promise<Response> {
     return new Response(`Invoice not found: ${id}`, { status: 404 });
   }
   // 閲覧は発行後のみ（下書きの請求書は PDF を出さない）。
-  if (!isIssued(invoice.status)) return notIssuedResponse("請求書");
+  if (!isIssued(invoice.status)) return notIssuedResponse("請求書"); // i18n-ignore
 
   const storageKey = pdfStorageKey.invoice(invoice.invoiceNumber);
 
@@ -95,10 +96,14 @@ export async function GET(request: Request): Promise<Response> {
     issuer: ISSUER,
     recipient: {
       name: invoice.customerName,
-      meta: metaLines.join("<br>"),
+      meta: metaLines.map(escapeHtml).join("<br>"),
     },
     // 書類 QR（CKK:INV:<番号>）。URL は入れない。
     doc_qr: documentQrSvg(QR_KINDS.INVOICE, invoice.invoiceNumber),
+    // 社印。ここに来る時点で isIssued は真だが（69 行目のガード）、
+    // companyStampImg 自身にも判定を持たせている（lib/pdf-stamp.ts の
+    // コメント参照）ので、ここでも明示的に渡す。
+    stamp: await companyStampImg(isIssued(invoice.status), lang),
     doc: {
       number: invoice.invoiceNumber,
       issued_date: documentFormatters.date(
@@ -123,7 +128,7 @@ export async function GET(request: Request): Promise<Response> {
       tax: yen(invoice.taxAmount),
       grand_total: yen(invoice.totalAmount),
     },
-    notes: (invoice.notes ?? "").replace(/\n/g, "<br>"),
+    notes: multilineHtml(invoice.notes),
   };
 
   let pdf: ArrayBuffer;

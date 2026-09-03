@@ -31,7 +31,7 @@ import { useForm } from "@mantine/form";
 import { notifications } from "@mantine/notifications";
 import { IconPlus, IconTrash } from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
-import { useLocale } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { useTransition } from "react";
 import { z } from "zod";
 import { searchProductOptions } from "@/app/(dashboard)/_shared/option-search";
@@ -42,7 +42,7 @@ import {
 } from "@/app/(dashboard)/shipping/delivery-notes/actions";
 import { GhostButton } from "@/components/ui/buttons";
 import { FieldValue } from "@/components/ui/FieldValue";
-import { PRODUCT_F4 } from "@/components/ui/f4-presets";
+import { productF4 } from "@/components/ui/f4-presets";
 import { HelpLabel } from "@/components/ui/HelpLabel";
 import { SalesRepSelect } from "@/components/ui/SalesRepSelect";
 import { SearchSelect } from "@/components/ui/SearchSelect";
@@ -62,37 +62,43 @@ const BASE_PATH = "/shipping/delivery-notes";
 
 const DELIVERY_METHODS = ["NORMAL", "DIRECT_TO_USER"] as const;
 
-const itemSchema = z.object({
-  rowId: z.string(),
-  productId: z.string().min(1, "製品を選択してください"),
-  productName: z.string(),
-  quantity: z.number().int().min(1, "1以上"),
-  unitPrice: z.number().min(0, "0以上"),
-  notes: z.string(),
-});
-
-const schema = z
-  .object({
-    deliveryOrderNumber: z.string().min(1, "出荷書を選択してください"),
-    salesRepId: z.string().nullable(),
-    deliveryMethod: z.enum(DELIVERY_METHODS),
-    endUserBpId: z.string().nullable(),
-    includePrice: z.boolean(),
+function buildSchema(tr: ReturnType<typeof useTranslations>) {
+  const itemSchema = z.object({
+    rowId: z.string(),
+    productId: z
+      .string()
+      .min(1, tr("shipping.deliveryOrderForm.selectProduct")),
+    productName: z.string(),
+    quantity: z.number().int().min(1, tr("common.mustBeAtLeastOne")),
+    unitPrice: z.number().min(0, tr("common.mustBeZeroOrMore")),
     notes: z.string(),
-    items: z.array(itemSchema).min(1, "明細を1件以上追加してください"),
-  })
-  .superRefine((v, ctx) => {
-    // ユーザー直送は届け先（最終需要家）が必須。
-    if (v.deliveryMethod === "DIRECT_TO_USER" && !v.endUserBpId) {
-      ctx.addIssue({
-        code: "custom",
-        path: ["endUserBpId"],
-        message: "最終需要家を選択してください",
-      });
-    }
   });
 
-type FormValues = z.infer<typeof schema>;
+  return z
+    .object({
+      deliveryOrderNumber: z
+        .string()
+        .min(1, tr("shipping.deliveryNoteForm.selectADeliveryOrder")),
+      salesRepId: z.string().nullable(),
+      deliveryMethod: z.enum(DELIVERY_METHODS),
+      endUserBpId: z.string().nullable(),
+      includePrice: z.boolean(),
+      notes: z.string(),
+      items: z.array(itemSchema).min(1, tr("common.addAtLeastOneLineItem")),
+    })
+    .superRefine((v, ctx) => {
+      // ユーザー直送は届け先（最終需要家）が必須。
+      if (v.deliveryMethod === "DIRECT_TO_USER" && !v.endUserBpId) {
+        ctx.addIssue({
+          code: "custom",
+          path: ["endUserBpId"],
+          message: tr("shipping.deliveryNotes.selectAnEndUser"),
+        });
+      }
+    });
+}
+
+type FormValues = z.infer<ReturnType<typeof buildSchema>>;
 type ItemForm = FormValues["items"][number];
 
 let rowSeq = 0;
@@ -121,12 +127,14 @@ function candidateItems(cand: DeliveryOrderCandidate): ItemForm[] {
 }
 
 function fromCandidate(cand: DeliveryOrderCandidate): FormValues {
+  // 納品方法は注文請書の配送方法を既定にする（onDeliveryOrderChange と同じ規則）。
+  const deliveryMethod = cand.deliveryMethod ?? "NORMAL";
   return {
     deliveryOrderNumber: cand.number,
     salesRepId: cand.salesRepId,
-    deliveryMethod: "NORMAL",
+    deliveryMethod,
     endUserBpId: cand.endUserBpId,
-    includePrice: true,
+    includePrice: deliveryMethod === "NORMAL",
     notes: "",
     items: candidateItems(cand),
   };
@@ -165,10 +173,12 @@ export function DeliveryNoteForm({
   /** `?deliveryOrder=DOR-…` のプリセレクト（候補に無ければ無視）。 */
   initialDeliveryOrder?: string | null;
 }) {
+  const tr = useTranslations();
   const locale = useLocale();
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const noteId = mode === "edit" ? note?.id : undefined;
+  const schema = buildSchema(tr);
 
   const preselected =
     mode === "create" && initialDeliveryOrder
@@ -307,17 +317,19 @@ export function DeliveryNoteForm({
             });
       if (result.ok) {
         notifications.show({
-          title: "保存しました",
+          title: tr("common.saved2"),
           message:
             mode === "edit"
-              ? "納品書を更新しました"
-              : `納品書 ${result.data.number} を作成しました`,
+              ? tr("shipping.deliveryNotes.theDeliveryNoteWasUpdated")
+              : tr("shipping.deliveryNoteForm.createdWithNumber", {
+                  number: result.data.number,
+                }),
           color: "green",
         });
         router.push(`${BASE_PATH}/${result.data.number}`);
       } else {
         notifications.show({
-          title: "エラー",
+          title: tr("common.error2"),
           message: result.error,
           color: "red",
         });
@@ -328,9 +340,9 @@ export function DeliveryNoteForm({
   return (
     <FormShell
       breadcrumbs={[
-        "出荷",
-        { label: "納品書", href: BASE_PATH },
-        mode === "edit" ? "編集" : "新規作成",
+        tr("common.shipping"),
+        { label: tr("common.deliveryNote"), href: BASE_PATH },
+        mode === "edit" ? tr("common.edit") : tr("common.new2"),
       ]}
       isDirty={form.isDirty()}
       isPending={isPending}
@@ -344,10 +356,14 @@ export function DeliveryNoteForm({
         ) : undefined
       }
       title={
-        mode === "edit" ? `納品書 編集 ${noteId ?? ""}` : "納品書 新規作成"
+        mode === "edit"
+          ? tr("shipping.deliveryNoteForm.editWithNumber", {
+              noteId: noteId ?? "",
+            })
+          : tr("shipping.deliveryNotes.newDeliveryNote")
       }
     >
-      <FormSection title="基本情報">
+      <FormSection title={tr("common.basicInformation")}>
         <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="sm">
           {mode === "create" ? (
             <Select
@@ -357,20 +373,27 @@ export function DeliveryNoteForm({
               }))}
               error={form.errors.deliveryOrderNumber}
               label={
-                <HelpLabel {...fieldHelp("deliveryNote", "deliveryOrder")} />
+                <HelpLabel
+                  {...fieldHelp(tr, "deliveryNote", "deliveryOrder")}
+                />
               }
               onChange={onDeliveryOrderChange}
-              placeholder="確定済み・出荷済みの出荷書を選択"
+              placeholder={tr(
+                "shipping.deliveryNotes.chooseAConfirmedOrShippedDelivery",
+              )}
               searchable={candidates.length > 5}
               value={form.values.deliveryOrderNumber || null}
               withAsterisk
             />
           ) : (
-            <FieldValue label="出荷書" value={note?.deliveryOrderNumber} />
+            <FieldValue
+              label={tr("common.deliveryOrder")}
+              value={note?.deliveryOrderNumber}
+            />
           )}
           <Input.Wrapper
             label={
-              <HelpLabel {...fieldHelp("deliveryNote", "deliveryMethod")} />
+              <HelpLabel {...fieldHelp(tr, "deliveryNote", "deliveryMethod")} />
             }
             withAsterisk
           >
@@ -385,7 +408,7 @@ export function DeliveryNoteForm({
             />
           </Input.Wrapper>
           {/* 納品先 = 注文明細の顧客（+支店）。作成後変更不可。 */}
-          <FieldValue label="納品先" value={recipientLabel} />
+          <FieldValue label={tr("common.shipTo")} value={recipientLabel} />
           <SalesRepSelect
             customerBpId={recipientBpId}
             initial={
@@ -398,13 +421,15 @@ export function DeliveryNoteForm({
           />
           {form.values.deliveryMethod === "DIRECT_TO_USER" && (
             <SearchSelect
-              description="ユーザー直送の届け先（配送完了書に価格なし・納品書別送）"
+              description={tr("shipping.deliveryNotes.shipToForDirectToUser")}
               error={form.errors.endUserBpId}
               initialOption={endUserInitialOption}
-              label={<HelpLabel {...fieldHelp("deliveryNote", "endUser")} />}
+              label={
+                <HelpLabel {...fieldHelp(tr, "deliveryNote", "endUser")} />
+              }
               onChange={(v) => form.setFieldValue("endUserBpId", v)}
               onSearch={searchEndUserOptions}
-              placeholder="最終需要家を検索"
+              placeholder={tr("shipping.deliveryNotes.searchEndUsers")}
               storageKey="end-user"
               value={form.values.endUserBpId}
               withAsterisk
@@ -414,8 +439,10 @@ export function DeliveryNoteForm({
             checked={form.values.includePrice}
             label={
               <HelpLabel
-                {...fieldHelp("deliveryNote", "includePrice", {
-                  label: "価格記載（納品書に単価・金額を記載する）",
+                {...fieldHelp(tr, "deliveryNote", "includePrice", {
+                  label: tr(
+                    "shipping.deliveryNotes.showPricesPrintUnitPriceAnd",
+                  ),
                 })}
               />
             }
@@ -426,17 +453,19 @@ export function DeliveryNoteForm({
           />
           <Textarea
             autosize
-            label={<HelpLabel {...fieldHelp("deliveryNote", "notes")} />}
+            label={<HelpLabel {...fieldHelp(tr, "deliveryNote", "notes")} />}
             minRows={1}
-            placeholder="備考（任意）"
+            placeholder={tr("common.notesOptional")}
             {...form.getInputProps("notes")}
           />
         </SimpleGrid>
       </FormSection>
 
       <FormSection
-        description="出荷書を選択すると明細が既定生成されます（単価は注文明細の単価）。価格記載 OFF のときは単価・金額を保存しません。"
-        title="明細"
+        description={tr(
+          "shipping.deliveryNotes.choosingADeliveryOrderPrefillsThe",
+        )}
+        title={tr("common.lineItems")}
       >
         <Group justify="flex-end" mb="xs">
           {typeof form.errors.items === "string" && (
@@ -458,14 +487,16 @@ export function DeliveryNoteForm({
                 >
                   <SearchSelect
                     error={form.errors[`items.${ri}.productId`]}
-                    f4={PRODUCT_F4}
+                    f4={productF4(tr)}
                     initialOption={
                       item.productId
                         ? { value: item.productId, label: item.productName }
                         : null
                     }
                     label={
-                      <HelpLabel {...fieldHelp("deliveryNote", "product")} />
+                      <HelpLabel
+                        {...fieldHelp(tr, "deliveryNote", "product")}
+                      />
                     }
                     onChange={(v, opt) =>
                       form.setFieldValue(`items.${ri}`, {
@@ -475,7 +506,7 @@ export function DeliveryNoteForm({
                       })
                     }
                     onSearch={searchProductOptions}
-                    placeholder="製品を検索"
+                    placeholder={tr("common.searchProducts")}
                     storageKey="product"
                     value={item.productId || null}
                     withAsterisk
@@ -483,7 +514,9 @@ export function DeliveryNoteForm({
                   <NumberInput
                     error={form.errors[`items.${ri}.quantity`]}
                     label={
-                      <HelpLabel {...fieldHelp("deliveryNote", "quantity")} />
+                      <HelpLabel
+                        {...fieldHelp(tr, "deliveryNote", "quantity")}
+                      />
                     }
                     maw={110}
                     min={1}
@@ -501,7 +534,9 @@ export function DeliveryNoteForm({
                     disabled={!form.values.includePrice}
                     error={form.errors[`items.${ri}.unitPrice`]}
                     label={
-                      <HelpLabel {...fieldHelp("deliveryNote", "unitPrice")} />
+                      <HelpLabel
+                        {...fieldHelp(tr, "deliveryNote", "unitPrice")}
+                      />
                     }
                     maw={160}
                     min={0}
@@ -517,9 +552,9 @@ export function DeliveryNoteForm({
                   />
                   <TextInput
                     label={
-                      <HelpLabel {...fieldHelp("deliveryNote", "notes")} />
+                      <HelpLabel {...fieldHelp(tr, "deliveryNote", "notes")} />
                     }
-                    placeholder="行の備考（任意）"
+                    placeholder={tr("common.lineNotesOptional")}
                     {...form.getInputProps(`items.${ri}.notes`)}
                   />
                 </Group>
@@ -537,7 +572,7 @@ export function DeliveryNoteForm({
                   : "—"}
               </Text>
               <ActionIcon
-                aria-label="明細を削除"
+                aria-label={tr("common.removeLine")}
                 color="red"
                 disabled={form.values.items.length <= 1}
                 mb={4}
@@ -567,14 +602,18 @@ export function DeliveryNoteForm({
           }}
           size="xs"
         >
-          明細を追加
+          {tr("common.addLine")}
         </GhostButton>
 
         <Divider my="md" />
         <Group gap="xl" justify="flex-end">
-          <Text fw={700}>数量合計 {totalQuantity}</Text>
+          <Text fw={700}>
+            {tr("common.totalQuantity")} {totalQuantity}
+          </Text>
           {form.values.includePrice && (
-            <Text fw={700}>合計金額 {formatMoney(totalAmount)}</Text>
+            <Text fw={700}>
+              {tr("common.totalAmount")} {formatMoney(totalAmount)}
+            </Text>
           )}
         </Group>
       </FormSection>

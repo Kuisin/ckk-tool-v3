@@ -1,4 +1,5 @@
 import { notFound } from "next/navigation";
+import { getTranslations } from "next-intl/server";
 import type { ReactNode } from "react";
 import { StepListPane } from "@/components/production/step-execution/StepListPane";
 import { MasterDetailShell } from "@/components/ui/MasterDetailShell";
@@ -20,6 +21,7 @@ export default async function WorkOrderStepsLayout({
   children: ReactNode;
   params: Promise<{ id: string }>;
 }) {
+  const tr = await getTranslations();
   const { id } = await params;
   const workOrderNumber = await resolveWorkOrderIdParam(id);
   if (workOrderNumber == null) notFound();
@@ -36,15 +38,15 @@ export default async function WorkOrderStepsLayout({
       header={
         <PageHeader
           breadcrumbs={[
-            "生産",
-            { label: "指示書", href: "/production/work-orders" },
+            tr("common.production"),
+            { label: tr("common.workOrder"), href: "/production/work-orders" },
             {
               label: woLabel,
               href: `/production/work-orders/${workOrderNumber}`,
             },
-            "工程",
+            tr("common.step"),
           ]}
-          title={`工程 — 指示書 ${woLabel}`}
+          title={`${tr("common.step")} — ${tr("common.workOrder")} ${woLabel}`}
         />
       }
       master={<StepListPane basePath={basePath} steps={nav.steps} />}

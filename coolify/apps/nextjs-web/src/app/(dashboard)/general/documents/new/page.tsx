@@ -1,3 +1,4 @@
+import { getTranslations } from "next-intl/server";
 import { DocumentEditor } from "@/components/documents/DocumentEditor";
 import { AccessDenied } from "@/components/ui/AccessDenied";
 import { checkPermission } from "@/lib/authz";
@@ -6,6 +7,7 @@ import { requireAppRead } from "@/lib/authz-page";
 export const dynamic = "force-dynamic";
 
 export default async function NewDocumentPage() {
+  const tr = await getTranslations();
   const denied = await requireAppRead("internal-pages");
   if (denied) return denied;
 
@@ -15,11 +17,11 @@ export default async function NewDocumentPage() {
     return (
       <AccessDenied
         breadcrumbs={[
-          "一般",
-          { label: "社内文書", href: "/general/documents" },
+          tr("common.general"),
+          { label: tr("common.internalDocuments"), href: "/general/documents" },
         ]}
         message={authz.error}
-        title="文書の作成"
+        title={tr("general.documents.createADocument")}
       />
     );
   }

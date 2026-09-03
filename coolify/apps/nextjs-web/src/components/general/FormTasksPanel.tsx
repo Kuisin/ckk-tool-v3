@@ -16,6 +16,7 @@
 import { Badge, Group, Paper, Stack, Text } from "@mantine/core";
 import { IconForms } from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import type { ReactNode } from "react";
 import type { CompletedRequestRow } from "@/app/(dashboard)/general/tasks/completions-data";
 import type {
@@ -88,12 +89,15 @@ function Row({
 }
 
 export function PendingFormsList({ rows }: { rows: PendingFormRow[] }) {
+  const tr = useTranslations();
   const router = useRouter();
   const fmt = useFormat();
   const isMobile = useIsMobile();
 
   if (rows.length === 0)
-    return <Empty message="回答待ちのフォームはありません" />;
+    return (
+      <Empty message={tr("general.formTasksPanel.thereAreNoFormsAwaitingA")} />
+    );
 
   return (
     <Stack gap="xs">
@@ -115,7 +119,9 @@ export function PendingFormsList({ rows }: { rows: PendingFormRow[] }) {
                   size="sm"
                   variant="light"
                 >
-                  {row.kind === "REQUEST" ? "申請・報告" : "アンケート"}
+                  {row.kind === "REQUEST"
+                    ? tr("common.requestOrReport")
+                    : tr("common.survey")}
                 </Badge>
               </>
             )
@@ -129,13 +135,17 @@ export function PendingFormsList({ rows }: { rows: PendingFormRow[] }) {
                   size="sm"
                   variant="light"
                 >
-                  {row.kind === "REQUEST" ? "申請・報告" : "アンケート"}
+                  {row.kind === "REQUEST"
+                    ? tr("common.requestOrReport")
+                    : tr("common.survey")}
                 </Badge>
               )}
               <Text c="dimmed" size="xs">
                 {row.closesAt
-                  ? `${fmt.dateTime(row.closesAt)} まで`
-                  : "期限なし"}
+                  ? tr("general.formTasksPanel.deadlineUntil", {
+                      datetime: fmt.dateTime(row.closesAt),
+                    })
+                  : tr("general.formTasksPanel.noDeadline")}
               </Text>
             </>
           }
@@ -146,12 +156,17 @@ export function PendingFormsList({ rows }: { rows: PendingFormRow[] }) {
 }
 
 export function MyResponsesList({ rows }: { rows: MyResponseRow[] }) {
+  const tr = useTranslations();
   const router = useRouter();
   const fmt = useFormat();
   const isMobile = useIsMobile();
 
   if (rows.length === 0)
-    return <Empty message="まだフォームに回答していません" />;
+    return (
+      <Empty
+        message={tr("general.formTasksPanel.youHaveNotAnsweredAnyForms")}
+      />
+    );
 
   return (
     <Stack gap="xs">
@@ -205,12 +220,16 @@ export function MyResponsesList({ rows }: { rows: MyResponseRow[] }) {
               {row.canEdit && (
                 <Badge color="blue" size="sm" variant="light">
                   {row.editDeadline
-                    ? `${fmt.dateTime(row.editDeadline)} まで編集可`
-                    : "編集可"}
+                    ? tr("general.formTasksPanel.editableUntil", {
+                        datetime: fmt.dateTime(row.editDeadline),
+                      })
+                    : tr("general.formTasksPanel.editable")}
                 </Badge>
               )}
               <Text c="dimmed" size="xs">
-                {row.submittedAt ? fmt.dateTime(row.submittedAt) : "下書き"}
+                {row.submittedAt
+                  ? fmt.dateTime(row.submittedAt)
+                  : tr("common.draft")}
               </Text>
             </>
           }
@@ -230,11 +249,15 @@ export function CompletedRequestsList({
 }: {
   rows: CompletedRequestRow[];
 }) {
+  const tr = useTranslations();
   const router = useRouter();
   const fmt = useFormat();
   const isMobile = useIsMobile();
 
-  if (rows.length === 0) return <Empty message="完了の通知はありません" />;
+  if (rows.length === 0)
+    return (
+      <Empty message={tr("general.formTasksPanel.thereIsNoCompletionNotice")} />
+    );
 
   return (
     <Stack gap="xs">
@@ -295,7 +318,7 @@ export function CompletedRequestsList({
               <>
                 {!row.readAt && (
                   <Badge color="blue" size="sm" variant="light">
-                    未読
+                    {tr("general.formTasksPanel.unread")}
                   </Badge>
                 )}
                 <Text c="dimmed" size="xs">

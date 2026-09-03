@@ -72,39 +72,45 @@ describe("productSummary", () => {
     productName,
     productText,
   });
+  // next-intl の t() の代わり（"{first} ほか {count} 種" 相当だけを再現する）
+  const tr = (_key: string, values?: Record<string, unknown>) =>
+    `${values?.first} ほか ${values?.count} 種`;
 
   it("1 種類ならその名前", () => {
-    expect(productSummary([item("超硬ドリル", "ドリル")]).label).toBe(
+    expect(productSummary([item("超硬ドリル", "ドリル")], tr).label).toBe(
       "超硬ドリル",
     );
   });
 
   it("複数なら先頭 + ほか N 種", () => {
-    const s = productSummary([
-      item("超硬ドリル", null),
-      item("ザグリカッター", null),
-      item("リーマ", null),
-    ]);
+    const s = productSummary(
+      [
+        item("超硬ドリル", null),
+        item("ザグリカッター", null),
+        item("リーマ", null),
+      ],
+      tr,
+    );
     expect(s.label).toBe("超硬ドリル ほか 2 種");
     expect(s.names).toHaveLength(3);
   });
 
   it("同じ製品名は 1 つに畳む", () => {
-    const s = productSummary([
-      item("超硬ドリル", null),
-      item("超硬ドリル", null),
-    ]);
+    const s = productSummary(
+      [item("超硬ドリル", null), item("超硬ドリル", null)],
+      tr,
+    );
     expect(s.label).toBe("超硬ドリル");
   });
 
   it("**未突合の行は抽出された品名で出す**（何の書類か掴めるように）", () => {
-    expect(productSummary([item(null, "OHリーマ φ8.3")]).label).toBe(
+    expect(productSummary([item(null, "OHリーマ φ8.3")], tr).label).toBe(
       "OHリーマ φ8.3",
     );
   });
 
   it("名前が何も無ければダッシュ", () => {
-    expect(productSummary([item(null, null), item(null, "  ")])).toEqual({
+    expect(productSummary([item(null, null), item(null, "  ")], tr)).toEqual({
       label: "—",
       names: [],
     });

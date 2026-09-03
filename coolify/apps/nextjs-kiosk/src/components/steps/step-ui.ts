@@ -2,7 +2,7 @@
  * step-ui.ts — 工程実行 UI の共通ヘルパー（クライアント側）。
  */
 
-import type { KioskMessages } from "@/lib/i18n";
+import { fillMessage, type KioskMessages } from "@/lib/i18n";
 import type { StepErrorCode } from "@/lib/step-execution";
 import type { StepSessionState } from "@/lib/steps-core";
 
@@ -132,7 +132,9 @@ export function stateLabel(
     case "BLOCKED":
       return m.steps.state.blocked;
     case "OTHER":
-      return m.steps.state.othersWorking(lockedByName ?? "");
+      return fillMessage(m.steps.state.othersWorking, {
+        name: lockedByName ?? "",
+      });
     case "COMPLETED":
       return m.steps.state.completed;
     case "CANCELLED":

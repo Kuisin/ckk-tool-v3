@@ -15,6 +15,7 @@
  * （帳票 PDF と違い保存キーが定まらない + 氏名入りで使い捨て）。
  */
 
+import { getTranslations } from "next-intl/server";
 import { formatCode } from "@/lib/crockford";
 import { escapeHtml } from "@/lib/format";
 import {
@@ -35,6 +36,8 @@ export const dynamic = "force-dynamic";
 
 // 寸法（原寸印刷の要）は lib/kiosk-card-sheet.ts が唯一の定義。
 
+const COMPANY_NAME = "シー・ケィ・ケー株式会社"; // i18n-ignore — 固有名詞（社名）
+
 /** カード 1 枚分のセル（十字トンボ + QR + 社名 + 氏名/記名線 + No.）。 */
 function cardCell(card: KioskCardPrintRow): string {
   const code = formatCode(card.id);
@@ -49,7 +52,7 @@ function cardCell(card: KioskCardPrintRow): string {
     <div class="card">
       <div class="qr">${qrSvg(code, { margin: 2 })}</div>
       <div class="head">
-        <span class="company">シー・ケィ・ケー株式会社</span>
+        <span class="company">${COMPANY_NAME}</span>
         ${user}
         <span class="shortcode">No. ${code.slice(-9)}</span>
       </div>
@@ -87,6 +90,7 @@ function timestampJst(): string {
 }
 
 export async function GET(request: Request): Promise<Response> {
+  const tr = await getTranslations();
   // 台紙の PDF は QR（= 認証情報そのもの）をファイルとして手元に残す操作。
   // 一覧を見るのとは重さが違うので、承認された期間だけに絞る。
   const gate = await useElevation("kiosk_card.print");
@@ -105,14 +109,14 @@ export async function GET(request: Request): Promise<Response> {
     .slice(0, 100);
   if (ids.length === 0) {
     return Response.json(
-      { error: "印刷対象のカードが指定されていません" },
+      { error: tr("settings.kioskCardActions.noCardsSpecifiedForPrint") },
       { status: 400 },
     );
   }
   const cards = await fetchKioskCardsForPrint(ids);
   if (cards.length === 0) {
     return Response.json(
-      { error: "印刷対象のカードがありません" },
+      { error: tr("settings.kioskCardActions.noCardsToPrint") },
       { status: 404 },
     );
   }
@@ -140,7 +144,7 @@ export async function GET(request: Request): Promise<Response> {
 
   const stamp = timestampJst();
   const asciiName = `qr-cards_${stamp}.pdf`;
-  const utf8Name = encodeURIComponent(`QRカード印刷_${stamp}.pdf`);
+  const utf8Name = encodeURIComponent(`QRカード印刷_${stamp}.pdf`); // i18n-ignore
   const disposition = params.get("download") === "1" ? "attachment" : "inline";
   return new Response(pdf, {
     headers: {

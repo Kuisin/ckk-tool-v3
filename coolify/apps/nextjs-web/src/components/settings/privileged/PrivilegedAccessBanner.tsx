@@ -1,5 +1,6 @@
 import { Alert, Anchor, Badge, Group, Stack, Text } from "@mantine/core";
 import { IconShieldCheck, IconShieldLock } from "@tabler/icons-react";
+import { getTranslations } from "next-intl/server";
 import { peekElevations } from "@/lib/privileged-access";
 import {
   ELEVATION_CODE_LABEL,
@@ -22,6 +23,7 @@ export async function PrivilegedAccessBanner({
 }: {
   code: ElevationCode;
 }) {
+  const tr = await getTranslations();
   const ops = operationsForCode(code);
   const views = await peekElevations(ops.map((o) => o.key));
   const entries = ops.map((o) => ({ op: o, view: views[o.key] }));
@@ -44,8 +46,13 @@ export async function PrivilegedAccessBanner({
     if (ms == null || ms <= 0) return null;
     const m = Math.floor(ms / 60_000);
     return m >= 60
-      ? `残り ${Math.floor(m / 60)} 時間 ${m % 60} 分`
-      : `残り ${Math.max(1, m)} 分`;
+      ? tr("settings.privilegedAccessBanner.remainingHM", {
+          hours: Math.floor(m / 60),
+          minutes: m % 60,
+        })
+      : tr("settings.privilegedAccessBanner.remainingM", {
+          minutes: Math.max(1, m),
+        });
   };
 
   return (
@@ -61,8 +68,13 @@ export async function PrivilegedAccessBanner({
       mb="md"
       title={
         allowed.length > 0
-          ? `${label}: ${allowed.length} 件の操作が使えます`
-          : `${label}: 承認された操作はありません`
+          ? tr("settings.privilegedAccessBanner.labelNOperationsAreAvailable", {
+              label,
+              count: allowed.length,
+            })
+          : tr("settings.privilegedAccessBanner.labelNoOperationsAreApproved", {
+              label,
+            })
       }
       variant="light"
     >
@@ -80,18 +92,23 @@ export async function PrivilegedAccessBanner({
               {view?.allowed && remainingLabel(view.remainingMs, view.state)
                 ? `（${remainingLabel(view.remainingMs, view.state)}）`
                 : view?.pending
-                  ? "（承認依頼中）"
+                  ? tr("settings.privileged.pendingApproval")
                   : ""}
             </Badge>
           ))}
         </Group>
         <Text size="xs">
           {allowed.length > 0
-            ? "持ち時間は最初に操作した時点から測ります。"
-            : "これらの操作には承認が必要です。"}
-          {pending.length > 0 && " 申請中のものは承認をお待ちください。"}{" "}
+            ? tr("settings.privileged.theClockStartsFromTheFirst")
+            : tr("settings.privileged.theseOperationsNeedApproval")}
+          {pending.length > 0 && (
+            <>
+              {" "}
+              {tr("settings.privilegedAccessBanner.pleaseWaitForApprovalOfThe")}
+            </>
+          )}{" "}
           <Anchor href="/settings/privileged-access/new" size="xs">
-            特権アクセスを申請する
+            {tr("settings.privileged.requestPrivilegedAccess")}
           </Anchor>
         </Text>
       </Stack>

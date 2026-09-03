@@ -10,6 +10,7 @@
 import { Anchor, Badge, Table, Tabs, Text } from "@mantine/core";
 import { IconBookmark } from "@tabler/icons-react";
 import Link from "next/link";
+import { useTranslations } from "next-intl";
 import { useFormat } from "@/components/layout/PreferencesProvider";
 import { InventoryBadge } from "@/components/production/InventoryBadge";
 import { AppTabs } from "@/components/ui/AppTabs";
@@ -21,7 +22,8 @@ import { useTabParam } from "@/hooks/useUrlState";
 import { InventoryTransactionsTable } from "../InventoryTransactionsTable";
 import {
   type InventoryReservationRow,
-  RESERVATION_STATUS_BADGE,
+  RESERVATION_STATUS_COLOR,
+  reservationStatusLabel,
 } from "../model";
 import type { ProductInventoryDetailData } from "./model";
 
@@ -32,20 +34,25 @@ export function ProductInventoryDetail({
 }: {
   record: ProductInventoryDetailData;
 }) {
+  const tr = useTranslations();
   const fmt = useFormat();
   // アクティブタブを ?tab= に保持（URL 共有でタブまで再現）
   const [tab, setTab] = useTabParam("reservations");
   return (
     <DetailShell
-      breadcrumbs={["生産", { label: "在庫管理", href: BASE_PATH }, "詳細"]}
+      breadcrumbs={[
+        tr("common.production"),
+        { label: tr("common.inventory"), href: BASE_PATH },
+        tr("common.detail"),
+      ]}
       status={
         record.isSemiFinished ? (
           <Badge color="orange" variant="light">
-            半製品
+            {tr("common.semiFinished")}
           </Badge>
         ) : (
           <Badge color="gray" variant="light">
-            完成品
+            {tr("common.finishedGoods")}
           </Badge>
         )
       }
@@ -54,7 +61,7 @@ export function ProductInventoryDetail({
     >
       <SummaryGrid>
         <FieldValue
-          label="製品"
+          label={tr("common.product")}
           value={
             <>
               <Text fw={500} size="sm">
@@ -66,9 +73,9 @@ export function ProductInventoryDetail({
             </>
           }
         />
-        <FieldValue label="拠点" value={record.plantName ?? "—"} />
+        <FieldValue label={tr("common.site")} value={record.plantName ?? "—"} />
         <FieldValue
-          label="ロット番号"
+          label={tr("common.lotNumber")}
           value={
             record.lotNumber != null ? (
               <DocNumber>{record.lotNumber}</DocNumber>
@@ -78,21 +85,21 @@ export function ProductInventoryDetail({
           }
         />
         <FieldValue
-          label="区分"
+          label={tr("common.type")}
           value={
             record.isSemiFinished ? (
               <Badge color="orange" variant="light">
-                半製品
+                {tr("common.semiFinished")}
               </Badge>
             ) : (
               <Badge color="gray" variant="light">
-                完成品
+                {tr("common.finishedGoods")}
               </Badge>
             )
           }
         />
         <FieldValue
-          label="在庫数"
+          label={tr("common.onHand")}
           value={
             <Text className="tabular-nums" size="sm" span>
               {record.quantity.toLocaleString("ja-JP")} 本
@@ -100,7 +107,7 @@ export function ProductInventoryDetail({
           }
         />
         <FieldValue
-          label="予約数"
+          label={tr("common.reserved")}
           value={
             <Text className="tabular-nums" size="sm" span>
               {record.reservedQuantity.toLocaleString("ja-JP")} 本
@@ -108,21 +115,26 @@ export function ProductInventoryDetail({
           }
         />
         <FieldValue
-          label="利用可能"
+          label={tr("common.available")}
           value={
             <InventoryBadge
               available={record.available}
               reserved={record.reservedQuantity}
-              unit="本"
+              unit={tr("common.pcs")}
             />
           }
         />
         <FieldValue
-          label="保管場所"
-          value={record.storageLabel ?? record.location ?? "未割当"}
+          label={tr("common.storageLocations")}
+          value={
+            record.storageLabel ?? record.location ?? tr("common.unassigned")
+          }
         />
         {record.sourceStepLabel && (
-          <FieldValue label="発生工程" value={record.sourceStepLabel} />
+          <FieldValue
+            label={tr("production.inventory.stepItOccurredAt")}
+            value={record.sourceStepLabel}
+          />
         )}
       </SummaryGrid>
 
@@ -141,7 +153,10 @@ export function ProductInventoryDetail({
         </Tabs.Panel>
 
         <Tabs.Panel pt="md" value="transactions">
-          <InventoryTransactionsTable rows={record.transactions} unit="本" />
+          <InventoryTransactionsTable
+            rows={record.transactions}
+            unit={tr("common.pcs")}
+          />
         </Tabs.Panel>
       </AppTabs>
     </DetailShell>
@@ -150,12 +165,13 @@ export function ProductInventoryDetail({
 
 /** 引当予約テーブル — 数量 / 状態 / 関連文書 / 日時。 */
 function ReservationsTable({ rows }: { rows: InventoryReservationRow[] }) {
+  const tr = useTranslations();
   const fmt = useFormat();
   if (rows.length === 0) {
     return (
       <EmptyState
         icon={<IconBookmark size={24} />}
-        message="この在庫への引当予約はありません"
+        message={tr("production.inventory.nothingIsReservedAgainstThisStock")}
       />
     );
   }
@@ -166,28 +182,30 @@ function ReservationsTable({ rows }: { rows: InventoryReservationRow[] }) {
         <Table.Thead>
           <Table.Tr>
             <Table.Th ta="right" w={100}>
-              数量
+              {tr("common.quantity")}
             </Table.Th>
-            <Table.Th w={90}>状態</Table.Th>
-            <Table.Th>関連</Table.Th>
-            <Table.Th w={150}>予約日時</Table.Th>
-            <Table.Th w={150}>確定/解除日時</Table.Th>
+            <Table.Th w={90}>{tr("common.status")}</Table.Th>
+            <Table.Th>{tr("common.related")}</Table.Th>
+            <Table.Th w={150}>{tr("production.inventory.reservedAt")}</Table.Th>
+            <Table.Th w={150}>
+              {tr("production.inventory.confirmedReleasedAt")}
+            </Table.Th>
           </Table.Tr>
         </Table.Thead>
         <Table.Tbody>
           {rows.map((r) => {
-            const def = RESERVATION_STATUS_BADGE[r.status] ?? {
-              label: r.status,
-              color: "gray",
-            };
+            const color = RESERVATION_STATUS_COLOR[r.status] ?? "gray";
+            const label = RESERVATION_STATUS_COLOR[r.status]
+              ? reservationStatusLabel(tr, r.status)
+              : r.status;
             return (
               <Table.Tr key={r.id}>
                 <Table.Td className="tabular-nums" ta="right">
                   {r.quantity.toLocaleString("ja-JP")} 本
                 </Table.Td>
                 <Table.Td>
-                  <Badge color={def.color} variant="light">
-                    {def.label}
+                  <Badge color={color} variant="light">
+                    {label}
                   </Badge>
                 </Table.Td>
                 <Table.Td>

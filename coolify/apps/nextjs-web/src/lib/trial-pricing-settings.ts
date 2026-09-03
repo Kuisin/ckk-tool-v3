@@ -7,8 +7,12 @@
  * lib/system-settings.ts. This module keeps only the shared types/defaults.
  */
 
+import type { getTranslations } from "next-intl/server";
 import type { MaterialPriceBasis } from "./material-pricing-core";
-import type { TrialPricingOptions } from "./trial-pricing";
+import {
+  builtinToolTypeLabel,
+  type TrialPricingOptions,
+} from "./trial-pricing";
 import {
   BUILTIN_TOOL_TYPES,
   type Criterion,
@@ -74,18 +78,40 @@ export function toTrialPricingOptions(
   };
 }
 
-/** 工具種の選択肢（SegmentedControl/Select 用）— 管理者定義リスト由来。 */
+type Tr = Awaited<ReturnType<typeof getTranslations>>;
+
+/**
+ * 工具種の選択肢（SegmentedControl/Select 用）— 管理者定義リスト由来。
+ * 組み込み種（builtin）は `tr` があれば画面の言語で出す — ラベルは管理者が
+ * 入力した文字列ではなく BUILTIN_TOOL_TYPES の ja 固定値なので、カスタム種
+ * （管理者が名付けた値。翻訳の対象外）とは扱いを分ける。
+ */
 export function toToolTypeOptions(
   settings: TrialPricingSettings,
+  tr?: Tr,
 ): { value: string; label: string }[] {
-  return settings.toolTypes.map((t) => ({ value: t.value, label: t.label }));
+  return settings.toolTypes.map((t) => ({
+    value: t.value,
+    label: (t.builtin && tr && builtinToolTypeLabel(tr, t.value)) || t.label,
+  }));
 }
 
-export const MATERIAL_PRICE_BASIS_OPTIONS: {
-  value: MaterialPriceBasis;
-  label: string;
-}[] = [
-  { value: "MAX", label: "最高単価（期間内）" },
-  { value: "LATEST", label: "最新単価" },
-  { value: "AVERAGE", label: "平均単価（期間内）" },
-];
+/** 材料参照価格の算出方法の選択肢（Select 用）。呼び出し側の `tr` を渡す。 */
+export function materialPriceBasisOptions(
+  tr: Tr,
+): { value: MaterialPriceBasis; label: string }[] {
+  return [
+    {
+      value: "MAX",
+      label: tr("sales.trialPricingSettings.highestPriceWithinThe"),
+    },
+    {
+      value: "LATEST",
+      label: tr("sales.trialPricingSettings.latestUnitPrice"),
+    },
+    {
+      value: "AVERAGE",
+      label: tr("sales.trialPricingSettings.averageUnitPriceWithin"),
+    },
+  ];
+}

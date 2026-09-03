@@ -7,6 +7,7 @@
  */
 
 import { type Access, ownOrPlantWhere, rowInScope } from "@ckk/authz-core";
+import { getLocale, getTranslations } from "next-intl/server";
 import type { ApprovalTrailView } from "@/components/production/ApprovalStatusPanel";
 import type {
   InspectionRecordView,
@@ -32,7 +33,9 @@ import {
   parseDocKey,
 } from "@/lib/doc-number";
 import { type LocalizedText, localized } from "@/lib/format";
+import type { Tr } from "@/lib/i18n";
 import {
+  type BoolLabels,
   formatCounts,
   formatSampleValue,
   type InspectionItemRecord,
@@ -52,6 +55,7 @@ import {
   effectiveLotInputMode,
   expectedInput,
 } from "@/lib/workflow-core";
+import { workflowCoreT } from "@/lib/workflow-core-labels";
 
 // 一覧クエリの取得上限（監査 P2-8 — 全件フェッチのデータ増加対策）。
 // DataTable はクライアントページングのため、最新分のみで実用上十分。
@@ -175,6 +179,7 @@ const WO_INCLUDE = {
     orderBy: { sortOrder: "asc" as const },
   },
   stepLinks: true,
+  finalInspection: true,
 };
 
 const iso = (d: Date | null | undefined) => d?.toISOString() ?? null;
@@ -223,38 +228,47 @@ function orderLineListLabel(
       branch: number | null;
     };
   }[],
+  tr: Tr,
 ): string | null {
   if (links.length === 0) return null;
   const first = orderLineNumberOf(links[0].orderLine);
   if (!first) return null;
-  return links.length > 1 ? `${first} ほか${links.length - 1}件` : first;
+  return links.length > 1
+    ? tr("production.workOrders.andNMoreOrderLines", {
+        first,
+        count: links.length - 1,
+      })
+    : first;
 }
 
-function mapRow(r: {
-  workOrderNumber: number;
-  yearMonth: string;
-  seq: number;
-  orderLineLinks: {
-    orderLine: {
-      acceptanceYearMonth: string;
-      acceptanceSeq: number;
-      branch: number | null;
-    };
-  }[];
-  product: { name: unknown };
-  type: string;
-  plannedQuantity: number;
-  approvalStatus: string;
-  status: string;
-  requestedAt: Date | null;
-  createdAt: Date;
-  updatedAt: Date;
-}): WorkOrderRow {
+function mapRow(
+  r: {
+    workOrderNumber: number;
+    yearMonth: string;
+    seq: number;
+    orderLineLinks: {
+      orderLine: {
+        acceptanceYearMonth: string;
+        acceptanceSeq: number;
+        branch: number | null;
+      };
+    }[];
+    product: { name: unknown };
+    type: string;
+    plannedQuantity: number;
+    approvalStatus: string;
+    status: string;
+    requestedAt: Date | null;
+    createdAt: Date;
+    updatedAt: Date;
+  },
+  tr: Tr,
+): WorkOrderRow {
   return {
     workOrderNumber: r.workOrderNumber,
     docNumber: formatDocNumber("WOR", r),
     createdAt: r.createdAt.toISOString(),
-    orderLineNumber: orderLineListLabel(r.orderLineLinks),
+    orderLineNumber: orderLineListLabel(r.orderLineLinks, tr),
     productName: localized(r.product.name as LocalizedText | null),
     type: r.type,
     plannedQuantity: r.plannedQuantity,
@@ -301,6 +315,7 @@ function workOrderRowInScope(
 export async function fetchWorkOrders(
   extraWhere?: Prisma.WorkOrderWhereInput,
 ): Promise<WorkOrderRow[]> {
+  const tr = await getTranslations();
   const authz = await checkPermission("work_order", "READ");
   if (!authz.ok) return [];
   const scope = workOrderScopeWhere(authz.access, authz.userId);
@@ -324,7 +339,7 @@ export async function fetchWorkOrders(
     },
     orderBy: { workOrderNumber: "desc" },
   });
-  return rows.map(mapRow);
+  return rows.map((r) => mapRow(r, tr));
 }
 
 /** ストリップ印刷（帯）の 1 件ぶん — 最小限の要約だけ。 */
@@ -350,6 +365,7 @@ export interface WorkOrderStripView {
 export async function fetchWorkOrderStrips(
   numbers: number[],
 ): Promise<WorkOrderStripView[]> {
+  const tr = await getTranslations();
   const authz = await checkPermission("work_order", "READ");
   if (!authz.ok || numbers.length === 0) return [];
   const rows = await prisma.workOrder.findMany({
@@ -402,12 +418,15 @@ export async function fetchWorkOrderStrips(
         workOrderNumber: r.workOrderNumber,
         docNumber: formatDocNumber("WOR", r),
         productName: localized(r.product.name as LocalizedText | null),
-        orderLineNumber: orderLineListLabel(r.orderLineLinks),
+        orderLineNumber: orderLineListLabel(r.orderLineLinks, tr),
         customerName:
           customers.length === 0
             ? null
             : customers.length > 1
-              ? `${customers[0]} ほか${customers.length - 1}社`
+              ? tr("production.workOrders.andNMoreCustomers", {
+                  first: customers[0],
+                  count: customers.length - 1,
+                })
               : customers[0],
         type: r.type,
         plannedQuantity: r.plannedQuantity,
@@ -431,6 +450,7 @@ export async function fetchWorkOrderApprovalTrail(
 export async function fetchWorkOrder(
   workOrderNumber: number,
 ): Promise<WorkOrderView | null> {
+  const tr = await getTranslations();
   const authz = await checkPermission("work_order", "READ");
   if (!authz.ok) return null;
   const r = await prisma.workOrder.findUnique({
@@ -454,6 +474,18 @@ export async function fetchWorkOrder(
   const userIds = new Set<string>();
   for (const h of historyRaw) if (h.user) userIds.add(h.user);
   for (const s of r.steps) if (s.completedBy) userIds.add(s.completedBy);
+  const fi = r.finalInspection;
+  for (const id of [
+    fi?.drawingLabelCheckedBy,
+    fi?.protectiveCapCheckedBy,
+    fi?.finishedQuantityCheckedBy,
+    fi?.shelvedBy,
+    fi?.deliveryNoteIssuedBy,
+    fi?.shipmentAuthorizedBy,
+    fi?.shipDefectReviewedBy,
+  ]) {
+    if (id) userIds.add(id);
+  }
   const users = userIds.size
     ? await prisma.user.findMany({
         where: { id: { in: [...userIds] } },
@@ -461,7 +493,7 @@ export async function fetchWorkOrder(
       })
     : [];
   const nameOf = (id: string | null | undefined) =>
-    (id && users.find((u) => u.id === id)?.displayName) || "システム";
+    (id && users.find((u) => u.id === id)?.displayName) || tr("common.system");
 
   // この指示書のロットが載った出荷書（手続き状況の「次の書類へ」）。
   // 出荷書 ↔ 指示書は明細のロット番号（= 指示書番号）でつながる。
@@ -610,6 +642,42 @@ export async function fetchWorkOrder(
       at: h.at,
       notes: h.notes ?? null,
     })),
+    finalInspection: fi
+      ? {
+          drawingLabelOk: fi.drawingLabelOk,
+          drawingLabelCheckedByName: fi.drawingLabelCheckedBy
+            ? nameOf(fi.drawingLabelCheckedBy)
+            : null,
+          drawingLabelCheckedAt: iso(fi.drawingLabelCheckedAt),
+          protectiveCapOk: fi.protectiveCapOk,
+          protectiveCapCheckedByName: fi.protectiveCapCheckedBy
+            ? nameOf(fi.protectiveCapCheckedBy)
+            : null,
+          protectiveCapCheckedAt: iso(fi.protectiveCapCheckedAt),
+          finishedQuantityOk: fi.finishedQuantityOk,
+          finishedQuantityCheckedByName: fi.finishedQuantityCheckedBy
+            ? nameOf(fi.finishedQuantityCheckedBy)
+            : null,
+          finishedQuantityCheckedAt: iso(fi.finishedQuantityCheckedAt),
+          spareStockUsed: fi.spareStockUsed,
+          spareStockReceived: fi.spareStockReceived,
+          shelvedByName: fi.shelvedBy ? nameOf(fi.shelvedBy) : null,
+          shelvedAt: iso(fi.shelvedAt),
+          deliveryNoteIssuedByName: fi.deliveryNoteIssuedBy
+            ? nameOf(fi.deliveryNoteIssuedBy)
+            : null,
+          deliveryNoteIssuedAt: iso(fi.deliveryNoteIssuedAt),
+          shipmentAuthorizedByName: fi.shipmentAuthorizedBy
+            ? nameOf(fi.shipmentAuthorizedBy)
+            : null,
+          shipmentAuthorizedAt: iso(fi.shipmentAuthorizedAt),
+          shipDefectReviewedByName: fi.shipDefectReviewedBy
+            ? nameOf(fi.shipDefectReviewedBy)
+            : null,
+          shipDefectReviewedAt: iso(fi.shipDefectReviewedAt),
+          shipDefectNotes: fi.shipDefectNotes,
+        }
+      : null,
     createdAt: r.createdAt.toISOString(),
     updatedAt: r.updatedAt.toISOString(),
   };
@@ -728,6 +796,16 @@ export async function fetchStepExecution(
 ): Promise<StepExecutionData | null> {
   const authz = await checkPermission("work_order", "READ");
   if (!authz.ok) return null;
+  const [tr, locale] = await Promise.all([getTranslations(), getLocale()]);
+  const bool: BoolLabels = {
+    yes: tr("common.yes"),
+    no: tr("common.no"),
+    rangeBetween: (min, max) =>
+      tr("inspectionLabels.rangeBetween", { min, max }),
+    rangeAtLeast: (min) => tr("inspectionLabels.rangeAtLeast", { min }),
+    rangeAtMost: (max) => tr("inspectionLabels.rangeAtMost", { max }),
+    listSeparator: tr("inspectionLabels.listSeparator"),
+  };
   const wo = await prisma.workOrder.findUnique({
     where: { workOrderNumber },
     select: {
@@ -825,6 +903,7 @@ export async function fetchStepExecution(
   for (const rec of [...step.inspectionRecords, ...woRecordsRaw]) {
     if (rec.recordedBy) userIds.add(rec.recordedBy);
     if (rec.approvedBy) userIds.add(rec.approvedBy);
+    if (rec.confirmedBy) userIds.add(rec.confirmedBy);
   }
   for (const d of step.defectRecords) {
     if (d.recordedBy) userIds.add(d.recordedBy);
@@ -836,7 +915,9 @@ export async function fetchStepExecution(
       })
     : [];
   const nameOf = (id: string | null | undefined) =>
-    id ? (users.find((u) => u.id === id)?.displayName ?? "システム") : null;
+    id
+      ? (users.find((u) => u.id === id)?.displayName ?? tr("common.system"))
+      : null;
 
   // 実測値の表示（合格数のみ → 合格 n/m、新形式 measured_values は型別
   // フォーマット、旧形式は生値）
@@ -848,12 +929,18 @@ export async function fetchStepExecution(
     templateItem: InspectionItemRecord;
   }): string | null => {
     if (it.inspectedCount != null || it.passedCount != null) {
-      return formatCounts(it.inspectedCount, it.passedCount);
+      return formatCounts(
+        it.inspectedCount,
+        it.passedCount,
+        tr("production.inspectionRecordForm.pass"),
+      );
     }
     const samples = parseStoredSamples(it.measuredValues);
     if (samples.length === 0) return it.measuredValue;
     const spec = itemSpecFromRow(it.templateItem);
-    return samples.map((s) => formatSampleValue(spec, s)).join(" / ");
+    return samples
+      .map((s) => formatSampleValue(spec, s, locale, bool))
+      .join(" / ");
   };
 
   type RecordRaw = (typeof step.inspectionRecords)[number];
@@ -870,6 +957,8 @@ export async function fetchStepExecution(
     recordedByName: nameOf(rec.recordedBy),
     approvedAt: iso(rec.approvedAt),
     approvedByName: nameOf(rec.approvedBy),
+    confirmedAt: iso(rec.confirmedAt),
+    confirmedByName: nameOf(rec.confirmedBy),
     items: rec.items.map((it) => ({
       templateItemId: it.templateItemId,
       itemName: localized(it.templateItem.itemName as LocalizedText | null),
@@ -886,6 +975,7 @@ export async function fetchStepExecution(
       version: t.inspectionTemplate.version,
       name: localized(t.inspectionTemplate.name as LocalizedText | null),
       relatedProcessStepId: t.inspectionTemplate.relatedProcessStepId,
+      sampleNaming: t.inspectionTemplate.sampleNaming,
       ...samplingSpecFromRow(t.inspectionTemplate),
       items: t.inspectionTemplate.items.map((it) => ({
         name: localized(it.itemName as LocalizedText | null),
@@ -1006,7 +1096,7 @@ export async function fetchStepExecution(
       outsourceCost:
         step.outsourceCost != null ? Number(step.outsourceCost) : null,
     },
-    canStart: canStartStep(step.id, ctx, actorId),
+    canStart: canStartStep(step.id, ctx, actorId, workflowCoreT(tr)),
     expectedInputQuantity: expectedInput(step.id, ctx),
     templates,
     stepRecords: step.inspectionRecords.map((r) => mapRecord(r, null)),
@@ -1083,11 +1173,13 @@ export async function fetchStorageLocationOptions(): Promise<Option[]> {
   }));
 }
 
-/** 検査表テンプレートの選択肢（関連工程の自動選択に使う）。 */
+/** 検査表テンプレートの選択肢（関連工程・対象製品の自動選択に使う）。 */
 export interface InspectionTemplateOption {
   value: string; // String(内部 id)
   label: string;
   relatedProcessStepId: number | null;
+  /** 対象製品。null = どの製品にも使える（汎用）。 */
+  productId: number | null;
 }
 
 /**
@@ -1107,6 +1199,7 @@ export async function fetchInspectionTemplateOptions(): Promise<
       value: String(r.id),
       label: `${r.code} v${r.version} ${localized(r.name as LocalizedText | null)}`,
       relatedProcessStepId: r.relatedProcessStepId,
+      productId: r.productId,
     }));
 }
 

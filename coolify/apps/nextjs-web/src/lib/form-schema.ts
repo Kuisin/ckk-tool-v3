@@ -23,6 +23,7 @@
  */
 
 import { z } from "zod";
+import type { Tr } from "./i18n";
 
 // ─── 項目型 ──────────────────────────────────────────────────────────────────
 
@@ -40,20 +41,41 @@ export type FormFieldType =
   | "table"
   | "related";
 
-export const FORM_FIELD_TYPES: { value: FormFieldType; label: string }[] = [
-  { value: "text", label: "1行テキスト" },
-  { value: "textarea", label: "複数行テキスト" },
-  { value: "richtext", label: "リッチテキスト" },
-  { value: "number", label: "数値" },
-  { value: "date", label: "日付" },
-  { value: "time", label: "時刻" },
-  { value: "select", label: "ドロップダウン（1つ選択）" },
-  { value: "multiselect", label: "複数選択" },
-  { value: "lookup", label: "業務データ検索" },
-  { value: "attachment", label: "添付ファイル" },
-  { value: "table", label: "サブテーブル（行を追加できる表）" },
-  { value: "related", label: "関連レコード一覧" },
+/** 項目型のキーだけの一覧（zod の enum・型チェック用。表示名は持たない）。 */
+export const FORM_FIELD_TYPE_VALUES: readonly FormFieldType[] = [
+  "text",
+  "textarea",
+  "richtext",
+  "number",
+  "date",
+  "time",
+  "select",
+  "multiselect",
+  "lookup",
+  "attachment",
+  "table",
+  "related",
 ];
+
+/** 項目型の選択肢（ビルダーの型セレクタ用）。呼び出し側の `tr` を渡す。 */
+export function formFieldTypes(
+  tr: Tr,
+): { value: FormFieldType; label: string }[] {
+  return [
+    { value: "text", label: tr("general.formSchema.oneLineText") },
+    { value: "textarea", label: tr("general.formSchema.multiLineText") },
+    { value: "richtext", label: tr("general.formSchema.richText") },
+    { value: "number", label: tr("common.numericValue") },
+    { value: "date", label: tr("common.date") },
+    { value: "time", label: tr("common.time") },
+    { value: "select", label: tr("general.formSchema.dropdownSingleSelect") },
+    { value: "multiselect", label: tr("common.multiSelect") },
+    { value: "lookup", label: tr("common.businessDataLookup") },
+    { value: "attachment", label: tr("common.attachment") },
+    { value: "table", label: tr("general.formSchema.subTableRepeatableRows") },
+    { value: "related", label: tr("general.formSchema.relatedRecords") },
+  ];
+}
 
 /** サブテーブルの列に置けない型（入れ子は 1 段までにする）。 */
 const NOT_NESTABLE: ReadonlySet<FormFieldType> = new Set([
@@ -99,20 +121,46 @@ export type LookupSource =
   | "storage_location"
   | "work_location";
 
-export const LOOKUP_SOURCES: { value: LookupSource; label: string }[] = [
-  { value: "user", label: "ユーザー" },
-  { value: "customer", label: "取引先（会社）" },
-  // 支店・工場まで含めて引く。customer は parentId=null（本社）だけなので、
-  // 「顧客の◯◯工場」を選びたいときはこちら。
-  { value: "business_partner", label: "取引先の支店・工場" },
-  { value: "product", label: "製品" },
-  { value: "material", label: "素材" },
-  { value: "material_type", label: "材種" },
-  { value: "process_step", label: "工程" },
-  { value: "plant", label: "拠点" },
-  { value: "storage_location", label: "保管場所" },
-  { value: "work_location", label: "作業場所" },
-];
+/** 呼び出し側の `tr` を渡す。 */
+export function lookupSources(
+  tr: Tr,
+): { value: LookupSource; label: string }[] {
+  return [
+    { value: "user", label: tr("general.formSchema.lookupSourceUser") },
+    {
+      value: "customer",
+      label: tr("general.formSchema.lookupSourceCustomer"),
+    },
+    // 支店・工場まで含めて引く。customer は parentId=null（本社）だけなので、
+    // 「顧客の◯◯工場」を選びたいときはこちら。
+    {
+      value: "business_partner",
+      label: tr("general.formSchema.lookupSourceBusinessPartner"),
+    },
+    { value: "product", label: tr("general.formSchema.lookupSourceProduct") },
+    {
+      value: "material",
+      label: tr("general.formSchema.lookupSourceMaterial"),
+    },
+    {
+      value: "material_type",
+      label: tr("general.formSchema.lookupSourceMaterialType"),
+    },
+    {
+      value: "process_step",
+      label: tr("general.formSchema.lookupSourceProcessStep"),
+    },
+    { value: "plant", label: tr("general.formSchema.lookupSourcePlant") },
+    {
+      value: "storage_location",
+      label: tr("general.formSchema.lookupSourceStorageLocation"),
+    },
+    {
+      value: "work_location",
+      label: tr("general.formSchema.lookupSourceWorkLocation"),
+    },
+  ];
+}
 
 /**
  * lookup の値から参照先の詳細画面 URL を作る。null = リンクにしない。
@@ -210,110 +258,140 @@ export interface FormFieldDef {
   isTitle?: boolean;
 }
 
-const localizedLabel = z.object({
-  ja: z.string().min(1, "ラベル（日本語）を入力してください"),
-  en: z.string(),
-});
-
-const fieldOption = z.object({
-  value: z.string().min(1, "選択肢の値を入力してください"),
-  label: localizedLabel,
-});
-
-const relatedConfig = z.object({
-  targetFormCode: z.string().min(1, "参照先のフォームを選んでください"),
-  targetFieldKey: z.string().min(1, "参照先の項目を選んでください"),
-  thisFieldKey: z.string().min(1, "このフォーム側の項目を選んでください"),
-  columns: z.array(z.string()).max(8, "表示する列は 8 つまでです"),
-  limit: z.number().int().min(1).max(100),
-});
-
-const patternField = z
-  .string()
-  .max(MAX_PATTERN_LENGTH, `正規表現は ${MAX_PATTERN_LENGTH} 文字までです`)
-  .refine((p) => isSafePattern(p), {
-    message: "この正規表現は使えません（構文エラー、または入れ子の量指定）",
+function localizedLabel(tr: Tr) {
+  return z.object({
+    ja: z.string().min(1, tr("general.formSchema.enterLabelJa")),
+    en: z.string(),
   });
+}
+
+function fieldOption(tr: Tr) {
+  return z.object({
+    value: z.string().min(1, tr("general.formSchema.enterChoiceValue")),
+    label: localizedLabel(tr),
+  });
+}
+
+function relatedConfig(tr: Tr) {
+  return z.object({
+    targetFormCode: z
+      .string()
+      .min(1, tr("general.formSchema.selectTargetForm")),
+    targetFieldKey: z
+      .string()
+      .min(1, tr("general.formSchema.selectTargetField")),
+    thisFieldKey: z
+      .string()
+      .min(1, tr("general.formSchema.selectThisFormField")),
+    columns: z
+      .array(z.string())
+      .max(8, tr("general.formSchema.upToNColumns", { n: 8 })),
+    limit: z.number().int().min(1).max(100),
+  });
+}
+
+function patternField(tr: Tr) {
+  return z
+    .string()
+    .max(
+      MAX_PATTERN_LENGTH,
+      tr("general.formSchema.patternMaxLength", { max: MAX_PATTERN_LENGTH }),
+    )
+    .refine((p) => isSafePattern(p), {
+      message: tr("general.formSchema.unsafePattern"),
+    });
+}
 
 /** 項目定義 1 件の zod。`table` の列は自分自身を 1 段だけ許す。 */
-const baseFieldShape = {
-  key: z
-    .string()
-    .regex(FIELD_KEY_PATTERN, "キーは英字で始まる英数字・_ のみ使えます"),
-  label: localizedLabel,
-  required: z.boolean(),
-  help: z.string().optional(),
-  placeholder: z.string().optional(),
-  options: z.array(fieldOption).optional(),
-  min: z.number().optional(),
-  max: z.number().optional(),
-  pattern: patternField.optional(),
-  patternMessage: z.string().optional(),
-  lookup: z
-    .object({ source: z.enum(LOOKUP_SOURCES.map((s) => s.value)) })
-    .optional(),
-  related: relatedConfig.optional(),
-  order: z.number().int(),
-  isTitle: z.boolean().optional(),
-};
+function baseFieldShape(tr: Tr) {
+  return {
+    key: z
+      .string()
+      .regex(FIELD_KEY_PATTERN, tr("general.formSchema.keyFormat")),
+    label: localizedLabel(tr),
+    required: z.boolean(),
+    help: z.string().optional(),
+    placeholder: z.string().optional(),
+    options: z.array(fieldOption(tr)).optional(),
+    min: z.number().optional(),
+    max: z.number().optional(),
+    pattern: patternField(tr).optional(),
+    patternMessage: z.string().optional(),
+    lookup: z
+      .object({ source: z.enum(lookupSources(tr).map((s) => s.value)) })
+      .optional(),
+    related: relatedConfig(tr).optional(),
+    order: z.number().int(),
+    isTitle: z.boolean().optional(),
+  };
+}
 
-const columnFieldSchema = z.object({
-  ...baseFieldShape,
-  type: z.enum(
-    FORM_FIELD_TYPES.filter((t) => isNestableFieldType(t.value)).map(
-      (t) => t.value,
-    ),
-  ),
-});
+function columnFieldSchema(tr: Tr) {
+  return z.object({
+    ...baseFieldShape(tr),
+    type: z.enum(FORM_FIELD_TYPE_VALUES.filter(isNestableFieldType)),
+  });
+}
 
-export const formFieldSchema = z.object({
-  ...baseFieldShape,
-  type: z.enum(FORM_FIELD_TYPES.map((t) => t.value)),
-  columns: z.array(columnFieldSchema).optional(),
-});
+export function formFieldSchema(tr: Tr) {
+  return z.object({
+    ...baseFieldShape(tr),
+    type: z.enum(FORM_FIELD_TYPE_VALUES),
+    columns: z.array(columnFieldSchema(tr)).optional(),
+  });
+}
 
-export const formFieldsSchema = z
-  .array(formFieldSchema)
-  .max(200, "項目は 200 個までです")
-  .superRefine((fields, ctx) => {
-    const seen = new Set<string>();
-    const titleFields = fields.filter((f) => f.isTitle);
-    if (titleFields.length > 1) {
-      ctx.addIssue({
-        code: "custom",
-        message: "一覧の見出しにできる項目は 1 つだけです",
-      });
-    }
-    for (const f of titleFields) {
-      if (!canBeTitleField(f.type)) {
+export function formFieldsSchema(tr: Tr) {
+  return z
+    .array(formFieldSchema(tr))
+    .max(200, tr("general.formSchema.upToNFields", { n: 200 }))
+    .superRefine((fields, ctx) => {
+      const seen = new Set<string>();
+      const titleFields = fields.filter((f) => f.isTitle);
+      if (titleFields.length > 1) {
         ctx.addIssue({
           code: "custom",
-          message: `「${f.label.ja}」はこの種類の項目を一覧の見出しにできません`,
+          message: tr("general.formSchema.onlyOneTitleField"),
         });
       }
-    }
-    for (const f of fields) {
-      if (seen.has(f.key)) {
-        ctx.addIssue({
-          code: "custom",
-          message: `項目キー "${f.key}" が重複しています`,
-        });
-      }
-      seen.add(f.key);
-      if (f.type === "table") {
-        const cols = new Set<string>();
-        for (const c of f.columns ?? []) {
-          if (cols.has(c.key)) {
-            ctx.addIssue({
-              code: "custom",
-              message: `「${f.label.ja}」の列キー "${c.key}" が重複しています`,
-            });
-          }
-          cols.add(c.key);
+      for (const f of titleFields) {
+        if (!canBeTitleField(f.type)) {
+          ctx.addIssue({
+            code: "custom",
+            message: tr("general.formSchema.cannotBeTitleField", {
+              label: f.label.ja,
+            }),
+          });
         }
       }
-    }
-  });
+      for (const f of fields) {
+        if (seen.has(f.key)) {
+          ctx.addIssue({
+            code: "custom",
+            message: tr("general.formSchema.duplicateFieldKey", {
+              key: f.key,
+            }),
+          });
+        }
+        seen.add(f.key);
+        if (f.type === "table") {
+          const cols = new Set<string>();
+          for (const c of f.columns ?? []) {
+            if (cols.has(c.key)) {
+              ctx.addIssue({
+                code: "custom",
+                message: tr("general.formSchema.duplicateColumnKey", {
+                  label: f.label.ja,
+                  key: c.key,
+                }),
+              });
+            }
+            cols.add(c.key);
+          }
+        }
+      }
+    });
+}
 
 /**
  * 保存してよい正規表現か。構文エラーと、指数爆発の典型である
@@ -335,25 +413,33 @@ export function isSafePattern(pattern: string): boolean {
 
 export function parseFormFields(
   value: unknown,
+  tr: Tr,
 ): { ok: true; fields: FormFieldDef[] } | { ok: false; error: string } {
-  const parsed = formFieldsSchema.safeParse(value);
+  const parsed = formFieldsSchema(tr).safeParse(value);
   if (!parsed.success) {
     const issue = parsed.error.issues[0];
-    const message = issue?.message ?? "項目定義が不正です";
+    const message =
+      issue?.message ?? tr("general.formSchema.invalidFieldDefinition");
     // 何番目の項目でこけたのかを言う。「ラベルを入力してください」だけだと、
     // 項目が 20 個あるフォームでどれを直せばいいのか分からない。
     const index = typeof issue?.path?.[0] === "number" ? issue.path[0] : null;
     return {
       ok: false,
-      error: index === null ? message : `${index + 1} 番目の項目: ${message}`,
+      error:
+        index === null
+          ? message
+          : tr("general.formSchema.itemIndexPrefix", {
+              index: index + 1,
+              message,
+            }),
     };
   }
   return { ok: true, fields: parsed.data as FormFieldDef[] };
 }
 
 /** 項目定義の JSON（form_versions.schema）を項目配列に戻す。壊れていたら空配列。 */
-export function fieldsFromSchema(schema: unknown): FormFieldDef[] {
-  const parsed = parseFormFields(schema);
+export function fieldsFromSchema(schema: unknown, tr: Tr): FormFieldDef[] {
+  const parsed = parseFormFields(schema, tr);
   return parsed.ok ? parsed.fields : [];
 }
 
@@ -398,61 +484,59 @@ function isBlank(v: FormAnswerValue): boolean {
 }
 
 /**
- * 1 項目の値を検証する。エラーメッセージ（日本語）か null を返す。
+ * 1 項目の値を検証する。エラーメッセージ（画面の言語）か null を返す。
  * クライアントとサーバの両方がこれを呼ぶ。
  */
 export function validateFieldValue(
   field: FormFieldDef,
   value: FormAnswerValue,
+  tr: Tr,
 ): string | null {
   const label = field.label.ja || field.key;
+  const e = (key: string, vars?: Record<string, unknown>) =>
+    tr(`general.formSchema.${key}`, { label, ...vars });
 
   // 関連レコード一覧は表示専用 — 値を持たない。
   if (field.type === "related") return null;
 
   if (isBlank(value)) {
-    return field.required ? `${label} は必須です` : null;
+    return field.required ? e("fieldRequired") : null;
   }
 
   switch (field.type) {
     case "number": {
-      if (typeof value !== "string") return `${label} は数値で入力してください`;
+      if (typeof value !== "string") return e("fieldEnterNumber");
       const n = Number(value);
-      if (!Number.isFinite(n)) return `${label} は数値で入力してください`;
+      if (!Number.isFinite(n)) return e("fieldEnterNumber");
       if (field.min != null && n < field.min)
-        return `${label} は ${field.min} 以上で入力してください`;
+        return e("fieldMinNumber", { min: field.min });
       if (field.max != null && n > field.max)
-        return `${label} は ${field.max} 以下で入力してください`;
+        return e("fieldMaxNumber", { max: field.max });
       return null;
     }
     case "date": {
       if (typeof value !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(value))
-        return `${label} は日付で入力してください`;
-      return Number.isNaN(Date.parse(value))
-        ? `${label} は日付で入力してください`
-        : null;
+        return e("fieldEnterDate");
+      return Number.isNaN(Date.parse(value)) ? e("fieldEnterDate") : null;
     }
     case "time": {
       if (typeof value !== "string" || !/^\d{2}:\d{2}$/.test(value))
-        return `${label} は時刻（HH:MM）で入力してください`;
+        return e("fieldEnterTime");
       const [h, m] = value.split(":").map(Number);
-      return h < 24 && m < 60
-        ? null
-        : `${label} は時刻（HH:MM）で入力してください`;
+      return h < 24 && m < 60 ? null : e("fieldEnterTime");
     }
     case "select": {
-      if (typeof value !== "string")
-        return `${label} は選択肢から選んでください`;
+      if (typeof value !== "string") return e("fieldSelectFromOptions");
       return (field.options ?? []).some((o) => o.value === value)
         ? null
-        : `${label} は選択肢から選んでください`;
+        : e("fieldSelectFromOptions");
     }
     case "multiselect": {
-      if (!Array.isArray(value)) return `${label} は選択肢から選んでください`;
+      if (!Array.isArray(value)) return e("fieldSelectFromOptions");
       const allowed = new Set((field.options ?? []).map((o) => o.value));
       return value.every((v) => typeof v === "string" && allowed.has(v))
         ? null
-        : `${label} は選択肢から選んでください`;
+        : e("fieldSelectFromOptions");
     }
     case "lookup": {
       if (
@@ -461,28 +545,29 @@ export function validateFieldValue(
         Array.isArray(value) ||
         typeof (value as { id?: unknown }).id !== "string"
       )
-        return `${label} を選択してください`;
+        return e("fieldSelectRequired");
       return null;
     }
     case "attachment": {
-      if (!Array.isArray(value)) return `${label} の添付が不正です`;
+      if (!Array.isArray(value)) return e("fieldInvalidAttachment");
       return value.every((v) => typeof v === "string")
         ? null
-        : `${label} の添付が不正です`;
+        : e("fieldInvalidAttachment");
     }
     case "table": {
-      if (!Array.isArray(value)) return `${label} の行が不正です`;
+      if (!Array.isArray(value)) return e("fieldInvalidRow");
       if (value.length > MAX_TABLE_ROWS)
-        return `${label} は ${MAX_TABLE_ROWS} 行までです`;
+        return e("fieldUpToNRows", { n: MAX_TABLE_ROWS });
       for (const [i, row] of value.entries()) {
         if (typeof row !== "object" || row == null)
-          return `${label} の ${i + 1} 行目が不正です`;
+          return e("fieldInvalidRowAt", { row: i + 1 });
         for (const col of field.columns ?? []) {
           const err = validateFieldValue(
             col,
             (row as Record<string, FormAnswerValue>)[col.key],
+            tr,
           );
-          if (err) return `${label} の ${i + 1} 行目: ${err}`;
+          if (err) return e("fieldRowError", { row: i + 1, error: err });
         }
       }
       return null;
@@ -493,13 +578,13 @@ export function validateFieldValue(
       return null;
     default: {
       // text / textarea
-      if (typeof value !== "string") return `${label} を入力してください`;
+      if (typeof value !== "string") return e("fieldEnterValue");
       if (value.length > MAX_TEXT_LENGTH)
-        return `${label} は ${MAX_TEXT_LENGTH} 文字までです`;
+        return e("fieldUpToNChars", { n: MAX_TEXT_LENGTH });
       if (field.pattern && isSafePattern(field.pattern)) {
         try {
           if (!new RegExp(field.pattern).test(value))
-            return field.patternMessage || `${label} の形式が正しくありません`;
+            return field.patternMessage || e("fieldInvalidFormat");
         } catch {
           // 保存時に弾いている想定。ここまで来たら検証はスキップする。
         }
@@ -513,10 +598,11 @@ export function validateFieldValue(
 export function validateAnswers(
   fields: FormFieldDef[],
   answers: Record<string, FormAnswerValue>,
+  tr: Tr,
 ): Record<string, string> {
   const errors: Record<string, string> = {};
   for (const field of fields) {
-    const err = validateFieldValue(field, answers[field.key]);
+    const err = validateFieldValue(field, answers[field.key], tr);
     if (err) errors[field.key] = err;
   }
   return errors;
@@ -612,13 +698,15 @@ export function formAvailability(
   return "OPEN";
 }
 
-export const AVAILABILITY_LABEL: Record<FormAvailability, string> = {
-  DRAFT: "下書き",
-  SCHEDULED: "受付前",
-  OPEN: "受付中",
-  CLOSED: "受付終了",
-  ARCHIVED: "アーカイブ",
-};
+export function availabilityLabel(tr: Tr): Record<FormAvailability, string> {
+  return {
+    DRAFT: tr("general.formSchema.availabilityDraft"),
+    SCHEDULED: tr("general.formSchema.availabilityScheduled"),
+    OPEN: tr("general.formSchema.availabilityOpen"),
+    CLOSED: tr("general.formSchema.availabilityClosed"),
+    ARCHIVED: tr("general.formSchema.availabilityArchived"),
+  };
+}
 
 export interface EditWindow extends FormWindow {
   responseEditMode: "NONE" | "UNTIL_CLOSE" | "UNTIL_DATE";

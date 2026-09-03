@@ -17,6 +17,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { ATTEST_COOKIE } from "@/lib/attest-core";
 import { prisma } from "@/lib/db";
+import { encodeInventoryNote } from "@/lib/inventory-note-core";
 import {
   DEVICE_COOKIE,
   destroySession,
@@ -94,7 +95,7 @@ export async function POST(req: Request) {
           beforeData: { status: device.status },
           afterData: {
             status: "PENDING",
-            note: "端末側からリンク解除（設定コード認証）",
+            note: encodeInventoryNote("deviceUnlinkedFromDevice"),
           },
         },
       })

@@ -17,6 +17,7 @@ import { Text, Textarea } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
 import { IconCheck, IconClock } from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { useState, useTransition } from "react";
 import { ActionCard } from "@/components/ui/ActionCard";
 import { ApproveButton, RejectButton } from "@/components/ui/buttons";
@@ -39,6 +40,7 @@ export function ResponseApprovalCard({
     reason: string,
   ) => Promise<{ ok: boolean; error?: string }>;
 }) {
+  const tr = useTranslations();
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [rejectOpen, setRejectOpen] = useState(false);
@@ -57,8 +59,8 @@ export function ResponseApprovalCard({
         router.refresh();
       } else {
         notifications.show({
-          title: "エラー",
-          message: result.error ?? "処理に失敗しました",
+          title: tr("common.error2"),
+          message: result.error ?? tr("common.theOperationFailed"),
           color: "red",
         });
       }
@@ -68,9 +70,9 @@ export function ResponseApprovalCard({
     if (!canAct) {
       return (
         <ActionCard
-          description="承認者の対応を待っています。"
+          description={tr("forms.responseApprovalCard.waitingForTheApprover")}
           icon={<IconClock size={20} />}
-          title="承認依頼中"
+          title={tr("common.pendingApproval")}
           tone="wait"
         />
       );
@@ -83,7 +85,7 @@ export function ResponseApprovalCard({
               <ApproveButton
                 loading={isPending}
                 onClick={() =>
-                  run(() => onApprove(responseNumber), "承認しました")
+                  run(() => onApprove(responseNumber), tr("common.approved"))
                 }
               />
               <RejectButton
@@ -92,25 +94,25 @@ export function ResponseApprovalCard({
               />
             </>
           }
-          description="内容を確認して承認または差し戻してください。"
+          description={tr("common.reviewItAndEitherApproveOr")}
           icon={<IconCheck size={20} />}
-          title="あなたの承認依頼中です"
+          title={tr("common.waitingForYourApproval")}
           tone="approve"
         />
         <ModalShell
           confirmColor="red"
           confirmDisabled={!reason.trim()}
-          confirmLabel="差し戻す"
+          confirmLabel={tr("common.sendBack")}
           loading={isPending}
           onClose={() => setRejectOpen(false)}
           onConfirm={() =>
-            run(() => onReject(responseNumber, reason), "差し戻しました")
+            run(() => onReject(responseNumber, reason), tr("common.sentBack"))
           }
           opened={rejectOpen}
-          title="差し戻し"
+          title={tr("common.reject")}
         >
           <Text mb="sm" size="sm">
-            差し戻す理由を入力してください（申請者に表示されます）。
+            {tr("forms.responseApprovalCard.enterAReasonForSendingIt")}
           </Text>
           <Textarea
             autosize

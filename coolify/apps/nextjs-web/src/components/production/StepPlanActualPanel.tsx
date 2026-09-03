@@ -25,6 +25,7 @@ import { DatePickerInput, TimeInput } from "@mantine/dates";
 import { notifications } from "@mantine/notifications";
 import { IconCalendar, IconPlus, IconTrash } from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { useState, useTransition } from "react";
 import { searchUserOptions } from "@/app/(dashboard)/_shared/option-search";
 import {
@@ -56,11 +57,12 @@ function RecordTable({
   /** 作業場所列。 */
   showLocation?: boolean;
 }) {
+  const tr = useTranslations();
   const fmt = useFormat();
   if (rows.length === 0) {
     return (
       <Text c="dimmed" size="sm">
-        記録はありません
+        {tr("production.stepPlanActualPanel.thereAreNoRecords")}
       </Text>
     );
   }
@@ -68,14 +70,20 @@ function RecordTable({
     <Table striped withTableBorder>
       <Table.Thead>
         <Table.Tr>
-          <Table.Th>担当者</Table.Th>
-          <Table.Th w={120}>日付</Table.Th>
-          <Table.Th w={130}>時間</Table.Th>
-          <Table.Th ta="right" w={90}>
-            数量
+          <Table.Th>{tr("common.assignee")}</Table.Th>
+          <Table.Th w={120}>{tr("common.date")}</Table.Th>
+          <Table.Th w={130}>
+            {tr("production.stepPlanActualPanel.hours")}
           </Table.Th>
-          {showLocation && <Table.Th w={180}>作業場所</Table.Th>}
-          <Table.Th>備考</Table.Th>
+          <Table.Th ta="right" w={90}>
+            {tr("common.quantity")}
+          </Table.Th>
+          {showLocation && (
+            <Table.Th w={180}>
+              {tr("production.stepPlanActualPanel.workLocation")}
+            </Table.Th>
+          )}
+          <Table.Th>{tr("common.notes")}</Table.Th>
           {canEdit && <Table.Th w={50} />}
         </Table.Tr>
       </Table.Thead>
@@ -91,7 +99,9 @@ function RecordTable({
             <Table.Td>
               <Group gap={6} wrap="nowrap">
                 <Text size="sm">
-                  {r.startTime ? `${r.startTime}〜${r.endTime ?? ""}` : "終日"}
+                  {r.startTime
+                    ? `${r.startTime}〜${r.endTime ?? ""}`
+                    : tr("production.stepPlanActualPanel.allDay")}
                 </Text>
                 {(r.concurrentCount ?? 1) > 1 && (
                   <Badge color="grape" size="xs" variant="light">
@@ -120,7 +130,9 @@ function RecordTable({
             {canEdit && (
               <Table.Td>
                 <ActionIcon
-                  aria-label="この記録を削除"
+                  aria-label={tr(
+                    "production.stepPlanActualPanel.deleteThisRecord",
+                  )}
                   color="red"
                   disabled={deleting}
                   onClick={() => onDelete(r.id)}
@@ -160,6 +172,7 @@ function RecordSection({
   /** 作業場所の選択肢。 */
   workLocationOptions?: { value: string; label: string }[];
 }) {
+  const tr = useTranslations();
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [userId, setUserId] = useState<string | null>(null);
@@ -174,16 +187,16 @@ function RecordSection({
   const handleAdd = () => {
     if (!userId) {
       notifications.show({
-        title: "入力不足",
-        message: "担当者を選択してください",
+        title: tr("common.missingInput"),
+        message: tr("production.stepPlanActualPanel.selectAnAssignee"),
         color: "red",
       });
       return;
     }
     if (!date) {
       notifications.show({
-        title: "入力不足",
-        message: "日付を選択してください",
+        title: tr("common.missingInput"),
+        message: tr("production.stepPlanActualPanel.selectADate"),
         color: "red",
       });
       return;
@@ -206,11 +219,11 @@ function RecordSection({
           : await addStepActual(payload);
       if (result.ok) {
         notifications.show({
-          title: "追加しました",
+          title: tr("common.added"),
           message:
             kind === "plan"
-              ? "作業計画を追加しました"
-              : "作業実績を追加しました",
+              ? tr("production.stepPlanActualPanel.theWorkPlanWasAdded")
+              : tr("production.stepPlanActualPanel.theWorkActualsWereAdded"),
           color: "green",
         });
         setStartTime("");
@@ -220,8 +233,10 @@ function RecordSection({
         router.refresh();
       } else {
         notifications.show({
-          title: "エラー",
-          message: result.errors?.join(" / ") ?? "追加に失敗しました",
+          title: tr("common.error2"),
+          message:
+            result.errors?.join(" / ") ??
+            tr("production.stepPlanActualPanel.couldNotAdd"),
           color: "red",
         });
       }
@@ -238,8 +253,8 @@ function RecordSection({
         router.refresh();
       } else {
         notifications.show({
-          title: "エラー",
-          message: result.errors?.join(" / ") ?? "削除に失敗しました",
+          title: tr("common.error2"),
+          message: result.errors?.join(" / ") ?? tr("common.couldNotDelete"),
           color: "red",
         });
       }
@@ -269,38 +284,40 @@ function RecordSection({
             <Group align="flex-end" gap="xs" wrap="wrap">
               <div style={{ flex: 2, minWidth: 200 }}>
                 <SearchSelect
-                  label="担当者"
+                  label={tr("common.assignee")}
                   onChange={setUserId}
                   onSearch={searchUserOptions}
-                  placeholder="従業員を検索"
+                  placeholder={tr(
+                    "production.stepPlanActualPanel.searchEmployees",
+                  )}
                   storageKey={`step-${kind}-user`}
                   value={userId}
                 />
               </div>
               <DatePickerInput
-                label="日付"
+                label={tr("common.date")}
                 leftSection={<IconCalendar size={16} />}
                 onChange={setDate}
-                placeholder="日付"
+                placeholder={tr("common.date")}
                 value={date}
                 valueFormat="YYYY/MM/DD"
                 w={150}
               />
               <TimeInput
-                label="開始（任意）"
+                label={tr("production.stepPlanActualPanel.startOptional")}
                 onChange={(e) => setStartTime(e.currentTarget.value)}
                 value={startTime}
                 w={110}
               />
               <TimeInput
-                label="終了（任意）"
+                label={tr("production.stepPlanActualPanel.endOptional")}
                 onChange={(e) => setEndTime(e.currentTarget.value)}
                 value={endTime}
                 w={110}
               />
               <NumberInput
                 allowNegative={false}
-                label="数量（任意）"
+                label={tr("production.stepPlanActualPanel.quantityOptional")}
                 min={1}
                 onChange={(v) => setQuantity(typeof v === "number" ? v : "")}
                 placeholder={
@@ -315,16 +332,18 @@ function RecordSection({
                 <Select
                   clearable
                   data={workLocationOptions}
-                  label="作業場所（任意）"
+                  label={tr(
+                    "production.stepPlanActualPanel.workLocationOptional",
+                  )}
                   onChange={setWorkLocationId}
-                  placeholder="機械・エリア"
+                  placeholder={tr("production.stepPlanActualPanel.machineArea")}
                   searchable
                   value={workLocationId}
                   w={220}
                 />
               )}
               <TextInput
-                label="備考"
+                label={tr("common.notes")}
                 onChange={(e) => setNotes(e.currentTarget.value)}
                 style={{ flex: 1, minWidth: 140 }}
                 value={notes}
@@ -334,7 +353,7 @@ function RecordSection({
                 loading={isPending}
                 onClick={handleAdd}
               >
-                追加
+                {tr("common.add")}
               </PrimaryButton>
             </Group>
           </Stack>
@@ -365,6 +384,7 @@ export function StepPlanActualPanel({
   /** 作業場所の選択肢（計画・実績フォーム用）。 */
   workLocationOptions: { value: string; label: string }[];
 }) {
+  const tr = useTranslations();
   const planEditable =
     canOperate && (stepStatus === "PENDING" || stepStatus === "IN_PROGRESS");
   const actualEditable = canOperate && stepStatus === "IN_PROGRESS";
@@ -373,23 +393,25 @@ export function StepPlanActualPanel({
     <>
       <RecordSection
         canEdit={planEditable}
-        description="担当者・日付（または時刻）ごとに分割して計画できます。作業場所（機械・エリア）も任意で割り当てられます。"
+        description={tr("production.stepPlanActualPanel.youCanSplitThePlanBy")}
         kind="plan"
         rows={plans}
         stepId={stepId}
         suggestedQuantity={expectedInputQuantity}
-        title="作業計画"
+        title={tr("production.stepPlanActualPanel.workPlan")}
         workLocationOptions={workLocationOptions}
         workOrderNumber={workOrderNumber}
       />
       <RecordSection
         canEdit={actualEditable}
-        description="実施した作業を担当者・日付ごとに記録します（進行中のみ追加可）。共有端末からの実績には端末の既定作業場所が入ります。"
+        description={tr(
+          "production.stepPlanActualPanel.recordsTheWorkDonePerAssignee",
+        )}
         kind="actual"
         rows={actuals}
         stepId={stepId}
         suggestedQuantity={expectedInputQuantity}
-        title="作業実績"
+        title={tr("production.stepPlanActualPanel.workActuals")}
         workLocationOptions={workLocationOptions}
         workOrderNumber={workOrderNumber}
       />

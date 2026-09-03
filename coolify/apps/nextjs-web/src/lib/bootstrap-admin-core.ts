@@ -14,6 +14,12 @@
  * 画面の表示を**同じ関数**で決めるため。片方だけ直して食い違うのを防ぐ。
  */
 
+/** next-intl の `t()` と互換の最小の形（サーバー/クライアントどちらの実体も渡せる）。 */
+type TrLike = (
+  key: string,
+  values?: Record<string, string | number | Date>,
+) => string;
+
 /** マイグレーションが作るローカル初期管理者の username。 */
 export const BOOTSTRAP_ADMIN_USERNAME = "admin";
 
@@ -61,6 +67,7 @@ export function isBootstrapAdmin(username: string): boolean {
  */
 export function bootstrapAdminState(
   input: BootstrapAdminInput,
+  tr: TrLike,
 ): BootstrapAdminState {
   if (!isBootstrapAdmin(input.username)) {
     return {
@@ -79,8 +86,7 @@ export function bootstrapAdminState(
     return {
       status: "retired",
       canDisable: false,
-      message:
-        "初期管理者は無効化済みです。実運用の管理者アカウントで運用してください。",
+      message: tr("settings.bootstrapAdminCard.retiredMessage"),
       isDefaultPasswordStillActive: false,
     };
   }
@@ -89,9 +95,7 @@ export function bootstrapAdminState(
     return {
       status: "blocked-no-other-admin",
       canDisable: false,
-      message:
-        "実ユーザーに管理者権限（system:ADMIN）を割り当ててから無効化してください。" +
-        "いま無効化すると管理者が居なくなり、権限を戻す画面が無いため psql でしか復旧できません。",
+      message: tr("settings.bootstrapAdminCard.blockedNoOtherAdminMessage"),
       isDefaultPasswordStillActive,
     };
   }
@@ -99,9 +103,9 @@ export function bootstrapAdminState(
   return {
     status: "ready-to-retire",
     canDisable: true,
-    message:
-      `他に管理者が ${input.otherActiveAdminCount} 名居ます。` +
-      "初期管理者は立ち上げ用の踏み台なので、無効化することを推奨します。",
+    message: tr("settings.bootstrapAdminCard.readyToRetireMessage", {
+      count: input.otherActiveAdminCount,
+    }),
     isDefaultPasswordStillActive,
   };
 }

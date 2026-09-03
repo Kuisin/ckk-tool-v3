@@ -3,6 +3,7 @@
 import { Badge, Group, Stack, Text } from "@mantine/core";
 import { IconFileDescription } from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { useFormat } from "@/components/layout/PreferencesProvider";
 import { DataTable } from "@/components/ui/DataTable";
 import { NewButton } from "@/components/ui/NewButton";
@@ -17,6 +18,7 @@ export function DocumentsTable({
   rows: PageRow[];
   canCreate: boolean;
 }) {
+  const tr = useTranslations();
   const router = useRouter();
   const fmt = useFormat();
 
@@ -24,17 +26,23 @@ export function DocumentsTable({
     <ListShell
       action={
         canCreate ? (
-          <NewButton href="/general/documents/new" label="文書を作る" />
+          <NewButton
+            href="/general/documents/new"
+            label={tr("documents.documentsTable.createADocument")}
+          />
         ) : undefined
       }
-      breadcrumbs={[{ label: "一般" }, { label: "社内文書" }]}
-      title="社内文書"
+      breadcrumbs={[
+        { label: tr("common.general") },
+        { label: tr("common.internalDocuments") },
+      ]}
+      title={tr("common.internalDocuments")}
     >
       <DataTable
         columns={[
           {
             key: "title",
-            header: "タイトル",
+            header: tr("common.title"),
             render: (r) => (
               <Stack gap={2}>
                 <Text fw={500} size="sm">
@@ -55,7 +63,7 @@ export function DocumentsTable({
           },
           {
             key: "status",
-            header: "状態",
+            header: tr("common.status"),
             width: 120,
             render: (r) => (
               <StatusBadge entity="InternalPage" status={r.status} />
@@ -63,7 +71,7 @@ export function DocumentsTable({
           },
           {
             key: "publishedRevision",
-            header: "公開版",
+            header: tr("common.publishedVersion"),
             width: 90,
             align: "right",
             render: (r) =>
@@ -71,7 +79,7 @@ export function DocumentsTable({
           },
           {
             key: "openComments",
-            header: "未解決",
+            header: tr("common.unresolved"),
             width: 90,
             align: "right",
             sortValue: (r) => r.openComments,
@@ -86,7 +94,7 @@ export function DocumentsTable({
           },
           {
             key: "updatedAt",
-            header: "更新日",
+            header: tr("common.updated"),
             width: 120,
             render: (r) => fmt.date(r.updatedAt),
           },
@@ -94,7 +102,7 @@ export function DocumentsTable({
         data={rows}
         defaultSort={{ key: "updatedAt", dir: "desc" }}
         emptyIcon={<IconFileDescription size={28} />}
-        emptyMessage="表示できる文書がありません"
+        emptyMessage={tr("documents.documentsTable.thereAreNoDocumentsToShow")}
         getRowId={(r) => r.pageNumber}
         onRowClick={(r) => router.push(`/general/documents/${r.pageNumber}`)}
         renderCard={(r) => (

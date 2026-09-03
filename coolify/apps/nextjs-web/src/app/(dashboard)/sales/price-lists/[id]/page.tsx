@@ -1,9 +1,12 @@
 import { notFound } from "next/navigation";
 import { PriceListDetail } from "@/components/sales/price-lists/PriceListDetail";
+import { appLabelForKey } from "@/lib/app-list";
 import { fetchAuditEntries } from "@/lib/audit";
 import { requireAppRead } from "@/lib/authz-page";
 import { parseDocKey } from "@/lib/doc-number";
 import { listMemos } from "@/lib/document-memos";
+import { formatDocPageTitle } from "@/lib/page-title";
+import { getServerLocale } from "@/lib/user-preferences";
 import {
   fetchCustomerOptions,
   fetchProductOptions,
@@ -19,7 +22,13 @@ export async function generateMetadata({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  return { title: `価格表 ${decodeURIComponent(id)} | CKK 業務管理システム` };
+  const locale = await getServerLocale();
+  return {
+    title: formatDocPageTitle(
+      appLabelForKey("price-lists", "価格表", locale), // i18n-ignore — ja はそのまま使う（訳の実体は appLabelForKey 内の en/zh マップ）
+      decodeURIComponent(id),
+    ),
+  };
 }
 
 /** 価格表 詳細 (SA22). `id` は価格表番号 PRC-YYYYMM-NNNNN. */

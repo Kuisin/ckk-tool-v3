@@ -39,6 +39,12 @@ export default async function DashboardLayout({
   // アプリ自体が非表示になるため、リボン情報は配布しない）。
   const isDevEnv = currentAppEnv() === "dev";
   const userId = await sessionUserId();
+  // proxy.ts が唯一の門にならないようにする（監査 C1）。ミドルウェアの迂回
+  // （Next の既知の advisory）や matcher の書き損じで proxy を抜けてきても、
+  // ダッシュボード配下はセッションが無ければ描かない。requiredPermission が
+  // null のアプリ（承認・予定 / フォーム / ファイル管理 …）は requireAppRead が
+  // 「ログインのみ」で通すので、ここで止めないと未認証で描画される。
+  if (!userId) redirect("/login");
   const [disabledKeys, unreleasedKeys, profile, visibleKeys, prefs, tableRows] =
     await Promise.all([
       getDisabledAppKeys(),
@@ -91,8 +97,12 @@ export default async function DashboardLayout({
         同じ app.users の設定を見る（src/i18n/request.ts / getCurrentPreferences）。
         NextIntlClientProvider はサーバーで描画されるとリクエストの locale /
         messages / timeZone をそのまま引き継ぐので、props は要らない。
-        ダッシュボード配下だけに掛ける — 公開マニュアルは翻訳対象外で、
-        ここで包むと静的化を落としてしまうため。
+
+        `app/providers.tsx` の**既定（ja・静的）プロバイダの内側にネストする**
+        ので、ここが実効の値になる——利用者ごとの言語切り替えが効くのは
+        ダッシュボード配下だけ。公開マニュアル・取引先ポータルは
+        `getCurrentPreferences()`（DB 読み取り）を経由しないので、静的化は
+        壊れない。
       */}
       <NextIntlClientProvider>
         <PreferencesProvider prefs={prefs}>

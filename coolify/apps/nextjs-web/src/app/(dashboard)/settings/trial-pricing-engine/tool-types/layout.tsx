@@ -1,3 +1,4 @@
+import { getTranslations } from "next-intl/server";
 import type { ReactNode } from "react";
 import { ToolTypesPanel } from "@/components/settings/ToolTypesPanel";
 import { MasterDetailShell } from "@/components/ui/MasterDetailShell";
@@ -16,6 +17,7 @@ export default async function ToolTypesLayout({
 }: {
   children: ReactNode;
 }) {
+  const tr = await getTranslations();
   const [settings, counts] = await Promise.all([
     getTrialPricingSettings(),
     prisma.estimate.groupBy({ by: ["toolType"], _count: { _all: true } }),
@@ -30,11 +32,11 @@ export default async function ToolTypesLayout({
       header={
         <PageHeader
           breadcrumbs={[
-            "システム",
-            { label: "価格試算計算", href: ENGINE },
-            "工具種管理",
+            tr("common.system"),
+            { label: tr("common.priceEstimateEngine"), href: ENGINE },
+            tr("common.toolTypes"),
           ]}
-          title="工具種管理"
+          title={tr("common.toolTypes")}
         />
       }
       initialMasterWidth={340}

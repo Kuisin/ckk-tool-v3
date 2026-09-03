@@ -12,6 +12,7 @@
  * サーバー専用（prisma import）— actions.ts と詳細ページから呼ぶ。
  */
 
+import { getTranslations } from "next-intl/server";
 import { resolveUnitPriceFromEntries } from "@/components/sales/quotes/model";
 import { prisma } from "@/lib/db";
 import type { DocKey } from "@/lib/doc-number";
@@ -51,6 +52,7 @@ const EMPTY_CHECK: AcceptancePriceCheck = { lines: [], diffCount: 0 };
 export async function checkAcceptancePrices(
   key: DocKey,
 ): Promise<AcceptancePriceCheck> {
+  const tr = await getTranslations();
   const acceptance = await prisma.orderAcceptance.findUnique({
     where: { yearMonth_seq: key },
     select: {
@@ -93,6 +95,7 @@ export async function checkAcceptancePrices(
       String(it.productId),
       it.orderType,
       it.quantity,
+      tr,
     );
     const expected = resolved?.unitPrice ?? null;
     return {
@@ -109,11 +112,17 @@ export async function checkAcceptancePrices(
 }
 
 /** 差異行の表示文字列（例: `行2 ¥1,200 ≠ 価格表 ¥1,000`）。 */
-export function priceDiffSummary(check: AcceptancePriceCheck): string[] {
+export function priceDiffSummary(
+  check: AcceptancePriceCheck,
+  tr: Awaited<ReturnType<typeof getTranslations>>,
+): string[] {
   return check.lines
     .filter((l) => l.diff)
-    .map(
-      (l) =>
-        `行${l.row} ${formatMoney(l.actual)} ≠ 価格表 ${formatMoney(l.expected)}`,
+    .map((l) =>
+      tr("sales.orderAcceptances.priceDiffLine", {
+        row: l.row,
+        actual: formatMoney(l.actual),
+        expected: formatMoney(l.expected),
+      }),
     );
 }

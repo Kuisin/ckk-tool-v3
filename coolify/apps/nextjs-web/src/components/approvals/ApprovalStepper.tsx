@@ -8,6 +8,7 @@
  */
 
 import { Stepper, Text } from "@mantine/core";
+import { useTranslations } from "next-intl";
 import {
   type ApprovalPhase,
   stepperActive as computeActive,
@@ -29,10 +30,11 @@ export function ApprovalStepper({
   currentStepNo: number;
   phase: ApprovalPhase;
 }) {
+  const tr = useTranslations();
   if (steps.length === 0) {
     return (
       <Text c="dimmed" size="sm">
-        承認フローが未設定です
+        {tr("approvals.approvalStepper.noApprovalFlowIsSet")}
       </Text>
     );
   }
@@ -44,7 +46,11 @@ export function ApprovalStepper({
       {steps.map((s) => (
         <Stepper.Step
           description={
-            s.mode === "ALL" ? `${s.groupLabel}（全員承認）` : s.groupLabel
+            s.mode === "ALL"
+              ? tr("approvals.approvalStepper.groupAllMustApprove", {
+                  group: s.groupLabel,
+                })
+              : s.groupLabel
           }
           key={s.stepNo}
           label={s.label}

@@ -165,6 +165,7 @@ model User {
   kioskDevicesActivated KioskDevice[]  @relation("KioskDeviceActivatedBy")
   kioskSessions         KioskSession[] @relation("KioskSessionUser")
   kioskDeviceLogs       KioskDeviceLog[] @relation("KioskDeviceLogUser")
+  displayDevicesActivated DisplayDevice[] @relation("DisplayDeviceActivatedBy")
 
   // 認証イベント（security.prisma）。失敗行は user_id が null のことも多い —
   // ユーザーに解決できなかった試行そのものを残すのがこのテーブルの目的。
@@ -224,6 +225,11 @@ model User {
   textScale String @default("md") @map("text_scale") @db.VarChar(8)
   // 文字を太くする（iOS の「文字を太くする」相当）。本文の太さを 1 段上げる。
   boldText Boolean @default(false) @map("bold_text")
+  // アプリ本体の書体（"noto" | "system"）。PDF は対象外 — 帳票は常に埋め込み
+  // Noto Sans JP で固定（lib/pdf.ts が同梱フォントをアップロードする側で、
+  // ここの選択は届かない）。"system" は Noto Sans JP を強制せず OS 既定の
+  // 書体（Windows なら游ゴシック UI / Meiryo 系、Mac なら Hiragino）へ委ねる。
+  fontFamily String @default("noto") @map("font_family") @db.VarChar(8)
 
   // Employees link to the shared directory by AD objectGUID (stable across
   // username/attribute changes). Null for SYSTEM / GUEST users.
@@ -234,6 +240,7 @@ model User {
   @@map("users")
   @@schema("app")
   formApprovalStepApprovers FormApprovalStepApprover[] @relation("FormApprovalStepApprover")
+  inspectionTemplateApprovers InspectionTemplateApprover[] @relation("InspectionTemplateApprover")
 
 }
 

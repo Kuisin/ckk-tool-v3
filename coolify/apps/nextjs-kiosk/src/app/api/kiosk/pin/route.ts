@@ -17,6 +17,7 @@ import {
   isCardWithinValidPeriod,
   isPinLocked,
   isValidPin,
+  newPinVerdict,
   nextPinFailureState,
 } from "@/lib/kiosk-auth-core";
 import {
@@ -51,6 +52,10 @@ export async function POST(req: Request) {
 
   if (!isValidPin(pin)) {
     return deny(ctx, "PIN_FORMAT", 400, { method });
+  }
+  // 初回設定は 6 桁 + 弱い並びを弾く（既存 PIN の照合は従来の 4〜6 桁のまま）。
+  if (purpose === "PIN_SETUP" && newPinVerdict(pin) !== "OK") {
+    return deny(ctx, "PIN_WEAK", 400, { method });
   }
 
   const consumed = consumeTicket(ticket, purpose, device.device.id);

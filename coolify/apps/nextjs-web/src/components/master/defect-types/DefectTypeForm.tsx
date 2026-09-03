@@ -17,6 +17,7 @@ import {
 import { useForm } from "@mantine/form";
 import { notifications } from "@mantine/notifications";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { useTransition } from "react";
 import { z } from "zod";
 import { createDefectType } from "@/app/(dashboard)/master/defect-types/actions";
@@ -32,23 +33,28 @@ import { zodResolver } from "@/lib/form";
 
 const BASE_PATH = "/master/defect-types";
 
-const defectTypeSchema = z.object({
-  code: z.string().min(1, "コードを入力してください"),
-  nameJa: z.string().min(1, "名称（日本語）を入力してください"),
-  nameTranslations: z.record(z.string(), z.string()).default({}),
-  sortOrder: z.number().int("表示順は整数で入力してください").min(0),
-  isActive: z.boolean(),
-});
+const defectTypeSchema = (tr: (key: string) => string) =>
+  z.object({
+    code: z.string().min(1, tr("common.codeRequired")),
+    nameJa: z.string().min(1, tr("common.nameJaRequired")),
+    nameTranslations: z.record(z.string(), z.string()).default({}),
+    sortOrder: z
+      .number()
+      .int(tr("master.processSteps.sortOrderInteger"))
+      .min(0),
+    isActive: z.boolean(),
+  });
 
-type FormValues = z.infer<typeof defectTypeSchema>;
+type FormValues = z.infer<ReturnType<typeof defectTypeSchema>>;
 
 export function DefectTypeForm() {
+  const tr = useTranslations();
   const router = useRouter();
   const isMobile = useIsMobile();
   const [isPending, startTransition] = useTransition();
 
   const form = useForm<FormValues>({
-    validate: zodResolver(defectTypeSchema),
+    validate: zodResolver(defectTypeSchema(tr)),
     initialValues: {
       code: "",
       nameJa: "",
@@ -63,15 +69,15 @@ export function DefectTypeForm() {
       const result = await createDefectType(values);
       if (result.ok) {
         notifications.show({
-          title: "保存しました",
-          message: "不良種類を作成しました",
+          title: tr("common.saved2"),
+          message: tr("master.defectTypes.theDefectTypeWasCreated"),
           color: "green",
         });
         // 詳細ページがないため一覧へ戻る。
         router.push(BASE_PATH);
       } else {
         notifications.show({
-          title: "エラー",
+          title: tr("common.error2"),
           message: result.error,
           color: "red",
         });
@@ -82,47 +88,51 @@ export function DefectTypeForm() {
   return (
     <FormShell
       breadcrumbs={[
-        "マスタ",
-        { label: "不良種類", href: BASE_PATH },
-        "新規作成",
+        tr("common.masterData"),
+        { label: tr("common.defectTypes"), href: BASE_PATH },
+        tr("common.new2"),
       ]}
       isDirty={form.isDirty()}
       isPending={isPending}
       onCancel={() => router.push(BASE_PATH)}
       onSubmit={form.onSubmit(handleSubmit)}
-      title="不良種類 新規作成"
+      title={tr("master.defectTypes.newDefectType")}
     >
-      <FormSection title="基本情報">
+      <FormSection title={tr("common.basicInformation")}>
         <SimpleGrid cols={isMobile ? 1 : 2} spacing="sm">
           <TextInput
-            description="不良種類を識別する一意のコード"
+            description={tr(
+              "master.defectTypes.aUniqueCodeIdentifyingTheDefect",
+            )}
             label={
               <HelpLabel
-                {...fieldHelp("defectType", "code", { label: "コード" })}
+                {...fieldHelp(tr, "defectType", "code", {
+                  label: tr("common.code"),
+                })}
               />
             }
-            placeholder="例: SCRATCH"
+            placeholder={tr("master.defectTypes.eGScratch")}
             withAsterisk
             {...form.getInputProps("code")}
           />
           <NumberInput
             allowDecimal={false}
-            description="一覧・不良入力での並び順"
-            label={<HelpLabel {...fieldHelp("defectType", "sortOrder")} />}
+            description={tr("master.defectTypes.orderInListsAndDefectEntry")}
+            label={<HelpLabel {...fieldHelp(tr, "defectType", "sortOrder")} />}
             min={0}
             {...form.getInputProps("sortOrder")}
           />
         </SimpleGrid>
         <Stack gap="sm" mt="sm">
           <LocalizedTextInput
-            help={fieldHelpTip("defectType", "code")}
+            help={fieldHelpTip(tr, "defectType", "code")}
             jaProps={form.getInputProps("nameJa")}
-            label="名称"
+            label={tr("common.name2")}
             required
             translationsProps={form.getInputProps("nameTranslations")}
           />
           <Switch
-            label={<HelpLabel {...fieldHelp("defectType", "active")} />}
+            label={<HelpLabel {...fieldHelp(tr, "defectType", "active")} />}
             {...form.getInputProps("isActive", { type: "checkbox" })}
           />
         </Stack>

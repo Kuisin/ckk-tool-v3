@@ -8,6 +8,7 @@
  */
 
 import { revalidatePath } from "next/cache";
+import { getTranslations } from "next-intl/server";
 import { z } from "zod";
 import { recordAudit } from "@/lib/audit";
 import { checkPermission } from "@/lib/authz";
@@ -36,47 +37,55 @@ const DIAMETER_MAX = 99.9;
 const LENGTH_MIN = 1;
 const LENGTH_MAX = 999;
 
-const productInput = z
-  .object({
-    nameJa: z.string().min(1, "名称（日本語）を入力してください"),
-    nameTranslations: z.record(z.string(), z.string()).optional(),
-    /**
-     * 製品が要求する素材の指定 = 材種 + 直径 + 全長。特定 materials 行には
-     * 紐付けない（同一材種・直径の複数素材が cut-to-length で充当可能）。
-     * materialTypeId は材種の内部 id（文字列 — UI の値）。空/null = 未設定。
-     */
-    materialTypeId: z.string().nullable(),
-    diameterMm: z.number().nullable(),
-    lengthMm: z.number().nullable(),
-    unit: z.string().min(1, "単位を選択してください"),
-    /** 検索・AI 突合用のキーワード（match_names）。保存時に整形する。 */
-    matchNames: z.array(z.string()).default([]),
-    isActive: z.boolean(),
-    notes: z.string().optional(),
-    spec: z.array(z.object({ key: z.string(), value: z.string() })),
-  })
-  .superRefine((v, ctx) => {
-    // 材種を指定したら直径・全長も必須（範囲チェック込み）。
-    if (!v.materialTypeId) return;
-    const d = v.diameterMm;
-    if (d == null || d < DIAMETER_MIN || d > DIAMETER_MAX) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        path: ["diameterMm"],
-        message: `直径は ${DIAMETER_MIN}〜${DIAMETER_MAX}mm で入力してください`,
-      });
-    }
-    const l = v.lengthMm;
-    if (l == null || l < LENGTH_MIN || l > LENGTH_MAX) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        path: ["lengthMm"],
-        message: `全長は ${LENGTH_MIN}〜${LENGTH_MAX}mm で入力してください`,
-      });
-    }
-  });
+function productInputSchema(tr: Awaited<ReturnType<typeof getTranslations>>) {
+  return z
+    .object({
+      nameJa: z.string().min(1, tr("common.enterNameInJapanese")),
+      nameTranslations: z.record(z.string(), z.string()).optional(),
+      /**
+       * 製品が要求する素材の指定 = 材種 + 直径 + 全長。特定 materials 行には
+       * 紐付けない（同一材種・直径の複数素材が cut-to-length で充当可能）。
+       * materialTypeId は材種の内部 id（文字列 — UI の値）。空/null = 未設定。
+       */
+      materialTypeId: z.string().nullable(),
+      diameterMm: z.number().nullable(),
+      lengthMm: z.number().nullable(),
+      unit: z.string().min(1, tr("master.productForm.selectUnit")),
+      /** 検索・AI 突合用のキーワード（match_names）。保存時に整形する。 */
+      matchNames: z.array(z.string()).default([]),
+      isActive: z.boolean(),
+      notes: z.string().optional(),
+      spec: z.array(z.object({ key: z.string(), value: z.string() })),
+    })
+    .superRefine((v, ctx) => {
+      // 材種を指定したら直径・全長も必須（範囲チェック込み）。
+      if (!v.materialTypeId) return;
+      const d = v.diameterMm;
+      if (d == null || d < DIAMETER_MIN || d > DIAMETER_MAX) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["diameterMm"],
+          message: tr("master.productsActions.diameterRange", {
+            min: DIAMETER_MIN,
+            max: DIAMETER_MAX,
+          }),
+        });
+      }
+      const l = v.lengthMm;
+      if (l == null || l < LENGTH_MIN || l > LENGTH_MAX) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["lengthMm"],
+          message: tr("master.productsActions.lengthRange", {
+            min: LENGTH_MIN,
+            max: LENGTH_MAX,
+          }),
+        });
+      }
+    });
+}
 
-export type ProductInput = z.infer<typeof productInput>;
+export type ProductInput = z.infer<ReturnType<typeof productInputSchema>>;
 
 function revalidate(id?: number) {
   revalidatePath(BASE_PATH);
@@ -114,6 +123,7 @@ function specJson(rows: { key: string; value: string }[]) {
  */
 async function validateProductTypeSpec(
   rows: { key: string; value: string }[],
+  tr: Awaited<ReturnType<typeof getTranslations>>,
 ): Promise<string | null> {
   const byKey = new Map(rows.map((r) => [r.key, r.value]));
   const typeId = rows.find((r) => r.key === PRODUCT_TYPE_SPEC_KEY)?.value;
@@ -125,7 +135,7 @@ async function validateProductTypeSpec(
   const typeKeys = new Set(type?.items.map((i) => i.key) ?? []);
   // 種別項目を検証。
   for (const it of type?.items ?? []) {
-    const msg = validateItemValue(it, byKey.get(it.key));
+    const msg = validateItemValue(it, byKey.get(it.key), tr);
     if (msg) return msg;
   }
   // 追加項目（種別外だが定義済みの項目）も型で検証。
@@ -134,7 +144,7 @@ async function validateProductTypeSpec(
     if (key === PRODUCT_TYPE_SPEC_KEY || typeKeys.has(key)) continue;
     const def = defByKey.get(key);
     if (def) {
-      const msg = validateItemValue(def, value);
+      const msg = validateItemValue(def, value, tr);
       if (msg) return msg;
     }
   }
@@ -144,14 +154,17 @@ async function validateProductTypeSpec(
 export async function createProduct(
   input: ProductInput,
 ): Promise<ActionResult<{ id: number; code: string }>> {
+  const tr = await getTranslations();
   const authz = await checkPermission("master", "CREATE");
   if (!authz.ok) return actionError(authz.error);
-  const parsed = productInput.safeParse(input);
+  const parsed = productInputSchema(tr).safeParse(input);
   if (!parsed.success) {
-    return actionError(parsed.error.issues[0]?.message ?? "入力が不正です");
+    return actionError(
+      parsed.error.issues[0]?.message ?? tr("common.invalidInput"),
+    );
   }
   const v = parsed.data;
-  const typeError = await validateProductTypeSpec(v.spec);
+  const typeError = await validateProductTypeSpec(v.spec, tr);
   if (typeError) return actionError(typeError);
   try {
     const { yearMonth, seq } = await allocateDocumentKey("PRODUCT");
@@ -192,7 +205,9 @@ export async function createProduct(
     revalidate(created.id);
     return actionOk({ id: created.id, code });
   } catch (e) {
-    return actionError(prismaErrorMessage(e, "製品の作成に失敗しました"));
+    return actionError(
+      prismaErrorMessage(e, tr("master.productsActions.createFailed"), tr),
+    );
   }
 }
 
@@ -200,14 +215,17 @@ export async function updateProduct(
   id: number,
   input: ProductInput,
 ): Promise<ActionResult<{ id: number }>> {
+  const tr = await getTranslations();
   const authz = await checkPermission("master", "UPDATE");
   if (!authz.ok) return actionError(authz.error);
-  const parsed = productInput.safeParse(input);
+  const parsed = productInputSchema(tr).safeParse(input);
   if (!parsed.success) {
-    return actionError(parsed.error.issues[0]?.message ?? "入力が不正です");
+    return actionError(
+      parsed.error.issues[0]?.message ?? tr("common.invalidInput"),
+    );
   }
   const v = parsed.data;
-  const typeError = await validateProductTypeSpec(v.spec);
+  const typeError = await validateProductTypeSpec(v.spec, tr);
   if (typeError) return actionError(typeError);
   try {
     const prior = await prisma.product.findUnique({
@@ -266,7 +284,9 @@ export async function updateProduct(
     revalidate(id);
     return actionOk({ id });
   } catch (e) {
-    return actionError(prismaErrorMessage(e, "製品の更新に失敗しました"));
+    return actionError(
+      prismaErrorMessage(e, tr("master.productsActions.updateFailed"), tr),
+    );
   }
 }
 
@@ -274,9 +294,10 @@ export async function setProductsActive(
   ids: number[],
   isActive: boolean,
 ): Promise<ActionResult> {
+  const tr = await getTranslations();
   const authz = await checkPermission("master", "UPDATE");
   if (!authz.ok) return actionError(authz.error);
-  if (ids.length === 0) return actionError("対象が選択されていません");
+  if (ids.length === 0) return actionError(tr("common.noTargetSelected"));
   try {
     await prisma.product.updateMany({
       where: { id: { in: ids } },
@@ -294,14 +315,17 @@ export async function setProductsActive(
     for (const id of ids) revalidatePath(`${BASE_PATH}/${id}`);
     return actionOk();
   } catch (e) {
-    return actionError(prismaErrorMessage(e, "状態の更新に失敗しました"));
+    return actionError(
+      prismaErrorMessage(e, tr("common.statusUpdateFailed"), tr),
+    );
   }
 }
 
 export async function deleteProducts(ids: number[]): Promise<ActionResult> {
+  const tr = await getTranslations();
   const authz = await checkPermission("master", "DELETE");
   if (!authz.ok) return actionError(authz.error);
-  if (ids.length === 0) return actionError("対象が選択されていません");
+  if (ids.length === 0) return actionError(tr("common.noTargetSelected"));
   try {
     // Guard: refuse when sales documents still reference one of the products.
     const where = { productId: { in: ids } };
@@ -310,9 +334,7 @@ export async function deleteProducts(ids: number[]): Promise<ActionResult> {
       prisma.quoteItem.count({ where }),
     ]);
     if (priceListEntries + quoteItems > 0) {
-      return actionError(
-        "この製品を参照するデータ（価格表・見積書）が存在するため削除できません。無効化を検討してください。",
-      );
+      return actionError(tr("master.productsActions.referencedCannotDelete"));
     }
     await prisma.product.deleteMany({ where: { id: { in: ids } } });
     for (const id of ids) {
@@ -325,6 +347,8 @@ export async function deleteProducts(ids: number[]): Promise<ActionResult> {
     revalidate();
     return actionOk();
   } catch (e) {
-    return actionError(prismaErrorMessage(e, "製品の削除に失敗しました"));
+    return actionError(
+      prismaErrorMessage(e, tr("master.productsActions.deleteFailed"), tr),
+    );
   }
 }

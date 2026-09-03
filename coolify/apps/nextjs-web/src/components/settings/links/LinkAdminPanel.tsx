@@ -32,6 +32,7 @@ import {
   IconTrash,
 } from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { useState, useTransition } from "react";
 import {
   addBlacklistAction,
@@ -52,6 +53,7 @@ export function LinkAdminPanel({
   links: LinkIndexRow[];
   blacklist: BlacklistRow[];
 }) {
+  const tr = useTranslations();
   const fmt = useFormat();
   const router = useRouter();
   const [tab, setTab] = useState<string | null>("index");
@@ -62,7 +64,7 @@ export function LinkAdminPanel({
   // 戻り値は void に固定する（notifications.show は id を返すので、
   // `return notifyError(...)` が useTransition の TransitionFunction に合わなくなる）。
   const notifyError = (message: string): void => {
-    notifications.show({ title: "エラー", message, color: "red" });
+    notifications.show({ title: tr("common.error2"), message, color: "red" });
   };
 
   const add = () => {
@@ -70,8 +72,8 @@ export function LinkAdminPanel({
       const result = await addBlacklistAction({ pattern, reason });
       if (!result.ok) return notifyError(result.error);
       notifications.show({
-        title: "追加しました",
-        message: `${pattern} へのリンクをブロックします`,
+        title: tr("common.added"),
+        message: tr("settings.links.blockingLinksToHost", { pattern }),
         color: "green",
       });
       setPattern("");
@@ -90,9 +92,9 @@ export function LinkAdminPanel({
 
   const remove = (row: BlacklistRow) => {
     openConfirm({
-      title: "ブロック指定の削除",
-      message: `${row.pattern} のブロックを解除します。以後このホストへのリンクは通常どおり開けます。`,
-      confirmLabel: "削除",
+      title: tr("settings.links.removeTheBlock"),
+      message: tr("settings.links.unblockConfirm", { pattern: row.pattern }),
+      confirmLabel: tr("common.delete"),
       onConfirm: () =>
         start(async () => {
           const result = await deleteBlacklistAction(row.id);
@@ -105,7 +107,7 @@ export function LinkAdminPanel({
   const linkColumns: Column<LinkIndexRow>[] = [
     {
       key: "code",
-      header: "短縮コード",
+      header: tr("settings.links.shortCode"),
       width: 130,
       render: (r) => (
         <Anchor ff="mono" href={`/l/${r.code}`} size="sm" target="_blank">
@@ -115,14 +117,14 @@ export function LinkAdminPanel({
     },
     {
       key: "hostname",
-      header: "ホスト",
+      header: tr("settings.links.host"),
       width: 200,
       render: (r) => (
         <Group gap="xs" wrap="nowrap">
           <Text size="sm">{r.hostname}</Text>
           {r.blocked && (
             <Badge color="red" size="xs" variant="light">
-              ブロック中
+              {tr("settings.links.blocked")}
             </Badge>
           )}
         </Group>
@@ -130,7 +132,7 @@ export function LinkAdminPanel({
     },
     {
       key: "url",
-      header: "遷移先",
+      header: tr("settings.links.destination"),
       width: 380,
       render: (r) => (
         <Tooltip label={r.url} multiline w={420} withArrow>
@@ -140,14 +142,14 @@ export function LinkAdminPanel({
     },
     {
       key: "hitCount",
-      header: "利用",
+      header: tr("settings.links.use"),
       width: 80,
       align: "right",
       render: (r) => <Text size="sm">{r.hitCount}</Text>,
     },
     {
       key: "lastUsedAt",
-      header: "最終利用",
+      header: tr("settings.links.lastUsed"),
       width: 150,
       render: (r) => (
         <Text c="dimmed" size="xs">
@@ -160,7 +162,7 @@ export function LinkAdminPanel({
   const blockColumns: Column<BlacklistRow>[] = [
     {
       key: "pattern",
-      header: "ホスト名",
+      header: tr("settings.links.hostName"),
       width: 240,
       render: (r) => (
         <Text fw={600} size="sm">
@@ -170,7 +172,7 @@ export function LinkAdminPanel({
     },
     {
       key: "reason",
-      header: "理由",
+      header: tr("common.reason"),
       width: 300,
       render: (r) => (
         <Text c={r.reason ? undefined : "dimmed"} size="sm">
@@ -180,14 +182,14 @@ export function LinkAdminPanel({
     },
     {
       key: "matchCount",
-      header: "該当リンク",
+      header: tr("settings.links.matchingLink"),
       width: 110,
       align: "right",
       render: (r) => <Text size="sm">{r.matchCount}</Text>,
     },
     {
       key: "isActive",
-      header: "有効",
+      header: tr("common.enabled"),
       width: 90,
       render: (r) => (
         <Switch
@@ -200,7 +202,7 @@ export function LinkAdminPanel({
     },
     {
       key: "createdAt",
-      header: "登録",
+      header: tr("common.register"),
       width: 170,
       render: (r) => (
         <Text c="dimmed" size="xs">
@@ -214,10 +216,10 @@ export function LinkAdminPanel({
     <AppTabs onChange={setTab} value={tab}>
       <Tabs.List>
         <Tabs.Tab leftSection={<IconLink size={14} />} value="index">
-          索引（{links.length}）
+          {tr("settings.links.indexTabLabel", { count: links.length })}
         </Tabs.Tab>
         <Tabs.Tab leftSection={<IconShieldOff size={14} />} value="blocked">
-          ブロック（{blacklist.length}）
+          {tr("settings.links.blockedTabLabel", { count: blacklist.length })}
         </Tabs.Tab>
       </Tabs.List>
 
@@ -229,15 +231,14 @@ export function LinkAdminPanel({
             variant="light"
           >
             <Text size="xs">
-              メモ / コメントに貼られた外部リンクは短縮リンクに置き換えられ、
-              閲覧者は確認ページで遷移先を見てから外部へ移動します。
+              {tr("settings.links.externalLinksPastedIntoMemosAnd")}
             </Text>
           </Alert>
           <DataTable
             columns={linkColumns}
             data={links}
             emptyIcon={<IconLink size={24} />}
-            emptyMessage="外部リンクはまだ登録されていません"
+            emptyMessage={tr("settings.links.noExternalLinksAreRegisteredYet")}
             getRowId={(r) => r.code}
             pageSize={20}
             settingsKey="links"
@@ -250,21 +251,21 @@ export function LinkAdminPanel({
           <Paper p="sm" radius="md" withBorder>
             <Stack gap="sm">
               <Text fw={600} size="sm">
-                ブロックを追加
+                {tr("settings.links.addABlock")}
               </Text>
               <Group align="flex-end" gap="sm">
                 <TextInput
-                  description="サブドメインも含めてブロックします"
-                  label="ホスト名"
+                  description={tr("settings.links.subdomainsAreBlockedToo")}
+                  label={tr("settings.links.hostName")}
                   onChange={(e) => setPattern(e.currentTarget.value)}
                   placeholder="evil.example"
                   style={{ flex: 1 }}
                   value={pattern}
                 />
                 <TextInput
-                  label="理由（任意）"
+                  label={tr("common.reasonOptional")}
                   onChange={(e) => setReason(e.currentTarget.value)}
-                  placeholder="フィッシング報告あり"
+                  placeholder={tr("settings.links.reportedAsPhishing")}
                   style={{ flex: 1 }}
                   value={reason}
                 />
@@ -273,7 +274,7 @@ export function LinkAdminPanel({
                   loading={pending}
                   onClick={add}
                 >
-                  追加
+                  {tr("common.add")}
                 </PrimaryButton>
               </Group>
             </Stack>
@@ -283,12 +284,12 @@ export function LinkAdminPanel({
             columns={blockColumns}
             data={blacklist}
             emptyIcon={<IconShieldOff size={24} />}
-            emptyMessage="ブロック指定はありません"
+            emptyMessage={tr("settings.links.thereAreNoBlocks")}
             getRowId={(r) => r.id}
             pageSize={20}
             rowActions={() => [
               {
-                label: "削除",
+                label: tr("common.delete"),
                 icon: <IconTrash size={14} />,
                 color: "red",
                 onAction: remove,

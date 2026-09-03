@@ -11,6 +11,7 @@ import "server-only";
  * 親が消えたときの掃除は DB のトリガ（app.purge_share_grants）が持つ。
  */
 
+import { getTranslations } from "next-intl/server";
 import { cache } from "react";
 import { getPermissionSet, sessionUserId } from "./authz";
 import { prisma } from "./db";
@@ -193,6 +194,7 @@ export async function listShareGrants(
   ownerId: string,
 ): Promise<ShareGrantView[]> {
   try {
+    const tr = await getTranslations();
     const rows = await prisma.shareGrant.findMany({
       where: { ownerType, ownerId },
       orderBy: [{ subjectType: "asc" }, { createdAt: "asc" }],
@@ -249,14 +251,14 @@ export async function listShareGrants(
       subjectId: r.subjectId,
       subjectLabel:
         r.subjectType === "EVERYONE"
-          ? "全社（ログインユーザー全員）"
+          ? tr("common.everyoneSubjectLabel")
           : (r.subjectType === "PLANT"
               ? plantName.get(r.subjectId ?? "")
               : r.subjectType === "ROLE"
                 ? roleName.get(r.subjectId ?? "")
                 : userName.get(r.subjectId ?? "")) ||
             r.subjectId ||
-            "（不明）",
+            tr("common.unknown"),
       level: r.level as ShareLevel,
       notifyOnComplete: r.notifyOnComplete,
       conditionFieldKey: r.conditionFieldKey,

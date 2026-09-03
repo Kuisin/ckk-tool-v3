@@ -67,7 +67,7 @@ export async function runNotificationDigest(): Promise<DigestRunResult> {
   try {
     return await sweep();
   } catch (e) {
-    console.error("[notification-digest] 掃き出しに失敗:", e);
+    console.error("[notification-digest] 掃き出しに失敗:", e); // i18n-ignore — サーバーログのみ（Loki）、UI に出ない
     return empty;
   } finally {
     running = false;
@@ -160,6 +160,7 @@ async function sweep(): Promise<DigestRunResult> {
       subject: digestSubject(items.length),
       omittedCount,
       allUrl: `${base}/notifications`,
+      locale,
       items: shown.map((i) => ({
         typeLabel: notificationTypeLabel(i.type, locale),
         title: i.title,

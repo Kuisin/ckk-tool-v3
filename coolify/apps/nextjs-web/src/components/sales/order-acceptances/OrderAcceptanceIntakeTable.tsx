@@ -38,17 +38,19 @@ import {
   IconUpload,
 } from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { useEffect, useState } from "react";
 import { useFormat } from "@/components/layout/PreferencesProvider";
 import { PrimaryButton, SecondaryButton } from "@/components/ui/buttons";
 import { type Column, DataTable } from "@/components/ui/DataTable";
 import { NewButton } from "@/components/ui/NewButton";
-import { StatusBadge, statusOptions } from "@/components/ui/StatusBadge";
+import { StatusBadge } from "@/components/ui/StatusBadge";
 import { ListShell } from "@/components/ui/shells";
 import { useUrlSelectState, useUrlStringState } from "@/hooks/useUrlState";
 import { useIsMobile } from "@/hooks/useViewport";
 import { parseExtractError } from "@/lib/intake-extract-error";
-import { INTAKE_SOURCE_BADGE, type OrderAcceptanceListRow } from "./model";
+import { statusOptions } from "@/lib/status-map";
+import { intakeSourceBadge, type OrderAcceptanceListRow } from "./model";
 
 /** 抽出失敗の表示（分類済みメッセージ — 旧形式の 1 行もそのまま読める）。 */
 function ExtractErrorBadge({
@@ -58,13 +60,16 @@ function ExtractErrorBadge({
   stored: string;
   size?: "xs" | "sm";
 }) {
+  const tr = useTranslations();
   const failure = parseExtractError(stored);
   return (
     <Tooltip
       label={[
         failure.summary,
         failure.cause,
-        `対処: ${failure.hint}`,
+        tr("sales.orderAcceptanceIntakeTable.hintPrefix", {
+          hint: failure.hint,
+        }),
         failure.detail,
       ]
         .filter(Boolean)
@@ -78,7 +83,9 @@ function ExtractErrorBadge({
         size={size}
         variant="light"
       >
-        {failure.retrying ? "再試行中" : "抽出失敗"}
+        {failure.retrying
+          ? tr("sales.orderAcceptanceIntakeTable.retrying")
+          : tr("common.extractionFailed")}
       </Badge>
     </Tooltip>
   );
@@ -116,6 +123,7 @@ export function OrderAcceptanceIntakeTable({
   /** INTAKE_DIR（監視フォルダ）が設定されているか（サーバーから渡す）。 */
   intakeDirConfigured: boolean;
 }) {
+  const tr = useTranslations();
   const fmt = useFormat();
   const router = useRouter();
   const isMobile = useIsMobile();
@@ -171,8 +179,10 @@ export function OrderAcceptanceIntakeTable({
       autoClose: false,
       color: "blue",
       loading: true,
-      message: `${files.length} 件を一覧に追加しています…`,
-      title: "優先取込",
+      message: tr("sales.orderAcceptanceIntakeTable.addingToListMessage", {
+        count: files.length,
+      }),
+      title: tr("sales.orderAcceptances.priorityIntake"),
       withCloseButton: false,
     });
     // 1 段目: 保存 + 採番だけ（defer=1）。ここでは抽出を積まない。
@@ -184,8 +194,12 @@ export function OrderAcceptanceIntakeTable({
         autoClose: false,
         color: "blue",
         loading: true,
-        message: `${i + 1} / ${files.length} 件目: ${file.name} を追加中…`,
-        title: "優先取込",
+        message: tr("sales.orderAcceptanceIntakeTable.addingItemProgress", {
+          index: i + 1,
+          total: files.length,
+          filename: file.name,
+        }),
+        title: tr("sales.orderAcceptances.priorityIntake"),
         withCloseButton: false,
       });
       try {
@@ -199,10 +213,14 @@ export function OrderAcceptanceIntakeTable({
         if (res.ok && json?.ok && json.number) {
           numbers.push(json.number);
         } else {
-          failures.push(`${file.name}: ${json?.error ?? "取込に失敗しました"}`);
+          failures.push(
+            `${file.name}: ${json?.error ?? tr("sales.orderAcceptanceIntakeTable.intakeFailed")}`,
+          );
         }
       } catch {
-        failures.push(`${file.name}: 通信エラー`);
+        failures.push(
+          `${file.name}: ${tr("sales.orderAcceptanceIntakeTable.communicationError")}`,
+        );
       }
     }
     // 全件が一覧に並んだ状態を先に見せてから抽出を始める。
@@ -217,8 +235,10 @@ export function OrderAcceptanceIntakeTable({
         autoClose: false,
         color: "blue",
         loading: true,
-        message: `${numbers.length} 件をAI抽出の待ち行列に入れています…`,
-        title: "優先取込",
+        message: tr("sales.orderAcceptanceIntakeTable.queueingForExtraction", {
+          count: numbers.length,
+        }),
+        title: tr("sales.orderAcceptances.priorityIntake"),
         withCloseButton: false,
       });
       try {
@@ -231,13 +251,20 @@ export function OrderAcceptanceIntakeTable({
         if (res.ok && json?.ok) {
           pending = json.pending ?? 0;
           if (json.skipped && json.skipped.length > 0) {
-            queueError = `抽出を開始できなかった書類: ${json.skipped.join(" ・ ")}`;
+            queueError = tr(
+              "sales.orderAcceptanceIntakeTable.extractionCouldNotStartDocs",
+              { documents: json.skipped.join(` ${tr("common.s1")} `) },
+            );
           }
         } else {
-          queueError = json?.error ?? "AI抽出の開始に失敗しました";
+          queueError =
+            json?.error ??
+            tr("sales.orderAcceptances.couldNotStartAiExtraction");
         }
       } catch {
-        queueError = "AI抽出の開始に失敗しました（通信エラー）";
+        queueError = tr(
+          "sales.orderAcceptances.couldNotStartAiExtractionCommunication",
+        );
       }
     }
 
@@ -249,11 +276,24 @@ export function OrderAcceptanceIntakeTable({
       loading: false,
       message:
         problems.length > 0
-          ? `${numbers.length} 件を一覧に追加しました / ${problems.join(" ・ ")}`
-          : `${numbers.length} 件を一覧に追加しました。AI抽出はこのあと順番に実行されます` +
-            `${pending > 1 ? `（抽出待ち ${pending} 件）` : ""}`,
+          ? tr("sales.orderAcceptanceIntakeTable.addedWithProblems", {
+              count: numbers.length,
+              problems: problems.join(` ${tr("common.s1")} `),
+            })
+          : pending > 1
+            ? tr(
+                "sales.orderAcceptanceIntakeTable.addedQueuedForExtractionWithPending",
+                { count: numbers.length, pending },
+              )
+            : tr("sales.orderAcceptanceIntakeTable.addedQueuedForExtraction", {
+                count: numbers.length,
+              }),
       title:
-        problems.length > 0 ? "優先取込 受付（一部失敗）" : "優先取込 受付",
+        problems.length > 0
+          ? tr(
+              "sales.orderAcceptanceIntakeTable.priorityIntakeAcceptedPartialFailure",
+            )
+          : tr("sales.orderAcceptances.priorityIntakeAccepted"),
       withCloseButton: true,
     });
     // ボタンはここで戻る — 抽出の完了は待たない。
@@ -264,7 +304,7 @@ export function OrderAcceptanceIntakeTable({
   const columns: Column<OrderAcceptanceListRow>[] = [
     {
       key: "number",
-      header: "番号",
+      header: tr("common.number"),
       sortable: true,
       render: (r) => (
         <Text ff="mono" size="sm">
@@ -274,11 +314,11 @@ export function OrderAcceptanceIntakeTable({
     },
     {
       key: "source",
-      header: "取込元",
+      header: tr("common.importedFrom"),
       width: 110,
       sortValue: (r) => r.source,
       render: (r) => {
-        const def = INTAKE_SOURCE_BADGE[r.source];
+        const def = intakeSourceBadge(tr)[r.source];
         return (
           <Badge color={def.color} size="sm" variant="light">
             {def.label}
@@ -288,7 +328,7 @@ export function OrderAcceptanceIntakeTable({
     },
     {
       key: "sourceFilename",
-      header: "ファイル名",
+      header: tr("common.fileName"),
       hideable: true,
       render: (r) => (
         <Text c={r.sourceFilename ? undefined : "dimmed"} size="sm" truncate>
@@ -298,7 +338,7 @@ export function OrderAcceptanceIntakeTable({
     },
     {
       key: "customerName",
-      header: "顧客",
+      header: tr("common.customer"),
       sortable: true,
       sortValue: (r) => r.customerName ?? "",
       render: (r) =>
@@ -308,13 +348,13 @@ export function OrderAcceptanceIntakeTable({
           </Text>
         ) : (
           <Badge color="orange" size="sm" variant="light">
-            未特定
+            {tr("common.notIdentified")}
           </Badge>
         ),
     },
     {
       key: "itemCount",
-      header: "明細数",
+      header: tr("common.lineCount"),
       align: "right",
       width: 80,
       sortValue: (r) => r.itemCount,
@@ -326,7 +366,7 @@ export function OrderAcceptanceIntakeTable({
     },
     {
       key: "orderDate",
-      header: "注文日",
+      header: tr("common.orderDate2"),
       width: 110,
       sortable: true,
       sortValue: (r) => r.orderDate ?? "",
@@ -338,7 +378,7 @@ export function OrderAcceptanceIntakeTable({
     },
     {
       key: "status",
-      header: "状態",
+      header: tr("common.status"),
       width: 110,
       sortValue: (r) => r.status,
       render: (r) => (
@@ -347,7 +387,7 @@ export function OrderAcceptanceIntakeTable({
     },
     {
       key: "extractError",
-      header: "エラー",
+      header: tr("common.error2"),
       width: 90,
       sortValue: (r) => (r.extractError ? 1 : 0),
       render: (r) =>
@@ -361,7 +401,7 @@ export function OrderAcceptanceIntakeTable({
     },
     {
       key: "createdAt",
-      header: "取込日時",
+      header: tr("sales.orderAcceptances.importedAt"),
       width: 140,
       sortable: true,
       sortValue: (r) => r.createdAt,
@@ -382,7 +422,7 @@ export function OrderAcceptanceIntakeTable({
               href="/sales/order-lines"
               leftSection={<IconClipboardList size={14} />}
             >
-              注文明細一覧
+              {tr("sales.orderAcceptances.orderLines")}
             </SecondaryButton>
           )}
           <FileButton
@@ -396,21 +436,24 @@ export function OrderAcceptanceIntakeTable({
                 loading={uploading}
                 {...props}
               >
-                優先取込
+                {tr("sales.orderAcceptances.priorityIntake")}
               </PrimaryButton>
             )}
           </FileButton>
-          <NewButton href={`${BASE_PATH}/new`} label="手入力で新規" />
+          <NewButton
+            href={`${BASE_PATH}/new`}
+            label={tr("common.createByHand")}
+          />
         </Group>
       }
-      breadcrumbs={["販売", "注文請書"]}
+      breadcrumbs={[tr("common.sales"), tr("common.orderAcceptance")]}
       filters={
         <Select
           clearable
           data={statusOptions("OrderAcceptanceIntake")}
           flex={isMobile ? 1 : undefined}
           onChange={setStatus}
-          placeholder="状態"
+          placeholder={tr("common.status")}
           value={status}
           w={isMobile ? undefined : 150}
         />
@@ -420,11 +463,11 @@ export function OrderAcceptanceIntakeTable({
         <TextInput
           leftSection={<IconSearch size={14} />}
           onChange={(e) => setSearch(e.currentTarget.value)}
-          placeholder="番号・ファイル名・顧客で検索"
+          placeholder={tr("sales.orderAcceptances.searchByNumberFileNameOr")}
           value={search}
         />
       }
-      title="注文請書"
+      title={tr("common.orderAcceptance")}
     >
       <Stack gap="xs">
         <Group gap="sm">
@@ -433,10 +476,11 @@ export function OrderAcceptanceIntakeTable({
             size="sm"
             variant="dot"
           >
-            監視フォルダ取込: {intakeDirConfigured ? "有効" : "未設定"}
+            {tr("sales.orderAcceptanceIntakeTable.watchedFolderIntakeLabel")}{" "}
+            {intakeDirConfigured ? tr("common.enabled") : tr("common.notSet2")}
           </Badge>
           <Text c="dimmed" size="xs">
-            優先取込は選んだファイルを先にすべて一覧へ追加し、そのあとAI抽出をまとめて待ち行列に入れます。抽出はバックグラウンドで順に実行します（1件あたり約1〜3分）。取込中の行がある間は30秒ごとに自動更新します。
+            {tr("sales.orderAcceptances.priorityIntakeAddsEveryFileYou")}
           </Text>
         </Group>
         <DataTable
@@ -444,11 +488,11 @@ export function OrderAcceptanceIntakeTable({
           data={filtered}
           defaultSort={{ key: "number", dir: "desc" }}
           emptyIcon={<IconClipboardCheck size={24} />}
-          emptyMessage="注文請書がありません"
+          emptyMessage={tr("sales.orderAcceptances.thereAreNoOrderAcceptances")}
           getRowId={(r) => r.number}
           onRowClick={(r) => router.push(`${BASE_PATH}/${r.number}`)}
           renderCard={(r) => {
-            const def = INTAKE_SOURCE_BADGE[r.source];
+            const def = intakeSourceBadge(tr)[r.source];
             return (
               <Group align="flex-start" justify="space-between" wrap="nowrap">
                 <Stack className="min-w-0" gap={3}>
@@ -461,22 +505,27 @@ export function OrderAcceptanceIntakeTable({
                     </Text>
                   ) : (
                     <Badge color="orange" size="xs" variant="light">
-                      顧客未特定
+                      {tr("common.customerNotIdentified")}
                     </Badge>
                   )}
                   <Text c="dimmed" size="xs" truncate>
-                    {r.sourceFilename ?? "（手入力）"}
+                    {r.sourceFilename ??
+                      tr("sales.orderAcceptances.enteredByHand")}
                   </Text>
                   <Group gap="md" mt={2}>
                     <Badge color={def.color} size="xs" variant="light">
                       {def.label}
                     </Badge>
                     <Text c="dimmed" size="xs">
-                      明細 {r.itemCount} 件
+                      {tr("sales.orderAcceptanceIntakeTable.lineCountLabel", {
+                        count: r.itemCount,
+                      })}
                     </Text>
                     {r.orderDate && (
                       <Text c="dimmed" size="xs">
-                        注文日 {fmt.date(r.orderDate)}
+                        {tr("sales.orderAcceptanceIntakeTable.orderDateLabel", {
+                          date: fmt.date(r.orderDate),
+                        })}
                       </Text>
                     )}
                     {r.extractError && (

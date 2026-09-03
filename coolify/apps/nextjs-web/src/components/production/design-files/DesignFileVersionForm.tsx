@@ -21,6 +21,7 @@ import { Alert, Group, Select, Stack, Text, Textarea } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
 import { IconInfoCircle, IconPlus } from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { useState } from "react";
 import { searchProductOptions } from "@/app/(dashboard)/_shared/option-search";
 import { SecondaryButton } from "@/components/ui/buttons";
@@ -56,6 +57,7 @@ export function DesignFileVersionForm({
   /** `?request=` から来たときの依頼。 */
   requestContext: DesignRequestContext | null;
 }) {
+  const tr = useTranslations();
   const router = useRouter();
   const isMobile = useIsMobile();
 
@@ -108,8 +110,11 @@ export function DesignFileVersionForm({
       } | null;
       if (res.ok && json?.ok) {
         notifications.show({
-          title: "登録しました",
-          message: `設計図 v${json.version} を追加しました`,
+          title: tr("common.registered"),
+          message: tr(
+            "production.designFileVersionForm.designFileWasAddedWithVersion",
+            { version: json.version ?? 1 },
+          ),
           color: "green",
         });
         // 依頼から来たなら依頼へ戻す（次にやることは「完了」なので）。
@@ -120,8 +125,9 @@ export function DesignFileVersionForm({
         );
       } else {
         notifications.show({
-          title: "エラー",
-          message: json?.error ?? "登録に失敗しました",
+          title: tr("common.error2"),
+          message:
+            json?.error ?? tr("production.designFiles.couldNotRegisterIt"),
           color: "red",
         });
       }
@@ -134,20 +140,23 @@ export function DesignFileVersionForm({
     <Stack gap="md">
       {requestContext && (
         <Alert color="blue" icon={<IconInfoCircle size={16} />}>
-          設計依頼 {requestContext.requestNumber} の成果物として登録します。
-          製品「{requestContext.productLabel}」
-          {requestContext.customerName
-            ? `・受注元「${requestContext.customerName}」`
-            : "・汎用"}
-          は依頼で決まっているので変更できません。
+          {tr("production.designFileVersionForm.registeringAsResultOfRequest", {
+            requestNumber: requestContext.requestNumber,
+            productLabel: requestContext.productLabel,
+            customerPart: requestContext.customerName
+              ? tr("production.designFileVersionForm.andCustomerWithName", {
+                  name: requestContext.customerName,
+                })
+              : tr("production.designFiles.generic"),
+          })}
         </Alert>
       )}
 
-      <FormSection title="対象">
+      <FormSection title={tr("common.target")}>
         {requestContext ? null : (
           <SearchSelect
             initialOption={initialProduct ?? undefined}
-            label="製品"
+            label={tr("common.product")}
             onChange={setProductId}
             onSearch={searchProductOptions}
             storageKey="product"
@@ -158,30 +167,32 @@ export function DesignFileVersionForm({
         <Select
           clearable
           data={customerOptions}
-          description="空のままなら「汎用」— 顧客専用の図面が無いときに使われます。版番号は受注元ごとに数えます"
+          description={tr("production.designFiles.leaveItBlankForGenericUsed")}
           disabled={requestContext != null}
-          label="受注元"
+          label={tr("common.orderingCustomer")}
           onChange={setCustomerBpId}
-          placeholder="汎用（すべての顧客）"
+          placeholder={tr("common.genericAllCustomers2")}
           searchable
           value={customerBpId}
         />
       </FormSection>
 
-      <FormSection title="ファイル">
+      <FormSection title={tr("common.file")}>
         <DesignFileSlot
-          description="加工プログラムを起こす元データ。この系列の最新図面になります"
+          description={tr(
+            "production.designFiles.theSourceDataForTheMachining",
+          )}
           file={blueprint}
           fullWidth={isMobile}
-          label="図面データ"
+          label={tr("production.designFiles.drawingFile")}
           onPick={setBlueprint}
           required
         />
         <DesignFileSlot
-          description="STL など、画面で形を確かめるためのファイル。無くても登録できます"
+          description={tr("production.designFiles.aFileSuchAsStlFor")}
           file={preview}
           fullWidth={isMobile}
-          label="プレビュー用（3D）"
+          label={tr("production.designFiles.forPreview3d")}
           onPick={setPreview}
         />
 
@@ -194,9 +205,14 @@ export function DesignFileVersionForm({
               file={r.file}
               fullWidth={isMobile}
               key={r.key}
-              label={`参考資料 ${i + 1}`}
+              label={tr(
+                "production.designFileVersionForm.referenceWithNumber",
+                { number: i + 1 },
+              )}
               note={r.note}
-              notePlaceholder="説明（任意）— 例: 部品図、寸法表"
+              notePlaceholder={tr(
+                "production.designFiles.descriptionOptionalEGPartDrawing",
+              )}
               onNoteChange={(v) =>
                 setReferences((prev) =>
                   prev.map((x, j) => (j === i ? { ...x, note: v } : x)),
@@ -224,21 +240,23 @@ export function DesignFileVersionForm({
                 setNextKey((k) => k + 1);
               }}
             >
-              参考資料を追加
+              {tr("production.designFiles.addAReference")}
             </SecondaryButton>
           </Group>
         </Stack>
 
         <Textarea
           autosize
-          label="メモ"
+          label={tr("common.memo")}
           minRows={2}
           onChange={(e) => setNotes(e.currentTarget.value)}
-          placeholder="この版で何が変わったか（任意）"
+          placeholder={tr(
+            "production.designFiles.whatChangedInThisVersionOptional",
+          )}
           value={notes}
         />
         <Text c="dimmed" size="xs">
-          1 件 20MB まで
+          {tr("production.designFiles.upTo20mbEach")}
         </Text>
       </FormSection>
 

@@ -36,6 +36,7 @@ import {
 } from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { fillMessage } from "@/lib/i18n";
 import { QR_KINDS, qrKeyOfKind } from "@/lib/qr-payload";
 import { playLogoutSound, playWarnSound } from "@/lib/sound";
 import type { StepRecordingData } from "@/lib/step-records";
@@ -218,26 +219,32 @@ export function StepExecutionView({
         <Paper p="md" radius="md" withBorder>
           <Stack gap={4}>
             <Text c="dimmed" size="sm">
-              {m.steps.card.workOrder(step.workOrderNumber)}
-              {step.plantName ? ` ・ ${step.plantName}` : ""}
-              {step.workLocationName ? ` ・ ${step.workLocationName}` : ""}
+              {fillMessage(m.steps.card.workOrder, { n: step.workOrderNumber })}
+              {step.plantName ? ` ${m.common.separator} ${step.plantName}` : ""}
+              {step.workLocationName
+                ? ` ${m.common.separator} ${step.workLocationName}`
+                : ""}
             </Text>
             <Title order={3}>{step.stepName}</Title>
             <Text c="dimmed">{step.productName}</Text>
             <Group gap="md" mt="xs">
               {step.inputQuantity != null && (
                 <Text size="sm">
-                  {m.steps.card.inputRecorded(step.inputQuantity)}
+                  {fillMessage(m.steps.card.inputRecorded, {
+                    n: step.inputQuantity,
+                  })}
                 </Text>
               )}
               {step.lotText != null && (
                 <Text c="dimmed" ff="monospace" size="sm">
-                  {m.steps.card.lot(step.lotText)}
+                  {fillMessage(m.steps.card.lot, { t: step.lotText })}
                 </Text>
               )}
               {step.plannedWorkHours != null && (
                 <Text c="dimmed" size="sm">
-                  {m.steps.card.plannedHours(step.plannedWorkHours)}
+                  {fillMessage(m.steps.card.plannedHours, {
+                    h: step.plannedWorkHours,
+                  })}
                 </Text>
               )}
               {(working || paused) && (
@@ -262,9 +269,10 @@ export function StepExecutionView({
                 {m.steps.location.deviceBlockedTitle}
               </Text>
               <Text size="sm">
-                {m.steps.location.deviceBlockedBody(
-                  locationGate.deviceDefaultLabel ?? m.steps.location.none,
-                )}
+                {fillMessage(m.steps.location.deviceBlockedBody, {
+                  label:
+                    locationGate.deviceDefaultLabel ?? m.steps.location.none,
+                })}
               </Text>
               {locationGate.allowed.length > 0 && (
                 <Stack gap={2}>
@@ -273,11 +281,12 @@ export function StepExecutionView({
                   </Text>
                   {locationGate.allowed.map((a) => (
                     <Text key={a.label} size="sm">
-                      ・{a.label}
+                      {m.common.separator}
+                      {a.label}
                       {a.deviceNames.length > 0
-                        ? `（${m.steps.location.devicesAt(
-                            a.deviceNames.join(" / "),
-                          )}）`
+                        ? `（${fillMessage(m.steps.location.devicesAt, {
+                            names: a.deviceNames.join(" / "),
+                          })}）`
                         : ""}
                     </Text>
                   ))}
@@ -320,13 +329,27 @@ export function StepExecutionView({
               {pendingLocationCode != null &&
                 step.sessionState === "STARTABLE" && (
                   <Text c="teal" size="sm">
-                    {m.steps.location.pendingScanned(pendingLocationCode)}
+                    {fillMessage(m.steps.location.pendingScanned, {
+                      code: pendingLocationCode,
+                    })}
                   </Text>
                 )}
+              {/* 開始前の案内は**どこが記録されるのかを名指しする**。以前は
+                  「端末の既定作業場所が記録されます」とだけ出していたので、
+                  (1) それがどこなのかは隠し設定画面を開くまで判らず、
+                  (2) 既定が未設定でも同じ文が出て、記録されないのに
+                  「記録されます」と読めていた。 */}
               {step.sessionState === "STARTABLE" &&
                 pendingLocationCode == null && (
-                  <Text c="dimmed" size="sm">
-                    {m.steps.location.deviceDefaultHint}
+                  <Text
+                    c={locationGate.deviceDefaultLabel ? "dimmed" : "orange"}
+                    size="sm"
+                  >
+                    {locationGate.deviceDefaultLabel
+                      ? fillMessage(m.steps.location.deviceDefaultHint, {
+                          label: locationGate.deviceDefaultLabel,
+                        })
+                      : m.steps.location.deviceDefaultNone}
                   </Text>
                 )}
               {locationNotice && (
@@ -362,7 +385,9 @@ export function StepExecutionView({
 
         {step.sessionState === "OTHER" && (
           <Alert color="orange" icon={<IconAlertTriangle size={20} />}>
-            {m.steps.state.othersWorking(step.lockedByName ?? "")}
+            {fillMessage(m.steps.state.othersWorking, {
+              name: step.lockedByName ?? "",
+            })}
           </Alert>
         )}
 
@@ -383,7 +408,9 @@ export function StepExecutionView({
                   />
                   {step.expectedInputQuantity != null && (
                     <Text c="dimmed" size="sm">
-                      {m.steps.start.expectedHint(step.expectedInputQuantity)}
+                      {fillMessage(m.steps.start.expectedHint, {
+                        n: step.expectedInputQuantity,
+                      })}
                       {startInput !== step.expectedInputQuantity
                         ? ` — ${m.steps.start.differsHint}`
                         : ""}
@@ -431,11 +458,12 @@ export function StepExecutionView({
                   <Title order={4}>{m.steps.complete.title}</Title>
                   {trackedMode === null ? (
                     <Text c="dimmed">
-                      {m.steps.complete.noneNote(
-                        step.inputQuantity ??
+                      {fillMessage(m.steps.complete.noneNote, {
+                        n:
+                          step.inputQuantity ??
                           step.expectedInputQuantity ??
                           step.workOrderPlannedQuantity,
-                      )}
+                      })}
                     </Text>
                   ) : (
                     <StepQuantityForm

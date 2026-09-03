@@ -1,4 +1,5 @@
 import { notFound } from "next/navigation";
+import { getTranslations } from "next-intl/server";
 import { MaterialReceiptDetail } from "@/components/purchase/material-receipts/MaterialReceiptDetail";
 import { listAttachments } from "@/lib/attachments";
 import { requireAppRead } from "@/lib/authz-page";
@@ -8,7 +9,12 @@ export const dynamic = "force-dynamic";
 
 /** 未認証スクレイパ向けの汎用 OG（種別のみ、業務データなし）。 */
 export async function generateMetadata() {
-  return { title: "素材入荷 詳細 | CKK 業務管理システム" };
+  const tr = await getTranslations();
+  return {
+    title: tr(
+      "purchase.materialReceipts.materialReceiptDetailsCkkBusinessManagement",
+    ),
+  };
 }
 
 /** 素材入荷 詳細 (PU23). URL id = uuid. */

@@ -1,4 +1,5 @@
 import { Stack, Text } from "@mantine/core";
+import { getTranslations } from "next-intl/server";
 import {
   type TrialPricingHubSection,
   TrialPricingHubSections,
@@ -6,7 +7,7 @@ import {
 import { PageHeader } from "@/components/ui/PageHeader";
 import { requireAppRead } from "@/lib/authz-page";
 import { getTrialPricingSettings } from "@/lib/system-settings";
-import { MATERIAL_PRICE_BASIS_OPTIONS } from "@/lib/trial-pricing-settings";
+import { materialPriceBasisOptions } from "@/lib/trial-pricing-settings";
 
 export const dynamic = "force-dynamic";
 
@@ -14,42 +15,54 @@ const BASE = "/settings/trial-pricing-engine";
 
 /** 価格試算計算（SY02）— 各セクションを閲覧し、クリックで個別の編集ページへ。 */
 export default async function TrialPricingEnginePage() {
+  const tr = await getTranslations();
   const denied = await requireAppRead("trial-pricing-engine");
   if (denied) return denied;
   const s = await getTrialPricingSettings();
   const basisLabel =
-    MATERIAL_PRICE_BASIS_OPTIONS.find((o) => o.value === s.materialPriceBasis)
+    materialPriceBasisOptions(tr).find((o) => o.value === s.materialPriceBasis)
       ?.label ?? s.materialPriceBasis;
 
   const sections: TrialPricingHubSection[] = [
     {
       key: "criteria",
-      title: "計算基準",
-      summary: `${s.criteria.length} 基準 — 見積単価は加算基準の合計`,
+      title: tr("common.calculationBasis"),
+      summary: tr("settings.trialPricingEngine.criteriaSummary", {
+        count: s.criteria.length,
+      }),
       href: `${BASE}/criteria`,
     },
     {
       key: "tool-types",
-      title: "工具種管理",
-      summary: `${s.toolTypes.length} 種 — 種ごとの適用基準と見積単価`,
+      title: tr("common.toolTypes"),
+      summary: tr("settings.trialPricingEngine.toolTypesSummary", {
+        count: s.toolTypes.length,
+      }),
       href: `${BASE}/tool-types`,
     },
     {
       key: "material-policy",
-      title: "材料参照価格ポリシー",
-      summary: `${basisLabel} / 参照 ${s.materialPriceLookbackMonths}ヶ月`,
+      title: tr("common.materialReferencePricePolicy"),
+      summary: tr("settings.trialPricingEngine.materialPolicySummary", {
+        basis: basisLabel,
+        months: s.materialPriceLookbackMonths,
+      }),
       href: `${BASE}/material-policy`,
     },
     {
       key: "custom-inputs",
-      title: "カスタム入力項目",
-      summary: `${s.customInputs.length} 項目 — 見積入力とグローバル固定係数`,
+      title: tr("common.customInputs"),
+      summary: tr("settings.trialPricingEngine.customInputsSummary", {
+        count: s.customInputs.length,
+      }),
       href: `${BASE}/custom-inputs`,
     },
     {
       key: "lookups",
-      title: "ルックアップ表",
-      summary: `${s.lookupTables.length} 表 — 径×全長マトリクス等を式内で参照`,
+      title: tr("common.lookupTable"),
+      summary: tr("settings.trialPricingEngine.lookupsSummary", {
+        count: s.lookupTables.length,
+      }),
       href: `${BASE}/lookups`,
     },
   ];
@@ -57,11 +70,11 @@ export default async function TrialPricingEnginePage() {
   return (
     <Stack gap="md" maw={1000}>
       <PageHeader
-        breadcrumbs={["システム", "価格試算計算"]}
-        title="価格試算計算"
+        breadcrumbs={[tr("common.system"), tr("common.priceEstimateEngine")]}
+        title={tr("common.priceEstimateEngine")}
       />
       <Text c="dimmed" size="sm">
-        各セクションを選ぶと編集ページが開きます。
+        {tr("settings.trialPricingEngine.selectingASectionOpensItsEdit")}
       </Text>
       <TrialPricingHubSections sections={sections} />
     </Stack>

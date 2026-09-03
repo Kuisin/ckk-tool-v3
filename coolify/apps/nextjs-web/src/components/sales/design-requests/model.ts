@@ -67,19 +67,9 @@ export const DESIGN_KIND_COLOR: Record<DesignRequestKind, string> = {
 };
 
 /** history Json の action → 画面表示名（PurchaseRequest と同型）。 */
-export const DESIGN_HISTORY_ACTION_LABEL: Record<string, string> = {
-  CREATE: "作成",
-  UPDATE: "更新",
-  REQUEST_APPROVAL: "承認依頼",
-  APPROVE: "承認",
-  REJECT: "差し戻し",
-  ASSIGN: "担当者変更",
-  KIND_OVERRIDE: "依頼区分の変更",
-  START: "着手",
-  COMPLETE: "完了",
-  REOPEN: "差し戻し（作業）",
-  CANCEL: "キャンセル",
-};
+// history Json の action → 表示ラベルは lib/enum-labels.ts
+// designHistoryActionLabel(value, locale) が持つ（enum.DESIGN_HISTORY_ACTION_
+// LABEL.*）。
 
 /**
  * 依頼区分の自動判定結果。判定そのものはサーバー側（design_files を引く）で、
@@ -94,11 +84,19 @@ export interface DesignKindDetection {
   latestFileLabel: string | null;
 }
 
-/** 判定の根拠を 1 行の日本語にする（フォームと詳細で同じ文言を使う）。 */
-export function describeDetection(d: DesignKindDetection): string {
+/**
+ * 判定の根拠を 1 行にする（フォームと詳細で同じ文言を使う）。
+ * 訳は呼び出し側の `tr` に委ねる（このファイルは pure / client-safe のみ）。
+ */
+export function describeDetection(
+  d: DesignKindDetection,
+  tr: (key: string, values?: Record<string, string | number | Date>) => string,
+): string {
   return d.versionCount === 0
-    ? "この製品にはまだ設計書がありません → 新規"
-    : `この製品には v${d.versionCount} まであります → 改訂`;
+    ? tr("sales.designRequests.noDesignYetSoNew")
+    : tr("sales.designRequests.hasVersionsSoRevision", {
+        versionCount: d.versionCount,
+      });
 }
 
 /**

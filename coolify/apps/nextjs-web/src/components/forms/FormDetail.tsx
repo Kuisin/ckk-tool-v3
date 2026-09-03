@@ -23,7 +23,8 @@ import {
   IconWorld,
 } from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
-import { useState, useTransition } from "react";
+import { useTranslations } from "next-intl";
+import { useEffect, useState, useTransition } from "react";
 import { useFormat } from "@/components/layout/PreferencesProvider";
 import type { FlowApprover } from "@/components/master/approval-flows/ApproverPermissionBadge";
 import { AppTabs } from "@/components/ui/AppTabs";
@@ -43,7 +44,7 @@ import {
   SummaryGrid,
 } from "@/components/ui/shells";
 import { useIsMobile } from "@/hooks/useViewport";
-import { AVAILABILITY_LABEL } from "@/lib/form-schema";
+import { availabilityLabel } from "@/lib/form-schema";
 import type { FormDetailView, ResponseRow } from "@/lib/forms";
 import { keepInAppOnClick } from "@/lib/pwa-display";
 import type { ShareGrantView } from "@/lib/share-grants";
@@ -112,13 +113,16 @@ export function FormDetail({
     status: "DRAFT" | "PUBLISHED" | "ARCHIVED",
   ) => Promise<{ ok: boolean; error?: string }>;
 }) {
+  const tr = useTranslations();
   const router = useRouter();
   const fmt = useFormat();
   const isMobile = useIsMobile();
-  const shareUrl =
-    typeof window !== "undefined"
-      ? `${window.location.origin}/f/${form.code}`
-      : `/f/${form.code}`;
+  // 共有 URL は絶対 URL にしたいが、origin はブラウザでしか分からない。
+  // SSR とクライアント初回描画は同じ相対パスにして、マウント後に origin を足す
+  // （描画中に window を見ると hydration の文字列不一致になる — e2e で検出）。
+  const [origin, setOrigin] = useState("");
+  useEffect(() => setOrigin(window.location.origin), []);
+  const shareUrl = `${origin}/f/${form.code}`;
 
   const [pending, startTransition] = useTransition();
   const [exportOpen, setExportOpen] = useState(false);
@@ -133,8 +137,8 @@ export function FormDetail({
         result.ok
           ? { title: done, message: form.title, color: "green" }
           : {
-              title: "変更できませんでした",
-              message: result.error ?? "もう一度お試しください",
+              title: tr("forms.formDetail.couldNotBeChanged"),
+              message: result.error ?? tr("forms.formDetail.pleaseTryAgain"),
               color: "red",
             },
       );
@@ -150,29 +154,32 @@ export function FormDetail({
           ? []
           : [
               {
-                label: "公開する",
+                label: tr("common.publish"),
                 icon: <IconWorld size={14} />,
                 disabled: pending || form.currentVersion === 0,
                 disabledReason:
                   form.currentVersion === 0
-                    ? "先に「編集」から項目を追加して保存してください"
+                    ? tr("forms.formDetail.addItemsUnderEditAndSave")
                     : undefined,
-                onClick: () => applyStatus("PUBLISHED", "公開しました"),
+                onClick: () => applyStatus("PUBLISHED", tr("common.published")),
               },
             ]),
         ...(form.status === "PUBLISHED"
           ? [
               {
-                label: "下書きに戻す",
+                label: tr("forms.formDetail.returnToDraft"),
                 icon: <IconArrowBackUp size={14} />,
                 disabled: pending,
                 onClick: () =>
                   openConfirm({
-                    title: "下書きに戻す",
-                    message:
-                      "受付を止めます。共有 URL を開いても回答できなくなります（今ある回答は残ります）。",
-                    confirmLabel: "下書きに戻す",
-                    onConfirm: () => applyStatus("DRAFT", "下書きに戻しました"),
+                    title: tr("forms.formDetail.returnToDraft"),
+                    message: tr("forms.formDetail.closesItTheSharedUrlNo"),
+                    confirmLabel: tr("forms.formDetail.returnToDraft"),
+                    onConfirm: () =>
+                      applyStatus(
+                        "DRAFT",
+                        tr("forms.formDetail.returnedToDraft"),
+                      ),
                   }),
               },
             ]
@@ -181,19 +188,18 @@ export function FormDetail({
           ? []
           : [
               {
-                label: "アーカイブする",
+                label: tr("common.archive"),
                 icon: <IconArchive size={14} />,
                 color: "red",
                 disabled: pending,
                 divider: true,
                 onClick: () =>
                   openConfirm({
-                    title: "アーカイブする",
-                    message:
-                      "使い終わったフォームとして片付けます。受付は止まりますが、回答と集計は残ります。",
-                    confirmLabel: "アーカイブする",
+                    title: tr("common.archive"),
+                    message: tr("forms.formDetail.putsTheFormAwayAsFinished"),
+                    confirmLabel: tr("common.archive"),
                     onConfirm: () =>
-                      applyStatus("ARCHIVED", "アーカイブしました"),
+                      applyStatus("ARCHIVED", tr("common.archived")),
                   }),
               },
             ]),
@@ -207,21 +213,21 @@ export function FormDetail({
           menuItems={[
             ...statusItems,
             {
-              label: "回答を集計する",
+              label: tr("forms.formDetail.summarizeTheResponses"),
               icon: <IconChartBar size={14} />,
               onClick: () => router.push(`/general/forms/${form.code}/summary`),
             },
             {
               // 回答画面は「配る先が見るもの」なので、編集中の画面を
               // 置き換えずに別タブで開く（PWA ではアプリ内で開く）。
-              label: "回答画面を開く",
+              label: tr("forms.formDetail.openTheResponseForm"),
               icon: <IconLink size={14} />,
               href: `/f/${form.code}`,
             },
             {
               // 別環境へ持っていくための書き出し。実ファイルの
               // ダウンロードなので href（Route Handler）で開く。
-              label: "定義を書き出す（.txt）",
+              label: tr("forms.formDetail.exportTheDefinitionTxt"),
               icon: <IconDownload size={14} />,
               href: `/api/forms/${form.code}/export`,
             },
@@ -234,8 +240,8 @@ export function FormDetail({
         />
       }
       breadcrumbs={[
-        { label: "一般" },
-        { label: "フォーム", href: "/general/forms" },
+        { label: tr("common.general") },
+        { label: tr("common.forms"), href: "/general/forms" },
         { label: form.title },
       ]}
       createdAt={fmt.dateTime(form.createdAt)}
@@ -245,51 +251,60 @@ export function FormDetail({
     >
       {form.currentVersion === 0 && (
         <Alert color="yellow">
-          まだ項目が公開されていません。「編集」から項目を組んで公開してください。
+          {tr("forms.formDetail.theFieldsAreNotPublishedYet")}
         </Alert>
       )}
 
       <SummaryGrid>
         <FieldValue
-          label="種類"
-          value={form.kind === "REQUEST" ? "申請・報告" : "アンケート"}
+          label={tr("common.kind")}
+          value={form.kind === "REQUEST" ? "申請・報告" : tr("common.survey")}
         />
         <FieldValue
-          label="受付"
+          label={tr("common.reception")}
           value={
             <Badge
               color={form.availability === "OPEN" ? "green" : "gray"}
               variant="light"
             >
-              {AVAILABILITY_LABEL[form.availability]}
+              {availabilityLabel(tr)[form.availability]}
             </Badge>
           }
         />
-        <FieldValue label="定義バージョン" value={`v${form.currentVersion}`} />
+        <FieldValue
+          label={tr("forms.formDetail.definitionVersion")}
+          value={`v${form.currentVersion}`}
+        />
         {/* 集計を Metabase で見るときに貼る値。集計画面にも同じものを出している。 */}
         <FieldValue
-          label="フォームコード"
+          label={tr("common.formCode")}
           value={<CopyableValue value={form.code} />}
         />
         <FieldValue
-          label="受付開始"
-          value={form.opensAt ? fmt.dateTime(form.opensAt) : "公開時から"}
+          label={tr("common.opens")}
+          value={
+            form.opensAt
+              ? fmt.dateTime(form.opensAt)
+              : tr("forms.formDetail.sinceItWasPublished")
+          }
         />
         <FieldValue
-          label="受付終了"
-          value={form.closesAt ? fmt.dateTime(form.closesAt) : "無期限"}
+          label={tr("common.closed")}
+          value={
+            form.closesAt ? fmt.dateTime(form.closesAt) : tr("common.noEndDate")
+          }
         />
         <FieldValue
-          label="回答者の表示"
+          label={tr("common.showRespondents")}
           value={
             form.respondentVisibility === "HIDDEN"
-              ? "表示しない（匿名で集計）"
-              : "表示する"
+              ? tr("forms.formDetail.doNotShowSummarizeAnonymously")
+              : tr("forms.formDetail.show")
           }
         />
         <FieldValue
           fullWidth
-          label="共有 URL"
+          label={tr("forms.formDetail.shareUrl")}
           value={
             <Group gap="xs" wrap={isMobile ? "wrap" : "nowrap"}>
               {/* URL そのものも踏めるようにする（コピーして貼り直す手間を省く）。
@@ -313,7 +328,7 @@ export function FormDetail({
                     }
                     onClick={copy}
                   >
-                    {copied ? "コピーしました" : "コピー"}
+                    {copied ? "コピーしました" : tr("common.copy2")}
                   </GhostButton>
                 )}
               </CopyButton>
@@ -325,23 +340,37 @@ export function FormDetail({
                 keepInApp
                 leftSection={<IconLink size={14} />}
               >
-                回答画面を開く
+                {tr("forms.formDetail.openTheResponseForm")}
               </GhostButton>
             </Group>
           }
         />
         {form.description && (
-          <FieldValue fullWidth label="説明" value={form.description} />
+          <FieldValue
+            fullWidth
+            label={tr("common.description")}
+            value={form.description}
+          />
         )}
       </SummaryGrid>
 
       <AppTabs defaultValue="fields">
         <Tabs.List>
-          <Tabs.Tab value="fields">項目（{form.fields.length}）</Tabs.Tab>
-          <Tabs.Tab value="responses">回答（{responses.length}）</Tabs.Tab>
-          {approval && <Tabs.Tab value="approval">承認</Tabs.Tab>}
-          <Tabs.Tab value="share">共有</Tabs.Tab>
-          <Tabs.Tab value="history">履歴</Tabs.Tab>
+          <Tabs.Tab value="fields">
+            {tr("forms.formDetail.fieldsWithCount", {
+              count: form.fields.length,
+            })}
+          </Tabs.Tab>
+          <Tabs.Tab value="responses">
+            {tr("forms.formDetail.responsesWithCount", {
+              count: responses.length,
+            })}
+          </Tabs.Tab>
+          {approval && (
+            <Tabs.Tab value="approval">{tr("common.approve")}</Tabs.Tab>
+          )}
+          <Tabs.Tab value="share">{tr("common.sharing")}</Tabs.Tab>
+          <Tabs.Tab value="history">{tr("common.history")}</Tabs.Tab>
         </Tabs.List>
 
         <Tabs.Panel pt="md" value="fields">
@@ -362,14 +391,14 @@ export function FormDetail({
                   router.push(`/general/forms/${form.code}/summary`)
                 }
               >
-                集計を見る
+                {tr("forms.formDetail.viewTheSummary")}
               </GhostButton>
               <GhostButton
                 fullWidth={isMobile}
                 leftSection={<IconTableExport size={14} />}
                 onClick={() => setExportOpen(true)}
               >
-                書き出す
+                {tr("forms.formDetail.export")}
               </GhostButton>
             </Group>
           )}
@@ -385,7 +414,7 @@ export function FormDetail({
               },
               {
                 key: "responseNumber",
-                header: "回答番号",
+                header: tr("common.responseNumber"),
                 width: 180,
                 render: (r) => (
                   <Text ff="mono" size="xs">
@@ -399,7 +428,7 @@ export function FormDetail({
                 ? [
                     {
                       key: "respondent",
-                      header: "回答者",
+                      header: tr("common.respondent"),
                       width: 140,
                       render: (r: ResponseRow) => r.respondent ?? "—",
                     },
@@ -407,7 +436,7 @@ export function FormDetail({
                 : []),
               {
                 key: "status",
-                header: "状態",
+                header: tr("common.status"),
                 width: 110,
                 render: (r) => (
                   <StatusBadge entity="FormResponse" status={r.status} />
@@ -415,7 +444,7 @@ export function FormDetail({
               },
               {
                 key: "summary",
-                header: "内容",
+                header: tr("common.details"),
                 render: (r) => (
                   <Text lineClamp={1} size="sm">
                     {r.summary || "—"}
@@ -424,14 +453,14 @@ export function FormDetail({
               },
               {
                 key: "submittedAt",
-                header: "提出日時",
+                header: tr("common.submittedAt"),
                 width: 150,
                 render: (r) =>
                   r.submittedAt ? fmt.dateTime(r.submittedAt) : "—",
               },
             ]}
             data={responses}
-            emptyMessage="まだ回答がありません"
+            emptyMessage={tr("common.noResponsesYet")}
             getRowId={(r) => r.responseNumber}
             onRowClick={(r) =>
               router.push(
@@ -460,7 +489,9 @@ export function FormDetail({
                   {r.summary || "—"}
                 </Text>
                 <Text c="dimmed" size="xs">
-                  {r.submittedAt ? fmt.dateTime(r.submittedAt) : "未提出"}
+                  {r.submittedAt
+                    ? fmt.dateTime(r.submittedAt)
+                    : tr("forms.formDetail.notSubmitted")}
                 </Text>
               </Stack>
             )}
@@ -504,7 +535,7 @@ export function FormDetail({
                 showNotifyOnComplete={form.kind === "REQUEST"}
               />
             )}
-            title="共有先"
+            title={tr("forms.formDetail.sharedWith")}
             view={
               <ShareGrantsView
                 conditionFields={conditionFieldsOf(form.fields)}
