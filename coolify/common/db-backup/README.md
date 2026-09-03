@@ -86,7 +86,8 @@ self-heals by taking a full.
 
 - `docker logs db-backup` (`[db-backup]` lines; picked up by the existing
   Loki/Alloy pipeline like other stacks).
-- `/data/db-backups/latest-status` — one line: `2026-07-05T13:00 hourly OK size=12M`.
+- `/data/db-backups/latest-status` — one line: `2026-07-05T13:00 hourly OK size=12M`（**ファイル**）。
+- `/data/db-backups/aux-status.json` — aux-backup の結果 `{at, ok, fail, skip, secrets}`。
 - Healthy state: newest `hourly/` (or today's `daily/`) is **< 2 h old**.
 
 ## Restore runbook
@@ -146,45 +147,78 @@ seaweedfs を起動。DB の `files.storage_key` と整合する時点の DB バ
 
 ## オフサイト（クラウド）同期 — offsite-backup サービス
 
-`/data/db-backups` 全体（PG 増分 + 論理 dump + SeaweedFS tar + pre-restore）を
-クラウドへ保全する（ホスト障害・盗難・災害対策 = 3-2-1 の「1」）。**作成即転送**:
+`/data/db-backups` のうち**復旧に要る集合**をクラウドへ保全する（ホスト障害・
+盗難・災害対策 = 3-2-1 の「1」。何を送るかは下表）。**作成即転送**:
 `inotify` で新規バックアップの書き込みを検知し、その都度 `rclone copy` で即リモート
 へ送る（全プロデューサが同じ `/backups` へ書くため 1 つの watcher で網羅）。さらに
 **04時台に 1 日 1 回 `rclone sync`（ミラー）** し、ローカルで prune された世代を
 リモートからも削除して保持を追従する。`OFFSITE_REMOTE` 未設定時は待機のみ。
 
+**送るのは全部ではない。** `/backups` は 8.19GiB あるが、その大半（`hourly/`
+5.1GB + `daily/` 2.3GB）は物理増分で、**ローカルの高速復旧**のためのもの。
+オフサイトが要るのは「サーバーごと失った」ときで、そこで使うのは論理 dump と
+月次フルなので、既定では復旧に要る最小集合だけを送る:
+
+| 送る | 中身 |
+|---|---|
+| `logical/**` | `pg_dump -Fc` の自己完結スナップショット（**復旧の主役**）|
+| `monthly/**` | 月次の物理フル |
+| `aux/**` `aux-monthly/**` | coolify-db / grafana / 暗号化シークレット |
+| `seaweedfs/**` | ファイルストレージの tar |
+| **送らない** | `hourly/**` `daily/**` `tmp/**` `pre-restore/**` `manual/**` |
+
+実測 **8.19GiB → 1.10GiB**（5,588 objects, 2026-09-03）。R2 無料枠（10GB /
+Class A 100万回）に収まる。対象は `OFFSITE_INCLUDE` で上書きできる。
+**オフサイトの RPO は論理 dump の間隔 = 24 時間**になる（ローカルは 1 時間のまま）。
+
+**暗号化は必須**（`crypt` リモートを R2 の上に被せる）。バックアップには業務文書と
+個人情報（`login_attempts` の IP・端末シグネチャ、従業員マスタ）が入る。事業者が
+持つのが暗号文だけになるので、越境移転の判断も単純になる。
+
 **有効化**（サーバーの `~/stacks/db-backup/.env` に追記 — コミット禁止）:
 
 ```ini
-# 例 A: さくらのレンタルサーバー（SFTP — 契約済みストレージを流用）
-OFFSITE_REMOTE=sakura:ckk-backups
-RCLONE_CONFIG_SAKURA_TYPE=sftp
-RCLONE_CONFIG_SAKURA_HOST=ckk-tool.sakura.ne.jp
-RCLONE_CONFIG_SAKURA_USER=<さくらアカウント>
-RCLONE_CONFIG_SAKURA_PASS=<rclone obscure したパスワード>   # docker run --rm rclone/rclone obscure '<平文>'
-
-# 例 B: Cloudflare R2（S3 互換 — 10GB まで無料、Cloudflare 契約に同居）
-OFFSITE_REMOTE=r2:ckk-backups
+# R2（S3 互換）— 素の保管先
 RCLONE_CONFIG_R2_TYPE=s3
 RCLONE_CONFIG_R2_PROVIDER=Cloudflare
-RCLONE_CONFIG_R2_ACCESS_KEY_ID=<key>
-RCLONE_CONFIG_R2_SECRET_ACCESS_KEY=<secret>
+RCLONE_CONFIG_R2_ACCESS_KEY_ID=<R2 の Access Key ID>
+RCLONE_CONFIG_R2_SECRET_ACCESS_KEY=<R2 の Secret Access Key>
 RCLONE_CONFIG_R2_ENDPOINT=https://<account_id>.r2.cloudflarestorage.com
+
+# crypt — 上の R2 を包む。送信先はこちらを指す
+RCLONE_CONFIG_R2CRYPT_TYPE=crypt
+RCLONE_CONFIG_R2CRYPT_REMOTE=r2:ckk-backups
+RCLONE_CONFIG_R2CRYPT_PASSWORD=<rclone obscure した値>
+RCLONE_CONFIG_R2CRYPT_PASSWORD2=<rclone obscure した値（salt）>
+
+OFFSITE_REMOTE=r2crypt:
 ```
 
+`rclone obscure` は**暗号化ではなく可逆な難読化**（rclone が要求する形式）なので、
+`.env` を読める者には平文と等価。意味があるのは「クラウド側が平文を持たない」こと。
+
+> ⚠️ **平文パスフレーズをサーバー外に必ず置く。** これを失うとオフサイトの
+> バックアップは永久に復号できない — サーバー全損時にこそ使うものなので、
+> サーバーだけに置いては意味がない。この Mac の Keychain に
+> `ckk-r2-crypt-password` / `ckk-r2-crypt-password2` として保管済み
+> （`security find-generic-password -s ckk-r2-crypt-password -w`）。
+> **パスワードマネージャにも入れること**（Keychain ごと失う場合に備える）。
+
+前提: Cloudflare ダッシュボードで **R2 を有効化**（無料枠でも課金情報の登録が要る）
+してからバケット `ckk-backups` を作る。API だけでは有効化できない
+（`code 10042: Please enable R2 through the Cloudflare Dashboard`）。
+
 適用: `docker compose up -d offsite-backup`。`OFFSITE_REMOTE` 未設定なら安全に
-待機する（何も送らない）。初回は手動同期で検証を推奨:
+待機する（何も送らない）。初回は必ず dry-run で確認:
 
 ```sh
+docker exec offsite-backup rclone size /backups --filter-from /tmp/offsite-filter.txt
 docker exec offsite-backup rclone sync /backups "$OFFSITE_REMOTE" --dry-run --stats-one-line
 ```
 
-**復元**: `rclone copy <remote>:ckk-backups /data/db-backups` で取り戻し、
-上記の PG / SeaweedFS 復元手順に接続する。
-
-**注意**: 保持世代はソース側で管理（sync はミラー）。バックアップには業務
-文書・個人情報が含まれるため、リモート側のアクセス権は最小化すること。
-機密性を上げたい場合は rclone crypt リモートを挟む（README 追補可）。
+**復元**: `rclone copy r2crypt: /data/db-backups`（crypt 経由なので自動で復号される）
+で取り戻し、下記の PG / SeaweedFS 復元手順に接続する。**復元は必ず一度試すこと** —
+試していないオフサイトバックアップは無いのと同じ。
 
 ## 論理バックアップ（logical-dump サービス）
 

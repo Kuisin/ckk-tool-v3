@@ -9,14 +9,33 @@
 # 保持（ローカルで prune された分をリモートからも削除）は 1 日 1 回の
 # rclone sync（ミラー）で追従する。
 #
+# **全部は送らない。** /backups は 7.8GB あるが、その大半（hourly 5.1GB +
+# daily 2.3GB）は物理増分で、ローカルの高速復旧のためのもの。オフサイトが要る
+# のは「サーバーごと失った」場合で、そこで使うのは論理 dump と月次フルなので、
+# 既定では復旧に要る最小集合だけを送る。実測 8.19GiB → **1.10GiB**（5,588 objects,
+# 2026-09-03 時点）で、R2 の無料枠（10GB / Class A 100万回）に十分収まる。
+# オフサイトの RPO は論理 dump の間隔 = 24 時間になる（ローカルは 1 時間のまま）。
+#
 # 設定（サーバーの .env のみ — コミット禁止）:
-#   OFFSITE_REMOTE      … rclone リモート:パス（例: sakura:ckk-backups / r2:ckk-backups）
+#   OFFSITE_REMOTE      … rclone リモート:パス（例: r2crypt:ckk-backups）
+#                          個人情報を含むため **crypt リモート推奨**（README 参照）
+#   OFFSITE_INCLUDE     … 送る対象（空白区切り）。既定は下記の最小集合
 #   RCLONE_CONFIG_*     … rclone リモート定義（README 参照）
 # 未設定なら警告 1 回で待機（再起動ループさせない）。
 set -eu
 
 REMOTE="${OFFSITE_REMOTE:-}"
 SRC="${OFFSITE_SRC:-/backups}"
+# 復旧に要る最小集合。hourly/ と daily/ は意図的に外す（上のコメント参照）。
+OFFSITE_INCLUDE="${OFFSITE_INCLUDE:-logical/** monthly/** aux/** aux-monthly/** seaweedfs/** aux-status.json latest-status}"
+FILTER_FILE=/tmp/offsite-filter.txt
+
+# rclone のフィルタファイルを組む（先勝ち。最後の "- *" で残りを全部落とす）。
+build_filter() {
+  : >"$FILTER_FILE"
+  for pat in $OFFSITE_INCLUDE; do printf '+ %s\n' "$pat" >>"$FILTER_FILE"; done
+  printf -- '- *\n' >>"$FILTER_FILE"
+}
 
 if [ -z "$REMOTE" ]; then
   echo "[offsite] OFFSITE_REMOTE 未設定 — オフサイト同期は無効（README 参照）"
@@ -28,17 +47,19 @@ push() {
   echo "[offsite] copy → ${REMOTE} $(date +%FT%T)"
   rclone copy "$SRC" "$REMOTE" --transfers 4 --checkers 8 --contimeout 30s \
     --timeout 5m --retries 3 --low-level-retries 10 --stats-one-line \
-    --exclude 'tmp/**' --exclude '.lock' || echo "[offsite] copy FAILED（次イベントで再試行）"
+    --filter-from "$FILTER_FILE" || echo "[offsite] copy FAILED（次イベントで再試行）"
 }
 # rclone sync: ミラー（ローカルで削除された世代をリモートからも削除）。日次保持用。
 mirror() {
   echo "[offsite] daily mirror (sync) → ${REMOTE} $(date +%FT%T)"
   rclone sync "$SRC" "$REMOTE" --transfers 4 --checkers 8 --contimeout 30s \
     --timeout 5m --retries 3 --low-level-retries 10 --stats-one-line \
-    --exclude 'tmp/**' --exclude '.lock' || echo "[offsite] sync FAILED"
+    --filter-from "$FILTER_FILE" || echo "[offsite] sync FAILED"
 }
 
+build_filter
 echo "[offsite] enabled → ${REMOTE}（作成即 copy ＋ 04時台に日次 mirror, TZ=${TZ:-UTC}）"
+echo "[offsite] 対象: ${OFFSITE_INCLUDE}"
 push  # 起動時キャッチアップ
 
 last_mirror=""
