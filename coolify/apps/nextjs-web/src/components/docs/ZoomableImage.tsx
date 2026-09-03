@@ -39,8 +39,8 @@ function getImageSrc(src: unknown): string {
 export function ZoomableImage(
   props: ImgHTMLAttributes<HTMLImageElement> & { isExternal?: boolean },
 ) {
-  const t = useTranslations("common");
   const { isExternal, ...imgProps } = props;
+  const tr = useTranslations();
   const [open, setOpen] = useState(false);
   const src = getImageSrc(props.src);
   const alt = typeof props.alt === "string" ? props.alt : "";
@@ -99,21 +99,21 @@ export function ZoomableImage(
                   }}
                 >
                   <ActionIcon
-                    aria-label={t("zoomOut")}
+                    aria-label={tr("docs.zoomableImage.zoomOut")}
                     onClick={() => zoomOut()}
                     variant="default"
                   >
                     −
                   </ActionIcon>
                   <ActionIcon
-                    aria-label={t("zoomIn")}
+                    aria-label={tr("docs.zoomableImage.zoomIn")}
                     onClick={() => zoomIn()}
                     variant="default"
                   >
                     +
                   </ActionIcon>
                   <ActionIcon
-                    aria-label={t("resetZoom")}
+                    aria-label={tr("docs.zoomableImage.resetZoom")}
                     onClick={() => resetTransform()}
                     variant="default"
                   >
