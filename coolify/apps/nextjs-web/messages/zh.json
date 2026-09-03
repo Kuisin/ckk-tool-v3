@@ -6706,7 +6706,10 @@
       "itemCountSuffix": "（{count} 项明细）",
       "priceDiffLine": "第 {row} 行 {actual} ≠ 价格表 {expected}",
       "theseLinesUseAnOverriddenPrice": "以下明细将以价格表以外的单价受理。这是有意的覆盖，不会阻止提交审批，但请在审批前确认单价。",
-      "priceOverrideLine": "第 {row} 行 {actual}（价格表 {expected}）"
+      "priceOverrideLine": "第 {row} 行 {actual}（价格表 {expected}）",
+      "hideTheDocumentPane": "折叠单据",
+      "showTheDocumentPane": "展开单据",
+      "hideTheDocument": "隐藏"
     },
     "orderLines": {
       "parentDocumentOfThisLine": "此明细的父单据",

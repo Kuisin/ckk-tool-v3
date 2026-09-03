@@ -6706,7 +6706,10 @@
       "itemCountSuffix": "（明細 {count} 件）",
       "priceDiffLine": "行{row} {actual} ≠ 価格表 {expected}",
       "theseLinesUseAnOverriddenPrice": "以下の明細は価格表と別の単価で受けます。意図的な上書きなので承認依頼は止まりませんが、承認前に単価をご確認ください。",
-      "priceOverrideLine": "行{row} {actual}（価格表 {expected}）"
+      "priceOverrideLine": "行{row} {actual}（価格表 {expected}）",
+      "hideTheDocumentPane": "書類を畳む",
+      "showTheDocumentPane": "書類を開く",
+      "hideTheDocument": "隠す"
     },
     "orderLines": {
       "parentDocumentOfThisLine": "この明細の親書類",

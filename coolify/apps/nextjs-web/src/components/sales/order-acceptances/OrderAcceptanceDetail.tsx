@@ -125,6 +125,7 @@ import {
   SummaryGrid,
 } from "@/components/ui/shells";
 import { useTabParam } from "@/hooks/useUrlState";
+import { useIsMobile } from "@/hooks/useViewport";
 import type { MemoView } from "@/lib/document-memos";
 import {
   acceptanceDeliveryMethodLabel,
@@ -245,6 +246,16 @@ export function OrderAcceptanceDetail({
   const [editing, setEditing] = useState(
     () => acceptance.status === "DRAFT" && acceptance.items.length === 0,
   );
+  /**
+   * 左の書類ペインを畳んでいるか（デスクトップのみ）。列幅を決めるのは
+   * この Grid なので、開閉の状態も**ペインではなくここ**が持つ。
+   * 畳むと左は細い帯（span="content"）になり、右が残り全部（span="auto"）を
+   * 取る — 明細エディタは 1 行に 5 欄あるので、この差で折り返しが消える。
+   */
+  const [docCollapsed, setDocCollapsed] = useState(false);
+  const isMobile = useIsMobile();
+  // モバイルは縦積み（書類はペイン内の折りたたみ）— 帯にはしない。
+  const railed = docCollapsed && !isMobile;
 
   const a = acceptance;
   const sourceDef = intakeSourceBadge(tr)[a.source];
@@ -617,14 +628,16 @@ export function OrderAcceptanceDetail({
       {actionCard}
 
       <Grid gap="md">
-        <Grid.Col span={{ base: 12, lg: 5 }}>
+        <Grid.Col span={railed ? "content" : { base: 12, lg: 5 }}>
           <IntakeDocumentPane
+            collapsed={docCollapsed}
             filename={a.sourceFilename}
             fileUrl={fileUrl}
             mimeType={a.sourceMimeType}
+            onToggleCollapse={() => setDocCollapsed((v) => !v)}
           />
         </Grid.Col>
-        <Grid.Col span={{ base: 12, lg: 7 }}>
+        <Grid.Col span={railed ? "auto" : { base: 12, lg: 7 }}>
           <Stack gap="md">
             {/* 取込中 / 抽出失敗（IMPORT） */}
             {a.status === "IMPORT" &&

@@ -111,6 +111,8 @@ To stop editing, press「**キャンセル**」(cancel); if you changed somethin
 
 Press the file name link to open the original order form in another tab and compare it side by side.
 
+Once you have read the document, 「**書類を畳む**」 (collapse the document — the left-pointing icon at the top right of the document frame) shrinks the left side to a narrow rail. **The right side grows by the same amount**, so the item table and the input fields fit without wrapping. 「**書類を開く**」 (expand the document) on the rail brings it back. On a phone or a narrow tablet the document still opens and closes with 「書類を見る」 (view the document) as before.
+
 At the top of the screen, 「**製品**」 (products), 「**明細数 / 合計数量**」 (lines / total quantity) and 「**合計金額**」 (total amount) tell you **what, how much and for how much** was ordered without opening the item table. With two or more products it reads 「〇〇 ほか 2 種」 (X and 2 more kinds); hover to read every name. The item table also ends with a **合計** (total) row.
 
 > ⚠️ The total amount adds up **only the lines that have a unit price**. When some lines are still empty it says 「**単価未入力 N 件を除く**」 (excluding N lines with no unit price) — fill those in and it becomes the full amount.

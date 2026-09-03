@@ -6706,7 +6706,10 @@
       "itemCountSuffix": " ({count} lines)",
       "priceDiffLine": "Line {row} {actual} ≠ price list {expected}",
       "theseLinesUseAnOverriddenPrice": "The lines below are accepted at a unit price other than the price list. The override is deliberate, so it does not block the approval request — check the unit price before approving.",
-      "priceOverrideLine": "Line {row} {actual} (price list {expected})"
+      "priceOverrideLine": "Line {row} {actual} (price list {expected})",
+      "hideTheDocumentPane": "Collapse the document",
+      "showTheDocumentPane": "Expand the document",
+      "hideTheDocument": "Hide"
     },
     "orderLines": {
       "parentDocumentOfThisLine": "Parent document of this line",
