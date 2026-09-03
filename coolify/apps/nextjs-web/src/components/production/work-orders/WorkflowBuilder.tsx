@@ -64,12 +64,16 @@ import {
   createWorkOrder,
   getDesignVersionsForProduct,
   getMaterialAtp,
+  getMaterialTypeSpec,
   getOrderLineInfo,
   getProductRoutesForOrderLine,
   getProductRoutesForProduct,
   getRouteVersionSteps,
+  getWorkOrderMaterialAssumption,
+  type MaterialTypeSpec,
   updateWorkOrder,
   type WorkOrderInput,
+  type WorkOrderMaterialAssumption,
 } from "@/app/(dashboard)/production/work-orders/actions";
 import type {
   InspectionTemplateOption,
@@ -459,23 +463,6 @@ export function WorkflowBuilder({
     [stepTemplates, templateOptions, workOrderProductId],
   );
 
-  // 編集時: 割当済みだが最新でないバージョンも選択肢に残す（バージョン固定）
-  const templateSelectData = useMemo(() => {
-    const known = new Set(templateOptions.map((t) => t.value));
-    const extra = new Map<string, string>();
-    for (const step of workOrder?.steps ?? []) {
-      for (const t of step.inspectionTemplates) {
-        if (!known.has(String(t.id))) {
-          extra.set(String(t.id), `${t.code} ${t.name}`);
-        }
-      }
-    }
-    return [
-      ...templateOptions.map((t) => ({ value: t.value, label: t.label })),
-      ...[...extra].map(([value, label]) => ({ value, label })),
-    ];
-  }, [templateOptions, workOrder]);
-
   // ── 工程ルート（製品の工程リスト） ──────────────────────────────────────────
   const [routesInfo, setRoutesInfo] = useState<{
     productId: number;
@@ -810,6 +797,74 @@ export function WorkflowBuilder({
       cancelled = true;
     };
   }, [materialIdValue]);
+
+  // ── 使用素材のプリフィル（製品の想定材種 × 直径） + 想定外の警告 ────────────
+  // 製品は「材種 + 直径」で素材を指定する（cut-to-length のため特定の
+  // materials 行には紐付けない）。ここでは対象製品からその構成を引き、
+  // 未入力なら一致する素材を候補として埋める。埋めた後・利用者が自分で
+  // 選び直した後は、次に想定外の素材が選ばれていないかだけを警告する
+  // （保存はブロックしない — §5 素材判断は指示書承認側で行う）。
+  const [materialAssumption, setMaterialAssumption] =
+    useState<WorkOrderMaterialAssumption | null>(null);
+  const [suggestedMaterialOption, setSuggestedMaterialOption] =
+    useState<Option | null>(null);
+  const [selectedMaterialSpec, setSelectedMaterialSpec] =
+    useState<MaterialTypeSpec | null>(null);
+  // 製品が変わるたびリセット — 新しい製品では改めて候補を提示してよい
+  const materialTouchedRef = useRef(false);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: workOrderProductId は再実行の起点（ref の書き換え自体には使わない）
+  useEffect(() => {
+    materialTouchedRef.current = false;
+  }, [workOrderProductId]);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: 製品/種別が変わったときだけ引き直す（materialId・setFieldValue は判定・更新に使うだけで再実行の起点にはしない）
+  useEffect(() => {
+    if (workOrderProductId == null) {
+      setMaterialAssumption(null);
+      return;
+    }
+    let cancelled = false;
+    getWorkOrderMaterialAssumption(workOrderProductId).then((info) => {
+      if (cancelled) return;
+      setMaterialAssumption(info);
+      if (
+        info?.suggestedMaterialId != null &&
+        !materialTouchedRef.current &&
+        !form.values.materialId &&
+        form.values.type === "MANUFACTURE"
+      ) {
+        form.setFieldValue("materialId", String(info.suggestedMaterialId));
+        setSuggestedMaterialOption({
+          value: String(info.suggestedMaterialId),
+          label:
+            info.suggestedMaterialLabel ?? String(info.suggestedMaterialId),
+        });
+      }
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [workOrderProductId, form.values.type]);
+  useEffect(() => {
+    if (!materialIdValue) {
+      setSelectedMaterialSpec(null);
+      return;
+    }
+    let cancelled = false;
+    getMaterialTypeSpec(Number(materialIdValue)).then((spec) => {
+      if (!cancelled) setSelectedMaterialSpec(spec);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [materialIdValue]);
+  const materialMismatch =
+    materialIdValue != null &&
+    selectedMaterialSpec != null &&
+    materialAssumption?.materialTypeId != null &&
+    (selectedMaterialSpec.materialTypeId !==
+      materialAssumption.materialTypeId ||
+      (materialAssumption.diameterMm != null &&
+        selectedMaterialSpec.diameterMm !== materialAssumption.diameterMm));
 
   // ── ライブ構成検証（保存ガード — 表示は ProcessListEditor 側） ───────────────
   const blockers = useMemo(
@@ -1212,16 +1267,28 @@ export function WorkflowBuilder({
           />
           {form.values.type === "MANUFACTURE" && (
             <SearchSelect
+              description={
+                materialAssumption?.materialTypeName
+                  ? tr("production.workOrders.assumedMaterialTypeWithName", {
+                      name: materialAssumption.materialTypeName,
+                    })
+                  : undefined
+              }
               initialOption={
-                workOrder?.materialId != null && workOrder.materialCode
+                suggestedMaterialOption ??
+                (workOrder?.materialId != null && workOrder.materialCode
                   ? {
                       value: String(workOrder.materialId),
                       label: `${workOrder.materialCode}（${workOrder.materialName}）`,
                     }
-                  : null
+                  : null)
               }
               label={<HelpLabel {...fieldHelp(tr, "workOrder", "material")} />}
-              onChange={(v) => form.setFieldValue("materialId", v)}
+              onChange={(v) => {
+                materialTouchedRef.current = true;
+                setSuggestedMaterialOption(null);
+                form.setFieldValue("materialId", v);
+              }}
               onSearch={searchMaterialOptions}
               placeholder={tr(
                 "production.workOrders.searchByMaterialCodeOrName",
@@ -1262,6 +1329,22 @@ export function WorkflowBuilder({
             />
           )}
         </SimpleGrid>
+        {/* 想定外の素材が選ばれているときの警告（材種 × 直径が製品の想定と
+            不一致）。プリフィルを手動で上書きした場合も含め、保存はブロック
+            しない — §5 素材判断は指示書承認側で行う。 */}
+        {materialMismatch && (
+          <Alert
+            color="orange"
+            icon={<IconAlertTriangle size={16} />}
+            variant="light"
+          >
+            {materialAssumption?.materialTypeName
+              ? tr("production.workOrders.materialTypeMismatchWithName", {
+                  name: materialAssumption.materialTypeName,
+                })
+              : tr("production.workOrders.materialTypeMismatch")}
+          </Alert>
+        )}
         {/* 素材 ATP 警告（充足=緑 / 不足+入荷予定あり=黄 / 不足+入荷予定なし=赤）。
             警告のみ — 保存はブロックしない（§5 素材判断は指示書承認側で行う）。 */}
         {materialIdValue && materialAtpInfo && (
@@ -1398,7 +1481,9 @@ export function WorkflowBuilder({
       )}
 
       {/* 検査表は検査工程ごとの割当（work_order_step_inspection_templates）。
-          工程を追加すると、その工程を関連工程に持つ検査表が既定で選ばれる。 */}
+          工程を追加すると、その工程を関連工程に持つ検査表が既定で選ばれる
+          （templatesFor）。付け替えはここでは行わない — 承認後の工程実行
+          画面（検査表ポップアップ、design.md §10.10/§12.3）へ移設した。 */}
       {inspectionSnapshots.length > 0 && (
         <FormSection
           description={tr(
@@ -1409,40 +1494,27 @@ export function WorkflowBuilder({
           <Stack gap="xs">
             {inspectionSnapshots.map((s) => {
               const cat = catalogSteps.find((c) => c.id === s.processStepId);
+              const assigned = templateOptions.filter((t) =>
+                templatesFor(s.processStepId).includes(t.value),
+              );
               return (
                 <Paper key={s.processStepId} p="sm" radius="sm" withBorder>
-                  <Group
-                    align={isMobile ? "flex-start" : "center"}
-                    gap="sm"
-                    wrap={isMobile ? "wrap" : "nowrap"}
-                  >
+                  <Group gap="sm" wrap="wrap">
                     <Text fw={600} size="sm" style={{ flexShrink: 0 }}>
                       {cat?.nameJa ??
                         tr("production.workflowBuilder.stepFallbackWithId", {
                           id: s.processStepId,
                         })}
                     </Text>
-                    <MultiSelect
-                      clearable
-                      data={templateSelectData}
-                      onChange={(v) =>
-                        setStepTemplates((cur) => ({
-                          ...cur,
-                          [s.processStepId]: v,
-                        }))
-                      }
-                      placeholder={
-                        templatesFor(s.processStepId).length
-                          ? undefined
-                          : tr(
-                              "production.workOrders.selectAnInspectionTemplate",
-                            )
-                      }
-                      searchable
-                      size="xs"
-                      style={{ flex: 1, minWidth: isMobile ? "100%" : 260 }}
-                      value={templatesFor(s.processStepId)}
-                    />
+                    {assigned.length > 0 ? (
+                      <Text c="dimmed" size="xs">
+                        {assigned.map((t) => t.label).join(" / ")}
+                      </Text>
+                    ) : (
+                      <Text c="dimmed" size="xs">
+                        {tr("production.workOrders.selectAnInspectionTemplate")}
+                      </Text>
+                    )}
                   </Group>
                 </Paper>
               );

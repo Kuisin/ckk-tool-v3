@@ -25,11 +25,11 @@ export const STATUS_MAPS = {
     CONFIRMED: "blue",
     REGISTERED: "green",
   },
+  // EXPIRED は保存しない派生状態（発行済み × 有効期限超過。
+  // components/sales/quotes/model.ts quoteDisplayStatus）— 色だけここに置く。
   Quote: {
     DRAFT: "gray",
     ISSUED: "blue",
-    ACCEPTED: "green",
-    REJECTED: "red",
     EXPIRED: "orange",
   },
   OrderAcceptance: {

@@ -90,7 +90,7 @@ TABLES = {
     "defect_types": "不良種類",
     "defect_records": "不良記録",
     # 試算・価格・見積
-    "estimates": "試算",
+    "estimates": "価格試算",
     "price_list_entries": "価格表エントリ",
     "price_list_variants": "価格表バリアント",
     "price_list_tiers": "価格表数量段階",
@@ -380,8 +380,8 @@ COLS = {
     "registered_at": "登録日時",
     "entry_year_month": "エントリ年月",
     "entry_seq": "エントリ連番",
-    "estimate_year_month": "試算年月",
-    "estimate_seq": "試算連番",
+    "estimate_year_month": "価格試算年月",
+    "estimate_seq": "価格試算連番",
     "base_unit_price": "基準単価",
     "order_type": "注文種別",
     "valid_from": "有効開始",
@@ -583,7 +583,7 @@ BLOB_JSON = [
 # created_at / quantity …）は上の COLS を流用し、ビュー固有の解決名列だけ
 # ANALYTICS_COLS で足す（適用時に {**COLS, **ANALYTICS_COLS} で合成）。
 ANALYTICS_TABLES = {
-    "v_estimates": "試算", "v_price_list_entries": "価格表",
+    "v_estimates": "価格試算", "v_price_list_entries": "価格表",
     "v_price_list_variants": "価格表バリアント", "v_quotes": "見積書",
     "v_quote_items": "見積明細", "v_order_acceptances": "注文請書",
     "v_order_lines": "注文明細", "v_design_requests": "設計依頼",
@@ -602,6 +602,7 @@ ANALYTICS_TABLES = {
     "v_approval_requests": "承認依頼", "v_approval_records": "承認記録",
     "v_business_partners": "取引先", "v_products": "製品", "v_materials": "素材",
     "v_material_types": "材種", "v_plants": "拠点", "v_users": "従業員",
+    "v_user_permissions": "従業員の権限",
     "v_process_step_catalog": "工程マスタ", "v_inspection_templates": "検査表テンプレート",
     "v_defect_types": "不良種類", "v_currencies": "通貨マスタ",
     "v_order_lines_disp": "注文明細(表示通貨別)", "v_invoices_disp": "請求書(表示通貨別)",
@@ -612,7 +613,7 @@ ANALYTICS_TABLES = {
 
 ANALYTICS_COLS = {
     # 導出書類番号
-    "estimate_no": "試算番号", "price_list_no": "価格表番号", "quote_no": "見積番号",
+    "estimate_no": "価格試算番号", "price_list_no": "価格表番号", "quote_no": "見積番号",
     "order_no": "注文番号", "order_line_no": "注文明細番号",
     "order_line_nos": "注文明細番号(一覧)", "work_order_no": "指示書番号",
     "delivery_order_no": "出荷書番号", "delivery_no": "納品番号", "invoice_no": "請求番号",

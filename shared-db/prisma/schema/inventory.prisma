@@ -110,7 +110,6 @@ model ProductInventory {
 
   // 一意バケット（NULLS NOT DISTINCT index — migration で置換済み）
   @@unique([productId, plantId, lotNumber, isSemiFinished, storageLocationId, shelfId], map: "product_inventory_bucket_key")
-  @@index([productId])
   @@map("product_inventory")
   @@schema("app")
 }
@@ -135,7 +134,6 @@ model MaterialInventory {
 
   // 一意バケット（NULLS NOT DISTINCT index — migration で置換済み）
   @@unique([materialId, plantId, storageLocationId, shelfId], map: "material_inventory_bucket_key")
-  @@index([materialId])
   @@map("material_inventory")
   @@schema("app")
 }

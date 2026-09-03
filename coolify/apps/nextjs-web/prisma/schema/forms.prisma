@@ -279,7 +279,6 @@ model ShareGrant {
   createdByUser User? @relation("ShareGrantCreatedBy", fields: [createdBy], references: [id])
 
   @@unique([ownerType, ownerId, subjectType, subjectId, level])
-  @@index([ownerType, ownerId])
   @@map("share_grants")
   @@schema("app")
 }

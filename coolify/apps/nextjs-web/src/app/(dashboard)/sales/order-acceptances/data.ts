@@ -168,6 +168,7 @@ export async function fetchOrderAcceptance(
     orderType: it.orderType,
     quantity: it.quantity,
     unitPrice: it.unitPrice != null ? Number(it.unitPrice) : null,
+    priceOverridden: it.priceOverridden,
     deliveryDate: it.deliveryDate?.toISOString().slice(0, 10) ?? null,
     notes: it.notes,
   }));

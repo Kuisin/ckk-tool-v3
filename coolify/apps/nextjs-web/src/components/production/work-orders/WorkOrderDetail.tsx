@@ -339,19 +339,6 @@ export function WorkOrderDetail({
           ) : null
         }
       />
-      <FieldValue
-        label={tr("common.inspectionSheet")}
-        value={(() => {
-          // 工程単位の割当を検査工程ごとに要約（工程名: 検査表 / …）
-          const rows = wo.steps
-            .filter((s) => s.inspectionTemplates.length > 0)
-            .map(
-              (s) =>
-                `${s.name}: ${s.inspectionTemplates.map((t) => t.name).join("・")}`,
-            );
-          return rows.length > 0 ? rows.join(" / ") : null;
-        })()}
-      />
     </SummaryGrid>
   );
 

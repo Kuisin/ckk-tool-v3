@@ -32,13 +32,7 @@ describe("label", () => {
 describe("labelOptions / labelKeys", () => {
   it("ja の並び順で { value, label } を返す", () => {
     const keys = labelKeys("status.STATUS_MAPS.Quote");
-    expect(keys).toEqual([
-      "DRAFT",
-      "ISSUED",
-      "ACCEPTED",
-      "REJECTED",
-      "EXPIRED",
-    ]);
+    expect(keys).toEqual(["DRAFT", "ISSUED", "EXPIRED"]);
   });
 
   it("未知の名前空間は空配列", () => {

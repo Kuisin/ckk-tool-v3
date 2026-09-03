@@ -5,9 +5,15 @@
  *
  * DRAFT 詳細のインライン編集と手入力（MANUAL）新規作成の両方で使う。
  * 各行: 製品 SearchSelect（未突合可 — 未選択は「製品未特定」バッジ）+
- * 品名テキスト（抽出の生テキスト）+ 種別 + 数量 + 単価（未入力可）+
- * 納期 + 備考。追加 / 削除可。バリデーションはサーバー側
- * （actions.ts の zod + 展開時の突合チェック）が最終ガード。
+ * 品名テキスト（抽出の生テキスト）+ 種別 + 数量 + 単価 + 納期 + 備考。
+ * 追加 / 削除可。バリデーションはサーバー側（actions.ts の zod + 展開時の
+ * 突合チェック）が最終ガード。
+ *
+ * **単価は既定で価格表が持つ**（§2 価格差異）。行に該当する価格表
+ * （顧客 × 製品 × 注文種別 × 数量）があれば単価欄は読み取り専用で、価格表の
+ * 単価が入る。外すときは行ごとの「単価を上書き」を明示的に入れる — 入力ミスと
+ * 意図を同じ見た目にしないため（判定は lib/order-acceptance-price-core、
+ * 解決は quotes/model の pure 関数で、保存時にサーバーが再解決する）。
  */
 
 import {
@@ -18,6 +24,7 @@ import {
   Group,
   NumberInput,
   Select,
+  Switch,
   Text,
   TextInput,
 } from "@mantine/core";
@@ -26,11 +33,20 @@ import { IconCalendar, IconPlus, IconTrash } from "@tabler/icons-react";
 import { useLocale, useTranslations } from "next-intl";
 import { searchProductOptions } from "@/app/(dashboard)/_shared/option-search";
 import type { OrderAcceptanceDraftInput } from "@/app/(dashboard)/sales/order-acceptances/actions";
+import type { PriceListEntry } from "@/components/sales/price-lists/model";
+import { resolveUnitPriceFromEntries } from "@/components/sales/quotes/model";
 import { GhostButton } from "@/components/ui/buttons";
 import { productF4 } from "@/components/ui/f4-presets";
 import { SearchSelect } from "@/components/ui/SearchSelect";
 import { orderTypeOptions } from "@/lib/enum-labels";
 import { formatMoney } from "@/lib/format";
+import type { Tr } from "@/lib/i18n";
+import {
+  type AcceptancePriceState,
+  acceptancePriceState,
+  effectiveUnitPrice,
+  normalizeOverride,
+} from "@/lib/order-acceptance-price-core";
 import { acceptanceTotals } from "@/lib/order-acceptance-totals";
 import { MatchSuggestions } from "./MatchSuggestions";
 import type { MatchSuggestion, OrderAcceptanceItemView } from "./model";
@@ -38,23 +54,10 @@ import type { MatchSuggestion, OrderAcceptanceItemView } from "./model";
 const ORDER_TYPES = ["PRODUCTION", "TEST", "SAMPLE", "OTHER"] as const;
 type OrderType = (typeof ORDER_TYPES)[number];
 
-/**
- * 保存済み明細行の価格照合結果（クライアント向け最小形 —
- * app/(dashboard)/sales/order-acceptances/price-check.ts 由来）。
- */
-export interface ItemPriceCheck {
-  /** 価格表から解決した期待単価（未解決は null）。 */
-  expected: number | null;
-  /** 入力単価が価格表と不一致。 */
-  diff: boolean;
-  /** 製品突合済みだが価格表エントリなし。 */
-  unpriced: boolean;
-}
-
 /** エディタ 1 行のフォーム値。 */
 export interface ItemRowForm {
   rowId: string;
-  /** 保存済み行の order_acceptance_items.id（未保存の追加行は null）。 */
+  /** 保存済み行の order_lines.id（未保存の追加行は null）。 */
   itemId: string | null;
   productId: string | null;
   /** SearchSelect の初期表示用ラベル（突合済みのとき）。 */
@@ -64,9 +67,84 @@ export interface ItemRowForm {
   productSuggestions: MatchSuggestion[];
   orderType: OrderType;
   quantity: number;
+  /**
+   * 人が入れた単価。**価格表どおりの行では使われない**（表示も保存も
+   * 価格表の単価 — rowPrice を通す）。上書き中 / 価格表なしの行の値。
+   */
   unitPrice: number | null;
+  /** 「単価を上書き」が入っているか。 */
+  priceOverridden: boolean;
   deliveryDate: string | null;
   notes: string;
+}
+
+/**
+ * 価格表を引くための文脈。顧客は編集中に変わりうるので、エントリは
+ * 顧客が決まるたびに取り直したものを渡す（price-lookup.ts）。
+ */
+export interface ItemPriceContext {
+  customerBpId: string | null;
+  priceEntries: PriceListEntry[];
+}
+
+/** 1 行の単価の出どころ（表示・合計・payload が同じ値を見る）。 */
+export interface RowPrice {
+  /** 価格表から解決した単価（null = 引けない）。 */
+  expected: number | null;
+  /** 効いている数量段階のラベル（「1〜9本」）。 */
+  tierLabel: string | null;
+  /** 単価を価格表が持っている行か（= 単価欄は読み取り専用）。 */
+  locked: boolean;
+  /** 上書きを入れられる行か（価格表がある行だけ）。 */
+  overridable: boolean;
+  /** 実際に保存・集計する単価。 */
+  effective: number | null;
+  state: AcceptancePriceState;
+}
+
+/**
+ * 行の単価を解決する。**表示と payload の両方がこれを通る** — 「見えている
+ * 単価」と「保存される単価」がずれないようにするため。
+ */
+export function rowPrice(
+  row: ItemRowForm,
+  ctx: ItemPriceContext,
+  tr: Tr,
+): RowPrice {
+  const resolved =
+    ctx.customerBpId && row.productId
+      ? resolveUnitPriceFromEntries(
+          ctx.priceEntries,
+          ctx.customerBpId,
+          row.productId,
+          row.orderType,
+          row.quantity,
+          tr,
+        )
+      : null;
+  const expected = resolved?.unitPrice ?? null;
+  const overridden = normalizeOverride({
+    expected,
+    overridden: row.priceOverridden,
+  });
+  const effective = effectiveUnitPrice({
+    expected,
+    entered: row.unitPrice,
+    overridden,
+  });
+  return {
+    expected,
+    tierLabel: resolved?.tierLabel ?? null,
+    locked: expected != null && !overridden,
+    overridable: expected != null,
+    effective,
+    state: acceptancePriceState({
+      matched: Boolean(ctx.customerBpId && row.productId),
+      expected,
+      actual: effective,
+      overridden,
+    }),
+  };
 }
 
 let rowSeq = 0;
@@ -82,6 +160,7 @@ export const newItemRow = (): ItemRowForm => ({
   orderType: "PRODUCTION",
   quantity: 1,
   unitPrice: null,
+  priceOverridden: false,
   deliveryDate: null,
   notes: "",
 });
@@ -100,35 +179,47 @@ export function toItemRows(items: OrderAcceptanceItemView[]): ItemRowForm[] {
       : "PRODUCTION",
     quantity: it.quantity,
     unitPrice: it.unitPrice,
+    priceOverridden: it.priceOverridden,
     deliveryDate: it.deliveryDate,
     notes: it.notes ?? "",
   }));
 }
 
-/** エディタ行 → Server Action 入力。 */
+/**
+ * エディタ行 → Server Action 入力。
+ *
+ * 価格表どおりの行は解決した単価を載せる（サーバーも保存時に同じ解決を
+ * 行うので、ここは「画面に見えていた金額」を送るためのもの）。
+ */
 export function toItemPayload(
   rows: ItemRowForm[],
+  ctx: ItemPriceContext,
+  tr: Tr,
 ): OrderAcceptanceDraftInput["items"] {
-  return rows.map((r) => ({
-    productId: r.productId,
-    productText: r.productText || null,
-    orderType: r.orderType,
-    quantity: r.quantity,
-    unitPrice: r.unitPrice,
-    deliveryDate: r.deliveryDate,
-    notes: r.notes || null,
-  }));
+  return rows.map((r) => {
+    const price = rowPrice(r, ctx, tr);
+    return {
+      productId: r.productId,
+      productText: r.productText || null,
+      orderType: r.orderType,
+      quantity: r.quantity,
+      unitPrice: price.effective,
+      priceOverridden: price.state === "override",
+      deliveryDate: r.deliveryDate,
+      notes: r.notes || null,
+    };
+  });
 }
 
 export function OrderAcceptanceItemsEditor({
   items,
   onChange,
-  lineChecks,
+  priceContext,
 }: {
   items: ItemRowForm[];
   onChange: (items: ItemRowForm[]) => void;
-  /** 保存済み行の価格照合結果（itemId → 結果）。保存内容に対する照合。 */
-  lineChecks?: Record<string, ItemPriceCheck>;
+  /** 価格表を引くための顧客 + エントリ。 */
+  priceContext: ItemPriceContext;
 }) {
   const tr = useTranslations();
   const locale = useLocale();
@@ -136,17 +227,34 @@ export function OrderAcceptanceItemsEditor({
     onChange(items.map((r, i) => (i === ri ? { ...r, ...p } : r)));
   };
 
-  // 合計は詳細画面と同じ数え方（lib/order-acceptance-totals）。
-  const totals = acceptanceTotals(items);
+  const prices = items.map((row) => rowPrice(row, priceContext, tr));
+
+  // 合計は詳細画面と同じ数え方（lib/order-acceptance-totals）。単価は
+  // 価格表 / 上書きの解決後の値で数える（画面に出ている金額と一致させる）。
+  const totals = acceptanceTotals(
+    items.map((row, i) => ({
+      productId: row.productId,
+      quantity: row.quantity,
+      unitPrice: prices[i].effective,
+    })),
+  );
 
   return (
     <Box>
       {items.map((row, ri) => {
-        const check = row.itemId ? lineChecks?.[row.itemId] : undefined;
+        const price = prices[ri];
+        // 価格表どおりに戻す行で、いま入っている単価が違う場合 —
+        // 保存すると価格表の単価に置き換わるので、置き換わる前に見せる。
+        const replaced =
+          price.locked &&
+          row.unitPrice != null &&
+          row.unitPrice !== price.expected
+            ? row.unitPrice
+            : null;
         return (
           <Box key={row.rowId}>
             {ri > 0 && <Divider my="md" />}
-            <Group gap="xs" mb={4}>
+            <Group gap="xs" mb={4} wrap="wrap">
               <Text c="dimmed" className="tabular-nums" size="xs">
                 {tr("sales.orderAcceptanceItemsEditor.lineOrdinal", {
                   index: ri + 1,
@@ -157,17 +265,62 @@ export function OrderAcceptanceItemsEditor({
                   {tr("common.productNotIdentified")}
                 </Badge>
               )}
-              {check?.diff && (
-                <Badge color="orange" size="xs" variant="light">
-                  {tr("sales.orderAcceptanceDetail.priceMismatchExpected", {
-                    expected: formatMoney(check.expected),
-                  })}
-                </Badge>
-              )}
-              {check?.unpriced && (
+              {price.state === "unpriced" && (
                 <Badge color="gray" size="xs" variant="light">
                   {tr("common.noPriceList")}
                 </Badge>
+              )}
+              {price.locked && (
+                <Badge color="blue" size="xs" variant="light">
+                  {price.tierLabel
+                    ? tr(
+                        "sales.orderAcceptanceItemsEditor.priceListPriceWithTier",
+                        {
+                          price: formatMoney(price.expected),
+                          tier: price.tierLabel,
+                        },
+                      )
+                    : tr("sales.orderAcceptanceItemsEditor.priceListPrice", {
+                        price: formatMoney(price.expected),
+                      })}
+                </Badge>
+              )}
+              {replaced != null && (
+                <Badge color="orange" size="xs" variant="light">
+                  {tr("sales.orderAcceptanceItemsEditor.willReplaceWithList", {
+                    entered: formatMoney(replaced),
+                  })}
+                </Badge>
+              )}
+              {price.state === "override" &&
+                price.effective !== price.expected && (
+                  <Badge color="violet" size="xs" variant="light">
+                    {tr("sales.orderAcceptanceItemsEditor.overriddenFromList", {
+                      expected: formatMoney(price.expected),
+                    })}
+                  </Badge>
+                )}
+              {/*
+                上書きは価格表がある行だけの選択肢 — 引ける単価が無い行に
+                「上書き」を出すと、外す相手のいない印が残る。
+              */}
+              {price.overridable && (
+                <Switch
+                  checked={row.priceOverridden}
+                  label={tr("sales.orderAcceptanceItemsEditor.overridePrice")}
+                  ml="auto"
+                  onChange={(e) =>
+                    patch(ri, {
+                      priceOverridden: e.currentTarget.checked,
+                      // 上書きを入れた瞬間の初期値は「いま見えている単価」。
+                      // 空欄から打ち直させない（直したいのは端数だけのことが多い）。
+                      unitPrice: e.currentTarget.checked
+                        ? (row.unitPrice ?? price.expected)
+                        : row.unitPrice,
+                    })
+                  }
+                  size="xs"
+                />
               )}
             </Group>
             <Group align="flex-end" gap="sm" wrap="nowrap">
@@ -232,6 +385,10 @@ export function OrderAcceptanceItemsEditor({
                     value={row.quantity}
                     withAsterisk
                   />
+                  {/*
+                    価格表どおりの行は読み取り専用。値は価格表から導出している
+                    ので、上書きを外すだけで元の単価に戻る（打ち直し不要）。
+                  */}
                   <NumberInput
                     decimalScale={2}
                     label={tr("common.unitPrice")}
@@ -240,10 +397,16 @@ export function OrderAcceptanceItemsEditor({
                     onChange={(v) =>
                       patch(ri, { unitPrice: typeof v === "number" ? v : null })
                     }
-                    placeholder={tr("sales.orderAcceptances.mayBeLeftBlank")}
+                    placeholder={
+                      price.locked
+                        ? tr("sales.orderAcceptanceItemsEditor.fromPriceList")
+                        : tr("sales.orderAcceptances.mayBeLeftBlank")
+                    }
                     prefix="¥"
+                    readOnly={price.locked}
                     thousandSeparator=","
-                    value={row.unitPrice ?? ""}
+                    value={price.effective ?? ""}
+                    variant={price.locked ? "filled" : "default"}
                   />
                 </Group>
                 {/*
@@ -298,8 +461,8 @@ export function OrderAcceptanceItemsEditor({
                 size="sm"
                 w={130}
               >
-                {row.unitPrice != null
-                  ? formatMoney(row.unitPrice * row.quantity)
+                {price.effective != null
+                  ? formatMoney(price.effective * row.quantity)
                   : "—"}
               </Text>
             </Group>

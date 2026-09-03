@@ -865,17 +865,46 @@ export async function fetchStepExecution(
   });
   if (!step) return null;
 
-  const [{ ctx }, actorId, defectTypes, allOptions, allowedLocationIds] =
-    await Promise.all([
-      fetchWorkflowCtx(wo.id),
-      getCurrentActorId(),
-      prisma.defectType.findMany({
-        where: { isActive: true },
-        orderBy: [{ sortOrder: "asc" }, { id: "asc" }],
-      }),
-      fetchWorkLocationOptions(),
-      fetchAllowedWorkLocationIds(step.processStepId),
-    ]);
+  const [
+    { ctx },
+    actorId,
+    defectTypes,
+    allOptions,
+    allowedLocationIds,
+    inspectionTemplateOptions,
+  ] = await Promise.all([
+    fetchWorkflowCtx(wo.id),
+    getCurrentActorId(),
+    prisma.defectType.findMany({
+      where: { isActive: true },
+      orderBy: [{ sortOrder: "asc" }, { id: "asc" }],
+    }),
+    fetchWorkLocationOptions(),
+    fetchAllowedWorkLocationIds(step.processStepId),
+    fetchInspectionTemplateOptions(),
+  ]);
+  // 検査表割当の選択肢: 有効な検査表テンプレート全件（WorkflowBuilder の
+  // templateSelectData と同じ方針 — 関連工程はテンプレート側の任意設定
+  // なので、無関係な工程にも汎用検査表を割り当てられる余地を残す）
+  // + 既に割り当てられている分（旧バージョン等で選択肢から外れていても
+  // 選べなくなると困る）。
+  const templateOptions = [
+    ...inspectionTemplateOptions.map((t) => ({
+      value: t.value,
+      label: t.label,
+    })),
+    ...step.inspectionTemplates
+      .filter(
+        (t) =>
+          !inspectionTemplateOptions.some(
+            (o) => o.value === String(t.inspectionTemplate.id),
+          ),
+      )
+      .map((t) => ({
+        value: String(t.inspectionTemplate.id),
+        label: `${t.inspectionTemplate.code} v${t.inspectionTemplate.version} ${localized(t.inspectionTemplate.name as LocalizedText | null)}`,
+      })),
+  ];
   // 工程マスタに許可リストがあれば選択肢を絞る（計画・実績とも同じ制限）
   const workLocationOptions =
     allowedLocationIds == null
@@ -1099,6 +1128,7 @@ export async function fetchStepExecution(
     canStart: canStartStep(step.id, ctx, actorId, workflowCoreT(tr)),
     expectedInputQuantity: expectedInput(step.id, ctx),
     templates,
+    templateOptions,
     stepRecords: step.inspectionRecords.map((r) => mapRecord(r, null)),
     workOrderRecords: woRecordsRaw.map((r) =>
       mapRecord(r, localized(r.step.processStep.name as LocalizedText | null)),

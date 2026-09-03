@@ -158,34 +158,37 @@ export async function getAdminUser(
   id: string,
 ): Promise<AdminUserDetail | null> {
   if (!UUID_RE.test(id)) return null;
-  const u = await prisma.user.findUnique({
-    where: { id },
-    include: {
-      roleAssignments: {
-        include: { role: true },
-        orderBy: { assignedAt: "desc" },
-      },
-      userPlants: {
-        include: { plant: true },
-        orderBy: { plant: { code: "asc" } },
-      },
-    },
-  });
-  if (!u) return null;
+  // ユーザー行と実効権限は互いに依存しないので同時に引く（往復 1 回ぶん）。
   // ビューは grant 単位の全行を返す（1 code×action に複数ロール分の行があり得る）。
   // 画面には **いちばん広い 1 行だけ** を出すので、読み込んだあと畳む（下）。
-  const permissions = await prisma.$queryRaw<
-    {
-      permission_code: string;
-      action: string;
-      scope: string;
-      scope_values: string[] | null;
-    }[]
-  >`
-    SELECT permission_code, action::text AS action, scope::text AS scope, scope_values
-    FROM app.user_permissions
-    WHERE user_id = ${id}::uuid
-    ORDER BY permission_code, action, scope`;
+  const [u, permissions] = await Promise.all([
+    prisma.user.findUnique({
+      where: { id },
+      include: {
+        roleAssignments: {
+          include: { role: true },
+          orderBy: { assignedAt: "desc" },
+        },
+        userPlants: {
+          include: { plant: true },
+          orderBy: { plant: { code: "asc" } },
+        },
+      },
+    }),
+    prisma.$queryRaw<
+      {
+        permission_code: string;
+        action: string;
+        scope: string;
+        scope_values: string[] | null;
+      }[]
+    >`
+      SELECT permission_code, action::text AS action, scope::text AS scope, scope_values
+      FROM app.user_permissions
+      WHERE user_id = ${id}::uuid
+      ORDER BY permission_code, action, scope`,
+  ]);
+  if (!u) return null;
   const activeAssignments = u.roleAssignments.filter((a) => a.isActive);
   return {
     id: u.id,

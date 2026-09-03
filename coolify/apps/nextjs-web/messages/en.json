@@ -1191,12 +1191,6 @@
         "ISSUED": {
           "label": "Issued"
         },
-        "ACCEPTED": {
-          "label": "Accepted"
-        },
-        "REJECTED": {
-          "label": "Rejected"
-        },
         "EXPIRED": {
           "label": "Expired"
         }
@@ -2347,6 +2341,9 @@
       "finishedGoodsEnterStockUnderThe": "Finished goods enter stock under the work order number's lot, and can later cover any order line's shipment",
       "theFromStockQuantityMatchesThe": "The from-stock quantity matches the allocation total",
       "searchByMaterialCodeOrName": "Search by material code or name",
+      "assumedMaterialTypeWithName": "Assumed material type: {name}",
+      "materialTypeMismatchWithName": "The selected material differs from the product's assumed material type ({name})",
+      "materialTypeMismatch": "The selected material differs from the product's assumed material type",
       "selectWhereTheFinishedGoodsGo": "Select where the finished goods go",
       "thereIsNoDrawingForThis": "There is no drawing for this product yet",
       "drawingUsed": "Drawing used",
@@ -2357,8 +2354,8 @@
       "noStepListIsRegisteredFor": "No step list is registered for this product (create one below)",
       "savesThisStepCompositionAsThe": "Saves this step composition as the product's step list v1",
       "markingItDedicatedMakesItPreferred": "Marking it dedicated makes it preferred for work orders of the same customer × product",
-      "inspectionSheetsAreAssignedPerInspection": "Inspection sheets are assigned per inspection step. Adding a step auto-selects the sheets related to it.",
-      "selectAnInspectionTemplate": "Select an inspection template",
+      "inspectionSheetsAreAssignedPerInspection": "Inspection sheets are auto-assigned per inspection step (sheets related to that step). Reassign them from the inspection sheet popup on the step execution page after approval.",
+      "selectAnInspectionTemplate": "No matching inspection sheet",
       "assignSomeonePerStepOptionalA": "Assign someone per step (optional). A dated work plan is created for each step you fill in. To set times and quantities too, add them afterwards on each step's plan panel.",
       "workPlanAssignees": "Work plan (assignees)",
       "plannedDate": "Planned date",
@@ -2746,7 +2743,9 @@
     "stepExecutionView": {
       "stepWithName": "Step: {name}",
       "theStepWasAborted": "The step was aborted",
-      "abort": "Abort"
+      "abort": "Abort",
+      "viewInspectionSheet": "View inspection sheet",
+      "noInspectionSheetAssigned": "No inspection sheet assigned"
     },
     "workOrderLinksCard": {
       "quantityPiecesWithCount": "{count} pcs",
@@ -2851,7 +2850,10 @@
       "cannotDeleteActualOfCompletedStep": "Cannot delete actuals of a completed or cancelled step",
       "actualNotFound": "Actual not found",
       "auditActualDeleted": "Deleted the step's work actual",
-      "couldNotDeleteActual": "Could not delete the work actual"
+      "couldNotDeleteActual": "Could not delete the work actual",
+      "inspectionSheetNotFound": "The specified inspection sheet was not found",
+      "auditInspectionSheetsSet": "Changed the step's inspection sheet assignment ({count})",
+      "couldNotSaveInspectionSheets": "Could not save the inspection sheet assignment"
     },
     "workOrderActions": {
       "acknowledgeFailed": "Could not record the acknowledgement",
@@ -6704,7 +6706,12 @@
       "watchedFolder": "Watched folder intake",
       "manualEntry": "Manual entry",
       "itemCountSuffix": " ({count} lines)",
-      "priceDiffLine": "Line {row} {actual} ≠ price list {expected}"
+      "priceDiffLine": "Line {row} {actual} ≠ price list {expected}",
+      "theseLinesUseAnOverriddenPrice": "The lines below are accepted at a unit price other than the price list. The override is deliberate, so it does not block the approval request — check the unit price before approving.",
+      "priceOverrideLine": "Line {row} {actual} (price list {expected})",
+      "hideTheDocumentPane": "Collapse the document",
+      "showTheDocumentPane": "Expand the document",
+      "hideTheDocument": "Hide"
     },
     "orderLines": {
       "parentDocumentOfThisLine": "Parent document of this line",
@@ -6848,12 +6855,9 @@
       "pDFGenerationFailedYouCanRetry": "PDF generation failed. You can retry with Regenerate on the PDF tab.",
       "issueTheQuote": "Issue the quote",
       "emailItToTheCustomerOnce": "Email it to the customer once issued",
-      "accept": "Accept",
-      "toTheOrder": "To the order",
       "whereTheUnitPriceCameFrom": "Where the unit price came from",
-      "noOrderYetNoOrderAcceptance": "No order yet (no order acceptance)",
       "noOrderYetTheOrderAcceptance": "No order yet (the order acceptance is made once accepted)",
-      "youCannotRaiseThisFromA": "You cannot raise this from a rejected or expired quote",
+      "youCannotRaiseThisFromA": "You cannot raise this from an expired quote",
       "branch": "Branch",
       "priceListApplied": "Price list applied",
       "tax10": "Tax (10%)",
@@ -7041,7 +7045,11 @@
       "priceMismatchCount": "{count} price mismatch(es)",
       "priceMismatchExpected": "Price mismatch (price list: {expected})",
       "unenteredCount": "{count} not entered",
-      "productSummaryAndMore": "{first} and {count} more"
+      "productSummaryAndMore": "{first} and {count} more",
+      "priceOverrideCount": "{count} overridden unit price(s)",
+      "lineOverrideText": "Line {row}: {actual} (price list {expected})",
+      "priceOverridden": "Overridden",
+      "priceOverriddenFromList": "Overridden (price list {expected})"
     },
     "orderAcceptanceIntakeTable": {
       "addedQueuedForExtraction": "Added {count} item(s) to the list. AI extraction will run in order after this",
@@ -7062,7 +7070,13 @@
     },
     "orderAcceptanceItemsEditor": {
       "lineCountAndTotalQuantity": "{count} line item(s) / total quantity",
-      "lineOrdinal": "Line {index}"
+      "lineOrdinal": "Line {index}",
+      "overridePrice": "Override the unit price",
+      "priceListPrice": "Price list {price}",
+      "priceListPriceWithTier": "Price list {price} ({tier})",
+      "fromPriceList": "From the price list",
+      "willReplaceWithList": "{entered} will be replaced by the price list unit price on save",
+      "overriddenFromList": "Overridden (price list {expected})"
     },
     "priceListDetail": {
       "confirmDeleteDiscountMessage": "Deletes \"{label}\". This cannot be undone.",
@@ -7097,7 +7111,6 @@
       "issuePdfDesc": "Issue the PDF",
       "itemCountNoSpace": "{count} items",
       "orderTypesAndTierCount": "{orderTypes} · {tierCount} tiers",
-      "rejected": "Reject",
       "validUntilLabel": "Valid until {date}"
     },
     "quoteForm": {
@@ -7163,8 +7176,10 @@
       "invalidQuoteNumber": "Invalid quote number",
       "issueFailed": "Could not issue",
       "noPriceListEntry": "Line {line}: no matching price list (register a price list from the price estimate)",
+      "onlyDraftCanBeEdited": "Only a draft quote can be edited",
       "onlyDraftCanBeIssued": "Only a draft quote can be issued",
       "quantityMinOne": "Quantity must be 1 or more",
+      "quoteNotFound": "Quote not found",
       "scopeDenied": "You do not have permission for this operation (out of scope)",
       "updateFailed": "Could not update the quote"
     },
@@ -8313,7 +8328,7 @@
       },
       "unitPrice": {
         "label": "Unit price",
-        "summary": "The price per piece. If it differs from the price list's unit price, the difference is shown immediately."
+        "summary": "The price per piece. When a price list exists its unit price is used; to change it, turn on Override the unit price."
       },
       "deliveryDate": {
         "label": "Delivery date",

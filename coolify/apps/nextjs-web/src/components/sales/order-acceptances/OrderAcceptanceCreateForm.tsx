@@ -34,6 +34,7 @@ import {
   OrderAcceptanceItemsEditor,
   toItemPayload,
 } from "./OrderAcceptanceItemsEditor";
+import { usePriceEntries } from "./usePriceEntries";
 
 const BASE_PATH = "/sales/order-acceptances";
 
@@ -69,6 +70,10 @@ export function OrderAcceptanceCreateForm({
   const [orderDate, setOrderDate] = useState<string | null>(null);
   const [notes, setNotes] = useState("");
   const [items, setItems] = useState<ItemRowForm[]>([newItemRow()]);
+  // 明細の単価は既定で価格表が持つ（§2）— 顧客が決まるとその顧客の
+  // 価格表を引いて、行ごとの単価をその場で出す。
+  const priceEntries = usePriceEntries(customerId);
+  const priceContext = { customerBpId: customerId, priceEntries };
 
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -95,7 +100,7 @@ export function OrderAcceptanceCreateForm({
         quoteNumber: quoteNumber || null,
         orderDate,
         notes: notes || null,
-        items: toItemPayload(items),
+        items: toItemPayload(items, priceContext, tr),
       });
       if (result.ok) {
         notifications.show({
@@ -137,6 +142,7 @@ export function OrderAcceptanceCreateForm({
         it.productId ||
         it.productText ||
         it.unitPrice != null ||
+        it.priceOverridden ||
         it.deliveryDate ||
         it.notes ||
         it.quantity !== 1 ||
@@ -314,7 +320,11 @@ export function OrderAcceptanceCreateForm({
         description={tr("sales.orderAcceptances.enterTheProductAndQuantityPer")}
         title={tr("common.lineItems")}
       >
-        <OrderAcceptanceItemsEditor items={items} onChange={setItems} />
+        <OrderAcceptanceItemsEditor
+          items={items}
+          onChange={setItems}
+          priceContext={priceContext}
+        />
       </FormSection>
     </FormShell>
   );

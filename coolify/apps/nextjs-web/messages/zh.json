@@ -1191,12 +1191,6 @@
         "ISSUED": {
           "label": "已发行"
         },
-        "ACCEPTED": {
-          "label": "已接受"
-        },
-        "REJECTED": {
-          "label": "已拒绝"
-        },
         "EXPIRED": {
           "label": "已过期"
         }
@@ -2347,6 +2341,9 @@
       "finishedGoodsEnterStockUnderThe": "成品将以工单编号的批次入库，日后可充当任意订单明细的出货",
       "theFromStockQuantityMatchesThe": "库存分与分配合计一致",
       "searchByMaterialCodeOrName": "按材料编号或名称搜索",
+      "assumedMaterialTypeWithName": "产品的假定材料类别：{name}",
+      "materialTypeMismatchWithName": "所选材料与产品假定的材料类别（{name}）不同",
+      "materialTypeMismatch": "所选材料与产品假定的材料类别不同",
       "selectWhereTheFinishedGoodsGo": "选择成品的存放位置",
       "thereIsNoDrawingForThis": "该产品尚无图纸",
       "drawingUsed": "使用的图纸",
@@ -2357,8 +2354,8 @@
       "noStepListIsRegisteredFor": "该产品未登记工序列表（请在下方新建）",
       "savesThisStepCompositionAsThe": "将此工序构成保存为产品的工序列表 v1",
       "markingItDedicatedMakesItPreferred": "设为专用后，同一客户×产品的工单将优先选择",
-      "inspectionSheetsAreAssignedPerInspection": "检查表按检查工序分配。添加工序后，将自动选中以该工序为关联工序的检查表。",
-      "selectAnInspectionTemplate": "选择检查表模板",
+      "inspectionSheetsAreAssignedPerInspection": "检查表按检查工序自动分配（以该工序为关联工序的检查表）。批准后可在工序执行画面的检查表弹窗中重新分配。",
+      "selectAnInspectionTemplate": "没有匹配的检查表",
       "assignSomeonePerStepOptionalA": "按工序分配负责人（可选）。填写负责人的工序将创建带计划日期的作业计划。若需确定时段・数量，请在创建后于各工序的计划面板中添加。",
       "workPlanAssignees": "作业计划（负责人）",
       "plannedDate": "计划日",
@@ -2746,7 +2743,9 @@
     "stepExecutionView": {
       "stepWithName": "工序：{name}",
       "theStepWasAborted": "工序已中断",
-      "abort": "中断"
+      "abort": "中断",
+      "viewInspectionSheet": "查看检查表",
+      "noInspectionSheetAssigned": "尚未分配检查表"
     },
     "workOrderLinksCard": {
       "quantityPiecesWithCount": "{count} 支",
@@ -2851,7 +2850,10 @@
       "cannotDeleteActualOfCompletedStep": "无法删除已完成或已取消工序的实绩",
       "actualNotFound": "未找到该实绩",
       "auditActualDeleted": "已删除工序的作业实绩",
-      "couldNotDeleteActual": "删除作业实绩失败"
+      "couldNotDeleteActual": "删除作业实绩失败",
+      "inspectionSheetNotFound": "未找到指定的检查表",
+      "auditInspectionSheetsSet": "已变更工序的检查表分配（{count} 项）",
+      "couldNotSaveInspectionSheets": "检查表分配保存失败"
     },
     "workOrderActions": {
       "acknowledgeFailed": "确认记录失败",
@@ -6704,7 +6706,12 @@
       "watchedFolder": "监视文件夹导入",
       "manualEntry": "手动录入",
       "itemCountSuffix": "（{count} 项明细）",
-      "priceDiffLine": "第 {row} 行 {actual} ≠ 价格表 {expected}"
+      "priceDiffLine": "第 {row} 行 {actual} ≠ 价格表 {expected}",
+      "theseLinesUseAnOverriddenPrice": "以下明细将以价格表以外的单价受理。这是有意的覆盖，不会阻止提交审批，但请在审批前确认单价。",
+      "priceOverrideLine": "第 {row} 行 {actual}（价格表 {expected}）",
+      "hideTheDocumentPane": "折叠单据",
+      "showTheDocumentPane": "展开单据",
+      "hideTheDocument": "隐藏"
     },
     "orderLines": {
       "parentDocumentOfThisLine": "此明细的父单据",
@@ -6848,12 +6855,9 @@
       "pDFGenerationFailedYouCanRetry": "PDF 生成失败。可在 PDF 标签页的「重新生成」中重试。",
       "issueTheQuote": "发行报价单",
       "emailItToTheCustomerOnce": "发行后向客户发送邮件",
-      "accept": "接受",
-      "toTheOrder": "转为接单",
       "whereTheUnitPriceCameFrom": "单价来源",
-      "noOrderYetNoOrderAcceptance": "未接单（尚无订单确认书）",
       "noOrderYetTheOrderAcceptance": "未接单（接受后创建订单确认书）",
-      "youCannotRaiseThisFromA": "无法从已拒绝或已过期的报价单发起",
+      "youCannotRaiseThisFromA": "无法从已过期的报价单发起",
       "branch": "分公司",
       "priceListApplied": "适用价格表",
       "tax10": "税额（10%）",
@@ -7041,7 +7045,11 @@
       "priceMismatchCount": "价格差异 {count} 项",
       "priceMismatchExpected": "价格差异（价格表 {expected}）",
       "unenteredCount": "未填写 {count} 项",
-      "productSummaryAndMore": "{first} 等 {count} 种"
+      "productSummaryAndMore": "{first} 等 {count} 种",
+      "priceOverrideCount": "单价覆盖 {count} 件",
+      "lineOverrideText": "第 {row} 行：{actual}（价格表 {expected}）",
+      "priceOverridden": "已覆盖",
+      "priceOverriddenFromList": "已覆盖（价格表 {expected}）"
     },
     "orderAcceptanceIntakeTable": {
       "addedQueuedForExtraction": "已将 {count} 项添加到列表。AI 提取将随后依次执行",
@@ -7062,7 +7070,13 @@
     },
     "orderAcceptanceItemsEditor": {
       "lineCountAndTotalQuantity": "明细 {count} 件 / 合计数量",
-      "lineOrdinal": "明细 {index}"
+      "lineOrdinal": "明细 {index}",
+      "overridePrice": "覆盖单价",
+      "priceListPrice": "价格表 {price}",
+      "priceListPriceWithTier": "价格表 {price}（{tier}）",
+      "fromPriceList": "来自价格表",
+      "willReplaceWithList": "保存时 {entered} 将被替换为价格表的单价",
+      "overriddenFromList": "已覆盖（价格表 {expected}）"
     },
     "priceListDetail": {
       "confirmDeleteDiscountMessage": "将删除“{label}”。此操作无法撤销。",
@@ -7097,7 +7111,6 @@
       "issuePdfDesc": "发行 PDF",
       "itemCountNoSpace": "{count} 件",
       "orderTypesAndTierCount": "{orderTypes}・{tierCount} 档",
-      "rejected": "拒绝",
       "validUntilLabel": "有效期限 {date}"
     },
     "quoteForm": {
@@ -7163,8 +7176,10 @@
       "invalidQuoteNumber": "报价单号无效",
       "issueFailed": "发行失败",
       "noPriceListEntry": "明细 {line}：没有匹配的价格表（请从价格试算登记价格表）",
+      "onlyDraftCanBeEdited": "只有草稿状态的报价单可以编辑",
       "onlyDraftCanBeIssued": "只有草稿状态的报价单可以发行",
       "quantityMinOne": "数量须为 1 以上",
+      "quoteNotFound": "未找到目标报价单",
       "scopeDenied": "没有此操作的权限（超出范围）",
       "updateFailed": "报价单更新失败"
     },
@@ -8313,7 +8328,7 @@
       },
       "unitPrice": {
         "label": "单价",
-        "summary": "每支的价格。若与价格表中的单价不同，将立即显示为差异。"
+        "summary": "每支的价格。存在价格表时将带入价格表的单价；如需更改，请打开「覆盖单价」。"
       },
       "deliveryDate": {
         "label": "交期",

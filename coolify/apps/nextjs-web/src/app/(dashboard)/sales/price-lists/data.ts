@@ -147,7 +147,9 @@ export interface RelatedQuoteRow {
   quoteNumber: string;
   quantity: number;
   amount: number;
-  status: string;
+  status: "DRAFT" | "ISSUED";
+  /** 表示状態（期限切れ）の判定に使う — components/sales/quotes/model.ts quoteDisplayStatus。 */
+  validUntil: string | null;
   createdAt: string;
 }
 
@@ -173,6 +175,7 @@ export async function fetchRelatedQuotes(
       quantity: 0,
       amount: 0,
       status: it.quote.status,
+      validUntil: it.quote.validUntil?.toISOString().slice(0, 10) ?? null,
       createdAt: it.quote.createdAt.toISOString(),
     };
     agg.quantity += it.quantity;

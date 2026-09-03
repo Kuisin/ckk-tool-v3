@@ -60,8 +60,10 @@ import { entrySummary, type PriceListEntry } from "../price-lists/model";
 import { IssueQuoteModal } from "./IssueQuoteModal";
 import {
   findPriceTierRefIn,
+  isEditable,
   orderTypeLabel,
   type Quote,
+  quoteDisplayStatus,
   quoteTotals,
 } from "./model";
 
@@ -98,6 +100,10 @@ export function QuoteDetail({
   const totals = quoteTotals(quote);
 
   const status = quote.status;
+  // 発行済み × 有効期限超過は保存しない派生状態（都度判定 — KioskCardsTable の
+  // resolveCardValidity と同じ約束。1 回だけ computed）。
+  const displayStatus = quoteDisplayStatus(quote);
+  const isExpired = displayStatus === "EXPIRED";
   // PDF は発行後のみ閲覧できる（ルート側も 403 で拒否する）。
   const canViewPdf = status !== "DRAFT";
   const pdfFilename = `${quote.quoteNumber}.pdf`;
@@ -109,10 +115,10 @@ export function QuoteDetail({
   const pdfUrl = (extra = "") =>
     `/api/pdf/quote?id=${encodeURIComponent(quote.id)}${extra}`;
 
-  // ── 手続き状況（下書き → 発行 → 受諾）───────────────────────────────────
-  // 却下・期限切れは「受諾」段で止まった状態。段を増やさず色で示す
-  // （_specs/design.md §9 の REJECTED = red / EXPIRED = orange）。
-  const settled = status === "ACCEPTED" || status === "REJECTED";
+  // ── 手続き状況（下書き → 発行）───────────────────────────────────────────
+  // 受諾したかどうかは注文請書側の状態から読む（下の handoffGroups の
+  // 「次の書類へ」）。期限切れは段を増やさず色で示す
+  // （_specs/design.md §9 の EXPIRED = orange）。
   const stages: ProcedureStage[] = [
     {
       key: "draft",
@@ -123,39 +129,22 @@ export function QuoteDetail({
     {
       key: "issued",
       label: tr("common.issue"),
-      description:
-        status === "DRAFT"
+      description: isExpired
+        ? tr("sales.quoteDetail.expiredOn", {
+            date: fmt.date(quote.validUntil),
+          })
+        : status === "DRAFT"
           ? tr("sales.quoteDetail.issuePdfDesc")
-          : tr("common.issued2"),
-      loading: status === "ISSUED",
-    },
-    {
-      key: "accepted",
-      label: tr("sales.quotes.accept"),
-      description:
-        status === "REJECTED"
-          ? tr("sales.quoteDetail.rejected")
-          : status === "EXPIRED"
-            ? tr("sales.quoteDetail.expiredOn", {
+          : quote.validUntil
+            ? tr("sales.quoteDetail.validUntilLabel", {
                 date: fmt.date(quote.validUntil),
               })
-            : status === "ACCEPTED"
-              ? tr("sales.quotes.toTheOrder")
-              : quote.validUntil
-                ? tr("sales.quoteDetail.validUntilLabel", {
-                    date: fmt.date(quote.validUntil),
-                  })
-                : tr("sales.quotes.toTheOrder"),
-      color:
-        status === "REJECTED"
-          ? "red"
-          : status === "EXPIRED"
-            ? "orange"
-            : undefined,
+            : tr("common.issued2"),
+      loading: status === "ISSUED" && !isExpired,
+      color: isExpired ? "orange" : undefined,
     },
   ];
-  const active =
-    status === "DRAFT" ? 0 : settled || status === "EXPIRED" ? 2 : 1;
+  const active = status === "DRAFT" ? 0 : 1;
 
   // 上流 = 明細の単価を引いた価格表（見積書は価格表からしか値を持たない）。
   const sourceGroups: HandoffGroup[] | undefined =
@@ -198,10 +187,7 @@ export function QuoteDetail({
               })
             : statusLabel("OrderAcceptanceIntake", a.status),
       })),
-      emptyNote:
-        status === "ACCEPTED"
-          ? tr("sales.quotes.noOrderYetNoOrderAcceptance")
-          : tr("sales.quotes.noOrderYetTheOrderAcceptance"),
+      emptyNote: tr("sales.quotes.noOrderYetTheOrderAcceptance"),
     },
   ];
 
@@ -259,7 +245,7 @@ export function QuoteDetail({
             {
               label: tr("common.raiseADesignRequest"),
               icon: <IconRuler2 size={14} />,
-              disabled: status === "REJECTED" || status === "EXPIRED",
+              disabled: isExpired,
               disabledReason: tr("sales.quotes.youCannotRaiseThisFromA"),
               onClick: () =>
                 router.push(
@@ -273,7 +259,12 @@ export function QuoteDetail({
               onClick: () => router.push(`${BASE_PATH}/new?from=${quote.id}`),
             },
           ]}
-          onEdit={() => router.push(`${BASE_PATH}/${quote.id}/edit`)}
+          // 発行後は編集不可（直したくなったら複製）。
+          onEdit={
+            isEditable(quote)
+              ? () => router.push(`${BASE_PATH}/${quote.id}/edit`)
+              : undefined
+          }
           pdf={canViewPdf ? { href: pdfUrl() } : undefined}
         />
       }
@@ -283,7 +274,7 @@ export function QuoteDetail({
         tr("common.detailBreadcrumb"),
       ]}
       createdAt={fmt.dateTime(quote.createdAt)}
-      status={<StatusBadge entity="Quote" status={status} />}
+      status={<StatusBadge entity="Quote" status={displayStatus} />}
       title={quote.quoteNumber}
       updatedAt={fmt.dateTime(quote.updatedAt)}
     >
@@ -476,7 +467,7 @@ export function QuoteDetail({
               </Text>
               <DesignRequestLinks
                 createDisabledReason={
-                  status === "REJECTED" || status === "EXPIRED"
+                  isExpired
                     ? tr("sales.quotes.youCannotRaiseThisFromA")
                     : undefined
                 }

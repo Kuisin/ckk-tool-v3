@@ -189,11 +189,19 @@ export async function searchQuoteOptions(
 ): Promise<SearchOption[]> {
   if (!(await requireAnyRead(QUOTE_PICKER_CODES)).ok) return [];
   const q = query.trim().toUpperCase();
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
   const rows = await prisma.quote.findMany({
     where: {
       ...(customerBpId ? { customerBpId } : {}),
-      // 却下・期限切れは選ばせない（参照しても意味がないため）。
-      status: { notIn: ["REJECTED", "EXPIRED"] },
+      // 期限切れは選ばせない（参照しても意味がないため）。EXPIRED は
+      // 保存しない派生状態なので、有効期限で判定する
+      // （components/sales/quotes/model.ts quoteDisplayStatus と同じ規則）。
+      OR: [
+        { status: "DRAFT" },
+        { status: "ISSUED", validUntil: null },
+        { status: "ISSUED", validUntil: { gte: today } },
+      ],
     },
     include: { customerBp: { select: { name: true } } },
     orderBy: [{ yearMonth: "desc" }, { seq: "desc" }],

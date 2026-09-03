@@ -1391,6 +1391,94 @@ export async function getMaterialAtp(
   }
 }
 
+/** 製品の想定素材構成（材種 × 直径）とビルダーの初期選択候補。 */
+export interface WorkOrderMaterialAssumption {
+  materialTypeId: number | null;
+  materialTypeName: string | null;
+  diameterMm: number | null;
+  /** 材種 × 直径が一致する素材（cut-to-length で全長違いを許容 — §5）。 */
+  suggestedMaterialId: number | null;
+  suggestedMaterialLabel: string | null;
+}
+
+/**
+ * 製品詳細から使用素材をプリフィルするための想定構成（材種 × 直径）。
+ * 製品は「材種 + 直径 + 全長」で素材を指定する（cut-to-length のため特定の
+ * materials 行には紐付けない — _specs/tables.md）ので、一致する素材の中から
+ * 全長も一致するものを優先して 1 件だけ候補にする。
+ */
+export async function getWorkOrderMaterialAssumption(
+  productId: number,
+): Promise<WorkOrderMaterialAssumption | null> {
+  if (!(await checkPermission("work_order", "READ")).ok) return null;
+  if (!Number.isInteger(productId) || productId <= 0) return null;
+  const product = await prisma.product.findUnique({
+    where: { id: productId },
+    select: {
+      materialTypeId: true,
+      diameterMm: true,
+      lengthMm: true,
+      materialType: { select: { name: true } },
+    },
+  });
+  if (!product || product.materialTypeId == null) return null;
+  const candidates = await prisma.material.findMany({
+    where: {
+      isActive: true,
+      materialTypeId: product.materialTypeId,
+      ...(product.diameterMm != null ? { diameterMm: product.diameterMm } : {}),
+    },
+    orderBy: { code: "asc" },
+    take: 20,
+  });
+  const exact =
+    product.lengthMm != null
+      ? candidates.find((m) =>
+          m.lengthMm.equals(product.lengthMm as Prisma.Decimal),
+        )
+      : undefined;
+  const suggested = exact ?? candidates[0] ?? null;
+  return {
+    materialTypeId: product.materialTypeId,
+    materialTypeName: product.materialType
+      ? localized(product.materialType.name as LocalizedText | null)
+      : null,
+    diameterMm: product.diameterMm != null ? Number(product.diameterMm) : null,
+    suggestedMaterialId: suggested?.id ?? null,
+    suggestedMaterialLabel: suggested
+      ? `${suggested.code}（${localized(suggested.name as LocalizedText | null)}）`
+      : null,
+  };
+}
+
+/** 選択中の素材の材種 × 直径（想定構成との一致判定用）。 */
+export interface MaterialTypeSpec {
+  materialTypeId: number;
+  materialTypeName: string;
+  diameterMm: number;
+}
+
+export async function getMaterialTypeSpec(
+  materialId: number,
+): Promise<MaterialTypeSpec | null> {
+  if (!(await checkPermission("work_order", "READ")).ok) return null;
+  if (!Number.isInteger(materialId) || materialId <= 0) return null;
+  const m = await prisma.material.findUnique({
+    where: { id: materialId },
+    select: {
+      materialTypeId: true,
+      diameterMm: true,
+      materialType: { select: { name: true } },
+    },
+  });
+  if (!m) return null;
+  return {
+    materialTypeId: m.materialTypeId,
+    materialTypeName: localized(m.materialType.name as LocalizedText | null),
+    diameterMm: Number(m.diameterMm),
+  };
+}
+
 /**
  * 注文明細 → 対象製品の工程ルート一覧（ビルダーのルート選択用）。
  * 明細の受注元（注文請書ヘッダの顧客）も返す — 顧客一致ルートの優先選択と

@@ -646,9 +646,7 @@ Stack (gap="md")
 | Estimate | REGISTERED | green | 価格表登録済 |
 | Quote | DRAFT | gray | 下書き |
 | Quote | ISSUED | blue | 発行済 |
-| Quote | ACCEPTED | green | 受諾済 |
-| Quote | REJECTED | red | 却下 |
-| Quote | EXPIRED | orange | 期限切れ |
+| Quote | EXPIRED | orange | 期限切れ（保存しない — 発行済み × 有効期限超過から都度導く） |
 | OrderAcceptanceIntake | IMPORT | gray | 取込中 |
 | OrderAcceptanceIntake | DRAFT | blue | 下書き |
 | OrderAcceptanceIntake | REQUESTED | yellow | 承認依頼中 |
