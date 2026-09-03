@@ -437,7 +437,7 @@ Table estimates {
 Enum ESTIMATE_STATUS {
   DRAFT           // 下書き
   CONFIRMED       // 確定（価格表の基準単価ソースに選択可能）
-  REGISTERED      // 価格表で使用済み（ロック — 再価格試算は複製で）
+  REGISTERED      // 価格表で使用済み（ロック — 作り直しは複製で）
 }
 
 // ===========================

@@ -116,7 +116,7 @@ text-color: #9d174d;
 
 /line/
 
-[role_sales: 単価を価格試算する] <block_apply>
+[role_sales: 単価を算出する] <block_apply>
 label: 価格試算;
 desc: 材料・寸法・加工条件から見積単価を算出し、内容が固まったら確定する。;
 [role_sales: 価格表を作成する] <block_apply>

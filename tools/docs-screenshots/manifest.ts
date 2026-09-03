@@ -299,7 +299,7 @@ export const shots: Shot[] = [
     },
   },
   {
-    // 下書き価格試算の操作メニュー（確定 / 製品にリンク / 複製して再価格試算）
+    // 下書き価格試算の操作メニュー（確定 / 製品にリンク / 複製して作り直す）
     id: "trial-estimate-detail-03",
     docPage: "operations/sales/trial-estimate/user",
     path: "/sales/trial-estimates/EST-202607-00003",
