@@ -62,6 +62,7 @@ import { ModalShell } from "@/components/ui/modals";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { localizedQuantityLabels } from "@/lib/workflow-core-labels";
 import type { StepExecutionData } from "./model";
+import { StepInspectionSheetModal } from "./StepInspectionSheetModal";
 
 const BASE_PATH = "/production/work-orders";
 
@@ -518,6 +519,24 @@ export function StepExecutionView({ data }: { data: StepExecutionData }) {
           {step.cancelReason ??
             tr("production.stepExecution.thisStepHasBeenCancelled2")}
         </Alert>
+      )}
+
+      {/* ── 検査表割当（工程単位。ポップアップで見る/編集する — design.md §10.10） ── */}
+      {step.isInspection && (
+        <StepInspectionSheetModal
+          assigned={data.templates.map((t) => ({
+            id: t.id,
+            code: t.code,
+            name: t.name,
+          }))}
+          canEdit={
+            data.workOrderStatus !== "CANCELLED" && step.status !== "CANCELLED"
+          }
+          options={data.templateOptions}
+          stepId={step.id}
+          stepName={step.name}
+          workOrderNumber={workOrderNumber}
+        />
       )}
 
       {/* ── 検査記録 / 検査承認 ── */}

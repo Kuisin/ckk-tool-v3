@@ -1359,3 +1359,78 @@ export async function deleteStepActual(
     );
   }
 }
+
+// ── 検査表割当 (work_order_step_inspection_templates) ───────────────────────
+
+/**
+ * 工程の検査表割当を丸ごと入れ替える（この工程の検査表ポップアップの保存）。
+ * 書き込み専用の Server Action — 表示は fetchStepExecution の
+ * templates/templateOptions が持つ。作成時の既定選択（templatesFor）とは
+ * 別経路: あちらは指示書の作成/DRAFT編集時にのみ効き、こちらは承認後の
+ * 工程実行画面から検査表そのものを付け替える唯一の場所。
+ */
+export async function updateStepInspectionTemplates(
+  workOrderNumber: number,
+  stepId: string,
+  templateIds: number[],
+): Promise<StepActionResult> {
+  const tr = await getTranslations();
+  const denied = await deniedStepPermission("UPDATE");
+  if (denied) return denied;
+  const ids = [...new Set(templateIds)].filter(
+    (id) => Number.isInteger(id) && id > 0,
+  );
+  try {
+    const step = await findStep(workOrderNumber, stepId);
+    if (!step) {
+      return {
+        ok: false,
+        errors: [tr("production.stepExecutionActions.stepNotFound")],
+      };
+    }
+    if (ids.length > 0) {
+      const found = await prisma.inspectionTemplate.count({
+        where: { id: { in: ids } },
+      });
+      if (found !== ids.length) {
+        return {
+          ok: false,
+          errors: [
+            tr("production.stepExecutionActions.inspectionSheetNotFound"),
+          ],
+        };
+      }
+    }
+    await prisma.$transaction(async (tx) => {
+      await tx.workOrderStepInspectionTemplate.deleteMany({
+        where: { stepId, inspectionTemplateId: { notIn: ids } },
+      });
+      if (ids.length > 0) {
+        await tx.workOrderStepInspectionTemplate.createMany({
+          data: ids.map((inspectionTemplateId) => ({
+            stepId,
+            inspectionTemplateId,
+          })),
+          skipDuplicates: true,
+        });
+      }
+    });
+    await recordAudit({
+      action: "UPDATE",
+      tableName: "work_orders",
+      recordId: String(workOrderNumber),
+      after: {
+        note: tr("production.stepExecutionActions.auditInspectionSheetsSet", {
+          count: ids.length,
+        }),
+      },
+    });
+    revalidate(workOrderNumber, stepId);
+    return { ok: true };
+  } catch (e) {
+    return failed(
+      e,
+      tr("production.stepExecutionActions.couldNotSaveInspectionSheets"),
+    );
+  }
+}

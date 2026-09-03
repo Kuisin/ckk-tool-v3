@@ -2341,6 +2341,9 @@
       "finishedGoodsEnterStockUnderThe": "Finished goods enter stock under the work order number's lot, and can later cover any order line's shipment",
       "theFromStockQuantityMatchesThe": "The from-stock quantity matches the allocation total",
       "searchByMaterialCodeOrName": "Search by material code or name",
+      "assumedMaterialTypeWithName": "Assumed material type: {name}",
+      "materialTypeMismatchWithName": "The selected material differs from the product's assumed material type ({name})",
+      "materialTypeMismatch": "The selected material differs from the product's assumed material type",
       "selectWhereTheFinishedGoodsGo": "Select where the finished goods go",
       "thereIsNoDrawingForThis": "There is no drawing for this product yet",
       "drawingUsed": "Drawing used",
@@ -2351,8 +2354,8 @@
       "noStepListIsRegisteredFor": "No step list is registered for this product (create one below)",
       "savesThisStepCompositionAsThe": "Saves this step composition as the product's step list v1",
       "markingItDedicatedMakesItPreferred": "Marking it dedicated makes it preferred for work orders of the same customer × product",
-      "inspectionSheetsAreAssignedPerInspection": "Inspection sheets are assigned per inspection step. Adding a step auto-selects the sheets related to it.",
-      "selectAnInspectionTemplate": "Select an inspection template",
+      "inspectionSheetsAreAssignedPerInspection": "Inspection sheets are auto-assigned per inspection step (sheets related to that step). Reassign them from the inspection sheet popup on the step execution page after approval.",
+      "selectAnInspectionTemplate": "No matching inspection sheet",
       "assignSomeonePerStepOptionalA": "Assign someone per step (optional). A dated work plan is created for each step you fill in. To set times and quantities too, add them afterwards on each step's plan panel.",
       "workPlanAssignees": "Work plan (assignees)",
       "plannedDate": "Planned date",
@@ -2740,7 +2743,9 @@
     "stepExecutionView": {
       "stepWithName": "Step: {name}",
       "theStepWasAborted": "The step was aborted",
-      "abort": "Abort"
+      "abort": "Abort",
+      "viewInspectionSheet": "View inspection sheet",
+      "noInspectionSheetAssigned": "No inspection sheet assigned"
     },
     "workOrderLinksCard": {
       "quantityPiecesWithCount": "{count} pcs",
@@ -2845,7 +2850,10 @@
       "cannotDeleteActualOfCompletedStep": "Cannot delete actuals of a completed or cancelled step",
       "actualNotFound": "Actual not found",
       "auditActualDeleted": "Deleted the step's work actual",
-      "couldNotDeleteActual": "Could not delete the work actual"
+      "couldNotDeleteActual": "Could not delete the work actual",
+      "inspectionSheetNotFound": "The specified inspection sheet was not found",
+      "auditInspectionSheetsSet": "Changed the step's inspection sheet assignment ({count})",
+      "couldNotSaveInspectionSheets": "Could not save the inspection sheet assignment"
     },
     "workOrderActions": {
       "acknowledgeFailed": "Could not record the acknowledgement",
