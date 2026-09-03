@@ -127,8 +127,11 @@ function KioskAppFlagsView({
               })}
             </Text>
           </Stack>
-          <Badge color={flags[app.key] ?? true ? "green" : "gray"} variant="light">
-            {flags[app.key] ?? true
+          <Badge
+            color={(flags[app.key] ?? true) ? "green" : "gray"}
+            variant="light"
+          >
+            {(flags[app.key] ?? true)
               ? tr("common.display")
               : tr("admin.appFlagsTable.hidden")}
           </Badge>

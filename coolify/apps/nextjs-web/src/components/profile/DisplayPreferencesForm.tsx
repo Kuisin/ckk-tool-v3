@@ -24,6 +24,7 @@
  */
 
 import {
+  Badge,
   Divider,
   Group,
   Paper,
@@ -36,11 +37,14 @@ import {
   Title,
 } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
+import { useRouter } from "next/navigation";
 import { NextIntlClientProvider, useTranslations } from "next-intl";
 import { useEffect, useMemo, useState, useTransition } from "react";
 import { saveDisplayPreferences } from "@/app/(dashboard)/profile/preferences/actions";
+import { EditablePanel } from "@/components/ui/EditablePanel";
+import { FieldValue } from "@/components/ui/FieldValue";
 import { PageHeader } from "@/components/ui/PageHeader";
-import { FormActions } from "@/components/ui/shells";
+import { FormActions, SummaryGrid } from "@/components/ui/shells";
 import { createFormatters } from "@/lib/format";
 import { LOCALE_LABELS, LOCALES } from "@/lib/i18n";
 import {
@@ -83,11 +87,18 @@ const FONT_FAMILY_LABEL_KEYS = {
   system: "fontFamilySystem",
 } as const satisfies Record<FontFamilyPref, string>;
 
-/** 選択中の言語で文言を差し替えるための入れ子プロバイダ。 */
-export function DisplayPreferencesForm({
+/**
+ * 表示設定の編集フォーム（EditablePanel の edit）。選択中の言語で
+ * プレビューするため、この階層だけ NextIntlClientProvider を入れ子にする。
+ */
+function DisplayPreferencesEditor({
   initial,
+  onCancel,
+  onSaved,
 }: {
   initial: DisplayPreferences;
+  onCancel: () => void;
+  onSaved: () => void;
 }) {
   const [prefs, setPrefs] = useState<DisplayPreferences>(initial);
   return (
@@ -96,28 +107,31 @@ export function DisplayPreferencesForm({
       messages={PREVIEW_MESSAGES[prefs.locale]}
       timeZone={prefs.timeZone}
     >
-      <PreferencesFormBody
-        initial={initial}
+      <PreferencesEditorBody
+        onCancel={onCancel}
         onChange={setPrefs}
+        onSaved={onSaved}
         prefs={prefs}
       />
     </NextIntlClientProvider>
   );
 }
 
-function PreferencesFormBody({
-  initial,
+function PreferencesEditorBody({
   prefs,
   onChange,
+  onCancel,
+  onSaved,
 }: {
-  initial: DisplayPreferences;
   prefs: DisplayPreferences;
   onChange: (next: DisplayPreferences) => void;
+  onCancel: () => void;
+  onSaved: () => void;
 }) {
   const [isPending, startTransition] = useTransition();
+  const router = useRouter();
   const t = useTranslations("preferences");
   const tc = useTranslations("common");
-  const tShell = useTranslations("shell");
 
   const fmt = useMemo(() => createFormatters(prefs), [prefs]);
 
@@ -183,16 +197,15 @@ function PreferencesFormBody({
             }
           : { title: tc("error"), message: result.error, color: "red" },
       );
+      if (result.ok) {
+        router.refresh();
+        onSaved();
+      }
     });
   };
 
   return (
     <Stack gap="md">
-      <PageHeader
-        breadcrumbs={[tShell("profile"), t("title")]}
-        title={t("title")}
-      />
-
       <Paper p="md" radius="md" shadow="xs">
         <Text c="dimmed" mb="md" size="sm">
           {t("description")}
@@ -348,11 +361,77 @@ function PreferencesFormBody({
         </Stack>
       </Paper>
 
-      <FormActions
-        loading={isPending}
-        onCancel={() => onChange(initial)}
-        onSave={save}
+      <FormActions loading={isPending} onCancel={onCancel} onSave={save} />
+    </Stack>
+  );
+}
+
+/** 表示設定の閲覧表示（EditablePanel の view — 保存済みの値のみ）。 */
+function DisplayPreferencesView({ prefs }: { prefs: DisplayPreferences }) {
+  const t = useTranslations("preferences");
+  const tc = useTranslations("common");
+  return (
+    <SummaryGrid>
+      <FieldValue label={t("language")} value={LOCALE_LABELS[prefs.locale]} />
+      <FieldValue label={t("timeZone")} value={prefs.timeZone} />
+      <FieldValue
+        label={t("dateFormat")}
+        value={`${prefs.dateFormat}（${dateFormatExample(prefs.dateFormat)}）`}
       />
+      <FieldValue
+        label={t("timeFormat")}
+        value={prefs.timeFormat === "24h" ? t("time24h") : t("time12h")}
+      />
+      <FieldValue
+        label={t("textSize")}
+        value={t(TEXT_SCALE_LABEL_KEYS[prefs.textScale])}
+      />
+      <FieldValue
+        label={t("boldText")}
+        value={
+          <Badge color={prefs.boldText ? "green" : "gray"}>
+            {prefs.boldText ? tc("enabled") : tc("disabled")}
+          </Badge>
+        }
+      />
+      <FieldValue
+        label={t("fontFamily")}
+        value={t(FONT_FAMILY_LABEL_KEYS[prefs.fontFamily])}
+      />
+    </SummaryGrid>
+  );
+}
+
+/**
+ * 表示設定（/profile/preferences、本人のみ）。既定は保存済みの値を閲覧、
+ * 編集は「編集」ボタンから（design.md §10.10）。ライブプレビューは編集中のみ。
+ */
+export function DisplayPreferencesForm({
+  initial,
+}: {
+  initial: DisplayPreferences;
+}) {
+  const tShell = useTranslations("shell");
+  const t = useTranslations("preferences");
+  return (
+    <Stack gap="md">
+      <PageHeader
+        breadcrumbs={[tShell("profile"), t("title")]}
+        title={t("title")}
+      />
+      <Paper p="md" radius="md" shadow="xs">
+        <EditablePanel
+          canEdit
+          edit={({ close }) => (
+            <DisplayPreferencesEditor
+              initial={initial}
+              onCancel={close}
+              onSaved={close}
+            />
+          )}
+          view={<DisplayPreferencesView prefs={initial} />}
+        />
+      </Paper>
     </Stack>
   );
 }
