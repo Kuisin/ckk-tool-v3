@@ -22,7 +22,7 @@ import { useUrlSelectState, useUrlStringState } from "@/hooks/useUrlState";
 import { useIsMobile } from "@/hooks/useViewport";
 import type { Option } from "@/lib/mock";
 import { statusOptions } from "@/lib/status-map";
-import { type Quote, quoteTotals } from "./model";
+import { type Quote, quoteDisplayStatus, quoteTotals } from "./model";
 
 const BASE_PATH = "/sales/quotes";
 
@@ -49,13 +49,17 @@ export function QuoteTable({
     setStatus(null);
   };
 
+  // EXPIRED は保存しない派生状態 — 一覧の絞り込み・表示は 1 回だけ計算した
+  // today を全行で共有する（KioskCardsTable と同じ約束）。
+  const today = new Date().toISOString().slice(0, 10);
+
   const filtered = rows.filter((q) => {
     const matchesSearch =
       !search ||
       q.quoteNumber.includes(search) ||
       q.customerName.includes(search);
     const matchesCustomer = !customer || q.customerId === customer;
-    const matchesStatus = !status || q.status === status;
+    const matchesStatus = !status || quoteDisplayStatus(q, today) === status;
     return matchesSearch && matchesCustomer && matchesStatus;
   });
 
@@ -100,8 +104,10 @@ export function QuoteTable({
       key: "status",
       header: tr("common.status"),
       width: 100,
-      sortValue: (q) => q.status,
-      render: (q) => <StatusBadge entity="Quote" status={q.status} />,
+      sortValue: (q) => quoteDisplayStatus(q, today),
+      render: (q) => (
+        <StatusBadge entity="Quote" status={quoteDisplayStatus(q, today)} />
+      ),
     },
     {
       key: "updatedAt",
@@ -179,7 +185,10 @@ export function QuoteTable({
             </Stack>
             <Stack align="flex-end" className="shrink-0" gap={4}>
               <MoneyText value={quoteTotals(q).grandTotal} />
-              <StatusBadge entity="Quote" status={q.status} />
+              <StatusBadge
+                entity="Quote"
+                status={quoteDisplayStatus(q, today)}
+              />
             </Stack>
           </Group>
         )}

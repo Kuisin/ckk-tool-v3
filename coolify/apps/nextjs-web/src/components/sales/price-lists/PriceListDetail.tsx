@@ -59,6 +59,7 @@ import { useTabParam } from "@/hooks/useUrlState";
 import type { MemoView } from "@/lib/document-memos";
 import type { Option } from "@/lib/mock";
 import { ORDER_TYPE_LABEL } from "@/lib/mock";
+import { quoteDisplayStatus } from "../quotes/model";
 import { CopyPriceListModal } from "./CopyPriceListModal";
 import { CreateQuoteModal } from "./CreateQuoteModal";
 import { DeletePriceListModal } from "./DeletePriceListModal";
@@ -541,7 +542,10 @@ export function PriceListDetail({
                             <MoneyText value={q.amount} />
                           </Table.Td>
                           <Table.Td>
-                            <StatusBadge entity="Quote" status={q.status} />
+                            <StatusBadge
+                              entity="Quote"
+                              status={quoteDisplayStatus(q)}
+                            />
                           </Table.Td>
                           <Table.Td>
                             <Text c="dimmed" className="tabular-nums" size="xs">

@@ -1191,12 +1191,6 @@
         "ISSUED": {
           "label": "已发行"
         },
-        "ACCEPTED": {
-          "label": "已接受"
-        },
-        "REJECTED": {
-          "label": "已拒绝"
-        },
         "EXPIRED": {
           "label": "已过期"
         }
@@ -6848,12 +6842,9 @@
       "pDFGenerationFailedYouCanRetry": "PDF 生成失败。可在 PDF 标签页的「重新生成」中重试。",
       "issueTheQuote": "发行报价单",
       "emailItToTheCustomerOnce": "发行后向客户发送邮件",
-      "accept": "接受",
-      "toTheOrder": "转为接单",
       "whereTheUnitPriceCameFrom": "单价来源",
-      "noOrderYetNoOrderAcceptance": "未接单（尚无订单确认书）",
       "noOrderYetTheOrderAcceptance": "未接单（接受后创建订单确认书）",
-      "youCannotRaiseThisFromA": "无法从已拒绝或已过期的报价单发起",
+      "youCannotRaiseThisFromA": "无法从已过期的报价单发起",
       "branch": "分公司",
       "priceListApplied": "适用价格表",
       "tax10": "税额（10%）",
@@ -7097,7 +7088,6 @@
       "issuePdfDesc": "发行 PDF",
       "itemCountNoSpace": "{count} 件",
       "orderTypesAndTierCount": "{orderTypes}・{tierCount} 档",
-      "rejected": "拒绝",
       "validUntilLabel": "有效期限 {date}"
     },
     "quoteForm": {
@@ -7163,8 +7153,10 @@
       "invalidQuoteNumber": "报价单号无效",
       "issueFailed": "发行失败",
       "noPriceListEntry": "明细 {line}：没有匹配的价格表（请从价格试算登记价格表）",
+      "onlyDraftCanBeEdited": "只有草稿状态的报价单可以编辑",
       "onlyDraftCanBeIssued": "只有草稿状态的报价单可以发行",
       "quantityMinOne": "数量须为 1 以上",
+      "quoteNotFound": "未找到目标报价单",
       "scopeDenied": "没有此操作的权限（超出范围）",
       "updateFailed": "报价单更新失败"
     },

@@ -826,17 +826,8 @@ export async function confirmOrderLines(
           },
         });
       }
-      // 参照元の見積書を受諾済みへ（ISSUED のときのみ、原子的に）
-      if (prior.quoteYearMonth && prior.quoteSeq != null) {
-        await tx.quote.updateMany({
-          where: {
-            yearMonth: prior.quoteYearMonth,
-            seq: prior.quoteSeq,
-            status: "ISSUED",
-          },
-          data: { status: "ACCEPTED" },
-        });
-      }
+      // 参照元の見積書の状態は変えない（ACCEPTED は廃止 — 受諾したかどうかは
+      // この注文請書自体が下流の「次の書類へ」として見積詳細に出る）。
     });
 
     const numbers = prior.items.map((_, i) =>

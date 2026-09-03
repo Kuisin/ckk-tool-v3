@@ -1,4 +1,5 @@
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
+import { isEditable } from "@/components/sales/quotes/model";
 import { QuoteForm } from "@/components/sales/quotes/QuoteForm";
 import { requireAppRead } from "@/lib/authz-page";
 import { parseDocKey } from "@/lib/doc-number";
@@ -11,7 +12,12 @@ import {
 
 export const dynamic = "force-dynamic";
 
-/** 見積書 編集 (SA23 → edit). */
+/**
+ * 見積書 編集 (SA23 → edit).
+ *
+ * 編集できるのは下書き（DRAFT）のみ — それ以外は詳細へリダイレクト
+ * （サーバーアクション側でも同じガードを行う）。直したくなったら複製する。
+ */
 export default async function SalesQuotesEditPage({
   params,
 }: {
@@ -31,6 +37,9 @@ export default async function SalesQuotesEditPage({
       fetchEntriesForCustomer(),
     ]);
   if (!quote) notFound();
+  if (!isEditable(quote)) {
+    redirect(`/sales/quotes/${quote.quoteNumber}`);
+  }
 
   return (
     <QuoteForm
