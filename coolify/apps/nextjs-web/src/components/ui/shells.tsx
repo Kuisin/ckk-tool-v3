@@ -112,6 +112,7 @@ export function ResourceActions({
           {/* アイコンのみのボタンには aria-label が必須（design.md §18.2）。 */}
           <Button
             aria-label={tr("common.actions2")}
+            className="shrink-0"
             px="xs"
             size={isMobile ? "sm" : undefined}
             variant="default"
