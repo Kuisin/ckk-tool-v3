@@ -256,6 +256,14 @@ export interface FormFieldDef {
    * 見せない。
    */
   isTitle?: boolean;
+  /**
+   * 所属セクションの key（lib/form-branching.ts FormSectionDef.key）。
+   * フォームがセクションに分かれていない（従来どおりの 1 ページ）ときは
+   * 未設定のまま — この列の有無だけで「セクションを使っているか」を
+   * 二重に持たない。トップレベルの項目にのみ意味を持つ（table の列には
+   * 付けない）。
+   */
+  sectionKey?: string;
 }
 
 function localizedLabel(tr: Tr) {
@@ -323,6 +331,7 @@ function baseFieldShape(tr: Tr) {
     related: relatedConfig(tr).optional(),
     order: z.number().int(),
     isTitle: z.boolean().optional(),
+    sectionKey: z.string().optional(),
   };
 }
 

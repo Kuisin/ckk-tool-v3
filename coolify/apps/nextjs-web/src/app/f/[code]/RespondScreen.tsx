@@ -15,7 +15,12 @@ import { hasAnyApproval } from "@/lib/approvals";
 import { sessionUserId } from "@/lib/authz";
 import { prisma } from "@/lib/db";
 import { myDraftsOf, resolveRespondState } from "@/lib/form-respond-state";
-import { fetchForm, fetchFormVersionFields, formAccess } from "@/lib/forms";
+import {
+  fetchForm,
+  fetchFormVersionFields,
+  fetchFormVersionSections,
+  formAccess,
+} from "@/lib/forms";
 import { NO_SHARE_ACCESS } from "@/lib/share-grants";
 import { getServerFormatters } from "@/lib/user-preferences";
 
@@ -300,6 +305,12 @@ export async function RespondScreen({
             editing.version,
           )
         : ((form as NonNullable<typeof form>).fields ?? []);
+      const sections = editing
+        ? await fetchFormVersionSections(
+            (form as NonNullable<typeof form>).id,
+            editing.version,
+          )
+        : ((form as NonNullable<typeof form>).sections ?? []);
 
       if (fields.length === 0) {
         return (
@@ -342,6 +353,7 @@ export async function RespondScreen({
               : null
           }
           fields={fields}
+          sections={sections}
           title={target.title}
         />
       );

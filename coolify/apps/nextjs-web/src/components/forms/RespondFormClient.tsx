@@ -7,6 +7,7 @@ import {
   updateResponse,
 } from "@/app/(dashboard)/general/forms/actions";
 import { useFormat } from "@/components/layout/PreferencesProvider";
+import type { FormSectionDef } from "@/lib/form-branching";
 import type {
   FormAnswerValue,
   FormAvailability,
@@ -19,6 +20,7 @@ export function RespondFormClient({
   title,
   description,
   fields,
+  sections = [],
   availability,
   closesAt,
   existing,
@@ -28,6 +30,7 @@ export function RespondFormClient({
   title: string;
   description: string | null;
   fields: FormFieldDef[];
+  sections?: FormSectionDef[];
   availability: FormAvailability;
   closesAt: string | null;
   existing: {
@@ -85,6 +88,7 @@ export function RespondFormClient({
           );
         return r.ok ? { ok: true } : { ok: false, error: r.error };
       }}
+      sections={sections}
       // 編集は受付終了後も許される設定があるので、送信可否は別に渡す。
       // 最終判定はサーバ（canEditResponse / formAvailability）がやり直す。
       submitLabel={

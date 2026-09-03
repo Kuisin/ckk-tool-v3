@@ -22,6 +22,10 @@ import { useTranslations } from "next-intl";
 import { useState, useTransition } from "react";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { FormActions, FormSection } from "@/components/ui/shells";
+import {
+  type FormSectionDef,
+  normalizeSectionOrder,
+} from "@/lib/form-branching";
 import { type FormFieldDef, normalizeOrder } from "@/lib/form-schema";
 import { FormBuilder } from "./FormBuilder";
 
@@ -64,6 +68,7 @@ export function FormEditor({
   code,
   initialSettings,
   initialFields,
+  initialSections = [],
   onSaveSettings,
   onPublishFields,
 }: {
@@ -71,11 +76,13 @@ export function FormEditor({
   code?: string;
   initialSettings: FormSettingsValues;
   initialFields: FormFieldDef[];
+  initialSections?: FormSectionDef[];
   onSaveSettings: (
     values: FormSettingsValues,
   ) => Promise<{ ok: boolean; error?: string; code?: string }>;
   onPublishFields?: (
     fields: FormFieldDef[],
+    sections: FormSectionDef[],
   ) => Promise<{ ok: boolean; error?: string }>;
 }) {
   const tr = useTranslations();
@@ -83,18 +90,21 @@ export function FormEditor({
   const [isPending, startTransition] = useTransition();
   const [values, setValues] = useState(initialSettings);
   const [fields, setFields] = useState(initialFields);
+  const [sections, setSections] = useState(initialSections);
 
   const set = (patch: Partial<FormSettingsValues>) =>
     setValues({ ...values, ...patch });
 
   /**
-   * 項目に手が入ったか。**入っていないときは公開しない** — 設定を直すたびに
-   * 中身の同じバージョンが積み上がるのを避ける（バージョンは不変なので、
-   * 一度作ると消せない）。
+   * 項目・セクションに手が入ったか。**入っていないときは公開しない** —
+   * 設定を直すたびに中身の同じバージョンが積み上がるのを避ける（バージョンは
+   * 不変なので、一度作ると消せない）。
    */
   const fieldsDirty =
     JSON.stringify(normalizeOrder(fields)) !==
-    JSON.stringify(normalizeOrder(initialFields));
+      JSON.stringify(normalizeOrder(initialFields)) ||
+    JSON.stringify(normalizeSectionOrder(sections)) !==
+      JSON.stringify(normalizeSectionOrder(initialSections));
 
   /**
    * 保存は 1 つ。設定と項目をまとめて保存する。
@@ -119,7 +129,7 @@ export function FormEditor({
       const target = saved.code ?? code;
 
       if (mode === "edit" && onPublishFields && fieldsDirty) {
-        const published = await onPublishFields(fields);
+        const published = await onPublishFields(fields, sections);
         if (!published.ok) {
           // 設定は保存済み。項目だけ落ちたので、画面はそのまま残して直させる。
           notifications.show({
@@ -313,7 +323,12 @@ export function FormEditor({
           <Text c="dimmed" size="sm">
             {tr("forms.formEditor.saveBelowStoresItTogetherWith")}
           </Text>
-          <FormBuilder fields={fields} onChange={setFields} />
+          <FormBuilder
+            fields={fields}
+            onChange={setFields}
+            onSectionsChange={setSections}
+            sections={sections}
+          />
           {fieldsDirty && (
             <Text c="orange" size="xs">
               {tr("forms.formEditor.thereAreUnsavedChangesToThe")}
