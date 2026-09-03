@@ -790,9 +790,6 @@
     "yesterday": "Yesterday",
     "daysAgo": "{n} days ago",
     "step": "Step",
-    "zoomIn": "Zoom in",
-    "zoomOut": "Zoom out",
-    "resetZoom": "Reset zoom",
     "userChangeUpdateRoles": "Change roles",
     "roleHash": "Role #{id}",
     "setRolesTo": "Set roles to {names}",
@@ -2132,7 +2129,17 @@
       "auditExportedToExcel": "Exported responses to Excel ({count} rows{truncated})",
       "auditExportTruncatedSuffix": ", truncated at the limit",
       "exportFilenamePartialSuffix": "_partial",
-      "everyFieldNeedsASection": "When using sections, every field must belong to a section"
+      "everyFieldNeedsASection": "When using sections, every field must belong to a section",
+      "transferHeaderTitle": "CKK business management system — form definition",
+      "transferHeaderFieldTitle": "Title",
+      "transferHeaderFieldKind": "Kind",
+      "transferHeaderFieldCount": "Fields",
+      "transferHeaderSource": "Exported from",
+      "transferHeaderExportedAt": "Exported at",
+      "transferHeaderNote1": "This file contains only the form definition. Responses and sharing settings are not included",
+      "transferHeaderNote2": "(sharing targets differ per environment, so an imported form starts unpublished).",
+      "transferHeaderNote3": "To import it, go to Forms > Import and either select this file or paste its contents.",
+      "transferHeaderNote4": "Do not edit the JSON below (the import fails if it is broken)."
     },
     "tasksActions": {
       "loginRequired": "Please log in",
@@ -2270,7 +2277,9 @@
       "notYetProcessed": "Not yet processed",
       "approvalRecordSectionTitle": "Approval record",
       "stepNoColumn": "Step",
-      "approverColumn": "Approver"
+      "approverColumn": "Approver",
+      "formCodeLine": "Form code: {code}",
+      "delegateForSuffix": "{approver} (on behalf of {delegateFor})"
     }
   },
   "production": {
@@ -2992,6 +3001,23 @@
     },
     "productRoutes": {
       "theSelectedProcessRouteIsNot": "The selected process route does not belong to this product"
+    },
+    "inspectionSheetPdf": {
+      "equipmentLaser": "Laser",
+      "equipmentProjector": "Projector",
+      "equipmentPick": "Pick tester",
+      "equipmentScale": "Scale",
+      "equipmentMicroscope": "Microscope",
+      "equipmentVisual": "Visual",
+      "equipmentCaliper": "Caliper",
+      "inspectionEquipment": "Inspection equipment",
+      "passOrFail": "Pass ・ Fail",
+      "passFail": "Pass/fail",
+      "overflowNote": "…{count} pcs in total",
+      "toleranceTop": "Tolerance top",
+      "toleranceBottom": "Tolerance bottom",
+      "upperLimit": "Upper limit",
+      "lowerLimit": "Lower limit"
     }
   },
   "purchase": {
@@ -7251,7 +7277,8 @@
       "directToUserButEndUserNot": "Direct to end user, but no end user specified",
       "noLineItems": "There are no line items",
       "lineProductNotIdentified": "Line {rows}: Product not identified",
-      "lineUnitPriceNotEntered": "Line {rows}: Unit price not entered"
+      "lineUnitPriceNotEntered": "Line {rows}: Unit price not entered",
+      "andNMore": "and {count} more"
     },
     "orderLineCore": {
       "confirmedLineCannotBeChanged": "A confirmed order line cannot be changed",
@@ -7703,7 +7730,9 @@
     "targetCancelRequestNotFound": "The cancellation request was not found",
     "cancelRequestNotPending": "This request has already been processed",
     "chainCancelNote": "Chain cancellation triggered by cancelling order acceptance {number}",
-    "cancelApplyFailed": "Could not apply the cancellation"
+    "cancelApplyFailed": "Could not apply the cancellation",
+    "lineNotCancellableState": "Order line (branch {branch}) is in a state that cannot be cancelled",
+    "cancelAppliedNote": "Cancellation applied (reason: {reason}) — {lines} line items / {released} reservations released / {woCount} work orders cancelled in chain"
   },
   "privilegedAccessGate": {
     "unknownOperation": "Unknown privileged operation: {key} (register it in lib/privileged-operations.ts)",
@@ -9148,6 +9177,13 @@
         "label": "Default value (override)",
         "summary": "Enter this only if you want a different default value for this field specifically when this type is selected. If left empty, the default value from the product item is used."
       }
+    }
+  },
+  "docs": {
+    "zoomableImage": {
+      "zoomOut": "Zoom out",
+      "zoomIn": "Zoom in",
+      "resetZoom": "Reset zoom"
     }
   }
 }

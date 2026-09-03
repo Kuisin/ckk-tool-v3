@@ -790,9 +790,6 @@
     "yesterday": "昨日",
     "daysAgo": "{n}日前",
     "step": "工程",
-    "zoomIn": "拡大",
-    "zoomOut": "縮小",
-    "resetZoom": "元のサイズに戻す",
     "userChangeUpdateRoles": "ロール割当の変更",
     "roleHash": "ロール #{id}",
     "setRolesTo": "ロールを {names} にする",
@@ -2132,7 +2129,17 @@
       "auditExportedToExcel": "回答を Excel で書き出し（{count} 件{truncated}）",
       "auditExportTruncatedSuffix": "・上限で打ち切り",
       "exportFilenamePartialSuffix": "_一部",
-      "everyFieldNeedsASection": "セクションに分けたら、すべての項目をいずれかのセクションに入れてください"
+      "everyFieldNeedsASection": "セクションに分けたら、すべての項目をいずれかのセクションに入れてください",
+      "transferHeaderTitle": "CKK 業務管理システム — フォーム定義",
+      "transferHeaderFieldTitle": "タイトル",
+      "transferHeaderFieldKind": "種類",
+      "transferHeaderFieldCount": "項目数",
+      "transferHeaderSource": "書き出し元",
+      "transferHeaderExportedAt": "書き出し日時",
+      "transferHeaderNote1": "このファイルは「フォームの作り」だけを含みます。回答と共有設定は含みません",
+      "transferHeaderNote2": "（共有先は環境ごとに違うため、取り込んだフォームは非公開で始まります）。",
+      "transferHeaderNote3": "取り込みは フォーム > 取り込み から、このファイルを選ぶか中身を貼り付けます。",
+      "transferHeaderNote4": "以下の JSON は編集しないでください（壊れると取り込めません）。"
     },
     "tasksActions": {
       "loginRequired": "ログインしてください",
@@ -2270,7 +2277,9 @@
       "notYetProcessed": "未処理",
       "approvalRecordSectionTitle": "承認の記録",
       "stepNoColumn": "段",
-      "approverColumn": "承認者"
+      "approverColumn": "承認者",
+      "formCodeLine": "フォームコード: {code}",
+      "delegateForSuffix": "{approver}（{delegateFor} の代理）"
     }
   },
   "production": {
@@ -2992,6 +3001,23 @@
     },
     "productRoutes": {
       "theSelectedProcessRouteIsNot": "選択された工程ルートがこの製品のものではありません"
+    },
+    "inspectionSheetPdf": {
+      "equipmentLaser": "レーザー",
+      "equipmentProjector": "投影機",
+      "equipmentPick": "ピック",
+      "equipmentScale": "スケール",
+      "equipmentMicroscope": "顕微鏡",
+      "equipmentVisual": "目視",
+      "equipmentCaliper": "ノギス",
+      "inspectionEquipment": "検査設備",
+      "passOrFail": "合 ・ 否",
+      "passFail": "合否",
+      "overflowNote": "…全{count}本",
+      "toleranceTop": "公差 Top",
+      "toleranceBottom": "公差 Bottom",
+      "upperLimit": "上限",
+      "lowerLimit": "下限"
     }
   },
   "purchase": {
@@ -7251,7 +7277,8 @@
       "directToUserButEndUserNot": "ユーザー直送ですがエンドユーザーが未指定です",
       "noLineItems": "明細が 1 件もありません",
       "lineProductNotIdentified": "明細 {rows} 行目: 製品が未特定です",
-      "lineUnitPriceNotEntered": "明細 {rows} 行目: 単価が未入力です"
+      "lineUnitPriceNotEntered": "明細 {rows} 行目: 単価が未入力です",
+      "andNMore": "ほか {count} 件"
     },
     "orderLineCore": {
       "confirmedLineCannotBeChanged": "確定済みの注文明細は変更できません",
@@ -7703,7 +7730,9 @@
     "targetCancelRequestNotFound": "キャンセル依頼が見つかりません",
     "cancelRequestNotPending": "この依頼は既に処理済みです",
     "chainCancelNote": "注文請書 {number} キャンセルに伴う連鎖キャンセル",
-    "cancelApplyFailed": "キャンセルの適用に失敗しました"
+    "cancelApplyFailed": "キャンセルの適用に失敗しました",
+    "lineNotCancellableState": "注文明細（枝番 {branch}）がキャンセルできない状態です",
+    "cancelAppliedNote": "キャンセル適用（理由: {reason}）— 明細 {lines} 件 / 予約解放 {released} 件 / 連鎖キャンセル指示書 {woCount} 件"
   },
   "privilegedAccessGate": {
     "unknownOperation": "未知の特権操作です: {key}（lib/privileged-operations.ts に登録してください）",
@@ -9148,6 +9177,13 @@
         "label": "既定値（上書き）",
         "summary": "その項目の既定値を、この種別のときだけ別の値にしたい場合に入れます。空なら製品項目側の既定値が使われます。"
       }
+    }
+  },
+  "docs": {
+    "zoomableImage": {
+      "zoomOut": "縮小",
+      "zoomIn": "拡大",
+      "resetZoom": "元のサイズに戻す"
     }
   }
 }
