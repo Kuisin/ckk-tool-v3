@@ -19,6 +19,7 @@
 
 import { ActionIcon } from "@mantine/core";
 import { Image as FumadocsImage } from "fumadocs-core/framework";
+import { useTranslations } from "next-intl";
 import { type ImgHTMLAttributes, useState } from "react";
 import { TransformComponent, TransformWrapper } from "react-zoom-pan-pinch";
 import { ModalShell } from "@/components/ui/modals";
@@ -39,6 +40,7 @@ export function ZoomableImage(
   props: ImgHTMLAttributes<HTMLImageElement> & { isExternal?: boolean },
 ) {
   const { isExternal, ...imgProps } = props;
+  const tr = useTranslations();
   const [open, setOpen] = useState(false);
   const src = getImageSrc(props.src);
   const alt = typeof props.alt === "string" ? props.alt : "";
@@ -97,21 +99,21 @@ export function ZoomableImage(
                   }}
                 >
                   <ActionIcon
-                    aria-label="縮小"
+                    aria-label={tr("docs.zoomableImage.zoomOut")}
                     onClick={() => zoomOut()}
                     variant="default"
                   >
                     −
                   </ActionIcon>
                   <ActionIcon
-                    aria-label="拡大"
+                    aria-label={tr("docs.zoomableImage.zoomIn")}
                     onClick={() => zoomIn()}
                     variant="default"
                   >
                     +
                   </ActionIcon>
                   <ActionIcon
-                    aria-label="元のサイズに戻す"
+                    aria-label={tr("docs.zoomableImage.resetZoom")}
                     onClick={() => resetTransform()}
                     variant="default"
                   >
