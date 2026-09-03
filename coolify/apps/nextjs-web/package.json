@@ -5,7 +5,7 @@
   "packageManager": "pnpm@10.18.0",
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
+    "build": "node ../../../tools/swimlane/build-diagrams.mjs && next build",
     "typecheck": "fumadocs-mdx && tsc --noEmit",
     "start": "next start",
     "lint": "biome check",
@@ -56,6 +56,7 @@
     "react": "19.2.4",
     "react-dom": "19.2.4",
     "react-markdown": "10.1.0",
+    "react-zoom-pan-pinch": "4.1.1",
     "remark-gfm": "4.0.1",
     "web-push": "^3.6.7",
     "zod": "^4.4.3"

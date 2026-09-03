@@ -11,6 +11,7 @@ import "server-only";
 import { getLocale, getTranslations } from "next-intl/server";
 import { checkPermission, sessionUserId } from "@/lib/authz";
 import { prisma } from "@/lib/db";
+import { type LocalizedText, localized } from "@/lib/format";
 import {
   type GrantState,
   grantState,
@@ -140,6 +141,42 @@ function elevationRow(
   };
 }
 
+/**
+ * 変更依頼の要約に出す名前の対応表（拠点 / ロール）。
+ *
+ * payload は id しか持たないので、これが無いと決裁画面に `#12 / #7` と並ぶ。
+ * 承認者は「何になるのか」を読んで判断するのだから、id では判断できない。
+ * どちらもマスタで数十件なので、件数を絞らず 1 回ずつ引いて Map にする。
+ */
+async function loadChangeNames(): Promise<ChangeNames> {
+  const locale = await getLocale();
+  const [plants, roles] = await Promise.all([
+    prisma.plant.findMany({ select: { id: true, code: true, name: true } }),
+    prisma.role.findMany({
+      select: { id: true, rolename: true, displayName: true },
+    }),
+  ]);
+  return {
+    plants: new Map(
+      plants.map((p) => [
+        p.id,
+        `${p.code} ${localized(p.name as LocalizedText | null, locale)}`,
+      ]),
+    ),
+    roles: new Map(
+      roles.map((r) => {
+        const label = localized(r.displayName as LocalizedText | null, locale);
+        return [r.id, label === "—" ? r.rolename : label];
+      }),
+    ),
+  };
+}
+
+interface ChangeNames {
+  plants: ReadonlyMap<number, string>;
+  roles: ReadonlyMap<number, string>;
+}
+
 function userChangeRow(
   r: {
     id: string;
@@ -158,6 +195,7 @@ function userChangeRow(
     decidedByUser: { displayName: string } | null;
   },
   tr: Awaited<ReturnType<typeof getTranslations>>,
+  names: ChangeNames,
 ): PrivilegedRequestRow {
   const kind = r.kind as UserChangeKind;
   return {
@@ -165,7 +203,7 @@ function userChangeRow(
     kind: "user-change",
     code: USER_ADMIN_CODE,
     title: `${userChangeLabel(kind, tr)}: ${r.targetUser.displayName}`,
-    detail: describeUserChange(kind, r.payload, tr),
+    detail: describeUserChange(kind, r.payload, tr, names),
     operations: [],
     reason: r.reason,
     status: r.status as PrivilegedRequestStatus,
@@ -207,7 +245,7 @@ export async function listMyRequests(): Promise<PrivilegedRequestRow[]> {
   const userId = await sessionUserId();
   if (!userId) return [];
   const now = new Date();
-  const [elevations, changes, locale, tr] = await Promise.all([
+  const [elevations, changes, locale, tr, names] = await Promise.all([
     prisma.privilegedAccessRequest.findMany({
       where: { requestedBy: userId },
       include: ELEVATION_INCLUDE,
@@ -222,11 +260,12 @@ export async function listMyRequests(): Promise<PrivilegedRequestRow[]> {
     }),
     getLocale(),
     getTranslations(),
+    loadChangeNames(),
   ]);
   const opLocale = locale === "en" ? "en" : "ja";
   return sortRows([
     ...elevations.map((r) => elevationRow(r, now, opLocale, tr)),
-    ...changes.map((r) => userChangeRow(r, tr)),
+    ...changes.map((r) => userChangeRow(r, tr, names)),
   ]);
 }
 
@@ -242,7 +281,7 @@ export async function listRequestsToApprove(): Promise<PrivilegedRequestRow[]> {
   if (codes.length === 0) return [];
   const now = new Date();
 
-  const [elevations, changes, locale, tr] = await Promise.all([
+  const [elevations, changes, locale, tr, names] = await Promise.all([
     codes.some((c) => (ELEVATION_CODES as readonly string[]).includes(c))
       ? prisma.privilegedAccessRequest.findMany({
           where: {
@@ -263,11 +302,12 @@ export async function listRequestsToApprove(): Promise<PrivilegedRequestRow[]> {
       : [],
     getLocale(),
     getTranslations(),
+    loadChangeNames(),
   ]);
   const opLocale = locale === "en" ? "en" : "ja";
   return [
     ...elevations.map((r) => elevationRow(r, now, opLocale, tr)),
-    ...changes.map((r) => userChangeRow(r, tr)),
+    ...changes.map((r) => userChangeRow(r, tr, names)),
   ].sort((a, b) => a.requestedAt.localeCompare(b.requestedAt));
 }
 
@@ -276,7 +316,7 @@ export async function listDecidedRequests(): Promise<PrivilegedRequestRow[]> {
   const codes = await approvableCodesFor([...ELEVATION_CODES, USER_ADMIN_CODE]);
   if (codes.length === 0) return [];
   const now = new Date();
-  const [elevations, changes, locale, tr] = await Promise.all([
+  const [elevations, changes, locale, tr, names] = await Promise.all([
     prisma.privilegedAccessRequest.findMany({
       where: { status: { notIn: ["PENDING"] }, code: { in: codes } },
       include: ELEVATION_INCLUDE,
@@ -293,11 +333,12 @@ export async function listDecidedRequests(): Promise<PrivilegedRequestRow[]> {
       : [],
     getLocale(),
     getTranslations(),
+    loadChangeNames(),
   ]);
   const opLocale = locale === "en" ? "en" : "ja";
   return [
     ...elevations.map((r) => elevationRow(r, now, opLocale, tr)),
-    ...changes.map((r) => userChangeRow(r, tr)),
+    ...changes.map((r) => userChangeRow(r, tr, names)),
   ].sort((a, b) => b.requestedAt.localeCompare(a.requestedAt));
 }
 

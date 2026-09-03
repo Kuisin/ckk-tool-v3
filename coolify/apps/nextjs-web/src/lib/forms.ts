@@ -17,6 +17,7 @@ import { getDisabledAppKeys } from "./app-flags";
 import { appList } from "./app-list";
 import { getVisibleAppKeys, sessionUserId } from "./authz";
 import { prisma } from "./db";
+import { type FormSectionDef, parseFormSections } from "./form-branching";
 import {
   type FormAnswerValue,
   type FormAvailability,
@@ -67,6 +68,10 @@ export interface FormDetailView {
   responseEditableUntil: Date | null;
   fields: FormFieldDef[];
   /**
+   * セクション（複数ページ）。空 = セクション未使用（従来どおりの 1 ページ）。
+   */
+  sections: FormSectionDef[];
+  /**
    * 保存済みの定義を読み取れなかったときの理由。**「項目ゼロ」と区別する**ため
    * に持つ — 黙って空のフォームを見せると、壊れているのか未作成なのか分からない。
    */
@@ -100,6 +105,16 @@ function fieldsOf(schema: unknown, tr: Tr): FormFieldDef[] {
 function schemaErrorOf(schema: unknown, tr: Tr): string | null {
   const parsed = parseFormFields(schema, tr);
   return parsed.ok ? null : parsed.error;
+}
+
+/** 定義バージョンの sections を戻す。壊れていたら空配列（=セクション無し扱い）。 */
+function sectionsOf(
+  sections: unknown,
+  fields: FormFieldDef[],
+  tr: Tr,
+): FormSectionDef[] {
+  const parsed = parseFormSections(sections, fields, tr);
+  return parsed.ok ? parsed.sections : [];
 }
 
 /**
@@ -165,6 +180,7 @@ export const fetchForm = cache(
       },
     });
     if (!row) return null;
+    const fields = fieldsOf(row.versions[0]?.schema ?? [], tr);
     return {
       id: row.id,
       code: row.code,
@@ -185,7 +201,8 @@ export const fetchForm = cache(
       closesAt: row.closesAt,
       responseEditMode: row.responseEditMode,
       responseEditableUntil: row.responseEditableUntil,
-      fields: fieldsOf(row.versions[0]?.schema ?? [], tr),
+      fields,
+      sections: sectionsOf(row.versions[0]?.sections ?? [], fields, tr),
       schemaError: schemaErrorOf(row.versions[0]?.schema ?? [], tr),
       createdBy: row.createdBy,
       createdAt: row.createdAt,
@@ -207,6 +224,27 @@ export async function fetchFormVersionFields(
     getTranslations(),
   ]);
   return fieldsOf(row?.schema ?? [], tr);
+}
+
+/**
+ * 特定バージョンのセクション定義。回答画面のページ送り・分岐判定に使う
+ * （fetchFormVersionFields と対になる — 呼び分けているのは、related の埋め込み
+ * 表示 (resolveRelatedRecords) や回答詳細のような「ページ送りが要らない」
+ * 呼び出し元にまでセクションの解決コストを払わせないため）。
+ */
+export async function fetchFormVersionSections(
+  formId: string,
+  version: number,
+): Promise<FormSectionDef[]> {
+  const [row, tr] = await Promise.all([
+    prisma.formVersion.findUnique({
+      where: { formId_version: { formId, version } },
+      select: { schema: true, sections: true },
+    }),
+    getTranslations(),
+  ]);
+  const fields = fieldsOf(row?.schema ?? [], tr);
+  return sectionsOf(row?.sections ?? [], fields, tr);
 }
 
 /** このフォームに対する自分の権限。 */

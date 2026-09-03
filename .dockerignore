@@ -10,6 +10,9 @@
 # db-migrate は shared-db（migration + SQL + prisma スキーマ）ごと必要。
 !coolify/apps/db-migrate/
 !shared-db/
+# マニュアルのスイムレーン図は nextjs-web の build が DSL から生成する
+# （pnpm build の先頭）。依存ゼロ・約 300KB。
+!tools/swimlane/
 shared-db/backups/
 **/node_modules
 **/.next

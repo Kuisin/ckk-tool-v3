@@ -20,12 +20,12 @@ background-color: #fffbeb;
 icon: #mail;
 
 <role_sales>
-label: 社内営業;
+label: 営業;
 text-color: #1e293b;
 background-color: #dbeafe;
 
 <role_support>
-label: 社内営業補助;
+label: 営業補助;
 text-color: #92400e;
 background-color: #fef3c7;
 
@@ -116,13 +116,13 @@ text-color: #9d174d;
 
 /line/
 
-[role_sales: 単価を試算する] <block_apply>
-label: 試算;
+[role_sales: 単価を算出する] <block_apply>
+label: 価格試算;
 desc: 材料・寸法・加工条件から見積単価を算出し、内容が固まったら確定する。;
 [role_sales: 価格表を作成する] <block_apply>
 label: 価格表;
 props: PRICE_LIST;
-desc: 顧客×製品の価格を決める。確定した試算を単価の基準にできる。;
+desc: 顧客×製品の価格を決める。確定した価格試算を単価の基準にできる。;
 [role_sales: 見積書を発行する] <block_apply>
 label: 見積書;
 props: QUOTE;

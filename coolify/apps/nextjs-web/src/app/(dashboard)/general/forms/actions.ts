@@ -32,6 +32,12 @@ import {
 } from "@/lib/authz";
 import { generateCode } from "@/lib/crockford";
 import { prisma } from "@/lib/db";
+import {
+  computeVisitedPath,
+  type FormSectionDef,
+  fieldsOnPath,
+  parseFormSections,
+} from "@/lib/form-branching";
 import { notifyFormCompletion } from "@/lib/form-completion";
 import {
   canEditResponse,
@@ -338,6 +344,7 @@ export async function updateFormSettings(
 export async function publishFormFields(
   code: string,
   fields: unknown,
+  sections: unknown = [],
 ): Promise<ActionResult<{ version: number }>> {
   const tr = await getTranslations();
   const gate = await requireFormEdit(code);
@@ -349,6 +356,18 @@ export async function publishFormFields(
     return actionError(tr("general.formsActions.addAtLeastOneField"));
 
   const ordered = normalizeOrder(parsed.fields);
+
+  const sectionsParsed = parseFormSections(sections, ordered, tr);
+  if (!sectionsParsed.ok) return actionError(sectionsParsed.error);
+  // セクションを使うなら、全項目がどこかのセクションに属していること
+  // （ビルダーは自然にそう組むが、取り込み等で崩れないようサーバ側でも見る）。
+  if (
+    sectionsParsed.sections.length > 0 &&
+    ordered.some((f) => !f.sectionKey)
+  ) {
+    return actionError(tr("general.formsActions.everyFieldNeedsASection"));
+  }
+
   try {
     const actor = await getCurrentActorId();
     const version = await prisma.$transaction(async (tx) => {
@@ -362,6 +381,7 @@ export async function publishFormFields(
           formId: form.id,
           version: next,
           schema: ordered as unknown as object,
+          sections: sectionsParsed.sections as unknown as object,
           publishedBy: actor,
         },
       });
@@ -531,6 +551,7 @@ interface RespondContext {
     responseEditableUntil: Date | null;
   };
   fields: FormFieldDef[];
+  sections: FormSectionDef[];
 }
 
 async function loadRespondContext(
@@ -561,10 +582,20 @@ async function loadRespondContext(
       ok: false,
       error: tr("general.formsActions.formNotYetPublished"),
     };
+  const sectionsParsed = parseFormSections(
+    form.versions[0]?.sections ?? [],
+    parsed.fields,
+    tr,
+  );
 
   return {
     ok: true,
-    ctx: { userId, form, fields: parsed.fields },
+    ctx: {
+      userId,
+      form,
+      fields: parsed.fields,
+      sections: sectionsParsed.ok ? sectionsParsed.sections : [],
+    },
   };
 }
 
@@ -703,7 +734,7 @@ export async function submitResponse(
   const tr = await getTranslations();
   const loaded = await loadRespondContext(code);
   if (!loaded.ok) return actionError(loaded.error);
-  const { userId, form, fields } = loaded.ctx;
+  const { userId, form, fields, sections } = loaded.ctx;
 
   const availability = formAvailability(form, new Date());
   if (availability !== "OPEN") {
@@ -715,7 +746,12 @@ export async function submitResponse(
   }
 
   if (!asDraft) {
-    const errors = validateAnswers(fields, answers, tr);
+    // どのセクションを実際に通ったかは、回答者の申告ではなくここで
+    // 独自に再計算する（クライアントの画面遷移を信用しない）。スキップした
+    // セクションの必須項目は提出をブロックしてはいけない。
+    const visited = computeVisitedPath(sections, fields, answers);
+    const relevant = fieldsOnPath(fields, sections, visited);
+    const errors = validateAnswers(relevant, answers, tr);
     const first = Object.values(errors)[0];
     if (first) return actionError(first);
   }
@@ -824,17 +860,19 @@ export async function updateResponse(
     return actionError(tr("general.formsActions.responseNotEditable"));
   }
 
-  const fieldsParsed = parseFormFields(
-    (
-      await prisma.formVersion.findUnique({
-        where: { formId_version: { formId: row.formId, version: row.version } },
-        select: { schema: true },
-      })
-    )?.schema ?? [],
-    tr,
-  );
+  const versionRow = await prisma.formVersion.findUnique({
+    where: { formId_version: { formId: row.formId, version: row.version } },
+    select: { schema: true, sections: true },
+  });
+  const fieldsParsed = parseFormFields(versionRow?.schema ?? [], tr);
   if (!fieldsParsed.ok)
     return actionError(tr("general.formsActions.couldNotLoadFormDef"));
+  const sectionsParsed = parseFormSections(
+    versionRow?.sections ?? [],
+    fieldsParsed.fields,
+    tr,
+  );
+  const sections = sectionsParsed.ok ? sectionsParsed.sections : [];
 
   const wasDraft = row.status === "DRAFT";
   // 下書きに戻す道は用意しない（提出済みを引っ込めるのは承認の取り消しであって
@@ -843,7 +881,11 @@ export async function updateResponse(
     return actionError(tr("general.formsActions.cannotRevertToDraft"));
 
   if (!asDraft) {
-    const errors = validateAnswers(fieldsParsed.fields, answers, tr);
+    // submitResponse と同じ規則: 実際に通ったセクションだけを検証する
+    // （回答者の申告ではなく、この回答自体からサーバー側で再計算する）。
+    const visited = computeVisitedPath(sections, fieldsParsed.fields, answers);
+    const relevant = fieldsOnPath(fieldsParsed.fields, sections, visited);
+    const errors = validateAnswers(relevant, answers, tr);
     const first = Object.values(errors)[0];
     if (first) return actionError(first);
   }
@@ -1176,6 +1218,9 @@ async function insertImportedForm(
         formId: form.id,
         version: 1,
         schema: fields as unknown as object,
+        // セクションの key はフォーム内部の話（他フォームを参照しない）なので、
+        // remapSelfReferences のような張り替えは要らない。
+        sections: body.sections as unknown as object,
         publishedBy: actor,
       },
     });
@@ -1225,6 +1270,7 @@ export async function importForm(
             formId: current.id,
             version: next,
             schema: body.fields as unknown as object,
+            sections: body.sections as unknown as object,
             publishedBy: actor,
           },
         });

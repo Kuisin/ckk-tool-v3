@@ -13,6 +13,7 @@
 
 import {
   ActionIcon,
+  Badge,
   Divider,
   Group,
   MultiSelect,
@@ -34,15 +35,13 @@ import {
   IconStarFilled,
   IconTrash,
 } from "@tabler/icons-react";
+import { useRouter } from "next/navigation";
 import { useLocale, useTranslations } from "next-intl";
 import { useState, useTransition } from "react";
 import { saveHomeSettingsAction } from "@/app/(dashboard)/profile/home/actions";
 import { useHiddenApps } from "@/components/layout/AppFlags";
-import {
-  CancelButton,
-  PrimaryButton,
-  SaveButton,
-} from "@/components/ui/buttons";
+import { PrimaryButton } from "@/components/ui/buttons";
+import { EditablePanel } from "@/components/ui/EditablePanel";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { FormActions } from "@/components/ui/shells";
 import { useIsMobile } from "@/hooks/useViewport";
@@ -134,8 +133,18 @@ function StarToggleCard({
   );
 }
 
-export function HomeSettingsForm({ initial }: { initial: HomeSettings }) {
+/** ホーム画面設定の編集フォーム（EditablePanel の edit）。 */
+function HomeSettingsEditor({
+  initial,
+  onCancel,
+  onSaved,
+}: {
+  initial: HomeSettings;
+  onCancel: () => void;
+  onSaved: () => void;
+}) {
   const tr = useTranslations();
+  const router = useRouter();
   const locale = useLocale() as Locale;
   const hiddenApps = useHiddenApps();
   const isMobile = useIsMobile();
@@ -198,6 +207,8 @@ export function HomeSettingsForm({ initial }: { initial: HomeSettings }) {
           message: tr("home.homeSettingsForm.theHomeLayoutWasUpdated"),
           color: "green",
         });
+        router.refresh();
+        onSaved();
       } else {
         notifications.show({
           title: tr("common.error2"),
@@ -209,15 +220,7 @@ export function HomeSettingsForm({ initial }: { initial: HomeSettings }) {
   };
 
   return (
-    <Stack gap="md" maw={960} mx="auto" w="100%">
-      <PageHeader
-        breadcrumbs={[
-          { label: tr("common.profile"), href: "/profile" },
-          { label: tr("home.homeSettingsForm.homeLayout") },
-        ]}
-        title={tr("home.homeSettingsForm.homeLayout")}
-      />
-
+    <Stack gap="md">
       {/* ── お気に入りアプリ ─────────────────────────────────────────── */}
       <Paper p="md" radius="md" shadow="xs">
         <Title mb="xs" order={4}>
@@ -393,25 +396,130 @@ export function HomeSettingsForm({ initial }: { initial: HomeSettings }) {
         </Paper>
       )}
 
-      {/* ── 保存 ─────────────────────────────────────────────────────── */}
-      <FormActions>
-        {isMobile ? (
-          <Stack gap="xs">
-            <SaveButton
-              fullWidth
-              loading={isPending}
-              onClick={save}
-              type="button"
-            />
-            <CancelButton fullWidth href="/" />
-          </Stack>
+      <FormActions loading={isPending} onCancel={onCancel} onSave={save} />
+    </Stack>
+  );
+}
+
+/** ホーム画面設定の閲覧表示（EditablePanel の view）。 */
+function HomeSettingsView({ initial }: { initial: HomeSettings }) {
+  const tr = useTranslations();
+  const locale = useLocale() as Locale;
+  const hiddenApps = useHiddenApps();
+  const apps = appList.filter((a) => !hiddenApps.has(a.key));
+  const appByKey = new Map(apps.map((a) => [a.key, a]));
+  const starredApps = initial.starred
+    .map((k) => appByKey.get(k))
+    .filter((a): a is AppEntry => a != null);
+
+  return (
+    <Stack gap="lg">
+      <Stack gap="xs">
+        <Text fw={600} size="sm">
+          {tr("home.homeSettingsForm.favoriteApps")}
+        </Text>
+        {starredApps.length === 0 ? (
+          <Text c="dimmed" size="sm">
+            {tr("common.none2")}
+          </Text>
         ) : (
-          <Group justify="flex-end">
-            <CancelButton href="/" />
-            <SaveButton loading={isPending} onClick={save} type="button" />
+          <Group gap="xs">
+            {starredApps.map((a) => (
+              <Badge
+                color={CATEGORY_COLORS[a.category]}
+                key={a.key}
+                leftSection={<IconStarFilled size={10} />}
+                variant="light"
+              >
+                {appLabel(a, locale)}
+              </Badge>
+            ))}
           </Group>
         )}
-      </FormActions>
+      </Stack>
+
+      <Stack gap="xs">
+        <Text fw={600} size="sm">
+          {tr("home.homeSettingsForm.displayMode")}
+        </Text>
+        <Badge variant="light">
+          {initial.mode === "custom"
+            ? tr("home.homeSettingsForm.customByGroup")
+            : tr("home.homeSettingsForm.standardByCategory")}
+        </Badge>
+      </Stack>
+
+      {initial.mode === "custom" && (
+        <Stack gap="xs">
+          <Text fw={600} size="sm">
+            {tr("home.homeSettingsForm.customGroup")}
+          </Text>
+          {initial.groups.length === 0 ? (
+            <Text c="dimmed" size="sm">
+              {tr("home.homeSettingsForm.thereAreNoGroupsEnterA")}
+            </Text>
+          ) : (
+            initial.groups.map((g) => (
+              <Paper key={g.name} p="sm" radius="sm" withBorder>
+                <Stack gap={6}>
+                  <Text fw={500} size="sm">
+                    {g.name}
+                  </Text>
+                  {g.apps.length === 0 ? (
+                    <Text c="dimmed" size="xs">
+                      {tr("common.none2")}
+                    </Text>
+                  ) : (
+                    <Group gap="xs">
+                      {g.apps.map((key) => {
+                        const app = appByKey.get(key);
+                        return (
+                          <Badge key={key} variant="light">
+                            {app ? appLabel(app, locale) : key}
+                          </Badge>
+                        );
+                      })}
+                    </Group>
+                  )}
+                </Stack>
+              </Paper>
+            ))
+          )}
+        </Stack>
+      )}
+    </Stack>
+  );
+}
+
+/**
+ * ホーム画面設定（本人のみ）。既定は閲覧、編集は「編集」ボタンから
+ * （design.md §10.10）。
+ */
+export function HomeSettingsForm({ initial }: { initial: HomeSettings }) {
+  const tr = useTranslations();
+
+  return (
+    <Stack gap="md" maw={960} mx="auto" w="100%">
+      <PageHeader
+        breadcrumbs={[
+          { label: tr("common.profile"), href: "/profile" },
+          { label: tr("home.homeSettingsForm.homeLayout") },
+        ]}
+        title={tr("home.homeSettingsForm.homeLayout")}
+      />
+      <Paper p="md" radius="md" shadow="xs">
+        <EditablePanel
+          canEdit
+          edit={({ close }) => (
+            <HomeSettingsEditor
+              initial={initial}
+              onCancel={close}
+              onSaved={close}
+            />
+          )}
+          view={<HomeSettingsView initial={initial} />}
+        />
+      </Paper>
     </Stack>
   );
 }

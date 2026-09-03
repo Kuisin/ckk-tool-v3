@@ -166,6 +166,20 @@ jobs:
       - name: Build (production)
         run: pnpm build
 
+      # pnpm build の先頭がスイムレーン図を DSL から生成し直すので、ここで
+      # 差分が出る = コミット済みの SVG が DSL と食い違っている、ということ。
+      # デプロイは生成し直した図を使うので本番は正しいままだが、リポジトリの
+      # 図が嘘をつくとレビューで気づけない。実際に一度ずれた（2026-08-30 の
+      # 用語統一が SVG にだけ当たり、DSL は旧語のまま残っていた）。
+      - name: Diagrams are in sync with their DSL
+        run: |
+          if ! git diff --quiet -- content/manual/assets/diagrams; then
+            echo "::error::スイムレーン図がDSLと食い違っています。node tools/swimlane/build-diagrams.mjs を実行して生成物をコミットしてください。"
+            git diff --stat -- content/manual/assets/diagrams
+            exit 1
+          fi
+          echo "図は DSL と一致しています"
+
   kiosk:
     name: nextjs-kiosk — lint & build (base ${{ github.base_ref }})
     runs-on: ubuntu-latest

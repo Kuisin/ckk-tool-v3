@@ -437,7 +437,7 @@ Table estimates {
 Enum ESTIMATE_STATUS {
   DRAFT           // 下書き
   CONFIRMED       // 確定（価格表の基準単価ソースに選択可能）
-  REGISTERED      // 価格表で使用済み（ロック — 再価格試算は複製で）
+  REGISTERED      // 価格表で使用済み（ロック — 作り直しは複製で）
 }
 
 // ===========================
@@ -2067,7 +2067,8 @@ Enum LOGIN_OUTCOME { SUCCESS, FAILURE }
 //     駄目」を却下せずに表現するため。
 //
 //   B 変更依頼（user_change_requests）
-//     それ自体が 1 つの具体的な変更である操作 — この人を停止する。
+//     それ自体が 1 つの具体的な変更である操作 — この人を停止する / この人に
+//     このロールを与える。
 //     承認がその変更を**適用する**。窓も duration も無い。
 //     work_order_flow_changes / order_acceptance_cancel_requests と同じ形で、
 //     適用は列を書き換えるのではなく通常の変更処理を通す。承認までに前提が
@@ -2126,7 +2127,7 @@ Enum PRIVILEGED_REQUEST_STATUS {
   EXPIRED    // **表示用の打刻**。判定はこの値を見ない
 }
 
-Enum USER_CHANGE_KIND { SUSPEND, RESTORE, UPDATE_PLANTS }
+Enum USER_CHANGE_KIND { SUSPEND, RESTORE, UPDATE_PLANTS, UPDATE_ROLES }
 
 Table user_change_requests {
   id               uuid [pk]

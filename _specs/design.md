@@ -531,16 +531,22 @@ Stack (gap="md")
 ├── Group (justify="space-between", align="flex-start", wrap="nowrap")
 │   ├── Stack (gap=4, minWidth=0)
 │   │   ├── [desktop only] Breadcrumbs
-│   │   └── Group gap="sm" align="center" wrap="nowrap"
-│   │       ├── Title order={isMobile ? 3 : 2} whiteSpace="nowrap"
-│   │       └── StatusBadge (see §9)
+│   │   └── Group gap="sm" align="end" wrap="nowrap" className="min-w-0"
+│   │       ├── Title order={isMobile ? 3 : 2} className="min-w-0 flex-1 truncate"
+│   │       │     — a long title (customer name, product name …) ellipsizes
+│   │       │       instead of overflowing into the badge/menu button. Mantine's
+│   │       │       Title has no `truncate` prop (unlike Text), so this is a
+│   │       │       Tailwind utility class, not a Mantine prop.
+│   │       └── StatusBadge (see §9), wrapped in a `shrink-0` span so it never
+│   │             gets squeezed by the shrinking title
 │   └── [desktop] Group gap="xs" flexShrink=0
 │       ├── Button variant="default" leftSection=<IconEdit size={14}>  → /edit
 │       ├── Button variant="default" leftSection=<IconFileTypePdf size={14}> (PDF)
 │       └── Menu shadow="sm"
 │           └── Menu.Dropdown: コピー / Divider / キャンセル(red)
 │   └── [mobile] Menu shadow="sm" position="bottom-end"
-│       ├── Menu.Target → Button variant="default" px="xs" size="sm" → <IconDotsVertical>
+│       ├── Menu.Target → Button variant="default" px="xs" size="sm"
+│       │     className="shrink-0" → <IconDotsVertical>
 │       └── Menu.Dropdown: 編集 / PDF / コピー / Divider / キャンセル(red)
 ├── [if an action is pending] ActionCard (see §10.9) — ヘッダー直下・最上部
 ├── Paper (withBorder, p="md", radius="md") — summary card

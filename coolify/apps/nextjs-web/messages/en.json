@@ -789,7 +789,19 @@
     "hoursAgo": "{n} hr ago",
     "yesterday": "Yesterday",
     "daysAgo": "{n} days ago",
-    "step": "Step"
+    "step": "Step",
+    "zoomIn": "Zoom in",
+    "zoomOut": "Zoom out",
+    "resetZoom": "Reset zoom",
+    "userChangeUpdateRoles": "Change roles",
+    "roleHash": "Role #{id}",
+    "setRolesTo": "Set roles to {names}",
+    "removeAllRoles": "Remove all roles",
+    "nonexistentRolesIncluded": "Includes a role that does not exist ({ids})",
+    "selectARole": "Select a role",
+    "cannotChangeRoles": "Cannot change the roles",
+    "cannotChangeOwnRoles": "You cannot change your own roles",
+    "cannotRemoveLastAdminRole": "The admin role cannot be removed from the last admin"
   },
   "shell": {
     "appsLabel": "Apps",
@@ -2119,7 +2131,8 @@
       "transferAttachmentNotCarried": "There is an attachment field. The files themselves are not carried over (only the field definition is)",
       "auditExportedToExcel": "Exported responses to Excel ({count} rows{truncated})",
       "auditExportTruncatedSuffix": ", truncated at the limit",
-      "exportFilenamePartialSuffix": "_partial"
+      "exportFilenamePartialSuffix": "_partial",
+      "everyFieldNeedsASection": "When using sections, every field must belong to a section"
     },
     "tasksActions": {
       "loginRequired": "Please log in",
@@ -2214,6 +2227,28 @@
       "availabilityOpen": "Open",
       "availabilityClosed": "Closed",
       "availabilityArchived": "Archived"
+    },
+    "formBranching": {
+      "invalidSections": "Invalid section definitions",
+      "tooManySections": "Up to {n} sections",
+      "sectionIndexInvalid": "Section {no} is invalid",
+      "sectionKeyRequired": "Section {no}: key is missing",
+      "duplicateSectionKey": "Section {no}: duplicate key",
+      "sectionTitleRequired": "Section {no}: enter a title (Japanese)",
+      "tooManyRules": "Section {no}: up to {n} branching rules",
+      "ruleInvalid": "Section {no}, rule {ruleNo} is invalid",
+      "ruleTargetRequired": "Section {no}, rule {ruleNo}: select a destination",
+      "conditionInvalid": "Section {no}, rule {ruleNo}: invalid condition",
+      "conditionFieldInvalid": "Section {no}, rule {ruleNo}: condition field cannot be used",
+      "conditionOpInvalid": "Section {no}, rule {ruleNo}: invalid comparison",
+      "conditionValueInvalid": "Section {no}, rule {ruleNo}: enter a condition value",
+      "ruleTargetIsSelf": "Section {no}: destination cannot be the section itself",
+      "ruleTargetNotFound": "Section {no}: destination section not found",
+      "submitAndFinish": "Submit and finish",
+      "unknownSection": "Unknown section",
+      "otherwiseGoTo": "Otherwise → {target}",
+      "ifConditionsGoTo": "{conditions} → {target}",
+      "conditionJoiner": " and "
     },
     "tasksTabs": {
       "workPlans": "Work plans",
@@ -3700,7 +3735,12 @@
       "registeredDevicesWeb": "Registered devices (web)",
       "passwordAndSso": "Password + SSO",
       "plantLabelDisabled": "{label} (disabled)",
-      "requestApprovalButton": "Request approval"
+      "requestApprovalButton": "Request approval",
+      "rolesDecideWhatThisPersonCanDo": "Roles decide what this person can do. The resulting permissions are listed below",
+      "theRolesChangeOnceApproved": "The roles change once approved",
+      "theRolesWereUpdated": "The roles were updated",
+      "removingEveryRoleLeavesNoPermissions": "Removing every role leaves this person with no permissions",
+      "eGChangingRolesDueTo": "e.g. Changing roles due to a transfer"
     },
     "userSuspensionPanel": {
       "suspendTheUser": "Suspend the user",
@@ -3838,7 +3878,34 @@
       "cannotReadDirIsItMounted": "Cannot read {dir} (is it mounted in the container?)",
       "intakeDirIntakeDirIsNotConfigured": "The intake folder (INTAKE_DIR) is not configured",
       "invalidFileName": "Invalid file name",
-      "theTargetFileWasNotFound": "The target file was not found"
+      "theTargetFileWasNotFound": "The target file was not found",
+      "pipeline": {
+        "aiConfigUnreadable": "Could not read the AI provider settings",
+        "aiConfigHint": "Set the token again in System → AI provider (SY0E)",
+        "storageSaveFailed": "Could not save to storage (SeaweedFS)",
+        "sourceAttachmentLabel": "Intake source (original)",
+        "ingestedNote": "Intake ({source}): {filename}",
+        "sourceFolder": "Watched folder",
+        "sourceUpload": "Priority intake",
+        "noSourceFile": "There is no source file",
+        "noSourceFileCause": "This order acceptance has no original file (PDF or image) attached",
+        "noSourceFileHint": "Enter the contents with Switch to manual entry, or import the file again",
+        "matched": "matched",
+        "unmatched": "not identified",
+        "extractionCompletedNote": "Auto-extraction completed ({count} line items, customer {matchState})",
+        "intakeNotificationTitle": "Order acceptance {number} was imported automatically",
+        "intakeNotificationMessage": "{count} line items, customer {matchState} — check the contents",
+        "notifyFailedLog": "[intake] Could not send the intake notification:",
+        "extractionFailedNote": "Auto-extraction failed (attempt {attempt} of {maxAttempts}): {summary}",
+        "intakeFailedNotificationTitle": "Auto-extraction failed for order acceptance {number}",
+        "retryingLog": "[intake] Retrying extraction {id} (attempt {attempt} of {maxAttempts} failed, in {seconds}s): {errorFirstLine}",
+        "jobCrashedLog": "[intake] Extraction job ended abnormally {id}",
+        "extractFailedLog": "[intake] Extraction failed {id}",
+        "requeuedLog": "[intake] Requeued {count} unextracted items",
+        "orphanRecoveredLog": "[intake] Recovered an orphaned .processing file: {name}",
+        "alreadyImportedSkipLog": "[intake] {name} → {number} (already imported, skipped)",
+        "numberBurnFailedLog": "[intake] Could not write the number into the file: {name}"
+      }
     },
     "portal": {
       "theAccountWasCreatedDisabledBy": "The account was created (disabled by default)",
@@ -4170,7 +4237,8 @@
       "disableFailed": "Could not disable",
       "reasonTooLong": "The reason must be 500 characters or fewer",
       "suspendFailed": "Could not suspend",
-      "restoreFailed": "Could not restore"
+      "restoreFailed": "Could not restore",
+      "updateRolesFailed": "Could not update the roles"
     },
     "kioskCardActions": {
       "invalidCardIdFormat": "Invalid card ID format",
@@ -5976,7 +6044,16 @@
     "formBuilder": {
       "dragToReorderPressAndHold": "Drag to reorder (press and hold on a phone)",
       "removeThisItem": "Remove this item",
-      "thereAreNoItemsCreateOne": "There are no items. Create one under \"Add an item\"."
+      "thereAreNoItemsCreateOne": "There are no items. Create one under \"Add an item\".",
+      "addASection": "+ Add section",
+      "dragToReorderSection": "Drag to reorder (press and hold)",
+      "itemCount": "{count} items",
+      "moveOrDeleteItemsFirst": "Move or delete its items first",
+      "removeThisSection": "Remove this section",
+      "section1": "Section 1",
+      "sectionN": "Section {n}",
+      "sectionTitlePlaceholder": "Section title",
+      "splitIntoSections": "Split into sections"
     },
     "formDetail": {
       "couldNotBeChanged": "Could not be changed",
@@ -6065,7 +6142,19 @@
       "invalidInternalKeyFormat": "The internal key format is invalid (alphanumeric and _, starting with a letter)",
       "duplicateInternalKey": "The internal key is duplicated",
       "unusableRegularExpression": "This regular expression cannot be used (syntax error, nested quantifiers, or over {max} characters)",
-      "keyErrorImportedDefinitionIsBroken": "{error} (the imported definition is broken)"
+      "keyErrorImportedDefinitionIsBroken": "{error} (the imported definition is broken)",
+      "section": "Section"
+    },
+    "formSectionRules": {
+      "title": "Branching rules",
+      "description": "Change where this section goes next based on the answer. Rules are evaluated top to bottom; the first match wins.",
+      "noRulesGoesInOrder": "No rules — always continues to the next section.",
+      "addARule": "Add a rule",
+      "removeTheRule": "Remove this rule",
+      "addACondition": "Add a condition",
+      "removeTheCondition": "Remove this condition",
+      "goTo": "Go to",
+      "noConditionableFieldsYet": "No fields (dropdown/number) are available for conditions yet."
     },
     "formFieldInput": {
       "searchAndSelect": "Search and select",
@@ -6183,7 +6272,9 @@
       "draftSaved": "Draft saved",
       "receptionClosedWithLabel": "This form is no longer accepting responses ({label}).",
       "receptionClosesAt": "Closes at",
-      "draftsInProgressWithCount": "Drafts in progress ({count})"
+      "draftsInProgressWithCount": "Drafts in progress ({count})",
+      "next": "Next",
+      "back": "Back"
     },
     "respondFormClient": {
       "send": "Send"
@@ -8945,6 +9036,10 @@
       }
     },
     "userManagement": {
+      "roles": {
+        "label": "Roles",
+        "summary": "The roles given to the user. Several can be selected."
+      },
       "plants": {
         "label": "Assigned sites",
         "summary": "The sites this user is responsible for. Multiple sites can be selected."

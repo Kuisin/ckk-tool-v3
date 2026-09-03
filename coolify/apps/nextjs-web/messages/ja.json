@@ -549,7 +549,7 @@
     "customize": "カスタム設定する",
     "validUntil2": "有効期限",
     "issued2": "発行済",
-    "duplicateAndReEstimate": "複製して再価格試算",
+    "duplicateAndReEstimate": "複製して作り直す",
     "priceEstimate": "価格試算",
     "priceEstimateNumber": "価格試算番号",
     "toolType": "工具種",
@@ -789,7 +789,19 @@
     "hoursAgo": "{n}時間前",
     "yesterday": "昨日",
     "daysAgo": "{n}日前",
-    "step": "工程"
+    "step": "工程",
+    "zoomIn": "拡大",
+    "zoomOut": "縮小",
+    "resetZoom": "元のサイズに戻す",
+    "userChangeUpdateRoles": "ロール割当の変更",
+    "roleHash": "ロール #{id}",
+    "setRolesTo": "ロールを {names} にする",
+    "removeAllRoles": "ロールをすべて外す",
+    "nonexistentRolesIncluded": "存在しないロールが含まれています（{ids}）",
+    "selectARole": "ロールを選択",
+    "cannotChangeRoles": "ロールを変更できません",
+    "cannotChangeOwnRoles": "自分のロールは変更できません",
+    "cannotRemoveLastAdminRole": "最後の管理者から管理者ロールを外すことはできません"
   },
   "shell": {
     "appsLabel": "アプリ",
@@ -2119,7 +2131,8 @@
       "transferAttachmentNotCarried": "添付ファイルの項目があります。ファイルそのものは運ばれません（項目の定義だけです）",
       "auditExportedToExcel": "回答を Excel で書き出し（{count} 件{truncated}）",
       "auditExportTruncatedSuffix": "・上限で打ち切り",
-      "exportFilenamePartialSuffix": "_一部"
+      "exportFilenamePartialSuffix": "_一部",
+      "everyFieldNeedsASection": "セクションに分けたら、すべての項目をいずれかのセクションに入れてください"
     },
     "tasksActions": {
       "loginRequired": "ログインしてください",
@@ -2214,6 +2227,28 @@
       "availabilityOpen": "受付中",
       "availabilityClosed": "受付終了",
       "availabilityArchived": "アーカイブ"
+    },
+    "formBranching": {
+      "invalidSections": "セクション定義が不正です",
+      "tooManySections": "セクションは {n} 個までです",
+      "sectionIndexInvalid": "{no} 番目のセクションが不正です",
+      "sectionKeyRequired": "{no} 番目のセクション: key がありません",
+      "duplicateSectionKey": "{no} 番目のセクション: key が重複しています",
+      "sectionTitleRequired": "{no} 番目のセクション: タイトル（日本語）を入力してください",
+      "tooManyRules": "{no} 番目のセクション: 分岐ルールは {n} 本までです",
+      "ruleInvalid": "{no} 番目のセクションの {ruleNo} 本目のルールが不正です",
+      "ruleTargetRequired": "{no} 番目のセクションの {ruleNo} 本目のルール: 遷移先を選んでください",
+      "conditionInvalid": "{no} 番目のセクションの {ruleNo} 本目のルール: 条件が不正です",
+      "conditionFieldInvalid": "{no} 番目のセクションの {ruleNo} 本目のルール: 条件の項目が選べません",
+      "conditionOpInvalid": "{no} 番目のセクションの {ruleNo} 本目のルール: 条件の比較が不正です",
+      "conditionValueInvalid": "{no} 番目のセクションの {ruleNo} 本目のルール: 条件の値を入力してください",
+      "ruleTargetIsSelf": "{no} 番目のセクション: 遷移先に自分自身は選べません",
+      "ruleTargetNotFound": "{no} 番目のセクション: 遷移先のセクションが見つかりません",
+      "submitAndFinish": "送信して終了",
+      "unknownSection": "不明なセクション",
+      "otherwiseGoTo": "それ以外 → {target}",
+      "ifConditionsGoTo": "{conditions} → {target}",
+      "conditionJoiner": " かつ "
     },
     "tasksTabs": {
       "workPlans": "作業予定",
@@ -3700,7 +3735,12 @@
       "registeredDevicesWeb": "登録端末（Web）",
       "passwordAndSso": "パスワード + SSO",
       "plantLabelDisabled": "{label}（無効）",
-      "requestApprovalButton": "承認を依頼"
+      "requestApprovalButton": "承認を依頼",
+      "rolesDecideWhatThisPersonCanDo": "この人が何をできるかを決めます。実効権限は下の表で確認できます",
+      "theRolesChangeOnceApproved": "承認されるとロール割当が変更されます",
+      "theRolesWereUpdated": "ロール割当を更新しました",
+      "removingEveryRoleLeavesNoPermissions": "ロールをすべて外すと、この人は何も操作できなくなります",
+      "eGChangingRolesDueTo": "例: 異動のため担当業務を変更"
     },
     "userSuspensionPanel": {
       "suspendTheUser": "ユーザーを停止",
@@ -3838,7 +3878,34 @@
       "cannotReadDirIsItMounted": "{dir} を読めません（コンテナにマウントされていますか）",
       "intakeDirIntakeDirIsNotConfigured": "取込フォルダ（INTAKE_DIR）が未設定です",
       "invalidFileName": "ファイル名が不正です",
-      "theTargetFileWasNotFound": "対象のファイルが見つかりません"
+      "theTargetFileWasNotFound": "対象のファイルが見つかりません",
+      "pipeline": {
+        "aiConfigUnreadable": "AI プロバイダの設定を読めませんでした",
+        "aiConfigHint": "システム設定 → AI プロバイダ（SY0E）でトークンを設定し直してください",
+        "storageSaveFailed": "ストレージ（SeaweedFS）への保存に失敗しました",
+        "sourceAttachmentLabel": "取込元（原本）",
+        "ingestedNote": "取込（{source}）: {filename}",
+        "sourceFolder": "監視フォルダ",
+        "sourceUpload": "優先取込",
+        "noSourceFile": "取込元ファイルがありません",
+        "noSourceFileCause": "この注文請書には原本（PDF・画像）が紐付いていません",
+        "noSourceFileHint": "「手入力に切り替え」で内容を入力するか、ファイルを取り直して取込してください",
+        "matched": "一致",
+        "unmatched": "未特定",
+        "extractionCompletedNote": "自動抽出完了（明細 {count} 件・顧客{matchState}）",
+        "intakeNotificationTitle": "注文請書 {number} を自動取込しました",
+        "intakeNotificationMessage": "明細 {count} 件・顧客{matchState} — 内容を確認してください",
+        "notifyFailedLog": "[intake] 取込通知に失敗:",
+        "extractionFailedNote": "自動抽出失敗（{attempt}/{maxAttempts} 回目）: {summary}",
+        "intakeFailedNotificationTitle": "注文請書 {number} の自動抽出に失敗しました",
+        "retryingLog": "[intake] 抽出を再試行 {id}（{attempt}/{maxAttempts} 回目失敗・{seconds}秒後）: {errorFirstLine}",
+        "jobCrashedLog": "[intake] 抽出ジョブが異常終了 {id}",
+        "extractFailedLog": "[intake] 抽出に失敗 {id}",
+        "requeuedLog": "[intake] 未抽出の {count} 件を再投入しました",
+        "orphanRecoveredLog": "[intake] 孤児 .processing を回収: {name}",
+        "alreadyImportedSkipLog": "[intake] {name} → {number} (取込済み・スキップ)",
+        "numberBurnFailedLog": "[intake] 番号の焼き込みに失敗: {name}"
+      }
     },
     "portal": {
       "theAccountWasCreatedDisabledBy": "アカウントを作成しました（既定は無効です）",
@@ -4170,7 +4237,8 @@
       "disableFailed": "無効化に失敗しました",
       "reasonTooLong": "理由は 500 文字までです",
       "suspendFailed": "停止に失敗しました",
-      "restoreFailed": "復帰に失敗しました"
+      "restoreFailed": "復帰に失敗しました",
+      "updateRolesFailed": "ロール割当の更新に失敗しました"
     },
     "kioskCardActions": {
       "invalidCardIdFormat": "カードIDの形式が正しくありません",
@@ -5976,7 +6044,16 @@
     "formBuilder": {
       "dragToReorderPressAndHold": "ドラッグして並べ替え（スマホは長押し）",
       "removeThisItem": "この項目を削除",
-      "thereAreNoItemsCreateOne": "項目がありません。「項目を追加」から作ってください。"
+      "thereAreNoItemsCreateOne": "項目がありません。「項目を追加」から作ってください。",
+      "addASection": "＋ セクションを追加",
+      "dragToReorderSection": "ドラッグして並べ替え（長押し）",
+      "itemCount": "{count} 項目",
+      "moveOrDeleteItemsFirst": "先に項目を移動または削除してください",
+      "removeThisSection": "このセクションを削除",
+      "section1": "セクション 1",
+      "sectionN": "セクション {n}",
+      "sectionTitlePlaceholder": "セクションのタイトル",
+      "splitIntoSections": "セクションに分ける"
     },
     "formDetail": {
       "couldNotBeChanged": "変更できませんでした",
@@ -6065,7 +6142,19 @@
       "invalidInternalKeyFormat": "内部キーの形式が不正です（英字で始まる英数字・_）",
       "duplicateInternalKey": "内部キーが重複しています",
       "unusableRegularExpression": "使えない正規表現です（構文エラー、量指定の入れ子、または {max} 文字超）",
-      "keyErrorImportedDefinitionIsBroken": "{error}（取り込んだ定義が壊れています）"
+      "keyErrorImportedDefinitionIsBroken": "{error}（取り込んだ定義が壊れています）",
+      "section": "セクション"
+    },
+    "formSectionRules": {
+      "title": "分岐ルール",
+      "description": "回答によってこのセクションの次に進む先を変える。上から順に評価し、最初に一致した 1 本を使う。",
+      "noRulesGoesInOrder": "ルールなし — 常に次のセクションへ進みます。",
+      "addARule": "ルールを追加",
+      "removeTheRule": "このルールを削除",
+      "addACondition": "条件を追加",
+      "removeTheCondition": "この条件を削除",
+      "goTo": "遷移先",
+      "noConditionableFieldsYet": "条件に使える項目（ドロップダウン・数値）がまだありません。"
     },
     "formFieldInput": {
       "searchAndSelect": "検索して選択",
@@ -6183,7 +6272,9 @@
       "draftSaved": "下書きを保存しました",
       "receptionClosedWithLabel": "このフォームの受付は終了しています（{label}）。",
       "receptionClosesAt": "受付終了",
-      "draftsInProgressWithCount": "書きかけの下書き（{count}）"
+      "draftsInProgressWithCount": "書きかけの下書き（{count}）",
+      "next": "次へ",
+      "back": "戻る"
     },
     "respondFormClient": {
       "send": "送信"
@@ -6767,7 +6858,7 @@
       "itCanBeChosenAsThe": "価格表（顧客×製品）の作成時に基準単価ソースとして選択できます",
       "changeTheProductLink": "製品リンクを変更",
       "linkToAProduct": "製品にリンク",
-      "thisEstimateIsAlreadyUsedIn": "この価格試算は価格表で使用済みのため編集できません。単価を見直す場合は複製して再価格試算してください。",
+      "thisEstimateIsAlreadyUsedIn": "この価格試算は価格表で使用済みのため編集できません。単価を見直す場合は複製して作り直してください。",
       "confirmedThisEstimateCanBeChosen": "確定済み —\n          価格表（顧客×製品）の作成時に、この価格試算を基準単価ソースとして選択できます。",
       "quoteRecipient": "見積り先",
       "maxDiameter": "最大径",
@@ -7000,7 +7091,7 @@
     "trialEstimateForm": {
       "machiningRateSpareShapeNote": "加工単価（¥{rate}/10分）・予備形状本数（{count}本）は価格試算計算のグローバル固定係数を使用します。",
       "policyBasisMonths": "ポリシー: {basis}・直近{months}ヶ月",
-      "reEstimatedName": "{name}（再価格試算）",
+      "reEstimatedName": "{name}（作り直し）",
       "referenceBasisMonths": "参照: {basis}（直近{months}ヶ月）",
       "referencePriceOn": "参照価格 {date}"
     },
@@ -7121,7 +7212,7 @@
       "invalidProduct": "製品の指定が不正です",
       "notFound": "価格試算が見つかりません",
       "onlyDraftCanBeConfirmed": "下書きの価格試算のみ確定できます",
-      "productLinkLockedByPriceList": "価格表で使用済みの価格試算は製品リンクを変更できません（複製して再価格試算してください）",
+      "productLinkLockedByPriceList": "価格表で使用済みの価格試算は製品リンクを変更できません（複製して作り直してください）",
       "productLinkUpdateFailed": "製品リンクの更新に失敗しました",
       "productNotFound": "製品が見つかりません",
       "purchaseHistoryFetchFailed": "仕入実績の取得に失敗しました",
@@ -8945,6 +9036,10 @@
       }
     },
     "userManagement": {
+      "roles": {
+        "label": "ロール",
+        "summary": "そのユーザーに与える役割です。複数選べます。"
+      },
       "plants": {
         "label": "所属拠点",
         "summary": "そのユーザーが担当する拠点です。複数選べます。"

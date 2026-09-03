@@ -38,6 +38,7 @@ export default async function EditFormPage({
     <EditFormClient
       code={code}
       fields={form.fields}
+      sections={form.sections}
       settings={{
         title: form.title,
         description: form.description ?? "",

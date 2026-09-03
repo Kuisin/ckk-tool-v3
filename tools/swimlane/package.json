@@ -6,6 +6,7 @@
   "description": "kai-swimlane DSL → SVG 生成（マニュアルのフロー図用。依存ゼロ・plain node で実行）",
   "license": "MIT",
   "scripts": {
-    "build": "node build-diagrams.mjs"
+    "build": "node build-diagrams.mjs",
+    "preview": "node preview.mjs"
   }
 }

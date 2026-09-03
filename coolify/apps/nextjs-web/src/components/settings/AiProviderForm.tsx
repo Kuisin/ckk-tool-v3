@@ -29,7 +29,9 @@ import {
   updateAiProviderSettings,
 } from "@/app/(dashboard)/settings/ai-provider/actions";
 import { GhostButton, SecondaryButton } from "@/components/ui/buttons";
-import { FormActions, FormSection } from "@/components/ui/shells";
+import { EditablePanel } from "@/components/ui/EditablePanel";
+import { FieldValue } from "@/components/ui/FieldValue";
+import { FormActions, FormSection, SummaryGrid } from "@/components/ui/shells";
 import {
   AI_PROVIDER_PRESETS,
   AI_PROVIDERS,
@@ -114,13 +116,17 @@ function StageResult({
 }
 
 /**
- * AI プロバイダ設定フォーム（SY0E）。
+ * AI プロバイダ設定の編集フォーム（EditablePanel の edit）。
  *
  * トークンは**書き込み専用** — 保存済みの値は下 4 桁しか表示せず、空欄で保存
  * すれば既存の値を維持する。サーバー側も平文を返さないので、入力欄に入れ戻す
  * 経路がそもそも無い。
  */
-export function AiProviderForm({ initial }: Props) {
+function AiProviderEditor({
+  initial,
+  onCancel,
+  onSaved,
+}: Props & { onCancel: () => void; onSaved: () => void }) {
   const tr = useTranslations();
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
@@ -178,6 +184,7 @@ export function AiProviderForm({ initial }: Props) {
         setToken("");
         setClearToken(false);
         router.refresh();
+        onSaved();
       } else {
         notifications.show({
           color: "red",
@@ -403,11 +410,74 @@ export function AiProviderForm({ initial }: Props) {
         </Stack>
       </FormSection>
 
-      <FormActions
-        loading={isPending}
-        onCancel={() => router.back()}
-        onSave={save}
-      />
+      <FormActions loading={isPending} onCancel={onCancel} onSave={save} />
     </Stack>
+  );
+}
+
+/** AI プロバイダ設定の閲覧モード（EditablePanel の view）。 */
+function AiProviderView({ initial }: Props) {
+  const tr = useTranslations();
+  const alert = tokenAlert(initial.tokenStatus, initial.encryptionKeyEnv, tr);
+  const hasStoredToken =
+    initial.tokenStatus === "set" || initial.tokenStatus === "rotate-pending";
+  const defaultLabel = tr("settings.aiProviderForm.default");
+
+  return (
+    <Stack gap="md">
+      {alert && (
+        <Alert color={alert.color} icon={<IconAlertTriangle size={16} />}>
+          {alert.message}
+        </Alert>
+      )}
+      <SummaryGrid>
+        <FieldValue
+          label={tr("settings.aiProviderForm.provider")}
+          value={aiProviderLabel(initial.provider, tr)}
+        />
+        <FieldValue
+          label={tr("settings.aiProviderForm.baseUrl")}
+          value={initial.baseUrl || defaultLabel}
+        />
+        <FieldValue
+          label={tr("settings.aiProviderForm.visionModel")}
+          value={initial.visionModel || defaultLabel}
+        />
+        <FieldValue
+          label={tr("settings.aiProviderForm.structuredModel")}
+          value={initial.structModel || defaultLabel}
+        />
+        <FieldValue
+          label={tr("settings.aiProviderForm.maxOutputTokens")}
+          value={initial.maxOutputTokens}
+        />
+        <FieldValue
+          label={tr("settings.aiProviderForm.aPIToken")}
+          value={
+            hasStoredToken
+              ? tr("settings.aiProviderForm.savedTokenMasked", {
+                  last4: initial.tokenLast4 ?? "",
+                })
+              : tr("common.notSet2")
+          }
+        />
+      </SummaryGrid>
+    </Stack>
+  );
+}
+
+/**
+ * AI プロバイダ設定（SY0E）。既定は閲覧、編集は「編集」ボタンから
+ * （design.md §10.10）。
+ */
+export function AiProviderForm({ initial }: Props) {
+  return (
+    <EditablePanel
+      canEdit
+      edit={({ close }) => (
+        <AiProviderEditor initial={initial} onCancel={close} onSaved={close} />
+      )}
+      view={<AiProviderView initial={initial} />}
+    />
   );
 }

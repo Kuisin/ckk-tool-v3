@@ -789,7 +789,19 @@
     "hoursAgo": "{n} 小时前",
     "yesterday": "昨天",
     "daysAgo": "{n} 天前",
-    "step": "工序"
+    "step": "工序",
+    "zoomIn": "放大",
+    "zoomOut": "缩小",
+    "resetZoom": "恢复原始大小",
+    "userChangeUpdateRoles": "变更角色分配",
+    "roleHash": "角色 #{id}",
+    "setRolesTo": "将角色设置为 {names}",
+    "removeAllRoles": "移除全部角色",
+    "nonexistentRolesIncluded": "包含不存在的角色（{ids}）",
+    "selectARole": "选择角色",
+    "cannotChangeRoles": "无法变更角色",
+    "cannotChangeOwnRoles": "无法变更自己的角色",
+    "cannotRemoveLastAdminRole": "无法从最后一名管理员移除管理员角色"
   },
   "shell": {
     "appsLabel": "应用",
@@ -2119,7 +2131,8 @@
       "transferAttachmentNotCarried": "存在附件项目。文件本身不会被转移（仅转移项目定义）",
       "auditExportedToExcel": "已将回答导出为 Excel（{count} 条{truncated}）",
       "auditExportTruncatedSuffix": "，因达到上限而截断",
-      "exportFilenamePartialSuffix": "_部分"
+      "exportFilenamePartialSuffix": "_部分",
+      "everyFieldNeedsASection": "启用分节后，所有项目都必须归属某个分节"
     },
     "tasksActions": {
       "loginRequired": "请登录",
@@ -2214,6 +2227,28 @@
       "availabilityOpen": "受理中",
       "availabilityClosed": "已结束",
       "availabilityArchived": "已归档"
+    },
+    "formBranching": {
+      "invalidSections": "分节定义无效",
+      "tooManySections": "分节最多 {n} 个",
+      "sectionIndexInvalid": "第 {no} 个分节无效",
+      "sectionKeyRequired": "第 {no} 个分节：缺少 key",
+      "duplicateSectionKey": "第 {no} 个分节：key 重复",
+      "sectionTitleRequired": "第 {no} 个分节：请输入标题（日语）",
+      "tooManyRules": "第 {no} 个分节：分支规则最多 {n} 条",
+      "ruleInvalid": "第 {no} 个分节的第 {ruleNo} 条规则无效",
+      "ruleTargetRequired": "第 {no} 个分节的第 {ruleNo} 条规则：请选择跳转目标",
+      "conditionInvalid": "第 {no} 个分节的第 {ruleNo} 条规则：条件无效",
+      "conditionFieldInvalid": "第 {no} 个分节的第 {ruleNo} 条规则：条件项目不可用",
+      "conditionOpInvalid": "第 {no} 个分节的第 {ruleNo} 条规则：比较方式无效",
+      "conditionValueInvalid": "第 {no} 个分节的第 {ruleNo} 条规则：请输入条件值",
+      "ruleTargetIsSelf": "第 {no} 个分节：跳转目标不能是自身",
+      "ruleTargetNotFound": "第 {no} 个分节：找不到跳转目标分节",
+      "submitAndFinish": "提交并结束",
+      "unknownSection": "未知分节",
+      "otherwiseGoTo": "否则 → {target}",
+      "ifConditionsGoTo": "{conditions} → {target}",
+      "conditionJoiner": " 且 "
     },
     "tasksTabs": {
       "workPlans": "工作计划",
@@ -3700,7 +3735,12 @@
       "registeredDevicesWeb": "已登记终端（Web）",
       "passwordAndSso": "密码 + SSO",
       "plantLabelDisabled": "{label}（已停用）",
-      "requestApprovalButton": "申请审批"
+      "requestApprovalButton": "申请审批",
+      "rolesDecideWhatThisPersonCanDo": "决定此人可以做什么。有效权限见下表",
+      "theRolesChangeOnceApproved": "批准后将变更角色分配",
+      "theRolesWereUpdated": "已更新角色分配",
+      "removingEveryRoleLeavesNoPermissions": "移除全部角色后，此人将无法进行任何操作",
+      "eGChangingRolesDueTo": "例：因调动更改负责业务"
     },
     "userSuspensionPanel": {
       "suspendTheUser": "停用用户",
@@ -3838,7 +3878,34 @@
       "cannotReadDirIsItMounted": "无法读取 {dir}（是否已挂载到容器？）",
       "intakeDirIntakeDirIsNotConfigured": "未设置导入文件夹（INTAKE_DIR）",
       "invalidFileName": "文件名无效",
-      "theTargetFileWasNotFound": "未找到目标文件"
+      "theTargetFileWasNotFound": "未找到目标文件",
+      "pipeline": {
+        "aiConfigUnreadable": "无法读取 AI 服务商设置",
+        "aiConfigHint": "请在系统 → AI 服务商（SY0E）中重新设置令牌",
+        "storageSaveFailed": "保存到存储（SeaweedFS）失败",
+        "sourceAttachmentLabel": "导入来源（原件）",
+        "ingestedNote": "导入（{source}）：{filename}",
+        "sourceFolder": "监视文件夹",
+        "sourceUpload": "优先导入",
+        "noSourceFile": "没有导入来源文件",
+        "noSourceFileCause": "此订单确认书未附带原件（PDF・图片）",
+        "noSourceFileHint": "请使用「切换为手动输入」录入内容，或重新获取文件后导入",
+        "matched": "已匹配",
+        "unmatched": "未确定",
+        "extractionCompletedNote": "自动提取完成（明细 {count} 件・客户{matchState}）",
+        "intakeNotificationTitle": "已自动导入订单确认书 {number}",
+        "intakeNotificationMessage": "明细 {count} 件・客户{matchState} — 请确认内容",
+        "notifyFailedLog": "[intake] 导入通知发送失败：",
+        "extractionFailedNote": "自动提取失败（第 {attempt}/{maxAttempts} 次）：{summary}",
+        "intakeFailedNotificationTitle": "订单确认书 {number} 的自动提取失败",
+        "retryingLog": "[intake] 重试提取 {id}（第 {attempt}/{maxAttempts} 次失败・{seconds} 秒后）：{errorFirstLine}",
+        "jobCrashedLog": "[intake] 提取任务异常结束 {id}",
+        "extractFailedLog": "[intake] 提取失败 {id}",
+        "requeuedLog": "[intake] 已重新投入 {count} 件未提取的文件",
+        "orphanRecoveredLog": "[intake] 回收孤立的 .processing 文件：{name}",
+        "alreadyImportedSkipLog": "[intake] {name} → {number}（已导入・跳过）",
+        "numberBurnFailedLog": "[intake] 编号写入失败：{name}"
+      }
     },
     "portal": {
       "theAccountWasCreatedDisabledBy": "已创建账户（默认为停用）",
@@ -4170,7 +4237,8 @@
       "disableFailed": "停用失败",
       "reasonTooLong": "理由最多 500 字",
       "suspendFailed": "停用失败",
-      "restoreFailed": "恢复失败"
+      "restoreFailed": "恢复失败",
+      "updateRolesFailed": "角色分配更新失败"
     },
     "kioskCardActions": {
       "invalidCardIdFormat": "卡片编号格式不正确",
@@ -5976,7 +6044,16 @@
     "formBuilder": {
       "dragToReorderPressAndHold": "拖动排序（手机长按）",
       "removeThisItem": "删除此项目",
-      "thereAreNoItemsCreateOne": "没有项目。请从「添加项目」创建。"
+      "thereAreNoItemsCreateOne": "没有项目。请从「添加项目」创建。",
+      "addASection": "＋ 添加分节",
+      "dragToReorderSection": "拖动排序（长按）",
+      "itemCount": "{count} 个项目",
+      "moveOrDeleteItemsFirst": "请先移动或删除其中的项目",
+      "removeThisSection": "删除此分节",
+      "section1": "分节 1",
+      "sectionN": "分节 {n}",
+      "sectionTitlePlaceholder": "分节标题",
+      "splitIntoSections": "分为多个分节"
     },
     "formDetail": {
       "couldNotBeChanged": "无法更改",
@@ -6065,7 +6142,19 @@
       "invalidInternalKeyFormat": "内部键格式无效（须以字母开头，由字母数字和 _ 组成）",
       "duplicateInternalKey": "内部键重复",
       "unusableRegularExpression": "无法使用该正则表达式（语法错误、量词嵌套，或超过 {max} 个字符）",
-      "keyErrorImportedDefinitionIsBroken": "{error}（导入的定义已损坏）"
+      "keyErrorImportedDefinitionIsBroken": "{error}（导入的定义已损坏）",
+      "section": "分节"
+    },
+    "formSectionRules": {
+      "title": "分支规则",
+      "description": "根据回答改变本分节之后的走向。按从上到下的顺序评估，采用第一条匹配的规则。",
+      "noRulesGoesInOrder": "无规则 — 始终进入下一个分节。",
+      "addARule": "添加规则",
+      "removeTheRule": "删除此规则",
+      "addACondition": "添加条件",
+      "removeTheCondition": "删除此条件",
+      "goTo": "跳转到",
+      "noConditionableFieldsYet": "目前没有可用作条件的项目（下拉/数值）。"
     },
     "formFieldInput": {
       "searchAndSelect": "搜索并选择",
@@ -6183,7 +6272,9 @@
       "draftSaved": "已保存草稿",
       "receptionClosedWithLabel": "此表单已停止接受回答（{label}）。",
       "receptionClosesAt": "受理截止",
-      "draftsInProgressWithCount": "未完成的草稿（{count}）"
+      "draftsInProgressWithCount": "未完成的草稿（{count}）",
+      "next": "下一步",
+      "back": "返回"
     },
     "respondFormClient": {
       "send": "发送"
@@ -8945,6 +9036,10 @@
       }
     },
     "userManagement": {
+      "roles": {
+        "label": "角色",
+        "summary": "赋予该用户的角色，可多选。"
+      },
       "plants": {
         "label": "所属据点",
         "summary": "该用户负责的据点，可多选。"

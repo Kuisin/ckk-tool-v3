@@ -5,6 +5,17 @@
  *
  * 受付前・受付終了のときは送信させないが、**これは UI の親切に過ぎない** —
  * 本当の判定はサーバ (actions.ts) が同じ関数でやり直す。
+ *
+ * **セクション（複数ページ）は既定オフ** — `sections` が空なら今までどおり
+ * 全項目を 1 ページに描く。セクションがあるときは 1 セクションずつ描き、
+ * 「次へ」を押すたびに lib/form-branching.ts resolveNextSection で次の
+ * 遷移先を計算する（回答による分岐＝スキップはここで効く）。
+ *
+ * **どのセクションを通ったかは常にサーバが computeVisitedPath で再計算する**
+ * （actions.ts submitResponse/updateResponse）。ここでの「次へ」の判定は
+ * 画面の親切であって、最終的な必須項目チェックの権威ではない — スキップした
+ * セクションの必須項目が提出をブロックしないことの保証は、サーバ側の同じ
+ * 純関数呼び出しが担う。
  */
 
 import { Alert, Anchor, Group, Paper, Stack, Text, Title } from "@mantine/core";
@@ -13,7 +24,7 @@ import { IconClock, IconLock } from "@tabler/icons-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
-import { useState, useTransition } from "react";
+import { useMemo, useState, useTransition } from "react";
 import { discardDraft } from "@/app/(dashboard)/general/forms/actions";
 import {
   CancelButton,
@@ -23,6 +34,13 @@ import {
 } from "@/components/ui/buttons";
 import { openConfirm } from "@/components/ui/modals";
 import { useIsMobile } from "@/hooks/useViewport";
+import {
+  computeVisitedPath,
+  type FormSectionDef,
+  fieldsOnPath,
+  resolveNextSection,
+  SECTION_SUBMIT,
+} from "@/lib/form-branching";
 import {
   availabilityLabel,
   type FormAnswerValue,
@@ -36,6 +54,7 @@ export function RespondForm({
   title,
   description,
   fields,
+  sections = [],
   availability,
   submittable,
   initialAnswers = {},
@@ -50,6 +69,8 @@ export function RespondForm({
   title: string;
   description?: string | null;
   fields: FormFieldDef[];
+  /** 空 = セクション未使用（従来どおり 1 ページに全項目）。 */
+  sections?: FormSectionDef[];
   availability: FormAvailability;
   /**
    * いま送信してよいか。**受付中かどうかとは別物** — 「編集は指定日時まで」の
@@ -86,9 +107,41 @@ export function RespondForm({
 
   const open = submittable;
 
+  const orderedSections = useMemo(
+    () => [...sections].sort((a, b) => a.order - b.order),
+    [sections],
+  );
+  const sectioned = orderedSections.length > 0;
+
+  // 現在のセクション（未使用なら null）。「戻る」履歴とは別に持つ —
+  // 履歴は表示のためだけで、検証は毎回 computeVisitedPath で作り直す。
+  const [currentSectionKey, setCurrentSectionKey] = useState<string | null>(
+    orderedSections[0]?.key ?? null,
+  );
+  const [historyStack, setHistoryStack] = useState<string[]>([]);
+
+  const currentSection = sectioned
+    ? (orderedSections.find((s) => s.key === currentSectionKey) ??
+      orderedSections[0])
+    : null;
+  const visibleFields =
+    sectioned && currentSection
+      ? fields.filter((f) => f.sectionKey === currentSection.key)
+      : fields;
+
+  const nextTarget =
+    sectioned && currentSection
+      ? resolveNextSection(currentSection, orderedSections, fields, answers)
+      : SECTION_SUBMIT;
+  const isLastStep = !sectioned || nextTarget === SECTION_SUBMIT;
+
   const submit = (asDraft: boolean) => {
     if (!asDraft) {
-      const found = validateAnswers(fields, answers, tr);
+      // 実際に通ったセクションだけを検証する — スキップしたセクションの
+      // 必須項目に足止めされない。最終判定はサーバが同じ関数で作り直す。
+      const visited = computeVisitedPath(orderedSections, fields, answers);
+      const relevant = fieldsOnPath(fields, orderedSections, visited);
+      const found = validateAnswers(relevant, answers, tr);
       setErrors(found);
       if (Object.keys(found).length > 0) {
         notifications.show({
@@ -118,6 +171,46 @@ export function RespondForm({
       }
     });
   };
+
+  const goNext = () => {
+    if (!currentSection) return;
+    // このセクション分だけを検証してから進む（次のページへ行けるかどうかの
+    // 足元チェック。最終的な提出可否は submit() 側の全体検証が決める）。
+    const found = validateAnswers(visibleFields, answers, tr);
+    setErrors(found);
+    if (Object.keys(found).length > 0) {
+      notifications.show({
+        title: tr("forms.respondForm.checkWhatYouEntered"),
+        message: Object.values(found)[0],
+        color: "red",
+      });
+      return;
+    }
+    if (nextTarget === SECTION_SUBMIT) {
+      submit(false);
+      return;
+    }
+    setHistoryStack((prev) => [...prev, currentSection.key]);
+    setCurrentSectionKey(nextTarget);
+    setErrors({});
+  };
+
+  const goBack = () => {
+    setHistoryStack((prev) => {
+      if (prev.length === 0) return prev;
+      const last = prev[prev.length - 1];
+      if (last) setCurrentSectionKey(last);
+      return prev.slice(0, -1);
+    });
+    setErrors({});
+  };
+
+  const primaryLabel =
+    sectioned && !isLastStep
+      ? tr("forms.respondForm.next")
+      : effectiveSubmitLabel;
+  const primaryAction = () =>
+    sectioned && !isLastStep ? goNext() : submit(false);
 
   return (
     <Stack
@@ -166,7 +259,10 @@ export function RespondForm({
 
       <Paper p="md" radius="md" shadow="xs">
         <Stack gap="md">
-          {fields.map((field) => (
+          {sectioned && currentSection && (
+            <Title order={5}>{currentSection.title.ja}</Title>
+          )}
+          {visibleFields.map((field) => (
             <FormFieldInput
               disabled={!open || isPending}
               error={errors[field.key]}
@@ -179,8 +275,8 @@ export function RespondForm({
         </Stack>
       </Paper>
 
-      {/* モバイルは主操作（送信）を上に、全幅で積む（design.md §8.3 — 画面下は
-          ソフトキーボードに取られる）。PC は右寄せの 1 行。 */}
+      {/* モバイルは主操作（送信/次へ）を上に、全幅で積む（design.md §8.3 —
+          画面下はソフトキーボードに取られる）。PC は右寄せの 1 行。 */}
       <div className="form-actions">
         {isMobile ? (
           <Stack gap="xs">
@@ -188,11 +284,16 @@ export function RespondForm({
               disabled={!open}
               fullWidth
               loading={isPending}
-              onClick={() => submit(false)}
+              onClick={primaryAction}
               type="button"
             >
-              {effectiveSubmitLabel}
+              {primaryLabel}
             </PrimaryButton>
+            {sectioned && historyStack.length > 0 && (
+              <SecondaryButton fullWidth onClick={goBack}>
+                {tr("forms.respondForm.back")}
+              </SecondaryButton>
+            )}
             {allowDraft && (
               <SecondaryButton
                 disabled={!open}
@@ -206,25 +307,34 @@ export function RespondForm({
             {onCancel && <CancelButton fullWidth onClick={onCancel} />}
           </Stack>
         ) : (
-          <Group justify="flex-end">
-            {onCancel && <CancelButton onClick={onCancel} />}
-            {allowDraft && (
-              <SecondaryButton
+          <Group justify="space-between">
+            <Group>
+              {sectioned && historyStack.length > 0 && (
+                <SecondaryButton onClick={goBack}>
+                  {tr("forms.respondForm.back")}
+                </SecondaryButton>
+              )}
+            </Group>
+            <Group justify="flex-end">
+              {onCancel && <CancelButton onClick={onCancel} />}
+              {allowDraft && (
+                <SecondaryButton
+                  disabled={!open}
+                  loading={isPending}
+                  onClick={() => submit(true)}
+                >
+                  {tr("forms.respondForm.saveAsDraft")}
+                </SecondaryButton>
+              )}
+              <PrimaryButton
                 disabled={!open}
                 loading={isPending}
-                onClick={() => submit(true)}
+                onClick={primaryAction}
+                type="button"
               >
-                {tr("forms.respondForm.saveAsDraft")}
-              </SecondaryButton>
-            )}
-            <PrimaryButton
-              disabled={!open}
-              loading={isPending}
-              onClick={() => submit(false)}
-              type="button"
-            >
-              {effectiveSubmitLabel}
-            </PrimaryButton>
+                {primaryLabel}
+              </PrimaryButton>
+            </Group>
           </Group>
         )}
       </div>

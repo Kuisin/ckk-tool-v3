@@ -15,8 +15,10 @@ import {
   type RoleOption,
   ShareGrantsPanel,
 } from "@/components/forms/ShareGrantsPanel";
+import { ShareGrantsView } from "@/components/forms/ShareGrantsView";
 import { useFormat } from "@/components/layout/PreferencesProvider";
 import { AppTabs } from "@/components/ui/AppTabs";
+import { EditablePanel } from "@/components/ui/EditablePanel";
 import { FieldValue } from "@/components/ui/FieldValue";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import {
@@ -177,16 +179,25 @@ export function DocumentDetail({
         </Tabs.Panel>
 
         <Tabs.Panel keepMounted={false} pt="md" value="share">
-          <ShareGrantsPanel
-            canManage={canManage}
-            grants={grants}
-            levels={PAGE_SHARE_LEVELS}
-            onSave={
-              onSaveShare as unknown as React.ComponentProps<
-                typeof ShareGrantsPanel
-              >["onSave"]
-            }
-            roleOptions={roleOptions}
+          <EditablePanel
+            canEdit={canManage}
+            edit={({ close }) => (
+              <ShareGrantsPanel
+                canManage={canManage}
+                grants={grants}
+                levels={PAGE_SHARE_LEVELS}
+                onCancel={close}
+                onSave={
+                  onSaveShare as unknown as React.ComponentProps<
+                    typeof ShareGrantsPanel
+                  >["onSave"]
+                }
+                onSaved={close}
+                roleOptions={roleOptions}
+              />
+            )}
+            title={tr("common.sharing")}
+            view={<ShareGrantsView grants={grants} />}
           />
         </Tabs.Panel>
 
