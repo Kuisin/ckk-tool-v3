@@ -651,6 +651,14 @@ Table order_lines {
   order_type      ORDER_TYPE [not null]
   quantity        int [not null]
   unit_price      numeric(12,2)
+  // 単価の持ち主。false（既定）= 価格表（顧客 × 製品 × 注文種別 × 数量）が
+  // 持つ — 保存時にサーバーが解決した単価を書き、画面の単価欄は読み取り専用。
+  // true = 人が「上書き」を明示して決めた単価で、価格表と違っても**差異では
+  // なく意図**として扱う（承認依頼を止めない。承認者には出す）。
+  // これを持たない頃は入力ミスと意図が同じ「価格差異」警告になっていたため、
+  // 依頼のたびに確認を押して通す運用になっていた。
+  // 判定は lib/order-acceptance-price-core.ts が唯一の定義元。
+  price_overridden boolean [not null, default: false]
   amount          numeric(12,2)            // 確定時に quantity * unit_price
   delivery_date   date
   notes           text
