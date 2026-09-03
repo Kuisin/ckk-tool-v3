@@ -105,11 +105,11 @@ export function PageHeader({
             })}
           </Breadcrumbs>
         )}
-        <Group align="end" gap="sm" wrap="nowrap">
-          <Title className="whitespace-nowrap" order={isMobile ? 3 : 2}>
+        <Group align="end" className="min-w-0" gap="sm" wrap="nowrap">
+          <Title className="min-w-0 flex-1 truncate" order={isMobile ? 3 : 2}>
             {title}
           </Title>
-          {status}
+          {status && <span className="shrink-0">{status}</span>}
         </Group>
       </Stack>
       {actions}
