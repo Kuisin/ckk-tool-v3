@@ -64,6 +64,15 @@ consumed as TS source via `transpilePackages`).
 
 - **ドキュメント基盤** — `fumadocs-ui` / `fumadocs-core` / `fumadocs-mdx` /
   `@orama/tokenizers`（+ `@types/mdx`）。`/manual` + `/admin-manual`。
+- **画像の拡大表示** — `react-zoom-pan-pinch`（MIT, 完全固定）。docs 画像の
+  全画面ビュー（`components/docs/ZoomableImage.tsx`）でホイール/ピンチ/
+  ダブルクリックの実ズーム + ドラッグ移動に使う。fumadocs-ui 同梱の
+  ImageZoom（react-medium-image-zoom）は「縮小⇄原寸」の単発トランジション
+  のみで、開いた後のホイール/ピンチは**閉じる**操作に割り当てられており
+  拡大できなかったため差し替えた。**責務の境界**: 開閉・背景・Esc・
+  フォーカストラップは既存の `ModalShell`（Mantine Modal）に任せ、
+  react-zoom-pan-pinch は transform（拡大率・位置）の計算だけを持つ — 2 つの
+  ライブラリでホイール/タッチのイベントを取り合わせない構成。
 - **リッチテキスト** — `@mantine/tiptap`（`@mantine/core` と**完全に同一バージョン**に
   固定）+ `@tiptap/react` / `@tiptap/pm` / `@tiptap/starter-kit` /
   `@tiptap/extension-link`。文書メモ / コメント（`ui/MemoPanel.tsx`）。
