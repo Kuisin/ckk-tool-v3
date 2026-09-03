@@ -20,12 +20,12 @@ background-color: #fffbeb;
 icon: #mail;
 
 <role_sales>
-label: 社内営業;
+label: 営業;
 text-color: #1e293b;
 background-color: #dbeafe;
 
 <role_support>
-label: 社内営業補助;
+label: 営業補助;
 text-color: #92400e;
 background-color: #fef3c7;
 
