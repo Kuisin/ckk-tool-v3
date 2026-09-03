@@ -2,8 +2,19 @@
 
 マニュアル（`coolify/apps/nextjs-web/content/manual/`）のプロセス編に載せる
 スイムレーン図を、kai-swimlane DSL から静的 SVG として生成するツール。
-生成物はコミットする（実行時依存なし — マニュアルは生成済み SVG を
-通常の画像として参照するだけ）。
+マニュアル側は生成済み SVG を通常の画像として参照するだけ（**実行時依存なし** —
+描画はビルドで終わっていて、ページを開くたびに図を組み立てたりはしない）。
+
+**正は DSL（`diagrams/*.txt`）。SVG は生成物。** `nextjs-web` の `pnpm build` が
+先頭でこのツールを走らせるので、**デプロイのたびに DSL から作り直される** —
+DSL を直して push すれば、生成物のコミットを忘れていても本番の図は新しくなる。
+Coolify の watch_paths にも `tools/swimlane/**` が入っているので、図だけの変更でも
+再デプロイが走る（`coolify/platform/setup.sh`）。
+
+生成物もコミットする。ビルドが作り直すので本番には効かないが、`pnpm dev` や
+エディタのプレビューが生成なしで図を出せるため。**コミット済み SVG が DSL と
+食い違ったら CI が落ちる**（`nextjs-web-ci.yml` の「Diagrams are in sync with
+their DSL」）— リポジトリの図が嘘をつくのを防ぐ。
 
 ## 構成
 
@@ -34,6 +45,13 @@ node tools/swimlane/build-diagrams.mjs   # リポジトリのどこからでも�
 - 生成 SVG に `viewBox` / `width` / `height` が無ければ exit 1
   （fumadocs の remark-image → next/image 静的 import が寸法を要求するため）
 
+**同じものが `nextjs-web` のビルドから自動で走る** —
+`"build": "node ../../../tools/swimlane/build-diagrams.mjs && next build"`。
+つまり DSL が壊れていればデプロイも CI も**そこで落ちる**（壊れた図が出回るより
+落ちたほうがよい）。Docker では `tools/swimlane` をビルドコンテキストへ入れて
+いる（`.dockerignore` の allowlist に 1 行 + Dockerfile の `COPY`）。依存ゼロの
+素の node スクリプトなので、そのために install するものは無い。
+
 ## 図を書いている間のプレビュー
 
 ```bash
@@ -41,22 +59,22 @@ node tools/swimlane/preview.mjs           # http://127.0.0.1:4321/
 node tools/swimlane/preview.mjs --port 5000
 ```
 
-`diagrams/` を監視して、`.txt` を保存した瞬間に描き直す。**マニュアルが読む SVG は
-従来どおりコミット済みの生成物**で、このサーバーはファイルを一切書かない — 変えたのは
-「直す → ビルド → コミット → 画面で確認」の往復だけ。
+`diagrams/` を監視して、`.txt` を保存した瞬間に描き直す。このサーバーは
+**ファイルを一切書かない** — 「直す → ビルド → 画面で確認」の往復を省くためだけのもの。
 
 `build-diagrams.mjs` と違って**エラーで終了しない**。書いている途中の DSL はほとんどの
 時間が構文エラーなので、エラーは画面上部に出して次の保存を待つ。判定は同じものを使うので、
 `viewBox` 欠落のようにビルドだけが落ちる状態もここで見える。
 
-図が固まったら `build-diagrams.mjs` を実行して、生成 SVG をコミットすること —
-プレビューを見ただけではマニュアルの画像は変わらない。
+図が固まったら `build-diagrams.mjs` を実行して生成物をコミットする。**忘れても本番の図は
+正しい**（ビルドが作り直すため）が、CI の同期チェックが落ちるので結局そこで気づく。
 
 **生成された SVG を直接編集しない。** 文言を直すときも触るのは `diagrams/*.txt` の方で、
 次のビルドが上書きする。実際に一度ずれた — 2026-08-30 の用語統一（試算 → 価格試算）が
 SVG 側にだけ当たっていて、DSL は旧語のまま残っていた。あの状態で誰かが
-`build-diagrams.mjs` を走らせれば、用語の決定が黙って巻き戻る。ずれているかどうかは
-プレビューと画面を見比べれば判る（プレビューは常に DSL を描くため）。
+`build-diagrams.mjs` を走らせれば、用語の決定が黙って巻き戻る（実際、その巻き戻りは
+このツールを触ったときに見つかった）。いまは**ビルドが必ず DSL から作り直す**ので、
+SVG を手で直しても次のデプロイで消える — 直す場所は DSL しかない。
 
 ## 図を書くときのルール（マニュアル向け）
 

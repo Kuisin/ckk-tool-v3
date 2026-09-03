@@ -36,7 +36,10 @@ BASE_DIR="/"
 APP_DIR="coolify/apps/nextjs-web"
 DOCKERFILE="/coolify/apps/nextjs-web/Dockerfile"
 # ルート lockfile / 共有パッケージの変更でも再ビルドする。
-WATCH_PATHS="coolify/apps/nextjs-web/**\npackages/**\npnpm-lock.yaml\npnpm-workspace.yaml\npackage.json"
+# tools/swimlane/** も見る — マニュアルのスイムレーン図は DSL からビルド時に
+# 生成するので、図を直したときに変わるのは diagrams/*.txt だけ。ここを見て
+# いないと「直したのに再デプロイされない」になる。
+WATCH_PATHS="coolify/apps/nextjs-web/**\npackages/**\ntools/swimlane/**\npnpm-lock.yaml\npnpm-workspace.yaml\npackage.json"
 API="http://127.0.0.1:8000/api/v1"
 TOKEN_FILE=/data/coolify/source/.api-token
 WEBHOOK_FILE=/data/coolify/source/.webhook-secrets
