@@ -8,6 +8,11 @@ import "server-only";
  * （system:READ）でゲート — 呼び出し側ページで checkPermission を通すこと。
  */
 
+import {
+  highestScopeRows,
+  type PermissionAction,
+  type PermissionScope,
+} from "@ckk/authz-core";
 import { BOOTSTRAP_ADMIN_USERNAME } from "./bootstrap-admin-core";
 import { prisma } from "./db";
 import type { LocalizedText } from "./format";
@@ -160,6 +165,7 @@ export async function getAdminUser(
   });
   if (!u) return null;
   // ビューは grant 単位の全行を返す（1 code×action に複数ロール分の行があり得る）。
+  // 画面には **いちばん広い 1 行だけ** を出すので、読み込んだあと畳む（下）。
   const permissions = await prisma.$queryRaw<
     {
       permission_code: string;
@@ -200,12 +206,28 @@ export async function getAdminUser(
       assignedAt: a.assignedAt?.toISOString() ?? null,
       deactivateAt: a.deactivateAt?.toISOString() ?? null,
     })),
-    permissions: permissions.map((p) => ({
-      permissionCode: p.permission_code,
-      action: p.action,
-      scope: p.scope,
-      scopeValues: p.scope_values ?? ["*"],
-    })),
+    // 同じ (権限コード × アクション) が複数ロールから何行も並ぶと「結局どこまで
+    // 届くのか」が読めない。判定（decide）は従来どおり全行の和集合で行い、
+    // **表示だけ** を最も広い scope の 1 行に畳む（@ckk/authz-core が唯一の定義）。
+    permissions: highestScopeRows(
+      permissions.map((p) => ({
+        code: p.permission_code,
+        action: p.action as PermissionAction,
+        scope: p.scope as PermissionScope,
+        scopeValues: p.scope_values ?? ["*"],
+      })),
+    )
+      .map((p) => ({
+        permissionCode: p.code,
+        action: p.action as string,
+        scope: p.scope as string,
+        scopeValues: [...p.scopeValues],
+      }))
+      .sort(
+        (a, b) =>
+          a.permissionCode.localeCompare(b.permissionCode) ||
+          a.action.localeCompare(b.action),
+      ),
     plants: u.userPlants.map((up) => ({
       id: up.plant.id,
       code: up.plant.code,

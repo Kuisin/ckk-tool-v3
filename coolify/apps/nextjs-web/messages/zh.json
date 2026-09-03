@@ -3726,7 +3726,7 @@
       "assignedOn": "分配日",
       "releasedAt": "解除时间",
       "effectivePermissions": "有效权限",
-      "thePermissionsGrantedByTheirActive": "由有效角色授予的许可一览（此人可执行的操作是下方所有行的总和）",
+      "thePermissionsGrantedByTheirActive": "由有效角色授予的许可一览（无论持有多少角色，每行显示该权限所能达到的最大范围）",
       "youDoNotHavePermission": "没有权限",
       "permissionCode": "权限编号",
       "action": "操作",

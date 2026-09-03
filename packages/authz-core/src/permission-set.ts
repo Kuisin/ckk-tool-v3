@@ -184,6 +184,60 @@ export const PERMISSION_SCOPES: readonly PermissionScope[] = [
   "OWN",
 ];
 
+/**
+ * scope の広さの順位。**小さいほど広い**（0 = ALL）。
+ * 並びは PERMISSION_SCOPES をそのまま使う — 順序表を 2 本持つと必ず割れる。
+ */
+export function scopeRank(scope: PermissionScope): number {
+  const i = PERMISSION_SCOPES.indexOf(scope);
+  // 未知の値は最も狭い扱い（fail-closed。表示でも過大に見せない）。
+  return i === -1 ? PERMISSION_SCOPES.length : i;
+}
+
+/**
+ * (code, action) ごとに **いちばん広い scope の行だけ** に畳む。
+ *
+ * 表示のためのもの — 判定は decide() が全行の和集合で行い、こちらを使わない。
+ * user_permissions ビューは grant 単位の全行を返すので、ロールを 2 つ持つ人の
+ * 権限一覧には同じ (code, action) が何行も並ぶ。読む側が知りたいのは
+ * 「結局どこまで届くのか」なので、いちばん広い 1 行に畳む。
+ *
+ * 同じ広さの行が複数あるときは **scope_values を足し合わせる**。ロール A が
+ * PLANT:[TOKYO]、ロール B が PLANT:[OSAKA] を与えているとき、片方だけ見せると
+ * 実際より狭く見える（decide() は両方を足すので、表示だけが嘘になる）。
+ * どちらかが '*' なら '*' に吸収させる。
+ *
+ * ⚠️ 広さの違う行は落とす。REGION:[EU] と PLANT:[TOKYO] を両方持っていて
+ * TOKYO が EU の外にある、というときだけ、畳んだ表示は実際の範囲を
+ * 言い切れない。順位表に載っている以上どちらが広いかは決まるので畳むが、
+ * 「1 行に畳めるほど単純ではない」場合が理論上あることは知っておくこと。
+ */
+export function highestScopeRows(
+  rows: readonly PermissionRow[],
+): PermissionRow[] {
+  const best = new Map<string, PermissionRow>();
+  for (const row of rows) {
+    const key = `${row.code}\u0000${row.action}`;
+    const kept = best.get(key);
+    if (!kept) {
+      best.set(key, { ...row, scopeValues: [...row.scopeValues] });
+      continue;
+    }
+    const rank = scopeRank(row.scope);
+    const keptRank = scopeRank(kept.scope);
+    if (rank < keptRank) {
+      best.set(key, { ...row, scopeValues: [...row.scopeValues] });
+    } else if (rank === keptRank) {
+      const merged = new Set([...kept.scopeValues, ...row.scopeValues]);
+      best.set(key, {
+        ...kept,
+        scopeValues: merged.has(ALL_CODES) ? [ALL_CODES] : [...merged].sort(),
+      });
+    }
+  }
+  return [...best.values()];
+}
+
 export const PERMISSION_ACTIONS: readonly PermissionAction[] = [
   "READ",
   "CREATE",

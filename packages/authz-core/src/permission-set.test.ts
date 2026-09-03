@@ -3,11 +3,21 @@ import {
   ALL_CODES,
   buildPermissionSet,
   decide,
+  highestScopeRows,
   isSuperuser,
+  PERMISSION_SCOPES,
   readableCodes,
+  scopeRank,
   visibleAppKeys,
 } from "./permission-set";
-import type { Access, PermissionRow, PlantRef, ScopeContext } from "./types";
+import type {
+  Access,
+  PermissionAction,
+  PermissionRow,
+  PermissionScope,
+  PlantRef,
+  ScopeContext,
+} from "./types";
 
 // ── fixtures ────────────────────────────────────────────────────────────────
 
@@ -262,6 +272,94 @@ describe("readableCodes / visibleAppKeys", () => {
     ]);
     expect(visibleAppKeys(superSet, apps)).toEqual(
       new Set(["quotes", "invoices", "docs"]),
+    );
+  });
+});
+
+describe("highestScopeRows — 実効権限の表示用に (code, action) を 1 行へ畳む", () => {
+  const row = (
+    code: string,
+    action: PermissionAction,
+    scope: PermissionScope,
+    scopeValues: string[] = ["*"],
+  ): PermissionRow => ({ code, action, scope, scopeValues });
+
+  it("同じ (code, action) はいちばん広い scope だけ残す", () => {
+    const out = highestScopeRows([
+      row("quote", "READ", "OWN"),
+      row("quote", "READ", "ALL"),
+      row("quote", "READ", "PLANT"),
+    ]);
+    expect(out).toHaveLength(1);
+    expect(out[0]?.scope).toBe("ALL");
+  });
+
+  it("action が違えば別の行として残る", () => {
+    const out = highestScopeRows([
+      row("quote", "READ", "ALL"),
+      row("quote", "UPDATE", "OWN"),
+    ]);
+    expect(out).toHaveLength(2);
+    expect(out.map((r) => r.action).sort()).toEqual(["READ", "UPDATE"]);
+  });
+
+  it("code が違えば別の行として残る", () => {
+    const out = highestScopeRows([
+      row("quote", "READ", "ALL"),
+      row("invoice", "READ", "OWN"),
+    ]);
+    expect(out).toHaveLength(2);
+  });
+
+  it("同じ広さなら scope_values を足す（片方だけ見せると狭く見えるため）", () => {
+    const out = highestScopeRows([
+      row("quote", "READ", "PLANT", ["TOKYO"]),
+      row("quote", "READ", "PLANT", ["OSAKA"]),
+    ]);
+    expect(out).toHaveLength(1);
+    expect(out[0]?.scopeValues).toEqual(["OSAKA", "TOKYO"]);
+  });
+
+  it("'*' は列挙を吸収する", () => {
+    const out = highestScopeRows([
+      row("quote", "READ", "PLANT", ["TOKYO"]),
+      row("quote", "READ", "PLANT", ["*"]),
+    ]);
+    expect(out[0]?.scopeValues).toEqual(["*"]);
+  });
+
+  it("狭いほうの scope_values は持ち上げない（別の広さの行は落とす）", () => {
+    const out = highestScopeRows([
+      row("quote", "READ", "REGION", ["EU"]),
+      row("quote", "READ", "PLANT", ["TOKYO"]),
+    ]);
+    expect(out).toHaveLength(1);
+    expect(out[0]?.scope).toBe("REGION");
+    expect(out[0]?.scopeValues).toEqual(["EU"]);
+  });
+
+  it("入力を書き換えない", () => {
+    const input = [row("quote", "READ", "PLANT", ["TOKYO"])];
+    highestScopeRows([...input, row("quote", "READ", "PLANT", ["OSAKA"])]);
+    expect(input[0]?.scopeValues).toEqual(["TOKYO"]);
+  });
+
+  it("空を渡せば空", () => {
+    expect(highestScopeRows([])).toEqual([]);
+  });
+});
+
+describe("scopeRank", () => {
+  it("ALL がいちばん広い（0）", () => {
+    expect(scopeRank("ALL")).toBe(0);
+  });
+  it("PERMISSION_SCOPES の並びどおりに広い→狭い", () => {
+    const ranks = PERMISSION_SCOPES.map(scopeRank);
+    expect(ranks).toEqual([...ranks].sort((a, b) => a - b));
+  });
+  it("未知の値は最も狭い扱い（fail-closed）", () => {
+    expect(scopeRank("NOPE" as PermissionScope)).toBeGreaterThanOrEqual(
+      PERMISSION_SCOPES.length,
     );
   });
 });

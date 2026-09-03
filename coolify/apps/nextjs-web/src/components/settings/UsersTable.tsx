@@ -10,12 +10,13 @@
 import { Badge, Group, Select, Text, TextInput } from "@mantine/core";
 import { IconSearch, IconUserCog } from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { useFormat } from "@/components/layout/PreferencesProvider";
 import { type Column, DataTable } from "@/components/ui/DataTable";
 import { ListShell } from "@/components/ui/shells";
 import { useUrlSelectState, useUrlStringState } from "@/hooks/useUrlState";
 import { localized } from "@/lib/format";
+import { listSearchMatch } from "@/lib/list-search";
 import type { AdminUserRow } from "@/lib/users-admin";
 
 export function userGroupLabels(
@@ -52,10 +53,23 @@ export function UserActiveBadge({ isActive }: { isActive: boolean }) {
   );
 }
 
+/**
+ * バッジに出す表示（= 検索の対象）。表示名が無いロールは rolename を出すので、
+ * 検索も同じ 1 本から作る — 「見えている文字で探せない」を作らないため。
+ */
+function roleBadgeLabel(
+  role: AdminUserRow["roles"][number],
+  locale: string,
+): string {
+  const label = localized(role.displayName, locale);
+  return label === "—" ? role.rolename : label;
+}
+
 export function UsersTable({ rows }: { rows: AdminUserRow[] }) {
   const tr = useTranslations();
   const fmt = useFormat();
   const router = useRouter();
+  const locale = useLocale();
 
   const [search, setSearch] = useUrlStringState("q");
   const [group, setGroup] = useUrlSelectState("group");
@@ -68,13 +82,15 @@ export function UsersTable({ rows }: { rows: AdminUserRow[] }) {
   };
 
   const filtered = rows.filter((r) => {
-    const q = search.trim().toLowerCase();
-    const matchesSearch =
-      !q ||
-      r.username.toLowerCase().includes(q) ||
-      r.displayName.toLowerCase().includes(q) ||
-      (r.email ?? "").toLowerCase().includes(q) ||
-      r.roles.some((role) => role.rolename.toLowerCase().includes(q));
+    // ロールは **バッジに出ている表示名**でも引けること。rolename（`staff` 等）
+    // だけを見ていたので、画面に「一般」と出ているのに「一般」で 0 件になっていた。
+    const matchesSearch = listSearchMatch(search, [
+      r.username,
+      r.displayName,
+      r.email,
+      ...r.roles.map((role) => roleBadgeLabel(role, locale)),
+      ...r.roles.map((role) => role.rolename),
+    ]);
     const matchesGroup = !group || r.group === group;
     const matchesActive =
       !active || (active === "active" ? r.isActive : !r.isActive);
@@ -134,9 +150,7 @@ export function UsersTable({ rows }: { rows: AdminUserRow[] }) {
           <Group gap={4} wrap="wrap">
             {r.roles.map((role) => (
               <Badge color="gray" key={role.rolename} variant="light">
-                {localized(role.displayName) === "—"
-                  ? role.rolename
-                  : localized(role.displayName)}
+                {roleBadgeLabel(role, locale)}
               </Badge>
             ))}
           </Group>

@@ -3726,7 +3726,7 @@
       "assignedOn": "割当日",
       "releasedAt": "解除日時",
       "effectivePermissions": "実効権限",
-      "thePermissionsGrantedByTheirActive": "有効なロールから与えられている許可の一覧（この人ができることは、下の行すべての合計です）",
+      "thePermissionsGrantedByTheirActive": "有効なロールから与えられている許可の一覧（ロールをいくつ持っていても、1 行 = その権限で届く最も広い範囲）",
       "youDoNotHavePermission": "権限がありません",
       "permissionCode": "権限コード",
       "action": "アクション",
