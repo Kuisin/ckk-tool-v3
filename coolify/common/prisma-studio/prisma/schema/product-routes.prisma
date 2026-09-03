@@ -23,7 +23,6 @@ model ProductProcessRoute {
 
   versions ProductProcessRouteVersion[]
 
-  @@index([productId])
   @@index([productId, customerBpId])
   @@map("product_process_routes")
   @@schema("app")

@@ -6698,7 +6698,12 @@
       "watchedFolder": "监视文件夹导入",
       "manualEntry": "手动录入",
       "itemCountSuffix": "（{count} 项明细）",
-      "priceDiffLine": "第 {row} 行 {actual} ≠ 价格表 {expected}"
+      "priceDiffLine": "第 {row} 行 {actual} ≠ 价格表 {expected}",
+      "theseLinesUseAnOverriddenPrice": "以下明细将以价格表以外的单价受理。这是有意的覆盖，不会阻止提交审批，但请在审批前确认单价。",
+      "priceOverrideLine": "第 {row} 行 {actual}（价格表 {expected}）",
+      "hideTheDocumentPane": "折叠单据",
+      "showTheDocumentPane": "展开单据",
+      "hideTheDocument": "隐藏"
     },
     "orderLines": {
       "parentDocumentOfThisLine": "此明细的父单据",
@@ -7032,7 +7037,11 @@
       "priceMismatchCount": "价格差异 {count} 项",
       "priceMismatchExpected": "价格差异（价格表 {expected}）",
       "unenteredCount": "未填写 {count} 项",
-      "productSummaryAndMore": "{first} 等 {count} 种"
+      "productSummaryAndMore": "{first} 等 {count} 种",
+      "priceOverrideCount": "单价覆盖 {count} 件",
+      "lineOverrideText": "第 {row} 行：{actual}（价格表 {expected}）",
+      "priceOverridden": "已覆盖",
+      "priceOverriddenFromList": "已覆盖（价格表 {expected}）"
     },
     "orderAcceptanceIntakeTable": {
       "addedQueuedForExtraction": "已将 {count} 项添加到列表。AI 提取将随后依次执行",
@@ -7053,7 +7062,13 @@
     },
     "orderAcceptanceItemsEditor": {
       "lineCountAndTotalQuantity": "明细 {count} 件 / 合计数量",
-      "lineOrdinal": "明细 {index}"
+      "lineOrdinal": "明细 {index}",
+      "overridePrice": "覆盖单价",
+      "priceListPrice": "价格表 {price}",
+      "priceListPriceWithTier": "价格表 {price}（{tier}）",
+      "fromPriceList": "来自价格表",
+      "willReplaceWithList": "保存时 {entered} 将被替换为价格表的单价",
+      "overriddenFromList": "已覆盖（价格表 {expected}）"
     },
     "priceListDetail": {
       "confirmDeleteDiscountMessage": "将删除“{label}”。此操作无法撤销。",
@@ -8305,7 +8320,7 @@
       },
       "unitPrice": {
         "label": "单价",
-        "summary": "每支的价格。若与价格表中的单价不同，将立即显示为差异。"
+        "summary": "每支的价格。存在价格表时将带入价格表的单价；如需更改，请打开「覆盖单价」。"
       },
       "deliveryDate": {
         "label": "交期",

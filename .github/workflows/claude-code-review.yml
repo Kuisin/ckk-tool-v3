@@ -1,5 +1,10 @@
 name: Claude Code Review
 
+# dev への通常 PR は軽量な単発レビュー（quick-review）だけを走らせ、
+# Action の消費を抑える。フルの多エージェントレビュー（full-review、
+# code-review プラグインの 4 エージェント構成）は main への昇格 PR
+# （head=dev, base=main — CLAUDE.md「Git workflow」参照）でのみ走る。
+
 on:
   pull_request:
     types: [opened, synchronize, ready_for_review, reopened]
@@ -11,12 +16,52 @@ on:
     #   - "src/**/*.jsx"
 
 jobs:
-  claude-review:
+  quick-review:
+    if: github.event.pull_request.base.ref != 'main'
     # Optional: Filter by PR author
     # if: |
     #   github.event.pull_request.user.login == 'external-contributor' ||
     #   github.event.pull_request.user.login == 'new-developer' ||
     #   github.event.pull_request.author_association == 'FIRST_TIME_CONTRIBUTOR'
+
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read
+      issues: read
+      id-token: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Run Claude quick review
+        id: claude-review
+        uses: anthropics/claude-code-action@v1
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          use_sticky_comment: 'true'
+          prompt: |
+            Do a single-pass, low-cost review of this PR's diff
+            (${{ github.repository }} #${{ github.event.pull_request.number }}).
+            It targets dev, not main — this is not a promotion PR, so keep
+            the review cheap and skip the full multi-agent treatment.
+
+            Read the diff with `gh pr diff ${{ github.event.pull_request.number }}`
+            and flag only correctness bugs you are highly confident about
+            (crashes, wrong logic, data loss, obvious security issues).
+            Do not audit CLAUDE.md compliance, do not dig through git blame
+            or history, do not report style nits or issues a linter would
+            already catch. If nothing meets that bar, say so briefly instead
+            of inventing findings.
+          claude_args: '--max-turns 15'
+          # See https://github.com/anthropics/claude-code-action/blob/main/docs/usage.md
+          # or https://code.claude.com/docs/en/cli-reference for available options
+
+  full-review:
+    if: github.event.pull_request.base.ref == 'main'
 
     runs-on: ubuntu-latest
     permissions:

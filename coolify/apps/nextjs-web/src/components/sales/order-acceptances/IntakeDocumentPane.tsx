@@ -8,11 +8,32 @@
  * ビューア指定）、画像は img。どちらでもないものはリンクだけ出す。
  *
  * デスクトップではヘッダー下に貼り付く（sticky）ので、右の明細を下へ
- * スクロールしても書類は見えたまま。モバイルは折りたたみ（既定で閉じる）。
+ * スクロールしても書類は見えたまま。
+ *
+ * **畳める（デスクトップ）** — 書類を読み終えて明細を直す段では、左の
+ * 40% が邪魔になる（明細エディタは 1 行に 5 欄あり、幅が足りないと単価が
+ * 次の行へ折り返す）。畳むと左は細い帯だけになり、**右がその分広がる**
+ * （列幅は親の Grid が持つので、開閉の状態も親が持つ — 下の `collapsed`）。
+ * モバイルは従来どおり縦積みの折りたたみ（既定で閉じる）。
  */
 
-import { Box, Collapse, Group, Paper, Text } from "@mantine/core";
-import { IconChevronDown, IconChevronUp, IconFile } from "@tabler/icons-react";
+import {
+  ActionIcon,
+  Box,
+  Collapse,
+  Group,
+  Paper,
+  Stack,
+  Text,
+  Tooltip,
+} from "@mantine/core";
+import {
+  IconChevronDown,
+  IconChevronUp,
+  IconFile,
+  IconLayoutSidebarLeftCollapse,
+  IconLayoutSidebarLeftExpand,
+} from "@tabler/icons-react";
 import { useTranslations } from "next-intl";
 import { useState } from "react";
 import { GhostButton } from "@/components/ui/buttons";
@@ -21,29 +42,100 @@ import { useIsMobile } from "@/hooks/useViewport";
 /** ビューア既定の「ページ全体」だと余白が大きいので幅に合わせる。 */
 const VIEWER_HASH = "#view=FitH&toolbar=1&navpanes=0";
 
+/** 畳んだときの帯の幅（px）。Grid.Col は span="content" でこれに合わせる。 */
+const RAIL_WIDTH = 44;
+
 export function IntakeDocumentPane({
   fileUrl,
   filename,
   mimeType,
   /** 右ペインの高さに合わせる（デスクトップ）。 */
   height = 640,
+  collapsed = false,
+  onToggleCollapse,
 }: {
   fileUrl: string | null;
   filename: string | null;
   /** 取込元の MIME。null のときは拡張子から推測する。 */
   mimeType?: string | null;
   height?: number;
+  /**
+   * デスクトップで畳んでいるか。**列幅を決めるのは親**（Grid）なので、
+   * 状態はここでは持たない。
+   */
+  collapsed?: boolean;
+  /** 省略すると畳むボタンを出さない（畳めない画面のため）。 */
+  onToggleCollapse?: () => void;
 }) {
   const tr = useTranslations();
   const isMobile = useIsMobile();
   const [open, setOpen] = useState(false);
 
+  const label = filename ?? tr("sales.orderAcceptances.sourceDocument");
+  const stickyStyle = isMobile
+    ? undefined
+    : ({ position: "sticky", top: 76, zIndex: 1 } as const);
+
+  // 畳んだ帯（デスクトップのみ）。書類が無い手入力でも畳めるようにしてある
+  // — 空の枠が右の幅を食っている方が困る。
+  if (!isMobile && collapsed) {
+    return (
+      <Paper p={6} radius="md" style={stickyStyle} w={RAIL_WIDTH} withBorder>
+        <Stack align="center" gap="xs">
+          <Tooltip label={tr("sales.orderAcceptances.showTheDocumentPane")}>
+            <ActionIcon
+              aria-label={tr("sales.orderAcceptances.showTheDocumentPane")}
+              color="gray"
+              onClick={onToggleCollapse}
+              variant="subtle"
+            >
+              <IconLayoutSidebarLeftExpand size={18} />
+            </ActionIcon>
+          </Tooltip>
+          <IconFile size={14} />
+          {/* 縦書きで名前を残す — 何を畳んだのかが分かるように。 */}
+          <Text
+            c="dimmed"
+            size="xs"
+            style={{
+              maxHeight: 220,
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+              whiteSpace: "nowrap",
+              writingMode: "vertical-rl",
+            }}
+          >
+            {fileUrl
+              ? label
+              : tr("sales.orderAcceptances.thereIsNoSourceDocumentEntered")}
+          </Text>
+        </Stack>
+      </Paper>
+    );
+  }
+
+  const collapseButton = onToggleCollapse && !isMobile && (
+    <Tooltip label={tr("sales.orderAcceptances.hideTheDocumentPane")}>
+      <ActionIcon
+        aria-label={tr("sales.orderAcceptances.hideTheDocumentPane")}
+        color="gray"
+        onClick={onToggleCollapse}
+        variant="subtle"
+      >
+        <IconLayoutSidebarLeftCollapse size={18} />
+      </ActionIcon>
+    </Tooltip>
+  );
+
   if (!fileUrl) {
     return (
-      <Paper p="md" radius="md" withBorder>
-        <Text c="dimmed" size="sm">
-          {tr("sales.orderAcceptances.thereIsNoSourceDocumentEntered")}
-        </Text>
+      <Paper p="xs" radius="md" style={stickyStyle} withBorder>
+        <Group gap="xs" justify="space-between" wrap="nowrap">
+          <Text c="dimmed" px={6} size="sm">
+            {tr("sales.orderAcceptances.thereIsNoSourceDocumentEntered")}
+          </Text>
+          {collapseButton}
+        </Group>
       </Paper>
     );
   }
@@ -60,7 +152,7 @@ export function IntakeDocumentPane({
       h={height}
       src={`${fileUrl}${VIEWER_HASH}`}
       style={{ border: 0, display: "block", width: "100%" }}
-      title={filename ?? tr("sales.orderAcceptances.sourceDocument")}
+      title={label}
     />
   ) : isImage ? (
     <Box
@@ -68,7 +160,7 @@ export function IntakeDocumentPane({
       // 画像は原寸だと大きいので幅に合わせ、縦は収まらなければスクロール。
     >
       <Box
-        alt={filename ?? tr("sales.orderAcceptances.sourceDocument")}
+        alt={label}
         component="img"
         src={fileUrl}
         style={{ display: "block", width: "100%" }}
@@ -85,7 +177,7 @@ export function IntakeDocumentPane({
       <Group className="min-w-0" gap={6} wrap="nowrap">
         <IconFile size={14} />
         <Text size="sm" truncate>
-          {filename ?? tr("sales.orderAcceptances.sourceDocument")}
+          {label}
         </Text>
       </Group>
       <Group gap="xs" wrap="nowrap">
@@ -100,20 +192,18 @@ export function IntakeDocumentPane({
             onClick={() => setOpen((v) => !v)}
             size="xs"
           >
-            {open ? "隠す" : tr("sales.orderAcceptances.viewTheDocument")}
+            {open
+              ? tr("sales.orderAcceptances.hideTheDocument")
+              : tr("sales.orderAcceptances.viewTheDocument")}
           </GhostButton>
         )}
+        {collapseButton}
       </Group>
     </Group>
   );
 
   return (
-    <Paper
-      p="xs"
-      radius="md"
-      style={isMobile ? undefined : { position: "sticky", top: 76, zIndex: 1 }}
-      withBorder
-    >
+    <Paper p="xs" radius="md" style={stickyStyle} withBorder>
       {header}
       {isMobile ? (
         <Collapse expanded={open}>

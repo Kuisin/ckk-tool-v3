@@ -50,32 +50,33 @@ interface RawPlantRow {
   id: number;
   code: string;
   region_code: string | null;
+  assigned: boolean;
 }
 
 /**
- * スコープ解決コンテキスト（2 クエリ）。
+ * スコープ解決コンテキスト（1 クエリ）。
  * assignedPlants = user_plants の所属（有効拠点のみ）。
  * allPlants      = 全有効拠点（REGION 展開用 — 件数は高々数十）。
+ *
+ * 以前は 2 クエリ（所属 / 全拠点）だったが、所属は全拠点の部分集合なので
+ * 全拠点を 1 回引いて所属フラグを列に持たせれば足りる。checkPermission は
+ * ほぼ全ページ・全 Server Action の先頭で呼ばれるので、往復 1 回ぶんが
+ * リクエストごとに効く。
  */
 export async function loadScopeContext(
   db: AuthzDb,
   userId: string,
 ): Promise<ScopeContext> {
-  const [assigned, all] = await Promise.all([
-    db.$queryRaw<RawPlantRow[]>`
-      SELECT p.id, p.code, r.code AS region_code
-        FROM app.user_plants up
-        JOIN app.plants p ON p.id = up.plant_id AND p.is_active
-        LEFT JOIN app.regions r ON r.id = p.region_id AND r.is_active
-       WHERE up.user_id = ${userId}::uuid
-    `,
-    db.$queryRaw<RawPlantRow[]>`
-      SELECT p.id, p.code, r.code AS region_code
-        FROM app.plants p
-        LEFT JOIN app.regions r ON r.id = p.region_id AND r.is_active
-       WHERE p.is_active
-    `,
-  ]);
+  const rows = await db.$queryRaw<RawPlantRow[]>`
+    SELECT p.id, p.code, r.code AS region_code,
+           EXISTS (
+             SELECT 1 FROM app.user_plants up
+              WHERE up.user_id = ${userId}::uuid AND up.plant_id = p.id
+           ) AS assigned
+      FROM app.plants p
+      LEFT JOIN app.regions r ON r.id = p.region_id AND r.is_active
+     WHERE p.is_active
+  `;
   const toRef = (r: RawPlantRow): PlantRef => ({
     id: r.id,
     code: r.code,
@@ -83,8 +84,8 @@ export async function loadScopeContext(
   });
   return {
     userId,
-    assignedPlants: assigned.map(toRef),
-    allPlants: all.map(toRef),
+    assignedPlants: rows.filter((r) => r.assigned).map(toRef),
+    allPlants: rows.map(toRef),
   };
 }
 

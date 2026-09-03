@@ -23,9 +23,9 @@ Single source of truth for the PostgreSQL database (`ckk`) that holds
 | `kot` | hr_records, employees, kot_employees, kot_match_review, import_runs, `v_labor` view | kot-import, admintools (role `kot`) |
 | `directory` | employee_directory (+ `ldap_guid`: the immutable AD objectGUID apps FK to), ldap_sync_log | vpn-ldap ldap-sync (role `ldap_sync`) |
 | `admintools` | mail_accounts, group_members | admintools (role `admintools`) |
-| `app` | ALL ckk-tool-v3 business tables in ONE schema — RBAC (users/roles/permissions), master data, business partners, sales (価格試算 → 価格表 → 見積書) — incl. the `app.user_permissions` view | nextjs-web (role `app`) |
+| `app` | ALL ckk-tool-v3 business tables in ONE schema — RBAC (users/roles/permissions), master data, business partners, sales (価格試算 → 価格表 → 見積書) — incl. the `app.user_permissions` view (grant 単位・判定用) and `app.user_permission_summary` (ユーザー 1 行・表示/点検用) | nextjs-web (role `app`) |
 | `analytics` | BI/AI 用の名前解決済みレポートビューのみ（`sql/analytics-views.sql`、security_invoker。Prisma 管理外） | postgres（views） |
-| `public` | Prisma `_prisma_migrations` only (labor compat views retired 2026-08 — see `sql/metabase-compat.sql`) | — |
+| `public` | Prisma `_prisma_migrations` only（旧 労務互換ビュー 8 本は 2026-08 に撤去済み。撤去用の `sql/metabase-compat.sql` も両環境に当て終えたので 2026-09 に削除） | — |
 
 The v3 web app owns a **single** `app` schema (Prisma-managed). Its scope is
 deliberately **minimal**: 価格試算 (`app.estimates`), 価格表

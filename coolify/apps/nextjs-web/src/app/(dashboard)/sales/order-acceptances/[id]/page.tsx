@@ -12,7 +12,7 @@ import { formatDocPageTitle } from "@/lib/page-title";
 import { getServerLocale } from "@/lib/user-preferences";
 import { fetchWorkLocationOptions } from "@/lib/work-locations";
 import { fetchOrderAcceptance, fetchPlantOptions } from "../data";
-import { checkAcceptancePrices } from "../price-check";
+import { checkAcceptancePrices, EMPTY_PRICE_CHECK } from "../price-check";
 
 export const dynamic = "force-dynamic";
 
@@ -81,7 +81,7 @@ export default async function OrderLineAcceptancesDetailPage({
     acceptance.status,
   )
     ? await checkAcceptancePrices(key)
-    : { lines: [], diffCount: 0 };
+    : EMPTY_PRICE_CHECK;
 
   return (
     <OrderAcceptanceDetail

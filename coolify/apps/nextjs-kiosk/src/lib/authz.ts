@@ -37,7 +37,7 @@ const permissionSetFor = cache(async (userId: string) =>
   buildPermissionSet(await loadPermissionRows(prisma, userId)),
 );
 
-/** スコープ解決コンテキスト（リクエスト単位でメモ化 — 2 クエリ）。 */
+/** スコープ解決コンテキスト（リクエスト単位でメモ化 — 1 クエリ）。 */
 const scopeContextFor = cache(async (userId: string) =>
   loadScopeContext(prisma, userId),
 );

@@ -57,7 +57,12 @@ import {
   actionOk,
   prismaErrorMessage,
 } from "@/lib/server-action";
-import { checkAcceptancePrices, priceDiffSummary } from "./price-check";
+import {
+  checkAcceptancePrices,
+  priceDiffSummary,
+  priceOverrideSummary,
+} from "./price-check";
+import { applyPriceListPrices } from "./price-resolve";
 
 const BASE_PATH = "/sales/order-acceptances";
 const SALES_ORDERS_PATH = "/sales/order-lines";
@@ -117,6 +122,12 @@ function itemInputSchema(tr: Tr) {
       .number()
       .min(0, tr("sales.orderAcceptanceActions.unitPriceMin0"))
       .nullable(),
+    /**
+     * 単価を価格表から外して人が決めた行か（§2）。省略 = 価格表どおりで、
+     * その行の unitPrice はサーバーが解決した値に置き換わる
+     * （applyPriceListPrices — クライアントの数字は読まない）。
+     */
+    priceOverridden: z.boolean().optional().default(false),
     deliveryDate: z.string().nullable(),
     notes: z.string().nullable(),
   });
@@ -230,14 +241,25 @@ async function headerRefsError(
   return null;
 }
 
-/** 明細入力 → create データ。 */
-function buildItemCreates(items: OrderAcceptanceDraftInput["items"]) {
+/**
+ * 明細入力 → create データ。
+ *
+ * 単価は**必ず applyPriceListPrices を通した入力**を渡すこと — 価格表どおりの
+ * 行（priceOverridden = false）の単価はサーバーが決める、という約束が
+ * そこにある（この関数は受け取った値をそのまま書く）。
+ */
+function buildItemCreates(
+  items: readonly (OrderAcceptanceDraftInput["items"][number] & {
+    priceOverridden: boolean;
+  })[],
+) {
   return items.map((it, i) => ({
     productId: it.productId ? Number(it.productId) : null,
     productText: trimOrNull(it.productText),
     orderType: it.orderType,
     quantity: it.quantity,
     unitPrice: it.unitPrice,
+    priceOverridden: it.priceOverridden,
     deliveryDate: it.deliveryDate ? new Date(it.deliveryDate) : null,
     notes: trimOrNull(it.notes),
     sortOrder: i,
@@ -399,8 +421,12 @@ export async function saveDraft(
       return actionError(tr("sales.orderAcceptanceActions.targetNotFound"));
     const refsError = await headerRefsError(tr, v);
     if (refsError) return actionError(refsError);
-    const creates = buildItemCreates(v.items);
     const customerBpId = trimOrNull(v.customerBpId);
+    // 価格表どおりの行の単価はここで確定する（クライアントの表示値は読まない）。
+    // 顧客が変わった保存でも、新しい顧客の価格表で解決し直される。
+    const creates = buildItemCreates(
+      await applyPriceListPrices(customerBpId, v.items, tr),
+    );
     const shipToBpId = trimOrNull(v.shipToBpId);
     // エンドユーザーは配送方法に依らず保持できる（直送では必須 —
     // headerRefsError。通常配送でも記録用に任意で持てる）。
@@ -578,6 +604,9 @@ export async function submitForApproval(
     // 価格照合はサーバー側で必ず再計算する（クライアント表示値は信用しない）。
     const priceCheck = await checkAcceptancePrices(key);
     const diffLines = priceDiffSummary(priceCheck, tr);
+    // 上書きは止めない（人が宣言した意図なので）。ただし承認するのは
+    // 「価格表どおり」ではなくその単価なので、監査行には必ず残す。
+    const overrideLines = priceOverrideSummary(priceCheck, tr);
     if (priceCheck.diffCount > 0 && !acknowledgePriceDiff) {
       return actionError(
         tr("sales.orderAcceptanceActions.priceDiffFound", {
@@ -616,6 +645,9 @@ export async function submitForApproval(
               ),
               priceDiffs: diffLines,
             }
+          : {}),
+        ...(priceCheck.overrideCount > 0
+          ? { priceOverrides: overrideLines }
           : {}),
       },
     });
@@ -967,7 +999,11 @@ export async function createManualAcceptance(
         orderDate: v.orderDate ? new Date(v.orderDate) : null,
         notes: trimOrNull(v.notes),
         createdBy: actor,
-        items: { create: buildItemCreates(v.items) },
+        items: {
+          create: buildItemCreates(
+            await applyPriceListPrices(v.customerBpId, v.items, tr),
+          ),
+        },
       },
     });
     await recordAudit({

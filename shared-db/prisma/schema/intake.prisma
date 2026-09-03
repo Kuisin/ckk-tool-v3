@@ -171,6 +171,13 @@ model OrderLine {
   quantity     Int
   unitPrice    Decimal?  @map("unit_price") @db.Decimal(12, 2)
   amount       Decimal?  @db.Decimal(12, 2) // 確定時に quantity * unitPrice で確定
+  /// 単価を価格表から外して人が決めた行か（§2 価格差異）。
+  /// false（既定）= 単価は価格表が持つ — 保存時にサーバーが
+  /// (顧客 × 製品 × 注文種別 × 数量) から解決した単価を書く。
+  /// true = 人が「上書き」を明示的に入れて決めた単価。価格表と違っても
+  /// **差異ではなく意図**として扱い、承認依頼を止めない（承認者には出す）。
+  /// 該当する価格表が無い行では意味を持たない（false のまま）。
+  priceOverridden Boolean @default(false) @map("price_overridden")
   deliveryDate DateTime? @map("delivery_date") @db.Date
   notes        String?
 
@@ -199,7 +206,6 @@ model OrderLine {
   invoiceItems   InvoiceItem[]
 
   @@unique([acceptanceYearMonth, acceptanceSeq, branch])
-  @@index([acceptanceYearMonth, acceptanceSeq])
   @@index([status])
   @@index([productId])
   @@index([lotNumber])

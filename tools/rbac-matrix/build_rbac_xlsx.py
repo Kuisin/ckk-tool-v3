@@ -6,6 +6,7 @@
 置き、2 つの実体だけを読む:
 
   1. app.roles / app.permissions / app.role_permission_relation（dev DB の実データ）
+     + app.user_permission_summary（ユーザー 1 行 = 有効なロール割当）
   2. coolify/apps/nextjs-web/src/lib/app-list.ts（アプリ → 権限コードの正）
 
 つまり出力は「シードにこう書いたつもり」ではなく「いま DB がこうなっている」。
@@ -169,15 +170,12 @@ def main() -> None:
         "FROM app.role_permission_relation rp "
         "JOIN app.roles r ON r.id = rp.role_id"
     )
+    # 1 行 = 1 ユーザーのビュー（有効な割当だけ。失効日を過ぎた割当も外れる —
+    # 以前の手書き GROUP BY は is_active しか見ておらず、deactivate_at を無視していた）。
     users = query(
-        "SELECT u.username, u.display_name, u.is_active, "
-        "coalesce(string_agg(r.rolename, ',' ORDER BY r.rolename) "
-        "  FILTER (WHERE ur.is_active), '') AS roles "
-        "FROM app.users u "
-        "LEFT JOIN app.user_role_relation ur ON ur.user_id = u.id "
-        "LEFT JOIN app.roles r ON r.id = ur.role_id "
-        "GROUP BY u.id, u.username, u.display_name, u.is_active "
-        "ORDER BY u.username"
+        "SELECT username, display_name, is_active, "
+        "array_to_string(roles, ',') AS roles "
+        "FROM app.user_permission_summary ORDER BY username"
     )
     apps = read_app_list()
 
