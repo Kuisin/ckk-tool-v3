@@ -2119,7 +2119,8 @@
       "transferAttachmentNotCarried": "添付ファイルの項目があります。ファイルそのものは運ばれません（項目の定義だけです）",
       "auditExportedToExcel": "回答を Excel で書き出し（{count} 件{truncated}）",
       "auditExportTruncatedSuffix": "・上限で打ち切り",
-      "exportFilenamePartialSuffix": "_一部"
+      "exportFilenamePartialSuffix": "_一部",
+      "everyFieldNeedsASection": "セクションに分けたら、すべての項目をいずれかのセクションに入れてください"
     },
     "tasksActions": {
       "loginRequired": "ログインしてください",
@@ -2214,6 +2215,28 @@
       "availabilityOpen": "受付中",
       "availabilityClosed": "受付終了",
       "availabilityArchived": "アーカイブ"
+    },
+    "formBranching": {
+      "invalidSections": "セクション定義が不正です",
+      "tooManySections": "セクションは {n} 個までです",
+      "sectionIndexInvalid": "{no} 番目のセクションが不正です",
+      "sectionKeyRequired": "{no} 番目のセクション: key がありません",
+      "duplicateSectionKey": "{no} 番目のセクション: key が重複しています",
+      "sectionTitleRequired": "{no} 番目のセクション: タイトル（日本語）を入力してください",
+      "tooManyRules": "{no} 番目のセクション: 分岐ルールは {n} 本までです",
+      "ruleInvalid": "{no} 番目のセクションの {ruleNo} 本目のルールが不正です",
+      "ruleTargetRequired": "{no} 番目のセクションの {ruleNo} 本目のルール: 遷移先を選んでください",
+      "conditionInvalid": "{no} 番目のセクションの {ruleNo} 本目のルール: 条件が不正です",
+      "conditionFieldInvalid": "{no} 番目のセクションの {ruleNo} 本目のルール: 条件の項目が選べません",
+      "conditionOpInvalid": "{no} 番目のセクションの {ruleNo} 本目のルール: 条件の比較が不正です",
+      "conditionValueInvalid": "{no} 番目のセクションの {ruleNo} 本目のルール: 条件の値を入力してください",
+      "ruleTargetIsSelf": "{no} 番目のセクション: 遷移先に自分自身は選べません",
+      "ruleTargetNotFound": "{no} 番目のセクション: 遷移先のセクションが見つかりません",
+      "submitAndFinish": "送信して終了",
+      "unknownSection": "不明なセクション",
+      "otherwiseGoTo": "それ以外 → {target}",
+      "ifConditionsGoTo": "{conditions} → {target}",
+      "conditionJoiner": " かつ "
     },
     "tasksTabs": {
       "workPlans": "作業予定",
@@ -5976,7 +5999,16 @@
     "formBuilder": {
       "dragToReorderPressAndHold": "ドラッグして並べ替え（スマホは長押し）",
       "removeThisItem": "この項目を削除",
-      "thereAreNoItemsCreateOne": "項目がありません。「項目を追加」から作ってください。"
+      "thereAreNoItemsCreateOne": "項目がありません。「項目を追加」から作ってください。",
+      "addASection": "＋ セクションを追加",
+      "dragToReorderSection": "ドラッグして並べ替え（長押し）",
+      "itemCount": "{count} 項目",
+      "moveOrDeleteItemsFirst": "先に項目を移動または削除してください",
+      "removeThisSection": "このセクションを削除",
+      "section1": "セクション 1",
+      "sectionN": "セクション {n}",
+      "sectionTitlePlaceholder": "セクションのタイトル",
+      "splitIntoSections": "セクションに分ける"
     },
     "formDetail": {
       "couldNotBeChanged": "変更できませんでした",
@@ -6065,7 +6097,19 @@
       "invalidInternalKeyFormat": "内部キーの形式が不正です（英字で始まる英数字・_）",
       "duplicateInternalKey": "内部キーが重複しています",
       "unusableRegularExpression": "使えない正規表現です（構文エラー、量指定の入れ子、または {max} 文字超）",
-      "keyErrorImportedDefinitionIsBroken": "{error}（取り込んだ定義が壊れています）"
+      "keyErrorImportedDefinitionIsBroken": "{error}（取り込んだ定義が壊れています）",
+      "section": "セクション"
+    },
+    "formSectionRules": {
+      "title": "分岐ルール",
+      "description": "回答によってこのセクションの次に進む先を変える。上から順に評価し、最初に一致した 1 本を使う。",
+      "noRulesGoesInOrder": "ルールなし — 常に次のセクションへ進みます。",
+      "addARule": "ルールを追加",
+      "removeTheRule": "このルールを削除",
+      "addACondition": "条件を追加",
+      "removeTheCondition": "この条件を削除",
+      "goTo": "遷移先",
+      "noConditionableFieldsYet": "条件に使える項目（ドロップダウン・数値）がまだありません。"
     },
     "formFieldInput": {
       "searchAndSelect": "検索して選択",
@@ -6183,7 +6227,9 @@
       "draftSaved": "下書きを保存しました",
       "receptionClosedWithLabel": "このフォームの受付は終了しています（{label}）。",
       "receptionClosesAt": "受付終了",
-      "draftsInProgressWithCount": "書きかけの下書き（{count}）"
+      "draftsInProgressWithCount": "書きかけの下書き（{count}）",
+      "next": "次へ",
+      "back": "戻る"
     },
     "respondFormClient": {
       "send": "送信"

@@ -110,6 +110,12 @@ model FormVersion {
   version Int
   // FormFieldDef[]（lib/form-schema.ts の zod で検証してから保存する）。
   schema Json
+  // FormSectionDef[]（lib/form-branching.ts の parseFormSections で検証してから
+  // 保存する）。既定 '[]' = セクション無し（1 ページの従来どおりの回答画面）。
+  // fields 側と別列にしているのは、フィールドの配列構造 (formFieldsSchema が
+  // 検証する z.array) を変えずに済ませるため — 既存の全呼び出し元・
+  // form-transfer.ts のインポート/エクスポートを壊さない。
+  sections Json @default("[]")
 
   publishedAt DateTime @default(now()) @map("published_at") @db.Timestamptz(6)
   publishedBy String?  @map("published_by") @db.Uuid

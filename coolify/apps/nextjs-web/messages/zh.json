@@ -2119,7 +2119,8 @@
       "transferAttachmentNotCarried": "存在附件项目。文件本身不会被转移（仅转移项目定义）",
       "auditExportedToExcel": "已将回答导出为 Excel（{count} 条{truncated}）",
       "auditExportTruncatedSuffix": "，因达到上限而截断",
-      "exportFilenamePartialSuffix": "_部分"
+      "exportFilenamePartialSuffix": "_部分",
+      "everyFieldNeedsASection": "启用分节后，所有项目都必须归属某个分节"
     },
     "tasksActions": {
       "loginRequired": "请登录",
@@ -2214,6 +2215,28 @@
       "availabilityOpen": "受理中",
       "availabilityClosed": "已结束",
       "availabilityArchived": "已归档"
+    },
+    "formBranching": {
+      "invalidSections": "分节定义无效",
+      "tooManySections": "分节最多 {n} 个",
+      "sectionIndexInvalid": "第 {no} 个分节无效",
+      "sectionKeyRequired": "第 {no} 个分节：缺少 key",
+      "duplicateSectionKey": "第 {no} 个分节：key 重复",
+      "sectionTitleRequired": "第 {no} 个分节：请输入标题（日语）",
+      "tooManyRules": "第 {no} 个分节：分支规则最多 {n} 条",
+      "ruleInvalid": "第 {no} 个分节的第 {ruleNo} 条规则无效",
+      "ruleTargetRequired": "第 {no} 个分节的第 {ruleNo} 条规则：请选择跳转目标",
+      "conditionInvalid": "第 {no} 个分节的第 {ruleNo} 条规则：条件无效",
+      "conditionFieldInvalid": "第 {no} 个分节的第 {ruleNo} 条规则：条件项目不可用",
+      "conditionOpInvalid": "第 {no} 个分节的第 {ruleNo} 条规则：比较方式无效",
+      "conditionValueInvalid": "第 {no} 个分节的第 {ruleNo} 条规则：请输入条件值",
+      "ruleTargetIsSelf": "第 {no} 个分节：跳转目标不能是自身",
+      "ruleTargetNotFound": "第 {no} 个分节：找不到跳转目标分节",
+      "submitAndFinish": "提交并结束",
+      "unknownSection": "未知分节",
+      "otherwiseGoTo": "否则 → {target}",
+      "ifConditionsGoTo": "{conditions} → {target}",
+      "conditionJoiner": " 且 "
     },
     "tasksTabs": {
       "workPlans": "工作计划",
@@ -5976,7 +5999,16 @@
     "formBuilder": {
       "dragToReorderPressAndHold": "拖动排序（手机长按）",
       "removeThisItem": "删除此项目",
-      "thereAreNoItemsCreateOne": "没有项目。请从「添加项目」创建。"
+      "thereAreNoItemsCreateOne": "没有项目。请从「添加项目」创建。",
+      "addASection": "＋ 添加分节",
+      "dragToReorderSection": "拖动排序（长按）",
+      "itemCount": "{count} 个项目",
+      "moveOrDeleteItemsFirst": "请先移动或删除其中的项目",
+      "removeThisSection": "删除此分节",
+      "section1": "分节 1",
+      "sectionN": "分节 {n}",
+      "sectionTitlePlaceholder": "分节标题",
+      "splitIntoSections": "分为多个分节"
     },
     "formDetail": {
       "couldNotBeChanged": "无法更改",
@@ -6065,7 +6097,19 @@
       "invalidInternalKeyFormat": "内部键格式无效（须以字母开头，由字母数字和 _ 组成）",
       "duplicateInternalKey": "内部键重复",
       "unusableRegularExpression": "无法使用该正则表达式（语法错误、量词嵌套，或超过 {max} 个字符）",
-      "keyErrorImportedDefinitionIsBroken": "{error}（导入的定义已损坏）"
+      "keyErrorImportedDefinitionIsBroken": "{error}（导入的定义已损坏）",
+      "section": "分节"
+    },
+    "formSectionRules": {
+      "title": "分支规则",
+      "description": "根据回答改变本分节之后的走向。按从上到下的顺序评估，采用第一条匹配的规则。",
+      "noRulesGoesInOrder": "无规则 — 始终进入下一个分节。",
+      "addARule": "添加规则",
+      "removeTheRule": "删除此规则",
+      "addACondition": "添加条件",
+      "removeTheCondition": "删除此条件",
+      "goTo": "跳转到",
+      "noConditionableFieldsYet": "目前没有可用作条件的项目（下拉/数值）。"
     },
     "formFieldInput": {
       "searchAndSelect": "搜索并选择",
@@ -6183,7 +6227,9 @@
       "draftSaved": "已保存草稿",
       "receptionClosedWithLabel": "此表单已停止接受回答（{label}）。",
       "receptionClosesAt": "受理截止",
-      "draftsInProgressWithCount": "未完成的草稿（{count}）"
+      "draftsInProgressWithCount": "未完成的草稿（{count}）",
+      "next": "下一步",
+      "back": "返回"
     },
     "respondFormClient": {
       "send": "发送"

@@ -96,6 +96,7 @@ const body: FormExportBody = {
   allowMultiple: true,
   responseEditMode: "UNTIL_CLOSE",
   fields,
+  sections: [],
 };
 
 function exported() {
@@ -140,6 +141,57 @@ describe("round trip", () => {
     const text = serializeFormExport(exported(), tr);
     expect(text).not.toContain("opensAt");
     expect(text).not.toContain("closesAt");
+  });
+
+  it("セクションも書き出して取り込むと同じ定義に戻る", () => {
+    const withSections = {
+      ...exported(),
+      form: {
+        ...body,
+        sections: [
+          {
+            key: "s1",
+            title: { ja: "セクション1", en: "" },
+            order: 0,
+            rules: [],
+          },
+        ],
+      },
+    };
+    const text = serializeFormExport(withSections, tr);
+    const parsed = parseFormExport(text, tr);
+    expect(parsed.ok).toBe(true);
+    if (!parsed.ok) return;
+    expect(parsed.data.form.sections).toEqual(withSections.form.sections);
+  });
+
+  it("sections を持たない旧形式のファイルは「セクション未使用」として読める", () => {
+    const legacy = JSON.stringify({
+      meta: {
+        formatVersion: FORM_EXPORT_FORMAT,
+        sourceEnv: "dev",
+        sourceCode: "ABCD2345",
+        sourceVersion: 1,
+        exportedAt: "2026-08-26T01:00:00.000Z",
+        exportedBy: null,
+        appVersion: null,
+        checksum: "",
+      },
+      form: {
+        title: "旧フォーム",
+        description: null,
+        kind: "SURVEY",
+        respondentVisibility: "SHOWN",
+        approvalEnabled: false,
+        allowMultiple: true,
+        responseEditMode: "NONE",
+        fields,
+      },
+    });
+    const parsed = parseFormExport(legacy, tr);
+    expect(parsed.ok).toBe(true);
+    if (!parsed.ok) return;
+    expect(parsed.data.form.sections).toEqual([]);
   });
 });
 

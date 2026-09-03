@@ -21,6 +21,7 @@
  * 受け取る — `lib/format.ts` の `Formatters` と同じ約束）。
  */
 
+import { type FormSectionDef, parseFormSections } from "./form-branching";
 import { type FormFieldDef, parseFormFields } from "./form-schema";
 import type { Tr } from "./i18n";
 
@@ -55,6 +56,8 @@ export interface FormExportBody {
    */
   responseEditMode: "NONE" | "UNTIL_CLOSE" | "UNTIL_DATE";
   fields: FormFieldDef[];
+  /** セクション（複数ページ）。空 = セクション未使用。 */
+  sections: FormSectionDef[];
 }
 
 export interface FormExport {
@@ -212,6 +215,14 @@ export function parseFormExport(text: string, tr: Tr): ParseResult {
       }),
     };
   }
+  // セクションが壊れていても取り込みは止めない — 空扱い（=セクション未使用）
+  // に落として項目だけは持ち込める。旧版（sections が無い）ファイルも同じ
+  // 経路で「空 = 未使用」になる。
+  const parsedSections = parseFormSections(
+    form.sections ?? [],
+    parsedFields.fields,
+    tr,
+  );
 
   const normalized: FormExportBody = {
     title: form.title.trim(),
@@ -227,6 +238,7 @@ export function parseFormExport(text: string, tr: Tr): ParseResult {
         ? form.responseEditMode
         : "NONE",
     fields: parsedFields.fields,
+    sections: parsedSections.ok ? parsedSections.sections : [],
   };
 
   const warnings: string[] = [];

@@ -73,6 +73,8 @@ export function FormFieldEditor({
   nestedOnly = false,
   onChange,
   onSetTitle,
+  sectionOptions = [],
+  onMoveSection,
 }: {
   field: FormFieldDef;
   /** 同じ階層の他の項目。関連レコード一覧の突き合わせ先をラベルで選ばせる。 */
@@ -86,6 +88,13 @@ export function FormFieldEditor({
    * 他の兄弟項目を書き換える必要があるため、配列全体を持つ FormBuilder 側が実装する。
    */
   onSetTitle?: () => void;
+  /**
+   * セクションの選択肢（1. タイトル 形式）。空 = セクション未使用（セレクトを
+   * 出さない）。サブテーブルの列には意味を持たせないので nestedOnly では渡さない。
+   */
+  sectionOptions?: { value: string; label: string }[];
+  /** セクションを跨いだ移動。FormBuilder 側が全体（fields 配列）を見て処理する。 */
+  onMoveSection?: (targetSectionKey: string) => void;
 }) {
   const tr = useTranslations();
   const isMobile = useIsMobile();
@@ -144,6 +153,15 @@ export function FormFieldEditor({
           value={field.help ?? ""}
         />
       </Group>
+
+      {!nestedOnly && sectionOptions.length > 0 && (
+        <Select
+          data={sectionOptions}
+          label={tr("forms.formFieldEditor.section")}
+          onChange={(v) => v && onMoveSection?.(v)}
+          value={field.sectionKey ?? null}
+        />
+      )}
 
       <Checkbox
         checked={field.required}

@@ -71,6 +71,7 @@ export async function GET(
         allowMultiple: form.allowMultiple,
         responseEditMode: form.responseEditMode,
         fields: form.fields,
+        sections: form.sections,
       },
     }),
     tr,
