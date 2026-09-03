@@ -20,6 +20,7 @@
 #   OFFSITE_REMOTE      … rclone リモート:パス（例: r2crypt:ckk-backups）
 #                          個人情報を含むため **crypt リモート推奨**（README 参照）
 #   OFFSITE_INCLUDE     … 送る対象（空白区切り）。既定は下記の最小集合
+#   OFFSITE_MAX_BYTES   … これを超えたら**送らない**（既定 8GiB）。下記参照
 #   RCLONE_CONFIG_*     … rclone リモート定義（README 参照）
 # 未設定なら警告 1 回で待機（再起動ループさせない）。
 set -eu
@@ -29,6 +30,14 @@ SRC="${OFFSITE_SRC:-/backups}"
 # 復旧に要る最小集合。hourly/ と daily/ は意図的に外す（上のコメント参照）。
 OFFSITE_INCLUDE="${OFFSITE_INCLUDE:-logical/** monthly/** aux/** aux-monthly/** seaweedfs/** aux-status.json latest-status}"
 FILTER_FILE=/tmp/offsite-filter.txt
+
+# **無料枠を超えたら課金されるのではなく、送るのをやめる。**
+# Cloudflare には R2 の支払い上限（ハードキャップ）が無い — 長く要望が出ている
+# が機能として存在しないので、「無料に収める」は送信側で担保するしかない。
+# 無料枠 10GB に対して既定 8GiB で止める。超過は静かに諦めず必ず記録する
+# （オフサイトが止まること自体が事故なので、気付けないほうが困る）。
+OFFSITE_MAX_BYTES="${OFFSITE_MAX_BYTES:-8589934592}"  # 8 GiB
+STATUS_FILE="${OFFSITE_STATUS_FILE:-/tmp/offsite-status.json}"
 
 # rclone のフィルタファイルを組む（先勝ち。最後の "- *" で残りを全部落とす）。
 build_filter() {
@@ -42,8 +51,35 @@ if [ -z "$REMOTE" ]; then
   exec sleep infinity
 fi
 
+# 送る前に対象の総量を測る。上限超えなら送信を中止（課金させない）。
+# 測るのはローカルの絞り込み後の量 — mirror でリモートはこれに一致するので、
+# リモートを数えて Class B を消費するより安く、かつ事前に判る。
+status_write() { # $1=state $2=bytes $3=detail
+  printf '{"at":"%s","state":"%s","bytes":%s,"limit":%s,"detail":"%s"}\n' \
+    "$(date -Iseconds)" "$1" "${2:-0}" "$OFFSITE_MAX_BYTES" "${3:-}" >"$STATUS_FILE" 2>/dev/null || true
+}
+
+within_limit() {
+  bytes=$(rclone size "$SRC" --filter-from "$FILTER_FILE" --json 2>/dev/null \
+          | tr ',' '\n' | sed -n 's/.*"bytes":[[:space:]]*\([0-9]*\).*/\1/p' | head -1)
+  if [ -z "$bytes" ]; then
+    echo "[offsite] ERROR 対象サイズを測れなかった — 安全側に倒して送らない"
+    status_write error "" "size measurement failed"
+    return 1
+  fi
+  if [ "$bytes" -gt "$OFFSITE_MAX_BYTES" ]; then
+    echo "[offsite] ERROR 対象 ${bytes}B が上限 ${OFFSITE_MAX_BYTES}B を超過 — **送信を中止**"
+    echo "[offsite]       保持を縮めるか OFFSITE_MAX_BYTES を上げること（R2 の無料枠は 10GB）"
+    status_write over_limit "$bytes" "refused: over OFFSITE_MAX_BYTES"
+    return 1
+  fi
+  status_write ok "$bytes" ""
+  return 0
+}
+
 # rclone copy: 新規/更新ファイルのみ追加（リモートは消さない）。作成即転送用。
 push() {
+  within_limit || return 0
   echo "[offsite] copy → ${REMOTE} $(date +%FT%T)"
   rclone copy "$SRC" "$REMOTE" --transfers 4 --checkers 8 --contimeout 30s \
     --timeout 5m --retries 3 --low-level-retries 10 --stats-one-line \
@@ -51,6 +87,7 @@ push() {
 }
 # rclone sync: ミラー（ローカルで削除された世代をリモートからも削除）。日次保持用。
 mirror() {
+  within_limit || return 0
   echo "[offsite] daily mirror (sync) → ${REMOTE} $(date +%FT%T)"
   rclone sync "$SRC" "$REMOTE" --transfers 4 --checkers 8 --contimeout 30s \
     --timeout 5m --retries 3 --low-level-retries 10 --stats-one-line \

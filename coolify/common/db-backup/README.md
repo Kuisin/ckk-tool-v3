@@ -204,6 +204,31 @@ OFFSITE_REMOTE=r2crypt:
 > （`security find-generic-password -s ckk-r2-crypt-password -w`）。
 > **パスワードマネージャにも入れること**（Keychain ごと失う場合に備える）。
 
+### 無料枠から出さない
+
+**Cloudflare には R2 の支払い上限（ハードキャップ）が無い。** 長く要望が出ている
+が機能として存在しないので、「無料に収める」は**送る側で担保する**しかない。
+`offsite-sync.sh` は送信前に対象の総量を測り、`OFFSITE_MAX_BYTES`（既定 **8GiB**、
+無料枠 10GB に対する余裕）を超えていたら **送信を中止する**（課金される代わりに
+オフサイトが止まる）。状態は `/tmp/offsite-status.json` に必ず残す —
+`{"state":"ok"|"over_limit"|"error","bytes":…,"limit":…}`。オフサイトが止まること
+自体が事故なので、静かに諦めさせない。
+
+| 無料枠（月次・繰り返し） | 現状 | 余裕 |
+|---|---|---|
+| ストレージ 10GB | **1.10GiB** | 約 9 倍 |
+| Class A（書き込み）100 万回 | 初回 5,588 + 日次 20 前後 | 桁違いに余裕 |
+| Class B（読み出し）1000 万回 | 月 7 万回程度（同期ごとの一覧） | 桁違いに余裕 |
+| 下り転送 | **常に無料**（R2 の特徴） | — |
+
+効いてくるのはストレージだけ。増えるのは主に `logical/`（DB サイズに比例）と
+`seaweedfs/`（業務ファイルの蓄積）なので、DB が現在の 5 倍あたりで 8GiB の
+上限に近づく。そのときは保持（`LOGICAL_KEEP_DAYS` / `MONTHLY_KEEP`）を縮めるか、
+上限を上げて課金を受け入れるかを**選ぶ**ことになる（黙って課金されない）。
+
+ダッシュボード側でも **Billing → Notifications** で使用量アラートを設定しておくと
+二重に気付ける（API トークンからは設定できない）。
+
 前提: Cloudflare ダッシュボードで **R2 を有効化**（無料枠でも課金情報の登録が要る）
 してからバケット `ckk-backups` を作る。API だけでは有効化できない
 （`code 10042: Please enable R2 through the Cloudflare Dashboard`）。
