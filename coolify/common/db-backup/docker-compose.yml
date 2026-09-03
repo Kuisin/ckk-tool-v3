@@ -177,6 +177,10 @@ services:
       - RCLONE_CONFIG_R2_ACCESS_KEY_ID=${RCLONE_CONFIG_R2_ACCESS_KEY_ID:-}
       - RCLONE_CONFIG_R2_SECRET_ACCESS_KEY=${RCLONE_CONFIG_R2_SECRET_ACCESS_KEY:-}
       - RCLONE_CONFIG_R2_ENDPOINT=${RCLONE_CONFIG_R2_ENDPOINT:-}
+      # object 権限だけのトークンは CreateBucket できない。rclone は既定で
+      # アップロード前にバケットの存在確認（無ければ作成）をするため、これを
+      # 止めないと毎回 403 AccessDenied になる（実際に踏んだ）。
+      - RCLONE_CONFIG_R2_NO_CHECK_BUCKET=${RCLONE_CONFIG_R2_NO_CHECK_BUCKET:-}
       # crypt リモート — R2 の上に被せてクライアント側で暗号化する。
       # バックアップには業務文書と個人情報（login_attempts の IP・端末シグネチャ、
       # 従業員マスタ）が入るので、平文でクラウドへ置かない。事業者が持つのは
