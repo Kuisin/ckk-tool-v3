@@ -1191,12 +1191,6 @@
         "ISSUED": {
           "label": "Issued"
         },
-        "ACCEPTED": {
-          "label": "Accepted"
-        },
-        "REJECTED": {
-          "label": "Rejected"
-        },
         "EXPIRED": {
           "label": "Expired"
         }
@@ -6853,12 +6847,9 @@
       "pDFGenerationFailedYouCanRetry": "PDF generation failed. You can retry with Regenerate on the PDF tab.",
       "issueTheQuote": "Issue the quote",
       "emailItToTheCustomerOnce": "Email it to the customer once issued",
-      "accept": "Accept",
-      "toTheOrder": "To the order",
       "whereTheUnitPriceCameFrom": "Where the unit price came from",
-      "noOrderYetNoOrderAcceptance": "No order yet (no order acceptance)",
       "noOrderYetTheOrderAcceptance": "No order yet (the order acceptance is made once accepted)",
-      "youCannotRaiseThisFromA": "You cannot raise this from a rejected or expired quote",
+      "youCannotRaiseThisFromA": "You cannot raise this from an expired quote",
       "branch": "Branch",
       "priceListApplied": "Price list applied",
       "tax10": "Tax (10%)",
@@ -7112,7 +7103,6 @@
       "issuePdfDesc": "Issue the PDF",
       "itemCountNoSpace": "{count} items",
       "orderTypesAndTierCount": "{orderTypes} · {tierCount} tiers",
-      "rejected": "Reject",
       "validUntilLabel": "Valid until {date}"
     },
     "quoteForm": {
@@ -7178,8 +7168,10 @@
       "invalidQuoteNumber": "Invalid quote number",
       "issueFailed": "Could not issue",
       "noPriceListEntry": "Line {line}: no matching price list (register a price list from the price estimate)",
+      "onlyDraftCanBeEdited": "Only a draft quote can be edited",
       "onlyDraftCanBeIssued": "Only a draft quote can be issued",
       "quantityMinOne": "Quantity must be 1 or more",
+      "quoteNotFound": "Quote not found",
       "scopeDenied": "You do not have permission for this operation (out of scope)",
       "updateFailed": "Could not update the quote"
     },

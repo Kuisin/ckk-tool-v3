@@ -29,12 +29,16 @@ enum EstimateStatus {
   @@schema("app")
 }
 
+// 見積書の状態は DRAFT / ISSUED の 2 つだけ保存する。ACCEPTED / REJECTED は
+// 廃止（受諾したかどうかは下流の注文請書の有無で読む — 手続き状況の
+// 「次の書類へ」）。EXPIRED は保存しない — 発行済みで有効期限
+// (quotes.valid_until) を過ぎているかをその場で判定する派生状態
+// （lib/quotes/model.ts quoteDisplayStatus。締切を過ぎた瞬間に正しくなる —
+//  保存すると日次ジョブが要る）。発行後の見積書は編集できない（複製して
+// 作り直す）。
 enum QuoteStatus {
   DRAFT
   ISSUED
-  ACCEPTED
-  REJECTED
-  EXPIRED
 
   @@map("QUOTE_STATUS")
   @@schema("app")

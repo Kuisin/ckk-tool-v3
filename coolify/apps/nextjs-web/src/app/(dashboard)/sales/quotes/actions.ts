@@ -72,7 +72,6 @@ function quoteInputSchema(tr: Awaited<ReturnType<typeof getTranslations>>) {
     // 営業担当 — 顧客の担当一覧（bp_sales_reps）から選ぶ。未指定で顧客が
     // 変わったときは主担当が既定で入る（lib/sales-rep resolveSalesRepId）。
     salesRepId: z.string().nullable().optional(),
-    status: z.enum(["DRAFT", "ISSUED", "ACCEPTED", "REJECTED", "EXPIRED"]),
     validUntil: z.string().nullable(),
     notes: z.string(),
     items: z
@@ -160,7 +159,7 @@ export async function createQuote(
         customerBpId: v.customerBpId,
         customerBranchBpId: v.customerBranchBpId,
         salesRepId,
-        status: v.status,
+        // status は既定 (DRAFT) のまま — 発行は issueQuote 経由の専用操作。
         validUntil: v.validUntil ? new Date(v.validUntil) : null,
         notes: v.notes.trim() || null,
         createdBy: authz.userId,
@@ -175,7 +174,7 @@ export async function createQuote(
       after: {
         customerBpId: v.customerBpId,
         salesRepId,
-        status: v.status,
+        status: "DRAFT",
         validUntil: v.validUntil,
         notes: v.notes.trim() || null,
         itemCount: v.items.length,
@@ -213,7 +212,6 @@ export async function updateQuote(
   }
   const v = parsed.data;
   try {
-    const items = await resolveItems(v, tr);
     const prior = await prisma.quote.findUnique({
       where: { yearMonth_seq: { yearMonth: key.yearMonth, seq: key.seq } },
       select: {
@@ -224,10 +222,16 @@ export async function updateQuote(
         notes: true,
       },
     });
+    if (!prior) return actionError(tr("sales.quoteActions.quoteNotFound"));
+    // 発行後は編集不可 — 直したくなったら複製して新しい見積を出す。
+    if (prior.status !== "DRAFT") {
+      return actionError(tr("sales.quoteActions.onlyDraftCanBeEdited"));
+    }
+    const items = await resolveItems(v, tr);
     const salesRepId = await resolveSalesRepId(
       v.salesRepId,
       v.customerBpId,
-      prior?.customerBpId ?? null,
+      prior.customerBpId,
     );
     await prisma.$transaction([
       prisma.quoteItem.deleteMany({
@@ -239,7 +243,6 @@ export async function updateQuote(
           customerBpId: v.customerBpId,
           customerBranchBpId: v.customerBranchBpId,
           salesRepId,
-          status: v.status,
           validUntil: v.validUntil ? new Date(v.validUntil) : null,
           notes: v.notes.trim() || null,
           items: { create: items },
@@ -250,21 +253,17 @@ export async function updateQuote(
       action: "UPDATE",
       tableName: "quotes",
       recordId: number,
-      before: prior
-        ? {
-            customerBpId: prior.customerBpId,
-            salesRepId: prior.salesRepId,
-            status: prior.status,
-            validUntil: prior.validUntil
-              ? prior.validUntil.toISOString().slice(0, 10)
-              : null,
-            notes: prior.notes,
-          }
-        : undefined,
+      before: {
+        customerBpId: prior.customerBpId,
+        salesRepId: prior.salesRepId,
+        validUntil: prior.validUntil
+          ? prior.validUntil.toISOString().slice(0, 10)
+          : null,
+        notes: prior.notes,
+      },
       after: {
         customerBpId: v.customerBpId,
         salesRepId,
-        status: v.status,
         validUntil: v.validUntil,
         notes: v.notes.trim() || null,
       },

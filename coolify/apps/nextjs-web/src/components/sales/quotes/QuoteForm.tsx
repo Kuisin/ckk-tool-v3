@@ -46,7 +46,6 @@ import { fieldHelp } from "@/lib/field-help";
 import { zodResolver } from "@/lib/form";
 import { formatMoney } from "@/lib/format";
 import type { Option } from "@/lib/mock";
-import { statusOptions } from "@/lib/status-map";
 import type { PriceListEntry } from "../price-lists/model";
 import { type Quote, resolveUnitPriceFromEntries, TAX_RATE } from "./model";
 
@@ -80,7 +79,6 @@ function buildSchema(tr: ReturnType<typeof useTranslations>) {
     customerBranchId: z.string().nullable(),
     /** 営業担当 — 顧客の担当一覧から選ぶ（未設定なら主担当が既定で入る）。 */
     salesRepId: z.string().nullable(),
-    status: z.enum(["DRAFT", "ISSUED", "ACCEPTED", "REJECTED", "EXPIRED"]),
     validUntil: z.string().nullable(),
     notes: z.string(),
     items: z.array(itemSchema).min(1, tr("sales.quoteForm.addAtLeastOneLine")),
@@ -124,7 +122,6 @@ function buildInitial(
     customerId: prefill?.customerId ?? "",
     customerBranchId: null,
     salesRepId: null,
-    status: "DRAFT",
     validUntil: null,
     notes: "",
     items: [emptyItem()],
@@ -166,7 +163,6 @@ function toFormValues(q: Quote): QuoteFormValues {
     customerId: q.customerId,
     customerBranchId: q.customerBranchId,
     salesRepId: q.salesRepId,
-    status: q.status,
     validUntil: q.validUntil,
     notes: q.notes ?? "",
     items: q.items.map((it) => ({
@@ -254,7 +250,6 @@ export function QuoteForm({
       customerBpId: values.customerId,
       customerBranchBpId: values.customerBranchId,
       salesRepId: values.salesRepId,
-      status: values.status,
       validUntil: values.validUntil,
       notes: values.notes,
       items: values.items.map((it) => ({
@@ -306,7 +301,7 @@ export function QuoteForm({
       onSubmit={form.onSubmit(handleSubmit)}
       status={
         mode === "edit" ? (
-          <StatusBadge entity="Quote" status={form.values.status} />
+          <StatusBadge entity="Quote" status="DRAFT" />
         ) : undefined
       }
       title={
@@ -356,11 +351,6 @@ export function QuoteForm({
             placeholder={tr("common.pickADate")}
             valueFormat="YYYY/MM/DD"
             {...form.getInputProps("validUntil")}
-          />
-          <Select
-            data={statusOptions("Quote")}
-            label={tr("common.status")}
-            {...form.getInputProps("status")}
           />
         </SimpleGrid>
       </FormSection>

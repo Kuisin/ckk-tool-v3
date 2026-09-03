@@ -1191,12 +1191,6 @@
         "ISSUED": {
           "label": "発行済"
         },
-        "ACCEPTED": {
-          "label": "受諾済"
-        },
-        "REJECTED": {
-          "label": "却下"
-        },
         "EXPIRED": {
           "label": "期限切れ"
         }
@@ -6853,12 +6847,9 @@
       "pDFGenerationFailedYouCanRetry": "PDF の生成に失敗しました。PDF タブの「再生成」で再試行できます。",
       "issueTheQuote": "見積書の発行",
       "emailItToTheCustomerOnce": "発行後に顧客へメール送付する",
-      "accept": "受諾",
-      "toTheOrder": "受注へ",
       "whereTheUnitPriceCameFrom": "単価の解決元",
-      "noOrderYetNoOrderAcceptance": "未受注（注文請書はまだありません）",
       "noOrderYetTheOrderAcceptance": "未受注（受諾後に注文請書を作成します）",
-      "youCannotRaiseThisFromA": "却下・期限切れの見積書からは起票できません",
+      "youCannotRaiseThisFromA": "期限切れの見積書からは起票できません",
       "branch": "支店",
       "priceListApplied": "適用価格表",
       "tax10": "消費税（10%）",
@@ -7112,7 +7103,6 @@
       "issuePdfDesc": "PDF を発行",
       "itemCountNoSpace": "{count}件",
       "orderTypesAndTierCount": "{orderTypes}・{tierCount}段階",
-      "rejected": "却下",
       "validUntilLabel": "有効期限 {date}"
     },
     "quoteForm": {
@@ -7178,8 +7168,10 @@
       "invalidQuoteNumber": "見積番号が不正です",
       "issueFailed": "発行に失敗しました",
       "noPriceListEntry": "明細{line}: 該当する価格表がありません（価格試算から価格表を登録してください）",
+      "onlyDraftCanBeEdited": "下書きの見積書のみ編集できます",
       "onlyDraftCanBeIssued": "下書きの見積書のみ発行できます",
       "quantityMinOne": "数量は1以上",
+      "quoteNotFound": "対象の見積書が見つかりません",
       "scopeDenied": "この操作の権限がありません（対象範囲外）",
       "updateFailed": "見積書の更新に失敗しました"
     },

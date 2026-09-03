@@ -10,7 +10,7 @@ import "server-only";
  * **閲覧は発行後のみ** — 下書き（DRAFT）の PDF は生成も閲覧もできない
  * （`isIssued`）。API ルートは 403 を返し、UI は PDF タブ / PDF ボタンを
  * 出さない。文書ごとの「発行済み」定義は下記のとおり:
- *   見積書 QUOTE          … DRAFT 以外（ISSUED / ACCEPTED / REJECTED / EXPIRED）
+ *   見積書 QUOTE          … DRAFT 以外（ISSUED。EXPIRED は保存しない派生状態）
  *   請求書 INVOICE        … ISSUED / SENT / PAID
  *   納品書 DELIVERY_NOTE  … ISSUED / DELIVERED
  * いずれも「DRAFT でなければ発行済み」で一致するため判定は共通。

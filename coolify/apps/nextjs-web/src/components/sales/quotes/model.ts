@@ -113,12 +113,11 @@ export interface QuoteItem {
   notes: string | null;
 }
 
-export type QuoteStatus =
-  | "DRAFT"
-  | "ISSUED"
-  | "ACCEPTED"
-  | "REJECTED"
-  | "EXPIRED";
+/** 保存される状態 — DRAFT / ISSUED の 2 つだけ。 */
+export type QuoteStatus = "DRAFT" | "ISSUED";
+
+/** 画面に出す状態 — EXPIRED は保存せず、有効期限からその場で導く。 */
+export type QuoteDisplayStatus = QuoteStatus | "EXPIRED";
 
 export interface Quote {
   /** Derived document number QOT-YYYYMM-NNNNN — also the URL id. */
@@ -144,6 +143,26 @@ export interface Quote {
   createdBy: string;
   createdAt: string;
   updatedAt: string;
+}
+
+/**
+ * 画面に出す状態 — 発行済みで有効期限 (validUntil) を過ぎていれば「期限切れ」。
+ * 保存しない派生値（`today` は呼び出し側で 1 回だけ computed — KioskCardsTable の
+ * `resolveCardValidity` と同じ約束）。
+ */
+export function quoteDisplayStatus(
+  q: Pick<Quote, "status" | "validUntil">,
+  today: string = new Date().toISOString().slice(0, 10),
+): QuoteDisplayStatus {
+  if (q.status === "ISSUED" && q.validUntil && q.validUntil < today) {
+    return "EXPIRED";
+  }
+  return q.status;
+}
+
+/** 編集可能か — 下書き（DRAFT）のみ。発行後は複製して作り直す。 */
+export function isEditable(q: Pick<Quote, "status">) {
+  return q.status === "DRAFT";
 }
 
 /** 小計 / 消費税(10%) / 合計(税込) — design-preview quote.html の totals に対応。 */

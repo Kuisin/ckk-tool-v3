@@ -20,7 +20,8 @@
 
 import "server-only";
 
-import { prisma } from "./db";
+import { quoteDisplayStatus } from "@/components/sales/quotes/model";
+import { type Prisma, prisma } from "./db";
 import { formatDocNumber } from "./doc-number";
 import { portalAccessFor, portalScopeFor } from "./portal-access";
 import type { PortalResourceType, PortalTarget } from "./portal-access-core";
@@ -34,10 +35,20 @@ import {
 import type { PortalDocumentDto } from "./portal-progress-core";
 
 /**
- * 見積書は社外に見せてよい状態だけ。
- * DRAFT（下書き）・REJECTED・EXPIRED は社内の状態なので出さない。
+ * 見積書は社外に見せてよい状態だけ。DRAFT（下書き）・期限切れは出さない。
+ * EXPIRED は保存しない派生状態（components/sales/quotes/model.ts
+ * quoteDisplayStatus）なので、ここでは validUntil を直接条件に入れる
+ * （下の quoteVisibleWhere）。
  */
-const VISIBLE_QUOTE_STATUS = ["ISSUED", "ACCEPTED"] as const;
+const VISIBLE_QUOTE_STATUS = ["ISSUED"] as const;
+
+/** 「発行済み × 期限切れでない」— 見積の一覧・単件アクセス判定で共有する条件。 */
+function quoteVisibleWhere(now: Date = new Date()): Prisma.QuoteWhereInput {
+  return {
+    status: { in: [...VISIBLE_QUOTE_STATUS] },
+    OR: [{ validUntil: null }, { validUntil: { gte: now } }],
+  };
+}
 /** 注文請書は「確定して先へ進んだもの」だけ。IMPORT / DRAFT は取込の途中。 */
 const VISIBLE_ACCEPTANCE_STATUS = [
   "APPROVED",
@@ -88,10 +99,14 @@ export async function listPortalDocuments(
     case "quotes": {
       const rows = await prisma.quote.findMany({
         where: {
-          status: { in: [...VISIBLE_QUOTE_STATUS] },
-          OR: [
-            { customerBpId: { in: bpIds } },
-            { customerBranchBpId: { in: bpIds } },
+          ...quoteVisibleWhere(),
+          AND: [
+            {
+              OR: [
+                { customerBpId: { in: bpIds } },
+                { customerBranchBpId: { in: bpIds } },
+              ],
+            },
           ],
         },
         select: {
@@ -219,9 +234,23 @@ export async function portalTargetOf(
     case "quotes": {
       const r = await prisma.quote.findUnique({
         where: key,
-        select: { customerBpId: true, customerBranchBpId: true, status: true },
+        select: {
+          customerBpId: true,
+          customerBranchBpId: true,
+          status: true,
+          validUntil: true,
+        },
       });
-      if (!r || !VISIBLE_QUOTE_STATUS.includes(r.status as never)) return null;
+      if (
+        !r ||
+        !VISIBLE_QUOTE_STATUS.includes(r.status as never) ||
+        quoteDisplayStatus({
+          status: r.status,
+          validUntil: r.validUntil?.toISOString().slice(0, 10) ?? null,
+        }) === "EXPIRED"
+      ) {
+        return null;
+      }
       return {
         type,
         id,
