@@ -163,6 +163,8 @@ export interface StepExecutionData {
   expectedInputQuantity: number | null;
   /** 指示書に紐付く検査表テンプレート（検査工程で使用）。 */
   templates: InspectionTemplateView[];
+  /** この工程の検査表割当を編集するときの選択肢（関連工程が一致 or 汎用）。 */
+  templateOptions: SelectOption[];
   /** この工程の検査記録。 */
   stepRecords: InspectionRecordView[];
   /** 指示書全体の検査記録（承認工程での承認対象）。 */

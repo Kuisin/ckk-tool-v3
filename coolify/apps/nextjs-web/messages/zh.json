@@ -2347,6 +2347,9 @@
       "finishedGoodsEnterStockUnderThe": "成品将以工单编号的批次入库，日后可充当任意订单明细的出货",
       "theFromStockQuantityMatchesThe": "库存分与分配合计一致",
       "searchByMaterialCodeOrName": "按材料编号或名称搜索",
+      "assumedMaterialTypeWithName": "产品的假定材料类别：{name}",
+      "materialTypeMismatchWithName": "所选材料与产品假定的材料类别（{name}）不同",
+      "materialTypeMismatch": "所选材料与产品假定的材料类别不同",
       "selectWhereTheFinishedGoodsGo": "选择成品的存放位置",
       "thereIsNoDrawingForThis": "该产品尚无图纸",
       "drawingUsed": "使用的图纸",
@@ -2357,8 +2360,8 @@
       "noStepListIsRegisteredFor": "该产品未登记工序列表（请在下方新建）",
       "savesThisStepCompositionAsThe": "将此工序构成保存为产品的工序列表 v1",
       "markingItDedicatedMakesItPreferred": "设为专用后，同一客户×产品的工单将优先选择",
-      "inspectionSheetsAreAssignedPerInspection": "检查表按检查工序分配。添加工序后，将自动选中以该工序为关联工序的检查表。",
-      "selectAnInspectionTemplate": "选择检查表模板",
+      "inspectionSheetsAreAssignedPerInspection": "检查表按检查工序自动分配（以该工序为关联工序的检查表）。批准后可在工序执行画面的检查表弹窗中重新分配。",
+      "selectAnInspectionTemplate": "没有匹配的检查表",
       "assignSomeonePerStepOptionalA": "按工序分配负责人（可选）。填写负责人的工序将创建带计划日期的作业计划。若需确定时段・数量，请在创建后于各工序的计划面板中添加。",
       "workPlanAssignees": "作业计划（负责人）",
       "plannedDate": "计划日",
@@ -2746,7 +2749,9 @@
     "stepExecutionView": {
       "stepWithName": "工序：{name}",
       "theStepWasAborted": "工序已中断",
-      "abort": "中断"
+      "abort": "中断",
+      "viewInspectionSheet": "查看检查表",
+      "noInspectionSheetAssigned": "尚未分配检查表"
     },
     "workOrderLinksCard": {
       "quantityPiecesWithCount": "{count} 支",
@@ -2851,7 +2856,10 @@
       "cannotDeleteActualOfCompletedStep": "无法删除已完成或已取消工序的实绩",
       "actualNotFound": "未找到该实绩",
       "auditActualDeleted": "已删除工序的作业实绩",
-      "couldNotDeleteActual": "删除作业实绩失败"
+      "couldNotDeleteActual": "删除作业实绩失败",
+      "inspectionSheetNotFound": "未找到指定的检查表",
+      "auditInspectionSheetsSet": "已变更工序的检查表分配（{count} 项）",
+      "couldNotSaveInspectionSheets": "检查表分配保存失败"
     },
     "workOrderActions": {
       "acknowledgeFailed": "确认记录失败",

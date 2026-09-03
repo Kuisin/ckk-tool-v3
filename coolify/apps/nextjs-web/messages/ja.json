@@ -2347,6 +2347,9 @@
       "finishedGoodsEnterStockUnderThe": "完成品は指示書番号のロットで在庫入庫され、後日任意の注文明細の\n                出荷に充当できます",
       "theFromStockQuantityMatchesThe": "在庫分は割当合計と一致します",
       "searchByMaterialCodeOrName": "素材コード・名称で検索",
+      "assumedMaterialTypeWithName": "製品の想定材種: {name}",
+      "materialTypeMismatchWithName": "選択中の素材は製品の想定材種（{name}）と異なります",
+      "materialTypeMismatch": "選択中の素材は製品の想定材種と異なります",
       "selectWhereTheFinishedGoodsGo": "完成品の保管場所を選択",
       "thereIsNoDrawingForThis": "この製品の図面はまだありません",
       "drawingUsed": "使用する図面",
@@ -2357,8 +2360,8 @@
       "noStepListIsRegisteredFor": "この製品の工程リストは未登録です（下で新規作成）",
       "savesThisStepCompositionAsThe": "この工程構成を製品の工程リスト v1 として保存します",
       "markingItDedicatedMakesItPreferred": "専用にすると同じ顧客×製品の指示書で優先選択されます",
-      "inspectionSheetsAreAssignedPerInspection": "検査表は検査工程ごとに割り当てます。工程を追加すると、その工程を関連工程に持つ検査表が自動で選ばれます。",
-      "selectAnInspectionTemplate": "検査表テンプレートを選択",
+      "inspectionSheetsAreAssignedPerInspection": "検査表は検査工程ごとに自動で割り当てられます（工程を関連工程に持つ検査表）。付け替えは承認後の工程実行画面（検査表ポップアップ）から行います。",
+      "selectAnInspectionTemplate": "一致する検査表がありません",
       "assignSomeonePerStepOptionalA": "工程ごとの担当者を割り当てます（任意）。担当を入れた工程に、計画日付きの作業計画が作成されます。時間帯・数量まで決める場合は、作成後に各工程の計画パネルで追加してください。",
       "workPlanAssignees": "作業計画（担当者）",
       "plannedDate": "計画日",
@@ -2746,7 +2749,9 @@
     "stepExecutionView": {
       "stepWithName": "工程: {name}",
       "theStepWasAborted": "工程を中断しました",
-      "abort": "中断する"
+      "abort": "中断する",
+      "viewInspectionSheet": "検査表を見る",
+      "noInspectionSheetAssigned": "検査表が割り当てられていません"
     },
     "workOrderLinksCard": {
       "quantityPiecesWithCount": "{count} 本",
@@ -2851,7 +2856,10 @@
       "cannotDeleteActualOfCompletedStep": "完了・キャンセル済みの工程の実績は削除できません",
       "actualNotFound": "対象の実績が見つかりません",
       "auditActualDeleted": "工程の作業実績を削除",
-      "couldNotDeleteActual": "作業実績の削除に失敗しました"
+      "couldNotDeleteActual": "作業実績の削除に失敗しました",
+      "inspectionSheetNotFound": "指定した検査表が見つかりません",
+      "auditInspectionSheetsSet": "工程の検査表割当を変更（{count} 件）",
+      "couldNotSaveInspectionSheets": "検査表の割当に失敗しました"
     },
     "workOrderActions": {
       "acknowledgeFailed": "確認の記録に失敗しました",
