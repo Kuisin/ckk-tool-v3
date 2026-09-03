@@ -332,6 +332,7 @@ export const FIELD_HELP = {
     active: {},
   },
   userManagement: {
+    roles: {},
     plants: {},
   },
   fileManagement: {

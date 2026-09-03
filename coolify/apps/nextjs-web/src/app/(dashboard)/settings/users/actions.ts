@@ -3,7 +3,8 @@
 /**
  * Server Actions — ユーザー管理（SY01）。
  *
- * 利用停止 / 復帰 / 所属拠点の変更は **特権操作**（権限コード user_admin）で、
+ * 利用停止 / 復帰 / 所属拠点の変更 / ロール割当の変更は **特権操作**
+ * （権限コード user_admin）で、
  * 方式 B「変更依頼」を通る:
  *   管理者（system:ADMIN）… 従来どおり直接適用する（利用者の決定）
  *   それ以外               … 変更依頼を 1 件出し、**承認がその変更を適用する**
@@ -15,6 +16,8 @@
  *
  * user_plants は PLANT/REGION スコープ解決の基盤（@ckk/authz-core
  * loadScopeContext）。差分適用（追加行は assignedBy = 操作者、削除行は物理削除）。
+ * user_role_relation は権限そのものなので、外す側は物理削除ではなく無効化する
+ * （割当履歴を残すため — 適用の本体は lib/user-change-requests.ts）。
  */
 
 import { isSuperuser } from "@ckk/authz-core";
@@ -128,12 +131,56 @@ export async function updateUserPlants(
   }
 }
 
+const updateRolesInputSchema = (
+  tr: Awaited<ReturnType<typeof getTranslations>>,
+) =>
+  z.object({
+    userId: z.string().uuid(tr("settings.usersActions.invalidUserId")),
+    roleIds: z.array(z.number().int().positive()),
+  });
+
+/**
+ * ロール割当を変更する（変更後の全体を渡す。差分ではない）。
+ *
+ * 所属拠点と同じ経路 — 管理者は直接適用、それ以外は理由を書いて変更依頼を出し、
+ * 承認が適用する。ロールは権限そのものなので、拠点より緩くする理由が無い。
+ */
+export async function updateUserRoles(
+  userId: string,
+  roleIds: number[],
+  reason?: string,
+): Promise<ActionResult<UserChangeOutcome>> {
+  const tr = await getTranslations();
+  const parsed = updateRolesInputSchema(tr).safeParse({ userId, roleIds });
+  if (!parsed.success) {
+    return actionError(
+      parsed.error.issues[0]?.message ?? tr("common.invalidInput"),
+    );
+  }
+  const v = parsed.data;
+  try {
+    return await applyOrRequest(
+      tr,
+      "UPDATE_ROLES",
+      v.userId,
+      { roleIds: v.roleIds },
+      reason,
+      tr("settings.usersActions.updateRolesFailed"),
+    );
+  } catch (e) {
+    return actionError(
+      prismaErrorMessage(e, tr("settings.usersActions.updateRolesFailed"), tr),
+    );
+  }
+}
+
 /**
  * 初期管理者（ローカル `admin`）を無効化する。
  *
  * 立ち上げ用の踏み台なので、実運用の管理者ができたら畳むのが正しい終わり方。
- * ただし **最後の管理者を消させない** — ロールを付与する画面が無いので、
- * 管理者が居ない DB は psql でしか復旧できない。
+ * ただし **最後の管理者を消させない** — ロールを付ける画面は SY01 にあるが、
+ * それを使うには user_admin が要り、user_admin はどの業務ロールにも配って
+ * いない。だから管理者が居ない DB はやはり psql でしか復旧できない。
  *
  * 可否の判定は bootstrapAdminState（純関数）に集約してあり、画面のボタンの活性も
  * 同じ関数の結果を見る。ここで読み直して再判定するのは画面を信用しないため —
