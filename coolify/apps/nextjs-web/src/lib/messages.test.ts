@@ -108,3 +108,51 @@ describe("ICU 互換性（退行防止）", () => {
     });
   }
 });
+
+/**
+ * 退行防止: **鍵が無いときの受け皿も、変数を埋めた文を返す。**
+ * ここが素通しだった間、`settings.orderIntake.pipeline.*` が丸ごと未登録
+ * だったせいで「注文請書 {number} を自動取込しました」がそのまま通知・
+ * push・監査ログに出ていた。壊れた文を出す受け皿は受け皿ではない。
+ */
+describe("fallback の変数埋め", () => {
+  it("鍵が無くても fallback の {name} を埋める", () => {
+    expect(
+      label("no.such.namespace.key", "ja", "注文請書 {number} を取込", {
+        number: "ORD-202609-00012",
+      }),
+    ).toBe("注文請書 ORD-202609-00012 を取込");
+  });
+
+  it("値の無い穴はそのまま残す（消して意味を変えない）", () => {
+    expect(label("no.such.namespace.key", "ja", "{a} と {b}", { a: 1 })).toBe(
+      "1 と {b}",
+    );
+  });
+});
+
+/**
+ * 取込パイプラインの文言は**リクエスト外**（instrumentation.ts のポーラー）
+ * から `label(key, "ja", fallback, vars)` で引かれる。鍵の登録漏れは
+ * 通知の本文に出るまで誰も気づかないので、ここで存在を確かめる。
+ */
+describe("settings.orderIntake.pipeline", () => {
+  it("通知の文言が鍵として登録されていて、変数が埋まる", () => {
+    expect(
+      label("settings.orderIntake.pipeline.intakeNotificationTitle", "ja", "", {
+        number: "ORD-202609-00012",
+      }),
+    ).toBe("注文請書 ORD-202609-00012 を自動取込しました");
+    expect(
+      label(
+        "settings.orderIntake.pipeline.intakeNotificationMessage",
+        "ja",
+        "",
+        {
+          count: 3,
+          matchState: label("settings.orderIntake.pipeline.matched", "ja"),
+        },
+      ),
+    ).toBe("明細 3 件・顧客一致 — 内容を確認してください");
+  });
+});
