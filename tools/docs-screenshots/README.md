@@ -9,10 +9,20 @@
 - pnpm（このディレクトリは独立パッケージ — リポジトリの pnpm workspace 外）
 - 初回のみ: `pnpm install && pnpm exec playwright install chromium`
 
+> **同じマシンで別のワークツリーが撮っているときは、ポートとコンテナ名を
+> まとめて変える。** 既定値のままだと、後始末（`docker rm -f`）が名前だけで
+> 相手を決めるので、**相手の DB を消す**。
+>
+> ```bash
+> SHOT_DB_CONTAINER=ckk-shots-db-2 SHOT_DB_PORT=55433 \
+>   SHOT_APP_PORT=3110 SHOT_KIOSK_PORT=3111 pnpm docs:shots
+> ```
+
 ## 使い方
 
 ```bash
 cd tools/docs-screenshots
+pnpm install --ignore-workspace   # 初回（このディレクトリは pnpm workspace 外）
 pnpm docs:shots              # 全撮影: DB 起動→シード→build→撮影→lint→破棄
 pnpm docs:verify             # 決定性確認: 撮り直して pixelmatch (diff < 0.1%)
 pnpm docs:lint               # マニュアル ↔ manifest ↔ PNG の整合性チェックのみ
@@ -126,6 +136,17 @@ metabase-demo-build.py` の `cards_spec` を直接書き換える。本番の実
 - **ユーザー**: `demo_shot` / `shot2026`（`screenshot-user-seed.sql`、固定 UUID、
   staff ロール = system/kiosk 以外の全 READ）。ログインは 1 回だけ行い
   storageState を再利用（アプリに 5 回失敗/15 分のレートリミットがあるため）。
+- **画像の高さ**: **全高（ページ全体）が既定**。表示領域ぶん（1440×900）だと
+  折り返しより下が切れ、詳細画面のタブ・明細表・フォームの後半が写らなかった。
+  全高で撮るために撮影直前に 2 つ手当てをしている（`screenshots.spec.ts`）:
+  (1) 表示領域ぶんずつ一度スクロールして、`useInView` で止めてある遅延読み込み
+  （設計図ビューアの 3D / PDF / 画像）を起こしてから先頭へ戻す — Chromium の
+  全高撮影は表示領域を広げるだけで **IntersectionObserver を発火させない**;
+  (2) 固定フッターを隠す — `position: fixed` は表示領域の位置に焼き込まれるため、
+  そのままだと画像の途中に横帯が残る（ヘッダーは `top: 0` なので先頭に 1 回
+  出るだけで正しい）。表示領域ぶんで撮りたい 1 枚があれば manifest に
+  `fullPage: false` を書く（いまは 0 枚）。`clip` 指定の 3 枚（印刷シート・
+  モーダル 2 つ）は要素ごと撮るのでこの手当ての対象外。
 - **描画**: viewport 1440×900 @2x / ja-JP / Asia/Tokyo / ライト固定 /
   `reducedMotion: reduce`（Mantine は theme.respectReducedMotion: true で対応）/
   `animations: "disabled"` / `caret: "hide"` / workers 1。
