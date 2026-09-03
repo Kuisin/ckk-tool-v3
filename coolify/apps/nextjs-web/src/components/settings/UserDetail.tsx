@@ -31,9 +31,9 @@ import {
   UserActiveBadge,
   UserGroupBadge,
 } from "@/components/settings/UsersTable";
-import { SaveButton } from "@/components/ui/buttons";
+import { EditablePanel } from "@/components/ui/EditablePanel";
 import { FieldValue } from "@/components/ui/FieldValue";
-import { DetailShell, SummaryGrid } from "@/components/ui/shells";
+import { DetailShell, FormActions, SummaryGrid } from "@/components/ui/shells";
 import { permissionActionLabel, permissionScopeLabel } from "@/lib/enum-labels";
 import { localized } from "@/lib/format";
 import type { LoginAttemptRow, UserDeviceRow } from "@/lib/login-attempts";
@@ -52,18 +52,19 @@ function plantLabel(p: AdminUserPlant): string {
   return `${p.code} ${localized(p.name)}`;
 }
 
-/** 所属拠点カード — system:ADMIN は MultiSelect で編集、他はバッジ表示。 */
-function UserPlantsCard({
+/** 所属拠点カードの編集フォーム（system:ADMIN のみ、または変更依頼）。 */
+function UserPlantsEditor({
   user,
   plantOptions,
-  canEdit,
   requiresApproval,
+  onCancel,
+  onSaved,
 }: {
   user: AdminUserDetail;
   plantOptions: AdminUserPlant[];
-  canEdit: boolean;
-  /** true = 直接は変えられず、変更依頼を出して承認を待つ（管理者以外）。 */
   requiresApproval: boolean;
+  onCancel: () => void;
+  onSaved: () => void;
 }) {
   const tr = useTranslations();
   const router = useRouter();
@@ -116,8 +117,8 @@ function UserPlantsCard({
             : tr("settings.userDetail.theAssignedSitesWereUpdated"),
           color: result.data.requested ? "blue" : "green",
         });
-        setReason("");
         router.refresh();
+        onSaved();
       } else {
         notifications.show({
           title: tr("common.error2"),
@@ -129,6 +130,74 @@ function UserPlantsCard({
   };
 
   return (
+    <>
+      <MultiSelect
+        clearable
+        data={options}
+        onChange={setValue}
+        placeholder={value.length === 0 ? tr("common.selectASite") : undefined}
+        searchable
+        value={value}
+      />
+      {requiresApproval && (
+        <Textarea
+          autosize
+          description={tr("common.theApproverDecidesBasedOnWhat")}
+          label={tr("settings.userDetail.reasonForTheChange")}
+          minRows={2}
+          mt="sm"
+          onChange={(e) => setReason(e.currentTarget.value)}
+          placeholder={tr("settings.userDetail.eGChangingSitesDueTo")}
+          value={reason}
+          withAsterisk
+        />
+      )}
+      <FormActions
+        disabled={!dirty || (requiresApproval && !reason.trim())}
+        loading={isPending}
+        onCancel={onCancel}
+        onSave={handleSave}
+        submitLabel={
+          requiresApproval
+            ? tr("settings.userDetail.requestApprovalButton")
+            : undefined
+        }
+      />
+    </>
+  );
+}
+
+/** 所属拠点カード — system:ADMIN は編集可、他は閲覧のみ。 */
+function UserPlantsCard({
+  user,
+  plantOptions,
+  canEdit,
+  requiresApproval,
+}: {
+  user: AdminUserDetail;
+  plantOptions: AdminUserPlant[];
+  canEdit: boolean;
+  /** true = 直接は変えられず、変更依頼を出して承認を待つ（管理者以外）。 */
+  requiresApproval: boolean;
+}) {
+  const tr = useTranslations();
+
+  const view =
+    user.plants.length === 0 ? (
+      <Text c="dimmed" size="sm">
+        {tr("settings.userDetail.thereAreNoAssignedSites")}
+      </Text>
+    ) : (
+      <Group gap="xs">
+        {user.plants.map((p) => (
+          <Badge color="blue" key={p.id} variant="light">
+            {plantLabel(p)}
+          </Badge>
+        ))}
+      </Group>
+    );
+
+  return (
     <Paper p="md" radius="md" withBorder>
       <Title mb="sm" order={5}>
         {tr("settings.userDetail.assignedSites")}
@@ -136,57 +205,19 @@ function UserPlantsCard({
       <Text c="dimmed" mb="sm" size="xs">
         {tr("settings.userDetail.theSitesThatSiteAndRegion")}
       </Text>
-      {canEdit ? (
-        <>
-          <MultiSelect
-            clearable
-            data={options}
-            onChange={setValue}
-            placeholder={
-              value.length === 0 ? tr("common.selectASite") : undefined
-            }
-            searchable
-            value={value}
+      <EditablePanel
+        canEdit={canEdit}
+        edit={({ close }) => (
+          <UserPlantsEditor
+            onCancel={close}
+            onSaved={close}
+            plantOptions={plantOptions}
+            requiresApproval={requiresApproval}
+            user={user}
           />
-          {requiresApproval && (
-            <Textarea
-              autosize
-              description={tr("common.theApproverDecidesBasedOnWhat")}
-              label={tr("settings.userDetail.reasonForTheChange")}
-              minRows={2}
-              mt="sm"
-              onChange={(e) => setReason(e.currentTarget.value)}
-              placeholder={tr("settings.userDetail.eGChangingSitesDueTo")}
-              value={reason}
-              withAsterisk
-            />
-          )}
-          <Group justify="flex-end" mt="sm">
-            <SaveButton
-              disabled={!dirty || (requiresApproval && !reason.trim())}
-              loading={isPending}
-              onClick={handleSave}
-              type="button"
-            >
-              {requiresApproval
-                ? tr("settings.userDetail.requestApprovalButton")
-                : undefined}
-            </SaveButton>
-          </Group>
-        </>
-      ) : user.plants.length === 0 ? (
-        <Text c="dimmed" size="sm">
-          {tr("settings.userDetail.thereAreNoAssignedSites")}
-        </Text>
-      ) : (
-        <Group gap="xs">
-          {user.plants.map((p) => (
-            <Badge color="blue" key={p.id} variant="light">
-              {plantLabel(p)}
-            </Badge>
-          ))}
-        </Group>
-      )}
+        )}
+        view={view}
+      />
     </Paper>
   );
 }

@@ -17,6 +17,7 @@ import { useFormat } from "@/components/layout/PreferencesProvider";
 import { ActiveBadge } from "@/components/ui/ActiveBadge";
 import { AppTabs } from "@/components/ui/AppTabs";
 import { DocNumber } from "@/components/ui/DocNumber";
+import { EditablePanel } from "@/components/ui/EditablePanel";
 import { FieldValue } from "@/components/ui/FieldValue";
 import { HistoryPanel } from "@/components/ui/HistoryPanel";
 import {
@@ -35,6 +36,7 @@ import {
 import {
   MaterialTypePriceGrid,
   type MaterialTypePriceSeed,
+  MaterialTypePriceView,
 } from "./MaterialTypePriceGrid";
 
 const BASE_PATH = "/master/material-types";
@@ -196,11 +198,25 @@ export function MaterialTypeDetail({
         </Tabs.Panel>
 
         <Tabs.Panel pt="md" value="prices">
-          <MaterialTypePriceGrid
-            diameterOptions={diameterOptions}
-            initialPrices={prices}
-            materialTypeId={record.id}
-            surfaceOptions={surfaceOptions}
+          <EditablePanel
+            canEdit
+            edit={({ close }) => (
+              <MaterialTypePriceGrid
+                diameterOptions={diameterOptions}
+                initialPrices={prices}
+                materialTypeId={record.id}
+                onCancel={close}
+                onSaved={close}
+                surfaceOptions={surfaceOptions}
+              />
+            )}
+            view={
+              <MaterialTypePriceView
+                diameterOptions={diameterOptions}
+                prices={prices}
+                surfaceOptions={surfaceOptions}
+              />
+            }
           />
         </Tabs.Panel>
 
