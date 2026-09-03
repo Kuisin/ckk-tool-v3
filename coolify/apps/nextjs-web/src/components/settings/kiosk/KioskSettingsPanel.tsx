@@ -24,19 +24,23 @@ import { IconInfoCircle } from "@tabler/icons-react";
 import { useTranslations } from "next-intl";
 import { useState, useTransition } from "react";
 import { updateKioskAppFlags } from "@/app/(dashboard)/settings/kiosk/actions";
+import { EditablePanel } from "@/components/ui/EditablePanel";
 import { FormActions } from "@/components/ui/shells";
 import type { KioskAppCatalogEntry } from "@/lib/kiosk-settings";
 
 type PolicyRow = { label: string; value: string };
 
-export function KioskSettingsPanel({
+/** アプリ表示 on/off の編集フォーム（EditablePanel の edit）。 */
+function KioskAppFlagsEditor({
   catalog,
   initialFlags,
-  policy,
+  onCancel,
+  onSaved,
 }: {
   catalog: KioskAppCatalogEntry[];
   initialFlags: Record<string, boolean>;
-  policy: PolicyRow[];
+  onCancel: () => void;
+  onSaved: () => void;
 }) {
   const tr = useTranslations();
   const [flags, setFlags] = useState<Record<string, boolean>>(initialFlags);
@@ -53,6 +57,7 @@ export function KioskSettingsPanel({
           message: tr("settings.kiosk.theSharedDeviceAppDisplaySettings"),
           color: "green",
         });
+        onSaved();
       } else {
         notifications.show({
           title: tr("common.error2"),
@@ -64,6 +69,90 @@ export function KioskSettingsPanel({
   };
 
   return (
+    <Stack gap="sm">
+      <Stack gap="xs">
+        {catalog.map((app) => (
+          <Group justify="space-between" key={app.key} wrap="nowrap">
+            <Stack gap={0} style={{ minWidth: 0 }}>
+              <Text fw={500}>{app.label}</Text>
+              <Text c="dimmed" size="xs">
+                {tr("settings.kioskSettingsPanel.permissionCode", {
+                  code: app.permission,
+                })}
+              </Text>
+            </Stack>
+            <Switch
+              aria-label={tr("settings.kioskSettingsPanel.showLabel", {
+                label: app.label,
+              })}
+              checked={flags[app.key] ?? true}
+              onChange={(e) =>
+                setFlags((prev) => ({
+                  ...prev,
+                  [app.key]: e.currentTarget.checked,
+                }))
+              }
+            />
+          </Group>
+        ))}
+      </Stack>
+      <FormActions
+        disabled={!dirty}
+        loading={isPending}
+        onCancel={onCancel}
+        onSave={save}
+      />
+    </Stack>
+  );
+}
+
+/** アプリ表示 on/off の閲覧表示（EditablePanel の view）。 */
+function KioskAppFlagsView({
+  catalog,
+  flags,
+}: {
+  catalog: KioskAppCatalogEntry[];
+  flags: Record<string, boolean>;
+}) {
+  const tr = useTranslations();
+  return (
+    <Stack gap="xs">
+      {catalog.map((app) => (
+        <Group justify="space-between" key={app.key} wrap="nowrap">
+          <Stack gap={0} style={{ minWidth: 0 }}>
+            <Text fw={500}>{app.label}</Text>
+            <Text c="dimmed" size="xs">
+              {tr("settings.kioskSettingsPanel.permissionCode", {
+                code: app.permission,
+              })}
+            </Text>
+          </Stack>
+          <Badge
+            color={(flags[app.key] ?? true) ? "green" : "gray"}
+            variant="light"
+          >
+            {(flags[app.key] ?? true)
+              ? tr("common.display")
+              : tr("admin.appFlagsTable.hidden")}
+          </Badge>
+        </Group>
+      ))}
+    </Stack>
+  );
+}
+
+export function KioskSettingsPanel({
+  catalog,
+  initialFlags,
+  policy,
+}: {
+  catalog: KioskAppCatalogEntry[];
+  initialFlags: Record<string, boolean>;
+  policy: PolicyRow[];
+}) {
+  const tr = useTranslations();
+
+  return (
     <Stack gap="lg">
       <Paper p="md" radius="md" shadow="xs">
         <Stack gap="sm">
@@ -71,32 +160,18 @@ export function KioskSettingsPanel({
           <Text c="dimmed" size="sm">
             {tr("settings.kiosk.chooseWhichAppsAppearInThe")}
           </Text>
-          <Stack gap="xs" mt="xs">
-            {catalog.map((app) => (
-              <Group justify="space-between" key={app.key} wrap="nowrap">
-                <Stack gap={0} style={{ minWidth: 0 }}>
-                  <Text fw={500}>{app.label}</Text>
-                  <Text c="dimmed" size="xs">
-                    {tr("settings.kioskSettingsPanel.permissionCode", {
-                      code: app.permission,
-                    })}
-                  </Text>
-                </Stack>
-                <Switch
-                  aria-label={tr("settings.kioskSettingsPanel.showLabel", {
-                    label: app.label,
-                  })}
-                  checked={flags[app.key] ?? true}
-                  onChange={(e) =>
-                    setFlags((prev) => ({
-                      ...prev,
-                      [app.key]: e.currentTarget.checked,
-                    }))
-                  }
-                />
-              </Group>
-            ))}
-          </Stack>
+          <EditablePanel
+            canEdit
+            edit={({ close }) => (
+              <KioskAppFlagsEditor
+                catalog={catalog}
+                initialFlags={initialFlags}
+                onCancel={close}
+                onSaved={close}
+              />
+            )}
+            view={<KioskAppFlagsView catalog={catalog} flags={initialFlags} />}
+          />
         </Stack>
       </Paper>
 
@@ -127,9 +202,6 @@ export function KioskSettingsPanel({
           </Table.ScrollContainer>
         </Stack>
       </Paper>
-
-      {/* 保存は画面下端に固定（design.md §8.3）。 */}
-      <FormActions disabled={!dirty} loading={isPending} onSave={save} />
     </Stack>
   );
 }

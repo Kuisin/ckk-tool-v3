@@ -8,7 +8,7 @@
  * 共通の EditableCellTable（スリムな行編集表）で描画する。
  */
 
-import { NumberInput, Select, Stack, Text } from "@mantine/core";
+import { NumberInput, Select, Stack, Table, Text } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
@@ -18,6 +18,7 @@ import {
   saveMaterialTypePrices,
 } from "@/app/(dashboard)/master/material-types/actions";
 import { EditableCellTable } from "@/components/ui/EditableCellTable";
+import { MoneyText } from "@/components/ui/MoneyText";
 import { FormActions } from "@/components/ui/shells";
 import type { Option } from "@/lib/mock";
 
@@ -39,6 +40,8 @@ export function MaterialTypePriceGrid({
   diameterOptions,
   surfaceOptions,
   initialPrices,
+  onCancel,
+  onSaved,
 }: {
   materialTypeId: number;
   /** 直径 options（value = 3桁コード, label = φ表示）. */
@@ -46,6 +49,8 @@ export function MaterialTypePriceGrid({
   /** 黒皮/研磨 options（value = 1文字コード, label = 名称）. */
   surfaceOptions: Option[];
   initialPrices: MaterialTypePriceSeed[];
+  onCancel?: () => void;
+  onSaved?: () => void;
 }) {
   const tr = useTranslations();
   const router = useRouter();
@@ -110,6 +115,7 @@ export function MaterialTypePriceGrid({
           color: "green",
         });
         router.refresh();
+        onSaved?.();
       } else {
         notifications.show({
           title: tr("common.error2"),
@@ -170,9 +176,82 @@ export function MaterialTypePriceGrid({
       />
       <FormActions
         loading={isSaving}
+        onCancel={onCancel}
         onSave={save}
         submitLabel={tr("master.materialTypes.saveTheDefaultUnitPrice")}
       />
+    </Stack>
+  );
+}
+
+/** 既定単価タブの閲覧モード（EditablePanel の view）。 */
+export function MaterialTypePriceView({
+  diameterOptions,
+  surfaceOptions,
+  prices,
+}: {
+  diameterOptions: Option[];
+  surfaceOptions: Option[];
+  prices: MaterialTypePriceSeed[];
+}) {
+  const tr = useTranslations();
+
+  const byDiameter = new Map<string, Record<string, number>>();
+  for (const p of prices) {
+    let row = byDiameter.get(p.diameterCode);
+    if (!row) {
+      row = {};
+      byDiameter.set(p.diameterCode, row);
+    }
+    row[p.surfaceFinishCode] = p.unitPrice;
+  }
+  const diameterLabel = (code: string) =>
+    diameterOptions.find((o) => o.value === code)?.label ?? code;
+  const rows = [...byDiameter.entries()].sort((a, b) =>
+    a[0].localeCompare(b[0]),
+  );
+
+  return (
+    <Stack gap="sm">
+      <Text c="dimmed" size="xs">
+        {tr("master.materialTypes.theDefaultMaterialPricePerMaterial")}
+      </Text>
+      {rows.length === 0 ? (
+        <Text c="dimmed" size="sm">
+          {tr("common.notSet")}
+        </Text>
+      ) : (
+        <Table withTableBorder>
+          <Table.Thead>
+            <Table.Tr>
+              <Table.Th>{tr("common.diameter")}</Table.Th>
+              {surfaceOptions.map((s) => (
+                <Table.Th key={s.value} style={{ textAlign: "right" }}>
+                  {s.label}
+                </Table.Th>
+              ))}
+            </Table.Tr>
+          </Table.Thead>
+          <Table.Tbody>
+            {rows.map(([diameterCode, prices]) => (
+              <Table.Tr key={diameterCode}>
+                <Table.Td>{diameterLabel(diameterCode)}</Table.Td>
+                {surfaceOptions.map((s) => (
+                  <Table.Td key={s.value}>
+                    {s.value in prices ? (
+                      <MoneyText value={prices[s.value]} />
+                    ) : (
+                      <Text c="dimmed" size="sm" ta="right">
+                        —
+                      </Text>
+                    )}
+                  </Table.Td>
+                ))}
+              </Table.Tr>
+            ))}
+          </Table.Tbody>
+        </Table>
+      )}
     </Stack>
   );
 }

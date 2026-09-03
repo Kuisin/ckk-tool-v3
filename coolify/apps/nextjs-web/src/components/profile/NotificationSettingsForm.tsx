@@ -47,17 +47,117 @@ import {
   savePushSubscriptionAction,
 } from "@/components/layout/notification-actions";
 import { useFormat } from "@/components/layout/PreferencesProvider";
-import {
-  PrimaryButton,
-  SaveButton,
-  SecondaryButton,
-} from "@/components/ui/buttons";
+import { PrimaryButton, SecondaryButton } from "@/components/ui/buttons";
+import { EditablePanel } from "@/components/ui/EditablePanel";
 import { openConfirm } from "@/components/ui/modals";
 import { PageHeader } from "@/components/ui/PageHeader";
+import { FormActions } from "@/components/ui/shells";
 
 interface ChannelSettings {
   emailEnabled: boolean;
   pushEnabled: boolean;
+}
+
+/** 通知チャネル（メール/プッシュ）の on/off 編集フォーム（EditablePanel の edit）。 */
+function ChannelSettingsEditor({
+  initial,
+  mailerConfigured,
+  onCancel,
+  onSaved,
+}: {
+  initial: ChannelSettings;
+  mailerConfigured: boolean;
+  onCancel: () => void;
+  onSaved: () => void;
+}) {
+  const tr = useTranslations();
+  const router = useRouter();
+  const [settings, setSettings] = useState(initial);
+  const [isPending, startTransition] = useTransition();
+
+  const save = () => {
+    startTransition(async () => {
+      const res = await saveNotificationSettingAction(settings);
+      if (res.ok) {
+        notifications.show({
+          title: tr("common.saved2"),
+          message: tr(
+            "profile.notificationSettingsForm.theNotificationSettingsWereUpdated",
+          ),
+          color: "green",
+        });
+        router.refresh();
+        onSaved();
+      } else {
+        notifications.show({
+          title: tr("common.error2"),
+          message: res.error,
+          color: "red",
+        });
+      }
+    });
+  };
+
+  return (
+    <Stack gap="md">
+      <Switch
+        checked={settings.emailEnabled}
+        description={
+          mailerConfigured
+            ? tr(
+                "profile.notificationSettingsForm.receiveApprovalRequestsImportResultsAnd",
+              )
+            : tr("profile.notificationSettingsForm.nothingIsSentWhileTheMail")
+        }
+        label={tr("profile.notificationSettingsForm.emailNotification")}
+        onChange={(e) =>
+          setSettings((s) => ({
+            ...s,
+            emailEnabled: e.currentTarget.checked,
+          }))
+        }
+      />
+      <Switch
+        checked={settings.pushEnabled}
+        description={tr(
+          "profile.notificationSettingsForm.sendPushNotificationsToTheEnabled",
+        )}
+        label={tr("profile.notificationSettingsForm.pushNotifications")}
+        onChange={(e) =>
+          setSettings((s) => ({
+            ...s,
+            pushEnabled: e.currentTarget.checked,
+          }))
+        }
+      />
+      <FormActions loading={isPending} onCancel={onCancel} onSave={save} />
+    </Stack>
+  );
+}
+
+/** 通知チャネルの閲覧表示（EditablePanel の view）。 */
+function ChannelSettingsView({ settings }: { settings: ChannelSettings }) {
+  const tr = useTranslations();
+  return (
+    <Stack gap="xs">
+      <Group justify="space-between" wrap="nowrap">
+        <Text size="sm">
+          {tr("profile.notificationSettingsForm.emailNotification")}
+        </Text>
+        <Badge color={settings.emailEnabled ? "green" : "gray"}>
+          {settings.emailEnabled ? tr("common.enabled") : tr("common.disabled")}
+        </Badge>
+      </Group>
+      <Group justify="space-between" wrap="nowrap">
+        <Text size="sm">
+          {tr("profile.notificationSettingsForm.pushNotifications")}
+        </Text>
+        <Badge color={settings.pushEnabled ? "green" : "gray"}>
+          {settings.pushEnabled ? tr("common.enabled") : tr("common.disabled")}
+        </Badge>
+      </Group>
+    </Stack>
+  );
 }
 
 /** 登録済みデバイス（本人の push_subscriptions 行）。 */
@@ -136,8 +236,7 @@ export function NotificationSettingsForm({
   const tr = useTranslations();
   const fmt = useFormat();
   const router = useRouter();
-  const [settings, setSettings] = useState(initial);
-  const [isPending, startTransition] = useTransition();
+  const [, startTransition] = useTransition();
   const [pushSupported, setPushSupported] = useState(true);
   const [subscribed, setSubscribed] = useState(false);
   const [currentEndpoint, setCurrentEndpoint] = useState<string | null>(null);
@@ -194,27 +293,6 @@ export function NotificationSettingsForm({
       window.removeEventListener("appinstalled", onInstalled);
     };
   }, []);
-
-  const save = () => {
-    startTransition(async () => {
-      const res = await saveNotificationSettingAction(settings);
-      if (res.ok) {
-        notifications.show({
-          title: tr("common.saved2"),
-          message: tr(
-            "profile.notificationSettingsForm.theNotificationSettingsWereUpdated",
-          ),
-          color: "green",
-        });
-      } else {
-        notifications.show({
-          title: tr("common.error2"),
-          message: res.error,
-          color: "red",
-        });
-      }
-    });
-  };
 
   const enablePushOnDevice = async () => {
     if (!vapidPublicKey) return;
@@ -371,41 +449,18 @@ export function NotificationSettingsForm({
           <Text fw={600} size="sm">
             {tr("profile.notificationSettingsForm.notificationChannel")}
           </Text>
-          <Switch
-            checked={settings.emailEnabled}
-            description={
-              mailerConfigured
-                ? tr(
-                    "profile.notificationSettingsForm.receiveApprovalRequestsImportResultsAnd",
-                  )
-                : tr(
-                    "profile.notificationSettingsForm.nothingIsSentWhileTheMail",
-                  )
-            }
-            label={tr("profile.notificationSettingsForm.emailNotification")}
-            onChange={(e) =>
-              setSettings((s) => ({
-                ...s,
-                emailEnabled: e.currentTarget.checked,
-              }))
-            }
-          />
-          <Switch
-            checked={settings.pushEnabled}
-            description={tr(
-              "profile.notificationSettingsForm.sendPushNotificationsToTheEnabled",
+          <EditablePanel
+            canEdit
+            edit={({ close }) => (
+              <ChannelSettingsEditor
+                initial={initial}
+                mailerConfigured={mailerConfigured}
+                onCancel={close}
+                onSaved={close}
+              />
             )}
-            label={tr("profile.notificationSettingsForm.pushNotifications")}
-            onChange={(e) =>
-              setSettings((s) => ({
-                ...s,
-                pushEnabled: e.currentTarget.checked,
-              }))
-            }
+            view={<ChannelSettingsView settings={initial} />}
           />
-          <div>
-            <SaveButton loading={isPending} onClick={save} type="button" />
-          </div>
         </Stack>
       </Paper>
 
