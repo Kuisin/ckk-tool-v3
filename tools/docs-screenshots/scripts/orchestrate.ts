@@ -21,6 +21,13 @@
  *                 撮影は当然失敗するので、使ったらログに出る警告を読むこと。
  *
  * 前提: Docker / pnpm。psql・gunzip はコンテナ内で実行するので不要。
+ *
+ * 環境変数（既定のまま使えるが、**別のワークツリーが同時に撮っているときは
+ * 4 つまとめて変える**。既定値のままだと相手の DB コンテナを消してしまう）:
+ *   SHOT_DB_CONTAINER  使い捨て DB のコンテナ名（既定 ckk-shots-db）
+ *   SHOT_DB_PORT       DB のホスト側ポート（既定 55432）
+ *   SHOT_APP_PORT      nextjs-web のポート（既定 3100）
+ *   SHOT_KIOSK_PORT    nextjs-kiosk のポート（既定 3101）
  */
 
 import { execFileSync, spawn, type ChildProcess } from "node:child_process";
@@ -41,7 +48,12 @@ const APP_PORT = Number(process.env.SHOT_APP_PORT ?? 3100);
 const APP_URL = process.env.APP_URL ?? `http://localhost:${APP_PORT}`;
 const KIOSK_PORT = Number(process.env.SHOT_KIOSK_PORT ?? 3101);
 const KIOSK_URL = process.env.KIOSK_URL ?? `http://localhost:${KIOSK_PORT}`;
-const DB_CONTAINER = "ckk-shots-db";
+// 同じマシンで別のワークツリーが同時に撮っていることがある（この машина は
+// ~20 個のワークツリーを抱えている）。ポートは既に環境変数で逃がせるのに
+// コンテナ名だけ固定だったので、2 本目を動かすと 1 本目の DB を
+// `docker rm -f` で消してしまう（後始末が名前だけで相手を決めるため）。
+// 名前も逃がして、SHOT_* を揃えて渡せば完全に独立して回せるようにする。
+const DB_CONTAINER = process.env.SHOT_DB_CONTAINER ?? "ckk-shots-db";
 const DB_IMAGE = "groonga/pgroonga:4.0.6-alpine-17";
 const DATABASE_URL = `postgresql://postgres:shots@127.0.0.1:${DB_PORT}/ckk`;
 const AUTH_SECRET = "docs-screenshots-fixed-secret-not-production";
@@ -174,7 +186,13 @@ function psqlInput(sql: Buffer | string): void {
 function seed(): void {
   if (!existsSync(join(SHARED_DB, "node_modules"))) {
     log("installing shared-db deps (first run)");
-    sh("pnpm", ["install", "--frozen-lockfile"], { cwd: SHARED_DB });
+    // --ignore-workspace が要る: shared-db はルートの pnpm workspace の
+    // メンバーではないので、付けないと pnpm がルートまで登って**ルートの**
+    // 依存を入れ、shared-db/node_modules は空のまま次の prisma が落ちる
+    // （node_modules を持たない新しいワークツリーで必ず起きる）。
+    sh("pnpm", ["install", "--frozen-lockfile", "--ignore-workspace"], {
+      cwd: SHARED_DB,
+    });
   }
   // ベースライン（2026-08-24 のスクウォッシュ）は directory.* も作り、初期マスタ /
   // RBAC / フィーチャーフラグも migration として入るので、directory-bootstrap も

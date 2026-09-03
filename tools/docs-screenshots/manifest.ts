@@ -42,7 +42,11 @@ export interface Shot {
   steps?: (page: Page) => Promise<void>;
   /** CSS セレクタ — 指定時はその要素だけを撮る。 */
   clip?: string;
-  /** ページ全体（スクロール分含む）を撮る。 */
+  /**
+   * 表示領域ぶんだけを撮る（`false`）。**既定は全高（ページ全体）** —
+   * 折り返しより下が切れた画像はマニュアルで説明できないため。いまこれを
+   * 明示している撮影は無い。
+   */
   fullPage?: boolean;
   /** 撮影時に塗りつぶす揮発領域（時計・相対時刻など）。 */
   mask?: string[];
@@ -600,13 +604,8 @@ export const shots: Shot[] = [
     id: "work-order-detail-01",
     docPage: "operations/production/work-order/user",
     path: "/production/work-orders/9001",
-    fullPage: true,
     steps: async (page) => {
       await page.getByText("工程ワークフロー").first().waitFor();
-      // fullPage 撮影では固定フッターがビューポート位置に焼き込まれるため隠す
-      await page.addStyleTag({
-        content: ".mantine-AppShell-footer { display: none !important; }",
-      });
     },
   },
   {
@@ -642,12 +641,11 @@ export const shots: Shot[] = [
   },
   // ── 生産: 初心者向けマニュアル用の追加撮影 ────────────────────────────────
   {
-    // 指示書ページ側の承認カット。approval-panel-01 と URL が同じなので
-    // fullPage で「指示書全体の中の手続き状況」として差別化する。
+    // 指示書ページ側の承認カット。approval-panel-01 と URL・撮り方が同じ
+    // （どちらも全高）なので中身は同一 — マニュアルの文脈が違うだけ。
     id: "work-order-approval-01",
     docPage: "operations/production/work-order/user",
     path: "/production/work-orders/9002",
-    fullPage: true,
     steps: async (page) => {
       await page.getByText("手続き状況").first().waitFor();
     },
@@ -733,7 +731,6 @@ export const shots: Shot[] = [
     id: "inventory-material-detail-01",
     docPage: "operations/production/material-inventory/user",
     path: "/production/inventory/materials/dc051000-0000-4000-8000-000000000002",
-    fullPage: true,
     steps: async (page) => {
       await page.getByText("PO-202607-90102").first().waitFor();
     },
@@ -1395,7 +1392,11 @@ export const shots: Shot[] = [
     docPage: "user-settings",
     path: "/profile/home",
     steps: async (page) => {
-      await page.getByText("お気に入り").first().waitFor();
+      // この画面は閲覧で開く（EditablePanel — design.md §10.10）。閲覧側は
+      // 「お気に入り: なし / 表示モード: 標準」の 2 行しかなく、マニュアルが
+      // 説明しているのは選ぶ側なので、編集を開いてから撮る。
+      await page.getByRole("button", { name: "編集" }).first().click();
+      await page.getByText("お気に入りアプリ").first().waitFor();
     },
   },
   {
@@ -1403,6 +1404,9 @@ export const shots: Shot[] = [
     docPage: "user-settings",
     path: "/profile/preferences",
     steps: async (page) => {
+      // この画面も閲覧で開く（EditablePanel）。プレビューは編集側にしか無いので
+      // 先に編集を開く — 開かないまま待つと 60 秒で落ちる（実際に落ちた）。
+      await page.getByRole("button", { name: "編集" }).first().click();
       // プレビュー（固定日時 2026/03/05 のサンプル）が出たら撮る。
       await page.getByText("プレビュー").first().waitFor();
     },
