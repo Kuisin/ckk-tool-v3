@@ -1,0 +1,11 @@
+-- ロール割当の変更（SY01）を方式 B の変更依頼に載せる。
+--
+-- なぜ enum を増やすのか: ロールの付け外しは「これから何かをする権利」ではなく
+-- それ自体が 1 つの具体的な変更なので、利用停止・所属拠点と同じ
+-- user_change_requests を通す（方式 A の時限昇格ではない）。payload は
+-- { roleIds: number[] }（lib/user-change-core.ts の zod が申請時と適用時の両方で検証）。
+--
+-- ⚠️ ALTER TYPE ... ADD VALUE で足した値は**同一トランザクション内で使えない**
+-- （前例 20260910090000 / 20260911090000）。この移行は値を足すだけで使わないので
+-- 1 本で足りる。
+ALTER TYPE app."USER_CHANGE_KIND" ADD VALUE IF NOT EXISTS 'UPDATE_ROLES' AFTER 'UPDATE_PLANTS';

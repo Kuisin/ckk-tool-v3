@@ -789,7 +789,16 @@
     "hoursAgo": "{n} 小时前",
     "yesterday": "昨天",
     "daysAgo": "{n} 天前",
-    "step": "工序"
+    "step": "工序",
+    "userChangeUpdateRoles": "变更角色分配",
+    "roleHash": "角色 #{id}",
+    "setRolesTo": "将角色设置为 {names}",
+    "removeAllRoles": "移除全部角色",
+    "nonexistentRolesIncluded": "包含不存在的角色（{ids}）",
+    "selectARole": "选择角色",
+    "cannotChangeRoles": "无法变更角色",
+    "cannotChangeOwnRoles": "无法变更自己的角色",
+    "cannotRemoveLastAdminRole": "无法从最后一名管理员移除管理员角色"
   },
   "shell": {
     "appsLabel": "应用",
@@ -3723,7 +3732,12 @@
       "registeredDevicesWeb": "已登记终端（Web）",
       "passwordAndSso": "密码 + SSO",
       "plantLabelDisabled": "{label}（已停用）",
-      "requestApprovalButton": "申请审批"
+      "requestApprovalButton": "申请审批",
+      "rolesDecideWhatThisPersonCanDo": "决定此人可以做什么。有效权限见下表",
+      "theRolesChangeOnceApproved": "批准后将变更角色分配",
+      "theRolesWereUpdated": "已更新角色分配",
+      "removingEveryRoleLeavesNoPermissions": "移除全部角色后，此人将无法进行任何操作",
+      "eGChangingRolesDueTo": "例：因调动更改负责业务"
     },
     "userSuspensionPanel": {
       "suspendTheUser": "停用用户",
@@ -4220,7 +4234,8 @@
       "disableFailed": "停用失败",
       "reasonTooLong": "理由最多 500 字",
       "suspendFailed": "停用失败",
-      "restoreFailed": "恢复失败"
+      "restoreFailed": "恢复失败",
+      "updateRolesFailed": "角色分配更新失败"
     },
     "kioskCardActions": {
       "invalidCardIdFormat": "卡片编号格式不正确",
@@ -9018,6 +9033,10 @@
       }
     },
     "userManagement": {
+      "roles": {
+        "label": "角色",
+        "summary": "赋予该用户的角色，可多选。"
+      },
       "plants": {
         "label": "所属据点",
         "summary": "该用户负责的据点，可多选。"

@@ -27,9 +27,11 @@ import {
   prismaErrorMessage,
 } from "@/lib/server-action";
 import {
+  canUpdateRoles,
   suspendPayloadSchema,
   type UserChangeKind,
   updatePlantsPayloadSchema,
+  updateRolesPayloadSchema,
   userChangeLabel,
   validatePayload,
 } from "@/lib/user-change-core";
@@ -38,7 +40,7 @@ import {
   canSuspend,
   resolveDisabledUntil,
 } from "@/lib/user-suspension-core";
-import { getAdminCoverage } from "@/lib/users-admin";
+import { getAdminCoverage, listAdminRoleIds } from "@/lib/users-admin";
 
 const BASE_PATH = "/settings/users";
 const PRIV_PATH = "/settings/privileged-access";
@@ -238,6 +240,119 @@ async function applyUpdatePlants(
   return { ok: true };
 }
 
+/**
+ * ロール割当を変更する（= 権限そのものを変える）。
+ *
+ * ■ 外す側は物理削除ではなく無効化
+ * `user_role_relation` は is_active / deactivate_at を持ち、SY01 は「ロール割当
+ * 履歴」として過去の割当も出す。行ごと消すと「いつ誰が外したのか」が消えるので、
+ * 外す側は is_active=false + deactivate_at=now に倒す。user_permissions ビューは
+ * その 2 列をそのまま見ているので、権限は同じ瞬間に消える。
+ *
+ * ■ 判定は適用時にやり直す
+ * 「最後の管理者から admin を外さない」は申請時にも見るが、承認までの間に他の
+ * 管理者が停止されていることがある。canUpdateRoles を**ここでも**通す。
+ */
+async function applyUpdateRoles(
+  actorId: string,
+  targetUserId: string,
+  payload: unknown,
+): Promise<ApplyResult> {
+  const tr = await getTranslations();
+  const parsed = updateRolesPayloadSchema.safeParse(payload);
+  if (!parsed.success)
+    return { ok: false, error: tr("common.requestContentInvalid") };
+
+  const target = await prisma.user.findUnique({
+    where: { id: targetUserId },
+    select: { id: true, username: true },
+  });
+  if (!target) return { ok: false, error: tr("common.targetUserNotFound") };
+
+  const requested = [...new Set(parsed.data.roleIds)];
+  const [allRoles, adminRoleIds, coverage] = await Promise.all([
+    prisma.role.findMany({ select: { id: true, rolename: true } }),
+    listAdminRoleIds(),
+    getAdminCoverage(targetUserId),
+  ]);
+
+  const decision = canUpdateRoles(
+    requested,
+    {
+      actorId,
+      targetUserId,
+      knownRoleIds: new Set(allRoles.map((r) => r.id)),
+      adminRoleIds: new Set(adminRoleIds),
+      ...coverage,
+    },
+    tr,
+  );
+  if (!decision.ok) {
+    return {
+      ok: false,
+      error: decision.message ?? tr("common.cannotChangeRoles"),
+    };
+  }
+
+  const current = await prisma.userRoleRelation.findMany({
+    where: { userId: targetUserId },
+    select: { roleId: true, isActive: true },
+  });
+  const activeIds = current.filter((r) => r.isActive).map((r) => r.roleId);
+  const existingIds = new Set(current.map((r) => r.roleId));
+  const requestedSet = new Set(requested);
+  const toEnable = requested.filter((id) => !activeIds.includes(id));
+  const toDisable = activeIds.filter((id) => !requestedSet.has(id));
+  if (toEnable.length === 0 && toDisable.length === 0) return { ok: true };
+
+  const now = new Date();
+  await prisma.$transaction([
+    ...(toDisable.length
+      ? [
+          prisma.userRoleRelation.updateMany({
+            where: { userId: targetUserId, roleId: { in: toDisable } },
+            data: { isActive: false, deactivateAt: now },
+          }),
+        ]
+      : []),
+    // 一度外したロールを付け直す場合は行が既にあるので update、無ければ create。
+    ...toEnable.map((roleId) =>
+      existingIds.has(roleId)
+        ? prisma.userRoleRelation.update({
+            where: { userId_roleId: { userId: targetUserId, roleId } },
+            data: {
+              isActive: true,
+              deactivateAt: null,
+              assignedAt: now,
+              assignedBy: actorId,
+            },
+          })
+        : prisma.userRoleRelation.create({
+            data: {
+              userId: targetUserId,
+              roleId,
+              assignedAt: now,
+              assignedBy: actorId,
+            },
+          }),
+    ),
+  ]);
+
+  const nameOf = new Map(allRoles.map((r) => [r.id, r.rolename]));
+  const toNames = (ids: number[]) =>
+    ids
+      .map((id) => nameOf.get(id) ?? `#${id}`)
+      .sort((a, b) => a.localeCompare(b));
+  await recordAudit({
+    action: "UPDATE",
+    tableName: "user_role_relation",
+    recordId: targetUserId,
+    before: { username: target.username, roles: toNames(activeIds) },
+    after: { username: target.username, roles: toNames(requested) },
+  });
+  return { ok: true };
+}
+
 /** kind → 適用。直接実行と承認後の適用が共有する唯一の入口。 */
 export async function applyUserChange(
   kind: UserChangeKind,
@@ -252,6 +367,8 @@ export async function applyUserChange(
       return applyRestore(actorId, targetUserId);
     case "UPDATE_PLANTS":
       return applyUpdatePlants(actorId, targetUserId, payload);
+    case "UPDATE_ROLES":
+      return applyUpdateRoles(actorId, targetUserId, payload);
   }
 }
 
