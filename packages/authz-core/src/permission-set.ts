@@ -247,3 +247,86 @@ export const PERMISSION_ACTIONS: readonly PermissionAction[] = [
   "APPROVE",
   "ADMIN",
 ];
+
+/** 1 権限コードぶんの実効権限（表示用）。 */
+export interface CodePermission {
+  code: string;
+  /** アクションごとの到達範囲。PERMISSION_ACTIONS の順。 */
+  actions: {
+    action: PermissionAction;
+    scope: PermissionScope;
+    scopeValues: readonly string[];
+  }[];
+  /**
+   * 全アクションで scope が同じならその 1 つ。違えば null。
+   * 画面はこれが非 null のときだけ「1 行に scope 1 つ」で描ける。
+   */
+  uniformScope: {
+    scope: PermissionScope;
+    scopeValues: readonly string[];
+  } | null;
+}
+
+/**
+ * 実効権限を **権限コードごとに 1 行** へまとめる（表示用）。
+ *
+ * highestScopeRows で (code, action) を 1 行にしても、`admin_manual` が
+ * 閲覧・書き出しで 2 行に分かれるのは変わらない。コードが繰り返し並ぶと
+ * 「この権限で何ができるのか」が読み取れない（携帯では特に）ので、
+ * コード 1 つ = 1 行にして、アクションを中に並べる。
+ *
+ * **ADMIN は同じコードの全アクションを内包する**（decide の matchingRows が
+ * そう扱う）。なので ADMIN があるとき、それ以下の広さのアクションは
+ * 冗長なので落とす。ただし **ADMIN より広いアクションは残す** —
+ * ADMIN が PLANT で READ が ALL なら、READ は本当に全社に届くため。
+ *
+ * アクション同士に上下は無い（EXPORT と READ はどちらが上でもない）ので、
+ * ADMIN 以外はまとめない。「閲覧できる」と「書き出せる」は別の事実。
+ */
+export function groupPermissionsByCode(
+  rows: readonly PermissionRow[],
+): CodePermission[] {
+  const byCode = new Map<string, PermissionRow[]>();
+  for (const row of highestScopeRows(rows)) {
+    const list = byCode.get(row.code);
+    if (list) list.push(row);
+    else byCode.set(row.code, [row]);
+  }
+
+  const out: CodePermission[] = [];
+  for (const [code, list] of byCode) {
+    const admin = list.find((r) => r.action === "ADMIN");
+    const kept = admin
+      ? list.filter(
+          (r) =>
+            r.action === "ADMIN" || scopeRank(r.scope) < scopeRank(admin.scope),
+        )
+      : list;
+    kept.sort(
+      (a, b) =>
+        PERMISSION_ACTIONS.indexOf(a.action) -
+        PERMISSION_ACTIONS.indexOf(b.action),
+    );
+    const first = kept[0];
+    const uniform =
+      first &&
+      kept.every(
+        (r) =>
+          r.scope === first.scope &&
+          r.scopeValues.length === first.scopeValues.length &&
+          r.scopeValues.every((v, i) => v === first.scopeValues[i]),
+      )
+        ? { scope: first.scope, scopeValues: first.scopeValues }
+        : null;
+    out.push({
+      code,
+      actions: kept.map((r) => ({
+        action: r.action,
+        scope: r.scope,
+        scopeValues: r.scopeValues,
+      })),
+      uniformScope: uniform,
+    });
+  }
+  return out.sort((a, b) => a.code.localeCompare(b.code));
+}

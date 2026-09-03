@@ -3,6 +3,7 @@ import {
   ALL_CODES,
   buildPermissionSet,
   decide,
+  groupPermissionsByCode,
   highestScopeRows,
   isSuperuser,
   PERMISSION_SCOPES,
@@ -361,5 +362,95 @@ describe("scopeRank", () => {
     expect(scopeRank("NOPE" as PermissionScope)).toBeGreaterThanOrEqual(
       PERMISSION_SCOPES.length,
     );
+  });
+});
+
+describe("groupPermissionsByCode — 権限コードごとに 1 行へまとめる", () => {
+  const row = (
+    code: string,
+    action: PermissionAction,
+    scope: PermissionScope,
+    scopeValues: string[] = ["*"],
+  ): PermissionRow => ({ code, action, scope, scopeValues });
+
+  it("同じコードの複数アクションが 1 行にまとまる（報告された症状）", () => {
+    const out = groupPermissionsByCode([
+      row("admin_manual", "EXPORT", "ALL"),
+      row("admin_manual", "READ", "ALL"),
+      row("admin_manual", "READ", "ALL"),
+      row("admin_manual", "READ", "ALL"),
+    ]);
+    expect(out).toHaveLength(1);
+    expect(out[0]?.code).toBe("admin_manual");
+    expect(out[0]?.actions.map((a) => a.action)).toEqual(["READ", "EXPORT"]);
+  });
+
+  it("scope が全アクションで同じなら uniformScope が入る", () => {
+    const out = groupPermissionsByCode([
+      row("approve", "READ", "ALL"),
+      row("approve", "EXPORT", "ALL"),
+    ]);
+    expect(out[0]?.uniformScope).toEqual({ scope: "ALL", scopeValues: ["*"] });
+  });
+
+  it("scope がアクションごとに違えば uniformScope は null", () => {
+    const out = groupPermissionsByCode([
+      row("quote", "READ", "ALL"),
+      row("quote", "UPDATE", "OWN"),
+    ]);
+    expect(out[0]?.uniformScope).toBeNull();
+    expect(out[0]?.actions).toHaveLength(2);
+  });
+
+  it("ADMIN は同じ広さ以下のアクションを内包するので落とす", () => {
+    const out = groupPermissionsByCode([
+      row("system", "ADMIN", "ALL"),
+      row("system", "READ", "ALL"),
+      row("system", "UPDATE", "PLANT", ["hq"]),
+    ]);
+    expect(out[0]?.actions.map((a) => a.action)).toEqual(["ADMIN"]);
+  });
+
+  it("ADMIN より広いアクションは残す（ADMIN=PLANT / READ=ALL）", () => {
+    const out = groupPermissionsByCode([
+      row("quote", "ADMIN", "PLANT", ["hq"]),
+      row("quote", "READ", "ALL"),
+    ]);
+    expect(out[0]?.actions.map((a) => a.action)).toEqual(["READ", "ADMIN"]);
+  });
+
+  it("アクション同士に上下は無いので ADMIN 以外はまとめない", () => {
+    const out = groupPermissionsByCode([
+      row("quote", "READ", "ALL"),
+      row("quote", "EXPORT", "ALL"),
+      row("quote", "DELETE", "ALL"),
+    ]);
+    expect(out[0]?.actions).toHaveLength(3);
+  });
+
+  it("コードごとに 1 行、コード順に並ぶ", () => {
+    const out = groupPermissionsByCode([
+      row("quote", "READ", "ALL"),
+      row("approve", "READ", "ALL"),
+      row("billing_closing", "READ", "ALL"),
+    ]);
+    expect(out.map((o) => o.code)).toEqual([
+      "approve",
+      "billing_closing",
+      "quote",
+    ]);
+  });
+
+  it("重複した grant 行は 1 つに畳まれる（highestScopeRows を通すため）", () => {
+    const out = groupPermissionsByCode([
+      row("quote", "READ", "PLANT", ["hq"]),
+      row("quote", "READ", "PLANT", ["osaka"]),
+    ]);
+    expect(out[0]?.actions).toHaveLength(1);
+    expect(out[0]?.actions[0]?.scopeValues).toEqual(["hq", "osaka"]);
+  });
+
+  it("空を渡せば空", () => {
+    expect(groupPermissionsByCode([])).toEqual([]);
   });
 });

@@ -9,7 +9,7 @@ import "server-only";
  */
 
 import {
-  highestScopeRows,
+  groupPermissionsByCode,
   type PermissionAction,
   type PermissionScope,
 } from "@ckk/authz-core";
@@ -44,12 +44,20 @@ export interface AdminUserAssignment extends AdminUserRole {
   deactivateAt: string | null;
 }
 
-export interface AdminUserPermission {
-  permissionCode: string;
+/** 1 アクションぶんの到達範囲。 */
+export interface AdminUserPermissionAction {
   action: string;
   scope: string;
   /** grant のスコープ対象コード（'*' = ワイルドカード）。ALL/OWN では無意味 */
   scopeValues: string[];
+}
+
+/** 実効権限の 1 行 = 1 権限コード（アクションは中に並べる）。 */
+export interface AdminUserPermission {
+  permissionCode: string;
+  actions: AdminUserPermissionAction[];
+  /** 全アクションで範囲が同じならその 1 つ。違えばアクションごとに出す。 */
+  uniformScope: { scope: string; scopeValues: string[] } | null;
 }
 
 /** 所属拠点（user_plants — PLANT/REGION スコープ解決の基盤）。 */
@@ -206,28 +214,31 @@ export async function getAdminUser(
       assignedAt: a.assignedAt?.toISOString() ?? null,
       deactivateAt: a.deactivateAt?.toISOString() ?? null,
     })),
-    // 同じ (権限コード × アクション) が複数ロールから何行も並ぶと「結局どこまで
-    // 届くのか」が読めない。判定（decide）は従来どおり全行の和集合で行い、
-    // **表示だけ** を最も広い scope の 1 行に畳む（@ckk/authz-core が唯一の定義）。
-    permissions: highestScopeRows(
+    // 1 行 = 1 権限コード。同じコードが複数ロール・複数アクションで何行も
+    // 並ぶと「この権限で何ができるのか」が読めない（携帯では特に）。
+    // 判定（decide）は従来どおり全行の和集合で行い、**表示だけ** を畳む。
+    // まとめ方の定義は @ckk/authz-core が 1 本持つ。
+    permissions: groupPermissionsByCode(
       permissions.map((p) => ({
         code: p.permission_code,
         action: p.action as PermissionAction,
         scope: p.scope as PermissionScope,
         scopeValues: p.scope_values ?? ["*"],
       })),
-    )
-      .map((p) => ({
-        permissionCode: p.code,
-        action: p.action as string,
-        scope: p.scope as string,
-        scopeValues: [...p.scopeValues],
-      }))
-      .sort(
-        (a, b) =>
-          a.permissionCode.localeCompare(b.permissionCode) ||
-          a.action.localeCompare(b.action),
-      ),
+    ).map((g) => ({
+      permissionCode: g.code,
+      actions: g.actions.map((a) => ({
+        action: a.action as string,
+        scope: a.scope as string,
+        scopeValues: [...a.scopeValues],
+      })),
+      uniformScope: g.uniformScope
+        ? {
+            scope: g.uniformScope.scope as string,
+            scopeValues: [...g.uniformScope.scopeValues],
+          }
+        : null,
+    })),
     plants: u.userPlants.map((up) => ({
       id: up.plant.id,
       code: up.plant.code,

@@ -17,6 +17,7 @@ export {
   ALL_CODES,
   buildPermissionSet,
   decide,
+  groupPermissionsByCode,
   highestScopeRows,
   isSuperuser,
   PERMISSION_ACTIONS,
