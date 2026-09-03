@@ -790,9 +790,6 @@
     "yesterday": "昨天",
     "daysAgo": "{n} 天前",
     "step": "工序",
-    "zoomIn": "放大",
-    "zoomOut": "缩小",
-    "resetZoom": "恢复原始大小",
     "userChangeUpdateRoles": "变更角色分配",
     "roleHash": "角色 #{id}",
     "setRolesTo": "将角色设置为 {names}",
@@ -2132,7 +2129,17 @@
       "auditExportedToExcel": "已将回答导出为 Excel（{count} 条{truncated}）",
       "auditExportTruncatedSuffix": "，因达到上限而截断",
       "exportFilenamePartialSuffix": "_部分",
-      "everyFieldNeedsASection": "启用分节后，所有项目都必须归属某个分节"
+      "everyFieldNeedsASection": "启用分节后，所有项目都必须归属某个分节",
+      "transferHeaderTitle": "CKK 业务管理系统 — 表单定义",
+      "transferHeaderFieldTitle": "标题",
+      "transferHeaderFieldKind": "类别",
+      "transferHeaderFieldCount": "项目数",
+      "transferHeaderSource": "导出来源",
+      "transferHeaderExportedAt": "导出时间",
+      "transferHeaderNote1": "此文件仅包含表单的结构，不包含回答与共享设置",
+      "transferHeaderNote2": "（共享对象因环境而异，导入的表单以未发布状态开始。）",
+      "transferHeaderNote3": "导入请从 表单 > 导入 中选择此文件，或粘贴其内容。",
+      "transferHeaderNote4": "请勿编辑以下 JSON（一旦损坏将无法导入）。"
     },
     "tasksActions": {
       "loginRequired": "请登录",
@@ -2270,7 +2277,9 @@
       "notYetProcessed": "未处理",
       "approvalRecordSectionTitle": "审批记录",
       "stepNoColumn": "级",
-      "approverColumn": "审批人"
+      "approverColumn": "审批人",
+      "formCodeLine": "表单编号：{code}",
+      "delegateForSuffix": "{approver}（{delegateFor} 的代理）"
     }
   },
   "production": {
@@ -2992,6 +3001,23 @@
     },
     "productRoutes": {
       "theSelectedProcessRouteIsNot": "所选的工序路线不属于该产品"
+    },
+    "inspectionSheetPdf": {
+      "equipmentLaser": "激光",
+      "equipmentProjector": "投影仪",
+      "equipmentPick": "杠杆百分表",
+      "equipmentScale": "直尺",
+      "equipmentMicroscope": "显微镜",
+      "equipmentVisual": "目视",
+      "equipmentCaliper": "卡尺",
+      "inspectionEquipment": "检查设备",
+      "passOrFail": "合格 ・ 不合格",
+      "passFail": "合否",
+      "overflowNote": "…共 {count} 支",
+      "toleranceTop": "公差上偏差",
+      "toleranceBottom": "公差下偏差",
+      "upperLimit": "上限",
+      "lowerLimit": "下限"
     }
   },
   "purchase": {
@@ -7251,7 +7277,8 @@
       "directToUserButEndUserNot": "为直送最终用户，但未指定最终用户",
       "noLineItems": "没有任何明细",
       "lineProductNotIdentified": "第 {rows} 行明细：产品未确定",
-      "lineUnitPriceNotEntered": "第 {rows} 行明细：单价未输入"
+      "lineUnitPriceNotEntered": "第 {rows} 行明细：单价未输入",
+      "andNMore": "其他 {count} 件"
     },
     "orderLineCore": {
       "confirmedLineCannotBeChanged": "已确认的订单明细无法更改",
@@ -7703,7 +7730,9 @@
     "targetCancelRequestNotFound": "未找到作废申请",
     "cancelRequestNotPending": "此申请已处理",
     "chainCancelNote": "因作废订单确认书 {number} 而触发的连锁作废",
-    "cancelApplyFailed": "作废应用失败"
+    "cancelApplyFailed": "作废应用失败",
+    "lineNotCancellableState": "订单明细（分项号 {branch}）处于无法作废的状态",
+    "cancelAppliedNote": "已执行作废（理由：{reason}）— 明细 {lines} 件 / 解除预留 {released} 件 / 连锁作废工单 {woCount} 件"
   },
   "privilegedAccessGate": {
     "unknownOperation": "未知的特权操作：{key}（请在 lib/privileged-operations.ts 中注册）",
@@ -9148,6 +9177,13 @@
         "label": "默认值（覆盖）",
         "summary": "仅当希望该字段在此种类下使用不同的默认值时才填写。留空则使用产品项目中设置的默认值。"
       }
+    }
+  },
+  "docs": {
+    "zoomableImage": {
+      "zoomOut": "缩小",
+      "zoomIn": "放大",
+      "resetZoom": "恢复原始大小"
     }
   }
 }
