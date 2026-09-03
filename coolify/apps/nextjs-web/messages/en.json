@@ -6704,7 +6704,9 @@
       "watchedFolder": "Watched folder intake",
       "manualEntry": "Manual entry",
       "itemCountSuffix": " ({count} lines)",
-      "priceDiffLine": "Line {row} {actual} ≠ price list {expected}"
+      "priceDiffLine": "Line {row} {actual} ≠ price list {expected}",
+      "theseLinesUseAnOverriddenPrice": "The lines below are accepted at a unit price other than the price list. The override is deliberate, so it does not block the approval request — check the unit price before approving.",
+      "priceOverrideLine": "Line {row} {actual} (price list {expected})"
     },
     "orderLines": {
       "parentDocumentOfThisLine": "Parent document of this line",
@@ -7041,7 +7043,11 @@
       "priceMismatchCount": "{count} price mismatch(es)",
       "priceMismatchExpected": "Price mismatch (price list: {expected})",
       "unenteredCount": "{count} not entered",
-      "productSummaryAndMore": "{first} and {count} more"
+      "productSummaryAndMore": "{first} and {count} more",
+      "priceOverrideCount": "{count} overridden unit price(s)",
+      "lineOverrideText": "Line {row}: {actual} (price list {expected})",
+      "priceOverridden": "Overridden",
+      "priceOverriddenFromList": "Overridden (price list {expected})"
     },
     "orderAcceptanceIntakeTable": {
       "addedQueuedForExtraction": "Added {count} item(s) to the list. AI extraction will run in order after this",
@@ -7062,7 +7068,13 @@
     },
     "orderAcceptanceItemsEditor": {
       "lineCountAndTotalQuantity": "{count} line item(s) / total quantity",
-      "lineOrdinal": "Line {index}"
+      "lineOrdinal": "Line {index}",
+      "overridePrice": "Override the unit price",
+      "priceListPrice": "Price list {price}",
+      "priceListPriceWithTier": "Price list {price} ({tier})",
+      "fromPriceList": "From the price list",
+      "willReplaceWithList": "{entered} will be replaced by the price list unit price on save",
+      "overriddenFromList": "Overridden (price list {expected})"
     },
     "priceListDetail": {
       "confirmDeleteDiscountMessage": "Deletes \"{label}\". This cannot be undone.",
@@ -8313,7 +8325,7 @@
       },
       "unitPrice": {
         "label": "Unit price",
-        "summary": "The price per piece. If it differs from the price list's unit price, the difference is shown immediately."
+        "summary": "The price per piece. When a price list exists its unit price is used; to change it, turn on Override the unit price."
       },
       "deliveryDate": {
         "label": "Delivery date",

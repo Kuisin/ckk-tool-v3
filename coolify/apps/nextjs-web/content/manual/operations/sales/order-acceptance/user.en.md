@@ -11,7 +11,8 @@ The computer reads the order form sent by the customer (a PDF or a scanned image
 
 - Load the order form file, and it is registered with **the customer name, the items and the number of pieces already filled in**.
 - You can check what was read with your own eyes and correct it before moving on.
-- If a unit price differs from the [price list](/manual/en/operations/sales/price-list/user), **the screen tells you**.
+- The unit price is filled in from the [price list](/manual/en/operations/sales/price-list/user). Only when you accept the order at a different price do you turn on「単価を上書き」(override the unit price) on that row and set it yourself.
+- If a row differs from the price list **without** an override, **the screen tells you**.
 - After you get your manager's approval, you can make the **注文明細 (order lines)** all at once — one per line item.
 - If there is no order form file, you can register it by typing it in.
 - From a deployed order acceptance you can go straight on to **creating the delivery order**.
@@ -25,7 +26,8 @@ Use this when an order form arrives from a customer by fax or email.
 - **注文明細 (order line)** … the internal slip made for each line item of an order acceptance. It is the basis for manufacturing and shipping.
 - **明細 (line item)** … one row inside the order. It says which product and how many pieces.
 - **注文確定 (deploy)** … the action of making the order lines from an order acceptance all at once.
-- **価格差異 (price difference)** … when the unit price written on the order form differs from the price on the price list.
+- **価格差異 (price difference)** … when the unit price on a row that has no override differs from the price on the price list.
+- **単価を上書き (override the unit price)** … taking that row's unit price off the price list and setting it yourself. It is a deliberate price, so it is not a price difference (the approver still sees it).
 - **取込中 (importing) / 下書き (draft) / 承認依頼中 (pending approval) / 承認済 (approved) / 確定済 (deployed) / アーカイブ (archived) / キャンセル (cancelled)** … where the order acceptance stands now.
 
 ## Before you start
@@ -113,12 +115,14 @@ At the top of the screen, 「**製品**」 (products), 「**明細数 / 合計�
 
 > ⚠️ The total amount adds up **only the lines that have a unit price**. When some lines are still empty it says 「**単価未入力 N 件を除く**」 (excluding N lines with no unit price) — fill those in and it becomes the full amount.
 
-> 💡 A row whose unit price differs from the price list shows an orange「**価格差異**」(price difference) badge together with the correct price. A gray「**価格表なし**」(no price list) badge only means there is no price list yet for that customer and product — it is not a mistake.
+> 💡 On a row that has a price list, the unit price **comes from the price list and cannot be edited as-is** (the blue「**価格表 ￥…**」badge also shows which quantity tier applies). To accept it at a different price, turn on「**単価を上書き**」(override the unit price) on the right of that row and then edit it. An overridden row shows a violet「**上書き**」badge next to the price-list price, and「**単価の上書き N 件**」(N overridden unit prices) appears at the top of the screen.
+>
+> The orange「**価格差異**」(price difference) badge marks a row that differs from the price list **without** an override — for example because the price list changed after the draft was saved. A gray「**価格表なし**」(no price list) badge only means there is no price list yet for that customer and product — it is not a mistake, and the unit price on that row is free to enter.
 
 ## Asking for approval
 
 1. In view mode, press「**承認依頼**」(request approval) in the card at the very top of the screen. (The button is hidden while you are editing — save first.) The button stays disabled while something is missing: the card lists what it is (for example「顧客が未特定です」— no customer —, or「明細 2 行目: 単価が未入力です」— no unit price on row 2). Fix it with「**編集**」(edit) first.
-2. If there is a price difference, a screen called「価格差異の確認」(check the price difference) appears. Check the contents and press「**差異を確認して依頼**」(confirm the difference and request).
+2. If there is a price difference, a screen called「価格差異の確認」(check the price difference) appears. Check the contents and press「**差異を確認して依頼**」(confirm the difference and request). Rows with an overridden unit price **do not stop the request** (the price is deliberate), but the approver also sees them as「単価の上書き N 件」(N overridden unit prices).
 
 The status changes to「**承認依頼中**」(pending approval).
 
@@ -257,7 +261,11 @@ The quantity ordered. Correct it if the reading was wrong.
 
 ### Unit price [#field-unit-price]
 
-The price per piece. **If it differs from the price list, the difference is shown on the spot.** When it does, adjust the price on the quote first, then correct it here.
+The price per piece. **When a price list exists, its unit price is filled in and the field cannot be edited** (change the quantity and the price moves to the tier that covers it).
+
+To accept the order at a different price, turn on「**単価を上書き**」(override the unit price) on that row and then edit it. It starts from the price-list price, so you only change what needs changing. Turning the override off restores the price-list price — **if you save it off, the price you had typed is replaced by the price-list price**, and a badge says so before you save.
+
+For a customer and product with no price list, the field is free to enter from the start (there is no override switch).
 
 ### Delivery date [#field-delivery-date]
 

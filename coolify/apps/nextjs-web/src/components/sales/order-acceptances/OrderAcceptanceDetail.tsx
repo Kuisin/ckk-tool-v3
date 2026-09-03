@@ -160,6 +160,7 @@ import {
   toItemPayload,
   toItemRows,
 } from "./OrderAcceptanceItemsEditor";
+import { usePriceEntries } from "./usePriceEntries";
 
 const BASE_PATH = "/sales/order-acceptances";
 const SALES_ORDERS_PATH = "/sales/order-lines";
@@ -180,7 +181,11 @@ function stepperActive(status: string): number {
   }
 }
 
-const EMPTY_PRICE_CHECK: AcceptancePriceCheck = { lines: [], diffCount: 0 };
+const EMPTY_PRICE_CHECK: AcceptancePriceCheck = {
+  lines: [],
+  diffCount: 0,
+  overrideCount: 0,
+};
 
 export function OrderAcceptanceDetail({
   acceptance,
@@ -345,8 +350,10 @@ export function OrderAcceptanceDetail({
   const totals = acceptanceTotals(a.items);
   const products = productSummary(a.items, tr);
 
-  // §2 価格照合（P0-8）— 差異行と明細 id → 照合結果の索引。
+  // §2 価格照合（P0-8）— 差異行・上書き行と、明細 id → 照合結果の索引。
+  // 差異（説明のつかない食い違い）と上書き（人が宣言した単価）は別に出す。
   const diffLines = priceCheck.lines.filter((l) => l.diff);
+  const overrideLines = priceCheck.lines.filter((l) => l.overridden);
   const checkByItemId = new Map<string, AcceptancePriceCheckLine>(
     priceCheck.lines.map((l) => [l.itemId, l]),
   );
@@ -769,10 +776,42 @@ export function OrderAcceptanceDetail({
               </Alert>
             )}
 
+            {/*
+              §2 上書きサマリ — こちらは警告ではない（人が宣言した単価）。
+              ただし承認するのは「価格表どおり」ではなくこの単価なので、
+              承認者が読める場所に必ず出す。
+            */}
+            {priceCheck.overrideCount > 0 && (
+              <Alert
+                color="violet"
+                icon={<IconInfoCircle size={16} />}
+                title={tr("sales.orderAcceptanceDetail.priceOverrideCount", {
+                  count: priceCheck.overrideCount,
+                })}
+                variant="light"
+              >
+                <Stack gap={4}>
+                  <Text size="sm">
+                    {tr(
+                      "sales.orderAcceptances.theseLinesUseAnOverriddenPrice",
+                    )}
+                  </Text>
+                  {overrideLines.map((l) => (
+                    <Text key={l.itemId} size="sm">
+                      {tr("sales.orderAcceptanceDetail.lineOverrideText", {
+                        row: l.row,
+                        actual: formatMoney(l.actual),
+                        expected: formatMoney(l.expected),
+                      })}
+                    </Text>
+                  ))}
+                </Stack>
+              </Alert>
+            )}
+
             {a.status === "DRAFT" && editing ? (
               <DraftEditor
                 acceptance={a}
-                lineChecks={checkByItemId}
                 onClose={() => setEditing(false)}
                 plantOptions={plantOptions}
                 workLocationOptions={workLocationOptions}
@@ -1073,6 +1112,38 @@ export function OrderAcceptanceDetail({
                                       )}
                                     </Badge>
                                   )}
+                                  {/*
+                                    上書き — 価格表と違うのは意図なので警告色に
+                                    しない。ただし価格表の単価は併記する
+                                    （何から外した単価なのかが分からないと、
+                                    承認する側は判断できない）。
+                                    印は保存済みの行（it）から出す — 確定済み・
+                                    アーカイブ済みでは照合を回さないので、
+                                    照合結果（lc）から出すと消えてしまう。
+                                    「なぜこの単価なのか」は後から一番よく
+                                    訊かれる。
+                                  */}
+                                  {it.priceOverridden && (
+                                    <Badge
+                                      color="violet"
+                                      size="xs"
+                                      variant="light"
+                                    >
+                                      {lc?.expected != null &&
+                                      lc.expected !== it.unitPrice
+                                        ? tr(
+                                            "sales.orderAcceptanceDetail.priceOverriddenFromList",
+                                            {
+                                              expected: formatMoney(
+                                                lc.expected,
+                                              ),
+                                            },
+                                          )
+                                        : tr(
+                                            "sales.orderAcceptanceDetail.priceOverridden",
+                                          )}
+                                    </Badge>
+                                  )}
                                   {lc?.unpriced && (
                                     <Badge
                                       color="gray"
@@ -1345,14 +1416,11 @@ export function OrderAcceptanceDetail({
  */
 function DraftEditor({
   acceptance,
-  lineChecks,
   onClose,
   plantOptions,
   workLocationOptions,
 }: {
   acceptance: OrderAcceptanceView;
-  /** 保存済み明細 id → 価格照合結果（行バッジ表示用）。 */
-  lineChecks: Map<string, AcceptancePriceCheckLine>;
   /** 閲覧モードへ戻す（保存成功 / キャンセル）。 */
   onClose: () => void;
   /** 担当拠点の選択肢（有効のみ）。 */
@@ -1400,6 +1468,11 @@ function DraftEditor({
   const [items, setItems] = useState<ItemRowForm[]>(() =>
     a.items.length > 0 ? toItemRows(a.items) : [newItemRow()],
   );
+  // 明細の単価は既定で価格表が持つ（§2）。編集中の顧客の価格表を引いて、
+  // 行ごとの単価をその場で解決する（保存済み結果の照合ではなく、いまの入力
+  // に対する解決 — 顧客や数量を変えた瞬間に単価が追随する）。
+  const priceEntries = usePriceEntries(customerId);
+  const priceContext = { customerBpId: customerId, priceEntries };
 
   /** 入力内容の指紋 — 変更の有無だけを見るので中身の意味は問わない。 */
   const fingerprint = JSON.stringify([
@@ -1441,7 +1514,7 @@ function DraftEditor({
         quoteNumber: quoteNumber || null,
         orderDate,
         notes: notes || null,
-        items: toItemPayload(items),
+        items: toItemPayload(items, priceContext, tr),
       });
       if (result.ok) {
         notifications.show({
@@ -1691,8 +1764,8 @@ function DraftEditor({
       >
         <OrderAcceptanceItemsEditor
           items={items}
-          lineChecks={Object.fromEntries(lineChecks)}
           onChange={setItems}
+          priceContext={priceContext}
         />
       </FormSection>
 

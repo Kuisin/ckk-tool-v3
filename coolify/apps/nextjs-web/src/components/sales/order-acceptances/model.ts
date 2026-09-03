@@ -101,6 +101,12 @@ export interface OrderAcceptanceItemView {
   orderType: string;
   quantity: number;
   unitPrice: number | null;
+  /**
+   * 単価を価格表から外して人が決めた行か（§2 価格差異）。
+   * false = 単価は価格表が持つ（保存時にサーバーが解決した値）。
+   * 該当する価格表が無い行では意味を持たない（常に false）。
+   */
+  priceOverridden: boolean;
   deliveryDate: string | null; // yyyy-mm-dd
   notes: string | null;
 }

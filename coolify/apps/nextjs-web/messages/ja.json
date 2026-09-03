@@ -6704,7 +6704,9 @@
       "watchedFolder": "監視フォルダ取込",
       "manualEntry": "手入力",
       "itemCountSuffix": "（明細 {count} 件）",
-      "priceDiffLine": "行{row} {actual} ≠ 価格表 {expected}"
+      "priceDiffLine": "行{row} {actual} ≠ 価格表 {expected}",
+      "theseLinesUseAnOverriddenPrice": "以下の明細は価格表と別の単価で受けます。意図的な上書きなので承認依頼は止まりませんが、承認前に単価をご確認ください。",
+      "priceOverrideLine": "行{row} {actual}（価格表 {expected}）"
     },
     "orderLines": {
       "parentDocumentOfThisLine": "この明細の親書類",
@@ -7041,7 +7043,11 @@
       "priceMismatchCount": "価格差異 {count} 件",
       "priceMismatchExpected": "価格差異（価格表 {expected}）",
       "unenteredCount": "未入力 {count} 件",
-      "productSummaryAndMore": "{first} ほか {count} 種"
+      "productSummaryAndMore": "{first} ほか {count} 種",
+      "priceOverrideCount": "単価の上書き {count} 件",
+      "lineOverrideText": "行{row}: {actual}（価格表 {expected}）",
+      "priceOverridden": "上書き",
+      "priceOverriddenFromList": "上書き（価格表 {expected}）"
     },
     "orderAcceptanceIntakeTable": {
       "addedQueuedForExtraction": "{count} 件を一覧に追加しました。AI抽出はこのあと順番に実行されます",
@@ -7062,7 +7068,13 @@
     },
     "orderAcceptanceItemsEditor": {
       "lineCountAndTotalQuantity": "明細 {count} 件 / 合計数量",
-      "lineOrdinal": "明細 {index}"
+      "lineOrdinal": "明細 {index}",
+      "overridePrice": "単価を上書き",
+      "priceListPrice": "価格表 {price}",
+      "priceListPriceWithTier": "価格表 {price}（{tier}）",
+      "fromPriceList": "価格表から",
+      "willReplaceWithList": "{entered} は保存時に価格表の単価へ置き換わります",
+      "overriddenFromList": "上書き（価格表 {expected}）"
     },
     "priceListDetail": {
       "confirmDeleteDiscountMessage": "「{label}」を削除します。この操作は取り消せません。",
@@ -8313,7 +8325,7 @@
       },
       "unitPrice": {
         "label": "単価",
-        "summary": "1 本あたりの価格です。価格表の単価と違うときは、その場で差異として示されます。"
+        "summary": "1 本あたりの価格です。価格表があるときは価格表の単価が入り、変えるときは「単価を上書き」を入れます。"
       },
       "deliveryDate": {
         "label": "納期",
