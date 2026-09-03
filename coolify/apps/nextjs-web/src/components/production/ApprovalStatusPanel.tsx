@@ -26,7 +26,7 @@ import {
   Title,
 } from "@mantine/core";
 import { IconAlertTriangle } from "@tabler/icons-react";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import {
   approveWorkOrder,
   rejectWorkOrder,
@@ -48,12 +48,9 @@ import {
   ProcedurePanel,
   type ProcedureStage,
 } from "@/components/ui/ProcedurePanel";
+import { workOrderHistoryActionLabel } from "@/lib/enum-labels";
 import { statusLabel } from "@/lib/status-map";
-import {
-  WORK_ORDER_HISTORY_ACTION_LABEL,
-  type WorkOrderHistoryView,
-  type WorkOrderView,
-} from "./work-orders/model";
+import type { WorkOrderHistoryView, WorkOrderView } from "./work-orders/model";
 
 export type {
   ApprovalTrailRecordView,
@@ -119,6 +116,7 @@ export function WorkOrderProcedurePanel({
   trail?: ApprovalTrailView[];
 }) {
   const tr = useTranslations();
+  const locale = useLocale();
   const fmt = useFormat();
   const wo = workOrder;
   const records = [...history].reverse();
@@ -359,7 +357,7 @@ export function WorkOrderProcedurePanel({
             {records.map((h, i) => (
               <Group gap="sm" key={`${h.at}-${h.action}-${i}`} wrap="nowrap">
                 <Badge color="gray" size="sm" variant="light">
-                  {WORK_ORDER_HISTORY_ACTION_LABEL[h.action] ?? h.action}
+                  {workOrderHistoryActionLabel(h.action, locale)}
                 </Badge>
                 <Text size="xs">{h.user}</Text>
                 <Text c="dimmed" className="tabular-nums" size="xs">
@@ -396,6 +394,7 @@ export function ApprovalStatusPanel({
   trail?: ApprovalTrailView[];
 }) {
   const tr = useTranslations();
+  const locale = useLocale();
   const fmt = useFormat();
   // 操作履歴は新しい順で表示
   const records = [...history].reverse();
@@ -438,7 +437,7 @@ export function ApprovalStatusPanel({
             {records.map((h, i) => (
               <Group gap="sm" key={`${h.at}-${h.action}-${i}`} wrap="nowrap">
                 <Badge color="gray" size="sm" variant="light">
-                  {WORK_ORDER_HISTORY_ACTION_LABEL[h.action] ?? h.action}
+                  {workOrderHistoryActionLabel(h.action, locale)}
                 </Badge>
                 <Text size="xs">{h.user}</Text>
                 <Text c="dimmed" className="tabular-nums" size="xs">

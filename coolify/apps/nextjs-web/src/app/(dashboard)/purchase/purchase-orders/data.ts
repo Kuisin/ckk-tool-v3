@@ -17,6 +17,7 @@ import type { HistoryEntry } from "@/lib/approvals";
 import { checkPermission } from "@/lib/authz";
 import { type Prisma, prisma } from "@/lib/db";
 import { type LocalizedText, localized } from "@/lib/format";
+import type { Tr } from "@/lib/i18n";
 
 // 一覧クエリの取得上限（監査 P2-8 — 全件フェッチのデータ増加対策）。
 // DataTable はクライアントページングのため、最新分のみで実用上十分。
@@ -85,6 +86,7 @@ export async function fetchPurchaseOrders(): Promise<PurchaseOrderRow[]> {
 /** 詳細 (PU22) view model。id = po_number。未存在は null。 */
 export async function fetchPurchaseOrder(
   poNumber: string,
+  tr: Tr,
 ): Promise<PurchaseOrderView | null> {
   const authz = await checkPermission("purchase_order", "READ");
   if (!authz.ok) return null;
@@ -117,7 +119,7 @@ export async function fetchPurchaseOrder(
       })
     : [];
   const nameOf = (id: string | null | undefined) =>
-    (id && users.find((u) => u.id === id)?.displayName) || "システム";
+    (id && users.find((u) => u.id === id)?.displayName) || tr("common.system");
 
   return {
     id: r.id,

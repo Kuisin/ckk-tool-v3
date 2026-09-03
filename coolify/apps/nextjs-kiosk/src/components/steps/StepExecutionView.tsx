@@ -220,8 +220,10 @@ export function StepExecutionView({
           <Stack gap={4}>
             <Text c="dimmed" size="sm">
               {fillMessage(m.steps.card.workOrder, { n: step.workOrderNumber })}
-              {step.plantName ? ` ・ ${step.plantName}` : ""}
-              {step.workLocationName ? ` ・ ${step.workLocationName}` : ""}
+              {step.plantName ? ` ${m.common.separator} ${step.plantName}` : ""}
+              {step.workLocationName
+                ? ` ${m.common.separator} ${step.workLocationName}`
+                : ""}
             </Text>
             <Title order={3}>{step.stepName}</Title>
             <Text c="dimmed">{step.productName}</Text>
@@ -279,7 +281,8 @@ export function StepExecutionView({
                   </Text>
                   {locationGate.allowed.map((a) => (
                     <Text key={a.label} size="sm">
-                      ・{a.label}
+                      {m.common.separator}
+                      {a.label}
                       {a.deviceNames.length > 0
                         ? `（${fillMessage(m.steps.location.devicesAt, {
                             names: a.deviceNames.join(" / "),

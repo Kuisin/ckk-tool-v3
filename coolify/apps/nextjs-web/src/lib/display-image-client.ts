@@ -9,11 +9,13 @@
  * `run(() => …)` はそのまま使える。
  */
 
+import type { Tr } from "./i18n";
 import type { ActionResult } from "./server-action";
 
 export async function uploadDisplayImage(
   displayId: string,
   file: File,
+  tr: Tr,
 ): Promise<ActionResult> {
   let res: Response;
   try {
@@ -24,9 +26,9 @@ export async function uploadDisplayImage(
       body,
     });
   } catch {
-    return { ok: false, error: "通信に失敗しました" };
+    return { ok: false, error: tr("common.communicationFailed") };
   }
   const json = (await res.json().catch(() => null)) as ActionResult | null;
   if (json && typeof json === "object" && "ok" in json) return json;
-  return { ok: false, error: "画像の保存に失敗しました" };
+  return { ok: false, error: tr("common.imageSaveFailed") };
 }

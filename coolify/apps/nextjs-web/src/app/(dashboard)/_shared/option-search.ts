@@ -8,6 +8,7 @@
  * 値は内部 id（連番）の文字列、ラベルは表示コード + 名称。
  */
 
+import { getTranslations } from "next-intl/server";
 import { checkPermission, requireAnyRead } from "@/lib/authz";
 import { bpMatchesQuery } from "@/lib/bp-search";
 import { prisma } from "@/lib/db";
@@ -421,6 +422,7 @@ export async function f4SearchProducts(
   filters: Record<string, string>,
 ): Promise<F4SearchRow[]> {
   if (!(await requireAnyRead(MASTER_PICKER_CODES)).ok) return [];
+  const tr = await getTranslations();
   const name = s(filters.name);
   const materialType = s(filters.materialType);
   // 名称欄はキーワード（match_names）込みで判定する（略称・英字でも当たる）。
@@ -454,7 +456,7 @@ export async function f4SearchProducts(
       value: String(p.id),
       label: productLabel(p),
       cells: [
-        formatProductNumber(p.yearMonth, p.seq) ?? "未採番",
+        formatProductNumber(p.yearMonth, p.seq) ?? tr("common.notNumbered"),
         nameJa,
         p.materialType?.code ?? "—",
         p.unit,
@@ -700,6 +702,7 @@ export async function searchShippableAcceptanceOptions(
 ): Promise<SearchOption[]> {
   if (!(await requireAnyRead(["delivery_order", "order_acceptance"])).ok)
     return [];
+  const tr = await getTranslations();
   const q = query.trim();
   const rows = await prisma.orderAcceptance.findMany({
     where: {
@@ -732,7 +735,7 @@ export async function searchShippableAcceptanceOptions(
     value: formatDocNumber("ORD", r),
     label: `${formatDocNumber("ORD", r)} ${localized(
       r.customerBp?.name as LocalizedText | null,
-    )}（明細 ${r.items.length} 件）`,
+    )}${tr("sales.orderAcceptances.itemCountSuffix", { count: r.items.length })}`,
   }));
 }
 

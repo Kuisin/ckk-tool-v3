@@ -19,15 +19,19 @@ import {
 } from "@tabler/icons-react";
 import { getTranslations } from "next-intl/server";
 import { resolveShortLink } from "@/lib/link-index";
+import { APP_NAME } from "@/lib/page-title";
 import { followShortLinkAction } from "./actions";
 
 export const dynamic = "force-dynamic";
 
-export const metadata = {
-  title: "外部サイトへ移動 | CKK 業務管理システム",
-  // 短縮リンクは索引されたくない。
-  robots: { index: false, follow: false },
-};
+export async function generateMetadata() {
+  const tr = await getTranslations();
+  return {
+    title: `${tr("l.page.goToAnExternalSite")} | ${APP_NAME}`,
+    // 短縮リンクは索引されたくない。
+    robots: { index: false, follow: false },
+  };
+}
 
 /**
  * 外部リンク確認ページ（`/l/<code>`）。
@@ -135,7 +139,7 @@ export default async function ShortLinkPage({
               <input name="code" type="hidden" value={code} />
               <Group justify="space-between">
                 <Anchor c="dimmed" href="/" size="sm">
-                  キャンセル
+                  {tr("common.cancel")}
                 </Anchor>
                 <Button
                   rightSection={<IconExternalLink size={16} />}

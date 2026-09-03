@@ -120,10 +120,11 @@ describe("resolveProductType", () => {
 describe("defaults", () => {
   it("default defs and types pass their schemas", () => {
     expect(
-      productItemDefsArraySchema.safeParse(DEFAULT_PRODUCT_ITEM_DEFS).success,
+      productItemDefsArraySchema(tr).safeParse(DEFAULT_PRODUCT_ITEM_DEFS)
+        .success,
     ).toBe(true);
     expect(
-      productTypesArraySchema.safeParse(DEFAULT_PRODUCT_TYPES).success,
+      productTypesArraySchema(tr).safeParse(DEFAULT_PRODUCT_TYPES).success,
     ).toBe(true);
   });
 

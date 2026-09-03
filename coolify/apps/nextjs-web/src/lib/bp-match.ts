@@ -76,12 +76,16 @@ const HONORIFICS = /(御中|様|殿|各位)\s*$/u;
  * `有沢製作所` の `有` のような社名の一部と見分けが付かなくなる。
  * （`㈱` は NFKC で `(株)` になるので、この 1 本で両方を拾う）
  */
+/**
+ * 法人格の表記そのもの（company-aliases.ts LEGAL_FORMS と同分類）。
+ * 突合ロジックの入力であって UI 文言ではない。
+ */
 function expandLegalMarks(raw: string): string {
   return raw
     .normalize("NFKC")
-    .replace(/[(（]\s*株\s*[)）]/g, "株式会社")
-    .replace(/[(（]\s*有\s*[)）]/g, "有限会社")
-    .replace(/[(（]\s*同\s*[)）]/g, "合同会社");
+    .replace(/[(（]\s*株\s*[)）]/g, "株式会社") // i18n-ignore
+    .replace(/[(（]\s*有\s*[)）]/g, "有限会社") // i18n-ignore
+    .replace(/[(（]\s*同\s*[)）]/g, "合同会社"); // i18n-ignore
 }
 
 /**

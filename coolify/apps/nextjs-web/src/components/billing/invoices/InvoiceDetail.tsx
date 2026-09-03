@@ -355,7 +355,7 @@ export function InvoiceDetail({
           value={<MoneyText ta="left" value={invoice.subtotal} />}
         />
         <FieldValue
-          label={taxLabel(invoice.taxType)}
+          label={taxLabel(invoice.taxType, tr)}
           value={<MoneyText ta="left" value={invoice.taxAmount} />}
         />
         <FieldValue
@@ -468,7 +468,7 @@ export function InvoiceDetail({
                 <Table.Td />
               </Table.Tr>
               <Table.Tr>
-                <Table.Td fw={700}>{taxLabel(invoice.taxType)}</Table.Td>
+                <Table.Td fw={700}>{taxLabel(invoice.taxType, tr)}</Table.Td>
                 <Table.Td />
                 <Table.Td />
                 <Table.Td fw={700} ta="right">

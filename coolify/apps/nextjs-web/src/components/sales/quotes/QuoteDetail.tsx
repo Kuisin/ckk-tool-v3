@@ -347,6 +347,7 @@ export function QuoteDetail({
                   const tierRef = findPriceTierRefIn(
                     relatedEntries,
                     it.priceTierId,
+                    tr,
                   );
                   return (
                     <Table.Tr key={it.id}>

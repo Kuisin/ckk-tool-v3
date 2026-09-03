@@ -203,7 +203,7 @@ export function parseFormExport(text: string, tr: Tr): ParseResult {
     };
   }
 
-  const parsedFields = parseFormFields(form.fields ?? []);
+  const parsedFields = parseFormFields(form.fields ?? [], tr);
   if (!parsedFields.ok) {
     return {
       ok: false,

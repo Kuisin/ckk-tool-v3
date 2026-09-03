@@ -1,4 +1,6 @@
+import { createTranslator } from "next-intl";
 import { describe, expect, it } from "vitest";
+import ja from "../../messages/ja.json";
 import {
   canBeTitleField,
   canEditResponse,
@@ -18,6 +20,8 @@ import {
   validateFieldValue,
 } from "./form-schema";
 
+const tr = createTranslator({ locale: "ja", messages: ja });
+
 function field(over: Partial<FormFieldDef>): FormFieldDef {
   return {
     key: "f1",
@@ -31,29 +35,33 @@ function field(over: Partial<FormFieldDef>): FormFieldDef {
 
 describe("validateFieldValue", () => {
   it("必須の空値だけを弾く", () => {
-    expect(validateFieldValue(field({ required: true }), "")).toMatch("必須");
-    expect(validateFieldValue(field({ required: true }), "  ")).toMatch("必須");
-    expect(validateFieldValue(field({ required: false }), "")).toBeNull();
-    expect(validateFieldValue(field({ required: true }), "x")).toBeNull();
+    expect(validateFieldValue(field({ required: true }), "", tr)).toMatch(
+      "必須",
+    );
+    expect(validateFieldValue(field({ required: true }), "  ", tr)).toMatch(
+      "必須",
+    );
+    expect(validateFieldValue(field({ required: false }), "", tr)).toBeNull();
+    expect(validateFieldValue(field({ required: true }), "x", tr)).toBeNull();
   });
 
   it("数値は範囲を見る", () => {
     const f = field({ type: "number", min: 1, max: 10 });
-    expect(validateFieldValue(f, "5")).toBeNull();
-    expect(validateFieldValue(f, "0")).toMatch("1 以上");
-    expect(validateFieldValue(f, "11")).toMatch("10 以下");
-    expect(validateFieldValue(f, "abc")).toMatch("数値");
+    expect(validateFieldValue(f, "5", tr)).toBeNull();
+    expect(validateFieldValue(f, "0", tr)).toMatch("1 以上");
+    expect(validateFieldValue(f, "11", tr)).toMatch("10 以下");
+    expect(validateFieldValue(f, "abc", tr)).toMatch("数値");
   });
 
   it("日付・時刻は形式を見る", () => {
     expect(
-      validateFieldValue(field({ type: "date" }), "2026-08-26"),
+      validateFieldValue(field({ type: "date" }), "2026-08-26", tr),
     ).toBeNull();
-    expect(validateFieldValue(field({ type: "date" }), "2026/08/26")).toMatch(
-      "日付",
-    );
-    expect(validateFieldValue(field({ type: "time" }), "09:30")).toBeNull();
-    expect(validateFieldValue(field({ type: "time" }), "25:00")).toMatch(
+    expect(
+      validateFieldValue(field({ type: "date" }), "2026/08/26", tr),
+    ).toMatch("日付");
+    expect(validateFieldValue(field({ type: "time" }), "09:30", tr)).toBeNull();
+    expect(validateFieldValue(field({ type: "time" }), "25:00", tr)).toMatch(
       "時刻",
     );
   });
@@ -64,29 +72,33 @@ describe("validateFieldValue", () => {
       { value: "b", label: { ja: "い", en: "b" } },
     ];
     expect(
-      validateFieldValue(field({ type: "select", options: opts }), "a"),
+      validateFieldValue(field({ type: "select", options: opts }), "a", tr),
     ).toBeNull();
     expect(
-      validateFieldValue(field({ type: "select", options: opts }), "z"),
+      validateFieldValue(field({ type: "select", options: opts }), "z", tr),
     ).toMatch("選択肢");
     expect(
-      validateFieldValue(field({ type: "multiselect", options: opts }), [
-        "a",
-        "b",
-      ]),
+      validateFieldValue(
+        field({ type: "multiselect", options: opts }),
+        ["a", "b"],
+        tr,
+      ),
     ).toBeNull();
     expect(
-      validateFieldValue(field({ type: "multiselect", options: opts }), [
-        "a",
-        "z",
-      ]),
+      validateFieldValue(
+        field({ type: "multiselect", options: opts }),
+        ["a", "z"],
+        tr,
+      ),
     ).toMatch("選択肢");
   });
 
   it("lookup は id を持つオブジェクトを要求する", () => {
     const f = field({ type: "lookup", lookup: { source: "customer" } });
-    expect(validateFieldValue(f, { id: "bp1", label: "取引先A" })).toBeNull();
-    expect(validateFieldValue(f, "bp1")).toMatch("選択");
+    expect(
+      validateFieldValue(f, { id: "bp1", label: "取引先A" }, tr),
+    ).toBeNull();
+    expect(validateFieldValue(f, "bp1", tr)).toMatch("選択");
   });
 
   it("正規表現は形式チェックに使い、メッセージを差し替えられる", () => {
@@ -94,8 +106,8 @@ describe("validateFieldValue", () => {
       pattern: "^[0-9]{3}-[0-9]{4}$",
       patternMessage: "郵便番号の形式で入力してください",
     });
-    expect(validateFieldValue(f, "123-4567")).toBeNull();
-    expect(validateFieldValue(f, "1234567")).toBe(
+    expect(validateFieldValue(f, "123-4567", tr)).toBeNull();
+    expect(validateFieldValue(f, "1234567", tr)).toBe(
       "郵便番号の形式で入力してください",
     );
   });
@@ -112,15 +124,15 @@ describe("validateFieldValue", () => {
         }),
       ],
     });
-    expect(validateFieldValue(f, [{ name: "山崎" }])).toBeNull();
-    expect(validateFieldValue(f, [{ name: "山崎" }, { name: "" }])).toMatch(
+    expect(validateFieldValue(f, [{ name: "山崎" }], tr)).toBeNull();
+    expect(validateFieldValue(f, [{ name: "山崎" }, { name: "" }], tr)).toMatch(
       "2 行目",
     );
   });
 
   it("関連レコード一覧は表示専用なので必須にしても通す", () => {
     const f = field({ type: "related", required: true });
-    expect(validateFieldValue(f, null)).toBeNull();
+    expect(validateFieldValue(f, null, tr)).toBeNull();
   });
 });
 
@@ -141,10 +153,10 @@ describe("validateAnswers / toPlainAnswers", () => {
   ];
 
   it("項目キーごとにエラーを返す", () => {
-    expect(validateAnswers(fields, { title: "", company: null })).toEqual({
+    expect(validateAnswers(fields, { title: "", company: null }, tr)).toEqual({
       title: "案件名 は必須です",
     });
-    expect(validateAnswers(fields, { title: "リーマ" })).toEqual({});
+    expect(validateAnswers(fields, { title: "リーマ" }, tr)).toEqual({});
   });
 
   it("平文射影は lookup のラベルを使う", () => {
@@ -234,55 +246,62 @@ describe("parseFormFields", () => {
   ];
 
   it("妥当な定義を通す", () => {
-    const r = parseFormFields(ok);
+    const r = parseFormFields(ok, tr);
     expect(r.ok).toBe(true);
   });
 
   it("キー重複を弾く", () => {
-    const r = parseFormFields([ok[0], { ...ok[0], order: 1 }]);
+    const r = parseFormFields([ok[0], { ...ok[0], order: 1 }], tr);
     expect(r.ok).toBe(false);
     if (!r.ok) expect(r.error).toContain("重複");
   });
 
   it("識別子でないキーを弾く", () => {
-    const r = parseFormFields([{ ...ok[0], key: "1bad" }]);
+    const r = parseFormFields([{ ...ok[0], key: "1bad" }], tr);
     expect(r.ok).toBe(false);
   });
 
   it("危険な正規表現を保存時に弾く", () => {
-    const r = parseFormFields([{ ...ok[0], pattern: "(a+)+" }]);
+    const r = parseFormFields([{ ...ok[0], pattern: "(a+)+" }], tr);
     expect(r.ok).toBe(false);
   });
 
   it("サブテーブルの列にサブテーブルは置けない", () => {
-    const r = parseFormFields([
-      {
-        ...ok[0],
-        type: "table",
-        columns: [{ ...ok[0], key: "inner", type: "table" }],
-      },
-    ]);
+    const r = parseFormFields(
+      [
+        {
+          ...ok[0],
+          type: "table",
+          columns: [{ ...ok[0], key: "inner", type: "table" }],
+        },
+      ],
+      tr,
+    );
     expect(r.ok).toBe(false);
   });
 
   it("見出し項目（isTitle）は 1 つまで通す", () => {
-    const r = parseFormFields([{ ...ok[0], isTitle: true }]);
+    const r = parseFormFields([{ ...ok[0], isTitle: true }], tr);
     expect(r.ok).toBe(true);
   });
 
   it("見出し項目が 2 つ以上あると弾く", () => {
-    const r = parseFormFields([
-      { ...ok[0], isTitle: true },
-      { ...ok[0], key: "title2", isTitle: true, order: 1 },
-    ]);
+    const r = parseFormFields(
+      [
+        { ...ok[0], isTitle: true },
+        { ...ok[0], key: "title2", isTitle: true, order: 1 },
+      ],
+      tr,
+    );
     expect(r.ok).toBe(false);
     if (!r.ok) expect(r.error).toContain("見出し");
   });
 
   it("複雑な型を見出しにすると弾く", () => {
-    const r = parseFormFields([
-      { ...ok[0], type: "table", isTitle: true, columns: [] },
-    ]);
+    const r = parseFormFields(
+      [{ ...ok[0], type: "table", isTitle: true, columns: [] }],
+      tr,
+    );
     expect(r.ok).toBe(false);
     if (!r.ok) expect(r.error).toContain("見出し");
   });
@@ -447,29 +466,32 @@ describe("追加した直後の項目がそのまま保存できること（回�
       required: false,
       order: i,
     }));
-    const parsed = parseFormFields(fresh);
+    const parsed = parseFormFields(fresh, tr);
     expect(parsed.ok).toBe(true);
   });
 });
 
 describe("parseFormFields のエラーは何番目かを言う", () => {
   it("2 番目の項目のラベルが空なら位置を示す", () => {
-    const r = parseFormFields([
-      {
-        key: "a",
-        label: { ja: "あ", en: "" },
-        type: "text",
-        required: false,
-        order: 0,
-      },
-      {
-        key: "b",
-        label: { ja: "", en: "" },
-        type: "text",
-        required: false,
-        order: 1,
-      },
-    ]);
+    const r = parseFormFields(
+      [
+        {
+          key: "a",
+          label: { ja: "あ", en: "" },
+          type: "text",
+          required: false,
+          order: 0,
+        },
+        {
+          key: "b",
+          label: { ja: "", en: "" },
+          type: "text",
+          required: false,
+          order: 1,
+        },
+      ],
+      tr,
+    );
     expect(r.ok).toBe(false);
     if (!r.ok) expect(r.error).toContain("2 番目の項目");
   });

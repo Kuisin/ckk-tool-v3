@@ -10,6 +10,7 @@
 import type { Prisma as PrismaNS } from "../../generated/client/client";
 import { prisma } from "./db";
 import { type LocalizedText, localized } from "./format";
+import type { Tr } from "./i18n";
 import {
   type RouteStepSnapshot,
   type RouteView,
@@ -193,6 +194,7 @@ export async function resolveRouteVersionTx(
   steps: readonly RouteStepSnapshot[],
   actor: string | null,
   productId: number,
+  tr: Tr,
   notes?: string | null,
 ): Promise<string | null> {
   if (input == null) return null;
@@ -218,7 +220,9 @@ export async function resolveRouteVersionTx(
     base.route.id !== input.routeId ||
     base.route.productId !== productId
   ) {
-    throw new Error("選択された工程ルートがこの製品のものではありません");
+    throw new Error(
+      tr("production.productRoutes.theSelectedProcessRouteIsNot"),
+    );
   }
   const baseSteps: RouteStepSnapshot[] = base.steps.map((s) => ({
     processStepId: s.processStepId,

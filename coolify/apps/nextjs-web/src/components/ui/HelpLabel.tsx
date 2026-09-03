@@ -11,7 +11,7 @@
  * （マニュアルの該当項目へ別タブで飛ぶ）。Tooltip の中はクリックできないため、
  * その場合だけ HoverCard に切り替える。`manual` 無しは従来どおり Tooltip。
  * 要約とリンク先は lib/field-help.ts にまとめてある — 直接書かずに
- * `fieldHelp("quote", "deliveryDate")` を label に展開して使う。
+ * `fieldHelp(tr, "quote", "deliveryDate")` を label に展開して使う。
  */
 
 import { Anchor, HoverCard, Text, ThemeIcon, Tooltip } from "@mantine/core";

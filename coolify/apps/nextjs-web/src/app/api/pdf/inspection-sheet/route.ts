@@ -117,7 +117,7 @@ export async function GET(request: Request): Promise<Response> {
     template: sheetTemplateHead(template, lotQuantity),
     meta: {
       work_order: workOrderNumber != null ? `#${workOrderNumber}` : BLANK_LINE,
-      lot_quantity: lotQuantity != null ? `${lotQuantity} 本` : BLANK_LINE,
+      lot_quantity: lotQuantity != null ? `${lotQuantity} 本` : BLANK_LINE, // i18n-ignore
       inspected_at: BLANK_LINE,
       recorded_by: BLANK_LINE,
       confirmed: BLANK_LINE,
@@ -131,10 +131,10 @@ export async function GET(request: Request): Promise<Response> {
     grid_html,
     counts_table_html,
     shape_html: shapeSectionHtml(template.items),
-    overall: { judgement: "合格 ・ 不合格" },
+    overall: { judgement: "合格 ・ 不合格" }, // i18n-ignore
     footer_note:
       esc(
-        `* は必須項目。抜取の欄数はロット数量からの要求サンプル数（上限 10 欄）。${overflowNote}`,
+        `* は必須項目。抜取の欄数はロット数量からの要求サンプル数（上限 10 欄）。${overflowNote}`, // i18n-ignore
       ) + equipmentLegendNote(template.items),
     final_inspection_html: finalInspectionSectionHtml(finalInspection),
   });

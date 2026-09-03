@@ -351,7 +351,9 @@ export function DesignRequestForm({
           ) : mode === "create" ? (
             <>
               <Input.Wrapper
-                label={<HelpLabel {...fieldHelp("designRequest", "trigger")} />}
+                label={
+                  <HelpLabel {...fieldHelp(tr, "designRequest", "trigger")} />
+                }
                 withAsterisk
               >
                 <SegmentedControl
@@ -371,7 +373,9 @@ export function DesignRequestForm({
                   description={tr(
                     "sales.designRequests.n1TheSourceQuoteWhenDesign",
                   )}
-                  label={<HelpLabel {...fieldHelp("designRequest", "quote")} />}
+                  label={
+                    <HelpLabel {...fieldHelp(tr, "designRequest", "quote")} />
+                  }
                   placeholder={tr(
                     "sales.designRequests.chooseFromRecentQuotes",
                   )}
@@ -384,7 +388,9 @@ export function DesignRequestForm({
                     "sales.designRequests.n3TheOrderLineWhenDesign",
                   )}
                   label={
-                    <HelpLabel {...fieldHelp("designRequest", "orderLine")} />
+                    <HelpLabel
+                      {...fieldHelp(tr, "designRequest", "orderLine")}
+                    />
                   }
                   onChange={(v) => form.setFieldValue("orderLineId", v)}
                   onSearch={searchOrderLineOptions}
@@ -452,7 +458,7 @@ export function DesignRequestForm({
                   }
                 : null
             }
-            label={<HelpLabel {...fieldHelp("designRequest", "product")} />}
+            label={<HelpLabel {...fieldHelp(tr, "designRequest", "product")} />}
             onChange={(v, opt) => {
               form.setFieldValue("productId", v ?? "");
               form.setFieldValue("productName", opt?.label ?? "");
@@ -487,7 +493,9 @@ export function DesignRequestForm({
             description={tr(
               "sales.designRequests.onceApprovedThisPersonIsNotified",
             )}
-            label={<HelpLabel {...fieldHelp("designRequest", "assignee")} />}
+            label={
+              <HelpLabel {...fieldHelp(tr, "designRequest", "assignee")} />
+            }
             placeholder={tr("common.whoDrawsTheDrawing")}
             searchable
             withAsterisk
@@ -495,7 +503,9 @@ export function DesignRequestForm({
           />
           <DatePickerInput
             clearable
-            label={<HelpLabel {...fieldHelp("designRequest", "desiredAt")} />}
+            label={
+              <HelpLabel {...fieldHelp(tr, "designRequest", "desiredAt")} />
+            }
             onChange={(v) => form.setFieldValue("desiredAt", v)}
             placeholder={tr("sales.designRequests.whenTheDrawingIsNeededBy")}
             value={form.values.desiredAt}
@@ -503,7 +513,9 @@ export function DesignRequestForm({
           />
           <Select
             data={designPriorityOptions(locale)}
-            label={<HelpLabel {...fieldHelp("designRequest", "priority")} />}
+            label={
+              <HelpLabel {...fieldHelp(tr, "designRequest", "priority")} />
+            }
             {...form.getInputProps("priority")}
           />
         </SimpleGrid>
@@ -564,7 +576,7 @@ export function DesignRequestForm({
                 )}
                 label={
                   <HelpLabel
-                    {...fieldHelp("designRequest", "baseDesignFile")}
+                    {...fieldHelp(tr, "designRequest", "baseDesignFile")}
                   />
                 }
                 placeholder={
@@ -576,7 +588,9 @@ export function DesignRequestForm({
               <Textarea
                 autosize
                 label={
-                  <HelpLabel {...fieldHelp("designRequest", "changeReason")} />
+                  <HelpLabel
+                    {...fieldHelp(tr, "designRequest", "changeReason")}
+                  />
                 }
                 minRows={2}
                 placeholder={tr("sales.designRequests.whyItIsBeingRedrawn")}
@@ -591,7 +605,9 @@ export function DesignRequestForm({
       <FormSection title={tr("common.requestDetails")}>
         <Textarea
           autosize
-          label={<HelpLabel {...fieldHelp("designRequest", "description")} />}
+          label={
+            <HelpLabel {...fieldHelp(tr, "designRequest", "description")} />
+          }
           minRows={4}
           placeholder={tr(
             "sales.designRequests.designRequestDetailsAndRequirementsOptional",

@@ -219,3 +219,11 @@ export const permissionActionLabel = (v: string, locale: Locale): string =>
   resolveLabel("PERMISSION_ACTION_LABEL", v, locale);
 export const permissionScopeLabel = (v: string, locale: Locale): string =>
   resolveLabel("PERMISSION_SCOPE_LABEL", v, locale);
+
+/** 指示書の履歴（history Json の action）表示ラベル。承認記録・履歴表示用。 */
+export const workOrderHistoryActionLabel = (value: string, locale: Locale) =>
+  resolveLabel("WORK_ORDER_HISTORY_ACTION_LABEL", value, locale);
+
+/** 設計依頼書の履歴（history Json の action）表示ラベル。 */
+export const designHistoryActionLabel = (value: string, locale: Locale) =>
+  resolveLabel("DESIGN_HISTORY_ACTION_LABEL", value, locale);

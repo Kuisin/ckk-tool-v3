@@ -15,7 +15,7 @@ export type ConnectionLevel = "gray" | "red" | "orange" | "green";
 export type IndicatorState = {
   level: ConnectionLevel;
   blinking: boolean;
-  /** ツールチップ表示用（日本語固定 — ヘッダーは全画面共通のため）。 */
+  /** ツールチップ表示用。 */
   label: string;
 };
 
@@ -32,25 +32,46 @@ export type IndicatorInput = {
   unstable: boolean;
 };
 
-export function resolveIndicator(input: IndicatorInput): IndicatorState {
+/** ラベルの文言（呼び出し側の辞書から渡す。既定値は ja）。 */
+export interface IndicatorLabels {
+  none: string;
+  deviceUnregistered: string;
+  app: string;
+  browser: string;
+  unstableSuffix: string;
+}
+
+// 既定値は ja。実際の画面は components/ConnectionIndicator.tsx が m.shell.connection* を渡す
+const DEFAULT_LABELS: IndicatorLabels = {
+  none: "接続なし", // i18n-ignore
+  deviceUnregistered: "端末未登録", // i18n-ignore
+  app: "専用アプリで接続中", // i18n-ignore
+  browser: "ブラウザで接続中（専用アプリ未使用）", // i18n-ignore
+  unstableSuffix: "・接続不安定", // i18n-ignore
+};
+
+export function resolveIndicator(
+  input: IndicatorInput,
+  labels: IndicatorLabels = DEFAULT_LABELS,
+): IndicatorState {
   if (!input.online || !input.serverReachable) {
-    return { level: "gray", blinking: false, label: "接続なし" };
+    return { level: "gray", blinking: false, label: labels.none };
   }
   if (!input.registered) {
-    return { level: "red", blinking: false, label: "端末未登録" };
+    return { level: "red", blinking: false, label: labels.deviceUnregistered };
   }
-  const unstableSuffix = input.unstable ? "・接続不安定" : "";
+  const unstableSuffix = input.unstable ? labels.unstableSuffix : "";
   if (input.hasBridge) {
     return {
       level: "green",
       blinking: input.unstable,
-      label: `専用アプリで接続中${unstableSuffix}`,
+      label: `${labels.app}${unstableSuffix}`,
     };
   }
   return {
     level: "orange",
     blinking: input.unstable,
-    label: `ブラウザで接続中（専用アプリ未使用）${unstableSuffix}`,
+    label: `${labels.browser}${unstableSuffix}`,
   };
 }
 

@@ -11,6 +11,7 @@
 
 import { ActionIcon, Group, NumberInput, Stack, Text } from "@mantine/core";
 import { IconMinus, IconPlus } from "@tabler/icons-react";
+import { useI18n } from "../I18nProvider";
 
 type Props = {
   value: number;
@@ -36,9 +37,10 @@ export function NumberStepper({
   compact = false,
   disabled = false,
 }: Props) {
+  const { m } = useI18n();
   const btn = compact ? 40 : 54;
   const fieldH = compact ? 40 : 54;
-  const a11y = ariaLabel ?? label ?? "数量";
+  const a11y = ariaLabel ?? label ?? m.common.quantity;
 
   const clamp = (n: number): number => {
     if (!Number.isFinite(n)) return min;

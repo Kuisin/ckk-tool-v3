@@ -23,6 +23,8 @@ import {
   toWireConfig,
 } from "./ai-provider-core";
 import { readConfigNamespace, writeConfigValues } from "./app-config";
+import type { Locale } from "./i18n";
+import { label } from "./messages";
 import {
   ENCRYPTION_KEY_ENV,
   hasEncryptionKey,
@@ -32,6 +34,15 @@ import {
 } from "./secret-box";
 
 const NAMESPACE = "ai_provider";
+const NS = "settings.aiProviderActions";
+function t(
+  key: string,
+  locale: Locale | undefined,
+  fallback: string,
+  vars?: Record<string, unknown>,
+): string {
+  return label(`${NS}.${key}`, locale ?? "ja", fallback, vars);
+}
 
 const KEY_MAP: Record<keyof AiProviderSettings, string> = {
   provider: "ai_provider.provider",
@@ -95,6 +106,7 @@ export type TokenAction =
 export async function saveAiProviderSettings(
   settings: AiProviderSettings,
   token: TokenAction = { action: "keep" },
+  locale?: Locale,
 ): Promise<{ ok: true } | { ok: false; error: string }> {
   const entries: Record<string, unknown> = {};
   for (const [field, key] of Object.entries(KEY_MAP) as [
@@ -109,7 +121,13 @@ export async function saveAiProviderSettings(
     if (!sealed.ok) {
       return {
         ok: false,
-        error: `暗号鍵（${ENCRYPTION_KEY_ENV}）が未設定のため API トークンを保存できません。システム管理者へ連絡してください。`,
+        error: t(
+          "encryptionKeyNotSetCannotSaveToken",
+          locale,
+          // i18n-ignore — 鍵は既存、これは死んだ fallback
+          `暗号鍵（${ENCRYPTION_KEY_ENV}）が未設定のため API トークンを保存できません。システム管理者へ連絡してください。`,
+          { envVar: ENCRYPTION_KEY_ENV },
+        ),
       };
     }
     entries[TOKEN_KEY] = sealed.sealed;
@@ -132,7 +150,9 @@ export class AiProviderConfigError extends Error {}
  * 効いていない」という一番わかりにくい形で出る。鍵の問題はプロバイダの 401 と
  * 区別できる文言で止める。
  */
-export async function aiConfigHeaders(): Promise<Record<string, string>> {
+export async function aiConfigHeaders(
+  locale?: Locale,
+): Promise<Record<string, string>> {
   const byKey = await readConfigNamespace(NAMESPACE);
   const view = settingsFrom(byKey);
   const stored = byKey.get(TOKEN_KEY) ?? null;
@@ -145,8 +165,19 @@ export async function aiConfigHeaders(): Promise<Record<string, string>> {
   ) {
     throw new AiProviderConfigError(
       opened.reason === "no-key"
-        ? `AI プロバイダの API トークンを復号できません（${ENCRYPTION_KEY_ENV} が未設定です）。システム管理者へ連絡してください。`
-        : "AI プロバイダの API トークンを復号できません（暗号鍵が変わった可能性があります）。システム設定 → AI プロバイダ でトークンを入力し直してください。",
+        ? t(
+            "cannotDecryptTokenKeyNotSet",
+            locale,
+            // i18n-ignore — 鍵は既存、これは死んだ fallback
+            `AI プロバイダの API トークンを復号できません（${ENCRYPTION_KEY_ENV} が未設定です）。システム管理者へ連絡してください。`,
+            { envVar: ENCRYPTION_KEY_ENV },
+          )
+        : t(
+            "cannotDecryptTokenKeyChanged",
+            locale,
+            // i18n-ignore — 鍵は既存、これは死んだ fallback
+            "AI プロバイダの API トークンを復号できません（暗号鍵が変わった可能性があります）。システム設定 → AI プロバイダ でトークンを入力し直してください。",
+          ),
     );
   }
 

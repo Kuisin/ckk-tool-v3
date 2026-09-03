@@ -355,5 +355,138 @@
     "cannotUndo": "此操作无法撤销。",
     "cancel": "取消",
     "execute": "执行"
+  },
+  "workflowCore": {
+    "stepNotFound": "未找到该工序",
+    "stepNotStartable": "该工序目前无法开始",
+    "anotherUserSession": "另一位用户正在操作中",
+    "execDepIncomplete": "执行依赖未完成（工序 {stepId}）",
+    "execDepOrIncomplete": "执行依赖（任一）均未完成",
+    "branchSourceIncomplete": "分支来源工序尚未完成",
+    "precedingWorkOrderIncomplete": "前置工单 #{workOrderNumber} 尚未完成"
+  },
+  "common": {
+    "separator": "、",
+    "deleteOneChar": "删除一个字符",
+    "confirm": "确定",
+    "quantity": "数量",
+    "unknown": "未知"
+  },
+  "shell": {
+    "notLoggedIn": "未登录",
+    "unnamedDevice": "（未命名）",
+    "unregisteredDevice": "未注册终端",
+    "kioskDeviceTitle": "CKK 专用终端",
+    "connectionNone": "无连接",
+    "connectionDeviceUnregistered": "终端未注册",
+    "connectionApp": "通过专用应用连接中",
+    "connectionBrowser": "通过浏览器连接中（未使用专用应用）",
+    "connectionUnstableSuffix": "・连接不稳定",
+    "connectionStatus": "连接状态：{label}",
+    "offlineTitle": "无法连接到服务器",
+    "offlineMessage": "请检查网络（Wi-Fi / LAN）。",
+    "offlineRecovery": "连接恢复后将自动继续。",
+    "appTitle": "CKK 专用终端",
+    "appDescription": "共用终端 — 使用二维码登录"
+  },
+  "linkCode": {
+    "label": "链接码",
+    "waitingForLink": "● 等待关联…",
+    "expiresAt": "有效期限：{countdown}",
+    "waitingForActivation": "● 等待启用…",
+    "expired": "链接码已过期。",
+    "issueNewCode": "签发新代码",
+    "retry": "重试"
+  },
+  "qrScanner": {
+    "cannotStart": "无法启动摄像头。请检查摄像头权限和 HTTPS 连接。",
+    "cameraSettings": "摄像头设置",
+    "selectCamera": "选择摄像头",
+    "cameraN": "摄像头 {n}"
+  },
+  "textScale": {
+    "xs": "最小",
+    "sm": "小",
+    "md": "标准",
+    "lg": "大",
+    "xl": "最大"
+  },
+  "display": {
+    "shell": {
+      "unnamedScreen": "（未命名）",
+      "screenOf": "第 {index} / {total} 屏",
+      "connectionFailedTitle": "无法连接",
+      "connectionFailedDetail": "无法连接服务器。恢复后将自动继续显示。",
+      "noContentTitle": "尚未为此屏幕设置显示内容",
+      "noContentDetail": "请在管理界面「终端管理」中为此屏幕分配显示内容。",
+      "invalidContentTitle": "请检查显示内容设置",
+      "invalidContentDetail": "分配的显示内容设置不正确。",
+      "metabaseNotConfiguredTitle": "尚未配置报表画面",
+      "metabaseNotConfiguredDetail": "尚未配置 Metabase 连接设置（URL 与签名密钥）。",
+      "unsupportedContentTitle": "无法显示",
+      "unsupportedContentDetail": "不支持此显示内容类型。",
+      "iframeTitleFallback": "显示屏",
+      "appTitle": "CKK 显示屏",
+      "appDescription": "现场管理显示屏"
+    },
+    "blocked": {
+      "disabled": "此屏幕已暂停。",
+      "revoked": "此屏幕的注册已被撤销。",
+      "unavailable": "此屏幕不可用。",
+      "detail": "如需再次使用，请在管理界面（终端管理 → 显示屏）中操作。此屏幕无法重新注册。"
+    },
+    "setup": {
+      "reasonNotFound": "此屏幕的注册已失效，请重新注册。",
+      "reasonExpired": "注册已过期，请重新注册。",
+      "reasonDisabled": "此屏幕已暂停，请联系管理员。",
+      "reasonRevoked": "此屏幕的注册已被撤销，请重新注册。",
+      "codeIssueFailed": "无法生成验证码",
+      "connectionFailed": "无法连接服务器",
+      "screenOfMachine": "本机 {total} 屏中的第 {index} 屏",
+      "linkedMessage": "已关联{deviceNameSuffix}。管理员启用后将开始显示。",
+      "deviceNameSuffix": "：{name}",
+      "instruction": "请管理员在「设置 → 终端管理 → 显示屏」中扫描或输入此验证码进行注册。",
+      "title": "显示屏注册"
+    },
+    "board": {
+      "unitPcs": "支",
+      "production": {
+        "title": "生产状况",
+        "empty": "暂无进行中的工单",
+        "unassigned": "未分配负责人",
+        "othersCount": "等 {count} 人",
+        "pending": "未开始",
+        "paused": "已暂停",
+        "working": "作业中",
+        "stepsProgress": "{completed} / {total} 道工序"
+      },
+      "shipping": {
+        "title": "待出货安排",
+        "empty": "暂无待出货安排",
+        "draftLabel": "准备中",
+        "confirmedLabel": "确定",
+        "noOrigin": "未设置出货据点",
+        "countUnit": "{count} 单 / {total} 支",
+        "lineUnit": "{count} 明细 / 支"
+      },
+      "quality": {
+        "title": "质量与不良",
+        "empty": "暂无不良记录",
+        "recentDaysTotal": "近 {days} 天 / 合计 {count} 件",
+        "unitCountDays": "件 / 近 {days} 天"
+      },
+      "pending": {
+        "title": "待安排",
+        "empty": "暂无待安排项目",
+        "overdueCount": "逾期 {count} 件",
+        "noDueDate": "交期未定",
+        "overdueLabel": "逾期",
+        "dueLabel": "交期",
+        "unarranged": "未安排 / {quantity} 支"
+      },
+      "announcement": {
+        "empty": "尚未设置通知内容"
+      }
+    }
   }
 }

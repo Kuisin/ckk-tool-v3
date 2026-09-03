@@ -67,19 +67,9 @@ export const DESIGN_KIND_COLOR: Record<DesignRequestKind, string> = {
 };
 
 /** history Json の action → 画面表示名（PurchaseRequest と同型）。 */
-export const DESIGN_HISTORY_ACTION_LABEL: Record<string, string> = {
-  CREATE: "作成",
-  UPDATE: "更新",
-  REQUEST_APPROVAL: "承認依頼",
-  APPROVE: "承認",
-  REJECT: "差し戻し",
-  ASSIGN: "担当者変更",
-  KIND_OVERRIDE: "依頼区分の変更",
-  START: "着手",
-  COMPLETE: "完了",
-  REOPEN: "差し戻し（作業）",
-  CANCEL: "キャンセル",
-};
+// history Json の action → 表示ラベルは lib/enum-labels.ts
+// designHistoryActionLabel(value, locale) が持つ（enum.DESIGN_HISTORY_ACTION_
+// LABEL.*）。
 
 /**
  * 依頼区分の自動判定結果。判定そのものはサーバー側（design_files を引く）で、

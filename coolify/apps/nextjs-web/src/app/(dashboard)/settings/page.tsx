@@ -6,5 +6,5 @@ import { workprocessHomeHref } from "@/lib/app-list";
  * 統一したため、ホームのシステムカテゴリ表示へリダイレクトする。
  */
 export default function SettingsIndexRedirect() {
-  redirect(workprocessHomeHref("システム"));
+  redirect(workprocessHomeHref("システム")); // i18n-ignore — AppCategory の内部識別子（表示は categoryLabel が担う）
 }

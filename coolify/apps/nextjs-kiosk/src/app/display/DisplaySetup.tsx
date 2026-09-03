@@ -21,17 +21,20 @@
  * 大きさも見出しの段もずれていた。違うのは見る距離だけなので variant="wall"
  * を渡す（テレビは数 m 離れて見る）。
  *
- * 文字は **ja 固定**。ディスプレイに利用者は居ないので言語設定が無い。
+ * 文言は I18nProvider（呼び出し元の page.tsx が盤面自身の locale で包む）から
+ * 読む — 端末自体に設定できる表示言語がある（kiosk_devices.locale と同じ規約）。
  */
 
 import { Badge } from "@mantine/core";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useI18n } from "@/components/I18nProvider";
 import {
   type LinkCodePhase,
   LinkCodeScreen,
 } from "@/components/LinkCodeScreen";
 import type { DisplayAuthFailReason } from "@/lib/display-auth";
 import type { MachineHint } from "@/lib/display-core";
+import { fillMessage, type KioskMessages } from "@/lib/i18n";
 import { claimScreenSlot } from "@/lib/screen-slot";
 
 /**
@@ -56,12 +59,23 @@ const SLOT_WATCH_MS = 5000;
  *   としか見えないため。だから NOT_FOUND の文言は「削除されました」ではなく、
  *   取り消し・行削除のどちらでも正しい言い方にしてある。
  */
-const REASON_NOTE: Partial<Record<DisplayAuthFailReason, string>> = {
-  NOT_FOUND: "この画面の登録は無効になりました。もう一度登録してください。",
-  EXPIRED: "登録の有効期限が切れました。もう一度登録してください。",
-  DISABLED: "この画面は一時停止されています。管理者にお問い合わせください。",
-  REVOKED: "この画面の登録は取り消されました。もう一度登録してください。",
-};
+function reasonNote(
+  reason: DisplayAuthFailReason,
+  setup: KioskMessages["display"]["setup"],
+): string | undefined {
+  switch (reason) {
+    case "NOT_FOUND":
+      return setup.reasonNotFound;
+    case "EXPIRED":
+      return setup.reasonExpired;
+    case "DISABLED":
+      return setup.reasonDisabled;
+    case "REVOKED":
+      return setup.reasonRevoked;
+    default:
+      return undefined;
+  }
+}
 
 type SetupState =
   | { phase: "loading" }
@@ -112,6 +126,7 @@ function useScreenSlot(
 }
 
 export function DisplaySetup({ reason, hint, screenTotal }: Props) {
+  const { m } = useI18n();
   const storageKey = deviceIdKey(hint.screenIndex);
   // 窓ごとの登録にするため、どの経路にも画面番号を載せる
   const screenQuery =
@@ -143,11 +158,11 @@ export function DisplaySetup({ reason, hint, screenTotal }: Props) {
         });
         return;
       }
-      setState({ phase: "error", message: "コードを発行できませんでした" });
+      setState({ phase: "error", message: m.display.setup.codeIssueFailed });
     } catch {
-      setState({ phase: "error", message: "サーバーに接続できません" });
+      setState({ phase: "error", message: m.display.setup.connectionFailed });
     }
-  }, [screenQuery]);
+  }, [screenQuery, m]);
 
   // 初期化: Cookie 消失なら reactivate → だめなら begin（キオスクと同じ）
   useEffect(() => {
@@ -284,7 +299,7 @@ export function DisplaySetup({ reason, hint, screenTotal }: Props) {
     };
   }, [state, begin, hint, screenQuery, storageKey]);
 
-  const note = REASON_NOTE[reason];
+  const note = reasonNote(reason, m.display.setup);
   // 1 台に複数つないでいるときは「何枚目か」を出す。**同時に 2 枚が同じような
   // コード画面を出すので、これが無いとどちらのコードを入力しているのか
   // 分からなくなる。**
@@ -296,7 +311,9 @@ export function DisplaySetup({ reason, hint, screenTotal }: Props) {
   const index = live?.index ?? hint.screenIndex;
   const total = Math.max(live?.total ?? 1, screenTotal);
   const screenLabel =
-    total > 1 && index ? `この機械の ${total} 枚中 ${index} 枚目` : null;
+    total > 1 && index
+      ? fillMessage(m.display.setup.screenOfMachine, { index, total })
+      : null;
 
   // 共有部品が読む形へ。linked の文面だけここで組み立てる（端末は
   // 「利用を開始できます」、ディスプレイは「表示を開始します」）。
@@ -304,13 +321,13 @@ export function DisplaySetup({ reason, hint, screenTotal }: Props) {
     state.phase === "linked"
       ? {
           phase: "linked",
-          message: (
-            <>
-              {`リンクしました${state.deviceName ? `: ${state.deviceName}` : ""}。管理者がこのディスプレイを`}
-              <b>有効化</b>
-              {"すると表示を開始します。"}
-            </>
-          ),
+          message: fillMessage(m.display.setup.linkedMessage, {
+            deviceNameSuffix: state.deviceName
+              ? fillMessage(m.display.setup.deviceNameSuffix, {
+                  name: state.deviceName,
+                })
+              : "",
+          }),
         }
       : state;
 
@@ -332,12 +349,12 @@ export function DisplaySetup({ reason, hint, screenTotal }: Props) {
           style={{ display: "block", height: "3rem" }}
         />
       }
-      instruction="管理者に「設定 → 端末管理 → ディスプレイ」でこのコードをスキャンまたは入力してもらい、登録してください。"
+      instruction={m.display.setup.instruction}
       notice={note}
       now={now}
       onRetry={begin}
       state={view}
-      title="ディスプレイの登録"
+      title={m.display.setup.title}
       variant="wall"
     />
   );

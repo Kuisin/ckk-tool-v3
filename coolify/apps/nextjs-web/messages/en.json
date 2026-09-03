@@ -783,7 +783,13 @@
     "workflowChangeRequest": "Workflow change",
     "orderAcceptanceCancelRequest": "Order acceptance cancellation request",
     "formRequest": "Form request",
-    "untitled": "Untitled"
+    "untitled": "Untitled",
+    "justNow": "Just now",
+    "minutesAgo": "{n} min ago",
+    "hoursAgo": "{n} hr ago",
+    "yesterday": "Yesterday",
+    "daysAgo": "{n} days ago",
+    "step": "Step"
   },
   "shell": {
     "appsLabel": "Apps",
@@ -1124,6 +1130,36 @@
       "SCHEDULED": "Not yet started",
       "EXPIRED": "Ended",
       "DISABLED": "Disabled"
+    },
+    "WORK_ORDER_HISTORY_ACTION_LABEL": {
+      "CREATE": "Created",
+      "COPY": "Copied",
+      "UPDATE": "Updated",
+      "REQUEST_APPROVAL": "Requested approval",
+      "APPROVE_STEP": "Approved",
+      "APPROVE_FINAL": "Final approval",
+      "APPROVE_1ST": "First approval",
+      "APPROVE_2ND": "Second approval",
+      "REJECT": "Sent back",
+      "CANCEL": "Cancelled"
+    },
+    "DESIGN_HISTORY_ACTION_LABEL": {
+      "CREATE": "Created",
+      "UPDATE": "Updated",
+      "REQUEST_APPROVAL": "Requested approval",
+      "APPROVE": "Approved",
+      "REJECT": "Sent back",
+      "ASSIGN": "Changed assignee",
+      "KIND_OVERRIDE": "Changed request kind",
+      "START": "Started",
+      "COMPLETE": "Completed",
+      "REOPEN": "Sent back (work)",
+      "CANCEL": "Cancelled"
+    },
+    "DESIGN_FILE_ROLE_LABEL": {
+      "PREVIEW": "Preview",
+      "BLUEPRINT": "Drawing file",
+      "REFERENCE": "Reference"
     }
   },
   "status": {
@@ -1925,7 +1961,10 @@
       "markedAsPaid": "Marked as paid",
       "searchByInvoiceNumberOrCustomer": "Search by invoice number or customer",
       "thereAreNoInvoicesGenerateThem": "There are no invoices (generate them from the billing closing)",
-      "exportedAtLabel": "Exported at {dateTime}"
+      "exportedAtLabel": "Exported at {dateTime}",
+      "taxLabelReduced": "Consumption tax (8%)",
+      "taxLabelExempt": "Consumption tax (exempt)",
+      "taxLabelStandard": "Consumption tax (10%)"
     },
     "invoiceDetail": {
       "confirmIssueMessage": "This issues invoice {invoiceNumber}. The issue date is recorded as today.",
@@ -1983,7 +2022,9 @@
       "youHaveNotAnsweredAnyForms": "You have not answered any forms yet",
       "editable": "Editable",
       "thereIsNoCompletionNotice": "There is no completion notice",
-      "unread": "Unread"
+      "unread": "Unread",
+      "deadlineUntil": "Until {datetime}",
+      "editableUntil": "Editable until {datetime}"
     },
     "inboxCommentsList": {
       "thereAreNoUnresolvedCommentsOn": "There are no unresolved comments on your documents"
@@ -2075,7 +2116,10 @@
       "transferChecksumMismatch": "The checksum does not match. Some content may be missing",
       "transferRelatedFieldWarning": "\"{label}\" references another form ({target}). If the destination has no form with the same code, nothing will be shown",
       "transferRelatedFieldNoTarget": "\"{label}\" has no reference form configured",
-      "transferAttachmentNotCarried": "There is an attachment field. The files themselves are not carried over (only the field definition is)"
+      "transferAttachmentNotCarried": "There is an attachment field. The files themselves are not carried over (only the field definition is)",
+      "auditExportedToExcel": "Exported responses to Excel ({count} rows{truncated})",
+      "auditExportTruncatedSuffix": ", truncated at the limit",
+      "exportFilenamePartialSuffix": "_partial"
     },
     "tasksActions": {
       "loginRequired": "Please log in",
@@ -2122,7 +2166,54 @@
       "richText": "Rich text",
       "dropdownSingleSelect": "Dropdown (single)",
       "subTableRepeatableRows": "Sub-table (repeatable rows)",
-      "relatedRecords": "Related records"
+      "relatedRecords": "Related records",
+      "lookupSourceUser": "User",
+      "lookupSourceCustomer": "Business partner (company)",
+      "lookupSourceBusinessPartner": "Business partner branch/plant",
+      "lookupSourceProduct": "Product",
+      "lookupSourceMaterial": "Material",
+      "lookupSourceMaterialType": "Material type",
+      "lookupSourceProcessStep": "Process step",
+      "lookupSourcePlant": "Site",
+      "lookupSourceStorageLocation": "Storage location",
+      "lookupSourceWorkLocation": "Work location",
+      "enterLabelJa": "Enter a label (Japanese)",
+      "enterChoiceValue": "Enter a value for the choice",
+      "selectTargetForm": "Select the target form",
+      "selectTargetField": "Select the target field",
+      "selectThisFormField": "Select the field on this form",
+      "upToNColumns": "Up to {n} columns can be shown",
+      "patternMaxLength": "The pattern can be up to {max} characters",
+      "unsafePattern": "This pattern cannot be used (syntax error, or nested quantifiers)",
+      "keyFormat": "The key must start with a letter and contain only letters, numbers, or _",
+      "upToNFields": "Up to {n} fields are allowed",
+      "onlyOneTitleField": "Only one field can be the list title",
+      "cannotBeTitleField": "\"{label}\" cannot be used as the list title for this field type",
+      "duplicateFieldKey": "Field key \"{key}\" is duplicated",
+      "duplicateColumnKey": "Column key \"{key}\" in \"{label}\" is duplicated",
+      "invalidFieldDefinition": "The field definition is invalid",
+      "itemIndexPrefix": "Item {index}: {message}",
+      "fieldRequired": "{label} is required",
+      "fieldEnterNumber": "Enter a number for {label}",
+      "fieldMinNumber": "{label} must be {min} or more",
+      "fieldMaxNumber": "{label} must be {max} or less",
+      "fieldEnterDate": "Enter a date for {label}",
+      "fieldEnterTime": "Enter a time (HH:MM) for {label}",
+      "fieldSelectFromOptions": "Select {label} from the choices",
+      "fieldSelectRequired": "Select {label}",
+      "fieldInvalidAttachment": "{label}'s attachment is invalid",
+      "fieldInvalidRow": "{label}'s row is invalid",
+      "fieldUpToNRows": "{label} can have up to {n} rows",
+      "fieldInvalidRowAt": "{label}, row {row} is invalid",
+      "fieldRowError": "{label}, row {row}: {error}",
+      "fieldEnterValue": "Enter {label}",
+      "fieldUpToNChars": "{label} can be up to {n} characters",
+      "fieldInvalidFormat": "{label}'s format is invalid",
+      "availabilityDraft": "Draft",
+      "availabilityScheduled": "Scheduled",
+      "availabilityOpen": "Open",
+      "availabilityClosed": "Closed",
+      "availabilityArchived": "Archived"
     },
     "tasksTabs": {
       "workPlans": "Work plans",
@@ -2135,6 +2226,16 @@
       "completedTitle": "{title} No.{recordNo} is complete",
       "applicantMessage": "Requester: {name}",
       "notifiedNote": "Notified completion ({count} people)"
+    },
+    "formResponsePdf": {
+      "unanswered": "(not answered)",
+      "managedInAttachmentsTab": "(managed under the Attachments tab)",
+      "filesCount": "{count} files",
+      "formResponseLabel": "Form response",
+      "notYetProcessed": "Not yet processed",
+      "approvalRecordSectionTitle": "Approval record",
+      "stepNoColumn": "Step",
+      "approverColumn": "Approver"
     }
   },
   "production": {
@@ -2220,7 +2321,9 @@
       "flowChangeAlreadyApplied": "Already applied (post-hoc approval — sending it back will not automatically revert it).",
       "flowChangeApprovalTitle": "Approve the workflow change",
       "flowChangeDescription": "{summary} | Requested by: {requestedBy} | {stepLabel}. {note}",
-      "flowChangeNotAppliedYet": "The steps will not change until approved."
+      "flowChangeNotAppliedYet": "The steps will not change until approved.",
+      "andNMoreOrderLines": "{first} and {count} more",
+      "andNMoreCustomers": "{first} and {count} more"
     },
     "addBranchModal": {
       "theBranchWasAdded": "The branch was added",
@@ -2506,7 +2609,8 @@
       "floorMapAlt": "Floor map: {name}",
       "lotN": "Lot {number}",
       "pinLabelWithStockCount": "{name} ({code}) | Stock: {count}",
-      "step": "Step"
+      "step": "Step",
+      "sourceStepLabel": "Work order #{number} / {stepName}"
     },
     "pendingWorkOrders": {
       "orderedQuantity": "Ordered quantity",
@@ -2842,6 +2946,17 @@
       "invalidDesignRequest": "The design request specified is invalid",
       "selectTheDrawingFile": "Select the drawing file",
       "isTooLargeMax20mb": "{name} is too large (up to 20MB per file)"
+    },
+    "workflowIssues": {
+      "stepFallback": "Step #{id}",
+      "missingAnd": "{step} requires {related}",
+      "exclusion": "{step} and {related} cannot be selected together",
+      "missingOrGroup": "{step} requires one of {related} (may be satisfied by a material condition)",
+      "missingStart": "The workflow must start with one of the \"issue/hand-off\" steps ({related})",
+      "multipleStart": "Only one \"issue/hand-off\" step can be selected (currently selected: {related})"
+    },
+    "productRoutes": {
+      "theSelectedProcessRouteIsNot": "The selected process route does not belong to this product"
     }
   },
   "purchase": {
@@ -3224,7 +3339,10 @@
       "scanQr": "Scan QR",
       "loginScreenLanguage": "Login screen language",
       "loginScreenLanguageDescription": "The display language for screens shown before logging in on this device (QR code login, device link, etc.).",
-      "loginScreenLanguageDefault": "Default (Japanese)"
+      "loginScreenLanguageDefault": "Default (Japanese)",
+      "hoursValue": "{n} hours",
+      "minutesValue": "{n} min",
+      "daysValue": "{n} days"
     },
     "links": {
       "links": "Links",
@@ -3261,7 +3379,12 @@
       "selectACriterionOnTheLeft": "Select a criterion on the left to edit its formula",
       "selectATableFromTheList": "Select a table from the list on the left",
       "selectingASectionOpensItsEdit": "Selecting a section opens its edit page.",
-      "selectAToolTypeOnThe": "Select a tool type on the left to edit which criteria apply"
+      "selectAToolTypeOnThe": "Select a tool type on the left to edit which criteria apply",
+      "criteriaSummary": "{count} criteria — the estimated unit price is their sum",
+      "toolTypesSummary": "{count} tool types — criteria and unit price per type",
+      "materialPolicySummary": "{basis} / lookback {months} mo.",
+      "customInputsSummary": "{count} fields — estimate inputs and global constants",
+      "lookupsSummary": "{count} tables — diameter × length matrices referenced from expressions"
     },
     "kioskCards": {
       "thereAreNoCardsToPrint": "There are no cards to print.",
@@ -3487,7 +3610,9 @@
       "thereAreNoFieldsToAssign": "There are no fields to assign. Create them under Item definitions first.",
       "editType": "Edit type",
       "editTypeName": "Edit type — {name}",
-      "defaultValueIfEmptyDefault": "If left blank: \"{default}\""
+      "defaultValueIfEmptyDefault": "If left blank: \"{default}\"",
+      "enterAnItemName": "Enter an item name",
+      "enterATypeName": "Enter a type name"
     },
     "productTypesListPanel": {
       "deleteTheProductType": "Delete the product type",
@@ -3668,7 +3793,10 @@
       "cannotShowTheSampleTheShared": "Cannot show the sample (the shared-device URL is not set)",
       "sampleOfLabel": "Sample of {label}",
       "linkThisDisplay": "Link display: {name}",
-      "screenNumber": "Screen {n}"
+      "screenNumber": "Screen {n}",
+      "displayLanguage": "Display language for this screen",
+      "displayLanguageDescription": "The display language for the board (production status, pending shipments, etc.) and the link-code screen. There is no login to pick a viewer's language, so it is set on the device itself.",
+      "displayLanguageDefault": "Default (Japanese)"
     },
     "orderIntake": {
       "queued": "Queued",
@@ -3705,7 +3833,12 @@
       "tooManyNumbersAtOnce": "You can specify up to {max} at a time",
       "noFileWasSpecified": "No file specified",
       "unsupportedFileFormatPdfPngJpg": "Unsupported file format (PDF / PNG / JPG / WEBP)",
-      "failedToSaveToTheIntake": "Could not save to the intake folder"
+      "failedToSaveToTheIntake": "Could not save to the intake folder",
+      "dirIsNotADirectory": "{dir} is not a directory",
+      "cannotReadDirIsItMounted": "Cannot read {dir} (is it mounted in the container?)",
+      "intakeDirIntakeDirIsNotConfigured": "The intake folder (INTAKE_DIR) is not configured",
+      "invalidFileName": "Invalid file name",
+      "theTargetFileWasNotFound": "The target file was not found"
     },
     "portal": {
       "theAccountWasCreatedDisabledBy": "The account was created (disabled by default)",
@@ -4011,7 +4144,16 @@
       "renameFloorMapFailed": "Could not update the floor map",
       "deleteFloorMapFailed": "Could not delete the floor map",
       "floorMapHasDevicesCannotDelete": "Cannot delete a floor map with devices placed on it. Remove the pins first.",
-      "floorMapHasStorageLocationsCannotDelete": "Cannot delete a floor map with storage locations placed on it. Remove the pins first."
+      "floorMapHasStorageLocationsCannotDelete": "Cannot delete a floor map with storage locations placed on it. Remove the pins first.",
+      "auditLinkedTablet": "Linked with tablet",
+      "auditUnlinked": "Unlinked",
+      "auditSettingsCodeRegenerated": "Regenerated device settings code",
+      "auditSettingsCodeRevealed": "Viewed device settings code",
+      "auditUnlockPinRevealed": "Viewed maintenance PIN",
+      "auditUnlockPinHistoryRevealed": "Viewed maintenance PIN history",
+      "auditDevicePinRevealed": "Viewed PIN held by device",
+      "auditPlacedOnFloorMap": "Placed on floor map \"{name}\" ({x}%, {y}%)",
+      "auditUnplacedFromFloorMap": "Removed pin from floor map"
     },
     "orderIntakeActions": {
       "scanStartFailed": "Could not start the scan",
@@ -4080,7 +4222,10 @@
       "connectionTestUnreadableResult": "Could not read the connection test result",
       "connectionTestTimedOut": "The connection test did not finish in time (90 seconds)",
       "connectionTestFailedLog": "[ai-provider] Connection test failed",
-      "extractionServerUnreachable": "Could not connect to the extraction server (po-extract). It may need to be updated."
+      "extractionServerUnreachable": "Could not connect to the extraction server (po-extract). It may need to be updated.",
+      "encryptionKeyNotSetCannotSaveToken": "Cannot save the API token because the encryption key ({envVar}) is not set. Contact your system administrator.",
+      "cannotDecryptTokenKeyNotSet": "Cannot decrypt the AI provider API token ({envVar} is not set). Contact your system administrator.",
+      "cannotDecryptTokenKeyChanged": "Cannot decrypt the AI provider API token (the encryption key may have changed). Re-enter the token under System settings → AI provider."
     },
     "filesActions": {
       "specifyFolder": "Specify a folder",
@@ -4203,7 +4348,9 @@
       "enterACriterionName": "Enter a criterion name",
       "enterALabel": "Enter a label",
       "idMustBeAlphanumericHyphens": "The ID may only contain letters, numbers, hyphens and underscores (starting with a letter or number)",
-      "specifyAtLeastOneKey": "Specify at least one key column"
+      "specifyAtLeastOneKey": "Specify at least one key column",
+      "toolTypeValueFormat": "Value must be uppercase letters, numbers or _ (starting with an uppercase letter)",
+      "enterADisplayName": "Enter a display name"
     },
     "aiProviderCore": {
       "baseUrlMustStartWithHttp": "The base URL must start with http:// or https://",
@@ -4224,7 +4371,9 @@
   },
   "portal": {
     "d": {
-      "identityCheck": "Identity check"
+      "identityCheck": "Identity check",
+      "deadLink": "This link is no longer available. Please contact your sales representative.",
+      "cannotOpenTheLink": "Cannot open the link"
     },
     "documents": {
       "document": "Document",
@@ -4517,7 +4666,11 @@
       "bulkEnabled": "Enabled {count} business partner(s)",
       "daySuffix": "{value} days",
       "endOfMonth": "End of month",
-      "primaryContactTag": "(Primary)"
+      "primaryContactTag": "(Primary)",
+      "enterFullName": "Enter a full name",
+      "roleInfoRequired": "Enter information for {role}",
+      "selectASalesRep": "Select a sales rep",
+      "billToOwnCompany": "— (own company)"
     },
     "defectTypes": {
       "theDefectTypeWasCreated": "The defect type was created",
@@ -5255,7 +5408,9 @@
       "toleranceTopBottomOrder": "Set the tolerance Top to be at least the Bottom",
       "updateFailed": "Could not update the inspection template",
       "updateItemFailed": "Could not update the inspection item",
-      "versionLocked": "This version cannot be changed because it is used by a work order or inspection record. Create a new version instead"
+      "versionLocked": "This version cannot be changed because it is used by a work order or inspection record. Create a new version instead",
+      "auditCreatedByImport": "Created by import: {code} v{version} ({count} items)",
+      "importFailed": "Import failed"
     },
     "materialNumberingActions": {
       "codeAlnumTwoDigits": "The code is 2 alphanumeric characters",
@@ -5344,7 +5499,10 @@
       "enterLabelJa": "Enter the display name (Japanese)",
       "duplicateTypeKey": "Duplicate type keys",
       "typeInUseCannotDelete": "Cannot delete a type in use: {keys}",
-      "saveTypesFailed": "Could not save the types"
+      "saveTypesFailed": "Could not save the types",
+      "auditWorkLocationAdded": "Added work location \"{name}\"",
+      "auditWorkLocationUpdated": "Updated work location \"{name}\"",
+      "auditWorkLocationDeleted": "Deleted work location"
     },
     "storageLocationActions": {
       "codeFormat": "Use letters, numbers, hyphens, and underscores for the code",
@@ -5550,13 +5708,20 @@
       "responseNotFound": "Response not found",
       "notSubmittedYet": "Not submitted yet",
       "itWasSentBack": "It was sent back",
-      "theEditingWindowHasClosedContact": "The editing window has closed. Contact the author if you need to change it."
+      "theEditingWindowHasClosedContact": "The editing window has closed. Contact the author if you need to change it.",
+      "myResponseTitle": "My response",
+      "submittedAt": "Submitted {datetime}",
+      "formPageTitle": "Form"
     },
     "responses": {
       "theUrlIsWrongOrYou": "The URL is wrong, or you do not have permission to view this form's responses.",
       "youCannotViewTheResponses": "You cannot view the responses",
       "onlyThoseMatchingTheSharingConditions": "(only those matching the sharing conditions)",
-      "respond": "Respond"
+      "respond": "Respond",
+      "pageTitle": "Responses"
+    },
+    "editResponsePage": {
+      "title": "Edit response"
     }
   },
   "l": {
@@ -5570,7 +5735,8 @@
       "thisLinkLeavesTheInternalSystem": "This link leaves the internal system. Check where it goes.",
       "destination": "Destination",
       "doNotEnterInternalPasswordsOr": "Do not enter internal passwords or business data on the site you are going to.",
-      "continueAndLeave": "Continue and leave"
+      "continueAndLeave": "Continue and leave",
+      "goToAnExternalSite": "Go to an external site"
     }
   },
   "admin": {
@@ -5584,7 +5750,13 @@
       "activityId": "Activity #{id}",
       "relatedPages": "Related pages",
       "shownInTheList": "(shown in the list)",
-      "whatChangedSummary": "What changed (summary)"
+      "whatChangedSummary": "What changed (summary)",
+      "suffixProduct": " (product)",
+      "suffixMaterial": " (material)",
+      "suffixStorageLocation": " (storage location)",
+      "suffixFloorMap": " (map)",
+      "suffixDisplay": " (display)",
+      "formResponsesLabel": "Form responses"
     },
     "appFlagsTable": {
       "labelWasSetToV2In": "{label} was set to {v2} in {env}",
@@ -5771,7 +5943,8 @@
       "oldLineNumber": "Old line {n}",
       "lineNumber": "Line {n}",
       "commentOnLine": "Comment on line {n}",
-      "commentPlaceholderForLine": "Comment on line {n}"
+      "commentPlaceholderForLine": "Comment on line {n}",
+      "pageTitleWithName": "Review — {title}"
     },
     "revisionDiff": {
       "compareFrom": "Compare from",
@@ -6412,7 +6585,9 @@
       "itemNameOnTheOrder": "Item name on the order",
       "mayBeLeftBlank": "May be left blank",
       "watchedFolder": "Watched folder intake",
-      "manualEntry": "Manual entry"
+      "manualEntry": "Manual entry",
+      "itemCountSuffix": " ({count} lines)",
+      "priceDiffLine": "Line {row} {actual} ≠ price list {expected}"
     },
     "orderLines": {
       "parentDocumentOfThisLine": "Parent document of this line",
@@ -6546,7 +6721,10 @@
       "unitPriceUsed": "Unit price used",
       "noMaximum": "No maximum",
       "removeTheTier": "Remove the tier",
-      "addATier": "Add a tier"
+      "addATier": "Add a tier",
+      "quantityRangeOpen": "{min}+ pcs",
+      "quantityRangeBounded": "{min}–{max} pcs",
+      "perPieceAmount": "{amount}/pc"
     },
     "quotes": {
       "issuedPdfGenerationFailed": "Issued (PDF generation failed)",
@@ -7064,7 +7242,10 @@
       "confirmShipBodyStock": "This marks delivery order {number} as shipped (the order line's shipping status will not change, since this is stock storage).",
       "shippedBody": "Marked delivery order {number} as shipped",
       "confirmDeleteBody": "This deletes delivery order {number}. This cannot be undone.",
-      "deletedBody": "Deleted delivery order {number}"
+      "deletedBody": "Deleted delivery order {number}",
+      "onlySameCustomerCanBeCombined": "A delivery order can only combine order lines for the same customer",
+      "onlySameShipToCanBeCombined": "A delivery order can only combine order lines for the same ship-to",
+      "onlySameDeliveryMethodCanBeCombined": "A delivery order can only combine order lines with the same delivery method (standard / direct to end user)"
     },
     "pendingShipments": {
       "completedLots": "Completed lots",
@@ -7832,6 +8013,1046 @@
     "shippedReservationReleased": "Reservation released by shipment {ref}",
     "materialReceived": "Material received",
     "reservedByStockCheck": "Reserved by stock check (§4)",
-    "stockCheckReservedAndShortage": "Stock check: reserved {reservedNow} / short {shortage}"
+    "stockCheckReservedAndShortage": "Stock check: reserved {reservedNow} / short {shortage}",
+    "stepStarted": "Started the step (step {sortOrder} · received {input})",
+    "stepPaused": "Paused the step (step {sortOrder})",
+    "stepResumed": "Resumed the step (step {sortOrder})",
+    "workLocationChanged": "Changed the work location (step {sortOrder} / location {workLocationId})",
+    "stepCompleted": "Completed the step (good {success}/{input})",
+    "defectsRecorded": "Added defect record ({count})",
+    "inspectionRecordedPass": "Saved inspection record (Pass / {count} items)",
+    "inspectionRecordedFail": "Saved inspection record (Fail / {count} items)",
+    "deviceUnlinkedFromDevice": "Unlinked from the device itself (device settings code)",
+    "deviceWorkLocationChangedFromDevice": "Changed the default work location from the device itself (device settings code)"
+  },
+  "workflowCore": {
+    "quantityLabels": {
+      "flow": {
+        "input": "Received",
+        "success": "Good",
+        "semi": "Semi-finished",
+        "scrap": "Scrapped",
+        "rework": "Process branch"
+      },
+      "inspection": {
+        "input": "Inspected",
+        "success": "Pass",
+        "semi": "Fail (semi-finished)",
+        "scrap": "Fail (scrapped)",
+        "rework": "Fail (process branch)"
+      },
+      "none": {
+        "input": "Received",
+        "success": "Good",
+        "semi": "Semi-finished",
+        "scrap": "Scrapped",
+        "rework": "Process branch"
+      }
+    },
+    "stepNotFound": "Step not found",
+    "stepNotStartable": "This step cannot be started in its current state",
+    "anotherUserSession": "Another user has an active session",
+    "execDepIncomplete": "Execution dependency incomplete (step {stepId})",
+    "execDepOrIncomplete": "None of the execution dependencies (any-of) are complete",
+    "branchSourceIncomplete": "The branch source step is not complete",
+    "precedingWorkOrderIncomplete": "Preceding work order #{workOrderNumber} is not complete",
+    "quantityNegative": "{label} must be 0 or greater",
+    "quantityConservationInspection": "The sum of pass + fail (semi-finished, scrapped, process branch) ({sum}) does not match the inspected count ({input})",
+    "quantityConservationFlow": "The sum of good + defective (semi-finished, scrapped, process branch) ({sum}) does not match the received count ({input})",
+    "routingExceedsLimit": "The total branch quantity ({static}) exceeds good + process branch ({limit})",
+    "selfLoopNotAllowed": "A self-loop cannot be created",
+    "linkEndpointOutsideWorkOrder": "A link endpoint is outside the work order",
+    "branchesAreCyclic": "The branches form a cycle",
+    "fullQuantity": "Full quantity"
+  },
+  "fieldHelp": {
+    "quote": {
+      "customer": {
+        "label": "Customer",
+        "summary": "Select the customer this quote is for. The unit price is determined from this customer's price list, so select it first."
+      },
+      "customerBranch": {
+        "label": "Branch",
+        "summary": "Select the destination branch. This cannot be selected if no branches are registered for this customer (leaving it blank is fine)."
+      },
+      "validUntil": {
+        "label": "Valid until",
+        "summary": "The last day this quote is valid. Quotes past this date can be treated as \"Expired\" in the list."
+      },
+      "status": {
+        "label": "Status",
+        "summary": "The quote's current status. New quotes start as \"Draft\"."
+      },
+      "product": {
+        "label": "Product",
+        "summary": "Select the product to quote. Once selected, the unit price matching the combination of customer, order type, and quantity is filled in automatically from the price list."
+      },
+      "orderType": {
+        "label": "Order type",
+        "summary": "Classifies the order as Production, Test, Sample, or Other. Even for the same product, prices differ by type, so choose according to the actual order (samples are treated as ¥0)."
+      },
+      "quantity": {
+        "label": "Quantity",
+        "summary": "Enter the number of pieces. If the price list sets unit prices by quantity range, the unit price changes according to the quantity entered."
+      },
+      "deliveryDate": {
+        "label": "Delivery date",
+        "summary": "The planned date to deliver this line item to the customer. Can be set per line item."
+      },
+      "notes": {
+        "label": "Notes",
+        "summary": "Internal notes. These do not appear on the quote PDF."
+      }
+    },
+    "priceList": {
+      "customer": {
+        "label": "Customer",
+        "summary": "The customer this pricing applies to. The combination of customer and product forms one price list entry, and cannot be changed after creation."
+      },
+      "product": {
+        "label": "Product",
+        "summary": "The product this pricing applies to. Like the customer, this cannot be changed after creation."
+      },
+      "orderType": {
+        "label": "Order type",
+        "summary": "Classifies the order as Production, Test, Sample, or Other. Even for the same customer and product, each type can have a different price."
+      },
+      "basePrice": {
+        "label": "Base unit price",
+        "summary": "The unit price that quantity tiers are based on. Each tier's unit price is determined by multiplying this price by its multiplier."
+      },
+      "validFrom": {
+        "label": "Valid from",
+        "summary": "The date this price becomes effective. When creating a quote, the price effective at that time is used."
+      },
+      "validUntil": {
+        "label": "Valid until",
+        "summary": "The date this price stops being effective. Leave blank for no end date."
+      },
+      "multiplier": {
+        "label": "Multiplier",
+        "summary": "The multiplier applied for each quantity range. Enter a value less than 1 to lower the unit price for larger quantities."
+      },
+      "customPrice": {
+        "label": "Custom price",
+        "summary": "Use this to manually set the unit price for just that tier. If entered, it takes priority over the multiplier-based calculation."
+      }
+    },
+    "orderAcceptance": {
+      "customer": {
+        "label": "Customer",
+        "summary": "The customer who placed the order. This is determined automatically from the imported order document, but if it cannot be determined, select it here."
+      },
+      "customerOrderRef": {
+        "label": "Customer order ref.",
+        "summary": "The number written on the customer's own order document. This number can be used to look up the order later when the customer inquires."
+      },
+      "quoteNumber": {
+        "label": "Quote",
+        "summary": "The quote this order is based on. If specified, that issued quote is automatically set to \"Accepted\" when this order is confirmed."
+      },
+      "orderDate": {
+        "label": "Order date",
+        "summary": "The date the customer placed the order. Enter the date written on the order document."
+      },
+      "shipTo": {
+        "label": "Ship-to",
+        "summary": "The delivery destination for the product. Select this when delivering to a different company or branch than the customer who placed the order. Leaving it blank means delivery to the customer."
+      },
+      "deliveryMethod": {
+        "label": "Delivery method",
+        "summary": "Standard delivery — delivers to the ordering customer (or its ship-to). Direct to end user — delivers directly to the end user. A delivery order can only combine orders with the same ship-to and delivery method."
+      },
+      "endUser": {
+        "label": "End user",
+        "summary": "The actual delivery destination (end user). Required when Direct to end user is selected; optional as a record even with standard delivery."
+      },
+      "assignedPlant": {
+        "label": "Assigned site",
+        "summary": "The site primarily responsible for handling this order. Select this to clarify which site the work belongs to."
+      },
+      "shippingWorkLocation": {
+        "label": "Shipping work location",
+        "summary": "The location where shipping work (packing, loading, etc.) is performed. Select from the work location master."
+      },
+      "notes": {
+        "label": "Notes",
+        "summary": "Notes for the order acceptance as a whole. For notes on individual line items, use the notes field on each row."
+      },
+      "product": {
+        "label": "Product",
+        "summary": "The ordered product. This is automatically matched from the item name on the order document, but the match can fail — in that case, select it manually."
+      },
+      "orderType": {
+        "label": "Order type",
+        "summary": "Classifies the order as Production, Test, Sample, or Other. Prices differ by this classification."
+      },
+      "quantity": {
+        "label": "Quantity",
+        "summary": "The ordered quantity. Correct it if the extracted result is inaccurate."
+      },
+      "unitPrice": {
+        "label": "Unit price",
+        "summary": "The price per piece. If it differs from the price list's unit price, the difference is shown immediately."
+      },
+      "deliveryDate": {
+        "label": "Delivery date",
+        "summary": "The delivery date for this line item. If not specified on the line item, the header's requested delivery date is used."
+      },
+      "itemNotes": {
+        "label": "Line item notes",
+        "summary": "Notes for this line item only (e.g. version number or custom details)."
+      }
+    },
+    "designRequest": {
+      "trigger": {
+        "label": "Trigger",
+        "summary": "Select whether this request is for a quote, made after an order is confirmed, or standalone (neither). Choosing \"At quote\" or \"At order\" determines whether you next link a Quote or an Order line. Choosing \"Standalone\" hides the linking field — use this for requests at a stage before any document exists, such as evaluating a new product or a preliminary customer inquiry."
+      },
+      "quote": {
+        "label": "Quote",
+        "summary": "Select this when the trigger is \"At quote\". Recording which quote the design is for makes it possible to trace the background later."
+      },
+      "orderLine": {
+        "label": "Order line",
+        "summary": "Select this when the trigger is \"At order\". Records which order the design is for."
+      },
+      "product": {
+        "label": "Product",
+        "summary": "The product the drawing is for. Required. Whether this becomes a \"New\" or \"Revision\" request is determined automatically by whether this product already has a past design document. Even a brand-new product that isn't registered yet can be added to the product master with just a name and unit, so register it first before submitting the request."
+      },
+      "assignee": {
+        "label": "Assignee",
+        "summary": "The production staff member who will create the drawing. Once approved, this person receives a notification to start work. It can still be changed from \"…\" after approval."
+      },
+      "desiredAt": {
+        "label": "Requested date",
+        "summary": "The date by which the drawing is needed. It can be left blank when registering, but entering it allows sorting in the list and highlights overdue items by color."
+      },
+      "priority": {
+        "label": "Priority",
+        "summary": "Normal or High. If a requested date is set, that serves as the guide, so priority is used for cases like \"the deadline is further out, but please start on this first\"."
+      },
+      "baseDesignFile": {
+        "label": "Base drawing",
+        "summary": "For a revision, which version to redraw from. If left blank, the latest version at the time of determination is used. If another revision is completed first while this request is pending, that fact is recorded in the history when it completes."
+      },
+      "changeReason": {
+        "label": "Reason for change",
+        "summary": "For a revision, describe why it is being redrawn. This is a separate field from the request description, and serves as a clue when tracing differences between versions later."
+      },
+      "description": {
+        "label": "Request description",
+        "summary": "Describe what needs to be designed. The production staff member creates the drawing based solely on this text, so be specific about dimensions, shape, reference to existing products, and points to note."
+      }
+    },
+    "trialEstimate": {
+      "customer": {
+        "label": "Customer",
+        "summary": "Who this price estimate is for. It can be calculated even if left blank — useful for a rough estimate before a customer has been decided."
+      },
+      "product": {
+        "label": "Product",
+        "summary": "The product this price estimate is for. Linking it to a product allows it to be selected as the base unit price source for the price list after confirmation."
+      },
+      "maxDiameter": {
+        "label": "Max diameter (mm)",
+        "summary": "The product's maximum diameter. Serves as a guide when selecting the material diameter."
+      },
+      "length": {
+        "label": "Overall length (mm)",
+        "summary": "The product's length. Since material cost is determined by length, changing this changes the material cost."
+      },
+      "materialType": {
+        "label": "Material type",
+        "summary": "The type of material to use. Select from types determined by the combination of manufacturer and grade."
+      },
+      "diameter": {
+        "label": "Diameter",
+        "summary": "The material's diameter. Select one larger than the product's maximum diameter."
+      },
+      "surfaceFinish": {
+        "label": "Surface finish",
+        "summary": "The material's surface condition. Black scale (as-rolled) is cheaper, but may require an additional centerless grinding charge."
+      },
+      "cylinderType": {
+        "label": "Cylinder type",
+        "summary": "Select this when the tool type is Cylinder. Machining cost varies by type."
+      },
+      "stepMachining": {
+        "label": "Step machining length (mm) / Step machining type",
+        "summary": "The length and type of step machining. Cost is determined by the combination of length and type."
+      },
+      "neckMachining": {
+        "label": "Neck machining length (mm) / Neck machining type",
+        "summary": "The length and type of neck machining. As with step machining, leave blank if not performed."
+      },
+      "machiningTime": {
+        "label": "Machining time (min)",
+        "summary": "The machining time per piece. Machining cost is calculated from this time, so enter a value close to the actual setup."
+      },
+      "coating": {
+        "label": "Coating",
+        "summary": "The type of coating. Selecting one adds the corresponding cost."
+      },
+      "lapping": {
+        "label": "Lapping",
+        "summary": "Whether to perform lapping."
+      },
+      "inspectionReport": {
+        "label": "Inspection certificate",
+        "summary": "Whether to include an inspection certificate. Including one adds an inspection cost."
+      },
+      "ld": {
+        "label": "LD machining / LD position / LD outer diameter (mm) / LD flute length (mm)",
+        "summary": "The conditions when LD machining is performed. Entering \"LD machining\" allows you to specify the position, outer diameter, and flute length."
+      }
+    },
+    "purchaseRequest": {
+      "reason": {
+        "label": "Reason for request",
+        "summary": "Explain why this material is needed. The approver will judge based on this, so noting which product and which step it is for will reduce back-and-forth."
+      },
+      "notes": {
+        "label": "Notes",
+        "summary": "Supplementary notes for the request as a whole. For notes about a specific material only, use the notes field on that line item."
+      },
+      "material": {
+        "label": "Material",
+        "summary": "Select the material you need. If it is not in the list, register it in the material master first."
+      },
+      "plant": {
+        "label": "Receiving site",
+        "summary": "The site that will receive this material. It will be added to that site's stock, so choose the site where it will actually be used."
+      },
+      "quantity": {
+        "label": "Quantity",
+        "summary": "Enter the quantity needed. The same quantity will carry over to the purchase order later."
+      },
+      "unit": {
+        "label": "Unit",
+        "summary": "The unit of measure, such as pcs, kg, or m. Selecting a material fills in its default unit."
+      },
+      "desiredDate": {
+        "label": "Requested date",
+        "summary": "The date by which you would like the material. This is not a fixed schedule — the actual expected arrival date is set with the supplier when creating the purchase order."
+      },
+      "itemNotes": {
+        "label": "Line item notes",
+        "summary": "Notes for this material only (e.g. \"same lot as last time\")."
+      }
+    },
+    "purchaseOrder": {
+      "supplier": {
+        "label": "Supplier",
+        "summary": "The company you are purchasing the material from. If it is not in the list, register it in the business partner master."
+      },
+      "orderDate": {
+        "label": "Order date",
+        "summary": "The date the order is placed. If left blank, the date you click \"Order\" will be filled in automatically."
+      },
+      "notes": {
+        "label": "Notes",
+        "summary": "Supplementary notes for the purchase order as a whole. For notes about a specific material only, use the notes field on that line item."
+      },
+      "material": {
+        "label": "Material",
+        "summary": "Select the material to order. If the purchase order was created from a purchase request, the request's details carry over."
+      },
+      "plant": {
+        "label": "Receiving site",
+        "summary": "The site that will receive this material. Recording the receipt increases stock at this site."
+      },
+      "quantity": {
+        "label": "Quantity",
+        "summary": "The quantity being ordered. It can be received in multiple partial deliveries if the shipment arrives in separate batches."
+      },
+      "unit": {
+        "label": "Unit",
+        "summary": "The unit of measure, such as pcs, kg, or m. Selecting a material fills in its default unit."
+      },
+      "unitPrice": {
+        "label": "Unit price",
+        "summary": "The price per unit. The amount entered here is used as the reference price for material cost in price estimates, so enter the actual transaction price."
+      },
+      "expectedDate": {
+        "label": "Expected date",
+        "summary": "The date this material is expected to arrive. Enter the date agreed with the supplier."
+      },
+      "itemNotes": {
+        "label": "Line item notes",
+        "summary": "Notes for this material only. For notes about the purchase order as a whole, use the notes field above."
+      }
+    },
+    "materialReceipt": {
+      "material": {
+        "label": "Material",
+        "summary": "Select the material that arrived. If recording the receipt from a purchase order, the order's details carry over."
+      },
+      "supplier": {
+        "label": "Supplier",
+        "summary": "The company that delivered the material. This is filled in automatically when receiving from a purchase order."
+      },
+      "plant": {
+        "label": "Receiving site",
+        "summary": "The site that actually received the material. Stock at this site will increase, so choose the site where the shipment arrived."
+      },
+      "receivedDate": {
+        "label": "Received date",
+        "summary": "The date the material was received. Stock increases on this date."
+      },
+      "quantity": {
+        "label": "Quantity",
+        "summary": "The quantity actually received. It does not need to match the ordered quantity — if delivered in separate batches, record only the amount received."
+      },
+      "unit": {
+        "label": "Unit",
+        "summary": "The unit of measure, such as pcs, kg, or m. Selecting a material fills in its default unit."
+      },
+      "notes": {
+        "label": "Notes",
+        "summary": "Additional notes. Record anything you might want to check later, such as damage or a quantity discrepancy."
+      }
+    },
+    "workOrder": {
+      "orderLine": {
+        "label": "Order line allocation",
+        "summary": "Which order line(s) this work order is for. Adding rows lets you combine multiple order lines for the same product into one work order (one lot), or conversely split a single order line across multiple work orders. This can be left empty for a work order that only builds stock."
+      },
+      "allocQuantity": {
+        "label": "Allocation quantity",
+        "summary": "The quantity to make for that order line. The maximum is the line's remaining allocatable amount (the order quantity minus what other work orders already allocate)."
+      },
+      "product": {
+        "label": "Target product",
+        "summary": "The product to make. If an order line is selected, its product is filled in automatically."
+      },
+      "plannedQuantity": {
+        "label": "Planned quantity",
+        "summary": "The quantity to make. Enter an amount at least equal to the total allocations (you may add extra to allow for defects; for stock work orders it equals the total allocation). This also becomes the initial received quantity for the first step."
+      },
+      "material": {
+        "label": "Material used",
+        "summary": "The material to be used. Once the work order is approved, this material is reserved from stock."
+      },
+      "storageLocation": {
+        "label": "Storage location",
+        "summary": "Where the finished product will be stored. Choose from the storage location master. It can be left empty if not yet decided."
+      },
+      "route": {
+        "label": "Step list / version",
+        "summary": "Which sequence of steps to use. Choose from the step lists registered for the product (not used for stock work orders)."
+      },
+      "newRouteName": {
+        "label": "New step list name",
+        "summary": "The name to use when creating a new step list on the spot. From then on, this sequence can be selected for the same product."
+      },
+      "inspectionTemplates": {
+        "label": "Inspection sheet",
+        "summary": "The inspection sheet template(s) used for each inspection step. Multiple can be selected. Adding a step automatically selects any inspection sheet templates linked to that step."
+      },
+      "notes": {
+        "label": "Notes",
+        "summary": "Additional notes. These are read by shop-floor staff when they view the work order."
+      }
+    },
+    "productInventory": {
+      "plant": {
+        "label": "Destination site",
+        "summary": "The site to transfer stock to. Stock at the source site decreases and stock at the destination site increases."
+      },
+      "location": {
+        "label": "Storage location / shelf",
+        "summary": "Where within the destination site to place it. Setting this makes it easier to locate the physical stock later."
+      },
+      "quantity": {
+        "label": "Quantity",
+        "summary": "The quantity to transfer. It cannot exceed the amount available at the source."
+      },
+      "notes": {
+        "label": "Notes",
+        "summary": "A field for recording the reason for the transfer, etc. The transfer is recorded in the history."
+      }
+    },
+    "materialInventory": {
+      "plant": {
+        "label": "Destination site",
+        "summary": "The site to transfer stock to. Stock at the source site decreases and stock at the destination site increases."
+      },
+      "location": {
+        "label": "Storage location / shelf",
+        "summary": "Where within the destination site to place it. Setting this makes it easier to locate the physical stock later."
+      },
+      "quantity": {
+        "label": "Quantity",
+        "summary": "The quantity to transfer. It cannot exceed the amount available at the source."
+      },
+      "notes": {
+        "label": "Notes",
+        "summary": "A field for recording the reason for the transfer, etc. The transfer is recorded in the history."
+      }
+    },
+    "approval": {
+      "rejectReason": {
+        "label": "Reason for sending back",
+        "summary": "The reason for sending this back. It will be shown as-is to the person who made the request."
+      }
+    },
+    "deliveryOrder": {
+      "orderLine": {
+        "label": "Order acceptance",
+        "summary": "Select the order acceptance this shipment is for. Once selected, its shippable order lines are filled in automatically."
+      },
+      "type": {
+        "label": "Type",
+        "summary": "The kind of shipment. Only Dispatch proceeds to a delivery note and billing."
+      },
+      "plant": {
+        "label": "From site",
+        "summary": "The originating site recorded on the document. For a Stock storage delivery order, stock is received into this site."
+      },
+      "notes": {
+        "label": "Notes",
+        "summary": "Supplementary notes for the delivery order as a whole. Notes for individual lines go in each line's own Notes field."
+      },
+      "product": {
+        "label": "Product",
+        "summary": "The product being shipped. Selecting an order line fills this in automatically (you can also search and change it)."
+      },
+      "quantity": {
+        "label": "Quantity",
+        "summary": "The quantity being shipped. It cannot exceed the lot's stock quantity or the order's remaining balance (order quantity minus already shipped)."
+      }
+    },
+    "deliveryNote": {
+      "deliveryOrder": {
+        "label": "Delivery order",
+        "summary": "The source delivery order. Selecting one carries over that shipment's products and quantities."
+      },
+      "deliveryMethod": {
+        "label": "Delivery method",
+        "summary": "Standard — delivered to the ordering customer, with the delivery note enclosed in the package. Direct to end user — shipped directly to the end user; the delivery note is sent separately and normally omits pricing. Selecting a delivery order fills in the default from the order acceptance's delivery method."
+      },
+      "recipient": {
+        "label": "Ship-to",
+        "summary": "The addressee of the delivery note. Normally the ordering customer; for direct-to-end-user delivery, set it to match the actual delivery destination."
+      },
+      "endUser": {
+        "label": "End user",
+        "summary": "The actual delivery destination for direct shipments. Selecting a delivery order fills in the default from the order acceptance's end user."
+      },
+      "includePrice": {
+        "label": "Include price",
+        "summary": "Whether to print the unit price and amount on the delivery note. This is normally turned off for direct-to-end-user deliveries, so the end user does not see the transaction price."
+      },
+      "notes": {
+        "label": "Notes",
+        "summary": "Supplementary notes for the delivery note. They appear on the delivery note PDF."
+      },
+      "product": {
+        "label": "Product",
+        "summary": "The product being delivered. Carried over from the delivery order."
+      },
+      "quantity": {
+        "label": "Quantity",
+        "summary": "The quantity being delivered. Prefilled from the delivery order's quantity."
+      },
+      "unitPrice": {
+        "label": "Unit price",
+        "summary": "The unit price printed on the delivery note. It is not printed when \"Include price\" is turned off."
+      }
+    },
+    "businessPartner": {
+      "bpCode": {
+        "label": "BP code",
+        "summary": "The business partner's number. Assigned automatically."
+      },
+      "name": {
+        "label": "Name",
+        "summary": "The company name. It appears exactly as entered on documents, so use the official name."
+      },
+      "nameKana": {
+        "label": "Kana / Short name",
+        "summary": "Kana is used when searching by name. Short name is used to display a compact label in narrow spaces such as list views."
+      },
+      "country": {
+        "label": "Country",
+        "summary": "The partner's country. Used to identify overseas business partners."
+      },
+      "taxNumber": {
+        "label": "Corporate number",
+        "summary": "An identification number such as the corporate number. Used for reconciliation in billing and accounting."
+      },
+      "matchNames": {
+        "label": "AI match names",
+        "summary": "Alternate spellings that should be recognized as the same company when incoming documents are read automatically. Listing former company names or variations in how \"K.K.\" or \"Co., Ltd.\" is written reduces the chance of matching to the wrong company during intake."
+      },
+      "address": {
+        "label": "Postal code / Address",
+        "summary": "The location. Appears on delivery notes and invoices."
+      },
+      "contact": {
+        "label": "Phone / Fax / Email / Website",
+        "summary": "Contact information for the company itself. Contact details for individual people are registered separately under \"Contacts.\""
+      },
+      "active": {
+        "label": "Enabled",
+        "summary": "Turning this off removes the partner from selection on new quotes, purchase orders, and the like. Documents already created for this company remain unchanged."
+      },
+      "notes": {
+        "label": "Notes",
+        "summary": "Supplementary notes. Recording the reasoning behind a decision or points to watch out for helps anyone who reviews this later understand the background."
+      },
+      "billingBp": {
+        "label": "Bill-to (if a different company)",
+        "summary": "Specify this when the invoice should be addressed to a different company. If left blank, the company itself is the addressee."
+      },
+      "paymentTerms": {
+        "label": "Closing day / Payment terms / Payment day",
+        "summary": "The payment arrangement. Billing closing runs according to the closing day set here."
+      },
+      "creditLimit": {
+        "label": "Credit limit",
+        "summary": "A guideline for the amount of credit that can be extended."
+      },
+      "taxType": {
+        "label": "Tax type",
+        "summary": "How consumption tax is treated. Used in invoice calculations."
+      },
+      "invoiceMethod": {
+        "label": "Invoice delivery method",
+        "summary": "How the invoice is delivered — Email, Fax, Post, or Portal."
+      },
+      "consignment": {
+        "label": "Consignment partner",
+        "summary": "Whether this partner is a consignment sales partner. Turn this on only for partners you do consignment sales with."
+      },
+      "vendorType": {
+        "label": "Vendor type",
+        "summary": "Whether this is a Supplier (a partner you buy materials or supplies from) or a Subcontractor (a partner you outsource part of a process to). The company appears only in the screen for the type selected here."
+      },
+      "leadTime": {
+        "label": "Standard lead time (days)",
+        "summary": "The typical number of days from placing the order to getting it back. Used as a guide when setting the expected receipt date for outsourced work."
+      },
+      "vendorPayment": {
+        "label": "Closing day / Payment terms / Payment day",
+        "summary": "The payment arrangement for payments you make to this partner."
+      },
+      "bank": {
+        "label": "Bank name / Branch name / Account type / Account number",
+        "summary": "The bank account to transfer payment to. Used when paying this partner."
+      },
+      "industry": {
+        "label": "Industry",
+        "summary": "The type of industry the company is in. For end users, it is enough to register only major ones — you do not need to register every end user."
+      }
+    },
+    "product": {
+      "code": {
+        "label": "Product code",
+        "summary": "The product's management number. It is used across all documents — quotes, order lines, work orders, and more."
+      },
+      "name": {
+        "label": "Name",
+        "summary": "The product's name. This name is printed on documents."
+      },
+      "unit": {
+        "label": "Unit",
+        "summary": "The unit used to count the product. The default is pcs."
+      },
+      "productType": {
+        "label": "Product type",
+        "summary": "The product's type. Selecting a type displays the specification fields defined for that type below."
+      },
+      "materialType": {
+        "label": "Material type",
+        "summary": "The type of material used to make this product."
+      },
+      "dimensions": {
+        "label": "Diameter (mm) / Overall length (mm)",
+        "summary": "The dimensions of the material required. Specified as \"material type + diameter + overall length\" rather than a specific material, since any material meeting those conditions can be used."
+      },
+      "keywords": {
+        "label": "Keywords",
+        "summary": "Alternate names for this product — abbreviations, readings, English names, or alternate ways of writing the dimensions. These words are also searchable, and are matched against this product when reading order documents. Use \"Suggest with AI\" to generate candidates."
+      },
+      "active": {
+        "label": "Enabled",
+        "summary": "Turning this off removes the product from selection on quotes and price lists."
+      },
+      "notes": {
+        "label": "Notes",
+        "summary": "Supplementary notes. Recording the reasoning behind a decision or points to watch out for helps anyone who reviews this later understand the background."
+      }
+    },
+    "materialType": {
+      "manufacturer": {
+        "label": "Manufacturer",
+        "summary": "The material's manufacturer. Options are registered in Code numbering."
+      },
+      "grade": {
+        "label": "Manufacturer grade",
+        "summary": "The grade within that manufacturer's lineup. Selecting a manufacturer narrows this to only that manufacturer's grades."
+      },
+      "shape": {
+        "label": "Shape",
+        "summary": "The shape — Standard, OH, Cylinder, and so on."
+      },
+      "name": {
+        "label": "Name",
+        "summary": "The material type's name. This name appears on material and product screens."
+      },
+      "active": {
+        "label": "Enabled",
+        "summary": "Turning this off removes the material type from selection for materials and products."
+      }
+    },
+    "material": {
+      "materialType": {
+        "label": "Material type",
+        "summary": "The material type this material is based on. Register the material type first."
+      },
+      "surfaceFinish": {
+        "label": "Surface finish",
+        "summary": "The surface condition. Choose from black skin, ground, or partially ground black skin."
+      },
+      "dimensions": {
+        "label": "Diameter (mm) / overall length (mm)",
+        "summary": "The material's dimensions. Both values become part of the material code."
+      },
+      "kind": {
+        "label": "Kind",
+        "summary": "The kind defined per shape (e.g. CH or 2V30 for OH shapes)."
+      },
+      "code": {
+        "label": "Material code",
+        "summary": "The code determined by the combination of material type, surface finish, diameter, and length. It is assembled automatically."
+      },
+      "name": {
+        "label": "Name",
+        "summary": "The material's name. It appears on purchase order and receipt screens."
+      },
+      "unit": {
+        "label": "Unit",
+        "summary": "The counting unit. It becomes the default unit on purchase orders and receipts."
+      },
+      "model": {
+        "label": "Manufacturer model / nominal diameter (mm)",
+        "summary": "The manufacturer's model number and nominal diameter. Register this information to convey to the supplier when ordering."
+      },
+      "keywords": {
+        "label": "Keywords",
+        "summary": "Alternative names for this material (abbreviations, readings, English names, or alternate dimension notations). Entries here can also be used to search for the material and are matched against it when reading in documents. Use \"Suggest with AI\" to generate candidates."
+      },
+      "active": {
+        "label": "Enabled",
+        "summary": "When turned off, the material no longer appears as an option on purchase orders or receipts."
+      },
+      "notes": {
+        "label": "Notes",
+        "summary": "Supplementary information. It helps to note the reasoning behind decisions and any points of caution, so that someone reviewing this later can follow the background."
+      }
+    },
+    "processStep": {
+      "code": {
+        "label": "Step code / name",
+        "summary": "The step's management number and name. This name is listed on work orders."
+      },
+      "allowedLocations": {
+        "label": "Allowed work locations",
+        "summary": "Restricts the work locations that can be used for this step's plans and actuals. You can specify by type (machine, area, etc.) or by individual location. If both are left empty, there is no restriction (all work locations can be used)."
+      },
+      "category": {
+        "label": "Category",
+        "summary": "The classification: material prep, machining, coating, inspection, inspection approval, or shipping."
+      },
+      "execution": {
+        "label": "Execution location",
+        "summary": "Whether the step is in-house only, or can be either in-house or outsourced. Allowing outsourcing lets you select a subcontractor on the work order."
+      },
+      "quantityTracking": {
+        "label": "Quantity tracking",
+        "summary": "How quantities are handled at this step — Flow (carries the quantity forward), Inspection (counted as an inspection), or None (not recorded). The input fields on the step execution screen change depending on the mode."
+      },
+      "defaultTime": {
+        "label": "Default work time",
+        "summary": "The estimated time per occurrence. It becomes the default value when creating a work order."
+      },
+      "sync": {
+        "label": "Sync capable",
+        "summary": "Whether this step can proceed in parallel with other steps."
+      },
+      "inspection": {
+        "label": "Inspection step / inspection approval step",
+        "summary": "Whether this is a step that performs inspection, or one that approves inspection results. Marking it as an inspection step allows recording an inspection sheet on the step execution screen."
+      },
+      "approvalRank": {
+        "label": "Required approval rank",
+        "summary": "The rank required to approve this step (e.g. section chief or above)."
+      },
+      "sortOrder": {
+        "label": "Sort order",
+        "summary": "The display order. This also becomes the default execution order when added to a step list or work order (issuing/handover is fixed at the top, pre-shipment inspection is fixed at the bottom)."
+      },
+      "active": {
+        "label": "Enabled / notes",
+        "summary": "When turned off, the step no longer appears as an option. Notes are supplementary information."
+      }
+    },
+    "inspectionTemplate": {
+      "code": {
+        "label": "Code / name",
+        "summary": "The template's management number and name. Selected by this name when linking it to a work order."
+      },
+      "processStep": {
+        "label": "Related step",
+        "summary": "The step this inspection sheet is used for. Specifying it makes the sheet easier to select on that step's execution screen."
+      },
+      "active": {
+        "label": "Enabled",
+        "summary": "When turned off, it no longer appears as an option to link to work orders."
+      }
+    },
+    "defectType": {
+      "code": {
+        "label": "Code / name",
+        "summary": "The defect type's management number and name. Selected by this name when recording a defect at a step."
+      },
+      "sortOrder": {
+        "label": "Sort order",
+        "summary": "The order in which options are listed. Placing frequently used ones near the top makes entry easier on the shop floor."
+      },
+      "active": {
+        "label": "Enabled",
+        "summary": "When turned off, it no longer appears as an option for defect records."
+      }
+    },
+    "approvalGroup": {
+      "name": {
+        "label": "Name",
+        "summary": "The group's name. It appears with this name in the list when selecting a group for an approval flow step."
+      },
+      "active": {
+        "label": "Enabled",
+        "summary": "When turned off, approvals through this group no longer take place. Member and delegate settings are configured on the detail screen."
+      },
+      "validFrom": {
+        "label": "Start date/time",
+        "summary": "The date and time from which a term-limited member can begin approving. This does not apply to permanent members. Before this time, they will not appear as a candidate approver."
+      },
+      "validUntil": {
+        "label": "End date/time",
+        "summary": "The date and time after which a term-limited member can no longer approve. This does not apply to permanent members. Once this time passes, approval rights are removed automatically, so there is no need to remove them manually."
+      }
+    },
+    "approvalFlow": {
+      "stepName": {
+        "label": "Step name",
+        "summary": "The name of this approval step. Enter a term that is understood internally, such as \"First approval\" or \"Department approval.\" This name appears on the document screen and in the pending-approval list."
+      },
+      "group": {
+        "label": "Approval group",
+        "summary": "The group that approves this step. Only the members of the group selected here (or their delegates within the valid period) can approve this step."
+      },
+      "mode": {
+        "label": "Approval condition",
+        "summary": "Whether approval by any one member is enough, or approval from all members is required. \"Any one member\" advances to the next step once a single person in the group approves. \"All members\" does not advance until every member who was in the group at the time the request was made has approved."
+      }
+    },
+    "plant": {
+      "code": {
+        "label": "Site code",
+        "summary": "The site's management number. This code is used on inventory and shipping screens."
+      },
+      "name": {
+        "label": "Name / kana",
+        "summary": "The site's name. It indicates the location for inventory, receiving, and shipping."
+      },
+      "region": {
+        "label": "Country / region",
+        "summary": "The country and region classification. It is the unit used when limiting a user's permissions to \"sites in this region only.\""
+      },
+      "address": {
+        "label": "Postal code / address",
+        "summary": "The location. It is used as the destination address on documents."
+      },
+      "contact": {
+        "label": "Phone number / email address / contact",
+        "summary": "Contact information. Used as the inquiry contact on documents."
+      },
+      "active": {
+        "label": "Enabled",
+        "summary": "When turned off, it no longer appears as an option for receiving or shipping locations."
+      },
+      "notes": {
+        "label": "Notes",
+        "summary": "Supplementary information. It helps to note the reasoning behind decisions and any points of caution, so that someone reviewing this later can follow the background."
+      }
+    },
+    "materialNumbering": {
+      "code": {
+        "label": "Code",
+        "summary": "A symbol that becomes part of material type codes and material codes. Decide it at registration — changing it later will break existing codes that were built using this part."
+      },
+      "name": {
+        "label": "Name",
+        "summary": "The name shown as an option on the material type and material screens."
+      },
+      "active": {
+        "label": "Enabled",
+        "summary": "Turning this off removes it from the options when registering a material type or material. Use it to hide a manufacturer or shape you no longer use, while keeping past registrations intact."
+      }
+    },
+    "workLocation": {
+      "plant": {
+        "label": "Site",
+        "summary": "The site this work location belongs to. When selecting a step's execution location, only work locations at this site appear as options."
+      },
+      "code": {
+        "label": "Code / Name (Japanese / English)",
+        "summary": "The management number and name of the work location. It can be selected as a step's execution location."
+      },
+      "type": {
+        "label": "Type",
+        "summary": "The category of the work location. Used to filter the list."
+      },
+      "capacity": {
+        "label": "Capacity",
+        "summary": "A rough guide to how much this location can handle at once. Enter 1 for a single machine, or the number of items that can be placed at once for an area."
+      },
+      "sortOrder": {
+        "label": "Sort order / Enabled / Notes",
+        "summary": "The display order, whether it appears as an option, and any additional notes."
+      }
+    },
+    "storageLocation": {
+      "plant": {
+        "label": "Site / Floor",
+        "summary": "The site and floor this location belongs to. Inventory is tracked by storage location at this level."
+      },
+      "code": {
+        "label": "Code / Name (Japanese / English)",
+        "summary": "The management number and name of the location. Once registered, it can be selected as a storage location for inventory."
+      },
+      "sortOrder": {
+        "label": "Sort order",
+        "summary": "The order in which it appears among the options. Smaller numbers appear first."
+      },
+      "active": {
+        "label": "Enabled / Notes",
+        "summary": "Turning this off removes it from the storage location options. Notes are for additional remarks."
+      }
+    },
+    "userManagement": {
+      "plants": {
+        "label": "Assigned sites",
+        "summary": "The sites this user is responsible for. Multiple sites can be selected."
+      }
+    },
+    "fileManagement": {
+      "showSystemFiles": {
+        "label": "Show system files",
+        "summary": "Whether to show OS/tool leftover files such as \".DS_Store\" or \"*.tmp\". Keep this off normally, and turn it on only when you want to clean them up."
+      },
+      "grantFolder": {
+        "label": "Folder (path prefix match)",
+        "summary": "The folder to grant access to. Since this matches by path prefix, everything under the specified folder is included."
+      },
+      "grantUser": {
+        "label": "User",
+        "summary": "The person who will be able to view this folder."
+      },
+      "grantWrite": {
+        "label": "Also allow writing",
+        "summary": "When turned on, the user can place and delete files, not just view them. Grant this only to people who need it."
+      }
+    },
+    "kioskCard": {
+      "count": {
+        "label": "Number of cards to issue",
+        "summary": "The number of cards to create at once. Newly created cards are not yet assigned to anyone."
+      },
+      "user": {
+        "label": "Assign to user",
+        "summary": "The person who will use this card. Once assigned, they can log in by tapping the card on a shop-floor tablet."
+      }
+    },
+    "kioskDevice": {
+      "name": {
+        "label": "Device name (Japanese / English)",
+        "summary": "The name shown in the list, on the floor map, and on activity-log badges. Use a name that lets people locate the physical device, such as \"Plant 1 entrance\"."
+      },
+      "plant": {
+        "label": "Site",
+        "summary": "The site where this device is located. Devices are listed grouped by site."
+      },
+      "location": {
+        "label": "Location",
+        "summary": "Where the device is placed within the site. Placing a pin on the floor map lets you see its position on screen as well."
+      },
+      "defaultWorkLocation": {
+        "label": "Default work location",
+        "summary": "The work location automatically recorded in the work record when a step is started or resumed on this device. Set it to the machine or area where the device is placed. It can also be changed from the device settings screen on the tablet itself (authenticated with the setup code)."
+      },
+      "linkCode": {
+        "label": "Link code",
+        "summary": "The verification code shown on the tablet's screen. First create the device profile on this screen, then scan (or type in) the code shown on the tablet to link that profile with the physical device."
+      }
+    },
+    "productType": {
+      "itemName": {
+        "label": "Item name (Japanese / English)",
+        "summary": "The name of the field shown on the product screen. Enter both Japanese and English."
+      },
+      "key": {
+        "label": "Key (identifier)",
+        "summary": "The alphanumeric name used to store this field. Decide it at registration — changing it later will disconnect it from values already entered."
+      },
+      "type": {
+        "label": "Type",
+        "summary": "The kind of value, such as text or number. The type determines which of the settings below apply — minimum/maximum for numbers, a pattern for text."
+      },
+      "default": {
+        "label": "Default value (base)",
+        "summary": "The value used when nothing is entered. Setting a commonly used value reduces manual input."
+      },
+      "placeholder": {
+        "label": "Placeholder",
+        "summary": "An example shown faintly in the input field. It is not saved as a value."
+      },
+      "required": {
+        "label": "Make required",
+        "summary": "When turned on, the product cannot be saved while this field is left empty."
+      },
+      "pattern": {
+        "label": "Pattern (regular expression)",
+        "summary": "A rule for the shape of the text. Use this only when you want to enforce a specific format."
+      },
+      "range": {
+        "label": "Minimum / Maximum",
+        "summary": "The allowed range of values for a numeric field."
+      },
+      "typeName": {
+        "label": "Type name (Japanese / English)",
+        "summary": "The name selected when creating a product."
+      },
+      "typeDescription": {
+        "label": "Description",
+        "summary": "A note explaining what kind of product this type is used for."
+      },
+      "typeActive": {
+        "label": "Enabled",
+        "summary": "Turning this off removes it from the options when creating a product. Products already created with this type remain unchanged."
+      },
+      "typeItems": {
+        "label": "Items",
+        "summary": "The fields shown on the product screen when this type is selected. Choose from the product items created above."
+      },
+      "typeDefault": {
+        "label": "Default value (override)",
+        "summary": "Enter this only if you want a different default value for this field specifically when this type is selected. If left empty, the default value from the product item is used."
+      }
+    }
   }
 }

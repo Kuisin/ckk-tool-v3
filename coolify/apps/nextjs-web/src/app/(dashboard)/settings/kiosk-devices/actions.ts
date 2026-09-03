@@ -260,7 +260,10 @@ export async function linkDeviceToProfile(
       tableName: "kiosk_devices",
       recordId: parsedId.data,
       before: { status: "PENDING" },
-      after: { status: "LINKED", note: "タブレットとリンク" },
+      after: {
+        status: "LINKED",
+        note: tr("settings.kioskDevicesActions.auditLinkedTablet"),
+      },
     });
     revalidate();
     return actionOk();
@@ -340,7 +343,10 @@ export async function unlinkDevice(id: string): Promise<ActionResult> {
       tableName: "kiosk_devices",
       recordId: parsed.data,
       before: { status: device.status },
-      after: { status: "PENDING", note: "リンク解除" },
+      after: {
+        status: "PENDING",
+        note: tr("settings.kioskDevicesActions.auditUnlinked"),
+      },
     });
     revalidate();
     return actionOk();
@@ -733,7 +739,9 @@ export async function regenerateSettingsCode(
       action: "UPDATE",
       tableName: "kiosk_devices",
       recordId: parsed.data,
-      after: { note: "端末設定コードを再生成" },
+      after: {
+        note: tr("settings.kioskDevicesActions.auditSettingsCodeRegenerated"),
+      },
     });
     revalidate();
     return actionOk({ code });
@@ -785,7 +793,7 @@ export async function revealKioskPin(input: {
         tableName: "kiosk_devices",
         recordId: parsed.data,
         after: {
-          note: "端末設定コードを表示",
+          note: tr("settings.kioskDevicesActions.auditSettingsCodeRevealed"),
           ...elevationAuditNote(gate, "kiosk_secret.reveal_settings_code"),
         },
       });
@@ -804,7 +812,7 @@ export async function revealKioskPin(input: {
       tableName: "system_settings",
       recordId: "kiosk.unlock_pin",
       after: {
-        note: "メンテナンス PIN を表示",
+        note: tr("settings.kioskDevicesActions.auditUnlockPinRevealed"),
         ...elevationAuditNote(gate, "kiosk_secret.reveal_unlock_pin"),
       },
     });
@@ -861,7 +869,7 @@ export async function listUnlockPinHistory(): Promise<
       tableName: "kiosk_unlock_pins",
       recordId: "kiosk.unlock_pin",
       after: {
-        note: "メンテナンス PIN の履歴を表示",
+        note: tr("settings.kioskDevicesActions.auditUnlockPinHistoryRevealed"),
         count: rows.length,
         ...elevationAuditNote(gate, "kiosk_secret.reveal_pin_history"),
       },
@@ -934,7 +942,7 @@ export async function revealDeviceUnlockPin(
       tableName: "kiosk_devices",
       recordId: parsed.data,
       after: {
-        note: "端末が保持しているメンテナンス PIN を表示",
+        note: tr("settings.kioskDevicesActions.auditDevicePinRevealed"),
         ...elevationAuditNote(gate, "kiosk_secret.reveal_device_pin"),
       },
     });
@@ -1066,7 +1074,11 @@ export async function placeDevice(raw: {
       tableName: "kiosk_devices",
       recordId: v.id,
       after: {
-        note: `フロアマップ「${map.name}」に配置（${round(v.mapX)}%, ${round(v.mapY)}%）`,
+        note: tr("settings.kioskDevicesActions.auditPlacedOnFloorMap", {
+          name: map.name,
+          x: round(v.mapX),
+          y: round(v.mapY),
+        }),
       },
     });
     revalidate();
@@ -1101,7 +1113,9 @@ export async function unplaceDevice(id: string): Promise<ActionResult> {
       action: "UPDATE",
       tableName: "kiosk_devices",
       recordId: parsed.data,
-      after: { note: "フロアマップのピンを解除" },
+      after: {
+        note: tr("settings.kioskDevicesActions.auditUnplacedFromFloorMap"),
+      },
     });
     revalidate();
     return actionOk();

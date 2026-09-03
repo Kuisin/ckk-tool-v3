@@ -22,31 +22,33 @@ export default async function KioskSettingsPage() {
   const policy = [
     {
       label: tr("settings.kiosk.maximumSessionLength"),
-      value: `${p.sessionTtlHours} 時間`,
+      value: tr("settings.kiosk.hoursValue", { n: p.sessionTtlHours }),
     },
     {
       label: tr("settings.kiosk.idleAutoLogout"),
-      value: `${p.idleTimeoutMinutes} 分`,
+      value: tr("settings.kiosk.minutesValue", { n: p.idleTimeoutMinutes }),
     },
     {
       label: tr("settings.kiosk.reEnterThePinDeviceUnused"),
-      value: `${p.pinReverifyDeviceIdleHours} 時間`,
+      value: tr("settings.kiosk.hoursValue", {
+        n: p.pinReverifyDeviceIdleHours,
+      }),
     },
     {
       label: tr("settings.kiosk.reEnterThePinElapsed"),
-      value: `${p.pinReverifyMaxDays} 日`,
+      value: tr("settings.kiosk.daysValue", { n: p.pinReverifyMaxDays }),
     },
     {
       label: tr("settings.kiosk.consecutivePinFailureLimit"),
-      value: `${p.pinMaxAttempts} 回`,
+      value: tr("settings.kiosk.useCountTimes", { count: p.pinMaxAttempts }),
     },
     {
       label: tr("settings.kiosk.pINLockoutTime"),
-      value: `${p.pinLockMinutes} 分`,
+      value: tr("settings.kiosk.minutesValue", { n: p.pinLockMinutes }),
     },
     {
       label: tr("settings.kiosk.deviceTokenLifetime"),
-      value: `${p.deviceTokenTtlDays} 日`,
+      value: tr("settings.kiosk.daysValue", { n: p.deviceTokenTtlDays }),
     },
   ];
 

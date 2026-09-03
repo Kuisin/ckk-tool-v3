@@ -179,7 +179,7 @@ export function ProductTypeEditForm({
           <TextInput
             label={
               <HelpLabel
-                {...fieldHelp("productType", "typeName", {
+                {...fieldHelp(tr, "productType", "typeName", {
                   label: tr("settings.productTypeEditForm.typeNameJapanese"),
                 })}
               />
@@ -194,7 +194,7 @@ export function ProductTypeEditForm({
           <TextInput
             label={
               <HelpLabel
-                {...fieldHelp("productType", "typeName", {
+                {...fieldHelp(tr, "productType", "typeName", {
                   label: tr("settings.productTypeEditForm.typeNameEnglish"),
                 })}
               />
@@ -207,7 +207,9 @@ export function ProductTypeEditForm({
           />
         </SimpleGrid>
         <Textarea
-          label={<HelpLabel {...fieldHelp("productType", "typeDescription")} />}
+          label={
+            <HelpLabel {...fieldHelp(tr, "productType", "typeDescription")} />
+          }
           mt="sm"
           onChange={(e) => patch({ description: e.currentTarget.value })}
           placeholder={tr("settings.productTypeEditForm.whatThisTypeIsForEtc")}
@@ -218,7 +220,7 @@ export function ProductTypeEditForm({
           checked={type.enabled}
           label={
             <HelpLabel
-              {...fieldHelp("productType", "typeActive", {
+              {...fieldHelp(tr, "productType", "typeActive", {
                 label: tr(
                   "settings.productTypeEditForm.enabledOfferedWhenCreatingAProduct",
                 ),
@@ -251,7 +253,9 @@ export function ProductTypeEditForm({
                   <Select
                     data={defOptions}
                     label={
-                      <HelpLabel {...fieldHelp("productType", "typeItems")} />
+                      <HelpLabel
+                        {...fieldHelp(tr, "productType", "typeItems")}
+                      />
                     }
                     onChange={(v) => patchAssign(i, { itemKey: v ?? "" })}
                     placeholder={tr("common.selectAnItem")}
@@ -271,7 +275,7 @@ export function ProductTypeEditForm({
                       )}
                       label={
                         <HelpLabel
-                          {...fieldHelp("productType", "typeDefault")}
+                          {...fieldHelp(tr, "productType", "typeDefault")}
                         />
                       }
                       onChange={(v) =>
@@ -293,7 +297,7 @@ export function ProductTypeEditForm({
                       }
                       label={
                         <HelpLabel
-                          {...fieldHelp("productType", "typeDefault")}
+                          {...fieldHelp(tr, "productType", "typeDefault")}
                         />
                       }
                       onChange={(e) =>

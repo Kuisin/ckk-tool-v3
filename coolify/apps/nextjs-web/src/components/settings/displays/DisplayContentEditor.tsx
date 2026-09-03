@@ -130,7 +130,7 @@ export function DisplayContentEditor({ display, plantOptions, onDone }: Props) {
   const uploadImage = (file: File | null) => {
     if (!file) return;
     startTransition(async () => {
-      const result = await uploadDisplayImage(display.id, file);
+      const result = await uploadDisplayImage(display.id, file, tr);
       if (!result.ok) {
         notifications.show({
           title: tr("common.error2"),

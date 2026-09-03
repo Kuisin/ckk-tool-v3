@@ -15,6 +15,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/db";
 import { type LocalizedText, localized } from "@/lib/format";
+import { encodeInventoryNote } from "@/lib/inventory-note-core";
 import { getDeviceForSettings } from "@/lib/kiosk-auth";
 import { consumeTicket, issueTicket } from "@/lib/tickets";
 import { wsBridge } from "@/lib/ws-bridge";
@@ -95,7 +96,7 @@ export async function POST(req: Request) {
         afterData: {
           defaultWorkLocationId: workLocationId,
           enforceWorkLocation,
-          note: "端末側から作業場所設定を変更（設定コード認証）",
+          note: encodeInventoryNote("deviceWorkLocationChangedFromDevice"),
         },
       },
     })

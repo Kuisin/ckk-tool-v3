@@ -48,10 +48,8 @@ import {
   dispositionTotals,
   quantitiesFromList,
 } from "@/lib/step-defects";
-import {
-  QUANTITY_LABELS,
-  type QuantityTrackingMode,
-} from "@/lib/workflow-core";
+import type { QuantityTrackingMode } from "@/lib/workflow-core";
+import { localizedQuantityLabels } from "@/lib/workflow-core-labels";
 
 export function StepQuantityForm({
   workOrderNumber,
@@ -76,7 +74,7 @@ export function StepQuantityForm({
   const [defects, setDefects] = useState<DefectReasonEntry[]>([]);
 
   const input = inputQuantity ?? 0;
-  const labels = QUANTITY_LABELS[mode];
+  const labels = localizedQuantityLabels(tr, mode);
   const issue = checkDefectList(defects, input, mode);
   const total = defectListTotal(defects);
   const success = deriveSuccessFromList(input, defects);

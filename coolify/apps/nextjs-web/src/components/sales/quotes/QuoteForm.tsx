@@ -117,6 +117,7 @@ function buildInitial(
   quote: Quote | null | undefined,
   prefill: QuotePrefill | undefined,
   entries: PriceListEntry[],
+  tr: ReturnType<typeof useTranslations>,
 ): QuoteFormValues {
   if (quote) return toFormValues(quote);
   const base: QuoteFormValues = {
@@ -138,6 +139,7 @@ function buildInitial(
       prefill.productId,
       orderType,
       quantity,
+      tr,
     );
     base.items = [
       {
@@ -206,7 +208,7 @@ export function QuoteForm({
 
   const form = useForm<QuoteFormValues>({
     validate: zodResolver(buildSchema(tr)),
-    initialValues: buildInitial(quote, prefill, entries),
+    initialValues: buildInitial(quote, prefill, entries, tr),
   });
 
   const branches = branchesByCustomer[form.values.customerId] ?? [];
@@ -225,6 +227,7 @@ export function QuoteForm({
               it.productId,
               it.orderType,
               it.quantity,
+              tr,
             )
           : null;
         return {
@@ -317,7 +320,7 @@ export function QuoteForm({
           <Select
             data={customerOptions}
             error={form.errors.customerId}
-            label={<HelpLabel {...fieldHelp("quote", "customer")} />}
+            label={<HelpLabel {...fieldHelp(tr, "quote", "customer")} />}
             onChange={(v) => onCustomerChange(v ?? "")}
             placeholder={tr("common.selectACustomer")}
             searchable
@@ -328,7 +331,7 @@ export function QuoteForm({
             clearable
             data={branches}
             disabled={branches.length === 0}
-            label={<HelpLabel {...fieldHelp("quote", "customerBranch")} />}
+            label={<HelpLabel {...fieldHelp(tr, "quote", "customerBranch")} />}
             placeholder={
               branches.length
                 ? tr("sales.quoteForm.selectABranch")
@@ -348,7 +351,7 @@ export function QuoteForm({
           />
           <DatePickerInput
             clearable
-            label={<HelpLabel {...fieldHelp("quote", "validUntil")} />}
+            label={<HelpLabel {...fieldHelp(tr, "quote", "validUntil")} />}
             leftSection={<IconCalendar size={14} />}
             placeholder={tr("common.pickADate")}
             valueFormat="YYYY/MM/DD"
@@ -427,7 +430,9 @@ export function QuoteForm({
               </Group>
               <DatePickerInput
                 clearable
-                label={<HelpLabel {...fieldHelp("quote", "deliveryDate")} />}
+                label={
+                  <HelpLabel {...fieldHelp(tr, "quote", "deliveryDate")} />
+                }
                 leftSection={<IconCalendar size={14} />}
                 maw={220}
                 mt="xs"
@@ -474,7 +479,7 @@ export function QuoteForm({
 
       <Textarea
         autosize
-        label={<HelpLabel {...fieldHelp("quote", "notes")} />}
+        label={<HelpLabel {...fieldHelp(tr, "quote", "notes")} />}
         minRows={2}
         {...form.getInputProps("notes")}
       />

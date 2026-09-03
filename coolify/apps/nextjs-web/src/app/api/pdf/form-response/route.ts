@@ -119,7 +119,7 @@ export async function GET(request: Request): Promise<Response> {
       label(
         "pdf.formResponse.noResponsesToPrint",
         "ja",
-        "印刷できる回答がありません",
+        "印刷できる回答がありません", // i18n-ignore
       ),
       { status: 409 },
     );
@@ -150,14 +150,14 @@ export async function GET(request: Request): Promise<Response> {
         label(
           "pdf.formResponse.bulkPrintedNote",
           "ja",
-          "回答を PDF でまとめて印刷（{count} 件",
+          "回答を PDF でまとめて印刷（{count} 件", // i18n-ignore
           { count: capped.length },
         ) +
         (responses.length > capped.length
           ? label(
               "pdf.formResponse.cappedSuffix",
               "ja",
-              "・上限 {max} 件で打ち切り",
+              "・上限 {max} 件で打ち切り", // i18n-ignore
               { max: MAX_BULK_PAGES },
             )
           : "") +

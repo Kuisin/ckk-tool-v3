@@ -44,9 +44,9 @@ export default async function WorkOrderStepsLayout({
               label: woLabel,
               href: `/production/work-orders/${workOrderNumber}`,
             },
-            "工程",
+            tr("common.step"),
           ]}
-          title={`工程 — 指示書 ${woLabel}`}
+          title={`${tr("common.step")} — ${tr("common.workOrder")} ${woLabel}`}
         />
       }
       master={<StepListPane basePath={basePath} steps={nav.steps} />}

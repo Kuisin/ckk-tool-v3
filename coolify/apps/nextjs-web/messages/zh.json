@@ -783,7 +783,13 @@
     "workflowChangeRequest": "工序流程变更",
     "orderAcceptanceCancelRequest": "订单确认书作废申请",
     "formRequest": "表单申请",
-    "untitled": "无标题"
+    "untitled": "无标题",
+    "justNow": "刚刚",
+    "minutesAgo": "{n} 分钟前",
+    "hoursAgo": "{n} 小时前",
+    "yesterday": "昨天",
+    "daysAgo": "{n} 天前",
+    "step": "工序"
   },
   "shell": {
     "appsLabel": "应用",
@@ -1124,6 +1130,36 @@
       "SCHEDULED": "期间前",
       "EXPIRED": "已结束",
       "DISABLED": "已停用"
+    },
+    "WORK_ORDER_HISTORY_ACTION_LABEL": {
+      "CREATE": "已创建",
+      "COPY": "已复制",
+      "UPDATE": "已更新",
+      "REQUEST_APPROVAL": "已申请审批",
+      "APPROVE_STEP": "已批准",
+      "APPROVE_FINAL": "最终批准",
+      "APPROVE_1ST": "一级审批",
+      "APPROVE_2ND": "二级审批",
+      "REJECT": "已退回",
+      "CANCEL": "已取消"
+    },
+    "DESIGN_HISTORY_ACTION_LABEL": {
+      "CREATE": "已创建",
+      "UPDATE": "已更新",
+      "REQUEST_APPROVAL": "已申请审批",
+      "APPROVE": "已批准",
+      "REJECT": "已退回",
+      "ASSIGN": "已变更负责人",
+      "KIND_OVERRIDE": "已变更申请类别",
+      "START": "已着手",
+      "COMPLETE": "已完成",
+      "REOPEN": "已退回（作业）",
+      "CANCEL": "已取消"
+    },
+    "DESIGN_FILE_ROLE_LABEL": {
+      "PREVIEW": "预览",
+      "BLUEPRINT": "图纸文件",
+      "REFERENCE": "参考资料"
     }
   },
   "status": {
@@ -1925,7 +1961,10 @@
       "markedAsPaid": "已标记为已付款",
       "searchByInvoiceNumberOrCustomer": "按请款单号或客户搜索",
       "thereAreNoInvoicesGenerateThem": "没有请款单（从结算处理生成）",
-      "exportedAtLabel": "已导出・{dateTime}"
+      "exportedAtLabel": "已导出・{dateTime}",
+      "taxLabelReduced": "消费税（8%）",
+      "taxLabelExempt": "消费税（免税）",
+      "taxLabelStandard": "消费税（10%）"
     },
     "invoiceDetail": {
       "confirmIssueMessage": "将发行请款单 {invoiceNumber}，发行日期记为今天。",
@@ -1983,7 +2022,9 @@
       "youHaveNotAnsweredAnyForms": "尚未回答任何表单",
       "editable": "可编辑",
       "thereIsNoCompletionNotice": "没有完成通知",
-      "unread": "未读"
+      "unread": "未读",
+      "deadlineUntil": "截至 {datetime}",
+      "editableUntil": "可编辑至 {datetime}"
     },
     "inboxCommentsList": {
       "thereAreNoUnresolvedCommentsOn": "您的文档没有未解决的评论"
@@ -2075,7 +2116,10 @@
       "transferChecksumMismatch": "校验和不匹配，内容可能存在缺失",
       "transferRelatedFieldWarning": "“{label}”引用了其他表单（{target}）。如果导入目的地没有相同代码的表单，将不会显示任何内容",
       "transferRelatedFieldNoTarget": "“{label}”未设置引用的表单",
-      "transferAttachmentNotCarried": "存在附件项目。文件本身不会被转移（仅转移项目定义）"
+      "transferAttachmentNotCarried": "存在附件项目。文件本身不会被转移（仅转移项目定义）",
+      "auditExportedToExcel": "已将回答导出为 Excel（{count} 条{truncated}）",
+      "auditExportTruncatedSuffix": "，因达到上限而截断",
+      "exportFilenamePartialSuffix": "_部分"
     },
     "tasksActions": {
       "loginRequired": "请登录",
@@ -2122,7 +2166,54 @@
       "richText": "富文本",
       "dropdownSingleSelect": "下拉（单选）",
       "subTableRepeatableRows": "子表（可增行）",
-      "relatedRecords": "关联记录"
+      "relatedRecords": "关联记录",
+      "lookupSourceUser": "用户",
+      "lookupSourceCustomer": "业务伙伴（公司）",
+      "lookupSourceBusinessPartner": "业务伙伴的分店・工厂",
+      "lookupSourceProduct": "产品",
+      "lookupSourceMaterial": "材料",
+      "lookupSourceMaterialType": "材料类别",
+      "lookupSourceProcessStep": "工序",
+      "lookupSourcePlant": "据点",
+      "lookupSourceStorageLocation": "存放位置",
+      "lookupSourceWorkLocation": "作业场所",
+      "enterLabelJa": "请输入标签（日语）",
+      "enterChoiceValue": "请输入选项的值",
+      "selectTargetForm": "请选择参照的表单",
+      "selectTargetField": "请选择参照的项目",
+      "selectThisFormField": "请选择本表单一侧的项目",
+      "upToNColumns": "显示列最多 {n} 列",
+      "patternMaxLength": "正则表达式最多 {max} 个字符",
+      "unsafePattern": "无法使用此正则表达式（语法错误，或存在嵌套量词）",
+      "keyFormat": "键须以字母开头，只能包含字母、数字或 _",
+      "upToNFields": "项目最多 {n} 个",
+      "onlyOneTitleField": "只能有一个项目作为列表标题",
+      "cannotBeTitleField": "「{label}」此类型的项目不能作为列表标题",
+      "duplicateFieldKey": "项目键 \"{key}\" 重复",
+      "duplicateColumnKey": "「{label}」的列键 \"{key}\" 重复",
+      "invalidFieldDefinition": "项目定义不正确",
+      "itemIndexPrefix": "第 {index} 个项目：{message}",
+      "fieldRequired": "{label} 为必填项",
+      "fieldEnterNumber": "请为 {label} 输入数值",
+      "fieldMinNumber": "{label} 须为 {min} 以上",
+      "fieldMaxNumber": "{label} 须为 {max} 以下",
+      "fieldEnterDate": "请为 {label} 输入日期",
+      "fieldEnterTime": "请为 {label} 输入时间（HH:MM）",
+      "fieldSelectFromOptions": "请从选项中选择 {label}",
+      "fieldSelectRequired": "请选择 {label}",
+      "fieldInvalidAttachment": "{label} 的附件不正确",
+      "fieldInvalidRow": "{label} 的行不正确",
+      "fieldUpToNRows": "{label} 最多 {n} 行",
+      "fieldInvalidRowAt": "{label} 第 {row} 行不正确",
+      "fieldRowError": "{label} 第 {row} 行：{error}",
+      "fieldEnterValue": "请输入 {label}",
+      "fieldUpToNChars": "{label} 最多 {n} 个字符",
+      "fieldInvalidFormat": "{label} 的格式不正确",
+      "availabilityDraft": "草稿",
+      "availabilityScheduled": "未开始",
+      "availabilityOpen": "受理中",
+      "availabilityClosed": "已结束",
+      "availabilityArchived": "已归档"
     },
     "tasksTabs": {
       "workPlans": "工作计划",
@@ -2135,6 +2226,16 @@
       "completedTitle": "{title} No.{recordNo} 已完成",
       "applicantMessage": "申请人：{name}",
       "notifiedNote": "已通知完成（{count} 人）"
+    },
+    "formResponsePdf": {
+      "unanswered": "（未回答）",
+      "managedInAttachmentsTab": "（在附件标签中管理）",
+      "filesCount": "{count} 个文件",
+      "formResponseLabel": "表单回答",
+      "notYetProcessed": "未处理",
+      "approvalRecordSectionTitle": "审批记录",
+      "stepNoColumn": "级",
+      "approverColumn": "审批人"
     }
   },
   "production": {
@@ -2220,7 +2321,9 @@
       "flowChangeAlreadyApplied": "已应用（事后审批 — 即使被退回也不会自动撤销）。",
       "flowChangeApprovalTitle": "工序流程变更的审批",
       "flowChangeDescription": "{summary}｜申请人：{requestedBy}｜{stepLabel}。{note}",
-      "flowChangeNotAppliedYet": "在获批之前，工序不会改变。"
+      "flowChangeNotAppliedYet": "在获批之前，工序不会改变。",
+      "andNMoreOrderLines": "{first} 等 {count} 件",
+      "andNMoreCustomers": "{first} 等 {count} 家"
     },
     "addBranchModal": {
       "theBranchWasAdded": "已添加分支",
@@ -2506,7 +2609,8 @@
       "floorMapAlt": "平面图：{name}",
       "lotN": "批次 {number}",
       "pinLabelWithStockCount": "{name}（{code}）｜库存 {count} 件",
-      "step": "工序"
+      "step": "工序",
+      "sourceStepLabel": "工单 #{number} / {stepName}"
     },
     "pendingWorkOrders": {
       "orderedQuantity": "接单数",
@@ -2842,6 +2946,17 @@
       "invalidDesignRequest": "指定的设计委托无效",
       "selectTheDrawingFile": "请选择图纸文件",
       "isTooLargeMax20mb": "{name} 过大（每个文件最多 20MB）"
+    },
+    "workflowIssues": {
+      "stepFallback": "工序 #{id}",
+      "missingAnd": "{step} 需要 {related}",
+      "exclusion": "{step} 与 {related} 不能同时选择",
+      "missingOrGroup": "{step} 需要 {related} 之一（可能由材料条件满足）",
+      "missingStart": "工序流程必须从「出料/交接」（{related}）之一开始",
+      "multipleStart": "「出料/交接」只能选择 1 个（当前已选：{related}）"
+    },
+    "productRoutes": {
+      "theSelectedProcessRouteIsNot": "所选的工序路线不属于该产品"
     }
   },
   "purchase": {
@@ -3224,7 +3339,10 @@
       "scanQr": "扫描二维码",
       "loginScreenLanguage": "登录界面语言",
       "loginScreenLanguageDescription": "该终端登录前的界面（二维码登录、终端关联等）所使用的显示语言。",
-      "loginScreenLanguageDefault": "默认（日语）"
+      "loginScreenLanguageDefault": "默认（日语）",
+      "hoursValue": "{n} 小时",
+      "minutesValue": "{n} 分钟",
+      "daysValue": "{n} 天"
     },
     "links": {
       "links": "链接管理",
@@ -3261,7 +3379,12 @@
       "selectACriterionOnTheLeft": "从左侧列表选择基准即可编辑公式",
       "selectATableFromTheList": "请从左侧列表选择表",
       "selectingASectionOpensItsEdit": "选择各区块即可打开编辑页面。",
-      "selectAToolTypeOnThe": "从左侧列表选择刀具类别即可编辑适用基准"
+      "selectAToolTypeOnThe": "从左侧列表选择刀具类别即可编辑适用基准",
+      "criteriaSummary": "{count} 项基准 — 试算单价为各基准之和",
+      "toolTypesSummary": "{count} 种刀具类别 — 各类别的适用基准与试算单价",
+      "materialPolicySummary": "{basis} / 参考 {months} 个月",
+      "customInputsSummary": "{count} 个项目 — 试算输入与全局固定系数",
+      "lookupsSummary": "{count} 张表 — 直径×全长矩阵等可在表达式中引用"
     },
     "kioskCards": {
       "thereAreNoCardsToPrint": "没有可打印的卡。",
@@ -3487,7 +3610,9 @@
       "thereAreNoFieldsToAssign": "没有可分配的项目。请先在「项目定义」中创建项目。",
       "editType": "编辑类别",
       "editTypeName": "编辑类别 — {name}",
-      "defaultValueIfEmptyDefault": "留空时为 \"{default}\""
+      "defaultValueIfEmptyDefault": "留空时为 \"{default}\"",
+      "enterAnItemName": "请输入项目名称",
+      "enterATypeName": "请输入类别名称"
     },
     "productTypesListPanel": {
       "deleteTheProductType": "删除产品类别",
@@ -3668,7 +3793,10 @@
       "cannotShowTheSampleTheShared": "无法显示样例（未设置共用终端的 URL）",
       "sampleOfLabel": "{label}示例",
       "linkThisDisplay": "关联显示屏：{name}",
-      "screenNumber": "第 {n} 屏"
+      "screenNumber": "第 {n} 屏",
+      "displayLanguage": "此屏幕的显示语言",
+      "displayLanguageDescription": "看板（生产状况、待出货等）和关联代码界面所使用的显示语言。由于没有登录来确定观看者的语言，因此在终端本身上设置。",
+      "displayLanguageDefault": "默认（日语）"
     },
     "orderIntake": {
       "queued": "已投入",
@@ -3705,7 +3833,12 @@
       "tooManyNumbersAtOnce": "一次最多只能指定 {max} 件",
       "noFileWasSpecified": "未指定文件",
       "unsupportedFileFormatPdfPngJpg": "不支持的文件格式（PDF / PNG / JPG / WEBP）",
-      "failedToSaveToTheIntake": "保存到导入文件夹失败"
+      "failedToSaveToTheIntake": "保存到导入文件夹失败",
+      "dirIsNotADirectory": "{dir} 不是目录",
+      "cannotReadDirIsItMounted": "无法读取 {dir}（是否已挂载到容器？）",
+      "intakeDirIntakeDirIsNotConfigured": "未设置导入文件夹（INTAKE_DIR）",
+      "invalidFileName": "文件名无效",
+      "theTargetFileWasNotFound": "未找到目标文件"
     },
     "portal": {
       "theAccountWasCreatedDisabledBy": "已创建账户（默认为停用）",
@@ -4011,7 +4144,16 @@
       "renameFloorMapFailed": "平面图更新失败",
       "deleteFloorMapFailed": "平面图删除失败",
       "floorMapHasDevicesCannotDelete": "已放置终端的平面图无法删除。请先移除图钉。",
-      "floorMapHasStorageLocationsCannotDelete": "已放置存放位置的平面图无法删除。请先移除图钉。"
+      "floorMapHasStorageLocationsCannotDelete": "已放置存放位置的平面图无法删除。请先移除图钉。",
+      "auditLinkedTablet": "已与平板关联",
+      "auditUnlinked": "已解除关联",
+      "auditSettingsCodeRegenerated": "已重新生成终端设置代码",
+      "auditSettingsCodeRevealed": "已查看终端设置代码",
+      "auditUnlockPinRevealed": "已查看维护 PIN",
+      "auditUnlockPinHistoryRevealed": "已查看维护 PIN 历史",
+      "auditDevicePinRevealed": "已查看终端持有的 PIN",
+      "auditPlacedOnFloorMap": "已放置到平面图「{name}」（{x}%, {y}%）",
+      "auditUnplacedFromFloorMap": "已从平面图解除图钉"
     },
     "orderIntakeActions": {
       "scanStartFailed": "扫描启动失败",
@@ -4080,7 +4222,10 @@
       "connectionTestUnreadableResult": "无法读取连接测试结果",
       "connectionTestTimedOut": "连接测试未在规定时间内完成（90 秒）",
       "connectionTestFailedLog": "[ai-provider] 连接测试失败",
-      "extractionServerUnreachable": "无法连接到抽取服务器（po-extract）。可能需要更新。"
+      "extractionServerUnreachable": "无法连接到抽取服务器（po-extract）。可能需要更新。",
+      "encryptionKeyNotSetCannotSaveToken": "由于未设置加密密钥（{envVar}），无法保存 API 令牌。请联系系统管理员。",
+      "cannotDecryptTokenKeyNotSet": "无法解密 AI 服务商的 API 令牌（未设置 {envVar}）。请联系系统管理员。",
+      "cannotDecryptTokenKeyChanged": "无法解密 AI 服务商的 API 令牌（加密密钥可能已更改）。请在系统设置 → AI 服务商中重新输入令牌。"
     },
     "filesActions": {
       "specifyFolder": "请指定文件夹",
@@ -4203,7 +4348,9 @@
       "enterACriterionName": "请输入基准名称",
       "enterALabel": "请输入标签",
       "idMustBeAlphanumericHyphens": "ID 只能包含英数字、连字符和下划线（须以英数字开头）",
-      "specifyAtLeastOneKey": "请至少指定一个键列"
+      "specifyAtLeastOneKey": "请至少指定一个键列",
+      "toolTypeValueFormat": "值须为大写字母、数字或 _（以大写字母开头）",
+      "enterADisplayName": "请输入显示名称"
     },
     "aiProviderCore": {
       "baseUrlMustStartWithHttp": "基础 URL 必须以 http:// 或 https:// 开头",
@@ -4224,7 +4371,9 @@
   },
   "portal": {
     "d": {
-      "identityCheck": "身份确认"
+      "identityCheck": "身份确认",
+      "deadLink": "此链接已失效，请联系销售负责人。",
+      "cannotOpenTheLink": "无法打开链接"
     },
     "documents": {
       "document": "单据",
@@ -4517,7 +4666,11 @@
       "bulkEnabled": "已启用 {count} 个业务伙伴",
       "daySuffix": "{value} 天",
       "endOfMonth": "月末",
-      "primaryContactTag": "（主要负责人）"
+      "primaryContactTag": "（主要负责人）",
+      "enterFullName": "请输入姓名",
+      "roleInfoRequired": "请输入{role}信息",
+      "selectASalesRep": "请选择销售负责人",
+      "billToOwnCompany": "—（本公司）"
     },
     "defectTypes": {
       "theDefectTypeWasCreated": "已创建不良类别",
@@ -5255,7 +5408,9 @@
       "toleranceTopBottomOrder": "公差 Top 请设置为大于等于 Bottom",
       "updateFailed": "更新检查表模板失败",
       "updateItemFailed": "更新检查项目失败",
-      "versionLocked": "此版本正在被工单或检查记录使用，无法更改。请创建新版本"
+      "versionLocked": "此版本正在被工单或检查记录使用，无法更改。请创建新版本",
+      "auditCreatedByImport": "通过导入创建：{code} v{version}（{count} 项）",
+      "importFailed": "导入失败"
     },
     "materialNumberingActions": {
       "codeAlnumTwoDigits": "编号为 2 位英数字",
@@ -5344,7 +5499,10 @@
       "enterLabelJa": "请输入显示名称（日语）",
       "duplicateTypeKey": "类别键有重复",
       "typeInUseCannotDelete": "使用中的类别无法删除：{keys}",
-      "saveTypesFailed": "类别保存失败"
+      "saveTypesFailed": "类别保存失败",
+      "auditWorkLocationAdded": "已添加作业场所「{name}」",
+      "auditWorkLocationUpdated": "已更新作业场所「{name}」",
+      "auditWorkLocationDeleted": "已删除作业场所"
     },
     "storageLocationActions": {
       "codeFormat": "编号请使用字母、数字、连字符和下划线",
@@ -5550,13 +5708,20 @@
       "responseNotFound": "未找到回答",
       "notSubmittedYet": "尚未提交",
       "itWasSentBack": "已被退回",
-      "theEditingWindowHasClosedContact": "可编辑期间已结束。如需修改请联系创建者。"
+      "theEditingWindowHasClosedContact": "可编辑期间已结束。如需修改请联系创建者。",
+      "myResponseTitle": "我的回答",
+      "submittedAt": "已提交 {datetime}",
+      "formPageTitle": "表单"
     },
     "responses": {
       "theUrlIsWrongOrYou": "URL 不正确，或没有查看此表单回答的权限。",
       "youCannotViewTheResponses": "无法查看回答",
       "onlyThoseMatchingTheSharingConditions": "（仅符合共享条件的）",
-      "respond": "回答"
+      "respond": "回答",
+      "pageTitle": "回答列表"
+    },
+    "editResponsePage": {
+      "title": "编辑回答"
     }
   },
   "l": {
@@ -5570,7 +5735,8 @@
       "thisLinkLeavesTheInternalSystem": "此链接将跳出内部系统。请确认跳转目标。",
       "destination": "目标位置",
       "doNotEnterInternalPasswordsOr": "请勿在跳转目标网站输入内部密码或业务数据。",
-      "continueAndLeave": "继续并离开"
+      "continueAndLeave": "继续并离开",
+      "goToAnExternalSite": "前往外部网站"
     }
   },
   "admin": {
@@ -5584,7 +5750,13 @@
       "activityId": "操作历史 #{id}",
       "relatedPages": "相关页面",
       "shownInTheList": "（在列表中显示）",
-      "whatChangedSummary": "变更内容（摘要）"
+      "whatChangedSummary": "变更内容（摘要）",
+      "suffixProduct": "（产品）",
+      "suffixMaterial": "（材料）",
+      "suffixStorageLocation": "（存放位置）",
+      "suffixFloorMap": "（地图）",
+      "suffixDisplay": "（显示屏）",
+      "formResponsesLabel": "表单回答"
     },
     "appFlagsTable": {
       "labelWasSetToV2In": "已在 {env} 中将 {label} 设为{v2}",
@@ -5771,7 +5943,8 @@
       "oldLineNumber": "旧第 {n} 行",
       "lineNumber": "第 {n} 行",
       "commentOnLine": "在第 {n} 行添加评论",
-      "commentPlaceholderForLine": "对第 {n} 行的评论"
+      "commentPlaceholderForLine": "对第 {n} 行的评论",
+      "pageTitleWithName": "审阅 — {title}"
     },
     "revisionDiff": {
       "compareFrom": "比较来源",
@@ -6412,7 +6585,9 @@
       "itemNameOnTheOrder": "订单上的品名",
       "mayBeLeftBlank": "可不填",
       "watchedFolder": "监视文件夹导入",
-      "manualEntry": "手动录入"
+      "manualEntry": "手动录入",
+      "itemCountSuffix": "（{count} 项明细）",
+      "priceDiffLine": "第 {row} 行 {actual} ≠ 价格表 {expected}"
     },
     "orderLines": {
       "parentDocumentOfThisLine": "此明细的父单据",
@@ -6546,7 +6721,10 @@
       "unitPriceUsed": "采用单价",
       "noMaximum": "无上限",
       "removeTheTier": "删除档",
-      "addATier": "添加档"
+      "addATier": "添加档",
+      "quantityRangeOpen": "{min} 支起",
+      "quantityRangeBounded": "{min}~{max} 支",
+      "perPieceAmount": "{amount}/支"
     },
     "quotes": {
       "issuedPdfGenerationFailed": "已发行（PDF 生成失败）",
@@ -7064,7 +7242,10 @@
       "confirmShipBodyStock": "将出货单 {number} 标记为已出货（因为是库存保管，订单明细的出货状态不会改变）。",
       "shippedBody": "已将出货单 {number} 标记为已出货",
       "confirmDeleteBody": "将删除出货单 {number}。此操作无法撤销。",
-      "deletedBody": "已删除出货单 {number}"
+      "deletedBody": "已删除出货单 {number}",
+      "onlySameCustomerCanBeCombined": "一张出货单只能合并同一客户的订单明细",
+      "onlySameShipToCanBeCombined": "一张出货单只能合并同一送货对象的订单明细",
+      "onlySameDeliveryMethodCanBeCombined": "一张出货单只能合并同一配送方式（常规配送 / 直送最终用户）的订单明细"
     },
     "pendingShipments": {
       "completedLots": "完成批次",
@@ -7832,6 +8013,1046 @@
     "shippedReservationReleased": "因出货解除预留 {ref}",
     "materialReceived": "材料到货",
     "reservedByStockCheck": "库存核对分配预留（§4）",
-    "stockCheckReservedAndShortage": "库存核对：已分配 {reservedNow} / 缺口 {shortage}"
+    "stockCheckReservedAndShortage": "库存核对：已分配 {reservedNow} / 缺口 {shortage}",
+    "stepStarted": "开始工序（工序 {sortOrder}・接收 {input}）",
+    "stepPaused": "暂停工序（工序 {sortOrder}）",
+    "stepResumed": "恢复工序（工序 {sortOrder}）",
+    "workLocationChanged": "变更作业场所（工序 {sortOrder} / 作业场所 {workLocationId}）",
+    "stepCompleted": "完成工序（良品 {success}/{input}）",
+    "defectsRecorded": "已添加不良记录（{count} 件）",
+    "inspectionRecordedPass": "已保存检查记录（合格 / {count} 项）",
+    "inspectionRecordedFail": "已保存检查记录（不合格 / {count} 项）",
+    "deviceUnlinkedFromDevice": "已从终端本身解除关联（设备设置码）",
+    "deviceWorkLocationChangedFromDevice": "已从终端本身变更作业场所设置（设备设置码）"
+  },
+  "workflowCore": {
+    "quantityLabels": {
+      "flow": {
+        "input": "接收数",
+        "success": "良品数",
+        "semi": "半成品",
+        "scrap": "报废",
+        "rework": "工序分支"
+      },
+      "inspection": {
+        "input": "检查数",
+        "success": "合格数",
+        "semi": "不合格（半成品）",
+        "scrap": "不合格（报废）",
+        "rework": "不合格（工序分支）"
+      },
+      "none": {
+        "input": "接收数",
+        "success": "良品数",
+        "semi": "半成品",
+        "scrap": "报废",
+        "rework": "工序分支"
+      }
+    },
+    "stepNotFound": "找不到工序",
+    "stepNotStartable": "该工序目前无法开始",
+    "anotherUserSession": "另一位用户正在操作中",
+    "execDepIncomplete": "执行依赖未完成（工序 {stepId}）",
+    "execDepOrIncomplete": "执行依赖（任一）均未完成",
+    "branchSourceIncomplete": "分支来源工序尚未完成",
+    "precedingWorkOrderIncomplete": "前置工单 #{workOrderNumber} 尚未完成",
+    "quantityNegative": "{label}请输入 0 以上的数值",
+    "quantityConservationInspection": "合格 + 不合格（半成品・报废・工序分支）之和（{sum}）与检查数（{input}）不一致",
+    "quantityConservationFlow": "良品 + 不良（半成品・报废・工序分支）之和（{sum}）与接收数（{input}）不一致",
+    "routingExceedsLimit": "分支数量总计（{static}）超过了 良品 + 工序分支（{limit}）",
+    "selfLoopNotAllowed": "无法创建自环",
+    "linkEndpointOutsideWorkOrder": "链接的端点不在该工单范围内",
+    "branchesAreCyclic": "分支形成了循环",
+    "fullQuantity": "全量"
+  },
+  "fieldHelp": {
+    "quote": {
+      "customer": {
+        "label": "客户",
+        "summary": "选择本报价单面向的客户。单价将根据所选客户的价格表确定，请先选择客户。"
+      },
+      "customerBranch": {
+        "label": "分公司",
+        "summary": "选择收件的分公司。如果该客户未登记分公司，则无法选择（留空即可）。"
+      },
+      "validUntil": {
+        "label": "失效日",
+        "summary": "本报价单的最后有效日期。超过该日期的报价单可在列表中标记为“已过期”。"
+      },
+      "status": {
+        "label": "状态",
+        "summary": "报价单当前的状态。新建时从“草稿”开始。"
+      },
+      "product": {
+        "label": "产品",
+        "summary": "选择要报价的产品。选择后，系统会根据客户、订单类别与数量的组合，从价格表中自动带入相应单价。"
+      },
+      "orderType": {
+        "label": "订单类别",
+        "summary": "订单类别分为量产、试制、样品与其他。即使是同一产品，不同类别的价格也不同，请根据实际订单选择（样品按 0 元处理）。"
+      },
+      "quantity": {
+        "label": "数量",
+        "summary": "输入数量（支数）。如果价格表按数量区间设置单价，单价将根据所输入的数量而变化。"
+      },
+      "deliveryDate": {
+        "label": "交期",
+        "summary": "该明细向客户交付的预计日期，可按明细单独设置。"
+      },
+      "notes": {
+        "label": "备注",
+        "summary": "仅供内部参考的补充说明，不会显示在报价单 PDF 上。"
+      }
+    },
+    "priceList": {
+      "customer": {
+        "label": "客户",
+        "summary": "确定价格所面向的客户。客户与产品的组合构成一条价格表记录，创建后不可更改。"
+      },
+      "product": {
+        "label": "产品",
+        "summary": "确定价格所对应的产品。与客户相同，创建后不可更改。"
+      },
+      "orderType": {
+        "label": "订单类别",
+        "summary": "订单类别分为量产、试制、样品与其他。即使客户与产品相同，不同类别也可以设置不同的价格。"
+      },
+      "basePrice": {
+        "label": "基准单价",
+        "summary": "作为数量档基础的单价。各档的单价由该单价乘以相应系数确定。"
+      },
+      "validFrom": {
+        "label": "生效日",
+        "summary": "该价格开始生效的日期。创建报价单时，将使用当时有效的价格。"
+      },
+      "validUntil": {
+        "label": "失效日",
+        "summary": "该价格停止生效的日期。留空则表示无期限。"
+      },
+      "multiplier": {
+        "label": "系数",
+        "summary": "各数量区间对应的系数。若希望购买数量越多单价越低，可输入小于 1 的数值。"
+      },
+      "customPrice": {
+        "label": "自定义单价",
+        "summary": "用于手动指定该档的单价。填写后将优先于按系数计算的结果。"
+      }
+    },
+    "orderAcceptance": {
+      "customer": {
+        "label": "客户",
+        "summary": "下单的客户。系统会根据导入的订单自动判定，若无法判定，请在此手动选择。"
+      },
+      "customerOrderRef": {
+        "label": "客户订单号",
+        "summary": "客户订单单据上标注的编号。日后客户咨询时，可通过该编号进行查找。"
+      },
+      "quoteNumber": {
+        "label": "报价单",
+        "summary": "该订单所依据的报价单。若指定，本订单确定时，该已发行的报价单会自动变为“已接受”。"
+      },
+      "orderDate": {
+        "label": "订货日",
+        "summary": "客户下单的日期。请输入订单单据上标注的日期。"
+      },
+      "shipTo": {
+        "label": "送货对象",
+        "summary": "产品的送达地点。当需要送达至下单客户以外的公司或分公司时选择。留空则表示送达至该客户本身。"
+      },
+      "deliveryMethod": {
+        "label": "配送方式",
+        "summary": "常规配送 — 送达下单客户（或其送货对象）。直送最终用户 — 直接送达最终用户。出货单只能合并送货对象与配送方式相同的订单。"
+      },
+      "endUser": {
+        "label": "最终用户",
+        "summary": "实际的送达对象（最终需求方）。选择直送最终用户时为必填项，常规配送下也可选填作为记录。"
+      },
+      "assignedPlant": {
+        "label": "负责据点",
+        "summary": "主要负责处理该订单的本公司据点。用于明确该工作归属哪个据点。"
+      },
+      "shippingWorkLocation": {
+        "label": "出货作业场所",
+        "summary": "进行出货作业（包装、装车等）的场所。从作业场所主数据中选择。"
+      },
+      "notes": {
+        "label": "备注",
+        "summary": "针对整份订单确认书的补充说明。若需针对各明细补充说明，请填写各行的备注。"
+      },
+      "product": {
+        "label": "产品",
+        "summary": "被订购的产品。系统会根据订单上的品名自动匹配，但可能无法匹配成功 — 此时请手动选择。"
+      },
+      "orderType": {
+        "label": "订单类别",
+        "summary": "分为量产、试制、样品与其他。价格因该分类而不同。"
+      },
+      "quantity": {
+        "label": "数量",
+        "summary": "订购的数量（支数）。若识别结果有误，请予以修正。"
+      },
+      "unitPrice": {
+        "label": "单价",
+        "summary": "每支的价格。若与价格表中的单价不同，将立即显示为差异。"
+      },
+      "deliveryDate": {
+        "label": "交期",
+        "summary": "该明细的交期。若明细未指定，则使用表头的希望交期。"
+      },
+      "itemNotes": {
+        "label": "明细备注",
+        "summary": "仅针对该明细的补充说明（例如版本号或定制内容等）。"
+      }
+    },
+    "designRequest": {
+      "trigger": {
+        "label": "触发方式",
+        "summary": "选择该委托是用于报价、订单确定之后，还是两者都不是的独立委托。选择“报价时”或“接单时”后，接下来需要关联的是报价单还是订单明细也会随之改变。选择“独立”则不会显示关联字段 — 用于尚未产生任何单据阶段的委托，例如新产品评估或客户的事先咨询。"
+      },
+      "quote": {
+        "label": "报价单",
+        "summary": "触发方式为“报价时”时选择。记录该设计对应的报价单，便于日后追溯经过。"
+      },
+      "orderLine": {
+        "label": "订单明细",
+        "summary": "触发方式为“接单时”时选择。记录该设计对应的订单。"
+      },
+      "product": {
+        "label": "产品",
+        "summary": "需要绘制图纸的产品。必填。是“新增”还是“修订”，将根据该产品是否已有过往设计文件自动判定。即便是尚未登记的全新产品，只需名称与单位即可登记到产品主数据中，请先完成登记后再提交委托。"
+      },
+      "assignee": {
+        "label": "负责人",
+        "summary": "负责绘制图纸的生产人员。审批通过后，该人员会收到“请开始处理”的通知。审批通过后仍可通过“…”进行变更。"
+      },
+      "desiredAt": {
+        "label": "希望交期",
+        "summary": "图纸所需完成的期限。留空也可登记，但填写后可在列表中排序，并会用颜色标示已超期的项目。"
+      },
+      "priority": {
+        "label": "优先级",
+        "summary": "分为普通与加急。若已填写希望交期，则以其为基准，因此优先级适用于“交期虽不紧，但希望优先处理”等情况。"
+      },
+      "baseDesignFile": {
+        "label": "原图纸",
+        "summary": "修订时，以哪个版本为基础重新绘制。留空则使用判定时的最新版本。若在本委托进行期间，另一项修订先行完成，完成时会在历史记录中留下相应说明。"
+      },
+      "changeReason": {
+        "label": "变更理由",
+        "summary": "修订时，请说明重新绘制的原因。此字段与委托内容字段相互独立，可作为日后追溯版本差异的线索。"
+      },
+      "description": {
+        "label": "委托内容",
+        "summary": "请描述需要设计的内容。生产负责人将仅依据此处内容绘制图纸，请具体说明尺寸、形状、可参考的既有产品及注意事项等。"
+      }
+    },
+    "trialEstimate": {
+      "customer": {
+        "label": "客户",
+        "summary": "该价格试算面向的客户。留空也可进行计算 — 可用于尚未确定对象阶段的粗略估算。"
+      },
+      "product": {
+        "label": "产品",
+        "summary": "该价格试算对应的产品。若与产品建立关联，确定后即可在价格表中作为基准单价来源选用。"
+      },
+      "maxDiameter": {
+        "label": "最大直径 (mm)",
+        "summary": "产品的最大直径。选择材料直径时的参考依据。"
+      },
+      "length": {
+        "label": "全长 (mm)",
+        "summary": "产品的长度。材料费用由长度决定，因此该值变化会影响材料成本。"
+      },
+      "materialType": {
+        "label": "材料类别",
+        "summary": "所使用的材料种类。请从由制造商与牌号组合确定的种类中选择。"
+      },
+      "diameter": {
+        "label": "直径",
+        "summary": "材料的直径。请选择大于产品最大直径的规格。"
+      },
+      "surfaceFinish": {
+        "label": "表面处理",
+        "summary": "材料的表面状态。黑皮（未研磨）价格较低，但有时需要另外加收无心磨加工费。"
+      },
+      "cylinderType": {
+        "label": "圆筒种类",
+        "summary": "工具类别为圆筒时选择。加工费因种类而异。"
+      },
+      "stepMachining": {
+        "label": "阶梯加工长度 (mm) / 阶梯加工种类",
+        "summary": "阶梯加工的长度及其种类。费用由长度与种类的组合确定。"
+      },
+      "neckMachining": {
+        "label": "颈下加工长度 (mm) / 颈下加工种类",
+        "summary": "颈下加工的长度及其种类。若不进行该加工，同样留空即可。"
+      },
+      "machiningTime": {
+        "label": "加工时间 (分钟)",
+        "summary": "每支的加工时间。加工费用根据该时间计算，请输入接近实际作业情况的数值。"
+      },
+      "coating": {
+        "label": "涂层",
+        "summary": "涂层的种类。选择后将加上相应的费用。"
+      },
+      "lapping": {
+        "label": "研磨抛光",
+        "summary": "是否进行研磨抛光处理。"
+      },
+      "inspectionReport": {
+        "label": "检查成绩书",
+        "summary": "是否附带检查成绩书。附带后将加上检查费用。"
+      },
+      "ld": {
+        "label": "LD 加工 / LD 部位 / LD 外径 (mm) / LD 刃长 (mm)",
+        "summary": "进行 LD 加工时的条件设置。选中“LD 加工”后，即可指定部位、外径与刃长。"
+      }
+    },
+    "purchaseRequest": {
+      "reason": {
+        "label": "申请理由",
+        "summary": "说明为什么需要该材料。审批人会据此判断，写明用于哪个产品的哪道工序可以减少往返沟通。"
+      },
+      "notes": {
+        "label": "备注",
+        "summary": "针对整个申请的补充说明。仅涉及特定材料的内容，请填写在明细的备注栏。"
+      },
+      "material": {
+        "label": "材料",
+        "summary": "选择所需的材料。列表中没有时，请先在材料主数据中登记。"
+      },
+      "plant": {
+        "label": "到货据点",
+        "summary": "接收该材料的据点。将计入该据点的库存，请选择实际使用的场所。"
+      },
+      "quantity": {
+        "label": "数量",
+        "summary": "输入所需数量。之后的采购单会沿用相同数量。"
+      },
+      "unit": {
+        "label": "单位",
+        "summary": "计量单位，如支、kg、m 等。选择材料后会自动带入默认单位。"
+      },
+      "desiredDate": {
+        "label": "希望交期",
+        "summary": "希望收到材料的日期。并非确定的计划——实际的预计到货日期将在制作采购单时与供应商确定。"
+      },
+      "itemNotes": {
+        "label": "明细备注",
+        "summary": "仅针对该材料的补充说明（例如“与上次相同批次”）。"
+      }
+    },
+    "purchaseOrder": {
+      "supplier": {
+        "label": "供应商",
+        "summary": "购买材料的对象。列表中没有时，请在业务伙伴主数据中登记。"
+      },
+      "orderDate": {
+        "label": "下单日",
+        "summary": "下单日期。留空时，点击“下单”的当天会自动填入。"
+      },
+      "notes": {
+        "label": "备注",
+        "summary": "针对整份采购单的补充说明。仅涉及特定材料的内容，请填写在明细的备注栏。"
+      },
+      "material": {
+        "label": "材料",
+        "summary": "选择要采购的材料。若采购单是由采购申请生成的，会沿用申请中的内容。"
+      },
+      "plant": {
+        "label": "到货据点",
+        "summary": "接收该材料的据点。登记到货后，该据点的库存会增加。"
+      },
+      "quantity": {
+        "label": "数量",
+        "summary": "下单的数量。到货时可以分批接收（适用于分多次送达的情况）。"
+      },
+      "unit": {
+        "label": "单位",
+        "summary": "计量单位，如支、kg、m 等。选择材料后会自动带入默认单位。"
+      },
+      "unitPrice": {
+        "label": "单价",
+        "summary": "每个单位的价格。此处输入的金额会作为价格试算中材料成本的参考价格，请输入实际交易价格。"
+      },
+      "expectedDate": {
+        "label": "预计到货日",
+        "summary": "该材料预计到货的日期。请填写与供应商约定的日期。"
+      },
+      "itemNotes": {
+        "label": "明细备注",
+        "summary": "仅针对该材料的补充说明。针对整份采购单的补充说明请填写在上方的备注栏。"
+      }
+    },
+    "materialReceipt": {
+      "material": {
+        "label": "材料",
+        "summary": "选择到货的材料。若是从采购单登记到货，会沿用采购单中的内容。"
+      },
+      "supplier": {
+        "label": "供应商",
+        "summary": "送货的公司。从采购单登记到货时会自动填入。"
+      },
+      "plant": {
+        "label": "到货据点",
+        "summary": "实际接收的据点。该据点的库存会增加，请选择货物实际到达的场所。"
+      },
+      "receivedDate": {
+        "label": "到货日",
+        "summary": "收货日期。库存将在此日期增加。"
+      },
+      "quantity": {
+        "label": "数量",
+        "summary": "实际到货的数量。可以与订购数量不同——分批到货时，只需登记实际收到的部分。"
+      },
+      "unit": {
+        "label": "单位",
+        "summary": "计量单位，如支、kg、m 等。选择材料后会自动带入默认单位。"
+      },
+      "notes": {
+        "label": "备注",
+        "summary": "补充说明。请记录日后可能需要核实的情况，例如有损伤或数量不符等。"
+      }
+    },
+    "workOrder": {
+      "orderLine": {
+        "label": "订单明细分配",
+        "summary": "该工单对应哪个（些）订单明细。添加行可以将同一产品的多条明细合并为一个工单（一个批次），也可以将一条明细拆分到多个工单中制作。仅用于备库的工单可以留空。"
+      },
+      "allocQuantity": {
+        "label": "分配数量",
+        "summary": "为该明细制作的数量。上限为该明细可分配的剩余数量（订单数量减去其他工单已分配的部分）。"
+      },
+      "product": {
+        "label": "目标产品",
+        "summary": "要制作的产品。选择订单明细后，会自动带入该订单的产品。"
+      },
+      "plannedQuantity": {
+        "label": "计划数量",
+        "summary": "制作的数量。应输入不少于分配总量的数值（可自行加上不良品的预留量；备库工单则等于分配总量）。该数值也会作为工序接收数的初始值。"
+      },
+      "material": {
+        "label": "使用材料",
+        "summary": "使用的材料。工单获批后，该材料将从库存中预留。"
+      },
+      "storageLocation": {
+        "label": "存放位置",
+        "summary": "成品的存放位置。请从存放位置主数据中选择。尚未确定时可以留空。"
+      },
+      "route": {
+        "label": "工序列表 / 版本",
+        "summary": "使用哪种工序顺序。请从为该产品登记的工序列表中选择（备库工单不使用此项）。"
+      },
+      "newRouteName": {
+        "label": "新工序列表名称",
+        "summary": "当场创建新工序列表时使用的名称。此后可为同一产品选择该顺序。"
+      },
+      "inspectionTemplates": {
+        "label": "检查表",
+        "summary": "各检查工序所使用的检查表模板，可多选。添加工序后，会自动选中与该工序关联的检查表模板。"
+      },
+      "notes": {
+        "label": "备注",
+        "summary": "补充说明。现场人员查看工单时会看到这些内容。"
+      }
+    },
+    "productInventory": {
+      "plant": {
+        "label": "目标据点",
+        "summary": "调拨的目标据点。源据点的库存会减少，目标据点的库存会增加。"
+      },
+      "location": {
+        "label": "存放位置 / 货架",
+        "summary": "在目标据点内的具体存放位置。提前设定便于日后查找实物。"
+      },
+      "quantity": {
+        "label": "数量",
+        "summary": "调拨的数量。不能超过源据点现有的数量。"
+      },
+      "notes": {
+        "label": "备注",
+        "summary": "用于记录调拨原因等信息的栏位。调拨记录会保留在历史中。"
+      }
+    },
+    "materialInventory": {
+      "plant": {
+        "label": "目标据点",
+        "summary": "调拨的目标据点。源据点的库存会减少，目标据点的库存会增加。"
+      },
+      "location": {
+        "label": "存放位置 / 货架",
+        "summary": "在目标据点内的具体存放位置。提前设定便于日后查找实物。"
+      },
+      "quantity": {
+        "label": "数量",
+        "summary": "调拨的数量。不能超过源据点现有的数量。"
+      },
+      "notes": {
+        "label": "备注",
+        "summary": "用于记录调拨原因等信息的栏位。调拨记录会保留在历史中。"
+      }
+    },
+    "approval": {
+      "rejectReason": {
+        "label": "退回理由",
+        "summary": "退回时的理由，将原样显示给申请人查看。"
+      }
+    },
+    "deliveryOrder": {
+      "orderLine": {
+        "label": "订单确认书",
+        "summary": "选择本次出货所对应的订单确认书。选定后，会自动带入该订单确认书中可出货的明细。"
+      },
+      "type": {
+        "label": "类别",
+        "summary": "出货的类别。只有「发货」才会进入送货单和请款流程。"
+      },
+      "plant": {
+        "label": "出货据点",
+        "summary": "单据上记录的出货据点。「库存保管」类型的出货书会将库存入库到此据点。"
+      },
+      "notes": {
+        "label": "备注",
+        "summary": "对整张出货书的补充说明。各明细行的补充说明请写在该行自己的备注栏。"
+      },
+      "product": {
+        "label": "产品",
+        "summary": "本次出货的产品。选择订单明细后会自动带入该产品（也可以搜索后更改）。"
+      },
+      "quantity": {
+        "label": "数量",
+        "summary": "本次出货的数量。不能超过该批次的库存数量，也不能超过订单剩余数量（订单数量减已出货数量）。"
+      }
+    },
+    "deliveryNote": {
+      "deliveryOrder": {
+        "label": "出货单",
+        "summary": "作为依据的出货单。选定后会带入该次出货的产品和数量。"
+      },
+      "deliveryMethod": {
+        "label": "配送方式",
+        "summary": "常规配送……送达订货方，送货单随货同寄。直送最终用户……直接送达最终用户，送货单另行寄送，通常不记载价格。选择出货单后，会根据订单确认书的配送方式带入默认值。"
+      },
+      "recipient": {
+        "label": "送货对象",
+        "summary": "送货单的收件对象。通常为订货方；直送时请按实际送达地点指定。"
+      },
+      "endUser": {
+        "label": "最终用户",
+        "summary": "直送时的实际送达对象。选择出货单后，会根据订单确认书的最终用户带入默认值。"
+      },
+      "includePrice": {
+        "label": "显示价格",
+        "summary": "是否在送货单上记载单价和金额。直送最终用户时通常关闭此项，以免让最终用户得知交易价格。"
+      },
+      "notes": {
+        "label": "备注",
+        "summary": "对送货单的补充说明，会显示在送货单 PDF 上。"
+      },
+      "product": {
+        "label": "产品",
+        "summary": "本次送货的产品，从出货单带入。"
+      },
+      "quantity": {
+        "label": "数量",
+        "summary": "本次送货的数量，默认带入出货单的数量。"
+      },
+      "unitPrice": {
+        "label": "单价",
+        "summary": "印在送货单上的单价。关闭「显示价格」时不会打印此项。"
+      }
+    },
+    "businessPartner": {
+      "bpCode": {
+        "label": "业务伙伴编号",
+        "summary": "业务伙伴的编号，系统自动生成。"
+      },
+      "name": {
+        "label": "名称",
+        "summary": "公司名称。会原样显示在单据上，请填写正式名称。"
+      },
+      "nameKana": {
+        "label": "假名读音 / 简称",
+        "summary": "假名读音用于按名称检索。简称用于在列表等空间较窄处显示简短名称。"
+      },
+      "country": {
+        "label": "国家",
+        "summary": "对方所在的国家，用于识别海外业务伙伴。"
+      },
+      "taxNumber": {
+        "label": "法人编号",
+        "summary": "法人编号等识别编号，用于请款和会计对账。"
+      },
+      "matchNames": {
+        "label": "AI 匹配名称",
+        "summary": "在自动读取收到的单据时，希望被识别为同一家公司的其他写法。列出旧公司名称，或「株式会社」等写法不同的表述，可以减少导入时匹配错误公司的情况。"
+      },
+      "address": {
+        "label": "邮政编码 / 地址",
+        "summary": "所在地。会显示在送货单和请款单上。"
+      },
+      "contact": {
+        "label": "电话 / 传真 / 邮箱 / 网站",
+        "summary": "公司层面的联系方式。各联系人的联系方式请另外在「联系人」中登记。"
+      },
+      "active": {
+        "label": "启用",
+        "summary": "关闭后，将无法在新的报价单、采购单等单据中选择该业务伙伴，但已为该公司创建的单据不受影响。"
+      },
+      "notes": {
+        "label": "备注",
+        "summary": "补充说明。写明决定的理由或注意事项，有助于日后查看的人了解来龙去脉。"
+      },
+      "billingBp": {
+        "label": "请款对象（为另一法人时）",
+        "summary": "当请款单的收件对象为另一家公司时在此指定。留空则以该公司本身为收件对象。"
+      },
+      "paymentTerms": {
+        "label": "结算日 / 账期 / 付款日",
+        "summary": "收款的约定。结算处理会按此处设置的结算日运行。"
+      },
+      "creditLimit": {
+        "label": "信用额度",
+        "summary": "可赊销金额的参考上限。"
+      },
+      "taxType": {
+        "label": "税务类别",
+        "summary": "消费税的处理方式，用于请款单的计算。"
+      },
+      "invoiceMethod": {
+        "label": "请款单寄送方式",
+        "summary": "请款单通过邮件、传真、邮寄还是门户方式送达。"
+      },
+      "consignment": {
+        "label": "委托销售对象",
+        "summary": "是否为委托销售对象。仅对进行委托销售的对象开启此项。"
+      },
+      "vendorType": {
+        "label": "供应商类别",
+        "summary": "选择该业务伙伴是供应商（购买材料或物资的对象）还是外协厂商（委托部分工序的对象）。该公司仅会出现在此处所选类别对应的画面中。"
+      },
+      "leadTime": {
+        "label": "标准交货周期（天）",
+        "summary": "从委托到收回的大致天数，用作确定外协到货预计日期的参考。"
+      },
+      "vendorPayment": {
+        "label": "结算日 / 账期 / 付款日",
+        "summary": "本公司向对方付款时的约定。"
+      },
+      "bank": {
+        "label": "银行名称 / 支行名称 / 账户类型 / 账号",
+        "summary": "汇款账户信息，用于向对方付款时使用。"
+      },
+      "industry": {
+        "label": "行业",
+        "summary": "该公司所属的行业类型。最终用户只需登记主要的大客户即可，无需登记所有最终用户。"
+      }
+    },
+    "product": {
+      "code": {
+        "label": "产品编号",
+        "summary": "产品的管理编号。见积书、订单明细、工单等所有单据都使用此编号。"
+      },
+      "name": {
+        "label": "名称",
+        "summary": "产品名称，会打印在单据上。"
+      },
+      "unit": {
+        "label": "单位",
+        "summary": "计数单位，默认为「支」。"
+      },
+      "productType": {
+        "label": "产品类别",
+        "summary": "产品的类别。选择类别后，下方会显示该类别所定义的规格项目。"
+      },
+      "materialType": {
+        "label": "材料类别",
+        "summary": "制作该产品所使用的材料类别。"
+      },
+      "dimensions": {
+        "label": "直径 (mm) / 全长 (mm)",
+        "summary": "所需材料的尺寸。以「材料类别 + 直径 + 全长」指定，而非特定材料——只要条件相同的材料均可使用。"
+      },
+      "keywords": {
+        "label": "关键词",
+        "summary": "该产品的其他称呼（简称、读法、英文名、尺寸的其他写法）。填写的词语同样可用于搜索，在读取订单文件时也会据此匹配到该产品。可使用「AI 生成候选」生成候选词。"
+      },
+      "active": {
+        "label": "启用",
+        "summary": "关闭后，将无法在报价单和价格表中选择该产品。"
+      },
+      "notes": {
+        "label": "备注",
+        "summary": "补充说明。写明决定的理由或注意事项，有助于日后查看的人了解来龙去脉。"
+      }
+    },
+    "materialType": {
+      "manufacturer": {
+        "label": "制造商",
+        "summary": "材料的制造商。可选项在编号构成中登记。"
+      },
+      "grade": {
+        "label": "制造商牌号",
+        "summary": "该制造商旗下的材质。选择制造商后，只会显示该制造商的材质。"
+      },
+      "shape": {
+        "label": "形状",
+        "summary": "形状，如标准、OH、圆筒等。"
+      },
+      "name": {
+        "label": "名称",
+        "summary": "材料类别的名称，会显示在材料和产品的画面中。"
+      },
+      "active": {
+        "label": "启用",
+        "summary": "关闭后，将无法在材料和产品中选择该材料类别。"
+      }
+    },
+    "material": {
+      "materialType": {
+        "label": "材料类别",
+        "summary": "该材料所基于的材料类别。请先登记材料类别。"
+      },
+      "surfaceFinish": {
+        "label": "表面处理",
+        "summary": "表面状态。可选择黑皮、研磨或研磨黑皮。"
+      },
+      "dimensions": {
+        "label": "直径 (mm) / 全长 (mm)",
+        "summary": "材料的尺寸。这两个数值将构成材料编号的一部分。"
+      },
+      "kind": {
+        "label": "种类",
+        "summary": "按形状确定的种类（如 OH 形状的 CH、2V30 等）。"
+      },
+      "code": {
+        "label": "材料编号",
+        "summary": "由材料类别、表面处理、直径、全长组合决定的编号，系统会自动生成。"
+      },
+      "name": {
+        "label": "名称",
+        "summary": "材料的名称。将显示在采购单和到货画面中。"
+      },
+      "unit": {
+        "label": "单位",
+        "summary": "计数单位。将作为采购单和到货的默认单位。"
+      },
+      "model": {
+        "label": "制造商型号 / 公称直径 (mm)",
+        "summary": "制造商的型号和公称直径。用于下单时告知供应商的信息。"
+      },
+      "keywords": {
+        "label": "关键词",
+        "summary": "该材料的其他称呼（简称、读法、英文名称、尺寸的其他写法）。这些词也可用于搜索，并在读取单据时用于匹配该材料。可通过“AI 生成候选”生成候选词。"
+      },
+      "active": {
+        "label": "启用",
+        "summary": "关闭后，该材料将不再出现在采购单或到货的选项中。"
+      },
+      "notes": {
+        "label": "备注",
+        "summary": "补充说明。建议写明决定的理由和注意事项，方便日后查看的人了解来龙去脉。"
+      }
+    },
+    "processStep": {
+      "code": {
+        "label": "工序编号 / 名称",
+        "summary": "工序的管理编号和名称。工单中将按此名称列出。"
+      },
+      "allowedLocations": {
+        "label": "允许的作业场所",
+        "summary": "限制该工序的计划与实绩中可使用的作业场所。可按类型（机械、区域等）汇总指定，也可单独指定场所。若两者都留空，则不限制（可使用所有作业场所）。"
+      },
+      "category": {
+        "label": "类别",
+        "summary": "分类：材料准备、加工、涂层、检查、检查批准或出货。"
+      },
+      "execution": {
+        "label": "实施场所",
+        "summary": "仅限厂内，还是厂内、外协均可。允许外协后，可在工单中选择外协厂商。"
+      },
+      "quantityTracking": {
+        "label": "数量管理",
+        "summary": "该工序对数量的处理方式——数量管理（延续数量）、检查（按检查计数）或无（不记录）。工序执行画面的输入项会随所选模式变化。"
+      },
+      "defaultTime": {
+        "label": "默认作业时间",
+        "summary": "每次作业的预估时间，将作为创建工单时的默认值。"
+      },
+      "sync": {
+        "label": "可同步",
+        "summary": "该工序是否可与其他工序并行进行。"
+      },
+      "inspection": {
+        "label": "检查工序 / 检查批准工序",
+        "summary": "该工序是执行检查的工序，还是批准检查结果的工序。设为检查工序后，可在工序执行画面中记录检查表。"
+      },
+      "approvalRank": {
+        "label": "所需审批职级",
+        "summary": "批准该工序所需的职级（如股长以上）。"
+      },
+      "sortOrder": {
+        "label": "显示顺序",
+        "summary": "显示顺序。加入工序列表或工单时的默认执行顺序也依此而定（发料、交接固定在最前，出货前检查固定在最后）。"
+      },
+      "active": {
+        "label": "启用 / 备注",
+        "summary": "关闭后，该工序将不再出现在选项中。备注为补充说明。"
+      }
+    },
+    "inspectionTemplate": {
+      "code": {
+        "label": "编号 / 名称",
+        "summary": "模板的管理编号和名称。与工单关联时按此名称选择。"
+      },
+      "processStep": {
+        "label": "关联工序",
+        "summary": "该检查表用于哪个工序。指定后，在该工序的执行画面中会更容易选择。"
+      },
+      "active": {
+        "label": "启用",
+        "summary": "关闭后，将不再出现在可与工单关联的选项中。"
+      }
+    },
+    "defectType": {
+      "code": {
+        "label": "编号 / 名称",
+        "summary": "不良类别的管理编号和名称。在工序中记录不良时按此名称选择。"
+      },
+      "sortOrder": {
+        "label": "显示顺序",
+        "summary": "选项的排列顺序。将常用项放在前面可以方便现场输入。"
+      },
+      "active": {
+        "label": "启用",
+        "summary": "关闭后，将不再出现在不良记录的选项中。"
+      }
+    },
+    "approvalGroup": {
+      "name": {
+        "label": "名称",
+        "summary": "组的名称。在审批流程的各级选择组时，将以此名称显示在列表中。"
+      },
+      "active": {
+        "label": "启用",
+        "summary": "关闭后，该组将无法进行审批。成员和代理设置需在详情画面中进行。"
+      },
+      "validFrom": {
+        "label": "开始日期时间",
+        "summary": "限期成员开始可以审批的日期时间。常任成员不适用此项。在此时间之前，该成员不会出现在审批人候选中。"
+      },
+      "validUntil": {
+        "label": "结束日期时间",
+        "summary": "限期成员停止可以审批的日期时间。常任成员不适用此项。超过此时间后将自动无法审批，无需手动删除。"
+      }
+    },
+    "approvalFlow": {
+      "stepName": {
+        "label": "级别名称",
+        "summary": "该审批级别的名称。请输入公司内部通用的说法，例如“一级审批”“部门审批”等。该名称将显示在单据画面和审批中列表内。"
+      },
+      "group": {
+        "label": "审批组",
+        "summary": "批准该级别的组。只有此处所选组的成员（或有效期内的代理人）才能批准该级别。"
+      },
+      "mode": {
+        "label": "审批成立条件",
+        "summary": "是任一人批准即可，还是需要全员批准。“任一人”只要组内任意一人批准即可进入下一级。“全员”则需发起申请时组内所有成员全部批准后才能进入下一级。"
+      }
+    },
+    "plant": {
+      "code": {
+        "label": "据点编号",
+        "summary": "据点的管理编号。库存和出货画面中会使用此编号。"
+      },
+      "name": {
+        "label": "名称 / 假名读音",
+        "summary": "据点的名称，表示库存、到货、出货所属的地点。"
+      },
+      "region": {
+        "label": "国家 / 地区",
+        "summary": "国家和地区的分类。用于将用户权限限定为“仅限该地区的据点”时的单位。"
+      },
+      "address": {
+        "label": "邮政编码 / 地址",
+        "summary": "所在地。用于单据中的收件地址。"
+      },
+      "contact": {
+        "label": "电话号码 / 邮箱地址 / 联系人",
+        "summary": "联系方式，用于单据中的咨询联系人信息。"
+      },
+      "active": {
+        "label": "启用",
+        "summary": "关闭后，将不再出现在到货地或出货地的选项中。"
+      },
+      "notes": {
+        "label": "备注",
+        "summary": "补充说明。建议写明决定的理由和注意事项，方便日后查看的人了解来龙去脉。"
+      }
+    },
+    "materialNumbering": {
+      "code": {
+        "label": "编号",
+        "summary": "构成材料类别编号、材料编号的一部分符号。请在登记时确定 —— 之后更改会导致使用该部件组成的现有编号对不上。"
+      },
+      "name": {
+        "label": "名称",
+        "summary": "在材料类别、材料画面中作为选项显示的名称。"
+      },
+      "active": {
+        "label": "启用",
+        "summary": "关闭后，登记材料类别或材料时将不再作为选项显示。用于在保留历史登记的同时，隐藏不再使用的制造商或形状。"
+      }
+    },
+    "workLocation": {
+      "plant": {
+        "label": "据点",
+        "summary": "该作业场所所属的据点。选择工序的实施场所时，只会显示该据点下的作业场所作为候选。"
+      },
+      "code": {
+        "label": "编号 / 名称（日语・英语）",
+        "summary": "作业场所的管理编号和名称。可作为工序的实施场所进行选择。"
+      },
+      "type": {
+        "label": "类别",
+        "summary": "作业场所的类别，用于列表筛选。"
+      },
+      "capacity": {
+        "label": "容量",
+        "summary": "可同时处理数量的参考值。若为单台机器则填 1，若为区域则填可同时放置的数量。"
+      },
+      "sortOrder": {
+        "label": "显示顺序 / 启用 / 备注",
+        "summary": "显示顺序、是否作为选项显示，以及补充说明。"
+      }
+    },
+    "storageLocation": {
+      "plant": {
+        "label": "据点 / 楼层",
+        "summary": "该位置所属的据点与楼层。库存以此位置为单位记录存放地点。"
+      },
+      "code": {
+        "label": "编号 / 名称（日语・英语）",
+        "summary": "该位置的管理编号和名称。登记后即可作为库存的存放位置进行选择。"
+      },
+      "sortOrder": {
+        "label": "显示顺序",
+        "summary": "在选项中的显示顺序，数值越小越靠前。"
+      },
+      "active": {
+        "label": "启用 / 备注",
+        "summary": "关闭后将不再作为存放位置的选项显示。备注为补充说明。"
+      }
+    },
+    "userManagement": {
+      "plants": {
+        "label": "所属据点",
+        "summary": "该用户负责的据点，可多选。"
+      }
+    },
+    "fileManagement": {
+      "showSystemFiles": {
+        "label": "显示系统文件",
+        "summary": "是否显示如 “.DS_Store”“*.tmp” 之类由操作系统或工具自动生成的残留文件。平时保持隐藏，仅在需要清理时开启。"
+      },
+      "grantFolder": {
+        "label": "文件夹（路径前缀匹配）",
+        "summary": "授予访问权限的文件夹。由于采用路径前缀匹配，指定文件夹下的所有内容都会包含在内。"
+      },
+      "grantUser": {
+        "label": "用户",
+        "summary": "允许查看该文件夹的对象。"
+      },
+      "grantWrite": {
+        "label": "同时允许写入",
+        "summary": "开启后，除了查看，该用户还可以放入或删除文件。请仅授予确有需要的人员。"
+      }
+    },
+    "kioskCard": {
+      "count": {
+        "label": "发行数量",
+        "summary": "一次制作的卡片数量。刚制作完成的卡片尚未分配给任何人。"
+      },
+      "user": {
+        "label": "分配对象用户",
+        "summary": "使用该卡片的人。分配后，该人员可通过在现场平板电脑上刷卡登录。"
+      }
+    },
+    "kioskDevice": {
+      "name": {
+        "label": "终端名称（日语 / 英语）",
+        "summary": "在列表、平面图和操作历史徽章中显示的名称。请使用能够找到实物的名称，例如“一号工厂 入口”。"
+      },
+      "plant": {
+        "label": "据点",
+        "summary": "放置该终端的据点。终端按据点分组排列。"
+      },
+      "location": {
+        "label": "位置",
+        "summary": "该据点内的具体摆放位置。在平面图上放置图钉后，屏幕上也能看到其位置。"
+      },
+      "defaultWorkLocation": {
+        "label": "默认作业场所",
+        "summary": "在该终端开始或恢复工序时，自动记录到作业实绩中的作业场所。请设置为该终端所在的机器或区域。也可以在平板电脑端的终端设置画面（通过设置代码验证）中修改。"
+      },
+      "linkCode": {
+        "label": "关联代码",
+        "summary": "平板电脑画面上显示的确认代码。请先在此画面创建终端档案，再扫描（或输入）平板电脑上显示的代码，将该档案与实体设备关联。"
+      }
+    },
+    "productType": {
+      "itemName": {
+        "label": "项目名称（日语 / 英语）",
+        "summary": "在产品画面中显示的字段名称。请同时输入日语和英语。"
+      },
+      "key": {
+        "label": "键（标识符）",
+        "summary": "保存该字段时使用的字母数字名称。请在登记时确定 —— 之后更改会导致此前输入的值无法关联。"
+      },
+      "type": {
+        "label": "类型",
+        "summary": "文字、数值等种类。类型不同，下方生效的设置项也不同 —— 数值类型为最小值/最大值，文字类型为格式。"
+      },
+      "default": {
+        "label": "默认值（基本）",
+        "summary": "未输入任何内容时使用的值。预先设置常用值可减少输入工作。"
+      },
+      "placeholder": {
+        "label": "占位符",
+        "summary": "在输入框中以浅色显示的示例文字，不会作为值被保存。"
+      },
+      "required": {
+        "label": "设为必填项",
+        "summary": "开启后，若该字段为空则无法保存产品。"
+      },
+      "pattern": {
+        "label": "格式（正则表达式）",
+        "summary": "文字格式的规则。仅在需要强制使用固定书写格式时使用。"
+      },
+      "range": {
+        "label": "最小值 / 最大值",
+        "summary": "数值类型字段可输入的取值范围。"
+      },
+      "typeName": {
+        "label": "种类名称（日语 / 英语）",
+        "summary": "创建产品时所选择的名称。"
+      },
+      "typeDescription": {
+        "label": "说明",
+        "summary": "说明该种类适用于何种产品的补充信息。"
+      },
+      "typeActive": {
+        "label": "启用",
+        "summary": "关闭后将不再作为创建产品时的选项显示。已使用该种类创建的产品不受影响。"
+      },
+      "typeItems": {
+        "label": "项目",
+        "summary": "选择该种类时，会在产品画面中显示的字段。请从上方创建的产品项目中选择。"
+      },
+      "typeDefault": {
+        "label": "默认值（覆盖）",
+        "summary": "仅当希望该字段在此种类下使用不同的默认值时才填写。留空则使用产品项目中设置的默认值。"
+      }
+    }
   }
 }

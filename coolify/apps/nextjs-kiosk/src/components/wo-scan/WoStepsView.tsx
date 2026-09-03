@@ -252,8 +252,10 @@ function WoStepCard({
                     names: item.assigneeNames.join(" / "),
                   })
                 : m.woScan.unplanned}
-              {step.plantName ? ` ・ ${step.plantName}` : ""}
-              {step.workLocationName ? ` ・ ${step.workLocationName}` : ""}
+              {step.plantName ? ` ${m.common.separator} ${step.plantName}` : ""}
+              {step.workLocationName
+                ? ` ${m.common.separator} ${step.workLocationName}`
+                : ""}
             </Text>
             <Group gap="sm" mt={2} wrap="wrap">
               {step.inputQuantity != null ? (

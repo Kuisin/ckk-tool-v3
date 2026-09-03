@@ -343,7 +343,7 @@ export async function publishFormFields(
   const gate = await requireFormEdit(code);
   if (!gate.ok) return actionError(gate.error);
 
-  const parsed = parseFormFields(fields);
+  const parsed = parseFormFields(fields, tr);
   if (!parsed.ok) return actionError(parsed.error);
   if (parsed.fields.length === 0)
     return actionError(tr("general.formsActions.addAtLeastOneField"));
@@ -555,7 +555,7 @@ async function loadRespondContext(
       error: tr("general.formsActions.noRespondPermission"),
     };
 
-  const parsed = parseFormFields(form.versions[0]?.schema ?? []);
+  const parsed = parseFormFields(form.versions[0]?.schema ?? [], tr);
   if (!parsed.ok || parsed.fields.length === 0)
     return {
       ok: false,
@@ -715,7 +715,7 @@ export async function submitResponse(
   }
 
   if (!asDraft) {
-    const errors = validateAnswers(fields, answers);
+    const errors = validateAnswers(fields, answers, tr);
     const first = Object.values(errors)[0];
     if (first) return actionError(first);
   }
@@ -831,6 +831,7 @@ export async function updateResponse(
         select: { schema: true },
       })
     )?.schema ?? [],
+    tr,
   );
   if (!fieldsParsed.ok)
     return actionError(tr("general.formsActions.couldNotLoadFormDef"));
@@ -842,7 +843,7 @@ export async function updateResponse(
     return actionError(tr("general.formsActions.cannotRevertToDraft"));
 
   if (!asDraft) {
-    const errors = validateAnswers(fieldsParsed.fields, answers);
+    const errors = validateAnswers(fieldsParsed.fields, answers, tr);
     const first = Object.values(errors)[0];
     if (first) return actionError(first);
   }
@@ -1489,6 +1490,7 @@ export async function fetchFormFieldOptions(
 ): Promise<FormOption[]> {
   const authz = await checkPermission("form", "READ");
   if (!authz.ok) return [];
+  const tr = await getTranslations();
   try {
     const form = await prisma.form.findUnique({
       where: { code },
@@ -1506,7 +1508,7 @@ export async function fetchFormFieldOptions(
     );
     if (!access.canRead) return [];
 
-    const parsed = parseFormFields(form.versions[0]?.schema ?? []);
+    const parsed = parseFormFields(form.versions[0]?.schema ?? [], tr);
     if (!parsed.ok) return [];
     return (
       parsed.fields

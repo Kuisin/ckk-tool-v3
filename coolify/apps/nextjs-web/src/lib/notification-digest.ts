@@ -67,7 +67,7 @@ export async function runNotificationDigest(): Promise<DigestRunResult> {
   try {
     return await sweep();
   } catch (e) {
-    console.error("[notification-digest] 掃き出しに失敗:", e);
+    console.error("[notification-digest] 掃き出しに失敗:", e); // i18n-ignore — サーバーログのみ（Loki）、UI に出ない
     return empty;
   } finally {
     running = false;

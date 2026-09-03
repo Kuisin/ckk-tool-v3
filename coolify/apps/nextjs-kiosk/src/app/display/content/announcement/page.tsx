@@ -1,3 +1,4 @@
+import { I18nProvider } from "@/components/I18nProvider";
 import { optionBoolean, optionString } from "@/lib/display-templates";
 import { boardContext, NOT_REGISTERED } from "../_shared/options";
 import { AnnouncementBoard } from "./AnnouncementBoard";
@@ -22,10 +23,12 @@ export default async function AnnouncementPage({
     );
 
   return (
-    <AnnouncementBoard
-      level={optionString(ctx.options, "level", "info")}
-      message={optionString(ctx.options, "message", "")}
-      showClock={optionBoolean(ctx.options, "showClock", true)}
-    />
+    <I18nProvider locale={ctx.locale}>
+      <AnnouncementBoard
+        level={optionString(ctx.options, "level", "info")}
+        message={optionString(ctx.options, "message", "")}
+        showClock={optionBoolean(ctx.options, "showClock", true)}
+      />
+    </I18nProvider>
   );
 }

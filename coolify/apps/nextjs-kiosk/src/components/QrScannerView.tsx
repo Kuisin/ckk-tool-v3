@@ -19,6 +19,8 @@ import {
 import { IconCameraOff, IconSettings } from "@tabler/icons-react";
 import QrScanner from "qr-scanner";
 import { useEffect, useRef, useState } from "react";
+import { fillMessage } from "@/lib/i18n";
+import { useI18n } from "./I18nProvider";
 
 const CAMERA_KEY = "kiosk_camera_id";
 
@@ -52,6 +54,7 @@ type Props = {
 };
 
 export function QrScannerView({ onScan, paused = false }: Props) {
+  const { m } = useI18n();
   const videoRef = useRef<HTMLVideoElement>(null);
   const scannerRef = useRef<QrScanner | null>(null);
   const lastScanRef = useRef<{ value: string; at: number }>({
@@ -60,6 +63,10 @@ export function QrScannerView({ onScan, paused = false }: Props) {
   });
   const onScanRef = useRef(onScan);
   onScanRef.current = onScan;
+  // スキャナ初期化 effect はマウント時 1 回だけ動かす（言語切替で
+  // カメラを再初期化させない）ので、文言は ref 経由で読む。
+  const cannotStartRef = useRef(m.qrScanner.cannotStart);
+  cannotStartRef.current = m.qrScanner.cannotStart;
 
   const [cameras, setCameras] = useState<QrScanner.Camera[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -108,9 +115,7 @@ export function QrScannerView({ onScan, paused = false }: Props) {
       })
       .catch(() => {
         setStarting(false);
-        setError(
-          "カメラを起動できません。カメラ権限と HTTPS 接続を確認してください。",
-        );
+        setError(cannotStartRef.current);
       });
 
     return () => {
@@ -172,7 +177,7 @@ export function QrScannerView({ onScan, paused = false }: Props) {
         <Menu position="bottom-end" shadow="md" withinPortal>
           <Menu.Target>
             <ActionIcon
-              aria-label="カメラ設定"
+              aria-label={m.qrScanner.cameraSettings}
               size="xl"
               style={{ position: "absolute", top: 12, right: 12 }}
               variant="default"
@@ -181,11 +186,13 @@ export function QrScannerView({ onScan, paused = false }: Props) {
             </ActionIcon>
           </Menu.Target>
           <Menu.Dropdown>
-            <Menu.Label>カメラを選択</Menu.Label>
+            <Menu.Label>{m.qrScanner.selectCamera}</Menu.Label>
             {cameras.map((cam, i) => (
               <Menu.Item key={cam.id} onClick={() => selectCamera(cam.id)}>
                 {/* ラベル無しで引いたときは id が入る（人が読めないので通し番号） */}
-                <Text size="sm">{cam.label || `カメラ ${i + 1}`}</Text>
+                <Text size="sm">
+                  {cam.label || fillMessage(m.qrScanner.cameraN, { n: i + 1 })}
+                </Text>
               </Menu.Item>
             ))}
           </Menu.Dropdown>

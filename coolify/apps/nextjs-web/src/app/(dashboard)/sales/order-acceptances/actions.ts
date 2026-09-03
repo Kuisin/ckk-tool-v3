@@ -577,7 +577,7 @@ export async function submitForApproval(
     }
     // 価格照合はサーバー側で必ず再計算する（クライアント表示値は信用しない）。
     const priceCheck = await checkAcceptancePrices(key);
-    const diffLines = priceDiffSummary(priceCheck);
+    const diffLines = priceDiffSummary(priceCheck, tr);
     if (priceCheck.diffCount > 0 && !acknowledgePriceDiff) {
       return actionError(
         tr("sales.orderAcceptanceActions.priceDiffFound", {

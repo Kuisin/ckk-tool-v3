@@ -73,6 +73,7 @@ export function ProductPriceResolverInput({
             next.productId,
             next.orderType,
             next.quantity,
+            tr,
           )
         : null;
     next.unitPrice = resolved?.unitPrice ?? 0;

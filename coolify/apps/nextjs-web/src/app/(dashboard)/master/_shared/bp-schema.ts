@@ -7,36 +7,39 @@
 import { z } from "zod";
 import { autoMatchNames } from "@/lib/company-aliases";
 import { Prisma } from "@/lib/db";
+import type { Tr } from "@/lib/i18n";
 import { LOCALES } from "@/lib/i18n";
 import { localizedInput, localizedInputOrNull } from "@/lib/server-action";
 
-export const bpBaseInput = z.object({
-  nameJa: z.string().min(1, "名称（日本語）を入力してください"),
-  nameTranslations: z.record(z.string(), z.string()).optional(),
-  nameKana: z.string().optional(),
-  shortName: z.string().optional(),
-  countryCode: z.string().nullable(),
-  postalCode: z.string().optional(),
-  addressJa: z.string().optional(),
-  addressTranslations: z.record(z.string(), z.string()).optional(),
-  phone: z.string().optional(),
-  fax: z.string().optional(),
-  email: z
-    .string()
-    .email("メールアドレスの形式が正しくありません")
-    .or(z.literal(""))
-    .optional(),
-  website: z.string().optional(),
-  taxNumber: z.string().optional(),
-  // 見積書/納品書/請求書をこの取引先へ出すときの言語。null = 既定言語（ja）。
-  // _specs/i18n-glossary.md §2.7・決定 10。
-  documentLocale: z.enum(LOCALES).nullable(),
-  matchNames: z.array(z.string()),
-  isActive: z.boolean(),
-  notes: z.string().optional(),
-});
+export function bpBaseInput(tr: Tr) {
+  return z.object({
+    nameJa: z.string().min(1, tr("common.nameJaRequired")),
+    nameTranslations: z.record(z.string(), z.string()).optional(),
+    nameKana: z.string().optional(),
+    shortName: z.string().optional(),
+    countryCode: z.string().nullable(),
+    postalCode: z.string().optional(),
+    addressJa: z.string().optional(),
+    addressTranslations: z.record(z.string(), z.string()).optional(),
+    phone: z.string().optional(),
+    fax: z.string().optional(),
+    email: z
+      .string()
+      .email(tr("common.invalidEmailFormat"))
+      .or(z.literal(""))
+      .optional(),
+    website: z.string().optional(),
+    taxNumber: z.string().optional(),
+    // 見積書/納品書/請求書をこの取引先へ出すときの言語。null = 既定言語（ja）。
+    // _specs/i18n-glossary.md §2.7・決定 10。
+    documentLocale: z.enum(LOCALES).nullable(),
+    matchNames: z.array(z.string()),
+    isActive: z.boolean(),
+    notes: z.string().optional(),
+  });
+}
 
-export type BpBaseInput = z.infer<typeof bpBaseInput>;
+export type BpBaseInput = z.infer<ReturnType<typeof bpBaseInput>>;
 
 /** BP base columns from validated input (create/update shared). */
 export function bpBaseData(v: BpBaseInput) {
@@ -71,29 +74,35 @@ export function bpBaseData(v: BpBaseInput) {
  * 顧客の営業担当 1 件（app.bp_sales_reps）。1 顧客に複数登録でき、書類の
  * 営業担当はこの一覧から選ぶ。主担当は 0 or 1 名 — 新規書類の既定値になる。
  */
-export const salesRepAssignmentInput = z.object({
-  userId: z.string().min(1, "担当者を選択してください"),
-  isPrimary: z.boolean(),
-});
+export function salesRepAssignmentInput(tr: Tr) {
+  return z.object({
+    userId: z.string().min(1, tr("master.businessPartners.selectASalesRep")),
+    isPrimary: z.boolean(),
+  });
+}
 
-export type SalesRepAssignmentInput = z.infer<typeof salesRepAssignmentInput>;
+export type SalesRepAssignmentInput = z.infer<
+  ReturnType<typeof salesRepAssignmentInput>
+>;
 
-export const customerAttrsInput = z.object({
-  customerCode: z.string().optional(),
-  billingBpId: z.string().nullable(),
-  closingDay: z.number().int().min(1).max(31).nullable(),
-  paymentTermsDays: z.number().int().min(0).nullable(),
-  paymentDay: z.number().int().min(1).max(31).nullable(),
-  creditLimit: z.number().min(0).nullable(),
-  taxType: z.enum(["TAXABLE", "EXEMPT", "REDUCED"]),
-  invoiceMethod: z.enum(["EMAIL", "FAX", "POST", "PORTAL"]),
-  isConsignment: z.boolean(),
-  // 属性行（bp_customer_attrs）ではなく別テーブルに書くので
-  // customerAttrsData には含めない（syncCustomerSalesReps が受け持つ）。
-  salesReps: z.array(salesRepAssignmentInput).default([]),
-});
+export function customerAttrsInput(tr: Tr) {
+  return z.object({
+    customerCode: z.string().optional(),
+    billingBpId: z.string().nullable(),
+    closingDay: z.number().int().min(1).max(31).nullable(),
+    paymentTermsDays: z.number().int().min(0).nullable(),
+    paymentDay: z.number().int().min(1).max(31).nullable(),
+    creditLimit: z.number().min(0).nullable(),
+    taxType: z.enum(["TAXABLE", "EXEMPT", "REDUCED"]),
+    invoiceMethod: z.enum(["EMAIL", "FAX", "POST", "PORTAL"]),
+    isConsignment: z.boolean(),
+    // 属性行（bp_customer_attrs）ではなく別テーブルに書くので
+    // customerAttrsData には含めない（syncCustomerSalesReps が受け持つ）。
+    salesReps: z.array(salesRepAssignmentInput(tr)).default([]),
+  });
+}
 
-export type CustomerAttrsInput = z.infer<typeof customerAttrsInput>;
+export type CustomerAttrsInput = z.infer<ReturnType<typeof customerAttrsInput>>;
 
 export function customerAttrsData(v: CustomerAttrsInput) {
   return {
@@ -160,41 +169,47 @@ export type BpRoleValue = (typeof BP_ROLES)[number];
  * ロールは 0 件でも作れる（まず BP を登録し、後からロールを付ける運用）。
  * 属性は対応ロールが選ばれているときだけ必須。
  */
-export const bpInput = bpBaseInput
-  .extend({
-    roles: z.array(z.enum(BP_ROLES)),
-    customer: customerAttrsInput.nullable(),
-    endUser: endUserAttrsInput.nullable(),
-    vendor: vendorAttrsInput.nullable(),
-  })
-  .superRefine((v, ctx) => {
-    const missing = (role: BpRoleValue, path: string) => {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        path: [path],
-        message: `${role === "CUSTOMER" ? "顧客" : role === "END_USER" ? "最終需要家" : "仕入先・外注先"}の情報を入力してください`,
-      });
-    };
-    if (v.roles.includes("CUSTOMER") && !v.customer)
-      missing("CUSTOMER", "customer");
-    if (v.roles.includes("END_USER") && !v.endUser)
-      missing("END_USER", "endUser");
-    if (v.roles.includes("VENDOR") && !v.vendor) missing("VENDOR", "vendor");
+export function bpInput(tr: Tr) {
+  return bpBaseInput(tr)
+    .extend({
+      roles: z.array(z.enum(BP_ROLES)),
+      customer: customerAttrsInput(tr).nullable(),
+      endUser: endUserAttrsInput.nullable(),
+      vendor: vendorAttrsInput.nullable(),
+    })
+    .superRefine((v, ctx) => {
+      const missing = (role: BpRoleValue, path: string) => {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: [path],
+          message: tr("master.businessPartners.roleInfoRequired", {
+            role: tr(`enum.BP_ROLE_LABEL.${role}`),
+          }),
+        });
+      };
+      if (v.roles.includes("CUSTOMER") && !v.customer)
+        missing("CUSTOMER", "customer");
+      if (v.roles.includes("END_USER") && !v.endUser)
+        missing("END_USER", "endUser");
+      if (v.roles.includes("VENDOR") && !v.vendor) missing("VENDOR", "vendor");
+    });
+}
+
+export type BpInput = z.infer<ReturnType<typeof bpInput>>;
+
+export function contactInput(tr: Tr) {
+  return z.object({
+    name: z.string().min(1, tr("master.businessPartners.enterFullName")),
+    nameKana: z.string().optional(),
+    department: z.string().optional(),
+    title: z.string().optional(),
+    email: z.string().optional(),
+    phone: z.string().optional(),
+    isPrimary: z.boolean(),
   });
+}
 
-export type BpInput = z.infer<typeof bpInput>;
-
-export const contactInput = z.object({
-  name: z.string().min(1, "氏名を入力してください"),
-  nameKana: z.string().optional(),
-  department: z.string().optional(),
-  title: z.string().optional(),
-  email: z.string().optional(),
-  phone: z.string().optional(),
-  isPrimary: z.boolean(),
-});
-
-export type ContactInput = z.infer<typeof contactInput>;
+export type ContactInput = z.infer<ReturnType<typeof contactInput>>;
 
 // パス定数は client component からも使うため bp-paths.ts に分離してある
 // （このファイルは @/lib/db 経由で Prisma を引き込むのでブラウザに乗せられない）。

@@ -373,7 +373,9 @@ export function DeliveryNoteForm({
               }))}
               error={form.errors.deliveryOrderNumber}
               label={
-                <HelpLabel {...fieldHelp("deliveryNote", "deliveryOrder")} />
+                <HelpLabel
+                  {...fieldHelp(tr, "deliveryNote", "deliveryOrder")}
+                />
               }
               onChange={onDeliveryOrderChange}
               placeholder={tr(
@@ -391,7 +393,7 @@ export function DeliveryNoteForm({
           )}
           <Input.Wrapper
             label={
-              <HelpLabel {...fieldHelp("deliveryNote", "deliveryMethod")} />
+              <HelpLabel {...fieldHelp(tr, "deliveryNote", "deliveryMethod")} />
             }
             withAsterisk
           >
@@ -422,7 +424,9 @@ export function DeliveryNoteForm({
               description={tr("shipping.deliveryNotes.shipToForDirectToUser")}
               error={form.errors.endUserBpId}
               initialOption={endUserInitialOption}
-              label={<HelpLabel {...fieldHelp("deliveryNote", "endUser")} />}
+              label={
+                <HelpLabel {...fieldHelp(tr, "deliveryNote", "endUser")} />
+              }
               onChange={(v) => form.setFieldValue("endUserBpId", v)}
               onSearch={searchEndUserOptions}
               placeholder={tr("shipping.deliveryNotes.searchEndUsers")}
@@ -435,7 +439,7 @@ export function DeliveryNoteForm({
             checked={form.values.includePrice}
             label={
               <HelpLabel
-                {...fieldHelp("deliveryNote", "includePrice", {
+                {...fieldHelp(tr, "deliveryNote", "includePrice", {
                   label: tr(
                     "shipping.deliveryNotes.showPricesPrintUnitPriceAnd",
                   ),
@@ -449,7 +453,7 @@ export function DeliveryNoteForm({
           />
           <Textarea
             autosize
-            label={<HelpLabel {...fieldHelp("deliveryNote", "notes")} />}
+            label={<HelpLabel {...fieldHelp(tr, "deliveryNote", "notes")} />}
             minRows={1}
             placeholder={tr("common.notesOptional")}
             {...form.getInputProps("notes")}
@@ -490,7 +494,9 @@ export function DeliveryNoteForm({
                         : null
                     }
                     label={
-                      <HelpLabel {...fieldHelp("deliveryNote", "product")} />
+                      <HelpLabel
+                        {...fieldHelp(tr, "deliveryNote", "product")}
+                      />
                     }
                     onChange={(v, opt) =>
                       form.setFieldValue(`items.${ri}`, {
@@ -508,7 +514,9 @@ export function DeliveryNoteForm({
                   <NumberInput
                     error={form.errors[`items.${ri}.quantity`]}
                     label={
-                      <HelpLabel {...fieldHelp("deliveryNote", "quantity")} />
+                      <HelpLabel
+                        {...fieldHelp(tr, "deliveryNote", "quantity")}
+                      />
                     }
                     maw={110}
                     min={1}
@@ -526,7 +534,9 @@ export function DeliveryNoteForm({
                     disabled={!form.values.includePrice}
                     error={form.errors[`items.${ri}.unitPrice`]}
                     label={
-                      <HelpLabel {...fieldHelp("deliveryNote", "unitPrice")} />
+                      <HelpLabel
+                        {...fieldHelp(tr, "deliveryNote", "unitPrice")}
+                      />
                     }
                     maw={160}
                     min={0}
@@ -542,7 +552,7 @@ export function DeliveryNoteForm({
                   />
                   <TextInput
                     label={
-                      <HelpLabel {...fieldHelp("deliveryNote", "notes")} />
+                      <HelpLabel {...fieldHelp(tr, "deliveryNote", "notes")} />
                     }
                     placeholder={tr("common.lineNotesOptional")}
                     {...form.getInputProps(`items.${ri}.notes`)}

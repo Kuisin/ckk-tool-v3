@@ -848,7 +848,7 @@ async function notifyStepStart(
       await notifyApprovalGroup(step.groupId, { ...payload, userIds });
     }
   } catch (e) {
-    console.error("[approvals] 承認依頼通知に失敗:", e);
+    console.error("[approvals] 承認依頼通知に失敗:", e); // i18n-ignore — サーバーログのみ（Loki）、UI に出ない
   }
 }
 
@@ -1136,7 +1136,7 @@ export async function actOnCurrentStep(input: {
         linkPath: APPROVAL_TARGET[input.targetType].href(input.targetId),
       });
     } catch (e) {
-      console.error("[approvals] 承認結果通知に失敗:", e);
+      console.error("[approvals] 承認結果通知に失敗:", e); // i18n-ignore — サーバーログのみ（Loki）、UI に出ない
     }
   }
 

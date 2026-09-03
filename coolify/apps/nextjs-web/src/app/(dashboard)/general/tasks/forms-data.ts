@@ -8,6 +8,7 @@
  *     **自分の分は自分に見える**（他人には出ない）。編集期限内なら直せる。
  */
 
+import { getTranslations } from "next-intl/server";
 import { sessionUserId } from "@/lib/authz";
 import { prisma } from "@/lib/db";
 import {
@@ -49,6 +50,7 @@ export interface FormTasks {
 export async function fetchFormTasks(): Promise<FormTasks> {
   const userId = await sessionUserId();
   if (!userId) return { pending: [], mine: [] };
+  const tr = await getTranslations();
 
   try {
     const now = new Date();
@@ -151,7 +153,7 @@ export async function fetchFormTasks(): Promise<FormTasks> {
       formTitle: r.form.title,
       recordTitle:
         titleTextOf(
-          fieldsFromSchema(r.form.versions[0]?.schema ?? []),
+          fieldsFromSchema(r.form.versions[0]?.schema ?? [], tr),
           (r.answers ?? {}) as Record<string, FormAnswerValue>,
         ) || null,
       recordNo: r.recordNo,

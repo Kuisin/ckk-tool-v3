@@ -8,6 +8,9 @@
  * fixtures (../price-lists/mock).
  */
 
+import { createTranslator } from "next-intl";
+import type { Tr } from "@/lib/i18n";
+import ja from "../../../../messages/ja.json";
 import { MOCK_PRICE_ENTRIES } from "../price-lists/mock";
 import {
   findPriceTierRefIn,
@@ -21,12 +24,19 @@ import {
 
 export * from "./model";
 
+// テスト専用フィクスチャ（このファイルはテストからしか import されない）。
+// モジュール読み込み時に評価される定数のため request scope が無く、ja 固定
+// の translator で組み立てる。
+// biome-ignore lint/suspicious/noExplicitAny: next-intl's messages type is too wide for a plain JSON import here
+const fixtureTr = createTranslator({ locale: "ja", messages: ja as any }) as Tr;
+
 /** Fixture-bound resolver — 価格表 fixtures + (顧客 × 製品 × 種別 × 数量). */
 export function resolveUnitPrice(
   customerId: string,
   productId: string,
   orderType: string,
   quantity: number,
+  tr: Tr,
   date: Date = new Date(),
 ): ResolvedPrice | null {
   return resolveUnitPriceFromEntries(
@@ -35,18 +45,20 @@ export function resolveUnitPrice(
     productId,
     orderType,
     quantity,
+    tr,
     date,
   );
 }
 
 export function findPriceTierRef(
   priceTierId: string | null,
+  tr: Tr,
 ): PriceTierRef | null {
-  return findPriceTierRefIn(MOCK_PRICE_ENTRIES, priceTierId);
+  return findPriceTierRefIn(MOCK_PRICE_ENTRIES, priceTierId, tr);
 }
 
-export function priceEntriesForQuote(q: Quote) {
-  return priceEntriesForQuoteIn(MOCK_PRICE_ENTRIES, q);
+export function priceEntriesForQuote(q: Quote, tr: Tr) {
+  return priceEntriesForQuoteIn(MOCK_PRICE_ENTRIES, q, tr);
 }
 
 /**
@@ -64,7 +76,13 @@ function buildItem(
     notes?: string | null;
   } = {},
 ): QuoteItem {
-  const resolved = resolveUnitPrice(customerId, productId, orderType, quantity);
+  const resolved = resolveUnitPrice(
+    customerId,
+    productId,
+    orderType,
+    quantity,
+    fixtureTr,
+  );
   const unitPrice = resolved?.unitPrice ?? 0;
   const discountAmount = resolved?.discountAmount ?? 0;
   return {

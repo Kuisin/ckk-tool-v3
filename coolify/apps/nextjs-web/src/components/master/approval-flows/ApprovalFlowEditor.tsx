@@ -337,7 +337,7 @@ export function ApprovalFlowEditor({
             const nameField = (
               <Box flex={isMobile ? undefined : 1} miw={0}>
                 <LocalizedTextInput
-                  help={fieldHelpTip("approvalFlow", "stepName")}
+                  help={fieldHelpTip(tr, "approvalFlow", "stepName")}
                   jaProps={{
                     value: s.nameJa,
                     onChange: (e) =>
@@ -358,7 +358,9 @@ export function ApprovalFlowEditor({
             const groupField = (
               <Select
                 data={groupOptions}
-                label={<HelpLabel {...fieldHelp("approvalFlow", "group")} />}
+                label={
+                  <HelpLabel {...fieldHelp(tr, "approvalFlow", "group")} />
+                }
                 onChange={(v) => patch(s.key, { groupId: v })}
                 placeholder={tr("common.select")}
                 searchable

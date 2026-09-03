@@ -1,6 +1,10 @@
 import { notFound } from "next/navigation";
+import { getTranslations } from "next-intl/server";
 import { StepExecutionView } from "@/components/production/step-execution/StepExecutionView";
+import { appLabelForKey } from "@/lib/app-list";
 import { requireAppRead } from "@/lib/authz-page";
+import { formatDocPageTitle } from "@/lib/page-title";
+import { getServerLocale } from "@/lib/user-preferences";
 import { fetchStepExecution, resolveWorkOrderIdParam } from "../../../data";
 
 export const dynamic = "force-dynamic";
@@ -12,8 +16,15 @@ export async function generateMetadata({
   params: Promise<{ id: string; stepId: string }>;
 }) {
   const { id } = await params;
+  const [locale, tr] = await Promise.all([
+    getServerLocale(),
+    getTranslations(),
+  ]);
   return {
-    title: `工程実行 — 指示書 #${decodeURIComponent(id)} | CKK 業務管理システム`,
+    title: formatDocPageTitle(
+      `${tr("settings.kioskSettings.stepExecution")} — ${appLabelForKey("work-orders", "指示書", locale)}`,
+      `#${decodeURIComponent(id)}`,
+    ),
   };
 }
 

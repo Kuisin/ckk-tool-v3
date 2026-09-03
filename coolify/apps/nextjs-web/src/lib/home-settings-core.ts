@@ -36,8 +36,12 @@ export const DEFAULT_HOME_SETTINGS: HomeSettings = {
 export const MAX_HOME_GROUPS = 20;
 export const MAX_GROUP_NAME_LENGTH = 30;
 
-/** カスタムモードで未所属アプリをまとめるセクション名。 */
-export const UNGROUPED_SECTION_TITLE = "その他";
+/**
+ * カスタムモードで未所属アプリをまとめるセクションの内部照合キー。
+ * 表示文字列ではない — 描画側（HomeApps.tsx）はこの値と一致したときだけ
+ * `t("other")` の訳語に差し替える。
+ */
+export const UNGROUPED_SECTION_TITLE = "その他"; // i18n-ignore — 内部照合キー、表示は t("other") が担う
 
 function toStringArray(value: unknown): string[] {
   if (!Array.isArray(value)) return [];

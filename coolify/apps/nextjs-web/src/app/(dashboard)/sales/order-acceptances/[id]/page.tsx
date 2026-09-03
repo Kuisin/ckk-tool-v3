@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 import { OrderAcceptanceDetail } from "@/components/sales/order-acceptances/OrderAcceptanceDetail";
+import { appLabelForKey } from "@/lib/app-list";
 import { fetchApprovalState, fetchApprovalTrail } from "@/lib/approvals";
 import { listAttachments } from "@/lib/attachments";
 import { fetchAuditEntries } from "@/lib/audit";
@@ -7,6 +8,8 @@ import { requireAppRead } from "@/lib/authz-page";
 import { formatDocNumber, parseDocKey } from "@/lib/doc-number";
 import { listMemos } from "@/lib/document-memos";
 import { fetchPendingAcceptanceCancel } from "@/lib/order-acceptance-cancel";
+import { formatDocPageTitle } from "@/lib/page-title";
+import { getServerLocale } from "@/lib/user-preferences";
 import { fetchWorkLocationOptions } from "@/lib/work-locations";
 import { fetchOrderAcceptance, fetchPlantOptions } from "../data";
 import { checkAcceptancePrices } from "../price-check";
@@ -20,8 +23,12 @@ export async function generateMetadata({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
+  const locale = await getServerLocale();
   return {
-    title: `注文請書 ${decodeURIComponent(id)} | CKK 業務管理システム`,
+    title: formatDocPageTitle(
+      appLabelForKey("order-acceptances", "注文請書", locale), // i18n-ignore — ja はそのまま使う（訳の実体は appLabelForKey 内の en/zh マップ）
+      decodeURIComponent(id),
+    ),
   };
 }
 

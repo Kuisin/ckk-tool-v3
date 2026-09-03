@@ -42,6 +42,7 @@ export function encodeRealtimeEvent(event: RealtimeEvent): string {
       label(
         "api.realtimeEvents.payloadTooLarge",
         "ja",
+        // i18n-ignore — 鍵は既存、これは死んだ fallback。呼び出し側のバグ検知用で UI には出ない
         "realtime ペイロードが大きすぎます ({bytes} > {max} バイト)",
         { bytes, max: REALTIME_MAX_PAYLOAD_BYTES },
       ),

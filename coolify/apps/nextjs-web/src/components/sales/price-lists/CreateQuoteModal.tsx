@@ -143,13 +143,14 @@ export function CreateQuoteModal({
             value={`${formatMoney(unitPrice)}（${quantityRange(
               tier.minQuantity,
               tier.maxQuantity,
+              tr,
             )} ×${tier.multiplier.toFixed(2)}）`}
           />
           <FieldValue
             label={tr("sales.priceLists.discountAppliedAutomatically")}
             value={
               discount
-                ? `-${formatMoney(discountAmount)}（${discount.label} ${discountValueLabel(discount)}）`
+                ? `-${formatMoney(discountAmount)}（${discount.label} ${discountValueLabel(discount, tr)}）`
                 : "—"
             }
           />

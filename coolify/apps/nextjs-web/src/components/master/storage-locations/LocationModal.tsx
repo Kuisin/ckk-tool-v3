@@ -138,7 +138,7 @@ export function LocationModal({
                 data={plantOptions}
                 label={
                   <HelpLabel
-                    {...fieldHelp("storageLocation", "plant", {
+                    {...fieldHelp(tr, "storageLocation", "plant", {
                       label: tr("master.plantTable.title"),
                     })}
                   />
@@ -165,7 +165,7 @@ export function LocationModal({
                 disabled={selectedPlantId == null || floorOptions.length === 0}
                 label={
                   <HelpLabel
-                    {...fieldHelp("storageLocation", "plant", {
+                    {...fieldHelp(tr, "storageLocation", "plant", {
                       label: tr("master.storageLocations.floor"),
                     })}
                   />
@@ -184,7 +184,7 @@ export function LocationModal({
           <TextInput
             label={
               <HelpLabel
-                {...fieldHelp("storageLocation", "code", {
+                {...fieldHelp(tr, "storageLocation", "code", {
                   label: tr("common.code"),
                 })}
               />
@@ -194,7 +194,7 @@ export function LocationModal({
             {...form.getInputProps("code")}
           />
           <LocalizedTextInput
-            help={fieldHelpTip("storageLocation", "code")}
+            help={fieldHelpTip(tr, "storageLocation", "code")}
             jaProps={form.getInputProps("nameJa")}
             label={tr("common.name2")}
             placeholder={tr("master.storageLocations.warehouse1")}
@@ -202,14 +202,16 @@ export function LocationModal({
             translationsProps={form.getInputProps("nameTranslations")}
           />
           <NumberInput
-            label={<HelpLabel {...fieldHelp("storageLocation", "sortOrder")} />}
+            label={
+              <HelpLabel {...fieldHelp(tr, "storageLocation", "sortOrder")} />
+            }
             {...form.getInputProps("sortOrder")}
           />
           <Switch
             checked={form.values.isActive}
             label={
               <HelpLabel
-                {...fieldHelp("storageLocation", "active", {
+                {...fieldHelp(tr, "storageLocation", "active", {
                   label: tr("common.enabled"),
                 })}
               />
@@ -221,7 +223,7 @@ export function LocationModal({
           <Textarea
             label={
               <HelpLabel
-                {...fieldHelp("storageLocation", "active", {
+                {...fieldHelp(tr, "storageLocation", "active", {
                   label: tr("common.notes"),
                 })}
               />

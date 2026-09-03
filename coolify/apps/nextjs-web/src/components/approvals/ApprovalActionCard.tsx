@@ -268,7 +268,7 @@ export function ApprovalActionCard({
         </Text>
         <Textarea
           autosize
-          label={<HelpLabel {...fieldHelp("approval", "rejectReason")} />}
+          label={<HelpLabel {...fieldHelp(tr, "approval", "rejectReason")} />}
           minRows={3}
           onChange={(e) => setReason(e.currentTarget.value)}
           placeholder={tr("common.enterAReason")}

@@ -66,7 +66,6 @@ import {
   countTrailRecords,
 } from "@/components/production/ApprovalStatusPanel";
 import { DesignFileList } from "@/components/production/design-files/DesignFileList";
-import { DESIGN_FILE_ROLE_LABEL } from "@/components/production/design-files/model";
 import { ActionCard } from "@/components/ui/ActionCard";
 import { AppTabs } from "@/components/ui/AppTabs";
 import {
@@ -103,6 +102,7 @@ import { isViewable } from "@/lib/design-file-kind";
 import { pickThumbFile } from "@/lib/design-files-core";
 import type { MemoView } from "@/lib/document-memos";
 import {
+  designHistoryActionLabel,
   designKindLabel,
   designPriorityLabel,
   designTriggerLabel,
@@ -115,7 +115,6 @@ import {
   canReopen,
   canRequestApproval,
   canStart,
-  DESIGN_HISTORY_ACTION_LABEL,
   DESIGN_KIND_COLOR,
   DESIGN_TRIGGER_COLOR,
   type DesignRequest,
@@ -409,7 +408,7 @@ export function DesignRequestDetail({
         key: f.id,
         label: f.filename,
         done: true,
-        note: DESIGN_FILE_ROLE_LABEL[f.role] ?? f.role,
+        note: tr(`enum.DESIGN_FILE_ROLE_LABEL.${f.role}`),
       })),
       emptyNote:
         request.status === "IN_PROGRESS"
@@ -751,7 +750,7 @@ export function DesignRequestDetail({
               {records.map((h, i) => (
                 <Group gap="sm" key={`${h.at}-${h.action}-${i}`} wrap="nowrap">
                   <Badge color="gray" size="sm" variant="light">
-                    {DESIGN_HISTORY_ACTION_LABEL[h.action] ?? h.action}
+                    {designHistoryActionLabel(h.action, locale)}
                   </Badge>
                   <Text size="xs">{h.user}</Text>
                   <Text c="dimmed" className="tabular-nums" size="xs">

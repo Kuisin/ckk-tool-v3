@@ -141,7 +141,7 @@ export function ItemDefEditForm({
           <TextInput
             label={
               <HelpLabel
-                {...fieldHelp("productType", "itemName", {
+                {...fieldHelp(tr, "productType", "itemName", {
                   label: tr("common.itemNameJapanese"),
                 })}
               />
@@ -156,7 +156,7 @@ export function ItemDefEditForm({
           <TextInput
             label={
               <HelpLabel
-                {...fieldHelp("productType", "itemName", {
+                {...fieldHelp(tr, "productType", "itemName", {
                   label: tr("settings.itemDefEditForm.itemNameEnglish"),
                 })}
               />
@@ -175,7 +175,7 @@ export function ItemDefEditForm({
             }
             disabled={isEdit}
             error={error?.includes(tr("common.key")) ? error : undefined}
-            label={<HelpLabel {...fieldHelp("productType", "key")} />}
+            label={<HelpLabel {...fieldHelp(tr, "productType", "key")} />}
             onChange={(e) => patch({ key: e.currentTarget.value })}
             placeholder="surfaceTreatment"
             value={def.key}
@@ -183,7 +183,7 @@ export function ItemDefEditForm({
           />
           <Select
             data={productFieldTypeOptions(tr)}
-            label={<HelpLabel {...fieldHelp("productType", "type")} />}
+            label={<HelpLabel {...fieldHelp(tr, "productType", "type")} />}
             onChange={(v) =>
               patch({ type: (v as ProductItemDef["type"]) ?? "string" })
             }
@@ -193,7 +193,7 @@ export function ItemDefEditForm({
             description={tr(
               "settings.itemDefEditForm.itCanBeOverriddenWhenAssigned",
             )}
-            label={<HelpLabel {...fieldHelp("productType", "default")} />}
+            label={<HelpLabel {...fieldHelp(tr, "productType", "default")} />}
             onChange={(e) => patch({ default: e.currentTarget.value })}
             placeholder={
               def.type === "boolean" ? "true / false" : tr("common.optional2")
@@ -201,7 +201,9 @@ export function ItemDefEditForm({
             value={def.default ?? ""}
           />
           <TextInput
-            label={<HelpLabel {...fieldHelp("productType", "placeholder")} />}
+            label={
+              <HelpLabel {...fieldHelp(tr, "productType", "placeholder")} />
+            }
             onChange={(e) => patch({ placeholder: e.currentTarget.value })}
             placeholder={tr("settings.itemDefEditForm.exampleInputEtcOptional")}
             value={def.placeholder ?? ""}
@@ -210,7 +212,7 @@ export function ItemDefEditForm({
 
         <Switch
           checked={def.required}
-          label={<HelpLabel {...fieldHelp("productType", "required")} />}
+          label={<HelpLabel {...fieldHelp(tr, "productType", "required")} />}
           mt="sm"
           onChange={(e) => patch({ required: e.currentTarget.checked })}
         />
@@ -225,7 +227,7 @@ export function ItemDefEditForm({
                 ? error
                 : undefined
             }
-            label={<HelpLabel {...fieldHelp("productType", "pattern")} />}
+            label={<HelpLabel {...fieldHelp(tr, "productType", "pattern")} />}
             mt="sm"
             onChange={(e) =>
               patch({ pattern: e.currentTarget.value || undefined })
@@ -240,7 +242,7 @@ export function ItemDefEditForm({
             <NumberInput
               label={
                 <HelpLabel
-                  {...fieldHelp("productType", "range", {
+                  {...fieldHelp(tr, "productType", "range", {
                     label: tr("common.minimum"),
                   })}
                 />
@@ -253,7 +255,7 @@ export function ItemDefEditForm({
             <NumberInput
               label={
                 <HelpLabel
-                  {...fieldHelp("productType", "range", {
+                  {...fieldHelp(tr, "productType", "range", {
                     label: tr("common.maximum"),
                   })}
                 />

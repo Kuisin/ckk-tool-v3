@@ -38,7 +38,9 @@ export async function fetchFinalInspectionPdfData(
       })
     : [];
   const nameOf = (id: string | null) =>
-    id ? (users.find((u) => u.id === id)?.displayName ?? "システム") : null;
+    id
+      ? (users.find((u) => u.id === id)?.displayName ?? "システム") // i18n-ignore — PDF テンプレート（ja 固定・documentFormatters と同じ扱い）
+      : null;
   const stamp = (by: string | null, at: Date | null) =>
     at
       ? `${nameOf(by) ?? ""}（${documentFormatters.dateTime(at.toISOString())}）`

@@ -9,6 +9,7 @@ import "server-only";
  * 未設定・不正時は既定値を返す。
  */
 
+import { getTranslations } from "next-intl/server";
 import { readConfigNamespace, writeConfigValues } from "./app-config";
 import {
   DEFAULT_PRODUCT_ITEM_DEFS,
@@ -33,7 +34,8 @@ async function readNs() {
 export async function getProductItemDefs(): Promise<ProductItemDef[]> {
   const raw = (await readNs()).get(DEFS_KEY);
   if (raw === undefined || raw === null) return DEFAULT_PRODUCT_ITEM_DEFS;
-  const parsed = productItemDefsArraySchema.safeParse(raw);
+  const tr = await getTranslations();
+  const parsed = productItemDefsArraySchema(tr).safeParse(raw);
   return parsed.success ? parsed.data : DEFAULT_PRODUCT_ITEM_DEFS;
 }
 
@@ -41,7 +43,8 @@ export async function getProductItemDefs(): Promise<ProductItemDef[]> {
 export async function getProductTypes(): Promise<ProductType[]> {
   const raw = (await readNs()).get(TYPES_KEY);
   if (raw === undefined || raw === null) return DEFAULT_PRODUCT_TYPES;
-  const parsed = productTypesArraySchema.safeParse(raw);
+  const tr = await getTranslations();
+  const parsed = productTypesArraySchema(tr).safeParse(raw);
   return parsed.success ? parsed.data : DEFAULT_PRODUCT_TYPES;
 }
 
@@ -53,15 +56,16 @@ export async function getProductItemSettings(): Promise<{
   const byKey = await readNs();
   const defsRaw = byKey.get(DEFS_KEY);
   const typesRaw = byKey.get(TYPES_KEY);
+  const tr = await getTranslations();
   const defs =
     defsRaw == null
       ? DEFAULT_PRODUCT_ITEM_DEFS
-      : (productItemDefsArraySchema.safeParse(defsRaw).data ??
+      : (productItemDefsArraySchema(tr).safeParse(defsRaw).data ??
         DEFAULT_PRODUCT_ITEM_DEFS);
   const types =
     typesRaw == null
       ? DEFAULT_PRODUCT_TYPES
-      : (productTypesArraySchema.safeParse(typesRaw).data ??
+      : (productTypesArraySchema(tr).safeParse(typesRaw).data ??
         DEFAULT_PRODUCT_TYPES);
   return { defs, types };
 }

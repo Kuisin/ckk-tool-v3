@@ -417,7 +417,7 @@ export function ProductForm({
               "master.products.formatPrdYyyymmNnnnNumberedAutomatically",
             )}
             disabled
-            label={<HelpLabel {...fieldHelp("product", "code")} />}
+            label={<HelpLabel {...fieldHelp(tr, "product", "code")} />}
             placeholder={tr("common.numberedAutomaticallyOnSave")}
             // 内部 ID ではなく採番済みの製品コードを表示する
             // （レガシー取込の製品はコード未採番なので空欄）。
@@ -425,26 +425,26 @@ export function ProductForm({
           />
           <Select
             data={unitOptions(locale)}
-            label={<HelpLabel {...fieldHelp("product", "unit")} />}
+            label={<HelpLabel {...fieldHelp(tr, "product", "unit")} />}
             withAsterisk
             {...form.getInputProps("unit")}
           />
         </SimpleGrid>
         <Stack gap="sm" mt="sm">
           <LocalizedTextInput
-            help={fieldHelpTip("product", "name")}
+            help={fieldHelpTip(tr, "product", "name")}
             jaProps={form.getInputProps("nameJa")}
             label={tr("common.name2")}
             required
             translationsProps={form.getInputProps("nameTranslations")}
           />
           <Switch
-            label={<HelpLabel {...fieldHelp("product", "active")} />}
+            label={<HelpLabel {...fieldHelp(tr, "product", "active")} />}
             {...form.getInputProps("isActive", { type: "checkbox" })}
           />
         </Stack>
         <Textarea
-          label={<HelpLabel {...fieldHelp("product", "notes")} />}
+          label={<HelpLabel {...fieldHelp(tr, "product", "notes")} />}
           mt="sm"
           placeholder={tr("common.notesAndRemarks")}
           rows={3}
@@ -453,7 +453,7 @@ export function ProductForm({
         {/* 検索・AI 突合用の別名。候補は AI に作らせ、採用は人が決める。 */}
         <MasterKeywordsField
           kind="product"
-          label={<HelpLabel {...fieldHelp("product", "keywords")} />}
+          label={<HelpLabel {...fieldHelp(tr, "product", "keywords")} />}
           onChange={(v) => form.setFieldValue("matchNames", v)}
           subject={keywordSubject}
           value={form.values.matchNames}
@@ -466,7 +466,7 @@ export function ProductForm({
       >
         <SearchSelect
           description={tr("common.onlyConvertedMaterialTypesWithA")}
-          label={<HelpLabel {...fieldHelp("product", "materialType")} />}
+          label={<HelpLabel {...fieldHelp(tr, "product", "materialType")} />}
           onChange={(value, option) => {
             form.setFieldValue("materialTypeId", value);
             form.setFieldValue("materialTypeLabel", option?.label ?? "");
@@ -490,7 +490,7 @@ export function ProductForm({
             error={form.errors.diameterMm}
             label={
               <HelpLabel
-                {...fieldHelp("product", "dimensions", {
+                {...fieldHelp(tr, "product", "dimensions", {
                   label: tr("common.diameterMm"),
                 })}
               />
@@ -518,7 +518,7 @@ export function ProductForm({
             error={form.errors.lengthMm}
             label={
               <HelpLabel
-                {...fieldHelp("product", "dimensions", {
+                {...fieldHelp(tr, "product", "dimensions", {
                   label: tr("common.overallLengthMm"),
                 })}
               />
@@ -548,7 +548,7 @@ export function ProductForm({
               selectedType?.description ||
               tr("master.products.selectATypeOptional")
             }
-            label={<HelpLabel {...fieldHelp("product", "productType")} />}
+            label={<HelpLabel {...fieldHelp(tr, "product", "productType")} />}
             onChange={onTypeChange}
             placeholder={tr("common.selectAType")}
             value={typeId}

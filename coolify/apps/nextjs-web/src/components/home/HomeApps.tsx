@@ -215,6 +215,7 @@ export function HomeApps({
 
           {/* biome-ignore lint/performance/noImgElement: static SVG logo — next/image adds no value */}
           <img
+            // i18n-ignore — 固有名詞（社名）。訳の対象外（_specs/i18n-glossary.md §1）
             alt="シー・ケィ・ケー株式会社"
             className="h-8 w-8 shrink-0 opacity-75"
             src={

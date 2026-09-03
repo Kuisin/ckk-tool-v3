@@ -671,7 +671,7 @@ export async function receivePurchaseOrderItems(
           linkPath: `/purchase/purchase-orders/${encodeURIComponent(poNumber)}`,
         });
       } catch (err) {
-        console.error("[purchase] 入荷完了通知に失敗:", err);
+        console.error("[purchase] 入荷完了通知に失敗:", err); // i18n-ignore — サーバーログのみ（Loki）、UI に出ない
       }
     }
     revalidate(poNumber);

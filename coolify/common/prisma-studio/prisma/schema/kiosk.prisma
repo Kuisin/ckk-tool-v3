@@ -82,6 +82,13 @@ model KioskDevice {
 
   status KioskDeviceStatus @default(PENDING)
 
+  // ログイン前画面（/login, /setup, /device-error, /device-settings）の表示言語。
+  // ログイン前はユーザーセッションが無く users.locale を引けないため、共有端末
+  // 自体にこの列を持たせる。未設定 = 既定言語（ja）。SY09 の編集モーダルと
+  // 端末設定画面（設定コード認証）の両方から変更できる（work_location と同じ
+  // 2 入口の約束）。
+  locale String?
+
   // 端末設定画面（ヘッダー5タップ）の解錠コード。SY09 の編集モーダルで管理者が
   // 確認・再生成し、フロア担当者に伝える運用。平文保持は仕様（低感度の便宜
   // ゲート — 5回失敗/15分ロックで総当たりは不可。認証はデバイストークンが担う）。

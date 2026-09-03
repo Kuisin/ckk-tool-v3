@@ -15,6 +15,7 @@
  */
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import type { Tr } from "@/lib/i18n";
 
 export interface NotificationItem {
   id: string;
@@ -225,16 +226,16 @@ export function useNotifications(): {
 }
 
 /** 通知タイムスタンプの相対表示（design.md §17.3: X分前 / X時間前 / 昨日）。 */
-export function relativeTime(iso: string): string {
+export function relativeTime(iso: string, tr: Tr): string {
   const diffMs = Date.now() - new Date(iso).getTime();
   const minutes = Math.floor(diffMs / 60_000);
-  if (minutes < 1) return "たった今";
-  if (minutes < 60) return `${minutes}分前`;
+  if (minutes < 1) return tr("common.justNow");
+  if (minutes < 60) return tr("common.minutesAgo", { n: minutes });
   const hours = Math.floor(minutes / 60);
-  if (hours < 24) return `${hours}時間前`;
+  if (hours < 24) return tr("common.hoursAgo", { n: hours });
   const days = Math.floor(hours / 24);
-  if (days === 1) return "昨日";
-  if (days < 7) return `${days}日前`;
+  if (days === 1) return tr("common.yesterday");
+  if (days < 7) return tr("common.daysAgo", { n: days });
   const d = new Date(iso);
   return `${d.getFullYear()}/${String(d.getMonth() + 1).padStart(2, "0")}/${String(d.getDate()).padStart(2, "0")}`;
 }

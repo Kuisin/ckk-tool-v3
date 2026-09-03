@@ -1,3 +1,4 @@
+import { I18nProvider } from "@/components/I18nProvider";
 import { loadQualityBoard, plantNameOf } from "@/lib/display-board";
 import { optionNumber } from "@/lib/display-templates";
 import { boardContext, NOT_REGISTERED } from "../_shared/options";
@@ -26,10 +27,12 @@ export default async function QualityBoardPage({
   ]);
 
   return (
-    <QualityBoard
-      plantName={plantName}
-      rowsPerPage={optionNumber(ctx.options, "rows", 8)}
-      summary={summary}
-    />
+    <I18nProvider locale={ctx.locale}>
+      <QualityBoard
+        plantName={plantName}
+        rowsPerPage={optionNumber(ctx.options, "rows", 8)}
+        summary={summary}
+      />
+    </I18nProvider>
   );
 }

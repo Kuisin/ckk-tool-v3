@@ -84,7 +84,7 @@ const emptyItem = (): ItemForm => ({
   materialLabel: "",
   plantId: null,
   quantity: 1,
-  unit: "本",
+  unit: "本", // i18n-ignore — DB データの既定値（単位）。対象外（_specs/i18n-glossary.md §1）
   desiredAt: null,
   notes: "",
 });
@@ -211,7 +211,7 @@ export function PurchaseRequestForm({
       <FormSection title={tr("common.basicInformation")}>
         <Textarea
           autosize
-          label={<HelpLabel {...fieldHelp("purchaseRequest", "reason")} />}
+          label={<HelpLabel {...fieldHelp(tr, "purchaseRequest", "reason")} />}
           minRows={2}
           placeholder={tr(
             "purchase.purchaseRequests.reasonAndIntendedUseOptional",
@@ -259,7 +259,7 @@ export function PurchaseRequestForm({
                     }
                     label={
                       <HelpLabel
-                        {...fieldHelp("purchaseRequest", "material")}
+                        {...fieldHelp(tr, "purchaseRequest", "material")}
                       />
                     }
                     onChange={(v, opt) => {
@@ -279,7 +279,9 @@ export function PurchaseRequestForm({
                     clearable
                     data={plantOptions}
                     label={
-                      <HelpLabel {...fieldHelp("purchaseRequest", "plant")} />
+                      <HelpLabel
+                        {...fieldHelp(tr, "purchaseRequest", "plant")}
+                      />
                     }
                     maw={180}
                     placeholder={tr("common.selectASite")}
@@ -318,7 +320,9 @@ export function PurchaseRequestForm({
               <DatePickerInput
                 clearable
                 label={
-                  <HelpLabel {...fieldHelp("purchaseRequest", "desiredDate")} />
+                  <HelpLabel
+                    {...fieldHelp(tr, "purchaseRequest", "desiredDate")}
+                  />
                 }
                 leftSection={<IconCalendar size={14} />}
                 maw={200}

@@ -90,7 +90,7 @@ const emptyItem = (): ItemForm => ({
   materialLabel: "",
   plantId: null,
   quantity: 1,
-  unit: "本",
+  unit: "本", // i18n-ignore — DB データの既定値（単位）。対象外（_specs/i18n-glossary.md §1）
   unitPrice: 0,
   expectedAt: null,
   notes: "",
@@ -232,7 +232,9 @@ export function PurchaseOrderForm({
           <Select
             clearable
             data={supplierOptions}
-            label={<HelpLabel {...fieldHelp("purchaseOrder", "supplier")} />}
+            label={
+              <HelpLabel {...fieldHelp(tr, "purchaseOrder", "supplier")} />
+            }
             placeholder={tr("common.selectASupplier")}
             searchable
             withAsterisk
@@ -241,7 +243,9 @@ export function PurchaseOrderForm({
           <DatePickerInput
             clearable
             description={tr("purchase.purchaseOrders.ifLeftBlankItIsSet")}
-            label={<HelpLabel {...fieldHelp("purchaseOrder", "orderDate")} />}
+            label={
+              <HelpLabel {...fieldHelp(tr, "purchaseOrder", "orderDate")} />
+            }
             leftSection={<IconCalendar size={14} />}
             placeholder={tr("common.pickADate")}
             valueFormat="YYYY/MM/DD"
@@ -307,7 +311,7 @@ export function PurchaseOrderForm({
                     clearable
                     data={plantOptions}
                     label={
-                      <HelpLabel {...fieldHelp("purchaseOrder", "plant")} />
+                      <HelpLabel {...fieldHelp(tr, "purchaseOrder", "plant")} />
                     }
                     maw={180}
                     placeholder={tr("common.selectASite")}
@@ -333,7 +337,9 @@ export function PurchaseOrderForm({
                     decimalScale={2}
                     error={form.errors[`items.${ri}.unitPrice`]}
                     label={
-                      <HelpLabel {...fieldHelp("purchaseOrder", "unitPrice")} />
+                      <HelpLabel
+                        {...fieldHelp(tr, "purchaseOrder", "unitPrice")}
+                      />
                     }
                     maw={150}
                     min={0}
@@ -359,7 +365,9 @@ export function PurchaseOrderForm({
               <DatePickerInput
                 clearable
                 label={
-                  <HelpLabel {...fieldHelp("purchaseOrder", "expectedDate")} />
+                  <HelpLabel
+                    {...fieldHelp(tr, "purchaseOrder", "expectedDate")}
+                  />
                 }
                 leftSection={<IconCalendar size={14} />}
                 maw={200}

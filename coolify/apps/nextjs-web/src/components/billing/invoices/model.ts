@@ -11,6 +11,8 @@
  * ここは pure / client-safe のみ。
  */
 
+import type { Tr } from "@/lib/i18n";
+
 export type InvoiceStatus = "DRAFT" | "ISSUED" | "SENT" | "PAID";
 
 export interface InvoiceItem {
@@ -96,13 +98,13 @@ export function canMarkPaid(inv: Pick<Invoice, "status">) {
  * 税額は締日処理が同じ区分で計算しているので、ラベルと金額が一致する
  * （以前は区分によらず「消費税（10%）」固定で、8% 顧客と食い違っていた）。
  */
-export function taxLabel(taxType: Invoice["taxType"]): string {
+export function taxLabel(taxType: Invoice["taxType"], tr: Tr): string {
   switch (taxType) {
     case "REDUCED":
-      return "消費税（8%）";
+      return tr("billing.invoices.taxLabelReduced");
     case "EXEMPT":
-      return "消費税（非課税）";
+      return tr("billing.invoices.taxLabelExempt");
     default:
-      return "消費税（10%）";
+      return tr("billing.invoices.taxLabelStandard");
   }
 }

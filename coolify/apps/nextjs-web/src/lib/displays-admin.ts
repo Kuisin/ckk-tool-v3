@@ -12,10 +12,11 @@ import "server-only";
  * この計算はソケットの有無を知らなくてよい。
  */
 
-import { getTranslations } from "next-intl/server";
+import { getLocale, getTranslations } from "next-intl/server";
 import { prisma } from "./db";
-import { findDisplayTemplate } from "./display-templates";
+import { findLocalizedDisplayTemplate } from "./display-template-labels";
 import { localized } from "./format";
+import type { Locale } from "./i18n";
 
 type Tr = Awaited<ReturnType<typeof getTranslations>>;
 
@@ -37,6 +38,8 @@ export interface DisplayRow {
   location: string | null;
   plantId: number | null;
   plantName: string | null;
+  /** 盤面自身の表示言語（未設定 = 既定言語 ja）。kiosk_devices.locale と同じ規約。 */
+  locale: string | null;
   /** 何を映すか。**画面ごとに持つ** — 共有の「表示内容」レコードは無い。 */
   contentType: DisplayContentType;
   contentConfig: unknown;
@@ -94,12 +97,19 @@ function jsonName(value: unknown): {
  * 知りたいのは「どの画面か」だけ**なので、テンプレート名（か種別名）に
  * 落とす。設定の中身は詳細で見る。
  */
-function describeContent(type: string, config: unknown, tr: Tr): string {
+function describeContent(
+  type: string,
+  config: unknown,
+  tr: Tr,
+  locale: Locale,
+): string {
   if (type === "APP_PAGE") {
     const page = (config as { page?: unknown } | null)?.page;
     return (
-      findDisplayTemplate(typeof page === "string" ? page : null)?.label ??
-      tr("displaysAdmin.noPageSelected")
+      findLocalizedDisplayTemplate(
+        typeof page === "string" ? page : null,
+        locale,
+      )?.label ?? tr("displaysAdmin.noPageSelected")
     );
   }
   if (type === "METABASE") return tr("displaysAdmin.metabaseDashboard");
@@ -115,6 +125,7 @@ function onlineAt(now: number, lastSeenAt: Date | null): boolean {
 
 export async function listDisplays(): Promise<DisplayRow[]> {
   const tr = await getTranslations();
+  const locale = (await getLocale()) as Locale;
   const rows = await prisma.displayDevice.findMany({
     orderBy: [{ status: "asc" }, { createdAt: "asc" }],
     select: {
@@ -122,6 +133,7 @@ export async function listDisplays(): Promise<DisplayRow[]> {
       name: true,
       location: true,
       plantId: true,
+      locale: true,
       status: true,
       scalePercent: true,
       machineId: true,
@@ -146,9 +158,10 @@ export async function listDisplays(): Promise<DisplayRow[]> {
       location: r.location,
       plantId: r.plantId,
       plantName: jsonName(r.plant?.name).text,
+      locale: r.locale,
       contentType: r.contentType as DisplayContentType,
       contentConfig: r.contentConfig,
-      contentLabel: describeContent(r.contentType, r.contentConfig, tr),
+      contentLabel: describeContent(r.contentType, r.contentConfig, tr, locale),
       refreshIntervalSec: r.refreshIntervalSec,
       status: r.status as DisplayStatus,
       scalePercent: r.scalePercent,
@@ -167,6 +180,7 @@ export async function getDisplayDetail(
   id: string,
 ): Promise<DisplayDetail | null> {
   const tr = await getTranslations();
+  const locale = (await getLocale()) as Locale;
   const r = await prisma.displayDevice.findUnique({
     where: { id },
     select: {
@@ -174,6 +188,7 @@ export async function getDisplayDetail(
       name: true,
       location: true,
       plantId: true,
+      locale: true,
       status: true,
       scalePercent: true,
       machineId: true,
@@ -225,9 +240,10 @@ export async function getDisplayDetail(
     location: r.location,
     plantId: r.plantId,
     plantName: jsonName(r.plant?.name).text,
+    locale: r.locale,
     contentType: r.contentType as DisplayContentType,
     contentConfig: r.contentConfig,
-    contentLabel: describeContent(r.contentType, r.contentConfig, tr),
+    contentLabel: describeContent(r.contentType, r.contentConfig, tr, locale),
     refreshIntervalSec: r.refreshIntervalSec,
     status: r.status as DisplayStatus,
     scalePercent: r.scalePercent,

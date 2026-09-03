@@ -24,6 +24,7 @@ import type { Prisma as PrismaNS } from "../../generated/client/client";
 import { recordAudit } from "./audit";
 import { prisma } from "./db";
 import { jstDateOnly } from "./format";
+import { encodeInventoryNote } from "./inventory-note-core";
 import {
   canStartStep,
   computeFinishedQuantity,
@@ -280,12 +281,12 @@ export async function startStepExecution(
       processStep: { select: { lotInputMode: true } },
     },
   });
-  if (!stepRow) return fail("NOT_FOUND", "工程が見つかりません");
+  if (!stepRow) return fail("NOT_FOUND", "工程が見つかりません"); // i18n-ignore
   if (
     stepRow.workOrder.status !== "APPROVED" &&
     stepRow.workOrder.status !== "IN_PROGRESS"
   ) {
-    return fail("WO_NOT_APPROVED", "指示書が承認済み/進行中ではありません");
+    return fail("WO_NOT_APPROVED", "指示書が承認済み/進行中ではありません"); // i18n-ignore
   }
 
   const { ctx } = await fetchWorkflowCtx(stepRow.workOrderId);
@@ -301,7 +302,7 @@ export async function startStepExecution(
   );
   const lot = lotText?.trim() || null;
   if (lotMode === "REQUIRED" && lot == null) {
-    return fail("LOT_REQUIRED", "ロット/伝票コードを入力してください");
+    return fail("LOT_REQUIRED", "ロット/伝票コードを入力してください"); // i18n-ignore
   }
 
   const input = inputQuantity ?? expectedInput(stepId, ctx);
@@ -348,7 +349,7 @@ export async function startStepExecution(
     return c.count;
   });
   if (claimed === 0) {
-    return fail("LOCK_TAKEN", "別のユーザーが先に開始しました");
+    return fail("LOCK_TAKEN", "別のユーザーが先に開始しました"); // i18n-ignore
   }
 
   // 最初の工程開始で指示書を進行中に
@@ -363,7 +364,10 @@ export async function startStepExecution(
     tableName: "work_orders",
     recordId: String(stepRow.workOrder.workOrderNumber),
     after: {
-      note: `工程を開始（step ${stepRow.sortOrder}・受入 ${input ?? "—"}）`,
+      note: encodeInventoryNote("stepStarted", {
+        sortOrder: stepRow.sortOrder,
+        input: input ?? "—",
+      }),
     },
   });
   return { ok: true };
@@ -382,9 +386,9 @@ export async function pauseStepExecution(
     where: { id: stepId },
     include: { workOrder: { select: { workOrderNumber: true } } },
   });
-  if (!stepRow) return fail("NOT_FOUND", "工程が見つかりません");
+  if (!stepRow) return fail("NOT_FOUND", "工程が見つかりません"); // i18n-ignore
   if (stepRow.status !== "IN_PROGRESS") {
-    return fail("NOT_IN_PROGRESS", "進行中の工程ではありません");
+    return fail("NOT_IN_PROGRESS", "進行中の工程ではありません"); // i18n-ignore
   }
 
   const now = new Date();
@@ -403,14 +407,18 @@ export async function pauseStepExecution(
     return c.count;
   });
   if (released === 0) {
-    return fail("LOCK_HELD_BY_OTHER", "別のユーザーがセッション中です");
+    return fail("LOCK_HELD_BY_OTHER", "別のユーザーがセッション中です"); // i18n-ignore
   }
 
   await recordAudit({
     action: "UPDATE",
     tableName: "work_orders",
     recordId: String(stepRow.workOrder.workOrderNumber),
-    after: { note: `工程を一時停止（step ${stepRow.sortOrder}）` },
+    after: {
+      note: encodeInventoryNote("stepPaused", {
+        sortOrder: stepRow.sortOrder,
+      }),
+    },
   });
   return { ok: true };
 }
@@ -429,15 +437,15 @@ export async function resumeStepExecution(
     where: { id: stepId },
     include: { workOrder: { select: { workOrderNumber: true, status: true } } },
   });
-  if (!stepRow) return fail("NOT_FOUND", "工程が見つかりません");
+  if (!stepRow) return fail("NOT_FOUND", "工程が見つかりません"); // i18n-ignore
   if (stepRow.status !== "IN_PROGRESS") {
-    return fail("NOT_IN_PROGRESS", "進行中の工程ではありません");
+    return fail("NOT_IN_PROGRESS", "進行中の工程ではありません"); // i18n-ignore
   }
   if (
     stepRow.workOrder.status !== "APPROVED" &&
     stepRow.workOrder.status !== "IN_PROGRESS"
   ) {
-    return fail("WO_NOT_APPROVED", "指示書が承認済み/進行中ではありません");
+    return fail("WO_NOT_APPROVED", "指示書が承認済み/進行中ではありません"); // i18n-ignore
   }
 
   // 同じ工程を続きから — 直前の自分のセッションと同じ場所とみなす。
@@ -472,14 +480,18 @@ export async function resumeStepExecution(
     return c.count;
   });
   if (claimed === 0) {
-    return fail("LOCK_HELD_BY_OTHER", "別のユーザーがセッション中です");
+    return fail("LOCK_HELD_BY_OTHER", "別のユーザーがセッション中です"); // i18n-ignore
   }
 
   await recordAudit({
     action: "UPDATE",
     tableName: "work_orders",
     recordId: String(stepRow.workOrder.workOrderNumber),
-    after: { note: `工程を再開（step ${stepRow.sortOrder}）` },
+    after: {
+      note: encodeInventoryNote("stepResumed", {
+        sortOrder: stepRow.sortOrder,
+      }),
+    },
   });
   return { ok: true };
 }
@@ -542,9 +554,9 @@ export async function setStepWorkLocation(
     where: { id: stepId },
     include: { workOrder: { select: { workOrderNumber: true } } },
   });
-  if (!stepRow) return fail("NOT_FOUND", "工程が見つかりません");
+  if (!stepRow) return fail("NOT_FOUND", "工程が見つかりません"); // i18n-ignore
   if (stepRow.status !== "IN_PROGRESS") {
-    return fail("NOT_IN_PROGRESS", "進行中の工程ではありません");
+    return fail("NOT_IN_PROGRESS", "進行中の工程ではありません"); // i18n-ignore
   }
   const updated = await prisma.workOrderStepActual.updateMany({
     where: { stepId, userId: actorId, endedAt: null },
@@ -553,7 +565,7 @@ export async function setStepWorkLocation(
   if (updated.count === 0) {
     return fail(
       "NO_OPEN_SESSION",
-      "作業セッションがありません（再開してから読み取ってください）",
+      "作業セッションがありません（再開してから読み取ってください）", // i18n-ignore
     );
   }
   await recordAudit({
@@ -561,7 +573,10 @@ export async function setStepWorkLocation(
     tableName: "work_orders",
     recordId: String(stepRow.workOrder.workOrderNumber),
     after: {
-      note: `作業場所を変更（step ${stepRow.sortOrder} / 作業場所 ${workLocationId}）`,
+      note: encodeInventoryNote("workLocationChanged", {
+        sortOrder: stepRow.sortOrder,
+        workLocationId,
+      }),
     },
   });
   return { ok: true };
@@ -594,12 +609,12 @@ export async function completeStepExecution(
       processStep: { select: { quantityTracking: true } },
     },
   });
-  if (!stepRow) return fail("NOT_FOUND", "工程が見つかりません");
+  if (!stepRow) return fail("NOT_FOUND", "工程が見つかりません"); // i18n-ignore
   if (stepRow.status !== "IN_PROGRESS") {
-    return fail("NOT_IN_PROGRESS", "進行中の工程ではありません");
+    return fail("NOT_IN_PROGRESS", "進行中の工程ではありません"); // i18n-ignore
   }
   if (stepRow.sessionLockedBy && stepRow.sessionLockedBy !== actorId) {
-    return fail("LOCK_HELD_BY_OTHER", "別のユーザーがセッション中です");
+    return fail("LOCK_HELD_BY_OTHER", "別のユーザーがセッション中です"); // i18n-ignore
   }
 
   const mode = stepRow.processStep.quantityTracking;
@@ -619,7 +634,7 @@ export async function completeStepExecution(
     };
   } else {
     if (quantities == null && (defectReasons?.length ?? 0) === 0) {
-      return fail("QUANTITY_REQUIRED", "数量を入力してください");
+      return fail("QUANTITY_REQUIRED", "数量を入力してください"); // i18n-ignore
     }
     // 受入数は開始時に確定した値を権威とする（完了時のクライアント値は無視）。
     const authoritativeInput =
@@ -634,14 +649,14 @@ export async function completeStepExecution(
     if (list.length === 0 && quantitiesDefects > 0) {
       return fail(
         "DEFECT_REASONS_REQUIRED",
-        "不良の内訳（種類・詳細）を入力してください",
+        "不良の内訳（種類・詳細）を入力してください", // i18n-ignore
       );
     }
     // 各行の 不良種類（FK）と詳細は必須。種類はマスタの実在 + 有効を再検証する。
     if (list.some((r) => r.defectTypeId == null || r.reason.trim() === "")) {
       return fail(
         "DEFECT_REASONS_REQUIRED",
-        "不良の各行に種類と詳細を入力してください",
+        "不良の各行に種類と詳細を入力してください", // i18n-ignore
       );
     }
     if (list.length > 0) {
@@ -651,7 +666,7 @@ export async function completeStepExecution(
         select: { id: true },
       });
       if (known.length !== ids.length) {
-        return fail("DEFECT_TYPE_INVALID", "不良種類が不正です");
+        return fail("DEFECT_TYPE_INVALID", "不良種類が不正です"); // i18n-ignore
       }
     }
     const sumType = (t: StepDefectReason["type"]) =>
@@ -752,7 +767,7 @@ export async function completeStepExecution(
     return c.count;
   });
   if (claimed !== 1) {
-    return fail("ALREADY_COMPLETED", "この工程は既に完了しています");
+    return fail("ALREADY_COMPLETED", "この工程は既に完了しています"); // i18n-ignore
   }
 
   // 全工程完了 → 指示書完了 + 在庫計上（完成品ロット入庫・半製品入庫・予約確定）。
@@ -774,7 +789,10 @@ export async function completeStepExecution(
     tableName: "work_orders",
     recordId: String(stepRow.workOrder.workOrderNumber),
     after: {
-      note: `工程を完了（良品 ${persisted.outputSuccessQuantity}/${persisted.inputQuantity}）`,
+      note: encodeInventoryNote("stepCompleted", {
+        success: persisted.outputSuccessQuantity,
+        input: persisted.inputQuantity,
+      }),
       ...persisted,
     },
   });

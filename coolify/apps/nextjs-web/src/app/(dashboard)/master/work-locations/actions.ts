@@ -238,7 +238,11 @@ export async function addWorkLocation(
       action: "UPDATE",
       tableName: "work_location_groups",
       recordId: String(groupId),
-      after: { note: `作業場所「${v.nameJa}」を追加` },
+      after: {
+        note: tr("master.workLocationsActions.auditWorkLocationAdded", {
+          name: v.nameJa,
+        }),
+      },
     });
     revalidate();
     return actionOk({ id: created.id });
@@ -289,7 +293,11 @@ export async function updateWorkLocation(
       action: "UPDATE",
       tableName: "work_location_groups",
       recordId: String(prior.groupId),
-      after: { note: `作業場所「${v.nameJa}」を更新` },
+      after: {
+        note: tr("master.workLocationsActions.auditWorkLocationUpdated", {
+          name: v.nameJa,
+        }),
+      },
     });
     revalidate();
     return actionOk({ id });
@@ -354,7 +362,9 @@ export async function deleteWorkLocation(id: number): Promise<ActionResult> {
       action: "UPDATE",
       tableName: "work_location_groups",
       recordId: String(prior.groupId),
-      after: { note: "作業場所を削除" },
+      after: {
+        note: tr("master.workLocationsActions.auditWorkLocationDeleted"),
+      },
     });
     revalidate();
     return actionOk();

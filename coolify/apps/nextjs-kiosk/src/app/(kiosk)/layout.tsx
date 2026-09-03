@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { DevicePresence } from "@/components/DevicePresence";
 import { I18nProvider } from "@/components/I18nProvider";
 import { KioskShell } from "@/components/KioskShell";
@@ -5,7 +6,7 @@ import { LastPageTracker } from "@/components/LastPageTracker";
 import { LocationReporter } from "@/components/LocationReporter";
 import { prisma } from "@/lib/db";
 import { getDeviceDefaultWorkLocationLabel } from "@/lib/device-work-location";
-import type { Locale } from "@/lib/i18n";
+import { getMessages, type Locale } from "@/lib/i18n";
 import { getDevice, getSession } from "@/lib/kiosk-auth";
 import {
   DEFAULT_TEXT_SCALE,
@@ -13,6 +14,26 @@ import {
   type TextScale,
   textScaleRootCss,
 } from "@/lib/text-scale";
+
+/**
+ * 端末の表示言語（未ログイン: kiosk_devices.locale / ログイン後: 利用者の
+ * locale）でページタイトルを出す。ルートレイアウトの静的 metadata は
+ * この言語が分からない時点の既定値（ja）で、ここが解決できた分だけ
+ * 上書きする（Next.js の metadata はレイアウトの入れ子でマージされる）。
+ */
+export async function generateMetadata(): Promise<Metadata> {
+  let locale: Locale = "ja";
+  try {
+    const device = await getDevice({ skipAttest: true });
+    if (device.ok) locale = device.device.locale;
+    const session = await getSession();
+    if (session) locale = session.locale;
+  } catch {
+    // ビルド時・DB 不通時は既定のまま
+  }
+  const m = getMessages(locale);
+  return { title: m.shell.appTitle, description: m.shell.appDescription };
+}
 
 /**
  * (kiosk) レイアウト — 共有タブレットの画面まわり（ヘッダー・フッター・
@@ -31,11 +52,13 @@ export default async function KioskLayout({
   let deviceName: string | null = null;
   let deviceId: string | null = null;
   let registered = false;
+  let deviceLocale: Locale = "ja";
   try {
     const device = await getDevice({ skipAttest: true });
     if (device.ok) {
       deviceName = device.device.name;
       deviceId = device.device.id;
+      deviceLocale = device.device.locale;
       registered = true;
     }
   } catch {
@@ -54,7 +77,10 @@ export default async function KioskLayout({
   // Provider の外側にあり、常に既定（ja）になっていた（言語の切替も
   // 効いていないように見える）。ページ側の包みはそのままでも害は無い
   // （内側が勝つだけで、同じ値になる）。
-  let locale: Locale = "ja";
+  // 未ログイン（ログイン前の画面）は端末の言語設定を使う — セッションが
+  // 無いので利用者の言語を引けない（SY09 で設定する kiosk_devices.locale。
+  // ログインすればすぐ利用者本人の設定に切り替わる）。
+  let locale: Locale = deviceLocale;
   try {
     const session = await getSession();
     userName = session?.displayName ?? null;

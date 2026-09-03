@@ -754,7 +754,7 @@ export function KioskDevicesTable({
             {tr("settings.kiosk.theProfileIsCreatedOpenAwaiting")}
           </Alert>
           <LocalizedTextInput
-            help={fieldHelpTip("kioskDevice", "name")}
+            help={fieldHelpTip(tr, "kioskDevice", "name")}
             jaProps={{
               value: createForm.nameJa,
               onChange: (e) => {
@@ -773,7 +773,7 @@ export function KioskDevicesTable({
           />
           <Select
             data={plantOptions}
-            label={<HelpLabel {...fieldHelp("kioskDevice", "plant")} />}
+            label={<HelpLabel {...fieldHelp(tr, "kioskDevice", "plant")} />}
             onChange={(v) => setCreateForm((s) => ({ ...s, plantId: v }))}
             placeholder={tr("common.selectASite")}
             searchable
@@ -781,7 +781,7 @@ export function KioskDevicesTable({
             withAsterisk
           />
           <TextInput
-            label={<HelpLabel {...fieldHelp("kioskDevice", "location")} />}
+            label={<HelpLabel {...fieldHelp(tr, "kioskDevice", "location")} />}
             onChange={(e) => {
               const location = e.currentTarget.value;
               setCreateForm((s) => ({ ...s, location }));
@@ -812,7 +812,7 @@ export function KioskDevicesTable({
             {tr("settings.kiosk.typeThe12CharacterCodeShown")}
           </Alert>
           <TextInput
-            label={<HelpLabel {...fieldHelp("kioskDevice", "linkCode")} />}
+            label={<HelpLabel {...fieldHelp(tr, "kioskDevice", "linkCode")} />}
             onChange={(e) =>
               setLinkCode(normalizeCode(e.currentTarget.value).slice(0, 12))
             }
@@ -839,7 +839,7 @@ export function KioskDevicesTable({
       >
         <Stack gap="sm">
           <LocalizedTextInput
-            help={fieldHelpTip("kioskDevice", "name")}
+            help={fieldHelpTip(tr, "kioskDevice", "name")}
             jaProps={{
               value: editForm.nameJa,
               onChange: (e) => {
@@ -857,7 +857,7 @@ export function KioskDevicesTable({
           />
           <Select
             data={plantOptions}
-            label={<HelpLabel {...fieldHelp("kioskDevice", "plant")} />}
+            label={<HelpLabel {...fieldHelp(tr, "kioskDevice", "plant")} />}
             onChange={(v) =>
               setEditForm((s) => ({
                 ...s,
@@ -871,7 +871,7 @@ export function KioskDevicesTable({
             withAsterisk
           />
           <TextInput
-            label={<HelpLabel {...fieldHelp("kioskDevice", "location")} />}
+            label={<HelpLabel {...fieldHelp(tr, "kioskDevice", "location")} />}
             onChange={(e) => {
               const location = e.currentTarget.value;
               setEditForm((s) => ({ ...s, location }));
@@ -886,7 +886,9 @@ export function KioskDevicesTable({
             )}
             description={tr("settings.kiosk.itIsRecordedAutomaticallyOnWork")}
             label={
-              <HelpLabel {...fieldHelp("kioskDevice", "defaultWorkLocation")} />
+              <HelpLabel
+                {...fieldHelp(tr, "kioskDevice", "defaultWorkLocation")}
+              />
             }
             onChange={(v) =>
               setEditForm((s) => ({ ...s, defaultWorkLocationId: v }))

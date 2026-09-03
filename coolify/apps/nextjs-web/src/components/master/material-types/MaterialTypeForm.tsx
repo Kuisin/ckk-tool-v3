@@ -193,18 +193,24 @@ export function MaterialTypeForm({
               <TextInput
                 disabled
                 label={
-                  <HelpLabel {...fieldHelp("materialType", "manufacturer")} />
+                  <HelpLabel
+                    {...fieldHelp(tr, "materialType", "manufacturer")}
+                  />
                 }
                 value={initial.composition.manufacturerLabel}
               />
               <TextInput
                 disabled
-                label={<HelpLabel {...fieldHelp("materialType", "grade")} />}
+                label={
+                  <HelpLabel {...fieldHelp(tr, "materialType", "grade")} />
+                }
                 value={initial.composition.gradeLabel}
               />
               <TextInput
                 disabled
-                label={<HelpLabel {...fieldHelp("materialType", "shape")} />}
+                label={
+                  <HelpLabel {...fieldHelp(tr, "materialType", "shape")} />
+                }
                 value={initial.composition.shapeLabel}
               />
               <TextInput
@@ -232,7 +238,7 @@ export function MaterialTypeForm({
             <Select
               data={manufacturerOptions}
               label={
-                <HelpLabel {...fieldHelp("materialType", "manufacturer")} />
+                <HelpLabel {...fieldHelp(tr, "materialType", "manufacturer")} />
               }
               placeholder={tr("common.selectAManufacturer")}
               withAsterisk
@@ -245,7 +251,7 @@ export function MaterialTypeForm({
             <Select
               data={filteredGrades}
               disabled={!form.values.manufacturerCode}
-              label={<HelpLabel {...fieldHelp("materialType", "grade")} />}
+              label={<HelpLabel {...fieldHelp(tr, "materialType", "grade")} />}
               placeholder={
                 form.values.manufacturerCode
                   ? tr("master.materialTypes.selectAMaterialType")
@@ -256,7 +262,7 @@ export function MaterialTypeForm({
             />
             <Select
               data={shapeOptions}
-              label={<HelpLabel {...fieldHelp("materialType", "shape")} />}
+              label={<HelpLabel {...fieldHelp(tr, "materialType", "shape")} />}
               placeholder={tr("common.selectAShape")}
               withAsterisk
               {...form.getInputProps("shapeCode")}
@@ -276,7 +282,7 @@ export function MaterialTypeForm({
 
       <FormSection title={tr("common.basicInformation")}>
         <LocalizedTextInput
-          help={fieldHelpTip("materialType", "name")}
+          help={fieldHelpTip(tr, "materialType", "name")}
           jaProps={form.getInputProps("nameJa")}
           label={tr("common.name2")}
           placeholder="K40UF"
@@ -284,7 +290,7 @@ export function MaterialTypeForm({
           translationsProps={form.getInputProps("nameTranslations")}
         />
         <Switch
-          label={<HelpLabel {...fieldHelp("materialType", "active")} />}
+          label={<HelpLabel {...fieldHelp(tr, "materialType", "active")} />}
           mt="md"
           {...form.getInputProps("isActive", { type: "checkbox" })}
         />

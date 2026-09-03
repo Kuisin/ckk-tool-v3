@@ -74,7 +74,7 @@ export async function requireElevation(
   const label = localized(op.label as unknown as LocalizedTextInput, locale);
   return (
     <AccessDenied
-      breadcrumbs={[categoryLabel("システム", locale), label]}
+      breadcrumbs={[categoryLabel("システム", locale), label]} // i18n-ignore — AppCategory の内部識別子（表示は categoryLabel が担う）
       message={gate.error}
       title={label}
     />

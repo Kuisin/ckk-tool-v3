@@ -109,9 +109,9 @@ export async function maybeRunDailyClosing(): Promise<void> {
       Number(get("month")),
     );
     console.log(
-      `[closing] 日次オートラン ${today}: 作成 ${result.created} / 更新 ${result.updated} / スキップ ${result.skipped}`,
+      `[closing] 日次オートラン ${today}: 作成 ${result.created} / 更新 ${result.updated} / スキップ ${result.skipped}`, // i18n-ignore — サーバーログのみ（Loki）、UI に出ない
     );
   } catch (e) {
-    console.error("[closing] 日次オートラン失敗:", e);
+    console.error("[closing] 日次オートラン失敗:", e); // i18n-ignore — サーバーログのみ（Loki）、UI に出ない
   }
 }

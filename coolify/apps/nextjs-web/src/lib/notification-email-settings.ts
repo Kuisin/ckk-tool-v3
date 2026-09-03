@@ -48,6 +48,7 @@ export async function getNotificationEmailSettings(): Promise<NotificationEmailS
   const parsed = notificationEmailSettingsSchema.safeParse(merged);
   if (!parsed.success) {
     console.error(
+      // i18n-ignore — サーバーログのみ（Loki）、UI に出ない
       "[notification-email] 設定が不正なので既定で動かします:",
       parsed.error.issues,
     );

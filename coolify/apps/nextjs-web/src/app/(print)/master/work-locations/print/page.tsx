@@ -6,6 +6,7 @@ import { prisma } from "@/lib/db";
 import { type LocalizedText, localized } from "@/lib/format";
 import { qrSvg } from "@/lib/qr";
 import { encodeQrPayload, QR_KINDS } from "@/lib/qr-payload";
+import { workLocationPrintStyles } from "./print-styles";
 import { PrintToolbar } from "./print-toolbar";
 
 export const dynamic = "force-dynamic";
@@ -15,7 +16,7 @@ export function generateMetadata() {
   const d = new Date();
   const pad = (n: number) => String(n).padStart(2, "0");
   return {
-    title: `作業場所QR印刷_${d.getFullYear()}${pad(d.getMonth() + 1)}${pad(d.getDate())}-${pad(d.getHours())}${pad(d.getMinutes())}`,
+    title: `作業場所QR印刷_${d.getFullYear()}${pad(d.getMonth() + 1)}${pad(d.getDate())}-${pad(d.getHours())}${pad(d.getMinutes())}`, // i18n-ignore — api/pdf/kiosk-cards/route.ts と同じファイル名規約
   };
 }
 
@@ -128,110 +129,17 @@ export default async function WorkLocationsPrintPage({
         ))
       )}
 
-      <style>{`
-        /* ページサイズは必ず「長さ」で書く（絶対ページボックス = 縮小禁止）。 */
-        @page { size: ${A4.width}mm ${A4.height}mm; margin: 0; }
-
-        .wl-print-root { background: #ffffff; color: #000000; }
-        .wl-print-toolbar { padding: 16px; }
-        .wl-print-empty { padding: 0 16px; color: #666666; font-size: 14px; }
-
-        .wl-print-sheet {
-          position: relative;
-          box-sizing: border-box;
-          width: ${A4.width}mm;
-          height: ${A4.height}mm;
-          padding: ${MARGIN_Y}mm ${MARGIN_X}mm;
-          margin: 0 auto;
-          overflow: hidden;
-          background: #ffffff;
-        }
-        .wl-print-sheet + .wl-print-sheet { break-before: page; }
-
-        .wl-print-grid {
-          display: grid;
-          grid-template-columns: repeat(${LABEL.cols}, ${LABEL.width}mm);
-          grid-auto-rows: ${LABEL.height}mm;
-        }
-        .wl-print-cell {
-          position: relative;
-          width: ${LABEL.width}mm;
-          height: ${LABEL.height}mm;
-          break-inside: avoid;
-        }
-        .wl-print-label {
-          box-sizing: border-box;
-          width: 100%;
-          height: 100%;
-          padding: 5mm;
-          display: flex;
-          gap: 4mm;
-          align-items: center;
-          overflow: hidden;
-        }
-
-        /* 十字トンボ（はさみ断裁の目印。SY08 と同じ描き方）。 */
-        .wl-crop { position: absolute; width: 0; height: 0; }
-        .wl-crop::before,
-        .wl-crop::after { content: ""; position: absolute; background: #888888; }
-        .wl-crop::before { width: 6mm; height: 0.2mm; left: -3mm; top: -0.1mm; }
-        .wl-crop::after { width: 0.2mm; height: 6mm; left: -0.1mm; top: -3mm; }
-        .wl-crop-tl { top: 0; left: 0; }
-        .wl-crop-tr { top: 0; left: ${LABEL.width}mm; }
-        .wl-crop-bl { top: ${LABEL.height}mm; left: 0; }
-        .wl-crop-br { top: ${LABEL.height}mm; left: ${LABEL.width}mm; }
-
-        .wl-print-scale {
-          position: absolute;
-          top: 12mm;
-          left: ${MARGIN_X}mm;
-          display: flex;
-          align-items: center;
-          gap: 2mm;
-          color: #999999;
-          font-size: 5pt;
-          line-height: 1;
-        }
-        .wl-print-scale-bar {
-          display: block;
-          width: 50mm;
-          height: 1.5mm;
-          border-left: 0.2mm solid #999999;
-          border-right: 0.2mm solid #999999;
-          border-bottom: 0.2mm solid #999999;
-        }
-
-        .wl-print-qr { flex-shrink: 0; }
-        .wl-print-qr svg { width: 40mm; height: 40mm; display: block; }
-        .wl-print-body {
-          flex: 1;
-          min-width: 0;
-          display: flex;
-          flex-direction: column;
-          gap: 1.5mm;
-        }
-        .wl-print-group { font-size: 8pt; color: #444444; overflow-wrap: anywhere; }
-        .wl-print-name { font-size: 14pt; font-weight: 700; line-height: 1.2; overflow-wrap: anywhere; }
-        .wl-print-code {
-          font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-          font-size: 9pt;
-          color: #333333;
-          overflow-wrap: anywhere;
-        }
-        .wl-print-hint { font-size: 5.5pt; color: #999999; }
-
-        @media screen {
-          .wl-print-root { background: #f1f3f5; padding-bottom: 24px; }
-          .wl-print-sheet {
-            box-shadow: 0 0 6px rgba(0, 0, 0, 0.25);
-            margin-bottom: 16px;
-          }
-        }
-        @media print {
-          .wl-print-toolbar { display: none; }
-          .wl-print-sheet { box-shadow: none; margin: 0 auto; }
-        }
-      `}</style>
+      <style>
+        {workLocationPrintStyles({
+          pageWidthMm: A4.width,
+          pageHeightMm: A4.height,
+          marginXMm: MARGIN_X,
+          marginYMm: MARGIN_Y,
+          cols: LABEL.cols,
+          labelWidthMm: LABEL.width,
+          labelHeightMm: LABEL.height,
+        })}
+      </style>
     </div>
   );
 }

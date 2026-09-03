@@ -159,7 +159,9 @@ export async function validateAndOrderSteps(
   if (blocking.length > 0) {
     return {
       ok: false,
-      error: blocking.map((i) => describeIssue(i, catalog.steps)).join(" / "),
+      error: blocking
+        .map((i) => describeIssue(i, catalog.steps, tr))
+        .join(" / "),
     };
   }
   const byId = new Map(steps.map((s) => [s.processStepId, s]));
@@ -211,6 +213,7 @@ import {
   validateRouting,
   type WorkflowCtx,
 } from "./workflow-core";
+import { workflowCoreT } from "./workflow-core-labels";
 
 export interface StepQuantities {
   inputQuantity: number;
@@ -349,7 +352,7 @@ export async function startStepExecution(
     };
   }
   const { ctx } = await fetchWorkflowCtx(stepRow.workOrderId);
-  const check = canStartStep(stepId, ctx, actor);
+  const check = canStartStep(stepId, ctx, actor, workflowCoreT(tr));
   if (!check.ok) return { ok: false, errors: check.reasons };
 
   // ロット/伝票コード — 実効モードは 上書き → カタログ既定（唯一の定義は
@@ -522,6 +525,7 @@ export async function completeStepExecution(
         defectRework: persisted.outputDefectRework,
       },
       mode,
+      workflowCoreT(tr),
     );
     if (qIssues.length > 0)
       return { ok: false, errors: qIssues.map((i) => i.message) };
@@ -547,6 +551,7 @@ export async function completeStepExecution(
       targetStepId: l.targetStepId,
       routedQuantity: l.routedQuantity,
     })),
+    workflowCoreT(tr),
   );
   if (rIssues.length > 0)
     return { ok: false, errors: rIssues.map((i) => i.message) };
@@ -907,7 +912,7 @@ export async function addBranchSeries(input: {
       })),
       ...linkRows,
     ];
-    const shapeErrors = validateDagShape(allSteps, allLinks);
+    const shapeErrors = validateDagShape(allSteps, allLinks, workflowCoreT(tr));
     if (shapeErrors.length > 0) throw new Error(shapeErrors.join(" / "));
 
     await tx.workOrderStepLink.createMany({

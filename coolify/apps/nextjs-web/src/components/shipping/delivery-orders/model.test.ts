@@ -1,5 +1,11 @@
+import { createTranslator } from "next-intl";
 import { describe, expect, it } from "vitest";
+import type { Tr } from "@/lib/i18n";
+import ja from "../../../../messages/ja.json";
 import { allocateLotUsage, combinabilityError } from "./model";
+
+// biome-ignore lint/suspicious/noExplicitAny: next-intl's messages type is too wide for a plain JSON import here
+const tr = createTranslator({ locale: "ja", messages: ja as any }) as Tr;
 
 describe("combinabilityError — 1 出荷書に束ねられる条件", () => {
   const ref = (
@@ -17,39 +23,43 @@ describe("combinabilityError — 1 出荷書に束ねられる条件", () => {
 
   it("同一顧客 × 同一出荷先 × 同一配送方法なら null", () => {
     expect(
-      combinabilityError([ref(), ref(), ref({ shipToBpId: null })], "cust-1"),
+      combinabilityError(
+        [ref(), ref(), ref({ shipToBpId: null })],
+        tr,
+        "cust-1",
+      ),
     ).toBeNull();
     expect(
-      combinabilityError([
-        ref({ shipToBpId: "bp-2" }),
-        ref({ shipToBpId: "bp-2" }),
-      ]),
+      combinabilityError(
+        [ref({ shipToBpId: "bp-2" }), ref({ shipToBpId: "bp-2" })],
+        tr,
+      ),
     ).toBeNull();
   });
 
   it("空配列は null（注文明細なしの出荷書）", () => {
-    expect(combinabilityError([])).toBeNull();
+    expect(combinabilityError([], tr)).toBeNull();
   });
 
   it("ヘッダの顧客と食い違うと顧客エラー", () => {
-    expect(combinabilityError([ref()], "cust-9")).toMatch(/同じ顧客/);
+    expect(combinabilityError([ref()], tr, "cust-9")).toMatch(/同じ顧客/);
   });
 
   it("明細間で顧客が違うと顧客エラー", () => {
     expect(
-      combinabilityError([ref(), ref({ customerBpId: "cust-2" })]),
+      combinabilityError([ref(), ref({ customerBpId: "cust-2" })], tr),
     ).toMatch(/同じ顧客/);
   });
 
   it("出荷先が違うと出荷先エラー（null と指定ありも別扱い）", () => {
     expect(
-      combinabilityError([ref(), ref({ shipToBpId: "bp-2" })], "cust-1"),
+      combinabilityError([ref(), ref({ shipToBpId: "bp-2" })], tr, "cust-1"),
     ).toMatch(/同じ出荷先/);
     expect(
-      combinabilityError([
-        ref({ shipToBpId: "bp-2" }),
-        ref({ shipToBpId: "bp-3" }),
-      ]),
+      combinabilityError(
+        [ref({ shipToBpId: "bp-2" }), ref({ shipToBpId: "bp-3" })],
+        tr,
+      ),
     ).toMatch(/同じ出荷先/);
   });
 
@@ -57,6 +67,7 @@ describe("combinabilityError — 1 出荷書に束ねられる条件", () => {
     expect(
       combinabilityError(
         [ref(), ref({ deliveryMethod: "DIRECT_TO_USER" })],
+        tr,
         "cust-1",
       ),
     ).toMatch(/同じ配送方法/);

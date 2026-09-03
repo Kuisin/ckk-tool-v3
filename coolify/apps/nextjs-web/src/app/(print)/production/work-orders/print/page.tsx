@@ -12,7 +12,7 @@ export function generateMetadata() {
   const d = new Date();
   const pad = (n: number) => String(n).padStart(2, "0");
   return {
-    title: `指示書ストリップ_${d.getFullYear()}${pad(d.getMonth() + 1)}${pad(d.getDate())}-${pad(d.getHours())}${pad(d.getMinutes())}`,
+    title: `指示書ストリップ_${d.getFullYear()}${pad(d.getMonth() + 1)}${pad(d.getDate())}-${pad(d.getHours())}${pad(d.getMinutes())}`, // i18n-ignore — api/pdf/kiosk-cards/route.ts と同じファイル名規約
   };
 }
 

@@ -1,3 +1,4 @@
+import { getTranslations } from "next-intl/server";
 import { LoginHistoryView } from "@/components/settings/security/LoginHistoryView";
 import { requireAppRead } from "@/lib/authz-page";
 import {
@@ -42,9 +43,10 @@ export default async function LoginHistoryPage({
     reason: one("reason"),
   };
 
+  const tr = await getTranslations();
   const [{ rows, nextCursor }, summary] = await Promise.all([
     listLoginAttempts(filter),
-    getLoginAttemptSummary(),
+    getLoginAttemptSummary(tr),
   ]);
 
   return (

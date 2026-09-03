@@ -34,6 +34,7 @@ import {
   type StepLinkState,
   type StepState,
 } from "@/lib/workflow-core";
+import { workflowCoreT } from "@/lib/workflow-core-labels";
 import {
   STEP_NODE_WIDTH,
   type StepFlowNode,
@@ -110,7 +111,11 @@ function Canvas({
     targetStepId: l.targetStepId,
     routedQuantity: l.routedQuantity,
   }));
-  const { nodes, edges } = layoutWorkflowGraph(engineSteps, engineLinks);
+  const { nodes, edges } = layoutWorkflowGraph(
+    engineSteps,
+    engineLinks,
+    workflowCoreT(tr),
+  );
 
   const stepOf = new Map(steps.map((s) => [s.id, s]));
   const flowNodes: StepFlowNode[] = nodes.flatMap((n) => {

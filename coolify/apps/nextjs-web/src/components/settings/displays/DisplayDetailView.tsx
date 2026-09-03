@@ -58,6 +58,7 @@ import {
   SummaryGrid,
 } from "@/components/ui/shells";
 import type { DisplayDetail } from "@/lib/displays-admin";
+import { LOCALE_LABELS, LOCALES } from "@/lib/i18n";
 import { OnlineDot } from "../kiosk/KioskDevicesTable";
 import {
   DisplayContentEditor,
@@ -97,6 +98,7 @@ export function DisplayDetailView({
     display.plantId ? String(display.plantId) : null,
   );
   const [scalePercent, setScalePercent] = useState(display.scalePercent);
+  const [locale, setLocale] = useState<string | null>(display.locale);
 
   const online =
     display.status === "ACTIVE" &&
@@ -134,6 +136,7 @@ export function DisplayDetailView({
           location,
           plantId: plantId ? Number(plantId) : null,
           scalePercent,
+          locale,
         }),
       tr("common.saved2"),
       () => {
@@ -450,6 +453,20 @@ export function DisplayDetailView({
                   />
                 </SimpleGrid>
                 <ScaleField onChange={setScalePercent} value={scalePercent} />
+                <Select
+                  clearable
+                  data={LOCALES.map((l) => ({
+                    value: l,
+                    label: LOCALE_LABELS[l],
+                  }))}
+                  description={tr(
+                    "settings.displays.displayLanguageDescription",
+                  )}
+                  label={tr("settings.displays.displayLanguage")}
+                  onChange={setLocale}
+                  placeholder={tr("settings.displays.displayLanguageDefault")}
+                  value={locale}
+                />
                 {/* 保存に成功したら閲覧へ戻す。キャンセルも同じ close。 */}
                 <FormActions
                   loading={pending}
@@ -476,6 +493,16 @@ export function DisplayDetailView({
                 <FieldValue
                   label={tr("common.zoom")}
                   value={`${display.scalePercent}%`}
+                />
+                <FieldValue
+                  label={tr("settings.displays.displayLanguage")}
+                  value={
+                    display.locale
+                      ? LOCALE_LABELS[
+                          display.locale as (typeof LOCALES)[number]
+                        ]
+                      : tr("settings.displays.displayLanguageDefault")
+                  }
                 />
               </SummaryGrid>
             }

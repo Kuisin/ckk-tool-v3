@@ -169,7 +169,7 @@ export function NotificationListView({
                     )}
                   </Stack>
                   <Text c="dimmed" className="whitespace-nowrap" size="xs">
-                    {relativeTime(notif.createdAt)}
+                    {relativeTime(notif.createdAt, tr)}
                   </Text>
                 </Group>
               </UnstyledButton>

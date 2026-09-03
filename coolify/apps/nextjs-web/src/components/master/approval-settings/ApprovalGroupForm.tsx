@@ -124,14 +124,14 @@ export function ApprovalGroupForm({
       >
         <SimpleGrid cols={1} spacing="sm">
           <LocalizedTextInput
-            help={fieldHelpTip("approvalGroup", "name")}
+            help={fieldHelpTip(tr, "approvalGroup", "name")}
             jaProps={form.getInputProps("nameJa")}
             label={tr("common.name2")}
             required
             translationsProps={form.getInputProps("nameTranslations")}
           />
           <Switch
-            label={<HelpLabel {...fieldHelp("approvalGroup", "active")} />}
+            label={<HelpLabel {...fieldHelp(tr, "approvalGroup", "active")} />}
             {...form.getInputProps("isActive", { type: "checkbox" })}
           />
         </SimpleGrid>

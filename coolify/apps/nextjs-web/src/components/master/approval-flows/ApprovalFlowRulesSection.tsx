@@ -111,7 +111,7 @@ const nextKey = () => `rule-row-${++seq}`;
 
 const emptyStep = (index: number): StepDraft => ({
   key: nextKey(),
-  nameJa: `第${index}承認`,
+  nameJa: `第${index}承認`, // i18n-ignore — DB データ（多言語 JSON 名称欄）の既定値。対象外（_specs/i18n-glossary.md §1）
   nameTranslations: {},
   groupId: null,
   mode: "ANY",

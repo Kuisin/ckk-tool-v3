@@ -1,5 +1,7 @@
+import { I18nProvider } from "@/components/I18nProvider";
 import { getDisplay } from "@/lib/display-auth";
 import { displayRegistrationBlocked, machineHint } from "@/lib/display-core";
+import { normalizeLocale } from "@/lib/i18n";
 import { DisplayBlocked } from "./DisplayBlocked";
 import { DisplayRenderer } from "./DisplayRenderer";
 import { DisplaySetup } from "./DisplaySetup";
@@ -44,6 +46,11 @@ export default async function DisplayPage({
   // 認証は**この窓の画面番号**で引く（窓ごとに別の登録になる）
   const auth = await getDisplay(hint.screenIndex);
 
+  // 盤面自身の表示言語。登録済み（有効・停止・失効いずれも行が実在する）なら
+  // その値、未登録（NO_COOKIE/NOT_FOUND/EXPIRED）は既定（ja）——見る人でログイン
+  // するわけではないので、端末自体の設定を使う（SY09 の編集モーダル）。
+  const locale = normalizeLocale(auth.ok ? auth.display.locale : auth.locale);
+
   // `?screen=` が無い窓だけ、自分で番号を取りに行く（2 枚目以降は開き直す）。
   // 明示されているときは何もしない = Pi や固定運用の指定を勝手に変えない。
   const slotGuard = <ScreenSlotGuard explicitScreen={hint.screenIndex} />;
@@ -52,16 +59,16 @@ export default async function DisplayPage({
     // 止められている画面は登録し直させない（上の注記）。
     if (displayRegistrationBlocked(auth.reason)) {
       return (
-        <>
+        <I18nProvider locale={locale}>
           <StuckGuard />
           <DisplayBlocked reason={auth.reason} />
-        </>
+        </I18nProvider>
       );
     }
     // それ以外（新品・Cookie 消失・期限切れ）は理由を出してからペアリングへ。
     // 現場の人が「壊れた」ではなく「取り消されたのだ」と分かるようにする。
     return (
-      <>
+      <I18nProvider locale={locale}>
         {slotGuard}
         {/* 登録前は誰も気づけないまま止まりうるので、一定時間で読み込み直す */}
         <StuckGuard />
@@ -70,12 +77,12 @@ export default async function DisplayPage({
           reason={auth.reason}
           screenTotal={screenTotal}
         />
-      </>
+      </I18nProvider>
     );
   }
 
   return (
-    <>
+    <I18nProvider locale={locale}>
       {slotGuard}
       <DisplayRenderer
         displayId={auth.display.id}
@@ -85,6 +92,6 @@ export default async function DisplayPage({
         scalePercent={auth.display.scalePercent}
         screenTotal={screenTotal}
       />
-    </>
+    </I18nProvider>
   );
 }

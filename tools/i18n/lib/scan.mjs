@@ -69,6 +69,44 @@ const EXCLUDED = [
   /\/mock\.ts$/,
   /\/fixtures\.ts$/,
   /\/display-sample\.ts$/,
+  // AUTO-GENERATED default DATA for admin-editable lookup tables (SY02 —
+  // LookupTableEditor.tsx lets the admin freely rename `keyColumns`, exactly
+  // like renaming a spreadsheet column). These are seed values transcribed
+  // from a business Excel file, not fixed code vocabulary — same category as
+  // mock.ts's sample names (_specs/i18n-glossary.md §1: DB-like data is out
+  // of scope, even when it happens to render as editable text on screen).
+  /\/trial-pricing-lookups\.ts$/,
+  // Seed defaults for admin-editable 価格試算 criteria/custom-input fields
+  // (name/label/expression — all rewritable via SY02's criterion edit form).
+  // Same category as trial-pricing-lookups.ts above. Split into its own file
+  // specifically because `expression` is a multi-line template literal
+  // containing embedded warn(...) messages — a same-line/previous-line
+  // `i18n-ignore` comment would land *inside* the expression string and
+  // change its behavior, so per-line ignores aren't an option here.
+  /\/trial-pricing-criteria-seed\.ts$/,
+  // 検査表テンプレート (MS09) の Excel 取込/書き出し**形式**。列見出し・型/
+  // サンプリング方式などの enum ラベル・真偽の記入例は、取込側の
+  // fromLabel()/parseBool() が同じ ja 文字列を読み戻す往復契約そのもの
+  // （ファイル自身の doc comment: "Excel には画面と同じ日本語を書いてもらう"）。
+  // 言語ごとに変えると、別言語の利用者が作った Excel を読めなくなる —
+  // CSV ヘッダーと同種の固定フォーマットであって、UI 語彙ではない。
+  /\/inspection-template-io\.ts$/,
+  /\/master\/inspection-templates\/excel-template\/route\.ts$/,
+  // 弥生会計 Next 仕訳インポート CSV の**列見出し・勘定科目名**（日付/借方勘定科目/
+  // 売掛金/売上高/仮受消費税…）。弥生側のインポーターが期待する固定の日本語
+  // 語彙で、CSV ヘッダーと同種の外部フォーマット契約——UI 語彙ではないので
+  // 言語ごとに変えると弥生に取り込めなくなる。
+  /\/csv-export\.ts$/,
+  // QRカード印刷シートの CSS（page.tsx から分離）。中身はほぼ全て CSS コメント
+  // （日本語の実装メモ）で、1 本の template literal の中にある。CSS コメントは
+  // ブラウザにも印刷にも出力されない開発者向け文書——trial-pricing-criteria-seed.ts
+  // と同じ理由（開いた template literal の中に i18n-ignore を挟むと CSS 本文へ
+  // 混入する）で、ファイルごと除外している。
+  /\/kiosk-cards\/print\/print-styles\.ts$/,
+  // 作業場所 QR ラベル印刷シートの CSS。理由は上の kiosk-cards 版と同じ。
+  /\/work-locations\/print\/print-styles\.ts$/,
+  // 指示書ストリップ印刷面の CSS。理由は上の kiosk-cards 版と同じ。
+  /\/work-order-strip-print-styles\.ts$/,
 ];
 
 /**
@@ -205,8 +243,18 @@ export function tokenize(source) {
       continue;
     }
 
-    // 正規表現リテラル（`/` の後ろが値を取り得ない位置なら除算）
-    if (c === "/" && /[=(,:[!&|?{};+\-*%^~<>]|^$/.test(prevSignificant)) {
+    // 正規表現リテラル（`/` の後ろが値を取り得ない位置なら除算）。
+    // ただし JSX の自己終端タグ `/>`（例: `}`/`"` の直後）と閉じタグ `</Foo>`
+    // （直前が `<`）は常にこの形を取るので、これを正規表現の開始と誤認すると
+    // 閉じる `/` が見つからず行末まで暴走し、その改行を外側のループと二重に
+    // 数えて以降の行番号がずれる（実際に発生し、無関係な行の i18n-ignore
+    // コメントを見てしまった）。
+    if (
+      c === "/" &&
+      at(i + 1) !== ">" &&
+      prevSignificant !== "<" &&
+      /[=(,:[!&|?{};+\-*%^~<>]|^$/.test(prevSignificant)
+    ) {
       i++;
       let inClass = false;
       while (i < n) {

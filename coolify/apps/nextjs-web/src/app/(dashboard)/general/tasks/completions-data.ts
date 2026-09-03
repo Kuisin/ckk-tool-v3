@@ -9,6 +9,7 @@
  * 対象書類を指す列を持たないので、回答ごとの既読を引けない。
  */
 
+import { getTranslations } from "next-intl/server";
 import { sessionUserId } from "@/lib/authz";
 import { prisma } from "@/lib/db";
 import {
@@ -37,6 +38,7 @@ export interface CompletedRequestRow {
 export async function fetchCompletedRequests(): Promise<CompletedRequestRow[]> {
   const userId = await sessionUserId();
   if (!userId) return [];
+  const tr = await getTranslations();
 
   try {
     const rows = await prisma.formCompletionNotice.findMany({
@@ -76,7 +78,7 @@ export async function fetchCompletedRequests(): Promise<CompletedRequestRow[]> {
       formTitle: r.response.form.title,
       recordTitle:
         titleTextOf(
-          fieldsFromSchema(r.response.form.versions[0]?.schema ?? []),
+          fieldsFromSchema(r.response.form.versions[0]?.schema ?? [], tr),
           (r.response.answers ?? {}) as Record<string, FormAnswerValue>,
         ) || null,
       recordNo: r.response.recordNo,

@@ -167,7 +167,9 @@ export function OrderAcceptanceCreateForm({
           <SearchSelect
             error={customerError}
             f4={customerF4(tr)}
-            label={<HelpLabel {...fieldHelp("orderAcceptance", "customer")} />}
+            label={
+              <HelpLabel {...fieldHelp(tr, "orderAcceptance", "customer")} />
+            }
             onChange={(v) => {
               setCustomerId(v);
               if (v) setCustomerError(null);
@@ -186,7 +188,9 @@ export function OrderAcceptanceCreateForm({
           {/* 出荷先は顧客と異なり得る（直送・支店渡しなど）— 任意。 */}
           <SearchSelect
             clearable
-            label={<HelpLabel {...fieldHelp("orderAcceptance", "shipTo")} />}
+            label={
+              <HelpLabel {...fieldHelp(tr, "orderAcceptance", "shipTo")} />
+            }
             onChange={setShipToBpId}
             onSearch={searchShipToOptions}
             placeholder={tr("common.searchShipToOptional")}
@@ -198,7 +202,9 @@ export function OrderAcceptanceCreateForm({
             allowDeselect={false}
             data={acceptanceDeliveryMethodOptions(locale)}
             label={
-              <HelpLabel {...fieldHelp("orderAcceptance", "deliveryMethod")} />
+              <HelpLabel
+                {...fieldHelp(tr, "orderAcceptance", "deliveryMethod")}
+              />
             }
             onChange={(v) => {
               setDeliveryMethod((v as "NORMAL" | "DIRECT_TO_USER") ?? "NORMAL");
@@ -211,7 +217,9 @@ export function OrderAcceptanceCreateForm({
           <SearchSelect
             clearable
             error={endUserError}
-            label={<HelpLabel {...fieldHelp("orderAcceptance", "endUser")} />}
+            label={
+              <HelpLabel {...fieldHelp(tr, "orderAcceptance", "endUser")} />
+            }
             onChange={(v) => {
               setEndUserBpId(v);
               if (v) setEndUserError(null);
@@ -230,7 +238,9 @@ export function OrderAcceptanceCreateForm({
             clearable
             data={plantOptions}
             label={
-              <HelpLabel {...fieldHelp("orderAcceptance", "assignedPlant")} />
+              <HelpLabel
+                {...fieldHelp(tr, "orderAcceptance", "assignedPlant")}
+              />
             }
             onChange={setAssignedPlantId}
             placeholder={tr("common.selectASiteOptional")}
@@ -242,7 +252,7 @@ export function OrderAcceptanceCreateForm({
             data={workLocationOptions}
             label={
               <HelpLabel
-                {...fieldHelp("orderAcceptance", "shippingWorkLocation")}
+                {...fieldHelp(tr, "orderAcceptance", "shippingWorkLocation")}
               />
             }
             onChange={setShippingWorkLocationId}
@@ -253,7 +263,7 @@ export function OrderAcceptanceCreateForm({
           <TextInput
             label={
               <HelpLabel
-                {...fieldHelp("orderAcceptance", "customerOrderRef")}
+                {...fieldHelp(tr, "orderAcceptance", "customerOrderRef")}
               />
             }
             onChange={(e) => setCustomerOrderRef(e.currentTarget.value)}
@@ -265,7 +275,7 @@ export function OrderAcceptanceCreateForm({
             clearable
             label={
               <HelpLabel
-                {...fieldHelp("orderAcceptance", "quoteNumber", {
+                {...fieldHelp(tr, "orderAcceptance", "quoteNumber", {
                   label: tr("common.quoteOptional"),
                 })}
               />
@@ -282,7 +292,9 @@ export function OrderAcceptanceCreateForm({
           />
           <DatePickerInput
             clearable
-            label={<HelpLabel {...fieldHelp("orderAcceptance", "orderDate")} />}
+            label={
+              <HelpLabel {...fieldHelp(tr, "orderAcceptance", "orderDate")} />
+            }
             leftSection={<IconCalendar size={14} />}
             onChange={setOrderDate}
             placeholder={tr("common.pickADate")}
@@ -290,7 +302,7 @@ export function OrderAcceptanceCreateForm({
             valueFormat="YYYY/MM/DD"
           />
           <TextInput
-            label={<HelpLabel {...fieldHelp("orderAcceptance", "notes")} />}
+            label={<HelpLabel {...fieldHelp(tr, "orderAcceptance", "notes")} />}
             onChange={(e) => setNotes(e.currentTarget.value)}
             placeholder={tr("common.notesOptional")}
             value={notes}

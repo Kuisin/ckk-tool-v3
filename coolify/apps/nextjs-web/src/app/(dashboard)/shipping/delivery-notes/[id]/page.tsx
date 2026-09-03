@@ -1,9 +1,12 @@
 import { notFound } from "next/navigation";
 import { DeliveryNoteDetail } from "@/components/shipping/delivery-notes/DeliveryNoteDetail";
+import { appLabelForKey } from "@/lib/app-list";
 import { fetchAuditEntries } from "@/lib/audit";
 import { requireAppRead } from "@/lib/authz-page";
 import { formatDocNumber, parseDocKey } from "@/lib/doc-number";
 import { isIssued, pdfStorageKey, storedPdfMeta } from "@/lib/document-pdf";
+import { formatDocPageTitle } from "@/lib/page-title";
+import { getServerLocale } from "@/lib/user-preferences";
 import { fetchInvoicesForDeliveryNote } from "../../../billing/invoices/data";
 import { fetchDeliveryNote } from "../data";
 
@@ -16,7 +19,13 @@ export async function generateMetadata({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  return { title: `納品書 ${decodeURIComponent(id)} | CKK 業務管理システム` };
+  const locale = await getServerLocale();
+  return {
+    title: formatDocPageTitle(
+      appLabelForKey("delivery-notes", "納品書", locale), // i18n-ignore — ja はそのまま使う（訳の実体は appLabelForKey 内の en/zh マップ）
+      decodeURIComponent(id),
+    ),
+  };
 }
 
 /** 納品書 詳細 (SH22). URL id = 導出文書番号 DRN-YYYYMM-NNNNN. */

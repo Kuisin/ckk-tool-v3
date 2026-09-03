@@ -35,6 +35,8 @@ export type DisplayAuth = {
   plantId: number | null;
   /** 表示倍率（%）。画面の大きさに合わせる微調整。 */
   scalePercent: number;
+  /** 盤面自身の表示言語（未設定 = 既定言語 ja）。SY09 の編集モーダルで設定。 */
+  locale: string | null;
 };
 
 export type DisplayAuthFailReason =
@@ -51,7 +53,16 @@ export type DisplayAuthFailReason =
 
 export type DisplayAuthResult =
   | { ok: true; display: DisplayAuth }
-  | { ok: false; reason: DisplayAuthFailReason };
+  | {
+      ok: false;
+      reason: DisplayAuthFailReason;
+      /**
+       * DISABLED/REVOKED は行が実在する（登録済みの画面が止められただけ）ので、
+       * 設定済みの表示言語をそのまま使う。行が無い場合（NO_COOKIE/NOT_FOUND/
+       * EXPIRED）は null = 既定（ja）。
+       */
+      locale?: string | null;
+    };
 
 function cookieOptions(maxAgeMs: number) {
   return {
@@ -116,11 +127,16 @@ export async function getDisplay(
       scalePercent: true,
       status: true,
       deviceTokenExpiresAt: true,
+      locale: true,
     },
   });
   if (!row) return { ok: false, reason: "NOT_FOUND" };
-  if (row.status === "DISABLED") return { ok: false, reason: "DISABLED" };
-  if (row.status !== "ACTIVE") return { ok: false, reason: "REVOKED" };
+  if (row.status === "DISABLED") {
+    return { ok: false, reason: "DISABLED", locale: row.locale };
+  }
+  if (row.status !== "ACTIVE") {
+    return { ok: false, reason: "REVOKED", locale: row.locale };
+  }
   if (!isDisplayTokenAlive(new Date(), row.deviceTokenExpiresAt)) {
     return { ok: false, reason: "EXPIRED" };
   }
@@ -133,6 +149,7 @@ export async function getDisplay(
       location: row.location,
       plantId: row.plantId,
       scalePercent: normalizeScalePercent(row.scalePercent),
+      locale: row.locale,
     },
   };
 }

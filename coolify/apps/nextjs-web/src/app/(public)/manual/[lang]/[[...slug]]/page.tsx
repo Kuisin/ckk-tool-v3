@@ -71,7 +71,7 @@ export async function generateMetadata({ params }: Params): Promise<Metadata> {
       title,
       description,
       url: page.url,
-      siteName: "CKK マニュアル",
+      siteName: "CKK マニュアル", // i18n-ignore — ブランド名の固定表記（layout.tsx の APP_NAME と同じ扱い）
       type: "article",
       locale,
       images,

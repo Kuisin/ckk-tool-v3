@@ -287,7 +287,7 @@ function summarizeField(
           const hour = v.slice(0, 2);
           return tr
             ? tr("forms.formSummaryCore.hourBucket", { hour })
-            : `${hour}時台`;
+            : `${hour}時台`; // i18n-ignore — 鍵は既存、tr 省略時（テストのみ）の死んだ fallback
         });
       const buckets = tally(hours).sort((a, b) =>
         a.label.localeCompare(b.label),
@@ -304,7 +304,7 @@ function summarizeField(
         answered,
         note: tr
           ? tr("forms.formSummaryCore.attachmentNote", { answered, files })
-          : `${answered} 件の回答に、合計 ${files} 個のファイル`,
+          : `${answered} 件の回答に、合計 ${files} 個のファイル`, // i18n-ignore — 鍵は既存、死んだ fallback
       };
     }
 
@@ -318,7 +318,7 @@ function summarizeField(
         answered,
         note: tr
           ? tr("forms.formSummaryCore.tableNote", { rows, avg })
-          : `合計 ${rows} 行（1 回答あたり平均 ${avg} 行）`,
+          : `合計 ${rows} 行（1 回答あたり平均 ${avg} 行）`, // i18n-ignore — 鍵は既存、死んだ fallback
       };
     }
 

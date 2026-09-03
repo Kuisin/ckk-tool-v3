@@ -9,6 +9,7 @@
  *    (entry by 顧客×製品 → variant by 注文種別 → tier by 数量).
  */
 
+import { createTranslator } from "next-intl";
 import { describe, expect, it } from "vitest";
 import {
   findApplicableDiscount,
@@ -19,7 +20,12 @@ import {
 } from "@/components/sales/price-lists/mock";
 import { resolveUnitPrice } from "@/components/sales/quotes/mock";
 import { getTrialEstimate } from "@/components/sales/trial-estimates/fixtures";
+import type { Tr } from "@/lib/i18n";
 import { calcTrialPricing } from "@/lib/trial-pricing";
+import ja from "../../../messages/ja.json";
+
+// biome-ignore lint/suspicious/noExplicitAny: next-intl's messages type is too wide for a plain JSON import here
+const tr = createTranslator({ locale: "ja", messages: ja as any }) as Tr;
 
 describe("価格試算 → 価格表 → 見積書 (constructed entry)", () => {
   // ── 1. 価格試算: base 見積単価 ────────────────────────────────────────────────
@@ -134,6 +140,7 @@ describe("価格試算 → 価格表 → 見積書 (registered mock data end-to-
       "2008",
       "PRODUCTION",
       80,
+      tr,
       new Date("2026-05-20"),
     );
     expect(r?.unitPrice).toBe(6200);
@@ -151,6 +158,7 @@ describe("価格試算 → 価格表 → 見積書 (registered mock data end-to-
       "1001",
       "PRODUCTION",
       100,
+      tr,
       new Date("2026-05-01"),
     );
     expect(prod?.unitPrice).toBe(6000);
@@ -160,12 +168,20 @@ describe("価格試算 → 価格表 → 見積書 (registered mock data end-to-
       "1001",
       "SAMPLE",
       5,
+      tr,
       new Date("2026-05-01"),
     );
     expect(sample?.unitPrice).toBe(0);
     // 未登録の注文種別は解決できない（バリアントなし → null）。
     expect(
-      resolveUnitPrice("bp-001", "1001", "TEST", 10, new Date("2026-05-01")),
+      resolveUnitPrice(
+        "bp-001",
+        "1001",
+        "TEST",
+        10,
+        tr,
+        new Date("2026-05-01"),
+      ),
     ).toBeNull();
   });
 
@@ -177,6 +193,7 @@ describe("価格試算 → 価格表 → 見積書 (registered mock data end-to-
       "1001",
       "PRODUCTION",
       100,
+      tr,
       new Date("2026-05-01"),
     );
     // 価格表 variant carries the 価格試算元 link and prices the quote line

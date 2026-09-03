@@ -133,7 +133,7 @@ export function DuplicatePriceListModal({
         label={tr("sales.priceLists.currentValidPeriod")}
         value={
           variant
-            ? validPeriod(fmt, variant.validFrom, variant.validUntil)
+            ? validPeriod(fmt, variant.validFrom, variant.validUntil, tr)
             : undefined
         }
       />
@@ -149,7 +149,7 @@ export function DuplicatePriceListModal({
           {variant?.tiers.map((tier) => (
             <Table.Tr key={tier.id}>
               <Table.Td>
-                {quantityRange(tier.minQuantity, tier.maxQuantity)}
+                {quantityRange(tier.minQuantity, tier.maxQuantity, tr)}
               </Table.Td>
               <Table.Td ta="right">
                 <MoneyText

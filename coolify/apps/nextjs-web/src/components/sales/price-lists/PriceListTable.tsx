@@ -276,6 +276,7 @@ export function PriceListTable({
               fmt,
               e.variants[0].validFrom,
               e.variants[0].validUntil,
+              tr,
             )}
           </Text>
         ) : (

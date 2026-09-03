@@ -245,14 +245,18 @@ const TABLE_ROUTES: Record<string, TableRoute> = {
 
 const NS = "admin.activityLogDetail";
 
-/** ja のフォールバック接尾辞・単独ラベル（鍵がまだカタログに無くても壊れない）。 */
+/**
+ * ja のフォールバック接尾辞・単独ラベル（鍵がまだカタログに無くても壊れない）。
+ * 鍵は messages/*.json の admin.activityLogDetail.* に実在するので、以下は
+ * 鍵が見つからないときだけ使われる死んだ ja フォールバック。
+ */
 const FALLBACK_JA: Record<string, string> = {
-  suffixProduct: "（製品）",
-  suffixMaterial: "（素材）",
-  suffixStorageLocation: "（保管場所）",
-  suffixFloorMap: "（マップ）",
-  suffixDisplay: "（ディスプレイ）",
-  formResponsesLabel: "フォーム回答",
+  suffixProduct: "（製品）", // i18n-ignore
+  suffixMaterial: "（素材）", // i18n-ignore
+  suffixStorageLocation: "（保管場所）", // i18n-ignore
+  suffixFloorMap: "（マップ）", // i18n-ignore
+  suffixDisplay: "（ディスプレイ）", // i18n-ignore
+  formResponsesLabel: "フォーム回答", // i18n-ignore
 };
 
 function resolveAppLabel(route: TableRoute, locale: Locale): string {
