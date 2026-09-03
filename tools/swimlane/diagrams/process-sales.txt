@@ -2,7 +2,7 @@
 // 用語は _specs/design.md §17（注文請書・注文明細）。
 
 /title/
-販売の流れ — 試算から受注確定まで
+販売の流れ — 価格試算から受注確定まで
 
 /option/
 show-step-block-captions: false;
@@ -115,9 +115,9 @@ text-color: #92400e;
 
 /line/
 
-[role_sales: 単価を試算する] <block_apply>
-label: 試算;
-desc: 材料・寸法・加工条件から見積単価を算出し、確定する。確定した試算だけが価格表の基準に使える。;
+[role_sales: 単価を価格試算する] <block_apply>
+label: 価格試算;
+desc: 材料・寸法・加工条件から見積単価を算出し、確定する。確定した価格試算だけが価格表の基準に使える。;
 [role_sales: 価格表を作成する] <block_apply>
 label: 価格表;
 props: PRICE_LIST;

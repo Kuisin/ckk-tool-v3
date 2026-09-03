@@ -21,6 +21,7 @@
 - `diagrams/*.txt` — 図の DSL ソース（コミット対象）。文法は swimlane-cloud の
   `dsl-rule.md`（旧版: このリポジトリの `tools/external-refs/kai-swimlane.md`）。
 - `build-diagrams.mjs` — `diagrams/*.txt` → `content/manual/assets/diagrams/<名前>.svg`
+- `preview.mjs` — 書きながら見るための開発用サーバー（**何も書き出さない**）
 
 ## 使い方
 
@@ -32,6 +33,30 @@ node tools/swimlane/build-diagrams.mjs   # リポジトリのどこからでも�
 - DSL にエラーがあれば一覧を表示して exit 1（部分出力はしない）
 - 生成 SVG に `viewBox` / `width` / `height` が無ければ exit 1
   （fumadocs の remark-image → next/image 静的 import が寸法を要求するため）
+
+## 図を書いている間のプレビュー
+
+```bash
+node tools/swimlane/preview.mjs           # http://127.0.0.1:4321/
+node tools/swimlane/preview.mjs --port 5000
+```
+
+`diagrams/` を監視して、`.txt` を保存した瞬間に描き直す。**マニュアルが読む SVG は
+従来どおりコミット済みの生成物**で、このサーバーはファイルを一切書かない — 変えたのは
+「直す → ビルド → コミット → 画面で確認」の往復だけ。
+
+`build-diagrams.mjs` と違って**エラーで終了しない**。書いている途中の DSL はほとんどの
+時間が構文エラーなので、エラーは画面上部に出して次の保存を待つ。判定は同じものを使うので、
+`viewBox` 欠落のようにビルドだけが落ちる状態もここで見える。
+
+図が固まったら `build-diagrams.mjs` を実行して、生成 SVG をコミットすること —
+プレビューを見ただけではマニュアルの画像は変わらない。
+
+**生成された SVG を直接編集しない。** 文言を直すときも触るのは `diagrams/*.txt` の方で、
+次のビルドが上書きする。実際に一度ずれた — 2026-08-30 の用語統一（試算 → 価格試算）が
+SVG 側にだけ当たっていて、DSL は旧語のまま残っていた。あの状態で誰かが
+`build-diagrams.mjs` を走らせれば、用語の決定が黙って巻き戻る。ずれているかどうかは
+プレビューと画面を見比べれば判る（プレビューは常に DSL を描くため）。
 
 ## 図を書くときのルール（マニュアル向け）
 
