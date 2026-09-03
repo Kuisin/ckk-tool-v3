@@ -81,7 +81,7 @@ Below that, three tables are lined up.
 
 ![Effective permissions table](../../../assets/screenshots/settings-users-permissions-01.png)
 
-This is the list of what the person can actually do right now. If the person has several roles, **everything from all of them put together is what that person can do**. The same row may appear twice, but that is not a problem.
+This is the list of what the person can actually do right now. However many roles the person has, there is **one row per permission**, listing what it lets them do (the actions) and the **widest scope** it reaches.
 
 Here is how to read the table.
 
@@ -171,8 +171,8 @@ A. Changing roles and assigned sites needs the "change user management" permissi
 **Q. Someone was given a role, but they say they still cannot open the screen.**
 A. Open that person's detail screen and look for the matching row in 「**実効権限**」 (Effective permissions). If the row is there but the data is empty, please also check whether 「**所属拠点**」 is empty.
 
-**Q. The same permission code appears on two rows in 「実効権限」.**
-A. That is normal. It happens when the person has two roles and the same permission comes from both. What they can actually do is the two rows put together.
+**Q. Someone has two roles, but 「実効権限」 shows only one row for the same permission code.**
+A. That is normal. The same permission is kept to **one row even when the actions differ**. If every action reaches the same scope it is shown once; only when they differ is the scope written per action. When the same permission comes from both roles, the **wider scope** is shown ("own data only" + "everything" → "everything").
 
 **Q. I want to know who changed this person's roles or assigned sites, and when.**
 A. You can check in the [Activity Log](/manual/en/operations/system/activity-log/user). Every change is recorded.

@@ -3752,7 +3752,7 @@
       "assignedOn": "Assigned on",
       "releasedAt": "Released at",
       "effectivePermissions": "Effective permissions",
-      "thePermissionsGrantedByTheirActive": "The permissions granted by their active roles (what they can do is the sum of every row below)",
+      "thePermissionsGrantedByTheirActive": "What this person can do. One row per permission — however many roles they hold, the actions and the scope they reach are shown together",
       "youDoNotHavePermission": "You do not have permission",
       "permissionCode": "Permission code",
       "action": "Action",
