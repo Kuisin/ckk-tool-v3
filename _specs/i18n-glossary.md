@@ -539,6 +539,8 @@ DB データは**訳す対象ではないが、入れ物の作り方は決めて
 | 行を削除 / 明細を追加 | Remove row / Add line | 删除行 / 添加明细 |
 | 公開する / 提出 | Publish / Submit | 发布 / 提交 |
 | 再取込 / 今すぐスキャン / 接続テスト | Re-import / Scan now / Test connection | 重新导入 / 立即扫描 / 连接测试 |
+| 拡大 / 縮小 | Zoom in / Zoom out | 放大 / 缩小 |
+| 元のサイズに戻す | Reset zoom | 恢复原始大小 |
 
 ### 3.17 画面の部品・項目名
 
