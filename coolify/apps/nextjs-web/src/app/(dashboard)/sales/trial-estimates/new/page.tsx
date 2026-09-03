@@ -18,7 +18,7 @@ import {
 
 export const dynamic = "force-dynamic";
 
-/** 価格試算 新規 (SA51). `?from=EST-…` で複製して再価格試算。 */
+/** 価格試算 新規 (SA51). `?from=EST-…` で複製して作り直す。 */
 export default async function TrialEstimateNewPage({
   searchParams,
 }: {

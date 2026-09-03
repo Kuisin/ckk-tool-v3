@@ -36,6 +36,12 @@ COPY coolify/apps/nextjs-web/prisma ./coolify/apps/nextjs-web/prisma
 WORKDIR /app/coolify/apps/nextjs-web
 RUN pnpm exec prisma generate
 WORKDIR /app
+# マニュアルのスイムレーン図は DSL から **ビルドのたびに生成する**
+# （pnpm build の先頭 = tools/swimlane/build-diagrams.mjs）。コミット済みの
+# SVG を読むだけにしていた頃は、DSL を直しても生成し直し忘れると古い図が
+# そのままデプロイされた。依存ゼロの素の node スクリプトなので install は要らない。
+# アプリソースより前に置いて、図だけ変えたデプロイでこの層が入れ替わるようにする。
+COPY tools/swimlane ./tools/swimlane
 COPY coolify/apps/nextjs-web ./coolify/apps/nextjs-web
 # このイメージが前提にしているマイグレーション一覧。/api/health がこれと
 # _prisma_migrations を突き合わせ、揃うまで unhealthy を返す（デプロイと

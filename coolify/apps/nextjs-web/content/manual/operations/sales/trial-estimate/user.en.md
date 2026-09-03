@@ -117,11 +117,11 @@ The screen of a saved estimate has five tabs.
 When you want to calculate again with only small changes, copy it instead of making it again from scratch.
 
 1. Open the estimate you want to start from.
-2. From「**…**」at the top right, press「**複製して再価格試算**」(copy and re-estimate).
+2. From「**…**」at the top right, press「**複製して作り直す**」(copy and re-estimate).
 3. A new input screen opens with the same contents. Change only what you need.
 4. Press「**保存**」(save).
 
-「（再価格試算）」(re-estimate) is added to the estimate name automatically, and a new number is given. You can do the same from「**…**」on a row in the list.
+「（作り直し）」(re-estimate) is added to the estimate name automatically, and a new number is given. You can do the same from「**…**」on a row in the list.
 
 ## Input fields
 
@@ -228,7 +228,7 @@ How many pieces the costing assumes. **Cost per piece changes with quantity** be
 ## Questions and problems
 
 **Q. I cannot edit a saved estimate.**
-A. An estimate keeps the prices from the moment it was saved as a record, so it cannot be changed afterwards. Use「**複製して再価格試算**」(copy and re-estimate) to make a new one.
+A. An estimate keeps the prices from the moment it was saved as a record, so it cannot be changed afterwards. Use「**複製して作り直す**」(copy and re-estimate) to make a new one.
 
 **Q. It says「価格試算名を入力してください」(please enter an estimate name) and I cannot save.**
 A. The estimate name is required. Enter a name that will be easy to find later in「価格試算名」(estimate name) at the very bottom of the screen.
@@ -240,7 +240,7 @@ A. Only **estimates that have a product set and whose status is 確定 (confirme
 A. That estimate is already confirmed, or already used in a price list. You do not need to confirm it again.
 
 **Q. It says「価格表で使用済みの価格試算は製品リンクを変更できません」(the product link cannot be changed on an estimate already used in a price list).**
-A. An estimate used in a price list (status 「価格表登録済」) cannot be changed. To calculate for a different product, make a new one with「複製して再価格試算」(copy and re-estimate).
+A. An estimate used in a price list (status 「価格表登録済」) cannot be changed. To calculate for a different product, make a new one with「複製して作り直す」(copy and re-estimate).
 
 **Q. The reference unit price shows「既定価格」(default price). The amount looks different from the real one.**
 A. There are no purchase records for that material yet, so the standard price registered on the material type is used. If you know the real price, enter it with「**単価を編集**」(edit unit price).

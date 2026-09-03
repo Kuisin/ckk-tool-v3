@@ -17,7 +17,7 @@ export type TrialPriceSnapshot = TrialResult & {
 
 /**
  * 価格試算 lifecycle — DRAFT: 編集可 / CONFIRMED: 計算確定・価格表登録可 /
- * REGISTERED: 価格表登録済（ロック — 複製して再価格試算）.
+ * REGISTERED: 価格表登録済（ロック — 複製して作り直す）.
  */
 export type EstimateStatus = "DRAFT" | "CONFIRMED" | "REGISTERED";
 
