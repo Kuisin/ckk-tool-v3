@@ -789,7 +789,10 @@
     "hoursAgo": "{n} 小时前",
     "yesterday": "昨天",
     "daysAgo": "{n} 天前",
-    "step": "工序"
+    "step": "工序",
+    "zoomIn": "放大",
+    "zoomOut": "缩小",
+    "resetZoom": "恢复原始大小"
   },
   "shell": {
     "appsLabel": "应用",

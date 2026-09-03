@@ -789,7 +789,10 @@
     "hoursAgo": "{n}時間前",
     "yesterday": "昨日",
     "daysAgo": "{n}日前",
-    "step": "工程"
+    "step": "工程",
+    "zoomIn": "拡大",
+    "zoomOut": "縮小",
+    "resetZoom": "元のサイズに戻す"
   },
   "shell": {
     "appsLabel": "アプリ",
