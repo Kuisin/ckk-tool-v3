@@ -732,6 +732,19 @@ SELECT
   u.last_login_at, u.created_at, u.updated_at
 FROM app.users u;
 
+-- 利用者ごとの実効権限（1 行 = 1 人）。元は app.user_permission_summary
+-- （マイグレーション 20261002090000）。配列は Metabase で読みにくいので
+-- カンマ区切りの文字列に落とし、JSON（permissions）は出さない — 詳しく見るのは
+-- SY01 の仕事で、ここは「誰が何を持っているか」を横に並べて眺めるためのもの。
+CREATE OR REPLACE VIEW analytics.v_user_permissions WITH (security_invoker = true) AS
+SELECT
+  s.user_id, s.username, s.display_name, s.is_active,
+  array_to_string(s.roles, ', ')            AS roles,
+  array_to_string(s.permission_codes, ', ') AS permission_codes,
+  array_to_string(s.grants, ', ')           AS grants,
+  s.grant_count, s.is_superuser
+FROM app.user_permission_summary s;
+
 CREATE OR REPLACE VIEW analytics.v_process_step_catalog WITH (security_invoker = true) AS
 SELECT
   ps.id, ps.code, ps.name->>'ja' AS name_ja, ps.name->>'en' AS name_en,

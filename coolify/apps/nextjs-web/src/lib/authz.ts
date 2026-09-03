@@ -58,7 +58,7 @@ const permissionSetFor = cache(
     buildPermissionSet(await loadPermissionRows(prisma, userId)),
 );
 
-/** スコープ解決コンテキスト（リクエスト単位でメモ化 — 2 クエリ）。 */
+/** スコープ解決コンテキスト（リクエスト単位でメモ化 — 1 クエリ）。 */
 const scopeContextFor = cache(
   async (userId: string): Promise<ScopeContext> =>
     loadScopeContext(prisma, userId),
@@ -88,8 +88,10 @@ export async function checkPermission(
   action: PermissionAction,
 ): Promise<AuthzResult> {
   const userId = await sessionUserId();
-  const [tr, locale] = await Promise.all([getTranslations(), getLocale()]);
-  if (!userId) return { ok: false, error: tr("common.loginRequired") };
+  if (!userId) {
+    const tr = await getTranslations();
+    return { ok: false, error: tr("common.loginRequired") };
+  }
 
   const [set, ctx] = await Promise.all([
     permissionSetFor(userId),
@@ -99,8 +101,11 @@ export async function checkPermission(
   if (decision.allowed) {
     return { ok: true, userId, access: decision.access };
   }
+  // 文言（翻訳カタログ・locale）は**拒否したときだけ**引く。ここはほぼ全ページ・
+  // 全 Server Action の先頭で通る道で、通る側（大多数）に文言は要らない。
   // コードだけを見せても「何を頼めばいいのか」が分からないので、名前つきで返す。
   // 括弧のコードは残す — 管理者への問い合わせではコードで指定されることがある。
+  const [tr, locale] = await Promise.all([getTranslations(), getLocale()]);
   return {
     ok: false,
     error: tr("common.permissionActionDenied", {
@@ -157,12 +162,15 @@ export async function requireAnyRead(
   codes: readonly string[],
 ): Promise<{ ok: true; userId: string } | { ok: false; error: string }> {
   const userId = await sessionUserId();
-  const tr = await getTranslations();
-  if (!userId) return { ok: false, error: tr("common.loginRequired") };
+  if (!userId) {
+    const tr = await getTranslations();
+    return { ok: false, error: tr("common.loginRequired") };
+  }
   const readable = readableCodes(await permissionSetFor(userId));
   if (readable.has("*") || codes.some((c) => readable.has(c))) {
     return { ok: true, userId };
   }
+  const tr = await getTranslations();
   return { ok: false, error: tr("common.permissionAnyReadDenied") };
 }
 

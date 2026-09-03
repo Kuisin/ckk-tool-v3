@@ -140,6 +140,6 @@ MB_URL=https://bi.ckk-tool.co.jp MB_API_KEY=mb_<admin> MB_DB_ID=5 MB_COLLECTION_
 
 労務ダッシュボードは元々 `public.*` の pass-through 互換ビュー経由だったが、
 全カード（構造化クエリ）と AI ラボ MCP を `kot.*` / `directory.*` 直参照へ
-付け替え、`public.*` の 8 ビューを撤去した（`shared-db/sql/metabase-compat.sql`
-が idempotent な DROP に変わっている）。bare 名で書かれた native カードは
+付け替え、`public.*` の 8 ビューを撤去した（撤去用だった
+`shared-db/sql/metabase-compat.sql` は dev / main 両方に当て終えたので 2026-09 に削除）。bare 名で書かれた native カードは
 `kot_ro` の search_path で解決されるため影響なし。

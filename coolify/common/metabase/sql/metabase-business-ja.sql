@@ -588,6 +588,7 @@ m(tbl, ja) AS (VALUES
   ('v_material_types', '材種'),
   ('v_plants', '拠点'),
   ('v_users', '従業員'),
+  ('v_user_permissions', '従業員の権限'),
   ('v_process_step_catalog', '工程マスタ'),
   ('v_inspection_templates', '検査表テンプレート'),
   ('v_defect_types', '不良種類'),
