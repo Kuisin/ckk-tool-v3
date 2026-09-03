@@ -8,6 +8,11 @@ import "server-only";
  * （system:READ）でゲート — 呼び出し側ページで checkPermission を通すこと。
  */
 
+import {
+  groupPermissionsByCode,
+  type PermissionAction,
+  type PermissionScope,
+} from "@ckk/authz-core";
 import { BOOTSTRAP_ADMIN_USERNAME } from "./bootstrap-admin-core";
 import { prisma } from "./db";
 import type { LocalizedText } from "./format";
@@ -39,12 +44,20 @@ export interface AdminUserAssignment extends AdminUserRole {
   deactivateAt: string | null;
 }
 
-export interface AdminUserPermission {
-  permissionCode: string;
+/** 1 アクションぶんの到達範囲。 */
+export interface AdminUserPermissionAction {
   action: string;
   scope: string;
   /** grant のスコープ対象コード（'*' = ワイルドカード）。ALL/OWN では無意味 */
   scopeValues: string[];
+}
+
+/** 実効権限の 1 行 = 1 権限コード（アクションは中に並べる）。 */
+export interface AdminUserPermission {
+  permissionCode: string;
+  actions: AdminUserPermissionAction[];
+  /** 全アクションで範囲が同じならその 1 つ。違えばアクションごとに出す。 */
+  uniformScope: { scope: string; scopeValues: string[] } | null;
 }
 
 /** 所属拠点（user_plants — PLANT/REGION スコープ解決の基盤）。 */
@@ -160,6 +173,7 @@ export async function getAdminUser(
   });
   if (!u) return null;
   // ビューは grant 単位の全行を返す（1 code×action に複数ロール分の行があり得る）。
+  // 画面には **いちばん広い 1 行だけ** を出すので、読み込んだあと畳む（下）。
   const permissions = await prisma.$queryRaw<
     {
       permission_code: string;
@@ -200,11 +214,30 @@ export async function getAdminUser(
       assignedAt: a.assignedAt?.toISOString() ?? null,
       deactivateAt: a.deactivateAt?.toISOString() ?? null,
     })),
-    permissions: permissions.map((p) => ({
-      permissionCode: p.permission_code,
-      action: p.action,
-      scope: p.scope,
-      scopeValues: p.scope_values ?? ["*"],
+    // 1 行 = 1 権限コード。同じコードが複数ロール・複数アクションで何行も
+    // 並ぶと「この権限で何ができるのか」が読めない（携帯では特に）。
+    // 判定（decide）は従来どおり全行の和集合で行い、**表示だけ** を畳む。
+    // まとめ方の定義は @ckk/authz-core が 1 本持つ。
+    permissions: groupPermissionsByCode(
+      permissions.map((p) => ({
+        code: p.permission_code,
+        action: p.action as PermissionAction,
+        scope: p.scope as PermissionScope,
+        scopeValues: p.scope_values ?? ["*"],
+      })),
+    ).map((g) => ({
+      permissionCode: g.code,
+      actions: g.actions.map((a) => ({
+        action: a.action as string,
+        scope: a.scope as string,
+        scopeValues: [...a.scopeValues],
+      })),
+      uniformScope: g.uniformScope
+        ? {
+            scope: g.uniformScope.scope as string,
+            scopeValues: [...g.uniformScope.scopeValues],
+          }
+        : null,
     })),
     plants: u.userPlants.map((up) => ({
       id: up.plant.id,

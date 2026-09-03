@@ -3,11 +3,22 @@ import {
   ALL_CODES,
   buildPermissionSet,
   decide,
+  groupPermissionsByCode,
+  highestScopeRows,
   isSuperuser,
+  PERMISSION_SCOPES,
   readableCodes,
+  scopeRank,
   visibleAppKeys,
 } from "./permission-set";
-import type { Access, PermissionRow, PlantRef, ScopeContext } from "./types";
+import type {
+  Access,
+  PermissionAction,
+  PermissionRow,
+  PermissionScope,
+  PlantRef,
+  ScopeContext,
+} from "./types";
 
 // ── fixtures ────────────────────────────────────────────────────────────────
 
@@ -263,5 +274,183 @@ describe("readableCodes / visibleAppKeys", () => {
     expect(visibleAppKeys(superSet, apps)).toEqual(
       new Set(["quotes", "invoices", "docs"]),
     );
+  });
+});
+
+describe("highestScopeRows — 実効権限の表示用に (code, action) を 1 行へ畳む", () => {
+  const row = (
+    code: string,
+    action: PermissionAction,
+    scope: PermissionScope,
+    scopeValues: string[] = ["*"],
+  ): PermissionRow => ({ code, action, scope, scopeValues });
+
+  it("同じ (code, action) はいちばん広い scope だけ残す", () => {
+    const out = highestScopeRows([
+      row("quote", "READ", "OWN"),
+      row("quote", "READ", "ALL"),
+      row("quote", "READ", "PLANT"),
+    ]);
+    expect(out).toHaveLength(1);
+    expect(out[0]?.scope).toBe("ALL");
+  });
+
+  it("action が違えば別の行として残る", () => {
+    const out = highestScopeRows([
+      row("quote", "READ", "ALL"),
+      row("quote", "UPDATE", "OWN"),
+    ]);
+    expect(out).toHaveLength(2);
+    expect(out.map((r) => r.action).sort()).toEqual(["READ", "UPDATE"]);
+  });
+
+  it("code が違えば別の行として残る", () => {
+    const out = highestScopeRows([
+      row("quote", "READ", "ALL"),
+      row("invoice", "READ", "OWN"),
+    ]);
+    expect(out).toHaveLength(2);
+  });
+
+  it("同じ広さなら scope_values を足す（片方だけ見せると狭く見えるため）", () => {
+    const out = highestScopeRows([
+      row("quote", "READ", "PLANT", ["TOKYO"]),
+      row("quote", "READ", "PLANT", ["OSAKA"]),
+    ]);
+    expect(out).toHaveLength(1);
+    expect(out[0]?.scopeValues).toEqual(["OSAKA", "TOKYO"]);
+  });
+
+  it("'*' は列挙を吸収する", () => {
+    const out = highestScopeRows([
+      row("quote", "READ", "PLANT", ["TOKYO"]),
+      row("quote", "READ", "PLANT", ["*"]),
+    ]);
+    expect(out[0]?.scopeValues).toEqual(["*"]);
+  });
+
+  it("狭いほうの scope_values は持ち上げない（別の広さの行は落とす）", () => {
+    const out = highestScopeRows([
+      row("quote", "READ", "REGION", ["EU"]),
+      row("quote", "READ", "PLANT", ["TOKYO"]),
+    ]);
+    expect(out).toHaveLength(1);
+    expect(out[0]?.scope).toBe("REGION");
+    expect(out[0]?.scopeValues).toEqual(["EU"]);
+  });
+
+  it("入力を書き換えない", () => {
+    const input = [row("quote", "READ", "PLANT", ["TOKYO"])];
+    highestScopeRows([...input, row("quote", "READ", "PLANT", ["OSAKA"])]);
+    expect(input[0]?.scopeValues).toEqual(["TOKYO"]);
+  });
+
+  it("空を渡せば空", () => {
+    expect(highestScopeRows([])).toEqual([]);
+  });
+});
+
+describe("scopeRank", () => {
+  it("ALL がいちばん広い（0）", () => {
+    expect(scopeRank("ALL")).toBe(0);
+  });
+  it("PERMISSION_SCOPES の並びどおりに広い→狭い", () => {
+    const ranks = PERMISSION_SCOPES.map(scopeRank);
+    expect(ranks).toEqual([...ranks].sort((a, b) => a - b));
+  });
+  it("未知の値は最も狭い扱い（fail-closed）", () => {
+    expect(scopeRank("NOPE" as PermissionScope)).toBeGreaterThanOrEqual(
+      PERMISSION_SCOPES.length,
+    );
+  });
+});
+
+describe("groupPermissionsByCode — 権限コードごとに 1 行へまとめる", () => {
+  const row = (
+    code: string,
+    action: PermissionAction,
+    scope: PermissionScope,
+    scopeValues: string[] = ["*"],
+  ): PermissionRow => ({ code, action, scope, scopeValues });
+
+  it("同じコードの複数アクションが 1 行にまとまる（報告された症状）", () => {
+    const out = groupPermissionsByCode([
+      row("admin_manual", "EXPORT", "ALL"),
+      row("admin_manual", "READ", "ALL"),
+      row("admin_manual", "READ", "ALL"),
+      row("admin_manual", "READ", "ALL"),
+    ]);
+    expect(out).toHaveLength(1);
+    expect(out[0]?.code).toBe("admin_manual");
+    expect(out[0]?.actions.map((a) => a.action)).toEqual(["READ", "EXPORT"]);
+  });
+
+  it("scope が全アクションで同じなら uniformScope が入る", () => {
+    const out = groupPermissionsByCode([
+      row("approve", "READ", "ALL"),
+      row("approve", "EXPORT", "ALL"),
+    ]);
+    expect(out[0]?.uniformScope).toEqual({ scope: "ALL", scopeValues: ["*"] });
+  });
+
+  it("scope がアクションごとに違えば uniformScope は null", () => {
+    const out = groupPermissionsByCode([
+      row("quote", "READ", "ALL"),
+      row("quote", "UPDATE", "OWN"),
+    ]);
+    expect(out[0]?.uniformScope).toBeNull();
+    expect(out[0]?.actions).toHaveLength(2);
+  });
+
+  it("ADMIN は同じ広さ以下のアクションを内包するので落とす", () => {
+    const out = groupPermissionsByCode([
+      row("system", "ADMIN", "ALL"),
+      row("system", "READ", "ALL"),
+      row("system", "UPDATE", "PLANT", ["hq"]),
+    ]);
+    expect(out[0]?.actions.map((a) => a.action)).toEqual(["ADMIN"]);
+  });
+
+  it("ADMIN より広いアクションは残す（ADMIN=PLANT / READ=ALL）", () => {
+    const out = groupPermissionsByCode([
+      row("quote", "ADMIN", "PLANT", ["hq"]),
+      row("quote", "READ", "ALL"),
+    ]);
+    expect(out[0]?.actions.map((a) => a.action)).toEqual(["READ", "ADMIN"]);
+  });
+
+  it("アクション同士に上下は無いので ADMIN 以外はまとめない", () => {
+    const out = groupPermissionsByCode([
+      row("quote", "READ", "ALL"),
+      row("quote", "EXPORT", "ALL"),
+      row("quote", "DELETE", "ALL"),
+    ]);
+    expect(out[0]?.actions).toHaveLength(3);
+  });
+
+  it("コードごとに 1 行、コード順に並ぶ", () => {
+    const out = groupPermissionsByCode([
+      row("quote", "READ", "ALL"),
+      row("approve", "READ", "ALL"),
+      row("billing_closing", "READ", "ALL"),
+    ]);
+    expect(out.map((o) => o.code)).toEqual([
+      "approve",
+      "billing_closing",
+      "quote",
+    ]);
+  });
+
+  it("重複した grant 行は 1 つに畳まれる（highestScopeRows を通すため）", () => {
+    const out = groupPermissionsByCode([
+      row("quote", "READ", "PLANT", ["hq"]),
+      row("quote", "READ", "PLANT", ["osaka"]),
+    ]);
+    expect(out[0]?.actions).toHaveLength(1);
+    expect(out[0]?.actions[0]?.scopeValues).toEqual(["hq", "osaka"]);
+  });
+
+  it("空を渡せば空", () => {
+    expect(groupPermissionsByCode([])).toEqual([]);
   });
 });

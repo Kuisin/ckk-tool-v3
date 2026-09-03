@@ -17,12 +17,15 @@ export {
   ALL_CODES,
   buildPermissionSet,
   decide,
+  groupPermissionsByCode,
+  highestScopeRows,
   isSuperuser,
   PERMISSION_ACTIONS,
   PERMISSION_SCOPES,
   readableCodes,
   SUPERUSER_ACTION,
   SUPERUSER_CODE,
+  scopeRank,
   visibleAppKeys,
 } from "./permission-set";
 export type { AuthzDb } from "./sql";

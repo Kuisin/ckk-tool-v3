@@ -184,6 +184,60 @@ export const PERMISSION_SCOPES: readonly PermissionScope[] = [
   "OWN",
 ];
 
+/**
+ * scope の広さの順位。**小さいほど広い**（0 = ALL）。
+ * 並びは PERMISSION_SCOPES をそのまま使う — 順序表を 2 本持つと必ず割れる。
+ */
+export function scopeRank(scope: PermissionScope): number {
+  const i = PERMISSION_SCOPES.indexOf(scope);
+  // 未知の値は最も狭い扱い（fail-closed。表示でも過大に見せない）。
+  return i === -1 ? PERMISSION_SCOPES.length : i;
+}
+
+/**
+ * (code, action) ごとに **いちばん広い scope の行だけ** に畳む。
+ *
+ * 表示のためのもの — 判定は decide() が全行の和集合で行い、こちらを使わない。
+ * user_permissions ビューは grant 単位の全行を返すので、ロールを 2 つ持つ人の
+ * 権限一覧には同じ (code, action) が何行も並ぶ。読む側が知りたいのは
+ * 「結局どこまで届くのか」なので、いちばん広い 1 行に畳む。
+ *
+ * 同じ広さの行が複数あるときは **scope_values を足し合わせる**。ロール A が
+ * PLANT:[TOKYO]、ロール B が PLANT:[OSAKA] を与えているとき、片方だけ見せると
+ * 実際より狭く見える（decide() は両方を足すので、表示だけが嘘になる）。
+ * どちらかが '*' なら '*' に吸収させる。
+ *
+ * ⚠️ 広さの違う行は落とす。REGION:[EU] と PLANT:[TOKYO] を両方持っていて
+ * TOKYO が EU の外にある、というときだけ、畳んだ表示は実際の範囲を
+ * 言い切れない。順位表に載っている以上どちらが広いかは決まるので畳むが、
+ * 「1 行に畳めるほど単純ではない」場合が理論上あることは知っておくこと。
+ */
+export function highestScopeRows(
+  rows: readonly PermissionRow[],
+): PermissionRow[] {
+  const best = new Map<string, PermissionRow>();
+  for (const row of rows) {
+    const key = `${row.code}\u0000${row.action}`;
+    const kept = best.get(key);
+    if (!kept) {
+      best.set(key, { ...row, scopeValues: [...row.scopeValues] });
+      continue;
+    }
+    const rank = scopeRank(row.scope);
+    const keptRank = scopeRank(kept.scope);
+    if (rank < keptRank) {
+      best.set(key, { ...row, scopeValues: [...row.scopeValues] });
+    } else if (rank === keptRank) {
+      const merged = new Set([...kept.scopeValues, ...row.scopeValues]);
+      best.set(key, {
+        ...kept,
+        scopeValues: merged.has(ALL_CODES) ? [ALL_CODES] : [...merged].sort(),
+      });
+    }
+  }
+  return [...best.values()];
+}
+
 export const PERMISSION_ACTIONS: readonly PermissionAction[] = [
   "READ",
   "CREATE",
@@ -193,3 +247,86 @@ export const PERMISSION_ACTIONS: readonly PermissionAction[] = [
   "APPROVE",
   "ADMIN",
 ];
+
+/** 1 権限コードぶんの実効権限（表示用）。 */
+export interface CodePermission {
+  code: string;
+  /** アクションごとの到達範囲。PERMISSION_ACTIONS の順。 */
+  actions: {
+    action: PermissionAction;
+    scope: PermissionScope;
+    scopeValues: readonly string[];
+  }[];
+  /**
+   * 全アクションで scope が同じならその 1 つ。違えば null。
+   * 画面はこれが非 null のときだけ「1 行に scope 1 つ」で描ける。
+   */
+  uniformScope: {
+    scope: PermissionScope;
+    scopeValues: readonly string[];
+  } | null;
+}
+
+/**
+ * 実効権限を **権限コードごとに 1 行** へまとめる（表示用）。
+ *
+ * highestScopeRows で (code, action) を 1 行にしても、`admin_manual` が
+ * 閲覧・書き出しで 2 行に分かれるのは変わらない。コードが繰り返し並ぶと
+ * 「この権限で何ができるのか」が読み取れない（携帯では特に）ので、
+ * コード 1 つ = 1 行にして、アクションを中に並べる。
+ *
+ * **ADMIN は同じコードの全アクションを内包する**（decide の matchingRows が
+ * そう扱う）。なので ADMIN があるとき、それ以下の広さのアクションは
+ * 冗長なので落とす。ただし **ADMIN より広いアクションは残す** —
+ * ADMIN が PLANT で READ が ALL なら、READ は本当に全社に届くため。
+ *
+ * アクション同士に上下は無い（EXPORT と READ はどちらが上でもない）ので、
+ * ADMIN 以外はまとめない。「閲覧できる」と「書き出せる」は別の事実。
+ */
+export function groupPermissionsByCode(
+  rows: readonly PermissionRow[],
+): CodePermission[] {
+  const byCode = new Map<string, PermissionRow[]>();
+  for (const row of highestScopeRows(rows)) {
+    const list = byCode.get(row.code);
+    if (list) list.push(row);
+    else byCode.set(row.code, [row]);
+  }
+
+  const out: CodePermission[] = [];
+  for (const [code, list] of byCode) {
+    const admin = list.find((r) => r.action === "ADMIN");
+    const kept = admin
+      ? list.filter(
+          (r) =>
+            r.action === "ADMIN" || scopeRank(r.scope) < scopeRank(admin.scope),
+        )
+      : list;
+    kept.sort(
+      (a, b) =>
+        PERMISSION_ACTIONS.indexOf(a.action) -
+        PERMISSION_ACTIONS.indexOf(b.action),
+    );
+    const first = kept[0];
+    const uniform =
+      first &&
+      kept.every(
+        (r) =>
+          r.scope === first.scope &&
+          r.scopeValues.length === first.scopeValues.length &&
+          r.scopeValues.every((v, i) => v === first.scopeValues[i]),
+      )
+        ? { scope: first.scope, scopeValues: first.scopeValues }
+        : null;
+    out.push({
+      code,
+      actions: kept.map((r) => ({
+        action: r.action,
+        scope: r.scope,
+        scopeValues: r.scopeValues,
+      })),
+      uniformScope: uniform,
+    });
+  }
+  return out.sort((a, b) => a.code.localeCompare(b.code));
+}

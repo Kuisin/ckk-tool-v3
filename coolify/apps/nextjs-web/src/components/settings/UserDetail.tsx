@@ -18,6 +18,7 @@ import {
   Group,
   MultiSelect,
   Paper,
+  Stack,
   Table,
   Text,
   Textarea,
@@ -44,6 +45,7 @@ import { FieldValue } from "@/components/ui/FieldValue";
 import { DetailShell, FormActions, SummaryGrid } from "@/components/ui/shells";
 import { permissionActionLabel, permissionScopeLabel } from "@/lib/enum-labels";
 import { localized } from "@/lib/format";
+import type { Locale } from "@/lib/i18n";
 import type { LoginAttemptRow, UserDeviceRow } from "@/lib/login-attempts";
 import { permissionLabel, permissionSummary } from "@/lib/permission-labels";
 import { canUpdateRoles } from "@/lib/user-change-core";
@@ -71,6 +73,20 @@ export interface RoleGuardFacts {
   adminRoleIds: number[];
   targetIsAdmin: boolean;
   otherActiveAdminCount: number;
+}
+
+/** スコープ 1 つの表示。拠点・地域で対象が限定されていれば括弧で添える。 */
+function scopeText(
+  s: { scope: string; scopeValues: string[] },
+  locale: Locale,
+): string {
+  const named =
+    (s.scope === "PLANT" || s.scope === "REGION") &&
+    !(s.scopeValues.length === 1 && s.scopeValues[0] === "*");
+  return (
+    permissionScopeLabel(s.scope, locale) +
+    (named ? ` (${s.scopeValues.join(", ")})` : "")
+  );
 }
 
 function plantLabel(p: AdminUserPlant): string {
@@ -587,10 +603,8 @@ export function UserDetail({
                 </Table.Tr>
               </Table.Thead>
               <Table.Tbody>
-                {user.permissions.map((p, i) => (
-                  <Table.Tr
-                    key={`${p.permissionCode}:${p.action}:${p.scope}:${i}`}
-                  >
+                {user.permissions.map((p) => (
+                  <Table.Tr key={p.permissionCode}>
                     <Table.Td>
                       {/* コードだけでは何の権限か読めないので、表示名を主に出し、
                           コードは補助として下に小さく添える（問い合わせでは
@@ -606,21 +620,35 @@ export function UserDetail({
                         {p.permissionCode}
                       </Text>
                     </Table.Td>
+                    {/* 範囲が全アクションで同じなら、アクションを並べて範囲は
+                        1 つだけ出す。違うときだけアクションごとに書く
+                        （「更新は拠点だけ」を全社と読ませないため）。 */}
                     <Table.Td>
-                      <Badge color="blue" variant="light">
-                        {permissionActionLabel(p.action, locale)}
-                      </Badge>
+                      <Group gap={4} wrap="wrap">
+                        {p.actions.map((a) => (
+                          <Badge color="blue" key={a.action} variant="light">
+                            {permissionActionLabel(a.action, locale)}
+                          </Badge>
+                        ))}
+                      </Group>
                     </Table.Td>
                     <Table.Td>
-                      <Text size="sm">
-                        {permissionScopeLabel(p.scope, locale)}
-                        {(p.scope === "PLANT" || p.scope === "REGION") &&
-                        !(
-                          p.scopeValues.length === 1 && p.scopeValues[0] === "*"
-                        )
-                          ? ` (${p.scopeValues.join(", ")})`
-                          : ""}
-                      </Text>
+                      {p.uniformScope ? (
+                        <Text size="sm">
+                          {scopeText(p.uniformScope, locale)}
+                        </Text>
+                      ) : (
+                        <Stack gap={2}>
+                          {p.actions.map((a) => (
+                            <Text key={a.action} size="sm">
+                              <Text c="dimmed" component="span" size="xs">
+                                {permissionActionLabel(a.action, locale)}:{" "}
+                              </Text>
+                              {scopeText(a, locale)}
+                            </Text>
+                          ))}
+                        </Stack>
+                      )}
                     </Table.Td>
                   </Table.Tr>
                 ))}
