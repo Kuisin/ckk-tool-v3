@@ -792,7 +792,16 @@
     "step": "Step",
     "zoomIn": "Zoom in",
     "zoomOut": "Zoom out",
-    "resetZoom": "Reset zoom"
+    "resetZoom": "Reset zoom",
+    "userChangeUpdateRoles": "Change roles",
+    "roleHash": "Role #{id}",
+    "setRolesTo": "Set roles to {names}",
+    "removeAllRoles": "Remove all roles",
+    "nonexistentRolesIncluded": "Includes a role that does not exist ({ids})",
+    "selectARole": "Select a role",
+    "cannotChangeRoles": "Cannot change the roles",
+    "cannotChangeOwnRoles": "You cannot change your own roles",
+    "cannotRemoveLastAdminRole": "The admin role cannot be removed from the last admin"
   },
   "shell": {
     "appsLabel": "Apps",
@@ -3726,7 +3735,12 @@
       "registeredDevicesWeb": "Registered devices (web)",
       "passwordAndSso": "Password + SSO",
       "plantLabelDisabled": "{label} (disabled)",
-      "requestApprovalButton": "Request approval"
+      "requestApprovalButton": "Request approval",
+      "rolesDecideWhatThisPersonCanDo": "Roles decide what this person can do. The resulting permissions are listed below",
+      "theRolesChangeOnceApproved": "The roles change once approved",
+      "theRolesWereUpdated": "The roles were updated",
+      "removingEveryRoleLeavesNoPermissions": "Removing every role leaves this person with no permissions",
+      "eGChangingRolesDueTo": "e.g. Changing roles due to a transfer"
     },
     "userSuspensionPanel": {
       "suspendTheUser": "Suspend the user",
@@ -4223,7 +4237,8 @@
       "disableFailed": "Could not disable",
       "reasonTooLong": "The reason must be 500 characters or fewer",
       "suspendFailed": "Could not suspend",
-      "restoreFailed": "Could not restore"
+      "restoreFailed": "Could not restore",
+      "updateRolesFailed": "Could not update the roles"
     },
     "kioskCardActions": {
       "invalidCardIdFormat": "Invalid card ID format",
@@ -9021,6 +9036,10 @@
       }
     },
     "userManagement": {
+      "roles": {
+        "label": "Roles",
+        "summary": "The roles given to the user. Several can be selected."
+      },
       "plants": {
         "label": "Assigned sites",
         "summary": "The sites this user is responsible for. Multiple sites can be selected."

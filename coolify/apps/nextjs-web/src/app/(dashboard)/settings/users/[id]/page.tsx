@@ -12,11 +12,16 @@ import {
   getAdminUser,
   getBootstrapAdminSnapshot,
   listActivePlantOptions,
+  listAdminRoleIds,
+  listRoleOptions,
 } from "@/lib/users-admin";
 
 export const dynamic = "force-dynamic";
 
-/** ユーザー管理（SY01）— ユーザー詳細（ロール割当・実効権限・所属拠点）。system 権限（READ）。 */
+/**
+ * ユーザー管理（SY01）— ユーザー詳細（ロール割当・実効権限・所属拠点）。
+ * 閲覧は system 権限（READ）、ロール割当と所属拠点の変更は user_admin。
+ */
 export default async function UserDetailPage({
   params,
 }: {
@@ -29,6 +34,8 @@ export default async function UserDetailPage({
   const [
     user,
     plantOptions,
+    roleOptions,
+    adminRoleIds,
     adminAuthz,
     userAdminAuthz,
     bootstrap,
@@ -39,6 +46,8 @@ export default async function UserDetailPage({
   ] = await Promise.all([
     getAdminUser(id),
     listActivePlantOptions(),
+    listRoleOptions(),
+    listAdminRoleIds(),
     checkPermission("system", "ADMIN"),
     checkPermission("user_admin", "UPDATE"),
     getBootstrapAdminSnapshot(),
@@ -49,7 +58,7 @@ export default async function UserDetailPage({
   ]);
   if (!user) notFound();
 
-  // 利用停止 / 復帰 / 所属拠点の変更は特権操作（user_admin）。管理者は素通しで
+  // 利用停止 / 復帰 / 所属拠点 / ロール割当の変更は特権操作（user_admin）。管理者は素通しで
   // 直接適用でき、それ以外は変更依頼を出して承認を待つ。画面は同じボタンを出す
   // が、ラベルと理由欄の要否がここで変わる（判定はサーバー側 applyOrRequest と
   // 同じ 2 つの条件なので、押してから断られることはない）。
@@ -76,9 +85,19 @@ export default async function UserDetailPage({
       />
       <UserDetail
         canEditPlants={canChangeUser}
+        // 自分のロールは自分で変えられない（canUpdateRoles と同じ条件）。
+        // ここで編集ボタンごと出さないのは、押せない操作を置かないため。
+        canEditRoles={canChangeUser && actorId !== user.id}
         loginAttempts={attempts.rows}
         plantOptions={plantOptions}
         requiresApproval={requiresApproval}
+        roleGuard={{
+          actorId: actorId ?? "",
+          adminRoleIds,
+          targetIsAdmin: coverage.targetIsAdmin,
+          otherActiveAdminCount: coverage.otherActiveAdminCount,
+        }}
+        roleOptions={roleOptions}
         user={user}
         userDevices={devices}
       />

@@ -13,6 +13,7 @@ import { prisma } from "./db";
 import type { LocalizedText } from "./format";
 
 export interface AdminUserRole {
+  id: number;
   rolename: string;
   displayName: LocalizedText | null;
 }
@@ -65,6 +66,35 @@ export interface AdminUserDetail extends AdminUserRow {
   plants: AdminUserPlant[];
 }
 
+/** ロール一覧（ロール割当セレクタの選択肢）。 */
+export async function listRoleOptions(): Promise<AdminUserRole[]> {
+  const rows = await prisma.role.findMany({
+    orderBy: { rolename: "asc" },
+    select: { id: true, rolename: true, displayName: true },
+  });
+  return rows.map((r) => ({
+    id: r.id,
+    rolename: r.rolename,
+    displayName: r.displayName as LocalizedText | null,
+  }));
+}
+
+/**
+ * system:ADMIN を与えるロールの id。
+ *
+ * ロール名（`admin`）で数えないのは getAdminCoverage と同じ理由 — ロール構成は
+ * 運用で変わるが、「実際に管理できるか」は grant があるかどうかで決まる。
+ * ここは grant（role_permission_relation）を直接見るので、users.is_active は
+ * 効かない（ロールの性質であってユーザーの状態ではないため）。
+ */
+export async function listAdminRoleIds(): Promise<number[]> {
+  const rows = await prisma.rolePermissionRelation.findMany({
+    where: { permissionCode: "system", action: "ADMIN" },
+    select: { roleId: true },
+  });
+  return [...new Set(rows.map((r) => r.roleId))];
+}
+
 /** 有効な拠点一覧（所属拠点セレクタの選択肢）。 */
 export async function listActivePlantOptions(): Promise<AdminUserPlant[]> {
   const rows = await prisma.plant.findMany({
@@ -101,6 +131,7 @@ export async function listAdminUsers(): Promise<AdminUserRow[]> {
     disabledReason: u.disabledReason ?? null,
     lastLoginAt: u.lastLoginAt?.toISOString() ?? null,
     roles: u.roleAssignments.map((a) => ({
+      id: a.role.id,
       rolename: a.role.rolename,
       displayName: a.role.displayName as LocalizedText | null,
     })),
@@ -153,6 +184,7 @@ export async function getAdminUser(
     disabledReason: u.disabledReason ?? null,
     lastLoginAt: u.lastLoginAt?.toISOString() ?? null,
     roles: activeAssignments.map((a) => ({
+      id: a.role.id,
       rolename: a.role.rolename,
       displayName: a.role.displayName as LocalizedText | null,
     })),
@@ -161,6 +193,7 @@ export async function getAdminUser(
     createdAt: u.createdAt?.toISOString() ?? null,
     updatedAt: u.updatedAt?.toISOString() ?? null,
     assignments: u.roleAssignments.map((a) => ({
+      id: a.role.id,
       rolename: a.role.rolename,
       displayName: a.role.displayName as LocalizedText | null,
       isActive: a.isActive,

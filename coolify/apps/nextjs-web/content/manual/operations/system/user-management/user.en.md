@@ -1,17 +1,18 @@
 ---
 title: "User Management — Operation Manual"
-description: "An app for seeing the list of people who use the system, and checking what each person is allowed to do."
+description: "An app for seeing the list of people who use the system, checking what each person is allowed to do, and changing their roles and assigned sites."
 screenshots: [settings-users-list-01, settings-users-detail-01, settings-users-roles-01, settings-users-plants-01, settings-users-permissions-01]
 ---
 An app for seeing the list of people who use the system and checking **what each person is allowed to do**. The operation code is `SY01`.
 
-This app is **for looking, not for changing**. You cannot add a person or change a name here (there is one exception — please see "Changing 所属拠点 (assigned sites)" below).
+You cannot add a person or change a name or email here (those are brought in from the company's shared login system). The only two things this screen changes are **roles** and **assigned sites**.
 
 ## What you can do with this app
 
 - You can see everyone registered in the system in one list.
 - You can narrow the list down by name or email address to find the person you are looking for.
 - When you choose one person, you can check the **roles** they have been given and the list of **things they can do**.
+- You can change a person's **roles** and **assigned sites** (permission required).
 - You can use it when you want to find out why a person cannot open a certain screen.
 
 ## Words used on this page
@@ -66,6 +67,7 @@ Below that, three tables are lined up.
 - 「**ロール**」 shows the name of the role, and 「**状態**」 shows whether it is in effect now.
 - Roles that were taken away in the past stay on record. A row with a date in 「**解除日時**」 (Removed on) is not in effect now.
 - When there is nothing, 「**ロールが割り当てられていません**」 (No roles are assigned) is shown. This person cannot do anything yet.
+- People with permission see an 「**編集**」 (Edit) button. See "[Changing ロール (roles)](#changing-ロール-roles)" for how.
 
 ### 所属拠点 (Assigned sites) — which site the person belongs to
 
@@ -89,17 +91,39 @@ Here is how to read the table.
 
 When there is nothing, 「**権限がありません**」 (No permissions) is shown.
 
-## Changing 所属拠点 (assigned sites) — system administrators only
+## Changing ロール (roles)
 
-This is the only item in this app that can be rewritten. The selection box and the 「**保存**」 (Save) button are shown only to people who have system administration permission.
+Give a person a role, or take one away. **Changing roles changes what that person can do, directly.**
+
+The 「**編集**」 (Edit) button appears at the top right of 「**ロール割当**」 only for people who have the "change user management" permission.
 
 1. Open the detail screen of the person you want to change.
-2. Click the 「**所属拠点**」 field.
+2. Press 「**編集**」 on 「**ロール割当**」.
+3. Click the selection box and choose roles from the list. You can choose more than one.
+4. To take a role away, click it once more to deselect it.
+5. Press 「**保存**」 (Save), or 「**承認を依頼**」 (Request approval) when approval is needed.
+
+For a system administrator the change takes effect straight away. **For everyone else nothing changes yet** — write 「**変更の理由**」 (Reason for the change) and submit, and an approval request appears in [Privileged access](/manual/en/operations/system/privileged-access/user) (SY0G). **The change takes effect when someone else approves it.** You cannot approve your own request.
+
+> ⚠️ If you remove every role, the person can do nothing at all. Check which screens they use before removing.
+
+> ⚠️ When there is only one administrator, you cannot take the admin role away from them — nobody could make anyone an administrator again. 「**最後の管理者から管理者ロールを外すことはできません**」 (The admin role cannot be removed from the last admin) is shown.
+
+> 💡 You cannot change your own roles. Please ask someone else.
+
+Removed roles stay on record. A date appears in 「**解除日時**」 (Removed on) in the table, so you can read later when it was taken away.
+
+## Changing 所属拠点 (assigned sites)
+
+The 「**編集**」 (Edit) button appears at the top right of 「**所属拠点**」 only for people who have the "change user management" permission.
+
+1. Open the detail screen of the person you want to change.
+2. Press 「**編集**」 on 「**所属拠点**」.
 3. Choose a site from the list. You can choose more than one.
 4. To take a site away, click it once more to deselect it.
-5. Press 「**保存**」.
+5. Press 「**保存**」 (Save), or 「**承認を依頼**」 (Request approval) when approval is needed.
 
-When 「**保存しました**」 (Saved) and 「**所属拠点を更新しました**」 (Assigned sites updated) are shown, you are finished.
+When 「**保存しました**」 (Saved) and 「**所属拠点を更新しました**」 (Assigned sites updated) are shown, you are finished. As with roles, anyone who is not a system administrator writes a reason and submits, and the change takes effect once it is approved.
 
 > ⚠️ When you take a site away, the person will see less data. Screens with the rule "only their own site" may become empty.
 
@@ -107,11 +131,20 @@ When 「**保存しました**」 (Saved) and 「**所属拠点を更新しま�
 
 ## Input fields
 
-A user's name and email are **imported from Active Directory** and cannot be changed here. The only input on this screen is the plant assignment.
+A user's name and email are **imported from Active Directory** and cannot be changed here. The only inputs on this screen are the roles and the plant assignment.
 
 | Field | Required | What to enter |
 |-------|----------|---------------|
+| [Roles](#field-roles) | Optional | The roles given to this user |
 | [Assigned plants](#field-plants) | Optional | The plants this user works with |
+
+### Roles [#field-roles]
+
+The roles given to the user. Several can be selected.
+
+**What the person can do is all the selected roles put together.** The result is shown in 「実効権限」 (Effective permissions) on the same screen. If every role is removed, the person can do nothing.
+
+Only people with the "change user management" permission can edit it, and anyone who is not a system administrator needs approval. You cannot change your own roles.
 
 ### Assigned plants [#field-plants]
 
@@ -119,7 +152,7 @@ The plants the user is responsible for. Several can be selected.
 
 The "plant" range of a permission is **decided by the overlap with what is selected here**. Someone whose permission is "view within their plant" sees only data for the plants listed here. If this is empty, plant-ranged permissions show nothing.
 
-Only a system administrator can edit it; everyone else sees the current assignment as badges.
+Only people with the "change user management" permission can edit it, and anyone who is not a system administrator needs approval. Everyone else sees the current assignment as badges.
 
 ## Questions and problems
 
@@ -127,10 +160,13 @@ Only a system administrator can edit it; everyone else sees the current assignme
 A. You cannot add people from this app. Information about people is brought in from the company's shared login system. Please ask your system administrator.
 
 **Q. I want to change someone's role.**
-A. On this screen you can only look; you cannot change anything. Please ask your system administrator.
+A. Press 「**編集**」 (Edit) on 「**ロール割当**」 on the detail screen (see "[Changing ロール (roles)](#changing-ロール-roles)"). If the button does not appear, you do not have permission. Please ask your system administrator.
 
-**Q. 「この操作の権限がありません（system:ADMIN）」 (You do not have permission for this operation) is shown and I cannot save the assigned sites.**
-A. Only system administrators can change assigned sites. Everyone else can only look. Please ask your system administrator.
+**Q. I saved the roles, but the person's permissions have not changed.**
+A. A change made by anyone who is not a system administrator **does not take effect until it is approved**. Check in [Privileged access](/manual/en/operations/system/privileged-access/user) (SY0G) whether your request is still pending approval.
+
+**Q. The 「編集」 (Edit) button does not appear.**
+A. Changing roles and assigned sites needs the "change user management" permission. Everyone else can only look. Please ask your system administrator.
 
 **Q. Someone was given a role, but they say they still cannot open the screen.**
 A. Open that person's detail screen and look for the matching row in 「**実効権限**」 (Effective permissions). If the row is there but the data is empty, please also check whether 「**所属拠点**」 is empty.
@@ -138,7 +174,7 @@ A. Open that person's detail screen and look for the matching row in 「**実効
 **Q. The same permission code appears on two rows in 「実効権限」.**
 A. That is normal. It happens when the person has two roles and the same permission comes from both. What they can actually do is the two rows put together.
 
-**Q. I want to know who changed this person's assigned sites, and when.**
+**Q. I want to know who changed this person's roles or assigned sites, and when.**
 A. You can check in the [Activity Log](/manual/en/operations/system/activity-log/user). Every change is recorded.
 
 <!-- permissions:start -->

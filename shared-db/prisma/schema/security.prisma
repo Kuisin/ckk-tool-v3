@@ -281,6 +281,7 @@ enum UserChangeKind {
   SUSPEND // 利用停止（恒久 or 期限つき）
   RESTORE // 利用停止の解除
   UPDATE_PLANTS // 所属拠点の変更（= PLANT/REGION スコープの変更）
+  UPDATE_ROLES // ロール割当の変更（= 権限そのものの変更）
 
   @@map("USER_CHANGE_KIND")
   @@schema("app")
@@ -292,6 +293,7 @@ enum UserChangeKind {
 //   SUSPEND        { disabledUntil: string | null, disabledReason: string }
 //   RESTORE        {}
 //   UPDATE_PLANTS  { plantIds: number[] }
+//   UPDATE_ROLES   { roleIds: number[] }
 //
 // 適用は列を直接書き換えるのではなく、通常の変更関数を通す。承認までに前提が
 // 崩れていれば（既に停止済み・拠点が消えた・対象が無効化された）適用せず
