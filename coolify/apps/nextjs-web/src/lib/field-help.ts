@@ -102,6 +102,7 @@ export const FIELD_HELP = {
     endUser: {},
     assignedPlant: {},
     shippingWorkLocation: {},
+    customerProvidesDeliveryNote: {},
     notes: {},
     product: {},
     orderType: {},
@@ -206,7 +207,6 @@ export const FIELD_HELP = {
     quantity: {},
   },
   deliveryNote: {
-    deliveryOrder: {},
     deliveryMethod: {},
     recipient: {},
     endUser: {},

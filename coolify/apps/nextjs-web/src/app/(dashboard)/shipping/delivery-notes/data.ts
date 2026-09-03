@@ -6,12 +6,11 @@
  * Prisma Decimal はここで Number() へ変換してからクライアントへ渡す。
  */
 
-import { ownOrPlantWhere, plantWhere, rowInScope } from "@ckk/authz-core";
+import { ownOrPlantWhere, rowInScope } from "@ckk/authz-core";
 import type {
   DeliveryMethod,
   DeliveryNote,
   DeliveryNoteStatus,
-  DeliveryOrderCandidate,
 } from "@/components/shipping/delivery-notes/model";
 import { checkPermission } from "@/lib/authz";
 import { type Prisma, prisma } from "@/lib/db";
@@ -171,113 +170,4 @@ export async function fetchDeliveryNote(
     return null;
   }
   return mapDeliveryNote(row);
-}
-
-// ── 新規フォーム用: 出荷書候補（確定済み・出荷済みのみ） ─────────────────────
-
-/**
- * 納品書を作成できる出荷書（CONFIRMED / SHIPPED）の候補一覧。
- * 少数想定のためサーバーで一括ロードして Select に渡す（最新 100 件）。
- */
-export async function fetchDeliveryOrderCandidates(): Promise<
-  DeliveryOrderCandidate[]
-> {
-  // SCOPED ユーザーにはスコープ拠点の出荷書のみ候補に出す。
-  const authz = await checkPermission("delivery_note", "READ");
-  if (!authz.ok) return [];
-  const rows = await prisma.deliveryOrder.findMany({
-    where: {
-      status: { in: ["CONFIRMED", "SHIPPED"] },
-      ...(plantWhere(
-        authz.access,
-        "fromPlantId",
-      ) as Prisma.DeliveryOrderWhereInput),
-    },
-    include: {
-      customerBp: true,
-      customerBranchBp: true,
-      items: {
-        orderBy: { sortOrder: "asc" },
-        include: {
-          product: true,
-          orderLine: {
-            include: {
-              endUserBp: true,
-              // 営業担当・配送方法・エンドユーザーの導出用
-              // （出荷書には保存されない）。
-              acceptance: {
-                select: {
-                  salesRepId: true,
-                  deliveryMethod: true,
-                  endUserBp: true,
-                },
-              },
-            },
-          },
-        },
-      },
-    },
-    orderBy: [{ yearMonth: "desc" }, { seq: "desc" }],
-    take: 100,
-  });
-  return rows.map((r) => {
-    const number = formatDocNumber("DOR", {
-      yearMonth: r.yearMonth,
-      seq: r.seq,
-    });
-    // 顧客はヘッダが権威（1 出荷書 = 1 顧客）。
-    const customerName = localized(r.customerBp.name as LocalizedText | null);
-    const totalQuantity = r.items.reduce((sum, it) => sum + it.quantity, 0);
-    // 最終需要家は注文明細ごとに異なり得る — 1 つに定まるときだけ既定値にする。
-    // 明細行の指定（行ごとの例外）→ 注文請書ヘッダのエンドユーザー の順に読む。
-    const endUsers = [
-      ...new Map(
-        r.items
-          .map(
-            (it) =>
-              it.orderLine?.endUserBp ?? it.orderLine?.acceptance.endUserBp,
-          )
-          .filter((bp): bp is NonNullable<typeof bp> => Boolean(bp))
-          .map((bp) => [bp.id, bp] as const),
-      ).values(),
-    ];
-    const endUser = endUsers.length === 1 ? endUsers[0] : null;
-    // 配送方法（注文請書ヘッダ）— 全明細で 1 つに定まるときだけ既定値にする
-    // （束ね条件の導入後は常に 1 つだが、旧データの混在は null で既定を触らない）。
-    const methods = new Set(
-      r.items
-        .map((it) => it.orderLine?.acceptance.deliveryMethod)
-        .filter((m): m is NonNullable<typeof m> => Boolean(m)),
-    );
-    const deliveryMethod = methods.size === 1 ? [...methods][0] : null;
-    // 出荷書の営業担当は導出値（明細 → 注文請書ヘッダ）。1 人に定まる
-    // ときだけ納品書へ引き継ぐ。
-    const repIds = new Set(
-      r.items
-        .map((it) => it.orderLine?.acceptance.salesRepId)
-        .filter((id): id is string => Boolean(id)),
-    );
-    return {
-      number,
-      label: `${number}　${customerName}（${totalQuantity}）`,
-      customerBpId: r.customerBpId,
-      customerName,
-      salesRepId: repIds.size === 1 ? [...repIds][0] : null,
-      customerBranchName: r.customerBranchBp
-        ? localized(r.customerBranchBp.name as LocalizedText | null)
-        : null,
-      deliveryMethod,
-      endUserBpId: endUser?.id ?? null,
-      endUserName: endUser
-        ? localized(endUser.name as LocalizedText | null)
-        : null,
-      items: r.items.map((it) => ({
-        productId: String(it.productId),
-        productName: productLabel(it.product),
-        quantity: it.quantity,
-        // 単価の既定値はその行の注文明細の単価（価格記載ありのとき使用）。
-        unitPrice: Number(it.orderLine?.unitPrice ?? 0),
-      })),
-    };
-  });
 }

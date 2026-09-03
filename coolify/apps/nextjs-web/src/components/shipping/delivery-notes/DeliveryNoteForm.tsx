@@ -1,15 +1,12 @@
 "use client";
 
 /**
- * DeliveryNoteForm — 納品書 新規作成 / 編集 (SH02, design.md §8.3).
+ * DeliveryNoteForm — 納品書 編集 (SH02, design.md §8.3).
  *
- * 新規: 出荷書 Select（確定済み・出荷済みのみ、サーバーロードの候補一覧。
- * `?deliveryOrder=DOR-…` でプリセレクト可）を選択すると、納品先（= 注文明細の
- * 顧客 + 支店）・最終需要家・明細（出荷書明細 + 受注単価）が既定生成される。
- * 納品方法: 通常納品（価格記載 既定 ON）/ ユーザー直送（最終需要家 必須・
- * 価格記載 既定 OFF）。価格記載 OFF のときは単価・金額を保存しない。
- *
- * 編集: 下書きのみ（ガードはサーバー側でも実施）。出荷書・納品先は変更不可。
+ * 納品書は出荷書の確定時に自動作成される（1 通、ユーザー直送は 2 通 —
+ * confirmDeliveryOrder / lib 側 planAutoDeliveryNotes）。この画面は
+ * **下書きの編集専用**（手動作成の口は無い — ガードはサーバー側でも実施）。
+ * 出荷書・納品先は変更不可。納品方法・最終需要家・価格記載・明細は編集できる。
  */
 
 import {
@@ -20,7 +17,6 @@ import {
   Input,
   NumberInput,
   SegmentedControl,
-  Select,
   SimpleGrid,
   Switch,
   Text,
@@ -36,7 +32,6 @@ import { useTransition } from "react";
 import { z } from "zod";
 import { searchProductOptions } from "@/app/(dashboard)/_shared/option-search";
 import {
-  createDeliveryNote,
   searchEndUserOptions,
   updateDeliveryNote,
 } from "@/app/(dashboard)/shipping/delivery-notes/actions";
@@ -52,11 +47,7 @@ import { deliveryMethodLabel } from "@/lib/enum-labels";
 import { fieldHelp } from "@/lib/field-help";
 import { zodResolver } from "@/lib/form";
 import { formatMoney } from "@/lib/format";
-import type {
-  DeliveryMethod,
-  DeliveryNote,
-  DeliveryOrderCandidate,
-} from "./model";
+import type { DeliveryMethod, DeliveryNote } from "./model";
 
 const BASE_PATH = "/shipping/delivery-notes";
 
@@ -76,9 +67,6 @@ function buildSchema(tr: ReturnType<typeof useTranslations>) {
 
   return z
     .object({
-      deliveryOrderNumber: z
-        .string()
-        .min(1, tr("shipping.deliveryNoteForm.selectADeliveryOrder")),
       salesRepId: z.string().nullable(),
       deliveryMethod: z.enum(DELIVERY_METHODS),
       endUserBpId: z.string().nullable(),
@@ -118,31 +106,8 @@ const emptyItem = (
   notes: "",
 });
 
-/** 出荷書候補 → 明細の既定行（単価は注文明細の単価）。 */
-function candidateItems(cand: DeliveryOrderCandidate): ItemForm[] {
-  if (cand.items.length === 0) return [emptyItem()];
-  return cand.items.map((it) =>
-    emptyItem(it.productId, it.productName, it.quantity, it.unitPrice),
-  );
-}
-
-function fromCandidate(cand: DeliveryOrderCandidate): FormValues {
-  // 納品方法は注文請書の配送方法を既定にする（onDeliveryOrderChange と同じ規則）。
-  const deliveryMethod = cand.deliveryMethod ?? "NORMAL";
-  return {
-    deliveryOrderNumber: cand.number,
-    salesRepId: cand.salesRepId,
-    deliveryMethod,
-    endUserBpId: cand.endUserBpId,
-    includePrice: deliveryMethod === "NORMAL",
-    notes: "",
-    items: candidateItems(cand),
-  };
-}
-
 function toFormValues(note: DeliveryNote): FormValues {
   return {
-    deliveryOrderNumber: note.deliveryOrderNumber,
     salesRepId: note.salesRepId,
     deliveryMethod: note.deliveryMethod,
     endUserBpId: note.endUserId,
@@ -159,117 +124,30 @@ function toFormValues(note: DeliveryNote): FormValues {
   };
 }
 
-export function DeliveryNoteForm({
-  mode,
-  note,
-  candidates,
-  initialDeliveryOrder,
-}: {
-  mode: "create" | "edit";
-  /** 編集時: 対象納品書（サーバー取得の view-model）。 */
-  note?: DeliveryNote | null;
-  /** 新規時: 出荷書候補（確定済み・出荷済み、サーバーロード）。 */
-  candidates: DeliveryOrderCandidate[];
-  /** `?deliveryOrder=DOR-…` のプリセレクト（候補に無ければ無視）。 */
-  initialDeliveryOrder?: string | null;
-}) {
+export function DeliveryNoteForm({ note }: { note: DeliveryNote }) {
   const tr = useTranslations();
   const locale = useLocale();
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
-  const noteId = mode === "edit" ? note?.id : undefined;
   const schema = buildSchema(tr);
-
-  const preselected =
-    mode === "create" && initialDeliveryOrder
-      ? (candidates.find((c) => c.number === initialDeliveryOrder) ?? null)
-      : null;
 
   const form = useForm<FormValues>({
     validate: zodResolver(schema),
-    initialValues:
-      mode === "edit" && note
-        ? toFormValues(note)
-        : preselected
-          ? fromCandidate(preselected)
-          : {
-              deliveryOrderNumber: "",
-              salesRepId: null,
-              deliveryMethod: "NORMAL",
-              endUserBpId: null,
-              includePrice: true,
-              notes: "",
-              items: [emptyItem()],
-            },
+    initialValues: toFormValues(note),
   });
 
-  const selectedCandidate =
-    mode === "create"
-      ? (candidates.find((c) => c.number === form.values.deliveryOrderNumber) ??
-        null)
-      : null;
-
-  // 納品先表示（作成後変更不可）: 新規 = 選択候補由来 / 編集 = 保存値。
-  const recipientLabel =
-    mode === "edit" && note
-      ? note.recipientBranchName
-        ? `${note.recipientName} / ${note.recipientBranchName}`
-        : note.recipientName
-      : selectedCandidate
-        ? selectedCandidate.customerBranchName
-          ? `${selectedCandidate.customerName} / ${selectedCandidate.customerBranchName}`
-          : selectedCandidate.customerName
-        : "—";
-
-  // 納品先の BP id — 営業担当の候補を引くキー（納品先と同じく作成後不変）。
-  const recipientBpId =
-    mode === "edit" && note
-      ? note.recipientId
-      : (selectedCandidate?.customerBpId ?? null);
+  // 納品先 = 注文明細の顧客（+支店）。作成後変更不可。
+  const recipientLabel = note.recipientBranchName
+    ? `${note.recipientName} / ${note.recipientBranchName}`
+    : note.recipientName;
 
   // 最終需要家の初期ラベル（SearchSelect の initialOption 用）。
-  const endUserInitialOption = (() => {
-    const id = form.values.endUserBpId;
-    if (!id) return null;
-    if (mode === "edit" && note?.endUserId === id && note.endUserName) {
-      return { value: id, label: note.endUserName };
-    }
-    const cand = selectedCandidate ?? preselected;
-    if (cand?.endUserBpId === id && cand.endUserName) {
-      return { value: id, label: cand.endUserName };
-    }
-    return null;
-  })();
-
-  /** 出荷書選択 → 納品先・最終需要家・明細を候補の既定値で再生成する。 */
-  const onDeliveryOrderChange = (number: string | null) => {
-    if (!number) {
-      form.setFieldValue("deliveryOrderNumber", "");
-      return;
-    }
-    const cand = candidates.find((c) => c.number === number);
-    if (!cand) {
-      form.setFieldValue("deliveryOrderNumber", number);
-      return;
-    }
-    form.setValues((prev) => ({
-      ...prev,
-      deliveryOrderNumber: cand.number,
-      // 営業担当は出荷書のものを引き継ぐ（未設定なら SalesRepSelect が
-      // 納品先の主担当を入れる）。
-      salesRepId: cand.salesRepId,
-      endUserBpId: cand.endUserBpId,
-      // 納品方法は注文請書の配送方法を既定にする（価格記載の既定も連動 —
-      // onMethodChange と同じ規則）。導出できないときは触らない。
-      ...(cand.deliveryMethod
-        ? {
-            deliveryMethod: cand.deliveryMethod,
-            includePrice: cand.deliveryMethod === "NORMAL",
-          }
-        : {}),
-      items: candidateItems(cand),
-    }));
-  };
+  const endUserInitialOption =
+    form.values.endUserBpId &&
+    note.endUserId === form.values.endUserBpId &&
+    note.endUserName
+      ? { value: form.values.endUserBpId, label: note.endUserName }
+      : null;
 
   /** 納品方法変更 → 価格記載の既定を切替（通常=ON / 直送=OFF）。 */
   const onMethodChange = (method: DeliveryMethod) => {
@@ -308,22 +186,11 @@ export function DeliveryNoteForm({
           notes: it.notes || null,
         })),
       };
-      const result =
-        mode === "edit" && noteId
-          ? await updateDeliveryNote(noteId, payload)
-          : await createDeliveryNote({
-              ...payload,
-              deliveryOrderNumber: values.deliveryOrderNumber,
-            });
+      const result = await updateDeliveryNote(note.id, payload);
       if (result.ok) {
         notifications.show({
           title: tr("common.saved2"),
-          message:
-            mode === "edit"
-              ? tr("shipping.deliveryNotes.theDeliveryNoteWasUpdated")
-              : tr("shipping.deliveryNoteForm.createdWithNumber", {
-                  number: result.data.number,
-                }),
+          message: tr("shipping.deliveryNotes.theDeliveryNoteWasUpdated"),
           color: "green",
         });
         router.push(`${BASE_PATH}/${result.data.number}`);
@@ -342,55 +209,23 @@ export function DeliveryNoteForm({
       breadcrumbs={[
         tr("common.shipping"),
         { label: tr("common.deliveryNote"), href: BASE_PATH },
-        mode === "edit" ? tr("common.edit") : tr("common.new2"),
+        tr("common.edit"),
       ]}
       isDirty={form.isDirty()}
       isPending={isPending}
-      onCancel={() =>
-        router.push(noteId ? `${BASE_PATH}/${noteId}` : BASE_PATH)
-      }
+      onCancel={() => router.push(`${BASE_PATH}/${note.id}`)}
       onSubmit={form.onSubmit(handleSubmit)}
-      status={
-        mode === "edit" && note ? (
-          <StatusBadge entity="DeliveryNote" status={note.status} />
-        ) : undefined
-      }
-      title={
-        mode === "edit"
-          ? tr("shipping.deliveryNoteForm.editWithNumber", {
-              noteId: noteId ?? "",
-            })
-          : tr("shipping.deliveryNotes.newDeliveryNote")
-      }
+      status={<StatusBadge entity="DeliveryNote" status={note.status} />}
+      title={tr("shipping.deliveryNoteForm.editWithNumber", {
+        noteId: note.id,
+      })}
     >
       <FormSection title={tr("common.basicInformation")}>
         <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="sm">
-          {mode === "create" ? (
-            <Select
-              data={candidates.map((c) => ({
-                value: c.number,
-                label: c.label,
-              }))}
-              error={form.errors.deliveryOrderNumber}
-              label={
-                <HelpLabel
-                  {...fieldHelp(tr, "deliveryNote", "deliveryOrder")}
-                />
-              }
-              onChange={onDeliveryOrderChange}
-              placeholder={tr(
-                "shipping.deliveryNotes.chooseAConfirmedOrShippedDelivery",
-              )}
-              searchable={candidates.length > 5}
-              value={form.values.deliveryOrderNumber || null}
-              withAsterisk
-            />
-          ) : (
-            <FieldValue
-              label={tr("common.deliveryOrder")}
-              value={note?.deliveryOrderNumber}
-            />
-          )}
+          <FieldValue
+            label={tr("common.deliveryOrder")}
+            value={note.deliveryOrderNumber}
+          />
           <Input.Wrapper
             label={
               <HelpLabel {...fieldHelp(tr, "deliveryNote", "deliveryMethod")} />
@@ -410,9 +245,9 @@ export function DeliveryNoteForm({
           {/* 納品先 = 注文明細の顧客（+支店）。作成後変更不可。 */}
           <FieldValue label={tr("common.shipTo")} value={recipientLabel} />
           <SalesRepSelect
-            customerBpId={recipientBpId}
+            customerBpId={note.recipientId}
             initial={
-              note?.salesRepId && note.salesRepName
+              note.salesRepId && note.salesRepName
                 ? { id: note.salesRepId, name: note.salesRepName }
                 : null
             }
@@ -461,12 +296,7 @@ export function DeliveryNoteForm({
         </SimpleGrid>
       </FormSection>
 
-      <FormSection
-        description={tr(
-          "shipping.deliveryNotes.choosingADeliveryOrderPrefillsThe",
-        )}
-        title={tr("common.lineItems")}
-      >
+      <FormSection title={tr("common.lineItems")}>
         <Group justify="flex-end" mb="xs">
           {typeof form.errors.items === "string" && (
             <Text c="red" size="xs">
@@ -588,18 +418,7 @@ export function DeliveryNoteForm({
         <GhostButton
           leftSection={<IconPlus size={16} />}
           mt="md"
-          onClick={() => {
-            const first = (selectedCandidate ?? preselected)?.items[0];
-            form.insertListItem(
-              "items",
-              emptyItem(
-                first?.productId ?? "",
-                first?.productName ?? "",
-                1,
-                first?.unitPrice ?? 0,
-              ),
-            );
-          }}
+          onClick={() => form.insertListItem("items", emptyItem())}
           size="xs"
         >
           {tr("common.addLine")}

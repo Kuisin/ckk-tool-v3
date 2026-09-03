@@ -190,6 +190,7 @@ screenshots: [order-acceptance-list-01, order-acceptance-new-01, order-acceptanc
 | [エンドユーザー](#field-end-user) | 直送時必須 | ユーザー直送の届け先（最終需要家） |
 | [担当拠点](#field-assigned-plant) | 任意 | この注文を処理する拠点 |
 | [出荷作業場所](#field-shipping-work-location) | 任意 | 出荷作業を行う場所 |
+| [顧客提供の納品書](#field-customer-provides-delivery-note) | 任意 | 顧客が自前の納品書を用意しているかの目印 |
 | [備考](#field-notes) | 任意 | 注文請書全体への補足 |
 | [製品](#field-product) | 必須 | 注文された製品 |
 | [品名（抽出テキスト）](#field-extracted-name) | — | 注文書に書かれていた品名 |
@@ -238,6 +239,10 @@ screenshots: [order-acceptance-list-01, order-acceptance-new-01, order-acceptanc
 ### 出荷作業場所 [#field-shipping-work-location]
 
 出荷の作業（梱包・積み込みなど）を行う場所です。[作業場所](/manual/ja/operations/masters/work-location/user)マスタから選びます。
+
+### 顧客提供の納品書 [#field-customer-provides-delivery-note]
+
+顧客が自前の納品書（バーコード印字など）を用意しているときに付けます。出荷準備の担当者への目印で、自社が発行する納品書に添えて同梱する運用のためのものです。チェックしても、自動で作成される納品書の通数や宛先は変わりません。
 
 ### 備考 [#field-notes]
 

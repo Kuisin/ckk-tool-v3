@@ -2,7 +2,11 @@ import { createTranslator } from "next-intl";
 import { describe, expect, it } from "vitest";
 import type { Tr } from "@/lib/i18n";
 import ja from "../../../../messages/ja.json";
-import { allocateLotUsage, combinabilityError } from "./model";
+import {
+  allocateLotUsage,
+  combinabilityError,
+  planAutoDeliveryNotes,
+} from "./model";
 
 // biome-ignore lint/suspicious/noExplicitAny: next-intl's messages type is too wide for a plain JSON import here
 const tr = createTranslator({ locale: "ja", messages: ja as any }) as Tr;
@@ -13,6 +17,7 @@ describe("combinabilityError — 1 出荷書に束ねられる条件", () => {
       customerBpId: string | null;
       shipToBpId: string | null;
       deliveryMethod: string;
+      endUserBpId: string | null;
     }> = {},
   ) => ({
     customerBpId: "cust-1",
@@ -71,6 +76,90 @@ describe("combinabilityError — 1 出荷書に束ねられる条件", () => {
         "cust-1",
       ),
     ).toMatch(/同じ配送方法/);
+  });
+
+  it("ユーザー直送でエンドユーザーが違うとエンドユーザーエラー", () => {
+    expect(
+      combinabilityError(
+        [
+          ref({ deliveryMethod: "DIRECT_TO_USER", endUserBpId: "eu-1" }),
+          ref({ deliveryMethod: "DIRECT_TO_USER", endUserBpId: "eu-2" }),
+        ],
+        tr,
+      ),
+    ).toMatch(/同じ届け先|エンドユーザー|最終需要家/);
+  });
+
+  it("通常配送ではエンドユーザーの食い違いを見ない", () => {
+    expect(
+      combinabilityError(
+        [ref({ endUserBpId: "eu-1" }), ref({ endUserBpId: "eu-2" })],
+        tr,
+        "cust-1",
+      ),
+    ).toBeNull();
+  });
+});
+
+describe("planAutoDeliveryNotes — 出荷書確定時の納品書自動作成の内訳", () => {
+  it("通常配送は顧客宛・価格記載ありの 1 通", () => {
+    expect(
+      planAutoDeliveryNotes({
+        customerBpId: "cust-1",
+        customerBranchBpId: "branch-1",
+        deliveryMethod: "NORMAL",
+        endUserBpId: null,
+      }),
+    ).toEqual([
+      {
+        recipientBpId: "cust-1",
+        recipientBranchBpId: "branch-1",
+        endUserBpId: null,
+        includePrice: true,
+      },
+    ]);
+  });
+
+  it("ユーザー直送は最終需要家宛(価格なし)+顧客宛(価格あり)の 2 通", () => {
+    expect(
+      planAutoDeliveryNotes({
+        customerBpId: "cust-1",
+        customerBranchBpId: null,
+        deliveryMethod: "DIRECT_TO_USER",
+        endUserBpId: "eu-1",
+      }),
+    ).toEqual([
+      {
+        recipientBpId: "eu-1",
+        recipientBranchBpId: null,
+        endUserBpId: null,
+        includePrice: false,
+      },
+      {
+        recipientBpId: "cust-1",
+        recipientBranchBpId: null,
+        endUserBpId: "eu-1",
+        includePrice: true,
+      },
+    ]);
+  });
+
+  it("ユーザー直送でエンドユーザー未解決なら顧客宛(価格あり)のみ", () => {
+    expect(
+      planAutoDeliveryNotes({
+        customerBpId: "cust-1",
+        customerBranchBpId: null,
+        deliveryMethod: "DIRECT_TO_USER",
+        endUserBpId: null,
+      }),
+    ).toEqual([
+      {
+        recipientBpId: "cust-1",
+        recipientBranchBpId: null,
+        endUserBpId: null,
+        includePrice: true,
+      },
+    ]);
   });
 });
 

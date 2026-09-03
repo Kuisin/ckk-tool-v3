@@ -96,6 +96,7 @@ export function OrderAcceptanceCreateForm({
         shippingWorkLocationId: shippingWorkLocationId
           ? Number(shippingWorkLocationId)
           : null,
+        customerProvidesDeliveryNote: false,
         customerOrderRef: customerOrderRef || null,
         quoteNumber: quoteNumber || null,
         orderDate,

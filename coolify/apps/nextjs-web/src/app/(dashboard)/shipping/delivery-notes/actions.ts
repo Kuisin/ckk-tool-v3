@@ -3,11 +3,12 @@
 /**
  * Server Actions — 納品書 (app.delivery_notes, SH02).
  *
- * 作成は allocateDocumentKey("DELIVERY") で (yearMonth, seq) を1回採番し、
- * 明細を nested create で一括作成する。表示番号 DRN-YYYYMM-NNNNN は導出。
- * 納品先（recipient）は出荷書 → 注文明細の顧客（+支店）から自動確定する。
- * DIRECT_TO_USER（ユーザー直送）は最終需要家が必須。価格記載
- * （includePrice=false）のときは単価・金額を保存しない（null）。
+ * **作成はここには無い。** 出荷書の確定 (DRAFT → CONFIRMED) 時に
+ * shipping/delivery-orders/actions.ts の confirmDeliveryOrder が自動で作る
+ * （通常配送は 1 通、ユーザー直送は 2 通 — 価格記載なしを最終需要家へ・
+ * 価格記載ありを顧客へ。lib 側の計画は
+ * components/shipping/delivery-orders/model.ts の planAutoDeliveryNotes）。
+ * ここは下書きの編集（明細は全置換）とライフサイクル操作だけを持つ。
  *
  * ステータス遷移: DRAFT →(発行)→ ISSUED →(納品)→ DELIVERED。
  */
@@ -21,13 +22,10 @@ import { checkPermission, requireAnyRead } from "@/lib/authz";
 import { prisma } from "@/lib/db";
 import {
   type DocKey,
-  formatDocNumber,
   formatProductNumber,
   parseDocKey,
 } from "@/lib/doc-number";
 import { type LocalizedText, localized } from "@/lib/format";
-import { allocateDocumentKey } from "@/lib/numbering";
-import { resolveSalesRepId } from "@/lib/sales-rep";
 import {
   type ActionResult,
   actionError,
@@ -91,17 +89,6 @@ function baseInputSchema(tr: Awaited<ReturnType<typeof getTranslations>>) {
   });
 }
 
-function createInputSchema(tr: Awaited<ReturnType<typeof getTranslations>>) {
-  return baseInputSchema(tr).extend({
-    deliveryOrderNumber: z
-      .string()
-      .min(1, tr("shipping.deliveryNoteForm.selectADeliveryOrder")),
-  });
-}
-
-export type DeliveryNoteCreateInput = z.infer<
-  ReturnType<typeof createInputSchema>
->;
 export type DeliveryNoteUpdateInput = z.infer<
   ReturnType<typeof baseInputSchema>
 >;
@@ -171,7 +158,6 @@ export async function searchEndUserOptions(
   }));
 }
 
-/** 作成 — 採番1回 + ヘッダ・明細を一括作成。作成後は詳細ページへ。 */
 /**
  * 納品書明細の出荷書整合検証（監査 P2-7）: 出荷書に存在する製品のみ・
  * 製品別 Σ数量 ≦ 出荷数量。違反行は製品名入りのエラー文字列を返す。
@@ -232,132 +218,6 @@ async function validateItemsAgainstShipment(
     }
   }
   return null;
-}
-
-export async function createDeliveryNote(
-  payload: DeliveryNoteCreateInput,
-): Promise<ActionResult<{ number: string }>> {
-  const tr = await getTranslations();
-  const authz = await checkPermission("delivery_note", "CREATE");
-  if (!authz.ok) return actionError(authz.error);
-  const parsed = createInputSchema(tr).safeParse(payload);
-  if (!parsed.success) {
-    return actionError(
-      parsed.error.issues[0]?.message ?? tr("common.invalidInput"),
-    );
-  }
-  const v = parsed.data;
-  const shpKey = parseDocKey(v.deliveryOrderNumber, "DOR");
-  if (!shpKey)
-    return actionError(
-      tr("shipping.deliveryNoteActions.invalidDeliveryOrderNumber"),
-    );
-  if (v.deliveryMethod === "DIRECT_TO_USER" && !v.endUserBpId) {
-    return actionError(
-      tr("shipping.deliveryNoteActions.selectEndUserForDirectToUser"),
-    );
-  }
-  try {
-    // 納品先は出荷書ヘッダの顧客（+支店）から確定する。1 出荷書は複数の
-    // 注文明細を束ねられるので、顧客は明細側ではなくヘッダが権威。
-    const shp = await prisma.deliveryOrder.findUnique({
-      where: { yearMonth_seq: shpKey },
-      include: {
-        // 営業担当は出荷書に保存されない — 明細 → 注文請書ヘッダから導出する。
-        items: {
-          select: {
-            orderLine: {
-              select: { acceptance: { select: { salesRepId: true } } },
-            },
-          },
-        },
-      },
-    });
-    if (!shp)
-      return actionError(
-        tr("shipping.deliveryNoteActions.deliveryOrderNotFound"),
-      );
-    // スコープ行チェック（PLANT）: 対象出荷書の出荷元拠点がスコープ内であること。
-    if (
-      authz.access.kind !== "ALL" &&
-      !rowInScope(authz.access, { plantIds: [shp.fromPlantId] }, authz.userId)
-    ) {
-      return actionError(tr("common.scopeDenied"));
-    }
-    if (shp.status !== "CONFIRMED" && shp.status !== "SHIPPED") {
-      return actionError(
-        tr(
-          "shipping.deliveryNoteActions.deliveryOrderMustBeConfirmedOrShipped",
-        ),
-      );
-    }
-    const itemsError = await validateItemsAgainstShipment(shpKey, v.items, tr);
-    if (itemsError) return actionError(itemsError);
-
-    const { yearMonth, seq } = await allocateDocumentKey("DELIVERY");
-    // 出荷書の導出担当（明細の注文請書の担当が 1 人に定まればそれ）を
-    // 引き継ぐ（無ければ納品先の主担当）。
-    const shpRepIds = new Set(
-      shp.items
-        .map((it) => it.orderLine?.acceptance.salesRepId)
-        .filter((id): id is string => Boolean(id)),
-    );
-    const inheritedRepId = shpRepIds.size === 1 ? [...shpRepIds][0] : null;
-    const salesRepId = await resolveSalesRepId(
-      v.salesRepId ?? inheritedRepId,
-      shp.customerBpId,
-      null,
-    );
-    await prisma.deliveryNote.create({
-      data: {
-        yearMonth,
-        seq,
-        deliveryOrderYearMonth: shpKey.yearMonth,
-        deliveryOrderSeq: shpKey.seq,
-        deliveryMethod: v.deliveryMethod,
-        recipientBpId: shp.customerBpId,
-        recipientBranchBpId: shp.customerBranchBpId,
-        salesRepId,
-        endUserBpId:
-          v.deliveryMethod === "DIRECT_TO_USER" ? v.endUserBpId : null,
-        includePrice: v.includePrice,
-        notes: trimOrNull(v.notes),
-        createdBy: authz.userId,
-        items: {
-          create: v.items.map((it, i) => toItemData(it, i, v.includePrice)),
-        },
-      },
-    });
-    const number = formatDocNumber("DRN", { yearMonth, seq });
-    await recordAudit({
-      action: "CREATE",
-      tableName: "delivery_notes",
-      recordId: number,
-      after: {
-        deliveryOrderNumber: v.deliveryOrderNumber,
-        deliveryMethod: v.deliveryMethod,
-        recipientBpId: shp.customerBpId,
-        salesRepId,
-        endUserBpId:
-          v.deliveryMethod === "DIRECT_TO_USER" ? v.endUserBpId : null,
-        includePrice: v.includePrice,
-        status: "DRAFT",
-        notes: trimOrNull(v.notes),
-        items: v.items,
-      },
-    });
-    revalidate(number);
-    revalidatePath(`/shipping/delivery-orders/${v.deliveryOrderNumber}`);
-    return actionOk({ number });
-  } catch (e) {
-    return actionError(
-      prismaErrorMessage(
-        e,
-        tr("shipping.deliveryNoteActions.createFailed"),
-        tr,
-      ),
-    );
-  }
 }
 
 /** 更新 — 下書きのみ（明細は全置換）。出荷書・納品先は作成後変更不可。 */

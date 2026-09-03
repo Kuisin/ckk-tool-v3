@@ -16,7 +16,10 @@ import { type Access, rowInScope } from "@ckk/authz-core";
 import { revalidatePath } from "next/cache";
 import { getTranslations } from "next-intl/server";
 import { z } from "zod";
-import { combinabilityError } from "@/components/shipping/delivery-orders/model";
+import {
+  combinabilityError,
+  planAutoDeliveryNotes,
+} from "@/components/shipping/delivery-orders/model";
 import { recordAudit } from "@/lib/audit";
 import { checkPermission } from "@/lib/authz";
 import { prisma } from "@/lib/db";
@@ -30,6 +33,7 @@ import { type LocalizedText, localized } from "@/lib/format";
 import { decodeInventoryNote } from "@/lib/inventory-note-core";
 import { allocateDocumentKey } from "@/lib/numbering";
 import { lineShipStatus } from "@/lib/order-line-core";
+import { resolveSalesRepId } from "@/lib/sales-rep";
 import {
   type ActionResult,
   actionError,
@@ -197,6 +201,12 @@ export interface DeliverySourceInfo {
   shipToName: string | null;
   /** 注文請書ヘッダの配送方法 — 同じ配送方法の明細だけを束ねられる。 */
   deliveryMethod: "NORMAL" | "DIRECT_TO_USER";
+  /**
+   * 実効エンドユーザー（明細の行ごと指定 ?? 注文請書ヘッダの既定）。
+   * ユーザー直送は同じエンドユーザーの明細だけを束ねられる — 確定時に
+   * 自動作成する納品書の届け先を 1 件に決め打つため（combinabilityError）。
+   */
+  endUserBpId: string | null;
   /** 注文請書ヘッダの担当拠点 — 出荷書の出荷元拠点の既定値に使う。 */
   assignedPlantId: string | null;
   /** 既に出荷済みの数量（残数の算出用）。 */
@@ -304,6 +314,7 @@ export async function fetchDeliverySourceInfo(
         ? localized(so.acceptance.shipToBp.name as LocalizedText | null)
         : null,
       deliveryMethod: so.acceptance.deliveryMethod,
+      endUserBpId: so.endUserBpId ?? so.acceptance.endUserBpId,
       assignedPlantId:
         so.acceptance.assignedPlantId != null
           ? String(so.acceptance.assignedPlantId)
@@ -442,13 +453,22 @@ async function validateCombinable(
   const lines = await prisma.orderLine.findMany({
     where: { id: { in: ids } },
     select: {
+      endUserBpId: true,
       acceptance: {
-        select: { customerBpId: true, shipToBpId: true, deliveryMethod: true },
+        select: {
+          customerBpId: true,
+          shipToBpId: true,
+          deliveryMethod: true,
+          endUserBpId: true,
+        },
       },
     },
   });
   return combinabilityError(
-    lines.map((l) => l.acceptance),
+    lines.map((l) => ({
+      ...l.acceptance,
+      endUserBpId: l.endUserBpId ?? l.acceptance.endUserBpId,
+    })),
     tr,
     customerBpId,
   );
@@ -768,6 +788,87 @@ export async function updateDeliveryOrder(
 }
 
 /** 確定 (DRAFT → CONFIRMED)。 */
+/**
+ * 確定 (DRAFT → CONFIRMED) 時に自動作成する納品書の材料を集める
+ * （DISPATCH のみ・明細ゼロは対象外）。営業担当は明細 → 注文請書ヘッダの
+ * 導出値が 1 人に定まるときだけ引き継ぐ（無ければ顧客の主担当）。
+ */
+async function planDeliveryOrderNotes(key: DocKey): Promise<{
+  customerBpId: string;
+  customerBranchBpId: string | null;
+  deliveryMethod: "NORMAL" | "DIRECT_TO_USER";
+  salesRepId: string | null;
+  items: { productId: number; quantity: number; unitPrice: number }[];
+  notes: ReturnType<typeof planAutoDeliveryNotes>;
+} | null> {
+  const row = await prisma.deliveryOrder.findUnique({
+    where: { yearMonth_seq: key },
+    select: {
+      type: true,
+      customerBpId: true,
+      customerBranchBpId: true,
+      items: {
+        orderBy: { sortOrder: "asc" },
+        select: {
+          productId: true,
+          quantity: true,
+          orderLine: {
+            select: {
+              unitPrice: true,
+              endUserBpId: true,
+              acceptance: {
+                select: {
+                  salesRepId: true,
+                  deliveryMethod: true,
+                  endUserBpId: true,
+                },
+              },
+            },
+          },
+        },
+      },
+    },
+  });
+  if (!row || row.type !== "DISPATCH" || row.items.length === 0) return null;
+
+  const repIds = new Set(
+    row.items
+      .map((it) => it.orderLine?.acceptance.salesRepId)
+      .filter((id): id is string => Boolean(id)),
+  );
+  const salesRepId = await resolveSalesRepId(
+    repIds.size === 1 ? [...repIds][0] : null,
+    row.customerBpId,
+    null,
+  );
+
+  // combinabilityError が全明細で揃えることを保証しているので先頭行の値でよい。
+  const deliveryMethod =
+    row.items[0].orderLine?.acceptance.deliveryMethod ?? "NORMAL";
+  const endUserBpId =
+    row.items[0].orderLine?.endUserBpId ??
+    row.items[0].orderLine?.acceptance.endUserBpId ??
+    null;
+
+  return {
+    customerBpId: row.customerBpId,
+    customerBranchBpId: row.customerBranchBpId,
+    deliveryMethod,
+    salesRepId,
+    items: row.items.map((it) => ({
+      productId: it.productId,
+      quantity: it.quantity,
+      unitPrice: Number(it.orderLine?.unitPrice ?? 0),
+    })),
+    notes: planAutoDeliveryNotes({
+      customerBpId: row.customerBpId,
+      customerBranchBpId: row.customerBranchBpId,
+      deliveryMethod,
+      endUserBpId,
+    }),
+  };
+}
+
 export async function confirmDeliveryOrder(
   number: string,
 ): Promise<ActionResult> {
@@ -781,25 +882,78 @@ export async function confirmDeliveryOrder(
     return actionError(tr("common.outOfScope"));
   }
   try {
-    const updated = await prisma.deliveryOrder.updateMany({
-      where: { ...key, status: "DRAFT" },
-      data: { status: "CONFIRMED" },
+    const plan = await planDeliveryOrderNotes(key);
+    // 採番は $transaction の外で行う（既存の全書類共通の作法 — allocateDocumentKey
+    // 参照。gap は許容し、番号の一意性だけを守る）。
+    const noteKeys = plan
+      ? await Promise.all(plan.notes.map(() => allocateDocumentKey("DELIVERY")))
+      : [];
+    const deliveryNoteNumbers: string[] = [];
+
+    await prisma.$transaction(async (tx) => {
+      const updated = await tx.deliveryOrder.updateMany({
+        where: { ...key, status: "DRAFT" },
+        data: { status: "CONFIRMED" },
+      });
+      if (updated.count === 0) {
+        throw new Error(
+          `GUARD:${tr("shipping.deliveryOrderActions.onlyDraftCanBeConfirmed")}`,
+        );
+      }
+      if (!plan) return;
+      for (let i = 0; i < plan.notes.length; i++) {
+        const notePlan = plan.notes[i];
+        const noteKey = noteKeys[i];
+        await tx.deliveryNote.create({
+          data: {
+            yearMonth: noteKey.yearMonth,
+            seq: noteKey.seq,
+            deliveryOrderYearMonth: key.yearMonth,
+            deliveryOrderSeq: key.seq,
+            deliveryMethod: plan.deliveryMethod,
+            recipientBpId: notePlan.recipientBpId,
+            recipientBranchBpId: notePlan.recipientBranchBpId,
+            endUserBpId: notePlan.endUserBpId,
+            salesRepId: plan.salesRepId,
+            includePrice: notePlan.includePrice,
+            createdBy: authz.userId,
+            items: {
+              create: plan.items.map((it, idx) => ({
+                productId: it.productId,
+                quantity: it.quantity,
+                unitPrice: notePlan.includePrice ? it.unitPrice : null,
+                amount: notePlan.includePrice
+                  ? it.unitPrice * it.quantity
+                  : null,
+                sortOrder: idx,
+              })),
+            },
+          },
+        });
+        deliveryNoteNumbers.push(formatDocNumber("DRN", noteKey));
+      }
     });
-    if (updated.count === 0) {
-      return actionError(
-        tr("shipping.deliveryOrderActions.onlyDraftCanBeConfirmed"),
-      );
-    }
     await recordAudit({
       action: "UPDATE",
       tableName: "delivery_orders",
       recordId: number,
       before: { status: "DRAFT" },
-      after: { status: "CONFIRMED" },
+      after: { status: "CONFIRMED", deliveryNoteNumbers },
     });
+    for (const n of deliveryNoteNumbers) {
+      await recordAudit({
+        action: "CREATE",
+        tableName: "delivery_notes",
+        recordId: n,
+        after: { note: tr("shipping.deliveryOrderActions.autoCreatedNote") },
+      });
+    }
     revalidate(number);
     return actionOk();
   } catch (e) {
+    if (e instanceof Error && e.message.startsWith("GUARD:")) {
+      return actionError(e.message.slice("GUARD:".length));
+    }
     return actionError(
       prismaErrorMessage(
         e,

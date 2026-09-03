@@ -13,6 +13,7 @@
  */
 
 import {
+  Alert,
   Anchor,
   Badge,
   Paper,
@@ -22,8 +23,10 @@ import {
   Text,
   Title,
 } from "@mantine/core";
+import { modals } from "@mantine/modals";
 import { notifications } from "@mantine/notifications";
 import {
+  IconAlertTriangle,
   IconCheck,
   IconDownload,
   IconTruckDelivery,
@@ -96,6 +99,30 @@ export function DeliveryNoteDetail({
   // PDF は発行後のみ閲覧できる（ルート側も 403 で拒否する）。
   const canViewPdf = note.status !== "DRAFT";
   const pdfFilename = `${note.deliveryNumber}.pdf`;
+  // ユーザー直送で価格記載ありの納品書は、最終需要家へ渡すと事故になる
+  // （届けるべき相手は顧客）。開く／ダウンロードの前に一度確認を挟む。
+  const showsPriceToDirectUser =
+    note.deliveryMethod === "DIRECT_TO_USER" && note.includePrice;
+  const confirmBeforePdf = (action: () => void) => {
+    if (!showsPriceToDirectUser) {
+      action();
+      return;
+    }
+    modals.openConfirmModal({
+      title: tr("shipping.deliveryNotes.confirmOpenWithPriceTitle"),
+      children: (
+        <Text size="sm">
+          {tr("shipping.deliveryNotes.confirmOpenWithPriceBody")}
+        </Text>
+      ),
+      labels: {
+        confirm: tr("common.openThePdf"),
+        cancel: tr("common.cancel"),
+      },
+      confirmProps: { color: "orange" },
+      onConfirm: action,
+    });
+  };
   const [pdfFile, setPdfFile] = useState<PdfFileMeta | null>(pdfMeta);
   // 再生成でプレビューの iframe を貼り替えるためのキャッシュバスター。
   const [pdfNonce, setPdfNonce] = useState(0);
@@ -261,7 +288,10 @@ export function DeliveryNoteDetail({
                     label: tr("common.downloadThePdf"),
                     icon: <IconDownload size={14} />,
                     onClick: () =>
-                      void downloadFile(pdfUrl("&download=1"), pdfFilename),
+                      confirmBeforePdf(
+                        () =>
+                          void downloadFile(pdfUrl("&download=1"), pdfFilename),
+                      ),
                   },
                 ]
               : []),
@@ -271,7 +301,18 @@ export function DeliveryNoteDetail({
               ? () => router.push(`${BASE_PATH}/${note.id}/edit`)
               : undefined
           }
-          pdf={canViewPdf ? { href: pdfUrl() } : undefined}
+          pdf={
+            canViewPdf
+              ? showsPriceToDirectUser
+                ? {
+                    onClick: () =>
+                      confirmBeforePdf(() =>
+                        window.open(pdfUrl(), "_blank", "noopener,noreferrer"),
+                      ),
+                  }
+                : { href: pdfUrl() }
+              : undefined
+          }
         />
       }
       breadcrumbs={[
@@ -284,6 +325,16 @@ export function DeliveryNoteDetail({
       title={note.deliveryNumber}
       updatedAt={fmt.dateTime(note.updatedAt)}
     >
+      {showsPriceToDirectUser && (
+        <Alert
+          color="orange"
+          icon={<IconAlertTriangle size={16} />}
+          title={tr("shipping.deliveryNotes.confirmOpenWithPriceTitle")}
+          variant="light"
+        >
+          {tr("shipping.deliveryNotes.directToUserPriceWarning")}
+        </Alert>
+      )}
       <SummaryGrid>
         <FieldValue
           label={tr("common.deliveryNoteNumber")}

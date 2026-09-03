@@ -175,6 +175,12 @@ export interface OrderAcceptanceView {
   /** 出荷作業場所（作業場所マスタ MS0D。任意。id は Select 向けに文字列化）。 */
   shippingWorkLocationId: string | null;
   shippingWorkLocationName: string | null;
+  /**
+   * 顧客が自前の納品書（バーコード印字など）を用意しているか。true のときは
+   * 自社発行の納品書に添える運用の目印（出荷準備担当への注意喚起）。
+   * 自動作成される納品書の通数・宛先には影響しない。
+   */
+  customerProvidesDeliveryNote: boolean;
   /** 作成者（app.users.display_name）。 */
   createdByName: string | null;
   quoteNumber: string | null;

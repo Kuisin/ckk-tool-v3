@@ -12,7 +12,7 @@ screenshots: [delivery-order-list-01, delivery-order-new-01, delivery-order-deta
 - 可以做一张出货单，写清要发的产品和数量。
 - 只要选一张订单回执，**还没发货的数量会自动填进明细里**（不用重新手打）。
 - 记录发货以后，**库存会自动减少**。
-- 可以从出货单做出[送货单](/manual/zh/operations/shipping/delivery-note/user)。
+- **确定**出货单后会**自动生成**[送货单](/manual/zh/operations/shipping/delivery-note/user)，无需手动创建。
 - 不发出去、留在公司里保管的部分（比如多做的备品）也可以记录。
 
 出货单是很重要的单据，以后做[发票](/manual/zh/operations/billing/invoice/user)时就以它为依据。
@@ -88,7 +88,7 @@ screenshots: [delivery-order-list-01, delivery-order-new-01, delivery-order-deta
 
 ![确定确认界面](../../../assets/screenshots/delivery-order-confirm-01.png)
 
-确定之后 **就不能再编辑了**，但可以开始做送货单。
+确定之后 **就不能再编辑了**。发送类出货单在确定的同时会**自动生成送货单** —— 直送最终用户会生成 **两份**：一份无价格（给最终用户）、一份含价格（给客户）。库存保管不会生成送货单。
 
 ### 2. 实际发出之后（发货）
 
@@ -111,15 +111,17 @@ screenshots: [delivery-order-list-01, delivery-order-new-01, delivery-order-deta
 
 在类别里选了「在庫保管」之后，界面上会显示相应的说明。
 
-## 做送货单
+## 送货单是怎么生成的
 
-1. 在出货单界面打开「**納品書**」（送货单）标签页。
-2. 点「**納品書を作成**」（创建送货单）。
-3. 会打开[送货单](/manual/zh/operations/shipping/delivery-note/user)的创建界面，出货单已经事先选好。
+送货单**不需要手动创建**。发送类出货单一经**确定**就会自动生成。
+
+- 常规配送：**一份**含价格的送货单。
+- 直送最终用户：**两份** —— 一份无价格（给最终用户）、一份含价格（给客户）。**切勿把含价格的那份交给最终用户**（[送货单](/manual/zh/operations/shipping/delivery-note/user)界面在打开或打印前也会提示警告）。
+- 库存保管的出货单不会生成送货单。
+
+出货单界面的「**納品書**」（送货单）标签页会列出从这张出货单生成的送货单（送货单号、送货对象、方式、状态、送货日）。
 
 ![送货单标签页](../../../assets/screenshots/delivery-order-delivery-notes-01.png)
-
-这个标签页里也会列出从这张出货单做出的送货单（送货单号、送货对象、方式、状态、送货日）。
 
 ## 输入项
 

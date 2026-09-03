@@ -6711,7 +6711,8 @@
       "priceOverrideLine": "第 {row} 行 {actual}（价格表 {expected}）",
       "hideTheDocumentPane": "折叠单据",
       "showTheDocumentPane": "展开单据",
-      "hideTheDocument": "隐藏"
+      "hideTheDocument": "隐藏",
+      "customerProvidesDeliveryNote": "客户自备送货单"
     },
     "orderLines": {
       "parentDocumentOfThisLine": "此明细的父单据",
@@ -7318,31 +7319,30 @@
       "markedAsDelivered": "已标记为已交货",
       "selectAnEndUser": "请选择最终用户",
       "theDeliveryNoteWasUpdated": "已更新送货单",
-      "newDeliveryNote": "新建送货单",
-      "chooseAConfirmedOrShippedDelivery": "选择已确定・已出货的出货单",
       "shipToForDirectToUser": "直送最终用户的送货对象（配送完成书不含价格・送货单另寄）",
       "searchEndUsers": "搜索最终用户",
       "showPricesPrintUnitPriceAnd": "记载价格（在送货单上记载单价・金额）",
-      "choosingADeliveryOrderPrefillsThe": "选择出货单后将默认生成明细（单价取自订单明细）。「记载价格」关闭时不保存单价・金额。",
       "searchByDeliveryNoteNumberDelivery": "按送货单号、出货单号或送货对象搜索",
       "thereAreNoDeliveryNotes": "没有送货单",
       "invoiceNote": "{status}・{amount}",
       "confirmIssueBody": "将发行送货单 {number}。发行后将无法编辑。",
       "issuedBody": "已发行送货单 {number}",
       "confirmDeliveredBody": "将送货单 {number} 标记为已交货。交货日期将记录为今天。",
-      "deliveredBody": "已将送货单 {number} 标记为已交货"
+      "deliveredBody": "已将送货单 {number} 标记为已交货",
+      "directToUserPriceWarning": "此送货单含有价格。请勿交给最终用户 —— 此单据是给客户的。",
+      "confirmOpenWithPriceTitle": "此送货单含有价格",
+      "confirmOpenWithPriceBody": "这是直送最终用户订单中含价格的送货单。请勿交给最终用户，仅供客户使用。"
     },
     "deliveryOrders": {
       "stockStorageSoNotTiedTo": "—（库存保管，故不关联订单明细）",
       "shipmentNotTiedToAnOrder": "—（未关联订单明细的出货）",
       "whereTheShippedLotWasMade": "出货批次的制造来源",
       "noDeliveryNoteHasBeenCreated": "尚未创建送货单",
-      "notCreatedTheDeliveryNoteIs": "未创建（出货后创建送货单）",
+      "notCreatedTheDeliveryNoteIs": "未创建（确认后自动创建）",
       "fromSite": "出货据点",
       "workOrderLinkedAtHeader": "工单（表头关联）",
-      "createADeliveryNote": "创建送货单",
       "thereIsNoDeliveryNoteFor": "此出货单尚无送货单",
-      "youCanCreateTheDeliveryNote": "确定后方可创建送货单",
+      "youCanCreateTheDeliveryNote": "确认出货单时会自动创建送货单",
       "ship": "出货",
       "shipped": "已出货",
       "confirmTheShipment": "确认出货",
@@ -7378,7 +7378,11 @@
       "deletedBody": "已删除出货单 {number}",
       "onlySameCustomerCanBeCombined": "一张出货单只能合并同一客户的订单明细",
       "onlySameShipToCanBeCombined": "一张出货单只能合并同一送货对象的订单明细",
-      "onlySameDeliveryMethodCanBeCombined": "一张出货单只能合并同一配送方式（常规配送 / 直送最终用户）的订单明细"
+      "onlySameDeliveryMethodCanBeCombined": "一张出货单只能合并同一配送方式（常规配送 / 直送最终用户）的订单明细",
+      "stockStorageHasNoDeliveryNote": "库存保管出货单不会创建送货单",
+      "onlySameEndUserCanBeCombined": "一张出货单只能合并同一最终用户的订单明细",
+      "confirmConfirmBodyDispatch": "将确认出货单 {number}。确认后无法编辑。系统会自动创建送货单（直送最终用户会创建两份 — 一份无价格、一份含价格）。",
+      "confirmedBodyDispatch": "已确认出货单 {number} 并创建送货单"
     },
     "pendingShipments": {
       "completedLots": "完成批次",
@@ -7414,23 +7418,17 @@
       "partialShipmentLabel": "部分出货（出货 {total} / 剩余 {remaining}）"
     },
     "deliveryNoteForm": {
-      "selectADeliveryOrder": "请选择出货单",
-      "createdWithNumber": "已创建送货单 {number}",
       "editWithNumber": "编辑送货单 {noteId}"
     },
     "deliveryNoteTable": {
       "destinationLabel": "送达对象：{name}"
     },
     "deliveryNoteActions": {
-      "createFailed": "送货单创建失败",
       "deliverFailed": "交货处理失败",
-      "deliveryOrderMustBeConfirmedOrShipped": "只能从已确定或已出货的出货单创建送货单",
-      "deliveryOrderNotFound": "未找到目标出货单",
       "draftOnlyCanEdit": "只有草稿送货单可以编辑",
       "draftOnlyCanIssue": "只有草稿送货单可以发行",
       "exceedsShippedQuantity": "{label} 的数量 {quantity} 超过出货数量 {shipped}",
       "invalidDeliveryNoteNumber": "送货单编号无效",
-      "invalidDeliveryOrderNumber": "出货单编号无效",
       "issueFailed": "发行失败",
       "issuedOnlyCanDeliver": "只有已发行的送货单可以标记为已交货",
       "productFallbackLabel": "产品 #{id}",
@@ -7458,7 +7456,8 @@
       "shipFailed": "出货处理失败",
       "shippedNotificationTitle": "出货单 {number} 已出货",
       "specifyAConfirmedOrderLine": "请指定已确定的订单明细",
-      "updateFailed": "出货单更新失败"
+      "updateFailed": "出货单更新失败",
+      "autoCreatedNote": "出货单确认时自动创建"
     }
   },
   "ui": {
@@ -8309,6 +8308,10 @@
       "shippingWorkLocation": {
         "label": "出货作业场所",
         "summary": "进行出货作业（包装、装车等）的场所。从作业场所主数据中选择。"
+      },
+      "customerProvidesDeliveryNote": {
+        "label": "客户自备送货单",
+        "summary": "客户自备送货单（如条码打印）时勾选，用于提醒发货人员随本系统自动生成的送货单一并附上客户自备的那份。不影响自动生成送货单的份数与收件人。"
       },
       "notes": {
         "label": "备注",

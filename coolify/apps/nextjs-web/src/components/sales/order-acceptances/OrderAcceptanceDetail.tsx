@@ -26,6 +26,7 @@ import {
   Alert,
   Anchor,
   Badge,
+  Checkbox,
   Divider,
   Grid,
   Group,
@@ -906,6 +907,26 @@ export function OrderAcceptanceDetail({
                     value={a.shippingWorkLocationName}
                   />
                   <FieldValue
+                    label={tr(
+                      "sales.orderAcceptances.customerProvidesDeliveryNote",
+                    )}
+                    value={
+                      <Badge
+                        color={
+                          a.customerProvidesDeliveryNote ? "green" : "gray"
+                        }
+                        size="sm"
+                        variant="light"
+                      >
+                        {tr(
+                          a.customerProvidesDeliveryNote
+                            ? "common.included"
+                            : "common.none2",
+                        )}
+                      </Badge>
+                    }
+                  />
+                  <FieldValue
                     label={tr("common.customerOrderRef")}
                     value={a.customerOrderRef}
                   />
@@ -1472,6 +1493,8 @@ function DraftEditor({
   const [shippingWorkLocationId, setShippingWorkLocationId] = useState<
     string | null
   >(a.shippingWorkLocationId);
+  const [customerProvidesDeliveryNote, setCustomerProvidesDeliveryNote] =
+    useState(a.customerProvidesDeliveryNote);
   const [customerOrderRef, setCustomerOrderRef] = useState(
     a.customerOrderRef ?? "",
   );
@@ -1496,6 +1519,7 @@ function DraftEditor({
     endUserBpId,
     assignedPlantId,
     shippingWorkLocationId,
+    customerProvidesDeliveryNote,
     customerOrderRef,
     quoteNumber,
     orderDate,
@@ -1523,6 +1547,7 @@ function DraftEditor({
         shippingWorkLocationId: shippingWorkLocationId
           ? Number(shippingWorkLocationId)
           : null,
+        customerProvidesDeliveryNote,
         customerOrderRef: customerOrderRef || null,
         quoteNumber: quoteNumber || null,
         orderDate,
@@ -1746,6 +1771,21 @@ function DraftEditor({
               placeholder={tr("common.selectAWorkLocationOptional")}
               searchable
               value={shippingWorkLocationId}
+            />
+            <Checkbox
+              checked={customerProvidesDeliveryNote}
+              label={
+                <HelpLabel
+                  {...fieldHelp(
+                    tr,
+                    "orderAcceptance",
+                    "customerProvidesDeliveryNote",
+                  )}
+                />
+              }
+              onChange={(e) =>
+                setCustomerProvidesDeliveryNote(e.currentTarget.checked)
+              }
             />
           </Group>
           {/*
