@@ -93,7 +93,7 @@ Each approval or send-back is recorded below "Progress" as an **approval record*
 
 Lists the [privileged access](/manual/en/operations/system/privileged-access/user) (`SY0G`) requests waiting for your decision. **The tab is hidden if you cannot decide any of them.**
 
-Privileged access requests send no notification to approvers, so until now they were only visible if you opened SY0G. They are surfaced here too, on the screen you open every day.
+A notification also goes out to everyone who can decide the request (bell, email, device push — see [User settings](/manual/en/user-settings)). Notifications get missed, so this screen lets you see **how many are still open** at any time.
 
 You only read them here — **the decision itself is not made on this screen**. "**Decide**" opens the "To approve" tab of Privileged access (`SY0G`); act there. Keeping a single place for the action avoids an approval screen that exists twice and only gets fixed once.
 

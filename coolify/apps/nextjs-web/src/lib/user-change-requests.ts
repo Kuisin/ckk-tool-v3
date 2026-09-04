@@ -21,6 +21,10 @@ import { recordAudit } from "@/lib/audit";
 import { checkPermission, sessionUserId } from "@/lib/authz";
 import { prisma } from "@/lib/db";
 import {
+  notifyPrivilegedDecided,
+  notifyPrivilegedRequested,
+} from "@/lib/privileged-notify";
+import {
   type ActionResult,
   actionError,
   actionOk,
@@ -47,6 +51,28 @@ const PRIV_PATH = "/settings/privileged-access";
 
 /** 変更の権限コード。方式 B なので昇格（時限付与）は使わない。 */
 export const USER_ADMIN_CODE = "user_admin";
+
+/** 対象者の表示名（引けなければ null）。通知の件名にだけ使う。 */
+async function targetName(userId: string): Promise<string | null> {
+  const u = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { displayName: true, username: true },
+  });
+  return u?.displayName ?? u?.username ?? null;
+}
+
+/**
+ * 通知の件名にする「何の依頼か」。方式 B は 1 つの具体的な変更なので、
+ * 種類と対象者が分かれば通知としては足りる（中身は SY0G で読む）。
+ */
+async function changeSubject(
+  kind: UserChangeKind,
+  targetName: string | null,
+  tr: Awaited<ReturnType<typeof getTranslations>>,
+): Promise<string> {
+  const label = userChangeLabel(kind, tr);
+  return targetName ? `${label}: ${targetName}` : label;
+}
 
 export interface ApplyResult {
   ok: boolean;
@@ -402,7 +428,7 @@ export async function createUserChangeRequest(input: {
 
   const target = await prisma.user.findUnique({
     where: { id: input.targetUserId },
-    select: { id: true, username: true },
+    select: { id: true, username: true, displayName: true },
   });
   if (!target) return actionError(tr("common.targetUserNotFound"));
 
@@ -426,6 +452,17 @@ export async function createUserChangeRequest(input: {
         targetUser: target.username,
         reason: input.reason.trim(),
       },
+    });
+    // 決裁できる人（user_admin:APPROVE 保持者）へ通知。
+    await notifyPrivilegedRequested({
+      code: USER_ADMIN_CODE,
+      requestedBy: actorId,
+      subject: await changeSubject(
+        input.kind,
+        target.displayName ?? target.username,
+        tr,
+      ),
+      reason: input.reason.trim(),
     });
     revalidatePath(PRIV_PATH);
     revalidatePath(`${BASE_PATH}/${input.targetUserId}`);
@@ -501,6 +538,23 @@ export async function approveUserChangeRequest(
       applyError: applied.ok ? null : applied.error,
     },
   });
+  await notifyPrivilegedDecided({
+    requestedBy: req.requestedBy,
+    decidedBy: actorId,
+    subject: await changeSubject(
+      req.kind,
+      await targetName(req.targetUserId),
+      tr,
+    ),
+    outcome: "APPROVED",
+    // 承認したのに当てられなかったときは、そう書く —「承認されたのに
+    // 変わっていない」を無言にしない（画面の apply_error と同じ事実）。
+    comment: applied.ok
+      ? comment
+      : tr("privilegedNotify.approvedButNotApplied", {
+          error: applied.error ?? tr("common.applyFailed"),
+        }),
+  });
   revalidatePath(PRIV_PATH);
   revalidatePath(BASE_PATH);
   revalidatePath(`${BASE_PATH}/${req.targetUserId}`);
@@ -541,6 +595,17 @@ export async function rejectUserChangeRequest(
     recordId: id,
     before: { status: "PENDING" },
     after: { status: "REJECTED", reason: reason.trim() },
+  });
+  await notifyPrivilegedDecided({
+    requestedBy: req.requestedBy,
+    decidedBy: actorId,
+    subject: await changeSubject(
+      req.kind,
+      await targetName(req.targetUserId),
+      tr,
+    ),
+    outcome: "REJECTED",
+    comment: reason,
   });
   revalidatePath(PRIV_PATH);
   return actionOk();

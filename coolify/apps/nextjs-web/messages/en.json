@@ -7774,6 +7774,14 @@
     "unknownOperation": "Unknown privileged operation: {key} (register it in lib/privileged-operations.ts)",
     "operationRequiresApprovalSy0g": "This operation requires approval ({label}). Request it from Privileged access (SY0G)"
   },
+  "privilegedNotify": {
+    "requestTitle": "Privileged access request: {subject}",
+    "requestMessage": "{name} / Reason: {reason}",
+    "approvedTitle": "Your privileged access request was approved: {subject}",
+    "rejectedTitle": "Your privileged access request was sent back: {subject}",
+    "revokedTitle": "Your privileged access grant was revoked: {subject}",
+    "approvedButNotApplied": "Approved, but the change could not be applied: {error}"
+  },
   "audit": {
     "emptyArray": "(None)",
     "fieldLabels": {

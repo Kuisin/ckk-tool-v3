@@ -7774,6 +7774,14 @@
     "unknownOperation": "未知の特権操作です: {key}（lib/privileged-operations.ts に登録してください）",
     "operationRequiresApprovalSy0g": "この操作には承認が必要です（{label}）。特権アクセス（SY0G）から申請してください"
   },
+  "privilegedNotify": {
+    "requestTitle": "特権アクセスの承認依頼: {subject}",
+    "requestMessage": "{name} / 理由: {reason}",
+    "approvedTitle": "特権アクセスの申請が承認されました: {subject}",
+    "rejectedTitle": "特権アクセスの申請が差し戻されました: {subject}",
+    "revokedTitle": "特権アクセスの付与が取り消されました: {subject}",
+    "approvedButNotApplied": "承認されましたが、変更を当てられませんでした: {error}"
+  },
   "audit": {
     "emptyArray": "（なし）",
     "fieldLabels": {
