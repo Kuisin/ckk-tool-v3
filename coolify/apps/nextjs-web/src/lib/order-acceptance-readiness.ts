@@ -114,3 +114,31 @@ export function readinessSummary(
       : "")
   );
 }
+
+// ── 出荷先が使える書類か（配送方法との関係） ────────────────────────────────
+
+/**
+ * 出荷先（ship_to）を指定できるのは**通常配送のときだけ**。
+ *
+ * ユーザー直送の届け先はエンドユーザー（end_user）で、そこに出荷先を併記すると
+ * 届け先が 2 つある書類になる — 出荷書確定時の納品書自動作成は届け先を 1 件に
+ * 決め打つ（planAutoDeliveryNotes）し、取引先ポータルの可視性も ship_to を
+ * 見る（lib/portal-documents）。どちらも「もう一方は無視する」という黙った
+ * 選択になるので、書けないようにする方を選ぶ。
+ *
+ * 画面はこの規則で欄を灰色にし、Server Action は保存時に値を落とす —
+ * 画面の入力は信用しない（灰色の欄は古いタブや API 直叩きでは灰色ではない）。
+ */
+export function shipToApplies(
+  deliveryMethod: "NORMAL" | "DIRECT_TO_USER",
+): boolean {
+  return deliveryMethod !== "DIRECT_TO_USER";
+}
+
+/** 配送方法に合わない出荷先を落とす（ユーザー直送 → 常に null）。 */
+export function normalizeShipToBpId(
+  deliveryMethod: "NORMAL" | "DIRECT_TO_USER",
+  shipToBpId: string | null,
+): string | null {
+  return shipToApplies(deliveryMethod) ? shipToBpId : null;
+}

@@ -140,6 +140,7 @@ import type { PendingAcceptanceCancelView } from "@/lib/order-acceptance-cancel"
 import {
   acceptanceReadiness,
   readinessSummary,
+  shipToApplies,
 } from "@/lib/order-acceptance-readiness";
 import {
   acceptanceTotals,
@@ -1685,9 +1686,16 @@ function DraftEditor({
             />
           </Group>
           <Group align="flex-end" gap="sm" grow preventGrowOverflow={false}>
-            {/* 出荷先は顧客と異なり得る（直送・支店渡しなど）— 任意。 */}
+            {/* 出荷先は顧客と異なり得る（支店渡しなど）— 通常配送のときだけの欄。
+                ユーザー直送の届け先はエンドユーザーなので灰色にする。 */}
             <SearchSelect
               clearable
+              description={
+                shipToApplies(deliveryMethod)
+                  ? undefined
+                  : tr("sales.orderAcceptances.shipToOnlyForNormalDelivery")
+              }
+              disabled={!shipToApplies(deliveryMethod)}
               initialOption={
                 a.shipToBpId && a.shipToName
                   ? { value: a.shipToBpId, label: a.shipToName }
@@ -1712,10 +1720,11 @@ function DraftEditor({
                 />
               }
               onChange={(v) => {
-                setDeliveryMethod(
-                  (v as "NORMAL" | "DIRECT_TO_USER") ?? "NORMAL",
-                );
-                if (v !== "DIRECT_TO_USER") setEndUserError(null);
+                const next = (v as "NORMAL" | "DIRECT_TO_USER") ?? "NORMAL";
+                setDeliveryMethod(next);
+                // 直送に切り替えたら出荷先は捨てる（保存側も落とす）。
+                if (!shipToApplies(next)) setShipToBpId(null);
+                if (next !== "DIRECT_TO_USER") setEndUserError(null);
               }}
               value={deliveryMethod}
               withAsterisk

@@ -183,7 +183,7 @@ screenshots: [order-acceptance-list-01, order-acceptance-new-01, order-acceptanc
 | [客户订单号](#field-customer-order-ref) | 选填 | 客户方订单上的编号 |
 | [报价单](#field-quote-number) | 选填 | 对应的报价单 |
 | [订单日期](#field-order-date) | 选填 | 客户下单的日期 |
-| [发货目的地](#field-ship-to) | 选填 | 产品的送达地点 |
+| [发货目的地](#field-ship-to) | 选填（仅常规配送） | 产品的送达地点 |
 | [配送方式](#field-delivery-method) | 必填 | 普通配送 / 直送最终用户 |
 | [最终用户](#field-end-user) | 直送时必填 | 直送时的实际送达对象（最终需要方） |
 | [负责据点](#field-assigned-plant) | 选填 | 处理这笔订单的据点 |
@@ -221,6 +221,8 @@ screenshots: [order-acceptance-list-01, order-acceptance-new-01, order-acceptanc
 ### 发货目的地 [#field-ship-to]
 
 产品的送达地点。要送到**与下单客户不同的公司・分店**时选择。留空则表示送到该客户处。
+
+此栏**仅用于常规配送**。把配送方式改为「直送最终用户」后会变灰、无法选择 —— 直送的送达对象是[最终用户](#field-end-user)，一份单据不应有两个送达对象。切换为直送时，之前选择的发货目的地会被清除。
 
 ### 配送方式 [#field-delivery-method]
 

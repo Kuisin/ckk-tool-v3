@@ -8,7 +8,9 @@
 import { describe, expect, it } from "vitest";
 import {
   acceptanceReadiness,
+  normalizeShipToBpId,
   readinessSummary,
+  shipToApplies,
 } from "./order-acceptance-readiness";
 
 /** テスト用の最小 tr — key と params をそのまま文字列化する。 */
@@ -171,5 +173,22 @@ describe("readinessSummary", () => {
     expect(readinessSummary(issues, tr, 1)).toBe(
       'sales.orderAcceptanceReadiness.customerNotIdentified sales.orderAcceptanceReadiness.andNMore:{"count":2}',
     );
+  });
+});
+
+describe("shipToApplies / normalizeShipToBpId — 出荷先は通常配送だけの欄", () => {
+  it("通常配送では出荷先を持てる", () => {
+    expect(shipToApplies("NORMAL")).toBe(true);
+    expect(normalizeShipToBpId("NORMAL", "bp-1")).toBe("bp-1");
+  });
+
+  it("ユーザー直送では出荷先を落とす（届け先はエンドユーザー）", () => {
+    expect(shipToApplies("DIRECT_TO_USER")).toBe(false);
+    expect(normalizeShipToBpId("DIRECT_TO_USER", "bp-1")).toBeNull();
+  });
+
+  it("未指定はどちらの配送方法でも null のまま", () => {
+    expect(normalizeShipToBpId("NORMAL", null)).toBeNull();
+    expect(normalizeShipToBpId("DIRECT_TO_USER", null)).toBeNull();
   });
 });

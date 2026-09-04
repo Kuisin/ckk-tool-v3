@@ -6677,6 +6677,7 @@
       "viewTheBreakdown": "View the breakdown",
       "didYouMean": "Did you mean",
       "selectACustomer": "Select a customer",
+      "shipToOnlyForNormalDelivery": "Not used for direct-to-end-user (the end user is the destination)",
       "createADraft": "Create a draft",
       "createAnOrderAcceptanceByHand": "Create an order acceptance by hand",
       "createsTheOrderAcceptanceDirectlyWithout": "Creates the order acceptance directly, without automatic order intake (saved as a draft).",
@@ -8367,7 +8368,7 @@
       },
       "shipTo": {
         "label": "Ship-to",
-        "summary": "The delivery destination for the product. Select this when delivering to a different company or branch than the customer who placed the order. Leaving it blank means delivery to the customer."
+        "summary": "The delivery destination for the product. Select this when delivering to a different company or branch than the customer who placed the order. Leaving it blank means delivery to the customer. It applies to standard delivery only — with direct-to-end-user it is disabled, because the end user is the destination."
       },
       "deliveryMethod": {
         "label": "Delivery method",

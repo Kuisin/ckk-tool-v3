@@ -6677,6 +6677,7 @@
       "viewTheBreakdown": "内訳を見る",
       "didYouMean": "もしかして",
       "selectACustomer": "顧客を選択してください",
+      "shipToOnlyForNormalDelivery": "ユーザー直送では使いません（届け先はエンドユーザー）",
       "createADraft": "下書きを作成",
       "createAnOrderAcceptanceByHand": "注文請書 手入力作成",
       "createsTheOrderAcceptanceDirectlyWithout": "注文書の自動取込を使わずに注文請書を直接作成します（下書きとして保存）。",
@@ -8367,7 +8368,7 @@
       },
       "shipTo": {
         "label": "出荷先",
-        "summary": "製品の届け先です。注文をくれたお客様と別の会社・支店に届けるときに選びます。空のままなら、お客様へ届けるという意味です。"
+        "summary": "製品の届け先です。注文をくれたお客様と別の会社・支店に届けるときに選びます。空のままなら、お客様へ届けるという意味です。通常配送のときだけの欄で、ユーザー直送では選べません（届け先はエンドユーザーになります）。"
       },
       "deliveryMethod": {
         "label": "配送方法",
