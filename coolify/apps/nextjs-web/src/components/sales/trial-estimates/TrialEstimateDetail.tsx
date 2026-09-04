@@ -54,7 +54,7 @@ import { ModalShell } from "@/components/ui/modals";
 import {
   type HandoffGroup,
   ProcedurePanel,
-  type ProcedureStage,
+  procedureStages,
 } from "@/components/ui/ProcedurePanel";
 import { SearchSelect } from "@/components/ui/SearchSelect";
 import { StatusBadge } from "@/components/ui/StatusBadge";
@@ -133,31 +133,32 @@ export function TrialEstimateDetail({
   const [linkProductId, setLinkProductId] = useState<string | null>(null);
 
   // ── 手続き状況（下書き → 確定 → 価格表登録済）───────────────────────────
-  const stages: ProcedureStage[] = [
-    {
-      key: "draft",
-      label: tr("common.draft"),
-      description: fmt.date(record.createdAt),
-      loading: status === "DRAFT",
-    },
-    {
-      key: "confirmed",
-      label: tr("common.confirmed"),
-      description:
-        status === "DRAFT"
-          ? tr("sales.trialEstimateDetail.readyForPriceListBase")
-          : tr("sales.trialEstimates.confirmed"),
-      loading: status === "CONFIRMED",
-    },
-    {
-      key: "registered",
-      label: tr("sales.trialEstimates.registered"),
-      description: record.registeredAt
-        ? fmt.date(record.registeredAt)
-        : tr("sales.trialEstimates.confirmedOnceUsedInAPrice"),
-    },
-  ];
-  const active = status === "DRAFT" ? 0 : status === "CONFIRMED" ? 1 : 3;
+  // 確定済みは「確定」が済んだ段。次は価格表で使われること（2）。
+  const stages = procedureStages(
+    [
+      {
+        key: "draft",
+        label: tr("common.draft"),
+        description: fmt.date(record.createdAt),
+      },
+      {
+        key: "confirmed",
+        label: tr("common.confirmed"),
+        description:
+          status === "DRAFT"
+            ? tr("sales.trialEstimateDetail.readyForPriceListBase")
+            : tr("sales.trialEstimates.confirmed"),
+      },
+      {
+        key: "registered",
+        label: tr("sales.trialEstimates.registered"),
+        description: record.registeredAt
+          ? fmt.date(record.registeredAt)
+          : tr("sales.trialEstimates.confirmedOnceUsedInAPrice"),
+      },
+    ],
+    status === "DRAFT" ? 0 : status === "CONFIRMED" ? 2 : 3,
+  );
 
   // 下流 = この価格試算を基準単価ソースにした価格表（1 価格試算が複数に使われ得る）。
   const handoffGroups: HandoffGroup[] = [
@@ -344,11 +345,7 @@ export function TrialEstimateDetail({
         />
       </SummaryGrid>
 
-      <ProcedurePanel
-        active={active}
-        handoffGroups={handoffGroups}
-        stages={stages}
-      />
+      <ProcedurePanel handoffGroups={handoffGroups} stages={stages} />
 
       <AppTabs onChange={setTab} value={tab}>
         <Tabs.List>

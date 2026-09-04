@@ -112,7 +112,7 @@ import {
   approvalStage,
   type HandoffGroup,
   ProcedurePanel,
-  type ProcedureStage,
+  procedureStages,
 } from "@/components/ui/ProcedurePanel";
 import { SalesRepSelect } from "@/components/ui/SalesRepSelect";
 import { SearchSelect } from "@/components/ui/SearchSelect";
@@ -168,8 +168,8 @@ import { usePriceEntries } from "./usePriceEntries";
 const BASE_PATH = "/sales/order-acceptances";
 const SALES_ORDERS_PATH = "/sales/order-lines";
 
-/** status → Stepper の active index（取込 / 下書き / 承認 / 確定）。 */
-function stepperActive(status: string): number {
+/** status → いま留まっている段（取込 / 下書き / 承認 / 確定）。 */
+function currentStage(status: string): number {
   switch (status) {
     case "IMPORT":
       return 0;
@@ -279,29 +279,29 @@ export function OrderAcceptanceDetail({
   const fileUrl = a.sourceFilename ? sourceFileUrl(a) : null;
 
   // ── 手続き状況（取込 → 下書き → 承認 → 確定）─────────────────────────────
-  const stages: ProcedureStage[] = [
-    {
-      key: "import",
-      label: tr("sales.orderAcceptances.intake"),
-      description: sourceDef.label,
-      loading: a.status === "IMPORT",
-    },
-    {
-      key: "draft",
-      label: tr("common.draft"),
-      description: tr("sales.orderAcceptances.reviewAndEdit"),
-      loading: a.status === "DRAFT",
-    },
-    approvalStage(approval, { fmtDate: (v) => fmt.date(v), tr }),
-    {
-      key: "completed",
-      label: tr("common.confirmed"),
-      description: a.completedAt
-        ? fmt.date(a.completedAt)
-        : tr("sales.orderAcceptances.toTheOrderLines"),
-      loading: a.status === "APPROVED",
-    },
-  ];
+  const stages = procedureStages(
+    [
+      {
+        key: "import",
+        label: tr("sales.orderAcceptances.intake"),
+        description: sourceDef.label,
+      },
+      {
+        key: "draft",
+        label: tr("common.draft"),
+        description: tr("sales.orderAcceptances.reviewAndEdit"),
+      },
+      approvalStage(approval, { fmtDate: (v) => fmt.date(v), tr }),
+      {
+        key: "completed",
+        label: tr("common.confirmed"),
+        description: a.completedAt
+          ? fmt.date(a.completedAt)
+          : tr("sales.orderAcceptances.toTheOrderLines"),
+      },
+    ],
+    currentStage(a.status),
+  );
 
   // 上流 = 元になった見積書（FAX 直受けの注文書には無い）。
   const sourceGroups: HandoffGroup[] | undefined = a.quoteNumber
@@ -1250,7 +1250,6 @@ export function OrderAcceptanceDetail({
             )}
 
             <ProcedurePanel
-              active={stepperActive(a.status)}
               handoffGroups={handoffGroups}
               sourceGroups={sourceGroups}
               stages={stages}

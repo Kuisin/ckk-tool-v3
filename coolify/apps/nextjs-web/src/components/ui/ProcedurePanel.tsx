@@ -12,12 +12,14 @@
  * 1 枚で前後関係まで追えるように、3 段構成にしてある:
  *
  *   前の書類から … `sourceGroups`   — どこから来たか（見積書 ← / 出荷書 ← …）
- *   Stepper      … `stages`+`active` — いまどの段か
+ *   Stepper      … `stages`           — いまどの段か（段ごとの状態）
  *   次の書類へ   … `handoffGroups`  — どこへ渡ったか（済/未 バッジ付き）
  *
- * 段の組み立ては書類ごとの呼び出し側（純ロジック）が行い、ここは表示のみ。
- * active = 「達成済みの段数」（Mantine Stepper の規約どおり、active 番目の
- * 段が現在進行中として表示される）。
+ * 段の組み立ては書類ごとの呼び出し側が `procedureStages()`
+ * （lib/procedure-stage.ts — 純ロジック・試験あり）で行い、ここは表示のみ。
+ * **段は自分の状態を名乗る**（done / current / pending / skipped）ので、
+ * このパネルは index の大小から状態を逆算しない — 逆算していた頃は
+ * 「済んだ段にスピナー」が書類ごとに起きた（納品書の「発行」）。
  *
  * 見出し（`title`）は既定の「手続き状況」のまま使う — 書類ごとに
  * 「承認・発注状況」などと変えると、統一した意味が無くなる。
@@ -34,7 +36,7 @@ import {
   Text,
   Title,
 } from "@mantine/core";
-import { IconBan } from "@tabler/icons-react";
+import { IconBan, IconMinus } from "@tabler/icons-react";
 import Link from "next/link";
 import { useTranslations } from "next-intl";
 import { useIsMobile } from "@/hooks/useViewport";
@@ -43,17 +45,19 @@ import {
   approvalStepDescription,
 } from "@/lib/approval-flow";
 import type { Tr } from "@/lib/i18n";
+import {
+  activeStageIndex,
+  type ProcedureStage,
+  type ProcedureStageDef,
+  type ProcedureStageState,
+} from "@/lib/procedure-stage";
 
-export interface ProcedureStage {
-  key: string;
-  label: string;
-  /** 補足（日時・承認グループ・差し戻し理由など）。 */
-  description?: string | null;
-  /** 現在段の色上書き（差し戻し = red など）。 */
-  color?: string;
-  /** 現在段をスピナー表示（進行中）。 */
-  loading?: boolean;
-}
+export type {
+  ProcedureStage,
+  ProcedureStageDef,
+  ProcedureStageState,
+} from "@/lib/procedure-stage";
+export { procedureStages } from "@/lib/procedure-stage";
 
 export interface HandoffItem {
   key: string;
@@ -81,7 +85,8 @@ export interface HandoffGroup {
 }
 
 /**
- * 承認フローの 1 段を ProcedureStage にする（承認を持つ書類の共通形）。
+ * 承認フローの 1 段を作る（承認を持つ書類の共通形）。状態は付けない —
+ * 他の段と一緒に `procedureStages()` へ渡す。
  *
  * 承認済みなら承認日、進行中なら「2/3 部門承認」——段数は承認設定 (MS0B) が
  * 決めるので、文言は `approvalStepDescription`（lib/approval-flow.ts）が唯一の
@@ -105,7 +110,7 @@ export function approvalStage(
     /** 呼び出し側の `useTranslations()`（既定の段名「承認」を訳すため）。 */
     tr: Tr;
   },
-): ProcedureStage {
+): ProcedureStageDef {
   return {
     key: "approval",
     label: opts.label ?? opts.tr("common.approve"),
@@ -185,10 +190,69 @@ function LinkGroups({
   );
 }
 
+/** まだ / もう通らない段は灰。済んだ段は既定の色（青）のまま。 */
+const GRAY_STATES = new Set<ProcedureStageState>(["pending", "skipped"]);
+
+/**
+ * 状態 → アイコン。**1 状態 = 1 アイコン**で、重ねない。
+ *
+ *   done     Mantine 既定のチェック（`completedIcon` を渡さない）
+ *   current  Mantine のスピナー（`loading`）
+ *   pending  段の番号（アイコン無しの既定）
+ *   skipped  横棒
+ */
+const STATE_ICON: Record<ProcedureStageState, React.ReactNode> = {
+  done: undefined,
+  current: undefined,
+  pending: undefined,
+  skipped: <IconMinus size={16} />,
+};
+
+/**
+ * 段の列そのもの（枠も見出しも持たない）。手続き状況（ProcedurePanel）と
+ * 承認フロー（ApprovalStepper）が同じ見た目になるよう、描画はここ 1 か所。
+ *
+ * **見た目は段の状態だけで決まる。** Mantine は active との前後で 3 つの
+ * 枠（済み / 現在 / 未）を使い分け、現在の枠では `progressIcon`、未の枠では
+ * `icon` を読む。どちらにも同じものを渡しておけば、`activeStageIndex` が
+ * どこを指していても状態どおりのアイコンが出る。
+ */
+export function ProcedureStepper({
+  stages,
+  ...props
+}: { stages: ProcedureStage[] } & Omit<
+  React.ComponentProps<typeof Stepper>,
+  "active" | "children"
+>) {
+  const isMobile = useIsMobile();
+  return (
+    <Stepper
+      active={activeStageIndex(stages)}
+      orientation={isMobile ? "vertical" : "horizontal"}
+      size="sm"
+      {...props}
+    >
+      {stages.map((s) => {
+        const icon = STATE_ICON[s.state];
+        return (
+          <Stepper.Step
+            color={s.color ?? (GRAY_STATES.has(s.state) ? "gray" : undefined)}
+            description={s.description}
+            icon={icon}
+            key={s.key}
+            label={s.label}
+            loading={s.state === "current"}
+            progressIcon={icon}
+          />
+        );
+      })}
+    </Stepper>
+  );
+}
+
 export function ProcedurePanel({
   title: titleProp,
   stages,
-  active,
   cancelled = false,
   cancelledNote,
   sourceGroups,
@@ -196,10 +260,9 @@ export function ProcedurePanel({
   children,
 }: {
   title?: string;
+  /** `procedureStages()` で作った段（各段が自分の状態を持つ）。 */
   stages: ProcedureStage[];
-  /** 達成済みの段数（= 現在進行中の段の index）。 */
-  active: number;
-  /** キャンセル済み — Stepper は現状のまま、バナーを重ねる。 */
+  /** キャンセル済み — 段は skipped で描き、バナーを重ねる。 */
   cancelled?: boolean;
   cancelledNote?: string | null;
   /** 前の書類（undefined = セクション非表示）。 */
@@ -211,7 +274,6 @@ export function ProcedurePanel({
 }) {
   const tr = useTranslations();
   const title = titleProp ?? tr("ui.procedurePanel.title");
-  const isMobile = useIsMobile();
   return (
     <Paper p="md" radius="md" withBorder>
       <Title mb="md" order={5}>
@@ -238,22 +300,10 @@ export function ProcedurePanel({
         />
       )}
 
-      <Stepper
-        active={active}
+      <ProcedureStepper
         mt={sourceGroups && sourceGroups.length > 0 ? "md" : undefined}
-        orientation={isMobile ? "vertical" : "horizontal"}
-        size="sm"
-      >
-        {stages.map((s, i) => (
-          <Stepper.Step
-            color={i === active ? s.color : undefined}
-            description={s.description}
-            key={s.key}
-            label={s.label}
-            loading={i === active && s.loading}
-          />
-        ))}
-      </Stepper>
+        stages={stages}
+      />
 
       {handoffGroups && handoffGroups.length > 0 && (
         <LinkGroups
