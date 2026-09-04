@@ -114,6 +114,7 @@ export async function getDevice(
       status: true,
       deviceTokenExpiresAt: true,
       locale: true,
+      fingerprint: true,
     },
   });
   if (!device) return { ok: false, reason: "NOT_FOUND" };
@@ -129,7 +130,8 @@ export async function getDevice(
   const attested = Boolean(
     secret &&
       attestCookie &&
-      verifyAttestCookie(secret, attestCookie, device.id),
+      // fingerprint を MAC に含めるので、SY09 の鍵リセットで古い Cookie は落ちる
+      verifyAttestCookie(secret, attestCookie, device.id, device.fingerprint),
   );
   if (!opts.skipAttest && attestationRequired() && !attested) {
     return { ok: false, reason: "ATTEST_REQUIRED" };
@@ -321,13 +323,19 @@ export async function getSession(): Promise<KioskUser | null> {
           locale: true,
         },
       },
+      card: { select: { status: true } },
     },
   });
   if (!session) return null;
 
   const now = new Date();
+  // カードが ASSIGNED でなくなっていたら（停止・取り消し・割当解除）セッションも
+  // 終わり。管理側（SY08）はセッションを失効させるが、それを忘れた経路が
+  // あってもここで止まる — セッションの根拠はカードなので、根拠が消えたら
+  // 8h の期限まで生き残らせない。
   const alive =
     session.user.isActive &&
+    session.card.status === "ASSIGNED" &&
     isSessionAlive(
       now,
       session.expiresAt,

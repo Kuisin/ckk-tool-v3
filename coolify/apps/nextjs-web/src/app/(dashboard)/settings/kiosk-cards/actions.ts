@@ -261,10 +261,23 @@ async function transitionCard(
         tr("settings.kioskCardActions.cardNotInStateForTransition", { note }),
       );
     }
-    await prisma.kioskCard.update({
-      where: { id: parsed.data },
-      data: { status: to },
-    });
+    // 一時停止は「ログイン不可」だけでなく、いま端末に居るセッションも切る
+    // （revokeCard と同じ）。カードを止めた瞬間に触れなくなるのが停止の意味で、
+    // 8h のハード期限まで生き残るセッションは停止の迂回路になる。
+    await prisma.$transaction([
+      prisma.kioskCard.update({
+        where: { id: parsed.data },
+        data: { status: to },
+      }),
+      ...(to === "SUSPENDED"
+        ? [
+            prisma.kioskSession.updateMany({
+              where: { cardId: parsed.data, revokedAt: null },
+              data: { revokedAt: new Date() },
+            }),
+          ]
+        : []),
+    ]);
     await recordAudit({
       action: "UPDATE",
       tableName: "kiosk_cards",
@@ -285,7 +298,7 @@ async function transitionCard(
   }
 }
 
-/** 割当済カードを一時停止する（ログイン不可）。 */
+/** 割当済カードを一時停止する（ログイン不可。オープン中のセッションも失効）。 */
 export async function suspendCard(cardId: string): Promise<ActionResult> {
   const tr = await getTranslations();
   return transitionCard(

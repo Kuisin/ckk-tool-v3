@@ -35,6 +35,7 @@ import {
   listDeviceSessions,
   listKioskPresence,
 } from "@/lib/kiosk-admin";
+import { notifyKioskDeviceRevoked } from "@/lib/kiosk-events";
 import { mintMonitorToken } from "@/lib/kiosk-ws-token";
 import { elevationAuditNote, useElevation } from "@/lib/privileged-access";
 import {
@@ -348,6 +349,8 @@ export async function unlinkDevice(id: string): Promise<ActionResult> {
         note: tr("settings.kioskDevicesActions.auditUnlinked"),
       },
     });
+    // 端末側の WS を切る（別プロセス — pg_notify 経由。kiosk-events.ts）
+    await notifyKioskDeviceRevoked(parsed.data);
     revalidate();
     return actionOk();
   } catch (e) {
@@ -609,6 +612,8 @@ async function transitionDevice(
       before: { status: device.status },
       after: { status: to },
     });
+    // 無効化は端末側の WS も切る（再有効化は端末が自分で繋ぎ直す）
+    if (to === "DISABLED") await notifyKioskDeviceRevoked(parsed.data);
     revalidate();
     return actionOk();
   } catch (e) {
@@ -697,6 +702,7 @@ export async function revokeDevice(id: string): Promise<ActionResult> {
       before: { status: device.status },
       after: { status: "REVOKED" },
     });
+    await notifyKioskDeviceRevoked(parsed.data);
     revalidate();
     return actionOk();
   } catch (e) {
@@ -1007,6 +1013,9 @@ export async function resetDeviceKey(id: string): Promise<ActionResult> {
       before: { fingerprint: device.fingerprint },
       after: { fingerprint: null },
     });
+    // 鍵が変わると attest Cookie（fingerprint を MAC に含む）は通らなくなる。
+    // 端末に繋ぎ直させて、次の upgrade で再アテストを要求する。
+    await notifyKioskDeviceRevoked(parsed.data);
     revalidate();
     return actionOk();
   } catch (e) {

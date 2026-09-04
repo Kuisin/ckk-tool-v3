@@ -14,6 +14,11 @@
  * ONLINE/OFFLINE の遷移は app.kiosk_device_logs へ記録する（冪等 guarded
  * insert — ws-db.ts insertPresenceLog）。ハートビート行は書かない。
  *
+ * 管理画面（nextjs-web = 別プロセス）が端末を取り消し / 無効化 / リンク解除 /
+ * 鍵リセットしたときは pg_notify（kiosk-events.ts）で合図が届き、その端末の
+ * ソケットを閉じる。閉じないと端末側は繋いだまま 30s ごとに活動時刻が刻まれ、
+ * 止めたはずの端末が SY09 で「オンライン」のまま残る（display-ws-server と同型）。
+ *
  * メッセージ形状は nextjs-web 側 useKioskPresence.ts と twin — 両方同時に更新。
  */
 
@@ -27,6 +32,7 @@ import {
   insertPresenceLog,
   listPresenceDevices,
   type PresenceUser,
+  subscribeKioskEvents,
   touchConnectedDevices,
   touchDeviceActivity,
 } from "./ws-db";
@@ -74,6 +80,12 @@ export class KioskWsServer implements KioskWsBridge {
       void this.tick();
     }, WS_SWEEP_INTERVAL_MS);
     timer.unref();
+
+    // 管理画面（nextjs-web = 別プロセス）からの合図。届かなくても
+    // touchConnectedDevices が ACTIVE 以外を刻まないので 5 分窓で追いつく。
+    subscribeKioskEvents((event) => {
+      if (event.kind === "revoked") this.notifyDeviceRevoked(event.deviceId);
+    });
   }
 
   /** 30s ごとの定期処理: 接続中端末の lastActivity 更新 → オンライン再計算。 */
@@ -136,6 +148,20 @@ export class KioskWsServer implements KioskWsBridge {
   }
 
   notifyDeviceChanged(deviceId: string): void {
+    void this.refreshDevice(deviceId, { force: true });
+  }
+
+  /**
+   * 端末の信頼が失われた（取り消し / 無効化 / リンク解除 / 鍵リセット）。
+   * その端末のソケットを全部閉じ、プレゼンスの「接続中」から即座に外す。
+   * 端末側は繋ぎ直そうとするが、次の upgrade 認証（ACTIVE + 期限内 + attest）
+   * で弾かれる — こちらは何も送らない（合図は中身ではない）。
+   */
+  notifyDeviceRevoked(deviceId: string): void {
+    const sockets = this.deviceSockets.get(deviceId);
+    // close イベントの前に外しておく — isOnline がソケットの有無を先に見るため
+    this.deviceSockets.delete(deviceId);
+    for (const ws of sockets ?? []) ws.close();
     void this.refreshDevice(deviceId, { force: true });
   }
 
