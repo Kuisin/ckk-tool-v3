@@ -2369,10 +2369,10 @@
       "andNMoreOrderLines": "{first} ほか{count}件",
       "andNMoreCustomers": "{first} ほか{count}社",
       "nextStepCreateADeliveryOrder": "次のステップ: 出荷書の作成",
-      "openDeliveryOrderFormForThisLot": "完成した {quantity} 本のうち、まだ出荷書に載っていない分で出荷書を作ります。同じ注文請書の他の明細もまとめられます。",
+      "openDeliveryOrderFormForThisLot": "まだ出荷していない {quantity} 本で出荷書を作ります。同じ注文請書の他の明細もまとめられます。",
       "deliveryOrderNeedsCompletedWorkOrder": "完了した指示書からのみ作成できます",
       "deliveryOrderNeedsOrderLine": "注文明細に紐づいていない指示書からは作成できません",
-      "deliveryOrderAlreadyArranged": "完成分はすべて出荷書に載っています"
+      "deliveryOrderAlreadyArranged": "この指示書の注文明細はすべて出荷手配済みです"
     },
     "addBranchModal": {
       "theBranchWasAdded": "分岐を追加しました",
@@ -2565,7 +2565,10 @@
       "itemRecorded": "「{item}」を記録しました",
       "shelvedBy": "棚包担当者",
       "shipmentAuthorizedBy": "出荷許可者",
-      "stageRecorded": "{stage}を記録しました"
+      "stageRecorded": "{stage}を記録しました",
+      "markOk": "{item}: 問題なし",
+      "markNg": "{item}: 問題あり",
+      "recordPriorStageFirst": "{label}を先に記録してください"
     },
     "workOrderStepsPanel": {
       "deleteTheBranch": "分岐の削除",

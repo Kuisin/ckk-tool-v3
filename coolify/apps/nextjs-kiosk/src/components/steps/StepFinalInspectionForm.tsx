@@ -179,36 +179,28 @@ export function StepFinalInspectionForm({
               <Group gap="sm" wrap="wrap">
                 {canRecord ? (
                   <Button.Group>
-                    <Button
-                      color="green"
-                      disabled={busy}
-                      onClick={() =>
-                        run({
-                          action: "FINAL_CHECK",
-                          checkField: field,
-                          checkOk: true,
-                        })
-                      }
-                      size="lg"
-                      variant={ok === true ? "filled" : "default"}
-                    >
-                      ○
-                    </Button>
-                    <Button
-                      color="red"
-                      disabled={busy}
-                      onClick={() =>
-                        run({
-                          action: "FINAL_CHECK",
-                          checkField: field,
-                          checkOk: false,
-                        })
-                      }
-                      size="lg"
-                      variant={ok === false ? "filled" : "default"}
-                    >
-                      ×
-                    </Button>
+                    {([true, false] as const).map((value) => (
+                      <Button
+                        // ○ / × だけでは読み上げがどの項目か分からない。
+                        aria-label={fillMessage(value ? t.markOk : t.markNg, {
+                          item: label,
+                        })}
+                        color={value ? "green" : "red"}
+                        disabled={busy}
+                        key={String(value)}
+                        onClick={() =>
+                          run({
+                            action: "FINAL_CHECK",
+                            checkField: field,
+                            checkOk: value,
+                          })
+                        }
+                        size="lg"
+                        variant={ok === value ? "filled" : "default"}
+                      >
+                        {value ? "○" : "×"}
+                      </Button>
+                    ))}
                   </Button.Group>
                 ) : (
                   <Badge
