@@ -912,6 +912,10 @@ export async function confirmDeliveryOrder(
         );
       }
       if (!plan) return;
+      // 納品書は**発行済（ISSUED）で作る** — 下書きを経由しない。内容は
+      // 出荷書と注文請書から機械的に決まる（planAutoDeliveryNotes）ので、
+      // 人が直す段階を置くと、価格記載や宛先を確定後に書き換えられてしまう。
+      // 直したいときは正しい注文請書・出荷書から作り直す。
       for (let i = 0; i < plan.notes.length; i++) {
         const notePlan = plan.notes[i];
         const noteKey = noteKeys[i];
@@ -919,6 +923,7 @@ export async function confirmDeliveryOrder(
           data: {
             yearMonth: noteKey.yearMonth,
             seq: noteKey.seq,
+            status: "ISSUED",
             deliveryOrderYearMonth: key.yearMonth,
             deliveryOrderSeq: key.seq,
             deliveryMethod: plan.deliveryMethod,
@@ -956,7 +961,10 @@ export async function confirmDeliveryOrder(
         action: "CREATE",
         tableName: "delivery_notes",
         recordId: n,
-        after: { note: tr("shipping.deliveryOrderActions.autoCreatedNote") },
+        after: {
+          status: "ISSUED",
+          note: tr("shipping.deliveryOrderActions.autoCreatedNote"),
+        },
       });
     }
     revalidate(number);

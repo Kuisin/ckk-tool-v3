@@ -66,7 +66,11 @@ export interface DeliveryNote {
   updatedAt: string;
 }
 
-/** 編集可能か — 下書きの納品書のみ。 */
+/**
+ * 編集可能か — 下書きの納品書のみ。
+ * 出荷書の確定で自動作成される納品書は最初から ISSUED なので、アプリ内で
+ * 作られた納品書はここが true になることはない（DRAFT は SQL 由来の行だけ）。
+ */
 export function isEditable(n: Pick<DeliveryNote, "status">) {
   return n.status === "DRAFT";
 }

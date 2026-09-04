@@ -1,19 +1,19 @@
 ---
 title: "Delivery Note — User Manual"
-description: "Review and edit the delivery note that is created automatically when a shipping order is confirmed, turn it into a PDF, and print it."
-screenshots: [delivery-note-list-01, delivery-note-detail-noprice-01, delivery-note-direct-01, delivery-note-issue-01, delivery-note-detail-01]
+description: "Review the delivery note that is created automatically when a shipping order is confirmed, turn it into a PDF, and print it."
+screenshots: [delivery-note-list-01, delivery-note-detail-noprice-01, delivery-note-detail-01]
 ---
-This app is for reviewing and editing the **delivery note** (納品書) that goes together with the products you ship (it is created automatically when a shipping order is confirmed). The operation code is `SH02`.
+This app is for reviewing the **delivery note** (納品書) that goes together with the products you ship (it is created automatically when a shipping order is confirmed, and is **already issued** at that moment). The operation code is `SH02`.
 
 > ⚠️ This app is still being prepared. Screens and steps may change before it is fully released.
 
 ## What you can do with this app
 
-- View a delivery note, and while it is still a draft, edit its contents.
+- View a delivery note and turn it into a PDF. **You cannot edit it on this screen** — it is built from the shipping order and the order acceptance, and it is already issued when it is created.
 - **You never make a delivery note yourself** — it is created automatically when you **confirm** a [shipping order](/manual/en/operations/shipping/delivery-order/user). Direct-to-end-user shipments create **two at once**: one without prices (for the end user) and one with prices (for the customer).
-- Choose whether to **show or hide** the amounts, while it is still a draft.
+- Whether the amounts are **shown or hidden** is decided by the delivery method on the order acceptance (direct-to-end-user shipments get one copy without prices and one with).
 - Turn the delivery note into a **PDF** to print it or put it in the box.
-- Record where things stand — "issued", "delivered".
+- Record that it has "arrived" (delivered).
 
 ## Words used on this page
 
@@ -31,7 +31,7 @@ When you open the app, you see a list of the delivery notes made so far.
 
 - **納品番号 (Delivery number)** … A number that starts with `DRN-`. The system adds it for you.
 - **方法 (Method)** … An orange 「ユーザー直送」 (Direct to end user) means it goes straight to the company using the product; a grey 「通常納品」 (Normal delivery) means it goes to the customer.
-- **状態 (Status)** … Grey is 「下書き」 (Draft), blue is 「発行済」 (Issued), green is 「納品済」 (Delivered).
+- **状態 (Status)** … Blue is 「発行済」 (Issued), green is 「納品済」 (Delivered). An automatically created delivery note starts as "Issued".
 - In the search box at the top you can type a delivery number, a shipping order number, or the name of the receiver or the end user to narrow the list.
 - The list shows **delivery notes sent from the site you belong to** and **delivery notes you made yourself**.
 - Click a row to open the detail screen for that delivery note.
@@ -43,35 +43,22 @@ You never make one by hand. It is created automatically the moment you confirm a
 - **Normal delivery** … **One** priced delivery note, to the customer.
 - **Direct to end user** … **Two at once**. The price-free copy goes to the end user (the company that actually uses the product); the priced copy goes to the customer. **Never hand the priced one to the end user** — this screen warns you before you open or print it.
 
-A newly-created delivery note is a 「**下書き**」 (Draft). Review it, and edit it before issuing if needed (see below). You can also open it from the 「**納品書**」 (Delivery notes) tab on the shipping order screen.
+A newly-created delivery note is already 「**発行済**」 (Issued). There is no draft stage, and **its contents cannot be changed afterwards** — they are carried over from the shipping order and the order acceptance, so check them before you confirm the shipping order (the confirmation window previews how many notes, to whom, and whether prices are shown). You can also open it from the 「**納品書**」 (Delivery notes) tab on the shipping order screen.
 
-## Editing a draft
+## When you want to change the contents
 
-While a delivery note is a draft, 「**編集**」 (Edit) lets you change: **delivery method, end user, sales rep, show prices, quantity, unit price, notes**. **The shipping order and the delivery destination (recipient) cannot be changed** — if it needs to go somewhere else, it has to be re-created from the right shipping order / order acceptance (ask your administrator).
+The contents of a delivery note (delivery method, end user, show prices, quantity, unit price) are decided automatically from the shipping order and the order acceptance, and **cannot be edited on the delivery note screen**.
 
-If you do not want to show the amounts, turn off the 「**価格記載（納品書に単価・金額を記載する）**」 (Show prices — print unit prices and amounts on the delivery note) switch. With it off you cannot type in the unit price boxes, and saving shows **no amounts on the screen or in the PDF**.
+- To change the destination or whether prices are shown, fix the delivery method / end user on the underlying [order acceptance](/manual/en/operations/sales/order-acceptance/user) **before** confirming the shipping order.
+- If you notice a mistake after confirming, it has to be re-created from the correct order acceptance / shipping order — ask your administrator.
+
+The price-free delivery note made for a direct-to-end-user shipment shows **no amounts on the screen or in the PDF**.
 
 ![Delivery note without amounts](../../../assets/screenshots/delivery-note-detail-noprice-01.png)
 
-If you try to save a direct-to-end-user note with 「最終需要家」 empty, you get 「**最終需要家を選択してください**」 (Please choose an end user).
+## Marking it delivered when it has arrived
 
-![Direct-to-end-user delivery note](../../../assets/screenshots/delivery-note-direct-01.png)
-
-## Issuing and delivering
-
-A delivery note moves through three stages: 「下書き」 (Draft) → 「発行済」 (Issued) → 「納品済」 (Delivered). You do this from the 「**…**」 button (the three dots) at the top right of the screen.
-
-### 1. Issue it
-
-1. On the delivery note screen, press 「**…**」 at the top right.
-2. Choose 「**発行**」 (Issue).
-3. 「発行の確認」 (Issue check) appears. Press 「**発行**」 (Issue).
-
-![Issue check window](../../../assets/screenshots/delivery-note-issue-01.png)
-
-Once issued, the status becomes 「**発行済**」 (Issued) and **you can no longer edit it**.
-
-### 2. When it has arrived
+A delivery note moves from 「発行済」 (Issued) to 「納品済」 (Delivered). It is already issued when it is created, so **there is no issue action**. You do this from the 「**…**」 button (the three dots) at the top right of the screen.
 
 1. Press 「**…**」 at the top right.
 2. Choose 「**納品済みにする**」 (Mark as delivered).
@@ -83,18 +70,18 @@ By the way, this delivery note's number appears later as the "source" on the lin
 
 ## Printing (PDF)
 
-You can see the PDF **only after issuing**. While it is a draft the PDF has not been made yet, and the 「**PDF**」 tab shows 「発行後に PDF を閲覧できます。」 (the PDF can be viewed after issuing).
+The PDF is available from the moment the delivery note is created.
 
-- After issuing, the 「**PDF**」 tab shows the PDF right on the screen. To make it again, press 「**再生成**」 (Regenerate).
+- The 「**PDF**」 tab shows the PDF right on the screen. To make it again, press 「**再生成**」 (Regenerate).
 - Choose 「**PDFをダウンロード**」 (Download PDF) from the 「**…**」 button (the three dots) at the top right of the screen to save it as a file. Print from there.
 
 ![Delivery note detail screen](../../../assets/screenshots/delivery-note-detail-01.png)
 
-> ⚠️ There is no delete action for delivery notes. Once made, a delivery note cannot be removed, so please check the contents carefully **while it is still a draft**.
+> ⚠️ There is no delete action for delivery notes. Once made, a delivery note cannot be removed or edited, so please check the previewed count, recipients and price setting carefully **before confirming the shipping order**.
 
 ## Input fields
 
-Every field on the delivery note screen. The **?** next to a field in the app links straight to its description here.
+Every field shown on the delivery note screen. All of them are carried over from the shipping order and the order acceptance and cannot be changed here. The **?** next to a field in the app links straight to its description here.
 
 | Field | Required | What to enter |
 |-------|----------|---------------|
@@ -160,17 +147,11 @@ A. A delivery note is only created for a **dispatch** shipping order. **Stock-st
 **Q. I want to change the delivery destination to another company, but I cannot choose it.**
 A. The delivery destination is decided by the customer on the order line behind the shipping order, so it cannot be changed on this screen. If the receiver is different, it has to be re-created from the correct order acceptance / shipping order.
 
-**Q. I get 「…は出荷書に含まれていません」 (… is not included in the shipping order) and cannot save.**
-A. You have put a product on a line that is not on the shipping order. Delete that row, or change it to a product that is on the shipping order.
+**Q. Which one do I hand over — the delivery note with prices or the one without?**
+A. A direct-to-end-user shipment makes two. Give the price-free one to the end user and the priced one to the customer. A normal delivery makes only one priced note.
 
-**Q. I get 「…の数量 60 が出荷数量 50 を超えています」 (Quantity 60 for … is more than the shipped quantity 50) and cannot save.**
-A. You have written more pieces than you really sent. Change the quantity so it is not more than the shipping order.
-
-**Q. I saved with the amounts hidden, but now I want to show them.**
-A. While it is a 「下書き」 (Draft) you can turn the switch back on with 「編集」 (Edit). The unit prices were not saved, though, so please enter them again. After it is issued you cannot fix it, so make a new one.
-
-**Q. I noticed a mistake after issuing it.**
-A. There is no way to undo an issue. Make a new delivery note with the correct contents, and do not hand the wrong one to the customer.
+**Q. The delivery note has a mistake in it.**
+A. A delivery note cannot be edited afterwards, and there is no way to undo an issue. It has to be re-created from the correct order acceptance / shipping order, so ask your administrator. Do not hand the wrong one to the customer.
 
 <!-- permissions:start -->
 ## Permissions required

@@ -77,10 +77,10 @@ desc: 実際に送り出したら「出荷」にする。;
 label: 在庫反映;
 desc: 出荷元拠点の在庫が減り、注文明細の状態が「一部出荷」または「出荷済」に変わる。;
 if (種別) is (発送) than #orange
-  [role_ship: 納品書を発行する] <block_apply>
+  [role_system: 納品書を発行する] <block_system>
   label: 納品書;
   props: DELIVERY;
-  desc: 納品方法（通常納品・ユーザー直送）と価格記載の有無を決めて発行する。;
+  desc: 確定と同時に発行済の納品書ができる。納品方法（通常納品・ユーザー直送）と価格記載の有無は注文請書から引き継ぐ。;
   [role_ship: 納品済にする] <block_apply>
   label: 納品;
   desc: 届いたら「納品済」にする。ここまで済んだ出荷が請求の対象になる。;
