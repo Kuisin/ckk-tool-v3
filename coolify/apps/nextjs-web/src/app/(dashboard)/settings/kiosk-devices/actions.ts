@@ -636,9 +636,17 @@ async function transitionDevice(
         }),
       );
     }
-    // biome-ignore lint/correctness/useHookAtTopLevel: React フックではないため
-    const gate = await useElevation("kiosk_device.set_enabled");
-    if (!gate.ok) return actionError(gate.error);
+    // 承認が要るのは**アクセスが増える向き**（DISABLED → ACTIVE）だけ。無効化は
+    // アクセスを減らす操作で、登録簿（privileged-operations.ts）の「停止を承認で
+    // 待たせるほうが危ない」という方針どおり素通し — 不審な端末を非管理者が
+    // すぐ止められること。カード一時停止・ディスプレイ無効化と同じ扱い。
+    let auditNote: Record<string, unknown> = {};
+    if (to === "ACTIVE") {
+      // biome-ignore lint/correctness/useHookAtTopLevel: React フックではないため
+      const gate = await useElevation("kiosk_device.set_enabled");
+      if (!gate.ok) return actionError(gate.error);
+      auditNote = elevationAuditNote(gate, "kiosk_device.set_enabled");
+    }
     await prisma.kioskDevice.update({
       where: { id: parsed.data },
       data: { status: to },
@@ -648,10 +656,7 @@ async function transitionDevice(
       tableName: "kiosk_devices",
       recordId: parsed.data,
       before: { status: device.status },
-      after: {
-        status: to,
-        ...elevationAuditNote(gate, "kiosk_device.set_enabled"),
-      },
+      after: { status: to, ...auditNote },
     });
     // 無効化は端末側の WS も切る（再有効化は端末が自分で繋ぎ直す）
     if (to === "DISABLED") await notifyKioskDeviceRevoked(parsed.data);

@@ -12,6 +12,7 @@ import { getLocale, getTranslations } from "next-intl/server";
 import { checkPermission, sessionUserId } from "@/lib/authz";
 import { prisma } from "@/lib/db";
 import { type LocalizedText, localized } from "@/lib/format";
+import { type Locale, normalizeLocale } from "@/lib/i18n";
 import {
   type GrantState,
   grantState,
@@ -91,7 +92,7 @@ function elevationRow(
     operations: { operation: string; granted: boolean }[];
   },
   now: Date,
-  opLocale: "ja" | "en",
+  opLocale: Locale,
   tr: Awaited<ReturnType<typeof getTranslations>>,
 ): PrivilegedRequestRow {
   const status = r.status as PrivilegedRequestStatus;
@@ -262,7 +263,7 @@ export async function listMyRequests(): Promise<PrivilegedRequestRow[]> {
     getTranslations(),
     loadChangeNames(),
   ]);
-  const opLocale = locale === "en" ? "en" : "ja";
+  const opLocale = normalizeLocale(locale);
   return sortRows([
     ...elevations.map((r) => elevationRow(r, now, opLocale, tr)),
     ...changes.map((r) => userChangeRow(r, tr, names)),
@@ -304,7 +305,7 @@ export async function listRequestsToApprove(): Promise<PrivilegedRequestRow[]> {
     getTranslations(),
     loadChangeNames(),
   ]);
-  const opLocale = locale === "en" ? "en" : "ja";
+  const opLocale = normalizeLocale(locale);
   return [
     ...elevations.map((r) => elevationRow(r, now, opLocale, tr)),
     ...changes.map((r) => userChangeRow(r, tr, names)),
@@ -335,7 +336,7 @@ export async function listDecidedRequests(): Promise<PrivilegedRequestRow[]> {
     getTranslations(),
     loadChangeNames(),
   ]);
-  const opLocale = locale === "en" ? "en" : "ja";
+  const opLocale = normalizeLocale(locale);
   return [
     ...elevations.map((r) => elevationRow(r, now, opLocale, tr)),
     ...changes.map((r) => userChangeRow(r, tr, names)),
