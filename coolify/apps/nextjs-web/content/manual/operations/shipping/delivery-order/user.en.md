@@ -47,6 +47,15 @@ When you open the app, you see a list of the shipping orders made so far.
 
 ## Making a shipping order
 
+You can start a delivery order from four places. They all open the same form.
+
+| Where you start | What is filled in |
+|---|---|
+| 「**新規作成**」 (New) on the delivery order list | Nothing — you pick the order acceptance yourself |
+| 「**出荷書を作成**」 on an [order acceptance](/manual/en/operations/sales/order-acceptance/user) | Every shippable line of that acceptance |
+| 「**出荷書を作成**」 on an [order line](/manual/en/operations/sales/order-line/user) or [pending shipment](/manual/en/operations/shipping/pending-shipment/user) | That one order line |
+| 「**出荷書を作成**」 on a [work order](/manual/en/operations/production/work-order/user) | The work order's order lines. **If the same order acceptance has other shippable lines, you are asked whether to ship them together** |
+
 1. Press 「**新規作成**」 (New) at the top right of the list screen.
 2. Click the 「**注文請書**」 (Order acceptance) box and pick the order acceptance you want to ship. Inside this box you search by the **customer name, product name, or the customer's order number**.
 3. For every shippable order line of that acceptance, **the not-yet-shipped quantity is filled in for you**. The source of the quantity is the **finished output of the connected work orders** (the pieces made for that line), allocated to the lots in number order within the physical stock — never more than what is still needed.
@@ -142,6 +151,8 @@ Every field on the shipping order screen. The **?** next to a field in the app l
 Which order this shipment is for, picked as an order acceptance. Choosing it fills in the shippable lines of that acceptance for you. The quantities come from the **finished output of the connected work orders**, within the physical stock and the order remainder.
 
 Multiple order acceptances can be combined into one delivery order only when they share **the same customer, the same ship-to and the same delivery method (normal / direct to user)**. Trying to add one that differs shows the reason on the spot.
+
+This box is an **add** box, so it goes back to empty after you pick something (so that you can add another one). What this delivery order is actually for is shown just below it, under 「**対象の注文請書**」 (covered order acceptances) — the numbers appear there whichever screen you started from: an order line, a work order, or an order acceptance.
 
 ### Type [#field-type]
 

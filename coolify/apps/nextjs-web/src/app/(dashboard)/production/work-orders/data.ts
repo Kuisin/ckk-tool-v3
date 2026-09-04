@@ -52,6 +52,7 @@ import { effectiveAllocatedByLine } from "@/lib/work-order-alloc";
 import { fetchWorkflowCtx, loadCatalog } from "@/lib/workflow";
 import {
   canStartStep,
+  computeFinishedQuantity,
   effectiveLotInputMode,
   expectedInput,
 } from "@/lib/workflow-core";
@@ -497,6 +498,10 @@ export async function fetchWorkOrder(
 
   // この指示書のロットが載った出荷書（手続き状況の「次の書類へ」）。
   // 出荷書 ↔ 指示書は明細のロット番号（= 指示書番号）でつながる。
+  // 完成数 = 工程 DAG の終端集計（不良で減った分は出荷対象にならない）。
+  // ctx は上で承認・開始可否のために既にロード済みなので引き直さない。
+  const finishedQuantity = computeFinishedQuantity(ctx.steps, ctx.links);
+
   const shipmentItems = await prisma.deliveryOrderItem.findMany({
     where: { lotNumber: r.workOrderNumber },
     select: {
@@ -523,6 +528,17 @@ export async function fetchWorkOrder(
       status: it.deliveryOrder.status,
       quantity: it.quantity,
     })),
+    finishedQuantity,
+    // 下書きの出荷書も「もう手配済み」として数える（未処理出荷書 SH03 と
+    // 同じ規約）— 二重に出荷書を起こさないため。ロット未指定で載せた行は
+    // ここに数えない（lot_number は任意列）ので、その場合は残数を多めに
+    // 見積もる。多めに出す側の誤差なので「出せるのに導線が出ない」には
+    // ならない — 実際に出せるかはフォームが明細ごとに再計算する。
+    unshippedQuantity: Math.max(
+      0,
+      finishedQuantity -
+        shipmentItems.reduce((sum, it) => sum + it.quantity, 0),
+    ),
     type: r.type,
     plannedQuantity: r.plannedQuantity,
     notes: r.notes,

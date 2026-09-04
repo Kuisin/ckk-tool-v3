@@ -2364,7 +2364,12 @@
       "flowChangeDescription": "{summary}｜申请人：{requestedBy}｜{stepLabel}。{note}",
       "flowChangeNotAppliedYet": "在获批之前，工序不会改变。",
       "andNMoreOrderLines": "{first} 等 {count} 件",
-      "andNMoreCustomers": "{first} 等 {count} 家"
+      "andNMoreCustomers": "{first} 等 {count} 家",
+      "nextStepCreateADeliveryOrder": "下一步：创建出货单",
+      "openDeliveryOrderFormForThisLot": "用已完成的 {quantity} 支中尚未列入出货单的部分创建出货单。也可一并加入同一订单确认书的其他明细。",
+      "deliveryOrderNeedsCompletedWorkOrder": "仅可从已完成的工单创建",
+      "deliveryOrderNeedsOrderLine": "未关联订单明细的工单无法创建",
+      "deliveryOrderAlreadyArranged": "完成数量已全部列入出货单"
     },
     "addBranchModal": {
       "theBranchWasAdded": "已添加分支",
@@ -7382,7 +7387,13 @@
       "stockStorageHasNoDeliveryNote": "库存保管出货单不会创建送货单",
       "onlySameEndUserCanBeCombined": "一张出货单只能合并同一最终用户的订单明细",
       "confirmConfirmBodyDispatch": "将确认出货单 {number}。确认后无法编辑。系统会自动创建送货单（直送最终用户会创建两份 — 一份无价格、一份含价格）。",
-      "confirmedBodyDispatch": "已确认出货单 {number} 并创建送货单"
+      "confirmedBodyDispatch": "已确认出货单 {number} 并创建送货单",
+      "coveredOrderAcceptances": "对象订单确认书",
+      "shipTogetherTitle": "是否一并出货同一订单确认书的其他明细？",
+      "shipTogetherBody": "同一订单确认书还有 {count} 条明细尚未出货。请选择要放入本出货单的明细。",
+      "unshippedWithLots": "未出货 {quantity} / 批次 {lots}",
+      "justThisWorkOrder": "仅此工单",
+      "addSelectedLines": "添加所选明细"
     },
     "pendingShipments": {
       "completedLots": "完成批次",
@@ -7415,7 +7426,8 @@
       "shippedQuantityLabel": "已出货 {quantity}",
       "completedQuantityLabel": "完成 {quantity}（来自 {count} 个已完成工单）",
       "exceedsRemainingLabel": "超过剩余订单量 {remaining}（出货 {total}）",
-      "partialShipmentLabel": "部分出货（出货 {total} / 剩余 {remaining}）"
+      "partialShipmentLabel": "部分出货（出货 {total} / 剩余 {remaining}）",
+      "couldNotAddWorkOrderLines": "无法读取工单 #{workOrderNumber} 的订单明细（可能未确定或未指定产品）"
     },
     "deliveryNoteForm": {
       "editWithNumber": "编辑送货单 {noteId}"
