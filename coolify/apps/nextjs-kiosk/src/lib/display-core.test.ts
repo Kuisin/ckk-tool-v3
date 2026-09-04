@@ -14,6 +14,7 @@ import {
   linkRemainingMs,
   MACHINE_ID_MAX_LENGTH,
   machineHint,
+  machineHintUpdate,
   normalizeMachineId,
   normalizeScalePercent,
   normalizeScreenIndex,
@@ -253,6 +254,26 @@ describe("normalizeScreenIndex", () => {
     expect(normalizeScreenIndex(null)).toBeNull();
     expect(normalizeScreenIndex(undefined)).toBeNull();
     expect(normalizeScreenIndex("")).toBeNull();
+  });
+});
+
+describe("machineHintUpdate", () => {
+  it("読めた手掛かりだけを載せる（null は「言っていない」）", () => {
+    expect(
+      machineHintUpdate({ machineId: "ckk-pi-01", screenIndex: 2 }),
+    ).toEqual({ machineId: "ckk-pi-01", screenIndex: 2 });
+    expect(
+      machineHintUpdate({ machineId: "ckk-pi-01", screenIndex: null }),
+    ).toEqual({ machineId: "ckk-pi-01" });
+    expect(machineHintUpdate({ machineId: null, screenIndex: 1 })).toEqual({
+      screenIndex: 1,
+    });
+  });
+  it("何も読めなければ空 — 既存の値を null で潰さない", () => {
+    const update = machineHintUpdate({ machineId: null, screenIndex: null });
+    expect(update).toEqual({});
+    expect("machineId" in update).toBe(false);
+    expect("screenIndex" in update).toBe(false);
   });
 });
 

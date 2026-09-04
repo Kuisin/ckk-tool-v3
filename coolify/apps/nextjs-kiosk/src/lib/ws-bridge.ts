@@ -12,6 +12,8 @@ export interface KioskWsBridge {
   notifyActivity(deviceId: string): void;
   /** 端末状態の変更（有効化/無効化/取り消し）をモニターへ通知。 */
   notifyDeviceChanged(deviceId: string): void;
+  /** 端末の信頼が失われた — その端末のソケットを閉じてプレゼンスから外す。 */
+  notifyDeviceRevoked(deviceId: string): void;
 }
 
 export function wsBridge(): KioskWsBridge | undefined {

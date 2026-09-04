@@ -12,7 +12,11 @@
 
 import { NextResponse } from "next/server";
 import { getDisplay, touchDisplay } from "@/lib/display-auth";
-import { machineHint, normalizeScreenIndex } from "@/lib/display-core";
+import {
+  machineHint,
+  machineHintUpdate,
+  normalizeScreenIndex,
+} from "@/lib/display-core";
 import { clientIpOf, userAgentOf } from "@/lib/request-ip";
 
 export const dynamic = "force-dynamic";
@@ -31,8 +35,9 @@ export async function POST(req: Request) {
     );
   }
 
-  // 手掛かりは毎回上書きする — 別の Pi へ差し替えたり、画面の並びを
-  // 入れ替えたりしたときに、古い値が残り続けないようにするため。
+  // 手掛かりは**読めたときだけ**上書きする（config と同じ）。以前は無いとき
+  // null を書いていたので、config が書いた値を heartbeat が消していた。
+  // 差し替え・並び替えは新しい値が来るので、それで上書きされる。
   const body = (await req.json().catch(() => null)) as {
     machineId?: unknown;
     screenIndex?: unknown;
@@ -43,8 +48,7 @@ export async function POST(req: Request) {
     ipAddress: clientIpOf(req),
     userAgent: userAgentOf(req),
     appVersion: process.env.NEXT_PUBLIC_APP_VERSION ?? null,
-    machineId: hint.machineId,
-    screenIndex: hint.screenIndex,
+    ...machineHintUpdate(hint),
   });
 
   return NextResponse.json({ ok: true });

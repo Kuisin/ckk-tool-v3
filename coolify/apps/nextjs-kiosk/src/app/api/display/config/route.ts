@@ -15,7 +15,11 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { getDisplay, touchDisplay } from "@/lib/display-auth";
 import { parseDisplayContent } from "@/lib/display-content";
-import { machineHint, normalizeScreenIndex } from "@/lib/display-core";
+import {
+  machineHint,
+  machineHintUpdate,
+  normalizeScreenIndex,
+} from "@/lib/display-core";
 import { deviceName } from "@/lib/format";
 import { metabaseEmbedUrl } from "@/lib/metabase-embed";
 import { clientIpOf, userAgentOf } from "@/lib/request-ip";
@@ -51,8 +55,7 @@ export async function GET(req: Request) {
     ipAddress: clientIpOf(req),
     userAgent: userAgentOf(req),
     // 手掛かりが URL に無いときは触らない（既存の値を null で潰さない）
-    ...(hint.machineId !== null ? { machineId: hint.machineId } : {}),
-    ...(hint.screenIndex !== null ? { screenIndex: hint.screenIndex } : {}),
+    ...machineHintUpdate(hint),
   });
 
   const row = await prisma.displayDevice.findUnique({
