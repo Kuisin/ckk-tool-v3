@@ -9,13 +9,16 @@
  */
 
 import { NextResponse } from "next/server";
+import { isApproverOf } from "@/lib/approvals";
 import {
   deleteAttachment,
   fetchAttachmentFile,
   isInlineSafe,
 } from "@/lib/attachments";
-import { requirePermissionResponse } from "@/lib/authz";
+import { requirePermissionResponse, sessionUserId } from "@/lib/authz";
 import { prisma } from "@/lib/db";
+import { fetchResponse, formAccess } from "@/lib/forms";
+import { responseInScope } from "@/lib/share-grants-core";
 import { contentTypeForKey, getObject } from "@/lib/storage";
 
 // 証憑の所属テーブル → 権限コード（未知の ownerType は system:ADMIN のみ）
@@ -36,17 +39,40 @@ async function gate(
   try {
     const row = await prisma.documentAttachment.findUnique({
       where: { id },
-      select: { ownerType: true },
+      select: { ownerType: true, ownerId: true },
     });
     if (!row) return new Response("Not found", { status: 404 });
     const code = OWNER_PERMISSION[row.ownerType];
-    return await requirePermissionResponse(
+    const denied = await requirePermissionResponse(
       code ?? "system",
       code ? action : "ADMIN",
     );
+    if (denied) return denied;
+    // フォーム回答の証憑は、回答本体と同じ門（本人 / 共有スコープ / 承認者）。
+    // form:READ は全業務ロールが持つので、権限コードだけでは他人の申請の
+    // 添付が UUID を知っていれば誰でも取れてしまう。
+    if (row.ownerType === "form_responses") {
+      return await formResponseGate(row.ownerId);
+    }
+    return null;
   } catch {
     return new Response("Not found", { status: 404 });
   }
+}
+
+/** 回答詳細 / PDF（api/pdf/form-response）と同じ判定。読めなければ 404。 */
+async function formResponseGate(responseId: string): Promise<Response | null> {
+  const viewerId = await sessionUserId();
+  const response = await fetchResponse(responseId);
+  if (!response) return new Response("Not found", { status: 404 });
+  const access = await formAccess(response.form);
+  const isOwner = !!viewerId && response.submittedBy === viewerId;
+  const inScope =
+    access.canRead && responseInScope(access.responseScope, response.answers);
+  const isApprover = await isApproverOf("form_responses", responseId, viewerId);
+  if (!inScope && !isOwner && !isApprover)
+    return new Response("Not found", { status: 404 });
+  return null;
 }
 
 export const dynamic = "force-dynamic";
