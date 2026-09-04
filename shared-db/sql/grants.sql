@@ -161,6 +161,13 @@ REVOKE SELECT ON app.user_devices        FROM metabase_ro;  -- 端末台帳（�
 REVOKE SELECT ON app.privileged_access_requests            FROM metabase_ro;
 REVOKE SELECT ON app.privileged_access_request_operations  FROM metabase_ro;
 REVOKE SELECT ON app.user_change_requests                  FROM metabase_ro;
+-- 共有端末のメンテナンス退出 PIN。現行値は system_settings['kiosk.unlock_pin']、
+-- 履歴は kiosk_unlock_pins に生値で載る（端末が保持している値を引くための表）。
+-- どちらも SY09 では特権操作 kiosk_secret の承認を経て初めて見える秘密なので、
+-- BI からは表ごと外す。system_settings には AI トークン（暗号化済み）なども
+-- 入る汎用 KV で、集計する対象ではない。analytics-views.sql は参照していない。
+REVOKE SELECT ON app.kiosk_unlock_pins   FROM metabase_ro;  -- 退出 PIN の履歴（生値）
+REVOKE SELECT ON app.system_settings     FROM metabase_ro;  -- 設定 KV（退出 PIN 現行値・暗号化トークン）
 
 -- (2) 一部だけ秘密の表 — テーブル SELECT を剥奪し、安全な列だけ列単位で GRANT
 --     （Postgres ではテーブル SELECT があると列単位 REVOKE が効かないため、
@@ -183,9 +190,9 @@ REVOKE SELECT ON app.kiosk_devices FROM metabase_ro;
 -- （ownership_source）と端末プロファイルは調査用なので出さない。
 GRANT SELECT (id, name, location, plant_id, floor_map_id, map_x, map_y, status,
               device_token_expires_at, user_agent, activated_by, activated_at,
-              last_activity_at, created_at, updated_at, linked_at, settings_code,
+              last_activity_at, created_at, updated_at, linked_at,
               ownership)
-  ON app.kiosk_devices TO metabase_ro;  -- 隠す: device_token_hash, device_public_key, fingerprint, last_ip_address, linked_ip_address, ownership_source, device_profile*
+  ON app.kiosk_devices TO metabase_ro;  -- 隠す: device_token_hash, device_public_key, fingerprint, last_ip_address, linked_ip_address, ownership_source, device_profile*, settings_code（端末設定画面の解錠コード）
 
 -- 管理ディスプレイ（デジタルサイネージ）。リンクコードは据付中に有効な
 -- 生の秘密なので表ごと落とす。端末側は「どこに何台あって、いつまで生きていたか」

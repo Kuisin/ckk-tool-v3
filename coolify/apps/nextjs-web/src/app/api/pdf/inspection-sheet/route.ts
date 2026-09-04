@@ -10,7 +10,8 @@
  * 権限: workOrder あり = work_order READ / なし = master READ。
  */
 
-import { requirePermissionResponse } from "@/lib/authz";
+import { workOrderScopeWhere } from "@/app/(dashboard)/production/work-orders/data";
+import { checkPermission, sessionUserId } from "@/lib/authz";
 import { prisma } from "@/lib/db";
 import { fetchFinalInspectionPdfData } from "@/lib/final-inspection-data";
 import {
@@ -50,11 +51,14 @@ export async function GET(request: Request): Promise<Response> {
     });
   }
 
-  const denied = await requirePermissionResponse(
+  const authz = await checkPermission(
     workOrderNumber != null ? "work_order" : "master",
     "READ",
   );
-  if (denied) return denied;
+  if (!authz.ok) {
+    const status = (await sessionUserId()) ? 403 : 401;
+    return Response.json({ error: authz.error }, { status });
+  }
 
   const template = await prisma.inspectionTemplate.findUnique({
     where: { id: templateId },
@@ -67,10 +71,16 @@ export async function GET(request: Request): Promise<Response> {
     return new Response(`Template not found: ${templateId}`, { status: 404 });
   }
 
+  // 指示書指定時はスコープ外を不存在と同じ 404 にする（fetchWorkOrder と同じ規則）。
   const wo =
     workOrderNumber != null
-      ? await prisma.workOrder.findUnique({
-          where: { workOrderNumber },
+      ? await prisma.workOrder.findFirst({
+          where: {
+            AND: [
+              { workOrderNumber },
+              workOrderScopeWhere(authz.access, authz.userId),
+            ],
+          },
           select: { plannedQuantity: true },
         })
       : null;

@@ -9,6 +9,7 @@
  * recordId = String(workOrderNumber) に記録 — 指示書詳細の履歴タブに載せる）。
  */
 
+import { type Access, rowInScope } from "@ckk/authz-core";
 import { revalidatePath } from "next/cache";
 import { getTranslations } from "next-intl/server";
 import { z } from "zod";
@@ -46,12 +47,49 @@ function failed(e: unknown, fallback: string): StepActionResult {
   return { ok: false, errors: [fallback] };
 }
 
-/** RBAC ゲート — 拒否時は StepActionResult 形のエラー、許可時は null。 */
+/**
+ * 対象指示書がスコープ内か（PLANT = 工程の実施拠点 ∪ OWN = 作成者）。
+ * work-orders/actions.ts の workOrderInScope と同じ規則。ALL は素通し。
+ * 不存在は true — 既存の stepNotFound / workOrderNotFound 系に委ねる。
+ */
+async function workOrderInScope(
+  access: Access,
+  userId: string,
+  workOrderNumber: number,
+): Promise<boolean> {
+  if (access.kind === "ALL") return true;
+  const row = await prisma.workOrder.findUnique({
+    where: { workOrderNumber },
+    select: { createdBy: true, steps: { select: { plantId: true } } },
+  });
+  if (!row) return true;
+  return rowInScope(
+    access,
+    { plantIds: row.steps.map((s) => s.plantId), createdBy: row.createdBy },
+    userId,
+  );
+}
+
+/**
+ * RBAC ゲート — 拒否時は StepActionResult 形のエラー、許可時は null。
+ * workOrderNumber を渡すと行スコープも見る（権限があっても対象範囲外なら拒否）。
+ * payload 形のアクションは zod 検証の前に権限だけ見て、番号が確定した後に
+ * もう一度スコープ付きで呼ぶ（checkPermission は cache() 済みなので安い）。
+ */
 async function deniedStepPermission(
   action: PermissionAction,
+  workOrderNumber?: number,
 ): Promise<StepActionResult | null> {
   const authz = await checkPermission("work_order", action);
-  return authz.ok ? null : { ok: false, errors: [authz.error] };
+  if (!authz.ok) return { ok: false, errors: [authz.error] };
+  if (
+    workOrderNumber != null &&
+    !(await workOrderInScope(authz.access, authz.userId, workOrderNumber))
+  ) {
+    const tr = await getTranslations();
+    return { ok: false, errors: [tr("common.scopeDenied")] };
+  }
+  return null;
 }
 
 /** 工程が指示書に属することの検証（URL 直叩き対策）。 */
@@ -71,7 +109,7 @@ export async function startStep(
   lotText?: string | null,
 ): Promise<StepActionResult> {
   const tr = await getTranslations();
-  const denied = await deniedStepPermission("UPDATE");
+  const denied = await deniedStepPermission("UPDATE", workOrderNumber);
   if (denied) return denied;
   const parsedLot = z
     .string()
@@ -109,7 +147,7 @@ export async function updateStepLot(
   lotText: string,
 ): Promise<StepActionResult> {
   const tr = await getTranslations();
-  const denied = await deniedStepPermission("UPDATE");
+  const denied = await deniedStepPermission("UPDATE", workOrderNumber);
   if (denied) return denied;
   const parsedLot = z.string().trim().max(100).safeParse(lotText);
   if (!parsedLot.success) {
@@ -195,7 +233,7 @@ export async function completeStep(
   defectReasons?: z.infer<typeof defectReasonsInput>,
 ): Promise<StepActionResult> {
   const tr = await getTranslations();
-  const denied = await deniedStepPermission("UPDATE");
+  const denied = await deniedStepPermission("UPDATE", workOrderNumber);
   if (denied) return denied;
   const parsed = quantitiesInput.nullable().safeParse(quantities);
   if (!parsed.success) {
@@ -238,7 +276,7 @@ export async function abortStep(
   reason: string,
 ): Promise<StepActionResult> {
   const tr = await getTranslations();
-  const denied = await deniedStepPermission("UPDATE");
+  const denied = await deniedStepPermission("UPDATE", workOrderNumber);
   if (denied) return denied;
   if (!reason.trim()) {
     return {
@@ -269,7 +307,7 @@ export async function rollbackStep(
   reason: string,
 ): Promise<StepActionResult> {
   const tr = await getTranslations();
-  const denied = await deniedStepPermission("UPDATE");
+  const denied = await deniedStepPermission("UPDATE", workOrderNumber);
   if (denied) return denied;
   try {
     const step = await findStep(workOrderNumber, stepId);
@@ -337,6 +375,8 @@ export async function addBranch(
     };
   }
   const v = parsed.data;
+  const outOfScope = await deniedStepPermission("UPDATE", v.workOrderNumber);
+  if (outOfScope) return outOfScope;
   try {
     const wo = await prisma.workOrder.findUnique({
       where: { workOrderNumber: v.workOrderNumber },
@@ -403,6 +443,8 @@ export async function updateBranch(
     };
   }
   const v = parsed.data;
+  const outOfScope = await deniedStepPermission("UPDATE", v.workOrderNumber);
+  if (outOfScope) return outOfScope;
   try {
     const wo = await prisma.workOrder.findUnique({
       where: { workOrderNumber: v.workOrderNumber },
@@ -451,6 +493,8 @@ export async function removeBranch(
     return { ok: false, errors: [tr("common.invalidInput")] };
   }
   const v = parsed.data;
+  const outOfScope = await deniedStepPermission("UPDATE", v.workOrderNumber);
+  if (outOfScope) return outOfScope;
   try {
     const wo = await prisma.workOrder.findUnique({
       where: { workOrderNumber: v.workOrderNumber },
@@ -528,6 +572,8 @@ export async function saveInspectionRecord(
     };
   }
   const v = parsed.data;
+  const outOfScope = await deniedStepPermission("UPDATE", v.workOrderNumber);
+  if (outOfScope) return outOfScope;
   try {
     const step = await findStep(v.workOrderNumber, v.stepId);
     if (!step) {
@@ -688,7 +734,7 @@ export async function approveInspectionRecord(
   //   （承認設定 MS0B の approval_groups）— 設定されていれば、そのグループの
   //   実効メンバー（本人 or 期間内の代理）だけが承認できる。未設定の
   //   テンプレートは従来どおり誰でも承認できる。
-  const denied = await deniedStepPermission("UPDATE");
+  const denied = await deniedStepPermission("UPDATE", workOrderNumber);
   if (denied) return denied;
   try {
     const record = await prisma.inspectionRecord.findFirst({
@@ -781,7 +827,7 @@ export async function confirmInspectionRecord(
   recordId: string,
 ): Promise<StepActionResult> {
   const tr = await getTranslations();
-  const denied = await deniedStepPermission("UPDATE");
+  const denied = await deniedStepPermission("UPDATE", workOrderNumber);
   if (denied) return denied;
   try {
     const record = await prisma.inspectionRecord.findFirst({
@@ -860,6 +906,8 @@ export async function saveDefectRecords(
     };
   }
   const v = parsed.data;
+  const outOfScope = await deniedStepPermission("UPDATE", v.workOrderNumber);
+  if (outOfScope) return outOfScope;
   try {
     const step = await findStep(v.workOrderNumber, v.stepId);
     if (!step) {
@@ -923,6 +971,8 @@ export async function saveOutsourceDates(
     return { ok: false, errors: [tr("common.invalidInput")] };
   }
   const v = parsed.data;
+  const outOfScope = await deniedStepPermission("UPDATE", v.workOrderNumber);
+  if (outOfScope) return outOfScope;
   try {
     const step = await findStep(v.workOrderNumber, v.stepId);
     if (!step) {
@@ -1114,6 +1164,8 @@ export async function addStepPlan(
     };
   }
   const v = parsed.data;
+  const outOfScope = await deniedStepPermission("UPDATE", v.workOrderNumber);
+  if (outOfScope) return outOfScope;
   const rangeError = validateTimeRange(v, tr);
   if (rangeError) return { ok: false, errors: [rangeError] };
   try {
@@ -1190,7 +1242,7 @@ export async function deleteStepPlan(
   planId: string,
 ): Promise<StepActionResult> {
   const tr = await getTranslations();
-  const denied = await deniedStepPermission("UPDATE");
+  const denied = await deniedStepPermission("UPDATE", workOrderNumber);
   if (denied) return denied;
   try {
     const step = await findStep(workOrderNumber, stepId);
@@ -1237,6 +1289,8 @@ export async function addStepActual(
     };
   }
   const v = parsed.data;
+  const outOfScope = await deniedStepPermission("UPDATE", v.workOrderNumber);
+  if (outOfScope) return outOfScope;
   const rangeError = validateTimeRange(v, tr);
   if (rangeError) return { ok: false, errors: [rangeError] };
   try {
@@ -1313,7 +1367,7 @@ export async function deleteStepActual(
   actualId: string,
 ): Promise<StepActionResult> {
   const tr = await getTranslations();
-  const denied = await deniedStepPermission("UPDATE");
+  const denied = await deniedStepPermission("UPDATE", workOrderNumber);
   if (denied) return denied;
   try {
     const step = await findStep(workOrderNumber, stepId);
@@ -1375,7 +1429,7 @@ export async function updateStepInspectionTemplates(
   templateIds: number[],
 ): Promise<StepActionResult> {
   const tr = await getTranslations();
-  const denied = await deniedStepPermission("UPDATE");
+  const denied = await deniedStepPermission("UPDATE", workOrderNumber);
   if (denied) return denied;
   const ids = [...new Set(templateIds)].filter(
     (id) => Number.isInteger(id) && id > 0,

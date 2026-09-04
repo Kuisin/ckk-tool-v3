@@ -158,6 +158,7 @@ function validateVariants(
 async function resolveEstimateSource(
   tr: Tr,
   estimateNumber: string,
+  productId: number,
 ): Promise<
   { ok: true; key: DocKey; needsLock: boolean } | { ok: false; error: string }
 > {
@@ -169,7 +170,7 @@ async function resolveEstimateSource(
     };
   const estimate = await prisma.estimate.findUnique({
     where: whereKey(key),
-    select: { status: true },
+    select: { status: true, productId: true },
   });
   if (!estimate)
     return { ok: false, error: tr("sales.priceListsActions.estimateNotFound") };
@@ -178,6 +179,10 @@ async function resolveEstimateSource(
       ok: false,
       error: tr("sales.priceListsActions.onlyConfirmedEstimateUsable"),
     };
+  }
+  // 別製品にリンクされた価格試算は基準単価ソースにできない（製品未リンクは可）。
+  if (estimate.productId != null && estimate.productId !== productId) {
+    return { ok: false, error: tr("sales.priceListsActions.estimateNotFound") };
   }
   return { ok: true, key, needsLock: estimate.status === "CONFIRMED" };
 }
@@ -252,7 +257,11 @@ export async function createPriceEntry(
     const estimateKeys = new Map<string, DocKey>();
     for (const variant of v.variants) {
       if (!variant.estimateNumber) continue;
-      const source = await resolveEstimateSource(tr, variant.estimateNumber);
+      const source = await resolveEstimateSource(
+        tr,
+        variant.estimateNumber,
+        v.identity.productId,
+      );
       if (!source.ok) return actionError(source.error);
       estimateKeys.set(variant.estimateNumber, source.key);
       if (source.needsLock) {
@@ -397,11 +406,21 @@ export async function updatePriceEntry(
     const removedIds = [...existingIds].filter((id) => !keptIds.has(id));
 
     // 新規バリアントの価格試算ソースを検証（既存バリアントのリンクは不変）。
+    // 価格試算はこの価格表の製品にリンクされたものだけ（別製品の単価を混ぜない）。
+    const entry = await prisma.priceListEntry.findUnique({
+      where: whereKey(key),
+      select: { productId: true },
+    });
+    if (!entry) return actionError(tr("sales.priceListsActions.updateFailed"));
     const locks: { number: string; key: DocKey }[] = [];
     const estimateKeys = new Map<string, DocKey>();
     for (const variant of v.variants) {
       if (variant.id || !variant.estimateNumber) continue;
-      const source = await resolveEstimateSource(tr, variant.estimateNumber);
+      const source = await resolveEstimateSource(
+        tr,
+        variant.estimateNumber,
+        entry.productId,
+      );
       if (!source.ok) return actionError(source.error);
       estimateKeys.set(variant.estimateNumber, source.key);
       if (source.needsLock) {
@@ -790,7 +809,17 @@ export async function saveDiscountRule(
       return actionError(tr("sales.priceListsActions.invalidVariant"));
     }
     if (v.id) {
-      await prisma.priceListDiscount.update({ where: { id: v.id }, data });
+      // id だけで更新すると他の価格表の値引きルールを書き換えられる —
+      // 検証済みのバリアントに属する行だけを対象にし、0 件なら失敗にする。
+      const updated = await prisma.priceListDiscount.updateMany({
+        where: { id: v.id, variantId: v.variantId },
+        data,
+      });
+      if (updated.count === 0) {
+        return actionError(
+          tr("sales.priceListsActions.saveDiscountRuleFailed"),
+        );
+      }
     } else {
       await prisma.priceListDiscount.create({
         data: { variantId: v.variantId, ...data },
@@ -834,7 +863,16 @@ export async function deleteDiscountRule(
     return actionError(tr("common.scopeDenied"));
   }
   try {
-    await prisma.priceListDiscount.delete({ where: { id } });
+    // id だけで消すと他の価格表の値引きルールを消せる — この価格表の
+    // バリアントに属する行だけを対象にし、0 件なら失敗にする。
+    const deleted = await prisma.priceListDiscount.deleteMany({
+      where: { id, variant: variantWhere(key) },
+    });
+    if (deleted.count === 0) {
+      return actionError(
+        tr("sales.priceListsActions.deleteDiscountRuleFailed"),
+      );
+    }
     await recordAudit({
       action: "UPDATE",
       tableName: "price_list_entries",
