@@ -5179,7 +5179,8 @@
       "sortOrderInteger": "Enter an integer for the sort order",
       "stepUpdated": "Step updated",
       "finalInspectionStep": "Final inspection step",
-      "theFinalInspectionChecklistIsRecorded": "The final inspection and pre-shipment checks (3 checks, spare stock, packing → delivery note → shipping approval) are recorded on this step's execution screen. There is one record per work order, and a work order whose step list has no flagged step has no final inspection."
+      "theFinalInspectionChecklistIsRecorded": "The final inspection and pre-shipment checks (3 checks, spare stock, packing → delivery note → shipping approval) are recorded on this step's execution screen. There is one record per work order, and a work order whose step list has no flagged step has no final inspection.",
+      "approvalStepsHaveNoQuantity": "An inspection approval step carries no quantity (quantity tracking is set to none). It approves the inspection sheet of an earlier step rather than working on the pieces."
     },
     "products": {
       "specification": "Specification",

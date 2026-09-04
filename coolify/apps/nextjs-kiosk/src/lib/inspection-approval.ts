@@ -23,6 +23,7 @@ import { prisma } from "./db";
 import type { LocalizedText } from "./format";
 import { localized } from "./format";
 import type { Locale } from "./i18n";
+import { inspectionValueLabel } from "./inspection-value-label";
 import { encodeInventoryNote } from "./inventory-note-core";
 import type { StepActionResult, StepErrorCode } from "./step-execution";
 
@@ -54,12 +55,25 @@ function effectiveMemberWhere(now: Date) {
   };
 }
 
+/** 検査表 1 行ぶんの記入内容（承認する人が中身を確かめるために出す）。 */
+export interface ApprovableInspectionItem {
+  itemName: string;
+  /** 実測値の表示文字列（複数サンプルは " / " 連結。未入力は null）。 */
+  valueLabel: string | null;
+  isPass: boolean | null;
+}
+
 /** 承認画面に出す検査記録 1 件。 */
 export interface ApprovableInspectionRecord {
   id: string;
   /** 記録元の工程名（指示書横断で並べるので、どの工程の検査かを出す）。 */
   stepName: string;
   templateName: string;
+  /**
+   * 記入済みの検査表の中身。**承認は「見てから押す」もの**なので、
+   * 何を承認するのか分からないまま印だけ押せる画面にしない。
+   */
+  items: ApprovableInspectionItem[];
   status: string;
   recordedAt: string | null;
   recordedByName: string | null;
@@ -141,9 +155,12 @@ export async function getWorkOrderInspectionRecords(
         },
       },
       step: { include: { processStep: { select: { name: true } } } },
+      // 承認する人が中身を確かめられるように、記入済みの行も渡す。
+      items: { include: { templateItem: true } },
     },
     orderBy: { recordedAt: "desc" },
   });
+  const valueLabel = inspectionValueLabel(locale);
 
   const userIds = [
     ...new Set(
@@ -169,6 +186,14 @@ export async function getWorkOrderInspectionRecords(
         locale,
       ),
       templateName: localized(r.template.name as LocalizedText | null, locale),
+      items: r.items.map((it) => ({
+        itemName: localized(
+          it.templateItem.itemName as LocalizedText | null,
+          locale,
+        ),
+        valueLabel: valueLabel(it),
+        isPass: it.isPass,
+      })),
       status: r.status,
       recordedAt: r.recordedAt?.toISOString() ?? null,
       recordedByName: nameOf(r.recordedBy),

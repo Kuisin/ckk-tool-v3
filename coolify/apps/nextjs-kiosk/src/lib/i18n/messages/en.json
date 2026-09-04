@@ -289,13 +289,26 @@
     },
     "approval": {
       "title": "Inspection approval",
+      "remaining": "{n} waiting for approval",
+      "allDone": "All approved",
       "empty": "There is no inspection record to approve",
       "approve": "Approve",
       "approved": "Approved",
-      "notApprover": "You are not an approver for this inspection sheet",
-      "onlyPass": "Only records that passed can be approved",
+      "othersToggle": "Approved / not applicable ({n})",
+      "othersHide": "Close",
+      "notApprover": "You are not an approver",
+      "onlyPass": "Cannot approve — it did not pass",
       "recordedBy": "Recorded {at} {by}",
-      "approvedMeta": "Approved {at} {by}"
+      "approvedMeta": "Approved {at} {by}",
+      "sheetOf": "{sheet} — {step}",
+      "viewSheet": "View the sheet",
+      "sheetTitle": "Inspection sheet",
+      "close": "Close",
+      "item": "Item",
+      "value": "Measured",
+      "verdict": "Result",
+      "noItems": "No items were filled in",
+      "checkThenApprove": "Check the contents before approving"
     }
   },
   "deviceError": {

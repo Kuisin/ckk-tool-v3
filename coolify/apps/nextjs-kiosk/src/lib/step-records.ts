@@ -26,23 +26,20 @@ import {
 } from "./final-inspection";
 import type { LocalizedText } from "./format";
 import { localized } from "./format";
-import { getMessages, type Locale } from "./i18n";
+import type { Locale } from "./i18n";
 import {
   type ApprovableInspectionRecord,
   getWorkOrderInspectionRecords,
 } from "./inspection-approval";
 import {
-  type BoolLabels,
-  formatCounts,
-  formatSampleValue,
   type InspectionItemSpec,
   type InspectionSampleValue,
   isSampleEmpty,
   itemSpecFromRow,
-  parseStoredSamples,
   resolveItemPass,
   samplingSpecFromRow,
 } from "./inspection-core";
+import { inspectionValueLabel } from "./inspection-value-label";
 import { encodeInventoryNote } from "./inventory-note-core";
 import type { StepActionResult, StepErrorCode } from "./step-execution";
 import { inspectionOutcome } from "./steps-core";
@@ -52,13 +49,6 @@ const fail = (code: StepErrorCode, ...errors: string[]): StepActionResult => ({
   codes: [code],
   errors: errors.length > 0 ? errors : undefined,
 });
-
-/** 実測値表示のはい/いいえ（ロケール別）。 */
-const BOOL_LABELS: Record<Locale, BoolLabels> = {
-  ja: { yes: "はい", no: "いいえ" },
-  en: { yes: "Yes", no: "No" },
-  zh: { yes: "是", no: "否" },
-};
 
 // ── 読み取り（実行画面に出すデータ） ─────────────────────────────────────────
 
@@ -233,28 +223,9 @@ export async function getStepRecordingData(
   const nameOf = (id: string | null) =>
     id ? (users.find((u) => u.id === id)?.displayName ?? null) : null;
 
-  const bool = BOOL_LABELS[locale];
-
-  // 実測値の表示（合格数のみ → 合格 n/m、新形式 measured_values は型別
-  // フォーマット、旧形式は生値）
-  const passLabel = getMessages(locale).steps.inspection.pass;
-  const valueLabel = (it: {
-    measuredValue: string | null;
-    measuredValues: unknown;
-    inspectedCount: number | null;
-    passedCount: number | null;
-    templateItem: Parameters<typeof itemSpecFromRow>[0];
-  }): string | null => {
-    if (it.inspectedCount != null || it.passedCount != null) {
-      return formatCounts(it.inspectedCount, it.passedCount, passLabel);
-    }
-    const samples = parseStoredSamples(it.measuredValues);
-    if (samples.length === 0) return it.measuredValue;
-    const spec = itemSpecFromRow(it.templateItem);
-    return samples
-      .map((s) => formatSampleValue(spec, s, locale, bool))
-      .join(" / ");
-  };
+  // 実測値の表示は検査承認側と同じものを使う（承認する人が見る値と記録した
+  // 人が見る値が違ったら承認の意味がない — inspection-value-label.ts）。
+  const valueLabel = inspectionValueLabel(locale);
 
   return {
     isInspection: step.processStep.isInspection,

@@ -5179,7 +5179,8 @@
       "sortOrderInteger": "请输入整数作为显示顺序",
       "stepUpdated": "已更新工序",
       "finalInspectionStep": "最终检查工序",
-      "theFinalInspectionChecklistIsRecorded": "在该工序的执行画面记录最终检查与出货前确认（3 项确认、备用库存、包装 → 发行送货单 → 出货批准）。每张工单一条记录；工序清单中没有带此标记工序的工单即没有最终检查。"
+      "theFinalInspectionChecklistIsRecorded": "在该工序的执行画面记录最终检查与出货前确认（3 项确认、备用库存、包装 → 发行送货单 → 出货批准）。每张工单一条记录；工序清单中没有带此标记工序的工单即没有最终检查。",
+      "approvalStepsHaveNoQuantity": "检查审批工序不带数量（数量管理设为「无」）。它是查看前道工序的检查表并审批的工序，而不是加工工序。"
     },
     "products": {
       "specification": "规格",
