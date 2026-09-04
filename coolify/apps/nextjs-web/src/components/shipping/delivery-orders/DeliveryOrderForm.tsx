@@ -8,10 +8,11 @@
  * 注文明細（SO）は m:n のまま（1 注文明細は複数の出荷書へ分割出荷できる）。
  * 既定行は未出荷数量を関連ロットへ自動割付した結果（allocateLotUsage）。
  *
- * ピッカーは**追加専用で選択値を残さない**（残すと「置き換え」に見えるうえ、
- * 複数の注文請書を束ねたときにどれを出せばいいのか決まらない）。代わりに
- * 「**対象の注文請書**」を読み取り専用で並べて出す — いま何に対する出荷書
- * なのかは、載っている明細から導くのが唯一の正しい答えなので。
+ * ピッカーの表示値は**いま載っている明細から導く**（自前の state を持たない）。
+ * 注文明細・指示書・注文請書のどこから作りはじめても、その明細の親の注文請書が
+ * そのまま欄に入る — 利用者が自分で選び直さなくてよい。複数の注文請書を
+ * 束ねたときは先頭が欄に入り、全体はすぐ下の「**対象の注文請書**」に並ぶ
+ * （欄は 1 つしか値を持てないので、束ねた事実はそちらが正）。
  *
  * 指示書（ロット）は**その行の注文明細に紐づく完了指示書**から選ぶ —
  * グループごとに取得した stockLots が選択肢で、他の受注のロットは出ない
@@ -72,6 +73,7 @@ import { deliveryMethodLabel, deliveryOrderTypeLabel } from "@/lib/enum-labels";
 import { fieldHelp } from "@/lib/field-help";
 import { zodResolver } from "@/lib/form";
 import type { Option } from "@/lib/mock";
+import type { RecentOption } from "@/lib/recents";
 import {
   allocateLotUsage,
   combinabilityError,
@@ -233,8 +235,13 @@ export function DeliveryOrderForm({
     Record<string, DeliverySourceInfo>
   >({});
 
-  // 注文請書ピッカー（グループ追加用）の選択値（ORD-…）— 追加後は空へ戻す。
-  const [pickedLineId, setPickedLineId] = useState<string>("");
+  /**
+   * 注文請書ピッカーで**選びかけ**の値（ORD-…）。確定した表示値は
+   * coveredOptions（= 載っている明細から導く）なので、ここは追加が終わるまでの
+   * 一時的な見た目のためだけに持つ。追加に失敗したら null に戻し、実際に
+   * 載っているものへ表示を戻す。
+   */
+  const [pendingPick, setPendingPick] = useState<RecentOption | null>(null);
 
   // `?workOrder=` で来たとき、同じ注文請書に残っている出荷できる明細。
   // 空でなければ「まとめて出荷しますか」のモーダルを出す（既定は全部チェック）。
@@ -409,10 +416,23 @@ export function DeliveryOrderForm({
     }
   };
 
-  /** 注文請書を選ぶ → 出荷できる注文明細すべてをグループとして追加する。 */
-  const onAcceptancePick = (acceptanceNumber: string | null) => {
-    setPickedLineId(acceptanceNumber ?? "");
-    if (!acceptanceNumber) return;
+  /**
+   * 注文請書を選ぶ → 出荷できる注文明細すべてをグループとして追加する。
+   * 追加が終わったら pendingPick を落とし、表示は coveredOptions（実際に
+   * 載っているもの）に任せる — 足せなかったときに欄だけ変わって見える、
+   * という食い違いを作らないため。
+   */
+  const onAcceptancePick = (
+    acceptanceNumber: string | null,
+    option?: RecentOption,
+  ) => {
+    if (!acceptanceNumber) {
+      setPendingPick(null);
+      return;
+    }
+    setPendingPick(
+      option ?? { value: acceptanceNumber, label: acceptanceNumber },
+    );
     fetchDeliveryAcceptanceSourceInfo(acceptanceNumber).then((infos) => {
       if (infos.length === 0) {
         notifications.show({
@@ -420,10 +440,11 @@ export function DeliveryOrderForm({
           message: tr("shipping.deliveryOrders.thereAreNoOrderLinesReady"),
           color: "red",
         });
+        setPendingPick(null);
         return;
       }
       addSourceGroups(infos);
-      setPickedLineId("");
+      setPendingPick(null);
     });
   };
 
@@ -533,19 +554,26 @@ export function DeliveryOrderForm({
 
   /**
    * いま載っている明細が属する注文請書（重複なし・並び順は追加順）。
-   * ピッカーは追加専用で選択値を残さないので、「何に対する出荷書か」は
-   * ここが唯一の表示。infoByLine がまだ読めていない行は出さない
-   * （読めた時点で増える — 空欄よりは途中経過のほうがましなため）。
+   *
+   * **注文請書の欄はここから導く** — 自前の選択 state を持たないので、
+   * 注文明細・指示書・注文請書のどこから作りはじめても、その明細の親の
+   * 注文請書がそのまま欄に入る（新規のプリセレクトでも編集でも同じ）。
+   * 束ねたときは先頭が欄に入り、全体は欄の下にバッジで並ぶ。
+   * infoByLine がまだ読めていない行は出さない（読めた時点で増える —
+   * 空欄よりは途中経過のほうがましなため）。
    */
-  const coveredAcceptances = [
-    ...new Set(
-      form.values.items
-        .map((it) =>
-          it.orderLineId ? infoByLine[it.orderLineId]?.acceptanceNumber : null,
-        )
-        .filter((n): n is string => Boolean(n)),
-    ),
-  ];
+  const coveredOptions: RecentOption[] = [];
+  for (const item of form.values.items) {
+    const info = item.orderLineId ? infoByLine[item.orderLineId] : null;
+    if (!info) continue;
+    if (coveredOptions.some((o) => o.value === info.acceptanceNumber)) continue;
+    coveredOptions.push({
+      value: info.acceptanceNumber,
+      label: `${info.acceptanceNumber} ${info.customerName}`,
+    });
+  }
+  // 欄に出す値 — 選びかけがあればそれ、無ければ実際に載っている先頭。
+  const pickerOption = pendingPick ?? coveredOptions[0] ?? null;
 
   const groups = groupItems(form.values.items);
 
@@ -836,7 +864,12 @@ export function DeliveryOrderForm({
               注文明細がグループとして**追加**される（m:n）。 */}
           <Stack gap={4}>
             <SearchSelect
+              // 値は載っている明細から導くので、空にできても意味が無い
+              // （消しても次のレンダーで戻る = 壊れて見える）。注文請書を
+              // 外すのは、その明細の行を消すこと。
+              clearable={false}
               error={form.errors.customerBpId}
+              initialOption={pickerOption}
               label={
                 <HelpLabel {...fieldHelp(tr, "deliveryOrder", "orderLine")} />
               }
@@ -846,27 +879,24 @@ export function DeliveryOrderForm({
                 "shipping.deliveryOrders.searchOrderAcceptancesAndAddLines",
               )}
               storageKey="order-acceptance"
-              value={pickedLineId || null}
+              value={pickerOption?.value ?? null}
               withAsterisk={mode === "create"}
             />
-            {/* ピッカーは追加専用で選択値を残さないので、いま何に対する
-                出荷書なのかはここが唯一の表示になる。 */}
-            <Group gap={6} wrap="wrap">
-              <Text c="dimmed" size="xs">
-                {tr("shipping.deliveryOrders.coveredOrderAcceptances")}
-              </Text>
-              {coveredAcceptances.length > 0 ? (
-                coveredAcceptances.map((number) => (
-                  <Badge key={number} size="sm" variant="light">
-                    <DocNumber>{number}</DocNumber>
-                  </Badge>
-                ))
-              ) : (
+            {/* 欄は 1 つしか値を持てない。2 つ以上の注文請書を束ねたときだけ、
+                束ねた事実を全部並べて出す（1 つのときは欄と同じ内容なので
+                出さない — 同じものを 2 度読ませない）。 */}
+            {coveredOptions.length > 1 && (
+              <Group gap={6} wrap="wrap">
                 <Text c="dimmed" size="xs">
-                  —
+                  {tr("shipping.deliveryOrders.coveredOrderAcceptances")}
                 </Text>
-              )}
-            </Group>
+                {coveredOptions.map((o) => (
+                  <Badge key={o.value} size="sm" variant="light">
+                    <DocNumber>{o.value}</DocNumber>
+                  </Badge>
+                ))}
+              </Group>
+            )}
           </Stack>
           <Input.Wrapper
             label={<HelpLabel {...fieldHelp(tr, "deliveryOrder", "type")} />}

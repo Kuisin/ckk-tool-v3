@@ -52,6 +52,8 @@ You can start a delivery order from four places. They all open the same form.
 | Where you start | What is filled in |
 |---|---|
 | 「**新規作成**」 (New) on the delivery order list | Nothing — you pick the order acceptance yourself |
+
+**Except when you start from the list, the 「注文請書」 (order acceptance) box is filled in too** — it holds the parent acceptance of the lines that were added.
 | 「**出荷書を作成**」 on an [order acceptance](/manual/en/operations/sales/order-acceptance/user) | Every shippable line of that acceptance |
 | 「**出荷書を作成**」 on an [order line](/manual/en/operations/sales/order-line/user) or [pending shipment](/manual/en/operations/shipping/pending-shipment/user) | That one order line |
 | 「**出荷書を作成**」 on a [work order](/manual/en/operations/production/work-order/user) | The work order's order lines. **If the same order acceptance has other shippable lines, you are asked whether to ship them together** |
@@ -152,7 +154,9 @@ Which order this shipment is for, picked as an order acceptance. Choosing it fil
 
 Multiple order acceptances can be combined into one delivery order only when they share **the same customer, the same ship-to and the same delivery method (normal / direct to user)**. Trying to add one that differs shows the reason on the spot.
 
-This box is an **add** box, so it goes back to empty after you pick something (so that you can add another one). What this delivery order is actually for is shown just below it, under 「**対象の注文請書**」 (covered order acceptances) — the numbers appear there whichever screen you started from: an order line, a work order, or an order acceptance.
+This box shows **the order acceptance the lines on the form belong to**. Whichever screen you started from — an order line, a work order or an order acceptance — the parent acceptance of those lines is already in the box, so you do not have to pick it again.
+
+A box can only hold one value, so **only when you have combined two or more acceptances** do all the numbers appear below it under 「**対象の注文請書**」 (covered order acceptances). To take an acceptance off, delete the rows of its lines with the bin icon at the right of each row — there is no way to empty the box itself.
 
 ### Type [#field-type]
 
