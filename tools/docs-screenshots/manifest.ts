@@ -621,7 +621,7 @@ export const shots: Shot[] = [
   {
     id: "approval-list-01",
     docPage: "operations/production/approval/user",
-    // 旧 承認管理 (PD03 /production/approvals) は 承認・予定 (CM01) へ移設され、
+    // 旧 承認管理 (PD03 /production/approvals) は 未処理一覧 (CM01) へ移設され、
     // 旧パスは 308 リダイレクト。リダイレクト先を直に撮る（旧パスのままだと
     // 「9002」が無い画面で 60 秒待って落ちる）。
     path: "/general/tasks?tab=approvals",

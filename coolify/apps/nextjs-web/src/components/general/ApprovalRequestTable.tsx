@@ -121,7 +121,7 @@ export function ApprovalRequestTable({
   embedded = false,
 }: {
   rows: ApprovalRequestRow[];
-  /** 承認・予定 (CM01) のセクションとして埋め込む（見出しは親が出す）。 */
+  /** 未処理一覧 (CM01) のセクションとして埋め込む（見出しは親が出す）。 */
   embedded?: boolean;
 }) {
   const tr = useTranslations();
@@ -214,7 +214,7 @@ export function ApprovalRequestTable({
 
   return (
     <ListShell
-      breadcrumbs={[tr("common.general"), tr("common.approvalsSchedule")]}
+      breadcrumbs={[tr("common.general"), tr("common.pendingList")]}
       embedded={embedded}
       filters=<Select
         clearable
@@ -236,7 +236,7 @@ export function ApprovalRequestTable({
           value={search}
         />
       }
-      title={tr("common.approvalsSchedule")}
+      title={tr("common.pendingList")}
     >
       <DataTable
         columns={columns}

@@ -89,7 +89,7 @@ list that they cannot approve their own request.
 | `material_receipt` | Material receipt | PU03 Material receipts |
 | `outsource_order` | Outsource order | PU04 Outsource orders |
 | `work_order` | Work order | PD02 Work orders / PD05 Pending work orders (also the kiosk's step execution and WO scan) |
-| `approve` | Approval | **No app** (formerly PD03; CM01 Approvals & schedule needs no permission) |
+| `approve` | Approval | **No app** (formerly PD03; CM01 Pending list needs no permission) |
 | `inventory` | Inventory | PD04 Inventory |
 | `delivery_order` | Delivery order | SH01 Delivery orders / SH03 Pending shipments |
 | `delivery_note` | Delivery note | SH02 Delivery notes |
@@ -108,7 +108,7 @@ list that they cannot approve their own request.
 | `user_admin` | User and permission changes | SY01 Users (**privileged**) |
 | `portal_admin` | Partner portal admin | SY0H Partner portal |
 
-**Some apps need no permission at all**: CM01 Approvals & schedule, CM02 Forms
+**Some apps need no permission at all**: CM01 Pending list, CM02 Forms
 (the app itself), DC01 Manual, SY06 Files, SY0G Privileged access. They are built
 to show only what concerns you, so the door is left open.
 

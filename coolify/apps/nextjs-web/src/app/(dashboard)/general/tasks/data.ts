@@ -1,5 +1,5 @@
 /**
- * data.ts — 承認・予定 (CM01) の作業予定セクションのデータソース。
+ * data.ts — 未処理一覧 (CM01) の作業予定セクションのデータソース。
  *
  * 自分に割り当てられた作業計画（work_order_step_plans）のうち、まだ終わって
  * いないもの（工程が PENDING / IN_PROGRESS・指示書がキャンセル以外）を
@@ -11,7 +11,7 @@ import { prisma } from "@/lib/db";
 import { formatDocNumber } from "@/lib/doc-number";
 import { type LocalizedText, localized } from "@/lib/format";
 
-/** 承認・予定の作業予定 1 行（client-safe）。 */
+/** 未処理一覧の作業予定 1 行（client-safe）。 */
 export interface MyPlanRow {
   id: string;
   /** 計画日（YYYY-MM-DD）。 */

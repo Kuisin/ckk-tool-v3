@@ -217,7 +217,7 @@
     "tier": "段階",
     "requester": "依頼者",
     "requestedAt": "依頼日時",
-    "approvalsSchedule": "承認・予定",
+    "pendingList": "未処理一覧",
     "save2": "保存",
     "profile": "プロフィール",
     "newGroup": "新しいグループ",
@@ -1594,7 +1594,7 @@
       },
       "approve": {
         "label": "承認管理",
-        "summary": "承認依頼中の一覧（承認・予定）を見られます。実際に承認できるかどうかは、この権限ではなく承認設定（MS0B）で決まります。"
+        "summary": "承認依頼中の一覧（未処理一覧）を見られます。実際に承認できるかどうかは、この権限ではなく承認設定（MS0B）で決まります。"
       },
       "form": {
         "label": "フォーム",
@@ -2041,7 +2041,9 @@
       "leaveAtLeastOne": "少なくとも 1 枚は残してください。"
     },
     "tasksView": {
-      "thereIsNoWorkAssignedTo": "割り当てられた作業予定はありません"
+      "thereIsNoWorkAssignedTo": "割り当てられた作業予定はありません",
+      "privilegedDecidedInSy0g": "決裁は特権アクセス (SY0G) で行います。",
+      "decide": "決裁する"
     },
     "formsActions": {
       "addAtLeastOneField": "項目を 1 つ以上追加してください",
@@ -6133,7 +6135,7 @@
       "useAnApprovalFlow": "承認フローを使う",
       "aSettingForWhenAnApprover": "承認者が「ここを直して」と言う場面のための設定。1 人でも承認したら締まります（差し戻しは設定に関係なく直せます）",
       "evenWhilePendingTheRespondentCan": "承認依頼中でも、最初の承認が下りるまでは回答者が直せる",
-      "whoIsToldOnCompletionAll": "完了（承認フローを使うなら全段の承認、使わないなら提出）したときの\n            通知先は、「共有」タブで共有先ごとに「完了通知」を付けて決めます。\n            通知を受け取った人は、承認・予定 (CM01) の「完了した申請」でも\n            一覧を見られます。",
+      "whoIsToldOnCompletionAll": "完了（承認フローを使うなら全段の承認、使わないなら提出）したときの\n            通知先は、「共有」タブで共有先ごとに「完了通知」を付けて決めます。\n            通知を受け取った人は、未処理一覧 (CM01) の「完了した申請」でも\n            一覧を見られます。",
       "allowOnlyOneResponsePerPerson": "1 人 1 回だけ回答できるようにする",
       "openPeriod": "受付期間",
       "ifEmptyItOpensTheMoment": "空なら公開した時点から受け付けます",
@@ -6362,7 +6364,7 @@
       "searchUsers": "ユーザーを検索",
       "removeAShare": "共有先を削除",
       "aFormWithNoSharesSet": "共有先を 1\n        つも設定していないフォームは、作成者と管理者にしか見えません。 URL\n        を知っていても開けません。",
-      "sharesWithCompletionNoticeTickedAre": "「完了通知」を付けた共有先には、申請・報告が完了したとき（承認フローを\n          使うなら全段の承認、使わないなら提出）に通知が届き、承認・予定 (CM01)\n          の「完了した申請」に並びます。条件を付けた共有先には、その条件に\n          当てはまる回答の完了だけが届きます。",
+      "sharesWithCompletionNoticeTickedAre": "「完了通知」を付けた共有先には、申請・報告が完了したとき（承認フローを\n          使うなら全段の承認、使わないなら提出）に通知が届き、未処理一覧 (CM01)\n          の「完了した申請」に並びます。条件を付けた共有先には、その条件に\n          当てはまる回答の完了だけが届きます。",
       "narrowWhichResponsesAreShownApplies": "見せる回答を絞る（この共有先だけに効きます）",
       "addAShare": "共有先を追加"
     },

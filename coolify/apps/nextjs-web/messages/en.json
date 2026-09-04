@@ -217,7 +217,7 @@
     "tier": "Tier",
     "requester": "Requester",
     "requestedAt": "Requested at",
-    "approvalsSchedule": "Approvals & schedule",
+    "pendingList": "Pending list",
     "save2": "Save",
     "profile": "Profile",
     "newGroup": "New group",
@@ -2041,7 +2041,9 @@
       "leaveAtLeastOne": "Leave at least one."
     },
     "tasksView": {
-      "thereIsNoWorkAssignedTo": "There is no work assigned to you"
+      "thereIsNoWorkAssignedTo": "There is no work assigned to you",
+      "privilegedDecidedInSy0g": "Decisions are made in Privileged access (SY0G).",
+      "decide": "Decide"
     },
     "formsActions": {
       "addAtLeastOneField": "Add at least one field",
@@ -6133,7 +6135,7 @@
       "useAnApprovalFlow": "Use an approval flow",
       "aSettingForWhenAnApprover": "A setting for when an approver says \"fix this\". It closes as soon as anyone approves (sending back always allows edits)",
       "evenWhilePendingTheRespondentCan": "Even while pending, the respondent can fix it until the first approval",
-      "whoIsToldOnCompletionAll": "Who is told on completion (all steps approved if an approval flow is used, otherwise submission) is set per share by ticking \"completion notice\" on the Sharing tab. Recipients can also see the list under \"Completed requests\" in Approvals & schedule (CM01).",
+      "whoIsToldOnCompletionAll": "Who is told on completion (all steps approved if an approval flow is used, otherwise submission) is set per share by ticking \"completion notice\" on the Sharing tab. Recipients can also see the list under \"Completed requests\" in Pending list (CM01).",
       "allowOnlyOneResponsePerPerson": "Allow only one response per person",
       "openPeriod": "Open period",
       "ifEmptyItOpensTheMoment": "If empty, it opens the moment it is published",
@@ -6362,7 +6364,7 @@
       "searchUsers": "Search users",
       "removeAShare": "Remove a share",
       "aFormWithNoSharesSet": "A form with no shares set is visible only to its author and administrators. Knowing the URL does not help.",
-      "sharesWithCompletionNoticeTickedAre": "Shares with \"completion notice\" ticked are told when a request or report completes (all steps approved with an approval flow, otherwise on submission), and it appears under \"Completed requests\" in Approvals & schedule (CM01). Shares with a condition only hear about completions matching it.",
+      "sharesWithCompletionNoticeTickedAre": "Shares with \"completion notice\" ticked are told when a request or report completes (all steps approved with an approval flow, otherwise on submission), and it appears under \"Completed requests\" in Pending list (CM01). Shares with a condition only hear about completions matching it.",
       "narrowWhichResponsesAreShownApplies": "Narrow which responses are shown (applies to this share only)",
       "addAShare": "Add a share"
     },
