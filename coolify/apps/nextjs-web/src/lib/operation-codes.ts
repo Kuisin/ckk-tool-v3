@@ -125,10 +125,10 @@ export const OPERATION_CODES: OperationCodeEntry[] = [
     index: "0",
   },
   {
-    // 一般カテゴリの 承認・予定 — 自分の作業予定 + 承認依頼中の横断一覧
+    // 一般カテゴリの 未処理一覧 — 自分の作業予定 + 承認依頼中の横断一覧
     //（旧 承認管理 PD03 の後継）。
     code: "CM01",
-    label: "承認・予定",
+    label: "未処理一覧",
     href: "/general/tasks",
     category: "一般",
     kind: "list",
@@ -186,7 +186,7 @@ export const OPERATION_CODES: OperationCodeEntry[] = [
   // 注文明細は販売カテゴリ (SA05) へ移設したため PD01/PD11/PD21 は欠番。
   // PD22 詳細（ID無し→検索）が旧 PD20 工程実行 のエントリポイントを兼ねる
   ...makeResource("生産", "PD", "2", "指示書", "/production/work-orders"),
-  // PD03（承認管理）は廃止・欠番 — 承認依頼中の横断一覧は 承認・予定 (CM01) へ。
+  // PD03（承認管理）は廃止・欠番 — 承認依頼中の横断一覧は 未処理一覧 (CM01) へ。
   // 在庫管理 — 製品・素材・仕掛品・ロケーションの統合単一画面, list コードのみ
   // （旧 PD04 製品在庫 / PD05 素材在庫 は本画面へ統合）
   {

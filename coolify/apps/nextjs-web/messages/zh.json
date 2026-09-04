@@ -217,7 +217,7 @@
     "tier": "档",
     "requester": "申请人",
     "requestedAt": "申请时间",
-    "approvalsSchedule": "审批与计划",
+    "pendingList": "未处理列表",
     "save2": "保存",
     "profile": "个人资料",
     "newGroup": "新分组",
@@ -2040,7 +2040,9 @@
       "leaveAtLeastOne": "请至少保留 1 张。"
     },
     "tasksView": {
-      "thereIsNoWorkAssignedTo": "没有分配的作业计划"
+      "thereIsNoWorkAssignedTo": "没有分配的作业计划",
+      "privilegedDecidedInSy0g": "决裁在特权访问 (SY0G) 中进行。",
+      "decide": "决裁"
     },
     "formsActions": {
       "addAtLeastOneField": "请至少添加一个项目",
@@ -6123,7 +6125,7 @@
       "useAnApprovalFlow": "使用审批流程",
       "aSettingForWhenAnApprover": "用于审批人说「请修改这里」的场景。只要有 1 人批准即截止（退回时无论设置如何均可修改）",
       "evenWhilePendingTheRespondentCan": "即使在审批中，首次批准前回答人仍可修改",
-      "whoIsToldOnCompletionAll": "完成（使用审批流程时为全部级别批准，不使用时为提交）时的通知对象，在「共享」标签页按共享对象勾选「完成通知」来确定。收到通知的人也可在审批与计划 (CM01) 的「已完成的申请」中查看列表。",
+      "whoIsToldOnCompletionAll": "完成（使用审批流程时为全部级别批准，不使用时为提交）时的通知对象，在「共享」标签页按共享对象勾选「完成通知」来确定。收到通知的人也可在未处理列表 (CM01) 的「已完成的申请」中查看列表。",
       "allowOnlyOneResponsePerPerson": "每人仅可回答一次",
       "openPeriod": "受理期间",
       "ifEmptyItOpensTheMoment": "留空则从发布时起受理",
@@ -6352,7 +6354,7 @@
       "searchUsers": "搜索用户",
       "removeAShare": "删除共享对象",
       "aFormWithNoSharesSet": "未设置任何共享对象的表单仅创建者和管理员可见。即使知道 URL 也无法打开。",
-      "sharesWithCompletionNoticeTickedAre": "勾选了「完成通知」的共享对象，将在申请・报告完成时（使用审批流程时为全部级别批准，不使用时为提交）收到通知，并列在审批与计划 (CM01) 的「已完成的申请」中。设置了条件的共享对象仅会收到符合该条件的回答的完成通知。",
+      "sharesWithCompletionNoticeTickedAre": "勾选了「完成通知」的共享对象，将在申请・报告完成时（使用审批流程时为全部级别批准，不使用时为提交）收到通知，并列在未处理列表 (CM01) 的「已完成的申请」中。设置了条件的共享对象仅会收到符合该条件的回答的完成通知。",
       "narrowWhichResponsesAreShownApplies": "限定显示的回答（仅对此共享对象生效）",
       "addAShare": "添加共享对象"
     },

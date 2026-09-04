@@ -1,5 +1,5 @@
 /**
- * approvals-data.ts — 承認・予定 (CM01) の承認セクションのデータソース
+ * approvals-data.ts — 未処理一覧 (CM01) の承認セクションのデータソース
  * （旧 承認管理 PD03 の横断一覧）。
  *
  * PENDING の approval_requests を対象種別（注文請書 / 指示書 / 素材発注書 /

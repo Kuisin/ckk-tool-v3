@@ -39,6 +39,7 @@ describe("visibleTaskTabs", () => {
     const visible = visibleTaskTabs(ALL, ["approvals", "comments"], tr);
     expect(visible.map((t) => t.id)).toEqual([
       "plans",
+      "privileged",
       "forms",
       "my-forms",
       "completions",

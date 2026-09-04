@@ -1,11 +1,12 @@
 "use client";
 
 /**
- * TasksView — 承認・予定 (CM01, /general/tasks)。
+ * TasksView — 未処理一覧 (CM01, /general/tasks)。
  *
- * 個人の「やること」ビュー。タブは 6 枚（作業予定 / 承認依頼中 / 未回答のフォーム /
- * 回答済みのフォーム / 完了した申請 / 文書のコメント）で、出るかどうかは
- *   ① その人に出せるか（承認権限・完了通知の有無）
+ * 個人の「やること」ビュー。タブは 7 枚（作業予定 / 承認依頼中 / 特権アクセス /
+ * 未回答のフォーム / 回答済みのフォーム / 完了した申請 / 文書のコメント）で、
+ * 出るかどうかは
+ *   ① その人に出せるか（承認権限・特権コードの決裁権限・完了通知の有無）
  *   ② 本人が隠していないか（app.user_view_settings — 右上「表示するタブ」）
  * の 2 段で決まる。判定は lib/tasks-tabs.ts（純関数）に置いてある。
  *
@@ -31,6 +32,7 @@ import { PageHeader } from "@/components/ui/PageHeader";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { useTabParam } from "@/hooks/useUrlState";
 import { useIsMobile } from "@/hooks/useViewport";
+import type { PrivilegedRequestRow } from "@/lib/privileged-requests";
 import { resolveActiveTab, visibleTaskTabs } from "@/lib/tasks-tabs";
 import { ApprovalRequestTable } from "./ApprovalRequestTable";
 import {
@@ -39,6 +41,7 @@ import {
   PendingFormsList,
 } from "./FormTasksPanel";
 import { InboxCommentsList } from "./InboxCommentsList";
+import { PrivilegedApprovalsList } from "./PrivilegedApprovalsList";
 import { TaskTabsSettingsButton } from "./TaskTabsSettings";
 
 const WORK_ORDERS_PATH = "/production/work-orders";
@@ -149,6 +152,7 @@ function PlanRow({ plan }: { plan: MyPlanRow }) {
 export function TasksView({
   plans,
   approvals,
+  privileged,
   forms,
   comments,
   completions,
@@ -157,6 +161,8 @@ export function TasksView({
   plans: MyPlanRow[];
   /** null = approve 権限なし（セクション自体を出さない）。 */
   approvals: ApprovalRequestRow[] | null;
+  /** 自分が決裁できる特権アクセスの申請。null = 決裁できる権限なし。 */
+  privileged: PrivilegedRequestRow[] | null;
   forms: FormTasks;
   comments: InboxCommentRow[];
   /** 自分宛に届いた「完了した申請・報告」。1 件も無ければタブを出さない。 */
@@ -171,6 +177,7 @@ export function TasksView({
   const available = [
     "plans",
     ...(approvals != null ? ["approvals"] : []),
+    ...(privileged != null ? ["privileged"] : []),
     "forms",
     "my-forms",
     ...(completions.length > 0 ? ["completions"] : []),
@@ -184,6 +191,7 @@ export function TasksView({
   const badges: Record<string, { count: number; color: string }> = {
     plans: { count: plans.length, color: "indigo" },
     approvals: { count: approvals?.length ?? 0, color: "yellow" },
+    privileged: { count: privileged?.length ?? 0, color: "orange" },
     forms: { count: forms.pending.length, color: "cyan" },
     "my-forms": { count: 0, color: "gray" },
     completions: { count: unreadCompletions, color: "blue" },
@@ -209,6 +217,9 @@ export function TasksView({
     approvals: approvals != null && (
       <ApprovalRequestTable embedded rows={approvals} />
     ),
+    privileged: privileged != null && (
+      <PrivilegedApprovalsList rows={privileged} />
+    ),
     forms: <PendingFormsList rows={forms.pending} />,
     "my-forms": <MyResponsesList rows={forms.mine} />,
     completions: <CompletedRequestsList rows={completions} />,
@@ -221,8 +232,8 @@ export function TasksView({
         actions={
           <TaskTabsSettingsButton available={available} hidden={hiddenTabs} />
         }
-        breadcrumbs={[tr("common.general"), tr("common.approvalsSchedule")]}
-        title={tr("common.approvalsSchedule")}
+        breadcrumbs={[tr("common.general"), tr("common.pendingList")]}
+        title={tr("common.pendingList")}
       />
 
       <AppTabs onChange={setTab} value={tab}>

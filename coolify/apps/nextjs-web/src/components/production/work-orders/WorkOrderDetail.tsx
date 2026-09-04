@@ -384,7 +384,7 @@ export function WorkOrderDetail({
         isApproval
           ? [
               tr("common.production"),
-              { label: tr("common.approvalsSchedule"), href: "/general/tasks" },
+              { label: tr("common.pendingList"), href: "/general/tasks" },
               woLabel,
             ]
           : [

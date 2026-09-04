@@ -297,7 +297,7 @@ Operation codes provide keyboard-shortcut navigation. Format: `{CAT}{MODE}{IDX}`
 | Category | IDX | Base label | list | new | detail |
 |----------|-----|-----------|------|-----|--------|
 | 共通 | — | ダッシュボード | CM00 | — | — |
-| 一般 | 1 | 承認・予定 | CM01 | — | — |
+| 一般 | 1 | 未処理一覧 | CM01 | — | — |
 | 販売 | 1 | 価格試算 | SA01 | SA11 | SA21 |
 | 販売 | 2 | 価格表 | SA02 | SA12 | SA22 |
 | 販売 | 3 | 見積書 | SA03 | SA13 | SA23 |
@@ -353,7 +353,7 @@ Operation codes provide keyboard-shortcut navigation. Format: `{CAT}{MODE}{IDX}`
 > `lib/app-list.ts`。
 >
 > `PD03` / `PD13` / `PD23` は**欠番**。旧 承認管理 は 一般カテゴリの
-> 承認・予定（`CM01`, `/general/tasks` — 自分の作業予定 + 承認依頼中の
+> 未処理一覧（`CM01`, `/general/tasks` — 自分の作業予定 + 承認依頼中の
 > 横断一覧）へ移設した。旧 `/production/approvals` はリダイレクト。
 >
 > `PD01` / `PD11` / `PD21` は**欠番**。旧 注文請書 は注文請書の明細に統合され、
@@ -424,7 +424,7 @@ Stack (gap="xl", p="md", maw={1200})
 | 指示書 | `IconSettings2` |
 | 未処理指示書 | `IconProgress` |
 | 設計図 | `IconFileVector` |
-| 承認・予定 | `IconClipboardList` |
+| 未処理一覧 | `IconClipboardList` |
 | 製品在庫 | `IconBoxSeam` |
 | 素材在庫 | `IconStack2` |
 | 出荷書 | `IconTruck` |
