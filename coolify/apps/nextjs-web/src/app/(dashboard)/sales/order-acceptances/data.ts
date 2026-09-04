@@ -242,6 +242,7 @@ export async function fetchOrderAcceptance(
     shippingWorkLocationName: r.shippingWorkLocation
       ? `${localized(r.shippingWorkLocation.group.name as LocalizedText | null)} / ${localized(r.shippingWorkLocation.name as LocalizedText | null)}`
       : null,
+    customerProvidesDeliveryNote: r.customerProvidesDeliveryNote,
     customerSuggestions: customerSuggestions.map((c) => ({
       id: c.id,
       label: c.label,

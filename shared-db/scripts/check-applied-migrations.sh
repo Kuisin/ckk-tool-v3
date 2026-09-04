@@ -22,6 +22,14 @@
 # ファイルが、変更・削除・改名されていたら **失敗**。
 # 新しいディレクトリを足すのは当然 OK。
 #
+# ■ 例外（1 つだけ）
+# 上の理屈は「base のマイグレーションは適用済み」が前提。**適用に失敗して
+# 止まっている** 1 本はその外側で、後ろに足しても直せない（Prisma は失敗した
+# 1 本があるとその先を流さない = P3018。まっさらな DB でも同じ場所で止まる）。
+# その場合に限り、migration.sql の先頭に
+#   -- allow-rewrite: <なぜ安全か。どの DB にも当たっていない根拠>
+# と書けば変更を通す。削除・改名は引き続き禁止。詳細は下の実装コメント。
+#
 # ■ 直し方
 #   1. 元のファイルを base の内容に戻す:
 #        git checkout origin/dev -- shared-db/prisma/migrations/<名前>/migration.sql
@@ -48,10 +56,43 @@ fi
 
 # base に無いディレクトリ（= この PR で新しく足したもの）は対象外。
 # それ以外のファイルが 1 つでも動いていたら止める。
-violations=$(
+changed=$(
   git diff --name-status "$BASE_REF"...HEAD -- "$MIGRATIONS_DIR" \
     | awk '$1 != "A" { print }'
 )
+
+# ── 例外: 一度も適用できていないマイグレーション ────────────────────────────
+# 上の理屈は「base のマイグレーションは適用済み」を前提にしている。**適用に
+# 失敗して止まっている** 1 本はその前提の外にある:
+#   - Prisma は失敗した 1 本があるとその先を一切流さない（P3018）ので、
+#     後ろに新しいマイグレーションを足しても永遠に届かない
+#   - まっさらな DB でも同じ場所で必ず止まる（新規構築・復旧ができない）
+# つまり直す道はそのファイルを直すことだけなので、**変更（M）に限り**
+# migration.sql の先頭に
+#   -- allow-rewrite: <なぜ安全か。どの DB にも当たっていない根拠>
+# と書いて意図的だと言わせる（allow-destructive と同じ流儀）。削除・改名は
+# 引き続き禁止 — 履歴からファイルが消えると checksum の照合先が無くなる。
+#
+# ⚠️ **本当に適用済みのファイルにこの印を付けてはいけない。** その場合は
+# 次のデプロイが P3006 で落ち、しかも落ちるのは無関係な誰かの merge のとき。
+# 印を付ける前に `prisma migrate status` で failed と出ることを確かめること。
+violations=""
+while read -r status path; do
+  [ -n "$status" ] || continue
+  case "$status" in
+    M*)
+      if [ -f "$path" ] && grep -q -- '-- allow-rewrite:' "$path"; then
+        echo "check-applied-migrations: 許可（allow-rewrite）: $path"
+        continue
+      fi
+      ;;
+  esac
+  violations="${violations}${status}	${path}
+"
+done <<EOF
+$changed
+EOF
+violations=$(printf '%s' "$violations")
 
 if [ -z "$violations" ]; then
   echo "check-applied-migrations: OK（$BASE_REF のマイグレーションは触られていません）"

@@ -81,6 +81,10 @@ model OrderAcceptance {
   assignedPlantId Int? @map("assigned_plant_id")
   // 出荷作業場所（作業場所マスタ MS0D。出荷作業を行う場所）
   shippingWorkLocationId Int? @map("shipping_work_location_id")
+  // 顧客が自前の納品書（バーコード等）を用意する取引か。true のときは
+  // 自社発行の納品書に添える形で顧客提供の納品書も同梱する運用上の目印
+  // （出荷準備担当への注意喚起。自動作成する納品書の通数は変わらない）。
+  customerProvidesDeliveryNote Boolean @default(false) @map("customer_provides_delivery_note")
 
   notes       String?
   completedAt DateTime? @map("completed_at") @db.Timestamptz(6)

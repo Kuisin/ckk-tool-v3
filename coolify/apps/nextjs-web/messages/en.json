@@ -6711,7 +6711,8 @@
       "priceOverrideLine": "Line {row} {actual} (price list {expected})",
       "hideTheDocumentPane": "Collapse the document",
       "showTheDocumentPane": "Expand the document",
-      "hideTheDocument": "Hide"
+      "hideTheDocument": "Hide",
+      "customerProvidesDeliveryNote": "Customer-supplied delivery note"
     },
     "orderLines": {
       "parentDocumentOfThisLine": "Parent document of this line",
@@ -7318,31 +7319,30 @@
       "markedAsDelivered": "Marked as delivered",
       "selectAnEndUser": "Select an end user",
       "theDeliveryNoteWasUpdated": "The delivery note was updated",
-      "newDeliveryNote": "New delivery note",
-      "chooseAConfirmedOrShippedDelivery": "Choose a confirmed or shipped delivery order",
       "shipToForDirectToUser": "Ship-to for direct-to-user delivery (no prices on the completion note; the delivery note is sent separately)",
       "searchEndUsers": "Search end users",
       "showPricesPrintUnitPriceAnd": "Show prices (print unit price and amount on the delivery note)",
-      "choosingADeliveryOrderPrefillsThe": "Choosing a delivery order prefills the lines (prices from the order lines). With \"show prices\" off, prices and amounts are not saved.",
       "searchByDeliveryNoteNumberDelivery": "Search by delivery note number, delivery order number or ship-to",
       "thereAreNoDeliveryNotes": "There are no delivery notes",
       "invoiceNote": "{status} · {amount}",
       "confirmIssueBody": "This issues delivery note {number}. It cannot be edited after issuing.",
       "issuedBody": "Issued delivery note {number}",
       "confirmDeliveredBody": "This marks delivery note {number} as delivered. Today's date will be recorded as the delivered date.",
-      "deliveredBody": "Marked delivery note {number} as delivered"
+      "deliveredBody": "Marked delivery note {number} as delivered",
+      "directToUserPriceWarning": "This delivery note includes prices. Do not hand it to the end user — it is addressed to the customer.",
+      "confirmOpenWithPriceTitle": "This delivery note includes prices",
+      "confirmOpenWithPriceBody": "This is the priced delivery note for a direct-to-end-user shipment. Do not give it to the end user — use it for the customer only."
     },
     "deliveryOrders": {
       "stockStorageSoNotTiedTo": "— (stock storage, so not tied to an order line)",
       "shipmentNotTiedToAnOrder": "— (shipment not tied to an order line)",
       "whereTheShippedLotWasMade": "Where the shipped lot was made",
       "noDeliveryNoteHasBeenCreated": "No delivery note has been created",
-      "notCreatedTheDeliveryNoteIs": "Not created (the delivery note is made after shipping)",
+      "notCreatedTheDeliveryNoteIs": "Not created (created automatically once confirmed)",
       "fromSite": "From site",
       "workOrderLinkedAtHeader": "Work order (linked at header)",
-      "createADeliveryNote": "Create a delivery note",
       "thereIsNoDeliveryNoteFor": "There is no delivery note for this delivery order yet",
-      "youCanCreateTheDeliveryNote": "You can create the delivery note once confirmed",
+      "youCanCreateTheDeliveryNote": "The delivery note is created automatically when the delivery order is confirmed",
       "ship": "Ship",
       "shipped": "Shipped",
       "confirmTheShipment": "Confirm the shipment",
@@ -7378,7 +7378,11 @@
       "deletedBody": "Deleted delivery order {number}",
       "onlySameCustomerCanBeCombined": "A delivery order can only combine order lines for the same customer",
       "onlySameShipToCanBeCombined": "A delivery order can only combine order lines for the same ship-to",
-      "onlySameDeliveryMethodCanBeCombined": "A delivery order can only combine order lines with the same delivery method (standard / direct to end user)"
+      "onlySameDeliveryMethodCanBeCombined": "A delivery order can only combine order lines with the same delivery method (standard / direct to end user)",
+      "stockStorageHasNoDeliveryNote": "Stock-storage delivery orders don't get a delivery note",
+      "onlySameEndUserCanBeCombined": "A delivery order can only combine order lines with the same end user",
+      "confirmConfirmBodyDispatch": "This confirms delivery order {number}. It cannot be edited afterward. Delivery note(s) will be created automatically (direct-to-end-user creates two — one without prices and one with).",
+      "confirmedBodyDispatch": "Confirmed delivery order {number} and created the delivery note(s)"
     },
     "pendingShipments": {
       "completedLots": "Completed lots",
@@ -7414,23 +7418,17 @@
       "partialShipmentLabel": "Partial shipment (shipping {total} / remaining {remaining})"
     },
     "deliveryNoteForm": {
-      "selectADeliveryOrder": "Select a delivery order",
-      "createdWithNumber": "Created delivery note {number}",
       "editWithNumber": "Edit delivery note {noteId}"
     },
     "deliveryNoteTable": {
       "destinationLabel": "Destination: {name}"
     },
     "deliveryNoteActions": {
-      "createFailed": "Could not create the delivery note",
       "deliverFailed": "Could not process the delivery",
-      "deliveryOrderMustBeConfirmedOrShipped": "A delivery note can only be created from a confirmed or shipped delivery order",
-      "deliveryOrderNotFound": "The delivery order was not found",
       "draftOnlyCanEdit": "Only a draft delivery note can be edited",
       "draftOnlyCanIssue": "Only a draft delivery note can be issued",
       "exceedsShippedQuantity": "{label} quantity {quantity} exceeds the shipped quantity {shipped}",
       "invalidDeliveryNoteNumber": "Invalid delivery note number",
-      "invalidDeliveryOrderNumber": "Invalid delivery order number",
       "issueFailed": "Could not issue it",
       "issuedOnlyCanDeliver": "Only an issued delivery note can be marked delivered",
       "productFallbackLabel": "Product #{id}",
@@ -7458,7 +7456,8 @@
       "shipFailed": "Could not process the shipment",
       "shippedNotificationTitle": "Delivery order {number} has shipped",
       "specifyAConfirmedOrderLine": "Specify a confirmed order line",
-      "updateFailed": "Could not update the delivery order"
+      "updateFailed": "Could not update the delivery order",
+      "autoCreatedNote": "Auto-created when the delivery order was confirmed"
     }
   },
   "ui": {
@@ -8309,6 +8308,10 @@
       "shippingWorkLocation": {
         "label": "Shipping work location",
         "summary": "The location where shipping work (packing, loading, etc.) is performed. Select from the work location master."
+      },
+      "customerProvidesDeliveryNote": {
+        "label": "Customer-supplied delivery note",
+        "summary": "Check this when the customer provides their own delivery note (e.g. for their barcode) to include alongside the one this system issues. It's a heads-up for shipping staff — it doesn't change how many delivery notes are auto-created or who they're addressed to."
       },
       "notes": {
         "label": "Notes",

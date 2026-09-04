@@ -188,6 +188,7 @@ screenshots: [order-acceptance-list-01, order-acceptance-new-01, order-acceptanc
 | [最终用户](#field-end-user) | 直送时必填 | 直送时的实际送达对象（最终需要方） |
 | [负责据点](#field-assigned-plant) | 选填 | 处理这笔订单的据点 |
 | [发货作业场所](#field-shipping-work-location) | 选填 | 进行发货作业的场所 |
+| [客户自备送货单](#field-customer-provides-delivery-note) | 选填 | 客户是否自备送货单的提示 |
 | [备注](#field-notes) | 选填 | 对整份受理书的补充 |
 | [产品](#field-product) | 必填 | 所订购的产品 |
 | [品名（提取文本）](#field-extracted-name) | — | 订单上记载的品名 |
@@ -236,6 +237,10 @@ screenshots: [order-acceptance-list-01, order-acceptance-new-01, order-acceptanc
 ### 发货作业场所 [#field-shipping-work-location]
 
 进行发货作业（包装、装车等）的场所。从[作业场所](/manual/zh/operations/masters/work-location/user)主数据中选择。
+
+### 客户自备送货单 [#field-customer-provides-delivery-note]
+
+客户自备送货单（如条码打印）时勾选。用于提醒发货人员随本系统开具的送货单一并附上客户自备的那份。勾选与否不影响自动生成送货单的份数与收件人。
 
 ### 备注 [#field-notes]
 

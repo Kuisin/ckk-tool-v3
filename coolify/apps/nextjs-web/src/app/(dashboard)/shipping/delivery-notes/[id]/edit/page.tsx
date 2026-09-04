@@ -28,5 +28,5 @@ export default async function ShippingDeliveryNotesEditPage({
   if (!note) notFound();
   if (!isEditable(note)) redirect(`/shipping/delivery-notes/${note.id}`);
 
-  return <DeliveryNoteForm candidates={[]} mode="edit" note={note} />;
+  return <DeliveryNoteForm note={note} />;
 }

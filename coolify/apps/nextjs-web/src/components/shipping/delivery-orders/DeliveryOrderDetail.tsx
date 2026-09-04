@@ -12,16 +12,7 @@
  * キャンセル（DRAFT のみ hard delete, 確認モーダル・赤）。
  */
 
-import {
-  Anchor,
-  Group,
-  Paper,
-  Stack,
-  Table,
-  Tabs,
-  Text,
-  Title,
-} from "@mantine/core";
+import { Anchor, Paper, Stack, Table, Tabs, Text, Title } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
 import { IconCheck, IconReceipt, IconTruck, IconX } from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
@@ -34,7 +25,6 @@ import {
 } from "@/app/(dashboard)/shipping/delivery-orders/actions";
 import { useFormat } from "@/components/layout/PreferencesProvider";
 import { AppTabs } from "@/components/ui/AppTabs";
-import { SecondaryButton } from "@/components/ui/buttons";
 import { DocNumber } from "@/components/ui/DocNumber";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { FieldValue } from "@/components/ui/FieldValue";
@@ -59,7 +49,7 @@ import { deliveryMethodLabel } from "@/lib/enum-labels";
 import type { ActionResult } from "@/lib/server-action";
 import { statusLabel } from "@/lib/status-map";
 import { DeliveryOrderTypeBadge } from "./DeliveryOrderTable";
-import { canCreateDeliveryNote, type DeliveryOrder, isEditable } from "./model";
+import { type DeliveryOrder, isEditable } from "./model";
 
 const BASE_PATH = "/shipping/delivery-orders";
 
@@ -420,35 +410,17 @@ export function DeliveryOrderDetail({
         <Tabs.Panel pt="md" value="delivery-notes">
           {order.deliveryNotes.length === 0 ? (
             <EmptyState
-              action={
-                canCreateDeliveryNote(order) ? (
-                  <SecondaryButton
-                    href={`/shipping/delivery-notes/new?deliveryOrder=${order.id}`}
-                    leftSection={<IconReceipt size={14} />}
-                  >
-                    {tr("shipping.deliveryOrders.createADeliveryNote")}
-                  </SecondaryButton>
-                ) : undefined
-              }
               icon={<IconReceipt size={24} />}
               message={
-                canCreateDeliveryNote(order)
-                  ? tr("shipping.deliveryOrders.thereIsNoDeliveryNoteFor")
-                  : tr("shipping.deliveryOrders.youCanCreateTheDeliveryNote")
+                order.type === "STOCK_STORAGE"
+                  ? tr("shipping.deliveryOrders.stockStorageHasNoDeliveryNote")
+                  : order.status === "DRAFT"
+                    ? tr("shipping.deliveryOrders.youCanCreateTheDeliveryNote")
+                    : tr("shipping.deliveryOrders.thereIsNoDeliveryNoteFor")
               }
             />
           ) : (
             <Stack gap="sm">
-              {canCreateDeliveryNote(order) && (
-                <Group justify="flex-end">
-                  <SecondaryButton
-                    href={`/shipping/delivery-notes/new?deliveryOrder=${order.id}`}
-                    leftSection={<IconReceipt size={14} />}
-                  >
-                    {tr("shipping.deliveryOrders.createADeliveryNote")}
-                  </SecondaryButton>
-                </Group>
-              )}
               <Table.ScrollContainer minWidth={560}>
                 <Table highlightOnHover>
                   <Table.Thead>
@@ -518,17 +490,23 @@ export function DeliveryOrderDetail({
         confirmColor="blue"
         confirmLabel={tr("common.confirmed")}
         loading={isPending}
-        message={tr("shipping.deliveryOrders.confirmConfirmBody", {
-          number: order.deliveryOrderNumber,
-        })}
+        message={tr(
+          order.type === "DISPATCH"
+            ? "shipping.deliveryOrders.confirmConfirmBodyDispatch"
+            : "shipping.deliveryOrders.confirmConfirmBody",
+          { number: order.deliveryOrderNumber },
+        )}
         onClose={() => setConfirmOpen(false)}
         onConfirm={() =>
           run(
             () => confirmDeliveryOrder(order.deliveryOrderNumber),
             tr("common.confirmed2"),
-            tr("shipping.deliveryOrders.confirmedBody", {
-              number: order.deliveryOrderNumber,
-            }),
+            tr(
+              order.type === "DISPATCH"
+                ? "shipping.deliveryOrders.confirmedBodyDispatch"
+                : "shipping.deliveryOrders.confirmedBody",
+              { number: order.deliveryOrderNumber },
+            ),
           )
         }
         opened={confirmOpen}

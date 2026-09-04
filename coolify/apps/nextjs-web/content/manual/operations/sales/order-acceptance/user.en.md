@@ -188,6 +188,7 @@ Every field on the order acceptance screen. What the AI read from the order land
 | [End user](#field-end-user) | Required for direct | Where a direct shipment goes (the end user) |
 | [Assigned plant](#field-assigned-plant) | Optional | The site that handles this order |
 | [Shipping work location](#field-shipping-work-location) | Optional | Where the shipping work is done |
+| [Customer-supplied delivery note](#field-customer-provides-delivery-note) | Optional | Whether the customer provides their own delivery note |
 | [Notes](#field-notes) | Optional | Notes for the whole acceptance |
 | [Product](#field-product) | Required | The product ordered |
 | [Item name (as read)](#field-extracted-name) | — | The item name printed on the order |
@@ -236,6 +237,10 @@ The site of your own company that mainly handles this order. Choose it when you 
 ### Shipping work location [#field-shipping-work-location]
 
 The place where the shipping work (packing, loading and so on) is done. Choose from the [work location](/manual/en/operations/masters/work-location/user) master.
+
+### Customer-supplied delivery note [#field-customer-provides-delivery-note]
+
+Check this when the customer provides their own delivery note (for example, for their own barcode). It's a heads-up for shipping staff to include it alongside the delivery note this system issues. Checking it does not change how many delivery notes are auto-created or who they are addressed to.
 
 ### Notes [#field-notes]
 

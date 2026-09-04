@@ -149,6 +149,8 @@ function draftInputSchema(tr: Tr) {
     assignedPlantId: z.number().int().positive().nullable().optional(),
     // 出荷作業場所（作業場所マスタ MS0D。任意）
     shippingWorkLocationId: z.number().int().positive().nullable().optional(),
+    // 顧客が自前の納品書を用意しているか（出荷準備担当への目印。任意）。
+    customerProvidesDeliveryNote: z.boolean().default(false),
     customerOrderRef: z.string().nullable(),
     // 参照する見積書番号 QOT-YYYYMM-NNNNN（任意 — P2-2 トレーサビリティ）
     quoteNumber: z.string().nullable().optional(),
@@ -409,6 +411,7 @@ export async function saveDraft(
         endUserBpId: true,
         assignedPlantId: true,
         shippingWorkLocationId: true,
+        customerProvidesDeliveryNote: true,
         customerOrderRef: true,
         orderDate: true,
         notes: true,
@@ -461,6 +464,7 @@ export async function saveDraft(
           endUserBpId,
           assignedPlantId,
           shippingWorkLocationId,
+          customerProvidesDeliveryNote: v.customerProvidesDeliveryNote,
           customerOrderRef: trimOrNull(v.customerOrderRef),
           ...quoteKeyOf(v.quoteNumber),
           orderDate: v.orderDate ? new Date(v.orderDate) : null,
@@ -482,6 +486,7 @@ export async function saveDraft(
         endUserBpId: prior.endUserBpId,
         assignedPlantId: prior.assignedPlantId,
         shippingWorkLocationId: prior.shippingWorkLocationId,
+        customerProvidesDeliveryNote: prior.customerProvidesDeliveryNote,
         customerOrderRef: prior.customerOrderRef,
         orderDate: prior.orderDate?.toISOString().slice(0, 10) ?? null,
         notes: prior.notes,
@@ -494,6 +499,7 @@ export async function saveDraft(
         endUserBpId,
         assignedPlantId,
         shippingWorkLocationId,
+        customerProvidesDeliveryNote: v.customerProvidesDeliveryNote,
         customerOrderRef: trimOrNull(v.customerOrderRef),
         orderDate: v.orderDate,
         notes: trimOrNull(v.notes),
@@ -994,6 +1000,7 @@ export async function createManualAcceptance(
         endUserBpId,
         assignedPlantId,
         shippingWorkLocationId,
+        customerProvidesDeliveryNote: v.customerProvidesDeliveryNote,
         customerOrderRef: trimOrNull(v.customerOrderRef),
         ...quoteKeyOf(v.quoteNumber),
         orderDate: v.orderDate ? new Date(v.orderDate) : null,

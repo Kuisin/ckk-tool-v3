@@ -14,7 +14,7 @@ screenshots: [delivery-order-list-01, delivery-order-new-01, delivery-order-deta
 - 送る製品と本数をまとめた出荷書をつくれます。
 - 注文請書を選ぶだけで、**まだ出荷していない分の明細が自動で入ります**（手で打ち直す必要はありません）。
 - 出荷した記録を残すと、**在庫が自動で減ります**。
-- 出荷書から[納品書](/manual/ja/operations/shipping/delivery-note/user)をつくれます。
+- 出荷書を**確定すると**、[納品書](/manual/ja/operations/shipping/delivery-note/user)が**自動で作られます**（手で作る必要はありません）。
 - 送らずに社内で預かる分（予備でつくった分など）も記録できます。
 
 出荷書は、あとで[請求書](/manual/ja/operations/billing/invoice/user)をつくるときの元になる大事な書類です。
@@ -90,7 +90,7 @@ screenshots: [delivery-order-list-01, delivery-order-new-01, delivery-order-deta
 
 ![確定の確認画面](../../../assets/screenshots/delivery-order-confirm-01.png)
 
-確定すると **編集ができなくなり**、代わりに納品書が作れるようになります。
+確定すると **編集ができなくなります**。発送（発送分）の出荷書は、確定と同時に**納品書が自動で作られます** — ユーザー直送は、価格記載なし（最終需要家へ渡す分）と価格記載あり（お客様宛）の **2 通**になります。在庫保管は納品書を作りません。
 
 ### 2. 実際に送ったら（出荷）
 
@@ -113,15 +113,17 @@ screenshots: [delivery-order-list-01, delivery-order-new-01, delivery-order-deta
 
 種別で「在庫保管」を選ぶと、画面にその説明が出ます。
 
-## 納品書をつくる
+## 納品書ができるまで
 
-1. 出荷書の画面で「**納品書**」タブを開きます。
-2. 「**納品書を作成**」を押します。
-3. 出荷書があらかじめ選ばれた状態で、[納品書](/manual/ja/operations/shipping/delivery-note/user)の作成画面が開きます。
+納品書は**手で作りません**。発送（発送分）の出荷書を**確定した瞬間に自動で作られます**。
+
+- 通常配送は、価格記載ありの納品書が **1 通**。
+- ユーザー直送は、**2 通**（価格記載なしを最終需要家へ、価格記載ありをお客様へ）。**価格記載ありの納品書を最終需要家へ渡さないよう注意してください**（[納品書](/manual/ja/operations/shipping/delivery-note/user)側にも開くときの警告があります）。
+- 在庫保管の出荷書は納品書を作りません。
+
+出荷書の画面の「**納品書**」タブに、この出荷書から作られた納品書の一覧（納品番号・納品先・方法・状態・納品日）が並びます。
 
 ![納品書タブ](../../../assets/screenshots/delivery-order-delivery-notes-01.png)
-
-このタブには、この出荷書から作った納品書の一覧（納品番号・納品先・方法・状態・納品日）も並びます。
 
 ## 入力項目
 
