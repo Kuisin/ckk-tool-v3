@@ -38,7 +38,14 @@
  * ような直らない失敗は 1 回で諦める。人からの再抽出は回数を 1 から数え直す。
  */
 
-import { mkdir, readdir, readFile, rename, stat } from "node:fs/promises";
+import {
+  mkdir,
+  readdir,
+  readFile,
+  rename,
+  stat,
+  utimes,
+} from "node:fs/promises";
 import path from "node:path";
 import { AiProviderConfigError, aiConfigHeaders } from "./ai-provider";
 import { APPROVAL_TARGET } from "./approval-targets";
@@ -1263,6 +1270,12 @@ export async function scanIntakeFolder(): Promise<void> {
       } catch {
         continue; // 他プロセスが先に取った
       }
+      // rename は mtime を更新しない。10 分以上待たされたファイルをクレーム
+      // した直後に、隣のコンテナの孤児回収（上）が「古い .processing」と見て
+      // 元の名前に戻してしまうと同じ PDF が 2 回登録される。クレーム時刻を
+      // mtime に刻んで、回収の判定を「クレームからの経過」にする。
+      const now = new Date();
+      await utimes(claimed, now, now).catch(() => {});
       // 移動先で使う名前（採番後は ORD-… 付き）。失敗時の退避にも使う。
       let filed = name;
       try {

@@ -45,11 +45,22 @@ export async function materialAtp(
   const input: AtpInput = {
     onHand: invRows.reduce((s, r) => s + Number(r.quantity), 0),
     reserved: invRows.reduce((s, r) => s + Number(r.reservedQuantity), 0),
-    expectedReceipts: orderedItems.map((it) => ({
-      date: it.expectedAt ? it.expectedAt.toISOString().slice(0, 10) : null,
-      quantity: Number(it.quantity),
-      ref: it.purchaseOrder.poNumber,
-    })),
+    // 入荷予定 = 発注数 − 入荷済み数。部分入荷は IN として on-hand に既に
+    // 載っているので、全量を数えると二重計上になる（PO は全量入荷まで
+    // ORDERED のまま）。残りが 0 の明細は予定から外す。
+    expectedReceipts: orderedItems.flatMap((it) => {
+      const remaining = Number(it.quantity) - Number(it.receivedQuantity);
+      if (!(remaining > 0)) return [];
+      return [
+        {
+          date: it.expectedAt
+            ? it.expectedAt.toISOString().slice(0, 10)
+            : null,
+          quantity: remaining,
+          ref: it.purchaseOrder.poNumber,
+        },
+      ];
+    }),
   };
 
   const timeline = buildAtpTimeline(input);

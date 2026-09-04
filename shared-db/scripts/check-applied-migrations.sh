@@ -82,8 +82,16 @@ while read -r status path; do
   case "$status" in
     M*)
       if [ -f "$path" ] && grep -q -- '-- allow-rewrite:' "$path"; then
-        echo "check-applied-migrations: 許可（allow-rewrite）: $path"
-        continue
+        # 印は「今回の PR で付けた」ときだけ効く。base 側に既に印がある =
+        # その書き換えは merge 済み = 本物の DB に当たっている。印が残った
+        # ままのファイルをもう一度触ると次のデプロイが P3006 で落ちるので、
+        # ここで止める（例: 20261001090000_quote_status_simplify）。
+        if git show "$BASE_REF:$path" 2>/dev/null | grep -q -- '-- allow-rewrite:'; then
+          echo "check-applied-migrations: allow-rewrite は base に既にある印なので無効（適用済みの可能性）: $path" >&2
+        else
+          echo "check-applied-migrations: 許可（allow-rewrite）: $path"
+          continue
+        fi
       fi
       ;;
   esac
