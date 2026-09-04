@@ -3973,7 +3973,17 @@
       "issuedLinks": "Issued links",
       "revoked": "Revoked",
       "linkSummary": "{email} / {count} uses / until {date}",
-      "verified": "Verified"
+      "verified": "Verified",
+      "sharingScope": "Sharing scope",
+      "noSharingYet": "Nothing is shared yet (this person can see nothing).",
+      "includesBranches": "Includes branches",
+      "includesEndUserDocuments": "Includes documents as end user or ship-to",
+      "revokingSharingHidesThoseDocuments": "After revoking, the documents in this scope are hidden from this person.",
+      "noLinksIssuedYet": "No links have been issued.",
+      "revokingTheLinkClosesTheSession": "Revoking also ends any session opened with that link.",
+      "viewingHistory": "Viewing history",
+      "nothingHasBeenViewedYet": "Nothing has been viewed yet.",
+      "ipAddress": "IP address"
     },
     "privileged": {
       "pendingApproval": "(pending approval)",
@@ -4473,14 +4483,22 @@
     },
     "documents": {
       "document": "Document",
-      "noneToShow": "There are no {document} to show."
+      "noneToShow": "There are no {document} to show.",
+      "dueDate": "Payment due",
+      "taxAmount": "Tax",
+      "noLineItems": "There are no line items.",
+      "priceOmitted": "This delivery note does not show prices."
     },
     "forms": {
       "thereAreNoResponsesToShow": "There are no responses to show.",
-      "noFormsAreSharedWithYou": "No forms are shared with you."
+      "noFormsAreSharedWithYou": "No forms are shared with you.",
+      "noAnswerFields": "There are no fields to show.",
+      "rowNumber": "Row {row}",
+      "responseCount": "{count} responses"
     },
     "orders": {
-      "thereAreNoOrdersToShow": "There are no orders to show."
+      "thereAreNoOrdersToShow": "There are no orders to show.",
+      "cancelledNotice": "This order line has been cancelled."
     },
     "page": {
       "youCanViewDocumentsAddressedTo": "You can view documents addressed to your company.",
@@ -4510,6 +4528,19 @@
     "loginActions": {
       "backupCodeInvalid": "The backup code is incorrect.",
       "issueMessage": "If the email address you entered is registered, a verification code has been sent. Enter it within 10 minutes. If it does not arrive, check your spam folder and contact your sales representative."
+    },
+    "common": {
+      "relatedDocuments": "Related documents"
+    },
+    "home": {
+      "greeting": "Hello, {name}",
+      "activeOrders": "Orders in progress",
+      "recentDocuments": "Recent documents",
+      "viewAll": "View all",
+      "nothingToShow": "There is nothing to show yet."
+    },
+    "nav": {
+      "menu": "Menu"
     }
   },
   "master": {

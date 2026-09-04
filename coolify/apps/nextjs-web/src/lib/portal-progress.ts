@@ -22,11 +22,25 @@ import "server-only";
 
 import { prisma } from "./db";
 import { type LocalizedTextInput, localized } from "./format";
-import { portalScopeFor } from "./portal-access";
+import { portalAccessFor, portalScopeFor } from "./portal-access";
 import type { PortalSession } from "./portal-auth";
 import {
+  type PortalRelatedRef,
+  visiblePortalRelated,
+} from "./portal-documents";
+import {
+  type PortalOrderLineDetailDto,
   type PortalOrderLineDto,
   portalProgressOf,
+} from "./portal-progress-core";
+
+// 純粋なもの（番号の組み立て・分解・集計）は core にある。ページからは
+// このファイル 1 本を読めば済むように、そのまま通す。
+export {
+  type PortalOrderSummary,
+  parsePortalOrderLineNumber,
+  portalOrderLineNumber,
+  summarizePortalOrders,
 } from "./portal-progress-core";
 
 /** 社外に出す注文明細の状態（DRAFT は確定前なので出さない）。 */
@@ -143,4 +157,164 @@ export async function listPortalOrderLines(
       shippedOn: iso(shippedAt ?? null),
     };
   });
+}
+
+/**
+ * 注文明細 1 件の詳細。
+ *
+ * **一覧と同じ許可リスト**に、その 1 件を開いたときだけ出すもの
+ * （取引先自身の注文書番号・注文日・関連書類）を足す。関連書類は
+ * `visiblePortalRelated` を通すので、見えない相手は行ごと落ちる。
+ *
+ * 見えない／存在しないは同じ null（呼び出し側は 404 にする）。
+ */
+export async function getPortalOrderLine(
+  session: PortalSession,
+  yearMonth: string,
+  seq: number,
+  branch: number,
+): Promise<PortalOrderLineDetailDto | null> {
+  // リンク限定セッションは進捗を持たない（その 1 件だけのスコープ）。
+  if (session.linkId) return null;
+
+  const row = await prisma.orderLine.findFirst({
+    where: {
+      acceptanceYearMonth: yearMonth,
+      acceptanceSeq: seq,
+      branch,
+      status: { in: [...VISIBLE_LINE_STATUS] },
+    },
+    // ★ 許可リスト。lot_number / is_locked / product_id は取らない。
+    select: {
+      branch: true,
+      quantity: true,
+      unitPrice: true,
+      amount: true,
+      deliveryDate: true,
+      status: true,
+      cancelledAt: true,
+      productText: true,
+      product: { select: { name: true } },
+      acceptance: {
+        select: {
+          customerOrderRef: true,
+          orderDate: true,
+          createdAt: true,
+          // 認可の材料（誰宛の注文か）。表示には使わない。
+          customerBpId: true,
+          customerBranchBpId: true,
+          endUserBpId: true,
+          shipToBpId: true,
+        },
+      },
+      deliveryItems: {
+        select: {
+          deliveryOrder: {
+            select: {
+              shippedAt: true,
+              deliveryNotes: {
+                select: {
+                  yearMonth: true,
+                  seq: true,
+                  deliveredAt: true,
+                  createdAt: true,
+                },
+              },
+            },
+          },
+        },
+      },
+      invoiceItems: {
+        select: {
+          invoiceYearMonth: true,
+          invoiceSeq: true,
+          invoice: { select: { issuedAt: true, createdAt: true } },
+        },
+      },
+    },
+  });
+  if (!row) return null;
+
+  // 認可は **注文明細（order_lines）そのもの**を対象に判定する。
+  //
+  // 以前は「その注文請書を書類として見てよいか」（portalTargetOf）で代用して
+  // いたが、あちらは請書の状態が APPROVED 以降であることまで要求するので、
+  // **キャンセルされた注文**（acceptance.status = CANCELLED）の明細が一覧には
+  // 出るのに詳細だけ 404 になる。一覧が CANCELLED を出すのは意図的（止まった
+  // ことこそ知らせたい）なので、詳細の側を合わせる。
+  //
+  // 宛て先の集合は一覧の WHERE と同じ列から作る ⇒ 一覧に出た行は必ず開ける。
+  const access = await portalAccessFor(session, {
+    type: "order_lines",
+    id: `ORD-${yearMonth}-${String(seq).padStart(5, "0")}-${String(branch).padStart(2, "0")}`,
+    customerBpIds: [
+      row.acceptance.customerBpId,
+      row.acceptance.customerBranchBpId,
+    ].filter((v): v is string => !!v),
+    endUserBpIds: [
+      row.acceptance.endUserBpId,
+      row.acceptance.shipToBpId,
+    ].filter((v): v is string => !!v),
+  });
+  if (!access.canView) return null;
+
+  const deliveries = row.deliveryItems.flatMap((i) =>
+    i.deliveryOrder.deliveryNotes.map((n) => ({ deliveredAt: n.deliveredAt })),
+  );
+  const shippedAt = row.deliveryItems
+    .map((i) => i.deliveryOrder.shippedAt)
+    .filter((d): d is Date => d != null)
+    .sort((a, b) => a.getTime() - b.getTime())[0];
+
+  const acceptanceNumber = `ORD-${yearMonth}-${String(seq).padStart(5, "0")}`;
+  const refs: PortalRelatedRef[] = [
+    {
+      type: "order_acceptances",
+      yearMonth,
+      seq,
+      issuedOn:
+        iso(row.acceptance.orderDate) ??
+        row.acceptance.createdAt.toISOString().slice(0, 10),
+    },
+  ];
+  for (const di of row.deliveryItems) {
+    for (const n of di.deliveryOrder.deliveryNotes) {
+      refs.push({
+        type: "delivery_notes",
+        yearMonth: n.yearMonth,
+        seq: n.seq,
+        issuedOn: (n.deliveredAt ?? n.createdAt).toISOString().slice(0, 10),
+      });
+    }
+  }
+  for (const ii of row.invoiceItems) {
+    refs.push({
+      type: "invoices",
+      yearMonth: ii.invoiceYearMonth,
+      seq: ii.invoiceSeq,
+      issuedOn: (ii.invoice.issuedAt ?? ii.invoice.createdAt)
+        .toISOString()
+        .slice(0, 10),
+    });
+  }
+
+  return {
+    acceptanceNumber,
+    branch: row.branch,
+    productName: row.product?.name
+      ? localized(row.product.name as LocalizedTextInput)
+      : (row.productText ?? "—"),
+    quantity: row.quantity,
+    unitPrice: row.unitPrice?.toString() ?? null,
+    amount: row.amount?.toString() ?? null,
+    deliveryDate: iso(row.deliveryDate),
+    progress: portalProgressOf(
+      { status: row.status, cancelledAt: row.cancelledAt },
+      deliveries,
+    ),
+    shippedOn: iso(shippedAt ?? null),
+    customerOrderRef: row.acceptance.customerOrderRef,
+    orderedOn: iso(row.acceptance.orderDate),
+    related: await visiblePortalRelated(session, refs),
+  };
 }

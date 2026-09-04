@@ -20,6 +20,8 @@
 import "server-only";
 
 import { prisma } from "./db";
+import type { FormAnswerValue, FormFieldDef } from "./form-schema";
+import { fetchFormVersionFields } from "./forms";
 import { portalGrantsFor } from "./portal-access";
 import type { PortalSession } from "./portal-auth";
 import { responseInScope } from "./share-grants-core";
@@ -153,4 +155,63 @@ export async function listPortalFormResponses(
       submittedOn: (r.submittedAt ?? r.createdAt).toISOString().slice(0, 10),
       answers: (r.answers ?? {}) as Record<string, unknown>,
     }));
+}
+
+/**
+ * 回答 1 件の詳細。
+ *
+ * 一覧が返す `answers` は突合用の生の値なので、そのままでは読めない
+ * （鍵が項目 key、値が lookup の `{ id, label }` など）。ここは
+ * **回答した時点のバージョンの項目定義**を一緒に返し、画面が
+ * `lib/form-answer-display.ts`（社内の回答画面・帳票と同じ規約）で描けるようにする。
+ *
+ * 出さないものは一覧と同じ: 提出者・承認の履歴・却下理由。**添付は出さない**
+ * —— 添付はフォーム本体とは別の共有規則（file_folder_grants）で守られていて、
+ * ここから引くとその規則を迂回する。
+ */
+export interface PortalFormResponseDetail {
+  formCode: string;
+  formTitle: string;
+  responseNumber: string;
+  submittedOn: string | null;
+  fields: FormFieldDef[];
+  answers: Record<string, FormAnswerValue>;
+}
+
+export async function getPortalFormResponse(
+  session: PortalSession,
+  code: string,
+  responseNumber: string,
+): Promise<PortalFormResponseDetail | null> {
+  // 一覧と同じ判定を通す。**行を引く前に**共有の有無を確かめ、共有条件に
+  // 当たらない回答は一覧と同じ規則で落とす（詳細だけ広く見えることが無いように）。
+  const rows = await listPortalFormResponses(session, code);
+  if (rows === null) return null;
+  if (!rows.some((r) => r.responseNumber === responseNumber)) return null;
+
+  const row = await prisma.formResponse.findUnique({
+    where: { responseNumber },
+    // 許可リスト。submittedBy / history / rejectReason / plainText は取らない。
+    select: {
+      responseNumber: true,
+      version: true,
+      formId: true,
+      submittedAt: true,
+      createdAt: true,
+      answers: true,
+      form: { select: { code: true, title: true } },
+    },
+  });
+  // 一覧に居た番号なので普通は在るが、状態が変わった直後は無いことがある。
+  if (!row || row.form.code !== code) return null;
+
+  return {
+    formCode: row.form.code,
+    formTitle: row.form.title,
+    responseNumber: row.responseNumber,
+    submittedOn: (row.submittedAt ?? row.createdAt).toISOString().slice(0, 10),
+    // 回答した時点の項目定義。あとで項目を消しても、この回答は元の形で読める。
+    fields: await fetchFormVersionFields(row.formId, row.version),
+    answers: (row.answers ?? {}) as Record<string, FormAnswerValue>,
+  };
 }

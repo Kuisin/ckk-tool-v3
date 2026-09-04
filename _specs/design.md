@@ -347,6 +347,7 @@ Operation codes provide keyboard-shortcut navigation. Format: `{CAT}{MODE}{IDX}`
 | システム | E | AI プロバイダ | SY0E | — | — |
 | システム | G | 特権アクセス | SY0G | — | — |
 | システム | F | 通知メール | SY0F | — | — |
+| システム | H | 取引先ポータル | SY0H | — | — |
 
 > `CM00`（ダッシュボード）は**アプリ一覧（`lib/app-list.ts`）には登録されて
 > いない** — ホーム自体だから。ランチャーに出るアプリの正は常に
@@ -455,6 +456,7 @@ Stack (gap="xl", p="md", maw={1200})
 | AI プロバイダ | `IconRobot` |
 | 特権アクセス | `IconShieldCheck` |
 | 通知メール | `IconMailFast` |
+| 取引先ポータル | `IconUsersGroup` |
 | マニュアル | `IconBook2` |
 
 ---

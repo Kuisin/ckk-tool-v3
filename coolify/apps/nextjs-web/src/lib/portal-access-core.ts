@@ -32,6 +32,23 @@ export function isPortalResourceType(v: string): v is PortalResourceType {
   return (PORTAL_RESOURCE_TYPES as readonly string[]).includes(v);
 }
 
+/**
+ * 閲覧記録（portal_access_logs.resource_type）に載る値。
+ *
+ * **付与できるもの（PORTAL_RESOURCE_TYPES）より広い。** 付与の語彙を広げると
+ * 「その種別の grant を作れるのに、認可側が解釈できない」行が作れてしまうので、
+ * 2 つは分けてある。ここに増えるのは「見られた対象」で、認可の単位ではない
+ * ものが入る:
+ *   form_responses … 回答 1 件。認可はフォーム（forms）の付与が決める。
+ */
+export const PORTAL_ACCESS_RESOURCE_TYPES = [
+  ...PORTAL_RESOURCE_TYPES,
+  "form_responses",
+] as const;
+
+export type PortalAccessResourceType =
+  (typeof PORTAL_ACCESS_RESOURCE_TYPES)[number];
+
 export const PORTAL_GRANT_KINDS = ["BP_SCOPE", "DOCUMENT", "FORM"] as const;
 export type PortalGrantKind = (typeof PORTAL_GRANT_KINDS)[number];
 

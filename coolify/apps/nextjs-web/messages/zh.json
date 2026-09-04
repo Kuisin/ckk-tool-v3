@@ -3973,7 +3973,17 @@
       "issuedLinks": "已发行的链接",
       "revoked": "已失效",
       "linkSummary": "{email} / {count} 次 / 至 {date}",
-      "verified": "已验证"
+      "verified": "已验证",
+      "sharingScope": "共享范围",
+      "noSharingYet": "尚未共享（此人看不到任何内容）。",
+      "includesBranches": "包含分公司",
+      "includesEndUserDocuments": "包含作为最终用户・送货对象的单据",
+      "revokingSharingHidesThoseDocuments": "失效后，此共享范围内的单据将对该人隐藏。",
+      "noLinksIssuedYet": "尚未发行链接。",
+      "revokingTheLinkClosesTheSession": "失效后，使用该链接打开的会话也会结束。",
+      "viewingHistory": "浏览记录",
+      "nothingHasBeenViewedYet": "尚未浏览任何内容。",
+      "ipAddress": "IP 地址"
     },
     "privileged": {
       "pendingApproval": "（审批中）",
@@ -4473,14 +4483,22 @@
     },
     "documents": {
       "document": "单据",
-      "noneToShow": "没有可显示的{document}。"
+      "noneToShow": "没有可显示的{document}。",
+      "dueDate": "付款期限",
+      "taxAmount": "税额",
+      "noLineItems": "没有明细。",
+      "priceOmitted": "本送货单不显示价格。"
     },
     "forms": {
       "thereAreNoResponsesToShow": "没有可显示的回答。",
-      "noFormsAreSharedWithYou": "没有共享的表单。"
+      "noFormsAreSharedWithYou": "没有共享的表单。",
+      "noAnswerFields": "没有可显示的项目。",
+      "rowNumber": "第 {row} 行",
+      "responseCount": "{count} 条回答"
     },
     "orders": {
-      "thereAreNoOrdersToShow": "没有可显示的订单。"
+      "thereAreNoOrdersToShow": "没有可显示的订单。",
+      "cancelledNotice": "此订单明细已取消。"
     },
     "page": {
       "youCanViewDocumentsAddressedTo": "您可以查看寄给贵公司的单据。",
@@ -4510,6 +4528,19 @@
     "loginActions": {
       "backupCodeInvalid": "备用码不正确。",
       "issueMessage": "如果您输入的邮箱地址已注册，验证码已发送。请在 10 分钟内输入。如未收到，请检查垃圾邮件文件夹，并联系您的销售负责人。"
+    },
+    "common": {
+      "relatedDocuments": "关联单据"
+    },
+    "home": {
+      "greeting": "{name} 您好",
+      "activeOrders": "进行中的订单",
+      "recentDocuments": "最近的单据",
+      "viewAll": "查看全部",
+      "nothingToShow": "暂无可显示的内容。"
+    },
+    "nav": {
+      "menu": "菜单"
     }
   },
   "master": {
